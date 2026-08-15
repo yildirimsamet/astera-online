@@ -4,6 +4,19 @@ on: { push: { branches: [main] }, pull_request: {} }
 jobs:
   verify:
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: blindspace
+          POSTGRES_PASSWORD: blindspace
+          POSTGRES_DB: blindspace
+        ports: ['5433:5432']
+        options: >-
+          --health-cmd "pg_isready -U blindspace"
+          --health-interval 2s --health-timeout 3s --health-retries 20
+    env:
+      DATABASE_URL: postgres://blindspace:blindspace@localhost:5433/blindspace
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
@@ -12,6 +25,8 @@ jobs:
         with: { node-version: 22, cache: pnpm }
       - run: pnpm install --frozen-lockfile
       - run: pnpm typecheck
-      # Unit + property tests, then the season regression gate. The gate is the
-      # one that catches balance regressions no unit test can see.
+      - run: pnpm lint
+      # Rule units and property tests, the season regression gate, then the
+      # persistence suite against a real Postgres. The season gate is the one
+      # that catches balance regressions no unit test can see.
       - run: pnpm test

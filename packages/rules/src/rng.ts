@@ -16,7 +16,7 @@ export function mulberry32(seed: number): Rng {
 }
 
 /** Stable 32-bit hash so string ids can seed a generator. */
-export function hashSeed(...parts: Array<string | number>): number {
+export function hashSeed(...parts: (string | number)[]): number {
   let h = 2166136261 >>> 0;
   for (const part of parts) {
     const s = String(part);
@@ -29,7 +29,7 @@ export function hashSeed(...parts: Array<string | number>): number {
   return h >>> 0;
 }
 
-export const seededFrom = (...parts: Array<string | number>): Rng =>
+export const seededFrom = (...parts: (string | number)[]): Rng =>
   mulberry32(hashSeed(...parts));
 
 export const clamp = (v: number, lo: number, hi: number): number =>

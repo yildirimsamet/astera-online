@@ -12,11 +12,11 @@ physically travel, and combat that resolves while you are asleep.
 ## Layout
 
 ```
-packages/rules/   @blindspace/rules  THE source of truth for every game rule
-packages/sim/     @blindspace/sim    headless season simulator + regression gate
-legacy/                              Phase 0 JS prototype, kept runnable
-apps/server/                         (phase 1) Fastify API + event worker
-apps/web/                            (phase 3) React + R3F client
+packages/rules/   @blindspace/rules   THE source of truth for every game rule
+packages/sim/     @blindspace/sim     headless season simulator + regression gate
+apps/server/      @blindspace/server  Fastify API + event worker (one image, two roles)
+apps/web/                             (phase 3) React + R3F client
+legacy/                               Phase 0 JS prototype, kept runnable
 ```
 
 ### The one architectural principle
@@ -37,19 +37,34 @@ from its seed.
 
 ```bash
 pnpm install
-pnpm typecheck            # every package
-pnpm test                 # 69 rule tests + 30 season assertions
+docker compose up -d      # Postgres on :5433
+
+pnpm verify               # typecheck + lint + all 166 tests
+pnpm typecheck
+pnpm lint
+pnpm test
+
 pnpm sim                  # look at a season by hand
 pnpm sim -- --players=200 --seed=7
+
+pnpm --filter @blindspace/server db:generate   # after a schema change
+pnpm --filter @blindspace/server dev
 ```
 
 ## Testing strategy
 
-| Layer | Covers | Speed |
+| Layer | Covers | Count |
 |---|---|---|
-| Rule units | Combat, economy curves, travel, clarity gradient, detection, dominion | < 1 s |
-| Properties (fast-check) | Invariants over *all* inputs: dominion sums to zero, loot never exceeds cargo, counts never go negative | ~2 s |
-| **Season regression** | A full 14-day season on three seeds, asserting the balance invariants stay in band | ~1 s |
+| Rule units | Combat, economy curves, travel, clarity gradient, detection, dominion | 55 |
+| Properties (fast-check) | Invariants over *all* inputs: dominion sums to zero, loot never exceeds cargo, counts never go negative | 14 |
+| **Season regression** | A full 14-day season on three seeds, asserting the balance invariants stay in band | 30 |
+| Persistence | Real Postgres. Double-spend, deadlock ordering, the lazy tick, crash recovery | 32 |
+| Auth | Token-type confusion, forged signatures, expiry, malformed headers | 20 |
+| Missions | Launch validation, abuse guards, radar-warning timing | 15 |
+
+Lint enforces the architectural boundary mechanically: `packages/rules` may not import
+a Node builtin, another workspace package, `Math.random`, `Date.now`, or `new Date`.
+If the rules ever acquire a clock, CI fails.
 
 The season regression is the one that matters. A balance regression — someone
 nudges a constant and the vault silently starts protecting 200% of storage

@@ -1,5 +1,21 @@
 import { DISRUPTION, ECON, SEASON, SHIELD } from './constants.js';
-import type { Resources } from './types.js';
+import { SATELLITE_IDS, type Resources, type SatelliteLevels } from './types.js';
+
+/**
+ * Satellite levels, by known key.
+ *
+ * `Object.values()` on a `Partial<Record<K, number>>` is typed `number[]`, which
+ * quietly hides the fact that a value can be undefined at runtime. Iterating the
+ * key list keeps the types honest and matches how hulls are handled.
+ */
+export function satelliteEntries(sats: SatelliteLevels): [(typeof SATELLITE_IDS)[number], number][] {
+  const out: [(typeof SATELLITE_IDS)[number], number][] = [];
+  for (const id of SATELLITE_IDS) {
+    const level = sats[id];
+    if (level !== undefined && level > 0) out.push([id, level]);
+  }
+  return out;
+}
 
 export const alloyRate = (level: number): number =>
   ECON.alloyBase * Math.pow(ECON.alloyMult, level);

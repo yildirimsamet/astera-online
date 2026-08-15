@@ -28,14 +28,14 @@ export function counterMult(attacker: HullClass, defender: HullClass): number {
   if (attacker === 'SUPPORT') return 0;
   if (defender === 'SUPPORT') return COMBAT.strongMult;
   if (BEATS[attacker] === defender) return COMBAT.strongMult;
-  if (BEATS[defender as Exclude<HullClass, 'SUPPORT'>] === attacker) return COMBAT.weakMult;
+  if (BEATS[defender] === attacker) return COMBAT.weakMult;
   return 1;
 }
 
 export const countOf = (fleet: Fleet, hull: HullId): number => fleet[hull] ?? 0;
 
-export function fleetEntries(fleet: Fleet): Array<[HullId, number]> {
-  const out: Array<[HullId, number]> = [];
+export function fleetEntries(fleet: Fleet): [HullId, number][] {
+  const out: [HullId, number][] = [];
   for (const id of ALL_HULLS) {
     const n = fleet[id] ?? 0;
     if (n > 0) out.push([id, n]);

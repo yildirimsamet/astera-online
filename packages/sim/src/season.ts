@@ -14,12 +14,14 @@ import {
   emptyLedger,
   fleetCargo,
   fleetCount,
+  fleetEntries,
   fleetSpeed,
   fleetValue,
   generateGalaxy,
   investedInBuilding,
   mulberry32,
   resolveCombat,
+  satelliteEntries,
   satelliteSlots,
   storageCap,
   travelMinutes,
@@ -29,7 +31,6 @@ import {
   type BuildingLevels,
   type Fleet,
   type Ledger,
-  type MobileHullId,
   type Rng,
   type SatelliteLevels,
 } from '@blindspace/rules';
@@ -62,7 +63,7 @@ export interface SimPlayer {
   wealthHistory: number[];
   recentHits: Map<number, number[]>;
   intel: Map<number, { stock: number; defence: number; at: number }>;
-  neighbours: Array<{ id: number; d: number }>;
+  neighbours: { id: number; d: number }[];
 }
 
 export interface Mission {
@@ -230,7 +231,7 @@ function runSession(p: SimPlayer, t: number, world: World, rng: Rng): void {
   // 2. Satellites, up to the slot cap.
   {
     const slots = satelliteSlots(p.buildings.RING);
-    const owned = Object.values(p.satellites).filter((v) => (v ?? 0) > 0).length;
+    const owned = satelliteEntries(p.satellites).length;
     for (const s of a.sats) {
       const lvl = p.satellites[s] ?? 0;
       if (lvl === 0 && owned >= slots) continue;
@@ -343,7 +344,7 @@ function tryAttack(p: SimPlayer, t: number, world: World, rng: Rng): void {
       : 0.7 + rng() * 0.25;
 
   const send: Fleet = {};
-  for (const k of MOBILE_HULLS as readonly MobileHullId[]) {
+  for (const k of MOBILE_HULLS) {
     const have = p.fleet[k] ?? 0;
     if (have <= 0) continue;
     const n = k === 'HAULER' ? have : Math.floor(have * commit);
@@ -370,8 +371,8 @@ function resolveMission(m: Mission, t: number, world: World, stats: DayStats): v
   if (!atk || !def) return;
 
   if (m.returning) {
-    for (const [k, n] of Object.entries(m.fleet)) {
-      atk.fleet[k as keyof Fleet] = (atk.fleet[k as keyof Fleet] ?? 0) + (n ?? 0);
+    for (const [hull, n] of fleetEntries(m.fleet)) {
+      atk.fleet[hull] = (atk.fleet[hull] ?? 0) + n;
     }
     sync(atk, t);
     const caps = capsOf(atk);
@@ -386,10 +387,10 @@ function resolveMission(m: Mission, t: number, world: World, stats: DayStats): v
   const rng = mulberry32((m.from * 7919 + m.to * 104729 + m.arriveAt) >>> 0);
   const r = resolveCombat(m.fleet, defenders, def.shield, rng);
 
-  for (const k of Object.keys(def.fleet) as Array<keyof Fleet>) {
+  for (const k of Object.keys(def.fleet) as (keyof Fleet)[]) {
     def.fleet[k] = r.defenderSurvivors[k] ?? 0;
   }
-  for (const k of Object.keys(def.ground) as Array<keyof Fleet>) {
+  for (const k of Object.keys(def.ground) as (keyof Fleet)[]) {
     def.ground[k] = (r.defenderSurvivors[k] ?? 0) + (r.defenceSalvage[k] ?? 0);
   }
   def.shield = r.shieldLeft;

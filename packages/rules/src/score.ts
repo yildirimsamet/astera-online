@@ -1,4 +1,4 @@
-import { investedInBuilding } from './economy.js';
+import { investedInBuilding, satelliteEntries } from './economy.js';
 import { fleetValue } from './hulls.js';
 import type { Holdings, Ledger } from './types.js';
 import type { CombatResult } from './combat.js';
@@ -14,7 +14,7 @@ import type { CombatResult } from './combat.js';
 export function wealth(h: Holdings): number {
   let v = 0;
   for (const level of Object.values(h.buildings)) v += investedInBuilding(level);
-  for (const level of Object.values(h.satellites)) v += investedInBuilding(level ?? 0);
+  for (const [, level] of satelliteEntries(h.satellites)) v += investedInBuilding(level);
   v += fleetValue(h.fleet);
   v += fleetValue(h.ground);
   v += h.alloy + h.crystal;

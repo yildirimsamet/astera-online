@@ -1,0 +1,17 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: blindspace-pg
+    environment:
+      POSTGRES_USER: blindspace
+      POSTGRES_PASSWORD: blindspace
+      POSTGRES_DB: blindspace
+    ports: ['5433:5432']
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U blindspace']
+      interval: 2s
+      timeout: 3s
+      retries: 20
+    tmpfs:
+      # Dev and CI database — speed over durability. Never used in production.
+      - /var/lib/postgresql/data

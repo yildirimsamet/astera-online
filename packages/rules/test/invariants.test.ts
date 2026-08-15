@@ -35,7 +35,7 @@ describe('combat invariants — must hold for ALL inputs', () => {
   it('never produces a negative unit count', () => {
     fc.assert(
       fc.property(arbFleet, arbDefence, fc.integer({ min: 0, max: 40_000 }), fc.nat(), (a, d, shield, seed) => {
-        const r = resolveCombat(a as Fleet, d as Fleet, shield, mulberry32(seed));
+        const r = resolveCombat(a, d, shield, mulberry32(seed));
         for (const id of ALL_HULLS) {
           expect(r.attackerSurvivors[id] ?? 0).toBeGreaterThanOrEqual(0);
           expect(r.defenderSurvivors[id] ?? 0).toBeGreaterThanOrEqual(0);
@@ -48,7 +48,7 @@ describe('combat invariants — must hold for ALL inputs', () => {
   it('never creates units out of nothing', () => {
     fc.assert(
       fc.property(arbFleet, arbDefence, fc.nat(), (a, d, seed) => {
-        const r = resolveCombat(a as Fleet, d as Fleet, 0, mulberry32(seed));
+        const r = resolveCombat(a, d, 0, mulberry32(seed));
         for (const id of ALL_HULLS) {
           expect(r.attackerSurvivors[id] ?? 0).toBeLessThanOrEqual((a as Fleet)[id] ?? 0);
           expect(r.defenderSurvivors[id] ?? 0).toBeLessThanOrEqual((d as Fleet)[id] ?? 0);
@@ -61,7 +61,7 @@ describe('combat invariants — must hold for ALL inputs', () => {
   it('never reports negative destroyed value, even with salvage', () => {
     fc.assert(
       fc.property(arbFleet, arbDefence, fc.nat(), (a, d, seed) => {
-        const r = resolveCombat(a as Fleet, d as Fleet, 0, mulberry32(seed));
+        const r = resolveCombat(a, d, 0, mulberry32(seed));
         expect(r.defenderLossValue).toBeGreaterThanOrEqual(0);
         expect(r.attackerLossValue).toBeGreaterThanOrEqual(0);
       }),
@@ -72,7 +72,7 @@ describe('combat invariants — must hold for ALL inputs', () => {
   it('DECISIVE implies the defence is actually gone', () => {
     fc.assert(
       fc.property(arbFleet, arbDefence, fc.nat(), (a, d, seed) => {
-        const r = resolveCombat(a as Fleet, d as Fleet, 0, mulberry32(seed));
+        const r = resolveCombat(a, d, 0, mulberry32(seed));
         if (r.grade === 'DECISIVE') expect(fleetCount(r.defenderSurvivors)).toBe(0);
       }),
       { numRuns: 300 },
@@ -82,7 +82,7 @@ describe('combat invariants — must hold for ALL inputs', () => {
   it('resolves in at most three rounds', () => {
     fc.assert(
       fc.property(arbFleet, arbDefence, fc.nat(), (a, d, seed) => {
-        const r = resolveCombat(a as Fleet, d as Fleet, 0, mulberry32(seed));
+        const r = resolveCombat(a, d, 0, mulberry32(seed));
         expect(r.rounds.length).toBeLessThanOrEqual(3);
       }),
       { numRuns: 200 },
@@ -92,8 +92,8 @@ describe('combat invariants — must hold for ALL inputs', () => {
   it('is deterministic for a given seed', () => {
     fc.assert(
       fc.property(arbFleet, arbDefence, fc.nat(), (a, d, seed) => {
-        const one = resolveCombat(a as Fleet, d as Fleet, 0, mulberry32(seed));
-        const two = resolveCombat(a as Fleet, d as Fleet, 0, mulberry32(seed));
+        const one = resolveCombat(a, d, 0, mulberry32(seed));
+        const two = resolveCombat(a, d, 0, mulberry32(seed));
         expect(two).toEqual(one);
       }),
       { numRuns: 200 },
@@ -112,7 +112,7 @@ describe('dominion is zero-sum for ALL battles', () => {
         (a, d, loot, seed) => {
           const atk = emptyLedger();
           const def = emptyLedger();
-          bookBattle(atk, def, loot, resolveCombat(a as Fleet, d as Fleet, 0, mulberry32(seed)));
+          bookBattle(atk, def, loot, resolveCombat(a, d, 0, mulberry32(seed)));
           expect(dominion(atk) + dominion(def)).toBe(0);
         },
       ),
@@ -146,8 +146,8 @@ describe('loot invariants', () => {
   it('a fleet can never carry more than its hulls allow', () => {
     fc.assert(
       fc.property(arbFleet, (f) => {
-        const loot = computeLoot({ alloy: 1e9, crystal: 1e9 }, 0, 'DECISIVE', fleetCargo(f as Fleet));
-        expect(loot.alloy + loot.crystal).toBeLessThanOrEqual(fleetCargo(f as Fleet));
+        const loot = computeLoot({ alloy: 1e9, crystal: 1e9 }, 0, 'DECISIVE', fleetCargo(f));
+        expect(loot.alloy + loot.crystal).toBeLessThanOrEqual(fleetCargo(f));
       }),
       { numRuns: 200 },
     );

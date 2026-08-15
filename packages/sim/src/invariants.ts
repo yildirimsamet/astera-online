@@ -4,6 +4,7 @@ import {
   dominion,
   fleetValue,
   investedInBuilding,
+  satelliteEntries,
   median,
   storageCap,
   vaultProtects,
@@ -57,7 +58,7 @@ export function measure(
         fleetValue(p.fleet) +
         p.alloy +
         p.crystal +
-        Object.values(p.satellites).reduce((s, l) => s + investedInBuilding(l ?? 0), 0);
+        satelliteEntries(p.satellites).reduce((s, [, l]) => s + investedInBuilding(l), 0);
       return p.wealthNow > 0 ? risk / p.wealthNow : 0;
     }),
   );
@@ -126,7 +127,7 @@ export function verdict(key: InvariantKey, value: number): Verdict {
 /** Median rank on the Dominion ladder, by archetype. Lower is better. */
 export function ladderByArchetype(
   players: readonly SimPlayer[],
-): Array<{ type: ArchetypeName; medianRank: number; bestRank: number; medianDominion: number }> {
+): { type: ArchetypeName; medianRank: number; bestRank: number; medianDominion: number }[] {
   const ladder = [...players].sort((a, b) => dominion(b.ledger) - dominion(a.ledger));
   const ranks = new Map<ArchetypeName, number[]>();
   ladder.forEach((p, i) => {

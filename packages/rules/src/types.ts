@@ -6,6 +6,7 @@ export type HullClass = 'SKIRMISHER' | 'LANCE' | 'BULWARK' | 'SUPPORT';
 
 export type BuildingId = 'CORE' | 'REFINERY' | 'EXTRACTOR' | 'VAULT' | 'SHIPYARD' | 'RING';
 export type SatelliteId = 'TELESCOPE' | 'RADAR' | 'AEGIS' | 'VEIL' | 'DRILL';
+export const SATELLITE_IDS = ['TELESCOPE', 'RADAR', 'AEGIS', 'VEIL', 'DRILL'] as const;
 
 export type Grade = 'DECISIVE' | 'PARTIAL' | 'REPELLED';
 export type ClarityState = 'FULL' | 'CLEAR' | 'INTERMITTENT' | 'DEGRADED' | 'BLIND';
