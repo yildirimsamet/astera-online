@@ -328,3 +328,75 @@ stroke weight, optical size, corner radius and viewing angle — is the entire j
 the one thing image models cannot hold. Use AI for **ship concept sketches** if useful,
 then have those redrawn as vectors. Draw the icons in **Figma**, **Affinity Designer** or
 **Illustrator** on a 24 px grid.
+
+---
+
+# Asset inventory · 2026-08-16
+
+## What exists (37 images) and where each one is used
+
+| Asset | Count | Used |
+|---|---|---|
+| `planets/planet_1..16` | 16 | **Everywhere a planet appears** — hero 132px, galaxy list 44px, dimmed for planets you cannot see into. Chosen by hash of the planet id, so a world never changes appearance. |
+| `resources/alloy`, `crystal` | 2 | Status bar, every price, the hero's per-hour readout, gain lines. |
+| `general/telescope_1..3` | 3 | Telescope row (tier by level), the intel screen's "no telescope" card, the target sheet's fleet-status gap. **Tier 2 is shown as the next-level preview at L2.** |
+| `general/radar_1..3` | 3 | Same pattern for Radar. |
+| `general/shield_1..3` | 3 | Same pattern for Aegis. |
+| `general/orbital_ring` | 1 | Orbital Ring row, and drawn **physically around the planet** on the hero once you own one. |
+| `general/drill` | 1 | Drill row, and as its orbital body. |
+| `sattelites/sattelite_type_1..4` | 4 | The bodies orbiting the planet hero — one per installed satellite. Type 2 doubles as the Veil. |
+| `ships/ship_1..4` | 4 | Wasp / Lance / Bulwark / Hauler, in the shipyard rows and full-bleed in the build sheet. |
+| `ships/explorer_ship` | 1 | Probe: the target sheet's "stock and defence" gap and the intel screen's empty probe report. |
+
+## What is missing
+
+### Blocking — these are drawn as flat SVG marks today
+
+| Needed | Why it matters |
+|---|---|
+| **Bastion** — a ground turret on a heavy base plate, no engines | The only unit with no art, and the one the game most often tells a player to build. It must read as *unable to leave*: the base plate is the whole point. |
+| **Command Core** | The build ceiling — the most-pressed button in the game. |
+| **Vault** | Thick-walled, heavy door. Must read as *unreachable*, not as money. |
+| **Shipyard** | An open gantry with a hull held inside it. |
+| **Alloy Refinery** / **Crystal Extractor** | Currently borrowing the raw resource renders, which is a small lie: a refinery is not a lump of alloy. |
+
+Ideally each of the five buildings ships in **three tiers**, exactly like
+`telescope_1..3`. That is what makes the planet visibly upgrade and what feeds the
+next-level preview.
+
+### High value
+
+- **Veil** — its own satellite body. It currently shares `sattelite_type_2`.
+- **Battle outcomes** — `DECISIVE`, `PARTIAL`, `REPELLED`. The return moment is the
+  most important screen in the game and has no imagery at all.
+- **Asteroid** — generated in the world already; nothing draws one.
+- **Background plate** — a starfield/nebula. The app background is CSS gradients;
+  one good plate lifts every screen at once.
+- **Wordmark / app icon** — for the entry screen and the eventual installable app.
+
+### Effects (sprite sheets or transparent PNG sequences)
+
+Engine trail, launch flare, impact/explosion, shield hit ripple, scan ping. These
+are what make an arrival *feel* like something. 512px frames, additive-friendly
+(bright on black, no baked background).
+
+## 3D — nothing exists yet, and the 2D renders cannot be reused
+
+**Important:** the sixteen planet PNGs are *renders*, not textures. They cannot be
+wrapped onto a sphere. Phase 5's R3F galaxy needs a different kind of asset:
+
+| Needed for 3D | Format |
+|---|---|
+| Planet surface maps | **Equirectangular** colour maps, 2:1 ratio, 2048×1024 (4096×2048 master). Six to eight, matching the 2D families. Optional roughness/normal maps. |
+| Starfield / nebula environment | Equirectangular `.hdr` or `.exr`, 4K master → 2K web. |
+| Ship meshes | `.glb`, Draco-compressed, KTX2 textures, ≤3k triangles each, one LOD below. The four existing ship renders work as the modelling reference. |
+| Ring station mesh | `.glb`, same budget. |
+
+Blender is the right tool for all of these, and the same `.blend` masters can
+re-render the 2D art if it ever needs to change.
+
+## Audio — nothing exists
+
+Lowest priority, and honest about why: this game is played in four-minute gaps,
+often in public, almost always muted. The first sounds worth having are a fleet
+arrival and an incoming-fleet warning, and only once notifications exist.
