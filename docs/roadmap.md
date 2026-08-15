@@ -16,14 +16,15 @@ known risk?*
 | 1 · Backend foundation | ✅ Done — `9c169ef` |
 | 2 · Intel layer | ✅ Done — `2afdf97` |
 | 3 · Return moment & re-engagement | ✅ Done |
-| **4 · Playable loop (thin client)** | **← NEXT. The core gameplay blocker.** |
+| 4 · Playable loop (thin client) | ✅ Done — the game can be played |
+| **4.5 · Play it for two days in real gaps** | **← NEXT. Not a build phase.** |
 | 5 · 3D galaxy | Not started |
 | 6 · Season lifecycle & leaderboard | Not started |
 | 7 · Playtest & balance | Not started |
 
 ```
-pnpm verify  →  0 type errors · 0 lint errors · 249 tests
-                rules 82 · sim 30 · server 137
+pnpm verify  →  0 type errors · 0 lint errors · 292 tests
+                rules 82 · sim 30 · server 147 · web 33
 ```
 
 ---
@@ -44,20 +45,22 @@ pnpm verify  →  0 type errors · 0 lint errors · 249 tests
 | Notifications | List, mark-seen, and SSE over Postgres LISTEN/NOTIFY. |
 | Asteroids | Generated and stored; no impacts scheduled, no Drill. |
 | Season lifecycle | `season_end` event kind exists; no handler. |
-| Web client | Does not exist. |
+| Onboarding | `POST /api/season/join`, `GET /api/season`, and a season CLI. Until Phase 4 a galaxy could only be created from inside a test. |
+| Web client | **Playable.** React + Vite + Tailwind + TanStack Query. Entry, planet, galaxy, intel, target and launch sheets, return overlay, live in-flight strip, SSE. |
 
-**Existing endpoints (19):** auth ×3 · `GET /api/planet` · planet upgrade/build/satellite ·
-`POST /api/fleet/launch` · `GET /api/intel` · `POST /api/intel/watch` ·
-`POST /api/intel/probe` · `GET /api/galaxy` · `GET /api/leaderboard` ·
-`GET /api/session/return` · `GET /api/session/unlocks` · `GET /api/notifications` ·
-`POST /api/notifications/seen` · `GET /api/stream` · `GET /health`
+**Existing endpoints (22):** auth ×3 · `GET /api/season` · `POST /api/season/join` ·
+`GET /api/planet` · planet upgrade/build/satellite · `POST /api/fleet/launch` ·
+`GET /api/intel` · `POST /api/intel/watch` · `POST /api/intel/probe` · `GET /api/galaxy` ·
+`GET /api/leaderboard` · `GET /api/session/return` · `GET /api/session/pending` ·
+`GET /api/session/unlocks` · `GET /api/notifications` · `POST /api/notifications/seen` ·
+`GET /api/stream` · `GET /health`
 
 **Event kinds handled (2):** `mission_arrival` (attack, return **and probe**) ·
 `radar_warning`
 
-> **The single most important fact:** the entire loop now exists, is tested, and is
-> reachable over HTTP — but there is no interface. **The game works and nobody can play
-> it.** The next job is the thinnest client that changes that.
+> **The single most important fact:** the loop is playable end to end. What it has never
+> had is a player. Everything below this line is now blocked on somebody actually living
+> with it for a couple of days — not on more features.
 
 ---
 
@@ -119,25 +122,52 @@ there is.
   filter, never an authorisation.
 - NOTIFY is transactional: an event from a rolled-back transaction is never delivered.
 
-## Phase 4 · Playable loop — thin client
+## Phase 4 · Playable loop — thin client — DONE
 
-**Goal:** actually play the game. This is the earliest point at which the design can be
-judged rather than argued about.
+**Delivered:** React + Vite + Tailwind + TanStack Query. Three screens plus the return
+overlay, the target and launch sheets, a live in-flight strip, and SSE. Deliberately
+**not** the 3D map — a list-based galaxy is enough to test whether the core decision is
+worth making, and the Phase 0 text prototype already proved that shape works.
 
-Deliberately **not** the 3D map. A list-based galaxy is enough to test whether the core
-decision is worth making — the Phase 0 text prototype already proved that shape works.
+The attack flow leads with the exposure line, as required:
+**"6 units defending home · Exposed for 26m"**, above everything else on the sheet.
 
-```
-LOGIN → PLANET → DEVELOP → GATHER INFO → CHOOSE TARGET → DISPATCH
-      → TRAVEL → OUTCOME → RETURN → NEW DECISION
-```
+**Two things had to be built on the server before any of it was reachable:**
 
-React + Vite + Tailwind + TanStack Query. Three screens plus the return overlay. The attack
-flow must lead with the exposure line: **"Home defence after launch: 4 units. Exposed for
-28 minutes."**
+1. **Onboarding did not exist.** `joinSeason` and `createSeason` were only ever called
+   from tests, so a real player could not get a planet and a galaxy could not be created
+   outside a test run. Now: `POST /api/season/join` (idempotent — a returning player
+   lands on the same planet), `GET /api/season`, and `pnpm season create|migrate|status`.
+2. **`GET /api/session/pending`.** The return payload advances `lastSeenAt` and may be
+   read once per session, so it cannot drive a live countdown. Design Law #1 needs a
+   surface that can be read as often as it is looked at.
+
+### The bug the client found
+
+**The return payload leaked the entire radar ladder.** `pending[]` listed every inbound
+attack unconditionally, with its exact ETA — so a player with *no radar at all* was told
+a fleet was coming and precisely how long they had. That is what Radar L3 exists to sell,
+and it silently reversed D9: a forty-minute flight gave forty minutes of notice.
+
+It shipped in Phase 3 and the test covering it **asserted the leak**. An inbound attack is
+now listed only when `radarDetectsFleets(level)` and `minutesRemaining <= lead(level)` —
+the same instant the warning notification fires. Three tests replaced the one.
+
+Found by building the strip that displays it, which is the whole argument for this phase.
+
+### Product bugs found by playing it
+
+- A brand-new commander's first screen was the return overlay reading **"0m · Nothing
+  happened. The galaxy did not notice you were away"** — the worst possible opening for a
+  game about being watched. The overlay now appears only when there is a return to report.
+- The in-flight strip covered the last row of every list. The shell is now a real app
+  shell: fixed bar, scrolling middle, fixed tabs.
+- The intel screen for a player who owns no instruments was three empty boxes. It now
+  shows what knowing costs — the one thing a blind commander needs, at the moment they
+  feel its absence.
 
 **Acceptance:** the developer plays it for two days in real gaps and the loop holds.
-Then: **play it.** Not read it — play it.
+**That has not happened yet. It is the next job, and it is not a build job.**
 
 ---
 

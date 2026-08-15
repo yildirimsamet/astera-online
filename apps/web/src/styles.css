@@ -1,0 +1,180 @@
+@import 'tailwindcss';
+@import '@fontsource-variable/ibm-plex-sans';
+@import '@fontsource/ibm-plex-mono/400.css';
+@import '@fontsource/ibm-plex-mono/500.css';
+@import '@fontsource/archivo-narrow/600.css';
+
+/**
+ * BLINDSPACE — instrument panel, not sci-fi HUD.
+ *
+ * The one rule this palette obeys: HUE carries category, LUMINANCE carries
+ * certainty. Alloy is warm, crystal is cold, danger is grease-pencil red — and
+ * knowledge fades toward the background as clarity drops, so an unreliable
+ * reading is literally harder to see than a confirmed one. Colour is information
+ * here, not decoration; nothing else may use the clarity ramp.
+ */
+@theme {
+  --color-void: #05070d;
+  --color-deep: #090d16;
+  --color-panel: #0e1421;
+  --color-raised: #151d2e;
+  --color-line: #1f2a3d;
+  --color-line-soft: #16202f;
+
+  --color-bone: #e8e3d6;
+  --color-dim: #8b95a8;
+  --color-faint: #5b6478;
+
+  --color-alloy: #d9a441;
+  --color-crystal: #6fd3e0;
+  --color-alert: #e2412c;
+
+  /* Certainty ramp. FULL is almost paper; BLIND is almost background. */
+  --color-clarity-full: #edf6ff;
+  --color-clarity-clear: #afc8dd;
+  --color-clarity-int: #7c8ca3;
+  --color-clarity-deg: #5a6478;
+  --color-clarity-blind: #39404f;
+
+  --font-display: 'Archivo Narrow', ui-sans-serif, system-ui, sans-serif;
+  --font-sans: 'IBM Plex Sans Variable', ui-sans-serif, system-ui, sans-serif;
+  --font-mono: 'IBM Plex Mono', ui-monospace, 'SF Mono', monospace;
+}
+
+@keyframes sheet-in {
+  from {
+    transform: translateY(14px);
+    opacity: 0;
+  }
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+}
+
+/** The return overlay's lines arrive one after another, like a log printing. */
+@keyframes line-in {
+  from {
+    transform: translateY(6px);
+    opacity: 0;
+  }
+}
+
+@layer base {
+  html {
+    background-color: var(--color-void);
+    /* No rubber-banding: this is an app surface, not a document. */
+    overscroll-behavior: none;
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    margin: 0;
+    color: var(--color-bone);
+    font-family: var(--font-sans);
+    font-size: 15px;
+    line-height: 1.45;
+    /* The disc, seen edge-on from inside it: one light source, low in the frame,
+       plus a plate grain. Two gradients and a filter — no image asset, nothing
+       to download, and it holds up at any size. */
+    background:
+      radial-gradient(120% 55% at 50% -10%, #101a33 0%, transparent 60%),
+      radial-gradient(90% 40% at 50% 105%, #0d1526 0%, transparent 70%),
+      var(--color-void);
+    background-attachment: fixed;
+    min-height: 100dvh;
+  }
+
+  /* Grain. Sits above the ground, below everything else, and never intercepts a tap. */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+    opacity: 0.035;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)'/%3E%3C/svg%3E");
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--color-crystal);
+    outline-offset: 2px;
+  }
+
+  button {
+    font: inherit;
+    color: inherit;
+    /* iOS shows a grey flash on tap that reads as a rendering fault on dark UI. */
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+}
+
+@layer components {
+  /** An instrument legend: the small engraved label above a reading. */
+  .legend {
+    font-family: var(--font-display);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+    font-size: 11px;
+    color: var(--color-faint);
+  }
+
+  /** Every number in the game. Tabular so a ticking value does not jitter. */
+  .num {
+    font-family: var(--font-mono);
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: 'zero' 1;
+  }
+
+  .panel {
+    background: linear-gradient(180deg, var(--color-panel) 0%, var(--color-deep) 100%);
+    border: 1px solid var(--color-line-soft);
+    border-radius: 3px;
+  }
+
+  .btn {
+    font-family: var(--font-display);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    font-size: 12px;
+    padding: 9px 14px;
+    border-radius: 2px;
+    border: 1px solid var(--color-line);
+    background: var(--color-raised);
+    color: var(--color-bone);
+    transition: border-color 120ms ease, background-color 120ms ease;
+    min-height: 38px;
+  }
+  .btn:active:not(:disabled) {
+    background: var(--color-line);
+  }
+  .btn:disabled {
+    color: var(--color-faint);
+    background: transparent;
+    border-color: var(--color-line-soft);
+  }
+
+  /** Reserved for the irreversible: launching, and nothing else. */
+  .btn-commit {
+    border-color: color-mix(in srgb, var(--color-alert) 55%, transparent);
+    background: color-mix(in srgb, var(--color-alert) 14%, transparent);
+    color: #ffb9ae;
+  }
+  .btn-commit:active:not(:disabled) {
+    background: color-mix(in srgb, var(--color-alert) 26%, transparent);
+  }
+}

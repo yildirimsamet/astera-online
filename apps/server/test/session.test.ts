@@ -1,8 +1,8 @@
 import { eq } from 'drizzle-orm';
 import { pino } from 'pino';
 import { afterAll, beforeEach, describe, expect, it } from 'vitest';
-import { ABUSE } from '@blindspace/rules';
-import { notifications, players, satellites, scanEvents } from '../src/db/schema.js';
+import { ABUSE, radarLeadMinutes } from '@blindspace/rules';
+import { missions, notifications, planets, players, satellites, scanEvents } from '../src/db/schema.js';
 import { EventBus, publish } from '../src/stream/bus.js';
 import {
   buildReturnPayload,
@@ -15,6 +15,7 @@ import { launchAttack } from '../src/services/mission.js';
 import { EventWorker } from '../src/worker/loop.js';
 import {
   TEST_DATABASE_URL,
+  giveSatellite,
   giveUnits,
   grant,
   seedWorld,
@@ -236,12 +237,70 @@ describe('the return payload', () => {
     void launch;
   });
 
-  it('shows an inbound fleet as a pending thread of its own', async () => {
-    await giveUnits(f.db, theirs, { WASP: 30 });
-    await launchAttack(f.db, theirs, mine, { WASP: 30 }, f.clock);
+  /**
+   * THE FOG APPLIES HERE TOO.
+   *
+   * This payload used to list every inbound attack unconditionally, with its exact
+   * ETA — handing any player, at any radar level including none, the one thing
+   * Radar L3 exists to sell, and reversing D9 in the process: a forty-minute
+   * flight gave forty minutes of notice. The test that covered it asserted the
+   * leak. All three cases below now pin the actual rule.
+   */
+  describe('an inbound fleet is only listed once radar has said so', () => {
+    const sendAtThem = async (): Promise<void> => {
+      await giveUnits(f.db, theirs, { WASP: 30 });
+      await launchAttack(f.db, theirs, mine, { WASP: 30 }, f.clock);
+    };
 
-    const payload = await buildReturnPayload(f.db, myPlayer, f.clock);
-    expect(payload.pending.some((p) => p.kind === 'incoming')).toBe(true);
+    it('says nothing at all without radar', async () => {
+      await sendAtThem();
+      const payload = await buildReturnPayload(f.db, myPlayer, f.clock);
+      expect(payload.pending.some((p) => p.kind === 'incoming')).toBe(false);
+    });
+
+    it('still says nothing with radar, while the fleet is far out', async () => {
+      await giveSatellite(f.db, mine, 'RADAR', 3);
+      await sendAtThem();
+
+      const payload = await buildReturnPayload(f.db, myPlayer, f.clock);
+      expect(payload.pending.some((p) => p.kind === 'incoming')).toBe(false);
+    });
+
+    it('lists it inside the lead window radar bought', async () => {
+      await giveSatellite(f.db, mine, 'RADAR', 3);
+      await sendAtThem();
+
+      const [inbound] = await f.db
+        .select()
+        .from(missions)
+        .where(eq(missions.targetPlanetId, mine));
+      // One minute inside the L3 fuse: warned, and not a moment earlier.
+      f.clock.set(new Date(inbound!.arriveAt.getTime() - (radarLeadMinutes(3) - 1) * 60_000));
+
+      const payload = await buildReturnPayload(f.db, myPlayer, f.clock);
+      const incoming = payload.pending.find((p) => p.kind === 'incoming');
+      expect(incoming).toBeDefined();
+      expect(incoming!.minutesRemaining).toBeLessThanOrEqual(radarLeadMinutes(3));
+    });
+  });
+
+  it('names the planet a returning fleet is coming back from', async () => {
+    await giveUnits(f.db, mine, { WASP: 30 });
+    const launch = await launchAttack(f.db, mine, theirs, { WASP: 30 }, f.clock);
+
+    const outbound = await buildReturnPayload(f.db, myPlayer, f.clock);
+    expect(outbound.pending.find((p) => p.kind === 'fleet')?.leg).toBe('outbound');
+
+    f.clock.set(launch.arriveAt);
+    await worker(f).tick();
+
+    const homeward = await buildReturnPayload(f.db, myPlayer, f.clock);
+    const thread = homeward.pending.find((p) => p.kind === 'fleet');
+    expect(thread?.leg).toBe('return');
+    // Its own planet's name would be useless here — the thread is about where it
+    // has been, not where it is going.
+    const [target] = await f.db.select().from(planets).where(eq(planets.id, theirs));
+    expect(thread?.targetName).toBe(target!.name);
   });
 
   it('404s for an account with no planet', async () => {

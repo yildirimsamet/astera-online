@@ -1,7 +1,8 @@
 import { pino } from 'pino';
 import { buildApp } from './app.js';
-import { loadEnv } from './env.js';
+import { loadDotEnv, loadEnv } from './env.js';
 
+loadDotEnv();
 const env = loadEnv();
 const log = pino({ level: env.LOG_LEVEL });
 const { app, worker, bus, close } = buildApp({ env, logger: log });

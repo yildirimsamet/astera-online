@@ -28,7 +28,7 @@ the rules ever acquire a clock.
 packages/rules/    @blindspace/rules    THE source of truth. Zero deps.
 packages/sim/      @blindspace/sim      Season simulator + CI regression gate
 apps/server/       @blindspace/server   Fastify API + event worker (one image, two roles)
-apps/web/                               React + R3F client — NOT BUILT YET
+apps/web/                               React + Vite client — playable; R3F lands in phase 5
 legacy/                                 Phase 0 JS prototype, still runnable
 ```
 

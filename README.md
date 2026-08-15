@@ -15,7 +15,7 @@ physically travel, and combat that resolves while you are asleep.
 packages/rules/   @blindspace/rules   THE source of truth for every game rule
 packages/sim/     @blindspace/sim     headless season simulator + regression gate
 apps/server/      @blindspace/server  Fastify API + event worker (one image, two roles)
-apps/web/                             (phase 3) React + R3F client
+apps/web/         @blindspace/web     React + Vite client — the playable loop
 legacy/                               Phase 0 JS prototype, kept runnable
 ```
 
@@ -39,7 +39,7 @@ from its seed.
 pnpm install
 docker compose up -d      # Postgres on :5433
 
-pnpm verify               # typecheck + lint + all 166 tests
+pnpm verify               # typecheck + lint + all 292 tests
 pnpm typecheck
 pnpm lint
 pnpm test
@@ -48,19 +48,45 @@ pnpm sim                  # look at a season by hand
 pnpm sim -- --players=200 --seed=7
 
 pnpm --filter @blindspace/server db:generate   # after a schema change
-pnpm --filter @blindspace/server dev
+```
+
+### Playing it
+
+A galaxy has to exist before anyone can join one.
+
+```bash
+cp .env.example .env
+docker compose up -d
+pnpm season migrate
+pnpm season create --shard EU-1 --seed 4242 --unattended 8
+
+pnpm dev                  # API on :3100, client on :5173
+```
+
+`--unattended N` places N inert commanders, already past newcomer grace, so a solo
+developer has something to scout and raid. They never act. **Anything they appear to
+teach you about balance is a lie.**
+
+`pnpm dev:web` binds to `0.0.0.0`, so the client is reachable from a phone on the same
+network — which is the only way to judge a mobile-first game.
+
+```bash
+pnpm shots ./out          # drive the running client and photograph every screen
 ```
 
 ## Testing strategy
 
 | Layer | Covers | Count |
 |---|---|---|
-| Rule units | Combat, economy curves, travel, clarity gradient, detection, dominion | 55 |
-| Properties (fast-check) | Invariants over *all* inputs: dominion sums to zero, loot never exceeds cargo, counts never go negative | 14 |
+| Rule units + properties | Combat, economy curves, travel, clarity gradient, detection, dominion — plus invariants asserted over *all* inputs with fast-check | 82 |
 | **Season regression** | A full 14-day season on three seeds, asserting the balance invariants stay in band | 30 |
-| Persistence | Real Postgres. Double-spend, deadlock ordering, the lazy tick, crash recovery | 32 |
-| Auth | Token-type confusion, forged signatures, expiry, malformed headers | 20 |
-| Missions | Launch validation, abuse guards, radar-warning timing | 15 |
+| Persistence & API | Real Postgres. Double-spend, deadlock ordering, the lazy tick, crash recovery, token-type confusion, fog enforced in the response, onboarding | 147 |
+| Client | The fog as rendered, the launch preview, token refresh, the return overlay, the resource ticker | 33 |
+
+The client tests are deliberately narrow: they cover what carries gameplay meaning —
+that an unwatched planet never renders as `UNKNOWN`, that the exposure preview equals
+what the server will compute, that a stale reading never loses its age — and nothing
+about how a button looks.
 
 Lint enforces the architectural boundary mechanically: `packages/rules` may not import
 a Node builtin, another workspace package, `Math.random`, `Date.now`, or `new Date`.

@@ -228,10 +228,11 @@ prototype. Found and fixed 7 balance/design bugs; the findings are in `docs/bala
 **Phase 1 (backend foundation) — DONE.** `9c169ef`.
 **Phase 2 (intel layer) — DONE.** The game's core system now exists server-side.
 **Phase 3 (return moment) — DONE.** Design Law #1 now has a delivery mechanism.
+**Phase 4 (playable loop) — DONE.** The game can be played by a human on a phone.
 
 ```
-pnpm verify  →  0 type errors · 0 lint errors · 249 tests
-                rules 82 · sim 30 · server 137
+pnpm verify  →  0 type errors · 0 lint errors · 292 tests
+                rules 82 · sim 30 · server 147 · web 33
 ```
 
 | Area | State |
@@ -248,23 +249,23 @@ pnpm verify  →  0 type errors · 0 lint errors · 249 tests
 | Notifications | List, mark-seen, and SSE over Postgres LISTEN/NOTIFY. |
 | Asteroids | Generated and stored; no impacts scheduled, no Drill. |
 | Season lifecycle | `season_end` event kind exists; no handler. |
-| Web client | Does not exist. |
+| Onboarding | `POST /api/season/join` · `GET /api/season` · `pnpm season create/migrate/status`. Before Phase 4 a galaxy could only be born inside a test. |
+| **Web client** | **Playable.** Entry → planet → galaxy → intel, target and launch sheets, return overlay, live in-flight strip, SSE. Mobile-first portrait. Not the 3D map. |
 
-**The single most important gap is now the client.** The entire loop exists, is tested,
-and is reachable over HTTP — but there is no interface, so nobody can play it. The next
-job is the thinnest client that makes the loop playable, not the 3D map.
+**The single most important gap is now a player.** The loop is playable end to end and
+has never been lived with. Phase 4 found three product bugs and one real fog leak simply
+by rendering the data — the next several will come the same way, from use, not from more
+features. **Do not start the 3D map to avoid this.**
 
 ## CURRENT ROADMAP
 
 Next task is at the top. Full detail and acceptance criteria in `docs/roadmap.md`.
 
-1. **Playable loop end to end** — a thin web client good enough to actually play:
-   planet → galaxy → intel → launch → return. **Not the 3D map yet.**
-   *This is now the core gameplay blocker — and the first point at which the design
-   can be judged rather than argued about.*
-2. **Play it for two days in real gaps**, then fix the highest-impact concrete problems.
-3. **3D galaxy** — R3F disc, instanced planets, camera + gestures. Timeboxed to 3 weeks.
-4. **Season lifecycle** — `season_end` handler, freeze, wipe, account record.
+1. **Play it for two days in real gaps**, on a phone, then fix the highest-impact
+   concrete problems. *This is the next job and it is not a build job.* The client is
+   done enough to judge; what it has never had is a player.
+2. **3D galaxy** — R3F disc, instanced planets, camera + gestures. Timeboxed to 3 weeks.
+3. **Season lifecycle** — `season_end` handler, freeze, wipe, account record.
 
 ## KNOWN RISKS
 
@@ -281,6 +282,8 @@ Next task is at the top. Full detail and acceptance criteria in `docs/roadmap.md
 
 - **Casual-player farming** (above) — the only unresolved *design* problem.
 - `request_log` table exists but idempotency keys are not wired into the launch path.
+- The web client is not served in production — dev runs behind the Vite proxy, so
+  same-origin cookies work locally and nothing serves the built bundle yet.
 - `PROVISIONAL` constants — vault floor, disruption duration, shield curve, season
   length, asteroid params. Settled by playtest, not by argument. Marked in
   `packages/rules/src/constants.ts`.

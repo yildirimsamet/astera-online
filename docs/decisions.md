@@ -139,6 +139,12 @@ fuse; the panic window stays tight.
 
 ---
 
+**Enforced in three places, not one.** The warning event fires at `arriveAt − lead`, the
+notification carries only what the radar level bought — and `pending[]` on the session
+payload applies the same gate. It did not, for one phase: it listed every inbound attack
+with its exact ETA regardless of radar, which handed away the whole ladder for free. The
+test covering it asserted the leak. Fixed in Phase 4, found by building the UI for it.
+
 ### D10 · Veil hides, it never lies — **LOCKED for MVP**
 
 Status becomes `UNKNOWN`, never a false `HOME`.

@@ -1,5 +1,12 @@
 import { and, desc, eq, gt, inArray, or, sql } from 'drizzle-orm';
-import { alloyRate, crystalRate, fleetCount } from '@blindspace/rules';
+import { alias } from 'drizzle-orm/pg-core';
+import {
+  alloyRate,
+  crystalRate,
+  fleetCount,
+  radarDetectsFleets,
+  radarLeadMinutes,
+} from '@blindspace/rules';
 import type { Clock } from '../clock.js';
 import type { Db } from '../db/client.js';
 import {
@@ -9,6 +16,7 @@ import {
   notifications,
   planets,
   players,
+  satellites,
   scanEvents,
   seasons,
   watches,
@@ -107,6 +115,8 @@ export interface PendingThread {
   kind: 'fleet' | 'probe' | 'incoming';
   targetName: string;
   minutesRemaining: number;
+  /** Which way a fleet of yours is flying. Absent for `incoming`. */
+  leg?: 'outbound' | 'return';
 }
 
 export interface ReturnPayload {
@@ -243,31 +253,7 @@ export async function buildReturnPayload(
   }
 
   /* Design Law #1 — what is still in flight */
-  const pending: PendingThread[] = [];
-  const inFlight = await db
-    .select({ mission: missions, targetName: planets.name })
-    .from(missions)
-    .innerJoin(planets, eq(missions.targetPlanetId, planets.id))
-    .where(
-      and(
-        eq(missions.status, 'in_flight'),
-        or(eq(missions.originPlanetId, planet.id), eq(missions.targetPlanetId, planet.id)),
-      ),
-    );
-
-  for (const row of inFlight) {
-    const m = row.mission;
-    const minutes = Math.max(0, Math.round((m.arriveAt.getTime() - now.getTime()) / 60_000));
-    if (m.targetPlanetId === planet.id && m.kind === 'attack') {
-      pending.push({ kind: 'incoming', targetName: 'inbound fleet', minutesRemaining: minutes });
-    } else if (m.originPlanetId === planet.id || m.targetPlanetId === planet.id) {
-      pending.push({
-        kind: m.kind === 'probe' ? 'probe' : 'fleet',
-        targetName: row.targetName,
-        minutesRemaining: minutes,
-      });
-    }
-  }
+  const pending = await pendingThreads(db, planet.id, now);
 
   // Advance the window and record what has now been announced.
   await db
@@ -284,6 +270,81 @@ export async function buildReturnPayload(
     pending,
     newUnlocks,
   };
+}
+
+/* ── what is still in flight ────────────────────────────────── */
+
+/**
+ * Every unresolved thread this planet has, at the tier of detail it has earned.
+ *
+ * THE RADAR GATE IS LOAD-BEARING. An inbound attack is listed only if this
+ * planet's radar detects fleets AND the warning would already have fired — that
+ * is, `minutesRemaining <= lead(radarLevel)`. Without the gate this payload told
+ * every player, at any radar level including none, that a fleet was inbound and
+ * exactly how long they had. That is the whole radar ladder given away for free,
+ * and it silently reversed D9: a forty-minute flight gave forty minutes of
+ * notice. It shipped that way in Phase 3 and was found by building the strip that
+ * displays it.
+ */
+export async function pendingThreads(
+  db: Db,
+  planetId: string,
+  now: Date,
+): Promise<PendingThread[]> {
+  // Both ends are needed: a fleet's thread is named after the planet that is NOT
+  // yours, and which end that is flips between the outbound and return legs.
+  const originPlanet = alias(planets, 'pending_origin');
+  const targetPlanet = alias(planets, 'pending_target');
+
+  const [inFlight, radarRow] = await Promise.all([
+    db
+      .select({
+        mission: missions,
+        originName: originPlanet.name,
+        targetName: targetPlanet.name,
+      })
+      .from(missions)
+      .innerJoin(originPlanet, eq(missions.originPlanetId, originPlanet.id))
+      .innerJoin(targetPlanet, eq(missions.targetPlanetId, targetPlanet.id))
+      .where(
+        and(
+          eq(missions.status, 'in_flight'),
+          or(eq(missions.originPlanetId, planetId), eq(missions.targetPlanetId, planetId)),
+        ),
+      ),
+    db
+      .select({ level: satellites.level })
+      .from(satellites)
+      .where(and(eq(satellites.planetId, planetId), eq(satellites.type, 'RADAR')))
+      .limit(1),
+  ]);
+
+  const radar = radarRow[0]?.level ?? 0;
+  const lead = radarLeadMinutes(radar);
+  const pending: PendingThread[] = [];
+
+  for (const row of inFlight) {
+    const m = row.mission;
+    const minutes = Math.max(0, Math.round((m.arriveAt.getTime() - now.getTime()) / 60_000));
+
+    if (m.targetPlanetId === planetId && m.kind === 'attack') {
+      if (!radarDetectsFleets(radar) || minutes > lead) continue;
+      pending.push({ kind: 'incoming', targetName: 'inbound fleet', minutesRemaining: minutes });
+      continue;
+    }
+
+    // A return leg flies backwards: its target is home and its origin is the
+    // planet that was raided, so the name worth showing is at the other end.
+    const returning = m.targetPlanetId === planetId;
+    pending.push({
+      kind: m.kind === 'probe' ? 'probe' : 'fleet',
+      targetName: returning ? row.originName : row.targetName,
+      minutesRemaining: minutes,
+      ...(m.kind === 'probe' ? {} : { leg: returning ? 'return' : 'outbound' }),
+    });
+  }
+
+  return pending;
 }
 
 /* ── notifications ──────────────────────────────────────────── */

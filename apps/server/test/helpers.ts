@@ -142,6 +142,27 @@ export async function setLevel(
     .onConflictDoUpdate({ target: [buildings.planetId, buildings.type], set: { level } });
 }
 
+/**
+ * Put a satellite in orbit directly, for arranging a test's preconditions.
+ *
+ * Slots are derived from the type's position in the satellite list so two calls
+ * for different types never collide on the (planet, slot) unique index.
+ */
+export async function giveSatellite(
+  db: Db,
+  planetId: string,
+  type: 'TELESCOPE' | 'RADAR' | 'AEGIS' | 'VEIL' | 'DRILL',
+  level: number,
+): Promise<void> {
+  const { satellites } = await import('../src/db/schema.js');
+  const { SATELLITE_IDS } = await import('@blindspace/rules');
+  const slot = SATELLITE_IDS.indexOf(type);
+  await db
+    .insert(satellites)
+    .values({ planetId, slot, type, level })
+    .onConflictDoUpdate({ target: [satellites.planetId, satellites.slot], set: { type, level } });
+}
+
 /** Put units on a planet directly. */
 export async function giveUnits(
   db: Db,

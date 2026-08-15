@@ -8,6 +8,7 @@ import {
   currentUnlocks,
   listNotifications,
   markNotificationsSeen,
+  pendingThreads,
 } from '../services/session.js';
 import { requireAuth } from './auth.js';
 
@@ -39,6 +40,26 @@ export function registerSessionRoutes(app: FastifyInstance): void {
   app.get('/api/session/return', { preHandler: requireAuth }, async (req) => {
     const playerId = await me(req.accountId!);
     return buildReturnPayload(app.db, playerId, app.clock);
+  });
+
+  /**
+   * What is still in flight — read as often as you like.
+   *
+   * Separate from `/api/session/return` on purpose: that one advances
+   * `lastSeenAt` and may be read exactly once a session, so it cannot be what
+   * keeps a live countdown honest.
+   */
+  app.get('/api/session/pending', { preHandler: requireAuth }, async (req) => {
+    const rows = await app.db
+      .select({ planetId: planets.id })
+      .from(planets)
+      .innerJoin(players, eq(planets.playerId, players.id))
+      .where(eq(players.accountId, req.accountId!))
+      .limit(1);
+    const planetId = rows[0]?.planetId;
+    if (!planetId) throw new GameError('NO_PLANET', 'Join a galaxy first', 404);
+
+    return { pending: await pendingThreads(app.db, planetId, app.clock.now()) };
   });
 
   app.get('/api/session/unlocks', { preHandler: requireAuth }, async (req) => {

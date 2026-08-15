@@ -20,6 +20,7 @@ import { registerHealthRoutes } from './routes/health.js';
 import { EventWorker } from './worker/loop.js';
 import { EventBus } from './stream/bus.js';
 import { registerSessionRoutes } from './routes/session.js';
+import { registerSeasonRoutes } from './routes/season.js';
 
 declare module 'fastify' {
   interface FastifyInstance {
@@ -121,6 +122,7 @@ export function buildApp(opts: BuildAppOptions): BuiltApp {
   // decorators above, and encapsulating them would hide `app.db` from them.
   registerHealthRoutes(app);
   registerAuthRoutes(app);
+  registerSeasonRoutes(app, opts.env.SHARD_CODE);
   registerPlanetRoutes(app);
   registerIntelRoutes(app);
   registerGalaxyRoutes(app);

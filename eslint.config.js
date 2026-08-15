@@ -82,6 +82,15 @@ export default defineConfig(
     },
   },
 
+  /**
+   * The client runs in a browser, not in Node. Without this every `window`,
+   * `document` and `setTimeout` reads as an undefined global.
+   */
+  {
+    files: ['apps/web/**/*.{ts,tsx}'],
+    languageOptions: { globals: { ...globals.browser } },
+  },
+
   /** Tests may be looser about assertions; they are the thing making the claims. */
   {
     files: ['**/test/**/*.ts', '**/*.test.ts'],
