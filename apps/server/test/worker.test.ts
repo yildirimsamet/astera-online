@@ -20,6 +20,14 @@ const makeWorker = (f: Fixture, staleMinutes = 5): EventWorker =>
  * architecture could have — the player loses hours of committed resources with no
  * explanation and no recourse.
  */
+// The database pool is shared across this whole file, so it is torn down at FILE
+// scope. An afterAll inside a describe would close it out from under any describe
+// that follows.
+afterAll(async () => {
+  const { close } = await testDb();
+  await close();
+});
+
 describe('event worker', () => {
   let f: Fixture;
 
@@ -27,10 +35,6 @@ describe('event worker', () => {
     f = await seedWorld(2);
   });
 
-  afterAll(async () => {
-    const { close } = await testDb();
-    await close();
-  });
 
   describe('claiming', () => {
     it('does not claim an event before it is due', async () => {

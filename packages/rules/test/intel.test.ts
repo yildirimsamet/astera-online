@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  bearingBetween,
   clarityState,
   detectChance,
   fuzzBand,
@@ -7,6 +8,8 @@ import {
   probeAccuracy,
   radarDetectsFleets,
   radarLeadMinutes,
+  radarRevealsBearing,
+  radarRevealsOrigin,
   telescopeReading,
   telescopeSeed,
 } from '../src/index.js';
@@ -126,5 +129,65 @@ describe('radar', () => {
   it('clamps out-of-range levels', () => {
     expect(radarLeadMinutes(99)).toBe(radarLeadMinutes(5));
     expect(radarLeadMinutes(-3)).toBe(0);
+  });
+});
+
+describe('bearing', () => {
+  const origin = { x: 0, y: 0, z: 0 };
+
+  it.each([
+    ['east', { x: 100, y: 0, z: 0 }],
+    ['south', { x: 0, y: 0, z: 100 }],
+    ['west', { x: -100, y: 0, z: 0 }],
+    ['north', { x: 0, y: 0, z: -100 }],
+    ['south-east', { x: 100, y: 0, z: 100 }],
+    ['north-west', { x: -100, y: 0, z: -100 }],
+  ])('reads %s correctly', (expected, to) => {
+    expect(bearingBetween(origin, to)).toBe(expected);
+  });
+
+  it('ignores the vertical axis — the disc is what matters', () => {
+    expect(bearingBetween(origin, { x: 100, y: 500, z: 0 })).toBe('east');
+    expect(bearingBetween(origin, { x: 100, y: -500, z: 0 })).toBe('east');
+  });
+
+  it('is antisymmetric — the opposite direction is four points away', () => {
+    const compass = ['east', 'south-east', 'south', 'south-west',
+                     'west', 'north-west', 'north', 'north-east'];
+    for (let i = 0; i < 8; i++) {
+      const angle = (i * Math.PI) / 4;
+      const to = { x: Math.cos(angle) * 100, y: 0, z: Math.sin(angle) * 100 };
+      const there = compass.indexOf(bearingBetween(origin, to));
+      const back = compass.indexOf(bearingBetween(to, origin));
+      expect((there + 4) % 8).toBe(back);
+    }
+  });
+
+  it('never throws on identical positions', () => {
+    expect(() => bearingBetween(origin, origin)).not.toThrow();
+  });
+
+  it('is stable regardless of distance', () => {
+    expect(bearingBetween(origin, { x: 1, y: 0, z: 0 })).toBe(
+      bearingBetween(origin, { x: 9999, y: 0, z: 0 }),
+    );
+  });
+});
+
+describe('radar disclosure tiers', () => {
+  it('withholds a bearing below L2', () => {
+    expect(radarRevealsBearing(1)).toBe(false);
+    expect(radarRevealsBearing(2)).toBe(true);
+  });
+
+  it('withholds the origin below L5 — that is what L5 is worth paying for', () => {
+    for (const level of [0, 1, 2, 3, 4]) expect(radarRevealsOrigin(level)).toBe(false);
+    expect(radarRevealsOrigin(5)).toBe(true);
+  });
+
+  it('detecting fleets and naming scanners are separate privileges', () => {
+    // L3 sees inbound fleets but still cannot name who scanned it.
+    expect(radarDetectsFleets(3)).toBe(true);
+    expect(radarRevealsOrigin(3)).toBe(false);
   });
 });

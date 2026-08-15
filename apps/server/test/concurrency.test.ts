@@ -14,6 +14,14 @@ import { grant, seedWorld, setLevel, testDb, type Fixture } from './helpers.js';
  * beside it. Without that, two requests both read a pre-tick balance, both pass
  * their affordability check, and the planet spends the same alloy twice.
  */
+// The database pool is shared across this whole file, so it is torn down at FILE
+// scope. An afterAll inside a describe would close it out from under any describe
+// that follows.
+afterAll(async () => {
+  const { close } = await testDb();
+  await close();
+});
+
 describe('concurrency', () => {
   let f: Fixture;
 
@@ -21,10 +29,6 @@ describe('concurrency', () => {
     f = await seedWorld(2);
   });
 
-  afterAll(async () => {
-    const { close } = await testDb();
-    await close();
-  });
 
   describe('double-spend', () => {
     it('two simultaneous upgrades of the same building: exactly one wins', async () => {

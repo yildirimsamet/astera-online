@@ -25,6 +25,7 @@ import {
 } from '../db/schema.js';
 import { loadLocked, saveResources, setUnits } from '../services/planet.js';
 import { clearMissionUnits, fleetOfMission } from '../services/mission.js';
+import { resolveProbe } from '../services/intel.js';
 import { schedule, type EventRow } from './queue.js';
 
 export interface HandlerContext {
@@ -102,6 +103,29 @@ export const onMissionArrival: Handler = async ({ db, clock }, event) => {
       // A return leg travels BACKWARDS: its origin is the planet that was raided
       // and its target is the attacker's home, which is where the ships live.
       await settleReturn(tx, mission, mission.targetPlanetId);
+      return;
+    }
+
+    if (mission.kind === 'probe') {
+      // Seeded from the mission id like combat, so a report — and whether it was
+      // detected — can be re-derived from its inputs.
+      const { detected, bearing } = await resolveProbe(
+        tx,
+        mission,
+        clock.now(),
+        seededFrom(missionId),
+      );
+      if (detected) {
+        const [target] = await tx
+          .select()
+          .from(planets)
+          .where(eq(planets.id, mission.targetPlanetId));
+        if (target) {
+          // Bearing is in the payload, but what the player is shown is decided at
+          // read time by their radar level — never here.
+          await notify(tx, target.playerId, 'scan_detected', { bearing });
+        }
+      }
       return;
     }
 

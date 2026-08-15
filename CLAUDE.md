@@ -1,7 +1,7 @@
 # CLAUDE.md — Blindspace
 
 > Read this first, every session. It is the operating manual, not the design doc.
-> Detail lives in `docs/`. This file exists so that a cold agent — or a future you
+> Detail lives in `docs/`. This file exists so that a cold agent — or a future you. You should read and stay up-to-date while doing any job.
 > with no memory of this project — can act correctly within five minutes.
 
 ---
@@ -226,10 +226,11 @@ Known platform traps already paid for (see `docs/architecture.md`):
 prototype. Found and fixed 7 balance/design bugs; the findings are in `docs/balance.md`.
 
 **Phase 1 (backend foundation) — DONE.** `9c169ef`.
+**Phase 2 (intel layer) — DONE.** The game's core system now exists server-side.
 
 ```
-pnpm verify  →  0 type errors · 0 lint errors · 166 tests
-                rules 69 · sim 30 · server 67
+pnpm verify  →  0 type errors · 0 lint errors · 220 tests
+                rules 82 · sim 30 · server 108
 ```
 
 | Area | State |
@@ -240,30 +241,30 @@ pnpm verify  →  0 type errors · 0 lint errors · 166 tests
 | Planet | Read, upgrade, build units, install satellite. Lazy economy under row locks. |
 | Fleet | Launch with validation and abuse guards. Arrival → combat → loot → disruption → return leg. |
 | Worker | `SKIP LOCKED` claim, reaper, idempotent resolution, crash-recovery tested. |
-| **Intel layer** | **NOT IMPLEMENTED.** `watches` and `scan_events` have zero write sites. No telescope, no probe, no scan detection, no veil effect. |
-| Notifications | Rows are written; no read endpoint, no SSE. |
-| Galaxy / leaderboard | No endpoints. |
+| **Intel layer** | **Complete.** Telescope with clarity gradient and windowed seeding, probes with detection and banded reports, radar log filtered by level, veil applied server-side. |
+| Galaxy / leaderboard | `GET /api/galaxy` with fog enforced in the response; Dominion ladder. |
+| Notifications | Rows are written (including `scan_detected`); **no read endpoint, no SSE.** |
 | Asteroids | Generated and stored; no impacts scheduled, no Drill. |
 | Season lifecycle | `season_end` event kind exists; no handler. |
 | Web client | Does not exist. |
 
-**The single most important gap: the intel layer is the game, and it has no server
-implementation.** Everything currently shipped is the infrastructure it sits on.
+**The single most important gap is now delivery, not mechanics.** Every core system
+exists and is tested, but a player cannot yet *see* any of it: there is no notification
+read endpoint, no SSE, no return payload, and no client. The game works and nobody can
+play it.
 
 ## CURRENT ROADMAP
 
 Next task is at the top. Full detail and acceptance criteria in `docs/roadmap.md`.
 
-1. **Intel layer (server)** — telescope reads with windowed seeding, probe dispatch and
-   arrival, radar scan detection, veil applied to reads, galaxy list endpoint with
-   server-side fog. *This is the core gameplay blocker.*
-2. **Return moment** — notifications read endpoint, SSE stream, "while you were gone"
-   payload. Without this, Design Law #1 has no delivery mechanism.
-3. **Playable loop end to end** — a thin web client good enough to actually play:
+1. **Return moment** — notifications read endpoint, SSE stream, "while you were gone"
+   payload, the unlock cascade. Without this, Design Law #1 has no delivery mechanism.
+   *This is now the core gameplay blocker.*
+2. **Playable loop end to end** — a thin web client good enough to actually play:
    planet → galaxy → intel → launch → return. Not the 3D map yet.
-4. **3D galaxy** — R3F disc, instanced planets, camera + gestures. Timeboxed to 3 weeks.
-5. **Season lifecycle + leaderboard** — Dominion ladder, freeze, wipe, account record.
-6. **Play it, fix the highest-impact problems, repeat.**
+3. **3D galaxy** — R3F disc, instanced planets, camera + gestures. Timeboxed to 3 weeks.
+4. **Season lifecycle** — `season_end` handler, freeze, wipe, account record.
+5. **Play it, fix the highest-impact problems, repeat.**
 
 ## KNOWN RISKS
 

@@ -1,6 +1,6 @@
 import { INTEL } from './constants.js';
 import { clamp, seededFrom } from './rng.js';
-import type { ClarityState, FleetStatus, Rng } from './types.js';
+import type { ClarityState, FleetStatus, Rng, Vec3 } from './types.js';
 
 export const clarity = (telescopeLevel: number, veilLevel: number): number =>
   telescopeLevel - veilLevel;
@@ -126,3 +126,27 @@ export function radarLeadMinutes(radarLevel: number): number {
 
 export const radarDetectsFleets = (radarLevel: number): boolean =>
   radarLeadMinutes(radarLevel) > 0;
+
+/** Radar L2 reveals a direction; L5 reveals who. Nothing in between. */
+export const radarRevealsBearing = (radarLevel: number): boolean => radarLevel >= 2;
+export const radarRevealsOrigin = (radarLevel: number): boolean => radarLevel >= 5;
+
+const COMPASS = [
+  'east', 'south-east', 'south', 'south-west',
+  'west', 'north-west', 'north', 'north-east',
+] as const;
+
+export type Bearing = (typeof COMPASS)[number];
+
+/**
+ * Eight-point compass direction from one planet to another, on the disc plane.
+ *
+ * Deliberately coarse: "a scan from the galactic north-west" should narrow the
+ * suspect list without naming anyone. Precision here would collapse the mystery
+ * that Radar L5 is supposed to be worth paying for.
+ */
+export function bearingBetween(from: Vec3, to: Vec3): Bearing {
+  const degrees = (Math.atan2(to.z - from.z, to.x - from.x) * 180) / Math.PI;
+  const index = Math.round(((degrees + 360) % 360) / 45) % 8;
+  return COMPASS[index] ?? 'east';
+}

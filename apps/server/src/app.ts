@@ -14,6 +14,8 @@ import { TokenService } from './auth/tokens.js';
 import { GameError } from './services/planet.js';
 import { registerAuthRoutes } from './routes/auth.js';
 import { registerPlanetRoutes } from './routes/planet.js';
+import { registerIntelRoutes } from './routes/intel.js';
+import { registerGalaxyRoutes } from './routes/galaxy.js';
 import { registerHealthRoutes } from './routes/health.js';
 import { EventWorker } from './worker/loop.js';
 
@@ -114,6 +116,8 @@ export function buildApp(opts: BuildAppOptions): BuiltApp {
   registerHealthRoutes(app);
   registerAuthRoutes(app);
   registerPlanetRoutes(app);
+  registerIntelRoutes(app);
+  registerGalaxyRoutes(app);
 
   return {
     app,

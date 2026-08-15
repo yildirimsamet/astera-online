@@ -14,16 +14,16 @@ known risk?*
 |---|---|
 | 0 · Design validation | ✅ Done |
 | 1 · Backend foundation | ✅ Done — `9c169ef` |
-| **2 · Intel layer** | **← NEXT. The core gameplay blocker.** |
-| 3 · Return moment & re-engagement | Not started |
+| 2 · Intel layer | ✅ Done |
+| **3 · Return moment & re-engagement** | **← NEXT. The core gameplay blocker.** |
 | 4 · Playable loop (thin client) | Not started |
 | 5 · 3D galaxy | Not started |
 | 6 · Season lifecycle & leaderboard | Not started |
 | 7 · Playtest & balance | Not started |
 
 ```
-pnpm verify  →  0 type errors · 0 lint errors · 166 tests
-                rules 69 · sim 30 · server 67
+pnpm verify  →  0 type errors · 0 lint errors · 220 tests
+                rules 82 · sim 30 · server 108
 ```
 
 ---
@@ -38,64 +38,52 @@ pnpm verify  →  0 type errors · 0 lint errors · 166 tests
 | Planet | Read, upgrade, build units, install satellite. Lazy economy under row locks. |
 | Fleet | Launch with validation and abuse guards. Arrival → combat → loot → disruption → return leg. |
 | Worker | `SKIP LOCKED` claim, reaper, idempotent resolution, crash-recovery tested. |
-| **Intel layer** | **NOT IMPLEMENTED.** `watches` and `scan_events` have zero write sites. |
-| Notifications | Rows written; no read endpoint, no SSE. |
-| Galaxy / leaderboard | No endpoints. |
+| **Intel layer** | **Complete.** Telescope + clarity gradient + windowed seeding, probes with detection and banded reports, radar log filtered by level, veil applied server-side. |
+| Galaxy / leaderboard | `GET /api/galaxy` with fog enforced in the response; Dominion ladder. |
+| Notifications | Rows written (including `scan_detected`); **no read endpoint, no SSE.** |
 | Asteroids | Generated and stored; no impacts scheduled, no Drill. |
 | Season lifecycle | `season_end` event kind exists; no handler. |
 | Web client | Does not exist. |
 
-**Existing endpoints (9):** `POST /api/auth/guest` · `POST /api/auth/refresh` ·
-`GET /api/auth/me` · `GET /api/planet` · `POST /api/planet/upgrade` ·
-`POST /api/planet/build` · `POST /api/planet/satellite` · `POST /api/fleet/launch` ·
-`GET /health`
+**Existing endpoints (14):** auth ×3 · `GET /api/planet` · planet upgrade/build/satellite ·
+`POST /api/fleet/launch` · `GET /api/intel` · `POST /api/intel/watch` ·
+`POST /api/intel/probe` · `GET /api/galaxy` · `GET /api/leaderboard` · `GET /health`
 
-**Existing event handlers (2):** `mission_arrival` · `radar_warning`
+**Event kinds handled (2):** `mission_arrival` (attack, return **and probe**) ·
+`radar_warning`
 
-> **The single most important fact:** everything shipped so far is the *infrastructure* the
-> game sits on. The intel layer — which the whole design says **is** the game — has no
-> server implementation.
-
----
-
-## Phase 2 · Intel layer — NEXT
-
-**Goal:** make information a thing players can buy, spend, lose and act on.
-
-### Deliverables
-
-- **Telescope** — `POST /api/intel/watch` (assign a slot), `GET /api/intel` (the feed).
-  Reads apply the clarity gradient with **windowed seeding** — this is not optional, see
-  below. Persist `lastStatus` / `lastConfirmedAt` on `watches` so staleness is real.
-- **Explorer** — `POST /api/intel/probe` creating a `kind='probe'` mission, plus an
-  arrival handler that writes a fuzzed report and rolls detection against the target's
-  radar level.
-- **Radar** — write `scan_events` on probe arrival. Expose the log with bearing at L2+ and
-  origin only at L5.
-- **Veil** — applied to every telescope read, server-side.
-- **Galaxy list** — `GET /api/galaxy` returning planets with **server-side fog**: public
-  tier for everyone, telescope tier only where a watch exists and clarity permits.
-
-### Acceptance criteria
-
-- Pulling to refresh **cannot** improve a telescope reading inside its 20-minute window.
-- A modified client **cannot** read a field it was not entitled to — verified by asserting
-  the API response shape, not the UI.
-- A probe report is a **band**, not a number, and the band narrows with probe level.
-- Probing a target with radar produces a `scan_event`; watching produces nothing
-  observable to the target, ever.
-- Telescope status matches ground truth when clarity ≥ +1, and is stale-or-unknown below.
-
-### Do NOT build yet
-
-Asteroids. Drill. Aegis interaction. The 3D map. Any client.
-
-### Gameplay check before calling it done
-
-Does knowing *"his fleet is away"* actually change what the player does next? If the answer
-is "not really", the fault is in what the telescope reports, not in the code.
+> **The single most important fact:** every core system now exists and is tested, but a
+> player cannot *see* any of it. There is no notification read endpoint, no SSE, no return
+> payload and no client. **The game works and nobody can play it.**
 
 ---
+
+## Phase 2 · Intel layer — DONE
+
+**Delivered:** telescope assignment capped by telescope level; reads applying the clarity
+gradient with **windowed seeding**; `watches` persisting `lastStatus` / `lastConfirmedAt`
+so staleness is real; probes as a `kind='probe'` mission with cost, flight time, banded
+reports and a seeded detection roll; `scan_events` written on every probe arrival;
+`probe_reports` as a separate table so the observer's intel and the target's radar log can
+never leak into one another; radar log filtered by level (bearing at L2, origin only at
+L5); veil applied to every read server-side; `GET /api/galaxy` with the fog enforced in
+the response.
+
+**Acceptance criteria — all met and asserted in tests:**
+
+- Refreshing cannot improve a reading inside its 20-minute window — 20 consecutive reads
+  return identical answers.
+- A planet you are not watching has **no `fleet` key at all** in the API response. Not
+  `UNKNOWN` — absent. Asserted against raw JSON, not the UI.
+- Probe reports are bands, and the band narrows with Shipyard level.
+- Watching leaves no trace even against maximum radar; probing always writes a scan row.
+- Radar below L5 never contains the origin anywhere in the payload.
+
+**Two test-quality problems found and fixed while building it:**
+`seedWorld()` truncates, so calling it mid-test destroyed the planets under test — that
+had made one test meaningless. And two detection tests bet on a 95% roll seeded from a
+random UUID, so they would have failed roughly one CI run in twenty; the read-filter tests
+now arrange their scan directly, and the detection claim is measured over eight probes.
 
 ## Phase 3 · Return moment & re-engagement
 

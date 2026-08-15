@@ -207,6 +207,37 @@ export const scanEvents = pgTable('scan_events', {
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 }, (t) => [index('scans_target_idx').on(t.targetPlanetId, t.createdAt)]);
 
+/**
+ * What a probe brought back, for the OBSERVER's eyes only.
+ *
+ * Deliberately a separate table from `scan_events`. Those two rows describe the
+ * same event from opposite sides — this one names the target and its contents,
+ * that one names the origin. Merging them would put the fog enforcement one
+ * mistaken `select *` away from telling a defender exactly who scanned them.
+ *
+ * Values are stored as bands, already fuzzed by probe accuracy. The true numbers
+ * are never persisted here, so even a leak of this table reveals only what the
+ * observer was entitled to see.
+ */
+export const probeReports = pgTable('probe_reports', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  observerPlayerId: uuid('observer_player_id').notNull().references(() => players.id),
+  targetPlanetId: uuid('target_planet_id').notNull().references(() => planets.id),
+  missionId: uuid('mission_id').notNull().references(() => missions.id),
+  /** 0.30–1.00. Shown to the player so they know how much to trust the bands. */
+  accuracy: real('accuracy').notNull(),
+  stock: jsonb('stock').$type<{ low: number; high: number }>().notNull(),
+  defence: jsonb('defence').$type<{ low: number; high: number }>().notNull(),
+  fleetSize: jsonb('fleet_size').$type<{ low: number; high: number }>().notNull(),
+  fleetHome: boolean('fleet_home').notNull(),
+  /** Whether the target's radar caught it — the observer learns this too. */
+  detected: boolean('detected').notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [
+  index('probe_reports_observer_idx').on(t.observerPlayerId, t.createdAt),
+  uniqueIndex('probe_reports_mission_idx').on(t.missionId),
+]);
+
 /** Telescope assignments. The target is NEVER told this row exists. */
 export const watches = pgTable('watches', {
   observerPlayerId: uuid('observer_player_id').notNull().references(() => players.id),

@@ -15,6 +15,14 @@ interface GuestResponse {
   accessToken: string;
 }
 
+// The database pool is shared across this whole file, so it is torn down at FILE
+// scope. An afterAll inside a describe would close it out from under any describe
+// that follows.
+afterAll(async () => {
+  const { close } = await testDb();
+  await close();
+});
+
 describe('auth', () => {
   let app: FastifyInstance;
   let close: () => Promise<void>;
@@ -33,10 +41,6 @@ describe('auth', () => {
     await close();
   });
 
-  afterAll(async () => {
-    const { close: closeDb } = await testDb();
-    await closeDb();
-  });
 
   const guest = async (): Promise<{ body: GuestResponse; cookie: string }> => {
     const res = await app.inject({ method: 'POST', url: '/api/auth/guest', payload: {} });

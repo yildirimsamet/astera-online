@@ -87,6 +87,21 @@ export const INTEL = {
   radarLeadMinutes: [0, 0, 0, 5, 8, 12] as readonly number[],
 } as const;
 
+/**
+ * Explorer probes.
+ *
+ * Fast and cheap relative to a fleet, because the decision they exist to create is
+ * "spend 7 minutes to know, or strike blind now" — not "can I afford to look".
+ * Shipyard level supplies BOTH probe accuracy and probe stealth: one building
+ * gates the whole active-intel path, which keeps the player's model small.
+ */
+export const PROBE = {
+  alloy: 220,
+  crystal: 0,
+  /** Faster than any hull — a probe is a sensor package, not a ship. */
+  speed: 90,
+} as const;
+
 /** PROVISIONAL — shield curve is settled by playtest. */
 export const SHIELD = {
   base: 700,

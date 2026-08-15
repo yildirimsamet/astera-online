@@ -10,6 +10,14 @@ import { giveUnits, grant, seedWorld, setLevel, testDb, type Fixture } from './h
 
 const silent = pino({ level: 'silent' });
 
+// The database pool is shared across this whole file, so it is torn down at FILE
+// scope. An afterAll inside a describe would close it out from under any describe
+// that follows.
+afterAll(async () => {
+  const { close } = await testDb();
+  await close();
+});
+
 describe('launching a fleet', () => {
   let f: Fixture;
   let attacker: string;
@@ -25,10 +33,6 @@ describe('launching a fleet', () => {
     f.clock.advance(ABUSE.graceMinutes + 10);
   });
 
-  afterAll(async () => {
-    const { close } = await testDb();
-    await close();
-  });
 
   describe('validation', () => {
     it('refuses to attack your own planet', async () => {
