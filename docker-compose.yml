@@ -12,6 +12,10 @@ services:
       interval: 2s
       timeout: 3s
       retries: 20
+    volumes:
+      # Creates blindspace_test alongside blindspace. Runs on first start of an
+      # empty data directory, which with tmpfs means every start.
+      - ./docker/init-test-db.sql:/docker-entrypoint-initdb.d/init-test-db.sql:ro
     tmpfs:
       # Dev and CI database — speed over durability. Never used in production.
       - /var/lib/postgresql/data

@@ -37,7 +37,7 @@ from its seed.
 
 ```bash
 pnpm install
-docker compose up -d      # Postgres on :5433
+docker compose up -d      # Postgres on :5433 — two databases, blindspace and blindspace_test
 
 pnpm verify               # typecheck + lint + all 292 tests
 pnpm typecheck

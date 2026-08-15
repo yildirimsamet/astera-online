@@ -8,7 +8,23 @@ import { joinSeason } from '../src/services/player.js';
 import { accounts } from '../src/db/schema.js';
 
 export const TEST_DATABASE_URL =
-  process.env.DATABASE_URL ?? 'postgres://blindspace:blindspace@localhost:5433/blindspace';
+  process.env.DATABASE_URL ?? 'postgres://blindspace:blindspace@localhost:5433/blindspace_test';
+
+/**
+ * A guard, not a convention.
+ *
+ * `truncateAll` empties every table between tests. Pointed at the development
+ * database it deletes the season you were playing — which is exactly what
+ * happened the first time the client was playable and `pnpm verify` ran. The
+ * suffix is the safety catch: a database this suite is allowed to erase has to
+ * say so in its name.
+ */
+if (!/_test(\?|$)/.test(TEST_DATABASE_URL)) {
+  throw new Error(
+    `Refusing to run tests against "${TEST_DATABASE_URL}" — this suite truncates every ` +
+      'table, and that is not a test database. Its name must end in `_test`.',
+  );
+}
 
 export const testEnv = (over: Record<string, string> = {}): Env =>
   loadEnv({
