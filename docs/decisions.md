@@ -281,6 +281,64 @@ Prisma's client is heavier and fights explicit locking.
 
 ---
 
+### A10 · SSE over Postgres LISTEN/NOTIFY, not an in-memory emitter — **LOCKED**
+
+**Rejected:** a process-local `EventEmitter`.
+
+**Why:** the API and the worker are separate process groups. The worker writes the
+notification; the API holds the player's open connection. An emitter would work perfectly in
+local dev — where both happen to be one process — and fail silently in production. That is
+the worst possible failure mode.
+
+`publish()` is called **inside** the transaction that produced the event. NOTIFY is
+transactional: delivered on `COMMIT`, discarded on rollback, so a client can never be told
+about a battle that was subsequently undone.
+
+**Reversible:** yes, but only toward something stronger (Redis pub/sub), never toward
+in-process.
+
+---
+
+### A11 · The unlock cascade is DERIVED, not stored — **LOCKED**
+
+What a player has unlocked is computed from history: a battle resolving unlocks the
+telescope, being attacked or scanned unlocks radar, watching someone unlocks the explorer,
+being scanned unlocks the veil.
+
+**Why:** stored flags drift from the events that justify them, and a player who somehow
+skips a step ends up stuck. Only *what has already been announced* is persisted
+(`players.unlocksSeen`), so the return overlay can say "new" exactly once.
+
+**Note:** the telescope unlocks whether the first fleet won or was annihilated. Losing it and
+only then being handed a telescope is the better lesson, and it means a wiped player is never
+left in a dead end.
+
+---
+
+### A12 · `probe_reports` is a separate table from `scan_events` — **LOCKED**
+
+**Why:** the two rows describe the same event from opposite sides. One names the target and
+its contents (the observer's intel); the other names the origin (the defender's radar log).
+Merging them would put fog enforcement one mistaken `select *` away from telling a defender
+exactly who scanned them.
+
+Probe values are stored already fuzzed, so even a leak of that table reveals only what the
+observer was entitled to see.
+
+---
+
+### A13 · Exactly one clock — **LOCKED (invariant)**
+
+Every timestamp written to the database comes from the injected clock. **Never
+`defaultNow()`.**
+
+**This shipped broken once.** `battle_reports.createdAt` used the database clock while
+everything else used the injected one. In production they agree closely enough to hide it;
+under a fixed clock the "while you were gone" window never closed and every read replayed the
+same news forever. If you add a table with a timestamp, pass the time in.
+
+---
+
 ## Reversed decisions — kept so nobody re-derives them
 
 ### ✗ Empire Value as the ladder

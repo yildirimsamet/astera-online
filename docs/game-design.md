@@ -7,9 +7,9 @@ Formulas and constants: [balance.md](balance.md). Why each choice was made:
 [decisions.md](decisions.md). Unfamiliar terms: [glossary.md](glossary.md).
 
 > ⚠ **This document describes the intended design, not the current implementation.**
-> Several systems here — the whole intel layer, asteroids, the season lifecycle — are
-> designed and specified but **not yet built**. For what actually exists today, see
-> [roadmap.md](roadmap.md).
+> Most of it is now built and tested server-side. Still unbuilt: **asteroids** (generated
+> but with no impacts or Drill), the **season lifecycle**, and **any client at all**. For
+> what actually exists today, see [roadmap.md](roadmap.md).
 
 ---
 

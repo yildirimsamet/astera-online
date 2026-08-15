@@ -171,6 +171,23 @@ When several tests fail identically, **that is one bug, not many.** Find the sha
 Fifteen worker tests once failed with the same message; the cause was a single `Date`
 binding.
 
+### A flaky test is a defect, not noise
+
+A test that passes 95% of the time will fail randomly in CI, and the first instinct will be
+to re-run it — which trains everyone to ignore red.
+
+Two tests here bet on a detection roll that succeeds 95% of the time, seeded from a random
+mission id. Both would have failed roughly one run in twenty. The fixes were structural, not
+statistical:
+
+- Tests about a **read filter** now arrange their input directly instead of driving it
+  through a probabilistic path. They were never about the roll.
+- The test that genuinely *is* about the roll measures it over eight probes and asserts a
+  bound with ~1e-6 failure probability.
+
+**Never** "just re-run it", and never loosen an assertion until it stops failing. Find what
+is actually non-deterministic and either remove the dependence or measure it properly.
+
 ### A diagnostic that cannot fail is not a diagnostic
 
 Two balance invariants were redefined after they failed to catch the bug they existed for.

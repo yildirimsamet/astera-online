@@ -47,7 +47,7 @@ legacy/                                 Phase 0 JS prototype, still runnable
 |---|---|---|
 | Language | TypeScript everywhere | Non-negotiable — it is what makes the shared rules package possible |
 | Server | Node 22 + Fastify | `inject()` makes API tests need no network |
-| API | REST + Zod | ~14 endpoints; trivially debuggable, consumable from a future native shell |
+| API | REST + Zod | 19 endpoints; trivially debuggable, consumable from a future native shell |
 | ORM | Drizzle | SQL-first, so `FOR UPDATE` and `SKIP LOCKED` are first-class |
 | Database | PostgreSQL 16 | Transactions are the whole point here |
 | Realtime | **SSE only** | Client→server is REST; server→client is rare events |
@@ -107,6 +107,30 @@ rather than racing a scheduler.
 
 ---
 
+## Realtime — SSE over LISTEN/NOTIFY
+
+One endpoint, `GET /api/stream`. It carries nothing but events a player could not have
+predicted — a battle resolving, a scan detected, a fleet inbound. A few hundred bytes an
+hour. Fleet motion and asteroid orbits are computed client-side from timestamps, so they
+never touch it.
+
+`EventBus` (`src/stream/bus.ts`) holds one dedicated Postgres connection issuing `LISTEN`,
+and fans out to subscribed SSE responses.
+
+**Not an in-memory emitter.** The API and the worker are separate process groups: the worker
+writes the notification, the API holds the player's open connection. An emitter would work
+perfectly in local dev — where both are one process — and fail in production. That is the
+worst possible failure mode, so it was never an option.
+
+**NOTIFY is transactional.** `publish()` is called *inside* the transaction that produced the
+event, so the payload is delivered on `COMMIT` and discarded on rollback. A client can never
+be told about a battle that was subsequently undone.
+
+Every SSE subscription returns an unsubscribe function, and the route wires it to **both**
+`close` and `error` on the raw request. Leaking one leaks a listener per reconnect.
+
+---
+
 ## Why a fleet can never disappear
 
 This is the worst bug this architecture could have: a player loses hours of committed
@@ -137,8 +161,8 @@ BEGIN
   assertLegal(action, planet, rules)                -- shared rules decide
   applyMutation()
   INSERT scheduled_events / missions as needed
+  publish(tx, playerId, kind)     -- pg_notify: fires on COMMIT, discarded on rollback
 COMMIT
-→ emit SSE (after commit, never inside)
 ```
 
 **The lazy tick lives inside the lock.** That is what makes double-spending impossible: a
@@ -160,15 +184,15 @@ retry handling for no benefit — every contended path already takes an explicit
 
 ## Data model
 
-Sixteen tables. **Nothing stores a value derivable from a formula and a clock.**
+Seventeen tables. **Nothing stores a value derivable from a formula and a clock.**
 
 `accounts` · `shards` · `seasons` · `players` · `planets` · `buildings` · `satellites` ·
-`units` · `missions` · `scheduled_events` · `battle_reports` · `scan_events` · `watches` ·
-`asteroids` · `notifications` · `request_log`
+`units` · `missions` · `scheduled_events` · `battle_reports` · `scan_events` ·
+`probe_reports` · `watches` · `asteroids` · `notifications` · `request_log`
 
 Schema: `apps/server/src/db/schema.ts`. Migrations: `apps/server/drizzle/`.
 
-### Two things worth knowing
+### Three things worth knowing
 
 **Time model.** Everything in the database is `timestamptz`. The rules work in minutes
 since season start. `apps/server/src/clock.ts` is the **only** place those two meet — if a
@@ -179,11 +203,26 @@ id. A fleet in flight is still owned by its planet (so it still counts toward We
 demonstrably not defending it. The mission's `fleet` jsonb is a snapshot for the battle
 report and is never read for state.
 
+**`probe_reports` and `scan_events` are separate on purpose.** They describe the same event
+from opposite sides: one names the target and its contents (the observer's intel), the other
+names the origin (the defender's radar log). Merging them would put fog enforcement one
+mistaken `select *` away from telling a defender exactly who scanned them.
+
 ---
 
 ## Platform traps already paid for
 
 These cost real debugging time. Do not rediscover them.
+
+### There must be exactly one clock
+
+`clock.ts` is the only bridge between wall time and game time, and **every** timestamp
+written to the database must come from the injected clock — never from `defaultNow()`.
+
+This shipped broken once. `battle_reports.createdAt` used `defaultNow()` while everything
+else used the injected clock. In production the two agree closely enough to hide it; under a
+fixed clock in tests, the "while you were gone" window never closed and every read replayed
+the same news forever. If you add a table with a timestamp, pass the time in.
 
 ### Drizzle's `sql` template cannot bind a JS `Date` through postgres.js
 
@@ -243,6 +282,9 @@ instead of 400.
 | Persistence | Real Postgres. Double-spend, deadlock ordering, lazy tick, crash recovery | 32 |
 | Auth | Token-type confusion, forged signatures, expiry, malformed headers | 20 |
 | Missions | Launch validation, abuse guards, radar-warning timing | 15 |
+| Intel | Clarity gradient, refresh-spam resistance, probe bands, radar disclosure tiers | 31 |
+| Galaxy | Fog asserted against raw JSON, not the UI | 10 |
+| Session | Unlock cascade, return payload, notification scoping, LISTEN/NOTIFY | 29 |
 
 **Test risk coverage, not line coverage.** The season regression is the one that matters
 most — it catches a class of bug that is invisible to unit tests and catastrophic in
