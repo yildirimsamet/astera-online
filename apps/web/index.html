@@ -8,6 +8,20 @@
     />
     <meta name="theme-color" content="#05070D" />
     <meta name="description" content="You own one planet. You cannot see what anyone else holds." />
+
+    <!--
+      Added so the game can be installed to a phone's home screen and run without
+      browser chrome. On a four-minute-session game played one-handed, the address
+      bar is a third of the difference between "a website" and "an app" — and the
+      two-day playtest happens on a phone, so it needs to be there for that.
+    -->
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <link rel="apple-touch-icon" href="/icons/icon-180.png" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="Blindspace" />
+
     <title>Blindspace</title>
   </head>
   <body>

@@ -16,6 +16,7 @@
     "dev:web": "pnpm --filter @blindspace/web dev",
     "season": "pnpm --filter @blindspace/server season",
     "shots": "node tools/screenshots.mjs",
+    "phone": "node tools/phone.mjs",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "verify": "pnpm typecheck && pnpm lint && pnpm test"

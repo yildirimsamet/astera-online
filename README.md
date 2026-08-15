@@ -67,8 +67,24 @@ pnpm dev                  # API on :3100, client on :5173
 developer has something to scout and raid. They never act. **Anything they appear to
 teach you about balance is a lie.**
 
-`pnpm dev:web` binds to `0.0.0.0`, so the client is reachable from a phone on the same
-network — which is the only way to judge a mobile-first game.
+### On a phone
+
+```bash
+pnpm phone                # prints the LAN URL and a QR code to scan
+```
+
+The dev server binds to `0.0.0.0` and proxies the API through the same address, so
+there is nothing else to start. The address comes from DHCP and changes; `pnpm phone`
+resolves it and skips the half-dozen Docker bridge addresses that look identical in
+`ifconfig`.
+
+**Add it to the home screen.** There is a web manifest, so it installs and runs without
+browser chrome. On a game played one-handed in four-minute sessions, the address bar is
+a third of the difference between "a website" and "an app" — and the playtest happens
+on a phone.
+
+If it will not load: check the phone is on the same network, and that the router does
+not have client isolation enabled.
 
 ```bash
 pnpm shots ./out          # drive the running client and photograph every screen
