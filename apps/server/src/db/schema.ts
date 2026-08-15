@@ -82,7 +82,16 @@ export const players = pgTable('players', {
   /** Denormalised for the rank floor check and the Wealth display. */
   wealth: real('wealth').notNull().default(0),
   joinedAt: timestamp('joined_at', { withTimezone: true }).notNull().defaultNow(),
+  /** Anchors the "while you were gone" window. Advanced only by the return endpoint. */
   lastSeenAt: timestamp('last_seen_at', { withTimezone: true }).notNull().defaultNow(),
+  /**
+   * Which unlocks this player has already been SHOWN.
+   *
+   * What is unlocked is derived from history, not stored — that cannot drift. This
+   * only records what has already been announced, so the return overlay can say
+   * "new" exactly once.
+   */
+  unlocksSeen: jsonb('unlocks_seen').$type<string[]>().notNull().default([]),
 }, (t) => [
   uniqueIndex('players_account_season_idx').on(t.accountId, t.seasonId),
   index('players_ladder_idx').on(t.seasonId, t.dominionTaken, t.dominionLost),

@@ -27,6 +27,7 @@ import { loadLocked, saveResources, setUnits } from '../services/planet.js';
 import { clearMissionUnits, fleetOfMission } from '../services/mission.js';
 import { resolveProbe } from '../services/intel.js';
 import { schedule, type EventRow } from './queue.js';
+import { publish } from '../stream/bus.js';
 
 export interface HandlerContext {
   db: Db;
@@ -69,8 +70,15 @@ async function notify(
   playerId: string,
   kind: typeof notifications.$inferInsert.kind,
   payload: Record<string, unknown>,
+  at: Date,
 ): Promise<void> {
-  await tx.insert(notifications).values({ playerId, kind, payload });
+  // `at` comes from the injected clock, never from the database's now(). There is
+  // exactly one clock in this system; letting defaultNow() supply timestamps put a
+  // second one in, and the "while you were gone" window silently never closed.
+  await tx.insert(notifications).values({ playerId, kind, payload, createdAt: at });
+  // NOTIFY is transactional — it fires on COMMIT and is discarded on rollback, so
+  // a client can never be told about a battle that was subsequently undone.
+  await publish(tx, playerId, kind);
 }
 
 /* ── mission arrival ────────────────────────────────────────── */
@@ -102,7 +110,7 @@ export const onMissionArrival: Handler = async ({ db, clock }, event) => {
     if (mission.kind === 'return') {
       // A return leg travels BACKWARDS: its origin is the planet that was raided
       // and its target is the attacker's home, which is where the ships live.
-      await settleReturn(tx, mission, mission.targetPlanetId);
+      await settleReturn(tx, mission, mission.targetPlanetId, clock.now());
       return;
     }
 
@@ -123,7 +131,7 @@ export const onMissionArrival: Handler = async ({ db, clock }, event) => {
         if (target) {
           // Bearing is in the payload, but what the player is shown is decided at
           // read time by their radar level — never here.
-          await notify(tx, target.playerId, 'scan_detected', { bearing });
+          await notify(tx, target.playerId, 'scan_detected', { bearing }, clock.now());
         }
       }
       return;
@@ -190,6 +198,7 @@ export const onMissionArrival: Handler = async ({ db, clock }, event) => {
       loot,
       attackerLosses: result.attackerLosses,
       defenderLosses: result.defenderLosses,
+      createdAt: defender.now,
     });
 
     // The attacking stack is gone from the origin either way; survivors become a
@@ -222,12 +231,18 @@ export const onMissionArrival: Handler = async ({ db, clock }, event) => {
       });
     }
 
-    await notify(tx, defender.playerId, 'raided', {
-      grade: result.grade,
-      lootAlloy: loot.alloy,
-      lootCrystal: loot.crystal,
-      unitsLost: fleetCount(result.defenderLosses),
-    });
+    await notify(
+      tx,
+      defender.playerId,
+      'raided',
+      {
+        grade: result.grade,
+        lootAlloy: loot.alloy,
+        lootCrystal: loot.crystal,
+        unitsLost: fleetCount(result.defenderLosses),
+      },
+      defender.now,
+    );
   });
 };
 
@@ -236,6 +251,7 @@ async function settleReturn(
   tx: Tx,
   mission: typeof missions.$inferSelect,
   homePlanetId: string,
+  at: Date,
 ): Promise<void> {
   const returning = await fleetOfMission(tx, homePlanetId, mission.id);
   const home = await loadLockedHome(tx, homePlanetId);
@@ -259,11 +275,17 @@ async function settleReturn(
 
   const [planet] = await tx.select().from(planets).where(eq(planets.id, homePlanetId));
   if (planet) {
-    await notify(tx, planet.playerId, 'fleet_returned', {
-      ships: fleetCount(returning),
-      lootAlloy: mission.loot?.alloy ?? 0,
-      lootCrystal: mission.loot?.crystal ?? 0,
-    });
+    await notify(
+      tx,
+      planet.playerId,
+      'fleet_returned',
+      {
+        ships: fleetCount(returning),
+        lootAlloy: mission.loot?.alloy ?? 0,
+        lootCrystal: mission.loot?.crystal ?? 0,
+      },
+      at,
+    );
   }
 }
 
@@ -305,12 +327,18 @@ export const onRadarWarning: Handler = async ({ db, clock }, event) => {
       Math.round((mission.arriveAt.getTime() - clock.now().getTime()) / 60_000),
     );
 
-    await notify(tx, target.playerId, 'incoming_fleet', {
-      etaMinutes,
-      // Size is revealed only from Radar L4, exact composition only from L5.
-      ...(radarLevel >= 4 ? { estimatedShips: fleetCount(mission.fleet) } : {}),
-      ...(radarLevel >= 5 ? { fleet: mission.fleet, origin: mission.originPlanetId } : {}),
-    });
+    await notify(
+      tx,
+      target.playerId,
+      'incoming_fleet',
+      {
+        etaMinutes,
+        // Size is revealed only from Radar L4, exact composition only from L5.
+        ...(radarLevel >= 4 ? { estimatedShips: fleetCount(mission.fleet) } : {}),
+        ...(radarLevel >= 5 ? { fleet: mission.fleet, origin: mission.originPlanetId } : {}),
+      },
+      clock.now(),
+    );
   });
 };
 

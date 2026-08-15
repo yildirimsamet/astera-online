@@ -14,16 +14,16 @@ known risk?*
 |---|---|
 | 0 · Design validation | ✅ Done |
 | 1 · Backend foundation | ✅ Done — `9c169ef` |
-| 2 · Intel layer | ✅ Done |
-| **3 · Return moment & re-engagement** | **← NEXT. The core gameplay blocker.** |
-| 4 · Playable loop (thin client) | Not started |
+| 2 · Intel layer | ✅ Done — `2afdf97` |
+| 3 · Return moment & re-engagement | ✅ Done |
+| **4 · Playable loop (thin client)** | **← NEXT. The core gameplay blocker.** |
 | 5 · 3D galaxy | Not started |
 | 6 · Season lifecycle & leaderboard | Not started |
 | 7 · Playtest & balance | Not started |
 
 ```
-pnpm verify  →  0 type errors · 0 lint errors · 220 tests
-                rules 82 · sim 30 · server 108
+pnpm verify  →  0 type errors · 0 lint errors · 249 tests
+                rules 82 · sim 30 · server 137
 ```
 
 ---
@@ -40,21 +40,24 @@ pnpm verify  →  0 type errors · 0 lint errors · 220 tests
 | Worker | `SKIP LOCKED` claim, reaper, idempotent resolution, crash-recovery tested. |
 | **Intel layer** | **Complete.** Telescope + clarity gradient + windowed seeding, probes with detection and banded reports, radar log filtered by level, veil applied server-side. |
 | Galaxy / leaderboard | `GET /api/galaxy` with fog enforced in the response; Dominion ladder. |
-| Notifications | Rows written (including `scan_detected`); **no read endpoint, no SSE.** |
+| Return moment | `GET /api/session/return` capped at 5 entries, advancing `lastSeenAt`; unlock cascade derived from history. |
+| Notifications | List, mark-seen, and SSE over Postgres LISTEN/NOTIFY. |
 | Asteroids | Generated and stored; no impacts scheduled, no Drill. |
 | Season lifecycle | `season_end` event kind exists; no handler. |
 | Web client | Does not exist. |
 
-**Existing endpoints (14):** auth ×3 · `GET /api/planet` · planet upgrade/build/satellite ·
+**Existing endpoints (19):** auth ×3 · `GET /api/planet` · planet upgrade/build/satellite ·
 `POST /api/fleet/launch` · `GET /api/intel` · `POST /api/intel/watch` ·
-`POST /api/intel/probe` · `GET /api/galaxy` · `GET /api/leaderboard` · `GET /health`
+`POST /api/intel/probe` · `GET /api/galaxy` · `GET /api/leaderboard` ·
+`GET /api/session/return` · `GET /api/session/unlocks` · `GET /api/notifications` ·
+`POST /api/notifications/seen` · `GET /api/stream` · `GET /health`
 
 **Event kinds handled (2):** `mission_arrival` (attack, return **and probe**) ·
 `radar_warning`
 
-> **The single most important fact:** every core system now exists and is tested, but a
-> player cannot *see* any of it. There is no notification read endpoint, no SSE, no return
-> payload and no client. **The game works and nobody can play it.**
+> **The single most important fact:** the entire loop now exists, is tested, and is
+> reachable over HTTP — but there is no interface. **The game works and nobody can play
+> it.** The next job is the thinnest client that changes that.
 
 ---
 
@@ -85,22 +88,36 @@ had made one test meaningless. And two detection tests bet on a 95% roll seeded 
 random UUID, so they would have failed roughly one CI run in twenty; the read-filter tests
 now arrange their scan directly, and the detection claim is measured over eight probes.
 
-## Phase 3 · Return moment & re-engagement
+## Phase 3 · Return moment & re-engagement — DONE
 
-**Goal:** deliver Design Law #1. Without this, nothing pulls the player back.
+**Delivered:** `GET /api/session/return` — the "while you were gone" payload, three kinds
+of line (what I did · what accrued · what's new), capped at five entries, advancing
+`lastSeenAt` so a second read correctly reports nothing. `pending[]` carries what is still
+in flight, which is how Design Law #1 is actually delivered rather than merely asserted.
+Notifications list and mark-seen. SSE at `GET /api/stream` over Postgres LISTEN/NOTIFY.
 
-- `GET /api/notifications` + mark-seen.
-- **`GET /api/session/return`** — the "while you were gone" payload: what I did, what
-  accrued, what's new. Max five entries.
-- `GET /api/stream` — SSE for battle results, scan alerts, inbound warnings.
-- The **unlock cascade**, server-side: telescope on first battle resolving *either way*,
-  radar on first incoming scan or attack, explorer on first ambiguous reading, veil on
-  first successful scan against you.
+**The unlock cascade is derived, not stored.** What is unlocked comes from history —
+a battle resolving unlocks the telescope, being attacked or scanned unlocks radar, watching
+someone unlocks the explorer, being scanned unlocks the veil. Only *what has already been
+announced* is stored, so the overlay can say "new" exactly once and the cascade can never
+drift out of sync with the events that justify it.
 
-**Acceptance:** close the client, return two hours later, and **≥2 things changed that the
-player did not cause** — with at least one of them being intel, not just resources.
+**A real bug this phase surfaced: there were two clocks.** `battleReports.createdAt` used
+the database's `defaultNow()` while everything else used the injected clock. In production
+they agree closely enough to hide it; with a fixed clock the "while you were gone" window
+never closed, so every read replayed the same news forever. All timestamps now come from
+the injected clock — `clock.ts` says there is exactly one clock in this system, and now
+there is.
 
----
+**Acceptance criteria — met and asserted:**
+
+- A second read in a row reports nothing new.
+- Each unlock is announced exactly once.
+- The telescope unlocks even when the first fleet is annihilated — no dead end.
+- An *undetected* scan unlocks nothing; you never learned about it.
+- A player cannot mark another player's notifications seen — ids from a client are a
+  filter, never an authorisation.
+- NOTIFY is transactional: an event from a rolled-back transaction is never delivered.
 
 ## Phase 4 · Playable loop — thin client
 

@@ -15,6 +15,13 @@
       "when": 1786797475530,
       "tag": "0001_serious_pestilence",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1786811317465,
+      "tag": "0002_flippant_trauma",
+      "breakpoints": true
     }
   ]
 }

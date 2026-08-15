@@ -18,6 +18,8 @@ import { registerIntelRoutes } from './routes/intel.js';
 import { registerGalaxyRoutes } from './routes/galaxy.js';
 import { registerHealthRoutes } from './routes/health.js';
 import { EventWorker } from './worker/loop.js';
+import { EventBus } from './stream/bus.js';
+import { registerSessionRoutes } from './routes/session.js';
 
 declare module 'fastify' {
   interface FastifyInstance {
@@ -25,6 +27,7 @@ declare module 'fastify' {
     clock: Clock;
     tokens: TokenService;
     worker: EventWorker;
+    bus: EventBus;
   }
   interface FastifyRequest {
     /** Set by `requireAuth`. Absent on public routes. */
@@ -42,6 +45,7 @@ export interface BuildAppOptions {
 export interface BuiltApp {
   app: FastifyInstance;
   worker: EventWorker;
+  bus: EventBus;
   close: () => Promise<void>;
 }
 
@@ -79,6 +83,8 @@ export function buildApp(opts: BuildAppOptions): BuiltApp {
   app.decorate('clock', clock);
   app.decorate('tokens', tokens);
   app.decorate('worker', worker);
+  const bus = new EventBus(opts.env.DATABASE_URL, log);
+  app.decorate('bus', bus);
 
   void app.register(cookie);
 
@@ -118,12 +124,15 @@ export function buildApp(opts: BuildAppOptions): BuiltApp {
   registerPlanetRoutes(app);
   registerIntelRoutes(app);
   registerGalaxyRoutes(app);
+  registerSessionRoutes(app);
 
   return {
     app,
     worker,
+    bus,
     close: async () => {
       await worker.stop();
+      await bus.stop();
       await app.close();
       if (owned) await owned.close();
     },

@@ -227,10 +227,11 @@ prototype. Found and fixed 7 balance/design bugs; the findings are in `docs/bala
 
 **Phase 1 (backend foundation) — DONE.** `9c169ef`.
 **Phase 2 (intel layer) — DONE.** The game's core system now exists server-side.
+**Phase 3 (return moment) — DONE.** Design Law #1 now has a delivery mechanism.
 
 ```
-pnpm verify  →  0 type errors · 0 lint errors · 220 tests
-                rules 82 · sim 30 · server 108
+pnpm verify  →  0 type errors · 0 lint errors · 249 tests
+                rules 82 · sim 30 · server 137
 ```
 
 | Area | State |
@@ -243,28 +244,27 @@ pnpm verify  →  0 type errors · 0 lint errors · 220 tests
 | Worker | `SKIP LOCKED` claim, reaper, idempotent resolution, crash-recovery tested. |
 | **Intel layer** | **Complete.** Telescope with clarity gradient and windowed seeding, probes with detection and banded reports, radar log filtered by level, veil applied server-side. |
 | Galaxy / leaderboard | `GET /api/galaxy` with fog enforced in the response; Dominion ladder. |
-| Notifications | Rows are written (including `scan_detected`); **no read endpoint, no SSE.** |
+| Return moment | `GET /api/session/return` — the "while you were gone" payload, capped at 5 entries, advancing `lastSeenAt`. Unlock cascade derived from history. |
+| Notifications | List, mark-seen, and SSE over Postgres LISTEN/NOTIFY. |
 | Asteroids | Generated and stored; no impacts scheduled, no Drill. |
 | Season lifecycle | `season_end` event kind exists; no handler. |
 | Web client | Does not exist. |
 
-**The single most important gap is now delivery, not mechanics.** Every core system
-exists and is tested, but a player cannot yet *see* any of it: there is no notification
-read endpoint, no SSE, no return payload, and no client. The game works and nobody can
-play it.
+**The single most important gap is now the client.** The entire loop exists, is tested,
+and is reachable over HTTP — but there is no interface, so nobody can play it. The next
+job is the thinnest client that makes the loop playable, not the 3D map.
 
 ## CURRENT ROADMAP
 
 Next task is at the top. Full detail and acceptance criteria in `docs/roadmap.md`.
 
-1. **Return moment** — notifications read endpoint, SSE stream, "while you were gone"
-   payload, the unlock cascade. Without this, Design Law #1 has no delivery mechanism.
-   *This is now the core gameplay blocker.*
-2. **Playable loop end to end** — a thin web client good enough to actually play:
-   planet → galaxy → intel → launch → return. Not the 3D map yet.
+1. **Playable loop end to end** — a thin web client good enough to actually play:
+   planet → galaxy → intel → launch → return. **Not the 3D map yet.**
+   *This is now the core gameplay blocker — and the first point at which the design
+   can be judged rather than argued about.*
+2. **Play it for two days in real gaps**, then fix the highest-impact concrete problems.
 3. **3D galaxy** — R3F disc, instanced planets, camera + gestures. Timeboxed to 3 weeks.
 4. **Season lifecycle** — `season_end` handler, freeze, wipe, account record.
-5. **Play it, fix the highest-impact problems, repeat.**
 
 ## KNOWN RISKS
 

@@ -4,7 +4,7 @@ import { loadEnv } from './env.js';
 
 const env = loadEnv();
 const log = pino({ level: env.LOG_LEVEL });
-const { app, worker, close } = buildApp({ env, logger: log });
+const { app, worker, bus, close } = buildApp({ env, logger: log });
 
 /**
  * One image, two roles. The api and worker process groups run the same build;
@@ -17,6 +17,8 @@ async function main(): Promise<void> {
     log.info('event worker started');
   }
   if (env.ROLE === 'api' || env.ROLE === 'both') {
+    // Only the API serves streams, so only the API needs to LISTEN.
+    await bus.start();
     await app.listen({ port: env.PORT, host: '0.0.0.0' });
     log.info({ port: env.PORT }, 'api listening');
   }

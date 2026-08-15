@@ -395,6 +395,7 @@ export async function resolveProbe(
     fleetSize: { low: size.low, high: size.high },
     fleetHome: !anyAway,
     detected,
+    createdAt: now,
   });
 
   // The target's radar log always gets a row; what the target may READ from it is
@@ -404,9 +405,9 @@ export async function resolveProbe(
     originPlanetId: origin.id,
     detected,
     bearing,
+    createdAt: now,
   });
 
-  void now;
   return { detected, bearing };
 }
 
