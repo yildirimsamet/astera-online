@@ -1,5 +1,8 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { useGalaxy, useIntel, usePending, usePlanet } from './api/queries.js';
 import type { ReturnPayload } from './api/schemas.js';
+import { directives, primary, type Directive, type PlanetGroup } from './lib/directives.js';
+import { useProjectedResources } from './lib/projection.js';
 import { useBootstrap } from './session/useBootstrap.js';
 import { useEventStream } from './session/useEventStream.js';
 import { useLiveAlerts } from './session/useLiveAlerts.js';
@@ -11,6 +14,7 @@ import { PendingStrip } from './shell/PendingStrip.js';
 import { ReturnOverlay } from './shell/ReturnOverlay.js';
 import { StatusBar } from './shell/StatusBar.js';
 import { TabBar, type Tab } from './shell/TabBar.js';
+import { DirectiveCard, DirectiveStrip } from './ui/DirectiveCard.js';
 
 export function App() {
   const { boot, takeAPlanet, retry } = useBootstrap();
@@ -21,10 +25,10 @@ export function App() {
 
   const [tab, setTab] = useState<Tab>('planet');
   const [arrivalSeen, setArrivalSeen] = useState(false);
+  const [openPlanetId, setOpenPlanetId] = useState<string | undefined>(undefined);
+  const [focusGroup, setFocusGroup] = useState<PlanetGroup | undefined>(undefined);
   const scroller = useRef<HTMLElement>(null);
 
-  // Switching tabs should land at the top of the new screen, not halfway down
-  // wherever the last one happened to be.
   useEffect(() => {
     scroller.current?.scrollTo({ top: 0 });
   }, [tab]);
@@ -61,16 +65,37 @@ export function App() {
     );
   }
 
+  const act = (directive: Directive): void => {
+    setTab(directive.action.screen);
+    setOpenPlanetId(directive.action.planetId);
+    setFocusGroup(directive.action.group);
+  };
+
   return (
-    // A shell, not a document: the bar and the tabs are always where the thumb
-    // left them, and only the middle scrolls. Sticky children would have let the
-    // in-flight strip cover the last row of every list.
     <div className="relative z-10 flex h-dvh flex-col overflow-hidden">
       <StatusBar />
 
       <main ref={scroller} className="flex-1 overflow-y-auto overscroll-contain pb-8">
-        {tab === 'planet' && <PlanetScreen />}
-        {tab === 'galaxy' && <GalaxyScreen />}
+        {/*
+          The situation, on every screen, above everything.
+
+          A player who has to work out what matters from sixteen equally-weighted
+          rows will not do it — they will close the app. This is the one place the
+          game says, in its own voice, what is happening and what it is worth doing
+          about it.
+        */}
+        <Situation tab={tab} onAct={act} />
+
+        {tab === 'planet' && <PlanetScreen {...(focusGroup ? { focusGroup } : {})} />}
+        {tab === 'galaxy' && (
+          <GalaxyScreen
+            {...(openPlanetId ? { openPlanetId } : {})}
+            onNavigate={(group) => {
+              setTab('planet');
+              setFocusGroup(group);
+            }}
+          />
+        )}
         {tab === 'intel' && <IntelScreen />}
       </main>
 
@@ -87,6 +112,44 @@ export function App() {
             setArrivalSeen(true);
           }}
         />
+      )}
+    </div>
+  );
+}
+
+function Situation({ tab, onAct }: { tab: Tab; onAct: (directive: Directive) => void }) {
+  const planet = usePlanet();
+  const galaxy = useGalaxy();
+  const intel = useIntel();
+  const pending = usePending();
+  const held = useProjectedResources(planet.data?.planet, planet.dataUpdatedAt, 5000);
+
+  const top = useMemo(() => {
+    if (!planet.data) return undefined;
+    return primary(
+      directives({
+        planet: planet.data,
+        galaxy: galaxy.data,
+        intel: intel.data,
+        pending: pending.data?.pending ?? [],
+        held,
+      }),
+    );
+  }, [planet.data, galaxy.data, intel.data, pending.data, held]);
+
+  if (!top) return null;
+
+  // The full card is a claim on the whole screen, and it has only earned that on
+  // the screen where the action actually happens. Everywhere else it is one line —
+  // still visible, still tappable, no longer pushing the content below the fold.
+  const here = top.action.screen === tab;
+
+  return (
+    <div className="px-4 pt-4">
+      {here ? (
+        <DirectiveCard directive={top} onAct={onAct} />
+      ) : (
+        <DirectiveStrip directive={top} onAct={onAct} />
       )}
     </div>
   );

@@ -3,6 +3,7 @@ import { compact, full } from '../lib/format.js';
 import { duration } from '../lib/time.js';
 import { useProjectedResources } from '../lib/projection.js';
 import { Meter } from '../ui/primitives.js';
+import { RESOURCE_ART } from '../ui/assets.js';
 
 /**
  * The instrument strip: what you hold, and how long the season has left.
@@ -69,7 +70,15 @@ function Stock({
   return (
     <div className="min-w-0 flex-1">
       <div className="flex items-baseline justify-between gap-2">
-        <span className="legend">{label}</span>
+        <span className="flex items-center gap-1.5">
+          <img
+            src={tone === 'alloy' ? RESOURCE_ART.alloy : RESOURCE_ART.crystal}
+            alt=""
+            aria-hidden
+            className="size-4 shrink-0 object-contain"
+          />
+          <span className="legend">{label}</span>
+        </span>
         {/* Full storage is production being thrown away — say so, once, quietly. */}
         <span className={`num text-[10px] ${atCap ? 'text-alert' : 'text-faint'}`}>
           {atCap ? 'full' : `+${compact(rate)}/h`}

@@ -197,3 +197,134 @@ master → 2K web), and two or three additive sprite sheets for engine trails an
 Nothing requested. This game is played in four-minute gaps, often in public, almost always
 muted. A notification sound would be the first audio worth having, and only once web push
 exists.
+
+---
+
+# Icon set brief
+
+Hand this to a designer as-is. It is written for someone who has never seen the game.
+
+## What the game is
+
+**Blindspace** — asynchronous multiplayer space strategy, played on a phone in portrait,
+in four-minute gaps. You own **one planet** in a galaxy of ~200 real people. You cannot
+see what they hold and they cannot see what you hold; buying, spending and hiding
+information *is* the game. You develop the planet, gather intel on neighbours, and send a
+fleet that **cannot be recalled** — then close the app and find out what happened later.
+
+The interface is an **instrument panel**, not a sci-fi HUD: near-black, dense, precise.
+Reference the observatory and the marine radar set, not the spaceship cockpit.
+
+## The rule that governs every icon
+
+**Icons carry shape. The interface carries colour.** In this UI, hue means category
+(alloy = warm amber, crystal = cold aqua, danger = grease-pencil red) and luminance means
+certainty. A pre-coloured icon would fight that system and break it.
+
+So: **single-colour line art, no fills, no gradients, no glow, no shadow.** The code tints
+each icon at the point of use.
+
+## Technical specification
+
+| | |
+|---|---|
+| Format | SVG, one file per icon, optimised (SVGO), plus the editable source file |
+| Canvas | `24 × 24` viewBox for UI icons · `48 × 48` for ship silhouettes |
+| Stroke | `1.5` units, round caps, round joins, `stroke="currentColor"`, `fill="none"` |
+| Alignment | Snapped to the pixel grid — these are read at 20 px on a phone |
+| Forbidden | Colour, gradients, drop shadows, neon glow, 3D renders, glossy chrome, text |
+| Naming | lowercase kebab: `alloy.svg`, `orbital-ring.svg`, `hull-wasp.svg` |
+
+Test every icon at **20 px on `#05070D`** before delivering. If it turns to mush, simplify
+it — detail that disappears is worse than detail that was never drawn.
+
+## 1 · Resources (2) — the most-used icons in the game
+
+| Icon | Shape | Encodes |
+|---|---|---|
+| `alloy` | Stacked metal ingots — chunky trapezoid bars, two or three, seen slightly from above | Common, heavy, builds everything. **Not a coin.** |
+| `crystal` | One elongated asymmetric shard with two or three facet lines | Scarce, sharp, gates the good things. **Not a cut diamond.** |
+
+## 2 · Navigation (3) — the tab bar
+
+| Icon | Shape |
+|---|---|
+| `planet` | A circle with one offset crescent arc inside it — lit from the upper left, matching the real planet art |
+| `galaxy` | A thin ellipse seen at a shallow angle with four or five dots scattered on it. The world is a **thin disc**, not a spiral |
+| `intel` | A camera-iris / aperture ring, six blades. **Not an eye** — the eye reads as surveillance-of-you; this is your own instrument |
+
+## 3 · Buildings (6) — the planet screen
+
+| Icon | Shape | Encodes |
+|---|---|---|
+| `command-core` | Nested hexagons with a horizontal bar sitting on top | It is the *level ceiling* for everything else |
+| `alloy-refinery` | Squat furnace, one chimney, a pour spout | Turns nothing into alloy, forever |
+| `crystal-extractor` | A mine headframe — an A-frame tower over a small shard | Slow, deep, scarce |
+| `vault` | Thick-walled square, heavy circular door with four bolts | Stock a raid can **never** reach. Weight and thickness, not wealth |
+| `shipyard` | An open gantry cradle with a bare hull outline held inside it | Where hulls are made; also sets probe accuracy |
+| `orbital-ring` | A small planet circle with a band around it, two nubs on the band | Satellite **slots** — the nubs are the slots |
+
+## 4 · Satellites (5) — the identity choice
+
+Five types, and a player will only ever afford about four slots. What they leave out is
+who they are. These five must be instantly distinguishable from each other at 20 px.
+
+| Icon | Shape | Encodes |
+|---|---|---|
+| `telescope` | A refractor tube on a two-leg mount, angled up to the right | Watching is **silent** — the target is never told |
+| `radar` | A dish with two or three arcs radiating from it | Catches probes; at higher levels warns of inbound fleets |
+| `aegis` | A dome arc over a short horizon line, one gap in the arc | An energy shield over a surface. **Not a medieval shield** |
+| `veil` | A circle whose right half dissolves into dashes | You become *unreadable* — it hides, it never lies |
+| `drill` | A helical bit descending toward a small angular rock | Mines passing asteroids |
+
+## 5 · Hulls (5) — silhouettes, `48 × 48`
+
+These may be **filled silhouettes** rather than strokes, because they need to read as
+*things* rather than symbols. One consistent viewing angle for all five — top-down or a
+shallow three-quarter, chosen once and never mixed. They must be distinguishable as
+shapes alone, because the counter cycle is the game's only combat skill:
+
+**Wasp ▸ Bulwark ▸ Lance ▸ Wasp**
+
+| Icon | Shape | Its job |
+|---|---|---|
+| `hull-wasp` | Small sharp dart, swept-back wings, one engine | Cheapest attack, fastest out and back. Looks like a thrown blade |
+| `hull-lance` | Long thin spine with a forward-projecting spinal gun | Highest attack. All weapon, no armour |
+| `hull-bulwark` | Broad, blunt, slab-sided, wide beam and short body, armour plating | The durability anchor. Visibly slow |
+| `hull-hauler` | Fat cargo body, two or three container blocks, tiny engines, **no weapons at all** | Carries the loot home and contributes nothing to the fight. It must look defenceless |
+| `hull-bastion` | A wide ground turret on a heavy base plate — no engines, no wings | Ground defence. **It can never leave the planet**, and the base plate is what says so |
+
+## 6 · Events (4) — notifications
+
+There are exactly four notification types in this game and there will never be a fifth.
+
+| Icon | Shape |
+|---|---|
+| `incoming-fleet` | An arrow pointing **into** a small circle. The most urgent mark in the game |
+| `fleet-returned` | An arrow curving **back to** a circle |
+| `raided` | A circle with a chunk broken out of its edge and a short downward arrow |
+| `scan-detected` | A single dot with one arc over it — a ping. Small, cold, unsettling |
+
+## 7 · Status (2)
+
+| Icon | Shape |
+|---|---|
+| `disrupted` | A small factory silhouette with a slash through it — surface works knocked offline |
+| `shielded` | The `aegis` dome arc, closed rather than gapped |
+
+## Save money where it does not matter
+
+Roughly half of these exist in good open-source libraries already
+(**Phosphor**, **Lucide**, **Tabler**) — the dish, the shield, the vault, the arrows.
+Commissioning all 27 is unnecessary.
+
+**Worth paying for, because nothing generic exists:** the five hulls, `alloy`, `crystal`,
+`veil`, `drill`, `orbital-ring`, `command-core`, `galaxy`.
+
+## A note on AI generation
+
+Do **not** generate an icon set with an image model. Consistency across a set — identical
+stroke weight, optical size, corner radius and viewing angle — is the entire job, and it is
+the one thing image models cannot hold. Use AI for **ship concept sketches** if useful,
+then have those redrawn as vectors. Draw the icons in **Figma**, **Affinity Designer** or
+**Illustrator** on a 24 px grid.

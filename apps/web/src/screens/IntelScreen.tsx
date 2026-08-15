@@ -1,22 +1,27 @@
 import { radarDetectsFleets, radarLeadMinutes } from '@blindspace/rules';
-import { useIntel, usePlanet } from '../api/queries.js';
+import { useGalaxy, useIntel, usePlanet } from '../api/queries.js';
 import { percent, range } from '../lib/format.js';
 import { staleness, useNow } from '../lib/time.js';
+import { satelliteArt } from '../ui/assets.js';
 import { Reading } from '../ui/Clarity.js';
-import { Empty, Note, Panel, Section } from '../ui/primitives.js';
+import { Note, Panel, Section } from '../ui/primitives.js';
 
 /**
- * The intel screen — the part of the game that is the game.
+ * WHAT YOU KNOW — and, more importantly, what you do not.
  *
- * Three tiers, in the order they cost: what your telescopes see for free, what
- * your probes bought, and what your radar caught looking back at you. The known
- * risk on this screen is that it reads as a boring list, so every row leads with
- * the thing that changes a decision — the reading and its age — and pushes the
- * mechanics behind it.
+ * The known product risk for this whole game is that the intel layer reads as a
+ * boring list. The fix is not decoration: it is that the screen leads with
+ * COVERAGE — how much of your neighbourhood you can actually see — so a player
+ * with three telescopes and eleven blind neighbours feels the eleven.
+ *
+ * Empty states here are the most valuable real estate in the game, because for
+ * the first hour they are the entire screen. Each one names the instrument that
+ * would fill it and what that instrument would tell them.
  */
 export function IntelScreen() {
   const intel = useIntel();
   const planet = usePlanet();
+  const galaxy = useGalaxy();
   const now = useNow(30_000);
 
   if (intel.isPending || !intel.data) {
@@ -30,33 +35,32 @@ export function IntelScreen() {
   const telescope = planet.data?.satellites.TELESCOPE ?? 0;
   const radar = planet.data?.satellites.RADAR ?? 0;
   const { watching, probeReports, radarLog } = intel.data;
-
-  const blind =
-    watching.length === 0 && probeReports.length === 0 && radarLog.length === 0 && radar < 1;
+  const neighbours = (galaxy.data?.planets ?? []).filter((p) => !p.isSelf).length;
+  const seen = watching.length;
 
   return (
     <div className="px-4 pt-4">
-      {blind && <LadderOfKnowing />}
+      <Coverage seen={seen} total={neighbours} slots={telescope} radar={radar} />
 
       <Section
         label="Watching"
-        aside={telescope > 0 ? `${String(watching.length)}/${String(telescope)} slots` : undefined}
+        aside={telescope > 0 ? `${String(seen)}/${String(telescope)} slots used` : undefined}
       >
         {watching.length === 0 ? (
-          <Empty>
-            {telescope > 0
-              ? 'Nothing assigned. Pick a planet in the galaxy and point a slot at it.'
-              : 'No telescope. You cannot see whether anyone’s fleet is home.'}
-          </Empty>
+          <Instrument
+            art={satelliteArt('TELESCOPE', 1)}
+            missing={telescope > 0 ? 'No slot is pointed at anything' : 'You have no Telescope'}
+            gives="Tells you the moment a planet's fleet leaves — the one fact that decides every raid."
+            cost={telescope > 0 ? 'Pick a planet in the galaxy and point a slot at it.' : 'Install one from your planet screen.'}
+          />
         ) : (
           <Panel className="py-1">
             {watching.map((watch) => (
-              <div
-                key={watch.slot}
-                className="border-b border-line-soft py-3 last:border-b-0"
-              >
+              <div key={watch.slot} className="border-b border-line-soft py-3 last:border-b-0">
                 <div className="flex items-baseline gap-2">
-                  <span className="text-[14px] text-bone">{watch.targetName}</span>
+                  <span className="font-display text-[14px] uppercase tracking-wide text-bone">
+                    {watch.targetName}
+                  </span>
                   <span className="text-[12px] text-faint">{watch.ownerName}</span>
                 </div>
                 <div className="mt-1.5">
@@ -67,24 +71,31 @@ export function IntelScreen() {
                     state={watch.reading.state}
                   />
                 </div>
+                {watch.reading.status === 'AWAY' && (
+                  <p className="mt-1.5 text-[12px] text-opportunity">
+                    Their planet is defended by whatever they left behind.
+                  </p>
+                )}
               </div>
             ))}
           </Panel>
         )}
         {watching.some((w) => w.reading.state === 'INTERMITTENT') && (
           <Note>
-            An intermittent reading refreshes every twenty minutes at best. Checking again will
-            not improve it — the answer is fixed until the window turns over.
+            An intermittent reading refreshes every twenty minutes at best. Checking again will not
+            improve it — the answer is fixed until the window turns over.
           </Note>
         )}
       </Section>
 
       <Section label="Probe reports" aside={probeReports.length > 0 ? 'newest first' : undefined}>
         {probeReports.length === 0 ? (
-          <Empty>
-            No probe has come back yet. A probe costs alloy and minutes and returns real numbers —
-            as a range.
-          </Empty>
+          <Instrument
+            art="/assets/images/ships/explorer_ship.png"
+            missing="No probe has ever come back"
+            gives="Real numbers — how much they hold and how hard they are to take — as a range."
+            cost="220 alloy and a few minutes. Their radar may catch it."
+          />
         ) : (
           <Panel className="py-1">
             {probeReports.map((report) => (
@@ -93,7 +104,9 @@ export function IntelScreen() {
                 className="border-b border-line-soft py-3 last:border-b-0"
               >
                 <div className="flex items-baseline justify-between gap-2">
-                  <span className="text-[14px] text-bone">{report.targetName}</span>
+                  <span className="font-display text-[14px] uppercase tracking-wide text-bone">
+                    {report.targetName}
+                  </span>
                   <span className="num text-[11px] text-faint">
                     {staleness((now - report.at.getTime()) / 60_000)}
                   </span>
@@ -104,9 +117,8 @@ export function IntelScreen() {
                   <Band label="Ships" value={range(report.fleetSize.low, report.fleetSize.high)} />
                 </dl>
                 <p className="num mt-2 text-[11px] text-faint">
-                  {percent(report.accuracy)} accuracy · fleet{' '}
-                  {report.fleetHome ? 'was home' : 'was out'}
-                  {report.detected && <span className="text-alert"> · they caught it</span>}
+                  {percent(report.accuracy)} accuracy · fleet {report.fleetHome ? 'was home' : 'was out'}
+                  {report.detected && <span className="text-threat"> · they caught it</span>}
                 </p>
               </div>
             ))}
@@ -114,14 +126,20 @@ export function IntelScreen() {
         )}
       </Section>
 
-      <Section label="Radar" aside={radar > 0 ? `L${String(radar)}` : undefined}>
+      <Section label="Who is looking at you" aside={radar > 0 ? `Radar L${String(radar)}` : undefined}>
         {radar < 1 ? (
-          <Empty>
-            No radar. Someone can build a complete picture of this planet and you will never
-            know they were here.
-          </Empty>
+          <Instrument
+            art={satelliteArt('RADAR', 1)}
+            missing="You have no Radar"
+            gives="Catches probes aimed at you. From L3, warns you before a fleet lands."
+            cost="Someone can build a complete picture of this planet and you will never know."
+          />
         ) : radarLog.length === 0 ? (
-          <Empty>Nothing has scanned you.</Empty>
+          <Panel>
+            <p className="text-[13px] text-dim">
+              Nothing has scanned you. Radar L{radar} is listening.
+            </p>
+          </Panel>
         ) : (
           <Panel className="py-1">
             {radarLog.map((scan) => (
@@ -157,43 +175,84 @@ export function IntelScreen() {
   );
 }
 
-/**
- * What a player sees before they own a single instrument.
- *
- * There is no tutorial in this game — each system is meant to be explained at the
- * moment its absence is felt, and this screen is that moment. Three empty boxes
- * would say "nothing here"; the ladder says "here is what knowing costs", which is
- * the only thing a blind commander actually needs.
- */
-function LadderOfKnowing() {
-  const rungs = [
-    ['Public', 'Free · silent', 'Who owns what, where it is, roughly how developed'],
-    ['Telescope', 'A satellite slot · silent', 'Whether their fleet is home — and how old that answer is'],
-    ['Probe', 'Alloy and minutes · loud', 'Their stock and defence, as a range. Their radar may catch it'],
-    ['Combat', 'Ships, permanently', 'The truth. The most accurate intel in the game'],
-  ];
+/** How much of your own neighbourhood you can actually see. */
+function Coverage({
+  seen,
+  total,
+  slots,
+  radar,
+}: {
+  seen: number;
+  total: number;
+  slots: number;
+  radar: number;
+}) {
+  const blind = Math.max(0, total - seen);
+  const share = total === 0 ? 0 : seen / total;
 
   return (
-    <div className="panel mb-7 px-3.5 py-4">
-      <p className="legend mb-3">What knowing costs</p>
-      {rungs.map(([name, cost, gives], i) => (
-        <div
-          key={name}
-          className={`flex gap-3 py-2 ${i > 0 ? 'border-t border-line-soft' : ''}`}
-        >
-          <span className="num w-5 shrink-0 pt-0.5 text-[11px] text-faint">{i + 1}</span>
-          <div className="min-w-0">
-            <p className="text-[14px] text-bone">
-              {name} <span className="text-[11px] text-faint">{cost}</span>
-            </p>
-            <p className="mt-0.5 text-[12px] leading-snug text-dim">{gives}</p>
-          </div>
-        </div>
-      ))}
-      <p className="mt-3 text-[12px] leading-relaxed text-faint">
-        Watching is silent. Probing is not — you are told when someone probes you, and so are
-        they. The cost of knowing is being known.
+    <div className="panel mb-6 px-3.5 py-3.5">
+      <p className="legend">Coverage</p>
+      <p className="mt-1.5 text-[17px] leading-tight text-bone">
+        {seen === 0 ? (
+          <>You cannot see into a single planet</>
+        ) : (
+          <>
+            Watching {seen} of {total}
+          </>
+        )}
       </p>
+      <div className="mt-2.5 flex h-1.5 gap-1">
+        {Array.from({ length: Math.max(1, total) }, (_, i) => (
+          <span
+            key={i}
+            className={`flex-1 rounded-[1px] ${i < seen ? 'bg-crystal' : 'bg-line'}`}
+          />
+        ))}
+      </div>
+      <p className="mt-2.5 text-[12px] leading-snug text-dim">
+        {blind > 0 && `${String(blind)} planets can move a fleet without you noticing. `}
+        {slots === 0
+          ? 'A Telescope is the cheapest way to stop that.'
+          : share < 1 && `Telescope L${String(slots + 1)} would watch one more.`}
+      </p>
+      {radar === 0 && (
+        <p className="mt-1.5 text-[12px] text-alloy">
+          And with no Radar, you cannot tell when someone is doing the same to you.
+        </p>
+      )}
+    </div>
+  );
+}
+
+/**
+ * An instrument you do not own, sold as a capability.
+ *
+ * Not a disabled row and not an apology: the art is at full strength, the line
+ * says what it would tell you, and the cost is stated plainly. A player should
+ * finish reading it wanting the thing.
+ */
+function Instrument({
+  art,
+  missing,
+  gives,
+  cost,
+}: {
+  art: string;
+  missing: string;
+  gives: string;
+  cost: string;
+}) {
+  return (
+    <div className="group flex items-start gap-3.5 p-3.5">
+      <div className="art-well flex size-14 shrink-0 items-center justify-center rounded">
+        <img src={art} alt="" aria-hidden className="size-13 object-contain" />
+      </div>
+      <div className="min-w-0 flex-1">
+        <p className="text-[14px] text-alloy">{missing}</p>
+        <p className="mt-1 text-[13px] leading-snug text-bone">{gives}</p>
+        <p className="mt-1.5 text-[12px] leading-snug text-faint">{cost}</p>
+      </div>
     </div>
   );
 }

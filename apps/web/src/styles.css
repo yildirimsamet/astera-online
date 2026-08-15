@@ -29,6 +29,15 @@
   --color-crystal: #6fd3e0;
   --color-alert: #e2412c;
 
+  /*
+   * Two more semantic hues, and only two. THREAT is the grease-pencil red already
+   * reserved for the irreversible; OPPORTUNITY is a jade that appears nowhere else
+   * in the interface, so the moment a window opens it is the only thing on screen
+   * wearing that colour.
+   */
+  --color-threat: #e2412c;
+  --color-opportunity: #5ad39b;
+
   /* Certainty ramp. FULL is almost paper; BLIND is almost background. */
   --color-clarity-full: #edf6ff;
   --color-clarity-clear: #afc8dd;
@@ -140,9 +149,92 @@
   }
 
   .panel {
+    position: relative;
     background: linear-gradient(180deg, var(--color-panel) 0%, var(--color-deep) 100%);
     border: 1px solid var(--color-line-soft);
-    border-radius: 3px;
+    border-radius: 4px;
+  }
+  /* A one-pixel catch-light along the top edge. It is the difference between a
+     surface and a rectangle, and it costs nothing. */
+  .panel::before {
+    content: '';
+    position: absolute;
+    inset: 0 0 auto 0;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgb(255 255 255 / 7%) 30%, transparent);
+    pointer-events: none;
+  }
+
+  /** A group of related decisions, headed by the problem it solves. */
+  .group {
+    border: 1px solid var(--color-line-soft);
+    border-radius: 4px;
+    background:
+      radial-gradient(120% 100% at 50% 0%, rgb(35 52 84 / 22%) 0%, transparent 60%),
+      linear-gradient(180deg, var(--color-panel) 0%, var(--color-deep) 100%);
+  }
+
+  /** The one thing on screen worth acting on. Loud on purpose. */
+  .directive {
+    position: relative;
+    overflow: hidden;
+    border-radius: 4px;
+    border: 1px solid;
+    padding: 14px;
+  }
+  .directive-threat {
+    border-color: color-mix(in srgb, var(--color-threat) 45%, transparent);
+    background:
+      radial-gradient(130% 120% at 0% 0%, color-mix(in srgb, var(--color-threat) 20%, transparent), transparent 62%),
+      var(--color-deep);
+  }
+  .directive-opportunity {
+    border-color: color-mix(in srgb, var(--color-opportunity) 40%, transparent);
+    background:
+      radial-gradient(130% 120% at 0% 0%, color-mix(in srgb, var(--color-opportunity) 16%, transparent), transparent 62%),
+      var(--color-deep);
+  }
+  .directive-growth,
+  .directive-idle {
+    border-color: var(--color-line);
+    background:
+      radial-gradient(130% 120% at 0% 0%, rgb(60 82 128 / 18%), transparent 62%),
+      var(--color-deep);
+  }
+
+  /** Rendered art sits on nothing, so it needs its own pool of light. */
+  .art-well {
+    background: radial-gradient(circle at 50% 45%, rgb(96 140 200 / 16%), transparent 68%);
+  }
+
+  .chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-family: var(--font-display);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    font-size: 10px;
+    padding: 3px 7px;
+    border-radius: 2px;
+    border: 1px solid var(--color-line);
+    color: var(--color-dim);
+  }
+  .chip-threat {
+    border-color: color-mix(in srgb, var(--color-threat) 50%, transparent);
+    color: #ff9d8f;
+    background: color-mix(in srgb, var(--color-threat) 12%, transparent);
+  }
+  .chip-opportunity {
+    border-color: color-mix(in srgb, var(--color-opportunity) 50%, transparent);
+    color: var(--color-opportunity);
+    background: color-mix(in srgb, var(--color-opportunity) 12%, transparent);
+  }
+  .chip-locked {
+    border-color: var(--color-line);
+    color: var(--color-dim);
+    background: rgb(255 255 255 / 3%);
   }
 
   .btn {
