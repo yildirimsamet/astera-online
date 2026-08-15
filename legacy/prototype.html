@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Blindspace — text prototype</title>
+<style>
+:root{
+  --bg:#0D1220; --panel:#141B2C; --panel2:#1C2439; --line:#2A3449;
+  --ink:#DCE3ED; --dim:#8593AC; --faint:#65728A;
+  --signal:#E8763F; --data:#46C3B3; --warn:#D2A048; --crit:#E0685F; --good:#5FBF7A;
+  --mono:ui-monospace,"SF Mono","Cascadia Code",Menlo,Consolas,monospace;
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{
+  background:var(--bg); color:var(--ink); font-family:var(--mono);
+  font-size:13px; line-height:1.5; padding:12px; max-width:560px; margin:0 auto;
+  -webkit-text-size-adjust:100%;
+}
+h1{font-size:15px;margin:0 0 2px;letter-spacing:.14em;text-transform:uppercase;color:var(--signal)}
+h2{font-size:10px;margin:0;padding:7px 10px;letter-spacing:.18em;text-transform:uppercase;
+   color:var(--dim);background:var(--panel2);border-bottom:1px solid var(--line)}
+.sub{color:var(--faint);font-size:11px;margin:0 0 14px}
+section{background:var(--panel);border:1px solid var(--line);border-radius:4px;margin-bottom:10px;overflow:hidden}
+.body{padding:10px}
+.row{display:flex;justify-content:space-between;gap:10px;align-items:baseline;padding:3px 0}
+.row+.row{border-top:1px solid rgba(42,52,73,.5)}
+.k{color:var(--dim)}
+.v{font-variant-numeric:tabular-nums}
+button{
+  font-family:var(--mono);font-size:11px;background:var(--panel2);color:var(--ink);
+  border:1px solid var(--line);border-radius:3px;padding:4px 9px;cursor:pointer;
+  letter-spacing:.06em;
+}
+button:hover:not(:disabled){border-color:var(--signal);color:var(--signal)}
+button:disabled{opacity:.32;cursor:not-allowed}
+button:focus-visible{outline:2px solid var(--signal);outline-offset:1px}
+button.go{background:var(--signal);color:#0D1220;border-color:var(--signal);font-weight:700}
+button.go:hover:not(:disabled){filter:brightness(1.12);color:#0D1220}
+.bar{height:3px;background:var(--panel2);border-radius:2px;overflow:hidden;margin-top:3px}
+.bar>i{display:block;height:100%;background:var(--data)}
+.bar.warn>i{background:var(--warn)}
+table{width:100%;border-collapse:collapse;font-size:11.5px}
+td{padding:5px 4px;border-bottom:1px solid rgba(42,52,73,.55);vertical-align:middle}
+tr:last-child td{border-bottom:none}
+td.n{text-align:right;font-variant-numeric:tabular-nums;color:var(--dim)}
+.tag{font-size:9px;letter-spacing:.1em;padding:1px 5px;border-radius:2px;border:1px solid}
+.home{color:var(--good);border-color:var(--good)}
+.away{color:var(--signal);border-color:var(--signal)}
+.unk{color:var(--faint);border-color:var(--faint)}
+.log{font-size:11px;max-height:190px;overflow-y:auto}
+.log div{padding:3px 0;border-bottom:1px solid rgba(42,52,73,.4);color:var(--dim)}
+.log b{color:var(--ink)}
+.log .win{color:var(--good)} .log .lose{color:var(--crit)} .log .info{color:var(--data)}
+dialog{
+  background:var(--panel);color:var(--ink);border:1px solid var(--signal);border-radius:5px;
+  max-width:440px;width:calc(100% - 24px);padding:0;font-family:var(--mono);font-size:13px;
+}
+dialog::backdrop{background:rgba(5,8,15,.82)}
+input[type=range]{width:100%;accent-color:var(--signal);margin:2px 0}
+.expose{background:var(--panel2);border-left:3px solid var(--signal);padding:8px 10px;margin:9px 0;font-size:12px}
+.muted{color:var(--faint);font-size:11px}
+.hint{color:var(--data)}
+#tele{font-size:12px}
+.center{text-align:center}
+</style>
+</head>
+<body>
+
+<h1>Blindspace</h1>
+<p class="sub">text prototype · real clock · close it and come back</p>
+
+<section id="planet-sec">
+  <h2>Your planet</h2>
+  <div class="body" id="planet"></div>
+</section>
+
+<section>
+  <h2>Buildings</h2>
+  <div class="body"><table id="buildings"></table></div>
+</section>
+
+<section>
+  <h2>Shipyard</h2>
+  <div class="body"><table id="yard"></table></div>
+</section>
+
+<section>
+  <h2>Intel</h2>
+  <div class="body" id="intel"></div>
+</section>
+
+<section>
+  <h2>The galaxy</h2>
+  <div class="body"><table id="galaxy"></table></div>
+</section>
+
+<section>
+  <h2>Log</h2>
+  <div class="body log" id="log"></div>
+</section>
+
+<p class="center muted">
+  <button id="stats-btn">session data</button>
+  <button id="reset-btn">reset</button>
+</p>
+
+<dialog id="return-dlg"><div class="body" id="return-body"></div></dialog>
+<dialog id="attack-dlg"><div class="body" id="attack-body"></div></dialog>
+<dialog id="stats-dlg"><div class="body" id="stats-body"></div></dialog>
+
+<script type="module" src="./prototype.js"></script>
+</body>
+</html>
