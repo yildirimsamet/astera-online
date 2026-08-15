@@ -38,6 +38,7 @@ export function ShipyardMark() {
   );
 }
 
+/** Unused since the Ring got real art. Kept: the Drill mark may need the same shape. */
 export function RingMark() {
   return (
     <svg viewBox="0 0 24 24" className={wrap} fill="none" stroke="currentColor" strokeWidth="1.4" aria-hidden>

@@ -1,20 +1,26 @@
 import type { ReactNode } from 'react';
 import type { Gain } from '../lib/gains.js';
 import { compact } from '../lib/format.js';
+import { haptic } from '../lib/haptics.js';
 import { RESOURCE_ART } from './assets.js';
+import { ProgressToNext } from './Meter.js';
 
 /**
  * One decision, presented as a decision.
  *
- * The rule this component exists to enforce: **nothing here is ever greyed out.**
- * An upgrade you cannot afford yet is the reason to go and earn; an upgrade you
- * have not unlocked is the reason to build the thing that unlocks it. Fading both
- * to 45% opacity — which is what the first version did — deletes exactly the
- * ambition the game runs on and leaves a screen of dead rows.
+ * Three rules this component exists to enforce:
  *
- * Layout note, learned from a screenshot: on a 390 px screen the action cannot
- * share a line with the copy. The button sits on the title line, and the text gets
- * the full width, or every row wraps into four lines of soup.
+ * NOTHING IS EVER GREYED OUT. An upgrade you cannot afford is the reason to go and
+ * earn; one you have not unlocked is the reason to build what unlocks it. Fading
+ * both to 45% opacity deletes exactly the ambition the game runs on.
+ *
+ * THE NEXT LEVEL IS VISIBLE BEFORE IT IS BOUGHT. Where the art changes tier, both
+ * are shown, current dimmed and next lit. A tech tree that only shows what you
+ * already own is a list of receipts.
+ *
+ * PROGRESS IS SHOWN, NOT STATED. When a row is unaffordable it carries a bar
+ * toward the price, because "62% of the way to a Bulwark" is a reason to come back
+ * and "Need 940" is a refusal.
  */
 export interface Blocked {
   /** Short, in the player's terms: "Needs Shipyard L4". */
@@ -25,6 +31,7 @@ export interface Blocked {
 
 export function UpgradeRow({
   art,
+  nextArt,
   mark,
   name,
   level,
@@ -37,9 +44,11 @@ export function UpgradeRow({
   onAct,
   pending = false,
   highlighted = false,
+  flash = false,
 }: {
   art?: string | null;
-  /** Drawn when there is no art for this thing yet. */
+  /** The art one level from now, when it visibly changes. */
+  nextArt?: string | null;
   mark?: ReactNode;
   name: string;
   level?: number;
@@ -52,39 +61,65 @@ export function UpgradeRow({
   onAct: () => void;
   pending?: boolean;
   highlighted?: boolean;
+  /** Set briefly after a successful purchase. */
+  flash?: boolean;
 }) {
   const shortAlloy = Math.max(0, cost.alloy - held.alloy);
   const shortCrystal = Math.max(0, cost.crystal - held.crystal);
   const affordable = shortAlloy === 0 && shortCrystal === 0;
+  const total = cost.alloy + cost.crystal;
+  const have = Math.min(held.alloy, cost.alloy) + Math.min(held.crystal, cost.crystal);
 
   return (
     <div
-      className={`border-b border-line-soft p-3 last:border-b-0 ${
+      className={`relative overflow-hidden border-b border-line-soft p-3 last:border-b-0 ${
         highlighted ? 'bg-crystal/10 ring-1 ring-inset ring-crystal/40' : ''
-      }`}
+      } ${flash ? 'sweep' : ''}`}
     >
       <div className="flex items-center gap-3">
-        <div className="art-well flex size-11 shrink-0 items-center justify-center rounded">
+        <div className="art-well relative flex size-12 shrink-0 items-center justify-center rounded">
           {art ? (
-            <img src={art} alt="" aria-hidden className="size-10 object-contain" loading="lazy" />
+            <img src={art} alt="" aria-hidden className="size-11 object-contain" loading="lazy" />
           ) : (
             mark
           )}
         </div>
+
+        {/* The upgrade you are being sold, shown rather than described. */}
+        {nextArt && (
+          <>
+            <span aria-hidden className="text-[13px] text-faint">
+              →
+            </span>
+            <div className="art-well flex size-12 shrink-0 items-center justify-center rounded ring-1 ring-crystal/30">
+              <img
+                src={nextArt}
+                alt={`${name} at the next tier`}
+                className="size-11 object-contain drop-shadow-[0_0_8px_rgba(111,211,224,0.35)]"
+                loading="lazy"
+              />
+            </div>
+          </>
+        )}
 
         <div className="flex min-w-0 flex-1 items-baseline gap-2">
           <h3 className="truncate font-display text-[15px] uppercase tracking-wide text-bone">
             {name}
           </h3>
           {level !== undefined && level > 0 && (
-            <span className="num text-[12px] text-faint">L{level}</span>
+            <span className={`num text-[12px] text-faint ${flash ? 'pop inline-block' : ''}`}>
+              L{level}
+            </span>
           )}
         </div>
 
         {blocked ? (
           <button
             type="button"
-            onClick={blocked.onFix}
+            onClick={() => {
+              haptic('tap');
+              blocked.onFix?.();
+            }}
             disabled={!blocked.onFix}
             className="chip chip-locked shrink-0"
           >
@@ -93,19 +128,26 @@ export function UpgradeRow({
         ) : (
           <button
             type="button"
-            className="btn shrink-0 px-3 text-[11px]"
+            className="btn shrink-0 px-3 text-[11px] active:scale-95"
             disabled={!affordable || pending}
-            onClick={onAct}
+            onClick={() => {
+              haptic('commit');
+              onAct();
+            }}
           >
-            {affordable ? actionLabel : `Need ${compact(shortAlloy > 0 ? shortAlloy : shortCrystal)}`}
+            {actionLabel}
           </button>
         )}
       </div>
 
-      <p className="mt-2 text-[12px] leading-snug text-dim">{role}</p>
+      {/*
+        The payload first, the explanation second.
 
+        "Safe from any raid 300 → 390" is the reason to press the button; the
+        sentence underneath is context for a player who wants it. Reading order
+        follows decision order.
+      */}
       <div className="mt-2 flex flex-wrap items-baseline gap-x-4 gap-y-1">
-        {/* The whole argument for pressing the button, in one line of numbers. */}
         {gain && (
           <p className="num text-[13px]">
             <span className="text-faint">{gain.label} </span>
@@ -119,6 +161,14 @@ export function UpgradeRow({
         <Price cost={cost} />
       </div>
       {gain?.unlocks && <p className="mt-1 text-[11px] text-crystal/80">{gain.unlocks}</p>}
+
+      <p className="mt-1.5 text-[12px] leading-snug text-faint">{role}</p>
+
+      {!affordable && !blocked && (
+        <div className="mt-2.5">
+          <ProgressToNext have={have} need={total} label={`Saving for ${name.toLowerCase()}`} />
+        </div>
+      )}
     </div>
   );
 }
@@ -127,12 +177,12 @@ function Price({ cost }: { cost: { alloy: number; crystal: number } }) {
   return (
     <span className="num flex items-center gap-2.5 text-[12px]">
       <span className="flex items-center gap-1 text-alloy">
-        <img src={RESOURCE_ART.alloy} alt="alloy" className="size-3.5 object-contain" />
+        <img src={RESOURCE_ART.alloy} alt="alloy" className="size-4 object-contain" />
         {compact(cost.alloy)}
       </span>
       {cost.crystal > 0 && (
         <span className="flex items-center gap-1 text-crystal">
-          <img src={RESOURCE_ART.crystal} alt="crystal" className="size-3.5 object-contain" />
+          <img src={RESOURCE_ART.crystal} alt="crystal" className="size-4 object-contain" />
           {compact(cost.crystal)}
         </span>
       )}
@@ -162,7 +212,7 @@ export function DecisionGroup({
         {aside}
       </header>
       <p className="mb-2.5 text-[12px] text-faint">{question}</p>
-      <div className="group">{children}</div>
+      <div className="frame">{children}</div>
     </section>
   );
 }

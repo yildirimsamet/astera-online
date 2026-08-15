@@ -6,6 +6,7 @@ import { compact, signed } from '../lib/format.js';
 import { duration } from '../lib/time.js';
 import { waspMinutes } from '../lib/navigation.js';
 import { ClarityBars } from '../ui/Clarity.js';
+import { PlanetSigil } from '../ui/PlanetSigil.js';
 import { Section } from '../ui/primitives.js';
 import { Sheet } from '../ui/Sheet.js';
 import { LaunchSheet } from './LaunchSheet.js';
@@ -182,10 +183,20 @@ function PlanetRow({
     <button
       type="button"
       onClick={onOpen}
-      className={`flex w-full items-start gap-3 border-b border-line-soft p-3 text-left last:border-b-0 ${
+      className={`flex w-full items-center gap-3 border-b border-line-soft p-3 text-left last:border-b-0 ${
         stance === 'window' ? 'bg-opportunity/8' : ''
       }`}
     >
+      {/*
+        A world, not a row in a table.
+
+        Sixteen renders keyed off the planet id means a player recognises a
+        neighbour by sight before they read the name — which is what turns a list
+        of strangers into a neighbourhood worth having opinions about. Planets you
+        cannot see into are dimmed, so the fog is visible in the list itself.
+      */}
+      <PlanetSigil seed={planet.id} size={44} dark={stance === 'unseen'} />
+
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-2">
           <span className="truncate font-display text-[15px] uppercase tracking-wide text-bone">

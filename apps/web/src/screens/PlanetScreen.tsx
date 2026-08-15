@@ -14,8 +14,8 @@ import { full } from '../lib/format.js';
 import type { PlanetGroup } from '../lib/directives.js';
 import { buildingGain, satelliteGain } from '../lib/gains.js';
 import { useProjectedResources } from '../lib/projection.js';
-import { BUILDING_ART, HULL_ART, satelliteArt } from '../ui/assets.js';
-import { BastionMark, CoreMark, RingMark, ShipyardMark, VaultMark } from '../ui/marks.js';
+import { BUILDING_ART, HULL_ART, nextSatelliteArt, satelliteArt } from '../ui/assets.js';
+import { BastionMark, CoreMark, ShipyardMark, VaultMark } from '../ui/marks.js';
 import { PlanetHero } from '../ui/PlanetHero.js';
 import { DecisionGroup, UpgradeRow, type Blocked } from '../ui/UpgradeRow.js';
 import { describe, useToast } from '../ui/Toast.js';
@@ -49,6 +49,18 @@ export function PlanetScreen({ focusGroup }: { focusGroup?: GroupId }) {
   const held = useProjectedResources(data?.planet, dataUpdatedAt, 5000);
   const [building, setBuilding] = useState<HullId | null>(null);
   const [focused, setFocused] = useState<string | null>(null);
+  // Set for a moment after a purchase lands, so the row can acknowledge it.
+  const [flashed, setFlashed] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!flashed) return;
+    const id = setTimeout(() => {
+      setFlashed(null);
+    }, 800);
+    return () => {
+      clearTimeout(id);
+    };
+  }, [flashed]);
 
   // Sending the player to the thing that is blocking them is only useful if they
   // can see it when they arrive.
@@ -80,13 +92,46 @@ export function PlanetScreen({ focusGroup }: { focusGroup?: GroupId }) {
       {order.map((id) => (
         <DecisionGroup key={id} problem={GROUPS[id].problem} question={GROUPS[id].question}>
           {id === 'defend' && (
-            <Defend planet={data} held={held} focused={focused} onNeed={setFocused} onBuild={setBuilding} />
+            <Defend
+              planet={data}
+              held={held}
+              focused={focused}
+              flashed={flashed}
+              onNeed={setFocused}
+              onFlash={setFlashed}
+              onBuild={setBuilding}
+            />
           )}
-          {id === 'see' && <See planet={data} held={held} focused={focused} onNeed={setFocused} />}
+          {id === 'see' && (
+            <See
+              planet={data}
+              held={held}
+              focused={focused}
+              flashed={flashed}
+              onNeed={setFocused}
+              onFlash={setFlashed}
+            />
+          )}
           {id === 'reach' && (
-            <Reach planet={data} held={held} focused={focused} onNeed={setFocused} onBuild={setBuilding} />
+            <Reach
+              planet={data}
+              held={held}
+              focused={focused}
+              flashed={flashed}
+              onNeed={setFocused}
+              onFlash={setFlashed}
+              onBuild={setBuilding}
+            />
           )}
-          {id === 'grow' && <Grow planet={data} held={held} focused={focused} />}
+          {id === 'grow' && (
+            <Grow
+              planet={data}
+              held={held}
+              focused={focused}
+              flashed={flashed}
+              onFlash={setFlashed}
+            />
+          )}
         </DecisionGroup>
       ))}
 
@@ -134,7 +179,9 @@ interface GroupProps {
   planet: PlanetView;
   held: { alloy: number; crystal: number };
   focused: string | null;
+  flashed: string | null;
   onNeed: (id: string) => void;
+  onFlash: (id: string) => void;
 }
 
 const cappedCount = (planet: PlanetView): number =>
@@ -142,7 +189,7 @@ const cappedCount = (planet: PlanetView): number =>
     (id) => (planet.buildings[id] ?? 0) >= (planet.buildings.CORE ?? 0),
   ).length;
 
-function useBuildingAction(planet: PlanetView) {
+function useBuildingAction(planet: PlanetView, onFlash: (id: string) => void) {
   const upgrade = useUpgrade();
   const say = useToast();
   const core = planet.buildings.CORE ?? 0;
@@ -163,6 +210,7 @@ function useBuildingAction(planet: PlanetView) {
       act: () => {
         upgrade.mutate(id, {
           onSuccess: (r) => {
+            onFlash(id);
             say(`${name} is now L${String(r.level)}`);
           },
           onError: (err) => {
@@ -174,7 +222,7 @@ function useBuildingAction(planet: PlanetView) {
   };
 }
 
-function useSatelliteAction(planet: PlanetView) {
+function useSatelliteAction(planet: PlanetView, onFlash: (id: string) => void) {
   const install = useInstallSatellite();
   const say = useToast();
   const core = planet.buildings.CORE ?? 0;
@@ -202,6 +250,7 @@ function useSatelliteAction(planet: PlanetView) {
       act: () => {
         install.mutate(id, {
           onSuccess: (r) => {
+            onFlash(id);
             say(`${name} online at L${String(r.level)}`);
           },
           onError: (err) => {
@@ -219,11 +268,13 @@ function Defend({
   planet,
   held,
   focused,
+  flashed,
   onNeed,
+  onFlash,
   onBuild,
 }: GroupProps & { onBuild: (hull: HullId) => void }) {
-  const building = useBuildingAction(planet);
-  const satellite = useSatelliteAction(planet);
+  const building = useBuildingAction(planet, onFlash);
+  const satellite = useSatelliteAction(planet, onFlash);
   const vault = building('VAULT', 'Vault', onNeed);
   const aegis = satellite('AEGIS', 'Aegis', onNeed);
   const shipyard = planet.buildings.SHIPYARD ?? 0;
@@ -246,11 +297,13 @@ function Defend({
           onAct={vault.act}
           pending={vault.pending}
           highlighted={focused === 'VAULT'}
+          flash={flashed === 'VAULT'}
         />
       </div>
 
       <UpgradeRow
         art={satelliteArt('AEGIS', Math.max(1, aegis.level))}
+        nextArt={nextSatelliteArt('AEGIS', aegis.level)}
         name="Aegis"
         level={aegis.level}
         role="Soaks the first damage of a raid, then regrows on its own."
@@ -261,6 +314,7 @@ function Defend({
         actionLabel={aegis.level === 0 ? 'Install' : 'Raise'}
         onAct={aegis.act}
         pending={aegis.pending}
+        flash={flashed === 'AEGIS'}
       />
 
       <UpgradeRow
@@ -289,8 +343,8 @@ function Defend({
   );
 }
 
-function See({ planet, held, focused, onNeed }: GroupProps) {
-  const satellite = useSatelliteAction(planet);
+function See({ planet, held, focused, flashed, onNeed, onFlash }: GroupProps) {
+  const satellite = useSatelliteAction(planet, onFlash);
   const telescope = satellite('TELESCOPE', 'Telescope', onNeed);
   const radar = satellite('RADAR', 'Radar', onNeed);
   const veil = satellite('VEIL', 'Veil', onNeed);
@@ -299,6 +353,7 @@ function See({ planet, held, focused, onNeed }: GroupProps) {
     <>
       <UpgradeRow
         art={satelliteArt('TELESCOPE', Math.max(1, telescope.level))}
+        nextArt={nextSatelliteArt('TELESCOPE', telescope.level)}
         name="Telescope"
         level={telescope.level}
         role={
@@ -314,10 +369,12 @@ function See({ planet, held, focused, onNeed }: GroupProps) {
         onAct={telescope.act}
         pending={telescope.pending}
         highlighted={focused === 'TELESCOPE'}
+        flash={flashed === 'TELESCOPE'}
       />
 
       <UpgradeRow
         art={satelliteArt('RADAR', Math.max(1, radar.level))}
+        nextArt={nextSatelliteArt('RADAR', radar.level)}
         name="Radar"
         level={radar.level}
         role={
@@ -333,6 +390,7 @@ function See({ planet, held, focused, onNeed }: GroupProps) {
         onAct={radar.act}
         pending={radar.pending}
         highlighted={focused === 'RADAR'}
+        flash={flashed === 'RADAR'}
       />
 
       <UpgradeRow
@@ -347,6 +405,7 @@ function See({ planet, held, focused, onNeed }: GroupProps) {
         actionLabel={veil.level === 0 ? 'Install' : 'Raise'}
         onAct={veil.act}
         pending={veil.pending}
+        flash={flashed === 'VEIL'}
       />
     </>
   );
@@ -356,10 +415,12 @@ function Reach({
   planet,
   held,
   focused,
+  flashed,
   onNeed,
+  onFlash,
   onBuild,
 }: GroupProps & { onBuild: (hull: HullId) => void }) {
-  const building = useBuildingAction(planet);
+  const building = useBuildingAction(planet, onFlash);
   const shipyard = building('SHIPYARD', 'Shipyard', onNeed);
   const level = planet.buildings.SHIPYARD ?? 0;
 
@@ -379,6 +440,7 @@ function Reach({
           onAct={shipyard.act}
           pending={shipyard.pending}
           highlighted={focused === 'SHIPYARD'}
+          flash={flashed === 'SHIPYARD'}
         />
       </div>
 
@@ -420,9 +482,9 @@ const HULL_PITCH: Record<HullId, string> = {
   BASTION: 'Never leaves the planet. The cheapest hit points you can own.',
 };
 
-function Grow({ planet, held, focused }: Omit<GroupProps, 'onNeed'>) {
+function Grow({ planet, held, focused, flashed, onFlash }: Omit<GroupProps, 'onNeed'>) {
   const noop = () => undefined;
-  const building = useBuildingAction(planet);
+  const building = useBuildingAction(planet, onFlash);
   const core = building('CORE', 'Command Core', noop);
   const refinery = building('REFINERY', 'Alloy Refinery', noop);
   const extractor = building('EXTRACTOR', 'Crystal Extractor', noop);
@@ -448,6 +510,7 @@ function Grow({ planet, held, focused }: Omit<GroupProps, 'onNeed'>) {
           onAct={core.act}
           pending={core.pending}
           highlighted={focused === 'CORE'}
+          flash={flashed === 'CORE'}
         />
       </div>
 
@@ -463,6 +526,7 @@ function Grow({ planet, held, focused }: Omit<GroupProps, 'onNeed'>) {
         actionLabel="Raise"
         onAct={refinery.act}
         pending={refinery.pending}
+        flash={flashed === 'REFINERY'}
       />
 
       <UpgradeRow
@@ -477,11 +541,12 @@ function Grow({ planet, held, focused }: Omit<GroupProps, 'onNeed'>) {
         actionLabel="Raise"
         onAct={extractor.act}
         pending={extractor.pending}
+        flash={flashed === 'EXTRACTOR'}
       />
 
       <div id="row-RING">
         <UpgradeRow
-          mark={<RingMark />}
+          art={BUILDING_ART.RING}
           name="Orbital Ring"
           level={ring.level}
           role="Slots for satellites. You will never run all five — what you leave out is who you are."
@@ -493,6 +558,7 @@ function Grow({ planet, held, focused }: Omit<GroupProps, 'onNeed'>) {
           onAct={ring.act}
           pending={ring.pending}
           highlighted={focused === 'RING'}
+          flash={flashed === 'RING'}
         />
       </div>
     </>

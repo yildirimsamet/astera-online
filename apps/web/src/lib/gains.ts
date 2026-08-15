@@ -9,9 +9,12 @@ import {
   shieldHp,
   storageCap,
   vaultProtects,
+  wealth,
   type BuildingId,
+  type BuildingLevels,
   type SatelliteId,
 } from '@blindspace/rules';
+import type { PlanetView } from '../api/schemas.js';
 import { compact, full, percent } from './format.js';
 
 /**
@@ -25,6 +28,33 @@ import { compact, full, percent } from './format.js';
  * `unlocks` is the other half: the thing that becomes possible, which is what
  * actually pulls a player up a tech tree.
  */
+/**
+ * POWER — everything this planet is worth, at what it cost.
+ *
+ * Computed here rather than read from `score.wealth`, which the server only
+ * refreshes when something is bought. A brand-new commander with twelve Wasps and
+ * two working buildings would otherwise be shown a Power of zero, which is both
+ * wrong and the single most discouraging number the interface could produce.
+ */
+export function powerOf(planet: PlanetView): number {
+  const buildings: BuildingLevels = {
+    CORE: planet.buildings.CORE ?? 0,
+    REFINERY: planet.buildings.REFINERY ?? 0,
+    EXTRACTOR: planet.buildings.EXTRACTOR ?? 0,
+    VAULT: planet.buildings.VAULT ?? 0,
+    SHIPYARD: planet.buildings.SHIPYARD ?? 0,
+    RING: planet.buildings.RING ?? 0,
+  };
+  return wealth({
+    buildings,
+    satellites: planet.satellites,
+    fleet: planet.fleet,
+    ground: planet.ground,
+    alloy: planet.planet.alloy,
+    crystal: planet.planet.crystal,
+  });
+}
+
 export interface Gain {
   /** The quantity being bought, named as the player feels it. */
   label: string;
@@ -119,10 +149,10 @@ export function satelliteGain(id: SatelliteId, level: number): Gain {
     case 'RADAR': {
       if (next < 3) {
         return {
-          label: 'Sees who is scanning you',
-          now: level === 0 ? 'nothing' : 'that it happened',
-          next: next === 1 ? 'that it happened' : 'the direction too',
-          ...(next === 1 ? { unlocks: 'L2 adds the bearing, L3 starts warning about fleets' } : {}),
+          label: 'Detects scans',
+          now: level === 0 ? 'no' : 'yes',
+          next: next === 1 ? 'yes' : 'yes, with bearing',
+          ...(next === 1 ? { unlocks: 'L2 adds the bearing · L3 warns about inbound fleets' } : {}),
         };
       }
       const nowLead = radarLeadMinutes(level);

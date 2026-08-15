@@ -71,6 +71,28 @@
   }
 }
 
+@keyframes pop {
+  40% {
+    transform: scale(1.14);
+  }
+}
+
+@keyframes sweep {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(100%);
+  }
+}
+
+/** The leading edge of a filling meter, so the fill reads as energy, not paint. */
+@keyframes meter-pulse {
+  50% {
+    opacity: 0.35;
+  }
+}
+
 @layer base {
   html {
     background-color: var(--color-void);
@@ -205,6 +227,85 @@
   /** Rendered art sits on nothing, so it needs its own pool of light. */
   .art-well {
     background: radial-gradient(circle at 50% 45%, rgb(96 140 200 / 16%), transparent 68%);
+  }
+
+  /**
+   * THE FRAME.
+   *
+   * The single change that stops this reading as a web page. Real interfaces in
+   * this genre are built objects: cut corners, a bright inner edge where light
+   * catches, a darker well behind the content. A 1px rounded rectangle is a card
+   * on a website; this is a panel bolted to something.
+   */
+  .frame {
+    position: relative;
+    background:
+      linear-gradient(180deg, rgb(22 32 52 / 55%) 0%, rgb(9 13 22 / 92%) 100%);
+    border: 1px solid var(--color-line);
+    /* Corner cuts. Cheap, and instantly legible as hardware. */
+    clip-path: polygon(
+      10px 0,
+      100% 0,
+      100% calc(100% - 10px),
+      calc(100% - 10px) 100%,
+      0 100%,
+      0 10px
+    );
+  }
+  .frame::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background: linear-gradient(180deg, rgb(255 255 255 / 6%), transparent 40%);
+  }
+
+  /** A bracket accent — the mark that says "this is the important one". */
+  .bracket {
+    position: relative;
+    padding-left: 11px;
+  }
+  .bracket::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 2px;
+    bottom: 2px;
+    width: 3px;
+    background: linear-gradient(180deg, var(--color-crystal), transparent);
+    opacity: 0.75;
+  }
+
+  /**
+   * A readout: the game's way of stating a number.
+   *
+   * Big figure, small unit, tabular. The size difference is doing the work that a
+   * label would otherwise have to do in words.
+   */
+  .readout {
+    font-family: var(--font-mono);
+    font-variant-numeric: tabular-nums;
+    line-height: 1;
+  }
+
+  /** Fires when a value the player cares about jumps. */
+  .pop {
+    animation: pop 420ms cubic-bezier(0.2, 0.9, 0.2, 1);
+  }
+
+  /** Fires on a completed purchase — a bright sweep across the row. */
+  .sweep::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background: linear-gradient(
+      100deg,
+      transparent 20%,
+      rgb(111 211 224 / 26%) 50%,
+      transparent 80%
+    );
+    animation: sweep 700ms ease-out;
   }
 
   .chip {

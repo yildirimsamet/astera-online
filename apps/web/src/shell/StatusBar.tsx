@@ -1,31 +1,32 @@
+import { useEffect, useRef, useState } from 'react';
 import { usePlanet, useSeason } from '../api/queries.js';
 import { compact, full } from '../lib/format.js';
 import { duration } from '../lib/time.js';
 import { useProjectedResources } from '../lib/projection.js';
-import { Meter } from '../ui/primitives.js';
 import { RESOURCE_ART } from '../ui/assets.js';
+import { Meter } from '../ui/Meter.js';
 
 /**
- * The instrument strip: what you hold, and how long the season has left.
+ * What you hold, and how long the season has left.
  *
  * Both numbers move on their own — the stock because it is being produced, the
- * season because it is ending. That is the whole game in two lines, and it is why
- * they are always on screen.
+ * season because it is ending — and that is the whole game in one strip, which is
+ * why it never leaves the screen.
  */
 export function StatusBar() {
   const { data, dataUpdatedAt } = usePlanet();
   const season = useSeason();
   const held = useProjectedResources(data?.planet, dataUpdatedAt);
 
-  if (!data) return <div className="h-[62px]" />;
+  if (!data) return <div className="h-[70px]" />;
 
   const hoursLeft = season.data
     ? Math.max(0, (season.data.endsAt.getTime() - Date.now()) / 3_600_000)
     : null;
 
   return (
-    <header className="shrink-0 border-b border-line-soft bg-void/90 px-4 pb-2.5 pt-[calc(10px+env(safe-area-inset-top))]">
-      <div className="flex items-end gap-5">
+    <header className="relative shrink-0 border-b border-line bg-gradient-to-b from-[#0b1120] to-void px-3 pb-2.5 pt-[calc(10px+env(safe-area-inset-top))]">
+      <div className="flex items-end gap-3">
         <Stock
           label="Alloy"
           value={held.alloy}
@@ -40,9 +41,9 @@ export function StatusBar() {
           rate={data.planet.crystalPerHour}
           tone="crystal"
         />
-        <div className="shrink-0 text-right">
+        <div className="shrink-0 pb-0.5 text-right">
           <p className="legend">Season</p>
-          <p className="num text-[13px] leading-tight text-dim">
+          <p className="readout mt-1 text-[13px] text-dim">
             {hoursLeft === null ? '—' : duration(hoursLeft * 60)}
           </p>
         </div>
@@ -66,28 +67,55 @@ function Stock({
 }) {
   const atCap = value >= cap - 0.5;
   const colour = tone === 'alloy' ? 'text-alloy' : 'text-crystal';
+  const pop = useJump(value);
 
   return (
     <div className="min-w-0 flex-1">
-      <div className="flex items-baseline justify-between gap-2">
-        <span className="flex items-center gap-1.5">
-          <img
-            src={tone === 'alloy' ? RESOURCE_ART.alloy : RESOURCE_ART.crystal}
-            alt=""
-            aria-hidden
-            className="size-4 shrink-0 object-contain"
-          />
-          <span className="legend">{label}</span>
-        </span>
-        {/* Full storage is production being thrown away — say so, once, quietly. */}
-        <span className={`num text-[10px] ${atCap ? 'text-alert' : 'text-faint'}`}>
-          {atCap ? 'full' : `+${compact(rate)}/h`}
+      <div className="flex items-center gap-1.5">
+        <img
+          src={tone === 'alloy' ? RESOURCE_ART.alloy : RESOURCE_ART.crystal}
+          alt=""
+          aria-hidden
+          className="size-5 shrink-0 object-contain drop-shadow-[0_0_5px_rgba(120,160,220,0.35)]"
+        />
+        <span className={`readout text-[18px] ${colour} ${pop ? 'pop' : ''}`}>{full(value)}</span>
+        <span className={`num ml-auto text-[10px] ${atCap ? 'text-threat' : 'text-faint'}`}>
+          {atCap ? 'FULL' : `+${compact(rate)}/h`}
         </span>
       </div>
-      <p className={`num text-[17px] leading-tight ${colour}`}>{full(value)}</p>
-      <div className="mt-1">
-        <Meter value={value} cap={cap} tone={tone} />
+      <p className="sr-only">{label}</p>
+      <div className="mt-1.5">
+        <Meter value={value} cap={cap} tone={tone} cells={10} />
       </div>
     </div>
   );
+}
+
+/**
+ * True for a moment after a value jumps by more than the trickle.
+ *
+ * Production creeps up a few units a second and must not twitch; a raid landing or
+ * a fleet coming home with loot moves thousands, and that deserves to be felt. The
+ * threshold is what separates the two.
+ */
+function useJump(value: number): boolean {
+  const previous = useRef(value);
+  const [popping, setPopping] = useState(false);
+
+  useEffect(() => {
+    const delta = Math.abs(value - previous.current);
+    const material = delta > Math.max(50, previous.current * 0.04);
+    previous.current = value;
+    if (!material) return;
+
+    setPopping(true);
+    const id = setTimeout(() => {
+      setPopping(false);
+    }, 450);
+    return () => {
+      clearTimeout(id);
+    };
+  }, [value]);
+
+  return popping;
 }
