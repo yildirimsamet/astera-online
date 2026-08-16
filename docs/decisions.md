@@ -345,6 +345,52 @@ same news forever. If you add a table with a timestamp, pass the time in.
 
 ---
 
+### D14 · No newcomer grace — **owner decision**
+
+A freshly joined commander used to be immune for four hours or until Core L4, whichever
+came first. Removed on the owner's instruction: *"yeni login korumasını tamamen kaldır.
+istemiyorum. benim kararım."*
+
+**What is gone:** `ABUSE.graceMinutes`, `ABUSE.graceUntilCoreLevel`, and the
+`NEWCOMER_GRACE` refusal. `canAttack` no longer takes the defender's age or buildings.
+
+**What remains:** the rank floor (nobody may attack a target below 40% of their own
+Wealth) and the bash limit (three hits per planet per twelve hours). Both scale with the
+SITUATION rather than being granted for merely being new, which is the distinction the
+decision turns on.
+
+**What this binds:** the casual-farming risk in [balance.md](balance.md) is now carried
+entirely by those two plus the vault floor. The first hours of an account are now live,
+and the opening tutorial — such as it is — has to teach that in the first session rather
+than after four hours of safety. If the shard turns out to eat new arrivals, the lever is
+the rank floor, not a re-introduced timer.
+
+**Reconsider only with data from a real shard**, not from the simulator, whose bots have
+no skill variance and never quit.
+
+---
+
+### D15 · Hardware is visible; readings are not — **LOCKED**
+
+Every satellite a player installs is drawn in orbit around their planet, and everyone can
+see it. Planet size is a three-step silhouette driven by the public core tier.
+
+**Why this does not break the fog.** The fog in this game is over *state*, not over
+*construction*: where a fleet is, how much stock is in the store, what a probe measured.
+None of that is disclosed here. What a passer-by learns is that a planet has instruments
+and is developed — the same thing they would learn from looking at a real planet through
+a telescope. Levels are never published: an Aegis is visible, its shield strength is not,
+and shield strength is what decides a raid.
+
+**What it buys.** Deterrence becomes a real strategy — a visibly fortified world is a
+world people route around — and the ownership pillar gets its feedback loop, because
+building something is now visible to other people rather than only to you.
+
+**Binds:** `GET /api/galaxy` publishes satellite TYPES only. Adding a level, a count of
+anything, or a satellite's target to that payload re-opens the question.
+
+---
+
 ## Reversed decisions — kept so nobody re-derives them
 
 ### ✗ Empire Value as the ladder

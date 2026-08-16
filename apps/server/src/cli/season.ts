@@ -10,7 +10,7 @@
  */
 import { parseArgs } from 'node:util';
 import { eq } from 'drizzle-orm';
-import { ABUSE, SEASON } from '@blindspace/rules';
+import { SEASON } from '@blindspace/rules';
 import { createDb } from '../db/client.js';
 import { runMigrations } from '../db/migrate.js';
 import { loadDotEnv, loadEnv } from '../env.js';
@@ -127,10 +127,12 @@ async function main(): Promise<void> {
 
         const unattended = num(values.unattended, 0);
         if (unattended > 0) {
-          // Backdated past newcomer grace. Without this every one of them is
-          // untouchable for four hours and the dev aid aids nothing on the day it
-          // is created — which is the only day anyone runs this.
-          const joinedAt = addMinutes(systemClock.now(), -(ABUSE.graceMinutes + 1));
+          // Backdated a few hours so they read as established commanders rather
+          // than as a crowd that appeared in the same second. Nothing gates on it
+          // any more — newcomer grace is gone (D14) — but the ladder and the
+          // return payload both read joinedAt, and a shard where every player is
+          //zero minutes old looks broken.
+          const joinedAt = addMinutes(systemClock.now(), -300);
 
           for (let i = 0; i < unattended; i++) {
             const name = `${NAMES[i % NAMES.length]!}-${String(100 + i)}`;

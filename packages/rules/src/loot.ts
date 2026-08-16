@@ -1,5 +1,5 @@
 import { ABUSE, COMBAT } from './constants.js';
-import type { BuildingLevels, Grade, Resources } from './types.js';
+import type { Grade, Resources } from './types.js';
 
 export const gradeMultiplier = (grade: Grade): number =>
   grade === 'DECISIVE'
@@ -38,7 +38,7 @@ export function computeLoot(
   };
 }
 
-export type AttackRefusal = 'RANK_FLOOR' | 'NEWCOMER_GRACE' | 'BASH_LIMIT' | 'SELF';
+export type AttackRefusal = 'RANK_FLOOR' | 'BASH_LIMIT' | 'SELF';
 
 export interface AttackCheck {
   ok: boolean;
@@ -48,30 +48,33 @@ export interface AttackCheck {
 export interface AttackParty {
   playerId: string;
   wealth: number;
-  joinedAtMinutes?: number;
-  buildings?: BuildingLevels;
 }
 
 /**
- * Four rules, no anti-cheat system. Core gameplay outranks abuse-hardening in MVP,
- * and on a 200-player shard social visibility catches more than code would.
+ * Three rules, no anti-cheat system. Core gameplay outranks abuse-hardening in
+ * MVP, and on a 200-player shard social visibility catches more than code would.
+ *
+ * THERE IS NO NEWCOMER GRACE. A four-hour shield on every fresh account was the
+ * fourth rule until the owner removed it: a world where a new arrival is
+ * untouchable is a world where the first hours are safe, and this game's first
+ * hours are supposed to be the ones that teach you that they are not. The rank
+ * floor still stops a whale farming a beginner, and the bash limit still stops
+ * anyone being hit repeatedly, so the two protections that scale with the
+ * SITUATION remain — what is gone is the one that was granted for merely being
+ * new.
+ *
+ * Recorded as D14 in `decisions.md`. The casual-farming risk in `balance.md` is
+ * now carried entirely by the rank floor and the vault floor.
  */
 export function canAttack(
   attacker: AttackParty,
   defender: AttackParty,
-  nowMinutes: number,
   recentHits: number,
 ): AttackCheck {
   if (attacker.playerId === defender.playerId) return { ok: false, reason: 'SELF' };
 
   if (defender.wealth < attacker.wealth * ABUSE.rankFloor) {
     return { ok: false, reason: 'RANK_FLOOR' };
-  }
-
-  const age = nowMinutes - (defender.joinedAtMinutes ?? 0);
-  const core = defender.buildings?.CORE ?? 0;
-  if (age < ABUSE.graceMinutes && core < ABUSE.graceUntilCoreLevel) {
-    return { ok: false, reason: 'NEWCOMER_GRACE' };
   }
 
   if (recentHits >= ABUSE.bashLimit) return { ok: false, reason: 'BASH_LIMIT' };

@@ -1,12 +1,23 @@
 import { and, eq } from 'drizzle-orm';
 import { pino } from 'pino';
 import { afterAll, beforeEach, describe, expect, it } from 'vitest';
-import { ABUSE, INTEL, PROBE } from '@blindspace/rules';
+import { INTEL, PROBE } from '@blindspace/rules';
 import { missions, planets, probeReports, satellites, scanEvents, watches } from '../src/db/schema.js';
 import { assignWatch, launchProbe, readRadarLog, readTelescopes } from '../src/services/intel.js';
 import { launchAttack } from '../src/services/mission.js';
 import { EventWorker } from '../src/worker/loop.js';
 import { giveUnits, grant, seedWorld, setLevel, testDb, type Fixture } from './helpers.js';
+
+/**
+ * A world that has been running a while.
+ *
+ * These used to advance past the newcomer grace period, which no longer exists
+ * (D14). The advance stays because the assertions below are about a settled
+ * world — accrued resources, telescope windows that have turned over — and
+ * removing it would quietly change what they test.
+ */
+const SETTLED_MINUTES = 250;
+
 
 const silent = pino({ level: 'silent' });
 
@@ -136,7 +147,7 @@ describe('the information layer', () => {
       await giveSatellite(f, mine, 'TELESCOPE', 2);
       await assignWatch(f.db, mine, theirs, 0, f.clock);
       await giveUnits(f.db, theirs, { WASP: 30 });
-      f.clock.advance(ABUSE.graceMinutes + 10);
+      f.clock.advance(SETTLED_MINUTES);
       await launchAttack(f.db, theirs, mine, { WASP: 30 }, f.clock);
 
       const [view] = await readTelescopes(f.db, myPlayer, f.clock);
@@ -145,7 +156,7 @@ describe('the information layer', () => {
 
     it('gives a return ETA only at FULL clarity', async () => {
       await giveUnits(f.db, theirs, { WASP: 30 });
-      f.clock.advance(ABUSE.graceMinutes + 10);
+      f.clock.advance(SETTLED_MINUTES);
       await launchAttack(f.db, theirs, mine, { WASP: 30 }, f.clock);
 
       await giveSatellite(f, mine, 'TELESCOPE', 2); // clarity +2 → FULL
@@ -165,7 +176,7 @@ describe('the information layer', () => {
       await giveSatellite(f, theirs, 'VEIL', 3); // clarity −2 → BLIND
       await assignWatch(f.db, mine, theirs, 0, f.clock);
       await giveUnits(f.db, theirs, { WASP: 30 });
-      f.clock.advance(ABUSE.graceMinutes + 10);
+      f.clock.advance(SETTLED_MINUTES);
       await launchAttack(f.db, theirs, mine, { WASP: 30 }, f.clock);
 
       // The true status is AWAY. It must never appear.
@@ -308,7 +319,7 @@ describe('the information layer', () => {
 
     it('reports the target as AWAY when their ships are out', async () => {
       await giveUnits(f.db, theirs, { WASP: 30 });
-      f.clock.advance(ABUSE.graceMinutes + 10);
+      f.clock.advance(SETTLED_MINUTES);
       await launchAttack(f.db, theirs, mine, { WASP: 30 }, f.clock);
 
       const launch = await launchProbe(f.db, mine, theirs, f.clock);

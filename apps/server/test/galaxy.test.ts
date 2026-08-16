@@ -2,13 +2,23 @@ import { eq } from 'drizzle-orm';
 import type { FastifyInstance } from 'fastify';
 import { pino } from 'pino';
 import { afterAll, afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { ABUSE } from '@blindspace/rules';
 import { buildApp } from '../src/app.js';
 import { TokenService } from '../src/auth/tokens.js';
 import { players, satellites } from '../src/db/schema.js';
 import { launchAttack } from '../src/services/mission.js';
 import { assignWatch } from '../src/services/intel.js';
 import { giveUnits, seedWorld, setLevel, testDb, testEnv, type Fixture } from './helpers.js';
+
+/**
+ * A world that has been running a while.
+ *
+ * These used to advance past the newcomer grace period, which no longer exists
+ * (D14). The advance stays because the assertions below are about a settled
+ * world — accrued resources, telescope windows that have turned over — and
+ * removing it would quietly change what they test.
+ */
+const SETTLED_MINUTES = 250;
+
 
 const silent = pino({ level: 'silent' });
 
@@ -18,6 +28,7 @@ interface GalaxyPlanet {
   owner: string;
   position: { x: number; y: number; z: number };
   coreTier: number;
+  satellites: string[];
   isSelf: boolean;
   fleet?: { status: string; staleMinutes: number; etaMinutes: number | null; clarity: string };
 }
@@ -93,7 +104,7 @@ describe('GET /api/galaxy — fog enforced in the response', () => {
   it('a planet you are not watching has NO fleet key at all', async () => {
     // Their fleet is genuinely away — the truth exists, it is just not yours.
     await giveUnits(f.db, theirs, { WASP: 30 });
-    f.clock.advance(ABUSE.graceMinutes + 10);
+    f.clock.advance(SETTLED_MINUTES);
     await launchAttack(f.db, theirs, mine, { WASP: 30 }, f.clock);
 
     const target = (await galaxy()).find((p) => p.id === theirs)!;
@@ -124,7 +135,7 @@ describe('GET /api/galaxy — fog enforced in the response', () => {
     await assignWatch(f.db, mine, theirs, 0, f.clock);
 
     await giveUnits(f.db, theirs, { WASP: 30 });
-    f.clock.advance(ABUSE.graceMinutes + 10);
+    f.clock.advance(SETTLED_MINUTES);
     await launchAttack(f.db, theirs, mine, { WASP: 30 }, f.clock);
 
     const target = (await galaxy()).find((p) => p.id === theirs)!;
@@ -143,6 +154,41 @@ describe('GET /api/galaxy — fog enforced in the response', () => {
     expect(planets.find((p) => p.id === third)!).not.toHaveProperty('fleet');
   });
 
+  /**
+   * D15 — hardware is public, readings are not.
+   *
+   * The line these hold is the difference between "that world has an Aegis",
+   * which is a shape anyone can see from outside and which makes deterrence a
+   * real strategy, and "that world's shield is 4,000", which decides whether a
+   * raid pays and therefore has to be bought with a probe.
+   */
+  it('publishes which instruments a planet carries', async () => {
+    await giveTelescope(theirs, 3);
+    await f.db.insert(satellites).values({ planetId: theirs, slot: 1, type: 'AEGIS', level: 5 });
+
+    const planets = await galaxy();
+    const target = planets.find((p) => p.id === theirs);
+    expect(target?.satellites).toEqual(expect.arrayContaining(['TELESCOPE', 'AEGIS']));
+  });
+
+  it('never publishes a satellite level, only its presence', async () => {
+    await f.db.insert(satellites).values({ planetId: theirs, slot: 1, type: 'AEGIS', level: 5 });
+
+    const res = await app.inject({ method: 'GET', url: '/api/galaxy', headers: auth });
+    const body = res.body;
+    // The whole payload, not just the parsed shape: a level smuggled in under any
+    // key at all would still be a level anyone could read.
+    expect(body).not.toMatch(/"level"/);
+    const target = res.json<{ planets: GalaxyPlanet[] }>().planets.find((p) => p.id === theirs);
+    for (const entry of target?.satellites ?? []) expect(entry).toBeTypeOf('string');
+  });
+
+  it('reports no hardware for a planet that has installed none', async () => {
+    const planets = await galaxy();
+    const bare = planets.find((p) => p.id === f.planetIds[2]);
+    expect(bare?.satellites).toEqual([]);
+  });
+
   it('exposes development as a coarse tier, never the exact Core level', async () => {
     await setLevel(f.db, theirs, 'CORE', 11);
     const target = (await galaxy()).find((p) => p.id === theirs)!;
@@ -159,8 +205,10 @@ describe('GET /api/galaxy — fog enforced in the response', () => {
 
     const target = (await galaxy()).find((p) => p.id === theirs)!;
     const keys = Object.keys(target);
+    // An allowlist, not a denylist: anything new in this payload has to be
+    // argued for here first. `satellites` is D15 and carries types only.
     expect(keys.sort()).toEqual(
-      ['coreTier', 'fleet', 'id', 'isSelf', 'name', 'owner', 'position'].sort(),
+      ['coreTier', 'fleet', 'id', 'isSelf', 'name', 'owner', 'position', 'satellites'].sort(),
     );
   });
 

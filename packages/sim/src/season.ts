@@ -304,8 +304,7 @@ function tryAttack(p: SimPlayer, t: number, world: World, rng: Rng): void {
     const hits = (p.recentHits.get(q.id) ?? []).filter((x) => t - x < ABUSE.bashWindowMinutes).length;
     const gate = canAttack(
       { playerId: String(p.id), wealth: p.wealthNow },
-      { playerId: String(q.id), wealth: q.wealthNow, joinedAtMinutes: q.joinedAt, buildings: q.buildings },
-      t,
+      { playerId: String(q.id), wealth: q.wealthNow },
       hits,
     );
     if (!gate.ok) continue;

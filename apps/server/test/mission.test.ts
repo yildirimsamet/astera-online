@@ -8,6 +8,17 @@ import { installSatellite } from '../src/services/build.js';
 import { EventWorker } from '../src/worker/loop.js';
 import { giveUnits, grant, seedWorld, setLevel, testDb, type Fixture } from './helpers.js';
 
+/**
+ * A world that has been running a while.
+ *
+ * These used to advance past the newcomer grace period, which no longer exists
+ * (D14). The advance stays because the assertions below are about a settled
+ * world — accrued resources, telescope windows that have turned over — and
+ * removing it would quietly change what they test.
+ */
+const SETTLED_MINUTES = 250;
+
+
 const silent = pino({ level: 'silent' });
 
 // The database pool is shared across this whole file, so it is torn down at FILE
@@ -30,7 +41,7 @@ describe('launching a fleet', () => {
     await giveUnits(f.db, attacker, { WASP: 50, HAULER: 5, BASTION: 3 });
     await grant(f.db, defender, 20_000, 2_000);
     // Clear newcomer grace so the interesting rules are the ones being tested.
-    f.clock.advance(ABUSE.graceMinutes + 10);
+    f.clock.advance(SETTLED_MINUTES);
   });
 
 
@@ -85,15 +96,22 @@ describe('launching a fleet', () => {
   });
 
   describe('abuse guards', () => {
-    it('protects a newcomer', async () => {
+    /**
+     * D14: there is no newcomer grace, and this is the test that says so out loud.
+     *
+     * A four-hour shield on every fresh account used to make this exact launch
+     * fail. It was removed by owner decision, and the failure mode of quietly
+     * putting it back is a game whose first hours teach the wrong lesson — so the
+     * assertion is now that a minutes-old commander is a legal target.
+     */
+    it('leaves a newcomer open to attack', async () => {
       const fresh = await seedWorld(2, 777);
       const [a, b] = fresh.planetIds as [string, string];
       await setLevel(fresh.db, a, 'CORE', 6);
       await giveUnits(fresh.db, a, { WASP: 30 });
-      // No clock advance: both are minutes old.
-      await expect(
-        launchAttack(fresh.db, a, b, { WASP: 10 }, fresh.clock),
-      ).rejects.toMatchObject({ code: 'NEWCOMER_GRACE' });
+      // No clock advance: both planets are minutes old.
+      const mission = await launchAttack(fresh.db, a, b, { WASP: 10 }, fresh.clock);
+      expect(mission.arriveAt.getTime()).toBeGreaterThan(fresh.clock.now().getTime());
     });
 
     it('refuses a target far below you on the ladder', async () => {

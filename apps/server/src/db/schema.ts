@@ -12,7 +12,7 @@ import {
   uniqueIndex,
   uuid,
 } from 'drizzle-orm/pg-core';
-import type { CombatRound, Fleet, Grade, HullId } from '@blindspace/rules';
+import type { CombatRound, Fleet, Grade, HullId, SatelliteId } from '@blindspace/rules';
 
 /**
  * Sixteen tables. Nothing here stores a value that can be derived from a formula
@@ -128,7 +128,7 @@ export const buildings = pgTable('buildings', {
 export const satellites = pgTable('satellites', {
   planetId: uuid('planet_id').notNull().references(() => planets.id),
   slot: integer('slot').notNull(),
-  type: text('type').notNull(),
+  type: text('type').$type<SatelliteId>().notNull(),
   level: integer('level').notNull().default(1),
 }, (t) => [primaryKey({ columns: [t.planetId, t.slot] })]);
 

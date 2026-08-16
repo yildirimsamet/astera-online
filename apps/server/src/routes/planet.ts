@@ -18,7 +18,16 @@ import { launchAttack } from '../services/mission.js';
 import { requireAuth } from './auth.js';
 
 const BUILDING = z.enum(['CORE', 'REFINERY', 'EXTRACTOR', 'VAULT', 'SHIPYARD', 'RING']);
-const SATELLITE = z.enum(['TELESCOPE', 'RADAR', 'AEGIS', 'VEIL', 'DRILL']);
+/**
+ * Four, not five.
+ *
+ * The Drill exists in the rules and in the art, and it mines asteroids — which
+ * are generated, stored, and never scheduled to impact anything. Until that
+ * lands, installing one costs a Ring slot and a full upgrade price and does
+ * precisely nothing, and the interface politely hiding the button did not stop
+ * the endpoint from selling it. A paid no-op is a bug, not a placeholder.
+ */
+const SATELLITE = z.enum(['TELESCOPE', 'RADAR', 'AEGIS', 'VEIL']);
 const MOBILE = z.enum(['WASP', 'LANCE', 'BULWARK', 'HAULER']);
 const HULL = z.enum(['WASP', 'LANCE', 'BULWARK', 'HAULER', 'BASTION']);
 

@@ -1,6 +1,7 @@
 import { eq } from 'drizzle-orm';
 import type { FastifyInstance } from 'fastify';
-import { buildings, planets, players } from '../db/schema.js';
+import type { SatelliteId } from '@blindspace/rules';
+import { buildings, planets, players, satellites } from '../db/schema.js';
 import { GameError } from '../services/planet.js';
 import { readTelescopes } from '../services/intel.js';
 import { galaxyTraffic } from '../services/traffic.js';
@@ -14,6 +15,26 @@ import { requireAuth } from './auth.js';
  * the cheapest tier of intel redundant.
  */
 const coreTier = (level: number): number => Math.max(1, Math.ceil(level / 3));
+
+/**
+ * HARDWARE IS PUBLIC; READINGS ARE NOT. D15.
+ *
+ * Which instruments a planet carries is visible to everyone — they are physical
+ * objects in orbit and the 3D galaxy draws them. Their LEVELS never leave the
+ * owner's own planet payload: an Aegis is visible, its shield strength is not,
+ * and shield strength is what decides whether a raid pays. Same for the rest.
+ * Seeing that a world is defended is deterrence, which the game wants; knowing
+ * how well is intel, which has to be bought.
+ */
+const publicTypes = (rows: readonly { planetId: string; type: SatelliteId }[]) => {
+  const map = new Map<string, SatelliteId[]>();
+  for (const row of rows) {
+    const list = map.get(row.planetId);
+    if (list) list.push(row.type);
+    else map.set(row.planetId, [row.type]);
+  }
+  return map;
+};
 
 export function registerGalaxyRoutes(app: FastifyInstance): void {
   /**
@@ -47,6 +68,12 @@ export function registerGalaxyRoutes(app: FastifyInstance): void {
       .where(eq(buildings.type, 'CORE'));
     const cores = new Map(coreRows.map((r) => [r.planetId, r.level]));
 
+    // One query for the whole season's hardware, for the same reason as the cores.
+    const satelliteRows = await app.db
+      .select({ planetId: satellites.planetId, type: satellites.type })
+      .from(satellites);
+    const installed = publicTypes(satelliteRows);
+
     const watching = await readTelescopes(app.db, self.player.id, app.clock);
     const byTarget = new Map(watching.map((w) => [w.targetPlanetId, w]));
 
@@ -61,6 +88,8 @@ export function registerGalaxyRoutes(app: FastifyInstance): void {
           owner: r.ownerName,
           position: { x: r.planet.x, y: r.planet.y, z: r.planet.z },
           coreTier: coreTier(cores.get(r.planet.id) ?? 1),
+          // Types only. Never levels — see `publicTypes`.
+          satellites: installed.get(r.planet.id) ?? [],
           isSelf,
           // Present only where earned. Absent is not "unknown" — it is "you are
           // not looking at this planet".

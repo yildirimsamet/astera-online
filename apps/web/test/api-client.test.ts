@@ -114,14 +114,14 @@ describe('the API client', () => {
 
   it('keeps the machine code so the UI can act on the refusal, not just print it', async () => {
     const fetch = vi.fn(() =>
-      json({ error: 'NEWCOMER_GRACE', message: 'That commander is still under newcomer protection' }, 403),
+      json({ error: 'BASH_LIMIT', message: 'You have hit this planet too many times recently' }, 403),
     );
 
     const api = new Api({ fetch: fetch as unknown as typeof globalThis.fetch });
     await expect(api.launch('p2', { WASP: 1 })).rejects.toMatchObject({
-      code: 'NEWCOMER_GRACE',
+      code: 'BASH_LIMIT',
       status: 403,
-      message: 'That commander is still under newcomer protection',
+      message: 'You have hit this planet too many times recently',
     });
   });
 

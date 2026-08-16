@@ -271,9 +271,9 @@ export function BrightStars() {
 
     const c = size / 2;
     const halo = ctx.createRadialGradient(c, c, 0, c, c, c);
-    halo.addColorStop(0, 'rgba(255,255,255,1)');
-    halo.addColorStop(0.12, 'rgba(220,235,255,0.55)');
-    halo.addColorStop(0.4, 'rgba(180,210,255,0.10)');
+    halo.addColorStop(0, 'rgba(255,255,255,0.9)');
+    halo.addColorStop(0.1, 'rgba(220,235,255,0.32)');
+    halo.addColorStop(0.36, 'rgba(180,210,255,0.06)');
     halo.addColorStop(1, 'rgba(0,0,0,0)');
     ctx.fillStyle = halo;
     ctx.fillRect(0, 0, size, size);
@@ -285,9 +285,9 @@ export function BrightStars() {
         ? ctx.createLinearGradient(0, 0, 0, size)
         : ctx.createLinearGradient(0, 0, size, 0);
       g.addColorStop(0, 'rgba(255,255,255,0)');
-      g.addColorStop(0.42, 'rgba(255,255,255,0.30)');
-      g.addColorStop(0.5, 'rgba(255,255,255,0.85)');
-      g.addColorStop(0.58, 'rgba(255,255,255,0.30)');
+      g.addColorStop(0.44, 'rgba(255,255,255,0.16)');
+      g.addColorStop(0.5, 'rgba(255,255,255,0.55)');
+      g.addColorStop(0.56, 'rgba(255,255,255,0.16)');
       g.addColorStop(1, 'rgba(255,255,255,0)');
       ctx.fillStyle = g;
       if (vertical) ctx.fillRect(c - 1, 0, 2, size);
@@ -309,7 +309,10 @@ export function BrightStars() {
             r * Math.cos(phi) * 0.8,
             r * Math.sin(phi) * Math.sin(theta),
           ] as [number, number, number],
-          scale: DISC_RADIUS * (0.10 + Math.random() * 0.11),
+          // Halved. At the old size a foreground star was wider than a planet and
+          // read as a lens flare stuck to the screen rather than as something far
+          // away — the giveaway that a backdrop is painted rather than deep.
+          scale: DISC_RADIUS * (0.05 + Math.random() * 0.055),
         };
       }),
     [],
@@ -325,11 +328,148 @@ export function BrightStars() {
             depthWrite={false}
             blending={THREE.AdditiveBlending}
             fog={false}
-            opacity={0.85}
+            opacity={0.42}
           />
         </sprite>
       ))}
     </>
+  );
+}
+
+/* ── meteors ────────────────────────────────────────────────── */
+
+/** How many can be in the sky at once. More than this and they stop being events. */
+const METEOR_POOL = 3;
+/** Seconds a streak is visible. */
+const METEOR_LIFE = 1.15;
+/** Seconds of empty sky between one and the next, per slot. */
+const METEOR_GAP = [7, 26] as const;
+
+interface Meteor {
+  from: THREE.Vector3;
+  direction: THREE.Vector3;
+  speed: number;
+  length: number;
+  /** Seconds until it appears; negative means it is already flying. */
+  wait: number;
+  age: number;
+}
+
+const spawn = (): Meteor => {
+  // Somewhere in the shell around the disc rather than out on the backdrop: a
+  // streak on the far sphere is a pixel and reads as a dead one.
+  const theta = Math.random() * Math.PI * 2;
+  const radius = DISC_RADIUS * (0.7 + Math.random() * 1.1);
+  const height = (Math.random() - 0.5) * DISC_RADIUS * 0.9;
+  const from = new THREE.Vector3(radius * Math.cos(theta), height, radius * Math.sin(theta));
+
+  // Mostly across the view rather than toward or away from it, which is what makes
+  // the motion legible — a meteor flying at the camera is a dot that grows.
+  const direction = new THREE.Vector3(
+    Math.random() - 0.5,
+    (Math.random() - 0.5) * 0.35,
+    Math.random() - 0.5,
+  ).normalize();
+
+  return {
+    from,
+    direction,
+    speed: DISC_RADIUS * (0.5 + Math.random() * 0.55),
+    length: DISC_RADIUS * (0.05 + Math.random() * 0.06),
+    wait: Math.random() * METEOR_GAP[1],
+    age: 0,
+  };
+};
+
+/**
+ * Shooting stars.
+ *
+ * The same idea as the asteroids — a body moving on a path — and every parameter
+ * is the opposite: small, quick, over in a second, and gone. They exist because a
+ * galaxy that only moves at asteroid speed reads as a diagram that drifts; a thing
+ * that flashes past and is missed if you blink is what makes it feel observed
+ * rather than drawn.
+ *
+ * Purely local. Nothing here is seeded from the season and nothing is fetched:
+ * this carries no information, so two players seeing different meteors costs the
+ * game nothing and costs the server nothing.
+ *
+ * ONE DRAW CALL. Every streak lives in a single line buffer, head bright and tail
+ * transparent through vertex colours, so the whole effect is two vertices per
+ * meteor and no per-object overhead.
+ */
+export function Meteors() {
+  const ref = useRef<THREE.LineSegments>(null);
+  const meteors = useMemo(() => Array.from({ length: METEOR_POOL }, spawn), []);
+
+  const geometry = useMemo(() => {
+    const g = new THREE.BufferGeometry();
+    g.setAttribute('position', new THREE.BufferAttribute(new Float32Array(METEOR_POOL * 6), 3));
+    const colours = new Float32Array(METEOR_POOL * 6);
+    g.setAttribute('color', new THREE.BufferAttribute(colours, 3));
+    return g;
+  }, []);
+
+  useFrame((state, delta) => {
+    const node = ref.current;
+    if (!node) return;
+    const position = node.geometry.getAttribute('position');
+    const colour = node.geometry.getAttribute('color');
+
+    meteors.forEach((meteor, i) => {
+      if (meteor.wait > 0) {
+        meteor.wait -= delta;
+        // Parked at the origin with black vertices: invisible under additive
+        // blending, and no branch needed in the draw.
+        position.setXYZ(i * 2, 0, 0, 0);
+        position.setXYZ(i * 2 + 1, 0, 0, 0);
+        colour.setXYZ(i * 2, 0, 0, 0);
+        colour.setXYZ(i * 2 + 1, 0, 0, 0);
+        return;
+      }
+
+      meteor.age += delta;
+      if (meteor.age > METEOR_LIFE) {
+        const next = spawn();
+        next.wait = METEOR_GAP[0] + Math.random() * (METEOR_GAP[1] - METEOR_GAP[0]);
+        meteors[i] = next;
+        return;
+      }
+
+      const t = meteor.age / METEOR_LIFE;
+      // In and out: a streak that pops on and cuts off reads as a rendering fault.
+      const brightness = Math.sin(Math.PI * t) ** 0.7;
+      const travelled = meteor.speed * meteor.age;
+
+      const head = meteor.direction.clone().multiplyScalar(travelled).add(meteor.from);
+      const tail = meteor.direction.clone().multiplyScalar(-meteor.length).add(head);
+
+      position.setXYZ(i * 2, head.x, head.y, head.z);
+      position.setXYZ(i * 2 + 1, tail.x, tail.y, tail.z);
+      colour.setXYZ(i * 2, brightness, brightness * 0.97, brightness * 0.9);
+      colour.setXYZ(i * 2 + 1, 0, 0, 0);
+    });
+
+    position.needsUpdate = true;
+    colour.needsUpdate = true;
+
+    // The scene renders on demand at twelve frames a second, which is plenty for a
+    // rock on a forty-minute orbit and useless for something crossing the sky in
+    // one second. While anything is in flight, ask for the next frame.
+    if (meteors.some((m) => m.wait <= 0)) state.invalidate();
+  });
+
+  return (
+    <lineSegments ref={ref} geometry={geometry} frustumCulled={false} renderOrder={-50}>
+      <lineBasicMaterial
+        vertexColors
+        transparent
+        opacity={0.9}
+        depthWrite={false}
+        fog={false}
+        blending={THREE.AdditiveBlending}
+      />
+    </lineSegments>
   );
 }
 

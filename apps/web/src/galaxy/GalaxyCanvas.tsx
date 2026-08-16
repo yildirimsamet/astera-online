@@ -4,9 +4,10 @@ import { AdaptiveDpr, Html, OrbitControls, Preload } from '@react-three/drei';
 import { Bloom, EffectComposer, Vignette } from '@react-three/postprocessing';
 import * as THREE from 'three';
 import type { Contact, GalaxyPlanet, PendingThread } from '../api/schemas.js';
-import { Asteroids, BrightStars, Core, Disc, Dust, Nebula, Starfield } from './Environment.jsx';
+import { Asteroids, BrightStars, Core, Disc, Dust, Meteors, Nebula, Starfield } from './Environment.jsx';
 import { OwnFleets, Traffic, WatchBeams } from './Fleets.jsx';
 import { PlanetField } from './PlanetField.jsx';
+import { Satellites } from './Satellites.jsx';
 import { DISC_RADIUS, asteroidsOf, planetNodes, toWorld, type PlanetNode } from './scene.js';
 import { installTapGuard, wasTap } from './tap.js';
 
@@ -130,6 +131,7 @@ export function GalaxyCanvas({
       <Starfield />
       <BrightStars />
       <Dust />
+      <Meteors />
       <Disc />
 
       {seasonStart && asteroids.length > 0 && (
@@ -138,6 +140,7 @@ export function GalaxyCanvas({
 
       <Suspense fallback={null}>
         <PlanetField nodes={nodes} selectedId={selectedId} onSelect={onSelect} />
+        <Satellites nodes={nodes} />
         <WatchBeams from={home} targets={watched} />
         <OwnFleets pending={pending} />
         <Traffic contacts={contacts} />
@@ -182,7 +185,7 @@ function Labels({ nodes, selectedId }: { nodes: readonly PlanetNode[]; selectedI
           key={node.id}
           position={[node.position[0], node.position[1] + node.radius * 1.85, node.position[2]]}
           center
-          distanceFactor={9}
+          distanceFactor={6}
           zIndexRange={[10, 0]}
           style={{ pointerEvents: 'none' }}
         >

@@ -22,7 +22,7 @@ import {
   satellites as satellitesTable,
   units,
 } from '../db/schema.js';
-import { GameError, buildingLevelsOf, loadLocked, setUnits } from './planet.js';
+import { GameError, loadLocked, setUnits } from './planet.js';
 import { schedule } from '../worker/queue.js';
 
 export interface LaunchResult {
@@ -105,19 +105,9 @@ export async function launchAttack(
         ),
       );
 
-    // canAttack only ever compares two minute values, so any consistent epoch
-    // works. Using wall-clock minutes for both keeps newcomer grace correct
-    // without a second, divergent code path.
-    const targetBuildings = await buildingLevelsOf(tx, targetPlanetId);
     const gate = canAttack(
       { playerId: me.id, wealth: me.wealth },
-      {
-        playerId: them.id,
-        wealth: them.wealth,
-        joinedAtMinutes: them.joinedAt.getTime() / 60_000,
-        buildings: targetBuildings,
-      },
-      origin.now.getTime() / 60_000,
+      { playerId: them.id, wealth: them.wealth },
       recent[0]?.n ?? 0,
     );
     if (!gate.ok) {
@@ -188,8 +178,6 @@ function describeRefusal(reason?: string): string {
   switch (reason) {
     case 'RANK_FLOOR':
       return 'That planet is too far below you to be worth attacking';
-    case 'NEWCOMER_GRACE':
-      return 'That commander is still under newcomer protection';
     case 'BASH_LIMIT':
       return 'You have hit this planet too many times recently';
     case 'SELF':

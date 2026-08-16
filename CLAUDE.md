@@ -234,8 +234,8 @@ runs on; panels open over it. Battle reports, the probe round trip and the inter
 overhaul landed alongside it.
 
 ```
-pnpm verify  →  0 type errors · 0 lint errors · 343 tests
-                rules 84 · sim 30 · server 172 · web 57
+pnpm verify  →  0 type errors · 0 lint errors · 346 tests
+                rules 84 · sim 30 · server 175 · web 57
 ```
 
 | Area | State |
@@ -250,11 +250,11 @@ pnpm verify  →  0 type errors · 0 lint errors · 343 tests
 | Galaxy / leaderboard | `GET /api/galaxy` with fog enforced in the response; Dominion ladder. |
 | Return moment | `GET /api/session/return` — the "while you were gone" payload, capped at 5 entries, advancing `lastSeenAt`. Unlock cascade derived from history. |
 | Notifications | List, mark-seen, and SSE over Postgres LISTEN/NOTIFY. |
-| Asteroids | Generated and stored; no impacts scheduled, no Drill. |
+| Asteroids | Generated and stored; no impacts scheduled. The Drill is designed and **not installable** — the endpoint used to sell it as a paid no-op. |
 | Season lifecycle | `season_end` event kind exists; no handler. |
 | Onboarding | `POST /api/season/join` · `GET /api/season` · `pnpm season create/migrate/status`. Before Phase 4 a galaxy could only be born inside a test. |
 | Battle reports | `GET /api/reports` — round by round, both sides' losses, loot, and the ledger movement, read from the stored swing. |
-| **Web client** | **Playable, on the 3D galaxy.** R3F disc with instanced worlds, real ship models, watch beams, probe round trips and other people's traffic. Planet screen is tabbed with per-item detail sheets; signals centre; fog enforced server-side throughout. |
+| **Web client** | **Playable, on the 3D galaxy.** R3F disc with instanced worlds, real ship models, orbiting hardware, meteors, watch beams, probe round trips and other people's traffic. Planet screen is tabbed with per-item detail sheets; signals centre; fog enforced server-side throughout. |
 
 **The single most important gap is now a player.** The loop is playable end to end and
 has never been lived with. Every phase so far has found product bugs simply by rendering

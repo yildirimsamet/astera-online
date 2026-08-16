@@ -150,11 +150,17 @@ export const DISRUPTION = {
   maxPendingMinutes: 240,
 } as const;
 
+/**
+ * The two protections that survive, and the one that does not.
+ *
+ * Both of these scale with the situation: the rank floor stops a large player
+ * farming a small one, and the bash limit stops anyone being hit over and over.
+ * The newcomer grace period — four hours of immunity for being freshly joined —
+ * was removed by owner decision (D14). Nothing is protected for merely being new.
+ */
 export const ABUSE = {
   bashLimit: 3,
   bashWindowMinutes: 720,
-  graceMinutes: 240,
-  graceUntilCoreLevel: 4,
   /** Cannot attack anyone below this share of your own Wealth. */
   rankFloor: 0.4,
 } as const;

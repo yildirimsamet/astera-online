@@ -1,12 +1,23 @@
 import type { FastifyInstance } from 'fastify';
 import { pino } from 'pino';
 import { afterAll, afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { ABUSE, fleetCount } from '@blindspace/rules';
+import { fleetCount } from '@blindspace/rules';
 import { buildApp } from '../src/app.js';
 import { TokenService } from '../src/auth/tokens.js';
 import { launchAttack } from '../src/services/mission.js';
 import { EventWorker } from '../src/worker/loop.js';
 import { giveUnits, grant, seedWorld, setLevel, testDb, testEnv, type Fixture } from './helpers.js';
+
+/**
+ * A world that has been running a while.
+ *
+ * These used to advance past the newcomer grace period, which no longer exists
+ * (D14). The advance stays because the assertions below are about a settled
+ * world — accrued resources, telescope windows that have turned over — and
+ * removing it would quietly change what they test.
+ */
+const SETTLED_MINUTES = 250;
+
 
 const silent = pino({ level: 'silent' });
 
@@ -54,7 +65,7 @@ describe('battle reports', () => {
     [mine, theirs] = f.planetIds as [string, string];
     await setLevel(f.db, mine, 'CORE', 8);
     await setLevel(f.db, theirs, 'CORE', 8);
-    f.clock.advance(ABUSE.graceMinutes + 10);
+    f.clock.advance(SETTLED_MINUTES);
 
     const built = buildApp({ env: testEnv(), logger: silent, db: f.db, clock: f.clock });
     app = built.app;

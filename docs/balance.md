@@ -323,6 +323,11 @@ would produce. **Do not tune ladder spread against the simulator.**
 and that is the stated target user. The vault floor, bash limits and newcomer grace are not
 enough on their own.
 
+It got harder, deliberately: **newcomer grace was removed by owner decision (D14)**, so a
+fresh account is attackable from its first minute. The rank floor and the bash limit are
+now the only structural protection, and neither of them helps a player who has built
+enough to be worth hitting but logs in twice a day.
+
 This is a tuning problem, not a structural one, and it needs real players rather than more
 simulation. Candidate levers, none yet tried:
 

@@ -132,6 +132,12 @@ export const galaxySchema = z.object({
       owner: z.string(),
       position: vec3,
       coreTier: z.number(),
+      /**
+       * The instruments in orbit, types only and never levels (D15). Hardware is
+       * public — it is a physical object anyone can see — while what it can DO
+       * stays behind a probe.
+       */
+      satellites: z.array(z.enum(['TELESCOPE', 'RADAR', 'AEGIS', 'VEIL', 'DRILL'])),
       isSelf: z.boolean(),
       /**
        * ABSENT means "you are not watching this planet" — it does not mean

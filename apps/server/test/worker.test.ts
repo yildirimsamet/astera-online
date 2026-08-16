@@ -163,7 +163,7 @@ describe('event worker', () => {
       await setLevel(f.db, attacker, 'CORE', 6);
       await giveUnits(f.db, attacker, { WASP: 40, HAULER: 4 });
       await grant(f.db, defender, 40_000, 4_000);
-      f.clock.advance(300); // clear newcomer grace
+      f.clock.advance(300); // a settled world, not one seconds old
 
       const launch = await launchAttack(f.db, attacker, defender, { WASP: 40, HAULER: 4 }, f.clock);
 

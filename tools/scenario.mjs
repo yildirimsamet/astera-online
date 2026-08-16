@@ -51,6 +51,19 @@ const report = await page.evaluate(async () => {
   const probed = sorted[1] ?? sorted[0];
   await api.watch(watched.id, 0);
   await api.probe(probed.id);
+  // Hardware is public now, so the disc should be showing it. A fresh commander
+  // can only afford so much, so raise the Ring and install whatever fits rather
+  // than failing the whole run on an empty wallet.
+  const tryTo = async (fn) => {
+    try {
+      await fn();
+      return true;
+    } catch {
+      return false;
+    }
+  };
+  await tryTo(() => api.upgrade('RING'));
+  for (const type of ['RADAR', 'AEGIS', 'VEIL']) await tryTo(() => api.installSatellite(type));
 
   return { watching: watched.name, probing: probed.name };
 });

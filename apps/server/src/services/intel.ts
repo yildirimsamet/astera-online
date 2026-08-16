@@ -49,7 +49,7 @@ export async function satelliteLevels(
     .where(inArray(satellites.planetId, [...planetIds]));
   for (const r of rows) {
     const entry = out.get(r.planetId) ?? {};
-    entry[r.type as SatelliteId] = r.level;
+    entry[r.type] = r.level;
     out.set(r.planetId, entry);
   }
   return out;

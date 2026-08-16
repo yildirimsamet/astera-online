@@ -6,7 +6,6 @@ import {
   type BuildingLevels,
   type Fleet,
   type HullId,
-  type SatelliteId,
   type SatelliteLevels,
 } from '@blindspace/rules';
 import { minutesSince, type Clock } from '../clock.js';
@@ -71,7 +70,7 @@ export async function loadLocked(tx: Tx, planetId: string, clock: Clock): Promis
   for (const b of buildingRows) levels[b.type as BuildingId] = b.level;
 
   const sats: SatelliteLevels = {};
-  for (const s of satelliteRows) sats[s.type as SatelliteId] = s.level;
+  for (const s of satelliteRows) sats[s.type] = s.level;
 
   const homeFleet: Fleet = {};
   const ground: Fleet = {};
@@ -235,8 +234,8 @@ export async function setBuildingLevel(
  * silently broken. `wealth` was written ONLY when a player bought something, so it
  * was never written at all for a player who had not: a fresh commander sat at
  * zero, and `canAttack` refuses anyone below 40% of the attacker's wealth. A
- * player who joined and pressed nothing was therefore PERMANENTLY IMMUNE to attack
- * once newcomer grace expired, which is the exact opposite of the design. It also
+ * player who joined and pressed nothing was therefore PERMANENTLY IMMUNE to
+ * attack, which is the exact opposite of the design. It also
  * went stale after every raid, since combat moves resources and units without
  * anyone "buying" anything.
  *
@@ -259,7 +258,7 @@ export async function recomputeWealth(tx: Tx, planetId: string): Promise<number>
   for (const b of buildingRows) levels[b.type as BuildingId] = b.level;
 
   const sats: SatelliteLevels = {};
-  for (const s of satelliteRows) sats[s.type as SatelliteId] = s.level;
+  for (const s of satelliteRows) sats[s.type] = s.level;
 
   const fleet: Fleet = {};
   const ground: Fleet = {};

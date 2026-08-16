@@ -2,13 +2,24 @@ import { eq } from 'drizzle-orm';
 import type { FastifyInstance } from 'fastify';
 import { pino } from 'pino';
 import { afterAll, afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { ABUSE, GALAXY, distance } from '@blindspace/rules';
+import { GALAXY, distance } from '@blindspace/rules';
 import { buildApp } from '../src/app.js';
 import { TokenService } from '../src/auth/tokens.js';
 import { planets } from '../src/db/schema.js';
 import { launchAttack } from '../src/services/mission.js';
 import { galaxyTraffic } from '../src/services/traffic.js';
 import { giveUnits, seedWorld, setLevel, testDb, testEnv, type Fixture } from './helpers.js';
+
+/**
+ * A world that has been running a while.
+ *
+ * These used to advance past the newcomer grace period, which no longer exists
+ * (D14). The advance stays because the assertions below are about a settled
+ * world — accrued resources, telescope windows that have turned over — and
+ * removing it would quietly change what they test.
+ */
+const SETTLED_MINUTES = 250;
+
 
 const silent = pino({ level: 'silent' });
 
@@ -46,7 +57,7 @@ describe('galaxy traffic — motion without routes', () => {
     f = await seedWorld(4);
     [mine, a, b] = f.planetIds as [string, string, string];
     for (const id of f.planetIds) await setLevel(f.db, id, 'CORE', 8);
-    f.clock.advance(ABUSE.graceMinutes + 10);
+    f.clock.advance(SETTLED_MINUTES);
 
     const built = buildApp({ env: testEnv(), logger: silent, db: f.db, clock: f.clock });
     app = built.app;

@@ -1,4 +1,10 @@
-import { GALAXY, asteroidPosition, generateGalaxy, type AsteroidSpec } from '@blindspace/rules';
+import {
+  GALAXY,
+  asteroidPosition,
+  generateGalaxy,
+  type AsteroidSpec,
+  type SatelliteId,
+} from '@blindspace/rules';
 import type { GalaxyPlanet } from '../api/schemas.js';
 
 /**
@@ -75,8 +81,31 @@ export interface PlanetNode {
   position: Vec3Tuple;
   /** Bigger worlds for more developed players — the only free public signal. */
   radius: number;
+  /** 1, 2 or 3. What the size means, for anything that needs to say it in words. */
+  weight: 1 | 2 | 3;
+  /** The instruments in orbit. Public hardware, never levels — D15. */
+  satellites: readonly SatelliteId[];
   stance: Stance;
 }
+
+/**
+ * THREE SIZES, NOT A RAMP.
+ *
+ * The server publishes a coarse core TIER — never the exact level, because that is
+ * what a probe is for — and the disc turns it into one of three silhouettes. A
+ * continuous ramp encoded five sizes that no eye could separate at a glance, which
+ * is the same as encoding nothing: the point of putting development into the
+ * picture is that a player sweeping the galaxy can tell a soft target from a hard
+ * one without opening anything.
+ *
+ * It is a silhouette, not a readout. "Bigger than me" is the whole message; how
+ * much bigger, what it is defended with and whether its fleet is home all still
+ * cost a telescope slot or a probe.
+ */
+const WEIGHT_RADIUS: Record<1 | 2 | 3, number> = { 1: 0.5, 2: 0.82, 3: 1.24 };
+
+export const weightOf = (coreTier: number): 1 | 2 | 3 =>
+  coreTier >= 4 ? 3 : coreTier >= 2 ? 2 : 1;
 
 export function planetNodes(planets: readonly GalaxyPlanet[]): PlanetNode[] {
   return planets.map((planet) => ({
@@ -85,9 +114,10 @@ export function planetNodes(planets: readonly GalaxyPlanet[]): PlanetNode[] {
     owner: planet.owner,
     position: toWorld(planet.position),
     // Map markers, not scale models. A planet at true scale in a disc 2000 units
-    // across would be invisible, so these are sized to be READ — with core tier
-    // driving the size, so one glance at the disc tells you who has been building.
-    radius: 0.62 + Math.min(4, planet.coreTier) * 0.12,
+    // across would be invisible, so these are sized to be READ.
+    radius: WEIGHT_RADIUS[weightOf(planet.coreTier)],
+    weight: weightOf(planet.coreTier),
+    satellites: planet.satellites,
     stance: stanceOf(planet),
   }));
 }

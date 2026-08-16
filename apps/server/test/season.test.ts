@@ -152,8 +152,8 @@ describe('onboarding — guest to planet', () => {
    * `players.wealth` was only ever written when someone bought something, so a
    * commander who had joined and pressed nothing sat at the column default of
    * zero — and the rank floor refuses any target below 40% of the attacker's
-   * wealth. Every such player was permanently unattackable once newcomer grace
-   * expired, which inverts the design: doing nothing made you safe.
+   * wealth. Every such player was permanently unattackable, which inverts the
+   * design: doing nothing made you safe.
    */
   it('gives a freshly placed commander real Wealth, so they can be attacked', async () => {
     await openGalaxy();

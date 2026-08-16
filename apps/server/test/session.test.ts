@@ -1,7 +1,7 @@
 import { and, eq } from 'drizzle-orm';
 import { pino } from 'pino';
 import { afterAll, beforeEach, describe, expect, it } from 'vitest';
-import { ABUSE, radarLeadMinutes } from '@blindspace/rules';
+import { radarLeadMinutes } from '@blindspace/rules';
 import { missions, notifications, planets, players, satellites, scanEvents } from '../src/db/schema.js';
 import { EventBus, publish } from '../src/stream/bus.js';
 import {
@@ -14,6 +14,7 @@ import { assignWatch } from '../src/services/intel.js';
 import { launchAttack } from '../src/services/mission.js';
 import { EventWorker } from '../src/worker/loop.js';
 import {
+
   TEST_DATABASE_URL,
   giveSatellite,
   giveUnits,
@@ -23,6 +24,16 @@ import {
   testDb,
   type Fixture,
 } from './helpers.js';
+
+/**
+ * A world that has been running a while.
+ *
+ * These used to advance past the newcomer grace period, which no longer exists
+ * (D14). The advance stays because the assertions below are about a settled
+ * world — accrued resources, telescope windows that have turned over — and
+ * removing it would quietly change what they test.
+ */
+const SETTLED_MINUTES = 250;
 
 const silent = pino({ level: 'silent' });
 
@@ -57,7 +68,7 @@ describe('the unlock cascade', () => {
     myPlayer = f.playerIds[0]!;
     await setLevel(f.db, mine, 'CORE', 8);
     await setLevel(f.db, theirs, 'CORE', 8);
-    f.clock.advance(ABUSE.graceMinutes + 10);
+    f.clock.advance(SETTLED_MINUTES);
   });
 
   it('a fresh commander has nothing unlocked but the fleet', async () => {
@@ -138,7 +149,7 @@ describe('the return payload', () => {
     myPlayer = f.playerIds[0]!;
     await setLevel(f.db, mine, 'CORE', 8);
     await setLevel(f.db, theirs, 'CORE', 8);
-    f.clock.advance(ABUSE.graceMinutes + 10);
+    f.clock.advance(SETTLED_MINUTES);
   });
 
   it('reports how long you were away', async () => {
