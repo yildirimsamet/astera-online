@@ -51,8 +51,8 @@ creating or destroying score from nothing.
 alloyRate(L)   = 40 × 1.45^L    per hour
 crystalRate(L) = 14 × 1.42^L    per hour
 
-upgradeCost(L) = 200 × 1.55^L   alloy
-               +  40 × 1.58^L   crystal   (from level 3)
+upgradeCost(L) = 200 × 1.55^L    alloy
+               +  55 × 1.518^L   crystal   (from level 1)
 
 storageCap     = 12 hours of production at the current level
 vaultProtects  = 300 × 1.30^L   per resource, un-raidable   [PROVISIONAL]
@@ -76,6 +76,38 @@ final day.
 
 **If you change the cost curve, re-derive the season length.** It is not an independent
 choice.
+
+### The crystal share is derived, not chosen
+
+```
+crystal income share = crystalRate(L) / alloyRate(L)   ≈ 0.34 → 0.28 over a season
+crystal cost   share = crystal(L)     / alloy(L)       ≈ 0.27 → 0.22
+                                                          ratio ≈ 0.78 at every level
+```
+
+Crystal shipped as a decorative resource. It was charged only from level 4, at 22% of the
+alloy price, against an income that is 34% of alloy income — so it arrived half again as
+fast as it could be spent, filled its twelve-hour store during the first night of every
+account, and wasted from then on. Nothing in the opening consumed it at all: not the Wasp,
+not a probe, not the first three upgrades. A resource a player watches accumulate and never
+spends is not scarcity, it is decoration.
+
+Two things were wrong and both are now derived rather than picked:
+
+**The multiplier.** `crystalCostMult = costMult × (crystalMult / alloyMult) = 1.518`. Two
+independently chosen multipliers drift: the old 1.58 against a 1.55 alloy curve pushed the
+crystal share from 0.21 up to 0.37 across ten levels while the income share fell, quietly
+inverting which resource was scarce by the late game.
+
+**The base.** Set at ~0.78 of income parity, and that number came from the simulator rather
+than from taste. At parity (base 69) crystal is spent as fast as it arrives, the stores sit
+near empty, and **there is nothing left to raid**: on seed 7 raid returns fell to RR 1.25,
+under the 1.3 floor, and the informed archetype dropped from first to third — selective
+raiding pays a fixed scouting cost against a shrinking prize, so it suffers first. At 0.78
+all three seeds hold every band and the informed archetype tops every ladder.
+
+Crystal must be spendable **and** worth stealing. `packages/rules/test/invariants.test.ts`
+holds both ends.
 
 ### Why 12 hours of storage
 
@@ -241,7 +273,15 @@ always look like the better purchase. **95% of attacks resolved DECISIVE.** → 
 26 Wasps (power 8.7) and 1 Bastion (power 8.8) read as equal while the Wasps annihilate it
 without a casualty. → **D12**.
 
-### 5. Raiding was 5% of the economy — the big one
+### 5. A spendable resource is a lootable resource
+
+Raising the crystal price of upgrades to income parity fixed the dead-resource problem and
+broke raiding in the same move — stock that gets spent is stock that is not in the store
+when a fleet arrives. RR fell under its floor and the informed archetype lost the ladder on
+seed 7 while every other invariant stayed green, which is exactly the failure shape a unit
+test cannot see. The settled value is a compromise between the two, found by running it.
+
+### 6. Raiding was 5% of the economy — the big one
 
 An alloy invested compounds ~16× over a 336-hour season; an alloy stolen returns 1×.
 Across a season, raiding moved 1.44M of value against a ~30M economy.

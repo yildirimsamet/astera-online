@@ -229,10 +229,13 @@ prototype. Found and fixed 7 balance/design bugs; the findings are in `docs/bala
 **Phase 2 (intel layer) — DONE.** The game's core system now exists server-side.
 **Phase 3 (return moment) — DONE.** Design Law #1 now has a delivery mechanism.
 **Phase 4 (playable loop) — DONE.** The game can be played by a human on a phone.
+**Phase 5 (the galaxy IS the shell) — IN PROGRESS.** The 3D disc is the surface the game
+runs on; panels open over it. Battle reports, the probe round trip and the interface
+overhaul landed alongside it.
 
 ```
-pnpm verify  →  0 type errors · 0 lint errors · 292 tests
-                rules 82 · sim 30 · server 147 · web 33
+pnpm verify  →  0 type errors · 0 lint errors · 343 tests
+                rules 84 · sim 30 · server 172 · web 57
 ```
 
 | Area | State |
@@ -250,25 +253,22 @@ pnpm verify  →  0 type errors · 0 lint errors · 292 tests
 | Asteroids | Generated and stored; no impacts scheduled, no Drill. |
 | Season lifecycle | `season_end` event kind exists; no handler. |
 | Onboarding | `POST /api/season/join` · `GET /api/season` · `pnpm season create/migrate/status`. Before Phase 4 a galaxy could only be born inside a test. |
-| **Web client** | **Playable.** Entry → planet → galaxy → intel, target and launch sheets, return overlay, live in-flight strip, SSE. Mobile-first portrait. Not the 3D map. |
+| Battle reports | `GET /api/reports` — round by round, both sides' losses, loot, and the ledger movement, read from the stored swing. |
+| **Web client** | **Playable, on the 3D galaxy.** R3F disc with instanced worlds, real ship models, watch beams, probe round trips and other people's traffic. Planet screen is tabbed with per-item detail sheets; signals centre; fog enforced server-side throughout. |
 
 **The single most important gap is now a player.** The loop is playable end to end and
-has never been lived with. Phase 4 found three product bugs and one real fog leak simply
-by rendering the data — the next several will come the same way, from use, not from more
-features. **Do not start the 3D map to avoid this.**
+has never been lived with. Every phase so far has found product bugs simply by rendering
+the data — the next several will come the same way, from use, not from more features.
 
 ## CURRENT ROADMAP
 
 Next task is at the top. Full detail and acceptance criteria in `docs/roadmap.md`.
 
-1. **The 3D galaxy as the shell** — a persistent R3F canvas the whole game runs inside,
-   with planet management as panels over it. **Not a fifth screen.** D1 says the galaxy
-   is *"an interface rather than a target list"*; Phase 4 shipped the target list, which
-   was a misreading of sequencing as product shape.
-2. **Play it for two days in real gaps**, on a phone, then fix what that reveals.
-3. **Battle report** — the loop's closing link. Reports are written and never shown;
-   the design calls the battle report the most accurate intel in the game.
-4. **Season lifecycle** — `season_end` handler, freeze, wipe, account record.
+1. **Play it for two days in real gaps**, on a phone, then fix what that reveals.
+   Everything below is smaller than what a single real session will turn up.
+2. **Season lifecycle** — `season_end` handler, freeze, wipe, account record.
+3. **Asteroid impacts and the Drill** — generated and stored, never scheduled.
+4. **Idempotency keys on the launch path** — `request_log` exists and is unused.
 
 ## KNOWN RISKS
 
@@ -333,6 +333,8 @@ the code → `git log`. Never re-invent lost context by guessing.
 | [`docs/engineering-standards.md`](docs/engineering-standards.md) | **Before writing any code at all** |
 | [`docs/working-agreement.md`](docs/working-agreement.md) | When unsure whether to decide or ask |
 | [`docs/roadmap.md`](docs/roadmap.md) | To find the next job and what "done" means for it |
+| [`docs/interface.md`](docs/interface.md) | Before changing a screen — what the UI states are and why |
+| [`docs/visual-design.md`](docs/visual-design.md) | Before making or asking for art |
 | [`docs/glossary.md`](docs/glossary.md) | Dominion? Clarity? Veil? Salvage? |
 
 ---

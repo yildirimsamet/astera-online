@@ -1,5 +1,4 @@
 import { useEffect, useRef } from 'react';
-import { useApi } from '../api/context.js';
 import { useNotifications } from '../api/queries.js';
 import { describeNotification } from '../lib/notifications.js';
 import { useToast } from '../ui/Toast.js';
@@ -11,10 +10,13 @@ import { useToast } from '../ui/Toast.js';
  * has already been told to the player by the return overlay, and repeating it as
  * a stack of toasts would make the most important screen in the game feel like a
  * duplicate.
+ *
+ * It no longer marks anything READ, though — that belongs to the one surface a
+ * player actually reads them on (`Signals`). Marking them on load meant the unread
+ * count was always zero, which is the same as not having one.
  */
 export function useLiveAlerts(enabled: boolean): void {
   const { data } = useNotifications();
-  const api = useApi();
   const say = useToast();
   const primed = useRef(false);
   const announced = useRef(new Set<string>());
@@ -26,7 +28,6 @@ export function useLiveAlerts(enabled: boolean): void {
     if (!primed.current) {
       primed.current = true;
       for (const n of unseen) announced.current.add(n.id);
-      if (unseen.length > 0) void api.markSeen(unseen.map((n) => n.id));
       return;
     }
 
@@ -38,6 +39,5 @@ export function useLiveAlerts(enabled: boolean): void {
       const line = describeNotification(n);
       if (line) say(line, n.kind === 'incoming_fleet' || n.kind === 'raided' ? 'error' : 'info');
     }
-    void api.markSeen(fresh.map((n) => n.id));
-  }, [data, enabled, api, say]);
+  }, [data, enabled, say]);
 }

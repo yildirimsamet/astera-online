@@ -81,14 +81,34 @@ await shot('05-planet');
 
 await page.mouse.wheel(0, 700);
 await page.waitForTimeout(400);
-await shot('06-planet-works');
+await shot('06-planet-grow');
 
-await page.mouse.wheel(0, 700);
+// Reach is where the locked state has to earn its keep: three of its four hulls
+// need a Shipyard the player does not have yet.
+await page.getByRole('button', { name: /^reach$/i }).click();
+await page.waitForTimeout(500);
+await shot('07-planet-reach');
+
+// The ladder — what the next three levels cost and give.
+await page.getByRole('button', { name: /^see$/i }).click();
 await page.waitForTimeout(400);
-await shot('07-planet-orbit');
+await page.getByRole('button', { name: /about telescope/i }).click();
+await page.waitForTimeout(700);
+await shot('08-item-sheet');
 
+// Two elements answer to "close" — the backdrop and the button. Escape is the
+// one unambiguous way to dismiss a sheet.
+await page.keyboard.press('Escape');
+await page.waitForTimeout(300);
+
+// The signals centre: what the galaxy said, and what is true right now.
+await page.getByRole('button', { name: /^signals/i }).click();
+await page.waitForTimeout(600);
+await shot('10-signals');
+await page.keyboard.press('Escape');
+await page.waitForTimeout(300);
 await page.getByRole('button', { name: /what you know/i }).click();
 await page.waitForTimeout(1000);
-await shot('08-intel');
+await shot('09-intel');
 
 await browser.close();

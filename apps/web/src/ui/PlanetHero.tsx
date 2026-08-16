@@ -55,56 +55,75 @@ export function PlanetHero({
 
   return (
     <div className="mb-5">
-      <div className="relative flex h-[204px] items-center justify-center">
-        {/* Depth, in two layers: a far glow and a near vignette. */}
-        <div
-          className="pointer-events-none absolute inset-x-[-16px] inset-y-[-24px]"
-          style={{
-            background:
-              'radial-gradient(60% 55% at 50% 46%, rgba(46,74,120,0.30) 0%, transparent 70%)',
-          }}
-        />
-
-        {/* The Ring is real hardware in this game, so it is drawn as hardware. */}
-        {ring > 0 && BUILDING_ART.RING && (
-          <img
-            src={BUILDING_ART.RING}
-            alt=""
-            aria-hidden
-            className="pointer-events-none absolute w-[250px] opacity-90"
-            style={{ transform: 'translateY(6px)' }}
+      {/*
+        Side by side rather than stacked.
+        A full-width portrait with the numbers underneath pushed every actual
+        decision below the fold — the player had to scroll past their own planet
+        to do anything with it. The planet keeps its presence; it just stops
+        occupying the screen alone.
+      */}
+      <div className="flex items-center gap-3">
+        <div className="relative flex size-[152px] shrink-0 items-center justify-center">
+          <div
+            className="pointer-events-none absolute inset-[-14px]"
+            style={{
+              background:
+                'radial-gradient(60% 55% at 50% 46%, rgba(46,74,120,0.30) 0%, transparent 70%)',
+            }}
           />
-        )}
 
-        <div className="absolute size-[176px] rounded-full border border-line-soft/50" />
-        <div className="absolute size-[176px] motion-safe:animate-[spin_84s_linear_infinite]">
-          {orbitals.map(([type], i) => {
-            const angle = (i / Math.max(1, orbitals.length)) * 360;
-            return (
-              <img
-                key={type}
-                src={ORBITAL_ART[type]}
-                alt={type.toLowerCase()}
-                title={type.toLowerCase()}
-                className="absolute left-1/2 top-1/2 size-10 object-contain drop-shadow-[0_0_6px_rgba(111,211,224,0.35)]"
-                style={{
-                  transform: `rotate(${String(angle)}deg) translate(88px) rotate(${String(-angle)}deg) translate(-50%, -50%)`,
-                }}
-              />
-            );
-          })}
+          {/* The Ring is real hardware in this game, so it is drawn as hardware. */}
+          {ring > 0 && BUILDING_ART.RING && (
+            <img
+              src={BUILDING_ART.RING}
+              alt=""
+              aria-hidden
+              className="pointer-events-none absolute w-[186px] opacity-90"
+              style={{ transform: 'translateY(4px)' }}
+            />
+          )}
+
+          <div className="absolute size-[132px] rounded-full border border-line-soft/50" />
+          <div className="absolute size-[132px] motion-safe:animate-[spin_84s_linear_infinite]">
+            {orbitals.map(([type], i) => {
+              const angle = (i / Math.max(1, orbitals.length)) * 360;
+              return (
+                <img
+                  key={type}
+                  src={ORBITAL_ART[type]}
+                  alt={type.toLowerCase()}
+                  title={type.toLowerCase()}
+                  className="absolute left-1/2 top-1/2 size-8 object-contain drop-shadow-[0_0_6px_rgba(111,211,224,0.35)]"
+                  style={{
+                    transform: `rotate(${String(angle)}deg) translate(66px) rotate(${String(-angle)}deg) translate(-50%, -50%)`,
+                  }}
+                />
+              );
+            })}
+          </div>
+
+          <PlanetSigil seed={planet.planet.id} size={100} shielded={planet.planet.shield > 0} />
         </div>
 
-        <PlanetSigil seed={planet.planet.id} size={132} shielded={planet.planet.shield > 0} />
+        <div className="min-w-0 flex-1">
+          <h1 className="font-display text-[20px] uppercase leading-tight tracking-[0.06em] text-bone">
+            {planet.planet.name}
+          </h1>
+          <div className="frame mt-2 px-3 py-2">
+            <p className="legend">Power</p>
+            <p className="readout mt-1 text-[24px] text-bone">{full(powerOf(planet))}</p>
+          </div>
+          <div className="mt-2 flex gap-3">
+            <Rate art={RESOURCE_ART.alloy} value={planet.planet.alloyPerHour} tone="text-alloy" />
+            <Rate
+              art={RESOURCE_ART.crystal}
+              value={planet.planet.crystalPerHour}
+              tone="text-crystal"
+            />
+          </div>
+        </div>
       </div>
 
-      <div className="mt-1 text-center">
-        <h1 className="font-display text-[27px] uppercase leading-none tracking-[0.07em] text-bone">
-          {planet.planet.name}
-        </h1>
-      </div>
-
-      <Readouts planet={planet} />
       {disruptedFor > 0 && <Disrupted ms={disruptedFor} />}
       <Verdicts planet={planet} ground={ground} home={home} exposed={exposed} />
     </div>

@@ -79,4 +79,14 @@ await page.waitForTimeout(2500);
 await page.screenshot({ path: `${OUT}/s2-angled.png` });
 console.log('shot s2');
 
+// Drag well past the disc plane: the camera must be able to come up underneath
+// the galaxy and look back at it, which used to be walled off at 0.46pi.
+await page.mouse.move(195, 300);
+await page.mouse.down();
+await page.mouse.move(195, 700, { steps: 24 });
+await page.mouse.up();
+await page.waitForTimeout(2500);
+await page.screenshot({ path: `${OUT}/s3-underneath.png` });
+console.log('shot s3');
+
 await browser.close();

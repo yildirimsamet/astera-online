@@ -74,7 +74,7 @@ export function App() {
 
   return (
     <div className="relative z-10 flex h-dvh flex-col overflow-hidden">
-      <StatusBar />
+      <StatusBar onNavigate={setTab} />
 
       {tab === 'galaxy' ? (
         // Full-bleed: the canvas owns the space between the bar and the tabs, and

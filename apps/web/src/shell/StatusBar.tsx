@@ -5,6 +5,8 @@ import { duration } from '../lib/time.js';
 import { useProjectedResources } from '../lib/projection.js';
 import { RESOURCE_ART } from '../ui/assets.js';
 import { Meter } from '../ui/Meter.js';
+import { Signals } from './Signals.js';
+import type { Tab } from './TabBar.js';
 
 /**
  * What you hold, and how long the season has left.
@@ -13,7 +15,7 @@ import { Meter } from '../ui/Meter.js';
  * season because it is ending — and that is the whole game in one strip, which is
  * why it never leaves the screen.
  */
-export function StatusBar() {
+export function StatusBar({ onNavigate }: { onNavigate: (tab: Tab) => void }) {
   const { data, dataUpdatedAt } = usePlanet();
   const season = useSeason();
   const held = useProjectedResources(data?.planet, dataUpdatedAt);
@@ -41,11 +43,14 @@ export function StatusBar() {
           rate={data.planet.crystalPerHour}
           tone="crystal"
         />
-        <div className="shrink-0 pb-0.5 text-right">
-          <p className="legend">Season</p>
-          <p className="readout mt-1 text-[13px] text-dim">
-            {hoursLeft === null ? '—' : duration(hoursLeft * 60)}
-          </p>
+        <div className="flex shrink-0 items-end gap-2 pb-0.5">
+          <div className="text-right">
+            <p className="legend">Season</p>
+            <p className="readout mt-1 text-[13px] text-dim">
+              {hoursLeft === null ? '—' : duration(hoursLeft * 60)}
+            </p>
+          </div>
+          <Signals onNavigate={onNavigate} />
         </div>
       </div>
     </header>
@@ -66,6 +71,7 @@ function Stock({
   tone: 'alloy' | 'crystal';
 }) {
   const atCap = value >= cap - 0.5;
+  const near = !atCap && rate > 0 && value > cap * 0.8;
   const colour = tone === 'alloy' ? 'text-alloy' : 'text-crystal';
   const pop = useJump(value);
 
@@ -79,8 +85,13 @@ function Stock({
           className="size-5 shrink-0 object-contain drop-shadow-[0_0_5px_rgba(120,160,220,0.35)]"
         />
         <span className={`readout text-[18px] ${colour} ${pop ? 'pop' : ''}`}>{full(value)}</span>
-        <span className={`num ml-auto text-[10px] ${atCap ? 'text-threat' : 'text-faint'}`}>
-          {atCap ? 'FULL' : `+${compact(rate)}/h`}
+        {/*
+          The ceiling, stated as time rather than as a fraction.
+          Production stops at the cap, so the number that matters is not "83%" —
+          it is how long you have before you start throwing hours away.
+        */}
+        <span className={`num ml-auto text-[10px] ${atCap ? 'text-threat' : near ? 'text-alloy' : 'text-faint'}`}>
+          {atCap ? 'FULL' : near ? `full in ${duration(((cap - value) / rate) * 60)}` : `+${compact(rate)}/h`}
         </span>
       </div>
       <p className="sr-only">{label}</p>

@@ -1,5 +1,5 @@
 import { Suspense, useEffect, useMemo, useRef, type ComponentRef } from 'react';
-import { Canvas, useThree } from '@react-three/fiber';
+import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { AdaptiveDpr, Html, OrbitControls, Preload } from '@react-three/drei';
 import { Bloom, EffectComposer, Vignette } from '@react-three/postprocessing';
 import * as THREE from 'three';
@@ -29,9 +29,25 @@ import { installTapGuard, wasTap } from './tap.js';
  *     it settles, which is where a mid-range phone actually wins its frames.
  */
 
-/** Never edge-on, never straight down — the disc should always read as a disc. */
-const MIN_POLAR = Math.PI * 0.1;
-const MAX_POLAR = Math.PI * 0.46;
+/**
+ * The whole sphere, minus the two poles.
+ *
+ * You may fly under the galaxy and look up at it. The earlier clamp stopped at
+ * 0.46π — just above the disc's own plane — which meant half of every orbit was a
+ * wall: you could tilt to look down and then the camera simply refused. Space has
+ * no floor and a galaxy has an underside.
+ *
+ * The poles themselves stay excluded by a hair. Exactly overhead, azimuth becomes
+ * undefined and the view snaps a quarter turn for no reason the player can see.
+ */
+const MIN_POLAR = Math.PI * 0.04;
+const MAX_POLAR = Math.PI * 0.96;
+
+/** How far past the rim you may drift before the camera is quietly walked back. */
+const LEASH = DISC_RADIUS * 1.15;
+
+/** Seconds spent easing onto a new subject. Long enough to follow, short enough not to wait. */
+const EASE = 0.5;
 
 /** Asteroid orbits take 15–40 minutes. Twelve frames a second is imperceptible. */
 const AMBIENT_FPS = 12;
@@ -70,6 +86,12 @@ export function GalaxyCanvas({
   }, [planets]);
 
   const asteroids = useMemo(() => (seed === undefined ? [] : asteroidsOf(seed)), [seed]);
+
+  /** The camera's subject: whatever world is open, so orbiting turns around it. */
+  const focus = useMemo<[number, number, number] | null>(() => {
+    const node = nodes.find((n) => n.id === selectedId);
+    return node ? node.position : null;
+  }, [nodes, selectedId]);
 
   const watched = useMemo(() => {
     const wanted = new Set(watching);
@@ -135,7 +157,7 @@ export function GalaxyCanvas({
 
       <AdaptiveDpr pixelated={false} />
       <DevBridge />
-      <Rig home={home} homeSignal={homeSignal} />
+      <Rig home={home} homeSignal={homeSignal} focus={focus} />
       <AmbientTicker />
     </Canvas>
   );
@@ -181,32 +203,113 @@ function Labels({ nodes, selectedId }: { nodes: readonly PlanetNode[]; selectedI
 /**
  * Camera behaviour.
  *
- * Free to roam the whole disc. The earlier version tethered the camera near the
- * player's own planet, which left half the galaxy unreachable and unclickable —
- * the opposite of a place you can explore. Panning is unrestricted, only the tilt
- * is clamped, and HOME always brings you back, so "lost" is never a state you can
- * get stuck in.
+ * Free to roam the whole disc — an earlier version tethered the camera near the
+ * player's own planet, which left half the galaxy unreachable and unclickable.
+ * Three things make free roaming comfortable rather than merely possible:
+ *
+ * ORBIT AROUND WHAT YOU TAPPED. The single biggest comfort factor in an orbit
+ * camera is whether the pivot is the thing you are looking at. Rotating a distant
+ * pivot swings your subject across the screen and out of frame, and the player
+ * fights the camera the whole way. Selecting a world eases the pivot onto it.
+ *
+ * ZOOM WHERE YOU POINT. Pinching or scrolling moves toward the cursor rather than
+ * the centre of the screen, so reaching a world in the corner is one gesture
+ * instead of zoom-then-pan-then-zoom.
+ *
+ * A LEASH RATHER THAN A WALL. Panning is unrestricted in the moment; drift far
+ * enough past the rim and the pivot is eased back over the next second. You cannot
+ * get lost in empty space, and you are never stopped dead mid-gesture.
  */
-function Rig({ home, homeSignal }: { home: [number, number, number]; homeSignal: number }) {
+function Rig({
+  home,
+  homeSignal,
+  focus,
+}: {
+  home: [number, number, number];
+  homeSignal: number;
+  /** The selected world, if any — the camera's subject. */
+  focus: [number, number, number] | null;
+}) {
   const ref = useRef<ComponentRef<typeof OrbitControls>>(null);
+  const invalidate = useThree((state) => state.invalidate);
+  /** Where the pivot is heading, and how much of the ease is left. */
+  const ease = useRef<{ to: THREE.Vector3; left: number } | null>(null);
 
+  const goTo = (x: number, y: number, z: number): void => {
+    ease.current = { to: new THREE.Vector3(x, y, z), left: EASE };
+    invalidate();
+  };
+
+  // HOME re-frames rather than teleports: an instant cut loses every sense of
+  // where you were, and re-orienting afterwards costs more than the half second.
   useEffect(() => {
     const controls = ref.current;
     if (!controls) return;
-    controls.target.set(home[0], home[1], home[2]);
-    controls.object.position.set(home[0] + 12, 16, home[2] + 20);
-    controls.update();
+    if (homeSignal === 0) {
+      controls.target.set(home[0], home[1], home[2]);
+      controls.object.position.set(home[0] + 12, 16, home[2] + 20);
+      controls.update();
+      return;
+    }
+    goTo(home[0], home[1], home[2]);
   }, [home, homeSignal]);
+
+  useEffect(() => {
+    // `focus` is memoised upstream, so this fires on a change of subject and not
+    // on every render of the galaxy.
+    if (focus) goTo(focus[0], focus[1], focus[2]);
+  }, [focus]);
+
+  useFrame((_, delta) => {
+    const controls = ref.current;
+    if (!controls) return;
+
+    /**
+     * The leash. Checked continuously rather than on release, because a player who
+     * has flung the camera into the void wants it back before they let go — and
+     * because the correction is a lerp, it reads as the galaxy pulling rather than
+     * as an edge they hit.
+     */
+    if (!ease.current) {
+      const t = controls.target;
+      const flat = Math.hypot(t.x, t.z);
+      if (flat > LEASH || Math.abs(t.y) > LEASH * 0.5) {
+        const k = flat > LEASH ? LEASH / flat : 1;
+        goTo(t.x * k, THREE.MathUtils.clamp(t.y, -LEASH * 0.5, LEASH * 0.5), t.z * k);
+      }
+    }
+
+    const move = ease.current;
+    if (!move) return;
+
+    // Frame-rate independent easing: the same curve at 30fps and at 120.
+    const step = 1 - Math.pow(0.001, delta / Math.max(0.001, move.left + delta));
+    const previous = controls.target.clone();
+    controls.target.lerp(move.to, Math.min(1, step));
+    // The camera follows its pivot, so the framing is preserved and only the
+    // subject changes. Moving the pivot alone would swing the view instead.
+    controls.object.position.add(controls.target.clone().sub(previous));
+    controls.update();
+    invalidate();
+
+    move.left -= delta;
+    if (move.left <= 0 || controls.target.distanceToSquared(move.to) < 0.0004) {
+      controls.target.copy(move.to);
+      controls.update();
+      ease.current = null;
+    }
+  });
 
   return (
     <OrbitControls
       ref={ref}
       makeDefault
       enableDamping
-      dampingFactor={0.075}
+      dampingFactor={0.08}
       rotateSpeed={0.5}
       zoomSpeed={0.9}
       panSpeed={0.9}
+      zoomToCursor
       minPolarAngle={MIN_POLAR}
       maxPolarAngle={MAX_POLAR}
       minDistance={1.2}

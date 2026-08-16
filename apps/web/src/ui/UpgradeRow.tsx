@@ -3,20 +3,29 @@ import type { Gain } from '../lib/gains.js';
 import { compact } from '../lib/format.js';
 import { haptic } from '../lib/haptics.js';
 import { RESOURCE_ART } from './assets.js';
+import { LockMark } from './marks.js';
 import { ProgressToNext } from './Meter.js';
 
 /**
  * One decision, presented as a decision.
  *
- * Three rules this component exists to enforce:
+ * Four rules this component exists to enforce.
  *
- * NOTHING IS EVER GREYED OUT. An upgrade you cannot afford is the reason to go and
- * earn; one you have not unlocked is the reason to build what unlocks it. Fading
- * both to 45% opacity deletes exactly the ambition the game runs on.
+ * THE ART CARRIES THE STATE; THE WORDS CARRY THE PROMISE. A locked item is
+ * desaturated behind a lock, and its name, its payload and its requirement stay at
+ * full strength (interface.md I1). The earlier rule here — that nothing is ever
+ * greyed out — was aimed at a real failure, fading a whole row to 45% and deleting
+ * the ambition the game runs on. It overcorrected into a screen where a hull you
+ * cannot build looks exactly like one you can, and a player concludes they already
+ * have everything. Locked must look locked. It must not look dead.
+ *
+ * THE REQUIREMENT IS A DOOR, NOT A SIGN. "Shipyard L4" is a button that takes you
+ * to the Shipyard.
  *
  * THE NEXT LEVEL IS VISIBLE BEFORE IT IS BOUGHT. Where the art changes tier, both
  * are shown, current dimmed and next lit. A tech tree that only shows what you
- * already own is a list of receipts.
+ * already own is a list of receipts. The whole ladder is one tap further, in the
+ * detail sheet.
  *
  * PROGRESS IS SHOWN, NOT STATED. When a row is unaffordable it carries a bar
  * toward the price, because "62% of the way to a Bulwark" is a reason to come back
@@ -42,6 +51,7 @@ export function UpgradeRow({
   blocked,
   actionLabel,
   onAct,
+  onOpen,
   pending = false,
   highlighted = false,
   flash = false,
@@ -59,6 +69,8 @@ export function UpgradeRow({
   blocked?: Blocked;
   actionLabel: string;
   onAct: () => void;
+  /** Opens the full picture. The row is the summary; the sheet is the decision. */
+  onOpen?: () => void;
   pending?: boolean;
   highlighted?: boolean;
   /** Set briefly after a successful purchase. */
@@ -70,23 +82,53 @@ export function UpgradeRow({
   const total = cost.alloy + cost.crystal;
   const have = Math.min(held.alloy, cost.alloy) + Math.min(held.crystal, cost.crystal);
 
+  const locked = blocked !== undefined;
+
   return (
     <div
       className={`relative overflow-hidden border-b border-line-soft p-3 last:border-b-0 ${
         highlighted ? 'bg-crystal/10 ring-1 ring-inset ring-crystal/40' : ''
       } ${flash ? 'sweep' : ''}`}
     >
-      <div className="flex items-center gap-3">
+      {/*
+        The whole row opens the detail, except where a control sits on top of it.
+        A card that only responds on one small chevron is a card players never
+        learn is tappable.
+      */}
+      {onOpen && (
+        <button
+          type="button"
+          aria-label={`About ${name}`}
+          className="absolute inset-0 z-0"
+          onClick={() => {
+            haptic('tap');
+            onOpen();
+          }}
+        />
+      )}
+
+      <div className="pointer-events-none relative z-10 flex items-center gap-3">
         <div className="art-well relative flex size-12 shrink-0 items-center justify-center rounded">
           {art ? (
-            <img src={art} alt="" aria-hidden className="size-11 object-contain" loading="lazy" />
+            <img
+              src={art}
+              alt=""
+              aria-hidden
+              className={`size-11 object-contain ${locked ? 'opacity-35 grayscale' : ''}`}
+              loading="lazy"
+            />
           ) : (
-            mark
+            <span className={locked ? 'opacity-35 grayscale' : ''}>{mark}</span>
+          )}
+          {locked && (
+            <span className="absolute inset-0 flex items-center justify-center">
+              <LockMark />
+            </span>
           )}
         </div>
 
         {/* The upgrade you are being sold, shown rather than described. */}
-        {nextArt && (
+        {!locked && nextArt && (
           <>
             <span aria-hidden className="text-[13px] text-faint">
               →
@@ -121,14 +163,14 @@ export function UpgradeRow({
               blocked.onFix?.();
             }}
             disabled={!blocked.onFix}
-            className="chip chip-locked shrink-0"
+            className="chip chip-locked pointer-events-auto shrink-0"
           >
             {blocked.reason}
           </button>
         ) : (
           <button
             type="button"
-            className="btn shrink-0 px-3 text-[11px] active:scale-95"
+            className="btn pointer-events-auto shrink-0 px-3 text-[11px] active:scale-95"
             disabled={!affordable || pending}
             onClick={() => {
               haptic('commit');
@@ -147,7 +189,7 @@ export function UpgradeRow({
         sentence underneath is context for a player who wants it. Reading order
         follows decision order.
       */}
-      <div className="mt-2 flex flex-wrap items-baseline gap-x-4 gap-y-1">
+      <div className="pointer-events-none relative z-10 mt-2 flex flex-wrap items-baseline gap-x-4 gap-y-1">
         {gain && (
           <p className="num text-[13px]">
             <span className="text-faint">{gain.label} </span>
@@ -160,12 +202,18 @@ export function UpgradeRow({
         )}
         <Price cost={cost} />
       </div>
-      {gain?.unlocks && <p className="mt-1 text-[11px] text-crystal/80">{gain.unlocks}</p>}
+      {gain?.unlocks && (
+        <p className="pointer-events-none relative z-10 mt-1 text-[11px] text-crystal/80">
+          {gain.unlocks}
+        </p>
+      )}
 
-      <p className="mt-1.5 text-[12px] leading-snug text-faint">{role}</p>
+      <p className="pointer-events-none relative z-10 mt-1.5 text-[12px] leading-snug text-faint">
+        {role}
+      </p>
 
       {!affordable && !blocked && (
-        <div className="mt-2.5">
+        <div className="pointer-events-none relative z-10 mt-2.5">
           <ProgressToNext have={have} need={total} label={`Saving for ${name.toLowerCase()}`} />
         </div>
       )}

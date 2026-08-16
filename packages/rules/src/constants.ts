@@ -14,9 +14,37 @@ export const ECON = {
 
   costBase: 200,
   costMult: 1.55,
-  crystalCostBase: 40,
-  crystalCostMult: 1.58,
-  crystalCostFromLevel: 3,
+  /**
+   * PROVISIONAL. INVARIANT: the crystal share of an upgrade must track the
+   * crystal share of INCOME, or the scarce resource is not scarce.
+   *
+   * The first draft charged crystal only from L4 upward and at 22% of the alloy
+   * price, against a crystal income that is 33% of alloy income. Crystal
+   * therefore arrived half again as fast as it could be spent: it filled its
+   * twelve-hour store during the first night of every account and wasted from
+   * then on, and for the whole opening — no crystal in the Wasp, none in a
+   * probe, none in the first three upgrades — it bought literally nothing.
+   * A resource the player watches accumulate and never spends is not scarcity,
+   * it is decoration.
+   *
+   * The multiplier is DERIVED, not chosen: `costMult * (crystalMult / alloyMult)`.
+   * Two independently hand-picked multipliers drift — the old 1.58 against a
+   * 1.55 alloy curve pushed the crystal share from 0.21 to 0.37 across ten
+   * levels while the income share fell, so the late game slowly inverted which
+   * resource was scarce. Tying it to the income curve holds the ratio flat at
+   * every level, and the base is then the only number a playtest has to move.
+   *
+   * The base is set at about four fifths of income parity, not at parity: the
+   * simulator showed that charging crystal as fast as it arrives empties the
+   * stores, and an empty store is nothing to raid. Raid returns fell through
+   * their floor and the informed archetype lost the ladder. Crystal must be
+   * spent AND worth stealing.
+   *
+   * `test/invariants.test.ts` holds the cost ratio to the income ratio.
+   */
+  crystalCostBase: 55,
+  crystalCostMult: 1.518,
+  crystalCostFromLevel: 1,
 
   /** Storage ceiling, expressed as hours of production at the current level. */
   capHours: 12,

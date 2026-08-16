@@ -8,13 +8,22 @@ import {
   type HullId,
   type SatelliteId,
 } from '@blindspace/rules';
-import { usePlanet, useBuild, useInstallSatellite, useUpgrade } from '../api/queries.js';
+import {
+  useGalaxy,
+  useIntel,
+  usePending,
+  usePlanet,
+  useBuild,
+  useInstallSatellite,
+  useUpgrade,
+} from '../api/queries.js';
 import type { PlanetView } from '../api/schemas.js';
 import { full } from '../lib/format.js';
-import type { PlanetGroup } from '../lib/directives.js';
+import { directives, primary, type PlanetGroup } from '../lib/directives.js';
 import { buildingGain, satelliteGain } from '../lib/gains.js';
 import { useProjectedResources } from '../lib/projection.js';
 import { BUILDING_ART, HULL_ART, nextSatelliteArt, satelliteArt } from '../ui/assets.js';
+import { ItemSheet, type ItemRef } from '../ui/ItemSheet.js';
 import { BastionMark, CoreMark, ShipyardMark, VaultMark } from '../ui/marks.js';
 import { PlanetHero } from '../ui/PlanetHero.js';
 import { DecisionGroup, UpgradeRow, type Blocked } from '../ui/UpgradeRow.js';
@@ -29,13 +38,21 @@ import { Sheet } from '../ui/Sheet.js';
  * identical buttons. It answered "what exists". It never answered "what should I
  * do, and why", which is the only question a player actually has.
  *
- * This version groups every decision by the PROBLEM it solves, orders those groups
- * by what currently matters, and states what each purchase changes in numbers. The
- * section headings are questions on purpose: a player scanning the screen should
- * find the heading that matches the worry they arrived with.
+ * The second version fixed the naming and then stacked all four groups down one
+ * column: sixteen rows, most of them below the fold, and no way to compare two
+ * decisions without scrolling past twelve others.
+ *
+ * This one is four tabs (interface.md I2). The order never changes, because a
+ * control that reorders itself destroys the muscle memory that makes it fast —
+ * what moves is the RECOMMENDATION, a pip on whichever problem currently matters
+ * most. The section headings stay questions: a player arrives with a worry and
+ * should be able to find the heading that matches it.
  */
 
 type GroupId = PlanetGroup;
+
+/** Fixed order: the sequence a planet is actually built in. */
+const TABS: GroupId[] = ['grow', 'see', 'defend', 'reach'];
 
 const GROUPS: Record<GroupId, { problem: string; question: string }> = {
   defend: { problem: 'Defend', question: 'What survives if someone lands here?' },
@@ -43,6 +60,16 @@ const GROUPS: Record<GroupId, { problem: string; question: string }> = {
   reach: { problem: 'Reach', question: 'What can you send, and how far?' },
   grow: { problem: 'Grow', question: 'How fast does everything else arrive?' },
 };
+
+/** Everything the detail sheet needs, gathered where the row already knows it. */
+export interface SheetSpec {
+  item: ItemRef;
+  name: string;
+  role: string;
+  blocked?: Blocked;
+  pending: boolean;
+  act: () => void;
+}
 
 export function PlanetScreen({
   focusGroup,
@@ -54,7 +81,10 @@ export function PlanetScreen({
 }) {
   const { data, dataUpdatedAt, isPending } = usePlanet();
   const held = useProjectedResources(data?.planet, dataUpdatedAt, 5000);
+  const advice = useAdvice(data, held);
   const [building, setBuilding] = useState<HullId | null>(null);
+  const [sheet, setSheet] = useState<SheetSpec | null>(null);
+  const [tab, setTab] = useState<GroupId | null>(null);
   const [focused, setFocused] = useState<string | null>(null);
   // Set for a moment after a purchase lands, so the row can acknowledge it.
   const [flashed, setFlashed] = useState<string | null>(null);
@@ -90,57 +120,53 @@ export function PlanetScreen({
     );
   }
 
-  const order = groupOrder(data, focusGroup);
+  const recommended = advice ?? groupOrder(data, focusGroup)[0] ?? 'grow';
+  const active = tab ?? focusGroup ?? recommended;
+
+  const shared = {
+    planet: data,
+    held,
+    focused,
+    flashed,
+    onNeed: (id: string) => {
+      // The thing that unblocks you may live under a different tab. Switching to
+      // it is the whole point of the requirement being a button.
+      const home = TAB_OF[id];
+      if (home) setTab(home);
+      setFocused(id);
+    },
+    onFlash: setFlashed,
+    onOpen: setSheet,
+  };
 
   return (
     <div className="px-4 pt-4">
       <PlanetHero planet={data} compact={embedded} />
 
-      {order.map((id) => (
-        <DecisionGroup key={id} problem={GROUPS[id].problem} question={GROUPS[id].question}>
-          {id === 'defend' && (
-            <Defend
-              planet={data}
-              held={held}
-              focused={focused}
-              flashed={flashed}
-              onNeed={setFocused}
-              onFlash={setFlashed}
-              onBuild={setBuilding}
-            />
-          )}
-          {id === 'see' && (
-            <See
-              planet={data}
-              held={held}
-              focused={focused}
-              flashed={flashed}
-              onNeed={setFocused}
-              onFlash={setFlashed}
-            />
-          )}
-          {id === 'reach' && (
-            <Reach
-              planet={data}
-              held={held}
-              focused={focused}
-              flashed={flashed}
-              onNeed={setFocused}
-              onFlash={setFlashed}
-              onBuild={setBuilding}
-            />
-          )}
-          {id === 'grow' && (
-            <Grow
-              planet={data}
-              held={held}
-              focused={focused}
-              flashed={flashed}
-              onFlash={setFlashed}
-            />
-          )}
-        </DecisionGroup>
-      ))}
+      <Tabs active={active} recommended={recommended} onSelect={setTab} />
+
+      <DecisionGroup problem={GROUPS[active].problem} question={GROUPS[active].question}>
+        {active === 'defend' && <Defend {...shared} onBuild={setBuilding} />}
+        {active === 'see' && <See {...shared} />}
+        {active === 'reach' && <Reach {...shared} onBuild={setBuilding} />}
+        {active === 'grow' && <Grow {...shared} />}
+      </DecisionGroup>
+
+      {sheet && (
+        <ItemSheet
+          item={sheet.item}
+          name={sheet.name}
+          role={sheet.role}
+          planet={data}
+          held={held}
+          {...(sheet.blocked ? { blocked: sheet.blocked } : {})}
+          pending={sheet.pending}
+          onAct={sheet.act}
+          onClose={() => {
+            setSheet(null);
+          }}
+        />
+      )}
 
       {building && (
         <BuildSheet
@@ -152,6 +178,94 @@ export function PlanetScreen({
           }}
         />
       )}
+    </div>
+  );
+}
+
+/**
+ * The recommendation, taken from the same place the banner takes it.
+ *
+ * The pip used to be scored separately, which produced the one thing an interface
+ * must never do: two pieces of advice on the same screen disagreeing. The card at
+ * the top said the planet was undefended while the pip pointed at See.
+ */
+function useAdvice(
+  planet: PlanetView | undefined,
+  held: { alloy: number; crystal: number },
+): GroupId | undefined {
+  const galaxy = useGalaxy();
+  const intel = useIntel();
+  const pending = usePending();
+
+  if (!planet) return undefined;
+  const top = primary(
+    directives({
+      planet,
+      galaxy: galaxy.data,
+      intel: intel.data,
+      pending: pending.data?.pending ?? [],
+      held,
+    }),
+  );
+  return top?.action.group;
+}
+
+/** Which tab a given row lives under, so a requirement can jump to it. */
+export const TAB_OF: Record<string, GroupId | undefined> = {
+  CORE: 'grow',
+  REFINERY: 'grow',
+  EXTRACTOR: 'grow',
+  RING: 'grow',
+  VAULT: 'defend',
+  AEGIS: 'defend',
+  TELESCOPE: 'see',
+  RADAR: 'see',
+  VEIL: 'see',
+  SHIPYARD: 'reach',
+};
+
+/**
+ * Four problems, one at a time.
+ *
+ * The pip is the recommendation — the same scoring that used to reorder the
+ * sections now just points at one. Advice that moves is useful; furniture that
+ * moves is not.
+ */
+function Tabs({
+  active,
+  recommended,
+  onSelect,
+}: {
+  active: GroupId;
+  recommended: GroupId;
+  onSelect: (id: GroupId) => void;
+}) {
+  return (
+    <div className="sticky top-0 z-20 -mx-4 mb-5 grid grid-cols-4 gap-1 border-y border-line-soft bg-deep/95 px-4 py-2 backdrop-blur">
+      {TABS.map((id) => {
+        const on = id === active;
+        return (
+          <button
+            key={id}
+            type="button"
+            aria-current={on ? 'page' : undefined}
+            onClick={() => {
+              onSelect(id);
+            }}
+            className={`relative py-2 font-display text-[11px] uppercase tracking-[0.14em] transition-colors ${
+              on ? 'bg-raised text-bone' : 'text-faint'
+            }`}
+          >
+            {GROUPS[id].problem}
+            {id === recommended && !on && (
+              <span
+                aria-label="suggested"
+                className="absolute right-1.5 top-1.5 size-1.5 rounded-full bg-crystal shadow-[0_0_6px_rgba(111,211,224,0.9)]"
+              />
+            )}
+          </button>
+        );
+      })}
     </div>
   );
 }
@@ -189,7 +303,23 @@ interface GroupProps {
   flashed: string | null;
   onNeed: (id: string) => void;
   onFlash: (id: string) => void;
+  onOpen: (spec: SheetSpec) => void;
 }
+
+/** Gathers a row's own knowledge into the shape the detail sheet reads. */
+const spec = (
+  item: ItemRef,
+  name: string,
+  role: string,
+  action: { blocked?: Blocked; pending: boolean; act: () => void },
+): SheetSpec => ({
+  item,
+  name,
+  role,
+  ...(action.blocked ? { blocked: action.blocked } : {}),
+  pending: action.pending,
+  act: action.act,
+});
 
 const cappedCount = (planet: PlanetView): number =>
   (['REFINERY', 'EXTRACTOR', 'VAULT', 'SHIPYARD', 'RING'] as const).filter(
@@ -278,6 +408,7 @@ function Defend({
   flashed,
   onNeed,
   onFlash,
+  onOpen,
   onBuild,
 }: GroupProps & { onBuild: (hull: HullId) => void }) {
   const building = useBuildingAction(planet, onFlash);
@@ -295,7 +426,10 @@ function Defend({
           mark={<VaultMark />}
           name="Vault"
           level={vault.level}
-          role="The only stock a raid cannot touch. Everything above it is takeable."
+          role={VAULT_ROLE}
+          onOpen={() => {
+            onOpen(spec({ kind: 'building', id: 'VAULT' }, 'Vault', VAULT_ROLE, vault));
+          }}
           gain={buildingGain('VAULT', vault.level, cappedCount(planet))}
           cost={vault.cost}
           held={held}
@@ -313,7 +447,10 @@ function Defend({
         nextArt={nextSatelliteArt('AEGIS', aegis.level)}
         name="Aegis"
         level={aegis.level}
-        role="Soaks the first damage of a raid, then regrows on its own."
+        role={AEGIS_ROLE}
+        onOpen={() => {
+          onOpen(spec({ kind: 'satellite', id: 'AEGIS' }, 'Aegis', AEGIS_ROLE, aegis));
+        }}
         gain={satelliteGain('AEGIS', aegis.level)}
         cost={aegis.cost}
         held={held}
@@ -350,7 +487,7 @@ function Defend({
   );
 }
 
-function See({ planet, held, focused, flashed, onNeed, onFlash }: GroupProps) {
+function See({ planet, held, focused, flashed, onNeed, onFlash, onOpen }: GroupProps) {
   const satellite = useSatelliteAction(planet, onFlash);
   const telescope = satellite('TELESCOPE', 'Telescope', onNeed);
   const radar = satellite('RADAR', 'Radar', onNeed);
@@ -363,11 +500,17 @@ function See({ planet, held, focused, flashed, onNeed, onFlash }: GroupProps) {
         nextArt={nextSatelliteArt('TELESCOPE', telescope.level)}
         name="Telescope"
         level={telescope.level}
-        role={
-          telescope.level === 0
-            ? 'You cannot tell whether anyone’s fleet is home.'
-            : 'Tells you the moment a watched fleet leaves. They are never told.'
-        }
+        role={roleFor('TELESCOPE', telescope.level)}
+        onOpen={() => {
+          onOpen(
+            spec(
+              { kind: 'satellite', id: 'TELESCOPE' },
+              'Telescope',
+              roleFor('TELESCOPE', telescope.level),
+              telescope,
+            ),
+          );
+        }}
         gain={satelliteGain('TELESCOPE', telescope.level)}
         cost={telescope.cost}
         held={held}
@@ -384,11 +527,12 @@ function See({ planet, held, focused, flashed, onNeed, onFlash }: GroupProps) {
         nextArt={nextSatelliteArt('RADAR', radar.level)}
         name="Radar"
         level={radar.level}
-        role={
-          radar.level === 0
-            ? 'A fleet can land here with no warning, and probes go unnoticed.'
-            : 'Catches probes, and buys you minutes before a fleet lands.'
-        }
+        role={roleFor('RADAR', radar.level)}
+        onOpen={() => {
+          onOpen(
+            spec({ kind: 'satellite', id: 'RADAR' }, 'Radar', roleFor('RADAR', radar.level), radar),
+          );
+        }}
         gain={satelliteGain('RADAR', radar.level)}
         cost={radar.cost}
         held={held}
@@ -404,7 +548,10 @@ function See({ planet, held, focused, flashed, onNeed, onFlash }: GroupProps) {
         art={satelliteArt('VEIL', Math.max(1, veil.level))}
         name="Veil"
         level={veil.level}
-        role="Their telescope reads UNKNOWN instead of your fleet. It hides; it never lies."
+        role={roleFor('VEIL', veil.level)}
+        onOpen={() => {
+          onOpen(spec({ kind: 'satellite', id: 'VEIL' }, 'Veil', roleFor('VEIL', veil.level), veil));
+        }}
         gain={satelliteGain('VEIL', veil.level)}
         cost={veil.cost}
         held={held}
@@ -425,6 +572,7 @@ function Reach({
   flashed,
   onNeed,
   onFlash,
+  onOpen,
   onBuild,
 }: GroupProps & { onBuild: (hull: HullId) => void }) {
   const building = useBuildingAction(planet, onFlash);
@@ -438,7 +586,10 @@ function Reach({
           mark={<ShipyardMark />}
           name="Shipyard"
           level={shipyard.level}
-          role="Unlocks heavier hulls, and sharpens every probe you send."
+          role={SHIPYARD_ROLE}
+          onOpen={() => {
+            onOpen(spec({ kind: 'building', id: 'SHIPYARD' }, 'Shipyard', SHIPYARD_ROLE, shipyard));
+          }}
           gain={buildingGain('SHIPYARD', shipyard.level, cappedCount(planet))}
           cost={shipyard.cost}
           held={held}
@@ -480,6 +631,40 @@ function Reach({
   );
 }
 
+/**
+ * What each thing is FOR — one sentence, written for the decision.
+ *
+ * Hoisted out of the rows because the detail sheet says the same sentence, and a
+ * pitch that drifts between two surfaces is two different products.
+ */
+const VAULT_ROLE = 'The only stock a raid cannot touch. Everything above it is takeable.';
+const AEGIS_ROLE = 'Soaks the first damage of a raid, then regrows on its own.';
+const SHIPYARD_ROLE = 'Unlocks heavier hulls, and sharpens every probe you send.';
+const REFINERY_ROLE = 'Everything you build waits on this number.';
+const EXTRACTOR_ROLE = 'Scarce. Gates the heavy hulls and every high building level.';
+const RING_ROLE =
+  'Slots for satellites. You will never run all five — what you leave out is who you are.';
+
+const coreRole = (capped: number): string =>
+  capped > 0
+    ? `${String(capped)} things are stuck at the ceiling until this goes up.`
+    : 'Nothing may exceed the Core. It is the ceiling for everything.';
+
+function roleFor(id: 'TELESCOPE' | 'RADAR' | 'VEIL', level: number): string {
+  switch (id) {
+    case 'TELESCOPE':
+      return level === 0
+        ? 'You cannot tell whether anyone’s fleet is home.'
+        : 'Tells you the moment a watched fleet leaves. They are never told.';
+    case 'RADAR':
+      return level === 0
+        ? 'A fleet can land here with no warning, and probes go unnoticed.'
+        : 'Catches probes, and buys you minutes before a fleet lands.';
+    case 'VEIL':
+      return 'Their telescope reads UNKNOWN instead of your fleet. It hides; it never lies.';
+  }
+}
+
 /** What each hull is *for*, in the terms the decision is actually made in. */
 const HULL_PITCH: Record<HullId, string> = {
   WASP: 'Cheapest damage, fastest home. The shortest time spent undefended.',
@@ -489,7 +674,7 @@ const HULL_PITCH: Record<HullId, string> = {
   BASTION: 'Never leaves the planet. The cheapest hit points you can own.',
 };
 
-function Grow({ planet, held, focused, flashed, onFlash }: Omit<GroupProps, 'onNeed'>) {
+function Grow({ planet, held, focused, flashed, onFlash, onOpen }: Omit<GroupProps, 'onNeed'>) {
   const noop = () => undefined;
   const building = useBuildingAction(planet, onFlash);
   const core = building('CORE', 'Command Core', noop);
@@ -505,11 +690,10 @@ function Grow({ planet, held, focused, flashed, onFlash }: Omit<GroupProps, 'onN
           mark={<CoreMark />}
           name="Command Core"
           level={core.level}
-          role={
-            capped > 0
-              ? `${String(capped)} things are stuck at the ceiling until this goes up.`
-              : 'Nothing may exceed the Core. It is the ceiling for everything.'
-          }
+          role={coreRole(capped)}
+          onOpen={() => {
+            onOpen(spec({ kind: 'building', id: 'CORE' }, 'Command Core', coreRole(capped), core));
+          }}
           gain={buildingGain('CORE', core.level, capped)}
           cost={core.cost}
           held={held}
@@ -525,7 +709,10 @@ function Grow({ planet, held, focused, flashed, onFlash }: Omit<GroupProps, 'onN
         art={BUILDING_ART.REFINERY}
         name="Alloy Refinery"
         level={refinery.level}
-        role="Everything you build waits on this number."
+        role={REFINERY_ROLE}
+        onOpen={() => {
+          onOpen(spec({ kind: 'building', id: 'REFINERY' }, 'Alloy Refinery', REFINERY_ROLE, refinery));
+        }}
         gain={buildingGain('REFINERY', refinery.level, capped)}
         cost={refinery.cost}
         held={held}
@@ -540,7 +727,12 @@ function Grow({ planet, held, focused, flashed, onFlash }: Omit<GroupProps, 'onN
         art={BUILDING_ART.EXTRACTOR}
         name="Crystal Extractor"
         level={extractor.level}
-        role="Scarce. Gates the heavy hulls and every high building level."
+        role={EXTRACTOR_ROLE}
+        onOpen={() => {
+          onOpen(
+            spec({ kind: 'building', id: 'EXTRACTOR' }, 'Crystal Extractor', EXTRACTOR_ROLE, extractor),
+          );
+        }}
         gain={buildingGain('EXTRACTOR', extractor.level, capped)}
         cost={extractor.cost}
         held={held}
@@ -556,7 +748,10 @@ function Grow({ planet, held, focused, flashed, onFlash }: Omit<GroupProps, 'onN
           art={BUILDING_ART.RING}
           name="Orbital Ring"
           level={ring.level}
-          role="Slots for satellites. You will never run all five — what you leave out is who you are."
+          role={RING_ROLE}
+          onOpen={() => {
+            onOpen(spec({ kind: 'building', id: 'RING' }, 'Orbital Ring', RING_ROLE, ring));
+          }}
           gain={buildingGain('RING', ring.level, capped)}
           cost={ring.cost}
           held={held}
