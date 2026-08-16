@@ -14,7 +14,11 @@ import { chromium } from 'playwright';
 const OUT = process.argv[2] ?? '.';
 const APP = process.env.BLINDSPACE_APP ?? 'http://localhost:5173/';
 
-const browser = await chromium.launch();
+// SwiftShader: headless Chromium has no GPU, and the galaxy is WebGL. Slow, but
+// it renders the same scene the phone will.
+const browser = await chromium.launch({
+  args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'],
+});
 const page = await browser.newPage({
   viewport: { width: 390, height: 844 }, // portrait phone — the only shape that matters
   deviceScaleFactor: 2,
@@ -28,6 +32,11 @@ const shot = async (name) => {
 page.on('pageerror', (error) => {
   console.log('PAGE EXCEPTION:', error.message);
 });
+
+/** The 3D scene needs a beat to load its textures before it is worth a photo. */
+const settle = async (ms = 2500) => {
+  await page.waitForTimeout(ms);
+};
 
 await page.goto(APP, { waitUntil: 'networkidle' });
 await page.waitForTimeout(600);
@@ -43,47 +52,41 @@ if (await dismiss.count()) {
   await shot('02-return-overlay');
   await dismiss.click();
 }
-await page.waitForTimeout(800);
-await shot('03-planet');
+// The galaxy is the home surface, so it is what a cold session opens on.
+await settle(3000);
+await shot('02-galaxy');
+
+await page.mouse.move(195, 430);
+await page.mouse.down();
+await page.mouse.move(285, 385, { steps: 14 });
+await page.mouse.up();
+await settle(1200);
+await shot('03-galaxy-orbited');
+
+await page.mouse.move(195, 430);
+for (let i = 0; i < 5; i++) {
+  await page.mouse.wheel(0, -120);
+  await page.waitForTimeout(90);
+}
+await settle(1200);
+await shot('04-galaxy-close');
+
+// The tabs are labelled by what they answer, not by their caption — the Planet
+// tab's accessible name is "Your planet".
+await page.getByRole('button', { name: /^your planet$/i }).click();
+await page.waitForTimeout(900);
+await shot('05-planet');
 
 await page.mouse.wheel(0, 700);
 await page.waitForTimeout(400);
-await shot('04-planet-works');
+await shot('06-planet-works');
 
 await page.mouse.wheel(0, 700);
 await page.waitForTimeout(400);
-await shot('05-planet-orbit');
-
-await page.getByRole('button', { name: /everyone else/i }).click();
-await page.waitForTimeout(1200);
-await shot('06-galaxy');
-
-await page.locator('button:has-text("tier")').first().click();
-await page.waitForTimeout(700);
-await shot('07-target');
-
-await page.getByRole('button', { name: /plan an attack/i }).click();
-await page.waitForTimeout(600);
-await shot('08-launch-empty');
-
-const more = page.getByRole('button', { name: /more wasp/i }).first();
-for (let i = 0; i < 6; i++) await more.click();
-await page.waitForTimeout(400);
-await shot('09-launch-chosen');
-
-await page.getByRole('button', { name: /send \d+ ships/i }).click();
-await page.waitForTimeout(400);
-await shot('10-launch-confirm');
-
-// Twice: backing out of the launch sheet returns you to the target sheet, which
-// is intended — you land back on what you know about them.
-await page.keyboard.press('Escape');
-await page.waitForTimeout(300);
-await page.keyboard.press('Escape');
-await page.waitForTimeout(300);
+await shot('07-planet-orbit');
 
 await page.getByRole('button', { name: /what you know/i }).click();
 await page.waitForTimeout(1000);
-await shot('11-intel');
+await shot('08-intel');
 
 await browser.close();

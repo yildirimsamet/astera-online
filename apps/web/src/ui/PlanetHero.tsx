@@ -17,7 +17,18 @@ import { PlanetSigil } from './PlanetSigil.js';
  * Underneath: POWER and output, then three verdicts. "None" is a verdict. "0
  * ground units" is a number the player still has to interpret.
  */
-export function PlanetHero({ planet }: { planet: PlanetView }) {
+export function PlanetHero({
+  planet,
+  compact: compactMode = false,
+}: {
+  planet: PlanetView;
+  /**
+   * Drops the portrait and the name. Used when this sits in a panel over the live
+   * galaxy — the planet is already on screen behind the sheet, and drawing it
+   * twice would be the only duplicated object in the interface.
+   */
+  compact?: boolean;
+}) {
   const now = useNow(1000);
   const orbitals = satelliteEntries(planet.satellites);
   const disruptedFor = planet.planet.disruptedUntil
@@ -31,6 +42,16 @@ export function PlanetHero({ planet }: { planet: PlanetView }) {
     planet.planet.alloy + planet.planet.crystal - planet.planet.vaultFloor,
   );
   const ring = planet.buildings.RING ?? 0;
+
+  if (compactMode) {
+    return (
+      <div className="mb-5">
+        <Readouts planet={planet} />
+        <Verdicts planet={planet} ground={ground} home={home} exposed={exposed} />
+        {disruptedFor > 0 && <Disrupted ms={disruptedFor} />}
+      </div>
+    );
+  }
 
   return (
     <div className="mb-5">
@@ -83,57 +104,81 @@ export function PlanetHero({ planet }: { planet: PlanetView }) {
         </h1>
       </div>
 
-      {/*
-        POWER and output, side by side.
+      <Readouts planet={planet} />
+      {disruptedFor > 0 && <Disrupted ms={disruptedFor} />}
+      <Verdicts planet={planet} ground={ground} home={home} exposed={exposed} />
+    </div>
+  );
+}
 
-        Power is everything this planet is worth — buildings, satellites, ships and
-        stock. It is the number that answers "am I getting stronger", and without it
-        a player has no way to feel a season's worth of investment.
-      */}
-      <div className="mt-3.5 flex items-stretch gap-2">
-        <div className="frame flex-1 px-3.5 py-2.5">
-          <p className="legend">Power</p>
-          <p className="readout mt-1.5 text-[26px] text-bone">{full(powerOf(planet))}</p>
-        </div>
-        <div className="frame w-[142px] px-3.5 py-2.5">
-          <p className="legend">Per hour</p>
-          <div className="mt-1.5 space-y-1">
-            <Rate art={RESOURCE_ART.alloy} value={planet.planet.alloyPerHour} tone="text-alloy" />
-            <Rate
-              art={RESOURCE_ART.crystal}
-              value={planet.planet.crystalPerHour}
-              tone="text-crystal"
-            />
-          </div>
+/**
+ * POWER and output.
+ *
+ * Power is everything this planet is worth — buildings, satellites, ships and
+ * stock. It answers "am I getting stronger", and without it a player has no way to
+ * feel a season of investment.
+ */
+function Readouts({ planet }: { planet: PlanetView }) {
+  return (
+    <div className="mt-3.5 flex items-stretch gap-2">
+      <div className="frame flex-1 px-3.5 py-2.5">
+        <p className="legend">Power</p>
+        <p className="readout mt-1.5 text-[26px] text-bone">{full(powerOf(planet))}</p>
+      </div>
+      <div className="frame w-[142px] px-3.5 py-2.5">
+        <p className="legend">Per hour</p>
+        <div className="mt-1.5 space-y-1">
+          <Rate art={RESOURCE_ART.alloy} value={planet.planet.alloyPerHour} tone="text-alloy" />
+          <Rate
+            art={RESOURCE_ART.crystal}
+            value={planet.planet.crystalPerHour}
+            tone="text-crystal"
+          />
         </div>
       </div>
+    </div>
+  );
+}
 
-      {disruptedFor > 0 && (
-        <p className="num mt-2.5 rounded border border-threat/40 bg-threat/10 px-3 py-2 text-center text-[12px] text-[#ff9d8f]">
-          Production stopped · raided · {countdown(disruptedFor)}
-        </p>
-      )}
+function Disrupted({ ms }: { ms: number }) {
+  return (
+    <p className="num mt-2.5 rounded border border-threat/40 bg-threat/10 px-3 py-2 text-center text-[12px] text-[#ff9d8f]">
+      Production stopped · raided · {countdown(ms)}
+    </p>
+  );
+}
 
-      <div className="mt-2 grid grid-cols-3 gap-2">
-        <Verdict
-          label="Defence"
-          value={ground === 0 ? 'None' : ground < 5 ? 'Thin' : 'Held'}
-          detail={ground === 0 ? `${String(home)} ships only` : `${String(ground)} on the ground`}
-          tone={ground === 0 ? 'bad' : ground < 5 ? 'warn' : 'good'}
-        />
-        <Verdict
-          label="Shield"
-          value={planet.planet.shield > 0 ? compact(planet.planet.shield) : 'None'}
-          detail={planet.planet.shield > 0 ? 'absorbs first' : 'no aegis'}
-          tone={planet.planet.shield > 0 ? 'good' : 'neutral'}
-        />
-        <Verdict
-          label="At risk"
-          value={compact(exposed)}
-          detail={`${compact(planet.planet.vaultFloor)} safe`}
-          tone={exposed > planet.planet.vaultFloor * 3 ? 'warn' : 'neutral'}
-        />
-      </div>
+function Verdicts({
+  planet,
+  ground,
+  home,
+  exposed,
+}: {
+  planet: PlanetView;
+  ground: number;
+  home: number;
+  exposed: number;
+}) {
+  return (
+    <div className="mt-2 grid grid-cols-3 gap-2">
+      <Verdict
+        label="Defence"
+        value={ground === 0 ? 'None' : ground < 5 ? 'Thin' : 'Held'}
+        detail={ground === 0 ? `${String(home)} ships only` : `${String(ground)} on the ground`}
+        tone={ground === 0 ? 'bad' : ground < 5 ? 'warn' : 'good'}
+      />
+      <Verdict
+        label="Shield"
+        value={planet.planet.shield > 0 ? compact(planet.planet.shield) : 'None'}
+        detail={planet.planet.shield > 0 ? 'absorbs first' : 'no aegis'}
+        tone={planet.planet.shield > 0 ? 'good' : 'neutral'}
+      />
+      <Verdict
+        label="At risk"
+        value={compact(exposed)}
+        detail={`${compact(planet.planet.vaultFloor)} safe`}
+        tone={exposed > planet.planet.vaultFloor * 3 ? 'warn' : 'neutral'}
+      />
     </div>
   );
 }

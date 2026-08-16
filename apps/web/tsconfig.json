@@ -5,6 +5,8 @@
     "jsx": "react-jsx",
     "noEmit": true,
     "resolveJsonModule": true,
+    /* import.meta.env, and the ?url / ?raw import suffixes. */
+    "types": ["vite/client"],
     "allowSyntheticDefaultImports": true
   },
   "include": ["src/**/*.ts", "src/**/*.tsx", "test/**/*.ts", "test/**/*.tsx", "*.ts"]

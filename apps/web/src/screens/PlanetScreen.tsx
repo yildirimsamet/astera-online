@@ -44,7 +44,14 @@ const GROUPS: Record<GroupId, { problem: string; question: string }> = {
   grow: { problem: 'Grow', question: 'How fast does everything else arrive?' },
 };
 
-export function PlanetScreen({ focusGroup }: { focusGroup?: GroupId }) {
+export function PlanetScreen({
+  focusGroup,
+  embedded = false,
+}: {
+  focusGroup?: GroupId;
+  /** Rendered inside a panel over the live galaxy rather than as a full screen. */
+  embedded?: boolean;
+}) {
   const { data, dataUpdatedAt, isPending } = usePlanet();
   const held = useProjectedResources(data?.planet, dataUpdatedAt, 5000);
   const [building, setBuilding] = useState<HullId | null>(null);
@@ -87,7 +94,7 @@ export function PlanetScreen({ focusGroup }: { focusGroup?: GroupId }) {
 
   return (
     <div className="px-4 pt-4">
-      <PlanetHero planet={data} />
+      <PlanetHero planet={data} compact={embedded} />
 
       {order.map((id) => (
         <DecisionGroup key={id} problem={GROUPS[id].problem} question={GROUPS[id].question}>

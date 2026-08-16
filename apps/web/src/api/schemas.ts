@@ -59,6 +59,8 @@ export const placementSchema = z.object({
 export const seasonSchema = z.object({
   seasonId: z.string(),
   shard: z.string(),
+  /** The galaxy layout and every asteroid orbit are rebuilt from this locally. */
+  seed: z.number(),
   status: z.string(),
   startsAt: z.coerce.date(),
   endsAt: z.coerce.date(),
@@ -259,6 +261,27 @@ export const notificationsSchema = z.object({
 });
 
 export const markedSchema = z.object({ marked: z.number() });
+
+const vec = z.object({ x: z.number(), y: z.number(), z: z.number() });
+
+/**
+ * Other players' fleets, deliberately unattributable.
+ *
+ * No id, owner, kind or destination — and `from`/`to` are points on the middle of
+ * a flight, not the planets at either end. See the server's `services/traffic.ts`
+ * for why each of those is load-bearing.
+ */
+export const trafficSchema = z.object({
+  contacts: z.array(
+    z.object({
+      from: vec,
+      to: vec,
+      startAt: z.coerce.date(),
+      endAt: z.coerce.date(),
+    }),
+  ),
+});
+export type Contact = z.infer<typeof trafficSchema>['contacts'][number];
 
 export type Session = z.infer<typeof sessionSchema>;
 export type Placement = z.infer<typeof placementSchema>;

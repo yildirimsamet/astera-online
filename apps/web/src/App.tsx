@@ -7,7 +7,7 @@ import { useBootstrap } from './session/useBootstrap.js';
 import { useEventStream } from './session/useEventStream.js';
 import { useLiveAlerts } from './session/useLiveAlerts.js';
 import { EntryScreen } from './screens/EntryScreen.js';
-import { GalaxyScreen } from './screens/GalaxyScreen.js';
+import { GalaxyView } from './screens/GalaxyView.jsx';
 import { IntelScreen } from './screens/IntelScreen.js';
 import { PlanetScreen } from './screens/PlanetScreen.js';
 import { PendingStrip } from './shell/PendingStrip.js';
@@ -23,7 +23,8 @@ export function App() {
   useEventStream(ready);
   useLiveAlerts(ready);
 
-  const [tab, setTab] = useState<Tab>('planet');
+  // The galaxy is the home surface, not a screen you visit. D1.
+  const [tab, setTab] = useState<Tab>('galaxy');
   const [arrivalSeen, setArrivalSeen] = useState(false);
   const [openPlanetId, setOpenPlanetId] = useState<string | undefined>(undefined);
   const [focusGroup, setFocusGroup] = useState<PlanetGroup | undefined>(undefined);
@@ -75,29 +76,34 @@ export function App() {
     <div className="relative z-10 flex h-dvh flex-col overflow-hidden">
       <StatusBar />
 
-      <main ref={scroller} className="flex-1 overflow-y-auto overscroll-contain pb-8">
-        {/*
-          The situation, on every screen, above everything.
-
-          A player who has to work out what matters from sixteen equally-weighted
-          rows will not do it — they will close the app. This is the one place the
-          game says, in its own voice, what is happening and what it is worth doing
-          about it.
-        */}
-        <Situation tab={tab} onAct={act} />
-
-        {tab === 'planet' && <PlanetScreen {...(focusGroup ? { focusGroup } : {})} />}
-        {tab === 'galaxy' && (
-          <GalaxyScreen
-            {...(openPlanetId ? { openPlanetId } : {})}
+      {tab === 'galaxy' ? (
+        // Full-bleed: the canvas owns the space between the bar and the tabs, and
+        // everything else in the game opens on top of it.
+        <main className="relative flex-1">
+          <GalaxyView
+            {...(openPlanetId ? { focusPlanetId: openPlanetId } : {})}
             onNavigate={(group) => {
               setTab('planet');
               setFocusGroup(group);
             }}
           />
-        )}
-        {tab === 'intel' && <IntelScreen />}
-      </main>
+        </main>
+      ) : (
+        <main ref={scroller} className="flex-1 overflow-y-auto overscroll-contain pb-8">
+          {/*
+            The situation, above everything.
+
+            A player who has to work out what matters from sixteen equally-weighted
+            rows will not do it — they will close the app. This is the one place the
+            game says, in its own voice, what is happening and what it is worth
+            doing about it.
+          */}
+          <Situation tab={tab} onAct={act} />
+
+          {tab === 'planet' && <PlanetScreen {...(focusGroup ? { focusGroup } : {})} />}
+          {tab === 'intel' && <IntelScreen />}
+        </main>
+      )}
 
       <div className="shrink-0">
         <PendingStrip />

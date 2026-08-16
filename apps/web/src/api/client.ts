@@ -14,6 +14,7 @@ import {
   satelliteInstallSchema,
   seasonSchema,
   sessionSchema,
+  trafficSchema,
   buildSchema,
   markedSchema,
   unlocksSchema,
@@ -136,6 +137,7 @@ export class Api {
   season = () => this.send('/api/season', seasonSchema);
   planet = () => this.send('/api/planet', planetSchema);
   galaxy = () => this.send('/api/galaxy', galaxySchema);
+  traffic = () => this.send('/api/galaxy/traffic', trafficSchema);
   leaderboard = () => this.send('/api/leaderboard', leaderboardSchema);
   intel = () => this.send('/api/intel', intelSchema);
 

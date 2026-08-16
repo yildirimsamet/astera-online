@@ -11,6 +11,7 @@ export const keys = {
   notifications: ['notifications'],
   unlocks: ['unlocks'],
   pending: ['pending'],
+  traffic: ['traffic'],
 } as const;
 
 /**
@@ -59,6 +60,17 @@ export function usePending() {
     staleTime: 30_000,
     refetchInterval: 60_000,
     refetchOnWindowFocus: true,
+  });
+}
+
+/** Ambient galaxy motion. Cheap, and stale data here costs nothing. */
+export function useTraffic() {
+  const api = useApi();
+  return useQuery({
+    queryKey: keys.traffic,
+    queryFn: api.traffic,
+    staleTime: 45_000,
+    refetchInterval: 60_000,
   });
 }
 
