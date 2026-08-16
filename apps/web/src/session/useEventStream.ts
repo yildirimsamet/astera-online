@@ -23,7 +23,14 @@ export function useEventStream(enabled: boolean): void {
     const controller = new AbortController();
 
     const refresh = (): void => {
-      for (const key of [keys.planet, keys.galaxy, keys.intel, keys.notifications, keys.pending]) {
+      for (const key of [
+        keys.planet,
+        keys.galaxy,
+        keys.intel,
+        keys.notifications,
+        keys.pending,
+        keys.reports,
+      ]) {
         void client.invalidateQueries({ queryKey: key });
       }
     };

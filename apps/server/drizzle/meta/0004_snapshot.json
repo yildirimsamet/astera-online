@@ -1,0 +1,1886 @@
+{
+  "id": "df38eb41-f83e-47ed-9aca-279d7a5c6b7c",
+  "prevId": "f2bf2b13-9408-4c80-9664-d388fc0b53ea",
+  "version": "7",
+  "dialect": "postgresql",
+  "tables": {
+    "public.accounts": {
+      "name": "accounts",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "email": {
+          "name": "email",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "display_name": {
+          "name": "display_name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "lifetime": {
+          "name": "lifetime",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'{}'::jsonb"
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "accounts_email_idx": {
+          "name": "accounts_email_idx",
+          "columns": [
+            {
+              "expression": "email",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.asteroids": {
+      "name": "asteroids",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "season_id": {
+          "name": "season_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "index": {
+          "name": "index",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "radius": {
+          "name": "radius",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "period": {
+          "name": "period",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "phase": {
+          "name": "phase",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "y": {
+          "name": "y",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "mass": {
+          "name": "mass",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {
+        "asteroids_season_idx": {
+          "name": "asteroids_season_idx",
+          "columns": [
+            {
+              "expression": "season_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "asteroids_season_id_seasons_id_fk": {
+          "name": "asteroids_season_id_seasons_id_fk",
+          "tableFrom": "asteroids",
+          "tableTo": "seasons",
+          "columnsFrom": [
+            "season_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.battle_reports": {
+      "name": "battle_reports",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "season_id": {
+          "name": "season_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "mission_id": {
+          "name": "mission_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "attacker_player_id": {
+          "name": "attacker_player_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "defender_player_id": {
+          "name": "defender_player_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "grade": {
+          "name": "grade",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "rounds": {
+          "name": "rounds",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "loot": {
+          "name": "loot",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "attacker_losses": {
+          "name": "attacker_losses",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "defender_losses": {
+          "name": "defender_losses",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "dominion_swing": {
+          "name": "dominion_swing",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "reports_defender_idx": {
+          "name": "reports_defender_idx",
+          "columns": [
+            {
+              "expression": "defender_player_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "created_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "reports_attacker_idx": {
+          "name": "reports_attacker_idx",
+          "columns": [
+            {
+              "expression": "attacker_player_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "created_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "reports_mission_idx": {
+          "name": "reports_mission_idx",
+          "columns": [
+            {
+              "expression": "mission_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "battle_reports_season_id_seasons_id_fk": {
+          "name": "battle_reports_season_id_seasons_id_fk",
+          "tableFrom": "battle_reports",
+          "tableTo": "seasons",
+          "columnsFrom": [
+            "season_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "battle_reports_mission_id_missions_id_fk": {
+          "name": "battle_reports_mission_id_missions_id_fk",
+          "tableFrom": "battle_reports",
+          "tableTo": "missions",
+          "columnsFrom": [
+            "mission_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "battle_reports_attacker_player_id_players_id_fk": {
+          "name": "battle_reports_attacker_player_id_players_id_fk",
+          "tableFrom": "battle_reports",
+          "tableTo": "players",
+          "columnsFrom": [
+            "attacker_player_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "battle_reports_defender_player_id_players_id_fk": {
+          "name": "battle_reports_defender_player_id_players_id_fk",
+          "tableFrom": "battle_reports",
+          "tableTo": "players",
+          "columnsFrom": [
+            "defender_player_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.buildings": {
+      "name": "buildings",
+      "schema": "",
+      "columns": {
+        "planet_id": {
+          "name": "planet_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "type": {
+          "name": "type",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "level": {
+          "name": "level",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "buildings_planet_id_planets_id_fk": {
+          "name": "buildings_planet_id_planets_id_fk",
+          "tableFrom": "buildings",
+          "tableTo": "planets",
+          "columnsFrom": [
+            "planet_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "buildings_planet_id_type_pk": {
+          "name": "buildings_planet_id_type_pk",
+          "columns": [
+            "planet_id",
+            "type"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.missions": {
+      "name": "missions",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "season_id": {
+          "name": "season_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "kind": {
+          "name": "kind",
+          "type": "mission_kind",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "status": {
+          "name": "status",
+          "type": "mission_status",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'in_flight'"
+        },
+        "origin_planet_id": {
+          "name": "origin_planet_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "target_planet_id": {
+          "name": "target_planet_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "fleet": {
+          "name": "fleet",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "loot": {
+          "name": "loot",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "distance": {
+          "name": "distance",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "depart_at": {
+          "name": "depart_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "arrive_at": {
+          "name": "arrive_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "parent_mission_id": {
+          "name": "parent_mission_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {
+        "missions_status_arrive_idx": {
+          "name": "missions_status_arrive_idx",
+          "columns": [
+            {
+              "expression": "status",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "arrive_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "missions_origin_idx": {
+          "name": "missions_origin_idx",
+          "columns": [
+            {
+              "expression": "origin_planet_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "missions_target_idx": {
+          "name": "missions_target_idx",
+          "columns": [
+            {
+              "expression": "target_planet_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "missions_season_id_seasons_id_fk": {
+          "name": "missions_season_id_seasons_id_fk",
+          "tableFrom": "missions",
+          "tableTo": "seasons",
+          "columnsFrom": [
+            "season_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "missions_origin_planet_id_planets_id_fk": {
+          "name": "missions_origin_planet_id_planets_id_fk",
+          "tableFrom": "missions",
+          "tableTo": "planets",
+          "columnsFrom": [
+            "origin_planet_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "missions_target_planet_id_planets_id_fk": {
+          "name": "missions_target_planet_id_planets_id_fk",
+          "tableFrom": "missions",
+          "tableTo": "planets",
+          "columnsFrom": [
+            "target_planet_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.notifications": {
+      "name": "notifications",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "player_id": {
+          "name": "player_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "kind": {
+          "name": "kind",
+          "type": "notification_kind",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "payload": {
+          "name": "payload",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "seen": {
+          "name": "seen",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "notifications_player_idx": {
+          "name": "notifications_player_idx",
+          "columns": [
+            {
+              "expression": "player_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "seen",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "created_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "notifications_player_id_players_id_fk": {
+          "name": "notifications_player_id_players_id_fk",
+          "tableFrom": "notifications",
+          "tableTo": "players",
+          "columnsFrom": [
+            "player_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.planets": {
+      "name": "planets",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "player_id": {
+          "name": "player_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "season_id": {
+          "name": "season_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "slot_index": {
+          "name": "slot_index",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "x": {
+          "name": "x",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "y": {
+          "name": "y",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "z": {
+          "name": "z",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "alloy": {
+          "name": "alloy",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 500
+        },
+        "crystal": {
+          "name": "crystal",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 120
+        },
+        "shield": {
+          "name": "shield",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "last_tick_at": {
+          "name": "last_tick_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "disrupted_until": {
+          "name": "disrupted_until",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {
+        "planets_player_idx": {
+          "name": "planets_player_idx",
+          "columns": [
+            {
+              "expression": "player_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "planets_season_slot_idx": {
+          "name": "planets_season_slot_idx",
+          "columns": [
+            {
+              "expression": "season_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "slot_index",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "planets_season_idx": {
+          "name": "planets_season_idx",
+          "columns": [
+            {
+              "expression": "season_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "planets_player_id_players_id_fk": {
+          "name": "planets_player_id_players_id_fk",
+          "tableFrom": "planets",
+          "tableTo": "players",
+          "columnsFrom": [
+            "player_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "planets_season_id_seasons_id_fk": {
+          "name": "planets_season_id_seasons_id_fk",
+          "tableFrom": "planets",
+          "tableTo": "seasons",
+          "columnsFrom": [
+            "season_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.players": {
+      "name": "players",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "account_id": {
+          "name": "account_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "season_id": {
+          "name": "season_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "dominion_taken": {
+          "name": "dominion_taken",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "dominion_lost": {
+          "name": "dominion_lost",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "wealth": {
+          "name": "wealth",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "joined_at": {
+          "name": "joined_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "last_seen_at": {
+          "name": "last_seen_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "unlocks_seen": {
+          "name": "unlocks_seen",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'[]'::jsonb"
+        }
+      },
+      "indexes": {
+        "players_account_season_idx": {
+          "name": "players_account_season_idx",
+          "columns": [
+            {
+              "expression": "account_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "season_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "players_ladder_idx": {
+          "name": "players_ladder_idx",
+          "columns": [
+            {
+              "expression": "season_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "dominion_taken",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "dominion_lost",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "players_account_id_accounts_id_fk": {
+          "name": "players_account_id_accounts_id_fk",
+          "tableFrom": "players",
+          "tableTo": "accounts",
+          "columnsFrom": [
+            "account_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "players_season_id_seasons_id_fk": {
+          "name": "players_season_id_seasons_id_fk",
+          "tableFrom": "players",
+          "tableTo": "seasons",
+          "columnsFrom": [
+            "season_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.probe_reports": {
+      "name": "probe_reports",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "observer_player_id": {
+          "name": "observer_player_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "target_planet_id": {
+          "name": "target_planet_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "mission_id": {
+          "name": "mission_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "accuracy": {
+          "name": "accuracy",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "stock": {
+          "name": "stock",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "defence": {
+          "name": "defence",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "fleet_size": {
+          "name": "fleet_size",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "fleet_home": {
+          "name": "fleet_home",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "detected": {
+          "name": "detected",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "delivered_at": {
+          "name": "delivered_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {
+        "probe_reports_observer_idx": {
+          "name": "probe_reports_observer_idx",
+          "columns": [
+            {
+              "expression": "observer_player_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "created_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "probe_reports_mission_idx": {
+          "name": "probe_reports_mission_idx",
+          "columns": [
+            {
+              "expression": "mission_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "probe_reports_observer_player_id_players_id_fk": {
+          "name": "probe_reports_observer_player_id_players_id_fk",
+          "tableFrom": "probe_reports",
+          "tableTo": "players",
+          "columnsFrom": [
+            "observer_player_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "probe_reports_target_planet_id_planets_id_fk": {
+          "name": "probe_reports_target_planet_id_planets_id_fk",
+          "tableFrom": "probe_reports",
+          "tableTo": "planets",
+          "columnsFrom": [
+            "target_planet_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "probe_reports_mission_id_missions_id_fk": {
+          "name": "probe_reports_mission_id_missions_id_fk",
+          "tableFrom": "probe_reports",
+          "tableTo": "missions",
+          "columnsFrom": [
+            "mission_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.request_log": {
+      "name": "request_log",
+      "schema": "",
+      "columns": {
+        "idempotency_key": {
+          "name": "idempotency_key",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "player_id": {
+          "name": "player_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "response": {
+          "name": "response",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "request_log_player_id_players_id_fk": {
+          "name": "request_log_player_id_players_id_fk",
+          "tableFrom": "request_log",
+          "tableTo": "players",
+          "columnsFrom": [
+            "player_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.satellites": {
+      "name": "satellites",
+      "schema": "",
+      "columns": {
+        "planet_id": {
+          "name": "planet_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "slot": {
+          "name": "slot",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "type": {
+          "name": "type",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "level": {
+          "name": "level",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 1
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "satellites_planet_id_planets_id_fk": {
+          "name": "satellites_planet_id_planets_id_fk",
+          "tableFrom": "satellites",
+          "tableTo": "planets",
+          "columnsFrom": [
+            "planet_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "satellites_planet_id_slot_pk": {
+          "name": "satellites_planet_id_slot_pk",
+          "columns": [
+            "planet_id",
+            "slot"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.scan_events": {
+      "name": "scan_events",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "target_planet_id": {
+          "name": "target_planet_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "origin_planet_id": {
+          "name": "origin_planet_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "detected": {
+          "name": "detected",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "bearing": {
+          "name": "bearing",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "scans_target_idx": {
+          "name": "scans_target_idx",
+          "columns": [
+            {
+              "expression": "target_planet_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "created_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "scan_events_target_planet_id_planets_id_fk": {
+          "name": "scan_events_target_planet_id_planets_id_fk",
+          "tableFrom": "scan_events",
+          "tableTo": "planets",
+          "columnsFrom": [
+            "target_planet_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "scan_events_origin_planet_id_planets_id_fk": {
+          "name": "scan_events_origin_planet_id_planets_id_fk",
+          "tableFrom": "scan_events",
+          "tableTo": "planets",
+          "columnsFrom": [
+            "origin_planet_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.scheduled_events": {
+      "name": "scheduled_events",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "season_id": {
+          "name": "season_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "kind": {
+          "name": "kind",
+          "type": "event_kind",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "ref_id": {
+          "name": "ref_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "payload": {
+          "name": "payload",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "resolve_at": {
+          "name": "resolve_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "status": {
+          "name": "status",
+          "type": "event_status",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'pending'"
+        },
+        "attempts": {
+          "name": "attempts",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "claimed_at": {
+          "name": "claimed_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "last_error": {
+          "name": "last_error",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {
+        "events_due_idx": {
+          "name": "events_due_idx",
+          "columns": [
+            {
+              "expression": "status",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "resolve_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "events_claimed_idx": {
+          "name": "events_claimed_idx",
+          "columns": [
+            {
+              "expression": "status",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "claimed_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "scheduled_events_season_id_seasons_id_fk": {
+          "name": "scheduled_events_season_id_seasons_id_fk",
+          "tableFrom": "scheduled_events",
+          "tableTo": "seasons",
+          "columnsFrom": [
+            "season_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.seasons": {
+      "name": "seasons",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "shard_id": {
+          "name": "shard_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "seed": {
+          "name": "seed",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "status": {
+          "name": "status",
+          "type": "season_status",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'pending'"
+        },
+        "starts_at": {
+          "name": "starts_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "ends_at": {
+          "name": "ends_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {
+        "seasons_shard_status_idx": {
+          "name": "seasons_shard_status_idx",
+          "columns": [
+            {
+              "expression": "shard_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "status",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "seasons_shard_id_shards_id_fk": {
+          "name": "seasons_shard_id_shards_id_fk",
+          "tableFrom": "seasons",
+          "tableTo": "shards",
+          "columnsFrom": [
+            "shard_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.shards": {
+      "name": "shards",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "code": {
+          "name": "code",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "region": {
+          "name": "region",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'eu'"
+        },
+        "player_cap": {
+          "name": "player_cap",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 200
+        }
+      },
+      "indexes": {
+        "shards_code_idx": {
+          "name": "shards_code_idx",
+          "columns": [
+            {
+              "expression": "code",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.units": {
+      "name": "units",
+      "schema": "",
+      "columns": {
+        "planet_id": {
+          "name": "planet_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "hull": {
+          "name": "hull",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "location": {
+          "name": "location",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'home'"
+        },
+        "count": {
+          "name": "count",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "units_planet_id_planets_id_fk": {
+          "name": "units_planet_id_planets_id_fk",
+          "tableFrom": "units",
+          "tableTo": "planets",
+          "columnsFrom": [
+            "planet_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "units_planet_id_hull_location_pk": {
+          "name": "units_planet_id_hull_location_pk",
+          "columns": [
+            "planet_id",
+            "hull",
+            "location"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.watches": {
+      "name": "watches",
+      "schema": "",
+      "columns": {
+        "observer_player_id": {
+          "name": "observer_player_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "slot": {
+          "name": "slot",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "target_planet_id": {
+          "name": "target_planet_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "last_status": {
+          "name": "last_status",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "last_confirmed_at": {
+          "name": "last_confirmed_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "watches_observer_player_id_players_id_fk": {
+          "name": "watches_observer_player_id_players_id_fk",
+          "tableFrom": "watches",
+          "tableTo": "players",
+          "columnsFrom": [
+            "observer_player_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "watches_target_planet_id_planets_id_fk": {
+          "name": "watches_target_planet_id_planets_id_fk",
+          "tableFrom": "watches",
+          "tableTo": "planets",
+          "columnsFrom": [
+            "target_planet_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "watches_observer_player_id_slot_pk": {
+          "name": "watches_observer_player_id_slot_pk",
+          "columns": [
+            "observer_player_id",
+            "slot"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    }
+  },
+  "enums": {
+    "public.event_kind": {
+      "name": "event_kind",
+      "schema": "public",
+      "values": [
+        "mission_arrival",
+        "radar_warning",
+        "asteroid_impact",
+        "season_end"
+      ]
+    },
+    "public.event_status": {
+      "name": "event_status",
+      "schema": "public",
+      "values": [
+        "pending",
+        "processing",
+        "done",
+        "failed"
+      ]
+    },
+    "public.mission_kind": {
+      "name": "mission_kind",
+      "schema": "public",
+      "values": [
+        "attack",
+        "probe",
+        "return"
+      ]
+    },
+    "public.mission_status": {
+      "name": "mission_status",
+      "schema": "public",
+      "values": [
+        "in_flight",
+        "resolved",
+        "cancelled"
+      ]
+    },
+    "public.notification_kind": {
+      "name": "notification_kind",
+      "schema": "public",
+      "values": [
+        "incoming_fleet",
+        "fleet_returned",
+        "raided",
+        "scan_detected"
+      ]
+    },
+    "public.season_status": {
+      "name": "season_status",
+      "schema": "public",
+      "values": [
+        "pending",
+        "live",
+        "frozen",
+        "wiped"
+      ]
+    }
+  },
+  "schemas": {},
+  "sequences": {},
+  "roles": {},
+  "policies": {},
+  "views": {},
+  "_meta": {
+    "columns": {},
+    "schemas": {},
+    "tables": {}
+  }
+}

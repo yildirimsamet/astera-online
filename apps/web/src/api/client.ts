@@ -10,6 +10,7 @@ import {
   placementSchema,
   planetSchema,
   probeSchema,
+  reportsSchema,
   returnSchema,
   satelliteInstallSchema,
   seasonSchema,
@@ -140,6 +141,8 @@ export class Api {
   traffic = () => this.send('/api/galaxy/traffic', trafficSchema);
   leaderboard = () => this.send('/api/leaderboard', leaderboardSchema);
   intel = () => this.send('/api/intel', intelSchema);
+  /** The closing link of the loop: what a fight actually taught you. */
+  reports = () => this.send('/api/reports?limit=20', reportsSchema);
 
   upgrade = (type: BuildingId) =>
     this.send('/api/planet/upgrade', upgradeSchema, { method: 'POST', body: { type } });

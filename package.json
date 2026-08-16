@@ -17,12 +17,14 @@
     "season": "pnpm --filter @blindspace/server season",
     "shots": "node tools/screenshots.mjs",
     "phone": "node tools/phone.mjs",
+    "models": "node tools/models.mjs",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "verify": "pnpm typecheck && pnpm lint && pnpm test"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
+    "@gltf-transform/cli": "^4.4.2",
     "@types/node": "^22.10.2",
     "eslint": "^10.8.1",
     "globals": "^17.11.0",

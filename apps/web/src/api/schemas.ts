@@ -261,6 +261,43 @@ export const returnSchema = z.object({
 
 export const unlocksSchema = z.object({ unlocked: z.array(unlockable) });
 
+/**
+ * A battle report: ground truth about what was BROUGHT, never about what remains.
+ *
+ * Both participants get the same facts because both were there. Survivors are not
+ * in the payload at all — a report tells you what someone fielded, not what they
+ * kept.
+ */
+export const reportsSchema = z.object({
+  reports: z.array(
+    z.object({
+      id: z.string(),
+      at: z.coerce.date(),
+      grade,
+      rounds: z.array(
+        z.object({
+          round: z.number(),
+          attackerDamage: z.number(),
+          defenderDamage: z.number(),
+          shieldAbsorbed: z.number(),
+          attackerLosses: fleet,
+          defenderLosses: fleet,
+        }),
+      ),
+      attacking: z.boolean(),
+      opponentName: z.string(),
+      opponentPlanet: z.string(),
+      yourLosses: fleet,
+      theirLosses: fleet,
+      lootAlloy: z.number(),
+      lootCrystal: z.number(),
+      /** Null on reports written before the swing was recorded. */
+      dominion: z.number().nullable(),
+    }),
+  ),
+});
+export type BattleReport = z.infer<typeof reportsSchema>['reports'][number];
+
 export const notificationsSchema = z.object({
   notifications: z.array(
     z.object({

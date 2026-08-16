@@ -63,6 +63,19 @@ export const HULL_ART: Record<HullId, string | null> = {
 
 export const PROBE_ART = `${BASE}/ships/explorer_ship.png`;
 
+/**
+ * Real geometry, where it exists.
+ *
+ * The 2D renders stay: they are what the shipyard and the panels use, and they are
+ * better at panel size than a model would be. This is only for the galaxy, where a
+ * craft is seen from every angle as the camera moves and a billboard starts to
+ * give itself away.
+ */
+export const MODEL = {
+  probe: '/assets/models/ships/explorer_ship.glb',
+  wasp: '/assets/models/ships/ship_1.glb',
+} as const;
+
 /* ── satellites and buildings ───────────────────────────────── */
 
 /**

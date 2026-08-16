@@ -12,6 +12,7 @@ export const keys = {
   unlocks: ['unlocks'],
   pending: ['pending'],
   traffic: ['traffic'],
+  reports: ['reports'],
 } as const;
 
 /**
@@ -72,6 +73,11 @@ export function useTraffic() {
     staleTime: 45_000,
     refetchInterval: 60_000,
   });
+}
+
+export function useReports() {
+  const api = useApi();
+  return useQuery({ queryKey: keys.reports, queryFn: api.reports, ...READ });
 }
 
 export function useLeaderboard() {

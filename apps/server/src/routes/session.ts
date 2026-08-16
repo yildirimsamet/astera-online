@@ -10,6 +10,7 @@ import {
   markNotificationsSeen,
   pendingThreads,
 } from '../services/session.js';
+import { readBattleReports } from '../services/reports.js';
 import { requireAuth } from './auth.js';
 
 const seenBody = z.object({ ids: z.array(z.string().uuid()).max(200).optional() });
@@ -60,6 +61,18 @@ export function registerSessionRoutes(app: FastifyInstance): void {
     if (!planetId) throw new GameError('NO_PLANET', 'Join a galaxy first', 404);
 
     return { pending: await pendingThreads(app.db, planetId, app.clock.now()) };
+  });
+
+  /**
+   * Battle reports — the most accurate intel in the game, and until now the only
+   * thing the server wrote and never showed anyone.
+   */
+  app.get('/api/reports', { preHandler: requireAuth }, async (req) => {
+    const query = z
+      .object({ limit: z.coerce.number().int().min(1).max(50).default(20) })
+      .parse(req.query);
+    const playerId = await me(req.accountId!);
+    return { reports: await readBattleReports(app.db, playerId, query.limit) };
   });
 
   app.get('/api/session/unlocks', { preHandler: requireAuth }, async (req) => {

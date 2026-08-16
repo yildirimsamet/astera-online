@@ -3,6 +3,7 @@ import { useGalaxy, useIntel, usePlanet } from '../api/queries.js';
 import { percent, range } from '../lib/format.js';
 import { staleness, useNow } from '../lib/time.js';
 import { satelliteArt } from '../ui/assets.js';
+import { BattleReports } from './BattleReports.jsx';
 import { Reading } from '../ui/Clarity.js';
 import { Note, Panel, Section } from '../ui/primitives.js';
 
@@ -125,6 +126,8 @@ export function IntelScreen() {
           </Panel>
         )}
       </Section>
+
+      <BattleReports />
 
       <Section label="Who is looking at you" aside={radar > 0 ? `Radar L${String(radar)}` : undefined}>
         {radar < 1 ? (

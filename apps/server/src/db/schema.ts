@@ -12,7 +12,7 @@ import {
   uniqueIndex,
   uuid,
 } from 'drizzle-orm/pg-core';
-import type { Fleet, Grade, HullId } from '@blindspace/rules';
+import type { CombatRound, Fleet, Grade, HullId } from '@blindspace/rules';
 
 /**
  * Sixteen tables. Nothing here stores a value that can be derived from a formula
@@ -159,6 +159,15 @@ export const missions = pgTable('missions', {
   distance: real('distance').notNull(),
   departAt: timestamp('depart_at', { withTimezone: true }).notNull(),
   arriveAt: timestamp('arrive_at', { withTimezone: true }).notNull(),
+  /**
+   * The outbound leg this one is coming home from.
+   *
+   * Set on a probe's return trip, so the arrival handler knows which report to
+   * deliver. An attack's return leg carries its survivors and its loot in its own
+   * columns and needs no link; a probe carries nothing but the answer, and the
+   * answer lives in `probe_reports`.
+   */
+  parentMissionId: uuid('parent_mission_id'),
 }, (t) => [
   index('missions_status_arrive_idx').on(t.status, t.arriveAt),
   index('missions_origin_idx').on(t.originPlanetId),
@@ -195,10 +204,21 @@ export const battleReports = pgTable('battle_reports', {
   attackerPlayerId: uuid('attacker_player_id').notNull().references(() => players.id),
   defenderPlayerId: uuid('defender_player_id').notNull().references(() => players.id),
   grade: text('grade').$type<Grade>().notNull(),
-  rounds: jsonb('rounds').$type<unknown[]>().notNull(),
+  rounds: jsonb('rounds').$type<CombatRound[]>().notNull(),
   loot: jsonb('loot').$type<{ alloy: number; crystal: number }>().notNull(),
   attackerLosses: jsonb('attacker_losses').$type<Fleet>().notNull(),
   defenderLosses: jsonb('defender_losses').$type<Fleet>().notNull(),
+  /**
+   * The attacker's Dominion movement, exactly as the ledger recorded it.
+   *
+   * Stored rather than recomputed. `defenderLossValue` is NET OF SALVAGE — 60% of
+   * destroyed ground defence rebuilds free — so deriving the swing from
+   * `defenderLosses` alone overstates it whenever Bastions died, and the report
+   * would quietly disagree with the ladder. Nullable because reports written
+   * before this column existed cannot be reconstructed; the client omits the line
+   * rather than inventing a figure.
+   */
+  dominionSwing: real('dominion_swing'),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 }, (t) => [
   index('reports_defender_idx').on(t.defenderPlayerId, t.createdAt),
@@ -242,6 +262,15 @@ export const probeReports = pgTable('probe_reports', {
   /** Whether the target's radar caught it — the observer learns this too. */
   detected: boolean('detected').notNull(),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  /**
+   * When the probe got home with it. NULL means still in the air.
+   *
+   * The snapshot is taken on arrival — that is the moment being measured, and it
+   * is also when the target's radar has its chance — but the observer cannot read
+   * any of it until the craft is back. Intel that teleports home is not a journey
+   * anyone has to plan around.
+   */
+  deliveredAt: timestamp('delivered_at', { withTimezone: true }),
 }, (t) => [
   index('probe_reports_observer_idx').on(t.observerPlayerId, t.createdAt),
   uniqueIndex('probe_reports_mission_idx').on(t.missionId),

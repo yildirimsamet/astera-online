@@ -360,7 +360,10 @@ export async function pendingThreads(
       kind: m.kind === 'probe' ? 'probe' : 'fleet',
       targetName: returning ? row.originName : row.targetName,
       minutesRemaining: minutes,
-      ...(m.kind === 'probe' ? {} : { leg: returning ? 'return' : 'outbound' }),
+      // Probes have legs too now that they fly home — "returning from" and
+      // "heading for" are different states of the same craft and the strip should
+      // not have to guess which.
+      leg: returning ? 'return' : 'outbound',
       // Yours, so you may watch it fly.
       path: {
         from: { x: row.originX, y: row.originY, z: row.originZ },

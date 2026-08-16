@@ -1,4 +1,4 @@
-import { and, desc, eq, gt, inArray, ne } from 'drizzle-orm';
+import { and, desc, eq, gt, inArray, isNotNull, ne } from 'drizzle-orm';
 import {
   PROBE,
   bearingBetween,
@@ -396,6 +396,10 @@ export async function resolveProbe(
     fleetHome: !anyAway,
     detected,
     createdAt: now,
+    // Written, but not readable until the craft is home. The snapshot is of this
+    // instant — that is what was measured, and it is what the target's radar had
+    // its chance against — but the observer learns none of it yet.
+    deliveredAt: null,
   });
 
   // The target's radar log always gets a row; what the target may READ from it is
@@ -451,12 +455,15 @@ export async function readRadarLog(
   }));
 }
 
+/** Only what has actually come home. A probe in flight tells you nothing yet. */
 export async function readProbeReports(db: Db, playerId: string, limit = 10) {
   return db
     .select({ report: probeReports, targetName: planets.name })
     .from(probeReports)
     .innerJoin(planets, eq(probeReports.targetPlanetId, planets.id))
-    .where(eq(probeReports.observerPlayerId, playerId))
+    .where(
+      and(eq(probeReports.observerPlayerId, playerId), isNotNull(probeReports.deliveredAt)),
+    )
     .orderBy(desc(probeReports.createdAt))
     .limit(limit);
 }

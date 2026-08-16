@@ -510,4 +510,88 @@ describe('the information layer', () => {
       expect(scan!.originPlanetId).toBe(mine);
     });
   });
+
+/**
+ * THE PROBE IS A ROUND TRIP.
+ *
+ * The snapshot is taken on arrival — that is the instant being measured, and it is
+ * when the target's radar has its chance — but the observer reads none of it until
+ * the craft is home. It makes scouting a commitment rather than a purchase, and it
+ * means a probe in the air is a pending thread, which Design Law #1 wants anyway.
+ */
+describe('a probe flies out and comes back', () => {
+  let f: Fixture;
+  let mine: string;
+  let theirs: string;
+  let myPlayer: string;
+
+  const worker = () =>
+    new EventWorker(f.db, f.clock, { pollMs: 1000, batch: 100, staleMinutes: 5 }, pino({ level: 'silent' }));
+
+  beforeEach(async () => {
+    f = await seedWorld(2);
+    [mine, theirs] = f.planetIds as [string, string];
+    myPlayer = f.playerIds[0]!;
+    await grant(f.db, mine, 5_000, 500);
+  });
+
+  it('tells you nothing until it is home', async () => {
+    const { launchProbe, readProbeReports } = await import('../src/services/intel.js');
+    const out = await launchProbe(f.db, mine, theirs, f.clock);
+
+    // It lands: the snapshot exists, and the target's radar has had its chance.
+    f.clock.set(out.arriveAt);
+    await worker().tick();
+    expect(await readProbeReports(f.db, myPlayer)).toHaveLength(0);
+
+    const { missions } = await import('../src/db/schema.js');
+    const { and, eq } = await import('drizzle-orm');
+    const [home] = await f.db
+      .select()
+      .from(missions)
+      .where(and(eq(missions.kind, 'probe'), eq(missions.status, 'in_flight')));
+    expect(home).toBeDefined();
+    expect(home!.originPlanetId).toBe(theirs);
+    expect(home!.targetPlanetId).toBe(mine);
+
+    // And only when it gets back does the answer appear.
+    f.clock.set(home!.arriveAt);
+    await worker().tick();
+    const reports = await readProbeReports(f.db, myPlayer);
+    expect(reports).toHaveLength(1);
+    expect(reports[0]!.report.deliveredAt).not.toBeNull();
+  });
+
+  /** The scan is written when the probe arrives, not when it gets home. */
+  it('is caught by radar on arrival, not on the way back', async () => {
+    const { launchProbe } = await import('../src/services/intel.js');
+    const { scanEvents } = await import('../src/db/schema.js');
+    const { eq } = await import('drizzle-orm');
+
+    const out = await launchProbe(f.db, mine, theirs, f.clock);
+    f.clock.set(out.arriveAt);
+    await worker().tick();
+
+    const scans = await f.db.select().from(scanEvents).where(eq(scanEvents.targetPlanetId, theirs));
+    expect(scans).toHaveLength(1);
+  });
+
+  /** A crashed worker replaying the arrival must not send a second craft home. */
+  it('does not schedule a second trip home when the arrival is delivered twice', async () => {
+    const { launchProbe } = await import('../src/services/intel.js');
+    const { missions } = await import('../src/db/schema.js');
+    const { and, eq } = await import('drizzle-orm');
+
+    const out = await launchProbe(f.db, mine, theirs, f.clock);
+    f.clock.set(out.arriveAt);
+    await worker().tick();
+    await worker().tick();
+
+    const homeward = await f.db
+      .select()
+      .from(missions)
+      .where(and(eq(missions.kind, 'probe'), eq(missions.originPlanetId, theirs)));
+    expect(homeward).toHaveLength(1);
+  });
+});
 });

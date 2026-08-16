@@ -1,5 +1,6 @@
 import { and, eq, sql } from 'drizzle-orm';
 import {
+  PROBE,
   applyDisruption,
   bookBattle,
   computeLoot,
@@ -9,6 +10,7 @@ import {
   fleetTravelMinutes,
   seededFrom,
   resolveCombat,
+  travelMinutes,
   vaultProtects,
   type Fleet,
   type Ledger,
@@ -21,6 +23,7 @@ import {
   notifications,
   planets,
   players,
+  probeReports,
   units,
 } from '../db/schema.js';
 import { loadLocked, recomputeWealth, saveResources, setUnits } from '../services/planet.js';
@@ -115,6 +118,22 @@ export const onMissionArrival: Handler = async ({ db, clock }, event) => {
     }
 
     if (mission.kind === 'probe') {
+      /**
+       * A probe coming home.
+       *
+       * Nothing is measured on this leg — the snapshot was taken when it arrived.
+       * All that happens here is that the answer becomes readable, which is the
+       * point of making it fly back at all: the intel is a round trip, so scouting
+       * is a commitment rather than a purchase.
+       */
+      if (mission.parentMissionId) {
+        await tx
+          .update(probeReports)
+          .set({ deliveredAt: clock.now() })
+          .where(eq(probeReports.missionId, mission.parentMissionId));
+        return;
+      }
+
       // Seeded from the mission id like combat, so a report — and whether it was
       // detected — can be re-derived from its inputs.
       const { detected, bearing } = await resolveProbe(
@@ -134,6 +153,32 @@ export const onMissionArrival: Handler = async ({ db, clock }, event) => {
           await notify(tx, target.playerId, 'scan_detected', { bearing }, clock.now());
         }
       }
+
+      // The trip home. Symmetric, because a probe is the same craft going the
+      // other way — and it is scheduled inside the same transaction as the
+      // snapshot, so a report can never exist with no way to reach its owner.
+      const home = travelMinutes(mission.distance, PROBE.speed);
+      const backAt = addMinutes(clock.now(), home);
+      const [ret] = await tx
+        .insert(missions)
+        .values({
+          seasonId: mission.seasonId,
+          kind: 'probe',
+          originPlanetId: mission.targetPlanetId,
+          targetPlanetId: mission.originPlanetId,
+          fleet: {},
+          distance: mission.distance,
+          departAt: clock.now(),
+          arriveAt: backAt,
+          parentMissionId: mission.id,
+        })
+        .returning();
+      await schedule(tx, {
+        seasonId: mission.seasonId,
+        kind: 'mission_arrival',
+        refId: ret!.id,
+        resolveAt: backAt,
+      });
       return;
     }
 
@@ -184,7 +229,11 @@ export const onMissionArrival: Handler = async ({ db, clock }, event) => {
 
     const attackerLedger = await ledgerOf(tx, attackerPlanet.playerId);
     const defenderLedger = await ledgerOf(tx, defender.playerId);
+    const before = attackerLedger.taken - attackerLedger.lost;
     bookBattle(attackerLedger, defenderLedger, loot.alloy + loot.crystal, result);
+    // Measured from the ledger itself rather than recomputed, so the report can
+    // never disagree with the ladder about what a battle was worth.
+    const dominionSwing = attackerLedger.taken - attackerLedger.lost - before;
     await saveLedger(tx, attackerLedger);
     await saveLedger(tx, defenderLedger);
 
@@ -198,6 +247,7 @@ export const onMissionArrival: Handler = async ({ db, clock }, event) => {
       loot,
       attackerLosses: result.attackerLosses,
       defenderLosses: result.defenderLosses,
+      dominionSwing,
       createdAt: defender.now,
     });
 
