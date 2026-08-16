@@ -87,6 +87,8 @@ await shot('06-planet-grow');
 // need a Shipyard the player does not have yet.
 await page.getByRole('button', { name: /^reach$/i }).click();
 await page.waitForTimeout(500);
+await page.mouse.wheel(0, 900);
+await page.waitForTimeout(400);
 await shot('07-planet-reach');
 
 // The ladder — what the next three levels cost and give.
