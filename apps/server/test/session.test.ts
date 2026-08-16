@@ -1,4 +1,4 @@
-import { eq } from 'drizzle-orm';
+import { and, eq } from 'drizzle-orm';
 import { pino } from 'pino';
 import { afterAll, beforeEach, describe, expect, it } from 'vitest';
 import { ABUSE, radarLeadMinutes } from '@blindspace/rules';
@@ -282,6 +282,40 @@ describe('the return payload', () => {
       expect(incoming).toBeDefined();
       expect(incoming!.minutesRemaining).toBeLessThanOrEqual(radarLeadMinutes(3));
     });
+  });
+
+  /**
+   * The path is the fog again, in a new field.
+   *
+   * Your own fleet may be watched flying; an inbound attack may not, because its
+   * origin is precisely what Radar L5 is sold for and a heading gives away most of
+   * what L2's bearing costs. Asserted on the payload, not on the rendering.
+   */
+  it('carries a flight path for your own fleets and none at all for an inbound one', async () => {
+    await giveUnits(f.db, mine, { WASP: 20 });
+    await launchAttack(f.db, mine, theirs, { WASP: 20 }, f.clock);
+
+    const outbound = await buildReturnPayload(f.db, myPlayer, f.clock);
+    const ours = outbound.pending.find((p) => p.kind === 'fleet');
+    expect(ours?.path).toBeDefined();
+    expect(ours?.path?.arriveAt.getTime()).toBeGreaterThan(ours!.path!.departAt.getTime());
+
+    // Now let radar see something coming, inside its lead window.
+    await giveSatellite(f.db, mine, 'RADAR', 3);
+    await giveUnits(f.db, theirs, { WASP: 20 });
+    await launchAttack(f.db, theirs, mine, { WASP: 20 }, f.clock);
+    const [inbound] = await f.db
+      .select()
+      .from(missions)
+      .where(and(eq(missions.targetPlanetId, mine), eq(missions.kind, 'attack')));
+    f.clock.set(new Date(inbound!.arriveAt.getTime() - (radarLeadMinutes(3) - 1) * 60_000));
+
+    const warned = await buildReturnPayload(f.db, myPlayer, f.clock);
+    const threat = warned.pending.find((p) => p.kind === 'incoming');
+    expect(threat).toBeDefined();
+    expect(threat?.path).toBeUndefined();
+    // Nothing in the object at all, not merely a null.
+    expect(Object.keys(threat!)).not.toContain('path');
   });
 
   it('names the planet a returning fleet is coming back from', async () => {

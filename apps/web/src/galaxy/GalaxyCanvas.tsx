@@ -3,8 +3,9 @@ import { Canvas, useThree } from '@react-three/fiber';
 import { AdaptiveDpr, Html, OrbitControls, Preload } from '@react-three/drei';
 import { Bloom, EffectComposer, Vignette } from '@react-three/postprocessing';
 import * as THREE from 'three';
-import type { GalaxyPlanet } from '../api/schemas.js';
+import type { Contact, GalaxyPlanet, PendingThread } from '../api/schemas.js';
 import { Asteroids, BrightStars, Core, Disc, Dust, Nebula, Starfield } from './Environment.jsx';
+import { OwnFleets, Traffic } from './Fleets.jsx';
 import { PlanetField } from './PlanetField.jsx';
 import { DISC_RADIUS, asteroidsOf, planetNodes, toWorld, type PlanetNode } from './scene.js';
 import { installTapGuard, wasTap } from './tap.js';
@@ -37,6 +38,10 @@ const AMBIENT_FPS = 12;
 
 export interface GalaxyCanvasProps {
   planets: readonly GalaxyPlanet[];
+  /** Your own missions. Inbound attacks carry no path and are not drawn as one. */
+  pending: readonly PendingThread[];
+  /** Everyone else's, already stripped of anything identifying by the server. */
+  contacts: readonly Contact[];
   seed: number | undefined;
   seasonStart: Date | undefined;
   selectedId: string | null;
@@ -47,6 +52,8 @@ export interface GalaxyCanvasProps {
 
 export function GalaxyCanvas({
   planets,
+  pending,
+  contacts,
   seed,
   seasonStart,
   selectedId,
@@ -101,6 +108,8 @@ export function GalaxyCanvas({
 
       <Suspense fallback={null}>
         <PlanetField nodes={nodes} selectedId={selectedId} onSelect={onSelect} />
+        <OwnFleets pending={pending} />
+        <Traffic contacts={contacts} />
         <Labels nodes={nodes} selectedId={selectedId} />
         <Preload all />
       </Suspense>

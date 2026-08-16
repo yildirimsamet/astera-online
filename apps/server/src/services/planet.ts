@@ -228,19 +228,62 @@ export async function setBuildingLevel(
     .onConflictDoUpdate({ target: [buildings.planetId, buildings.type], set: { level } });
 }
 
-/** Recompute and store Wealth. Denormalised so the rank-floor check is one read. */
-export async function refreshWealth(tx: Tx, planet: LockedPlanet): Promise<number> {
+/**
+ * Recompute and store Wealth, reading everything fresh.
+ *
+ * Denormalised so the rank-floor check is one read — and that denormalisation was
+ * silently broken. `wealth` was written ONLY when a player bought something, so it
+ * was never written at all for a player who had not: a fresh commander sat at
+ * zero, and `canAttack` refuses anyone below 40% of the attacker's wealth. A
+ * player who joined and pressed nothing was therefore PERMANENTLY IMMUNE to attack
+ * once newcomer grace expired, which is the exact opposite of the design. It also
+ * went stale after every raid, since combat moves resources and units without
+ * anyone "buying" anything.
+ *
+ * Counting ALL units owned, not just the ones at home: Wealth is "everything you
+ * own, at what it cost", and a fleet in flight is still owned. Counting only the
+ * garrison meant a player was cheapest — and so most protected by the rank floor —
+ * at exactly the moment their fleet was away and they were most vulnerable.
+ */
+export async function recomputeWealth(tx: Tx, planetId: string): Promise<number> {
+  const [row] = await tx.select().from(planets).where(eq(planets.id, planetId));
+  if (!row) return 0;
+
+  const [buildingRows, satelliteRows, unitRows] = await Promise.all([
+    tx.select().from(buildings).where(eq(buildings.planetId, planetId)),
+    tx.select().from(satellites).where(eq(satellites.planetId, planetId)),
+    tx.select().from(units).where(eq(units.planetId, planetId)),
+  ]);
+
+  const levels = Object.fromEntries(BUILDING_IDS.map((b) => [b, 0])) as BuildingLevels;
+  for (const b of buildingRows) levels[b.type as BuildingId] = b.level;
+
+  const sats: SatelliteLevels = {};
+  for (const s of satelliteRows) sats[s.type as SatelliteId] = s.level;
+
+  const fleet: Fleet = {};
+  const ground: Fleet = {};
+  for (const u of unitRows) {
+    if (u.count <= 0) continue;
+    const bucket = u.hull === 'BASTION' ? ground : fleet;
+    bucket[u.hull] = (bucket[u.hull] ?? 0) + u.count;
+  }
+
   const value = wealth({
-    buildings: planet.buildings,
-    satellites: planet.satellites,
-    fleet: planet.homeFleet,
-    ground: planet.ground,
-    alloy: planet.alloy,
-    crystal: planet.crystal,
+    buildings: levels,
+    satellites: sats,
+    fleet,
+    ground,
+    alloy: row.alloy,
+    crystal: row.crystal,
   });
-  await tx.update(players).set({ wealth: value }).where(eq(players.id, planet.playerId));
+  await tx.update(players).set({ wealth: value }).where(eq(players.id, row.playerId));
   return value;
 }
+
+/** Convenience for callers that already hold a lock. */
+export const refreshWealth = (tx: Tx, planet: LockedPlanet): Promise<number> =>
+  recomputeWealth(tx, planet.planetId);
 
 /** Everything a player currently owns, including fleets that are away. */
 export async function totalUnitsOf(tx: Tx, planetId: string): Promise<Fleet> {

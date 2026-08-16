@@ -228,6 +228,19 @@ const pendingThread = z.object({
   targetName: z.string(),
   minutesRemaining: z.number(),
   leg: z.enum(['outbound', 'return']).optional(),
+  /**
+   * ABSENT on an inbound attack, always. Its origin is what Radar L5 sells and its
+   * heading is most of what L2's bearing costs, so the server never sends one —
+   * there is no field here for a modified client to read.
+   */
+  path: z
+    .object({
+      from: vec3,
+      to: vec3,
+      departAt: z.coerce.date(),
+      arriveAt: z.coerce.date(),
+    })
+    .optional(),
 });
 
 export const pendingSchema = z.object({ pending: z.array(pendingThread) });

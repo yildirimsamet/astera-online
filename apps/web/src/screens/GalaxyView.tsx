@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useGalaxy, useIntel, usePlanet, useSeason } from '../api/queries.js';
+import { useGalaxy, useIntel, usePending, usePlanet, useSeason, useTraffic } from '../api/queries.js';
 import { GalaxyCanvas } from '../galaxy/GalaxyCanvas.jsx';
 import { STANCE_COLOUR, stanceOf } from '../galaxy/scene.js';
 import { haptic } from '../lib/haptics.js';
@@ -32,6 +32,8 @@ export function GalaxyView({
   const planet = usePlanet();
   const intel = useIntel();
   const season = useSeason();
+  const pending = usePending();
+  const traffic = useTraffic();
 
   const [selectedId, setSelectedId] = useState<string | null>(focusPlanetId ?? null);
   const [attacking, setAttacking] = useState(false);
@@ -51,6 +53,8 @@ export function GalaxyView({
     <div className="absolute inset-0 overflow-hidden">
       <GalaxyCanvas
         planets={planets}
+        pending={pending.data?.pending ?? []}
+        contacts={traffic.data?.contacts ?? []}
         seed={season.data?.seed}
         seasonStart={season.data?.startsAt}
         selectedId={selectedId}

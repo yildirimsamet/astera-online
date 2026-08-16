@@ -117,6 +117,20 @@ export interface PendingThread {
   minutesRemaining: number;
   /** Which way a fleet of yours is flying. Absent for `incoming`. */
   leg?: 'outbound' | 'return';
+  /**
+   * Where it is flying, so the client can draw it moving.
+   *
+   * PRESENT ONLY FOR YOUR OWN MISSIONS. An inbound attack never carries a path —
+   * its origin is exactly what Radar L5 is sold for, and a heading would give away
+   * most of what L2's bearing costs. The fog is enforced by omission here, as
+   * everywhere else: there is no field for a modified client to read.
+   */
+  path?: {
+    from: { x: number; y: number; z: number };
+    to: { x: number; y: number; z: number };
+    departAt: Date;
+    arriveAt: Date;
+  };
 }
 
 export interface ReturnPayload {
@@ -302,6 +316,12 @@ export async function pendingThreads(
         mission: missions,
         originName: originPlanet.name,
         targetName: targetPlanet.name,
+        originX: originPlanet.x,
+        originY: originPlanet.y,
+        originZ: originPlanet.z,
+        targetX: targetPlanet.x,
+        targetY: targetPlanet.y,
+        targetZ: targetPlanet.z,
       })
       .from(missions)
       .innerJoin(originPlanet, eq(missions.originPlanetId, originPlanet.id))
@@ -341,6 +361,13 @@ export async function pendingThreads(
       targetName: returning ? row.originName : row.targetName,
       minutesRemaining: minutes,
       ...(m.kind === 'probe' ? {} : { leg: returning ? 'return' : 'outbound' }),
+      // Yours, so you may watch it fly.
+      path: {
+        from: { x: row.originX, y: row.originY, z: row.originZ },
+        to: { x: row.targetX, y: row.targetY, z: row.targetZ },
+        departAt: m.departAt,
+        arriveAt: m.arriveAt,
+      },
     });
   }
 

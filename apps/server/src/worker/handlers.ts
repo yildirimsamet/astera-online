@@ -23,7 +23,7 @@ import {
   players,
   units,
 } from '../db/schema.js';
-import { loadLocked, saveResources, setUnits } from '../services/planet.js';
+import { loadLocked, recomputeWealth, saveResources, setUnits } from '../services/planet.js';
 import { clearMissionUnits, fleetOfMission } from '../services/mission.js';
 import { resolveProbe } from '../services/intel.js';
 import { schedule, type EventRow } from './queue.js';
@@ -231,6 +231,11 @@ export const onMissionArrival: Handler = async ({ db, clock }, event) => {
       });
     }
 
+    // A raid moves stock and destroys units on both sides, so both Wealth figures
+    // are stale the moment it resolves — and Wealth gates who may attack whom.
+    await recomputeWealth(tx, defender.planetId);
+    await recomputeWealth(tx, attackerPlanet.planetId);
+
     await notify(
       tx,
       defender.playerId,
@@ -272,6 +277,8 @@ async function settleReturn(
       })
       .where(eq(planets.id, homePlanetId));
   }
+
+  await recomputeWealth(tx, homePlanetId);
 
   const [planet] = await tx.select().from(planets).where(eq(planets.id, homePlanetId));
   if (planet) {

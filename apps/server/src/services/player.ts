@@ -4,7 +4,7 @@ import type { Db } from '../db/client.js';
 import type { Clock } from '../clock.js';
 import { accounts, buildings, planets, players, seasons, shards, units } from '../db/schema.js';
 import { galaxyOf, occupiedSlots } from './season.js';
-import { GameError } from './planet.js';
+import { GameError, recomputeWealth } from './planet.js';
 
 const STARTING_BUILDINGS = [
   { type: 'CORE', level: 1 },
@@ -112,6 +112,10 @@ export async function joinSeason(
           count,
         })),
       );
+
+      // Without this a fresh commander's Wealth stays at the column default of
+      // zero, and the rank floor then protects them from every attacker forever.
+      await recomputeWealth(tx, planet!.id);
 
       return { playerId: player!.id, planetId: planet!.id, slotIndex: slot.index };
     });

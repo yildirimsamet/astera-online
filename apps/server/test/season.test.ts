@@ -146,6 +146,25 @@ describe('onboarding — guest to planet', () => {
     expect(res.statusCode).toBe(401);
   });
 
+  /**
+   * THE BUG A PLAYER HIT WHILE TRYING TO PLAY.
+   *
+   * `players.wealth` was only ever written when someone bought something, so a
+   * commander who had joined and pressed nothing sat at the column default of
+   * zero — and the rank floor refuses any target below 40% of the attacker's
+   * wealth. Every such player was permanently unattackable once newcomer grace
+   * expired, which inverts the design: doing nothing made you safe.
+   */
+  it('gives a freshly placed commander real Wealth, so they can be attacked', async () => {
+    await openGalaxy();
+    const me = await guest();
+    const placement = (await join(me)).json<JoinResponse>();
+
+    const [player] = await db.select().from(players).where(eq(players.id, placement.playerId));
+    // Starting buildings plus twelve Wasps is worth something, and it must say so.
+    expect(player?.wealth).toBeGreaterThan(0);
+  });
+
   it('reports the season clock and how full the galaxy is', async () => {
     await openGalaxy(60);
     const me = await guest();
