@@ -262,12 +262,12 @@ function Ring({
     <group ref={ref} position={node.position}>
       {/* The halo. Behind the world, so it reads as light coming off the limb. */}
       <mesh position={[0, 0, -0.01]}>
-        <planeGeometry args={[node.radius * 4.4, node.radius * 4.4]} />
+        <planeGeometry args={[node.radius * 2.2, node.radius * 2.2]} />
         <meshBasicMaterial
           map={softGlow()}
           color={colour}
           transparent
-          opacity={node.stance === 'window' ? 0.5 : 0.32}
+          opacity={node.stance === 'window' ? 0.25 : 0.16}
           depthWrite={false}
           blending={THREE.AdditiveBlending}
         />

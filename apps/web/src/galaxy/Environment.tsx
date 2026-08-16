@@ -35,27 +35,34 @@ function paintNebula(): THREE.Texture {
   ctx.fillStyle = '#04060c';
   ctx.fillRect(0, 0, w, h);
 
-  // Cold clouds low, a warm bloom near the core, and a band of dust across the
-  // middle so the horizon reads as a galactic plane rather than a gradient.
+  /*
+   * SPACE IS BLACK. The nebula is what is IN it.
+   *
+   * The previous pass covered the whole sphere in overlapping wide clouds at 0.2–0.3
+   * alpha, accumulating into a flat purple haze — and a uniform mid-tone is the one
+   * thing that destroys depth, because everything in front of it loses its
+   * silhouette. Most of this texture must stay near-black.
+   *
+   * So: few clouds, tight, well separated, low alpha, and steep falloff. Structure
+   * you notice in a couple of places, not a wash you look through everywhere.
+   */
   const clouds: [number, number, number, string][] = [
-    [0.16, 0.40, 0.30, 'rgba(52, 96, 170, 0.30)'],
-    [0.26, 0.58, 0.22, 'rgba(34, 62, 124, 0.26)'],
-    [0.44, 0.30, 0.20, 'rgba(112, 66, 158, 0.20)'],
-    [0.55, 0.46, 0.28, 'rgba(60, 44, 128, 0.22)'],
-    [0.70, 0.60, 0.30, 'rgba(30, 74, 132, 0.24)'],
-    [0.84, 0.32, 0.24, 'rgba(150, 72, 96, 0.18)'],
-    [0.94, 0.62, 0.20, 'rgba(44, 40, 104, 0.20)'],
-    [0.06, 0.72, 0.22, 'rgba(58, 38, 96, 0.20)'],
-    // Two tight, brighter knots. Uniform clouds read as a gradient; the eye needs
-    // somewhere to land before it believes the rest is depth.
-    [0.21, 0.46, 0.09, 'rgba(120, 170, 240, 0.26)'],
-    [0.72, 0.54, 0.07, 'rgba(190, 140, 210, 0.22)'],
+    [0.19, 0.40, 0.17, 'rgba(48, 92, 168, 0.15)'],
+    [0.52, 0.62, 0.15, 'rgba(96, 58, 148, 0.11)'],
+    [0.79, 0.34, 0.16, 'rgba(30, 74, 132, 0.13)'],
+    // Two tight knots. The eye needs somewhere to land before it reads the rest
+    // as distance rather than as fog.
+    [0.22, 0.43, 0.05, 'rgba(132, 178, 244, 0.22)'],
+    [0.77, 0.37, 0.04, 'rgba(198, 146, 214, 0.18)'],
   ];
 
   ctx.globalCompositeOperation = 'lighter';
   for (const [cx, cy, r, colour] of clouds) {
     const gradient = ctx.createRadialGradient(cx * w, cy * h, 0, cx * w, cy * h, r * w);
     gradient.addColorStop(0, colour);
+    // A steep shoulder: the cloud gives up its brightness fast and the sphere is
+    // black again well before the next one starts.
+    gradient.addColorStop(0.45, 'rgba(0,0,0,0)');
     gradient.addColorStop(1, 'rgba(0,0,0,0)');
     ctx.fillStyle = gradient;
     ctx.fillRect(0, 0, w, h);
@@ -186,11 +193,11 @@ export function Starfield() {
     g.setAttribute('position', new THREE.BufferAttribute(positions, 3));
     g.setAttribute('color', new THREE.BufferAttribute(colours, 3));
     const m = new THREE.PointsMaterial({
-      size: 0.055,
+      size: 0.075,
       sizeAttenuation: true,
       vertexColors: true,
       transparent: true,
-      opacity: 0.9,
+      opacity: 1,
       depthWrite: false,
       fog: false,
     });
@@ -288,6 +295,9 @@ export function Disc() {
  * next to. Now they are small, dark, lit from the same direction as everything
  * else, and each one tumbles on its own axis so they are legibly OBJECTS.
  */
+/** How far back along the orbit the tail reaches, in minutes of travel. */
+const TAIL_MINUTES = 0.5;
+
 export function Asteroids({
   asteroids,
   seasonStart,
@@ -296,12 +306,53 @@ export function Asteroids({
   seasonStart: Date;
 }) {
   const ref = useRef<THREE.InstancedMesh>(null);
+  const trails = useRef<THREE.LineSegments>(null);
   const dummy = useMemo(() => new THREE.Object3D(), []);
+
+  /**
+   * The tails.
+   *
+   * Two vertices per rock — where it is, and where it was half a minute ago — in
+   * one buffer, so every trail in the galaxy is a single draw call. The head is
+   * lit and the tail is transparent, which is what makes the direction readable at
+   * a glance: without it these are just rocks sitting in space.
+   */
+  const trailGeometry = useMemo(() => {
+    const count = Math.max(1, asteroids.length);
+    const g = new THREE.BufferGeometry();
+    g.setAttribute('position', new THREE.BufferAttribute(new Float32Array(count * 6), 3));
+
+    const colours = new Float32Array(count * 6);
+    for (let i = 0; i < count; i++) {
+      colours.set([0.62, 0.68, 0.82], i * 6); // head
+      colours.set([0, 0, 0], i * 6 + 3); // tail, faded to nothing
+    }
+    g.setAttribute('color', new THREE.BufferAttribute(colours, 3));
+    return g;
+  }, [asteroids.length]);
 
   useFrame(() => {
     const mesh = ref.current;
     if (!mesh) return;
-    const positions: Vec3Tuple[] = asteroidPositions(asteroids, seasonStart, Date.now());
+    const now = Date.now();
+    const positions: Vec3Tuple[] = asteroidPositions(asteroids, seasonStart, now);
+    const behind: Vec3Tuple[] = asteroidPositions(
+      asteroids,
+      seasonStart,
+      now - TAIL_MINUTES * 60_000,
+    );
+
+    const line = trails.current;
+    if (line) {
+      const attribute = line.geometry.getAttribute('position');
+      positions.forEach((p, i) => {
+        const was = behind[i] ?? p;
+        attribute.setXYZ(i * 2, p[0], p[1], p[2]);
+        attribute.setXYZ(i * 2 + 1, was[0], was[1], was[2]);
+      });
+      attribute.needsUpdate = true;
+    }
+
     positions.forEach((p, i) => {
       dummy.position.set(p[0], p[1], p[2]);
       // Tumbling, keyed off position so it is deterministic and drifts as it orbits.
@@ -314,14 +365,26 @@ export function Asteroids({
   });
 
   return (
-    <instancedMesh
-      ref={ref}
-      args={[undefined, undefined, Math.max(1, asteroids.length)]}
-      frustumCulled={false}
-    >
-      <dodecahedronGeometry args={[0.075, 0]} />
-      {/* Lambert, not basic: a flat fill is exactly what made these read as bugs. */}
-      <meshLambertMaterial color="#5a5f6d" emissive="#0d1119" flatShading />
-    </instancedMesh>
+    <>
+      <lineSegments ref={trails} geometry={trailGeometry} frustumCulled={false}>
+        <lineBasicMaterial
+          vertexColors
+          transparent
+          opacity={0.55}
+          depthWrite={false}
+          blending={THREE.AdditiveBlending}
+        />
+      </lineSegments>
+
+      <instancedMesh
+        ref={ref}
+        args={[undefined, undefined, Math.max(1, asteroids.length)]}
+        frustumCulled={false}
+      >
+        <dodecahedronGeometry args={[0.075, 0]} />
+        {/* Lambert, not basic: a flat fill is what made these read as bugs. */}
+        <meshLambertMaterial color="#5a5f6d" emissive="#0d1119" flatShading />
+      </instancedMesh>
+    </>
   );
 }

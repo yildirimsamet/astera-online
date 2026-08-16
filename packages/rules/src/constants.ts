@@ -140,8 +140,17 @@ export const GALAXY = {
 
   asteroidMin: 8,
   asteroidMax: 14,
-  asteroidPeriodMin: 15,
-  asteroidPeriodMax: 40,
+  /**
+   * Orbital period in minutes. PROVISIONAL.
+   *
+   * Quartered from 15–40. At the old rate a rock crossed its own width in about
+   * twenty seconds, so the disc looked static in any session short enough to
+   * actually play — and a living galaxy that only moves while you are not watching
+   * is not doing its job. Nothing reads these but the renderer: impacts are not
+   * scheduled and the season simulator does not model asteroids at all.
+   */
+  asteroidPeriodMin: 4,
+  asteroidPeriodMax: 10,
   asteroidMassMin: 200,
   asteroidMassMax: 1400,
   asteroidDamagePerMass: 8,
