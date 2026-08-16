@@ -4,7 +4,7 @@ import { AdaptiveDpr, Html, OrbitControls, Preload } from '@react-three/drei';
 import { Bloom, EffectComposer, Vignette } from '@react-three/postprocessing';
 import * as THREE from 'three';
 import type { GalaxyPlanet } from '../api/schemas.js';
-import { Asteroids, Core, Disc, Dust, Nebula, Starfield } from './Environment.jsx';
+import { Asteroids, BrightStars, Core, Disc, Dust, Nebula, Starfield } from './Environment.jsx';
 import { PlanetField } from './PlanetField.jsx';
 import { DISC_RADIUS, asteroidsOf, planetNodes, toWorld, type PlanetNode } from './scene.js';
 import { installTapGuard, wasTap } from './tap.js';
@@ -91,6 +91,7 @@ export function GalaxyCanvas({
       <Nebula />
       <Core />
       <Starfield />
+      <BrightStars />
       <Dust />
       <Disc />
 

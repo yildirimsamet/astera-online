@@ -1,7 +1,8 @@
-import { useMemo, useRef } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import type { AsteroidSpec } from '@blindspace/rules';
+import { paintNebulaCanvas } from './nebula.js';
 import { DISC_RADIUS, asteroidPositions, type Vec3Tuple } from './scene.js';
 
 /**
@@ -17,79 +18,65 @@ import { DISC_RADIUS, asteroidPositions, type Vec3Tuple } from './scene.js';
 /* ── nebula ─────────────────────────────────────────────────── */
 
 /**
- * Painted once, at startup, on a 2D canvas.
+ * The backdrop.
  *
- * A procedural fbm shader would look marginally better and would run per-pixel,
- * every frame, on a phone. This runs once and then costs nothing, which is the
- * right trade for something the player is never meant to look at directly.
+ * Generated rather than painted — see `nebula.ts` for why filaments and dust
+ * matter. It is a few hundred milliseconds of CPU, so it is computed AFTER first
+ * paint and faded in: the galaxy opens instantly on black and stars, and the gas
+ * arrives a moment later. Blocking the first frame on scenery would be the wrong
+ * trade in a game people open for four minutes.
  */
-function paintNebula(): THREE.Texture {
-  const w = 1024;
-  const h = 512;
-  const canvas = document.createElement('canvas');
-  canvas.width = w;
-  canvas.height = h;
-  const ctx = canvas.getContext('2d');
-  if (!ctx) return new THREE.Texture();
-
-  ctx.fillStyle = '#04060c';
-  ctx.fillRect(0, 0, w, h);
-
-  /*
-   * SPACE IS BLACK. The nebula is what is IN it.
-   *
-   * The previous pass covered the whole sphere in overlapping wide clouds at 0.2–0.3
-   * alpha, accumulating into a flat purple haze — and a uniform mid-tone is the one
-   * thing that destroys depth, because everything in front of it loses its
-   * silhouette. Most of this texture must stay near-black.
-   *
-   * So: few clouds, tight, well separated, low alpha, and steep falloff. Structure
-   * you notice in a couple of places, not a wash you look through everywhere.
-   */
-  const clouds: [number, number, number, string][] = [
-    [0.19, 0.40, 0.17, 'rgba(48, 92, 168, 0.15)'],
-    [0.52, 0.62, 0.15, 'rgba(96, 58, 148, 0.11)'],
-    [0.79, 0.34, 0.16, 'rgba(30, 74, 132, 0.13)'],
-    // Two tight knots. The eye needs somewhere to land before it reads the rest
-    // as distance rather than as fog.
-    [0.22, 0.43, 0.05, 'rgba(132, 178, 244, 0.22)'],
-    [0.77, 0.37, 0.04, 'rgba(198, 146, 214, 0.18)'],
-  ];
-
-  ctx.globalCompositeOperation = 'lighter';
-  for (const [cx, cy, r, colour] of clouds) {
-    const gradient = ctx.createRadialGradient(cx * w, cy * h, 0, cx * w, cy * h, r * w);
-    gradient.addColorStop(0, colour);
-    // A steep shoulder: the cloud gives up its brightness fast and the sphere is
-    // black again well before the next one starts.
-    gradient.addColorStop(0.45, 'rgba(0,0,0,0)');
-    gradient.addColorStop(1, 'rgba(0,0,0,0)');
-    ctx.fillStyle = gradient;
-    ctx.fillRect(0, 0, w, h);
-  }
-
-  // Grain, so the clouds have texture instead of reading as airbrush.
-  const grain = ctx.getImageData(0, 0, w, h);
-  for (let i = 0; i < grain.data.length; i += 4) {
-    const n = (Math.random() - 0.5) * 5;
-    grain.data[i] = Math.max(0, Math.min(255, (grain.data[i] ?? 0) + n));
-    grain.data[i + 1] = Math.max(0, Math.min(255, (grain.data[i + 1] ?? 0) + n));
-    grain.data[i + 2] = Math.max(0, Math.min(255, (grain.data[i + 2] ?? 0) + n));
-  }
-  ctx.putImageData(grain, 0, 0);
-
-  const texture = new THREE.CanvasTexture(canvas);
-  texture.colorSpace = THREE.SRGBColorSpace;
-  texture.mapping = THREE.EquirectangularReflectionMapping;
-  return texture;
-}
-
 export function Nebula() {
-  const texture = useMemo(paintNebula, []);
+  const [texture, setTexture] = useState<THREE.Texture | null>(null);
+  const material = useRef<THREE.MeshBasicMaterial>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    const build = (): void => {
+      if (cancelled) return;
+      const map = new THREE.CanvasTexture(paintNebulaCanvas());
+      map.colorSpace = THREE.SRGBColorSpace;
+      map.mapping = THREE.EquirectangularReflectionMapping;
+      // Seamless the whole way round; the generator samples on a cylinder.
+      map.wrapS = THREE.RepeatWrapping;
+      setTexture(map);
+    };
+
+    // Yield to the browser so the first frame is already on screen. Safari still
+    // has no requestIdleCallback, hence the timeout path.
+    const supportsIdle = 'requestIdleCallback' in window;
+    const handle = supportsIdle
+      ? window.requestIdleCallback(build, { timeout: 900 })
+      : window.setTimeout(build, 60);
+
+    return () => {
+      cancelled = true;
+      if (supportsIdle) window.cancelIdleCallback(handle);
+      else window.clearTimeout(handle);
+    };
+  }, []);
+
+  // Fade in, so the gas arrives rather than appearing.
+  useFrame((_, delta) => {
+    const m = material.current;
+    if (!m || !texture) return;
+    if (m.opacity < 1) m.opacity = Math.min(1, m.opacity + delta * 0.9);
+  });
+
+  if (!texture) return null;
+
   return (
     <mesh scale={[-1, 1, 1]} renderOrder={-100}>
-      <sphereGeometry args={[DISC_RADIUS * 6, 32, 20]} />
-      <meshBasicMaterial map={texture} side={THREE.BackSide} depthWrite={false} fog={false} />
+      <sphereGeometry args={[DISC_RADIUS * 6, 48, 32]} />
+      <meshBasicMaterial
+        ref={material}
+        map={texture}
+        side={THREE.BackSide}
+        depthWrite={false}
+        fog={false}
+        transparent
+        opacity={0}
+      />
     </mesh>
   );
 }
@@ -167,44 +154,183 @@ export function Core() {
 
 /* ── stars and dust ─────────────────────────────────────────── */
 
-/** Two shells, colour-varied. A field of identical white dots reads as noise. */
+/**
+ * The starfield.
+ *
+ * Three things separate a photographed sky from a scatter of white dots, and all
+ * three are here:
+ *
+ *   A POWER LAW. Real skies are overwhelmingly faint stars with a handful of
+ *   bright ones. Uniform brightness is the single biggest tell of a fake sky.
+ *
+ *   TEMPERATURE. Stars run blue-white through yellow to orange. Not a rainbow —
+ *   a narrow, physical range.
+ *
+ *   A GALACTIC BAND. Half the stars are concentrated toward the disc plane, which
+ *   is what you see from inside a galaxy, and it ties the sky to the playfield
+ *   instead of floating unrelated behind it.
+ */
 export function Starfield() {
   const { geometry, material } = useMemo(() => {
-    const count = 2200;
+    const count = 4200;
     const positions = new Float32Array(count * 3);
     const colours = new Float32Array(count * 3);
+    const sizes = new Float32Array(count);
     const tint = new THREE.Color();
 
     for (let i = 0; i < count; i++) {
       const theta = Math.random() * Math.PI * 2;
-      const phi = Math.acos(2 * Math.random() - 1);
-      const r = DISC_RADIUS * (2.6 + Math.random() * 2.4);
+      // Half the sky is in the band, half is scattered everywhere.
+      const inBand = Math.random() < 0.5;
+      const phi = inBand
+        ? Math.PI / 2 + (Math.random() - 0.5) * 0.42
+        : Math.acos(2 * Math.random() - 1);
+      const r = DISC_RADIUS * (2.8 + Math.random() * 2.6);
+
       positions[i * 3] = r * Math.sin(phi) * Math.cos(theta);
-      positions[i * 3 + 1] = r * Math.cos(phi) * 0.6;
+      positions[i * 3 + 1] = r * Math.cos(phi);
       positions[i * 3 + 2] = r * Math.sin(phi) * Math.sin(theta);
 
-      // Mostly cold, occasionally warm — the variance is what sells it.
-      const warm = Math.random() < 0.18;
-      tint.setHSL(warm ? 0.08 : 0.58, warm ? 0.5 : 0.35, 0.6 + Math.random() * 0.35);
+      // Magnitude: cubed uniform, so most stars are faint and a few are not.
+      const magnitude = Math.pow(Math.random(), 3);
+      // The floor matters more than the ceiling: a sky whose faint stars vanish
+      // has empty patches, and empty patches read as a black screen rather than
+      // as distance.
+      sizes[i] = 0.058 + magnitude * 0.19;
+
+      // 3000K to 11000K, roughly — orange through white to blue-white.
+      const warmth = Math.random();
+      const hue = warmth < 0.22 ? 0.07 : warmth < 0.55 ? 0.13 : 0.58;
+      const saturation = warmth < 0.55 ? 0.45 : 0.28;
+      tint.setHSL(hue, saturation, 0.66 + magnitude * 0.34);
       colours.set([tint.r, tint.g, tint.b], i * 3);
     }
 
     const g = new THREE.BufferGeometry();
     g.setAttribute('position', new THREE.BufferAttribute(positions, 3));
     g.setAttribute('color', new THREE.BufferAttribute(colours, 3));
-    const m = new THREE.PointsMaterial({
-      size: 0.075,
-      sizeAttenuation: true,
-      vertexColors: true,
+    g.setAttribute('size', new THREE.BufferAttribute(sizes, 1));
+
+    /**
+     * A tiny shader, for one reason: per-star size.
+     *
+     * `PointsMaterial` has a single size for the whole cloud, which forces every
+     * star to the same brightness and throws away the power law above. Eleven
+     * lines of GLSL buy the entire effect.
+     */
+    const m = new THREE.ShaderMaterial({
       transparent: true,
-      opacity: 1,
       depthWrite: false,
+      blending: THREE.AdditiveBlending,
       fog: false,
+      uniforms: { uScale: { value: 700 } },
+      vertexShader: `
+        attribute float size;
+        varying vec3 vColour;
+        uniform float uScale;
+        void main() {
+          vColour = color;
+          vec4 mv = modelViewMatrix * vec4(position, 1.0);
+          gl_PointSize = size * uScale / -mv.z;
+          gl_Position = projectionMatrix * mv;
+        }
+      `,
+      fragmentShader: `
+        varying vec3 vColour;
+        void main() {
+          // Round, with a soft falloff — a square star is a dead giveaway.
+          float d = length(gl_PointCoord - vec2(0.5));
+          float alpha = smoothstep(0.5, 0.06, d);
+          gl_FragColor = vec4(vColour, alpha);
+        }
+      `,
+      vertexColors: true,
     });
+
     return { geometry: g, material: m };
   }, []);
 
-  return <points geometry={geometry} material={material} />;
+  return <points geometry={geometry} material={material} frustumCulled={false} />;
+}
+
+/**
+ * The brightest stars, with diffraction spikes.
+ *
+ * The four-point cross is the visual signature of a telescope photograph — it
+ * comes from the vanes holding the secondary mirror, and it is the single detail
+ * that makes an image read as Hubble rather than as a wallpaper. Twenty sprites,
+ * so it costs nothing.
+ */
+export function BrightStars() {
+  const texture = useMemo(() => {
+    const size = 128;
+    const canvas = document.createElement('canvas');
+    canvas.width = canvas.height = size;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return new THREE.CanvasTexture(canvas);
+
+    const c = size / 2;
+    const halo = ctx.createRadialGradient(c, c, 0, c, c, c);
+    halo.addColorStop(0, 'rgba(255,255,255,1)');
+    halo.addColorStop(0.12, 'rgba(220,235,255,0.55)');
+    halo.addColorStop(0.4, 'rgba(180,210,255,0.10)');
+    halo.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.fillStyle = halo;
+    ctx.fillRect(0, 0, size, size);
+
+    // The spikes themselves: two tapered bars, drawn as gradients so they fade.
+    ctx.globalCompositeOperation = 'lighter';
+    for (const vertical of [false, true]) {
+      const g = vertical
+        ? ctx.createLinearGradient(0, 0, 0, size)
+        : ctx.createLinearGradient(0, 0, size, 0);
+      g.addColorStop(0, 'rgba(255,255,255,0)');
+      g.addColorStop(0.42, 'rgba(255,255,255,0.30)');
+      g.addColorStop(0.5, 'rgba(255,255,255,0.85)');
+      g.addColorStop(0.58, 'rgba(255,255,255,0.30)');
+      g.addColorStop(1, 'rgba(255,255,255,0)');
+      ctx.fillStyle = g;
+      if (vertical) ctx.fillRect(c - 1, 0, 2, size);
+      else ctx.fillRect(0, c - 1, size, 2);
+    }
+
+    return new THREE.CanvasTexture(canvas);
+  }, []);
+
+  const stars = useMemo(
+    () =>
+      Array.from({ length: 22 }, () => {
+        const theta = Math.random() * Math.PI * 2;
+        const phi = Math.acos(2 * Math.random() - 1);
+        const r = DISC_RADIUS * 3.6;
+        return {
+          position: [
+            r * Math.sin(phi) * Math.cos(theta),
+            r * Math.cos(phi) * 0.8,
+            r * Math.sin(phi) * Math.sin(theta),
+          ] as [number, number, number],
+          scale: DISC_RADIUS * (0.10 + Math.random() * 0.11),
+        };
+      }),
+    [],
+  );
+
+  return (
+    <>
+      {stars.map((star, i) => (
+        <sprite key={i} position={star.position} scale={[star.scale, star.scale, 1]}>
+          <spriteMaterial
+            map={texture}
+            transparent
+            depthWrite={false}
+            blending={THREE.AdditiveBlending}
+            fog={false}
+            opacity={0.85}
+          />
+        </sprite>
+      ))}
+    </>
+  );
 }
 
 /**
@@ -298,6 +424,35 @@ export function Disc() {
 /** How far back along the orbit the tail reaches, in minutes of travel. */
 const TAIL_MINUTES = 0.5;
 
+/**
+ * A rock, generated rather than modelled.
+ *
+ * An icosahedron with every vertex pushed in or out by a hash of its own position:
+ * lumpy, faceted, and different for every seed. This is one of the few places
+ * where procedural geometry genuinely beats an asset — real asteroids are
+ * irregular lumps, which is exactly what noise produces, and three variants at
+ * thirty lines cost nothing to load.
+ */
+function rockGeometry(seed: number): THREE.BufferGeometry {
+  const geometry = new THREE.IcosahedronGeometry(0.075, 1);
+  const position = geometry.getAttribute('position');
+  const v = new THREE.Vector3();
+
+  for (let i = 0; i < position.count; i++) {
+    v.fromBufferAttribute(position, i);
+    // Hash the direction, so shared vertices displace identically and the surface
+    // stays closed rather than splitting at the seams.
+    const h = Math.sin(v.x * 91.7 + v.y * 47.3 + v.z * 133.1 + seed * 12.9) * 43758.5453;
+    const jitter = 0.72 + (h - Math.floor(h)) * 0.62;
+    v.multiplyScalar(jitter);
+    position.setXYZ(i, v.x, v.y, v.z);
+  }
+
+  position.needsUpdate = true;
+  geometry.computeVertexNormals();
+  return geometry;
+}
+
 export function Asteroids({
   asteroids,
   seasonStart,
@@ -308,6 +463,7 @@ export function Asteroids({
   const ref = useRef<THREE.InstancedMesh>(null);
   const trails = useRef<THREE.LineSegments>(null);
   const dummy = useMemo(() => new THREE.Object3D(), []);
+  const rock = useMemo(() => rockGeometry(7), []);
 
   /**
    * The tails.
@@ -378,10 +534,9 @@ export function Asteroids({
 
       <instancedMesh
         ref={ref}
-        args={[undefined, undefined, Math.max(1, asteroids.length)]}
+        args={[rock, undefined, Math.max(1, asteroids.length)]}
         frustumCulled={false}
       >
-        <dodecahedronGeometry args={[0.075, 0]} />
         {/* Lambert, not basic: a flat fill is what made these read as bugs. */}
         <meshLambertMaterial color="#5a5f6d" emissive="#0d1119" flatShading />
       </instancedMesh>
