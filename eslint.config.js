@@ -83,6 +83,27 @@ export default defineConfig(
   },
 
   /**
+   * Development tooling, deliberately exempt from type-aware linting.
+   *
+   * These scripts run in Node but carry code that executes inside a browser page
+   * — everything passed to `page.evaluate` is compiled and run somewhere else
+   * entirely. Type-aware rules need one type context per file and there are two
+   * here, so they report every DOM reference as unsafe. Turning them off for this
+   * directory is honest; annotating browser code as if it were Node would not be.
+   *
+   * Nothing here ships: no application code imports it.
+   */
+  {
+    files: ['tools/**/*.mjs'],
+    extends: [tseslint.configs.disableTypeChecked],
+    languageOptions: { globals: { ...globals.node, ...globals.browser } },
+    rules: {
+      'no-undef': 'off',
+      'no-console': 'off',
+    },
+  },
+
+  /**
    * The client runs in a browser, not in Node. Without this every `window`,
    * `document` and `setTimeout` reads as an undefined global.
    */

@@ -38,7 +38,9 @@ const settle = async (ms = 2500) => {
   await page.waitForTimeout(ms);
 };
 
-await page.goto(APP, { waitUntil: 'networkidle' });
+// Not `networkidle`: once signed in the event stream holds a connection open, so
+// the network never goes idle.
+await page.goto(APP, { waitUntil: 'load' });
 await page.waitForTimeout(600);
 await shot('01-entry');
 

@@ -50,8 +50,23 @@ export function OwnFleets({ pending }: { pending: readonly PendingThread[] }) {
   );
 }
 
+/**
+ * A probe reads differently from a fleet, on purpose.
+ *
+ * They are different bets — one costs 220 alloy and some minutes, the other costs
+ * ships you cannot get back — and a player glancing at the disc should never have
+ * to work out which of the two is in the air. Warm and dashed for the scout, cold
+ * and solid for the fleet.
+ */
+const ROUTE = {
+  fleet: { colour: '#6fd3e0', opacity: 0.22, scale: 0.34 },
+  probe: { colour: '#d9a441', opacity: 0.3, scale: 0.24 },
+} as const;
+
 function Flight({ thread }: { thread: PendingThread }) {
   const path = thread.path;
+  const isProbe = thread.kind === 'probe';
+  const style = isProbe ? ROUTE.probe : ROUTE.fleet;
   const camera = useThree((state) => state.camera);
   const group = useRef<THREE.Group>(null);
   const trail = useRef<THREE.Mesh>(null);
@@ -67,6 +82,8 @@ function Flight({ thread }: { thread: PendingThread }) {
   const line = useMemo(() => {
     const g = new THREE.BufferGeometry();
     g.setAttribute('position', new THREE.Float32BufferAttribute([...from, ...to], 3));
+    // Dashes need the per-vertex distance along the line; without this call a
+    // dashed material silently renders solid.
     return g;
   }, [from, to]);
 
@@ -92,14 +109,26 @@ function Flight({ thread }: { thread: PendingThread }) {
   return (
     <>
       {/* The route, drawn faintly. Yours, so there is nothing to hide. */}
-      <lineSegments geometry={line}>
-        <lineBasicMaterial
-          color="#6fd3e0"
-          transparent
-          opacity={0.22}
-          depthWrite={false}
-          blending={THREE.AdditiveBlending}
-        />
+      <lineSegments geometry={line} onUpdate={(self) => self.computeLineDistances()}>
+        {isProbe ? (
+          <lineDashedMaterial
+            color={style.colour}
+            dashSize={0.28}
+            gapSize={0.22}
+            transparent
+            opacity={style.opacity}
+            depthWrite={false}
+            blending={THREE.AdditiveBlending}
+          />
+        ) : (
+          <lineBasicMaterial
+            color={style.colour}
+            transparent
+            opacity={style.opacity}
+            depthWrite={false}
+            blending={THREE.AdditiveBlending}
+          />
+        )}
       </lineSegments>
 
       <group ref={group}>
@@ -107,7 +136,7 @@ function Flight({ thread }: { thread: PendingThread }) {
           <planeGeometry args={[0.7, 0.16]} />
           <meshBasicMaterial
             map={glow}
-            color="#7fc9ff"
+            color={isProbe ? '#f0c070' : '#7fc9ff'}
             transparent
             opacity={0.55}
             depthWrite={false}
@@ -115,11 +144,75 @@ function Flight({ thread }: { thread: PendingThread }) {
           />
         </mesh>
         <mesh>
-          <planeGeometry args={[0.34, 0.34]} />
+          <planeGeometry args={[style.scale, style.scale]} />
           <meshBasicMaterial map={texture} transparent alphaTest={0.2} depthWrite={false} />
         </mesh>
       </group>
     </>
+  );
+}
+
+/**
+ * WHAT YOU ARE LOOKING AT.
+ *
+ * A faint beam from your world to each planet a telescope slot is pointed at. Only
+ * you can see it, because it is drawn from your own intel payload and nothing
+ * about a watch ever leaves your client — that asymmetry is the design's, not an
+ * accident: watching is silent and the target is never told.
+ *
+ * Tapered rather than uniform. The beam is bright where you are and fades to
+ * nothing before it arrives, which reads as *looking* rather than as a link
+ * between two things, and keeps it from competing with the fleet routes.
+ */
+export function WatchBeams({
+  from,
+  targets,
+}: {
+  from: Vec3Tuple;
+  targets: readonly Vec3Tuple[];
+}) {
+  const material = useRef<THREE.LineBasicMaterial>(null);
+
+  const geometry = useMemo(() => {
+    if (targets.length === 0) return null;
+    const positions: number[] = [];
+    const colours: number[] = [];
+    for (const target of targets) {
+      // Stop short of the target: a line that touches the planet reads as a tether.
+      const end: Vec3Tuple = [
+        from[0] + (target[0] - from[0]) * 0.82,
+        from[1] + (target[1] - from[1]) * 0.82,
+        from[2] + (target[2] - from[2]) * 0.82,
+      ];
+      positions.push(...from, ...end);
+      colours.push(0.85, 0.92, 1, 0, 0, 0);
+    }
+    const g = new THREE.BufferGeometry();
+    g.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+    g.setAttribute('color', new THREE.Float32BufferAttribute(colours, 3));
+    return g;
+  }, [from, targets]);
+
+  // A slow breath, so the beam reads as an instrument doing something rather than
+  // a line someone drew.
+  useFrame(({ clock }) => {
+    const m = material.current;
+    if (m) m.opacity = 0.16 + Math.sin(clock.elapsedTime * 1.1) * 0.05;
+  });
+
+  if (!geometry) return null;
+
+  return (
+    <lineSegments geometry={geometry} frustumCulled={false}>
+      <lineBasicMaterial
+        ref={material}
+        vertexColors
+        transparent
+        opacity={0.18}
+        depthWrite={false}
+        blending={THREE.AdditiveBlending}
+      />
+    </lineSegments>
   );
 }
 

@@ -55,6 +55,7 @@ export function GalaxyView({
         planets={planets}
         pending={pending.data?.pending ?? []}
         contacts={traffic.data?.contacts ?? []}
+        watching={(intel.data?.watching ?? []).map((w) => w.targetPlanetId)}
         seed={season.data?.seed}
         seasonStart={season.data?.startsAt}
         selectedId={selectedId}

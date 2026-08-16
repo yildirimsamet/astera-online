@@ -5,7 +5,7 @@ import { Bloom, EffectComposer, Vignette } from '@react-three/postprocessing';
 import * as THREE from 'three';
 import type { Contact, GalaxyPlanet, PendingThread } from '../api/schemas.js';
 import { Asteroids, BrightStars, Core, Disc, Dust, Nebula, Starfield } from './Environment.jsx';
-import { OwnFleets, Traffic } from './Fleets.jsx';
+import { OwnFleets, Traffic, WatchBeams } from './Fleets.jsx';
 import { PlanetField } from './PlanetField.jsx';
 import { DISC_RADIUS, asteroidsOf, planetNodes, toWorld, type PlanetNode } from './scene.js';
 import { installTapGuard, wasTap } from './tap.js';
@@ -42,6 +42,8 @@ export interface GalaxyCanvasProps {
   pending: readonly PendingThread[];
   /** Everyone else's, already stripped of anything identifying by the server. */
   contacts: readonly Contact[];
+  /** Ids of the planets your telescopes are pointed at. Yours alone to know. */
+  watching: readonly string[];
   seed: number | undefined;
   seasonStart: Date | undefined;
   selectedId: string | null;
@@ -54,6 +56,7 @@ export function GalaxyCanvas({
   planets,
   pending,
   contacts,
+  watching,
   seed,
   seasonStart,
   selectedId,
@@ -67,6 +70,11 @@ export function GalaxyCanvas({
   }, [planets]);
 
   const asteroids = useMemo(() => (seed === undefined ? [] : asteroidsOf(seed)), [seed]);
+
+  const watched = useMemo(() => {
+    const wanted = new Set(watching);
+    return planets.filter((p) => wanted.has(p.id)).map((p) => toWorld(p.position));
+  }, [planets, watching]);
 
   useEffect(() => installTapGuard(), []);
 
@@ -108,6 +116,7 @@ export function GalaxyCanvas({
 
       <Suspense fallback={null}>
         <PlanetField nodes={nodes} selectedId={selectedId} onSelect={onSelect} />
+        <WatchBeams from={home} targets={watched} />
         <OwnFleets pending={pending} />
         <Traffic contacts={contacts} />
         <Labels nodes={nodes} selectedId={selectedId} />
