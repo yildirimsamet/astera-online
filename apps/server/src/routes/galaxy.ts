@@ -3,6 +3,7 @@ import type { FastifyInstance } from 'fastify';
 import { buildings, planets, players } from '../db/schema.js';
 import { GameError } from '../services/planet.js';
 import { readTelescopes } from '../services/intel.js';
+import { galaxyTraffic } from '../services/traffic.js';
 import { requireAuth } from './auth.js';
 
 /**
@@ -75,6 +76,34 @@ export function registerGalaxyRoutes(app: FastifyInstance): void {
             : {}),
         };
       }),
+    };
+  });
+
+  /**
+   * Movement in the galaxy, deliberately unattributable.
+   *
+   * Exists so the 3D surface has life in it without handing away the intel layer:
+   * contacts appear mid-flight only, offset by a seeded jitter wider than the
+   * planets are spaced, and carry no id, owner, kind or destination. See
+   * `services/traffic.ts` for why each of those three rules is load-bearing.
+   */
+  app.get('/api/galaxy/traffic', { preHandler: requireAuth }, async (req) => {
+    const mine = await app.db
+      .select({ player: players, planet: planets })
+      .from(players)
+      .innerJoin(planets, eq(planets.playerId, players.id))
+      .where(eq(players.accountId, req.accountId!))
+      .limit(1);
+    const self = mine[0];
+    if (!self) throw new GameError('NO_PLANET', 'Join a galaxy first', 404);
+
+    return {
+      contacts: await galaxyTraffic(
+        app.db,
+        self.player.seasonId,
+        self.planet.id,
+        app.clock.now(),
+      ),
     };
   });
 

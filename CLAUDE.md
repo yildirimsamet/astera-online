@@ -261,11 +261,14 @@ features. **Do not start the 3D map to avoid this.**
 
 Next task is at the top. Full detail and acceptance criteria in `docs/roadmap.md`.
 
-1. **Play it for two days in real gaps**, on a phone, then fix the highest-impact
-   concrete problems. *This is the next job and it is not a build job.* The client is
-   done enough to judge; what it has never had is a player.
-2. **3D galaxy** — R3F disc, instanced planets, camera + gestures. Timeboxed to 3 weeks.
-3. **Season lifecycle** — `season_end` handler, freeze, wipe, account record.
+1. **The 3D galaxy as the shell** — a persistent R3F canvas the whole game runs inside,
+   with planet management as panels over it. **Not a fifth screen.** D1 says the galaxy
+   is *"an interface rather than a target list"*; Phase 4 shipped the target list, which
+   was a misreading of sequencing as product shape.
+2. **Play it for two days in real gaps**, on a phone, then fix what that reveals.
+3. **Battle report** — the loop's closing link. Reports are written and never shown;
+   the design calls the battle report the most accurate intel in the game.
+4. **Season lifecycle** — `season_end` handler, freeze, wipe, account record.
 
 ## KNOWN RISKS
 
@@ -274,7 +277,7 @@ Next task is at the top. Full detail and acceptance criteria in `docs/roadmap.md
 | **Information is invisible.** The whole game lives in a data layer with no physical presence. If the intel feed reads as a boring list, there is no game. | Highest | Disproportionate UX effort on the intel screen and return overlay. Test with people who are not you. |
 | **Empty shard.** Async PvP with 12 players is nothing. | High | Do not open a second shard until the first fills. Pre-fill season 1 by invitation. |
 | **Nobody scouts.** Players skip the intel layer and raid whoever is nearest — the game degrades into a worse OGame. | High | Track scout-before-attack rate; target ≥50% by day 3. |
-| **3D scope creep.** The galaxy view is the most seductive and least load-bearing part. | High | Hard 3-week fence. Points, lines, labels. No models, textures or shaders. |
+| **3D scope creep.** Easy to gold-plate a surface that is now load-bearing. | High | Instanced spheres, lines, DOM labels, one emissive material. Use assets that exist; commission nothing mid-phase. |
 | **Casual players get farmed.** The 2-logins/day archetype finishes at −10k to −19k Dominion, and that is the target user. | Open | Needs real players, not more simulation. Top of the playtest agenda. |
 | **Solo burnout.** Month four is where solo projects die. | Real | Ship something two people can play early, even if ugly. |
 

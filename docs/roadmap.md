@@ -16,9 +16,9 @@ known risk?*
 | 1 · Backend foundation | ✅ Done — `9c169ef` |
 | 2 · Intel layer | ✅ Done — `2afdf97` |
 | 3 · Return moment & re-engagement | ✅ Done |
-| 4 · Playable loop (thin client) | ✅ Done — the game can be played |
-| **4.5 · Play it for two days in real gaps** | **← NEXT. Not a build phase.** |
-| 5 · 3D galaxy | Not started |
+| 4 · Playable loop (thin client) | ✅ Done — proved the loop; the shell was wrong |
+| **5 · The galaxy IS the game — 3D surface** | **← NEXT. The product's actual shape.** |
+| 5.5 · Play it for two days in real gaps | After the shell lands |
 | 6 · Season lifecycle & leaderboard | Not started |
 | 7 · Playtest & balance | Not started |
 
@@ -171,20 +171,49 @@ Found by building the strip that displays it, which is the whole argument for th
 
 ---
 
-## Phase 5 · 3D galaxy
+## Phase 5 · The galaxy IS the game — the 3D surface
 
-R3F disc, instanced planets (1 draw call), camera + gestures, HOME button, DOM labels,
-semantic LOD, client-side fleet interpolation from timestamps.
+**This is not a view. It is the shell the whole game runs inside.**
 
-**Acceptance:** 300 planets at 60 fps on a mid-range Android. HOME recovers the camera
-from any state.
+`decisions.md` D1 (LOCKED) says it in one line — the information game *"makes the 3D
+galaxy an interface rather than a target list"* — and A2 chose R3F precisely so 3D and
+DOM compose in one tree, *"which matters when the game is 90% interface"*.
 
-> **Hard fence: 3 weeks.** Points, lines, labels, one emissive material. **No models, no
-> textures, no custom shaders, no post-processing.** This is the most seductive and least
-> load-bearing part of the project. If it runs over, it ships as-is and the time comes out
-> of polish — never out of the intel layer.
+An earlier draft of this file described 3D as the most seductive and least load-bearing
+part of the project and fenced it behind everything else. That was a scope-protection
+instinct applied to the wrong thing, and following it produced a tabbed list app: the
+Phase 4 client is menus with a galaxy table inside them. Sequencing 3D late was correct;
+concluding that the finished game is menus was not. **D1 outranks this file** — the
+decision hierarchy in `CLAUDE.md` puts the decision log at 3 and does not list the
+roadmap at all.
 
----
+**The shape:**
+
+- A persistent R3F canvas is the home surface. The disc, your planet, everyone else's.
+- Planet management is panels that slide over the live galaxy — the galaxy never closes.
+- Asteroids orbit, visibly, computed from the clock (`asteroidPosition`, already pure).
+- Your fleets fly, with trails, interpolated from timestamps (`interpolatePosition`,
+  already pure). Radar contacts appear as threat vectors inside the lead window.
+- **The fog becomes the art.** A planet you do not watch is a dark sphere with no
+  detail. One you watch is lit — and if its fleet is away, its orbit is visibly empty.
+  The telescope reading stops being a text row and becomes a thing you see.
+
+**Other players' fleets are shown as unattributable contacts.** Visible only between 25%
+and 85% of their flight, offset by a seeded jitter wider than the planets are spaced, and
+carrying no id, owner, kind or destination. Motion without routes: you learn the galaxy is
+busy, never whose fleet left. Anything more precise deletes D1.
+
+**Camera:** perspective, constrained orbit (tilt clamped), drag to orbit, pinch to zoom,
+two-finger pan, HOME recovers from any state. Free orbit was rejected — one-handed
+portrait gets lost.
+
+**Acceptance:** 300 planets at 60 fps on a mid-range Android, one draw call for the
+planet field. HOME recovers the camera from any state. A player can run a whole session —
+read the situation, inspect a neighbour, launch — without the galaxy ever leaving the
+screen.
+
+**Still no gold-plating:** instanced spheres, lines, DOM labels, one emissive material.
+Models and textures only where an asset already exists.
 
 ## Phase 6 · Season lifecycle & leaderboard
 

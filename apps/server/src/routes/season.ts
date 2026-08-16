@@ -32,6 +32,15 @@ export function registerSeasonRoutes(app: FastifyInstance, shardCode: string): v
     return {
       seasonId: season.id,
       shard: shard.code,
+      /**
+       * The galaxy is never stored slot by slot — it is regenerated from this seed
+       * wherever it is needed. Handing it to the client lets the 3D surface build
+       * the disc and the asteroid orbits locally instead of downloading them, which
+       * is what A5 meant by "nothing is stored that a formula and a clock can
+       * derive". It reveals nothing: the layout is public, and every planet in it
+       * is already returned by /api/galaxy.
+       */
+      seed: season.seed,
       status: season.status,
       startsAt: season.startsAt,
       endsAt: season.endsAt,
