@@ -38,12 +38,18 @@ function paintNebula(): THREE.Texture {
   // Cold clouds low, a warm bloom near the core, and a band of dust across the
   // middle so the horizon reads as a galactic plane rather than a gradient.
   const clouds: [number, number, number, string][] = [
-    [0.18, 0.42, 0.34, 'rgba(38, 68, 122, 0.16)'],
-    [0.32, 0.62, 0.26, 'rgba(22, 44, 88, 0.14)'],
-    [0.54, 0.38, 0.30, 'rgba(74, 48, 116, 0.12)'],
-    [0.72, 0.55, 0.34, 'rgba(28, 58, 104, 0.13)'],
-    [0.88, 0.34, 0.22, 'rgba(104, 60, 82, 0.09)'],
-    [0.06, 0.70, 0.24, 'rgba(46, 32, 78, 0.11)'],
+    [0.16, 0.40, 0.30, 'rgba(52, 96, 170, 0.30)'],
+    [0.26, 0.58, 0.22, 'rgba(34, 62, 124, 0.26)'],
+    [0.44, 0.30, 0.20, 'rgba(112, 66, 158, 0.20)'],
+    [0.55, 0.46, 0.28, 'rgba(60, 44, 128, 0.22)'],
+    [0.70, 0.60, 0.30, 'rgba(30, 74, 132, 0.24)'],
+    [0.84, 0.32, 0.24, 'rgba(150, 72, 96, 0.18)'],
+    [0.94, 0.62, 0.20, 'rgba(44, 40, 104, 0.20)'],
+    [0.06, 0.72, 0.22, 'rgba(58, 38, 96, 0.20)'],
+    // Two tight, brighter knots. Uniform clouds read as a gradient; the eye needs
+    // somewhere to land before it believes the rest is depth.
+    [0.21, 0.46, 0.09, 'rgba(120, 170, 240, 0.26)'],
+    [0.72, 0.54, 0.07, 'rgba(190, 140, 210, 0.22)'],
   ];
 
   ctx.globalCompositeOperation = 'lighter';
@@ -58,7 +64,7 @@ function paintNebula(): THREE.Texture {
   // Grain, so the clouds have texture instead of reading as airbrush.
   const grain = ctx.getImageData(0, 0, w, h);
   for (let i = 0; i < grain.data.length; i += 4) {
-    const n = (Math.random() - 0.5) * 7;
+    const n = (Math.random() - 0.5) * 5;
     grain.data[i] = Math.max(0, Math.min(255, (grain.data[i] ?? 0) + n));
     grain.data[i + 1] = Math.max(0, Math.min(255, (grain.data[i + 1] ?? 0) + n));
     grain.data[i + 2] = Math.max(0, Math.min(255, (grain.data[i + 2] ?? 0) + n));
@@ -81,14 +87,45 @@ export function Nebula() {
   );
 }
 
+/**
+ * A soft radial falloff, built once and shared.
+ *
+ * `circleGeometry` with additive blending gives a disc with a HARD edge — which is
+ * what made the marker behind the player's planet read as a grey plate rather than
+ * as light. A glow needs a gradient, and a gradient needs a texture.
+ */
+let glowTexture: THREE.Texture | null = null;
+
+export function softGlow(): THREE.Texture {
+  if (glowTexture) return glowTexture;
+  const size = 128;
+  const canvas = document.createElement('canvas');
+  canvas.width = canvas.height = size;
+  const ctx = canvas.getContext('2d');
+  if (ctx) {
+    const g = ctx.createRadialGradient(size / 2, size / 2, 0, size / 2, size / 2, size / 2);
+    g.addColorStop(0, 'rgba(255,255,255,1)');
+    g.addColorStop(0.32, 'rgba(255,255,255,0.55)');
+    g.addColorStop(0.62, 'rgba(255,255,255,0.16)');
+    g.addColorStop(1, 'rgba(255,255,255,0)');
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, size, size);
+  }
+  glowTexture = new THREE.CanvasTexture(canvas);
+  return glowTexture;
+}
+
 /* ── the core ───────────────────────────────────────────────── */
 
 /**
- * The galactic core: the scene's one light source and its only anchor.
+ * The galactic core.
  *
- * A disc with nothing at the middle reads as a scatter plot. A bright core gives
- * the camera something to be oriented by, and it is what makes the fog and the
- * dust look like they belong to a galaxy.
+ * A disc with nothing in the middle reads as a scatter plot; this gives the camera
+ * something to be oriented by. It is deliberately NOT a sun — the design has no
+ * star and planets do not orbit it. The first version was big and bright enough
+ * that worlds appeared to be sitting inside it, which invented a piece of fiction
+ * the game does not have. Now it is a distant brightening, well inside the radius
+ * where any planet is placed.
  */
 export function Core() {
   const texture = useMemo(() => {
@@ -109,7 +146,7 @@ export function Core() {
   }, []);
 
   return (
-    <sprite scale={[DISC_RADIUS * 0.45, DISC_RADIUS * 0.45, 1]}>
+    <sprite scale={[DISC_RADIUS * 0.16, DISC_RADIUS * 0.16, 1]}>
       <spriteMaterial
         map={texture}
         transparent
@@ -241,9 +278,15 @@ export function Disc() {
 /* ── asteroids ──────────────────────────────────────────────── */
 
 /**
- * Positions are a pure function of the clock, so this is the cheapest life the
- * scene can have: real bodies on exact orbits for zero bytes and zero server work.
- * Public, deterministic, identical for everyone.
+ * Asteroids.
+ *
+ * Positions are a pure function of the clock — real bodies on exact orbits for
+ * zero bytes and zero server work, identical for everyone.
+ *
+ * They used to render as pale flat hexagons and read as rendering artefacts
+ * rather than rocks: no shading, no scale cue, brighter than the worlds they were
+ * next to. Now they are small, dark, lit from the same direction as everything
+ * else, and each one tumbles on its own axis so they are legibly OBJECTS.
  */
 export function Asteroids({
   asteroids,
@@ -261,8 +304,9 @@ export function Asteroids({
     const positions: Vec3Tuple[] = asteroidPositions(asteroids, seasonStart, Date.now());
     positions.forEach((p, i) => {
       dummy.position.set(p[0], p[1], p[2]);
-      dummy.rotation.set(p[0] * 2, p[2] * 2, 0);
-      dummy.scale.setScalar(0.9 + ((i % 5) * 0.12));
+      // Tumbling, keyed off position so it is deterministic and drifts as it orbits.
+      dummy.rotation.set(p[0] * 3, p[2] * 3, p[0] * p[2]);
+      dummy.scale.setScalar(0.7 + ((i % 5) * 0.22));
       dummy.updateMatrix();
       mesh.setMatrixAt(i, dummy.matrix);
     });
@@ -270,9 +314,14 @@ export function Asteroids({
   });
 
   return (
-    <instancedMesh ref={ref} args={[undefined, undefined, Math.max(1, asteroids.length)]}>
-      <icosahedronGeometry args={[0.07, 0]} />
-      <meshBasicMaterial color="#8a94ab" />
+    <instancedMesh
+      ref={ref}
+      args={[undefined, undefined, Math.max(1, asteroids.length)]}
+      frustumCulled={false}
+    >
+      <dodecahedronGeometry args={[0.075, 0]} />
+      {/* Lambert, not basic: a flat fill is exactly what made these read as bugs. */}
+      <meshLambertMaterial color="#5a5f6d" emissive="#0d1119" flatShading />
     </instancedMesh>
   );
 }

@@ -15,16 +15,39 @@ import type { GalaxyPlanet } from '../api/schemas.js';
  * exactly what A5 meant and why the seed is now on `/api/season`.
  */
 
-export const SCALE = 100;
+/**
+ * Game units per world unit.
+ *
+ * Halved from 100, which doubles how far apart the worlds sit on screen without
+ * touching a single gameplay number: travel times, ranges and the rank floor all
+ * read the game's own coordinates and are unaffected. If the DESIGN distances
+ * should grow too — every flight taking twice as long — that is `GALAXY.radius` in
+ * the rules package, and it moves the balance simulation with it.
+ */
+export const SCALE = 50;
 
 export const DISC_RADIUS = GALAXY.radius / SCALE;
 export const DISC_THICKNESS = GALAXY.thickness / SCALE;
 
 export type Vec3Tuple = [number, number, number];
 
+/**
+ * Height, exaggerated.
+ *
+ * The design's disc is deliberately thin — radius 1000, thickness ±120 — because
+ * that reads as a galaxy and stays legible on a portrait phone. Rendered
+ * faithfully it also reads as a single horizontal line of planets.
+ *
+ * This is relief exaggeration, the same trick a physical globe uses for mountains:
+ * the PICTURE is stretched vertically while every distance the game computes stays
+ * exactly as it was. Travel times, ranges and the rank floor all read the game's
+ * own coordinates and none of them can tell the difference.
+ */
+const VERTICAL_EXAGGERATION = 3.5;
+
 export const toWorld = (p: { x: number; y: number; z: number }): Vec3Tuple => [
   p.x / SCALE,
-  p.y / SCALE,
+  (p.y * VERTICAL_EXAGGERATION) / SCALE,
   p.z / SCALE,
 ];
 

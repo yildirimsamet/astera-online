@@ -2,7 +2,9 @@ import { useLayoutEffect, useMemo, useRef } from 'react';
 import { useFrame, useLoader, useThree, type ThreeEvent } from '@react-three/fiber';
 import * as THREE from 'three';
 import { planetArt } from '../ui/assets.js';
+import { softGlow } from './Environment.jsx';
 import { STANCE_LIGHT, type PlanetNode } from './scene.js';
+import { wasTap } from './tap.js';
 
 /**
  * Every world in the disc, in sixteen draw calls.
@@ -141,6 +143,9 @@ function PlanetInstances({ group, onSelect }: { group: Group; onSelect: (id: str
   // valid; only a change in positions would need it recomputed.
 
   const pick = (event: ThreeEvent<PointerEvent>): void => {
+    // Panning across the disc must not open whatever was under the thumb when the
+    // gesture started. Only a gesture that ends without travelling is a choice.
+    if (!wasTap()) return;
     event.stopPropagation();
     const index = event.instanceId;
     if (index === undefined) return;
@@ -149,9 +154,40 @@ function PlanetInstances({ group, onSelect }: { group: Group; onSelect: (id: str
   };
 
   return (
-    <instancedMesh ref={ref} args={[undefined, undefined, count]} onPointerDown={pick}>
+    <instancedMesh
+      ref={ref}
+      args={[undefined, undefined, count]}
+      onPointerUp={pick}
+      /**
+       * #4 — worlds vanishing at certain angles.
+       *
+       * The bounding sphere computed above makes culling correct, but each texture
+       * group spans the whole disc, so a group is either entirely on screen or
+       * entirely off it — and "entirely off" was being decided by a sphere that a
+       * grazing frustum could miss. With at most fifty planets in sixteen draw
+       * calls there is nothing to win by culling them, and everything to lose.
+       */
+      frustumCulled={false}
+    >
       <planeGeometry args={[1, 1]} />
-      <meshBasicMaterial map={texture} transparent depthWrite={false} toneMapped={false} />
+      {/*
+        #9 — a nearer world drawing behind a further one.
+        
+        `transparent` + `depthWrite: false` means nothing writes depth, so the draw
+        ORDER decides what covers what — and the order is per instanced group, not
+        per planet. The fix is to stop treating these as translucent: the art is
+        opaque inside a hard alpha edge, so an alpha test cuts the disc out while
+        still writing depth, and `alphaToCoverage` uses the MSAA samples to keep
+        the rim smooth instead of jagged.
+      */}
+      <meshBasicMaterial
+        map={texture}
+        transparent={false}
+        alphaTest={0.35}
+        alphaToCoverage
+        depthWrite
+        toneMapped={false}
+      />
     </instancedMesh>
   );
 }
@@ -185,8 +221,20 @@ function Highlights({
   );
 }
 
-const RING_COLOUR = { self: '#8fd6ea', window: '#5ad39b', other: '#e8e3d6' } as const;
+const MARK_COLOUR = { self: '#8fd6ea', window: '#5ad39b', other: '#e8e3d6' } as const;
 
+/**
+ * "This one is mine."
+ *
+ * The first version was a hoop at 1.45× the planet's radius: a big empty circle
+ * floating around a world, reading as a targeting reticle rather than as identity.
+ *
+ * This sits ON the silhouette instead. A hairline at the planet's own edge, a soft
+ * halo bleeding out of it, and a small chevron above — the map-marker vocabulary,
+ * which is instantly legible and does not fence the planet off from the scene it
+ * lives in. Selection adds a second, wider ring so the two states never collapse
+ * into one another.
+ */
 function Ring({
   node,
   camera,
@@ -203,28 +251,44 @@ function Ring({
 
   const colour =
     node.stance === 'self'
-      ? RING_COLOUR.self
+      ? MARK_COLOUR.self
       : node.stance === 'window'
-        ? RING_COLOUR.window
-        : RING_COLOUR.other;
-  const radius = node.radius * 1.45;
+        ? MARK_COLOUR.window
+        : MARK_COLOUR.other;
+
+  const edge = node.radius * 1.04;
 
   return (
     <group ref={ref} position={node.position}>
-      <mesh>
-        <ringGeometry args={[radius, radius * 1.05, 48]} />
-        <meshBasicMaterial color={colour} transparent opacity={selected ? 0.95 : 0.6} />
+      {/* The halo. Behind the world, so it reads as light coming off the limb. */}
+      <mesh position={[0, 0, -0.01]}>
+        <planeGeometry args={[node.radius * 4.4, node.radius * 4.4]} />
+        <meshBasicMaterial
+          map={softGlow()}
+          color={colour}
+          transparent
+          opacity={node.stance === 'window' ? 0.5 : 0.32}
+          depthWrite={false}
+          blending={THREE.AdditiveBlending}
+        />
       </mesh>
-      {node.stance === 'window' && (
+
+      {/* A hairline on the silhouette itself. */}
+      <mesh>
+        <ringGeometry args={[edge, edge * 1.018, 64]} />
+        <meshBasicMaterial color={colour} transparent opacity={0.9} depthWrite={false} />
+      </mesh>
+
+      {/* The chevron: a map pin, pointing at the thing it names. */}
+      <mesh position={[0, node.radius * 1.34, 0]} rotation={[0, 0, Math.PI]}>
+        <coneGeometry args={[node.radius * 0.13, node.radius * 0.2, 3]} />
+        <meshBasicMaterial color={colour} transparent opacity={0.95} depthWrite={false} />
+      </mesh>
+
+      {selected && (
         <mesh>
-          <circleGeometry args={[radius * 1.5, 24]} />
-          <meshBasicMaterial
-            color={colour}
-            transparent
-            opacity={0.13}
-            depthWrite={false}
-            blending={THREE.AdditiveBlending}
-          />
+          <ringGeometry args={[node.radius * 1.34, node.radius * 1.36, 64]} />
+          <meshBasicMaterial color={colour} transparent opacity={0.55} depthWrite={false} />
         </mesh>
       )}
     </group>

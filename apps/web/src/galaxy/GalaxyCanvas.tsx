@@ -7,6 +7,7 @@ import type { GalaxyPlanet } from '../api/schemas.js';
 import { Asteroids, Core, Disc, Dust, Nebula, Starfield } from './Environment.jsx';
 import { PlanetField } from './PlanetField.jsx';
 import { DISC_RADIUS, asteroidsOf, planetNodes, toWorld, type PlanetNode } from './scene.js';
+import { installTapGuard, wasTap } from './tap.js';
 
 /**
  * THE GAME SURFACE.
@@ -60,14 +61,17 @@ export function GalaxyCanvas({
 
   const asteroids = useMemo(() => (seed === undefined ? [] : asteroidsOf(seed)), [seed]);
 
+  useEffect(() => installTapGuard(), []);
+
   return (
     <Canvas
       frameloop="demand"
-      camera={{ position: [home[0] + 7, 10, home[2] + 12], fov: 45, near: 0.1, far: 400 }}
+      camera={{ position: [home[0] + 12, 16, home[2] + 20], fov: 45, near: 0.1, far: 600 }}
       dpr={[1, 2]}
       gl={{ antialias: true, powerPreference: 'high-performance' }}
       onPointerMissed={() => {
-        onSelect(null);
+        // Same rule as selecting: releasing after a pan is not a click on space.
+        if (wasTap()) onSelect(null);
       }}
       style={{ position: 'absolute', inset: 0, touchAction: 'none' }}
     >
@@ -77,7 +81,12 @@ export function GalaxyCanvas({
         staying crisp, which is most of what makes a scene read as deep rather than
         as objects on a black sheet. Far enough out that nothing interactive hides.
       */}
-      <fog attach="fog" args={['#070c18', 30, 120]} />
+      <fog attach="fog" args={['#070c18', 55, 210]} />
+
+      {/* One key light, from the same upper-left the planet renders assume, so the
+          asteroids are shaded consistently with everything else. */}
+      <ambientLight intensity={0.35} />
+      <directionalLight position={[-8, 12, 9]} intensity={2.2} />
 
       <Nebula />
       <Core />
@@ -130,14 +139,14 @@ function Labels({ nodes, selectedId }: { nodes: readonly PlanetNode[]; selectedI
       {marked.map((node) => (
         <Html
           key={node.id}
-          position={[node.position[0], node.position[1] + node.radius * 1.6, node.position[2]]}
+          position={[node.position[0], node.position[1] + node.radius * 1.85, node.position[2]]}
           center
-          distanceFactor={16}
+          distanceFactor={9}
           zIndexRange={[10, 0]}
           style={{ pointerEvents: 'none' }}
         >
           <span
-            className={`whitespace-nowrap font-display text-[14px] uppercase tracking-[0.14em] ${
+            className={`whitespace-nowrap font-display text-[12px] uppercase tracking-[0.16em] ${
               node.stance === 'window' ? 'text-opportunity' : 'text-bone'
             }`}
             style={{ textShadow: '0 0 10px rgba(0,0,0,0.95)' }}
@@ -166,7 +175,7 @@ function Rig({ home, homeSignal }: { home: [number, number, number]; homeSignal:
     const controls = ref.current;
     if (!controls) return;
     controls.target.set(home[0], home[1], home[2]);
-    controls.object.position.set(home[0] + 7, 10, home[2] + 12);
+    controls.object.position.set(home[0] + 12, 16, home[2] + 20);
     controls.update();
   }, [home, homeSignal]);
 
