@@ -113,6 +113,27 @@ sudo nginx -t && sudo systemctl reload nginx
 certificate without rewriting the vhost, so the file in this repo stays the file
 on the server.
 
+**Renewal needs a reload, and nothing was doing it.** certbot writes the new
+certificate and stops; nginx goes on serving the one it loaded at startup. The
+renewal then succeeds, the timer reports success, and the site begins serving an
+expired certificate about thirty days later with nothing anywhere saying so.
+`/etc/letsencrypt/renewal-hooks/deploy/reload-nginx.sh` fixes it for every
+certificate on the box — this one, candely's and hoofywood's, none of which had a
+hook. It is global rather than per-certificate because one nginx serves all of
+them, and a reload is graceful.
+
+Verify with `sudo certbot renew --cert-name asteraonline.space --dry-run`. It
+prints "unable to obtain fresh authorizations" — that is staging reusing
+authorizations, not a fault; what matters is the line that follows it. The
+challenge path itself is worth checking directly on all four names:
+
+```bash
+echo ok | sudo tee /var/www/html/.well-known/acme-challenge/probe
+for h in asteraonline.space www.asteraonline.space api.asteraonline.space socket.asteraonline.space; do
+  curl -s http://$h/.well-known/acme-challenge/probe; done
+sudo rm /var/www/html/.well-known/acme-challenge/probe
+```
+
 ---
 
 ## Deploying a change
@@ -226,3 +247,30 @@ When one process is no longer enough, add a second service to
   days from bootstrap, so the handler is due before then.
 - **`request_log` is unused.** Idempotency keys are not wired into the launch path.
 - **No alerting.** `/health` is truthful and nothing reads it on a schedule.
+
+---
+
+## A warning paid for once
+
+**Do not create a test account in a live galaxy.** Deleting one afterwards is not
+a single `DELETE`: nothing in the schema cascades, so the rows have to come out in
+dependency order — and a mission aimed at the test planet belongs to somebody
+ELSE. Removing it stranded a real commander's two Wasps at a `location` naming a
+mission that no longer existed, where no safety net could reach them: `abandon()`
+reads the event, `sweepStranded` reads the mission, and both were gone.
+
+The repair is to bring anything home whose location names a mission that no longer
+exists:
+
+```sql
+WITH stranded AS (
+  DELETE FROM units u
+  WHERE u.location <> 'home' AND u.location NOT IN (SELECT id::text FROM missions)
+  RETURNING u.planet_id, u.hull, u.count)
+INSERT INTO units (planet_id, hull, location, count)
+SELECT planet_id, hull, 'home', count FROM stranded
+ON CONFLICT (planet_id, hull, location) DO UPDATE SET count = units.count + EXCLUDED.count;
+```
+
+Verify the deployment against `/api/preview` and the rehearsal instead — they
+write nothing and take no seat, which is what D56 built them for.
