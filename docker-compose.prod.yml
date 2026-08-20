@@ -1,0 +1,88 @@
+# Astera Online — production.
+#
+# NOT the file beside it. `docker-compose.yml` runs a throwaway Postgres on tmpfs
+# for tests and local play; it keeps nothing across a restart and its password is
+# the word "astera". Copying it to a server would put the database on the public
+# internet and lose the season on the first reboot.
+#
+#   docker compose -f docker-compose.prod.yml up -d
+#
+# Everything binds to 127.0.0.1. Nothing here is reachable from outside the box
+# except through nginx, which is what makes TRUST_PROXY safe to turn on: the only
+# thing that can set `X-Forwarded-For` is the proxy that sets it honestly.
+
+name: astera
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: astera-postgres-prod
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-astera}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+      POSTGRES_DB: ${POSTGRES_DB:-astera}
+    volumes:
+      - astera_pgdata:/var/lib/postgresql/data
+    # Published on loopback so `season status`, a pg_dump and psql all work from
+    # the host without entering the container. Never widen this.
+    ports:
+      - '127.0.0.1:${POSTGRES_PORT:-5545}:5432'
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U ${POSTGRES_USER:-astera} -d ${POSTGRES_DB:-astera}']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    logging:
+      driver: json-file
+      options: { max-size: '10m', max-file: '3' }
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: server
+    image: astera-server
+    container_name: astera-api-prod
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      # ONE PROCESS SERVES BOTH HALVES. The split exists (`ROLE=api` and
+      # `ROLE=worker` run the same image) and is worth taking when one shard is
+      # not enough; at fifty players a second container is a second thing to
+      # watch for no measurable gain. See docs/deployment.md to split it.
+      ROLE: both
+      PORT: 3200
+      DATABASE_URL: postgres://${POSTGRES_USER:-astera}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-astera}
+      JWT_SECRET: ${JWT_SECRET:?set JWT_SECRET in .env}
+      # Behind nginx `req.ip` is the proxy unless this is on, and a rate limiter
+      # that sees one address for the whole internet locks out every player at
+      # once. Safe here only because the port above is loopback-only.
+      TRUST_PROXY: 'true'
+      WORKER_POLL_MS: ${WORKER_POLL_MS:-1000}
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      RATE_LIMIT_MAX: ${RATE_LIMIT_MAX:-300}
+      RATE_LIMIT_AUTH_MAX: ${RATE_LIMIT_AUTH_MAX:-20}
+      RATE_LIMIT_SIGNUP_MAX: ${RATE_LIMIT_SIGNUP_MAX:-6}
+    ports:
+      - '127.0.0.1:${API_PORT:-3200}:3200'
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      # REPORTS, NEVER RESTARTS. `/health` answers 503 for a stalled queue, a
+      # failed event or a stranded flight — all real faults, none of them fixed
+      # by killing the process. Compose does not restart on unhealthy, and
+      # nothing should be wired up to make it: a restart loop would clear the
+      # very state an operator needs to read. Watch it, do not act on it.
+      test: ['CMD-SHELL', 'wget -q -O- http://127.0.0.1:3200/health || exit 1']
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
+    logging:
+      driver: json-file
+      options: { max-size: '10m', max-file: '5' }
+
+volumes:
+  astera_pgdata:

@@ -1,0 +1,36 @@
+# What never needs to reach the build.
+#
+# ONE ENTRY HERE IS LOAD-BEARING AND IT IS AN OMISSION: `apps/server/drizzle`
+# must NOT be excluded. `db/migrate.ts` reads the migration folder and its journal
+# off disk at boot, and an image without it refuses to start — which is the
+# correct behaviour and a confusing way to find out (D47).
+
+node_modules
+**/node_modules
+
+# Build output. The image builds its own; a stale local copy shadowing it is a
+# deploy that ships whatever was last on the developer's machine.
+dist
+**/dist
+out
+
+# Source art and rendering scratch. `apps/web/public/assets` holds the exported
+# copies the client actually loads; this is the 25 MB it was exported FROM.
+assets
+legacy
+
+.git
+.github
+.env
+.env.*
+!.env.example
+!.env.production.example
+
+coverage
+*.tsbuildinfo
+.turbo
+.DS_Store
+
+# Harnesses that drive a real browser. Nothing in the image runs them.
+tools
+docs

@@ -28,12 +28,28 @@ if (!/_test(\?|$)/.test(TEST_DATABASE_URL)) {
   );
 }
 
+/**
+ * THE SUITE OPTS OUT OF THE RATE LIMIT, AND SAYS SO OUT LOUD.
+ *
+ * Every request in this suite arrives from the same address, because `inject`
+ * has only one. Under the production ceilings a single test file would exhaust
+ * the login bucket in its third case and the rest of the run would fail on 429s
+ * that have nothing to do with what is being tested.
+ *
+ * Raised rather than switched off, so the plugin is still in the stack for every
+ * test — the counting, the store and the rebuilt error body are all live, and
+ * anything that would break under them breaks here too. `ratelimit.test.ts`
+ * lowers them back down to real numbers and asserts the behaviour directly.
+ */
 export const testEnv = (over: Record<string, string> = {}): Env =>
   loadEnv({
     NODE_ENV: 'test',
     DATABASE_URL: TEST_DATABASE_URL,
     JWT_SECRET: 'test-secret-that-is-long-enough',
     WORKER_POLL_MS: '50',
+    RATE_LIMIT_MAX: '100000',
+    RATE_LIMIT_AUTH_MAX: '100000',
+    RATE_LIMIT_SIGNUP_MAX: '100000',
     ...over,
   });
 

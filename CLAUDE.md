@@ -186,6 +186,19 @@ Each was paid for in iteration. `docs/decisions.md` holds the evidence.
 | **A guided beat leaves ONE thing pressable, and the way out is never one of the things locked** | Activations outside the target are cancelled — never pointer or touch events, which would cancel the scroll or the orbit they began. The allowance is a LIST, shallow to deep, because a gated control OPENS a surface; gating only the first seals the player inside the sheet they were told to open (D56) |
 | **Read a file's docblock before editing it** | The 3D surface and its harnesses carry a dozen traps that each cost a bug — orbit standoffs, `lookAt` frames, sprite tinting, plume direction, a screenshot that stalls the frame loop. Every one is written at its own site in `apps/web/src/galaxy/` and `tools/` |
 
+**Production**
+
+| Rule | Why |
+|---|---|
+| **The client and the API share ONE origin** | `credentials: 'same-origin'`, a `SameSite=Lax` refresh cookie and no CORS anywhere. Moving the API to `api.` ends every session at the first token expiry and makes `x-server-time` unreadable — which drops the disc onto the DEVICE clock and undoes D52 for everybody (D57) |
+| **Routes are registered inside `app.after()`** | `register` QUEUES a plugin; routes added synchronously afterwards exist before it does. Registered the obvious way, every per-route rate limit was silently ignored — 200 to an unlimited flood, green typecheck, green tests |
+| **A rate-limit refusal is a `GameError`** | Whatever `errorResponseBuilder` returns IS the error the handler receives, and a plain object arrives with no `statusCode` — so the handler cannot tell it from a bug and answers 500 |
+| `TRUST_PROXY` is off unless nothing but the proxy can reach the port | Behind nginx `req.ip` is the proxy, so one bucket holds the whole internet and the first burst locks out every player. On a directly reachable server it is a limiter anyone walks past by inventing an address |
+| **The seat ceiling is the empty-shard mitigation** | `/api/onboarding/claim` is unauthenticated and takes one of fifty seats, filled strictly in order. Unlimited, a script spends the frontier in seconds |
+| Migrations run BEFORE the new image serves | The server refuses to start against a database it is ahead of (D47), and that refusal is the good outcome. The reverse order answers every request and fails every worker tick |
+| **`/health` reports; it never restarts anything** | Every 503 it produces describes state a restart would clear without fixing — and clearing it destroys the only evidence |
+| `docker-compose.yml` is NOT the production file | It is tmpfs and its password is the word "astera". `docker-compose.prod.yml` is the one with a volume |
+
 **Engineering**
 
 | Rule | Why |
@@ -312,7 +325,8 @@ the return moment; the playable loop; the galaxy as the only screen (D20); accou
 galaxies (D21); the owner's interface pass (D22–D26); the OGame pass (D27–D33); mining,
 wreckage, engagement, notifications and the radar rebuild (D34–D50); the live galaxy and the
 end of waiting (D51–D53); the name, the identity and the way out (D54); Turkish and English
-(D55); the rehearsal — ninety seconds of the real game before there is an account (D56).
+(D55); the rehearsal — ninety seconds of the real game before there is an account (D56); production
+on one origin, with the ceilings that a public door needs (D57).
 
 ```
 pnpm verify  →  0 type errors · 0 lint errors · 1,392 tests
@@ -348,6 +362,7 @@ seed. `ARR` was always the next thing to re-derive; it is now the only thing.
 | Language | Turkish and English, detected from the device and switchable on the front door and in the commander sheet. Resources are compiled in, so the first frame is never in the wrong language. Every element owns its strings; a refusal is localised off its code with the server's figures kept (D55) |
 | Identity | **Astera Online** everywhere — package scope, database, container, channel, title, manifest. The painted wordmark on the front door and the loading cover, and app icons cut from the same artwork (D54) |
 | Onboarding | A stranger plays the real galaxy for ninety seconds before an account exists: the public preview takes no seat, the beats gate to one control at a time, and the claim makes the account, takes the seat and replays the opening in one call (D56) |
+| Deployment | Live at `asteraonline.space`. Host nginx serves the built client and proxies `/api` to one container; Postgres in a second with a named volume and a nightly dump. Rate limits on the login and the seat. `./deploy/deploy.sh` (D57) |
 | Season lifecycle | `season_end` event kind exists; **no handler** |
 
 **The single most important gap is a player.** The loop is playable end to end and has
@@ -383,7 +398,6 @@ has walked it who did not build it.
 - `request_log` exists but idempotency keys are not wired into the launch path.
 - Mining and salvage launches still cost two round trips. Every other mutation answers with the
   planet view (D53); making these one means returning `mining` and `pending` as well.
-- The web client is not served in production — dev runs behind the Vite proxy.
 - `PROVISIONAL` constants: vault floor, disruption duration, shield curve, season length,
   asteroid parameters. Settled by playtest, not by argument. Marked in `constants.ts`.
 - Simulator bots have no skill variance. **Do not tune ladder spread against the simulator.**
@@ -415,6 +429,7 @@ has walked it who did not build it.
 | `docs/decisions.md` | Before changing anything that feels settled |
 | `docs/balance.md` | Before touching a number |
 | `docs/architecture.md` | Before writing server code |
+| `docs/deployment.md` | Before touching anything that runs on the server |
 | `docs/engineering-standards.md` | **Before writing any code at all** |
 | `docs/roadmap.md` | To find the next job and what "done" means for it |
 | `docs/interface.md` | Before changing a screen |

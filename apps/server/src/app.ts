@@ -1,4 +1,5 @@
 import cookie from '@fastify/cookie';
+import rateLimit from '@fastify/rate-limit';
 import Fastify, {
   type FastifyBaseLogger,
   type FastifyError,
@@ -27,6 +28,27 @@ import { registerPreviewRoutes } from './routes/preview.js';
 import { registerOnboardingRoutes } from './routes/onboarding.js';
 import { Presence } from './services/presence.js';
 
+/**
+ * THE TWO ROUTES THAT COST MORE THAN THEY LOOK, AND THEIR WINDOWS.
+ *
+ * The ceilings are configurable because a deployment may need to move them; the
+ * WINDOWS are not, because they are the reasoning rather than the tuning. A ten
+ * minute window on signing in is what turns "twenty tries" into a rate slow
+ * enough that a password list is useless; an hour on taking a seat is what makes
+ * exhausting a fifty-world galaxy take a day of sustained effort from fifty
+ * different addresses instead of four seconds from one.
+ */
+const AUTH_WINDOW = '10 minutes';
+const SIGNUP_WINDOW = '1 hour';
+
+/** What a route asks for when it wants one of the strict buckets. */
+export interface RouteLimits {
+  /** Signing in and exchanging a refresh cookie. */
+  auth: { max: number; timeWindow: string };
+  /** Anything that creates an account — and therefore takes a seat. */
+  signup: { max: number; timeWindow: string };
+}
+
 declare module 'fastify' {
   interface FastifyInstance {
     db: Db;
@@ -35,6 +57,7 @@ declare module 'fastify' {
     presence: Presence;
     worker: EventWorker;
     bus: EventBus;
+    limits: RouteLimits;
   }
   interface FastifyRequest {
     /** Set by `requireAuth`. Absent on public routes. */
@@ -71,6 +94,11 @@ export function buildApp(opts: BuildAppOptions): BuiltApp {
   const app = Fastify({
     loggerInstance: log,
     disableRequestLogging: opts.env.NODE_ENV === 'test',
+    /**
+     * Behind the production proxy `req.ip` must be the CALLER, not nginx. See
+     * `TRUST_PROXY` in env.ts for why this is off unless a deployment says so.
+     */
+    trustProxy: opts.env.TRUST_PROXY,
   });
   const tokens = new TokenService(
     opts.env.JWT_SECRET,
@@ -95,8 +123,57 @@ export function buildApp(opts: BuildAppOptions): BuiltApp {
   app.decorate('worker', worker);
   const bus = new EventBus(opts.env.DATABASE_URL, log);
   app.decorate('bus', bus);
+  app.decorate('limits', {
+    auth: { max: opts.env.RATE_LIMIT_AUTH_MAX, timeWindow: AUTH_WINDOW },
+    signup: { max: opts.env.RATE_LIMIT_SIGNUP_MAX, timeWindow: SIGNUP_WINDOW },
+  });
 
   void app.register(cookie);
+
+  /**
+   * A CEILING ON WHAT ONE ADDRESS CAN ASK FOR.
+   *
+   * Registered at the root and therefore global, which is the only way the
+   * per-route ceilings below it work at all: a route's `config.rateLimit` is an
+   * OVERRIDE of this registration, not a registration of its own.
+   *
+   * A REFUSAL HERE IS A REFUSAL LIKE ANY OTHER. The plugin's own body is
+   * `{statusCode, error: 'Too Many Requests', message}`, which would put the
+   * literal words "Too Many Requests" through the client's error path as though
+   * they were a machine code, and would arrive in English whatever the player
+   * reads the game in. Rebuilt into the shape every other refusal already uses —
+   * a stable code plus the figures the sentence was made from — so `RATE_LIMITED`
+   * localises off `i18n/errors.ts` exactly like `SHARD_FULL` does (D55).
+   *
+   * IT RETURNS A `GameError`, WHICH IS NOT A FLOURISH. Whatever this builder
+   * returns is handed to `setErrorHandler` as the error itself, and a plain
+   * object arrives there with no `statusCode` on it at all — so the handler
+   * cannot tell it from a bug, answers 500, and the ceiling reports itself as a
+   * server fault. Returning the project's own error type means the branch that
+   * already knows how to answer a refusal answers this one too.
+   *
+   * IN-MEMORY, ON PURPOSE. The store is per process, so two API processes would
+   * each allow the full ceiling. That is the correct trade at this size: one
+   * process serves every galaxy, and a Redis dependency bought to halve a number
+   * that is already an order of magnitude clear of real play is a dependency for
+   * nothing.
+   */
+  void app.register(rateLimit, {
+    global: true,
+    max: opts.env.RATE_LIMIT_MAX,
+    timeWindow: '1 minute',
+    errorResponseBuilder: (_req, context) => {
+      // `ttl` is milliseconds until the bucket refills. Kept as a figure rather
+      // than a sentence so the client can say it in the player's own language.
+      const seconds = Math.max(1, Math.ceil(context.ttl / 1000));
+      return new GameError(
+        'RATE_LIMITED',
+        `Too many requests. Try again in ${String(seconds)} seconds.`,
+        429,
+        { seconds },
+      );
+    },
+  });
 
   /**
    * THE SERVER'S CLOCK, ON EVERY ANSWER, TO THE MILLISECOND. D52.
@@ -163,19 +240,38 @@ export function buildApp(opts: BuildAppOptions): BuiltApp {
     return reply.status(500).send({ error: 'INTERNAL', message: 'Something went wrong' });
   });
 
-  // Registered directly rather than inside a plugin: these routes share the
-  // decorators above, and encapsulating them would hide `app.db` from them.
-  registerHealthRoutes(app);
-  registerAuthRoutes(app);
-  registerServerRoutes(app);
-  registerPreviewRoutes(app);
-  registerOnboardingRoutes(app);
-  registerSeasonRoutes(app);
-  registerPlanetRoutes(app);
-  registerIntelRoutes(app);
-  registerGalaxyRoutes(app);
-  registerMiningRoutes(app);
-  registerSessionRoutes(app);
+  /**
+   * ROUTES GO IN AFTER THE PLUGINS ABOVE HAVE ACTUALLY LOADED.
+   *
+   * `register` does not run a plugin — it QUEUES it, and the queue is drained at
+   * `ready()`. Routes added synchronously after the call are therefore added
+   * BEFORE the plugin exists, and a plugin that works by inspecting routes as
+   * they arrive never sees them.
+   *
+   * That is exactly how `@fastify/rate-limit` works: it installs an `onRoute`
+   * hook and reads each route's `config.rateLimit`. Registered the obvious way,
+   * every ceiling in this file was silently ignored — the API answered 200 to an
+   * unlimited flood of logins, typechecked, and passed every test that was not
+   * specifically looking for a 429. `ratelimit.test.ts` is looking.
+   *
+   * `after` is the seam: it fires once the preceding registrations have loaded,
+   * and routes declared inside it still attach to THIS instance rather than to a
+   * child context — so they keep the decorators above, which is why they were
+   * never wrapped in a plugin of their own.
+   */
+  app.after(() => {
+    registerHealthRoutes(app);
+    registerAuthRoutes(app);
+    registerServerRoutes(app);
+    registerPreviewRoutes(app);
+    registerOnboardingRoutes(app);
+    registerSeasonRoutes(app);
+    registerPlanetRoutes(app);
+    registerIntelRoutes(app);
+    registerGalaxyRoutes(app);
+    registerMiningRoutes(app);
+    registerSessionRoutes(app);
+  });
 
   return {
     app,

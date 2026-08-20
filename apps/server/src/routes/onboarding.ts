@@ -74,7 +74,17 @@ type Applied =
   | { kind: Intent['kind']; ok: false; error: string; params?: Record<string, string | number> };
 
 export function registerOnboardingRoutes(app: FastifyInstance): void {
-  app.post('/api/onboarding/claim', async (req, reply) => {
+  /**
+   * THE ONE UNAUTHENTICATED ROUTE THAT SPENDS A SCARCE THING.
+   *
+   * Everything else a stranger can reach either writes nothing (`/api/preview`)
+   * or creates a row that costs the world nothing. This takes a SEAT: a galaxy
+   * holds fifty worlds, galaxies open strictly in order, and that ordering is the
+   * only mitigation the empty-shard risk has. Left open, a script fills the
+   * frontier in the time it takes to write the loop, and every real player who
+   * arrives afterwards lands in a galaxy of ghosts.
+   */
+  app.post('/api/onboarding/claim', { config: { rateLimit: app.limits.signup } }, async (req, reply) => {
     const body = claimBody.parse(req.body ?? {});
 
     const account = await claimAccount(app, body.username, body.password);

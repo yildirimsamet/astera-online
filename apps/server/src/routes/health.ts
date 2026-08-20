@@ -24,7 +24,14 @@ import { strandedFlightCount } from '../worker/abandon.js';
 const MAX_QUEUE_LAG_SECONDS = 120;
 
 export function registerHealthRoutes(app: FastifyInstance): void {
-  app.get('/health', async (_req, reply) => {
+  /**
+   * EXEMPT FROM THE RATE LIMIT, because this is the one route whose caller is a
+   * machine. An uptime monitor and a container healthcheck both hit it on a fixed
+   * cadence from a fixed address, and a 429 here does not read as "slow down" —
+   * it reads as an outage, which is precisely the alarm this endpoint exists to
+   * make trustworthy.
+   */
+  app.get('/health', { config: { rateLimit: false } }, async (_req, reply) => {
     const checks: {
       database?: string;
       queue?: string;

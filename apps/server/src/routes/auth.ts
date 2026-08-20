@@ -61,13 +61,30 @@ export async function openSession(
  * stateless, no session store.
  */
 export function registerAuthRoutes(app: FastifyInstance): void {
-  app.post('/api/auth/register', async (req, reply) => {
+  /**
+   * REGISTERING IS RATE-LIMITED AS A SIGNUP, NOT AS A LOGIN.
+   *
+   * It does not take a seat on its own — joining a galaxy is a separate,
+   * authenticated call — but it is still the cheapest way to manufacture the
+   * accounts that would then take them, and it burns a full scrypt doing it.
+   */
+  app.post('/api/auth/register', { config: { rateLimit: app.limits.signup } }, async (req, reply) => {
     const body = registerBody.parse(req.body ?? {});
     const account = await registerAccount(app.db, body);
     return openSession(app, reply, account);
   });
 
-  app.post('/api/auth/login', async (req, reply) => {
+  /**
+   * THE BRUTE-FORCE SURFACE, AND THE EXPENSIVE ONE.
+   *
+   * There is no lockout anywhere else in the system and these tokens are
+   * stateless, so this ceiling is the whole of the defence against someone
+   * working through a password list. It is also the only route where a refusal
+   * costs the server as much as an acceptance — see `authenticate`, which hashes
+   * a decoy for a name that does not exist so that the two cannot be told apart
+   * by a stopwatch.
+   */
+  app.post('/api/auth/login', { config: { rateLimit: app.limits.auth } }, async (req, reply) => {
     const body = loginBody.parse(req.body ?? {});
     const account = await authenticate(app.db, body);
     return openSession(app, reply, account);
@@ -92,7 +109,15 @@ export function registerAuthRoutes(app: FastifyInstance): void {
     return { ok: true };
   });
 
-  /** Exchange the long-lived cookie for a fresh access token. */
+  /**
+   * Exchange the long-lived cookie for a fresh access token.
+   *
+   * DELIBERATELY ON THE GLOBAL BUCKET rather than the strict auth one. A failed
+   * refresh is a JWT signature check and one indexed lookup — nothing like the
+   * scrypt a login pays — and the cost of getting this wrong is asymmetric: a
+   * ceiling low enough to matter would sign out a household, an office or anyone
+   * behind carrier NAT the moment several people played at once.
+   */
   app.post('/api/auth/refresh', async (req, reply) => {
     const cookie = req.cookies[REFRESH_COOKIE];
     if (!cookie) throw new GameError('NO_SESSION', 'No session cookie', 401);

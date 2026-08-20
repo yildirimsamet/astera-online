@@ -63,6 +63,7 @@ export const errors = {
   PROBE_ALREADY_OUT: 'O gezegende çalışan bir sondan zaten var',
   PROSPECTOR_CAP: 'En fazla {{max}} Kazıcı tutabilirsin, elinde {{have}} tane var.',
   PROSPECTOR_CAP_atLimit: 'Elinde zaten {{max}} Kazıcı var; sınır bu.',
+  RATE_LIMITED: 'Çok sık denedin; {{seconds}} saniye sonra tekrar dene.',
   REHEARSAL_ONLY: 'Bu dünya senin olmadan yapılamaz',
   SEASON_NOT_FOUND: 'Böyle bir sezon yok',
   SELF_ATTACK: 'Kendi gezegenine saldıramazsın',

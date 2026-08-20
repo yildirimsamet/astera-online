@@ -20,6 +20,54 @@ const schema = z.object({
   /** How rarely one account's "in game" stamp is rewritten. See services/presence.ts. */
   PRESENCE_THROTTLE_MS: z.coerce.number().default(60_000),
   /**
+   * READ THE CALLER'S ADDRESS OUT OF THE PROXY'S HEADER. Production only.
+   *
+   * Behind nginx every request arrives from 127.0.0.1, so `req.ip` is the proxy
+   * and not the caller. That is merely untidy in a log and CATASTROPHIC in a rate
+   * limiter: one bucket for the whole internet means the first burst locks every
+   * player out of the game at once. Turning this on makes `req.ip` read
+   * `X-Forwarded-For` instead.
+   *
+   * OFF BY DEFAULT, because a server reachable directly must never believe a
+   * header the caller writes — that is a rate limiter anyone can walk past by
+   * inventing an address. It is safe to turn on exactly when nothing but the proxy
+   * can reach the port, which is what the `127.0.0.1:` bind in the production
+   * compose file guarantees.
+   */
+  TRUST_PROXY: z
+    .enum(['true', 'false'])
+    .default('false')
+    .transform((value) => value === 'true'),
+  /**
+   * HOW MANY REQUESTS ONE ADDRESS MAY MAKE A MINUTE.
+   *
+   * A safety net over the whole API rather than a game rule. A commander at rest
+   * costs four polls a minute plus one held stream; a commander playing hard costs
+   * perhaps forty. Three hundred is far above anything a person produces and far
+   * below what it takes to hurt a small box.
+   */
+  RATE_LIMIT_MAX: z.coerce.number().default(300),
+  /**
+   * SIGNING IN IS EXPENSIVE ON PURPOSE, WHICH MAKES IT A LEVER.
+   *
+   * Every login burns a full scrypt — 16 MB and tens of milliseconds — and it does
+   * so even for a name that does not exist, because the decoy hash in
+   * `services/account.ts` is what removes the timing oracle. Measured on the
+   * development box: fifty concurrent bad logins pin a core for half a second. It
+   * is also the brute-force surface, and there is no lockout anywhere else.
+   */
+  RATE_LIMIT_AUTH_MAX: z.coerce.number().default(20),
+  /**
+   * A NEW ACCOUNT TAKES A SEAT, AND SEATS ARE THE SCARCE THING. D21/D56.
+   *
+   * `/api/onboarding/claim` is unauthenticated and creates an account, a planet
+   * and a place in the frontier galaxy in one call. A galaxy holds fifty worlds
+   * and galaxies fill strictly in order, so a script left alone with this endpoint
+   * empties the only mitigation the empty-shard risk has. Six an hour per address
+   * is generous for a household and useless for a script.
+   */
+  RATE_LIMIT_SIGNUP_MAX: z.coerce.number().default(6),
+  /**
    * HOW LATE THE WORLD IS ALLOWED TO BE. D52.
    *
    * Every scheduled moment in the game — a raid settling, a fleet coming home, a

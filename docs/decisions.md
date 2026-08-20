@@ -400,6 +400,71 @@ galaxy became the only screen at D20 and the card lost its home. It is the last 
 engine's old surface and is left in place deliberately, not overlooked.
 **Binds:** `docs/interface.md` I2 no longer describes a pip.
 
+### D57 · Production: one origin, one process, three ceilings — owner instruction
+
+**Live at `asteraonline.space`.** Host nginx serves the built client from
+`/var/www/astera` and proxies `/api` to a single container on `127.0.0.1:3200`;
+Postgres is a second container on `127.0.0.1:5545` with a named volume. Full
+detail in `docs/deployment.md`.
+
+**One origin, and the subdomains redirect.** `api.` and `socket.` were registered
+before the code was read; both now 301 to the apex. The client is built
+same-origin — `credentials: 'same-origin'`, a `SameSite=Lax` refresh cookie, and no
+CORS registered anywhere — so serving the API from `api.` breaks two things
+silently: sessions end at the first token expiry, and `x-server-time` becomes
+unreadable, which drops the disc back onto the DEVICE clock and undoes D52 for
+every player at once. `socket.` was never needed; the only realtime surface is SSE
+on `/api/stream`.
+
+**Three rate-limit ceilings, and the seat one is the reason.**
+`/api/onboarding/claim` is unauthenticated and takes a SEAT: fifty worlds a galaxy,
+filled strictly in order, and that ordering is the whole mitigation for the
+empty-shard risk. Unlimited, one script spends it in seconds. Login is capped
+because sessions are stateless JWTs with no lockout anywhere else, and because a
+wrong password costs a full scrypt — the decoy hash in `authenticate` means a name
+that does not exist costs exactly as much, which is right for timing and expensive
+under load: fifty concurrent bad logins pinned a core for half a second on the
+development box. A global ceiling sits under both. `/health` is exempt, because its
+callers are machines and a 429 there reads as an outage.
+
+**`TRUST_PROXY` is off by default and on in production.** Behind nginx `req.ip` is
+the proxy, so one bucket would hold the entire internet and the first burst would
+lock out every player at once. It is only safe because the API port is published on
+loopback: a server reachable directly must never believe an address the caller
+wrote.
+
+**Routes are registered inside `app.after()`, and that is load-bearing.**
+`register` QUEUES a plugin; routes added synchronously afterwards exist before the
+plugin does, so a plugin that works by inspecting routes as they arrive never sees
+them. Every per-route ceiling was silently ignored — the API answered 200 to an
+unlimited flood, typechecked, and passed every test not specifically looking for a
+429.
+
+**A rate-limit refusal is a `GameError`.** Whatever `errorResponseBuilder` returns
+is handed to the error handler AS the error, and a plain object arrives with no
+`statusCode` — so the handler cannot tell it from a bug and answers 500. Returning
+the project's own error type means one refusal shape for the whole API, and
+`RATE_LIMITED` localises off its code with `{ seconds }` intact (D55).
+
+**`tsx` is a dependency of `apps/server`, not a dev tool.** `@astera/rules` is
+consumed as source so the three consumers cannot drift, so production needs a
+TypeScript runtime. It resolves because pnpm links the workspace package as a
+symlink and Node takes the real path — outside `node_modules`, which is the only
+place tsx will transpile.
+
+**Migrations run before the new image serves.** The server refuses to start against
+a database it is ahead of (D47) and that refusal is the good outcome; the reverse
+order is an old image against a new schema, which answers every request and fails
+every worker tick.
+
+**`/health` reports and never restarts.** Compose does not restart an unhealthy
+container and nothing may be wired up to make it: every 503 it produces describes
+state a restart would clear without fixing, and clearing it destroys the evidence.
+
+**Binds:** `docs/deployment.md`; `docker-compose.prod.yml` and the file beside it
+are not interchangeable — `docker-compose.yml` is tmpfs and its password is the
+word "astera".
+
 ## Architecture
 
 A1 · One source of truth — LOCKED

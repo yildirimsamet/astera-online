@@ -72,6 +72,7 @@ export const errors = {
    * A belt-and-braces line: the beats gate every control they cannot pay for, so
    * reaching this means one slipped through. Better a sentence than the code.
    */
+  RATE_LIMITED: 'Too many requests. Try again in {{seconds}} seconds.',
   REHEARSAL_ONLY: 'Not until this world is yours',
   SEASON_NOT_FOUND: 'No such season',
   SELF_ATTACK: 'You cannot attack your own planet',
