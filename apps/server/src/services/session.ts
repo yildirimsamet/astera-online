@@ -8,7 +8,7 @@ import {
   radarLead,
   radarRange,
   type Fleet,
-} from '@blindspace/rules';
+} from '@astera/rules';
 import type { Clock } from '../clock.js';
 import type { Db, Queryable } from '../db/client.js';
 import {

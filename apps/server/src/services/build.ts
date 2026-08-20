@@ -15,7 +15,7 @@ import {
   type HullId,
   type InstrumentId,
   type SatelliteId,
-} from '@blindspace/rules';
+} from '@astera/rules';
 import type { Clock } from '../clock.js';
 import type { Db, Tx } from '../db/client.js';
 import { satellites } from '../db/schema.js';

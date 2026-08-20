@@ -107,7 +107,7 @@ alternatives (see [decisions.md](decisions.md), D1). The reasoning:
    radar is an event log. Neither needs physics, simulation, or a combat renderer — which
    is precisely why one person can ship this. Combat, by contrast, is weeks of tuning.
 3. **Its return moment refreshes itself.** Most async games return you to the *same*
-   question every session: *did my thing finish?* Blindspace returns you to *new material* —
+   question every session: *did my thing finish?* Astera Online returns you to *new material* —
    sightings, absences, scans from a bearing you do not recognise, patterns that only mean
    something across three visits.
 4. **It manufactures the two hardest emotions.** Curiosity and fear cannot be produced by

@@ -1,7 +1,7 @@
 import { eq } from 'drizzle-orm';
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
-import { PROBE } from '@blindspace/rules';
+import { PROBE } from '@astera/rules';
 import { planets, players } from '../db/schema.js';
 import { GameError } from '../services/planet.js';
 import {

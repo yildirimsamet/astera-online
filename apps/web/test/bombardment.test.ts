@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { COMBAT, engagementEndsAt, isEngaging } from '@blindspace/rules';
+import { COMBAT, engagementEndsAt, isEngaging } from '@astera/rules';
 import {
   BLAST_SECONDS,
   MISSILE_OF_SHIP,

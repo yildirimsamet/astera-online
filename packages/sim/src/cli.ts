@@ -3,7 +3,7 @@
  *
  * The test suite is the regression gate; this is for looking at a season by hand.
  */
-import { dominion, median } from '@blindspace/rules';
+import { dominion, median } from '@astera/rules';
 import { BANDS, LEVERS, ladderByArchetype, runSeason, verdict, type InvariantKey } from './index.js';
 
 const arg = (k: string, d: number): number => {
@@ -25,7 +25,7 @@ const num = (v: number) => (Number.isNaN(v) ? '  n/a' : v.toFixed(2).padStart(5)
 const tint = (k: InvariantKey, v: number) =>
   verdict(k, v) === 'OK' ? C.green : verdict(k, v) === 'n/a' ? C.grey : C.red;
 
-console.log(`\n${C.bold}${C.orange}BLINDSPACE${C.reset} ${C.dim}season simulation${C.reset}`);
+console.log(`\n${C.bold}${C.orange}ASTERA ONLINE${C.reset} ${C.dim}season simulation${C.reset}`);
 console.log(`${C.grey}${cfg.players} players · ${cfg.days} days · seed ${cfg.seed}${C.reset}\n`);
 console.log(C.bold + pad('DAY', 5) + keys.map((k) => pad(k, 8)).join('') + pad('ATK', 6) + pad('D/P/R', 12) + C.reset);
 console.log(C.grey + '─'.repeat(5 + keys.length * 8 + 18) + C.reset);

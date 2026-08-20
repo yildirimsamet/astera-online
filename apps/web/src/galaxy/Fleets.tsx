@@ -2,7 +2,7 @@ import { Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import { useFrame } from '@react-three/fiber';
 import { useGLTF } from '@react-three/drei';
 import * as THREE from 'three';
-import { engagementEndsAt, isEngaging } from '@blindspace/rules';
+import { engagementEndsAt, isEngaging } from '@astera/rules';
 import type { Contact, PendingThread } from '../api/schemas.js';
 import { HULL_MODEL, MODEL, MODEL_FACING } from '../ui/assets.js';
 import { Bombardment } from './Bombardment.jsx';

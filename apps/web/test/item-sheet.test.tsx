@@ -1,6 +1,6 @@
 import { render, screen, within } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
-import { instrumentCost, upgradeCost } from '@blindspace/rules';
+import { instrumentCost, upgradeCost } from '@astera/rules';
 import { compact } from '../src/lib/format.js';
 import { ItemSheet } from '../src/ui/ItemSheet.js';
 import type { PlanetView } from '../src/api/schemas.js';

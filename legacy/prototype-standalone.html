@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Blindspace — text prototype (standalone)</title>
+<title>Astera Online — text prototype (standalone)</title>
 <style>
 :root{
   --bg:#0D1220; --panel:#141B2C; --panel2:#1C2439; --line:#2A3449;
@@ -68,7 +68,7 @@ input[type=range]{width:100%;accent-color:var(--signal);margin:2px 0}
 </head>
 <body>
 
-<h1>Blindspace</h1>
+<h1>Astera Online</h1>
 <p class="sub">text prototype · real clock · close it and come back</p>
 
 <section id="planet-sec">
@@ -113,7 +113,7 @@ input[type=range]{width:100%;accent-color:var(--signal);margin:2px 0}
 <script type="module">
 /* ---- rules.mjs ---- */
 /**
- * BLINDSPACE — canonical game rules.
+ * ASTERA ONLINE — canonical game rules.
  *
  * Single source of truth for every formula in the GDD. Imported by both
  * simulate.mjs (headless season simulator) and prototype.html (text prototype),
@@ -684,7 +684,7 @@ const median = (arr) => {
 
 /* ---- prototype.js ---- */
 /**
- * BLINDSPACE — text prototype.
+ * ASTERA ONLINE — text prototype.
  *
  * Answers exactly one question: does the choice between striking blind and
  * spending eight minutes to know feel like a real decision?
@@ -694,7 +694,7 @@ const median = (arr) => {
  */
 
 
-const SAVE = 'blindspace.proto.v2';
+const SAVE = 'astera.proto.v2';
 const MAX_CATCHUP_MIN = 7 * 24 * 60;
 const GRACE_MIN = 240;        // newcomer immunity — 4h, or until Command Core L4
 

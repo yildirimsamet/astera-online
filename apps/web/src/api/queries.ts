@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { engagementEndsAt } from '@blindspace/rules';
-import type { Fleet, BuildingId, HullId, InstrumentId, SatelliteId } from '@blindspace/rules';
+import { engagementEndsAt } from '@astera/rules';
+import type { Fleet, BuildingId, HullId, InstrumentId, SatelliteId } from '@astera/rules';
 import type { z } from 'zod';
 import type { MiningRun, PendingThread, PlanetView, notificationsSchema } from './schemas.js';
 import { useApi } from './context.js';

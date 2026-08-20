@@ -1,4 +1,4 @@
-# Blindspace — documentation
+# Astera Online — documentation
 
 Start with [`../CLAUDE.md`](../CLAUDE.md). It is the operating manual: mission, principles,
 invariants, current state and how to work here. Everything in this folder is the detail behind
@@ -56,7 +56,7 @@ lost context by guessing.
 
 ## The two rules that matter most
 
-1. **The client never decides an outcome.** Every game rule lives in `@blindspace/rules` — pure
+1. **The client never decides an outcome.** Every game rule lives in `@astera/rules` — pure
    functions, zero dependencies, no clock, no I/O, no ambient randomness. ESLint enforces it.
 2. **Code without tests is code that was never written.**
 

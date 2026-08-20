@@ -7,10 +7,10 @@ import { FixedClock } from '../src/clock.js';
 import { createSeason } from '../src/services/season.js';
 import { joinSeason } from '../src/services/player.js';
 import { accounts } from '../src/db/schema.js';
-import { engagementEndsAt } from '@blindspace/rules';
+import { engagementEndsAt } from '@astera/rules';
 
 export const TEST_DATABASE_URL =
-  process.env.DATABASE_URL ?? 'postgres://blindspace:blindspace@localhost:5433/blindspace_test';
+  process.env.DATABASE_URL ?? 'postgres://astera:astera@localhost:5433/astera_test';
 
 /**
  * A guard, not a convention.
@@ -179,7 +179,7 @@ export async function grant(
 ): Promise<void> {
   const { planets } = await import('../src/db/schema.js');
   const { eq } = await import('drizzle-orm');
-  const { alloyRate, crystalRate, storageCap } = await import('@blindspace/rules');
+  const { alloyRate, crystalRate, storageCap } = await import('@astera/rules');
 
   const levelFor = (amount: number, rate: (l: number) => number): number => {
     let level = 1;
@@ -265,7 +265,7 @@ export async function giveInstrument(
   type: 'TELESCOPE' | 'RADAR' | 'AEGIS' | 'VEIL',
   level: number,
 ): Promise<void> {
-  const { INSTRUMENT_IDS } = await import('@blindspace/rules');
+  const { INSTRUMENT_IDS } = await import('@astera/rules');
   await install(db, planetId, INSTRUMENT_IDS.indexOf(type), type, level);
 }
 
@@ -275,7 +275,7 @@ export async function giveSatellite(
   planetId: string,
   type: 'FOUNDRY' | 'UPLINK' | 'DERRICK' | 'BEACON',
 ): Promise<void> {
-  const { INSTRUMENT_IDS, SATELLITE_IDS } = await import('@blindspace/rules');
+  const { INSTRUMENT_IDS, SATELLITE_IDS } = await import('@astera/rules');
   await install(db, planetId, INSTRUMENT_IDS.length + SATELLITE_IDS.indexOf(type), type, 1);
 }
 

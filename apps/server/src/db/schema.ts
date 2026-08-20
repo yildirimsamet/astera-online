@@ -14,7 +14,7 @@ import {
   uniqueIndex,
   uuid,
 } from 'drizzle-orm/pg-core';
-import type { CombatRound, Fleet, Grade, HullId } from '@blindspace/rules';
+import type { CombatRound, Fleet, Grade, HullId } from '@astera/rules';
 
 /**
  * Eighteen tables. Nothing here stores a value that can be derived from a formula
@@ -432,7 +432,7 @@ export const asteroidClaims = pgTable('asteroid_claims', {
  *
  * NOTHING ABOUT ITS CURRENT VALUE IS STORED (A5). The initial piles and the clock
  * give the decay; `takenAlloy`/`takenCrystal` give what has already been carried
- * off. `debrisRemaining()` in `@blindspace/rules` is the only thing that combines
+ * off. `debrisRemaining()` in `@astera/rules` is the only thing that combines
  * them, so the server, the client and any test all read the same number.
  *
  * There is no `expiresAt` and no scheduled event to expire one. A field that

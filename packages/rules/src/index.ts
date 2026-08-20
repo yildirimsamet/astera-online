@@ -1,5 +1,5 @@
 /**
- * @blindspace/rules — the single source of truth for every game rule.
+ * @astera/rules — the single source of truth for every game rule.
  *
  * Pure functions only. No clock, no I/O, no ambient randomness. The server
  * imports this to decide outcomes; the simulator imports it to validate balance;

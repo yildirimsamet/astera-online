@@ -1,4 +1,4 @@
-import { COMBAT, seededFrom } from '@blindspace/rules';
+import { COMBAT, seededFrom } from '@astera/rules';
 
 /**
  * WHO FIRES, WHEN, AND AT WHAT. D44.

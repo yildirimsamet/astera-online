@@ -38,7 +38,7 @@ const check = (label, cond, extra = '') => {
   if (!cond) process.exitCode = 1;
 };
 
-console.log('\n\x1b[1mBLINDSPACE prototype — smoke test\x1b[0m\n');
+console.log('\n\x1b[1mASTERA ONLINE prototype — smoke test\x1b[0m\n');
 
 check('starts with 12 Wasps', S.player.fleet.WASP === 12);
 check('telescope locked at start', !S.unlocked.telescope);

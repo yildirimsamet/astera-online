@@ -1,4 +1,4 @@
-import { radarDetectsFleets, radarRange, telescopeSlots } from '@blindspace/rules';
+import { radarDetectsFleets, radarRange, telescopeSlots } from '@astera/rules';
 import { useGalaxy, useIntel, usePlanet } from '../api/queries.js';
 import { percent, range } from '../lib/format.js';
 import { staleness, useNow } from '../lib/time.js';

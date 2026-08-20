@@ -1,7 +1,7 @@
 import { eq } from 'drizzle-orm';
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
-import { prospectorHold, prospectorSpeed } from '@blindspace/rules';
+import { prospectorHold, prospectorSpeed } from '@astera/rules';
 import { planets, players } from '../db/schema.js';
 import { GameError, orbitOf } from '../services/planet.js';
 import {

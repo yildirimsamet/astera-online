@@ -2,7 +2,7 @@ import type { FastifyInstance } from 'fastify';
 import { pino } from 'pino';
 import { afterAll, beforeEach, describe, expect, it } from 'vitest';
 import { and, eq } from 'drizzle-orm';
-import { alloyRate, flightSlots } from '@blindspace/rules';
+import { alloyRate, flightSlots } from '@astera/rules';
 import { buildings, debrisFields, notifications, shards } from '../src/db/schema.js';
 import { EventWorker } from '../src/worker/loop.js';
 import { launchAttack } from '../src/services/mission.js';

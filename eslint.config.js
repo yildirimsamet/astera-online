@@ -41,7 +41,7 @@ export default defineConfig(
   /**
    * THE ARCHITECTURAL BOUNDARY, mechanically enforced.
    *
-   * @blindspace/rules must stay pure: zero runtime dependencies, no clock, no
+   * @astera/rules must stay pure: zero runtime dependencies, no clock, no
    * I/O, no ambient randomness. This is the invariant the whole design rests on
    * — the server, the simulator and the client can only agree about outcomes if
    * the rules cannot observe anything but their arguments.
@@ -58,7 +58,7 @@ export default defineConfig(
               message: 'rules must be I/O-free — no Node builtins',
             },
             {
-              group: ['@blindspace/*', 'drizzle-orm*', 'postgres', 'fastify*', 'zod'],
+              group: ['@astera/*', 'drizzle-orm*', 'postgres', 'fastify*', 'zod'],
               message: 'rules must have zero runtime dependencies',
             },
           ],

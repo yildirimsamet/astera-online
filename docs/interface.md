@@ -91,11 +91,18 @@ a commander with an empty mailbox had no route at all to telescope readings, pro
 battle reports or the radar log — the surface that holds "the information is the game".
 
 Every full surface now hangs off the header, which is the one piece of chrome that never
-leaves: the works and its collect control, the season clock (which is also the commander
-sheet), **Intel**, and Signals. Your own planet opens by tapping your own world, and every
-other surface opens by focusing the thing it is about.
+leaves: the works and its collect control, the **commander** control, **Intel**, and Signals.
+Your own planet opens by tapping your own world, and every other surface opens by focusing the
+thing it is about.
 
-**Before shipping a surface, name the control that opens it when nothing has happened.**
+**A way in labelled as something else is not a way in.** The commander control — the account, the
+galaxy, the season, and sign-out — was that same permanent header button for a long time, and it
+still produced "there is no logout button, I cannot sign out": it said SEASON and drew a duration
+under it, so it read as a clock, and nobody presses a readout. It carries the player's own name
+now, with the season figure under it. A player hunting for the way out hunts for themselves.
+
+**Before shipping a surface, name the control that opens it when nothing has happened — and check
+that the control names it back.**
 
 ### I6 · A readout measures what the player owns, never what exists
 

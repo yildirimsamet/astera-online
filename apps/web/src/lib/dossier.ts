@@ -9,7 +9,7 @@ import {
   tiersWithinBand,
   withinTelescopeRange,
   type Fleet,
-} from '@blindspace/rules';
+} from '@astera/rules';
 import type {
   BattleReport,
   GalaxyPlanet,

@@ -1,5 +1,5 @@
 import { and, eq } from 'drizzle-orm';
-import { GALAXY, SEASON, SERVERS, generateGalaxy, type GalaxySpec } from '@blindspace/rules';
+import { GALAXY, SEASON, SERVERS, generateGalaxy, type GalaxySpec } from '@astera/rules';
 import type { Db } from '../db/client.js';
 import { planets, seasons, shards } from '../db/schema.js';
 import { addMinutes } from '../clock.js';

@@ -5,6 +5,6 @@ export default defineConfig({
   out: './drizzle',
   dialect: 'postgresql',
   dbCredentials: {
-    url: process.env.DATABASE_URL ?? 'postgres://blindspace:blindspace@localhost:5433/blindspace',
+    url: process.env.DATABASE_URL ?? 'postgres://astera:astera@localhost:5433/astera',
   },
 });

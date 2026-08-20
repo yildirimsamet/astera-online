@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { alloyRate, collectorCap, crystalRate, median, storageCap } from '@blindspace/rules';
+import { alloyRate, collectorCap, crystalRate, median, storageCap } from '@astera/rules';
 import {
   BANDS, LEVERS, freshStats, informedArchetypeWins, ladderByArchetype, measure,
   runSeason, verdict, type InvariantKey, type SimPlayer,

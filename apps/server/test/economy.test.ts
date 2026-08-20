@@ -16,7 +16,7 @@ import {
   storageCap,
   telescopeCooldownHours,
   upgradeCost,
-} from '@blindspace/rules';
+} from '@astera/rules';
 import { planets } from '../src/db/schema.js';
 import { collectWorks, installSatellite, raiseInstrument } from '../src/services/build.js';
 import { assignWatch, launchProbe } from '../src/services/intel.js';

@@ -7,7 +7,7 @@
  * read off their engine bells. This is the tool that did it, written down so the
  * next hull does not have to be guessed either.
  *
- *   pnpm --filter @blindspace/web dev   →   http://localhost:5173/facing.html
+ *   pnpm --filter @astera/web dev   →   http://localhost:5173/facing.html
  *
  * Development only. `facing.html` is not linked from the app and is never built.
  */

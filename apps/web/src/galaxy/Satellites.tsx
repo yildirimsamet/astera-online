@@ -2,7 +2,7 @@ import { useMemo, useRef } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
 import { useGLTF } from '@react-three/drei';
 import * as THREE from 'three';
-import { SATELLITE_IDS, type SatelliteId } from '@blindspace/rules';
+import { SATELLITE_IDS, type SatelliteId } from '@astera/rules';
 import { SATELLITE_MODEL, SATELLITE_NEON } from '../ui/assets.js';
 import { softGlow } from './Environment.jsx';
 import { unitModel } from './model.js';

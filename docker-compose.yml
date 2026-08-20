@@ -1,19 +1,19 @@
 services:
   postgres:
     image: postgres:16-alpine
-    container_name: blindspace-pg
+    container_name: astera-pg
     environment:
-      POSTGRES_USER: blindspace
-      POSTGRES_PASSWORD: blindspace
-      POSTGRES_DB: blindspace
+      POSTGRES_USER: astera
+      POSTGRES_PASSWORD: astera
+      POSTGRES_DB: astera
     ports: ['5433:5432']
     healthcheck:
-      test: ['CMD-SHELL', 'pg_isready -U blindspace']
+      test: ['CMD-SHELL', 'pg_isready -U astera']
       interval: 2s
       timeout: 3s
       retries: 20
     volumes:
-      # Creates blindspace_test alongside blindspace. Runs on first start of an
+      # Creates astera_test alongside astera. Runs on first start of an
       # empty data directory, which with tmpfs means every start.
       - ./docker/init-test-db.sql:/docker-entrypoint-initdb.d/init-test-db.sql:ro
     tmpfs:

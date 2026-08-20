@@ -140,7 +140,7 @@ export function Signals({ onOpen }: { onOpen: (panel: Panel) => void }) {
           }}
         >
           {status.length > 0 && (
-            <div className="mb-5">
+            <div className="mb-5 mt-4">
               <p className="legend mb-2">Right now</p>
               <div className="frame">
                 {status.map((item) => (

@@ -1,5 +1,5 @@
 import { useEffect, useState, type ReactNode } from 'react';
-import { HULLS, PROBE, fleetCount, telescopeSlots, type HullId } from '@blindspace/rules';
+import { HULLS, PROBE, fleetCount, telescopeSlots, type HullId } from '@astera/rules';
 import type {
   AsteroidView,
   BattleReport,

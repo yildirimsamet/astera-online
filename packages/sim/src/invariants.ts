@@ -11,7 +11,7 @@ import {
   median,
   storageCap,
   vaultProtects,
-} from '@blindspace/rules';
+} from '@astera/rules';
 import type { DayStats, SimPlayer } from './season.js';
 import type { ArchetypeName } from './archetypes.js';
 

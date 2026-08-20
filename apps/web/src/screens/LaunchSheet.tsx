@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { HULLS, fleetCount, type Fleet, type MobileHullId } from '@blindspace/rules';
+import { HULLS, fleetCount, type Fleet, type MobileHullId } from '@astera/rules';
 import { useLaunch } from '../api/queries.js';
 import type { GalaxyPlanet, PlanetView } from '../api/schemas.js';
 import { compact } from '../lib/format.js';

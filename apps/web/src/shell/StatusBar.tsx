@@ -1,12 +1,12 @@
 import { useEffect, useRef, useState } from 'react';
-import { collectorCap } from '@blindspace/rules';
+import { collectorCap } from '@astera/rules';
 import { useCollect, usePlanet, useSeason } from '../api/queries.js';
 import { compact, full } from '../lib/format.js';
 import { duration } from '../lib/time.js';
 import { haptic } from '../lib/haptics.js';
 import { useProjected, type Projected } from '../lib/projection.js';
 import { RESOURCE_ART } from '../ui/assets.js';
-import { IntelIcon } from '../ui/icons/index.js';
+import { ChevronIcon, IntelIcon } from '../ui/icons/index.js';
 import { Meter } from '../ui/Meter.js';
 import { describe, useToast } from '../ui/Toast.js';
 import type { PlanetView } from '../api/schemas.js';
@@ -18,15 +18,24 @@ import { serverNow } from '../lib/clock.js';
  * What you hold, what is waiting, and how long the season has left.
  *
  * One of only two things left outside the galaxy (D20), so it has to earn every
- * pixel. Three jobs:
+ * pixel. Four jobs:
  *
  *   · WHAT IS SPENDABLE — storage, against its ceiling.
  *   · WHAT IS WAITING — the works (D16). This is the reason to open the game when
  *     nothing is in flight, so it is a control rather than a readout: one tap
  *     empties it, and when it is full it says what that is costing per hour.
  *   · WHAT IS NEW — the signals beacon.
+ *   · WHO YOU ARE — the commander control, which is the whole of the account: the
+ *     galaxy you are in, how long the season has, and the way out.
  */
-export function StatusBar({ onOpen }: { onOpen: (panel: Panel) => void }) {
+export function StatusBar({
+  commander,
+  onOpen,
+}: {
+  /** Who is signed in. The header states it, because it is the way back out. */
+  commander: string;
+  onOpen: (panel: Panel) => void;
+}) {
   const { data, dataUpdatedAt } = usePlanet();
   const season = useSeason();
   const held = useProjected(data?.planet, dataUpdatedAt);
@@ -56,32 +65,53 @@ export function StatusBar({ onOpen }: { onOpen: (panel: Panel) => void }) {
         />
         <div className="flex shrink-0 items-end gap-2 pb-0.5">
           {/**
-           * THE SEASON CLOCK IS ALSO THE WAY OUT. D21.
+           * THE WAY OUT SAYS YOUR NAME. Owner-reported bug: "there is no logout
+           * button, I cannot sign out."
            *
-           * A readout made pressable rather than a new control: this figure already
-           * belongs to *this commander in this galaxy*, so "how long have I got" and
-           * "who am I, and how do I leave" are the same question asked twice.
+           * There was one. It has always been in the commander sheet, and this
+           * control has always opened that sheet — but the control said SEASON and
+           * drew a duration under it, so what a player saw was a clock. It read as a
+           * readout, and nobody presses a readout. D21 put the account behind the
+           * season figure on the argument that "how long have I got" and "who am I,
+           * and how do I leave" are the same question asked twice; that is true of
+           * the SHEET and was never true of the LABEL.
            *
-           * It was briefly at the foot of the planet sheet, which is reached by
-           * tapping your own world in the disc. That is the correct home for
-           * everything else about your planet and the wrong one for signing out: it
-           * puts the most basic account control in the game behind a hit-test
-           * against a sphere in a 3D scene, and a player who cannot find their
-           * planet cannot sign out.
+           * So the label is the commander now and the season stays as the figure
+           * underneath. Same one control, same sheet, same width — the name is
+           * capped and truncates rather than eating into the two stock columns
+           * beside it, which have about ninety pixels each on a phone and need
+           * every one of them. It is also the only thing in the header that is
+           * about the account rather than the world, which is exactly what a player
+           * hunts for when they want to leave.
+           *
+           * `I5` in `docs/interface.md`: a surface with no permanent way in does not
+           * exist for the player, and a way in labelled as something else is not a
+           * way in. It was briefly at the foot of the planet sheet, which is worse
+           * again — that puts sign-out behind a hit-test against a sphere in a 3D
+           * scene, and a player who cannot find their planet cannot sign out.
            */}
           <button
             type="button"
-            aria-label="Commander and season"
+            aria-label={`Commander ${commander} — season, galaxy and sign out`}
             onClick={() => {
               haptic('tap');
               onOpen('commander');
             }}
-            className="rounded-sm px-1 py-0.5 text-right transition-colors active:bg-raised/60"
+            className="flex h-9 flex-col justify-center rounded-sm border border-line-soft bg-deep px-1.5 text-right transition-colors hover:border-line active:bg-raised/60"
           >
-            <p className="legend">Season</p>
-            <p className="readout mt-1 text-[13px] text-dim">
+            <span className="flex items-center justify-end gap-0.5">
+              {/* The display face, but NOT the `legend` class: that carries 0.14em of
+                  tracking, which is right for a four-letter label and costs about
+                  three characters of a sixteen-character name in a column this
+                  narrow. A name truncated to "SHOT1E7…" identifies nobody. */}
+              <span className="max-w-[76px] truncate font-display text-[11px] font-semibold uppercase leading-tight tracking-[0.02em] text-bone">
+                {commander}
+              </span>
+              <ChevronIcon className="size-3 shrink-0 text-faint" />
+            </span>
+            <span className="readout text-[12px] leading-tight text-dim">
               {hoursLeft === null ? '—' : duration(hoursLeft * 60)}
-            </p>
+            </span>
           </button>
           {/*
             THE WAY INTO WHAT YOU KNOW. Owner-reported bug.

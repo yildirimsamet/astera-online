@@ -24,7 +24,7 @@ import {
   type InstrumentId,
   type InstrumentLevels,
   type TelescopeReading,
-} from '@blindspace/rules';
+} from '@astera/rules';
 import { addMinutes, minutesSince, type Clock } from '../clock.js';
 import type { Db, Queryable, Tx } from '../db/client.js';
 import {

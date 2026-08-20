@@ -1,6 +1,6 @@
 import type {
   BuildingId, GroundHullId, InstrumentId, MobileHullId, SatelliteId,
-} from '@blindspace/rules';
+} from '@astera/rules';
 
 /** A hull that fights. Haulers are cargo and are bought on their own terms. */
 export type CombatHullId = Exclude<MobileHullId, 'HAULER'>;

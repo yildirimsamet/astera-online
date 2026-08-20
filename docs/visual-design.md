@@ -106,9 +106,19 @@ no baked colour. Exported as React components in `apps/web/src/ui/icons/`. They 
 | `ships/ship_1..4` | 4 | Wasp / Lance / Bulwark / Hauler |
 | `ships/explorer_ship` | 1 | The probe |
 | `models/*.glb` | — | Every craft in transit, the four satellites in orbit, three rock bodies, the debris ring, the missile |
+| `logos/logo-lockup` | 1 | **The ASTERA ONLINE wordmark**, hung by `Wordmark` on the front door and the loading cover — the only two surfaces that state the identity |
+| `logos/logo-mark` | 1 | The same artwork with the words taken off. Nothing draws it yet; it is what the icons are cut from and what a small placement would use |
+| `icons/icon-{180,192,512}`, `icon-512-maskable`, `favicon-{32,64}` | 6 | The manifest, the iOS home screen, and the browser tab |
 
 `general/orbital_ring` and `general/drill` are unused — the Ring was retired in D22 and the
 Drill became a craft in D25. Both files are still in the repo.
+
+**The two `logos/*` files above are DERIVED and committed** (D54). The supplied plates —
+`logo-big/small` and `logo-background-big/small`, kept beside them — paint the glow on solid
+black, which draws a visible rectangle over the void and over the loading frame's radial
+gradients. The derived pair carries an alpha channel lifted so that `alpha = max(r,g,b)` and
+`colour = pixel / alpha`, which composited over black is the original pixel for pixel. Nothing
+regenerates them on a build; `art.test.ts` is what catches a missing one.
 
 ### What is missing
 
@@ -120,7 +130,6 @@ well, and the lock marks a STATE, which no photograph can.
 |---|---|
 | **Alloy Refinery** / **Crystal Extractor** | The last borrow: both wear the raw resource they produce, which reads well at row size but is a small lie about what the building is |
 | Battle-outcome imagery for `DECISIVE` / `PARTIAL` / `REPELLED` | The report is the loop's payoff and is currently all type |
-| A wordmark and an app icon | Nothing to put on a home screen |
 
 A new installation ships in **three tiers**, exactly like `telescope_1..3` — that is what makes
 a planet visibly upgrade and what feeds the next-level preview. A new HULL ships as one

@@ -99,7 +99,7 @@ export function App() {
 
   return (
     <div className="relative z-10 flex h-dvh flex-col overflow-hidden">
-      <StatusBar onOpen={setPanel} />
+      <StatusBar commander={session.me.displayName} onOpen={setPanel} />
 
       <main className="relative flex-1">
         <GalaxyView

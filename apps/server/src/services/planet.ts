@@ -15,7 +15,7 @@ import {
   type SatelliteId,
   type SatelliteSet,
   HULLS,
-} from '@blindspace/rules';
+} from '@astera/rules';
 import { minutesSince, type Clock } from '../clock.js';
 import type { Db, Queryable, Tx } from '../db/client.js';
 import { buildings, planets, players, satellites, seasons, units } from '../db/schema.js';

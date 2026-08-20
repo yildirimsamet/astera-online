@@ -1,4 +1,4 @@
-import { productiveMinutes } from '@blindspace/rules';
+import { productiveMinutes } from '@astera/rules';
 import type { PlanetView } from '../api/schemas.js';
 import { toServerTime } from './clock.js';
 import { useNow } from './time.js';

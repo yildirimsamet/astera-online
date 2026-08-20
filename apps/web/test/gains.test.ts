@@ -6,7 +6,7 @@ import {
   SATELLITE_IDS,
   instrumentMaxed,
   telescopeSlots,
-} from '@blindspace/rules';
+} from '@astera/rules';
 import { buildingGain, instrumentGain, satelliteGain } from '../src/lib/gains.js';
 
 /**

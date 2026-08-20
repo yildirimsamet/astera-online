@@ -1,5 +1,5 @@
 /**
- * BLINDSPACE — text prototype.
+ * ASTERA ONLINE — text prototype.
  *
  * Answers exactly one question: does the choice between striking blind and
  * spending eight minutes to know feel like a real decision?
@@ -17,7 +17,7 @@ import {
   clarity, clarityState, telescopeReading, detectChance, probeAccuracy, fuzzBand,
 } from './rules.mjs';
 
-const SAVE = 'blindspace.proto.v2';
+const SAVE = 'astera.proto.v2';
 const MAX_CATCHUP_MIN = 7 * 24 * 60;
 const GRACE_MIN = 240;        // newcomer immunity — 4h, or until Command Core L4
 

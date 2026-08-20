@@ -1,5 +1,5 @@
 {
-  "name": "@blindspace/web",
+  "name": "@astera/web",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -11,7 +11,7 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@blindspace/rules": "workspace:*",
+    "@astera/rules": "workspace:*",
     "@react-three/drei": "^10.7.8",
     "@react-three/fiber": "^9.7.0",
     "@react-three/postprocessing": "^3.0.5",

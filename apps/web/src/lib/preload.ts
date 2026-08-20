@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { ASTEROID_MODELS, MODEL, PLANET_ART, SATELLITE_MODEL } from '../ui/assets.js';
-import { SATELLITE_IDS } from '@blindspace/rules';
+import { SATELLITE_IDS } from '@astera/rules';
 
 /**
  * WAITING, DONE HONESTLY.

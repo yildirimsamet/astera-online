@@ -12,7 +12,7 @@ import {
   prospectorSpeed,
   prospectorTravelExact,
   type AsteroidSpec,
-} from '@blindspace/rules';
+} from '@astera/rules';
 import { asteroidClaims, miningRuns, planets, units } from '../src/db/schema.js';
 import { launchMining, visibleAsteroids } from '../src/services/mining.js';
 import { buildUnits } from '../src/services/build.js';

@@ -8,7 +8,7 @@ import {
   distance,
   engagementEndsAt,
   fleetTravelMinutes,
-} from '@blindspace/rules';
+} from '@astera/rules';
 import { missions, notifications, planets, scheduledEvents, units } from '../src/db/schema.js';
 import { launchAttack } from '../src/services/mission.js';
 import { launchProbe } from '../src/services/intel.js';

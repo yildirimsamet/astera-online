@@ -10,7 +10,7 @@
 import { chromium } from 'playwright';
 
 const OUT = process.argv[2] ?? '.';
-const APP = process.env.BLINDSPACE_APP ?? 'http://localhost:5173/';
+const APP = process.env.ASTERA_APP ?? 'http://localhost:5173/';
 
 const browser = await chromium.launch({
   args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'],

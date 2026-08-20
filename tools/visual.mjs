@@ -7,8 +7,8 @@
  * the real client against the real API, photographs it, and MEASURES the scene
  * through the `DevBridge` rather than guessing from the picture.
  *
- *   pnpm --filter @blindspace/server dev
- *   pnpm --filter @blindspace/web dev
+ *   pnpm --filter @astera/server dev
+ *   pnpm --filter @astera/web dev
  *   node tools/visual.mjs out/visual
  *
  * WebGL runs on SwiftShader here, so everything is given time to settle.

@@ -1,5 +1,5 @@
 import { eq } from 'drizzle-orm';
-import { SERVERS } from '@blindspace/rules';
+import { SERVERS } from '@astera/rules';
 import type { Db } from '../db/client.js';
 import type { Clock } from '../clock.js';
 import { players } from '../db/schema.js';

@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import type { HullId } from '@blindspace/rules';
+import type { HullId } from '@astera/rules';
 import type { IconProps } from './index.js';
 
 /**

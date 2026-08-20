@@ -6,13 +6,13 @@
  * at rather than imagined.
  *
  *   pnpm dev:server      # or however the API is running
- *   pnpm --filter @blindspace/web dev
+ *   pnpm --filter @astera/web dev
  *   node tools/screenshots.mjs /path/to/output
  */
 import { chromium } from 'playwright';
 
 const OUT = process.argv[2] ?? '.';
-const APP = process.env.BLINDSPACE_APP ?? 'http://localhost:5173/';
+const APP = process.env.ASTERA_APP ?? 'http://localhost:5173/';
 
 // SwiftShader: headless Chromium has no GPU, and the galaxy is WebGL. Slow, but
 // it renders the same scene the phone will.

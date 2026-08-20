@@ -21,7 +21,7 @@ import {
   vaultProtects,
   type Fleet,
   type Ledger,
-} from '@blindspace/rules';
+} from '@astera/rules';
 import { addMinutes, atMinute, minutesSince, type Clock } from '../clock.js';
 import type { Db, Tx } from '../db/client.js';
 import {

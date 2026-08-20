@@ -5,7 +5,7 @@ import {
   generateGalaxy,
   interceptAsteroid,
   prospectorSpeed,
-} from '@blindspace/rules';
+} from '@astera/rules';
 import {
   asteroidWorldPosition,
   contactPosition,

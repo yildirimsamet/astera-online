@@ -1,6 +1,6 @@
 ---
-name: blindspace
-description: "Blindspace — the user's solo-dev multiplayer space game at ~/Desktop/Coding/MyProjects/blindspace; read its CLAUDE.md before doing anything"
+name: astera
+description: "Astera Online — the user's solo-dev multiplayer space game at ~/Desktop/Coding/MyProjects/blindspace; read its CLAUDE.md before doing anything"
 metadata: 
   node_type: memory
   type: project
@@ -8,7 +8,7 @@ metadata:
   modified: 2026-08-15T16:44:48.635Z
 ---
 
-**Blindspace** lives at `/home/yildirim/Desktop/Coding/MyProjects/blindspace` (git repo, pnpm
+**Astera Online** lives at `/home/yildirim/Desktop/Coding/MyProjects/blindspace` (git repo, pnpm
 monorepo). A mobile-first async multiplayer space game where the core tension is *seeing and
 being seen*: one planet each, fleets that physically travel, combat resolving while both
 players are offline.

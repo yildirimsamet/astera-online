@@ -11,7 +11,7 @@ import {
   type InstrumentId,
   type Resources,
   type SatelliteId,
-} from '@blindspace/rules';
+} from '@astera/rules';
 import type { PlanetView } from '../api/schemas.js';
 
 /**

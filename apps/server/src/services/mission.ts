@@ -12,8 +12,8 @@ import {
   type Fleet,
   type HullId,
   HULLS,
-} from '@blindspace/rules';
-import { ABUSE } from '@blindspace/rules';
+} from '@astera/rules';
+import { ABUSE } from '@astera/rules';
 import { addMinutes, type Clock } from '../clock.js';
 import type { Db, Tx } from '../db/client.js';
 import {

@@ -1,5 +1,5 @@
 import { and, eq, inArray, isNotNull, isNull, ne, or, sql } from 'drizzle-orm';
-import { flightSlots } from '@blindspace/rules';
+import { flightSlots } from '@astera/rules';
 import type { Queryable } from '../db/client.js';
 import { miningRuns, missions } from '../db/schema.js';
 import { GameError } from './planet.js';
@@ -7,7 +7,7 @@ import { GameError } from './planet.js';
 /**
  * FLIGHT SLOTS — how much a planet may have in the air at once. D28.
  *
- * The rule lives in `@blindspace/rules`; this is the only place that counts what
+ * The rule lives in `@astera/rules`; this is the only place that counts what
  * is currently using it, and every launch path goes through `assertFreeBay`.
  *
  * WHY ONE HELPER AND NOT THREE COPIES. The count has to be taken under the planet

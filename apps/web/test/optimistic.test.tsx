@@ -2,7 +2,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { act, renderHook, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ReactNode } from 'react';
-import { upgradeCost } from '@blindspace/rules';
+import { upgradeCost } from '@astera/rules';
 import type { Api } from '../src/api/client.js';
 import { ApiProvider } from '../src/api/context.js';
 import { keys, useCollect, useUpgrade } from '../src/api/queries.js';

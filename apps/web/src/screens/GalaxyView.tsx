@@ -29,7 +29,7 @@ import { threadKey } from '../galaxy/Fleets.jsx';
 import { HomeworldIcon } from '../ui/icons/index.js';
 import { haptic } from '../lib/haptics.js';
 import { duration, minutesLeft, useNow } from '../lib/time.js';
-import { distance, engagementEndsAt, interceptAsteroid, travelMinutes } from '@blindspace/rules';
+import { distance, engagementEndsAt, interceptAsteroid, travelMinutes } from '@astera/rules';
 import { LaunchSheet } from './LaunchSheet.jsx';
 import { PlanetScreen } from './PlanetScreen.jsx';
 import { IntelScreen } from './IntelScreen.jsx';
@@ -758,8 +758,9 @@ function AsteroidFocusHost({
  * WHO YOU ARE, WHERE YOU ARE, AND HOW LONG YOU HAVE. D21.
  *
  * The one surface in the game that is about the account rather than about the
- * world, and the only place sign-out lives. Opened from the season clock in the
- * header, because that figure already belongs to this commander in this galaxy.
+ * world, and the only place sign-out lives. Opened from the commander control in
+ * the header — the control that carries the player's own name, because a player
+ * looking for the way out looks for themselves and not for a clock.
  *
  * It states the galaxy by name. With ten of them, "which one am I in" stopped
  * being a question with one possible answer, and a player who cannot name their own

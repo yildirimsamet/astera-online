@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { HULLS, counterMult, fleetValue, type Fleet, type HullId } from '@blindspace/rules';
+import { HULLS, counterMult, fleetValue, type Fleet, type HullId } from '@astera/rules';
 import {
   ARCHETYPES, COMBAT_HULLS, GROUND_DEFENCE, adaptiveMix, runSeason, tradeScore,
   type ArchetypeName, type CombatHullId,

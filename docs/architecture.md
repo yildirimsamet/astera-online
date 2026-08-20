@@ -5,7 +5,7 @@ How it is built, and — more usefully — which traps are already paid for.
 ## The one principle
 
 > Every game rule — combat, economy, travel, loot, intel, visibility, scoring — lives in
-> `@blindspace/rules`: **pure functions, zero runtime dependencies, no clock, no I/O, no
+> `@astera/rules`: **pure functions, zero runtime dependencies, no clock, no I/O, no
 > ambient randomness.** The server imports it to decide outcomes, the simulator to validate
 > balance, the client *only* to predict and render.
 >
@@ -18,9 +18,9 @@ by ESLint, not by discipline** — CI fails if the rules ever acquire a clock.
 ## Layout
 
 ```
-packages/rules/    @blindspace/rules    THE source of truth. Zero deps.
-packages/sim/      @blindspace/sim      Season simulator + CI regression gate
-apps/server/       @blindspace/server   Fastify API + event worker (one image, two roles)
+packages/rules/    @astera/rules    THE source of truth. Zero deps.
+packages/sim/      @astera/sim      Season simulator + CI regression gate
+apps/server/       @astera/server   Fastify API + event worker (one image, two roles)
 apps/web/                               React + Vite + R3F client
 tools/                                  Playwright harnesses that measure the running game
 legacy/                                 Phase 0 JS prototype, still runnable
@@ -328,7 +328,7 @@ docker compose up -d      # Postgres on :5433
 pnpm verify               # typecheck + lint + all tests
 pnpm sim -- --players=50 --seed=7
 
-pnpm --filter @blindspace/server db:generate   # after a schema change
+pnpm --filter @astera/server db:generate   # after a schema change
 pnpm dev                                       # server + web together
 
 node tools/visual.mjs out/visual               # drive and measure the running client

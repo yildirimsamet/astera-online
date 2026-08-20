@@ -67,6 +67,6 @@ export async function assertSchemaCurrent(db: Db): Promise<void> {
   throw new Error(
     `The database is ${String(behind)} migration(s) behind this build. Every worker ` +
       'tick will fail on the first insert that touches a missing column, and no fleet ' +
-      'will ever land. Run: pnpm --filter @blindspace/server season migrate',
+      'will ever land. Run: pnpm --filter @astera/server season migrate',
   );
 }

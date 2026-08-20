@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { HULLS, fleetEntries } from '@blindspace/rules';
+import { HULLS, fleetEntries } from '@astera/rules';
 import { useReports } from '../api/queries.js';
 import type { BattleReport } from '../api/schemas.js';
 import { compact, full, signed } from '../lib/format.js';

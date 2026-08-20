@@ -8,7 +8,7 @@ import {
   fleetEntries,
   type Fleet,
   type HullId,
-} from '@blindspace/rules';
+} from '@astera/rules';
 import {
   battleReports,
   debrisFields,

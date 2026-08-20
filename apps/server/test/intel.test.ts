@@ -1,7 +1,7 @@
 import { and, eq } from 'drizzle-orm';
 import { pino } from 'pino';
 import { afterAll, beforeEach, describe, expect, it } from 'vitest';
-import { INTEL, PROBE } from '@blindspace/rules';
+import { INTEL, PROBE } from '@astera/rules';
 import { missions, planets, probeReports, satellites, scanEvents, watches } from '../src/db/schema.js';
 import { assignWatch, launchProbe, readRadarLog, readTelescopes } from '../src/services/intel.js';
 import { launchAttack } from '../src/services/mission.js';

@@ -4,7 +4,7 @@ import {
   type BuildingId,
   type InstrumentId,
   type SatelliteId,
-} from '@blindspace/rules';
+} from '@astera/rules';
 import type { PlanetView } from '../api/schemas.js';
 import { compact } from '../lib/format.js';
 import { ActionButton } from './Action.js';

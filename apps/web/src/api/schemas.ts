@@ -7,7 +7,7 @@ import type {
   HullId,
   InstrumentId,
   SatelliteId,
-} from '@blindspace/rules';
+} from '@astera/rules';
 
 /**
  * The API boundary.

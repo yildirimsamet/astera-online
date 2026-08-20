@@ -1086,10 +1086,51 @@ its properties would ship a visible defect rather than a different-looking one, 
 edge; and it is empty where `Core` already is, or the two stack into something that reads as a
 STAR, which this galaxy deliberately does not have.
 
+### D54 · The game is Astera Online, and the way out says your name — owner instruction
+Three things, one pass.
+
+**The name.** `Blindspace` is gone from every file in the repository. It was three different
+strings doing three different jobs and each was renamed to the form that job needs: the package
+scope is `@astera/*`, the Postgres role, database, container and LISTEN channel are `astera`,
+`astera_test`, `astera-pg` and `astera_events`, the `<title>` and the manifest `name` are
+**Astera Online**, and the two places a phone truncates — the manifest `short_name` and
+`apple-mobile-web-app-title` — are **Astera**. The dev database is on tmpfs and is recreated by
+every container start anyway, so renaming the role cost nothing that a restart was not already
+costing. The repository DIRECTORY is still `blindspace`; renaming it would move the memory slug
+and every absolute path in it, and it is not visible to a player.
+
+**The identity.** The supplied art is a glow painted on a solid black plate. Dropped straight
+onto the app that draws a black rectangle over the void — which is `#04060c`, and lit by two
+radial gradients on the loading frame, so the box shows. Two derived files carry an alpha channel
+instead, lifted so that `alpha = max(r,g,b)` and `colour = pixel / alpha`: composited over black
+that is the original pixel for pixel, where the obvious `alpha = luminance` would have crushed
+every mid-tone. Quantised to 255 colours, which is 66KB against 272KB and indistinguishable at
+any size the game draws it. `Wordmark` is the single component both the front door and the
+loading cover hang, because two hand-set headings is how a wordmark drifts. The app icons and the
+two favicons are square crops of the same artwork with the words taken off — at 32px a wordmark
+is a smudge — and `art.test.ts` resolves every one of them against `public/`, since nothing
+regenerates these on a build.
+
+**The way out.** Owner-reported: "there is no logout button, I cannot sign out." There was one,
+and there had been since D21 — in the commander sheet, opened by a header control that is always
+on screen. The control said SEASON and drew a duration under it, so what every player saw was a
+clock, and nobody presses a readout. D21's argument was that "how long have I got" and "who am I,
+and how do I leave" are the same question asked twice; that is true of the SHEET and was never
+true of the LABEL. The control now carries the commander's own NAME with the season figure under
+it, and the plate and chevron the other two header controls already had. Not a fourth icon
+button: two stock columns share this row and have about ninety pixels each on a phone, which is
+already the tightest thing in the interface. The name is set in the display face at its own
+tracking rather than in `legend`, whose 0.14em costs three characters of a sixteen-character name
+in a column this narrow — and a name truncated to "SHOT1E7…" identifies nobody.
+
+**This generalises `I5`.** A surface reachable only as a side effect does not exist for the
+player; so does a surface whose only permanent way in is labelled as something else. Before
+shipping a surface, name the control that opens it — and check that the control names it back.
+
 ## Architecture
 
 ### A1 · One source of truth for game rules — LOCKED, foundational
-`@blindspace/rules`: pure functions, zero runtime dependencies, no clock, no I/O, no ambient
+`@astera/rules`: pure functions, zero runtime dependencies, no clock, no I/O, no ambient
 randomness. The server decides outcomes with it, the simulator validates balance with it, the
 client only predicts and renders.
 **This constraint decided the entire stack** — it requires one language across client, server and

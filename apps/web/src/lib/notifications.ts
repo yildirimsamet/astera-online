@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { HULLS, type HullId } from '@blindspace/rules';
+import { HULLS, type HullId } from '@astera/rules';
 import type { NotificationView } from '../api/schemas.js';
 import { compact } from './format.js';
 import { duration } from './time.js';

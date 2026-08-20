@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { SATELLITE_IDS } from '@blindspace/rules';
+import { SATELLITE_IDS } from '@astera/rules';
 import { SATELLITE_NEON } from '../src/ui/assets.js';
 import {
   NEON_RATIO,

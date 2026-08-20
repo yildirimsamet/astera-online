@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * BLINDSPACE — headless season simulator.
+ * ASTERA ONLINE — headless season simulator.
  *
  * Runs a full season with bot archetypes executing the real formulas from
  * rules.mjs, and reports the six balance invariants from GDD §G.1 every day.
@@ -554,7 +554,7 @@ function printReport({ world, report }) {
     return;
   }
 
-  console.log(`\n${C.bold}${C.orange}BLINDSPACE${C.reset} ${C.dim}season simulation${C.reset}`);
+  console.log(`\n${C.bold}${C.orange}ASTERA ONLINE${C.reset} ${C.dim}season simulation${C.reset}`);
   console.log(`${C.grey}${CFG.players} players · ${CFG.days} days · seed ${CFG.seed}${C.reset}\n`);
 
   console.log(`${C.bold}${pad('DAY', 5)}${['ARR', 'VFR', 'TI', 'RR', 'SV', 'G', 'TAX'].map((k) => pad(k, 8)).join('')}${pad('ATK', 6)}${pad('LOOT', 10)}${pad('D/P/R', 12)}${C.reset}`);

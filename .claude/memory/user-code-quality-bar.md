@@ -28,4 +28,4 @@ watching the codebase grow. It is a standing rule, not a one-off request.
 **How to apply:** run typecheck + lint + tests as one gate before claiming anything is done.
 When several tests fail identically, that is one bug, not many. When a test is flaky —
 e.g. betting on a probabilistic roll — that is a defect to fix, not noise to tolerate.
-On Blindspace this is written up in `docs/engineering-standards.md`. See [[blindspace]].
+On Astera Online this is written up in `docs/engineering-standards.md`. See [[astera]].

@@ -41,7 +41,7 @@ importers:
 
   apps/server:
     dependencies:
-      '@blindspace/rules':
+      '@astera/rules':
         specifier: workspace:*
         version: link:../../packages/rules
       '@fastify/cookie':
@@ -72,7 +72,7 @@ importers:
 
   apps/web:
     dependencies:
-      '@blindspace/rules':
+      '@astera/rules':
         specifier: workspace:*
         version: link:../../packages/rules
       '@react-three/drei':
@@ -160,7 +160,7 @@ importers:
 
   packages/sim:
     dependencies:
-      '@blindspace/rules':
+      '@astera/rules':
         specifier: workspace:*
         version: link:../rules
 

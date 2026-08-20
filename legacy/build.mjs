@@ -20,8 +20,8 @@ const html = readFileSync('prototype.html', 'utf8')
     '<script type="module" src="./prototype.js"></script>',
     `<script type="module">\n/* ---- rules.mjs ---- */\n${rules}\n/* ---- prototype.js ---- */\n${proto}\n</script>`
   )
-  .replace('<title>Blindspace — text prototype</title>',
-           '<title>Blindspace — text prototype (standalone)</title>');
+  .replace('<title>Astera Online — text prototype</title>',
+           '<title>Astera Online — text prototype (standalone)</title>');
 
 writeFileSync('prototype-standalone.html', html);
 console.log(`prototype-standalone.html  ${(html.length / 1024).toFixed(0)} KB — open it directly, no server needed`);

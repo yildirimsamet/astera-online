@@ -1,4 +1,4 @@
-# CLAUDE.md — Blindspace
+# CLAUDE.md — Astera Online
 
 Operating manual for a cold agent. Read it first, every session. Detail lives in `docs/`.
 
@@ -175,6 +175,7 @@ Each was paid for in iteration. `docs/decisions.md` holds the evidence.
 | The cover comes off when the disc is BUILT, not when the bytes land | Models still have to parse, compile and upload; `FirstFrame` reports the first real frame |
 | Nothing on the way in blocks the player | A loading screen is an OVERLAY over a page that is already loading, never a gate in front of one |
 | Every card carries a two-or-three-word tag, separate from its role sentence | The role argues a decision; the tag answers "what IS this" for someone scanning fourteen cards |
+| **A control names the surface it opens** | A permanent way in is not enough. The commander sheet — the account, the galaxy, sign-out — hung off a header button that said SEASON and drew a duration, so it read as a clock and produced "there is no logout button" (D54) |
 | **The galactic plane carries no lines** | The graph-paper quality came from strokes being strokes, not from their brightness — modulating them changed nothing and cost a pass to find out (D53b) |
 | **Read a file's docblock before editing it** | The 3D surface and its harnesses carry a dozen traps that each cost a bug — orbit standoffs, `lookAt` frames, sprite tinting, plume direction, a screenshot that stalls the frame loop. Every one is written at its own site in `apps/web/src/galaxy/` and `tools/` |
 
@@ -264,7 +265,7 @@ Full detail in `docs/engineering-standards.md`. The short version:
 ### Server rules
 
 - **Server-authoritative.** Resources, fleet state, combat, travel, cooldowns, loot and
-  progression are decided server-side, inside a transaction, using `@blindspace/rules`.
+  progression are decided server-side, inside a transaction, using `@astera/rules`.
 - **The fog is enforced in the query, not the UI.** A modified client must not be able to
   read a field it was not entitled to.
 - **Lazy evaluation for anything continuous; scheduled events for anything that must happen
@@ -303,11 +304,11 @@ Phases 0–7 are done: the rules module and season simulator; the backend; the i
 the return moment; the playable loop; the galaxy as the only screen (D20); accounts and ten
 galaxies (D21); the owner's interface pass (D22–D26); the OGame pass (D27–D33); mining,
 wreckage, engagement, notifications and the radar rebuild (D34–D50); the live galaxy and the
-end of waiting (D51–D53).
+end of waiting (D51–D53); the name, the identity and the way out (D54).
 
 ```
-pnpm verify  →  0 type errors · 0 lint errors · 1,278 tests
-                rules 221 · sim 47 · server 462 · web 548
+pnpm verify  →  0 type errors · 0 lint errors · 1,281 tests
+                rules 221 · sim 47 · server 462 · web 551
 ```
 
 **Two season-gate assertions are RED, and they MOVED at D52a:** `ARR` reads 0.298 on seed
@@ -336,6 +337,7 @@ seed. `ARR` was always the next thing to re-derive; it is now the only thing.
 | Live channel | Two topics on one SSE socket: what happened to YOU, and what happened in your GALAXY. A stranger's launch reaches every screen in under a second; the polls are a sixty-second net under it, and `/health` says whether the channel is up (D53) |
 | Look | Nebula, a power-law starfield with diffraction spikes, meteors, dust, bloom. Worlds carry an atmosphere limb — warm on the lit side, gone on the dark one — and the galactic plane is a painted plate of spiral arms and dust lanes — no lines anywhere (D53a, D53b) |
 | Web client | The galaxy is the only screen. Focus anything and a rail states what you know and how you know it. Everything animated runs on `serverNow()`, so every player watches the same instant (D52). One tap, one round trip — and the deterministic spends are predicted and reconciled, so the screen agrees with the tap immediately (D53) |
+| Identity | **Astera Online** everywhere — package scope, database, container, channel, title, manifest. The painted wordmark on the front door and the loading cover, and app icons cut from the same artwork (D54) |
 | Season lifecycle | `season_end` event kind exists; **no handler** |
 
 **The single most important gap is a player.** The loop is playable end to end and has

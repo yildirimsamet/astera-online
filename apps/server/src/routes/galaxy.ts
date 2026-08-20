@@ -1,6 +1,6 @@
 import { and, eq, inArray } from 'drizzle-orm';
 import type { FastifyInstance } from 'fastify';
-import { SATELLITE_IDS, coreTier, type SatelliteId } from '@blindspace/rules';
+import { SATELLITE_IDS, coreTier, type SatelliteId } from '@astera/rules';
 import { buildings, planets, players, satellites } from '../db/schema.js';
 import { GameError } from '../services/planet.js';
 import { readTelescopes } from '../services/intel.js';

@@ -1,7 +1,7 @@
 import { eq } from 'drizzle-orm';
 import { pino } from 'pino';
 import { afterAll, afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { activeAsteroids, generateGalaxy } from '@blindspace/rules';
+import { activeAsteroids, generateGalaxy } from '@astera/rules';
 import { planets, scheduledEvents } from '../src/db/schema.js';
 import { EventBus } from '../src/stream/bus.js';
 import { launchAttack } from '../src/services/mission.js';

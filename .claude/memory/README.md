@@ -9,7 +9,7 @@ the work up.
 | File | Holds |
 |---|---|
 | `MEMORY.md` | The index. One line per memory. |
-| `blindspace.md` | What this project is, where it lives, and that the design phase is **over**. |
+| `astera.md` | What this project is, where it lives, and that the design phase is **over**. |
 | `user-execution-mode.md` | How the owner wants work done: decide small things yourself, ship, ask only on core product direction. |
 | `user-code-quality-bar.md` | Full typing, zero lint errors, tests for everything, root cause before fixing a test. |
 

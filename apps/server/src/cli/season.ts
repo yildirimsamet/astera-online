@@ -1,15 +1,15 @@
 /**
  * World operations — the only way galaxies come into existence.
  *
- *   pnpm --filter @blindspace/server season migrate
- *   pnpm --filter @blindspace/server season bootstrap
- *   pnpm --filter @blindspace/server season status
- *   pnpm --filter @blindspace/server season wipe --yes
+ *   pnpm --filter @astera/server season migrate
+ *   pnpm --filter @astera/server season bootstrap
+ *   pnpm --filter @astera/server season status
+ *   pnpm --filter @astera/server season wipe --yes
  */
 import { parseArgs } from 'node:util';
 import { randomBytes } from 'node:crypto';
 import { eq } from 'drizzle-orm';
-import { SEASON, SERVERS } from '@blindspace/rules';
+import { SEASON, SERVERS } from '@astera/rules';
 import { createDb } from '../db/client.js';
 import { runMigrations } from '../db/migrate.js';
 import { loadDotEnv, loadEnv } from '../env.js';

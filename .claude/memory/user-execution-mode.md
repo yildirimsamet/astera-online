@@ -36,4 +36,4 @@ so directly — "research is a tool, documentation is a tool, architecture is a 
 them is the product."
 
 **How to apply:** when stuck, pick the smallest reversible option and continue. Report what
-changed and what is next; do not narrate every decision. See [[blindspace]].
+changed and what is next; do not narrate every decision. See [[astera]].

@@ -102,4 +102,4 @@ export async function findAccount(db: Db, accountId: string): Promise<AccountRec
  */
 let decoy: Promise<string> | null = null;
 const decoyHash = (): Promise<string> =>
-  (decoy ??= hashPassword('blindspace-decoy-never-a-real-password'));
+  (decoy ??= hashPassword('astera-decoy-never-a-real-password'));

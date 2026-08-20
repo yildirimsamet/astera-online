@@ -8,10 +8,11 @@ import {
   ALL_HULLS,
   type BuildingId,
   type InstrumentId,
-} from '@blindspace/rules';
+} from '@astera/rules';
 import {
   BUILDING_ART,
   HULL_ART,
+  LOGO,
   buildingArt,
   groundArt,
   instrumentArt,
@@ -214,6 +215,37 @@ describe('the hull renders', () => {
   it('agrees with the first tier of the battery ladder', () => {
     for (const id of GROUND_HULLS) {
       expect(HULL_ART[id]).toBe(groundArt(id, 1));
+    }
+  });
+});
+
+describe('the identity', () => {
+  /**
+   * The wordmark is on the first frame of every session, so a broken path here is
+   * not a blank well beside a price — it is the game opening with no name on it.
+   *
+   * Both files are DERIVED and committed — the supplied art is a glow on a solid
+   * black plate, and these are the same pixels with that plate lifted into an alpha
+   * channel. Nothing regenerates them on a build, so the only thing standing
+   * between a deleted file and a nameless front door is this assertion.
+   */
+  it('resolves both forms of the mark', () => {
+    for (const [form, url] of Object.entries(LOGO)) {
+      expect(existsSync(served(url)), `LOGO.${form} → ${url}`).toBe(true);
+    }
+  });
+
+  /** Every icon the manifest and the document head hand to a browser. */
+  it('resolves every installed icon', () => {
+    for (const name of [
+      'icon-192.png',
+      'icon-512.png',
+      'icon-512-maskable.png',
+      'icon-180.png',
+      'favicon-32.png',
+      'favicon-64.png',
+    ]) {
+      expect(existsSync(served(`/icons/${name}`)), name).toBe(true);
     }
   });
 });

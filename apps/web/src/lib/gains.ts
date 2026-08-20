@@ -17,7 +17,7 @@ import {
   type BuildingLevels,
   type InstrumentId,
   type SatelliteId,
-} from '@blindspace/rules';
+} from '@astera/rules';
 import type { PlanetView } from '../api/schemas.js';
 import { compact, full, percent } from './format.js';
 

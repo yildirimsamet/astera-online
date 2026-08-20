@@ -17,12 +17,27 @@
     -->
     <link rel="manifest" href="/manifest.webmanifest" />
     <link rel="apple-touch-icon" href="/icons/icon-180.png" />
+    <!--
+      The tab icon. Two sizes rather than one: the mark is a crescent, a streak and
+      a craft, and a browser downscaling 192px to 16px turns all three into the same
+      grey smudge. Every one of these is a square crop of the same artwork the
+      wordmark is cut from, so a pinned tab and an installed home screen show the
+      same object.
+    -->
+    <link rel="icon" type="image/png" sizes="32x32" href="/icons/favicon-32.png" />
+    <link rel="icon" type="image/png" sizes="64x64" href="/icons/favicon-64.png" />
+    <!--
+      The lockup is on the very first frame of every session — the loading cover
+      hangs it before React has decided which screen it is covering — so it is
+      fetched alongside the module graph rather than after it.
+    -->
+    <link rel="preload" as="image" href="/assets/images/logos/logo-lockup.png" />
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-    <meta name="apple-mobile-web-app-title" content="Blindspace" />
+    <meta name="apple-mobile-web-app-title" content="Astera" />
 
-    <title>Blindspace</title>
+    <title>Astera Online</title>
   </head>
   <body>
     <div id="root"></div>

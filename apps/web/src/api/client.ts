@@ -1,5 +1,5 @@
 import type { z } from 'zod';
-import type { Fleet, BuildingId, HullId, InstrumentId, SatelliteId } from '@blindspace/rules';
+import type { Fleet, BuildingId, HullId, InstrumentId, SatelliteId } from '@astera/rules';
 import { noteServerTime } from '../lib/clock.js';
 import {
   collectSchema,

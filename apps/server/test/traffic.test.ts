@@ -1,5 +1,5 @@
 import { and, eq } from 'drizzle-orm';
-import { COMBAT, engagementEndsAt } from '@blindspace/rules';
+import { COMBAT, engagementEndsAt } from '@astera/rules';
 import type { FastifyInstance } from 'fastify';
 import { pino } from 'pino';
 import { afterAll, afterEach, beforeEach, describe, expect, it } from 'vitest';

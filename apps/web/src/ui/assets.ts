@@ -4,7 +4,7 @@ import type {
   HullId,
   InstrumentId,
   SatelliteId,
-} from '@blindspace/rules';
+} from '@astera/rules';
 import { noseBearing, type Facing } from '../galaxy/model.js';
 
 /**
@@ -30,6 +30,24 @@ export const tierOf = (level: number): 1 | 2 | 3 => (level >= 5 ? 3 : level >= 3
 export const RESOURCE_ART = {
   alloy: `${BASE}/resources/alloy.png`,
   crystal: `${BASE}/resources/crystal.png`,
+} as const;
+
+/**
+ * The identity, in the two forms it is ever used in.
+ *
+ * `lockup` is the full ASTERA ONLINE mark and `mark` is the same artwork with the
+ * words taken off, for anywhere too small to read them.
+ *
+ * BOTH ARE DERIVED FILES, and the derivation matters. The supplied art is a glow
+ * painted on a solid black plate; dropped straight onto the app it draws a black
+ * rectangle over the void, which is a shade lighter than the plate and lit by two
+ * radial gradients — so the box shows. These carry an alpha channel instead, lifted
+ * so that compositing over black reproduces the original pixel for pixel. The
+ * originals stay beside them untouched as the source of any future crop.
+ */
+export const LOGO = {
+  lockup: `${BASE}/logos/logo-lockup.png`,
+  mark: `${BASE}/logos/logo-mark.png`,
 } as const;
 
 /* ── planets ────────────────────────────────────────────────── */

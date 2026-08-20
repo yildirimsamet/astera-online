@@ -1,4 +1,4 @@
-# Blindspace
+# Astera Online
 
 > The fleet is the bet. The information is the game. The planet is the stake.
 
@@ -12,17 +12,17 @@ physically travel, and combat that resolves while you are asleep.
 ## Layout
 
 ```
-packages/rules/   @blindspace/rules   THE source of truth for every game rule
-packages/sim/     @blindspace/sim     headless season simulator + regression gate
-apps/server/      @blindspace/server  Fastify API + event worker (one image, two roles)
-apps/web/         @blindspace/web     React + Vite client — the playable loop
+packages/rules/   @astera/rules   THE source of truth for every game rule
+packages/sim/     @astera/sim     headless season simulator + regression gate
+apps/server/      @astera/server  Fastify API + event worker (one image, two roles)
+apps/web/         @astera/web     React + Vite client — the playable loop
 legacy/                               Phase 0 JS prototype, kept runnable
 ```
 
 ### The one architectural principle
 
 Every game rule — combat, economy, travel, loot, intel, visibility, scoring —
-lives in `@blindspace/rules` as pure functions with **zero dependencies, no
+lives in `@astera/rules` as pure functions with **zero dependencies, no
 clock, no I/O, and no ambient randomness**. The server imports it to decide
 outcomes. The simulator imports it to validate balance. The client imports it
 only to predict and render.
@@ -37,9 +37,9 @@ from its seed.
 
 ```bash
 pnpm install
-docker compose up -d      # Postgres on :5433 — two databases, blindspace and blindspace_test
+docker compose up -d      # Postgres on :5433 — two databases, astera and astera_test
 
-pnpm verify               # typecheck + lint + all 292 tests
+pnpm verify               # typecheck + lint + all 1,281 tests
 pnpm typecheck
 pnpm lint
 pnpm test
@@ -47,7 +47,7 @@ pnpm test
 pnpm sim                  # look at a season by hand
 pnpm sim -- --players=200 --seed=7
 
-pnpm --filter @blindspace/server db:generate   # after a schema change
+pnpm --filter @astera/server db:generate   # after a schema change
 ```
 
 ### Playing it
@@ -94,10 +94,10 @@ pnpm shots ./out          # drive the running client and photograph every screen
 
 | Layer | Covers | Count |
 |---|---|---|
-| Rule units + properties | Combat, economy curves, travel, clarity gradient, detection, dominion — plus invariants asserted over *all* inputs with fast-check | 82 |
-| **Season regression** | A full 14-day season on three seeds, asserting the balance invariants stay in band | 30 |
-| Persistence & API | Real Postgres. Double-spend, deadlock ordering, the lazy tick, crash recovery, token-type confusion, fog enforced in the response, onboarding | 147 |
-| Client | The fog as rendered, the launch preview, token refresh, the return overlay, the resource ticker | 33 |
+| Rule units + properties | Combat, economy curves, travel, clarity gradient, detection, dominion — plus invariants asserted over *all* inputs with fast-check | 221 |
+| **Season regression** | A full 14-day season on three seeds, asserting the balance invariants stay in band | 47 |
+| Persistence & API | Real Postgres. Double-spend, deadlock ordering, the lazy tick, crash recovery, token-type confusion, fog enforced in the response, onboarding | 462 |
+| Client | The fog as rendered, the launch preview, token refresh, the return overlay, the resource ticker | 551 |
 
 The client tests are deliberately narrow: they cover what carries gameplay meaning —
 that an unwatched planet never renders as `UNKNOWN`, that the exposure preview equals

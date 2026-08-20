@@ -1,4 +1,4 @@
-import { ALL_HULLS, HULLS, type Fleet, type HullId } from '@blindspace/rules';
+import { ALL_HULLS, HULLS, type Fleet, type HullId } from '@astera/rules';
 
 /**
  * HOW A FLEET IS DRAWN — the owner's rule, made exact.

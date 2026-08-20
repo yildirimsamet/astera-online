@@ -9,7 +9,7 @@ import tailwindcss from '@tailwindcss/vite';
  * another origin would mean SameSite=None plus CORS credentials — a weaker cookie
  * and two more things to get wrong — for no benefit in a single-deployment game.
  */
-const API = process.env.BLINDSPACE_API ?? 'http://localhost:3100';
+const API = process.env.ASTERA_API ?? 'http://localhost:3100';
 
 export default defineConfig({
   plugins: [react(), tailwindcss()],

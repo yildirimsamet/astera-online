@@ -1,5 +1,5 @@
 import { and, eq, inArray, ne } from 'drizzle-orm';
-import { engagementEndsAt, type Fleet, type Vec3 } from '@blindspace/rules';
+import { engagementEndsAt, type Fleet, type Vec3 } from '@astera/rules';
 import type { Db } from '../db/client.js';
 import { miningRuns, missions, planets } from '../db/schema.js';
 

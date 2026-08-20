@@ -1,3 +1,5 @@
+import { Wordmark } from '../ui/Wordmark.jsx';
+
 /**
  * THE WAIT, MADE PART OF THE GAME.
  *
@@ -12,9 +14,9 @@
  * one job: hold the frame with something that looks like the game rather than like
  * a page that has not finished. Three parts, no more.
  *
- *   THE MARK. The wordmark set exactly as the front door sets it, so the loading
- *   frame and the landing page read as one surface rather than as two screens that
- *   happen to follow each other.
+ *   THE MARK. The same `Wordmark` the front door hangs, at a smaller width, so the
+ *   loading frame and the landing page read as one surface rather than as two
+ *   screens that happen to follow each other.
  *
  *   THE INSTRUMENT. A dish sweeping an arc — the same object the Signals beacon
  *   draws, moving. It is the one piece of motion, and it is doing the thing the
@@ -66,9 +68,8 @@ export function LoadingScreen({
       <div className="relative flex w-full max-w-xs flex-col items-center">
         <Dish />
 
-        <h1 className="mt-8 font-display text-[30px] uppercase leading-none tracking-[0.22em] text-bone">
-          Blind
-          <span className="text-faint">space</span>
+        <h1 className="mt-8">
+          <Wordmark width={200} />
         </h1>
 
         <p className="legend mt-3 text-center">{caption}</p>

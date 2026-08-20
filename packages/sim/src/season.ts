@@ -46,7 +46,7 @@ import {
   type GroundHullId,
   type InstrumentLevels,
   type SatelliteId,
-} from '@blindspace/rules';
+} from '@astera/rules';
 import { ARCHETYPES, ARCHETYPE_NAMES, type ArchetypeName, type CombatHullId, type Composition } from './archetypes.js';
 import { measure, type Invariants } from './invariants.js';
 

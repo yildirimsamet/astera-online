@@ -1,5 +1,5 @@
 {
-  "name": "@blindspace/sim",
+  "name": "@astera/sim",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -10,6 +10,6 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@blindspace/rules": "workspace:*"
+    "@astera/rules": "workspace:*"
   }
 }

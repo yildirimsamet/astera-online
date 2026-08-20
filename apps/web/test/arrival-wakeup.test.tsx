@@ -1,7 +1,7 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { render } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { COMBAT, engagementEndsAt } from '@blindspace/rules';
+import { COMBAT, engagementEndsAt } from '@astera/rules';
 import { useFleetArrivals, useMiningArrivals } from '../src/api/queries.js';
 import type { MiningRun, PendingThread } from '../src/api/schemas.js';
 

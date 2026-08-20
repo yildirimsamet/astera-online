@@ -352,15 +352,21 @@ describe('the server list', () => {
 });
 
 /**
- * THE WAY OUT. D21.
+ * THE WAY OUT. D21, corrected.
  *
  * Sign-out was briefly at the foot of the planet sheet, which is opened by tapping
  * your own world in the 3D disc. It worked, and it put the most basic account
  * control in the game behind a hit-test against a sphere — a player who cannot find
  * their planet could not sign out.
  *
- * So it hangs off the season clock in the header, which is a plain DOM button that
- * is always on screen. This is the test that keeps it one.
+ * So it hangs off a header control, which is a plain DOM button that is always on
+ * screen. That was true for a long time and STILL produced "there is no logout
+ * button": the button said SEASON and drew a duration under it, so every player who
+ * looked at it saw a clock. A permanent control that names something else is not a
+ * permanent way in.
+ *
+ * These two tests are what keep it one — that the control exists, and that it says
+ * the player's own name.
  */
 describe('reaching the way out', () => {
   it('offers a commander control in the header at all times', async () => {
@@ -376,14 +382,39 @@ describe('reaching the way out', () => {
     render(
       <Wrapper>
         <ToastProvider>
-          <StatusBar onOpen={onOpen} />
+          <StatusBar commander="Vantage" onOpen={onOpen} />
         </ToastProvider>
       </Wrapper>,
     );
 
-    const control = screen.getByRole('button', { name: /commander and season/i });
+    const control = screen.getByRole('button', { name: /commander Vantage/i });
     await userEvent.setup().click(control);
     expect(onOpen).toHaveBeenCalledWith('commander');
+  });
+
+  /**
+   * The name has to be VISIBLE, not only in the accessible name. This is the
+   * difference between the control a player finds and the one they walk past, and
+   * it is the entire content of the bug report that produced it.
+   */
+  it('states the commander name on the control, in the open', async () => {
+    const { StatusBar } = await import('../src/shell/StatusBar.js');
+    const { ToastProvider } = await import('../src/ui/Toast.js');
+    const { wrapper: Wrapper, queries } = harness();
+
+    queries.setQueryData(['planet'], planetPayload());
+    queries.setQueryData(['season'], seasonPayload());
+
+    render(
+      <Wrapper>
+        <ToastProvider>
+          <StatusBar commander="Vantage" onOpen={vi.fn()} />
+        </ToastProvider>
+      </Wrapper>,
+    );
+
+    const control = screen.getByRole('button', { name: /commander Vantage/i });
+    expect(control.textContent).toContain('Vantage');
   });
 
   /**
@@ -411,7 +442,7 @@ describe('reaching the way out', () => {
     render(
       <Wrapper>
         <ToastProvider>
-          <StatusBar onOpen={onOpen} />
+          <StatusBar commander="Vantage" onOpen={onOpen} />
         </ToastProvider>
       </Wrapper>,
     );

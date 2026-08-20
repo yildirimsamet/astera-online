@@ -1,6 +1,6 @@
 import { and, eq } from 'drizzle-orm';
 import { afterAll, beforeEach, describe, expect, it } from 'vitest';
-import { HULLS, alloyRate, collectorCap, flightSlots, storageCap, upgradeCost } from '@blindspace/rules';
+import { HULLS, alloyRate, collectorCap, flightSlots, storageCap, upgradeCost } from '@astera/rules';
 import { buildings, planets } from '../src/db/schema.js';
 import { loadLocked, withTwoPlanetLock } from '../src/services/planet.js';
 import { buildUnits, upgradeBuilding } from '../src/services/build.js';

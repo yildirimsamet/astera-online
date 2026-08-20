@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { HULLS, distance, exposureMinutes, fleetTravelMinutes } from '@blindspace/rules';
+import { HULLS, distance, exposureMinutes, fleetTravelMinutes } from '@astera/rules';
 import { planRoute, reachMinutes } from '../src/lib/navigation.js';
 
 /**

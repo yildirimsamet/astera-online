@@ -11,7 +11,7 @@ import {
   type Fleet,
   type MobileHullId,
   type Vec3,
-} from '@blindspace/rules';
+} from '@astera/rules';
 
 /**
  * The launch preview.

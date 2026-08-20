@@ -1,7 +1,7 @@
 import { and, eq, sql } from 'drizzle-orm';
 import { pino } from 'pino';
 import { afterAll, afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { radarLead, radarRange } from '@blindspace/rules';
+import { radarLead, radarRange } from '@astera/rules';
 import { missions, notifications, planets, players, satellites, scanEvents, watches } from '../src/db/schema.js';
 import { CHANNEL, EventBus, publish, publishShard } from '../src/stream/bus.js';
 import {

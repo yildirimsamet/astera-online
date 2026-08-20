@@ -6,7 +6,7 @@ import { EventWorker } from '../src/worker/loop.js';
 import { launchAttack } from '../src/services/mission.js';
 import { assignWatch, launchProbe } from '../src/services/intel.js';
 import { launchMining } from '../src/services/mining.js';
-import { activeAsteroids, generateGalaxy } from '@blindspace/rules';
+import { activeAsteroids, generateGalaxy } from '@astera/rules';
 import {
   giveInstrument,
   giveUnits,

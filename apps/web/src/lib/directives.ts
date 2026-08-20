@@ -3,7 +3,7 @@ import {
   fleetValue,
   radarDetectsFleets,
   vaultProtects,
-} from '@blindspace/rules';
+} from '@astera/rules';
 import type { GalaxyView, IntelView, PendingThread, PlanetView } from '../api/schemas.js';
 import { compact, full } from './format.js';
 import { duration } from './time.js';

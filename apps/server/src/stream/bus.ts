@@ -4,7 +4,7 @@ import postgres from 'postgres';
 import type { FastifyBaseLogger } from 'fastify';
 import type { Queryable } from '../db/client.js';
 
-export const CHANNEL = 'blindspace_events';
+export const CHANNEL = 'astera_events';
 
 /**
  * TWO KINDS OF EVENT ON ONE CHANNEL. D53.

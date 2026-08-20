@@ -1,5 +1,5 @@
 import { and, eq, inArray, sql } from 'drizzle-orm';
-import { fleetCount, fleetEntries, type Fleet } from '@blindspace/rules';
+import { fleetCount, fleetEntries, type Fleet } from '@astera/rules';
 import type { Clock } from '../clock.js';
 import type { Db, Tx } from '../db/client.js';
 import { miningRuns, missions, planets, units } from '../db/schema.js';

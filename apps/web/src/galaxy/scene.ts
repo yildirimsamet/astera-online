@@ -1,4 +1,4 @@
-import { GALAXY, interpolatePosition, type SatelliteId } from '@blindspace/rules';
+import { GALAXY, interpolatePosition, type SatelliteId } from '@astera/rules';
 import type { Contact, GalaxyPlanet, MiningRun, PendingThread } from '../api/schemas.js';
 
 /**

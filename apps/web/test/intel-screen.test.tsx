@@ -2,7 +2,7 @@ import type { ReactNode } from 'react';
 import { render, screen } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { describe, expect, it, vi } from 'vitest';
-import { radarRange, telescopeSlots } from '@blindspace/rules';
+import { radarRange, telescopeSlots } from '@astera/rules';
 import { Api } from '../src/api/client.js';
 import { ApiProvider } from '../src/api/context.js';
 import { IntelScreen } from '../src/screens/IntelScreen.js';

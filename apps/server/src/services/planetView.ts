@@ -14,7 +14,7 @@ import {
   upgradeCost,
   vaultProtects,
   type BuildingId,
-} from '@blindspace/rules';
+} from '@astera/rules';
 import type { Clock } from '../clock.js';
 import type { Tx } from '../db/client.js';
 import { players } from '../db/schema.js';

@@ -2,7 +2,7 @@ import type { FastifyInstance } from 'fastify';
 import { pino } from 'pino';
 import { afterAll, afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { eq } from 'drizzle-orm';
-import { DEBRIS, HULLS, fleetCount, type HullId } from '@blindspace/rules';
+import { DEBRIS, HULLS, fleetCount, type HullId } from '@astera/rules';
 import { battleReports, debrisFields, miningRuns, planets, players } from '../src/db/schema.js';
 import { buildApp } from '../src/app.js';
 import { TokenService } from '../src/auth/tokens.js';

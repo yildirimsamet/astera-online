@@ -1,5 +1,5 @@
 import { desc, eq, inArray, or } from 'drizzle-orm';
-import type { CombatRound, Fleet, Grade } from '@blindspace/rules';
+import type { CombatRound, Fleet, Grade } from '@astera/rules';
 import type { Db } from '../db/client.js';
 import { battleReports, planets, players } from '../db/schema.js';
 

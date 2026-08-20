@@ -1,5 +1,5 @@
 import { and, asc, eq, gte, inArray, sql } from 'drizzle-orm';
-import { SEASON, SERVERS } from '@blindspace/rules';
+import { SEASON, SERVERS } from '@astera/rules';
 import type { Db } from '../db/client.js';
 import type { Clock } from '../clock.js';
 import { addMinutes } from '../clock.js';

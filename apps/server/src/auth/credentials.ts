@@ -22,7 +22,7 @@ export const USERNAME_PATTERN = /^[a-zA-Z0-9_]{3,16}$/;
 
 /** Names that must never belong to a player, whatever the casing. */
 const RESERVED = new Set([
-  'admin', 'administrator', 'root', 'system', 'server', 'blindspace',
+  'admin', 'administrator', 'root', 'system', 'server', 'astera',
   'moderator', 'mod', 'support', 'staff', 'null', 'undefined', 'anonymous',
 ]);
 

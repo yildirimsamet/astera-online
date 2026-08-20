@@ -1,4 +1,4 @@
-import type { Grade } from '@blindspace/rules';
+import type { Grade } from '@astera/rules';
 
 /**
  * The verdict on a battle, stamped rather than typed.

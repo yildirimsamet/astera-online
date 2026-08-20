@@ -12,7 +12,7 @@ import {
   type HullId,
   type InstrumentId,
   type SatelliteId,
-} from '@blindspace/rules';
+} from '@astera/rules';
 import {
   useGalaxy,
   useIntel,

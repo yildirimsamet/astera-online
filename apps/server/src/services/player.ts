@@ -1,5 +1,5 @@
 import { eq } from 'drizzle-orm';
-import { START, pickSpawnSlot } from '@blindspace/rules';
+import { START, pickSpawnSlot } from '@astera/rules';
 import type { Db } from '../db/client.js';
 import type { Clock } from '../clock.js';
 import { accounts, buildings, planets, players, seasons, shards } from '../db/schema.js';

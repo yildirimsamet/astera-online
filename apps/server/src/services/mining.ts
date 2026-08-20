@@ -18,7 +18,7 @@ import {
   distance,
   type AsteroidSpec,
   type Vec3,
-} from '@blindspace/rules';
+} from '@astera/rules';
 import { addMinutes, atMinute, minutesSince, type Clock } from '../clock.js';
 import type { Db, Queryable, Tx } from '../db/client.js';
 import { asteroidClaims, debrisFields, miningRuns, planets, seasons, units } from '../db/schema.js';

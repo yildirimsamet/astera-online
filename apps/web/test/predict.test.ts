@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { HULLS, PROSPECTOR, instrumentCost, satelliteCost, upgradeCost } from '@blindspace/rules';
+import { HULLS, PROSPECTOR, instrumentCost, satelliteCost, upgradeCost } from '@astera/rules';
 import {
   predictBuild,
   predictCollect,

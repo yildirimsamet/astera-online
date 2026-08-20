@@ -186,7 +186,7 @@ re-breaking something:
 
 The client sends **intent** and receives **outcomes**. It never computes one. Resources, fleet
 state, combat, travel, cooldowns, loot and progression are decided server-side, in a
-transaction, using `@blindspace/rules`.
+transaction, using `@astera/rules`.
 
 **The fog is enforced in the query, not the UI.** A modified client must not be able to read a
 field it was not entitled to — asserted against the API response shape, never the rendering.
@@ -198,7 +198,7 @@ field it was not entitled to — asserted against the API response shape, never 
 - **Two-planet operations lock in ascending id order.** Otherwise mutual raids deadlock.
 - Never emit an SSE event inside a transaction. Commit first.
 - Every list endpoint needs a bound. Watch for N+1 and unbounded queries.
-- A schema change means `pnpm --filter @blindspace/server db:generate` and a committed
+- A schema change means `pnpm --filter @astera/server db:generate` and a committed
   migration. **Never edit a generated migration that has already been applied anywhere**, and
   the server refuses to boot against a database it is ahead of (D47).
 

@@ -1,5 +1,5 @@
 /**
- * BLINDSPACE — canonical game rules.
+ * ASTERA ONLINE — canonical game rules.
  *
  * Single source of truth for every formula in the GDD. Imported by both
  * simulate.mjs (headless season simulator) and prototype.html (text prototype),

@@ -4,6 +4,7 @@ import { LandingScene } from '../landing/LandingScene.jsx';
 import { LANDING_ASSETS, usePreload, type Loader } from '../lib/preload.js';
 import { LoadingScreen } from '../shell/LoadingScreen.js';
 import { Button } from '../ui/kit/index.js';
+import { Wordmark } from '../ui/Wordmark.jsx';
 
 /**
  * THE FRONT DOOR. D21.
@@ -89,9 +90,11 @@ export function LandingScreen({
             deliberately narrow one. The composition behind puts the hero world on
             the right, so a left-aligned column is also the correct half. */}
         <header className="w-full max-w-md">
-          <h1 className="font-display text-[46px] uppercase leading-none tracking-[0.06em] text-bone">
-            Blind
-            <span className="text-faint">space</span>
+          {/* The painted lockup rather than type. It is the first thing anyone sees
+              of this game and it carries the planet, the streak and the craft — the
+              three things the sentence underneath then explains. */}
+          <h1>
+            <Wordmark width={300} className="mx-auto" />
           </h1>
           <p className="mt-5 max-w-sm text-[15px] leading-relaxed text-dim">
             You own one planet in a galaxy of fifty real people. You cannot see what they

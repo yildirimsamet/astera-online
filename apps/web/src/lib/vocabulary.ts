@@ -1,4 +1,4 @@
-import type { BuildingId, HullId, InstrumentId, SatelliteId } from '@blindspace/rules';
+import type { BuildingId, HullId, InstrumentId, SatelliteId } from '@astera/rules';
 
 /**
  * Every name and one-line role the player reads, in one place.

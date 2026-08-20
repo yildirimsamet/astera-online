@@ -1,4 +1,4 @@
-import type { ClarityState, FleetStatus } from '@blindspace/rules';
+import type { ClarityState, FleetStatus } from '@astera/rules';
 import { staleness } from '../lib/time.js';
 
 /**

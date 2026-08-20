@@ -1,4 +1,4 @@
-import { fleetCount } from '@blindspace/rules';
+import { fleetCount } from '@astera/rules';
 import type { PlanetView } from '../api/schemas.js';
 import { compact, full } from '../lib/format.js';
 import { powerOf } from '../lib/gains.js';
@@ -128,7 +128,7 @@ export function PlanetHero({
  */
 function Readouts({ planet }: { planet: PlanetView }) {
   return (
-    <div className="mt-3.5 flex items-stretch gap-2">
+    <div className="mt-2 flex items-stretch gap-2">
       <div className="frame flex-1 px-3.5 py-2.5">
         <p className="legend">Power</p>
         <p className="readout mt-1.5 text-[26px] text-bone">{full(powerOf(planet))}</p>
