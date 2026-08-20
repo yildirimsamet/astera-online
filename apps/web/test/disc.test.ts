@@ -65,15 +65,19 @@ describe('the galactic plane', () => {
   });
 
   /**
-   * IT IS SCENERY, AND SCENERY LOSES.
+   * IT IS SCENERY, AND SCENERY IS NOT ALLOWED TO BE THE SUBJECT. Owner decision.
    *
-   * The plate spans the whole playfield and everything that matters is drawn in
-   * front of it. The ceiling is set by the dimmest thing that must stay legible
-   * against it — a world the fog has dimmed to `STANCE_LIGHT.dark` — and the first
-   * plate was photographed at 0.5, where the lower half of the disc was a blue wash
-   * that a dark world sat inside rather than in front of.
+   * This first asserted only that the plate was dimmer than the dimmest thing that
+   * has to read against it — a world the fog has taken down to `STANCE_LIGHT.dark`.
+   * That is a LEGIBILITY test, and it is not the rule: it passed 0.38, which the
+   * owner looked at and rejected because the arms held the eye. What a player is
+   * meant to be looking at is the worlds.
+   *
+   * So the bar is subordination rather than mere darkness — comfortably under half
+   * the dimmest world it sits behind. Stated as the relationship and not as the
+   * number, because the number is a taste and the relationship is the decision.
    */
-  it('stays dimmer than the dimmest thing that has to read against it', () => {
-    expect(DISC_OPACITY).toBeLessThan(STANCE_LIGHT.dark);
+  it('stays clearly subordinate to the dimmest world it sits behind', () => {
+    expect(DISC_OPACITY).toBeLessThanOrEqual(STANCE_LIGHT.dark / 2);
   });
 });

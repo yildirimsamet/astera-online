@@ -685,13 +685,21 @@ export function Disc() {
 }
 
 /**
- * How bright the plane is allowed to get.
+ * How bright the plane is allowed to get. Owner decision.
  *
- * It is scenery and everything that matters is drawn in front of it, so the
- * ceiling is set by the dimmest thing that must stay legible against it: a world
- * the fog has dimmed to `STANCE_LIGHT.dark`.
+ * IT IS SCENERY, AND SCENERY IS NOT ALLOWED TO BE THE SUBJECT. The first ceiling
+ * here was "dimmer than the dimmest thing that has to read against it" — a world
+ * the fog has taken down to `STANCE_LIGHT.dark` — and that is a legibility test,
+ * not an attention one. It passed 0.38, which the owner looked at and rejected:
+ * the arms held the eye, and what a player is meant to be looking at is the
+ * worlds.
+ *
+ * So the rule is stronger than legibility. The plate has to be clearly
+ * SUBORDINATE, not merely darker — comfortably under half the dimmest world it
+ * sits behind — and the test says so in those terms rather than in this number,
+ * because the number is a taste and the relationship is the decision.
  */
-export const DISC_OPACITY = 0.3;
+export const DISC_OPACITY = 0.18;
 
 /* ── asteroids ──────────────────────────────────────────────── */
 

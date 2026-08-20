@@ -1067,10 +1067,17 @@ circles cannot, and it is the same single draw call.
 **Two more things came out of photographing it rather than reasoning about it.** The first plate
 was sampled at a noise frequency of 3.1 and came back airbrushed — two smooth ribbons with no
 grain at all — for the reason the nebula's own docblock already gives: fine structure reads as
-something enormous and far away, coarse structure reads as fog in front of the camera. And at 0.5
-opacity the lower half of the disc was a blue wash that a fog-dimmed world sat INSIDE rather than
-in front of; the ceiling is set by the dimmest thing that has to stay legible against it, which is
-`STANCE_LIGHT.dark`, and there is a test saying so.
+something enormous and far away, coarse structure reads as fog in front of the camera. And the brightness took
+two passes and an owner rejection to settle. At 0.5 the lower half of the disc was a blue wash that
+a fog-dimmed world sat INSIDE rather than in front of, so the ceiling was set at "dimmer than
+`STANCE_LIGHT.dark`" — the dimmest thing that has to stay legible against it.
+
+**That ceiling was the wrong test, and the owner is what found it.** Legibility is not the rule.
+The plate passed at 0.38 and was rejected on sight: the arms held the eye, and what a player is
+meant to be looking at is the worlds. Scenery is not allowed to be the subject. It sits at 0.18
+now, and the test asserts SUBORDINATION rather than mere darkness — comfortably under half the
+dimmest world it sits behind — stated as the relationship, because the number is a taste and the
+relationship is the decision.
 
 What can be asserted is asserted. Most of a painted plate is judged from a photograph, but two of
 its properties would ship a visible defect rather than a different-looking one, and jsdom has no
