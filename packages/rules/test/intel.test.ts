@@ -6,12 +6,19 @@ import {
   fuzzBand,
   mulberry32,
   probeAccuracy,
+  INTEL,
+  RADAR_RANGES,
+  maxRadarRange,
+  nextRadarCheck,
   radarDetectsFleets,
-  radarLeadMinutes,
+  radarLead,
+  radarRange,
   radarRevealsBearing,
   radarRevealsOrigin,
   telescopeReading,
   telescopeSeed,
+  travelMinutes,
+  HULLS,
 } from '../src/index.js';
 
 describe('clarity gradient', () => {
@@ -118,17 +125,128 @@ describe('radar', () => {
     expect(radarDetectsFleets(3)).toBe(true);
   });
 
-  it('higher radar buys a longer fuse', () => {
-    expect(radarLeadMinutes(5)).toBeGreaterThan(radarLeadMinutes(3));
-  });
-
-  it('keeps the panic window tight even on a long flight', () => {
-    expect(radarLeadMinutes(5)).toBeLessThan(20);
+  it('higher radar reaches further', () => {
+    expect(radarRange(5)).toBeGreaterThan(radarRange(3));
   });
 
   it('clamps out-of-range levels', () => {
-    expect(radarLeadMinutes(99)).toBe(radarLeadMinutes(5));
-    expect(radarLeadMinutes(-3)).toBe(0);
+    expect(radarRange(99)).toBe(radarRange(5));
+    expect(radarRange(-3)).toBe(0);
+  });
+
+  /**
+   * THE REACH IS THE DEFENDER'S; THE NOTICE IS THE ATTACKER'S. D49.
+   *
+   * This is the whole reason the countdown was replaced. One radar, one origin,
+   * one distance — and the minutes of warning fall out of how fast the fleet
+   * chose to travel. A Bulwark siege fleet is telegraphed; a Wasp strike is not.
+   */
+  it('gives a slow fleet more notice than a fast one over the same leg', () => {
+    const dist = 800;
+    const wasp = travelMinutes(dist, HULLS.WASP.speed);
+    const bulwark = travelMinutes(dist, HULLS.BULWARK.speed);
+    const reach = radarRange(5);
+
+    expect(radarLead(reach, dist, bulwark)).toBeGreaterThan(radarLead(reach, dist, wasp));
+    // And the fast one is still worth having: a maxed radar beats the old flat 12.
+    expect(radarLead(reach, dist, wasp)).toBeGreaterThan(12);
+  });
+
+  /**
+   * D9, WHICH SURVIVES THIS CHANGE. "A 40-minute flight must not give 40 minutes
+   * of notice." Because the notice is a FRACTION of the flight — `range / dist` —
+   * a long leg can never hand over all of itself.
+   */
+  it('never gives away a whole long flight', () => {
+    const dist = 1800;
+    const oneWay = travelMinutes(dist, HULLS.WASP.speed);
+    expect(radarLead(radarRange(5), dist, oneWay)).toBeLessThan(oneWay * 0.4);
+  });
+
+  /** A raid launched from inside the circle is seen from the moment it leaves. */
+  it('sees a neighbour inside the circle for its whole flight', () => {
+    const dist = 100;
+    const oneWay = travelMinutes(dist, HULLS.WASP.speed);
+    expect(radarLead(radarRange(5), dist, oneWay)).toBe(oneWay);
+  });
+
+  it('gives no notice at all with no reach', () => {
+    expect(radarLead(radarRange(2), 800, 30)).toBe(0);
+    expect(radarLead(0, 800, 30)).toBe(0);
+  });
+});
+
+/**
+ * THE RUNGS THE WARNING RE-CHECKS AT. D45, in D49's units.
+ *
+ * A radar warning is scheduled once, at the earliest instant any radar could
+ * fire, and the defender's level is read when it runs — so a radar installed or
+ * raised mid-flight is worth what it says on the tin. Getting there means hopping
+ * down the ladder, and these are the rungs.
+ */
+describe('the radar ladder', () => {
+  const DIST = 900;
+  const ONE_WAY = 60;
+
+  it('lists every reach the table sells, widest first, without repeats', () => {
+    expect(RADAR_RANGES).toEqual([500, 340, 200]);
+  });
+
+  /** DERIVED, so a sixth level or a changed figure is picked up rather than copied. */
+  it('is derived from the reach table itself', () => {
+    for (const range of RADAR_RANGES) {
+      expect(INTEL.radarRange).toContain(range);
+    }
+    expect(maxRadarRange()).toBe(Math.max(...INTEL.radarRange));
+  });
+
+  it('nothing is ever scheduled earlier than the widest reach', () => {
+    expect(maxRadarRange()).toBe(radarRange(5));
+  });
+
+  it('hops to the next rung whose crossing is still ahead', () => {
+    const lead = (range: number) => radarLead(range, DIST, ONE_WAY);
+    expect(nextRadarCheck(ONE_WAY, DIST, ONE_WAY)).toBe(500);
+    expect(nextRadarCheck(lead(500), DIST, ONE_WAY)).toBe(340);
+    expect(nextRadarCheck(lead(340), DIST, ONE_WAY)).toBe(200);
+  });
+
+  /**
+   * AND THEN STOPS. The hop is what makes a mid-flight upgrade work; a hop with no
+   * floor would be a poll, and a poll that never terminates is an event that
+   * reschedules itself for the rest of the season.
+   */
+  it('gives up once the fleet is inside the narrowest reach', () => {
+    expect(nextRadarCheck(radarLead(200, DIST, ONE_WAY), DIST, ONE_WAY)).toBeNull();
+    expect(nextRadarCheck(1, DIST, ONE_WAY)).toBeNull();
+    expect(nextRadarCheck(0, DIST, ONE_WAY)).toBeNull();
+  });
+
+  it('terminates from any starting point', () => {
+    let at: number | null = ONE_WAY;
+    for (let hops = 0; at !== null; hops++) {
+      const range: number | null = nextRadarCheck(at, DIST, ONE_WAY);
+      at = range === null ? null : radarLead(range, DIST, ONE_WAY);
+      expect(hops).toBeLessThan(RADAR_RANGES.length + 1);
+    }
+  });
+
+  /**
+   * A LEG SHORTER THAN THE WIDEST REACH STILL TERMINATES.
+   *
+   * Every rung wider than the leg gives the same answer — the whole flight — so
+   * `radarLead(range) < remaining` is false for all of them at launch and the hop
+   * has to fall straight through to a narrower one rather than sitting on a rung
+   * it can never leave.
+   */
+  it('terminates on a leg shorter than the widest reach', () => {
+    const short = 120;
+    let at: number | null = 12;
+    for (let hops = 0; at !== null; hops++) {
+      const range: number | null = nextRadarCheck(at, short, 12);
+      at = range === null ? null : radarLead(range, short, 12);
+      expect(hops).toBeLessThan(RADAR_RANGES.length + 1);
+    }
   });
 });
 

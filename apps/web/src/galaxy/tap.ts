@@ -23,6 +23,27 @@ let originY = 0;
 let travelled = 0;
 let installed = false;
 
+/**
+ * Did this gesture actually land on something?
+ *
+ * THE BUG THIS EXISTS FOR. Selecting a world sometimes opened the focus rail and
+ * sometimes did not, at random, and tapping the same world again worked — the
+ * camera always flew to it, so the selection was being MADE and then thrown away
+ * within the same gesture.
+ *
+ * The culprit is the canvas's `onPointerMissed`, which clears the selection when a
+ * tap hits empty space. R3F decides "missed" from its own click bookkeeping, and
+ * an object that registers `onPointerUp` rather than `onClick` is not reliably
+ * counted as hit — so the miss handler fired on the same pointerup that had just
+ * selected something, and whichever of the two `setState` calls React flushed last
+ * won. That is a coin toss, which is exactly what it looked like.
+ *
+ * A flag the pick handlers set themselves removes the ambiguity entirely: the
+ * scene knows perfectly well whether anything was hit, so it says so, and the miss
+ * handler believes it rather than R3F's inference.
+ */
+let hitSomething = false;
+
 /** Idempotent: safe to call from every component that cares. */
 export function installTapGuard(): () => void {
   if (installed) return () => undefined;
@@ -33,6 +54,8 @@ export function installTapGuard(): () => void {
     originX = event.clientX;
     originY = event.clientY;
     travelled = 0;
+    // A fresh gesture has hit nothing yet.
+    hitSomething = false;
   };
 
   // Peak distance, not final distance — a finger that swings out and comes back
@@ -54,3 +77,16 @@ export function installTapGuard(): () => void {
 /** True only if the gesture that just ended was a genuine tap. */
 export const wasTap = (): boolean =>
   travelled <= MOVE_TOLERANCE && performance.now() - startedAt <= HOLD_LIMIT_MS;
+
+/** Called by every pick handler in the scene the moment it accepts a tap. */
+export const markHit = (): void => {
+  hitSomething = true;
+};
+
+/**
+ * True when this gesture really did land on empty space.
+ *
+ * The only safe basis for clearing a selection. Never trust the canvas's miss
+ * event on its own — see `hitSomething`.
+ */
+export const wasMiss = (): boolean => !hitSomething;

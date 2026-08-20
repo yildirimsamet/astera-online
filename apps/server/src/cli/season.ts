@@ -1,35 +1,45 @@
 /**
- * Season operations — the only way a galaxy comes into existence.
- *
- * Until this existed, a live world could only be created from inside a test, which
- * meant the whole game was reachable over HTTP and unplayable in practice.
+ * World operations — the only way galaxies come into existence.
  *
  *   pnpm --filter @blindspace/server season migrate
- *   pnpm --filter @blindspace/server season create --shard EU-1 --seed 4242
+ *   pnpm --filter @blindspace/server season bootstrap
  *   pnpm --filter @blindspace/server season status
+ *   pnpm --filter @blindspace/server season wipe --yes
  */
 import { parseArgs } from 'node:util';
+import { randomBytes } from 'node:crypto';
 import { eq } from 'drizzle-orm';
-import { SEASON } from '@blindspace/rules';
+import { SEASON, SERVERS } from '@blindspace/rules';
 import { createDb } from '../db/client.js';
 import { runMigrations } from '../db/migrate.js';
 import { loadDotEnv, loadEnv } from '../env.js';
 import { addMinutes, systemClock } from '../clock.js';
 import { accounts, players } from '../db/schema.js';
+import { hashPassword } from '../auth/password.js';
 import { createSeason, liveSeason } from '../services/season.js';
 import { joinSeason } from '../services/player.js';
+import {
+  bootstrapServers,
+  listServers,
+  shardNameFor,
+  wipeAllServers,
+} from '../services/servers.js';
 
 const USAGE = `
 season migrate                     apply pending migrations
-season create [options]            open a galaxy on a shard
-season status                      what is live right now
+season bootstrap [options]         open all ${String(SERVERS.count)} galaxies (idempotent)
+season create [options]            open ONE galaxy on a named shard
+season status                      every galaxy, its population and who is on it
+season wipe --yes [options]        END EVERYTHING. Fold records into accounts,
+                                   delete every season world, open fresh galaxies.
 
-  --shard CODE      shard code            (default: SHARD_CODE env, or EU-1)
-  --seed N          galaxy seed           (default: random)
-  --days N          season length         (default: ${String(SEASON.days)})
-  --cap N           player capacity       (default: 200)
-  --unattended N    DEV AID ONLY: place N inert commanders so a solo developer
-                    has something to scout and raid. Never use on a real shard.
+  --shard CODE      shard code, for 'create'   (default: EU-1)
+  --seed N          galaxy seed / seed base    (default: random)
+  --days N          season length              (default: ${String(SEASON.days)})
+  --cap N           planets per galaxy         (default: ${String(SERVERS.capacity)})
+  --count N         galaxies, for 'bootstrap'  (default: ${String(SERVERS.count)})
+  --unattended N    DEV AID ONLY: place N inert commanders on the FIRST open galaxy
+                    so a solo developer has something to scout and raid.
 `;
 
 const NAMES = [
@@ -52,7 +62,9 @@ async function main(): Promise<void> {
       seed: { type: 'string' },
       days: { type: 'string' },
       cap: { type: 'string' },
+      count: { type: 'string' },
       unattended: { type: 'string' },
+      yes: { type: 'boolean' },
     },
   });
 
@@ -60,7 +72,7 @@ async function main(): Promise<void> {
   loadDotEnv();
   const env = loadEnv();
   const { db, close } = createDb(env.DATABASE_URL, { max: 4 });
-  const shardCode = values.shard ?? env.SHARD_CODE;
+  const shardCode = values.shard ?? 'EU-1';
 
   try {
     switch (command) {
@@ -70,26 +82,45 @@ async function main(): Promise<void> {
         return;
       }
 
-      case 'status': {
-        const row = await liveSeason(db, shardCode);
-        if (!row) {
-          console.log(`${shardCode}: no live season`);
-          return;
-        }
-        const population = await db
-          .select({ id: players.id })
-          .from(players)
-          .where(eq(players.seasonId, row.season.id));
-        const hoursLeft = (row.season.endsAt.getTime() - Date.now()) / 3_600_000;
+      case 'bootstrap': {
+        const result = await bootstrapServers(db, systemClock, {
+          count: num(values.count, SERVERS.count),
+          capacity: num(values.cap, SERVERS.capacity),
+          days: num(values.days, SEASON.days),
+          ...(values.seed === undefined ? {} : { seedBase: num(values.seed, 0) }),
+        });
         console.log(
           [
-            `shard      ${row.shard.code}`,
-            `season     ${row.season.id}`,
-            `seed       ${String(row.season.seed)}`,
-            `players    ${String(population.length)} / ${String(row.shard.playerCap)}`,
-            `ends in    ${hoursLeft.toFixed(1)}h`,
+            `opened     ${result.created.join(', ') || '(none)'}`,
+            `already up ${result.existing.join(', ') || '(none)'}`,
+            `capacity   ${String(num(values.cap, SERVERS.capacity))} planets each`,
           ].join('\n'),
         );
+        await placeUnattended(db, num(values.unattended, 0));
+        return;
+      }
+
+      case 'status': {
+        const servers = await listServers(db, systemClock);
+        if (servers.length === 0) {
+          console.log('no galaxies. run: season bootstrap');
+          return;
+        }
+        console.log('  #  shard      name          planets   online  status');
+        for (const s of servers) {
+          console.log(
+            [
+              String(s.ordinal).padStart(3),
+              '  ',
+              s.code.padEnd(11),
+              s.name.padEnd(14),
+              `${String(s.planets)}/${String(s.capacity)}`.padStart(7),
+              String(s.online).padStart(8),
+              '  ',
+              s.status,
+            ].join(''),
+          );
+        }
         return;
       }
 
@@ -108,10 +139,11 @@ async function main(): Promise<void> {
         const seed = num(values.seed, Math.floor(Math.random() * 1_000_000));
         const { season, galaxy } = await createSeason(db, {
           shardCode,
+          shardName: shardNameFor(1),
           seed,
           startsAt: systemClock.now(),
           days: num(values.days, SEASON.days),
-          playerCap: num(values.cap, 200),
+          playerCap: num(values.cap, SERVERS.capacity),
         });
 
         console.log(
@@ -124,31 +156,33 @@ async function main(): Promise<void> {
             `ends       ${season.endsAt.toISOString()}`,
           ].join('\n'),
         );
+        await placeUnattended(db, num(values.unattended, 0));
+        return;
+      }
 
-        const unattended = num(values.unattended, 0);
-        if (unattended > 0) {
-          // Backdated a few hours so they read as established commanders rather
-          // than as a crowd that appeared in the same second. Nothing gates on it
-          // any more — newcomer grace is gone (D14) — but the ladder and the
-          // return payload both read joinedAt, and a shard where every player is
-          //zero minutes old looks broken.
-          const joinedAt = addMinutes(systemClock.now(), -300);
-
-          for (let i = 0; i < unattended; i++) {
-            const name = `${NAMES[i % NAMES.length]!}-${String(100 + i)}`;
-            const [account] = await db.insert(accounts).values({ displayName: name }).returning();
-            const placed = await joinSeason(db, account!.id, season.id, systemClock);
-            await db
-              .update(players)
-              .set({ joinedAt })
-              .where(eq(players.id, placed.playerId));
-          }
-          console.log(
-            `\nplaced ${String(unattended)} UNATTENDED commanders, already past newcomer grace.\n` +
-              'They never act. They exist so a solo developer can exercise the loop —\n' +
-              'anything they appear to teach you about balance is a lie.',
+      case 'wipe': {
+        // A confirmation flag rather than a prompt: this command is meant to be
+        // runnable from a script, and a script cannot answer a prompt. What it
+        // must not be is runnable by accident.
+        if (values.yes !== true) {
+          throw new Error(
+            'wipe ends every season and deletes every planet in the world. ' +
+              'Re-run with --yes if that is what you mean.',
           );
         }
+        const result = await wipeAllServers(db, systemClock, {
+          count: num(values.count, SERVERS.count),
+          capacity: num(values.cap, SERVERS.capacity),
+          days: num(values.days, SEASON.days),
+          ...(values.seed === undefined ? {} : { seedBase: num(values.seed, 0) }),
+        });
+        console.log(
+          [
+            `seasons wiped   ${String(result.seasonsWiped)}`,
+            `players cleared ${String(result.playersCleared)}`,
+            `galaxies opened ${result.serversOpened.join(', ') || '(none)'}`,
+          ].join('\n'),
+        );
         return;
       }
 
@@ -159,6 +193,56 @@ async function main(): Promise<void> {
   } finally {
     await close();
   }
+}
+
+/**
+ * DEV AID ONLY. Inert commanders on the first galaxy that will take them.
+ *
+ * They never act. Anything they appear to teach you about balance is a lie — they
+ * exist so that a solo developer has something to point a telescope at.
+ */
+async function placeUnattended(
+  db: Awaited<ReturnType<typeof createDb>>['db'],
+  count: number,
+): Promise<void> {
+  if (count <= 0) return;
+
+  const servers = await listServers(db, systemClock);
+  const open = servers.find((s) => s.status === 'open');
+  if (!open) throw new Error('no open galaxy to place unattended commanders on');
+
+  const row = await liveSeason(db, open.code);
+  if (!row) throw new Error(`${open.code} has no live season`);
+
+  // Backdated a few hours so they read as established commanders rather than as a
+  // crowd that appeared in the same second. Nothing gates on it any more —
+  // newcomer grace is gone (D14) — but the ladder and the return payload both read
+  // joinedAt, and a shard where every player is zero minutes old looks broken.
+  const joinedAt = addMinutes(systemClock.now(), -300);
+
+  for (let i = 0; i < count; i++) {
+    const name = `${NAMES[i % NAMES.length]!}-${String(100 + i)}`;
+    const [account] = await db
+      .insert(accounts)
+      .values({
+        // Usernames are unique, so a second run must not collide with the first.
+        username: `${name.toLowerCase().replace('-', '_')}_${randomBytes(2).toString('hex')}`,
+        // A real hash of bytes nobody has. These accounts are not sign-in-able by
+        // design: an unattended commander with a guessable password is a way in.
+        passwordHash: await hashPassword(randomBytes(32).toString('base64url')),
+        displayName: name,
+      })
+      .returning();
+
+    const placed = await joinSeason(db, account!.id, row.season.id, systemClock);
+    await db.update(players).set({ joinedAt }).where(eq(players.id, placed.playerId));
+  }
+
+  console.log(
+    `\nplaced ${String(count)} UNATTENDED commanders on ${open.code}.\n` +
+      'They never act. They exist so a solo developer can exercise the loop —\n' +
+      'anything they appear to teach you about balance is a lie.',
+  );
 }
 
 main().catch((err: unknown) => {

@@ -1,21 +1,23 @@
-import { eq } from 'drizzle-orm';
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
-import { z } from 'zod';
-import { accounts } from '../db/schema.js';
+import { loginBody, registerBody } from '../auth/credentials.js';
+import { authenticate, findAccount, registerAccount } from '../services/account.js';
+import { currentPlacement } from '../services/servers.js';
 import { GameError } from '../services/planet.js';
 
 const REFRESH_COOKIE = 'bs_refresh';
 
-const guestBody = z.object({
-  displayName: z.string().trim().min(1).max(24).optional(),
-});
-
-/** A pool of names so a guest arrives already feeling like somebody. */
-const CALLSIGNS = [
-  'Vantage', 'Kestrel', 'Quillon', 'Bellwether', 'Orrery', 'Cinder',
-  'Lodestar', 'Halcyon', 'Vesper', 'Thistle', 'Marrow', 'Tessellate',
-];
-
+/**
+ * IDENTITY IS A NAME AND A PASSWORD. D21.
+ *
+ * The guest door is gone. It existed to satisfy the Return Test — a player looking
+ * at their own planet inside sixty seconds — and it bought that at the price of an
+ * account that lived in one browser's cookie jar. A season is fourteen days long,
+ * and a commander who opens the game on their laptop and finds a stranger's empire
+ * has not been given a fast start; they have been given somebody else's game.
+ *
+ * Short access token in memory, long refresh token in an httpOnly cookie. Both
+ * stateless, no session store.
+ */
 export function registerAuthRoutes(app: FastifyInstance): void {
   const setRefresh = (reply: FastifyReply, token: string, days: number): void => {
     void reply.setCookie(REFRESH_COOKIE, token, {
@@ -27,26 +29,53 @@ export function registerAuthRoutes(app: FastifyInstance): void {
     });
   };
 
-  /**
-   * Create an account with no form to fill in.
-   *
-   * Idempotency is intentionally NOT applied here: every call is meant to mint a
-   * fresh guest. Clients hold the refresh cookie to come back to the same one.
-   */
-  app.post('/api/auth/guest', async (req, reply) => {
-    const body = guestBody.parse(req.body ?? {});
-    const name =
-      body.displayName ??
-      `${CALLSIGNS[Math.floor(Math.random() * CALLSIGNS.length)]!}-${Math.floor(Math.random() * 900 + 100)}`;
-
-    const [account] = await app.db.insert(accounts).values({ displayName: name }).returning();
-
+  /** Mint both tokens, hang the refresh one on the reply, and describe the session. */
+  const openSession = async (
+    reply: FastifyReply,
+    account: { id: string; username: string; displayName: string },
+  ) => {
     const [access, refresh] = await Promise.all([
-      app.tokens.issueAccess(account!.id),
-      app.tokens.issueRefresh(account!.id),
+      app.tokens.issueAccess(account.id),
+      app.tokens.issueRefresh(account.id),
     ]);
-    setRefresh(reply, refresh, 30);
-    return { accountId: account!.id, displayName: account!.displayName, accessToken: access };
+    setRefresh(reply, refresh, app.tokens.refreshDays);
+    return {
+      accountId: account.id,
+      username: account.username,
+      displayName: account.displayName,
+      accessToken: access,
+    };
+  };
+
+  app.post('/api/auth/register', async (req, reply) => {
+    const body = registerBody.parse(req.body ?? {});
+    const account = await registerAccount(app.db, body);
+    return openSession(reply, account);
+  });
+
+  app.post('/api/auth/login', async (req, reply) => {
+    const body = loginBody.parse(req.body ?? {});
+    const account = await authenticate(app.db, body);
+    return openSession(reply, account);
+  });
+
+  /**
+   * Sign out.
+   *
+   * Clears the cookie, which is the whole of it: the access token is in the tab's
+   * memory and dies with the page. The refresh token itself stays cryptographically
+   * valid until it expires — these are stateless JWTs and there is no revocation
+   * list. That is a KNOWN LIMITATION, not an oversight: a copy already stolen off
+   * the wire is not recovered by asking the browser to forget its own, and a
+   * revocation table is a session store, which is what statelessness bought us.
+   * It becomes worth building the moment accounts hold anything but a season.
+   *
+   * Public on purpose. Signing out must work when the access token has already
+   * expired, which is precisely when a player is most likely to be trying.
+   */
+  app.post('/api/auth/logout', (_req, reply) => {
+    void reply.clearCookie(REFRESH_COOKIE, { path: '/' });
+    return { ok: true };
   });
 
   /** Exchange the long-lived cookie for a fresh access token. */
@@ -61,24 +90,39 @@ export function registerAuthRoutes(app: FastifyInstance): void {
       throw new GameError('BAD_SESSION', 'Session is invalid or expired', 401);
     }
 
-    const [account] = await app.db.select().from(accounts).where(eq(accounts.id, accountId));
+    const account = await findAccount(app.db, accountId);
+    // A token for an account that no longer exists — a wiped test database, a
+    // deleted account — is a dead session, not a server fault.
     if (!account) throw new GameError('BAD_SESSION', 'Session is invalid or expired', 401);
 
-    const [access, refresh] = await Promise.all([
-      app.tokens.issueAccess(accountId),
-      app.tokens.issueRefresh(accountId),
-    ]);
-    setRefresh(reply, refresh, 30);
-    return { accountId, displayName: account.displayName, accessToken: access };
+    return openSession(reply, account);
   });
 
+  /**
+   * Who am I, and where am I standing?
+   *
+   * The placement is here rather than on a second call because it decides which
+   * screen the client opens on: a commander with a planet goes to their galaxy, a
+   * commander without one goes to the server list. Two round trips to answer one
+   * question is a visible flash of the wrong screen on a phone.
+   */
   app.get('/api/auth/me', { preHandler: requireAuth }, async (req) => {
-    const [account] = await app.db
-      .select()
-      .from(accounts)
-      .where(eq(accounts.id, req.accountId!));
+    const account = await findAccount(app.db, req.accountId!);
     if (!account) throw new GameError('BAD_SESSION', 'Session is invalid', 401);
-    return { accountId: account.id, displayName: account.displayName };
+
+    const placement = await currentPlacement(app.db, account.id);
+    return {
+      accountId: account.id,
+      username: account.username,
+      displayName: account.displayName,
+      placement: placement
+        ? {
+            shard: placement.shardCode,
+            shardName: placement.shardName,
+            planetName: placement.planetName,
+          }
+        : null,
+    };
   });
 }
 
@@ -87,15 +131,42 @@ export function registerAuthRoutes(app: FastifyInstance): void {
  *
  * Refresh tokens are rejected here by the `typ` check inside `verify` — without
  * that, a thirty-day cookie would double as an API credential.
+ *
+ * This is also the single choke point every authenticated request passes through,
+ * which is why presence is stamped here (D21) rather than in a global hook that
+ * would also fire for the health check and the login form.
  */
 export async function requireAuth(req: FastifyRequest): Promise<void> {
   const header = req.headers.authorization;
   if (!header?.startsWith('Bearer ')) {
     throw new GameError('UNAUTHENTICATED', 'Sign in first', 401);
   }
+  let accountId: string;
   try {
-    req.accountId = await req.server.tokens.verify(header.slice(7), 'access');
+    accountId = await req.server.tokens.verify(header.slice(7), 'access');
   } catch {
     throw new GameError('UNAUTHENTICATED', 'Sign in first', 401);
   }
+  req.accountId = accountId;
+  await req.server.presence.touch(accountId);
+}
+
+/**
+ * Read the caller's identity if they have one, and carry on if they do not.
+ *
+ * For the server list, which is public — a player has to be able to see the state
+ * of the galaxies before deciding whether this game is worth an account — but
+ * which says one extra thing to somebody signed in: which galaxy is already theirs.
+ */
+export async function optionalAuth(req: FastifyRequest): Promise<void> {
+  const header = req.headers.authorization;
+  if (!header?.startsWith('Bearer ')) return;
+  try {
+    req.accountId = await req.server.tokens.verify(header.slice(7), 'access');
+  } catch {
+    // An expired token on a public route is not an error. The caller simply gets
+    // the anonymous answer, and the client's refresh path handles the rest.
+    return;
+  }
+  await req.server.presence.touch(req.accountId);
 }

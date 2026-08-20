@@ -6,7 +6,15 @@ import { missions, planets, probeReports, satellites, scanEvents, watches } from
 import { assignWatch, launchProbe, readRadarLog, readTelescopes } from '../src/services/intel.js';
 import { launchAttack } from '../src/services/mission.js';
 import { EventWorker } from '../src/worker/loop.js';
-import { giveUnits, grant, seedWorld, setLevel, testDb, type Fixture } from './helpers.js';
+import {
+  giveUnits,
+  grant,
+  makeAccount,
+  seedWorld,
+  setLevel,
+  testDb,
+  type Fixture,
+} from './helpers.js';
 
 /**
  * A world that has been running a while.
@@ -22,7 +30,7 @@ const SETTLED_MINUTES = 250;
 const silent = pino({ level: 'silent' });
 
 /** Set a satellite directly, for arranging preconditions. */
-async function giveSatellite(
+async function giveInstrument(
   f: Fixture,
   planetId: string,
   type: 'TELESCOPE' | 'RADAR' | 'VEIL' | 'AEGIS' | 'DRILL',
@@ -73,19 +81,30 @@ describe('the information layer', () => {
       });
     });
 
-    it('allows exactly as many slots as the telescope level', async () => {
-      await giveSatellite(f, mine, 'TELESCOPE', 1);
+    /**
+     * D18 slowed the slot curve: L1 and L2 watch one planet, L3 and L4 watch two.
+     * It used to be one slot per level, which handed a mid-season player five
+     * simultaneous windows and made "who do I watch" a question nobody had to
+     * answer.
+     */
+    it('gives a second slot at L3, not at L2', async () => {
+      await giveInstrument(f, mine, 'TELESCOPE', 1);
       await expect(assignWatch(f.db, mine, theirs, 0, f.clock)).resolves.toBeTruthy();
       await expect(assignWatch(f.db, mine, theirs, 1, f.clock)).rejects.toMatchObject({
         code: 'BAD_SLOT',
       });
 
-      await giveSatellite(f, mine, 'TELESCOPE', 2);
+      await giveInstrument(f, mine, 'TELESCOPE', 2);
+      await expect(assignWatch(f.db, mine, theirs, 1, f.clock)).rejects.toMatchObject({
+        code: 'BAD_SLOT',
+      });
+
+      await giveInstrument(f, mine, 'TELESCOPE', 3);
       await expect(assignWatch(f.db, mine, theirs, 1, f.clock)).resolves.toBeTruthy();
     });
 
     it('refuses negative and fractional slots', async () => {
-      await giveSatellite(f, mine, 'TELESCOPE', 3);
+      await giveInstrument(f, mine, 'TELESCOPE', 3);
       for (const slot of [-1, 1.5]) {
         await expect(assignWatch(f.db, mine, theirs, slot, f.clock)).rejects.toMatchObject({
           code: 'BAD_SLOT',
@@ -94,14 +113,14 @@ describe('the information layer', () => {
     });
 
     it('refuses to watch your own planet', async () => {
-      await giveSatellite(f, mine, 'TELESCOPE', 1);
+      await giveInstrument(f, mine, 'TELESCOPE', 1);
       await expect(assignWatch(f.db, mine, mine, 0, f.clock)).rejects.toMatchObject({
         code: 'SELF_WATCH',
       });
     });
 
     it('404s on a planet that does not exist', async () => {
-      await giveSatellite(f, mine, 'TELESCOPE', 1);
+      await giveInstrument(f, mine, 'TELESCOPE', 1);
       await expect(
         assignWatch(f.db, mine, '00000000-0000-0000-0000-000000000000', 0, f.clock),
       ).rejects.toMatchObject({ status: 404 });
@@ -112,7 +131,7 @@ describe('the information layer', () => {
       const w = await seedWorld(3);
       const [a, b, c] = w.planetIds as [string, string, string];
       await setLevel(w.db, a, 'CORE', 8);
-      await giveSatellite(w, a, 'TELESCOPE', 2);
+      await giveInstrument(w, a, 'TELESCOPE', 2);
 
       await assignWatch(w.db, a, b, 0, w.clock);
       await readTelescopes(w.db, w.playerIds[0]!, w.clock);
@@ -135,7 +154,7 @@ describe('the information layer', () => {
 
   describe('what the telescope shows', () => {
     it('reports HOME when their ships are home', async () => {
-      await giveSatellite(f, mine, 'TELESCOPE', 2);
+      await giveInstrument(f, mine, 'TELESCOPE', 2);
       await assignWatch(f.db, mine, theirs, 0, f.clock);
 
       const [view] = await readTelescopes(f.db, myPlayer, f.clock);
@@ -144,7 +163,7 @@ describe('the information layer', () => {
     });
 
     it('reports AWAY the moment a fleet leaves orbit', async () => {
-      await giveSatellite(f, mine, 'TELESCOPE', 2);
+      await giveInstrument(f, mine, 'TELESCOPE', 2);
       await assignWatch(f.db, mine, theirs, 0, f.clock);
       await giveUnits(f.db, theirs, { WASP: 30 });
       f.clock.advance(SETTLED_MINUTES);
@@ -159,21 +178,21 @@ describe('the information layer', () => {
       f.clock.advance(SETTLED_MINUTES);
       await launchAttack(f.db, theirs, mine, { WASP: 30 }, f.clock);
 
-      await giveSatellite(f, mine, 'TELESCOPE', 2); // clarity +2 → FULL
+      await giveInstrument(f, mine, 'TELESCOPE', 2); // clarity +2 → FULL
       await assignWatch(f.db, mine, theirs, 0, f.clock);
       const [full] = await readTelescopes(f.db, myPlayer, f.clock);
       expect(full!.reading.state).toBe('FULL');
       expect(full!.reading.etaMinutes).toBeGreaterThan(0);
 
-      await giveSatellite(f, mine, 'TELESCOPE', 1); // clarity +1 → CLEAR
+      await giveInstrument(f, mine, 'TELESCOPE', 1); // clarity +1 → CLEAR
       const [clear] = await readTelescopes(f.db, myPlayer, f.clock);
       expect(clear!.reading.state).toBe('CLEAR');
       expect(clear!.reading.etaMinutes).toBeNull();
     });
 
     it('a Veil that outmatches the telescope blinds it completely', async () => {
-      await giveSatellite(f, mine, 'TELESCOPE', 1);
-      await giveSatellite(f, theirs, 'VEIL', 3); // clarity −2 → BLIND
+      await giveInstrument(f, mine, 'TELESCOPE', 1);
+      await giveInstrument(f, theirs, 'VEIL', 3); // clarity −2 → BLIND
       await assignWatch(f.db, mine, theirs, 0, f.clock);
       await giveUnits(f.db, theirs, { WASP: 30 });
       f.clock.advance(SETTLED_MINUTES);
@@ -189,8 +208,8 @@ describe('the information layer', () => {
     });
 
     it('a matched Veil produces fog, not a wall', async () => {
-      await giveSatellite(f, mine, 'TELESCOPE', 2);
-      await giveSatellite(f, theirs, 'VEIL', 2); // clarity 0 → INTERMITTENT
+      await giveInstrument(f, mine, 'TELESCOPE', 2);
+      await giveInstrument(f, theirs, 'VEIL', 2); // clarity 0 → INTERMITTENT
       await assignWatch(f.db, mine, theirs, 0, f.clock);
 
       const states = new Set<string>();
@@ -217,8 +236,8 @@ describe('the information layer', () => {
      * pulling to refresh until INTERMITTENT happens to yield a confirmation.
      */
     it('reading twenty times inside one window gives twenty identical answers', async () => {
-      await giveSatellite(f, mine, 'TELESCOPE', 2);
-      await giveSatellite(f, theirs, 'VEIL', 2); // the fuzzy state
+      await giveInstrument(f, mine, 'TELESCOPE', 2);
+      await giveInstrument(f, theirs, 'VEIL', 2); // the fuzzy state
       await assignWatch(f.db, mine, theirs, 0, f.clock);
 
       const first = (await readTelescopes(f.db, myPlayer, f.clock))[0]!.reading;
@@ -230,8 +249,8 @@ describe('the information layer', () => {
     });
 
     it('but the answer can change once the window rolls over', async () => {
-      await giveSatellite(f, mine, 'TELESCOPE', 1);
-      await giveSatellite(f, theirs, 'VEIL', 2); // DEGRADED — flips between known and unknown
+      await giveInstrument(f, mine, 'TELESCOPE', 1);
+      await giveInstrument(f, theirs, 'VEIL', 2); // DEGRADED — flips between known and unknown
       await assignWatch(f.db, mine, theirs, 0, f.clock);
 
       const seen = new Set<string>();
@@ -279,7 +298,7 @@ describe('the information layer', () => {
     it('files a banded report on arrival — never an exact number', async () => {
       await grant(f.db, theirs, 60_000, 6_000);
       await giveUnits(f.db, theirs, { WASP: 40, BASTION: 3 });
-      await giveSatellite(f, theirs, 'VEIL', 2); // force accuracy below 1.0
+      await giveInstrument(f, theirs, 'VEIL', 2); // force accuracy below 1.0
 
       const launch = await launchProbe(f.db, mine, theirs, f.clock);
       f.clock.set(launch.arriveAt);
@@ -295,7 +314,7 @@ describe('the information layer', () => {
 
     it('a better shipyard buys a narrower band', async () => {
       await grant(f.db, theirs, 60_000, 6_000);
-      await giveSatellite(f, theirs, 'VEIL', 3);
+      await giveInstrument(f, theirs, 'VEIL', 3);
 
       const widthAfterProbe = async (shipyard: number): Promise<number> => {
         await setLevel(f.db, mine, 'SHIPYARD', shipyard);
@@ -308,6 +327,12 @@ describe('the information layer', () => {
           .from(probeReports)
           .where(eq(probeReports.missionId, launch.missionId));
         const r = rows[0]!;
+        // Fly it home before the next one goes out. Only one probe may work a
+        // planet at a time, and a craft on its return leg is still working it —
+        // the answer is in the air. Skipping this made the second call fail with
+        // PROBE_ALREADY_OUT rather than measuring anything.
+        f.clock.advance(launch.flightMinutes);
+        await worker(f).tick();
         return (r.stock.high - r.stock.low) / Math.max(1, r.stock.high);
       };
 
@@ -340,8 +365,8 @@ describe('the information layer', () => {
     });
 
     it('watching leaves no trace the target can ever see', async () => {
-      await giveSatellite(f, mine, 'TELESCOPE', 3);
-      await giveSatellite(f, theirs, 'RADAR', 5); // maximum radar
+      await giveInstrument(f, mine, 'TELESCOPE', 3);
+      await giveInstrument(f, theirs, 'RADAR', 5); // maximum radar
       await assignWatch(f.db, mine, theirs, 0, f.clock);
 
       for (let i = 0; i < 10; i++) {
@@ -367,7 +392,7 @@ describe('the information layer', () => {
     });
 
     it('high radar catches almost everything — measured over many probes', async () => {
-      await giveSatellite(f, theirs, 'RADAR', 5); // detect chance clamps to 0.95
+      await giveInstrument(f, theirs, 'RADAR', 5); // detect chance clamps to 0.95
       await setLevel(f.db, mine, 'SHIPYARD', 0);
 
       const PROBES = 8;
@@ -375,6 +400,10 @@ describe('the information layer', () => {
         await grant(f.db, mine, 50_000, 5_000);
         const launch = await launchProbe(f.db, mine, theirs, f.clock);
         f.clock.set(launch.arriveAt);
+        await worker(f).tick();
+        // Each craft has to get home before the next can go: one probe per target
+        // at a time, both legs.
+        f.clock.advance(launch.flightMinutes);
         await worker(f).tick();
         f.clock.advance(1);
       }
@@ -424,7 +453,7 @@ describe('the information layer', () => {
     });
 
     it('L1 gives the fact only — no bearing, no origin', async () => {
-      await giveSatellite(f, theirs, 'RADAR', 1);
+      await giveInstrument(f, theirs, 'RADAR', 1);
       const [entry] = await readRadarLog(f.db, theirs);
       expect(entry).toBeDefined();
       expect(entry!.bearing).toBeNull();
@@ -432,20 +461,20 @@ describe('the information layer', () => {
     });
 
     it('L2 adds a direction but still never names anyone', async () => {
-      await giveSatellite(f, theirs, 'RADAR', 2);
+      await giveInstrument(f, theirs, 'RADAR', 2);
       const [entry] = await readRadarLog(f.db, theirs);
       expect(entry!.bearing).toBeTruthy();
       expect(entry!.originPlanetName).toBeNull();
     });
 
     it.each([3, 4])('L%i still withholds the origin', async (level) => {
-      await giveSatellite(f, theirs, 'RADAR', level);
+      await giveInstrument(f, theirs, 'RADAR', level);
       const [entry] = await readRadarLog(f.db, theirs);
       expect(entry!.originPlanetName).toBeNull();
     });
 
     it('only L5 names the scanner', async () => {
-      await giveSatellite(f, theirs, 'RADAR', 5);
+      await giveInstrument(f, theirs, 'RADAR', 5);
       const [entry] = await readRadarLog(f.db, theirs);
       expect(entry!.originPlanetName).toBeTruthy();
     });
@@ -455,23 +484,19 @@ describe('the information layer', () => {
 
   describe('intel across a season boundary', () => {
     it('cannot watch a planet that belongs to another galaxy', async () => {
-      await giveSatellite(f, mine, 'TELESCOPE', 2);
+      await giveInstrument(f, mine, 'TELESCOPE', 2);
 
       // A second live season in the same database — no truncation.
       const { createSeason } = await import('../src/services/season.js');
       const { joinSeason } = await import('../src/services/player.js');
-      const { accounts } = await import('../src/db/schema.js');
       const other = await createSeason(f.db, {
         shardCode: 'EU-OTHER',
         seed: 31337,
         startsAt: f.clock.now(),
         playerCap: 20,
       });
-      const [stranger] = await f.db
-        .insert(accounts)
-        .values({ displayName: 'Stranger' })
-        .returning();
-      const elsewhere = await joinSeason(f.db, stranger!.id, other.season.id, f.clock);
+      const stranger = await makeAccount(f.db, 'Stranger');
+      const elsewhere = await joinSeason(f.db, stranger.id, other.season.id, f.clock);
 
       await expect(
         assignWatch(f.db, mine, elsewhere.planetId, 0, f.clock),
@@ -482,18 +507,14 @@ describe('the information layer', () => {
       await grant(f.db, mine, 50_000, 5_000);
       const { createSeason } = await import('../src/services/season.js');
       const { joinSeason } = await import('../src/services/player.js');
-      const { accounts } = await import('../src/db/schema.js');
       const other = await createSeason(f.db, {
         shardCode: 'EU-OTHER-2',
         seed: 4711,
         startsAt: f.clock.now(),
         playerCap: 20,
       });
-      const [stranger] = await f.db
-        .insert(accounts)
-        .values({ displayName: 'Stranger 2' })
-        .returning();
-      const elsewhere = await joinSeason(f.db, stranger!.id, other.season.id, f.clock);
+      const stranger = await makeAccount(f.db, 'Stranger2');
+      const elsewhere = await joinSeason(f.db, stranger.id, other.season.id, f.clock);
 
       await expect(
         launchProbe(f.db, mine, elsewhere.planetId, f.clock),

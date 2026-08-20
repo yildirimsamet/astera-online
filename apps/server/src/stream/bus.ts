@@ -1,3 +1,4 @@
+import { z } from 'zod';
 import { sql } from 'drizzle-orm';
 import postgres from 'postgres';
 import type { FastifyBaseLogger } from 'fastify';
@@ -5,9 +6,17 @@ import type { Queryable } from '../db/client.js';
 
 export const CHANNEL = 'blindspace_events';
 
-export interface StreamEvent {
-  playerId: string;
-  kind: string;
+const eventPayload = z.object({ playerId: z.string().min(1), kind: z.string().min(1) });
+
+export type StreamEvent = z.infer<typeof eventPayload>;
+
+/** `JSON.parse` throws on malformed input; the schema handles everything else. */
+function safeJson(raw: string): unknown {
+  try {
+    return JSON.parse(raw);
+  } catch {
+    return undefined;
+  }
 }
 
 type Listener = (event: StreamEvent) => void;
@@ -59,14 +68,39 @@ export class EventBus {
     }
   }
 
+  /**
+   * PARSED, NOT CAST.
+   *
+   * This was `JSON.parse(payload) as StreamEvent`, and the cast was a lie in two
+   * measured ways.
+   *
+   * A HALF-FORMED MESSAGE WAS DELIVERED AS A REAL ONE. `{"playerId":"<a real id>"}`
+   * with no `kind` parses to an object, matches a subscriber, and is handed to the
+   * listener — which forwards it to the browser as a server-sent event with
+   * `kind: undefined`. The client then invalidates queries on a message that says
+   * nothing happened. There is a test for exactly this payload, and it fails
+   * against the old code.
+   *
+   * AND `JSON.parse` ACCEPTS FAR MORE THAN AN OBJECT. `null`, `7` and `"hello"` are
+   * all valid JSON documents, so on `null` the parse succeeded and `.playerId` threw
+   * a TypeError on the next line — outside the `try`, inside a postgres.js
+   * notification callback. Measured: postgres.js absorbs that, so the LISTEN socket
+   * does survive today. But the fan-out for every player on the server then depends
+   * on a library swallowing our exceptions, which is not a property this code should
+   * be resting on.
+   *
+   * A schema costs one allocation per notification and removes both. This is the
+   * boundary `engineering-standards.md` means by "parse untrusted input with Zod";
+   * that a trusted process writes the payload today does not make the socket a safe
+   * place to assume it.
+   */
   private dispatch(payload: string): void {
-    let event: StreamEvent;
-    try {
-      event = JSON.parse(payload) as StreamEvent;
-    } catch {
+    const parsed = eventPayload.safeParse(safeJson(payload));
+    if (!parsed.success) {
       this.log.warn({ payload }, 'unparseable event payload');
       return;
     }
+    const event = parsed.data;
     for (const listener of this.listeners.get(event.playerId) ?? []) {
       try {
         listener(event);

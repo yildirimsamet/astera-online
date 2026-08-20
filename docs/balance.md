@@ -1,121 +1,105 @@
 # Balance & Mathematics
 
-Where every number came from, what the simulator proved, and which relationships must
-never be broken.
+Where every number came from and which relationships must never break.
 
-**The constants live in `packages/rules/src/constants.ts`.** That file is authoritative;
-this document explains it. Values marked `PROVISIONAL` are settled by playtest, not by
-argument.
+**`packages/rules/src/constants.ts` is authoritative; this file explains it.** If a number
+here disagrees with the constant, the constant wins and this file has drifted. Values marked
+`PROVISIONAL` are settled by playtest, not by argument.
 
----
+## The invariants tests enforce
 
-## The invariants that must never break
+Breaking one of these is not a balance regression — it is a broken game, usually silently.
 
-These are enforced by tests. Breaking one is not a balance regression — it is a broken
-game, usually silently.
+**`vaultMult < alloyMult`.** If protection compounds faster than the stock it protects, the
+vault eventually covers 100% of storage and nothing is ever raidable again, with no other
+symptom. The first draft shipped `900 × 1.5^L` against an `alloyMult` of 1.45 and protected
+208% of storage at L3, 301% at L14. Now `600 × 1.30^L`, so the protected *fraction* shrinks
+as a player grows — 45% at L3, 26% at L8, 14% at L14. That is also the intended design:
+beginners nearly fully protected, leaders nearly fully exposed.
 
-### `vaultMult < alloyMult` — the one that nearly killed the project
+**Combat variance is ±8%.** A design constraint, not a preference: if randomness dominated,
+intel would be worthless.
 
-If protection compounds faster than the stock it protects, the vault eventually covers
-100% of storage and **nothing in the galaxy is ever raidable again** — with no other
-symptom.
+**Dominion sums to exactly zero across a battle.** Property-tested over arbitrary fleets and
+loot values. Otherwise the ladder creates score from nothing.
 
-The first draft shipped `900 × 1.5^L` against an `alloyMult` of 1.45:
-
-| Level | Vault protects | Storage cap | % protected |
-|---|---|---|---|
-| 3 | 3,038 | 1,463 | **208%** |
-| 8 | 23,066 | 9,380 | **246%** |
-| 14 | 262,736 | 87,175 | **301%** |
-
-Now `300 × 1.30^L`, and the protected *fraction* shrinks as a player grows — which is also
-the intended design: beginners nearly fully protected, leaders nearly fully exposed.
-
-`packages/rules/test/economy.test.ts` fails if the relationship ever inverts.
-
-### Low combat variance
-
-±8%. If randomness dominated outcomes, intel would be worthless and the core loop would
-collapse. This is a design constraint, not a tuning preference.
-
-### Dominion sums to exactly zero across a battle
-
-Property-tested over arbitrary fleets and loot values. If it ever does not, the ladder is
-creating or destroying score from nothing.
-
----
+**`START` is arithmetic:** `2,060 alloy · 276 crystal` = Core, Refinery and Extractor each
+1→2 (1,020 A · 276 C) plus two Wasps (1,040 A). Exactly the opening the design wants a new
+commander to finish in one sitting, and not a unit more.
 
 ## Economy
 
 ```
-alloyRate(L)   = 40 × 1.45^L    per hour
-crystalRate(L) = 14 × 1.42^L    per hour
+alloyRate(L)   = 80 × 1.45^L    per hour
+crystalRate(L) = 28 × 1.42^L    per hour
 
-upgradeCost(L) = 200 × 1.55^L    alloy
-               +  55 × 1.518^L   crystal   (from level 1)
+upgradeCost(L) = 200 × 1.70^L     alloy
+               +  55 × 1.6648^L   crystal   (from level 1)
 
 storageCap     = 12 hours of production at the current level
-vaultProtects  = 300 × 1.30^L   per resource, un-raidable   [PROVISIONAL]
+collectorCap   = 10 hours — what the WORKS hold before they stop   [D16]
+vaultProtects  = 600 × 1.30^L per resource, un-raidable            [PROVISIONAL]
 ```
+
+Income was doubled from 40/14 (D17), and income was doubled rather than costs cut on purpose:
+every relationship here is a *ratio*. Scaling both bases by the same factor leaves
+`vaultMult < alloyMult`, the crystal share and `payback = cost / gain` exactly where they
+were, and simply runs the clock twice as fast.
+
+### The two piles — D16
+
+```
+production → WORKS (cap 10h, raidable at 50%, vault does NOT cover it)
+                ↓  collect()
+             STORAGE (cap 12h, spendable, vault floor applies)
+```
+
+Total accumulation across an absence is 22 hours, not 12 — a long absence is more forgiving
+than it was. Nothing accrues past that, so an absence of a day and an absence of a month
+produce the same state.
+
+**Twelve hours of storage** means sleeping eight arrives at ~80% of cap: close enough to feel
+pressure, not so close that a normal night is punished. **Ten hours for the works** is a night
+plus a margin, so a player who sleeps normally wastes nothing.
 
 ### The payback curve is the brake
 
 ```
-payback(L) = cost(L) / marginalGain(L) = 11.1 × 1.069^L hours
+payback(L) = cost(L) / marginalGain(L) = 5.56 × 1.1724^L hours
 ```
 
 | Level | 1 | 5 | 10 | 15 |
 |---|---|---|---|---|
-| Payback | 11.9h | 15.4h | 21.6h | 30.2h |
+| Payback | 6.5h | 12.3h | 27.3h | 60.4h |
 
-Cost grows at 1.55 against production at 1.45, so payback lengthens with level. **That
-drift is what stops a 14-day season running away** — and it is what produces the sunset:
-investment stays rational while `payback < remainingHours × 0.4`, which on day 13 means
-~10 hours, which no level satisfies. Every player independently stops building on the
-final day.
+Cost grows at 1.70 against production at 1.45, so payback lengthens with level. **That drift
+is what stops a 14-day season running away**, and it produces the sunset: investment stays
+rational while `payback < remainingHours × 0.4`, which on day 13 means ~9.6 hours — satisfied
+by no level past L3. Every player independently stops building on the final day.
 
-**If you change the cost curve, re-derive the season length.** It is not an independent
-choice.
+**If you change the cost curve, re-derive the season length.** It is not an independent choice.
 
 ### The crystal share is derived, not chosen
 
 ```
-crystal income share = crystalRate(L) / alloyRate(L)   ≈ 0.34 → 0.28 over a season
-crystal cost   share = crystal(L)     / alloy(L)       ≈ 0.27 → 0.22
-                                                          ratio ≈ 0.78 at every level
+crystal income share = crystalRate(L) / alloyRate(L)   0.343 → 0.261 over a season
+crystal cost   share = crystal(L)     / alloy(L)       0.271 → 0.205
+                                                       ratio  0.786 at every level
 ```
 
-Crystal shipped as a decorative resource. It was charged only from level 4, at 22% of the
-alloy price, against an income that is 34% of alloy income — so it arrived half again as
-fast as it could be spent, filled its twelve-hour store during the first night of every
-account, and wasted from then on. Nothing in the opening consumed it at all: not the Wasp,
-not a probe, not the first three upgrades. A resource a player watches accumulate and never
-spends is not scarcity, it is decoration.
+Crystal shipped as decoration: charged only from level 4, at 22% of the alloy price, against
+an income that is 34% of alloy income. It filled its store on the first night of every account
+and wasted from then on, and nothing in the opening consumed it at all.
 
-Two things were wrong and both are now derived rather than picked:
+**The multiplier is derived:** `crystalCostMult = costMult × (crystalMult / alloyMult)`. Two
+independently chosen multipliers drift — an earlier 1.58 against a 1.55 alloy curve pushed the
+crystal share from 0.21 to 0.37 across ten levels while the income share fell, quietly
+inverting which resource was scarce.
 
-**The multiplier.** `crystalCostMult = costMult × (crystalMult / alloyMult) = 1.518`. Two
-independently chosen multipliers drift: the old 1.58 against a 1.55 alloy curve pushed the
-crystal share from 0.21 up to 0.37 across ten levels while the income share fell, quietly
-inverting which resource was scarce by the late game.
-
-**The base.** Set at ~0.78 of income parity, and that number came from the simulator rather
-than from taste. At parity (base 69) crystal is spent as fast as it arrives, the stores sit
-near empty, and **there is nothing left to raid**: on seed 7 raid returns fell to RR 1.25,
-under the 1.3 floor, and the informed archetype dropped from first to third — selective
-raiding pays a fixed scouting cost against a shrinking prize, so it suffers first. At 0.78
-all three seeds hold every band and the informed archetype tops every ladder.
-
-Crystal must be spendable **and** worth stealing. `packages/rules/test/invariants.test.ts`
-holds both ends.
-
-### Why 12 hours of storage
-
-Sleeping eight hours arrives at ~80% of cap — close enough to feel pressure, not so close
-that a normal night is punished. It also means the vault refills to a raidable amount
-roughly once per real day.
-
----
+**The base is set at ~0.79 of income parity, and that came from the simulator.** At parity
+crystal is spent as fast as it arrives, the stores sit near empty, and **there is nothing left
+to raid**: raid returns fell under their floor and the informed archetype dropped to third.
+Crystal must be spendable **and** worth stealing.
 
 ## Combat
 
@@ -126,55 +110,53 @@ support hulls: prey to everything (1.6× taken), deal nothing, shielded while es
 
 grade on VALUE destroyed:
   all defenders dead        → DECISIVE  → loot 50% of raidable
-  ≥60% of value destroyed   → PARTIAL   → loot 25%
+  ≥45% of value destroyed   → PARTIAL   → loot 25%
   below that                → REPELLED  → nothing
 
-defenceSalvage = 60% of destroyed ground units rebuild free
+defenceSalvage  = 60% of destroyed ground units rebuild free
+lootBufferShare = 50% — ore still in the works is half as easy to carry off
+engagementSeconds = 10 — a raid is over its target this long before it settles [D44]
 ```
 
-### Hulls
+| Hull | Class | ATK | HP | Speed | Cargo | Alloy | Crystal | Yard | HP/1k | ATK/1k |
+|---|---|---|---|---|---|---|---|---|---|---|
+| Wasp | Skirmisher | 14 | 24 | 46 | 40 | 520 | 0 | 0 | 46.2 | 26.9 |
+| Lance | Lance | 46 | 62 | 34 | 50 | 1,900 | 380 | 2 | 27.2 | 20.2 |
+| Bulwark | Bulwark | 26 | 210 | 21 | 70 | 5,000 | 1,240 | 4 | 33.7 | 4.2 |
+| Hauler | Support | 0 | 80 | 30 | **1,800** | 2,300 | 260 | 1 | 31.3 | — |
+| Bastion | Bulwark · ground | 34 | 260 | — | — | 3,400 | 760 | 1 | 62.5 | 8.2 |
+| Thorn | Skirmisher · ground | 16 | 60 | — | — | 1,600 | 240 | 0 | 32.6 | 8.7 |
+| Prospector | Support · mining | 0 | 70 | *see below* | 1,800 | 1,400 | 240 | 1 | 42.7 | — |
 
-| Hull | Class | ATK | HP | Speed | Cargo | Alloy | Crystal | Yard |
-|---|---|---|---|---|---|---|---|---|
-| Wasp | Skirmisher | 14 | 24 | 46 | 40 | 260 | 0 | 0 |
-| Lance | Lance | 46 | 62 | 34 | 50 | 950 | 190 | 2 |
-| Bulwark | Bulwark | 26 | 210 | 21 | 70 | 2,500 | 620 | 4 |
-| Hauler | Support | 0 | 80 | 30 | **900** | 1,150 | 130 | 1 |
-| Bastion | Bulwark · ground | 34 | 260 | — | — | 1,700 | 380 | 1 |
+The Bastion is **1.35× more HP per resource** than the best ship because it can never leave.
+That is the entire justification for ground defence existing separately.
 
-Bastion is **1.8× more HP per alloy** than any ship, because it can never leave. That is
-the entire justification for ground defence existing as a separate thing.
+**The two ground guns are opposite classes on purpose (D27).** Wasps overwhelm a Bastion and
+are held by a Thorn; Lances break a Thorn and shatter against a Bastion. A defender chooses
+what to be strong against and an attacker has to find out which — the decision a single ground
+hull cannot produce.
+
+> **A known problem in this table is deliberately not fixed.** The Bulwark has 4.2 attack per
+> 1,000 resources against the Wasp's 26.9, so at equal budget it loses to the Lance it
+> counters. Raising it was measured across the whole range and hands the season to whoever
+> accumulates most (D27). It is a durability hull; exchange ratios cannot price 210 hit points.
+
+**The Prospector's live speed is `PROSPECTOR.speed` (660), not `HULLS.PROSPECTOR.speed`.** The
+hull record carries a stale nominal 62 that nothing reads — `fleetSpeed` walks `MOBILE_HULLS`,
+which excludes it. The live figure is `3 × (asteroidSpeedMin + asteroidSpeedMax) / 2` (D43), a
+Derrick lifts it to 4.5×, and it uses its own `launchMinutes` of 0.4 rather than
+`TRAVEL.baseMinutes` (D48).
 
 ### Loot
 
 ```
-raidable = max(0, stock − vaultFloor)
+raidable = max(0, storage − vaultFloor) + works × lootBufferShare
 loot     = min(raidable × grade, totalCargoCapacity)
 ```
 
-**The 50% rule *is* the repeat-raid decay system**: successive raids take 50%, then 25%,
-then 12.5% of the original pile. Diminishing returns arrive free — no cooldown table, no
+**The 50% rule *is* the repeat-raid decay system**: successive raids take 50%, then 25%, then
+12.5% of the original pile. Diminishing returns arrive free, with no cooldown table and no
 extra state.
-
-### Worked example
-
-40 Wasps + 10 Lances (19,900 alloy-equivalent) vs 6 Bulwarks + 8 Bastions (28,600), no
-shield:
-
-| Round | Atk dmg | Def dmg | Attacker after | Defender after |
-|---|---|---|---|---|
-| 1 | 1,184 | 431 | 34 Wasp · 6 Lance | 4 Bulwark · 6 Bastion |
-| 2 | 934 | 308 | 29 Wasp · 4 Lance | 3 Bulwark · 4 Bastion |
-| 3 | 765 | 214 | **25 Wasp · 3 Lance** | **2 Bulwark · 3 Bastion** |
-
-Defender value loss 63.8% → **PARTIAL**, 25% loot.
-
-Note what the numbers did unprompted: the attacker brought the *correct* counter (Wasps at
-1.6× into Bulwark-class) and still only managed a partial, because they were outvalued
-1.44 to 1. **Composition earns you a fight above your weight; it does not win one for
-free.**
-
----
 
 ## Information
 
@@ -185,154 +167,247 @@ accuracy     = clamp(0.55 + 0.12 × (probeL − veilL),         0.30, 1.00)
 
 INTERMITTENT: refresh ≤ every 20 min, 25% of refreshes dropped
 DEGRADED:     reads UNKNOWN 70% of the time
-radar lead:   [L0–L2: none, L3: 5 min, L4: 8, L5: 12]
 ```
 
-Floors and ceilings guarantee no investment ever buys perfect invisibility or perfect
+Floors and ceilings guarantee that no investment buys perfect invisibility or perfect
 omniscience. **The fog never fully lifts.**
+
+### The telescope — D18
+
+| Level | 1 | 2 | 3 | 4 | 5 |
+|---|---|---|---|---|---|
+| Watch slots | 1 | 1 | 2 | 2 | 3 |
+| Range (units) | 420 | 640 | 950 | 1,400 | ∞ |
+| Re-point cooldown | 24h | 20h | 15h | 10h | 6h |
+
+The disc has radius 1000, so the furthest two planets can be is a little over 2000 apart. On a
+50-world galaxy L1 reaches about six neighbours, L2 thirteen, L3 twenty-five. **Range is what
+makes "who are my neighbours" a real question.** Cooldown is charged on re-pointing only.
+
+### The radar — D49
+
+| Level | 1 | 2 | 3 | 4 | 5 |
+|---|---|---|---|---|---|
+| Reach (units) | — | — | 200 | 340 | 500 |
+| Also | catches probes | + bearing | | + ship estimate | + names the origin |
+
+**The warning fires when a fleet crosses inside the circle**, so how much notice it buys falls
+out of the attacker's own speed. Against a typical 800-unit leg at L5: Wasp 15 min, Lance 20,
+Hauler in tow 22, Bulwark siege 30. Notice is `oneWay × range / distance`, so a long flight can
+never hand over its whole duration (D9).
 
 ### The refresh-spam rule
 
 Telescope reads are seeded from `(watchId, floor(now / 20min))`, so a reading is identical
-however many times it is requested inside its window.
+however many times it is requested inside its window. **Without this a player defeats the
+entire fog layer by pulling to refresh** until `INTERMITTENT` yields a confirmation. It is the
+easiest way to ship a broken information game and it is not obvious from the formula.
 
-**Without this, a player defeats the entire fog layer by pulling to refresh** until
-`INTERMITTENT` happens to yield a confirmation. This is the easiest way to ship a broken
-information game, and it is not obvious from reading the formula.
+### Probes
 
----
+`50 alloy · 50 crystal · speed 90`, rationed by flight bays. Charging a little of *both*
+resources keeps a probe a decision after the opening; alloy alone is the resource nobody is
+ever short of.
+
+## Hardware — two kinds, D25
+
+**Four INSTRUMENTS on the ground**, levelled, no slot:
+
+```
+instrumentCost(id, L) = upgradeCost(L) × mult
+  TELESCOPE ×3 · RADAR ×2 · AEGIS ×2 · VEIL ×2
+
+shieldHp(L) = 40 × 1.42^L, regen 5%/hr        [PROVISIONAL]
+```
+
+`SHIELD.base` was cut from 700 in D22 and **must stay near a fleet's own hit points**. The old
+figure was only survivable because almost nobody could afford an Aegis; once satellites stopped
+being rationed, adoption went 18% → 67% and raid returns collapsed to 0.60–0.73.
+
+**Four SATELLITES in orbit**, one slot each, bought once, never raised:
+
+| Satellite | Alloy | Crystal | Effect |
+|---|---|---|---|
+| Uplink | 1,500 | 500 | Gates the Telescope and the Radar. Nothing else gates anything |
+| Foundry | 9,000 | 3,000 | ×1.06 on everything the works produce |
+| Derrick | 9,000 | 3,000 | ×2.6 mining hold, ×1.5 mining speed |
+| Beacon | 11,000 | 3,500 | ×1.3 speed for every fleet that leaves here |
+
+Slots come from the Command Core at L1, L3, L5 and L9.
+
+**`SATELLITES.FOUNDRY.production` stays at 1.06.** It compounds twice — bots buy ground defence
+as a ratio of the stock it raises — so at +8% TURTLE tops the ladder on every gate seed.
+
+**Instruments stay cheap and the reason is measured (D30).** All four at maximum cost 42,219,
+less than one building step at L10→L11. Every attempt to fix that fails the gate, because
+raising the price of one un-losable holding pushes wealth into another one.
 
 ## Other constants
 
 ```
 travelMinutes = 3 + (distance / slowestShipSpeed) × 1.2
-shieldHp(L)   = 700 × 1.42^L, regen 5%/hr        [PROVISIONAL]
-disruption    = 180 / 60 / 0 min, cap 240 pending [PROVISIONAL]
+disruption    = 180 / 60 / 0 min, cap 240 pending   [PROVISIONAL]
 
 abuse guards  bash 3 per attacker per target per 12h
-              newcomer grace 4h or Command Core L4
-              rank floor: cannot attack below 40% of your Wealth
+              tier band: ±2 development tiers   [D49]
+              NO newcomer grace   [D14]
 
-galaxy        disc radius 1000, ±120 thickness, min separation 90, 200 slots
-              8–14 asteroids, period 15–40 min, mass 200–1400, damage = mass × 8
+galaxy        disc radius 1000, ±120 thickness, min separation 90
+              10 galaxies × 50 worlds, filled strictly in order   [D21]
 season        14 days, investment horizon share 0.4
+debris        10% of destroyed non-ground value, decays over 3h   [PROVISIONAL, D37]
+              no field at all below DEBRIS.minimum (200) — a skirmish leaves nothing
 ```
 
----
+### Asteroids — D19
+
+```
+spawn         2.7 new rocks per hour           [PROVISIONAL]
+orbit         radius 200–950, closed, constant speed 140–300 units/min
+life          3–6 hours in the disc, then gone for good
+ore by level  [—, 800, 1600, 3200, 6000, 11000]
+level weights [—, 0.40, 0.27, 0.18, 0.10, 0.05]
+crystal share 0.25–0.65, rolled per rock
+```
+
+Speed is **independent of level**, so a rich rock is not automatically a slow one, and the orbit
+is **closed**, so a craft slower than a rock still has a meeting on a later pass. Interception is
+a root find rather than a speed comparison.
+
+Ore was cut by roughly seven from the first pass, which had sized rocks against the field's own
+total and never compared them to a refinery: one Prospector brought home 3,651 an hour against a
+planet's entire 156.
+
+**There is no impact system.** Asteroid impacts remain on the deferred list in `roadmap.md`.
 
 ## The simulator
 
 `packages/sim` runs a full 14-day season with five bot archetypes executing the real rules,
-deterministically from a seed. **Its regression test runs in CI on three seeds.**
+deterministically from a seed. **Its regression test runs in CI on five seeds at 50 players** —
+the size the game actually ships. It used to run three seeds at 120, which never reaches a
+player, and that mattered: at 50 the pre-OGame baseline failed `informedArchetypeWins` on seed
+99 and nothing at 120 showed it.
+
+Which invariants are asserted per seed and which are pooled is decided by **measured spread**:
+`ARR` (6%), `SV` (4%) and `VFR` (17%) per seed; `RR` (28%), `TAX` (52%) and `TI` (unstable at
+n=50 by construction) pooled. A real regression moves every seed together, so the pooled median
+still catches it; what it stops catching is one unlucky galaxy.
 
 ```bash
-pnpm sim -- --players=200 --seed=7
+pnpm sim -- --players=50 --seed=7
 ```
-
-A balance regression — someone nudges a constant and the vault silently starts protecting
-200% of storage again — is invisible to unit tests and catastrophic in production. A full
-simulated season is the only thing that catches it, and it costs a few seconds.
 
 ### The six health invariants
 
 | | Healthy | Means | Lever if out of band |
 |---|---|---|---|
 | `ARR` | 0.30–0.55 | Share of Wealth that is actually losable | Building vs ship cost balance |
-| `VFR` | 0.25–0.65 | **Raidable** stock as a share of raidable capacity | Upgrade lumpiness. LOW = nothing worth raiding |
+| `VFR` | 0.16–0.65 | **Raidable** stock as a share of raidable capacity | Upgrade lumpiness. LOW = nothing worth raiding |
 | `TI` | −0.40–0.55 | Passive players' share of an active player's ladder position | Loot grades, Bastion efficiency, disruption |
 | `RR` | 1.3–3.5 | Dominion gained per unit spent gaining it | Loot grades, salvage, hull HP |
 | `SV` | 0.10–0.30 | Daily Wealth churn — the re-login driver | Loot %, travel times |
 | `TAX` | 0.10–0.45 | Share of a peaceful player's output taken by raiders | Disruption duration, loot %, attack frequency |
 
-Two of these were **redefined after they failed to catch the bug they existed for**:
+Two of these were **redefined after they failed to catch the bug they existed for**: `VFR`
+measured raw stock ÷ cap and read a healthy 0.50 all season while the vault protected 100% of
+it; `TAX` used a median, which always read 0.00 because most players are not raided on any
+given day. **A diagnostic that cannot fail is not a diagnostic.**
 
-- `VFR` originally measured raw stock ÷ cap, and read a healthy 0.50 all season while the
-  vault protected 100% of it. It now measures *raidable* fill.
-- `TAX` originally used a median, which always read 0.00 because most players are not
-  raided on any given day. It now uses a mean and counts production denied by disruption.
+### Current reading — RED, and it MOVED at D52a
 
-**A diagnostic that cannot fail is not a diagnostic.**
+**`ARR` reads 0.298 on seed 42 and 0.299 on seed 99**, against a band of 0.308–0.326.
+Everything else is green.
 
----
+**THE CAUSE OF THE OLD RED WAS A MODELLING BUG, NOT A BALANCE PROBLEM.** For four phases the
+red pair was pooled `TAX` at 0.0717 against a floor of 0.10 (per seed: 42:0.079 · 7:0.138 ·
+99:0.072 · 4242:0.065 · 1337:0.052) and the informed archetype losing seed 4242 to RAIDER.
+**Both now pass, and nothing was tuned to make them.**
+
+A blind attacker values a target from how developed it looks, and the docblock over that
+expression said — correctly, since D16 — that the guess "counts the works as well as the
+store, because a target's storage is now a transient that empties minutes after its owner
+logs in". The expression counted `storageCap` alone. The scouted branch had been updated for
+D16; the blind branch had not. So every unscouted target was under-valued by roughly the
+collector ceiling, blind raiding was suppressed across the whole galaxy, and the archetype
+that suffered most was the one that raids without scouting first.
+
+That is why `TAX` sat low and why the informed archetype's edge was inconsistent: both were
+reading a galaxy with less raiding in it than the rules describe. Found by a code review, as
+a comment that disagreed with the line beneath it.
+
+**The tier band remains a measurable no-op in the simulator** — every bot finishes at Core
+7–10 (tiers 3–4) and a ±2 band admits every pairing; disabling the check reproduces the same
+numbers. That was true before D52a and is still true.
+
+`ARR` was always the second item on the roadmap. It is now the only red one, and it is the
+one to re-derive.
+
+`TAX` had reached exactly its floor under D27 and has never had headroom since; D30 measured a
+10% instrument-curve change tipping it, and D33 measured a sink worth 2% of Wealth tipping
+`ARR`. **Neither band may be widened to admit a feature.**
 
 ## What the simulator proved
 
-### 1. The vault curve inversion
-Covered above. Found on the very first run.
+> Findings 1–4 were measured on the pre-D17 economy. The conclusions stand and are why the
+> current constants look the way they do; the absolute figures inside them are historical.
 
-### 2. Haulers evaporated in round one
-80 HP taking 1.6× from everything. Attackers arrived with no cargo and raiding could not
-pay for itself. → **D8**.
-
-### 3. Nobody built defence
-23 Bastions across 140 planets. The bots bought buildings first and defence from the
-leftovers, which meant it never got bought — buildings compound, so at the margin they
-always look like the better purchase. **95% of attacks resolved DECISIVE.** → **D7**.
-
-### 4. Grading on `ATK × HP` mis-scored every countered fight
-26 Wasps (power 8.7) and 1 Bastion (power 8.8) read as equal while the Wasps annihilate it
-without a casualty. → **D12**.
-
-### 5. A spendable resource is a lootable resource
-
-Raising the crystal price of upgrades to income parity fixed the dead-resource problem and
-broke raiding in the same move — stock that gets spent is stock that is not in the store
-when a fleet arrives. RR fell under its floor and the informed archetype lost the ladder on
-seed 7 while every other invariant stayed green, which is exactly the failure shape a unit
-test cannot see. The settled value is a compromise between the two, found by running it.
-
-### 6. Raiding was 5% of the economy — the big one
-
-An alloy invested compounds ~16× over a 336-hour season; an alloy stolen returns 1×.
-Across a season, raiding moved 1.44M of value against a ~30M economy.
-
-**The loot dial was provably inert:**
+1. **The vault curve inversion.** Found on the very first run. → D13.
+2. **Haulers evaporated in round one.** 80 HP taking 1.6× from everything, so attackers arrived
+   with no cargo and raiding could not pay for itself. → D8.
+3. **Nobody built defence.** 23 Bastions across 140 planets, and 95% of attacks resolved
+   DECISIVE. The bots bought buildings first and defence from the leftovers, because buildings
+   compound and always look like the better purchase at the margin. → D7.
+4. **Grading on `ATK × HP` mis-scored every countered fight.** → D12.
+5. **A spendable resource is a lootable resource.** Raising crystal costs to income parity fixed
+   the dead-resource problem and broke raiding in the same move — stock that gets spent is not in
+   the store when a fleet arrives. Exactly the failure shape a unit test cannot see.
+6. **Raiding was 5% of the economy, and the loot dial is provably inert:**
 
 | `lootDecisive` | 0.4 | 0.5 | 0.6 | 0.75 | 0.9 |
 |---|---|---|---|---|---|
 | Raid Tax | 0.05 | 0.05 | 0.05 | 0.06 | 0.05 |
 | Turtle Index | 2.20 | 1.99 | 2.02 | 2.18 | 1.99 |
 
-Doubling loot changed nothing. Neither did the storage cap. This is why **D2 + D3 + D7**
-exist, and why "just raise the loot percentage" is not a valid future suggestion.
-
-### Where it landed
-
-Four seeds, 140 players, 14 days — the informed archetype tops the ladder every time:
-
-```
-GRINDER  median rank  12–15    median dominion  +22,400 .. +28,300   ← informed
-FARMER   median rank  42–76    median dominion   −2,400 ..  +4,800
-TURTLE   median rank  55–61    median dominion         0
-RAIDER   median rank  93–101   median dominion   −5,100 .. −11,000   ← blind
-CASUAL   median rank  93–120   median dominion   −8,900 .. −17,000
-```
-
-Blind aggression loses money. Passive accumulation scores nothing. Information wins.
-
----
+Doubling loot changed nothing. Neither did the storage cap. This is why D2, D3 and D7 exist, and
+why "just raise the loot percentage" is not a valid suggestion. `COMBAT.defenceSalvage` was later
+swept 0.60 → 0.20 and is inert for the same reason: **a lever that changes what a loss COSTS
+cannot fix a problem in what an attack ACHIEVES.**
 
 ## Known limitations of the tool
 
-**The bots have no skill variance**, so ladder spread reads far narrower than a real shard
-would produce. **Do not tune ladder spread against the simulator.**
+**The bots have no skill variance**, so ladder spread reads far narrower than a real shard.
+**Do not tune ladder spread against the simulator.**
+
+**The bots are competent, not optimal, on purpose.** Only `GRINDER` reasons about its fleet. A
+galaxy of optimal players is exactly as wrong as a galaxy of idiots — if everybody fields the
+right ships, nothing is left for information to buy and the design's central claim becomes
+untestable.
+
+**There is not one asteroid in it.** Mining, the Derrick, wreckage and the whole D19 economy are
+invisible to every number here. **The simulator must not price what it refuses to simulate.**
+
+**`TI` is unstable at small galaxy sizes.** It divides passive Dominion by active Dominion and
+the denominator can approach zero; on seed 1337 at 50 players it read 28.79. A division artefact,
+not a signal.
 
 ## The one open balance problem
 
-**The casual archetype (2 logins/day) finishes at −10k to −19k Dominion on every seed** —
-and that is the stated target user. The vault floor, bash limits and newcomer grace are not
-enough on their own.
+**The casual archetype is the stated target user and its outcome is not stable.** At 50 players
+it finishes anywhere from +15,547 to −8,664 Dominion depending on seed. The spread is the
+problem: whether a two-logins-a-day player has a good season is currently decided by who happens
+to live near them.
 
-It got harder, deliberately: **newcomer grace was removed by owner decision (D14)**, so a
-fresh account is attackable from its first minute. The rank floor and the bash limit are
-now the only structural protection, and neither of them helps a player who has built
-enough to be worth hitting but logs in twice a day.
+The vault floor, the bash limit and the tier band are the only structural protection — newcomer
+grace was removed by owner decision (D14), so a fresh account is attackable from its first
+minute.
 
-This is a tuning problem, not a structural one, and it needs real players rather than more
-simulation. Candidate levers, none yet tried:
+A tuning problem, not a structural one, and it needs real players rather than more simulation.
+Candidate levers, none yet tried:
 
+- **Halve disruption against players who have been offline a long time.** Disruption denies
+  compounding and `TAX` counts denied production, so this targets what actually buries an
+  infrequent player without weakening raiding. Uses `lastSeenAt`, which already exists.
 - Scale the vault floor by time since last login.
-- Shorten disruption against players who have been offline a long time.
-- Widen the rank floor for infrequent players.
+- Widen the tier band for infrequent players.
 
 **Top of the playtest agenda.**

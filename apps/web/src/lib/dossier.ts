@@ -1,0 +1,395 @@
+import {
+  ALL_HULLS,
+  HULLS,
+  coreTier,
+  distance,
+  reachableTiers,
+  telescopeRange,
+  telescopeSlots,
+  tiersWithinBand,
+  withinTelescopeRange,
+  type Fleet,
+} from '@blindspace/rules';
+import type {
+  BattleReport,
+  GalaxyPlanet,
+  IntelView,
+  PlanetView,
+} from '../api/schemas.js';
+
+/**
+ * WHAT YOU KNOW, AND HOW YOU KNOW IT.
+ *
+ * The focus panel's whole job. A number on its own is worse than useless in this
+ * game — "defence 1,400" invites a player to bet a fleet on it without asking when
+ * it was measured, how precisely, or by what. Every line this produces therefore
+ * carries its PROVENANCE and its AGE, because in an information game those are not
+ * decoration around the fact; they are most of the fact.
+ *
+ * Four sources, in ascending order of trustworthiness, which is also the order
+ * they cost:
+ *
+ *   · PUBLIC — free, live, and true forever. Name, owner, development tier, and
+ *     which instruments are in orbit (D15).
+ *   · TELESCOPE — a slot and a cooldown. One fact only, and the most valuable one:
+ *     is their combat fleet home. May be stale, and says so.
+ *   · PROBE — resources and a round trip, and it may be caught. Bands, never
+ *     numbers, and the band widens as the reading ages.
+ *   · BATTLE — ships you cannot get back. Ground truth about what they FIELDED,
+ *     and the only place a composition ever comes from.
+ *
+ * Pure. No clock of its own, no fetching — `now` is passed in, so this is
+ * testable and cannot drift between renders.
+ */
+
+export type Source = 'public' | 'telescope' | 'probe' | 'battle';
+
+export interface Fact {
+  key: string;
+  label: string;
+  value: string;
+  source: Source;
+  /** Minutes since this was true. Zero means live; null means timeless. */
+  ageMinutes: number | null;
+  /** 0–1 where the source reports one. Only probes do. */
+  accuracy?: number;
+  /** One line of context, in the player's terms. */
+  note?: string;
+  /** True when this is the opportunity the whole game is about. */
+  opportunity?: boolean;
+}
+
+export interface Gap {
+  key: string;
+  label: string;
+  /** What is missing, stated as a state of the world rather than a failure. */
+  missing: string;
+  /** Why a player should care enough to close it. */
+  why: string;
+  /** Which action closes it, for the panel to render a control. */
+  closes: 'telescope' | 'probe' | 'battle';
+  /** Set when the action exists but cannot be taken yet, and why. */
+  blocked?: string;
+}
+
+export interface Dossier {
+  facts: Fact[];
+  gaps: Gap[];
+  /** Distance in game units. */
+  range: number;
+  /**
+   * Whether this world is inside your development-tier band. D49.
+   *
+   * Computed here rather than in the panel because it is a READING of the target
+   * like every other line in this file, and because the server will refuse the
+   * launch on exactly this rule — a control that offers what the server refuses is
+   * the one thing a commitment surface must never do.
+   */
+  inBand: boolean;
+  /** The tiers you may fight, inclusive. For saying WHY, when you may not. */
+  band: { low: number; high: number };
+}
+
+const SOURCE_LABEL: Record<Source, string> = {
+  public: 'Public',
+  telescope: 'Telescope',
+  probe: 'Probe',
+  battle: 'Battle report',
+};
+
+export const sourceLabel = (source: Source): string => SOURCE_LABEL[source];
+
+const band = (low: number, high: number): string =>
+  low === high ? String(Math.round(low)) : `${Math.round(low)}–${Math.round(high)}`;
+
+/** "3 Wasp · 1 Lance", in the fixed hull order so it reads the same every time. */
+export function describeFleet(fleet: Fleet): string {
+  const parts: string[] = [];
+  for (const id of ALL_HULLS) {
+    const n = fleet[id] ?? 0;
+    if (n > 0) parts.push(`${String(n)} ${HULLS[id].name}`);
+  }
+  return parts.join(' · ');
+}
+
+/**
+ * The most anyone has ever SEEN this planet field, from battle reports.
+ *
+ * Losses, not holdings — a report says what died, which is a floor on what was
+ * there and never a ceiling. Phrased that way in the UI too: "at least", because
+ * quietly presenting a floor as a total is how a player loses a fleet.
+ */
+function fieldedAtLeast(reports: readonly BattleReport[], planetName: string): {
+  fleet: Fleet;
+  atMinutes: number;
+} | null {
+  let best: { fleet: Fleet; at: number } | null = null;
+
+  for (const report of reports) {
+    if (report.opponentPlanet !== planetName) continue;
+    const theirs = report.theirLosses;
+    const total = ALL_HULLS.reduce((s, id) => s + (theirs[id] ?? 0), 0);
+    if (total === 0) continue;
+    if (!best || report.at.getTime() > best.at) {
+      best = { fleet: theirs, at: report.at.getTime() };
+    }
+  }
+  if (!best) return null;
+  return { fleet: best.fleet, atMinutes: best.at };
+}
+
+export interface DossierInput {
+  target: GalaxyPlanet;
+  planet: PlanetView;
+  intel: IntelView | undefined;
+  reports: readonly BattleReport[];
+  /** Epoch millis. Passed in so this stays pure. */
+  now: number;
+}
+
+/**
+ * Everything the player is entitled to know about another world, in one list.
+ *
+ * The server has already enforced the fog — a planet the caller does not watch
+ * arrives with no `fleet` key at all, and probe bands are stored pre-fuzzed. This
+ * only ARRANGES what came back; it never infers a value the payload withheld.
+ */
+export function dossier({ target, planet, intel, reports, now }: DossierInput): Dossier {
+  const facts: Fact[] = [];
+  const gaps: Gap[] = [];
+  const range = distance(planet.planet.position, target.position);
+
+  /* ── public ─────────────────────────────────────────────── */
+
+  facts.push({
+    key: 'owner',
+    label: 'Held by',
+    value: target.owner,
+    source: 'public',
+    ageMinutes: null,
+    note: 'Free to everyone, all season.',
+  });
+
+  /**
+   * DEVELOPMENT, AND SINCE D49 ALSO WHETHER YOU MAY FIGHT THEM.
+   *
+   * The tier band replaced a Wealth ratio precisely so that this line could carry
+   * it: the figure that decides whether a launch is legal is now the one free,
+   * public, always-live fact on every world in the galaxy. A player can read the
+   * whole question off the map before they pack a fleet, which a private ratio and
+   * a 403 could never let them do.
+   */
+  const myTier = coreTier(planet.buildings.CORE ?? 1);
+  const myBand = reachableTiers(planet.buildings.CORE ?? 1);
+  const inBand = tiersWithinBand(myTier, target.coreTier);
+
+  facts.push({
+    key: 'development',
+    label: 'Development',
+    value: `Tier ${String(target.coreTier)}`,
+    source: 'public',
+    ageMinutes: null,
+    note: inBand
+      ? `How big the world is. You are Tier ${String(myTier)}, so this one is inside your reach.`
+      : `Out of reach. You are Tier ${String(myTier)} and may fight Tier ${String(myBand.low)} to ${String(myBand.high)}.`,
+  });
+
+  if (target.satellites.length > 0) {
+    facts.push({
+      key: 'hardware',
+      label: 'Satellites in orbit',
+      value: target.satellites.join(' · '),
+      source: 'public',
+      ageMinutes: null,
+      // D15 in one sentence, in the player's terms.
+      note: 'You can see the hardware. What it can do costs a probe.',
+    });
+  }
+
+  /* ── telescope ──────────────────────────────────────────── */
+
+  const telescope = planet.instruments.TELESCOPE ?? 0;
+
+  if (target.fleet) {
+    const away = target.fleet.status === 'AWAY';
+    const unreadable = target.fleet.status === 'UNKNOWN';
+
+    facts.push({
+      key: 'fleet',
+      label: 'Their fleet',
+      value: unreadable ? 'Unreadable' : away ? 'Not home' : 'Home',
+      source: 'telescope',
+      ageMinutes: unreadable ? null : target.fleet.staleMinutes,
+      opportunity: away,
+      note: unreadable
+        ? 'Their Veil is beating your Telescope. Raise it, or send a probe instead.'
+        : away
+          ? target.fleet.etaMinutes === null
+            ? 'You cannot tell when it comes back. That is the risk you are taking.'
+            : 'Their planet is defended by whatever they left behind.'
+          : 'Watching is silent — they are never told you are looking.',
+    });
+  } else {
+    const outOfRange = telescope > 0 && !withinTelescopeRange(telescope, range);
+    const slots = telescopeSlots(telescope);
+    const used = intel?.watching.length ?? 0;
+
+    gaps.push({
+      key: 'fleet',
+      label: 'Their fleet',
+      missing:
+        telescope === 0
+          ? 'You have no Telescope'
+          : outOfRange
+            ? 'Beyond your Telescope’s reach'
+            : 'No slot is pointed here',
+      why: 'The single most valuable fact in the game: a fleet that is away cannot defend its planet.',
+      closes: 'telescope',
+      ...(outOfRange
+        ? {
+            blocked: `Reaches ${String(Math.round(telescopeRange(telescope)))}; this world is ${String(Math.round(range))} away`,
+          }
+        : telescope > 0 && used >= slots
+          ? { blocked: `All ${String(slots)} slots are in use — one has to be moved` }
+          : {}),
+    });
+  }
+
+  /* ── probe ──────────────────────────────────────────────── */
+
+  const report = intel?.probeReports.find((r) => r.targetPlanetId === target.id);
+  if (report) {
+    const age = (now - report.at.getTime()) / 60_000;
+
+    facts.push({
+      key: 'stock',
+      label: 'Resources held',
+      value: band(report.stock.low, report.stock.high),
+      source: 'probe',
+      ageMinutes: age,
+      accuracy: report.accuracy,
+      note: report.detected
+        ? 'Their radar caught the probe — they know somebody looked.'
+        : 'The probe got in and out unnoticed.',
+    });
+
+    facts.push({
+      key: 'defence',
+      label: 'Defence value',
+      value: band(report.defence.low, report.defence.high),
+      source: 'probe',
+      ageMinutes: age,
+      accuracy: report.accuracy,
+      note: 'What was standing on the planet when the probe passed.',
+    });
+
+    facts.push({
+      key: 'ships',
+      label: 'Ships counted',
+      value: band(report.fleetSize.low, report.fleetSize.high),
+      source: 'probe',
+      ageMinutes: age,
+      accuracy: report.accuracy,
+      note: report.fleetHome ? 'Everything they own was home.' : 'Some of their ships were out.',
+    });
+  } else {
+    gaps.push({
+      key: 'stock',
+      label: 'Resources and defence',
+      missing: 'Nothing has ever looked closely',
+      why: 'You are about to bet a fleet on what is down there. A probe turns that guess into a range.',
+      closes: 'probe',
+    });
+  }
+
+  /* ── battle ─────────────────────────────────────────────── */
+
+  const fought = fieldedAtLeast(reports, target.name);
+  if (fought) {
+    facts.push({
+      key: 'composition',
+      label: 'Known to field',
+      value: `at least ${describeFleet(fought.fleet)}`,
+      source: 'battle',
+      ageMinutes: (now - fought.atMinutes) / 60_000,
+      note: 'What you destroyed last time you fought. They may have rebuilt.',
+    });
+  } else {
+    gaps.push({
+      key: 'composition',
+      label: 'What they actually fly',
+      missing: 'You have never fought them',
+      why: 'A battle report is the only place an exact composition ever comes from.',
+      closes: 'battle',
+    });
+  }
+
+  return { facts, gaps, range, inBand, band: myBand };
+}
+
+/**
+ * THE ONE LINE THE COLLAPSED RAIL SHOWS.
+ *
+ * It used to be computed from `target.fleet` alone, and said "Never looked" for
+ * anything with no telescope reading — including a world the player had probed an
+ * hour earlier and fought a war with last night. That is the worst class of bug an
+ * information game can have: the interface asserting ignorance the player does not
+ * have, on the exact surface they use to decide where to send a fleet.
+ *
+ * So the headline is now drawn from everything known, in the order the facts are
+ * worth: a live fleet reading first, then the most recent thing that ever looked,
+ * and only then the genuine absence. `none` really does mean nothing has ever been
+ * learned about this world beyond what is public.
+ *
+ * Returned as a shape rather than a string so it stays pure — ages are formatted
+ * by the panel, which owns the clock.
+ */
+export type Headline =
+  | { kind: 'fleet-away' }
+  | { kind: 'fleet-home' }
+  /** You looked, and their Veil beat your Telescope. Information, not absence. */
+  | { kind: 'veiled' }
+  | { kind: 'probed'; ageMinutes: number }
+  | { kind: 'fought'; ageMinutes: number }
+  | { kind: 'none' };
+
+export function headline(read: Dossier, target: GalaxyPlanet): Headline {
+  if (target.fleet) {
+    if (target.fleet.status === 'AWAY') return { kind: 'fleet-away' };
+    if (target.fleet.status === 'UNKNOWN') return { kind: 'veiled' };
+    return { kind: 'fleet-home' };
+  }
+
+  const probe = read.facts.find((f) => f.source === 'probe' && f.ageMinutes !== null);
+  if (probe?.ageMinutes != null) return { kind: 'probed', ageMinutes: probe.ageMinutes };
+
+  const battle = read.facts.find((f) => f.source === 'battle' && f.ageMinutes !== null);
+  if (battle?.ageMinutes != null) return { kind: 'fought', ageMinutes: battle.ageMinutes };
+
+  return { kind: 'none' };
+}
+
+/**
+ * How much to trust a line, as a word.
+ *
+ * Deliberately coarse. A percentage invites arithmetic the player has no way to do
+ * — the underlying band is already fuzzed — whereas "roughly" and "precisely" are
+ * exactly as precise as the reading deserves.
+ */
+export function confidenceWord(accuracy: number | undefined): string | null {
+  if (accuracy === undefined) return null;
+  if (accuracy >= 0.9) return 'precise';
+  if (accuracy >= 0.7) return 'good';
+  if (accuracy >= 0.5) return 'rough';
+  return 'vague';
+}
+
+/**
+ * Whether a reading is old enough that acting on it is a gamble.
+ *
+ * Twenty minutes is not arbitrary: it is `INTEL.intermittentRefreshMin`, the
+ * window the telescope's own seeding uses. Inside it a reading is as fresh as the
+ * game will ever let it be; past it, the fleet may have moved twice.
+ */
+export const isStale = (ageMinutes: number | null): boolean =>
+  ageMinutes !== null && ageMinutes >= 20;

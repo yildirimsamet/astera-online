@@ -12,7 +12,7 @@ import { countdown, useNow } from '../lib/time.js';
  * decoration.
  */
 export function PendingStrip() {
-  const { data, dataUpdatedAt } = usePending();
+  const { data } = usePending();
   const now = useNow(1000);
   const threads = data?.pending ?? [];
 
@@ -28,10 +28,12 @@ export function PendingStrip() {
     >
       {shown ? (
         <div className="flex items-center gap-3">
-          <span className={`legend ${incoming ? 'text-[#e08a7c]' : ''}`}>{title(shown)}</span>
+          <span className={`legend min-w-0 truncate ${incoming ? 'text-[#e08a7c]' : ''}`}>
+            {title(shown)}
+          </span>
           <span className="h-px flex-1 bg-line-soft" />
           <span className={`num text-[13px] ${incoming ? 'text-[#ffb9ae]' : 'text-bone'}`}>
-            {countdown(arrivalOf(shown, dataUpdatedAt) - now)}
+            {countdown(arrivalOf(shown) - now)}
           </span>
           {threads.length > 1 && (
             <span className="num text-[11px] text-faint">+{String(threads.length - 1)}</span>
@@ -44,18 +46,37 @@ export function PendingStrip() {
   );
 }
 
+/**
+ * WHOSE FLIGHT THIS IS, SAID OUT LOUD.
+ *
+ * The strip is a permanent bar at the foot of the screen and the focus rail opens
+ * directly above it, so the two stack into what reads as one panel — and this row's
+ * countdown then reads as belonging to whatever the player has just tapped. Focus
+ * anything that is NOT yours, which is most of the disc, and the strip was quietly
+ * attributing your own fleet's clock to somebody else's craft.
+ *
+ * Nothing about the strip changed except that every line now begins with "Your".
+ * That is the whole fix: the countdown never moved, it was only ever unlabelled.
+ */
 const title = (thread: PendingThread): string => {
   if (thread.kind === 'incoming') return 'Inbound fleet';
-  if (thread.kind === 'probe') return `Probe → ${thread.targetName}`;
+  if (thread.kind === 'probe') return `Your probe → ${thread.targetName}`;
   return thread.leg === 'return'
-    ? `Fleet returning from ${thread.targetName}`
-    : `Fleet → ${thread.targetName}`;
+    ? `Your fleet home from ${thread.targetName}`
+    : `Your fleet → ${thread.targetName}`;
 };
 
 /**
- * The server sends whole minutes remaining, as of the moment it answered — so the
- * arrival instant is fixed against THAT timestamp, not against now. Anchoring to
- * now would make the countdown stand still: both sides would advance together.
+ * THE INSTANT ITSELF, not a figure rebuilt from a rounded one.
+ *
+ * This used to be `answeredAt + minutesRemaining * 60_000`, which is accurate to
+ * within half a minute and no better. The attacker's own strip read the exact
+ * `arriveAt` off the thread's path, and a defender — whose inbound thread has no
+ * path, deliberately — got the reconstruction. So the two players watching the
+ * same fleet counted down to instants up to thirty seconds apart, which reads as
+ * the game being unable to agree with itself about when it will land.
+ *
+ * `answeredAt` is no longer needed at all: an absolute timestamp does not have to
+ * be anchored to anything.
  */
-export const arrivalOf = (thread: PendingThread, answeredAt: number): number =>
-  answeredAt + thread.minutesRemaining * 60_000;
+export const arrivalOf = (thread: PendingThread): number => thread.arriveAt.getTime();

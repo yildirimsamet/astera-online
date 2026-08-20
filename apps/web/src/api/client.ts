@@ -1,19 +1,27 @@
 import type { z } from 'zod';
-import type { Fleet, BuildingId, HullId, SatelliteId } from '@blindspace/rules';
+import type { Fleet, BuildingId, HullId, InstrumentId, SatelliteId } from '@blindspace/rules';
+import { noteServerTime } from '../lib/clock.js';
 import {
+  collectSchema,
   galaxySchema,
   intelSchema,
+  miningLaunchSchema,
+  miningSchema,
   launchSchema,
   leaderboardSchema,
+  meSchema,
   notificationsSchema,
+  okSchema,
   pendingSchema,
   placementSchema,
   planetSchema,
   probeSchema,
   reportsSchema,
   returnSchema,
+  instrumentRaiseSchema,
   satelliteInstallSchema,
   seasonSchema,
+  serverListSchema,
   sessionSchema,
   trafficSchema,
   buildSchema,
@@ -42,7 +50,16 @@ export interface ApiDeps {
 
 interface RequestOptions {
   method?: 'GET' | 'POST';
-  body?: unknown;
+  /**
+   * The payload as an OBJECT. `send` serialises it — do not pre-encode.
+   *
+   * This was `unknown`, and two call sites passed `JSON.stringify(...)` as well.
+   * The result was a body double-encoded to a JSON string literal, so the server's
+   * `z.object(...).parse(req.body)` saw a string and every launch failed with
+   * "expected object, received string". Typed as a record, that mistake is a
+   * compile error rather than a runtime one a player finds.
+   */
+  body?: Record<string, unknown>;
   /** Refresh tokens are only ever exchanged by `restore()`; never recurse into it. */
   retryOnExpiry?: boolean;
 }
@@ -75,6 +92,16 @@ export class Api {
     schema: z.ZodType<T>,
     opts: RequestOptions = {},
   ): Promise<T> {
+    /**
+     * EVERY ANSWER CARRIES THE SERVER'S CLOCK, so the offset costs no request. D52.
+     *
+     * The disc is drawn by comparing server timestamps against "now", and "now" used
+     * to be the DEVICE's clock — so a phone with a drifted clock drew every fleet at
+     * the wrong point of its leg and every countdown at the wrong number. See
+     * `lib/clock.ts`. Measured around the call rather than after it, because half
+     * the round trip is what has to come back off the sample.
+     */
+    const sentAt = Date.now();
     const res = await this.http(`${this.baseUrl}${path}`, {
       method: opts.method ?? 'GET',
       headers: {
@@ -85,6 +112,7 @@ export class Api {
       // Sends the refresh cookie. Same-origin in dev via the Vite proxy.
       credentials: 'same-origin',
     });
+    noteServerTime(res.headers.get('x-server-time'), res.headers.get('date'), sentAt, Date.now());
 
     if (res.status === 401 && (opts.retryOnExpiry ?? true)) {
       if (await this.restore()) {
@@ -94,6 +122,23 @@ export class Api {
 
     const body: unknown = await res.json().catch(() => null);
     if (!res.ok) {
+      /**
+       * A failure with NO BODY is not a game rule refusing you.
+       *
+       * It is the API being unreachable — restarting, redeploying, or behind a
+       * proxy that answered for it. Every game error carries a code and a sentence
+       * saying what the player did wrong; a bare status carries neither, and
+       * reporting it as "Something went wrong" told the player their action was
+       * rejected when in fact it never arrived. Those want different responses:
+       * one means change what you are doing, the other means try again.
+       */
+      if (body === null) {
+        throw new ApiError(
+          'UNREACHABLE',
+          'Lost contact with the server. Try again in a moment.',
+          res.status,
+        );
+      }
       const parsed = errorShape(body);
       throw new ApiError(parsed.error, parsed.message, res.status);
     }
@@ -122,19 +167,69 @@ export class Api {
     return this.refreshing;
   }
 
-  async signInAsGuest(displayName?: string) {
-    const session = await this.send('/api/auth/guest', sessionSchema, {
+  /**
+   * Create a commander. D21.
+   *
+   * `retryOnExpiry: false` on all three of these: there is no session to refresh
+   * yet, and a 401 from a login is the answer, not a stale token.
+   */
+  async register(username: string, password: string) {
+    const session = await this.send('/api/auth/register', sessionSchema, {
       method: 'POST',
-      body: displayName ? { displayName } : {},
+      body: { username, password },
       retryOnExpiry: false,
     });
     this.token = session.accessToken;
     return session;
   }
 
+  async login(username: string, password: string) {
+    const session = await this.send('/api/auth/login', sessionSchema, {
+      method: 'POST',
+      body: { username, password },
+      retryOnExpiry: false,
+    });
+    this.token = session.accessToken;
+    return session;
+  }
+
+  /**
+   * Sign out.
+   *
+   * The in-memory token is dropped FIRST and unconditionally. If the request fails
+   * — offline, server restarting — the player must still end up signed out of this
+   * tab; a logout that silently leaves you logged in because the network hiccuped
+   * is the worst possible failure mode for a shared computer.
+   */
+  async logout(): Promise<void> {
+    this.token = null;
+    try {
+      await this.send('/api/auth/logout', okSchema, { method: 'POST', retryOnExpiry: false });
+    } catch {
+      // The cookie may survive. Nothing in this tab can use it, and the next
+      // `restore()` is the server's chance to disagree.
+    }
+  }
+
+  me = () => this.send('/api/auth/me', meSchema);
+
+  /** Drops the token without telling the server. For a 401 we already know about. */
+  forget(): void {
+    this.token = null;
+  }
+
+  /* ── choosing a galaxy ────────────────────────────────────── */
+
+  /** Public. A player may read the state of the world before making an account. */
+  servers = () => this.send('/api/servers', serverListSchema);
+
+  joinServer = (code: string) =>
+    this.send(`/api/servers/${encodeURIComponent(code)}/join`, placementSchema, {
+      method: 'POST',
+    });
+
   /* ── world ────────────────────────────────────────────────── */
 
-  join = () => this.send('/api/season/join', placementSchema, { method: 'POST' });
   season = () => this.send('/api/season', seasonSchema);
   planet = () => this.send('/api/planet', planetSchema);
   galaxy = () => this.send('/api/galaxy', galaxySchema);
@@ -150,6 +245,11 @@ export class Api {
   build = (hull: HullId, count: number) =>
     this.send('/api/planet/build', buildSchema, { method: 'POST', body: { hull, count } });
 
+  /** Raise one of the four on the ground. D25. */
+  raiseInstrument = (type: InstrumentId) =>
+    this.send('/api/planet/instrument', instrumentRaiseSchema, { method: 'POST', body: { type } });
+
+  /** Put one of the four in orbit. Bought once — there is no second call. D25. */
   installSatellite = (type: SatelliteId) =>
     this.send('/api/planet/satellite', satelliteInstallSchema, { method: 'POST', body: { type } });
 
@@ -164,6 +264,24 @@ export class Api {
     this.send('/api/intel/watch', watchSchema, {
       method: 'POST',
       body: { targetPlanetId, slot },
+    });
+
+  /** Empty the works into storage. D16 — the one manual step in the economy. */
+  collect = () => this.send('/api/planet/collect', collectSchema, { method: 'POST' });
+
+  mining = () => this.send('/api/mining', miningSchema);
+
+  mine = (asteroidIndex: number, craft: number) =>
+    this.send('/api/mining/launch', miningLaunchSchema, {
+      method: 'POST',
+      body: { asteroidIndex, craft },
+    });
+
+  /** Send craft to a wreck field. D32 — the same craft, a different errand. */
+  harvest = (fieldId: string, craft: number) =>
+    this.send('/api/mining/harvest', miningLaunchSchema, {
+      method: 'POST',
+      body: { fieldId, craft },
     });
 
   probe = (targetPlanetId: string) =>
@@ -192,11 +310,25 @@ export class Api {
    * lands in every proxy log on the way.
    */
   async stream(onEvent: (kind: string) => void, signal: AbortSignal): Promise<void> {
-    const res = await this.http(`${this.baseUrl}/api/stream`, {
-      headers: this.token ? { authorization: `Bearer ${this.token}` } : {},
-      credentials: 'same-origin',
-      signal,
-    });
+    const open = (): Promise<Response> =>
+      this.http(`${this.baseUrl}/api/stream`, {
+        headers: this.token ? { authorization: `Bearer ${this.token}` } : {},
+        credentials: 'same-origin',
+        signal,
+      });
+
+    /**
+     * THE STREAM REFRESHES ITS OWN CREDENTIAL. D45.
+     *
+     * `send()` has always retried a 401 through `restore()`; this did not, and an
+     * access token lives fifteen minutes. So any reconnect after the token expired
+     * — a phone waking up, a proxy dropping an idle socket, a server restart —
+     * failed, and the backoff loop then retried with the SAME dead token. Live
+     * updates came back only when some unrelated query happened to refresh, which
+     * is a recovery path nobody designed and nobody can see.
+     */
+    let res = await open();
+    if (res.status === 401 && (await this.restore())) res = await open();
     if (!res.ok || !res.body) throw new ApiError('STREAM_FAILED', 'Stream unavailable', res.status);
 
     const reader = res.body.getReader();

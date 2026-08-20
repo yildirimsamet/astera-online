@@ -5,10 +5,12 @@ import {
   crystalRate,
   fleetCount,
   radarDetectsFleets,
-  radarLeadMinutes,
+  radarLead,
+  radarRange,
+  type Fleet,
 } from '@blindspace/rules';
 import type { Clock } from '../clock.js';
-import type { Db } from '../db/client.js';
+import type { Db, Queryable } from '../db/client.js';
 import {
   battleReports,
   buildings,
@@ -21,6 +23,7 @@ import {
   seasons,
   watches,
 } from '../db/schema.js';
+import { announceUnlocks } from './notifications.js';
 import { GameError } from './planet.js';
 
 /* ── the unlock cascade ─────────────────────────────────────── */
@@ -55,7 +58,7 @@ export const UNLOCK_COPY: Record<Unlockable, { title: string; body: string }> = 
  * the history that justifies it — and a player who somehow skipped a step still
  * gets the right answer.
  */
-export async function currentUnlocks(db: Db, playerId: string): Promise<Unlockable[]> {
+export async function currentUnlocks(db: Queryable, playerId: string): Promise<Unlockable[]> {
   const [battles, scans, watching] = await Promise.all([
     db
       .select({ n: sql<number>`count(*)::int`, asDefender: sql<number>`
@@ -112,11 +115,51 @@ export interface ReturnEntry {
 }
 
 export interface PendingThread {
+  /** The mission's own id — YOUR OWN CRAFT ONLY. Absent on `incoming`. See below. */
+  id?: string;
   kind: 'fleet' | 'probe' | 'incoming';
   targetName: string;
   minutesRemaining: number;
+  /**
+   * WHEN IT LANDS, EXACTLY — and it is on every thread, including an inbound one.
+   *
+   * `minutesRemaining` is rounded, and the client used to rebuild the arrival
+   * instant from it. On your OWN craft that did not matter, because the strip could
+   * read the exact `arriveAt` off `path`; on an INBOUND attack there is no path, so
+   * the defender's countdown was reconstructed from a whole-minute figure and ran
+   * up to thirty seconds away from the attacker's. Two players watching the same
+   * fleet saw two different clocks.
+   *
+   * Publishing the instant to an inbound thread costs the fog nothing. The radar
+   * ladder sells WHETHER you are warned and HOW EARLY (D9); it has never sold the
+   * precision of the clock, and the defender already knows the arrival minute. What
+   * stays withheld is unchanged: no origin, no heading, no composition.
+   */
+  arriveAt: Date;
   /** Which way a fleet of yours is flying. Absent for `incoming`. */
   leg?: 'outbound' | 'return';
+  /**
+   * What is in it. PRESENT ONLY FOR YOUR OWN MISSIONS.
+   *
+   * THIS IS NOT THE FOG RULE IT USED TO BE, and the comment said otherwise for two
+   * phases. It read "composition is what Radar L5 sells, and an inbound attack must
+   * never carry it" — which stopped being true at D24, when the owner made every
+   * craft in the galaxy readable down to the hull. A defender can already count the
+   * ships in a contact on `/api/galaxy/traffic`, exactly as any stranger can.
+   *
+   * WHAT THE RADAR STILL SELLS IS ATTRIBUTION, and that is the whole ladder: a
+   * contact is a craft moving out there, and knowing that it is coming for YOU, and
+   * how long you have, is what you pay for. A defender watching traffic may work it
+   * out from a short hop and cannot from a long one — that asymmetry is the game,
+   * not a leak. Owner's call, on review.
+   *
+   * So this stays absent from an inbound thread for a narrower and still real
+   * reason: this payload is the ATTRIBUTED one. Everything on it is already known to
+   * be aimed at you, so a composition here would be the radar's answer given away
+   * with the radar's question. Omitted rather than nulled — there is no field for a
+   * modified client to read.
+   */
+  fleet?: Fleet;
   /**
    * Where it is flying, so the client can draw it moving.
    *
@@ -253,10 +296,18 @@ export async function buildReturnPayload(
     }
   }
 
-  /* what is new */
-  const unlocked = await currentUnlocks(db, playerId);
-  const seen = new Set(player.unlocksSeen);
-  const newUnlocks = unlocked.filter((u) => !seen.has(u));
+  /**
+   * What is new — announced through the ONE path that records it. D45.
+   *
+   * This used to run its own copy of the diff against `unlocksSeen` and write the
+   * field itself. That was safe while this was the only surface that announced
+   * anything; it is not now that a battle, a caught probe and a telescope being
+   * pointed all announce unlocks as notifications. Two writers of one field means
+   * whichever ran first silently ate the other's news — and this one is an
+   * endpoint no client calls (D23), so the unlock would have been consumed by a
+   * route nobody reads and never shown to anybody.
+   */
+  const newUnlocks = await db.transaction((tx) => announceUnlocks(tx, playerId, now));
   for (const u of newUnlocks) {
     entries.push({
       kind: 'unlock',
@@ -269,14 +320,8 @@ export async function buildReturnPayload(
   /* Design Law #1 — what is still in flight */
   const pending = await pendingThreads(db, planet.id, now);
 
-  // Advance the window and record what has now been announced.
-  await db
-    .update(players)
-    .set({
-      lastSeenAt: now,
-      ...(newUnlocks.length > 0 ? { unlocksSeen: [...seen, ...newUnlocks] } : {}),
-    })
-    .where(eq(players.id, playerId));
+  // Advance the window. What has been announced is recorded by `announceUnlocks`.
+  await db.update(players).set({ lastSeenAt: now }).where(eq(players.id, playerId));
 
   return {
     awayMinutes,
@@ -293,12 +338,17 @@ export async function buildReturnPayload(
  *
  * THE RADAR GATE IS LOAD-BEARING. An inbound attack is listed only if this
  * planet's radar detects fleets AND the warning would already have fired — that
- * is, `minutesRemaining <= lead(radarLevel)`. Without the gate this payload told
- * every player, at any radar level including none, that a fleet was inbound and
- * exactly how long they had. That is the whole radar ladder given away for free,
- * and it silently reversed D9: a forty-minute flight gave forty minutes of
- * notice. It shipped that way in Phase 3 and was found by building the strip that
- * displays it.
+ * is, the fleet is already inside the radar's own reach. Without the gate this
+ * payload told every player, at any radar level including none, that a fleet was
+ * inbound and exactly how long they had. That is the whole radar ladder given
+ * away for free, and it silently reversed D9: a forty-minute flight gave forty
+ * minutes of notice. It shipped that way in Phase 3 and was found by building the
+ * strip that displays it.
+ *
+ * THE GATE AND THE WARNING MUST AGREE, and since D49 that means both read a
+ * DISTANCE. This surface is a live query and the warning is a scheduled event, so
+ * they can never share a computation — only a rule. `radarLead` is that rule, and
+ * both sides call it with the same three figures off the same mission row.
  */
 export async function pendingThreads(
   db: Db,
@@ -340,7 +390,7 @@ export async function pendingThreads(
   ]);
 
   const radar = radarRow[0]?.level ?? 0;
-  const lead = radarLeadMinutes(radar);
+  const reach = radarRange(radar);
   const pending: PendingThread[] = [];
 
   for (const row of inFlight) {
@@ -348,8 +398,19 @@ export async function pendingThreads(
     const minutes = Math.max(0, Math.round((m.arriveAt.getTime() - now.getTime()) / 60_000));
 
     if (m.targetPlanetId === planetId && m.kind === 'attack') {
-      if (!radarDetectsFleets(radar) || minutes > lead) continue;
-      pending.push({ kind: 'incoming', targetName: 'inbound fleet', minutesRemaining: minutes });
+      const oneWay = (m.arriveAt.getTime() - m.departAt.getTime()) / 60_000;
+      const lead = radarLead(reach, m.distance, oneWay);
+      // Measured unrounded: `minutes` is rounded for display and comparing a
+      // rounded figure against an exact one puts the strip and the warning up to
+      // thirty seconds out of step with each other.
+      const remaining = (m.arriveAt.getTime() - now.getTime()) / 60_000;
+      if (!radarDetectsFleets(radar) || remaining > lead) continue;
+      pending.push({
+        kind: 'incoming',
+        targetName: 'inbound fleet',
+        minutesRemaining: minutes,
+        arriveAt: m.arriveAt,
+      });
       continue;
     }
 
@@ -357,13 +418,41 @@ export async function pendingThreads(
     // planet that was raided, so the name worth showing is at the other end.
     const returning = m.targetPlanetId === planetId;
     pending.push({
+      /**
+       * THE MISSION'S OWN ID, ON YOUR OWN CRAFT ONLY. D52.
+       *
+       * It discloses nothing — `/api/galaxy/traffic` already publishes the same
+       * uuid to the whole galaxy as a contact's key, and it maps to no world, no
+       * player and no name anywhere else. What it buys is that both sides of a raid
+       * seed the SAME volley: the bombardment is generated from this string, so the
+       * attacker and every bystander watch the identical rounds leave the identical
+       * ships. A key rebuilt from the target's name and a list position could not
+       * agree with anything.
+       *
+       * Never on an `incoming` thread, which returns above and carries nothing.
+       */
+      id: m.id,
       kind: m.kind === 'probe' ? 'probe' : 'fleet',
       targetName: returning ? row.originName : row.targetName,
       minutesRemaining: minutes,
+      arriveAt: m.arriveAt,
       // Probes have legs too now that they fly home — "returning from" and
       // "heading for" are different states of the same craft and the strip should
       // not have to guess which.
       leg: returning ? 'return' : 'outbound',
+      /**
+       * What is actually in it.
+       *
+       * ONLY EVER ON YOUR OWN CRAFT. An inbound attack never reaches this line —
+       * it returns above — because a fleet's composition is precisely what Radar
+       * L5 sells, and D9 was already broken once by this payload handing out
+       * something the radar ladder was supposed to charge for.
+       *
+       * On your own missions it is free: you packed it. The galaxy needs it to
+       * draw a squadron as the hulls it contains rather than as one anonymous
+       * marker.
+       */
+      fleet: m.fleet,
       // Yours, so you may watch it fly.
       path: {
         from: { x: row.originX, y: row.originY, z: row.originZ },

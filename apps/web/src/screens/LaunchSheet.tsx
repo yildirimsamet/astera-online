@@ -5,6 +5,9 @@ import type { GalaxyPlanet, PlanetView } from '../api/schemas.js';
 import { compact } from '../lib/format.js';
 import { duration } from '../lib/time.js';
 import { MOBILE, planRoute } from '../lib/navigation.js';
+import { StatStrip } from '../ui/Action.js';
+import { HULL_ART } from '../ui/assets.js';
+import { HullMark } from '../ui/icons/hulls.js';
 import { Sheet } from '../ui/Sheet.js';
 import { describe, useToast } from '../ui/Toast.js';
 
@@ -123,14 +126,51 @@ export function LaunchSheet({
           const chosen = sending[hull] ?? 0;
           if (available === 0) return null;
           return (
-            <div key={hull} className="flex items-center gap-3 border-b border-line-soft py-2.5">
-              <div className="min-w-0 flex-1">
-                <p className="text-[14px] text-bone">{HULLS[hull].name}</p>
-                <p className="num text-[11px] text-faint">
-                  {String(available)} home · speed {String(HULLS[hull].speed)}
-                </p>
+            <div
+              key={hull}
+              className={`border-b border-line-soft py-2.5 ${chosen > 0 ? 'bg-crystal/[0.05]' : ''}`}
+            >
+              {/*
+                THE SHIP, NOT ITS NAME.
+                This picker used to be a name and a speed, which is the one place
+                in the game a player is actually choosing between hulls and the one
+                place they were given nothing to choose WITH. The counter cycle is
+                the whole of combat, and it is decided by these four numbers.
+              */}
+              <div className="flex items-center gap-3">
+                <div className="art-well flex size-12 shrink-0 items-center justify-center rounded">
+                  {HULL_ART[hull] ? (
+                    <img
+                      src={HULL_ART[hull]}
+                      alt=""
+                      aria-hidden
+                      className="size-11 object-contain"
+                      loading="lazy"
+                    />
+                  ) : (
+                    <HullMark hull={hull} className="size-7 text-dim" />
+                  )}
+                </div>
+
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-baseline gap-2">
+                    <p className="font-display text-[14px] uppercase tracking-wide text-bone">
+                      {HULLS[hull].name}
+                    </p>
+                    <span className="num text-[11px] text-faint">{available} home</span>
+                  </div>
+                  <div className="mt-1">
+                    <StatStrip
+                      atk={HULLS[hull].atk}
+                      hp={HULLS[hull].hp}
+                      speed={HULLS[hull].speed}
+                      cargo={HULLS[hull].cargo}
+                    />
+                  </div>
+                </div>
               </div>
-              <div className="flex items-center gap-1">
+
+              <div className="mt-2 flex items-center justify-end gap-1">
                 <StepButton
                   label={`Fewer ${HULLS[hull].name}`}
                   onClick={() => {
@@ -169,11 +209,30 @@ export function LaunchSheet({
       </div>
 
       {confirming && (
-        <p className="mt-5 text-[13px] leading-relaxed text-[#e08a7c]">
-          This cannot be recalled. Once it leaves, the only way to find out what was down there
-          is to watch it land — and your planet holds {String(route.homeDefenceAfter)} units until
-          it comes back.
-        </p>
+        <>
+          <p className="mt-5 text-[13px] leading-relaxed text-[#e08a7c]">
+            This cannot be recalled. Once it leaves, the only way to find out what was down there
+            is to watch it land — and your planet holds {String(route.homeDefenceAfter)} units until
+            it comes back.
+          </p>
+          {/*
+            THE CHEAPEST DEPTH IN THE GAME. D28.
+
+            A fleet in flight is already untouchable — nothing can be raided that is
+            not on the ground — and the player was never told. In OGame this same
+            rule is called fleetsave and it took their players years to discover on
+            their own; it is the single most important behaviour in that game and
+            nobody designed it.
+
+            Saying it out loud turns an existing rule into a strategy, and it makes
+            the sentence above cut both ways: a launch is a risk to your planet AND
+            the only way to make your fleet safe. That is a real decision, and it
+            costs one line of text.
+          */}
+          <p className="mt-2 text-[13px] leading-relaxed text-dim">
+            Ships in flight cannot be raided. Your planet can.
+          </p>
+        </>
       )}
     </Sheet>
   );

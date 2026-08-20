@@ -1,8 +1,8 @@
-import { radarDetectsFleets, radarLeadMinutes } from '@blindspace/rules';
+import { radarDetectsFleets, radarRange, telescopeSlots } from '@blindspace/rules';
 import { useGalaxy, useIntel, usePlanet } from '../api/queries.js';
 import { percent, range } from '../lib/format.js';
 import { staleness, useNow } from '../lib/time.js';
-import { satelliteArt } from '../ui/assets.js';
+import { instrumentArt } from '../ui/assets.js';
 import { BattleReports } from './BattleReports.jsx';
 import { Reading } from '../ui/Clarity.js';
 import { Note, Panel, Section } from '../ui/primitives.js';
@@ -33,15 +33,21 @@ export function IntelScreen() {
     );
   }
 
-  const telescope = planet.data?.satellites.TELESCOPE ?? 0;
-  const radar = planet.data?.satellites.RADAR ?? 0;
+  const telescope = planet.data?.instruments.TELESCOPE ?? 0;
+  const radar = planet.data?.instruments.RADAR ?? 0;
   const { watching, probeReports, radarLog } = intel.data;
   const neighbours = (galaxy.data?.planets ?? []).filter((p) => !p.isSelf).length;
   const seen = watching.length;
 
   return (
     <div className="px-4 pt-4">
-      <Coverage seen={seen} total={neighbours} slots={telescope} radar={radar} />
+      <Coverage
+        seen={seen}
+        slots={telescopeSlots(telescope)}
+        neighbours={neighbours}
+        telescope={telescope}
+        radar={radar}
+      />
 
       <Section
         label="Watching"
@@ -49,7 +55,7 @@ export function IntelScreen() {
       >
         {watching.length === 0 ? (
           <Instrument
-            art={satelliteArt('TELESCOPE', 1)}
+            art={instrumentArt('TELESCOPE', 1)}
             missing={telescope > 0 ? 'No slot is pointed at anything' : 'You have no Telescope'}
             gives="Tells you the moment a planet's fleet leaves — the one fact that decides every raid."
             cost={telescope > 0 ? 'Pick a planet in the galaxy and point a slot at it.' : 'Install one from your planet screen.'}
@@ -132,9 +138,9 @@ export function IntelScreen() {
       <Section label="Who is looking at you" aside={radar > 0 ? `Radar L${String(radar)}` : undefined}>
         {radar < 1 ? (
           <Instrument
-            art={satelliteArt('RADAR', 1)}
+            art={instrumentArt('RADAR', 1)}
             missing="You have no Radar"
-            gives="Catches probes aimed at you. From L3, warns you before a fleet lands."
+            gives="Catches probes aimed at you. From L3, it sweeps a circle around your world and warns you the moment a fleet crosses into it."
             cost="Someone can build a complete picture of this planet and you will never know."
           />
         ) : radarLog.length === 0 ? (
@@ -166,8 +172,15 @@ export function IntelScreen() {
         )}
         {radar > 0 && (
           <Note>
+            {/*
+              A REACH, NOT A COUNTDOWN. D49.
+              How much WARNING it buys depends on what is flying at you, so a
+              figure in minutes would be a different lie for every raid. The
+              circle is the thing the player owns; the second sentence is the
+              consequence, and it is the interesting half.
+            */}
             {radarDetectsFleets(radar)
-              ? `Radar L${String(radar)} warns you ${String(radarLeadMinutes(radar))} minutes before a fleet lands.`
+              ? `Radar L${String(radar)} catches a fleet ${String(radarRange(radar))} units out. A slow, heavy fleet is inside that circle for far longer than a fast one — so you get more warning about the raids that can actually hurt you.`
               : `Radar L${String(radar)} catches probes. From L3 it also warns of inbound fleets.`}
             {radar < 2 && ' L2 adds the direction they came from.'}
             {radar >= 2 && radar < 5 && ' L5 names the planet.'}
@@ -178,47 +191,89 @@ export function IntelScreen() {
   );
 }
 
-/** How much of your own neighbourhood you can actually see. */
+/**
+ * WHAT YOUR EYES ARE DOING, MEASURED AGAINST WHAT YOU OWN.
+ *
+ * REWRITTEN ON THE OWNER'S NOTE. It used to read "Watching 2 of 47" against every
+ * other planet in the galaxy, and draw a 47-cell bar with two cells lit. That is
+ * a progress bar toward a goal the game does not have and could not offer: a
+ * telescope tops out at three slots (D18, and D36 caps it), so the number on the
+ * right was permanently unreachable by a factor of fifteen. An interface that
+ * shows a player a 4% score on a task that cannot be completed is telling them
+ * they are failing at something nobody asked them to do.
+ *
+ * The real question is the one the design actually poses: OF THE EYES YOU HAVE,
+ * how many are pointed at somebody — and is the next pair worth buying. So the
+ * denominator is the slot count, the bar has one cell per slot, and the size of
+ * the galaxy appears where it belongs: as the reason a slot is a decision.
+ */
 function Coverage({
   seen,
-  total,
   slots,
+  neighbours,
+  telescope,
   radar,
 }: {
+  /** Slots currently pointed at a world. */
   seen: number;
-  total: number;
+  /** Slots this telescope has at all. */
   slots: number;
+  /** How many other worlds are out there. Context, never a target. */
+  neighbours: number;
+  telescope: number;
   radar: number;
 }) {
-  const blind = Math.max(0, total - seen);
-  const share = total === 0 ? 0 : seen / total;
+  const idle = Math.max(0, slots - seen);
+  // Only where there is a slot to add ONE to. With no telescope at all the line
+  // above is already selling the first one, and "would watch one more" against
+  // zero is arithmetic nobody said out loud.
+  const more = slots > 0 && telescopeSlots(telescope + 1) > slots;
 
   return (
     <div className="panel mb-6 px-3.5 py-3.5">
       <p className="legend">Coverage</p>
       <p className="mt-1.5 text-[17px] leading-tight text-bone">
-        {seen === 0 ? (
+        {slots === 0 ? (
           <>You cannot see into a single planet</>
-        ) : (
+        ) : idle > 0 ? (
           <>
-            Watching {seen} of {total}
+            Watching {seen} of your {slots} {slots === 1 ? 'slot' : 'slots'}
           </>
+        ) : (
+          <>Every slot you have is watching someone</>
         )}
       </p>
-      <div className="mt-2.5 flex h-1.5 gap-1">
-        {Array.from({ length: Math.max(1, total) }, (_, i) => (
-          <span
-            key={i}
-            className={`flex-1 rounded-[1px] ${i < seen ? 'bg-crystal' : 'bg-line'}`}
-          />
-        ))}
-      </div>
+
+      {slots > 0 && (
+        <div className="mt-2.5 flex h-1.5 gap-1">
+          {Array.from({ length: slots }, (_, i) => (
+            <span key={i} className={`flex-1 rounded-[1px] ${i < seen ? 'bg-crystal' : 'bg-line'}`} />
+          ))}
+        </div>
+      )}
+
       <p className="mt-2.5 text-[12px] leading-snug text-dim">
-        {blind > 0 && `${String(blind)} planets can move a fleet without you noticing. `}
         {slots === 0
           ? 'A Telescope is the cheapest way to stop that.'
-          : share < 1 && `Telescope L${String(slots + 1)} would watch one more.`}
+          : idle > 0
+            ? `${String(idle)} ${idle === 1 ? 'slot is' : 'slots are'} idle. Pick a world in the galaxy and point one at it.`
+            : /*
+                THE SCARCITY IS THE PRODUCT, AND IT IS SAID AS SUCH.
+                Nobody watches a galaxy; you watch the two or three worlds you
+                have decided matter. Naming the size of the disc here is what
+                makes moving a slot feel like a choice rather than a shortfall.
+              */
+              `${String(neighbours)} worlds out there and ${String(slots)} ${
+                slots === 1 ? 'eye' : 'eyes'
+              } to spend. Moving one costs a cooldown, so choose who.`}
       </p>
+
+      {more && (
+        <p className="mt-1.5 text-[12px] text-crystal">
+          Telescope L{telescope + 1} would watch one more.
+        </p>
+      )}
+
       {radar === 0 && (
         <p className="mt-1.5 text-[12px] text-alloy">
           And with no Radar, you cannot tell when someone is doing the same to you.
@@ -241,7 +296,8 @@ function Instrument({
   gives,
   cost,
 }: {
-  art: string;
+  /** null where an instrument has no render of its own — the well just stays empty. */
+  art: string | null;
   missing: string;
   gives: string;
   cost: string;
@@ -249,7 +305,7 @@ function Instrument({
   return (
     <div className="group flex items-start gap-3.5 p-3.5">
       <div className="art-well flex size-14 shrink-0 items-center justify-center rounded">
-        <img src={art} alt="" aria-hidden className="size-13 object-contain" />
+        {art && <img src={art} alt="" aria-hidden className="size-13 object-contain" />}
       </div>
       <div className="min-w-0 flex-1">
         <p className="text-[14px] text-alloy">{missing}</p>

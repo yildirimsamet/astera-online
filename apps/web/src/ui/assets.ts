@@ -1,4 +1,11 @@
-import type { BuildingId, HullId, SatelliteId } from '@blindspace/rules';
+import type {
+  BuildingId,
+  GroundHullId,
+  HullId,
+  InstrumentId,
+  SatelliteId,
+} from '@blindspace/rules';
+import { noseBearing, type Facing } from '../galaxy/model.js';
 
 /**
  * The art, mapped to the game.
@@ -49,6 +56,19 @@ const hash = (seed: string): number => {
 export const planetArt = (planetId: string): string =>
   `${BASE}/planets/planet_${String((hash(planetId) % PLANET_COUNT) + 1)}.png`;
 
+/**
+ * Every world render there is.
+ *
+ * Which planet gets which is decided from its id, so a galaxy of fifty worlds
+ * uses most of these and there is no way to know which until the payload arrives.
+ * Derived from `PLANET_COUNT` rather than listed, so a seventeenth render is
+ * picked up by whatever preloads them.
+ */
+export const PLANET_ART: readonly string[] = Array.from(
+  { length: PLANET_COUNT },
+  (_, i) => `${BASE}/planets/planet_${String(i + 1)}.png`,
+);
+
 /* ── hulls ──────────────────────────────────────────────────── */
 
 export const HULL_ART: Record<HullId, string | null> = {
@@ -56,12 +76,59 @@ export const HULL_ART: Record<HullId, string | null> = {
   LANCE: `${BASE}/ships/ship_2.png`,
   BULWARK: `${BASE}/ships/ship_3.png`,
   HAULER: `${BASE}/ships/ship_4.png`,
-  // No art yet — a ground turret is not a ship, and borrowing a hull render would
-  // say the one thing about a Bastion that is false: that it can leave.
-  BASTION: null,
+  /**
+   * THE TURRET ITSELF, AT ITS FIRST TIER. No longer a borrow and no longer blank.
+   *
+   * Both guns were `null` because the only art in the repo was a ship, and a
+   * Bastion drawn as a ship states the one thing about it that is false: that it
+   * can leave. The owner has now supplied a gun on a base plate for each of them,
+   * so the reason has gone and the render is the honest picture.
+   *
+   * This entry is the tier-1 render, for callers that know a hull and not a count.
+   * A surface that knows how many are STANDING should use `groundArt` instead —
+   * a battery's only ladder is how many guns are in it.
+   */
+  BASTION: `${BASE}/general/bastion_1.png`,
+  THORN: `${BASE}/general/thorn_1.png`,
+  /**
+   * The craft's own render, at its first tier.
+   *
+   * A hull card shows what you are buying, and what you are buying is the craft
+   * rather than a level of it — the ladder of three lives on the Drill's own detail
+   * sheet, where the level is the thing being sold.
+   */
+  PROSPECTOR: `${BASE}/drills/drill_1.png`,
 };
 
 export const PROBE_ART = `${BASE}/ships/explorer_ship.png`;
+
+/**
+ * A GROUND BATTERY, TIERED BY HOW MANY GUNS ARE STANDING.
+ *
+ * The two ground guns are the only hardware in the game with three renders and no
+ * level, so rule ONE at the top of this file needed one restatement to apply: a
+ * battery's ladder is its COUNT. One gun is a gun; six is an emplacement, and the
+ * renders say exactly that — a single barrel, then a heavier one, then a bank of
+ * three on the same plate.
+ *
+ * The thresholds are `tierOf`'s, read off the number standing rather than off a
+ * level, so there is one ladder rule in this file and not two. `Math.max(1, …)` at
+ * the call site keeps a planet with nothing on the ground showing what it would be
+ * buying instead of an empty well.
+ */
+export const groundArt = (id: GroundHullId, standing: number): string =>
+  `${BASE}/general/${id === 'BASTION' ? 'bastion' : 'thorn'}_${String(tierOf(standing))}.png`;
+
+/**
+ * What the battery becomes with one more gun — or null when it looks the same.
+ *
+ * The anticipation hook, in the one place a player can act on it: the row that
+ * sells the gun. "Build one more and the plate carries three barrels."
+ */
+export function nextGroundArt(id: GroundHullId, standing: number): string | null {
+  if (tierOf(standing) === tierOf(standing + 1)) return null;
+  return groundArt(id, standing + 1);
+}
 
 /**
  * Real geometry, where it exists.
@@ -74,15 +141,175 @@ export const PROBE_ART = `${BASE}/ships/explorer_ship.png`;
 export const MODEL = {
   probe: '/assets/models/ships/explorer_ship.glb',
   wasp: '/assets/models/ships/ship_1.glb',
+  lance: '/assets/models/ships/ship_2.glb',
+  bulwark: '/assets/models/ships/ship_3.glb',
+  hauler: '/assets/models/ships/ship_4.glb',
+  /** The mining craft, and the Drill's own body. Owner-supplied; no longer a borrow. */
+  drill: '/assets/models/drills/drill.glb',
+  /**
+   * WHAT A RAID LOOKS LIKE FROM ORBIT. D44.
+   *
+   * Fired by the squadron over the ten seconds a landing takes, at a quarter to a
+   * half the size of the ship that launched it. It is a craft rather than a prop —
+   * it is aimed, it flies nose-first, and it has a facing like anything else that
+   * is pointed somewhere.
+   */
+  missile: '/assets/models/missiles/ship_missile.glb',
+  /**
+   * One chunk of wreckage. D32.
+   *
+   * Not a craft: it is never oriented, so it has no `MODEL_FACING` entry and wants
+   * none. It is drawn instanced and tumbling in a ring around a planet that has
+   * just been fought over.
+   */
+  debris: '/assets/models/debris/debris.glb',
 } as const;
+
+/**
+ * Which way each hull's nose points inside its own file.
+ *
+ * Measured, not guessed — every model was rendered from six sides and read off
+ * the engine bells. Four of the five were authored nose-down−X; only the Wasp
+ * arrived facing +Z. `orientedCraft` turns each onto +Z so `lookAt` aims the nose
+ * and not the exhaust. A new hull MUST get an entry here: without one it will fly
+ * backwards or sideways, and that is the sort of thing nobody notices in review
+ * and everybody notices in play.
+ */
+export const MODEL_FACING: Record<string, Facing> = {
+  [MODEL.probe]: '-x',
+  [MODEL.wasp]: '+z',
+  [MODEL.lance]: '-x',
+  [MODEL.bulwark]: '-x',
+  [MODEL.hauler]: '-x',
+  /**
+   * The drill bit leads. Measured, not assumed: rendered from six sides at
+   * `/facing.html`, where the +X face is the spiral bit head-on and the −X face is
+   * a domed back with nothing on it. Its longest axis is X (0.98 against 0.71 and
+   * 0.57), which for once agrees with the nose — but the six views are what settled
+   * it, because a bounding box cannot tell a drill from a tail.
+   */
+  [MODEL.drill]: '+x',
+  /**
+   * THE ONE NOSE IN THE GAME THAT IS NOT ON AN AXIS. D44.
+   *
+   * Measured rather than eyeballed, and it had to be: the body lies at 56.5° in
+   * its own XZ plane, so the six-sided render shows a missile in EVERY horizontal
+   * view and none of the four compass answers is right. A principal-component fit
+   * over all 4,103 vertices gives an axis of (0.833, −0.044, 0.551) and settles
+   * which end is the nose by cross-section — the +axis end closes to a radius of
+   * 0.05 where the other flares to 0.14 for the fins and the nozzle.
+   *
+   * The 2.5° of pitch in that axis is left alone: `Facing` turns about Y and only
+   * about Y, which is what keeps every hull level against world up.
+   */
+  [MODEL.missile]: noseBearing(0.8332, 0.5512),
+};
+
+/**
+ * The hull a squadron is drawn as, in the galaxy.
+ *
+ * The Prospector's borrow is over: it flew as a Hauler for three phases because no
+ * mining craft existed, and the owner has now supplied one. A drill bit leading a
+ * hull says what the craft is before any label does, which is the whole reason this
+ * file forbids borrowing in the first place.
+ */
+export const HULL_MODEL: Record<HullId, string> = {
+  WASP: MODEL.wasp,
+  LANCE: MODEL.lance,
+  BULWARK: MODEL.bulwark,
+  HAULER: MODEL.hauler,
+  // Ground defence never travels, so it is never drawn in transit. Present only
+  // so the map is total and nothing has to guard against a missing key.
+  BASTION: MODEL.bulwark,
+  THORN: MODEL.wasp,
+  PROSPECTOR: MODEL.drill,
+};
+
+/**
+ * WHICH MODELS FLY.
+ *
+ * `MODEL` used to hold craft and nothing else, so "every model declares a facing"
+ * was a safe rule. D32 put a piece of wreckage in it — a prop, which tumbles, has
+ * no nose, and would be actively wrong to orient. The distinction is stated here
+ * rather than left implicit, because the rule that matters is not "everything has
+ * a facing" but "everything that is AIMED has one", and a rule nobody can see is a
+ * rule the next model quietly breaks.
+ *
+ * A new entry in `MODEL` belongs on one of these two lists. The tests check both
+ * directions: a craft without a facing flies backwards, and a facing on a prop is
+ * a claim about geometry that nothing honours.
+ */
+export const CRAFT_MODELS: readonly string[] = [
+  MODEL.probe,
+  MODEL.wasp,
+  MODEL.lance,
+  MODEL.bulwark,
+  MODEL.hauler,
+  MODEL.drill,
+  MODEL.missile,
+];
+
+/** Drawn, never aimed. Scenery and wreckage. */
+export const PROP_MODELS: readonly string[] = [MODEL.debris];
+
+/** Three bodies, so a field of fifty rocks does not look stamped from one mould. */
+export const ASTEROID_MODELS = [
+  '/assets/models/asteroids/asteroid_1.glb',
+  '/assets/models/asteroids/asteroid_2.glb',
+  '/assets/models/asteroids/asteroid_3.glb',
+] as const;
+
+/**
+ * THE FOUR SATELLITES, AS REAL GEOMETRY. D25.
+ *
+ * Only satellites are in this map now, because only satellites are in orbit. The
+ * Telescope, Radar, Aegis and Veil moved to the ground where they always belonged,
+ * and the Drill became a craft — this map used to carry all five and had to keep a
+ * dead DRILL entry just to stay total. It is total by construction now.
+ *
+ * The pairing is by what each body plainly IS, not by file order: the dish is the
+ * comms relay, the industrial hub is the works, the heavy rig is the mining
+ * tender, the lens is the navigation mark. A player who has seen one in someone
+ * else's orbit should be able to name it, because hardware is public (D15) and
+ * that recognition is the only intel it hands over for free.
+ */
+export const SATELLITE_MODEL: Record<SatelliteId, string> = {
+  FOUNDRY: '/assets/models/sattelites/sattelite_1.glb',
+  BEACON: '/assets/models/sattelites/sattelite_2.glb',
+  DERRICK: '/assets/models/sattelites/sattelite_3.glb',
+  UPLINK: '/assets/models/sattelites/sattelite_4.glb',
+};
+
+/**
+ * The rim light each satellite wears in the galaxy, at owner request.
+ *
+ * Bound to the BODY rather than to the job, and each one is the colour that body
+ * already glows in its own render — blue hub, green lens, amber rig, violet dish.
+ * A neon that fought its model would read as a bug rather than as a marker.
+ */
+export const SATELLITE_NEON: Record<SatelliteId, string> = {
+  FOUNDRY: '#4ea8ff',
+  BEACON: '#3ddc84',
+  DERRICK: '#ff9c3d',
+  UPLINK: '#a77bff',
+};
 
 /* ── satellites and buildings ───────────────────────────────── */
 
 /**
- * Telescope, Radar and Aegis are ground installations with three tiers each.
- * Veil rides on a satellite body; the Drill and the Ring have their own art.
+ * INSTRUMENT ART, TIERED BY LEVEL. D25.
+ *
+ * All four now have three renders each, and raising one visibly replaces it — the
+ * anticipation hook this file exists for. The Veil was the exception for two
+ * phases: the render it used to wear became a real satellite under D25, and a Veil
+ * drawn as somebody else's hardware would state the two things about it that are
+ * false — that it is in orbit, and that it is the Beacon. It has its own dome now,
+ * so the exception is over and every instrument shows the thing it actually is.
+ *
+ * The return type stays nullable because the callers are shared with `buildingArt`
+ * and with `HULL_ART`, both of which still have honest nulls in them.
  */
-export function satelliteArt(type: SatelliteId, level: number): string {
+export function instrumentArt(type: InstrumentId, level: number): string | null {
   const tier = tierOf(level);
   switch (type) {
     case 'TELESCOPE':
@@ -92,9 +319,7 @@ export function satelliteArt(type: SatelliteId, level: number): string {
     case 'AEGIS':
       return `${BASE}/general/shield_${String(tier)}.png`;
     case 'VEIL':
-      return `${BASE}/sattelites/sattelite_type_2.png`;
-    case 'DRILL':
-      return `${BASE}/general/drill.png`;
+      return `${BASE}/general/veil_${String(tier)}.png`;
   }
 }
 
@@ -104,25 +329,73 @@ export function satelliteArt(type: SatelliteId, level: number): string {
  * This is the anticipation hook: "at L3 your telescope becomes THAT". A tech tree
  * that only ever shows what you already own is a list of receipts.
  */
-export function nextSatelliteArt(type: SatelliteId, level: number): string | null {
+export function nextInstrumentArt(type: InstrumentId, level: number): string | null {
   if (tierOf(level) === tierOf(level + 1)) return null;
-  return satelliteArt(type, level + 1);
+  return instrumentArt(type, level + 1);
 }
 
-export const BUILDING_ART: Record<BuildingId, string | null> = {
-  CORE: null,
-  REFINERY: RESOURCE_ART.alloy,
-  EXTRACTOR: RESOURCE_ART.crystal,
-  VAULT: null,
-  SHIPYARD: null,
-  RING: `${BASE}/general/orbital_ring.png`,
+/**
+ * SATELLITE ART, UNTIERED, BECAUSE A SATELLITE HAS NO LEVELS. D25.
+ *
+ * One render each, and it is the same render everywhere: the panel that sells it,
+ * the sheet that describes it, and the body drawn in somebody else's orbit. There
+ * is no ladder to anticipate here — the choice is whether to own it at all, and
+ * which slot it costs you.
+ */
+export const SATELLITE_ART: Record<SatelliteId, string> = {
+  FOUNDRY: `${BASE}/sattelites/sattelite_type_1.png`,
+  BEACON: `${BASE}/sattelites/sattelite_type_2.png`,
+  DERRICK: `${BASE}/sattelites/sattelite_type_3.png`,
+  UPLINK: `${BASE}/sattelites/sattelite_type_4.png`,
 };
 
-/** Small orbital bodies drawn around the planet — one per installed satellite. */
-export const ORBITAL_ART: Record<SatelliteId, string> = {
-  TELESCOPE: `${BASE}/sattelites/sattelite_type_1.png`,
-  RADAR: `${BASE}/sattelites/sattelite_type_3.png`,
-  VEIL: `${BASE}/sattelites/sattelite_type_2.png`,
-  DRILL: `${BASE}/general/drill.png`,
-  AEGIS: `${BASE}/sattelites/sattelite_type_4.png`,
+/**
+ * Buildings, at the tier their level puts them in.
+ *
+ * The Command Core, the Vault and now the Shipyard ship with three renders each.
+ * All three were once wired to `null` — the interface drew a line-art mark while
+ * finished art of the exact thing sat unused in the repo. They tier by level, so
+ * raising one visibly replaces the structure, which is the anticipation hook this
+ * file exists for.
+ *
+ * The Refinery and Extractor stay on the resource they produce, which reads better
+ * at row size than a building would — that is a choice, not a missing asset.
+ */
+export function buildingArt(id: BuildingId, level: number): string | null {
+  const tier = tierOf(level);
+  switch (id) {
+    case 'CORE':
+      return `${BASE}/general/command_core_${String(tier)}.png`;
+    case 'VAULT':
+      return `${BASE}/general/vault_${String(tier)}.png`;
+    case 'REFINERY':
+      return RESOURCE_ART.alloy;
+    case 'EXTRACTOR':
+      return RESOURCE_ART.crystal;
+    case 'SHIPYARD':
+      return `${BASE}/general/shipyard_${String(tier)}.png`;
+  }
+}
+
+/**
+ * The art one level on, or null when nothing visibly changes.
+ *
+ * Compares the RENDERS rather than the tiers, which is not the same question here:
+ * the Refinery and the Extractor wear the resource they produce at every level, so
+ * a tier check said "new hardware at L3" and handed back the identical picture. No
+ * caller passed it on, so nothing was ever drawn — but the promise this function
+ * makes is "something changes", and it was only true for three of five buildings.
+ */
+export function nextBuildingArt(id: BuildingId, level: number): string | null {
+  const next = buildingArt(id, level + 1);
+  return next === buildingArt(id, level) ? null : next;
+}
+
+/** Kept for callers that do not know a level. Prefer `buildingArt`. */
+export const BUILDING_ART: Record<BuildingId, string | null> = {
+  CORE: `${BASE}/general/command_core_1.png`,
+  REFINERY: RESOURCE_ART.alloy,
+  EXTRACTOR: RESOURCE_ART.crystal,
+  VAULT: `${BASE}/general/vault_1.png`,
+  SHIPYARD: `${BASE}/general/shipyard_1.png`,
 };

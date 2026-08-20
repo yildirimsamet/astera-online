@@ -1,9 +1,15 @@
 /**
- * Marks for the things that have no art yet.
+ * Marks for the things that have no art.
  *
- * Deliberately drawn rather than borrowed: giving the Bastion a ship render would
- * state the one thing about it that is false — that it can leave. Each of these is
- * on the asset request list; until then they are honest, quiet, and consistent.
+ * This file used to hold six. Four of them — the Shipyard, the Veil, the Bastion
+ * and the Thorn — were placeholders waiting on renders that have now arrived, and
+ * a drawn line stood where finished art of the exact thing was about to sit. They
+ * are gone: `ui/assets.ts` owns those four, tiered.
+ *
+ * What is left is the Core and the Vault, which are the floor of an art well that
+ * can never be reached now that every building has a render, and the lock, which
+ * is not a placeholder at all — it marks a STATE, and there is no photograph of
+ * "you cannot have this yet".
  */
 
 const wrap = 'size-10 text-dim';
@@ -24,40 +30,6 @@ export function VaultMark() {
       <rect x="3.5" y="4.5" width="17" height="15" rx="1.5" />
       <circle cx="12" cy="12" r="4" />
       <path d="M12 6.5v2M12 15.5v2M6.5 12h2M15.5 12h2" strokeLinecap="round" />
-    </svg>
-  );
-}
-
-export function ShipyardMark() {
-  return (
-    <svg viewBox="0 0 24 24" className={wrap} fill="none" stroke="currentColor" strokeWidth="1.4" aria-hidden>
-      <path d="M4 5v14M20 5v14" strokeLinecap="round" />
-      <path d="M4 9h16M4 15h16" strokeOpacity=".4" />
-      <path d="M8 12.5 12 8l4 4.5-4 3.5Z" strokeLinejoin="round" className="text-crystal" />
-    </svg>
-  );
-}
-
-/** Unused since the Ring got real art. Kept: the Drill mark may need the same shape. */
-export function RingMark() {
-  return (
-    <svg viewBox="0 0 24 24" className={wrap} fill="none" stroke="currentColor" strokeWidth="1.4" aria-hidden>
-      <circle cx="12" cy="12" r="4.5" />
-      <ellipse cx="12" cy="12" rx="9.5" ry="3.6" transform="rotate(-18 12 12)" />
-      <circle cx="20" cy="9.6" r="1.1" fill="currentColor" className="text-crystal" />
-      <circle cx="4" cy="14.4" r="1.1" fill="currentColor" className="text-crystal" />
-    </svg>
-  );
-}
-
-/** A gun on a base plate. The plate is the point: it never lifts off. */
-export function BastionMark() {
-  return (
-    <svg viewBox="0 0 24 24" className={wrap} fill="none" stroke="currentColor" strokeWidth="1.4" aria-hidden>
-      <path d="M2.5 20h19" strokeLinecap="round" className="text-bone" />
-      <path d="M5.5 20v-2.5h13V20" strokeLinejoin="round" />
-      <path d="M9 17.5v-3.5h6v3.5" strokeLinejoin="round" />
-      <path d="M12 14V9M12 9l3-3" strokeLinecap="round" className="text-crystal" />
     </svg>
   );
 }

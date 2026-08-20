@@ -1,17 +1,26 @@
 import { and, eq } from 'drizzle-orm';
-import { SEASON, generateGalaxy, type GalaxySpec } from '@blindspace/rules';
+import { GALAXY, SEASON, SERVERS, generateGalaxy, type GalaxySpec } from '@blindspace/rules';
 import type { Db } from '../db/client.js';
-import { asteroids, planets, seasons, shards } from '../db/schema.js';
+import { planets, seasons, shards } from '../db/schema.js';
 import { addMinutes } from '../clock.js';
 
 /**
  * The galaxy is never stored slot by slot — it is regenerated from `seed`
- * wherever it is needed, identically on server, simulator and client. Only the
- * asteroids get rows, because impacts must be schedulable.
+ * wherever it is needed, identically on server, simulator and client.
+ *
+ * ASTEROIDS NO LONGER GET ROWS EITHER (D19). They used to, on the grounds that
+ * impacts must be schedulable; impacts were never scheduled, and the field is now
+ * a deterministic function of the seed like everything else. The only fact about a
+ * rock that a formula and a clock cannot produce is how much ore somebody else has
+ * already taken out of it, and that lives in `asteroid_claims`.
  */
 const cache = new Map<string, GalaxySpec>();
 
-export function galaxyOf(seasonId: string, seed: number, slots: number): GalaxySpec {
+export function galaxyOf(
+  seasonId: string,
+  seed: number,
+  slots: number = GALAXY.defaultSlots,
+): GalaxySpec {
   const key = `${seasonId}:${slots}`;
   let spec = cache.get(key);
   if (!spec) {
@@ -21,8 +30,30 @@ export function galaxyOf(seasonId: string, seed: number, slots: number): GalaxyS
   return spec;
 }
 
+/**
+ * An ordinal for a shard that was created without one.
+ *
+ * The ten real galaxies are numbered 1..10 by `bootstrapServers`, and the ordinal
+ * carries the sequential-fill rule — so a shard made outside that path (every test
+ * fixture, and any one-off galaxy) needs a number that is unique, stable across
+ * re-creation, and provably out of the way of the real ten. A hash offset past
+ * `SERVERS.count` is all three: the same code always lands on the same ordinal, so
+ * `onConflictDoUpdate` on a re-run is a no-op rather than a silent renumbering.
+ */
+function incidentalOrdinal(code: string): number {
+  let h = 2166136261;
+  for (let i = 0; i < code.length; i++) {
+    h ^= code.charCodeAt(i);
+    h = Math.imul(h, 16777619);
+  }
+  return SERVERS.count + 1 + (Math.abs(h) % 1_000_000);
+}
+
 export interface CreateSeasonInput {
   shardCode: string;
+  shardName?: string;
+  /** Fill order. Ten galaxies fill strictly in ascending ordinal. D21. */
+  ordinal?: number;
   seed: number;
   startsAt: Date;
   days?: number;
@@ -30,12 +61,14 @@ export interface CreateSeasonInput {
 }
 
 export async function createSeason(db: Db, input: CreateSeasonInput) {
-  const cap = input.playerCap ?? 200;
+  const cap = input.playerCap ?? SERVERS.capacity;
+  const name = input.shardName ?? input.shardCode;
+  const ordinal = input.ordinal ?? incidentalOrdinal(input.shardCode);
 
   const [shard] = await db
     .insert(shards)
-    .values({ code: input.shardCode, playerCap: cap })
-    .onConflictDoUpdate({ target: shards.code, set: { playerCap: cap } })
+    .values({ code: input.shardCode, name, ordinal, playerCap: cap })
+    .onConflictDoUpdate({ target: shards.code, set: { name, ordinal, playerCap: cap } })
     .returning();
 
   const days = input.days ?? SEASON.days;
@@ -50,22 +83,7 @@ export async function createSeason(db: Db, input: CreateSeasonInput) {
     })
     .returning();
 
-  const spec = galaxyOf(season!.id, input.seed, cap);
-  if (spec.asteroids.length > 0) {
-    await db.insert(asteroids).values(
-      spec.asteroids.map((a) => ({
-        seasonId: season!.id,
-        index: a.index,
-        radius: a.radius,
-        period: a.period,
-        phase: a.phase,
-        y: a.y,
-        mass: a.mass,
-      })),
-    );
-  }
-
-  return { shard: shard!, season: season!, galaxy: spec };
+  return { shard: shard!, season: season!, galaxy: galaxyOf(season!.id, input.seed, cap) };
 }
 
 export async function liveSeason(db: Db, shardCode: string) {

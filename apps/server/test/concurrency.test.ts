@@ -1,9 +1,11 @@
 import { and, eq } from 'drizzle-orm';
 import { afterAll, beforeEach, describe, expect, it } from 'vitest';
-import { alloyRate, storageCap, upgradeCost } from '@blindspace/rules';
+import { HULLS, alloyRate, collectorCap, flightSlots, storageCap, upgradeCost } from '@blindspace/rules';
 import { buildings, planets } from '../src/db/schema.js';
 import { loadLocked, withTwoPlanetLock } from '../src/services/planet.js';
 import { buildUnits, upgradeBuilding } from '../src/services/build.js';
+import { baysInUse } from '../src/services/flight.js';
+import { launchProbe } from '../src/services/intel.js';
 import { grant, seedWorld, setLevel, testDb, type Fixture } from './helpers.js';
 
 /**
@@ -92,7 +94,12 @@ describe('concurrency', () => {
       const planetId = f.planetIds[0]!;
       await setLevel(f.db, planetId, 'SHIPYARD', 1);
       await setLevel(f.db, planetId, 'CORE', 5);
-      await grant(f.db, planetId, 1000, 1000); // three Wasps at 260 each
+      // Priced from the rules, not written down: hull costs doubled with D17 and a
+      // literal here made this test pass for the wrong reason — nobody could afford
+      // the batch, so "exactly one winner" became "no winners" and the mutual
+      // exclusion it exists to prove was never exercised.
+      const batch = HULLS.WASP.alloy * 3;
+      await grant(f.db, planetId, batch + 10, batch + 10);
 
       const results = await Promise.allSettled(
         Array.from({ length: 5 }, () => buildUnits(f.db, planetId, 'WASP', 3, f.clock)),
@@ -102,6 +109,44 @@ describe('concurrency', () => {
 
       const [planet] = await f.db.select().from(planets).where(eq(planets.id, planetId));
       expect(planet!.alloy).toBeGreaterThanOrEqual(0);
+    });
+  });
+
+  /**
+   * FLIGHT BAYS ARE A COUNT READ UNDER A LOCK, WHICH IS THE ONLY WAY IT IS SAFE. D28.
+   *
+   * A bay check outside the planet's row lock is the classic check-then-act race:
+   * both requests count the same free bay, both pass, and a planet ends up with more
+   * craft in the air than the Command Core allows. `assertFreeBay` takes the `tx`
+   * that `loadLocked` already holds precisely so this cannot happen — and this test
+   * is what proves it, because nothing else in the suite would notice.
+   */
+  describe('flight bays', () => {
+    it('two simultaneous launches into one free bay: exactly one wins', async () => {
+      const f = await seedWorld(4);
+      const [mine, a, b, c] = f.planetIds as [string, string, string, string];
+      for (const id of f.planetIds) {
+        await setLevel(f.db, id, 'CORE', 1);
+        await grant(f.db, id, 200_000, 20_000);
+      }
+      f.clock.advance(600);
+
+      // Fill every bay but one.
+      expect(flightSlots(1)).toBe(3);
+      await launchProbe(f.db, mine, a, f.clock);
+      await launchProbe(f.db, mine, b, f.clock);
+
+      // Two launches race for the last bay, at two different targets so the
+      // one-probe-per-target rule cannot be what refuses either of them.
+      const results = await Promise.allSettled([
+        launchProbe(f.db, mine, c, f.clock),
+        launchProbe(f.db, mine, c, f.clock),
+      ]);
+      const won = results.filter((r) => r.status === 'fulfilled').length;
+      expect(won, 'both launches got the same bay').toBe(1);
+
+      const inAir = await baysInUse(f.db, mine);
+      expect(inAir).toBe(flightSlots(1));
     });
   });
 
@@ -138,6 +183,12 @@ describe('concurrency', () => {
     });
   });
 
+  /**
+   * D16 moved production into the works. Every assertion here reads
+   * `bufferAlloy` rather than `alloy` for that reason — an untouched planet's
+   * SPENDABLE stock no longer moves at all, and a test still watching `alloy`
+   * would report the lazy tick as broken when it is working exactly as designed.
+   */
   describe('the lazy tick', () => {
     it('credits exactly one hour of production after one hour', async () => {
       const planetId = f.planetIds[0]!;
@@ -146,7 +197,10 @@ describe('concurrency', () => {
       f.clock.advance(60);
       const after = await f.db.transaction((tx) => loadLocked(tx, planetId, f.clock));
 
-      expect(after.alloy).toBeCloseTo(alloyRate(1), 3);
+      expect(after.bufferAlloy).toBeCloseTo(alloyRate(1), 3);
+      // ...and storage is untouched, which is the half of D16 most likely to be
+      // broken by accident later.
+      expect(after.alloy).toBe(0);
     });
 
     it('is idempotent — two loads at the same instant do not double-credit', async () => {
@@ -157,17 +211,21 @@ describe('concurrency', () => {
       const first = await f.db.transaction((tx) => loadLocked(tx, planetId, f.clock));
       const second = await f.db.transaction((tx) => loadLocked(tx, planetId, f.clock));
 
-      expect(second.alloy).toBeCloseTo(first.alloy, 6);
+      expect(second.bufferAlloy).toBeCloseTo(first.bufferAlloy, 6);
     });
 
-    it('never exceeds the storage cap, however long the absence', async () => {
+    it('stops at the collector cap, however long the absence', async () => {
       const planetId = f.planetIds[0]!;
       await grant(f.db, planetId, 0, 0);
 
       f.clock.advance(60 * 24 * 30); // a month away
       const after = await f.db.transaction((tx) => loadLocked(tx, planetId, f.clock));
 
-      expect(after.alloy).toBe(storageCap(alloyRate(1)));
+      // The works fill and STOP. This clamp is what makes a month away and a day
+      // away produce the same planet, and it is the honest version of a cap: the
+      // waste is real and the interface says so.
+      expect(after.bufferAlloy).toBe(collectorCap(alloyRate(1)));
+      expect(collectorCap(alloyRate(1))).toBeLessThan(storageCap(alloyRate(1)));
     });
 
     it('produces nothing while the surface works are disrupted', async () => {
@@ -181,7 +239,7 @@ describe('concurrency', () => {
       f.clock.advance(120);
       const after = await f.db.transaction((tx) => loadLocked(tx, planetId, f.clock));
 
-      expect(after.alloy).toBe(0);
+      expect(after.bufferAlloy).toBe(0);
     });
 
     it('resumes for exactly the minutes after disruption ends', async () => {
@@ -195,7 +253,7 @@ describe('concurrency', () => {
       f.clock.advance(120); // 60 disrupted, 60 producing
       const after = await f.db.transaction((tx) => loadLocked(tx, planetId, f.clock));
 
-      expect(after.alloy).toBeCloseTo(alloyRate(1), 3);
+      expect(after.bufferAlloy).toBeCloseTo(alloyRate(1), 3);
     });
 
     it('does not run time backwards if the clock is behind lastTick', async () => {

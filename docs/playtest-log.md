@@ -10,7 +10,8 @@ come from living with it, and they cannot be found any other way.
 
 ```bash
 docker compose up -d
-pnpm season create --shard EU-1 --seed 4242 --unattended 8   # if none is live
+pnpm season migrate && pnpm season bootstrap   # if no world is live
+pnpm season bootstrap --unattended 8           # DEV ONLY: neighbours to scout
 pnpm dev
 ```
 
@@ -57,9 +58,10 @@ Count these across the whole two days:
 
 - **Did the top directive ever tell you something you already knew, or something wrong?**
   It is a ranked model with hand-set weights. Two days will show whether the weights are.
+- **Did you ever have to guess whether a world was in your tier band before packing a fleet?**
 - **Did you ever not know what to do next?** Note the exact moment.
 - **Did you ever want a number the interface did not give you?**
-- **Did the return overlay feel like news, or like a dialog to dismiss?**
+- **Did Signals feel like news, or like a badge to clear?**
 - **Did you feel anything when a fleet landed?** If not, that is the most important
   finding available and it outranks every feature on the roadmap.
 - **Battery and heat**, since it is a phone.
@@ -69,7 +71,6 @@ Count these across the whole two days:
 Read your own notes and rank the problems by how often they appear, not by how annoying
 they felt. Then fix the top three. Everything else waits for real players.
 
----
 
 # Sessions
 

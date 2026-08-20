@@ -8,15 +8,32 @@ const schema = z.object({
   PORT: z.coerce.number().default(3000),
   DATABASE_URL: z.string().min(1),
   /**
-   * The shard this API places new players on. One shard for MVP (A7), but every
-   * table is season-aware, so running EU-2 later is a row and another process.
+   * Rotating this invalidates every session. Must be set in production.
+   *
+   * `SHARD_CODE` used to sit here and is gone (D21). One process now serves all ten
+   * galaxies and works out which one a caller is in from their own player row, so a
+   * variable naming "the" shard could only ever be wrong for nine of them.
    */
-  SHARD_CODE: z.string().min(1).default('EU-1'),
-  /** Rotating this invalidates every session. Must be set in production. */
   JWT_SECRET: z.string().min(16).default('dev-only-secret-do-not-ship-me'),
   ACCESS_TOKEN_MINUTES: z.coerce.number().default(15),
   REFRESH_TOKEN_DAYS: z.coerce.number().default(30),
-  WORKER_POLL_MS: z.coerce.number().default(5000),
+  /** How rarely one account's "in game" stamp is rewritten. See services/presence.ts. */
+  PRESENCE_THROTTLE_MS: z.coerce.number().default(60_000),
+  /**
+   * HOW LATE THE WORLD IS ALLOWED TO BE. D52.
+   *
+   * Every scheduled moment in the game — a raid settling, a fleet coming home, a
+   * drill reaching its rock, a radar warning firing — happens on the next tick
+   * after its `resolve_at`. At five seconds that is up to five seconds during which
+   * a squadron that has finished bombarding is still `in_flight`: it hangs over the
+   * world it has just hit, doing nothing, because nothing has decided yet. The
+   * owner named it exactly — "boş boş bekliyorlar".
+   *
+   * One second. A tick is a single `SKIP LOCKED` claim that returns nothing almost
+   * every time, so the cost is a query per second per worker process and the return
+   * is that the universe stops visibly lagging its own clock.
+   */
+  WORKER_POLL_MS: z.coerce.number().default(1000),
   WORKER_BATCH: z.coerce.number().default(100),
   /** A claim older than this is assumed dead and returned to the queue. */
   WORKER_STALE_MINUTES: z.coerce.number().default(5),

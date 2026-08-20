@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import {
+  COMBAT,
+  GROUND_HULLS,
+  HULLS,
   computeLoot,
+  counterMult,
   emptyLedger,
   bookBattle,
   dominion,
@@ -9,6 +13,8 @@ import {
   fleetValue,
   mulberry32,
   resolveCombat,
+  type HullId,
+  type MobileHullId,
 } from '../src/index.js';
 
 const rng = () => mulberry32(12345);
@@ -35,6 +41,70 @@ describe('counter cycle', () => {
     expect(fleetValue(lances.attackerLosses)).toBeGreaterThan(
       fleetValue(wasps.attackerLosses),
     );
+  });
+});
+
+/**
+ * TWO GROUND GUNS, IN OPPOSITE CLASSES. D27.
+ *
+ * The property these protect is not a number, it is a SHAPE: whatever counters one
+ * ground hull must not counter the other. With a single ground hull the defender
+ * had no composition choice and the attacker had no question to ask, and both
+ * branches of the one-hull design were measured and failed — see `docs/balance.md`.
+ */
+describe('ground defence is a choice, not a quantity', () => {
+  const price = (h: HullId) => HULLS[h].alloy + HULLS[h].crystal;
+
+  it('there is more than one ground hull', () => {
+    expect(GROUND_HULLS.length).toBeGreaterThan(1);
+  });
+
+  it('no single attacking hull counters all of them', () => {
+    for (const atk of ['WASP', 'LANCE', 'BULWARK'] as MobileHullId[]) {
+      const strongAgainst = GROUND_HULLS.filter(
+        (g) => counterMult(HULLS[atk].cls, HULLS[g].cls) === COMBAT.strongMult,
+      );
+      expect(
+        strongAgainst.length,
+        `${atk} hard-counters every ground hull, so defence has no shape`,
+      ).toBeLessThan(GROUND_HULLS.length);
+    }
+  });
+
+  it('every ground hull is counterable by something', () => {
+    // The other failure mode: a gun nothing beats makes attacking pointless.
+    for (const g of GROUND_HULLS) {
+      const answers = (['WASP', 'LANCE', 'BULWARK'] as MobileHullId[]).filter(
+        (atk) => counterMult(HULLS[atk].cls, HULLS[g].cls) === COMBAT.strongMult,
+      );
+      expect(answers.length, `nothing counters ${g}`).toBeGreaterThan(0);
+    }
+  });
+
+  it('the light gun is reachable from a standing start', () => {
+    // A beginner with no Shipyard must be able to defend something, or the rank
+    // floor is the only thing between them and a developed neighbour.
+    const cheapest = [...GROUND_HULLS].sort((x, y) => price(x) - price(y))[0]!;
+    expect(HULLS[cheapest].minShipyard).toBe(0);
+  });
+
+  it('bringing the wrong counter is punished', () => {
+    // The whole point of scouting: guess wrong and the exchange inverts.
+    const budget = 40_000;
+    const spend = (h: HullId, n = budget) => Math.max(1, Math.floor(n / price(h)));
+    for (const g of GROUND_HULLS) {
+      const right = (['WASP', 'LANCE', 'BULWARK'] as MobileHullId[]).find(
+        (a) => counterMult(HULLS[a].cls, HULLS[g].cls) === COMBAT.strongMult,
+      )!;
+      const wrong = (['WASP', 'LANCE', 'BULWARK'] as MobileHullId[]).find(
+        (a) => counterMult(HULLS[a].cls, HULLS[g].cls) === COMBAT.weakMult,
+      )!;
+      const hit = (a: MobileHullId) => {
+        const r = resolveCombat({ [a]: spend(a) }, { [g]: spend(g) }, 0, flat());
+        return fleetValue(r.defenderLosses) / Math.max(1, fleetValue(r.attackerLosses));
+      };
+      expect(hit(right), `${right} should beat ${g}`).toBeGreaterThan(hit(wrong));
+    }
   });
 });
 
@@ -126,29 +196,29 @@ describe('outcome grades', () => {
 
 describe('loot', () => {
   const stock = { alloy: 60_000, crystal: 8_000 };
+  const empty = { alloy: 0, crystal: 0 };
 
   it('takes half of what is above the vault floor', () => {
-    const loot = computeLoot(stock, 10_000, 'DECISIVE', 1_000_000);
+    const loot = computeLoot(stock, empty, 10_000, 'DECISIVE', 1_000_000);
     expect(loot.alloy).toBe(25_000);
   });
 
   it('never exceeds cargo', () => {
-    const loot = computeLoot(stock, 0, 'DECISIVE', 900);
+    const loot = computeLoot(stock, empty, 0, 'DECISIVE', 900);
     expect(loot.alloy + loot.crystal).toBeLessThanOrEqual(900);
   });
 
   it('cannot touch anything below the vault floor', () => {
-    expect(computeLoot({ alloy: 500, crystal: 100 }, 5_000, 'DECISIVE', 99_999)).toEqual({
-      alloy: 0,
-      crystal: 0,
-    });
+    const loot = computeLoot({ alloy: 500, crystal: 100 }, empty, 5_000, 'DECISIVE', 99_999);
+    expect(loot.alloy).toBe(0);
+    expect(loot.crystal).toBe(0);
   });
 
   it('the 50% rule IS the repeat-raid decay', () => {
     let alloy = 80_000;
     const taken: number[] = [];
     for (let i = 0; i < 3; i++) {
-      const loot = computeLoot({ alloy, crystal: 0 }, 0, 'DECISIVE', 1_000_000);
+      const loot = computeLoot({ alloy, crystal: 0 }, empty, 0, 'DECISIVE', 1_000_000);
       taken.push(loot.alloy);
       alloy -= loot.alloy;
     }
@@ -157,7 +227,64 @@ describe('loot', () => {
   });
 
   it('a repelled raid takes nothing', () => {
-    expect(computeLoot(stock, 0, 'REPELLED', 99_999)).toEqual({ alloy: 0, crystal: 0 });
+    const loot = computeLoot(stock, { alloy: 9_000, crystal: 0 }, 0, 'REPELLED', 99_999);
+    expect(loot.alloy).toBe(0);
+    expect(loot.crystal).toBe(0);
+  });
+
+  /* ── the uncollected works, D16 ──────────────────────────── */
+
+  it('takes uncollected ore at half the rate it takes storage', () => {
+    const fromStore = computeLoot({ alloy: 10_000, crystal: 0 }, empty, 0, 'DECISIVE', 1e9);
+    const fromWorks = computeLoot(empty, { alloy: 10_000, crystal: 0 }, 0, 'DECISIVE', 1e9);
+    expect(fromWorks.alloy).toBe(fromStore.alloy * COMBAT.lootBufferShare);
+  });
+
+  /**
+   * The vault protects a STORE. Ore still in the works has not reached one, so the
+   * floor cannot cover it — otherwise a small player with a big vault would be
+   * completely unraidable simply by never pressing collect, which is the exploit
+   * D13 already had to be rescued from once.
+   */
+  it('the vault floor does not cover the works', () => {
+    const loot = computeLoot(empty, { alloy: 4_000, crystal: 0 }, 50_000, 'DECISIVE', 1e9);
+    expect(loot.alloy).toBeGreaterThan(0);
+    expect(loot.fromStock.alloy).toBe(0);
+    expect(loot.fromBuffer.alloy).toBe(loot.alloy);
+  });
+
+  it('reports the split so the caller can debit both columns', () => {
+    const loot = computeLoot(
+      { alloy: 20_000, crystal: 4_000 },
+      { alloy: 6_000, crystal: 1_000 },
+      0,
+      'DECISIVE',
+      1e9,
+    );
+    expect(loot.fromStock.alloy + loot.fromBuffer.alloy).toBe(loot.alloy);
+    expect(loot.fromStock.crystal + loot.fromBuffer.crystal).toBe(loot.crystal);
+    expect(loot.fromStock.alloy).toBe(10_000);
+    expect(loot.fromBuffer.alloy).toBe(1_500);
+  });
+
+  /**
+   * A cargo shortfall must cost every pile the same proportion. Draining whichever
+   * one the code happens to read first would make loot depend on argument order,
+   * and a hauler-light raid would come home with a suspiciously tidy answer.
+   */
+  it('scales all four piles together when cargo runs out', () => {
+    const loot = computeLoot(
+      { alloy: 40_000, crystal: 40_000 },
+      { alloy: 40_000, crystal: 40_000 },
+      0,
+      'DECISIVE',
+      1_000,
+    );
+    expect(loot.alloy + loot.crystal).toBeLessThanOrEqual(1_000);
+    expect(loot.fromBuffer.alloy).toBeGreaterThan(0);
+    expect(loot.fromStock.alloy).toBeGreaterThan(0);
+    // Storage is exposed at twice the rate, so it should give up twice as much.
+    expect(loot.fromStock.alloy / loot.fromBuffer.alloy).toBeCloseTo(2, 1);
   });
 });
 

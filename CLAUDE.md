@@ -1,140 +1,237 @@
 # CLAUDE.md — Blindspace
 
-> Read this first, every session. It is the operating manual, not the design doc.
-> Detail lives in `docs/`. This file exists so that a cold agent — or a future you. You should read and stay up-to-date while doing any job.
-> with no memory of this project — can act correctly within five minutes.
+Operating manual for a cold agent. Read it first, every session. Detail lives in `docs/`.
 
----
+> **Keep this file small.** It is loaded into every session. Add a line only if a cold
+> agent would get the work wrong without it. Delete a line the moment it stops being true.
+> Rationale, measurements and history belong in `docs/`, never here. The same rule governs
+> `docs/`: a living reference, not an archive.
 
-## PRODUCT MISSION
+## The product
 
-Build a **small, fast, mobile-first multiplayer space game** that a solo developer can
-actually finish, and that makes a player think **"I wonder what happened"** after they
-close it.
+A small, fast, **mobile-first multiplayer space game** a solo developer can finish, that
+makes a player think *"I wonder what happened"* after they close it.
 
-This is explicitly **not** a 4X, not an MMO, not an OGame clone, not AAA. Feature count
-is not progress. The product is a playable game that pulls people back.
-
-## CORE PLAYER EXPERIENCE
-
-The player owns one planet in a galaxy of ~200 real people. They cannot see what others
-hold. Others cannot see what they hold. **Everything either side does about that is the
-game.**
-
-Nine emotions are **gameplay requirements**, not marketing copy. Every system must serve
-at least one, and the strong ones must serve several:
-
-`OWNERSHIP` · `CURIOSITY` · `COMPETITION` · `AMBITION` · `RISK / FEAR OF LOSS` ·
-`OPPORTUNITY` · `RE-ENGAGEMENT` · `MEMORABILITY` · `FUN`
-
-## DESIGN NORTH STAR
-
-**SIMPLE TO PLAY. DEEP UNDER THE SURFACE.**
-
-Few systems, learned fast. Depth comes from how those systems *interact*, never from
-adding more of them. If you are about to add complexity to create depth, you are about
-to make a mistake — strengthen a relationship between existing systems instead.
-
-One sentence that settles most arguments:
+Each player owns one planet in a galaxy of ~50 real people. Nobody can see what anyone else
+holds. **Everything either side does about that is the game.**
 
 > **The fleet is the bet. The information is the game. The planet is the stake.**
 
-## CORE GAMEPLAY LOOP
+**Design north star: simple to play, deep under the surface.** Depth comes from how few
+systems *interact*, never from adding more. If you are about to add complexity to create
+depth, strengthen a relationship between existing systems instead.
+
+**Feel north star: fun, utopian, epic — a NASA photograph you can fly around in, and one
+that is happening RIGHT NOW.** This is a requirement, not decoration, and every task is
+judged against it as well as against correctness. Three tests, in order:
+
+1. **Is it alive?** Things are happening to other people while you watch — fleets crossing,
+   drills racing for a rock, a raid landing on a world you have nothing to do with. A disc
+   where nothing moves has failed even when every number on it is right.
+2. **Is it happening NOW?** Anything with a moment attached happens at that moment, on
+   screen, for everybody at once. **Waiting is the enemy**: a state that has not arrived, a
+   craft parked on its destination, a spinner where a decision should be, a squadron
+   hanging over a world with nothing left to do. Solve it the cleanest way — predict and
+   reconcile, wake on the instant the payload already names, publish the moment — never by
+   making the player wait for a round trip.
+3. **Is it beautiful?** Scale, depth and light. A world is a world, not a dot; a raid is a
+   bombardment, not a status change. If a moment would be more magnificent and it costs the
+   loop nothing, make it more magnificent.
+
+None of this relaxes the principles below: the server is still the only authority, the fog
+is still enforced in the query, and it is never a licence to add systems.
+**Simple implementation, magnificent presentation.** Detail: `docs/product-vision.md`.
+
+Nine emotions are gameplay requirements, not marketing: `OWNERSHIP` · `CURIOSITY` ·
+`COMPETITION` · `AMBITION` · `RISK` · `OPPORTUNITY` · `RE-ENGAGEMENT` · `MEMORABILITY` ·
+`FUN`. Every system serves at least one; the strong ones serve several.
+
+## The loop
 
 ```
-DEVELOP → ACCUMULATE → GATHER INFORMATION → SPOT OPPORTUNITY → CHOOSE TARGET
+DEVELOP → ACCUMULATE → GATHER INTEL → SPOT OPPORTUNITY → CHOOSE TARGET
    → TAKE RISK → DISPATCH → WAIT OFFLINE → OUTCOME → GAIN / LOSS → NEW DECISION
 ```
 
-Step 9 feeds step 3: **the battle report is the most accurate intel in the game.**
-Economy, buildings and progression are *infrastructure* for this loop. They are not the
-loop. If they become the main activity, the product has regressed.
+Step 9 feeds step 3: the battle report is the most accurate intel in the game. Economy and
+buildings are *infrastructure* for this loop, not the loop. If they become the main
+activity, the product has regressed.
 
----
+## Non-negotiable principles
 
-## NON-NEGOTIABLE GAMEPLAY PRINCIPLES
-
-1. **The client never decides an outcome.** It renders and sends intent. Nothing else.
-2. **Buildings are never destroyed.** Raids and asteroids take shields, satellites,
-   units, stock and *production time*. You can be robbed; you cannot be un-made.
-3. **A launched fleet cannot be recalled.** Commitment must be irreversible or the risk
-   is theatre.
-4. **Watching is silent; probing is loud.** You are never told who is watching you. You
+1. **The client never decides an outcome.** It renders and sends intent.
+2. **Buildings are never destroyed.** Raids take shields, satellites, units, stock and
+   production time. You can be robbed; you cannot be un-made.
+3. **A launched fleet cannot be recalled.** Commitment must be irreversible or risk is theatre.
+4. **Watching is silent; probing is loud.** You are never told who is watching you; you
    *are* told when someone probed you. That asymmetry produces the dread.
-5. **Information must have a price and a cost of use.** The cost of knowing is being
-   known.
-6. **Every session must end with something in flight.** A state where nothing is pending
-   is a state with no reason to return. (See `DO NOT BREAK`.)
-7. **Combat stays simple on purpose.** It is the resolution mechanic, not the skill
-   expression. The skill lives in the information layer. This is the scope trade that
-   pays for everything else.
-8. **Low combat variance (±8%).** If randomness dominates outcomes, intel is worthless
-   and the core loop collapses.
+5. **Information has a price and a cost of use.** The cost of knowing is being known.
+6. **Every session must end with something in flight.** Nothing pending = no reason to return.
+7. **Combat stays simple on purpose.** It is the resolution mechanic; skill lives in the
+   information layer. This is the scope trade that pays for everything else.
+8. **Low combat variance (±8%).** If randomness dominates, intel is worthless.
+9. **A moment worth animating is worth everybody seeing.** The fog is about what you KNOW
+   before a decision, never about hiding the world from the people living in it. A battle
+   only its attacker can watch is a database transaction with sound effects (D52).
+10. **The world is live, and the interface never makes anyone wait for it.** Anything with
+    a moment attached happens at that moment, on screen, for everybody at once. Predict and
+    reconcile; wake on the instant the payload already names; poll what only somebody else
+    can change. Never a spinner where a decision should be.
 
----
+## Source of truth
 
-## SOURCE OF TRUTH / DECISION HIERARCHY
+When two disagree, the higher wins: **locked product constraints** (mobile-first portrait,
+solo-dev scope, web first, async persistent world, one planet per player,
+server-authoritative) → `docs/game-design.md` → `docs/decisions.md` → the code → anything
+marked `PROVISIONAL` → agent preference (lowest).
 
-When two things disagree, the higher one wins:
+**If the code disagrees with the design, the code is not automatically right.** Find out
+which decision is authoritative. If the change is correct, update the doc *first*.
 
-1. **Locked product constraints** — mobile-first portrait, solo-dev scope, web MVP
-   first, async persistent world, one planet per player, server-authoritative.
-2. **Approved core game design** — `docs/game-design.md` and the published GDD.
-3. **Decision log** — `docs/decisions.md`. Every locked decision, why, and what it binds.
-4. **Current implementation** — the code.
-5. **Temporary assumptions** — anything marked PROVISIONAL.
-6. **Agent preference** — lowest. Yours included.
+## Invariants — do not break these
 
-**If the implementation disagrees with the design, the implementation is not
-automatically right.** Find out which decision is the source of truth and why the code
-diverged. If the change is genuinely correct, update the source-of-truth doc *first*,
-then the code.
+Each was paid for in iteration. `docs/decisions.md` holds the evidence.
 
----
+**Score and balance**
 
-## DO NOT BREAK
-
-These have already been decided, tested, and paid for in iteration. Do not silently
-re-litigate them.
-
-| Rule | Why it exists |
+| Rule | Why |
 |---|---|
-| **Score is Dominion, not net worth** | The simulator proved wealth ladders reward passive play: builders finished at 2.1× raiders' net worth and no loot % changed it. `docs/balance.md` |
-| **`vaultMult` must stay below `alloyMult`** | Violating it makes the vault protect 100% of storage and silently kills all PvP. It shipped broken once. Enforced by a test. |
-| **Support hulls are shielded while combat hulls live** | Otherwise Haulers die in round 1, attackers arrive with no cargo, and raiding cannot pay for itself. |
-| **Ground defence is durable (60% salvage)** | Consumable defence made 95% of attacks DECISIVE, and if blind raiding never fails there is nothing for information to reduce. |
-| **Construction is instant — no build timers** | "A bar filled up" is the weakest return hook available, and timers invite pay-to-skip. Also makes the panic session real. |
-| **Telescope reads are seeded per `(watchId, timeWindow)`** | Otherwise a player defeats the entire fog layer by pulling to refresh. **Easiest way to ship a broken information game.** |
-| **Radar warns at `arriveAt − lead`, not at launch** | A 40-minute flight must not give 40 minutes of notice. |
-| **`packages/rules` has zero deps, no clock, no I/O, no ambient randomness** | It is the single source of truth shared by server, simulator and client. Enforced by ESLint; CI fails if broken. |
+| Score is Dominion, not net worth | Wealth ladders reward passive play — builders finished at 2.1× raiders' net worth |
+| Wreckage is Wealth, never Dominion | Dominion is zero-sum and only combat makes it; debris was taken from nobody |
+| `vaultMult < alloyMult` | Above it the vault protects 100% of storage and all PvP silently dies |
+| `SATELLITES.FOUNDRY.production` stays 1.06 | It compounds twice; at 1.08 TURTLE tops every gate seed |
+| `BULWARK.atk` stays 26 | Raising it subsidises whoever accumulates most: informed wins 5/5 → 0/5 |
+| `START` is arithmetic | Exactly Core + Refinery + Extractor to L2 plus two Wasps. A test enforces it |
+| Do not enlarge the opening grant | It is a lever on how much thinking is worth, measured over eight seasons |
+| `DEBRIS.share` < 1 | Or a field is worth more than the fleets that died for it |
+| **No new un-losable sink fits the gate** | A research tree, a permanent upgrade or a dearer instrument all push wealth into what a raid cannot take. Measured twice: an instrument curve ≥1.1, and a sink worth 2% of Wealth. `TAX` and `ARR` have no headroom — **never widen a band to admit a feature** |
+| Two levers are proven inert | The loot dial and `COMBAT.defenceSalvage`. What a loss COSTS cannot fix what an attack ACHIEVES |
 
----
+**Combat and defence**
 
-## ANTI-SCOPE-CREEP RULES
+| Rule | Why |
+|---|---|
+| Support hulls are shielded while combat hulls live | Otherwise Haulers die in round 1 and raiding cannot pay for itself |
+| Ground defence is durable (60% salvage) | Consumable defence made 95% of attacks DECISIVE |
+| Two ground guns in opposite classes; the cheapest buildable at Shipyard 0 | One gun makes defence a binary. Both branches were measured and failed |
+| Ground hulls leave no wreckage | They already have 60% salvage; counting twice makes a fortress profit from being attacked |
+| A raid lands at `arriveAt` and settles ten seconds later | `COMBAT.engagementSeconds` is a real server window; the mission stays `in_flight` throughout |
+| **A fleet that reaches its target ALWAYS fires** — win, lose or be annihilated | The ten seconds are the payoff of a decision made forty minutes ago. A squadron that arrives and vanishes without a shot is the loop's one visible reward, deleted |
 
-- Before adding anything: **"which core-loop problem does this solve?"** No answer → out.
-- Never remove or weaken core gameplay because it is hard to build. Ask instead:
-  *what is the simplest version that preserves the intended gameplay?*
-- **Simple implementation ≠ simplified gameplay.** Prefer the first. The second is only
-  ever a deliberate, documented product decision.
-- Cut order if behind: asteroids → Radar L4–L5 → Aegis → cosmetics.
-  **Never cut any part of telescope / explorer / radar / veil.** Those four are the game.
-- Post-MVP and staying there: alliances, chat, active deception, fleet interception,
-  combat replay, multiple planets, monetisation.
+**Information**
 
----
+| Rule | Why |
+|---|---|
+| Telescope reads are seeded per `(watchId, timeWindow)` | Otherwise pull-to-refresh defeats the entire fog layer |
+| An instrument stops where its own effect table stops | `INSTRUMENT_MAX_LEVEL` is DERIVED from table length; no upgrade row may show an unchanged before-and-after |
+| Radar is a RADIUS, not a countdown (D49) | It warns when a fleet crosses inside `radarRange`, so a slow fleet is telegraphed and a fast one is not — and a long flight never gives away all of itself |
+| The defender's radar level is read when the warning FIRES | Frozen at launch it was wrong in both directions |
+| Instruments and satellites are two different things (D25) | Four levelled INSTRUMENTS on the ground; four SATELLITES in orbit, each taking a slot |
+| The Command Core opens orbit slots at 1, 3, 5 and 9 | Which one, two or three you run is who you are |
+| The Uplink gates the Telescope and the Radar, and nothing else gates anything | The one prerequisite in the system. What it costs is the SLOT |
+| A contact carries a bearing window, never a route | Position is public; intent is not. Mining and salvage runs are the stated exception — and so is a raid that has ALREADY LANDED (D52), for the ten seconds it is standing on the world |
+| Traffic excludes what you OWN, not what is aimed at you | Otherwise the one commander a raid is aimed at is the only one who cannot see it |
 
-## QUALITY BAR
+**The world, and the worker that runs it**
 
-A feature is done when **all three** hold:
+| Rule | Why |
+|---|---|
+| You may attack within ±2 development tiers (D49) | `coreTier` is public on every world, so the rule is readable off the map before a fleet is packed |
+| One account, one planet, one galaxy; galaxies fill strictly in order | Both enforced in the database — a service check and its insert cannot be made atomic, and ten galaxies offered at once is ten empty rooms |
+| `/api/season` derives the galaxy from the caller, never from config | It carries the seed the client rebuilds the whole disc from |
+| Construction is instant — no build timers | "A bar filled up" is the weakest return hook there is, and timers invite pay-to-skip |
+| A planet owns at most three Prospectors, counted wherever they are | Otherwise mining scales with wealth instead of with the which-rock-and-when decision |
+| Mined ore lands in the WORKS, never in storage | Risk-free banked income decoupled from war is what emptied OGame's PvP |
+| A Prospector flies at 3× the mean asteroid speed, and has its own launch overhead | Arithmetic: it makes the intercept root unique and the lead shot legible. `TRAVEL.baseMinutes` is priced into every raid and must not move |
+| A flight bay is counted under the planet row lock | Check-then-act outside the lock lets two racing launches see the same free bay |
+| An outbound leg belongs to its origin; a return leg to its target | Return legs are stored with the two SWAPPED |
+| Every notification is idempotent by `(player_id, kind, ref_id)` | A worker killed between COMMIT and `complete()` has its event redelivered |
+| A raid tells BOTH sides, even when nothing comes back | An annihilated fleet used to produce no notification at all |
+| `announceUnlocks` is the only writer of `unlocksSeen` | Two writers means whichever runs first eats the other's news |
+| Every safety net reads the EVENT, so a flight whose event row is gone is invisible to all of them | `abandon()` releases a failed event's hold; `sweepStranded` releases the ones with no event at all; `/health` reports both |
+| Housekeeping may never stop the event queue | One throw inside the stranded sweep took the whole queue down |
+| The server refuses to run against a database it is ahead of | `assertSchemaCurrent` at boot. Checked, never auto-applied — N replicas racing the same DDL is worse |
 
-```
-TECHNICAL CORRECTNESS  +  GAMEPLAY CORRECTNESS  +  UX QUALITY
-```
+**Client**
 
-Compiling, passing tests and existing in the UI is only the first third.
+| Rule | Why |
+|---|---|
+| Every route the client parses is in `apps/server/test/contract.test.ts` | A route whose shape moves answers 200, typechecks, passes both suites and goes dark |
+| The client never pre-encodes a request body | `send()` serialises; a second `JSON.stringify` must be a compile error |
+| The client parses a notification `kind` as a string, never an enum | One unknown value would erase the player's whole history instead of one line |
+| Both sides of a raid read the same `arriveAt` | Rebuilding it from a rounded figure put them thirty seconds apart |
+| **Every countdown comes off `arriveAt`, never off `minutesRemaining`** | The payload figure is rounded and up to a poll old. Two surfaces reading different ones put two disagreeing clocks for one fleet on screen at once (D51) |
+| A stale payload is a craft PARKED on its destination, not a missing one | Every leg interpolates and CLAMPS. Wake on the instant the payload already names — and keep asking until the world has actually moved on (D52), because the resolving event lands on the worker's next tick |
+| **Everything that moves reads `serverNow()`, never `Date.now()`** | The disc is drawn by comparing server timestamps against "now". A drifted phone drew every fleet at the wrong point of its leg, silently, and differently from everyone else's (D52) |
+| `traffic`, `mining`, `pending` and `galaxy` need a timer as well as events | The stream fires only for what happens TO YOU — and a neighbour's world growing, re-arming or letting its fleet out is never about you (D51) |
+| **Nothing is ever drawn inside a world, whoever owns it** | A leg stands off at BOTH ends (D44/D51); a contact has no destination to stand off from, so `clearOfWorlds` puts it on the surface instead |
+| The cover comes off when the disc is BUILT, not when the bytes land | Models still have to parse, compile and upload; `FirstFrame` reports the first real frame |
+| Nothing on the way in blocks the player | A loading screen is an OVERLAY over a page that is already loading, never a gate in front of one |
+| Every card carries a two-or-three-word tag, separate from its role sentence | The role argues a decision; the tag answers "what IS this" for someone scanning fourteen cards |
+| **Read a file's docblock before editing it** | The 3D surface and its harnesses carry a dozen traps that each cost a bug — orbit standoffs, `lookAt` frames, sprite tinting, plume direction, a screenshot that stalls the frame loop. Every one is written at its own site in `apps/web/src/galaxy/` and `tools/` |
 
-### The engineering law
+**Engineering**
+
+| Rule | Why |
+|---|---|
+| `packages/rules` has zero deps, no clock, no I/O, no ambient randomness | It is the single source of truth for server, simulator and client. ESLint enforces it; CI fails if broken |
+| The simulator must not price what it refuses to simulate | Charging for an unmodelled benefit drains the galaxy's military |
+| An interception is solved in continuous time | `travelExact`, not `travelMinutes` — a rock does not wait at a whole minute |
+| Two-planet operations lock in ascending id order | Otherwise mutual raids deadlock |
+
+## How to work
+
+Default behaviour is **move the project forward**: `IMPLEMENT → TEST → PLAY → EVALUATE →
+FIX → CONTINUE`.
+
+**Decide yourself:** architecture, folder structure, libraries, queries, caching, component
+design, internal APIs, test design, small UX details.
+
+**Ask only when** a change alters the core loop, risk/reward, the PvP model, ownership,
+season structure, progression, the game's identity, or a locked constraint.
+
+**Never:** re-research settled questions, keep improving the design docs, wait for every
+uncertainty before building, or redesign a working system because something better might
+exist. Small, low-risk and reversible → pick the simplest option and move.
+
+**When context is lost:** this file → `docs/roadmap.md` → `docs/decisions.md` → the code →
+`git log`. Never re-invent lost context by guessing.
+
+### Change discipline
+
+> **Change what was asked for. Nothing else.**
+
+If the task is "fix the shortfall label", the shortfall label changes and nothing else
+does — not the neighbouring row, not a colour you noticed on the way past, not a refactor
+that would have been nice.
+
+Sometimes a change genuinely forces another. That is allowed, never silently:
+
+1. Say it in the report — one line on what else moved and why it had to.
+2. Write it down: `docs/decisions.md` for a rule, a comment at the site for a number.
+3. Prove it was forced — a measurement, a failing test, a simulator run. Not an opinion.
+
+If you cannot do all three, it was not forced. Leave it alone and mention it.
+
+**Docs change in the same pass as the code.** A locked behaviour changes → update the
+invariants table and add a decision. A system is retired → delete its rows and its prose. A
+stale doc is worse than no doc, because the next reader trusts it.
+
+### Anti-scope-creep
+
+- Before adding anything: *"which core-loop problem does this solve?"* No answer → out.
+- Never weaken core gameplay because it is hard to build. Ask instead: what is the simplest
+  version that preserves the intended gameplay?
+- **Simple implementation ≠ simplified gameplay.** Prefer the first.
+- Cut order if behind: asteroids → Radar L4–L5 → Aegis → cosmetics. **Never cut any part of
+  telescope / explorer / radar / veil.** Those four are the game.
+- Post-MVP and staying there: alliances, chat, active deception, fleet interception, combat
+  replay, multiple planets, monetisation.
+
+## Quality bar
+
+A feature is done when **all three** hold: technical correctness + gameplay correctness +
+UX quality. Compiling, passing tests and existing in the UI is only the first third.
 
 > **CODE WITHOUT TESTS IS CODE THAT WAS NEVER WRITTEN. IT IS UNFINISHED WORK.**
 
@@ -142,204 +239,159 @@ Compiling, passing tests and existing in the UI is only the first third.
 pnpm verify        # 0 type errors · 0 lint errors · all tests green
 ```
 
-Non-negotiable, in full detail in [`docs/engineering-standards.md`](docs/engineering-standards.md):
+Full detail in `docs/engineering-standards.md`. The short version:
 
 - **Everything is typed. `any` is banned.** No casts to silence the compiler. Parse
   untrusted input with Zod at the boundary; never let unparsed data reach a service.
-- **Zero lint errors, always.** Type-aware `strictTypeChecked`. If a rule is wrong, change
-  the rule deliberately — never learn to ignore its output.
-- **Test edge cases, not just the happy path.** Boundaries, malformed input, adversarial
-  input, concurrency, failure, time. Risk coverage, never line coverage.
+- **Zero lint errors, always.** If a rule is wrong, change the rule deliberately.
+- **Test edge cases:** boundaries, malformed and adversarial input, concurrency, failure,
+  time. Risk coverage, never line coverage.
 - **When a test fails, find the root cause first.** Never bend a test to fit the code, or
-  code to fit a wrong test. Several failures here have been bad arrangements; several have
-  been real bugs that looked like bad tests. Establish which before changing either.
-- **Many tests failing identically is one bug, not many.**
+  code to fit a wrong test. Many tests failing identically is one bug, not many.
+- **No silent placeholders.** A `TODO` in core gameplay logic is a bug that has not been
+  filed yet.
+- **Verify frontend work by looking at it.** `node tools/visual.mjs` drives the real client
+  and measures the scene. A green typecheck has shipped a frozen rock and a sideways ship.
 
-**No silent placeholders.** Fake server logic, client authority, hardcoded gameplay
-values, fake combat results, fake persistence and TODO'd core logic must be gone before
-MVP or explicitly documented as a known limitation. A `TODO` in core gameplay logic is a
-bug that has not been filed yet.
-
----
-
-## GAMEPLAY VALIDATION RULES
-
-Run any new or materially changed system through this. Weak answers mean it is not done,
-even if the tests pass:
-
-1. What decision does it create? 2. Why should the player care? 3. What does it interact
-with? 4. How does success feel? 5. What does failure cost? 6. Does it create an
-opportunity? 7. Does it create curiosity? 8. Does it raise the chance of coming back?
-9. Does it add micro-management? 10. Would the game be better without it?
-
-**Do not turn perfect theoretical answers into a precondition for building.** When in
-doubt: `PROTOTYPE → PLAY → OBSERVE → DECIDE`.
-
-### Product regression signals — fix, don't excuse as "fine for MVP"
-
-The game is drifting if: it becomes `BUILD → WAIT → COLLECT → UPGRADE → REPEAT`;
-resource collection becomes the main fun; other players stop mattering; the
-intel → decision → action chain weakens; risk disappears; opportunity moments vanish;
-ownership of the planet fades; micro-management creeps in; it becomes technically
-impressive but emotionally empty; or new systems make old ones pointless.
-
----
-
-## ENGINEERING / PERFORMANCE RULES
+### Server rules
 
 - **Server-authoritative.** Resources, fleet state, combat, travel, cooldowns, loot and
   progression are decided server-side, inside a transaction, using `@blindspace/rules`.
 - **The fog is enforced in the query, not the UI.** A modified client must not be able to
   read a field it was not entitled to.
-- **Lazy evaluation for anything continuous; scheduled events for anything that must
-  happen at a moment. There is no global tick and no per-planet loop.**
+- **Lazy evaluation for anything continuous; scheduled events for anything that must happen
+  at a moment.** There is no global tick and no per-planet loop. A scheduled moment is late
+  by at most one `WORKER_POLL_MS`, which is why it is a second and not five (D52) — that
+  latency is visible as a squadron holding over a world with nothing left to do.
 - **Nothing is stored that a formula and a clock can derive** — no fleet positions, no
   asteroid coordinates, no resource tick rows.
-- Every mutating action: lock the planet row → advance economy *inside* the lock →
-  validate against the rules → mutate → commit → emit.
-- **Two-planet operations lock in ascending id order.** Otherwise mutual raids deadlock.
+- Every mutating action: lock the planet row → advance economy inside the lock → validate
+  against the rules → mutate → commit → emit.
+- The world runs while the player is offline. For every timed system ask: what happens on
+  restart? If the job runs twice? If two fleets land at once? If the request is retried? If
+  the transaction dies halfway? Idempotency, retry and crash recovery are part of the
+  feature, not a follow-up.
 - Watch for: N+1 queries, unbounded queries, duplicate jobs, race conditions, oversized
   payloads, needless re-renders, heavy 3D scenes, memory leaks.
-- Performance is designed in, not added later — but never kill core gameplay for it.
 
-## ASYNC WORLD RULES
+### Validating a new system
 
-The world runs while the player is offline. For every timed system ask:
+What decision does it create? Why should the player care? What does it interact with? How
+does success feel? What does failure cost? Does it create opportunity, curiosity, a reason
+to come back? Does it add micro-management? Would the game be better without it?
 
-> What happens on server restart? If the job runs twice? If two fleets land at once? If
-> the request is retried? If the transaction dies halfway?
+Weak answers mean it is not done — but do not turn perfect answers into a precondition for
+building. When in doubt: `PROTOTYPE → PLAY → OBSERVE → DECIDE`.
 
-"Works under normal conditions" is not a passing grade. Idempotency, retry, and crash
-recovery are part of the feature, not a follow-up.
+**Regression signals — fix, don't excuse as "fine for MVP":** the loop becomes
+`BUILD → WAIT → COLLECT → UPGRADE`; resource collection becomes the fun; other players stop
+mattering; the intel → decision → action chain weakens; risk or opportunity disappears;
+ownership fades; micro-management creeps in; it becomes technically impressive and
+emotionally empty; new systems make old ones pointless.
 
-Known platform traps already paid for (see `docs/architecture.md`):
-- Drizzle's `sql` template **cannot bind a JS `Date`** through postgres.js.
-- `RETURNING` does **not** preserve a subquery's `ORDER BY`.
+## Current state
 
----
-
-## CURRENT PROJECT STATE
-
-*Updated at milestones and direction changes — not on every commit.*
-
-**Phase 0 (design validation) — DONE.** Rules module, season simulator, wall-clock text
-prototype. Found and fixed 7 balance/design bugs; the findings are in `docs/balance.md`.
-
-**Phase 1 (backend foundation) — DONE.** `9c169ef`.
-**Phase 2 (intel layer) — DONE.** The game's core system now exists server-side.
-**Phase 3 (return moment) — DONE.** Design Law #1 now has a delivery mechanism.
-**Phase 4 (playable loop) — DONE.** The game can be played by a human on a phone.
-**Phase 5 (the galaxy IS the shell) — IN PROGRESS.** The 3D disc is the surface the game
-runs on; panels open over it. Battle reports, the probe round trip and the interface
-overhaul landed alongside it.
+Phases 0–7 are done: the rules module and season simulator; the backend; the intel layer;
+the return moment; the playable loop; the galaxy as the only screen (D20); accounts and ten
+galaxies (D21); the owner's interface pass (D22–D26); the OGame pass (D27–D33); mining,
+wreckage, engagement, notifications and the radar rebuild (D34–D50).
 
 ```
-pnpm verify  →  0 type errors · 0 lint errors · 346 tests
-                rules 84 · sim 30 · server 175 · web 57
+pnpm verify  →  0 type errors · 0 lint errors · 1,176 tests
+                rules 221 · sim 47 · server 434 · web 474
 ```
+
+**Two season-gate assertions are RED, and they MOVED at D52a:** `ARR` reads 0.298 on seed
+42 and 0.299 on seed 99, against a band of 0.308–0.326. Both live in `packages/sim`.
+Everything else is green.
+
+They used to be pooled `TAX` (0.0717 against a floor of 0.10) and the informed archetype
+losing seed 4242 to RAIDER. **Both of those now pass**, and nothing was tuned to make them:
+the blind attacker's target valuation counted storage only, while its own docblock claimed
+it counted the works as well — so every unscouted target was under-valued by roughly the
+collector ceiling and blind raiding was suppressed. Fixing the expression to match the
+stated rule lifted `TAX` into band and put the informed archetype back on top of every
+seed. `ARR` was always the next thing to re-derive; it is now the only thing.
 
 | Area | State |
 |---|---|
-| `packages/rules` | Complete. Economy, combat, travel, intel math, loot, dominion, galaxy gen, disruption. |
-| `packages/sim` | Complete. Season regression gate runs in CI on 3 seeds. |
-| Auth | Guest sign-in, refresh rotation, token-type separation. |
-| Planet | Read, upgrade, build units, install satellite. Lazy economy under row locks. |
-| Fleet | Launch with validation and abuse guards. Arrival → combat → loot → disruption → return leg. |
-| Worker | `SKIP LOCKED` claim, reaper, idempotent resolution, crash-recovery tested. |
-| **Intel layer** | **Complete.** Telescope with clarity gradient and windowed seeding, probes with detection and banded reports, radar log filtered by level, veil applied server-side. |
-| Galaxy / leaderboard | `GET /api/galaxy` with fog enforced in the response; Dominion ladder. |
-| Return moment | `GET /api/session/return` — the "while you were gone" payload, capped at 5 entries, advancing `lastSeenAt`. Unlock cascade derived from history. |
-| Notifications | List, mark-seen, and SSE over Postgres LISTEN/NOTIFY. |
-| Asteroids | Generated and stored; no impacts scheduled. The Drill is designed and **not installable** — the endpoint used to sell it as a paid no-op. |
-| Season lifecycle | `season_end` event kind exists; no handler. |
-| Onboarding | `POST /api/season/join` · `GET /api/season` · `pnpm season create/migrate/status`. Before Phase 4 a galaxy could only be born inside a test. |
-| Battle reports | `GET /api/reports` — round by round, both sides' losses, loot, and the ledger movement, read from the stored swing. |
-| **Web client** | **Playable, on the 3D galaxy.** R3F disc with instanced worlds, real ship models, orbiting hardware, meteors, watch beams, probe round trips and other people's traffic. Planet screen is tabbed with per-item detail sheets; signals centre; fog enforced server-side throughout. |
+| `packages/rules` | Complete. Economy, combat, travel, intel, loot, dominion, galaxy generation, disruption |
+| `packages/sim` | Complete. Five-seed season gate at 50 players — see above |
+| Auth · servers | Username and password, scrypt, refresh rotation. Ten galaxies of fifty, filled in order |
+| Planet | Five buildings, two ground guns, four instruments, four satellites. Lazy economy under row locks |
+| Fleet · worker | Launch guards, arrival → combat → loot → disruption → return. `SKIP LOCKED` claim, reaper, crash recovery tested |
+| Intel | Telescope with clarity gradient and windowed seeding, probes with detection and bands, radar as a detection radius, veil applied server-side |
+| Notifications | Seven kinds, both sides of everything, idempotent, payloads held by a contract test |
+| Asteroids · wreckage | A mining economy with exact interception; public decaying debris fields. A salvage run is its own contact kind (D51) |
+| Engagement | A raid holds in orbit for ten seconds and bombards, **and the whole galaxy watches it** — same hold, same volley, same mission id on every screen (D52) |
+| Web client | The galaxy is the only screen. Focus anything and a rail states what you know and how you know it. Everything animated runs on `serverNow()`, so every player watches the same instant (D52) |
+| Season lifecycle | `season_end` event kind exists; **no handler** |
 
-**The single most important gap is now a player.** The loop is playable end to end and
-has never been lived with. Every phase so far has found product bugs simply by rendering
-the data — the next several will come the same way, from use, not from more features.
+**The single most important gap is a player.** The loop is playable end to end and has
+never been lived with.
 
-## CURRENT ROADMAP
+## Next
 
-Next task is at the top. Full detail and acceptance criteria in `docs/roadmap.md`.
+1. **Play it for two days in real gaps**, on a phone, then fix what that reveals — see
+   `docs/playtest-log.md`. Everything below is smaller than one real session.
+2. **Re-derive `ARR`, give `TAX` headroom, and find why the gate went red.** Until this is
+   done, nothing in the un-losable-sink family can be measured.
+3. **Season lifecycle** — a `season_end` handler and freeze, so a season finishes on its
+   own rather than when someone runs a command.
+4. **Asteroid impacts and the Drill** — generated and stored, never scheduled.
+5. **Idempotency keys on the launch path** — `request_log` exists and is unused.
 
-1. **Play it for two days in real gaps**, on a phone, then fix what that reveals.
-   Everything below is smaller than what a single real session will turn up.
-2. **Season lifecycle** — `season_end` handler, freeze, wipe, account record.
-3. **Asteroid impacts and the Drill** — generated and stored, never scheduled.
-4. **Idempotency keys on the launch path** — `request_log` exists and is unused.
-
-## KNOWN RISKS
+## Known risks
 
 | Risk | Severity | Mitigation |
 |---|---|---|
-| **Information is invisible.** The whole game lives in a data layer with no physical presence. If the intel feed reads as a boring list, there is no game. | Highest | Disproportionate UX effort on the intel screen and return overlay. Test with people who are not you. |
-| **Empty shard.** Async PvP with 12 players is nothing. | High | Do not open a second shard until the first fills. Pre-fill season 1 by invitation. |
-| **Nobody scouts.** Players skip the intel layer and raid whoever is nearest — the game degrades into a worse OGame. | High | Track scout-before-attack rate; target ≥50% by day 3. |
-| **3D scope creep.** Easy to gold-plate a surface that is now load-bearing. | High | Instanced spheres, lines, DOM labels, one emissive material. Use assets that exist; commission nothing mid-phase. |
-| **Casual players get farmed.** The 2-logins/day archetype finishes at −10k to −19k Dominion, and that is the target user. | Open | Needs real players, not more simulation. Top of the playtest agenda. |
-| **Solo burnout.** Month four is where solo projects die. | Real | Ship something two people can play early, even if ugly. |
+| **Information is invisible.** If the intel feed reads as a boring list, there is no game | Highest | Disproportionate UX effort there. Test with people who are not you |
+| **Empty shard.** Async PvP with twelve players is nothing | High | Enforced by the frontier rule; still pre-fill galaxy 1 by invitation |
+| **Nobody scouts** — the game degrades into a worse OGame | High | Track scout-before-attack rate; target ≥50% by day 3 |
+| **3D scope creep** on a load-bearing surface | High | Instanced spheres, lines, DOM labels. Use assets that exist; commission nothing mid-phase |
+| **Casual players get farmed** — the 2-logins/day archetype finishes at −10k to −19k Dominion | Open | The only unresolved *design* problem. Needs real players, not more simulation |
+| **Solo burnout** at month four | Real | Ship something two people can play early, even if ugly |
 
-## KNOWN OPEN ISSUES
+## Known issues
 
-- **Casual-player farming** (above) — the only unresolved *design* problem.
-- `request_log` table exists but idempotency keys are not wired into the launch path.
-- The web client is not served in production — dev runs behind the Vite proxy, so
-  same-origin cookies work locally and nothing serves the built bundle yet.
-- `PROVISIONAL` constants — vault floor, disruption duration, shield curve, season
-  length, asteroid params. Settled by playtest, not by argument. Marked in
-  `packages/rules/src/constants.ts`.
-- Simulator bots have no skill variance, so ladder spread reads far narrower than a real
-  shard. **Do not tune ladder spread against the simulator.**
+- The season gate is red on `TAX` and on seed 4242 (above).
+- `request_log` exists but idempotency keys are not wired into the launch path.
+- The web client is not served in production — dev runs behind the Vite proxy.
+- `PROVISIONAL` constants: vault floor, disruption duration, shield curve, season length,
+  asteroid parameters. Settled by playtest, not by argument. Marked in `constants.ts`.
+- Simulator bots have no skill variance. **Do not tune ladder spread against the simulator.**
+- The Intel screen advertises a probe as "220 alloy"; `PROBE` is 50 alloy and 50 crystal.
 
----
+### Dev-loop traps that look like broken code
 
-## HOW TO WORK ON THIS
+- Changing `packages/rules` needs **both** dev servers restarted — the API caches the
+  generated galaxy per process, and Vite does not watch the linked workspace package.
+- Tailwind v4's `@theme` publishes colours as `--color-alloy`, not `--alloy`. A bare
+  `var(--alloy)` resolves to nothing, which makes any surrounding `color-mix()` an invalid
+  declaration the browser drops in silence.
+- A three.js component authored for one camera is not portable to another. `Dust` is sized
+  for a camera outside a 20-unit disc; inside that radius every near point renders as a
+  flat square.
+- Drizzle's `sql` template cannot bind a JS `Date` through postgres.js.
+- `RETURNING` does not preserve a subquery's `ORDER BY`.
 
-Default behaviour is **move the project forward**.
-
-```
-IMPLEMENT → TEST → PLAY → EVALUATE → FIX → CONTINUE
-```
-
-**Decide for yourself:** architecture, folder structure, libraries, queries, caching,
-component design, internal APIs, test design, small UX details.
-
-**Ask the user only when** a change alters the core loop, the risk/reward structure, the
-PvP model, the ownership model, the season structure, the progression model, the game's
-identity, or a locked constraint.
-
-**Do not:** re-research settled questions, keep improving the GDD, wait for every
-uncertainty to resolve before building, or redesign a working system because something
-better might exist. If a decision is small, low-risk and reversible — pick the simplest
-workable option and move.
-
-**When context is lost:** read this file → `docs/roadmap.md` → `docs/decisions.md` →
-the code → `git log`. Never re-invent lost context by guessing.
-
----
-
-## THE DOCS
+## The docs
 
 | File | Read it when |
 |---|---|
-| [`docs/README.md`](docs/README.md) | You are new — it has a 30-minute onboarding path |
-| [`docs/product-vision.md`](docs/product-vision.md) | You need to know *why* this game exists |
-| [`docs/game-design.md`](docs/game-design.md) | You need to know how a system is meant to work |
-| [`docs/decisions.md`](docs/decisions.md) | Before changing anything that feels settled |
-| [`docs/balance.md`](docs/balance.md) | Before touching a number |
-| [`docs/architecture.md`](docs/architecture.md) | Before writing server code — it lists traps already paid for |
-| [`docs/engineering-standards.md`](docs/engineering-standards.md) | **Before writing any code at all** |
-| [`docs/working-agreement.md`](docs/working-agreement.md) | When unsure whether to decide or ask |
-| [`docs/roadmap.md`](docs/roadmap.md) | To find the next job and what "done" means for it |
-| [`docs/interface.md`](docs/interface.md) | Before changing a screen — what the UI states are and why |
-| [`docs/visual-design.md`](docs/visual-design.md) | Before making or asking for art |
-| [`docs/glossary.md`](docs/glossary.md) | Dominion? Clarity? Veil? Salvage? |
+| `docs/product-vision.md` | You need to know *why* this game exists |
+| `docs/game-design.md` | You need to know how a system is meant to work |
+| `docs/decisions.md` | Before changing anything that feels settled |
+| `docs/balance.md` | Before touching a number |
+| `docs/architecture.md` | Before writing server code |
+| `docs/engineering-standards.md` | **Before writing any code at all** |
+| `docs/roadmap.md` | To find the next job and what "done" means for it |
+| `docs/interface.md` | Before changing a screen |
+| `docs/visual-design.md` | Before making or asking for art |
+| `docs/playtest-log.md` | Before and during a real play session |
+| `docs/glossary.md` | Dominion? Clarity? Veil? Salvage? |
 
----
-
-## THE ONE THING TO REMEMBER
+## The one thing to remember
 
 The goal is not to finish the features.
 

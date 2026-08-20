@@ -1,5 +1,6 @@
 import {
   HULLS,
+  MOBILE_HULLS,
   distance,
   exposureMinutes,
   fleetCargo,
@@ -64,4 +65,11 @@ export function reachMinutes(origin: Vec3, target: Vec3, homeFleet: Fleet): numb
 export const waspMinutes = (origin: Vec3, target: Vec3): number =>
   travelMinutes(distance(origin, target), HULLS.WASP.speed);
 
-export const MOBILE: readonly MobileHullId[] = ['WASP', 'LANCE', 'BULWARK', 'HAULER'];
+/**
+ * What the launch sheet offers.
+ *
+ * Re-exported from the rules package rather than written out again: a second copy
+ * of this list is a hull that gets added to the game and silently never appears in
+ * the sheet. D27 added one ground hull and proved how easy that is to miss.
+ */
+export const MOBILE: readonly MobileHullId[] = MOBILE_HULLS;

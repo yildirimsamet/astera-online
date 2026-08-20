@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { serverNow } from './clock.js';
 
 /**
  * Time is the game's other currency, so it gets its own vocabulary.
@@ -12,10 +13,10 @@ const MINUTE = 60_000;
 
 /** A live clock, shared shape for every countdown. One interval per component. */
 export function useNow(intervalMs = 1000): number {
-  const [now, setNow] = useState(() => Date.now());
+  const [now, setNow] = useState(() => serverNow());
   useEffect(() => {
     const id = setInterval(() => {
-      setNow(Date.now());
+      setNow(serverNow());
     }, intervalMs);
     return () => {
       clearInterval(id);
@@ -35,6 +36,20 @@ export function countdown(ms: number): string {
   if (m > 0) return `${String(m)}m ${String(s).padStart(2, '0')}s`;
   return `${String(s)}s`;
 }
+
+/**
+ * MINUTES LEFT, OFF THE INSTANT ITSELF — never off a figure the server rounded.
+ *
+ * Every payload that carries a flight carries both: an exact `arriveAt` and a
+ * `minutesRemaining` computed and rounded when the request was answered. Reading
+ * the second one is what put two disagreeing clocks on screen at once — the focus
+ * rail sat on a whole-minute figure that was up to a poll stale while the pending
+ * strip directly beneath it counted the same craft down in seconds. An absolute
+ * timestamp needs no anchor and cannot go stale; the rounded figure is display
+ * data, and only the surface that is genuinely offline should ever read it.
+ */
+export const minutesLeft = (arriveAt: Date, now: number): number =>
+  Math.max(0, (arriveAt.getTime() - now) / MINUTE);
 
 /** How long a span lasts, when it is not counting down. "3h 06m" · "45m". */
 export function duration(minutes: number): string {

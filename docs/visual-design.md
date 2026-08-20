@@ -1,402 +1,170 @@
 # Visual Design & Asset Direction
 
-Visual quality is a core part of this game's identity and player experience. Do not treat visuals as secondary to functionality or leave them until the end.
+Visual quality is part of this game's identity, not a finishing pass. The game should feel
+polished, cohesive and intentional — never like a working prototype with placeholder graphics.
 
-The game should feel visually polished, cohesive, memorable, and intentional — not like a technically functional prototype with placeholder graphics.
+## The feeling, before anything else
 
-## Visual Quality Rule
+> **Fun, utopian, epic. A NASA photograph you can fly around in — and one that is happening
+> right now, not one that is being reported to you.**
 
-When implementing any visual element, ask:
+The owner's direction, and it outranks convenience. `docs/product-vision.md` states it in full
+and `CLAUDE.md` carries the short form; what it means for this document:
 
-- Does this look good enough for the final game?
-- Does it fit the game's established visual identity?
-- Does it make the game feel more immersive and desirable to return to?
-- Is this something the agent can realistically create at a high quality?
+- **Scale and depth over neatness.** A world is a world, not a dot. A raid is a bombardment, not
+  a status change. If a moment would be more magnificent and it costs the loop nothing, make it
+  more magnificent.
+- **Motion is content.** A still disc has failed even when every number on it is correct.
+  Something should always be crossing it, and the things crossing it belong to other people.
+- **Nothing on screen may be waiting.** No spinner where a decision should be, no craft parked on
+  its destination, no squadron holding over a world with nothing left to do. When a payload is
+  late the world keeps running off the clock it already has and corrects itself when the truth
+  lands — it never freezes and waits to be told (D52).
+- **A moment worth animating is worth everybody seeing.** The fog governs what you KNOW before a
+  decision; it is not a reason to hide the world from the people living in it.
 
-Do not settle for crude, generic, or obviously AI-generated/placeholder-looking visuals simply because they are technically functional.
+## Art direction — Command Deck
 
-## When You Need an Asset From Me
+> The player is standing at a command deck window, looking out at the disc. Every panel is a
+> machined plate that slides into that window. The plates are lit by their own readouts.
 
-If an element would look significantly better with a proper custom asset and you cannot create a sufficiently high-quality version yourself, **stop and ask me for the asset instead of implementing a low-quality approximation**.
+**1 · The world never closes.** The R3F canvas is mounted once and is behind everything,
+always. Panels are plates that slide over a living galaxy, never pages that replace it. A
+screen that hides the world is a website.
 
-This can include, for example:
+**2 · Every surface is a built object.** Cut corners, a bright top bevel where light catches,
+a darker bottom edge, a drop shadow that follows the cut silhouette, and a recessed well
+behind content. Three vocabulary words and only three — **plate**, **slab**, **socket**. A 1px
+rounded rectangle is a card on a website.
 
-- Planet models
-- Buildings
-- Ships
-- Space structures
-- Asteroids
-- Galaxy/environment elements
-- Icons
-- Effects
-- Backgrounds
-- Illustrations
-- Important UI artwork
-- Other distinctive visual elements
+**3 · The interface is lit by itself.** In space the only light source is the instrument.
+Active things carry an emissive edge that bleeds onto what is next to them; inactive things do
+not. **Glow is a state, never a decoration** — if everything glows, nothing is on.
 
-When requesting an asset, do not simply say:
+**4 · The art is the hero, never a bullet point.** The renders in `public/assets/images/` are
+300–450px and are the most expensive thing this project owns. They appear at 96–140px inside a
+lit socket, as the subject of a card. A render used at 40px in a text row is a wasted asset and
+reads as a favicon.
 
-> "I need a ship model."
+**5 · Numbers are the loudest thing on screen.** Stock, power, ETA, exposure, dominion — the
+game *is* those numbers. A display face at real size with tabular figures, never 12px mono in
+a list.
 
-Tell me exactly what is needed.
+### What is gameplay and not taste
 
-For each requested asset, provide:
+- **Hue carries category, luminance carries certainty.** Alloy warm amber, crystal cold aqua,
+  threat grease-pencil red, opportunity a jade used nowhere else.
+- **The clarity ramp is reserved.** `FULL → CLEAR → INTERMITTENT → DEGRADED → BLIND` fades
+  toward the background, so an unreliable reading is literally harder to see. Nothing outside
+  the intel layer may use those five values.
+- **Commit styling is reserved for the irreversible.** Launching, and nothing else.
+- **Icons carry shape; the interface carries colour.** Hue already means category, so a
+  coloured icon competes with the one thing colour is for.
+- Near-black ground. Density with structure. No ornament that carries no information.
 
-1. **What the asset is**
-2. **What it should look like**
-3. **Its visual style**
-4. **Important shape/material/detail requirements**
-5. **Required format and technical requirements**
-6. **Where it will be used in the game**
-7. **Recommended tools/services where I can create or obtain it**
-8. **A suitable prompt/specification I can give to that tool if useful**
+The palette is read off the art that already exists: gunmetal and graphite structures,
+electric-blue emissive panels, amber emissive on alloy and the vault, crystalline blue shards,
+molten-orange veining in raw alloy.
 
-For example, instead of asking for "a spaceship," explain the intended silhouette, scale, style, materials, level of detail, camera usage, animation requirements, and whether it should be a 3D model, texture, icon, or illustration.
+> **The test:** does this look like a real game, or like a website that happens to contain one?
 
-## Do Not Block Progress Unnecessarily
+## When to ask for an asset
 
-Use your own implementation when you can produce a good result with code, procedural graphics, shaders, CSS, SVG, Three.js/R3F, etc.
+If an element would be significantly better with a proper custom asset and you cannot produce
+one at sufficient quality, **stop and ask rather than shipping a low-quality approximation.**
+The same applies to audio.
 
-Ask me for an external/custom asset only when it would make a **meaningful visual-quality difference**.
+When requesting one, never say "I need a ship model". Give: what it is · what it should look
+like · its style · shape, material and detail requirements · format and technical requirements
+· where it is used · recommended tools.
 
-The goal is not to outsource every visual element.
+**`KNOWN RISKS` forbids commissioning art mid-phase.** Use what exists; a procedural stand-in
+that is honest beats a half-finished commission.
 
-The goal is:
+## Technical specification for icons
 
-**Use code for what code can do well.  
-Use custom assets when custom assets are necessary for a polished game.**
+24px grid, 1.5px stroke, round caps and joins, `currentColor` only — no fills, no gradients,
+no baked colour. Exported as React components in `apps/web/src/ui/icons/`. They must read at
+16px on a phone in daylight.
 
-Never sacrifice the game's visual quality merely to avoid asking me for an asset.
-
-When an asset is needed, tell the user:
-
-1. **What asset is needed**
-2. **What it should look like**
-3. **Its visual/style requirements**
-4. **Where/how the user can create or obtain it** (for example: Blender, AI image generation, asset stores, audio-generation tools, etc.)
-5. **The required format/resolution/technical requirements**, when relevant.
-
-Do not block development unnecessarily. If a temporary implementation is sufficient for development, use one, but clearly mark it as temporary and replace it before MVP completion if the final experience requires a real asset.
-
-## Audio
-
-Audio is part of the game experience.
-
-If music, ambient sound, UI sounds, combat sounds, fleet travel sounds, notifications, or other audio would materially improve the experience and a proper asset is required, ask the user for it using the same process above.
-
-## Quality Rule
-
-Before accepting a visual implementation, ask:
-
-> "Does this look like a real game, or does it look like a website that happens to contain a game?"
-
-If it looks like a website, improve it.
-
-**Visual quality is part of gameplay quality.**
-
-ASSET PRODUCTION & VISUAL DIRECTION
-
-The game is a 3D space/galaxy game where players can own planets and see other players' planets. It starts as a web game using React + React Three Fiber + Three.js, with mobile app and PC versions planned later.
-
-Visual quality is very important. The game must feel like a real space game/app, NOT like a typical web dashboard or website. The space/galaxy theme should be strong, immersive and visually cohesive.
-
-The following asset pipeline is a general example, NOT a strict requirement. Choose the best approach based on the project's actual needs, visual quality, performance and future web/mobile/PC compatibility.
-
-Possible tools/approaches:
-
-- Blender → 3D models and optimization
-- GLB/glTF → web-friendly 3D assets
-- AI image generation → concept art, textures, backgrounds and visual references
-- Figma → UI/HUD design
-- Procedural generation → planet/asteroid/environment variations
-- Three.js particles → simple VFX such as stars, explosions, engine trails, etc.
-- AI or sound libraries → music and sound effects
-
-Prefer reusable assets and variations over creating hundreds of unique heavy assets. For example, a small number of high-quality planet/ship bases can be procedurally varied.
-
-Keep performance in mind, especially the existing target of smooth performance on mid-range Android devices. Use appropriate LODs, instancing, optimized meshes, compressed textures and efficient rendering where appropriate.
-
-The project should preserve high-quality source/master assets where possible so the same visual assets can later be adapted for mobile and PC.
-
-IMPORTANT:
-If a required visual/audio asset is something you cannot create at a sufficiently high quality, or creating it yourself would result in a generic, simple or amateur-looking result, DO NOT substitute it with a poor implementation. Ask me to provide or obtain the appropriate asset instead.
-
-The same applies to important sound effects, music and other audio assets: if they materially affect the game's quality and you cannot produce an appropriate result, request the asset from me.
-
-The goal is a polished, cohesive, visually impressive space game — not merely a technically functional web application.
-
----
-
-# Assets currently requested
-
-Kept here rather than in an issue tracker so a cold agent finds it while reading the
-visual rules. Each entry says what is temporary, what would replace it, and what the
-replacement must satisfy. **Nothing here blocks development** — every one has a working
-procedural stand-in today.
-
-## 1 · Planet portrait — WANTED NOW
-
-**What it is.** The player's own planet, shown on the planet screen and the entry screen.
-Currently `apps/web/src/ui/PlanetSigil.tsx`, a procedural SVG: one radial body gradient,
-two-octave `feTurbulence` surface, angular shadow, atmospheric limb. It is deterministic
-from the planet id, costs nothing to load, and is honest — but it is a good CSS planet,
-not a beautiful one, and this is the image carrying the entire ownership pillar.
-
-**What it should look like.** A single planet, lit from the upper left by one cold white
-star, seen from roughly 1.5 planet-diameters away. Roughly a third of the disc in shadow,
-with a soft terminator. Visible surface character at a glance — banding, weather, or
-continents — legible at 104 px on a phone. A thin atmospheric rim on the lit edge only.
-No rings, no moons, no ships, no lens flare, no starfield in the image.
-
-**Style.** Photographic-plausible, not stylised or cartoon. Reference: Cassini and Voyager
-plate photography, not concept art. It must sit inside a near-black `#05070D` interface
-without glowing — the interface is an instrument panel and the planet is the one warm
-object in it.
-
-**Variations needed.** Six to eight bases, splitting into two families the palette already
-assumes: **cold** (ice, blue-grey, methane) and **warm** (rust, ochre, iron oxide). Each
-base gets procedurally hue-shifted and re-lit per planet, so six well-made bases cover two
-hundred planets. Do not produce two hundred images.
-
-**Format.** `1024 × 1024` PNG with a real alpha channel — transparent outside the disc,
-no baked background, no baked glow. Disc centred, occupying ~76% of the frame (matching
-the current `r=38` in a 100-unit viewBox) so it drops in without re-layout. Delivered as
-PNG for the master; the build converts to WebP. Keep the master at 2048 if the tool
-produces it — the same asset will be needed at higher resolution for desktop later.
-
-**Where it is used.** `PlanetSigil` — the only component that changes. The planet screen
-hero at 104 px, the entry screen at 188 px, and later the Phase 5 galaxy at label scale.
-
-**How to make it.** Two good routes:
-- **Blender** — a UV sphere, one sun lamp, a procedural noise/Musgrave material into
-  displacement and colour ramp, render with a transparent film. This gives the cleanest
-  masters and re-renders for free at any resolution.
-- **AI image generation** (Midjourney / DALL·E / Stable Diffusion) then background removal.
-  Faster, less controllable, and the lighting direction must be checked on every output.
-
-**Prompt, if generating:**
-
-> A single exoplanet photographed from space, three-quarter lit by one cold white star
-> from the upper left, one third of the sphere in shadow with a soft terminator, subtle
-> banded cloud layers and continental mottling, thin blue atmospheric rim on the lit edge,
-> no rings, no moons, no spacecraft, no lens flare, pure black background, scientific
-> photography, Cassini probe plate, sharp, high detail, centred, square
-
-Generate one set with a cold blue-grey palette and one with a rust-and-ochre palette.
-
-## 2 · Phase 5 — the 3D galaxy
-
-Do **not** produce these yet. The galaxy view is fenced at three weeks and starts as
-points, lines and labels; asking for models before that fence is how the fence breaks.
-When it opens, the request will be: one low-poly planet base mesh with a 1K PBR set
-(`.glb`, Draco + KTX2), one equirectangular starfield/nebula environment (`.hdr`, 4K
-master → 2K web), and two or three additive sprite sheets for engine trails and impacts.
-
-## 3 · Audio
-
-Nothing requested. This game is played in four-minute gaps, often in public, almost always
-muted. A notification sound would be the first audio worth having, and only once web push
-exists.
-
----
-
-# Icon set brief
-
-Hand this to a designer as-is. It is written for someone who has never seen the game.
-
-## What the game is
-
-**Blindspace** — asynchronous multiplayer space strategy, played on a phone in portrait,
-in four-minute gaps. You own **one planet** in a galaxy of ~200 real people. You cannot
-see what they hold and they cannot see what you hold; buying, spending and hiding
-information *is* the game. You develop the planet, gather intel on neighbours, and send a
-fleet that **cannot be recalled** — then close the app and find out what happened later.
-
-The interface is an **instrument panel**, not a sci-fi HUD: near-black, dense, precise.
-Reference the observatory and the marine radar set, not the spaceship cockpit.
-
-## The rule that governs every icon
-
-**Icons carry shape. The interface carries colour.** In this UI, hue means category
-(alloy = warm amber, crystal = cold aqua, danger = grease-pencil red) and luminance means
-certainty. A pre-coloured icon would fight that system and break it.
-
-So: **single-colour line art, no fills, no gradients, no glow, no shadow.** The code tints
-each icon at the point of use.
-
-## Technical specification
-
-| | |
-|---|---|
-| Format | SVG, one file per icon, optimised (SVGO), plus the editable source file |
-| Canvas | `24 × 24` viewBox for UI icons · `48 × 48` for ship silhouettes |
-| Stroke | `1.5` units, round caps, round joins, `stroke="currentColor"`, `fill="none"` |
-| Alignment | Snapped to the pixel grid — these are read at 20 px on a phone |
-| Forbidden | Colour, gradients, drop shadows, neon glow, 3D renders, glossy chrome, text |
-| Naming | lowercase kebab: `alloy.svg`, `orbital-ring.svg`, `hull-wasp.svg` |
-
-Test every icon at **20 px on `#05070D`** before delivering. If it turns to mush, simplify
-it — detail that disappears is worse than detail that was never drawn.
-
-## 1 · Resources (2) — the most-used icons in the game
-
-| Icon | Shape | Encodes |
-|---|---|---|
-| `alloy` | Stacked metal ingots — chunky trapezoid bars, two or three, seen slightly from above | Common, heavy, builds everything. **Not a coin.** |
-| `crystal` | One elongated asymmetric shard with two or three facet lines | Scarce, sharp, gates the good things. **Not a cut diamond.** |
-
-## 2 · Navigation (3) — the tab bar
-
-| Icon | Shape |
-|---|---|
-| `planet` | A circle with one offset crescent arc inside it — lit from the upper left, matching the real planet art |
-| `galaxy` | A thin ellipse seen at a shallow angle with four or five dots scattered on it. The world is a **thin disc**, not a spiral |
-| `intel` | A camera-iris / aperture ring, six blades. **Not an eye** — the eye reads as surveillance-of-you; this is your own instrument |
-
-## 3 · Buildings (6) — the planet screen
-
-| Icon | Shape | Encodes |
-|---|---|---|
-| `command-core` | Nested hexagons with a horizontal bar sitting on top | It is the *level ceiling* for everything else |
-| `alloy-refinery` | Squat furnace, one chimney, a pour spout | Turns nothing into alloy, forever |
-| `crystal-extractor` | A mine headframe — an A-frame tower over a small shard | Slow, deep, scarce |
-| `vault` | Thick-walled square, heavy circular door with four bolts | Stock a raid can **never** reach. Weight and thickness, not wealth |
-| `shipyard` | An open gantry cradle with a bare hull outline held inside it | Where hulls are made; also sets probe accuracy |
-| `orbital-ring` | A small planet circle with a band around it, two nubs on the band | Satellite **slots** — the nubs are the slots |
-
-## 4 · Satellites (5) — the identity choice
-
-Five types, and a player will only ever afford about four slots. What they leave out is
-who they are. These five must be instantly distinguishable from each other at 20 px.
-
-| Icon | Shape | Encodes |
-|---|---|---|
-| `telescope` | A refractor tube on a two-leg mount, angled up to the right | Watching is **silent** — the target is never told |
-| `radar` | A dish with two or three arcs radiating from it | Catches probes; at higher levels warns of inbound fleets |
-| `aegis` | A dome arc over a short horizon line, one gap in the arc | An energy shield over a surface. **Not a medieval shield** |
-| `veil` | A circle whose right half dissolves into dashes | You become *unreadable* — it hides, it never lies |
-| `drill` | A helical bit descending toward a small angular rock | Mines passing asteroids |
-
-## 5 · Hulls (5) — silhouettes, `48 × 48`
-
-These may be **filled silhouettes** rather than strokes, because they need to read as
-*things* rather than symbols. One consistent viewing angle for all five — top-down or a
-shallow three-quarter, chosen once and never mixed. They must be distinguishable as
-shapes alone, because the counter cycle is the game's only combat skill:
-
-**Wasp ▸ Bulwark ▸ Lance ▸ Wasp**
-
-| Icon | Shape | Its job |
-|---|---|---|
-| `hull-wasp` | Small sharp dart, swept-back wings, one engine | Cheapest attack, fastest out and back. Looks like a thrown blade |
-| `hull-lance` | Long thin spine with a forward-projecting spinal gun | Highest attack. All weapon, no armour |
-| `hull-bulwark` | Broad, blunt, slab-sided, wide beam and short body, armour plating | The durability anchor. Visibly slow |
-| `hull-hauler` | Fat cargo body, two or three container blocks, tiny engines, **no weapons at all** | Carries the loot home and contributes nothing to the fight. It must look defenceless |
-| `hull-bastion` | A wide ground turret on a heavy base plate — no engines, no wings | Ground defence. **It can never leave the planet**, and the base plate is what says so |
-
-## 6 · Events (4) — notifications
-
-There are exactly four notification types in this game and there will never be a fifth.
-
-| Icon | Shape |
-|---|---|
-| `incoming-fleet` | An arrow pointing **into** a small circle. The most urgent mark in the game |
-| `fleet-returned` | An arrow curving **back to** a circle |
-| `raided` | A circle with a chunk broken out of its edge and a short downward arrow |
-| `scan-detected` | A single dot with one arc over it — a ping. Small, cold, unsettling |
-
-## 7 · Status (2)
-
-| Icon | Shape |
-|---|---|
-| `disrupted` | A small factory silhouette with a slash through it — surface works knocked offline |
-| `shielded` | The `aegis` dome arc, closed rather than gapped |
-
-## Save money where it does not matter
-
-Roughly half of these exist in good open-source libraries already
-(**Phosphor**, **Lucide**, **Tabler**) — the dish, the shield, the vault, the arrows.
-Commissioning all 27 is unnecessary.
-
-**Worth paying for, because nothing generic exists:** the five hulls, `alloy`, `crystal`,
-`veil`, `drill`, `orbital-ring`, `command-core`, `galaxy`.
-
-## A note on AI generation
-
-Do **not** generate an icon set with an image model. Consistency across a set — identical
-stroke weight, optical size, corner radius and viewing angle — is the entire job, and it is
-the one thing image models cannot hold. Use AI for **ship concept sketches** if useful,
-then have those redrawn as vectors. Draw the icons in **Figma**, **Affinity Designer** or
-**Illustrator** on a 24 px grid.
-
----
-
-# Asset inventory · 2026-08-16
-
-## What exists (37 images) and where each one is used
+## Asset inventory
 
 | Asset | Count | Used |
 |---|---|---|
-| `planets/planet_1..16` | 16 | **Everywhere a planet appears** — hero 132px, galaxy list 44px, dimmed for planets you cannot see into. Chosen by hash of the planet id, so a world never changes appearance. |
-| `resources/alloy`, `crystal` | 2 | Status bar, every price, the hero's per-hour readout, gain lines. |
-| `general/telescope_1..3` | 3 | Telescope row (tier by level), the intel screen's "no telescope" card, the target sheet's fleet-status gap. **Tier 2 is shown as the next-level preview at L2.** |
-| `general/radar_1..3` | 3 | Same pattern for Radar. |
-| `general/shield_1..3` | 3 | Same pattern for Aegis. |
-| `general/orbital_ring` | 1 | Orbital Ring row, and drawn **physically around the planet** on the hero once you own one. |
-| `general/drill` | 1 | Drill row, and as its orbital body. |
-| `sattelites/sattelite_type_1..4` | 4 | The bodies orbiting the planet hero — one per installed satellite. Type 2 doubles as the Veil. |
-| `ships/ship_1..4` | 4 | Wasp / Lance / Bulwark / Hauler, in the shipyard rows and full-bleed in the build sheet. |
-| `ships/explorer_ship` | 1 | Probe: the target sheet's "stock and defence" gap and the intel screen's empty probe report. |
+| `planets/planet_1..16` | 16 | **Everywhere a planet appears.** Chosen by hash of the planet id, so a world never changes appearance |
+| `resources/alloy`, `crystal` | 2 | Status bar, every price, the hero's per-hour readout, gain lines |
+| `general/telescope_1..3` | 3 | Telescope row (tier by level), the intel screen's empty state, the dossier's fleet-status gap |
+| `general/radar_1..3` | 3 | Same pattern for the Radar |
+| `general/shield_1..3` | 3 | Same pattern for the Aegis |
+| `general/veil_1..3` | 3 | Same pattern for the Veil |
+| `general/command_core_1..3` | 3 | Command Core row and its ladder (tier by level) |
+| `general/vault_1..3` | 3 | Same pattern for the Vault |
+| `general/shipyard_1..3` | 3 | Same pattern for the Shipyard |
+| `general/bastion_1..3`, `thorn_1..3` | 6 | The two ground guns. **Tiered by how many are STANDING, not by a level** — a gun has no level, so a battery's ladder is its count (`groundArt`) |
+| `drills/drill_1..3` | 3 | The Prospector: shipyard row, build sheet, and the craft drawn in the galaxy |
+| `sattelites/sattelite_type_1..4` | 4 | **The four satellites, one render each and untiered** — a satellite has no levels (D25). Foundry / Beacon / Derrick / Uplink, in file order |
+| `ships/ship_1..4` | 4 | Wasp / Lance / Bulwark / Hauler |
+| `ships/explorer_ship` | 1 | The probe |
+| `models/*.glb` | — | Every craft in transit, the four satellites in orbit, three rock bodies, the debris ring, the missile |
 
-## What is missing
+`general/orbital_ring` and `general/drill` are unused — the Ring was retired in D22 and the
+Drill became a craft in D25. Both files are still in the repo.
 
-### Blocking — these are drawn as flat SVG marks today
+### What is missing
+
+Every building, every instrument and both ground guns now have a render. `ui/marks.tsx` is
+down to the Core, the Vault and the lock — the first two are the unreachable floor of an art
+well, and the lock marks a STATE, which no photograph can.
 
 | Needed | Why it matters |
 |---|---|
-| **Bastion** — a ground turret on a heavy base plate, no engines | The only unit with no art, and the one the game most often tells a player to build. It must read as *unable to leave*: the base plate is the whole point. |
-| **Command Core** | The build ceiling — the most-pressed button in the game. |
-| **Vault** | Thick-walled, heavy door. Must read as *unreachable*, not as money. |
-| **Shipyard** | An open gantry with a hull held inside it. |
-| **Alloy Refinery** / **Crystal Extractor** | Currently borrowing the raw resource renders, which is a small lie: a refinery is not a lump of alloy. |
+| **Alloy Refinery** / **Crystal Extractor** | The last borrow: both wear the raw resource they produce, which reads well at row size but is a small lie about what the building is |
+| Battle-outcome imagery for `DECISIVE` / `PARTIAL` / `REPELLED` | The report is the loop's payoff and is currently all type |
+| A wordmark and an app icon | Nothing to put on a home screen |
 
-Ideally each of the five buildings ships in **three tiers**, exactly like
-`telescope_1..3`. That is what makes the planet visibly upgrade and what feeds the
-next-level preview.
+A new installation ships in **three tiers**, exactly like `telescope_1..3` — that is what makes
+a planet visibly upgrade and what feeds the next-level preview. A new HULL ships as one
+render, because a hull is bought rather than raised. The exception is a GROUND gun, which is
+bought repeatedly and never raised: three renders, chosen by how many are standing.
 
-### High value
+**Effects**, as sprite sheets or transparent PNG sequences at 512px, additive-friendly (bright
+on black, no baked background): engine trail, launch flare, impact, shield hit ripple, scan
+ping. Fire and explosion effects are currently baked procedurally in `vfx.ts`.
 
-- **Veil** — its own satellite body. It currently shares `sattelite_type_2`.
-- **Battle outcomes** — `DECISIVE`, `PARTIAL`, `REPELLED`. The return moment is the
-  most important screen in the game and has no imagery at all.
-- **Asteroid** — generated in the world already; nothing draws one.
-- **Background plate** — a starfield/nebula. The app background is CSS gradients;
-  one good plate lifts every screen at once.
-- **Wordmark / app icon** — for the entry screen and the eventual installable app.
+### 3D — the 2D renders cannot be reused
 
-### Effects (sprite sheets or transparent PNG sequences)
-
-Engine trail, launch flare, impact/explosion, shield hit ripple, scan ping. These
-are what make an arrival *feel* like something. 512px frames, additive-friendly
-(bright on black, no baked background).
-
-## 3D — nothing exists yet, and the 2D renders cannot be reused
-
-**Important:** the sixteen planet PNGs are *renders*, not textures. They cannot be
-wrapped onto a sphere. Phase 5's R3F galaxy needs a different kind of asset:
+The sixteen planet PNGs are **renders, not textures**. They cannot be wrapped onto a sphere.
 
 | Needed for 3D | Format |
 |---|---|
-| Planet surface maps | **Equirectangular** colour maps, 2:1 ratio, 2048×1024 (4096×2048 master). Six to eight, matching the 2D families. Optional roughness/normal maps. |
-| Starfield / nebula environment | Equirectangular `.hdr` or `.exr`, 4K master → 2K web. |
-| Ship meshes | `.glb`, Draco-compressed, KTX2 textures, ≤3k triangles each, one LOD below. The four existing ship renders work as the modelling reference. |
-| Ring station mesh | `.glb`, same budget. |
+| Planet surface maps | Equirectangular colour maps, 2:1, 2048×1024 (4096×2048 master). Optional roughness/normal |
+| Starfield / nebula environment | Equirectangular `.hdr` or `.exr`, 4K master → 2K web |
+| Ship meshes | `.glb`, Draco-compressed, KTX2 textures, ≤3k triangles, one LOD below |
 
-Blender is the right tool for all of these, and the same `.blend` masters can
-re-render the 2D art if it ever needs to change.
+Blender is the right tool for all of these, and the same masters can re-render the 2D art.
+
+### Which way a ship faces — a rule that has already cost a bug
+
+**Author every craft with its nose down +Z, level, centred on its own origin.** That is the
+axis `Object3D.lookAt` aims, so a model built this way needs no correction anywhere.
+
+The existing hulls do not obey it — four were authored nose-down −X, one nose-down +Z — so
+each one's facing is DECLARED in `MODEL_FACING` (`apps/web/src/ui/assets.ts`) and
+`orientedCraft` turns it onto +Z. **A new hull with no entry there will fly backwards or
+sideways.**
+
+The client used to infer facing from the bounding box, which is wrong twice over: a box cannot
+tell a fuselage from a wingspan (the Explorer is 0.62 long and 1.00 across the wings, so it
+flew sideways down every route), and it cannot tell a nose from a tail. **Facing is information
+only the person who made the model has. It has to be written down, not guessed.**
+
+Two more traps at the same site: `orientedCraft` turns a model *before* it measures it, because
+a box round a body lying diagonally is a box round the diagonal; and a thin shell needs
+`THREE.DoubleSide` or it draws nothing for half of every rotation, which reads as a corrupt
+model rather than a material setting.
 
 ## Audio — nothing exists
 
-Lowest priority, and honest about why: this game is played in four-minute gaps,
-often in public, almost always muted. The first sounds worth having are a fleet
-arrival and an incoming-fleet warning, and only once notifications exist.
+Lowest priority, and honest about why: this game is played in four-minute gaps, often in
+public, almost always muted. The first sounds worth having are a fleet arrival and an
+incoming-fleet warning, and only once notifications exist.

@@ -1,8 +1,8 @@
 import { eq } from 'drizzle-orm';
-import { pickSpawnSlot } from '@blindspace/rules';
+import { START, pickSpawnSlot } from '@blindspace/rules';
 import type { Db } from '../db/client.js';
 import type { Clock } from '../clock.js';
-import { accounts, buildings, planets, players, seasons, shards, units } from '../db/schema.js';
+import { accounts, buildings, planets, players, seasons, shards } from '../db/schema.js';
 import { galaxyOf, occupiedSlots } from './season.js';
 import { GameError, recomputeWealth } from './planet.js';
 
@@ -12,11 +12,7 @@ const STARTING_BUILDINGS = [
   { type: 'EXTRACTOR', level: 1 },
   { type: 'VAULT', level: 0 },
   { type: 'SHIPYARD', level: 0 },
-  { type: 'RING', level: 0 },
 ];
-
-/** Session one contains three concepts: planet, fleet, attack. Twelve Wasps is the fleet. */
-const STARTING_FLEET = { WASP: 12 } as const;
 
 const NAMES = [
   'Kestrel', 'Vantage', 'Halcyon', 'Tessellate', 'Orrery', 'Bellwether',
@@ -27,103 +23,205 @@ export interface JoinResult {
   playerId: string;
   planetId: string;
   slotIndex: number;
+  seasonId: string;
 }
 
 /**
- * Place a new player.
+ * Two joins raced for the same slot. Thrown to roll the transaction back, caught
+ * by the retry loop, and never seen outside this file — which is exactly why it is
+ * a class of its own rather than a bare `Error`: a `catch` that retries on
+ * *anything* also retries on a bug, and hides it.
+ */
+class SlotTaken extends Error {}
+
+/**
+ * This account acquired a player row while we were building one.
  *
- * Two players joining simultaneously can pick the same free slot; the unique
- * index on (season_id, slot_index) rejects the loser, who simply retries against
- * the now-smaller set of free slots.
+ * Distinct from `SlotTaken` because the answer is the opposite: a lost slot is
+ * retried, a lost account race must never be — retrying would lose it again, for
+ * the same reason, forever. The winner is read back outside the transaction and
+ * decides between "here is your planet" and ALREADY_PLACED.
+ */
+class PlayerExists extends Error {}
+
+/** How many times a join will re-pick a slot before giving up. */
+const MAX_ATTEMPTS = 6;
+
+/**
+ * Where this account already stands, if anywhere.
+ *
+ * The join to `planets` is an inner one on purpose: a player row without a planet
+ * is a half-finished join, and treating it as a placement would hand the caller a
+ * planet id that does not exist. There is no path that creates one — both rows are
+ * written in the same transaction — and this is what keeps that true if one ever
+ * appears.
+ */
+async function readPlacement(db: Db, accountId: string): Promise<JoinResult | null> {
+  const [found] = await db
+    .select({ player: players, planet: planets })
+    .from(players)
+    .innerJoin(planets, eq(planets.playerId, players.id))
+    .where(eq(players.accountId, accountId))
+    .limit(1);
+
+  if (!found) return null;
+  return {
+    playerId: found.player.id,
+    planetId: found.planet.id,
+    slotIndex: found.planet.slotIndex,
+    seasonId: found.player.seasonId,
+  };
+}
+
+/**
+ * Turn an existing placement into either an idempotent success or a refusal.
+ *
+ * SAME GALAXY IS A SUCCESS. A retried request, a reinstall, or a double-tapped
+ * button on a slow phone connection must land on the same planet rather than
+ * acquiring a second one or being told off for something it did itself. A
+ * DIFFERENT galaxy is the one-planet rule, and the caller has to be told rather
+ * than silently redirected — being moved to a galaxy you did not choose is worse
+ * than being refused the one you did.
+ */
+function settle(placement: JoinResult, seasonId: string): JoinResult {
+  if (placement.seasonId !== seasonId) {
+    throw new GameError('ALREADY_PLACED', 'You already command a planet in another galaxy', 409);
+  }
+  return placement;
+}
+
+/**
+ * Place a player on a galaxy.
+ *
+ * THREE RACES, ALL SETTLED BY THE DATABASE RATHER THAN BY A PRIOR CHECK:
+ *
+ *   · Two accounts pick the same free slot. `planets_season_slot_idx` rejects the
+ *     loser, who re-picks against the now-smaller free set.
+ *   · One account joins two galaxies at once from two tabs. `players_account_idx`
+ *     rejects the second — this is the one-planet rule, and it is a real race, not
+ *     a theoretical one, because a double-tap on a slow connection sends two
+ *     requests before either reply lands.
+ *   · The fiftieth and fifty-first players join together. Both pass the capacity
+ *     read; the slot index then rejects one of them, and the retry finds no free
+ *     slot and reports SHARD_FULL.
+ *
+ * Every one of those is expressed as `onConflictDoNothing` returning no row, so
+ * the failure is a value to test and not an exception to classify. Nothing in this
+ * file inspects a driver error code.
  */
 export async function joinSeason(
   db: Db,
   accountId: string,
   seasonId: string,
   clock: Clock,
-  attempt = 0,
 ): Promise<JoinResult> {
-  const existing = await db
-    .select({ player: players, planet: planets })
-    .from(players)
-    .innerJoin(planets, eq(planets.playerId, players.id))
-    .where(eq(players.accountId, accountId))
-    .limit(1);
-  const found = existing.find((r) => r.player.seasonId === seasonId);
-  if (found) {
-    return {
-      playerId: found.player.id,
-      planetId: found.planet.id,
-      slotIndex: found.planet.slotIndex,
-    };
-  }
+  const existing = await readPlacement(db, accountId);
+  if (existing) return settle(existing, seasonId);
 
   const [season] = await db.select().from(seasons).where(eq(seasons.id, seasonId));
   if (!season) throw new GameError('SEASON_NOT_FOUND', 'No such season', 404);
   const [shard] = await db.select().from(shards).where(eq(shards.id, season.shardId));
+  if (!shard) throw new GameError('SEASON_NOT_FOUND', 'No such season', 404);
 
-  const spec = galaxyOf(seasonId, season.seed, shard!.playerCap);
-  const taken = await occupiedSlots(db, seasonId);
-  if (taken.size >= shard!.playerCap) {
-    throw new GameError('SHARD_FULL', 'This galaxy is full', 409);
-  }
-
-  const slot = pickSpawnSlot(spec.slots, taken);
-  if (!slot) throw new GameError('SHARD_FULL', 'This galaxy is full', 409);
-
+  const spec = galaxyOf(seasonId, season.seed, shard.playerCap);
   const [account] = await db.select().from(accounts).where(eq(accounts.id, accountId));
   const now = clock.now();
 
-  try {
-    return await db.transaction(async (tx) => {
-      const [player] = await tx
-        .insert(players)
-        .values({
-          accountId,
-          seasonId,
-          name: account?.displayName ?? 'Commander',
-          joinedAt: now,
-          lastSeenAt: now,
-        })
-        .returning();
+  for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
+    const taken = await occupiedSlots(db, seasonId);
+    if (taken.size >= shard.playerCap) {
+      throw new GameError('SHARD_FULL', 'This galaxy is full', 409);
+    }
 
-      const planetName = `${NAMES[slot.index % NAMES.length]}-${slot.index}`;
-      const [planet] = await tx
-        .insert(planets)
-        .values({
-          playerId: player!.id,
-          seasonId,
-          name: planetName,
+    const slot = pickSpawnSlot(spec.slots, taken);
+    if (!slot) throw new GameError('SHARD_FULL', 'This galaxy is full', 409);
+
+    try {
+      return await db.transaction(async (tx) => {
+        const [player] = await tx
+          .insert(players)
+          .values({
+            accountId,
+            seasonId,
+            name: account?.displayName ?? 'Commander',
+            joinedAt: now,
+            lastSeenAt: now,
+            lastActiveAt: now,
+          })
+          .onConflictDoNothing({ target: players.accountId })
+          .returning();
+
+        if (!player) throw new PlayerExists();
+
+        const planetName = `${NAMES[slot.index % NAMES.length]}-${slot.index}`;
+        const [planet] = await tx
+          .insert(planets)
+          .values({
+            playerId: player.id,
+            seasonId,
+            name: planetName,
+            slotIndex: slot.index,
+            x: slot.x, y: slot.y, z: slot.z,
+            /**
+             * The opening grant, from the rules package rather than the column
+             * default. D22 makes the figure derived arithmetic — exactly the cost
+             * of the first four things a commander does — so it has to come from
+             * the one place that can be tested against those prices.
+             */
+            alloy: START.alloy,
+            crystal: START.crystal,
+            lastTickAt: now,
+          })
+          .onConflictDoNothing({ target: [planets.seasonId, planets.slotIndex] })
+          .returning();
+
+        if (!planet) throw new SlotTaken();
+
+        await tx
+          .insert(buildings)
+          .values(STARTING_BUILDINGS.map((b) => ({ planetId: planet.id, ...b })));
+
+        /**
+         * NO STARTING FLEET. D22.
+         *
+         * A commander used to be handed twelve Wasps, which answered the only
+         * question the opening asks — what do you spend on — before they had a
+         * chance to. They are given the alloy for two instead, and whether that
+         * alloy becomes ships, production or an instrument is the first real
+         * decision in the game.
+         *
+         * No `units` rows are written at all: a fleet of zero is the absence of
+         * rows, and `loadLocked` already reads a missing row as none.
+         */
+
+        // Without this a fresh commander's Wealth stays at the column default of
+        // zero, and the rank floor then protects them from every attacker forever.
+        await recomputeWealth(tx, planet.id);
+
+        return {
+          playerId: player.id,
+          planetId: planet.id,
           slotIndex: slot.index,
-          x: slot.x, y: slot.y, z: slot.z,
-          lastTickAt: now,
-        })
-        .returning();
-
-      await tx
-        .insert(buildings)
-        .values(STARTING_BUILDINGS.map((b) => ({ planetId: planet!.id, ...b })));
-
-      await tx.insert(units).values(
-        Object.entries(STARTING_FLEET).map(([hull, count]) => ({
-          planetId: planet!.id,
-          hull: hull as 'WASP',
-          location: 'home',
-          count,
-        })),
-      );
-
-      // Without this a fresh commander's Wealth stays at the column default of
-      // zero, and the rank floor then protects them from every attacker forever.
-      await recomputeWealth(tx, planet!.id);
-
-      return { playerId: player!.id, planetId: planet!.id, slotIndex: slot.index };
-    });
-  } catch (err) {
-    // Lost the race for this slot. Retry against the smaller free set.
-    if (attempt < 5) return joinSeason(db, accountId, seasonId, clock, attempt + 1);
-    throw err;
+          seasonId,
+        };
+      });
+    } catch (err) {
+      if (err instanceof SlotTaken) continue;
+      if (err instanceof PlayerExists) {
+        // The other request has committed by the time ON CONFLICT DO NOTHING
+        // returns nothing, so the winner is readable now. Whether this is a
+        // success or a refusal depends on which galaxy it landed in.
+        const winner = await readPlacement(db, accountId);
+        if (winner) return settle(winner, seasonId);
+        // The winner rolled back after taking the row. Nothing is placed, so the
+        // honest thing is to try again rather than to report a planet nobody has.
+        continue;
+      }
+      throw err;
+    }
   }
+
+  throw new GameError('SHARD_FULL', 'This galaxy is full', 409);
 }
 
 export async function touchLastSeen(db: Db, playerId: string, clock: Clock): Promise<void> {

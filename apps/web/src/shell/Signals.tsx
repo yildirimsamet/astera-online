@@ -1,14 +1,14 @@
-import { useState } from 'react';
-import { useApi } from '../api/context.js';
-import { useNotifications, usePlanet } from '../api/queries.js';
+import { useMemo, useState } from 'react';
+import { useMarkSeen, useNotifications, usePlanet } from '../api/queries.js';
 import type { NotificationView, PlanetView } from '../api/schemas.js';
 import { compact } from '../lib/format.js';
 import { haptic } from '../lib/haptics.js';
-import { describeNotification } from '../lib/notifications.js';
-import { useProjectedResources } from '../lib/projection.js';
+import { describeNotification, isAlarming } from '../lib/notifications.js';
+import { useProjected, type Projected } from '../lib/projection.js';
 import { duration, staleness, useNow } from '../lib/time.js';
 import { Sheet } from '../ui/Sheet.js';
-import type { Tab } from './TabBar.js';
+import type { Panel } from '../screens/GalaxyView.jsx';
+import { serverNow } from '../lib/clock.js';
 
 /**
  * SIGNALS — everything the galaxy said while you were not reading.
@@ -34,20 +34,45 @@ export interface Status {
   tone: 'threat' | 'alloy' | 'crystal';
   line: string;
   detail: string;
-  go?: Tab;
+  go?: Panel;
 }
 
-export function Signals({ onNavigate }: { onNavigate: (tab: Tab) => void }) {
+export function Signals({ onOpen }: { onOpen: (panel: Panel) => void }) {
   const [open, setOpen] = useState(false);
+  /**
+   * WHAT WAS NEW WHEN YOU OPENED IT.
+   *
+   * Marking read is optimistic — the player HAS read them, and a badge that waits
+   * for a round trip to clear is a badge that looks stuck. But the rows are drawn
+   * from the same data, so the optimism greyed out every line in the same frame
+   * the sheet appeared, and the one question the surface exists to answer — WHICH
+   * of these is new — was unanswerable by the time it could be asked.
+   *
+   * The count comes from the live data and clears at once. The highlighting comes
+   * from this snapshot and holds until the sheet is closed.
+   */
+  const [justRead, setJustRead] = useState<ReadonlySet<string>>(new Set());
   const { data } = useNotifications();
   const planet = usePlanet();
-  const api = useApi();
+  const markSeen = useMarkSeen();
   const now = useNow(30_000);
   // Stock is projected forward between fetches, so "almost full" is judged
   // against what the player is actually holding rather than what we last read.
-  const held = useProjectedResources(planet.data?.planet, planet.dataUpdatedAt, 5000);
+  const held = useProjected(planet.data?.planet, planet.dataUpdatedAt, 5000);
 
-  const events = data?.notifications ?? [];
+  /**
+   * Only what this build can actually put into words.
+   *
+   * A kind from a newer server renders nothing, so counting it would light a
+   * badge that reading cannot clear — and a badge that cannot be cleared is how
+   * players learn to ignore badges. It is still marked seen when the sheet opens,
+   * for the same reason.
+   */
+  const events = useMemo(
+    () => (data?.notifications ?? []).filter((n) => describeNotification(n, now) !== null),
+    [data, now],
+  );
+  const groups = useMemo(() => group(events), [events]);
   const unseen = events.filter((n) => !n.seen).length;
   const status = planet.data ? statusOf(planet.data, held) : [];
 
@@ -61,20 +86,47 @@ export function Signals({ onNavigate }: { onNavigate: (tab: Tab) => void }) {
           setOpen(true);
           // Opening is what marks them read. Loading the app is not: a player who
           // starts the game and immediately closes it has not been told anything.
-          const fresh = events.filter((n) => !n.seen).map((n) => n.id);
-          if (fresh.length > 0) void api.markSeen(fresh);
+          //
+          // Every unseen id in the payload, not only the ones this build can
+          // describe — a row nobody can be shown must not hold the badge open.
+          const fresh = (data?.notifications ?? []).filter((n) => !n.seen).map((n) => n.id);
+          setJustRead(new Set(fresh));
+          if (fresh.length > 0) markSeen.mutate(fresh);
         }}
+        /**
+         * UNREAD IS LOUD. Owner decision.
+         *
+         * The beacon used to differ from its resting state by a faintly tinted
+         * glyph, which on a phone in daylight is no difference at all — the one
+         * control whose whole job is to say "something happened while you were
+         * away" was the quietest thing in the header.
+         *
+         * Unread now takes the threat colour and pulses. Status alone (a full
+         * works, a disrupted planet) stays warm and still: it is true rather than
+         * new, and a badge that can never be cleared teaches people to ignore
+         * badges.
+         */
         className={`relative flex size-9 items-center justify-center rounded-sm border transition-colors ${
-          status.length > 0
-            ? 'border-alloy/50 bg-alloy/10'
-            : 'border-line-soft bg-deep hover:border-line'
+          unseen > 0
+            ? 'border-threat/70 bg-threat/15 motion-safe:animate-pulse'
+            : status.length > 0
+              ? 'border-alloy/50 bg-alloy/10'
+              : 'border-line-soft bg-deep hover:border-line'
         }`}
       >
         <Beacon lit={unseen > 0} />
         {unseen > 0 && (
-          <span className="num absolute -right-1 -top-1 min-w-[16px] rounded-full bg-threat px-1 text-center text-[10px] leading-4 text-bone">
-            {unseen > 9 ? '9+' : unseen}
-          </span>
+          <>
+            {/* A halo outside the button, so the pulse is visible against the
+                header's own gradient rather than only inside the border. */}
+            <span
+              aria-hidden
+              className="pointer-events-none absolute -inset-1 rounded-sm bg-threat/20 blur-[6px] motion-safe:animate-pulse"
+            />
+            <span className="num absolute -right-1 -top-1 min-w-[16px] rounded-full bg-threat px-1 text-center text-[10px] leading-4 text-bone shadow-[0_0_8px_rgba(224,138,124,0.9)]">
+              {unseen > 9 ? '9+' : unseen}
+            </span>
+          </>
         )}
       </button>
 
@@ -84,6 +136,7 @@ export function Signals({ onNavigate }: { onNavigate: (tab: Tab) => void }) {
           title="Signals"
           onClose={() => {
             setOpen(false);
+            setJustRead(new Set());
           }}
         >
           {status.length > 0 && (
@@ -97,7 +150,7 @@ export function Signals({ onNavigate }: { onNavigate: (tab: Tab) => void }) {
                     disabled={!item.go}
                     onClick={() => {
                       if (!item.go) return;
-                      onNavigate(item.go);
+                      onOpen(item.go);
                       setOpen(false);
                     }}
                     className="flex w-full items-start gap-3 border-b border-line-soft p-3 text-left last:border-b-0"
@@ -134,13 +187,15 @@ export function Signals({ onNavigate }: { onNavigate: (tab: Tab) => void }) {
             </p>
           ) : (
             <div className="frame">
-              {events.map((event) => (
+              {groups.map((entry) => (
                 <Event
-                  key={event.id}
-                  event={event}
+                  key={entry.event.id}
+                  event={entry.event}
+                  repeats={entry.repeats}
+                  unread={!entry.event.seen || justRead.has(entry.event.id)}
                   now={now}
-                  onGo={(tab) => {
-                    onNavigate(tab);
+                  onGo={(panel) => {
+                    onOpen(panel);
                     setOpen(false);
                   }}
                 />
@@ -154,25 +209,71 @@ export function Signals({ onNavigate }: { onNavigate: (tab: Tab) => void }) {
 }
 
 /** Where each kind of news is actually dealt with. */
-const DESTINATION: Record<string, Tab> = {
+const DESTINATION: Record<string, Panel> = {
+  // Something is coming: spend the stock, build a gun, get the fleet out.
   incoming_fleet: 'planet',
   fleet_returned: 'planet',
+  // Everything that is a READING goes where readings live — the battle report
+  // behind a raid, the radar log behind a scan, the report behind a probe.
   raided: 'intel',
+  raid_result: 'intel',
   scan_detected: 'intel',
+  probe_report: 'intel',
+  unlock: 'intel',
 };
+
+/**
+ * IDENTICAL NEWS, COLLAPSED. D45.
+ *
+ * The overlay this list replaced said "3 scans detected" on one line. Signals said
+ * it three times, in the same words, and a run of eleven — which is what a night
+ * under a determined neighbour's probes looks like — pushed everything else off
+ * the screen. `game-design.md` calls that a wall of logs and forbids it.
+ *
+ * Only adjacent runs of the same kind fold, and only for kinds whose sentence
+ * carries no figures of its own. Anything with a number in it says something
+ * different every time and must stay on its own line.
+ */
+const FOLDABLE = new Set(['scan_detected']);
+
+interface Group {
+  event: NotificationView;
+  repeats: number;
+}
+
+export function group(events: readonly NotificationView[]): Group[] {
+  const out: Group[] = [];
+  for (const event of events) {
+    const last = out[out.length - 1];
+    if (last && FOLDABLE.has(event.kind) && last.event.kind === event.kind) {
+      last.repeats += 1;
+      // The newest of a run keeps the row, and its unseen state is the run's:
+      // one unread scan in a fold of five must not read as already handled.
+      if (!event.seen) last.event = { ...last.event, seen: false };
+      continue;
+    }
+    out.push({ event, repeats: 1 });
+  }
+  return out;
+}
 
 function Event({
   event,
+  repeats,
+  unread,
   now,
   onGo,
 }: {
   event: NotificationView;
+  repeats: number;
+  /** New in THIS reading — see `justRead`. Not simply `!event.seen`. */
+  unread: boolean;
   now: number;
-  onGo: (tab: Tab) => void;
+  onGo: (panel: Panel) => void;
 }) {
-  const line = describeNotification(event);
+  const line = describeNotification(event, now);
   if (!line) return null;
-  const bad = event.kind === 'incoming_fleet' || event.kind === 'raided';
+  const bad = isAlarming(event);
   const destination = DESTINATION[event.kind];
 
   return (
@@ -183,16 +284,19 @@ function Event({
         if (destination) onGo(destination);
       }}
       className={`flex w-full items-start gap-3 border-b border-line-soft p-3 text-left last:border-b-0 ${
-        event.seen ? '' : 'bg-crystal/[0.04]'
+        unread ? 'bg-crystal/[0.04]' : ''
       }`}
     >
       <span
         className={`mt-1 size-2 shrink-0 rounded-full ${
-          event.seen ? 'bg-line' : bad ? 'bg-threat' : 'bg-crystal'
+          !unread ? 'bg-line' : bad ? 'bg-threat' : 'bg-crystal'
         }`}
       />
       <span className="min-w-0 flex-1">
-        <span className={`block text-[13px] ${bad ? 'text-[#ff9d8f]' : 'text-bone'}`}>{line}</span>
+        <span className={`block text-[13px] ${bad ? 'text-[#ff9d8f]' : 'text-bone'}`}>
+          {line}
+          {repeats > 1 && <span className="num text-faint"> ×{repeats}</span>}
+        </span>
         <span className="num mt-0.5 block text-[11px] text-faint">
           {staleness((now - event.at.getTime()) / 60_000)}
         </span>
@@ -204,39 +308,59 @@ function Event({
 /**
  * The states that are true right now.
  *
- * A full store is the one the player asked for and the one the design already
- * paid for: production stops at twelve hours (ECON.capHours), so an overnight
- * absence costs real output. Stated as hours thrown away rather than as "storage
- * full", because a percentage is a fact and a loss is a reason to act.
+ * REWRITTEN FOR D16. The old version warned about a full STORE, which was the
+ * right warning when production flowed straight into it. It no longer does:
+ * production fills the works and stops there, so a full store is now a mild
+ * inconvenience — the next collection will not fit — while full WORKS are the real
+ * loss, because that is where production actually halts.
+ *
+ * Both are stated as what they cost per hour rather than as a percentage. A
+ * percentage is a fact; a loss is a reason to act.
  */
-export function statusOf(planet: PlanetView, held: { alloy: number; crystal: number }): Status[] {
+export function statusOf(planet: PlanetView, held: Projected): Status[] {
   const out: Status[] = [];
+  const p = planet.planet;
 
-  if (planet.planet.disruptedUntil && planet.planet.disruptedUntil.getTime() > Date.now()) {
+  if (p.disruptedUntil && p.disruptedUntil.getTime() > serverNow()) {
     out.push({
       tone: 'threat',
       line: 'Your works are offline',
       detail: `Raided. Production resumes in ${duration(
-        (planet.planet.disruptedUntil.getTime() - Date.now()) / 60_000,
+        (p.disruptedUntil.getTime() - serverNow()) / 60_000,
       )}.`,
     });
   }
 
+  /**
+   * JUDGED AGAINST THE PROJECTION, LIKE EVERY OTHER PILE ON THIS SURFACE. D52a.
+   *
+   * `held` has carried projected buffer figures since D16 and this read `p.bufferAlloy`
+   * — the last fetch — so the two halves of the same widget disagreed: the header's
+   * Works meter (which uses the projection) hit 100% while Signals, the one surface
+   * whose job is to SAY the works have stopped, stayed silent until the next poll.
+   * Up to thirty seconds of production thrown away with the interface insisting
+   * nothing was wrong.
+   */
+  const worksFull =
+    held.bufferAlloy >= p.bufferAlloyCap - 0.5 || held.bufferCrystal >= p.bufferCrystalCap - 0.5;
+  if (worksFull) {
+    out.push({
+      tone: 'alloy',
+      line: 'The works have stopped',
+      detail: `Full and idle. ${compact(p.alloyPerHour + p.crystalPerHour)} an hour is being thrown away — collect it.`,
+      go: 'planet',
+    });
+  }
+
+  // A full store only matters because it blocks the next collection. Said that
+  // way round, because "storage full" on its own is not something a player can act
+  // on now that nothing flows into it.
   for (const store of stores(planet, held)) {
-    if (store.value >= store.cap - 0.5) {
+    if (store.value >= store.cap - 0.5 && store.waiting > 0) {
       out.push({
         tone: store.tone,
         line: `${store.name} store is full`,
-        detail: `${compact(store.rate)} an hour is being thrown away. Spend it.`,
-        go: 'planet',
-      });
-    } else if (store.value > store.cap * 0.85 && store.rate > 0) {
-      out.push({
-        tone: store.tone,
-        line: `${store.name} store almost full`,
-        detail: `${compact(store.cap - store.value)} of room — ${duration(
-          ((store.cap - store.value) / store.rate) * 60,
-        )} before it starts wasting.`,
+        detail: `${compact(store.waiting)} is waiting in the works with nowhere to go. Spend something.`,
         go: 'planet',
       });
     }
@@ -245,21 +369,24 @@ export function statusOf(planet: PlanetView, held: { alloy: number; crystal: num
   return out;
 }
 
-function stores(planet: PlanetView, held: { alloy: number; crystal: number }) {
+function stores(planet: PlanetView, held: Projected) {
   return [
     {
       name: 'Alloy',
       tone: 'alloy' as const,
       value: held.alloy,
       cap: planet.planet.alloyCap,
-      rate: planet.planet.alloyPerHour,
+      // Projected too: "the store is full AND something is waiting" is one
+      // sentence, and reading its two halves off two different instants is what
+      // let it be true and unsaid at the same time.
+      waiting: held.bufferAlloy,
     },
     {
       name: 'Crystal',
       tone: 'crystal' as const,
       value: held.crystal,
       cap: planet.planet.crystalCap,
-      rate: planet.planet.crystalPerHour,
+      waiting: held.bufferCrystal,
     },
   ];
 }
@@ -269,7 +396,7 @@ function Beacon({ lit }: { lit: boolean }) {
   return (
     <svg
       viewBox="0 0 24 24"
-      className={`size-5 ${lit ? 'text-crystal' : 'text-faint'}`}
+      className={`size-5 ${lit ? 'text-[#ffb9ae]' : 'text-faint'}`}
       fill="none"
       stroke="currentColor"
       strokeWidth="1.5"

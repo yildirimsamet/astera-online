@@ -1,4 +1,4 @@
-import { investedInBuilding, satelliteEntries } from './economy.js';
+import { instrumentEntries, investedInBuilding, investedInInstrument, investedInSatellite } from './economy.js';
 import { fleetValue } from './hulls.js';
 import type { Holdings, Ledger } from './types.js';
 import type { CombatResult } from './combat.js';
@@ -14,7 +14,11 @@ import type { CombatResult } from './combat.js';
 export function wealth(h: Holdings): number {
   let v = 0;
   for (const level of Object.values(h.buildings)) v += investedInBuilding(level);
-  for (const [, level] of satelliteEntries(h.satellites)) v += investedInBuilding(level);
+  // Priced with the instrument's own multiplier (D22) — a Telescope is three
+  // times a building at the same level and must be valued at what it cost.
+  for (const [id, level] of instrumentEntries(h.instruments)) v += investedInInstrument(id, level);
+  // A satellite is one purchase at one price (D25).
+  for (const id of h.satellites) v += investedInSatellite(id);
   v += fleetValue(h.fleet);
   v += fleetValue(h.ground);
   v += h.alloy + h.crystal;

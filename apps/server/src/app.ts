@@ -16,17 +16,21 @@ import { registerAuthRoutes } from './routes/auth.js';
 import { registerPlanetRoutes } from './routes/planet.js';
 import { registerIntelRoutes } from './routes/intel.js';
 import { registerGalaxyRoutes } from './routes/galaxy.js';
+import { registerMiningRoutes } from './routes/mining.js';
 import { registerHealthRoutes } from './routes/health.js';
 import { EventWorker } from './worker/loop.js';
 import { EventBus } from './stream/bus.js';
 import { registerSessionRoutes } from './routes/session.js';
 import { registerSeasonRoutes } from './routes/season.js';
+import { registerServerRoutes } from './routes/servers.js';
+import { Presence } from './services/presence.js';
 
 declare module 'fastify' {
   interface FastifyInstance {
     db: Db;
     clock: Clock;
     tokens: TokenService;
+    presence: Presence;
     worker: EventWorker;
     bus: EventBus;
   }
@@ -45,6 +49,8 @@ export interface BuildAppOptions {
 
 export interface BuiltApp {
   app: FastifyInstance;
+  /** The pool the app is using, so the boot path can check the schema against it. */
+  db: Db;
   worker: EventWorker;
   bus: EventBus;
   close: () => Promise<void>;
@@ -83,11 +89,37 @@ export function buildApp(opts: BuildAppOptions): BuiltApp {
   app.decorate('db', db);
   app.decorate('clock', clock);
   app.decorate('tokens', tokens);
+  app.decorate('presence', new Presence(db, clock, opts.env.PRESENCE_THROTTLE_MS));
   app.decorate('worker', worker);
   const bus = new EventBus(opts.env.DATABASE_URL, log);
   app.decorate('bus', bus);
 
   void app.register(cookie);
+
+  /**
+   * THE SERVER'S CLOCK, ON EVERY ANSWER, TO THE MILLISECOND. D52.
+   *
+   * The whole disc is drawn by comparing server timestamps against "now", and the
+   * client's "now" is a phone — which can be minutes out and is never asked. Under
+   * that, two people sitting next to each other watch the same fleet at different
+   * points of its leg, and both countdowns are wrong.
+   *
+   * HTTP already carries `Date`, and the client falls back to it, but `Date` has
+   * ONE-SECOND resolution: on a ten-second engagement window that is a tenth of the
+   * only cinematic in the game. A millisecond stamp costs one header.
+   *
+   * It reads `app.clock`, not `Date.now()` — the injected clock is the single source
+   * of time on this server (A13), and a test that fixes it must see the API agree
+   * with the world it is fixing.
+   *
+   * SAME-ORIGIN ONLY, deliberately: the web client is served from this host and in
+   * dev goes through the Vite proxy, so no CORS exposure is needed. Serving the
+   * client from another origin would require `Access-Control-Expose-Headers`.
+   */
+  app.addHook('onSend', (_req, reply, payload, done) => {
+    reply.header('x-server-time', String(clock.now().getTime()));
+    done(null, payload);
+  });
 
   /**
    * One error shape for the whole API. A GameError carries a stable machine code
@@ -122,14 +154,18 @@ export function buildApp(opts: BuildAppOptions): BuiltApp {
   // decorators above, and encapsulating them would hide `app.db` from them.
   registerHealthRoutes(app);
   registerAuthRoutes(app);
-  registerSeasonRoutes(app, opts.env.SHARD_CODE);
+  registerServerRoutes(app);
+  registerSeasonRoutes(app);
   registerPlanetRoutes(app);
   registerIntelRoutes(app);
   registerGalaxyRoutes(app);
+  registerMiningRoutes(app);
   registerSessionRoutes(app);
 
   return {
     app,
+    /** The pool the app is using, so the boot path can check the schema against it. */
+    db,
     worker,
     bus,
     close: async () => {

@@ -1,12 +1,31 @@
 import { and, eq } from 'drizzle-orm';
 import { pino } from 'pino';
 import { afterAll, beforeEach, describe, expect, it } from 'vitest';
-import { ABUSE, HULLS, fleetTravelMinutes, distance } from '@blindspace/rules';
-import { missions, planets, players, scheduledEvents, units } from '../src/db/schema.js';
+import {
+  ABUSE,
+  COMBAT,
+  HULLS,
+  distance,
+  engagementEndsAt,
+  fleetTravelMinutes,
+} from '@blindspace/rules';
+import { missions, notifications, planets, scheduledEvents, units } from '../src/db/schema.js';
 import { launchAttack } from '../src/services/mission.js';
-import { installSatellite } from '../src/services/build.js';
+import { launchProbe } from '../src/services/intel.js';
+import { raiseInstrument } from '../src/services/build.js';
 import { EventWorker } from '../src/worker/loop.js';
-import { giveUnits, grant, seedWorld, setLevel, testDb, type Fixture } from './helpers.js';
+import {
+  giveSatellite,
+  giveUnits,
+  grant,
+  levelWorld,
+  placeAt,
+  seedWorld,
+  setLevel,
+  settledAt,
+  testDb,
+  type Fixture,
+} from './helpers.js';
 
 /**
  * A world that has been running a while.
@@ -33,10 +52,14 @@ describe('launching a fleet', () => {
   let f: Fixture;
   let attacker: string;
   let defender: string;
+  let other: string;
 
   beforeEach(async () => {
-    f = await seedWorld(2);
-    [attacker, defender] = f.planetIds as [string, string];
+    f = await seedWorld(3);
+    [attacker, defender, other] = f.planetIds as [string, string, string];
+    // A second target at exactly the defender's distance, so a test can compare
+    // two launches without both being committed to the same planet.
+    await placeAt(f.db, other, { x: -150 });
     await setLevel(f.db, attacker, 'CORE', 6);
     await giveUnits(f.db, attacker, { WASP: 50, HAULER: 5, BASTION: 3 });
     await grant(f.db, defender, 20_000, 2_000);
@@ -114,16 +137,36 @@ describe('launching a fleet', () => {
       expect(mission.arriveAt.getTime()).toBeGreaterThan(fresh.clock.now().getTime());
     });
 
-    it('refuses a target far below you on the ladder', async () => {
-      await f.db
-        .update(players)
-        .set({ wealth: 1_000_000 })
-        .where(eq(players.id, f.playerIds[0]!));
-      await f.db.update(players).set({ wealth: 100 }).where(eq(players.id, f.playerIds[1]!));
+    /**
+     * THE BAND, FROM THE OUTSIDE. D49.
+     *
+     * It used to be a Wealth ratio, and the test set two `players.wealth` columns
+     * directly. It is now the public development tier, so the arrangement is a
+     * Core level — which is also the point of the change: the thing that decides
+     * whether a launch is legal is the thing the attacker could already see on the
+     * map before they packed a fleet.
+     */
+    it('refuses a target more than two development tiers away', async () => {
+      // Attacker is Core 6 — tier 2 — from the fixture. Tier 5 is three above.
+      await setLevel(f.db, defender, 'CORE', 15);
 
       await expect(
         launchAttack(f.db, attacker, defender, { WASP: 5 }, f.clock),
-      ).rejects.toMatchObject({ code: 'RANK_FLOOR' });
+      ).rejects.toMatchObject({ code: 'TIER_BAND' });
+    });
+
+    /** And the edge of the band is legal, in both directions. */
+    it('allows a target exactly two tiers away, above and below', async () => {
+      await setLevel(f.db, defender, 'CORE', 12); // tier 4, two above tier 2
+      await expect(
+        launchAttack(f.db, attacker, defender, { WASP: 5 }, f.clock),
+      ).resolves.toBeTruthy();
+
+      await setLevel(f.db, attacker, 'CORE', 9); // tier 3
+      await setLevel(f.db, other, 'CORE', 1); // tier 1, two below
+      await expect(
+        launchAttack(f.db, attacker, other, { WASP: 5 }, f.clock),
+      ).resolves.toBeTruthy();
     });
 
     it('stops the fourth raid on the same target inside the window', async () => {
@@ -133,9 +176,30 @@ describe('launching a fleet', () => {
         { pollMs: 1000, batch: 100, staleMinutes: 5 },
         silent,
       );
+      /**
+       * THE FLEET HAS TO COME HOME BETWEEN RAIDS, and this loop now waits for it.
+       *
+       * It used to launch again the moment the battle resolved, and passed only
+       * because the target had a garrison big enough to destroy the raiders — a
+       * wiped fleet has no return leg to be committed to. D22 leaves a fresh planet
+       * with no ships at all, so five Wasps now win, survive, and turn for home,
+       * and the second launch was refused by FLEET_ALREADY_COMMITTED before the
+       * bash limit was ever reached. The test was passing for the wrong reason.
+       *
+       * Flying the return leg is also the honest sequence: three raids on the same
+       * neighbour, each one completed, and the fourth refused because of the LIMIT
+       * rather than because the fleet is still in the air.
+       */
       for (let i = 0; i < ABUSE.bashLimit; i++) {
+        const departedAt = f.clock.now().getTime();
         const launch = await launchAttack(f.db, attacker, defender, { WASP: 5 }, f.clock);
-        f.clock.set(launch.arriveAt);
+        const oneWay = (launch.arriveAt.getTime() - departedAt) / 60_000;
+
+        f.clock.set(settledAt(launch.arriveAt));
+        await worker.tick();
+
+        // The survivors fly the same leg back, then land.
+        f.clock.advance(oneWay + 1);
         await worker.tick();
         f.clock.advance(1);
       }
@@ -187,13 +251,25 @@ describe('launching a fleet', () => {
 
     it('a slower fleet takes longer — composition is a time decision', async () => {
       await giveUnits(f.db, attacker, { WASP: 50, HAULER: 5, BULWARK: 2 });
+      // Two equidistant targets, because only one fleet may be committed to a
+      // given planet at a time. The comparison is about hull speed, not range.
       const fast = await launchAttack(f.db, attacker, defender, { WASP: 1 }, f.clock);
-      const slow = await launchAttack(f.db, attacker, defender, { BULWARK: 1 }, f.clock);
+      const slow = await launchAttack(f.db, attacker, other, { BULWARK: 1 }, f.clock);
       expect(slow.exposureMinutes).toBeGreaterThan(fast.exposureMinutes);
       expect(HULLS.BULWARK.speed).toBeLessThan(HULLS.WASP.speed);
     });
 
-    it('schedules the arrival at the moment the fleet lands', async () => {
+    /**
+     * THE ARRIVAL AND THE OUTCOME ARE TEN SECONDS APART. D44.
+     *
+     * `arriveAt` is when the fleet is over the target and it did not move: it is
+     * what both sides read, what the radar counts down to, and what the client
+     * flies the craft against. What moved is when the battle is SETTLED — the
+     * engagement is a real window in which the mission is still `in_flight` and
+     * nothing has been decided, which is the only reason the client may draw a
+     * bombardment rather than a re-enactment of a recorded fact.
+     */
+    it('lands the fleet at arriveAt and settles the battle an engagement later', async () => {
       const launch = await launchAttack(f.db, attacker, defender, { WASP: 10 }, f.clock);
       const [event] = await f.db
         .select()
@@ -204,7 +280,41 @@ describe('launching a fleet', () => {
             eq(scheduledEvents.refId, launch.missionId),
           ),
         );
-      expect(event!.resolveAt.getTime()).toBe(launch.arriveAt.getTime());
+      expect(event!.resolveAt.getTime()).toBe(engagementEndsAt(launch.arriveAt.getTime()));
+      expect(event!.resolveAt.getTime() - launch.arriveAt.getTime()).toBe(
+        COMBAT.engagementSeconds * 1000,
+      );
+    });
+
+    /**
+     * AND THE ETA THE PLAYER READS IS UNCHANGED BY IT.
+     *
+     * The engagement is deliberately far below the granularity of every clock in
+     * the interface — ETAs are whole minutes — so a ten-second window must not
+     * show up as an extra minute anywhere. This is what stops a piece of theatre
+     * quietly rewriting the travel model.
+     */
+    it('does not lengthen the flight the player was quoted', async () => {
+      const departedAt = f.clock.now().getTime();
+      const launch = await launchAttack(f.db, attacker, defender, { WASP: 10 }, f.clock);
+      const quoted = (launch.arriveAt.getTime() - departedAt) / 60_000;
+      expect(quoted).toBe(Math.ceil(quoted));
+      expect(launch.exposureMinutes).toBe(quoted * 2);
+    });
+
+    /** A probe has no engagement: it resolves the instant it gets there. */
+    it('gives a probe no engagement window at all', async () => {
+      const probe = await launchProbe(f.db, attacker, defender, f.clock);
+      const [event] = await f.db
+        .select()
+        .from(scheduledEvents)
+        .where(
+          and(
+            eq(scheduledEvents.kind, 'mission_arrival'),
+            eq(scheduledEvents.refId, probe.missionId),
+          ),
+        );
+      expect(event!.resolveAt.getTime()).toBe(probe.arriveAt.getTime());
     });
 
     it('records the mission as in flight', async () => {
@@ -216,23 +326,46 @@ describe('launching a fleet', () => {
   });
 
   describe('radar warning', () => {
-    it('is not scheduled at all below Radar L3', async () => {
+    /**
+     * BELOW L3 NOBODY IS WARNED — which is a fact about the NOTIFICATION, not
+     * about the event. D45.
+     *
+     * This used to assert that no event was scheduled, and that mechanism has
+     * changed: one warning is now scheduled for every raid and the defender's
+     * radar is read at the moment it fires, because freezing the level at launch
+     * meant a radar installed mid-flight bought nothing while the pending strip —
+     * which reads the live level — warned anyway. The rule the test protects is
+     * unchanged and is asserted here as what a player would actually experience.
+     * `notifications.test.ts` walks the whole ladder.
+     */
+    it('warns nobody below Radar L3, however long the fleet is in the air', async () => {
       await setLevel(f.db, defender, 'CORE', 6);
-      await setLevel(f.db, defender, 'RING', 2);
       await grant(f.db, defender, 200_000, 200_000);
-      await installSatellite(f.db, defender, 'RADAR', f.clock);
+      // The Radar hangs off an Uplink in orbit (D25).
+      await giveSatellite(f.db, defender, 'UPLINK');
+      await raiseInstrument(f.db, defender, 'RADAR', f.clock);
+      // Paying for a Radar made the defender rich, and rich means TALL — see
+      // `levelWorld`. This test is about the warning, not about the tier band.
+      await levelWorld(f.db, f.planetIds);
 
       const launch = await launchAttack(f.db, attacker, defender, { WASP: 10 }, f.clock);
-      const warnings = await f.db
+      const worker = new EventWorker(
+        f.db,
+        f.clock,
+        { pollMs: 1000, batch: 100, staleMinutes: 5 },
+        pino({ level: 'silent' }),
+      );
+      // Every rung of the ladder, right up to the moment it lands.
+      for (const out of [12, 8, 5, 1]) {
+        f.clock.set(new Date(launch.arriveAt.getTime() - out * 60_000));
+        await worker.tick();
+      }
+
+      const told = await f.db
         .select()
-        .from(scheduledEvents)
-        .where(
-          and(
-            eq(scheduledEvents.kind, 'radar_warning'),
-            eq(scheduledEvents.refId, launch.missionId),
-          ),
-        );
-      expect(warnings).toHaveLength(0);
+        .from(notifications)
+        .where(eq(notifications.kind, 'incoming_fleet'));
+      expect(told).toHaveLength(0);
     });
 
     /**
@@ -241,9 +374,10 @@ describe('launching a fleet', () => {
      */
     it('fires shortly before impact once Radar reaches L3', async () => {
       await setLevel(f.db, defender, 'CORE', 8);
-      await setLevel(f.db, defender, 'RING', 2);
       await grant(f.db, defender, 500_000, 500_000);
-      for (let i = 0; i < 3; i++) await installSatellite(f.db, defender, 'RADAR', f.clock);
+      await giveSatellite(f.db, defender, 'UPLINK');
+      for (let i = 0; i < 3; i++) await raiseInstrument(f.db, defender, 'RADAR', f.clock);
+      await levelWorld(f.db, f.planetIds);
 
       const launch = await launchAttack(f.db, attacker, defender, { WASP: 10 }, f.clock);
       const [warning] = await f.db
@@ -260,7 +394,17 @@ describe('launching a fleet', () => {
       const leadMinutes =
         (launch.arriveAt.getTime() - warning!.resolveAt.getTime()) / 60_000;
       expect(leadMinutes).toBeGreaterThan(0);
-      expect(leadMinutes).toBeLessThanOrEqual(12);
+      /**
+       * NEVER MORE THAN THE FLIGHT ITSELF, AND ON A LONG LEG NEVER CLOSE TO IT.
+       *
+       * D49 made the fuse a crossing rather than a constant, so there is no single
+       * figure to assert against any more — the honest bound is D9's own words.
+       * The test planets are a cluster, so this is deliberately generous; the
+       * proportional bound lives in `rules/test/intel.test.ts`.
+       */
+      const flightMinutes =
+        (launch.arriveAt.getTime() - f.clock.now().getTime()) / 60_000;
+      expect(leadMinutes).toBeLessThanOrEqual(flightMinutes);
     });
   });
 });

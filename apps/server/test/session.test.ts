@@ -1,9 +1,9 @@
-import { and, eq } from 'drizzle-orm';
+import { and, eq, sql } from 'drizzle-orm';
 import { pino } from 'pino';
 import { afterAll, beforeEach, describe, expect, it } from 'vitest';
-import { radarLeadMinutes } from '@blindspace/rules';
-import { missions, notifications, planets, players, satellites, scanEvents } from '../src/db/schema.js';
-import { EventBus, publish } from '../src/stream/bus.js';
+import { radarLead, radarRange } from '@blindspace/rules';
+import { missions, notifications, planets, players, satellites, scanEvents, watches } from '../src/db/schema.js';
+import { CHANNEL, EventBus, publish } from '../src/stream/bus.js';
 import {
   buildReturnPayload,
   currentUnlocks,
@@ -14,13 +14,14 @@ import { assignWatch } from '../src/services/intel.js';
 import { launchAttack } from '../src/services/mission.js';
 import { EventWorker } from '../src/worker/loop.js';
 import {
-
   TEST_DATABASE_URL,
-  giveSatellite,
+  giveInstrument,
   giveUnits,
   grant,
+  placeAt,
   seedWorld,
   setLevel,
+  settledAt,
   testDb,
   type Fixture,
 } from './helpers.js';
@@ -34,6 +35,23 @@ import {
  * removing it would quietly change what they test.
  */
 const SETTLED_MINUTES = 250;
+
+/**
+ * How much notice a radar of `level` gives against THIS mission. D49.
+ *
+ * A radar is a circle, so the lead is a property of the leg — the distance and
+ * how fast the fleet flew it — rather than a figure a table can be asked for.
+ * Read off the mission row, exactly as the server reads it.
+ */
+const leadFor = (
+  mission: { distance: number; departAt: Date; arriveAt: Date },
+  level: number,
+): number =>
+  radarLead(
+    radarRange(level),
+    mission.distance,
+    (mission.arriveAt.getTime() - mission.departAt.getTime()) / 60_000,
+  );
 
 const silent = pino({ level: 'silent' });
 
@@ -49,10 +67,22 @@ afterAll(async () => {
 });
 
 /** Run a raid to completion so its battle report exists. */
+/**
+ * A complete raid: out, resolved, and home again.
+ *
+ * The return leg is not decoration here. Only one fleet may be committed to a
+ * given planet at a time, and a fleet still in the air on its way BACK is still
+ * committed — so a helper that stopped at the arrival could only ever be used
+ * once per pair, and the tests that raid repeatedly would fail on the second call
+ * rather than on anything they were written to check.
+ */
 async function raid(f: Fixture, from: string, to: string, wasps = 20): Promise<void> {
   await giveUnits(f.db, from, { WASP: wasps });
   const launch = await launchAttack(f.db, from, to, { WASP: wasps }, f.clock);
-  f.clock.set(launch.arriveAt);
+  f.clock.set(settledAt(launch.arriveAt));
+  await worker(f).tick();
+  // exposureMinutes is the full round trip, so this always clears the way home.
+  f.clock.advance(launch.exposureMinutes);
   await worker(f).tick();
 }
 
@@ -224,11 +254,42 @@ describe('the return payload', () => {
     expect(second.entries.filter((e) => e.kind === 'raided')).toHaveLength(0);
   });
 
-  it('announces each unlock exactly once', async () => {
+  /**
+   * EXACTLY ONCE, ACROSS EVERY SURFACE THAT ANNOUNCES. D45.
+   *
+   * The battle itself now announces the Telescope, as a notification, at the
+   * moment it resolves — which is what Design Law #2 asks for and what this
+   * cascade never had. So by the time anything reads the return payload the news
+   * has already been delivered, and the payload correctly reports nothing new.
+   *
+   * The assertion that matters is that it is announced ONCE IN TOTAL. Both
+   * surfaces read and write the same `unlocksSeen`, so the failure this pins is
+   * two of them each announcing it — or, worse, this endpoint (which no client
+   * calls, D23) consuming the announcement before the player ever saw it.
+   */
+  it('announces each unlock exactly once, wherever it is announced from', async () => {
     await raid(f, mine, theirs, 20);
 
+    const told = await f.db
+      .select()
+      .from(notifications)
+      .where(and(eq(notifications.playerId, myPlayer), eq(notifications.kind, 'unlock')));
+    expect(told.map((n) => n.payload.unlock)).toEqual(['TELESCOPE']);
+
+    // Already announced, so the return payload adds nothing — and adds nothing
+    // twice.
+    expect((await buildReturnPayload(f.db, myPlayer, f.clock)).newUnlocks).toEqual([]);
+    expect((await buildReturnPayload(f.db, myPlayer, f.clock)).newUnlocks).toEqual([]);
+  });
+
+  /** And an unlock nothing has announced yet is still announced exactly once. */
+  it('announces an unlock the live path has not reached, then never again', async () => {
+    await f.db
+      .insert(watches)
+      .values({ observerPlayerId: myPlayer, slot: 0, targetPlanetId: theirs });
+
     const first = await buildReturnPayload(f.db, myPlayer, f.clock);
-    expect(first.newUnlocks).toContain('TELESCOPE');
+    expect(first.newUnlocks).toContain('EXPLORER');
 
     const second = await buildReturnPayload(f.db, myPlayer, f.clock);
     expect(second.newUnlocks).toEqual([]);
@@ -270,28 +331,39 @@ describe('the return payload', () => {
     });
 
     it('still says nothing with radar, while the fleet is far out', async () => {
-      await giveSatellite(f.db, mine, 'RADAR', 3);
+      await giveInstrument(f.db, mine, 'RADAR', 3);
+      /**
+       * OUT PAST THE CIRCLE, WHICH IS WHAT "FAR OUT" NOW MEANS. D49.
+       *
+       * The test planets are a 150-unit cluster and Radar L3 reaches 200, so
+       * every neighbour in the fixture is inside the circle from the moment it
+       * launches — correctly, and uselessly for this assertion. Moving the
+       * attacker out is what makes the fleet actually far away.
+       */
+      await placeAt(f.db, theirs, { x: 1500 });
       await sendAtThem();
 
       const payload = await buildReturnPayload(f.db, myPlayer, f.clock);
       expect(payload.pending.some((p) => p.kind === 'incoming')).toBe(false);
     });
 
-    it('lists it inside the lead window radar bought', async () => {
-      await giveSatellite(f.db, mine, 'RADAR', 3);
+    it('lists it inside the window radar bought', async () => {
+      await giveInstrument(f.db, mine, 'RADAR', 3);
       await sendAtThem();
 
       const [inbound] = await f.db
         .select()
         .from(missions)
         .where(eq(missions.targetPlanetId, mine));
-      // One minute inside the L3 fuse: warned, and not a moment earlier.
-      f.clock.set(new Date(inbound!.arriveAt.getTime() - (radarLeadMinutes(3) - 1) * 60_000));
+      // One minute inside the L3 circle: warned, and not a moment earlier. D49 —
+      // the lead is a property of the LEG, so it is read off the mission row.
+      const lead = leadFor(inbound!, 3);
+      f.clock.set(new Date(inbound!.arriveAt.getTime() - (lead - 1) * 60_000));
 
       const payload = await buildReturnPayload(f.db, myPlayer, f.clock);
       const incoming = payload.pending.find((p) => p.kind === 'incoming');
       expect(incoming).toBeDefined();
-      expect(incoming!.minutesRemaining).toBeLessThanOrEqual(radarLeadMinutes(3));
+      expect(incoming!.minutesRemaining).toBeLessThanOrEqual(Math.ceil(lead));
     });
   });
 
@@ -312,14 +384,14 @@ describe('the return payload', () => {
     expect(ours?.path?.arriveAt.getTime()).toBeGreaterThan(ours!.path!.departAt.getTime());
 
     // Now let radar see something coming, inside its lead window.
-    await giveSatellite(f.db, mine, 'RADAR', 3);
+    await giveInstrument(f.db, mine, 'RADAR', 3);
     await giveUnits(f.db, theirs, { WASP: 20 });
     await launchAttack(f.db, theirs, mine, { WASP: 20 }, f.clock);
     const [inbound] = await f.db
       .select()
       .from(missions)
       .where(and(eq(missions.targetPlanetId, mine), eq(missions.kind, 'attack')));
-    f.clock.set(new Date(inbound!.arriveAt.getTime() - (radarLeadMinutes(3) - 1) * 60_000));
+    f.clock.set(new Date(inbound!.arriveAt.getTime() - (leadFor(inbound!, 3) - 1) * 60_000));
 
     const warned = await buildReturnPayload(f.db, myPlayer, f.clock);
     const threat = warned.pending.find((p) => p.kind === 'incoming');
@@ -336,7 +408,7 @@ describe('the return payload', () => {
     const outbound = await buildReturnPayload(f.db, myPlayer, f.clock);
     expect(outbound.pending.find((p) => p.kind === 'fleet')?.leg).toBe('outbound');
 
-    f.clock.set(launch.arriveAt);
+    f.clock.set(settledAt(launch.arriveAt));
     await worker(f).tick();
 
     const homeward = await buildReturnPayload(f.db, myPlayer, f.clock);
@@ -462,6 +534,67 @@ describe('the event bus', () => {
     await publish(f.db, f.playerIds[0]!, 'raided');
     await new Promise((r) => setTimeout(r, 300));
     expect(hits).toBe(0);
+    await bus.stop();
+  });
+
+  /**
+   * A MALFORMED PAYLOAD MUST NOT TAKE THE SOCKET DOWN.
+   *
+   * LISTEN runs on ONE shared connection for the whole API process, and the
+   * notification callback is not wrapped by anything. `dispatch` used to cast the
+   * result of `JSON.parse` straight to `StreamEvent` with only the parse inside its
+   * `try` — but `null`, `7` and `"hello"` are all valid JSON, so on any of them the
+   * parse succeeded and reading `.playerId` threw on the next line, outside the
+   * guard. That does not drop one message: it kills live updates for every player
+   * on the server, silently, with nobody told.
+   *
+   * Each of these goes down the real channel, and then a REAL event is published.
+   * The assertion is that the real one still arrives — which is the only way to say
+   * "the bus survived" rather than "nothing crashed the test runner".
+   */
+  it('survives every shape of rubbish on the channel', async () => {
+    const rubbish = [
+      'null',
+      '7',
+      '"hello"',
+      'true',
+      '[]',
+      'not json at all',
+      '',
+      '{}',
+      '{"playerId":123,"kind":"raided"}',
+      '{"kind":"raided"}',
+      '{"playerId":"","kind":"raided"}',
+      '{"playerId":"p","kind":null}',
+    ];
+    for (const bad of rubbish) {
+      await f.db.execute(sql`select pg_notify(${CHANNEL}, ${bad})`);
+    }
+    // Give the listener a beat to process all of them before the good one.
+    await new Promise((r) => setTimeout(r, 300));
+
+    const arrived = waitFor(f.playerIds[0]!);
+    await publish(f.db, f.playerIds[0]!, 'raided');
+    await expect(arrived, 'the bus stopped delivering after a bad payload').resolves.toMatchObject({
+      kind: 'raided',
+    });
+    await bus.stop();
+  });
+
+  /** And rubbish is never handed to a listener as if it were an event. */
+  it('never delivers a payload that failed to parse', async () => {
+    let hits = 0;
+    const off = bus.subscribe(f.playerIds[0]!, () => {
+      hits++;
+    });
+    for (const bad of ['null', '{"playerId":123}', `{"playerId":"${f.playerIds[0]!}"}`]) {
+      await f.db.execute(sql`select pg_notify(${CHANNEL}, ${bad})`);
+    }
+    await new Promise((r) => setTimeout(r, 400));
+    // The third one names a real player but has no `kind`, so it is still not an
+    // event — a half-formed message must not reach a listener at all.
+    expect(hits).toBe(0);
+    off();
     await bus.stop();
   });
 

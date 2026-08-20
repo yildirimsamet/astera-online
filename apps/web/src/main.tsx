@@ -1,6 +1,7 @@
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { LazyMotion, MotionConfig, domMax } from 'motion/react';
 import { Api } from './api/client.js';
 import { ApiProvider } from './api/context.js';
 import { ToastProvider } from './ui/Toast.js';
@@ -35,14 +36,30 @@ const client = new QueryClient({
 const root = document.getElementById('root');
 if (!root) throw new Error('no #root element');
 
+/**
+ * Motion, loaded the small way.
+ *
+ * `LazyMotion` + the `m` components keep the animation runtime out of the initial
+ * bundle until something actually animates. `domMax` rather than `domAnimation`
+ * because bottom sheets are dragged, and a sheet you cannot swipe away reads as dated
+ * on a phone — this is a mobile-first game, not a desktop app that shrinks.
+ *
+ * `reducedMotion="user"` makes the OS setting authoritative for every animation in
+ * the app, so the CSS media query in styles.css and the JS animations agree instead
+ * of one of them quietly ignoring the preference.
+ */
 createRoot(root).render(
   <StrictMode>
-    <QueryClientProvider client={client}>
-      <ApiProvider api={api}>
-        <ToastProvider>
-          <App />
-        </ToastProvider>
-      </ApiProvider>
-    </QueryClientProvider>
+    <LazyMotion features={domMax} strict>
+      <MotionConfig reducedMotion="user">
+        <QueryClientProvider client={client}>
+          <ApiProvider api={api}>
+            <ToastProvider>
+              <App />
+            </ToastProvider>
+          </ApiProvider>
+        </QueryClientProvider>
+      </MotionConfig>
+    </LazyMotion>
   </StrictMode>,
 );

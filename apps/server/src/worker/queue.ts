@@ -89,9 +89,14 @@ export async function complete(db: Db, id: string): Promise<void> {
  * its attempt budget. Better late than never: every event carries the time it was
  * meant to fire at, so a retry is still correct, merely delayed.
  */
-export async function fail(db: Db, id: string, err: unknown, maxAttempts = 5): Promise<void> {
+export async function fail(
+  db: Db,
+  id: string,
+  err: unknown,
+  maxAttempts = 5,
+): Promise<{ exhausted: boolean }> {
   const message = err instanceof Error ? err.message : String(err);
-  await db
+  const rows = await db
     .update(scheduledEvents)
     .set({
       status: sql`CASE WHEN ${scheduledEvents.attempts} >= ${maxAttempts}
@@ -99,7 +104,12 @@ export async function fail(db: Db, id: string, err: unknown, maxAttempts = 5): P
       claimedAt: null,
       lastError: message,
     })
-    .where(eq(scheduledEvents.id, id));
+    .where(eq(scheduledEvents.id, id))
+    .returning({ status: scheduledEvents.status });
+  // The caller has to know, because a row that reaches `failed` is never read
+  // again by anything — whatever it was going to resolve is stranded until
+  // somebody undoes it. See `worker/abandon.ts`.
+  return { exhausted: rows[0]?.status === 'failed' };
 }
 
 /**
@@ -144,6 +154,21 @@ export async function schedule(
  * A stalled worker is the failure that silently breaks this game: the API keeps
  * answering and planets keep producing while fleets simply never land.
  */
+/**
+ * Events that gave up for good.
+ *
+ * `oldestPendingAge` filters `status = 'pending'`, so a `failed` row is invisible
+ * to it and the lag metric reads perfectly healthy while a flight is stranded.
+ * Anything above zero here is a bug that has already happened. D28.
+ */
+export async function failedEventCount(db: Db): Promise<number> {
+  const [row] = await db
+    .select({ n: sql<number>`count(*)::int` })
+    .from(scheduledEvents)
+    .where(eq(scheduledEvents.status, 'failed'));
+  return row?.n ?? 0;
+}
+
 export async function oldestPendingAge(db: Db, now: Date): Promise<number | null> {
   const [row] = await db
     .select({ resolveAt: scheduledEvents.resolveAt })

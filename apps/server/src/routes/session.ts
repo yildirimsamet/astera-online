@@ -83,7 +83,20 @@ export function registerSessionRoutes(app: FastifyInstance): void {
   app.get('/api/notifications', { preHandler: requireAuth }, async (req) => {
     const query = z
       .object({
-        unseenOnly: z.coerce.boolean().default(false),
+        /**
+         * NOT `z.coerce.boolean()`, WHICH CANNOT SAY NO.
+         *
+         * Coercion is `Boolean(value)`, and a query string is always a string —
+         * so `?unseenOnly=false` and `?unseenOnly=0` both parsed to TRUE. A flag
+         * that only has one setting is worse than no flag: it reads as supported.
+         * Nothing in the client sends it today, which is the only reason this had
+         * not yet been found by someone filtering a list and getting the whole of
+         * it back.
+         */
+        unseenOnly: z
+          .enum(['true', 'false'])
+          .default('false')
+          .transform((value) => value === 'true'),
         limit: z.coerce.number().int().min(1).max(100).default(30),
       })
       .parse(req.query);

@@ -7,8 +7,15 @@ import {
   fleetCargo,
   fleetCount,
   fleetEntries,
+  fleetSpeedMult,
   fleetTravelMinutes,
+  nextRadarCheck,
+  radarLead,
+  radarRange,
+  radarRevealsOrigin,
   seededFrom,
+  DEBRIS,
+  HULLS,
   resolveCombat,
   travelMinutes,
   vaultProtects,
@@ -19,8 +26,9 @@ import { addMinutes, atMinute, minutesSince, type Clock } from '../clock.js';
 import type { Db, Tx } from '../db/client.js';
 import {
   battleReports,
+  debrisFields,
+  miningRuns,
   missions,
-  notifications,
   planets,
   players,
   probeReports,
@@ -28,9 +36,10 @@ import {
 } from '../db/schema.js';
 import { loadLocked, recomputeWealth, saveResources, setUnits } from '../services/planet.js';
 import { clearMissionUnits, fleetOfMission } from '../services/mission.js';
-import { resolveProbe } from '../services/intel.js';
+import { instrumentLevels, levelOf, resolveProbe } from '../services/intel.js';
+import { resolveMiningArrival, resolveMiningReturn } from '../services/mining.js';
+import { announceUnlocks, notify } from '../services/notifications.js';
 import { schedule, type EventRow } from './queue.js';
-import { publish } from '../stream/bus.js';
 
 export interface HandlerContext {
   db: Db;
@@ -66,22 +75,6 @@ async function saveLedger(tx: Tx, ledger: Ledger & { id: string }): Promise<void
     .update(players)
     .set({ dominionTaken: ledger.taken, dominionLost: ledger.lost })
     .where(eq(players.id, ledger.id));
-}
-
-async function notify(
-  tx: Tx,
-  playerId: string,
-  kind: typeof notifications.$inferInsert.kind,
-  payload: Record<string, unknown>,
-  at: Date,
-): Promise<void> {
-  // `at` comes from the injected clock, never from the database's now(). There is
-  // exactly one clock in this system; letting defaultNow() supply timestamps put a
-  // second one in, and the "while you were gone" window silently never closed.
-  await tx.insert(notifications).values({ playerId, kind, payload, createdAt: at });
-  // NOTIFY is transactional — it fires on COMMIT and is discarded on rollback, so
-  // a client can never be told about a battle that was subsequently undone.
-  await publish(tx, playerId, kind);
 }
 
 /* ── mission arrival ────────────────────────────────────────── */
@@ -127,10 +120,43 @@ export const onMissionArrival: Handler = async ({ db, clock }, event) => {
        * is a commitment rather than a purchase.
        */
       if (mission.parentMissionId) {
-        await tx
+        const [delivered] = await tx
           .update(probeReports)
           .set({ deliveredAt: clock.now() })
-          .where(eq(probeReports.missionId, mission.parentMissionId));
+          .where(eq(probeReports.missionId, mission.parentMissionId))
+          .returning();
+        // Nothing came back means a redelivery of an event already handled; the
+        // report was marked delivered the first time and its owner already told.
+        if (!delivered) return;
+
+        /**
+         * THE INTEL HAS LANDED, AND SAYING SO IS THE POINT. D45.
+         *
+         * This branch used to set a timestamp and stop. A probe is the most
+         * deliberate purchase in the game — alloy, a flight bay, a round trip, and
+         * the risk of being caught — and the moment its answer became readable was
+         * the one moment nothing was published: no notification, no stream event,
+         * so not even the intel panel refreshed for a player who had it open.
+         * "The information is the game", and the information arrived in silence.
+         */
+        const [scouted] = await tx
+          .select({ name: planets.name })
+          .from(planets)
+          .where(eq(planets.id, delivered.targetPlanetId));
+        await notify(tx, {
+          playerId: delivered.observerPlayerId,
+          kind: 'probe_report',
+          payload: {
+            targetPlanetId: delivered.targetPlanetId,
+            targetName: scouted?.name ?? 'an unknown world',
+            // Their radar caught it. The intel screen says so too; this is the
+            // first time the player finds out, and it decides whether they are
+            // expected.
+            detected: delivered.detected,
+          },
+          at: clock.now(),
+          refId: mission.parentMissionId,
+        });
         return;
       }
 
@@ -150,7 +176,16 @@ export const onMissionArrival: Handler = async ({ db, clock }, event) => {
         if (target) {
           // Bearing is in the payload, but what the player is shown is decided at
           // read time by their radar level — never here.
-          await notify(tx, target.playerId, 'scan_detected', { bearing }, clock.now());
+          await notify(tx, {
+            playerId: target.playerId,
+            kind: 'scan_detected',
+            payload: { bearing },
+            at: clock.now(),
+            refId: missionId,
+          });
+          // "Was someone poking at me?" — the feeling that opens the Radar, and
+          // the one that opens the Veil. Design Law #2.
+          await announceUnlocks(tx, target.playerId, clock.now());
         }
       }
 
@@ -204,8 +239,18 @@ export const onMissionArrival: Handler = async ({ db, clock }, event) => {
     }
     await setUnits(tx, defender.planetId, defenderHome, 'home');
 
+    /**
+     * Two piles, two exposures (D16).
+     *
+     * Storage is taken in full above the vault floor; ore still uncollected in the
+     * works is taken at `COMBAT.lootBufferShare` and the vault does not reach it at
+     * all. `computeLoot` reports the split precisely because this code has to debit
+     * two different columns — deriving one from the other would silently overdraw
+     * whichever pile happened to be smaller.
+     */
     const loot = computeLoot(
       { alloy: defender.alloy, crystal: defender.crystal },
+      { alloy: defender.bufferAlloy, crystal: defender.bufferCrystal },
       vaultProtects(defender.buildings.VAULT),
       result.grade,
       fleetCargo(result.attackerSurvivors),
@@ -218,8 +263,10 @@ export const onMissionArrival: Handler = async ({ db, clock }, event) => {
     );
 
     await saveResources(tx, defender.planetId, {
-      alloy: defender.alloy - loot.alloy,
-      crystal: defender.crystal - loot.crystal,
+      alloy: defender.alloy - loot.fromStock.alloy,
+      crystal: defender.crystal - loot.fromStock.crystal,
+      bufferAlloy: defender.bufferAlloy - loot.fromBuffer.alloy,
+      bufferCrystal: defender.bufferCrystal - loot.fromBuffer.crystal,
       shield: result.shieldLeft,
       disruptedUntil:
         disruptedUntilMinutes > defender.nowMinutes
@@ -244,7 +291,8 @@ export const onMissionArrival: Handler = async ({ db, clock }, event) => {
       defenderPlayerId: defender.playerId,
       grade: result.grade,
       rounds: result.rounds,
-      loot,
+      // Totals only: the split is for debiting the defender, not for the record.
+      loot: { alloy: loot.alloy, crystal: loot.crystal },
       attackerLosses: result.attackerLosses,
       defenderLosses: result.defenderLosses,
       dominionSwing,
@@ -253,10 +301,66 @@ export const onMissionArrival: Handler = async ({ db, clock }, event) => {
 
     // The attacking stack is gone from the origin either way; survivors become a
     // new return mission, and the dead simply cease to exist.
+    /**
+     * THE WRECKAGE. D32.
+     *
+     * A share of every non-ground hull destroyed on BOTH sides, left at the
+     * defender's coordinates for anyone to come and take. Ground units are excluded
+     * because they already have `defenceSalvage` — counting them here would return
+     * about 85% of a defender's losses and make a fortress profit from being
+     * attacked.
+     *
+     * `!HULLS[id].ground` rather than `MOBILE_HULLS` membership: a Prospector
+     * sitting at home is part of the defence and really does die, and it is
+     * wreckage like anything else. `MOBILE_HULLS` excludes it and would silently
+     * drop it.
+     *
+     * WEALTH, NEVER DOMINION. Nothing here touches a ledger — wreckage was not
+     * taken FROM anybody, so crediting it to the ladder would create score from
+     * nothing and break the zero-sum guarantee D2 rests on.
+     */
+    const wreckValue =
+      (flyingValue(result.attackerLosses) + flyingValue(result.defenderLosses)) * DEBRIS.share;
+    if (wreckValue >= DEBRIS.minimum) {
+      // Split the way the hulls were priced, so a crystal-heavy battle leaves
+      // crystal-heavy wreckage.
+      const alloyShare = flyingAlloy(result.attackerLosses) + flyingAlloy(result.defenderLosses);
+      const totalRaw = flyingValue(result.attackerLosses) + flyingValue(result.defenderLosses);
+      const alloyPart = totalRaw > 0 ? alloyShare / totalRaw : 1;
+      await tx.insert(debrisFields).values({
+        seasonId: mission.seasonId,
+        planetId: defender.planetId,
+        missionId,
+        alloy: wreckValue * alloyPart,
+        crystal: wreckValue * (1 - alloyPart),
+        createdAt: defender.now,
+      });
+    }
+
     await clearMissionUnits(tx, mission.originPlanetId, missionId);
 
     if (fleetCount(result.attackerSurvivors) > 0) {
-      const home = fleetTravelMinutes(mission.distance, result.attackerSurvivors);
+      /**
+       * THE BEACON APPLIES TO THE TRIP HOME TOO. D25 said "out and back".
+       *
+       * `launchAttack` passes `fleetSpeedMult(origin.orbit)`; this called the
+       * two-argument form, so `boost` defaulted to 1 and a raid flew out 1.3× faster
+       * and came home at walking pace. The satellite costs 11,000 alloy and 3,500
+       * crystal, the card copy promises the round trip, and `packages/sim` already
+       * prices the return leg WITH the multiplier — so the simulator was valuing a
+       * benefit the server did not deliver, which is the mirror image of the
+       * standing rule that it must not price what it refuses to simulate.
+       *
+       * It reads the ATTACKER's orbit, which is where the beacon is. Reading the
+       * mission's own origin would be wrong on a return leg: a return row is stored
+       * with its two ends swapped (D28), so `originPlanetId` is the world that was
+       * raided.
+       */
+      const home = fleetTravelMinutes(
+        mission.distance,
+        result.attackerSurvivors,
+        fleetSpeedMult(attackerPlanet.orbit),
+      );
       const arriveAt = addMinutes(attackerPlanet.now, home);
       const [ret] = await tx
         .insert(missions)
@@ -266,7 +370,7 @@ export const onMissionArrival: Handler = async ({ db, clock }, event) => {
           originPlanetId: mission.targetPlanetId,
           targetPlanetId: mission.originPlanetId,
           fleet: result.attackerSurvivors,
-          loot,
+          loot: { alloy: loot.alloy, crystal: loot.crystal },
           distance: mission.distance,
           departAt: attackerPlanet.now,
           arriveAt,
@@ -286,22 +390,80 @@ export const onMissionArrival: Handler = async ({ db, clock }, event) => {
     await recomputeWealth(tx, defender.planetId);
     await recomputeWealth(tx, attackerPlanet.planetId);
 
-    await notify(
-      tx,
-      defender.playerId,
-      'raided',
-      {
+    /**
+     * BOTH SIDES ARE TOLD. D45.
+     *
+     * Only the defender used to be. An attacker learned the outcome of their own
+     * raid when the survivors got home carrying the loot — and if there were no
+     * survivors there was nothing to come home, so the single most expensive thing
+     * that can happen to a player produced no notification, no stream event, and
+     * therefore not even a refetch: they watched the bombardment and the screen
+     * simply never changed. Measured, on a fleet annihilated by ground defence.
+     *
+     * The battle report has always held the detail. What was missing was anybody
+     * being told it exists.
+     */
+    await notify(tx, {
+      playerId: defender.playerId,
+      kind: 'raided',
+      payload: {
         grade: result.grade,
         lootAlloy: loot.alloy,
         lootCrystal: loot.crystal,
         unitsLost: fleetCount(result.defenderLosses),
+        // What holding the line cost them. Already in the defender's own battle
+        // report, so this reveals nothing new — it lets "you repelled a raid" say
+        // what the raid paid, which is the difference between a fact and a result.
+        theirLosses: fleetCount(result.attackerLosses),
       },
-      defender.now,
-    );
+      at: defender.now,
+      refId: missionId,
+    });
+
+    await notify(tx, {
+      playerId: attackerPlanet.playerId,
+      kind: 'raid_result',
+      payload: {
+        grade: result.grade,
+        targetName: defender.name,
+        lootAlloy: loot.alloy,
+        lootCrystal: loot.crystal,
+        unitsLost: fleetCount(result.attackerLosses),
+        shipsHome: fleetCount(result.attackerSurvivors),
+        dominion: dominionSwing,
+      },
+      at: defender.now,
+      refId: missionId,
+    });
+
+    // "Where did his fleet go?" — the first battle, won or lost, is what opens the
+    // Telescope; being on the receiving end is what opens the Radar. Design Law #2,
+    // which until now was computed and never announced to anyone.
+    await announceUnlocks(tx, attackerPlanet.playerId, defender.now);
+    await announceUnlocks(tx, defender.playerId, defender.now);
   });
 };
 
 /** A surviving fleet reaches home: ships rejoin the garrison, loot lands in the vault. */
+
+/**
+ * Resource value of the hulls in a fleet that are NOT ground emplacements.
+ *
+ * Derived from `Hull.ground` rather than from `MOBILE_HULLS`, which excludes the
+ * Prospector — and a Prospector at home is part of the defence and really can be
+ * destroyed. A destroyed ship is wreckage whatever it was built for; the only
+ * exclusion the rule wants is the one that already has a salvage mechanism.
+ */
+const flyingValue = (fleet: Fleet): number =>
+  fleetEntries(fleet)
+    .filter(([id]) => !HULLS[id].ground)
+    .reduce((sum, [id, n]) => sum + n * (HULLS[id].alloy + HULLS[id].crystal), 0);
+
+const flyingAlloy = (fleet: Fleet): number =>
+  fleetEntries(fleet)
+    .filter(([id]) => !HULLS[id].ground)
+    .reduce((sum, [id, n]) => sum + n * HULLS[id].alloy, 0);
+
 async function settleReturn(
   tx: Tx,
   mission: typeof missions.$inferSelect,
@@ -332,17 +494,27 @@ async function settleReturn(
 
   const [planet] = await tx.select().from(planets).where(eq(planets.id, homePlanetId));
   if (planet) {
-    await notify(
-      tx,
-      planet.playerId,
-      'fleet_returned',
-      {
+    // A return leg flies backwards, so the world it came FROM is its origin.
+    const [from] = await tx
+      .select({ name: planets.name })
+      .from(planets)
+      .where(eq(planets.id, mission.originPlanetId));
+    await notify(tx, {
+      playerId: planet.playerId,
+      kind: 'fleet_returned',
+      payload: {
+        // THE DISCRIMINANT. D45. Three different things come home under this one
+        // kind and the client has to tell them apart before it can read a single
+        // field — a mining run's payload has no `ships` in it and never did.
+        trip: 'raid',
         ships: fleetCount(returning),
+        fromName: from?.name ?? null,
         lootAlloy: mission.loot?.alloy ?? 0,
         lootCrystal: mission.loot?.crystal ?? 0,
       },
       at,
-    );
+      refId: mission.id,
+    });
   }
 }
 
@@ -359,11 +531,35 @@ async function loadLockedHome(tx: Tx, planetId: string): Promise<{ fleet: Fleet 
 /* ── radar warning ──────────────────────────────────────────── */
 
 /**
- * "Incoming fleet · ETA 9 min."
+ * "Incoming fleet · lands in 9 min."
  *
  * The highest-value notification in the game: it converts a passive loss into an
  * active decision, because the player can still spend their stock, launch their
  * own fleet out, or stand and fight.
+ *
+ * THE DEFENDER'S RADAR IS READ HERE, AT THE MOMENT OF FIRING. D45.
+ *
+ * It used to be read at launch and frozen into the event's payload, which broke
+ * the ladder in both directions:
+ *
+ *   · A defender with no radar had no event scheduled at all, so installing one
+ *     while a fleet was in the air bought nothing — while `pendingThreads`, which
+ *     reads the live level, put "inbound fleet" on their strip. One fact, two
+ *     surfaces, opposite answers.
+ *   · A defender who went Radar 3 → 5 mid-flight was warned with an L3 payload:
+ *     no size, no composition, for a rung they had already paid for.
+ *
+ * Every raid now schedules one warning at the widest crossing any radar could
+ * catch it at, and this handler hops down `RADAR_RANGES` until the reach the
+ * defender has actually earned matches where the fleet actually is. D9 is
+ * untouched: the warning still fires when the fleet crosses in, never at launch,
+ * and a wider reach can never be bought retroactively — a radar installed with the
+ * fleet already four minutes out warns at four minutes.
+ *
+ * D49 TURNED THE RUNGS FROM MINUTES INTO DISTANCES, and the shape did not change
+ * with them. Both are converted back to minutes-before-arrival by `radarLead`,
+ * because that is the axis this event is scheduled on and the axis the mission row
+ * can be read against.
  */
 export const onRadarWarning: Handler = async ({ db, clock }, event) => {
   const missionId = event.refId;
@@ -374,32 +570,154 @@ export const onRadarWarning: Handler = async ({ db, clock }, event) => {
     // Nothing to warn about if it already landed or was somehow cancelled.
     if (mission?.status !== 'in_flight') return;
 
+    const now = clock.now();
+    const remaining = (mission.arriveAt.getTime() - now.getTime()) / 60_000;
+    // Already over the target: the engagement window keeps the mission in flight
+    // for ten more seconds, and a warning that arrives with the fleet is noise.
+    if (remaining <= 0) return;
+
     const [target] = await tx.select().from(planets).where(eq(planets.id, mission.targetPlanetId));
     if (!target) return;
 
-    const payload = event.payload as { radarLevel?: number } | null;
-    const radarLevel = payload?.radarLevel ?? 0;
-    const etaMinutes = Math.max(
-      0,
-      Math.round((mission.arriveAt.getTime() - clock.now().getTime()) / 60_000),
-    );
+    const levels = await instrumentLevels(tx, [target.id]);
+    const radarLevel = levelOf(levels, target.id, 'RADAR');
+    /**
+     * The whole leg, so a reach in units can be turned into minutes of notice.
+     *
+     * `mission.distance` is stored at launch and `departAt`/`arriveAt` bound the
+     * flight, so this is the same arithmetic the client draws the craft with — the
+     * warning fires when the fleet the player can SEE crosses the circle.
+     */
+    const oneWay = (mission.arriveAt.getTime() - mission.departAt.getTime()) / 60_000;
+    const lead = radarLead(radarRange(radarLevel), mission.distance, oneWay);
 
-    await notify(
-      tx,
-      target.playerId,
-      'incoming_fleet',
-      {
-        etaMinutes,
+    /**
+     * Not yet — or never.
+     *
+     * `TOLERANCE` absorbs the sub-second gap between the instant this was
+     * scheduled for and the instant the worker actually claimed it. Without it a
+     * check armed for `arriveAt − 12` that fires 40 ms late reads 11.999 minutes
+     * remaining against a 12-minute lead, decides the defender has not earned it,
+     * and silently demotes a Radar 5 warning to the 8-minute rung.
+     */
+    if (lead <= 0 || remaining > lead + LEAD_TOLERANCE) {
+      const next = nextRadarCheck(remaining, mission.distance, oneWay);
+      if (next !== null) {
+        await schedule(tx, {
+          seasonId: mission.seasonId,
+          kind: 'radar_warning',
+          refId: missionId,
+          resolveAt: addMinutes(mission.arriveAt, -radarLead(next, mission.distance, oneWay)),
+        });
+      }
+      return;
+    }
+
+    await notify(tx, {
+      playerId: target.playerId,
+      kind: 'incoming_fleet',
+      payload: {
+        /**
+         * THE INSTANT, not only the countdown. D39, applied to a notification.
+         *
+         * `etaMinutes` is measured from the moment this row was written, so a
+         * notification read an hour later still claimed "ETA 12 min" — a live
+         * countdown frozen at the moment it stopped being true. The client reads
+         * `arriveAt` against its own clock and puts the line into the past tense
+         * once the fleet has landed. The defender already has this instant on
+         * their pending strip; the radar ladder sells whether and how early you
+         * are warned, never the precision of the clock.
+         */
+        arriveAt: mission.arriveAt.toISOString(),
+        etaMinutes: Math.max(0, Math.round(remaining)),
         // Size is revealed only from Radar L4, exact composition only from L5.
         ...(radarLevel >= 4 ? { estimatedShips: fleetCount(mission.fleet) } : {}),
-        ...(radarLevel >= 5 ? { fleet: mission.fleet, origin: mission.originPlanetId } : {}),
+        // A NAME, never the id. Every other L5 reveal in the game sends the
+        // planet's name (`readRadarLog`); this one sent a raw uuid, which is why
+        // nothing ever displayed it and L5 read exactly like L4.
+        ...(radarRevealsOrigin(radarLevel)
+          ? { fleet: mission.fleet, originName: await planetName(tx, mission.originPlanetId) }
+          : {}),
       },
-      clock.now(),
-    );
+      at: now,
+      refId: missionId,
+    });
+  });
+};
+
+/** Half a minute. Scheduling is exact; claiming a due event is not. */
+const LEAD_TOLERANCE = 0.5;
+
+async function planetName(tx: Tx, planetId: string): Promise<string> {
+  const [row] = await tx.select({ name: planets.name }).from(planets).where(eq(planets.id, planetId));
+  return row?.name ?? 'an unknown world';
+}
+
+/**
+ * A squadron meets its rock. D19.
+ *
+ * The whole claim happens inside one transaction under a lock on the claim row,
+ * which is what makes the race honest: two squadrons landing in the same second
+ * are serialised, and the second reads a total that already includes the first.
+ */
+export const onMiningArrival: Handler = async ({ db, clock }, event) => {
+  const runId = event.refId;
+  if (!runId) throw new Error('mining_arrival without refId');
+  await db.transaction(async (tx) => {
+    await resolveMiningArrival(tx, runId, clock.now());
+  });
+};
+
+/** A squadron gets home and unloads into storage. */
+export const onMiningReturn: Handler = async ({ db, clock }, event) => {
+  const runId = event.refId;
+  if (!runId) throw new Error('mining_return without refId');
+  await db.transaction(async (tx) => {
+    const delivered = await resolveMiningReturn(tx, runId, clock);
+    if (!delivered) return; // already settled by another worker
+
+    const [run] = await tx.select().from(miningRuns).where(eq(miningRuns.id, runId));
+    if (!run) return;
+    const [planet] = await tx.select().from(planets).where(eq(planets.id, run.planetId));
+    if (!planet) return;
+
+    await recomputeWealth(tx, run.planetId);
+    /**
+     * Reuses `fleet_returned` rather than inventing a kind: from the player's side
+     * this IS craft coming home with cargo.
+     *
+     * IT CARRIES `trip`, AND THAT IS NOT COSMETIC. D45. This payload named its
+     * discriminant `kind`, which collided with the notification's own `kind`, and
+     * it shared none of its fields with the raid payload the client parsed. So the
+     * parse failed on every single mining and harvest return and the client fell
+     * back to "Your fleet is home." — no ore, no waste, nothing. A drill flew for
+     * forty minutes and reported a sentence.
+     *
+     * `wasted` is the part that matters most and the part that had never once been
+     * displayed: ore mined and then thrown away because the works were already
+     * full is exactly the lesson D31 exists to teach, and it was being taught in
+     * silence.
+     */
+    await notify(tx, {
+      playerId: planet.playerId,
+      kind: 'fleet_returned',
+      payload: {
+        trip: run.debrisFieldId === null ? 'mining' : 'harvest',
+        craft: delivered.craft,
+        alloy: Math.round(delivered.delivered.alloy),
+        crystal: Math.round(delivered.delivered.crystal),
+        wastedAlloy: Math.round(delivered.wasted.alloy),
+        wastedCrystal: Math.round(delivered.wasted.crystal),
+      },
+      at: clock.now(),
+      refId: runId,
+    });
   });
 };
 
 export const HANDLERS: Partial<Record<EventRow['kind'], Handler>> = {
   mission_arrival: onMissionArrival,
   radar_warning: onRadarWarning,
+  mining_arrival: onMiningArrival,
+  mining_return: onMiningReturn,
 };

@@ -1,18 +1,75 @@
-import { and, eq, inArray } from 'drizzle-orm';
+import { and, eq, inArray, ne } from 'drizzle-orm';
 import {
+  BUILDING_IDS,
+  INSTRUMENT_IDS,
+  SATELLITE_IDS,
   advanceEconomy,
+  productionMult,
   wealth,
   type BuildingId,
   type BuildingLevels,
   type Fleet,
   type HullId,
-  type SatelliteLevels,
+  type InstrumentId,
+  type InstrumentLevels,
+  type SatelliteId,
+  type SatelliteSet,
+  HULLS,
 } from '@blindspace/rules';
 import { minutesSince, type Clock } from '../clock.js';
-import type { Db, Tx } from '../db/client.js';
+import type { Db, Queryable, Tx } from '../db/client.js';
 import { buildings, planets, players, satellites, seasons, units } from '../db/schema.js';
 
-const BUILDING_IDS: BuildingId[] = ['CORE', 'REFINERY', 'EXTRACTOR', 'VAULT', 'SHIPYARD', 'RING'];
+/**
+ * The buildings that exist, as a set, for rejecting rows that name one that does
+ * not.
+ *
+ * The Orbital Ring was retired in D22 and its rows are still in the database of
+ * any season that predates the change. Reading one back into `BuildingLevels`
+ * would put a key on the object that the type says cannot be there, and `wealth()`
+ * iterates that object — so a decommissioned structure would keep contributing to
+ * a live player's Wealth, and therefore to the rank floor that decides who may
+ * attack them. Skipping unknown types is what keeps a legacy row inert.
+ */
+const KNOWN_BUILDINGS = new Set<string>(BUILDING_IDS);
+
+/**
+ * The two id spaces the `satellites` table holds, and why unknown rows are dropped.
+ *
+ * D25 split installed hardware into ground INSTRUMENTS with levels and orbit
+ * SATELLITES without. Both live in one table, told apart by their id. A row naming
+ * something retired — the DRILL satellite, before it became a craft — belongs to
+ * neither list and is skipped, so it can never go on contributing to Wealth and
+ * therefore to the rank floor that decides who may attack a player.
+ */
+const KNOWN_INSTRUMENTS = new Set<string>(INSTRUMENT_IDS);
+const KNOWN_SATELLITES = new Set<string>(SATELLITE_IDS);
+
+interface Installed {
+  instruments: InstrumentLevels;
+  orbit: SatelliteSet;
+}
+
+/** Rows to the two shapes the game reads, with anything retired left behind. */
+function installedFrom(rows: readonly { type: string; level: number }[]): Installed {
+  const instruments: InstrumentLevels = {};
+  const orbit: SatelliteId[] = [];
+  for (const row of rows) {
+    if (KNOWN_INSTRUMENTS.has(row.type)) instruments[row.type as InstrumentId] = row.level;
+    else if (KNOWN_SATELLITES.has(row.type)) orbit.push(row.type as SatelliteId);
+  }
+  return { instruments, orbit };
+}
+
+/** Rows to levels, with every building present at zero and nothing else present. */
+function buildingLevelsFrom(rows: readonly { type: string; level: number }[]): BuildingLevels {
+  const levels = Object.fromEntries(BUILDING_IDS.map((b) => [b, 0])) as BuildingLevels;
+  for (const row of rows) {
+    if (!KNOWN_BUILDINGS.has(row.type)) continue;
+    levels[row.type as BuildingId] = row.level;
+  }
+  return levels;
+}
 
 export interface LockedPlanet {
   planetId: string;
@@ -21,12 +78,19 @@ export interface LockedPlanet {
   seasonStart: Date;
   name: string;
   x: number; y: number; z: number;
+  /** In storage: spendable, vault-protected, fully exposed to a raid. */
   alloy: number;
   crystal: number;
+  /** In the works: not spendable until collected, exposed at half. D16. */
+  bufferAlloy: number;
+  bufferCrystal: number;
   shield: number;
   disruptedUntil: Date | null;
   buildings: BuildingLevels;
-  satellites: SatelliteLevels;
+  /** Ground installations, with their levels. */
+  instruments: InstrumentLevels;
+  /** What is in orbit. Presence is the whole state — D25. */
+  orbit: SatelliteSet;
   /** Units physically at home right now. Anything in flight is not here. */
   homeFleet: Fleet;
   ground: Fleet;
@@ -66,17 +130,15 @@ export async function loadLocked(tx: Tx, planetId: string, clock: Clock): Promis
     tx.select().from(units).where(and(eq(units.planetId, planetId), eq(units.location, 'home'))),
   ]);
 
-  const levels = Object.fromEntries(BUILDING_IDS.map((b) => [b, 0])) as BuildingLevels;
-  for (const b of buildingRows) levels[b.type as BuildingId] = b.level;
+  const levels = buildingLevelsFrom(buildingRows);
 
-  const sats: SatelliteLevels = {};
-  for (const s of satelliteRows) sats[s.type] = s.level;
+  const { instruments, orbit } = installedFrom(satelliteRows);
 
   const homeFleet: Fleet = {};
   const ground: Fleet = {};
   for (const u of unitRows) {
     if (u.count <= 0) continue;
-    (u.hull === 'BASTION' ? ground : homeFleet)[u.hull] = u.count;
+    (HULLS[u.hull].ground ? ground : homeFleet)[u.hull] = u.count;
   }
 
   const now = clock.now();
@@ -86,6 +148,8 @@ export async function loadLocked(tx: Tx, planetId: string, clock: Clock): Promis
     {
       alloy: row.alloy,
       crystal: row.crystal,
+      bufferAlloy: row.bufferAlloy,
+      bufferCrystal: row.bufferCrystal,
       shield: row.shield,
       lastTickMinutes: minutesSince(season.startsAt, row.lastTickAt),
       disruptedUntilMinutes: row.disruptedUntil
@@ -95,7 +159,9 @@ export async function loadLocked(tx: Tx, planetId: string, clock: Clock): Promis
     {
       refineryLevel: levels.REFINERY,
       extractorLevel: levels.EXTRACTOR,
-      aegisLevel: sats.AEGIS ?? 0,
+      aegisLevel: instruments.AEGIS ?? 0,
+      // A Foundry lifts the rate, and therefore the caps that follow from it. D25.
+      production: productionMult(orbit),
     },
     nowMinutes,
   );
@@ -106,6 +172,8 @@ export async function loadLocked(tx: Tx, planetId: string, clock: Clock): Promis
       .set({
         alloy: advanced.alloy,
         crystal: advanced.crystal,
+        bufferAlloy: advanced.bufferAlloy,
+        bufferCrystal: advanced.bufferCrystal,
         shield: advanced.shield,
         lastTickAt: now,
       })
@@ -121,10 +189,13 @@ export async function loadLocked(tx: Tx, planetId: string, clock: Clock): Promis
     x: row.x, y: row.y, z: row.z,
     alloy: advanced.alloy,
     crystal: advanced.crystal,
+    bufferAlloy: advanced.bufferAlloy,
+    bufferCrystal: advanced.bufferCrystal,
     shield: advanced.shield,
     disruptedUntil: row.disruptedUntil,
     buildings: levels,
-    satellites: sats,
+    instruments,
+    orbit,
     homeFleet,
     ground,
     nowMinutes,
@@ -169,13 +240,23 @@ export async function withTwoPlanetLock<T>(
 export async function saveResources(
   tx: Tx,
   planetId: string,
-  next: { alloy: number; crystal: number; shield?: number; disruptedUntil?: Date | null },
+  next: {
+    alloy: number;
+    crystal: number;
+    /** Omit to leave the works untouched — most callers only move storage. */
+    bufferAlloy?: number;
+    bufferCrystal?: number;
+    shield?: number;
+    disruptedUntil?: Date | null;
+  },
 ): Promise<void> {
   await tx
     .update(planets)
     .set({
       alloy: next.alloy,
       crystal: next.crystal,
+      ...(next.bufferAlloy !== undefined ? { bufferAlloy: next.bufferAlloy } : {}),
+      ...(next.bufferCrystal !== undefined ? { bufferCrystal: next.bufferCrystal } : {}),
       ...(next.shield !== undefined ? { shield: next.shield } : {}),
       ...(next.disruptedUntil !== undefined ? { disruptedUntil: next.disruptedUntil } : {}),
     })
@@ -230,14 +311,16 @@ export async function setBuildingLevel(
 /**
  * Recompute and store Wealth, reading everything fresh.
  *
- * Denormalised so the rank-floor check is one read — and that denormalisation was
- * silently broken. `wealth` was written ONLY when a player bought something, so it
- * was never written at all for a player who had not: a fresh commander sat at
- * zero, and `canAttack` refuses anyone below 40% of the attacker's wealth. A
- * player who joined and pressed nothing was therefore PERMANENTLY IMMUNE to
- * attack, which is the exact opposite of the design. It also
- * went stale after every raid, since combat moves resources and units without
- * anyone "buying" anything.
+ * Denormalised so the ladder is one read — and that denormalisation was silently
+ * broken. `wealth` was written ONLY when a player bought something, so it was
+ * never written at all for a player who had not: a fresh commander sat at zero.
+ * It also went stale after every raid, since combat moves resources and units
+ * without anyone "buying" anything.
+ *
+ * IT NO LONGER DECIDES WHO MAY ATTACK WHOM. D49 replaced the Wealth ratio with a
+ * development-tier band, so a stale figure here is now a wrong number on the
+ * ladder rather than a player who cannot be attacked at all — which is what it
+ * used to be, and is why this function exists.
  *
  * Counting ALL units owned, not just the ones at home: Wealth is "everything you
  * own, at what it cost", and a fleet in flight is still owned. Counting only the
@@ -254,27 +337,30 @@ export async function recomputeWealth(tx: Tx, planetId: string): Promise<number>
     tx.select().from(units).where(eq(units.planetId, planetId)),
   ]);
 
-  const levels = Object.fromEntries(BUILDING_IDS.map((b) => [b, 0])) as BuildingLevels;
-  for (const b of buildingRows) levels[b.type as BuildingId] = b.level;
+  const levels = buildingLevelsFrom(buildingRows);
 
-  const sats: SatelliteLevels = {};
-  for (const s of satelliteRows) sats[s.type] = s.level;
+  const { instruments, orbit } = installedFrom(satelliteRows);
 
   const fleet: Fleet = {};
   const ground: Fleet = {};
   for (const u of unitRows) {
     if (u.count <= 0) continue;
-    const bucket = u.hull === 'BASTION' ? ground : fleet;
+    const bucket = HULLS[u.hull].ground ? ground : fleet;
     bucket[u.hull] = (bucket[u.hull] ?? 0) + u.count;
   }
 
   const value = wealth({
     buildings: levels,
-    satellites: sats,
+    instruments,
+    satellites: orbit,
     fleet,
     ground,
-    alloy: row.alloy,
-    crystal: row.crystal,
+    // Uncollected ore is owned, so it is Wealth — and Wealth is what the rank
+    // floor reads. Counting only storage would make a player cheapest, and so
+    // most protected from attack, at exactly the moment they were carrying the
+    // most: overnight, with the works full and nothing collected.
+    alloy: row.alloy + row.bufferAlloy,
+    crystal: row.crystal + row.bufferCrystal,
   });
   await tx.update(players).set({ wealth: value }).where(eq(players.id, row.playerId));
   return value;
@@ -292,12 +378,41 @@ export async function totalUnitsOf(tx: Tx, planetId: string): Promise<Fleet> {
   return out;
 }
 
+/**
+ * A planet's own craft that are NOT standing on it.
+ *
+ * `homeFleet` answers "what could I launch"; this answers "what do I own that is
+ * already out". They differ for the whole of every round trip, and a rule about
+ * ownership — `PROSPECTOR.max` — has to read the second one or a player empties
+ * the cap simply by having their craft in the air.
+ */
+export async function awayFleet(tx: Tx, planetId: string): Promise<Fleet> {
+  const rows = await tx
+    .select()
+    .from(units)
+    .where(and(eq(units.planetId, planetId), ne(units.location, 'home')));
+  const out: Fleet = {};
+  for (const r of rows) if (r.count > 0) out[r.hull] = (out[r.hull] ?? 0) + r.count;
+  return out;
+}
+
+/**
+ * What is in a planet's orbit, without taking a lock. D25.
+ *
+ * Several systems need it and none of them is mutating the planet: mining reads the
+ * Derrick, a launch reads the Beacon, the economy reads the Foundry. Keeping one
+ * answer means a satellite that changes a number cannot be honoured in one place
+ * and forgotten in another.
+ */
+export async function orbitOf(tx: Queryable, planetId: string): Promise<SatelliteSet> {
+  const rows = await tx.select().from(satellites).where(eq(satellites.planetId, planetId));
+  return installedFrom(rows).orbit;
+}
+
 /** Building levels for a planet we are not holding a lock on. */
 export async function buildingLevelsOf(tx: Tx, planetId: string): Promise<BuildingLevels> {
   const rows = await tx.select().from(buildings).where(eq(buildings.planetId, planetId));
-  const levels = Object.fromEntries(BUILDING_IDS.map((b) => [b, 0])) as BuildingLevels;
-  for (const r of rows) levels[r.type as BuildingId] = r.level;
-  return levels;
+  return buildingLevelsFrom(rows);
 }
 
 export const planetIdsOfPlayers = (tx: Tx, playerIds: string[]) =>

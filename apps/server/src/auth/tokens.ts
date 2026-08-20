@@ -27,7 +27,13 @@ export class TokenService {
   constructor(
     secret: string,
     private readonly accessMinutes: number,
-    private readonly refreshDays: number,
+    /**
+     * Public because the refresh COOKIE's lifetime has to match the refresh
+     * TOKEN's. Two independent settings for one duration eventually disagree, and
+     * the failure is a cookie that outlives its token — a browser that believes it
+     * is signed in and an API that does not.
+     */
+    readonly refreshDays: number,
   ) {
     this.key = new TextEncoder().encode(secret);
   }

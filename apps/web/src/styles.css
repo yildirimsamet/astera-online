@@ -1,60 +1,123 @@
 @import 'tailwindcss';
 @import '@fontsource-variable/ibm-plex-sans';
-@import '@fontsource/ibm-plex-mono/400.css';
-@import '@fontsource/ibm-plex-mono/500.css';
-@import '@fontsource/archivo-narrow/600.css';
+@import '@fontsource-variable/saira/standard.css';
+@import './styles/chrome.css';
 
 /**
- * BLINDSPACE — instrument panel, not sci-fi HUD.
+ * BLINDSPACE — the COMMAND DECK.
  *
- * The one rule this palette obeys: HUE carries category, LUMINANCE carries
- * certainty. Alloy is warm, crystal is cold, danger is grease-pencil red — and
- * knowledge fades toward the background as clarity drops, so an unreliable
- * reading is literally harder to see than a confirmed one. Colour is information
- * here, not decoration; nothing else may use the clarity ramp.
+ * The player is standing at a deck window looking out at the disc. Every panel is a
+ * machined plate that slides into that window, and the plates are lit by their own
+ * readouts. See docs/visual-design.md § ART DIRECTION.
+ *
+ * The law this palette obeys has NOT changed, because it is gameplay and not taste:
+ * HUE carries category, LUMINANCE carries certainty. Alloy is warm, crystal is cold,
+ * danger is grease-pencil red — and knowledge fades toward the background as clarity
+ * drops, so an unreliable reading is literally harder to see than a confirmed one.
+ *
+ * What changed is the MATERIAL. Colour is still information; light is now state.
+ * A surface that glows is a surface that is doing something.
  */
 @theme {
-  --color-void: #05070d;
-  --color-deep: #090d16;
-  --color-panel: #0e1421;
-  --color-raised: #151d2e;
-  --color-line: #1f2a3d;
-  --color-line-soft: #16202f;
+  /* ── GROUND ─────────────────────────────────────────────────
+     Deepest first. The canvas sits at void; plates rise off it. */
+  --color-void: #04060c;
+  --color-deep: #070b14;
+  --color-panel: #0d131f;
+  --color-raised: #141c2b;
+  --color-line: #22304a;
+  --color-line-soft: #182132;
 
-  --color-bone: #e8e3d6;
-  --color-dim: #8b95a8;
-  --color-faint: #5b6478;
+  /* ── MATERIAL ───────────────────────────────────────────────
+     The machined surface, read straight off the art: gunmetal and
+     graphite, lit from above by one cold source. */
+  --color-plate-hi: #1d2841;
+  --color-plate: #111926;
+  --color-plate-lo: #080d16;
+  --color-well: #05080f;
+  --color-edge-lit: #4a6288;
+  --color-edge-shade: #02040a;
 
+  /* ── INK ────────────────────────────────────────────────────
+     Bone is warm on purpose: it is the one thing on screen that is
+     not machinery, and it keeps a near-black interface from reading
+     as a terminal. */
+  --color-bone: #e9e4d8;
+  --color-dim: #93a0b6;
+  --color-faint: #5f6b81;
+
+  /* ── SEMANTIC · meanings are locked, do not repurpose ────── */
   --color-alloy: #d9a441;
   --color-crystal: #6fd3e0;
   --color-alert: #e2412c;
-
-  /*
-   * Two more semantic hues, and only two. THREAT is the grease-pencil red already
-   * reserved for the irreversible; OPPORTUNITY is a jade that appears nowhere else
-   * in the interface, so the moment a window opens it is the only thing on screen
-   * wearing that colour.
-   */
   --color-threat: #e2412c;
   --color-opportunity: #5ad39b;
 
-  /* Certainty ramp. FULL is almost paper; BLIND is almost background. */
+  /* ── EMISSIVE · light only, never meaning ───────────────────
+     Each semantic hue gets a brighter sibling used exclusively for
+     glow, rim light and lit edges. The flat token still carries the
+     category; this one carries the fact that something is ON. */
+  --color-alloy-glow: #ffbe52;
+  --color-crystal-glow: #59c8ff;
+  --color-threat-glow: #ff6a4d;
+  --color-opportunity-glow: #6ff5b6;
+
+  /* ── CERTAINTY RAMP · reserved for the intel layer ──────────
+     FULL is almost paper; BLIND is almost background. Nothing
+     outside the fog may wear these five values. */
   --color-clarity-full: #edf6ff;
   --color-clarity-clear: #afc8dd;
   --color-clarity-int: #7c8ca3;
   --color-clarity-deg: #5a6478;
   --color-clarity-blind: #39404f;
 
-  --font-display: 'Archivo Narrow', ui-sans-serif, system-ui, sans-serif;
+  /* ── TYPE ───────────────────────────────────────────────────
+     Two families. Saira is squared, technical and has a width axis,
+     so condensed labels and wide hero numerals come from one file.
+     Plex Sans stays: the prose is the game's voice and it is good. */
+  --font-display: 'Saira Variable', ui-sans-serif, system-ui, sans-serif;
   --font-sans: 'IBM Plex Sans Variable', ui-sans-serif, system-ui, sans-serif;
-  --font-mono: 'IBM Plex Mono', ui-monospace, 'SF Mono', monospace;
+  /* Legacy alias. `.num` and `.readout` resolve through it, so every
+     existing tabular number inherits the new face without a rewrite. */
+  --font-mono: 'Saira Variable', ui-sans-serif, system-ui, sans-serif;
+
+  /* Scale, so the sprawl of arbitrary text-[13px] can end. */
+  --text-hero: 46px;
+  --text-hero--line-height: 0.92;
+  --text-readout: 30px;
+  --text-readout--line-height: 1;
+  --text-figure: 21px;
+  --text-figure--line-height: 1.05;
+  --text-title: 18px;
+  --text-title--line-height: 1.2;
+  --text-body: 14px;
+  --text-body--line-height: 1.5;
+  --text-label: 11px;
+  --text-label--line-height: 1.2;
+  --text-micro: 10px;
+  --text-micro--line-height: 1.2;
+
+  /* ── MOTION ─────────────────────────────────────────────────
+     One ease for everything mechanical: fast out of the gate, settles
+     without bounce. Hardware does not spring. */
+  --ease-hardware: cubic-bezier(0.16, 0.84, 0.32, 1);
+  --ease-press: cubic-bezier(0.3, 0, 0.2, 1);
 }
 
-@keyframes sheet-in {
-  from {
-    transform: translateY(14px);
-    opacity: 0;
-  }
+/* Geometry and elevation. Plain custom properties rather than @theme
+   entries — these are consumed by chrome.css, not by utilities. */
+:root {
+  --cut-sm: 8px;
+  --cut-md: 12px;
+  --cut-lg: 18px;
+
+  --dur-fast: 120ms;
+  --dur-base: 220ms;
+  --dur-slow: 420ms;
+
+  /* The thickness under a pressable surface. This single value is what
+     makes a button feel like an object rather than a rectangle. */
+  --slab-depth: 2px;
 }
 
 @keyframes fade-in {
@@ -77,6 +140,7 @@
   }
 }
 
+/** Fires on a completed purchase — a bright sweep across the surface. */
 @keyframes sweep {
   from {
     transform: translateX(-100%);
@@ -93,6 +157,27 @@
   }
 }
 
+/** An emissive edge breathing. Reserved for a state that wants attention. */
+@keyframes ember {
+  0%,
+  100% {
+    opacity: 0.55;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+/** Loading: a light passing under a plate rather than a spinner. */
+@keyframes shimmer {
+  from {
+    transform: translateX(-60%);
+  }
+  to {
+    transform: translateX(160%);
+  }
+}
+
 @layer base {
   html {
     background-color: var(--color-void);
@@ -101,36 +186,58 @@
     -webkit-text-size-adjust: 100%;
   }
 
+  /**
+   * NOTHING IS SELECTABLE. Owner decision.
+   *
+   * This is a game, not a document. Every interaction it has is a tap or a drag —
+   * orbiting the disc, pulling a sheet, holding a button — and on a touch screen
+   * every one of those doubles as the gesture that starts a text selection. The
+   * result is a blue highlight over a planet name and an iOS callout offering to
+   * copy it, in the middle of a camera move.
+   *
+   * Applied at the root and lifted for the two places where selecting text is the
+   * point: real inputs, and anything explicitly marked. `-webkit-touch-callout`
+   * kills the long-press menu, which `user-select` alone does not.
+   */
+  html,
+  body {
+    -webkit-user-select: none;
+    user-select: none;
+    -webkit-touch-callout: none;
+  }
+
+  input,
+  textarea,
+  select,
+  [contenteditable],
+  .selectable {
+    -webkit-user-select: text;
+    user-select: text;
+    -webkit-touch-callout: default;
+  }
+
   body {
     margin: 0;
     color: var(--color-bone);
     font-family: var(--font-sans);
-    font-size: 15px;
-    line-height: 1.45;
-    /* The disc, seen edge-on from inside it: one light source, low in the frame,
-       plus a plate grain. Two gradients and a filter — no image asset, nothing
-       to download, and it holds up at any size. */
+    font-size: var(--text-body);
+    line-height: 1.5;
+    /*
+      The ground under the canvas. The 3D stage covers this in normal play, so it
+      is really a first-paint backdrop and a safety net for the frame where WebGL
+      has not come up yet — which is exactly when a flat black screen would read
+      as a crash.
+    */
     background:
-      radial-gradient(120% 55% at 50% -10%, #101a33 0%, transparent 60%),
-      radial-gradient(90% 40% at 50% 105%, #0d1526 0%, transparent 70%),
+      radial-gradient(120% 55% at 50% -10%, #0e1830 0%, transparent 60%),
+      radial-gradient(90% 40% at 50% 105%, #0b1322 0%, transparent 70%),
       var(--color-void);
     background-attachment: fixed;
     min-height: 100dvh;
   }
 
-  /* Grain. Sits above the ground, below everything else, and never intercepts a tap. */
-  body::before {
-    content: '';
-    position: fixed;
-    inset: 0;
-    z-index: 0;
-    pointer-events: none;
-    opacity: 0.035;
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)'/%3E%3C/svg%3E");
-  }
-
   :focus-visible {
-    outline: 2px solid var(--color-crystal);
+    outline: 2px solid var(--color-crystal-glow);
     outline-offset: 2px;
   }
 
@@ -153,144 +260,49 @@
 }
 
 @layer components {
-  /** An instrument legend: the small engraved label above a reading. */
+  /**
+   * An engraved label: the small stamped caption above a reading.
+   *
+   * Condensed via the width axis and pushed into the surface with a one-pixel
+   * dark shadow, so it reads as printed onto the plate rather than typed over it.
+   */
   .legend {
     font-family: var(--font-display);
     font-weight: 600;
+    font-stretch: 88%;
     text-transform: uppercase;
     letter-spacing: 0.14em;
-    font-size: 11px;
+    font-size: var(--text-label);
+    line-height: 1.2;
     color: var(--color-faint);
+    text-shadow: 0 1px 0 rgb(0 0 0 / 60%);
   }
 
   /** Every number in the game. Tabular so a ticking value does not jitter. */
   .num {
-    font-family: var(--font-mono);
+    font-family: var(--font-display);
     font-variant-numeric: tabular-nums;
-    font-feature-settings: 'zero' 1;
-  }
-
-  .panel {
-    position: relative;
-    background: linear-gradient(180deg, var(--color-panel) 0%, var(--color-deep) 100%);
-    border: 1px solid var(--color-line-soft);
-    border-radius: 4px;
-  }
-  /* A one-pixel catch-light along the top edge. It is the difference between a
-     surface and a rectangle, and it costs nothing. */
-  .panel::before {
-    content: '';
-    position: absolute;
-    inset: 0 0 auto 0;
-    height: 1px;
-    background: linear-gradient(90deg, transparent, rgb(255 255 255 / 7%) 30%, transparent);
-    pointer-events: none;
-  }
-
-  /** A group of related decisions, headed by the problem it solves. */
-  .group {
-    border: 1px solid var(--color-line-soft);
-    border-radius: 4px;
-    background:
-      radial-gradient(120% 100% at 50% 0%, rgb(35 52 84 / 22%) 0%, transparent 60%),
-      linear-gradient(180deg, var(--color-panel) 0%, var(--color-deep) 100%);
-  }
-
-  /** The one thing on screen worth acting on. Loud on purpose. */
-  .directive {
-    position: relative;
-    overflow: hidden;
-    border-radius: 4px;
-    border: 1px solid;
-    padding: 14px;
-  }
-  .directive-threat {
-    border-color: color-mix(in srgb, var(--color-threat) 45%, transparent);
-    background:
-      radial-gradient(130% 120% at 0% 0%, color-mix(in srgb, var(--color-threat) 20%, transparent), transparent 62%),
-      var(--color-deep);
-  }
-  .directive-opportunity {
-    border-color: color-mix(in srgb, var(--color-opportunity) 40%, transparent);
-    background:
-      radial-gradient(130% 120% at 0% 0%, color-mix(in srgb, var(--color-opportunity) 16%, transparent), transparent 62%),
-      var(--color-deep);
-  }
-  .directive-growth,
-  .directive-idle {
-    border-color: var(--color-line);
-    background:
-      radial-gradient(130% 120% at 0% 0%, rgb(60 82 128 / 18%), transparent 62%),
-      var(--color-deep);
-  }
-
-  /** Rendered art sits on nothing, so it needs its own pool of light. */
-  .art-well {
-    background: radial-gradient(circle at 50% 45%, rgb(96 140 200 / 16%), transparent 68%);
+    font-weight: 500;
   }
 
   /**
-   * THE FRAME.
+   * A readout: the game's way of stating a number that matters.
    *
-   * The single change that stops this reading as a web page. Real interfaces in
-   * this genre are built objects: cut corners, a bright inner edge where light
-   * catches, a darker well behind the content. A 1px rounded rectangle is a card
-   * on a website; this is a panel bolted to something.
-   */
-  .frame {
-    position: relative;
-    background:
-      linear-gradient(180deg, rgb(22 32 52 / 55%) 0%, rgb(9 13 22 / 92%) 100%);
-    border: 1px solid var(--color-line);
-    /* Corner cuts. Cheap, and instantly legible as hardware. */
-    clip-path: polygon(
-      10px 0,
-      100% 0,
-      100% calc(100% - 10px),
-      calc(100% - 10px) 100%,
-      0 100%,
-      0 10px
-    );
-  }
-  .frame::after {
-    content: '';
-    position: absolute;
-    inset: 0;
-    pointer-events: none;
-    background: linear-gradient(180deg, rgb(255 255 255 / 6%), transparent 40%);
-  }
-
-  /** A bracket accent — the mark that says "this is the important one". */
-  .bracket {
-    position: relative;
-    padding-left: 11px;
-  }
-  .bracket::before {
-    content: '';
-    position: absolute;
-    left: 0;
-    top: 2px;
-    bottom: 2px;
-    width: 3px;
-    background: linear-gradient(180deg, var(--color-crystal), transparent);
-    opacity: 0.75;
-  }
-
-  /**
-   * A readout: the game's way of stating a number.
-   *
-   * Big figure, small unit, tabular. The size difference is doing the work that a
-   * label would otherwise have to do in words.
+   * Heavy, slightly wide, tight leading. Stock, power, ETA and exposure ARE the
+   * game — they get to be the loudest thing on the plate.
    */
   .readout {
-    font-family: var(--font-mono);
+    font-family: var(--font-display);
     font-variant-numeric: tabular-nums;
+    font-weight: 700;
+    font-stretch: 105%;
+    letter-spacing: -0.01em;
     line-height: 1;
   }
 
   /** Fires when a value the player cares about jumps. */
   .pop {
-    animation: pop 420ms cubic-bezier(0.2, 0.9, 0.2, 1);
+    animation: pop 420ms var(--ease-hardware);
   }
 
   /** Fires on a completed purchase — a bright sweep across the row. */
@@ -302,72 +314,9 @@
     background: linear-gradient(
       100deg,
       transparent 20%,
-      rgb(111 211 224 / 26%) 50%,
+      rgb(89 200 255 / 26%) 50%,
       transparent 80%
     );
     animation: sweep 700ms ease-out;
-  }
-
-  .chip {
-    display: inline-flex;
-    align-items: center;
-    gap: 5px;
-    font-family: var(--font-display);
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.1em;
-    font-size: 10px;
-    padding: 3px 7px;
-    border-radius: 2px;
-    border: 1px solid var(--color-line);
-    color: var(--color-dim);
-  }
-  .chip-threat {
-    border-color: color-mix(in srgb, var(--color-threat) 50%, transparent);
-    color: #ff9d8f;
-    background: color-mix(in srgb, var(--color-threat) 12%, transparent);
-  }
-  .chip-opportunity {
-    border-color: color-mix(in srgb, var(--color-opportunity) 50%, transparent);
-    color: var(--color-opportunity);
-    background: color-mix(in srgb, var(--color-opportunity) 12%, transparent);
-  }
-  .chip-locked {
-    border-color: var(--color-line);
-    color: var(--color-dim);
-    background: rgb(255 255 255 / 3%);
-  }
-
-  .btn {
-    font-family: var(--font-display);
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.1em;
-    font-size: 12px;
-    padding: 9px 14px;
-    border-radius: 2px;
-    border: 1px solid var(--color-line);
-    background: var(--color-raised);
-    color: var(--color-bone);
-    transition: border-color 120ms ease, background-color 120ms ease;
-    min-height: 38px;
-  }
-  .btn:active:not(:disabled) {
-    background: var(--color-line);
-  }
-  .btn:disabled {
-    color: var(--color-faint);
-    background: transparent;
-    border-color: var(--color-line-soft);
-  }
-
-  /** Reserved for the irreversible: launching, and nothing else. */
-  .btn-commit {
-    border-color: color-mix(in srgb, var(--color-alert) 55%, transparent);
-    background: color-mix(in srgb, var(--color-alert) 14%, transparent);
-    color: #ffb9ae;
-  }
-  .btn-commit:active:not(:disabled) {
-    background: color-mix(in srgb, var(--color-alert) 26%, transparent);
   }
 }

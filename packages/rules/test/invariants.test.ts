@@ -2,11 +2,40 @@ import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
 import {
   ALL_HULLS,
+  DEBRIS,
   ECON,
+  GALAXY,
+  HULLS,
+  INSTRUMENT_COST_MULT,
+  INSTRUMENT_IDS,
+  PROBE,
+  PROSPECTOR,
+  SATELLITES,
+  SATELLITE_IDS,
+  START,
+  TRAVEL,
   alloyRate,
+  asteroidActive,
+  asteroidPosition,
+  claimDebris,
+  claimOre,
+  collectorCap,
   crystalRate,
+  debrisRemaining,
+  distance,
+  interceptAsteroid,
+  investedInInstrument,
+  investedInSatellite,
+  prospectorSpeed,
+  instrumentCost,
+  satelliteCost,
+  satelliteSlots,
   storageCap,
+  telescopeCooldownHours,
+  telescopeRange,
+  telescopeSlots,
   upgradeCost,
+  withinTelescopeRange,
   bookBattle,
   computeLoot,
   dominion,
@@ -14,8 +43,10 @@ import {
   fleetCargo,
   fleetCount,
   generateGalaxy,
+  median,
   mulberry32,
   resolveCombat,
+  prospectorTravelExact,
   travelMinutes,
   type Fleet,
 } from '../src/index.js';
@@ -132,16 +163,30 @@ describe('loot invariants', () => {
       fc.property(
         fc.integer({ min: 0, max: 500_000 }),
         fc.integer({ min: 0, max: 500_000 }),
+        fc.integer({ min: 0, max: 200_000 }),
+        fc.integer({ min: 0, max: 200_000 }),
         fc.integer({ min: 0, max: 100_000 }),
         fc.integer({ min: 0, max: 200_000 }),
         fc.constantFrom('DECISIVE' as const, 'PARTIAL' as const, 'REPELLED' as const),
-        (alloy, crystal, floor, cargo, grade) => {
-          const loot = computeLoot({ alloy, crystal }, floor, grade, cargo);
+        (alloy, crystal, bufA, bufC, floor, cargo, grade) => {
+          const stock = { alloy, crystal };
+          const buffer = { alloy: bufA, crystal: bufC };
+          const loot = computeLoot(stock, buffer, floor, grade, cargo);
+
           expect(loot.alloy + loot.crystal).toBeLessThanOrEqual(cargo);
-          expect(loot.alloy).toBeLessThanOrEqual(Math.max(0, alloy - floor));
-          expect(loot.crystal).toBeLessThanOrEqual(Math.max(0, crystal - floor));
           expect(loot.alloy).toBeGreaterThanOrEqual(0);
           expect(loot.crystal).toBeGreaterThanOrEqual(0);
+
+          // Neither column may be over-drawn: the caller debits each separately,
+          // and a loot line larger than the pile it came from is a negative
+          // balance waiting to be written.
+          expect(loot.fromStock.alloy).toBeLessThanOrEqual(Math.max(0, alloy - floor));
+          expect(loot.fromStock.crystal).toBeLessThanOrEqual(Math.max(0, crystal - floor));
+          expect(loot.fromBuffer.alloy).toBeLessThanOrEqual(bufA);
+          expect(loot.fromBuffer.crystal).toBeLessThanOrEqual(bufC);
+
+          expect(loot.fromStock.alloy + loot.fromBuffer.alloy).toBe(loot.alloy);
+          expect(loot.fromStock.crystal + loot.fromBuffer.crystal).toBe(loot.crystal);
         },
       ),
       { numRuns: 500 },
@@ -151,7 +196,8 @@ describe('loot invariants', () => {
   it('a fleet can never carry more than its hulls allow', () => {
     fc.assert(
       fc.property(arbFleet, (f) => {
-        const loot = computeLoot({ alloy: 1e9, crystal: 1e9 }, 0, 'DECISIVE', fleetCargo(f));
+        const big = { alloy: 1e9, crystal: 1e9 };
+        const loot = computeLoot(big, big, 0, 'DECISIVE', fleetCargo(f));
         expect(loot.alloy + loot.crystal).toBeLessThanOrEqual(fleetCargo(f));
       }),
       { numRuns: 200 },
@@ -195,6 +241,385 @@ describe('galaxy generation', () => {
 
   it('produces the requested number of slots', () => {
     expect(generateGalaxy(4, 200).slots).toHaveLength(200);
+  });
+
+  /**
+   * The client regenerates the field locally and the server resolves mining
+   * against it. If the two disagree by so much as one rock, a player mines an
+   * asteroid they cannot see — so the field must not depend on how many planet
+   * slots the shard happens to have.
+   */
+  it('generates the same asteroid field whatever the shard cap', () => {
+    expect(generateGalaxy(31, 120).asteroids).toEqual(generateGalaxy(31, 200).asteroids);
+  });
+});
+
+/**
+ * ASTEROIDS AND INTERCEPTION — D19.
+ *
+ * The interception is the one piece of new maths in the game, and it is the kind
+ * that fails silently: a craft aimed a few units wrong still flies, still arrives,
+ * and just quietly never meets the rock. These hold the meeting itself rather than
+ * the algebra that produces it.
+ */
+describe('the asteroid field', () => {
+  const spec = generateGalaxy(7, 40);
+  const rocks = spec.asteroids;
+
+  it('spawns a level distribution that adds up', () => {
+    const sum = GALAXY.asteroidLevelWeights.reduce((a, b) => a + b, 0);
+    expect(sum).toBeCloseTo(1, 6);
+  });
+
+  it('gives every rock ore, a finite life and an orbit inside the disc', () => {
+    for (const a of rocks.slice(0, 200)) {
+      expect(a.ore).toBeGreaterThan(0);
+      expect(a.expiresAt).toBeGreaterThan(a.appearsAt);
+      expect(a.speed).toBeGreaterThanOrEqual(GALAXY.asteroidSpeedMin);
+      expect(a.speed).toBeLessThanOrEqual(GALAXY.asteroidSpeedMax);
+      expect(a.radius).toBeGreaterThanOrEqual(GALAXY.asteroidOrbitMin);
+      expect(a.radius).toBeLessThanOrEqual(GALAXY.asteroidOrbitMax);
+      // The revolution time has to agree with the speed it was given, or the
+      // rendered motion and the solver would disagree about where it is.
+      expect((2 * Math.PI * a.radius) / a.period).toBeCloseTo(a.speed, 6);
+    }
+  });
+
+  /**
+   * THE REASON THE ORBIT CAME BACK. A rock has to be visibly moving — the field
+   * looked frozen when speeds were capped so a straight-line intercept could be
+   * solved in closed form.
+   */
+  it('moves fast enough to be seen moving', () => {
+    for (const a of rocks.slice(0, 50)) {
+      // Rendered world units per minute, at the client's scale of 50 game units
+      // to one world unit. A planet is 0.5 to 1.24 world units across.
+      expect(a.speed / 50).toBeGreaterThan(1);
+    }
+  });
+
+  it('stays on its orbit, at the radius it was given', () => {
+    const a = rocks[3]!;
+    for (const t of [a.appearsAt, a.appearsAt + 7, a.expiresAt - 1]) {
+      const at = asteroidPosition(a, t);
+      expect(Math.hypot(at.x, at.z)).toBeCloseTo(a.radius, 6);
+      expect(at.y).toBe(a.y);
+    }
+  });
+
+  it('comes back round — one period later it is where it started', () => {
+    const a = rocks[5]!;
+    const start = asteroidPosition(a, a.appearsAt);
+    const later = asteroidPosition(a, a.appearsAt + a.period);
+    expect(distance(start, later)).toBeLessThan(1e-6);
+  });
+
+  it('is only in the disc between appearing and expiring', () => {
+    const a = rocks[5]!;
+    expect(asteroidActive(a, a.appearsAt - 1)).toBe(false);
+    expect(asteroidActive(a, a.appearsAt)).toBe(true);
+    expect(asteroidActive(a, a.expiresAt)).toBe(false);
+  });
+
+  /**
+   * THE DRILL IS A MULTIPLE OF THE ROCKS, AND THE MULTIPLE IS THE POINT. D40.
+   *
+   * `PROSPECTOR.speed` is arithmetic, not a round number: three times the mean of
+   * the asteroid speed band. Move the band without moving it and the lead angle a
+   * player watches — a third of a lap at 3x, more than a full lap at the old 62 —
+   * silently drifts back to the unreadable version the owner reported.
+   */
+  it('flies at three times the mean rock, and a Derrick at four and a half', () => {
+    const meanRock = (GALAXY.asteroidSpeedMin + GALAXY.asteroidSpeedMax) / 2;
+    expect(prospectorSpeed([])).toBeCloseTo(3 * meanRock, 6);
+    const withDerrick = prospectorSpeed(['DERRICK']) / meanRock;
+    expect(withDerrick).toBeGreaterThanOrEqual(4);
+    expect(withDerrick).toBeLessThanOrEqual(5);
+  });
+
+  /**
+   * ONE MEETING, AND NO SCAN CAN STEP OVER IT. D40.
+   *
+   * `interceptAsteroid` walks forward in fixed steps looking for a sign change, so
+   * its correctness depends on the intercept function not wobbling between two
+   * samples. It cannot, at any speed above `distanceFactor x asteroidSpeedMax`:
+   * the distance term can then move the flight estimate by less than a minute per
+   * minute, so `f` falls monotonically and the first crossing is the only one.
+   * Below that threshold — which is where the old 62 sat — the guarantee is gone
+   * and the solver is relying on the step being fine enough.
+   */
+  it('flies fast enough that the intercept solve has exactly one root', () => {
+    expect(prospectorSpeed([])).toBeGreaterThan(
+      TRAVEL.distanceFactor * GALAXY.asteroidSpeedMax,
+    );
+  });
+
+  /**
+   * THE PROPERTY THAT MATTERS. A rock FASTER than the craft must still be
+   * meetable — that is the entire reason the orbit came back, and the thing a
+   * straight-line path could not give.
+   *
+   * Asserted at a speed no craft in the game has, deliberately. D40 lifted the
+   * Prospector clear above the whole speed band, so this can no longer be reached
+   * through `prospectorSpeed` — but it is a property of the SOLVER, not of the
+   * Prospector, and deleting it would take the safety net out from under any
+   * future craft that flies slower than a rock.
+   */
+  it('can be met even by a craft slower than the rock', () => {
+    const rock = rocks[4]!;
+    const crawling = rock.speed * 0.4;
+    const hit = interceptAsteroid({ x: 0, y: 0, z: 0 }, crawling, rock, rock.appearsAt + 1);
+    expect(hit).not.toBeNull();
+    expect(distance(asteroidPosition(rock, hit!.meetsAtMinutes), hit!.at)).toBeLessThan(1e-6);
+  });
+
+  /**
+   * THE LEAD ANGLE THE PLAYER ACTUALLY WATCHES. D40, and the reason the speed moved.
+   *
+   * A squadron flies to where the rock WILL BE, so the aim point is always ahead of
+   * the rock on its orbit — that is D19 working. What broke was HOW FAR ahead: at
+   * the old speed the median meeting was more than a full revolution away, which
+   * reads as a craft setting off in an unrelated direction. Held to under half a
+   * lap here, which is a lead shot rather than a lap of waiting.
+   */
+  /**
+   * THE LAUNCH OVERHEAD IS THE LEAD, and that is why it has its own figure. D48.
+   *
+   * A fixed delay before a craft covers any ground is a fixed head start for the
+   * rock, and no amount of hull speed shrinks it. At `TRAVEL.baseMinutes` the
+   * overhead was 68% of a mining flight and a rock covered 660 units during it —
+   * 85% of the whole lead. Held far below the warship figure, or the aim point
+   * drifts back to somewhere unrelated whatever the drill's speed is.
+   */
+  it("gives a mining craft a launch overhead far below a warship's", () => {
+    expect(PROSPECTOR.launchMinutes).toBeLessThan(TRAVEL.baseMinutes / 4);
+    expect(PROSPECTOR.launchMinutes).toBeGreaterThan(0);
+  });
+
+  /** And the overhead is a minority of a typical mining flight, not the bulk of it. */
+  it('spends most of a mining flight actually travelling', () => {
+    const shares: number[] = [];
+    for (const planet of spec.slots.slice(0, 8)) {
+      for (const rock of rocks.slice(0, 120)) {
+        const hit = interceptAsteroid(planet, prospectorSpeed([]), rock, rock.appearsAt + 1);
+        if (hit) shares.push(PROSPECTOR.launchMinutes / hit.flightMinutes);
+      }
+    }
+    expect(shares.length).toBeGreaterThan(200);
+    expect(median(shares)).toBeLessThan(0.5);
+  });
+
+  it('aims less than half a revolution ahead of the rock', () => {
+    const laps: number[] = [];
+    for (const planet of spec.slots.slice(0, 8)) {
+      for (const rock of rocks.slice(0, 120)) {
+        const now = rock.appearsAt + 1;
+        const hit = interceptAsteroid(planet, prospectorSpeed([]), rock, now);
+        if (hit) laps.push(hit.flightMinutes / rock.period);
+      }
+    }
+    expect(laps.length).toBeGreaterThan(200);
+    /**
+     * A SIXTH OF A LAP AT THE MEDIAN, tightened from a half by D48.
+     *
+     * Half a revolution was the band the speed change alone could reach; it still
+     * put the aim point most of a planet-width from the rock a player had just
+     * tapped, and the owner reported it as the craft going somewhere unrelated.
+     * Cutting the launch overhead is what brought it to a lead the eye reads as
+     * aiming ahead of a moving target: measured over 3,756 launches on the live
+     * seed, the median is 0.127 revolutions — about 46 degrees.
+     */
+    expect(median(laps)).toBeLessThan(1 / 6);
+
+    /**
+     * AND THE WORST CASE IS STILL UNDER HALF A LAP.
+     *
+     * A median alone can hide a tail, and the tail is what a player actually
+     * complains about — one rock sent somewhere baffling is the memory that
+     * sticks. The measured maximum is 0.437; anything at or past half a
+     * revolution is a craft setting off the "wrong way" round the orbit.
+     */
+    expect(Math.max(...laps)).toBeLessThan(0.5);
+  });
+
+  it('always finds a meeting, and the two are actually in the same place', () => {
+    fc.assert(
+      fc.property(
+        fc.nat({ max: rocks.length - 1 }),
+        fc.nat({ max: spec.slots.length - 1 }),
+        fc.double({ min: 0, max: 0.9, noNaN: true }),
+        fc.boolean(),
+        (rockIndex, slotIndex, when, derrick) => {
+          const a = rocks[rockIndex]!;
+          const planet = spec.slots[slotIndex]!;
+          const speed = prospectorSpeed(derrick ? ['DERRICK'] : []);
+          const now = a.appearsAt + (a.expiresAt - a.appearsAt) * when;
+
+          const hit = interceptAsteroid(planet, speed, a, now);
+          if (!hit) {
+            // The only acceptable refusal is a rock with too little life left for
+            // any crossing of the disc to reach it.
+            const widest = 2 * GALAXY.radius;
+            expect(a.expiresAt - now).toBeLessThan(
+              PROSPECTOR.launchMinutes + (widest * TRAVEL.distanceFactor) / speed + 1,
+            );
+            return;
+          }
+
+          // The rock is still there when the craft arrives.
+          expect(hit.meetsAtMinutes).toBeLessThan(a.expiresAt);
+          // A MINING craft's overhead, not a warship's — see `prospectorTravelExact`.
+          expect(hit.flightMinutes).toBeGreaterThanOrEqual(PROSPECTOR.launchMinutes);
+
+          /**
+           * THE CRAFT ARRIVES WHEN THE ROCK DOES, TO THE SECOND.
+           *
+           * This used to allow a whole minute of slack, and the slack was hiding a
+           * real fault: the solver worked in continuous time while the tolerance
+           * compared it against the ROUNDED travel rule, so a craft could be given
+           * a flight up to a minute out of step with the meeting it was solving
+           * for — and it sat at the intercept point waiting for a rock that had not
+           * arrived. Both now read `travelExact`, so they agree by construction.
+           */
+          const flown = prospectorTravelExact(distance(planet, hit.at), speed);
+          expect(Math.abs(flown - hit.flightMinutes)).toBeLessThan(1e-9);
+
+          // And the aim point is where the rock will be, not where it is.
+          const truth = asteroidPosition(a, hit.meetsAtMinutes);
+          expect(distance(truth, hit.at)).toBeLessThan(1e-6);
+        },
+      ),
+      { numRuns: 400 },
+    );
+  });
+
+  it('refuses a rock that has already left', () => {
+    const a = rocks[0]!;
+    expect(interceptAsteroid({ x: 0, y: 0, z: 0 }, 80, a, a.expiresAt + 1)).toBeNull();
+  });
+
+  it('refuses a rock with no life left to fly to', () => {
+    const a = rocks[0]!;
+    expect(interceptAsteroid({ x: 0, y: 0, z: 0 }, 80, a, a.expiresAt - 1)).toBeNull();
+  });
+
+  it('refuses a craft with no speed rather than aiming at nothing', () => {
+    const a = rocks[0]!;
+    expect(interceptAsteroid({ x: 0, y: 0, z: 0 }, 0, a, a.appearsAt + 1)).toBeNull();
+  });
+
+  /**
+   * THE MEETING IS THE NEAREST ONE, NOT MERELY A VALID ONE.
+   *
+   * The owner's rule: a craft goes to the closest point at which it and the rock
+   * can actually be in the same place, and takes exactly as long as that trip
+   * takes. A solver that returned a later crossing would send a craft the long way
+   * round an orbit for no reason a player could see.
+   */
+  it('finds the earliest meeting there is, not a later one', () => {
+    const rock = rocks[11]!;
+    const speed = prospectorSpeed(['DERRICK']);
+    const planet = spec.slots[3]!;
+    const now = rock.appearsAt + 2;
+    const hit = interceptAsteroid(planet, speed, rock, now);
+    expect(hit).not.toBeNull();
+
+    // Sweep every earlier moment: none of them can be reached in time.
+    for (let t = 0.05; t < hit!.flightMinutes - 0.05; t += 0.05) {
+      const reachable = prospectorTravelExact(
+        distance(planet, asteroidPosition(rock, now + t)),
+        speed,
+      );
+      expect(reachable, `t=${t.toFixed(2)} should be unreachable`).toBeGreaterThan(t);
+    }
+  });
+
+  /** And it never claims a trip shorter than launch and landing themselves cost. */
+  it('never returns a flight shorter than the overhead', () => {
+    for (const rock of rocks.slice(0, 60)) {
+      const hit = interceptAsteroid(spec.slots[0]!, prospectorSpeed(['DERRICK']), rock, rock.appearsAt + 1);
+      if (hit) expect(hit.flightMinutes).toBeGreaterThanOrEqual(PROSPECTOR.launchMinutes);
+    }
+  });
+});
+
+describe('ore claims', () => {
+  it('never takes more than the hold or more than is there', () => {
+    fc.assert(
+      fc.property(
+        fc.integer({ min: 0, max: 20_000 }),
+        fc.integer({ min: 0, max: 6_000 }),
+        fc.double({ min: 0, max: 1, noNaN: true }),
+        (remaining, hold, share) => {
+          const claim = claimOre(remaining, hold, share);
+          expect(claim.taken).toBeLessThanOrEqual(hold);
+          expect(claim.taken).toBeLessThanOrEqual(remaining);
+          expect(claim.remaining).toBe(remaining - claim.taken);
+          expect(claim.alloy + claim.crystal).toBe(claim.taken);
+          expect(claim.alloy).toBeGreaterThanOrEqual(0);
+          expect(claim.crystal).toBeGreaterThanOrEqual(0);
+        },
+      ),
+      { numRuns: 400 },
+    );
+  });
+
+  /** The race, stated as an invariant: two craft can never take more than exists. */
+  it('a queue of craft can never take more ore than the rock had', () => {
+    let remaining = 3_400;
+    let total = 0;
+    for (let i = 0; i < 10; i++) {
+      const claim = claimOre(remaining, 900, 0.4);
+      total += claim.taken;
+      remaining = claim.remaining;
+    }
+    expect(total).toBe(3_400);
+    expect(remaining).toBe(0);
+  });
+});
+
+/**
+ * THE TELESCOPE'S THREE GATES — D18.
+ *
+ * Each one has to reward levelling, and none may go backwards: a player who pays
+ * for L4 and gets a shorter reach than they had at L3 has been robbed by a typo in
+ * a table.
+ */
+describe('telescope gates', () => {
+  const levels = [1, 2, 3, 4, 5, 6, 9];
+
+  it('never gives less reach, fewer slots or a longer wait for more level', () => {
+    for (let i = 1; i < levels.length; i++) {
+      const lo = levels[i - 1]!;
+      const hi = levels[i]!;
+      expect(telescopeRange(hi)).toBeGreaterThanOrEqual(telescopeRange(lo));
+      expect(telescopeSlots(hi)).toBeGreaterThanOrEqual(telescopeSlots(lo));
+      expect(telescopeCooldownHours(hi)).toBeLessThanOrEqual(telescopeCooldownHours(lo));
+    }
+  });
+
+  it('has no telescope at level zero', () => {
+    expect(telescopeSlots(0)).toBe(0);
+    expect(telescopeRange(0)).toBe(0);
+  });
+
+  it('reaches the whole disc at the top of the table', () => {
+    const acrossTheGalaxy = GALAXY.radius * 2;
+    expect(withinTelescopeRange(5, acrossTheGalaxy)).toBe(true);
+    expect(withinTelescopeRange(1, acrossTheGalaxy)).toBe(false);
+  });
+});
+
+/**
+ * D16. The buffer must not out-hold the store, or the works become the safer
+ * place to keep everything and the loot table stops mattering.
+ */
+describe('the collector sits in front of storage, not instead of it', () => {
+  it('holds less than the store it feeds', () => {
+    for (const level of [0, 3, 7, 12]) {
+      expect(collectorCap(alloyRate(level))).toBeLessThan(storageCap(alloyRate(level)));
+      expect(collectorCap(crystalRate(level))).toBeLessThan(storageCap(crystalRate(level)));
+    }
   });
 });
 
@@ -259,5 +684,348 @@ describe('crystal is a constraint, not a souvenir', () => {
     })();
     const hoursToFillStore = storageCap(crystalRate(1)) / crystalRate(1);
     expect(hoursToFirstSink).toBeLessThan(hoursToFillStore);
+  });
+});
+
+/**
+ * THE OPENING GRANT IS ARITHMETIC, NOT A ROUND NUMBER. D22.
+ *
+ * `START` exists to pay for exactly one opening — Core, Refinery and Extractor to
+ * L2, and two Wasps — so it must never drift away from what those things cost. Any
+ * price change that is not matched here silently either strands a new commander
+ * mid-opening or hands them a surplus they did not decide anything to get.
+ */
+describe('the opening grant', () => {
+  /** Core, Refinery and Extractor each go 1 → 2, so three of the same step. */
+  const OPENING_UPGRADES = 3;
+  const OPENING_WASPS = 2;
+  const step = upgradeCost(1);
+
+  it('pays for the whole opening, to the unit', () => {
+    expect(START.alloy).toBe(OPENING_UPGRADES * step.alloy + OPENING_WASPS * HULLS.WASP.alloy);
+    expect(START.crystal).toBe(
+      OPENING_UPGRADES * step.crystal + OPENING_WASPS * HULLS.WASP.crystal,
+    );
+  });
+
+  /**
+   * And no further. The grant is a budget with nothing spare in it — the first
+   * real decision in the game is which part of the opening to do first, and a
+   * surplus would delete that decision before the player met it.
+   */
+  it('leaves nothing over for a third Wasp', () => {
+    const spent = OPENING_UPGRADES * step.alloy + OPENING_WASPS * HULLS.WASP.alloy;
+    expect(START.alloy - spent).toBeLessThan(HULLS.WASP.alloy);
+  });
+
+  /**
+   * THE OPENING MUST BE ABLE TO END WITH SOMETHING IN THE AIR. D28, D29.
+   *
+   * Every bay is dark when a planet is created, and a session that cannot fill one
+   * breaks Design Law #1 at the exact moment a player is deciding whether to come
+   * back. The three upgrades are MANDATORY — the Core ceiling refuses any other
+   * first move — and they consume all the crystal, so the cheapest flight in the
+   * game (a probe, 50 alloy and 50 crystal) is out of reach at t=0.
+   *
+   * What the grant does fund is two Wasps, and sending them IS a flight. This
+   * asserts the property the opening actually rests on: after the mandatory
+   * upgrades, what remains must still buy something that can leave the ground.
+   */
+  it('still buys a craft after the upgrades the Core ceiling forces', () => {
+    const mandatory = OPENING_UPGRADES * step.alloy;
+    expect(START.alloy - mandatory).toBeGreaterThanOrEqual(HULLS.WASP.alloy);
+    // And crystal really is what binds — worth stating, because it is why a probe
+    // is not the answer and why enlarging the grant is the tempting wrong fix.
+    expect(START.crystal - OPENING_UPGRADES * step.crystal).toBeLessThan(PROBE.crystal);
+  });
+
+  /** No warships arrive with the planet — the first fleet is bought, not given. */
+  it('is the only thing a new commander is handed', () => {
+    expect(START.alloy).toBeGreaterThan(0);
+    expect(START.crystal).toBeGreaterThan(0);
+    // A grant that could not even buy the first Core level would strand a player
+    // with no move at all, which is the one failure mode worth a guard.
+    expect(START.alloy).toBeGreaterThanOrEqual(upgradeCost(1).alloy);
+  });
+});
+
+/**
+ * THE INFORMATION LAYER'S PRICE, RELATIVE TO THE ECONOMY'S. D30.
+ *
+ * These do not assert that the current ratio is RIGHT — it is measured to be too
+ * cheap, and the fix is measured to break the game (see `INSTRUMENT_LEVEL_WORTH`).
+ * They assert the two things that must stay true whatever that constant becomes,
+ * so the next attempt cannot quietly break either while moving it.
+ */
+describe('what the information layer costs', () => {
+  const tot = (r: { alloy: number; crystal: number }): number => r.alloy + r.crystal;
+  const fourAtMax = INSTRUMENT_IDS.reduce((sum, id) => sum + investedInInstrument(id, 5), 0);
+
+  /**
+   * THE DOOR STAYS OPEN IN THE FIRST HOUR. D22 priced the first rung so that a
+   * brand-new commander can reach the fog layer at all, and every candidate curve
+   * must leave `upgradeCost(0)` alone — the moment the entry price moves, the
+   * cheapest way to make instruments matter becomes the one that locks beginners
+   * out of them.
+   */
+  it('a first-level instrument stays reachable from the opening grant', () => {
+    for (const id of INSTRUMENT_IDS) {
+      const first = tot(instrumentCost(id, 0));
+      expect(first, `${id} L1 is out of reach at t=0`).toBeLessThanOrEqual(START.alloy);
+    }
+    // And the cheapest of them by a wide margin, so "look" is never the expensive
+    // first move for someone who has just arrived.
+    const dearest = Math.max(...INSTRUMENT_IDS.map((id) => tot(instrumentCost(id, 0))));
+    expect(dearest).toBeLessThan(tot(upgradeCost(1)) * 3);
+  });
+
+  /**
+   * THE LADDER MUST STAY A LADDER. Whatever the curve, a higher rung must cost
+   * more than a lower one — a flat or inverted ladder would make levelling a
+   * telescope free at the top, which is the failure this whole area is about.
+   */
+  it('every rung costs more than the one below it', () => {
+    for (const id of INSTRUMENT_IDS) {
+      for (let l = 1; l < 5; l++) {
+        expect(tot(instrumentCost(id, l)), `${id} L${String(l)}`).toBeGreaterThan(
+          tot(instrumentCost(id, l - 1)),
+        );
+      }
+    }
+  });
+
+  /**
+   * THE MEASUREMENT THAT MADE D30 A DECISION RATHER THAN A TODO.
+   *
+   * Owning the whole information layer at maximum currently costs less than one
+   * building step at the level a season actually reaches. That is recorded here as
+   * a fact rather than asserted as correct: if somebody moves the curve, this is
+   * the number that tells them how far they moved it.
+   */
+  it('is currently cheaper than a single late building step — knowingly', () => {
+    const lateStep = tot(upgradeCost(10));
+    expect(fourAtMax).toBeLessThan(lateStep);
+    // A guard rather than a target: if it ever drops below a QUARTER of a step the
+    // information layer has become free, which no curve should ever produce.
+    expect(fourAtMax).toBeGreaterThan(lateStep / 4);
+  });
+});
+
+/**
+ * INSTRUMENTS ARE PRICED; SATELLITES ARE RATIONED. D22, split by D25.
+ *
+ * The four ground instruments are gated by price alone — any of them, in any
+ * order — so the multiplier is the only thing making a choice between them cost
+ * anything. The four orbit satellites are gated by SLOTS, which the Command Core
+ * opens at levels 1, 3, 5 and 9, and each is bought once at a flat price.
+ */
+describe('instrument pricing carries the choice between them', () => {
+  it('makes every instrument dearer than a building at the same level', () => {
+    for (const id of INSTRUMENT_IDS) {
+      for (const level of [0, 1, 3, 5]) {
+        const base = upgradeCost(level);
+        const kit = instrumentCost(id, level);
+        expect(kit.alloy, `${id} L${String(level)}`).toBeGreaterThan(base.alloy);
+        expect(kit.crystal, `${id} L${String(level)}`).toBeGreaterThanOrEqual(base.crystal);
+      }
+    }
+  });
+
+  it('makes the Telescope the dearest thing a planet can build', () => {
+    for (const id of INSTRUMENT_IDS) {
+      if (id === 'TELESCOPE') continue;
+      expect(INSTRUMENT_COST_MULT.TELESCOPE).toBeGreaterThan(INSTRUMENT_COST_MULT[id]);
+      expect(instrumentCost('TELESCOPE', 2).alloy).toBeGreaterThan(instrumentCost(id, 2).alloy);
+    }
+  });
+
+  it('never gets cheaper as it goes up', () => {
+    for (const id of INSTRUMENT_IDS) {
+      for (let level = 0; level < 8; level++) {
+        expect(instrumentCost(id, level + 1).alloy).toBeGreaterThan(
+          instrumentCost(id, level).alloy,
+        );
+      }
+    }
+  });
+
+  /**
+   * Wealth reads what was actually spent. Valuing a Telescope as a building would
+   * under-report a scout's holdings by two thirds — and the rank floor is computed
+   * from Wealth, so that is an attack rule quietly reading the wrong number.
+   */
+  it('values an installed instrument at what it cost', () => {
+    expect(investedInInstrument('TELESCOPE', 0)).toBe(0);
+    for (const id of INSTRUMENT_IDS) {
+      const sum = [0, 1, 2].reduce((total, level) => {
+        const c = instrumentCost(id, level);
+        return total + c.alloy + c.crystal;
+      }, 0);
+      expect(investedInInstrument(id, 3)).toBe(sum);
+    }
+  });
+});
+
+/**
+ * THE ORBIT, AND THE SLOTS THAT RATION IT. D25.
+ *
+ * Four satellites and four slots would be a checklist rather than a choice, and the
+ * thing that stops it being one is WHEN the slots arrive: the fourth is a Core 9
+ * planet, which is most of a season away. For the part of the game anybody actually
+ * plays, a world runs one, two or three of them and which ones is who it is.
+ */
+describe('satellites in orbit', () => {
+  it('opens a slot at Core 1, 3, 5 and 9, and nowhere else', () => {
+    const at = (core: number): number => satelliteSlots(core);
+    expect(at(0)).toBe(0);
+    expect([at(1), at(2)]).toEqual([1, 1]);
+    expect([at(3), at(4)]).toEqual([2, 2]);
+    expect([at(5), at(6), at(7), at(8)]).toEqual([3, 3, 3, 3]);
+    expect([at(9), at(20)]).toEqual([4, 4]);
+  });
+
+  it('never takes a slot away as the Core goes up', () => {
+    for (let core = 0; core < 30; core += 1) {
+      expect(satelliteSlots(core + 1)).toBeGreaterThanOrEqual(satelliteSlots(core));
+    }
+  });
+
+  /** The set has to fit, or one of the four could never be built by anybody. */
+  it('has room for every satellite that exists, eventually', () => {
+    expect(satelliteSlots(9)).toBe(SATELLITE_IDS.length);
+  });
+
+  /**
+   * And not before the late game. If the whole set fitted early there would be no
+   * choice at all — which is the failure this decision exists to avoid.
+   */
+  it('cannot hold the whole set until the Core is deep', () => {
+    expect(satelliteSlots(4)).toBeLessThan(SATELLITE_IDS.length);
+    expect(satelliteSlots(8)).toBeLessThan(SATELLITE_IDS.length);
+  });
+
+  it('charges one flat price, because it is bought once', () => {
+    for (const id of SATELLITE_IDS) {
+      const price = satelliteCost(id);
+      expect(price.alloy).toBeGreaterThan(0);
+      expect(price.crystal).toBeGreaterThan(0);
+      expect(investedInSatellite(id)).toBe(price.alloy + price.crystal);
+    }
+  });
+
+  /**
+   * A satellite's whole value arrives with the purchase, so its price has to be a
+   * real commitment — around what a mid Core level costs, not pocket change.
+   */
+  it('prices the three multipliers as commitments', () => {
+    for (const id of SATELLITE_IDS) {
+      if (id === 'UPLINK') continue;
+      expect(satelliteCost(id).alloy).toBeGreaterThan(upgradeCost(4).alloy);
+    }
+  });
+
+  /**
+   * THE THREE THAT CHANGE A NUMBER ARE COMMITMENTS. THE UPLINK IS A DOOR.
+   *
+   * Every satellite used to be asserted expensive here, and D25's Uplink breaks
+   * that on purpose. The other three each multiply something a planet already has,
+   * so they must cost more than a mid-game building or the slot decision is free.
+   * The Uplink multiplies nothing: it is the only way to reach the Telescope and the
+   * Radar, and a door priced like a commitment is a fog layer most of the galaxy
+   * never opens. It stays reachable inside the opening, and what it really costs is
+   * the SLOT.
+   */
+  it('keeps the Uplink reachable, because it is the door to the fog layer', () => {
+    expect(satelliteCost('UPLINK').alloy).toBeLessThan(satelliteCost('FOUNDRY').alloy);
+    expect(satelliteCost('UPLINK').alloy).toBeLessThan(START.alloy);
+  });
+
+  /** Each one changes a DIFFERENT number. Four bonuses to the same stat is one choice. */
+  it('gives every satellite its own job', () => {
+    expect(SATELLITES.FOUNDRY.production).toBeGreaterThan(1);
+    expect(SATELLITES.DERRICK.hold).toBeGreaterThan(1);
+    expect(SATELLITES.DERRICK.speed).toBeGreaterThan(1);
+    expect(SATELLITES.BEACON.speed).toBeGreaterThan(1);
+    // The Uplink buys a capability rather than a multiplier, so it has no number.
+    expect(Object.keys(SATELLITES.UPLINK).sort()).toEqual(['alloy', 'crystal']);
+  });
+});
+
+/**
+ * WRECKAGE. D32.
+ *
+ * The properties that make debris safe to have at all. The mechanic it is modelled
+ * on — OGame's debris field — is the good half of that game's aftermath; the half
+ * that emptied its PvP layer is the expedition, and the only thing separating them
+ * is that wreckage is made of destroyed ships. These hold that line.
+ */
+describe('debris fields', () => {
+  it('fades to exactly nothing at the end of its life', () => {
+    expect(debrisRemaining(1000, 0, 0)).toBe(1000);
+    expect(debrisRemaining(1000, 0, DEBRIS.decayMinutes / 2)).toBeCloseTo(500, 5);
+    expect(debrisRemaining(1000, 0, DEBRIS.decayMinutes)).toBe(0);
+    // And stays at nothing rather than going negative for a late arrival.
+    expect(debrisRemaining(1000, 0, DEBRIS.decayMinutes * 3)).toBe(0);
+  });
+
+  it('never grows, at any age', () => {
+    fc.assert(
+      fc.property(
+        fc.integer({ min: 0, max: 500_000 }),
+        fc.integer({ min: 0, max: 500_000 }),
+        fc.nat({ max: 600 }),
+        fc.nat({ max: 600 }),
+        (initial, taken, a, b) => {
+          const [early, late] = a <= b ? [a, b] : [b, a];
+          expect(debrisRemaining(initial, taken, late)).toBeLessThanOrEqual(
+            debrisRemaining(initial, taken, early) + 1e-6,
+          );
+        },
+      ),
+      { numRuns: 300 },
+    );
+  });
+
+  it('what has already been carried off is never available again', () => {
+    const initial = 10_000;
+    const half = debrisRemaining(initial, 0, 0) / 2;
+    expect(debrisRemaining(initial, half, 0)).toBeCloseTo(half, 5);
+    // Taking everything leaves nothing, whatever the clock says.
+    expect(debrisRemaining(initial, initial, 0)).toBe(0);
+  });
+
+  /**
+   * A harvest may never take more than is there, and the split follows what the
+   * field is actually made of — a crystal-heavy wreck comes home crystal-heavy.
+   */
+  it('a claim is bounded by the hold and by what is left', () => {
+    fc.assert(
+      fc.property(
+        fc.integer({ min: 0, max: 100_000 }),
+        fc.integer({ min: 0, max: 100_000 }),
+        fc.integer({ min: 0, max: 100_000 }),
+        (alloy, crystal, hold) => {
+          const c = claimDebris(alloy, crystal, hold);
+          expect(c.alloy + c.crystal).toBeLessThanOrEqual(hold);
+          expect(c.alloy).toBeLessThanOrEqual(alloy);
+          expect(c.crystal).toBeLessThanOrEqual(crystal);
+          expect(c.alloy).toBeGreaterThanOrEqual(0);
+          expect(c.crystal).toBeGreaterThanOrEqual(0);
+        },
+      ),
+      { numRuns: 400 },
+    );
+  });
+
+  /**
+   * THE PROPERTY THAT KEEPS IT FROM BECOMING AN EXPEDITION.
+   *
+   * A field is a share of what was destroyed, so it can never be worth more than
+   * the fleets that died to make it. If this ever inverts, harvesting pays better
+   * than the fight that produced it and the loop runs on wreckage instead of war.
+   */
+  it('is always worth less than the fleets that died for it', () => {
+    expect(DEBRIS.share).toBeGreaterThan(0);
+    expect(DEBRIS.share).toBeLessThan(1);
   });
 });

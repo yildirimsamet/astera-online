@@ -3,13 +3,51 @@
 ## What this is
 
 A **mobile-first, portrait, asynchronous multiplayer space game.** Each player owns one
-planet in a galaxy of roughly 200 real people, at real 3D coordinates. Fleets physically
+planet in a galaxy of fifty real people, at real 3D coordinates. Fleets physically
 travel between planets over minutes. Combat resolves on the server while both players are
 asleep.
 
 The pitch in one line:
 
 > **The fleet is the bet. The information is the game. The planet is the stake.**
+
+## What it has to FEEL like
+
+> **Fun, utopian, epic. A NASA photograph you can fly around in — and one that is
+> happening right now, not one that is being reported to you.**
+
+This is a product requirement, not decoration, and it outranks convenience. Three tests,
+in order:
+
+1. **Is it alive?** The disc is a place where things are happening, to other people, while
+   you watch. Fleets crossing, drills racing for a rock, a raid landing on a world you have
+   nothing to do with. If a player sits on the galaxy and nothing moves, the product has
+   failed even if every number on the screen is correct.
+2. **Is it happening NOW?** Anything with a moment attached happens at that moment and is on
+   screen at that moment, for everybody at once. Not on the next poll, not when the worker
+   gets round to it, not once the payload catches up. **Waiting is the enemy** — a state
+   that has not arrived, a craft parked on its destination, a spinner where a decision
+   should be, a squadron hanging over a world with nothing left to do.
+3. **Is it beautiful?** Scale, depth and light. A world is a world, not a dot; a raid is a
+   bombardment, not a status change; the sky is deep and the disc is enormous. If a moment
+   would be more magnificent and it costs nothing the loop cares about, make it more
+   magnificent.
+
+### What that forbids
+
+- **A screen that waits for a server round trip to say what happened.** Predict, render, and
+  reconcile — the server stays the only authority on the OUTCOME, never on the frame rate.
+- **A moment nobody can watch.** If it is worth animating it is worth everybody seeing;
+  see D52, which made the combat cinematic public because a battle only its attacker can
+  see is a database transaction with sound effects.
+- **Dead air inside a state.** Arrive, fight, leave. Nothing in this game stands still
+  waiting for a timer that has already expired.
+- **A rule that is enforced by the interface refusing to move.** If a payload is late, the
+  world keeps running off the clock it already has and corrects itself when the truth lands.
+
+The limits this does NOT relax: the server is still the only authority (P1), a fleet still
+cannot be recalled (P3), the fog is still enforced in the query (P4/P5), and none of this
+is a licence to add systems. **Simple implementation, magnificent presentation.**
 
 ## What this is not
 
@@ -61,7 +99,7 @@ The two laws that fall out of it:
 ## Why the core tension is information, not combat
 
 This was the single most consequential design decision, and it was made against real
-alternatives (see [decisions.md](decisions.md), A1). The reasoning:
+alternatives (see [decisions.md](decisions.md), D1). The reasoning:
 
 1. **It is the differentiator.** Every async space game has fleets and raids. Almost none
    make *seeing and being seen* the core mechanic.

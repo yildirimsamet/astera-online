@@ -1,4 +1,4 @@
-import { and, desc, eq, gt, inArray, isNotNull, ne } from 'drizzle-orm';
+import { and, desc, eq, gt, inArray, isNotNull, ne, or } from 'drizzle-orm';
 import {
   PROBE,
   bearingBetween,
@@ -10,13 +10,19 @@ import {
   fleetValue,
   radarRevealsBearing,
   radarRevealsOrigin,
+  telescopeCooldownHours,
+  telescopeRange,
   telescopeReading,
   telescopeSeed,
+  telescopeSlots,
   travelMinutes,
+  withinTelescopeRange,
   type Bearing,
   type FleetStatus,
   type HullId,
-  type SatelliteId,
+  INSTRUMENT_IDS,
+  type InstrumentId,
+  type InstrumentLevels,
   type TelescopeReading,
 } from '@blindspace/rules';
 import { addMinutes, minutesSince, type Clock } from '../clock.js';
@@ -32,33 +38,40 @@ import {
   units,
   watches,
 } from '../db/schema.js';
+import { assertFreeBay } from './flight.js';
+import { announceUnlocks } from './notifications.js';
 import { GameError, buildingLevelsOf, loadLocked, saveResources } from './planet.js';
 import { schedule } from '../worker/queue.js';
 
 /* ── satellite levels ───────────────────────────────────────── */
 
-export async function satelliteLevels(
+export async function instrumentLevels(
   tx: Queryable,
   planetIds: readonly string[],
-): Promise<Map<string, Partial<Record<SatelliteId, number>>>> {
-  const out = new Map<string, Partial<Record<SatelliteId, number>>>();
+): Promise<Map<string, InstrumentLevels>> {
+  const out = new Map<string, InstrumentLevels>();
   if (planetIds.length === 0) return out;
   const rows = await tx
     .select()
     .from(satellites)
     .where(inArray(satellites.planetId, [...planetIds]));
   for (const r of rows) {
+    // The table also holds orbit satellites (D25); those carry no level anyone
+    // reads, and a row naming something retired belongs to neither list.
+    if (!KNOWN_INSTRUMENTS.has(r.type)) continue;
     const entry = out.get(r.planetId) ?? {};
-    entry[r.type] = r.level;
+    entry[r.type as InstrumentId] = r.level;
     out.set(r.planetId, entry);
   }
   return out;
 }
 
+const KNOWN_INSTRUMENTS = new Set<string>(INSTRUMENT_IDS);
+
 export const levelOf = (
-  levels: Map<string, Partial<Record<SatelliteId, number>>>,
+  levels: Map<string, InstrumentLevels>,
   planetId: string,
-  type: SatelliteId,
+  type: InstrumentId,
 ): number => levels.get(planetId)?.[type] ?? 0;
 
 /* ── ground truth: is their fleet home? ─────────────────────── */
@@ -94,6 +107,16 @@ export async function fleetTruthFor(
         inArray(units.planetId, [...planetIds]),
         ne(units.location, 'home'),
         gt(units.count, 0),
+        /**
+         * A Prospector is not a fleet. D19.
+         *
+         * The telescope sells exactly one fact — is the COMBAT fleet home — and a
+         * mining craft leaving must not make a planet read `AWAY`. Without this
+         * line, sending a Prospector at a passing rock would advertise a planet as
+         * undefended while its whole garrison sat there, and the most valuable
+         * signal in the game would quietly become approximate.
+         */
+        ne(units.hull, 'PROSPECTOR'),
       ),
     )
     .groupBy(units.planetId);
@@ -141,14 +164,21 @@ export interface WatchView {
   targetName: string;
   ownerName: string;
   reading: TelescopeReading;
+  /** When this slot may be re-pointed. Null means now. D18. */
+  cooldownUntil: Date | null;
 }
 
 /**
  * Assign a telescope slot.
  *
- * Slots are capped by telescope LEVEL, not by satellite slots: Telescope L1
- * watches one planet, L2 two, and so on. That is what makes levelling the
- * telescope a real choice against levelling anything else.
+ * THREE GATES, not one (D18). Slots come from telescope level, and on top of that
+ * the target has to be within range and the slot has to be off cooldown.
+ *
+ * All three are enforced HERE, server-side, for the same reason the clarity
+ * gradient is: the shipped version had only the slot check, so a Telescope L1
+ * could read the fleet status of every planet in the galaxy in thirty seconds by
+ * moving its single slot down the list. That is not a fog, it is a button, and it
+ * made the entire clarity gradient optional.
  */
 export async function assignWatch(
   db: Db,
@@ -156,17 +186,19 @@ export async function assignWatch(
   targetPlanetId: string,
   slot: number,
   clock: Clock,
-): Promise<{ slot: number; targetPlanetId: string }> {
+): Promise<{ slot: number; targetPlanetId: string; cooldownUntil: Date | null }> {
   if (observerPlanetId === targetPlanetId) {
     throw new GameError('SELF_WATCH', 'You already know what your own fleet is doing');
   }
 
   return db.transaction(async (tx) => {
     const observer = await loadLocked(tx, observerPlanetId, clock);
-    const level = observer.satellites.TELESCOPE ?? 0;
+    const level = observer.instruments.TELESCOPE ?? 0;
     if (level < 1) throw new GameError('NO_TELESCOPE', 'Install a Telescope first', 403);
-    if (!Number.isInteger(slot) || slot < 0 || slot >= level) {
-      throw new GameError('BAD_SLOT', `Telescope L${level} can watch ${level} planet(s)`);
+
+    const slots = telescopeSlots(level);
+    if (!Number.isInteger(slot) || slot < 0 || slot >= slots) {
+      throw new GameError('BAD_SLOT', `Telescope L${level} can watch ${slots} planet(s)`);
     }
 
     const [target] = await tx.select().from(planets).where(eq(planets.id, targetPlanetId));
@@ -175,17 +207,62 @@ export async function assignWatch(
       throw new GameError('CROSS_SEASON', 'That planet is in another galaxy');
     }
 
+    const reach = distance(observer, target);
+    if (!withinTelescopeRange(level, reach)) {
+      throw new GameError(
+        'OUT_OF_RANGE',
+        `Telescope L${level} reaches ${Math.round(telescopeRange(level))} units; that world is ${Math.round(reach)} away`,
+      );
+    }
+
+    const [existing] = await tx
+      .select()
+      .from(watches)
+      .where(and(eq(watches.observerPlayerId, observer.playerId), eq(watches.slot, slot)));
+
+    // Re-pointing at what the slot already watches is a no-op, not a purchase.
+    // Charging a day's cooldown for a double-tap would be indefensible.
+    if (existing?.targetPlanetId === targetPlanetId) {
+      return { slot, targetPlanetId, cooldownUntil: existing.cooldownUntil };
+    }
+
+    const now = observer.now;
+    if (existing?.cooldownUntil && existing.cooldownUntil > now) {
+      const minutes = Math.ceil((existing.cooldownUntil.getTime() - now.getTime()) / 60_000);
+      throw new GameError(
+        'SLOT_COOLING',
+        `That slot is still realigning — ${String(minutes)} minutes left`,
+        409,
+      );
+    }
+
+    /**
+     * Filling an EMPTY slot is free; moving an occupied one costs the cooldown.
+     *
+     * The price is changing your mind, not looking — so a player who has just
+     * installed their first telescope is never made to wait before using it, and a
+     * player who wants to sweep the galaxy pays for every step of the sweep.
+     */
+    const cooldownUntil = existing
+      ? addMinutes(now, telescopeCooldownHours(level) * 60)
+      : null;
+
     await tx
       .insert(watches)
-      .values({ observerPlayerId: observer.playerId, slot, targetPlanetId })
+      .values({ observerPlayerId: observer.playerId, slot, targetPlanetId, cooldownUntil })
       // Re-pointing a slot discards its confirmation history — you are looking at
       // something new, so nothing is "last confirmed" about it.
       .onConflictDoUpdate({
         target: [watches.observerPlayerId, watches.slot],
-        set: { targetPlanetId, lastStatus: null, lastConfirmedAt: null },
+        set: { targetPlanetId, lastStatus: null, lastConfirmedAt: null, cooldownUntil },
       });
 
-    return { slot, targetPlanetId };
+    // "I can't tell if he's rich." Pointing a telescope at somebody is the moment
+    // the Explorer becomes worth having, and it is where Design Law #2 says to
+    // announce it. Guarded by `unlocksSeen`, so re-pointing announces nothing.
+    await announceUnlocks(tx, observer.playerId, now);
+
+    return { slot, targetPlanetId, cooldownUntil };
   });
 }
 
@@ -224,7 +301,7 @@ export async function readTelescopes(
   const targetIds = rows.map((r) => r.planet.id);
 
   const [levels, truth] = await Promise.all([
-    satelliteLevels(db, [myPlanet.id, ...targetIds]),
+    instrumentLevels(db, [myPlanet.id, ...targetIds]),
     fleetTruthFor(db, targetIds, now),
   ]);
   const myTelescope = levelOf(levels, myPlanet.id, 'TELESCOPE');
@@ -254,7 +331,23 @@ export async function readTelescopes(
 
     if (reading.status !== 'UNKNOWN') {
       const confirmedAt = addMinutes(now, -reading.staleMinutes);
-      if (!row.watch.lastConfirmedAt || confirmedAt > row.watch.lastConfirmedAt) {
+      /**
+       * A READ THAT WRITES, THROTTLED TO WHAT THE READ ACTUALLY MEANS. D52.
+       *
+       * At CLEAR and FULL `staleMinutes` is always zero, so `confirmedAt` is always
+       * `now` and this fired on EVERY call — which was tolerable while `/api/galaxy`
+       * only refetched on window focus, and stopped being tolerable when it started
+       * polling so that a reading labelled `live` is actually live. One row per
+       * watched world per request, per player.
+       *
+       * The column exists so the INTERMITTENT and DEGRADED tiers can say how many
+       * MINUTES old a reading is. A quarter of a minute of granularity is invisible
+       * in every arithmetic that reads it — `staleness()` renders anything under a
+       * minute as "live" — and it drops the write rate by whatever the poll interval
+       * happens to be.
+       */
+      const advance = confirmedAt.getTime() - (row.watch.lastConfirmedAt?.getTime() ?? -Infinity);
+      if (advance >= CONFIRM_GRANULARITY_MS) {
         await db
           .update(watches)
           .set({ lastStatus: reading.status, lastConfirmedAt: confirmedAt })
@@ -273,10 +366,14 @@ export async function readTelescopes(
       targetName: target.name,
       ownerName: row.owner,
       reading,
+      cooldownUntil: row.watch.cooldownUntil,
     });
   }
   return views;
 }
+
+/** How much a confirmation has to move before it is worth a write. See above. */
+const CONFIRM_GRANULARITY_MS = 15_000;
 
 /* ── explorer ───────────────────────────────────────────────── */
 
@@ -312,6 +409,55 @@ export async function launchProbe(
     if (!target) throw new GameError('PLANET_NOT_FOUND', 'No such planet', 404);
     if (target.seasonId !== origin.seasonId) {
       throw new GameError('CROSS_SEASON', 'That planet is in another galaxy');
+    }
+
+    /**
+     * TWO LIMITS ON SCOUTING, both owner decisions.
+     *
+     * Counted under the origin planet's lock, so two probes launched at the same
+     * instant cannot both see a clear board and both pass — the second blocks here
+     * and re-reads a row the first has already written.
+     *
+     * Return legs count. A probe on its way home is still a craft you have not got
+     * back, and letting the cap reset at the halfway point would make it a cap on
+     * outbound distance rather than on how much you may have in the air.
+     */
+    const inFlight = await tx
+      .select({ targetPlanetId: missions.targetPlanetId, originPlanetId: missions.originPlanetId })
+      .from(missions)
+      .where(
+        and(
+          eq(missions.kind, 'probe'),
+          eq(missions.status, 'in_flight'),
+          or(
+            eq(missions.originPlanetId, originPlanetId),
+            eq(missions.targetPlanetId, originPlanetId),
+          ),
+        ),
+      );
+
+    /**
+     * The probe cap is now the general flight-slot rule. D28.
+     *
+     * `PROBE.maxInFlight` was a special case that rationed one craft type and left
+     * mining and raiding unrationed; a bay is the same scarcity applied to
+     * everything that leaves the ground. The `inFlight` rows above are still
+     * needed — the one-probe-per-target rule below reads them.
+     */
+    await assertFreeBay(tx, originPlanetId, origin.buildings.CORE);
+
+    // One probe per target at a time. A second one launched before the first
+    // reports would buy nothing — the answer is already on its way — and it is the
+    // cheapest way to turn a banded reading into a precise one by averaging.
+    const already = inFlight.some(
+      (m) => m.targetPlanetId === targetPlanetId || m.originPlanetId === targetPlanetId,
+    );
+    if (already) {
+      throw new GameError(
+        'PROBE_ALREADY_OUT',
+        'You already have a probe working that planet',
+        409,
+      );
     }
 
     const dist = distance(origin, target);
@@ -359,7 +505,7 @@ export async function resolveProbe(
   const [target] = await tx.select().from(planets).where(eq(planets.id, mission.targetPlanetId));
   if (!origin || !target) throw new Error('probe references a missing planet');
 
-  const levels = await satelliteLevels(tx, [target.id]);
+  const levels = await instrumentLevels(tx, [target.id]);
   const veil = levelOf(levels, target.id, 'VEIL');
   const radar = levelOf(levels, target.id, 'RADAR');
 
@@ -437,7 +583,7 @@ export async function readRadarLog(
   planetId: string,
   limit = 20,
 ): Promise<ScanView[]> {
-  const levels = await satelliteLevels(db, [planetId]);
+  const levels = await instrumentLevels(db, [planetId]);
   const radar = levelOf(levels, planetId, 'RADAR');
 
   const rows = await db

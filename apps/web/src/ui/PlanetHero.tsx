@@ -1,18 +1,18 @@
-import { fleetCount, satelliteEntries } from '@blindspace/rules';
+import { fleetCount } from '@blindspace/rules';
 import type { PlanetView } from '../api/schemas.js';
 import { compact, full } from '../lib/format.js';
 import { powerOf } from '../lib/gains.js';
 import { countdown, useNow } from '../lib/time.js';
-import { BUILDING_ART, ORBITAL_ART, RESOURCE_ART } from './assets.js';
+import { SATELLITE_ART, RESOURCE_ART } from './assets.js';
 import { PlanetSigil } from './PlanetSigil.js';
 
 /**
  * "This is MY planet."
  *
  * The ownership pillar is carried by an image, not a heading. The planet is the
- * largest object in the interface; the Orbital Ring is physically around it; the
- * satellites orbit it; the shield encloses it. A player who buys a Ring should see
- * a ring, and that is the entire feedback loop for a screen full of purchases.
+ * largest object in the interface; the satellites orbit it; the shield encloses it.
+ * A player who buys a satellite should see it appear overhead, and that is the
+ * entire feedback loop for a screen full of purchases.
  *
  * Underneath: POWER and output, then three verdicts. "None" is a verdict. "0
  * ground units" is a number the player still has to interpret.
@@ -30,7 +30,7 @@ export function PlanetHero({
   compact?: boolean;
 }) {
   const now = useNow(1000);
-  const orbitals = satelliteEntries(planet.satellites);
+  const orbitals = planet.orbit;
   const disruptedFor = planet.planet.disruptedUntil
     ? planet.planet.disruptedUntil.getTime() - now
     : 0;
@@ -41,7 +41,6 @@ export function PlanetHero({
     0,
     planet.planet.alloy + planet.planet.crystal - planet.planet.vaultFloor,
   );
-  const ring = planet.buildings.RING ?? 0;
 
   if (compactMode) {
     return (
@@ -72,25 +71,15 @@ export function PlanetHero({
             }}
           />
 
-          {/* The Ring is real hardware in this game, so it is drawn as hardware. */}
-          {ring > 0 && BUILDING_ART.RING && (
-            <img
-              src={BUILDING_ART.RING}
-              alt=""
-              aria-hidden
-              className="pointer-events-none absolute w-[186px] opacity-90"
-              style={{ transform: 'translateY(4px)' }}
-            />
-          )}
 
           <div className="absolute size-[132px] rounded-full border border-line-soft/50" />
           <div className="absolute size-[132px] motion-safe:animate-[spin_84s_linear_infinite]">
-            {orbitals.map(([type], i) => {
+            {orbitals.map((type, i) => {
               const angle = (i / Math.max(1, orbitals.length)) * 360;
               return (
                 <img
                   key={type}
-                  src={ORBITAL_ART[type]}
+                  src={SATELLITE_ART[type]}
                   alt={type.toLowerCase()}
                   title={type.toLowerCase()}
                   className="absolute left-1/2 top-1/2 size-8 object-contain drop-shadow-[0_0_6px_rgba(111,211,224,0.35)]"

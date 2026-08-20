@@ -3,9 +3,22 @@ import { pino } from 'pino';
 import { afterAll, beforeEach, describe, expect, it } from 'vitest';
 import { battleReports, missions, planets, players, scheduledEvents, units } from '../src/db/schema.js';
 import { EventWorker } from '../src/worker/loop.js';
-import { claimDue, complete, fail, reap, schedule } from '../src/worker/queue.js';
+import { claimDue, complete, fail, failedEventCount, reap, schedule } from '../src/worker/queue.js';
+import { abandon, strandedFlightCount, sweepStranded } from '../src/worker/abandon.js';
+import { baysInUse } from '../src/services/flight.js';
 import { launchAttack } from '../src/services/mission.js';
-import { giveUnits, grant, seedWorld, setLevel, testDb, type Fixture } from './helpers.js';
+import {
+  giveInstrument,
+  giveSatellite,
+  giveUnits,
+  grant,
+  placeAt,
+  seedWorld,
+  setLevel,
+  settledAt,
+  testDb,
+  type Fixture,
+} from './helpers.js';
 
 const silent = pino({ level: 'silent' });
 
@@ -142,6 +155,188 @@ describe('event worker', () => {
     });
   });
 
+  /**
+   * A FLIGHT WHOSE EVENT ROW IS SIMPLY GONE. D46.
+   *
+   * Every safety net in the worker reads the EVENT: `reap` requeues a dead claim,
+   * `fail` retries and then abandons, `/health` counts failed rows. A mission with
+   * no event at all is invisible to all three — it sits `in_flight` for the rest of
+   * the season holding a flight bay, and health reports `ok` throughout. One was
+   * found thirteen hours past its arrival on a live galaxy, and nothing running
+   * could have noticed it.
+   */
+  describe('a flight with no event to resolve it', () => {
+    /** Launch a raid, then delete its arrival exactly as a lost row would be. */
+    const orphan = async (): Promise<{ missionId: string; attacker: string }> => {
+      const [attacker, defender] = f.planetIds as [string, string];
+      await setLevel(f.db, attacker, 'CORE', 6);
+      await giveUnits(f.db, attacker, { WASP: 20 });
+      f.clock.advance(300);
+      const launch = await launchAttack(f.db, attacker, defender, { WASP: 20 }, f.clock);
+      await f.db
+        .delete(scheduledEvents)
+        .where(
+          and(
+            eq(scheduledEvents.refId, launch.missionId),
+            eq(scheduledEvents.kind, 'mission_arrival'),
+          ),
+        );
+      return { missionId: launch.missionId, attacker };
+    };
+
+    it('is left alone while it is still legitimately in the air', async () => {
+      await orphan();
+      expect(await sweepStranded(f.db, f.clock)).toBe(0);
+      expect(await strandedFlightCount(f.db, f.clock.now())).toBe(0);
+    });
+
+    /**
+     * And for a grace period after it too. A resolution can be a few seconds late
+     * for entirely ordinary reasons — a poll interval, a retry, a restart — and
+     * sweeping a flight that was about to resolve would destroy a real raid.
+     */
+    it('is left alone for a grace period past its own arrival', async () => {
+      const { missionId } = await orphan();
+      const [mission] = await f.db.select().from(missions).where(eq(missions.id, missionId));
+      f.clock.set(new Date(mission!.arriveAt.getTime() + 60_000));
+      expect(await sweepStranded(f.db, f.clock)).toBe(0);
+    });
+
+    /**
+     * AND THE SWEEP RUNS ON ITS OWN CLOCK, NOT THE QUEUE'S. D52.
+     *
+     * It is two correlated `NOT EXISTS` scans over tables that grow all season, and
+     * it ran before `claimDue` on EVERY tick. That was defensible at a five-second
+     * poll; `WORKER_POLL_MS` is now one second because it is the latency of the
+     * whole world, and tying a repair's cost to that number means every future
+     * improvement in how live the game feels is paid for again in table scans.
+     *
+     * The first tick still sweeps unconditionally: a process starting up after a
+     * crash is exactly when there is most likely to be something to find.
+     */
+    it('sweeps on the first tick, and not again until its own interval', async () => {
+      // Stranded up front, because `orphan` moves the clock and the whole point of
+      // this test is what happens while the clock does NOT move. The second is
+      // inserted directly rather than launched: one fleet per target is a real guard
+      // (D28) and this test is about the sweep, not about launching.
+      const { missionId: first } = await orphan();
+      const [attacker, defender] = f.planetIds as [string, string];
+      const overdue = new Date(f.clock.now().getTime() - 30 * 60_000);
+      const [raw] = await f.db
+        .insert(missions)
+        .values({
+          seasonId: f.seasonId,
+          kind: 'attack',
+          originPlanetId: attacker,
+          targetPlanetId: defender,
+          fleet: { WASP: 1 },
+          distance: 100,
+          departAt: new Date(overdue.getTime() - 60 * 60_000),
+          arriveAt: overdue,
+        })
+        .returning();
+      const second = raw!.id;
+      await f.db.update(missions).set({ arriveAt: overdue }).where(eq(missions.id, first));
+      // Held back until the second tick, so the first has exactly one thing to find.
+      await f.db
+        .update(missions)
+        .set({ arriveAt: new Date(f.clock.now().getTime() + 60 * 60_000) })
+        .where(eq(missions.id, second));
+
+      const worker = makeWorker(f);
+      expect((await worker.tick()).abandoned, 'a fresh worker must sweep at once').toBe(1);
+
+      // Strand the second one, and ask again at the very same instant.
+      await f.db.update(missions).set({ arriveAt: overdue }).where(eq(missions.id, second));
+      expect((await worker.tick()).abandoned, 'swept again inside its own interval').toBe(0);
+
+      f.clock.advance(1);
+      expect((await worker.tick()).abandoned, 'never swept again at all').toBe(1);
+    });
+
+    it('is released once it is clearly never going to resolve', async () => {
+      const { missionId, attacker } = await orphan();
+      const [mission] = await f.db.select().from(missions).where(eq(missions.id, missionId));
+      f.clock.set(new Date(mission!.arriveAt.getTime() + 30 * 60_000));
+
+      expect(await strandedFlightCount(f.db, f.clock.now())).toBe(1);
+      expect(await sweepStranded(f.db, f.clock)).toBe(1);
+
+      // Cancelled, not resolved: the server could not run the battle, so the
+      // conservative reading is that the raid never happened.
+      const [after] = await f.db.select().from(missions).where(eq(missions.id, missionId));
+      expect(after!.status).toBe('cancelled');
+
+      // The ships are home and the bay is free — the whole point of the sweep.
+      const home = await f.db
+        .select()
+        .from(units)
+        .where(and(eq(units.planetId, attacker), eq(units.location, 'home')));
+      expect(home.find((u) => u.hull === 'WASP')?.count).toBe(20);
+      expect(await baysInUse(f.db, attacker)).toBe(0);
+      expect(await strandedFlightCount(f.db, f.clock.now())).toBe(0);
+    });
+
+    /** Idempotent: a second sweep must not double-credit the same ships. */
+    it('releases it exactly once', async () => {
+      const { missionId, attacker } = await orphan();
+      const [mission] = await f.db.select().from(missions).where(eq(missions.id, missionId));
+      f.clock.set(new Date(mission!.arriveAt.getTime() + 30 * 60_000));
+
+      expect(await sweepStranded(f.db, f.clock)).toBe(1);
+      expect(await sweepStranded(f.db, f.clock)).toBe(0);
+      const home = await f.db
+        .select()
+        .from(units)
+        .where(and(eq(units.planetId, attacker), eq(units.location, 'home')));
+      expect(home.find((u) => u.hull === 'WASP')?.count).toBe(20);
+    });
+
+    /**
+     * A RADAR WARNING IS NOT AN ARRIVAL, and it points at the same mission id.
+     * Matching on `ref_id` alone would see one and call the flight healthy for as
+     * long as the warning sat in the queue.
+     */
+    it('is not hidden by another event pointing at the same mission', async () => {
+      const [attacker, defender] = f.planetIds as [string, string];
+      await setLevel(f.db, attacker, 'CORE', 6);
+      await giveInstrument(f.db, defender, 'RADAR', 5);
+      await giveUnits(f.db, attacker, { WASP: 20 });
+      f.clock.advance(300);
+      const launch = await launchAttack(f.db, attacker, defender, { WASP: 20 }, f.clock);
+
+      // The warning survives; only the arrival is lost.
+      await f.db
+        .delete(scheduledEvents)
+        .where(
+          and(
+            eq(scheduledEvents.refId, launch.missionId),
+            eq(scheduledEvents.kind, 'mission_arrival'),
+          ),
+        );
+      const left = await f.db
+        .select()
+        .from(scheduledEvents)
+        .where(eq(scheduledEvents.refId, launch.missionId));
+      expect(left.map((e) => e.kind)).toEqual(['radar_warning']);
+
+      f.clock.set(new Date(launch.arriveAt.getTime() + 30 * 60_000));
+      expect(await sweepStranded(f.db, f.clock)).toBe(1);
+    });
+
+    /** And the worker does it on its own, without anybody calling the sweep. */
+    it('is released by an ordinary worker tick', async () => {
+      const { missionId } = await orphan();
+      const [mission] = await f.db.select().from(missions).where(eq(missions.id, missionId));
+      f.clock.set(new Date(mission!.arriveAt.getTime() + 30 * 60_000));
+
+      const result = await makeWorker(f).tick();
+      expect(result.abandoned).toBe(1);
+      const [after] = await f.db.select().from(missions).where(eq(missions.id, missionId));
+      expect(after!.status).toBe('cancelled');
+    });
+  });
+
   describe('crash recovery', () => {
     it('the reaper returns an abandoned claim to the queue', async () => {
       await schedule(f.db, { seasonId: f.seasonId, kind: 'season_end', resolveAt: f.clock.now() });
@@ -168,7 +363,7 @@ describe('event worker', () => {
       const launch = await launchAttack(f.db, attacker, defender, { WASP: 40, HAULER: 4 }, f.clock);
 
       // Worker A claims the arrival and is killed before completing.
-      f.clock.set(launch.arriveAt);
+      f.clock.set(settledAt(launch.arriveAt));
       const claimed = await claimDue(f.db, 10, f.clock.now());
       expect(claimed.some((e) => e.kind === 'mission_arrival')).toBe(true);
 
@@ -216,7 +411,7 @@ describe('event worker', () => {
       f.clock.advance(300);
 
       const launch = await launchAttack(f.db, attacker, defender, { WASP: 40 }, f.clock);
-      f.clock.set(launch.arriveAt);
+      f.clock.set(settledAt(launch.arriveAt));
 
       const worker = makeWorker(f);
       await worker.tick();
@@ -264,8 +459,29 @@ describe('event worker', () => {
         .where(and(eq(units.planetId, attacker), eq(units.location, 'home')));
       expect(athome.find((u) => u.hull === 'WASP')!.count).toBe(0);
 
+      /**
+       * THE ENGAGEMENT IS A REAL WINDOW, NOT AN ANIMATION. D44.
+       *
+       * A worker ticking at `arriveAt` resolves nothing: the fleet is over the
+       * world and the battle has not happened yet.
+       *
+       * ASSERTED ON THE BATTLE, NOT ON THE EVENT COUNT. This read
+       * `tick().processed === 0`, which was a proxy for "nothing was due" and
+       * stopped being one when D45 gave every raid a radar warning to re-check at
+       * the widest radar crossing. That event IS due here and processing it is
+       * correct; what must still be true is that nothing has been decided.
+       */
       f.clock.set(launch.arriveAt);
       const worker = makeWorker(f);
+      await worker.tick();
+      expect(await f.db.select().from(battleReports)).toHaveLength(0);
+      const [midEngagement] = await f.db
+        .select()
+        .from(missions)
+        .where(eq(missions.id, launch.missionId));
+      expect(midEngagement!.status).toBe('in_flight');
+
+      f.clock.set(settledAt(launch.arriveAt));
       await worker.tick();
 
       const [report] = await f.db.select().from(battleReports);
@@ -306,6 +522,47 @@ describe('event worker', () => {
       expect(attackerPlanet!.alloy).toBeGreaterThan(0); // loot arrived
     });
 
+    /**
+     * THE BEACON SPEEDS THE TRIP HOME TOO. D25 sold "out and back".
+     *
+     * `launchAttack` passed `fleetSpeedMult(origin.orbit)` and the return leg called
+     * the two-argument `fleetTravelMinutes`, so `boost` defaulted to 1: a raid flew
+     * out 1.3× faster and walked home. The satellite costs 11,000 alloy and 3,500
+     * crystal, and `packages/sim` already applies the multiplier to the return leg —
+     * so the balance simulator was valuing a benefit the server did not deliver.
+     *
+     * Asserted as a comparison between two identical raids rather than against a
+     * constant, so it survives any change to `SATELLITES.BEACON.speed`.
+     */
+    it('brings the survivors home at the speed the Beacon was bought for', async () => {
+      const homeLeg = async (beacon: boolean): Promise<number> => {
+        f = await seedWorld(2);
+        const [attacker, defender] = f.planetIds as [string, string];
+        // A real raiding distance. The seed puts these two 150 apart, where the
+        // whole-minute rounding swallows a 30% difference and the assertion below
+        // would pass against the bug it exists to catch.
+        await placeAt(f.db, attacker, { x: 0 });
+        await placeAt(f.db, defender, { x: 1_200 });
+        await setLevel(f.db, attacker, 'CORE', 9);
+        await giveUnits(f.db, attacker, { WASP: 60 });
+        await grant(f.db, defender, 20_000, 2_000);
+        if (beacon) await giveSatellite(f.db, attacker, 'BEACON');
+        f.clock.advance(300);
+
+        const launch = await launchAttack(f.db, attacker, defender, { WASP: 60 }, f.clock);
+        f.clock.set(settledAt(launch.arriveAt));
+        await makeWorker(f).tick();
+
+        const [ret] = await f.db.select().from(missions).where(eq(missions.kind, 'return'));
+        expect(ret, 'nothing survived to fly home').toBeDefined();
+        return ret!.arriveAt.getTime() - ret!.departAt.getTime();
+      };
+
+      const plain = await homeLeg(false);
+      const boosted = await homeLeg(true);
+      expect(boosted, 'the trip home ignored the Beacon').toBeLessThan(plain);
+    });
+
     it('leaves no units stranded in a mission location once it is over', async () => {
       const [attacker, defender] = f.planetIds as [string, string];
       await setLevel(f.db, attacker, 'CORE', 6);
@@ -316,7 +573,7 @@ describe('event worker', () => {
       const launch = await launchAttack(f.db, attacker, defender, { WASP: 60 }, f.clock);
       const worker = makeWorker(f);
 
-      f.clock.set(launch.arriveAt);
+      f.clock.set(settledAt(launch.arriveAt));
       await worker.tick();
       const [ret] = await f.db.select().from(missions).where(eq(missions.kind, 'return'));
       f.clock.set(ret!.arriveAt);
@@ -341,5 +598,108 @@ describe('event worker', () => {
       expect(after!.status).toBe('done');
       expect(after!.lastError).toBeNull();
     });
+  });
+});
+
+/**
+ * THE STRANDED-FLIGHT LEAK, AND THE PROOF IT IS CLOSED. D28.
+ *
+ * `fail()` retries five times and then parks an event as `failed`. Nothing ever
+ * read a `failed` row again — and because `claimMission` flips the mission inside
+ * the same transaction that throws, every failed attempt rolled the mission back
+ * to `in_flight`. The result was a flight that never landed: its units parked
+ * off-planet forever, its origin-target pair blocked for the season, and — once
+ * flight bays exist — a bay held with no path back.
+ *
+ * The leak predates bays. Bays are what made it unacceptable.
+ */
+describe('an event that gives up releases what it was holding', () => {
+  let f: Fixture;
+  let mine: string;
+  let theirs: string;
+
+  beforeEach(async () => {
+    f = await seedWorld(2);
+    [mine, theirs] = f.planetIds as [string, string];
+    for (const id of f.planetIds) {
+      await setLevel(f.db, id, 'CORE', 3);
+      await grant(f.db, id, 200_000, 20_000);
+    }
+    await giveUnits(f.db, mine, { WASP: 40 });
+    f.clock.advance(600);
+  });
+
+  /** Burn the retry budget without needing the handler to actually be broken. */
+  const exhaust = async (eventId: string): Promise<void> => {
+    for (let i = 0; i < 6; i++) {
+      await f.db
+        .update(scheduledEvents)
+        .set({ attempts: sql`${scheduledEvents.attempts} + 1` })
+        .where(eq(scheduledEvents.id, eventId));
+      await fail(f.db, eventId, new Error('handler is broken'));
+    }
+  };
+
+  it('marks the mission cancelled and brings the units home', async () => {
+    const launch = await launchAttack(f.db, mine, theirs, { WASP: 20 }, f.clock);
+    const [event] = await f.db
+      .select()
+      .from(scheduledEvents)
+      .where(eq(scheduledEvents.refId, launch.missionId));
+    expect(event).toBeDefined();
+
+    const before = await baysInUse(f.db, mine);
+    expect(before).toBe(1);
+
+    await exhaust(event!.id);
+    const released = await abandon(f.db, event!, f.clock);
+    expect(released).toBe(true);
+
+    const [mission] = await f.db.select().from(missions).where(eq(missions.id, launch.missionId));
+    expect(mission!.status).toBe('cancelled');
+
+    // The bay is free again...
+    expect(await baysInUse(f.db, mine)).toBe(0);
+
+    // ...and the ships are not lost. A handler that cannot run is the server's
+    // failure, not the player's.
+    const home = await f.db
+      .select()
+      .from(units)
+      .where(and(eq(units.planetId, mine), eq(units.location, 'home')));
+    expect(home.find((u) => u.hull === 'WASP')?.count).toBe(40);
+  });
+
+  it('is idempotent — abandoning twice releases nothing the second time', async () => {
+    const launch = await launchAttack(f.db, mine, theirs, { WASP: 20 }, f.clock);
+    const [event] = await f.db
+      .select()
+      .from(scheduledEvents)
+      .where(eq(scheduledEvents.refId, launch.missionId));
+    await exhaust(event!.id);
+
+    expect(await abandon(f.db, event!, f.clock)).toBe(true);
+    expect(await abandon(f.db, event!, f.clock)).toBe(false);
+    const home = await f.db
+      .select()
+      .from(units)
+      .where(and(eq(units.planetId, mine), eq(units.location, 'home')));
+    expect(home.find((u) => u.hull === 'WASP')?.count, 'units returned twice').toBe(40);
+  });
+
+  /**
+   * A dead event is invisible to the lag metric, which only reads `pending` rows —
+   * so the health check said "ok" while a player was permanently unable to launch.
+   */
+  it('a failed event is visible to the health check', async () => {
+    const launch = await launchAttack(f.db, mine, theirs, { WASP: 20 }, f.clock);
+    const [event] = await f.db
+      .select()
+      .from(scheduledEvents)
+      .where(eq(scheduledEvents.refId, launch.missionId));
+
+    expect(await failedEventCount(f.db)).toBe(0);
+    await exhaust(event!.id);
+    expect(await failedEventCount(f.db)).toBe(1);
   });
 });

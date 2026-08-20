@@ -4,7 +4,7 @@ import * as THREE from 'three';
 import { planetArt } from '../ui/assets.js';
 import { softGlow } from './Environment.jsx';
 import { STANCE_LIGHT, type PlanetNode } from './scene.js';
-import { wasTap } from './tap.js';
+import { markHit, wasTap } from './tap.js';
 
 /**
  * Every world in the disc, in sixteen draw calls.
@@ -146,6 +146,7 @@ function PlanetInstances({ group, onSelect }: { group: Group; onSelect: (id: str
     // Panning across the disc must not open whatever was under the thumb when the
     // gesture started. Only a gesture that ends without travelling is a choice.
     if (!wasTap()) return;
+    markHit();
     event.stopPropagation();
     const index = event.instanceId;
     if (index === undefined) return;
@@ -156,6 +157,7 @@ function PlanetInstances({ group, onSelect }: { group: Group; onSelect: (id: str
   return (
     <instancedMesh
       ref={ref}
+      name="planet-worlds"
       args={[undefined, undefined, count]}
       onPointerUp={pick}
       /**

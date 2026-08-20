@@ -41,11 +41,28 @@ const settle = async (ms = 2500) => {
 // Not `networkidle`: once signed in the event stream holds a connection open, so
 // the network never goes idle.
 await page.goto(APP, { waitUntil: 'load' });
-await page.waitForTimeout(600);
-await shot('01-entry');
+// The landing page's 3D scene loads real models; give it long enough to be worth
+// photographing rather than photographing a black rectangle.
+await settle(3500);
+await shot('01-landing');
 
+// A fresh commander every run. The name has to be unique — usernames are unique
+// forever (D21) — so it carries the clock.
+const NAME = `Shot${Date.now().toString(36).slice(-6)}`;
 await page.getByRole('button', { name: /take a planet/i }).click();
-await page.waitForTimeout(2000);
+await page.waitForTimeout(500);
+await shot('01b-register');
+
+await page.getByLabel(/commander name/i).fill(NAME);
+await page.getByLabel(/password/i).fill('screenshot-password');
+await page.getByRole('button', { name: /create commander/i }).click();
+
+// The server list: ten galaxies, one of them open.
+await page.waitForTimeout(1500);
+await shot('01c-servers');
+
+await page.getByRole('button', { name: /^join$/i }).first().click();
+await page.waitForTimeout(2500);
 
 // A brand-new commander has never left, so there is no return to report. Only an
 // account with history gets the overlay.

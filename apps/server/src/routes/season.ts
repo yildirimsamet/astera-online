@@ -1,37 +1,41 @@
 import { eq, sql } from 'drizzle-orm';
 import type { FastifyInstance } from 'fastify';
-import { planets, players } from '../db/schema.js';
+import { planets, players, seasons, shards } from '../db/schema.js';
 import { GameError } from '../services/planet.js';
-import { liveSeason } from '../services/season.js';
-import { joinSeason } from '../services/player.js';
 import { requireAuth } from './auth.js';
 
 /**
- * Getting into the galaxy.
+ * The clock of the galaxy the caller is standing in.
  *
- * Auth creates an account; this places it on a world. Keeping them separate is
- * what lets an account outlive a season — the account keeps record and cosmetics,
- * the player row is wiped with the shard.
+ * DERIVED FROM THE PLAYER, NOT FROM CONFIGURATION. Until D21 this read a
+ * `SHARD_CODE` environment variable, which is correct for exactly as long as there
+ * is one galaxy — the moment there are ten, an env var means every player is told
+ * the season, the seed and the deadline of `EU-1` whichever galaxy they are
+ * actually in. The seed is the worst of those: the client rebuilds the entire disc
+ * and every asteroid orbit from it, so a wrong one draws a world the server does
+ * not have, and mining resolves against rocks the player never saw.
  */
-export function registerSeasonRoutes(app: FastifyInstance, shardCode: string): void {
-  const requireLiveSeason = async () => {
-    const row = await liveSeason(app.db, shardCode);
-    if (!row) throw new GameError('NO_SEASON', 'No galaxy is open right now', 404);
-    return row;
-  };
+export function registerSeasonRoutes(app: FastifyInstance): void {
+  app.get('/api/season', { preHandler: requireAuth }, async (req) => {
+    const [row] = await app.db
+      .select({ season: seasons, shard: shards, playerId: players.id })
+      .from(players)
+      .innerJoin(seasons, eq(players.seasonId, seasons.id))
+      .innerJoin(shards, eq(seasons.shardId, shards.id))
+      .where(eq(players.accountId, req.accountId!))
+      .limit(1);
 
-  /** The season clock. Public: knowing how long is left is what produces the sunset. */
-  app.get('/api/season', { preHandler: requireAuth }, async () => {
-    const { season, shard } = await requireLiveSeason();
+    if (!row) throw new GameError('NO_PLANET', 'Join a galaxy first', 404);
 
     const [count] = await app.db
       .select({ n: sql<number>`count(*)::int` })
-      .from(players)
-      .where(eq(players.seasonId, season.id));
+      .from(planets)
+      .where(eq(planets.seasonId, row.season.id));
 
     return {
-      seasonId: season.id,
-      shard: shard.code,
+      seasonId: row.season.id,
+      shard: row.shard.code,
+      shardName: row.shard.name === '' ? row.shard.code : row.shard.name,
       /**
        * The galaxy is never stored slot by slot — it is regenerated from this seed
        * wherever it is needed. Handing it to the client lets the 3D surface build
@@ -40,37 +44,12 @@ export function registerSeasonRoutes(app: FastifyInstance, shardCode: string): v
        * derive". It reveals nothing: the layout is public, and every planet in it
        * is already returned by /api/galaxy.
        */
-      seed: season.seed,
-      status: season.status,
-      startsAt: season.startsAt,
-      endsAt: season.endsAt,
-      playerCap: shard.playerCap,
+      seed: row.season.seed,
+      status: row.season.status,
+      startsAt: row.season.startsAt,
+      endsAt: row.season.endsAt,
+      playerCap: row.shard.playerCap,
       players: count?.n ?? 0,
-    };
-  });
-
-  /**
-   * Take a planet on the live season.
-   *
-   * Idempotent by construction: `joinSeason` returns the existing placement, so a
-   * client that retries — or a player who reinstalls — lands on the same planet
-   * rather than acquiring a second one.
-   */
-  app.post('/api/season/join', { preHandler: requireAuth }, async (req) => {
-    const { season } = await requireLiveSeason();
-    const joined = await joinSeason(app.db, req.accountId!, season.id, app.clock);
-
-    const [planet] = await app.db
-      .select()
-      .from(planets)
-      .where(eq(planets.id, joined.planetId));
-
-    return {
-      seasonId: season.id,
-      playerId: joined.playerId,
-      planetId: joined.planetId,
-      planetName: planet?.name ?? '',
-      slotIndex: joined.slotIndex,
     };
   });
 }

@@ -1,9 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
-import type { AsteroidSpec } from '@blindspace/rules';
 import { paintNebulaCanvas } from './nebula.js';
-import { DISC_RADIUS, asteroidPositions, type Vec3Tuple } from './scene.js';
+import { DISC_RADIUS } from './scene.js';
 
 /**
  * The space the game happens in.
@@ -562,124 +561,4 @@ export function Disc() {
  * else, and each one tumbles on its own axis so they are legibly OBJECTS.
  */
 /** How far back along the orbit the tail reaches, in minutes of travel. */
-const TAIL_MINUTES = 0.5;
 
-/**
- * A rock, generated rather than modelled.
- *
- * An icosahedron with every vertex pushed in or out by a hash of its own position:
- * lumpy, faceted, and different for every seed. This is one of the few places
- * where procedural geometry genuinely beats an asset — real asteroids are
- * irregular lumps, which is exactly what noise produces, and three variants at
- * thirty lines cost nothing to load.
- */
-function rockGeometry(seed: number): THREE.BufferGeometry {
-  const geometry = new THREE.IcosahedronGeometry(0.075, 1);
-  const position = geometry.getAttribute('position');
-  const v = new THREE.Vector3();
-
-  for (let i = 0; i < position.count; i++) {
-    v.fromBufferAttribute(position, i);
-    // Hash the direction, so shared vertices displace identically and the surface
-    // stays closed rather than splitting at the seams.
-    const h = Math.sin(v.x * 91.7 + v.y * 47.3 + v.z * 133.1 + seed * 12.9) * 43758.5453;
-    const jitter = 0.72 + (h - Math.floor(h)) * 0.62;
-    v.multiplyScalar(jitter);
-    position.setXYZ(i, v.x, v.y, v.z);
-  }
-
-  position.needsUpdate = true;
-  geometry.computeVertexNormals();
-  return geometry;
-}
-
-export function Asteroids({
-  asteroids,
-  seasonStart,
-}: {
-  asteroids: readonly AsteroidSpec[];
-  seasonStart: Date;
-}) {
-  const ref = useRef<THREE.InstancedMesh>(null);
-  const trails = useRef<THREE.LineSegments>(null);
-  const dummy = useMemo(() => new THREE.Object3D(), []);
-  const rock = useMemo(() => rockGeometry(7), []);
-
-  /**
-   * The tails.
-   *
-   * Two vertices per rock — where it is, and where it was half a minute ago — in
-   * one buffer, so every trail in the galaxy is a single draw call. The head is
-   * lit and the tail is transparent, which is what makes the direction readable at
-   * a glance: without it these are just rocks sitting in space.
-   */
-  const trailGeometry = useMemo(() => {
-    const count = Math.max(1, asteroids.length);
-    const g = new THREE.BufferGeometry();
-    g.setAttribute('position', new THREE.BufferAttribute(new Float32Array(count * 6), 3));
-
-    const colours = new Float32Array(count * 6);
-    for (let i = 0; i < count; i++) {
-      colours.set([0.62, 0.68, 0.82], i * 6); // head
-      colours.set([0, 0, 0], i * 6 + 3); // tail, faded to nothing
-    }
-    g.setAttribute('color', new THREE.BufferAttribute(colours, 3));
-    return g;
-  }, [asteroids.length]);
-
-  useFrame(() => {
-    const mesh = ref.current;
-    if (!mesh) return;
-    const now = Date.now();
-    const positions: Vec3Tuple[] = asteroidPositions(asteroids, seasonStart, now);
-    const behind: Vec3Tuple[] = asteroidPositions(
-      asteroids,
-      seasonStart,
-      now - TAIL_MINUTES * 60_000,
-    );
-
-    const line = trails.current;
-    if (line) {
-      const attribute = line.geometry.getAttribute('position');
-      positions.forEach((p, i) => {
-        const was = behind[i] ?? p;
-        attribute.setXYZ(i * 2, p[0], p[1], p[2]);
-        attribute.setXYZ(i * 2 + 1, was[0], was[1], was[2]);
-      });
-      attribute.needsUpdate = true;
-    }
-
-    positions.forEach((p, i) => {
-      dummy.position.set(p[0], p[1], p[2]);
-      // Tumbling, keyed off position so it is deterministic and drifts as it orbits.
-      dummy.rotation.set(p[0] * 3, p[2] * 3, p[0] * p[2]);
-      dummy.scale.setScalar(0.7 + ((i % 5) * 0.22));
-      dummy.updateMatrix();
-      mesh.setMatrixAt(i, dummy.matrix);
-    });
-    mesh.instanceMatrix.needsUpdate = true;
-  });
-
-  return (
-    <>
-      <lineSegments ref={trails} geometry={trailGeometry} frustumCulled={false}>
-        <lineBasicMaterial
-          vertexColors
-          transparent
-          opacity={0.55}
-          depthWrite={false}
-          blending={THREE.AdditiveBlending}
-        />
-      </lineSegments>
-
-      <instancedMesh
-        ref={ref}
-        args={[rock, undefined, Math.max(1, asteroids.length)]}
-        frustumCulled={false}
-      >
-        {/* Lambert, not basic: a flat fill is what made these read as bugs. */}
-        <meshLambertMaterial color="#5a5f6d" emissive="#0d1119" flatShading />
-      </instancedMesh>
-    </>
-  );
-}

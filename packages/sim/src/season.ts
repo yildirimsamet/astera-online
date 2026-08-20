@@ -1,12 +1,17 @@
 import {
   ABUSE,
+  ALL_HULLS,
+  collectorCap,
+  GROUND_HULLS,
   HULLS,
   MOBILE_HULLS,
+  counterMult,
   advanceEconomy,
   alloyRate,
   applyDisruption,
   bookBattle,
   canAttack,
+  collect,
   computeLoot,
   crystalRate,
   distance,
@@ -16,13 +21,19 @@ import {
   fleetCount,
   fleetEntries,
   fleetSpeed,
+  fleetSpeedMult,
   fleetValue,
   generateGalaxy,
+  START,
   investedInBuilding,
   mulberry32,
   resolveCombat,
-  satelliteEntries,
+  instrumentCost,
+  isSatellite,
+  productionMult,
+  satelliteCost,
   satelliteSlots,
+  seeingUnlocked,
   storageCap,
   travelMinutes,
   upgradeCost,
@@ -32,9 +43,11 @@ import {
   type Fleet,
   type Ledger,
   type Rng,
-  type SatelliteLevels,
+  type GroundHullId,
+  type InstrumentLevels,
+  type SatelliteId,
 } from '@blindspace/rules';
-import { ARCHETYPES, ARCHETYPE_NAMES, type ArchetypeName } from './archetypes.js';
+import { ARCHETYPES, ARCHETYPE_NAMES, type ArchetypeName, type CombatHullId, type Composition } from './archetypes.js';
 import { measure, type Invariants } from './invariants.js';
 
 export interface SimPlayer {
@@ -43,11 +56,16 @@ export interface SimPlayer {
   type: ArchetypeName;
   x: number; y: number; z: number;
   buildings: BuildingLevels;
-  satellites: SatelliteLevels;
+  instruments: InstrumentLevels;
+  /** What is in orbit. Presence is the whole state — D25. */
+  orbit: SatelliteId[];
   fleet: Fleet;
   ground: Fleet;
   alloy: number;
   crystal: number;
+  /** Uncollected production sitting in the works. D16. */
+  bufferAlloy: number;
+  bufferCrystal: number;
   shield: number;
   lastTick: number;
   joinedAt: number;
@@ -62,7 +80,8 @@ export interface SimPlayer {
   wealthNow: number;
   wealthHistory: number[];
   recentHits: Map<number, number[]>;
-  intel: Map<number, { stock: number; defence: number; at: number }>;
+  /** What a probe last measured: what could be carried off, and what defends it. */
+  intel: Map<number, { stock: number; defence: number; composition: Fleet; at: number }>;
   neighbours: { id: number; d: number }[];
 }
 
@@ -127,11 +146,16 @@ export function buildWorld(cfg: SimConfig): World {
     name: `P${String(i).padStart(3, '0')}`,
     type: names[i] ?? 'CASUAL',
     x: slot.x, y: slot.y, z: slot.z,
-    buildings: { CORE: 1, REFINERY: 1, EXTRACTOR: 1, VAULT: 0, SHIPYARD: 0, RING: 0 },
-    satellites: {},
-    fleet: { WASP: 12 },
+    buildings: { CORE: 1, REFINERY: 1, EXTRACTOR: 1, VAULT: 0, SHIPYARD: 0 },
+    instruments: {},
+    orbit: [],
+    // D22: no starting fleet, and the grant is what the opening costs. Mirrors
+    // `joinSeason` exactly — a simulation that opens differently from the game is
+    // measuring a different game.
+    fleet: {},
     ground: {},
-    alloy: 500, crystal: 120,
+    alloy: START.alloy, crystal: START.crystal,
+    bufferAlloy: 0, bufferCrystal: 0,
     shield: 0, lastTick: 0, joinedAt: 0, disruptedUntil: 0,
     nextLogin: Math.floor(rng() * 240),
     ledger: emptyLedger(),
@@ -160,53 +184,270 @@ const capsOf = (p: SimPlayer) => ({
   crystal: storageCap(crystalRate(p.buildings.EXTRACTOR)),
 });
 
+/**
+ * What the WORKS hold when full, which is where production actually lands (D16).
+ *
+ * Priced through `productionMult` for the same reason `worksOf` is: a Foundry lifts
+ * the rate and therefore the ceiling that follows from it.
+ */
+const worksCapsOf = (p: SimPlayer) => {
+  const boost = productionMult(p.orbit);
+  return {
+    alloy: collectorCap(alloyRate(p.buildings.REFINERY) * boost),
+    crystal: collectorCap(crystalRate(p.buildings.EXTRACTOR) * boost),
+  };
+};
+
+const worksOf = (p: SimPlayer) => ({
+  refineryLevel: p.buildings.REFINERY,
+  extractorLevel: p.buildings.EXTRACTOR,
+  aegisLevel: p.instruments.AEGIS ?? 0,
+  production: productionMult(p.orbit),
+});
+
 function sync(p: SimPlayer, t: number): void {
   const next = advanceEconomy(
     {
-      alloy: p.alloy, crystal: p.crystal, shield: p.shield,
+      alloy: p.alloy, crystal: p.crystal,
+      bufferAlloy: p.bufferAlloy, bufferCrystal: p.bufferCrystal,
+      shield: p.shield,
       lastTickMinutes: p.lastTick, disruptedUntilMinutes: p.disruptedUntil,
     },
-    {
-      refineryLevel: p.buildings.REFINERY,
-      extractorLevel: p.buildings.EXTRACTOR,
-      aegisLevel: p.satellites.AEGIS ?? 0,
-    },
+    worksOf(p),
     t,
   );
   p.alloy = next.alloy;
   p.crystal = next.crystal;
+  p.bufferAlloy = next.bufferAlloy;
+  p.bufferCrystal = next.bufferCrystal;
   p.shield = next.shield;
   p.lastTick = next.lastTickMinutes;
 }
 
+/**
+ * The tap, as a bot performs it. D16.
+ *
+ * Every archetype empties the works the moment it logs in — it is one button and
+ * there is never a reason not to. Modelling it as automatic-on-login is what makes
+ * the simulator honest about the collector's real cost, which is not the tap but
+ * the PRODUCTION LOST between logins: a bot that visits twice a day fills an
+ * eight-hour buffer and idles for four, and that shortfall now shows up in the
+ * archetype spread instead of being invisible.
+ */
+function collectWorks(p: SimPlayer): void {
+  const after = collect(
+    {
+      alloy: p.alloy, crystal: p.crystal,
+      bufferAlloy: p.bufferAlloy, bufferCrystal: p.bufferCrystal,
+      shield: p.shield,
+      lastTickMinutes: p.lastTick, disruptedUntilMinutes: p.disruptedUntil,
+    },
+    worksOf(p),
+  ).state;
+
+  p.alloy = after.alloy;
+  p.crystal = after.crystal;
+  p.bufferAlloy = after.bufferAlloy;
+  p.bufferCrystal = after.bufferCrystal;
+}
+
+// Uncollected ore is still owned, so it still counts as Wealth — and Wealth is
+// what the rank floor reads. Leaving the buffer out would make a player cheapest,
+// and so most protected from attack, at exactly the moment they were carrying the
+// most: overnight, with the works full.
 const holdingsOf = (p: SimPlayer) => ({
-  buildings: p.buildings, satellites: p.satellites,
-  fleet: p.fleet, ground: p.ground, alloy: p.alloy, crystal: p.crystal,
+  buildings: p.buildings, instruments: p.instruments, satellites: p.orbit,
+  fleet: p.fleet, ground: p.ground,
+  alloy: p.alloy + p.bufferAlloy,
+  crystal: p.crystal + p.bufferCrystal,
 });
+
+/* ── what to build, and why it is derived rather than listed ───── */
+
+/** Every hull that fights. Haulers carry; ground units never leave. */
+export const COMBAT_HULLS: readonly CombatHullId[] = MOBILE_HULLS.filter(
+  (h): h is CombatHullId => h !== 'HAULER',
+);
+
+/**
+ * What a bot expects to meet on the ground.
+ *
+ * Read off the hull table rather than written down, so a second ground hull is
+ * picked up instead of silently ignored.
+ *
+ * THERE ARE TWO SINCE D27 — a Bastion and a Thorn, in opposite classes — and this
+ * comment claimed there was exactly one for long enough that `expectedDefence`
+ * sixty lines below documents the bug that arose precisely BECAUSE "how much
+ * defence do they have" and "how many Bastions" stopped being the same question.
+ * One assumed hull each is a bot reasoning about the classes it may face, which is
+ * public in the hull table and not information a human is denied.
+ */
+export const GROUND_DEFENCE: Fleet = Object.fromEntries(
+  ALL_HULLS.filter((id) => HULLS[id].ground).map((id) => [id, 1]),
+);
+
+/**
+ * Damage a hull deals before it dies, per resource spent, against a known defence.
+ *
+ * BOTH DIRECTIONS OF THE COUNTER MATRIX, because either one alone lies. A Bulwark's
+ * raw attack per resource is a sixth of a Wasp's, so an offence-only measure says
+ * never build one; what a Bulwark is actually for is what it survives, and that
+ * only shows up in the incoming multiplier.
+ *
+ * DERIVED FROM `counterMult`, NOT FROM A TABLE OF HULL NAMES. That property is
+ * load-bearing rather than tidy: this policy exists so that a combat change can be
+ * measured, and a policy that hardcoded today's answer would have to be rewritten
+ * by the very change it exists to measure — which would leave the reading exactly
+ * as uninterpretable as it was before.
+ */
+export function tradeScore(hull: CombatHullId, defenders: Fleet): number {
+  const h = HULLS[hull];
+  const cost = h.alloy + h.crystal;
+  if (cost <= 0 || h.atk <= 0) return 0;
+
+  let hpPool = 0;
+  let atkPool = 0;
+  let outWeighted = 0;
+  let inWeighted = 0;
+  for (const [id, n] of fleetEntries(defenders)) {
+    const d = HULLS[id];
+    hpPool += n * d.hp;
+    atkPool += n * d.atk;
+    outWeighted += n * d.hp * counterMult(h.cls, d.cls);
+    inWeighted += n * d.atk * counterMult(d.cls, h.cls);
+  }
+  if (hpPool <= 0) return 0;
+
+  const out = outWeighted / hpPool;
+  const incoming = atkPool > 0 ? inWeighted / atkPool : 1;
+  return (h.atk * out * (h.hp / incoming)) / cost;
+}
+
+/**
+ * What the informed player brings, given what the Shipyard can build.
+ *
+ * Seventy-thirty and not a hundred-zero, on purpose. A bot that always fields the
+ * single best hull is playing a solved game, and `BANDS` measured against a galaxy
+ * of solved players says nothing about a galaxy of people. The second hull is the
+ * hedge a competent player keeps against the home fleet they cannot see.
+ */
+export function adaptiveMix(
+  yard: number,
+  fallback: Composition,
+  defence: Fleet = GROUND_DEFENCE,
+): Composition {
+  const buildable = COMBAT_HULLS.filter((h) => yard >= HULLS[h].minShipyard);
+  if (buildable.length === 0) return fallback;
+
+  const ranked = [...buildable].sort((x, y) => tradeScore(y, defence) - tradeScore(x, defence));
+  const first = ranked[0];
+  if (!first) return fallback;
+  const second = ranked[1];
+  return second ? { [first]: 0.7, [second]: 0.3 } : { [first]: 1 };
+}
+
+
+/**
+ * WHAT THIS PLAYER EXPECTS TO FLY INTO.
+ *
+ * SCORING AGAINST GROUND DEFENCE ALONE WAS A REAL BUG, and it hid for a whole
+ * stage. A planet's guns are roughly a sixth of the hull value a raider meets —
+ * most of a galaxy sits in home FLEETS — so ranking hulls against `GROUND_DEFENCE`
+ * picked the hull that counters a turret and loses to the swarm guarding it. It
+ * was invisible while there was one ground hull, because the answer happened to
+ * coincide; D27 made the two answers differ and the bug surfaced at once.
+ *
+ * VALUE-NORMALISED, NOT SUMMED. A raw sum of every scouted fleet is dominated by
+ * whichever neighbour happens to hoard the most Wasps, which is a fact about one
+ * planet rather than about the neighbourhood. Each report is scaled to the same
+ * weight before being blended, so what comes out is the SHAPE of local defence.
+ *
+ * It is a PRIOR, never a solution: the fleet is bought before a target is chosen,
+ * so this answers "what does my neighbourhood look like", not "what has that
+ * planet got". That is what keeps an informed bot competent rather than optimal —
+ * and a bot that has scouted nobody falls back to its own habits, which is the
+ * honest model of a player guessing from what they would build themselves.
+ */
+function expectedDefence(p: SimPlayer, t: number, fallback: Composition): Fleet {
+  const seen: Fleet = {};
+  let reports = 0;
+  for (const known of p.intel.values()) {
+    // What a neighbourhood BUILDS moves far more slowly than the stock in its
+    // stores, so a day-old reading is still worth having.
+    if (t - known.at > 1440) continue;
+    const value = fleetValue(known.composition);
+    if (value <= 0) continue;
+    reports++;
+    for (const [id, n] of fleetEntries(known.composition)) {
+      seen[id] = (seen[id] ?? 0) + (n * 10_000) / value;
+    }
+  }
+  if (reports === 0) {
+    for (const [id, share] of Object.entries(fallback) as [CombatHullId, number][]) {
+      seen[id] = (share * 10_000) / (HULLS[id].alloy + HULLS[id].crystal);
+    }
+  }
+  // Ground guns never leave, so every raid meets them on top of whatever flies.
+  for (const id of GROUND_HULLS) seen[id] = (seen[id] ?? 0) + 1;
+  return seen;
+}
+
+/** Only what fights. Haulers are cargo — eight of them are not a raid. */
+const combatPart = (fleet: Fleet): Fleet =>
+  Object.fromEntries(COMBAT_HULLS.map((h) => [h, fleet[h] ?? 0]));
+
+/**
+ * The smallest fleet worth launching, PRICED rather than counted.
+ *
+ * This was `fleetCount(p.fleet) < 8` — eight hulls of anything — a fair proxy only
+ * while every combat hull cost about the same. An archetype fielding Lances at
+ * 2,280 against a Wasp's 520 met a bar four times dearer for no stated reason, and
+ * measured, four of six GRINDERs finished a season holding a good fleet they were
+ * never allowed to launch while Wasp swarms sailed through the same gate.
+ *
+ * Derived from the cheapest combat hull, so it keeps meaning what it always meant
+ * — eight Wasps' worth of fight — whatever a future hull table says.
+ */
+const MIN_RAID_VALUE =
+  8 * Math.min(...COMBAT_HULLS.map((h) => HULLS[h].alloy + HULLS[h].crystal));
 
 /* ── a bot session ─────────────────────────────────────────────── */
 
 function runSession(p: SimPlayer, t: number, world: World, rng: Rng): void {
   sync(p, t);
+  // First thing anyone does on opening the game, and the thing that restarts
+  // production that the full buffer had stopped.
+  collectWorks(p);
   const a = ARCHETYPES[p.type];
 
-  // 0. Defence first, as insurance on what is currently raidable.
+  /**
+   * 0. Defence first, as insurance on what is currently raidable.
+   *
+   * TWO GUNS NOW, AND THE SPLIT IS THE ARCHETYPE'S OWN. D27. A defender used to have
+   * no composition choice at all — there was one ground hull, so "how much defence"
+   * was the entire decision. With a heavy Bulwark-class gun and a light
+   * Skirmisher-class one, what a planet is strong AGAINST is a choice, and it is the
+   * choice an attacker has to scout to discover.
+   */
   {
     const raidable = Math.max(0, p.alloy - vaultProtects(p.buildings.VAULT));
     const target = raidable * a.defenceRatio;
-    const held = fleetValue(p.ground);
-    const B = HULLS.BASTION;
-    if (held < target && p.buildings.SHIPYARD >= B.minShipyard) {
-      const want = Math.floor((target - held) / (B.alloy + B.crystal));
-      const n = Math.min(
-        want,
-        Math.floor((p.alloy * 0.5) / B.alloy),
-        Math.floor(p.crystal / B.crystal),
-      );
-      if (n > 0) {
-        p.ground.BASTION = (p.ground.BASTION ?? 0) + n;
-        p.alloy -= n * B.alloy;
-        p.crystal -= n * B.crystal;
+    const shortfall = target - fleetValue(p.ground);
+    if (shortfall > 0) {
+      for (const [id, share] of Object.entries(a.groundMix) as [GroundHullId, number][]) {
+        const g = HULLS[id];
+        if (p.buildings.SHIPYARD < g.minShipyard) continue;
+        const want = Math.floor((shortfall * share) / (g.alloy + g.crystal));
+        const n = Math.min(
+          want,
+          Math.floor((p.alloy * 0.5) / g.alloy),
+          g.crystal > 0 ? Math.floor(p.crystal / g.crystal) : Infinity,
+        );
+        if (n > 0) {
+          p.ground[id] = (p.ground[id] ?? 0) + n;
+          p.alloy -= n * g.alloy;
+          p.crystal -= n * g.crystal;
+        }
       }
     }
   }
@@ -228,40 +469,113 @@ function runSession(p: SimPlayer, t: number, world: World, rng: Rng): void {
     }
   }
 
-  // 2. Satellites, up to the slot cap.
+  /**
+   * 2. ONE PIECE OF HARDWARE PER SESSION, off a single wishlist. D25.
+   *
+   * The archetype's `wants` mixes ground instruments and satellites in its own
+   * priority order, and the first entry it can actually afford is what it buys.
+   * Instruments are levelled and so stay on the list until the Command Core
+   * ceiling stops them; a satellite drops off it the moment it is in orbit.
+   *
+   * WHY ONE LIST AND NOT TWO. The Uplink gates the Telescope and the Radar, so an
+   * archetype whose first choice is a seeing instrument cannot reach it until a
+   * satellite is bought. Modelled as two passes, the gated entries were skipped,
+   * something cheaper was bought instead, and the Uplink never came — the GRINDER
+   * played whole seasons blind and took the design's central claim down with it.
+   *
+   * THE BUDGET GUARD MATTERS TOO. Satellites cost several times a building at the
+   * same level, and "buy whenever affordable" would have a bot empty its store into
+   * orbit while its planet stands undefended. No player does that. Reserving the
+   * archetype's military share is the same discipline the building pass applies
+   * with its half-hour of production.
+   */
   {
-    const slots = satelliteSlots(p.buildings.RING);
-    const owned = satelliteEntries(p.satellites).length;
-    for (const s of a.sats) {
-      const lvl = p.satellites[s] ?? 0;
-      if (lvl === 0 && owned >= slots) continue;
-      if (lvl >= p.buildings.CORE) continue;
-      const cost = upgradeCost(lvl);
-      if (p.alloy >= cost.alloy && p.crystal >= cost.crystal) {
-        p.alloy -= cost.alloy;
-        p.crystal -= cost.crystal;
-        p.satellites[s] = lvl + 1;
-        break;
+    const room = satelliteSlots(p.buildings.CORE) - p.orbit.length;
+    for (const id of a.wants) {
+      const orbital = isSatellite(id);
+      let cost;
+      if (orbital) {
+        if (room <= 0 || p.orbit.includes(id)) continue;
+        cost = satelliteCost(id);
+      } else {
+        const lvl = p.instruments[id] ?? 0;
+        if (lvl >= p.buildings.CORE) continue;
+        // The two seeing instruments hang off an Uplink in orbit (D25).
+        if ((id === 'TELESCOPE' || id === 'RADAR') && !seeingUnlocked(p.orbit)) continue;
+        cost = instrumentCost(id, lvl);
       }
+
+      /**
+       * RESERVE BOTH METALS, NOT JUST ALLOY.
+       *
+       * Guarding alloy alone looks right and is not: pass 3 buys hulls out of a
+       * share of ALLOY but clips the count by whatever CRYSTAL is left, and crystal
+       * is the scarcer of the two. A guard that protects only alloy therefore lets
+       * every hardware purchase come out of the fleet through the side door — the
+       * galaxy's military fell by a sixth, and raid returns with it, while the bots
+       * appeared to be reserving their military budget the whole time.
+       */
+      const keepAlloy = p.alloy * a.militaryShare;
+      const keepCrystal = p.crystal * a.militaryShare;
+      if (p.alloy - cost.alloy < keepAlloy) continue;
+      if (p.crystal - cost.crystal < keepCrystal) continue;
+
+      p.alloy -= cost.alloy;
+      p.crystal -= cost.crystal;
+      if (orbital) p.orbit.push(id);
+      else p.instruments[id] = (p.instruments[id] ?? 0) + 1;
+      break;
     }
   }
 
-  // 3. Offensive hulls from what remains.
+  /**
+   * 3. Offensive hulls from what remains, to the archetype's composition.
+   *
+   * This used to walk `['BULWARK','LANCE','WASP']`, buy the first hull it could
+   * afford and `break` — so every bot in the galaxy spent its entire military
+   * budget on the most expensive hull available to it, every session. That is the
+   * inverse of the dominant composition, and it means every raid-return figure the
+   * project has recorded was measured in a world where nobody fields a fleet that
+   * works. See `Archetype.composition`.
+   */
   {
     const budget = p.alloy * a.militaryShare;
     const yard = p.buildings.SHIPYARD;
-    for (const hull of ['BULWARK', 'LANCE', 'WASP'] as const) {
-      const h = HULLS[hull];
-      if (yard < h.minShipyard || budget < h.alloy) continue;
-      let n = Math.floor(budget / h.alloy);
-      if (h.crystal > 0) n = Math.min(n, Math.floor(p.crystal / h.crystal));
-      n = Math.min(n, Math.floor(p.alloy / h.alloy));
-      if (n > 0) {
-        p.fleet[hull] = (p.fleet[hull] ?? 0) + n;
-        p.alloy -= n * h.alloy;
-        p.crystal -= n * h.crystal;
+    const mix = a.adaptsComposition
+      ? adaptiveMix(yard, a.composition, expectedDefence(p, t, a.composition))
+      : a.composition;
+
+    // Only what the Shipyard can actually build, renormalised — otherwise a low
+    // yard silently forfeits the share it cannot spend and under-buys all season.
+    const open = COMBAT_HULLS.filter((h) => (mix[h] ?? 0) > 0 && yard >= HULLS[h].minShipyard);
+    const total = open.reduce((sum, h) => sum + (mix[h] ?? 0), 0);
+
+    if (total > 0) {
+      /**
+       * Biggest share first, carrying whatever a hull could not spend to the next.
+       *
+       * Without the carry an early budget is smaller than one hull of the preferred
+       * type, every share rounds to zero, and a bot that can afford five Wasps buys
+       * nothing at all for the first days of the season.
+       */
+      const order = [...open].sort((x, y) => (mix[y] ?? 0) - (mix[x] ?? 0));
+      let carry = 0;
+      for (let pass = 0; pass < 2; pass++) {
+        for (const hull of order) {
+          const h = HULLS[hull];
+          const spend = pass === 0 ? (budget * (mix[hull] ?? 0)) / total + carry : carry;
+          if (spend < h.alloy) continue;
+          let n = Math.floor(spend / h.alloy);
+          n = Math.min(n, Math.floor(p.alloy / h.alloy));
+          if (h.crystal > 0) n = Math.min(n, Math.floor(p.crystal / h.crystal));
+          if (n > 0) {
+            p.fleet[hull] = (p.fleet[hull] ?? 0) + n;
+            p.alloy -= n * h.alloy;
+            p.crystal -= n * h.crystal;
+          }
+          carry = Math.max(0, spend - n * h.alloy);
+        }
       }
-      break;
     }
 
     // Cargo sized to what a neighbour is likely holding, not bought one at a time.
@@ -290,8 +604,9 @@ function runSession(p: SimPlayer, t: number, world: World, rng: Rng): void {
 
 function tryAttack(p: SimPlayer, t: number, world: World, rng: Rng): void {
   const a = ARCHETYPES[p.type];
-  const speed = fleetSpeed(p.fleet);
-  if (speed <= 0 || fleetCount(p.fleet) < 8) return;
+  // A Beacon in orbit shortens every leg this planet flies. D25.
+  const speed = fleetSpeed(p.fleet) * fleetSpeedMult(p.orbit);
+  if (speed <= 0 || fleetValue(combatPart(p.fleet)) < MIN_RAID_VALUE) return;
   p.wealthNow = wealth(holdingsOf(p));
 
   let best: { q: SimPlayer; d: number; flight: number; score: number; scouted: boolean; defence: number | null } | null = null;
@@ -303,17 +618,44 @@ function tryAttack(p: SimPlayer, t: number, world: World, rng: Rng): void {
 
     const hits = (p.recentHits.get(q.id) ?? []).filter((x) => t - x < ABUSE.bashWindowMinutes).length;
     const gate = canAttack(
-      { playerId: String(p.id), wealth: p.wealthNow },
-      { playerId: String(q.id), wealth: q.wealthNow },
+      // D49: the band is measured in development tiers, not in Wealth.
+      { playerId: String(p.id), coreLevel: p.buildings.CORE },
+      { playerId: String(q.id), coreLevel: q.buildings.CORE },
       hits,
     );
     if (!gate.ok) continue;
 
     const known = p.intel.get(q.id);
     const scouted = Boolean(a.scouts && known && t - known.at < 120);
-    const stock = scouted && known ? known.stock : (capsOf(q).alloy + capsOf(q).crystal) * 0.35;
     const defence = scouted && known ? known.defence : null;
 
+    /**
+     * A scout learns what a planet is holding; a blind attacker guesses from how
+     * developed it looks.
+     *
+     * Both figures count the works as well as the store (D16) — a target's storage
+     * is now a transient that empties minutes after its owner logs in, so a guess
+     * or a measurement that looked only at storage would describe every planet in
+     * the galaxy as empty.
+     */
+    /**
+     * AND THE BLIND GUESS COUNTS THE WORKS TOO, which is what the note above always
+     * claimed and the expression never did. D52a.
+     *
+     * `capsOf` is storage alone. The scouted branch was updated for D16 — it reads
+     * `bufferAlloy + bufferCrystal` off the real planet — and this one was not, so a
+     * blind attacker under-valued every target by roughly the collector ceiling and
+     * the model preferred scouted targets for a reason that was an omission rather
+     * than an effect. That is the kind of silent skew that makes a `TAX` reading
+     * uninterpretable, which matters because `TAX` is one of the two gate
+     * assertions currently red.
+     */
+    const blindCaps = capsOf(q);
+    const blindWorks = worksCapsOf(q);
+    const stock =
+      scouted && known
+        ? known.stock
+        : (blindCaps.alloy + blindCaps.crystal + blindWorks.alloy + blindWorks.crystal) * 0.35;
     const vault = vaultProtects(q.buildings.VAULT);
     const expectedLoot = Math.max(0, stock - vault * 2) * 0.5;
     const flight = travelMinutes(nb.d, speed);
@@ -329,8 +671,9 @@ function tryAttack(p: SimPlayer, t: number, world: World, rng: Rng): void {
     p.scoutsSent++;
     sync(best.q, t);
     p.intel.set(best.q.id, {
-      stock: best.q.alloy + best.q.crystal,
+      stock: best.q.alloy + best.q.crystal + best.q.bufferAlloy + best.q.bufferCrystal,
       defence: fleetValue({ ...best.q.fleet, ...best.q.ground }),
+      composition: { ...best.q.fleet, ...best.q.ground },
       at: t + 8,
     });
     return; // spends the session on the probe
@@ -396,12 +739,17 @@ function resolveMission(m: Mission, t: number, world: World, stats: DayStats): v
 
   const loot = computeLoot(
     { alloy: def.alloy, crystal: def.crystal },
+    { alloy: def.bufferAlloy, crystal: def.bufferCrystal },
     vaultProtects(def.buildings.VAULT),
     r.grade,
     fleetCargo(r.attackerSurvivors),
   );
-  def.alloy -= loot.alloy;
-  def.crystal -= loot.crystal;
+  // Two columns, debited separately — the works are not the store, and the vault
+  // covers only one of them. D16.
+  def.alloy -= loot.fromStock.alloy;
+  def.crystal -= loot.fromStock.crystal;
+  def.bufferAlloy -= loot.fromBuffer.alloy;
+  def.bufferCrystal -= loot.fromBuffer.crystal;
 
   const wasUntil = def.disruptedUntil;
   def.disruptedUntil = applyDisruption(wasUntil, t, r.grade);
@@ -433,7 +781,7 @@ function resolveMission(m: Mission, t: number, world: World, stats: DayStats): v
   if (fleetCount(r.attackerSurvivors) > 0) {
     world.missions.push({
       from: m.from, to: m.to, fleet: r.attackerSurvivors,
-      arriveAt: t + travelMinutes(m.distance, fleetSpeed(r.attackerSurvivors)),
+      arriveAt: t + travelMinutes(m.distance, fleetSpeed(r.attackerSurvivors) * fleetSpeedMult(atk.orbit)),
       distance: m.distance, scouted: m.scouted, returning: true, loot,
     });
   }

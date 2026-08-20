@@ -27,8 +27,15 @@ import { duration } from './time.js';
 
 export type DirectiveKind = 'threat' | 'opportunity' | 'growth' | 'idle';
 export type Screen = 'planet' | 'galaxy' | 'intel';
-/** The planet screen's sections, named for the problem each one solves. */
-export type PlanetGroup = 'defend' | 'see' | 'reach' | 'grow';
+/**
+ * The planet screen's sections, named for the problem each one solves.
+ *
+ * `see` became `orbit` in D22. The old section held three of the five satellites
+ * and the other two lived under Defend and Grow, so a player could not compare the
+ * choice the design calls "the identity choice" without visiting three tabs.
+ * `orbit` holds all five and nothing else.
+ */
+export type PlanetGroup = 'defend' | 'orbit' | 'reach' | 'grow';
 
 export interface Directive {
   id: string;
@@ -137,16 +144,32 @@ export function directives(s: Situation): Directive[] {
     });
   }
 
-  // Production above the ceiling is production thrown away, every hour, silently.
+  /**
+   * A FULL STORE BLOCKS THE NEXT COLLECTION. IT DOES NOT THROW PRODUCTION AWAY.
+   *
+   * This line was written before D16, when production flowed straight into
+   * storage and a full store really did mean ore evaporating every hour. It does
+   * not any more: production fills the WORKS, and the works are what stop. The old
+   * wording survived the change and stayed on screen saying something false.
+   *
+   * D22 is what made it impossible to ignore. The opening grant is larger than a
+   * level-one refinery's own store, so a brand-new commander met "you are throwing
+   * away 240 an hour" as the first thing the game ever told them — alarming, and
+   * wrong, about ore that was sitting safely in their bank waiting to be spent.
+   *
+   * It also only fires when there is something WAITING. A full store with empty
+   * works costs nothing at all and is not worth a word.
+   */
   const alloyFull = s.held.alloy >= planet.planet.alloyCap - 1;
   const crystalFull = s.held.crystal >= planet.planet.crystalCap - 1;
-  if (alloyFull || crystalFull) {
-    const wasted = (alloyFull ? planet.planet.alloyPerHour : 0) + (crystalFull ? planet.planet.crystalPerHour : 0);
+  const waiting = planet.planet.bufferAlloy + planet.planet.bufferCrystal;
+  if ((alloyFull || crystalFull) && waiting >= 1) {
     out.push({
       id: 'storage-full',
       kind: 'opportunity',
-      title: `You are throwing away ${compact(wasted)} an hour`,
-      detail: 'Storage is full. Everything produced from now on is lost until you spend some.',
+      title: `${compact(waiting)} cannot be collected`,
+      detail:
+        'Your store is full, so the works have nowhere to empty into. Spend something and claim it.',
       action: { label: 'Spend it', screen: 'planet', group: 'grow' },
       weight: 640,
     });
@@ -155,26 +178,26 @@ export function directives(s: Situation): Directive[] {
   /* ── growth ───────────────────────────────────────────────── */
 
   // Blind is the default state and it is the one the whole game is about.
-  const telescope = planet.satellites.TELESCOPE ?? 0;
+  const telescope = planet.instruments.TELESCOPE ?? 0;
   if (telescope === 0) {
     out.push({
       id: 'no-telescope',
       kind: 'growth',
       title: 'You cannot see anyone',
       detail: 'A Telescope watches one planet and tells you when its fleet leaves. Nobody is told you are watching.',
-      action: { label: 'Install a Telescope', screen: 'planet', group: 'see' },
+      action: { label: 'Install a Telescope', screen: 'planet', group: 'orbit' },
       weight: 600,
     });
   }
 
-  const radar = planet.satellites.RADAR ?? 0;
+  const radar = planet.instruments.RADAR ?? 0;
   if (!radarDetectsFleets(radar) && fleetValue(planet.ground) + fleetValue(planet.fleet) > 0) {
     out.push({
       id: 'no-radar',
       kind: 'growth',
       title: 'A fleet could land here without warning',
       detail: 'Radar L3 gives you minutes of notice — enough to spend the stock or move the fleet.',
-      action: { label: 'Look at Radar', screen: 'planet', group: 'see' },
+      action: { label: 'Look at Radar', screen: 'planet', group: 'orbit' },
       weight: radar === 0 ? 480 : 300,
     });
   }
@@ -182,7 +205,7 @@ export function directives(s: Situation): Directive[] {
   // The Core ceiling is the most common invisible wall: several rows refuse at
   // once and the reason is one level away.
   const core = planet.buildings.CORE ?? 0;
-  const capped = (['REFINERY', 'EXTRACTOR', 'VAULT', 'SHIPYARD', 'RING'] as const).filter(
+  const capped = (['REFINERY', 'EXTRACTOR', 'VAULT', 'SHIPYARD'] as const).filter(
     (id) => (planet.buildings[id] ?? 0) >= core,
   ).length;
   if (capped >= 2) {
@@ -198,7 +221,17 @@ export function directives(s: Situation): Directive[] {
 
   /* ── the empty state is itself a directive ────────────────── */
 
-  if (s.pending.length === 0) {
+  /**
+   * READ OFF THE BAYS, NOT OFF `pending`. D28.
+   *
+   * `/api/session/pending` carries missions only — a Prospector out at a rock
+   * produces no thread — so `pending.length === 0` told a miner that nothing was in
+   * flight while three of their bays were occupied. `flight.used` is the count the
+   * server enforces launches against, so it is the one that can be trusted here.
+   */
+  const bays = planet.flight;
+
+  if (bays.used === 0) {
     out.push({
       id: 'idle',
       kind: 'idle',
@@ -209,6 +242,25 @@ export function directives(s: Situation): Directive[] {
           : 'You have no ships at home. Build some, or wait for yours to come back.',
       action: { label: 'Find a target', screen: 'galaxy' },
       weight: 200,
+    });
+  } else if (bays.used < bays.total) {
+    /**
+     * DELIBERATELY THE QUIETEST THING ON THE LIST.
+     *
+     * It states a fact and stops. The moment this argues — "don't waste your
+     * bays!" — it is a streak counter with better manners, and `game-design.md`
+     * excludes those by name. A player who has committed something and chosen not
+     * to commit more has made a decision, and this must read as noticing it rather
+     * than as correcting it.
+     */
+    const free = bays.total - bays.used;
+    out.push({
+      id: 'bays-free',
+      kind: 'idle',
+      title: free === 1 ? 'One bay is still free' : `${String(free)} bays are still free`,
+      detail: 'A probe, a raid or a mining run — anything that leaves takes one.',
+      action: { label: 'Look for something', screen: 'galaxy' },
+      weight: 120,
     });
   }
 

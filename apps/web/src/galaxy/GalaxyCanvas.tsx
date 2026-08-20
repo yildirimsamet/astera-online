@@ -3,13 +3,35 @@ import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { AdaptiveDpr, Html, OrbitControls, Preload } from '@react-three/drei';
 import { Bloom, EffectComposer, Vignette } from '@react-three/postprocessing';
 import * as THREE from 'three';
-import type { Contact, GalaxyPlanet, PendingThread } from '../api/schemas.js';
-import { Asteroids, BrightStars, Core, Disc, Dust, Meteors, Nebula, Starfield } from './Environment.jsx';
-import { OwnFleets, Traffic, WatchBeams } from './Fleets.jsx';
+import type {
+  AsteroidView,
+  Contact,
+  GalaxyPlanet,
+  MiningRun,
+  PendingThread,
+} from '../api/schemas.js';
+import type { Focus } from './FocusPanel.js';
+import { BrightStars, Core, Disc, Dust, Meteors, Nebula, Starfield } from './Environment.jsx';
+import { Wrecks, type WreckView } from './Wrecks.js';
+import { Asteroids, InterceptMarks } from './Asteroids.jsx';
+import { OwnFleets, Traffic, WatchBeams, threadKey } from './Fleets.jsx';
 import { PlanetField } from './PlanetField.jsx';
-import { Satellites } from './Satellites.jsx';
-import { DISC_RADIUS, asteroidsOf, planetNodes, toWorld, type PlanetNode } from './scene.js';
-import { installTapGuard, wasTap } from './tap.js';
+import { Satellites, Shields } from './Satellites.jsx';
+import { MiningFlights } from './MiningFlights.jsx';
+import {
+  DISC_RADIUS,
+  asteroidWorldPosition,
+  clearOfWorlds,
+  contactPosition,
+  legStandoff,
+  planetNodes,
+  runPosition,
+  threadPosition,
+  toWorld,
+  type PlanetNode,
+} from './scene.js';
+import { installTapGuard, wasMiss, wasTap } from './tap.js';
+import { serverNow } from '../lib/clock.js';
 
 /**
  * THE GAME SURFACE.
@@ -50,8 +72,29 @@ const LEASH = DISC_RADIUS * 1.15;
 /** Seconds spent easing onto a new subject. Long enough to follow, short enough not to wait. */
 const EASE = 0.5;
 
-/** Asteroid orbits take 15–40 minutes. Twelve frames a second is imperceptible. */
-const AMBIENT_FPS = 12;
+/**
+ * Frames a second requested for things that move on their own.
+ *
+ * Was twelve, chosen when the only ambient motion was a rock creeping round a
+ * fifteen-to-forty-minute orbit — at that speed twelve is genuinely imperceptible.
+ * It is not any more: the rocks travel at double the old speed and now TUMBLE, and
+ * a body turning half a radian a second at twelve frames steps four degrees at a
+ * time, which reads as a stutter rather than a spin.
+ *
+ * Twenty-four is the floor where rotation looks continuous, and still under half
+ * the cost of a real loop — the point of `frameloop="demand"` was never a
+ * particular number, it was not rendering a still scene sixty times a second.
+ */
+const AMBIENT_FPS = 24;
+
+/**
+ * World units from the camera to a focused craft or rock.
+ *
+ * Close enough that a 0.3-unit hull fills a readable part of the frame, far enough
+ * that a squadron's whole formation and the world it is heading for both stay in
+ * shot. Planets are exempt: they are already the size the map is drawn at.
+ */
+const CRAFT_DISTANCE = 7;
 
 export interface GalaxyCanvasProps {
   planets: readonly GalaxyPlanet[];
@@ -61,12 +104,27 @@ export interface GalaxyCanvasProps {
   contacts: readonly Contact[];
   /** Ids of the planets your telescopes are pointed at. Yours alone to know. */
   watching: readonly string[];
-  seed: number | undefined;
+  /** Rocks crossing the disc right now, and your craft working them. D19. */
+  asteroids: readonly AsteroidView[];
+  runs: readonly MiningRun[];
+  /** Wreck fields left by battles, visible to the whole galaxy. D32. */
+  wrecks: readonly WreckView[];
+  /** Where your own craft launch from, for drawing mining legs. */
+  homePosition: { x: number; y: number; z: number } | undefined;
+  /** Your Aegis level. Only ever your own — D15 keeps everyone else's private. */
+  aegisLevel: number;
   seasonStart: Date | undefined;
-  selectedId: string | null;
-  onSelect: (id: string | null) => void;
+  focus: Focus | null;
+  onFocus: (focus: Focus | null) => void;
   /** Bumped by the HOME button to re-centre on the player's own world. */
   homeSignal: number;
+  /**
+   * Called once, after the first frame that has every model in it is on screen.
+   *
+   * The cover over this canvas cannot be lifted on "the request came back": the
+   * models still have to decode, compile and upload after that. See `FirstFrame`.
+   */
+  onReady?: () => void;
 }
 
 export function GalaxyCanvas({
@@ -74,11 +132,16 @@ export function GalaxyCanvas({
   pending,
   contacts,
   watching,
-  seed,
+  asteroids,
+  runs,
+  wrecks,
+  homePosition,
+  aegisLevel,
   seasonStart,
-  selectedId,
-  onSelect,
+  focus,
+  onFocus,
   homeSignal,
+  onReady,
 }: GalaxyCanvasProps) {
   const nodes = useMemo(() => planetNodes(planets), [planets]);
   const home = useMemo<[number, number, number]>(() => {
@@ -86,13 +149,107 @@ export function GalaxyCanvas({
     return self ? toWorld(self.position) : [0, 0, 0];
   }, [planets]);
 
-  const asteroids = useMemo(() => (seed === undefined ? [] : asteroidsOf(seed)), [seed]);
+  const selfId = useMemo(() => planets.find((p) => p.isSelf)?.id, [planets]);
+  const selectedId = focus?.kind === 'planet' ? focus.id : null;
 
-  /** The camera's subject: whatever world is open, so orbiting turns around it. */
-  const focus = useMemo<[number, number, number] | null>(() => {
-    const node = nodes.find((n) => n.id === selectedId);
-    return node ? node.position : null;
-  }, [nodes, selectedId]);
+  /**
+   * The camera's subject.
+   *
+   * A PLANET is a fixed point and the rig can ease onto it once. EVERYTHING ELSE
+   * MOVES — a rock crossing the disc, a squadron on its way to a raid, a
+   * Prospector coming home — so focusing one has to keep following, or the thing
+   * you tapped drifts out of frame mid-sentence. That is what `subject` is: a live
+   * position, read fresh each frame, rather than a destination.
+   *
+   * SQUADRONS AND MINING RUNS WERE MISSING FROM THIS LIST, and the symptom was
+   * exact: tapping a rock flew the camera to it and tracked it, tapping your own
+   * fleet selected it, opened its panel, and left the camera wherever it was — so
+   * the two gestures behaved differently for no reason a player could see. They
+   * are the same gesture and they now do the same thing.
+   *
+   * Every branch reads the SAME interpolation the renderer uses, so the camera and
+   * the craft agree to the frame. Deriving a second position here — even a very
+   * close one — would show as the subject creeping out of centre over a long leg.
+   */
+  const subject = useMemo<(() => [number, number, number] | null) | null>(() => {
+    if (!focus) return null;
+
+    if (focus.kind === 'planet') {
+      const node = nodes.find((n) => n.id === focus.id);
+      return node ? () => node.position : null;
+    }
+
+    if (focus.kind === 'asteroid' && seasonStart) {
+      const rock = asteroids.find((a) => a.index === focus.index);
+      if (!rock) return null;
+      return () => asteroidWorldPosition(rock, seasonStart, serverNow());
+    }
+
+    /**
+     * A wreck sits at the planet the battle happened over, so the camera goes to
+     * the planet's position. Without this branch the camera silently does nothing
+     * when a player taps one — the failure mode the switch is exhaustive against.
+     */
+    if (focus.kind === 'debris') {
+      const wreck = wrecks.find((w) => w.id === focus.id);
+      const node = wreck ? nodes.find((n) => n.id === wreck.planetId) : undefined;
+      return node ? () => node.position : null;
+    }
+
+    if (focus.kind === 'thread') {
+      const thread = pending.find((t, i) => threadKey(t, i) === focus.key);
+      const path = thread?.path;
+      if (!thread || !path) return null;
+      /**
+       * THE SAME STANDOFF THE RENDERER USES. D44.
+       *
+       * A leg now stops in orbit rather than at a world's centre, and the camera
+       * has to read the identical number — a rig that tracked the old endpoint
+       * would let a focused squadron drift a planet-radius off centre over the
+       * last minute of its approach, and then sit looking past it for the whole
+       * engagement.
+       */
+      const standoff = legStandoff(thread, nodes);
+      return () => threadPosition(path, serverNow(), standoff);
+    }
+
+    if (focus.kind === 'run' && homePosition) {
+      const run = runs.find((r) => r.id === focus.id);
+      if (!run) return null;
+      return () => runPosition(run, homePosition, serverNow());
+    }
+
+    /**
+     * Somebody else's craft is followed from its BEARING WINDOW rather than from a
+     * route, because a window is all the server sends (D24). The camera therefore
+     * tracks it exactly as far ahead as the payload knows, and re-anchors on the
+     * next poll — which is the same thing the renderer does, from the same numbers.
+     */
+    if (focus.kind === 'contact') {
+      const contact = contacts.find((c) => c.id === focus.id);
+      if (!contact) return null;
+      // Corrected exactly as the renderer corrects it, or the rig would centre on
+      // a point inside a world while the craft is drawn on its surface.
+      return () => clearOfWorlds(nodes, contactPosition(contact, serverNow(), nodes));
+    }
+
+    return null;
+  }, [focus, nodes, asteroids, seasonStart, pending, runs, homePosition, contacts]);
+
+  /**
+   * How close the camera is pulled in when it takes a new subject.
+   *
+   * A world is drawn between 0.44 and 1.4 units across and a craft is a fraction
+   * of that, so the distance at which a planet is comfortably framed is one at
+   * which a squadron is three pixels. Focusing something small therefore has to
+   * DOLLY as well as pivot — the owner's note was that tapping a fleet did not
+   * zoom, and a camera that only re-centres on something invisible has technically
+   * obeyed and practically done nothing.
+   *
+   * Only ever pulls IN, and only when the camera is further out than this. A
+   * player who has deliberately gone close keeps their framing.
+   */
+  const approach = focus === null || focus.kind === 'planet' ? null : CRAFT_DISTANCE;
 
   const watched = useMemo(() => {
     const wanted = new Set(watching);
@@ -108,8 +265,15 @@ export function GalaxyCanvas({
       dpr={[1, 2]}
       gl={{ antialias: true, powerPreference: 'high-performance' }}
       onPointerMissed={() => {
-        // Same rule as selecting: releasing after a pan is not a click on space.
-        if (wasTap()) onSelect(null);
+        /**
+         * Clear the selection ONLY when the gesture genuinely hit nothing.
+         *
+         * `wasMiss()` is the scene's own answer, set by the pick handlers, rather
+         * than R3F's inference — which counted a tap on an object as a miss and
+         * cleared the very selection that tap had just made, at random, depending
+         * on which state update React flushed last.
+         */
+        if (wasTap() && wasMiss()) onFocus(null);
       }}
       style={{ position: 'absolute', inset: 0, touchAction: 'none' }}
     >
@@ -134,18 +298,69 @@ export function GalaxyCanvas({
       <Meteors />
       <Disc />
 
-      {seasonStart && asteroids.length > 0 && (
-        <Asteroids asteroids={asteroids} seasonStart={seasonStart} />
-      )}
-
       <Suspense fallback={null}>
-        <PlanetField nodes={nodes} selectedId={selectedId} onSelect={onSelect} />
+        {/* Wreckage is independent of the rock field — a battle can leave one on a
+            day when nothing is crossing the disc. D32. */}
+        <Wrecks
+          wrecks={wrecks}
+          nodes={nodes}
+          focusedId={focus?.kind === 'debris' ? focus.id : null}
+          onSelect={(id) => {
+            onFocus({ kind: 'debris', id });
+          }}
+        />
+
+        {seasonStart && asteroids.length > 0 && (
+          <Asteroids
+            asteroids={asteroids}
+            seasonStart={seasonStart}
+            focusedIndex={focus?.kind === 'asteroid' ? focus.index : null}
+            onSelect={(index) => {
+              onFocus({ kind: 'asteroid', index });
+            }}
+          />
+        )}
+
+        <PlanetField
+          nodes={nodes}
+          selectedId={selectedId}
+          onSelect={(id) => {
+            onFocus({ kind: 'planet', id });
+          }}
+        />
         <Satellites nodes={nodes} />
+        <Shields nodes={nodes} ownLevel={aegisLevel} ownId={selfId} />
         <WatchBeams from={home} targets={watched} />
-        <OwnFleets pending={pending} />
-        <Traffic contacts={contacts} />
+        <OwnFleets
+          pending={pending}
+          nodes={nodes}
+          focusedKey={focus?.kind === 'thread' ? focus.key : null}
+          onSelect={(key) => {
+            onFocus({ kind: 'thread', key });
+          }}
+        />
+        {homePosition && (
+          <MiningFlights
+            runs={runs}
+            home={homePosition}
+            focusedId={focus?.kind === 'run' ? focus.id : null}
+            onSelect={(id) => {
+              onFocus({ kind: 'run', id });
+            }}
+          />
+        )}
+        <InterceptMarks runs={runs} />
+        <Traffic
+          contacts={contacts}
+          nodes={nodes}
+          focusedId={focus?.kind === 'contact' ? focus.id : null}
+          onSelect={(id) => {
+            onFocus({ kind: 'contact', id });
+          }}
+        />
         <Labels nodes={nodes} selectedId={selectedId} />
         <Preload all />
+        {onReady && <FirstFrame onDrawn={onReady} />}
       </Suspense>
 
       {/*
@@ -160,7 +375,7 @@ export function GalaxyCanvas({
 
       <AdaptiveDpr pixelated={false} />
       <DevBridge />
-      <Rig home={home} homeSignal={homeSignal} focus={focus} />
+      <Rig home={home} homeSignal={homeSignal} subject={subject} approach={approach} />
       <AmbientTicker />
     </Canvas>
   );
@@ -226,25 +441,40 @@ function Labels({ nodes, selectedId }: { nodes: readonly PlanetNode[]; selectedI
 function Rig({
   home,
   homeSignal,
-  focus,
+  subject,
+  approach,
 }: {
   home: [number, number, number];
   homeSignal: number;
-  /** The selected world, if any — the camera's subject. */
-  focus: [number, number, number] | null;
+  /**
+   * Where the camera should be looking, read fresh each frame.
+   *
+   * A function rather than a point because the subject may be MOVING: an asteroid
+   * crosses the disc while the player reads its panel, and a rig that eased onto
+   * where it used to be would let the thing they tapped slide out of frame.
+   */
+  subject: (() => [number, number, number] | null) | null;
+  /** Pull the camera in to at most this distance while easing. Null leaves it. */
+  approach: number | null;
 }) {
   const ref = useRef<ComponentRef<typeof OrbitControls>>(null);
   const invalidate = useThree((state) => state.invalidate);
-  /** Where the pivot is heading, and how much of the ease is left. */
-  const ease = useRef<{ to: THREE.Vector3; left: number } | null>(null);
+  /** Where the pivot is heading, how much ease is left, and how close to come. */
+  const ease = useRef<{ to: THREE.Vector3; left: number; pullTo: number | null } | null>(null);
 
-  const goTo = (x: number, y: number, z: number): void => {
-    ease.current = { to: new THREE.Vector3(x, y, z), left: EASE };
+  const goTo = (x: number, y: number, z: number, pullTo: number | null = null): void => {
+    ease.current = { to: new THREE.Vector3(x, y, z), left: EASE, pullTo };
     invalidate();
   };
 
-  // HOME re-frames rather than teleports: an instant cut loses every sense of
-  // where you were, and re-orienting afterwards costs more than the half second.
+  /**
+   * HOME re-frames rather than teleports: an instant cut loses every sense of
+   * where you were, and re-orienting afterwards costs more than the half second.
+   *
+   * Note the caller clears the SELECTION before bumping this. Without that, the
+   * ease ran, finished, and then the subject-tracking below immediately dragged
+   * the camera back to whatever was focused — the button appeared to do nothing.
+   */
   useEffect(() => {
     const controls = ref.current;
     if (!controls) return;
@@ -258,14 +488,38 @@ function Rig({
   }, [home, homeSignal]);
 
   useEffect(() => {
-    // `focus` is memoised upstream, so this fires on a change of subject and not
+    // `subject` is memoised upstream, so this fires on a change of subject and not
     // on every render of the galaxy.
-    if (focus) goTo(focus[0], focus[1], focus[2]);
-  }, [focus]);
+    const at = subject?.();
+    if (at) goTo(at[0], at[1], at[2], approach);
+  }, [subject, approach]);
 
   useFrame((_, delta) => {
     const controls = ref.current;
     if (!controls) return;
+
+    /**
+     * KEEP UP WITH A MOVING SUBJECT.
+     *
+     * Once the initial ease has landed, a focused asteroid is tracked directly:
+     * the pivot and the camera both take the subject's per-frame delta, so the
+     * rock stays put on screen and the player keeps whatever angle they chose.
+     * Applied as a delta rather than a lerp-to-point so it does not fight a player
+     * who is orbiting at the same time.
+     */
+    if (!ease.current && subject) {
+      const at = subject();
+      if (at) {
+        const target = new THREE.Vector3(at[0], at[1], at[2]);
+        const drift = target.clone().sub(controls.target);
+        if (drift.lengthSq() > 1e-10) {
+          controls.target.add(drift);
+          controls.object.position.add(drift);
+          controls.update();
+          invalidate();
+        }
+      }
+    }
 
     /**
      * The leash. Checked continuously rather than on release, because a player who
@@ -273,7 +527,7 @@ function Rig({
      * because the correction is a lerp, it reads as the galaxy pulling rather than
      * as an edge they hit.
      */
-    if (!ease.current) {
+    if (!ease.current && !subject) {
       const t = controls.target;
       const flat = Math.hypot(t.x, t.z);
       if (flat > LEASH || Math.abs(t.y) > LEASH * 0.5) {
@@ -292,6 +546,26 @@ function Rig({
     // The camera follows its pivot, so the framing is preserved and only the
     // subject changes. Moving the pivot alone would swing the view instead.
     controls.object.position.add(controls.target.clone().sub(previous));
+
+    /**
+     * And close the distance, on the same curve.
+     *
+     * Applied along the camera's own view vector, so the angle the player chose is
+     * untouched and only the range changes. One-way: if they are already closer
+     * than the approach distance, nothing happens — the rig never pushes a player
+     * back out of a view they went and got.
+     */
+    if (move.pullTo !== null) {
+      const out = controls.object.position.clone().sub(controls.target);
+      const range = out.length();
+      if (range > move.pullTo) {
+        const wanted = Math.max(move.pullTo, range + (move.pullTo - range) * Math.min(1, step));
+        controls.object.position.copy(
+          controls.target.clone().add(out.setLength(wanted)),
+        );
+      }
+    }
+
     controls.update();
     invalidate();
 
@@ -370,5 +644,36 @@ function AmbientTicker() {
     };
   }, [invalidate]);
 
+  return null;
+}
+
+/**
+ * THE FRAME THAT PROVES THE GALAXY IS ACTUALLY UP. Owner decision.
+ *
+ * A preloader that fetches urls can only tell you the BYTES have arrived. Eleven
+ * GLTFs then have to be parsed, their materials compiled and their buffers pushed
+ * to the GPU, and on a phone that is the visible part of the wait — the part where
+ * worlds appear without their instruments and each hull lands with a stutter. The
+ * old cover came off on `assets.ready`, which is the moment before all of that
+ * rather than after it.
+ *
+ * This sits INSIDE the same Suspense boundary as everything it is vouching for, so
+ * it cannot mount until every `useGLTF` in the subtree has resolved; `<Preload all/>`
+ * immediately above it forces the compile. Then it waits for a real animation frame
+ * to be painted before it says so — `useFrame` runs BEFORE the draw, so reporting
+ * from inside it would be one frame early, which is exactly the frame the stutter
+ * is in.
+ *
+ * Fires once and never again. A cover that can come back is a flash.
+ */
+function FirstFrame({ onDrawn }: { onDrawn: () => void }) {
+  const fired = useRef(false);
+  useFrame(() => {
+    if (fired.current) return;
+    fired.current = true;
+    requestAnimationFrame(() => {
+      onDrawn();
+    });
+  });
   return null;
 }

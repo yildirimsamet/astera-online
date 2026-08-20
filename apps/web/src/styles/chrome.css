@@ -1,0 +1,1059 @@
+/**
+ * CHROME — the machined-surface vocabulary.
+ *
+ * Three words, and deliberately only three. Everything in the interface is one of
+ * them, which is what stops a redesign this size from turning into forty unrelated
+ * card styles:
+ *
+ *   PLATE   a surface that holds information. Rises off the world.
+ *   SLAB    a surface you press. Has thickness, and loses it when pressed.
+ *   SOCKET  a recess that holds art. Cut into a plate, lit from inside.
+ *
+ * One light source, up and slightly forward. Every highlight in this file is the top
+ * edge catching it and every shadow is the bottom edge losing it. Break that and the
+ * surfaces stop belonging to the same object.
+ *
+ * PERFORMANCE NOTE. A live WebGL canvas sits behind all of this. Depth therefore comes
+ * from `box-shadow`, which composites cheaply, and NOT from `filter: drop-shadow`,
+ * which forces a raster layer per element. `filter` appears exactly once here, on
+ * `.cut-shadow`, because `clip-path` clips `box-shadow` and there is no other way to
+ * put a shadow under a cut-corner silhouette. Use it sparingly and never in a list.
+ */
+
+@layer components {
+  /* ─────────────────────────────────────────────────────────────
+     PLATE
+     ───────────────────────────────────────────────────────────── */
+
+  .plate {
+    position: relative;
+    border-radius: 10px;
+    /* Two layers: the catch-light along the top, then the body of the metal. */
+    background:
+      linear-gradient(180deg, rgb(255 255 255 / 9%) 0%, transparent 30%),
+      linear-gradient(
+        180deg,
+        var(--color-plate-hi) 0%,
+        var(--color-plate) 44%,
+        var(--color-plate-lo) 100%
+      );
+    box-shadow:
+      inset 0 0 0 1px rgb(74 98 136 / 20%),
+      inset 0 -1px 0 rgb(0 0 0 / 60%),
+      0 1px 0 rgb(0 0 0 / 55%),
+      0 14px 30px -12px rgb(0 0 0 / 80%);
+  }
+
+  /** Flush against the world: no lift, for plates that fill the screen. */
+  .plate-flush {
+    box-shadow:
+      inset 0 0 0 1px rgb(74 98 136 / 16%),
+      inset 0 1px 0 rgb(255 255 255 / 6%);
+  }
+
+  /** Recessed instead of raised — for wells, tracks and inactive segments. */
+  .plate-sunk {
+    background: linear-gradient(180deg, var(--color-well) 0%, #0a1018 100%);
+    box-shadow:
+      inset 0 2px 6px rgb(0 0 0 / 70%),
+      inset 0 0 0 1px rgb(0 0 0 / 50%),
+      0 1px 0 rgb(255 255 255 / 5%);
+  }
+
+  /**
+   * The emissive edge.
+   *
+   * Light is STATE, never decoration. A plate wearing one of these is doing
+   * something right now — it is threatening, it is an open window, it is selected.
+   * If every plate glows, the player learns that glow means nothing.
+   */
+  .plate-lit,
+  .plate-threat,
+  .plate-opportunity,
+  .plate-alloy {
+    --edge: rgb(89 200 255 / 55%);
+    --edge-soft: rgb(89 200 255 / 40%);
+  }
+  .plate-threat {
+    --edge: rgb(255 106 77 / 60%);
+    --edge-soft: rgb(226 65 44 / 45%);
+  }
+  .plate-opportunity {
+    --edge: rgb(111 245 182 / 55%);
+    --edge-soft: rgb(90 211 155 / 40%);
+  }
+  .plate-alloy {
+    --edge: rgb(255 190 82 / 55%);
+    --edge-soft: rgb(217 164 65 / 40%);
+  }
+  .plate-lit::after,
+  .plate-threat::after,
+  .plate-opportunity::after,
+  .plate-alloy::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    pointer-events: none;
+    box-shadow:
+      inset 0 0 0 1px var(--edge),
+      inset 0 0 14px -4px var(--edge-soft),
+      0 0 22px -8px var(--edge-soft);
+  }
+
+  /** A tinted wash under a lit plate, so the colour reaches the middle. */
+  .plate-threat {
+    background:
+      radial-gradient(130% 110% at 0% 0%, rgb(226 65 44 / 18%), transparent 58%),
+      linear-gradient(180deg, rgb(255 255 255 / 7%) 0%, transparent 30%),
+      linear-gradient(180deg, #1a1620 0%, #120e15 44%, var(--color-plate-lo) 100%);
+  }
+  .plate-opportunity {
+    background:
+      radial-gradient(130% 110% at 0% 0%, rgb(90 211 155 / 14%), transparent 58%),
+      linear-gradient(180deg, rgb(255 255 255 / 7%) 0%, transparent 30%),
+      linear-gradient(180deg, #12211f 0%, #0d1719 44%, var(--color-plate-lo) 100%);
+  }
+
+  /**
+   * The cut corner.
+   *
+   * Two opposite corners sheared, which is the fastest way to say "this is hardware
+   * and not a div". Used as an ACCENT — the directive, the commit surface, the
+   * active dock plate — never as the default card shape, because at list density it
+   * turns into visual noise and the cuts stop meaning anything.
+   *
+   * `clip-path` clips `box-shadow`, so the edge line is drawn as a second clipped
+   * layer: the element itself is the 1px edge colour and `::before` is the face,
+   * inset by one pixel. `isolation` plus `z-index: -1` keeps that face above the
+   * element's own background but below the content.
+   */
+  .plate-cut {
+    --cut: var(--cut-md);
+    position: relative;
+    isolation: isolate;
+    border-radius: 0;
+    background: rgb(74 98 136 / 42%);
+    clip-path: polygon(
+      var(--cut) 0,
+      100% 0,
+      100% calc(100% - var(--cut)),
+      calc(100% - var(--cut)) 100%,
+      0 100%,
+      0 var(--cut)
+    );
+    box-shadow: none;
+  }
+  .plate-cut::before {
+    content: '';
+    position: absolute;
+    inset: 1px;
+    z-index: -1;
+    clip-path: polygon(
+      calc(var(--cut) - 1px) 0,
+      100% 0,
+      100% calc(100% - var(--cut) + 1px),
+      calc(100% - var(--cut) + 1px) 100%,
+      0 100%,
+      0 calc(var(--cut) - 1px)
+    );
+    background:
+      linear-gradient(180deg, rgb(255 255 255 / 8%) 0%, transparent 30%),
+      linear-gradient(
+        180deg,
+        var(--color-plate-hi) 0%,
+        var(--color-plate) 44%,
+        var(--color-plate-lo) 100%
+      );
+  }
+  .plate-cut-sm {
+    --cut: var(--cut-sm);
+  }
+  .plate-cut-lg {
+    --cut: var(--cut-lg);
+  }
+
+  /** The only `filter` in the system. See the performance note at the top. */
+  .cut-shadow {
+    filter: drop-shadow(0 10px 22px rgb(0 0 0 / 70%)) drop-shadow(0 1px 0 rgb(0 0 0 / 80%));
+  }
+
+  /* ─────────────────────────────────────────────────────────────
+     SLAB — a surface you press
+     ───────────────────────────────────────────────────────────── */
+
+  /**
+   * The thickness is the whole trick. `0 var(--slab-depth) 0` paints the side of the
+   * object; pressing translates the face down by exactly that much and swaps the
+   * extrusion for an inset shadow, so the surface visibly goes INTO the panel.
+   * It is the difference between a button and a coloured rectangle.
+   */
+  .slab {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    border: 0;
+    border-radius: 8px;
+    padding: 11px 16px;
+    min-height: 42px;
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-stretch: 92%;
+    font-size: 13px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--color-bone);
+    text-shadow: 0 1px 0 rgb(0 0 0 / 55%);
+    background: linear-gradient(180deg, #2c3b57 0%, #1b2637 55%, #141c2b 100%);
+    box-shadow:
+      inset 0 1px 0 rgb(255 255 255 / 16%),
+      inset 0 0 0 1px rgb(74 98 136 / 30%),
+      inset 0 -1px 0 rgb(0 0 0 / 45%),
+      0 var(--slab-depth) 0 #05080f,
+      0 4px 10px -2px rgb(0 0 0 / 65%);
+    transition:
+      transform var(--dur-fast) var(--ease-press),
+      box-shadow var(--dur-fast) var(--ease-press),
+      filter var(--dur-fast) var(--ease-press);
+  }
+  .slab:active:not(:disabled) {
+    transform: translateY(var(--slab-depth));
+    box-shadow:
+      inset 0 1px 0 rgb(255 255 255 / 5%),
+      inset 0 0 0 1px rgb(74 98 136 / 26%),
+      inset 0 2px 7px rgb(0 0 0 / 65%),
+      0 0 0 #05080f;
+  }
+  .slab:disabled {
+    color: var(--color-faint);
+    text-shadow: none;
+    background: linear-gradient(180deg, #141b28 0%, #0d131e 100%);
+    box-shadow:
+      inset 0 0 0 1px rgb(74 98 136 / 14%),
+      inset 0 1px 0 rgb(255 255 255 / 4%);
+  }
+
+  /** The affirmative action on a surface: build, raise, install, watch. */
+  .slab-primary {
+    color: #eaf7ff;
+    background: linear-gradient(180deg, #3d8fbe 0%, #1f6390 55%, #164e75 100%);
+    box-shadow:
+      inset 0 1px 0 rgb(255 255 255 / 28%),
+      inset 0 0 0 1px rgb(89 200 255 / 45%),
+      inset 0 -1px 0 rgb(0 0 0 / 35%),
+      0 var(--slab-depth) 0 #071a28,
+      0 4px 12px -2px rgb(0 0 0 / 60%),
+      0 0 20px -6px rgb(89 200 255 / 55%);
+  }
+  .slab-primary:active:not(:disabled) {
+    box-shadow:
+      inset 0 1px 0 rgb(255 255 255 / 8%),
+      inset 0 0 0 1px rgb(89 200 255 / 40%),
+      inset 0 2px 8px rgb(0 0 0 / 55%),
+      0 0 0 #071a28,
+      0 0 14px -6px rgb(89 200 255 / 45%);
+  }
+
+  /**
+   * Reserved for the irreversible: launching, and nothing else.
+   *
+   * A fleet cannot be recalled. This surface exists so that the one control in the
+   * game with no undo never looks like the control that raises a refinery.
+   */
+  .slab-commit {
+    color: #fff0ec;
+    background: linear-gradient(180deg, #c9503c 0%, #a02f22 55%, #7d2419 100%);
+    box-shadow:
+      inset 0 1px 0 rgb(255 255 255 / 26%),
+      inset 0 0 0 1px rgb(255 106 77 / 55%),
+      inset 0 -1px 0 rgb(0 0 0 / 35%),
+      0 var(--slab-depth) 0 #2c0b06,
+      0 4px 12px -2px rgb(0 0 0 / 60%),
+      0 0 22px -6px rgb(255 106 77 / 55%);
+  }
+  .slab-commit:active:not(:disabled) {
+    box-shadow:
+      inset 0 1px 0 rgb(255 255 255 / 8%),
+      inset 0 0 0 1px rgb(255 106 77 / 50%),
+      inset 0 2px 8px rgb(0 0 0 / 55%),
+      0 0 0 #2c0b06;
+  }
+
+  /** No thickness, no fill — for tertiary actions that must not compete. */
+  .slab-ghost {
+    color: var(--color-dim);
+    background: transparent;
+    box-shadow: inset 0 0 0 1px rgb(74 98 136 / 26%);
+  }
+  .slab-ghost:active:not(:disabled) {
+    transform: none;
+    background: rgb(74 98 136 / 14%);
+    box-shadow: inset 0 0 0 1px rgb(74 98 136 / 40%);
+  }
+
+  /* ─────────────────────────────────────────────────────────────
+     SOCKET — a recess that holds art
+     ───────────────────────────────────────────────────────────── */
+
+  /**
+   * Rendered art arrives on a transparent background, which means it is floating in
+   * nothing. The socket gives it a place to sit and a reason to be lit: a cut recess
+   * with its own pool of light, so a 3D render reads as an object housed in the
+   * panel rather than a PNG pasted onto it.
+   */
+  .socket {
+    position: relative;
+    display: grid;
+    place-items: center;
+    overflow: hidden;
+    border-radius: 9px;
+    background:
+      radial-gradient(circle at 50% 38%, rgb(89 200 255 / 15%) 0%, transparent 62%),
+      linear-gradient(180deg, #070c15 0%, #0b1220 100%);
+    box-shadow:
+      inset 0 2px 7px rgb(0 0 0 / 78%),
+      inset 0 0 0 1px rgb(0 0 0 / 55%),
+      0 1px 0 rgb(255 255 255 / 6%);
+  }
+  .socket-alloy {
+    background:
+      radial-gradient(circle at 50% 38%, rgb(255 190 82 / 15%) 0%, transparent 62%),
+      linear-gradient(180deg, #0e0a06 0%, #140e08 100%);
+  }
+  .socket-threat {
+    background:
+      radial-gradient(circle at 50% 38%, rgb(255 106 77 / 16%) 0%, transparent 62%),
+      linear-gradient(180deg, #120a09 0%, #170d0b 100%);
+  }
+  /** The art itself: grounded with a contact shadow so it is not pasted on. */
+  .socket-art {
+    filter: drop-shadow(0 6px 10px rgb(0 0 0 / 65%));
+  }
+
+  /* ─────────────────────────────────────────────────────────────
+     FIELD — a recess you type into
+     ───────────────────────────────────────────────────────────── */
+
+  /**
+   * The first text input this game has ever had. D21.
+   *
+   * Built from the socket rather than from scratch, because it is the same physical
+   * idea: something cut INTO the plate rather than raised off it. A slab is a
+   * surface you press; a field is a surface you fill. Keeping those two readings
+   * distinct is what stops a form from looking like a row of buttons.
+   *
+   * `font-size: 16px` on the input is not a type choice — iOS Safari zooms the
+   * whole page when a focused input is any smaller, and a login form that jerks the
+   * viewport is the first thing a new player would experience.
+   */
+  .field {
+    width: 100%;
+    min-height: 48px;
+    padding: 12px 14px;
+    border-radius: 9px;
+    color: var(--color-bone);
+    font-family: var(--font-sans);
+    font-size: 16px;
+    letter-spacing: 0.01em;
+    background: linear-gradient(180deg, #070c15 0%, #0b1220 100%);
+    box-shadow:
+      inset 0 2px 7px rgb(0 0 0 / 78%),
+      inset 0 0 0 1px rgb(0 0 0 / 55%),
+      0 1px 0 rgb(255 255 255 / 6%);
+    transition:
+      box-shadow var(--dur-fast) var(--ease-hardware),
+      background var(--dur-fast) var(--ease-hardware);
+  }
+  .field::placeholder {
+    color: var(--color-faint);
+  }
+  .field:focus {
+    outline: none;
+    box-shadow:
+      inset 0 2px 7px rgb(0 0 0 / 70%),
+      inset 0 0 0 1px rgb(89 200 255 / 55%),
+      0 0 0 3px rgb(89 200 255 / 12%);
+  }
+  /** A field whose contents were refused. Colour states it; the message says why. */
+  .field-bad {
+    box-shadow:
+      inset 0 2px 7px rgb(0 0 0 / 70%),
+      inset 0 0 0 1px rgb(226 65 44 / 65%);
+  }
+
+  /* ─────────────────────────────────────────────────────────────
+     GLASS — a panel over the living world
+     ───────────────────────────────────────────────────────────── */
+
+  /**
+   * The galaxy never closes (interface.md I5), so every panel is something you look
+   * THROUGH at the world rather than a page that replaced it. Blur plus a dark tint
+   * keeps the disc readable behind without letting it compete with the content.
+   */
+  .glass {
+    background: linear-gradient(180deg, rgb(9 14 24 / 88%) 0%, rgb(4 6 12 / 96%) 100%);
+    backdrop-filter: blur(20px) saturate(1.15);
+    -webkit-backdrop-filter: blur(20px) saturate(1.15);
+  }
+  /** Lighter, for HUD furniture that should not black out the view behind it. */
+  .glass-thin {
+    background: linear-gradient(180deg, rgb(11 17 29 / 72%) 0%, rgb(6 10 18 / 80%) 100%);
+    backdrop-filter: blur(14px) saturate(1.1);
+    -webkit-backdrop-filter: blur(14px) saturate(1.1);
+  }
+
+  /* ─────────────────────────────────────────────────────────────
+     FURNITURE
+     ───────────────────────────────────────────────────────────── */
+
+  /** A machined seam: dark groove with a light catching its lower lip. */
+  .rail {
+    height: 2px;
+    background: linear-gradient(180deg, rgb(0 0 0 / 70%) 0%, rgb(255 255 255 / 6%) 100%);
+  }
+  .rail-soft {
+    height: 1px;
+    background: linear-gradient(
+      90deg,
+      transparent,
+      rgb(74 98 136 / 38%) 22%,
+      rgb(74 98 136 / 38%) 78%,
+      transparent
+    );
+  }
+
+  /** Text stamped into metal. */
+  .etch {
+    text-shadow: 0 1px 0 rgb(0 0 0 / 70%);
+  }
+  /** Text lit from behind — for a value that is currently live. */
+  .lit {
+    text-shadow: 0 0 14px currentcolor;
+  }
+
+  .chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    border-radius: 4px;
+    padding: 3px 8px;
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-stretch: 88%;
+    font-size: var(--text-micro);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--color-dim);
+    background: rgb(74 98 136 / 12%);
+    box-shadow: inset 0 0 0 1px rgb(74 98 136 / 28%);
+    text-shadow: 0 1px 0 rgb(0 0 0 / 50%);
+  }
+  .chip-threat {
+    color: #ffb0a2;
+    background: rgb(226 65 44 / 16%);
+    box-shadow:
+      inset 0 0 0 1px rgb(255 106 77 / 45%),
+      0 0 12px -4px rgb(255 106 77 / 55%);
+  }
+  .chip-opportunity {
+    color: var(--color-opportunity-glow);
+    background: rgb(90 211 155 / 14%);
+    box-shadow:
+      inset 0 0 0 1px rgb(111 245 182 / 42%),
+      0 0 12px -4px rgb(111 245 182 / 50%);
+  }
+  .chip-alloy {
+    color: var(--color-alloy-glow);
+    background: rgb(217 164 65 / 14%);
+    box-shadow: inset 0 0 0 1px rgb(255 190 82 / 38%);
+  }
+  .chip-crystal {
+    color: var(--color-crystal-glow);
+    background: rgb(89 200 255 / 12%);
+    box-shadow: inset 0 0 0 1px rgb(89 200 255 / 38%);
+  }
+  .chip-locked {
+    color: var(--color-faint);
+    background: rgb(0 0 0 / 35%);
+    box-shadow: inset 0 0 0 1px rgb(74 98 136 / 20%);
+  }
+
+  /** An unread mark. Small, bright, and the only thing shaped like it. */
+  .pip {
+    display: block;
+    width: 7px;
+    height: 7px;
+    border-radius: 999px;
+    background: var(--color-crystal-glow);
+    box-shadow: 0 0 8px 1px rgb(89 200 255 / 80%);
+  }
+  .pip-threat {
+    background: var(--color-threat-glow);
+    box-shadow: 0 0 8px 1px rgb(255 106 77 / 80%);
+  }
+
+  /**
+   * Loading: a light passing under the plate.
+   *
+   * Not a spinner. A spinner says "the web is thinking"; a panel warming up says the
+   * instrument is coming online, which is the same wait wearing the game's clothes.
+   */
+  .shimmer {
+    position: relative;
+    overflow: hidden;
+  }
+  .shimmer::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    width: 45%;
+    pointer-events: none;
+    background: linear-gradient(
+      90deg,
+      transparent,
+      rgb(89 200 255 / 12%) 50%,
+      transparent
+    );
+    animation: shimmer 1.5s var(--ease-hardware) infinite;
+  }
+
+  /** Fine horizontal scanlines. Barely there — texture, not a costume. */
+  .scan::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    opacity: 0.35;
+    background: repeating-linear-gradient(
+      180deg,
+      transparent 0 2px,
+      rgb(0 0 0 / 22%) 2px 3px
+    );
+  }
+
+  /* ─────────────────────────────────────────────────────────────
+     LEGACY
+     Screens are migrated to the kit one at a time, and the ones still
+     waiting must keep rendering in the meantime. Every rule below is
+     the old class name re-cut in the new material. Deleted once
+     nothing references it.
+     ───────────────────────────────────────────────────────────── */
+
+  .panel {
+    position: relative;
+    border-radius: 10px;
+    background:
+      linear-gradient(180deg, rgb(255 255 255 / 9%) 0%, transparent 30%),
+      linear-gradient(
+        180deg,
+        var(--color-plate-hi) 0%,
+        var(--color-plate) 44%,
+        var(--color-plate-lo) 100%
+      );
+    box-shadow:
+      inset 0 0 0 1px rgb(74 98 136 / 20%),
+      inset 0 -1px 0 rgb(0 0 0 / 60%),
+      0 1px 0 rgb(0 0 0 / 55%),
+      0 14px 30px -12px rgb(0 0 0 / 80%);
+  }
+
+  .btn {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    border: 0;
+    border-radius: 8px;
+    padding: 11px 16px;
+    min-height: 42px;
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-stretch: 92%;
+    font-size: 13px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--color-bone);
+    text-shadow: 0 1px 0 rgb(0 0 0 / 55%);
+    background: linear-gradient(180deg, #2c3b57 0%, #1b2637 55%, #141c2b 100%);
+    box-shadow:
+      inset 0 1px 0 rgb(255 255 255 / 16%),
+      inset 0 0 0 1px rgb(74 98 136 / 30%),
+      inset 0 -1px 0 rgb(0 0 0 / 45%),
+      0 var(--slab-depth) 0 #05080f,
+      0 4px 10px -2px rgb(0 0 0 / 65%);
+    transition:
+      transform var(--dur-fast) var(--ease-press),
+      box-shadow var(--dur-fast) var(--ease-press);
+  }
+  .btn:active:not(:disabled) {
+    transform: translateY(var(--slab-depth));
+    box-shadow:
+      inset 0 1px 0 rgb(255 255 255 / 5%),
+      inset 0 0 0 1px rgb(74 98 136 / 26%),
+      inset 0 2px 7px rgb(0 0 0 / 65%),
+      0 0 0 #05080f;
+  }
+  .btn:disabled {
+    color: var(--color-faint);
+    text-shadow: none;
+    background: linear-gradient(180deg, #141b28 0%, #0d131e 100%);
+    box-shadow:
+      inset 0 0 0 1px rgb(74 98 136 / 14%),
+      inset 0 1px 0 rgb(255 255 255 / 4%);
+  }
+  .btn-commit {
+    color: #fff0ec;
+    background: linear-gradient(180deg, #c9503c 0%, #a02f22 55%, #7d2419 100%);
+    box-shadow:
+      inset 0 1px 0 rgb(255 255 255 / 26%),
+      inset 0 0 0 1px rgb(255 106 77 / 55%),
+      inset 0 -1px 0 rgb(0 0 0 / 35%),
+      0 var(--slab-depth) 0 #2c0b06,
+      0 4px 12px -2px rgb(0 0 0 / 60%),
+      0 0 22px -6px rgb(255 106 77 / 55%);
+  }
+
+  /* Old shapes still referenced by unmigrated screens. */
+  .frame {
+    position: relative;
+    border-radius: 10px;
+    background: linear-gradient(180deg, rgb(22 32 52 / 60%) 0%, rgb(9 13 22 / 92%) 100%);
+    box-shadow:
+      inset 0 0 0 1px rgb(74 98 136 / 24%),
+      inset 0 1px 0 rgb(255 255 255 / 7%);
+  }
+  .group {
+    position: relative;
+    border-radius: 10px;
+    background:
+      radial-gradient(120% 100% at 50% 0%, rgb(35 52 84 / 24%) 0%, transparent 60%),
+      linear-gradient(180deg, var(--color-panel) 0%, var(--color-deep) 100%);
+    box-shadow: inset 0 0 0 1px rgb(74 98 136 / 18%);
+  }
+  .art-well {
+    background: radial-gradient(circle at 50% 45%, rgb(89 200 255 / 16%), transparent 68%);
+  }
+  .bracket {
+    position: relative;
+    padding-left: 11px;
+  }
+  .bracket::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 2px;
+    bottom: 2px;
+    width: 3px;
+    border-radius: 2px;
+    background: linear-gradient(180deg, var(--color-crystal-glow), transparent);
+    box-shadow: 0 0 8px -1px rgb(89 200 255 / 70%);
+  }
+  .directive {
+    position: relative;
+    overflow: hidden;
+    border-radius: 10px;
+    padding: 14px;
+    box-shadow:
+      inset 0 0 0 1px rgb(74 98 136 / 22%),
+      0 10px 24px -12px rgb(0 0 0 / 80%);
+  }
+  .directive-threat {
+    background:
+      radial-gradient(130% 120% at 0% 0%, rgb(226 65 44 / 22%), transparent 62%),
+      linear-gradient(180deg, #171016 0%, var(--color-plate-lo) 100%);
+    box-shadow:
+      inset 0 0 0 1px rgb(255 106 77 / 48%),
+      inset 0 0 16px -6px rgb(255 106 77 / 45%),
+      0 0 24px -10px rgb(255 106 77 / 50%);
+  }
+  .directive-opportunity {
+    background:
+      radial-gradient(130% 120% at 0% 0%, rgb(90 211 155 / 18%), transparent 62%),
+      linear-gradient(180deg, #101d1c 0%, var(--color-plate-lo) 100%);
+    box-shadow:
+      inset 0 0 0 1px rgb(111 245 182 / 44%),
+      inset 0 0 16px -6px rgb(111 245 182 / 40%),
+      0 0 24px -10px rgb(111 245 182 / 45%);
+  }
+  .directive-growth,
+  .directive-idle {
+    background:
+      radial-gradient(130% 120% at 0% 0%, rgb(60 82 128 / 22%), transparent 62%),
+      linear-gradient(180deg, var(--color-plate) 0%, var(--color-plate-lo) 100%);
+  }
+}
+
+/* NOTE ON VARIABLE NAMES. Tailwind v4's `@theme` publishes these as
+   `--color-alloy`, `--color-crystal`, and so on. Writing `var(--alloy)` looks
+   right and resolves to nothing, which makes any `color-mix()` around it produce
+   an invalid declaration that the browser drops in silence — a button with no
+   background and dark text on a dark ground. Always use the `--color-` name. */
+
+/* ── the claim badge · D16 ────────────────────────────────────
+   Clash of Clans' collector, on your own planet. The vessel is the message:
+   small, visibly filling, and it stops. See galaxy/Claim.tsx.            */
+
+.claim-badge {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 11px 6px 8px;
+  border: 1px solid color-mix(in srgb, var(--color-crystal) 45%, var(--color-line));
+  border-radius: 5px;
+  background: color-mix(in srgb, var(--color-void) 88%, transparent);
+  backdrop-filter: blur(6px);
+  box-shadow: 0 2px 10px rgb(0 0 0 / 55%);
+  white-space: nowrap;
+  cursor: pointer;
+  /* A slow bob, so the eye finds it without it demanding anything. */
+  animation: claim-bob 3.2s ease-in-out infinite;
+}
+
+.claim-badge:active { transform: scale(0.96); }
+
+.claim-vessels { display: flex; gap: 3px; }
+
+/* The rim is drawn full height ALWAYS — that is what makes the empty space
+   above the fill readable as "this is how much room is left". */
+.claim-vessel {
+  position: relative;
+  width: 9px;
+  height: 22px;
+  border: 1px solid color-mix(in srgb, var(--color-line) 80%, transparent);
+  border-radius: 1.5px;
+  background: rgb(0 0 0 / 45%);
+  overflow: hidden;
+}
+
+.claim-fill {
+  position: absolute;
+  inset-inline: 0;
+  bottom: 0;
+  transition: height 600ms ease-out;
+}
+
+.claim-fill-alloy { background: linear-gradient(to top, #c8862f, #f0c070); }
+.claim-fill-crystal { background: linear-gradient(to top, #2f8fa8, #7fdcf0); }
+
+.claim-amount {
+  font-family: var(--font-mono, inherit);
+  font-size: 13px;
+  line-height: 1;
+  color: var(--color-bone);
+}
+
+/* A bead running down the rim: production, visibly arriving. */
+.claim-drip {
+  position: absolute;
+  left: 9px;
+  top: 4px;
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background: #f0c070;
+  animation: claim-drip 1.9s linear infinite;
+}
+
+.claim-badge-nearly { border-color: color-mix(in srgb, var(--color-alloy) 55%, transparent); }
+
+/* Full: amber, pulsing, and the drip is GONE. Nothing is arriving any more. */
+.claim-badge-full {
+  border-color: var(--color-alloy);
+  background: color-mix(in srgb, var(--color-alloy) 16%, var(--color-void));
+  animation: claim-bob 3.2s ease-in-out infinite, claim-urgent 1.1s ease-in-out infinite;
+}
+
+.claim-alert {
+  font-family: var(--font-display, inherit);
+  font-size: 12px;
+  line-height: 1;
+  color: var(--color-alloy);
+}
+
+@keyframes claim-bob {
+  0%, 100% { translate: 0 0; }
+  50% { translate: 0 -3px; }
+}
+
+@keyframes claim-drip {
+  0% { opacity: 0; translate: 0 0; }
+  20% { opacity: 1; }
+  100% { opacity: 0; translate: 0 14px; }
+}
+
+@keyframes claim-urgent {
+  0%, 100% { box-shadow: 0 2px 10px rgb(0 0 0 / 55%), 0 0 0 0 color-mix(in srgb, var(--color-alloy) 45%, transparent); }
+  50% { box-shadow: 0 2px 10px rgb(0 0 0 / 55%), 0 0 0 5px color-mix(in srgb, var(--color-alloy) 0%, transparent); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .claim-badge, .claim-badge-full { animation: none; }
+  .claim-drip { display: none; }
+}
+
+/* ── the works · D16 ──────────────────────────────────────────
+   Two small vessels beside two big storage bars. The size difference IS the
+   lesson: what production lands in is a fraction of what it ends up in. See
+   shell/StatusBar.tsx.                                                     */
+
+.works {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+  min-width: 0;
+  padding: 4px 10px 4px 7px;
+  border: 1px solid var(--color-line-soft);
+  border-radius: 3px;
+  background: color-mix(in srgb, var(--color-raised) 55%, transparent);
+  text-align: left;
+  transition: border-color 160ms ease, background 160ms ease;
+}
+
+.works:not(:disabled):active { transform: scale(0.995); }
+.works-idle { opacity: 0.55; }
+
+.works-vessels { display: flex; gap: 3px; flex-shrink: 0; }
+
+/* Rim always full height — the empty part is the headroom, and the headroom is
+   the whole point. */
+.works-vessel {
+  position: relative;
+  width: 9px;
+  height: 22px;
+  border: 1px solid color-mix(in srgb, var(--color-line) 90%, transparent);
+  border-radius: 2px;
+  background: rgb(0 0 0 / 40%);
+  overflow: hidden;
+}
+
+.works-fill {
+  position: absolute;
+  inset-inline: 0;
+  bottom: 0;
+  transition: height 700ms ease-out;
+}
+
+.works-fill-alloy { background: linear-gradient(to top, #b3771f, #f0c070); }
+.works-fill-crystal { background: linear-gradient(to top, #2a7f96, #7fdcf0); }
+
+/* Inflow, running only while the works run. Its absence is how a player sees
+   that production has actually stopped rather than merely reached a number. */
+.works-drip {
+  position: absolute;
+  left: 50%;
+  top: 2px;
+  width: 2px;
+  height: 2px;
+  margin-left: -1px;
+  border-radius: 50%;
+  animation: works-drip 1.6s linear infinite;
+}
+
+.works-drip-alloy { background: #f0c070; }
+.works-drip-crystal { background: #7fdcf0; animation-delay: 0.5s; }
+
+.works-body { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.works-amount { font-size: 13px; line-height: 1.1; }
+
+.works-action {
+  margin-left: auto;
+  flex-shrink: 0;
+  font-family: var(--font-display, inherit);
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+/* Full: amber, pulsing, inflow gone. */
+.works-full {
+  border-color: var(--color-alloy);
+  background: color-mix(in srgb, var(--color-alloy) 14%, transparent);
+  animation: works-urgent 1.3s ease-in-out infinite;
+}
+
+@keyframes works-drip {
+  0% { opacity: 0; translate: 0 0; }
+  25% { opacity: 1; }
+  100% { opacity: 0; translate: 0 16px; }
+}
+
+@keyframes works-urgent {
+  0%, 100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--color-alloy) 40%, transparent); }
+  50% { box-shadow: 0 0 0 4px color-mix(in srgb, var(--color-alloy) 0%, transparent); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .works-drip { display: none; }
+  .works-full { animation: none; }
+}
+
+/* ── actions · four states, and the state is visible ──────────
+   interface.md I1: "the standard failure is rendering the last two identically".
+   See ui/Action.tsx.                                                        */
+
+.act {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  /* IT MAY SHRINK, AND IT MUST NEVER OVERFLOW.
+     This was `flex-shrink: 0` beside `white-space: nowrap`, on a control whose
+     width depends on its CONTENT — a shortfall in two resources is three times the
+     width of the word RAISE. In a row that also holds two 48px art wells, the
+     button simply grew past the right edge and the card clipped it, so the player
+     saw a price with its last digit missing. Shrinking with a floor keeps it on
+     the row; the states below are what make the content fit inside the floor. */
+  flex-shrink: 1;
+  min-width: 0;
+  max-width: 100%;
+  min-height: 34px;
+  padding: 0 11px;
+  border: 1px solid transparent;
+  border-radius: 3px;
+  font-family: var(--font-display, inherit);
+  font-size: 11px;
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  transition: filter 140ms ease, border-color 140ms ease;
+}
+
+/* A verb never wraps and never truncates — it is two syllables. */
+.act-word { line-height: 1; white-space: nowrap; }
+
+/* READY — the only filled state, and the only one that acts.
+   Weighted deliberately hard: at 26% tint this read as another outline on a
+   near-black ground, which is the exact failure the four states exist to fix. */
+.act-ready {
+  border-color: color-mix(in srgb, var(--color-crystal) 85%, transparent);
+  background: linear-gradient(
+    to bottom,
+    color-mix(in srgb, var(--color-crystal) 62%, transparent),
+    color-mix(in srgb, var(--color-crystal) 34%, transparent)
+  );
+  color: #062028;
+  font-weight: 600;
+  box-shadow:
+    inset 0 1px 0 color-mix(in srgb, #ffffff 30%, transparent),
+    0 1px 6px color-mix(in srgb, var(--color-crystal) 22%, transparent);
+}
+.act-ready:active:not(:disabled) { transform: scale(0.96); filter: brightness(1.15); }
+.act-ready:disabled { opacity: 0.6; }
+
+/* SHORT — outlined, with the gap named. Never a dead grey rectangle. */
+.act-short {
+  border-color: color-mix(in srgb, var(--color-alloy) 34%, transparent);
+  background: transparent;
+  color: var(--color-alloy);
+  cursor: not-allowed;
+  /* Two lines rather than one long one. The widest thing this control ever has to
+     say is "short, this much alloy AND this much crystal", which on one line is
+     wider than a phone can give it beside two art wells. Stacking the label over
+     the figures costs 12px of height and takes about 45% off the width, which is
+     what keeps it on the row instead of off the edge of the card. */
+  padding: 4px 9px;
+  line-height: 1.15;
+}
+
+/* The stack itself: the state on top, the gap underneath. */
+.act-need {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  min-width: 0;
+}
+.act-need-figs { display: inline-flex; align-items: center; gap: 7px; }
+/* The word that stops a shortfall being read as a price. Quieter than the
+   figures it qualifies, because the figures are what the player acts on. */
+.act-need-word {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 9px;
+  letter-spacing: 0.16em;
+  opacity: 0.7;
+}
+.act-need-part {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  font-family: var(--font-mono, inherit);
+  font-size: 11px;
+  letter-spacing: 0;
+  color: var(--color-alloy);
+}
+.act-need-crystal { color: var(--color-crystal); }
+
+/* A full-width action — the sheet footer — has room for one line, and looks wrong
+   as a stacked block across 340px. It opts back out. */
+.act-short.w-full .act-need {
+  flex-direction: row;
+  gap: 8px;
+}
+.act-short.w-full { padding: 0 11px; }
+
+/* LOCKED — a door, not a disabled control. */
+.act-locked {
+  border-style: dashed;
+  border-color: color-mix(in srgb, var(--color-line) 100%, transparent);
+  background: rgb(0 0 0 / 25%);
+  color: var(--color-dim);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+}
+/* A REQUIREMENT IS A SENTENCE AND SENTENCES VARY.
+   "Core L7" is four characters; "an Uplink in orbit" is eighteen. The long ones
+   wrap to a second line inside the button rather than pushing the control off the
+   card — a door the player cannot read is not a door. */
+.act-locked .act-word {
+  white-space: normal;
+  text-align: left;
+  overflow-wrap: anywhere;
+}
+.act-locked:not(:disabled):active { transform: scale(0.96); }
+.act-locked:not(:disabled) { color: var(--color-bone); border-color: color-mix(in srgb, var(--color-alloy) 40%, transparent); }
+.act-go { opacity: 0.75; }
+
+/* ── combat statistics ───────────────────────────────────────── */
+
+.stats { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.stats-card { gap: 16px; }
+
+.stat { display: inline-flex; align-items: center; gap: 5px; }
+.stat-icon { display: inline-flex; opacity: 0.9; }
+.stat-body { display: flex; flex-direction: column; gap: 1px; }
+.stat-value {
+  font-family: var(--font-mono, inherit);
+  font-size: 13px;
+  line-height: 1.1;
+  color: var(--color-bone);
+}
+.stats-card .stat-value { font-size: 17px; }
+
+/* Fixed hues, matching what these ideas already mean elsewhere in the UI. */
+.stat-attack .stat-icon { color: #e08a7c; }
+.stat-hull   .stat-icon { color: var(--color-bone); }
+.stat-speed  .stat-icon { color: var(--color-crystal); }
+.stat-cargo  .stat-icon { color: var(--color-alloy); }
+
+/* ── price ───────────────────────────────────────────────────── */
+
+.price { display: inline-flex; align-items: center; gap: 10px; }
+.price-part {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-family: var(--font-mono, inherit);
+  font-size: 12px;
+  color: var(--color-alloy);
+}
+.price-crystal { color: var(--color-crystal); }
+/* Short shows as a struck-through-ish dimming rather than red: it is a price you
+   cannot meet YET, not an error. */
+.price-short { opacity: 0.5; text-decoration: underline dotted; text-underline-offset: 3px; }

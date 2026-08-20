@@ -185,3 +185,24 @@ export function resolveCombat(
     defenceSalvage,
   };
 }
+
+/* ── the engagement window ──────────────────────────────────── */
+
+/** The engagement, in milliseconds. `COMBAT.engagementSeconds`, once. */
+export const ENGAGEMENT_MS = COMBAT.engagementSeconds * 1000;
+
+/**
+ * When a landing's outcome is settled: the moment the fleet arrives, plus the
+ * engagement. D44.
+ *
+ * THE SERVER SCHEDULES AGAINST THIS AND THE CLIENT DRAWS AGAINST IT, from the one
+ * definition — which is what makes the ten seconds a state of the world rather
+ * than an animation the client happens to play. Two copies of `+ 10s` would drift
+ * the instant either side was tuned, and the symptom would be a squadron still
+ * firing at a world whose battle report had already been written.
+ */
+export const engagementEndsAt = (arriveAtMs: number): number => arriveAtMs + ENGAGEMENT_MS;
+
+/** Is this fleet over its target right now, with nothing yet decided? */
+export const isEngaging = (arriveAtMs: number, nowMs: number): boolean =>
+  nowMs >= arriveAtMs && nowMs < engagementEndsAt(arriveAtMs);

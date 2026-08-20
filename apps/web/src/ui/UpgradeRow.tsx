@@ -1,10 +1,10 @@
 import type { ReactNode } from 'react';
 import type { Gain } from '../lib/gains.js';
-import { compact } from '../lib/format.js';
+
 import { haptic } from '../lib/haptics.js';
-import { RESOURCE_ART } from './assets.js';
+import { duration } from '../lib/time.js';
+import { ActionButton, Price, StatStrip, type Verb } from './Action.js';
 import { LockMark } from './marks.js';
-import { ProgressToNext } from './Meter.js';
 
 /**
  * One decision, presented as a decision.
@@ -27,9 +27,13 @@ import { ProgressToNext } from './Meter.js';
  * already own is a list of receipts. The whole ladder is one tap further, in the
  * detail sheet.
  *
- * PROGRESS IS SHOWN, NOT STATED. When a row is unaffordable it carries a bar
- * toward the price, because "62% of the way to a Bulwark" is a reason to come back
- * and "Need 940" is a refusal.
+ * AN UNAFFORDABLE ROW ANSWERS "WHEN", NOT "HOW FAR". This used to be a progress
+ * bar reading "Saving for bastion · 40%", and the owner could not tell what it was
+ * measuring — which settles it, because a bar that needs explaining is worse than
+ * no bar. It was also redundant: the button already names the exact shortfall, so
+ * the percentage was the same refusal in a second costume. A TIME is different in
+ * kind. It is a fact the player can plan around — come back after dinner, or raise
+ * production first — and planning around a wait is the behaviour the game wants.
  */
 export interface Blocked {
   /** Short, in the player's terms: "Needs Shipyard L4". */
@@ -44,12 +48,16 @@ export function UpgradeRow({
   mark,
   name,
   level,
+  tag,
   role,
   gain,
   cost,
   held,
+  income,
   blocked,
+  verb,
   actionLabel,
+  stats,
   onAct,
   onOpen,
   pending = false,
@@ -62,12 +70,28 @@ export function UpgradeRow({
   mark?: ReactNode;
   name: string;
   level?: number;
+  /**
+   * TWO OR THREE WORDS SAYING WHAT THIS IS. Owner request.
+   *
+   * Sits directly under the name, before any number, because the first question a
+   * player has about an unfamiliar card is not "what does the next level cost" —
+   * it is "what is this". `role` answers the second question and is a sentence;
+   * this answers the first and must never become one.
+   */
+  tag?: string;
   role: string;
   gain?: Gain;
   cost: { alloy: number; crystal: number };
   held: { alloy: number; crystal: number };
+  /** Production rates, so an unaffordable row can say WHEN instead of how far. */
+  income?: { alloyPerHour: number; crystalPerHour: number };
   blocked?: Blocked;
-  actionLabel: string;
+  /** Which act this is, so the control can carry its shape. */
+  verb: Verb;
+  /** Overrides the verb's own word where a row needs something specific. */
+  actionLabel?: string;
+  /** Hull figures, where the row is a ship. */
+  stats?: { atk: number; hp: number; speed: number; cargo: number };
   onAct: () => void;
   /** Opens the full picture. The row is the summary; the sheet is the decision. */
   onOpen?: () => void;
@@ -79,10 +103,25 @@ export function UpgradeRow({
   const shortAlloy = Math.max(0, cost.alloy - held.alloy);
   const shortCrystal = Math.max(0, cost.crystal - held.crystal);
   const affordable = shortAlloy === 0 && shortCrystal === 0;
-  const total = cost.alloy + cost.crystal;
-  const have = Math.min(held.alloy, cost.alloy) + Math.min(held.crystal, cost.crystal);
-
   const locked = blocked !== undefined;
+
+  /**
+   * How long until this is affordable, at the planet's current rates.
+   *
+   * The larger of the two waits, since both prices must be met. It assumes the
+   * works keep being emptied (D16) — the estimate is a floor, and a player who
+   * leaves the collectors full will wait longer than it says.
+   *
+   * Null when the question has no answer — nothing is being produced — because
+   * "affordable in ∞" is worse than saying nothing at all.
+   */
+  const waitMinutes =
+    income && (income.alloyPerHour > 0 || income.crystalPerHour > 0)
+      ? Math.max(
+          shortAlloy > 0 ? (shortAlloy / Math.max(1, income.alloyPerHour)) * 60 : 0,
+          shortCrystal > 0 ? (shortCrystal / Math.max(1, income.crystalPerHour)) * 60 : 0,
+        )
+      : null;
 
   return (
     <div
@@ -106,6 +145,39 @@ export function UpgradeRow({
           }}
         />
       )}
+
+      {/*
+        THE NAME GETS THE WHOLE WIDTH.
+
+        It used to share a line with the art, the tier arrow, the next tier's art
+        and the button, and on a 390px phone that left it about eighty pixels —
+        "COMMAND…", which names nothing. A truncated label is worse than a small
+        one: the player cannot tell what they are being sold, and this row exists
+        to sell it.
+
+        Everything else on that line has a fixed width and cannot be squeezed, so
+        the name was always going to be what gave. Putting it above costs one line
+        of height and makes the row read in the order a player asks: what is it,
+        what does it look like, what does it cost, what do I press.
+      */}
+      <div className="pointer-events-none relative z-10 mb-2">
+        <div className="flex items-baseline gap-2">
+          <h3 className="min-w-0 font-display text-[15px] uppercase tracking-wide text-bone">
+            {name}
+          </h3>
+          {level !== undefined && level > 0 && (
+            <span className={`num text-[12px] text-faint ${flash ? 'pop inline-block' : ''}`}>
+              L{level}
+            </span>
+          )}
+        </div>
+        {/*
+          Small and BOLD, at the owner's direction, and deliberately not the same
+          grey as the sentence lower down: it has to survive a thumb scrolling past
+          at speed, which is the only moment it is ever read.
+        */}
+        {tag && <p className="mt-0.5 text-[11px] font-semibold leading-snug text-dim">{tag}</p>}
+      </div>
 
       <div className="pointer-events-none relative z-10 flex items-center gap-3">
         <div className="art-well relative flex size-12 shrink-0 items-center justify-center rounded">
@@ -144,42 +216,20 @@ export function UpgradeRow({
           </>
         )}
 
-        <div className="flex min-w-0 flex-1 items-baseline gap-2">
-          <h3 className="truncate font-display text-[15px] uppercase tracking-wide text-bone">
-            {name}
-          </h3>
-          {level !== undefined && level > 0 && (
-            <span className={`num text-[12px] text-faint ${flash ? 'pop inline-block' : ''}`}>
-              L{level}
-            </span>
-          )}
-        </div>
+        {/* Pushes the control to the right edge, where every row's control sits. */}
+        <div className="flex-1" />
 
-        {blocked ? (
-          <button
-            type="button"
-            onClick={() => {
-              haptic('tap');
-              blocked.onFix?.();
-            }}
-            disabled={!blocked.onFix}
-            className="chip chip-locked pointer-events-auto shrink-0"
-          >
-            {blocked.reason}
-          </button>
-        ) : (
-          <button
-            type="button"
-            className="btn pointer-events-auto shrink-0 px-3 text-[11px] active:scale-95"
-            disabled={!affordable || pending}
-            onClick={() => {
-              haptic('commit');
-              onAct();
-            }}
-          >
-            {actionLabel}
-          </button>
-        )}
+        <span className="pointer-events-auto shrink-0">
+          <ActionButton
+            verb={verb}
+            cost={cost}
+            held={held}
+            {...(blocked ? { blocked } : {})}
+            onAct={onAct}
+            pending={pending}
+            {...(actionLabel ? { label: actionLabel } : {})}
+          />
+        </span>
       </div>
 
       {/*
@@ -200,7 +250,7 @@ export function UpgradeRow({
             <span className="text-bone">{gain.next}</span>
           </p>
         )}
-        <Price cost={cost} />
+        <Price cost={cost} held={held} />
       </div>
       {gain?.unlocks && (
         <p className="pointer-events-none relative z-10 mt-1 text-[11px] text-crystal/80">
@@ -208,33 +258,63 @@ export function UpgradeRow({
         </p>
       )}
 
+      {stats && (
+        <div className="pointer-events-none relative z-10 mt-2">
+          <StatStrip {...stats} />
+        </div>
+      )}
+
       <p className="pointer-events-none relative z-10 mt-1.5 text-[12px] leading-snug text-faint">
         {role}
       </p>
 
-      {!affordable && !blocked && (
-        <div className="pointer-events-none relative z-10 mt-2.5">
-          <ProgressToNext have={have} need={total} label={`Saving for ${name.toLowerCase()}`} />
-        </div>
+      {/*
+        WHEN, not how far along.
+
+        This used to be a progress bar reading "Saving for bastion · 40%". The
+        owner could not tell what it was measuring, which settles it — a bar that
+        needs explaining is worse than no bar, and 40% of a price is not a fact
+        anyone can act on. It also duplicated the button, which already names the
+        exact shortfall.
+
+        What a player actually wants to know is WHEN. Production is a known rate
+        and the gap is a known number, so the answer is a time, and a time is
+        something you can plan a session around.
+      */}
+      {!affordable && !blocked && waitMinutes !== null && (
+        <p className="pointer-events-none relative z-10 mt-2 text-[11px] text-faint">
+          Affordable in <span className="num text-alloy">{duration(waitMinutes)}</span> at your
+          current rate
+        </p>
       )}
     </div>
   );
 }
 
-function Price({ cost }: { cost: { alloy: number; crystal: number } }) {
+/**
+ * A BAND INSIDE A SECTION, WHERE THE CARDS BELOW IT OBEY A DIFFERENT RULE.
+ *
+ * Not decoration and not a second heading level for its own sake. It exists
+ * wherever one surface holds two kinds of thing that a player has to be able to
+ * tell apart before choosing — satellites that cost a slot against instruments
+ * that do not, warships against the craft that never fight. Those distinctions
+ * were carried by a paragraph, and a paragraph between cards is a paragraph nobody
+ * reads while scrolling.
+ *
+ * `note` is the rule in one short clause. If it needs two, the band is wrong.
+ */
+export function Band({ label, note, aside }: { label: string; note?: string; aside?: ReactNode }) {
   return (
-    <span className="num flex items-center gap-2.5 text-[12px]">
-      <span className="flex items-center gap-1 text-alloy">
-        <img src={RESOURCE_ART.alloy} alt="alloy" className="size-4 object-contain" />
-        {compact(cost.alloy)}
-      </span>
-      {cost.crystal > 0 && (
-        <span className="flex items-center gap-1 text-crystal">
-          <img src={RESOURCE_ART.crystal} alt="crystal" className="size-4 object-contain" />
-          {compact(cost.crystal)}
-        </span>
-      )}
-    </span>
+    <div className="border-b border-line-soft bg-void/30 px-3.5 py-2">
+      <div className="flex items-baseline gap-2">
+        <h3 className="font-display text-[11px] uppercase tracking-[0.16em] text-crystal/85">
+          {label}
+        </h3>
+        <span className="h-px flex-1 bg-gradient-to-r from-line-soft to-transparent" />
+        {aside}
+      </div>
+      {note && <p className="mt-1 text-[11px] leading-snug text-faint">{note}</p>}
+    </div>
   );
 }
 
