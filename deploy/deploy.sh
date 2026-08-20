@@ -26,11 +26,23 @@ say() { printf '\n\033[1;36m▸ %s\033[0m\n' "$*"; }
 
 [[ -f .env ]] || { echo "No .env beside docker-compose.prod.yml. Copy .env.production.example."; exit 1; }
 
-if [[ "${1:-}" != "--local" ]]; then
+# A SCRIPT THAT UPDATES ITSELF HAS TO HAND OVER, NOT CARRY ON.
+#
+# `git reset --hard` rewrites this file while bash is part-way through reading
+# it. Bash keeps a byte offset into the script and re-reads from it, so what runs
+# after the fetch is whatever now happens to sit at that offset in the NEW file —
+# a mixture of two versions, silently. The first deploy after adding a step to
+# this script ran the old body and reported success.
+#
+# So: fetch, then replace this process with the updated script. The marker stops
+# the new one fetching again.
+if [[ "${1:-}" != "--local" && "${ASTERA_DEPLOY_REEXEC:-}" != "1" ]]; then
   say "Fetching origin/master"
   git fetch --quiet origin
   git checkout --quiet master
   git reset --hard --quiet origin/master
+  export ASTERA_DEPLOY_REEXEC=1
+  exec "$0" "$@"
 fi
 echo "  at $(git rev-parse --short HEAD) — $(git log -1 --format=%s)"
 
