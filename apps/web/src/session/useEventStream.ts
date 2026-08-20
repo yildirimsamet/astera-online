@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useApi } from '../api/context.js';
 import { keys } from '../api/queries.js';
+import { isShardEvent, shardCoalescer } from './shardEvents.js';
 
 /** How long a connection must last before it counts as one that worked. */
 const HEALTHY_MS = 5000;
@@ -13,9 +14,23 @@ const backoffMs = (attempt: number): number =>
 /**
  * The only realtime surface in the game.
  *
- * It carries no state — just "something happened to you". Everything else is
- * refetched, which keeps the server authoritative and the payload a few hundred
- * bytes an hour. Fleet motion is derived from timestamps, never streamed.
+ * It carries no state — just "something happened". Everything else is refetched,
+ * which keeps the server authoritative and the payload a few hundred bytes an
+ * hour. Fleet motion is derived from timestamps, never streamed.
+ *
+ * TWO FAMILIES ARRIVE ON IT. D53.
+ *
+ *   · A PLAYER event happened TO THIS COMMANDER — a battle resolving, a scan
+ *     detected, a fleet inbound. Almost anything can have moved, so it refreshes
+ *     everything, immediately.
+ *   · A SHARD event happened to SOMEBODY ELSE in the same galaxy, and it is the
+ *     half no event could ever announce before: a neighbour launching, a rival's
+ *     drill reaching a rock first, a raid landing on a world across the disc. It
+ *     is namespaced `shard:` on the wire and goes through a coalescer, because
+ *     fifty clients hearing one launch must not become fifty simultaneous reads.
+ *
+ * The second used to be a timer. The timers are still there as a floor, at sixty
+ * seconds — see the read policy in `queries.ts`.
  */
 export function useEventStream(enabled: boolean): void {
   const api = useApi();
@@ -25,7 +40,29 @@ export function useEventStream(enabled: boolean): void {
     if (!enabled) return;
     const controller = new AbortController();
 
-    const refresh = (): void => {
+    const shard = shardCoalescer((reads) => {
+      for (const key of reads) void client.invalidateQueries({ queryKey: key });
+    });
+
+    const refresh = (kind: string): void => {
+      /**
+       * A GALAXY-WIDE EVENT IS NOT ABOUT YOU, AND MUST NOT COST WHAT ONE IS. D53.
+       *
+       * The blanket refresh below is right for something that happened to this
+       * commander, where almost anything can have moved. It is completely wrong
+       * for a neighbour launching a fleet: that changes one list, and in a busy
+       * galaxy it happens often. Fifty clients each refetching eight payloads on
+       * every launch in the shard is how a liveness feature becomes a load
+       * problem.
+       *
+       * So a shard event is routed to the one or two reads it actually moves, and
+       * coalesced. See `shardEvents.ts`.
+       */
+      if (isShardEvent(kind)) {
+        shard.note(kind);
+        return;
+      }
+
       /**
        * EVERY read that a resolved event can change — and `traffic` and `mining`
        * were missing from it.
@@ -35,8 +72,7 @@ export function useEventStream(enabled: boolean): void {
        * else's from `traffic`. `interpolatePosition` clamps at the end of a
        * flight, so a craft whose list has not been refetched does not vanish or
        * turn round — it SITS on its target, motionless, until something else
-       * happens to refresh it. `mining` polls at ninety seconds, so a drill could
-       * hang over a rock for a minute and a half after its work was done.
+       * happens to refresh it.
        *
        * An omission here does not fail loudly. It renders a stopped world.
        */
@@ -94,6 +130,7 @@ export function useEventStream(enabled: boolean): void {
 
     return () => {
       controller.abort();
+      shard.cancel();
     };
   }, [api, client, enabled]);
 }

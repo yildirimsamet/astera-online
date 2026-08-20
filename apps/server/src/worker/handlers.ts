@@ -39,6 +39,7 @@ import { clearMissionUnits, fleetOfMission } from '../services/mission.js';
 import { instrumentLevels, levelOf, resolveProbe } from '../services/intel.js';
 import { resolveMiningArrival, resolveMiningReturn } from '../services/mining.js';
 import { announceUnlocks, notify } from '../services/notifications.js';
+import { publishShard } from '../stream/bus.js';
 import { schedule, type EventRow } from './queue.js';
 
 export interface HandlerContext {
@@ -93,6 +94,23 @@ export const onMissionArrival: Handler = async ({ db, clock }, event) => {
   await db.transaction(async (tx) => {
     const mission = await claimMission(tx, missionId);
     if (!mission) return; // already resolved by another worker
+
+    /**
+     * THE WHOLE GALAXY WATCHES A FLIGHT END. D53.
+     *
+     * Every branch below ends a leg that somebody else could see: a raid resolving
+     * into a debris field, a probe going home, a squadron landing. All of it is
+     * public and all of it used to arrive on a twenty-second poll — which, for a
+     * raid, meant the bombardment finished and the squadron then hung over the
+     * world it had already destroyed until a timer happened along.
+     *
+     * Published on the CLAIM rather than at the end, for the reason the claim
+     * exists: a redelivered event finds the mission already resolved, claims
+     * nothing, returns here, and must not send fifty clients to refetch a galaxy
+     * that has not changed. And it is inside the transaction, so a resolution that
+     * rolls back is never announced.
+     */
+    await publishShard(tx, mission.seasonId, 'arrival');
 
     // Ascending id order, always — two planets raiding each other simultaneously
     // would otherwise deadlock.

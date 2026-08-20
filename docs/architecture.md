@@ -96,9 +96,29 @@ a stranded flight is housekeeping; landing everybody's fleets is the job.
 
 ## Realtime — SSE over LISTEN/NOTIFY
 
-One endpoint, `GET /api/stream`, carrying only events a player could not have predicted — a
-battle resolving, a scan detected, a fleet inbound. A few hundred bytes an hour. Fleet motion
-and asteroid orbits are computed client-side from timestamps and never touch it.
+One endpoint, `GET /api/stream`, carrying only instants a player could not have predicted. Fleet
+motion and asteroid orbits are computed client-side from timestamps and never touch it.
+
+**Two topics on one connection — D53.**
+
+| Topic | Carries | Example |
+|---|---|---|
+| `p:<playerId>` | What happened TO this commander | a battle resolving, a scan detected, a fleet inbound |
+| `s:<seasonId>` | What happened IN this galaxy | a fleet left a world, a raid resolved, a drill went out, a world grew |
+
+The shard topic is the half no event could ever announce, and it is what used to arrive on a poll.
+Its payload is **a shard id and a kind — nothing else**: no world, no owner, no heading. What it
+says is what the poll it replaced said, sooner. Every fog rule is still enforced in the query it
+points at.
+
+**The publishing rule, and it is the whole safety argument:** a shard event fires exactly when the
+public payload it points at has changed, and at no other time. A Core crossing a tier publishes; a
+Refinery reaching L7 does not. A satellite going up publishes; a Telescope going up does not,
+because a ground instrument is private (D15/D25) and a broadcast timed to it would be the one fact
+on this channel a refetch could not have shown. Building ships publishes nothing.
+
+The season is the shard key because `/api/traffic`, `/api/galaxy` and `/api/mining` are already
+scoped by it, and it is read from the PLAYER row — never from anything a client can influence.
 
 **Not an in-memory emitter.** The API and the worker are separate process groups: the worker
 writes the notification, the API holds the player's open connection. An emitter would work
@@ -112,21 +132,48 @@ told about a battle that was subsequently undone.
 Every subscription returns an unsubscribe function, wired to **both** `close` and `error` on
 the raw request. Leaking one leaks a listener per reconnect.
 
-### The stream is not the whole liveness story — D52
+### How a client finds out anything — D52, rewritten at D53
 
-**It fires only for what happens TO YOU**, and most of what makes the disc feel inhabited happens
-to somebody else: a neighbour's fleet leaving, a rival's drill reaching a rock first, a raid
-landing on a world across the galaxy. None of that will ever produce an event for you.
+Three mechanisms, in order of precision, and the shortest is not the timer.
 
-So the client rule is: **anything that moves, or that can change because of somebody else,
-carries a timer** — `traffic` at twenty seconds, `mining` and `galaxy` at thirty, `pending` at
-sixty. The stream and the arrival wake-ups still do the precise work; a timer is a floor under
-liveness, never the mechanism for an instant the payload already names.
+1. **The instant the payload already names.** Every flight carries its own arrival, so nothing is
+   ever polled for to find out when it lands — the client wakes on it.
+2. **The stream.** Anything that happens to this commander, and since D53 anything that happens in
+   this galaxy. Measured end to end in a real browser: a bystander sees a stranger's raid ~850ms
+   after the launch commits, against the twenty-second poll it replaced.
+3. **The timer, which is now a SAFETY NET.** Sixty seconds across the board. It is what runs the
+   galaxy if the live channel is down — a dropped socket, a restart, a phone that lost signal.
 
-Polling `/api/galaxy` is safe for the intel layer, and it is worth saying why since it looks like
-it should not be: a telescope read is seeded per `(watchId, timeWindow)`, so asking again inside
-a window returns the same answer and cannot buy a confirmation. The write it provokes
-(`watches.lastConfirmedAt`) is throttled server-side to a quarter of a minute.
+The client coalesces shard events over 250ms and maps each kind to the one or two reads it moves.
+A launch does not refetch `/api/galaxy`: that payload carries a telescope reading per watched world
+and a flight cannot change it. Measured: seven events cost 56 invalidations under a blanket
+refresh and 2 under the routed one.
+
+Refetching `/api/galaxy` at all is safe for the intel layer, and it is worth saying why since it
+looks like it should not be: a telescope read is seeded per `(watchId, timeWindow)`, so asking
+again inside a window returns the same answer and cannot buy a confirmation. The write it provokes
+(`watches.lastConfirmedAt`) is throttled server-side to a quarter of a minute, which caps it
+whatever the client does.
+
+Because the net is now longer than the old poll, **`/health` reports the bus**: whether it is
+listening, how much it has delivered, and how long it has been silent. A dead channel and a quiet
+galaxy look identical from outside and only one of them is fine. It does not fail the check on its
+own — degraded is not down.
+
+### A mutation answers with the world — D53
+
+Every mutation used to return a fragment and the client refetched `/api/planet` to learn what its
+own action had done: two round trips for one tap, in a game whose construction is instant on
+payment. `planetView()` is the body of `GET /api/planet` as a function, and every mutation returns
+it — built in the same transaction under the same row lock, so it is free and authoritative.
+A launch returns its `pendingThreads` too, from the same builder the GET uses.
+
+On top of that, the deterministic spends are **predicted on the tap** and reconciled with the
+answer. That does not weaken "the client never decides an outcome": the server still validates
+inside a row lock and overwrites the prediction, exactly as the works have been projected since
+D16. A predictor DECLINES whenever the answer is not certain — the Core ceiling, the Shipyard gate,
+the Uplink prerequisite, the Prospector cap counted across craft that are away. It predicts only
+what the player is looking at; caps, rates and slots arrive with the real answer.
 
 ### Two clocks, and only one of them is authoritative — D52
 

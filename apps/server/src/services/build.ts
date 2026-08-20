@@ -3,6 +3,7 @@ import {
   HULLS,
   PROSPECTOR,
   collect,
+  coreTier,
   instrumentCost,
   instrumentMaxed,
   productionMult,
@@ -18,6 +19,8 @@ import {
 import type { Clock } from '../clock.js';
 import type { Db, Tx } from '../db/client.js';
 import { satellites } from '../db/schema.js';
+import { publishShard } from '../stream/bus.js';
+import { planetView, type PlanetView } from './planetView.js';
 import {
   GameError,
   addUnits,
@@ -37,7 +40,26 @@ import {
  * nine minutes before a fleet lands is a real emergency option.
  */
 
-export interface CollectResult {
+/**
+ * EVERY MUTATION ANSWERS WITH THE WHOLE WORLD. D53.
+ *
+ * Each of these used to return a fragment — a level, a hull count, two resource
+ * figures — and the client threw it away and refetched `/api/planet` to find out
+ * what had actually happened. Two round trips for one tap, in a game whose entire
+ * construction model is "instant on payment, no build timers": on a phone that is
+ * three to eight hundred milliseconds of a dead button after a decision the design
+ * promises is immediate.
+ *
+ * The view is free here — see `planetView` — and it is authoritative, because it
+ * is built inside the same transaction under the same row lock. The fragment stays
+ * beside it: it is what the toast and the animation read, and it says what THIS
+ * action did, which the whole-world payload cannot.
+ */
+export interface WithPlanet {
+  planet: PlanetView;
+}
+
+export interface CollectResult extends WithPlanet {
   moved: { alloy: number; crystal: number };
   /** Would not fit; still sitting in the works. */
   blocked: { alloy: number; crystal: number };
@@ -106,6 +128,7 @@ export async function collectWorks(
       crystal: result.state.crystal,
       bufferAlloy: result.state.bufferAlloy,
       bufferCrystal: result.state.bufferCrystal,
+      planet: await planetView(tx, planetId, clock),
     };
   });
 }
@@ -115,7 +138,7 @@ export async function upgradeBuilding(
   planetId: string,
   type: BuildingId,
   clock: Clock,
-): Promise<{ type: BuildingId; level: number; alloy: number; crystal: number }> {
+): Promise<WithPlanet & { type: BuildingId; level: number; alloy: number; crystal: number }> {
   return withPlanetLock(db, planetId, clock, async (tx, planet) => {
     const level = planet.buildings[type];
 
@@ -138,7 +161,25 @@ export async function upgradeBuilding(
     planet.crystal = crystal;
     await refreshWealth(tx, planet);
 
-    return { type, level: level + 1, alloy, crystal };
+    /**
+     * THE DISC IS TOLD ONLY WHEN THE DISC ACTUALLY CHANGED. D53.
+     *
+     * The rule for every shard broadcast is that it fires exactly when the public
+     * payload it points at has moved, and no other time. `/api/galaxy` publishes
+     * `coreTier` — a three-level bucket — and nothing else about a building, so a
+     * Refinery going to L7 changes nothing anybody else can read, and a Core going
+     * from 3 to 4 changes the silhouette of a world for the whole galaxy.
+     *
+     * Announcing every upgrade would have been simpler and would have leaked the
+     * one thing this channel is careful not to carry: a timing signal for something
+     * a refetch could not show. Fifty clients refetching a payload identical to the
+     * one they hold is also just waste.
+     */
+    if (type === 'CORE' && coreTier(level + 1) !== coreTier(level)) {
+      await publishShard(tx, planet.seasonId, 'world');
+    }
+
+    return { type, level: level + 1, alloy, crystal, planet: await planetView(tx, planetId, clock) };
   });
 }
 
@@ -148,7 +189,7 @@ export async function buildUnits(
   hull: HullId,
   count: number,
   clock: Clock,
-): Promise<{ hull: HullId; built: number; alloy: number; crystal: number }> {
+): Promise<WithPlanet & { hull: HullId; built: number; alloy: number; crystal: number }> {
   if (!Number.isInteger(count) || count < 1) {
     throw new GameError('BAD_COUNT', 'Count must be a positive integer');
   }
@@ -208,7 +249,7 @@ export async function buildUnits(
     planet.crystal = crystal;
     await refreshWealth(tx, planet);
 
-    return { hull, built: count, alloy, crystal };
+    return { hull, built: count, alloy, crystal, planet: await planetView(tx, planetId, clock) };
   });
 }
 
@@ -229,7 +270,7 @@ export async function raiseInstrument(
   planetId: string,
   type: InstrumentId,
   clock: Clock,
-): Promise<{ type: InstrumentId; level: number }> {
+): Promise<WithPlanet & { type: InstrumentId; level: number }> {
   return withPlanetLock(db, planetId, clock, async (tx, planet) => {
     const level = planet.instruments[type] ?? 0;
 
@@ -271,7 +312,7 @@ export async function raiseInstrument(
     planet.crystal = crystal;
     await refreshWealth(tx, planet);
 
-    return { type, level: level + 1 };
+    return { type, level: level + 1, planet: await planetView(tx, planetId, clock) };
   });
 }
 
@@ -295,7 +336,7 @@ export async function installSatellite(
   planetId: string,
   type: SatelliteId,
   clock: Clock,
-): Promise<{ type: SatelliteId; slot: number }> {
+): Promise<WithPlanet & { type: SatelliteId; slot: number }> {
   return withPlanetLock(db, planetId, clock, async (tx, planet) => {
     if (planet.orbit.includes(type)) {
       throw new GameError('ALREADY_IN_ORBIT', 'That satellite is already in orbit', 409);
@@ -319,7 +360,14 @@ export async function installSatellite(
     planet.crystal = crystal;
     await refreshWealth(tx, planet);
 
-    return { type, slot };
+    /**
+     * Hardware in orbit is public (D15) and the disc draws it, so a satellite going
+     * up changes what every other commander can see around this world. Always, not
+     * conditionally: there is no bucketing here, every install is a new body.
+     */
+    await publishShard(tx, planet.seasonId, 'world');
+
+    return { type, slot, planet: await planetView(tx, planetId, clock) };
   });
 }
 

@@ -42,6 +42,7 @@ import { assertFreeBay } from './flight.js';
 import { announceUnlocks } from './notifications.js';
 import { GameError, buildingLevelsOf, loadLocked, saveResources } from './planet.js';
 import { schedule } from '../worker/queue.js';
+import { publishShard } from '../stream/bus.js';
 
 /* ── satellite levels ───────────────────────────────────────── */
 
@@ -489,6 +490,17 @@ export async function launchProbe(
       refId: mission!.id,
       resolveAt: arriveAt,
     });
+
+    /**
+     * A PROBE IS A CRAFT IN THE AIR, AND THE DISC SHOWS IT. D53.
+     *
+     * `galaxyTraffic` publishes it as a `probe` contact to everyone but its owner,
+     * so the galaxy is told the same way a raid is. What it is NOT told is who
+     * launched it or where it is going — a contact carries a bearing window and
+     * nothing else, and "probing is loud" stays a fact the TARGET is told by their
+     * own instruments, never one the disc gives away.
+     */
+    await publishShard(tx, origin.seasonId, 'launch');
 
     return { missionId: mission!.id, arriveAt, flightMinutes };
   });

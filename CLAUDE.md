@@ -75,8 +75,9 @@ activity, the product has regressed.
    only its attacker can watch is a database transaction with sound effects (D52).
 10. **The world is live, and the interface never makes anyone wait for it.** Anything with
     a moment attached happens at that moment, on screen, for everybody at once. Predict and
-    reconcile; wake on the instant the payload already names; poll what only somebody else
-    can change. Never a spinner where a decision should be.
+    reconcile; wake on the instant the payload already names; **broadcast what happens in the
+    galaxy** (D53). A poll is a safety net under a live channel, never the mechanism. Never a
+    spinner where a decision should be, and never two round trips for one tap.
 
 ## Source of truth
 
@@ -146,6 +147,7 @@ Each was paid for in iteration. `docs/decisions.md` holds the evidence.
 | A flight bay is counted under the planet row lock | Check-then-act outside the lock lets two racing launches see the same free bay |
 | An outbound leg belongs to its origin; a return leg to its target | Return legs are stored with the two SWAPPED |
 | Every notification is idempotent by `(player_id, kind, ref_id)` | A worker killed between COMMIT and `complete()` has its event redelivered |
+| **A shard broadcast fires exactly when the public payload it points at has changed** | It carries a shard id and a kind and nothing else, so it can only ever say "go and read what you were already entitled to". Publish on anything else and it becomes a timing signal for a fact the fog hides — which is why a Core crossing a tier publishes and a Refinery does not, and why `raiseInstrument` never does (D53) |
 | A raid tells BOTH sides, even when nothing comes back | An annihilated fleet used to produce no notification at all |
 | `announceUnlocks` is the only writer of `unlocksSeen` | Two writers means whichever runs first eats the other's news |
 | Every safety net reads the EVENT, so a flight whose event row is gone is invisible to all of them | `abandon()` releases a failed event's hold; `sweepStranded` releases the ones with no event at all; `/health` reports both |
@@ -158,6 +160,9 @@ Each was paid for in iteration. `docs/decisions.md` holds the evidence.
 |---|---|
 | Every route the client parses is in `apps/server/test/contract.test.ts` | A route whose shape moves answers 200, typechecks, passes both suites and goes dark |
 | The client never pre-encodes a request body | `send()` serialises; a second `JSON.stringify` must be a compile error |
+| **A mutation answers with the whole planet view, and it must equal what `GET` would say** | Built in the same transaction under the same lock, so it is free and authoritative. A view assembled from the objects the mutation happens to hold drifts, and the interface corrects itself silently on the next refetch (D53) |
+| **An optimistic predictor DECLINES whenever the answer is not certain** | A prediction that is only usually right is worse than none: the flicker of a purchase un-happening lands on the one screen the game is played on. Every server guard is re-checked before predicting (D53) |
+| **Anything that renders the disc takes stable props** | `GalaxyView` holds a clock, so it re-renders on a timer whether or not the galaxy moved. An array built with `.map` in the JSX rebuilt the watch beams' GPU buffer every tick (D53) |
 | The client parses a notification `kind` as a string, never an enum | One unknown value would erase the player's whole history instead of one line |
 | Both sides of a raid read the same `arriveAt` | Rebuilding it from a rounded figure put them thirty seconds apart |
 | **Every countdown comes off `arriveAt`, never off `minutesRemaining`** | The payload figure is rounded and up to a poll old. Two surfaces reading different ones put two disagreeing clocks for one fleet on screen at once (D51) |
@@ -294,11 +299,12 @@ emotionally empty; new systems make old ones pointless.
 Phases 0–7 are done: the rules module and season simulator; the backend; the intel layer;
 the return moment; the playable loop; the galaxy as the only screen (D20); accounts and ten
 galaxies (D21); the owner's interface pass (D22–D26); the OGame pass (D27–D33); mining,
-wreckage, engagement, notifications and the radar rebuild (D34–D50).
+wreckage, engagement, notifications and the radar rebuild (D34–D50); the live galaxy and the
+end of waiting (D51–D53).
 
 ```
-pnpm verify  →  0 type errors · 0 lint errors · 1,176 tests
-                rules 221 · sim 47 · server 434 · web 474
+pnpm verify  →  0 type errors · 0 lint errors · 1,265 tests
+                rules 221 · sim 47 · server 462 · web 535
 ```
 
 **Two season-gate assertions are RED, and they MOVED at D52a:** `ARR` reads 0.298 on seed
@@ -323,8 +329,9 @@ seed. `ARR` was always the next thing to re-derive; it is now the only thing.
 | Intel | Telescope with clarity gradient and windowed seeding, probes with detection and bands, radar as a detection radius, veil applied server-side |
 | Notifications | Seven kinds, both sides of everything, idempotent, payloads held by a contract test |
 | Asteroids · wreckage | A mining economy with exact interception; public decaying debris fields. A salvage run is its own contact kind (D51) |
-| Engagement | A raid holds in orbit for ten seconds and bombards, **and the whole galaxy watches it** — same hold, same volley, same mission id on every screen (D52) |
-| Web client | The galaxy is the only screen. Focus anything and a rail states what you know and how you know it. Everything animated runs on `serverNow()`, so every player watches the same instant (D52) |
+| Engagement | A raid holds in orbit for ten seconds and bombards, **and the whole galaxy watches it** — same hold, same volley, same mission id on every screen (D52), at the display's real frame rate (D53) |
+| Live channel | Two topics on one SSE socket: what happened to YOU, and what happened in your GALAXY. A stranger's launch reaches every screen in under a second; the polls are a sixty-second net under it, and `/health` says whether the channel is up (D53) |
+| Web client | The galaxy is the only screen. Focus anything and a rail states what you know and how you know it. Everything animated runs on `serverNow()`, so every player watches the same instant (D52). One tap, one round trip — and the deterministic spends are predicted and reconciled, so the screen agrees with the tap immediately (D53) |
 | Season lifecycle | `season_end` event kind exists; **no handler** |
 
 **The single most important gap is a player.** The loop is playable end to end and has
@@ -335,7 +342,8 @@ never been lived with.
 1. **Play it for two days in real gaps**, on a phone, then fix what that reveals — see
    `docs/playtest-log.md`. Everything below is smaller than one real session.
 2. **Re-derive `ARR`, give `TAX` headroom, and find why the gate went red.** Until this is
-   done, nothing in the un-losable-sink family can be measured.
+   done, nothing in the un-losable-sink family can be measured. `TAX` is back in band since
+   D52a; `ARR` is the only red assertion left.
 3. **Season lifecycle** — a `season_end` handler and freeze, so a season finishes on its
    own rather than when someone runs a command.
 4. **Asteroid impacts and the Drill** — generated and stored, never scheduled.
@@ -356,6 +364,10 @@ never been lived with.
 
 - The season gate is red on `TAX` and on seed 4242 (above).
 - `request_log` exists but idempotency keys are not wired into the launch path.
+- Mining and salvage launches still cost two round trips. Every other mutation answers with the
+  planet view (D53); making these one means returning `mining` and `pending` as well.
+- Worlds are the only completely still object in a scene where everything else breathes. The
+  atmosphere half of D53's instruction is a separate pass.
 - The web client is not served in production — dev runs behind the Vite proxy.
 - `PROVISIONAL` constants: vault floor, disruption duration, shield curve, season length,
   asteroid parameters. Settled by playtest, not by argument. Marked in `constants.ts`.

@@ -27,6 +27,9 @@ import {
 import { assertFreeBay } from './flight.js';
 import { GameError, loadLocked, setUnits } from './planet.js';
 import { schedule } from '../worker/queue.js';
+import { publishShard } from '../stream/bus.js';
+import { pendingThreads, type PendingThread } from './session.js';
+import { planetView, type PlanetView } from './planetView.js';
 
 export interface LaunchResult {
   missionId: string;
@@ -34,6 +37,21 @@ export interface LaunchResult {
   /** Minutes the origin planet is left weakened — the line the UI leads with. */
   exposureMinutes: number;
   homeDefenceAfter: number;
+  /**
+   * THE FLEET IS DRAWN ON THE FRAME THE ANSWER LANDS. D53.
+   *
+   * A launch used to answer with four numbers, and the squadron did not appear on
+   * the disc until a second request came back with it — so the most committed act
+   * in the game, the one thing that cannot be recalled, was followed by the disc
+   * doing nothing for a round trip.
+   *
+   * Both lists come back instead, built inside the launching transaction and so
+   * identical in shape to the payloads they replace in the cache: `pending`
+   * because it holds the new flight, `planet` because the ships have left the home
+   * stack and a bay is now in use.
+   */
+  pending: PendingThread[];
+  planet: PlanetView;
 }
 
 /**
@@ -266,6 +284,20 @@ export async function launchAttack(
       resolveAt: warnAt > origin.now ? warnAt : origin.now,
     });
 
+    /**
+     * AND THE GALAXY IS TOLD, THE MOMENT IT LEAVES. D53.
+     *
+     * A departure is public — it has been since D24 — and until now it reached
+     * everybody else on a twenty-second poll. A short hop had covered a fifth of
+     * its leg before anybody but its owner knew it existed, which is precisely how
+     * a galaxy of fifty real people comes to read as empty.
+     *
+     * The payload names no world, no owner and no heading; it says a launch
+     * happened here, and every client goes and reads `/api/traffic` — the same
+     * fog-enforced query the poll was going to read anyway, sooner.
+     */
+    await publishShard(tx, origin.seasonId, 'launch');
+
     const homeDefenceAfter =
       fleetCount(remaining) + fleetCount(origin.ground);
 
@@ -274,6 +306,14 @@ export async function launchAttack(
       arriveAt,
       exposureMinutes: oneWay * 2,
       homeDefenceAfter,
+      /**
+       * Built by the SAME function the GET route uses, deliberately. A hand-rolled
+       * thread here would be a second definition of a shape the disc interpolates
+       * against, and the first time the two drifted the squadron would jump the
+       * moment the next refetch landed.
+       */
+      pending: await pendingThreads(tx, originPlanetId, origin.now),
+      planet: await planetView(tx, originPlanetId, clock),
     };
   });
 }

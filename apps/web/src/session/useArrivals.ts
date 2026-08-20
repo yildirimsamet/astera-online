@@ -13,10 +13,10 @@ import { serverNow } from '../lib/clock.js';
  * SITS on its target, motionless, until the list it came from is fetched again.
  *
  * Before this, "again" meant one of three things: an event stream message, a
- * window focus, or a poll — and the polls are twenty seconds for your own fleets,
- * sixty for everybody else's and ninety for mining. So a drill really could hang
- * over a rock for a minute and a half with its work finished, and the honest
- * conclusion a player draws from that is that the game is stuck.
+ * window focus, or a poll — and the polls are sixty seconds for your own fleets,
+ * twenty for everybody else's and thirty for mining. So a drill really could hang
+ * over a rock for half a minute with its work finished, and the honest conclusion
+ * a player draws from that is that the game is stuck.
  *
  * THE CLIENT ALREADY KNOWS WHEN. Every one of those payloads carries the arrival
  * instant, because the whole rendering model is built on it. So there is nothing

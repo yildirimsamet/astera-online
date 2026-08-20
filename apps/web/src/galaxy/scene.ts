@@ -398,7 +398,7 @@ export function clearOfWorlds(
 /**
  * How far past its window a contact may be carried before it stops.
  *
- * Traffic refetches every sixty seconds against a four-minute window, so this is
+ * Traffic refetches every twenty seconds against a four-minute window, so this is
  * only ever reached when a poll has failed — a tab that was backgrounded, a phone
  * that lost signal. Coasting on the last known bearing for a while is much better
  * than a craft stopping dead in open space, which reads as a broken game rather
@@ -488,7 +488,7 @@ export function engagementHold(
  *
  * What it sends is still a TRAJECTORY, not a position: entry point, exit point,
  * speed and lifetime. So the client animates fifty moving rocks from its own clock
- * exactly as it animates fleets, and one small request every ninety seconds
+ * exactly as it animates fleets, and one small request every thirty seconds
  * replaces a stream. A5's principle survives intact; only the source of the ore
  * count moved.
  */

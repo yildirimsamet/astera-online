@@ -32,6 +32,26 @@ export function registerSessionRoutes(app: FastifyInstance): void {
   };
 
   /**
+   * Who is asking, and which galaxy they live in. D53.
+   *
+   * The stream needs both: one topic for what happens TO this commander, one for
+   * what happens IN their shard. The season id is read from the PLAYER row rather
+   * than taken from anywhere the client can influence, so a connection can only
+   * ever be subscribed to the galaxy it is actually in.
+   */
+  const whoAndWhere = async (accountId: string): Promise<{ playerId: string; seasonId: string }> => {
+    const rows = await app.db
+      .select({ playerId: players.id, seasonId: players.seasonId })
+      .from(players)
+      .innerJoin(planets, eq(planets.playerId, players.id))
+      .where(eq(players.accountId, accountId))
+      .limit(1);
+    const row = rows[0];
+    if (!row) throw new GameError('NO_PLANET', 'Join a galaxy first', 404);
+    return row;
+  };
+
+  /**
    * "While you were gone."
    *
    * The first thing a returning player sees, and the mechanism behind Design Law
@@ -126,12 +146,27 @@ export function registerSessionRoutes(app: FastifyInstance): void {
    * Server-sent events.
    *
    * Deliberately the ONLY realtime surface. Fleet motion and asteroid orbits are
-   * computed client-side from timestamps, so this carries nothing but events the
-   * player could not have predicted: a battle resolving, a scan detected, a fleet
-   * inbound. A few hundred bytes an hour.
+   * computed client-side from timestamps, so this carries nothing but instants the
+   * player could not have predicted.
+   *
+   * TWO TOPICS, NOT ONE. D53.
+   *
+   *   · The PLAYER topic — a battle resolving, a scan detected, a fleet inbound.
+   *     Addressed to this commander and nobody else, and it has always been here.
+   *   · The SHARD topic — a fleet left a world, a raid resolved, a drill went out,
+   *     a world grew. Addressed to everybody in the galaxy, because that is what a
+   *     living galaxy is: things happening to other people while you watch.
+   *
+   * The second is what the polls used to do, twenty to thirty seconds late. It
+   * carries no id, no owner and no heading — only that something of that shape
+   * happened here — so what a subscriber does with it is refetch a payload it was
+   * already entitled to read, sooner. See `bus.ts`.
+   *
+   * Still a few hundred bytes an hour for the player topic, and a shard topic that
+   * costs one line per real event in a galaxy of fifty.
    */
   app.get('/api/stream', { preHandler: requireAuth }, async (req, reply) => {
-    const playerId = await me(req.accountId!);
+    const { playerId, seasonId } = await whoAndWhere(req.accountId!);
 
     reply.hijack();
     reply.raw.writeHead(200, {
@@ -143,9 +178,11 @@ export function registerSessionRoutes(app: FastifyInstance): void {
     });
     reply.raw.write(`: connected\n\n`);
 
-    const unsubscribe = app.bus.subscribe(playerId, (event) => {
+    const send = (event: { kind: string }): void => {
       reply.raw.write(`event: ${event.kind}\ndata: ${JSON.stringify(event)}\n\n`);
-    });
+    };
+    const unsubscribe = app.bus.subscribe(playerId, send);
+    const unsubscribeShard = app.bus.subscribeShard(seasonId, send);
 
     const heartbeat = setInterval(() => {
       reply.raw.write(`: ping\n\n`);
@@ -154,6 +191,7 @@ export function registerSessionRoutes(app: FastifyInstance): void {
     const cleanup = (): void => {
       clearInterval(heartbeat);
       unsubscribe();
+      unsubscribeShard();
     };
     // Both events matter: 'close' for a client that goes away, 'error' for a
     // socket that dies. Leaking a subscription leaks a listener per reconnect.

@@ -775,6 +775,9 @@ the disc feel inhabited happens to somebody else. `galaxy` at thirty seconds joi
 twenty and `mining` at thirty. It is safe for the intel layer because a telescope read is seeded
 per `(watchId, timeWindow)` — asking again inside a window cannot buy a confirmation — and the
 write it provokes (`lastConfirmedAt`) is throttled to a quarter of a minute server-side.
+**Superseded by D53:** those timers are a sixty-second safety net now, and the work is done by a
+galaxy-wide broadcast on the same SSE socket. The seeding argument above is unchanged and is still
+what makes refetching `/api/galaxy` safe at any rate.
 
 **And more bombardment.** One-to-three rounds per drawn model put four rounds across ten seconds
 for a typical raid. Four to eight, with a floor of 18 rounds on the whole volley so a SMALL raid
@@ -867,6 +870,129 @@ so the balance simulator was pricing a benefit the server did not deliver — th
 the standing rule that it must not price what it refuses to simulate. Both regression tests were
 checked against the unfixed code first; the Beacon one needed a real raiding distance, because at
 the seed's 150 units the whole-minute rounding swallows a 30% difference.
+
+### D53 · The galaxy is live for everybody, and nothing waits for a round trip — owner instruction
+The owner asked for the structures that contradict "a magnificent atmosphere, and as much as
+possible happening live" to be found and fixed. The audit turned up eleven, in four families.
+Two of the four turned out to be right already, and that is recorded here as well: a plan that
+only lists what it changed cannot be checked.
+
+**THE SCENE WAS RENDERED BY A `setInterval`.** The disc renders on demand, and the asking was a
+timer at 24fps. 41.67ms against a 16.67ms refresh does not divide, so the requests landed 50ms,
+33ms, 50ms apart and every moving thing inherited that beat — and Chromium throttles timers in a
+page it thinks is backgrounded, which `tools/engagement.mjs` already carried three flags to work
+around. The ticker is now `requestAnimationFrame`, and it asks for every Nth DISPLAY frame rather
+than for a wall-clock interval, so each request lands on a vsync boundary. The stride is measured
+and `floor`ed, never rounded: `Math.round` returns 4 at 90Hz, which is 22.5fps against a floor of
+24, and it happens to survive at 60Hz on a floating-point accident — correct on the display
+everybody develops against and wrong on the phones.
+
+R3F unwinds its loop the moment its pending-frame count hits zero and needs a whole display frame
+to restart, so asking one frame at a time caps the scene at every OTHER frame. Invisible at a
+stride of two and the entire answer at a stride of one — which is what a device at or below the
+floor gets, so a phone struggling to hold 24fps was being quietly halved to 12. It buys two frames
+every two frames there. Measured on a headless renderer managing 14fps: 0.59 of the display's
+frames before, 1.0 after.
+
+**AND THE BOMBARDMENT NEVER ASKED FOR ONE AT ALL.** `Meteors` and the camera rig have always used
+`state.invalidate()` from inside a frame; the volley did not, so the ten seconds the whole loop
+pays for were drawn at the rate chosen for a rock on a forty-minute orbit — about twenty stepped
+positions for a round crossing its gap, and a nozzle flickering at nearly seven hertz sampled three
+and a half times a cycle. `<FullRate />` mounts with the volley and asks for every frame the
+display will give, for exactly as long as the engagement lasts.
+
+**THE GALAXY WAS LATE FOR EVERYONE BUT ITS OWNER.** `publish()` had exactly one caller in the
+codebase — the notification writer — so the stream fired only for what happened TO YOU, and
+everything else arrived on a poll: twenty seconds for a neighbour's launch, thirty for a world
+changing shape. A short flight had covered a fifth of its leg before anybody but its owner knew it
+existed, which is precisely how a galaxy of fifty real people comes to read as empty.
+
+The same LISTEN/NOTIFY bus now carries a second topic, keyed on the SEASON — which is what
+`/api/traffic`, `/api/galaxy` and `/api/mining` are already scoped by, so a subscriber hears about
+exactly the rows it may read. A connection subscribes to both. **Measured end to end in a real
+browser: a bystander saw a stranger's raid 821–872ms after the launch committed**, against a
+twenty-second poll.
+
+*What it costs, and why it is not a leak.* The payload is a shard id and a kind — no world, no
+owner, no heading, no position — and a test asserts those are the only two keys on it. What it
+says is what the poll it replaces said, sooner: go and read a payload you were already entitled to.
+The rule at every publish site is that **a shard event fires exactly when the public payload it
+points at has changed, and at no other time.** So a Command Core crossing a tier boundary publishes
+and a Refinery reaching L7 does not; a satellite going up publishes and a Telescope going up does
+not, because a ground instrument appears in no public payload (D15/D25) and a broadcast timed to it
+would be the one fact on this channel that a refetch could not have shown. Building ships publishes
+nothing. All of it is asserted in `broadcast.test.ts`, in both directions.
+
+*What it costs in load.* Less than the polls it replaces. At fifty commanders the old floor was a
+hundred and fifty requests a minute standing still; the new one is fifty plus one burst per real
+event. The client coalesces events over 250ms and maps each kind to the one or two reads it
+actually moves — a launch does not refetch `/api/galaxy`, which carries a telescope reading per
+watched world. Measured: seven events under the blanket path produced 56 invalidations, and 2
+under the routed one.
+
+*And the polls became a net rather than the mechanism.* Sixty seconds across the board, which is
+worse than before if the channel dies — so `/health` reports whether the bus is listening, how much
+it has delivered and how long it has been silent. It does not fail the check on its own: a galaxy
+running on its polls is degraded, not down.
+
+**EVERY ACTION COST TWO ROUND TRIPS.** Each mutation returned a fragment — a level, a hull count,
+two resource figures — and the client threw it away and refetched `/api/planet` to find out what
+its own action had done. In a game whose construction model is "instant on payment, no build
+timers", that is three to eight hundred milliseconds of a dead button after every tap. The body of
+`GET /api/planet` is now `planetView()`, and every mutation returns it, built inside the same
+transaction under the same row lock — free, because the lock is already held and the second
+economy advance is a no-op. A launch returns its own `pendingThreads` too, from the same builder
+the GET uses, so the squadron is on the disc on the frame the answer lands rather than a request
+later. `contract.test.ts` asserts the view a mutation returns is byte-identical to the one GET
+would have given; that test was checked against a deliberately stale view first.
+
+**AND THEN THE LAST ROUND TRIP CAME OUT OF THE PLAYER'S WAY.** Upgrade, build, instrument,
+satellite and collect are predicted on the tap and reconciled with the server's answer. This does
+not weaken principle 1 — the client still decides nothing; the server validates against its own
+figures inside a row lock and its answer overwrites the prediction, exactly as `useProjected` has
+predicted the works since D16. What is new is the restraint: a predictor touches the two piles
+being spent, the one thing being bought, and the price of the next one of it, and **declines**
+whenever the answer is not certain — the Core ceiling, the Shipyard gate, the Uplink prerequisite,
+the Prospector cap counted across craft that are away, an instrument with nothing left to sell.
+A prediction that is only usually right is worse than none. Re-deriving storage caps, per-hour
+rates, orbit slots and Wealth would be `planetView` written a second time in another language;
+those land with the real answer two hundred milliseconds later and nobody is staring at a storage
+ceiling in that time. **Measured in a real browser with the server held back two seconds: the
+screen agreed with the tap in 683ms.**
+
+*One thing this broke, found in review.* An optimistic write re-anchors React Query's
+`dataUpdatedAt` to now, and the works are not stored but PROJECTED from it — so a payload carrying
+a works figure from five minutes ago made the meter visibly drop and then be corrected. The
+prediction now brings the works forward first, through the same `worksAt` the projection hook
+uses, and a rollback restores that settled world rather than the pre-tap one.
+
+**THE DISC RE-RENDERED ON A CLOCK, AND TWO PROPS DID NOT SURVIVE IT.** `GalaxyView` holds a
+five-second clock, so it re-renders whether or not the galaxy has changed. That is meant to be
+free. `watching` was built with `.map` inside the JSX and had a new identity every time, and it is
+a dependency of the memo that resolves those worlds to positions, which is the dependency of the
+memo that builds the watch beams' `BufferGeometry` — so a player with telescopes pointed uploaded a
+fresh line buffer to the GPU on every tick, for beams that had not moved. Measured: the geometry id
+changed on a twenty-second window before, and is stable after.
+
+**TWO THINGS THE AUDIT EXPECTED TO FIND AND DID NOT.** The plan claimed the five-second clock put
+the engagement transition up to five seconds late; it does not — the engagement comes off the
+payload and off `useEngagement`'s own timers, and every figure that clock feeds is a whole-minute
+one. And a first measurement suggested the scene leaked geometries at rest; it plateaus at 42, and
+the growth was the models finishing loading. Both are recorded because a wrong diagnosis that is
+quietly dropped is a wrong diagnosis somebody re-derives later.
+
+**Two gaps the review of this work found in it.** `abandon()` and `sweepStranded` take a flight out
+of the sky without announcing it, which the sixty-second net made three times more visible than the
+twenty-second one had — they publish now. And `/api/stream` had no test of any kind, which was
+tolerable when it carried rare news and is not now that the polls are a net under it; it is
+exercised through a real socket, because `reply.hijack()` is exactly the part worth testing and
+`app.inject` cannot reach it.
+
+**What is deliberately NOT done.** Mining and salvage launches still cost two round trips: making
+them one means returning `mining` and `pending` as well as `planet`, which is a larger change than
+it looks and was not in the approved scope. The atmosphere half of the owner's instruction — worlds
+being the only completely still object in a scene where everything else breathes — is a separate
+pass, on the owner's decision.
 
 ## Architecture
 

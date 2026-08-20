@@ -15,11 +15,14 @@ import { useArrivals } from '../src/session/useArrivals.js';
  * on top of whatever it flew at, and stays there until the list it came from is
  * fetched again.
  *
- * "Again" used to mean an event-stream message, a window focus, or a poll — and the
- * polls were twenty seconds for your own fleets, sixty for everybody else's and
- * ninety for mining. A drill really could hang over a rock for a minute and a half
- * with its work finished. The reasonable conclusion a player draws from that is
- * that the game is stuck, and the owner drew it.
+ * "Again" used to mean an event-stream message, a window focus, or a poll, and the
+ * polls were tens of seconds. A drill really could hang over a rock with its work
+ * finished. The reasonable conclusion a player draws from that is that the game is
+ * stuck, and the owner drew it.
+ *
+ * D53 put a galaxy-wide broadcast under all of it, which shortens the fallback but
+ * does not replace this: a broadcast says something happened, and this knows WHEN
+ * it is going to.
  *
  * The client already knows every arrival instant — the whole rendering model is
  * built on them — so there is nothing to poll for. One timer, fired when the

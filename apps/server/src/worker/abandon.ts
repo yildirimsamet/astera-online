@@ -7,6 +7,7 @@ import type { EventRow } from './queue.js';
 import { clearMissionUnits, fleetOfMission } from '../services/mission.js';
 import { notify } from '../services/notifications.js';
 import { setUnits } from '../services/planet.js';
+import { publishShard } from '../stream/bus.js';
 
 /**
  * WHAT HAPPENS WHEN AN EVENT GIVES UP FOR GOOD. D28.
@@ -107,6 +108,20 @@ async function abandonMission(db: Db, missionId: string, at: Date): Promise<bool
       at,
       mission.kind === 'probe' ? 'probe' : 'fleet',
     );
+    /**
+     * AND THE GALAXY IS TOLD THE CRAFT IS GONE. D53.
+     *
+     * A cancelled mission leaves `in_flight`, so it drops out of `galaxyTraffic` —
+     * which means every other client is drawing a contact that no longer exists.
+     * That used to correct itself on a twenty-second poll; the poll is now a
+     * sixty-second net under the broadcast, so leaving this out would have made the
+     * rarest failure in the game three times more visible than it was before.
+     *
+     * `arrival` rather than a kind of its own: from every screen but the owner's,
+     * a flight ending because it was abandoned and a flight ending because it
+     * landed are the same event — a contact that is no longer there.
+     */
+    await publishShard(tx, mission.seasonId, 'arrival');
     return true;
   });
 }
@@ -132,6 +147,8 @@ async function abandonMiningRun(db: Db, runId: string, at: Date): Promise<boolea
       .delete(units)
       .where(and(eq(units.planetId, run.planetId), eq(units.location, `mine:${runId}`)));
     await tellThemItCameBack(tx, run.planetId, run.craft, runId, at);
+    /** Same reason: the drill is out of the sky, and the disc has to stop drawing it. */
+    await publishShard(tx, run.seasonId, 'mining');
     return true;
   });
 }

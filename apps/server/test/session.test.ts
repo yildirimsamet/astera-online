@@ -1,9 +1,9 @@
 import { and, eq, sql } from 'drizzle-orm';
 import { pino } from 'pino';
-import { afterAll, beforeEach, describe, expect, it } from 'vitest';
+import { afterAll, afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { radarLead, radarRange } from '@blindspace/rules';
 import { missions, notifications, planets, players, satellites, scanEvents, watches } from '../src/db/schema.js';
-import { CHANNEL, EventBus, publish } from '../src/stream/bus.js';
+import { CHANNEL, EventBus, publish, publishShard } from '../src/stream/bus.js';
 import {
   buildReturnPayload,
   currentUnlocks,
@@ -624,5 +624,185 @@ describe('the event bus', () => {
   it('survives being stopped twice', async () => {
     await bus.stop();
     await expect(bus.stop()).resolves.toBeUndefined();
+  });
+});
+
+/**
+ * THE GALAXY-WIDE CHANNEL. D53.
+ *
+ * The player stream only ever fired for what happened TO YOU, and most of what
+ * makes a disc feel inhabited happens to somebody else. This is the topic that
+ * carries the rest, and every property that keeps it from being a leak or a load
+ * problem is asserted here rather than reasoned about.
+ */
+describe('the shard channel', () => {
+  let f: Fixture;
+  let bus: EventBus;
+
+  beforeEach(async () => {
+    f = await seedWorld(2);
+    bus = new EventBus(TEST_DATABASE_URL, silent);
+    await bus.start();
+  });
+
+  afterEach(async () => {
+    await bus.stop();
+  });
+
+  const waitForShard = (shard: string, ms = 3000): Promise<{ kind: string }> =>
+    new Promise((resolve, reject) => {
+      const timer = setTimeout(() => {
+        off();
+        reject(new Error('no shard event within timeout'));
+      }, ms);
+      const off = bus.subscribeShard(shard, (event) => {
+        clearTimeout(timer);
+        off();
+        resolve(event);
+      });
+    });
+
+  it('delivers a shard event to everybody subscribed to that galaxy', async () => {
+    const arrived = waitForShard(f.seasonId);
+    await publishShard(f.db, f.seasonId, 'launch');
+    await expect(arrived).resolves.toMatchObject({ kind: 'shard:launch' });
+  });
+
+  /**
+   * TWO GALAXIES ARE TWO GALAXIES.
+   *
+   * Ten shards run on one deployment (D21) and they share this one Postgres
+   * channel. A launch in galaxy 3 reaching galaxy 7 would send fifty clients to
+   * refetch a payload that cannot have moved — and, worse, would be a timing
+   * signal crossing a boundary the whole season structure exists to draw.
+   */
+  it('never delivers one galaxy\'s events to another', async () => {
+    let leaked = false;
+    const off = bus.subscribeShard(crypto.randomUUID(), () => {
+      leaked = true;
+    });
+
+    const mine = waitForShard(f.seasonId);
+    await publishShard(f.db, f.seasonId, 'launch');
+    await mine;
+
+    expect(leaked).toBe(false);
+    off();
+  });
+
+  /**
+   * A PLAYER ID AND A SHARD ID ARE BOTH UUIDS OUT OF THE SAME GENERATOR.
+   *
+   * Keyed on the bare id, one flat map would deliver a galaxy's traffic to a
+   * commander who happened to share its uuid — and, far more likely in practice,
+   * a test or a fixture that reuses an id would pass for the wrong reason. The
+   * topics are namespaced; this proves it in both directions.
+   */
+  it('keeps the two topics apart even when the ids are identical', async () => {
+    const shared = f.playerIds[0]!;
+    let asPlayer = 0;
+    let asShard = 0;
+    const offPlayer = bus.subscribe(shared, () => {
+      asPlayer += 1;
+    });
+    const offShard = bus.subscribeShard(shared, () => {
+      asShard += 1;
+    });
+
+    await publishShard(f.db, shared, 'world');
+    await new Promise((r) => setTimeout(r, 400));
+    expect(asShard).toBe(1);
+    expect(asPlayer).toBe(0);
+
+    await publish(f.db, shared, 'raided');
+    await new Promise((r) => setTimeout(r, 400));
+    expect(asPlayer).toBe(1);
+    expect(asShard).toBe(1);
+
+    offPlayer();
+    offShard();
+  });
+
+  /**
+   * WHAT IS ON THE WIRE, stated as an assertion rather than as a promise.
+   *
+   * The whole case for this channel not being a leak is that there is nowhere in
+   * the payload to put a leak: a shard id, and a kind. No planet, no player, no
+   * position, no heading. If a field is ever added here, this fails.
+   */
+  it('carries a shard and a kind, and nothing else at all', async () => {
+    const arrived = new Promise<Record<string, unknown>>((resolve) => {
+      const off = bus.subscribeShard(f.seasonId, (event) => {
+        off();
+        resolve(event);
+      });
+    });
+    await publishShard(f.db, f.seasonId, 'arrival');
+    expect(Object.keys(await arrived).sort()).toEqual(['kind', 'shard']);
+  });
+
+  /**
+   * The kinds are namespaced on the wire because the browser reads the SSE event
+   * name, and that string space already holds every notification kind — which the
+   * client turns into user-visible text. A collision would put a line in somebody's
+   * Signals feed that nothing wrote.
+   */
+  it('namespaces every kind, so it can never be read as a notification', async () => {
+    for (const kind of ['launch', 'arrival', 'mining', 'world'] as const) {
+      const arrived = waitForShard(f.seasonId);
+      await publishShard(f.db, f.seasonId, kind);
+      await expect(arrived).resolves.toMatchObject({ kind: `shard:${kind}` });
+    }
+  });
+
+  /** Same transactional rule as a player event, and the same reason. */
+  it('discards a shard event from a transaction that rolled back', async () => {
+    let hits = 0;
+    const off = bus.subscribeShard(f.seasonId, () => {
+      hits += 1;
+    });
+
+    await f.db
+      .transaction(async (tx) => {
+        await publishShard(tx, f.seasonId, 'launch');
+        throw new Error('deliberate rollback');
+      })
+      .catch(() => undefined);
+
+    await new Promise((r) => setTimeout(r, 300));
+    expect(hits).toBe(0);
+    off();
+  });
+
+  it('stops delivering after unsubscribe', async () => {
+    let hits = 0;
+    const off = bus.subscribeShard(f.seasonId, () => {
+      hits += 1;
+    });
+    expect(bus.shardSubscriberCount(f.seasonId)).toBe(1);
+    off();
+    expect(bus.shardSubscriberCount(f.seasonId)).toBe(0);
+
+    await publishShard(f.db, f.seasonId, 'launch');
+    await new Promise((r) => setTimeout(r, 300));
+    expect(hits).toBe(0);
+  });
+
+  /**
+   * `/health` has to be able to say whether the live path is up. Now that the
+   * client's polls are a sixty-second net rather than the mechanism, a bus that
+   * has quietly stopped listening looks exactly like a quiet galaxy.
+   */
+  it('reports whether it is actually listening', async () => {
+    expect(bus.status().listening).toBe(true);
+    const before = bus.status().delivered;
+
+    const arrived = waitForShard(f.seasonId);
+    await publishShard(f.db, f.seasonId, 'launch');
+    await arrived;
+    expect(bus.status().delivered).toBeGreaterThan(before);
+
+    await bus.stop();
+    expect(bus.status().listening).toBe(false);
   });
 });

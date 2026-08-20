@@ -40,20 +40,20 @@ export interface Projected {
   bufferCrystal: number;
 }
 
-export function useProjected(
-  planet: PlanetView['planet'] | undefined,
+/**
+ * The works, moved forward from when they were last read to a given instant.
+ *
+ * Pulled out of the hook because a second caller needs exactly this and must not
+ * have a second copy of it: an optimistic write re-anchors React Query's
+ * `dataUpdatedAt` to NOW, so a payload written with a works figure from a minute
+ * ago would make the projection restart from the older number — the meter would
+ * visibly drop and then be corrected by the server's answer. See `predict.ts`.
+ */
+export function worksAt(
+  planet: PlanetView['planet'],
   fetchedAt: number,
-  /**
-   * One second where the number is being watched; far coarser everywhere else.
-   * The planet screen only needs this to decide whether a button can be pressed,
-   * and re-rendering forty rows every second to move a boundary nobody is staring
-   * at is the definition of an unnecessary re-render.
-   */
-  intervalMs = 1000,
-): Projected {
-  const now = useNow(intervalMs);
-  if (!planet) return { alloy: 0, crystal: 0, bufferAlloy: 0, bufferCrystal: 0 };
-
+  now: number,
+): { bufferAlloy: number; bufferCrystal: number } {
   /**
    * ALL THREE INSTANTS ON THE SERVER'S EPOCH — and one of them is not born there.
    *
@@ -73,15 +73,27 @@ export function useProjected(
   const hours = productiveMinutes(from, to, until) / 60;
 
   return {
-    alloy: planet.alloy,
-    crystal: planet.crystal,
-    bufferAlloy: Math.min(
-      planet.bufferAlloyCap,
-      planet.bufferAlloy + planet.alloyPerHour * hours,
-    ),
+    bufferAlloy: Math.min(planet.bufferAlloyCap, planet.bufferAlloy + planet.alloyPerHour * hours),
     bufferCrystal: Math.min(
       planet.bufferCrystalCap,
       planet.bufferCrystal + planet.crystalPerHour * hours,
     ),
   };
+}
+
+export function useProjected(
+  planet: PlanetView['planet'] | undefined,
+  fetchedAt: number,
+  /**
+   * One second where the number is being watched; far coarser everywhere else.
+   * The planet screen only needs this to decide whether a button can be pressed,
+   * and re-rendering forty rows every second to move a boundary nobody is staring
+   * at is the definition of an unnecessary re-render.
+   */
+  intervalMs = 1000,
+): Projected {
+  const now = useNow(intervalMs);
+  if (!planet) return { alloy: 0, crystal: 0, bufferAlloy: 0, bufferCrystal: 0 };
+
+  return { alloy: planet.alloy, crystal: planet.crystal, ...worksAt(planet, fetchedAt, now) };
 }

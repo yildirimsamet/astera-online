@@ -67,7 +67,7 @@ import { miningRuns, missions, planets } from '../db/schema.js';
  * How far ahead a contact's motion is published, in minutes.
  *
  * Long enough that a missed poll does not freeze a craft mid-flight — traffic
- * refetches every sixty seconds — and short enough that the window is a heading
+ * refetches every twenty seconds — and short enough that the window is a heading
  * rather than a route. The value is not sensitive: extending it reveals nothing an
  * observer could not get by watching the same craft for the same length of time.
  */

@@ -15,9 +15,10 @@ import {
   type Shot,
 } from './volley.js';
 import { serverNow } from '../lib/clock.js';
+import { FullRate } from './frames.jsx';
 
 /**
- * THE TEN SECONDS A RAID TAKES TO LAND. D44.
+ * THE TEN SECONDS A RAID TAKES TO LAND. D44, made public by D52.
  *
  * A fleet reaches its target at `arriveAt` and the outcome is settled ten seconds
  * later (`COMBAT.engagementSeconds`). In between, the squadron holds in orbit and
@@ -29,12 +30,20 @@ import { serverNow } from '../lib/clock.js';
  * cinematic and a re-enactment, and it is why the ten seconds live in
  * `packages/rules` rather than in a constant in this file.
  *
- * WHAT IT DELIBERATELY DOES NOT DRAW. Only your OWN outbound raid, never an
- * inbound one on your own world. An inbound attack reaches the client radar-gated
- * and stripped of its composition (D9), so there is no ship in the payload to fire
- * anything — drawing a bombardment of your own planet would either invent a fleet
- * or hand the arrival to a commander who never bought a radar. The fog holds
- * because there is nothing here to render, not because something filters it.
+ * AND EVERYBODY SEES IT. This used to say the opposite — only your own outbound
+ * raid, never one landing anywhere else, because a contact carried a bearing and
+ * no destination and there was nothing for a bystander's client to fire at. D52
+ * reversed it on the owner's decision: a battle only its attacker can watch is a
+ * database transaction with sound effects. `galaxyTraffic` now publishes an
+ * `engagement` — the target's coordinates and the two instants — for exactly the
+ * seconds the fleet is standing on the world, so this component is mounted twice
+ * over from two different payloads and draws the same volley off the same mission
+ * id on every screen in the galaxy. See `Fleets`, which mounts both.
+ *
+ * WHAT THAT DISCLOSES IS NOTHING NEW: a planet's coordinates are public on
+ * `/api/galaxy`, the craft is standing on top of it, and the bearing it came in on
+ * was visible for the whole flight. There is still no owner, no origin and no name
+ * anywhere in a contact.
  *
  * EVERYTHING IS IN THE SQUADRON'S OWN FRAME. The parent group is already placed at
  * the fleet and turned to face the world (`lookAt`, in `Fleets`), so the world's
@@ -129,6 +138,20 @@ export function Bombardment({
 
   return (
     <Suspense fallback={null}>
+      {/**
+       * THE DISPLAY'S REAL RATE, FOR THESE TEN SECONDS ONLY. D53.
+       *
+       * Nothing here ever asked for a frame. The disc renders on demand and the
+       * only thing asking was the ambient floor, so the whole bombardment was
+       * drawn at the rate chosen for a rock creeping round a forty-minute orbit: a
+       * round crossing its gap in eight tenths of a second got about twenty stepped
+       * positions, and the nozzle flicker at nearly seven hertz got three and a
+       * half samples a cycle, which reads as noise rather than as an engine.
+       *
+       * `Meteors` and the camera rig have always done this; the one moment in the
+       * game that a decision was made forty minutes for was the one that did not.
+       */}
+      <FullRate />
       {shots.map((shot, i) => (
         <Round
           key={i}

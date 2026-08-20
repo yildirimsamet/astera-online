@@ -9,6 +9,7 @@ import { launchAttack } from '../src/services/mission.js';
 import { launchProbe } from '../src/services/intel.js';
 import { launchMining } from '../src/services/mining.js';
 import { buildApp } from '../src/app.js';
+import { SHARD_PREFIX } from '../src/stream/bus.js';
 import { TokenService } from '../src/auth/tokens.js';
 import {
   buildSchema,
@@ -40,6 +41,10 @@ import {
   watchSchema,
 } from '../../web/src/api/schemas.js';
 import { describeNotification } from '../../web/src/lib/notifications.js';
+import {
+  SHARD_PREFIX as CLIENT_SHARD_PREFIX,
+  isShardEvent,
+} from '../../web/src/session/shardEvents.js';
 import { giveInstrument, giveSatellite, giveUnits, grant, levelWorld, seedWorld, setLevel, settledAt, testDb, testEnv, type Fixture } from './helpers.js';
 
 /**
@@ -404,6 +409,67 @@ describe('every payload the client parses', () => {
     expect(parsed.missionId).toBeTruthy();
     expect(parsed.arriveAt.getTime()).toBeGreaterThan(f.clock.now().getTime());
     expect(mine).toBeTruthy();
+
+    /**
+     * AND THE FLEET IS IN THE ANSWER, so the disc can draw it without asking again.
+     * D53. A launch that came back without its own mission would leave the client
+     * writing an empty list over a cache that had the flight in it — worse than the
+     * round trip it replaced.
+     */
+    expect(parsed.pending.some((t) => t.arriveAt.getTime() === parsed.arriveAt.getTime())).toBe(
+      true,
+    );
+  });
+
+  /**
+   * THE VIEW A MUTATION RETURNS IS THE VIEW THE GET WOULD HAVE RETURNED. D53.
+   *
+   * This is the whole safety property of answering with the world instead of
+   * refetching it. The client writes the mutation's payload straight into the
+   * cache, so if the two ever disagreed the interface would show one thing and
+   * then silently correct itself on the next unrelated refetch — the hardest class
+   * of bug to see and the easiest to introduce, because the obvious optimisation
+   * here is to build the answer from the objects the mutation already has in hand.
+   *
+   * Asserted for every mutation that carries one, and against the real GET.
+   */
+  it('answers every mutation with exactly what GET /api/planet would say', async () => {
+    const cases: { url: string; body: Record<string, unknown> }[] = [
+      { url: '/api/planet/upgrade', body: { type: 'VAULT' } },
+      { url: '/api/planet/build', body: { hull: 'WASP', count: 1 } },
+      { url: '/api/planet/collect', body: {} },
+      { url: '/api/planet/instrument', body: { type: 'RADAR' } },
+    ];
+
+    for (const { url, body } of cases) {
+      const answered = planetSchema.parse(
+        (await post(url, body) as { planet: unknown }).planet,
+      );
+      const fetched = planetSchema.parse(await get('/api/planet'));
+      expect(answered, `${url} answered with a view GET disagrees with`).toEqual(fetched);
+    }
+  });
+
+  /**
+   * THE ONE STRING THE TWO SIDES BOTH HARD-CODE. D53.
+   *
+   * A shard event is namespaced on the wire so it can never be mistaken for a
+   * notification kind, which the client turns into user-visible text. But the
+   * namespace is declared twice — once in `bus.ts`, once in `shardEvents.ts` — and
+   * nothing else in the system connects them: change one and every galaxy-wide
+   * event silently stops routing, the disc quietly falls back to its sixty-second
+   * net, and not one test in either package goes red.
+   *
+   * This file already imports the client's own parsers for exactly this class of
+   * failure. The prefix is the same kind of contract.
+   */
+  it('namespaces shard events with the same prefix on both sides', () => {
+    expect(SHARD_PREFIX).toBe(CLIENT_SHARD_PREFIX);
+    // And the client agrees that a real one is one, so the check cannot pass by
+    // both sides being equally empty.
+    expect(SHARD_PREFIX).not.toBe('');
+    expect(isShardEvent(`${SHARD_PREFIX}launch`)).toBe(true);
+    expect(isShardEvent('fleet_returned')).toBe(false);
   });
 
   it('POST /api/intel/watch parses', async () => {

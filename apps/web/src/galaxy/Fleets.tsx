@@ -878,7 +878,10 @@ export function WatchBeams({
   if (!geometry) return null;
 
   return (
-    <lineSegments geometry={geometry} frustumCulled={false}>
+    // Named for the same reason the planet and rock instances are: the visual
+    // harness picks objects out of the graph by name, and "the line buffer with
+    // few vertices and a colour attribute" also describes the meteors.
+    <lineSegments name="watch-beams" geometry={geometry} frustumCulled={false}>
       <lineBasicMaterial
         ref={material}
         vertexColors

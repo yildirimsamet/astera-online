@@ -184,11 +184,27 @@ export const planetSchema = z.object({
   score: z.object({ wealth: z.number(), dominion: z.number() }),
 });
 
+/**
+ * EVERY MUTATION ANSWERS WITH THE WHOLE WORLD. D53.
+ *
+ * Each of these used to be a fragment, and the client threw it away and refetched
+ * `/api/planet` to find out what its own action had done — two round trips for one
+ * tap, in a game whose construction model is "instant on payment, no build timers".
+ * The server now builds the same view it would have served on that second request,
+ * inside the transaction that did the work, so the client writes it straight into
+ * the cache and there is no second request at all.
+ *
+ * The fragment stays: it says what THIS action did, which a whole-world payload
+ * cannot, and it is what the toast and the flash on the row read.
+ */
+const withPlanet = { planet: planetSchema };
+
 export const upgradeSchema = z.object({
   type: buildingId,
   level: z.number(),
   alloy: z.number(),
   crystal: z.number(),
+  ...withPlanet,
 });
 
 export const buildSchema = z.object({
@@ -196,26 +212,24 @@ export const buildSchema = z.object({
   built: z.number(),
   alloy: z.number(),
   crystal: z.number(),
+  ...withPlanet,
 });
 
 /** Raising one of the four on the ground. D25. */
 export const instrumentRaiseSchema = z.object({
   type: instrumentId,
   level: z.number(),
+  ...withPlanet,
 });
 
 /** Putting one of the four in orbit. No level — it is up or it is not. D25. */
 export const satelliteInstallSchema = z.object({
   type: satelliteId,
   slot: z.number(),
+  ...withPlanet,
 });
 
-export const launchSchema = z.object({
-  missionId: z.string(),
-  arriveAt: z.coerce.date(),
-  exposureMinutes: z.number(),
-  homeDefenceAfter: z.number(),
-});
+
 
 /* ── the galaxy, at the tier of detail you have earned ──────── */
 
@@ -331,6 +345,7 @@ export const collectSchema = z.object({
   crystal: z.number(),
   bufferAlloy: z.number(),
   bufferCrystal: z.number(),
+  ...withPlanet,
 });
 
 export const watchSchema = z.object({
@@ -395,6 +410,29 @@ const pendingThread = z.object({
 });
 
 export const pendingSchema = z.object({ pending: z.array(pendingThread) });
+
+/**
+ * A LAUNCH ANSWERS WITH THE FLEET IT JUST CREATED. D53.
+ *
+ * The most committed act in the game — there is no recall — used to be followed by
+ * the disc doing nothing at all for a round trip, because the squadron only exists
+ * on screen once `/api/session/pending` has been fetched again. Both lists come
+ * back with the launch now, built inside the same transaction and in exactly the
+ * shape of the payloads they replace, so the craft is drawn on the frame the
+ * answer lands.
+ *
+ * Declared here rather than up with the other mutations because it needs
+ * `pendingThread`, and a schema that referenced it earlier would read `undefined`
+ * at module-evaluation time.
+ */
+export const launchSchema = z.object({
+  missionId: z.string(),
+  arriveAt: z.coerce.date(),
+  exposureMinutes: z.number(),
+  homeDefenceAfter: z.number(),
+  pending: z.array(pendingThread),
+  ...withPlanet,
+});
 
 export const returnSchema = z.object({
   awayMinutes: z.number(),

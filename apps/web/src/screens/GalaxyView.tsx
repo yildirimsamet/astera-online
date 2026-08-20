@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   useGalaxy,
   useIntel,
@@ -176,6 +176,42 @@ export function GalaxyView({
   const threads = useMemo(() => pending.data?.pending ?? [], [pending.data]);
 
   /**
+   * EVERY PROP THE DISC TAKES IS STABLE, AND TWO OF THEM WERE NOT. D53.
+   *
+   * This component holds a clock, so it re-renders on a timer whether or not
+   * anything about the galaxy has changed. That is meant to be free — React
+   * reconciles, nothing below it sees a changed prop, nothing is rebuilt.
+   *
+   * It was not free for these two. `watching` was built with `.map` in the JSX, so
+   * it was a NEW ARRAY on every render even when the same worlds were being
+   * watched — and it is a dependency of the memo that resolves those worlds to
+   * positions, which is in turn the dependency of the memo that builds the watch
+   * beams' `BufferGeometry`. A player with telescopes pointed was allocating and
+   * uploading a fresh line buffer to the GPU every time this clock ticked, for a
+   * set of beams that had not moved. The callbacks are the same story one level up:
+   * a new function identity re-runs anything below that depends on it.
+   *
+   * `contacts` is memoised for the same reason rather than because it churns —
+   * React Query's structural sharing keeps it stable while the payload is
+   * unchanged, but only while `traffic.data` is DEFINED; the `?? []` fallback
+   * before the first fetch was a fresh array each time.
+   */
+  const contacts = useMemo(() => traffic.data?.contacts ?? [], [traffic.data]);
+  const watching = useMemo(
+    () => (intel.data?.watching ?? []).map((w) => w.targetPlanetId),
+    [intel.data],
+  );
+  const onReady = useCallback(() => {
+    setDrawn(true);
+  }, []);
+  const onFocus = useCallback((next: Focus | null) => {
+    if (next) haptic('tap');
+    setFocus(next);
+    setDetail(false);
+    setAttacking(false);
+  }, []);
+
+  /**
    * REFETCH THE MOMENT ANYTHING LANDS.
    *
    * Every list here draws its craft by interpolating between two timestamps, and
@@ -311,8 +347,8 @@ export function GalaxyView({
       <GalaxyCanvas
         planets={planets}
         pending={threads}
-        contacts={traffic.data?.contacts ?? []}
-        watching={(intel.data?.watching ?? []).map((w) => w.targetPlanetId)}
+        contacts={contacts}
+        watching={watching}
         asteroids={asteroids}
         runs={runs}
 
@@ -321,15 +357,8 @@ export function GalaxyView({
         aegisLevel={planet.data?.instruments.AEGIS ?? 0}
         {...(season.data ? { seasonStart: season.data.startsAt } : { seasonStart: undefined })}
         focus={focus}
-        onReady={() => {
-          setDrawn(true);
-        }}
-        onFocus={(next) => {
-          if (next) haptic('tap');
-          setFocus(next);
-          setDetail(false);
-          setAttacking(false);
-        }}
+        onReady={onReady}
+        onFocus={onFocus}
         homeSignal={homeSignal}
       />
 

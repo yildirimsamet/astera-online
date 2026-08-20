@@ -351,7 +351,13 @@ export async function buildReturnPayload(
  * both sides call it with the same three figures off the same mission row.
  */
 export async function pendingThreads(
-  db: Db,
+  /**
+   * A `Tx` as well as a `Db`, so a launch can answer with the list it just joined.
+   * D53. Read inside the launching transaction the fleet is created in, this sees
+   * the new mission before it commits — which is the whole point: the craft is
+   * drawn on the frame the response lands, instead of one round trip later.
+   */
+  db: Queryable,
   planetId: string,
   now: Date,
 ): Promise<PendingThread[]> {

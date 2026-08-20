@@ -12,6 +12,7 @@ import type {
 } from '../api/schemas.js';
 import type { Focus } from './FocusPanel.js';
 import { BrightStars, Core, Disc, Dust, Meteors, Nebula, Starfield } from './Environment.jsx';
+import { useAmbientFrames } from './frames.jsx';
 import { Wrecks, type WreckView } from './Wrecks.js';
 import { Asteroids, InterceptMarks } from './Asteroids.jsx';
 import { OwnFleets, Traffic, WatchBeams, threadKey } from './Fleets.jsx';
@@ -71,21 +72,6 @@ const LEASH = DISC_RADIUS * 1.15;
 
 /** Seconds spent easing onto a new subject. Long enough to follow, short enough not to wait. */
 const EASE = 0.5;
-
-/**
- * Frames a second requested for things that move on their own.
- *
- * Was twelve, chosen when the only ambient motion was a rock creeping round a
- * fifteen-to-forty-minute orbit — at that speed twelve is genuinely imperceptible.
- * It is not any more: the rocks travel at double the old speed and now TUMBLE, and
- * a body turning half a radian a second at twelve frames steps four degrees at a
- * time, which reads as a stutter rather than a spin.
- *
- * Twenty-four is the floor where rotation looks continuous, and still under half
- * the cost of a real loop — the point of `frameloop="demand"` was never a
- * particular number, it was not rendering a still scene sixty times a second.
- */
-const AMBIENT_FPS = 24;
 
 /**
  * World units from the camera to a focused craft or rock.
@@ -631,19 +617,13 @@ function DevBridge() {
  * With `frameloop="demand"` nothing renders unless something asks. The camera asks
  * while it is moving; this asks slowly and constantly, so the asteroids and the
  * dust keep drifting without paying for sixty frames a second of a still scene.
+ *
+ * The asking itself lives in `frames.tsx` — it used to be a `setInterval`, which
+ * beat against the display's refresh and was throttled by the browser whenever it
+ * decided the page was not being looked at. See that file for the measurements.
  */
 function AmbientTicker() {
-  const invalidate = useThree((state) => state.invalidate);
-
-  useEffect(() => {
-    const id = setInterval(() => {
-      invalidate();
-    }, 1000 / AMBIENT_FPS);
-    return () => {
-      clearInterval(id);
-    };
-  }, [invalidate]);
-
+  useAmbientFrames();
   return null;
 }
 

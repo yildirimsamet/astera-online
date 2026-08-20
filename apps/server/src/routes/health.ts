@@ -4,11 +4,22 @@ import { failedEventCount, oldestPendingAge } from '../worker/queue.js';
 import { strandedFlightCount } from '../worker/abandon.js';
 
 /**
- * Health checks the database AND the event queue.
+ * Health checks the database, the event queue AND the live channel.
  *
  * A stalled worker is the failure that silently breaks this game: the API keeps
  * answering, planets keep producing, and fleets simply never land. Checking only
  * the database would report that as healthy.
+ *
+ * THE LIVE CHANNEL JOINED THE LIST AT D53, and it had to. While the client polled
+ * every twenty seconds a dead event bus was a degradation nobody would notice;
+ * now the polls are a sixty-second SAFETY NET under a channel that is meant to do
+ * the work, so a bus that has quietly stopped listening looks from the outside
+ * exactly like a quiet galaxy. Whether the LISTEN socket is open is the one thing
+ * an operator cannot infer from any other signal, so it is reported here.
+ *
+ * It does NOT fail the check on its own. A galaxy running on its polls is
+ * degraded, not down, and taking a healthy deployment out of rotation over a
+ * liveness channel would be a worse outcome than the latency it is reporting.
  */
 const MAX_QUEUE_LAG_SECONDS = 120;
 
@@ -20,6 +31,10 @@ export function registerHealthRoutes(app: FastifyInstance): void {
       queueLagSeconds?: number | null;
       failedEvents?: number;
       strandedFlights?: number;
+      stream?: string;
+      streamTopics?: number;
+      streamDelivered?: number;
+      streamIdleSeconds?: number | null;
     } = {};
     let ok = true;
 
@@ -68,6 +83,12 @@ export function registerHealthRoutes(app: FastifyInstance): void {
       ok = false;
       checks.queue = err instanceof Error ? err.message : 'unreachable';
     }
+
+    const bus = app.bus.status();
+    checks.stream = bus.listening ? 'ok' : 'not listening';
+    checks.streamTopics = bus.topics;
+    checks.streamDelivered = bus.delivered;
+    checks.streamIdleSeconds = bus.idleSeconds;
 
     return reply.status(ok ? 200 : 503).send({ ok, checks });
   });

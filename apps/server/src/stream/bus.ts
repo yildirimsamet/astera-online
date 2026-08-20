@@ -6,9 +6,57 @@ import type { Queryable } from '../db/client.js';
 
 export const CHANNEL = 'blindspace_events';
 
-const eventPayload = z.object({ playerId: z.string().min(1), kind: z.string().min(1) });
+/**
+ * TWO KINDS OF EVENT ON ONE CHANNEL. D53.
+ *
+ * A PLAYER event is something that happened TO ONE COMMANDER — a battle resolving,
+ * a scan detected, a fleet inbound. It is addressed to them and nobody else sees
+ * it. That is what this bus has always carried.
+ *
+ * A SHARD event is something that happened IN A GALAXY, addressed to everybody
+ * living in it: a fleet left a world, a raid resolved, a drill went out, a world
+ * grew. It carries no id, no owner and no position — only that something of that
+ * shape happened here, just now. Every client in the shard hears it and refetches
+ * the payload it already had the right to read.
+ *
+ * WHY IT EXISTS. The player stream fires only for what happens TO YOU, and most of
+ * what makes a galaxy feel inhabited happens to somebody ELSE. None of that could
+ * ever produce an event for you, so it arrived on a poll — up to twenty seconds
+ * for a neighbour's launch, thirty for a world changing shape. A short flight had
+ * covered a fifth of its leg before anybody but its owner knew it existed.
+ *
+ * WHY IT LEAKS NOTHING. The payload is a shard id and a kind. What it says is
+ * exactly what the poll it replaces said, sooner: go and read `/api/traffic`,
+ * which is fog-enforced in the query and has been since D24. It cannot name a
+ * world, a player or a heading, because there is no field here to put one in.
+ * Which is also why `raiseInstrument` does NOT publish one — a ground instrument
+ * is private (D15/D25), it appears in no public payload, and a broadcast timed to
+ * it would be the one fact on this channel that is not already derivable.
+ */
+const playerEvent = z.object({ playerId: z.string().min(1), kind: z.string().min(1) });
+const shardEvent = z.object({ shard: z.string().min(1), kind: z.string().min(1) });
+const eventPayload = z.union([playerEvent, shardEvent]);
 
 export type StreamEvent = z.infer<typeof eventPayload>;
+
+/**
+ * What a shard is told about, in the server's own words.
+ *
+ * The client decides which of its own reads each one moves — that mapping is a
+ * client concern and lives there. This says what HAPPENED, never what to fetch.
+ */
+export type ShardEventKind = 'launch' | 'arrival' | 'mining' | 'world';
+
+/**
+ * Shard kinds go out prefixed, and the prefix is not decoration.
+ *
+ * The browser reads the SSE `event:` name and nothing else, and the same string
+ * space already holds every notification kind — which the client turns into
+ * user-visible text. A shard kind colliding with a notification kind would put a
+ * line in somebody's Signals feed that nothing wrote. The namespace makes the two
+ * families impossible to confuse, in both directions.
+ */
+export const SHARD_PREFIX = 'shard:';
 
 /** `JSON.parse` throws on malformed input; the schema handles everything else. */
 function safeJson(raw: string): unknown {
@@ -37,6 +85,9 @@ export class EventBus {
   private connection: postgres.Sql | null = null;
   private unlisten: (() => Promise<void>) | null = null;
   private readonly listeners = new Map<string, Set<Listener>>();
+  /** Counters for `/health`, so a dead live path is visible from outside. */
+  private delivered = 0;
+  private lastEventAt: number | null = null;
 
   constructor(
     private readonly url: string,
@@ -101,7 +152,9 @@ export class EventBus {
       return;
     }
     const event = parsed.data;
-    for (const listener of this.listeners.get(event.playerId) ?? []) {
+    this.delivered += 1;
+    this.lastEventAt = Date.now();
+    for (const listener of this.listeners.get(topicOf(event)) ?? []) {
       try {
         listener(event);
       } catch (err) {
@@ -113,19 +166,77 @@ export class EventBus {
 
   /** @returns an unsubscribe function. Callers MUST invoke it on disconnect. */
   subscribe(playerId: string, listener: Listener): () => void {
-    const set = this.listeners.get(playerId) ?? new Set<Listener>();
+    return this.listen(playerTopic(playerId), listener);
+  }
+
+  /**
+   * Everything happening in one galaxy, to whoever is living in it. D53.
+   *
+   * A connection subscribes to this AS WELL AS to its own player topic: the two
+   * carry different things and neither is a superset of the other.
+   */
+  subscribeShard(shard: string, listener: Listener): () => void {
+    return this.listen(shardTopic(shard), listener);
+  }
+
+  private listen(topic: string, listener: Listener): () => void {
+    const set = this.listeners.get(topic) ?? new Set<Listener>();
     set.add(listener);
-    this.listeners.set(playerId, set);
+    this.listeners.set(topic, set);
     return () => {
       set.delete(listener);
-      if (set.size === 0) this.listeners.delete(playerId);
+      if (set.size === 0) this.listeners.delete(topic);
     };
   }
 
   subscriberCount(playerId: string): number {
-    return this.listeners.get(playerId)?.size ?? 0;
+    return this.listeners.get(playerTopic(playerId))?.size ?? 0;
+  }
+
+  shardSubscriberCount(shard: string): number {
+    return this.listeners.get(shardTopic(shard))?.size ?? 0;
+  }
+
+  /**
+   * WHETHER THE LIVE PATH IS ACTUALLY UP, for `/health`. D53.
+   *
+   * This matters more than it did. While the client polled every twenty seconds a
+   * dead bus was a degradation nobody would notice; now the polls are a sixty
+   * second SAFETY NET under a channel that is meant to do the work, and a bus that
+   * has quietly stopped listening looks exactly like a quiet galaxy. The one thing
+   * an operator cannot infer from the outside is whether the socket is open, so
+   * that is what is reported.
+   */
+  status(): { listening: boolean; topics: number; delivered: number; idleSeconds: number | null } {
+    return {
+      listening: this.connection !== null && this.unlisten !== null,
+      topics: this.listeners.size,
+      delivered: this.delivered,
+      /**
+       * How long since anything came down the channel, or null if nothing ever has.
+       *
+       * `delivered` says whether the path has ever worked; this says whether it is
+       * still working. A socket that is open, has a subscriber count, and has been
+       * silent for an hour on a galaxy with people in it is the failure mode that
+       * neither of the other two figures can show.
+       */
+      idleSeconds:
+        this.lastEventAt === null ? null : Math.round((Date.now() - this.lastEventAt) / 1000),
+    };
   }
 }
+
+/**
+ * One flat map, two namespaces.
+ *
+ * A shard id and a player id are both uuids out of the same generator, so a single
+ * map keyed on the bare id would deliver a galaxy's traffic to whichever commander
+ * happened to share its uuid. Astronomically unlikely and trivially prevented.
+ */
+const playerTopic = (playerId: string): string => `p:${playerId}`;
+const shardTopic = (shard: string): string => `s:${shard}`;
+const topicOf = (event: StreamEvent): string =>
+  'playerId' in event ? playerTopic(event.playerId) : shardTopic(event.shard);
 
 /**
  * Announce an event to whoever is watching this player's stream.
@@ -135,5 +246,27 @@ export class EventBus {
  */
 export async function publish(tx: Queryable, playerId: string, kind: string): Promise<void> {
   const payload = JSON.stringify({ playerId, kind } satisfies StreamEvent);
+  await tx.execute(sql`select pg_notify(${CHANNEL}, ${payload})`);
+}
+
+/**
+ * Announce that something happened in a galaxy, to everybody living in it. D53.
+ *
+ * Same transactional rule as `publish`, and the same reason: a launch that rolls
+ * back must not send fifty clients to refetch a fleet that does not exist.
+ *
+ * The shard is the SEASON id, which is what `/api/traffic`, `/api/galaxy` and
+ * `/api/mining` are all already scoped by — so a subscriber is told about exactly
+ * the rows it is entitled to read and never about a galaxy it is not in.
+ */
+export async function publishShard(
+  tx: Queryable,
+  shard: string,
+  kind: ShardEventKind,
+): Promise<void> {
+  const payload = JSON.stringify({
+    shard,
+    kind: `${SHARD_PREFIX}${kind}`,
+  } satisfies StreamEvent);
   await tx.execute(sql`select pg_notify(${CHANNEL}, ${payload})`);
 }

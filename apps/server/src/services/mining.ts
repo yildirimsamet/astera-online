@@ -26,6 +26,7 @@ import { assertFreeBay } from './flight.js';
 import { GameError, loadLocked, orbitOf, saveResources, setUnits } from './planet.js';
 import { galaxyOf } from './season.js';
 import { schedule } from '../worker/queue.js';
+import { publishShard } from '../stream/bus.js';
 
 /**
  * MINING — D19.
@@ -227,6 +228,16 @@ export async function launchMining(
       resolveAt: arriveAt,
     });
 
+    /**
+     * AND THE RACE IS ANNOUNCED. D53.
+     *
+     * A mining run is the most public thing in the game — D19 publishes the whole
+     * leg, the route and the clock, because two players racing for a rock is only
+     * a race if both of them can see it. Learning about it up to thirty seconds
+     * late is losing the part of the race that was worth watching.
+     */
+    await publishShard(tx, origin.seasonId, 'mining');
+
     return {
       runId: run!.id,
       asteroidIndex,
@@ -254,6 +265,16 @@ export async function resolveMiningArrival(tx: Tx, runId: string, now: Date): Pr
     .returning();
   const run = claimed[0];
   if (!run) return; // already resolved by another worker
+
+  /**
+   * THE GALAXY SEES THE DRILL TURN FOR HOME. D53.
+   *
+   * Published from HERE rather than from the worker handler, because the claim
+   * above is the thing that decides whether any work happened at all: a redelivered
+   * event finds the row already `returning`, claims nothing, and must not send
+   * fifty clients to refetch a world that has not moved.
+   */
+  await publishShard(tx, run.seasonId, 'mining');
 
   let mined = { alloy: 0, crystal: 0 };
 
@@ -376,6 +397,9 @@ export async function resolveMiningReturn(
     .returning();
   const run = claimed[0];
   if (!run) return null;
+
+  /** And again when it lands, for the same reason and on the same claim. D53. */
+  await publishShard(tx, run.seasonId, 'mining');
 
   const planet = await loadLocked(tx, run.planetId, clock);
 
@@ -649,6 +673,9 @@ export async function launchHarvest(
       refId: run!.id,
       resolveAt: arriveAt,
     });
+
+    /** A salvage run is a race for a public landmark, exactly like a rock. D53. */
+    await publishShard(tx, origin.seasonId, 'mining');
 
     return {
       runId: run!.id,
