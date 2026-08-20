@@ -1028,16 +1028,9 @@ artefact rather than as an object.
 
 **AND THE PLANE WAS A DIAGRAM.** Five complete circles of even brightness and sixteen radial spokes
 running the full width, all at one opacity — against the nebula it was the most technical-looking
-thing on screen, in a scene whose whole brief is that it is a photograph. A telescope image has no
-spokes. The rings are ARCS now, brightness varying on a slow harmonic with a different phase per
-ring, so each fades in and out as it goes round: a circle of constant weight is drawn, and a ring
-that is bright in places and gone in others is structure. The spokes went from sixteen to eight and
-fade from the core outward, gone well before the rim, doing the one job they were for — saying
-where the middle is. Still one geometry and one draw call; the variation is vertex colours.
-
-The first photograph of that came back BRIGHTER than the grid it replaced, because the weights run
-0.1 to 1.0 and the material opacity had been left where a flat 0.34 used to be. The peak is what
-has to match the old constant, not the average.
+thing on screen, in a scene whose whole brief is that it is a photograph. The rings were made into
+arcs with brightness varying around the circumference, and the spokes cut to eight and faded from
+the core outward. **Superseded by D53b, which is where that turned out to be the wrong fix.**
 
 **AND THE THIRD ITEM TURNED OUT TO BE A DIFFERENT BUG.** The loading gates on the planet sheet, the
 intel screen and the reports list were expected to be near-dead code, and they were — but they
@@ -1049,6 +1042,42 @@ branch and the screen said **"nothing has been fought over yet"** about a reques
 arrived — the interface stating a fact about the season on the strength of a network error.
 `ServersScreen` was the only surface with the error branch, and it is the pattern the other three
 now follow. All three regressions were checked against the unfixed code first.
+
+### D53b · The plane is photographed, not plotted — owner rejection
+The owner looked at D53a's disc and asked whether it had worked. It had not, and the interesting
+part is why: **the fix treated the symptom.**
+
+D53a kept the rings and modulated their brightness around the circumference. Photographed from
+directly overhead — which nobody had done, because the harness always framed a world — the plane
+still read as a **targeting reticle**: concentric circles with radial spokes, exactly the thing
+the change was supposed to remove. The graph-paper quality never came from the lines being even.
+It came from them being LINES. Thin hard strokes at constant width are vector graphics, and there
+are none of those in a telescope image, so no amount of varying the brightness along a stroke was
+going to help.
+
+So the strokes are gone. The plane is a painted plate now — spiral arms of gas and dust lying
+flat, fading to nothing at the rim — built with the same three ideas as the backdrop, and
+deliberately so: domain-warped noise for filaments, an independent field SUBTRACTING for dust
+lanes, and a narrow palette. Two surfaces in one photograph built from different ideas about what
+space looks like will always disagree. `fbm` is now exported from `nebula.ts` rather than copied.
+
+It orients BETTER than the rings did. Arms carry rotation as well as extent, which concentric
+circles cannot, and it is the same single draw call.
+
+**Two more things came out of photographing it rather than reasoning about it.** The first plate
+was sampled at a noise frequency of 3.1 and came back airbrushed — two smooth ribbons with no
+grain at all — for the reason the nebula's own docblock already gives: fine structure reads as
+something enormous and far away, coarse structure reads as fog in front of the camera. And at 0.5
+opacity the lower half of the disc was a blue wash that a fog-dimmed world sat INSIDE rather than
+in front of; the ceiling is set by the dimmest thing that has to stay legible against it, which is
+`STANCE_LIGHT.dark`, and there is a test saying so.
+
+What can be asserted is asserted. Most of a painted plate is judged from a photograph, but two of
+its properties would ship a visible defect rather than a different-looking one, and jsdom has no
+2D context to check the pixels — so the radial profile is a pure exported function and
+`disc.test.ts` pins both: it reaches exactly nothing at the rim, or the plate has a cut circular
+edge; and it is empty where `Core` already is, or the two stack into something that reads as a
+STAR, which this galaxy deliberately does not have.
 
 ## Architecture
 

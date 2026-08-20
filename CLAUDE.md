@@ -175,6 +175,7 @@ Each was paid for in iteration. `docs/decisions.md` holds the evidence.
 | The cover comes off when the disc is BUILT, not when the bytes land | Models still have to parse, compile and upload; `FirstFrame` reports the first real frame |
 | Nothing on the way in blocks the player | A loading screen is an OVERLAY over a page that is already loading, never a gate in front of one |
 | Every card carries a two-or-three-word tag, separate from its role sentence | The role argues a decision; the tag answers "what IS this" for someone scanning fourteen cards |
+| **The galactic plane carries no lines** | The graph-paper quality came from strokes being strokes, not from their brightness — modulating them changed nothing and cost a pass to find out (D53b) |
 | **Read a file's docblock before editing it** | The 3D surface and its harnesses carry a dozen traps that each cost a bug — orbit standoffs, `lookAt` frames, sprite tinting, plume direction, a screenshot that stalls the frame loop. Every one is written at its own site in `apps/web/src/galaxy/` and `tools/` |
 
 **Engineering**
@@ -305,8 +306,8 @@ wreckage, engagement, notifications and the radar rebuild (D34–D50); the live 
 end of waiting (D51–D53).
 
 ```
-pnpm verify  →  0 type errors · 0 lint errors · 1,273 tests
-                rules 221 · sim 47 · server 462 · web 543
+pnpm verify  →  0 type errors · 0 lint errors · 1,278 tests
+                rules 221 · sim 47 · server 462 · web 548
 ```
 
 **Two season-gate assertions are RED, and they MOVED at D52a:** `ARR` reads 0.298 on seed
@@ -333,7 +334,7 @@ seed. `ARR` was always the next thing to re-derive; it is now the only thing.
 | Asteroids · wreckage | A mining economy with exact interception; public decaying debris fields. A salvage run is its own contact kind (D51) |
 | Engagement | A raid holds in orbit for ten seconds and bombards, **and the whole galaxy watches it** — same hold, same volley, same mission id on every screen (D52), at the display's real frame rate (D53) |
 | Live channel | Two topics on one SSE socket: what happened to YOU, and what happened in your GALAXY. A stranger's launch reaches every screen in under a second; the polls are a sixty-second net under it, and `/health` says whether the channel is up (D53) |
-| Look | Nebula, a power-law starfield with diffraction spikes, meteors, dust, bloom. Worlds carry an atmosphere limb — warm on the lit side, gone on the dark one — and the galactic plane is arcs and fading spokes rather than graph paper (D53a) |
+| Look | Nebula, a power-law starfield with diffraction spikes, meteors, dust, bloom. Worlds carry an atmosphere limb — warm on the lit side, gone on the dark one — and the galactic plane is a painted plate of spiral arms and dust lanes — no lines anywhere (D53a, D53b) |
 | Web client | The galaxy is the only screen. Focus anything and a rail states what you know and how you know it. Everything animated runs on `serverNow()`, so every player watches the same instant (D52). One tap, one round trip — and the deterministic spends are predicted and reconciled, so the screen agrees with the tap immediately (D53) |
 | Season lifecycle | `season_end` event kind exists; **no handler** |
 

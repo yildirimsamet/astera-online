@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
-import { paintNebulaCanvas } from './nebula.js';
+import { paintDiscCanvas, paintNebulaCanvas } from './nebula.js';
 import { DISC_RADIUS } from './scene.js';
 
 /**
@@ -604,106 +604,94 @@ export function Dust() {
 /* ── the disc ───────────────────────────────────────────────── */
 
 /**
- * THE PLANE, WITHOUT THE GRAPH PAPER. D53a.
+ * THE GALACTIC PLANE. D53b.
  *
  * A disc with nothing in it reads as a scatter plot, so the camera needs something
- * to orbit and the eye needs to know which way is up. That much was right.
+ * to orbit and the eye needs to know which way is up.
  *
- * What was wrong is that it was drawn as a DIAGRAM: five complete circles of even
- * brightness and sixteen radial spokes running the full width, all at one opacity.
- * Photographed against the nebula it is the single most technical-looking thing on
- * screen — the one element that says "this is a chart of a galaxy" in a scene whose
- * whole brief is that it is a photograph of one. A telescope image has no spokes.
+ * This was five rings and sixteen spokes, and then the same rings with their
+ * brightness modulated around the circumference. Modulating them was treating the
+ * symptom: the graph-paper quality does not come from the lines being even, it
+ * comes from them being LINES. Photographed from overhead it still read as a
+ * targeting reticle — thin hard strokes at constant width are vector graphics, and
+ * there are none of those in a telescope image.
  *
- * Two changes, and neither of them removes the orientation it is there for.
+ * So it is a painted plate now, from `paintDiscCanvas`: spiral arms of gas and
+ * dust lying flat, fading to nothing at the rim. It orients BETTER than the rings
+ * did, because arms carry rotation as well as extent and concentric circles cannot.
  *
- *   THE RINGS ARE ARCS NOW, not circles. Brightness varies around the circumference
- *   on a slow harmonic with a different phase per ring, so each one fades in and out
- *   of visibility as it goes round. A complete circle of constant weight is drawn; a
- *   ring that is bright in places and gone in others is STRUCTURE, and the eye reads
- *   the second as depth and the first as a grid.
- *
- *   THE SPOKES STOP BEFORE THEY ARRIVE. Sixteen became eight, and each fades from
- *   the core outward and is gone well before the rim. They now do the one job they
- *   were for — saying where the middle is — instead of drawing a wheel over the
- *   playfield.
- *
- * Vertex colours rather than five materials: it is still one geometry and one draw
- * call, which is what it always was.
+ * PAINTED AFTER FIRST PAINT, like the backdrop. It is CPU work measured in
+ * hundreds of milliseconds and the galaxy has to open on something; the plane
+ * arrives a moment later and fades in.
  */
-const DISC_RINGS = [0.2, 0.4, 0.6, 0.8, 1] as const;
-const DISC_SPOKES = 8;
-/** The plane's own colour. Desaturated blue, dark enough to sit under everything. */
-const DISC_TINT = { r: 0.141, g: 0.204, b: 0.310 };
-
 export function Disc() {
-  const geometry = useMemo(() => {
-    const points: number[] = [];
-    const colours: number[] = [];
+  const [texture, setTexture] = useState<THREE.Texture | null>(null);
+  const material = useRef<THREE.MeshBasicMaterial>(null);
 
-    /** How bright this ring is at this angle. Three lobes, phased per ring. */
-    const arc = (angle: number, phase: number): number => {
-      const wave = 0.5 + 0.5 * Math.sin(angle * 3 + phase);
-      // Cubed, so the bright stretches are short and most of the ring is faint.
-      return 0.1 + 0.9 * wave ** 3;
+  useEffect(() => {
+    let cancelled = false;
+    const build = (): void => {
+      if (cancelled) return;
+      const map = new THREE.CanvasTexture(paintDiscCanvas());
+      map.colorSpace = THREE.SRGBColorSpace;
+      setTexture(map);
     };
-
-    const push = (x: number, z: number, weight: number): void => {
-      points.push(x, 0, z);
-      colours.push(DISC_TINT.r * weight, DISC_TINT.g * weight, DISC_TINT.b * weight);
+    const supportsIdle = 'requestIdleCallback' in window;
+    const handle = supportsIdle
+      ? window.requestIdleCallback(build, { timeout: 1200 })
+      : window.setTimeout(build, 90);
+    return () => {
+      cancelled = true;
+      if (supportsIdle) window.cancelIdleCallback(handle);
+      else window.clearTimeout(handle);
     };
-
-    DISC_RINGS.forEach((fraction, ring) => {
-      const radius = DISC_RADIUS * fraction;
-      const segments = 128;
-      const phase = ring * 1.7;
-      for (let i = 0; i < segments; i++) {
-        const a = (i / segments) * Math.PI * 2;
-        const b = ((i + 1) / segments) * Math.PI * 2;
-        push(Math.cos(a) * radius, Math.sin(a) * radius, arc(a, phase));
-        push(Math.cos(b) * radius, Math.sin(b) * radius, arc(b, phase));
-      }
-    });
-
-    for (let i = 0; i < DISC_SPOKES; i++) {
-      const a = (i / DISC_SPOKES) * Math.PI * 2;
-      /**
-       * Drawn in steps rather than as one segment, because a line's vertex colours
-       * interpolate between its two ends and a spoke needs to fade on a curve —
-       * linearly it is still a visible line most of the way out.
-       */
-      const steps = 8;
-      const from = DISC_RADIUS * 0.16;
-      const to = DISC_RADIUS * 0.62;
-      for (let k = 0; k < steps; k++) {
-        const t0 = k / steps;
-        const t1 = (k + 1) / steps;
-        const r0 = from + (to - from) * t0;
-        const r1 = from + (to - from) * t1;
-        push(Math.cos(a) * r0, Math.sin(a) * r0, (1 - t0) ** 2);
-        push(Math.cos(a) * r1, Math.sin(a) * r1, (1 - t1) ** 2);
-      }
-    }
-
-    const g = new THREE.BufferGeometry();
-    g.setAttribute('position', new THREE.Float32BufferAttribute(points, 3));
-    g.setAttribute('color', new THREE.Float32BufferAttribute(colours, 3));
-    return g;
   }, []);
 
+  useFrame((_, delta) => {
+    const m = material.current;
+    if (!m || !texture) return;
+    if (m.opacity < DISC_OPACITY) m.opacity = Math.min(DISC_OPACITY, m.opacity + delta * 0.5);
+  });
+
+  if (!texture) return null;
+
   return (
-    <lineSegments geometry={geometry}>
-      {/*
-        The PEAK of the arc, not its average. The old grid was a flat 0.34 the whole
-        way round; the vertex weights now run 0.1 to 1.0, so this has to be set so
-        the brightest stretch lands about where the old constant did — otherwise
-        "more structure" arrives as "twice as bright", which is what the first
-        photograph of this showed.
-      */}
-      <lineBasicMaterial vertexColors transparent opacity={0.4} depthWrite={false} />
-    </lineSegments>
+    /**
+     * Lying in the plane, and readable from underneath — you may fly below the
+     * galaxy and look up at it, so a single-sided plate would leave the underside
+     * of the disc missing.
+     */
+    <mesh rotation={[-Math.PI / 2, 0, 0]} renderOrder={-80}>
+      <planeGeometry args={[DISC_RADIUS * 2.1, DISC_RADIUS * 2.1]} />
+      <meshBasicMaterial
+        ref={material}
+        map={texture}
+        side={THREE.DoubleSide}
+        transparent
+        opacity={0}
+        depthWrite={false}
+        blending={THREE.AdditiveBlending}
+        /**
+         * Not fogged. The plate spans the whole playfield, so atmospheric
+         * perspective would darken its far half and leave a gradient across the
+         * galaxy that turns with the camera — which reads as a lighting bug rather
+         * than as distance.
+         */
+        fog={false}
+        toneMapped={false}
+      />
+    </mesh>
   );
 }
+
+/**
+ * How bright the plane is allowed to get.
+ *
+ * It is scenery and everything that matters is drawn in front of it, so the
+ * ceiling is set by the dimmest thing that must stay legible against it: a world
+ * the fog has dimmed to `STANCE_LIGHT.dark`.
+ */
+export const DISC_OPACITY = 0.3;
 
 /* ── asteroids ──────────────────────────────────────────────── */
 
