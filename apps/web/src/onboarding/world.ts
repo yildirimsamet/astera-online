@@ -67,6 +67,22 @@ export function openWorld(preview: Preview): RehearsalWorld {
   return {
     reserved: preview.reserved,
     buildings: { ...START_BUILDINGS },
+    /**
+     * THE REHEARSAL RUNS ON `START`, NOT ON WHAT THE PLANET IS CREATED WITH — and
+     * the difference is deliberate. D58.
+     *
+     * `START` is the arithmetic the opening TEACHES: three mandatory upgrades that
+     * spend the crystal to the last unit, and exactly two Wasps with what is left.
+     * A beat says so out loud. Handing the rehearsal the cushion as well would make
+     * that sentence false, let a fourth upgrade and a third Wasp become affordable
+     * inside a guided beat, and turn a lesson in scarcity into a shopping trip.
+     *
+     * The cushion is what the commander finds when the rehearsal becomes a season —
+     * the server creates the real planet with `PLANET_START`, the replay spends
+     * `START` of it, and precisely `OPENING_BONUS` is left standing. So this is not
+     * a misprediction that has to be reconciled: it is the same arithmetic, and the
+     * only thing the player is not told in advance is the welcome.
+     */
     alloy: START.alloy,
     crystal: START.crystal,
     fleet: {},

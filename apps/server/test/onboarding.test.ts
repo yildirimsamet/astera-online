@@ -2,7 +2,7 @@ import { eq } from 'drizzle-orm';
 import type { FastifyInstance } from 'fastify';
 import { pino } from 'pino';
 import { afterAll, afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { START, upgradeCost, HULLS } from '@astera/rules';
+import { OPENING_BONUS, PLANET_START, START, upgradeCost, HULLS } from '@astera/rules';
 import { buildApp } from '../src/app.js';
 import { accounts, buildings, missions, planets, players, units } from '../src/db/schema.js';
 import { FixedClock } from '../src/clock.js';
@@ -132,7 +132,7 @@ describe('onboarding claim', () => {
     expect(body.accessToken).not.toBe('');
     expect(body.placement.shard).toBe('EU-1');
     expect(body.placement.planetName).not.toBe('');
-    expect(body.planet.planet.alloy).toBe(START.alloy);
+    expect(body.planet.planet.alloy).toBe(PLANET_START.alloy);
     expect(await db.select().from(players)).toHaveLength(1);
   });
 
@@ -150,9 +150,18 @@ describe('onboarding claim', () => {
     expect(body.planet.buildings.CORE).toBe(2);
     expect(body.planet.buildings.REFINERY).toBe(2);
     expect(body.planet.buildings.EXTRACTOR).toBe(2);
-    // Every last unit of the grant is spent: that is the lesson the beat teaches.
-    expect(body.planet.planet.alloy).toBe(0);
-    expect(body.planet.planet.crystal).toBe(0);
+    /**
+         * THE ARITHMETIC GRANT IS SPENT TO THE LAST UNIT — that is the lesson the
+         * beat teaches, and it still holds. WHAT IS LEFT IS THE CUSHION, exactly
+         * (D58): the opening costs `START` and a new world is created with `START`
+         * plus `OPENING_BONUS`, so a commander who has just finished onboarding
+         * stands on a planet with something to spend rather than nothing to press.
+         *
+         * Asserted as the constant rather than as 1000/500, so that moving the
+         * cushion moves this test with it and moving it by ACCIDENT does not.
+         */
+    expect(body.planet.planet.alloy).toBe(OPENING_BONUS.alloy);
+    expect(body.planet.planet.crystal).toBe(OPENING_BONUS.crystal);
 
     const flying = await db
       .select()
@@ -330,6 +339,46 @@ describe('onboarding claim', () => {
     expect(await db.select().from(players)).toHaveLength(2);
   });
 
+  /**
+   * THE POINT OF THE CUSHION, ASSERTED AS A CONSEQUENCE RATHER THAN AS A NUMBER.
+   *
+   * The complaint it answers was precise: onboarding ends with the grant spent to
+   * the last crystal, both Wasps gone, and a flight forty minutes out — so a
+   * commander who has just been persuaded to make an account has nothing at all to
+   * press. This checks the thing that actually matters at that moment: that what
+   * is left is enough to DO something with.
+   *
+   * The two things reachable at that point are a fourth building level and a
+   * Shipyard, so those are what it prices. If a future balance pass makes the
+   * cushion too small to buy either, this fails here rather than in front of the
+   * next fifty players.
+   */
+  it('leaves a freshly onboarded commander able to act', async () => {
+    await openWorld();
+    const target = await neighbour();
+
+    const body = (await claim({
+      username: 'kaptan',
+      password: 'correct-horse-battery',
+      intents: OPENING(target.planetId),
+    })).json<Claim>();
+
+    const left = { alloy: body.planet.planet.alloy, crystal: body.planet.planet.crystal };
+
+    // A fourth level on any of the three buildings the opening raised to L2.
+    const nextLevel = upgradeCost(2);
+    expect(left.alloy).toBeGreaterThanOrEqual(nextLevel.alloy);
+    expect(left.crystal).toBeGreaterThanOrEqual(nextLevel.crystal);
+
+    // Or the first building the opening never touches, which is what unlocks
+    // every hull beyond the Wasp.
+    const firstNewBuilding = upgradeCost(0);
+    expect(left.alloy).toBeGreaterThanOrEqual(firstNewBuilding.alloy);
+
+    // And a replacement for a Wasp, since both of the opening's are in the air.
+    expect(left.alloy).toBeGreaterThanOrEqual(HULLS.WASP.alloy);
+  });
+
   /** Nothing to replay is a real claim, not a malformed one. */
   it('takes a claim with no intents at all', async () => {
     await openWorld();
@@ -337,7 +386,7 @@ describe('onboarding claim', () => {
     const body = (await claim({ username: 'kaptan', password: 'correct-horse-battery' })).json<Claim>();
 
     expect(body.applied).toEqual([]);
-    expect(body.planet.planet.alloy).toBe(START.alloy);
+    expect(body.planet.planet.alloy).toBe(PLANET_START.alloy);
   });
 
   /**

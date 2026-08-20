@@ -1,7 +1,7 @@
 import { and, eq } from 'drizzle-orm';
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
-import { START } from '@astera/rules';
+import { PLANET_START } from '@astera/rules';
 import { registerBody } from '../auth/credentials.js';
 import { missions, planets, units } from '../db/schema.js';
 import { authenticate, registerAccount } from '../services/account.js';
@@ -236,7 +236,19 @@ async function untouched(app: FastifyInstance, planetId: string): Promise<boolea
     .from(planets)
     .where(eq(planets.id, planetId));
   if (!row) return false;
-  if (Math.floor(row.alloy) !== START.alloy || Math.floor(row.crystal) !== START.crystal) {
+  /**
+   * COMPARED AGAINST WHAT A PLANET IS CREATED WITH, not against `START`.
+   *
+   * These two stopped being the same number at D58: a new world now holds the
+   * arithmetic grant plus the opening cushion. Left reading `START`, this guard
+   * would find every fresh planet ALREADY TOUCHED, skip the replay, and answer
+   * every rehearsal decision with `ALREADY_OPENED` — an onboarding that asks a
+   * stranger to make five choices and then silently discards all of them.
+   */
+  if (
+    Math.floor(row.alloy) !== PLANET_START.alloy ||
+    Math.floor(row.crystal) !== PLANET_START.crystal
+  ) {
     return false;
   }
 

@@ -24,7 +24,7 @@ import {
   fleetSpeedMult,
   fleetValue,
   generateGalaxy,
-  START,
+  PLANET_START,
   investedInBuilding,
   mulberry32,
   resolveCombat,
@@ -154,7 +154,7 @@ export function buildWorld(cfg: SimConfig): World {
     // measuring a different game.
     fleet: {},
     ground: {},
-    alloy: START.alloy, crystal: START.crystal,
+    alloy: PLANET_START.alloy, crystal: PLANET_START.crystal,
     bufferAlloy: 0, bufferCrystal: 0,
     shield: 0, lastTick: 0, joinedAt: 0, disruptedUntil: 0,
     nextLogin: Math.floor(rng() * 240),

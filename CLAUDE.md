@@ -102,8 +102,9 @@ Each was paid for in iteration. `docs/decisions.md` holds the evidence.
 | `vaultMult < alloyMult` | Above it the vault protects 100% of storage and all PvP silently dies |
 | `SATELLITES.FOUNDRY.production` stays 1.06 | It compounds twice; at 1.08 TURTLE tops every gate seed |
 | `BULWARK.atk` stays 26 | Raising it subsidises whoever accumulates most: informed wins 5/5 → 0/5 |
-| `START` is arithmetic | Exactly Core + Refinery + Extractor to L2 plus two Wasps. A test enforces it |
-| Do not enlarge the opening grant | It is a lever on how much thinking is worth, measured over eight seasons |
+| `START` is arithmetic | Exactly Core + Refinery + Extractor to L2 plus two Wasps. A test enforces it, and the REHEARSAL still runs on it — a beat says the crystal is gone exactly, and that has to stay true |
+| **A planet is created with `PLANET_START` = `START` + `OPENING_BONUS`** | Owner decision D58, overriding "do not enlarge the opening grant". Granted once, at planet creation. The opening spends `START`; the cushion is what a commander finds when onboarding ends, instead of nothing to press. **It cost the central claim on one seed of five** — see below |
+| `untouched()` compares against `PLANET_START`, never `START` | It is the claim's idempotency guard. Reading the wrong one makes every fresh planet look already-played, so the replay is skipped and all five rehearsal decisions are silently discarded |
 | `DEBRIS.share` < 1 | Or a field is worth more than the fleets that died for it |
 | **No new un-losable sink fits the gate** | A research tree, a permanent upgrade or a dearer instrument all push wealth into what a raid cannot take. Measured twice: an instrument curve ≥1.1, and a sink worth 2% of Wealth. `TAX` and `ARR` have no headroom — **never widen a band to admit a feature** |
 | Two levers are proven inert | The loot dial and `COMBAT.defenceSalvage`. What a loss COSTS cannot fix what an attack ACHIEVES |
@@ -329,13 +330,20 @@ end of waiting (D51–D53); the name, the identity and the way out (D54); Turkis
 on one origin, with the ceilings that a public door needs (D57).
 
 ```
-pnpm verify  →  0 type errors · 0 lint errors · 1,392 tests
-                rules 221 · sim 47 · server 492 · web 632
+pnpm verify  →  0 type errors · 0 lint errors · 1,399 tests
+                rules 221 · sim 47 · server 499 · web 632
 ```
 
-**Two season-gate assertions are RED, and they MOVED at D52a:** `ARR` reads 0.298 on seed
-42 and 0.299 on seed 99, against a band of 0.308–0.326. Both live in `packages/sim`.
-Everything else is green.
+**One season-gate assertion is RED, and it MOVED at D58:** *the informed archetype tops the
+ladder on every seed* now fails on seed 42, where RAIDER finishes first — 4 of 5 instead of
+5 of 5. It lives in `packages/sim`. Everything else is green.
+
+**`ARR` is no longer red.** It was 0.298 / 0.299 against a band of 0.308–0.326 from D52a
+until D58, and it is now in band on all five seeds. Nothing was tuned to achieve that: the
+opening grant was enlarged by owner decision, which is precisely the trade `constants.ts`
+had measured and refused — a looser opening buys raid returns and a kinder tax by eroding
+the informed player's edge. One red became one red, and the one now red is the design's
+central claim. **Watch it before adding anything else to the opening.**
 
 They used to be pooled `TAX` (0.0717 against a floor of 0.10) and the informed archetype
 losing seed 4242 to RAIDER. **Both of those now pass**, and nothing was tuned to make them:
@@ -373,9 +381,11 @@ has walked it who did not build it.
 
 1. **Play it for two days in real gaps**, on a phone, then fix what that reveals — see
    `docs/playtest-log.md`. Everything below is smaller than one real session.
-2. **Re-derive `ARR`, give `TAX` headroom, and find why the gate went red.** Until this is
-   done, nothing in the un-losable-sink family can be measured. `TAX` is back in band since
-   D52a; `ARR` is the only red assertion left.
+2. **Win seed 42 back for the informed archetype.** D58 enlarged the opening by owner
+   decision and RAIDER now tops that seed — the design's central claim, 4 of 5 instead of
+   5 of 5. `ARR` and `TAX` are both in band, so the levers are free; the question is
+   whether the intel layer can be made to pay for itself at the looser opening rather than
+   whether the opening should be tightened again.
 3. **Season lifecycle** — a `season_end` handler and freeze, so a season finishes on its
    own rather than when someone runs a command.
 4. **Asteroid impacts and the Drill** — generated and stored, never scheduled.

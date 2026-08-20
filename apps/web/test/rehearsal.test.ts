@@ -1,6 +1,8 @@
 import { describe, expect, it, vi } from 'vitest';
 import {
   HULLS,
+  OPENING_BONUS,
+  PLANET_START,
   PROBE,
   START,
   START_BUILDINGS,
@@ -122,12 +124,26 @@ const opened = (): RehearsalWorld => {
 /* ── the opening is arithmetic, not a script ────────────────── */
 
 describe('the opening budget', () => {
-  it('starts on exactly the grant and exactly the starting buildings', () => {
+  /**
+   * THE REHEARSAL OPENS ON `START`, AND THE REAL PLANET ON `PLANET_START`. D58.
+   *
+   * Deliberately different, and this is the assertion that keeps the difference
+   * exactly one thing: the cushion. `START` is the arithmetic the beats teach —
+   * three mandatory upgrades that spend the crystal to the last unit and exactly
+   * two Wasps with the rest — and a rehearsal handed the cushion as well would
+   * make a beat's sentence false and turn a lesson in scarcity into a shopping
+   * trip. What the commander finds after claiming is `OPENING_BONUS`, untouched.
+   */
+  it('opens on the arithmetic it teaches, not on the welcome that follows it', () => {
     const w = openWorld(previewOf());
     expect(w.alloy).toBe(START.alloy);
     expect(w.crystal).toBe(START.crystal);
     expect(w.buildings).toEqual(START_BUILDINGS);
     expect(w.intents).toEqual([]);
+
+    // And the difference between the two is the cushion, whole.
+    expect(PLANET_START.alloy - START.alloy).toBe(OPENING_BONUS.alloy);
+    expect(PLANET_START.crystal - START.crystal).toBe(OPENING_BONUS.crystal);
   });
 
   /**
@@ -159,8 +175,9 @@ describe('the opening budget', () => {
   /**
    * THE SENTENCE THE BEAT SAYS OUT LOUD — "your crystal is gone, exactly, and that
    * is not a coincidence" — and the reason the first flight is a raid rather than
-   * a probe. If a balance change ever makes a probe affordable at this point, the
-   * beat is lying and this is where it is caught.
+   * a probe. If a balance change ever makes a probe affordable INSIDE THE
+   * REHEARSAL, the beat is lying and this is where it is caught. The cushion (D58)
+   * does not reach here: it is added to the real planet, not to this one.
    */
   it('leaves nothing for a probe, which is why the fleet is the first flight', () => {
     const three = opened();

@@ -177,8 +177,14 @@ describe('the beat script', () => {
     expect(beatNamed('target').panel).toBeNull();
   });
 
-  /** The opening world is exactly what the server writes, or the beats lie. */
-  it('rehearses the same opening the server creates', () => {
+  /**
+   * The buildings are exactly what the server writes, and the grant is the
+   * arithmetic the beats teach — `START`, not the `PLANET_START` the real planet
+   * is created with. D58 puts a cushion on top of the latter deliberately; see
+   * `openWorld`. If either half drifts, a beat starts describing a planet the
+   * player is not looking at.
+   */
+  it('rehearses the opening the beats teach', () => {
     const world = openWorld(previewOf());
     expect(world.buildings).toEqual(START_BUILDINGS);
     expect(world.alloy).toBe(START.alloy);

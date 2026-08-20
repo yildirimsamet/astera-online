@@ -291,6 +291,11 @@ upgrade a commander reaches for and the order is forced: Core, Refinery, Extract
 **all 276 crystal exactly**, leaving alloy for **exactly two Wasps**. That is why the first flight
 is a raid and not a probe: after the mandatory three there is no crystal for one. A test asserts
 the whole chain, so a balance change breaks it here rather than in front of a stranger.
+**D58 put a cushion on the real planet and left this untouched on purpose** — the rehearsal opens
+on `START`, the server creates the world with `PLANET_START`, and the difference is exactly
+`OPENING_BONUS`. Handing the rehearsal the cushion as well would make the beat's sentence false
+and turn a lesson in scarcity into a shopping trip; what the commander finds after claiming is a
+welcome rather than a misprediction. `openWorld` says so at the site.
 
 **The wall is at the end, at the moment of most desire** — a world with a name, a fleet they
 built and a target they chose. Two steps inside ONE `<form>`: a password manager only offers to
@@ -464,6 +469,59 @@ state a restart would clear without fixing, and clearing it destroys the evidenc
 **Binds:** `docs/deployment.md`; `docker-compose.prod.yml` and the file beside it
 are not interchangeable — `docker-compose.yml` is tmpfs and its password is the
 word "astera".
+
+### D58 · A cushion after onboarding — owner instruction, overriding a measured refusal
+
+**A new planet is created with `START` plus `OPENING_BONUS` (1,000 alloy, 500
+crystal), granted once, when the planet is made.** One account holds one planet,
+so it cannot fire twice; there is no daily grant and no repeat.
+
+**The problem is real.** `START` is exactly what the opening COSTS and the
+rehearsal spends it to the last crystal: three mandatory upgrades and two Wasps,
+which then leave. A commander who has just been persuaded to make an account
+therefore lands on a world with no ships at home, no resources and a flight forty
+minutes out — nothing to press, at the moment the game has the least credit with
+them. The owner's words were "boş boş bekliyor".
+
+**It is also exactly what D22/D29 refused, and that refusal was measured.** The
+evidence is kept in `constants.ts` rather than deleted: a looser opening improves
+raid returns and the tax on peaceful players, and does it by eroding the informed
+player's edge. This override was measured too, on the same five-seed gate:
+
+| | before | after |
+|---|---|---|
+| `ARR`, all five seeds | RED on 42 and 99 (0.298 / 0.299, band 0.308–0.326) | **green on all five** |
+| `TAX` · `RR` · `TI` · `VFR` · `SV` | green | green |
+| informed archetype tops every seed | **green, 5/5** | **RED — RAIDER tops seed 42, 4/5** |
+
+One red assertion became one red assertion, and moved: `ARR` — red since D52a and
+second on the roadmap — is now in band on every seed, and the cost is that the
+design's CENTRAL claim slipped on one seed of five. Nothing was tuned to produce
+either result. That trade is the owner's, and it is written here so the next
+reader does not rediscover it as a mystery.
+
+**The rehearsal runs on `START`, not on `PLANET_START`, and that is deliberate.**
+A beat says out loud that the crystal is gone exactly and that this is not a
+coincidence. Handing the rehearsal the cushion would make that sentence false, let
+a fourth upgrade and a third Wasp become affordable inside a guided beat, and turn
+a lesson in scarcity into a shopping trip. The cushion is what the commander finds
+when the rehearsal becomes a season: the server creates the planet with
+`PLANET_START`, the replay spends `START` of it, and precisely `OPENING_BONUS` is
+left standing. Every web test passed unchanged across this change, which is the
+evidence that the teaching was not touched.
+
+**`untouched()` had to move with it.** The claim's idempotency guard recognises a
+world nobody has acted on by comparing its resources to the opening grant. Left
+reading `START`, it would find every fresh planet already touched, skip the replay
+and answer every rehearsal decision with `ALREADY_OPENED` — an onboarding that
+asks a stranger for five choices and silently discards all of them.
+
+**The simulator opens its bots on `PLANET_START` too.** A simulator that models a
+different opening from the one shipping is measuring a game that does not exist.
+
+**Binds:** the invariant "do not enlarge the opening grant" is superseded by owner
+decision; `START` keeps its arithmetic and its documentation because that is what
+the opening teaches.
 
 ## Architecture
 

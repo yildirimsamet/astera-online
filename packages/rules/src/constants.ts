@@ -154,6 +154,55 @@ export const START = {
 } as const;
 
 /**
+ * A CUSHION ON TOP OF THE ARITHMETIC — OWNER DECISION, D58.
+ *
+ * `START` above is exactly what the opening COSTS, and it is spent to the last
+ * crystal by the time the rehearsal ends: three mandatory upgrades and the two
+ * Wasps, which then leave. A commander who has just finished onboarding therefore
+ * lands on a world with no ships at home, no resources, and a flight forty minutes
+ * out — nothing to press, at the one moment the game has the least credit with
+ * them. That is the problem this fixes and it is a real one.
+ *
+ * IT IS ALSO EXACTLY WHAT THE PARAGRAPH ABOVE REFUSES, and that refusal was
+ * measured. The owner's call overrides it knowingly, so the evidence stays where
+ * the next reader will find it rather than being quietly deleted: a looser opening
+ * buys raid returns and a kinder tax by eroding the informed player's edge, and
+ * `informedArchetypeWins` is the design's central claim. Watch it.
+ *
+ * KEPT SEPARATE FROM `START` RATHER THAN FOLDED INTO IT, for two reasons. The
+ * arithmetic is load-bearing documentation — it is what explains why the first
+ * three upgrades are mandatory and in that order — and it would be lost inside a
+ * single larger number. And a cushion that is its own constant can be tuned, or
+ * withdrawn, without re-deriving anything.
+ *
+ * ABOVE THE STORAGE CAP ON PURPOSE, and so is `START` already: a fresh planet's
+ * alloy ceiling is 1,392 and the grant has always been 2,060. Nothing clamps
+ * stored resources downward — the cap gates what may be COLLECTED out of the works
+ * — so the grant is not silently lost. It does mean the works cannot be emptied
+ * into storage until some of it is spent, which is the intended pressure: this is
+ * money to use, not money to sit on.
+ */
+export const OPENING_BONUS = {
+  alloy: 1000,
+  crystal: 500,
+} as const;
+
+/**
+ * WHAT A NEW PLANET IS ACTUALLY CREATED WITH. One answer, four callers.
+ *
+ * The server writes it, the claim's idempotency guard recognises an untouched
+ * world by it, the simulator opens every bot on it, and the rehearsal predicts
+ * against it. Those four MUST agree: a rehearsal that predicts a different opening
+ * from the one the server hands out is a screen that contradicts itself at the
+ * last step, and a simulator that models a different one is measuring a game that
+ * is not shipping.
+ */
+export const PLANET_START = {
+  alloy: START.alloy + OPENING_BONUS.alloy,
+  crystal: START.crystal + OPENING_BONUS.crystal,
+} as const;
+
+/**
  * WHAT A FRESH PLANET IS BUILT WITH, before the grant above is spent on anything.
  *
  * The Core and the Refinery are BOTH at 1, which is what makes the first three

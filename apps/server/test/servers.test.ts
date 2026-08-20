@@ -1,5 +1,5 @@
 import { eq } from 'drizzle-orm';
-import { START as GRANT } from '@astera/rules';
+import { PLANET_START as GRANT } from '@astera/rules';
 import type { FastifyInstance } from 'fastify';
 import { pino } from 'pino';
 import { afterAll, afterEach, beforeEach, describe, expect, it } from 'vitest';

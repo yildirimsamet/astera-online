@@ -1,5 +1,5 @@
 import { eq } from 'drizzle-orm';
-import { BUILDING_IDS, START, START_BUILDINGS, pickSpawnSlot } from '@astera/rules';
+import { BUILDING_IDS, PLANET_START, START_BUILDINGS, pickSpawnSlot } from '@astera/rules';
 import type { Db } from '../db/client.js';
 import type { Clock } from '../clock.js';
 import { accounts, buildings, planets, players, seasons, shards } from '../db/schema.js';
@@ -181,12 +181,16 @@ export async function joinSeason(
             x: slot.x, y: slot.y, z: slot.z,
             /**
              * The opening grant, from the rules package rather than the column
-             * default. D22 makes the figure derived arithmetic — exactly the cost
-             * of the first four things a commander does — so it has to come from
-             * the one place that can be tested against those prices.
+             * default. D22 makes `START` derived arithmetic — exactly the cost of
+             * the first four things a commander does — so it has to come from the
+             * one place that can be tested against those prices.
+             *
+             * `PLANET_START` is that arithmetic PLUS the cushion the owner added at
+             * D58, because the arithmetic alone is spent to the last crystal by the
+             * time onboarding ends and leaves nothing to press.
              */
-            alloy: START.alloy,
-            crystal: START.crystal,
+            alloy: PLANET_START.alloy,
+            crystal: PLANET_START.crystal,
             lastTickAt: now,
           })
           .onConflictDoNothing({ target: [planets.seasonId, planets.slotIndex] })
