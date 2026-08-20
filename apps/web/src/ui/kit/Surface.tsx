@@ -129,6 +129,39 @@ export function Waiting({ children }: { children: ReactNode }) {
   );
 }
 
+/**
+ * WHERE A SURFACE COULD NOT BE READ AT ALL. D53a.
+ *
+ * `Waiting` says something is coming. This says it is not, and offers the one
+ * action that can change that.
+ *
+ * The distinction had been lost in three places, and each lost it differently.
+ * React Query's `isPending` goes FALSE the moment a query errors — the status
+ * becomes `error` — but `data` stays undefined, so a gate written as
+ * `isPending || !data` falls through to its loading branch forever: an animated
+ * pulse claiming progress on a request that has already given up. On the reports
+ * list it was worse than a pulse, because an empty list and a failed one took the
+ * same branch and the screen said "nothing has been fought over yet" about a
+ * request that never arrived. `ServersScreen` was the only surface that had the
+ * error branch, and it is the pattern the other three now follow.
+ */
+export function Unreachable({ what, onRetry }: { what: string; onRetry: () => void }) {
+  return (
+    <div className="px-4 py-6" role="alert">
+      <p className="text-[14px] text-alert">Could not reach {what}.</p>
+      <button
+        type="button"
+        className="btn mt-3"
+        onClick={() => {
+          onRetry();
+        }}
+      >
+        Try again
+      </button>
+    </div>
+  );
+}
+
 export function Note({ children }: { children: ReactNode }) {
   return <p className="mt-2 text-micro leading-relaxed text-faint">{children}</p>;
 }

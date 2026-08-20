@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { Unreachable, Waiting } from '../ui/kit/Surface.js';
 import {
   HULLS,
   PROSPECTOR,
@@ -116,7 +117,7 @@ export function PlanetScreen({
   /** Rendered inside a panel over the live galaxy rather than as a full screen. */
   embedded?: boolean;
 }) {
-  const { data, dataUpdatedAt, isPending } = usePlanet();
+  const { data, dataUpdatedAt, isError, refetch } = usePlanet();
   const held = useProjected(data?.planet, dataUpdatedAt, 5000);
   const advice = useAdvice(data, held);
   const [building, setBuilding] = useState<HullId | null>(null);
@@ -149,13 +150,25 @@ export function PlanetScreen({
     };
   }, [focused]);
 
-  if (isPending || !data) {
+  /**
+   * A FAILED READ IS NOT A SLOW ONE.
+   *
+   * This was `isPending || !data`, and the second half is what made it wrong: on an
+   * error React Query's status becomes `error` — so `isPending` goes false — while
+   * `data` stays undefined, and the screen sat on an animated "Reading planet"
+   * claiming progress on a request that had already given up retrying.
+   */
+  if (isError) {
     return (
-      <div className="px-4 pt-16 text-center">
-        <p className="legend animate-pulse">Reading planet</p>
-      </div>
+      <Unreachable
+        what="your planet"
+        onRetry={() => {
+          void refetch();
+        }}
+      />
     );
   }
+  if (!data) return <Waiting>Reading planet</Waiting>;
 
   const recommended = advice ?? groupOrder(data, focusGroup)[0] ?? 'grow';
   const active = tab ?? focusGroup ?? recommended;

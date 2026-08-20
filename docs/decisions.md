@@ -994,6 +994,62 @@ it looks and was not in the approved scope. The atmosphere half of the owner's i
 being the only completely still object in a scene where everything else breathes — is a separate
 pass, on the owner's decision.
 
+### D53a · The worlds get air, and the plane stops being graph paper — owner instruction
+The atmosphere half of D53, held back as its own pass on the owner's decision so it could be
+looked at and dropped without losing the liveness work.
+
+**A WORLD WAS THE ONLY DEAD OBJECT IN THE SCENE.** A hull sheds a wake, a shield breathes, a rock
+tumbles, a watch beam pulses, a plume flickers — and the worlds, which are what the game is
+about, had nothing happening at all and ended at a hard alpha cut, so each one sat on black like a
+sticker. What was physically missing is the limb: a shell of gas scatters light forward, so a lit
+planet is BRIGHTEST at its own edge and that brightness bleeds a little past the silhouette. It is
+the single detail that separates a photographed planet from a sphere with a texture on it.
+
+One extra instanced quad — one draw call for the whole galaxy, because the limb is the same
+texture on every world where the bodies need a bucket per render. Two gradients do the work. The
+radial one puts the peak just INSIDE where the planet's edge falls, so the band straddles the
+silhouette; entirely outside it would be a halo, which this scene already uses to mean "selected".
+The linear one takes nearly all of it off the dark side, because a ring of even width is a
+manufactured object.
+
+**BOTH OF THOSE ARE LESSONS FROM PHOTOGRAPHS, NOT FROM THEORY.** The first attempt, at a scale of
+1.34 with a soft falloff, put half a radius of grey haze around every world and drowned the
+selection ring — the same failure `BLAST_SIZE` records, and the same fix. The second, tightened but
+with a gentle 1 → 0.24 light bias, survived the whole way round and read as a gasket bolted to the
+planet. The third, at 1.16 with a 1 → 0.015 bias, is a warm crescent. The proportions that matter
+are pinned in `planet-visuals.test.ts`: outside the world, well inside the selection ring, at most
+a fifth of a radius, warm rather than neutral, and multiplied by the same `STANCE_LIGHT` the body
+is — or the brightest pixel on the silhouette would be at full strength on exactly the worlds the
+fog is dimming.
+
+It also breathes, at eighteen seconds and one and a half per cent, phase-shifted per world. The
+reason is the one already written on `Shields`: something perfectly still reads as a modelling
+artefact rather than as an object.
+
+**AND THE PLANE WAS A DIAGRAM.** Five complete circles of even brightness and sixteen radial spokes
+running the full width, all at one opacity — against the nebula it was the most technical-looking
+thing on screen, in a scene whose whole brief is that it is a photograph. A telescope image has no
+spokes. The rings are ARCS now, brightness varying on a slow harmonic with a different phase per
+ring, so each fades in and out as it goes round: a circle of constant weight is drawn, and a ring
+that is bright in places and gone in others is structure. The spokes went from sixteen to eight and
+fade from the core outward, gone well before the rim, doing the one job they were for — saying
+where the middle is. Still one geometry and one draw call; the variation is vertex colours.
+
+The first photograph of that came back BRIGHTER than the grid it replaced, because the weights run
+0.1 to 1.0 and the material opacity had been left where a flat 0.34 used to be. The peak is what
+has to match the old constant, not the average.
+
+**AND THE THIRD ITEM TURNED OUT TO BE A DIFFERENT BUG.** The loading gates on the planet sheet, the
+intel screen and the reports list were expected to be near-dead code, and they were — but they
+conflated a failed read with a slow one. React Query's `isPending` goes false the moment a query
+errors while `data` stays undefined, so a gate written as `isPending || !data` falls through to its
+loading branch forever: an animated pulse claiming progress on a request that has already given up
+retrying. On the reports list it was worse, because an empty list and a failed one took the same
+branch and the screen said **"nothing has been fought over yet"** about a request that never
+arrived — the interface stating a fact about the season on the strength of a network error.
+`ServersScreen` was the only surface with the error branch, and it is the pattern the other three
+now follow. All three regressions were checked against the unfixed code first.
+
 ## Architecture
 
 ### A1 · One source of truth for game rules — LOCKED, foundational

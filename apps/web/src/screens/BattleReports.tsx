@@ -6,6 +6,7 @@ import { compact, full, signed } from '../lib/format.js';
 import { staleness, useNow } from '../lib/time.js';
 import { HULL_ART, RESOURCE_ART } from '../ui/assets.js';
 import { Empty, Section } from '../ui/primitives.js';
+import { Unreachable } from '../ui/kit/Surface.js';
 import { Sheet } from '../ui/Sheet.js';
 
 /**
@@ -21,14 +22,28 @@ import { Sheet } from '../ui/Sheet.js';
  * fielded, what it cost you, and what the fight moved on the ladder.
  */
 export function BattleReports() {
-  const { data, isPending } = useReports();
+  const { data, isPending, isError, refetch } = useReports();
   const [open, setOpen] = useState<BattleReport | null>(null);
   const now = useNow(30_000);
   const reports = data?.reports ?? [];
 
   return (
     <Section label="Battle reports" aside={reports.length > 0 ? 'newest first' : undefined}>
-      {isPending ? null : reports.length === 0 ? (
+      {/*
+        AN EMPTY LIST AND A FAILED ONE ARE NOT THE SAME SENTENCE.
+        
+        Both left `reports` empty, so a request that never arrived was reported as
+        "nothing has been fought over yet" — the interface stating a fact about the
+        season on the strength of a network error.
+      */}
+      {isError ? (
+        <Unreachable
+          what="your battle reports"
+          onRetry={() => {
+            void refetch();
+          }}
+        />
+      ) : isPending ? null : reports.length === 0 ? (
         <Empty>
           Nothing has been fought over yet. A battle is the only intel in this game that is
           never a guess.

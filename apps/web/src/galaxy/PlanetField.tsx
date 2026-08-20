@@ -2,7 +2,7 @@ import { useLayoutEffect, useMemo, useRef } from 'react';
 import { useFrame, useLoader, useThree, type ThreeEvent } from '@react-three/fiber';
 import * as THREE from 'three';
 import { planetArt } from '../ui/assets.js';
-import { softGlow } from './Environment.jsx';
+import { limbTexture, softGlow } from './Environment.jsx';
 import { STANCE_LIGHT, type PlanetNode } from './scene.js';
 import { markHit, wasTap } from './tap.js';
 
@@ -57,8 +57,126 @@ export function PlanetField({
       {groups.map((group) => (
         <PlanetInstances key={group.texture} group={group} onSelect={onSelect} />
       ))}
+      <Atmospheres nodes={nodes} />
       <Highlights nodes={nodes} selectedId={selectedId} />
     </>
+  );
+}
+
+/**
+ * THE ONE THING IN THIS SCENE THAT WAS NOT ALIVE. D53a.
+ *
+ * A hull sheds a wake, a shield breathes, a rock tumbles, a beam pulses, a plume
+ * flickers — and the worlds, which are what the game is about, were the only
+ * objects in the sky with nothing happening at all. They also ended at a hard
+ * alpha cut, so each one sat on black like a sticker rather than hanging in space.
+ *
+ * One extra quad per world fixes both: the light a planet scatters at its own
+ * limb. See `limbTexture` for what the gradients are doing and why the peak
+ * straddles the silhouette rather than sitting outside it.
+ *
+ * ONE DRAW CALL FOR THE WHOLE GALAXY. The bodies need one bucket per distinct
+ * render because each is its own texture; the limb is the same texture on every
+ * world, so all fifty are a single instanced mesh. That is the entire cost.
+ *
+ * NOT A MARKER. `Highlights` already draws a coloured halo, and it means "this one
+ * is yours" or "this one is selected" — three or four worlds ever. If the limb read
+ * as a halo it would drown that. It is warm, faint, tight to the silhouette, and it
+ * never changes with focus.
+ */
+export const LIMB_SCALE = 1.16;
+
+/**
+ * A breath so slow it is under conscious notice, and the reason it exists at all
+ * is the one written on `Shields`: something perfectly still reads as a modelling
+ * artefact rather than as an object. Eighteen seconds and one and a half per cent,
+ * phase-shifted per world so fifty of them never pulse in unison.
+ */
+const LIMB_BREATH_RATE = 0.35;
+const LIMB_BREATH_DEPTH = 0.015;
+
+/** Scattered light, not white: an atmosphere lit by a warm key reads warm. */
+export const LIMB_TINT = { r: 1, g: 0.83, b: 0.64 };
+
+function Atmospheres({ nodes }: { nodes: readonly PlanetNode[] }) {
+  const ref = useRef<THREE.InstancedMesh>(null);
+  const camera = useThree((state) => state.camera);
+  const texture = useMemo(() => limbTexture(), []);
+  const tint = useMemo(() => new THREE.Color(), []);
+  const count = nodes.length;
+
+  /**
+   * IGNORANCE IS DARK HERE TOO.
+   *
+   * The bodies are dimmed per instance by `STANCE_LIGHT`, so a world the player
+   * cannot see is literally darker. A limb at full brightness on an unwatched world
+   * would light up the exact thing the fog is dimming — and would do it in the most
+   * eye-catching way available, since it is the brightest pixel on the silhouette.
+   */
+  useLayoutEffect(() => {
+    const mesh = ref.current;
+    if (!mesh) return;
+    nodes.forEach((node, i) => {
+      const light = STANCE_LIGHT[node.stance];
+      mesh.setColorAt(i, tint.setRGB(LIMB_TINT.r * light, LIMB_TINT.g * light, LIMB_TINT.b * light));
+    });
+    if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
+    if (!Array.isArray(mesh.material)) mesh.material.needsUpdate = true;
+  }, [nodes, tint]);
+
+  useFrame(({ clock }) => {
+    const mesh = ref.current;
+    if (!mesh) return;
+    const t = clock.elapsedTime;
+    nodes.forEach((node, i) => {
+      UP.position.set(node.position[0], node.position[1], node.position[2]);
+      UP.quaternion.copy(camera.quaternion);
+      // Phase off the world's own x so the field never settles into one rhythm.
+      const breath = 1 + Math.sin(t * LIMB_BREATH_RATE + node.position[0]) * LIMB_BREATH_DEPTH;
+      UP.scale.setScalar(node.radius * 2 * LIMB_SCALE * breath);
+      UP.updateMatrix();
+      mesh.setMatrixAt(i, UP.matrix);
+    });
+    mesh.instanceMatrix.needsUpdate = true;
+  });
+
+  if (count === 0) return null;
+
+  return (
+    <instancedMesh
+      ref={ref}
+      name="planet-limbs"
+      args={[undefined, undefined, count]}
+      /**
+       * Same reason the bodies are not culled: one instanced mesh spans the whole
+       * disc, so it is either entirely on screen or entirely off it, and "entirely
+       * off" was being decided by a bounding sphere a grazing frustum could miss.
+       */
+      frustumCulled={false}
+      /** Behind everything that stands ON a world, and never a hit target. */
+      renderOrder={-1}
+      raycast={() => null}
+    >
+      <planeGeometry args={[1, 1]} />
+      {/*
+        DEPTH IS READ AND NEVER WRITTEN.
+        
+        Three's default depth function is LessEqual, and this quad is a billboard
+        through the same centre as the body it belongs to — so across the overlap
+        the two have equal depth and the limb passes, which is what puts the bright
+        part of the band ON the planet's edge rather than only beside it. Anything
+        genuinely nearer still occludes it, and writing depth would let a limb hide
+        the craft standing off the world behind it.
+      */}
+      <meshBasicMaterial
+        map={texture}
+        transparent
+        depthWrite={false}
+        blending={THREE.AdditiveBlending}
+        toneMapped={false}
+        opacity={0.62}
+      />
+    </instancedMesh>
   );
 }
 
@@ -226,6 +344,17 @@ function Highlights({
 const MARK_COLOUR = { self: '#8fd6ea', window: '#5ad39b', other: '#e8e3d6' } as const;
 
 /**
+ * Where the selection ring stands off, as a multiple of the world's radius.
+ *
+ * Named because something else now has to stay inside it. The atmosphere limb is
+ * on every world in the galaxy; the selection ring is on ONE. If the limb ever
+ * reached as far, the marker would be reading against a bright band rather than
+ * against space, and the one control that answers "which of these did I tap"
+ * would be the hardest thing on screen to find. Pinned in `planet-visuals.test`.
+ */
+export const SELECTION_RING = 1.34;
+
+/**
  * "This one is mine."
  *
  * The first version was a hoop at 1.45× the planet's radius: a big empty circle
@@ -282,14 +411,14 @@ function Ring({
       </mesh>
 
       {/* The chevron: a map pin, pointing at the thing it names. */}
-      <mesh position={[0, node.radius * 1.34, 0]} rotation={[0, 0, Math.PI]}>
+      <mesh position={[0, node.radius * SELECTION_RING, 0]} rotation={[0, 0, Math.PI]}>
         <coneGeometry args={[node.radius * 0.13, node.radius * 0.2, 3]} />
         <meshBasicMaterial color={colour} transparent opacity={0.95} depthWrite={false} />
       </mesh>
 
       {selected && (
         <mesh>
-          <ringGeometry args={[node.radius * 1.34, node.radius * 1.36, 64]} />
+          <ringGeometry args={[node.radius * SELECTION_RING, node.radius * (SELECTION_RING + 0.02), 64]} />
           <meshBasicMaterial color={colour} transparent opacity={0.55} depthWrite={false} />
         </mesh>
       )}

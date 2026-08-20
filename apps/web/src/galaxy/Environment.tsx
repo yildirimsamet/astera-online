@@ -108,6 +108,93 @@ export function softGlow(): THREE.Texture {
   return glowTexture;
 }
 
+/**
+ * THE LIGHT A WORLD SCATTERS AT ITS OWN EDGE. D53a.
+ *
+ * The planet renders are lit, shaded and finished, and they end at a hard alpha
+ * cut — so a world sat on black as a cut-out. Every other object in this scene has
+ * something happening at its boundary: a hull sheds a wake, a shield breathes, a
+ * rock catches the key light. The worlds, which are what the game is ABOUT, were
+ * the only things in the sky with nothing between them and space.
+ *
+ * What is missing physically is the limb: a thin shell of gas around a planet
+ * scatters light forward and sideways, so a lit world is BRIGHTEST right at its
+ * edge and that brightness bleeds a little way past the silhouette. It is the
+ * single detail that separates a photographed planet from a sphere with a texture
+ * on it, and it costs one quad.
+ *
+ * TWO GRADIENTS, AND BOTH ARE LOAD-BEARING.
+ *
+ *   THE RADIAL ONE puts the peak just INSIDE where the planet's own edge falls,
+ *   not outside it. A ring drawn entirely in the space around a world is a halo —
+ *   a marker, which this scene already uses for selection and must not be confused
+ *   with. Straddling the silhouette makes it read as the world's own atmosphere
+ *   catching the light.
+ *
+ *   THE LINEAR ONE puts more of it toward the upper left, because that is where
+ *   every one of the sixteen planet renders is lit from and where the scene's key
+ *   light is. A uniform ring reads as a decal; a limb that is bright on the lit
+ *   side and faint on the dark one reads as light. It survives every camera angle
+ *   for the same reason the art does: both are billboards, so "upper left" is a
+ *   fixed direction on screen and the two can never disagree.
+ */
+let limb: THREE.Texture | null = null;
+
+export function limbTexture(): THREE.Texture {
+  if (limb) return limb;
+  // 512 rather than 256: the band this draws is a tenth of the radius wide, and at
+  // half this resolution its falloff banded visibly on a world filling the screen.
+  const size = 512;
+  const canvas = document.createElement('canvas');
+  canvas.width = canvas.height = size;
+  const ctx = canvas.getContext('2d');
+  if (ctx) {
+    const c = size / 2;
+    /**
+     * A BAND, NOT A CLOUD, and this is the number that decides which.
+     *
+     * The planet's own edge sits at `1 / LIMB_SCALE` of this quad's half-width —
+     * 0.885 at the scale this is drawn with. The peak goes a hair inside it, so the
+     * brightest part lands ON the world's rim and only its tail reaches past the
+     * silhouette. Photographed first at a peak of 0.71 against a scale of 1.34,
+     * which put a grey cloud half a radius deep around every world and drowned the
+     * selection ring — the same failure, and the same fix, as `BLAST_SIZE`.
+     */
+    const g = ctx.createRadialGradient(c, c, 0, c, c, c);
+    g.addColorStop(0, 'rgba(255,255,255,0)');
+    g.addColorStop(0.815, 'rgba(255,255,255,0.02)');
+    g.addColorStop(0.852, 'rgba(255,255,255,0.7)');
+    g.addColorStop(0.878, 'rgba(255,255,255,0.4)');
+    g.addColorStop(0.935, 'rgba(255,255,255,0.11)');
+    g.addColorStop(1, 'rgba(255,255,255,0)');
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, size, size);
+
+    /**
+     * AND THEN NEARLY ALL OF IT IS TAKEN OFF THE DARK SIDE.
+     *
+     * `destination-in` multiplies the alpha already in the canvas by this one, so
+     * the band keeps its shape and only its brightness turns with the light.
+     *
+     * THE FALLOFF HAS TO BE BRUTAL, and the first two attempts were not. At
+     * 1 → 0.62 → 0.24 the band survived the whole way round and read as a grey
+     * gasket bolted to the planet, because a ring of even width is a manufactured
+     * object and an atmosphere is not. A real limb is a bright crescent on the lit
+     * side that fades to NOTHING before it reaches the terminator — so the dark
+     * side keeps two per cent, which is under the threshold of being a ring at all.
+     */
+    ctx.globalCompositeOperation = 'destination-in';
+    const lit = ctx.createLinearGradient(0, 0, size, size);
+    lit.addColorStop(0, 'rgba(0,0,0,1)');
+    lit.addColorStop(0.42, 'rgba(0,0,0,0.3)');
+    lit.addColorStop(1, 'rgba(0,0,0,0.015)');
+    ctx.fillStyle = lit;
+    ctx.fillRect(0, 0, size, size);
+  }
+  limb = new THREE.CanvasTexture(canvas);
+  return limb;
+}
+
 /* ── the core ───────────────────────────────────────────────── */
 
 /**
@@ -516,33 +603,104 @@ export function Dust() {
 
 /* ── the disc ───────────────────────────────────────────────── */
 
-/** Rings and spokes on the galactic plane, so the camera has something to orbit. */
+/**
+ * THE PLANE, WITHOUT THE GRAPH PAPER. D53a.
+ *
+ * A disc with nothing in it reads as a scatter plot, so the camera needs something
+ * to orbit and the eye needs to know which way is up. That much was right.
+ *
+ * What was wrong is that it was drawn as a DIAGRAM: five complete circles of even
+ * brightness and sixteen radial spokes running the full width, all at one opacity.
+ * Photographed against the nebula it is the single most technical-looking thing on
+ * screen — the one element that says "this is a chart of a galaxy" in a scene whose
+ * whole brief is that it is a photograph of one. A telescope image has no spokes.
+ *
+ * Two changes, and neither of them removes the orientation it is there for.
+ *
+ *   THE RINGS ARE ARCS NOW, not circles. Brightness varies around the circumference
+ *   on a slow harmonic with a different phase per ring, so each one fades in and out
+ *   of visibility as it goes round. A complete circle of constant weight is drawn; a
+ *   ring that is bright in places and gone in others is STRUCTURE, and the eye reads
+ *   the second as depth and the first as a grid.
+ *
+ *   THE SPOKES STOP BEFORE THEY ARRIVE. Sixteen became eight, and each fades from
+ *   the core outward and is gone well before the rim. They now do the one job they
+ *   were for — saying where the middle is — instead of drawing a wheel over the
+ *   playfield.
+ *
+ * Vertex colours rather than five materials: it is still one geometry and one draw
+ * call, which is what it always was.
+ */
+const DISC_RINGS = [0.2, 0.4, 0.6, 0.8, 1] as const;
+const DISC_SPOKES = 8;
+/** The plane's own colour. Desaturated blue, dark enough to sit under everything. */
+const DISC_TINT = { r: 0.141, g: 0.204, b: 0.310 };
+
 export function Disc() {
   const geometry = useMemo(() => {
     const points: number[] = [];
-    for (const fraction of [0.2, 0.4, 0.6, 0.8, 1]) {
+    const colours: number[] = [];
+
+    /** How bright this ring is at this angle. Three lobes, phased per ring. */
+    const arc = (angle: number, phase: number): number => {
+      const wave = 0.5 + 0.5 * Math.sin(angle * 3 + phase);
+      // Cubed, so the bright stretches are short and most of the ring is faint.
+      return 0.1 + 0.9 * wave ** 3;
+    };
+
+    const push = (x: number, z: number, weight: number): void => {
+      points.push(x, 0, z);
+      colours.push(DISC_TINT.r * weight, DISC_TINT.g * weight, DISC_TINT.b * weight);
+    };
+
+    DISC_RINGS.forEach((fraction, ring) => {
       const radius = DISC_RADIUS * fraction;
       const segments = 128;
+      const phase = ring * 1.7;
       for (let i = 0; i < segments; i++) {
         const a = (i / segments) * Math.PI * 2;
         const b = ((i + 1) / segments) * Math.PI * 2;
-        points.push(Math.cos(a) * radius, 0, Math.sin(a) * radius);
-        points.push(Math.cos(b) * radius, 0, Math.sin(b) * radius);
+        push(Math.cos(a) * radius, Math.sin(a) * radius, arc(a, phase));
+        push(Math.cos(b) * radius, Math.sin(b) * radius, arc(b, phase));
+      }
+    });
+
+    for (let i = 0; i < DISC_SPOKES; i++) {
+      const a = (i / DISC_SPOKES) * Math.PI * 2;
+      /**
+       * Drawn in steps rather than as one segment, because a line's vertex colours
+       * interpolate between its two ends and a spoke needs to fade on a curve —
+       * linearly it is still a visible line most of the way out.
+       */
+      const steps = 8;
+      const from = DISC_RADIUS * 0.16;
+      const to = DISC_RADIUS * 0.62;
+      for (let k = 0; k < steps; k++) {
+        const t0 = k / steps;
+        const t1 = (k + 1) / steps;
+        const r0 = from + (to - from) * t0;
+        const r1 = from + (to - from) * t1;
+        push(Math.cos(a) * r0, Math.sin(a) * r0, (1 - t0) ** 2);
+        push(Math.cos(a) * r1, Math.sin(a) * r1, (1 - t1) ** 2);
       }
     }
-    for (let i = 0; i < 16; i++) {
-      const a = (i / 16) * Math.PI * 2;
-      points.push(Math.cos(a) * DISC_RADIUS * 0.16, 0, Math.sin(a) * DISC_RADIUS * 0.16);
-      points.push(Math.cos(a) * DISC_RADIUS, 0, Math.sin(a) * DISC_RADIUS);
-    }
+
     const g = new THREE.BufferGeometry();
     g.setAttribute('position', new THREE.Float32BufferAttribute(points, 3));
+    g.setAttribute('color', new THREE.Float32BufferAttribute(colours, 3));
     return g;
   }, []);
 
   return (
     <lineSegments geometry={geometry}>
-      <lineBasicMaterial color="#24344f" transparent opacity={0.34} depthWrite={false} />
+      {/*
+        The PEAK of the arc, not its average. The old grid was a flat 0.34 the whole
+        way round; the vertex weights now run 0.1 to 1.0, so this has to be set so
+        the brightest stretch lands about where the old constant did — otherwise
+        "more structure" arrives as "twice as bright", which is what the first
+        photograph of this showed.
+      */}
+      <lineBasicMaterial vertexColors transparent opacity={0.4} depthWrite={false} />
     </lineSegments>
   );
 }

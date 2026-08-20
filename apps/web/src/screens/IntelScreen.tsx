@@ -6,6 +6,7 @@ import { instrumentArt } from '../ui/assets.js';
 import { BattleReports } from './BattleReports.jsx';
 import { Reading } from '../ui/Clarity.js';
 import { Note, Panel, Section } from '../ui/primitives.js';
+import { Unreachable, Waiting } from '../ui/kit/Surface.js';
 
 /**
  * WHAT YOU KNOW — and, more importantly, what you do not.
@@ -25,13 +26,19 @@ export function IntelScreen() {
   const galaxy = useGalaxy();
   const now = useNow(30_000);
 
-  if (intel.isPending || !intel.data) {
+  // Same distinction as the planet sheet: an error leaves `data` undefined but is
+  // not a load in progress, and a pulse over a dead request is the interface lying.
+  if (intel.isError) {
     return (
-      <div className="px-4 pt-16 text-center">
-        <p className="legend animate-pulse">Collecting</p>
-      </div>
+      <Unreachable
+        what="what you know"
+        onRetry={() => {
+          void intel.refetch();
+        }}
+      />
     );
   }
+  if (!intel.data) return <Waiting>Collecting</Waiting>;
 
   const telescope = planet.data?.instruments.TELESCOPE ?? 0;
   const radar = planet.data?.instruments.RADAR ?? 0;

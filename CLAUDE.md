@@ -170,6 +170,8 @@ Each was paid for in iteration. `docs/decisions.md` holds the evidence.
 | **Everything that moves reads `serverNow()`, never `Date.now()`** | The disc is drawn by comparing server timestamps against "now". A drifted phone drew every fleet at the wrong point of its leg, silently, and differently from everyone else's (D52) |
 | `traffic`, `mining`, `pending` and `galaxy` need a timer as well as events | The stream fires only for what happens TO YOU — and a neighbour's world growing, re-arming or letting its fleet out is never about you (D51) |
 | **Nothing is ever drawn inside a world, whoever owns it** | A leg stands off at BOTH ends (D44/D51); a contact has no destination to stand off from, so `clearOfWorlds` puts it on the surface instead |
+| **A world's atmosphere limb stays inside the selection ring** | Every world has a limb and exactly one has a ring. A limb that reached as far would make the marker read against a bright band instead of against space (D53a) |
+| **A failed read is never drawn as a slow one** | `isPending` goes false on error while `data` stays undefined, so `isPending \|\| !data` pulses forever at a request that gave up — and on the reports list it announced an empty season (D53a) |
 | The cover comes off when the disc is BUILT, not when the bytes land | Models still have to parse, compile and upload; `FirstFrame` reports the first real frame |
 | Nothing on the way in blocks the player | A loading screen is an OVERLAY over a page that is already loading, never a gate in front of one |
 | Every card carries a two-or-three-word tag, separate from its role sentence | The role argues a decision; the tag answers "what IS this" for someone scanning fourteen cards |
@@ -303,8 +305,8 @@ wreckage, engagement, notifications and the radar rebuild (D34–D50); the live 
 end of waiting (D51–D53).
 
 ```
-pnpm verify  →  0 type errors · 0 lint errors · 1,265 tests
-                rules 221 · sim 47 · server 462 · web 535
+pnpm verify  →  0 type errors · 0 lint errors · 1,273 tests
+                rules 221 · sim 47 · server 462 · web 543
 ```
 
 **Two season-gate assertions are RED, and they MOVED at D52a:** `ARR` reads 0.298 on seed
@@ -331,6 +333,7 @@ seed. `ARR` was always the next thing to re-derive; it is now the only thing.
 | Asteroids · wreckage | A mining economy with exact interception; public decaying debris fields. A salvage run is its own contact kind (D51) |
 | Engagement | A raid holds in orbit for ten seconds and bombards, **and the whole galaxy watches it** — same hold, same volley, same mission id on every screen (D52), at the display's real frame rate (D53) |
 | Live channel | Two topics on one SSE socket: what happened to YOU, and what happened in your GALAXY. A stranger's launch reaches every screen in under a second; the polls are a sixty-second net under it, and `/health` says whether the channel is up (D53) |
+| Look | Nebula, a power-law starfield with diffraction spikes, meteors, dust, bloom. Worlds carry an atmosphere limb — warm on the lit side, gone on the dark one — and the galactic plane is arcs and fading spokes rather than graph paper (D53a) |
 | Web client | The galaxy is the only screen. Focus anything and a rail states what you know and how you know it. Everything animated runs on `serverNow()`, so every player watches the same instant (D52). One tap, one round trip — and the deterministic spends are predicted and reconciled, so the screen agrees with the tap immediately (D53) |
 | Season lifecycle | `season_end` event kind exists; **no handler** |
 
@@ -366,8 +369,6 @@ never been lived with.
 - `request_log` exists but idempotency keys are not wired into the launch path.
 - Mining and salvage launches still cost two round trips. Every other mutation answers with the
   planet view (D53); making these one means returning `mining` and `pending` as well.
-- Worlds are the only completely still object in a scene where everything else breathes. The
-  atmosphere half of D53's instruction is a separate pass.
 - The web client is not served in production — dev runs behind the Vite proxy.
 - `PROVISIONAL` constants: vault floor, disruption duration, shield curve, season length,
   asteroid parameters. Settled by playtest, not by argument. Marked in `constants.ts`.
