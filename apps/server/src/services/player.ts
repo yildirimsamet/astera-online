@@ -1,23 +1,40 @@
 import { eq } from 'drizzle-orm';
-import { START, pickSpawnSlot } from '@astera/rules';
+import { BUILDING_IDS, START, START_BUILDINGS, pickSpawnSlot } from '@astera/rules';
 import type { Db } from '../db/client.js';
 import type { Clock } from '../clock.js';
 import { accounts, buildings, planets, players, seasons, shards } from '../db/schema.js';
 import { galaxyOf, occupiedSlots } from './season.js';
 import { GameError, recomputeWealth } from './planet.js';
 
-const STARTING_BUILDINGS = [
-  { type: 'CORE', level: 1 },
-  { type: 'REFINERY', level: 1 },
-  { type: 'EXTRACTOR', level: 1 },
-  { type: 'VAULT', level: 0 },
-  { type: 'SHIPYARD', level: 0 },
-];
+/**
+ * The rows a fresh planet is written with, from the one table that decides it.
+ *
+ * `START_BUILDINGS` is in the rules package because the rehearsal shows a visitor
+ * this same planet before it exists (D56), and a client that starts a level apart
+ * from the server would show a first upgrade the claim then refuses.
+ */
+const STARTING_BUILDINGS = BUILDING_IDS.map((type) => ({
+  type,
+  level: START_BUILDINGS[type],
+}));
 
 const NAMES = [
   'Kestrel', 'Vantage', 'Halcyon', 'Tessellate', 'Orrery', 'Bellwether',
   'Cinder', 'Lodestar', 'Quillon', 'Marrow', 'Vesper', 'Thistle',
 ];
+
+/**
+ * What the world in a given slot is called.
+ *
+ * EXPORTED BECAUSE TWO PLACES NAME IT NOW. `joinSeason` names it when the row is
+ * written, and `/api/preview` names it before the row exists — the rehearsal shows
+ * a visitor the world they are about to be given, by name, and a preview that says
+ * `Vesper-31` for a planet that turns out to be `Marrow-31` is the interface
+ * contradicting itself at the one moment the player is deciding to trust it.
+ * One function, so the two cannot drift.
+ */
+export const planetNameFor = (slotIndex: number): string =>
+  `${NAMES[slotIndex % NAMES.length] ?? 'World'}-${String(slotIndex)}`;
 
 export interface JoinResult {
   playerId: string;
@@ -153,7 +170,7 @@ export async function joinSeason(
 
         if (!player) throw new PlayerExists();
 
-        const planetName = `${NAMES[slot.index % NAMES.length]}-${slot.index}`;
+        const planetName = planetNameFor(slot.index);
         const [planet] = await tx
           .insert(planets)
           .values({

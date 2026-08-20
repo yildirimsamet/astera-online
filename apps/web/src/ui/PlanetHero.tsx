@@ -1,5 +1,7 @@
 import { fleetCount } from '@astera/rules';
+import { useTranslation } from 'react-i18next';
 import type { PlanetView } from '../api/schemas.js';
+import { satelliteLabel } from '../i18n/names.js';
 import { compact, full } from '../lib/format.js';
 import { powerOf } from '../lib/gains.js';
 import { countdown, useNow } from '../lib/time.js';
@@ -29,6 +31,7 @@ export function PlanetHero({
    */
   compact?: boolean;
 }) {
+  const { t } = useTranslation();
   const now = useNow(1000);
   const orbitals = planet.orbit;
   const disruptedFor = planet.planet.disruptedUntil
@@ -80,8 +83,8 @@ export function PlanetHero({
                 <img
                   key={type}
                   src={SATELLITE_ART[type]}
-                  alt={type.toLowerCase()}
-                  title={type.toLowerCase()}
+                  alt={satelliteLabel(type)}
+                  title={satelliteLabel(type)}
                   className="absolute left-1/2 top-1/2 size-8 object-contain drop-shadow-[0_0_6px_rgba(111,211,224,0.35)]"
                   style={{
                     transform: `rotate(${String(angle)}deg) translate(66px) rotate(${String(-angle)}deg) translate(-50%, -50%)`,
@@ -99,7 +102,7 @@ export function PlanetHero({
             {planet.planet.name}
           </h1>
           <div className="frame mt-2 px-3 py-2">
-            <p className="legend">Power</p>
+            <p className="legend">{t('planetHero.power')}</p>
             <p className="readout mt-1 text-[24px] text-bone">{full(powerOf(planet))}</p>
           </div>
           <div className="mt-2 flex gap-3">
@@ -127,14 +130,15 @@ export function PlanetHero({
  * feel a season of investment.
  */
 function Readouts({ planet }: { planet: PlanetView }) {
+  const { t } = useTranslation();
   return (
     <div className="mt-2 flex items-stretch gap-2">
       <div className="frame flex-1 px-3.5 py-2.5">
-        <p className="legend">Power</p>
+        <p className="legend">{t('planetHero.power')}</p>
         <p className="readout mt-1.5 text-[26px] text-bone">{full(powerOf(planet))}</p>
       </div>
       <div className="frame w-[142px] px-3.5 py-2.5">
-        <p className="legend">Per hour</p>
+        <p className="legend">{t('planetHero.perHour')}</p>
         <div className="mt-1.5 space-y-1">
           <Rate art={RESOURCE_ART.alloy} value={planet.planet.alloyPerHour} tone="text-alloy" />
           <Rate
@@ -149,9 +153,10 @@ function Readouts({ planet }: { planet: PlanetView }) {
 }
 
 function Disrupted({ ms }: { ms: number }) {
+  const { t } = useTranslation();
   return (
     <p className="num mt-2.5 rounded border border-threat/40 bg-threat/10 px-3 py-2 text-center text-[12px] text-[#ff9d8f]">
-      Production stopped · raided · {countdown(ms)}
+      {t('planetHero.disrupted', { countdown: countdown(ms) })}
     </p>
   );
 }
@@ -167,24 +172,41 @@ function Verdicts({
   home: number;
   exposed: number;
 }) {
+  const { t } = useTranslation();
   return (
     <div className="mt-2 grid grid-cols-3 gap-2">
       <Verdict
-        label="Defence"
-        value={ground === 0 ? 'None' : ground < 5 ? 'Thin' : 'Held'}
-        detail={ground === 0 ? `${String(home)} ships only` : `${String(ground)} on the ground`}
+        label={t('planetHero.defence')}
+        value={
+          ground === 0
+            ? t('planetHero.defenceNone')
+            : ground < 5
+              ? t('planetHero.defenceThin')
+              : t('planetHero.defenceHeld')
+        }
+        detail={
+          ground === 0
+            ? t('planetHero.defenceShipsOnly', { count: home })
+            : t('planetHero.defenceOnGround', { count: ground })
+        }
         tone={ground === 0 ? 'bad' : ground < 5 ? 'warn' : 'good'}
       />
       <Verdict
-        label="Shield"
-        value={planet.planet.shield > 0 ? compact(planet.planet.shield) : 'None'}
-        detail={planet.planet.shield > 0 ? 'absorbs first' : 'no aegis'}
+        label={t('planetHero.shield')}
+        value={
+          planet.planet.shield > 0 ? compact(planet.planet.shield) : t('planetHero.shieldNone')
+        }
+        detail={
+          planet.planet.shield > 0
+            ? t('planetHero.shieldAbsorbs')
+            : t('planetHero.shieldNoAegis')
+        }
         tone={planet.planet.shield > 0 ? 'good' : 'neutral'}
       />
       <Verdict
-        label="At risk"
+        label={t('planetHero.atRisk')}
         value={compact(exposed)}
-        detail={`${compact(planet.planet.vaultFloor)} safe`}
+        detail={t('planetHero.atRiskSafe', { amount: compact(planet.planet.vaultFloor) })}
         tone={exposed > planet.planet.vaultFloor * 3 ? 'warn' : 'neutral'}
       />
     </div>
@@ -192,11 +214,12 @@ function Verdicts({
 }
 
 function Rate({ art, value, tone }: { art: string; value: number; tone: string }) {
+  const { t } = useTranslation();
   return (
     <p className={`num flex items-center gap-1.5 text-[14px] ${tone}`}>
       <img src={art} alt="" aria-hidden className="size-4 object-contain" />
       {compact(value)}
-      <span className="text-[10px] text-faint">/h</span>
+      <span className="text-[10px] text-faint">{t('planetHero.perHourSuffix')}</span>
     </p>
   );
 }

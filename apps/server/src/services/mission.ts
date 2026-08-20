@@ -76,7 +76,7 @@ export async function launchAttack(
   // so checking it first would report a malformed request as an empty one.
   for (const [hull, n] of Object.entries(requested) as [HullId, number][]) {
     if (!Number.isInteger(n) || n < 0) {
-      throw new GameError('BAD_FLEET', `Bad ship count for ${hull}`);
+      throw new GameError('BAD_FLEET', `Bad ship count for ${hull}`, 400, { hull });
     }
   }
   if (fleetCount(requested) === 0) {
@@ -87,7 +87,11 @@ export async function launchAttack(
     const origin = await loadLocked(tx, originPlanetId, clock);
 
     for (const [hull, n] of Object.entries(requested) as [HullId, number][]) {
-      if (HULLS[hull].ground) throw new GameError('GROUND_UNIT', `${HULLS[hull].name}s cannot travel`);
+      if (HULLS[hull].ground) {
+        // The ID, not the English name: the client holds its own name for every
+        // hull and would otherwise print "Bastion" on a Turkish screen.
+        throw new GameError('GROUND_UNIT', `${HULLS[hull].name}s cannot travel`, 400, { hull });
+      }
       // Belt and braces: the route schema cannot name a Prospector either. D19
       // keeps mining craft out of the fog layer, and the cheapest way to be sure is
       // for every path into an attack fleet to refuse them independently.
@@ -95,7 +99,7 @@ export async function launchAttack(
         throw new GameError('NOT_A_WARSHIP', 'Prospectors mine; they do not raid');
       }
       if ((origin.homeFleet[hull] ?? 0) < n) {
-        throw new GameError('NOT_ENOUGH_SHIPS', `Not enough ${hull} at home`);
+        throw new GameError('NOT_ENOUGH_SHIPS', `Not enough ${hull} at home`, 400, { hull });
       }
     }
     if (fleetSpeed(requested) <= 0) {

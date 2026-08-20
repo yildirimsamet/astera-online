@@ -197,7 +197,9 @@ export async function buildUnits(
   return withPlanetLock(db, planetId, clock, async (tx, planet) => {
     const spec = HULLS[hull];
     if (planet.buildings.SHIPYARD < spec.minShipyard) {
-      throw new GameError('SHIPYARD_TOO_LOW', `Needs Shipyard L${spec.minShipyard}`);
+      throw new GameError('SHIPYARD_TOO_LOW', `Needs Shipyard L${spec.minShipyard}`, 400, {
+        level: spec.minShipyard,
+      });
     }
     /**
      * A DRILL IS A CRAFT, AND THE SHIPYARD BUILDS CRAFT. D25.
@@ -228,6 +230,10 @@ export async function buildUnits(
           have >= PROSPECTOR.max
             ? `You already have ${String(PROSPECTOR.max)} Prospectors. That is the limit.`
             : `You may hold ${String(PROSPECTOR.max)} Prospectors, and you have ${String(have)}.`,
+          400,
+          // `context` picks the variant client-side, the same way it picks the
+          // wording here. i18next reads it off the params like any other value.
+          { max: PROSPECTOR.max, have, ...(have >= PROSPECTOR.max ? { context: 'atLimit' } : {}) },
         );
       }
     }
@@ -294,6 +300,10 @@ export async function raiseInstrument(
       throw new GameError(
         'AT_MAX_LEVEL',
         `Your ${type === 'TELESCOPE' ? 'Telescope' : 'Radar'} is at its highest level. There is nothing further to gain.`,
+        400,
+        // The instrument is named by ID, not by its English label: the client has
+        // its own name for it and would otherwise print "Telescope" in Turkish.
+        { instrument: type },
       );
     }
 

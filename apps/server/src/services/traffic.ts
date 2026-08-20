@@ -256,11 +256,17 @@ const ownsLeg = (m: typeof missions.$inferSelect, planetId: string): boolean =>
  * payload at full fidelity, complete with their route, and a second anonymous copy
  * beside the real one would be both confusing and a free calibration sample. What
  * counts as "own" is `ownsLeg`, and the distinction matters — see above.
+ *
+ * `ownPlanetId` IS NULL FOR A CALLER WHO OWNS NOTHING. D56: `/api/preview` shows a
+ * visitor the disc before they have an account, so there is no leg of theirs to
+ * leave out and every contact is somebody else's by definition. Expressed as null
+ * rather than as an id that matches no row, because the id has to reach a `uuid`
+ * column — a sentinel string is a 500 from the driver, which is how this was found.
  */
 export async function galaxyTraffic(
   db: Db,
   seasonId: string,
-  ownPlanetId: string,
+  ownPlanetId: string | null,
   now: Date,
 ): Promise<Contact[]> {
   const [missionRows, miningRows] = await Promise.all([
@@ -275,7 +281,7 @@ export async function galaxyTraffic(
         and(
           eq(miningRuns.seasonId, seasonId),
           ne(miningRuns.status, 'done'),
-          ne(miningRuns.planetId, ownPlanetId),
+          ...(ownPlanetId === null ? [] : [ne(miningRuns.planetId, ownPlanetId)]),
         ),
       ),
   ]);
@@ -299,7 +305,7 @@ export async function galaxyTraffic(
   const out: Contact[] = [];
 
   for (const { mission } of missionRows) {
-    if (ownsLeg(mission, ownPlanetId)) continue;
+    if (ownPlanetId !== null && ownsLeg(mission, ownPlanetId)) continue;
     const origin = positions.get(mission.originPlanetId);
     const target = positions.get(mission.targetPlanetId);
     if (!origin || !target) continue;

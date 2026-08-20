@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { collectorCap } from '@astera/rules';
 import { useCollect, usePlanet, useSeason } from '../api/queries.js';
 import { compact, full } from '../lib/format.js';
@@ -36,6 +37,7 @@ export function StatusBar({
   commander: string;
   onOpen: (panel: Panel) => void;
 }) {
+  const { t } = useTranslation();
   const { data, dataUpdatedAt } = usePlanet();
   const season = useSeason();
   const held = useProjected(data?.planet, dataUpdatedAt);
@@ -50,14 +52,14 @@ export function StatusBar({
     <header className="relative shrink-0 border-b border-line bg-gradient-to-b from-[#0b1120] to-void px-3 pb-2 pt-[calc(10px+env(safe-area-inset-top))]">
       <div className="flex items-end gap-3">
         <Stock
-          label="Alloy"
+          label={t('statusBar.alloyLabel')}
           value={held.alloy}
           cap={data.planet.alloyCap}
           rate={data.planet.alloyPerHour}
           tone="alloy"
         />
         <Stock
-          label="Crystal"
+          label={t('statusBar.crystalLabel')}
           value={held.crystal}
           cap={data.planet.crystalCap}
           rate={data.planet.crystalPerHour}
@@ -92,7 +94,7 @@ export function StatusBar({
            */}
           <button
             type="button"
-            aria-label={`Commander ${commander} — season, galaxy and sign out`}
+            aria-label={t('statusBar.commanderHint', { name: commander })}
             onClick={() => {
               haptic('tap');
               onOpen('commander');
@@ -110,7 +112,7 @@ export function StatusBar({
               <ChevronIcon className="size-3 shrink-0 text-faint" />
             </span>
             <span className="readout text-[12px] leading-tight text-dim">
-              {hoursLeft === null ? '—' : duration(hoursLeft * 60)}
+              {hoursLeft === null ? t('statusBar.seasonUnknown') : duration(hoursLeft * 60)}
             </span>
           </button>
           {/*
@@ -127,7 +129,7 @@ export function StatusBar({
           */}
           <button
             type="button"
-            aria-label="Intel — what you know"
+            aria-label={t('statusBar.intelHint')}
             onClick={() => {
               haptic('tap');
               onOpen('intel');
@@ -160,15 +162,16 @@ export function StatusBar({
  * the two states the player cares about. The number is there for a screen reader.
  */
 export function Bays({ flight }: { flight: { used: number; total: number } }) {
+  const { t } = useTranslation();
   if (flight.total <= 0) return null;
   const free = Math.max(0, flight.total - flight.used);
   return (
     <div
       className="flex shrink-0 flex-col justify-center gap-1 pl-1 pr-0.5 text-right"
       role="img"
-      aria-label={`${String(flight.used)} of ${String(flight.total)} flight bays in use`}
+      aria-label={t('statusBar.bays.hint', { used: flight.used, total: flight.total })}
     >
-      <p className="legend">In flight</p>
+      <p className="legend">{t('statusBar.bays.label')}</p>
       <div className="flex items-center justify-end gap-[3px]" aria-hidden>
         {Array.from({ length: flight.total }, (_, i) => (
           <span
@@ -181,7 +184,7 @@ export function Bays({ flight }: { flight: { used: number; total: number } }) {
           />
         ))}
       </div>
-      <p className="sr-only">{free} free</p>
+      <p className="sr-only">{t('statusBar.bays.free', { count: free })}</p>
     </div>
   );
 }
@@ -226,6 +229,7 @@ function Works({
   held: Projected;
   onOpen: (panel: Panel) => void;
 }) {
+  const { t } = useTranslation();
   const collect = useCollect();
   const say = useToast();
 
@@ -249,7 +253,9 @@ function Works({
         type="button"
         disabled={collect.isPending || !something}
         aria-label={
-          full ? 'Works are full — collect now' : `Collect ${String(Math.round(waiting))}`
+          full
+            ? t('statusBar.works.hintFull')
+            : t('statusBar.works.hintCollect', { amount: Math.round(waiting) })
         }
         onClick={() => {
           haptic('commit');
@@ -258,7 +264,12 @@ function Works({
               const moved = Math.round(r.moved.alloy + r.moved.crystal);
               const held = Math.round(r.blocked.alloy + r.blocked.crystal);
               say(
-                held > 0 ? `Collected ${compact(moved)} · ${compact(held)} would not fit` : `Collected ${compact(moved)}`,
+                held > 0
+                  ? t('statusBar.works.collectedPartly', {
+                      moved: compact(moved),
+                      held: compact(held),
+                    })
+                  : t('statusBar.works.collected', { amount: compact(moved) }),
                 held > 0 ? 'error' : undefined,
               );
             },
@@ -279,14 +290,16 @@ function Works({
         </span>
 
         <span className="works-body">
-          <span className="legend">{full ? 'Works full' : 'Works'}</span>
+          <span className="legend">
+            {full ? t('statusBar.works.labelFull') : t('statusBar.works.label')}
+          </span>
           <span className={`num works-amount ${full ? 'text-alloy' : 'text-bone'}`}>
             {compact(waiting)}
           </span>
         </span>
 
         <span className={`works-action ${full ? 'text-alloy' : 'text-crystal'}`}>
-          {something ? 'Collect' : '—'}
+          {something ? t('statusBar.works.collect') : t('statusBar.works.idle')}
         </span>
       </button>
 
@@ -298,7 +311,7 @@ function Works({
           }}
           className="shrink-0 self-center text-[10px] leading-tight text-threat underline-offset-2 hover:underline"
         >
-          Store full
+          {t('statusBar.works.storeFull')}
         </button>
       )}
 
@@ -364,6 +377,7 @@ function Stock({
   rate: number;
   tone: 'alloy' | 'crystal';
 }) {
+  const { t } = useTranslation();
   const atCap = value >= cap - 0.5;
   const near = !atCap && rate > 0 && value > cap * 0.8;
   const colour = tone === 'alloy' ? 'text-alloy' : 'text-crystal';
@@ -407,7 +421,7 @@ function Stock({
             atCap ? 'text-threat' : near ? 'text-alloy' : 'text-faint'
           }`}
         >
-          {atCap ? 'FULL' : `${compact(cap - value)} free`}
+          {atCap ? t('statusBar.storeFull') : t('statusBar.storeFree', { amount: compact(cap - value) })}
         </span>
       </div>
     </div>

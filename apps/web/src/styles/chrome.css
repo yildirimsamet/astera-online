@@ -128,6 +128,133 @@
    * inset by one pixel. `isolation` plus `z-index: -1` keeps that face above the
    * element's own background but below the content.
    */
+  /**
+   * THE FRONT DOOR'S ONE CONTROL. D56.
+   *
+   * Everything else in this interface is deliberately quiet hardware: a slab is a
+   * surface you press, and it does not perform. This one does, and the reason is
+   * that it is the only control on a page a stranger meets before they know what
+   * this game is — it has to read as a way IN to somewhere, not as a form's submit.
+   *
+   * Built from the same cut plate as the rest so it belongs to the same machine,
+   * with three things layered on top and NOTHING that moves the layout:
+   *
+   *   · A SLOW ORBIT of light behind the face, on `::before`. A conic gradient
+   *     turning once every twelve seconds — the same figure the disc's own worlds
+   *     move at, which is why it reads as distance rather than as a spinner.
+   *   · A GLINT that crosses the face every few seconds, on `::after`. Short,
+   *     wide and low-contrast: a highlight travelling over metal, not a shine
+   *     effect.
+   *   · A BREATHING GLOW outside the edge, on the element itself.
+   *
+   * `prefers-reduced-motion` stops all three and leaves the plate lit, because the
+   * control has to be legible as the loud one whether or not it is allowed to move.
+   */
+  .enter {
+    --cut: var(--cut-md);
+    position: relative;
+    isolation: isolate;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.75rem;
+    width: 100%;
+    min-height: 68px;
+    padding: 0 1.5rem;
+    border: 0;
+    border-radius: 0;
+    color: var(--color-bone);
+    background: color-mix(in srgb, var(--color-crystal) 60%, transparent);
+    clip-path: polygon(
+      var(--cut) 0,
+      100% 0,
+      100% calc(100% - var(--cut)),
+      calc(100% - var(--cut)) 100%,
+      0 100%,
+      0 var(--cut)
+    );
+    animation: enter-breathe 4.5s ease-in-out infinite;
+  }
+
+  /* The face, inset by the edge line, exactly as `.plate-cut` does it. */
+  .enter::before {
+    content: '';
+    position: absolute;
+    inset: 1px;
+    z-index: -2;
+    clip-path: polygon(
+      calc(var(--cut) - 1px) 0,
+      100% 0,
+      100% calc(100% - var(--cut) + 1px),
+      calc(100% - var(--cut) + 1px) 100%,
+      0 100%,
+      0 calc(var(--cut) - 1px)
+    );
+    background:
+      radial-gradient(120% 180% at 50% 120%, color-mix(in srgb, var(--color-crystal) 34%, transparent), transparent 70%),
+      linear-gradient(180deg, #16294a 0%, #0a1428 55%, #070f1e 100%);
+  }
+
+  /* The glint. One pass, then a long wait — a highlight, not a shimmer. */
+  .enter::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    background: linear-gradient(
+      104deg,
+      transparent 34%,
+      rgb(255 255 255 / 16%) 46%,
+      rgb(190 225 255 / 22%) 50%,
+      transparent 64%
+    );
+    transform: translateX(-130%);
+    animation: enter-glint 5.5s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+  }
+
+  .enter:active {
+    transform: translateY(1px);
+    animation: none;
+  }
+
+  /**
+   * The orbit of light behind the face.
+   *
+   * A child rather than a third pseudo-element, because the plate has only two and
+   * both are spoken for by the material.
+   */
+  .enter-orbit {
+    position: absolute;
+    inset: -60%;
+    z-index: -1;
+    opacity: 0.55;
+    background: conic-gradient(
+      from 0deg,
+      transparent 0 52%,
+      color-mix(in srgb, var(--color-crystal) 70%, transparent) 68%,
+      color-mix(in srgb, var(--color-crystal-glow) 80%, transparent) 74%,
+      transparent 88%
+    );
+    /* Blurred, so it reads as a light source turning behind the plate rather than
+       as a wedge with an edge. Without it the conic gradient's boundary is a hard
+       diagonal across the face. */
+    filter: blur(18px);
+    animation: enter-orbit 12s linear infinite;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .enter,
+    .enter::after,
+    .enter-orbit {
+      animation: none;
+    }
+    .enter::after {
+      transform: none;
+      opacity: 0.25;
+    }
+  }
+
   .plate-cut {
     --cut: var(--cut-md);
     position: relative;
@@ -772,6 +899,20 @@
   font-size: 12px;
   line-height: 1;
   color: var(--color-alloy);
+}
+
+@keyframes enter-orbit {
+  to { transform: rotate(1turn); }
+}
+
+@keyframes enter-glint {
+  0%, 62% { transform: translateX(-130%); }
+  100% { transform: translateX(130%); }
+}
+
+@keyframes enter-breathe {
+  0%, 100% { box-shadow: 0 12px 44px -16px color-mix(in srgb, var(--color-crystal) 55%, transparent); }
+  50% { box-shadow: 0 14px 60px -14px color-mix(in srgb, var(--color-crystal) 85%, transparent); }
 }
 
 @keyframes claim-bob {

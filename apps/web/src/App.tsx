@@ -1,8 +1,10 @@
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useSession } from './session/useSession.js';
 import { useEventStream } from './session/useEventStream.js';
 import { useLiveAlerts } from './session/useLiveAlerts.js';
 import { LandingScreen } from './screens/LandingScreen.jsx';
+import { Rehearsal } from './onboarding/Rehearsal.jsx';
 import { ServersScreen } from './screens/ServersScreen.jsx';
 import { GalaxyView, type Panel } from './screens/GalaxyView.jsx';
 import { PendingStrip } from './shell/PendingStrip.js';
@@ -41,7 +43,27 @@ import { StatusBar } from './shell/StatusBar.js';
  * of Design Law #1 than a screen shown once and dismissed.
  */
 export function App() {
-  const { session, authenticate, chooseServer, signOut, retry } = useSession();
+  /**
+   * THE WHOLE TREE SUBSCRIBES TO THE LANGUAGE HERE, AND ONLY HERE.
+   *
+   * `useTranslation` re-renders its component when `languageChanged` fires, and
+   * nothing below this is memoised — so one subscription at the root repaints
+   * every screen at once. That is what lets `format.ts`, `time.ts` and the
+   * `i18n/names.ts` lookups stay plain functions instead of hooks: they read the
+   * live instance, and the render that reads them is already happening.
+   */
+  const { t } = useTranslation();
+  const {
+    session,
+    authenticate,
+    chooseServer,
+    signOut,
+    retry,
+    rehearse,
+    leaveRehearsal,
+    signInInstead,
+    claim,
+  } = useSession();
   const ready = session.phase === 'ready';
 
   useEventStream(ready);
@@ -58,14 +80,34 @@ export function App() {
    * refuses.
    */
   if (session.phase === 'starting') {
-    return <LoadingScreen caption="Making contact" />;
+    return <LoadingScreen caption={t('loading.contact')} />;
   }
 
   if (session.phase === 'landing') {
     return (
       <LandingScreen
         onAuthenticate={authenticate}
+        onBegin={rehearse}
+        {...(session.open === undefined ? {} : { open: session.open })}
         {...(session.error === undefined ? {} : { error: session.error })}
+      />
+    );
+  }
+
+  /**
+   * THE REHEARSAL OWNS THE WHOLE SCREEN, INCLUDING ITS OWN API AND CACHE. D56.
+   *
+   * It is not wrapped in the app's providers on purpose: everything it holds
+   * describes a planet that does not exist, and the session that follows must
+   * never read a byte of it.
+   */
+  if (session.phase === 'rehearsing') {
+    return (
+      <Rehearsal
+        preview={session.preview}
+        onClaim={claim}
+        onSignIn={signInInstead}
+        onLeave={leaveRehearsal}
       />
     );
   }
@@ -88,10 +130,10 @@ export function App() {
   if (session.phase === 'blocked') {
     return (
       <main className="flex min-h-dvh flex-col items-center justify-center gap-4 px-8 text-center">
-        <p className="legend">Not right now</p>
+        <p className="legend">{t('app.blockedTitle')}</p>
         <p className="text-[15px] text-dim">{session.message}</p>
         <button type="button" className="btn" onClick={retry}>
-          Try again
+          {t('app.blockedRetry')}
         </button>
       </main>
     );

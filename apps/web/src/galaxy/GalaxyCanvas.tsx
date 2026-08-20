@@ -74,6 +74,21 @@ const LEASH = DISC_RADIUS * 1.15;
 const EASE = 0.5;
 
 /**
+ * How close the camera comes when it flies home from the wide opening. D56.
+ *
+ * MUCH CLOSER THAN THE ORDINARY FRAMING, on the owner's instruction, and the
+ * reason is what the flight is FOR. A returning commander opens at about 26 units
+ * because they want their neighbourhood: their world and everything they might
+ * send a fleet at. A stranger pressing "show me my world" is being answered, and
+ * an answer that stops a disc-width away shows them a dot among dots.
+ *
+ * Well clear of `minDistance`, so the rig lands rather than being caught by a
+ * clamp — and the player can pull straight back out, because the approach is
+ * one-way (see `pullTo`) and never pushes anybody off a view they went and got.
+ */
+const HOME_DISTANCE = 7;
+
+/**
  * World units from the camera to a focused craft or rock.
  *
  * Close enough that a 0.3-unit hull fills a readable part of the frame, far enough
@@ -105,6 +120,28 @@ export interface GalaxyCanvasProps {
   /** Bumped by the HOME button to re-centre on the player's own world. */
   homeSignal: number;
   /**
+   * Open on the whole disc, with nothing selected. D56.
+   *
+   * For the onboarding rehearsal only. See `Rig` for why the ordinary first frame
+   * snaps to the player's own world and why that is the wrong opening for somebody
+   * who has never seen this galaxy.
+   */
+  openWide?: boolean;
+  /**
+   * Which worlds may be selected at all. D56.
+   *
+   * Absent means every world, which is the game. The rehearsal narrows it beat by
+   * beat — first to the visitor's own world, then to everybody else's, then to the
+   * ones inside the tier band — so that a step cannot be completed by tapping the
+   * wrong thing and leaving the instruction on screen contradicting the world.
+   *
+   * FILTERED AT THE TAP ROUTER RATHER THAN BY MASKING THE SCREEN. A world is a
+   * moving point inside a canvas the player can orbit; a hole cut in an overlay
+   * drifts off it the moment the camera does. This cannot drift — it is the same
+   * decision the router already makes, with one more question asked of it.
+   */
+  allowFocus?: (planetId: string) => boolean;
+  /**
    * Called once, after the first frame that has every model in it is on screen.
    *
    * The cover over this canvas cannot be lifted on "the request came back": the
@@ -127,6 +164,8 @@ export function GalaxyCanvas({
   focus,
   onFocus,
   homeSignal,
+  openWide = false,
+  allowFocus,
   onReady,
 }: GalaxyCanvasProps) {
   const nodes = useMemo(() => planetNodes(planets), [planets]);
@@ -259,7 +298,10 @@ export function GalaxyCanvas({
          * cleared the very selection that tap had just made, at random, depending
          * on which state update React flushed last.
          */
-        if (wasTap() && wasMiss()) onFocus(null);
+        // A rehearsal that is holding a world for a beat must not have it cleared
+        // by a tap on empty space: the instruction would still be on screen with
+        // nothing selected behind it.
+        if (wasTap() && wasMiss() && !allowFocus) onFocus(null);
       }}
       style={{ position: 'absolute', inset: 0, touchAction: 'none' }}
     >
@@ -311,6 +353,9 @@ export function GalaxyCanvas({
           nodes={nodes}
           selectedId={selectedId}
           onSelect={(id) => {
+            // D56. Absent means every world, which is the game; the rehearsal
+            // narrows it per beat so a step cannot be finished on the wrong world.
+            if (allowFocus && !allowFocus(id)) return;
             onFocus({ kind: 'planet', id });
           }}
         />
@@ -361,7 +406,13 @@ export function GalaxyCanvas({
 
       <AdaptiveDpr pixelated={false} />
       <DevBridge />
-      <Rig home={home} homeSignal={homeSignal} subject={subject} approach={approach} />
+      <Rig
+        home={home}
+        homeSignal={homeSignal}
+        subject={subject}
+        approach={approach}
+        openWide={openWide}
+      />
       <AmbientTicker />
     </Canvas>
   );
@@ -429,6 +480,7 @@ function Rig({
   homeSignal,
   subject,
   approach,
+  openWide = false,
 }: {
   home: [number, number, number];
   homeSignal: number;
@@ -442,6 +494,16 @@ function Rig({
   subject: (() => [number, number, number] | null) | null;
   /** Pull the camera in to at most this distance while easing. Null leaves it. */
   approach: number | null;
+  /**
+   * OPEN ON THE WHOLE DISC RATHER THAN ON YOUR OWN DOORSTEP. D56.
+   *
+   * The first frame normally snaps to the player's world, which is right for a
+   * commander coming back to a season and wrong for somebody who has never seen
+   * this galaxy: it answers "where am I" before they have asked it, and it makes
+   * "show me my world" a control with nothing left to do. Opening wide is what
+   * gives that first instruction something to be.
+   */
+  openWide?: boolean;
 }) {
   const ref = useRef<ComponentRef<typeof OrbitControls>>(null);
   const invalidate = useThree((state) => state.invalidate);
@@ -465,13 +527,30 @@ function Rig({
     const controls = ref.current;
     if (!controls) return;
     if (homeSignal === 0) {
+      if (openWide) {
+        // The disc entire, from above and outside it. Nothing is selected, so the
+        // leash below leaves this alone until the player moves.
+        controls.target.set(0, 0, 0);
+        controls.object.position.set(0, DISC_RADIUS * 1.15, DISC_RADIUS * 1.75);
+        controls.update();
+        return;
+      }
       controls.target.set(home[0], home[1], home[2]);
       controls.object.position.set(home[0] + 12, 16, home[2] + 20);
       controls.update();
       return;
     }
-    goTo(home[0], home[1], home[2]);
-  }, [home, homeSignal]);
+    /**
+     * COMING HOME CLOSES THE RANGE AS WELL AS MOVING THE PIVOT.
+     *
+     * Easing the pivot alone keeps whatever distance the camera was at, which is
+     * correct for the header's own "centre on your planet" — the player is already
+     * among the worlds and only wants re-centring. From the wide opening it is
+     * not: the pivot would arrive at a world still a disc-width away, and the
+     * flight that was supposed to show them their planet would show them a dot.
+     */
+    goTo(home[0], home[1], home[2], openWide ? HOME_DISTANCE : null);
+  }, [home, homeSignal, openWide]);
 
   useEffect(() => {
     // `subject` is memoised upstream, so this fires on a change of subject and not

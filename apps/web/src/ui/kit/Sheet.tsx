@@ -1,4 +1,5 @@
 import { useEffect, type ReactNode } from 'react';
+import { useTranslation } from 'react-i18next';
 import { AnimatePresence, m } from 'motion/react';
 import { IconButton } from './Button.js';
 import { CloseIcon } from '../icons/index.js';
@@ -40,6 +41,7 @@ export function Sheet({
   footer?: ReactNode;
   dismissible?: boolean;
 }) {
+  const { t } = useTranslation();
   useEffect(() => {
     if (!open) return;
     const onKey = (event: KeyboardEvent): void => {
@@ -57,7 +59,7 @@ export function Sheet({
         <div className="fixed inset-0 z-40 flex flex-col justify-end">
           <m.button
             type="button"
-            aria-label="Close"
+            aria-label={t('sheet.dismiss')}
             onClick={onClose}
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -105,7 +107,7 @@ export function Sheet({
                   {title}
                 </h2>
               </div>
-              <IconButton ariaLabel="Close" onClick={onClose} tone="ghost" size="sm">
+              <IconButton ariaLabel={t('sheet.close')} onClick={onClose} tone="ghost" size="sm">
                 <CloseIcon className="size-4" />
               </IconButton>
             </div>

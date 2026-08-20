@@ -1,6 +1,6 @@
 import { act, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { ToastProvider, useToast } from '../src/ui/Toast.js';
+import { DWELL_MS, ToastProvider, useToast } from '../src/ui/Toast.js';
 
 /**
  * ONE LINE AT A TIME, AND ALL OF THEM IN TURN. D45.
@@ -68,14 +68,19 @@ describe('the toast queue', () => {
   it('goes away once the queue is empty', () => {
     speak([['only', 'info']]);
     act(() => {
-      vi.advanceTimersByTime(4100);
+      vi.advanceTimersByTime(DWELL_MS + 100);
     });
     expect(screen.queryByRole('status')).not.toBeInTheDocument();
   });
 
   /**
-   * A message arriving behind the current one must not restart its four seconds,
-   * or a steady trickle of news would pin the first line on screen forever.
+   * A message arriving behind the current one must not restart its dwell, or a
+   * steady trickle of news would pin the first line on screen forever.
+   *
+   * TIMED OFF `DWELL_MS` RATHER THAN OFF A LITERAL. The rule this protects is
+   * "queuing does not extend the line already showing"; the pacing itself is a
+   * tuned number, and a test that hard-codes it goes red on a change of taste
+   * while saying nothing about the behaviour it exists to hold.
    */
   it('does not extend the line on screen when something queues behind it', () => {
     render(
@@ -86,17 +91,18 @@ describe('the toast queue', () => {
     act(() => {
       screen.getByRole('button', { name: 'speak' }).click();
     });
+    // Most of the way through the first one's turn.
     act(() => {
-      vi.advanceTimersByTime(3000);
+      vi.advanceTimersByTime(DWELL_MS * 0.75);
     });
-    // A second message, said with one second of the first still to run.
+    // A second message, said with a quarter of the first still to run.
     act(() => {
       screen.getByRole('button', { name: 'speak' }).click();
     });
     act(() => {
-      vi.advanceTimersByTime(1100);
+      vi.advanceTimersByTime(DWELL_MS * 0.3);
     });
-    // The first has had its four seconds and handed over.
+    // The first has had its turn and handed over — one line, not two.
     expect(screen.getAllByRole('status')).toHaveLength(1);
   });
 });

@@ -1,4 +1,4 @@
-import type { InstrumentId, SatelliteId } from './types.js';
+import type { BuildingId, InstrumentId, SatelliteId } from './types.js';
 
 /**
  * Every number the design can be wrong about, in one place.
@@ -152,6 +152,29 @@ export const START = {
   alloy: 2060,
   crystal: 276,
 } as const;
+
+/**
+ * WHAT A FRESH PLANET IS BUILT WITH, before the grant above is spent on anything.
+ *
+ * The Core and the Refinery are BOTH at 1, which is what makes the first three
+ * upgrades mandatory and ordered: no building may exceed the Core, so `1 >= 1`
+ * refuses the Refinery until the Core moves. That is not a quirk to be worked
+ * around — it is the arithmetic the paragraph above describes, and the opening the
+ * player is taught.
+ *
+ * IT LIVES HERE BECAUSE THREE PLACES NEED THE SAME ANSWER. The server writes these
+ * rows when a planet is created, the simulator starts its bots on them, and the
+ * onboarding rehearsal (D56) shows a visitor a planet that does not exist yet — and
+ * a rehearsal whose opening differs by one level from the world it turns into is
+ * the interface contradicting itself at the moment it asks to be trusted.
+ */
+export const START_BUILDINGS = {
+  CORE: 1,
+  REFINERY: 1,
+  EXTRACTOR: 1,
+  VAULT: 0,
+  SHIPYARD: 0,
+} as const satisfies Record<BuildingId, number>;
 
 /**
  * WHAT AN INSTRUMENT COSTS, RELATIVE TO A BUILDING. D22, narrowed by D25.

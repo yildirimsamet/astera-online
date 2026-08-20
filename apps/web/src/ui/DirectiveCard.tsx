@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import type { Directive } from '../lib/directives.js';
 
 /**
@@ -14,14 +15,16 @@ export function DirectiveCard({
   directive: Directive;
   onAct: (directive: Directive) => void;
 }) {
-  const label =
+  const { t } = useTranslation();
+  const label = t(
     directive.kind === 'threat'
-      ? 'Threat'
+      ? 'directives.kindThreat'
       : directive.kind === 'opportunity'
-        ? 'Opportunity'
+        ? 'directives.kindOpportunity'
         : directive.kind === 'growth'
-          ? 'Weakness'
-          : 'Nothing pending';
+          ? 'directives.kindGrowth'
+          : 'directives.kindIdle',
+  );
 
   const accent =
     directive.kind === 'threat'
@@ -59,6 +62,7 @@ export function DirectiveStrip({
   directive: Directive;
   onAct: (directive: Directive) => void;
 }) {
+  const { t } = useTranslation();
   const accent =
     directive.kind === 'threat'
       ? 'chip-threat'
@@ -74,7 +78,19 @@ export function DirectiveStrip({
       }}
       className="flex w-full items-center gap-3 border-b border-line-soft py-2.5 text-left"
     >
-      <span className={`chip ${accent}`}>{directive.kind}</span>
+      {/* The KIND as a word, not the enum. The strip used to print `threat` —
+          the machine's name for it — which was already wrong in English. */}
+      <span className={`chip ${accent}`}>
+        {t(
+          directive.kind === 'threat'
+            ? 'directives.kindThreat'
+            : directive.kind === 'opportunity'
+              ? 'directives.kindOpportunity'
+              : directive.kind === 'growth'
+                ? 'directives.kindGrowth'
+                : 'directives.kindIdle',
+        )}
+      </span>
       <span className="min-w-0 flex-1 truncate text-[13px] text-bone">{directive.title}</span>
       <span aria-hidden className="text-faint">
         →

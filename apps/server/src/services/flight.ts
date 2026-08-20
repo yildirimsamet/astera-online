@@ -103,6 +103,7 @@ export async function assertFreeBay(
       'NO_FREE_BAY',
       `All ${String(total)} flight bays are in use. Something has to land first.`,
       409,
+      { total },
     );
   }
 }

@@ -1,4 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from 'react';
+import { describeError } from '../i18n/errors.js';
 
 type Tone = 'info' | 'error';
 interface Message {
@@ -9,8 +10,15 @@ interface Message {
 
 const ToastContext = createContext<((text: string, tone?: Tone) => void) | null>(null);
 
-/** Four seconds each, one at a time. */
-const DWELL_MS = 4000;
+/**
+ * How long one line holds the slot before the next may have it.
+ *
+ * EXPORTED so the tests can express the queue's RULE — "the first has had its
+ * turn and handed over" — rather than a millisecond count that has to be edited
+ * every time this is tuned. A test that hard-codes the number goes red on a
+ * change of pacing and says nothing about the behaviour it exists to protect.
+ */
+export const DWELL_MS = 750;
 
 let sequence = 0;
 
@@ -18,8 +26,9 @@ let sequence = 0;
  * One line, bottom of the screen, gone in four seconds.
  *
  * Refusals are the main thing that lands here, and a refusal must say what to do
- * next — the API already writes them that way ("Command Core must be raised
- * first"), so this shows the server's sentence rather than inventing one.
+ * next — the API writes them that way ("Command Core must be raised first") and
+ * the client's own catalogue is written to the same rule, keyed by the API's code
+ * so the sentence can be said in either language. See `i18n/errors.ts`.
  *
  * IT IS A QUEUE, BECAUSE IT WAS A SINGLE SLOT. D45.
  *
@@ -59,7 +68,16 @@ export function ToastProvider({ children }: { children: ReactNode }) {
       {message && (
         <div
           role="status"
-          className="pointer-events-none fixed inset-x-0 bottom-[calc(112px+env(safe-area-inset-bottom))] z-50 flex justify-center px-4"
+          /**
+           * LIFTED OVER WHATEVER IS ALREADY SPEAKING. D56.
+           *
+           * The onboarding card sits along the bottom edge and is taller than the
+           * gap this used to leave, so a toast landed across the middle of the
+           * sentence telling the player what to do next. The card publishes its own
+           * height as `--toast-lift` while it is mounted; everywhere else the
+           * variable is absent and the original offset stands.
+           */
+          className="pointer-events-none fixed inset-x-0 bottom-[calc(var(--toast-lift,112px)+env(safe-area-inset-bottom))] z-50 flex justify-center px-4"
         >
           <p
             key={message.id}
@@ -81,6 +99,13 @@ export function useToast(): (text: string, tone?: Tone) => void {
   return say;
 }
 
-/** Every refusal the player sees comes through here, so none of them leak a stack. */
-export const describe = (err: unknown): string =>
-  err instanceof Error ? err.message : 'Something went wrong';
+/**
+ * Every refusal the player sees comes through here, so none of them leak a stack
+ * — and none of them arrive in the wrong language.
+ *
+ * The API answers with a stable code and the figures the sentence was built from;
+ * `describeError` turns that back into a sentence in whichever language is up.
+ * The server's own English is the fallback for a code this build has never heard
+ * of, which is exactly what a phone one deploy behind the server needs.
+ */
+export const describe = (err: unknown): string => describeError(err);

@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   useGalaxy,
   useIntel,
@@ -26,6 +27,7 @@ import {
   type Focus,
 } from '../galaxy/FocusPanel.jsx';
 import { threadKey } from '../galaxy/Fleets.jsx';
+import type { PlanetGroup } from '../lib/directives.js';
 import { HomeworldIcon } from '../ui/icons/index.js';
 import { haptic } from '../lib/haptics.js';
 import { duration, minutesLeft, useNow } from '../lib/time.js';
@@ -37,6 +39,7 @@ import { Sheet } from '../ui/Sheet.js';
 import { Button } from '../ui/kit/index.js';
 import { describe, useToast } from '../ui/Toast.js';
 import { GALAXY_ASSETS, usePreload } from '../lib/preload.js';
+import { LanguageSwitch } from '../ui/LanguageSwitch.jsx';
 import { LoadingScreen } from '../shell/LoadingScreen.js';
 import { useArrivals } from '../session/useArrivals.js';
 import { serverNow } from '../lib/clock.js';
@@ -66,6 +69,11 @@ export function GalaxyView({
   onPanel,
   commander,
   onSignOut,
+  onFocused,
+  planetGroup,
+  openWide,
+  allowFocus,
+  goHome,
 }: {
   /** Opened from the header, which is the only chrome left outside the canvas. */
   panel: Panel;
@@ -73,7 +81,32 @@ export function GalaxyView({
   /** Who is signed in. Shown on the one surface that is about you rather than the world. */
   commander: string;
   onSignOut: () => void;
+  /**
+   * What the player just selected, reported to whoever is watching. D56.
+   *
+   * READ-ONLY, AND ONLY THE ONBOARDING LISTENS. The rehearsal's beats advance on
+   * what the player DID — tapping their own world, then a neighbour — rather than
+   * on a "next" button, and the honest way to know is to be told. Focus itself
+   * stays owned here: a beat that could MOVE the camera would be a tutorial
+   * playing itself, which is the thing this whole flow exists not to be.
+   */
+  onFocused?: (focus: Focus | null) => void;
+  /** Which decision group the planet panel opens on, when something else decides. */
+  planetGroup?: PlanetGroup;
+  /** Open on the whole disc with nothing selected, for the rehearsal. D56. */
+  openWide?: boolean;
+  /** Which worlds may be selected. Absent means all of them, which is the game. */
+  allowFocus?: (planetId: string) => boolean;
+  /**
+   * Bumped from outside to fly the camera to the player's own world. D56.
+   *
+   * The same path the header's own control takes, deliberately: the selection is
+   * cleared first and then the signal is raised, because a subject still being
+   * tracked drags the camera straight back and the flight appears to do nothing.
+   */
+  goHome?: number;
 }) {
+  const { t } = useTranslation();
   const galaxy = useGalaxy();
   const planet = usePlanet();
   const intel = useIntel();
@@ -108,6 +141,21 @@ export function GalaxyView({
   const [detail, setDetail] = useState(false);
   const [attacking, setAttacking] = useState(false);
   const [homeSignal, setHomeSignal] = useState(0);
+
+  /**
+   * FLY HOME WHEN SOMEBODY OUTSIDE ASKS. D56.
+   *
+   * Skips the very first value so a mount does not count as a request — the rig
+   * already frames the opening, and re-triggering it here would fight that with an
+   * ease starting from the frame it just set.
+   */
+  const askedHome = useRef(goHome);
+  useEffect(() => {
+    if (goHome === undefined || goHome === askedHome.current) return;
+    askedHome.current = goHome;
+    setFocus(null);
+    setHomeSignal((n) => n + 1);
+  }, [goHome]);
 
   /**
    * THE DISC COMES UP UNDER A COVER, NOT AFTER ONE. Owner decision.
@@ -204,12 +252,16 @@ export function GalaxyView({
   const onReady = useCallback(() => {
     setDrawn(true);
   }, []);
-  const onFocus = useCallback((next: Focus | null) => {
-    if (next) haptic('tap');
-    setFocus(next);
-    setDetail(false);
-    setAttacking(false);
-  }, []);
+  const onFocus = useCallback(
+    (next: Focus | null) => {
+      if (next) haptic('tap');
+      setFocus(next);
+      setDetail(false);
+      setAttacking(false);
+      onFocused?.(next);
+    },
+    [onFocused],
+  );
 
   /**
    * REFETCH THE MOMENT ANYTHING LANDS.
@@ -360,6 +412,8 @@ export function GalaxyView({
         onReady={onReady}
         onFocus={onFocus}
         homeSignal={homeSignal}
+        openWide={openWide ?? false}
+        {...(allowFocus ? { allowFocus } : {})}
       />
 
       {/* ── the only chrome on the canvas ───────────────────── */}
@@ -375,14 +429,16 @@ export function GalaxyView({
           and the tracking on the label eased off so it still reads at 9px.
         */}
         <div className="pointer-events-auto frame px-2 py-1">
-          <p className="legend text-[9px] tracking-[0.10em]">The disc</p>
+          <p className="legend text-[9px] tracking-[0.10em]">{t('galaxy.discLabel')}</p>
           <p className="num mt-0.5 text-[10px] leading-tight text-bone">
-            {planets.length} worlds
+            {t('galaxy.worlds', { count: planets.length })}
             {windowsOpen(planets) > 0 && (
-              <span className="text-opportunity"> · {windowsOpen(planets)} fleet away</span>
+              <span className="text-opportunity">
+                {t('galaxy.fleetAway', { count: windowsOpen(planets) })}
+              </span>
             )}
             {asteroids.length > 0 && (
-              <span className="text-crystal"> · {asteroids.length} rocks</span>
+              <span className="text-crystal">{t('galaxy.rocks', { count: asteroids.length })}</span>
             )}
             {/*
               WRECKAGE IS COUNTED HERE BECAUSE IT IS PUBLIC. D32.
@@ -393,10 +449,7 @@ export function GalaxyView({
               thing it exists to advertise.
             */}
             {wrecks.length > 0 && (
-              <span className="text-alloy">
-                {' '}
-                · {wrecks.length} {wrecks.length === 1 ? 'wreck' : 'wrecks'}
-              </span>
+              <span className="text-alloy">{t('galaxy.wrecks', { count: wrecks.length })}</span>
             )}
           </p>
         </div>
@@ -410,7 +463,7 @@ export function GalaxyView({
         */}
         <button
           type="button"
-          aria-label="Centre on your planet"
+          aria-label={t('galaxy.home')}
           onClick={() => {
             haptic('tap');
             // Going home means letting go of what you were looking at. Leaving the
@@ -473,7 +526,12 @@ export function GalaxyView({
               { fieldId, craft },
               {
                 onSuccess: (r) => {
-                  say(`${String(r.craft)} away · ${String(Math.round(r.flightMinutes))}m to the wreck`);
+                  say(
+                    t('galaxy.harvestAway', {
+                      count: r.craft,
+                      minutes: Math.round(r.flightMinutes),
+                    }),
+                  );
                   close();
                   setAwaiting({ kind: 'run', id: r.runId });
                 },
@@ -503,7 +561,12 @@ export function GalaxyView({
               { asteroidIndex: index, craft },
               {
                 onSuccess: (r) => {
-                  say(`${String(r.craft)} away · meets the rock in ${String(Math.round(r.flightMinutes))}m`);
+                  say(
+                    t('galaxy.miningAway', {
+                      count: r.craft,
+                      minutes: Math.round(r.flightMinutes),
+                    }),
+                  );
                   close();
                   setAwaiting({ kind: 'run', id: r.runId });
                 },
@@ -598,21 +661,21 @@ export function GalaxyView({
 
       {panel === 'planet' && planet.data && (
         <Sheet
-          eyebrow="Your planet"
+          eyebrow={t('galaxy.panelPlanetEyebrow')}
           title={planet.data.planet.name}
           onClose={() => {
             onPanel(null);
           }}
         >
           <div className="-mx-4">
-            <PlanetScreen embedded />
+            <PlanetScreen embedded {...(planetGroup ? { focusGroup: planetGroup } : {})} />
           </div>
         </Sheet>
       )}
 
       {panel === 'commander' && (
         <Sheet
-          eyebrow="Commander"
+          eyebrow={t('galaxy.panelCommanderEyebrow')}
           title={commander}
           onClose={() => {
             onPanel(null);
@@ -629,8 +692,8 @@ export function GalaxyView({
 
       {panel === 'intel' && (
         <Sheet
-          eyebrow="What you know"
-          title="Intel"
+          eyebrow={t('galaxy.panelIntelEyebrow')}
+          title={t('galaxy.panelIntelTitle')}
           onClose={() => {
             onPanel(null);
           }}
@@ -643,6 +706,10 @@ export function GalaxyView({
 
 
       {attacking && selected && planet.data && (
+        // Marked for the onboarding gate (D56): it is opened BY a gated control,
+        // so sealing it would trap the player inside the commitment they were
+        // told to make.
+        <div data-launch-sheet>
         <LaunchSheet
           target={selected}
           planet={planet.data}
@@ -654,12 +721,17 @@ export function GalaxyView({
             setAwaiting({ kind: 'outbound', targetName: selected.name });
           }}
         />
+        </div>
       )}
 
       {covered && (
         <LoadingScreen
           caption={
-            !dataSettled ? 'Sweeping the disc' : !assets.ready ? 'Charting the disc' : 'Bringing it up'
+            !dataSettled
+              ? t('loading.sweeping')
+              : !assets.ready
+                ? t('loading.charting')
+                : t('loading.raising')
           }
           {...(dataSettled && !assets.ready ? { progress: assets.progress } : {})}
         />
@@ -777,33 +849,51 @@ function CommanderPanel({
   endsAt: Date | null;
   onSignOut: () => void;
 }) {
+  const { t } = useTranslation();
   const hoursLeft = endsAt === null ? null : (endsAt.getTime() - serverNow()) / 3_600_000;
 
   return (
-    <div className="flex flex-col gap-5">
+    <div className="flex flex-col gap-5 mt-4">
       <div className="grid grid-cols-2 gap-3">
         <div className="plate plate-cut plate-cut-sm p-3">
-          <p className="legend">Galaxy</p>
-          <p className="mt-1 truncate text-[15px] text-bone">{galaxy ?? '—'}</p>
+          <p className="legend">{t('galaxy.commander.galaxyLabel')}</p>
+          <p className="mt-1 truncate text-[15px] text-bone">
+            {galaxy ?? t('galaxy.commander.galaxyUnknown')}
+          </p>
           {shard !== null && shard !== galaxy && (
             <p className="mt-0.5 text-[11px] text-faint">{shard}</p>
           )}
         </div>
         <div className="plate plate-cut plate-cut-sm p-3">
-          <p className="legend">Season ends in</p>
+          <p className="legend">{t('galaxy.commander.endsLabel')}</p>
           <p className="readout mt-1 text-[15px] text-bone">
-            {hoursLeft === null ? '—' : duration(Math.max(0, hoursLeft) * 60)}
+            {hoursLeft === null
+              ? t('galaxy.commander.endsUnknown')
+              : duration(Math.max(0, hoursLeft) * 60)}
           </p>
         </div>
       </div>
 
-      <p className="text-[13px] leading-relaxed text-dim">
-        Your commander is a name and a password, so this planet is waiting on any browser
-        you sign into. At the wipe every galaxy resets and everyone starts again.
-      </p>
+      <p className="text-[13px] leading-relaxed text-dim">{t('galaxy.commander.body')}</p>
+
+      {/*
+        THE LANGUAGE LIVES HERE, beside the galaxy and the way out.
+
+        This is the one surface in the game that is about the ACCOUNT rather than
+        the world (D21, D54), and which language you read the world in is an
+        account fact — it is not a season, not a planet, and it has no business on
+        a tab of the planet sheet. It also sits above sign-out rather than below,
+        because the two most destructive controls on a screen should not be
+        adjacent by accident.
+      */}
+      <div>
+        <p className="legend mb-2">{t('settings.sectionLabel')}</p>
+        <LanguageSwitch />
+        <p className="mt-2 text-[11px] leading-snug text-faint">{t('settings.hint')}</p>
+      </div>
 
       <Button variant="ghost" size="lg" full onClick={onSignOut}>
-        Sign out
+        {t('galaxy.commander.signOut')}
       </Button>
     </div>
   );

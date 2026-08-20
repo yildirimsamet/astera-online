@@ -5,6 +5,7 @@ import {
   vaultProtects,
 } from '@astera/rules';
 import type { GalaxyView, IntelView, PendingThread, PlanetView } from '../api/schemas.js';
+import i18n from '../i18n/index.js';
 import { compact, full } from './format.js';
 import { duration } from './time.js';
 
@@ -78,9 +79,9 @@ export function directives(s: Situation): Directive[] {
     out.push({
       id: 'inbound',
       kind: 'threat',
-      title: `Inbound fleet · ${duration(inbound.minutesRemaining)}`,
-      detail: 'Spend the stock, send your fleet out, or stand and fight. It cannot be taken if it is not here.',
-      action: { label: 'Spend it now', screen: 'planet', group: 'defend' },
+      title: i18n.t('directives.inboundTitle', { duration: duration(inbound.minutesRemaining) }),
+      detail: i18n.t('directives.inboundDetail'),
+      action: { label: i18n.t('directives.inboundAction'), screen: 'planet', group: 'defend' },
       weight: 1000,
     });
   }
@@ -91,9 +92,9 @@ export function directives(s: Situation): Directive[] {
     out.push({
       id: 'undefended',
       kind: 'threat',
-      title: 'Nothing is defending this planet',
-      detail: `${full(exposed)} above your vault floor, and no ground defence. Bastions never leave.`,
-      action: { label: 'Build defence', screen: 'planet', group: 'defend' },
+      title: i18n.t('directives.undefendedTitle'),
+      detail: i18n.t('directives.undefendedDetail', { amount: full(exposed) }),
+      action: { label: i18n.t('directives.undefendedAction'), screen: 'planet', group: 'defend' },
       weight: 820,
     });
   }
@@ -105,9 +106,12 @@ export function directives(s: Situation): Directive[] {
     out.push({
       id: 'exposed-stock',
       kind: 'threat',
-      title: `${full(exposed)} can be taken from you`,
-      detail: `Your vault protects ${full(protectedFloor)}. The next level protects ${full(next)}.`,
-      action: { label: 'Raise the Vault', screen: 'planet', group: 'defend' },
+      title: i18n.t('directives.exposedTitle', { amount: full(exposed) }),
+      detail: i18n.t('directives.exposedDetail', {
+        now: full(protectedFloor),
+        next: full(next),
+      }),
+      action: { label: i18n.t('directives.exposedAction'), screen: 'planet', group: 'defend' },
       weight: 700,
     });
   }
@@ -117,9 +121,9 @@ export function directives(s: Situation): Directive[] {
     out.push({
       id: 'scanned',
       kind: 'threat',
-      title: scans === 1 ? 'Someone scanned you' : `${String(scans)} scans against you`,
-      detail: 'They are building a picture of what you hold. A Veil makes that picture wrong.',
-      action: { label: 'See the log', screen: 'intel' },
+      title: i18n.t('directives.scannedTitle', { count: scans }),
+      detail: i18n.t('directives.scannedDetail'),
+      action: { label: i18n.t('directives.scannedAction'), screen: 'intel' },
       weight: 520,
     });
   }
@@ -134,12 +138,18 @@ export function directives(s: Situation): Directive[] {
     out.push({
       id: `window-${target.id}`,
       kind: 'opportunity',
-      title: `${target.name}'s fleet is away`,
+      title: i18n.t('directives.windowTitle', { name: target.name }),
       detail:
         target.fleet.etaMinutes === null
-          ? `Seen ${target.fleet.staleMinutes < 1 ? 'just now' : `${duration(target.fleet.staleMinutes)} ago`}. You do not know when it returns.`
-          : `Back in about ${duration(target.fleet.etaMinutes)}. Their planet is holding whatever they left behind.`,
-      action: { label: 'Open the window', screen: 'galaxy', planetId: target.id },
+          ? target.fleet.staleMinutes < 1
+            ? i18n.t('directives.windowDetailUnknownJustNow')
+            : i18n.t('directives.windowDetailUnknown', {
+                age: duration(target.fleet.staleMinutes),
+              })
+          : i18n.t('directives.windowDetailEta', {
+              duration: duration(target.fleet.etaMinutes),
+            }),
+      action: { label: i18n.t('directives.windowAction'), screen: 'galaxy', planetId: target.id },
       weight: 900,
     });
   }
@@ -167,10 +177,9 @@ export function directives(s: Situation): Directive[] {
     out.push({
       id: 'storage-full',
       kind: 'opportunity',
-      title: `${compact(waiting)} cannot be collected`,
-      detail:
-        'Your store is full, so the works have nowhere to empty into. Spend something and claim it.',
-      action: { label: 'Spend it', screen: 'planet', group: 'grow' },
+      title: i18n.t('directives.storageFullTitle', { amount: compact(waiting) }),
+      detail: i18n.t('directives.storageFullDetail'),
+      action: { label: i18n.t('directives.storageFullAction'), screen: 'planet', group: 'grow' },
       weight: 640,
     });
   }
@@ -183,9 +192,9 @@ export function directives(s: Situation): Directive[] {
     out.push({
       id: 'no-telescope',
       kind: 'growth',
-      title: 'You cannot see anyone',
-      detail: 'A Telescope watches one planet and tells you when its fleet leaves. Nobody is told you are watching.',
-      action: { label: 'Install a Telescope', screen: 'planet', group: 'orbit' },
+      title: i18n.t('directives.noTelescopeTitle'),
+      detail: i18n.t('directives.noTelescopeDetail'),
+      action: { label: i18n.t('directives.noTelescopeAction'), screen: 'planet', group: 'orbit' },
       weight: 600,
     });
   }
@@ -195,9 +204,9 @@ export function directives(s: Situation): Directive[] {
     out.push({
       id: 'no-radar',
       kind: 'growth',
-      title: 'A fleet could land here without warning',
-      detail: 'Radar L3 gives you minutes of notice — enough to spend the stock or move the fleet.',
-      action: { label: 'Look at Radar', screen: 'planet', group: 'orbit' },
+      title: i18n.t('directives.noRadarTitle'),
+      detail: i18n.t('directives.noRadarDetail'),
+      action: { label: i18n.t('directives.noRadarAction'), screen: 'planet', group: 'orbit' },
       weight: radar === 0 ? 480 : 300,
     });
   }
@@ -212,9 +221,9 @@ export function directives(s: Situation): Directive[] {
     out.push({
       id: 'core-ceiling',
       kind: 'growth',
-      title: `Command Core is blocking ${String(capped)} upgrades`,
-      detail: 'Nothing may exceed the Core. Raising it releases all of them at once.',
-      action: { label: 'Raise the Core', screen: 'planet', group: 'grow' },
+      title: i18n.t('directives.coreCeilingTitle', { count: capped }),
+      detail: i18n.t('directives.coreCeilingDetail'),
+      action: { label: i18n.t('directives.coreCeilingAction'), screen: 'planet', group: 'grow' },
       weight: 440,
     });
   }
@@ -235,12 +244,12 @@ export function directives(s: Situation): Directive[] {
     out.push({
       id: 'idle',
       kind: 'idle',
-      title: 'Nothing is in flight',
+      title: i18n.t('directives.idleTitle'),
       detail:
         home > 0
-          ? 'Nothing will happen to you, or for you, until you send something.'
-          : 'You have no ships at home. Build some, or wait for yours to come back.',
-      action: { label: 'Find a target', screen: 'galaxy' },
+          ? i18n.t('directives.idleDetailHasShips')
+          : i18n.t('directives.idleDetailNoShips'),
+      action: { label: i18n.t('directives.idleAction'), screen: 'galaxy' },
       weight: 200,
     });
   } else if (bays.used < bays.total) {
@@ -257,9 +266,9 @@ export function directives(s: Situation): Directive[] {
     out.push({
       id: 'bays-free',
       kind: 'idle',
-      title: free === 1 ? 'One bay is still free' : `${String(free)} bays are still free`,
-      detail: 'A probe, a raid or a mining run — anything that leaves takes one.',
-      action: { label: 'Look for something', screen: 'galaxy' },
+      title: i18n.t('directives.baysFreeTitle', { count: free }),
+      detail: i18n.t('directives.baysFreeDetail'),
+      action: { label: i18n.t('directives.baysFreeAction'), screen: 'galaxy' },
       weight: 120,
     });
   }

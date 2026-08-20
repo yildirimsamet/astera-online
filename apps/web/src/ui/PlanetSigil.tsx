@@ -1,4 +1,5 @@
 import { planetArt } from './assets.js';
+import i18n from '../i18n/index.js';
 
 /**
  * A planet.
@@ -30,7 +31,7 @@ export function PlanetSigil({
       className="relative shrink-0"
       style={{ width: size, height: size }}
       role="img"
-      aria-label="Planet"
+      aria-label={i18n.t('surface.planetSigil')}
     >
       {/* Atmospheric bloom, outside the disc. The only real glow in the interface. */}
       {!dark && (

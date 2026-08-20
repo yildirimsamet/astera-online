@@ -2,11 +2,21 @@ import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { LazyMotion, MotionConfig, domMax } from 'motion/react';
+import { I18nextProvider } from 'react-i18next';
+/**
+ * FIRST, AND BEFORE ANYTHING THAT RENDERS. The instance initialises at import
+ * with its resources already in memory, so by the time React paints there is a
+ * language — no suspense, no flash of `landing.premise`. See `i18n/index.ts`.
+ */
+import i18n from './i18n/index.js';
+import { syncDocumentLanguage } from './i18n/document.js';
 import { Api } from './api/client.js';
 import { ApiProvider } from './api/context.js';
 import { ToastProvider } from './ui/Toast.js';
 import { App } from './App.js';
 import './styles.css';
+
+syncDocumentLanguage();
 
 const api = new Api();
 
@@ -50,16 +60,18 @@ if (!root) throw new Error('no #root element');
  */
 createRoot(root).render(
   <StrictMode>
-    <LazyMotion features={domMax} strict>
-      <MotionConfig reducedMotion="user">
-        <QueryClientProvider client={client}>
-          <ApiProvider api={api}>
-            <ToastProvider>
-              <App />
-            </ToastProvider>
-          </ApiProvider>
-        </QueryClientProvider>
-      </MotionConfig>
-    </LazyMotion>
+    <I18nextProvider i18n={i18n}>
+      <LazyMotion features={domMax} strict>
+        <MotionConfig reducedMotion="user">
+          <QueryClientProvider client={client}>
+            <ApiProvider api={api}>
+              <ToastProvider>
+                <App />
+              </ToastProvider>
+            </ApiProvider>
+          </QueryClientProvider>
+        </MotionConfig>
+      </LazyMotion>
+    </I18nextProvider>
   </StrictMode>,
 );

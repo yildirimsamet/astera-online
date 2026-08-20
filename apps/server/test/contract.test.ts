@@ -13,6 +13,7 @@ import { SHARD_PREFIX } from '../src/stream/bus.js';
 import { TokenService } from '../src/auth/tokens.js';
 import {
   buildSchema,
+  claimSchema,
   collectSchema,
   galaxySchema,
   instrumentRaiseSchema,
@@ -28,6 +29,7 @@ import {
   pendingSchema,
   placementSchema,
   planetSchema,
+  previewSchema,
   probeSchema,
   reportsSchema,
   returnSchema,
@@ -165,6 +167,62 @@ describe('every payload the client parses', () => {
     const parsed = galaxySchema.parse(await get('/api/galaxy'));
     expect(parsed.planets.length).toBeGreaterThan(0);
     expect(parsed.planets.some((p) => p.shielded)).toBe(true);
+  });
+
+  /**
+   * THE ONE ROUTE WITH NO CALLER. D56.
+   *
+   * `/api/preview` is parsed by a visitor who has no token, so nothing downstream
+   * will refuse a request that reads it — which makes it the single most important
+   * shape in this file to hold. It is also assembled from three of the schemas
+   * above, deliberately: the rehearsal answers `/api/season`, `/api/galaxy` and
+   * `/api/galaxy/traffic` out of this one payload.
+   */
+  it('GET /api/preview parses, with no authorization at all', async () => {
+    const res = await app.inject({ method: 'GET', url: '/api/preview' });
+    expect(res.statusCode, res.body.slice(0, 300)).toBe(200);
+
+    const parsed = previewSchema.parse(res.json());
+    expect(parsed.galaxy.planets.length).toBeGreaterThan(0);
+    // The reserved world is drawn among the real ones and is the caller's `you`.
+    expect(parsed.galaxy.you.planetId).toBe(parsed.reserved.id);
+    expect(parsed.galaxy.planets.filter((w) => w.isSelf)).toHaveLength(1);
+    // Sub-payloads parse as the production schemas, which is the point of the shape.
+    seasonSchema.parse(parsed.season);
+    galaxySchema.parse(parsed.galaxy);
+    trafficSchema.parse(parsed.traffic);
+  });
+
+  /**
+   * The claim answers with a whole planet view, like every other mutation (D53),
+   * and with a per-step verdict the interface has to be able to read.
+   */
+  it('POST /api/onboarding/claim parses', async () => {
+    const res = await app.inject({
+      method: 'POST',
+      url: '/api/onboarding/claim',
+      payload: {
+        username: 'contract_claimer',
+        password: 'correct-horse-battery',
+        intents: [
+          { kind: 'upgrade', building: 'CORE' },
+          { kind: 'upgrade', building: 'REFINERY' },
+        ],
+      },
+    });
+    expect(res.statusCode, res.body.slice(0, 300)).toBe(200);
+
+    const parsed = claimSchema.parse(res.json());
+    expect(parsed.applied.map((a) => a.ok)).toEqual([true, true]);
+    expect(parsed.planet.buildings.CORE).toBe(2);
+    expect(parsed.placement.planetName).not.toBe('');
+    // The session half is the same shape `/api/auth/register` answers with.
+    sessionSchema.parse({
+      accountId: parsed.accountId,
+      username: parsed.username,
+      displayName: parsed.displayName,
+      accessToken: parsed.accessToken,
+    });
   });
 
   /** The one that went dark. A live season, a real field, the client's own parser. */

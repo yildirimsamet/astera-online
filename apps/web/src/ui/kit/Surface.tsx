@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import { useTranslation } from 'react-i18next';
 
 /**
  * The furniture: headings, dividers, empty states, loading states.
@@ -146,9 +147,12 @@ export function Waiting({ children }: { children: ReactNode }) {
  * error branch, and it is the pattern the other three now follow.
  */
 export function Unreachable({ what, onRetry }: { what: string; onRetry: () => void }) {
+  const { t } = useTranslation();
   return (
     <div className="px-4 py-6" role="alert">
-      <p className="text-[14px] text-alert">Could not reach {what}.</p>
+      {/* `what` arrives already translated from the caller, which is the one that
+          knows WHICH surface failed. The sentence around it is this component's. */}
+      <p className="text-[14px] text-alert">{t('surface.unreachable', { what })}</p>
       <button
         type="button"
         className="btn mt-3"
@@ -156,7 +160,7 @@ export function Unreachable({ what, onRetry }: { what: string; onRetry: () => vo
           onRetry();
         }}
       >
-        Try again
+        {t('surface.retry')}
       </button>
     </div>
   );

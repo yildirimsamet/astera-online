@@ -1,5 +1,7 @@
+import { useTranslation } from 'react-i18next';
 import { usePending } from '../api/queries.js';
 import type { PendingThread } from '../api/schemas.js';
+import i18n from '../i18n/index.js';
 import { countdown, useNow } from '../lib/time.js';
 
 /**
@@ -12,6 +14,7 @@ import { countdown, useNow } from '../lib/time.js';
  * decoration.
  */
 export function PendingStrip() {
+  const { t } = useTranslation();
   const { data } = usePending();
   const now = useNow(1000);
   const threads = data?.pending ?? [];
@@ -36,11 +39,13 @@ export function PendingStrip() {
             {countdown(arrivalOf(shown) - now)}
           </span>
           {threads.length > 1 && (
-            <span className="num text-[11px] text-faint">+{String(threads.length - 1)}</span>
+            <span className="num text-[11px] text-faint">
+              {t('pendingStrip.more', { count: threads.length - 1 })}
+            </span>
           )}
         </div>
       ) : (
-        <p className="legend text-faint">Nothing in flight</p>
+        <p className="legend text-faint">{t('pendingStrip.empty')}</p>
       )}
     </div>
   );
@@ -59,11 +64,11 @@ export function PendingStrip() {
  * That is the whole fix: the countdown never moved, it was only ever unlabelled.
  */
 const title = (thread: PendingThread): string => {
-  if (thread.kind === 'incoming') return 'Inbound fleet';
-  if (thread.kind === 'probe') return `Your probe → ${thread.targetName}`;
-  return thread.leg === 'return'
-    ? `Your fleet home from ${thread.targetName}`
-    : `Your fleet → ${thread.targetName}`;
+  if (thread.kind === 'incoming') return i18n.t('pendingStrip.incoming');
+  if (thread.kind === 'probe') return i18n.t('pendingStrip.probe', { target: thread.targetName });
+  return i18n.t(thread.leg === 'return' ? 'pendingStrip.fleetHome' : 'pendingStrip.fleetOut', {
+    target: thread.targetName,
+  });
 };
 
 /**

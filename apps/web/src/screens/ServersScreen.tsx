@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Trans, useTranslation } from 'react-i18next';
 import { useServers } from '../api/queries.js';
 import type { ServerRow } from '../api/schemas.js';
 import { Button } from '../ui/kit/index.js';
@@ -31,6 +32,7 @@ export function ServersScreen({
   onSignOut: () => void;
   error?: string;
 }) {
+  const { t } = useTranslation();
   const servers = useServers();
   const [chosen, setChosen] = useState<string | null>(null);
 
@@ -41,20 +43,17 @@ export function ServersScreen({
     <main className="min-h-dvh bg-void px-5 pb-[calc(28px+env(safe-area-inset-bottom))] pt-[calc(28px+env(safe-area-inset-top))]">
       <header className="flex items-start justify-between gap-4">
         <div>
-          <p className="legend">Commander</p>
+          <p className="legend">{t('servers.commanderLabel')}</p>
           <h1 className="mt-1 font-display text-[24px] uppercase tracking-[0.05em] text-bone">
             {displayName}
           </h1>
         </div>
         <Button size="sm" variant="ghost" onClick={onSignOut}>
-          Sign out
+          {t('servers.signOut')}
         </Button>
       </header>
 
-      <p className="mt-6 max-w-md text-[14px] leading-relaxed text-dim">
-        Every galaxy holds fifty commanders and no more. They fill in order, so the one
-        you join is the one that already has people in it.
-      </p>
+      <p className="mt-6 max-w-md text-[14px] leading-relaxed text-dim">{t('servers.rule')}</p>
 
       {error !== undefined && (
         <p className="mt-4 text-[13px] text-alert" role="alert">
@@ -62,23 +61,23 @@ export function ServersScreen({
         </p>
       )}
 
-      {servers.isPending && <p className="legend mt-8 animate-pulse">Reading the sky</p>}
+      {servers.isPending && <p className="legend mt-8 animate-pulse">{t('servers.loading')}</p>}
 
       {servers.isError && (
         <div className="mt-8">
-          <p className="text-[14px] text-alert">Could not reach the galaxies.</p>
+          <p className="text-[14px] text-alert">{t('servers.unreachable')}</p>
           <Button
             className="mt-3"
             onClick={() => {
               void servers.refetch();
             }}
           >
-            Try again
+            {t('servers.retry')}
           </Button>
         </div>
       )}
 
-      <ul className="mt-6 flex flex-col gap-2" aria-label="Galaxies">
+      <ul className="mt-6 flex flex-col gap-2" aria-label={t('servers.listLabel')}>
         {rows.map((server) => (
           <ServerCard
             key={server.code}
@@ -94,27 +93,28 @@ export function ServersScreen({
       </ul>
 
       {servers.isSuccess && rows.length === 0 && (
-        <p className="mt-8 text-[14px] text-dim">
-          No galaxy is open right now. The season is between wipes — try again shortly.
-        </p>
+        <p className="mt-8 text-[14px] text-dim">{t('servers.noneOpen')}</p>
       )}
 
       {servers.isSuccess && rows.length > 0 && !open && (
-        <p className="mt-6 text-[13px] text-faint">
-          Every galaxy is full. The next one opens at the wipe, when everyone starts again.
-        </p>
+        <p className="mt-6 text-[13px] text-faint">{t('servers.allFull')}</p>
       )}
     </main>
   );
 }
 
-/** What each status means, in the player's language rather than the server's. */
-const EXPLAIN: Record<ServerRow['status'], string> = {
-  open: 'Taking commanders',
-  full: 'Full',
-  locked: 'Opens when the one above fills',
-  closed: 'Between seasons',
-};
+/**
+ * What each status means, in the player's language rather than the server's.
+ *
+ * A map to KEYS rather than to sentences: a table of finished strings is built
+ * once at module load and would still be English after the switcher was pressed.
+ */
+const EXPLAIN = {
+  open: 'servers.status.open',
+  full: 'servers.status.full',
+  locked: 'servers.status.locked',
+  closed: 'servers.status.closed',
+} as const satisfies Record<ServerRow['status'], string>;
 
 function ServerCard({
   server,
@@ -127,6 +127,7 @@ function ServerCard({
   disabled: boolean;
   onChoose: () => void;
 }) {
+  const { t } = useTranslation();
   const joinable = server.status === 'open' && !server.yours;
   const fill = server.capacity > 0 ? Math.min(1, server.planets / server.capacity) : 0;
 
@@ -165,10 +166,15 @@ function ServerCard({
           <p className="mt-1.5 text-[11px] text-faint">
             {server.online > 0 ? (
               <>
-                <span className="text-opportunity">{server.online}</span> in game now ·{' '}
+                <Trans
+                  i18nKey="servers.online"
+                  values={{ amount: server.online }}
+                  components={[<span key="n" className="text-opportunity" />]}
+                />
+                {' · '}
               </>
             ) : null}
-            {server.yours ? 'Your galaxy' : EXPLAIN[server.status]}
+            {server.yours ? t('servers.yours') : t(EXPLAIN[server.status])}
           </p>
         </div>
 
@@ -181,7 +187,7 @@ function ServerCard({
          */}
         {(server.yours || joinable) && (
           <Button size="sm" variant="primary" disabled={disabled} onClick={onChoose}>
-            {busy ? '…' : server.yours ? 'Enter' : 'Join'}
+            {busy ? t('servers.joining') : server.yours ? t('servers.enter') : t('servers.join')}
           </Button>
         )}
       </div>

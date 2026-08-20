@@ -1,4 +1,6 @@
 import type { ClarityState, FleetStatus } from '@astera/rules';
+import { useTranslation } from 'react-i18next';
+import i18n from '../i18n/index.js';
 import { staleness } from '../lib/time.js';
 
 /**
@@ -41,6 +43,29 @@ const FILL: Record<ClarityState, string> = {
 
 export const clarityTone = (state: ClarityState): string => TONE[state];
 
+/** The band as a word, for the screen reader. Keys, so it follows the language. */
+const STATE_WORD = {
+  FULL: 'clarity.stateFull',
+  CLEAR: 'clarity.stateClear',
+  INTERMITTENT: 'clarity.stateIntermittent',
+  DEGRADED: 'clarity.stateDegraded',
+  BLIND: 'clarity.stateBlind',
+} as const satisfies Record<ClarityState, string>;
+
+/**
+ * THE READING, AS THREE KEYS RATHER THAN A TEMPLATE.
+ *
+ * It was `FLEET ${status}`, which is a sentence assembled out of an enum — it
+ * works only in a language where the noun comes first and the enum happens to be
+ * an English word. Turkish reads FİLO EVDE and FİLO DIŞARIDA, so both halves have
+ * to be one translated string.
+ */
+const FLEET_WORD = {
+  HOME: 'clarity.fleetHome',
+  AWAY: 'clarity.fleetAway',
+  UNKNOWN: 'clarity.unreadable',
+} as const satisfies Record<FleetStatus, string>;
+
 /** Signal-strength bars. Five steps, one per clarity band. */
 export function ClarityBars({ state }: { state: ClarityState }) {
   const lit = SEGMENTS[state];
@@ -48,7 +73,7 @@ export function ClarityBars({ state }: { state: ClarityState }) {
     <span
       className="inline-flex items-end gap-[2px]"
       role="img"
-      aria-label={`Clarity ${state.toLowerCase()}`}
+      aria-label={i18n.t('clarity.barsLabel', { state: i18n.t(STATE_WORD[state]) })}
     >
       {[0, 1, 2, 3, 4].map((i) => (
         <span
@@ -75,17 +100,18 @@ export interface ReadingProps {
  * the age is never omitted and never rounded away.
  */
 export function Reading({ status, staleMinutes, etaMinutes, state }: ReadingProps) {
+  const { t } = useTranslation();
   const unknown = status === 'UNKNOWN';
   return (
     <span className="flex items-center gap-2">
       <ClarityBars state={state} />
       <span className={`num text-[13px] tracking-wide ${TONE[state]}`}>
-        {unknown ? 'UNREADABLE' : `FLEET ${status}`}
+        {t(FLEET_WORD[status])}
       </span>
       {!unknown && (
         <span className="num text-[11px] text-faint">
           {staleness(staleMinutes)}
-          {etaMinutes !== null && ` · back in ${String(etaMinutes)}m`}
+          {etaMinutes !== null && t('clarity.backIn', { minutes: etaMinutes })}
         </span>
       )}
     </span>
@@ -94,5 +120,6 @@ export function Reading({ status, staleMinutes, etaMinutes, state }: ReadingProp
 
 /** What a planet you have never pointed anything at looks like. */
 export function Unwatched() {
-  return <span className="num text-[12px] text-faint">no watch assigned</span>;
+  const { t } = useTranslation();
+  return <span className="num text-[12px] text-faint">{t('clarity.unwatched')}</span>;
 }

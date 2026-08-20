@@ -120,6 +120,20 @@
   --slab-depth: 2px;
 }
 
+/**
+ * A REFUSED PRESS, ANSWERED. D56.
+ *
+ * The onboarding gate cancels an activation that is not the beat's own target, and
+ * a cancellation that looks like nothing at all reads as a dead control. The card
+ * carrying the instruction is what moves — a short lift and settle rather than a
+ * shake, because a shake reads as an error and the player has not made one.
+ */
+@keyframes nudge {
+  0% { transform: translateY(0); }
+  35% { transform: translateY(-6px); }
+  100% { transform: translateY(0); }
+}
+
 @keyframes fade-in {
   from {
     opacity: 0;

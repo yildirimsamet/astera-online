@@ -121,7 +121,9 @@ export async function launchMining(
   clock: Clock,
 ): Promise<MiningLaunch> {
   if (!Number.isInteger(craft) || craft < 1) {
-    throw new GameError('BAD_COUNT', 'Send at least one Prospector');
+    throw new GameError('BAD_COUNT', 'Send at least one Prospector', 400, {
+      context: 'prospector',
+    });
   }
 
   return db.transaction(async (tx) => {
@@ -136,7 +138,9 @@ export async function launchMining(
      */
     const available = origin.homeFleet.PROSPECTOR ?? 0;
     if (available < craft) {
-      throw new GameError('NOT_ENOUGH_CRAFT', `Only ${String(available)} Prospectors at home`);
+      throw new GameError('NOT_ENOUGH_CRAFT', `Only ${String(available)} Prospectors at home`, 400, {
+        available,
+      });
     }
 
     // Before the intercept solve: no point finding a meeting point for a launch
@@ -596,7 +600,7 @@ export async function launchHarvest(
   clock: Clock,
 ): Promise<MiningLaunch> {
   if (!Number.isInteger(craft) || craft < 1) {
-    throw new GameError('BAD_COUNT', 'Send at least one craft');
+    throw new GameError('BAD_COUNT', 'Send at least one craft', 400, { context: 'craft' });
   }
 
   return db.transaction(async (tx) => {
@@ -604,7 +608,9 @@ export async function launchHarvest(
 
     const available = origin.homeFleet.PROSPECTOR ?? 0;
     if (available < craft) {
-      throw new GameError('NOT_ENOUGH_CRAFT', `Only ${String(available)} Prospectors at home`);
+      throw new GameError('NOT_ENOUGH_CRAFT', `Only ${String(available)} Prospectors at home`, 400, {
+        available,
+      });
     }
 
     await assertFreeBay(tx, planetId, origin.buildings.CORE);

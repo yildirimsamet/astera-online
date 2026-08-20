@@ -1,6 +1,8 @@
 import { useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useMarkSeen, useNotifications, usePlanet } from '../api/queries.js';
 import type { NotificationView, PlanetView } from '../api/schemas.js';
+import i18n from '../i18n/index.js';
 import { compact } from '../lib/format.js';
 import { haptic } from '../lib/haptics.js';
 import { describeNotification, isAlarming } from '../lib/notifications.js';
@@ -38,6 +40,7 @@ export interface Status {
 }
 
 export function Signals({ onOpen }: { onOpen: (panel: Panel) => void }) {
+  const { t } = useTranslation();
   const [open, setOpen] = useState(false);
   /**
    * WHAT WAS NEW WHEN YOU OPENED IT.
@@ -80,7 +83,7 @@ export function Signals({ onOpen }: { onOpen: (panel: Panel) => void }) {
     <>
       <button
         type="button"
-        aria-label={unseen > 0 ? `Signals — ${String(unseen)} unread` : 'Signals'}
+        aria-label={unseen > 0 ? t('signals.beaconUnread', { count: unseen }) : t('signals.beacon')}
         onClick={() => {
           haptic('tap');
           setOpen(true);
@@ -132,8 +135,10 @@ export function Signals({ onOpen }: { onOpen: (panel: Panel) => void }) {
 
       {open && (
         <Sheet
-          eyebrow={unseen > 0 ? `${String(unseen)} new` : 'Everything you have been told'}
-          title="Signals"
+          eyebrow={
+            unseen > 0 ? t('signals.eyebrowUnread', { count: unseen }) : t('signals.eyebrowRead')
+          }
+          title={t('signals.title')}
           onClose={() => {
             setOpen(false);
             setJustRead(new Set());
@@ -141,7 +146,7 @@ export function Signals({ onOpen }: { onOpen: (panel: Panel) => void }) {
         >
           {status.length > 0 && (
             <div className="mb-5 mt-4">
-              <p className="legend mb-2">Right now</p>
+              <p className="legend mb-2">{t('signals.statusHeading')}</p>
               <div className="frame">
                 {status.map((item) => (
                   <button
@@ -179,11 +184,10 @@ export function Signals({ onOpen }: { onOpen: (panel: Panel) => void }) {
             </div>
           )}
 
-          <p className="legend mb-2">What happened</p>
+          <p className="legend mb-2">{t('signals.eventsHeading')}</p>
           {events.length === 0 ? (
             <p className="border border-dashed border-line-soft px-3.5 py-6 text-center text-[13px] text-dim">
-              Nothing yet. The galaxy tells you when a fleet moves against you, when a probe is
-              caught, and when your own ships come home.
+              {t('signals.empty')}
             </p>
           ) : (
             <div className="frame">
@@ -295,7 +299,9 @@ function Event({
       <span className="min-w-0 flex-1">
         <span className={`block text-[13px] ${bad ? 'text-[#ff9d8f]' : 'text-bone'}`}>
           {line}
-          {repeats > 1 && <span className="num text-faint"> ×{repeats}</span>}
+          {repeats > 1 && (
+            <span className="num text-faint"> {i18n.t('signals.repeat', { count: repeats })}</span>
+          )}
         </span>
         <span className="num mt-0.5 block text-[11px] text-faint">
           {staleness((now - event.at.getTime()) / 60_000)}
@@ -324,10 +330,10 @@ export function statusOf(planet: PlanetView, held: Projected): Status[] {
   if (p.disruptedUntil && p.disruptedUntil.getTime() > serverNow()) {
     out.push({
       tone: 'threat',
-      line: 'Your works are offline',
-      detail: `Raided. Production resumes in ${duration(
-        (p.disruptedUntil.getTime() - serverNow()) / 60_000,
-      )}.`,
+      line: i18n.t('signals.status.disruptedLine'),
+      detail: i18n.t('signals.status.disruptedDetail', {
+        duration: duration((p.disruptedUntil.getTime() - serverNow()) / 60_000),
+      }),
     });
   }
 
@@ -346,8 +352,10 @@ export function statusOf(planet: PlanetView, held: Projected): Status[] {
   if (worksFull) {
     out.push({
       tone: 'alloy',
-      line: 'The works have stopped',
-      detail: `Full and idle. ${compact(p.alloyPerHour + p.crystalPerHour)} an hour is being thrown away — collect it.`,
+      line: i18n.t('signals.status.worksStoppedLine'),
+      detail: i18n.t('signals.status.worksStoppedDetail', {
+        amount: compact(p.alloyPerHour + p.crystalPerHour),
+      }),
       go: 'planet',
     });
   }
@@ -359,8 +367,8 @@ export function statusOf(planet: PlanetView, held: Projected): Status[] {
     if (store.value >= store.cap - 0.5 && store.waiting > 0) {
       out.push({
         tone: store.tone,
-        line: `${store.name} store is full`,
-        detail: `${compact(store.waiting)} is waiting in the works with nowhere to go. Spend something.`,
+        line: i18n.t(store.line),
+        detail: i18n.t('signals.status.storeDetail', { amount: compact(store.waiting) }),
         go: 'planet',
       });
     }
@@ -372,7 +380,9 @@ export function statusOf(planet: PlanetView, held: Projected): Status[] {
 function stores(planet: PlanetView, held: Projected) {
   return [
     {
-      name: 'Alloy',
+      // The whole line, not a noun to splice into one: Turkish declines the
+      // resource ("Alaşım deposu dolu"), so there is no stem this could hand over.
+      line: 'signals.status.alloyStoreLine' as const,
       tone: 'alloy' as const,
       value: held.alloy,
       cap: planet.planet.alloyCap,
@@ -382,7 +392,7 @@ function stores(planet: PlanetView, held: Projected) {
       waiting: held.bufferAlloy,
     },
     {
-      name: 'Crystal',
+      line: 'signals.status.crystalStoreLine' as const,
       tone: 'crystal' as const,
       value: held.crystal,
       cap: planet.planet.crystalCap,

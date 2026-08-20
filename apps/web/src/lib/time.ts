@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import i18n from '../i18n/index.js';
 import { serverNow } from './clock.js';
 
 /**
@@ -25,16 +26,23 @@ export function useNow(intervalMs = 1000): number {
   return now;
 }
 
-/** "1h 04m" · "9m 40s" · "18s" · "now". Never negative. */
+/**
+ * "1h 04m" · "9m 40s" · "18s" · "now". Never negative.
+ *
+ * The unit letters are translated, not appended: Turkish counts in `1s 04d` and
+ * `9d 40sn`, and a countdown that read `1sa 04dk` would be two characters wider
+ * on the one strip that has no room to give. The shapes are chosen in
+ * `units` per language for exactly that reason — see the note there.
+ */
 export function countdown(ms: number): string {
-  if (ms <= 0) return 'now';
+  if (ms <= 0) return i18n.t('units.now');
   const total = Math.floor(ms / 1000);
   const h = Math.floor(total / 3600);
   const m = Math.floor((total % 3600) / 60);
   const s = total % 60;
-  if (h > 0) return `${String(h)}h ${String(m).padStart(2, '0')}m`;
-  if (m > 0) return `${String(m)}m ${String(s).padStart(2, '0')}s`;
-  return `${String(s)}s`;
+  if (h > 0) return i18n.t('units.hoursMinutes', { h, m: String(m).padStart(2, '0') });
+  if (m > 0) return i18n.t('units.minutesSeconds', { m, s: String(s).padStart(2, '0') });
+  return i18n.t('units.seconds', { s });
 }
 
 /**
@@ -58,10 +66,10 @@ export function duration(minutes: number): string {
   const m = whole % 60;
   if (h >= 24) {
     const d = Math.floor(h / 24);
-    return `${String(d)}d ${String(h % 24)}h`;
+    return i18n.t('units.daysHours', { d, h: h % 24 });
   }
-  if (h > 0) return `${String(h)}h ${String(m).padStart(2, '0')}m`;
-  return `${String(m)}m`;
+  if (h > 0) return i18n.t('units.hoursMinutes', { h, m: String(m).padStart(2, '0') });
+  return i18n.t('units.minutes', { m });
 }
 
 /**
@@ -69,8 +77,8 @@ export function duration(minutes: number): string {
  * "HOME · 18 min ago" is a different decision from "HOME · live".
  */
 export function staleness(minutes: number): string {
-  if (minutes < 1) return 'live';
-  return `${duration(minutes)} ago`;
+  if (minutes < 1) return i18n.t('units.live');
+  return i18n.t('units.ago', { duration: duration(minutes) });
 }
 
 export const minutesUntil = (at: Date, now: number): number => (at.getTime() - now) / MINUTE;

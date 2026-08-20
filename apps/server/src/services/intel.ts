@@ -199,7 +199,10 @@ export async function assignWatch(
 
     const slots = telescopeSlots(level);
     if (!Number.isInteger(slot) || slot < 0 || slot >= slots) {
-      throw new GameError('BAD_SLOT', `Telescope L${level} can watch ${slots} planet(s)`);
+      throw new GameError('BAD_SLOT', `Telescope L${level} can watch ${slots} planet(s)`, 400, {
+        level,
+        slots,
+      });
     }
 
     const [target] = await tx.select().from(planets).where(eq(planets.id, targetPlanetId));
@@ -213,6 +216,8 @@ export async function assignWatch(
       throw new GameError(
         'OUT_OF_RANGE',
         `Telescope L${level} reaches ${Math.round(telescopeRange(level))} units; that world is ${Math.round(reach)} away`,
+        400,
+        { level, reach: Math.round(telescopeRange(level)), distance: Math.round(reach) },
       );
     }
 
@@ -234,6 +239,7 @@ export async function assignWatch(
         'SLOT_COOLING',
         `That slot is still realigning — ${String(minutes)} minutes left`,
         409,
+        { minutes },
       );
     }
 
@@ -403,7 +409,9 @@ export async function launchProbe(
   return db.transaction(async (tx) => {
     const origin = await loadLocked(tx, originPlanetId, clock);
     if (origin.alloy < PROBE.alloy || origin.crystal < PROBE.crystal) {
-      throw new GameError('INSUFFICIENT_RESOURCES', 'Not enough resources for a probe');
+      throw new GameError('INSUFFICIENT_RESOURCES', 'Not enough resources for a probe', 400, {
+        context: 'probe',
+      });
     }
 
     const [target] = await tx.select().from(planets).where(eq(planets.id, targetPlanetId));

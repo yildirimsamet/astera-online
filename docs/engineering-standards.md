@@ -144,6 +144,22 @@ nothing said so.
 **A new contract test is only finished when you have watched it fail.** Revert the fix, confirm
 it goes red, put the fix back.
 
+### Two languages are checked by machine, not by promise
+
+`t()` is typed against the English resource tree, so a key that does not exist is a compile error
+at the call site rather than a path printed on a phone. Every other language is typed as that tree
+with its string literals widened, so a missing or extra key is a compile error too.
+
+`apps/web/test/i18n.test.ts` covers what types cannot see, and each case is a real failure mode:
+an empty string; a key copied across untranslated; a `{{placeholder}}` or `<0>` slot dropped or
+renamed in one language; a plural missing its `_one` form. That last one bites specifically in
+Turkish — no plural suffix follows a numeral, so writing only `_other` looks correct, and i18next
+falls back to the **bare key** rather than to `_other`.
+
+The untranslated check keeps an explicit exception list for leaves that genuinely read the same in
+both languages (punctuation, bare placeholders, proper nouns). A second test fails on any entry in
+that list that is no longer identical, so an allowance cannot quietly rot into permission.
+
 ### Verify frontend work by looking at it
 
 `node tools/visual.mjs out/visual` drives the real client against the real API, photographs it
@@ -175,11 +191,21 @@ re-breaking something:
 
 ## Errors
 
-- One shape for the whole API: `{ error: MACHINE_CODE, message: "human sentence" }`.
-- `GameError` carries a stable code, a sentence a player can act on, and an HTTP status.
-  Anything else is a bug and is **not** described to the client.
+- One shape for the whole API:
+  `{ error: MACHINE_CODE, message: "human sentence", params?: { … } }`.
+- `GameError` carries a stable code, a sentence a player can act on, an HTTP status, and — where
+  the sentence has figures in it — the figures themselves. Anything else is a bug and is **not**
+  described to the client.
 - Messages say what went wrong *and what to do*: `"Command Core must be raised first"`, never
   `"validation failed"`.
+- **The code is what the client localises off; the sentence is the fallback.** A finished sentence
+  cannot be translated after the fact — "All 4 flight bays are in use" has the 4 baked in — so a
+  refusal that interpolates anything sends its parts as `params` too. The English sentence still
+  ships, because a phone one deploy behind the server has never heard of the new code and the
+  server's own words beat a key path on screen.
+- **Named things travel as IDs.** `{ hull: 'WASP' }`, never `{ hull: 'Wasp' }`. The server has no
+  business holding a Turkish name for a hull — `packages/rules` is shared with the simulator and is
+  deliberately language-free — so the client resolves the ID at the last moment.
 - Never swallow an error to make a test pass.
 
 ## Server authority

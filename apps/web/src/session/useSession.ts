@@ -2,7 +2,9 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useApi } from '../api/context.js';
 import { ApiError } from '../api/client.js';
-import type { Me } from '../api/schemas.js';
+import { describeError } from '../i18n/errors.js';
+import { keys } from '../api/keys.js';
+import type { ClaimIntent, ClaimResult, Me, Preview } from '../api/schemas.js';
 
 /** Where the player is standing, as one word. */
 export type Phase = Session['phase'];
@@ -17,7 +19,15 @@ export type Session =
   /** Asking the cookie whether there is a session to come back to. */
   | { phase: 'starting' }
   /** No session. The front door: the premise, and a way in. */
-  | { phase: 'landing'; error?: string }
+  | { phase: 'landing'; error?: string; open?: 'login' | 'register' }
+  /**
+   * Playing the real game, on a world that does not exist yet. D56.
+   *
+   * Between `landing` and `ready`, and it is the only phase a visitor can be in
+   * without an account. Nothing has been written on the server — the preview took
+   * no seat — so leaving it costs the galaxy nothing.
+   */
+  | { phase: 'rehearsing'; preview: Preview }
   /** Signed in, no planet. Choose a galaxy. */
   | { phase: 'servers'; me: Me; error?: string }
   /** Signed in, placed, and standing on their planet. */
@@ -25,8 +35,12 @@ export type Session =
   /** Something is wrong that the player cannot fix by pressing again. */
   | { phase: 'blocked'; message: string };
 
-const messageOf = (err: unknown): string =>
-  err instanceof Error ? err.message : 'Could not reach the server';
+/**
+ * The same catalogue every other refusal goes through — a failed sign-in is a
+ * refusal like any other, and it lands on the one screen a player who has not
+ * chosen a language yet is looking at.
+ */
+const messageOf = (err: unknown): string => describeError(err);
 
 /**
  * THE THREE SCREENS THIS GAME HAS, AND HOW YOU GET BETWEEN THEM. D21.
@@ -150,6 +164,98 @@ export function useSession() {
     [api, session, settle],
   );
 
+  /**
+   * Start the rehearsal: read the frontier galaxy, and play it. D56.
+   *
+   * ONE PUBLIC REQUEST AND NO ACCOUNT. If every galaxy is full there is nothing to
+   * rehearse and the front door says so, rather than opening ninety seconds of a
+   * world that cannot be claimed at the end.
+   */
+  const rehearse = useCallback(async (): Promise<void> => {
+    /**
+     * THE FRONT DOOR STAYS ON SCREEN WHILE THIS LANDS.
+     *
+     * It used to drop to the loading frame, and that is a spinner where a decision
+     * should be (Principle 10): the visitor pressed one button and the thing they
+     * were looking at was replaced by a caption saying "making contact". The page
+     * they pressed is a live 3D scene — leaving it up and letting the control say
+     * it is working is both calmer and honest, and the disc behind it is already
+     * loading its models by then.
+     */
+    try {
+      setSession({ phase: 'rehearsing', preview: await api.preview() });
+    } catch (err) {
+      setSession({ phase: 'landing', error: messageOf(err) });
+      throw err;
+    }
+  }, [api]);
+
+  /** Out of the rehearsal without an account. Nothing to undo. */
+  const leaveRehearsal = useCallback((): void => {
+    setSession({ phase: 'landing' });
+  }, []);
+
+  /** Out of the rehearsal, to sign in as somebody who already exists. */
+  const signInInstead = useCallback((): void => {
+    setSession({ phase: 'landing', open: 'login' });
+  }, []);
+
+  /**
+   * The claim landed. An account, a seat, and the opening — all real.
+   *
+   * THE PLANET IS SEEDED RATHER THAN REFETCHED. The claim answered with the whole
+   * planet view, built in the transaction that made it (D53), so writing it into
+   * the cache is what stops the first frame of a player's first session being a
+   * loading state for a payload they are already holding.
+   */
+  const settleClaim = useCallback(
+    (result: ClaimResult): void => {
+      queries.clear();
+      queries.setQueryData(keys.planet, result.planet);
+      setSession({
+        phase: 'ready',
+        me: {
+          accountId: result.accountId,
+          username: result.username,
+          displayName: result.displayName,
+          placement: {
+            shard: result.placement.shard,
+            shardName: result.placement.shardName,
+            planetName: result.placement.planetName,
+          },
+        },
+        standing: {
+          shard: result.placement.shard,
+          shardName: result.placement.shardName,
+          planetName: result.placement.planetName,
+        },
+      });
+    },
+    [queries],
+  );
+
+  /**
+   * Turn the rehearsal into a season.
+   *
+   * IT GOES THROUGH THE APP'S OWN `Api`, and that is the whole reason this lives
+   * here rather than inside the rehearsal. The rehearsal's client is one whose
+   * `fetch` never leaves the device — it would have answered this call with
+   * `REHEARSAL_ONLY` — and even if it had reached the server, the access token
+   * would have landed on an instance the game is about to throw away, leaving the
+   * first frame of a player's first session to 401 and refresh its way in.
+   */
+  const claim = useCallback(
+    async (
+      username: string,
+      password: string,
+      intents: readonly ClaimIntent[],
+    ): Promise<void> => {
+      settleClaim(await api.claim(username, password, intents));
+    },
+    [api, settleClaim],
+  );
+
+
   const signOut = useCallback(async (): Promise<void> => {
     setSession({ phase: 'starting' });
     await api.logout();
@@ -163,5 +269,15 @@ export function useSession() {
     void coldStart();
   }, [coldStart]);
 
-  return { session, authenticate, chooseServer, signOut, retry };
+  return {
+    session,
+    authenticate,
+    chooseServer,
+    signOut,
+    retry,
+    rehearse,
+    leaveRehearsal,
+    signInInstead,
+    claim,
+  };
 }

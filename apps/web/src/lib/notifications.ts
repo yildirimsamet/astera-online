@@ -1,6 +1,7 @@
 import { z } from 'zod';
-import { HULLS, type HullId } from '@astera/rules';
 import type { NotificationView } from '../api/schemas.js';
+import i18n from '../i18n/index.js';
+import { hullName, unlockCopy } from '../i18n/names.js';
 import { compact } from './format.js';
 import { duration } from './time.js';
 
@@ -106,26 +107,55 @@ const probeHome = z.object({
   detected: z.boolean().optional(),
 });
 
-const unlocked = z.object({ title: z.string(), body: z.string() });
+/**
+ * `unlock` is the ID and is what the client localises off; `title` and `body` are
+ * the server's own English, kept as the fallback for a fifth unlock this build
+ * has never heard of. Optional because rows written before this existed carry
+ * only the pair.
+ */
+const unlocked = z.object({
+  unlock: z.string().optional(),
+  title: z.string(),
+  body: z.string(),
+});
 
 /* ── the sentences ──────────────────────────────────────────── */
 
-const named = (hull: string): string =>
-  hull in HULLS ? HULLS[hull as HullId].name : hull;
+/** A hull id off the wire, in the player's language. Unknown ids pass through. */
+const named = (hull: string): string => hullName(hull) ?? hull;
 
 /** "30 Wasp · 10 Lance". What Radar L5 is actually sold for. */
 const composition = (ships: Record<string, number>): string =>
   Object.entries(ships)
     .filter(([, n]) => n > 0)
-    .map(([hull, n]) => `${String(n)} ${named(hull)}`)
-    .join(' · ');
+    .map(([hull, n]) => i18n.t('notifications.composition', { count: n, hull: named(hull) }))
+    .join(i18n.t('notifications.join'));
 
 const spoils = (alloy: number, crystal: number): string[] => {
   const out: string[] = [];
-  if (alloy >= 1) out.push(`+${compact(alloy)} alloy`);
-  if (crystal >= 1) out.push(`+${compact(crystal)} crystal`);
+  if (alloy >= 1) out.push(i18n.t('notifications.spoilAlloy', { amount: compact(alloy) }));
+  if (crystal >= 1) out.push(i18n.t('notifications.spoilCrystal', { amount: compact(crystal) }));
   return out;
 };
+
+/** The separator between clauses of one notification. One place, one decision. */
+const JOIN = (): string => i18n.t('notifications.join');
+
+/**
+ * DECISIVE, PARTIAL or REPELLED, in the player's language.
+ *
+ * The payload carries the enum, not a word, so an unrecognised value from a newer
+ * server passes through as itself rather than disappearing — the same fallback
+ * rule as every other id that arrives over the wire.
+ */
+const GRADE_KEY = {
+  DECISIVE: 'reports.gradeDecisive',
+  PARTIAL: 'reports.gradePartial',
+  REPELLED: 'reports.gradeRepelled',
+} as const;
+
+const gradeWord = (grade: string): string =>
+  grade in GRADE_KEY ? i18n.t(GRADE_KEY[grade as keyof typeof GRADE_KEY]) : grade;
 
 /**
  * @param now the client's clock, so a countdown can go into the past tense.
@@ -136,7 +166,7 @@ export function describeNotification(notification: NotificationView, now: number
   switch (notification.kind) {
     case 'incoming_fleet': {
       const parsed = incoming.safeParse(notification.payload);
-      if (!parsed.success) return 'Incoming fleet.';
+      if (!parsed.success) return i18n.t('notifications.incomingFallback');
       const { arriveAt, etaMinutes, estimatedShips, fleet: ships, originName } = parsed.data;
 
       /**
@@ -149,90 +179,109 @@ export function describeNotification(notification: NotificationView, now: number
        */
       const landed = arriveAt !== undefined && arriveAt.getTime() <= now;
       const clock = landed
-        ? 'landed'
+        ? i18n.t('notifications.incomingLanded')
         : arriveAt === undefined
-          ? `ETA ${String(etaMinutes)} min`
-          : `lands in ${duration((arriveAt.getTime() - now) / 60_000)}`;
+          ? i18n.t('notifications.incomingEta', { minutes: etaMinutes })
+          : i18n.t('notifications.incomingLandsIn', {
+              duration: duration((arriveAt.getTime() - now) / 60_000),
+            });
 
-      const parts = [`Incoming fleet · ${clock}`];
+      const parts = [i18n.t('notifications.incomingHead', { clock })];
       // Composition is the better line when radar has bought it — it says what
       // to build against, which a count cannot.
       if (ships && Object.keys(ships).length > 0) parts.push(composition(ships));
-      else if (estimatedShips !== undefined) parts.push(`est. ${String(estimatedShips)} ships`);
-      if (originName !== undefined) parts.push(`from ${originName}`);
-      return parts.join(' · ');
+      else if (estimatedShips !== undefined) {
+        parts.push(i18n.t('notifications.incomingEstimate', { count: estimatedShips }));
+      }
+      if (originName !== undefined) {
+        parts.push(i18n.t('notifications.incomingFrom', { origin: originName }));
+      }
+      return parts.join(JOIN());
     }
 
     case 'raided': {
       const parsed = raided.safeParse(notification.payload);
-      if (!parsed.success) return 'You were raided.';
+      if (!parsed.success) return i18n.t('notifications.raidedFallback');
       const { grade, lootAlloy, lootCrystal, unitsLost, theirLosses } = parsed.data;
       if (grade === 'REPELLED') {
         // What it cost to hold, on both sides. "You repelled a raid" on its own
         // reads as a free win, and a defence that looks free is not one anybody
         // maintains.
-        const cost = [`${String(unitsLost)} lost holding`];
+        const cost = [i18n.t('notifications.repelledLost', { count: unitsLost })];
         if (theirLosses !== undefined && theirLosses > 0) {
-          cost.push(`${String(theirLosses)} of theirs destroyed`);
+          cost.push(i18n.t('notifications.repelledTheirs', { count: theirLosses }));
         }
-        return `Raid repelled · ${cost.join(' · ')}`;
+        return i18n.t('notifications.repelledHead', { cost: cost.join(JOIN()) });
       }
       const loot = lootAlloy + lootCrystal;
-      return `Raided · −${compact(loot)} taken · ${String(unitsLost)} units lost`;
+      return i18n.t('notifications.raided', { amount: compact(loot), count: unitsLost });
     }
 
     case 'raid_result': {
       const parsed = raidResult.safeParse(notification.payload);
-      if (!parsed.success) return 'Your raid resolved.';
+      if (!parsed.success) return i18n.t('notifications.raidResultFallback');
       const { grade, targetName, lootAlloy, lootCrystal, unitsLost, shipsHome } = parsed.data;
       // The fleet is gone. This is the line the whole notification exists for —
       // before it, nothing in the game told a player their raid had been wiped out.
       if (shipsHome === 0) {
-        return `${targetName} held · your fleet was destroyed · ${String(unitsLost)} ships lost`;
+        return i18n.t('notifications.raidWiped', { target: targetName, count: unitsLost });
       }
       const took = spoils(lootAlloy, lootCrystal);
-      const detail = took.length > 0 ? took.join(' · ') : 'nothing taken';
-      return `${grade} at ${targetName} · ${detail} · ${String(unitsLost)} ships lost`;
+      const detail = took.length > 0 ? took.join(JOIN()) : i18n.t('notifications.raidNothing');
+      return i18n.t('notifications.raidResult', {
+        grade: gradeWord(grade),
+        target: targetName,
+        detail,
+        count: unitsLost,
+      });
     }
 
     case 'fleet_returned': {
       const parsed = returned.safeParse(notification.payload);
       if (!parsed.success) {
         const legacy = legacyRaidReturn.safeParse(notification.payload);
-        if (!legacy.success) return 'Your fleet is home.';
+        if (!legacy.success) return i18n.t('notifications.fleetFallback');
         const loot = legacy.data.lootAlloy + legacy.data.lootCrystal;
-        return loot > 0
-          ? `Fleet home · ${String(legacy.data.ships)} ships · +${compact(loot)} looted`
-          : `Fleet home · ${String(legacy.data.ships)} ships · empty-handed`;
+        return i18n.t(
+          loot > 0 ? 'notifications.fleetHomeLooted' : 'notifications.fleetHomeEmpty',
+          { where: '', count: legacy.data.ships, amount: compact(loot) },
+        );
       }
       const trip = parsed.data;
       if (trip.trip === 'recalled') {
-        if (trip.craftKind === 'probe') {
-          return 'Your probe was lost · that flight could not be completed';
-        }
-        return `${String(trip.craft)} craft returned · that flight could not be completed`;
+        if (trip.craftKind === 'probe') return i18n.t('notifications.probeLost');
+        return i18n.t('notifications.recalled', { count: trip.craft });
       }
       if (trip.trip === 'raid') {
-        const where = trip.fromName ? ` from ${trip.fromName}` : '';
+        const where = trip.fromName
+          ? i18n.t('notifications.fleetFrom', { origin: trip.fromName })
+          : '';
         const loot = trip.lootAlloy + trip.lootCrystal;
-        return loot > 0
-          ? `Fleet home${where} · ${String(trip.ships)} ships · +${compact(loot)} looted`
-          : `Fleet home${where} · ${String(trip.ships)} ships · empty-handed`;
+        return i18n.t(
+          loot > 0 ? 'notifications.fleetHomeLooted' : 'notifications.fleetHomeEmpty',
+          { where, count: trip.ships, amount: compact(loot) },
+        );
       }
-      const what = trip.trip === 'harvest' ? 'Salvage' : 'Ore';
+      const what = i18n.t(
+        trip.trip === 'harvest' ? 'notifications.salvageWord' : 'notifications.oreWord',
+      );
       const landed = spoils(trip.alloy, trip.crystal);
       const wasted = trip.wastedAlloy + trip.wastedCrystal;
       if (landed.length === 0) {
         return wasted > 0
-          ? `${what} home · nowhere to put it · ${compact(wasted)} thrown away`
-          : `${what} run home · nothing left to take`;
+          ? i18n.t('notifications.haulWasted', { what, amount: compact(wasted) })
+          : i18n.t('notifications.haulNothing', { what });
       }
       // The waste is the lesson. Ore mined and then dumped because the works were
       // already full is what D31 charges a miner for, and it had never once been
       // shown anywhere in the client.
       return wasted > 0
-        ? `${what} home · ${landed.join(' · ')} · ${compact(wasted)} lost, works full`
-        : `${what} home · ${landed.join(' · ')}`;
+        ? i18n.t('notifications.haulPartly', {
+            what,
+            landed: landed.join(JOIN()),
+            amount: compact(wasted),
+          })
+        : i18n.t('notifications.haul', { what, landed: landed.join(JOIN()) });
     }
 
     case 'scan_detected': {
@@ -241,20 +290,21 @@ export function describeNotification(notification: NotificationView, now: number
       // read it — so the API's own radar-filtered log is the source for that, and
       // this line stays deliberately vague.
       void parsed;
-      return 'Scan detected. Someone is building a picture of you.';
+      return i18n.t('notifications.scanDetected');
     }
 
     case 'probe_report': {
       const parsed = probeHome.safeParse(notification.payload);
-      if (!parsed.success) return 'A probe is home. Its report is readable.';
-      const caught = parsed.data.detected === true ? ' · they caught it' : '';
-      return `Probe home · ${parsed.data.targetName} is readable${caught}`;
+      if (!parsed.success) return i18n.t('notifications.probeFallback');
+      const caught = parsed.data.detected === true ? i18n.t('notifications.probeCaught') : '';
+      return i18n.t('notifications.probeHome', { target: parsed.data.targetName, caught });
     }
 
     case 'unlock': {
       const parsed = unlocked.safeParse(notification.payload);
       if (!parsed.success) return null;
-      return `${parsed.data.title} — ${parsed.data.body}`;
+      const copy = unlockCopy(parsed.data.unlock, parsed.data);
+      return i18n.t('notifications.unlock', { title: copy.title, body: copy.body });
     }
 
     /**

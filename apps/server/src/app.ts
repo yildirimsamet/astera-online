@@ -23,6 +23,8 @@ import { EventBus } from './stream/bus.js';
 import { registerSessionRoutes } from './routes/session.js';
 import { registerSeasonRoutes } from './routes/season.js';
 import { registerServerRoutes } from './routes/servers.js';
+import { registerPreviewRoutes } from './routes/preview.js';
+import { registerOnboardingRoutes } from './routes/onboarding.js';
 import { Presence } from './services/presence.js';
 
 declare module 'fastify' {
@@ -132,7 +134,18 @@ export function buildApp(opts: BuildAppOptions): BuiltApp {
     const err: unknown = error;
 
     if (err instanceof GameError) {
-      return reply.status(err.status).send({ error: err.code, message: err.message });
+      /**
+       * The code, the English sentence, and the figures that sentence was built
+       * from. The client localises off the code and interpolates the params; the
+       * sentence is what a client one deploy BEHIND this server still has to show.
+       * `params` is omitted rather than sent empty, so nothing changes on the wire
+       * for the refusals that have no figures in them.
+       */
+      return reply.status(err.status).send({
+        error: err.code,
+        message: err.message,
+        ...(err.params === undefined ? {} : { params: err.params }),
+      });
     }
     // Zod throws on bad input at the route boundary. Without this branch every
     // malformed request would surface as a 500 and look like a server fault.
@@ -155,6 +168,8 @@ export function buildApp(opts: BuildAppOptions): BuiltApp {
   registerHealthRoutes(app);
   registerAuthRoutes(app);
   registerServerRoutes(app);
+  registerPreviewRoutes(app);
+  registerOnboardingRoutes(app);
   registerSeasonRoutes(app);
   registerPlanetRoutes(app);
   registerIntelRoutes(app);

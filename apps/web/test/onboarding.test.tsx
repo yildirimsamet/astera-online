@@ -75,22 +75,30 @@ function harness(servers: ServerRow[] = [server()]) {
 const instantly: Loader = () => Promise.resolve();
 
 const openDoor = async (): Promise<void> => {
-  await screen.findByRole('button', { name: /take a planet/i });
+  await screen.findByRole('button', { name: /check your planet/i });
 };
 
 describe('the landing screen', () => {
-  it('states the premise before it asks for anything', async () => {
+  /**
+   * THE MIDDLE OF THIS PAGE IS THE GAME, NOT A PARAGRAPH. Owner decision.
+   *
+   * It carried the premise and the stake — two paragraphs a stranger reads after
+   * they have already decided from the picture. They are gone, the wordmark sits
+   * high, and what is left is a sky, one line about who is in there, and one door.
+   */
+  it('shows a sky and a door, and asks for nothing', async () => {
     const { wrapper: Wrapper } = harness();
     render(
       <Wrapper>
-        <LandingScreen onAuthenticate={vi.fn()} loadAsset={instantly} />
+        <LandingScreen onAuthenticate={vi.fn()} onBegin={vi.fn(() => Promise.resolve())} loadAsset={instantly} />
       </Wrapper>,
     );
     await openDoor();
 
-    expect(screen.getByText(/one planet in a galaxy of fifty real people/i)).toBeInTheDocument();
-    // No form until it is asked for. The premise is the first thing, not a field.
+    expect(screen.getByText(/your planet is ready/i)).toBeInTheDocument();
+    // No form until it is asked for, and no wall of copy in front of the scene.
     expect(screen.queryByLabelText(/commander name/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/one planet in a galaxy of/i)).not.toBeInTheDocument();
   });
 
   /**
@@ -105,7 +113,7 @@ describe('the landing screen', () => {
     ]);
     render(
       <Wrapper>
-        <LandingScreen onAuthenticate={vi.fn()} loadAsset={instantly} />
+        <LandingScreen onAuthenticate={vi.fn()} onBegin={vi.fn(() => Promise.resolve())} loadAsset={instantly} />
       </Wrapper>,
     );
     await openDoor();
@@ -118,27 +126,68 @@ describe('the landing screen', () => {
     const { wrapper: Wrapper } = harness([]);
     render(
       <Wrapper>
-        <LandingScreen onAuthenticate={vi.fn()} loadAsset={instantly} />
+        <LandingScreen onAuthenticate={vi.fn()} onBegin={vi.fn(() => Promise.resolve())} loadAsset={instantly} />
       </Wrapper>,
     );
     await openDoor();
     expect(screen.queryByText(/commanders hold a world/i)).not.toBeInTheDocument();
   });
 
-  it('opens the form on either door and can swap between them', async () => {
+  /**
+   * THE PRIMARY DOOR STOPPED BEING A FORM. D56.
+   *
+   * A stranger is asked for a password after ninety seconds of the real game, not
+   * before it — so the loud button starts the rehearsal and nothing on this page
+   * asks for anything until they have something worth keeping.
+   */
+  it('begins the rehearsal on the primary door rather than asking for a password', async () => {
     const user = userEvent.setup();
+    const onBegin = vi.fn(() => Promise.resolve());
     const { wrapper: Wrapper } = harness();
     render(
       <Wrapper>
-        <LandingScreen onAuthenticate={vi.fn()} loadAsset={instantly} />
+        <LandingScreen onAuthenticate={vi.fn()} onBegin={onBegin} loadAsset={instantly} />
       </Wrapper>,
     );
     await openDoor();
 
-    await user.click(screen.getByRole('button', { name: /take a planet/i }));
-    expect(screen.getByRole('dialog', { name: /create a commander/i })).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: /check your planet/i }));
+    expect(onBegin).toHaveBeenCalledTimes(1);
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+  });
 
-    await user.click(screen.getByRole('button', { name: /i already have a commander/i }));
+  it('opens sign-in on the second door, and can still swap to making a commander', async () => {
+    const user = userEvent.setup();
+    const { wrapper: Wrapper } = harness();
+    render(
+      <Wrapper>
+        <LandingScreen onAuthenticate={vi.fn()} onBegin={vi.fn(() => Promise.resolve())} loadAsset={instantly} />
+      </Wrapper>,
+    );
+    await openDoor();
+
+    await user.click(screen.getByRole('button', { name: /^i already have a commander$/i }));
+    expect(screen.getByRole('dialog', { name: /sign in/i })).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: /i need a commander/i }));
+    expect(screen.getByRole('dialog', { name: /create a commander/i })).toBeInTheDocument();
+  });
+
+  /** Somebody sent back here to sign in lands on the form, not on the front page. */
+  it('opens the form it was asked to open', async () => {
+    const { wrapper: Wrapper } = harness();
+    render(
+      <Wrapper>
+        <LandingScreen
+          onAuthenticate={vi.fn()}
+          onBegin={vi.fn(() => Promise.resolve())}
+          open="login"
+          loadAsset={instantly}
+        />
+      </Wrapper>,
+    );
+    await openDoor();
+
     expect(screen.getByRole('dialog', { name: /sign in/i })).toBeInTheDocument();
   });
 
@@ -148,12 +197,13 @@ describe('the landing screen', () => {
     const { wrapper: Wrapper } = harness();
     render(
       <Wrapper>
-        <LandingScreen onAuthenticate={onAuthenticate} loadAsset={instantly} />
+        <LandingScreen onAuthenticate={onAuthenticate} onBegin={vi.fn(() => Promise.resolve())} loadAsset={instantly} />
       </Wrapper>,
     );
     await openDoor();
 
-    await user.click(screen.getByRole('button', { name: /take a planet/i }));
+    await user.click(screen.getByRole('button', { name: /^i already have a commander$/i }));
+    await user.click(screen.getByRole('button', { name: /i need a commander/i }));
     await user.type(screen.getByLabelText(/commander name/i), 'Vantage');
     await user.type(screen.getByLabelText(/password/i), 'a-real-password');
     await user.click(screen.getByRole('button', { name: /create commander/i }));
@@ -167,12 +217,12 @@ describe('the landing screen', () => {
     const { wrapper: Wrapper } = harness();
     render(
       <Wrapper>
-        <LandingScreen onAuthenticate={onAuthenticate} loadAsset={instantly} />
+        <LandingScreen onAuthenticate={onAuthenticate} onBegin={vi.fn(() => Promise.resolve())} loadAsset={instantly} />
       </Wrapper>,
     );
     await openDoor();
 
-    await user.click(screen.getByRole('button', { name: /sign in/i }));
+    await user.click(screen.getByRole('button', { name: /^i already have a commander$/i }));
     const form = screen.getByRole('dialog');
     await user.type(within(form).getByLabelText(/commander name/i), '  Vantage  ');
     await user.type(within(form).getByLabelText(/password/i), 'a-real-password');
@@ -191,12 +241,13 @@ describe('the landing screen', () => {
     const { wrapper: Wrapper } = harness();
     render(
       <Wrapper>
-        <LandingScreen onAuthenticate={onAuthenticate} loadAsset={instantly} />
+        <LandingScreen onAuthenticate={onAuthenticate} onBegin={vi.fn(() => Promise.resolve())} loadAsset={instantly} />
       </Wrapper>,
     );
     await openDoor();
 
-    await user.click(screen.getByRole('button', { name: /take a planet/i }));
+    await user.click(screen.getByRole('button', { name: /^i already have a commander$/i }));
+    await user.click(screen.getByRole('button', { name: /i need a commander/i }));
     await user.type(screen.getByLabelText(/commander name/i), username);
     await user.type(screen.getByLabelText(/password/i), password);
     await user.click(screen.getByRole('button', { name: /create commander/i }));
@@ -217,12 +268,12 @@ describe('the landing screen', () => {
     const { wrapper: Wrapper } = harness();
     render(
       <Wrapper>
-        <LandingScreen onAuthenticate={onAuthenticate} loadAsset={instantly} />
+        <LandingScreen onAuthenticate={onAuthenticate} onBegin={vi.fn(() => Promise.resolve())} loadAsset={instantly} />
       </Wrapper>,
     );
     await openDoor();
 
-    await user.click(screen.getByRole('button', { name: /sign in/i }));
+    await user.click(screen.getByRole('button', { name: /^i already have a commander$/i }));
     const form = screen.getByRole('dialog');
     await user.type(within(form).getByLabelText(/commander name/i), 'Vantage');
     await user.type(within(form).getByLabelText(/password/i), 'wrong-password');
@@ -239,12 +290,12 @@ describe('the landing screen', () => {
     const { wrapper: Wrapper } = harness();
     render(
       <Wrapper>
-        <LandingScreen onAuthenticate={vi.fn()} loadAsset={instantly} />
+        <LandingScreen onAuthenticate={vi.fn()} onBegin={vi.fn(() => Promise.resolve())} loadAsset={instantly} />
       </Wrapper>,
     );
     await openDoor();
 
-    await user.click(screen.getByRole('button', { name: /take a planet/i }));
+    await user.click(screen.getByRole('button', { name: /^i already have a commander$/i }));
     expect(screen.getByRole('dialog')).toBeInTheDocument();
 
     await user.keyboard('{Escape}');

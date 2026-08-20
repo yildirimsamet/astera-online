@@ -49,7 +49,16 @@ export function LoadingScreen({
 
   return (
     <main
-      className="fixed inset-0 z-50 flex flex-col items-center justify-center overflow-hidden bg-void px-8"
+      /**
+       * THE COVER IS THE TOPMOST THING IN THE APP.
+       *
+       * It shared `z-50` with the toast and with the onboarding's beat card, and
+       * DOM order decided the rest — so a card written later in the tree painted
+       * over a screen whose entire job is to be the only thing visible. A layer
+       * that must cover everything cannot be on the same rung as the things it
+       * covers.
+       */
+      className="fixed inset-0 z-[60] flex flex-col items-center justify-center overflow-hidden bg-void px-8"
       role="status"
       aria-live="polite"
       aria-busy="true"

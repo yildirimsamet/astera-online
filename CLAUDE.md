@@ -177,6 +177,13 @@ Each was paid for in iteration. `docs/decisions.md` holds the evidence.
 | Every card carries a two-or-three-word tag, separate from its role sentence | The role argues a decision; the tag answers "what IS this" for someone scanning fourteen cards |
 | **A control names the surface it opens** | A permanent way in is not enough. The commander sheet — the account, the galaxy, sign-out — hung off a header button that said SEASON and drew a duration, so it read as a clock and produced "there is no logout button" (D54) |
 | **The galactic plane carries no lines** | The graph-paper quality came from strokes being strokes, not from their brightness — modulating them changed nothing and cost a pass to find out (D53b) |
+| **No user-facing string is written in a component** | Every one lives in `apps/web/src/i18n/locales/`, one section per surface, and NOTHING is shared between surfaces — two controls that read the same today are two controls (D55) |
+| **The Turkish is written in Turkish, not converted from the English** | Finish the sentence, verb over nominalisation, semicolon instead of the English dash, and the phrase that does the same job rather than the dictionary equivalent. The rules are at the top of `locales/tr/entry.ts`; the first attempt ignored them and read like a book translation |
+| A refusal travels as a CODE plus its figures, never as a finished sentence | "All 4 flight bays are in use" cannot be translated after the fact. `GameError` carries `params`; named things travel as IDs and are resolved on the client (D55) |
+| Numbers, dates and clocks go through `format.ts` and `time.ts` | `1.234.567` against `1,234,567`, `%40` against `40%`. `toFixed` is hard-wired to a full stop and put an English decimal inside a Turkish suffix |
+| **A visitor plays before an account, and it costs the shard nothing** | `/api/preview` writes NOTHING — no account, no player, no planet and above all **no seat**. Fifty worlds fill strictly in order and that rule is the empty-shard risk's only mitigation; a seat spent on somebody who never came back is spent forever (D56) |
+| **The rehearsal produces INTENTS; the server produces outcomes** | It renders the real screens against an `Api` whose `fetch` never leaves the device, and the claim replays what was pressed through the ordinary services. Predicting with `@astera/rules` is what lets the screen keep up with a finger; it is never a decision |
+| **A guided beat leaves ONE thing pressable, and the way out is never one of the things locked** | Activations outside the target are cancelled — never pointer or touch events, which would cancel the scroll or the orbit they began. The allowance is a LIST, shallow to deep, because a gated control OPENS a surface; gating only the first seals the player inside the sheet they were told to open (D56) |
 | **Read a file's docblock before editing it** | The 3D surface and its harnesses carry a dozen traps that each cost a bug — orbit standoffs, `lookAt` frames, sprite tinting, plume direction, a screenshot that stalls the frame loop. Every one is written at its own site in `apps/web/src/galaxy/` and `tools/` |
 
 **Engineering**
@@ -304,11 +311,12 @@ Phases 0–7 are done: the rules module and season simulator; the backend; the i
 the return moment; the playable loop; the galaxy as the only screen (D20); accounts and ten
 galaxies (D21); the owner's interface pass (D22–D26); the OGame pass (D27–D33); mining,
 wreckage, engagement, notifications and the radar rebuild (D34–D50); the live galaxy and the
-end of waiting (D51–D53); the name, the identity and the way out (D54).
+end of waiting (D51–D53); the name, the identity and the way out (D54); Turkish and English
+(D55); the rehearsal — ninety seconds of the real game before there is an account (D56).
 
 ```
-pnpm verify  →  0 type errors · 0 lint errors · 1,281 tests
-                rules 221 · sim 47 · server 462 · web 551
+pnpm verify  →  0 type errors · 0 lint errors · 1,392 tests
+                rules 221 · sim 47 · server 492 · web 632
 ```
 
 **Two season-gate assertions are RED, and they MOVED at D52a:** `ARR` reads 0.298 on seed
@@ -337,11 +345,14 @@ seed. `ARR` was always the next thing to re-derive; it is now the only thing.
 | Live channel | Two topics on one SSE socket: what happened to YOU, and what happened in your GALAXY. A stranger's launch reaches every screen in under a second; the polls are a sixty-second net under it, and `/health` says whether the channel is up (D53) |
 | Look | Nebula, a power-law starfield with diffraction spikes, meteors, dust, bloom. Worlds carry an atmosphere limb — warm on the lit side, gone on the dark one — and the galactic plane is a painted plate of spiral arms and dust lanes — no lines anywhere (D53a, D53b) |
 | Web client | The galaxy is the only screen. Focus anything and a rail states what you know and how you know it. Everything animated runs on `serverNow()`, so every player watches the same instant (D52). One tap, one round trip — and the deterministic spends are predicted and reconciled, so the screen agrees with the tap immediately (D53) |
+| Language | Turkish and English, detected from the device and switchable on the front door and in the commander sheet. Resources are compiled in, so the first frame is never in the wrong language. Every element owns its strings; a refusal is localised off its code with the server's figures kept (D55) |
 | Identity | **Astera Online** everywhere — package scope, database, container, channel, title, manifest. The painted wordmark on the front door and the loading cover, and app icons cut from the same artwork (D54) |
+| Onboarding | A stranger plays the real galaxy for ninety seconds before an account exists: the public preview takes no seat, the beats gate to one control at a time, and the claim makes the account, takes the seat and replays the opening in one call (D56) |
 | Season lifecycle | `season_end` event kind exists; **no handler** |
 
 **The single most important gap is a player.** The loop is playable end to end and has
-never been lived with.
+never been lived with — the onboarding now gets a stranger to a committed fleet, but nobody
+has walked it who did not build it.
 
 ## Next
 
@@ -389,6 +400,10 @@ never been lived with.
   for a camera outside a 20-unit disc; inside that radius every near point renders as a
   flat square.
 - Drizzle's `sql` template cannot bind a JS `Date` through postgres.js.
+- `'İ'.toLowerCase()` is `i` **plus a combining dot** in JavaScript, so `/istihbarat/i` does not
+  match `İstihbarat`. Never case-fold a Turkish label to compare it — match it as written.
+- Adding a dependency to `apps/web` makes Vite re-optimise, and the open dev server answers 504
+  until it is restarted. It looks exactly like a blank page.
 - `RETURNING` does not preserve a subquery's `ORDER BY`.
 
 ## The docs

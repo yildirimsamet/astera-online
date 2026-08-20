@@ -1,0 +1,199 @@
+/**
+ * DİSK VE ÜZERİNDEKİ HER ŞEY — galaksinin kendi çerçevesi, komutan sayfası ve
+ * "bu ne, ben bunun hakkında ne biliyorum" sorusunu cevaplayan odak şeridi.
+ *
+ * Odak şeridindeki sınır cümleleri bu oyunun kalbi: oyuncuya neyi GÖREMEDİĞİNİ
+ * söylerler. O yüzden hepsi düz ve net kurulur — "bu okumada yok" gibi bir kalıp
+ * tek bir yerde belirlenir ve her yerde aynı biçimde tekrarlanır, ki oyuncu
+ * sınırın nerede olduğunu ezberleyebilsin.
+ */
+
+export const galaxy = {
+  discLabel: 'Disk',
+  worlds: '{{count}} gezegen',
+  fleetAway: ' · {{count}} filo dışarıda',
+  rocks: ' · {{count}} kaya',
+  wrecks_one: ' · {{count}} enkaz',
+  wrecks_other: ' · {{count}} enkaz',
+  home: 'Gezegenine dön',
+
+  harvestAway: '{{count}} araç kalktı · enkaza {{minutes}} dk',
+  miningAway: '{{count}} araç kalktı · kayaya {{minutes}} dk',
+
+  panelPlanetEyebrow: 'Gezegenin',
+  panelCommanderEyebrow: 'Komutan',
+  panelIntelEyebrow: 'Bildiklerin',
+  panelIntelTitle: 'İstihbarat',
+
+  commander: {
+    galaxyLabel: 'Galaksi',
+    galaxyUnknown: '—',
+    endsLabel: 'Sezonun bitmesine',
+    endsUnknown: '—',
+    body:
+      'Komutanın bir ad ve bir paroladan ibaret; gezegenin, giriş yaptığın her tarayıcıda seni bekliyor. Sıfırlamada bütün galaksiler baştan kuruluyor ve herkes yeniden başlıyor.',
+    signOut: 'Çıkış yap',
+  },
+} as const;
+
+export const focus = {
+  shellLabel: '{{title}} — odak',
+  clear: 'Seçimi bırak',
+
+  unknown: 'Bilinmiyor',
+
+  planet: {
+    eyebrow: 'Sahibi: {{owner}}',
+    attack: 'Saldırı planla',
+    outOfBand: '{{tier}}. kademe — sen {{low}}–{{high}} arasına vurabilirsin',
+    windowOpen: 'Filoları evde değil. Bütün oyunun beklediği an tam olarak bu.',
+    distance: 'Mesafe',
+    reach: 'Varış süren',
+    reachUnknown: '—',
+    known: 'Bildiklerin',
+    knownOf: '{{total}} üzerinden {{have}}',
+
+    headlineFleetAway: 'Filo dışarıda',
+    headlineFleetHome: 'Filo evde',
+    headlineVeiled: 'Perdeli',
+    headlineProbed: 'Sonda · {{age}}',
+    headlineFought: 'Çatışma · {{age}}',
+    headlineNone: 'Hiçbir bilgi yok',
+
+    installTelescope: 'Teleskop kur',
+    watchSlot: '{{slot}}. yuvayı çevir',
+    replaceSlot: '{{slot}}. yuva · {{target}} yerine',
+    watching: '{{target}} izlemeye alındı',
+    sendProbe: 'Sonda gönder · {{alloy}} alaşım · {{crystal}} kristal',
+    probeAway: 'Sonda kalktı · {{duration}} sonra rapor verecek',
+  },
+
+  asteroid: {
+    eyebrow: '{{level}}. seviye asteroit',
+    title: '{{index}} numaralı kaya',
+    summaryOre: '{{amount}} cevher',
+    working_one: '{{count}} aracın bu kayada · {{state}}',
+    working_other: '{{count}} aracın bu kayada · {{state}}',
+    stateReturning: 'dönüyor',
+    stateInbound: 'gidiyor',
+    noCraft: 'Evde Kazıcı yok',
+    tooLate: 'Sen varmadan gitmiş olur',
+    send: '{{count}} gönder · {{duration}}',
+    oreLeft: 'Kalan cevher',
+    leavesIn: 'Diskten çıkışına',
+    composition: 'İçindeki',
+    compositionValue: '%{{percent}} kristal',
+    speed: 'Hız',
+    speedValue: 'dakikada {{rate}}',
+    spill:
+      'Havuzun ancak {{room}} daha alabilir. Bu yükün {{lost}} kadarı varışta çöpe gider; önce havuzu boşalt.',
+    taken: 'İçinden {{amount}} kadarını birileri çoktan almış.',
+    untouched: 'Hiç dokunulmamış. İlk varan, taşıyabildiği kadarını alır.',
+    fleetLine_one: 'Evde {{count}} Kazıcı var; {{hold}} taşıyor.',
+    fleetLine_other:
+      'Evde {{count}} Kazıcı var. Her biri {{hold}} taşıyor, hepsi birden {{total}}.',
+    derrickPitch:
+      'Yörüngedeki bir <0>{{name}}</0> bunu her biri için <1>{{hold}}</1> yapar, üstelik daha erken vardırır.',
+    intercept: 'Araçların {{reach}} sonra kayayı yakalar; {{spare}} de payın kalır.',
+  },
+
+  craftPicker: {
+    label: 'Kaç araç gitsin',
+  },
+
+  debris: {
+    eyebrow: 'Enkaz',
+    titleUnknown: 'Enkaz sahası',
+    titleOver: '{{planet}} üzerindeki enkaz',
+    summarySalvage: '{{amount}} hurda',
+    working_one: '{{count}} aracın orada · {{state}}',
+    working_other: '{{count}} aracın orada · {{state}}',
+    stateReturning: 'dönüyor',
+    stateInbound: 'gidiyor',
+    noCraft: 'Evde araç yok',
+    tooLate: 'Sen varmadan dağılır',
+    send: '{{count}} gönder · {{duration}}',
+    alloyLeft: 'Kalan alaşım',
+    crystalLeft: 'Kalan kristal',
+    goneIn: 'Dağılmasına',
+    yourHold: 'Taşıma kapasiten',
+    spill:
+      'Havuzun ancak {{room}} daha alabilir. Bunun {{lost}} kadarı varışta çöpe gider; önce havuzu boşalt.',
+    body:
+      'Burada biri filosunu kaybetmiş. Enkaz sönüyor ve herkes görüyor; ilk varan kalanı alır.',
+  },
+
+  run: {
+    eyebrowHome: 'Dönüş yolunda',
+    eyebrowSalvage: 'Hurda seferi',
+    eyebrowOutbound: 'Gidiş yolunda',
+    title_one: '{{count}} Kazıcı',
+    title_other: '{{count}} Kazıcı',
+    homeIn: 'Eve varışına',
+    reachesIn: 'Varışına',
+    meetsRockIn: 'Kayayı yakalamasına',
+    target: 'Hedef',
+    targetWreck: '{{planet}} üzerindeki enkaz',
+    targetWreckAnon: 'Bir gezegenin üzerindeki enkaz',
+    targetDecayed: 'Saha dağıldı',
+    targetRock: '{{level}}. seviye kaya',
+    targetRockGone: 'Kaya geçip gitti',
+    carrying: '{{alloy}} alaşım ve {{crystal}} kristal taşıyor.',
+    emptySalvage: 'Vardığında saha çoktan yağmalanmıştı; eli boş dönüyor.',
+    emptyRock: 'Vardığında kaya çoktan boşaltılmıştı; eli boş dönüyor.',
+    salvageNote:
+      'Enkaz sahası yerinden kımıldamaz ve herkes onu görür. {{clock}} İlk varan taşıyabildiğini alır.',
+    salvageClock: '{{duration}} sonra dağılıyor.',
+    miningNote:
+      'Kayanın şu anki yerine değil, varacağı yere uçuyor. İlk varan taşıyabildiğini alır.',
+  },
+
+  thread: {
+    eyebrowProbeHome: 'Sonda dönüyor',
+    eyebrowProbeOut: 'Sonda gidiyor',
+    eyebrowFleetHome: 'Filo dönüyor',
+    eyebrowFleetOut: 'Filo gidiyor',
+    arrivesIn: 'Varışına',
+    craft: 'Gemi',
+    craftUnknown: '—',
+    returning: 'Yolda, geri geliyor. Verecek karar kalmadı.',
+    outbound: 'Kalkan filo geri çağrılamaz.',
+  },
+
+  contact: {
+    eyebrowBattle: 'Bir akın iniyor',
+    eyebrowSalvage: 'Biri hurda topluyor',
+    eyebrowMining: 'Biri maden çıkarıyor',
+    eyebrowProbe: 'Biri keşif yapıyor',
+    eyebrowMoving: 'Biri hareket hâlinde',
+    titleBattle: 'Ateş altında',
+    titleFleet: 'Filo',
+    titleProbe: 'Sonda',
+    titleMining: 'Maden seferi',
+    titleHarvest: 'Hurda seferi',
+    working: 'Çalışıyor',
+    craftCount: '{{count}} gemi',
+    bombarding: 'Bombardıman',
+    settling: 'Şu an sonuçlanıyor',
+    unattributed: 'Kime ait belli değil',
+    arrivalUnknown: 'Varışı bilinmiyor',
+    craftLabel: 'Gemi',
+    craftUnknown: '—',
+    statusLabel: 'Durum',
+    statusLanded: 'İndi',
+    arrivesIn: 'Varışına',
+    arrivesUnknown: 'Bilinmiyor',
+    boundaryBattle:
+      'O gezegenin üzerinde bir filo var ve ateş ediyor. Kime ait olduğu, nereden geldiği ve kimin kazanacağı bu okumada yok.',
+    boundarySalvage:
+      'Hurda seferi herkese açıktır: saha, rota ve saat. Eve ne götürdüğü değil.',
+    boundaryMining:
+      'Maden seferi herkese açıktır: kaya, rota ve saat. Eve ne götürdüğü değil.',
+    boundaryFleet:
+      'Neyin uçtuğunu ve içinde ne olduğunu görüyorsun. Kime ait olduğu, nereden gelip nereye gittiği bu okumada yok.',
+    telescopeHint:
+      'Bir gezegene çevrilmiş Teleskop, o gezegenin filosu kalktığında sana söyler. Harekete isim koymanın tek yolu bu.',
+    wreckHint:
+      'Enkaz herkese açıktır. İki filodan geriye ne kalırsa birazdan orada olacak; isteyen gidip alır.',
+  },
+} as const;

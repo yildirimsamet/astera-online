@@ -169,3 +169,24 @@ that it should top the ladder.
 
 **The six invariants** — `ARR`, `VFR`, `TI`, `RR`, `SV`, `TAX`. Balance health checks
 measured every simulated day. Defined in [balance.md](balance.md).
+
+
+## Language
+
+**Locale tree** — `apps/web/src/i18n/locales/<lang>/`. One section per surface, keyed by the
+element that shows the string. English is the shape every other language is typed and tested
+against; Turkish is the **fallback**, which is what a device that asked for neither lands on.
+
+**Turkish ship names** — Class names, not proper nouns, so they are translated:
+Wasp → **Atmaca**, Lance → **Mızrak**, Bulwark → **Siper**, Hauler → **Şilep**,
+Bastion → **Tabya**, Thorn → **Diken**, Prospector → **Kazıcı**. Satellites likewise:
+Uplink → **Röle**, Foundry → **Dökümhane**, Derrick → **Vinç**, Beacon → **Fener**.
+`packages/rules` keeps the IDs and holds no language at all.
+
+**Havuz** — Turkish for the *works* (D16): where production collects, stops when full, and is
+emptied by hand. "İşlik" is too technical and "ocak" collides with mining; a havuz fills and
+overflows, which is exactly the picture the two vessels in the header draw.
+
+**`params`** — The figures a refusal was built from, sent beside its English sentence so the
+client can say the same thing in another language. See `errors` in
+[engineering-standards.md](engineering-standards.md).

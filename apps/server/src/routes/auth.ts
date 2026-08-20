@@ -6,6 +6,48 @@ import { GameError } from '../services/planet.js';
 
 const REFRESH_COOKIE = 'bs_refresh';
 
+const setRefresh = (reply: FastifyReply, token: string, days: number): void => {
+  void reply.setCookie(REFRESH_COOKIE, token, {
+    httpOnly: true,
+    sameSite: 'lax',
+    secure: process.env.NODE_ENV === 'production',
+    path: '/',
+    maxAge: days * 24 * 60 * 60,
+  });
+};
+
+/**
+ * Mint both tokens, hang the refresh one on the reply, and describe the session.
+ *
+ * EXPORTED BECAUSE TWO ROUTES OPEN A SESSION NOW. Registering does, and so does
+ * the onboarding claim (D56) — which registers, joins a galaxy and replays an
+ * opening in one call, precisely so a player who has just committed does not then
+ * watch three round trips before their world appears. A second copy of this would
+ * be a second place the cookie's flags can drift from the first.
+ */
+export async function openSession(
+  app: FastifyInstance,
+  reply: FastifyReply,
+  account: { id: string; username: string; displayName: string },
+): Promise<{
+  accountId: string;
+  username: string;
+  displayName: string;
+  accessToken: string;
+}> {
+  const [access, refresh] = await Promise.all([
+    app.tokens.issueAccess(account.id),
+    app.tokens.issueRefresh(account.id),
+  ]);
+  setRefresh(reply, refresh, app.tokens.refreshDays);
+  return {
+    accountId: account.id,
+    username: account.username,
+    displayName: account.displayName,
+    accessToken: access,
+  };
+}
+
 /**
  * IDENTITY IS A NAME AND A PASSWORD. D21.
  *
@@ -19,44 +61,16 @@ const REFRESH_COOKIE = 'bs_refresh';
  * stateless, no session store.
  */
 export function registerAuthRoutes(app: FastifyInstance): void {
-  const setRefresh = (reply: FastifyReply, token: string, days: number): void => {
-    void reply.setCookie(REFRESH_COOKIE, token, {
-      httpOnly: true,
-      sameSite: 'lax',
-      secure: process.env.NODE_ENV === 'production',
-      path: '/',
-      maxAge: days * 24 * 60 * 60,
-    });
-  };
-
-  /** Mint both tokens, hang the refresh one on the reply, and describe the session. */
-  const openSession = async (
-    reply: FastifyReply,
-    account: { id: string; username: string; displayName: string },
-  ) => {
-    const [access, refresh] = await Promise.all([
-      app.tokens.issueAccess(account.id),
-      app.tokens.issueRefresh(account.id),
-    ]);
-    setRefresh(reply, refresh, app.tokens.refreshDays);
-    return {
-      accountId: account.id,
-      username: account.username,
-      displayName: account.displayName,
-      accessToken: access,
-    };
-  };
-
   app.post('/api/auth/register', async (req, reply) => {
     const body = registerBody.parse(req.body ?? {});
     const account = await registerAccount(app.db, body);
-    return openSession(reply, account);
+    return openSession(app, reply, account);
   });
 
   app.post('/api/auth/login', async (req, reply) => {
     const body = loginBody.parse(req.body ?? {});
     const account = await authenticate(app.db, body);
-    return openSession(reply, account);
+    return openSession(app, reply, account);
   });
 
   /**
@@ -95,7 +109,7 @@ export function registerAuthRoutes(app: FastifyInstance): void {
     // deleted account — is a dead session, not a server fault.
     if (!account) throw new GameError('BAD_SESSION', 'Session is invalid or expired', 401);
 
-    return openSession(reply, account);
+    return openSession(app, reply, account);
   });
 
   /**

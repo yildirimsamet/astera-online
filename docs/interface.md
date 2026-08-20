@@ -37,8 +37,13 @@ player concluded they already had everything.
 ### I2 · Four categories, four tabs, fixed order
 
 `Grow · Orbit · Defend · Reach`, always in that order, as a segmented control rather than a
-scroll. **Order is fixed because a control that reorders itself destroys muscle memory.** The
-*recommendation* moves instead: a pip marks the tab that currently matters most.
+scroll. **Order is fixed because a control that reorders itself destroys muscle memory.**
+
+**Nothing on the bar gives advice.** A pip used to mark whichever problem the situation engine
+ranked highest, and it was removed by owner decision (D56a): the tabs say what they ARE and the
+choosing is the player's, rather than a second opinion sitting beside whatever else is on
+screen. What survives of the ranking is which tab the screen OPENS on — a default, not a
+recommendation.
 
 **Where a tab holds more than one kind of thing, a BAND separates them** (D26). Orbit carries
 four satellites that each cost a slot and four instruments that do not; Reach carries hulls
@@ -113,3 +118,32 @@ the figure was unreachable by a factor of fifteen and the bar could never pass 6
 
 The denominator is what the player has: slots used against slots owned. The size of the galaxy
 still appears, but as the *reason* a slot is a decision rather than as a target.
+
+### I7 · A string in a component is a string that exists in one language
+
+Every word a player reads lives in `apps/web/src/i18n/locales/`, keyed by the surface it belongs
+to. Nothing is shared between surfaces: two controls that read identically today are still two
+controls, because the day one of them is reworded — or translated differently, which happens
+constantly between two languages — the other must not move with it.
+
+**A sentence is translated whole, never assembled in JSX.** `Short {alloy} and {crystal}` hard-codes
+where the verb sits, and Turkish puts it last. Anything with markup inside it goes through `<Trans>`
+with numbered slots; anything with a figure in it takes the figure as a named value. The same rule
+covers punctuation that looks like layout: `%40` and `40%` differ by which side the language puts
+the sign on, so even that is a translated string rather than a template literal.
+
+**The exception is a proper noun the product owns.** "Astera Online" is the name of the game (D54)
+and does not get a Turkish form. Everything else does, including ship classes — "Wasp" carries
+*cheap, fast, swarm* to an English reader and nothing at all to a Turkish one, so it is Atmaca.
+
+### I8 · The language control is visible, not buried
+
+Two languages is a pair, not a list, so it is a segmented control with both options on screen —
+never a dropdown. The person who needs it is by definition the person who cannot read the label on
+the menu that would take them to it, which is also why each option is written in its own language
+("Türkçe", never "Turkish").
+
+It appears twice on purpose. In the commander sheet, beside the galaxy and sign-out, because which
+language you read the world in is an account fact and that is the one surface about the account
+rather than the world. And on the front door, because a visitor who landed in the wrong language
+has no account yet and cannot reach a sheet that only exists after they sign in.

@@ -1,5 +1,6 @@
 import { useEffect, useState, type ReactNode } from 'react';
-import { HULLS, PROBE, fleetCount, telescopeSlots, type HullId } from '@astera/rules';
+import { useTranslation, Trans } from 'react-i18next';
+import { PROBE, fleetCount, telescopeSlots, type HullId } from '@astera/rules';
 import type {
   AsteroidView,
   BattleReport,
@@ -11,6 +12,7 @@ import type {
   PlanetView,
 } from '../api/schemas.js';
 import { useProbe, useWatch } from '../api/queries.js';
+import { hullLabel, hullName, satelliteLabel } from '../i18n/names.js';
 import { compact } from '../lib/format.js';
 import {
   confidenceWord,
@@ -94,10 +96,17 @@ function Shell({
   onToggle: () => void;
   onClose: () => void;
 }) {
+  const { t } = useTranslation();
   return (
     <section
+      /**
+       * `data-focus-rail` is how the onboarding gate (D56) finds this surface. The
+       * beat that asks for a fleet to be sent has to leave the rail live — the
+       * commitment is inside it — without leaving the rest of the screen live too.
+       */
+      data-focus-rail
       className="pointer-events-auto absolute inset-x-0 bottom-0 z-20 border-t border-line bg-void/92 backdrop-blur-md"
-      aria-label={`${title} — focus`}
+      aria-label={t('focus.shellLabel', { title })}
     >
       {/* The rail. Always present, and the whole control when collapsed. */}
       <div className="flex items-center gap-3 px-3 py-2">
@@ -126,7 +135,7 @@ function Shell({
         </button>
         <button
           type="button"
-          aria-label="Clear selection"
+          aria-label={t('focus.clear')}
           onClick={onClose}
           className="shrink-0 rounded-sm px-1.5 py-1 text-[16px] leading-none text-faint hover:text-bone"
         >
@@ -204,12 +213,13 @@ function GapRow({
   blocked?: string;
   action?: ReactNode;
 }) {
+  const { t } = useTranslation();
   return (
     <div className="rounded border border-dashed border-line px-3 py-2">
       <div className="flex items-baseline gap-2">
         <p className="legend">{label}</p>
         <span className="ml-auto shrink-0 text-[10px] uppercase tracking-wider text-faint">
-          Unknown
+          {t('focus.unknown')}
         </span>
       </div>
       <p className="mt-0.5 text-[13px] text-alloy">{missing}</p>
@@ -265,6 +275,7 @@ export function PlanetFocus({
   open: boolean;
   onToggle: () => void;
 }) {
+  const { t } = useTranslation();
   const read = dossier({ target, planet, intel, reports, now });
   const reach = reachMinutes(planet.planet.position, target.position, planet.fleet);
   const away = target.fleet?.status === 'AWAY';
@@ -273,7 +284,7 @@ export function PlanetFocus({
   return (
     <Shell
       art={<PlanetSigil seed={target.id} size={40} dark={known.kind === 'none'} />}
-      eyebrow={`Held by ${target.owner}`}
+      eyebrow={t('focus.planet.eyebrow', { owner: target.owner })}
       title={target.name}
       open={open}
       onToggle={onToggle}
@@ -291,28 +302,47 @@ export function PlanetFocus({
        */
       actions={
         read.inBand ? (
-          <button type="button" className="slab slab-commit flex-1" onClick={onAttack}>
-            Plan an attack
+          <button
+            type="button"
+            // Marked so a surface outside this panel can point at the commitment.
+            // The onboarding opens exactly this path and refuses the rest of the
+            // rail, because nothing else on it is affordable out of the opening
+            // grant — a probe alone needs crystal the mandatory upgrades spent.
+            data-attack
+            className="slab slab-commit flex-1"
+            onClick={onAttack}
+          >
+            {t('focus.planet.attack')}
           </button>
         ) : (
           <span className="slab slab-ghost flex-1 cursor-default text-center opacity-60">
-            Tier {target.coreTier} — you may fight {read.band.low}–{read.band.high}
+            {t('focus.planet.outOfBand', {
+              tier: target.coreTier,
+              low: read.band.low,
+              high: read.band.high,
+            })}
           </span>
         )
       }
     >
       {away && (
         <p className="mb-3 rounded border border-opportunity/40 bg-opportunity/10 px-3 py-2 text-[13px] text-opportunity">
-          Their fleet is not home. This is the window the whole game is about.
+          {t('focus.planet.windowOpen')}
         </p>
       )}
 
       <div className="mb-3 grid grid-cols-3 gap-3">
-        <Figure label="Distance" value={String(Math.round(read.range))} />
-        <Figure label="Your reach" value={reach === null ? '—' : duration(reach)} />
+        <Figure label={t('focus.planet.distance')} value={String(Math.round(read.range))} />
         <Figure
-          label="Known"
-          value={`${String(read.facts.length)} of ${String(read.facts.length + read.gaps.length)}`}
+          label={t('focus.planet.reach')}
+          value={reach === null ? t('focus.planet.reachUnknown') : duration(reach)}
+        />
+        <Figure
+          label={t('focus.planet.known')}
+          value={t('focus.planet.knownOf', {
+            have: read.facts.length,
+            total: read.facts.length + read.gaps.length,
+          })}
         />
       </div>
 
@@ -346,19 +376,28 @@ export function PlanetFocus({
 
 /** The collapsed rail's single line. Never claims ignorance the player does not have. */
 function Headline({ of }: { of: HeadlineKind }) {
+  const { t } = useTranslation();
   switch (of.kind) {
     case 'fleet-away':
-      return <span className="text-opportunity">Fleet away</span>;
+      return <span className="text-opportunity">{t('focus.planet.headlineFleetAway')}</span>;
     case 'fleet-home':
-      return <span>Fleet home</span>;
+      return <span>{t('focus.planet.headlineFleetHome')}</span>;
     case 'veiled':
-      return <span className="text-dim">Veiled</span>;
+      return <span className="text-dim">{t('focus.planet.headlineVeiled')}</span>;
     case 'probed':
-      return <span className="text-dim">Probed {staleness(of.ageMinutes)}</span>;
+      return (
+        <span className="text-dim">
+          {t('focus.planet.headlineProbed', { age: staleness(of.ageMinutes) })}
+        </span>
+      );
     case 'fought':
-      return <span className="text-dim">Fought {staleness(of.ageMinutes)}</span>;
+      return (
+        <span className="text-dim">
+          {t('focus.planet.headlineFought', { age: staleness(of.ageMinutes) })}
+        </span>
+      );
     case 'none':
-      return <span className="text-faint">No intel</span>;
+      return <span className="text-faint">{t('focus.planet.headlineNone')}</span>;
   }
 }
 
@@ -387,6 +426,7 @@ function CloseGap({
   /** Called with the target's name once a probe is away, so the disc can follow it. */
   onLaunched: (targetName: string) => void;
 }) {
+  const { t } = useTranslation();
   const watch = useWatch();
   const probe = useProbe();
   const say = useToast();
@@ -395,7 +435,7 @@ function CloseGap({
     if (telescope === 0) {
       return (
         <button type="button" className="slab slab-ghost w-full" onClick={onInstallTelescope}>
-          Install a Telescope
+          {t('focus.planet.installTelescope')}
         </button>
       );
     }
@@ -414,7 +454,7 @@ function CloseGap({
                   { targetPlanetId: target.id, slot },
                   {
                     onSuccess: () => {
-                      say(`Watching ${target.name}`);
+                      say(t('focus.planet.watching', { target: target.name }));
                     },
                     onError: (err) => {
                       say(describe(err), 'error');
@@ -424,8 +464,8 @@ function CloseGap({
               }}
             >
               {current
-                ? `Slot ${String(slot + 1)} · replace ${current.targetName}`
-                : `Watch · slot ${String(slot + 1)}`}
+                ? t('focus.planet.replaceSlot', { slot: slot + 1, target: current.targetName })
+                : t('focus.planet.watchSlot', { slot: slot + 1 })}
             </button>
           );
         })}
@@ -442,7 +482,7 @@ function CloseGap({
         onClick={() => {
           probe.mutate(target.id, {
             onSuccess: (r) => {
-              say(`Probe away · reports back in ${duration(r.flightMinutes)}`);
+              say(t('focus.planet.probeAway', { duration: duration(r.flightMinutes) }));
               // Close the dossier and go with it. Owner decision — a launch you
               // cannot recall should feel like something left, not like a form
               // being submitted.
@@ -454,7 +494,10 @@ function CloseGap({
           });
         }}
       >
-        Send a probe · {compact(PROBE.alloy)} alloy · {compact(PROBE.crystal)} crystal
+        {t('focus.planet.sendProbe', {
+          alloy: compact(PROBE.alloy),
+          crystal: compact(PROBE.crystal),
+        })}
       </button>
     );
   }
@@ -516,6 +559,7 @@ export function AsteroidFocus({
   open: boolean;
   onToggle: () => void;
 }) {
+  const { t } = useTranslation();
   const crystal = Math.round(rock.crystalShare * 100);
   // What a full squadron could actually take, which is the number that decides
   // how many to send — not the rock's total.
@@ -537,14 +581,19 @@ export function AsteroidFocus({
 
   return (
     <Shell
-      eyebrow={`Level ${String(rock.level)} asteroid`}
-      title={`Rock ${String(rock.index)}`}
+      eyebrow={t('focus.asteroid.eyebrow', { level: rock.level })}
+      title={t('focus.asteroid.title', { index: rock.index })}
       open={open}
       onToggle={onToggle}
       onClose={onClose}
       summary={
         <span>
-          <span className="text-crystal">{compact(rock.oreRemaining)}</span> ore &middot;{' '}
+          <Trans
+            i18nKey="focus.asteroid.summaryOre"
+            values={{ amount: compact(rock.oreRemaining) }}
+            components={[<span key="n" className="text-crystal" />]}
+          />
+          {' · '}
           <span className={minutesLeft < 60 ? 'text-threat' : ''}>{duration(minutesLeft)}</span>
         </span>
       }
@@ -560,8 +609,14 @@ export function AsteroidFocus({
          */
         run ? (
           <p className="num text-[12px] text-crystal">
-            {run.craft} craft already working this rock ·{' '}
-            {run.status === 'returning' ? 'heading home' : 'inbound'}
+            {t('focus.asteroid.working', {
+              count: run.craft,
+              state: t(
+                run.status === 'returning'
+                  ? 'focus.asteroid.stateReturning'
+                  : 'focus.asteroid.stateInbound',
+              ),
+            })}
           </p>
         ) : (
           <button
@@ -573,10 +628,10 @@ export function AsteroidFocus({
             }}
           >
             {craftAvailable < 1
-              ? 'No Prospectors at home'
+              ? t('focus.asteroid.noCraft')
               : tooLate
-                ? 'It will be gone before you arrive'
-                : `Send ${String(sending)} · ${duration(reach)}`}
+                ? t('focus.asteroid.tooLate')
+                : t('focus.asteroid.send', { count: sending, duration: duration(reach) })}
           </button>
         )
       }
@@ -590,14 +645,24 @@ export function AsteroidFocus({
       )}
 
       <div className="grid grid-cols-2 gap-3">
-        <Figure label="Ore left" value={compact(rock.oreRemaining)} tone="crystal" />
         <Figure
-          label="Leaves in"
+          label={t('focus.asteroid.oreLeft')}
+          value={compact(rock.oreRemaining)}
+          tone="crystal"
+        />
+        <Figure
+          label={t('focus.asteroid.leavesIn')}
           value={duration(minutesLeft)}
           tone={minutesLeft < 60 ? 'threat' : undefined}
         />
-        <Figure label="Composition" value={`${String(crystal)}% crystal`} />
-        <Figure label="Speed" value={`${rock.speed.toFixed(1)}/min`} />
+        <Figure
+          label={t('focus.asteroid.composition')}
+          value={t('focus.asteroid.compositionValue', { percent: crystal })}
+        />
+        <Figure
+          label={t('focus.asteroid.speed')}
+          value={t('focus.asteroid.speedValue', { rate: rock.speed.toFixed(1) })}
+        />
       </div>
 
       {spill > 0 && !run && (
@@ -608,28 +673,35 @@ export function AsteroidFocus({
          * so it is stated here, with the fix, rather than reported on arrival.
          */
         <p className="mt-3 text-[12px] leading-snug text-alloy">
-          Your works can only take {compact(worksRoom)} more. About {compact(spill)} of this
-          haul would be lost on arrival — empty them first.
+          {t('focus.asteroid.spill', { room: compact(worksRoom), lost: compact(spill) })}
         </p>
       )}
 
       <p className="mt-3 text-[12px] leading-snug text-dim">
         {rock.oreRemaining < rock.ore
-          ? `Somebody has already taken ${compact(rock.ore - rock.oreRemaining)} out of it.`
-          : 'Untouched. First craft to reach it takes what it can carry.'}
+          ? t('focus.asteroid.taken', { amount: compact(rock.ore - rock.oreRemaining) })
+          : t('focus.asteroid.untouched')}
       </p>
 
       <p className="num mt-2 text-[11px] text-faint">
-        {craftAvailable} Prospector{craftAvailable === 1 ? '' : 's'} at home · each carries{' '}
-        {compact(craftHold)} · {compact(canCarry)} between them
+        {t('focus.asteroid.fleetLine', {
+          count: craftAvailable,
+          hold: compact(craftHold),
+          total: compact(canCarry),
+        })}
       </p>
 
       {/* The one thing a Derrick changes about this trip, priced as a reason. */}
       {!derrick && derrickHold > craftHold && (
         <p className="mt-1 text-[11px] leading-snug text-faint">
-          A <span className="text-bone">Derrick</span> in orbit would make that{' '}
-          <span className="num text-crystal">{compact(derrickHold)}</span> each, and get them there
-          sooner.
+          <Trans
+            i18nKey="focus.asteroid.derrickPitch"
+            values={{ name: satelliteLabel('DERRICK'), hold: compact(derrickHold) }}
+            components={[
+              <span key="n" className="text-bone" />,
+              <span key="h" className="num text-crystal" />,
+            ]}
+          />
         </p>
       )}
 
@@ -640,8 +712,10 @@ export function AsteroidFocus({
       */}
       {reach !== null && !tooLate && (
         <p className="mt-1 text-[11px] leading-snug text-faint">
-          Your craft would meet it in {duration(reach)}, with {duration(minutesLeft - reach)} to
-          spare.
+          {t('focus.asteroid.intercept', {
+            reach: duration(reach),
+            spare: duration(minutesLeft - reach),
+          })}
         </p>
       )}
     </Shell>
@@ -668,6 +742,7 @@ export function RunFocus({
   open: boolean;
   onToggle: () => void;
 }) {
+  const { t } = useTranslation();
   const returning = run.status === 'returning';
   /**
    * A HARVEST IS NOT A MINING RUN, AND THIS PANEL USED TO SAY IT WAS. D32.
@@ -689,8 +764,14 @@ export function RunFocus({
 
   return (
     <Shell
-      eyebrow={returning ? 'Coming home' : salvage ? 'Salvage run' : 'Outbound'}
-      title={`${String(run.craft)} Prospector${run.craft === 1 ? '' : 's'}`}
+      eyebrow={t(
+        returning
+          ? 'focus.run.eyebrowHome'
+          : salvage
+            ? 'focus.run.eyebrowSalvage'
+            : 'focus.run.eyebrowOutbound',
+      )}
+      title={t('focus.run.title', { count: run.craft })}
       open={open}
       onToggle={onToggle}
       onClose={onClose}
@@ -698,19 +779,27 @@ export function RunFocus({
     >
       <div className="grid grid-cols-2 gap-3">
         <Figure
-          label={returning ? 'Home in' : salvage ? 'Reaches it in' : 'Meets the rock in'}
+          label={t(
+            returning
+              ? 'focus.run.homeIn'
+              : salvage
+                ? 'focus.run.reachesIn'
+                : 'focus.run.meetsRockIn',
+          )}
           value={duration(minutesRemaining)}
         />
         <Figure
-          label="Target"
+          label={t('focus.run.target')}
           value={
             salvage
               ? wreck
-                ? `Wreckage over ${wreck.planetName ?? 'a world'}`
-                : 'Field has decayed'
+                ? wreck.planetName === undefined
+                  ? t('focus.run.targetWreckAnon')
+                  : t('focus.run.targetWreck', { planet: wreck.planetName })
+                : t('focus.run.targetDecayed')
               : rock
-                ? `Level ${String(rock.level)} rock`
-                : 'Rock has passed'
+                ? t('focus.run.targetRock', { level: rock.level })
+                : t('focus.run.targetRockGone')
           }
         />
       </div>
@@ -718,22 +807,20 @@ export function RunFocus({
       {returning ? (
         <p className="mt-3 text-[13px] leading-snug text-bone">
           {run.minedAlloy + run.minedCrystal > 0
-            ? `Carrying ${compact(run.minedAlloy)} alloy and ${compact(run.minedCrystal)} crystal.`
-            : salvage
-              ? 'Arrived to find the field already picked over. Coming back empty.'
-              : 'Arrived to find the rock already stripped. Coming back empty.'}
+            ? t('focus.run.carrying', {
+                alloy: compact(run.minedAlloy),
+                crystal: compact(run.minedCrystal),
+              })
+            : t(salvage ? 'focus.run.emptySalvage' : 'focus.run.emptyRock')}
         </p>
       ) : salvage ? (
         <p className="mt-3 text-[12px] leading-snug text-dim">
-          A field does not move, and everybody can see it.{' '}
-          {wreck ? `It is gone in ${duration(wreck.minutesLeft)}.` : ''} Whoever gets there first
-          takes what they can carry.
+          {t('focus.run.salvageNote', {
+            clock: wreck ? t('focus.run.salvageClock', { duration: duration(wreck.minutesLeft) }) : '',
+          })}
         </p>
       ) : (
-        <p className="mt-3 text-[12px] leading-snug text-dim">
-          Flying to where the rock will be, not where it is. Whoever gets there first takes what
-          they can carry.
-        </p>
+        <p className="mt-3 text-[12px] leading-snug text-dim">{t('focus.run.miningNote')}</p>
       )}
     </Shell>
   );
@@ -754,19 +841,20 @@ export function ThreadFocus({
   open: boolean;
   onToggle: () => void;
 }) {
+  const { t } = useTranslation();
   const composition = thread.fleet ? describeThreadFleet(thread.fleet) : null;
 
   return (
     <Shell
-      eyebrow={
+      eyebrow={t(
         thread.kind === 'probe'
           ? thread.leg === 'return'
-            ? 'Probe coming home'
-            : 'Probe outbound'
+            ? 'focus.thread.eyebrowProbeHome'
+            : 'focus.thread.eyebrowProbeOut'
           : thread.leg === 'return'
-            ? 'Fleet returning'
-            : 'Fleet outbound'
-      }
+            ? 'focus.thread.eyebrowFleetHome'
+            : 'focus.thread.eyebrowFleetOut',
+      )}
       title={thread.targetName}
       open={open}
       onToggle={onToggle}
@@ -774,8 +862,15 @@ export function ThreadFocus({
       summary={<span>{duration(minutesRemaining)}</span>}
     >
       <div className="grid grid-cols-2 gap-3">
-        <Figure label="Arrives in" value={duration(minutesRemaining)} />
-        <Figure label="Craft" value={composition ? String(fleetCount(thread.fleet ?? {})) : '—'} />
+        <Figure label={t('focus.thread.arrivesIn')} value={duration(minutesRemaining)} />
+        <Figure
+          label={t('focus.thread.craft')}
+          value={
+            composition
+              ? String(fleetCount(thread.fleet ?? {}))
+              : t('focus.thread.craftUnknown')
+          }
+        />
       </div>
 
       {composition && (
@@ -789,7 +884,7 @@ export function ThreadFocus({
               >
                 <HullMark hull={hull} className="size-4 text-dim" />
                 <span className="num text-[12px] text-bone">
-                  {n} {HULLS[hull].name}
+                  {n} {hullLabel(hull)}
                 </span>
               </span>
             ))}
@@ -797,18 +892,21 @@ export function ThreadFocus({
       )}
 
       <p className="mt-3 text-[12px] leading-snug text-dim">
-        {thread.leg === 'return'
-          ? 'On its way back. Nothing more to decide.'
-          : 'A launched fleet cannot be recalled.'}
+        {t(thread.leg === 'return' ? 'focus.thread.returning' : 'focus.thread.outbound')}
       </p>
     </Shell>
   );
 }
 
+/**
+ * Only ever tested for emptiness by the panel, but it is still a string a
+ * developer reads in a debugger — so it names hulls the way the rest of the game
+ * does rather than printing the raw enum.
+ */
 const describeThreadFleet = (fleet: Record<string, number>): string =>
   Object.entries(fleet)
     .filter(([, n]) => n > 0)
-    .map(([hull, n]) => `${String(n)} ${hull}`)
+    .map(([hull, n]) => `${String(n)} ${hullName(hull) ?? hull}`)
     .join(' · ');
 
 /* ── someone else's craft ────────────────────────────────────── */
@@ -841,6 +939,7 @@ export function ContactFocus({
   open: boolean;
   onToggle: () => void;
 }) {
+  const { t } = useTranslation();
   const hulls = (Object.entries(contact.fleet ?? {}) as [HullId, number][]).filter(
     ([, n]) => n > 0,
   );
@@ -868,18 +967,18 @@ export function ContactFocus({
 
   return (
     <Shell
-      eyebrow={
+      eyebrow={t(
         battle
-          ? 'A raid is landing'
+          ? 'focus.contact.eyebrowBattle'
           : salvage
-            ? 'Somebody is salvaging'
+            ? 'focus.contact.eyebrowSalvage'
             : mining
-              ? 'Somebody is mining'
+              ? 'focus.contact.eyebrowMining'
               : contact.kind === 'probe'
-                ? 'Somebody is scouting'
-                : 'Somebody is moving'
-      }
-      title={battle ? 'Under fire' : CONTACT_TITLE[contact.kind]}
+                ? 'focus.contact.eyebrowProbe'
+                : 'focus.contact.eyebrowMoving',
+      )}
+      title={t(battle ? 'focus.contact.titleBattle' : CONTACT_TITLE[contact.kind])}
       open={open}
       onToggle={onToggle}
       onClose={onClose}
@@ -887,7 +986,7 @@ export function ContactFocus({
         mining ? (
           <span className="text-alloy">
             {contact.minutesRemaining === undefined
-              ? 'Working'
+              ? t('focus.contact.working')
               : duration(contact.minutesRemaining)}
           </span>
         ) : battle ? (
@@ -900,9 +999,11 @@ export function ContactFocus({
           */
           <>
             <span className="text-[#ffb9ae]">
-              {total > 0 ? `${String(total)} craft` : 'Bombarding'}
+              {total > 0
+                ? t('focus.contact.craftCount', { count: total })
+                : t('focus.contact.bombarding')}
             </span>
-            <span className="block text-[11px] text-faint">Settling now</span>
+            <span className="block text-[11px] text-faint">{t('focus.contact.settling')}</span>
           </>
         ) : (
           /*
@@ -919,34 +1020,38 @@ export function ContactFocus({
           */
           <>
             <span className={total > 0 ? '' : 'text-faint'}>
-              {total > 0 ? `${String(total)} craft` : 'Unattributed'}
+              {total > 0
+                ? t('focus.contact.craftCount', { count: total })
+                : t('focus.contact.unattributed')}
             </span>
-            <span className="block text-[11px] text-faint">Arrival unknown</span>
+            <span className="block text-[11px] text-faint">
+              {t('focus.contact.arrivalUnknown')}
+            </span>
           </>
         )
       }
     >
       <div className="grid grid-cols-2 gap-3">
         <Figure
-          label="Craft"
+          label={t('focus.contact.craftLabel')}
           value={
             mining
               ? String(contact.craft ?? 0)
               : total > 0
                 ? String(total)
-                : '—'
+                : t('focus.contact.craftUnknown')
           }
         />
         <Figure
-          label={battle ? 'Status' : 'Arrives in'}
+          label={t(battle ? 'focus.contact.statusLabel' : 'focus.contact.arrivesIn')}
           value={
             battle
-              ? 'Landed'
+              ? t('focus.contact.statusLanded')
               : mining
                 ? contact.minutesRemaining === undefined
-                  ? '—'
+                  ? t('focus.contact.craftUnknown')
                   : duration(contact.minutesRemaining)
-                : 'Unknown'
+                : t('focus.contact.arrivesUnknown')
           }
           {...(battle
             ? { tone: 'threat' as const }
@@ -965,7 +1070,7 @@ export function ContactFocus({
             >
               <HullMark hull={hull} className="size-4 text-dim" />
               <span className="num text-[12px] text-bone">
-                {n} {HULLS[hull].name}
+                {n} {hullLabel(hull)}
               </span>
             </span>
           ))}
@@ -978,25 +1083,23 @@ export function ContactFocus({
         an absence they will not pay to close.
       */}
       <p className="mt-3 text-[12px] leading-snug text-dim">
-        {battle
-          ? 'A fleet is over that world and firing. Whose it is, and where it came from, are still not in this reading — and neither is who wins.'
-          : salvage
-          ? 'A salvage run is public — the field, the route and the clock. What it brings home is not.'
-          : mining
-          ? 'A mining run is public — the rock, the route and the clock. What it brings home is not.'
-          : 'You can see what is flying and what is in it. Whose it is, where it came from and where it is going are not in this reading.'}
+        {t(
+          battle
+            ? 'focus.contact.boundaryBattle'
+            : salvage
+              ? 'focus.contact.boundarySalvage'
+              : mining
+                ? 'focus.contact.boundaryMining'
+                : 'focus.contact.boundaryFleet',
+        )}
       </p>
       {!mining && !battle && (
         <p className="mt-2 text-[12px] leading-snug text-faint">
-          A Telescope pointed at a world tells you when ITS fleet leaves. That is the only way
-          to put a name to movement.
+          {t('focus.contact.telescopeHint')}
         </p>
       )}
       {battle && (
-        <p className="mt-2 text-[12px] leading-snug text-faint">
-          Wreckage is public. Whatever is left of both fleets will be in orbit there shortly,
-          and anyone may go and get it.
-        </p>
+        <p className="mt-2 text-[12px] leading-snug text-faint">{t('focus.contact.wreckHint')}</p>
       )}
     </Shell>
   );
@@ -1033,10 +1136,11 @@ function CraftPicker({
   value: number;
   onPick: (n: number) => void;
 }) {
+  const { t } = useTranslation();
   if (available < 2) return null;
   return (
     <div className="mt-3">
-      <p className="legend mb-1.5">How many to send</p>
+      <p className="legend mb-1.5">{t('focus.craftPicker.label')}</p>
       <div className="flex items-center gap-2">
         {Array.from({ length: available }, (_, i) => i + 1).map((n) => (
           <button
@@ -1083,6 +1187,7 @@ export function DebrisFocus({
   open: boolean;
   onToggle: () => void;
 }) {
+  const { t } = useTranslation();
   const left = field.alloy + field.crystal;
   const canCarry = craftHold * craftAvailable;
   const worthSending = Math.max(
@@ -1099,14 +1204,23 @@ export function DebrisFocus({
 
   return (
     <Shell
-      eyebrow="Wreckage"
-      title={planetName === undefined ? 'Debris field' : `Debris over ${planetName}`}
+      eyebrow={t('focus.debris.eyebrow')}
+      title={
+        planetName === undefined
+          ? t('focus.debris.titleUnknown')
+          : t('focus.debris.titleOver', { planet: planetName })
+      }
       open={open}
       onToggle={onToggle}
       onClose={onClose}
       summary={
         <span>
-          <span className="text-alloy">{compact(left)}</span> salvage &middot;{' '}
+          <Trans
+            i18nKey="focus.debris.summarySalvage"
+            values={{ amount: compact(left) }}
+            components={[<span key="n" className="text-alloy" />]}
+          />
+          {' · '}
           <span className={field.minutesLeft < 30 ? 'text-threat' : ''}>
             {duration(field.minutesLeft)}
           </span>
@@ -1115,8 +1229,14 @@ export function DebrisFocus({
       actions={
         run ? (
           <p className="num text-[12px] text-alloy">
-            {run.craft} craft already there &middot;{' '}
-            {run.status === 'returning' ? 'heading home' : 'inbound'}
+            {t('focus.debris.working', {
+              count: run.craft,
+              state: t(
+                run.status === 'returning'
+                  ? 'focus.debris.stateReturning'
+                  : 'focus.debris.stateInbound',
+              ),
+            })}
           </p>
         ) : (
           <button
@@ -1128,10 +1248,10 @@ export function DebrisFocus({
             }}
           >
             {craftAvailable < 1
-              ? 'No craft at home'
+              ? t('focus.debris.noCraft')
               : tooLate
-                ? 'It will be gone before you arrive'
-                : `Send ${String(sending)} · ${duration(reach)}`}
+                ? t('focus.debris.tooLate')
+                : t('focus.debris.send', { count: sending, duration: duration(reach) })}
           </button>
         )
       }
@@ -1145,37 +1265,38 @@ export function DebrisFocus({
       )}
 
       <div className="grid grid-cols-2 gap-3">
-        <Figure label="Alloy left" value={compact(field.alloy)} tone="alloy" />
-        <Figure label="Crystal left" value={compact(field.crystal)} tone="crystal" />
+        <Figure label={t('focus.debris.alloyLeft')} value={compact(field.alloy)} tone="alloy" />
         <Figure
-          label="Gone in"
+          label={t('focus.debris.crystalLeft')}
+          value={compact(field.crystal)}
+          tone="crystal"
+        />
+        <Figure
+          label={t('focus.debris.goneIn')}
           value={duration(field.minutesLeft)}
           tone={field.minutesLeft < 30 ? 'threat' : undefined}
         />
-        <Figure label="Your hold" value={compact(canCarry)} />
+        <Figure label={t('focus.debris.yourHold')} value={compact(canCarry)} />
       </div>
 
       {spill > 0 && !run && (
         <p className="mt-3 text-[12px] leading-snug text-alloy">
-          Your works can only take {compact(worksRoom)} more. About {compact(spill)} of this
-          would be lost on arrival — empty them first.
+          {t('focus.debris.spill', { room: compact(worksRoom), lost: compact(spill) })}
         </p>
       )}
 
-      <p className="mt-3 text-[12px] leading-snug text-dim">
-        Somebody lost a fleet here. It is fading, and everyone can see it — whoever gets
-        there first takes what is left.
-      </p>
+      <p className="mt-3 text-[12px] leading-snug text-dim">{t('focus.debris.body')}</p>
     </Shell>
   );
 }
 
-const CONTACT_TITLE: Record<Contact['kind'], string> = {
-  fleet: 'Squadron',
-  probe: 'Probe',
-  mining: 'Mining run',
-  harvest: 'Salvage run',
-};
+/** What each kind of foreign craft is called. Keys, so it follows the language. */
+const CONTACT_TITLE = {
+  fleet: 'focus.contact.titleFleet',
+  probe: 'focus.contact.titleProbe',
+  mining: 'focus.contact.titleMining',
+  harvest: 'focus.contact.titleHarvest',
+} as const satisfies Record<Contact['kind'], string>;
 
 /* ── shared ──────────────────────────────────────────────────── */
 

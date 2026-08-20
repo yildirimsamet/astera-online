@@ -1,6 +1,5 @@
 import {
   ALL_HULLS,
-  HULLS,
   coreTier,
   distance,
   reachableTiers,
@@ -16,6 +15,8 @@ import type {
   IntelView,
   PlanetView,
 } from '../api/schemas.js';
+import i18n from '../i18n/index.js';
+import { hullLabel, satelliteLabel } from '../i18n/names.js';
 
 /**
  * WHAT YOU KNOW, AND HOW YOU KNOW IT.
@@ -90,24 +91,32 @@ export interface Dossier {
   band: { low: number; high: number };
 }
 
-const SOURCE_LABEL: Record<Source, string> = {
-  public: 'Public',
-  telescope: 'Telescope',
-  probe: 'Probe',
-  battle: 'Battle report',
-};
+/**
+ * Where a fact came from, in one word.
+ *
+ * Keys rather than sentences: a table of finished strings is built once at module
+ * load and would still be English after the language changed under it.
+ */
+const SOURCE_LABEL = {
+  public: 'dossier.sourcePublic',
+  telescope: 'dossier.sourceTelescope',
+  probe: 'dossier.sourceProbe',
+  battle: 'dossier.sourceBattle',
+} as const satisfies Record<Source, string>;
 
-export const sourceLabel = (source: Source): string => SOURCE_LABEL[source];
+export const sourceLabel = (source: Source): string => i18n.t(SOURCE_LABEL[source]);
 
 const band = (low: number, high: number): string =>
-  low === high ? String(Math.round(low)) : `${Math.round(low)}–${Math.round(high)}`;
+  low === high
+    ? String(Math.round(low))
+    : `${Math.round(low)}${i18n.t('units.rangeJoin')}${Math.round(high)}`;
 
 /** "3 Wasp · 1 Lance", in the fixed hull order so it reads the same every time. */
 export function describeFleet(fleet: Fleet): string {
   const parts: string[] = [];
   for (const id of ALL_HULLS) {
     const n = fleet[id] ?? 0;
-    if (n > 0) parts.push(`${String(n)} ${HULLS[id].name}`);
+    if (n > 0) parts.push(`${String(n)} ${hullLabel(id)}`);
   }
   return parts.join(' · ');
 }
@@ -163,11 +172,11 @@ export function dossier({ target, planet, intel, reports, now }: DossierInput): 
 
   facts.push({
     key: 'owner',
-    label: 'Held by',
+    label: i18n.t('dossier.ownerLabel'),
     value: target.owner,
     source: 'public',
     ageMinutes: null,
-    note: 'Free to everyone, all season.',
+    note: i18n.t('dossier.ownerNote'),
   });
 
   /**
@@ -185,24 +194,28 @@ export function dossier({ target, planet, intel, reports, now }: DossierInput): 
 
   facts.push({
     key: 'development',
-    label: 'Development',
-    value: `Tier ${String(target.coreTier)}`,
+    label: i18n.t('dossier.developmentLabel'),
+    value: i18n.t('dossier.developmentValue', { tier: target.coreTier }),
     source: 'public',
     ageMinutes: null,
     note: inBand
-      ? `How big the world is. You are Tier ${String(myTier)}, so this one is inside your reach.`
-      : `Out of reach. You are Tier ${String(myTier)} and may fight Tier ${String(myBand.low)} to ${String(myBand.high)}.`,
+      ? i18n.t('dossier.developmentInBand', { tier: myTier })
+      : i18n.t('dossier.developmentOutOfBand', {
+          tier: myTier,
+          low: myBand.low,
+          high: myBand.high,
+        }),
   });
 
   if (target.satellites.length > 0) {
     facts.push({
       key: 'hardware',
-      label: 'Satellites in orbit',
-      value: target.satellites.join(' · '),
+      label: i18n.t('dossier.hardwareLabel'),
+      value: target.satellites.map((id) => satelliteLabel(id)).join(' · '),
       source: 'public',
       ageMinutes: null,
       // D15 in one sentence, in the player's terms.
-      note: 'You can see the hardware. What it can do costs a probe.',
+      note: i18n.t('dossier.hardwareNote'),
     });
   }
 
@@ -216,18 +229,22 @@ export function dossier({ target, planet, intel, reports, now }: DossierInput): 
 
     facts.push({
       key: 'fleet',
-      label: 'Their fleet',
-      value: unreadable ? 'Unreadable' : away ? 'Not home' : 'Home',
+      label: i18n.t('dossier.fleetLabel'),
+      value: unreadable
+        ? i18n.t('dossier.fleetUnreadable')
+        : away
+          ? i18n.t('dossier.fleetAway')
+          : i18n.t('dossier.fleetHome'),
       source: 'telescope',
       ageMinutes: unreadable ? null : target.fleet.staleMinutes,
       opportunity: away,
       note: unreadable
-        ? 'Their Veil is beating your Telescope. Raise it, or send a probe instead.'
+        ? i18n.t('dossier.fleetVeiledNote')
         : away
           ? target.fleet.etaMinutes === null
-            ? 'You cannot tell when it comes back. That is the risk you are taking.'
-            : 'Their planet is defended by whatever they left behind.'
-          : 'Watching is silent — they are never told you are looking.',
+            ? i18n.t('dossier.fleetAwayUnknownNote')
+            : i18n.t('dossier.fleetAwayNote')
+          : i18n.t('dossier.fleetHomeNote'),
     });
   } else {
     const outOfRange = telescope > 0 && !withinTelescopeRange(telescope, range);
@@ -236,21 +253,24 @@ export function dossier({ target, planet, intel, reports, now }: DossierInput): 
 
     gaps.push({
       key: 'fleet',
-      label: 'Their fleet',
+      label: i18n.t('dossier.fleetLabel'),
       missing:
         telescope === 0
-          ? 'You have no Telescope'
+          ? i18n.t('dossier.fleetGapNoTelescope')
           : outOfRange
-            ? 'Beyond your Telescope’s reach'
-            : 'No slot is pointed here',
-      why: 'The single most valuable fact in the game: a fleet that is away cannot defend its planet.',
+            ? i18n.t('dossier.fleetGapOutOfRange')
+            : i18n.t('dossier.fleetGapNoSlot'),
+      why: i18n.t('dossier.fleetGapWhy'),
       closes: 'telescope',
       ...(outOfRange
         ? {
-            blocked: `Reaches ${String(Math.round(telescopeRange(telescope)))}; this world is ${String(Math.round(range))} away`,
+            blocked: i18n.t('dossier.fleetGapRange', {
+              reach: Math.round(telescopeRange(telescope)),
+              distance: Math.round(range),
+            }),
           }
         : telescope > 0 && used >= slots
-          ? { blocked: `All ${String(slots)} slots are in use — one has to be moved` }
+          ? { blocked: i18n.t('dossier.fleetGapSlots', { count: slots }) }
           : {}),
     });
   }
@@ -263,41 +283,39 @@ export function dossier({ target, planet, intel, reports, now }: DossierInput): 
 
     facts.push({
       key: 'stock',
-      label: 'Resources held',
+      label: i18n.t('dossier.stockLabel'),
       value: band(report.stock.low, report.stock.high),
       source: 'probe',
       ageMinutes: age,
       accuracy: report.accuracy,
-      note: report.detected
-        ? 'Their radar caught the probe — they know somebody looked.'
-        : 'The probe got in and out unnoticed.',
+      note: report.detected ? i18n.t('dossier.stockCaught') : i18n.t('dossier.stockClean'),
     });
 
     facts.push({
       key: 'defence',
-      label: 'Defence value',
+      label: i18n.t('dossier.defenceLabel'),
       value: band(report.defence.low, report.defence.high),
       source: 'probe',
       ageMinutes: age,
       accuracy: report.accuracy,
-      note: 'What was standing on the planet when the probe passed.',
+      note: i18n.t('dossier.defenceNote'),
     });
 
     facts.push({
       key: 'ships',
-      label: 'Ships counted',
+      label: i18n.t('dossier.shipsLabel'),
       value: band(report.fleetSize.low, report.fleetSize.high),
       source: 'probe',
       ageMinutes: age,
       accuracy: report.accuracy,
-      note: report.fleetHome ? 'Everything they own was home.' : 'Some of their ships were out.',
+      note: report.fleetHome ? i18n.t('dossier.shipsAllHome') : i18n.t('dossier.shipsSomeOut'),
     });
   } else {
     gaps.push({
       key: 'stock',
-      label: 'Resources and defence',
-      missing: 'Nothing has ever looked closely',
-      why: 'You are about to bet a fleet on what is down there. A probe turns that guess into a range.',
+      label: i18n.t('dossier.probeGapLabel'),
+      missing: i18n.t('dossier.probeGapMissing'),
+      why: i18n.t('dossier.probeGapWhy'),
       closes: 'probe',
     });
   }
@@ -308,18 +326,18 @@ export function dossier({ target, planet, intel, reports, now }: DossierInput): 
   if (fought) {
     facts.push({
       key: 'composition',
-      label: 'Known to field',
-      value: `at least ${describeFleet(fought.fleet)}`,
+      label: i18n.t('dossier.compositionLabel'),
+      value: i18n.t('dossier.compositionValue', { fleet: describeFleet(fought.fleet) }),
       source: 'battle',
       ageMinutes: (now - fought.atMinutes) / 60_000,
-      note: 'What you destroyed last time you fought. They may have rebuilt.',
+      note: i18n.t('dossier.compositionNote'),
     });
   } else {
     gaps.push({
       key: 'composition',
-      label: 'What they actually fly',
-      missing: 'You have never fought them',
-      why: 'A battle report is the only place an exact composition ever comes from.',
+      label: i18n.t('dossier.compositionGapLabel'),
+      missing: i18n.t('dossier.compositionGapMissing'),
+      why: i18n.t('dossier.compositionGapWhy'),
       closes: 'battle',
     });
   }
@@ -378,10 +396,10 @@ export function headline(read: Dossier, target: GalaxyPlanet): Headline {
  */
 export function confidenceWord(accuracy: number | undefined): string | null {
   if (accuracy === undefined) return null;
-  if (accuracy >= 0.9) return 'precise';
-  if (accuracy >= 0.7) return 'good';
-  if (accuracy >= 0.5) return 'rough';
-  return 'vague';
+  if (accuracy >= 0.9) return i18n.t('dossier.confidencePrecise');
+  if (accuracy >= 0.7) return i18n.t('dossier.confidenceGood');
+  if (accuracy >= 0.5) return i18n.t('dossier.confidenceRough');
+  return i18n.t('dossier.confidenceVague');
 }
 
 /**

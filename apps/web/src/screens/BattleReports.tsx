@@ -1,7 +1,10 @@
 import { useState } from 'react';
-import { HULLS, fleetEntries } from '@astera/rules';
+import { Trans, useTranslation } from 'react-i18next';
+import { fleetEntries, type Grade } from '@astera/rules';
 import { useReports } from '../api/queries.js';
 import type { BattleReport } from '../api/schemas.js';
+import i18n from '../i18n/index.js';
+import { hullLabel } from '../i18n/names.js';
 import { compact, full, signed } from '../lib/format.js';
 import { staleness, useNow } from '../lib/time.js';
 import { HULL_ART, RESOURCE_ART } from '../ui/assets.js';
@@ -21,14 +24,33 @@ import { Sheet } from '../ui/Sheet.js';
  * The list is a verdict per row. The detail is the thing worth reading: what they
  * fielded, what it cost you, and what the fight moved on the ladder.
  */
+/**
+ * DECISIVE, PARTIAL, REPELLED — the three outcomes, as keys.
+ *
+ * The grade is a stamp: it is printed in caps and it is the first thing a player
+ * looks for, so it has to be a WORD in their language rather than the enum the
+ * combat model happens to use.
+ */
+const GRADE = {
+  DECISIVE: 'reports.gradeDecisive',
+  PARTIAL: 'reports.gradePartial',
+  REPELLED: 'reports.gradeRepelled',
+} as const satisfies Record<Grade, string>;
+
+const gradeWord = (grade: Grade): string => i18n.t(GRADE[grade]);
+
 export function BattleReports() {
+  const { t } = useTranslation();
   const { data, isPending, isError, refetch } = useReports();
   const [open, setOpen] = useState<BattleReport | null>(null);
   const now = useNow(30_000);
   const reports = data?.reports ?? [];
 
   return (
-    <Section label="Battle reports" aside={reports.length > 0 ? 'newest first' : undefined}>
+    <Section
+      label={t('reports.heading')}
+      aside={reports.length > 0 ? t('reports.newest') : undefined}
+    >
       {/*
         AN EMPTY LIST AND A FAILED ONE ARE NOT THE SAME SENTENCE.
         
@@ -38,16 +60,13 @@ export function BattleReports() {
       */}
       {isError ? (
         <Unreachable
-          what="your battle reports"
+          what={t('surface.whatReports')}
           onRetry={() => {
             void refetch();
           }}
         />
       ) : isPending ? null : reports.length === 0 ? (
-        <Empty>
-          Nothing has been fought over yet. A battle is the only intel in this game that is
-          never a guess.
-        </Empty>
+        <Empty>{t('reports.empty')}</Empty>
       ) : (
         <div className="frame">
           {reports.map((report) => (
@@ -62,11 +81,12 @@ export function BattleReports() {
               <GradeMark report={report} />
               <div className="min-w-0 flex-1">
                 <p className="truncate text-[14px] text-bone">
-                  {report.attacking ? 'You raided ' : 'Raided by '}
+                  {t(report.attacking ? 'reports.youRaided' : 'reports.raidedBy')}
                   <span className="text-dim">{report.opponentPlanet}</span>
                 </p>
                 <p className="num mt-0.5 text-[11px] text-faint">
-                  {staleness((now - report.at.getTime()) / 60_000)} · {report.rounds.length} rounds
+                  {staleness((now - report.at.getTime()) / 60_000)} ·{' '}
+                  {t('reports.rounds', { count: report.rounds.length })}
                 </p>
               </div>
               {report.dominion !== null && (
@@ -104,42 +124,43 @@ function GradeMark({ report }: { report: BattleReport }) {
   return (
     <span
       className={`chip shrink-0 ${won ? 'chip-opportunity' : 'chip-threat'}`}
-      title={report.grade}
+      title={gradeWord(report.grade)}
     >
-      {report.grade}
+      {gradeWord(report.grade)}
     </span>
   );
 }
 
 function ReportSheet({ report, onClose }: { report: BattleReport; onClose: () => void }) {
+  const { t } = useTranslation();
   const looted = report.lootAlloy + report.lootCrystal;
 
   return (
     <Sheet
-      eyebrow={report.attacking ? `You raided ${report.opponentName}` : `${report.opponentName} raided you`}
-      title={report.grade}
+      eyebrow={t(report.attacking ? 'reports.sheetYouRaided' : 'reports.sheetTheyRaided', {
+        opponent: report.opponentName,
+      })}
+      title={gradeWord(report.grade)}
       onClose={onClose}
     >
       <p className="text-[13px] leading-relaxed text-dim">
         {report.attacking
-          ? report.grade === 'REPELLED'
-            ? `${report.opponentPlanet} held. You now know what it takes to break it.`
-            : `${report.opponentPlanet} did not hold.`
-          : report.grade === 'REPELLED'
-            ? 'You held. They now know how much you had waiting.'
-            : 'You did not hold.'}
+          ? t(report.grade === 'REPELLED' ? 'reports.heldAgainstYou' : 'reports.brokenByYou', {
+              planet: report.opponentPlanet,
+            })
+          : t(report.grade === 'REPELLED' ? 'reports.youHeld' : 'reports.youFell')}
       </p>
 
       <div className="mt-5 grid grid-cols-3 gap-3">
-        <Figure label="Rounds" value={String(report.rounds.length)} />
+        <Figure label={t('reports.roundsLabel')} value={String(report.rounds.length)} />
         <Figure
-          label={looted >= 0 ? 'Taken' : 'Lost'}
+          label={t(looted >= 0 ? 'reports.taken' : 'reports.lost')}
           value={compact(Math.abs(looted))}
           tone={looted >= 0 ? 'text-alloy' : 'text-threat'}
         />
         {report.dominion !== null && (
           <Figure
-            label="Dominion"
+            label={t('reports.dominion')}
             value={signed(report.dominion)}
             tone={report.dominion >= 0 ? 'text-opportunity' : 'text-threat'}
           />
@@ -149,11 +170,19 @@ function ReportSheet({ report, onClose }: { report: BattleReport; onClose: () =>
       {looted !== 0 && (
         <p className="num mt-3 flex items-center gap-3 text-[12px]">
           <span className="flex items-center gap-1 text-alloy">
-            <img src={RESOURCE_ART.alloy} alt="alloy" className="size-4 object-contain" />
+            <img
+              src={RESOURCE_ART.alloy}
+              alt={t('vocabulary.resource.alloy')}
+              className="size-4 object-contain"
+            />
             {signed(report.lootAlloy)}
           </span>
           <span className="flex items-center gap-1 text-crystal">
-            <img src={RESOURCE_ART.crystal} alt="crystal" className="size-4 object-contain" />
+            <img
+              src={RESOURCE_ART.crystal}
+              alt={t('vocabulary.resource.crystal')}
+              className="size-4 object-contain"
+            />
             {signed(report.lootCrystal)}
           </span>
         </p>
@@ -166,13 +195,13 @@ function ReportSheet({ report, onClose }: { report: BattleReport; onClose: () =>
         gets — no bands, no staleness, no clarity gradient. It is what makes the
         fight you just had worth something the next time you look at that planet.
       */}
-      <h3 className="legend mt-7">What they had</h3>
-      <Losses fleet={report.theirLosses} tone="text-bone" empty="Nothing of theirs was destroyed." />
+      <h3 className="legend mt-7">{t('reports.theirs')}</h3>
+      <Losses fleet={report.theirLosses} tone="text-bone" empty={t('reports.theirsEmpty')} />
 
-      <h3 className="legend mt-6">What it cost you</h3>
-      <Losses fleet={report.yourLosses} tone="text-[#ff9d8f]" empty="You lost nothing." />
+      <h3 className="legend mt-6">{t('reports.yours')}</h3>
+      <Losses fleet={report.yourLosses} tone="text-[#ff9d8f]" empty={t('reports.yoursEmpty')} />
 
-      <h3 className="legend mt-7">How it went</h3>
+      <h3 className="legend mt-7">{t('reports.howItWent')}</h3>
       <div className="frame mt-2">
         {report.rounds.map((round) => (
           <div
@@ -181,18 +210,23 @@ function ReportSheet({ report, onClose }: { report: BattleReport; onClose: () =>
           >
             <span className="num w-6 text-[11px] text-faint">{round.round}</span>
             <span className="num flex-1 text-[12px] text-dim">
-              you dealt{' '}
-              <span className="text-bone">
-                {compact(report.attacking ? round.attackerDamage : round.defenderDamage)}
-              </span>
-              , took{' '}
-              <span className="text-bone">
-                {compact(report.attacking ? round.defenderDamage : round.attackerDamage)}
-              </span>
+              {/* One sentence with two figures in it. Turkish puts both verbs at
+                  the end, so the clauses cannot be spliced in JSX. */}
+              <Trans
+                i18nKey="reports.roundLine"
+                values={{
+                  dealt: compact(report.attacking ? round.attackerDamage : round.defenderDamage),
+                  took: compact(report.attacking ? round.defenderDamage : round.attackerDamage),
+                }}
+                components={[
+                  <span key="d" className="text-bone" />,
+                  <span key="t" className="text-bone" />,
+                ]}
+              />
             </span>
             {round.shieldAbsorbed > 0 && (
               <span className="num text-[11px] text-crystal">
-                shield {compact(round.shieldAbsorbed)}
+                {t('reports.shield', { amount: compact(round.shieldAbsorbed) })}
               </span>
             )}
           </div>
@@ -219,7 +253,7 @@ function Losses({ fleet, tone, empty }: { fleet: BattleReport['yourLosses']; ton
           )}
           <div>
             <p className={`num text-[16px] leading-none ${tone}`}>{full(count)}</p>
-            <p className="legend mt-1">{HULLS[hull].name}</p>
+            <p className="legend mt-1">{hullLabel(hull)}</p>
           </div>
         </div>
       ))}

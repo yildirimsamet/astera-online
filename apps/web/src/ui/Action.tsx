@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import i18n from '../i18n/index.js';
 import { compact } from '../lib/format.js';
 import { haptic } from '../lib/haptics.js';
 import {
@@ -69,13 +70,20 @@ const VERB_ICON: Record<Verb, (props: { className?: string }) => ReactNode> = {
   send: SendIcon,
 };
 
-const VERB_LABEL: Record<Verb, string> = {
-  raise: 'Raise',
-  build: 'Build',
-  install: 'Install',
-  claim: 'Collect',
-  send: 'Send',
-};
+/**
+ * The word on the button, as a KEY.
+ *
+ * A table of finished strings would be built once at module load and would still
+ * be in the old language after the switcher was pressed — the same trap every
+ * other `Record<..., string>` of copy in this codebase had.
+ */
+const VERB_LABEL = {
+  raise: 'action.verbRaise',
+  build: 'action.verbBuild',
+  install: 'action.verbInstall',
+  claim: 'action.verbClaim',
+  send: 'action.verbSend',
+} as const satisfies Record<Verb, string>;
 
 export interface Shortfall {
   alloy: number;
@@ -172,7 +180,7 @@ export function ActionButton({
         <span className="act-need">
           <span className="act-need-word">
             <Icon className="size-3.5 shrink-0 opacity-50" />
-            Short
+            {i18n.t('action.short')}
           </span>
           <span className="act-need-figs">
             {short.alloy > 0 && (
@@ -205,7 +213,7 @@ export function ActionButton({
       className={`act act-ready ${full ? 'w-full' : ''}`}
     >
       <Icon className="size-4 shrink-0" />
-      <span className="act-word">{label ?? VERB_LABEL[verb]}</span>
+      <span className="act-word">{label ?? i18n.t(VERB_LABEL[verb])}</span>
     </button>
   );
 }
@@ -213,9 +221,13 @@ export function ActionButton({
 /** Said in full for a screen reader, and on hover, where icons cannot carry it. */
 function shortfallLabel(short: Shortfall): string {
   const parts: string[] = [];
-  if (short.alloy > 0) parts.push(`${compact(short.alloy)} more alloy`);
-  if (short.crystal > 0) parts.push(`${compact(short.crystal)} more crystal`);
-  return `Short — needs ${parts.join(' and ')}`;
+  if (short.alloy > 0) {
+    parts.push(i18n.t('action.shortfallAlloy', { amount: compact(short.alloy) }));
+  }
+  if (short.crystal > 0) {
+    parts.push(i18n.t('action.shortfallCrystal', { amount: compact(short.crystal) }));
+  }
+  return i18n.t('action.shortfallLabel', { parts: parts.join(i18n.t('action.shortfallJoin')) });
 }
 
 /* ── combat statistics ───────────────────────────────────────── */
@@ -250,24 +262,36 @@ export function StatStrip({
 
   return (
     <div className={`stats ${big ? 'stats-card' : ''}`}>
-      <Stat icon={<AttackIcon className={big ? 'size-5' : 'size-4'} />} tone="attack" label="Attack" value={atk} big={big} />
-      <Stat icon={<HullIcon className={big ? 'size-5' : 'size-4'} />} tone="hull" label="Hull" value={hp} big={big} />
+      <Stat
+        icon={<AttackIcon className={big ? 'size-5' : 'size-4'} />}
+        tone="attack"
+        label={i18n.t('action.statAttack')}
+        value={atk}
+        big={big}
+      />
+      <Stat
+        icon={<HullIcon className={big ? 'size-5' : 'size-4'} />}
+        tone="hull"
+        label={i18n.t('action.statHull')}
+        value={hp}
+        big={big}
+      />
       <Stat
         icon={<SpeedIcon className={big ? 'size-5' : 'size-4'} />}
         tone="speed"
-        label="Speed"
+        label={i18n.t('action.statSpeed')}
         value={speed}
         // A Bastion never moves, and printing "0" invites the reader to think it
         // is slow rather than fixed in place.
-        text={speed === 0 ? 'fixed' : undefined}
+        text={speed === 0 ? i18n.t('action.statSpeedFixed') : undefined}
         big={big}
       />
       <Stat
         icon={<CargoIcon className={big ? 'size-5' : 'size-4'} />}
         tone="cargo"
-        label="Cargo"
+        label={i18n.t('action.statCargo')}
         value={cargo}
-        text={cargo === 0 ? '—' : undefined}
+        text={cargo === 0 ? i18n.t('action.statCargoNone') : undefined}
         big={big}
       />
     </div>

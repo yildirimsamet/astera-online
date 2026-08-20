@@ -5,14 +5,16 @@ import {
   type InstrumentId,
   type SatelliteId,
 } from '@astera/rules';
+import { useTranslation } from 'react-i18next';
 import type { PlanetView } from '../api/schemas.js';
+import i18n from '../i18n/index.js';
+import { satelliteBlurb } from '../i18n/names.js';
 import { compact } from '../lib/format.js';
 import { ActionButton } from './Action.js';
 import { buildingGain, instrumentGain, satelliteGain, type Gain } from '../lib/gains.js';
 import { RESOURCE_ART, SATELLITE_ART, buildingArt, instrumentArt, tierOf } from './assets.js';
 import { CoreMark, VaultMark } from './marks.js';
 import { Sheet } from './Sheet.js';
-import { SATELLITE_BLURB } from '../lib/vocabulary.js';
 import type { Blocked } from './UpgradeRow.js';
 
 /**
@@ -66,6 +68,7 @@ export function ItemSheet({
   onAct: () => void;
   onClose: () => void;
 }) {
+  const { t } = useTranslation();
   const level = levelOf(planet, item);
   const cost = costFor(planet, item, level);
   const short = {
@@ -81,11 +84,11 @@ export function ItemSheet({
       eyebrow={
         item.kind === 'satellite'
           ? level === 0
-            ? 'Not in orbit'
-            : 'In orbit'
+            ? t('itemSheet.eyebrowNotInOrbit')
+            : t('itemSheet.eyebrowInOrbit')
           : level === 0
-            ? 'Not installed'
-            : `Level ${String(level)}`
+            ? t('itemSheet.eyebrowNotInstalled')
+            : t('itemSheet.eyebrowLevel', { level })
       }
       title={name}
       onClose={onClose}
@@ -114,11 +117,11 @@ export function ItemSheet({
           label={
             item.kind === 'satellite'
               ? level === 0
-                ? 'Put in orbit'
-                : 'Already in orbit'
+                ? t('itemSheet.actPutInOrbit')
+                : t('itemSheet.actAlreadyInOrbit')
               : level === 0
-                ? 'Install'
-                : `Raise to L${String(level + 1)}`
+                ? t('itemSheet.actInstall')
+                : t('itemSheet.actRaise', { level: level + 1 })
           }
           onAct={() => {
             onAct();
@@ -133,15 +136,27 @@ export function ItemSheet({
 
       {blocked && (
         <p className="mt-3 border border-threat/30 bg-threat/10 px-3 py-2 text-[12px] text-threat">
-          Locked — needs {blocked.reason}.
+          {t('itemSheet.lockedNote', { reason: blocked.reason })}
         </p>
       )}
 
       {!blocked && !affordable && (
+        /*
+          ONE SENTENCE, ASSEMBLED IN THE RESOURCE — not three JSX fragments.
+          The old form hard-coded where "Short" sits and where "and" goes, which
+          is a decision about English word order. Turkish puts the verb last
+          ("... eksik"), so the sentence has to be built from its parts by the
+          translation rather than by the layout.
+        */
         <p className="mt-3 text-[12px] text-alloy">
-          Short {short.alloy > 0 && `${compact(short.alloy)} alloy`}
-          {short.alloy > 0 && short.crystal > 0 && ' and '}
-          {short.crystal > 0 && `${compact(short.crystal)} crystal`}.
+          {t('itemSheet.shortNote', {
+            parts: [
+              ...(short.alloy > 0 ? [t('itemSheet.shortAlloy', { amount: compact(short.alloy) })] : []),
+              ...(short.crystal > 0
+                ? [t('itemSheet.shortCrystal', { amount: compact(short.crystal) })]
+                : []),
+            ].join(t('itemSheet.shortJoin')),
+          })}
         </p>
       )}
 
@@ -154,7 +169,7 @@ export function ItemSheet({
         />
       ) : (
         <div className="mt-6">
-          <p className="legend mb-2">What each level buys</p>
+          <p className="legend mb-2">{t('itemSheet.ladderHeading')}</p>
           <div className="frame">
             {rungs.map((rung) => (
               <Rung
@@ -219,6 +234,7 @@ function Rung({
   /** True when this rung's unlock line is the same one the rung above already made. */
   repeats: boolean;
 }) {
+  const { t } = useTranslation();
   const gain = gainFor(item, level - 1);
   /**
    * EVERY RUNG WEARS ITS OWN PICTURE.
@@ -244,7 +260,7 @@ function Rung({
     >
       <div className="w-9 shrink-0 pt-0.5">
         <span className={`num text-[13px] ${next ? 'text-crystal' : 'text-faint'}`}>
-          L{level}
+          {t('itemSheet.rungLevel', { level })}
         </span>
       </div>
 
@@ -253,7 +269,7 @@ function Rung({
           className={`art-well flex size-11 shrink-0 items-center justify-center rounded ${
             upgrades ? 'ring-1 ring-crystal/40' : ''
           }`}
-          title={upgrades ? `New hardware at L${String(level)}` : undefined}
+          title={upgrades ? t('itemSheet.rungNewHardware', { level }) : undefined}
         >
           <img
             src={art}
@@ -279,12 +295,20 @@ function Rung({
 
       <span className="num shrink-0 pt-0.5 text-right text-[11px] text-faint">
         <span className="flex items-center gap-1">
-          <img src={RESOURCE_ART.alloy} alt="alloy" className="size-3.5 object-contain" />
+          <img
+            src={RESOURCE_ART.alloy}
+            alt={i18n.t('vocabulary.resource.alloy')}
+            className="size-3.5 object-contain"
+          />
           {compact(cost.alloy)}
         </span>
         {cost.crystal > 0 && (
           <span className="mt-0.5 flex items-center gap-1 text-crystal/70">
-            <img src={RESOURCE_ART.crystal} alt="crystal" className="size-3.5 object-contain" />
+            <img
+              src={RESOURCE_ART.crystal}
+              alt={i18n.t('vocabulary.resource.crystal')}
+              className="size-3.5 object-contain"
+            />
             {compact(cost.crystal)}
           </span>
         )}
@@ -313,12 +337,13 @@ function Orbital({
   slots: number;
   used: number;
 }) {
+  const { t } = useTranslation();
   const free = Math.max(0, slots - used);
   const gain = satelliteGain(id);
 
   return (
     <div className="mt-6">
-      <p className="legend mb-2">What it does</p>
+      <p className="legend mb-2">{t('itemSheet.orbitalDoesHeading')}</p>
       <div className="frame p-3">
         <p className="num text-[13px]">
           <span className="text-faint">{gain.label} </span>
@@ -327,10 +352,10 @@ function Orbital({
         {gain.unlocks && (
           <p className="mt-1 text-[11px] leading-snug text-crystal/80">{gain.unlocks}</p>
         )}
-        <p className="mt-3 text-[12px] leading-relaxed text-dim">{SATELLITE_BLURB[id]}</p>
+        <p className="mt-3 text-[12px] leading-relaxed text-dim">{satelliteBlurb(id)}</p>
       </div>
 
-      <p className="legend mb-2 mt-5">What it costs</p>
+      <p className="legend mb-2 mt-5">{t('itemSheet.orbitalCostHeading')}</p>
       <div className="frame p-3">
         {/*
           THE ORE PRICE LIVES HERE BECAUSE THERE IS NO RUNG TO PUT IT ON.
@@ -340,16 +365,24 @@ function Orbital({
         */}
         <div className="flex items-center gap-4 border-b border-line-soft pb-3">
           <span className="num flex items-center gap-1.5 text-[15px] text-bone">
-            <img src={RESOURCE_ART.alloy} alt="alloy" className="size-4 object-contain" />
+            <img
+              src={RESOURCE_ART.alloy}
+              alt={i18n.t('vocabulary.resource.alloy')}
+              className="size-4 object-contain"
+            />
             {compact(cost.alloy)}
           </span>
           {cost.crystal > 0 && (
             <span className="num flex items-center gap-1.5 text-[15px] text-crystal">
-              <img src={RESOURCE_ART.crystal} alt="crystal" className="size-4 object-contain" />
+              <img
+                src={RESOURCE_ART.crystal}
+                alt={i18n.t('vocabulary.resource.crystal')}
+                className="size-4 object-contain"
+              />
               {compact(cost.crystal)}
             </span>
           )}
-          <span className="text-[12px] text-faint">once — it is never raised</span>
+          <span className="text-[12px] text-faint">{t('itemSheet.orbitalOnce')}</span>
         </div>
 
         <div className="flex items-center justify-between pt-3">
@@ -363,8 +396,8 @@ function Orbital({
         </div>
         <span className="num text-[12px] text-dim">
           {free > 0
-            ? `${String(free)} of ${String(slots)} free`
-            : 'No free slot — raise the Command Core'}
+            ? t('itemSheet.orbitalFree', { free, total: slots })
+            : t('itemSheet.orbitalNoSlot')}
         </span>
         </div>
       </div>

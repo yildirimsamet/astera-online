@@ -667,6 +667,93 @@ export const trafficSchema = z.object({
 });
 export type Contact = z.infer<typeof trafficSchema>['contacts'][number];
 
+/* ── the rehearsal, and claiming what it built ──────────────── */
+
+/**
+ * THE GALAXY BEFORE YOU HAVE AN ACCOUNT. D56.
+ *
+ * ONE PUBLIC REQUEST, SHAPED AS THE THREE PAYLOADS THE CLIENT ALREADY PARSES.
+ * `season`, `galaxy` and `traffic` are the production schemas, reused rather than
+ * mirrored — which is what lets the rehearsal answer those three routes from local
+ * state without a second set of types, and what makes the contract test cover the
+ * preview and the live game with the same assertions.
+ *
+ * `reserved` is the world the server would give this visitor: real slot, real
+ * position, real name. It is a preview and not a reservation — two people looking
+ * at once are shown the same slot, and whoever claims second lands on the next one.
+ */
+export const previewSchema = z.object({
+  season: seasonSchema,
+  galaxy: galaxySchema,
+  traffic: trafficSchema,
+  reserved: z.object({
+    id: z.string(),
+    name: z.string(),
+    slotIndex: z.number(),
+    position: vec3,
+  }),
+  shard: z.object({
+    code: z.string(),
+    name: z.string(),
+    planets: z.number(),
+    capacity: z.number(),
+    online: z.number(),
+  }),
+});
+
+/**
+ * ONE DECISION THE VISITOR MADE, ON ITS WAY TO THE SERVER.
+ *
+ * INTENTS, NOT OUTCOMES. The rehearsal ran the same `@astera/rules` the server
+ * validates with, so the screen could keep up with a finger — but what travels is
+ * only ever what was PRESSED. Principle 1: the client renders and sends intent.
+ *
+ * A request schema rather than a response one, so the shape the client builds is
+ * checked by the same tool that checks what comes back, and the server's own
+ * `z.discriminatedUnion` has something to be compared against.
+ */
+export const claimIntent = z.discriminatedUnion('kind', [
+  z.object({ kind: z.literal('upgrade'), building: buildingId }),
+  z.object({ kind: z.literal('build'), hull: hullId, count: z.number().int().min(1) }),
+  z.object({
+    kind: z.literal('launch'),
+    targetPlanetId: z.string(),
+    fleet: z.record(hullId, z.number().int().min(0)),
+  }),
+]);
+
+/**
+ * What became of one decision the rehearsal recorded, once the server ran it.
+ *
+ * A refusal is a CODE and its figures, never a finished sentence (D55): the target
+ * that crossed out of the tier band while somebody typed a password has to be
+ * sayable in both languages.
+ */
+export const appliedSchema = z.object({
+  kind: z.enum(['upgrade', 'build', 'launch']),
+  ok: z.boolean(),
+  error: z.string().optional(),
+  params: z.record(z.union([z.string(), z.number()])).optional(),
+});
+
+/**
+ * The claim: an account, a seat and the whole opening, in one answer.
+ *
+ * It carries the planet view for the same reason every mutation does (D53) — the
+ * interface must never have to ask a second time for the consequence of a tap, and
+ * the one call that CREATES a planet is the last place to make an exception.
+ */
+export const claimSchema = sessionSchema.extend({
+  placement: z.object({
+    shard: z.string(),
+    shardName: z.string(),
+    planetId: z.string(),
+    planetName: z.string(),
+  }),
+  applied: z.array(appliedSchema),
+  planet: planetSchema,
+});
+
 export type Session = z.infer<typeof sessionSchema>;
 export type Me = z.infer<typeof meSchema>;
 export type ServerRow = z.infer<typeof serverSchema>;
@@ -692,3 +779,7 @@ export type AsteroidView = z.infer<typeof asteroidSchema>;
 export type MiningRun = MiningView['runs'][number];
 export type CollectResult = z.infer<typeof collectSchema>;
 export type NotificationView = z.infer<typeof notificationsSchema>['notifications'][number];
+export type Preview = z.infer<typeof previewSchema>;
+export type Applied = z.infer<typeof appliedSchema>;
+export type ClaimResult = z.infer<typeof claimSchema>;
+export type ClaimIntent = z.infer<typeof claimIntent>;

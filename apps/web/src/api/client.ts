@@ -2,6 +2,8 @@ import type { z } from 'zod';
 import type { Fleet, BuildingId, HullId, InstrumentId, SatelliteId } from '@astera/rules';
 import { noteServerTime } from '../lib/clock.js';
 import {
+  claimSchema,
+  type ClaimIntent,
   collectSchema,
   galaxySchema,
   intelSchema,
@@ -15,6 +17,7 @@ import {
   pendingSchema,
   placementSchema,
   planetSchema,
+  previewSchema,
   probeSchema,
   reportsSchema,
   returnSchema,
@@ -31,12 +34,24 @@ import {
   watchSchema,
 } from './schemas.js';
 
-/** The API's single error shape, preserved so the UI can act on the code. */
+/** The figures a refusal was built from, as the server sent them. */
+export type ErrorParams = Record<string, string | number>;
+
+/**
+ * The API's single error shape, preserved so the UI can act on the code.
+ *
+ * `params` is what makes a refusal translatable. `message` arrives with its
+ * numbers already interpolated into English and can only be shown as-is; the code
+ * plus its params is the same fact in a form `i18n/errors.ts` can say again in
+ * another language. Absent on the refusals that have no figures in them, and on
+ * anything an older server sends.
+ */
 export class ApiError extends Error {
   constructor(
     readonly code: string,
     message: string,
     readonly status: number,
+    readonly params?: ErrorParams,
   ) {
     super(message);
     this.name = 'ApiError';
@@ -140,7 +155,7 @@ export class Api {
         );
       }
       const parsed = errorShape(body);
-      throw new ApiError(parsed.error, parsed.message, res.status);
+      throw new ApiError(parsed.error, parsed.message, res.status, parsed.params);
     }
     return schema.parse(body);
   }
@@ -212,6 +227,37 @@ export class Api {
   }
 
   me = () => this.send('/api/auth/me', meSchema);
+
+  /* ── the rehearsal, and claiming it ───────────────────────── */
+
+  /**
+   * The frontier galaxy, before there is anybody to ask on behalf of. D56.
+   *
+   * Public, so no token and nothing to refresh. This is the whole of what the
+   * rehearsal stands on: one payload, and a clock — every leg on the disc is drawn
+   * by interpolating between instants the contacts already carry, so the galaxy
+   * keeps moving for as long as a visitor watches it with no stream and no poll.
+   */
+  preview = () => this.send('/api/preview', previewSchema, { retryOnExpiry: false });
+
+  /**
+   * Turn the rehearsal into a season: an account, a seat, and every decision
+   * replayed by the server that will hold them.
+   *
+   * `intents` is what the visitor DID, never what the rehearsal computed. The
+   * client's copy of the outcome was a prediction made with the same
+   * `@astera/rules` the server validates against; this call is where it becomes
+   * true, or is refused and says which step and why.
+   */
+  async claim(username: string, password: string, intents: readonly ClaimIntent[]) {
+    const claimed = await this.send('/api/onboarding/claim', claimSchema, {
+      method: 'POST',
+      body: { username, password, intents },
+      retryOnExpiry: false,
+    });
+    this.token = claimed.accessToken;
+    return claimed;
+  }
 
   /** Drops the token without telling the server. For a 401 we already know about. */
   forget(): void {
@@ -357,13 +403,33 @@ export class Api {
   }
 }
 
-function errorShape(body: unknown): { error: string; message: string } {
+function errorShape(body: unknown): { error: string; message: string; params?: ErrorParams } {
   if (body && typeof body === 'object') {
     const record: Record<string, unknown> = { ...body };
     const error = typeof record.error === 'string' ? record.error : 'UNKNOWN';
     const message =
       typeof record.message === 'string' ? record.message : 'Something went wrong';
-    return { error, message };
+    const params = readParams(record.params);
+    return { error, message, ...(params === undefined ? {} : { params }) };
   }
   return { error: 'UNKNOWN', message: 'Something went wrong' };
+}
+
+/**
+ * Untrusted, so every entry is checked rather than cast.
+ *
+ * These land in `i18n.t(...)` as interpolation VALUES and never as a key, so the
+ * worst a hostile server could do is print a string — but a nested object or an
+ * array reaching the formatter would render as `[object Object]` in the middle of
+ * a sentence, and that is a real thing a mismatched deploy can produce. Anything
+ * that is not a string or a finite number is dropped.
+ */
+function readParams(value: unknown): ErrorParams | undefined {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return undefined;
+  const out: ErrorParams = {};
+  for (const [key, entry] of Object.entries(value as Record<string, unknown>)) {
+    if (typeof entry === 'string') out[key] = entry;
+    else if (typeof entry === 'number' && Number.isFinite(entry)) out[key] = entry;
+  }
+  return Object.keys(out).length > 0 ? out : undefined;
 }

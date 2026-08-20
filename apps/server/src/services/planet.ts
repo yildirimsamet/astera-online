@@ -99,11 +99,28 @@ export interface LockedPlanet {
   now: Date;
 }
 
+/** The figures a refusal is built from, sent alongside it so it can be re-said. */
+export type ErrorParams = Record<string, string | number>;
+
+/**
+ * A refusal the player is allowed to read.
+ *
+ * `message` is the English sentence and stays authoritative for anything that
+ * cannot look the code up. `params` is the same fact taken apart: the client has
+ * its own catalogue keyed by `code`, and a sentence with its numbers already
+ * baked in cannot be translated after the fact — "All 4 flight bays are in use"
+ * is finished English. Sending both costs one object and is what lets the same
+ * refusal arrive in Turkish with the 4 still in it.
+ *
+ * Only interpolating errors need it. A refusal whose sentence is fixed carries no
+ * params and needs none.
+ */
 export class GameError extends Error {
   constructor(
     readonly code: string,
     message: string,
     readonly status = 400,
+    readonly params?: ErrorParams,
   ) {
     super(message);
     this.name = 'GameError';

@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import { Trans, useTranslation } from 'react-i18next';
 import type { Gain } from '../lib/gains.js';
 
 import { haptic } from '../lib/haptics.js';
@@ -100,6 +101,7 @@ export function UpgradeRow({
   /** Set briefly after a successful purchase. */
   flash?: boolean;
 }) {
+  const { t } = useTranslation();
   const shortAlloy = Math.max(0, cost.alloy - held.alloy);
   const shortCrystal = Math.max(0, cost.crystal - held.crystal);
   const affordable = shortAlloy === 0 && shortCrystal === 0;
@@ -137,7 +139,7 @@ export function UpgradeRow({
       {onOpen && (
         <button
           type="button"
-          aria-label={`About ${name}`}
+          aria-label={t('upgradeRow.about', { name })}
           className="absolute inset-0 z-0"
           onClick={() => {
             haptic('tap');
@@ -208,7 +210,7 @@ export function UpgradeRow({
             <div className="art-well flex size-12 shrink-0 items-center justify-center rounded ring-1 ring-crystal/30">
               <img
                 src={nextArt}
-                alt={`${name} at the next tier`}
+                alt={t('upgradeRow.nextTierAlt', { name })}
                 className="size-11 object-contain drop-shadow-[0_0_8px_rgba(111,211,224,0.35)]"
                 loading="lazy"
               />
@@ -219,7 +221,14 @@ export function UpgradeRow({
         {/* Pushes the control to the right edge, where every row's control sits. */}
         <div className="flex-1" />
 
-        <span className="pointer-events-auto shrink-0">
+        {/*
+          `data-act` marks THE control this row commits with, so a surface outside
+          the row can point at it without knowing how the row is built. The
+          onboarding gate (D56) lights exactly one control per beat and refuses
+          every other press; a selector reaching in for "the last button" would
+          break the first time a row grew a second one.
+        */}
+        <span data-act className="pointer-events-auto shrink-0">
           <ActionButton
             verb={verb}
             cost={cost}
@@ -244,7 +253,7 @@ export function UpgradeRow({
           <p className="num text-[13px]">
             <span className="text-faint">{gain.label} </span>
             <span className="text-dim">{gain.now}</span>
-            <span className="mx-1 text-faint" aria-label="becomes">
+            <span className="mx-1 text-faint" aria-label={t('upgradeRow.becomes')}>
               →
             </span>
             <span className="text-bone">{gain.next}</span>
@@ -283,8 +292,11 @@ export function UpgradeRow({
       */}
       {!affordable && !blocked && waitMinutes !== null && (
         <p className="pointer-events-none relative z-10 mt-2 text-[11px] text-faint">
-          Affordable in <span className="num text-alloy">{duration(waitMinutes)}</span> at your
-          current rate
+          <Trans
+            i18nKey="upgradeRow.affordableIn"
+            values={{ duration: duration(waitMinutes) }}
+            components={[<span key="n" className="num text-alloy" />]}
+          />
         </p>
       )}
     </div>

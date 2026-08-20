@@ -19,6 +19,8 @@ import {
   type SatelliteId,
 } from '@astera/rules';
 import type { PlanetView } from '../api/schemas.js';
+import i18n from '../i18n/index.js';
+import { hullLabel } from '../i18n/names.js';
 import { compact, full, percent } from './format.js';
 
 /**
@@ -61,7 +63,9 @@ export function powerOf(planet: PlanetView): number {
 
 /** Range in words. "Infinite" is not a distance a player can picture. */
 const rangeWord = (units: number): string =>
-  Number.isFinite(units) ? `${String(Math.round(units))} units` : 'the whole disc';
+  Number.isFinite(units)
+    ? i18n.t('gains.rangeUnits', { count: Math.round(units) })
+    : i18n.t('gains.rangeWhole');
 
 export interface Gain {
   /** The quantity being bought, named as the player feels it. */
@@ -90,31 +94,37 @@ export function buildingGain(
   switch (id) {
     case 'CORE':
       return {
-        label: 'Build ceiling',
-        now: `L${String(level)}`,
-        next: `L${String(next)}`,
+        label: i18n.t('gains.core.label'),
+        now: i18n.t('gains.core.level', { level }),
+        next: i18n.t('gains.core.level', { level: next }),
         unlocks:
           cappedCount > 0
-            ? `Releases ${String(cappedCount)} blocked upgrade${cappedCount === 1 ? '' : 's'}`
-            : 'Raises the cap on everything else',
+            ? i18n.t('gains.core.releases', { count: cappedCount })
+            : i18n.t('gains.core.raisesCap'),
       };
     case 'REFINERY':
       return {
-        label: 'Alloy per hour',
-        now: `${compact(alloyRate(level))}/h`,
-        next: `${compact(alloyRate(next))}/h`,
-        unlocks: `Storage ${compact(storageCap(alloyRate(level)))} → ${compact(storageCap(alloyRate(next)))}`,
+        label: i18n.t('gains.refinery.label'),
+        now: i18n.t('gains.refinery.rate', { amount: compact(alloyRate(level)) }),
+        next: i18n.t('gains.refinery.rate', { amount: compact(alloyRate(next)) }),
+        unlocks: i18n.t('gains.refinery.storage', {
+          now: compact(storageCap(alloyRate(level))),
+          next: compact(storageCap(alloyRate(next))),
+        }),
       };
     case 'EXTRACTOR':
       return {
-        label: 'Crystal per hour',
-        now: `${compact(crystalRate(level))}/h`,
-        next: `${compact(crystalRate(next))}/h`,
-        unlocks: `Storage ${compact(storageCap(crystalRate(level)))} → ${compact(storageCap(crystalRate(next)))}`,
+        label: i18n.t('gains.extractor.label'),
+        now: i18n.t('gains.extractor.rate', { amount: compact(crystalRate(level)) }),
+        next: i18n.t('gains.extractor.rate', { amount: compact(crystalRate(next)) }),
+        unlocks: i18n.t('gains.extractor.storage', {
+          now: compact(storageCap(crystalRate(level))),
+          next: compact(storageCap(crystalRate(next))),
+        }),
       };
     case 'VAULT':
       return {
-        label: 'Safe from any raid',
+        label: i18n.t('gains.vault.label'),
         now: full(vaultProtects(level)),
         next: full(vaultProtects(next)),
       };
@@ -140,19 +150,21 @@ export function buildingGain(
       const flat = probeAccuracy(next, 0) === probeAccuracy(level, 0);
       if (flat) {
         return {
-          label: 'Sees through a Veil up to',
-          now: `L${String(seesThrough(level))}`,
-          next: `L${String(seesThrough(next))}`,
+          label: i18n.t('gains.shipyard.seesLabel'),
+          now: i18n.t('gains.shipyard.seesValue', { level: seesThrough(level) }),
+          next: i18n.t('gains.shipyard.seesValue', { level: seesThrough(next) }),
           unlocks: unlocked
-            ? `Unlocks the ${HULLS[unlocked].name}`
-            : 'And makes your own probes harder to detect',
+            ? i18n.t('gains.shipyard.unlocksHull', { hull: hullLabel(unlocked) })
+            : i18n.t('gains.shipyard.stealth'),
         };
       }
       return {
-        label: 'Probe accuracy',
+        label: i18n.t('gains.shipyard.accuracyLabel'),
         now: percent(probeAccuracy(level, 0)),
         next: percent(probeAccuracy(next, 0)),
-        ...(unlocked ? { unlocks: `Unlocks the ${HULLS[unlocked].name}` } : {}),
+        ...(unlocked
+          ? { unlocks: i18n.t('gains.shipyard.unlocksHull', { hull: hullLabel(unlocked) }) }
+          : {}),
       };
     }
   }
@@ -171,10 +183,10 @@ export function instrumentGain(id: InstrumentId, level: number): Gain {
     case 'TELESCOPE': {
       if (instrumentMaxed('TELESCOPE', level)) {
         return {
-          label: 'Planets you can watch',
+          label: i18n.t('gains.telescope.slotsLabel'),
           now: String(telescopeSlots(level)),
           next: String(telescopeSlots(level)),
-          unlocks: 'At its highest level — it already reaches the whole disc',
+          unlocks: i18n.t('gains.telescope.maxed'),
           maxed: true,
         };
       }
@@ -185,20 +197,34 @@ export function instrumentGain(id: InstrumentId, level: number): Gain {
 
       if (nextSlots > slots) {
         return {
-          label: 'Planets you can watch',
+          label: i18n.t('gains.telescope.slotsLabel'),
           now: String(slots),
           next: String(nextSlots),
-          unlocks: `Reaches ${rangeWord(reach)} · a slot realigns in ${String(cooldown)}h`,
+          unlocks: i18n.t('gains.telescope.reachAndCooldown', {
+            range: rangeWord(reach),
+            hours: cooldown,
+          }),
         };
       }
       return {
-        label: 'How far you can see',
+        label: i18n.t('gains.telescope.rangeLabel'),
         now: rangeWord(telescopeRange(level)),
         next: rangeWord(reach),
         unlocks:
           telescopeSlots(next + 1) > nextSlots
-            ? `Next level adds a ${String(nextSlots + 1)}${nextSlots === 1 ? 'nd' : 'rd'} slot`
-            : `A slot realigns in ${String(cooldown)}h`,
+            ? i18n.t('gains.telescope.nextSlot', {
+                /**
+                 * The ordinal is a translated token rather than an English
+                 * suffix glued to a number. `2nd`/`3rd` is a rule about English
+                 * spelling; Turkish writes `2.` and `3.` and has no suffix to
+                 * append at all, so building the word here would have shipped
+                 * "3rd yuvayı ekler".
+                 */
+                ordinal: i18n.t(
+                  nextSlots === 1 ? 'gains.telescope.ordinalSecond' : 'gains.telescope.ordinalThird',
+                ),
+              })
+            : i18n.t('gains.telescope.cooldown', { hours: cooldown }),
       };
     }
     /**
@@ -210,19 +236,20 @@ export function instrumentGain(id: InstrumentId, level: number): Gain {
     case 'RADAR': {
       if (instrumentMaxed('RADAR', level)) {
         return {
-          label: 'How far it sweeps',
+          label: i18n.t('gains.radar.sweepLabel'),
           now: rangeWord(radarRange(level)),
           next: rangeWord(radarRange(level)),
-          unlocks: 'At its highest level — it already names where a scan came from',
+          unlocks: i18n.t('gains.radar.maxed'),
           maxed: true,
         };
       }
       if (next < 3) {
         return {
-          label: 'Detects scans',
-          now: level === 0 ? 'no' : 'yes',
-          next: next === 1 ? 'yes' : 'yes, with bearing',
-          ...(next === 1 ? { unlocks: 'L2 adds the bearing · L3 warns about inbound fleets' } : {}),
+          label: i18n.t('gains.radar.scansLabel'),
+          now: level === 0 ? i18n.t('gains.radar.scansNo') : i18n.t('gains.radar.scansYes'),
+          next:
+            next === 1 ? i18n.t('gains.radar.scansYes') : i18n.t('gains.radar.scansBearing'),
+          ...(next === 1 ? { unlocks: i18n.t('gains.radar.l2l3') } : {}),
         };
       }
       /**
@@ -236,22 +263,22 @@ export function instrumentGain(id: InstrumentId, level: number): Gain {
        */
       const nowReach = radarRange(level);
       return {
-        label: 'How far it sweeps',
-        now: nowReach > 0 ? rangeWord(nowReach) : 'none',
+        label: i18n.t('gains.radar.sweepLabel'),
+        now: nowReach > 0 ? rangeWord(nowReach) : i18n.t('gains.radar.sweepNone'),
         next: rangeWord(radarRange(next)),
         ...(next === 4
-          ? { unlocks: 'Adds an estimate of how many ships are coming' }
+          ? { unlocks: i18n.t('gains.radar.estimate') }
           : next === 5
-            ? { unlocks: 'Names the planet it came from' }
+            ? { unlocks: i18n.t('gains.radar.origin') }
             : {}),
       };
     }
     case 'AEGIS':
       return {
-        label: 'Shield',
+        label: i18n.t('gains.aegis.label'),
         now: full(shieldHp(level)),
         next: full(shieldHp(next)),
-        unlocks: 'Absorbs damage before your units take any. Regenerates 5% an hour',
+        unlocks: i18n.t('gains.aegis.unlocks'),
       };
     /**
      * A VEIL IS MEASURED AGAINST THE INSTRUMENTS POINTED AT IT.
@@ -268,10 +295,15 @@ export function instrumentGain(id: InstrumentId, level: number): Gain {
     case 'VEIL': {
       const blinds = (v: number): number => Math.max(0, v - 2);
       return {
-        label: 'Blinds a telescope up to',
-        now: blinds(level) === 0 ? 'none' : `L${String(blinds(level))}`,
-        next: `L${String(blinds(next))}`,
-        unlocks: `Cuts a probe's accuracy to ${percent(probeAccuracy(next, next))} at equal Shipyard`,
+        label: i18n.t('gains.veil.label'),
+        now:
+          blinds(level) === 0
+            ? i18n.t('gains.veil.none')
+            : i18n.t('gains.veil.level', { level: blinds(level) }),
+        next: i18n.t('gains.veil.level', { level: blinds(next) }),
+        unlocks: i18n.t('gains.veil.unlocks', {
+          percent: Math.round(probeAccuracy(next, next) * 100),
+        }),
       };
     }
   }
@@ -288,33 +320,35 @@ export function satelliteGain(id: SatelliteId): Gain {
   switch (id) {
     case 'FOUNDRY':
       return {
-        label: 'Everything the works produce',
+        label: i18n.t('gains.foundry.label'),
         // The pair is a STATE, not a step: a satellite is up or it is not, and an
         // em-dash in the "now" column reads as a number that failed to load.
-        now: 'as built',
-        next: `+${String(Math.round((SATELLITES.FOUNDRY.production - 1) * 100))}%`,
-        unlocks: 'Alloy and crystal both, for the rest of the season',
+        now: i18n.t('gains.foundry.now'),
+        next: i18n.t('gains.foundry.next', {
+          percent: Math.round((SATELLITES.FOUNDRY.production - 1) * 100),
+        }),
+        unlocks: i18n.t('gains.foundry.unlocks'),
       };
     case 'UPLINK':
       return {
-        label: 'Telescope and Radar',
-        now: 'locked',
-        next: 'unlocked',
-        unlocks: 'The only way to stop guessing about the people around you',
+        label: i18n.t('gains.uplink.label'),
+        now: i18n.t('gains.uplink.now'),
+        next: i18n.t('gains.uplink.next'),
+        unlocks: i18n.t('gains.uplink.unlocks'),
       };
     case 'DERRICK':
       return {
-        label: 'Every Prospector carries',
-        now: '1×',
-        next: `${String(SATELLITES.DERRICK.hold)}×`,
-        unlocks: `And flies ${String(SATELLITES.DERRICK.speed)}× faster — first to the rock takes the ore`,
+        label: i18n.t('gains.derrick.label'),
+        now: i18n.t('gains.derrick.now'),
+        next: i18n.t('gains.derrick.next', { factor: SATELLITES.DERRICK.hold }),
+        unlocks: i18n.t('gains.derrick.unlocks', { factor: SATELLITES.DERRICK.speed }),
       };
     case 'BEACON':
       return {
-        label: 'Every fleet that leaves here',
-        now: 'normal speed',
-        next: `${String(SATELLITES.BEACON.speed)}× faster`,
-        unlocks: 'Out and back — a shorter window with your defence away from home',
+        label: i18n.t('gains.beacon.label'),
+        now: i18n.t('gains.beacon.now'),
+        next: i18n.t('gains.beacon.next', { factor: SATELLITES.BEACON.speed }),
+        unlocks: i18n.t('gains.beacon.unlocks'),
       };
   }
 }

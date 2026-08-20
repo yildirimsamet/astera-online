@@ -1,4 +1,5 @@
 import { useEffect, type ReactNode } from 'react';
+import { useTranslation } from 'react-i18next';
 
 /**
  * A bottom sheet — every decision in this game is made from one.
@@ -21,6 +22,7 @@ export function Sheet({
   children: ReactNode;
   footer?: ReactNode;
 }) {
+  const { t } = useTranslation();
   useEffect(() => {
     const onKey = (event: KeyboardEvent): void => {
       if (event.key === 'Escape') onClose();
@@ -35,7 +37,7 @@ export function Sheet({
     <div className="fixed inset-0 z-40 flex flex-col justify-end">
       <button
         type="button"
-        aria-label="Close"
+        aria-label={t('sheet.dismiss')}
         onClick={onClose}
         className="absolute inset-0 animate-[fade-in_140ms_ease-out] bg-void/80 backdrop-blur-[2px]"
       />
@@ -59,6 +61,14 @@ export function Sheet({
         role="dialog"
         aria-modal="true"
         aria-label={title}
+        /**
+         * `data-sheet-panel` is the sheet's own box, as opposed to the full-screen
+         * scrim it floats on. Anything positioning ITSELF against an open sheet —
+         * the onboarding card getting out of the way of what it is pointing at
+         * (D56) — has to measure this and not the container, or it is told the
+         * sheet fills the screen and gives up.
+         */
+        data-sheet-panel
         className="panel relative flex max-h-[86dvh] animate-[sheet-in_180ms_ease-out] flex-col rounded-t-md border-x-0 border-b-0 border-t-line pb-[env(safe-area-inset-bottom)]"
       >
         <div className="flex shrink-0 items-start gap-3 border-b border-line-soft bg-panel/95 px-4 py-3">
@@ -67,7 +77,7 @@ export function Sheet({
             <h2 className="truncate font-display text-[19px] tracking-wide text-bone">{title}</h2>
           </div>
           <button type="button" onClick={onClose} className="btn px-3 py-1.5">
-            Close
+            {t('sheet.close')}
           </button>
         </div>
         {/* `min-h-0` is what actually lets a flex child scroll instead of growing. */}

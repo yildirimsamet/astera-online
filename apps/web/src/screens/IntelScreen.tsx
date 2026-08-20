@@ -1,4 +1,5 @@
 import { radarDetectsFleets, radarRange, telescopeSlots } from '@astera/rules';
+import { useTranslation } from 'react-i18next';
 import { useGalaxy, useIntel, usePlanet } from '../api/queries.js';
 import { percent, range } from '../lib/format.js';
 import { staleness, useNow } from '../lib/time.js';
@@ -21,6 +22,7 @@ import { Unreachable, Waiting } from '../ui/kit/Surface.js';
  * would fill it and what that instrument would tell them.
  */
 export function IntelScreen() {
+  const { t } = useTranslation();
   const intel = useIntel();
   const planet = usePlanet();
   const galaxy = useGalaxy();
@@ -31,14 +33,14 @@ export function IntelScreen() {
   if (intel.isError) {
     return (
       <Unreachable
-        what="what you know"
+        what={t('surface.whatIntel')}
         onRetry={() => {
           void intel.refetch();
         }}
       />
     );
   }
-  if (!intel.data) return <Waiting>Collecting</Waiting>;
+  if (!intel.data) return <Waiting>{t('surface.waitingIntel')}</Waiting>;
 
   const telescope = planet.data?.instruments.TELESCOPE ?? 0;
   const radar = planet.data?.instruments.RADAR ?? 0;
@@ -57,15 +59,25 @@ export function IntelScreen() {
       />
 
       <Section
-        label="Watching"
-        aside={telescope > 0 ? `${String(seen)}/${String(telescope)} slots used` : undefined}
+        label={t('intel.watching.heading')}
+        aside={
+          telescope > 0
+            ? t('intel.watching.slotsUsed', { used: seen, total: telescope })
+            : undefined
+        }
       >
         {watching.length === 0 ? (
           <Instrument
             art={instrumentArt('TELESCOPE', 1)}
-            missing={telescope > 0 ? 'No slot is pointed at anything' : 'You have no Telescope'}
-            gives="Tells you the moment a planet's fleet leaves — the one fact that decides every raid."
-            cost={telescope > 0 ? 'Pick a planet in the galaxy and point a slot at it.' : 'Install one from your planet screen.'}
+            missing={t(
+              telescope > 0
+                ? 'intel.watching.missingNoSlot'
+                : 'intel.watching.missingNoTelescope',
+            )}
+            gives={t('intel.watching.gives')}
+            cost={t(
+              telescope > 0 ? 'intel.watching.costPoint' : 'intel.watching.costInstall',
+            )}
           />
         ) : (
           <Panel className="py-1">
@@ -87,7 +99,7 @@ export function IntelScreen() {
                 </div>
                 {watch.reading.status === 'AWAY' && (
                   <p className="mt-1.5 text-[12px] text-opportunity">
-                    Their planet is defended by whatever they left behind.
+                    {t('intel.watching.away')}
                   </p>
                 )}
               </div>
@@ -95,20 +107,26 @@ export function IntelScreen() {
           </Panel>
         )}
         {watching.some((w) => w.reading.state === 'INTERMITTENT') && (
-          <Note>
-            An intermittent reading refreshes every twenty minutes at best. Checking again will not
-            improve it — the answer is fixed until the window turns over.
-          </Note>
+          <Note>{t('intel.watching.intermittent')}</Note>
         )}
       </Section>
 
-      <Section label="Probe reports" aside={probeReports.length > 0 ? 'newest first' : undefined}>
+      <Section
+        label={t('intel.probes.heading')}
+        aside={probeReports.length > 0 ? t('intel.probes.newest') : undefined}
+      >
         {probeReports.length === 0 ? (
           <Instrument
             art="/assets/images/ships/explorer_ship.png"
-            missing="No probe has ever come back"
-            gives="Real numbers — how much they hold and how hard they are to take — as a range."
-            cost="220 alloy and a few minutes. Their radar may catch it."
+            missing={t('intel.probes.missing')}
+            gives={t('intel.probes.gives')}
+            /*
+              THE FIGURE IN THIS LINE IS WRONG IN BOTH LANGUAGES, ON PURPOSE.
+              `PROBE` is 50 alloy and 50 crystal; the copy says 220 alloy.
+              CLAUDE.md tracks it as a known issue, so this pass translates it
+              faithfully rather than quietly fixing copy it was not asked to touch.
+            */
+            cost={t('intel.probes.cost')}
           />
         ) : (
           <Panel className="py-1">
@@ -126,13 +144,27 @@ export function IntelScreen() {
                   </span>
                 </div>
                 <dl className="mt-2 grid grid-cols-3 gap-3">
-                  <Band label="Stock" value={range(report.stock.low, report.stock.high)} />
-                  <Band label="Defence" value={range(report.defence.low, report.defence.high)} />
-                  <Band label="Ships" value={range(report.fleetSize.low, report.fleetSize.high)} />
+                  <Band
+                    label={t('intel.probes.stock')}
+                    value={range(report.stock.low, report.stock.high)}
+                  />
+                  <Band
+                    label={t('intel.probes.defence')}
+                    value={range(report.defence.low, report.defence.high)}
+                  />
+                  <Band
+                    label={t('intel.probes.ships')}
+                    value={range(report.fleetSize.low, report.fleetSize.high)}
+                  />
                 </dl>
                 <p className="num mt-2 text-[11px] text-faint">
-                  {percent(report.accuracy)} accuracy · fleet {report.fleetHome ? 'was home' : 'was out'}
-                  {report.detected && <span className="text-threat"> · they caught it</span>}
+                  {t(
+                    report.fleetHome ? 'intel.probes.accuracyHome' : 'intel.probes.accuracyOut',
+                    { percent: percent(report.accuracy) },
+                  )}
+                  {report.detected && (
+                    <span className="text-threat">{t('intel.probes.caught')}</span>
+                  )}
                 </p>
               </div>
             ))}
@@ -142,19 +174,20 @@ export function IntelScreen() {
 
       <BattleReports />
 
-      <Section label="Who is looking at you" aside={radar > 0 ? `Radar L${String(radar)}` : undefined}>
+      <Section
+        label={t('intel.radar.heading')}
+        aside={radar > 0 ? t('intel.radar.level', { level: radar }) : undefined}
+      >
         {radar < 1 ? (
           <Instrument
             art={instrumentArt('RADAR', 1)}
-            missing="You have no Radar"
-            gives="Catches probes aimed at you. From L3, it sweeps a circle around your world and warns you the moment a fleet crosses into it."
-            cost="Someone can build a complete picture of this planet and you will never know."
+            missing={t('intel.radar.missing')}
+            gives={t('intel.radar.gives')}
+            cost={t('intel.radar.cost')}
           />
         ) : radarLog.length === 0 ? (
           <Panel>
-            <p className="text-[13px] text-dim">
-              Nothing has scanned you. Radar L{radar} is listening.
-            </p>
+            <p className="text-[13px] text-dim">{t('intel.radar.quiet', { level: radar })}</p>
           </Panel>
         ) : (
           <Panel className="py-1">
@@ -164,10 +197,16 @@ export function IntelScreen() {
                 className="flex items-baseline justify-between gap-3 border-b border-line-soft py-2.5 last:border-b-0"
               >
                 <span className="text-[13px] text-bone">
-                  Scan detected
-                  {scan.bearing && <span className="text-dim"> from the galactic {scan.bearing}</span>}
+                  {t('intel.radar.scan')}
+                  {scan.bearing && (
+                    <span className="text-dim">
+                      {t('intel.radar.bearing', { bearing: scan.bearing })}
+                    </span>
+                  )}
                   {scan.originPlanetName && (
-                    <span className="text-alloy"> · {scan.originPlanetName}</span>
+                    <span className="text-alloy">
+                      {t('intel.radar.origin', { planet: scan.originPlanetName })}
+                    </span>
                   )}
                 </span>
                 <span className="num shrink-0 text-[11px] text-faint">
@@ -187,10 +226,10 @@ export function IntelScreen() {
               consequence, and it is the interesting half.
             */}
             {radarDetectsFleets(radar)
-              ? `Radar L${String(radar)} catches a fleet ${String(radarRange(radar))} units out. A slow, heavy fleet is inside that circle for far longer than a fast one — so you get more warning about the raids that can actually hurt you.`
-              : `Radar L${String(radar)} catches probes. From L3 it also warns of inbound fleets.`}
-            {radar < 2 && ' L2 adds the direction they came from.'}
-            {radar >= 2 && radar < 5 && ' L5 names the planet.'}
+              ? t('intel.radar.noteFleets', { level: radar, range: radarRange(radar) })
+              : t('intel.radar.noteProbes', { level: radar })}
+            {radar < 2 && t('intel.radar.noteBearing')}
+            {radar >= 2 && radar < 5 && t('intel.radar.noteOrigin')}
           </Note>
         )}
       </Section>
@@ -230,6 +269,7 @@ function Coverage({
   telescope: number;
   radar: number;
 }) {
+  const { t } = useTranslation();
   const idle = Math.max(0, slots - seen);
   // Only where there is a slot to add ONE to. With no telescope at all the line
   // above is already selling the first one, and "would watch one more" against
@@ -238,17 +278,13 @@ function Coverage({
 
   return (
     <div className="panel mb-6 px-3.5 py-3.5">
-      <p className="legend">Coverage</p>
+      <p className="legend">{t('intel.coverage.label')}</p>
       <p className="mt-1.5 text-[17px] leading-tight text-bone">
-        {slots === 0 ? (
-          <>You cannot see into a single planet</>
-        ) : idle > 0 ? (
-          <>
-            Watching {seen} of your {slots} {slots === 1 ? 'slot' : 'slots'}
-          </>
-        ) : (
-          <>Every slot you have is watching someone</>
-        )}
+        {slots === 0
+          ? t('intel.coverage.blind')
+          : idle > 0
+            ? t('intel.coverage.partial', { seen, count: slots })
+            : t('intel.coverage.full')}
       </p>
 
       {slots > 0 && (
@@ -261,30 +297,26 @@ function Coverage({
 
       <p className="mt-2.5 text-[12px] leading-snug text-dim">
         {slots === 0
-          ? 'A Telescope is the cheapest way to stop that.'
+          ? t('intel.coverage.blindHint')
           : idle > 0
-            ? `${String(idle)} ${idle === 1 ? 'slot is' : 'slots are'} idle. Pick a world in the galaxy and point one at it.`
+            ? t('intel.coverage.idleHint', { count: idle })
             : /*
                 THE SCARCITY IS THE PRODUCT, AND IT IS SAID AS SUCH.
                 Nobody watches a galaxy; you watch the two or three worlds you
                 have decided matter. Naming the size of the disc here is what
                 makes moving a slot feel like a choice rather than a shortfall.
               */
-              `${String(neighbours)} worlds out there and ${String(slots)} ${
-                slots === 1 ? 'eye' : 'eyes'
-              } to spend. Moving one costs a cooldown, so choose who.`}
+              t('intel.coverage.scarcity', { neighbours, count: slots })}
       </p>
 
       {more && (
         <p className="mt-1.5 text-[12px] text-crystal">
-          Telescope L{telescope + 1} would watch one more.
+          {t('intel.coverage.oneMore', { level: telescope + 1 })}
         </p>
       )}
 
       {radar === 0 && (
-        <p className="mt-1.5 text-[12px] text-alloy">
-          And with no Radar, you cannot tell when someone is doing the same to you.
-        </p>
+        <p className="mt-1.5 text-[12px] text-alloy">{t('intel.coverage.noRadar')}</p>
       )}
     </div>
   );

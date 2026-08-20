@@ -188,9 +188,11 @@ export async function resolveJoinTarget(
 
   switch (target.status) {
     case 'closed':
-      throw new GameError('NO_SEASON', `${target.name} is not open right now`, 409);
+      throw new GameError('NO_SEASON', `${target.name} is not open right now`, 409, {
+        shard: target.name,
+      });
     case 'full':
-      throw new GameError('SHARD_FULL', `${target.name} is full`, 409);
+      throw new GameError('SHARD_FULL', `${target.name} is full`, 409, { shard: target.name });
     case 'locked': {
       const frontier = list.find((s) => s.status === 'open');
       throw new GameError(
@@ -199,6 +201,10 @@ export async function resolveJoinTarget(
           ? `${target.name} opens once ${frontier.name} is full. Join ${frontier.name}.`
           : `${target.name} is not open yet`,
         409,
+        {
+          shard: target.name,
+          ...(frontier ? { frontier: frontier.name, context: 'frontier' } : {}),
+        },
       );
     }
     case 'open':
@@ -214,7 +220,11 @@ export async function resolveJoinTarget(
   // Unreachable through `listServers`, which only reports 'open' for a live
   // season. Checked anyway: the alternative to this branch is a non-null
   // assertion on the row that decides where a player spends a season.
-  if (!row) throw new GameError('NO_SEASON', `${target.name} is not open right now`, 409);
+  if (!row) {
+    throw new GameError('NO_SEASON', `${target.name} is not open right now`, 409, {
+      shard: target.name,
+    });
+  }
 
   return {
     seasonId: row.season.id,

@@ -1,9 +1,13 @@
 import { useEffect, useId, useRef, useState } from 'react';
+import { Trans, useTranslation } from 'react-i18next';
 import { useServers } from '../api/queries.js';
 import { LandingScene } from '../landing/LandingScene.jsx';
+import { full } from '../lib/format.js';
+import { MIN_PASSWORD, USERNAME_PATTERN } from '../lib/credentials.js';
 import { LANDING_ASSETS, usePreload, type Loader } from '../lib/preload.js';
 import { LoadingScreen } from '../shell/LoadingScreen.js';
 import { Button } from '../ui/kit/index.js';
+import { LanguageSwitch } from '../ui/LanguageSwitch.jsx';
 import { Wordmark } from '../ui/Wordmark.jsx';
 
 /**
@@ -26,10 +30,23 @@ import { Wordmark } from '../ui/Wordmark.jsx';
  */
 export function LandingScreen({
   onAuthenticate,
+  onBegin,
+  open,
   error,
   loadAsset,
 }: {
   onAuthenticate: (mode: Mode, username: string, password: string) => Promise<void>;
+  /**
+   * The primary door. D56.
+   *
+   * It no longer opens a form. A stranger is asked for a password AFTER ninety
+   * seconds of the real game, not before — the rehearsal costs the galaxy nothing
+   * (no account, no seat) and it is the only thing on this page that can answer
+   * "is this worth two weeks of my evenings".
+   */
+  onBegin: () => Promise<void>;
+  /** A form to open on arrival, for somebody sent back here to sign in. */
+  open?: Mode;
   error?: string;
   /**
    * How one asset is fetched. Overridden only under test.
@@ -42,7 +59,10 @@ export function LandingScreen({
    */
   loadAsset?: Loader;
 }) {
-  const [mode, setMode] = useState<Mode | null>(null);
+  const { t } = useTranslation();
+  const [mode, setMode] = useState<Mode | null>(open ?? null);
+  /** True while the frontier galaxy is being read. The page stays; the door waits. */
+  const [opening, setOpening] = useState(false);
   const servers = useServers();
   /**
    * THE SCREEN IS A COVER, NOT A GATE. Owner decision.
@@ -68,6 +88,7 @@ export function LandingScreen({
   const commanders = servers.data?.servers.reduce((sum, s) => sum + s.planets, 0) ?? null;
   const online = servers.data?.servers.reduce((sum, s) => sum + s.online, 0) ?? null;
 
+
   return (
     <main className="relative min-h-dvh overflow-hidden bg-void">
       <LandingScene />
@@ -83,29 +104,68 @@ export function LandingScreen({
        * where the words are; the clear band between them is the whole reason there
        * is a 3D scene at all.
        */}
-      <div className="relative z-10 flex min-h-dvh flex-col justify-between bg-[linear-gradient(180deg,rgb(4_6_12/0.94)_0%,rgb(4_6_12/0.86)_22%,rgb(4_6_12/0.22)_42%,rgb(4_6_12/0.12)_58%,rgb(4_6_12/0.8)_84%,rgb(4_6_12/0.97)_100%)] px-6 pb-[calc(28px+env(safe-area-inset-bottom))] pt-[calc(56px+env(safe-area-inset-top))]">
-        {/* A phone-width column, whatever the window is. This is a mobile-first
-            game (a locked product constraint), and on a desktop a full-width row
-            of two 600px buttons reads as an unfinished web page rather than as a
-            deliberately narrow one. The composition behind puts the hero world on
-            the right, so a left-aligned column is also the correct half. */}
-        <header className="w-full max-w-md">
-          {/* The painted lockup rather than type. It is the first thing anyone sees
-              of this game and it carries the planet, the streak and the craft — the
-              three things the sentence underneath then explains. */}
-          <h1>
-            <Wordmark width={300} className="mx-auto" />
-          </h1>
-          <p className="mt-5 max-w-sm text-[15px] leading-relaxed text-dim">
-            You own one planet in a galaxy of fifty real people. You cannot see what they
-            hold. They cannot see what you hold.
-          </p>
-          <p className="mt-3 max-w-sm text-[15px] leading-relaxed text-dim">
-            Everything either side does about that is the game.
-          </p>
-        </header>
+      {/**
+       * THE COPY OWNS THE TOP AND THE BOTTOM, AND THE MIDDLE IS THE GAME.
+       *
+       * The scrim is dark at the two ends and clear through the middle. NOT a flat
+       * tint and not a simple top-to-bottom fade: the scene moves and the text does
+       * not, so legibility cannot depend on what happens to be behind a line at a
+       * given second. The clear band between the two stops is the whole reason
+       * there is a 3D scene at all, and it is wider now than it was — the premise
+       * paragraphs that used to fill it have gone, because a stranger reads the
+       * picture first and the sentence second, and the sentence was crowding the
+       * picture out.
+       */}
+      <div className="relative z-10 flex min-h-dvh flex-col justify-between bg-[linear-gradient(180deg,rgb(4_6_12/0.92)_0%,rgb(4_6_12/0.72)_16%,rgb(4_6_12/0.10)_34%,rgb(4_6_12/0.06)_58%,rgb(4_6_12/0.78)_82%,rgb(4_6_12/0.97)_100%)] px-6 pb-[calc(28px+env(safe-area-inset-bottom))] pt-[calc(30px+env(safe-area-inset-top))]">
+        {/*
+          THE SWITCHER IS ON THE FRONT DOOR, not only in the commander sheet: a
+          visitor who has landed in the wrong language has no account yet, so the
+          sheet that holds that control does not exist for them.
 
-        <footer className="w-full max-w-md">
+          Top right, and small enough to be furniture. It sat under the wordmark
+          competing with the one decision this page asks for; up here it is
+          findable by anyone looking for it and invisible to everyone else.
+        */}
+        {/*
+          THE TOP GROUP. The switcher and the lockup travel together so that the
+          column between them and the footer is EMPTY — that gap is the picture,
+          and it is the argument this page is making. Grouped rather than left as
+          two flex children, which would have shared the space equally and parked
+          the wordmark in the dead centre.
+        */}
+        <div>
+          <div className="flex justify-end">
+            <LanguageSwitch compact />
+          </div>
+
+          <header className="w-full">
+            {/* The painted lockup rather than type. It is the first thing anyone
+                sees of this game, and with the middle cleared it sits high and
+                lets the sky underneath do the talking. */}
+            <h1>
+              <Wordmark width={288} className="mx-auto mt-2" />
+            </h1>
+          </header>
+        </div>
+
+        {/**
+         * ONE DOOR, AND IT IS NOT A FORM. D56.
+         *
+         * This page used to end in two equally weighted buttons, one of which
+         * opened a password field. That is the shape of a service you sign up for,
+         * and a stranger meeting it has been asked to commit before they have been
+         * given a single reason to. The loud control now starts the rehearsal —
+         * ninety seconds of the real galaxy, costing the visitor nothing and the
+         * shard no seat — and the account is asked for at the end, once there is
+         * something worth keeping.
+         *
+         * SIGNING IN IS A LINE OF TEXT, NOT A SECOND BUTTON. It is for the small
+         * minority arriving on a new device; everybody else is restored by the
+         * cookie before this page is ever drawn. Given equal weight it competes
+         * with the one decision the page is asking for, and it reads to a first-
+         * time visitor as a wall.
+         */}
+        <footer className="mx-auto w-full max-w-md">
           <Population commanders={commanders} online={online} />
 
           {error !== undefined && mode === null && (
@@ -114,30 +174,45 @@ export function LandingScreen({
             </p>
           )}
 
-          <div className="flex gap-3">
-            <Button
-              variant="primary"
-              size="lg"
-              full
-              onClick={() => {
-                setMode('register');
-              }}
-            >
-              Take a planet
-            </Button>
-            <Button
-              size="lg"
-              full
+          <p className="legend mb-3 text-center text-crystal/90">{t('landing.ready')}</p>
+
+          <button
+            type="button"
+            className="enter font-display uppercase"
+            disabled={opening}
+            onClick={() => {
+              if (opening) return;
+              setOpening(true);
+              void onBegin().catch(() => {
+                // The session hook has already put the reason on this page.
+                setOpening(false);
+              });
+            }}
+          >
+            <span className="enter-orbit" aria-hidden />
+            <span className="text-[15px] tracking-[0.18em]">
+              {opening ? t('landing.opening') : t('landing.register')}
+            </span>
+            <span aria-hidden className="text-[15px] text-crystal">
+              &rarr;
+            </span>
+          </button>
+
+          <p className="mt-3 text-center text-[11px] text-faint">
+            {t('landing.reassurance')}
+          </p>
+
+          <div className="mt-2 text-center">
+            <button
+              type="button"
+              className="text-[12px] text-faint underline-offset-4 hover:underline"
               onClick={() => {
                 setMode('login');
               }}
             >
-              Sign in
-            </Button>
+              {t('landing.signIn')}
+            </button>
           </div>
-          <p className="mt-3 text-center text-[11px] text-faint">
-            A name and a password. Your commander follows you to any browser.
-          </p>
         </footer>
       </div>
 
@@ -155,7 +230,7 @@ export function LandingScreen({
       {/* Over everything, including the form — the page underneath is live and
           loading the whole time it is up. */}
       {!assets.ready && (
-        <LoadingScreen caption="Bringing the sky up" progress={assets.progress} />
+        <LoadingScreen caption={t('landing.cover')} progress={assets.progress} />
       )}
     </main>
   );
@@ -173,11 +248,25 @@ function Population({ commanders, online }: { commanders: number | null; online:
   if (commanders === null || commanders === 0) return null;
   return (
     <p className="mb-4 text-[12px] text-faint">
-      <span className="text-dim">{commanders.toLocaleString()}</span> commanders hold a world
+      {/*
+        `Trans` rather than two fragments of a sentence: which side of the figure
+        the noun sits on is a property of the language, and splitting the string
+        here would decide that in JSX for every language at once. The tinted span
+        is the `<0>` in the resource.
+      */}
+      <Trans
+        i18nKey="landing.populationHeld"
+        values={{ amount: full(commanders) }}
+        components={[<span key="n" className="text-dim" />]}
+      />
       {online !== null && online > 0 && (
         <>
           {' · '}
-          <span className="text-opportunity">{online.toLocaleString()}</span> in game now
+          <Trans
+            i18nKey="landing.populationOnline"
+            values={{ amount: full(online) }}
+            components={[<span key="n" className="text-opportunity" />]}
+          />
         </>
       )}
     </p>
@@ -186,8 +275,6 @@ function Population({ commanders, online }: { commanders: number | null; online:
 
 /* ── the form ───────────────────────────────────────────────── */
 
-const USERNAME_PATTERN = /^[a-zA-Z0-9_]{3,16}$/;
-const MIN_PASSWORD = 8;
 
 /**
  * Sign in, or become somebody.
@@ -213,6 +300,7 @@ function AuthDialog({
   onClose: () => void;
   onSubmit: (mode: Mode, username: string, password: string) => Promise<void>;
 }) {
+  const { t } = useTranslation();
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [problem, setProblem] = useState<string | null>(null);
@@ -243,13 +331,13 @@ function AuthDialog({
 
   const check = (): string | null => {
     if (register && !USERNAME_PATTERN.test(username.trim())) {
-      return 'Names are 3-16 letters, numbers or underscores.';
+      return t('landing.form.badName');
     }
-    if (username.trim().length === 0) return 'Enter your commander name.';
+    if (username.trim().length === 0) return t('landing.form.noName');
     if (register && password.length < MIN_PASSWORD) {
-      return `Passwords are at least ${String(MIN_PASSWORD)} characters.`;
+      return t('landing.form.shortPassword', { count: MIN_PASSWORD });
     }
-    if (password.length === 0) return 'Enter your password.';
+    if (password.length === 0) return t('landing.form.noPassword');
     return null;
   };
 
@@ -268,7 +356,7 @@ function AuthDialog({
       } catch (err) {
         // The session hook has already set the phase back; this is the part the
         // form owns — say what happened without discarding what was typed.
-        setProblem(err instanceof Error ? err.message : 'Could not sign in');
+        setProblem(err instanceof Error ? err.message : t('landing.form.failed'));
         setBusy(false);
       }
     })();
@@ -279,11 +367,11 @@ function AuthDialog({
       className="fixed inset-0 z-30 flex items-end justify-center sm:items-center"
       role="dialog"
       aria-modal="true"
-      aria-label={register ? 'Create a commander' : 'Sign in'}
+      aria-label={register ? t('landing.form.labelRegister') : t('landing.form.labelLogin')}
     >
       <button
         type="button"
-        aria-label="Close"
+        aria-label={t('landing.form.close')}
         className="absolute inset-0 bg-void/70 backdrop-blur-sm"
         onClick={onClose}
       />
@@ -295,13 +383,15 @@ function AuthDialog({
           submit();
         }}
       >
-        <p className="legend">{register ? 'New commander' : 'Welcome back'}</p>
+        <p className="legend">
+          {register ? t('landing.form.eyebrowRegister') : t('landing.form.eyebrowLogin')}
+        </p>
         <h2 className="mt-2 font-display text-[24px] uppercase tracking-[0.05em] text-bone">
-          {register ? 'Take a planet' : 'Sign in'}
+          {register ? t('landing.form.headingRegister') : t('landing.form.headingLogin')}
         </h2>
 
         <label className="legend mt-6 block" htmlFor={nameId}>
-          Commander name
+          {t('landing.form.nameLabel')}
         </label>
         <input
           id={nameId}
@@ -317,11 +407,11 @@ function AuthDialog({
           autoCorrect="off"
           spellCheck={false}
           maxLength={16}
-          placeholder="Vantage"
+          placeholder={t('landing.form.namePlaceholder')}
         />
 
         <label className="legend mt-4 block" htmlFor={passwordId}>
-          Password
+          {t('landing.form.passwordLabel')}
         </label>
         <input
           id={passwordId}
@@ -334,7 +424,7 @@ function AuthDialog({
           }}
           autoComplete={register ? 'new-password' : 'current-password'}
           maxLength={200}
-          placeholder={register ? `At least ${String(MIN_PASSWORD)} characters` : ''}
+          placeholder={register ? t('landing.form.passwordPlaceholder', { count: MIN_PASSWORD }) : ''}
         />
 
         {problem !== null && (
@@ -347,7 +437,11 @@ function AuthDialog({
             Wiring both would run `submit` twice per press, and the `busy` guard
             cannot stop that — React has not re-rendered between the two calls. */}
         <Button type="submit" variant="primary" size="lg" full disabled={busy} className="mt-6">
-          {busy ? 'Making contact' : register ? 'Create commander' : 'Sign in'}
+          {busy
+            ? t('landing.form.submitBusy')
+            : register
+              ? t('landing.form.submitRegister')
+              : t('landing.form.submitLogin')}
         </Button>
 
         <button
@@ -358,7 +452,7 @@ function AuthDialog({
             onMode(register ? 'login' : 'register');
           }}
         >
-          {register ? 'I already have a commander' : 'I need a commander'}
+          {register ? t('landing.form.switchToLogin') : t('landing.form.switchToRegister')}
         </button>
       </form>
     </div>

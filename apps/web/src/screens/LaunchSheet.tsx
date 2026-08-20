@@ -1,7 +1,9 @@
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { HULLS, fleetCount, type Fleet, type MobileHullId } from '@astera/rules';
 import { useLaunch } from '../api/queries.js';
 import type { GalaxyPlanet, PlanetView } from '../api/schemas.js';
+import { hullLabel } from '../i18n/names.js';
 import { compact } from '../lib/format.js';
 import { duration } from '../lib/time.js';
 import { MOBILE, planRoute } from '../lib/navigation.js';
@@ -32,6 +34,7 @@ export function LaunchSheet({
   onClose: () => void;
   onLaunched: () => void;
 }) {
+  const { t } = useTranslation();
   const launch = useLaunch();
   const say = useToast();
   const [sending, setSending] = useState<Fleet>({});
@@ -48,7 +51,7 @@ export function LaunchSheet({
 
   return (
     <Sheet
-      eyebrow="Attack"
+      eyebrow={t('launch.eyebrow')}
       title={target.name}
       onClose={onClose}
       footer={
@@ -61,7 +64,7 @@ export function LaunchSheet({
                 setConfirming(false);
               }}
             >
-              Back
+              {t('launch.back')}
             </button>
             <button
               type="button"
@@ -73,7 +76,10 @@ export function LaunchSheet({
                   {
                     onSuccess: (result) => {
                       say(
-                        `Launched. Exposed for ${duration(result.exposureMinutes)} · ${String(result.homeDefenceAfter)} units holding.`,
+                        t('launch.launched', {
+                          duration: duration(result.exposureMinutes),
+                          count: result.homeDefenceAfter,
+                        }),
                       );
                       onLaunched();
                     },
@@ -85,7 +91,7 @@ export function LaunchSheet({
                 );
               }}
             >
-              {launch.isPending ? 'Launching' : 'Launch — no recall'}
+              {launch.isPending ? t('launch.launching') : t('launch.commit')}
             </button>
           </div>
         ) : (
@@ -97,30 +103,37 @@ export function LaunchSheet({
               setConfirming(true);
             }}
           >
-            {total === 0 ? 'Choose a fleet' : `Send ${String(total)} ships`}
+            {total === 0 ? t('launch.chooseFleet') : t('launch.send', { count: total })}
           </button>
         )
       }
     >
       {/* THE LINE. Everything else on this sheet is supporting detail. */}
       <div className="panel border-alert/25 bg-alert/5 px-3.5 py-3">
-        <p className="legend text-[#e08a7c]">While this fleet is away</p>
+        <p className="legend text-[#e08a7c]">{t('launch.whileAway')}</p>
         <p className="num mt-1.5 text-[19px] leading-tight text-bone">
-          {String(route.homeDefenceAfter)} units defending home
+          {t('launch.defending', { count: route.homeDefenceAfter })}
         </p>
         <p className="num mt-1 text-[13px] text-[#e08a7c]">
-          {total === 0 ? 'Nothing sent yet' : `Exposed for ${duration(route.exposureMinutes)}`}
+          {total === 0
+            ? t('launch.nothingSent')
+            : t('launch.exposedFor', { duration: duration(route.exposureMinutes) })}
         </p>
       </div>
 
       <div className="mt-5 grid grid-cols-3 gap-3">
-        <Figure label="One way" value={route.oneWayMinutes > 0 ? duration(route.oneWayMinutes) : '—'} />
-        <Figure label="Cargo" value={compact(route.cargo)} />
-        <Figure label="Distance" value={route.distance.toFixed(0)} />
+        <Figure
+          label={t('launch.oneWay')}
+          value={
+            route.oneWayMinutes > 0 ? duration(route.oneWayMinutes) : t('launch.oneWayUnknown')
+          }
+        />
+        <Figure label={t('launch.cargo')} value={compact(route.cargo)} />
+        <Figure label={t('launch.distance')} value={route.distance.toFixed(0)} />
       </div>
 
       <div className="mt-6">
-        <p className="legend mb-2">Fleet</p>
+        <p className="legend mb-2">{t('launch.fleetHeading')}</p>
         {MOBILE.map((hull) => {
           const available = planet.fleet[hull] ?? 0;
           const chosen = sending[hull] ?? 0;
@@ -155,9 +168,11 @@ export function LaunchSheet({
                 <div className="min-w-0 flex-1">
                   <div className="flex items-baseline gap-2">
                     <p className="font-display text-[14px] uppercase tracking-wide text-bone">
-                      {HULLS[hull].name}
+                      {hullLabel(hull)}
                     </p>
-                    <span className="num text-[11px] text-faint">{available} home</span>
+                    <span className="num text-[11px] text-faint">
+                      {t('launch.atHome', { count: available })}
+                    </span>
                   </div>
                   <div className="mt-1">
                     <StatStrip
@@ -172,7 +187,7 @@ export function LaunchSheet({
 
               <div className="mt-2 flex items-center justify-end gap-1">
                 <StepButton
-                  label={`Fewer ${HULLS[hull].name}`}
+                  label={t('launch.fewer', { name: hullLabel(hull) })}
                   onClick={() => {
                     set(hull, chosen - stepFor(available));
                   }}
@@ -181,7 +196,7 @@ export function LaunchSheet({
                 </StepButton>
                 <span className="num w-12 text-center text-[16px] text-bone">{String(chosen)}</span>
                 <StepButton
-                  label={`More ${HULLS[hull].name}`}
+                  label={t('launch.more', { name: hullLabel(hull) })}
                   onClick={() => {
                     set(hull, chosen + stepFor(available));
                   }}
@@ -195,25 +210,21 @@ export function LaunchSheet({
                     set(hull, chosen === available ? 0 : available);
                   }}
                 >
-                  All
+                  {t('launch.all')}
                 </button>
               </div>
             </div>
           );
         })}
         {fleetCount(planet.fleet) === 0 && (
-          <p className="text-[13px] text-dim">
-            No ships at home. Build some in the shipyard, or wait for a fleet to come back.
-          </p>
+          <p className="text-[13px] text-dim">{t('launch.noShips')}</p>
         )}
       </div>
 
       {confirming && (
         <>
           <p className="mt-5 text-[13px] leading-relaxed text-[#e08a7c]">
-            This cannot be recalled. Once it leaves, the only way to find out what was down there
-            is to watch it land — and your planet holds {String(route.homeDefenceAfter)} units until
-            it comes back.
+            {t('launch.warning', { count: route.homeDefenceAfter })}
           </p>
           {/*
             THE CHEAPEST DEPTH IN THE GAME. D28.
@@ -229,9 +240,7 @@ export function LaunchSheet({
             the only way to make your fleet safe. That is a real decision, and it
             costs one line of text.
           */}
-          <p className="mt-2 text-[13px] leading-relaxed text-dim">
-            Ships in flight cannot be raided. Your planet can.
-          </p>
+          <p className="mt-2 text-[13px] leading-relaxed text-dim">{t('launch.fleetsave')}</p>
         </>
       )}
     </Sheet>
