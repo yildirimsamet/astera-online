@@ -68,11 +68,30 @@ rm -rf "$STAGE"
 docker build --target web-dist --output "type=local,dest=$STAGE" .
 [[ -f "$STAGE/index.html" ]] || { echo "Client build produced no index.html."; exit 1; }
 
+# PRE-COMPRESS, so nginx never spends a cycle on it. `gzip_static on` serves the
+# `.gz` beside a file when the client accepts it; built here at level 9 rather
+# than per request at nginx's default level 1, which is worth ~100 KB on the one
+# file that decides how long a phone stares at the loading cover.
+#
+# -k keeps the original: a client that does not send Accept-Encoding still needs
+# it, and `try_files` looks for the plain name.
+find "$STAGE" -type f \( -name '*.js' -o -name '*.css' -o -name '*.svg' \
+     -o -name '*.json' -o -name '*.webmanifest' -o -name '*.html' \) \
+     -size +1k -exec gzip -9 -k -f {} +
+echo "  pre-compressed $(find "$STAGE" -name '*.gz' | wc -l) files"
+
 say "Publishing the client to $WEBROOT"
 sudo mkdir -p "$WEBROOT"
 # --delete so a removed asset actually goes; rsync swaps each file into place, so
 # a reload never sees a half-written bundle.
-sudo rsync -a --delete "$STAGE"/ "$WEBROOT"/
+#
+# --chmod IS NOT TIDINESS. `-a` copies the source's permissions onto the
+# destination ROOT as well, and `docker build --output` writes its staging
+# directory 0700 — so a plain `-a` left /var/www/astera readable by its owner
+# only. nginx runs as www-data and would still have served it after the chown
+# below, which is exactly what makes it a bad failure: the site works, and
+# nobody can read the directory to find out why anything is wrong.
+sudo rsync -a --delete --chmod=D755,F644 "$STAGE"/ "$WEBROOT"/
 sudo chown -R www-data:www-data "$WEBROOT"
 rm -rf "$STAGE"
 
