@@ -122,6 +122,13 @@ export const seasonSchema = z.object({
   endsAt: z.coerce.date(),
   playerCap: z.number(),
   players: z.number(),
+  /**
+   * Commanders whose last authenticated request was inside the online window.
+   *
+   * Optional so a client one deploy ahead of the server still parses — the same
+   * rule every added field follows here.
+   */
+  online: z.number().optional(),
 });
 
 /* ── your planet ────────────────────────────────────────────── */

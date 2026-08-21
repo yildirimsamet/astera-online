@@ -523,6 +523,48 @@ different opening from the one shipping is measuring a game that does not exist.
 decision; `START` keeps its arithmetic and its documentation because that is what
 the opening teaches.
 
+### D59 · Make looking worth doing — owner instruction
+
+**A probe flies three times faster (90 → 270) and costs half the crystal (50 → 25).**
+The complaint was that nobody used them: the answer arrived long after the decision
+it was meant to inform, so commanders raided blind. Crystal is the binding resource
+in the opening, so it is the half of the price that decides whether a probe is
+affordable at the moment somebody is working out what kind of game this is.
+
+**HOW MANY may be in the air is still the flight bay, not a probe counter.** D28
+made the bay the one scarcity every craft shares and removed `PROBE.maxInFlight`;
+restoring it was considered and refused by the owner. A planet starts with three
+bays, so the practical answer to "at most three probes" is already yes at the level
+where a player is learning to scout.
+
+**The card that sells scouting was quoting a price the game had never charged.**
+`intel.probes.cost` said "220 alloy" for two phases while `PROBE` charged 50 and 50
+— tracked in CLAUDE.md as a known issue and translated faithfully into Turkish
+rather than fixed. It is interpolated from the constant now, in both languages, so
+it cannot drift again, and the sentence leads with speed because that is the thing
+worth advertising that was not being advertised.
+
+**Measured, and it moved nothing.** The five-seed gate reads exactly as it did
+before: `ARR`, `TAX`, `RR`, `TI`, `VFR` and `SV` all in band, and the one red
+assertion is still D58's — RAIDER tops seed 42.
+
+**Binds:** nothing quotes a craft price as a literal string.
+
+### D60 · The online count on the disc — owner instruction
+
+`/api/season` carries `online` beside `players`, counted on the same
+`SERVERS.onlineWindowMinutes` window the server list uses — two surfaces
+disagreeing about how many people are in a galaxy is worse than either being
+wrong. It rides the payload the galaxy screen already reads rather than a second
+request, and it leaks nothing: a galaxy's population is public to somebody who has
+not signed in.
+
+The figure is optional on the client's schema so an older server still parses,
+which means the contract test has to assert it is actually SENT — the same silent
+failure the notification payloads had. It asserts through `requireAuth`, where
+presence is stamped: a caller who has just made an authenticated request is in the
+galaxy by definition, so the count can never honestly be zero there.
+
 ## Architecture
 
 A1 · One source of truth — LOCKED

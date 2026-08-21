@@ -1,7 +1,7 @@
-import { radarDetectsFleets, radarRange, telescopeSlots } from '@astera/rules';
+import { PROBE, radarDetectsFleets, radarRange, telescopeSlots } from '@astera/rules';
 import { useTranslation } from 'react-i18next';
 import { useGalaxy, useIntel, usePlanet } from '../api/queries.js';
-import { percent, range } from '../lib/format.js';
+import { full, percent, range } from '../lib/format.js';
 import { staleness, useNow } from '../lib/time.js';
 import { instrumentArt } from '../ui/assets.js';
 import { BattleReports } from './BattleReports.jsx';
@@ -121,12 +121,17 @@ export function IntelScreen() {
             missing={t('intel.probes.missing')}
             gives={t('intel.probes.gives')}
             /*
-              THE FIGURE IN THIS LINE IS WRONG IN BOTH LANGUAGES, ON PURPOSE.
-              `PROBE` is 50 alloy and 50 crystal; the copy says 220 alloy.
-              CLAUDE.md tracks it as a known issue, so this pass translates it
-              faithfully rather than quietly fixing copy it was not asked to touch.
+              THE PRICE COMES FROM THE RULE, NOT FROM THE SENTENCE. D59.
+
+              This line advertised 220 alloy while the game charged 50 alloy and
+              50 crystal — a figure nothing in the code had ever used. It is the
+              one card that has to persuade a commander to look instead of hit, so
+              a wrong price here is not a typo, it is the argument failing.
             */
-            cost={t('intel.probes.cost')}
+            cost={t('intel.probes.cost', {
+              alloy: full(PROBE.alloy),
+              crystal: full(PROBE.crystal),
+            })}
           />
         ) : (
           <Panel className="py-1">

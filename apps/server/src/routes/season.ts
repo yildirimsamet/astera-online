@@ -1,6 +1,8 @@
-import { eq, sql } from 'drizzle-orm';
+import { and, eq, gte, sql } from 'drizzle-orm';
 import type { FastifyInstance } from 'fastify';
+import { SERVERS } from '@astera/rules';
 import { planets, players, seasons, shards } from '../db/schema.js';
+import { addMinutes } from '../clock.js';
 import { GameError } from '../services/planet.js';
 import { requireAuth } from './auth.js';
 
@@ -27,10 +29,33 @@ export function registerSeasonRoutes(app: FastifyInstance): void {
 
     if (!row) throw new GameError('NO_PLANET', 'Join a galaxy first', 404);
 
-    const [count] = await app.db
-      .select({ n: sql<number>`count(*)::int` })
-      .from(planets)
-      .where(eq(planets.seasonId, row.season.id));
+    /**
+     * HOW MANY WORLDS, AND HOW MANY OF THEM HAVE SOMEBODY AT THE CONTROLS.
+     *
+     * `online` is here rather than on a second request because the caller already
+     * reads this payload for the season clock, and a galaxy screen asking twice to
+     * put one number in a corner is two round trips for one tap.
+     *
+     * The window is `SERVERS.onlineWindowMinutes`, the same one the server list
+     * uses — deliberately, because two surfaces disagreeing about how many people
+     * are in a galaxy is worse than either figure being wrong. It is generous on
+     * purpose: this game is played in gaps, and a commander reading a battle
+     * report for four minutes has not left.
+     *
+     * It leaks nothing. The population of a galaxy is already public on
+     * `/api/servers` to somebody who has not even signed in.
+     */
+    const since = addMinutes(app.clock.now(), -SERVERS.onlineWindowMinutes);
+    const [[count], [active]] = await Promise.all([
+      app.db
+        .select({ n: sql<number>`count(*)::int` })
+        .from(planets)
+        .where(eq(planets.seasonId, row.season.id)),
+      app.db
+        .select({ n: sql<number>`count(*)::int` })
+        .from(players)
+        .where(and(eq(players.seasonId, row.season.id), gte(players.lastActiveAt, since))),
+    ]);
 
     return {
       seasonId: row.season.id,
@@ -50,6 +75,7 @@ export function registerSeasonRoutes(app: FastifyInstance): void {
       endsAt: row.season.endsAt,
       playerCap: row.shard.playerCap,
       players: count?.n ?? 0,
+      online: active?.n ?? 0,
     };
   });
 }

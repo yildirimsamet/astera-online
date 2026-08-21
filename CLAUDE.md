@@ -411,7 +411,6 @@ has walked it who did not build it.
 - `PROVISIONAL` constants: vault floor, disruption duration, shield curve, season length,
   asteroid parameters. Settled by playtest, not by argument. Marked in `constants.ts`.
 - Simulator bots have no skill variance. **Do not tune ladder spread against the simulator.**
-- The Intel screen advertises a probe as "220 alloy"; `PROBE` is 50 alloy and 50 crystal.
 
 ### Dev-loop traps that look like broken code
 

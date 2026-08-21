@@ -5,6 +5,12 @@
 
 export const galaxy = {
   discLabel: 'The disc',
+  /**
+   * Its own key rather than a reuse of the server list's, because nothing is
+   * shared between surfaces (D55): this one sits at 8px in the corner of the
+   * disc and the other is a row in a list, and they are free to diverge.
+   */
+  online: '{{count}} online',
   worlds: '{{count}} worlds',
   fleetAway: ' · {{count}} fleet away',
   rocks: ' · {{count}} rocks',

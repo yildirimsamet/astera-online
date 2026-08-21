@@ -541,11 +541,35 @@ export const PROBE = {
    * whether this is a game about looking or a game about hitting. Charging a
    * little of BOTH resources is what keeps it a decision after the opening: alloy
    * alone is the resource nobody is ever short of.
+   *
+   * The crystal half was halved again to 25 at D59, with the speed tripled — see
+   * both below. HOW MANY may be in the air at once is NOT set here: it is the
+   * general flight-bay rule (`flightSlots`), which D28 made the one scarcity every
+   * craft in the game shares, and the owner's call is that it stays that way.
    */
   alloy: 50,
-  crystal: 50,
-  /** Faster than any hull — a probe is a sensor package, not a ship. */
-  speed: 90,
+  /**
+   * Halved to 25 on the owner's instruction, with the speed below.
+   *
+   * The pair of changes has one purpose: make looking the thing a player reaches
+   * for first. Crystal is the binding resource in the opening — the three
+   * mandatory upgrades consume all of it — so it is the half of this price that
+   * decides whether a probe is affordable at the moment somebody is deciding what
+   * kind of game this is.
+   */
+  crystal: 25,
+  /**
+   * TRIPLED, FROM 90. Owner instruction.
+   *
+   * A probe was faster than any hull and still not fast enough to be worth the
+   * wait: the answer arrived long after the decision it was meant to inform, so
+   * players raided blind instead. At 270 it comes back inside a session rather
+   * than inside an evening.
+   *
+   * `TRAVEL.baseMinutes` is untouched and must stay so — it is the launch overhead
+   * priced into every raid in the game, and moving it here would move all of them.
+   */
+  speed: 270,
 } as const;
 
 /**

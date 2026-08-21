@@ -385,6 +385,25 @@ describe('every payload the client parses', () => {
   });
 
   /**
+   * THE GALAXY COUNTS THE PERSON ASKING.
+   *
+   * `online` is optional on the client's schema, so a server that stops sending it
+   * parses perfectly and the corner of the disc simply goes blank — the same shape
+   * of silent failure the notification payloads had. The table below would not
+   * notice, so the figure gets an assertion of its own.
+   *
+   * Asserted through `requireAuth`, which is where presence is stamped: a caller
+   * who has just made an authenticated request IS in the galaxy, by definition, so
+   * the count can never honestly be zero here.
+   */
+  it('GET /api/season counts who is in the galaxy, including the caller', async () => {
+    const parsed = seasonSchema.parse(await get('/api/season'));
+    expect(parsed.online, 'the online figure was not sent at all').toBeDefined();
+    expect(parsed.online).toBeGreaterThanOrEqual(1);
+    expect(parsed.online).toBeLessThanOrEqual(parsed.players);
+  });
+
+  /**
    * EVERY OTHER GET THE CLIENT PARSES, in one table.
    *
    * These are one-liners because the interesting assertion is simply "the client's

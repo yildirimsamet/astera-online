@@ -40,11 +40,17 @@ export const intel = {
     missing: 'No probe has ever come back',
     gives: 'Real numbers — how much they hold and how hard they are to take — as a range.',
     /**
-     * The figure here is WRONG and is left wrong on purpose: `PROBE` is 50 alloy
-     * and 50 crystal, and CLAUDE.md tracks the mismatch as a known issue. Fixing
-     * copy is not this pass's job — translating it faithfully is.
+     * THE FIGURES ARE INTERPOLATED, NOT WRITTEN. D59.
+     *
+     * This line said "220 alloy" for two phases while `PROBE` charged 50 and 50 —
+     * a price the game had never charged, on the one card whose whole job is to
+     * sell scouting to somebody deciding whether to look or to hit. It is passed
+     * the real constants now, so it cannot drift from them again.
+     *
+     * Speed leads the sentence on the owner's instruction: a probe is the fastest
+     * thing a commander can arm, and nobody was using it.
      */
-    cost: '220 alloy and a few minutes. Their radar may catch it.',
+    cost: 'Fast and cheap — {{alloy}} alloy, {{crystal}} crystal, and it outruns every warship you own. Their radar may catch it.',
     stock: 'Stock',
     defence: 'Defence',
     ships: 'Ships',

@@ -10,6 +10,7 @@
 
 export const galaxy = {
   discLabel: 'Disk',
+  online: '{{count}} çevrimiçi',
   worlds: '{{count}} gezegen',
   fleetAway: ' · {{count}} filo dışarıda',
   rocks: ' · {{count}} kaya',

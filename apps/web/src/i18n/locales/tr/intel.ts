@@ -43,8 +43,8 @@ export const intel = {
     newest: 'en yeni önce',
     missing: 'Henüz geri dönen bir sonda olmadı',
     gives: 'Gerçek sayılar: ellerinde ne var, kırmak ne kadar zor. Hepsini aralık olarak verir.',
-    /** Rakam İngilizcesinde de hatalı; CLAUDE.md bunu bilinen sorun olarak tutuyor. */
-    cost: '220 alaşım ve birkaç dakika. Radarları onu yakalayabilir.',
+    /** Rakamlar `PROBE` sabitinden gelir; artık elle yazılmaz. D59. */
+    cost: 'Hızlı ve ucuz: {{alloy}} alaşım, {{crystal}} kristal. Elindeki hiçbir savaş gemisi ona yetişemez; ama radarları onu yakalayabilir.',
     stock: 'Stok',
     defence: 'Savunma',
     ships: 'Gemi',

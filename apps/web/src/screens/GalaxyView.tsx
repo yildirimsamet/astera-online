@@ -429,7 +429,32 @@ export function GalaxyView({
           and the tracking on the label eased off so it still reads at 9px.
         */}
         <div className="pointer-events-auto frame px-2 py-1">
-          <p className="legend text-[9px] tracking-[0.10em]">{t('galaxy.discLabel')}</p>
+          {/*
+            THE NAME ON THE LEFT, WHO IS IN HERE ON THE RIGHT.
+
+            `justify-between` rather than a gap, because the two are not a phrase:
+            one names the place and the other counts the people in it. The box is
+            already as wide as the line of counts underneath, so pushing the tally
+            to the far edge costs no width and gives it its own corner to live in.
+
+            Green is the system's own `opportunity`, which is what the disc already
+            uses for a fleet in the air — the colour means "somebody is doing
+            something" everywhere else on this screen, and a commander at the
+            controls is the same fact.
+
+            HIDDEN, NOT ZEROED, when the figure is absent: `online` is optional on
+            the payload so a client ahead of its server still parses, and "0
+            online" on a screen you are personally looking at is a lie.
+          */}
+          <div className="flex items-center justify-between gap-3">
+            <p className="legend text-[9px] tracking-[0.10em]">{t('galaxy.discLabel')}</p>
+            {season.data?.online !== undefined && (
+              <p className="flex items-center gap-1 text-[8px] leading-none text-dim">
+                <span className="size-1 rounded-full bg-opportunity" aria-hidden="true" />
+                {t('galaxy.online', { count: season.data.online })}
+              </p>
+            )}
+          </div>
           <p className="num mt-0.5 text-[10px] leading-tight text-bone">
             {t('galaxy.worlds', { count: planets.length })}
             {windowsOpen(planets) > 0 && (
