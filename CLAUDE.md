@@ -336,11 +336,11 @@ pnpm verify  →  0 type errors · 0 lint errors · 1,404 tests
                 rules 221 · sim 47 · server 501 · web 635
 ```
 
-**Three season-gate assertions are RED, and they MOVED again at D61:** `ARR` reads 0.297
-and 0.300 against a floor of 0.300 on two seeds, and `TI` reads −0.457 against a floor of
-−0.40. Both live in `packages/sim`; both are a few thousandths out; both are the bands that
-encode *do not make hoarding too painful*, which is the direction D61 was instructed to
-push. Everything else is green.
+**Five season-gate assertions are RED after D61 and D62:** `ARR` reads 0.292–0.300 against
+a floor of 0.300 on four seeds, and `TI` reads −0.457 against a floor of −0.40. All live in
+`packages/sim`; all are a few thousandths out; all are the bands that encode *do not make
+hoarding too painful* and *leave something to raid* — which is the direction both decisions
+were instructed to push. Everything else is green.
 
 **The design's central claim came back.** *The informed archetype tops the ladder on every
 seed* was red from D58 (RAIDER took seed 42) and is green again since D61. Nothing was

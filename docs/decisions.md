@@ -602,6 +602,32 @@ one went from 2,300 alloy to 1,150.
 
 **Binds:** `docs/balance.md` line 41 no longer reads "600 × 1.30^L per resource".
 
+### D62 · A little more room for the attacker — owner instruction
+
+`COMBAT.partialThreshold` 0.45 → 0.42. A raid that breaks 42% of the defending
+fleet comes home with a partial haul and an hour of disruption instead of nothing.
+
+**It is the only honest lever for "the attacker wins more".** The variance band is
+locked at ±8% — below it randomness drowns the intel layer — and the counter cycle
+is what makes composition a decision. This number is the one that DEFINES whether
+an attack counted.
+
+**0.38 was tried first and the measurement refused it.** A lower bar helps the
+BLIND attacker more than the informed one, because an informed attacker already
+picks fights it wins outright; at 0.38 the informed archetype lost the ladder
+again — the claim the whole design rests on, and the one D61 had just won back.
+
+**It changes almost nothing this week, and that is worth saying.** Measured on the
+live shard: 30 DECISIVE against 1 REPELLED. The whole galaxy is defended by 22
+Wasps and one Thorn, and two planets have any shield at all. The attacker already
+wins 97% of the time; what a win actually costs them is SHIPS — 20 lost across 30
+victories. This lever is for the point where people start building defence.
+
+**The price, stated:** `ARR` now reads under its floor on four seeds instead of
+two — 0.292 to 0.300 against 0.300. Successful raids empty stores, and `ARR` is
+the band that says there must be something left to raid. Nothing was tuned to hide
+it.
+
 ### D60 · The online count on the disc — owner instruction
 
 `/api/season` carries `online` beside `players`, counted on the same

@@ -395,8 +395,29 @@ export const COMBAT = {
   strongMult: 1.6,
   weakMult: 0.625,
 
-  /** Value-loss share below DECISIVE that still earns a partial haul. */
-  partialThreshold: 0.45,
+  /**
+   * Value-loss share below DECISIVE that still earns a partial haul.
+   *
+   * LOWERED 0.45 → 0.42 AT D62, on the owner's instruction to tip the odds a
+   * little toward the attacker. It is the only honest lever for that: the variance
+   * band is locked at ±8% (below it randomness drowns the intel layer, D8) and the
+   * counter cycle is what makes composition a decision. This number is the one
+   * that DEFINES whether an attack counted — a raid that breaks 42% of the
+   * defending fleet now comes home with a partial haul and an hour of disruption
+   * instead of nothing at all.
+   *
+   * 0.38 WAS TRIED FIRST AND REFUSED BY THE MEASUREMENT. A lower bar helps the
+   * BLIND attacker more than the informed one — an informed attacker already picks
+   * fights it wins outright — and at 0.38 the informed archetype lost the ladder
+   * again, which is the claim the whole design rests on. 0.42 keeps it.
+   *
+   * IT CHANGES ALMOST NOTHING TODAY, and that is worth writing down. Measured on
+   * the live shard: 30 DECISIVE against 1 REPELLED, because the whole galaxy is
+   * defended by 22 Wasps and one Thorn and almost nobody has a shield. The
+   * attacker already wins 97% of the time. This is a lever for the point where
+   * people start building defence, not for this week.
+   */
+  partialThreshold: 0.42,
   /**
    * RAISED AT D61 — 0.5 → 0.65 and 0.25 → 0.35. Owner instruction: the game is
    * PvP-first and winning a fight has to feel like winning one.
