@@ -1,6 +1,6 @@
-import { cleanup, render } from '@testing-library/react';
+import { act, cleanup, render } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { useAmbientMusic } from '../src/lib/music.js';
+import { musicEnabled, setMusicEnabled, useAmbientMusic } from '../src/lib/music.js';
 
 /**
  * THE SCORE, AND THE FOUR THINGS THAT GO WRONG WITH BACKGROUND AUDIO.
@@ -42,6 +42,7 @@ const setHidden = (value: boolean): void => {
 };
 
 beforeEach(() => {
+  setMusicEnabled(true);
   hidden = false;
   rejectPlay = null;
   fake = {
@@ -198,5 +199,77 @@ describe('the ambient score', () => {
     setHidden(true);
     setHidden(false);
     expect(fake.play).toHaveBeenCalledTimes(2);
+  });
+});
+
+/**
+ * THE SWITCH. Owner instruction: a small speaker in the menu, on or off.
+ *
+ * What matters is that it is a PAUSE and not a teardown. Rebuilding the element on
+ * every toggle would drop `currentTime`, re-download 800 KB, and make turning the
+ * music off and on again restart the track from the top — so the effect that owns
+ * the element must not depend on the flag, and these tests are what hold that.
+ */
+describe('the sound switch', () => {
+  it('pauses without tearing the element down, and resumes where it was', () => {
+    render(<Harness />);
+    expect(fake.play).toHaveBeenCalledTimes(1);
+
+    act(() => {
+      setMusicEnabled(false);
+    });
+    expect(fake.pause).toHaveBeenCalledTimes(1);
+    // Nothing was released: a reload here would lose the position.
+    expect(fake.load).not.toHaveBeenCalled();
+
+    act(() => {
+      setMusicEnabled(true);
+    });
+    expect(fake.play).toHaveBeenCalledTimes(2);
+    expect(fake.load).not.toHaveBeenCalled();
+  });
+
+  it('does not start on mount when it was left off', () => {
+    setMusicEnabled(false);
+    render(<Harness />);
+    expect(fake.play).not.toHaveBeenCalled();
+  });
+
+  /**
+   * The visibility handler reads the LIVE flag rather than one captured when the
+   * effect ran — otherwise coming back to a tab would start music somebody had
+   * switched off.
+   */
+  it('stays silent when the tab comes back and the switch is off', () => {
+    render(<Harness />);
+    act(() => {
+      setMusicEnabled(false);
+    });
+    const plays = fake.play.mock.calls.length;
+
+    setHidden(true);
+    setHidden(false);
+    expect(fake.play).toHaveBeenCalledTimes(plays);
+  });
+
+  it('remembers the choice across a reload of the module state', () => {
+    setMusicEnabled(false);
+    expect(musicEnabled()).toBe(false);
+    expect(globalThis.localStorage.getItem('astera.music')).toBe('off');
+
+    setMusicEnabled(true);
+    expect(globalThis.localStorage.getItem('astera.music')).toBe('on');
+  });
+
+  it('survives a storage that throws, and still switches for this session', () => {
+    const spy = vi.spyOn(globalThis, 'localStorage', 'get').mockImplementation(() => {
+      throw new Error('storage is disabled');
+    });
+    expect(() => {
+      setMusicEnabled(false);
+    }).not.toThrow();
+    expect(musicEnabled()).toBe(false);
+    spy.mockRestore();
+    setMusicEnabled(true);
   });
 });

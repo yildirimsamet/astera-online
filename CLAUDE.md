@@ -188,6 +188,9 @@ Each was paid for in iteration. `docs/decisions.md` holds the evidence.
 | **The Turkish is written in Turkish, not converted from the English** | Finish the sentence, verb over nominalisation, semicolon instead of the English dash, and the phrase that does the same job rather than the dictionary equivalent. The rules are at the top of `locales/tr/entry.ts`; the first attempt ignored them and read like a book translation |
 | A refusal travels as a CODE plus its figures, never as a finished sentence | "All 4 flight bays are in use" cannot be translated after the fact. `GameError` carries `params`; named things travel as IDs and are resolved on the client (D55) |
 | Numbers, dates and clocks go through `format.ts` and `time.ts` | `1.234.567` against `1,234,567`, `%40` against `40%`. `toFixed` is hard-wired to a full stop and put an English decimal inside a Turkish suffix |
+| **A returning player is never offered onboarding** | Signing out lands on the front door with the sign-in form OPEN, and a device that has held a commander leads with sign-in instead of the rehearsal. The claim dialog asks you to CREATE a commander, so a signed-out player typed a new name and was handed a second account with a second planet in another galaxy — every rule intact, the funnel wrong (D68) |
+| **The camera may be moved by an instruction and never by the absence of one** | A followed craft ends the moment it lands; reading that as "nothing is focused" handed the frame to the leash and threw the view across the disc. Losing a subject RELEASES the rig into free-look, and only the player clears it (D69) |
+| **Anything that may re-frame the camera is keyed on `focusIdentity`, never on the subject getter** | The getter is a memo over six query results, all fresh arrays on every refetch — so the rig re-framed itself several times a minute while the player sat still (D69) |
 | **A visitor plays before an account, and it costs the shard nothing** | `/api/preview` writes NOTHING — no account, no player, no planet and above all **no seat**. Fifty worlds fill strictly in order and that rule is the empty-shard risk's only mitigation; a seat spent on somebody who never came back is spent forever (D56) |
 | **The rehearsal produces INTENTS; the server produces outcomes** | It renders the real screens against an `Api` whose `fetch` never leaves the device, and the claim replays what was pressed through the ordinary services. Predicting with `@astera/rules` is what lets the screen keep up with a finger; it is never a decision |
 | **A guided beat leaves ONE thing pressable, and the way out is never one of the things locked** | Activations outside the target are cancelled — never pointer or touch events, which would cancel the scroll or the orbit they began. The allowance is a LIST, shallow to deep, because a gated control OPENS a surface; gating only the first seals the player inside the sheet they were told to open (D56) |
@@ -209,6 +212,8 @@ Each was paid for in iteration. `docs/decisions.md` holds the evidence.
 | **Routes are registered inside `app.after()`** | `register` QUEUES a plugin; routes added synchronously afterwards exist before it does. Registered the obvious way, every per-route rate limit was silently ignored — 200 to an unlimited flood, green typecheck, green tests |
 | **A rate-limit refusal is a `GameError`** | Whatever `errorResponseBuilder` returns IS the error the handler receives, and a plain object arrives with no `statusCode` — so the handler cannot tell it from a bug and answers 500 |
 | `TRUST_PROXY` is off unless nothing but the proxy can reach the port | Behind nginx `req.ip` is the proxy, so one bucket holds the whole internet and the first burst locks out every player. On a directly reachable server it is a limiter anyone walks past by inventing an address |
+| **A seat idle for `SERVERS.idleDays` goes back to the galaxy, and the ACCOUNT survives** | Fifty commanders of whom forty are inert is not a full galaxy, it is an empty one nobody can join. The season presence is reclaimed and the record folds into `accounts.lifetime`; the commander signs back in and joins whatever is open (D70) |
+| **The reclaim sweep NEVER touches a world with anything in the air that names it** | Including a raid an active player launched at it thirty seconds ago. Deleting a mission out from under a live fleet stranded a real player's ships on this database once; an idle world is deferred to a later sweep instead (D70) |
 | **The seat ceiling is the empty-shard mitigation** | `/api/onboarding/claim` is unauthenticated and takes one of fifty seats, filled strictly in order. Unlimited, a script spends the frontier in seconds |
 | Migrations run BEFORE the new image serves | The server refuses to start against a database it is ahead of (D47), and that refusal is the good outcome. The reverse order answers every request and fails every worker tick |
 | **`/health` reports; it never restarts anything** | Every 503 it produces describes state a restart would clear without fixing — and clearing it destroys the only evidence |
@@ -342,11 +347,12 @@ wreckage, engagement, notifications and the radar rebuild (D34–D50); the live 
 end of waiting (D51–D53); the name, the identity and the way out (D54); Turkish and English
 (D55); the rehearsal — ninety seconds of the real game before there is an account (D56); production
 on one origin, with the ceilings that a public door needs (D57); the reward panel and the one
-menu that holds it (D64–D67).
+menu that holds it (D64–D67); the returning door, the camera that stops moving on its
+own, and seats that come back (D68–D71).
 
 ```
-pnpm verify  →  0 type errors · 0 lint errors · 1,572 tests
-                rules 248 · sim 47 · server 530 · web 747
+pnpm verify  →  0 type errors · 0 lint errors · 1,624 tests
+                rules 248 · sim 47 · server 544 · web 785
 ```
 
 **Two season-gate assertions are RED after D63, down from five:** `TI` reads −0.465 against
@@ -396,6 +402,7 @@ seed. `ARR` was always the next thing to re-derive; it is now the only thing.
 | Deployment | Live at `asteraonline.space`. Host nginx serves the built client and proxies `/api` to one container; Postgres in a second with a named volume and a nightly dump. Rate limits on the login and the seat. `./deploy/deploy.sh` (D57) |
 | Rewards | Eleven chains, counted off the world rather than accumulated; claimed once under the planet lock, granted above the storage cap so a raider can take them. The @JoinAstera bonus is a human reading a DM plus `season reward NAME` (D64, D64a) |
 | Score · analytics | One looped track at 0.35, paused with the tab and resumed from the same instant (D66). GA4 behind `VITE_GA_ID`, deferred to idle, absent unless configured (D67) |
+| Seats | A world idle for three days is reclaimed by the worker and its seat handed back; the account survives and rejoins from the server list. Never touches a world with a flight in the air (D70) |
 | Season lifecycle | `season_end` event kind exists; **no handler** |
 
 **The single most important gap is a player.** The loop is playable end to end and has

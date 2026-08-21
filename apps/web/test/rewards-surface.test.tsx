@@ -41,6 +41,13 @@ const tier = (goal: number, state: 'locked' | 'claimable' | 'claimed', chain = '
 
 const rewards = (chains: unknown[], claimable = 0) => ({ chains, claimable });
 
+const social = (state: 'locked' | 'claimable' | 'claimed') => ({
+  id: 'SOCIAL',
+  metric: 'grant',
+  progress: state === 'locked' ? 0 : 1,
+  tiers: [{ id: 'SOCIAL:1', goal: 1, alloy: 1000, crystal: 500, state }],
+});
+
 const probeChain = (progress: number, states: ('locked' | 'claimable' | 'claimed')[]) => ({
   id: 'PROBE',
   metric: 'count',
@@ -191,17 +198,7 @@ describe('the reward panel', () => {
    */
   it('tells the commander what to put in the message', async () => {
     const { wrapper: Wrapper, queries } = harness();
-    queries.setQueryData(
-      ['rewards'],
-      rewards([
-        {
-          id: 'SOCIAL',
-          metric: 'grant',
-          progress: 0,
-          tiers: [{ id: 'SOCIAL:1', goal: 1, alloy: 500, crystal: 250, state: 'locked' }],
-        },
-      ]),
-    );
+    queries.setQueryData(['rewards'], rewards([social('locked')]));
 
     render(
       <Wrapper>
@@ -210,9 +207,149 @@ describe('the reward panel', () => {
     );
 
     expect(await screen.findByText(/Vantage/)).toBeInTheDocument();
-    const link = screen.getByRole('link', { name: /JoinAstera/i });
+    expect(screen.getByText(/waiting on your message/i)).toBeInTheDocument();
+  });
+
+  /**
+   * IT LEAVES THE GAME, so the control has to be honest about that: a new tab, and
+   * no handle on the page it came from. `noopener` is not decoration — without it
+   * the opened site can reach back through `window.opener`.
+   */
+  it('opens the account in a new tab, with no handle on the game', async () => {
+    const { wrapper: Wrapper, queries } = harness();
+    queries.setQueryData(['rewards'], rewards([social('locked')]));
+
+    render(
+      <Wrapper>
+        <RewardsScreen commander="Vantage" />
+      </Wrapper>,
+    );
+
+    const link = await screen.findByRole('link', { name: /JoinAstera/i });
     expect(link).toHaveAttribute('href', expect.stringContaining('JoinAstera'));
-    // An outbound link out of a game must not hand the opener a live window.
+    expect(link).toHaveAttribute('target', '_blank');
     expect(link).toHaveAttribute('rel', expect.stringContaining('noopener'));
+  });
+
+  /**
+   * PINNED ABOVE EVEN A CLAIMABLE GOAL. Owner instruction, and the reasoning is
+   * that it is the only reward nobody can discover by playing — every other chain
+   * is met by pressing the thing it pays for.
+   */
+  it('puts the community bonus first, above a goal that is ready to claim', async () => {
+    const { wrapper: Wrapper, queries } = harness();
+    queries.setQueryData(
+      ['rewards'],
+      rewards([probeChain(1, ['claimable', 'locked', 'locked']), social('locked')], 1),
+    );
+
+    render(
+      <Wrapper>
+        <RewardsScreen commander="Vantage" />
+      </Wrapper>,
+    );
+
+    // Asserted by document ORDER rather than by list position: the bonus card's
+    // three numbered steps are list items too, so counting `listitem` roles would
+    // be counting the wrong things.
+    const bonus = await screen.findByText(/community bonus/i);
+    const goal = screen.getByText(/probes sent/i);
+    expect(bonus.compareDocumentPosition(goal) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
+  it('offers the claim once a human has confirmed it', async () => {
+    const { wrapper: Wrapper, queries, api } = harness();
+    queries.setQueryData(['rewards'], rewards([social('claimable')], 1));
+    const claim = vi.spyOn(api, 'claimReward').mockResolvedValue({
+      granted: { alloy: 1000, crystal: 500 },
+      rewards: rewards([social('claimed')], 0),
+      planet: undefined,
+    } as never);
+
+    render(
+      <Wrapper>
+        <RewardsScreen commander="Vantage" />
+      </Wrapper>,
+    );
+
+    await userEvent.setup().click(await screen.findByRole('button', { name: /claim your bonus/i }));
+    expect(claim).toHaveBeenCalledWith('SOCIAL:1');
+  });
+});
+
+/**
+ * WHAT HAPPENS WHEN THE STORE IS ALREADY FULL — the first question a player asks
+ * before pressing a button that adds resources.
+ *
+ * The answer is the surprising one, and the panel has to say it: NOTHING IS LOST.
+ * A grant is written straight to storage with no clamp, exactly as `OPENING_BONUS`
+ * is, so the whole amount lands and the store is allowed to sit above its ceiling.
+ * `apps/server/test/rewards.test.ts` proves the server half; this is the half that
+ * tells the player.
+ */
+describe('claiming into a full store', () => {
+  const stock = (alloy: number, crystal: number) => ({
+    planet: { alloy, crystal, alloyCap: 1000, crystalCap: 400 },
+  });
+
+  it('says nothing is lost when a claimable reward would go over the ceiling', async () => {
+    const { wrapper: Wrapper, queries } = harness();
+    queries.setQueryData(['planet'], stock(950, 100));
+    queries.setQueryData(
+      ['rewards'],
+      rewards([probeChain(1, ['claimable', 'locked', 'locked'])], 1),
+    );
+
+    render(
+      <Wrapper>
+        <RewardsScreen commander="Vantage" />
+      </Wrapper>,
+    );
+
+    expect(await screen.findByText(/nothing is lost/i)).toBeInTheDocument();
+    // And it is still claimable: the note explains, it does not block.
+    expect(screen.getByRole('button', { name: /^claim$/i })).toBeEnabled();
+  });
+
+  it('stays quiet when everything on offer fits', async () => {
+    const { wrapper: Wrapper, queries } = harness();
+    queries.setQueryData(['planet'], stock(10, 10));
+    queries.setQueryData(
+      ['rewards'],
+      rewards([probeChain(1, ['claimable', 'locked', 'locked'])], 1),
+    );
+
+    render(
+      <Wrapper>
+        <RewardsScreen commander="Vantage" />
+      </Wrapper>,
+    );
+
+    await screen.findByRole('button', { name: /^claim$/i });
+    expect(screen.queryByText(/nothing is lost/i)).not.toBeInTheDocument();
+  });
+
+  /**
+   * Measured against the LARGEST single claimable tier and never against their
+   * sum: they are claimed one at a time, so warning about a total nobody will
+   * press in one go would cry wolf on a store with plenty of room.
+   */
+  it('does not warn about a total the player cannot claim in one press', async () => {
+    const { wrapper: Wrapper, queries } = harness();
+    // Three tiers of 200 each would total 600 and overflow; individually they fit.
+    queries.setQueryData(['planet'], stock(500, 10));
+    queries.setQueryData(
+      ['rewards'],
+      rewards([probeChain(5, ['claimable', 'claimable', 'claimable'])], 3),
+    );
+
+    render(
+      <Wrapper>
+        <RewardsScreen commander="Vantage" />
+      </Wrapper>,
+    );
+
+    await screen.findAllByRole('button', { name: /^claim$/i });
+    expect(screen.queryByText(/nothing is lost/i)).not.toBeInTheDocument();
   });
 });

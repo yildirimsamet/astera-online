@@ -863,6 +863,127 @@ route tracking, because there is no router. Two events, both GA4's own names:
 `sign_up` and `login`, with `method` separating the front-door registration from
 the rehearsal claim — which is the single number this project most needs to read.
 
+### D68 · Signing out stopped handing out a second planet — owner-reported bug
+
+*"Onboarding bitirdim ve logout oldum → tekrar preview sayfasına yönlendirildim →
+CLAIM YOUR PLANET → başka bir serverda yeniden gezegen veriyor."*
+
+**Reproduced against the real API before anything was changed, and the server was
+not at fault.** The same credentials come back to the same account and the same
+planet with nothing replayed; `joinSeason` returns the existing placement and
+`settle()` still throws `ALREADY_PLACED` for a second galaxy. Every rule held.
+
+What produced the second world was the DOOR. D56 made the loud control on the
+landing page "play ninety seconds of the real galaxy", on the correct argument
+that a stranger should not be asked for a password before they have a reason.
+A player who has just signed out is not a stranger — and the dialog at the end of
+a rehearsal asks you to CREATE a commander, so the obedient thing to type is a new
+name. A new name is a new account, and a new account is legitimately entitled to a
+seat in the frontier galaxy. Nothing refused, because nothing was broken.
+
+**Two changes, both on the client.** Signing out lands on the front door with the
+sign-in form already open. And the device remembers that a commander has existed
+here (`lib/returning.ts`), which inverts the weights on a cold start days later:
+signing in becomes the loud control and the rehearsal becomes the quiet line.
+
+**It is a hint and never a gate.** Both doors stay reachable from either state — a
+shared phone, or somebody deliberately making a second commander, must still get
+through — and a device with storage disabled gets the first-time door, which is
+the correct default rather than a degraded one. Nothing here is trusted by the
+server.
+
+### D69 · The camera stopped moving on its own — owner-reported bug
+
+Two reports, one cause each, both about the rig acting without being asked.
+
+**It re-framed itself while the player sat still.** The "ease onto a new subject"
+effect was keyed on a MEMOISED GETTER whose dependencies were the six query
+results behind it — `nodes`, `asteroids`, `pending`, `runs`, `contacts`, `wrecks`.
+Every one is a fresh array on every refetch, and in a live galaxy those refetch on
+each shard broadcast as well as on the sixty-second net. So the effect fired
+several times a minute with nobody touching anything: the pivot re-eased and
+`pullTo` dollied the camera back in, wiping out the player's framing. The
+docblock claimed it "fires on a change of subject and not on every render", which
+was the intention and was never true. It is keyed on `focusIdentity()` now — a
+stable string that moves when somebody selects something else and at no other
+time.
+
+**It jumped when a followed craft ended.** A fleet, probe or drill stops existing
+the moment it lands or gets home, and the rig read the missing position as
+"nothing is focused" — which handed the frame to the LEASH and dragged a camera
+that had followed a squadron out to the rim back toward the middle of the disc at
+a new angle. Losing a subject now RELEASES the rig: no ease, no leash, no
+re-frame, free-look exactly where it was left. The release is cleared by the
+player — touching the controls, picking something new, pressing home — never by
+the world. **The camera may be moved by an instruction and never by the absence of
+one.**
+
+Both rules moved out of the `useFrame` callback into `galaxy/follow.ts` as pure
+functions, because a rule inside a frame loop wrapped in a WebGL canvas is a rule
+no test can reach.
+
+### D70 · Three days away and the seat goes back — owner instruction
+
+*"Bir oyuncu 3 gün boyunca oyuna girmezse gezegeni silinsin ve böylece serverlarda
+yer açılır. Pasif hesaplar birikmez."*
+
+**The seat is the scarce thing and this is what keeps it moving.** A galaxy holds
+fifty worlds and galaxies fill strictly in order — the only mitigation the
+empty-shard risk has — and that inverts completely once seats are held by people
+who signed up and never came back. The live shard already looked like this: a
+hundred accounts in two days, and worlds the owner read as bots because nothing
+had happened on them since.
+
+**The account survives** — owner decision. Only the season presence is reclaimed;
+the record folds into `accounts.lifetime` exactly as a wipe folds it, and the
+commander signs back in, finds no planet, and is taken to the server list. That
+path is why D68 had to land first: without it, a reclaimed commander would have
+been offered onboarding.
+
+**Three safety properties, and they are the whole design.** It never touches a
+world with anything in the air that names it — including a raid an active player
+launched at it thirty seconds ago — and defers to a later sweep instead; deleting
+a mission out from under a live fleet is not theoretical, it happened on this
+project's production database once and stranded a real player's Wasps. It
+re-reads `lastActiveAt` under a row lock, so a commander who opens the game
+between the candidate read and the delete keeps their world. And it runs one
+transaction per planet, so a world that cannot be taken apart leaves every other
+one alone.
+
+**It takes other people's history with it**, and that is stated rather than
+hidden: `battle_reports` carries foreign keys to both players and to the mission,
+so a raid an active commander flew against a reclaimed world cannot be kept. It is
+the same trade a wipe makes, it is the only one the schema allows, and it is worth
+less than the seat.
+
+Runs in the worker on a ten-minute clock with its own catch — *housekeeping may
+never stop the event queue* — and `/health` reports how many seats are eligible so
+a sweep that has stopped running is visible.
+
+### D71 · The community bonus goes first, and the store cannot swallow a reward
+
+Owner instruction, three parts.
+
+**Pinned above everything, claimable goals included.** It is the only reward that
+asks the player to do something OUTSIDE the game, so it is the only one that
+cannot be discovered by playing — every other chain is met by pressing the thing
+it pays for. A card nobody scrolls to is a card nobody follows. Raised to 1,000
+alloy and 500 crystal, the same size as `OPENING_BONUS`, and still excluded from
+`rewardPurse()` so it cannot drag the economy's ratios around from outside.
+
+**"Depo doluysa ödül boşa mı gidiyor?" — no, and the panel now says so.** A grant
+is written straight to storage with no clamp, exactly as `OPENING_BONUS` is, so
+the whole amount lands and the store is allowed to sit above its ceiling. What it
+costs is the WORKS, which cannot be emptied into an over-full store — the pressure
+is to spend rather than to hoard. The note appears only when a claimable tier
+would actually overflow, and it is measured against the largest SINGLE tier rather
+than their sum, because they are claimed one at a time.
+
+**A sound switch in the menu**, beside the language because both are preferences
+about the device rather than about the commander. It is a pause and a resume on
+the element that is already there, never a rebuild — so the track carries on from
+where it was silenced rather than restarting.
+
 ## Architecture
 
 A1 · One source of truth — LOCKED

@@ -96,4 +96,7 @@ export const menu = {
   rewardsHint: 'Galaksinin sana oynadığın için borcu',
   rewardsWaiting: '{{count}} hazır',
   accountHeading: 'Hesap',
+  soundLabel: 'Ses',
+  soundOn: 'Müzik çalıyor.',
+  soundOff: 'Bu cihazda kapalı.',
 } as const;

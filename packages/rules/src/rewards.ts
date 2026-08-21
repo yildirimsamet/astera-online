@@ -68,6 +68,13 @@ import type { Resources } from './types.js';
 
 /** Every chain, in the order the panel lists them. */
 export const REWARD_CHAIN_IDS = [
+  /**
+   * FIRST, BY OWNER INSTRUCTION, and it is the one entry that is not ordered by
+   * when a commander meets it. It is the only reward that asks the player to do
+   * something OUTSIDE the game, so it is the only one that has to be seen rather
+   * than found — everything below it is discovered by playing anyway.
+   */
+  'SOCIAL',
   'PROBE',
   'RAID',
   'CORE',
@@ -78,7 +85,6 @@ export const REWARD_CHAIN_IDS = [
   'AEGIS',
   'MINE',
   'SALVAGE',
-  'SOCIAL',
 ] as const;
 
 export type RewardChainId = (typeof REWARD_CHAIN_IDS)[number];
@@ -259,15 +265,19 @@ const CHAINS: Record<RewardChainId, RewardChain> = {
    * player is looking at them, which is the difference between a reward and a
    * balance that changed overnight.
    *
-   * 500 / 250 is the owner's figure and it is the largest single grant here —
-   * roughly two Wasps. It is deliberately NOT scaled to the 35% crystal share the
-   * rest of the table holds to: it is paid once, to a few dozen people, and it is
-   * marketing rather than economy.
+   * 1,000 / 500 is the owner's figure, raised from 500 / 250. It is by some way
+   * the largest single grant in the table — the same size as `OPENING_BONUS`, the
+   * cushion a brand-new commander is handed — and that is the point: it is paid
+   * once, to a few dozen people, and it is marketing rather than economy.
+   *
+   * It is deliberately NOT scaled to the ~35% crystal share the rest of the table
+   * holds to, and `rewardPurse()` excludes it, so it cannot drag the economy's
+   * ratios around from outside the game.
    */
   SOCIAL: {
     id: 'SOCIAL',
     metric: 'grant',
-    tiers: [{ goal: 1, reward: { alloy: 500, crystal: 250 } }],
+    tiers: [{ goal: 1, reward: { alloy: 1000, crystal: 500 } }],
   },
 };
 

@@ -105,4 +105,7 @@ export const menu = {
   rewardsHint: 'What the galaxy owes you for playing it',
   rewardsWaiting: '{{count}} ready',
   accountHeading: 'Account',
+  soundLabel: 'Sound',
+  soundOn: 'The score is playing.',
+  soundOff: 'Silenced on this device.',
 } as const;

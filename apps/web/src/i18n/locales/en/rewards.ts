@@ -62,13 +62,23 @@ export const rewards = {
    * rather than a progress bar. Three steps, stated plainly, with the handle as a
    * real link — a player is not going to retype it.
    */
+  /**
+   * THE COMMUNITY BONUS, and it is written as an INSTRUCTION rather than as a
+   * description, because it is the only thing in the game a player has to do
+   * somewhere else. Three steps, in the order they have to happen, each one short
+   * enough to be read on a phone with the app already open in another tab.
+   */
   social: {
+    eyebrow: 'Community bonus',
     handle: '@JoinAstera',
     url: 'https://x.com/JoinAstera',
-    step1: 'Follow @JoinAstera.',
-    step2: 'Send a direct message with your commander name — {{name}}.',
-    step3: 'It is checked by hand, and the reward appears here to claim.',
-    pending: 'Waiting on the message',
-    ready: 'Confirmed — claim it',
+    alloy: 'alloy',
+    crystal: 'crystal',
+    open: 'Open @JoinAstera on X',
+    step1: 'Follow @JoinAstera — the button below opens it in a new tab.',
+    step2: 'Send us a direct message with your commander name:',
+    step3: 'We check it by hand. Once we do, the reward waits for you here.',
+    pending: 'Waiting on your message',
+    ready: 'Confirmed — claim your bonus',
   },
 } as const;

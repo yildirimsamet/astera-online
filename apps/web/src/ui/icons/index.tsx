@@ -544,6 +544,56 @@ export function EyeIcon(props: IconProps) {
   );
 }
 
+/**
+ * SOUND, ON AND OFF — two glyphs rather than one that is tinted differently.
+ *
+ * A speaker that means "off" only by being dimmer is a control a player has to
+ * reason about; a speaker with a cross through it is one they read. The set's law
+ * is that icons carry SHAPE and the interface carries colour, and a mute switch is
+ * the clearest case there is for obeying it.
+ *
+ * The cone is the same in both so the pair reads as one object in two states, and
+ * the waves are drawn at two lengths so the "on" glyph still says something at
+ * 18px when the second arc closes up.
+ */
+/**
+ * OUT OF THE GAME AND INTO A NEW TAB.
+ *
+ * The one icon in this set that describes what a control DOES to the browser
+ * rather than what it means in the galaxy — because leaving the game is exactly
+ * what a player needs warning about before they press it. The arrow leaves the
+ * box; the box has a gap where it leaves, which is what stops it reading as a
+ * "send" glyph.
+ */
+export function ExternalIcon(props: IconProps) {
+  return (
+    <Glyph {...props}>
+      <path d="M13.4 4.6H19.4V10.6" />
+      <path d="m19.4 4.6-8.2 8.2" />
+      <path d="M18 14.2v4.6a1.6 1.6 0 0 1-1.6 1.6H5.2a1.6 1.6 0 0 1-1.6-1.6V7.6A1.6 1.6 0 0 1 5.2 6h4.6" />
+    </Glyph>
+  );
+}
+
+export function SpeakerOnIcon(props: IconProps) {
+  return (
+    <Glyph {...props}>
+      <path d="M4 9.4h3.2L12 5.4v13.2l-4.8-4H4Z" />
+      <path d="M15.6 9.4a3.8 3.8 0 0 1 0 5.2" />
+      <path d="M18.2 6.8a7.4 7.4 0 0 1 0 10.4" />
+    </Glyph>
+  );
+}
+
+export function SpeakerOffIcon(props: IconProps) {
+  return (
+    <Glyph {...props}>
+      <path d="M4 9.4h3.2L12 5.4v13.2l-4.8-4H4Z" />
+      <path d="m16 9.6 4.8 4.8M20.8 9.6 16 14.4" />
+    </Glyph>
+  );
+}
+
 export function MenuIcon(props: IconProps) {
   return (
     <Glyph {...props}>

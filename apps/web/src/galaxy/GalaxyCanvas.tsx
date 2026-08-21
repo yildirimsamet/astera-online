@@ -11,6 +11,7 @@ import type {
   PendingThread,
 } from '../api/schemas.js';
 import type { Focus } from './FocusPanel.js';
+import { focusIdentity, rigAction } from './follow.js';
 import { BrightStars, Core, Disc, Dust, Meteors, Nebula, Starfield } from './Environment.jsx';
 import { useAmbientFrames } from './frames.jsx';
 import { Wrecks, type WreckView } from './Wrecks.js';
@@ -276,6 +277,26 @@ export function GalaxyCanvas({
    */
   const approach = focus === null || focus.kind === 'planet' ? null : CRAFT_DISTANCE;
 
+  /**
+   * WHAT IS FOCUSED, AS A STABLE STRING — and it is the fix for a camera that
+   * re-framed itself while the player sat still. Owner-reported bug.
+   *
+   * `subject` above is a memo over `nodes`, `asteroids`, `pending`, `runs`,
+   * `contacts` and `wrecks`. Every one of those is a fresh array on every refetch,
+   * and in a live galaxy they refetch on every shard broadcast as well as on the
+   * sixty-second net — so the memo produced a NEW FUNCTION several times a minute
+   * without the player touching anything. The rig's "ease onto a new subject"
+   * effect was keyed on that function, so it fired each time: the pivot re-eased
+   * and, worse, `pullTo` dollied the camera back in to `CRAFT_DISTANCE`, undoing
+   * whatever framing the player had chosen. The docblock on that effect claimed it
+   * "fires on a change of subject and not on every render", which was the
+   * intention and was never true.
+   *
+   * This is what a change of subject actually is: the player picked something
+   * else. It moves when they act and at no other time.
+   */
+  const focusKey = useMemo(() => focusIdentity(focus), [focus]);
+
   const watched = useMemo(() => {
     const wanted = new Set(watching);
     return planets.filter((p) => wanted.has(p.id)).map((p) => toWorld(p.position));
@@ -410,6 +431,7 @@ export function GalaxyCanvas({
         home={home}
         homeSignal={homeSignal}
         subject={subject}
+        focusKey={focusKey}
         approach={approach}
         openWide={openWide}
       />
@@ -479,6 +501,7 @@ function Rig({
   home,
   homeSignal,
   subject,
+  focusKey,
   approach,
   openWide = false,
 }: {
@@ -492,6 +515,15 @@ function Rig({
    * where it used to be would let the thing they tapped slide out of frame.
    */
   subject: (() => [number, number, number] | null) | null;
+  /**
+   * WHAT IS FOCUSED, AND THE ONLY THING THAT MAY RE-FRAME THE CAMERA.
+   *
+   * `subject` changes identity whenever any of the six lists behind it refetches,
+   * which in a live galaxy is several times a minute. Keying the ease on it made
+   * the rig re-frame itself while the player sat watching. This changes when the
+   * player picks something else, and at no other time.
+   */
+  focusKey: string | null;
   /** Pull the camera in to at most this distance while easing. Null leaves it. */
   approach: number | null;
   /**
@@ -510,6 +542,36 @@ function Rig({
   /** Where the pivot is heading, how much ease is left, and how close to come. */
   const ease = useRef<{ to: THREE.Vector3; left: number; pullTo: number | null } | null>(null);
 
+  /**
+   * The live getter, mirrored so the frame loop reads the current one WITHOUT the
+   * effects below depending on its identity.
+   *
+   * Assigned during render on purpose. A `useEffect` would land after this
+   * component's own effects — and after the ease effect that has to read it on the
+   * frame the focus changes — so the first frame of every new subject would track
+   * the previous one's position.
+   */
+  const live = useRef(subject);
+  live.current = subject;
+
+  /**
+   * THE SUBJECT IS GONE AND THE CAMERA STAYS WHERE IT IS. Owner-reported bug.
+   *
+   * A followed craft stops existing the moment it lands, turns for home, or gets
+   * back — `pending`, `runs` and `contacts` simply stop carrying it. The rig read
+   * that as "nothing is focused", which handed the frame straight to the LEASH
+   * below: a camera that had followed a squadron out toward the rim was yanked
+   * back toward the middle of the disc, at a new angle, for no reason the player
+   * could connect to anything they did.
+   *
+   * What they asked for is what a camera should do anyway: *"focus nerede nasıl
+   * kaldıysa öylece kalsın, free looking mode'una geçsin."* So losing a subject
+   * releases the rig — no ease, no leash, no re-frame — and it simply stops
+   * driving. The leash is a comfort rule about a player PANNING into the void, and
+   * it resumes the moment they touch the controls again.
+   */
+  const released = useRef(false);
+
   const goTo = (x: number, y: number, z: number, pullTo: number | null = null): void => {
     ease.current = { to: new THREE.Vector3(x, y, z), left: EASE, pullTo };
     invalidate();
@@ -526,6 +588,8 @@ function Rig({
   useEffect(() => {
     const controls = ref.current;
     if (!controls) return;
+    // An explicit instruction, so the rig is driving again.
+    released.current = false;
     if (homeSignal === 0) {
       if (openWide) {
         // The disc entire, from above and outside it. Nothing is selected, so the
@@ -552,12 +616,19 @@ function Rig({
     goTo(home[0], home[1], home[2], openWide ? HOME_DISTANCE : null);
   }, [home, homeSignal, openWide]);
 
+  /**
+   * TAKE A NEW SUBJECT. Keyed on `focusKey`, never on `subject` — see the prop.
+   *
+   * A fresh selection also clears the release latch: the player has just told the
+   * rig what to look at, so it is driving again and the leash is back on duty.
+   */
   useEffect(() => {
-    // `subject` is memoised upstream, so this fires on a change of subject and not
-    // on every render of the galaxy.
-    const at = subject?.();
+    released.current = false;
+    const at = live.current?.();
     if (at) goTo(at[0], at[1], at[2], approach);
-  }, [subject, approach]);
+    // `live` is read through a ref by design: this must not re-run when the data
+    // behind the subject refetches, only when the player picks something else.
+  }, [focusKey, approach]);
 
   useFrame((_, delta) => {
     const controls = ref.current;
@@ -572,17 +643,26 @@ function Rig({
      * Applied as a delta rather than a lerp-to-point so it does not fight a player
      * who is orbiting at the same time.
      */
-    if (!ease.current && subject) {
-      const at = subject();
-      if (at) {
-        const target = new THREE.Vector3(at[0], at[1], at[2]);
-        const drift = target.clone().sub(controls.target);
-        if (drift.lengthSq() > 1e-10) {
-          controls.target.add(drift);
-          controls.object.position.add(drift);
-          controls.update();
-          invalidate();
-        }
+    const follow = live.current;
+    const at = follow?.() ?? null;
+
+    /** Every decision the rig makes on its own, in one pure call. See `follow.ts`. */
+    const act = rigAction({
+      easing: ease.current !== null,
+      following: follow !== null,
+      positioned: at !== null,
+      released: released.current,
+    });
+    if (act.release) released.current = true;
+
+    if (act.track && at) {
+      const target = new THREE.Vector3(at[0], at[1], at[2]);
+      const drift = target.clone().sub(controls.target);
+      if (drift.lengthSq() > 1e-10) {
+        controls.target.add(drift);
+        controls.object.position.add(drift);
+        controls.update();
+        invalidate();
       }
     }
 
@@ -592,7 +672,11 @@ function Rig({
      * because the correction is a lerp, it reads as the galaxy pulling rather than
      * as an edge they hit.
      */
-    if (!ease.current && !subject) {
+    /**
+     * The leash. Off while the rig is released, and off on the frame a subject
+     * ends — see `rigAction`, which is where that rule lives and is tested.
+     */
+    if (act.leash) {
       const t = controls.target;
       const flat = Math.hypot(t.x, t.z);
       if (flat > LEASH || Math.abs(t.y) > LEASH * 0.5) {
@@ -665,6 +749,17 @@ function Rig({
         RIGHT: THREE.MOUSE.PAN,
       }}
       touches={{ ONE: THREE.TOUCH.ROTATE, TWO: THREE.TOUCH.DOLLY_PAN }}
+      /**
+       * Touching the controls ends free-look and puts the leash back on duty.
+       *
+       * Without this a camera released by a vanished fleet would stay unleashed for
+       * the rest of the session, and a player could then pan into empty space with
+       * nothing to walk them back. The release is about not being moved WITHOUT
+       * asking; the moment they ask, the ordinary rules apply again.
+       */
+      onStart={() => {
+        released.current = false;
+      }}
     />
   );
 }

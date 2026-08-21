@@ -248,6 +248,38 @@ name.
 would mean an admin credential living in the environment of a public API for the
 sake of a few dozen manual grants a season.
 
+## Idle seats
+
+A commander who has not opened the game for `SERVERS.idleDays` (three) has their
+world reclaimed and their seat handed back to the galaxy. The worker does it on a
+ten-minute clock; there is nothing to run by hand.
+
+**The account survives.** Only the season presence goes: the record folds into
+`accounts.lifetime` exactly as a wipe folds it, and the commander signs back in,
+finds no planet, and is taken to the server list to join whatever galaxy is open.
+
+**It never touches a world with a flight in the air that names it** — including a
+raid somebody launched at it a minute ago — and defers those to a later sweep.
+
+`/health` reports `idleSeats`: how many are eligible **right now**, without
+touching any of them. A number that stays high across several checks means the
+sweep has stopped running, which nothing else would show — a galaxy silting up
+with inert worlds looks from the outside exactly like a busy one.
+
+```bash
+curl -s localhost:3200/health | jq '.checks.idleSeats'
+```
+
+To see who is about to go, and how long they have been away:
+
+```bash
+docker compose -f docker-compose.prod.yml exec postgres \
+  psql -U astera -d astera -c \
+  "select a.username, p.last_active_at, now() - p.last_active_at as away
+     from players p join accounts a on a.id = p.account_id
+    order by p.last_active_at;"
+```
+
 ## Rate limits
 
 Three buckets, all keyed by caller address. `TRUST_PROXY=true` is what makes that

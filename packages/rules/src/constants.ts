@@ -1084,4 +1084,30 @@ export const SERVERS = {
    * for four minutes has not left.
    */
   onlineWindowMinutes: 5,
+
+  /**
+   * HOW LONG A COMMANDER MAY BE AWAY BEFORE THEIR WORLD IS RECLAIMED. Owner
+   * instruction: *"bir oyuncu 3 gün boyunca oyuna girmezse gezegeni silinsin ve
+   * böylece serverlarda yer açılır. Pasif hesaplar birikmez."*
+   *
+   * THE SEAT IS THE SCARCE THING AND THIS IS WHAT KEEPS IT MOVING. A galaxy holds
+   * fifty worlds and galaxies fill strictly in order, which is the only mitigation
+   * the empty-shard risk has — and it works exactly backwards once the seats are
+   * held by people who signed up on day one and never returned. Fifty commanders
+   * of whom forty are inert is not a populated galaxy; it is an empty one that
+   * cannot be joined.
+   *
+   * THREE DAYS IS SHORT, AND IT IS SHORT ON PURPOSE. A season is fourteen days,
+   * flights are minutes, and this game is played in gaps of a few hours — somebody
+   * still playing simply cannot cross three days without opening it. The number is
+   * measured from `players.lastActiveAt`, which every authenticated request
+   * advances (throttled to once a minute), so it means "has not opened the game"
+   * and not "has not acted".
+   *
+   * THE ACCOUNT SURVIVES. Only the season presence is reclaimed: the record folds
+   * into `accounts.lifetime` exactly as a wipe folds it, and the commander can
+   * sign in and take a seat in whatever galaxy is open. Owner decision, and it is
+   * why this is called reclaiming rather than deleting.
+   */
+  idleDays: 3,
 } as const;

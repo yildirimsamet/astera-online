@@ -1,11 +1,18 @@
 import type { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useRewards } from '../api/queries.js';
+import { setMusicEnabled, useMusicEnabled } from '../lib/music.js';
 import { serverNow } from '../lib/clock.js';
 import { haptic } from '../lib/haptics.js';
 import { duration } from '../lib/time.js';
 import { Button } from '../ui/kit/index.js';
-import { ChevronIcon, IntelIcon, RewardIcon } from '../ui/icons/index.js';
+import {
+  ChevronIcon,
+  IntelIcon,
+  RewardIcon,
+  SpeakerOffIcon,
+  SpeakerOnIcon,
+} from '../ui/icons/index.js';
 import { LanguageSwitch } from '../ui/LanguageSwitch.js';
 import type { Panel } from '../screens/GalaxyView.jsx';
 
@@ -130,6 +137,13 @@ export function MenuPanel({
         <p className="legend mb-2">{t('settings.sectionLabel')}</p>
         <LanguageSwitch />
         <p className="mt-2 text-[11px] leading-snug text-faint">{t('settings.hint')}</p>
+
+        {/*
+          THE SOUND SWITCH, beside the language because they are the same kind of
+          thing: a preference about the device you are holding rather than about
+          the commander or the season. Both are stored per device for that reason.
+        */}
+        <SoundSwitch />
       </div>
 
       <Button variant="ghost" size="lg" full onClick={onSignOut}>
@@ -184,6 +198,50 @@ function MenuRow({
         </span>
       )}
       <ChevronIcon className="size-4 shrink-0 text-faint" />
+    </button>
+  );
+}
+
+/**
+ * ON OR OFF, AND THE GLYPH SAYS WHICH. Owner instruction.
+ *
+ * `aria-pressed` rather than a checkbox: this is a control with two states that
+ * takes effect immediately, which is exactly what a toggle button is for, and it
+ * means a screen reader announces the state rather than the player having to infer
+ * it from a label that changed.
+ *
+ * The label changes with the state as well as the icon. A control whose only
+ * signal is a picture is one a player has to test to understand.
+ */
+function SoundSwitch() {
+  const { t } = useTranslation();
+  const on = useMusicEnabled();
+
+  return (
+    <button
+      type="button"
+      aria-pressed={on}
+      onClick={() => {
+        haptic('tap');
+        setMusicEnabled(!on);
+      }}
+      className={`mt-3 flex w-full items-center gap-2.5 rounded-md border px-3 py-2.5 text-left transition-colors ${
+        on
+          ? 'border-line-soft bg-deep text-bone hover:border-line'
+          : 'border-line-soft bg-deep text-faint hover:border-line'
+      }`}
+    >
+      <span className="socket grid size-8 shrink-0 place-items-center rounded-md">
+        {on ? <SpeakerOnIcon className="size-[18px]" /> : <SpeakerOffIcon className="size-[18px]" />}
+      </span>
+      <span className="min-w-0 flex-1">
+        <span className="block font-display text-[12px] font-semibold uppercase tracking-[0.04em]">
+          {t('menu.soundLabel')}
+        </span>
+        <span className="mt-0.5 block text-[11px] leading-snug text-faint">
+          {on ? t('menu.soundOn') : t('menu.soundOff')}
+        </span>
+      </span>
     </button>
   );
 }

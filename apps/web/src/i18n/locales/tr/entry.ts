@@ -21,6 +21,15 @@ export const landing = {
   register: 'Gezegenini İncele',
   signIn: 'Zaten bir komutanım var',
   reassurance: 'Hesap gerekmiyor. Önce oyna, sonra sahiplen.',
+
+  /**
+   * Dönen komutanın kapısı. Bu cihazda daha önce komutan olmuş biri için iki
+   * düğmenin ağırlığı yer değiştirir; giriş öne geçer.
+   */
+  welcomeBack: 'Gezegenin bıraktığın yerde duruyor',
+  signInPrimary: 'Giriş yap',
+  returningHint: 'Aynı komutan, aynı galaksi; hangi tarayıcıdan girersen gir.',
+  newCommander: 'Bunun yerine yeni bir komutan başlat',
   opening: 'Galaksi açılıyor',
   ready: 'Gezegenin hazır',
   cover: 'Gökyüzü açılıyor',

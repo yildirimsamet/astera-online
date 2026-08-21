@@ -53,13 +53,21 @@ export const rewards = {
     SOCIAL: { name: '@JoinAstera hesabını takip et', tag: 'Komutan başına bir kez' },
   },
 
+  /**
+   * Topluluk ödülü; oyunun dışında yapılacak tek iş olduğu için açıklama değil
+   * TALİMAT olarak yazıldı. Üç adım, yapılacakları sırasıyla.
+   */
   social: {
+    eyebrow: 'Topluluk ödülü',
     handle: '@JoinAstera',
     url: 'https://x.com/JoinAstera',
-    step1: '@JoinAstera hesabını takip et.',
-    step2: 'Komutan adını yazıp DM at: {{name}}.',
-    step3: 'Elle kontrol ediliyor; onaylanınca ödül burada seni bekliyor olacak.',
+    alloy: 'alaşım',
+    crystal: 'kristal',
+    open: "@JoinAstera'yı X'te aç",
+    step1: '@JoinAstera hesabını takip et; aşağıdaki düğme yeni sekmede açar.',
+    step2: 'Bize komutan adını yazıp DM at:',
+    step3: 'Elle kontrol ediyoruz. Onayladığımız anda ödül burada seni bekliyor olacak.',
     pending: 'Mesajın bekleniyor',
-    ready: 'Onaylandı; alabilirsin',
+    ready: 'Onaylandı; ödülünü al',
   },
 } as const;

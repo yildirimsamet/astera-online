@@ -20,6 +20,19 @@ export const landing = {
   register: 'Check Your Planet',
   signIn: 'I already have a commander',
   reassurance: 'No account yet. Play first, keep it after.',
+
+  /**
+   * THE RETURNING DOOR. Owner-reported bug.
+   *
+   * A device that has held a commander gets the two controls swapped: signing in
+   * becomes the loud one. Their own strings rather than a reuse of `signIn` and
+   * `register`, because they say different things — one is "come back to the world
+   * you left", the other is "see what this is".
+   */
+  welcomeBack: 'Your planet is where you left it',
+  signInPrimary: 'Sign in',
+  returningHint: 'Same commander, same galaxy, on any browser.',
+  newCommander: 'Start a new commander instead',
   opening: 'Opening the galaxy',
   ready: 'Your planet is ready',
   cover: 'Bringing the sky up',

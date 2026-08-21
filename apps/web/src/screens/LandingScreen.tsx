@@ -9,6 +9,7 @@ import { LoadingScreen } from '../shell/LoadingScreen.js';
 import { Button } from '../ui/kit/index.js';
 import { LanguageSwitch } from '../ui/LanguageSwitch.jsx';
 import { Wordmark } from '../ui/Wordmark.jsx';
+import { commanderKnownHere } from '../lib/returning.js';
 
 /**
  * THE FRONT DOOR. D21.
@@ -34,6 +35,7 @@ export function LandingScreen({
   open,
   error,
   loadAsset,
+  knownCommander,
 }: {
   onAuthenticate: (mode: Mode, username: string, password: string) => Promise<void>;
   /**
@@ -58,9 +60,22 @@ export function LandingScreen({
    * `preload.test.ts`.
    */
   loadAsset?: Loader;
+  /**
+   * Whether this device has held a commander. Overridden only under test, which
+   * is the same seam `loadAsset` uses and for the same reason: the real answer
+   * comes from `localStorage`, and a test that has to write to storage to set up
+   * a render is a test about storage.
+   */
+  knownCommander?: () => boolean;
 }) {
   const { t } = useTranslation();
   const [mode, setMode] = useState<Mode | null>(open ?? null);
+  /**
+   * Read ONCE, at mount, and never again. This screen is remounted every time the
+   * app returns to `landing`, so there is nothing to subscribe to — and a value
+   * that changed mid-render would swap the button under the player's thumb.
+   */
+  const [returning] = useState(() => (knownCommander ?? commanderKnownHere)());
   /** True while the frontier galaxy is being read. The page stays; the door waits. */
   const [opening, setOpening] = useState(false);
   const servers = useServers();
@@ -174,45 +189,112 @@ export function LandingScreen({
             </p>
           )}
 
-          <p className="legend mb-3 text-center text-crystal/90">{t('landing.ready')}</p>
-
-          <button
-            type="button"
-            className="enter font-display uppercase"
-            disabled={opening}
-            onClick={() => {
-              if (opening) return;
-              setOpening(true);
-              void onBegin().catch(() => {
-                // The session hook has already put the reason on this page.
-                setOpening(false);
-              });
-            }}
-          >
-            <span className="enter-orbit" aria-hidden />
-            <span className="text-[15px] tracking-[0.18em]">
-              {opening ? t('landing.opening') : t('landing.register')}
-            </span>
-            <span aria-hidden className="text-[15px] text-crystal">
-              &rarr;
-            </span>
-          </button>
-
-          <p className="mt-3 text-center text-[11px] text-faint">
-            {t('landing.reassurance')}
+          {/**
+           * THE TWO DOORS SWAP FOR SOMEBODY WHO HAS BEEN HERE. Owner-reported bug.
+           *
+           * D56's argument is intact and unchanged for a STRANGER: the loud
+           * control is ninety seconds of the real galaxy, and the password is
+           * asked for at the end once there is something worth keeping.
+           *
+           * It is the wrong door for a returning player, and that is not a matter
+           * of taste — it produced a second account. Signing out landed here, the
+           * loud control started the rehearsal, and the dialog at the end of a
+           * rehearsal asks you to CREATE a commander. Typing a new name is the
+           * obedient thing to do, a new name is a new account, and a new account
+           * is entitled to a seat in the frontier galaxy. Nothing refused, because
+           * nothing had been broken.
+           *
+           * So on a device that has held a commander the weights invert: signing
+           * in becomes the loud control and the rehearsal becomes the quiet line.
+           * Both doors stay open — a shared phone, or somebody making a second
+           * commander deliberately, must still be able to get through — and the
+           * flag is a HINT that decides emphasis, never a gate. See
+           * `lib/returning.ts`.
+           */}
+          <p className="legend mb-3 text-center text-crystal/90">
+            {returning ? t('landing.welcomeBack') : t('landing.ready')}
           </p>
 
-          <div className="mt-2 text-center">
-            <button
-              type="button"
-              className="text-[12px] text-faint underline-offset-4 hover:underline"
-              onClick={() => {
-                setMode('login');
-              }}
-            >
-              {t('landing.signIn')}
-            </button>
-          </div>
+          {returning ? (
+            <>
+              <button
+                type="button"
+                className="enter font-display uppercase"
+                onClick={() => {
+                  setMode('login');
+                }}
+              >
+                <span className="enter-orbit" aria-hidden />
+                <span className="text-[15px] tracking-[0.18em]">
+                  {t('landing.signInPrimary')}
+                </span>
+                <span aria-hidden className="text-[15px] text-crystal">
+                  &rarr;
+                </span>
+              </button>
+
+              <p className="mt-3 text-center text-[11px] text-faint">
+                {t('landing.returningHint')}
+              </p>
+
+              <div className="mt-2 text-center">
+                <button
+                  type="button"
+                  disabled={opening}
+                  className="text-[12px] text-faint underline-offset-4 hover:underline"
+                  onClick={() => {
+                    if (opening) return;
+                    setOpening(true);
+                    void onBegin().catch(() => {
+                      setOpening(false);
+                    });
+                  }}
+                >
+                  {opening ? t('landing.opening') : t('landing.newCommander')}
+                </button>
+              </div>
+            </>
+          ) : (
+            <>
+              <button
+                type="button"
+                className="enter font-display uppercase"
+                disabled={opening}
+                onClick={() => {
+                  if (opening) return;
+                  setOpening(true);
+                  void onBegin().catch(() => {
+                    // The session hook has already put the reason on this page.
+                    setOpening(false);
+                  });
+                }}
+              >
+                <span className="enter-orbit" aria-hidden />
+                <span className="text-[15px] tracking-[0.18em]">
+                  {opening ? t('landing.opening') : t('landing.register')}
+                </span>
+                <span aria-hidden className="text-[15px] text-crystal">
+                  &rarr;
+                </span>
+              </button>
+
+              <p className="mt-3 text-center text-[11px] text-faint">
+                {t('landing.reassurance')}
+              </p>
+
+              <div className="mt-2 text-center">
+                <button
+                  type="button"
+                  className="text-[12px] text-faint underline-offset-4 hover:underline"
+                  onClick={() => {
+                    setMode('login');
+                  }}
+                >
+                  {t('landing.signIn')}
+                </button>
+              </div>
+            </>
+          )}
         </footer>
       </div>
 

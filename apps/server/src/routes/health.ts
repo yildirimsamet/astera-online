@@ -2,6 +2,7 @@ import { sql } from 'drizzle-orm';
 import type { FastifyInstance } from 'fastify';
 import { failedEventCount, oldestPendingAge } from '../worker/queue.js';
 import { strandedFlightCount } from '../worker/abandon.js';
+import { idleSeatCount } from '../services/reclaim.js';
 
 /**
  * Health checks the database, the event queue AND the live channel.
@@ -38,6 +39,17 @@ export function registerHealthRoutes(app: FastifyInstance): void {
       queueLagSeconds?: number | null;
       failedEvents?: number;
       strandedFlights?: number;
+      /**
+       * Seats eligible to be reclaimed right now. REPORTED, NEVER ACTED ON.
+       *
+       * A count that stays high across several checks means the ten-minute sweep
+       * is not running — which nothing else here would show, because a galaxy
+       * silting up with inert worlds looks identical from the outside to a busy
+       * one. It never fails the check: idle seats are a slow problem, and taking a
+       * healthy deployment out of rotation over one would be worse than the
+       * crowding it reports.
+       */
+      idleSeats?: number;
       stream?: string;
       streamTopics?: number;
       streamDelivered?: number;
@@ -74,6 +86,7 @@ export function registerHealthRoutes(app: FastifyInstance): void {
        */
       const stranded = await strandedFlightCount(app.db, app.clock.now());
       checks.strandedFlights = stranded;
+      checks.idleSeats = await idleSeatCount(app.db, app.clock);
       if (lag !== null && lag > MAX_QUEUE_LAG_SECONDS) {
         ok = false;
         checks.queue = 'stalled';

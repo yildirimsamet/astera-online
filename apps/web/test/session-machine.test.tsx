@@ -260,7 +260,21 @@ describe('the session machine', () => {
     expect(session.error).toBeTruthy();
   });
 
-  it('returns to the front door on sign-out', async () => {
+  /**
+   * SIGNING OUT PUTS THE WAY BACK IN FRONT OF THEM. Owner-reported bug.
+   *
+   * It used to land on a BARE front door, whose loud control starts ninety
+   * seconds of onboarding and ends in a dialog asking for a NEW commander name.
+   * That produced exactly what was reported: a player signed out, took the door
+   * they were given, typed a new name because that is what the dialog asks for,
+   * and was handed a second account with a second planet in a different galaxy.
+   *
+   * Nothing on the server was broken — reproduced against the real API, the same
+   * credentials come back to the same planet and `ALREADY_PLACED` still guards a
+   * second galaxy. The funnel was the bug, so `open: 'login'` is the fix, and this
+   * assertion is what stops it silently reverting to a bare landing.
+   */
+  it('returns to the front door with the way back in already open, on sign-out', async () => {
     const { wrapper } = harness({ ...placed, '/api/auth/logout': { ok: true } });
     const { result } = renderHook(() => useSession(), { wrapper });
     await waitFor(() => {
@@ -271,6 +285,27 @@ describe('the session machine', () => {
       await result.current.signOut();
     });
     expect(result.current.session.phase).toBe('landing');
+    expect(result.current.session).toMatchObject({ open: 'login' });
+  });
+
+  /**
+   * And the device remembers, for the OTHER route to the same screen: a cold start
+   * days later, where a dialog on arrival would be wrong but the new-visitor door
+   * would be just as wrong. See `lib/returning.ts`.
+   */
+  it('remembers that a commander has existed on this device', async () => {
+    const { forgetCommander, commanderKnownHere } = await import('../src/lib/returning.js');
+    forgetCommander();
+    expect(commanderKnownHere()).toBe(false);
+
+    const { wrapper } = harness(placed);
+    const { result } = renderHook(() => useSession(), { wrapper });
+    await waitFor(() => {
+      expect(result.current.session.phase).toBe('ready');
+    });
+
+    expect(commanderKnownHere()).toBe(true);
+    forgetCommander();
   });
 
   /**

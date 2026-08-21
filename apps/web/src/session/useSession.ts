@@ -6,6 +6,7 @@ import { describeError } from '../i18n/errors.js';
 import { keys } from '../api/keys.js';
 import type { ClaimIntent, ClaimResult, Me, Preview } from '../api/schemas.js';
 import { track } from '../lib/analytics.js';
+import { rememberCommander } from '../lib/returning.js';
 
 /** Where the player is standing, as one word. */
 export type Phase = Session['phase'];
@@ -83,6 +84,17 @@ export function useSession() {
     // eslint-disable-next-line @typescript-eslint/require-await
     async (me: Me): Promise<void> => {
       queries.clear();
+      /**
+       * THE DEVICE NOW KNOWS SOMEBODY HAS A COMMANDER HERE. Owner-reported bug.
+       *
+       * Marked on every route into a real session — a cold-start restore as much
+       * as a fresh sign-in — because what the front door needs to know is not "did
+       * you just log in", it is "is this a stranger". Without it a player who
+       * signs out is offered the rehearsal as the loud control, creates a second
+       * account because the dialog asks them to name one, and lands on a second
+       * planet in a different galaxy. See `lib/returning.ts`.
+       */
+      rememberCommander();
       if (!me.placement) {
         setSession({ phase: 'servers', me });
         return;
@@ -266,6 +278,7 @@ export function useSession() {
       intents: readonly ClaimIntent[],
     ): Promise<void> => {
       const result = await api.claim(username, password, intents);
+      rememberCommander();
       // The other door. A commander who played the rehearsal first and is only now
       // becoming an account — the conversion this whole onboarding exists for.
       track('sign_up', { method: 'rehearsal' });
@@ -275,11 +288,25 @@ export function useSession() {
   );
 
 
+  /**
+   * SIGNING OUT PUTS THE WAY BACK IN FRONT OF THEM, NOT THE REHEARSAL.
+   *
+   * It used to land on a bare `landing`, whose loud control starts ninety seconds
+   * of onboarding and ends in a dialog asking for a NEW commander name. That is
+   * the whole of the owner-reported bug: a player signed out, was handed the
+   * new-visitor door, typed a new name because that is what the dialog asks for,
+   * and received a second account with a second planet in a different galaxy.
+   *
+   * The form opens directly. Somebody who signed out to switch commanders is
+   * exactly where they need to be, and somebody who signed out to leave closes one
+   * dialog. `lib/returning.ts` handles the other route to the same screen — a cold
+   * start days later — where a modal on arrival would be wrong.
+   */
   const signOut = useCallback(async (): Promise<void> => {
     setSession({ phase: 'starting' });
     await api.logout();
     queries.clear();
-    setSession({ phase: 'landing' });
+    setSession({ phase: 'landing', open: 'login' });
   }, [api, queries]);
 
   /** For the blocked screen: try the whole cold start again. */
