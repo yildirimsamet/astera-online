@@ -361,7 +361,12 @@ export const notifications = {
   repelledHead: 'Akın püskürtüldü · {{cost}}',
   repelledLost: 'savunurken {{count}} kayıp',
   repelledTheirs: 'karşıdan {{count}} gemi yok edildi',
-  raided: 'Akın yedin · −{{amount}} gitti · {{count}} birlik kayıp',
+  raided: 'Akın yedin · {{detail}}',
+  raidedWorks: 'havuz {{time}} kapalı',
+  raidedTaken: '−{{amount}} gitti',
+  raidedLost_one: '{{count}} birlik kayıp',
+  raidedLost_other: '{{count}} birlik kayıp',
+  raidedNothing: 'Akın yedin · eli boş döndüler',
 
   raidResultFallback: 'Akının sonuçlandı.',
   raidWiped: '{{target}} dayandı. Filon yok edildi, {{count}} gemi kayıp',

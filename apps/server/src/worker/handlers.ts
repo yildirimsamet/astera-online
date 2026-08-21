@@ -433,6 +433,23 @@ export const onMissionArrival: Handler = async ({ db, clock }, event) => {
         // report, so this reveals nothing new — it lets "you repelled a raid" say
         // what the raid paid, which is the difference between a fact and a result.
         theirLosses: fleetCount(result.attackerLosses),
+        /**
+         * HOW LONG THE WORKS ARE DOWN — THE THING THAT ACTUALLY HAPPENED.
+         *
+         * Without this the notification could only report the two figures that
+         * were often zero, and on a live shard that is exactly how it read: a
+         * commander raided six times in an evening was told "−0 taken · 0 units
+         * lost" six times, because the vault floor makes a poor planet unlootable
+         * and an undefended one loses no units. Nothing in the line was false and
+         * nothing in it was the point — every one of those raids had knocked their
+         * production offline for three hours (D3).
+         *
+         * Sent as minutes FROM NOW rather than as an instant, because that is what
+         * the sentence says and it cannot then drift as the row ages: a
+         * notification is a record of a moment, not a live countdown. The planet
+         * view carries `disruptedUntil` for the countdown.
+         */
+        disruptedMinutes: Math.max(0, disruptedUntilMinutes - defender.nowMinutes),
       },
       at: defender.now,
       refId: missionId,

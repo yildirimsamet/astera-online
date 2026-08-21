@@ -3,7 +3,7 @@ import { pino } from 'pino';
 import { afterAll, beforeEach, describe, expect, it } from 'vitest';
 import { and, eq } from 'drizzle-orm';
 import { alloyRate, flightSlots } from '@astera/rules';
-import { buildings, debrisFields, notifications, shards } from '../src/db/schema.js';
+import { buildings, debrisFields, notifications, planets, shards } from '../src/db/schema.js';
 import { EventWorker } from '../src/worker/loop.js';
 import { launchAttack } from '../src/services/mission.js';
 import { launchProbe } from '../src/services/intel.js';
@@ -641,6 +641,100 @@ describe('every payload the client parses', () => {
     'Your raid resolved.',
     'A probe is home. Its report is readable.',
   ]);
+
+  /**
+   * A RAID THAT TAKES NOTHING STILL HAS TO SAY WHAT IT DID.
+   *
+   * Reported from the live shard, and the screenshot was six of these in a row:
+   *
+   *     Raided · −0 taken · 0 units lost
+   *     Raided · −0 taken · 0 units lost
+   *     ...
+   *
+   * Both figures are genuinely zero and neither is the point. The vault floor
+   * means nobody is ever lootable to zero, so a poor planet yields nothing; an
+   * undefended one loses no units because it had none. What HAPPENED is that
+   * every one of those raids knocked the works offline for three hours (D3) and
+   * stripped the shield — and the payload carried neither, so the sentence could
+   * not mention them. A player was told nothing was happening to them while their
+   * production sat switched off all evening.
+   *
+   * The assertion is in two halves on purpose: the worker must SEND the figure,
+   * and the sentence must USE it. Checking only the first would pass a payload
+   * nothing reads, which is exactly the failure `describeNotification` was given a
+   * contract test for in the first place.
+   */
+  it('tells a defender with nothing to lose what the raid actually did', async () => {
+    const [mine, theirs] = f.planetIds as [string, string];
+    const worker = new EventWorker(
+      f.db,
+      f.clock,
+      { pollMs: 1000, batch: 100, staleMinutes: 5 },
+      silent,
+    );
+
+    await levelWorld(f.db, f.planetIds);
+    const launch = await launchAttack(f.db, mine, theirs, { WASP: 6 }, f.clock);
+
+    /**
+     * Empty, undefended, and ALREADY DOWN — which is the reported case rather than
+     * a contrived one: this is the second raid of an evening. The standing
+     * disruption is what keeps the works from refilling during the forty minutes
+     * the fleet is in the air, so the planet is still empty when it lands. Without
+     * it the buffer accrues over the flight and the raid leaves with 194.
+     */
+    await f.db
+      .update(planets)
+      .set({
+        alloy: 0,
+        crystal: 0,
+        bufferAlloy: 0,
+        bufferCrystal: 0,
+        shield: 0,
+        disruptedUntil: new Date(launch.arriveAt.getTime() + 60 * 60_000),
+      })
+      .where(eq(planets.id, theirs));
+
+    f.clock.set(settledAt(launch.arriveAt));
+    await worker.tick();
+
+    const [row] = await f.db
+      .select()
+      .from(notifications)
+      .where(eq(notifications.kind, 'raided'));
+    expect(row, 'the defender was told nothing at all').toBeDefined();
+
+    const payload = row!.payload as {
+      lootAlloy: number;
+      lootCrystal: number;
+      unitsLost: number;
+      disruptedMinutes?: number;
+    };
+    // The premise: this is the raid whose two old figures were both zero.
+    expect(payload.lootAlloy + payload.lootCrystal).toBe(0);
+    expect(payload.unitsLost).toBe(0);
+    // And the thing that did happen, which used not to travel at all.
+    expect(payload.disruptedMinutes, 'the works were knocked down and nobody said so')
+      .toBeGreaterThan(0);
+
+    const now = f.clock.now().getTime();
+    const view = (over: Record<string, unknown>) =>
+      notificationsSchema.shape.notifications.element.parse({
+        id: row!.id,
+        kind: row!.kind,
+        payload: { ...payload, ...over },
+        seen: row!.seen,
+        at: row!.createdAt,
+      });
+
+    // THE FIGURE IS LOAD-BEARING IN THE SENTENCE, not merely present in the row.
+    // Asserted by removing it rather than by matching wording, so the copy stays
+    // free to change in either language.
+    const told = describeNotification(view({}), now);
+    const silent_ = describeNotification(view({ disruptedMinutes: undefined }), now);
+    expect(told).not.toBe(silent_);
+    expect(told).not.toBeNull();
+  });
 
   it('every notification a real worker writes says something specific', async () => {
     const [mine, theirs] = f.planetIds as [string, string];

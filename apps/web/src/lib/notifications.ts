@@ -46,6 +46,8 @@ const raided = z.object({
   lootCrystal: z.number(),
   unitsLost: z.number(),
   theirLosses: z.number().optional(),
+  /** Optional: rows written before the works were reported are still readable. */
+  disruptedMinutes: z.number().optional(),
 });
 
 const raidResult = z.object({
@@ -202,7 +204,8 @@ export function describeNotification(notification: NotificationView, now: number
     case 'raided': {
       const parsed = raided.safeParse(notification.payload);
       if (!parsed.success) return i18n.t('notifications.raidedFallback');
-      const { grade, lootAlloy, lootCrystal, unitsLost, theirLosses } = parsed.data;
+      const { grade, lootAlloy, lootCrystal, unitsLost, theirLosses, disruptedMinutes } =
+        parsed.data;
       if (grade === 'REPELLED') {
         // What it cost to hold, on both sides. "You repelled a raid" on its own
         // reads as a free win, and a defence that looks free is not one anybody
@@ -213,8 +216,38 @@ export function describeNotification(notification: NotificationView, now: number
         }
         return i18n.t('notifications.repelledHead', { cost: cost.join(JOIN()) });
       }
+      /**
+       * SAY WHAT HAPPENED, NOT WHAT DID NOT.
+       *
+       * This line was "Raided · −{loot} taken · {n} units lost" unconditionally,
+       * and on a live shard it read "−0 taken · 0 units lost" over and over: the
+       * vault floor makes a poor planet unlootable and an undefended one loses no
+       * units, so both figures are zero precisely when a player is at their most
+       * vulnerable. Six of those in an evening is a game telling somebody nothing
+       * is happening to them while their production sits switched off.
+       *
+       * So the clauses are now the ones that are TRUE. What was taken, what was
+       * lost, and how long the works are down — each stated only when it is not
+       * zero, and the works stated first because it is the largest of the three.
+       */
+      const clauses: string[] = [];
+      if (disruptedMinutes !== undefined && disruptedMinutes > 0) {
+        clauses.push(i18n.t('notifications.raidedWorks', { time: duration(disruptedMinutes) }));
+      }
       const loot = lootAlloy + lootCrystal;
-      return i18n.t('notifications.raided', { amount: compact(loot), count: unitsLost });
+      if (loot > 0) {
+        clauses.push(i18n.t('notifications.raidedTaken', { amount: compact(loot) }));
+      }
+      if (unitsLost > 0) {
+        clauses.push(i18n.t('notifications.raidedLost', { count: unitsLost }));
+      }
+      /**
+       * A raid that genuinely cost nothing — repelled by the vault floor with no
+       * defenders to lose and, on an older row, no works figure to report. Saying
+       * so plainly is better than assembling an empty sentence.
+       */
+      if (clauses.length === 0) return i18n.t('notifications.raidedNothing');
+      return i18n.t('notifications.raided', { detail: clauses.join(JOIN()) });
     }
 
     case 'raid_result': {

@@ -328,7 +328,12 @@ export const notifications = {
   repelledHead: 'Raid repelled · {{cost}}',
   repelledLost: '{{count}} lost holding',
   repelledTheirs: '{{count}} of theirs destroyed',
-  raided: 'Raided · −{{amount}} taken · {{count}} units lost',
+  raided: 'Raided · {{detail}}',
+  raidedWorks: 'works down {{time}}',
+  raidedTaken: '−{{amount}} taken',
+  raidedLost_one: '{{count}} unit lost',
+  raidedLost_other: '{{count}} units lost',
+  raidedNothing: 'Raided · they got nothing',
 
   raidResultFallback: 'Your raid resolved.',
   raidWiped: '{{target}} held · your fleet was destroyed · {{count}} ships lost',
