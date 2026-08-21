@@ -67,6 +67,9 @@ activity, the product has regressed.
    *are* told when someone probed you. That asymmetry produces the dread.
 5. **Information has a price and a cost of use.** The cost of knowing is being known.
 6. **Every session must end with something in flight.** Nothing pending = no reason to return.
+   **NEEDS RE-DERIVING SINCE D63.** Flights are now shorter than a session — a raid
+   is twelve minutes round trip — so this law has no long clock left to hang on. The
+   game is real-time by owner decision; what replaces the return hook is open.
 7. **Combat stays simple on purpose.** It is the resolution mechanic; skill lives in the
    information layer. This is the scope trade that pays for everything else.
 8. **Low combat variance (±8%).** If randomness dominates, intel is worthless.
@@ -82,7 +85,7 @@ activity, the product has regressed.
 ## Source of truth
 
 When two disagree, the higher wins: **locked product constraints** (mobile-first portrait,
-solo-dev scope, web first, async persistent world, one planet per player,
+solo-dev scope, web first, **real-time persistent world** (async retired at D63), one planet per player,
 server-authoritative) → `docs/game-design.md` → `docs/decisions.md` → the code → anything
 marked `PROVISIONAL` → agent preference (lowest).
 
@@ -146,7 +149,7 @@ Each was paid for in iteration. `docs/decisions.md` holds the evidence.
 | Construction is instant — no build timers | "A bar filled up" is the weakest return hook there is, and timers invite pay-to-skip |
 | A planet owns at most three Prospectors, counted wherever they are | Otherwise mining scales with wealth instead of with the which-rock-and-when decision |
 | Mined ore lands in the WORKS, never in storage | Risk-free banked income decoupled from war is what emptied OGame's PvP |
-| A Prospector flies at 3× the mean asteroid speed, and has its own launch overhead | Arithmetic: it makes the intercept root unique and the lead shot legible. `TRAVEL.baseMinutes` is priced into every raid and must not move |
+| A Prospector flies at 3× the mean asteroid speed, and has its own launch overhead | Arithmetic: it makes the intercept root unique and the lead shot legible. Its overhead is a RATIO of `TRAVEL.baseMinutes` (under a quarter) and moves with it — D63 moved both |
 | A flight bay is counted under the planet row lock | Check-then-act outside the lock lets two racing launches see the same free bay |
 | An outbound leg belongs to its origin; a return leg to its target | Return legs are stored with the two SWAPPED |
 | Every notification is idempotent by `(player_id, kind, ref_id)` | A worker killed between COMMIT and `complete()` has its event redelivered |
@@ -187,6 +190,8 @@ Each was paid for in iteration. `docs/decisions.md` holds the evidence.
 | **A visitor plays before an account, and it costs the shard nothing** | `/api/preview` writes NOTHING — no account, no player, no planet and above all **no seat**. Fifty worlds fill strictly in order and that rule is the empty-shard risk's only mitigation; a seat spent on somebody who never came back is spent forever (D56) |
 | **The rehearsal produces INTENTS; the server produces outcomes** | It renders the real screens against an `Api` whose `fetch` never leaves the device, and the claim replays what was pressed through the ordinary services. Predicting with `@astera/rules` is what lets the screen keep up with a finger; it is never a decision |
 | **A guided beat leaves ONE thing pressable, and the way out is never one of the things locked** | Activations outside the target are cancelled — never pointer or touch events, which would cancel the scroll or the orbit they began. The allowance is a LIST, shallow to deep, because a gated control OPENS a surface; gating only the first seals the player inside the sheet they were told to open (D56) |
+| **A rule measured in MINUTES breaks when speeds change; a rule measured in RATIOS does not** | D63 moved hull speeds ×9.46 and nine tests failed at once — none because the thing they tested had broken. `advance(10)` into a flight that was 27 minutes, a radar sweep in tenths of a minute, a lead asserted as `> 12`. Write the share, not the count |
+| **An absolute duration stops being a fraction when flights get short** | `BEARING_MINUTES` equalled a whole leg, so a contact's window became a ROUTE and gave away the destination. `LEAD_TOLERANCE` was 77% of Radar L3's lead, so every rung warned at a wider circle than it sold. Both were invisible until the tempo moved (D63) |
 | **Read a file's docblock before editing it** | The 3D surface and its harnesses carry a dozen traps that each cost a bug — orbit standoffs, `lookAt` frames, sprite tinting, plume direction, a screenshot that stalls the frame loop. Every one is written at its own site in `apps/web/src/galaxy/` and `tools/` |
 
 **Production**
@@ -332,15 +337,23 @@ end of waiting (D51–D53); the name, the identity and the way out (D54); Turkis
 on one origin, with the ceilings that a public door needs (D57).
 
 ```
-pnpm verify  →  0 type errors · 0 lint errors · 1,404 tests
-                rules 221 · sim 47 · server 501 · web 635
+pnpm verify  →  0 type errors · 0 lint errors · 1,414 tests
+                rules 229 · sim 47 · server 503 · web 635
 ```
 
-**Five season-gate assertions are RED after D61 and D62:** `ARR` reads 0.292–0.300 against
-a floor of 0.300 on four seeds, and `TI` reads −0.457 against a floor of −0.40. All live in
-`packages/sim`; all are a few thousandths out; all are the bands that encode *do not make
-hoarding too painful* and *leave something to raid* — which is the direction both decisions
-were instructed to push. Everything else is green.
+**Two season-gate assertions are RED after D63, down from five:** `TI` reads −0.465 against
+a floor of −0.40, and *the informed archetype tops the ladder on every seed* drops one seed.
+Both live in `packages/sim`. Everything else is green.
+
+**`ARR` came back into band on all five seeds** with D63's retune, after being red since
+D52a. Nothing was tuned to achieve it.
+
+**The simulator now models a game we do not ship.** Its bots act on `loginsPerDay` — every
+2.4 to 12 hours — which described an async world and does not describe a real-time one.
+That is the first suspect for the two reds, but the obvious version of the hypothesis was
+TESTED AND REFUTED: scaling `loginsPerDay` ×4 took the gate from two red to five. Re-deriving
+the simulator for real-time pacing is real work; do not guess at it, and **do not tune the
+game against these two numbers until it is done.**
 
 **The design's central claim came back.** *The informed archetype tops the ladder on every
 seed* was red from D58 (RAIDER took seed 42) and is green again since D61. Nothing was
@@ -407,6 +420,13 @@ has walked it who did not build it.
 ## Known issues
 
 - The season gate is red on `TAX` and on seed 4242 (above).
+- **Arrival instants are rounded UP to whole minutes, and a whole minute is now up to half a
+  flight.** `travelMinutes` feeds `arriveAt` for every raid and probe. At forty-minute flights
+  that was 2% and invisible; since D63 it is 8–50%, it flattens short legs, and it is why the
+  probe had to be slowed rather than left at 2,554 (every probe on the disc landed at exactly
+  two minutes). The fix is to schedule on `travelExact` and keep the rounding for the ETA a
+  player READS — tried, and it moves nine server tests, so it wants its own pass and its own
+  measurement rather than being bundled into a tuning change.
 - `request_log` exists but idempotency keys are not wired into the launch path.
 - Mining and salvage launches still cost two round trips. Every other mutation answers with the
   planet view (D53); making these one means returning `mining` and `pending` as well.

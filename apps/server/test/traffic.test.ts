@@ -115,10 +115,24 @@ describe('galaxy traffic — motion in public, intent in private', () => {
       pino({ level: 'silent' }),
     );
 
-  /** A raid between two OTHER planets, which is what the caller may see. */
-  const strangersFight = async (): Promise<void> => {
+  /**
+   * A raid between two OTHER planets, which is what the caller may see.
+   *
+   * IT RETURNS THE LAUNCH, AND `midFlight` MOVES THE CLOCK BY A SHARE OF IT.
+   * These tests used to `advance(10)` — ten minutes into a flight that was
+   * twenty-seven — and every one of them broke at D63 when hull speeds went up and
+   * the same ten minutes landed the fleet before the assertion ran. What they are
+   * about is a craft part-way along its leg, so that is what they now say.
+   */
+  const strangersFight = async (): Promise<{ arriveAt: Date }> => {
     await giveUnits(f.db, a, { WASP: 30 });
-    await launchAttack(f.db, a, b, { WASP: 30 }, f.clock);
+    return launchAttack(f.db, a, b, { WASP: 30 }, f.clock);
+  };
+
+  /** Move to `share` of the way through a flight that lands at `arriveAt`. */
+  const midFlight = (arriveAt: Date, share = 0.5): void => {
+    const now = f.clock.now().getTime();
+    f.clock.set(new Date(now + (arriveAt.getTime() - now) * share));
   };
 
   const fetchContacts = async (): Promise<Contact[]> => {
@@ -135,8 +149,7 @@ describe('galaxy traffic — motion in public, intent in private', () => {
   /* ── what the galaxy may see ───────────────────────────────── */
 
   it('shows something moving out there', async () => {
-    await strangersFight();
-    f.clock.advance(10);
+    midFlight((await strangersFight()).arriveAt);
     expect(await fetchContacts()).toHaveLength(1);
   });
 
@@ -160,8 +173,7 @@ describe('galaxy traffic — motion in public, intent in private', () => {
   });
 
   it('says what kind of craft it is, because the neon does', async () => {
-    await strangersFight();
-    f.clock.advance(10);
+    midFlight((await strangersFight()).arriveAt);
     expect((await fetchContacts())[0]?.kind).toBe('fleet');
   });
 
@@ -173,15 +185,13 @@ describe('galaxy traffic — motion in public, intent in private', () => {
    * what makes a contact an object worth tapping rather than a light going past.
    */
   it('says what is in it, down to the hull', async () => {
-    await strangersFight();
-    f.clock.advance(10);
+    midFlight((await strangersFight()).arriveAt);
     expect((await fetchContacts())[0]?.fleet).toEqual({ WASP: 30 });
   });
 
   /** And it is stable, or focus would drop the thing the player selected. */
   it('keeps the same id across requests, so focus survives a refetch', async () => {
-    await strangersFight();
-    f.clock.advance(10);
+    midFlight((await strangersFight()).arriveAt);
 
     const first = await fetchContacts();
     const second = await fetchContacts();
@@ -202,8 +212,7 @@ describe('galaxy traffic — motion in public, intent in private', () => {
    * If this ever fails, craft really are appearing out of nowhere.
    */
   it('lies exactly on the line between the two worlds that produced it', async () => {
-    await strangersFight();
-    f.clock.advance(10);
+    midFlight((await strangersFight()).arriveAt);
 
     const [contact] = await fetchContacts();
     const [origin] = await f.db.select().from(planets).where(eq(planets.id, a));
@@ -237,8 +246,7 @@ describe('galaxy traffic — motion in public, intent in private', () => {
    * be enough to rebuild the route in a modified client.
    */
   it('names no world and no owner', async () => {
-    await strangersFight();
-    f.clock.advance(10);
+    midFlight((await strangersFight()).arriveAt);
 
     const body = await raw();
     for (const leak of ['planetId', 'originPlanetId', 'targetPlanetId', 'owner', 'Tester']) {
@@ -248,8 +256,7 @@ describe('galaxy traffic — motion in public, intent in private', () => {
 
   /** A fleet's fields are exactly the window, its kind and what is in it. */
   it('gives a fleet a bearing window and no route at all', async () => {
-    await strangersFight();
-    f.clock.advance(10);
+    midFlight((await strangersFight()).arriveAt);
 
     const [contact] = await fetchContacts();
     expect(Object.keys(contact!).sort()).toEqual([
@@ -272,10 +279,48 @@ describe('galaxy traffic — motion in public, intent in private', () => {
    * it — a `to` beyond the arrival point would be the destination, stated outright
    * and ahead of time, which is the one thing this payload exists to withhold.
    */
+  /**
+   * A WINDOW, NOT A ROUTE — AT ANY SPEED. D63.
+   *
+   * `BEARING_MINUTES` is an absolute duration, and an absolute duration stops being
+   * a heading the moment flights get shorter than it. When hull speeds went up
+   * 9.46× a mean leg became four minutes — exactly the window — so the published
+   * end point WAS the destination, and "a contact carries a bearing window, never
+   * a route" quietly stopped holding.
+   *
+   * Asserted as a share of the flight rather than as a count of minutes, so the
+   * next speed change cannot walk past it either.
+   */
+  it('publishes a heading, never the whole of what is left to fly', async () => {
+    await giveUnits(f.db, a, { WASP: 30 });
+    const launch = await launchAttack(f.db, a, b, { WASP: 30 }, f.clock);
+
+    /**
+     * Sampled where there is still a real flight left to give away. The final
+     * approach is deliberately NOT covered: the window is floored at one refetch
+     * so a craft never freezes short of its target, which means a craft inside its
+     * last minute does publish its arrival point. That is the same concession D52
+     * already makes for a raid that has landed — the fog rule is about the flight,
+     * not the last few seconds of it.
+     */
+    for (const share of [0.1, 0.4, 0.7]) {
+      const start = f.clock.now().getTime();
+      midFlight(launch.arriveAt, share);
+      const [contact] = await fetchContacts();
+      expect(contact, `no contact at ${String(share)} of the leg`).toBeDefined();
+
+      const now = f.clock.now().getTime();
+      const remaining = launch.arriveAt.getTime() - now;
+      const shown = new Date(contact!.endAt).getTime() - now;
+      expect(shown, 'the window reached the landing').toBeLessThan(remaining);
+      f.clock.set(new Date(start));
+    }
+  });
+
   it('never publishes a point past the end of the flight', async () => {
     await giveUnits(f.db, a, { WASP: 30 });
     const launch = await launchAttack(f.db, a, b, { WASP: 30 }, f.clock);
-    f.clock.advance(10);
+    midFlight(launch.arriveAt);
 
     const [contact] = await fetchContacts();
     expect(new Date(contact!.endAt).getTime()).toBeLessThan(launch.arriveAt.getTime());
@@ -408,8 +453,7 @@ describe('galaxy traffic — motion in public, intent in private', () => {
    */
   it('shows a fleet flying at you, exactly as it shows one flying at anybody else', async () => {
     await giveUnits(f.db, b, { WASP: 30 });
-    await launchAttack(f.db, b, mine, { WASP: 30 }, f.clock);
-    f.clock.advance(10);
+    midFlight((await launchAttack(f.db, b, mine, { WASP: 30 }, f.clock)).arriveAt);
 
     const seen = await fetchContacts();
     expect(seen).toHaveLength(1);
@@ -538,9 +582,10 @@ describe('galaxy traffic — motion in public, intent in private', () => {
    * everybody. Hiding where a Prospector was going would hide the contest.
    */
   describe('mining runs are public in full', () => {
-    const strangerMines = async (): Promise<void> => {
+    /** Returns the run so a test can move to a share of it rather than guess minutes. */
+    const strangerMines = async () => {
       await giveUnits(f.db, a, { PROSPECTOR: 3 });
-      await launchMining(f.db, a, 0, 2, f.clock);
+      return launchMining(f.db, a, 0, 2, f.clock);
     };
 
     /**
@@ -566,8 +611,7 @@ describe('galaxy traffic — motion in public, intent in private', () => {
     };
 
     it('shows the whole leg and the time left on it', async () => {
-      await strangerMines();
-      f.clock.advance(2);
+      midFlight((await strangerMines()).arriveAt);
 
       const run = (await fetchContacts()).find((c) => c.kind === 'mining');
       expect(run).toBeDefined();
@@ -673,8 +717,7 @@ describe('galaxy traffic — motion in public, intent in private', () => {
 
   /** Used directly by the 3D surface; keep the service honest too. */
   it('produces the same result through the service as through the route', async () => {
-    await strangersFight();
-    f.clock.advance(10);
+    midFlight((await strangersFight()).arriveAt);
 
     const direct = await galaxyTraffic(f.db, f.seasonId, mine, f.clock.now());
     const overHttp = await fetchContacts();

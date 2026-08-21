@@ -148,8 +148,20 @@ describe('radar', () => {
     const reach = radarRange(5);
 
     expect(radarLead(reach, dist, bulwark)).toBeGreaterThan(radarLead(reach, dist, wasp));
-    // And the fast one is still worth having: a maxed radar beats the old flat 12.
-    expect(radarLead(reach, dist, wasp)).toBeGreaterThan(12);
+
+    /**
+     * AND THE FAST ONE IS STILL WORTH HAVING — stated as the SHARE of the leg it
+     * hands over, not as a count of minutes.
+     *
+     * This line used to read `toBeGreaterThan(12)`, comparing a maxed radar against
+     * the flat twelve-minute countdown D49 retired. That comparison did not survive
+     * D63: hull speeds were raised so the widest leg on the disc is fifteen minutes,
+     * and twelve minutes of notice on a five-minute flight is arithmetically
+     * impossible. The number was a fossil of the old speeds; what it was protecting
+     * is the fraction, and the fraction is exactly what `radarLead` computes.
+     */
+    expect(radarLead(reach, dist, wasp)).toBeCloseTo(Math.min(1, reach / dist) * wasp, 5);
+    expect(radarLead(reach, dist, wasp)).toBeGreaterThan(wasp * 0.5);
   });
 
   /**

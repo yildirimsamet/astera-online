@@ -150,7 +150,7 @@ squadron holds in orbit and fires on the world. It is a real server window, not 
 nothing is decided until it closes.
 
 **It always happens.** Win, lose or be annihilated, a fleet that reaches its target fires: the
-ten seconds are the payoff of a decision made forty minutes ago, and there is no state in which a
+ten seconds are the payoff of a decision made minutes ago (D63 — it was forty before), and there is no state in which a
 squadron arrives and vanishes without a shot.
 
 **And it is public.** Everyone in the season sees the same squadron holding over the same world
@@ -180,7 +180,7 @@ blind raiding never fails there is nothing for information to reduce.
 
 ### Disruption
 
-A successful raid knocks the target's works offline: 180 min on DECISIVE, 60 on PARTIAL.
+A successful raid knocks the target's works offline: 40 min on DECISIVE, 15 on PARTIAL (D63 — it was 180/60 while flights took forty minutes).
 Refreshes rather than stacks, capped at 240 min pending. **Buildings are never damaged** — the
 ownership pillar holds — but the victim loses *compounding* rather than merely stock. It is
 the only thing that makes raiding competitive with building over a season.
@@ -188,7 +188,7 @@ the only thing that makes raiding competitive with building over a season.
 ### Wreckage
 
 A resolved battle leaves a public debris field at the defender's coordinates holding 10% of
-the value of every non-ground hull destroyed on both sides. It decays over three hours and
+the value of every non-ground hull destroyed on both sides. It decays over twenty minutes (D63) and
 anybody can harvest it (D32, D37). A private fight becomes a public, timed, contested second
 event — and somebody who is not at war gets a reason to watch other people's.
 

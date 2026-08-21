@@ -7,12 +7,22 @@
  * Seçimler sözlük karşılığı değil, Türkçede aynı askerî tınıyı veren adlar:
  *
  *   Wasp → Atmaca · Lance → Mızrak · Bulwark → Siper · Hauler → Şilep
- *   Bastion → Tabya · Thorn → Diken · Prospector → Kazıcı
+ *   Bastion → Tabya · Thorn → Kirpi · Prospector → Kazıcı
  *
  * "Tabya" ve "Şilep" gerçek Türkçe askerî ve denizcilik terimleri; oyuncunun
- * kulağına yabancı gelmezler. Uydular da aynı mantıkla: Uplink bir muhabere
- * rölesi olduğu için Röle, Derrick maden vinci olduğu için Vinç, Beacon seyir
- * feneri olduğu için Fener.
+ * kulağına yabancı gelmezler.
+ *
+ * UYDULARIN ADI, YAPTIKLARI İŞTEN GELİR — SÖZLÜKTEN DEĞİL. İlk turda hepsi
+ * İngilizce adın birebir karşılığıydı ve beşi de kulağa saçma geliyordu: bir
+ * muhabere rölesine "Röle", yörüngedeki bir üretim çarpanına "Dökümhane", maden
+ * kulesine "Vinç", seyir işaretçisine "Fener". Doğru kelimelerdi ve yanlış
+ * adlardı; hiçbiri oyuncuya o uydunun ne işe yaradığını söylemiyordu.
+ *
+ *   Uplink  → Anten    Teleskopla Radarın bağlandığı yer; ikisinin yanında durur
+ *   Foundry → Körük    Körük ocağı harlar: üretim çarpanının tam karşılığı
+ *   Derrick → Matkap   Delme işini iyileştirir, ve kelimeyi herkes bilir
+ *   Beacon  → Kılavuz  Filoyu hızlandıran rehber; "fener"in yükü yok
+ *   Thorn   → Kirpi    Ucuz, dikenli, savunmacı — Türkçe zırhlıyı zaten böyle adlandırır
  *
  * ROL CÜMLELERİNİN KURALI. Her biri iki şey söyler: bu ne kazandırır, ve neyi
  * kazandırmaz. İkinci yarı olmadan dört seçenek de "işine yarar" demiş olur ve
@@ -55,23 +65,23 @@ export const vocabulary = {
       tag: 'Gezegen izler',
       role: 'Her seviyede bir gezegen daha izlersin. Sessizdir, kimse fark etmez.',
       roleNone:
-        'GÖZ. Bir gezegeni izlersin, filosu havalandığı an haberin olur; oyundaki en değerli bilgi bu. Önce yörüngeye Röle koyman gerekiyor.',
+        'GÖZ. Bir gezegeni izlersin, filosu havalandığı an haberin olur; oyundaki en değerli bilgi bu. Önce yörüngeye Anten koyman gerekiyor.',
       roleOwned:
         'GÖZ. İzlediğini karşı taraf asla öğrenmez. Sana bilgi verir, koruma vermez.',
     },
     RADAR: {
       name: 'Radar',
       tag: 'Geleni gösterir',
-      role: 'Sondaları yakalar. L3’ten sonra gelen filoyu da haber verir.',
+      role: 'Sondaları yakalar. L3’ten sonra geleni, savunmanı kurmaya yetecek kadar önce haber verir.',
       roleNone:
-        'UYARI. Şu anda buraya bir filo hiç haber vermeden inebilir, sondalar gelip gider ruhun duymaz. Önce yörüngeye Röle koyman gerekiyor.',
+        'UYARI. Şu anda buraya bir filo hiç haber vermeden inebilir, sondalar gelip gider ruhun duymaz. Önce yörüngeye Anten koyman gerekiyor.',
       roleOwned:
-        'UYARI. Sondaları yakalar, iniş öncesi sana birkaç dakika kazandırır. Saldırıda hiçbir işe yaramaz.',
+        'UYARI. Sondaları yakalar; gelen filoyu daha yere top koyacak vaktin varken haber verir. Saldırıda hiçbir işe yaramaz.',
     },
     AEGIS: {
       name: 'Aegis',
       tag: 'Gezegeni saran kalkan',
-      role: 'Kalkan canı. Saatte %5 kendini toplar; yörüngede değil, gezegende durur.',
+      role: 'Kalkan canı. Saatte %40 kendini toplar; yörüngede değil, gezegende durur.',
       roleNone:
         'EMER. Akının ilk darbesini birliklerin yerine kalkan yer, sonra kendi kendine bedavaya dolar. Güvenlidir ama sana hiçbir şey göstermez.',
       roleOwned:
@@ -90,7 +100,7 @@ export const vocabulary = {
 
   satellite: {
     UPLINK: {
-      name: 'Röle',
+      name: 'Anten',
       tag: 'Teleskop ve Radarı açar',
       role:
         'GÖREBİL. Teleskoba ve Radara açılan tek kapı. Ne üretir ne savunur; ama o olmadan çevrendeki herkes hakkında sadece tahmin yürütürsün.',
@@ -98,7 +108,7 @@ export const vocabulary = {
         'Bir muhabere rölesi. Ne üretir ne savunur, ama Teleskop ve Radar yalnızca onunla açılır. Yani çevrendekiler hakkında tahmin yürütmeyi bırakmanın tek yolu bu.',
     },
     FOUNDRY: {
-      name: 'Dökümhane',
+      name: 'Körük',
       tag: 'Saatlik üretimi artırır',
       role:
         'KAZAN. İki metal de sezon boyunca daha hızlı gelir. Buradaki en yavaş ödül, ama son gün hâlâ kazandıran tek şey.',
@@ -106,7 +116,7 @@ export const vocabulary = {
         'Havuzu baştan kurar. Yukarıda durduğu sürece alaşım da kristal de daha hızlı çıkar. Listenin en yavaş getirisi; buna karşılık sezonun son gününde hâlâ para kazandıran tek uydu.',
     },
     DERRICK: {
-      name: 'Vinç',
+      name: 'Matkap',
       tag: 'Madencileri güçlendirir',
       role:
         'KAZ. Kazıcıların çok daha fazla taşır ve çok daha erken varır. Kapışılan bir kayada birinci ile ikinci arasındaki fark tam olarak budur. Hiç madene çıkmayacaksan bir işe yaramaz.',
@@ -114,7 +124,7 @@ export const vocabulary = {
         'Madenci araçlarının ikmal gemisi. Her Kazıcın çok daha fazla cevher taşır ve kayasına çok daha erken varır. Kapışılan bir asteroitte birinci varmakla ikinci varmak arasındaki farkı bu belirler.',
     },
     BEACON: {
-      name: 'Fener',
+      name: 'Kılavuz',
       tag: 'Filoları hızlandırır',
       role:
         'VUR. Gönderdiğin her filo gidiş dönüş daha az zaman harcar. Hiçbir dövüşü kazandırmaz; sadece gezegeninin açıkta kaldığı süreyi kısaltır.',
@@ -155,7 +165,7 @@ export const vocabulary = {
       pitch: 'Ağır yer topları. Mızrakları kırarlar, ama Atmaca sürüsünün altında ezilirler.',
     },
     THORN: {
-      name: 'Diken',
+      name: 'Kirpi',
       tag: 'Hafif yer topu',
       role: 'Yer savunması. Ucuz, hafif ve hiç kalkmaz.',
       pitch: 'Hafif yer topları; ucuz oldukları için çok sayıda dizilir. Ağırları biçerler, Mızraklar onları teker teker toplar.',
@@ -176,11 +186,11 @@ export const vocabulary = {
   unlock: {
     TELESCOPE: {
       title: 'Teleskop açıldı',
-      body: 'Yörüngeye bir Röle koy; sonra bir gezegeni izleyebilirsin.',
+      body: 'Yörüngeye bir Anten koy; sonra bir gezegeni izleyebilirsin.',
     },
     RADAR: {
       title: 'Radar açıldı',
-      body: 'Yörüngeye bir Röle koy; sonra sana kimin baktığını yakalarsın.',
+      body: 'Yörüngeye bir Anten koy; sonra sana kimin baktığını yakalarsın.',
     },
     EXPLORER: {
       title: 'Kâşif açıldı',
@@ -249,7 +259,7 @@ export const gains = {
   },
   aegis: {
     label: 'Kalkan',
-    unlocks: 'Birliklerin hasar almadan önce o emer, saatte %5 dolar',
+    unlocks: 'Birliklerin hasar almadan önce o emer, saatte %40 dolar',
   },
   veil: {
     label: 'Kör ettiği teleskop',
@@ -323,7 +333,7 @@ export const directives = {
 
   noRadarTitle: 'Buraya bir filo habersiz inebilir',
   noRadarDetail:
-    'Radar L3 sana birkaç dakika kazandırır; stoğu harcamaya ya da filoyu kaçırmaya yeter.',
+    'Radar L3 geleni, daha yere top koyacak vaktin varken haber verir.',
   noRadarAction: 'Radara bak',
 
   coreCeilingTitle: 'Komuta Çekirdeği {{count}} yükseltmeyi tıkıyor',

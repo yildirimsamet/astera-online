@@ -42,7 +42,7 @@ export const planet = {
       'Buradan hiç ayrılmazlar. Biri neye zayıfsa öteki ona güçlü; tek çeşit dizersen, seni gözetleyen akıncı tam onun karşıtıyla gelir.',
     thornNone: 'Hafif toplar. Ağır gövdeleri biçerler, Mızraklar onları teker teker toplar.',
     thornStanding: 'Yerde {{count}} tane var. Ağırlara güçlü, Mızraklara zayıf.',
-    thornGain: 'Diken',
+    thornGain: 'Kirpi',
     bastionNone: 'Ağır toplar. Mızrakları kırarlar, Atmaca sürüsünün altında ezilirler.',
     bastionStanding:
       'Yerde {{count}} tane var. Mızraklara güçlü, sürülere zayıf. Kaybettiklerinin %60’ı bedavaya geri gelir.',
@@ -76,7 +76,7 @@ export const planet = {
 
   blocked: {
     core: 'Çekirdek L{{level}}',
-    uplink: 'yörüngede Röle',
+    uplink: 'yörüngede Anten',
     orbitSlot: 'boş yörünge yuvası',
     shipyard: 'Tersane L{{level}}',
     maxed: 'en üst seviyede',

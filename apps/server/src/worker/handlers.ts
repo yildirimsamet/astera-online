@@ -680,8 +680,25 @@ export const onRadarWarning: Handler = async ({ db, clock }, event) => {
   });
 };
 
-/** Half a minute. Scheduling is exact; claiming a due event is not. */
-const LEAD_TOLERANCE = 0.5;
+/**
+ * Three seconds. Scheduling is exact; claiming a due event is not.
+ *
+ * IT WAS HALF A MINUTE, AND THAT STOPPED BEING A ROUNDING ERROR AT D63. The figure
+ * exists to absorb the gap between the instant an event is scheduled for and the
+ * instant a worker claims it — bounded by `WORKER_POLL_MS`, which is one second.
+ * Half a minute was thirty times that even before hull speeds went up.
+ *
+ * Afterwards it was worse than generous, it was WRONG: Radar L3 buys 0.65 minutes
+ * of warning on a long leg, so a tolerance of 0.5 was 77% of the entire lead and
+ * every rung of the ladder fired at a visibly wider circle than it sold. An L3
+ * defender was getting most of L4's warning, which is the ladder — the thing the
+ * radar is actually sold on — quietly collapsing.
+ *
+ * Three seconds is three poll intervals. It still absorbs every claim delay the
+ * queue can produce and is no longer a meaningful share of any lead the ladder
+ * sells.
+ */
+const LEAD_TOLERANCE = 0.05;
 
 async function planetName(tx: Tx, planetId: string): Promise<string> {
   const [row] = await tx.select({ name: planets.name }).from(planets).where(eq(planets.id, planetId));

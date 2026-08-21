@@ -87,9 +87,14 @@ describe('what is in flight', () => {
    * already knows the arrival minute.
    */
   it('gives both sides of a raid the same arrival instant, to the millisecond', async () => {
-    const { arriveAt } = await raid();
-    // Close enough that the radar warning has fired.
-    f.clock.set(new Date(arriveAt.getTime() - 3 * 60_000));
+    const { arriveAt, lead } = await raid();
+    /**
+     * Half way through the warning the radar actually bought, rather than a flat
+     * three minutes. At D63's speeds the whole flight is shorter than that, so the
+     * old line put the clock BEFORE the fleet crossed into the circle and the
+     * defender correctly saw nothing — a test failing on its own setup.
+     */
+    f.clock.set(new Date(arriveAt.getTime() - (lead / 2) * 60_000));
 
     const [attacker] = await pendingThreads(f.db, mine, f.clock.now());
     const [defender] = await pendingThreads(f.db, theirs, f.clock.now());
@@ -204,7 +209,19 @@ describe('what is in flight', () => {
     ): Promise<{ distance: number; lead: number }> => {
       const [row] = await w.db.select().from(missions).where(eq(missions.id, missionId));
       const span = (row!.arriveAt.getTime() - row!.departAt.getTime()) / 60_000;
-      for (let out = span; out >= 0; out -= 0.1) {
+      /**
+       * STEPPED BY DISTANCE, NOT BY TIME.
+       *
+       * This swept in tenths of a minute, which was a few units of travel at the old
+       * hull speeds and forty-three at D63's — so the circle it measured came out ten
+       * units inside the real one and the assertion below failed on the sweep's own
+       * granularity rather than on anything the radar did. Deriving the step from
+       * this fleet's actual pace keeps the resolution fixed in UNITS at any speed,
+       * which is what the assertion is written in.
+       */
+      const perMinute = row!.distance / span;
+      const step = 5 / perMinute;
+      for (let out = span; out >= 0; out -= step) {
         w.clock.set(new Date(row!.arriveAt.getTime() - out * 60_000));
         const seen = await pendingThreads(w.db, defender, w.clock.now());
         if (seen.some((t) => t.kind === 'incoming')) {

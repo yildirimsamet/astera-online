@@ -43,7 +43,7 @@ export const errors = {
   INSUFFICIENT_RESOURCES: 'Kaynağın yetmiyor',
   INSUFFICIENT_RESOURCES_probe: 'Sonda için kaynağın yetmiyor',
   INTERNAL: 'Bir şeyler ters gitti',
-  NEEDS_UPLINK: 'Önce yörüngeye bir Röle koy',
+  NEEDS_UPLINK: 'Önce yörüngeye bir Anten koy',
   NO_FREE_BAY: '{{total}} rampanın hepsi dolu. Önce bir şeyin inmesi gerek.',
   NO_FREE_SLOT: 'Bir yuva daha için Komuta Çekirdeğini yükselt',
   NO_PLANET: 'Önce bir galaksiye katıl',

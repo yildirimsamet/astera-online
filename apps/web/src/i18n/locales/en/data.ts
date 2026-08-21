@@ -29,16 +29,16 @@ export const vocabulary = {
     RADAR: {
       name: 'Radar',
       tag: 'See who is coming',
-      role: 'Catches probes. From L3, warns of an inbound fleet.',
+      role: 'Catches probes. From L3, warns of an inbound fleet in time to arm for it.',
       roleNone:
         'BE WARNED. Right now a fleet can land here with no notice and probes come and go unseen. Needs an Uplink overhead.',
       roleOwned:
-        'BE WARNED. Catches probes and buys minutes before a landing. Wins nothing on offence.',
+        'BE WARNED. Catches probes, and names an inbound fleet while there is still time to put a gun on the ground. Wins nothing on offence.',
     },
     AEGIS: {
       name: 'Aegis',
       tag: 'Shield for your planet',
-      role: 'Shield HP, regenerating 5% an hour. Sits at the planet, not in orbit.',
+      role: 'Shield HP, regenerating 40% an hour. Sits at the planet, not in orbit.',
       roleNone:
         'ABSORB. Sits at the planet, not in orbit. Soaks the opening damage of a raid and regrows on its own, free. Safe, and completely blind.',
       roleOwned:
@@ -215,7 +215,7 @@ export const gains = {
   },
   aegis: {
     label: 'Shield',
-    unlocks: 'Absorbs damage before your units take any. Regenerates 5% an hour',
+    unlocks: 'Absorbs damage before your units take any. Regenerates 40% an hour',
   },
   veil: {
     label: 'Blinds a telescope up to',
@@ -288,7 +288,7 @@ export const directives = {
   noTelescopeAction: 'Install a Telescope',
 
   noRadarTitle: 'A fleet could land here without warning',
-  noRadarDetail: 'Radar L3 gives you minutes of notice — enough to spend the stock or move the fleet.',
+  noRadarDetail: 'Radar L3 names an inbound fleet while there is still time to put a gun on the ground.',
   noRadarAction: 'Look at Radar',
 
   coreCeilingTitle: 'Command Core is blocking {{count}} upgrades',

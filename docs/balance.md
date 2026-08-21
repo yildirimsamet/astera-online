@@ -113,7 +113,7 @@ support hulls: prey to everything (1.6× taken), deal nothing, shielded while es
 
 grade on VALUE destroyed:
   all defenders dead        → DECISIVE  → loot 50% of raidable
-  ≥45% of value destroyed   → PARTIAL   → loot 25%
+  ≥42% of value destroyed   → PARTIAL   → loot 35%
   below that                → REPELLED  → nothing
 
 defenceSalvage  = 60% of destroyed ground units rebuild free
@@ -123,11 +123,11 @@ engagementSeconds = 10 — a raid is over its target this long before it settles
 
 | Hull | Class | ATK | HP | Speed | Cargo | Alloy | Crystal | Yard | HP/1k | ATK/1k |
 |---|---|---|---|---|---|---|---|---|---|---|
-| Wasp | Skirmisher | 14 | 24 | 46 | 40 | 520 | 0 | 0 | 46.2 | 26.9 |
-| Lance | Lance | 46 | 62 | 34 | 50 | 1,900 | 380 | 2 | 27.2 | 20.2 |
-| Bulwark | Bulwark | 26 | 210 | 21 | 70 | 5,000 | 1,240 | 4 | 33.7 | 4.2 |
-| Hauler | Support | 0 | 80 | 30 | **1,800** | 2,300 | 260 | 1 | 31.3 | — |
-| Bastion | Bulwark · ground | 34 | 260 | — | — | 3,400 | 760 | 1 | 62.5 | 8.2 |
+| Wasp | Skirmisher | 14 | 24 | 435 | 40 | 260 | 0 | 0 | 46.2 | 26.9 |
+| Lance | Lance | 46 | 62 | 322 | 50 | 950 | 190 | 2 | 27.2 | 20.2 |
+| Bulwark | Bulwark | 26 | 210 | 199 | 70 | 2,500 | 620 | 4 | 33.7 | 4.2 |
+| Hauler | Support | 0 | 80 | 284 | **1,800** | 1,150 | 130 | 1 | 31.3 | — |
+| Bastion | Bulwark · ground | 34 | 260 | — | — | 1,700 | 380 | 1 | 62.5 | 8.2 |
 | Thorn | Skirmisher · ground | 16 | 60 | — | — | 1,600 | 240 | 0 | 32.6 | 8.7 |
 | Prospector | Support · mining | 0 | 70 | *see below* | 1,800 | 1,400 | 240 | 1 | 42.7 | — |
 
@@ -181,7 +181,7 @@ omniscience. **The fog never fully lifts.**
 |---|---|---|---|---|---|
 | Watch slots | 1 | 1 | 2 | 2 | 3 |
 | Range (units) | 420 | 640 | 950 | 1,400 | ∞ |
-| Re-point cooldown | 24h | 20h | 15h | 10h | 6h |
+| Re-point cooldown | 5h | 4h | 3h | 2h | 1h |
 
 The disc has radius 1000, so the furthest two planets can be is a little over 2000 apart. On a
 50-world galaxy L1 reaches about six neighbours, L2 thirteen, L3 twenty-five. **Range is what
@@ -195,9 +195,14 @@ makes "who are my neighbours" a real question.** Cooldown is charged on re-point
 | Also | catches probes | + bearing | | + ship estimate | + names the origin |
 
 **The warning fires when a fleet crosses inside the circle**, so how much notice it buys falls
-out of the attacker's own speed. Against a typical 800-unit leg at L5: Wasp 15 min, Lance 20,
-Hauler in tow 22, Bulwark siege 30. Notice is `oneWay × range / distance`, so a long flight can
-never hand over its whole duration (D9).
+out of the attacker's own speed. Against a typical 800-unit leg at L5 since D63: Wasp 3.1 min,
+Lance 3.8, Hauler in tow 4.4, Bulwark siege 5.0. Notice is `oneWay × range / distance`, so a
+long flight can never hand over its whole duration (D9).
+
+**Those minutes no longer buy an evacuation, and are not meant to.** At D63's tempo the radar
+sells the window to ARM rather than the window to flee: construction is instant and a Kirpi is
+800 alloy at Shipyard 0, so three minutes is exactly enough to put a gun on the ground. The
+ladder is unchanged; what it promises is not.
 
 ### The refresh-spam rule
 
@@ -220,7 +225,7 @@ ever short of.
 instrumentCost(id, L) = upgradeCost(L) × mult
   TELESCOPE ×3 · RADAR ×2 · AEGIS ×2 · VEIL ×2
 
-shieldHp(L) = 40 × 1.42^L, regen 5%/hr        [PROVISIONAL]
+shieldHp(L) = 40 × 1.42^L, regen 40%/hr       [PROVISIONAL]
 ```
 
 `SHIELD.base` was cut from 700 in D22 and **must stay near a fleet's own hit points**. The old

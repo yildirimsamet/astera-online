@@ -490,8 +490,17 @@ export const COMBAT = {
 } as const;
 
 export const TRAVEL = {
-  /** Launch and landing overhead, in minutes. */
-  baseMinutes: 3,
+  /**
+   * Launch and landing overhead, in minutes.
+   *
+   * 3 → 1 AT D63. It was 11% of a mean Wasp leg and became 50% of one when hull
+   * speeds went up 9.46×, so half of every short flight was a fixed cost that no
+   * choice of hull could change — which is most of why composition stopped reading
+   * as a timing decision. It is still a real launch cost and still what keeps a
+   * mining intercept from being a straight line to the rock; it is simply no longer
+   * the majority of the trip.
+   */
+  baseMinutes: 1,
   distanceFactor: 1.2,
 } as const;
 
@@ -580,7 +589,26 @@ export const INTEL = {
    * both narrow and slow to re-aim, and levelling buys slots, range and agility at
    * once. That is what lets it compete with levelling anything else.
    */
-  telescopeCooldownHours: [0, 24, 20, 15, 10, 6] as readonly number[],
+  /**
+   * SCALED DOWN AT D63, from [0, 24, 20, 15, 10, 6].
+   *
+   * The cooldown exists so choosing who to watch costs something. It still does —
+   * but at twelve-minute round trips six hours was thirty raids long, so a player
+   * picked one target and the galaxy turned over completely before they were
+   * allowed to look anywhere else. These keep the "several flights" weight the
+   * ladder was designed with.
+   */
+  /**
+   * WHOLE HOURS, AND THAT IS A CONSTRAINT RATHER THAN A COINCIDENCE.
+   *
+   * The first draft of this ladder read `[0, 4, 3, 2, 1.5, 1]`, and `gains.ts`
+   * hands the figure straight to `{{hours}}` — which i18next stringifies with
+   * `String()`, so a Turkish player upgrading to Telescope L4 was shown "1.5 saat"
+   * where the language writes "1,5". Every number a player reads is supposed to go
+   * through `format.ts` for exactly that reason. Five whole hours down to one keeps
+   * five distinct rungs and takes the decimal out of the problem entirely.
+   */
+  telescopeCooldownHours: [0, 5, 4, 3, 2, 1] as readonly number[],
 } as const;
 
 /**
@@ -623,17 +651,32 @@ export const PROBE = {
    */
   crystal: 25,
   /**
-   * TRIPLED, FROM 90. Owner instruction.
+   * TRIPLED FROM 90 AT D59, THEN RE-DERIVED AT D63 — 850, not 2554.
    *
    * A probe was faster than any hull and still not fast enough to be worth the
    * wait: the answer arrived long after the decision it was meant to inform, so
-   * players raided blind instead. At 270 it comes back inside a session rather
-   * than inside an evening.
+   * players raided blind instead. D59 tripled it for that, and D63 then scaled
+   * every hull in the game by 9.46 — applying both compounded to twenty-eight
+   * times the original and broke what D59 was for.
    *
-   * `TRAVEL.baseMinutes` is untouched and must stay so — it is the launch overhead
-   * priced into every raid in the game, and moving it here would move all of them.
+   * AT 2554 EVERY PROBE IN THE GALAXY LANDED IN EXACTLY TWO MINUTES. Measured
+   * across five legs from the closest pair on the disc to the furthest: 2, 2, 2, 2,
+   * 2, against a Wasp's 2, 3, 4, 5, 7. Distance had stopped meaning anything to a
+   * scout, so "who is near enough to look at cheaply" stopped being a question —
+   * which is a gradient the intel layer is built on.
+   *
+   * 850 is 90 carried through D63's own factor. It holds the relationship the
+   * probe has always had — a shade under twice a Wasp — and puts the widest leg on
+   * the disc at four minutes against a Wasp's seven, which is still comfortably
+   * "back inside a session". The underlying cause is that `travelMinutes` rounds
+   * to whole minutes and a whole minute is now up to half a flight; that is worth
+   * fixing on its own and is written up in CLAUDE.md rather than bundled here.
+   *
+   * `TRAVEL.baseMinutes` is not touched HERE — it is the launch overhead priced into
+   * every raid in the game, so it is moved deliberately and in its own place, which
+   * D63 did when it fell from 3 to 1.
    */
-  speed: 270,
+  speed: 850,
 } as const;
 
 /**
@@ -687,7 +730,7 @@ export const PROSPECTOR = {
   /**
    * LAUNCH AND LANDING OVERHEAD FOR A MINING CRAFT. D48.
    *
-   * `TRAVEL.baseMinutes` is 3, and for a raid that is 7% of a forty-minute flight
+   * `TRAVEL.baseMinutes` was 3 when this was measured, and for a raid that was 7% of a forty-minute flight
    * and invisible. For an interception it is the whole problem. Measured over
    * 3,744 launches on the live seed: the median mining flight is 4.44 minutes, of
    * which **3.00 is this overhead and 1.44 is actual travel** — 68% of the trip is
@@ -712,8 +755,15 @@ export const PROSPECTOR = {
    * IT DOES NOT TOUCH `TRAVEL.baseMinutes`, and must not. That figure is priced
    * into every raid, every probe and the whole season simulator; this is a
    * property of one unarmed craft on a short errand.
+   *
+   * 0.4 → 0.13 AT D63, holding the RATIO rather than the figure. The rule this
+   * number exists to satisfy is that a mining craft's overhead sits far below a
+   * warship's — `invariants.test.ts` puts it at under a quarter — and when
+   * `TRAVEL.baseMinutes` came down from 3 to 1, an unchanged 0.4 became 40% of a
+   * warship's launch and broke it. The ratio, 0.133, is what was measured; the
+   * absolute was only ever its shadow.
    */
-  launchMinutes: 0.4,
+  launchMinutes: 0.13,
   /** Resource units one craft carries home, before a Derrick. */
   hold: 300,
   /**
@@ -763,7 +813,18 @@ export const PROSPECTOR = {
 export const SHIELD = {
   base: 40,
   mult: 1.42,
-  regenPerHour: 0.05,
+  /**
+   * 0.05 → 0.40 AT D63, and it is the same decision as everything else on this
+   * page: the number was right against forty-minute flights and is meaningless
+   * against six-minute ones.
+   *
+   * At 5% an hour a stripped shield took twenty hours to come back — a hundred
+   * raids at the new tempo, so the shield was permanently at zero and the live
+   * shard already showed it: two planets in thirty-nine had any shield at all.
+   * At 40% it recovers in two and a half hours, which is what twenty hours used
+   * to be worth in raids.
+   */
+  regenPerHour: 0.40,
 } as const;
 
 /**
@@ -773,10 +834,19 @@ export const SHIELD = {
  * raiding competitive with building over a season.
  */
 export const DISRUPTION = {
-  decisiveMinutes: 180,
-  partialMinutes: 60,
+  /**
+   * 180 → 40 and 60 → 15 AT D63.
+   *
+   * Disruption is priced against what a raid COSTS to mount. At forty-minute
+   * flights three hours of a victim's works was 3.3× the attacker's effort; at
+   * twelve-minute round trips it became 15×, so raiding stopped being rewarding
+   * and became disproportionately efficient — a defender hit twice was capped out
+   * for four hours on twenty-four minutes of somebody's attention.
+   */
+  decisiveMinutes: 40,
+  partialMinutes: 15,
   /** You can never be disrupted more than this far into the future. */
-  maxPendingMinutes: 240,
+  maxPendingMinutes: 60,
 } as const;
 
 /**
@@ -955,11 +1025,14 @@ export const DEBRIS = {
   /**
    * Minutes until a field is worthless. PROVISIONAL.
    *
-   * The nearest neighbour on a 50-world disc is an 8-minute flight and the tenth is
-   * 18, so three hours is generous — it may need to come DOWN to make the race
-   * sharp rather than up.
+   * 180 → 20 AT D63, which is the "come DOWN to make the race sharp" this comment
+   * predicted, arriving for a reason it did not: at the new hull speeds a field
+   * lasted thirty crossings of the whole disc, so every player in the galaxy could
+   * reach it several times over and there was no race at all. Twenty minutes is
+   * about five legs — near enough that being close matters, far enough that a
+   * commander who sees it can still get there.
    */
-  decayMinutes: 180,
+  decayMinutes: 20,
   /**
    * Below this a field is not worth creating; it would be noise on the disc.
    *

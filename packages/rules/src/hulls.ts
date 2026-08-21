@@ -8,8 +8,8 @@ import type { Fleet, GroundHullId, Hull, HullClass, HullId, MobileHullId } from 
  * because a defender with only one of them has no decision to make (D27).
  */
 export const HULLS: Record<HullId, Hull> = {
-  WASP: { id: 'WASP', name: 'Wasp', cls: 'SKIRMISHER', atk: 14, hp: 24, speed: 46, cargo: 40, alloy: 260, crystal: 0, minShipyard: 0, ground: false },
-  LANCE: { id: 'LANCE', name: 'Lance', cls: 'LANCE', atk: 46, hp: 62, speed: 34, cargo: 50, alloy: 950, crystal: 190, minShipyard: 2, ground: false },
+  WASP: { id: 'WASP', name: 'Wasp', cls: 'SKIRMISHER', atk: 14, hp: 24, speed: 435, cargo: 40, alloy: 260, crystal: 0, minShipyard: 0, ground: false },
+  LANCE: { id: 'LANCE', name: 'Lance', cls: 'LANCE', atk: 46, hp: 62, speed: 322, cargo: 50, alloy: 950, crystal: 190, minShipyard: 2, ground: false },
   /**
    * ATTACK DELIBERATELY LEFT AT 26, AND THAT IS A MEASURED DECISION. D27.
    *
@@ -31,8 +31,8 @@ export const HULLS: Record<HullId, Hull> = {
    * ratios cannot see that. Read the low attack as the price of the durability,
    * not as a bug awaiting a fix.
    */
-  BULWARK: { id: 'BULWARK', name: 'Bulwark', cls: 'BULWARK', atk: 26, hp: 210, speed: 21, cargo: 70, alloy: 2500, crystal: 620, minShipyard: 4, ground: false },
-  HAULER: { id: 'HAULER', name: 'Hauler', cls: 'SUPPORT', atk: 0, hp: 80, speed: 30, cargo: 1800, alloy: 1150, crystal: 130, minShipyard: 1, ground: false },
+  BULWARK: { id: 'BULWARK', name: 'Bulwark', cls: 'BULWARK', atk: 26, hp: 210, speed: 199, cargo: 70, alloy: 2500, crystal: 620, minShipyard: 4, ground: false },
+  HAULER: { id: 'HAULER', name: 'Hauler', cls: 'SUPPORT', atk: 0, hp: 80, speed: 284, cargo: 1800, alloy: 1150, crystal: 130, minShipyard: 1, ground: false },
   /**
    * THE HEAVY GUN. Bulwark-class, so a swarm of Wasps overwhelms it and a Lance
    * breaks against it. Expensive, slow to accumulate, and what a planet buys when
@@ -77,7 +77,7 @@ export const HULLS: Record<HullId, Hull> = {
    * a raid lands is lost with the rest of the garrison — mining is not free money,
    * it is capital parked outdoors.
    */
-  PROSPECTOR: { id: 'PROSPECTOR', name: 'Prospector', cls: 'SUPPORT', atk: 0, hp: 70, speed: 62, cargo: 1800, alloy: 700, crystal: 120, minShipyard: 1, ground: false },
+  PROSPECTOR: { id: 'PROSPECTOR', name: 'Prospector', cls: 'SUPPORT', atk: 0, hp: 70, speed: 587, cargo: 1800, alloy: 700, crystal: 120, minShipyard: 1, ground: false },
 };
 
 /** What may be put in an attack fleet. A Prospector is deliberately not here. */

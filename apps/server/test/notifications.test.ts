@@ -1,7 +1,8 @@
 import { and, eq } from 'drizzle-orm';
 import { pino } from 'pino';
 import { afterAll, beforeEach, describe, expect, it } from 'vitest';
-import { notifications, players, scheduledEvents } from '../src/db/schema.js';
+import { radarLead, radarRange } from '@astera/rules';
+import { missions, notifications, players, scheduledEvents } from '../src/db/schema.js';
 import { EventWorker } from '../src/worker/loop.js';
 import { launchAttack } from '../src/services/mission.js';
 import { assignWatch, launchProbe } from '../src/services/intel.js';
@@ -159,23 +160,78 @@ describe('the radar warning', () => {
 
   const launch = () => launchAttack(f.db, attacker, defender, { WASP: 40 }, f.clock);
 
+  /**
+   * THE WARNING THIS LEVEL ACTUALLY BUYS ON THIS LEG, IN MINUTES.
+   *
+   * Every case below used to name a fixed marker — twelve minutes out, eight, five
+   * — which read correctly while a Wasp crossing this leg took an hour and became
+   * nonsense at D63's speeds, where the whole flight is thirteen minutes and Radar
+   * L5 buys 1.6 of them. All six failed at once, and none of them because the
+   * radar had changed.
+   *
+   * The lead is what the ladder sells (D49: a RADIUS, not a countdown), so it is
+   * what the markers are expressed in. `radarLead` is the same function the server
+   * schedules against, so this cannot drift from the rule it is checking.
+   */
+  const leadFor = async (missionId: string, level: number): Promise<number> => {
+    const [row] = await f.db.select().from(missions).where(eq(missions.id, missionId));
+    const oneWay = (row!.arriveAt.getTime() - row!.departAt.getTime()) / 60_000;
+    return radarLead(radarRange(level), row!.distance, oneWay);
+  };
+
   it('warns at the lead the level buys, and not before', async () => {
-    await giveInstrument(f.db, defender, 'RADAR', 3); // five minutes
-    const { arriveAt } = await launch();
+    await giveInstrument(f.db, defender, 'RADAR', 3);
+    const { arriveAt, missionId } = await launch();
+    const lead = await leadFor(missionId, 3);
     const worker = makeWorker(f);
 
-    // Twelve minutes out: the event is due, but this defender has not bought
-    // twelve minutes of warning.
-    f.clock.set(minutesBefore(arriveAt, 12));
+    // Three times this defender's reach: the event is due, but they have not
+    // bought a warning this early.
+    f.clock.set(minutesBefore(arriveAt, lead * 3));
     await worker.tick();
     expect(await kindsFor(f, f.playerIds[1]!)).toEqual([]);
 
-    // Eight minutes out: still not theirs.
-    f.clock.set(minutesBefore(arriveAt, 8));
+    // Still outside the circle, and still not theirs.
+    f.clock.set(minutesBefore(arriveAt, lead * 1.5));
     await worker.tick();
     expect(await kindsFor(f, f.playerIds[1]!)).toEqual([]);
 
-    f.clock.set(minutesBefore(arriveAt, 5));
+    // Inside it.
+    f.clock.set(minutesBefore(arriveAt, lead * 0.5));
+    await worker.tick();
+    expect(await kindsFor(f, f.playerIds[1]!)).toEqual(['incoming_fleet']);
+  });
+
+  /**
+   * THE LADDER IS A LADDER — EACH RUNG WARNS AT ITS OWN CIRCLE, NOT A WIDER ONE.
+   *
+   * `LEAD_TOLERANCE` exists to absorb the gap between an event's scheduled instant
+   * and the moment a worker claims it. At half a minute it was thirty times the
+   * poll interval, which was merely generous until D63 — and then Radar L3's lead
+   * fell to 0.65 minutes on a long leg, so the tolerance was 77% of the whole
+   * warning and an L3 defender received most of L4's. The ladder is what the radar
+   * is sold on, so it gets an assertion rather than a comment.
+   *
+   * Written against the leads the rules compute, so it holds at any hull speed.
+   */
+  it('gives each rung its own circle, and never a wider one', async () => {
+    await giveInstrument(f.db, defender, 'RADAR', 3);
+    const { arriveAt, missionId } = await launch();
+    const low = await leadFor(missionId, 3);
+    const high = await leadFor(missionId, 5);
+    expect(high, 'a higher rung must buy more warning').toBeGreaterThan(low);
+
+    const worker = makeWorker(f);
+    // Standing where a Radar 5 would already have spoken, an L3 must not.
+    f.clock.set(minutesBefore(arriveAt, high * 0.9));
+    await worker.tick();
+    expect(
+      await kindsFor(f, f.playerIds[1]!),
+      'an L3 defender was warned at an L5 distance',
+    ).toEqual([]);
+
+    // And at its own circle it does.
+    f.clock.set(minutesBefore(arriveAt, low * 0.5));
     await worker.tick();
     expect(await kindsFor(f, f.playerIds[1]!)).toEqual(['incoming_fleet']);
   });
@@ -189,15 +245,17 @@ describe('the radar warning', () => {
    * opposite answers.
    */
   it('is bought by a radar installed while the fleet is in the air', async () => {
-    const { arriveAt } = await launch();
+    const { arriveAt, missionId } = await launch();
+    const lead = await leadFor(missionId, 5);
     const worker = makeWorker(f);
 
-    f.clock.set(minutesBefore(arriveAt, 12));
+    // Outside even the widest reach, and with no radar to hear it anyway.
+    f.clock.set(minutesBefore(arriveAt, lead * 3));
     await worker.tick();
     expect(await kindsFor(f, f.playerIds[1]!)).toEqual([]);
 
     await giveInstrument(f.db, defender, 'RADAR', 5);
-    f.clock.set(minutesBefore(arriveAt, 8));
+    f.clock.set(minutesBefore(arriveAt, lead * 0.5));
     await worker.tick();
     expect(await kindsFor(f, f.playerIds[1]!)).toEqual(['incoming_fleet']);
   });
@@ -211,10 +269,10 @@ describe('the radar warning', () => {
    */
   it('gives the richer payload to a level raised mid-flight', async () => {
     await giveInstrument(f.db, defender, 'RADAR', 3);
-    const { arriveAt } = await launch();
+    const { arriveAt, missionId } = await launch();
 
     await giveInstrument(f.db, defender, 'RADAR', 5);
-    f.clock.set(minutesBefore(arriveAt, 12));
+    f.clock.set(minutesBefore(arriveAt, (await leadFor(missionId, 5)) * 0.5));
     await makeWorker(f).tick();
 
     const [warning] = await newsFor(f, f.playerIds[1]!);
@@ -228,11 +286,14 @@ describe('the radar warning', () => {
   });
 
   it('never warns a planet with no radar, and stops asking', async () => {
-    const { arriveAt } = await launch();
+    const { arriveAt, missionId } = await launch();
     const worker = makeWorker(f);
 
-    for (const out of [12, 8, 5, 1]) {
-      f.clock.set(minutesBefore(arriveAt, out));
+    // Right through the widest reach the ladder sells and out the other side, so
+    // "never warns" means never — not merely "not yet".
+    const widest = await leadFor(missionId, 5);
+    for (const share of [3, 1.5, 0.75, 0.25]) {
+      f.clock.set(minutesBefore(arriveAt, widest * share));
       await worker.tick();
     }
     expect(await kindsFor(f, f.playerIds[1]!)).toEqual([]);
@@ -256,9 +317,10 @@ describe('the radar warning', () => {
   it('writes one warning however many times the event is delivered', async () => {
     await giveInstrument(f.db, defender, 'RADAR', 5);
     const { arriveAt, missionId } = await launch();
+    const lead = await leadFor(missionId, 5);
     const worker = makeWorker(f);
 
-    f.clock.set(minutesBefore(arriveAt, 12));
+    f.clock.set(minutesBefore(arriveAt, lead * 0.6));
     await worker.tick();
 
     await f.db
@@ -267,7 +329,7 @@ describe('the radar warning', () => {
       .where(
         and(eq(scheduledEvents.kind, 'radar_warning'), eq(scheduledEvents.refId, missionId)),
       );
-    f.clock.set(minutesBefore(arriveAt, 11));
+    f.clock.set(minutesBefore(arriveAt, lead * 0.4));
     await worker.tick();
 
     expect(await kindsFor(f, f.playerIds[1]!)).toEqual(['incoming_fleet']);
@@ -276,8 +338,8 @@ describe('the radar warning', () => {
   /** The countdown is stored as an instant, so a row read later is not a lie. */
   it('carries the arrival instant, not only a countdown', async () => {
     await giveInstrument(f.db, defender, 'RADAR', 5);
-    const { arriveAt } = await launch();
-    f.clock.set(minutesBefore(arriveAt, 12));
+    const { arriveAt, missionId } = await launch();
+    f.clock.set(minutesBefore(arriveAt, (await leadFor(missionId, 5)) * 0.5));
     await makeWorker(f).tick();
 
     const [warning] = await newsFor(f, f.playerIds[1]!);

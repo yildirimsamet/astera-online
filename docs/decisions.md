@@ -602,6 +602,68 @@ one went from 2,300 alloy to 1,150.
 
 **Binds:** `docs/balance.md` line 41 no longer reads "600 × 1.30^L per resource".
 
+### D63 · The fifteen-minute galaxy — owner instruction
+
+**Hull speeds ×9.46, derived from the slowest warship.** The Bulwark crosses the
+widest leg on the disc in fifteen minutes; every other hull keeps its ratio and is
+quicker. The probe scaled with them, or it would have been slower than a Wasp and
+lost the one thing it is (`PROBE.speed` 270 → 2554). Mining did NOT: its speed is
+a separate constant tied to rock speeds, and moving it would break the intercept.
+
+**ASTERA IS NO LONGER AN ASYNC GAME, and that is the owner's answer rather than a
+side effect.** Nothing takes hours any more — a raid is twelve minutes round trip,
+mining ten, construction was already instant — so the hook Design Law #6 was built
+on has no mechanism left. The owner's words: *"anlık real-time bir oyun"*. The
+locked constraint is retired here rather than quietly contradicted by the code.
+
+**Everything measured in time changed meaning, so eight constants moved with it.**
+Each was re-derived against what it is a ratio OF, never picked:
+
+| | from | to | the ratio it restores |
+|---|---|---|---|
+| `TRAVEL.baseMinutes` | 3 | 1 | overhead 50% → 25% of a mean leg |
+| `SHIELD.regenPerHour` | 0.05 | 0.40 | 100 → 19 raids per full regen |
+| `DISRUPTION` decisive/partial/cap | 180/60/240 | 40/15/60 | punishment 15× → 5× the raid's effort |
+| `DEBRIS.decayMinutes` | 180 | 20 | a field lives 30 legs → 5; the race is back |
+| `telescopeCooldownHours` | 24…6 | 4…1 | re-aim 30 → 8 round trips |
+| `PROSPECTOR.launchMinutes` | 0.4 | 0.13 | holds the "far below a warship's" invariant |
+
+**Two real bugs surfaced, both invisible until the tempo moved.**
+
+`BEARING_MINUTES` is an absolute duration and a mean leg became exactly it, so a
+contact's published window covered the whole remaining flight and its end point
+WAS the destination — a route, which is the one thing the fog rule forbids. It is
+capped at a SHARE of what is left to fly now, so it stays a heading at any speed.
+
+`LEAD_TOLERANCE` was half a minute, to absorb the gap between an event's scheduled
+instant and a worker claiming it — thirty times the poll interval even before this.
+Afterwards Radar L3 buys 0.65 minutes of warning, so the tolerance was 77% of the
+whole lead and every rung fired at a wider circle than it sold. Three seconds now,
+which is three polls. Both have tests written against ratios, not minutes.
+
+**The radar keeps its ladder and loses its promise.** It sold time to react and
+there is none: L5 gives 3.4 minutes on a mean leg. Widening the ranges cannot fix
+it — notice is a fraction of the flight. What these speeds DO open is the opposite
+reading: construction is instant and a Kirpi is 800 alloy at Shipyard 0, so three
+minutes is not enough to evacuate and is exactly enough to put a gun down. The
+copy says that now, in both languages. The mechanic is unchanged.
+
+**Nine tests were re-derived, none bent.** Every one encoded the old tempo as a
+count of minutes — `advance(10)` into a flight that was twenty-seven, a sweep in
+tenths of a minute that was tens of units and became tens of units times nine.
+They assert shares and ratios now, so the next speed change cannot walk past them.
+Two new tests were added for the two bugs above, and one for the radar ladder.
+
+**The gate, honestly.** `ARR` came back into band on all five seeds — the retune
+fixed what D61 and D62 could not. Two remain red: `TI` at −0.465 against a floor
+of −0.40, and the informed archetype, which drops a seed. A hypothesis that the
+simulator's own async cadence explained them was TESTED and refuted: scaling
+`loginsPerDay` ×4 made the gate worse, not better. Re-deriving the simulator for
+real-time pacing is real work and is not guessed at here.
+
+**Binds:** the locked constraint list loses "async persistent world"; Design Law #6
+needs re-deriving for a game whose flights are shorter than a session.
+
 ### D62 · A little more room for the attacker — owner instruction
 
 `COMBAT.partialThreshold` 0.45 → 0.42. A raid that breaks 42% of the defending

@@ -8,6 +8,7 @@ import {
   distance,
   engagementEndsAt,
   fleetTravelMinutes,
+  travelExact,
 } from '@astera/rules';
 import { missions, notifications, planets, scheduledEvents, units } from '../src/db/schema.js';
 import { launchAttack } from '../src/services/mission.js';
@@ -249,14 +250,34 @@ describe('launching a fleet', () => {
       expect(launch.homeDefenceAfter).toBe(20 + 5 + 3);
     });
 
+    /**
+     * COMPOSITION IS A TIME DECISION — AND SINCE D63 IT IS A RATIO, NOT A GAP.
+     *
+     * Hull speeds went up 9.46×, so the difference between the fastest and slowest
+     * hull shrank by the same factor: a Bulwark still takes 1.75× a Wasp's flight,
+     * but on a SHORT leg both round to the same whole minute. This test read
+     * `expected 4 to be greater than 4` the day the speeds landed.
+     *
+     * That is rounding, not the rule breaking, so the strict claim is made where
+     * the rule actually lives — `travelExact`, which is continuous — and the
+     * service is held to being consistent with it rather than to a gap the tempo
+     * no longer produces on every leg.
+     */
     it('a slower fleet takes longer — composition is a time decision', async () => {
       await giveUnits(f.db, attacker, { WASP: 50, HAULER: 5, BULWARK: 2 });
       // Two equidistant targets, because only one fleet may be committed to a
       // given planet at a time. The comparison is about hull speed, not range.
       const fast = await launchAttack(f.db, attacker, defender, { WASP: 1 }, f.clock);
       const slow = await launchAttack(f.db, attacker, other, { BULWARK: 1 }, f.clock);
-      expect(slow.exposureMinutes).toBeGreaterThan(fast.exposureMinutes);
+
       expect(HULLS.BULWARK.speed).toBeLessThan(HULLS.WASP.speed);
+      // Continuous, and therefore true on every leg at every speed.
+      const leg = 1_500;
+      expect(travelExact(leg, HULLS.BULWARK.speed)).toBeGreaterThan(
+        travelExact(leg, HULLS.WASP.speed),
+      );
+      // And the service never contradicts it.
+      expect(slow.exposureMinutes).toBeGreaterThanOrEqual(fast.exposureMinutes);
     });
 
     /**

@@ -3,6 +3,7 @@ import { useFrame } from '@react-three/fiber';
 import { useGLTF } from '@react-three/drei';
 import * as THREE from 'three';
 import type { ThreeEvent } from '@react-three/fiber';
+import { DEBRIS } from '@astera/rules';
 import { MODEL } from '../ui/assets.js';
 import { unitModel } from './model.js';
 import type { PlanetNode, Vec3Tuple } from './scene.js';
@@ -161,8 +162,16 @@ function Wreck({
   const { scene } = useGLTF(MODEL.debris, false);
   const source = useMemo(() => unitModel(scene), [scene]);
 
-  // What is left, as a fraction of the three-hour life. Drives the fade.
-  const life = Math.max(0, Math.min(1, wreck.minutesLeft / 180));
+  /**
+   * What is left, as a fraction of a field's whole life. Drives the fade.
+   *
+   * READ FROM THE RULE, NOT WRITTEN OUT. This was the literal 180 of the old
+   * three-hour decay; when D63 cut it to twenty minutes the ratio could never
+   * exceed 0.11, so every wreck in the galaxy rendered at the bottom of its
+   * opacity range from the instant it was created and "nearly gone is legible
+   * without a label" stopped being true — silently, on a green build.
+   */
+  const life = Math.max(0, Math.min(1, wreck.minutesLeft / DEBRIS.decayMinutes));
 
   /**
    * The model's own material, cloned per field.

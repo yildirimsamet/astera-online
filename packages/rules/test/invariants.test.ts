@@ -3,15 +3,18 @@ import { describe, expect, it } from 'vitest';
 import {
   ALL_HULLS,
   DEBRIS,
+  DISRUPTION,
   ECON,
   GALAXY,
   HULLS,
   INSTRUMENT_COST_MULT,
   INSTRUMENT_IDS,
+  INTEL,
   PROBE,
   PROSPECTOR,
   SATELLITES,
   SATELLITE_IDS,
+  SHIELD,
   START,
   TRAVEL,
   alloyRate,
@@ -47,6 +50,7 @@ import {
   mulberry32,
   resolveCombat,
   prospectorTravelExact,
+  travelExact,
   travelMinutes,
   type Fleet,
 } from '../src/index.js';
@@ -209,7 +213,11 @@ describe('travel', () => {
   it('is monotonic in distance and never instant', () => {
     fc.assert(
       fc.property(fc.integer({ min: 0, max: 4000 }), fc.integer({ min: 1, max: 60 }), (d, s) => {
-        expect(travelMinutes(d, s)).toBeGreaterThanOrEqual(3);
+        // The launch overhead, read from the rule rather than written out. It was
+        // the literal 3 until D63 moved it, at which point this asserted a figure
+        // the game no longer had — the invariant is "never instant", not "never
+        // under three minutes".
+        expect(travelMinutes(d, s)).toBeGreaterThanOrEqual(TRAVEL.baseMinutes);
         expect(travelMinutes(d + 100, s)).toBeGreaterThanOrEqual(travelMinutes(d, s));
       }),
       { numRuns: 300 },
@@ -1027,5 +1035,96 @@ describe('debris fields', () => {
   it('is always worth less than the fleets that died for it', () => {
     expect(DEBRIS.share).toBeGreaterThan(0);
     expect(DEBRIS.share).toBeLessThan(1);
+  });
+});
+
+/**
+ * THE TEMPO INVARIANTS. D63.
+ *
+ * Half the constants in this game are not values, they are RATIOS wearing a
+ * value's clothes. A shield's regen is only meaningful against how often a raid
+ * can land; a disruption only against what that raid cost to mount; a wreck
+ * field's life only against how long it takes to fly there. Every one was chosen
+ * against forty-minute flights, and when hull speeds went up 9.46× every one
+ * quietly became something else — a shield that never came back, a punishment
+ * fifteen times the effort, a "race" nobody had to hurry for.
+ *
+ * NONE OF IT FAILED A TEST, because the tests asserted the values. These assert
+ * the ratios instead. The bands are deliberately wide: a tuning pass should move
+ * any of these numbers without a fight, and only a pass that FORGETS one should
+ * hear about it.
+ */
+describe('the tempo — every ratio a hull speed is measured against', () => {
+  const spec = generateGalaxy(1, 50);
+  const legs: number[] = [];
+  for (let i = 0; i < spec.slots.length; i++) {
+    for (let j = i + 1; j < spec.slots.length; j++) {
+      legs.push(distance(spec.slots[i]!, spec.slots[j]!));
+    }
+  }
+  const meanLeg = legs.reduce((a, b) => a + b, 0) / legs.length;
+  const furthest = Math.max(...legs);
+  /** A mean raid, out and back. The unit everything below is counted in. */
+  const roundTrip = 2 * travelMinutes(meanLeg, HULLS.WASP.speed);
+
+  it('keeps the slowest warship inside a single sitting', () => {
+    const widest = travelMinutes(furthest, HULLS.BULWARK.speed);
+    expect(widest).toBeLessThanOrEqual(20);
+    expect(widest).toBeGreaterThan(5);
+  });
+
+  it('leaves the launch overhead a minority of a typical flight', () => {
+    // It was 50% the day the speeds landed, which is most of why hull choice
+    // stopped reading as a decision about time.
+    expect(TRAVEL.baseMinutes / travelMinutes(meanLeg, HULLS.WASP.speed)).toBeLessThan(0.4);
+    expect(TRAVEL.baseMinutes).toBeGreaterThan(0);
+  });
+
+  it('keeps hull choice a real difference in arrival time', () => {
+    // A ratio, not a gap. At this tempo the gap is minutes, and that is the point.
+    expect(
+      travelExact(meanLeg, HULLS.BULWARK.speed) / travelExact(meanLeg, HULLS.WASP.speed),
+    ).toBeGreaterThan(1.3);
+  });
+
+  it('gives a stripped shield back within a plausible number of raids', () => {
+    // At 5% an hour this was a hundred, so the shield sat permanently at zero and
+    // the live shard showed it: two planets in thirty-nine had one at all.
+    const raidsPerRegen = ((1 / SHIELD.regenPerHour) * 60) / roundTrip;
+    expect(raidsPerRegen).toBeLessThan(40);
+    expect(raidsPerRegen).toBeGreaterThan(3);
+  });
+
+  it('prices disruption against what the raid cost to mount', () => {
+    // 15× the day the speeds landed: raiding stopped being rewarding and became
+    // disproportionately efficient.
+    const perEffort = DISRUPTION.decisiveMinutes / roundTrip;
+    expect(perEffort).toBeLessThan(9);
+    expect(perEffort).toBeGreaterThan(1.5);
+    expect(DISRUPTION.partialMinutes).toBeLessThan(DISRUPTION.decisiveMinutes);
+    expect(DISRUPTION.maxPendingMinutes).toBeGreaterThanOrEqual(DISRUPTION.decisiveMinutes);
+  });
+
+  it('keeps a wreck field a race rather than a landmark', () => {
+    // Thirty legs of life meant every player in the galaxy could reach it several
+    // times over, which is the opposite of a race.
+    const legsOfLife = DEBRIS.decayMinutes / travelMinutes(meanLeg, HULLS.WASP.speed);
+    expect(legsOfLife).toBeLessThan(12);
+    expect(legsOfLife).toBeGreaterThan(1.5);
+  });
+
+  it('keeps re-aiming a telescope a commitment rather than a season', () => {
+    // Thirty round trips meant picking one target and watching the galaxy turn
+    // over completely before being allowed to look anywhere else.
+    const trips = (INTEL.telescopeCooldownHours[5]! * 60) / roundTrip;
+    expect(trips).toBeLessThan(20);
+    expect(trips).toBeGreaterThan(1);
+  });
+
+  it('keeps a probe the fastest thing a commander can send', () => {
+    for (const hull of Object.values(HULLS)) {
+      if (hull.ground) continue;
+      expect(PROBE.speed, `a ${hull.name} outruns a probe`).toBeGreaterThan(hull.speed);
+    }
   });
 });

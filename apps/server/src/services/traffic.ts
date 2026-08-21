@@ -74,6 +74,37 @@ import { miningRuns, missions, planets } from '../db/schema.js';
 const BEARING_MINUTES = 4;
 
 /**
+ * AND NEVER MORE THAN THIS SHARE OF WHAT IS LEFT TO FLY. D63.
+ *
+ * The ceiling above is an absolute duration, and an absolute duration stops being
+ * a heading the moment flights get shorter than it. At D63's hull speeds a mean
+ * leg is four minutes — exactly `BEARING_MINUTES` — so the published window
+ * covered the whole remaining flight and its end point WAS the destination. That
+ * is a route, and "a contact carries a bearing window, never a route" is the fog
+ * rule this file exists to enforce.
+ *
+ * Expressed as a share so it holds at any speed: whatever the tempo, an observer
+ * is shown where a craft will be part of the way from here, never where it stops.
+ */
+const BEARING_SHARE = 0.5;
+
+/**
+ * AND NEVER SHORTER THAN ONE REFETCH, WHATEVER THE SHARE WORKS OUT TO.
+ *
+ * The client draws a craft by interpolating inside the published window and CLAMPS
+ * at its end, so a window shorter than the gap between reads is a craft that stops
+ * dead and waits — the exact failure D52 was written to delete, arriving at the
+ * most dramatic moment there is, the seconds before a raid lands.
+ *
+ * `useTraffic` refetches on a sixty-second net, so that is the floor. Its effect is
+ * that a craft inside its last minute has its window clamped to the arrival — the
+ * final approach IS given away, and that is the same concession D52 already makes
+ * by publishing a raid that has landed. A craft a minute out is visibly landing
+ * somewhere; the fog rule is about the flight, not the last few seconds of it.
+ */
+const MIN_COAST_MS = 60_000;
+
+/**
  * How much of the final approach an engaging contact publishes.
  *
  * Only so the client has a DIRECTION: the squadron is held off the world along the
@@ -194,6 +225,20 @@ const progress = (depart: number, arrive: number, at: number): number => {
  *
  * Returns null when the craft is not in the air at `now`, so a caller never has to
  * reason about whether a mission has landed.
+ *
+ * THE WINDOW NO LONGER RUNS TO THE ARRIVAL, EXCEPT ON FINAL APPROACH. D63.
+ *
+ * D52 removed an arrival margin here because a margin PARKED a craft short of its
+ * target, and that reasoning is intact — it is why `MIN_COAST_MS` exists. What
+ * changed is that `BEARING_MINUTES` is an absolute duration and a mean leg became
+ * exactly it, so the window covered the whole remaining flight and its end point
+ * WAS the destination. That is a route, which is the one thing the fog rule here
+ * forbids.
+ *
+ * So the window is capped at a SHARE of what is left, and floored at one refetch
+ * so nothing ever freezes. The two together mean a craft with real flight ahead of
+ * it publishes a heading, and a craft inside its last minute publishes its arrival
+ * — the same concession D52 already makes for a raid that has landed.
  */
 function windowOf(
   from: Vec3,
@@ -208,9 +253,17 @@ function windowOf(
   if (now.getTime() < depart || now.getTime() >= arrive) return null;
 
   const startAt = now;
-  // Never past the landing itself, so the client's coast cannot carry a craft
-  // through the world it is arriving at.
-  const end = Math.min(now.getTime() + BEARING_MINUTES * 60_000, arrive);
+  /**
+   * Never past the landing itself, so the client's coast cannot carry a craft
+   * through the world it is arriving at — and never as far as the landing either,
+   * which is what keeps the window a heading rather than a route at any speed.
+   */
+  const remaining = arrive - now.getTime();
+  const windowMs = Math.max(
+    MIN_COAST_MS,
+    Math.min(BEARING_MINUTES * 60_000, remaining * BEARING_SHARE),
+  );
+  const end = Math.min(now.getTime() + windowMs, arrive);
 
   return {
     from: lerp(from, to, progress(depart, arrive, startAt.getTime())),

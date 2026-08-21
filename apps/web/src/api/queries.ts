@@ -70,9 +70,21 @@ type NotificationList = z.infer<typeof notificationsSchema>;
 const NET_MS = 60_000;
 const READ = { staleTime: 15_000, refetchOnWindowFocus: true } as const;
 
+/**
+ * The galaxy's clock — and, since D60, how many people are in it.
+ *
+ * FIVE MINUTES WAS RIGHT WHILE THIS PAYLOAD WAS STATIC. The seed, the shard and
+ * `endsAt` do not move, so nothing here needed asking for often. `online` does
+ * move, and it is counted over a five-minute window on the server — so a
+ * five-minute cache on top of it put a figure on the disc that could be ten
+ * minutes behind the galaxy. On a real-time game (D63) that is the one number on
+ * screen that must not be stale.
+ *
+ * A minute costs one small request and makes the count honest.
+ */
 export function useSeason() {
   const api = useApi();
-  return useQuery({ queryKey: keys.season, queryFn: api.season, staleTime: 5 * 60_000 });
+  return useQuery({ queryKey: keys.season, queryFn: api.season, staleTime: NET_MS });
 }
 
 /**

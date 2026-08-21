@@ -95,7 +95,7 @@ players are nearly fully protected; large players nearly fully exposed.
 **Raidable stock** — `max(0, stock − vaultFloor)`. The only part of a treasury that can be
 taken.
 
-**Disruption** — A successful raid knocks the target's surface works offline (180 min
+**Disruption** — A successful raid knocks the target's surface works offline (40 min
 DECISIVE / 60 PARTIAL). The victim loses *compounding*, not just stock. Buildings are never
 damaged.
 
