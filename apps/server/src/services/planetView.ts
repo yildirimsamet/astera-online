@@ -96,7 +96,22 @@ export async function planetView(tx: Tx, planetId: string, clock: Clock) {
       bufferCrystal: Math.floor(p.bufferCrystal),
       bufferAlloyCap: collectorCap(perHourAlloy),
       bufferCrystalCap: collectorCap(perHourCrystal),
-      vaultFloor: vaultProtects(p.buildings.VAULT),
+      /**
+       * WHAT IS ACTUALLY SAFE, AS ONE FIGURE. D61.
+       *
+       * The floor is a pair now, and the screen asks a single question: how much of
+       * what I am holding can nobody take. That is `min(held, floor)` on each side
+       * added together — not the floor itself, which would claim protection over
+       * crystal a planet does not have.
+       *
+       * It also makes the arithmetic the interface was already doing correct.
+       * `PlanetHero` reads `alloy + crystal - vaultFloor` as the exposed amount;
+       * against a single flat floor that OVERSTATED the risk, because the rule
+       * deducted that floor from each resource and the screen deducted it once.
+       */
+      vaultFloor:
+        Math.min(Math.floor(p.alloy), vaultProtects(p.buildings.VAULT).alloy) +
+        Math.min(Math.floor(p.crystal), vaultProtects(p.buildings.VAULT).crystal),
       shield: Math.floor(p.shield),
       disruptedUntil: p.disruptedUntil,
     },

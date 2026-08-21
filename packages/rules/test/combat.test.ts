@@ -197,37 +197,59 @@ describe('outcome grades', () => {
 describe('loot', () => {
   const stock = { alloy: 60_000, crystal: 8_000 };
   const empty = { alloy: 0, crystal: 0 };
+  /**
+   * The same floor on both resources. Real play never looks like this — the
+   * crystal floor is a fraction of the alloy one (D61) — but a test about the
+   * SHARE, the cargo cap or the repeat decay has no business varying two numbers
+   * at once, and saying so here is clearer than two literals at every call.
+   */
+  const both = (n: number) => ({ alloy: n, crystal: n });
 
-  it('takes half of what is above the vault floor', () => {
-    const loot = computeLoot(stock, empty, 10_000, 'DECISIVE', 1_000_000);
-    expect(loot.alloy).toBe(25_000);
+  /**
+   * Asserted against the constant, not against a literal. The share was 0.5 for
+   * four phases and is 0.65 since D61; what must never change is that the floor is
+   * subtracted BEFORE the share is taken, and that is what this pins.
+   */
+  it('takes its share of what is above the vault floor, and nothing of what is under it', () => {
+    const loot = computeLoot(stock, empty, both(10_000), 'DECISIVE', 1_000_000);
+    expect(loot.alloy).toBe((stock.alloy - 10_000) * COMBAT.lootDecisive);
   });
 
   it('never exceeds cargo', () => {
-    const loot = computeLoot(stock, empty, 0, 'DECISIVE', 900);
+    const loot = computeLoot(stock, empty, both(0), 'DECISIVE', 900);
     expect(loot.alloy + loot.crystal).toBeLessThanOrEqual(900);
   });
 
   it('cannot touch anything below the vault floor', () => {
-    const loot = computeLoot({ alloy: 500, crystal: 100 }, empty, 5_000, 'DECISIVE', 99_999);
+    const loot = computeLoot({ alloy: 500, crystal: 100 }, empty, both(5_000), 'DECISIVE', 99_999);
     expect(loot.alloy).toBe(0);
     expect(loot.crystal).toBe(0);
   });
 
-  it('the 50% rule IS the repeat-raid decay', () => {
+  /**
+   * THE SHARE IS THE REPEAT-RAID DECAY SYSTEM, whatever the share happens to be.
+   *
+   * Taking a fixed proportion of what is left means the second raid on the same
+   * pile is worth `(1 - share)` of the first and the third `(1 - share)²` — so
+   * diminishing returns arrive for free, with no cooldown table and no extra
+   * state. That relationship is the invariant; 50% was only ever the number it
+   * was expressed in, and it is 65% since D61.
+   */
+  it('the share IS the repeat-raid decay', () => {
+    const left = 1 - COMBAT.lootDecisive;
     let alloy = 80_000;
     const taken: number[] = [];
     for (let i = 0; i < 3; i++) {
-      const loot = computeLoot({ alloy, crystal: 0 }, empty, 0, 'DECISIVE', 1_000_000);
+      const loot = computeLoot({ alloy, crystal: 0 }, empty, both(0), 'DECISIVE', 1_000_000);
       taken.push(loot.alloy);
       alloy -= loot.alloy;
     }
-    expect(taken[1]!).toBeCloseTo(taken[0]! / 2, 0);
-    expect(taken[2]!).toBeCloseTo(taken[0]! / 4, 0);
+    expect(taken[1]!).toBeCloseTo(taken[0]! * left, 0);
+    expect(taken[2]!).toBeCloseTo(taken[0]! * left * left, 0);
   });
 
   it('a repelled raid takes nothing', () => {
-    const loot = computeLoot(stock, { alloy: 9_000, crystal: 0 }, 0, 'REPELLED', 99_999);
+    const loot = computeLoot(stock, { alloy: 9_000, crystal: 0 }, both(0), 'REPELLED', 99_999);
     expect(loot.alloy).toBe(0);
     expect(loot.crystal).toBe(0);
   });
@@ -235,8 +257,8 @@ describe('loot', () => {
   /* ── the uncollected works, D16 ──────────────────────────── */
 
   it('takes uncollected ore at half the rate it takes storage', () => {
-    const fromStore = computeLoot({ alloy: 10_000, crystal: 0 }, empty, 0, 'DECISIVE', 1e9);
-    const fromWorks = computeLoot(empty, { alloy: 10_000, crystal: 0 }, 0, 'DECISIVE', 1e9);
+    const fromStore = computeLoot({ alloy: 10_000, crystal: 0 }, empty, both(0), 'DECISIVE', 1e9);
+    const fromWorks = computeLoot(empty, { alloy: 10_000, crystal: 0 }, both(0), 'DECISIVE', 1e9);
     expect(fromWorks.alloy).toBe(fromStore.alloy * COMBAT.lootBufferShare);
   });
 
@@ -247,7 +269,7 @@ describe('loot', () => {
    * D13 already had to be rescued from once.
    */
   it('the vault floor does not cover the works', () => {
-    const loot = computeLoot(empty, { alloy: 4_000, crystal: 0 }, 50_000, 'DECISIVE', 1e9);
+    const loot = computeLoot(empty, { alloy: 4_000, crystal: 0 }, both(50_000), 'DECISIVE', 1e9);
     expect(loot.alloy).toBeGreaterThan(0);
     expect(loot.fromStock.alloy).toBe(0);
     expect(loot.fromBuffer.alloy).toBe(loot.alloy);
@@ -257,14 +279,14 @@ describe('loot', () => {
     const loot = computeLoot(
       { alloy: 20_000, crystal: 4_000 },
       { alloy: 6_000, crystal: 1_000 },
-      0,
+      both(0),
       'DECISIVE',
       1e9,
     );
     expect(loot.fromStock.alloy + loot.fromBuffer.alloy).toBe(loot.alloy);
     expect(loot.fromStock.crystal + loot.fromBuffer.crystal).toBe(loot.crystal);
-    expect(loot.fromStock.alloy).toBe(10_000);
-    expect(loot.fromBuffer.alloy).toBe(1_500);
+    expect(loot.fromStock.alloy).toBe(20_000 * COMBAT.lootDecisive);
+    expect(loot.fromBuffer.alloy).toBe(6_000 * COMBAT.lootDecisive * COMBAT.lootBufferShare);
   });
 
   /**
@@ -276,7 +298,7 @@ describe('loot', () => {
     const loot = computeLoot(
       { alloy: 40_000, crystal: 40_000 },
       { alloy: 40_000, crystal: 40_000 },
-      0,
+      both(0),
       'DECISIVE',
       1_000,
     );

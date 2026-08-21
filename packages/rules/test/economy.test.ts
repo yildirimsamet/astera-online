@@ -72,18 +72,18 @@ describe('the vault invariant', () => {
   it('never protects more than storage can hold', () => {
     for (let level = 0; level <= 20; level++) {
       const cap = storageCap(alloyRate(level));
-      expect(vaultProtects(level)).toBeLessThan(cap);
+      expect(vaultProtects(level).alloy).toBeLessThan(cap);
     }
   });
 
   it('protects a shrinking share as a player grows', () => {
-    const share = (l: number) => vaultProtects(l) / storageCap(alloyRate(l));
+    const share = (l: number) => vaultProtects(l).alloy / storageCap(alloyRate(l));
     expect(share(10)).toBeLessThan(share(3));
     expect(share(16)).toBeLessThan(share(10));
   });
 
   it('protects something even with no Vault built', () => {
-    expect(vaultProtects(0)).toBeGreaterThan(0);
+    expect(vaultProtects(0).alloy).toBeGreaterThan(0);
   });
 });
 

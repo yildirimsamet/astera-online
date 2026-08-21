@@ -106,6 +106,8 @@ Each was paid for in iteration. `docs/decisions.md` holds the evidence.
 | **A planet is created with `PLANET_START` = `START` + `OPENING_BONUS`** | Owner decision D58, overriding "do not enlarge the opening grant". Granted once, at planet creation. The opening spends `START`; the cushion is what a commander finds when onboarding ends, instead of nothing to press. **It cost the central claim on one seed of five** — see below |
 | `untouched()` compares against `PLANET_START`, never `START` | It is the claim's idempotency guard. Reading the wrong one makes every fresh planet look already-played, so the replay is skipped and all five rehearsal decisions are silently discarded |
 | `DEBRIS.share` < 1 | Or a field is worth more than the fleets that died for it |
+| **The vault floor is a PAIR, never one number** | It was derived against alloy and charged against crystal too, which made crystal unraidable for the whole opening — 13 of 26 live raids took nothing. `vaultProtects` returns `{alloy, crystal}` so the compiler catches the next caller who assumes symmetry (D61) |
+| A constant priced in another constant moves with it | Hull prices halved at D61; `DEBRIS.minimum` and `START.alloy` are both denominated in ship value and had to halve too. Five debris tests failed the moment one did not |
 | **No new un-losable sink fits the gate** | A research tree, a permanent upgrade or a dearer instrument all push wealth into what a raid cannot take. Measured twice: an instrument curve ≥1.1, and a sink worth 2% of Wealth. `TAX` and `ARR` have no headroom — **never widen a band to admit a feature** |
 | Two levers are proven inert | The loot dial and `COMBAT.defenceSalvage`. What a loss COSTS cannot fix what an attack ACHIEVES |
 
@@ -330,20 +332,20 @@ end of waiting (D51–D53); the name, the identity and the way out (D54); Turkis
 on one origin, with the ceilings that a public door needs (D57).
 
 ```
-pnpm verify  →  0 type errors · 0 lint errors · 1,399 tests
-                rules 221 · sim 47 · server 499 · web 632
+pnpm verify  →  0 type errors · 0 lint errors · 1,404 tests
+                rules 221 · sim 47 · server 501 · web 635
 ```
 
-**One season-gate assertion is RED, and it MOVED at D58:** *the informed archetype tops the
-ladder on every seed* now fails on seed 42, where RAIDER finishes first — 4 of 5 instead of
-5 of 5. It lives in `packages/sim`. Everything else is green.
+**Three season-gate assertions are RED, and they MOVED again at D61:** `ARR` reads 0.297
+and 0.300 against a floor of 0.300 on two seeds, and `TI` reads −0.457 against a floor of
+−0.40. Both live in `packages/sim`; both are a few thousandths out; both are the bands that
+encode *do not make hoarding too painful*, which is the direction D61 was instructed to
+push. Everything else is green.
 
-**`ARR` is no longer red.** It was 0.298 / 0.299 against a band of 0.308–0.326 from D52a
-until D58, and it is now in band on all five seeds. Nothing was tuned to achieve that: the
-opening grant was enlarged by owner decision, which is precisely the trade `constants.ts`
-had measured and refused — a looser opening buys raid returns and a kinder tax by eroding
-the informed player's edge. One red became one red, and the one now red is the design's
-central claim. **Watch it before adding anything else to the opening.**
+**The design's central claim came back.** *The informed archetype tops the ladder on every
+seed* was red from D58 (RAIDER took seed 42) and is green again since D61. Nothing was
+tuned to achieve it in either direction — D58 enlarged the opening and cost it, D61 halved
+hull prices and fixed the vault floor and won it back.
 
 They used to be pooled `TAX` (0.0717 against a floor of 0.10) and the informed archetype
 losing seed 4242 to RAIDER. **Both of those now pass**, and nothing was tuned to make them:

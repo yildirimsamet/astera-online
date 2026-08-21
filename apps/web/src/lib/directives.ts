@@ -102,7 +102,10 @@ export function directives(s: Situation): Directive[] {
   // The vault is the only thing a raid cannot reach, so the gap between stock and
   // floor is literally the amount at risk this minute.
   if (exposed > protectedFloor * 3) {
-    const next = vaultProtects((planet.buildings.VAULT ?? 0) + 1);
+    // The ceiling one level up, across both stores — the same figure the upgrade
+    // card quotes, so the directive and the row it sends you to agree.
+    const nextFloor = vaultProtects((planet.buildings.VAULT ?? 0) + 1);
+    const next = nextFloor.alloy + nextFloor.crystal;
     out.push({
       id: 'exposed-stock',
       kind: 'threat',

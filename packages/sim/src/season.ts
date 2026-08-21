@@ -430,7 +430,7 @@ function runSession(p: SimPlayer, t: number, world: World, rng: Rng): void {
    * choice an attacker has to scout to discover.
    */
   {
-    const raidable = Math.max(0, p.alloy - vaultProtects(p.buildings.VAULT));
+    const raidable = Math.max(0, p.alloy - vaultProtects(p.buildings.VAULT).alloy);
     const target = raidable * a.defenceRatio;
     const shortfall = target - fleetValue(p.ground);
     if (shortfall > 0) {
@@ -657,7 +657,12 @@ function tryAttack(p: SimPlayer, t: number, world: World, rng: Rng): void {
         ? known.stock
         : (blindCaps.alloy + blindCaps.crystal + blindWorks.alloy + blindWorks.crystal) * 0.35;
     const vault = vaultProtects(q.buildings.VAULT);
-    const expectedLoot = Math.max(0, stock - vault * 2) * 0.5;
+    /**
+     * `stock` above is alloy and crystal added together, so the floor deducted
+     * from it has to be both floors added together too — which is what `vault * 2`
+     * meant while the two were the same number. They are not any more (D61).
+     */
+    const expectedLoot = Math.max(0, stock - (vault.alloy + vault.crystal)) * 0.5;
     const flight = travelMinutes(nb.d, speed);
     // A blind attacker cannot make this risk discount. That is the whole point.
     const risk = defence !== null ? 1 + defence / Math.max(1, fleetValue(p.fleet)) : 1.6;

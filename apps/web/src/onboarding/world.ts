@@ -250,7 +250,10 @@ export function planetOf(w: RehearsalWorld): PlanetView {
       bufferCrystal: 0,
       bufferAlloyCap: collectorCap(perHourAlloy),
       bufferCrystalCap: collectorCap(perHourCrystal),
-      vaultFloor: vaultProtects(w.buildings.VAULT),
+      // The same figure the server sends: what is actually safe, not the floor.
+      vaultFloor:
+        Math.min(w.alloy, vaultProtects(w.buildings.VAULT).alloy) +
+        Math.min(w.crystal, vaultProtects(w.buildings.VAULT).crystal),
       shield: 0,
       disruptedUntil: null,
     },

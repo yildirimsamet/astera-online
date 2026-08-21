@@ -93,8 +93,8 @@ const capsOf = (p: SimPlayer) => ({
 const raidableNow = (p: SimPlayer): number => {
   const vault = vaultProtects(p.buildings.VAULT);
   return (
-    Math.max(0, p.alloy - vault) +
-    Math.max(0, p.crystal - vault) +
+    Math.max(0, p.alloy - vault.alloy) +
+    Math.max(0, p.crystal - vault.crystal) +
     (p.bufferAlloy + p.bufferCrystal) * COMBAT.lootBufferShare
   );
 };
@@ -107,8 +107,8 @@ const raidableCeiling = (p: SimPlayer): number => {
   const rc = crystalRate(p.buildings.EXTRACTOR);
   return Math.max(
     1,
-    Math.max(0, c.alloy - vault) +
-      Math.max(0, c.crystal - vault) +
+    Math.max(0, c.alloy - vault.alloy) +
+      Math.max(0, c.crystal - vault.crystal) +
       (collectorCap(ra) + collectorCap(rc)) * COMBAT.lootBufferShare,
   );
 };

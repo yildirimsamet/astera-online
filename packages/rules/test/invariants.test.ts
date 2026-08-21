@@ -171,7 +171,7 @@ describe('loot invariants', () => {
         (alloy, crystal, bufA, bufC, floor, cargo, grade) => {
           const stock = { alloy, crystal };
           const buffer = { alloy: bufA, crystal: bufC };
-          const loot = computeLoot(stock, buffer, floor, grade, cargo);
+          const loot = computeLoot(stock, buffer, { alloy: floor, crystal: floor }, grade, cargo);
 
           expect(loot.alloy + loot.crystal).toBeLessThanOrEqual(cargo);
           expect(loot.alloy).toBeGreaterThanOrEqual(0);
@@ -197,7 +197,7 @@ describe('loot invariants', () => {
     fc.assert(
       fc.property(arbFleet, (f) => {
         const big = { alloy: 1e9, crystal: 1e9 };
-        const loot = computeLoot(big, big, 0, 'DECISIVE', fleetCargo(f));
+        const loot = computeLoot(big, big, { alloy: 0, crystal: 0 }, 'DECISIVE', fleetCargo(f));
         expect(loot.alloy + loot.crystal).toBeLessThanOrEqual(fleetCargo(f));
       }),
       { numRuns: 200 },

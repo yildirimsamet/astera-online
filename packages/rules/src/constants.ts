@@ -63,7 +63,14 @@ export const ECON = {
   crystalCostMult: 1.6648,
   crystalCostFromLevel: 1,
 
-  /** Storage ceiling, expressed as hours of production at the current level. */
+  /**
+   * Storage ceiling, expressed as hours of production at the current level.
+   *
+   * 12 → 14 at D61, on the owner's instruction that the game is PvP-first. It is a
+   * loot lever as much as a comfort one: what a raid can take is what sits ABOVE
+   * the vault floor, so a taller store is a bigger prize as well as a longer leash
+   * for the player filling it.
+   */
   capHours: 12,
 
   /**
@@ -94,8 +101,28 @@ export const ECON = {
    * alloyMult of 1.45 and killed the entire PvP economy for a whole season
    * before the simulator caught it.
    */
-  vaultBase: 600,
+  vaultBase: 450,
   vaultMult: 1.3,
+  /**
+   * THE FLOOR IS NOT THE SAME NUMBER FOR BOTH RESOURCES. D61.
+   *
+   * `vaultBase` was derived against ALLOY and then applied to crystal as well —
+   * "600 per resource", written down in `docs/balance.md` and marked PROVISIONAL,
+   * which is the mark that says a playtest settles it rather than an argument.
+   *
+   * THE PLAYTEST SETTLED IT. Crystal income is 35% of alloy income, so a 600
+   * crystal floor is the same thing as a 1,700 alloy floor: at Extractor L2 the
+   * crystal store caps at 678, so the floor covered 88% of it and crystal was
+   * effectively unraidable for the whole opening. Measured on the live shard at 34
+   * players: 26 raids, mean haul 17 alloy and 5 crystal, and THIRTEEN of them took
+   * nothing at all. A commander was sending 1,040 alloy of Wasps to win a fight
+   * worth 22.
+   *
+   * DERIVED, NOT PICKED — the income ratio, exactly as `crystalCostMult` is
+   * derived from the same curve. Two hand-chosen floors would drift apart the way
+   * two hand-chosen multipliers did before D13.
+   */
+  vaultCrystalShare: 28 / 80,
 } as const;
 
 /**
@@ -118,9 +145,14 @@ export const ECON = {
  *   Command Core 1 → 2      340 alloy ·  92 crystal
  *   Alloy Refinery 1 → 2    340 alloy ·  92 crystal
  *   Crystal Extractor 1 → 2 340 alloy ·  92 crystal
- *   two Wasps             1,040 alloy ·   0 crystal
+ *   two Wasps               520 alloy ·   0 crystal
  *   ────────────────────────────────────────────────
- *                         2,060 alloy · 276 crystal
+ *                         1,540 alloy · 276 crystal
+ *
+ * THE ALLOY FIGURE MOVED AT D61 AND THE ARITHMETIC DID NOT. Hull prices were
+ * halved on the owner's instruction, so two Wasps cost 520 rather than 1,040 and
+ * this grant is re-derived from the same four lines. It is a smaller number
+ * buying exactly the same opening — not a tightening.
  *
  * THE CORE IS FIRST BECAUSE NOTHING ELSE CAN BE. No building may exceed it, and a
  * new planet holds the Core and the Refinery both at L1 — so `1 >= 1` refuses the
@@ -129,7 +161,7 @@ export const ECON = {
  *
  * SO CRYSTAL IS WHAT BINDS THE OPENING, NOT ALLOY, and that is the whole reason
  * the first session used to close with nothing in the air: the cheapest flight in
- * the game is a probe at 50 alloy and 50 crystal, and after three mandatory
+ * the game is a probe at 50 alloy and 25 crystal (D59), and after three mandatory
  * upgrades there is no crystal left to buy one. The two Wasps are the flight the
  * grant actually funds — sending them is what fills a bay, and `firstOrders` now
  * says so in as many words.
@@ -149,7 +181,7 @@ export const ECON = {
  * tightening it is the direction that favours the player who thinks.**
  */
 export const START = {
-  alloy: 2060,
+  alloy: 1540,
   crystal: 276,
 } as const;
 
@@ -365,8 +397,19 @@ export const COMBAT = {
 
   /** Value-loss share below DECISIVE that still earns a partial haul. */
   partialThreshold: 0.45,
-  lootDecisive: 0.5,
-  lootPartial: 0.25,
+  /**
+   * RAISED AT D61 — 0.5 → 0.65 and 0.25 → 0.35. Owner instruction: the game is
+   * PvP-first and winning a fight has to feel like winning one.
+   *
+   * `docs/balance.md` records the loot dial as INERT, and that finding stands: it
+   * was tried as a way to change WHO wins a season and it does not, because what a
+   * loss costs cannot fix what an attack achieves. That is exactly why it is the
+   * right dial to move here. The complaint was never about the ladder — it was
+   * that a commander sends a fleet, wins, and is handed 22 resources. Inert on the
+   * outcome is precisely what makes it safe to spend on the reward.
+   */
+  lootDecisive: 0.65,
+  lootPartial: 0.35,
 
   /**
    * PROVISIONAL. How much of an UNCOLLECTED buffer a raid can take, relative to
@@ -896,8 +939,15 @@ export const DEBRIS = {
    * sharp rather than up.
    */
   decayMinutes: 180,
-  /** Below this a field is not worth creating; it would be noise on the disc. */
-  minimum: 200,
+  /**
+   * Below this a field is not worth creating; it would be noise on the disc.
+   *
+   * HALVED WITH THE HULLS AT D61. This threshold is denominated in ship value, so
+   * leaving it at 200 while every hull price halved would have doubled it in real
+   * terms — and it did, immediately: five debris tests went from a field to no
+   * field at all. A constant priced in another constant has to move with it.
+   */
+  minimum: 100,
 } as const;
 
 export const SEASON = {

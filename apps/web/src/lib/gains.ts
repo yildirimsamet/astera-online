@@ -125,8 +125,10 @@ export function buildingGain(
     case 'VAULT':
       return {
         label: i18n.t('gains.vault.label'),
-        now: full(vaultProtects(level)),
-        next: full(vaultProtects(next)),
+        // An upgrade card has no holdings to measure against, so it quotes the
+        // CEILING: everything this level could cover, across both stores.
+        now: full(vaultProtects(level).alloy + vaultProtects(level).crystal),
+        next: full(vaultProtects(next).alloy + vaultProtects(next).crystal),
       };
     case 'SHIPYARD': {
       const unlocked = (['LANCE', 'HAULER', 'BULWARK'] as const).find(

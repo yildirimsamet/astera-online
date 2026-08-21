@@ -192,8 +192,20 @@ export const collectorCap = (ratePerHour: number): number =>
   Math.round(ECON.collectorHours * ratePerHour);
 
 /** Level 0 still protects the base amount — nobody is ever lootable to zero. */
-export const vaultProtects = (level: number): number =>
-  Math.round(ECON.vaultBase * Math.pow(ECON.vaultMult, Math.max(0, level)));
+/**
+ * WHAT THE VAULT KEEPS SAFE, PER RESOURCE. D61.
+ *
+ * It returns a PAIR, and that shape is the fix. It used to return one number that
+ * every caller applied to alloy and to crystal alike — which reads as symmetry and
+ * is not: crystal income is 35% of alloy income, so the same floor covered 88% of
+ * a young planet's crystal store and made the resource unraidable for the whole
+ * opening. Returning two figures makes the asymmetry impossible to apply by
+ * accident, which a second exported function would not have.
+ */
+export const vaultProtects = (level: number): Resources => {
+  const alloy = Math.round(ECON.vaultBase * Math.pow(ECON.vaultMult, Math.max(0, level)));
+  return { alloy, crystal: Math.round(alloy * ECON.vaultCrystalShare) };
+};
 
 export const shieldHp = (level: number): number =>
   level <= 0 ? 0 : Math.round(SHIELD.base * Math.pow(SHIELD.mult, level));

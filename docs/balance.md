@@ -38,7 +38,10 @@ upgradeCost(L) = 200 × 1.70^L     alloy
 
 storageCap     = 12 hours of production at the current level
 collectorCap   = 10 hours — what the WORKS hold before they stop   [D16]
-vaultProtects  = 600 × 1.30^L per resource, un-raidable            [PROVISIONAL]
+vaultProtects  = 450 × 1.30^L alloy, ×28/80 of that for crystal    [PROVISIONAL]
+                 un-raidable. NOT the same figure for both: crystal income is
+                 35% of alloy income, so one flat floor made crystal            
+                 unraidable for the whole opening (D61)
 ```
 
 Income was doubled from 40/14 (D17), and income was doubled rather than costs cut on purpose:

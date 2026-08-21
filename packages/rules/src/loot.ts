@@ -42,7 +42,12 @@ export const NO_LOOT: Loot = {
 export function computeLoot(
   stock: Resources,
   buffer: Resources,
-  vaultFloor: number,
+  /**
+   * A PAIR, NOT A NUMBER. D61. The two floors differ because the two economies
+   * do — see `vaultProtects`. Taking a number here is what let one figure sized
+   * for alloy be charged against crystal for four phases.
+   */
+  vaultFloor: Resources,
   grade: Grade,
   cargo: number,
 ): Loot {
@@ -50,8 +55,8 @@ export function computeLoot(
   if (mult === 0 || cargo <= 0) return NO_LOOT;
 
   const share = COMBAT.lootBufferShare;
-  const stockA = Math.max(0, stock.alloy - vaultFloor) * mult;
-  const stockC = Math.max(0, stock.crystal - vaultFloor) * mult;
+  const stockA = Math.max(0, stock.alloy - vaultFloor.alloy) * mult;
+  const stockC = Math.max(0, stock.crystal - vaultFloor.crystal) * mult;
   const bufferA = Math.max(0, buffer.alloy) * mult * share;
   const bufferC = Math.max(0, buffer.crystal) * mult * share;
 

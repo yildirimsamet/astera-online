@@ -8,8 +8,8 @@ import type { Fleet, GroundHullId, Hull, HullClass, HullId, MobileHullId } from 
  * because a defender with only one of them has no decision to make (D27).
  */
 export const HULLS: Record<HullId, Hull> = {
-  WASP: { id: 'WASP', name: 'Wasp', cls: 'SKIRMISHER', atk: 14, hp: 24, speed: 46, cargo: 40, alloy: 520, crystal: 0, minShipyard: 0, ground: false },
-  LANCE: { id: 'LANCE', name: 'Lance', cls: 'LANCE', atk: 46, hp: 62, speed: 34, cargo: 50, alloy: 1900, crystal: 380, minShipyard: 2, ground: false },
+  WASP: { id: 'WASP', name: 'Wasp', cls: 'SKIRMISHER', atk: 14, hp: 24, speed: 46, cargo: 40, alloy: 260, crystal: 0, minShipyard: 0, ground: false },
+  LANCE: { id: 'LANCE', name: 'Lance', cls: 'LANCE', atk: 46, hp: 62, speed: 34, cargo: 50, alloy: 950, crystal: 190, minShipyard: 2, ground: false },
   /**
    * ATTACK DELIBERATELY LEFT AT 26, AND THAT IS A MEASURED DECISION. D27.
    *
@@ -31,14 +31,14 @@ export const HULLS: Record<HullId, Hull> = {
    * ratios cannot see that. Read the low attack as the price of the durability,
    * not as a bug awaiting a fix.
    */
-  BULWARK: { id: 'BULWARK', name: 'Bulwark', cls: 'BULWARK', atk: 26, hp: 210, speed: 21, cargo: 70, alloy: 5000, crystal: 1240, minShipyard: 4, ground: false },
-  HAULER: { id: 'HAULER', name: 'Hauler', cls: 'SUPPORT', atk: 0, hp: 80, speed: 30, cargo: 1800, alloy: 2300, crystal: 260, minShipyard: 1, ground: false },
+  BULWARK: { id: 'BULWARK', name: 'Bulwark', cls: 'BULWARK', atk: 26, hp: 210, speed: 21, cargo: 70, alloy: 2500, crystal: 620, minShipyard: 4, ground: false },
+  HAULER: { id: 'HAULER', name: 'Hauler', cls: 'SUPPORT', atk: 0, hp: 80, speed: 30, cargo: 1800, alloy: 1150, crystal: 130, minShipyard: 1, ground: false },
   /**
    * THE HEAVY GUN. Bulwark-class, so a swarm of Wasps overwhelms it and a Lance
    * breaks against it. Expensive, slow to accumulate, and what a planet buys when
    * it expects to be hit by something serious.
    */
-  BASTION: { id: 'BASTION', name: 'Bastion', cls: 'BULWARK', atk: 34, hp: 260, speed: 0, cargo: 0, alloy: 3400, crystal: 760, minShipyard: 1, ground: true },
+  BASTION: { id: 'BASTION', name: 'Bastion', cls: 'BULWARK', atk: 34, hp: 260, speed: 0, cargo: 0, alloy: 1700, crystal: 380, minShipyard: 1, ground: true },
   /**
    * THE LIGHT GUN. D27. Skirmisher-class, so it tears into heavy hulls and is
    * picked apart by Lances — the exact inverse of the Bastion, which is its whole
@@ -63,7 +63,7 @@ export const HULLS: Record<HullId, Hull> = {
    * repays the fleet it costs. Both neighbours of it are worse on a band that
    * matters, which is what makes this a floor-and-ceiling rather than a taste.
    */
-  THORN: { id: 'THORN', name: 'Thorn', cls: 'SKIRMISHER', atk: 16, hp: 60, speed: 0, cargo: 0, alloy: 1600, crystal: 240, minShipyard: 0, ground: true },
+  THORN: { id: 'THORN', name: 'Thorn', cls: 'SKIRMISHER', atk: 16, hp: 60, speed: 0, cargo: 0, alloy: 800, crystal: 120, minShipyard: 0, ground: true },
   /**
    * The mining craft. D19.
    *
@@ -77,7 +77,7 @@ export const HULLS: Record<HullId, Hull> = {
    * a raid lands is lost with the rest of the garrison — mining is not free money,
    * it is capital parked outdoors.
    */
-  PROSPECTOR: { id: 'PROSPECTOR', name: 'Prospector', cls: 'SUPPORT', atk: 0, hp: 70, speed: 62, cargo: 1800, alloy: 1400, crystal: 240, minShipyard: 1, ground: false },
+  PROSPECTOR: { id: 'PROSPECTOR', name: 'Prospector', cls: 'SUPPORT', atk: 0, hp: 70, speed: 62, cargo: 1800, alloy: 700, crystal: 120, minShipyard: 1, ground: false },
 };
 
 /** What may be put in an attack fleet. A Prospector is deliberately not here. */

@@ -550,6 +550,58 @@ assertion is still D58's — RAIDER tops seed 42.
 
 **Binds:** nothing quotes a craft price as a literal string.
 
+### D61 · Winning a fight has to pay — owner instruction
+
+**"Bir filo yolluyorum, savaşı kazanıyorum ama tatmin etmiyor. Oyun PvP odaklı
+olmalı."** Measured on the live shard at 34 players before changing anything:
+
+    26 raids · mean haul 17 alloy + 5 crystal · 13 of them took NOTHING
+    a Wasp cost 520; the mean raid returned 4% of one
+
+**The cause was the vault floor, and it was a bug wearing a constant's clothes.**
+`vaultBase` was derived against alloy and then charged against crystal too — "600
+per resource", written in `docs/balance.md` and marked PROVISIONAL. Crystal income
+is 35% of alloy income, so 600 crystal is the same thing as 1,700 alloy: at
+Extractor L2 the crystal store caps at 678 and the floor covered 88% of it.
+Crystal was unraidable for the entire opening.
+
+`vaultProtects` returns a PAIR now, and that shape is the fix — the compiler found
+all nine call sites, two of them inside the simulator, which had been modelling
+the same mistake. A second exported function would have let the next caller make
+it again.
+
+**Four numbers moved, each with a reason:**
+
+| | from | to | why |
+|---|---|---|---|
+| vault floor (alloy) | 600 | 450 | the average live planet held 615; alloy was 97% protected |
+| vault floor (crystal) | 600 | `450 × 28/80` = 158 | derived from the income ratio, as `crystalCostMult` is |
+| `lootDecisive` / `lootPartial` | 0.5 / 0.25 | 0.65 / 0.35 | the dial is INERT on the ladder — which is exactly what makes it safe to spend on the reward |
+| every hull price | — | **halved** | uniform, so every ratio the balance rests on is untouched; only fleet size per unit of economy moves |
+
+`START` is re-derived from the same four lines — 1,540 rather than 2,060 — so the
+opening still costs exactly three upgrades and two Wasps. `DEBRIS.minimum` halved
+with the hulls: it is priced in ship value, and leaving it would have doubled it
+in real terms. Five debris tests said so immediately.
+
+**Storage was asked for and deliberately NOT given.** `capHours` 12 → 14 was
+tried and measured: it costs the informed archetype a seed. It is also already
+answered — halving hull prices doubled the store in the only unit a player counts
+it in, from 3.9 Wasps to 7.8 at Refinery L2.
+
+**Measured, and the gate moved in both directions.** The informed archetype tops
+every seed again — D58's regression is closed. In its place `ARR` reads 0.297 and
+0.300 against a floor of 0.300 on two seeds, and `TI` reads −0.457 against a floor
+of −0.40. Both are the bands that encode "do not make hoarding too painful", and
+both are a few thousandths out. Nothing was tuned to produce either.
+
+**Cargo is now the binding constraint on a small raid, and that is the design
+working.** With 333 lootable on an average world, two Wasps still come home with
+78 — they can only carry 80. The answer is a Hauler, which is why it matters that
+one went from 2,300 alloy to 1,150.
+
+**Binds:** `docs/balance.md` line 41 no longer reads "600 × 1.30^L per resource".
+
 ### D60 · The online count on the disc — owner instruction
 
 `/api/season` carries `online` beside `players`, counted on the same
