@@ -174,8 +174,14 @@ export const vocabulary = {
   },
 
   unlock: {
-    TELESCOPE: { title: 'Teleskop açıldı', body: 'Artık bir gezegeni izleyebilirsin. Birini seç.' },
-    RADAR: { title: 'Radar açıldı', body: 'Artık sana kimin baktığını yakalayabilirsin.' },
+    TELESCOPE: {
+      title: 'Teleskop açıldı',
+      body: 'Yörüngeye bir Röle koy; sonra bir gezegeni izleyebilirsin.',
+    },
+    RADAR: {
+      title: 'Radar açıldı',
+      body: 'Yörüngeye bir Röle koy; sonra sana kimin baktığını yakalarsın.',
+    },
     EXPLORER: {
       title: 'Kâşif açıldı',
       body: 'Kesin bilgi istiyorsan sonda gönder. Radarları onu yakalayabilir.',

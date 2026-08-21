@@ -32,13 +32,26 @@ export const UNLOCKABLE = ['TELESCOPE', 'RADAR', 'EXPLORER', 'VEIL'] as const;
 export type Unlockable = (typeof UNLOCKABLE)[number];
 
 export const UNLOCK_COPY: Record<Unlockable, { title: string; body: string }> = {
+  /**
+   * THE TWO GATED ONES NAME THEIR GATE, AND THEY HAVE TO.
+   *
+   * `build.ts` refuses a Telescope or a Radar without an Uplink in orbit —
+   * `NEEDS_UPLINK`, and it is the one prerequisite in the whole system. This
+   * cascade does not know about it and should not: it fires at the moment the
+   * player FEELS the absence, which is the first battle, and that moment is right.
+   *
+   * What was wrong was the promise. "You may watch one planet. Choose one." was
+   * told to 25 of 26 commanders on a live shard, not one of whom owned an Uplink,
+   * so every one of them was invited to do something the server would refuse. The
+   * news is still the news; the sentence now says what it costs.
+   */
   TELESCOPE: {
     title: 'Telescope unlocked',
-    body: 'You may watch one planet. Choose one.',
+    body: 'Put an Uplink in orbit and you can watch one planet.',
   },
   RADAR: {
     title: 'Radar unlocked',
-    body: 'You can now detect when someone is looking at you.',
+    body: 'Put an Uplink in orbit and you will catch anyone looking at you.',
   },
   EXPLORER: {
     title: 'Explorer unlocked',

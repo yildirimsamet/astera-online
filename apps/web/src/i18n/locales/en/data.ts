@@ -142,8 +142,14 @@ export const vocabulary = {
 
   /** The four things a season can hand you, announced the moment they open. */
   unlock: {
-    TELESCOPE: { title: 'Telescope unlocked', body: 'You may watch one planet. Choose one.' },
-    RADAR: { title: 'Radar unlocked', body: 'You can now detect when someone is looking at you.' },
+    TELESCOPE: {
+      title: 'Telescope unlocked',
+      body: 'Put an Uplink in orbit and you can watch one planet.',
+    },
+    RADAR: {
+      title: 'Radar unlocked',
+      body: 'Put an Uplink in orbit and you will catch anyone looking at you.',
+    },
     EXPLORER: {
       title: 'Explorer unlocked',
       body: 'Send a probe to know for certain. Their radar may catch it.',

@@ -199,6 +199,52 @@ describe('a translated sentence keeps the parts its caller passes it', () => {
   });
 });
 
+/**
+ * A CAPABILITY THAT IS GATED MUST NAME ITS GATE — IN EVERY LANGUAGE.
+ *
+ * The unlock cascade fires at the moment the player feels a system's absence,
+ * which for the Telescope is their first battle. It knows nothing about the
+ * Uplink, and it should not: the moment is right. But `build.ts` refuses a
+ * Telescope or a Radar without one, so a line reading "You may watch one planet.
+ * Choose one." invited the player to do something the server would answer with
+ * NEEDS_UPLINK.
+ *
+ * It was not hypothetical and it was not rare. On the live shard, 25 of 26
+ * commanders had been told the Telescope was theirs; NONE of them owned an
+ * Uplink, because nobody in the galaxy did.
+ *
+ * The Uplink is matched AS WRITTEN, never case-folded. `'İ'.toLowerCase()` is `i`
+ * plus a combining dot in JavaScript, so folding a Turkish label to compare it is
+ * a bug generator; the name is read out of the same locale tree the sentence
+ * comes from, so renaming the satellite moves this test with it.
+ */
+describe('an unlock never promises what a gate refuses', () => {
+  const GATED = ['TELESCOPE', 'RADAR'] as const;
+
+  it('names the Uplink in the English body of every gated unlock', () => {
+    for (const id of GATED) {
+      expect(en.vocabulary.unlock[id].body).toContain(en.vocabulary.satellite.UPLINK.name);
+    }
+  });
+
+  it('names the Uplink in the Turkish body of every gated unlock', () => {
+    for (const id of GATED) {
+      expect(tr.vocabulary.unlock[id].body).toContain(tr.vocabulary.satellite.UPLINK.name);
+    }
+  });
+
+  /**
+   * The ungated ones must NOT, or the sentence invents a prerequisite that does
+   * not exist — the opposite failure, and just as misleading.
+   */
+  it('leaves the ungated unlocks free of it', () => {
+    for (const id of ['EXPLORER', 'VEIL'] as const) {
+      expect(en.vocabulary.unlock[id].body).not.toContain(en.vocabulary.satellite.UPLINK.name);
+      expect(tr.vocabulary.unlock[id].body).not.toContain(tr.vocabulary.satellite.UPLINK.name);
+    }
+  });
+});
+
 describe('which language a device lands in', () => {
   const nav = (...tags: string[]) => ({ language: tags[0] ?? '', languages: tags });
 
