@@ -83,12 +83,71 @@ export interface ReclaimResult {
 }
 
 /**
- * Everything that must be quiet before a world can be taken apart.
+ * EVERY ROW IN THE WORLD THAT THIS PLANET IS THE REASON FOR.
  *
- * DELIBERATELY BROAD. A false positive costs one sweep's delay — ten minutes on a
- * player who has been gone three days. A false negative costs somebody their fleet.
+ * ONE FUNCTION, TWO CALLERS, AND THEY MUST NOT DISAGREE. `busy()` asks whether
+ * anything here is still in the air and `demolish()` deletes it; if they compute
+ * different sets, the sweep can delete something it never checked was quiet. They
+ * did, in the first draft, and the hole was exact: `busy()` looked only at debris
+ * AT this planet, while `demolish()` also deleted debris this planet's RAIDS left
+ * at other worlds — so a third party's harvest run, in the air toward wreckage
+ * that this commander made somewhere else, would have been deleted out from under
+ * its craft. That is the same failure that stranded a real player's Wasps on this
+ * project's production database once.
+ *
+ * Debris sits at the DEFENDER's planet. So the fields this world is responsible
+ * for are the ones standing over it, plus the ones its own battles created
+ * elsewhere — and a harvest run pointed at either is a flight that must be left
+ * alone.
  */
-async function busy(tx: Tx, planetId: string, fieldIds: string[]): Promise<boolean> {
+async function worldRows(
+  tx: Tx,
+  planetId: string,
+): Promise<{ missionIds: string[]; fieldIds: string[]; runIds: string[] }> {
+  const missionIds = (
+    await tx
+      .select({ id: missions.id })
+      .from(missions)
+      .where(or(eq(missions.originPlanetId, planetId), eq(missions.targetPlanetId, planetId)))
+  ).map((r) => r.id);
+
+  const fieldIds = (
+    await tx
+      .select({ id: debrisFields.id })
+      .from(debrisFields)
+      .where(
+        missionIds.length > 0
+          ? or(eq(debrisFields.planetId, planetId), inArray(debrisFields.missionId, missionIds))
+          : eq(debrisFields.planetId, planetId),
+      )
+  ).map((r) => r.id);
+
+  const runIds = (
+    await tx
+      .select({ id: miningRuns.id })
+      .from(miningRuns)
+      .where(
+        fieldIds.length > 0
+          ? or(eq(miningRuns.planetId, planetId), inArray(miningRuns.debrisFieldId, fieldIds))
+          : eq(miningRuns.planetId, planetId),
+      )
+  ).map((r) => r.id);
+
+  return { missionIds, fieldIds, runIds };
+}
+
+/**
+ * Is anything still happening here?
+ *
+ * DELIBERATELY BROAD. A false positive costs one sweep's delay — ten minutes, on a
+ * commander who has been gone three days. A false negative costs somebody their
+ * fleet.
+ */
+async function busy(
+  tx: Tx,
+  planetId: string,
+  rows: { runIds: string[] },
+): Promise<boolean> {
   const [flight] = await tx
     .select({ id: missions.id })
     .from(missions)
@@ -101,17 +160,11 @@ async function busy(tx: Tx, planetId: string, fieldIds: string[]): Promise<boole
     .limit(1);
   if (flight) return true;
 
+  if (rows.runIds.length === 0) return false;
   const [run] = await tx
     .select({ id: miningRuns.id })
     .from(miningRuns)
-    .where(
-      and(
-        ne(miningRuns.status, 'done'),
-        fieldIds.length > 0
-          ? or(eq(miningRuns.planetId, planetId), inArray(miningRuns.debrisFieldId, fieldIds))
-          : eq(miningRuns.planetId, planetId),
-      ),
-    )
+    .where(and(inArray(miningRuns.id, rows.runIds), ne(miningRuns.status, 'done')))
     .limit(1);
   return run !== undefined;
 }
@@ -152,31 +205,13 @@ async function foldRecord(
  * it. `wipeAllServers` learned this the hard way and could not reset any galaxy
  * where a battle had ever happened.
  */
-async function demolish(tx: Tx, planetId: string, playerId: string): Promise<void> {
-  const missionIds = (
-    await tx
-      .select({ id: missions.id })
-      .from(missions)
-      .where(or(eq(missions.originPlanetId, planetId), eq(missions.targetPlanetId, planetId)))
-  ).map((r) => r.id);
-
-  /**
-   * Wreckage AT this world, and wreckage this world's battles made ELSEWHERE.
-   *
-   * Debris sits at the DEFENDER's planet, so a raid this planet flew left a field
-   * at somebody else's world that still points back at the mission about to be
-   * deleted. Missing that second set is a constraint violation, not a leak.
-   */
-  const fieldIds = (
-    await tx
-      .select({ id: debrisFields.id })
-      .from(debrisFields)
-      .where(
-        missionIds.length > 0
-          ? or(eq(debrisFields.planetId, planetId), inArray(debrisFields.missionId, missionIds))
-          : eq(debrisFields.planetId, planetId),
-      )
-  ).map((r) => r.id);
+async function demolish(
+  tx: Tx,
+  planetId: string,
+  playerId: string,
+  rows: { missionIds: string[]; fieldIds: string[]; runIds: string[] },
+): Promise<void> {
+  const { missionIds, fieldIds, runIds } = rows;
 
   await tx.delete(rewardGrants).where(eq(rewardGrants.playerId, playerId));
   await tx.delete(requestLog).where(eq(requestLog.playerId, playerId));
@@ -212,17 +247,6 @@ async function demolish(tx: Tx, planetId: string, playerId: string): Promise<voi
    * wakes the worker, finds nothing, and — depending on the handler — either logs
    * or retries until its budget runs out.
    */
-  const runIds = (
-    await tx
-      .select({ id: miningRuns.id })
-      .from(miningRuns)
-      .where(
-        fieldIds.length > 0
-          ? or(eq(miningRuns.planetId, planetId), inArray(miningRuns.debrisFieldId, fieldIds))
-          : eq(miningRuns.planetId, planetId),
-      )
-  ).map((r) => r.id);
-
   const refs = [...missionIds, ...runIds];
   if (refs.length > 0) {
     await tx.delete(scheduledEvents).where(inArray(scheduledEvents.refId, refs));
@@ -301,17 +325,15 @@ export async function reclaimIdleSeats(
           .for('update');
         if (!fresh || fresh.lastActiveAt >= cutoff) return 'came-back' as const;
 
-        const fieldIds = (
-          await tx
-            .select({ id: debrisFields.id })
-            .from(debrisFields)
-            .where(eq(debrisFields.planetId, row.planetId))
-        ).map((r) => r.id);
-
-        if (await busy(tx, row.planetId, fieldIds)) return 'busy' as const;
+        /**
+         * Read ONCE and used by both, so what is checked for quiet and what is
+         * deleted can never be different sets. See `worldRows`.
+         */
+        const rows = await worldRows(tx, row.planetId);
+        if (await busy(tx, row.planetId, rows)) return 'busy' as const;
 
         await foldRecord(tx, row.accountId, row);
-        await demolish(tx, row.planetId, row.playerId);
+        await demolish(tx, row.planetId, row.playerId, rows);
         return 'reclaimed' as const;
       });
 

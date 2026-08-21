@@ -225,6 +225,60 @@ describe('reclaiming idle seats', () => {
     expect(await gone(idle)).toBe(true);
   });
 
+  /**
+   * THE GAP THAT WAS NEARLY SHIPPED, and it is worth stating because it is subtle.
+   *
+   * Debris sits at the DEFENDER's planet, so a raid the idle commander flew left
+   * wreckage at somebody ELSE's world — and `demolish()` has to delete that field,
+   * because it points back at a mission about to go. The first draft's `busy()`
+   * only looked at debris standing over the idle planet itself, so a third party's
+   * harvest run in the air toward that other field would have been deleted out
+   * from under its craft: the same stranding this project has already caused once
+   * on a live galaxy.
+   *
+   * `busy()` and `demolish()` read one set now, and this is what holds them to it.
+   */
+  it('defers when a third party is harvesting wreckage this world’s raid created', async () => {
+    await grant(f.db, idle, 40_000, 16_000);
+    await levelWorld(f.db, f.planetIds);
+    await giveUnits(f.db, idle, { WASP: 12 });
+    // Real HULLS on the defending side, not only ground guns: ground units leave
+    // no wreckage by design, so a raid that only kills Thorns produces no field.
+    await giveUnits(f.db, active, { WASP: 10, THORN: 2 });
+    // The idle commander raids a NEIGHBOUR, leaving wreckage over the neighbour.
+    await launchAttack(f.db, idle, active, { WASP: 8 }, f.clock);
+    await drain();
+
+    const [field] = await f.db.select().from(debrisFields);
+    expect(field, 'the fixture produced no wreckage to harvest').toBeDefined();
+    expect(field!.planetId).toBe(active);
+
+    // A THIRD commander sends craft to it, and is still on their way.
+    await f.db.insert(miningRuns).values({
+      seasonId: f.seasonId,
+      planetId: f.planetIds[2]!,
+      targetKind: 'debris',
+      debrisFieldId: field!.id,
+      status: 'outbound',
+      craft: 2,
+      holdEach: 100,
+      interceptX: 0,
+      interceptY: 0,
+      interceptZ: 0,
+      departAt: f.clock.now(),
+      arriveAt: f.clock.now(),
+    });
+
+    await lastSeen(f.playerIds[0]!, SERVERS.idleDays + 1);
+    const result = await reclaimIdleSeats(f.db, f.clock);
+
+    expect(result.reclaimed).toHaveLength(0);
+    expect(result.deferred).toBe(1);
+    expect(await gone(idle)).toBe(false);
+    // And the harvest is untouched, which is the whole point.
+    expect(await f.db.select().from(miningRuns)).toHaveLength(1);
+  });
+
   it('defers a world whose own craft are still out mining', async () => {
     await lastSeen(f.playerIds[0]!, SERVERS.idleDays + 1);
     await f.db.insert(miningRuns).values({
