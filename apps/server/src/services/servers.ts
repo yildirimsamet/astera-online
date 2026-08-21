@@ -16,6 +16,7 @@ import {
   players,
   probeReports,
   requestLog,
+  rewardGrants,
   satellites,
   scanEvents,
   scheduledEvents,
@@ -434,6 +435,10 @@ export async function wipeAllServers(
      * It goes before `mining_runs` as well as before `missions`: a harvest run
      * points at the field it was sent to.
      */
+    // Rewards claimed in a season die with it: the table's only foreign key is to
+    // `players`, which is deleted below, and a season's record is folded into the
+    // account rather than carried over as an unclaimed grant.
+    await tx.delete(rewardGrants);
     await tx.delete(requestLog);
     await tx.delete(notifications);
     await tx.delete(scanEvents);

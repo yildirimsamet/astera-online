@@ -30,19 +30,18 @@ import { threadKey } from '../galaxy/Fleets.jsx';
 import type { PlanetGroup } from '../lib/directives.js';
 import { HomeworldIcon } from '../ui/icons/index.js';
 import { haptic } from '../lib/haptics.js';
-import { duration, minutesLeft, useNow } from '../lib/time.js';
+import { minutesLeft, useNow } from '../lib/time.js';
 import { distance, engagementEndsAt, interceptAsteroid, travelMinutes } from '@astera/rules';
 import { LaunchSheet } from './LaunchSheet.jsx';
 import { PlanetScreen } from './PlanetScreen.jsx';
 import { IntelScreen } from './IntelScreen.jsx';
+import { RewardsScreen } from './RewardsScreen.jsx';
+import { MenuPanel } from '../shell/MenuPanel.jsx';
 import { Sheet } from '../ui/Sheet.js';
-import { Button } from '../ui/kit/index.js';
 import { describe, useToast } from '../ui/Toast.js';
 import { GALAXY_ASSETS, usePreload } from '../lib/preload.js';
-import { LanguageSwitch } from '../ui/LanguageSwitch.jsx';
 import { LoadingScreen } from '../shell/LoadingScreen.js';
 import { useArrivals } from '../session/useArrivals.js';
-import { serverNow } from '../lib/clock.js';
 
 /**
  * THE GALAXY IS THE GAME. D20.
@@ -62,7 +61,7 @@ import { serverNow } from '../lib/clock.js';
  * is entitled to know about that object and how they came to know it.
  */
 
-export type Panel = 'planet' | 'intel' | 'commander' | null;
+export type Panel = 'planet' | 'intel' | 'rewards' | 'menu' | null;
 
 export function GalaxyView({
   panel,
@@ -698,7 +697,7 @@ export function GalaxyView({
         </Sheet>
       )}
 
-      {panel === 'commander' && (
+      {panel === 'menu' && (
         <Sheet
           eyebrow={t('galaxy.panelCommanderEyebrow')}
           title={commander}
@@ -706,12 +705,27 @@ export function GalaxyView({
             onPanel(null);
           }}
         >
-          <CommanderPanel
+          <MenuPanel
             galaxy={season.data?.shardName ?? null}
             shard={season.data?.shard ?? null}
             endsAt={season.data?.endsAt ?? null}
+            onOpen={onPanel}
             onSignOut={onSignOut}
           />
+        </Sheet>
+      )}
+
+      {panel === 'rewards' && (
+        <Sheet
+          eyebrow={t('rewards.eyebrow')}
+          title={t('rewards.title')}
+          onClose={() => {
+            onPanel(null);
+          }}
+        >
+          <div className="-mx-4 px-4">
+            <RewardsScreen commander={commander} />
+          </div>
         </Sheet>
       )}
 
@@ -848,79 +862,6 @@ function AsteroidFocusHost({
         onSend(rock.index, craft);
       }}
     />
-  );
-}
-
-/**
- * WHO YOU ARE, WHERE YOU ARE, AND HOW LONG YOU HAVE. D21.
- *
- * The one surface in the game that is about the account rather than about the
- * world, and the only place sign-out lives. Opened from the commander control in
- * the header — the control that carries the player's own name, because a player
- * looking for the way out looks for themselves and not for a clock.
- *
- * It states the galaxy by name. With ten of them, "which one am I in" stopped
- * being a question with one possible answer, and a player who cannot name their own
- * galaxy cannot tell a friend where to find them.
- */
-function CommanderPanel({
-  galaxy,
-  shard,
-  endsAt,
-  onSignOut,
-}: {
-  galaxy: string | null;
-  shard: string | null;
-  endsAt: Date | null;
-  onSignOut: () => void;
-}) {
-  const { t } = useTranslation();
-  const hoursLeft = endsAt === null ? null : (endsAt.getTime() - serverNow()) / 3_600_000;
-
-  return (
-    <div className="flex flex-col gap-5 mt-4">
-      <div className="grid grid-cols-2 gap-3">
-        <div className="plate plate-cut plate-cut-sm p-3">
-          <p className="legend">{t('galaxy.commander.galaxyLabel')}</p>
-          <p className="mt-1 truncate text-[15px] text-bone">
-            {galaxy ?? t('galaxy.commander.galaxyUnknown')}
-          </p>
-          {shard !== null && shard !== galaxy && (
-            <p className="mt-0.5 text-[11px] text-faint">{shard}</p>
-          )}
-        </div>
-        <div className="plate plate-cut plate-cut-sm p-3">
-          <p className="legend">{t('galaxy.commander.endsLabel')}</p>
-          <p className="readout mt-1 text-[15px] text-bone">
-            {hoursLeft === null
-              ? t('galaxy.commander.endsUnknown')
-              : duration(Math.max(0, hoursLeft) * 60)}
-          </p>
-        </div>
-      </div>
-
-      <p className="text-[13px] leading-relaxed text-dim">{t('galaxy.commander.body')}</p>
-
-      {/*
-        THE LANGUAGE LIVES HERE, beside the galaxy and the way out.
-
-        This is the one surface in the game that is about the ACCOUNT rather than
-        the world (D21, D54), and which language you read the world in is an
-        account fact — it is not a season, not a planet, and it has no business on
-        a tab of the planet sheet. It also sits above sign-out rather than below,
-        because the two most destructive controls on a screen should not be
-        adjacent by accident.
-      */}
-      <div>
-        <p className="legend mb-2">{t('settings.sectionLabel')}</p>
-        <LanguageSwitch />
-        <p className="mt-2 text-[11px] leading-snug text-faint">{t('settings.hint')}</p>
-      </div>
-
-      <Button variant="ghost" size="lg" full onClick={onSignOut}>
-        {t('galaxy.commander.signOut')}
-      </Button>
-    </div>
   );
 }
 

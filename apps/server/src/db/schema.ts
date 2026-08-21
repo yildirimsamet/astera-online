@@ -210,6 +210,23 @@ export const planets = pgTable('planets', {
   /** Lazy economy anchor. Advanced inside the row lock, never on a timer. */
   lastTickAt: timestamp('last_tick_at', { withTimezone: true }).notNull().defaultNow(),
   disruptedUntil: timestamp('disrupted_until', { withTimezone: true }),
+  /**
+   * HOW MANY OF EACH HULL THIS PLANET HAS EVER BUILT. Cumulative, never reduced.
+   *
+   * THE ONE TALLY IN THIS FEATURE THAT IS NOT DERIVED, and it earns the exception.
+   * Every other reward metric is counted off rows that survive the thing they
+   * describe — a mission is still in the table when it lands, a building level
+   * does not fall. A SHIP does not survive: it dies in combat and its `units` row
+   * goes down with it, so "how many have you ever built" cannot be reconstructed
+   * from the world at any later moment. It is written inside the same row lock
+   * `buildUnits` already holds, so it costs no query and cannot race the spend it
+   * is counting.
+   *
+   * Deliberately keyed by hull rather than being a single total: 50 Bulwarks and
+   * 50 Wasps differ by an order of magnitude in what they cost, and one number
+   * could not have meant both.
+   */
+  builtEver: jsonb('built_ever').$type<Fleet>().notNull().default({}),
 }, (t) => [
   uniqueIndex('planets_player_idx').on(t.playerId),
   uniqueIndex('planets_season_slot_idx').on(t.seasonId, t.slotIndex),
@@ -554,3 +571,37 @@ export const requestLog = pgTable('request_log', {
   response: jsonb('response').$type<unknown>().notNull(),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 });
+
+/**
+ * A REWARD THAT HAS BEEN UNLOCKED, AND WHETHER IT HAS BEEN TAKEN.
+ *
+ * One row per (player, tier), and the primary key is the whole of the
+ * once-only rule: a second claim is a duplicate-key violation rather than an
+ * application check that two concurrent taps could both pass.
+ *
+ * THE TABLE DOES TWO JOBS BECAUSE THEY ARE THE SAME JOB SEEN FROM TWO ENDS.
+ *
+ *   · For the ten EARNED chains a row is written at the moment of claiming, with
+ *     `claimedAt` set. Eligibility itself is never stored — it is counted from
+ *     missions, runs and levels every time the panel is read — so a row here
+ *     means "paid", full stop.
+ *   · For `SOCIAL` there is nothing in the galaxy to count. The operator writes
+ *     the row with `claimedAt` NULL, which is the grant: it says a human checked
+ *     the direct message. The player then claims it down the identical path, and
+ *     the same primary key stops it being claimed twice.
+ *
+ * The amounts are stored rather than re-read from `@astera/rules` at display
+ * time, for the reason every ledger stores them: what a tier pays may be retuned,
+ * and a receipt that changes retroactively is not a receipt.
+ */
+export const rewardGrants = pgTable('reward_grants', {
+  playerId: uuid('player_id').notNull().references(() => players.id),
+  /** `CHAIN:GOAL`, built by `rewardId()` in @astera/rules. Text, so retiring a
+   *  chain leaves old rows readable instead of failing an enum cast. */
+  rewardId: text('reward_id').notNull(),
+  alloy: real('alloy').notNull().default(0),
+  crystal: real('crystal').notNull().default(0),
+  /** NULL means unlocked and waiting. Only `SOCIAL` is ever seen in that state. */
+  claimedAt: timestamp('claimed_at', { withTimezone: true }),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [primaryKey({ columns: [t.playerId, t.rewardId] })]);

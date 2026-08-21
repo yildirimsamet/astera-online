@@ -20,6 +20,8 @@ import {
   previewSchema,
   probeSchema,
   reportsSchema,
+  rewardClaimSchema,
+  rewardsSchema,
   returnSchema,
   instrumentRaiseSchema,
   satelliteInstallSchema,
@@ -314,6 +316,15 @@ export class Api {
 
   /** Empty the works into storage. D16 — the one manual step in the economy. */
   collect = () => this.send('/api/planet/collect', collectSchema, { method: 'POST' });
+
+  rewards = () => this.send('/api/rewards', rewardsSchema);
+
+  /**
+   * `send()` serialises. A second `JSON.stringify` here would be a compile error,
+   * which is the point of the rule.
+   */
+  claimReward = (id: string) =>
+    this.send('/api/rewards/claim', rewardClaimSchema, { method: 'POST', body: { id } });
 
   mining = () => this.send('/api/mining', miningSchema);
 

@@ -85,6 +85,13 @@ export function useEventStream(enabled: boolean): void {
         keys.reports,
         keys.traffic,
         keys.mining,
+        /**
+         * Reward progress is COUNTED off the world rather than accumulated, so
+         * the events that move it are the ones that finish a flight: a raid
+         * resolving, a drill reaching its rock. Those are exactly the moments a
+         * tap cannot cover, because the player made the decision minutes ago.
+         */
+        keys.rewards,
       ]) {
         void client.invalidateQueries({ queryKey: key });
       }

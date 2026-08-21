@@ -238,6 +238,52 @@ export function useReports() {
   return useQuery({ queryKey: keys.reports, queryFn: api.reports, ...READ });
 }
 
+/**
+ * WHAT THE GAME OWES YOU, AND THE ONE READ THAT DOES NOT NEED A TIMER.
+ *
+ * Everything on this payload moves because YOU moved it — a probe you sent, a
+ * level you bought, a run of yours that arrived — so `READ` is the whole policy
+ * and a poll would be a request a minute for a number that cannot have changed.
+ *
+ * The one thing that moves it without a tap is a flight ENDING — a raid
+ * resolving, a drill reaching its rock — and that is a player event, which
+ * `useEventStream` already invalidates this key for. A hand-written `SOCIAL`
+ * grant is not an event at all and is picked up when the panel is opened, which
+ * is the only moment it matters.
+ */
+export function useRewards() {
+  const api = useApi();
+  return useQuery({ queryKey: keys.rewards, queryFn: api.rewards, ...READ });
+}
+
+/**
+ * TAKE ONE TIER. Answers with both surfaces it moved, so neither refetches.
+ *
+ * NOT PREDICTED, and that is the rule rather than an omission: an optimistic
+ * predictor DECLINES whenever the answer is not certain (D53), and this one is
+ * not. The server re-counts progress under the planet lock and can legitimately
+ * refuse a tier this client believes is claimable — a second tab took it, a run
+ * this phone has not heard about yet. The flicker of a reward un-happening is
+ * exactly the failure D53 forbids, and the round trip it would save is one the
+ * player is already watching a number count up through.
+ */
+export function useClaimReward() {
+  const api = useApi();
+  const client = useQueryClient();
+  const invalidate = useInvalidator();
+  const apply = useApplyPlanet();
+  return useMutation({
+    mutationFn: (id: string) => api.claimReward(id),
+    onSuccess: (result) => {
+      apply(result.planet);
+      client.setQueryData(keys.rewards, result.rewards);
+      // Wealth moved with the grant, and a store that just crossed a tier changes
+      // this world's silhouette on everybody else's disc.
+      invalidate(keys.leaderboard, keys.galaxy);
+    },
+  });
+}
+
 export function useLeaderboard() {
   const api = useApi();
   return useQuery({ queryKey: keys.leaderboard, queryFn: api.leaderboard, staleTime: 60_000 });

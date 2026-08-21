@@ -1,19 +1,17 @@
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { collectorCap } from '@astera/rules';
-import { useCollect, usePlanet, useSeason } from '../api/queries.js';
+import { useCollect, usePlanet, useRewards } from '../api/queries.js';
 import { compact, full } from '../lib/format.js';
-import { duration } from '../lib/time.js';
 import { haptic } from '../lib/haptics.js';
 import { useProjected, type Projected } from '../lib/projection.js';
 import { RESOURCE_ART } from '../ui/assets.js';
-import { ChevronIcon, IntelIcon } from '../ui/icons/index.js';
+import { MenuIcon } from '../ui/icons/index.js';
 import { Meter } from '../ui/Meter.js';
 import { describe, useToast } from '../ui/Toast.js';
 import type { PlanetView } from '../api/schemas.js';
 import { Signals } from './Signals.js';
 import type { Panel } from '../screens/GalaxyView.jsx';
-import { serverNow } from '../lib/clock.js';
 
 /**
  * What you hold, what is waiting, and how long the season has left.
@@ -26,8 +24,8 @@ import { serverNow } from '../lib/clock.js';
  *     nothing is in flight, so it is a control rather than a readout: one tap
  *     empties it, and when it is full it says what that is costing per hour.
  *   · WHAT IS NEW — the signals beacon.
- *   · WHO YOU ARE — the commander control, which is the whole of the account: the
- *     galaxy you are in, how long the season has, and the way out.
+ *   · EVERYTHING ELSE — one menu control, holding intel, rewards and the account:
+ *     the galaxy you are in, how long the season has, and the way out.
  */
 export function StatusBar({
   commander,
@@ -39,14 +37,15 @@ export function StatusBar({
 }) {
   const { t } = useTranslation();
   const { data, dataUpdatedAt } = usePlanet();
-  const season = useSeason();
   const held = useProjected(data?.planet, dataUpdatedAt);
+  /**
+   * The badge, and the only reason the header reads this at all. `READ` policy —
+   * no poll — so it costs one request per session plus whatever the event stream
+   * invalidates.
+   */
+  const waiting = useRewards().data?.claimable ?? 0;
 
   if (!data) return <div className="h-[70px]" />;
-
-  const hoursLeft = season.data
-    ? Math.max(0, (season.data.endsAt.getTime() - serverNow()) / 3_600_000)
-    : null;
 
   return (
     <header className="relative shrink-0 border-b border-line bg-gradient-to-b from-[#0b1120] to-void px-3 pb-2 pt-[calc(10px+env(safe-area-inset-top))]">
@@ -67,78 +66,62 @@ export function StatusBar({
         />
         <div className="flex shrink-0 items-end gap-2 pb-0.5">
           {/**
-           * THE WAY OUT SAYS YOUR NAME. Owner-reported bug: "there is no logout
-           * button, I cannot sign out."
+           * TWO CONTROLS, AND THERE USED TO BE FOUR. Owner decision.
            *
-           * There was one. It has always been in the commander sheet, and this
-           * control has always opened that sheet — but the control said SEASON and
-           * drew a duration under it, so what a player saw was a clock. It read as a
-           * readout, and nobody presses a readout. D21 put the account behind the
-           * season figure on the argument that "how long have I got" and "who am I,
-           * and how do I leave" are the same question asked twice; that is true of
-           * the SHEET and was never true of the LABEL.
+           * The right-hand end of this header had grown a commander button, an
+           * intel button and the beacon, and the rewards panel would have been a
+           * fourth — on a phone, beside two stock columns that the `Stock`
+           * docblock below already records as starved for width at five digits.
            *
-           * So the label is the commander now and the season stays as the figure
-           * underneath. Same one control, same sheet, same width — the name is
-           * capped and truncates rather than eating into the two stock columns
-           * beside it, which have about ninety pixels each on a phone and need
-           * every one of them. It is also the only thing in the header that is
-           * about the account rather than the world, which is exactly what a player
-           * hunts for when they want to leave.
+           * So everything that is not NEWS went behind one control. What is left
+           * is the pair that must be reachable in one tap because both are about
+           * to change your mind: the beacon, which says something happened, and
+           * the way in to everything else.
            *
-           * `I5` in `docs/interface.md`: a surface with no permanent way in does not
-           * exist for the player, and a way in labelled as something else is not a
-           * way in. It was briefly at the foot of the planet sheet, which is worse
-           * again — that puts sign-out behind a hit-test against a sphere in a 3D
-           * scene, and a player who cannot find their planet cannot sign out.
+           * D54 IS NOT BEING UNDONE HERE, AND IT WOULD BE EASY TO THINK IT IS.
+           * That decision's finding was not "the commander control must be on the
+           * header" — it was "a control that says SEASON and draws a clock is not
+           * a way out, because nobody presses a readout". The bug was the LABEL.
+           * This control's accessible name still carries the commander's name and
+           * still names what is behind it, and sign-out is still exactly two taps
+           * from the galaxy, the same as before. What it stops doing is spending
+           * seventy-six pixels of a phone's header on a name the player already
+           * knows.
+           *
+           * The season clock moved into the sheet with it. It was a readout, it
+           * was never pressable, and it is one tap from here.
            */}
-          <button
-            type="button"
-            aria-label={t('statusBar.commanderHint', { name: commander })}
-            onClick={() => {
-              haptic('tap');
-              onOpen('commander');
-            }}
-            className="flex h-9 flex-col justify-center rounded-sm border border-line-soft bg-deep px-1.5 text-right transition-colors hover:border-line active:bg-raised/60"
-          >
-            <span className="flex items-center justify-end gap-0.5">
-              {/* The display face, but NOT the `legend` class: that carries 0.14em of
-                  tracking, which is right for a four-letter label and costs about
-                  three characters of a sixteen-character name in a column this
-                  narrow. A name truncated to "SHOT1E7…" identifies nobody. */}
-              <span className="max-w-[76px] truncate font-display text-[11px] font-semibold uppercase leading-tight tracking-[0.02em] text-bone">
-                {commander}
-              </span>
-              <ChevronIcon className="size-3 shrink-0 text-faint" />
-            </span>
-            <span className="readout text-[12px] leading-tight text-dim">
-              {hoursLeft === null ? t('statusBar.seasonUnknown') : duration(hoursLeft * 60)}
-            </span>
-          </button>
-          {/*
-            THE WAY INTO WHAT YOU KNOW. Owner-reported bug.
-
-            The Intel centre — telescope readings, probe reports, battle reports,
-            the radar log — could only be opened by tapping a NOTIFICATION of the
-            right kind in Signals. A player with an empty mailbox had no route to
-            it at all, which means the surface that holds "the information is the
-            game" was reachable only as a side effect of somebody else acting.
-
-            It sits beside the beacon because the two are the same subject seen
-            twice: Signals is what you were TOLD, Intel is what you KNOW.
-          */}
-          <button
-            type="button"
-            aria-label={t('statusBar.intelHint')}
-            onClick={() => {
-              haptic('tap');
-              onOpen('intel');
-            }}
-            className="flex size-9 items-center justify-center rounded-sm border border-line-soft bg-deep text-dim transition-colors hover:border-line hover:text-bone"
-          >
-            <IntelIcon className="size-5" />
-          </button>
           <Signals onOpen={onOpen} />
+          <button
+            type="button"
+            aria-label={t('statusBar.menuHint', { name: commander })}
+            onClick={() => {
+              haptic('tap');
+              onOpen('menu');
+            }}
+            className="relative flex size-9 items-center justify-center rounded-sm border border-line-soft bg-deep text-dim transition-colors hover:border-line hover:text-bone"
+          >
+            <MenuIcon className="size-5" />
+            {/*
+              A REWARD WAITING IS A DOT, NOT A PULSE.
+
+              The beacon pulses for unread signals and that is the loudest thing
+              this header is allowed to do. A reward is TRUE rather than NEW — it
+              will still be there tomorrow, and it was earned rather than done to
+              you — so it gets the same treatment `Signals` gives its status ring:
+              present, coloured, and still. Two things competing for the same
+              alarm is how a player learns to ignore both.
+            */}
+            {waiting > 0 && (
+              <span
+                className="absolute -right-0.5 -top-0.5 size-2 rounded-full bg-opportunity shadow-[0_0_5px_var(--color-opportunity)]"
+                aria-hidden="true"
+              />
+            )}
+            {waiting > 0 && (
+              <span className="sr-only">{t('statusBar.menuWaiting', { count: waiting })}</span>
+            )}
+          </button>
         </div>
       </div>
 

@@ -22,5 +22,6 @@ export const keys = {
   pending: ['pending'],
   traffic: ['traffic'],
   reports: ['reports'],
+  rewards: ['rewards'],
   mining: ['mining'],
 } as const;

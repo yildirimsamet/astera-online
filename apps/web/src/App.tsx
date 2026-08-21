@@ -10,6 +10,7 @@ import { GalaxyView, type Panel } from './screens/GalaxyView.jsx';
 import { PendingStrip } from './shell/PendingStrip.js';
 import { LoadingScreen } from './shell/LoadingScreen.js';
 import { StatusBar } from './shell/StatusBar.js';
+import { useAmbientMusic } from './lib/music.js';
 
 /**
  * THREE SCREENS, ONE OF WHICH IS THE GAME.
@@ -65,6 +66,16 @@ export function App() {
     claim,
   } = useSession();
   const ready = session.phase === 'ready';
+
+  /**
+   * ABOVE EVERY EARLY RETURN IN THIS COMPONENT, and it has to be.
+   *
+   * The score runs for the whole session — the front door, the rehearsal and the
+   * galaxy are one continuous piece of music, not three. Called from a branch it
+   * would unmount and remount on every phase change, which restarts the track
+   * from the top each time a player signs in.
+   */
+  useAmbientMusic();
 
   useEventStream(ready);
   useLiveAlerts(ready);

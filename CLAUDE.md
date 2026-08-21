@@ -181,6 +181,7 @@ Each was paid for in iteration. `docs/decisions.md` holds the evidence.
 | The cover comes off when the disc is BUILT, not when the bytes land | Models still have to parse, compile and upload; `FirstFrame` reports the first real frame |
 | Nothing on the way in blocks the player | A loading screen is an OVERLAY over a page that is already loading, never a gate in front of one |
 | Every card carries a two-or-three-word tag, separate from its role sentence | The role argues a decision; the tag answers "what IS this" for someone scanning fourteen cards |
+| **Background audio is a lifecycle problem, not a playback one** | Autoplay is refused on every cold tab; `pause()` rejects a pending `play()` with `AbortError`; and a teardown that only pauses leaves the media fetch and the decoder alive, which StrictMode's double mount turns into two tracks at once (D66) |
 | **A control names the surface it opens** | A permanent way in is not enough. The commander sheet — the account, the galaxy, sign-out — hung off a header button that said SEASON and drew a duration, so it read as a clock and produced "there is no logout button" (D54) |
 | **The galactic plane carries no lines** | The graph-paper quality came from strokes being strokes, not from their brightness — modulating them changed nothing and cost a pass to find out (D53b) |
 | **No user-facing string is written in a component** | Every one lives in `apps/web/src/i18n/locales/`, one section per surface, and NOTHING is shared between surfaces — two controls that read the same today are two controls (D55) |
@@ -192,12 +193,18 @@ Each was paid for in iteration. `docs/decisions.md` holds the evidence.
 | **A guided beat leaves ONE thing pressable, and the way out is never one of the things locked** | Activations outside the target are cancelled — never pointer or touch events, which would cancel the scroll or the orbit they began. The allowance is a LIST, shallow to deep, because a gated control OPENS a surface; gating only the first seals the player inside the sheet they were told to open (D56) |
 | **A rule measured in MINUTES breaks when speeds change; a rule measured in RATIOS does not** | D63 moved hull speeds ×9.46 and nine tests failed at once — none because the thing they tested had broken. `advance(10)` into a flight that was 27 minutes, a radar sweep in tenths of a minute, a lead asserted as `> 12`. Write the share, not the count |
 | **An absolute duration stops being a fraction when flights get short** | `BEARING_MINUTES` equalled a whole leg, so a contact's window became a ROUTE and gave away the destination. `LEAD_TOLERANCE` was 77% of Radar L3's lead, so every rung warned at a wider circle than it sold. Both were invisible until the tempo moved (D63) |
+| **Reward progress is COUNTED off the world, never accumulated into a counter** | Ten of eleven chains read rows the game keeps anyway — missions by kind, runs that arrived, levels standing. A chain added later is retroactive for free, nothing can drift from what it counts, and nothing on the path that produces progress has to be made idempotent (D64) |
+| **`planets.builtEver` is the one reward tally that is stored, and it has to be** | A ship does not survive the thing it describes: it dies and its `units` row goes down with it. Every other metric is recoverable from the world; this one is not |
+| **A reward id is parsed strictly and stored canonically** | The claim's once-only guarantee is a primary key on the id. `PROBE:1e0` and `PROBE:1:1` both used to resolve to `PROBE:1`, which is three keys for one tier and three payments (D64) |
+| **A reward grants ABOVE the storage cap, and is never clamped** | `OPENING_BONUS` already does this and its docblock says why: nothing clamps stored resources downward, so the grant is never lost. Clamping would make a reward evaporate at the moment it was earned |
+| **Nothing about a commander's name is ever case-folded to compare it** | `'İ'.toLowerCase()` is `i` plus a combining dot in JavaScript AND in Postgres, so `lower(name) = lower($1)` cannot find `İhsan`. Compare as written, or fold both sides with the same normaliser that wrote the value (D64a) |
 | **Read a file's docblock before editing it** | The 3D surface and its harnesses carry a dozen traps that each cost a bug — orbit standoffs, `lookAt` frames, sprite tinting, plume direction, a screenshot that stalls the frame loop. Every one is written at its own site in `apps/web/src/galaxy/` and `tools/` |
 
 **Production**
 
 | Rule | Why |
 |---|---|
+| **`VITE_GA_ID` is inlined at BUILD time, so analytics needs a redeploy and not a restart** | The client is a directory of static files with no environment to read. Unset means no tag, no third-party request and no globals — that is the whole opt-out and it is the default (D67) |
 | **The client and the API share ONE origin** | `credentials: 'same-origin'`, a `SameSite=Lax` refresh cookie and no CORS anywhere. Moving the API to `api.` ends every session at the first token expiry and makes `x-server-time` unreadable — which drops the disc onto the DEVICE clock and undoes D52 for everybody (D57) |
 | **Routes are registered inside `app.after()`** | `register` QUEUES a plugin; routes added synchronously afterwards exist before it does. Registered the obvious way, every per-route rate limit was silently ignored — 200 to an unlimited flood, green typecheck, green tests |
 | **A rate-limit refusal is a `GameError`** | Whatever `errorResponseBuilder` returns IS the error the handler receives, and a plain object arrives with no `statusCode` — so the handler cannot tell it from a bug and answers 500 |
@@ -334,11 +341,12 @@ galaxies (D21); the owner's interface pass (D22–D26); the OGame pass (D27–D3
 wreckage, engagement, notifications and the radar rebuild (D34–D50); the live galaxy and the
 end of waiting (D51–D53); the name, the identity and the way out (D54); Turkish and English
 (D55); the rehearsal — ninety seconds of the real game before there is an account (D56); production
-on one origin, with the ceilings that a public door needs (D57).
+on one origin, with the ceilings that a public door needs (D57); the reward panel and the one
+menu that holds it (D64–D67).
 
 ```
-pnpm verify  →  0 type errors · 0 lint errors · 1,414 tests
-                rules 229 · sim 47 · server 503 · web 635
+pnpm verify  →  0 type errors · 0 lint errors · 1,572 tests
+                rules 248 · sim 47 · server 530 · web 747
 ```
 
 **Two season-gate assertions are RED after D63, down from five:** `TI` reads −0.465 against
@@ -386,6 +394,8 @@ seed. `ARR` was always the next thing to re-derive; it is now the only thing.
 | Identity | **Astera Online** everywhere — package scope, database, container, channel, title, manifest. The painted wordmark on the front door and the loading cover, and app icons cut from the same artwork (D54) |
 | Onboarding | A stranger plays the real galaxy for ninety seconds before an account exists: the public preview takes no seat, the beats gate to one control at a time, and the claim makes the account, takes the seat and replays the opening in one call (D56) |
 | Deployment | Live at `asteraonline.space`. Host nginx serves the built client and proxies `/api` to one container; Postgres in a second with a named volume and a nightly dump. Rate limits on the login and the seat. `./deploy/deploy.sh` (D57) |
+| Rewards | Eleven chains, counted off the world rather than accumulated; claimed once under the planet lock, granted above the storage cap so a raider can take them. The @JoinAstera bonus is a human reading a DM plus `season reward NAME` (D64, D64a) |
+| Score · analytics | One looped track at 0.35, paused with the tab and resumed from the same instant (D66). GA4 behind `VITE_GA_ID`, deferred to idle, absent unless configured (D67) |
 | Season lifecycle | `season_end` event kind exists; **no handler** |
 
 **The single most important gap is a player.** The loop is playable end to end and has

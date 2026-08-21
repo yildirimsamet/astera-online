@@ -15,6 +15,7 @@ import { TokenService } from './auth/tokens.js';
 import { GameError } from './services/planet.js';
 import { registerAuthRoutes } from './routes/auth.js';
 import { registerPlanetRoutes } from './routes/planet.js';
+import { registerRewardRoutes } from './routes/rewards.js';
 import { registerIntelRoutes } from './routes/intel.js';
 import { registerGalaxyRoutes } from './routes/galaxy.js';
 import { registerMiningRoutes } from './routes/mining.js';
@@ -267,6 +268,7 @@ export function buildApp(opts: BuildAppOptions): BuiltApp {
     registerOnboardingRoutes(app);
     registerSeasonRoutes(app);
     registerPlanetRoutes(app);
+    registerRewardRoutes(app);
     registerIntelRoutes(app);
     registerGalaxyRoutes(app);
     registerMiningRoutes(app);

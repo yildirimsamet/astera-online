@@ -5,6 +5,7 @@ import { ApiError } from '../api/client.js';
 import { describeError } from '../i18n/errors.js';
 import { keys } from '../api/keys.js';
 import type { ClaimIntent, ClaimResult, Me, Preview } from '../api/schemas.js';
+import { track } from '../lib/analytics.js';
 
 /** Where the player is standing, as one word. */
 export type Phase = Session['phase'];
@@ -130,6 +131,20 @@ export function useSession() {
       try {
         if (mode === 'register') await api.register(username, password);
         else await api.login(username, password);
+        /**
+         * THE FUNNEL, AND IT IS TWO EVENTS BECAUSE THERE ARE TWO WAYS IN.
+         *
+         * GA4's own names, not invented ones: `sign_up` and `login` are reported
+         * in the console's built-in funnel views, and anything else has to be
+         * assembled into a custom report by hand. `method` distinguishes this
+         * door from the rehearsal's — a stranger who plays first and claims after
+         * (D56) is the single number this project most needs to be able to read,
+         * and it cannot be read if both routes report the same event with no
+         * qualifier.
+         *
+         * No username, no id, nothing about the person. See `analytics.ts`.
+         */
+        track(mode === 'register' ? 'sign_up' : 'login', { method: 'form' });
         await settle(await api.me());
       } catch (err) {
         setSession({ phase: 'landing', error: messageOf(err) });
@@ -250,7 +265,11 @@ export function useSession() {
       password: string,
       intents: readonly ClaimIntent[],
     ): Promise<void> => {
-      settleClaim(await api.claim(username, password, intents));
+      const result = await api.claim(username, password, intents);
+      // The other door. A commander who played the rehearsal first and is only now
+      // becoming an account — the conversion this whole onboarding exists for.
+      track('sign_up', { method: 'rehearsal' });
+      settleClaim(result);
     },
     [api, settleClaim],
   );

@@ -6,7 +6,7 @@ import type { MiningRun } from '../api/schemas.js';
 import { MODEL, MODEL_FACING } from '../ui/assets.js';
 import { orientedCraft } from './model.js';
 import { ROUTE_OPACITY, ROUTE_OPACITY_FOCUSED, Wake } from './Fleets.jsx';
-import { runPosition, toWorld, type Vec3Tuple } from './scene.js';
+import { CRAFT_SCALE, runPosition, toWorld, type Vec3Tuple } from './scene.js';
 import { formationFor, slotOffset } from './Squadrons.js';
 import { markHit, wasTap } from './tap.js';
 import { serverNow } from '../lib/clock.js';
@@ -30,7 +30,7 @@ import { serverNow } from '../lib/clock.js';
  * confusing exactly once, and then it is the most legible thing in the game.
  */
 
-const STYLE = { colour: '#d9a441', scale: 0.26, flame: '#ffc073' } as const;
+const STYLE = { colour: '#d9a441', scale: 0.26 * CRAFT_SCALE, flame: '#ffc073' } as const;
 
 useGLTF.preload(MODEL.drill, false);
 

@@ -1,11 +1,12 @@
 import { app, document, landing, loading, servers, settings } from './entry.js';
-import { pendingStrip, sheet, signals, statusBar, surface } from './shell.js';
+import { menu, pendingStrip, sheet, signals, statusBar, surface } from './shell.js';
 import { focus, galaxy } from './world.js';
 import { action, itemSheet, launch, planet, planetHero, upgradeRow } from './planet.js';
 import { clarity, dossier, intel, reports } from './intel.js';
 import { directives, gains, notifications, units, vocabulary } from './data.js';
 import { errors } from './errors.js';
 import { onboarding } from './onboarding.js';
+import { rewards } from './rewards.js';
 
 /**
  * ENGLISH, AND IT IS THE SHAPE EVERY OTHER LANGUAGE IS CHECKED AGAINST.
@@ -30,6 +31,7 @@ export const en = {
   document,
   settings,
   statusBar,
+  menu,
   pendingStrip,
   signals,
   sheet,
@@ -53,6 +55,7 @@ export const en = {
   units,
   errors,
   onboarding,
+  rewards,
 } as const;
 
 /**

@@ -705,6 +705,164 @@ failure the notification payloads had. It asserts through `requireAuth`, where
 presence is stamped: a caller who has just made an authenticated request is in the
 galaxy by definition, so the count can never honestly be zero there.
 
+### D64 · A reason to press something after onboarding — owner instruction
+
+**Report.** *"Onboardingden sonra user'a yapıcak bişey kalmıyor."* D58 answered the
+same complaint with `OPENING_BONUS` — one more decision's worth of resources. That
+bought a first purchase and nothing after it.
+
+**What was built.** Eleven reward chains, in `packages/rules/src/rewards.ts`. Each
+is a goal that keeps going — probe once, then twice more, then twice more again —
+and every tier it passes is claimable independently and never expires.
+
+**It pays for ACTS, never for attendance, and that is the whole design.**
+`game-design.md` bans streaks, login bonuses and "we miss you" by name, because
+each of them pays for being present at the right hour. Nothing here can be earned
+by waiting: a player who leaves the tab open for a week completes none of it. Two
+of the eleven chains pay for probing and raiding specifically, and they carry the
+largest purses — the recorded risk against this game is *"nobody scouts, and it
+degrades into a worse OGame"*.
+
+**The grant is resources, and that is not laziness.** A permanent upgrade, a
+cosmetic or a discount would all be UN-LOSABLE, which the invariant table refuses
+by name. Alloy and crystal land in storage, above the vault floor, where a raider
+can come and take them. A reward that can be stolen stays inside the game.
+
+**PROGRESS IS COUNTED, NEVER ACCUMULATED.** There is no achievement table, no
+counter incremented from six services and no listener on the event queue. Ten of
+the eleven chains are read off rows the game keeps anyway — missions by kind,
+mining runs that arrived, levels standing right now. It costs three queries and
+buys four things: a chain added later is retroactive for everyone with no
+backfill; a counter cannot drift from the world it counts, because it *is* the
+world; nothing needs to be made idempotent, because nothing is written on the path
+that produces progress; and a raid resolving while the panel is open needs to tell
+the panel nothing.
+
+**The one exception is `planets.builtEver`.** A ship does not survive the thing it
+describes — it dies, and its `units` row goes down with it — so "how many have you
+ever built" is unrecoverable. One jsonb column, written inside the lock
+`buildUnits` already holds. The migration backfills it from what each planet is
+holding now, which under-counts a veteran and never over-counts one.
+
+**The amounts.** The brief was *"orta iyi arası"*. 13,600 alloy and 4,740 crystal
+if every tier is taken, against a fourteen-day season that produces well over
+100,000 — roughly a tenth, front-loaded. Crystal is held at ~35% of alloy, which
+is the income share and not a taste: paying crystal faster than it is earned would
+silently undo the scarcity `ECON.crystalCostBase` took a whole pass to derive.
+
+**The simulator does not model any of it**, so the season gate is unmoved: `TI` is
+still −0.4652 and the informed archetype still drops one seed, exactly as before.
+That is a known gap and not a result.
+
+**Two bugs the tests found in this work, both about paying twice.**
+`findRewardTier` used to accept `PROBE:1e0` and `PROBE:1:1` as aliases for
+`PROBE:1` — and the claim's idempotency is a primary key on the id, which cannot
+tell three spellings apart. The parse is strict now and the service keys off the
+canonical form rather than the caller's string. Separately, a mission `abandon()`
+had cancelled was still counted as a raid flown, so a failing event queue paid out
+alloy.
+
+### D64a · The Twitter bonus is a human reading a message — owner instruction
+
+Follow `@JoinAstera`, send the commander name by direct message, claim 500 alloy
+and 250 crystal, once per commander.
+
+There is no Twitter API in this project and there is not going to be one: a
+marketing integration is not a game system, and the honest implementation of "a
+human checked" is a human checking. `season reward <commander>` writes the grant
+row; the PLAYER still claims it from the panel, so the resources arrive while they
+are looking at them and the ordinary claim path does the locking, the once-only
+key and the toast.
+
+**No HTTP surface for it, deliberately.** An admin endpoint would put an admin
+credential in the environment of a public API for the sake of a few dozen manual
+grants a season.
+
+**The lookup does not case-fold.** `'İ'.toLowerCase()` is `i` plus a combining
+dot, in JavaScript and in Postgres alike, so `lower(name) = lower($1)` never
+matches a commander called `İhsan` — and roughly half this game's players are
+Turkish. The display name is compared as written; the username is compared after
+`normaliseUsername`, the same function that folded it on the way in. Comparing a
+value against itself through its own normaliser is the only case-insensitivity
+that is safe in any alphabet.
+
+### D65 · One way in, instead of four — owner instruction
+
+The header's right-hand end had grown a commander control, an intel control and
+the signals beacon, and the rewards panel would have been a fourth — on a phone,
+beside two stock columns the `Stock` docblock already records as starved for width
+at five digits. Everything that is not NEWS went behind one menu control.
+
+**D54 is not being undone, and it would be easy to think it is.** That finding was
+not "the commander control must be on the header" — it was *"a control that says
+SEASON and draws a clock is not a way out, because nobody presses a readout"*. The
+bug was the LABEL. This control's accessible name still carries the commander and
+still names what is behind it; the sheet it opens is still titled with the
+player's own name; sign-out is still exactly two taps from the galaxy. What is
+given up is the name being legible without opening anything, against a hamburger —
+the one glyph on a phone that needs no label to read as "everything else is here".
+
+`onboarding.test.tsx` records the relaxation rather than dropping the test.
+
+### D65a · An eye, exactly where the icon set says not to use one
+
+`icons/index.tsx` states that `intel` is an aperture and **not** an eye, because an
+eye reads as surveillance OF you and the Intel centre is your own instrument. The
+probe control now wears an eye, which is the opposite act and the opposite icon: a
+probe looks at somebody else's world, and that world is TOLD. The two glyphs
+disagreeing is the silent half of the fog disagreeing with the loud half.
+
+### D66 · The score, and the four ways background audio breaks — owner instruction
+
+One track, looped, at a fixed 0.35, paused whenever the page is not being looked
+at and resumed from the same instant. What the implementation is actually about is
+lifecycle:
+
+· **Autoplay is blocked, and that is not an error.** Every current browser refuses
+  `play()` until the page has been interacted with. The first attempt is expected
+  to fail; the rejection arms a one-shot listener on the next real gesture.
+· **`pause()` preserves `currentTime`**, so "resume where it left off" needs no
+  bookkeeping — and deliberately none, because a stored position and the element's
+  own position are two sources of truth for one fact.
+· **Pausing a pending `play()` rejects it** with `AbortError`, every time a tab is
+  backgrounded during the load window. An unhandled rejection in the console of a
+  live game is indistinguishable from a real fault.
+· **It must leave nothing behind.** What leaks is not a DOM node — the element is
+  never in the document — it is an in-flight media fetch and a decoder, and both
+  survive a `pause()`. Clearing `src` and calling `load()` is what frees them, and
+  StrictMode's double mount is exactly the case that turns a missed teardown into
+  two tracks playing over each other.
+
+`visibilitychange` is the whole of the pause rule and `blur` is deliberately not
+part of it: `blur` also fires for devtools and the address bar, neither of which
+means the player stopped watching.
+
+**There is no mute control**, by owner instruction that the volume stays fixed.
+Worth revisiting the first time somebody plays this in public.
+
+### D67 · Google Analytics, loaded the way Next.js would load it — owner instruction
+
+The brief asked for Next's best practice and this is not a Next app, so
+`@next/third-parties`' `<GoogleAnalytics>` was translated rather than the pasted
+snippet copied. Four things that component does, all of which matter more here:
+
+1. **It never blocks the page** — `afterInteractive`, never in `<head>`. Here it
+   waits for idle as well: the pasted snippet would sit in front of a 1.8 MB
+   three.js bundle on a phone, which is the one thing `LoadingScreen` exists to
+   keep honest.
+2. **`dataLayer` and `gtag` exist before the script does**, so a call made during
+   the load window queues instead of being dropped.
+3. **The id is configuration.** `VITE_GA_ID`, inlined at build time. Unset — every
+   dev server, every test, every local build — nothing is fetched and nothing is
+   defined. That is the whole opt-out.
+4. **It is idempotent.** StrictMode mounts twice and two tags double every figure.
+
+No consent banner, because nothing here reads or writes anything the player gave
+us: no ad module, no user id, no custom dimension carrying a commander name. No
+route tracking, because there is no router. Two events, both GA4's own names:
+`sign_up` and `login`, with `method` separating the front-door registration from
+the rehearsal claim — which is the single number this project most needs to read.
+
 ## Architecture
 
 A1 · One source of truth — LOCKED

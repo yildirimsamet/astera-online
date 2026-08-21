@@ -1,4 +1,4 @@
-import { eq } from 'drizzle-orm';
+import { eq, sql } from 'drizzle-orm';
 import {
   HULLS,
   PROSPECTOR,
@@ -18,7 +18,7 @@ import {
 } from '@astera/rules';
 import type { Clock } from '../clock.js';
 import type { Db, Tx } from '../db/client.js';
-import { satellites } from '../db/schema.js';
+import { planets, satellites } from '../db/schema.js';
 import { publishShard } from '../stream/bus.js';
 import { planetView, type PlanetView } from './planetView.js';
 import {
@@ -248,6 +248,30 @@ export async function buildUnits(
     const crystal = planet.crystal - totalCrystal;
     await saveResources(tx, planetId, { alloy, crystal });
     await addUnits(tx, planetId, { [hull]: count });
+
+    /**
+     * THE ONLY PLACE A HULL COMES INTO EXISTENCE, so it is the only place that
+     * has to remember one did.
+     *
+     * `units` is a live count and it goes DOWN — a squadron that dies takes its
+     * row with it — so nothing downstream can ever reconstruct how many were
+     * built. The reward panel's ships chain needs exactly that figure, and this
+     * is the single write that keeps it. See `planets.builtEver` in the schema
+     * for why it is the one derived-progress exception in the feature.
+     *
+     * Done in SQL rather than by reading the column and writing it back: this
+     * transaction already holds the row lock, but expressing it as an update
+     * against the stored value means the tally cannot be lost to a stale read if
+     * that ever stops being true.
+     */
+    await tx
+      .update(planets)
+      .set({
+        builtEver: sql`jsonb_set(
+          ${planets.builtEver}, ${`{${hull}}`},
+          to_jsonb(coalesce((${planets.builtEver} ->> ${hull})::int, 0) + ${count}), true)`,
+      })
+      .where(eq(planets.id, planetId));
 
     const bucket = spec.ground ? planet.ground : planet.homeFleet;
     bucket[hull] = (bucket[hull] ?? 0) + count;

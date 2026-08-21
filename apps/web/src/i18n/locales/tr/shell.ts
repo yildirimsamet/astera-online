@@ -12,9 +12,8 @@ export const statusBar = {
   crystalLabel: 'Kristal',
   storeFull: 'DOLU',
   storeFree: '{{amount}} yer var',
-  commanderHint: 'Komutan {{name}} — sezon, galaksi ve çıkış',
-  seasonUnknown: '—',
-  intelHint: 'İstihbarat — bildiklerin',
+  menuHint: 'Komutan {{name}}; istihbarat, ödüller ve hesap',
+  menuWaiting: '{{count}} ödül bekliyor',
   bays: {
     hint: '{{total}} rampanın {{used}} tanesi dolu',
     label: 'Havada',
@@ -76,7 +75,25 @@ export const surface = {
   whatPlanet: 'Gezegenin',
   whatIntel: 'Bildiklerin',
   whatReports: 'Savaş raporların',
+  whatRewards: 'Ödüllerin',
   waitingPlanet: 'Gezegen okunuyor',
   waitingIntel: 'Toplanıyor',
   planetSigil: 'Gezegen',
+} as const;
+
+/**
+ * MENÜ — galaksi dışındaki her şeye tek giriş.
+ *
+ * Buradaki her dize kendine ait; başka bir yerdeki etiketle aynı okunanlar bile.
+ * İstihbaratı açan satır, eskiden onu açan başlık düğmesi değildir; biri yeniden
+ * yazıldığında diğeri onunla birlikte kaymamalı.
+ */
+export const menu = {
+  eyebrow: 'Komutan',
+  intelLabel: 'İstihbarat',
+  intelHint: 'Teleskop, sondalar, radar ve savaş raporları',
+  rewardsLabel: 'Ödüller',
+  rewardsHint: 'Galaksinin sana oynadığın için borcu',
+  rewardsWaiting: '{{count}} hazır',
+  accountHeading: 'Hesap',
 } as const;

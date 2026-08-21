@@ -77,7 +77,15 @@ say "Building the client"
 # directly, so there is no container in the path of a static asset.
 STAGE="$ROOT/.deploy-web"
 rm -rf "$STAGE"
-docker build --target web-dist --output "type=local,dest=$STAGE" .
+# The analytics id, if this deployment has one. Read from the same `.env` the API
+# uses, and passed as a BUILD argument because Vite inlines it into the bundle —
+# there is no runtime environment on a directory of static files. Unset means the
+# client ships with no tag at all, which is the correct behaviour and not a
+# degraded one.
+GA_ID=$(grep -E '^VITE_GA_ID=' .env | cut -d= -f2- || true)
+docker build --target web-dist --build-arg "VITE_GA_ID=${GA_ID}" \
+  --output "type=local,dest=$STAGE" .
+[[ -n "$GA_ID" ]] && echo "  analytics: $GA_ID" || echo "  analytics: not configured"
 [[ -f "$STAGE/index.html" ]] || { echo "Client build produced no index.html."; exit 1; }
 
 # PRE-COMPRESS, so nginx never spends a cycle on it. `gzip_static on` serves the

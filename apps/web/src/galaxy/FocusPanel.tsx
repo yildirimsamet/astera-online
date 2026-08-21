@@ -27,6 +27,7 @@ import {
 import { duration, staleness } from '../lib/time.js';
 import { reachMinutes } from '../lib/navigation.js';
 import { HullMark } from '../ui/icons/hulls.js';
+import { AttackIcon, EyeIcon } from '../ui/icons/index.js';
 import { PlanetSigil } from '../ui/PlanetSigil.js';
 import { describe, useToast } from '../ui/Toast.js';
 
@@ -312,6 +313,17 @@ export function PlanetFocus({
             className="slab slab-commit flex-1"
             onClick={onAttack}
           >
+            {/*
+              THE ONE IRREVERSIBLE CONTROL IN THE GAME NOW CARRIES A MARK.
+
+              `slab-commit` is reserved for the launch and nothing else, and the
+              glyph is the second half of that same argument: on a rail where
+              every other control is a slab of the same size, weight and colour
+              family, shape is what a thumb recognises before the word is read.
+              `.slab` is already a flex row with an 8px gap, so the icon needs no
+              layout of its own.
+            */}
+            <AttackIcon className="size-[18px] shrink-0" />
             {t('focus.planet.attack')}
           </button>
         ) : (
@@ -494,6 +506,10 @@ function CloseGap({
           });
         }}
       >
+        {/* An eye, deliberately — see `EyeIcon`. A probe looks at somebody else's
+            world and that world is told, which is the opposite of the aperture the
+            Intel centre wears. */}
+        <EyeIcon className="size-[18px] shrink-0" />
         {t('focus.planet.sendProbe', {
           alloy: compact(PROBE.alloy),
           crystal: compact(PROBE.crystal),

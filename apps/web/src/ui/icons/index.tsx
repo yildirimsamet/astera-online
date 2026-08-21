@@ -512,6 +512,67 @@ export function InstallIcon(props: IconProps) {
 }
 
 /** CLAIM — take it away with you. An arrow leaving a vessel. */
+/**
+ * MENU — three rules, and the middle one is short.
+ *
+ * A hamburger, and deliberately the plainest one in the set. Everything else here
+ * encodes a rule about the game; this encodes nothing, because the moment a menu
+ * control tries to be clever about what is behind it, it stops reading as the
+ * place where the things you cannot find are kept. The unequal middle bar is the
+ * only concession — three identical rules at 20px read as a texture.
+ */
+/**
+ * A PROBE — AN EYE, AND THIS IS THE ONE PLACE AN EYE IS RIGHT.
+ *
+ * The set's own rule says `intel` is an aperture and NOT an eye, because an eye
+ * reads as surveillance OF you and the Intel centre is your own instrument
+ * pointed outward. That reasoning holds, and it is exactly why this glyph is the
+ * opposite: a probe is surveillance of SOMEBODY ELSE'S world, it is the loud half
+ * of the fog ("watching is silent; probing is loud"), and the target is told it
+ * happened. The two icons disagreeing is the two acts disagreeing.
+ *
+ * The pupil is a ring rather than a filled dot — at 20px a solid pupil closes the
+ * lid shape into a blob, and this glyph sits inside a button next to text where
+ * it has less room than a list icon does.
+ */
+export function EyeIcon(props: IconProps) {
+  return (
+    <Glyph {...props}>
+      <path d="M2.6 12S6.4 5.8 12 5.8 21.4 12 21.4 12 17.6 18.2 12 18.2 2.6 12 2.6 12Z" />
+      <circle cx="12" cy="12" r="2.9" />
+    </Glyph>
+  );
+}
+
+export function MenuIcon(props: IconProps) {
+  return (
+    <Glyph {...props}>
+      <path d="M4 7h16M4 12h11M4 17h16" />
+    </Glyph>
+  );
+}
+
+/**
+ * A REWARD WAITING TO BE TAKEN — an open hand, not a trophy or a gift box.
+ *
+ * A trophy says "you were the best", which is what the Dominion ladder is for and
+ * is not what this panel does. A gift box says the game is giving something away.
+ * Both are wrong: every one of these was earned by an act, and the honest picture
+ * of "come and take it" is something held out.
+ */
+export function RewardIcon(props: IconProps) {
+  return (
+    <Glyph {...props}>
+      {/* The palm, open and slightly cupped. */}
+      <path d="M4.6 12.6a7.4 7.4 0 0 0 14.8 0" />
+      <path d="M4.6 12.6h14.8" />
+      {/* What is standing in it. Off-centre so it reads as an object rather than
+          as a decorative diamond centred on the axis. */}
+      <path d="M12 3.2 14.4 7 12 10.4 9.6 7Z" />
+    </Glyph>
+  );
+}
+
 export function ClaimIcon(props: IconProps) {
   return (
     <Glyph {...props}>

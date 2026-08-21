@@ -67,7 +67,6 @@ const TURKISH = flatten(tr);
  */
 const IDENTICAL_ON_PURPOSE = new Set([
   // Punctuation and stand-ins for a missing figure. Not words.
-  'statusBar.seasonUnknown',
   'statusBar.works.idle',
   'galaxy.commander.galaxyUnknown',
   'galaxy.commander.endsUnknown',
@@ -103,6 +102,19 @@ const IDENTICAL_ON_PURPOSE = new Set([
   'vocabulary.instrument.RADAR.name',
   'vocabulary.instrument.AEGIS.name',
   'intel.radar.level',
+  // The reward panel. A multiplier and a fraction are notation, not language —
+  // "×3" and "3 / 5" are read the same in both. The LEVEL forms beside them are
+  // not on this list, because `L5` is `S5` in Turkish (seviye) and a translated
+  // pair is exactly what that difference should look like.
+  'rewards.goalCount',
+  'rewards.progressCount',
+  // The instrument's own name, kept by the Turkish glossary — the same decision
+  // `vocabulary.instrument.AEGIS.name` above records.
+  'rewards.chains.AEGIS.name',
+  // A handle and the address it points at. Translating either would send the
+  // player somewhere that does not exist.
+  'rewards.social.handle',
+  'rewards.social.url',
 ]);
 
 describe('the two languages hold the same keys', () => {

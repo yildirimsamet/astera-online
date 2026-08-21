@@ -16,7 +16,7 @@ export { ArtWell, type WellTone } from './ArtWell.js';
 export { ResourcePill } from './ResourcePill.js';
 export { Readout, Stat, type ReadoutSize } from './Readout.js';
 export { PriceTag, Amount } from './PriceTag.js';
-export { SectionHead, Chip, EmptyState, Skeleton, SkeletonText, Waiting, Note, type ChipTone } from './Surface.js';
+export { SectionHead, Chip, EmptyState, Skeleton, SkeletonText, Waiting, Note, Unreachable, type ChipTone } from './Surface.js';
 export { GradeStamp, wentYourWay } from './GradeStamp.js';
 export { Sheet } from './Sheet.js';
 export { useCountUp, useJump } from './useCountUp.js';

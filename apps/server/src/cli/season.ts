@@ -9,7 +9,7 @@
 import { parseArgs } from 'node:util';
 import { randomBytes } from 'node:crypto';
 import { eq } from 'drizzle-orm';
-import { SEASON, SERVERS } from '@astera/rules';
+import { SEASON, SERVERS, rewardId } from '@astera/rules';
 import { createDb } from '../db/client.js';
 import { runMigrations } from '../db/migrate.js';
 import { loadDotEnv, loadEnv } from '../env.js';
@@ -18,12 +18,16 @@ import { accounts, players } from '../db/schema.js';
 import { hashPassword } from '../auth/password.js';
 import { createSeason, liveSeason } from '../services/season.js';
 import { joinSeason } from '../services/player.js';
+import { grantReward } from '../services/rewards.js';
 import {
   bootstrapServers,
   listServers,
   shardNameFor,
   wipeAllServers,
 } from '../services/servers.js';
+
+/** The @JoinAstera bonus, which is the only hand-checked reward there is. */
+const SOCIAL_REWARD = rewardId('SOCIAL', 1);
 
 const USAGE = `
 season migrate                     apply pending migrations
@@ -32,6 +36,8 @@ season create [options]            open ONE galaxy on a named shard
 season status                      every galaxy, its population and who is on it
 season wipe --yes [options]        END EVERYTHING. Fold records into accounts,
                                    delete every season world, open fresh galaxies.
+season reward NAME [--id ID]       unlock a hand-checked reward for one commander
+                                   (default SOCIAL:1 — the @JoinAstera bonus)
 
   --shard CODE      shard code, for 'create'   (default: EU-1)
   --seed N          galaxy seed / seed base    (default: random)
@@ -40,6 +46,23 @@ season wipe --yes [options]        END EVERYTHING. Fold records into accounts,
   --count N         galaxies, for 'bootstrap'  (default: ${String(SERVERS.count)})
   --unattended N    DEV AID ONLY: place N inert commanders on the FIRST open galaxy
                     so a solo developer has something to scout and raid.
+  --id ID           reward tier, for 'reward'    (default: ${SOCIAL_REWARD})
+
+THE TWITTER BONUS IS A HUMAN CHECKING A DIRECT MESSAGE, and this is the whole of
+its implementation. A player follows @JoinAstera and sends their commander name;
+you read it and run:
+
+  pnpm --filter @astera/server season reward Vantage
+
+That writes the grant. The PLAYER still claims it in the game, from the rewards
+panel, so the resources arrive while they are looking at them and the ordinary
+claim path does the locking, the once-only key and the toast. Idempotent: running
+it twice for the same commander is a no-op and says so.
+
+There is no HTTP route for this on purpose. An admin endpoint would put an admin
+credential in the environment of a public API for the sake of a few dozen manual
+grants a season; a command on a box only the operator can reach does the same job
+with no attack surface at all.
 `;
 
 const NAMES = [
@@ -64,6 +87,7 @@ async function main(): Promise<void> {
       cap: { type: 'string' },
       count: { type: 'string' },
       unattended: { type: 'string' },
+      id: { type: 'string' },
       yes: { type: 'boolean' },
     },
   });
@@ -157,6 +181,23 @@ async function main(): Promise<void> {
           ].join('\n'),
         );
         await placeUnattended(db, num(values.unattended, 0));
+        return;
+      }
+
+      /**
+       * The operator's half of a reward the game cannot see. See USAGE above and
+       * `services/rewards.ts` for why this is a command and not a route.
+       */
+      case 'reward': {
+        const name = positionals[1];
+        if (name === undefined) throw new Error('Which commander? season reward NAME');
+        const id = values.id ?? SOCIAL_REWARD;
+        const result = await grantReward(db, name, id);
+        console.log(
+          result.already
+            ? `${result.player} already has ${id}. Nothing written.`
+            : `${result.player} may now claim ${id}.`,
+        );
         return;
       }
 

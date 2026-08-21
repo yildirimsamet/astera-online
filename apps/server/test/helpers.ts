@@ -68,7 +68,8 @@ export async function testDb(): Promise<{ db: Db; close: () => Promise<void> }> 
 /** Wipe everything between tests. CASCADE handles the foreign-key order. */
 export async function truncateAll(db: Db): Promise<void> {
   await db.execute(sql`
-    TRUNCATE request_log, notifications, scan_events, probe_reports, watches, battle_reports,
+    TRUNCATE reward_grants, request_log, notifications, scan_events, probe_reports, watches,
+             battle_reports,
              scheduled_events, missions, mining_runs, asteroid_claims, units, satellites,
              buildings, planets, players, seasons, shards, accounts
     RESTART IDENTITY CASCADE

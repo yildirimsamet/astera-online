@@ -237,6 +237,51 @@ export const satelliteInstallSchema = z.object({
 });
 
 
+/* ── rewards ────────────────────────────────────────────────── */
+
+/**
+ * WHAT THE GAME OWES YOU FOR PLAYING IT.
+ *
+ * `id` is `CHAIN:GOAL` and is parsed as a plain STRING, never as an enum — the
+ * same rule the notification kinds are read under, and for the same reason. A
+ * chain added on the server one deploy ahead of a phone must cost that phone one
+ * unrenderable card, not the whole panel: `z.enum` would reject the array and
+ * `data` would stay undefined, so a player would see an empty rewards screen
+ * rather than a shorter one.
+ *
+ * `metric` is what decides the SENTENCE under a goal — "3 of 5 probes sent"
+ * against "Command Core L5" — because those are different kinds of number and one
+ * phrasing could not have carried both. Unknown values render as a count, which
+ * is the honest fallback: a figure and a target.
+ */
+export const rewardTier = z.object({
+  id: z.string(),
+  goal: z.number(),
+  alloy: z.number(),
+  crystal: z.number(),
+  state: z.enum(['locked', 'claimable', 'claimed']),
+});
+
+export const rewardsSchema = z.object({
+  chains: z.array(
+    z.object({
+      id: z.string(),
+      metric: z.string(),
+      progress: z.number(),
+      tiers: z.array(rewardTier),
+    }),
+  ),
+  /** How many tiers are waiting. The menu badge is this number and nothing else. */
+  claimable: z.number(),
+});
+
+export const rewardClaimSchema = z.object({
+  granted: resources,
+  rewards: rewardsSchema,
+  ...withPlanet,
+});
+
+
 
 /* ── the galaxy, at the tier of detail you have earned ──────── */
 
@@ -769,6 +814,9 @@ export type ServerList = z.infer<typeof serverListSchema>;
 export type Placement = z.infer<typeof placementSchema>;
 export type SeasonInfo = z.infer<typeof seasonSchema>;
 export type PlanetView = z.infer<typeof planetSchema>;
+export type RewardsView = z.infer<typeof rewardsSchema>;
+export type RewardChainView = RewardsView['chains'][number];
+export type RewardTierView = z.infer<typeof rewardTier>;
 export type GalaxyView = z.infer<typeof galaxySchema>;
 export type GalaxyPlanet = GalaxyView['planets'][number];
 export type Leaderboard = z.infer<typeof leaderboardSchema>;

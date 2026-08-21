@@ -44,6 +44,13 @@ FROM web-deps AS web-build
 COPY packages ./packages
 COPY apps/web ./apps/web
 COPY tsconfig.base.json ./
+# THE MEASUREMENT ID IS BAKED IN HERE OR NOT AT ALL. Vite inlines `import.meta.env`
+# at build time, so this cannot be supplied to the running container — the client
+# is a directory of static files with no environment to read. Absent (the default,
+# and every local build) the client installs no tag and fetches nothing from
+# Google; see `apps/web/src/lib/analytics.ts`.
+ARG VITE_GA_ID=""
+ENV VITE_GA_ID=$VITE_GA_ID
 RUN pnpm --filter @astera/web build
 
 # A filesystem, not an image. `docker build --target web-dist --output` writes it

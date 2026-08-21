@@ -10,6 +10,7 @@ import { I18nextProvider } from 'react-i18next';
  */
 import i18n from './i18n/index.js';
 import { syncDocumentLanguage } from './i18n/document.js';
+import { startAnalytics } from './lib/analytics.js';
 import { Api } from './api/client.js';
 import { ApiProvider } from './api/context.js';
 import { ToastProvider } from './ui/Toast.js';
@@ -17,6 +18,15 @@ import { App } from './App.js';
 import './styles.css';
 
 syncDocumentLanguage();
+
+/**
+ * Measurement, and it is deliberately the last thing set up and the first thing
+ * that is allowed to wait. Nothing is fetched unless `VITE_GA_ID` was set at build
+ * time, and even then the request is deferred to an idle moment — see
+ * `lib/analytics.ts` for why the pasted `<head>` snippet would have been wrong on
+ * a page that opens by compiling a 3D scene.
+ */
+startAnalytics();
 
 const api = new Api();
 

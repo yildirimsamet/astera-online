@@ -403,7 +403,7 @@ describe('the server list', () => {
 });
 
 /**
- * THE WAY OUT. D21, corrected.
+ * THE WAY OUT. D21, corrected at D54, and MOVED — not weakened — by the menu.
  *
  * Sign-out was briefly at the foot of the planet sheet, which is opened by tapping
  * your own world in the 3D disc. It worked, and it put the most basic account
@@ -416,12 +416,22 @@ describe('the server list', () => {
  * looked at it saw a clock. A permanent control that names something else is not a
  * permanent way in.
  *
- * These two tests are what keep it one — that the control exists, and that it says
- * the player's own name.
+ * THE CONTROL IS NOW THE MENU, and the header no longer prints the commander's
+ * name in the open. That is an owner decision — the header had four controls in it
+ * and the two stock figures beside them are the most-read numbers in the game — and
+ * it is a real relaxation of D54's second test, so it is recorded rather than
+ * quietly dropped. What is kept is everything the finding was actually about: the
+ * control is permanent, it is a plain DOM button, its accessible name carries both
+ * the commander and what is behind it, and the sheet it opens is titled with the
+ * player's own name. What is given up is the name being legible without opening
+ * anything, against a hamburger, which is the one glyph on a phone that needs no
+ * label to read as "everything else is in here".
+ *
+ * The three tests below are what keep it a way out: the control exists, it opens
+ * the menu, and it still says who you are to anyone who asks it.
  */
 describe('reaching the way out', () => {
-  it('offers a commander control in the header at all times', async () => {
-    const onOpen = vi.fn();
+  const header = async (onOpen = vi.fn()) => {
     const { StatusBar } = await import('../src/shell/StatusBar.js');
     const { ToastProvider } = await import('../src/ui/Toast.js');
     const { wrapper: Wrapper, queries } = harness();
@@ -437,35 +447,57 @@ describe('reaching the way out', () => {
         </ToastProvider>
       </Wrapper>,
     );
+    return { onOpen };
+  };
 
+  it('offers a permanent way into the account, from the header', async () => {
+    const { onOpen } = await header();
     const control = screen.getByRole('button', { name: /commander Vantage/i });
     await userEvent.setup().click(control);
-    expect(onOpen).toHaveBeenCalledWith('commander');
+    expect(onOpen).toHaveBeenCalledWith('menu');
   });
 
   /**
-   * The name has to be VISIBLE, not only in the accessible name. This is the
-   * difference between the control a player finds and the one they walk past, and
-   * it is the entire content of the bug report that produced it.
+   * IT NAMES WHAT IS BEHIND IT, which is the whole of the D54 finding. A control
+   * whose label describes something other than the surface it opens is not a way
+   * in — that is how a button reading SEASON produced "there is no logout button"
+   * while opening the sheet with sign-out in it.
    */
-  it('states the commander name on the control, in the open', async () => {
-    const { StatusBar } = await import('../src/shell/StatusBar.js');
-    const { ToastProvider } = await import('../src/ui/Toast.js');
-    const { wrapper: Wrapper, queries } = harness();
+  it('says whose account it is and what is inside', async () => {
+    await header();
+    const control = screen.getByRole('button', { name: /commander Vantage/i });
+    const label = control.getAttribute('aria-label') ?? '';
+    expect(label).toMatch(/vantage/i);
+    expect(label).toMatch(/account/i);
+  });
 
-    queries.setQueryData(['planet'], planetPayload());
-    queries.setQueryData(['season'], seasonPayload());
+  /**
+   * The two surfaces that came off the header are reachable from the sheet, and
+   * they are LABELLED — a menu is read rather than recognised, so a row with only
+   * a glyph on it would have moved the D54 problem one level down.
+   */
+  it('carries intel and rewards as named rows, not as glyphs', async () => {
+    const { MenuPanel } = await import('../src/shell/MenuPanel.js');
+    const onOpen = vi.fn();
+    const { wrapper: Wrapper } = harness();
 
     render(
       <Wrapper>
-        <ToastProvider>
-          <StatusBar commander="Vantage" onOpen={vi.fn()} />
-        </ToastProvider>
+        <MenuPanel
+          galaxy="Vantage"
+          shard="EU-1"
+          endsAt={new Date(Date.now() + 3_600_000)}
+          onOpen={onOpen}
+          onSignOut={vi.fn()}
+        />
       </Wrapper>,
     );
 
-    const control = screen.getByRole('button', { name: /commander Vantage/i });
-    expect(control.textContent).toContain('Vantage');
+    const user = userEvent.setup();
+    await user.click(screen.getByRole('button', { name: /rewards/i }));
+    expect(onOpen).toHaveBeenCalledWith('rewards');
+    await user.click(screen.getByRole('button', { name: /intel/i }));
+    expect(onOpen).toHaveBeenCalledWith('intel');
   });
 
   /**
@@ -477,24 +509,27 @@ describe('reaching the way out', () => {
    * which means the surface that holds "the information is the game" existed only
    * as a side effect of somebody else acting on them.
    *
-   * It is a header control now, and this test is what keeps it one.
+   * It is a MENU ROW now rather than a header control, and this test is what keeps
+   * it a route that exists with nothing in the mailbox: the notifications list is
+   * deliberately empty here, which is the whole point of the bug it came from.
    */
   it('offers a way into the intel centre with an empty mailbox', async () => {
     const onOpen = vi.fn();
-    const { StatusBar } = await import('../src/shell/StatusBar.js');
-    const { ToastProvider } = await import('../src/ui/Toast.js');
+    const { MenuPanel } = await import('../src/shell/MenuPanel.js');
     const { wrapper: Wrapper, queries } = harness();
 
-    queries.setQueryData(['planet'], planetPayload());
-    queries.setQueryData(['season'], seasonPayload());
     // Nothing has happened to this player, which is the whole point.
     queries.setQueryData(['notifications'], { notifications: [] });
 
     render(
       <Wrapper>
-        <ToastProvider>
-          <StatusBar commander="Vantage" onOpen={onOpen} />
-        </ToastProvider>
+        <MenuPanel
+          galaxy="Vantage"
+          shard="EU-1"
+          endsAt={null}
+          onOpen={onOpen}
+          onSignOut={vi.fn()}
+        />
       </Wrapper>,
     );
 

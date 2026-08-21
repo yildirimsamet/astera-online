@@ -2,7 +2,7 @@ import type { FastifyInstance } from 'fastify';
 import { pino } from 'pino';
 import { afterAll, beforeEach, describe, expect, it } from 'vitest';
 import { and, eq } from 'drizzle-orm';
-import { alloyRate, flightSlots } from '@astera/rules';
+import { REWARD_CHAINS, alloyRate, flightSlots, rewardId } from '@astera/rules';
 import { buildings, debrisFields, notifications, planets, shards } from '../src/db/schema.js';
 import { EventWorker } from '../src/worker/loop.js';
 import { launchAttack } from '../src/services/mission.js';
@@ -33,6 +33,8 @@ import {
   probeSchema,
   reportsSchema,
   returnSchema,
+  rewardClaimSchema,
+  rewardsSchema,
   satelliteInstallSchema,
   seasonSchema,
   sessionSchema,
@@ -516,6 +518,7 @@ describe('every payload the client parses', () => {
       { url: '/api/planet/build', body: { hull: 'WASP', count: 1 } },
       { url: '/api/planet/collect', body: {} },
       { url: '/api/planet/instrument', body: { type: 'RADAR' } },
+      { url: '/api/rewards/claim', body: { id: rewardId('CORE', 3) } },
     ];
 
     for (const { url, body } of cases) {
@@ -525,6 +528,65 @@ describe('every payload the client parses', () => {
       const fetched = planetSchema.parse(await get('/api/planet'));
       expect(answered, `${url} answered with a view GET disagrees with`).toEqual(fetched);
     }
+  });
+
+  /**
+   * THE REWARD PANEL, WHICH IS THE ONE PAYLOAD WITH AN OPEN VOCABULARY IN IT.
+   *
+   * `chains[].id` and `metric` are parsed as plain STRINGS on the client, on the
+   * same reasoning as a notification kind: a chain added on the server one deploy
+   * ahead of a phone must cost that phone one unrenderable card, not the whole
+   * panel. That only holds if the server is actually sending strings the schema
+   * accepts, which is what this checks — and the spot-check below is what stops
+   * the schema being loose enough to accept the wrong shape in silence.
+   */
+  it('GET /api/rewards parses, and states progress in the units it is measured in', async () => {
+    const parsed = rewardsSchema.parse(await get('/api/rewards'));
+
+    /**
+     * A LEVEL CHAIN REPORTS THE LEVEL THE WORLD IS ACTUALLY STANDING AT — read
+     * off `/api/planet` rather than written down here, because `grant()` raises
+     * the Core to whatever will hold the money it is asked for and a literal
+     * would be pinned to that helper's arithmetic instead of to the rule.
+     */
+    const planet = planetSchema.parse(await get('/api/planet'));
+    const core = parsed.chains.find((c) => c.id === 'CORE');
+    expect(core?.metric).toBe('level');
+    expect(core?.progress).toBe(planet.buildings.CORE);
+    expect(core?.tiers.every((t) => t.state === 'claimable')).toBe(true);
+    expect(parsed.claimable).toBeGreaterThan(0);
+
+    /**
+     * AND THE OTHER END OF THE GRADIENT, which is the half that could pass by
+     * accident. This fixture puts units on the planet with a direct insert, so
+     * nothing was ever BUILT here — and `builtEver` counts building, not holding.
+     * A ships chain reading anything but zero would mean the tally had been wired
+     * to the live unit count, which is the exact mistake the column exists to
+     * avoid.
+     */
+    const ships = parsed.chains.find((c) => c.id === 'SHIPS');
+    expect(ships?.metric).toBe('count');
+    expect(ships?.progress).toBe(0);
+    expect(ships?.tiers.every((t) => t.state === 'locked')).toBe(true);
+
+    // Every chain the rules declare is on the wire; a missing one is a card the
+    // player can never see and progress that silently stops being counted.
+    expect(parsed.chains).toHaveLength(REWARD_CHAINS.length);
+  });
+
+  it('POST /api/rewards/claim parses, and carries the panel as well as the planet', async () => {
+    const parsed = rewardClaimSchema.parse(
+      await post('/api/rewards/claim', { id: rewardId('CORE', 3) }),
+    );
+    expect(parsed.granted.alloy).toBeGreaterThan(0);
+
+    // The claim answers with BOTH surfaces it moved, so neither has to refetch —
+    // the same rule every other mutation follows (D53).
+    const tier = parsed.rewards.chains
+      .find((c) => c.id === 'CORE')
+      ?.tiers.find((t) => t.goal === 3);
+    expect(tier?.state).toBe('claimed');
+    expect(parsed.rewards).toEqual(rewardsSchema.parse(await get('/api/rewards')));
   });
 
   /**

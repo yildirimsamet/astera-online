@@ -249,3 +249,26 @@ describe('the identity', () => {
     }
   });
 });
+
+/**
+ * THE SCORE'S FILE, GUARDED THE SAME WAY EVERY OTHER ASSET IS.
+ *
+ * `music.ts` names a path as a plain string, and a missing or renamed file fails
+ * the way every asset in this project fails: silently. There is no empty well to
+ * notice here — the game simply plays in silence, which is indistinguishable from
+ * a browser that refused autoplay, and that is a real state the player can be in.
+ * So nothing would ever be investigated.
+ *
+ * The path is read out of the module rather than written down twice: a test that
+ * asserts its own copy of a constant proves only that it can copy.
+ */
+describe('the ambient score', () => {
+  it('names a file that is actually served', async () => {
+    const source = await import('node:fs/promises').then((fs) =>
+      fs.readFile(resolve(process.cwd(), 'src/lib/music.ts'), 'utf8'),
+    );
+    const track = /const TRACK = '([^']+)'/.exec(source)?.[1];
+    expect(track, 'music.ts no longer declares TRACK the way this test reads it').toBeTruthy();
+    expect(existsSync(served(track!)), `${track!} is not in public/`).toBe(true);
+  });
+});

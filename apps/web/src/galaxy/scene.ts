@@ -29,6 +29,30 @@ export const SCALE = 50;
 export const DISC_RADIUS = GALAXY.radius / SCALE;
 export const DISC_THICKNESS = GALAXY.thickness / SCALE;
 
+/**
+ * HOW BIG A CRAFT IS DRAWN, AS ONE MULTIPLIER. Owner decision: half again.
+ *
+ * Every hull, probe and drill in the galaxy — your own and everybody else's — is
+ * declared at a base size in `Fleets.tsx` and `MiningFlights.tsx`, and every one
+ * of those numbers is multiplied by this. That is why it is a factor rather than
+ * seven edited constants: the RELATIVE sizes are a design statement (a Wasp reads
+ * smaller than a Bulwark, a probe smaller than either) and a bulk change must not
+ * quietly flatten them.
+ *
+ * IT MOVES THREE THINGS THAT ARE NOT THE MODEL, and all three should move with it.
+ * Formation spacing is `scale × 1.5`, so squadrons spread as their ships grow and
+ * do not intersect. The tap sphere is `max(0.45, scale × 1.6)`, so a bigger craft
+ * is a bigger target — at 1.0 the Wasp's sphere was pinned to the 0.45 floor and
+ * at 1.5 it clears it, which is a real gain on a phone. The wake and the exhaust
+ * are both stated in units of `scale` already.
+ *
+ * WHAT IT DOES NOT TOUCH is anything the game computes. Craft sizes are pure
+ * presentation — no distance, no range, no hit-test against another object and no
+ * travel time reads them — so this is the same kind of number as
+ * `VERTICAL_EXAGGERATION` below and carries the same guarantee.
+ */
+export const CRAFT_SCALE = 1.5;
+
 export type Vec3Tuple = [number, number, number];
 
 /**

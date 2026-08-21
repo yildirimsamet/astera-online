@@ -11,6 +11,7 @@ import { orientedCraft } from './model.js';
 import {
   clearOfWorlds,
   contactPosition,
+  CRAFT_SCALE,
   engagementHold,
   legEnd,
   legStandoff,
@@ -147,14 +148,14 @@ export const ROUTE_OPACITY_FOCUSED = 0.42;
 const ROUTE = {
   fleet: {
     url: MODEL.wasp,
-    scale: 0.225,
+    scale: 0.225 * CRAFT_SCALE,
     flame: '#8fd8ff',
     /** Blue: this is a warship. */
     neon: '#3fa9ff',
   },
   probe: {
     url: MODEL.probe,
-    scale: 0.18,
+    scale: 0.18 * CRAFT_SCALE,
     flame: '#9dffc4',
     /** Green: this is the scout. */
     neon: '#3ff08a',
@@ -914,13 +915,13 @@ export function WatchBeams({
  * out "8 Wasps" was the interface disagreeing with itself about the same fact.
  */
 const CONTACT_STYLE: Record<Contact['kind'], { neon: string; scale: number; flame: string }> = {
-  fleet: { neon: '#3fa9ff', scale: 0.195, flame: '#8fd8ff' },
-  probe: { neon: '#3ff08a', scale: 0.15, flame: '#9dffc4' },
-  mining: { neon: '#ffb057', scale: 0.18, flame: '#ffd9a8' },
+  fleet: { neon: '#3fa9ff', scale: 0.195 * CRAFT_SCALE, flame: '#8fd8ff' },
+  probe: { neon: '#3ff08a', scale: 0.15 * CRAFT_SCALE, flame: '#9dffc4' },
+  mining: { neon: '#ffb057', scale: 0.18 * CRAFT_SCALE, flame: '#ffd9a8' },
   // A harvest is the same craft on a different errand, so it keeps the miner's
   // amber and goes a shade paler — recognisably the same kind of thing, visibly
   // not headed for a rock. D32.
-  harvest: { neon: '#ffcf8f', scale: 0.18, flame: '#ffe9cc' },
+  harvest: { neon: '#ffcf8f', scale: 0.18 * CRAFT_SCALE, flame: '#ffe9cc' },
 };
 
 /** A probe is one craft; anything else is drawn from what the payload says is in it. */

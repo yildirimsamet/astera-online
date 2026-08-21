@@ -9,10 +9,15 @@ export const statusBar = {
   /** The store's ceiling, stated as space. */
   storeFull: 'FULL',
   storeFree: '{{amount}} free',
-  /** The commander control — the way out, and it says your name. */
-  commanderHint: 'Commander {{name}} — season, galaxy and sign out',
-  seasonUnknown: '—',
-  intelHint: 'Intel — what you know',
+  /**
+   * THE MENU CONTROL. Owner decision: the header's right-hand end had grown to
+   * three controls plus a beacon and had run out of room for a fourth.
+   *
+   * It says what is behind it rather than saying "menu", because D54's bug was a
+   * control labelled as something other than what it opened.
+   */
+  menuHint: 'Commander {{name}} — intel, rewards, account',
+  menuWaiting: '{{count}} rewards waiting',
   bays: {
     hint: '{{used}} of {{total}} flight bays in use',
     label: 'In flight',
@@ -78,8 +83,26 @@ export const surface = {
   whatPlanet: 'your planet',
   whatIntel: 'what you know',
   whatReports: 'your battle reports',
+  whatRewards: 'your rewards',
   waitingPlanet: 'Reading planet',
   waitingIntel: 'Collecting',
   /** The generated crest a world wears. One element, used on two surfaces. */
   planetSigil: 'Planet',
+} as const;
+
+/**
+ * THE MENU — one way in to everything that is not the galaxy.
+ *
+ * Every string here is its own, including the ones that read like a label
+ * somewhere else: the row that opens Intel is not the header button that used to,
+ * and the day one of them is reworded the other must not move with it.
+ */
+export const menu = {
+  eyebrow: 'Commander',
+  intelLabel: 'Intel',
+  intelHint: 'Telescope, probes, radar and battle reports',
+  rewardsLabel: 'Rewards',
+  rewardsHint: 'What the galaxy owes you for playing it',
+  rewardsWaiting: '{{count}} ready',
+  accountHeading: 'Account',
 } as const;

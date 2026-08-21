@@ -21,3 +21,4 @@ export * from './loot.js';
 export * from './intel.js';
 export * from './score.js';
 export * from './galaxy.js';
+export * from './rewards.js';

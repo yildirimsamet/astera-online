@@ -205,6 +205,49 @@ gunzip -c ~/backups/astera-<stamp>.sql.gz | \
 
 ---
 
+## Analytics
+
+`VITE_GA_ID` in `.env`, beside everything else. Empty is the default and means the
+built client installs no tag, makes no third-party request and defines no globals.
+
+**It is inlined into the bundle at build time**, so changing it needs a redeploy
+rather than a container restart — the client is a directory of static files with no
+environment to read. `deploy.sh` reads it from `.env`, passes it to `docker build`
+as a build argument, and prints which of the two it did.
+
+Two events are reported, both GA4's own names: `sign_up` and `login`, with `method`
+separating the front-door form from the rehearsal claim. That second number is the
+conversion the whole onboarding exists for. Nothing about a player is sent — no
+name, no id, no custom dimension.
+
+## Granting the @JoinAstera bonus
+
+A player follows the account and sends their commander name by direct message. You
+read it and run, on the box:
+
+```bash
+docker compose -f docker-compose.prod.yml exec api \
+  apps/server/node_modules/.bin/tsx apps/server/src/cli/season.ts reward 'Vantage'
+```
+
+That writes the grant. The PLAYER still claims it from the rewards panel, so the
+resources arrive while they are looking at them and the ordinary claim path does
+the locking and the once-only key.
+
+**Idempotent.** Running it twice for the same commander writes nothing the second
+time and says so, which matters because you will run it twice — the input is a
+message read on a phone.
+
+**Type the name exactly as they wrote it.** The lookup does not case-fold the
+display name, deliberately: `İ` does not fold to `i` in Postgres any more than it
+does in JavaScript, and roughly half this game's players are Turkish. The account
+USERNAME is matched case-insensitively as well, so either will do for an ASCII
+name.
+
+**There is no HTTP route for this**, and that is the point — an admin endpoint
+would mean an admin credential living in the environment of a public API for the
+sake of a few dozen manual grants a season.
+
 ## Rate limits
 
 Three buckets, all keyed by caller address. `TRUST_PROXY=true` is what makes that
