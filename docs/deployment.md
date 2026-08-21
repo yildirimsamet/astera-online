@@ -1,8 +1,12 @@
 # Deployment
 
-How Astera Online runs in production. Read `docs/architecture.md` first if you
-have not; this file is only the part that is true of the server rather than of
-the game.
+How Astera Online runs in production: the box, the containers, the proxy, the
+certificates and the things an operator does by hand. Read `docs/architecture.md`
+first if you have not; this file is only the part that is true of the server
+rather than of the game.
+
+**It is not the release checklist.** How a change gets from a branch onto this box
+— the gates, the ordering, the blast radius on live players — is `docs/deploy.md`.
 
 **Live at** `https://asteraonline.space` on a shared box that also runs two other
 projects. Nothing here may reach outside the `astera` compose project or
@@ -137,6 +141,10 @@ sudo rm /var/www/html/.well-known/acme-challenge/probe
 ---
 
 ## Deploying a change
+
+> **The checklist lives in `docs/deploy.md`** — what has to be green before a
+> change is pushed, what a restart costs the people currently playing, and what to
+> read afterwards to prove it cost them nothing. This section is only the mechanism.
 
 ```bash
 cd ~/astera && ./deploy/deploy.sh

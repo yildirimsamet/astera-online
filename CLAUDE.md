@@ -485,7 +485,8 @@ has walked it who did not build it.
 | `docs/decisions.md` | Before changing anything that feels settled |
 | `docs/balance.md` | Before touching a number |
 | `docs/architecture.md` | Before writing server code |
-| `docs/deployment.md` | Before touching anything that runs on the server |
+| `docs/deploy.md` | **Before shipping a change.** The gates it has to pass, how it goes out, and every way it can hurt somebody who is playing |
+| `docs/deployment.md` | Before touching anything that RUNS on the server — nginx, ports, certificates, backups, rate limits |
 | `docs/engineering-standards.md` | **Before writing any code at all** |
 | `docs/roadmap.md` | To find the next job and what "done" means for it |
 | `docs/interface.md` | Before changing a screen |
