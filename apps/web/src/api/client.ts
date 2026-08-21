@@ -365,8 +365,19 @@ export class Api {
    * Not `EventSource`: that cannot send an Authorization header, and the only
    * alternative would be putting the access token in a query string, where it
    * lands in every proxy log on the way.
+   *
+   * `onOpen` FIRES WHEN THE SOCKET IS ACTUALLY UP, which is a different fact from
+   * "this function was called". Everything on this channel is fire-and-forget —
+   * there is no replay, no cursor and no backlog — so events that happened while
+   * the connection was down are simply GONE. The caller needs to know the instant
+   * it can start trusting the channel again, because that is the instant it has to
+   * go and re-read the world it stopped hearing about. See `useEventStream`.
    */
-  async stream(onEvent: (kind: string) => void, signal: AbortSignal): Promise<void> {
+  async stream(
+    onEvent: (kind: string) => void,
+    signal: AbortSignal,
+    onOpen?: () => void,
+  ): Promise<void> {
     const open = (): Promise<Response> =>
       this.http(`${this.baseUrl}/api/stream`, {
         headers: this.token ? { authorization: `Bearer ${this.token}` } : {},
@@ -387,6 +398,9 @@ export class Api {
     let res = await open();
     if (res.status === 401 && (await this.restore())) res = await open();
     if (!res.ok || !res.body) throw new ApiError('STREAM_FAILED', 'Stream unavailable', res.status);
+
+    // Headers are in and the body is open: from here the client hears everything.
+    onOpen?.();
 
     const reader = res.body.getReader();
     const decoder = new TextDecoder();

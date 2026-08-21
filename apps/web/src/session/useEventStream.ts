@@ -7,6 +7,33 @@ import { isShardEvent, shardCoalescer } from './shardEvents.js';
 /** How long a connection must last before it counts as one that worked. */
 const HEALTHY_MS = 5000;
 
+/**
+ * Every read a player event can move — and the same set a RECONNECTION moves.
+ *
+ * A craft is drawn from whichever of these carries it: your own fleets from
+ * `pending`, your mining and harvest runs from `mining`, and everybody else's from
+ * `traffic`. Every leg is interpolated between two timestamps and CLAMPS at the
+ * end, so a craft whose list has not been refetched does not vanish or turn round —
+ * it SITS on its target, motionless, until something else happens to refresh it.
+ *
+ * An omission here does not fail loudly. It renders a stopped world.
+ *
+ * `rewards` is here because reward progress is COUNTED off the world rather than
+ * accumulated, so what moves it is a flight ENDING — exactly the moment a tap
+ * cannot cover, because the player made the decision minutes ago.
+ */
+const LIVE_READS = [
+  keys.planet,
+  keys.galaxy,
+  keys.intel,
+  keys.notifications,
+  keys.pending,
+  keys.reports,
+  keys.traffic,
+  keys.mining,
+  keys.rewards,
+] as const;
+
 /** Full jitter, capped. A shard restarting must not be hit by 200 synchronised retries. */
 const backoffMs = (attempt: number): number =>
   Math.random() * Math.min(30_000, 1000 * 2 ** Math.min(attempt, 5));
@@ -31,6 +58,14 @@ const backoffMs = (attempt: number): number =>
  *
  * The second used to be a timer. The timers are still there as a floor, at sixty
  * seconds — see the read policy in `queries.ts`.
+ *
+ * AND A RECONNECTION IS A THIRD THING, WHICH NOTHING USED TO HANDLE. D72.
+ *
+ * Nothing on this channel is replayable: no cursor, no backlog, no ids. Whatever
+ * was published while the socket was down is gone, and no payload says so — so a
+ * dropped socket left the disc reading a world up to a minute old, with craft
+ * parked on their destinations, until the safety net came round. Every open after
+ * the first re-reads `LIVE_READS`; see the loop below for why the first is exempt.
  */
 export function useEventStream(enabled: boolean): void {
   const api = useApi();
@@ -43,6 +78,18 @@ export function useEventStream(enabled: boolean): void {
     const shard = shardCoalescer((reads) => {
       for (const key of reads) void client.invalidateQueries({ queryKey: key });
     });
+
+    /**
+     * EVERYTHING THAT CAN HAVE MOVED BECAUSE OF SOMETHING THIS CLIENT WAS TOLD.
+     *
+     * Named because it has two callers now, and they mean the same thing for two
+     * different reasons: a player event says "something happened to you", and a
+     * reconnection says "something may have happened to you and nobody could tell
+     * you about it".
+     */
+    const resync = (): void => {
+      for (const key of LIVE_READS) void client.invalidateQueries({ queryKey: key });
+    };
 
     const refresh = (kind: string): void => {
       /**
@@ -76,25 +123,7 @@ export function useEventStream(enabled: boolean): void {
        *
        * An omission here does not fail loudly. It renders a stopped world.
        */
-      for (const key of [
-        keys.planet,
-        keys.galaxy,
-        keys.intel,
-        keys.notifications,
-        keys.pending,
-        keys.reports,
-        keys.traffic,
-        keys.mining,
-        /**
-         * Reward progress is COUNTED off the world rather than accumulated, so
-         * the events that move it are the ones that finish a flight: a raid
-         * resolving, a drill reaching its rock. Those are exactly the moments a
-         * tap cannot cover, because the player made the decision minutes ago.
-         */
-        keys.rewards,
-      ]) {
-        void client.invalidateQueries({ queryKey: key });
-      }
+      resync();
     };
 
     /** Resolves early on abort, so a 30-second backoff cannot outlive the tab. */
@@ -113,10 +142,29 @@ export function useEventStream(enabled: boolean): void {
 
     void (async () => {
       let attempt = 0;
+      /**
+       * HOW MANY TIMES THIS SOCKET HAS COME UP — and why the first one is different.
+       *
+       * On the first open the queries have only just mounted and fetched; there is
+       * nothing to catch up on and re-reading everything would double the cost of
+       * a cold start. Every open AFTER that means the channel was DOWN for a while,
+       * and this client heard nothing during it: the stream carries no cursor and
+       * no backlog, so a raid that resolved, a neighbour that launched and a world
+       * that grew while the socket was dead are all simply missing.
+       *
+       * Before this, the only thing that closed that gap was the sixty-second
+       * safety-net poll — so a proxy dropping the socket, a deploy, or a phone
+       * waking from sleep left the disc showing a world up to a minute out of date,
+       * with fleets parked on their destinations, and nothing on screen said so.
+       */
+      let opens = 0;
       while (!controller.signal.aborted) {
         const openedAt = Date.now();
         try {
-          await api.stream(refresh, controller.signal);
+          await api.stream(refresh, controller.signal, () => {
+            opens += 1;
+            if (opens > 1) resync();
+          });
         } catch {
           // Fall through: a connection that threw and one that closed instantly
           // are the same problem, and both are counted below.

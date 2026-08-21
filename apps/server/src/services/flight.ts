@@ -51,6 +51,37 @@ const minesOf = (planetId: string) =>
     ),
   );
 
+/**
+ * THE RULE ITSELF, IN ONE PLACE, FOR CODE THAT HOLDS A ROW RATHER THAN A QUERY.
+ *
+ * The SQL below and this predicate are the same sentence said twice because they
+ * are asked in two different places — a `WHERE` clause cannot be applied to a row
+ * already in memory, and a JavaScript filter cannot be pushed into a count. What
+ * must never happen again is a THIRD statement of it written from scratch, which
+ * is exactly what `pendingThreads` had: it matched `origin OR target` and then
+ * special-cased only an inbound attack, so every other foreign leg standing at one
+ * end of your world — a probe flying at you, a probe flying home from you, a
+ * raider's survivors leaving your orbit — was handed to you as YOUR OWN craft,
+ * with its route, its composition and the other world's NAME on it.
+ *
+ * That was a duplicate and a leak at the same time: the same mission was drawn
+ * once out of `pending` as your fleet and once out of `traffic` as an anonymous
+ * contact, in two different places, on the same disc.
+ *
+ * `traffic.ts` reads this too, so the three surfaces that have to agree about
+ * whose craft something is — the bay count, the public contact list and your own
+ * pending list — now agree by construction.
+ */
+type Leg = Pick<
+  typeof missions.$inferSelect,
+  'kind' | 'parentMissionId' | 'originPlanetId' | 'targetPlanetId'
+>;
+
+export const legBelongsTo = (mission: Leg, planetId: string): boolean =>
+  mission.kind === 'return' || mission.parentMissionId !== null
+    ? mission.targetPlanetId === planetId
+    : mission.originPlanetId === planetId;
+
 /** Craft this planet currently has off the ground, across every kind of flight. */
 export async function baysInUse(tx: Queryable, planetId: string): Promise<number> {
   const [flights] = await tx

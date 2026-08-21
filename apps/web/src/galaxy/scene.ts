@@ -422,15 +422,20 @@ export function clearOfWorlds(
 /**
  * How far past its window a contact may be carried before it stops.
  *
- * Traffic refetches every twenty seconds against a four-minute window, so this is
- * only ever reached when a poll has failed — a tab that was backgrounded, a phone
- * that lost signal. Coasting on the last known bearing for a while is much better
- * than a craft stopping dead in open space, which reads as a broken game rather
- * than as a missed request. It reveals nothing: the heading is already public, and
+ * The client WAKES ON `endAt` and asks for the next window (`useContactWindows`),
+ * with a sixty-second net under that — so this is only ever reached when a read
+ * has actually failed: a tab that was backgrounded, a phone that lost signal.
+ * Coasting on the last known bearing for a while is much better than a craft
+ * stopping dead in open space, which reads as a broken game rather than as a
+ * missed request. It reveals nothing: the heading is already public, and
  * extrapolating it is exactly what a player's eye does anyway.
  *
  * It does stop eventually. A craft coasting for ever would sail off the disc and
  * out past the rim, which is a worse lie than standing still.
+ *
+ * AND IT DOES NOT APPLY TO AN ARRIVAL AT ALL. D72. A window clamped to the landing
+ * has no more flight to coast into, so extrapolating it flies the craft through
+ * the world it is arriving at. `contact.landing` is what tells the two apart.
  */
 const COAST = 1.5;
 
@@ -461,9 +466,23 @@ export function contactPosition(
     return engagementHold(fight.target, contact.from, nodes);
   }
 
+  /**
+   * COAST ONLY WHERE THERE IS MORE FLIGHT TO COAST INTO.
+   *
+   * `COAST` exists so a craft whose next read is late keeps moving instead of
+   * stopping dead in open space. It is the wrong instinct at the END of a leg: a
+   * window whose far point is the craft's actual destination, extrapolated by half
+   * as much again, draws the craft straight through the world it is landing on and
+   * out the far side — which is what "a craft went backwards / ended up in the
+   * wrong place" looks like when a refetch is a second late.
+   *
+   * The payload says which kind of window this is (`landing`), because four
+   * coordinates and two instants cannot. A heading coasts; an arrival holds.
+   */
+  const ceiling = contact.landing === true ? 1 : COAST;
   const span = contact.endAt.getTime() - contact.startAt.getTime();
   const t =
-    span <= 0 ? 1 : Math.max(0, Math.min(COAST, (now - contact.startAt.getTime()) / span));
+    span <= 0 ? 1 : Math.max(0, Math.min(ceiling, (now - contact.startAt.getTime()) / span));
   return toWorld({
     x: contact.from.x + (contact.to.x - contact.from.x) * t,
     y: contact.from.y + (contact.to.y - contact.from.y) * t,

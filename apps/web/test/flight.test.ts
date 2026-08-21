@@ -268,6 +268,29 @@ describe('a contact in the galaxy', () => {
     expect(later[0]).toBeGreaterThan(toWorld({ x: 400, y: 0, z: 0 })[0]);
   });
 
+  /**
+   * AND IT DOES NOT COAST AT ALL WHEN THE WINDOW ENDS WHERE THE CRAFT DOES.
+   *
+   * `landing` is set only in the last minute of a leg, and only then does the
+   * window's far point stop being a heading and become the destination. Coasting
+   * half as much again past a destination draws the craft straight through the
+   * world it is arriving at and out the other side — which is what a late refetch
+   * looked like from every other player's disc.
+   */
+  it('holds at the end of a landing window instead of flying through the world', () => {
+    const landing = contact({ landing: true });
+    const end = toWorld({ x: 400, y: 0, z: 0 });
+    expect(contactPosition(landing, END.getTime())).toEqual(end);
+    expect(contactPosition(landing, END.getTime() + 30_000)).toEqual(end);
+    expect(contactPosition(landing, END.getTime() + 10 * 60_000)).toEqual(end);
+  });
+
+  it('still coasts when the window is only a heading', () => {
+    const heading = contactPosition(contact(), END.getTime() + 30_000);
+    const held = contactPosition(contact({ landing: true }), END.getTime() + 30_000);
+    expect(heading[0]).toBeGreaterThan(held[0]);
+  });
+
   /** But not for ever, or it would sail out past the rim of the disc. */
   it('stops eventually rather than leaving the galaxy', () => {
     const far = contactPosition(contact(), END.getTime() + 60 * 60_000);

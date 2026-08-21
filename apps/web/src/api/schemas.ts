@@ -692,6 +692,19 @@ export const trafficSchema = z.object({
       to: vec,
       startAt: z.coerce.date(),
       endAt: z.coerce.date(),
+      /**
+       * THE WINDOW ENDS WHERE THE CRAFT DOES. See `Contact.landing` on the server.
+       *
+       * Absent means the far end is a HEADING, and the client may coast a little
+       * past it when a read is late. Present means it is the craft's stopping point
+       * and coasting would fly it through the world it is landing on.
+       *
+       * Optional so a client ahead of its server still parses: an older payload
+       * carries no flag, the coast behaves exactly as it did before, and nothing
+       * breaks — the failure it prevents is cosmetic and rare, and a hard schema
+       * would turn it into a disc that does not render at all.
+       */
+      landing: z.boolean().optional(),
       fleet: fleet.optional(),
       craft: z.number().optional(),
       route: z

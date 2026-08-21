@@ -5,7 +5,7 @@ import * as THREE from 'three';
 import type { MiningRun } from '../api/schemas.js';
 import { MODEL, MODEL_FACING } from '../ui/assets.js';
 import { orientedCraft } from './model.js';
-import { ROUTE_OPACITY, ROUTE_OPACITY_FOCUSED, Wake } from './Fleets.jsx';
+import { ROUTE_OPACITY, ROUTE_OPACITY_FOCUSED, Wake, useLine } from './Fleets.jsx';
 import { CRAFT_SCALE, runPosition, toWorld, type Vec3Tuple } from './scene.js';
 import { formationFor, slotOffset } from './Squadrons.js';
 import { markHit, wasTap } from './tap.js';
@@ -80,27 +80,27 @@ function Run({
   const returning = run.status === 'returning';
 
   /**
-   * Outbound flies planet → interception; the return leg flies it backwards.
+   * Where this leg ENDS. Outbound that is the interception point; on the way home
+   * it is the planet, because the leg is flown backwards.
    *
-   * The rock is not an endpoint on either leg, because by the time the craft is
-   * heading home the rock has moved on and is no longer where the meeting was.
+   * The rock is not an endpoint on either leg: by the time the craft is heading
+   * home the rock has moved on and is no longer where the meeting was.
+   *
+   * The leg's start is not needed — the line's near end follows the craft, which
+   * `runPosition` already places from the clock.
    */
-  const [from, to] = useMemo(() => {
-    const planet = toWorld(home);
-    const meet = toWorld(run.intercept);
-    return returning ? ([meet, planet] as const) : ([planet, meet] as const);
-  }, [home, run.intercept, returning]);
+  const to = useMemo(
+    () => toWorld(returning ? home : run.intercept),
+    [home, run.intercept, returning],
+  );
 
   const formation = useMemo(
     () => formationFor({ PROSPECTOR: run.craft }),
     [run.craft],
   );
 
-  const line = useMemo(() => {
-    const g = new THREE.BufferGeometry();
-    g.setAttribute('position', new THREE.Float32BufferAttribute([...from, ...to], 3));
-    return g;
-  }, [from, to]);
+  /** One buffer for the life of the run, written both ends per frame. See `useLine`. */
+  const line = useLine();
 
   useFrame(() => {
     const node = group.current;
@@ -112,6 +112,7 @@ function Run({
 
     const points = line.getAttribute('position') as THREE.BufferAttribute;
     points.setXYZ(0, at[0], at[1], at[2]);
+    points.setXYZ(1, to[0], to[1], to[2]);
     points.needsUpdate = true;
   });
 

@@ -45,6 +45,7 @@ interface Contact {
   to: { x: number; y: number; z: number };
   startAt: string;
   endAt: string;
+  landing?: boolean;
   route?: { from: unknown; to: unknown; departAt: string; arriveAt: string };
   minutesRemaining?: number;
   engagement?: { arriveAt: string; endsAt: string; target: { x: number; y: number; z: number } };
@@ -327,6 +328,44 @@ describe('galaxy traffic — motion in public, intent in private', () => {
     expect(new Date(contact!.startAt).getTime()).toBeLessThanOrEqual(
       new Date(contact!.endAt).getTime(),
     );
+  });
+
+  /**
+   * WHICH KIND OF WINDOW THIS IS, SAID OUT LOUD.
+   *
+   * The client interpolates inside the window and coasts a little past it when a
+   * read is late, because a craft stopping dead in open space reads as a broken
+   * game. That is right for a heading and wrong for an arrival — coasting past a
+   * point that IS the destination draws the craft through the world it is landing
+   * on and out the far side.
+   *
+   * Four coordinates and two instants cannot tell the two apart, so the server
+   * says. It discloses nothing: the flag is only ever set in the last minute, and
+   * in that minute the window's end point already IS the destination.
+   */
+  it('says nothing about landing while there is real flight left', async () => {
+    await giveUnits(f.db, a, { WASP: 30 });
+    const launch = await launchAttack(f.db, a, b, { WASP: 30 }, f.clock);
+
+    for (const share of [0.1, 0.4, 0.7]) {
+      const start = f.clock.now().getTime();
+      midFlight(launch.arriveAt, share);
+      const [contact] = await fetchContacts();
+      expect(contact?.landing, `claimed a landing at ${String(share)} of the leg`).toBeUndefined();
+      f.clock.set(new Date(start));
+    }
+  });
+
+  it('marks the window as the arrival once it is clamped to it', async () => {
+    await giveUnits(f.db, a, { WASP: 30 });
+    const launch = await launchAttack(f.db, a, b, { WASP: 30 }, f.clock);
+
+    // Half a minute out: inside the coast floor, so the window runs to the landing.
+    f.clock.set(new Date(launch.arriveAt.getTime() - 30_000));
+    const [contact] = await fetchContacts();
+    expect(contact, 'the craft vanished on final approach').toBeDefined();
+    expect(new Date(contact!.endAt).getTime()).toBe(launch.arriveAt.getTime());
+    expect(contact!.landing, 'the arrival window was not marked as one').toBe(true);
   });
 
   /**

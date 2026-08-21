@@ -15,7 +15,6 @@ import {
   engagementHold,
   legEnd,
   legStandoff,
-  legStart,
   targetNodeOf,
   threadPosition,
   toWorld,
@@ -331,6 +330,51 @@ function Exhaust({ colour, length, width }: { colour: string; length: number; wi
   );
 }
 
+/**
+ * ONE LINE BUFFER PER CRAFT, FOR AS LONG AS THAT CRAFT EXISTS.
+ *
+ * Every route on this disc was a `BufferGeometry` built inside a `useMemo` keyed on
+ * the leg's endpoints — and those endpoints were derived from a payload that came
+ * back as a brand new object on every single refetch (see `api/structural.ts`). So
+ * a new buffer was allocated for every craft in the galaxy every time `pending` or
+ * `traffic` was read, several times a minute.
+ *
+ * AND THE OLD ONE WAS NEVER FREED. Replacing the `geometry` prop on a mounted
+ * object hands three.js a new buffer and simply drops the old one on the floor;
+ * nothing disposes it, because nothing unmounted. That is a GPU allocation per
+ * craft per refetch, for as long as the tab is open, and it is invisible until the
+ * scene starts to stutter on a phone an hour into a session.
+ *
+ * Both ends are written every frame anyway — the near end has to follow the craft —
+ * so the buffer never needed rebuilding at all. It is allocated once, mutated in
+ * place, and disposed when the craft it belongs to leaves the disc.
+ *
+ * `enabled` is for the one caller that may have no line: a contact only publishes a
+ * route when it is a mining or salvage run (D24). Passed as a flag rather than
+ * decided by the caller so the hook is still called unconditionally, which is what
+ * the rules of hooks require.
+ */
+export function useLine(): THREE.BufferGeometry;
+export function useLine(enabled: boolean): THREE.BufferGeometry | null;
+export function useLine(enabled = true): THREE.BufferGeometry | null {
+  const geometry = useMemo(() => {
+    if (!enabled) return null;
+    const g = new THREE.BufferGeometry();
+    // Two points, filled on the first frame. Never resized after this.
+    g.setAttribute('position', new THREE.Float32BufferAttribute(new Float32Array(6), 3));
+    return g;
+  }, [enabled]);
+
+  useEffect(
+    () => () => {
+      geometry?.dispose();
+    },
+    [geometry],
+  );
+
+  return geometry;
+}
+
 function Flight({
   id,
   thread,
@@ -367,10 +411,15 @@ function Flight({
    * See `legStandoff` for what the seam looked like before it did.
    */
   const standoff = useMemo(() => legStandoff(thread, nodes), [thread, nodes]);
-  const from = useMemo(
-    () => (path ? legStart(path, standoff.start) : ([0, 0, 0] as Vec3Tuple)),
-    [path, standoff],
-  );
+  /**
+   * Only the FAR end is needed here now.
+   *
+   * The near end used to be baked into the route's geometry at construction; it is
+   * written from the craft's own position every frame instead, so `legStart` is left
+   * to `threadPosition`, which is the one place a leg's beginning still decides
+   * anything. Keeping a second copy of it here was what forced the geometry to be
+   * rebuilt whenever the standoff memo produced a new object.
+   */
   const stop = useMemo(
     () => (path ? legEnd(path, standoff.end) : ([0, 0, 0] as Vec3Tuple)),
     [path, standoff],
@@ -418,11 +467,7 @@ function Flight({
    * intent rather than as a trail: a thread the ship is pulling itself along, thin
    * enough that a glance at the galaxy sees worlds first and traffic second.
    */
-  const line = useMemo(() => {
-    const g = new THREE.BufferGeometry();
-    g.setAttribute('position', new THREE.Float32BufferAttribute([...from, ...stop], 3));
-    return g;
-  }, [from, stop]);
+  const line = useLine();
 
   useFrame(() => {
     if (!path || !group.current) return;
@@ -442,8 +487,16 @@ function Flight({
      */
     group.current.lookAt(to[0], to[1], to[2]);
 
-    // The near end follows the craft. Cheaper than rebuilding the geometry: three
-    // floats and a flag, once a frame, for every craft in the air.
+    /**
+     * BOTH ENDS, EVERY FRAME — which is also why the geometry itself never changes.
+     *
+     * The near end has always followed the craft. The far end used to be baked in
+     * at construction, so the geometry had to be REBUILT whenever the leg's endpoint
+     * memo produced a new tuple — which was every refetch, because the payload
+     * behind it was a fresh object every time. Writing six floats is cheaper than
+     * allocating a buffer, and it means the one buffer lives exactly as long as the
+     * flight does. See `useLine`.
+     */
     const points = line.getAttribute('position') as THREE.BufferAttribute;
     const nose = style.scale * 0.6;
     const dx = stop[0] - at[0];
@@ -452,6 +505,7 @@ function Flight({
     const left = Math.hypot(dx, dy, dz);
     const k = left > nose ? nose / left : 0;
     points.setXYZ(0, at[0] + dx * k, at[1] + dy * k, at[2] + dz * k);
+    points.setXYZ(1, stop[0], stop[1], stop[2]);
     points.needsUpdate = true;
   });
 
@@ -671,6 +725,15 @@ export function Wake({ scale, colour }: { scale: number; colour: string }) {
     return g;
   }, [colour]);
 
+  // Freed with the craft. One strip is small; a season's worth of squadrons that
+  // each left one behind is not. See `useLine` for the same reasoning at length.
+  useEffect(
+    () => () => {
+      geometry.dispose();
+    },
+    [geometry],
+  );
+
   const eye = useMemo(() => new THREE.Vector3(), []);
   const side = useMemo(() => new THREE.Vector3(), []);
 
@@ -869,6 +932,20 @@ export function WatchBeams({
     return g;
   }, [from, targets]);
 
+  /**
+   * REBUILT WHEN THE WATCH LIST MOVES, AND THE OLD ONE HAS TO GO WITH IT.
+   *
+   * This one genuinely does have to be rebuilt — its vertex count is the number of
+   * beams — so it cannot take the `useLine` treatment. What it can do is not leak
+   * the buffer it replaces, which is the half that was missing.
+   */
+  useEffect(
+    () => () => {
+      geometry?.dispose();
+    },
+    [geometry],
+  );
+
   // A slow breath, so the beam reads as an instrument doing something rather than
   // a line someone drew.
   useFrame(({ clock }) => {
@@ -1025,14 +1102,7 @@ function Foreign({
    * a line behind a craft says where it came from, which is the one thing this
    * payload exists to withhold, and on a mining run it is simply clutter.
    */
-  const route = useMemo(() => {
-    if (!contact.route) return null;
-    const a = toWorld(contact.route.from);
-    const b = toWorld(contact.route.to);
-    const g = new THREE.BufferGeometry();
-    g.setAttribute('position', new THREE.Float32BufferAttribute([...a, ...b], 3));
-    return g;
-  }, [contact.route]);
+  const route = useLine(contact.route !== undefined);
   const ahead = useMemo(
     () => (contact.route ? toWorld(contact.route.to) : null),
     [contact.route],
@@ -1159,11 +1229,15 @@ function Foreign({
  * visible at the end of it; two timers cost nothing and mount the volley for
  * exactly the ten seconds it is wanted.
  *
- * Both edges are armed, and the window is re-read on every change of `arriveAt`,
- * so a tab that was asleep across the whole engagement wakes to the correct answer
- * rather than to a squadron firing at a world whose report it has already read.
+ * Both edges are armed, and the window is re-read on every change of `arriveAt`
+ * AND every time the page becomes visible again — because a backgrounded tab has
+ * its timers throttled and its frames stopped, so the state it holds when it wakes
+ * is the state it had when it went away rather than the state of the world.
+ *
+ * Exported for its own test. It decides whether a `Bombardment` EXISTS, which is
+ * the one thing on this disc that cannot be checked by looking at a still frame.
  */
-function useEngagement(arriveAt: number | null): boolean {
+export function useEngagement(arriveAt: number | null): boolean {
   const [engaging, setEngaging] = useState(
     () => arriveAt !== null && isEngaging(arriveAt, serverNow()),
   );
@@ -1173,7 +1247,6 @@ function useEngagement(arriveAt: number | null): boolean {
       setEngaging(false);
       return;
     }
-    setEngaging(isEngaging(arriveAt, serverNow()));
 
     const timers: ReturnType<typeof setTimeout>[] = [];
     const arm = (at: number, to: boolean): void => {
@@ -1189,10 +1262,37 @@ function useEngagement(arriveAt: number | null): boolean {
         );
       }
     };
-    arm(arriveAt, true);
-    arm(engagementEndsAt(arriveAt), false);
+
+    /**
+     * THE CLOCK IS THE AUTHORITY; THE TIMERS ONLY SAY WHEN TO LOOK AT IT.
+     *
+     * A backgrounded tab has its timers throttled to about one a minute and its
+     * animation frames stopped altogether, so a phone that was in a pocket across
+     * a ten-second engagement comes back holding whatever `engaging` was when it
+     * went away — which for a raid that has since resolved is `true`, and draws a
+     * squadron bombarding a world whose battle report the player has already read.
+     *
+     * So the answer is recomputed from `serverNow()` whenever the page becomes
+     * visible again, and the timers are re-armed from the same instant. Nothing
+     * here decides anything: `isEngaging` is the rule, the server owns the clock,
+     * and this only asks the question again at the moments it can have changed.
+     */
+    const settle = (): void => {
+      for (const timer of timers) clearTimeout(timer);
+      timers.length = 0;
+      setEngaging(isEngaging(arriveAt, serverNow()));
+      arm(arriveAt, true);
+      arm(engagementEndsAt(arriveAt), false);
+    };
+
+    settle();
+    const wake = (): void => {
+      if (document.visibilityState === 'visible') settle();
+    };
+    document.addEventListener('visibilitychange', wake);
 
     return () => {
+      document.removeEventListener('visibilitychange', wake);
       for (const timer of timers) clearTimeout(timer);
     };
   }, [arriveAt]);

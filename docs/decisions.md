@@ -984,6 +984,118 @@ about the device rather than about the commander. It is a pause and a resume on
 the element that is already there, never a rebuild — so the track carries on from
 where it was silenced rather than restarting.
 
+### D72 · One craft, one marker — the real-time movement pass
+
+Owner report: craft stuttering, freezing, arriving at the wrong time, appearing
+twice, and two clients disagreeing about the same squadron. Six causes, none of
+them in the interpolation itself, which was correct throughout.
+
+**The duplicate was a fog leak wearing a rendering costume.** `pendingThreads`
+selects every mission with this planet at EITHER end — it has to, because an
+inbound raid is how the radar warning reaches you — and then special-cased exactly
+one foreign leg: an attack aimed at you. Four legs match that query without being
+yours, and the other three fell through to the branch that describes your own
+craft. So a probe flying at you, a probe flying home from you, and a raider's
+survivors leaving your orbit were all handed to you with a full `path` (both
+endpoints, so the disc drew the route), the hulls inside them, and `targetName` set
+to the OTHER WORLD'S NAME.
+
+The consequences were exact and had all been reported as separate bugs. A player
+who had just been probed could read who probed them off their own pending strip,
+which is the whole of D9 given away. A player who had just been raided watched
+twenty of the attacker's Wasps leave their orbit labelled as their own outbound
+squadron — and, because an outbound fleet bombards when it arrives, watched a
+phantom bombardment of the raider's homeworld. And every one of those legs is
+ALSO published to that same caller by `/api/galaxy/traffic`, which excludes only
+what the caller genuinely owns: one mission, two payloads, two craft on one disc,
+disagreeing about what they were.
+
+The rule was already written down twice — `flight.ts` counts bays with it,
+`traffic.ts` decides what to publish with it — and both were right. It is now
+stated once, as `legBelongsTo`, and all three surfaces read it.
+
+**Structural sharing was off, everywhere, and had been since the first schema.**
+React Query preserves identity across a refetch by walking the old value against
+the new one; its walker recurses through plain arrays and plain objects and treats
+everything else as a leaf compared by reference. A `Date` is neither — and every
+payload the disc draws from parses its instants with `z.coerce.date()`, which mints
+fresh ones every time. So `traffic`, `pending` and `mining` came back as brand new
+arrays of brand new objects on every read, several times a minute, whether or not
+anything had changed.
+
+That is the root of a whole class of symptoms that had each been patched locally:
+every `useMemo` below those lists re-ran, every `BufferGeometry` built from one was
+rebuilt, and the camera re-framed itself on data that had not moved — which is D69,
+and why `focusIdentity` exists. One clause added to the walker fixes it for the
+whole client: a Date compared to a Date is equal when it names the same instant.
+`api/structural.ts`.
+
+**And it is one clause, held to that by a test against the library's own function.**
+This replaces the walker for EVERY query in the app, so the claim that bounds the
+risk is not "it handles Dates" — it is "it is otherwise exactly what the library
+would have done". The first version reached for `Object.is` at the leaf because it
+reads better than `===`, and that silently changed the answer for `NaN` (which
+would have stopped churning) and for `-0` (which would have replaced `+0`). Neither
+is reachable through a Zod-parsed JSON payload, which is exactly why nothing would
+ever have caught it; the conformance cases in `structural.test.ts` did, on the pass
+that wrote them.
+
+**And the geometry it rebuilt was never freed.** Replacing the `geometry` prop of a
+mounted object hands three.js a new buffer and drops the old one on the floor;
+nothing unmounted, so nothing disposed it. That is a GPU allocation per craft per
+refetch for as long as the tab is open — invisible until the scene starts to
+stutter an hour into a session, which is the hardest kind of bug to connect to its
+cause. Both ends of every route are written each frame anyway, so the buffer never
+needed rebuilding: one per craft, mutated in place, disposed when the craft leaves.
+
+**A reconnection is a resync, and nothing was doing one.** The stream carries no
+cursor and no backlog, so everything that happened while the socket was down was
+simply never delivered. The only thing closing that gap was the sixty-second net,
+so a dropped socket, a deploy or a phone waking from sleep left the disc up to a
+minute stale with craft parked on their destinations and nothing on screen saying
+so. `api.stream` reports when the socket is actually up; every open after the first
+re-reads the live set. The first is deliberately exempt — the queries have only just
+fetched, and doubling a cold start buys nothing.
+
+**A mutation's answer could be overwritten by a read issued before the tap.**
+`useOptimisticPlanet` cancels in-flight reads on the way IN and said why; the way
+OUT did not. `useArrivals` invalidates `planet` and `pending` on every due arrival,
+so a launch pressed in that same second had its brand new fleet overwritten by a
+list that predates it — the squadron appeared on the disc and blinked out for up to
+a minute. It needs no network trouble at all to reproduce, and there is a test that
+fails without the cancel.
+
+**A contact could coast through the world it was landing on.** The client
+extrapolates half a window past the published one, because a craft that stops dead
+in open space reads as a broken game. That is right for a heading and wrong for an
+arrival, and four coordinates and two instants cannot tell the two apart. The
+payload says: `landing` is set only when the window is clamped to the arrival, which
+only happens inside the last `MIN_COAST_MS` — and in that minute the window's end
+point already IS the destination, published in full. It names a property of a
+payload the caller is already holding.
+
+**And a stranger's bearing window expiring is not an arrival.** That wake sat in
+the same list as real arrivals, which refetch nine payloads including the most
+expensive read in the game — so `/api/galaxy` was being pulled on a schedule set
+entirely by other people's traffic. One key now, and the same timer.
+
+**What was NOT changed, having been checked.** The event system needs no sequence
+numbers, no versions and no de-duplication: a shard event carries a kind and
+nothing else and can only ever say "go and read what you were already entitled
+to", which is idempotent and order-independent by construction, and every server
+handler is already claim-once. Adding a version to a payload that carries no state
+would be inventing a problem. `travelMinutes` still rounds arrivals UP to whole
+minutes and is still wrong at D63's speeds — it is consistent between server and
+every client, so it is a tempo bug rather than a synchronisation one, and it stays
+on the known-issues list with its own pass.
+
+**Verified live, not only in the suite.** `tools/movement.mjs` signs two commanders
+in against a real server, puts a raid and a probe in the air, and measures both
+screens through the dev bridge: every craft advances between two samples, no two
+markers occupy the same point, the same craft is in the same place on both screens,
+and nothing is drawn at the origin or inside a world. `tools/loop-check.mjs` gained
+the same question asked from the far end of a raid.
+
 ## Architecture
 
 A1 · One source of truth — LOCKED

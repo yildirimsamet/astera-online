@@ -101,7 +101,19 @@ const seen = (await call('/api/galaxy/traffic', { token: b.token })).contacts;
 const kinds = seen.map((c) => c.kind);
 check('B sees a warship in the air', kinds.includes('fleet'), kinds.join(', '));
 check('B sees a scout in the air', kinds.includes('probe'));
-check('B sees a mining craft in the air', kinds.includes('mining'));
+/**
+ * ONLY IF THERE WAS A ROCK TO SEND A DRILL AT.
+ *
+ * Asteroids appear and expire on the season's own schedule, so a disc can quite
+ * legitimately be empty — section 2 below already says so and skips itself. This
+ * check did not, and reported a FAIL for a craft that was never launched, which
+ * buries the real failures under a permanent red on a fresh galaxy.
+ */
+if (field.asteroids.length > 0) {
+  check('B sees a mining craft in the air', kinds.includes('mining'));
+} else {
+  console.log('  (no rock in the disc right now — no drill to look for)');
+}
 check(
   'and the raid flying AT B is one of them',
   seen.some((c) => c.kind === 'fleet'),
@@ -203,6 +215,106 @@ check('the survivors are on their way home', Boolean(ret), ret ? `status=${ret.s
 const [{ n: stranded }] = await sql`
   SELECT count(*)::int AS n FROM missions WHERE status = 'in_flight' AND arrive_at < now() - interval '5 minutes'`;
 check('nothing is stranded in the galaxy', Number(stranded) === 0, `${String(stranded)} stuck`);
+
+/* ── 4 · is anything drawn twice, from EITHER end? ──────────── */
+
+/**
+ * ONE CRAFT, ONE MARKER, PER VIEWER.
+ *
+ * Your own craft are drawn from `/api/session/pending`; everybody else's from
+ * `/api/galaxy/traffic`. The two lists key on the same mission id, so an id in
+ * both is literally the same squadron rendered twice in one scene, from two
+ * payloads that disagree about what it is.
+ *
+ * Section 1 above asks this of the player whose craft it is. This asks it of the
+ * player at the OTHER end, which is where it was actually broken: `pendingThreads`
+ * matched `origin OR target` and special-cased only an inbound attack, so a probe
+ * flying at you, a probe flying home from you, and a raider's survivors leaving
+ * your orbit were all handed to you as YOUR OWN craft — with a route line, the
+ * hulls inside, and the other world's NAME on them.
+ *
+ * B has just been raided and the attacker's survivors are leaving B's orbit right
+ * now, which is exactly that case.
+ */
+console.log('\n4 · nothing is drawn twice, from either end');
+
+const idsOf = (threads) => new Set(threads.map((t) => t.id).filter(Boolean));
+
+for (const [who, side] of [['A', a], ['B', b]]) {
+  const own = idsOf((await call('/api/session/pending', { token: side.token })).pending);
+  const contacts = (await call('/api/galaxy/traffic', { token: side.token })).contacts;
+  const twice = contacts.filter((c) => own.has(c.id)).map((c) => c.id);
+  check(
+    `${who} draws no craft twice`,
+    twice.length === 0,
+    `${String(own.size)} own, ${String(contacts.length)} contacts`,
+  );
+}
+
+/**
+ * And B's own list names nothing of A's — no route out of B's orbit, no hulls, and
+ * above all not A's world, which is what identified the raider.
+ */
+const bPending = (await call('/api/session/pending', { token: b.token })).pending;
+const foreign = await sql`
+  SELECT id FROM missions
+  WHERE status = 'in_flight' AND kind = 'return' AND origin_planet_id = ${b.planet.id}`;
+check(
+  "B's own list does not carry the attacker's departing fleet",
+  foreign.every((m) => !idsOf(bPending).has(m.id)),
+  `${String(foreign.length)} of A's legs standing at B's world`,
+);
+check(
+  "and names no world but B's own targets",
+  !JSON.stringify(bPending).includes(a.planet.name),
+  bPending.map((t) => `${t.kind}:${t.targetName}`).join(', ') || 'nothing in flight',
+);
+
+/**
+ * AND TWO CLIENTS WATCHING ONE CRAFT AGREE ABOUT IT.
+ *
+ * Position is derived on each client from the window the server published, so two
+ * players agree only if they were handed the same window for the same mission id.
+ * Read back to back, from two tokens, and compared to the millisecond.
+ *
+ * IT NEEDS A THIRD COMMANDER TO BE A TEST AT ALL. A and B can only have a craft in
+ * common if it belongs to NEITHER of them — everything of A's is excluded from A's
+ * own contact list by construction, and B has nothing in the air. Without C this
+ * check compared an empty set against an empty set and reported PASS, which is the
+ * worst possible outcome for a check: green, and measuring nothing.
+ */
+const c = await commander(`loopc${stamp}`);
+await sql`UPDATE planets SET alloy = 50000, crystal = 20000 WHERE id = ${c.planet.id}`;
+const cTarget = (await call('/api/galaxy', { token: c.token })).planets.find(
+  (p) => !p.isSelf && p.id !== a.planet.id && p.id !== b.planet.id,
+);
+await call('/api/intel/probe', {
+  method: 'POST',
+  token: c.token,
+  body: { targetPlanetId: cTarget.id },
+});
+
+const asA = (await call('/api/galaxy/traffic', { token: a.token })).contacts;
+const asB = (await call('/api/galaxy/traffic', { token: b.token })).contacts;
+const shared = asA.filter((x) => asB.some((o) => o.id === x.id));
+const disagreed = shared.filter((x) => {
+  const other = asB.find((o) => o.id === x.id);
+  return (
+    other.kind !== x.kind ||
+    Math.abs(new Date(other.endAt).getTime() - new Date(x.endAt).getTime()) > 1500 ||
+    Math.hypot(other.to.x - x.to.x, other.to.y - x.to.y, other.to.z - x.to.z) > 1
+  );
+});
+check(
+  'there is a craft belonging to neither of them to compare',
+  shared.length > 0,
+  `${String(asA.length)} on A's screen, ${String(asB.length)} on B's, ${String(shared.length)} in common`,
+);
+check(
+  'two clients watching the same craft are told the same thing',
+  shared.length > 0 && disagreed.length === 0,
+  `${String(shared.length)} craft in common, ${String(disagreed.length)} disagreed`,
+);
 
 const health = await (await fetch(`${API}/health`)).json();
 check('the server reports itself healthy', health.ok === true, JSON.stringify(health.checks));

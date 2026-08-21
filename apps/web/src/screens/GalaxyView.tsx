@@ -13,6 +13,7 @@ import {
   useReports,
   useSeason,
   useTraffic,
+  useContactWindows,
 } from '../api/queries.js';
 import type { AsteroidView, MiningRun, MiningView } from '../api/schemas.js';
 import { GalaxyCanvas } from '../galaxy/GalaxyCanvas.jsx';
@@ -130,6 +131,15 @@ export function GalaxyView({
    */
   useMiningArrivals(mining.data?.runs);
   useFleetArrivals(pending.data?.pending);
+  /**
+   * AND ASK FOR THE NEXT BEARING WINDOW WHEN THE CURRENT ONE RUNS OUT.
+   *
+   * A stranger's craft is drawn inside a published window; when it ends the client
+   * has no more motion to interpolate and coasts on a guess. This asks for the next
+   * one, and — unlike a real arrival — it refetches `traffic` and nothing else,
+   * because nothing else can have changed. See `useContactWindows`.
+   */
+  useContactWindows(traffic.data?.contacts);
 
   const [focus, setFocus] = useState<Focus | null>(null);
   /**
@@ -295,16 +305,20 @@ export function GalaxyView({
           .filter((t) => t.kind === 'fleet' && t.leg === 'outbound')
           .map((t) => new Date(engagementEndsAt(t.arriveAt.getTime()))),
         ...runs.map((r) => (r.status === 'returning' ? r.homeAt : r.arriveAt)),
-        ...(traffic.data?.contacts ?? []).map((c) => c.endAt),
         /**
          * AND SOMEBODY ELSE'S BATTLE, WHICH IS NOW EVERYBODY'S. D52.
          *
          * A bystander has no pending thread of their own, so nothing here was ever
-         * armed for a raid they are only WATCHING — their traffic list polls every
-         * twenty seconds, which is twenty seconds of a squadron hanging over a
-         * world with its volley finished. Both edges are offered: the landing, so
-         * the bombardment starts on the instant, and the settlement, so the wreck
-         * of it clears the moment the server says so.
+         * armed for a raid they are only WATCHING — their traffic list arrived on a
+         * poll, which was that many seconds of a squadron hanging over a world with
+         * its volley finished. Both edges are offered: the landing, so the
+         * bombardment starts on the instant, and the settlement, so the wreck of it
+         * clears the moment the server says so.
+         *
+         * These stay in the FULL refresh while a contact's plain window end does
+         * not (D72): a battle resolving really does move the planet, the reports
+         * and the debris on `mining`, where a bearing window expiring moves only
+         * `traffic`.
          */
         ...(traffic.data?.contacts ?? []).flatMap((c) =>
           c.engagement ? [c.engagement.arriveAt, c.engagement.endsAt] : [],

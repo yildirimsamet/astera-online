@@ -12,6 +12,7 @@ import i18n from './i18n/index.js';
 import { syncDocumentLanguage } from './i18n/document.js';
 import { startAnalytics } from './lib/analytics.js';
 import { Api } from './api/client.js';
+import { shareStructure } from './api/structural.js';
 import { ApiProvider } from './api/context.js';
 import { ToastProvider } from './ui/Toast.js';
 import { App } from './App.js';
@@ -49,6 +50,19 @@ const client = new QueryClient({
       // then a visible failure, never a silent stale render.
       retry: 1,
       refetchOnReconnect: true,
+      /**
+       * IDENTITY ACROSS A REFETCH, WHICH THE DEFAULT COULD NOT GIVE US.
+       *
+       * Every payload the disc draws from carries `Date` instants, and React
+       * Query's own walker treats a Date as a leaf compared by reference — so a
+       * refetch that read back exactly what it already held still produced brand
+       * new arrays of brand new objects. Every memo below them re-ran, every
+       * `BufferGeometry` built from one was rebuilt, and the camera re-framed
+       * itself on data that had not moved.
+       *
+       * One clause fixes it for the whole client at once. See `api/structural.ts`.
+       */
+      structuralSharing: shareStructure,
     },
   },
 });

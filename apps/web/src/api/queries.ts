@@ -3,7 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { engagementEndsAt } from '@astera/rules';
 import type { Fleet, BuildingId, HullId, InstrumentId, SatelliteId } from '@astera/rules';
 import type { z } from 'zod';
-import type { MiningRun, PendingThread, PlanetView, notificationsSchema } from './schemas.js';
+import type { Contact, MiningRun, PendingThread, PlanetView, notificationsSchema } from './schemas.js';
 import { useApi } from './context.js';
 import { keys } from './keys.js';
 import { serverNow } from '../lib/clock.js';
@@ -274,8 +274,9 @@ export function useClaimReward() {
   const apply = useApplyPlanet();
   return useMutation({
     mutationFn: (id: string) => api.claimReward(id),
-    onSuccess: (result) => {
-      apply(result.planet);
+    onSuccess: async (result) => {
+      // Both writes come out of one answer, so both need the same protection.
+      await Promise.all([apply(result.planet), client.cancelQueries({ queryKey: keys.rewards })]);
       client.setQueryData(keys.rewards, result.rewards);
       // Wealth moved with the grant, and a store that just crossed a tier changes
       // this world's silhouette on everybody else's disc.
@@ -419,6 +420,32 @@ export function useMiningArrivals(runs: readonly MiningRun[] | undefined): void 
 }
 
 /**
+ * A CONTACT'S PUBLISHED WINDOW RUNNING OUT IS NOT AN ARRIVAL.
+ *
+ * Somebody else's craft carries a BEARING WINDOW — where it is and where it will be
+ * a little later — and the client interpolates inside it. When the window ends the
+ * client is out of published motion, so it has to ask for the next one, or the
+ * craft coasts on a guess and then stops.
+ *
+ * That wake used to be mixed in with the real arrivals, which refetch nine
+ * payloads: the planet, the galaxy, the reports, the notifications. None of those
+ * can have moved because a STRANGER'S bearing window expired — the only thing that
+ * changed is the window itself. In a busy galaxy every contact has one ending
+ * inside the next minute, so the most expensive read in the game was being pulled
+ * on a schedule set by other people's traffic.
+ *
+ * One key, and the same timer mechanism. What the window says is public and the
+ * refetch is the same fog-enforced query it always was.
+ */
+export function useContactWindows(contacts: readonly Contact[] | undefined): void {
+  const moments = useMemo(
+    () => (contacts ?? []).map((c) => c.endAt.getTime()).sort((a, b) => a - b),
+    [contacts],
+  );
+  useRefetchOnArrival(moments, keys.traffic);
+}
+
+/**
  * Wake up when one of your own fleets lands, and again when its battle is settled.
  *
  * A raid is over its target for `COMBAT.engagementSeconds` before anything is
@@ -463,10 +490,28 @@ function useInvalidator() {
  *
  * The other keys still invalidate: they are payloads this action moved that the
  * response does not carry.
+ *
+ * AND THE WRITE HAS TO WIN AGAINST A READ THAT IS ALREADY IN THE AIR. D72.
+ *
+ * `setQueryData` puts the authoritative view in the cache; a `GET /api/planet`
+ * that was issued BEFORE the tap and lands after it overwrites that view with the
+ * pre-tap world, and React Query has no way to know which of the two is newer —
+ * the response it is holding is simply the most recent one to arrive.
+ *
+ * It is not hypothetical. `useArrivals` invalidates `planet` and `pending` every
+ * time a flight is due, and a player pressing LAUNCH in that same second sees the
+ * fleet appear on the disc and then vanish for up to a minute — the exact "entity
+ * spawned and then disappeared" failure, and it needs no network trouble at all to
+ * reproduce.
+ *
+ * `cancelQueries` aborts the outstanding fetch and reverts its state, so the value
+ * written here is the last word. `useOptimisticPlanet` already did this on the way
+ * IN, for the same reason and with the same comment; the way out was missing it.
  */
 function useApplyPlanet() {
   const client = useQueryClient();
-  return (planet: PlanetView) => {
+  return async (planet: PlanetView) => {
+    await client.cancelQueries({ queryKey: keys.planet });
     client.setQueryData(keys.planet, planet);
   };
 }
@@ -556,8 +601,8 @@ export function useUpgrade() {
     onError: (_error, _type, context) => {
       rollback(context);
     },
-    onSuccess: (result) => {
-      apply(result.planet);
+    onSuccess: async (result) => {
+      await apply(result.planet);
       // The galaxy because a Core crossing a tier changes this world's silhouette
       // for everybody, and the ladder because Wealth moved.
       invalidate(keys.galaxy, keys.leaderboard);
@@ -577,8 +622,8 @@ export function useBuild() {
     onError: (_error, _vars, context) => {
       rollback(context);
     },
-    onSuccess: (result) => {
-      apply(result.planet);
+    onSuccess: async (result) => {
+      await apply(result.planet);
       invalidate(keys.leaderboard);
     },
   });
@@ -596,8 +641,8 @@ export function useRaiseInstrument() {
       rollback(context);
     },
     // A new Telescope level changes what every reading is allowed to say.
-    onSuccess: (result) => {
-      apply(result.planet);
+    onSuccess: async (result) => {
+      await apply(result.planet);
       invalidate(keys.intel, keys.galaxy, keys.leaderboard);
     },
   });
@@ -619,8 +664,8 @@ export function useInstallSatellite() {
      * changes what every other player can see around this world — including the
      * body they will watch appear.
      */
-    onSuccess: (result) => {
-      apply(result.planet);
+    onSuccess: async (result) => {
+      await apply(result.planet);
       invalidate(keys.intel, keys.galaxy, keys.leaderboard);
     },
   });
@@ -666,8 +711,8 @@ export function useCollect() {
     onError: (_error, _vars, context) => {
       rollback(context);
     },
-    onSuccess: (result) => {
-      apply(result.planet);
+    onSuccess: async (result) => {
+      await apply(result.planet);
       invalidate(keys.galaxy, keys.leaderboard);
     },
   });
@@ -707,7 +752,7 @@ export function useLaunch() {
   return useMutation({
     mutationFn: ({ targetPlanetId, fleet }: { targetPlanetId: string; fleet: Fleet }) =>
       api.launch(targetPlanetId, fleet),
-    onSuccess: (result) => {
+    onSuccess: async (result) => {
       /**
        * THE SQUADRON IS ON THE DISC BEFORE THE SHEET HAS FINISHED CLOSING. D53.
        *
@@ -716,7 +761,18 @@ export function useLaunch() {
        * with it. Both lists are in the answer now, in the shape the cache already
        * holds, so the leg starts interpolating on the frame the response lands.
        */
-      apply(result.planet);
+      await Promise.all([
+        apply(result.planet),
+        /**
+         * AND THE PENDING LIST, WHICH IS THE ONE THAT DRAWS THE SQUADRON.
+         *
+         * `useArrivals` invalidates this key on every due arrival, so a launch
+         * pressed while one of those reads is in the air had its brand new fleet
+         * overwritten by a list that predates it — the craft appeared on the disc
+         * and then blinked out.
+         */
+        client.cancelQueries({ queryKey: keys.pending }),
+      ]);
       client.setQueryData(keys.pending, { pending: result.pending });
       invalidate(keys.galaxy, keys.intel);
     },

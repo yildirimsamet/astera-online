@@ -2,6 +2,7 @@ import { and, eq, inArray, ne } from 'drizzle-orm';
 import { engagementEndsAt, type Fleet, type Vec3 } from '@astera/rules';
 import type { Db } from '../db/client.js';
 import { miningRuns, missions, planets } from '../db/schema.js';
+import { legBelongsTo } from './flight.js';
 
 /**
  * TRAFFIC — the galaxy is busy, and now you can see it.
@@ -66,10 +67,11 @@ import { miningRuns, missions, planets } from '../db/schema.js';
 /**
  * How far ahead a contact's motion is published, in minutes.
  *
- * Long enough that a missed poll does not freeze a craft mid-flight — traffic
- * refetches every twenty seconds — and short enough that the window is a heading
- * rather than a route. The value is not sensitive: extending it reveals nothing an
- * observer could not get by watching the same craft for the same length of time.
+ * Long enough that a missed read does not freeze a craft mid-flight — the client
+ * wakes on `endAt` to ask for the next window, with a sixty-second net under it —
+ * and short enough that the window is a heading rather than a route. The value is
+ * not sensitive: extending it reveals nothing an observer could not get by
+ * watching the same craft for the same length of time.
  */
 const BEARING_MINUTES = 4;
 
@@ -123,9 +125,9 @@ const APPROACH_MS = 60_000;
  * galaxy stood still for the last stretch of its flight and then blinked out.
  *
  * D50 already recorded that the margin cost the fog nothing, because the NEAR end
- * of the window has always been the craft's true position, refreshed every twenty
- * seconds until it lands. It withheld a few hundred metres of a flight anyone
- * could already watch, and charged a dead stop for it.
+ * of the window has always been the craft's true position, refreshed on every read
+ * until it lands. It withheld a few hundred metres of a flight anyone could
+ * already watch, and charged a dead stop for it.
  *
  * What replaced it is the opposite decision, and the owner's: a raid landing is
  * the most watchable thing in the galaxy, so it is PUBLIC. The window runs to the
@@ -162,6 +164,27 @@ export interface Contact {
   to: Vec3;
   startAt: Date;
   endAt: Date;
+  /**
+   * THIS WINDOW ENDS WHERE THE CRAFT DOES, RATHER THAN PART OF THE WAY ALONG.
+   *
+   * The client interpolates inside the window and, if a read is late, COASTS a
+   * little past it on the published heading — because a craft that stops dead in
+   * open space reads as a broken game, while one that carries on for a few more
+   * seconds reads as exactly what an eye would guess.
+   *
+   * That is right for a heading and wrong for an arrival: coasting past `endAt`
+   * when `endAt` IS the destination flies the craft straight through the world it
+   * was landing on and out the other side. The client cannot tell the two apart —
+   * a window is four numbers and none of them says which kind it is — so the server
+   * says.
+   *
+   * IT DISCLOSES NOTHING. `windowOf` clamps to the arrival only inside the last
+   * `MIN_COAST_MS` of a flight, and in that case the window's END POINT already IS
+   * the destination, published in full. This names a property of a payload the
+   * caller is already holding; it is the same concession D52 makes for a raid that
+   * has landed, stated so the renderer can act on it instead of guessing.
+   */
+  landing?: boolean;
   /**
    * The whole leg, and the clock on it. MINING ONLY.
    *
@@ -246,7 +269,7 @@ function windowOf(
   departAt: Date,
   arriveAt: Date,
   now: Date,
-): { from: Vec3; to: Vec3; startAt: Date; endAt: Date } | null {
+): { from: Vec3; to: Vec3; startAt: Date; endAt: Date; landing?: boolean } | null {
   const depart = departAt.getTime();
   const arrive = arriveAt.getTime();
   if (arrive <= depart) return null;
@@ -270,6 +293,9 @@ function windowOf(
     to: lerp(from, to, progress(depart, arrive, end)),
     startAt,
     endAt: new Date(end),
+    // Only when the window's far end is the craft's actual stopping point, which
+    // is only ever inside the last `MIN_COAST_MS`. See `Contact.landing`.
+    ...(end >= arrive ? { landing: true } : {}),
   };
 }
 
@@ -296,11 +322,13 @@ function windowOf(
  * moving out there — the same thing it tells everybody else. Knowing that it is
  * coming for YOU, and how long you have, is still exactly what the Radar sells
  * (D9), and that ladder is untouched.
+ *
+ * IT IS NO LONGER SPELT OUT HERE. `legBelongsTo` in `flight.ts` is the one
+ * statement of the rule for code holding a row, and this file, `pendingThreads`
+ * and the bay count all read it — because the moment two of them disagreed, a
+ * craft was either drawn twice on one disc or not at all. It was, and it is why
+ * this import exists.
  */
-const ownsLeg = (m: typeof missions.$inferSelect, planetId: string): boolean =>
-  m.kind === 'return' || m.parentMissionId !== null
-    ? m.targetPlanetId === planetId
-    : m.originPlanetId === planetId;
 
 /**
  * Everything in the air in this season, at the fidelity the galaxy is entitled to.
@@ -308,7 +336,7 @@ const ownsLeg = (m: typeof missions.$inferSelect, planetId: string): boolean =>
  * The caller's OWN craft are excluded: those are drawn from the player's own
  * payload at full fidelity, complete with their route, and a second anonymous copy
  * beside the real one would be both confusing and a free calibration sample. What
- * counts as "own" is `ownsLeg`, and the distinction matters — see above.
+ * counts as "own" is `legBelongsTo`, and the distinction matters — see above.
  *
  * `ownPlanetId` IS NULL FOR A CALLER WHO OWNS NOTHING. D56: `/api/preview` shows a
  * visitor the disc before they have an account, so there is no leg of theirs to
@@ -358,7 +386,7 @@ export async function galaxyTraffic(
   const out: Contact[] = [];
 
   for (const { mission } of missionRows) {
-    if (ownPlanetId !== null && ownsLeg(mission, ownPlanetId)) continue;
+    if (ownPlanetId !== null && legBelongsTo(mission, ownPlanetId)) continue;
     const origin = positions.get(mission.originPlanetId);
     const target = positions.get(mission.targetPlanetId);
     if (!origin || !target) continue;

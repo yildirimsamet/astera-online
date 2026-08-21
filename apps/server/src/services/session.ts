@@ -23,6 +23,7 @@ import {
   seasons,
   watches,
 } from '../db/schema.js';
+import { legBelongsTo } from './flight.js';
 import { announceUnlocks } from './notifications.js';
 import { GameError } from './planet.js';
 
@@ -416,7 +417,40 @@ export async function pendingThreads(
     const m = row.mission;
     const minutes = Math.max(0, Math.round((m.arriveAt.getTime() - now.getTime()) / 60_000));
 
-    if (m.targetPlanetId === planetId && m.kind === 'attack') {
+    /**
+     * WHOSE CRAFT IS THIS? THE SAME QUESTION `flight.ts` AND `traffic.ts` ASK.
+     *
+     * This used to be answered here for one case only — an inbound attack — and
+     * everything else that touched this planet at either end fell through to the
+     * branch below and was described as the caller's OWN craft. The query matches
+     * `origin OR target`, and four different legs match it without being yours:
+     *
+     *   · a probe flying AT you        origin them, target you
+     *   · that probe flying home       origin you,  target them   (parent set)
+     *   · a raider's survivors leaving origin you,  target them   (kind 'return')
+     *   · your own raid's return leg — which IS yours, at the other end
+     *
+     * Only the last is the caller's. The other three were handed out with a full
+     * `path` (both endpoints, so the disc drew the route), the `fleet` inside them,
+     * and `targetName` set to the OTHER WORLD'S NAME — so a player who had just
+     * been probed could read who had probed them straight off their own pending
+     * strip, and a player who had just been raided watched twenty of the attacker's
+     * Wasps leave their orbit labelled as their own outbound squadron, complete
+     * with a bombardment fired at the raider's homeworld when the phantom "landed".
+     *
+     * And every one of them is ALSO published to this caller by `/api/galaxy/traffic`
+     * as an anonymous contact, because `galaxyTraffic` excludes only the legs the
+     * caller genuinely owns. So the same mission was drawn twice on one disc, in two
+     * different places, from two payloads that disagreed about what it was.
+     */
+    if (!legBelongsTo(m, planetId)) {
+      /**
+       * SOMEBODY ELSE'S LEG. The only thing this payload may ever say about one is
+       * that a raid is coming, and only once the radar has actually caught it.
+       * Everything else about a foreign craft belongs to the public contact list,
+       * where it arrives with no owner, no route and no name.
+       */
+      if (m.kind !== 'attack' || m.targetPlanetId !== planetId) continue;
       const oneWay = (m.arriveAt.getTime() - m.departAt.getTime()) / 60_000;
       const lead = radarLead(reach, m.distance, oneWay);
       // Measured unrounded: `minutes` is rounded for display and comparing a
@@ -434,8 +468,10 @@ export async function pendingThreads(
     }
 
     // A return leg flies backwards: its target is home and its origin is the
-    // planet that was raided, so the name worth showing is at the other end.
-    const returning = m.targetPlanetId === planetId;
+    // planet that was raided, so the name worth showing is at the other end. Read
+    // off the same rule that decided the leg was yours, rather than off a column —
+    // the two agree for an owned leg and only one of them is the definition.
+    const returning = m.kind === 'return' || m.parentMissionId !== null;
     pending.push({
       /**
        * THE MISSION'S OWN ID, ON YOUR OWN CRAFT ONLY. D52.

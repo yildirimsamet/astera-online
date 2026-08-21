@@ -82,9 +82,24 @@ await page.goto(WEB, { waitUntil: 'domcontentloaded' });
 const COMMANDER = `visual${String(Date.now()).slice(-8)}`;
 const PASSWORD = 'correct-horse-battery';
 
-// The front door waits for its own sky (D23), so the button is not there at once.
-await page.getByRole('button', { name: /^take a planet$/i }).first().waitFor({ timeout: 40_000 });
-await page.getByRole('button', { name: /^take a planet$/i }).first().click();
+/**
+ * THE FRONT DOOR MOVED, AND THIS HARNESS SAT WAITING AT THE OLD ONE. D68.
+ *
+ * "Take a planet" is no longer a control on the landing page; it is the HEADING of
+ * the register form, and the form is reached through one of the two doors D56/D68
+ * put there — the rehearsal ("Check your planet") or sign-in ("I already have a
+ * commander"). This harness clicked a button that had not existed for two
+ * decisions and reported a forty-second timeout that read like a broken scene.
+ *
+ * The sign-in door is the one taken here, then switched to register: it is two
+ * clicks and it does not enter the ninety-second onboarding rehearsal, which is
+ * its own flow with its own harness (`tools/onboarding.mjs`).
+ */
+// The front door waits for its own sky (D23), so the buttons are not there at once.
+const signInDoor = page.getByRole('button', { name: /already have a commander/i }).first();
+await signInDoor.waitFor({ timeout: 40_000 });
+await signInDoor.click();
+await page.getByRole('button', { name: /i need a commander/i }).first().click();
 await page.getByLabel(/commander name/i).fill(COMMANDER);
 await page.getByLabel(/password/i).fill(PASSWORD);
 await page.getByRole('button', { name: /create commander/i }).click();

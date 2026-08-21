@@ -361,6 +361,28 @@ describe('every payload the client parses', () => {
   });
 
   /**
+   * AND IT CARRIES THE FLAG THAT DECIDES HOW THE CRAFT IS DRAWN ON APPROACH.
+   *
+   * `landing` says the window's far point is the craft's stopping place rather than
+   * a heading, so the client holds there instead of coasting through the world. It
+   * is optional on the schema — an older server simply behaves as it did — which
+   * means a plain parse can never prove it arrives. This does.
+   */
+  it('GET /api/galaxy/traffic marks a contact on final approach as landing', async () => {
+    const [, theirs, third] = f.planetIds as [string, string, string];
+    await giveUnits(f.db, theirs, { WASP: 20 });
+    const launch = await launchAttack(f.db, theirs, third, { WASP: 20 }, f.clock);
+    // Half a minute out: inside the coast floor, so the window runs to the landing.
+    f.clock.set(new Date(launch.arriveAt.getTime() - 30_000));
+
+    const parsed = trafficSchema.parse(await get('/api/galaxy/traffic'));
+    const approaching = parsed.contacts.find((c) => c.id === launch.missionId);
+    expect(approaching, 'the craft was not on the payload at all').toBeDefined();
+    expect(approaching?.landing).toBe(true);
+    expect(approaching?.endAt.getTime()).toBe(launch.arriveAt.getTime());
+  });
+
+  /**
    * THE VOLLEY'S SEED, ON BOTH SIDES OF THE SAME RAID. D52.
    *
    * The bombardment is generated from the mission id, and the attacker draws from

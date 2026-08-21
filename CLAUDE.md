@@ -137,7 +137,9 @@ Each was paid for in iteration. `docs/decisions.md` holds the evidence.
 | The Command Core opens orbit slots at 1, 3, 5 and 9 | Which one, two or three you run is who you are |
 | The Uplink gates the Telescope and the Radar, and nothing else gates anything | The one prerequisite in the system. What it costs is the SLOT |
 | A contact carries a bearing window, never a route | Position is public; intent is not. Mining and salvage runs are the stated exception — and so is a raid that has ALREADY LANDED (D52), for the ten seconds it is standing on the world |
+| **A window says whether it is a heading or an arrival** | The client coasts past a heading so nothing freezes on a late read, and must NOT coast past a destination or it flies the craft through the world. `landing` is set only where the window is clamped to the arrival — the last minute, where the end point already IS the destination (D72) |
 | Traffic excludes what you OWN, not what is aimed at you | Otherwise the one commander a raid is aimed at is the only one who cannot see it |
+| **Whose leg it is has ONE definition, and three surfaces read it** | `legBelongsTo`: an outbound leg belongs to its origin, a return leg to its target. `pendingThreads` wrote its own version and special-cased only an inbound attack — so a probe flying at you, a probe flying home from you and a raider's survivors leaving your orbit all arrived as YOUR craft, with a route line and the other world's NAME on them. The same missions are in `traffic` too, so each was drawn twice on one disc (D72) |
 
 **The world, and the worker that runs it**
 
@@ -168,6 +170,11 @@ Each was paid for in iteration. `docs/decisions.md` holds the evidence.
 | The client never pre-encodes a request body | `send()` serialises; a second `JSON.stringify` must be a compile error |
 | **A mutation answers with the whole planet view, and it must equal what `GET` would say** | Built in the same transaction under the same lock, so it is free and authoritative. A view assembled from the objects the mutation happens to hold drifts, and the interface corrects itself silently on the next refetch (D53) |
 | **An optimistic predictor DECLINES whenever the answer is not certain** | A prediction that is only usually right is worse than none: the flicker of a purchase un-happening lands on the one screen the game is played on. Every server guard is re-checked before predicting (D53) |
+| **Every payload is identity-stable when nothing changed** | React Query's structural sharing treats a `Date` as a leaf compared by reference, and every schema parses instants with `z.coerce.date()` — so `traffic`, `pending` and `mining` were brand new objects on every read. Every memo below them re-ran, every route buffer was rebuilt, and the camera re-framed itself on data that had not moved (that is D69). One clause in `api/structural.ts`, installed once (D72) |
+| **`shareStructure` is `replaceEqualDeep` plus ONE clause, and a test holds it to that** | It replaces the walker for every query in the app, so the property that bounds the risk is not "it handles Dates" but "it is otherwise identical". Writing `Object.is` instead of `===` looked tidier and silently changed the answer for `NaN` and `-0`; the conformance test against the library's own function is what found it (D72) |
+| **A geometry lives as long as the craft, and is disposed with it** | Replacing a `geometry` prop drops the old buffer on the floor — nothing unmounted, so nothing freed it. Both ends of every route are written each frame anyway, so it never needed rebuilding: `useLine` allocates one and disposes it (D72) |
+| **A reconnection is a resync** | The stream has no cursor and no backlog, so everything that happened while the socket was down was never delivered. Every open after the first re-reads the live set; the first is exempt because the queries have only just fetched (D72) |
+| **A write cancels the reads it is about to overrule** | `useArrivals` invalidates `planet` and `pending` on every due arrival, so a launch pressed in that second had its new fleet overwritten by a list that predates it — the squadron appeared and blinked out. `useOptimisticPlanet` already cancelled on the way in; the way out did not (D72) |
 | **Anything that renders the disc takes stable props** | `GalaxyView` holds a clock, so it re-renders on a timer whether or not the galaxy moved. An array built with `.map` in the JSX rebuilt the watch beams' GPU buffer every tick (D53) |
 | The client parses a notification `kind` as a string, never an enum | One unknown value would erase the player's whole history instead of one line |
 | Both sides of a raid read the same `arriveAt` | Rebuilding it from a rounded figure put them thirty seconds apart |
@@ -348,11 +355,12 @@ end of waiting (D51–D53); the name, the identity and the way out (D54); Turkis
 (D55); the rehearsal — ninety seconds of the real game before there is an account (D56); production
 on one origin, with the ceilings that a public door needs (D57); the reward panel and the one
 menu that holds it (D64–D67); the returning door, the camera that stops moving on its
-own, and seats that come back (D68–D71).
+own, and seats that come back (D68–D71); one craft, one marker — the real-time
+movement pass (D72).
 
 ```
-pnpm verify  →  0 type errors · 0 lint errors · 1,624 tests
-                rules 248 · sim 47 · server 544 · web 785
+pnpm verify  →  0 type errors · 0 lint errors · 1,689 tests
+                rules 248 · sim 47 · server 553 · web 841
 ```
 
 **Two season-gate assertions are RED after D63, down from five:** `TI` reads −0.465 against
@@ -393,7 +401,7 @@ seed. `ARR` was always the next thing to re-derive; it is now the only thing.
 | Notifications | Seven kinds, both sides of everything, idempotent, payloads held by a contract test |
 | Asteroids · wreckage | A mining economy with exact interception; public decaying debris fields. A salvage run is its own contact kind (D51) |
 | Engagement | A raid holds in orbit for ten seconds and bombards, **and the whole galaxy watches it** — same hold, same volley, same mission id on every screen (D52), at the display's real frame rate (D53) |
-| Live channel | Two topics on one SSE socket: what happened to YOU, and what happened in your GALAXY. A stranger's launch reaches every screen in under a second; the polls are a sixty-second net under it, and `/health` says whether the channel is up (D53) |
+| Live channel | Two topics on one SSE socket: what happened to YOU, and what happened in your GALAXY. A stranger's launch reaches every screen in under a second; the polls are a sixty-second net under it, and `/health` says whether the channel is up (D53). Every reconnection re-reads the live set, because the channel has no backlog (D72) |
 | Look | Nebula, a power-law starfield with diffraction spikes, meteors, dust, bloom. Worlds carry an atmosphere limb — warm on the lit side, gone on the dark one — and the galactic plane is a painted plate of spiral arms and dust lanes — no lines anywhere (D53a, D53b) |
 | Web client | The galaxy is the only screen. Focus anything and a rail states what you know and how you know it. Everything animated runs on `serverNow()`, so every player watches the same instant (D52). One tap, one round trip — and the deterministic spends are predicted and reconciled, so the screen agrees with the tap immediately (D53) |
 | Language | Turkish and English, detected from the device and switchable on the front door and in the commander sheet. Resources are compiled in, so the first frame is never in the wrong language. Every element owns its strings; a refusal is localised off its code with the server's figures kept (D55) |

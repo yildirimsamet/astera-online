@@ -20,14 +20,24 @@ import { COALESCE_MS } from '../src/session/shardEvents.js';
  */
 
 let onEvent: ((kind: string) => void) | null = null;
+/**
+ * Held so a test can close the socket by hand.
+ *
+ * A real stream stays open until something breaks it; the fake has to be able to
+ * break on demand, because half of what this file now tests is what happens
+ * AFTER it does.
+ */
+let closeSocket: (() => void) | null = null;
 
 const fakeApi = (): Api =>
   ({
-    stream: (handler: (kind: string) => void) => {
+    stream: (handler: (kind: string) => void, _signal: AbortSignal, onOpen?: () => void) => {
       onEvent = handler;
-      // Never resolves: a real stream stays open, and resolving would send the
-      // hook round its reconnect loop and into a backoff timer.
-      return new Promise<void>(() => undefined);
+      // Opens immediately, as a working connection does.
+      onOpen?.();
+      return new Promise<void>((resolve) => {
+        closeSocket = resolve;
+      });
     },
   }) as unknown as Api;
 
@@ -48,6 +58,7 @@ describe('the event stream', () => {
   beforeEach(() => {
     vi.useFakeTimers();
     onEvent = null;
+    closeSocket = null;
     asked = [];
     client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
     client.invalidateQueries = (filters?: { queryKey?: readonly unknown[] }) => {
@@ -123,6 +134,65 @@ describe('the event stream', () => {
     // The raid is already through; only the launch is still waiting.
     expect(asked).toContain('reports');
     expect(asked).not.toEqual([]);
+  });
+
+  /* ── coming back after the channel was down ────────────────── */
+
+  /**
+   * THE STREAM HAS NO REPLAY, SO A RECONNECTION IS A RESYNC.
+   *
+   * Every event on this channel is fire-and-forget: no cursor, no backlog, no ids.
+   * Whatever happened while the socket was down — a raid resolving, a neighbour
+   * launching, a world growing — was simply never delivered, and nothing in the
+   * payloads themselves says so.
+   *
+   * Before this, the only thing that closed the gap was the sixty-second safety-net
+   * poll. A proxy dropping the socket, a deploy, or a phone waking from sleep left
+   * the disc showing a world up to a minute out of date, with craft parked on their
+   * destinations, and nothing on screen admitting it.
+   */
+  it('does not refetch on the first connection, which has nothing to catch up on', () => {
+    mount();
+    expect(asked, 'a cold start paid for its own reads twice').toEqual([]);
+  });
+
+  /** Drop the socket and let the reconnect loop's backoff run out. */
+  const reconnect = async (): Promise<void> => {
+    await act(async () => {
+      closeSocket?.();
+      // Longer than the capped backoff, so the loop has certainly reopened.
+      await vi.advanceTimersByTimeAsync(60_000);
+    });
+  };
+
+  it('re-reads the whole world when the socket comes back', async () => {
+    mount();
+    expect(asked).toEqual([]);
+
+    await reconnect();
+
+    expect(asked, 'nothing was re-read after the channel came back').toContain('traffic');
+    expect(asked).toContain('pending');
+    expect(asked).toContain('planet');
+    expect(asked).toContain('mining');
+    expect(asked).toContain('galaxy');
+  });
+
+  /**
+   * ONCE PER RECONNECTION — not once per event, and not on a timer.
+   *
+   * The cost of a resync is the whole read set, so it has to be tied to the thing
+   * that actually loses events: the socket going down and coming back.
+   */
+  it('resyncs again on a second reconnection', async () => {
+    mount();
+    await reconnect();
+    const first = asked.length;
+    expect(first).toBeGreaterThan(6);
+
+    asked = [];
+    await reconnect();
+    expect(asked).toHaveLength(first);
   });
 
   /** An unmounted tab must not flush a window it armed on the way out. */

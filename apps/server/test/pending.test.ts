@@ -6,6 +6,7 @@ import { missions } from '../src/db/schema.js';
 import { pendingThreads } from '../src/services/session.js';
 import { launchAttack } from '../src/services/mission.js';
 import { launchProbe } from '../src/services/intel.js';
+import { galaxyTraffic } from '../src/services/traffic.js';
 import { EventWorker } from '../src/worker/loop.js';
 import {
   giveInstrument,
@@ -354,5 +355,138 @@ describe('what is in flight', () => {
 
     await f.db.update(missions).set({ status: 'cancelled' }).where(eq(missions.status, 'in_flight'));
     expect(await pendingThreads(f.db, mine, f.clock.now())).toEqual([]);
+  });
+});
+
+/**
+ * WHOSE CRAFT IS THIS, ASKED OF EVERY LEG THAT TOUCHES A WORLD.
+ *
+ * `pendingThreads` matches `origin OR target` and used to special-case exactly one
+ * foreign leg — an inbound attack. Four kinds of leg match that query without
+ * belonging to the caller, and the other three fell through to the branch that
+ * describes YOUR OWN craft: with a full `path` (so the disc drew a route line),
+ * the `fleet` inside it, and `targetName` set to the other world's name.
+ *
+ * So a player who had just been probed could read WHO probed them off their own
+ * pending strip, and a player who had just been raided watched the attacker's
+ * survivors leave their orbit labelled as their own outbound squadron — which the
+ * galaxy then drew bombarding the raider's homeworld when the phantom "arrived".
+ *
+ * And every one of those legs is ALSO published to the same caller by
+ * `/api/galaxy/traffic`, because that list excludes only what the caller owns. One
+ * mission, two payloads, two craft on one disc, disagreeing about what they were.
+ *
+ * The rule was already written down twice — in `flight.ts`, which counts bays, and
+ * in `traffic.ts`, which decides what to publish. These hold the third caller to it.
+ */
+describe('whose craft is in flight', () => {
+  let f: Fixture;
+  let mine: string;
+  let theirs: string;
+
+  const worker = () =>
+    new EventWorker(f.db, f.clock, { pollMs: 1000, batch: 100, staleMinutes: 5 }, silent);
+
+  beforeEach(async () => {
+    f = await seedWorld(3);
+    [mine, theirs] = f.planetIds as [string, string];
+    for (const id of f.planetIds) {
+      await setLevel(f.db, id, 'CORE', 8);
+      await setLevel(f.db, id, 'SHIPYARD', 2);
+      await grant(f.db, id, 300_000, 60_000);
+    }
+    f.clock.advance(200);
+    await giveUnits(f.db, mine, { WASP: 20 });
+  });
+
+  /**
+   * THE ONE INVARIANT UNDER ALL OF THIS: a craft is drawn exactly once per viewer.
+   *
+   * Your own craft come from `pending` and everybody else's from `traffic`, and the
+   * two lists key on the same mission id — so an id appearing in both is, literally,
+   * the same squadron rendered twice in the same scene from two different payloads.
+   */
+  const drawnTwice = async (planetId: string): Promise<string[]> => {
+    const own = await pendingThreads(f.db, planetId, f.clock.now());
+    const seen = await galaxyTraffic(f.db, f.seasonId, planetId, f.clock.now());
+    const ids = new Set(own.map((t) => t.id).filter((id): id is string => id !== undefined));
+    return seen.filter((c) => ids.has(c.id)).map((c) => c.id);
+  };
+
+  it('never tells a scouted world that a probe is inbound, or whose it is', async () => {
+    await launchProbe(f.db, mine, theirs, f.clock);
+    f.clock.advance(0.5);
+
+    const scouted = await pendingThreads(f.db, theirs, f.clock.now());
+    expect(scouted, 'an inbound probe was listed as the target’s own craft').toEqual([]);
+    expect(await drawnTwice(theirs)).toEqual([]);
+  });
+
+  it('never tells a scouted world about the probe flying home from it', async () => {
+    const launch = await launchProbe(f.db, mine, theirs, f.clock);
+    f.clock.set(new Date(launch.arriveAt.getTime() + 1000));
+    await worker().tick();
+
+    // The prober's own craft, on its way back.
+    const prober = await pendingThreads(f.db, mine, f.clock.now());
+    expect(prober).toHaveLength(1);
+    expect(prober[0]!.leg).toBe('return');
+
+    const scouted = await pendingThreads(f.db, theirs, f.clock.now());
+    expect(scouted, 'a probe leaving was listed as the scouted world’s own craft').toEqual([]);
+    expect(await drawnTwice(theirs)).toEqual([]);
+  });
+
+  /**
+   * THE WORST OF THE FOUR. A return leg is stored with its two ends SWAPPED, so a
+   * raider's survivors flying home have the RAIDED world in `originPlanetId` — which
+   * the old code read as "an outbound leg of yours".
+   */
+  it('never gives a raided world the attacker’s departing fleet as its own', async () => {
+    const launch = await launchAttack(f.db, mine, theirs, { WASP: 20 }, f.clock);
+    f.clock.set(settledAt(launch.arriveAt));
+    await worker().tick();
+
+    const attacker = await pendingThreads(f.db, mine, f.clock.now());
+    expect(attacker, 'nothing came home from the raid').toHaveLength(1);
+    expect(attacker[0]!.leg).toBe('return');
+
+    const raided = await pendingThreads(f.db, theirs, f.clock.now());
+    expect(raided, 'the attacker’s fleet was listed as the defender’s own').toEqual([]);
+    expect(await drawnTwice(theirs)).toEqual([]);
+    // And nothing on the payload names the world it is flying to.
+    expect(JSON.stringify(raided)).not.toContain(mine);
+  });
+
+  /**
+   * The one foreign leg that IS reported, unchanged: a raid aimed at you, once the
+   * radar has caught it. This is the branch the fix must not have taken with it.
+   */
+  it('still warns a defender about an inbound raid, and only about that', async () => {
+    await giveInstrument(f.db, theirs, 'RADAR', 5);
+    const launch = await launchAttack(f.db, mine, theirs, { WASP: 20 }, f.clock);
+    f.clock.set(new Date(launch.arriveAt.getTime() - 1000));
+
+    const warned = await pendingThreads(f.db, theirs, f.clock.now());
+    expect(warned).toHaveLength(1);
+    expect(warned[0]!.kind).toBe('incoming');
+    expect(warned[0]!.path).toBeUndefined();
+    expect(warned[0]!.fleet).toBeUndefined();
+    expect(warned[0]!.id).toBeUndefined();
+    // An inbound thread carries no id, so it cannot collide with a contact either.
+    expect(await drawnTwice(theirs)).toEqual([]);
+  });
+
+  /** And a bystander's disc is unaffected: everything is somebody else's. */
+  it('draws nothing twice for a world that is not involved at all', async () => {
+    const third = f.planetIds[2]!;
+    await launchAttack(f.db, mine, theirs, { WASP: 20 }, f.clock);
+    await launchProbe(f.db, mine, theirs, f.clock);
+    f.clock.advance(0.5);
+
+    expect(await pendingThreads(f.db, third, f.clock.now())).toEqual([]);
+    expect(await drawnTwice(third)).toEqual([]);
+    // But it does see them, anonymously.
+    expect(await galaxyTraffic(f.db, f.seasonId, third, f.clock.now())).toHaveLength(2);
   });
 });

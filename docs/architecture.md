@@ -144,6 +144,19 @@ Three mechanisms, in order of precision, and the shortest is not the timer.
 3. **The timer, which is now a SAFETY NET.** Sixty seconds across the board. It is what runs the
    galaxy if the live channel is down — a dropped socket, a restart, a phone that lost signal.
 
+**And a reconnection is a resync — D72.** The channel carries no cursor and no backlog, so
+everything that happened while the socket was down was never delivered and nothing in the payloads
+says so. Until D72 the only thing closing that gap was mechanism 3, so a dropped socket left the
+disc up to a minute stale with craft parked on their destinations. `api.stream` now reports when
+the socket is actually up, and every open AFTER the first re-reads the live set. The first is
+exempt on purpose: the queries have only just fetched, and doubling a cold start buys nothing.
+
+**A window on a foreign craft expiring is not an arrival — D72.** A contact carries a bearing
+window and the client asks for the next one when it runs out. That wake used to sit in the same
+list as real arrivals, which refetch nine payloads; nothing but `traffic` can have changed because
+a stranger's window expired, and in a busy galaxy one expires every few seconds — so the most
+expensive read in the game was being pulled on a schedule set by other people's traffic.
+
 The client coalesces shard events over 250ms and maps each kind to the one or two reads it moves.
 A launch does not refetch `/api/galaxy`: that payload carries a telescope reading per watched world
 and a flight cannot change it. Measured: seven events cost 56 invalidations under a blanket
@@ -167,6 +180,14 @@ own action had done: two round trips for one tap, in a game whose construction i
 payment. `planetView()` is the body of `GET /api/planet` as a function, and every mutation returns
 it — built in the same transaction under the same row lock, so it is free and authoritative.
 A launch returns its `pendingThreads` too, from the same builder the GET uses.
+
+**And the write cancels the reads it is about to overrule — D72.** `setQueryData` is the last word
+only if nothing older lands after it. A `GET` issued before the tap resolves afterwards and
+overwrites the authoritative answer with the pre-tap world; React Query holds whichever response
+arrived last and cannot know which is newer. `useArrivals` invalidates `planet` and `pending` on
+every due arrival, so a launch pressed in that second had its new fleet overwritten and the
+squadron appeared on the disc and blinked out. Every mutation that writes a payload cancels that
+payload's in-flight reads first — which the optimistic path already did on the way in.
 
 On top of that, the deterministic spends are **predicted on the tap** and reconciled with the
 answer. That does not weaken "the client never decides an outcome": the server still validates

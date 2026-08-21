@@ -2,8 +2,8 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { render } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { COMBAT, engagementEndsAt } from '@astera/rules';
-import { useFleetArrivals, useMiningArrivals } from '../src/api/queries.js';
-import type { MiningRun, PendingThread } from '../src/api/schemas.js';
+import { useContactWindows, useFleetArrivals, useMiningArrivals } from '../src/api/queries.js';
+import type { Contact, MiningRun, PendingThread } from '../src/api/schemas.js';
 
 /**
  * WAKE UP WHEN SOMETHING LANDS. D48.
@@ -25,9 +25,18 @@ import type { MiningRun, PendingThread } from '../src/api/schemas.js';
 
 const at = (ms: number): Date => new Date(ms);
 
-function Harness({ runs, pending }: { runs?: MiningRun[]; pending?: PendingThread[] }) {
+function Harness({
+  runs,
+  pending,
+  contacts,
+}: {
+  runs?: MiningRun[];
+  pending?: PendingThread[];
+  contacts?: Contact[];
+}) {
   useMiningArrivals(runs);
   useFleetArrivals(pending);
+  useContactWindows(contacts);
   return null;
 }
 
@@ -52,7 +61,7 @@ describe('a client waiting for an arrival', () => {
     vi.restoreAllMocks();
   });
 
-  const mount = (props: { runs?: MiningRun[]; pending?: PendingThread[] }) =>
+  const mount = (props: { runs?: MiningRun[]; pending?: PendingThread[]; contacts?: Contact[] }) =>
     render(
       <QueryClientProvider client={client}>
         <Harness {...props} />
@@ -194,6 +203,50 @@ describe('a client waiting for an arrival', () => {
     mount({ runs: [], pending: [] });
     vi.advanceTimersByTime(600_000);
     expect(invalidated).toHaveLength(0);
+  });
+
+  /* ── somebody else's bearing window ───────────────────────── */
+
+  const contact = (endAt: Date): Contact => ({
+    id: 'c1',
+    kind: 'fleet',
+    from: { x: 0, y: 0, z: 0 },
+    to: { x: 40, y: 0, z: 0 },
+    startAt: at(Date.now()),
+    endAt,
+  });
+
+  /**
+   * A STRANGER'S WINDOW EXPIRING IS NOT AN ARRIVAL, AND MUST NOT COST WHAT ONE IS.
+   *
+   * The client interpolates a contact inside its published window and has to ask
+   * for the next one when it runs out. That wake used to sit in the same list as
+   * real arrivals, which refetch nine payloads — the planet, the galaxy, the
+   * reports, the notifications. Not one of them can have moved because somebody
+   * else's bearing window expired, and in a busy galaxy one expires every few
+   * seconds, so the most expensive read in the game was being pulled on a schedule
+   * set entirely by other people's traffic.
+   */
+  it('asks for the next window when the current one runs out', () => {
+    mount({ contacts: [contact(at(Date.now() + 60_000))] });
+    vi.advanceTimersByTime(59_000);
+    expect(invalidated).toHaveLength(0);
+
+    vi.advanceTimersByTime(2_000);
+    expect(invalidated.map((k) => k[0])).toEqual(['traffic']);
+  });
+
+  it('reads nothing but traffic, however many contacts are in the air', () => {
+    mount({
+      contacts: [0, 1, 2].map((i) => ({
+        ...contact(at(Date.now() + 20_000 * (i + 1))),
+        id: `c${String(i)}`,
+      })),
+    });
+    vi.advanceTimersByTime(120_000);
+
+    expect(invalidated.length).toBeGreaterThan(0);
+    expect([...new Set(invalidated.map((k) => k[0]))]).toEqual(['traffic']);
   });
 
   /**
