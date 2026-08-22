@@ -1230,6 +1230,29 @@ test is a property of one rock. `invariants.test.ts` now pins rate x mean life
 across five seeds and most of a season, and asserts the disc never empties, which
 is the failure a mean alone cannot show.
 
+### D82 · Hull crystal costs rise by one quarter — owner instruction
+
+Every vehicle and ground-defence hull now costs 1.25× its D78 crystal amount,
+rounded to the nearest whole resource: Wasp 0, Lance 238, Bulwark 775, Hauler 163,
+Bastion 475, Thorn 150 and Prospector 150. Alloy prices, attack, hit points, speed,
+cargo, class, unlock level and ground/mobile identity do not move. Because zero
+remains zero, the two opening Wasps and `START` arithmetic are unchanged.
+
+This supersedes D78's conclusion that live hull prices remain unchanged, but it
+does not select any of D78's rejected candidates. D78 redistributed an unchanged
+total between alloy and crystal; D82 leaves alloy fixed and raises the total price.
+The planned research system remains a future crystal sink rather than being folded
+into this change.
+
+**Measured exception, explicitly accepted by the owner on 2026-08-22.** Across the
+five fixed 50-player seeds, crystal-cap time falls from D78's 8,888 player-hours to
+7,704 (−13.3%), and the median of final unused crystal falls from about 9,473 to
+9,057. All pooled gates and every other per-seed gate remain green. Seed 7 alone
+lands at ARR 0.2962205608319292, 0.0038 below the standard 0.300 floor. The global
+band is not widened: `season.test.ts` pins this one accepted reading exactly so any
+further movement fails, and the exception is to be deleted if a later balance
+change returns the seed to the normal band.
+
 ## Architecture
 
 A1 · One source of truth — LOCKED

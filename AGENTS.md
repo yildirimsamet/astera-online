@@ -114,7 +114,7 @@ Each was paid for in iteration. `docs/decisions.md` holds the evidence.
 | A constant priced in another constant moves with it                     | Hull prices halved at D61; `DEBRIS.minimum` and `START.alloy` are both denominated in ship value and had to halve too. Five debris tests failed the moment one did not                                                                                                                  |
 | **No new un-losable sink fits the gate**                                | A research tree, a permanent upgrade or a dearer instrument all push wealth into what a raid cannot take. Measured twice: an instrument curve ≥1.1, and a sink worth 2% of Wealth. `TAX` and `ARR` have no headroom — **never widen a band to admit a feature**                         |
 | Two levers are proven inert                                             | The loot dial and `COMBAT.defenceSalvage`. What a loss COSTS cannot fix what an attack ACHIEVES                                                                                                                                                                                         |
-| Hull crystal redistribution is blocked (D78)                            | 25% misses the cap-time target; 30% and 35% break existing season gates. Hull prices stay unchanged; do not substitute fuel or an un-losable upgrade sink.                                                                                                                               |
+| **Hull crystal costs are 1.25× their D78 values (D82)**                 | This is a crystal-only surcharge, rounded to the nearest whole unit; alloy and every hull stat stay fixed. Wasp remains zero-crystal, so `START` is unchanged. It supersedes D78's unchanged-price conclusion, not its rejected same-total redistribution experiment.                                   |
 
 **Combat and defence**
 
@@ -366,8 +366,8 @@ own, and seats that come back (D68–D71); one craft, one marker — the real-ti
 movement pass (D72).
 
 ```
-pnpm verify  →  0 type errors · 0 lint errors · 1,757 tests
-                rules 252 · sim 53 · server 571 · web 881
+pnpm verify  →  0 type errors · 0 lint errors · 1,760 tests
+                rules 255 · sim 53 · server 571 · web 881
 ```
 
 **The current five-seed season regression gate is green.** Do not confuse a red diagnostic

@@ -58,9 +58,25 @@ const RUNS = SEEDS.map((seed) => {
 const PER_SEED: InvariantKey[] = ['ARR', 'VFR', 'SV'];
 const POOLED: InvariantKey[] = ['TI', 'RR', 'TAX'];
 
-describe.each(RUNS)('season on seed $seed', ({ world, medians }) => {
+/**
+ * D82 OWNER OVERRIDE, LOCKED TO THE MEASURED READING RATHER THAN A WIDER BAND.
+ *
+ * Raising only hull crystal costs by 25% puts seed 7 at ARR 0.2962205608319292,
+ * 0.0038 below the global floor. The owner explicitly accepted that exact result
+ * for the live game on 2026-08-22. Do not turn this into a looser global floor:
+ * any movement must fail here and be re-measured, and this exception should be
+ * deleted if a later balance change brings the seed back into the standard band.
+ */
+const D82_ACCEPTED_SEED_7_ARR = 0.2962205608319292;
+
+describe.each(RUNS)('season on seed $seed', ({ seed, world, medians }) => {
   it.each(PER_SEED)('%s holds its band', (key) => {
     const m = medians[key];
+    if (seed === 7 && key === 'ARR') {
+      expect(m, 'D82 owner-accepted seed 7 ARR moved; re-measure the explicit exception')
+        .toBeCloseTo(D82_ACCEPTED_SEED_7_ARR, 12);
+      return;
+    }
     const v = verdict(key, m);
     expect(v, `${key} = ${m.toFixed(3)} is ${v}. Lever: ${LEVERS[key]}`).toBe('OK');
   });

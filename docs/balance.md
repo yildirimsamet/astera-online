@@ -104,14 +104,21 @@ crystal is spent as fast as it arrives, the stores sit near empty, and **there i
 to raid**: raid returns fell under their floor and the informed archetype dropped to third.
 Crystal must be spendable **and** worth stealing.
 
-**Advanced-hull redistribution is blocked (D78).** Moving the unchanged total prices
-of Lance, Bulwark and Hauler to 25%, 30% or 35% crystal reduces cap time, but candidates
-break season gates or miss the cap-time target. Prospector is not falsely counted in
-that conclusion: the simulator does not yet model mining craft purchases, and prints
-its Prospector spend as zero. Therefore no complete four-hull candidate is selectable
-and authoritative prices remain unchanged. Run `pnpm sim` for cap player-hours, final
-median unused crystal and the category distribution; `--crystal-share=0.25|0.30|0.35`
-reproduces the partial experiment without changing rules.
+**The D78 same-total redistribution experiment remains blocked.** Moving the unchanged
+total prices of Lance, Bulwark and Hauler to 25%, 30% or 35% crystal reduced cap time,
+but candidates broke season gates or missed the cap-time target. Prospector was not
+falsely counted in that conclusion: the simulator does not yet model mining craft
+purchases, and prints its Prospector spend as zero.
+
+**D82 is a different operation:** every hull's existing crystal component is multiplied
+by 1.25 and rounded to the nearest whole resource, so total prices rise while alloy and
+all hull statistics remain fixed. Wasp's zero stays zero and therefore opening arithmetic
+does not move. This owner-directed surcharge is the authoritative price table below;
+the planned research system is a separate future sink and has not been pre-spent here.
+Run `pnpm sim` for cap player-hours, final median unused crystal and category distribution;
+`--crystal-share=0.25|0.30|0.35` still reproduces only the historical D78 experiment.
+The five-seed gate has one explicit owner-accepted D82 exception: seed 7 ARR is pinned
+at 0.2962205608319292 instead of weakening the global 0.300 floor (see D82).
 
 ## Combat
 
@@ -133,14 +140,14 @@ engagementSeconds = 10 — a raid is over its target this long before it settles
 | Hull | Class | ATK | HP | Speed | Cargo | Alloy | Crystal | Yard | HP/1k | ATK/1k |
 |---|---|---|---|---|---|---|---|---|---|---|
 | Wasp | Skirmisher | 14 | 24 | 435 | 40 | 260 | 0 | 0 | 46.2 | 26.9 |
-| Lance | Lance | 46 | 62 | 322 | 50 | 950 | 190 | 2 | 27.2 | 20.2 |
-| Bulwark | Bulwark | 26 | 210 | 199 | 70 | 2,500 | 620 | 4 | 33.7 | 4.2 |
-| Hauler | Support | 0 | 80 | 284 | **1,800** | 1,150 | 130 | 1 | 31.3 | — |
-| Bastion | Bulwark · ground | 34 | 260 | — | — | 1,700 | 380 | 1 | 62.5 | 8.2 |
-| Thorn | Skirmisher · ground | 16 | 60 | — | — | 800 | 120 | 0 | 65.2 | 17.4 |
-| Prospector | Support · mining | 0 | 70 | *see below* | 1,800 | 700 | 120 | 1 | 85.4 | — |
+| Lance | Lance | 46 | 62 | 322 | 50 | 950 | 238 | 2 | 26.1 | 19.4 |
+| Bulwark | Bulwark | 26 | 210 | 199 | 70 | 2,500 | 775 | 4 | 32.1 | 4.0 |
+| Hauler | Support | 0 | 80 | 284 | **1,800** | 1,150 | 163 | 1 | 30.5 | — |
+| Bastion | Bulwark · ground | 34 | 260 | — | — | 1,700 | 475 | 1 | 59.8 | 7.8 |
+| Thorn | Skirmisher · ground | 16 | 60 | — | — | 800 | 150 | 0 | 63.2 | 16.8 |
+| Prospector | Support · mining | 0 | 70 | *see below* | 1,800 | 700 | 150 | 1 | 82.4 | — |
 
-The Bastion is **1.35× more HP per resource** than the best ship because it can never leave.
+The Bastion is **1.29× more HP per resource** than the best ship because it can never leave.
 That is the entire justification for ground defence existing separately.
 
 **The two ground guns are opposite classes on purpose (D27).** Wasps overwhelm a Bastion and
