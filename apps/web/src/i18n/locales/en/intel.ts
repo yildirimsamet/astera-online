@@ -4,6 +4,9 @@
  */
 
 export const intel = {
+  tabs: {
+    label: 'Intel reports',
+  },
   coverage: {
     label: 'Coverage',
     blind: 'You cannot see into a single planet',

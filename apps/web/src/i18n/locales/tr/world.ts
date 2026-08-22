@@ -10,6 +10,7 @@
 
 export const galaxy = {
   discLabel: 'Disk',
+  serverLabel: '{{name}} ({{code}})',
   online: '{{count}} çevrimiçi',
   worlds: '{{count}} gezegen',
   fleetAway: ' · {{count}} filo dışarıda',
@@ -45,6 +46,7 @@ export const focus = {
 
   planet: {
     eyebrow: 'Sahibi: {{owner}}',
+    location: 'Dünya · {{planet}}',
     attack: 'Saldırı planla',
     outOfBand: '{{tier}}. kademe — sen {{low}}–{{high}} arasına vurabilirsin',
     windowOpen: 'Filoları evde değil. Bütün oyunun beklediği an tam olarak bu.',

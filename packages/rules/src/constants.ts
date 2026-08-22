@@ -687,9 +687,8 @@ export const PROBE = {
  * Shipyard, and the thing that improves it is the DERRICK in orbit — one satellite,
  * owned or not, lifting every craft the planet has at once.
  *
- * SPEED IS THE LOAD-BEARING NUMBER, AND IT IS NOW A MULTIPLE OF THE ROCKS. D43,
- * owner's figure: a Prospector flies at THREE TIMES the mean asteroid speed, and a
- * Derrick lifts it to four and a half.
+ * SPEED IS THE LOAD-BEARING NUMBER. D74 sets the base to 330 and keeps the
+ * Derrick's 1.5x lift, for 495.
  *
  * It was 62 against rocks that run at 140-300, and the mathematics of that were
  * never wrong — a closed orbit means a slower craft still has a meeting, it simply
@@ -700,19 +699,17 @@ export const PROBE = {
  * on the far side of the disc. Every one of those flights was exact. Not one of
  * them was legible, and the owner reported it as craft going somewhere unrelated.
  *
- * At 3x the same sweep reads 0.34 revolutions and a median 784 units — a third of
- * a lap, which is a lead shot the eye can follow rather than a lap and a bit,
- * which is not. It also makes the solve UNCONDITIONALLY WELL-POSED: see
- * `interceptAsteroid`, where a hull speed above `distanceFactor x asteroidSpeedMax`
- * (= 360) makes the intercept function strictly decreasing, so there is exactly one
- * meeting and no scan can step over it.
+ * D43 temporarily put it at 3x the mean rock speed. D74 halves that figure by
+ * owner instruction. Across the five gate seeds the widest measured base lead is
+ * 1.006 revolutions; the Derrick stays at 0.666.
  *
- * THE ARITHMETIC, and it is arithmetic rather than a round number — `invariants`
- * asserts it: 3 x (asteroidSpeedMin + asteroidSpeedMax) / 2 = 3 x 220 = 660.
+ * The base is below the old monotonic-root threshold of 360. The circular solver
+ * was built for slower craft, and the generated field is measured directly:
+ * neither the base nor boosted craft misses a live rock through 90% of its life.
  *
  * WHY THIS IS NOT A MINING BUFF. Income is `hold ÷ round trip` per craft, but the
  * GALAXY's mining income is bounded by the ore that exists — about 6,700 an hour
- * across every player, against a demand of three craft x 300 hold per planet per
+ * across every player, against a demand of two craft x 300 hold per planet per
  * trip. Supply has always been the binding constraint by two orders of magnitude,
  * so a shorter trip changes WHO reaches a rock first and how long a flight bay is
  * held, not how much ore the field yields. What it sharpens is D19's race, which
@@ -725,8 +722,8 @@ export const PROBE = {
  * so the ceiling a developed miner reaches is where it always was.
  */
 export const PROSPECTOR = {
-  /** Game units per minute, before a Derrick. Three times the mean rock. */
-  speed: 660,
+  /** Game units per minute, before a Derrick. D74. */
+  speed: 330,
   /**
    * LAUNCH AND LANDING OVERHEAD FOR A MINING CRAFT. D48.
    *
@@ -750,7 +747,7 @@ export const PROSPECTOR = {
    * galaxy's mining income is bounded by the ore that EXISTS (about 6,700 an hour)
    * against a demand two orders of magnitude larger. A shorter round trip changes
    * who reaches a rock first, not what the field yields — and `PROSPECTOR.max`
-   * still caps a planet at three craft.
+   * still caps a planet at two craft.
    *
    * IT DOES NOT TOUCH `TRAVEL.baseMinutes`, and must not. That figure is priced
    * into every raid, every probe and the whole season simulator; this is a
@@ -772,18 +769,18 @@ export const PROSPECTOR = {
    * Mining is a side errand, not a career. Uncapped, the only question a miner ever
    * faces is "how many more can I afford" — the answer is always "more", the fleet
    * scales linearly with wealth, and mining income decouples from every decision
-   * the game is actually about. Three makes the interesting question the one D19
+   * the game is actually about. Two makes the interesting question the one D19
    * wanted: WHICH rock, and WHEN, given that a squadron is away for a round trip
    * and holds one of a handful of flight bays while it is.
    *
-   * It also bounds the throughput D31 deliberately capped by planet size: three
-   * craft is `3 x hold` per round trip and no more, whatever a season's wealth
+   * It also bounds the throughput D31 deliberately capped by planet size: two
+   * craft is `2 x hold` per round trip and no more, whatever a season's wealth
    * curve does.
    *
    * Counted across EVERY location, not just the ones sitting at home — craft in
    * flight are still owned, and a cap that a launch could dodge is not a cap.
    */
-  max: 3,
+  max: 2,
 } as const;
 
 /**
@@ -835,7 +832,7 @@ export const SHIELD = {
  */
 export const DISRUPTION = {
   /**
-   * 180 → 40 and 60 → 15 AT D63.
+   * 40 → 15 and 15 → 5 AT D73.
    *
    * Disruption is priced against what a raid COSTS to mount. At forty-minute
    * flights three hours of a victim's works was 3.3× the attacker's effort; at
@@ -843,10 +840,10 @@ export const DISRUPTION = {
    * and became disproportionately efficient — a defender hit twice was capped out
    * for four hours on twenty-four minutes of somebody's attention.
    */
-  decisiveMinutes: 40,
-  partialMinutes: 15,
+  decisiveMinutes: 15,
+  partialMinutes: 5,
   /** You can never be disrupted more than this far into the future. */
-  maxPendingMinutes: 60,
+  maxPendingMinutes: 15,
 } as const;
 
 /**

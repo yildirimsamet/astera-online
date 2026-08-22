@@ -97,6 +97,7 @@ const IDENTICAL_ON_PURPOSE = new Set([
   'gains.derrick.next',
   // Proper nouns and marks the Turkish glossary keeps.
   // A bare interpolation of a galaxy's name: there is no language in it to translate.
+  'galaxy.serverLabel',
   'onboarding.beats.wide.title',
   'landing.form.namePlaceholder',
   'vocabulary.instrument.RADAR.name',

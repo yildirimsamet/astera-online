@@ -6,6 +6,7 @@ import {
   accounts,
   battleReports,
   buildings,
+  chatMessages,
   debrisFields,
   miningRuns,
   missions,
@@ -240,6 +241,7 @@ async function demolish(
         eq(battleReports.defenderPlayerId, playerId),
       ),
     );
+  await tx.delete(chatMessages).where(eq(chatMessages.authorPlayerId, playerId));
 
   /**
    * Scheduled events point at a mission or a run by `refId` and carry NO foreign

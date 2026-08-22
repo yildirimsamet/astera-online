@@ -82,10 +82,10 @@ export function BattleReports() {
               <div className="min-w-0 flex-1">
                 <p className="truncate text-[14px] text-bone">
                   {t(report.attacking ? 'reports.youRaided' : 'reports.raidedBy')}
-                  <span className="text-dim">{report.opponentPlanet}</span>
+                  <span className="text-dim">{report.opponentName}</span>
                 </p>
                 <p className="num mt-0.5 text-[11px] text-faint">
-                  {staleness((now - report.at.getTime()) / 60_000)} ·{' '}
+                  {report.opponentPlanet} · {staleness((now - report.at.getTime()) / 60_000)} ·{' '}
                   {t('reports.rounds', { count: report.rounds.length })}
                 </p>
               </div>

@@ -54,6 +54,7 @@ export function registerIntelRoutes(app: FastifyInstance): void {
       probeReports: reports.map((r) => ({
         targetPlanetId: r.report.targetPlanetId,
         targetName: r.targetName,
+        targetUsername: r.targetUsername,
         at: r.report.createdAt,
         // Rounded so the UI cannot imply more precision than the probe bought.
         accuracy: Math.round(r.report.accuracy * 100) / 100,

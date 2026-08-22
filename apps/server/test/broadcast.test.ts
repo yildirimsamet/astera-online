@@ -147,6 +147,7 @@ describe('the shard broadcast', () => {
     await worker.tick();
     await settle();
     expect(heard).toContain('shard:arrival');
+    expect(heard).toContain('shard:score');
   });
 
   it('announces a satellite going up — hardware in orbit is public', async () => {

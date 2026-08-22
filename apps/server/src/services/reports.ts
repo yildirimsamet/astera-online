@@ -1,7 +1,7 @@
 import { desc, eq, inArray, or } from 'drizzle-orm';
 import type { CombatRound, Fleet, Grade } from '@astera/rules';
 import type { Db } from '../db/client.js';
-import { battleReports, planets, players } from '../db/schema.js';
+import { accounts, battleReports, planets, players } from '../db/schema.js';
 
 /**
  * BATTLE REPORTS — the closing link of the loop.
@@ -69,9 +69,10 @@ export async function readBattleReports(
     r.attackerPlayerId === playerId ? r.defenderPlayerId : r.attackerPlayerId,
   );
   const opponents = await db
-    .select({ id: players.id, name: players.name, planet: planets.name })
+    .select({ id: players.id, name: accounts.displayName, planet: planets.name })
     .from(players)
     .innerJoin(planets, eq(planets.playerId, players.id))
+    .innerJoin(accounts, eq(players.accountId, accounts.id))
     .where(inArray(players.id, opponentIds));
   const byId = new Map(opponents.map((o) => [o.id, o]));
 

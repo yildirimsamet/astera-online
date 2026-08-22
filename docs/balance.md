@@ -104,6 +104,15 @@ crystal is spent as fast as it arrives, the stores sit near empty, and **there i
 to raid**: raid returns fell under their floor and the informed archetype dropped to third.
 Crystal must be spendable **and** worth stealing.
 
+**Advanced-hull redistribution is blocked (D78).** Moving the unchanged total prices
+of Lance, Bulwark and Hauler to 25%, 30% or 35% crystal reduces cap time, but candidates
+break season gates or miss the cap-time target. Prospector is not falsely counted in
+that conclusion: the simulator does not yet model mining craft purchases, and prints
+its Prospector spend as zero. Therefore no complete four-hull candidate is selectable
+and authoritative prices remain unchanged. Run `pnpm sim` for cap player-hours, final
+median unused crystal and the category distribution; `--crystal-share=0.25|0.30|0.35`
+reproduces the partial experiment without changing rules.
+
 ## Combat
 
 ```
@@ -128,8 +137,8 @@ engagementSeconds = 10 — a raid is over its target this long before it settles
 | Bulwark | Bulwark | 26 | 210 | 199 | 70 | 2,500 | 620 | 4 | 33.7 | 4.2 |
 | Hauler | Support | 0 | 80 | 284 | **1,800** | 1,150 | 130 | 1 | 31.3 | — |
 | Bastion | Bulwark · ground | 34 | 260 | — | — | 1,700 | 380 | 1 | 62.5 | 8.2 |
-| Thorn | Skirmisher · ground | 16 | 60 | — | — | 1,600 | 240 | 0 | 32.6 | 8.7 |
-| Prospector | Support · mining | 0 | 70 | *see below* | 1,800 | 1,400 | 240 | 1 | 42.7 | — |
+| Thorn | Skirmisher · ground | 16 | 60 | — | — | 800 | 120 | 0 | 65.2 | 17.4 |
+| Prospector | Support · mining | 0 | 70 | *see below* | 1,800 | 700 | 120 | 1 | 85.4 | — |
 
 The Bastion is **1.35× more HP per resource** than the best ship because it can never leave.
 That is the entire justification for ground defence existing separately.
@@ -144,21 +153,28 @@ hull cannot produce.
 > counters. Raising it was measured across the whole range and hands the season to whoever
 > accumulates most (D27). It is a durability hull; exchange ratios cannot price 210 hit points.
 
-**The Prospector's live speed is `PROSPECTOR.speed` (660), not `HULLS.PROSPECTOR.speed`.** The
-hull record carries a stale nominal 62 that nothing reads — `fleetSpeed` walks `MOBILE_HULLS`,
-which excludes it. The live figure is `3 × (asteroidSpeedMin + asteroidSpeedMax) / 2` (D43), a
-Derrick lifts it to 4.5×, and it uses its own `launchMinutes` of 0.4 rather than
-`TRAVEL.baseMinutes` (D48).
+**The Prospector's live speed is `PROSPECTOR.speed` (330), and the ship-card duplicate in
+`HULLS.PROSPECTOR.speed` must equal it.** A Derrick keeps its 1.5× multiplier and lifts the
+craft to 495. Across five seeds, fifty spawn slots and 200 rocks per seed, both speeds reached
+100% of rocks at spawn and at 25/50/75/90% of their lifetime. The base craft's measured maximum
+one-way/round-trip was 7.22/14.44 minutes with a 1.006-revolution lead; boosted was
+4.84/9.68 with a 0.666-revolution lead. It uses its own
+`launchMinutes` of 0.13 rather than `TRAVEL.baseMinutes` (D48, D74).
 
 ### Loot
+
+The proposed 3× combat-cargo change is blocked by the season gate (D80) and is not
+authoritative. Loot remains capped by what exists, the outcome share and the cargo
+of the surviving fleet; an annihilated squadron returns nothing. Haulers remain
+shielded while any combat hull survives.
 
 ```
 raidable = max(0, storage − vaultFloor) + works × lootBufferShare
 loot     = min(raidable × grade, totalCargoCapacity)
 ```
 
-**The 50% rule *is* the repeat-raid decay system**: successive raids take 50%, then 25%, then
-12.5% of the original pile. Diminishing returns arrive free, with no cooldown table and no
+**The 65% rule *is* the repeat-raid decay system**: successive decisive raids take 65%, then
+22.75%, then 7.96% of the original pile. Diminishing returns arrive free, with no cooldown table and no
 extra state.
 
 ## Information
@@ -254,7 +270,7 @@ raising the price of one un-losable holding pushes wealth into another one.
 
 ```
 travelMinutes = 3 + (distance / slowestShipSpeed) × 1.2
-disruption    = 180 / 60 / 0 min, cap 240 pending   [PROVISIONAL]
+disruption    = 15 / 5 / 0 min, cap 15 pending   [PROVISIONAL]
 
 abuse guards  bash 3 per attacker per target per 12h
               tier band: ±2 development tiers   [D49]
@@ -321,10 +337,11 @@ measured raw stock ÷ cap and read a healthy 0.50 all season while the vault pro
 it; `TAX` used a median, which always read 0.00 because most players are not raided on any
 given day. **A diagnostic that cannot fail is not a diagnostic.**
 
-### Current reading — RED, and it MOVED at D52a
+### Current reading — five-seed regression gate green
 
-**`ARR` reads 0.298 on seed 42 and 0.299 on seed 99**, against a band of 0.308–0.326.
-Everything else is green.
+The current pooled five-seed regression gate is green. Individual single-seed CLI runs can
+still print a red daily `TI`; that diagnostic is pooled across all five seeds by the actual
+gate and must not be mistaken for a failing regression assertion.
 
 **THE CAUSE OF THE OLD RED WAS A MODELLING BUG, NOT A BALANCE PROBLEM.** For four phases the
 red pair was pooled `TAX` at 0.0717 against a floor of 0.10 (per seed: 42:0.079 · 7:0.138 ·
@@ -347,8 +364,7 @@ a comment that disagreed with the line beneath it.
 7–10 (tiers 3–4) and a ±2 band admits every pairing; disabling the check reproduces the same
 numbers. That was true before D52a and is still true.
 
-`ARR` was always the second item on the roadmap. It is now the only red one, and it is the
-one to re-derive.
+`ARR` remains a first-class diagnostic, but no current gate band is red.
 
 `TAX` had reached exactly its floor under D27 and has never had headroom since; D30 measured a
 10% instrument-curve change tipping it, and D33 measured a sink worth 2% of Wealth tipping

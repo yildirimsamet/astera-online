@@ -1,4 +1,5 @@
 import { PROBE, radarDetectsFleets, radarRange, telescopeSlots } from '@astera/rules';
+import { useRef, useState, type KeyboardEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useGalaxy, useIntel, usePlanet } from '../api/queries.js';
 import { full, percent, range } from '../lib/format.js';
@@ -27,6 +28,22 @@ export function IntelScreen() {
   const planet = usePlanet();
   const galaxy = useGalaxy();
   const now = useNow(30_000);
+  const [reportTab, setReportTab] = useState<'probes' | 'battles'>('probes');
+  const probeTab = useRef<HTMLButtonElement>(null);
+  const battleTab = useRef<HTMLButtonElement>(null);
+
+  const onReportTabKeyDown = (event: KeyboardEvent<HTMLButtonElement>) => {
+    let next: 'probes' | 'battles' | null = null;
+    if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') {
+      next = reportTab === 'probes' ? 'battles' : 'probes';
+    }
+    if (event.key === 'Home') next = 'probes';
+    if (event.key === 'End') next = 'battles';
+    if (next === null) return;
+    event.preventDefault();
+    setReportTab(next);
+    (next === 'probes' ? probeTab : battleTab).current?.focus();
+  };
 
   // Same distinction as the planet sheet: an error leaves `data` undefined but is
   // not a load in progress, and a pulse over a dead request is the interface lying.
@@ -85,9 +102,9 @@ export function IntelScreen() {
               <div key={watch.slot} className="border-b border-line-soft py-3 last:border-b-0">
                 <div className="flex items-baseline gap-2">
                   <span className="font-display text-[14px] uppercase tracking-wide text-bone">
-                    {watch.targetName}
+                    {watch.ownerName}
                   </span>
-                  <span className="text-[12px] text-faint">{watch.ownerName}</span>
+                  <span className="text-[12px] text-faint">{watch.targetName}</span>
                 </div>
                 <div className="mt-1.5">
                   <Reading
@@ -111,10 +128,51 @@ export function IntelScreen() {
         )}
       </Section>
 
-      <Section
-        label={t('intel.probes.heading')}
-        aside={probeReports.length > 0 ? t('intel.probes.newest') : undefined}
+      <div
+        role="tablist"
+        aria-label={t('intel.tabs.label')}
+        className="mx-0 mt-6 grid grid-cols-2 gap-1 rounded border border-line-soft bg-void/60 p-1"
       >
+        <button
+          ref={probeTab}
+          id="intel-tab-probes"
+          type="button"
+          role="tab"
+          aria-selected={reportTab === 'probes'}
+          aria-controls="intel-panel-probes"
+          tabIndex={reportTab === 'probes' ? 0 : -1}
+          onClick={() => { setReportTab('probes'); }}
+          onKeyDown={onReportTabKeyDown}
+          className={`rounded px-2 py-2 font-display text-[11px] uppercase tracking-wide transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-crystal ${reportTab === 'probes' ? 'bg-crystal/12 text-crystal' : 'text-faint'}`}
+        >
+          {t('intel.probes.heading')}
+        </button>
+        <button
+          ref={battleTab}
+          id="intel-tab-battles"
+          type="button"
+          role="tab"
+          aria-selected={reportTab === 'battles'}
+          aria-controls="intel-panel-battles"
+          tabIndex={reportTab === 'battles' ? 0 : -1}
+          onClick={() => { setReportTab('battles'); }}
+          onKeyDown={onReportTabKeyDown}
+          className={`rounded px-2 py-2 font-display text-[11px] uppercase tracking-wide transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-crystal ${reportTab === 'battles' ? 'bg-crystal/12 text-crystal' : 'text-faint'}`}
+        >
+          {t('reports.heading')}
+        </button>
+      </div>
+
+      <div
+        id="intel-panel-probes"
+        role="tabpanel"
+        aria-labelledby="intel-tab-probes"
+        hidden={reportTab !== 'probes'}
+      >
+        <Section
+          label={t('intel.probes.heading')}
+          aside={probeReports.length > 0 ? t('intel.probes.newest') : undefined}
+        >
         {probeReports.length === 0 ? (
           <Instrument
             art="/assets/images/ships/explorer_ship.png"
@@ -142,8 +200,9 @@ export function IntelScreen() {
               >
                 <div className="flex items-baseline justify-between gap-2">
                   <span className="font-display text-[14px] uppercase tracking-wide text-bone">
-                    {report.targetName}
+                    {report.targetUsername}
                   </span>
+                  <span className="truncate text-[12px] text-faint">{report.targetName}</span>
                   <span className="num text-[11px] text-faint">
                     {staleness((now - report.at.getTime()) / 60_000)}
                   </span>
@@ -175,9 +234,17 @@ export function IntelScreen() {
             ))}
           </Panel>
         )}
-      </Section>
+        </Section>
+      </div>
 
-      <BattleReports />
+      <div
+        id="intel-panel-battles"
+        role="tabpanel"
+        aria-labelledby="intel-tab-battles"
+        hidden={reportTab !== 'battles'}
+      >
+        <BattleReports />
+      </div>
 
       <Section
         label={t('intel.radar.heading')}

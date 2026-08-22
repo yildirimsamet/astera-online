@@ -81,6 +81,11 @@ export function App() {
   useLiveAlerts(ready);
 
   const [panel, setPanel] = useState<Panel>(null);
+  const [planetFocus, setPlanetFocus] = useState<{ planetId: string; request: number } | null>(null);
+  const focusPlanet = (planetId: string): void => {
+    setPanel(null);
+    setPlanetFocus((current) => ({ planetId, request: (current?.request ?? 0) + 1 }));
+  };
 
   /**
    * D23. Every transition between screens shows the same frame.
@@ -152,12 +157,13 @@ export function App() {
 
   return (
     <div className="relative z-10 flex h-dvh flex-col overflow-hidden">
-      <StatusBar commander={session.me.displayName} onOpen={setPanel} />
+      <StatusBar commander={session.me.displayName} onOpen={setPanel} onFocusPlanet={focusPlanet} />
 
       <main className="relative flex-1">
         <GalaxyView
           panel={panel}
           onPanel={setPanel}
+          focusRequest={planetFocus}
           commander={session.me.displayName}
           onSignOut={() => {
             void signOut();
@@ -171,4 +177,3 @@ export function App() {
     </div>
   );
 }
-

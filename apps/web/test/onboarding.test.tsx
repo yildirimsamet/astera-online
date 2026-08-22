@@ -85,7 +85,7 @@ describe('the landing screen', () => {
    * It carried the premise and the stake — two paragraphs a stranger reads after
    * they have already decided from the picture. They are gone, the wordmark sits
    * high, and what is left is a sky, one line about who is in there, and one door.
-   */
+  */
   it('shows a sky and a door, and asks for nothing', async () => {
     const { wrapper: Wrapper } = harness();
     render(
@@ -443,7 +443,7 @@ describe('reaching the way out', () => {
     render(
       <Wrapper>
         <ToastProvider>
-          <StatusBar commander="Vantage" onOpen={onOpen} />
+          <StatusBar commander="Vantage" onOpen={onOpen} onFocusPlanet={vi.fn()} />
         </ToastProvider>
       </Wrapper>,
     );
@@ -476,7 +476,7 @@ describe('reaching the way out', () => {
    * they are LABELLED — a menu is read rather than recognised, so a row with only
    * a glyph on it would have moved the D54 problem one level down.
    */
-  it('carries intel and rewards as named rows, not as glyphs', async () => {
+  it('carries intel, leaderboard and rewards as named rows, not as glyphs', async () => {
     const { MenuPanel } = await import('../src/shell/MenuPanel.js');
     const onOpen = vi.fn();
     const { wrapper: Wrapper } = harness();
@@ -494,10 +494,13 @@ describe('reaching the way out', () => {
     );
 
     const user = userEvent.setup();
+    expect(screen.queryByRole('button', { name: /galaxy chat/i })).not.toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: /rewards/i }));
     expect(onOpen).toHaveBeenCalledWith('rewards');
     await user.click(screen.getByRole('button', { name: /intel/i }));
     expect(onOpen).toHaveBeenCalledWith('intel');
+    await user.click(screen.getByRole('button', { name: /leaderboard/i }));
+    expect(onOpen).toHaveBeenCalledWith('leaderboard');
   });
 
   /**

@@ -211,7 +211,7 @@ export async function buildUnits(
      */
 
     /**
-     * THREE PROSPECTORS, EVER. `PROSPECTOR.max`.
+     * TWO PROSPECTORS, EVER. `PROSPECTOR.max`.
      *
      * Counted over every `units` row for this planet rather than over
      * `planet.homeFleet`, because a craft that is away mining is still a craft this

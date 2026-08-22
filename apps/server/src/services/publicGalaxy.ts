@@ -1,7 +1,7 @@
 import { and, eq, inArray } from 'drizzle-orm';
 import { SATELLITE_IDS, coreTier, type SatelliteId, type Vec3 } from '@astera/rules';
 import type { Db } from '../db/client.js';
-import { buildings, planets, players, satellites } from '../db/schema.js';
+import { accounts, buildings, planets, players, satellites } from '../db/schema.js';
 
 /**
  * EVERY WORLD IN A SEASON, AT THE DETAIL EVERYBODY IS ENTITLED TO.
@@ -74,9 +74,10 @@ const publicShields = (rows: readonly { planetId: string; type: string }[]) =>
 
 export async function publicWorlds(db: Db, seasonId: string): Promise<PublicWorld[]> {
   const rows = await db
-    .select({ planet: planets, ownerName: players.name })
+    .select({ planet: planets, ownerName: accounts.displayName })
     .from(planets)
     .innerJoin(players, eq(planets.playerId, players.id))
+    .innerJoin(accounts, eq(players.accountId, accounts.id))
     .where(eq(planets.seasonId, seasonId));
 
   const ids = rows.map((r) => r.planet.id);

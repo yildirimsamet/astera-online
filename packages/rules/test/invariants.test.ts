@@ -329,20 +329,11 @@ describe('the asteroid field', () => {
     expect(asteroidActive(a, a.expiresAt)).toBe(false);
   });
 
-  /**
-   * THE DRILL IS A MULTIPLE OF THE ROCKS, AND THE MULTIPLE IS THE POINT. D40.
-   *
-   * `PROSPECTOR.speed` is arithmetic, not a round number: three times the mean of
-   * the asteroid speed band. Move the band without moving it and the lead angle a
-   * player watches — a third of a lap at 3x, more than a full lap at the old 62 —
-   * silently drifts back to the unreadable version the owner reported.
-   */
-  it('flies at three times the mean rock, and a Derrick at four and a half', () => {
-    const meanRock = (GALAXY.asteroidSpeedMin + GALAXY.asteroidSpeedMax) / 2;
-    expect(prospectorSpeed([])).toBeCloseTo(3 * meanRock, 6);
-    const withDerrick = prospectorSpeed(['DERRICK']) / meanRock;
-    expect(withDerrick).toBeGreaterThanOrEqual(4);
-    expect(withDerrick).toBeLessThanOrEqual(5);
+  it('flies at 330, reaches 495 with a Derrick, and the ship card agrees', () => {
+    expect(prospectorSpeed([])).toBe(330);
+    expect(prospectorSpeed(['DERRICK'])).toBe(495);
+    expect(HULLS.PROSPECTOR.speed).toBe(PROSPECTOR.speed);
+    expect(PROSPECTOR.max).toBe(2);
   });
 
   /**
@@ -356,8 +347,8 @@ describe('the asteroid field', () => {
    * Below that threshold — which is where the old 62 sat — the guarantee is gone
    * and the solver is relying on the step being fine enough.
    */
-  it('flies fast enough that the intercept solve has exactly one root', () => {
-    expect(prospectorSpeed([])).toBeGreaterThan(
+  it('deliberately relies on the circular solver below the monotonic-root threshold', () => {
+    expect(prospectorSpeed([])).toBeLessThan(
       TRAVEL.distanceFactor * GALAXY.asteroidSpeedMax,
     );
   });
@@ -417,7 +408,7 @@ describe('the asteroid field', () => {
     expect(median(shares)).toBeLessThan(0.5);
   });
 
-  it('aims less than half a revolution ahead of the rock', () => {
+  it('keeps the live reference field below one revolution of lead', () => {
     const laps: number[] = [];
     for (const planet of spec.slots.slice(0, 8)) {
       for (const rock of rocks.slice(0, 120)) {
@@ -428,26 +419,49 @@ describe('the asteroid field', () => {
     }
     expect(laps.length).toBeGreaterThan(200);
     /**
-     * A SIXTH OF A LAP AT THE MEDIAN, tightened from a half by D48.
+     * A FIFTH OF A LAP AT THE MEDIAN after D74 halved the craft speed.
      *
      * Half a revolution was the band the speed change alone could reach; it still
      * put the aim point most of a planet-width from the rock a player had just
      * tapped, and the owner reported it as the craft going somewhere unrelated.
      * Cutting the launch overhead is what brought it to a lead the eye reads as
      * aiming ahead of a moving target: measured over 3,756 launches on the live
-     * seed, the median is 0.127 revolutions — about 46 degrees.
+     * seed, the current median is 0.186 revolutions — about 67 degrees.
      */
-    expect(median(laps)).toBeLessThan(1 / 6);
+    expect(median(laps)).toBeLessThan(0.2);
 
     /**
-     * AND THE WORST CASE IS STILL UNDER HALF A LAP.
+     * AND THE WORST CASE IS STILL UNDER ONE LAP.
      *
      * A median alone can hide a tail, and the tail is what a player actually
      * complains about — one rock sent somewhere baffling is the memory that
-     * sticks. The measured maximum is 0.437; anything at or past half a
-     * revolution is a craft setting off the "wrong way" round the orbit.
+     * sticks. D74 trades the old half-lap ceiling for the requested slower craft;
+     * the generated-field sweep below locks the new measured ceiling.
      */
-    expect(Math.max(...laps)).toBeLessThan(0.5);
+    expect(Math.max(...laps)).toBeLessThan(1);
+  });
+
+  it('keeps every generated rock reachable across the five gate seeds', () => {
+    for (const [speed, maxFlight, maxLaps] of [
+      [prospectorSpeed([]), 8, 1.01],
+      [prospectorSpeed(['DERRICK']), 5, 0.67],
+    ] as const) {
+      for (const seed of [42, 7, 99, 4242, 1337]) {
+        const generated = generateGalaxy(seed, 50);
+        for (const planet of generated.slots) {
+          for (const rock of generated.asteroids.slice(0, 200)) {
+            for (const when of [0, 0.25, 0.5, 0.75, 0.9]) {
+              const now = rock.appearsAt + 1 + (rock.expiresAt - rock.appearsAt - 1) * when;
+              const hit = interceptAsteroid(planet, speed, rock, now);
+              expect(hit, `seed ${String(seed)} rock ${String(rock.index)} at ${String(when)}`).not.toBeNull();
+              expect(hit!.flightMinutes).toBeLessThan(maxFlight);
+              expect(hit!.flightMinutes / rock.period).toBeLessThan(maxLaps);
+              expect(hit!.flightMinutes * 2).toBeLessThan(maxFlight * 2);
+            }
+          }
+        }
+      }
+    }
   });
 
   it('always finds a meeting, and the two are actually in the same place', () => {

@@ -45,7 +45,7 @@ export type StreamEvent = z.infer<typeof eventPayload>;
  * The client decides which of its own reads each one moves — that mapping is a
  * client concern and lives there. This says what HAPPENED, never what to fetch.
  */
-export type ShardEventKind = 'launch' | 'arrival' | 'mining' | 'world';
+export type ShardEventKind = 'launch' | 'arrival' | 'mining' | 'world' | 'score' | 'chat';
 
 /**
  * Shard kinds go out prefixed, and the prefix is not decoration.

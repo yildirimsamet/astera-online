@@ -15,12 +15,15 @@ export function Sheet({
   onClose,
   children,
   footer,
+  contained = false,
 }: {
   title: string;
   eyebrow?: string;
   onClose: () => void;
   children: ReactNode;
   footer?: ReactNode;
+  /** Give the body a real height and let its child own scrolling. */
+  contained?: boolean;
 }) {
   const { t } = useTranslation();
   useEffect(() => {
@@ -69,7 +72,7 @@ export function Sheet({
          * sheet fills the screen and gives up.
          */
         data-sheet-panel
-        className="panel relative flex max-h-[86dvh] animate-[sheet-in_180ms_ease-out] flex-col rounded-t-md border-x-0 border-b-0 border-t-line pb-[env(safe-area-inset-bottom)]"
+        className={`panel relative flex animate-[sheet-in_180ms_ease-out] flex-col rounded-t-md border-x-0 border-b-0 border-t-line pb-[env(safe-area-inset-bottom)] ${contained ? 'h-[86dvh]' : 'max-h-[86dvh]'}`}
       >
         <div className="flex shrink-0 items-start gap-3 border-b border-line-soft bg-panel/95 px-4 py-3">
           <div className="min-w-0 flex-1">
@@ -81,7 +84,9 @@ export function Sheet({
           </button>
         </div>
         {/* `min-h-0` is what actually lets a flex child scroll instead of growing. */}
-        <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4 pt-0">{children}</div>
+        <div className={`min-h-0 flex-1 px-4 py-4 pt-0 ${contained ? 'overflow-hidden' : 'overflow-y-auto'}`}>
+          {children}
+        </div>
         {footer && (
           <div className="shrink-0 border-t border-line-soft bg-panel/95 px-4 py-3">{footer}</div>
         )}

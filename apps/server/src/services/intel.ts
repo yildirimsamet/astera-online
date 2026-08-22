@@ -28,6 +28,7 @@ import {
 import { addMinutes, minutesSince, type Clock } from '../clock.js';
 import type { Db, Queryable, Tx } from '../db/client.js';
 import {
+  accounts,
   missions,
   planets,
   players,
@@ -288,11 +289,12 @@ export async function readTelescopes(
     .select({
       watch: watches,
       planet: planets,
-      owner: players.name,
+      owner: accounts.displayName,
     })
     .from(watches)
     .innerJoin(planets, eq(watches.targetPlanetId, planets.id))
     .innerJoin(players, eq(planets.playerId, players.id))
+    .innerJoin(accounts, eq(players.accountId, accounts.id))
     .where(eq(watches.observerPlayerId, playerId));
 
   if (rows.length === 0) return [];
@@ -624,9 +626,15 @@ export async function readRadarLog(
 /** Only what has actually come home. A probe in flight tells you nothing yet. */
 export async function readProbeReports(db: Db, playerId: string, limit = 10) {
   return db
-    .select({ report: probeReports, targetName: planets.name })
+    .select({
+      report: probeReports,
+      targetName: planets.name,
+      targetUsername: accounts.displayName,
+    })
     .from(probeReports)
     .innerJoin(planets, eq(probeReports.targetPlanetId, planets.id))
+    .innerJoin(players, eq(planets.playerId, players.id))
+    .innerJoin(accounts, eq(players.accountId, accounts.id))
     .where(
       and(eq(probeReports.observerPlayerId, playerId), isNotNull(probeReports.deliveredAt)),
     )

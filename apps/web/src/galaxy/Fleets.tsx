@@ -852,12 +852,10 @@ function Pips({ filled, scale, lit }: { filled: number; scale: number; lit: bool
   const size = scale * 0.085;
   const gap = size * 1.6;
   /**
-   * TWO ROWS OF FIVE, not one row of ten.
+   * UP TO FIVE PIPS IN ONE ROW.
    *
-   * `PER_MODEL` doubled to ten (owner decision), and the pips follow it because
-   * they are the exact count — but ten in a line is twice as wide as the craft
-   * carrying them, which turns a readout into a banner. Five and five keeps the
-   * width exactly where it was and still reads as a tally.
+   * The pips follow `PER_MODEL` because they are the exact count. Keeping the row
+   * capped at five also preserves the layout if that constant is revisited.
    */
   const perRow = Math.min(PER_MODEL, 5);
   const rows = Math.ceil(PER_MODEL / perRow);

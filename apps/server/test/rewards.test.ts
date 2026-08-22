@@ -393,7 +393,7 @@ describe('rewards', () => {
    */
   it('finds a Turkish commander name written as the player writes it', async () => {
     const [row] = await f.db.select().from(players).where(eq(players.id, f.playerIds[0]!));
-    await f.db.update(players).set({ name: 'İhsan' }).where(eq(players.id, row!.id));
+    await f.db.update(accounts).set({ displayName: 'İhsan' }).where(eq(accounts.id, row!.accountId));
 
     const granted = await grantReward(f.db, 'İhsan', rewardId('SOCIAL', 1));
     expect(granted.player).toBe('İhsan');

@@ -4,7 +4,7 @@ import type { FastifyInstance } from 'fastify';
 import { pino } from 'pino';
 import { afterAll, afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { buildApp } from '../src/app.js';
-import { debrisFields, missions, planets, players, seasons, shards } from '../src/db/schema.js';
+import { chatMessages, debrisFields, missions, planets, players, seasons, shards } from '../src/db/schema.js';
 import { FixedClock } from '../src/clock.js';
 import {
   bootstrapServers,
@@ -564,9 +564,15 @@ describe('servers', () => {
     it('clears every galaxy and lets everybody start again', async () => {
       await openWorld(2, 1);
       const me = await register();
-      await join(me, 'EU-1');
+      const placed = (await join(me, 'EU-1')).json<Placement>();
       const other = await register();
       await join(other, 'EU-2');
+      await db.insert(chatMessages).values({
+        seasonId: placed.seasonId,
+        authorPlayerId: placed.playerId,
+        content: 'gone with the season',
+        createdAt: clock.now(),
+      });
 
       const result = await wipeAllServers(db, clock, { count: 2, capacity: 1 });
 
@@ -574,6 +580,7 @@ describe('servers', () => {
       expect(result.seasonsWiped).toBe(2);
       expect(await db.select().from(players)).toHaveLength(0);
       expect(await db.select().from(planets)).toHaveLength(0);
+      expect(await db.select().from(chatMessages)).toHaveLength(0);
 
       // And the world is open again, from the first galaxy.
       const body = await list();

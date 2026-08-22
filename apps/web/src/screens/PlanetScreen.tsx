@@ -964,12 +964,11 @@ function Reach({
            * A PROSPECTOR DOES NOT FLY AT ITS HULL SPEED. D25.
            *
            * Mining reads `PROSPECTOR.speed` — a separate constant, tied to how fast
-           * a rock moves so an intercept is always solvable — and `fleetSpeed` never
+           * a rock moves so interception stays exact — and `fleetSpeed` never
            * touches the hull field at all. The card was printing the hull number,
-           * which was harmlessly wrong at 62 and actively misleading after D63
-           * scaled it to 587: it made the fastest craft in the game read as slower
-           * than a Wasp. The Derrick's lift is deliberately not shown; this is the
-           * shipyard, and what it sells is the craft.
+           * which drifted from the authoritative value. D74 locks the duplicate in
+           * `HULLS` to this same value too. The Derrick's lift is deliberately not
+           * shown; this is the shipyard, and what it sells is the craft.
            */
           speed: id === 'PROSPECTOR' ? PROSPECTOR.speed : hullSpec.speed,
           cargo: hullSpec.cargo,

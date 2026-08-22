@@ -4,12 +4,15 @@ import { pino } from 'pino';
 import { afterAll, afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { buildApp } from '../src/app.js';
 import { TokenService } from '../src/auth/tokens.js';
-import { players, satellites } from '../src/db/schema.js';
+import { accounts, players, satellites } from '../src/db/schema.js';
 import { launchAttack } from '../src/services/mission.js';
 import { assignWatch } from '../src/services/intel.js';
+import { createSeason } from '../src/services/season.js';
+import { joinSeason } from '../src/services/player.js';
 import {
   giveInstrument,
   giveUnits,
+  makeAccount,
   seedWorld,
   setLevel,
   testDb,
@@ -108,6 +111,15 @@ describe('GET /api/galaxy — fog enforced in the response', () => {
       expect(p.position.x).toBeTypeOf('number');
       expect(p.coreTier).toBeGreaterThanOrEqual(1);
     }
+  });
+
+  it('uses the account display name, including Turkish İ, never players.name', async () => {
+    await f.db.update(accounts).set({ displayName: 'İzci' }).where(eq(accounts.id, f.accountIds[1]!));
+    await f.db.update(players).set({ name: 'STALE-SEASON-NAME' }).where(eq(players.id, f.playerIds[1]!));
+
+    const target = (await galaxy()).find((p) => p.id === theirs)!;
+    expect(target.owner).toBe('İzci');
+    expect(JSON.stringify(target)).not.toContain('STALE-SEASON-NAME');
   });
 
   it('a planet you are not watching has NO fleet key at all', async () => {
@@ -313,19 +325,52 @@ describe('GET /api/leaderboard', () => {
 
     const res = await app.inject({ method: 'GET', url: '/api/leaderboard', headers: auth });
     const body = res.json<{
-      ladder: { rank: number; playerId: string; dominion: number }[];
-      you: { rank: number; dominion: number } | null;
+      ladder: { rank: number; playerId: string; score: number; planetId: string; coreTier: number }[];
+      you: { rank: number; score: number } | null;
     }>();
 
     expect(body.ladder[0]!.playerId).toBe(f.playerIds[1]!);
-    expect(body.ladder[0]!.dominion).toBe(4000);
+    expect(body.ladder[0]!.score).toBe(4000);
+    expect(body.ladder[0]!.planetId).toBe(f.planetIds[1]!);
+    expect(body.ladder[0]!.coreTier).toBeGreaterThan(0);
     expect(body.ladder.map((e) => e.rank)).toEqual([1, 2, 3]);
-    expect(body.you!.dominion).toBe(-700);
+    expect(body.you!.score).toBe(-700);
   });
 
   it('a player who has never fought sits at exactly zero', async () => {
     const res = await app.inject({ method: 'GET', url: '/api/leaderboard', headers: auth });
-    const body = res.json<{ you: { dominion: number } }>();
-    expect(body.you.dominion).toBe(0);
+    const body = res.json<{ you: { score: number } }>();
+    expect(body.you.score).toBe(0);
+  });
+
+  it('uses the canonical account display name on the ladder', async () => {
+    await f.db.update(accounts).set({ displayName: 'İzci' }).where(eq(accounts.id, f.accountIds[0]!));
+    await f.db.update(players).set({ name: 'STALE-SEASON-NAME' }).where(eq(players.id, f.playerIds[0]!));
+    const res = await app.inject({ method: 'GET', url: '/api/leaderboard', headers: auth });
+    const body = res.json<{ you: { username: string } }>();
+    expect(body.you.username).toBe('İzci');
+  });
+
+  it('breaks score ties by join time and then player id', async () => {
+    const same = new Date('2026-01-01T00:00:00.000Z');
+    await f.db.update(players).set({ joinedAt: same, dominionTaken: 100, dominionLost: 0 });
+    const res = await app.inject({ method: 'GET', url: '/api/leaderboard', headers: auth });
+    const rows = res.json<{ ladder: { playerId: string; score: number }[] }>().ladder;
+    expect(rows.every((row) => row.score === 100)).toBe(true);
+    expect(rows.map((row) => row.playerId)).toEqual([...f.playerIds].sort());
+  });
+
+  it('never includes a commander from another galaxy', async () => {
+    const other = await createSeason(f.db, {
+      shardCode: 'EU-LADDER-OTHER', seed: 8128, startsAt: f.clock.now(), playerCap: 5,
+    });
+    const account = await makeAccount(f.db, 'Elsewhere');
+    const joined = await joinSeason(f.db, account.id, other.season.id, f.clock);
+    await f.db.update(players).set({ dominionTaken: 1_000_000 }).where(eq(players.id, joined.playerId));
+
+    const res = await app.inject({ method: 'GET', url: '/api/leaderboard', headers: auth });
+    const rows = res.json<{ ladder: { playerId: string }[] }>().ladder;
+    expect(rows.map((row) => row.playerId)).not.toContain(joined.playerId);
+    expect(rows).toHaveLength(3);
   });
 });

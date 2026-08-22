@@ -469,7 +469,7 @@ function Labels({ nodes, selectedId }: { nodes: readonly PlanetNode[]; selectedI
             }`}
             style={{ textShadow: '0 0 10px rgba(0,0,0,0.95)' }}
           >
-            {node.name}
+            {node.owner}
           </span>
         </Html>
       ))}

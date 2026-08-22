@@ -78,13 +78,22 @@ describe('a raid tells both sides', () => {
       rows.filter((r) => r.kind === 'raided'),
     );
     expect(raided).toBeDefined();
-    expect(raided!.payload).toMatchObject({ grade: expect.any(String) as string });
+    expect(raided!.payload).toMatchObject({
+      grade: expect.any(String) as string,
+      originPlanetId: attacker,
+      originUsername: expect.any(String) as string,
+      originPlanetName: expect.any(String) as string,
+    });
 
     const [result] = await newsFor(f, f.playerIds[0]!).then((rows) =>
       rows.filter((r) => r.kind === 'raid_result'),
     );
     expect(result, 'the attacker was told nothing at all').toBeDefined();
-    expect(result!.payload).toMatchObject({ targetName: expect.any(String) as string });
+    expect(result!.payload).toMatchObject({
+      targetPlanetId: defender,
+      targetUsername: expect.any(String) as string,
+      targetPlanetName: expect.any(String) as string,
+    });
   });
 
   /**
@@ -281,7 +290,9 @@ describe('the radar warning', () => {
     expect(warning!.payload).toMatchObject({
       estimatedShips: 40,
       fleet: { WASP: 40 },
-      originName: expect.any(String) as string,
+      originPlanetId: attacker,
+      originUsername: expect.any(String) as string,
+      originPlanetName: expect.any(String) as string,
     });
   });
 
@@ -375,7 +386,11 @@ describe('a probe coming home', () => {
 
     const rows = (await newsFor(f, f.playerIds[0]!)).filter((r) => r.kind === 'probe_report');
     expect(rows).toHaveLength(1);
-    expect(rows[0]!.payload).toMatchObject({ targetName: expect.any(String) as string });
+    expect(rows[0]!.payload).toMatchObject({
+      targetPlanetId: f.planetIds[1],
+      targetUsername: expect.any(String) as string,
+      targetPlanetName: expect.any(String) as string,
+    });
   });
 });
 

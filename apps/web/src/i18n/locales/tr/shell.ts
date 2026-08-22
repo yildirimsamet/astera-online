@@ -12,7 +12,7 @@ export const statusBar = {
   crystalLabel: 'Kristal',
   storeFull: 'DOLU',
   storeFree: '{{amount}} yer var',
-  menuHint: 'Komutan {{name}}; istihbarat, ödüller ve hesap',
+  menuHint: 'Komutan {{name}}; istihbarat, liderlik tablosu, ödüller ve hesap',
   menuWaiting: '{{count}} ödül bekliyor',
   bays: {
     hint: '{{total}} rampanın {{used}} tanesi dolu',
@@ -49,6 +49,7 @@ export const signals = {
   eyebrowRead: 'Sana bildirilen her şey',
   statusHeading: 'Şu anda',
   eventsHeading: 'Neler oldu',
+  openEvent: 'İlgili raporu aç',
   empty:
     'Henüz bir şey yok. Sana bir filo yöneldiğinde, bir sonda yakalandığında ve gemilerin eve döndüğünde galaksi haber verir.',
   repeat: '×{{count}}',
@@ -76,8 +77,12 @@ export const surface = {
   whatIntel: 'Bildiklerin',
   whatReports: 'Savaş raporların',
   whatRewards: 'Ödüllerin',
+  whatLeaderboard: 'Hâkimiyet sıralaması',
+  whatChat: 'galaksi sohbeti',
   waitingPlanet: 'Gezegen okunuyor',
   waitingIntel: 'Toplanıyor',
+  waitingLeaderboard: 'Galaksi sıralanıyor',
+  waitingChat: 'Galaksi sohbeti açılıyor',
   planetSigil: 'Gezegen',
 } as const;
 
@@ -95,8 +100,42 @@ export const menu = {
   rewardsLabel: 'Ödüller',
   rewardsHint: 'Galaksinin sana oynadığın için borcu',
   rewardsWaiting: '{{count}} hazır',
+  leaderboardLabel: 'Liderlik tablosu',
+  leaderboardHint: 'Bütün komutanların Hâkimiyet sırası',
   accountHeading: 'Hesap',
   soundLabel: 'Ses',
   soundOn: 'Müzik çalıyor.',
   soundOff: 'Bu cihazda kapalı.',
+} as const;
+
+export const leaderboard = {
+  eyebrow: 'Yerel galaksi',
+  title: 'Liderlik tablosu',
+  empty: 'Bu galaksiye henüz bir komutan katılmadı.',
+  rank: '{{rank}}. sıra',
+  tier: '{{tier}}. kademe',
+  score: 'Hâkimiyet',
+  you: 'Sen',
+} as const;
+
+export const chat = {
+  eyebrow: 'Bu galakside canlı',
+  title: 'Galaksi Sohbeti',
+  launcher: 'Galaksi sohbetini aç',
+  launcherUnread: 'Galaksi sohbetini aç — {{count}} okunmamış',
+  list: 'Galaksi mesajları',
+  empty: 'Henüz kimse konuşmadı. Galaksideki ilk ses sen ol.',
+  older: 'Eski mesajları yükle',
+  loadingOlder: 'Eski mesajlar yükleniyor',
+  placeholder: 'Galaksiye mesaj yaz',
+  send: 'Gönder',
+  remaining: '{{count}} karakter kaldı',
+  time: {
+    justNow: 'şimdi',
+    minutes_one: '{{count}} dakika önce',
+    minutes_other: '{{count}} dakika önce',
+    hours: '{{hours}} sa {{minutes}} dk önce',
+    days_one: '{{count}} gün önce',
+    days_other: '{{count}} gün önce',
+  },
 } as const;

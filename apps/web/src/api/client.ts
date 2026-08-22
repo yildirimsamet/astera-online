@@ -11,6 +11,10 @@ import {
   miningSchema,
   launchSchema,
   leaderboardSchema,
+  chatPageSchema,
+  chatPostSchema,
+  chatReadSchema,
+  chatUnreadSchema,
   meSchema,
   notificationsSchema,
   okSchema,
@@ -283,6 +287,13 @@ export class Api {
   galaxy = () => this.send('/api/galaxy', galaxySchema);
   traffic = () => this.send('/api/galaxy/traffic', trafficSchema);
   leaderboard = () => this.send('/api/leaderboard', leaderboardSchema);
+  chatMessages = (before?: string) =>
+    this.send(`/api/chat/messages?limit=50${before ? `&before=${encodeURIComponent(before)}` : ''}`, chatPageSchema);
+  postChat = (content: string) =>
+    this.send('/api/chat/messages', chatPostSchema, { method: 'POST', body: { content } });
+  chatUnread = () => this.send('/api/chat/unread', chatUnreadSchema);
+  markChatRead = (messageId: string) =>
+    this.send('/api/chat/read', chatReadSchema, { method: 'POST', body: { messageId } });
   intel = () => this.send('/api/intel', intelSchema);
   /** The closing link of the loop: what a fight actually taught you. */
   reports = () => this.send('/api/reports?limit=20', reportsSchema);

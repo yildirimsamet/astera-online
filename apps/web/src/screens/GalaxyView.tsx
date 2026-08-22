@@ -38,11 +38,15 @@ import { PlanetScreen } from './PlanetScreen.jsx';
 import { IntelScreen } from './IntelScreen.jsx';
 import { RewardsScreen } from './RewardsScreen.jsx';
 import { MenuPanel } from '../shell/MenuPanel.jsx';
+import { LeaderboardScreen } from './LeaderboardScreen.jsx';
+import { ChatScreen } from './ChatScreen.jsx';
+import { ChatLauncher } from './ChatLauncher.jsx';
 import { Sheet } from '../ui/Sheet.js';
 import { describe, useToast } from '../ui/Toast.js';
 import { GALAXY_ASSETS, usePreload } from '../lib/preload.js';
 import { LoadingScreen } from '../shell/LoadingScreen.js';
 import { useArrivals } from '../session/useArrivals.js';
+import { DiscReadout } from './DiscReadout.jsx';
 
 /**
  * THE GALAXY IS THE GAME. D20.
@@ -62,11 +66,12 @@ import { useArrivals } from '../session/useArrivals.js';
  * is entitled to know about that object and how they came to know it.
  */
 
-export type Panel = 'planet' | 'intel' | 'rewards' | 'menu' | null;
+export type Panel = 'planet' | 'intel' | 'leaderboard' | 'chat' | 'rewards' | 'menu' | null;
 
 export function GalaxyView({
   panel,
   onPanel,
+  focusRequest,
   commander,
   onSignOut,
   onFocused,
@@ -74,10 +79,13 @@ export function GalaxyView({
   openWide,
   allowFocus,
   goHome,
+  showChat = true,
 }: {
   /** Opened from the header, which is the only chrome left outside the canvas. */
   panel: Panel;
   onPanel: (panel: Panel) => void;
+  /** A route from an already-revealed identity back to its world. */
+  focusRequest?: { planetId: string; request: number } | null;
   /** Who is signed in. Shown on the one surface that is about you rather than the world. */
   commander: string;
   onSignOut: () => void;
@@ -105,6 +113,8 @@ export function GalaxyView({
    * tracked drags the camera straight back and the flight appears to do nothing.
    */
   goHome?: number;
+  /** Hidden in the pre-account rehearsal, where no commander identity exists. */
+  showChat?: boolean;
 }) {
   const { t } = useTranslation();
   const galaxy = useGalaxy();
@@ -271,6 +281,24 @@ export function GalaxyView({
     },
     [onFocused],
   );
+  const focusPlanet = useCallback(
+    (planetId: string) => {
+      if (!planets.some((candidate) => candidate.id === planetId)) return;
+      const next: Focus = { kind: 'planet', id: planetId };
+      setFocus(next);
+      setDetail(false);
+      setAttacking(false);
+      onFocused?.(next);
+    },
+    [onFocused, planets],
+  );
+  const handledFocusRequest = useRef<number | null>(null);
+  useEffect(() => {
+    if (!focusRequest || handledFocusRequest.current === focusRequest.request) return;
+    if (!planets.some((candidate) => candidate.id === focusRequest.planetId)) return;
+    handledFocusRequest.current = focusRequest.request;
+    focusPlanet(focusRequest.planetId);
+  }, [focusPlanet, focusRequest, planets]);
 
   /**
    * REFETCH THE MOMENT ANYTHING LANDS.
@@ -441,7 +469,11 @@ export function GalaxyView({
           game has, on the device the game is aimed at. Smaller box, smaller type,
           and the tracking on the label eased off so it still reads at 9px.
         */}
-        <div className="pointer-events-auto frame px-2 py-1">
+        <DiscReadout
+          shardName={season.data?.shardName}
+          shard={season.data?.shard ?? ''}
+          online={season.data?.online}
+        >
           {/*
             THE NAME ON THE LEFT, WHO IS IN HERE ON THE RIGHT.
 
@@ -459,16 +491,6 @@ export function GalaxyView({
             the payload so a client ahead of its server still parses, and "0
             online" on a screen you are personally looking at is a lie.
           */}
-          <div className="flex items-center justify-between gap-3">
-            <p className="legend text-[9px] tracking-[0.10em]">{t('galaxy.discLabel')}</p>
-            {season.data?.online !== undefined && (
-              <p className="flex items-center gap-1 text-[8px] leading-none text-dim">
-                <span className="size-1 rounded-full bg-opportunity" aria-hidden="true" />
-                {t('galaxy.online', { count: season.data.online })}
-              </p>
-            )}
-          </div>
-          <p className="num mt-0.5 text-[10px] leading-tight text-bone">
             {t('galaxy.worlds', { count: planets.length })}
             {windowsOpen(planets) > 0 && (
               <span className="text-opportunity">
@@ -489,8 +511,7 @@ export function GalaxyView({
             {wrecks.length > 0 && (
               <span className="text-alloy">{t('galaxy.wrecks', { count: wrecks.length })}</span>
             )}
-          </p>
-        </div>
+        </DiscReadout>
 
         {/*
           HOME, as a mark rather than a word.
@@ -515,6 +536,14 @@ export function GalaxyView({
           <HomeworldIcon className="size-5" />
         </button>
       </div>
+
+      {showChat && (
+        <ChatLauncher
+          onOpen={() => {
+            onPanel('chat');
+          }}
+        />
+      )}
 
       {/*
         The colour legend that used to sit down here is gone (owner decision). It
@@ -699,8 +728,8 @@ export function GalaxyView({
 
       {panel === 'planet' && planet.data && (
         <Sheet
-          eyebrow={t('galaxy.panelPlanetEyebrow')}
-          title={planet.data.planet.name}
+          eyebrow={planet.data.planet.name}
+          title={commander}
           onClose={() => {
             onPanel(null);
           }}
@@ -739,6 +768,45 @@ export function GalaxyView({
         >
           <div className="-mx-4 px-4">
             <RewardsScreen commander={commander} />
+          </div>
+        </Sheet>
+      )}
+
+      {panel === 'leaderboard' && (
+        <Sheet
+          eyebrow={t('leaderboard.eyebrow')}
+          title={t('leaderboard.title')}
+          onClose={() => {
+            onPanel(null);
+          }}
+        >
+          <div className="-mx-4">
+            <LeaderboardScreen
+              onFocusPlanet={(planetId) => {
+                onPanel(null);
+                focusPlanet(planetId);
+              }}
+            />
+          </div>
+        </Sheet>
+      )}
+
+      {showChat && panel === 'chat' && (
+        <Sheet
+          contained
+          eyebrow={t('chat.eyebrow')}
+          title={t('chat.title')}
+          onClose={() => {
+            onPanel(null);
+          }}
+        >
+          <div className="-mx-4 h-full">
+            <ChatScreen
+              onFocusPlanet={(planetId) => {
+                onPanel(null);
+                focusPlanet(planetId);
+              }}
+            />
           </div>
         </Sheet>
       )}

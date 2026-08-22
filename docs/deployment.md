@@ -57,7 +57,7 @@ Every gate, in order. A skipped gate is paid for on the box instead.
 | # | Gate | |
 |---|---|---|
 | 1 | **Review the diff, including your own** | Did a moved docblock land on the right thing? Did the change make an existing comment false — grep the numbers you changed. Does every new test fail against the old code? Revert the fix, watch it go red, put it back. |
-| 2 | `pnpm verify` | 0 type errors, 0 lint errors, all suites green **except the two documented `sim` reds** (`CLAUDE.md` names them). Any other red is a stop. |
+| 2 | `pnpm verify` | 0 type errors, 0 lint errors, every suite and the five-seed simulation gate green. Any red is a stop. |
 | 3 | `pnpm build` | **Not optional** — see below. |
 | 4 | Drive it running | `tools/loop-check.mjs` (the loop over real HTTP as two commanders), `tools/movement.mjs` (craft actually move on two real screens, nothing drawn twice), `tools/visual.mjs` (the disc comes up). Against an isolated scratch database, never the one you play. Raise `RATE_LIMIT_*` on the throwaway API or the harnesses die on a 429. |
 | 5 | Docs in the same pass | Invariant table, a decision, the test counts. A stale doc is worse than no doc. |

@@ -364,6 +364,9 @@ export const notifications = {
   incomingHead: 'Filo geliyor · {{clock}}',
   incomingEstimate: 'yaklaşık {{count}} gemi',
   incomingFrom: 'kalkış: {{origin}}',
+  commanderAt: '{{username}} · {{planet}} gezegeni',
+  unknownCommander: 'biri',
+  raidedBy: 'Akıncı: {{origin}} · ',
   composition: '{{count}} {{hull}}',
   join: ' · ',
 

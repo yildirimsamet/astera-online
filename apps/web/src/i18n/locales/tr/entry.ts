@@ -91,9 +91,9 @@ export const app = {
 
 export const loading = {
   contact: 'Bağlantı kuruluyor',
-  sweeping: 'Disk taranıyor',
-  charting: 'Disk çiziliyor',
-  raising: 'Görüntü açılıyor',
+  sweeping: 'Galaksi taranıyor',
+  charting: 'Galaksi çiziliyor',
+  raising: 'Görüntü yükleniyor',
 } as const;
 
 export const document = {

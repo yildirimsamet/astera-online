@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useRef } from 'react';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useInfiniteQuery, useMutation, useQuery, useQueryClient, type InfiniteData } from '@tanstack/react-query';
 import { engagementEndsAt } from '@astera/rules';
 import type { Fleet, BuildingId, HullId, InstrumentId, SatelliteId } from '@astera/rules';
 import type { z } from 'zod';
-import type { Contact, MiningRun, PendingThread, PlanetView, notificationsSchema } from './schemas.js';
+import type { ChatPage, Contact, MiningRun, PendingThread, PlanetView, notificationsSchema } from './schemas.js';
 import { useApi } from './context.js';
 import { keys } from './keys.js';
 import { serverNow } from '../lib/clock.js';
@@ -288,6 +288,70 @@ export function useClaimReward() {
 export function useLeaderboard() {
   const api = useApi();
   return useQuery({ queryKey: keys.leaderboard, queryFn: api.leaderboard, staleTime: 60_000 });
+}
+
+export function useChatMessages() {
+  const api = useApi();
+  return useInfiniteQuery({
+    queryKey: keys.chatMessages,
+    queryFn: ({ pageParam }) => api.chatMessages(pageParam ?? undefined),
+    initialPageParam: null as string | null,
+    getNextPageParam: (page) => page.nextBefore,
+    staleTime: 15_000,
+  });
+}
+
+export function useChatUnread(enabled = true) {
+  const api = useApi();
+  return useQuery({
+    queryKey: keys.chatUnread,
+    queryFn: api.chatUnread,
+    enabled,
+    ...READ,
+  });
+}
+
+export function usePostChat() {
+  const api = useApi();
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (content: string) => api.postChat(content),
+    onMutate: async () => {
+      // A GET started before Send cannot be allowed to land after the
+      // authoritative POST response and erase the new message from the cache.
+      await client.cancelQueries({ queryKey: keys.chatMessages });
+    },
+    onSuccess: ({ message }) => {
+      client.setQueryData<InfiniteData<ChatPage, string | null>>(keys.chatMessages, (current) => {
+        if (!current) {
+          return { pages: [{ messages: [message], nextBefore: null }], pageParams: [null] };
+        }
+        const first = current.pages[0];
+        if (!first || first.messages.some((row) => row.id === message.id)) return current;
+        return {
+          ...current,
+          pages: [{ ...first, messages: [...first.messages, message] }, ...current.pages.slice(1)],
+        };
+      });
+      void client.invalidateQueries({ queryKey: keys.chatUnread });
+    },
+  });
+}
+
+export function useMarkChatRead() {
+  const api = useApi();
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (messageId: string) => api.markChatRead(messageId),
+    retry: 1,
+    onMutate: async () => {
+      await client.cancelQueries({ queryKey: keys.chatUnread });
+      client.setQueryData(keys.chatUnread, { count: 0 });
+    },
+    onSettled: () => {
+      void client.invalidateQueries({ queryKey: keys.chatUnread });
+    },
+  });
 }
 
 export function useUnlocks() {

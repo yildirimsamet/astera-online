@@ -27,6 +27,7 @@ import { registerSeasonRoutes } from './routes/season.js';
 import { registerServerRoutes } from './routes/servers.js';
 import { registerPreviewRoutes } from './routes/preview.js';
 import { registerOnboardingRoutes } from './routes/onboarding.js';
+import { registerChatRoutes } from './routes/chat.js';
 import { Presence } from './services/presence.js';
 
 /**
@@ -273,6 +274,7 @@ export function buildApp(opts: BuildAppOptions): BuiltApp {
     registerGalaxyRoutes(app);
     registerMiningRoutes(app);
     registerSessionRoutes(app);
+    registerChatRoutes(app);
   });
 
   return {

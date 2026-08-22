@@ -62,6 +62,8 @@ const WITH_BODY: [name: string, call: (api: Api) => Promise<unknown>, expected: 
   ['launch', (a) => a.launch('p-1', { WASP: 3 }), { targetPlanetId: 'p-1', fleet: { WASP: 3 } }],
   ['watch', (a) => a.watch('p-1', 2), { targetPlanetId: 'p-1', slot: 2 }],
   ['probe', (a) => a.probe('p-1'), { targetPlanetId: 'p-1' }],
+  ['postChat', (a) => a.postChat('hello'), { content: 'hello' }],
+  ['markChatRead', (a) => a.markChatRead('00000000-0000-4000-8000-000000000001'), { messageId: '00000000-0000-4000-8000-000000000001' }],
   // The two that were broken.
   ['mine', (a) => a.mine(7, 3), { asteroidIndex: 7, craft: 3 }],
   ['harvest', (a) => a.harvest('field-1', 3), { fieldId: 'field-1', craft: 3 }],

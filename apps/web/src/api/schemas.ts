@@ -114,7 +114,8 @@ export const okSchema = z.object({ ok: z.boolean() });
 export const seasonSchema = z.object({
   seasonId: z.string(),
   shard: z.string(),
-  shardName: z.string(),
+  /** Added after the first season payload; old servers remain readable. */
+  shardName: z.string().optional(),
   /** The galaxy layout and every asteroid orbit are rebuilt from this locally. */
   seed: z.number(),
   status: z.string(),
@@ -331,21 +332,43 @@ export const leaderboardSchema = z.object({
     z.object({
       rank: z.number(),
       playerId: z.string(),
-      name: z.string(),
-      dominion: z.number(),
-      wealth: z.number(),
+      username: z.string(),
+      planetId: z.string(),
+      planetName: z.string(),
+      coreTier: z.number(),
+      score: z.number(),
     }),
   ),
   you: z
     .object({
       rank: z.number(),
       playerId: z.string(),
-      name: z.string(),
-      dominion: z.number(),
-      wealth: z.number(),
+      username: z.string(),
+      planetId: z.string(),
+      planetName: z.string(),
+      coreTier: z.number(),
+      score: z.number(),
     })
     .nullable(),
 });
+
+const chatMessageSchema = z.object({
+  id: z.string(),
+  authorPlayerId: z.string(),
+  planetId: z.string(),
+  username: z.string(),
+  content: z.string(),
+  createdAt: z.coerce.date(),
+  self: z.boolean(),
+});
+
+export const chatPageSchema = z.object({
+  messages: z.array(chatMessageSchema),
+  nextBefore: z.string().nullable(),
+});
+export const chatPostSchema = z.object({ message: chatMessageSchema });
+export const chatUnreadSchema = z.object({ count: z.number().int().nonnegative() });
+export const chatReadSchema = z.object({ ok: z.literal(true), readAt: z.coerce.date() });
 
 /* ── intel ──────────────────────────────────────────────────── */
 
@@ -377,6 +400,7 @@ export const intelSchema = z.object({
     z.object({
       targetPlanetId: z.string(),
       targetName: z.string(),
+      targetUsername: z.string(),
       at: z.coerce.date(),
       accuracy: z.number(),
       stock: band,
@@ -833,6 +857,8 @@ export type RewardTierView = z.infer<typeof rewardTier>;
 export type GalaxyView = z.infer<typeof galaxySchema>;
 export type GalaxyPlanet = GalaxyView['planets'][number];
 export type Leaderboard = z.infer<typeof leaderboardSchema>;
+export type ChatPage = z.infer<typeof chatPageSchema>;
+export type ChatMessage = ChatPage['messages'][number];
 export type IntelView = z.infer<typeof intelSchema>;
 export type WatchView = IntelView['watching'][number];
 export type ProbeReport = IntelView['probeReports'][number];

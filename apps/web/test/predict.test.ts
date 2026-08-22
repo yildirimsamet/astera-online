@@ -125,7 +125,7 @@ describe('predicting a build', () => {
    *
    * The cap counts craft wherever they are — which is the whole reason the payload
    * carries `fleetAway`. A predictor reading only the home stack would offer a
-   * fourth drill to somebody whose three were out mining.
+   * third drill to somebody whose two were out mining.
    */
   it('counts drills that are away against the cap', () => {
     const mining = planetView(

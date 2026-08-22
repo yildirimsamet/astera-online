@@ -1,6 +1,7 @@
-import { eq } from 'drizzle-orm';
+import { and, asc, desc, eq, sql } from 'drizzle-orm';
+import { coreTier } from '@astera/rules';
 import type { FastifyInstance } from 'fastify';
-import { planets, players } from '../db/schema.js';
+import { accounts, buildings, planets, players, seasons, shards } from '../db/schema.js';
 import { GameError } from '../services/planet.js';
 import { readTelescopes } from '../services/intel.js';
 import { publicWorlds } from '../services/publicGalaxy.js';
@@ -103,23 +104,44 @@ export function registerGalaxyRoutes(app: FastifyInstance): void {
     const self = mine[0];
     if (!self) throw new GameError('NO_PLANET', 'Join a galaxy first', 404);
 
+    const [galaxy] = await app.db
+      .select({ capacity: shards.playerCap })
+      .from(seasons)
+      .innerJoin(shards, eq(seasons.shardId, shards.id))
+      .where(eq(seasons.id, self.seasonId));
+    if (!galaxy) throw new GameError('SEASON_NOT_FOUND', 'Galaxy not found', 404);
+
+    const score = sql<number>`round(${players.dominionTaken} - ${players.dominionLost})`;
     const rows = await app.db
-      .select()
+      .select({
+        playerId: players.id,
+        username: accounts.displayName,
+        planetId: planets.id,
+        planetName: planets.name,
+        coreLevel: buildings.level,
+        score,
+      })
       .from(players)
-      .where(eq(players.seasonId, self.seasonId));
+      .innerJoin(accounts, eq(players.accountId, accounts.id))
+      .innerJoin(planets, eq(planets.playerId, players.id))
+      .innerJoin(buildings, and(eq(buildings.planetId, planets.id), eq(buildings.type, 'CORE')))
+      .where(eq(players.seasonId, self.seasonId))
+      .orderBy(desc(score), asc(players.joinedAt), asc(players.id))
+      .limit(galaxy.capacity);
 
     const ladder = rows
-      .map((p) => ({
-        playerId: p.id,
-        name: p.name,
-        dominion: Math.round(p.dominionTaken - p.dominionLost),
-        wealth: Math.round(p.wealth),
-      }))
-      .sort((a, b) => b.dominion - a.dominion)
-      .map((entry, i) => ({ rank: i + 1, ...entry }));
+      .map((entry, i) => ({
+        rank: i + 1,
+        playerId: entry.playerId,
+        username: entry.username,
+        planetId: entry.planetId,
+        planetName: entry.planetName,
+        coreTier: coreTier(entry.coreLevel),
+        score: entry.score,
+      }));
 
     return {
-      ladder: ladder.slice(0, 50),
+      ladder,
       you: ladder.find((e) => e.playerId === self.id) ?? null,
     };
   });

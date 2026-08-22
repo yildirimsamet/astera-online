@@ -77,7 +77,7 @@ export const HULLS: Record<HullId, Hull> = {
    * a raid lands is lost with the rest of the garrison — mining is not free money,
    * it is capital parked outdoors.
    */
-  PROSPECTOR: { id: 'PROSPECTOR', name: 'Prospector', cls: 'SUPPORT', atk: 0, hp: 70, speed: 587, cargo: 1800, alloy: 700, crystal: 120, minShipyard: 1, ground: false },
+  PROSPECTOR: { id: 'PROSPECTOR', name: 'Prospector', cls: 'SUPPORT', atk: 0, hp: 70, speed: 330, cargo: 1800, alloy: 700, crystal: 120, minShipyard: 1, ground: false },
 };
 
 /** What may be put in an attack fleet. A Prospector is deliberately not here. */

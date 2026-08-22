@@ -93,8 +93,8 @@ export const planet = {
     max: 'Max {{count}}',
     build: 'Build {{count}}',
     capped:
-      'You already hold {{count}} — the limit. Send one out and bring it home; you will not be building a fourth.',
-    heldOfMax: '{{owned}} of {{max}} held. Three is the limit, counting the ones that are out.',
+      'You already hold {{count}} — the limit. Craft that are out still count, so you cannot build another.',
+    heldOfMax: '{{owned}} of {{max}} held. The ones that are out count too.',
     defenceAfter: 'Home defence after: {{count}} units',
   },
 } as const;

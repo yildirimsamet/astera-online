@@ -323,7 +323,7 @@ function GoalCard({
  *     so the page it opens gets no handle on this one.
  *   · THE COMMANDER NAME IS PRINTED, and getting this wrong would break the whole
  *     feature in silence. The operator's command resolves what is typed against
- *     `players.name`, the account's display name — so a card that printed the
+ *     `accounts.displayName`, the canonical commander identity — so a card that printed the
  *     PLANET's name would have every player send a string the grant can never
  *     find, and the operator would be told no such commander exists while looking
  *     at their message.

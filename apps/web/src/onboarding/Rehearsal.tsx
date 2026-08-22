@@ -324,10 +324,15 @@ export function Rehearsal({
          * have fixed the symptom and left the trap for the next overlay.
          */}
         <div className="relative z-10 flex h-dvh flex-col overflow-hidden">
-          <StatusBar commander={preview.reserved.name} onOpen={setPanel} />
+          <StatusBar
+            commander={preview.reserved.name}
+            onOpen={setPanel}
+            onFocusPlanet={(planetId) => { void planetId; }}
+          />
 
           <main className="relative flex-1">
             <GalaxyView
+              showChat={false}
               panel={panel}
               onPanel={setPanel}
               commander={preview.reserved.name}

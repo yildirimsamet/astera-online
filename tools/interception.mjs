@@ -69,12 +69,12 @@ const mine = await page.evaluate(async () => {
   return galaxy.planets.find((p) => p.isSelf).id;
 });
 
-// Three craft and the bays to fly them. Straight into the database — this is a
+// Two craft and the bays to fly them. Straight into the database — this is a
 // camera rig, not a playthrough.
 await sql`UPDATE buildings SET level = 9 WHERE planet_id = ${mine} AND type = 'CORE'`;
 await sql`
-  INSERT INTO units (planet_id, hull, location, count) VALUES (${mine}, 'PROSPECTOR', 'home', 3)
-  ON CONFLICT (planet_id, hull, location) DO UPDATE SET count = 3
+  INSERT INTO units (planet_id, hull, location, count) VALUES (${mine}, 'PROSPECTOR', 'home', 2)
+  ON CONFLICT (planet_id, hull, location) DO UPDATE SET count = 2
 `;
 
 /** The richest rock in the disc — the one a player would actually pick. */
@@ -82,7 +82,7 @@ const launched = await page.evaluate(async () => {
   const field = await window.__api.mining();
   const rock = [...field.asteroids].sort((a, b) => b.level - a.level)[0];
   if (!rock) return null;
-  const run = await window.__api.mine(rock.index, 3);
+  const run = await window.__api.mine(rock.index, 2);
   return { index: rock.index, level: rock.level, flightMinutes: run.flightMinutes, intercept: run.intercept };
 });
 if (!launched) throw new Error('no rock in the disc to aim at');

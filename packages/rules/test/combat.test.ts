@@ -9,6 +9,7 @@ import {
   bookBattle,
   dominion,
   fleetCount,
+  fleetCargo,
   fleetPower,
   fleetValue,
   mulberry32,
@@ -141,6 +142,24 @@ describe('support hulls', () => {
     const escorted = resolveCombat({ WASP: 30, HAULER: 20 }, { BASTION: 3 }, 0, flat());
     const alone = resolveCombat({ WASP: 30 }, { BASTION: 3 }, 0, flat());
     expect(escorted.defenderLossValue).toBe(alone.defenderLossValue);
+  });
+
+  it('keeps Haulers untouched in an escorted round, then exposes them after the escort dies', () => {
+    const r = resolveCombat({ WASP: 1, HAULER: 10 }, { BASTION: 20 }, 0, flat());
+    expect(r.rounds[0]?.attackerLosses.HAULER ?? 0).toBe(0);
+    expect(r.rounds.slice(1).some((round) => (round.attackerLosses.HAULER ?? 0) > 0)).toBe(true);
+  });
+});
+
+describe('combat cargo', () => {
+  it('adds mixed-fleet capacity from every surviving combat hull', () => {
+    const fleet = { WASP: 2, LANCE: 3, BULWARK: 4, HAULER: 1 } as const;
+    expect(fleetCargo(fleet)).toBe(
+      2 * HULLS.WASP.cargo
+      + 3 * HULLS.LANCE.cargo
+      + 4 * HULLS.BULWARK.cargo
+      + HULLS.HAULER.cargo,
+    );
   });
 });
 

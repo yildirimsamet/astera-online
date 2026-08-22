@@ -119,12 +119,32 @@ export interface SimConfig {
   players: number;
   days: number;
   seed: number;
+  /** Experiment-only redistribution; total hull prices never move. */
+  hullCrystalShare?: 0.25 | 0.30 | 0.35;
+}
+
+export type CrystalSpendCategory =
+  | 'buildings'
+  | 'hardware'
+  | 'defence'
+  | 'combat'
+  | 'hauler'
+  | 'prospector';
+
+export interface CrystalDiagnostics {
+  capPlayerHours: number;
+  medianUnused: number;
+  spent: Record<CrystalSpendCategory, number>;
+  spentShare: Record<CrystalSpendCategory, number>;
 }
 
 export interface World {
   players: SimPlayer[];
   missions: Mission[];
   rng: Rng;
+  hullCrystalShare?: SimConfig['hullCrystalShare'];
+  crystalCapPlayerMinutes: number;
+  crystalSpent: Record<CrystalSpendCategory, number>;
 }
 
 /* ── setup ─────────────────────────────────────────────────────── */
@@ -174,7 +194,38 @@ export function buildWorld(cfg: SimConfig): World {
       .slice(0, 18);
   }
 
-  return { players, missions: [], rng };
+  return {
+    players,
+    missions: [],
+    rng,
+    ...(cfg.hullCrystalShare === undefined ? {} : { hullCrystalShare: cfg.hullCrystalShare }),
+    crystalCapPlayerMinutes: 0,
+    crystalSpent: { buildings: 0, hardware: 0, defence: 0, combat: 0, hauler: 0, prospector: 0 },
+  };
+}
+
+const REDISTRIBUTED_HULLS = new Set(['LANCE', 'BULWARK', 'HAULER', 'PROSPECTOR']);
+
+/** Same total price, with only the alloy/crystal split changed for an experiment. */
+export function redistributedHullPrice(
+  id: keyof typeof HULLS,
+  share?: SimConfig['hullCrystalShare'],
+): { alloy: number; crystal: number } {
+  const hull = HULLS[id];
+  if (share === undefined || !REDISTRIBUTED_HULLS.has(id)) {
+    return { alloy: hull.alloy, crystal: hull.crystal };
+  }
+  const total = hull.alloy + hull.crystal;
+  const crystal = Math.round(total * share);
+  return { alloy: total - crystal, crystal };
+}
+
+function hullPrice(world: World, id: keyof typeof HULLS): { alloy: number; crystal: number } {
+  return redistributedHullPrice(id, world.hullCrystalShare);
+}
+
+function spendCrystal(world: World, category: CrystalSpendCategory, amount: number): void {
+  world.crystalSpent[category] += amount;
 }
 
 /* ── economy ───────────────────────────────────────────────────── */
@@ -447,6 +498,7 @@ function runSession(p: SimPlayer, t: number, world: World, rng: Rng): void {
           p.ground[id] = (p.ground[id] ?? 0) + n;
           p.alloy -= n * g.alloy;
           p.crystal -= n * g.crystal;
+          spendCrystal(world, 'defence', n * g.crystal);
         }
       }
     }
@@ -464,6 +516,7 @@ function runSession(p: SimPlayer, t: number, world: World, rng: Rng): void {
       ) {
         p.alloy -= cost.alloy;
         p.crystal -= cost.crystal;
+        spendCrystal(world, 'buildings', cost.crystal);
         p.buildings[key] = lvl + 1;
       }
     }
@@ -522,6 +575,7 @@ function runSession(p: SimPlayer, t: number, world: World, rng: Rng): void {
 
       p.alloy -= cost.alloy;
       p.crystal -= cost.crystal;
+      spendCrystal(world, 'hardware', cost.crystal);
       if (orbital) p.orbit.push(id);
       else p.instruments[id] = (p.instruments[id] ?? 0) + 1;
       break;
@@ -562,37 +616,40 @@ function runSession(p: SimPlayer, t: number, world: World, rng: Rng): void {
       let carry = 0;
       for (let pass = 0; pass < 2; pass++) {
         for (const hull of order) {
-          const h = HULLS[hull];
+          const price = hullPrice(world, hull);
           const spend = pass === 0 ? (budget * (mix[hull] ?? 0)) / total + carry : carry;
-          if (spend < h.alloy) continue;
-          let n = Math.floor(spend / h.alloy);
-          n = Math.min(n, Math.floor(p.alloy / h.alloy));
-          if (h.crystal > 0) n = Math.min(n, Math.floor(p.crystal / h.crystal));
+          if (spend < price.alloy) continue;
+          let n = Math.floor(spend / price.alloy);
+          n = Math.min(n, Math.floor(p.alloy / price.alloy));
+          if (price.crystal > 0) n = Math.min(n, Math.floor(p.crystal / price.crystal));
           if (n > 0) {
             p.fleet[hull] = (p.fleet[hull] ?? 0) + n;
-            p.alloy -= n * h.alloy;
-            p.crystal -= n * h.crystal;
+            p.alloy -= n * price.alloy;
+            p.crystal -= n * price.crystal;
+            spendCrystal(world, 'combat', n * price.crystal);
           }
-          carry = Math.max(0, spend - n * h.alloy);
+          carry = Math.max(0, spend - n * price.alloy);
         }
       }
     }
 
     // Cargo sized to what a neighbour is likely holding, not bought one at a time.
     if (yard >= HULLS.HAULER.minShipyard && a.attackChance > 0) {
+      const price = hullPrice(world, 'HAULER');
       const nb = p.neighbours[0] ? world.players[p.neighbours[0].id] : undefined;
       const caps = nb ? capsOf(nb) : { alloy: 5000, crystal: 1500 };
       const want = Math.ceil(((caps.alloy + caps.crystal) * 0.25) / HULLS.HAULER.cargo);
       const have = p.fleet.HAULER ?? 0;
       const n = Math.min(
         want - have,
-        Math.floor((p.alloy * 0.3) / HULLS.HAULER.alloy),
-        Math.floor(p.crystal / HULLS.HAULER.crystal),
+        Math.floor((p.alloy * 0.3) / price.alloy),
+        Math.floor(p.crystal / price.crystal),
       );
       if (n > 0) {
         p.fleet.HAULER = have + n;
-        p.alloy -= n * HULLS.HAULER.alloy;
-        p.crystal -= n * HULLS.HAULER.crystal;
+        p.alloy -= n * price.alloy;
+        p.crystal -= n * price.crystal;
+        spendCrystal(world, 'hauler', n * price.crystal);
       }
     }
   }
@@ -800,7 +857,7 @@ export interface DayReport {
   invariants: Invariants;
 }
 
-export function runSeason(cfg: SimConfig): { world: World; days: DayReport[] } {
+export function runSeason(cfg: SimConfig): { world: World; days: DayReport[]; diagnostics: CrystalDiagnostics } {
   const world = buildWorld(cfg);
   const total = cfg.days * 1440;
   const days: DayReport[] = [];
@@ -816,6 +873,11 @@ export function runSeason(cfg: SimConfig): { world: World; days: DayReport[] } {
     }
     for (const p of world.players) {
       if (p.nextLogin <= t) runSession(p, t, world, world.rng);
+    }
+    if (t > 0) {
+      for (const p of world.players) {
+        if (p.crystal >= capsOf(p).crystal - 0.01) world.crystalCapPlayerMinutes += 1;
+      }
     }
     if (t > 0 && t % 1440 === 0) {
       for (const p of world.players) {
@@ -833,7 +895,27 @@ export function runSeason(cfg: SimConfig): { world: World; days: DayReport[] } {
       stats = freshStats();
     }
   }
-  return { world, days };
+  const spentTotal = Object.values(world.crystalSpent).reduce((sum, value) => sum + value, 0);
+  const spentShare = Object.fromEntries(
+    Object.entries(world.crystalSpent).map(([key, value]) => [key, spentTotal > 0 ? value / spentTotal : 0]),
+  ) as Record<CrystalSpendCategory, number>;
+  const unused = world.players
+    .map((player) => player.crystal + player.bufferCrystal)
+    .sort((a, b) => a - b);
+  const middle = Math.floor(unused.length / 2);
+  const medianUnused = unused.length % 2 === 0
+    ? ((unused[middle - 1] ?? 0) + (unused[middle] ?? 0)) / 2
+    : (unused[middle] ?? 0);
+  return {
+    world,
+    days,
+    diagnostics: {
+      capPlayerHours: world.crystalCapPlayerMinutes / 60,
+      medianUnused,
+      spent: { ...world.crystalSpent },
+      spentShare,
+    },
+  };
 }
 
 export { dominion, investedInBuilding, capsOf, holdingsOf };

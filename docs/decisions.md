@@ -131,8 +131,8 @@ Battle sonrası defender coordinates'te, iki tarafın öldürülen non-ground hu
 D33 · Doctrine removed — MEASURED
 İkinci progression axis, bonus 0 olsa bile purchase'ın kendisi ARR/TAX gate'lerini bozduğu için kaldırıldı. D30'un genellemesi: yeni un-losable sink eklenemez; research tree, permanent upgrade veya Wealth-counting cosmetic bile aynı sorunu çıkarır. Önce TAX headroom, sonra ARR yeniden ölçülmeli; band genişletilerek feature kabul edilmemeli.
 
-D34 · Maximum 3 Prospectors — OWNER DECISION
-PROSPECTOR.max=3, tüm location'lar birlikte sayılır. Fiyat sınırı yerine ownership cap kullanılır; loadLocked değil totalUnitsOf row lock altında okunur. fleetAway planet API'ye taşınır; cap server-side enforcement'tır.
+D34 · Prospector ownership cap — OWNER DECISION, COUNT SUPERSEDED BY D74
+PROSPECTOR.max=2 (D74), tüm location'lar birlikte sayılır. Fiyat sınırı yerine ownership cap kullanılır; loadLocked değil totalUnitsOf row lock altında okunur. fleetAway planet API'ye taşınır; cap server-side enforcement'tır.
 
 D35 · Debris asset is one annulus — IMPLEMENTATION NOTE
 Wreck asset bütün ring olarak tek kez instantiate edilir. unitModel ilk mesh'i alır; ince shell THREE.DoubleSide ister; model material'i flat tint'i override eder. Clearance planet radius'un multiplier'ıdır. Chunk detail mesh'e bake'dir. Tap targets: world 0–12px, wreck 16–28px. Testler arasında reload gerekir.
@@ -149,8 +149,8 @@ Server doğru, client stale. Event stream traffic/mining'i invalid etmiyordu; ne
 D39 · Same raid, same clock — OWNER REPORT
 Attacker/defender aynı fleet için farklı countdown görüyordu çünkü one side rounded minutesRemaining, diğer side exact arriveAt taşıyordu. arriveAt tüm threads'te bulunur. Radar yalnızca warning timing'i satar; clock precision aynı kalır.
 
-D40 · Squadron = 10 ships/model — OWNER DECISION
-PER_MODEL 5→10; flying asset'ler %25 küçülür; shallow V yerine solid cone kullanılır. Radius/depth √index ile büyür; golden angle tekrar eden spoke görüntüsünü engeller.
+D40 · Squadron = 5 ships/model — OWNER DECISION
+PER_MODEL 10→5; her model beş gemiyi, üstündeki beş pip de kesin sayıyı temsil eder. MAX_MARKERS 12 kalır; sınırı aşan gemiler sayısal overflow ile eksiksiz belirtilir. Flying asset'ler %25 küçüktür; shallow V yerine solid cone kullanılır. Radius/depth √index ile büyür; golden angle tekrar eden spoke görüntüsünü engeller.
 
 D41 · Aegis = panelled shell — OWNER DECISION
 Hexagonal fragment-shader grid; level ile cold-blue whitening. half GLSL reserved word; shader comments içinde backtick template literal'ı bozabilir; fwidth offset değil edge softening için kullanılmalıdır. Grid dome'un tamamında görünmeli, cell interiors fill olmamalıdır.
@@ -158,8 +158,8 @@ Hexagonal fragment-shader grid; level ile cold-blue whitening. half GLSL reserve
 D42 · First orders removed — OWNER DECISION
 İlk sipariş sistemi kaldırıldı; onboarding yeniden ele alınacak.
 
-D43 · Prospector speed corrected — OWNER INSTRUCTION
-3,483 launch ölçümünde asteroid intercept'i 1.10 revolution ahead, median 686 unit sapıyordu. PROSPECTOR.speed=3×(min+max)/2=660; sapma 0.34 revolution seviyesine indi. Mining yield değişmiyor; yalnızca race sonucu değişiyor. Intercept root artık unique ve çözülebilir.
+D43 · Prospector speed corrected — OWNER INSTRUCTION, SPEED SUPERSEDED BY D74
+3,483 launch ölçümünde asteroid intercept'i 1.10 revolution ahead, median 686 unit sapıyordu. D43 hızı 660 yaptı; D74 bunu 330'a indirdi ve generated-field erişilebilirliğini yeniden ölçtü. Mining yield değişmiyor; yalnızca race sonucu değişiyor.
 
 D44 · Raid = 10s live bombardment — OWNER INSTRUCTION
 Fleet arriveAt'ta target orbit'e gelir, combat COMBAT.engagementSeconds sonra resolve olur; mission bu arada in_flight kalır. arriveAt değişmez. Sonrasında D52 ile engagement tüm galaxy'ye public hale geldi. orbitStandoff, local/world coordinate ayrımı, texture-based fire color, plume/wake yönü ve CDP screenshot requestAnimationFrame starvation özel testlerle korunur.
@@ -1095,6 +1095,100 @@ screens through the dev bridge: every craft advances between two samples, no two
 markers occupy the same point, the same craft is in the same place on both screens,
 and nothing is drawn at the origin or inside a world. `tools/loop-check.mjs` gained
 the same question asked from the far end of a raid.
+
+### D73 · Raids interrupt the live loop, not the session — owner instruction
+
+Works disruption is 15 minutes for DECISIVE, 5 for PARTIAL and zero for REPELLED,
+with a hard ceiling of 15 minutes from the current instant. Repeated raids refresh
+the applicable window but never stack it. Production resumes on the exact ending
+minute already carried by `disruptedUntil`; notifications state the duration written
+by settlement and the live planet view owns the countdown.
+
+### D74 · Two slower Prospectors — owner instruction, measured
+
+`PROSPECTOR.max` is 2 across every unit location. Base speed is 330; Derrick keeps
+1.5× and therefore gives 495. `HULLS.PROSPECTOR.speed` is the ship-card duplicate
+and is locked equal to the authoritative constant. The slower base drops below the
+old unique-root proof threshold (360), but not below the solver's capability: a
+five-seed sweep over 50 spawn slots × 200 rocks found 100% reachable at spawn and
+at 25/50/75/90% of lifetime for both speeds. Maximum base flight was 7.22 minutes,
+round trip 14.44 and lead 1.006 revolutions; boosted was 4.84/9.68 and 0.666
+revolutions. No asteroid generation change was needed.
+
+### D75 · The account display name is the visible commander identity — owner instruction
+
+`accounts.displayName` is the canonical name of a person. `players.name` remains
+season state but is never a public identity source. Galaxy labels, focus surfaces,
+intel and battle reports lead with the commander; `planets.name` is retained only
+as secondary location context. Notifications use explicit `targetUsername`,
+`originUsername` and `fromUsername` fields and keep parser fallbacks for historical
+payloads. A username is joined only inside projections whose existing fog rule has
+already revealed that person; identity is not a new intel tier.
+
+### D76 · The Dominion ladder is the whole local galaxy — owner instruction
+
+The leaderboard returns every commander in the caller's galaxy, bounded by that
+galaxy's configured capacity. A row is rank, player/account identity, planet,
+public Core tier and `round(dominionTaken - dominionLost)`. Ordering is score
+descending, then `joinedAt` ascending, then player id ascending. Combat publishes
+`shard:score` only when a rounded score changes; `shard:world` also refreshes the
+open ladder because a public tier changed.
+
+### D77 · Galaxy chat is seasonal, live and server-authored — owner instruction
+
+Chat belongs to one season and is wiped with that world. A message stores only its
+season, author player, trimmed 1–280 character content and the authoritative server
+instant. The authenticated player is always the author; clients cannot submit an
+author or username. Reads are cursor-paginated to at most fifty rows and never cross
+the caller's season. One player may commit at most five messages in any rolling ten
+seconds, enforced transactionally. Message instants are strictly monotonic inside
+a season under the same transaction lock; the timestamp read marker can therefore
+never collapse two concurrent authors.
+
+Unread state is durable on the player row and counts only messages from other
+commanders after the latest visible message the player marked read. Posting one's
+own message never creates unread state. `shard:chat` announces only that the scoped
+chat projection changed; an open panel refreshes immediately and a closed panel
+refreshes the unread dot on the permanent lower-right Galaxy control. Chat has no
+commander-menu row and does not mark the account-menu control. Message time copy uses Moment durations at the locked
+minute, hour and day boundaries.
+
+### D78 · Hull crystal redistribution has no selectable candidate — measured blocker
+
+The simulator now reports crystal-cap player-hours, final median unused crystal and
+crystal spending by category. LANCE, BULWARK and HAULER were exercised at 25%, 30%
+and 35% crystal shares without changing total prices; Wasp and opening arithmetic
+stayed fixed. Across seeds 42, 7, 99, 4242 and 1337, baseline cap time was 8,888
+player-hours. The partial candidates produced 6,962 (−21.7%), 5,863 (−34.0%) and
+4,656 (−47.6%) respectively.
+
+No candidate can be selected. At 30% and 35%, existing season gates regress. The
+25% result misses the cap-time target and also regresses gates, but is not a complete
+measurement: the season simulator does not model mining or Prospector procurement,
+so its Prospector spend category is deliberately zero. Pretending that row had been
+measured would make the acceptance claim false. Hull prices therefore remain
+unchanged until that model exists; no fuel, permanent upgrade or other un-losable
+sink is introduced as a substitute.
+
+### D79 · Revealed commander identity is a route back to the world — owner instruction
+
+An identity already revealed in Signals is bold and directly focusable when its
+notification payload names the corresponding planet id. Activating it closes the
+notification sheet, selects that world and moves the existing Galaxy camera focus
+to it; the dossier starts collapsed. Chat exposes the same route on other
+commanders' usernames using the planet id already public inside the caller's own
+galaxy; Leaderboard usernames use their row's already-public planet id as the same
+route. IDs are attached only beside identities the existing projection already
+reveals, so this adds navigation and no new fog tier.
+
+### D80 · Three-times combat cargo is blocked — measured
+
+Wasp, Lance, Bulwark and Hauler cargo were raised exactly 3× while Prospector
+capacity stayed unchanged, then run through the five-seed season gate. The prior
+green baseline gained two new failures: seed 99 ARR fell to 0.290 and pooled TI to
+−0.4305. The gate bands were not widened. The experiment is therefore not
+authoritative and the live cargo figures remain unchanged. Survivor cargo bounds
+and Hauler escort targeting gained direct regression coverage independently.
 
 ## Architecture
 

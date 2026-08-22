@@ -19,6 +19,8 @@ describe('what a shard event asks the client to read', () => {
   it('recognises the namespace, and only the namespace', () => {
     expect(isShardEvent('shard:launch')).toBe(true);
     expect(isShardEvent('shard:world')).toBe(true);
+    expect(isShardEvent('shard:score')).toBe(true);
+    expect(isShardEvent('shard:chat')).toBe(true);
     // Notification kinds share this string space and must never be mistaken for
     // one — a shard kind read as a notification would put a line in Signals that
     // nothing wrote, and vice versa.
@@ -52,7 +54,9 @@ describe('what a shard event asks the client to read', () => {
     for (const kind of ['shard:launch', 'shard:arrival', 'shard:mining']) {
       expect(readsForShardEvent(kind), kind).not.toContainEqual(keys.galaxy);
     }
-    expect(readsForShardEvent('shard:world')).toEqual([keys.galaxy]);
+    expect(readsForShardEvent('shard:world')).toEqual([keys.galaxy, keys.leaderboard]);
+    expect(readsForShardEvent('shard:score')).toEqual([keys.leaderboard]);
+    expect(readsForShardEvent('shard:chat')).toEqual([keys.chatMessages, keys.chatUnread]);
   });
 
   /**
@@ -101,10 +105,11 @@ describe('the coalescer', () => {
     vi.advanceTimersByTime(COALESCE_MS);
     expect(flush).toHaveBeenCalledTimes(1);
     const reads = flush.mock.calls[0]?.[0] as readonly (readonly string[])[];
-    expect(reads).toHaveLength(3);
+    expect(reads).toHaveLength(4);
     expect(reads).toContainEqual(keys.traffic);
     expect(reads).toContainEqual(keys.mining);
     expect(reads).toContainEqual(keys.galaxy);
+    expect(reads).toContainEqual(keys.leaderboard);
   });
 
   /**
@@ -134,7 +139,7 @@ describe('the coalescer', () => {
     vi.advanceTimersByTime(COALESCE_MS);
 
     expect(flush).toHaveBeenCalledTimes(2);
-    expect(flush.mock.calls[1]?.[0]).toEqual([keys.galaxy]);
+    expect(flush.mock.calls[1]?.[0]).toEqual([keys.galaxy, keys.leaderboard]);
   });
 
   /**
@@ -169,6 +174,6 @@ describe('the coalescer', () => {
     vi.advanceTimersByTime(COALESCE_MS);
     expect(flush).toHaveBeenCalledTimes(1);
     // The launch was cancelled with the timer; only the new event survives.
-    expect(flush.mock.calls[0]?.[0]).toEqual([keys.galaxy]);
+    expect(flush.mock.calls[0]?.[0]).toEqual([keys.galaxy, keys.leaderboard]);
   });
 });

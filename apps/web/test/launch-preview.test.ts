@@ -52,11 +52,12 @@ describe('the launch preview', () => {
     expect(heavy.exposureMinutes).toBe(heavy.oneWayMinutes * 2);
   });
 
-  it('adds the cargo the Haulers bring, and nothing for the rest', () => {
+  it('adds combat-hull cargo and the larger dedicated Hauler capacity', () => {
     const combat = planRoute(HERE, THERE, { WASP: 10 }, { WASP: 10, HAULER: 2 }, {});
     const withCargo = planRoute(HERE, THERE, { WASP: 10, HAULER: 2 }, { WASP: 10, HAULER: 2 }, {});
 
     expect(withCargo.cargo - combat.cargo).toBe(2 * HULLS.HAULER.cargo);
+    expect(combat.cargo).toBe(10 * HULLS.WASP.cargo);
   });
 
   it('reports no exposure at all when nothing has been chosen yet', () => {

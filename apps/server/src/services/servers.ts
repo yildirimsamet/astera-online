@@ -8,6 +8,7 @@ import {
   asteroidClaims,
   battleReports,
   buildings,
+  chatMessages,
   debrisFields,
   miningRuns,
   missions,
@@ -439,6 +440,7 @@ export async function wipeAllServers(
     // `players`, which is deleted below, and a season's record is folded into the
     // account rather than carried over as an unclaimed grant.
     await tx.delete(rewardGrants);
+    await tx.delete(chatMessages);
     await tx.delete(requestLog);
     await tx.delete(notifications);
     await tx.delete(scanEvents);

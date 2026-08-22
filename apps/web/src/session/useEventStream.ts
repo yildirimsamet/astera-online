@@ -32,6 +32,8 @@ const LIVE_READS = [
   keys.traffic,
   keys.mining,
   keys.rewards,
+  keys.chatMessages,
+  keys.chatUnread,
 ] as const;
 
 /** Full jitter, capped. A shard restarting must not be hit by 200 synchronised retries. */

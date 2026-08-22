@@ -2,7 +2,7 @@ import { and, eq } from 'drizzle-orm';
 import { pino } from 'pino';
 import { afterAll, beforeEach, describe, expect, it } from 'vitest';
 import { INTEL, PROBE } from '@astera/rules';
-import { missions, planets, probeReports, satellites, scanEvents, watches } from '../src/db/schema.js';
+import { accounts, missions, planets, players, probeReports, satellites, scanEvents, watches } from '../src/db/schema.js';
 import { assignWatch, launchProbe, readRadarLog, readTelescopes } from '../src/services/intel.js';
 import { launchAttack } from '../src/services/mission.js';
 import { EventWorker } from '../src/worker/loop.js';
@@ -154,10 +154,13 @@ describe('the information layer', () => {
 
   describe('what the telescope shows', () => {
     it('reports HOME when their ships are home', async () => {
+      await f.db.update(accounts).set({ displayName: 'İzci' }).where(eq(accounts.id, f.accountIds[1]!));
+      await f.db.update(players).set({ name: 'STALE-SEASON-NAME' }).where(eq(players.id, f.playerIds[1]!));
       await giveInstrument(f, mine, 'TELESCOPE', 2);
       await assignWatch(f.db, mine, theirs, 0, f.clock);
 
       const [view] = await readTelescopes(f.db, myPlayer, f.clock);
+      expect(view!.ownerName).toBe('İzci');
       expect(view!.reading.status).toBe('HOME');
       expect(view!.reading.state).toBe('FULL');
     });
@@ -568,6 +571,8 @@ describe('a probe flies out and comes back', () => {
   });
 
   it('tells you nothing until it is home', async () => {
+    await f.db.update(accounts).set({ displayName: 'İzci' }).where(eq(accounts.id, f.accountIds[1]!));
+    await f.db.update(players).set({ name: 'STALE-SEASON-NAME' }).where(eq(players.id, f.playerIds[1]!));
     const { launchProbe, readProbeReports } = await import('../src/services/intel.js');
     const out = await launchProbe(f.db, mine, theirs, f.clock);
 
@@ -576,8 +581,6 @@ describe('a probe flies out and comes back', () => {
     await worker().tick();
     expect(await readProbeReports(f.db, myPlayer)).toHaveLength(0);
 
-    const { missions } = await import('../src/db/schema.js');
-    const { and, eq } = await import('drizzle-orm');
     const [home] = await f.db
       .select()
       .from(missions)
@@ -592,6 +595,8 @@ describe('a probe flies out and comes back', () => {
     const reports = await readProbeReports(f.db, myPlayer);
     expect(reports).toHaveLength(1);
     expect(reports[0]!.report.deliveredAt).not.toBeNull();
+    expect(reports[0]!.targetUsername).toBe('İzci');
+    expect(reports[0]!.targetName).not.toBe('STALE-SEASON-NAME');
   });
 
   /** The scan is written when the probe arrives, not when it gets home. */

@@ -51,6 +51,7 @@ const mine: PlanetView = planetView(
 const probeReport = (minutesAgo: number): NonNullable<IntelView>['probeReports'][number] => ({
   targetPlanetId: 'p2',
   targetName: 'Grimhold',
+  targetUsername: 'İzci',
   at: new Date(NOW - minutesAgo * 60_000),
   accuracy: 0.7,
   detected: false,

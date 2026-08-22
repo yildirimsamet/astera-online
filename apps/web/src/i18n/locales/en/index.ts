@@ -1,5 +1,5 @@
 import { app, document, landing, loading, servers, settings } from './entry.js';
-import { menu, pendingStrip, sheet, signals, statusBar, surface } from './shell.js';
+import { chat, leaderboard, menu, pendingStrip, sheet, signals, statusBar, surface } from './shell.js';
 import { focus, galaxy } from './world.js';
 import { action, itemSheet, launch, planet, planetHero, upgradeRow } from './planet.js';
 import { clarity, dossier, intel, reports } from './intel.js';
@@ -32,6 +32,8 @@ export const en = {
   settings,
   statusBar,
   menu,
+  leaderboard,
+  chat,
   pendingStrip,
   signals,
   sheet,

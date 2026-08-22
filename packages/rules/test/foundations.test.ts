@@ -198,9 +198,10 @@ describe('loot grading', () => {
 
 describe('disruption', () => {
   it('lasts longest after a decisive loss and not at all after a repel', () => {
-    expect(disruptionMinutes('DECISIVE')).toBe(DISRUPTION.decisiveMinutes);
-    expect(disruptionMinutes('PARTIAL')).toBe(DISRUPTION.partialMinutes);
+    expect(disruptionMinutes('DECISIVE')).toBe(15);
+    expect(disruptionMinutes('PARTIAL')).toBe(5);
     expect(disruptionMinutes('REPELLED')).toBe(0);
+    expect(DISRUPTION.maxPendingMinutes).toBe(15);
     expect(disruptionMinutes('DECISIVE')).toBeGreaterThan(disruptionMinutes('PARTIAL'));
   });
 });

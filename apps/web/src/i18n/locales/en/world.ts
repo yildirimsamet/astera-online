@@ -5,6 +5,7 @@
 
 export const galaxy = {
   discLabel: 'The disc',
+  serverLabel: '{{name}} ({{code}})',
   /**
    * Its own key rather than a reuse of the server list's, because nothing is
    * shared between surfaces (D55): this one sits at 8px in the corner of the
@@ -48,6 +49,7 @@ export const focus = {
 
   planet: {
     eyebrow: 'Held by {{owner}}',
+    location: 'World · {{planet}}',
     attack: 'Plan an attack',
     outOfBand: 'Tier {{tier}} — you may fight {{low}}–{{high}}',
     windowOpen: 'Their fleet is not home. This is the window the whole game is about.',

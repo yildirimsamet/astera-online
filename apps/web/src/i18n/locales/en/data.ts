@@ -321,6 +321,9 @@ export const notifications = {
   incomingHead: 'Incoming fleet · {{clock}}',
   incomingEstimate: 'est. {{count}} ships',
   incomingFrom: 'from {{origin}}',
+  commanderAt: '{{username}} at {{planet}}',
+  unknownCommander: 'someone',
+  raidedBy: 'Raider: {{origin}} · ',
   composition: '{{count}} {{hull}}',
   join: ' · ',
 

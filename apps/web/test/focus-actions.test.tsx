@@ -89,6 +89,12 @@ const show = () => {
 };
 
 describe('the focus rail’s two commitments', () => {
+  it('leads with the commander and keeps the planet as location context', () => {
+    show();
+    expect(screen.getByRole('region', { name: 'Sable — focus' })).toBeInTheDocument();
+    expect(screen.getByText('World · Grimhold')).toBeInTheDocument();
+  });
+
   it('marks the attack with a glyph as well as a word', () => {
     show();
     const attack = document.querySelector('[data-attack]');

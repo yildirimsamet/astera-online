@@ -37,10 +37,17 @@ const incoming = z.object({
   estimatedShips: z.number().optional(),
   /** Radar L5, both of them. */
   fleet: fleet.optional(),
+  originPlanetId: z.string().optional(),
+  originUsername: z.string().optional(),
+  originPlanetName: z.string().optional(),
+  /** Historical payload fallback. */
   originName: z.string().optional(),
 });
 
 const raided = z.object({
+  originPlanetId: z.string().optional(),
+  originUsername: z.string().optional(),
+  originPlanetName: z.string().optional(),
   grade: z.string(),
   lootAlloy: z.number(),
   lootCrystal: z.number(),
@@ -52,7 +59,11 @@ const raided = z.object({
 
 const raidResult = z.object({
   grade: z.string(),
-  targetName: z.string(),
+  targetPlanetId: z.string().optional(),
+  targetUsername: z.string().optional(),
+  targetPlanetName: z.string().optional(),
+  /** Historical payload fallback. */
+  targetName: z.string().optional(),
   lootAlloy: z.number(),
   lootCrystal: z.number(),
   unitsLost: z.number(),
@@ -71,6 +82,10 @@ const returned = z.discriminatedUnion('trip', [
   z.object({
     trip: z.literal('raid'),
     ships: z.number(),
+    fromPlanetId: z.string().optional(),
+    fromUsername: z.string().nullable().optional(),
+    fromPlanetName: z.string().nullable().optional(),
+    /** Historical payload fallback. */
     fromName: z.string().nullable().optional(),
     lootAlloy: z.number(),
     lootCrystal: z.number(),
@@ -105,7 +120,11 @@ const legacyRaidReturn = z.object({
 const scanned = z.object({ bearing: z.string().optional() });
 
 const probeHome = z.object({
-  targetName: z.string(),
+  targetPlanetId: z.string().optional(),
+  targetUsername: z.string().optional(),
+  targetPlanetName: z.string().optional(),
+  /** Historical payload fallback. */
+  targetName: z.string().optional(),
   detected: z.boolean().optional(),
 });
 
@@ -159,6 +178,73 @@ const GRADE_KEY = {
 const gradeWord = (grade: string): string =>
   grade in GRADE_KEY ? i18n.t(GRADE_KEY[grade as keyof typeof GRADE_KEY]) : grade;
 
+const identity = (
+  username: string | null | undefined,
+  planetName: string | null | undefined,
+  legacy: string | null | undefined,
+): string => {
+  if (username && planetName) {
+    return i18n.t('notifications.commanderAt', { username, planet: planetName });
+  }
+  return username ?? planetName ?? legacy ?? i18n.t('notifications.unknownCommander');
+};
+
+export interface NotificationIdentity {
+  label: string;
+  planetId?: string;
+}
+
+/** The identity already printed in a notification, plus its safe Galaxy route. */
+export function notificationIdentity(notification: NotificationView): NotificationIdentity | null {
+  switch (notification.kind) {
+    case 'incoming_fleet': {
+      const parsed = incoming.safeParse(notification.payload);
+      if (!parsed.success) return null;
+      const { originPlanetId, originUsername, originPlanetName, originName } = parsed.data;
+      if (!originUsername && !originPlanetName && !originName) return null;
+      return {
+        label: identity(originUsername, originPlanetName, originName),
+        ...(originPlanetId ? { planetId: originPlanetId } : {}),
+      };
+    }
+    case 'raided': {
+      const parsed = raided.safeParse(notification.payload);
+      if (!parsed.success || !parsed.data.originUsername) return null;
+      return {
+        label: identity(parsed.data.originUsername, parsed.data.originPlanetName, undefined),
+        ...(parsed.data.originPlanetId ? { planetId: parsed.data.originPlanetId } : {}),
+      };
+    }
+    case 'raid_result': {
+      const parsed = raidResult.safeParse(notification.payload);
+      if (!parsed.success) return null;
+      return {
+        label: identity(parsed.data.targetUsername, parsed.data.targetPlanetName, parsed.data.targetName),
+        ...(parsed.data.targetPlanetId ? { planetId: parsed.data.targetPlanetId } : {}),
+      };
+    }
+    case 'fleet_returned': {
+      const parsed = returned.safeParse(notification.payload);
+      if (!parsed.success || parsed.data.trip !== 'raid') return null;
+      if (!parsed.data.fromUsername && !parsed.data.fromPlanetName && !parsed.data.fromName) return null;
+      return {
+        label: identity(parsed.data.fromUsername, parsed.data.fromPlanetName, parsed.data.fromName),
+        ...(parsed.data.fromPlanetId ? { planetId: parsed.data.fromPlanetId } : {}),
+      };
+    }
+    case 'probe_report': {
+      const parsed = probeHome.safeParse(notification.payload);
+      if (!parsed.success) return null;
+      return {
+        label: identity(parsed.data.targetUsername, parsed.data.targetPlanetName, parsed.data.targetName),
+        ...(parsed.data.targetPlanetId ? { planetId: parsed.data.targetPlanetId } : {}),
+      };
+    }
+    default:
+      return null;
+  }
+}
+
 /**
  * @param now the client's clock, so a countdown can go into the past tense.
  * Passing it rather than reading `Date.now()` in here keeps this pure and lets a
@@ -169,7 +255,10 @@ export function describeNotification(notification: NotificationView, now: number
     case 'incoming_fleet': {
       const parsed = incoming.safeParse(notification.payload);
       if (!parsed.success) return i18n.t('notifications.incomingFallback');
-      const { arriveAt, etaMinutes, estimatedShips, fleet: ships, originName } = parsed.data;
+      const {
+        arriveAt, etaMinutes, estimatedShips, fleet: ships,
+        originUsername, originPlanetName, originName,
+      } = parsed.data;
 
       /**
        * THE COUNTDOWN IS AGAINST THE ARRIVAL INSTANT, NOT THE WRITTEN ETA.
@@ -195,8 +284,10 @@ export function describeNotification(notification: NotificationView, now: number
       else if (estimatedShips !== undefined) {
         parts.push(i18n.t('notifications.incomingEstimate', { count: estimatedShips }));
       }
-      if (originName !== undefined) {
-        parts.push(i18n.t('notifications.incomingFrom', { origin: originName }));
+      if (originUsername !== undefined || originPlanetName !== undefined || originName !== undefined) {
+        parts.push(i18n.t('notifications.incomingFrom', {
+          origin: identity(originUsername, originPlanetName, originName),
+        }));
       }
       return parts.join(JOIN());
     }
@@ -204,8 +295,16 @@ export function describeNotification(notification: NotificationView, now: number
     case 'raided': {
       const parsed = raided.safeParse(notification.payload);
       if (!parsed.success) return i18n.t('notifications.raidedFallback');
-      const { grade, lootAlloy, lootCrystal, unitsLost, theirLosses, disruptedMinutes } =
+      const {
+        grade, lootAlloy, lootCrystal, unitsLost, theirLosses, disruptedMinutes,
+        originUsername, originPlanetName,
+      } =
         parsed.data;
+      const raider = originUsername
+        ? i18n.t('notifications.raidedBy', {
+            origin: identity(originUsername, originPlanetName, undefined),
+          })
+        : '';
       if (grade === 'REPELLED') {
         // What it cost to hold, on both sides. "You repelled a raid" on its own
         // reads as a free win, and a defence that looks free is not one anybody
@@ -214,7 +313,7 @@ export function describeNotification(notification: NotificationView, now: number
         if (theirLosses !== undefined && theirLosses > 0) {
           cost.push(i18n.t('notifications.repelledTheirs', { count: theirLosses }));
         }
-        return i18n.t('notifications.repelledHead', { cost: cost.join(JOIN()) });
+        return `${raider}${i18n.t('notifications.repelledHead', { cost: cost.join(JOIN()) })}`;
       }
       /**
        * SAY WHAT HAPPENED, NOT WHAT DID NOT.
@@ -246,24 +345,28 @@ export function describeNotification(notification: NotificationView, now: number
        * defenders to lose and, on an older row, no works figure to report. Saying
        * so plainly is better than assembling an empty sentence.
        */
-      if (clauses.length === 0) return i18n.t('notifications.raidedNothing');
-      return i18n.t('notifications.raided', { detail: clauses.join(JOIN()) });
+      if (clauses.length === 0) return `${raider}${i18n.t('notifications.raidedNothing')}`;
+      return `${raider}${i18n.t('notifications.raided', { detail: clauses.join(JOIN()) })}`;
     }
 
     case 'raid_result': {
       const parsed = raidResult.safeParse(notification.payload);
       if (!parsed.success) return i18n.t('notifications.raidResultFallback');
-      const { grade, targetName, lootAlloy, lootCrystal, unitsLost, shipsHome } = parsed.data;
+      const {
+        grade, targetUsername, targetPlanetName, targetName,
+        lootAlloy, lootCrystal, unitsLost, shipsHome,
+      } = parsed.data;
+      const target = identity(targetUsername, targetPlanetName, targetName);
       // The fleet is gone. This is the line the whole notification exists for —
       // before it, nothing in the game told a player their raid had been wiped out.
       if (shipsHome === 0) {
-        return i18n.t('notifications.raidWiped', { target: targetName, count: unitsLost });
+        return i18n.t('notifications.raidWiped', { target, count: unitsLost });
       }
       const took = spoils(lootAlloy, lootCrystal);
       const detail = took.length > 0 ? took.join(JOIN()) : i18n.t('notifications.raidNothing');
       return i18n.t('notifications.raidResult', {
         grade: gradeWord(grade),
-        target: targetName,
+        target,
         detail,
         count: unitsLost,
       });
@@ -286,8 +389,9 @@ export function describeNotification(notification: NotificationView, now: number
         return i18n.t('notifications.recalled', { count: trip.craft });
       }
       if (trip.trip === 'raid') {
-        const where = trip.fromName
-          ? i18n.t('notifications.fleetFrom', { origin: trip.fromName })
+        const origin = identity(trip.fromUsername, trip.fromPlanetName, trip.fromName);
+        const where = trip.fromUsername || trip.fromPlanetName || trip.fromName
+          ? i18n.t('notifications.fleetFrom', { origin })
           : '';
         const loot = trip.lootAlloy + trip.lootCrystal;
         return i18n.t(
@@ -330,7 +434,14 @@ export function describeNotification(notification: NotificationView, now: number
       const parsed = probeHome.safeParse(notification.payload);
       if (!parsed.success) return i18n.t('notifications.probeFallback');
       const caught = parsed.data.detected === true ? i18n.t('notifications.probeCaught') : '';
-      return i18n.t('notifications.probeHome', { target: parsed.data.targetName, caught });
+      return i18n.t('notifications.probeHome', {
+        target: identity(
+          parsed.data.targetUsername,
+          parsed.data.targetPlanetName,
+          parsed.data.targetName,
+        ),
+        caught,
+      });
     }
 
     case 'unlock': {

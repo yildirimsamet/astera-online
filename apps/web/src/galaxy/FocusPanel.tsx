@@ -285,8 +285,8 @@ export function PlanetFocus({
   return (
     <Shell
       art={<PlanetSigil seed={target.id} size={40} dark={known.kind === 'none'} />}
-      eyebrow={t('focus.planet.eyebrow', { owner: target.owner })}
-      title={target.name}
+      eyebrow={t('focus.planet.location', { planet: target.name })}
+      title={target.owner}
       open={open}
       onToggle={onToggle}
       onClose={onClose}
@@ -489,7 +489,7 @@ function CloseGap({
     return (
       <button
         type="button"
-        className="slab slab-primary w-full"
+        className="slab slab-primary w-full text-[10px]"
         disabled={probe.isPending}
         onClick={() => {
           probe.mutate(target.id, {
@@ -1138,9 +1138,9 @@ export function ContactFocus({
  * target could actually fill. That is the right DEFAULT and it was the wrong
  * BEHAVIOUR, because it silently spent the whole squadron. A player who wants one
  * craft on a rock and one on a wreck field had no way to say so — the first launch
- * took all three and the second target was unreachable until they came home.
+ * took the whole available squadron and the second target was unreachable until they came home.
  *
- * `PROSPECTOR.max` is three (D34), so this is three buttons and never a stepper.
+ * `PROSPECTOR.max` is two (D74), so this is two buttons and never a stepper.
  * The default stays `worthSending`, so the common case is still one tap.
  */
 function CraftPicker({
@@ -1349,5 +1349,3 @@ function Figure({
 /** Minutes a rock has left in the disc, from the season clock. */
 export const minutesLeftFor = (rock: AsteroidView, seasonStart: Date, now: number): number =>
   Math.max(0, rock.expiresAt - (now - seasonStart.getTime()) / 60_000);
-
-

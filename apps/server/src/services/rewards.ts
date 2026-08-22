@@ -396,11 +396,11 @@ export async function grantReward(
      * the only case-insensitivity that is safe in any alphabet.
      */
     const rows = await tx
-      .select({ id: players.id, name: players.name })
+      .select({ id: players.id, name: accounts.displayName })
       .from(players)
       .innerJoin(accounts, eq(accounts.id, players.accountId))
       .where(
-        or(eq(players.name, username), eq(accounts.username, normaliseUsername(username))),
+        or(eq(accounts.displayName, username), eq(accounts.username, normaliseUsername(username))),
       )
       .limit(1);
     const player = rows[0];

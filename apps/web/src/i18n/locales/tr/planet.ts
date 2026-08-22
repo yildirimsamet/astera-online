@@ -96,7 +96,7 @@ export const planet = {
     max: 'En fazla {{count}}',
     build: '{{count}} tane yap',
     capped:
-      'Elinde zaten {{count}} tane var, sınır bu. Birini gönder ve geri getir; dördüncüyü yapamazsın.',
+      'Elinde zaten {{count}} tane var, sınır bu. Dışarıdakiler de sayıldığı için bir tane daha yapamazsın.',
     heldOfMax: 'Elinde {{max}} üzerinden {{owned}} var. Dışarıdakiler de sayılıyor.',
     defenceAfter: 'Sonrasında evde {{count}} birlik kalır',
   },

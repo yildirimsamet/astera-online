@@ -30,10 +30,12 @@ import type { Panel } from '../screens/GalaxyView.jsx';
 export function StatusBar({
   commander,
   onOpen,
+  onFocusPlanet,
 }: {
   /** Who is signed in. The header states it, because it is the way back out. */
   commander: string;
   onOpen: (panel: Panel) => void;
+  onFocusPlanet: (planetId: string) => void;
 }) {
   const { t } = useTranslation();
   const { data, dataUpdatedAt } = usePlanet();
@@ -91,7 +93,7 @@ export function StatusBar({
            * The season clock moved into the sheet with it. It was a readout, it
            * was never pressable, and it is one tap from here.
            */}
-          <Signals onOpen={onOpen} />
+          <Signals onOpen={onOpen} onFocusPlanet={onFocusPlanet} />
           <button
             type="button"
             aria-label={t('statusBar.menuHint', { name: commander })}

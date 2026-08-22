@@ -23,6 +23,11 @@ code. Read with `visual-design.md`, which governs art rather than layout.
 
 ## The rules this sets
 
+Commander identity is always `accounts.displayName`. Galaxy labels and focus
+surfaces lead with the commander username; planet names are secondary location
+copy. Intel and reports follow the same order without widening their existing fog
+projection.
+
 ### I1 · Locked reads as locked — art desaturates, copy does not
 
 **The artwork carries the state; the words carry the promise.** A locked item's art is
@@ -88,6 +93,18 @@ Unseen state clears when the centre is **opened**, not when the app loads. Statu
 the count, because a badge that cannot be cleared teaches people to ignore badges. A run of
 identical events folds to one row with a count rather than repeating down the screen.
 
+A commander or planet identity in Signals is set in bold. When the payload already
+reveals that world's identity, the name is also a direct route back to the disc:
+pressing it closes Signals, selects the world and flies the camera to it with the
+focus detail kept collapsed. Chat usernames provide the same route for other
+commanders in the local galaxy, and Leaderboard usernames do likewise. A conversation
+or ranking never becomes a hunt through every world on the map.
+
+Galaxy Chat's composer is fixed to the foot of its sheet. The message history is the
+only scrolling region; reaching the newest message never pushes the textarea or Send
+control below the viewport. Chat is absent from the pre-account rehearsal: before a
+commander identity exists there is neither a launcher nor an unread request.
+
 ### I5 · Every surface has a permanent way in
 
 A surface reachable only as a side effect of something else happening does not exist for the
@@ -99,6 +116,25 @@ Every full surface now hangs off the header, which is the one piece of chrome th
 leaves: the works and its collect control, the **commander** control, **Intel**, and Signals.
 Your own planet opens by tapping your own world, and every other surface opens by focusing the
 thing it is about.
+
+The disc caption names the room as well as the map: `The disc · Vantage (EU-1)` / `Disk ·
+Vantage (EU-1)`. The live online count keeps the opposite edge. A client talking to a server
+that predates the shard name omits the room label instead of inventing one, and long names
+truncate before they can push the live count off a portrait screen.
+
+Leaderboard is a permanent commander-menu surface. It shows the whole local galaxy in
+authoritative Dominion order: rank, commander username, planet, public Core tier and score.
+The caller's row is highlighted. A score broadcast refreshes an open ladder immediately;
+a public world update refreshes it too because Core tier is part of every row.
+
+Galaxy Chat belongs directly to the disc and identifies people only by commander username.
+Its permanent way in is a compact control at the lower-right of the Galaxy viewport, not a
+commander-menu row.
+The newest page opens at the bottom, older pages load through the cursor, and a submitted
+message appears from the authoritative response. While the panel is open, `shard:chat`
+keeps it live and the newest visible message advances the durable read marker. While it is
+closed, the same event refreshes the unread count; a small red dot appears on the Galaxy
+chat control itself. The player's own posts never light the dot.
 
 **A way in labelled as something else is not a way in.** The commander control — the account, the
 galaxy, the season, and sign-out — was that same permanent header button for a long time, and it
@@ -118,6 +154,11 @@ the figure was unreachable by a factor of fifteen and the bar could never pass 6
 
 The denominator is what the player has: slots used against slots owned. The size of the galaxy
 still appears, but as the *reason* a slot is a decision rather than as a target.
+
+Probe and battle reports share one position below Watching as two tabs, with Probe reports as
+the default. Battle history must always be one tap away even when the probe history is long.
+The controls are real tabs: selected state is announced, only the active panel is exposed, and
+Left/Right/Home/End move both focus and selection. Radar remains below the report switcher.
 
 ### I7 · A string in a component is a string that exists in one language
 

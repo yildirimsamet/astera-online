@@ -234,18 +234,36 @@ describe('disruption', () => {
   it('refreshes rather than stacking', () => {
     const first = applyDisruption(0, 0, 'DECISIVE');
     const second = applyDisruption(first, 10, 'DECISIVE');
-    expect(second).toBeLessThanOrEqual(10 + 240);
-    expect(second).toBeGreaterThanOrEqual(first);
+    expect(first).toBe(15);
+    expect(second).toBe(25);
+    expect(applyDisruption(second, 10, 'PARTIAL')).toBe(25);
   });
 
   it('cannot be pushed beyond the pending cap by chain-raiding', () => {
     let until = 0;
     for (let i = 0; i < 20; i++) until = applyDisruption(until, i, 'DECISIVE');
-    expect(until - 19).toBeLessThanOrEqual(240);
+    expect(until - 19).toBe(15);
   });
 
   it('a repelled raid disrupts nothing', () => {
     expect(applyDisruption(0, 0, 'REPELLED')).toBe(0);
+  });
+
+  it('resumes production on the exact minute the disruption ends', () => {
+    const input = { refineryLevel: 5, extractorLevel: 4, aegisLevel: 0 };
+    const state = {
+      alloy: 0,
+      crystal: 0,
+      bufferAlloy: 0,
+      bufferCrystal: 0,
+      shield: 0,
+      lastTickMinutes: 0,
+      disruptedUntilMinutes: 15,
+    };
+    const atEnd = advanceEconomy(state, input, 15);
+    expect(atEnd.bufferAlloy).toBe(0);
+    const oneMinuteLater = advanceEconomy(atEnd, input, 16);
+    expect(oneMinuteLater.bufferAlloy).toBeCloseTo(alloyRate(5) / 60, 6);
   });
 
   it('productiveMinutes never exceeds the span', () => {

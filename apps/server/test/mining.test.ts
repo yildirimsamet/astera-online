@@ -116,15 +116,15 @@ describe('mining', () => {
     });
 
     /**
-     * THREE, AND ONLY EVER THREE. `PROSPECTOR.max`.
+     * TWO, AND ONLY EVER TWO. `PROSPECTOR.max`.
      *
      * Mining is a side errand. Uncapped, the only question a miner faces is "how
      * many more can I afford", the answer is always "more", and mining income
      * scales with wealth instead of with the decisions D19 wanted — which rock,
      * and when, given a squadron is away for a round trip.
      */
-    describe('is rationed to three', () => {
-      it('refuses the fourth, and says how many you hold', async () => {
+    describe('is rationed to two', () => {
+      it('refuses the third, and says how many you hold', async () => {
         await grant(f.db, mine, 500_000, 200_000);
         await expect(
           buildUnits(f.db, mine, 'PROSPECTOR', PROSPECTOR.max, f.clock),
@@ -132,6 +132,7 @@ describe('mining', () => {
 
         await expect(buildUnits(f.db, mine, 'PROSPECTOR', 1, f.clock)).rejects.toMatchObject({
           code: 'PROSPECTOR_CAP',
+          params: { max: 2, have: 2, context: 'atLimit' },
         });
       });
 
@@ -166,7 +167,7 @@ describe('mining', () => {
         const rock = waitForRock();
         await launchMining(f.db, mine, rock.index, PROSPECTOR.max, f.clock);
 
-        // Nothing at home now — and still no room for a fourth.
+        // Nothing at home now — and still no room for a third.
         const home = await f.db
           .select()
           .from(units)

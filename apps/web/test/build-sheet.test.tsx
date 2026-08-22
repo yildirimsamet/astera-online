@@ -109,7 +109,7 @@ describe('the quantity picker', () => {
     expect(offered.some((s) => s.startsWith('Max'))).toBe(true);
   });
 
-  /** THE COMPLAINT, ASSERTED: three is the limit, so nothing above three is offered. */
+  /** THE COMPLAINT, ASSERTED: the ownership cap is also the picker's ceiling. */
   it('never offers more Prospectors than a planet may hold', async () => {
     show();
     await openSheet('Prospector');
@@ -123,7 +123,7 @@ describe('the quantity picker', () => {
   });
 
   it('shrinks the offer as craft are built', async () => {
-    show({ fleet: { PROSPECTOR: 2 } });
+    show({ fleet: { PROSPECTOR: PROSPECTOR.max - 1 } });
     await openSheet('Prospector');
     const offered = steps().map((s) => Number(s.replace('Max ', '')));
     expect(Math.max(...offered)).toBe(1);
@@ -134,7 +134,7 @@ describe('the quantity picker', () => {
    *
    * `fleet` is what is standing on the ground, and craft that are away mining are
    * not in it. Counting only that, the sheet would cheerfully offer three more to
-   * somebody whose three were in the air — and the server, which counts what you
+   * somebody whose craft were in the air — and the server, which counts what you
    * OWN, would refuse every one of them.
    */
   it('counts craft that are away mining, not just the ones at home', async () => {

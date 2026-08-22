@@ -5,7 +5,7 @@ import type { NotificationView, PlanetView } from '../api/schemas.js';
 import i18n from '../i18n/index.js';
 import { compact } from '../lib/format.js';
 import { haptic } from '../lib/haptics.js';
-import { describeNotification, isAlarming } from '../lib/notifications.js';
+import { describeNotification, isAlarming, notificationIdentity } from '../lib/notifications.js';
 import { useProjected, type Projected } from '../lib/projection.js';
 import { duration, staleness, useNow } from '../lib/time.js';
 import { Sheet } from '../ui/Sheet.js';
@@ -39,7 +39,13 @@ export interface Status {
   go?: Panel;
 }
 
-export function Signals({ onOpen }: { onOpen: (panel: Panel) => void }) {
+export function Signals({
+  onOpen,
+  onFocusPlanet,
+}: {
+  onOpen: (panel: Panel) => void;
+  onFocusPlanet: (planetId: string) => void;
+}) {
   const { t } = useTranslation();
   const [open, setOpen] = useState(false);
   /**
@@ -202,6 +208,10 @@ export function Signals({ onOpen }: { onOpen: (panel: Panel) => void }) {
                     onOpen(panel);
                     setOpen(false);
                   }}
+                  onFocusPlanet={(planetId) => {
+                    setOpen(false);
+                    onFocusPlanet(planetId);
+                  }}
                 />
               ))}
             </div>
@@ -267,6 +277,7 @@ function Event({
   unread,
   now,
   onGo,
+  onFocusPlanet,
 }: {
   event: NotificationView;
   repeats: number;
@@ -274,31 +285,57 @@ function Event({
   unread: boolean;
   now: number;
   onGo: (panel: Panel) => void;
+  onFocusPlanet: (planetId: string) => void;
 }) {
   const line = describeNotification(event, now);
   if (!line) return null;
   const bad = isAlarming(event);
   const destination = DESTINATION[event.kind];
+  const subject = notificationIdentity(event);
+  const subjectAt = subject === null ? -1 : line.indexOf(subject.label);
 
   return (
-    <button
-      type="button"
-      disabled={!destination}
-      onClick={() => {
-        if (destination) onGo(destination);
-      }}
-      className={`flex w-full items-start gap-3 border-b border-line-soft p-3 text-left last:border-b-0 ${
+    <div
+      data-testid="signal-event"
+      className={`relative flex w-full items-start gap-3 border-b border-line-soft p-3 text-left last:border-b-0 ${
         unread ? 'bg-crystal/[0.04]' : ''
       }`}
     >
+      {destination && (
+        <button
+          type="button"
+          aria-label={i18n.t('signals.openEvent')}
+          onClick={() => { onGo(destination); }}
+          className="absolute inset-0"
+        />
+      )}
       <span
         className={`mt-1 size-2 shrink-0 rounded-full ${
           !unread ? 'bg-line' : bad ? 'bg-threat' : 'bg-crystal'
         }`}
       />
-      <span className="min-w-0 flex-1">
-        <span className={`block text-[13px] ${bad ? 'text-[#ff9d8f]' : 'text-bone'}`}>
-          {line}
+      <span className="pointer-events-none relative min-w-0 flex-1">
+        <span className={`relative block text-[13px] ${bad ? 'text-[#ff9d8f]' : 'text-bone'}`}>
+          {subject && subjectAt >= 0 ? (
+            <>
+              {line.slice(0, subjectAt)}
+              {subject.planetId ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    haptic('tap');
+                    onFocusPlanet(subject.planetId!);
+                  }}
+                  className="pointer-events-auto relative z-10 font-bold text-inherit underline decoration-current/40 underline-offset-2"
+                >
+                  {subject.label}
+                </button>
+              ) : (
+                <strong className="font-bold">{subject.label}</strong>
+              )}
+              {line.slice(subjectAt + subject.label.length)}
+            </>
+          ) : line}
           {repeats > 1 && (
             <span className="num text-faint"> {i18n.t('signals.repeat', { count: repeats })}</span>
           )}
@@ -307,7 +344,7 @@ function Event({
           {staleness((now - event.at.getTime()) / 60_000)}
         </span>
       </span>
-    </button>
+    </div>
   );
 }
 

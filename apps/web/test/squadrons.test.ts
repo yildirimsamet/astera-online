@@ -7,13 +7,15 @@ import { MAX_MARKERS, PER_MODEL, formationFor, leadHull, markersFor, slotOffset 
  * "One model per PER_MODEL ships. That many pips above each model; as many filled
  * as that model carries."
  *
- * DERIVED FROM `PER_MODEL`, NOT FROM THE NUMBER IT HAPPENS TO BE. The rule was
- * five and the owner has since made it ten, and every case below that hard-coded
- * a 5 broke — which is a test telling you the constant moved, not that the
- * behaviour did. What is actually being asserted is the SHAPE: full groups first,
- * the remainder last, every ship accounted for, nothing over one model's capacity.
+ * The group size is itself an owner decision, so one test locks it to five. The
+ * remaining cases assert the shape: full groups first, the remainder last, every
+ * ship accounted for, nothing over one model's capacity.
  */
 describe('how a fleet becomes models', () => {
+  it('represents exactly five ships with each model', () => {
+    expect(PER_MODEL).toBe(5);
+  });
+
   it('draws the owner’s worked example exactly', () => {
     // One of the first hull and one full group plus two of the second.
     const markers = markersFor({ WASP: 1, LANCE: PER_MODEL + 2 });
@@ -28,6 +30,13 @@ describe('how a fleet becomes models', () => {
   it('draws exactly one model for a full group', () => {
     expect(markersFor({ WASP: PER_MODEL })).toEqual([
       { hull: 'WASP', filled: PER_MODEL, ordinal: 0 },
+    ]);
+  });
+
+  it('draws six ships as one full group and one remainder', () => {
+    expect(markersFor({ WASP: 6 })).toEqual([
+      { hull: 'WASP', filled: 5, ordinal: 0 },
+      { hull: 'WASP', filled: 1, ordinal: 1 },
     ]);
   });
 
@@ -85,6 +94,12 @@ describe('how a fleet becomes models', () => {
     expect(a).toEqual(b);
     expect(a[0]).toBe('WASP');
   });
+
+  it('accounts for every ship in a mixed fleet', () => {
+    const markers = markersFor({ WASP: 6, LANCE: 10, BULWARK: 3, HAULER: 1 });
+    expect(markers.reduce((sum, marker) => sum + marker.filled, 0)).toBe(20);
+    expect(markers.filter((marker) => marker.hull === 'LANCE')).toHaveLength(2);
+  });
 });
 
 /**
@@ -98,6 +113,13 @@ describe('very large fleets', () => {
     expect(markers.length).toBeLessThanOrEqual(12);
     expect(markers.reduce((s, m) => s + m.filled, 0) + hidden).toBe(200);
     expect(hidden).toBeGreaterThan(0);
+  });
+
+  it('counts mixed-hull overflow without losing a ship', () => {
+    const { markers, hidden } = formationFor({ WASP: 31, LANCE: 27, BULWARK: 14 });
+    expect(markers).toHaveLength(MAX_MARKERS);
+    expect(markers.reduce((sum, marker) => sum + marker.filled, 0) + hidden).toBe(72);
+    expect(hidden).toBe(16);
   });
 
   it('hides nothing when the fleet fits', () => {

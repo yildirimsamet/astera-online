@@ -17,7 +17,7 @@ import {
 import type { CombatRound, Fleet, Grade, HullId } from '@astera/rules';
 
 /**
- * Eighteen tables. Nothing here stores a value that can be derived from a formula
+ * Twenty-one tables. Nothing here stores a value that can be derived from a formula
  * and a clock — no fleet positions, no asteroid coordinates, no resource ticks.
  *
  * TIME MODEL: everything is `timestamptz`. The rules package works in minutes
@@ -152,6 +152,8 @@ export const players = pgTable('players', {
    * commander per minute and never a read.
    */
   lastActiveAt: timestamp('last_active_at', { withTimezone: true }).notNull().defaultNow(),
+  /** Durable across devices, but not across a season: the newest chat instant read. D77. */
+  lastChatReadAt: timestamp('last_chat_read_at', { withTimezone: true }),
   /**
    * Which unlocks this player has already been SHOWN.
    *
@@ -181,6 +183,24 @@ export const players = pgTable('players', {
   uniqueIndex('players_account_idx').on(t.accountId),
   index('players_ladder_idx').on(t.seasonId, t.dominionTaken, t.dominionLost),
   index('players_active_idx').on(t.seasonId, t.lastActiveAt),
+]);
+
+/**
+ * THE GALAXY'S CONVERSATION. D77.
+ *
+ * Seasonal by construction: authors and readers are season players, and wipe removes
+ * these rows before either parent. The account display name is joined when reading so a
+ * message cannot preserve stale `players.name` identity and cannot accept a client name.
+ */
+export const chatMessages = pgTable('chat_messages', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  seasonId: uuid('season_id').notNull().references(() => seasons.id),
+  authorPlayerId: uuid('author_player_id').notNull().references(() => players.id),
+  content: text('content').notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [
+  index('chat_messages_season_cursor_idx').on(t.seasonId, t.createdAt, t.id),
+  index('chat_messages_author_rate_idx').on(t.authorPlayerId, t.createdAt),
 ]);
 
 export const planets = pgTable('planets', {

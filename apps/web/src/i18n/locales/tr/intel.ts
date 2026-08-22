@@ -8,6 +8,9 @@
  */
 
 export const intel = {
+  tabs: {
+    label: 'İstihbarat raporları',
+  },
   coverage: {
     label: 'Kapsama',
     blind: 'Tek bir gezegenin bile içini göremiyorsun',

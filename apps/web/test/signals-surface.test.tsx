@@ -38,15 +38,16 @@ vi.mock('../src/api/queries.js', async () => {
   };
 });
 
-function mount(given: NotificationView[]) {
+function mount(given: NotificationView[], onFocusPlanet = vi.fn()) {
   rows = given;
   marked.mockReset();
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-  return render(
+  const view = render(
     <QueryClientProvider client={client}>
-      <Signals onOpen={vi.fn()} />
+      <Signals onOpen={vi.fn()} onFocusPlanet={onFocusPlanet} />
     </QueryClientProvider>,
   );
+  return { ...view, onFocusPlanet };
 }
 
 describe('the signals beacon', () => {
@@ -97,6 +98,49 @@ describe('the signals beacon', () => {
     expect(screen.getByText(/Raided · −900 taken · 3 units lost/)).toBeInTheDocument();
   });
 
+  it('bolds a revealed identity and closes Signals through its planet focus route', async () => {
+    const view = mount([
+      notification({
+        kind: 'probe_report',
+        payload: {
+          targetPlanetId: 'target-planet',
+          targetUsername: 'İzci',
+          targetPlanetName: 'Kestrel-12',
+          detected: false,
+        },
+      }),
+    ]);
+    await userEvent.click(screen.getByRole('button', { name: 'Signals — 1 unread' }));
+    const identity = screen.getByRole('button', { name: /İzci/i });
+    expect(identity).toHaveClass('font-bold');
+    await userEvent.click(identity);
+    expect(view.onFocusPlanet).toHaveBeenCalledWith('target-planet');
+    expect(screen.queryByRole('dialog', { name: 'Signals' })).not.toBeInTheDocument();
+  });
+
+  it('keeps a repelled raider identity visible, bold and focusable', async () => {
+    const view = mount([
+      notification({
+        kind: 'raided',
+        payload: {
+          originPlanetId: 'raider-planet',
+          originUsername: 'Akıncı',
+          originPlanetName: 'Kestrel-9',
+          grade: 'REPELLED',
+          lootAlloy: 0,
+          lootCrystal: 0,
+          unitsLost: 2,
+          theirLosses: 5,
+        },
+      }),
+    ]);
+    await userEvent.click(screen.getByRole('button', { name: 'Signals — 1 unread' }));
+    const identity = screen.getByRole('button', { name: /Akıncı/ });
+    expect(identity).toHaveClass('font-bold');
+    await userEvent.click(identity);
+    expect(view.onFocusPlanet).toHaveBeenCalledWith('raider-planet');
+  });
+
   /**
    * WHICH OF THESE IS NEW — the one question the surface exists to answer.
    *
@@ -115,14 +159,14 @@ describe('the signals beacon', () => {
     rows = rows.map((n) => ({ ...n, seen: true }));
     view.rerender(
       <QueryClientProvider client={new QueryClient()}>
-        <Signals onOpen={vi.fn()} />
+        <Signals onOpen={vi.fn()} onFocusPlanet={vi.fn()} />
       </QueryClientProvider>,
     );
 
     // The badge is gone...
     expect(screen.getByRole('button', { name: 'Signals' })).toBeInTheDocument();
     // ...and the row that was new is still shown as new.
-    const shown = screen.getAllByRole('button').filter((el) => el.textContent.includes('Raided'));
+    const shown = screen.getAllByTestId('signal-event');
     expect(shown).toHaveLength(2);
     expect(shown[0]!.className).toContain('bg-crystal');
     expect(shown[1]!.className).not.toContain('bg-crystal');

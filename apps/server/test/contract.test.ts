@@ -13,6 +13,10 @@ import { SHARD_PREFIX } from '../src/stream/bus.js';
 import { TokenService } from '../src/auth/tokens.js';
 import {
   buildSchema,
+  chatPageSchema,
+  chatPostSchema,
+  chatReadSchema,
+  chatUnreadSchema,
   claimSchema,
   collectSchema,
   galaxySchema,
@@ -442,6 +446,8 @@ describe('every payload the client parses', () => {
     ['/api/servers', serverListSchema],
     ['/api/season', seasonSchema],
     ['/api/leaderboard', leaderboardSchema],
+    ['/api/chat/messages', chatPageSchema],
+    ['/api/chat/unread', chatUnreadSchema],
     ['/api/intel', intelSchema],
     ['/api/notifications', notificationsSchema],
     ['/api/session/return', returnSchema],
@@ -449,6 +455,13 @@ describe('every payload the client parses', () => {
     ['/api/session/unlocks', unlocksSchema],
   ] as const)('GET %s parses', async (url, schema) => {
     schema.parse(await get(url));
+  });
+
+  it('POST /api/chat/messages and /api/chat/read parse', async () => {
+    const sent = chatPostSchema.parse(await post('/api/chat/messages', { content: 'hello galaxy' }));
+    expect(sent.message.self).toBe(true);
+    const marked = chatReadSchema.parse(await post('/api/chat/read', { messageId: sent.message.id }));
+    expect(marked.ok).toBe(true);
   });
 
   /**
@@ -817,8 +830,7 @@ describe('every payload the client parses', () => {
     expect(payload.lootAlloy + payload.lootCrystal).toBe(0);
     expect(payload.unitsLost).toBe(0);
     // And the thing that did happen, which used not to travel at all.
-    expect(payload.disruptedMinutes, 'the works were knocked down and nobody said so')
-      .toBeGreaterThan(0);
+    expect(payload.disruptedMinutes, 'the works were knocked down and nobody said so').toBe(15);
 
     const now = f.clock.now().getTime();
     const view = (over: Record<string, unknown>) =>

@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
 import { render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { describe, expect, it, vi } from 'vitest';
 import { radarRange, telescopeSlots } from '@astera/rules';
@@ -176,5 +177,55 @@ describe('what the radar promises', () => {
     show({ telescope: 1, watching: 0, worlds: 20, radar: 2 });
     expect(screen.getByText(/catches probes\. from l3/i)).toBeInTheDocument();
     expect(screen.queryByText(/units out/i)).not.toBeInTheDocument();
+  });
+});
+
+describe('report tabs', () => {
+  it('defaults to probe reports and exposes one active panel', () => {
+    show({ telescope: 1, watching: 0, worlds: 20 });
+    expect(screen.getByRole('tablist', { name: 'Intel reports' })).toBeVisible();
+    expect(screen.getByRole('tab', { name: 'Probe reports' })).toHaveAttribute('aria-selected', 'true');
+    expect(screen.getByRole('tabpanel', { name: 'Probe reports' })).toBeVisible();
+    expect(screen.queryByRole('tabpanel', { name: 'Battle reports' })).not.toBeInTheDocument();
+  });
+
+  it('opens battle reports with one tap and hides the probe panel', async () => {
+    show({ telescope: 1, watching: 0, worlds: 20 });
+    await userEvent.click(screen.getByRole('tab', { name: 'Battle reports' }));
+    expect(screen.getByRole('tab', { name: 'Battle reports' })).toHaveAttribute('aria-selected', 'true');
+    expect(screen.getByRole('tabpanel', { name: 'Battle reports' })).toBeVisible();
+    expect(screen.queryByRole('tabpanel', { name: 'Probe reports' })).not.toBeInTheDocument();
+    expect(screen.getByText(/nothing has been fought over yet/i)).toBeVisible();
+  });
+
+  it('moves selection and focus with arrow keys', async () => {
+    show({ telescope: 1, watching: 0, worlds: 20 });
+    const probes = screen.getByRole('tab', { name: 'Probe reports' });
+    probes.focus();
+    await userEvent.keyboard('{ArrowRight}');
+    expect(screen.getByRole('tab', { name: 'Battle reports' })).toHaveFocus();
+    expect(screen.getByRole('tabpanel', { name: 'Battle reports' })).toBeVisible();
+    await userEvent.keyboard('{Home}');
+    expect(probes).toHaveFocus();
+  });
+
+  it('wraps both arrow directions at the ends of the tablist', async () => {
+    show({ telescope: 1, watching: 0, worlds: 20 });
+    const probes = screen.getByRole('tab', { name: 'Probe reports' });
+    const battles = screen.getByRole('tab', { name: 'Battle reports' });
+    probes.focus();
+    await userEvent.keyboard('{ArrowLeft}');
+    expect(battles).toHaveFocus();
+    await userEvent.keyboard('{ArrowRight}');
+    expect(probes).toHaveFocus();
+  });
+
+  it('uses Turkish tab names without case-folding dotted İ', async () => {
+    const i18n = (await import('../src/i18n/index.js')).default;
+    await i18n.changeLanguage('tr');
+    show({ telescope: 1, watching: 0, worlds: 20 });
+    expect(screen.getByRole('tablist', { name: 'İstihbarat raporları' })).toBeVisible();
+    expect(screen.getByRole('tab', { name: 'Sonda raporları' })).toBeVisible();
+    expect(screen.getByRole('tab', { name: 'Savaş raporları' })).toBeVisible();
   });
 });

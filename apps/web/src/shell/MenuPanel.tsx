@@ -9,6 +9,7 @@ import { Button } from '../ui/kit/index.js';
 import {
   ChevronIcon,
   IntelIcon,
+  LeaderboardIcon,
   RewardIcon,
   SpeakerOffIcon,
   SpeakerOnIcon,
@@ -85,6 +86,14 @@ export function MenuPanel({
           hint={t('menu.intelHint')}
           onClick={() => {
             onOpen('intel');
+          }}
+        />
+        <MenuRow
+          icon={<LeaderboardIcon className="size-5" />}
+          label={t('menu.leaderboardLabel')}
+          hint={t('menu.leaderboardHint')}
+          onClick={() => {
+            onOpen('leaderboard');
           }}
         />
         <MenuRow

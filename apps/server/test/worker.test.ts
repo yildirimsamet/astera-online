@@ -1,4 +1,5 @@
 import { and, eq, sql } from 'drizzle-orm';
+import { fleetCargo } from '@astera/rules';
 import { pino } from 'pino';
 import { afterAll, beforeEach, describe, expect, it } from 'vitest';
 import { battleReports, missions, planets, players, scheduledEvents, units } from '../src/db/schema.js';
@@ -493,6 +494,7 @@ describe('event worker', () => {
       const [after] = await f.db.select().from(planets).where(eq(planets.id, defender));
       expect(after!.alloy).toBeLessThan(before[0]!.alloy);
       expect(after!.disruptedUntil).not.toBeNull();
+      expect(after!.disruptedUntil!.getTime() - f.clock.now().getTime()).toBe(15 * 60_000);
 
       // Dominion is zero-sum across the pair.
       const rows = await f.db.select().from(players);
@@ -505,6 +507,9 @@ describe('event worker', () => {
         .from(missions)
         .where(eq(missions.kind, 'return'));
       expect(ret).toBeDefined();
+      expect(report!.loot.alloy + report!.loot.crystal).toBeLessThanOrEqual(
+        fleetCargo(ret!.fleet),
+      );
 
       f.clock.set(ret!.arriveAt);
       await worker.tick();

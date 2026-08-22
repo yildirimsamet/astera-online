@@ -279,9 +279,10 @@ const REFINE = 40;
  * (d|A - P|/dt) / speed - 1`, and the rock's contribution is bounded by its own
  * speed, so once `hullSpeed > factor x asteroidSpeedMax` every derivative is
  * negative: `f` is strictly decreasing, the root is unique, and no scan step can
- * straddle it. D43 put the Prospector there deliberately (660 against a bound of
- * 360) — the solver still serves slower craft, but for the one craft the game
- * actually flies the answer is now unconditional rather than merely well-sampled.
+ * straddle it. D74 deliberately puts the base Prospector below that bound (330
+ * against 360), so generated-field coverage is asserted by the sweep in
+ * `invariants.test.ts`; the solver has always supported slower craft because the
+ * orbit comes back around.
  */
 export function interceptAsteroid(
   from: Vec3,

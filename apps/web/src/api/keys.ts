@@ -17,6 +17,8 @@ export const keys = {
   galaxy: ['galaxy'],
   intel: ['intel'],
   leaderboard: ['leaderboard'],
+  chatMessages: ['chat', 'messages'],
+  chatUnread: ['chat', 'unread'],
   notifications: ['notifications'],
   unlocks: ['unlocks'],
   pending: ['pending'],

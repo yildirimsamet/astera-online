@@ -49,14 +49,15 @@ recall.
 **Wasp / Lance / Bulwark** — The three combat hulls, forming the counter cycle
 `WASP ▸ BULWARK ▸ LANCE ▸ WASP` at 1.6× / 0.625×.
 
-**Hauler** — The cargo hull. 1,800 cargo, zero attack. **You cannot bring loot home without
-them.** Shielded from fire while any combat hull on your side survives.
+**Hauler** — The dedicated cargo hull. 1,800 cargo, zero attack. Combat hulls carry a small
+amount themselves; Haulers make a serious haul possible. Shielded from fire while any combat
+hull on your side survives.
 
 **Bastion** — The heavy ground gun. Cannot travel, 1.35× more HP per resource than any ship,
 and 60% of destroyed ground units rebuild free.
 
 **DECISIVE / PARTIAL / REPELLED** — The three battle grades, by share of defender *value*
-destroyed. Loot 50% / 25% / 0% of raidable stock.
+destroyed. Loot 65% / 35% / 0% of raidable stock, still bounded by survivor cargo.
 
 **Salvage** — The 60% of destroyed ground defence that rebuilds free. It exists so that
 blind raiding can actually fail.

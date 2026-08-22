@@ -3,20 +3,18 @@ import { ALL_HULLS, HULLS, type Fleet, type HullId } from '@astera/rules';
 /**
  * HOW A FLEET IS DRAWN — the owner's rule, made exact.
  *
- * "One model per TEN ships of a type. Above each model, ten pips; as many are
+ * "One model per FIVE ships of a type. Above each model, five pips; as many are
  * filled as that model actually carries."
  *
  * So a squadron of 1 Wasp and 17 Lances is drawn as:
  *
- *   · one Wasp   — pips ●○○○○○○○○○   (1 of 10)
- *   · one Lance  — pips ●●●●●●●●●●   (10 of 10)
- *   · one Lance  — pips ●●●●●●●○○○   (7 of 10)
+ *   · one Wasp   — pips ●○○○○   (1 of 5)
+ *   · one Lance  — pips ●●●●●   (5 of 5)
+ *   · one Lance  — pips ●●○○○   (2 of 5)
  *
- * TEN RATHER THAN FIVE, at owner request. At five, a fleet of any real size filled
- * the screen with craft: forty Wasps was eight models, and past that the disc read
- * as a wall of hulls rather than as a squadron. Doubling what one model stands for
- * halves the count without losing a single ship from the reading — the pips still
- * carry the exact number.
+ * Five is the current owner decision: small and medium fleets should read as a
+ * group of craft sooner. `MAX_MARKERS` remains the hard render budget, and the
+ * numeric overflow preserves the exact count when a large fleet exceeds it.
  *
  * WHY IT IS WORTH THE TROUBLE. Rendering one marker per fleet tells a player
  * nothing they did not already know; rendering one model per SHIP is unreadable
@@ -30,7 +28,7 @@ import { ALL_HULLS, HULLS, type Fleet, type HullId } from '@astera/rules';
  */
 
 /** Ships one model stands for. */
-export const PER_MODEL = 10;
+export const PER_MODEL = 5;
 
 export interface Marker {
   hull: HullId;

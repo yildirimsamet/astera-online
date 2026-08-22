@@ -16,7 +16,7 @@ export const statusBar = {
    * It says what is behind it rather than saying "menu", because D54's bug was a
    * control labelled as something other than what it opened.
    */
-  menuHint: 'Commander {{name}} — intel, rewards, account',
+  menuHint: 'Commander {{name}} — intel, leaderboard, rewards, account',
   menuWaiting: '{{count}} rewards waiting',
   bays: {
     hint: '{{used}} of {{total}} flight bays in use',
@@ -53,6 +53,7 @@ export const signals = {
   eyebrowRead: 'Everything you have been told',
   statusHeading: 'Right now',
   eventsHeading: 'What happened',
+  openEvent: 'Open related report',
   empty:
     'Nothing yet. The galaxy tells you when a fleet moves against you, when a probe is caught, and when your own ships come home.',
   repeat: '×{{count}}',
@@ -84,8 +85,12 @@ export const surface = {
   whatIntel: 'what you know',
   whatReports: 'your battle reports',
   whatRewards: 'your rewards',
+  whatLeaderboard: 'the Dominion ladder',
+  whatChat: 'galaxy chat',
   waitingPlanet: 'Reading planet',
   waitingIntel: 'Collecting',
+  waitingLeaderboard: 'Ranking the galaxy',
+  waitingChat: 'Opening galaxy chat',
   /** The generated crest a world wears. One element, used on two surfaces. */
   planetSigil: 'Planet',
 } as const;
@@ -104,8 +109,42 @@ export const menu = {
   rewardsLabel: 'Rewards',
   rewardsHint: 'What the galaxy owes you for playing it',
   rewardsWaiting: '{{count}} ready',
+  leaderboardLabel: 'Leaderboard',
+  leaderboardHint: 'Every commander ranked by Dominion',
   accountHeading: 'Account',
   soundLabel: 'Sound',
   soundOn: 'The score is playing.',
   soundOff: 'Silenced on this device.',
+} as const;
+
+export const leaderboard = {
+  eyebrow: 'The local galaxy',
+  title: 'Leaderboard',
+  empty: 'No commanders have joined this galaxy yet.',
+  rank: 'Rank {{rank}}',
+  tier: 'Tier {{tier}}',
+  score: 'Dominion',
+  you: 'You',
+} as const;
+
+export const chat = {
+  eyebrow: 'Live in this galaxy',
+  title: 'Galaxy Chat',
+  launcher: 'Open galaxy chat',
+  launcherUnread: 'Open galaxy chat — {{count}} unread',
+  list: 'Galaxy messages',
+  empty: 'No one has spoken yet. Be the first voice in the galaxy.',
+  older: 'Load older messages',
+  loadingOlder: 'Loading older messages',
+  placeholder: 'Message the galaxy',
+  send: 'Send',
+  remaining: '{{count}} characters left',
+  time: {
+    justNow: 'just now',
+    minutes_one: '{{count}} minute ago',
+    minutes_other: '{{count}} minutes ago',
+    hours: '{{hours}}h {{minutes}}m ago',
+    days_one: '{{count}} day ago',
+    days_other: '{{count}} days ago',
+  },
 } as const;

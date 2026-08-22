@@ -3,7 +3,7 @@ import { pino } from 'pino';
 import { afterAll, afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { eq } from 'drizzle-orm';
 import { DEBRIS, HULLS, fleetCount, type HullId } from '@astera/rules';
-import { battleReports, debrisFields, miningRuns, planets, players } from '../src/db/schema.js';
+import { accounts, battleReports, debrisFields, miningRuns, planets, players } from '../src/db/schema.js';
 import { buildApp } from '../src/app.js';
 import { TokenService } from '../src/auth/tokens.js';
 import { launchAttack } from '../src/services/mission.js';
@@ -170,9 +170,11 @@ describe('battle reports', () => {
   });
 
   it('names the opponent — being raided reveals the raider', async () => {
+    await f.db.update(accounts).set({ displayName: 'İzci' }).where(eq(accounts.id, f.accountIds[0]!));
+    await f.db.update(players).set({ name: 'STALE-SEASON-NAME' }).where(eq(players.id, f.playerIds[0]!));
     await raid();
     const [defender] = await reportsFor(1);
-    expect(defender!.opponentName).not.toBe('');
+    expect(defender!.opponentName).toBe('İzci');
     expect(defender!.opponentPlanet).not.toBe('');
   });
 

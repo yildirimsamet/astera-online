@@ -16,8 +16,20 @@ const C = {
   red: '\x1b[31m', green: '\x1b[32m', grey: '\x1b[90m', orange: '\x1b[38;5;208m',
 };
 
-const cfg = { players: arg('players', 140), days: arg('days', 14), seed: arg('seed', 42) };
-const { world, days } = runSeason(cfg);
+const requestedShare = process.argv.find((a) => a.startsWith('--crystal-share='));
+const hullCrystalShare = requestedShare === undefined
+  ? undefined
+  : Number(requestedShare.split('=')[1]) as 0.25 | 0.30 | 0.35;
+if (hullCrystalShare !== undefined && ![0.25, 0.30, 0.35].includes(hullCrystalShare)) {
+  throw new Error('--crystal-share must be 0.25, 0.30 or 0.35');
+}
+const cfg = {
+  players: arg('players', 140),
+  days: arg('days', 14),
+  seed: arg('seed', 42),
+  ...(hullCrystalShare === undefined ? {} : { hullCrystalShare }),
+};
+const { world, days, diagnostics } = runSeason(cfg);
 const keys = Object.keys(BANDS) as InvariantKey[];
 
 const pad = (s: unknown, n: number) => String(s).padEnd(n);
@@ -72,3 +84,10 @@ console.log(`  ${pad('blind', 10)}${String(bl).padStart(5)} raids   net ${Math.r
 console.log(`\n${C.grey}top wealth ${Math.max(...world.players.map((p) => p.wealthNow)).toLocaleString('en-US')} · ` +
   `#1 dominion ${Math.max(...world.players.map((p) => dominion(p.ledger))).toLocaleString('en-US')} · ` +
   `peak Core L${Math.max(...world.players.map((p) => p.buildings.CORE))}${C.reset}\n`);
+
+console.log(`${C.bold}CRYSTAL USE${C.reset}`);
+console.log(`  cap player-hours ${Math.round(diagnostics.capPlayerHours).toLocaleString('en-US')} · ` +
+  `median unused ${Math.round(diagnostics.medianUnused).toLocaleString('en-US')}`);
+console.log(`  spend ${Object.entries(diagnostics.spentShare)
+  .map(([category, share]) => `${category} ${(share * 100).toFixed(1)}%`)
+  .join(' · ')}\n`);

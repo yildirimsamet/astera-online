@@ -141,6 +141,16 @@ export function IntelIcon(props: IconProps) {
   );
 }
 
+/** Two live voices, without turning the galaxy's conversation into a notification bell. */
+export function ChatIcon(props: IconProps) {
+  return (
+    <Glyph {...props}>
+      <path d="M4 5.5h16v10.2H9l-5 3.2Z" />
+      <path d="M8 9.2h8M8 12.2h5" />
+    </Glyph>
+  );
+}
+
 /* ── 3 · Buildings ──────────────────────────────────────────────
    Each shape encodes what the building DECIDES, not what it looks like. */
 
@@ -619,6 +629,16 @@ export function RewardIcon(props: IconProps) {
       {/* What is standing in it. Off-centre so it reads as an object rather than
           as a decorative diamond centred on the axis. */}
       <path d="M12 3.2 14.4 7 12 10.4 9.6 7Z" />
+    </Glyph>
+  );
+}
+
+/** The Dominion ladder: a podium, not a generic analytics chart. */
+export function LeaderboardIcon(props: IconProps) {
+  return (
+    <Glyph {...props}>
+      <path d="M4 20v-6h5v6M9 20V8h6v12M15 20v-9h5v9" />
+      <path d="M11 4h2M12 3v3" />
     </Glyph>
   );
 }

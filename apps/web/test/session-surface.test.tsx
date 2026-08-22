@@ -327,6 +327,19 @@ describe('notification copy', () => {
       expect(line).toBe('DECISIVE at Grimhold · +3.2k alloy · 2 ships lost');
     });
 
+    it('leads with the canonical username and keeps the planet as location', () => {
+      const line = say('raid_result', {
+        grade: 'DECISIVE',
+        targetUsername: 'İzci',
+        targetPlanetName: 'Grimhold',
+        lootAlloy: 3200,
+        lootCrystal: 0,
+        unitsLost: 2,
+        shipsHome: 38,
+      });
+      expect(line).toContain('İzci at Grimhold');
+    });
+
     it('does not paint a win as a threat, and does paint a wipeout as one', () => {
       const won = { ...base, kind: 'raid_result', payload: { grade: 'DECISIVE', targetName: 'X', lootAlloy: 1, lootCrystal: 0, unitsLost: 0, shipsHome: 12 } };
       const lost = { ...base, kind: 'raid_result', payload: { grade: 'REPELLED', targetName: 'X', lootAlloy: 0, lootCrystal: 0, unitsLost: 12, shipsHome: 0 } };
@@ -348,6 +361,24 @@ describe('notification copy', () => {
           lootCrystal: 800,
         }),
       ).toBe('Fleet home from Grimhold · 38 ships · +4.0k looted');
+    });
+
+    it('reads the new return identity fields and preserves legacy rows', () => {
+      expect(
+        say('fleet_returned', {
+          trip: 'raid',
+          ships: 2,
+          fromUsername: 'İzci',
+          fromPlanetName: 'Grimhold',
+          lootAlloy: 0,
+          lootCrystal: 0,
+        }),
+      ).toContain('İzci at Grimhold');
+      expect(
+        say('fleet_returned', {
+          trip: 'raid', ships: 2, fromName: 'Legacy', lootAlloy: 0, lootCrystal: 0,
+        }),
+      ).toContain('Legacy');
     });
 
     /**
@@ -416,6 +447,13 @@ describe('notification copy', () => {
       expect(say('probe_report', { targetName: 'Grimhold', detected: false })).toBe(
         'Probe home · Grimhold is readable',
       );
+    });
+
+    it('uses the new probe username fields without breaking historical payloads', () => {
+      expect(say('probe_report', {
+        targetUsername: 'İzci', targetPlanetName: 'Grimhold', detected: false,
+      })).toContain('İzci at Grimhold');
+      expect(say('probe_report', { targetName: 'Legacy', detected: false })).toContain('Legacy');
     });
 
     it('says when their radar caught it, because that changes what to do next', () => {

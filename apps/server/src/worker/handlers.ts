@@ -25,6 +25,7 @@ import {
 import { addMinutes, atMinute, minutesSince, type Clock } from '../clock.js';
 import type { Db, Tx } from '../db/client.js';
 import {
+  accounts,
   battleReports,
   debrisFields,
   miningRuns,
@@ -157,16 +158,14 @@ export const onMissionArrival: Handler = async ({ db, clock }, event) => {
          * so not even the intel panel refreshed for a player who had it open.
          * "The information is the game", and the information arrived in silence.
          */
-        const [scouted] = await tx
-          .select({ name: planets.name })
-          .from(planets)
-          .where(eq(planets.id, delivered.targetPlanetId));
+        const scouted = await identityOfPlanet(tx, delivered.targetPlanetId);
         await notify(tx, {
           playerId: delivered.observerPlayerId,
           kind: 'probe_report',
           payload: {
             targetPlanetId: delivered.targetPlanetId,
-            targetName: scouted?.name ?? 'an unknown world',
+            targetUsername: scouted?.username ?? 'someone',
+            targetPlanetName: scouted?.planetName ?? 'an unknown world',
             // Their radar caught it. The intel screen says so too; this is the
             // first time the player finds out, and it decides whether they are
             // expected.
@@ -295,12 +294,19 @@ export const onMissionArrival: Handler = async ({ db, clock }, event) => {
     const attackerLedger = await ledgerOf(tx, attackerPlanet.playerId);
     const defenderLedger = await ledgerOf(tx, defender.playerId);
     const before = attackerLedger.taken - attackerLedger.lost;
+    const defenderBefore = defenderLedger.taken - defenderLedger.lost;
     bookBattle(attackerLedger, defenderLedger, loot.alloy + loot.crystal, result);
     // Measured from the ledger itself rather than recomputed, so the report can
     // never disagree with the ladder about what a battle was worth.
     const dominionSwing = attackerLedger.taken - attackerLedger.lost - before;
     await saveLedger(tx, attackerLedger);
     await saveLedger(tx, defenderLedger);
+    if (
+      Math.round(before) !== Math.round(attackerLedger.taken - attackerLedger.lost)
+      || Math.round(defenderBefore) !== Math.round(defenderLedger.taken - defenderLedger.lost)
+    ) {
+      await publishShard(tx, mission.seasonId, 'score');
+    }
 
     await tx.insert(battleReports).values({
       seasonId: mission.seasonId,
@@ -408,6 +414,11 @@ export const onMissionArrival: Handler = async ({ db, clock }, event) => {
     await recomputeWealth(tx, defender.planetId);
     await recomputeWealth(tx, attackerPlanet.planetId);
 
+    const [attackerIdentity, defenderIdentity] = await Promise.all([
+      identityOfPlanet(tx, attackerPlanet.planetId),
+      identityOfPlanet(tx, defender.planetId),
+    ]);
+
     /**
      * BOTH SIDES ARE TOLD. D45.
      *
@@ -425,6 +436,13 @@ export const onMissionArrival: Handler = async ({ db, clock }, event) => {
       playerId: defender.playerId,
       kind: 'raided',
       payload: {
+        ...(attackerIdentity
+          ? {
+              originPlanetId: mission.originPlanetId,
+              originUsername: attackerIdentity.username,
+              originPlanetName: attackerIdentity.planetName,
+            }
+          : {}),
         grade: result.grade,
         lootAlloy: loot.alloy,
         lootCrystal: loot.crystal,
@@ -442,7 +460,7 @@ export const onMissionArrival: Handler = async ({ db, clock }, event) => {
          * lost" six times, because the vault floor makes a poor planet unlootable
          * and an undefended one loses no units. Nothing in the line was false and
          * nothing in it was the point — every one of those raids had knocked their
-         * production offline for three hours (D3).
+         * production offline for the disruption window.
          *
          * Sent as minutes FROM NOW rather than as an instant, because that is what
          * the sentence says and it cannot then drift as the row ages: a
@@ -460,7 +478,9 @@ export const onMissionArrival: Handler = async ({ db, clock }, event) => {
       kind: 'raid_result',
       payload: {
         grade: result.grade,
-        targetName: defender.name,
+        targetPlanetId: defender.planetId,
+        targetUsername: defenderIdentity?.username ?? 'someone',
+        targetPlanetName: defender.name,
         lootAlloy: loot.alloy,
         lootCrystal: loot.crystal,
         unitsLost: fleetCount(result.attackerLosses),
@@ -530,10 +550,7 @@ async function settleReturn(
   const [planet] = await tx.select().from(planets).where(eq(planets.id, homePlanetId));
   if (planet) {
     // A return leg flies backwards, so the world it came FROM is its origin.
-    const [from] = await tx
-      .select({ name: planets.name })
-      .from(planets)
-      .where(eq(planets.id, mission.originPlanetId));
+    const from = await identityOfPlanet(tx, mission.originPlanetId);
     await notify(tx, {
       playerId: planet.playerId,
       kind: 'fleet_returned',
@@ -543,7 +560,9 @@ async function settleReturn(
         // field — a mining run's payload has no `ships` in it and never did.
         trip: 'raid',
         ships: fleetCount(returning),
-        fromName: from?.name ?? null,
+        fromPlanetId: mission.originPlanetId,
+        fromUsername: from?.username ?? null,
+        fromPlanetName: from?.planetName ?? null,
         lootAlloy: mission.loot?.alloy ?? 0,
         lootCrystal: mission.loot?.crystal ?? 0,
       },
@@ -671,7 +690,18 @@ export const onRadarWarning: Handler = async ({ db, clock }, event) => {
         // planet's name (`readRadarLog`); this one sent a raw uuid, which is why
         // nothing ever displayed it and L5 read exactly like L4.
         ...(radarRevealsOrigin(radarLevel)
-          ? { fleet: mission.fleet, originName: await planetName(tx, mission.originPlanetId) }
+          ? {
+              fleet: mission.fleet,
+              ...(await identityOfPlanet(tx, mission.originPlanetId).then((origin) =>
+                origin
+                  ? {
+                      originPlanetId: mission.originPlanetId,
+                      originUsername: origin.username,
+                      originPlanetName: origin.planetName,
+                    }
+                  : {},
+              )),
+            }
           : {}),
       },
       at: now,
@@ -700,9 +730,17 @@ export const onRadarWarning: Handler = async ({ db, clock }, event) => {
  */
 const LEAD_TOLERANCE = 0.05;
 
-async function planetName(tx: Tx, planetId: string): Promise<string> {
-  const [row] = await tx.select({ name: planets.name }).from(planets).where(eq(planets.id, planetId));
-  return row?.name ?? 'an unknown world';
+async function identityOfPlanet(
+  tx: Tx,
+  planetId: string,
+): Promise<{ username: string; planetName: string } | undefined> {
+  const [row] = await tx
+    .select({ username: accounts.displayName, planetName: planets.name })
+    .from(planets)
+    .innerJoin(players, eq(planets.playerId, players.id))
+    .innerJoin(accounts, eq(players.accountId, accounts.id))
+    .where(eq(planets.id, planetId));
+  return row;
 }
 
 /**

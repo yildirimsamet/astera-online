@@ -100,13 +100,13 @@ worth doing. **Cost lumpiness is a hard requirement, not a tuning preference.**
 
 | Hull | Class | Mathematical job | Cost of using it |
 |---|---|---|---|
-| **Wasp** | Skirmisher | Cheapest attack per alloy, fastest → shortest exposure. 1.6× into Bulwark-class, so it is the anti-turtle tool | 24 HP evaporates against Lances |
-| **Lance** | Lance | Highest raw attack. 1.6× into Wasps — the answer to a swarm | 0.625× into Bulwark-class; useless against a fortified planet |
-| **Bulwark** | Bulwark | The durability anchor. 1.6× into Lances | Speed 21 nearly doubles exposure on any route |
-| **Hauler** | Support | 1,800 cargo. **You cannot bring loot home without them, and they contribute nothing to the fight** | Every Hauler slot is a combat slot you did not bring |
+| **Wasp** | Skirmisher | Cheapest attack per alloy, fastest → shortest exposure. 1.6× into Bulwark-class, so it is the anti-turtle tool. 40 cargo | 24 HP evaporates against Lances |
+| **Lance** | Lance | Highest raw attack. 1.6× into Wasps — the answer to a swarm. 50 cargo | 0.625× into Bulwark-class; useless against a fortified planet |
+| **Bulwark** | Bulwark | The durability anchor. 1.6× into Lances. 70 cargo | Speed 199 gives the longest exposure on any route |
+| **Hauler** | Support | 1,800 cargo. **The dedicated cargo hull; it contributes nothing to the fight** | Every Hauler slot is a combat slot you did not bring |
 | **Bastion** | Bulwark, ground | 1.35× more HP per resource than any ship, because it can never leave. Breaks Lances | Cannot attack. Swarms overwhelm it |
 | **Thorn** | Skirmisher, ground | Light, cheap, buildable at Shipyard 0. Tears into heavy hulls | Lances pick it apart |
-| **Prospector** | Support, mining | Mines rocks and harvests wreckage. Three per planet, ever | Dies with the garrison; competes for the same bays |
+| **Prospector** | Support, mining | Mines rocks and harvests wreckage. Two per planet, ever | Dies with the garrison; competes for the same bays |
 
 Counter cycle: **`WASP ▸ BULWARK ▸ LANCE ▸ WASP`** at 1.6× / 0.625×. Support hulls are prey
 to everything and deal nothing.
@@ -180,8 +180,8 @@ blind raiding never fails there is nothing for information to reduce.
 
 ### Disruption
 
-A successful raid knocks the target's works offline: 40 min on DECISIVE, 15 on PARTIAL (D63 — it was 180/60 while flights took forty minutes).
-Refreshes rather than stacks, capped at 240 min pending. **Buildings are never damaged** — the
+A successful raid knocks the target's works offline: 15 min on DECISIVE, 5 on PARTIAL and 0 on REPELLED (D73). A later raid refreshes this window but cannot stack it beyond 15 minutes from now.
+Refreshes rather than stacks, capped at 15 min pending. **Buildings are never damaged** — the
 ownership pillar holds — but the victim loses *compounding* rather than merely stock. It is
 the only thing that makes raiding competitive with building over a season.
 
