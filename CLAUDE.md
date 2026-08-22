@@ -359,23 +359,25 @@ own, and seats that come back (D68–D71); one craft, one marker — the real-ti
 movement pass (D72).
 
 ```
-pnpm verify  →  0 type errors · 0 lint errors · 1,689 tests
-                rules 248 · sim 47 · server 553 · web 841
+pnpm verify  →  0 type errors · 0 lint errors · 1,758 tests
+                rules 253 · sim 53 · server 571 · web 881
 ```
 
-**Two season-gate assertions are RED after D63, down from five:** `TI` reads −0.465 against
-a floor of −0.40, and *the informed archetype tops the ladder on every seed* drops one seed.
-Both live in `packages/sim`. Everything else is green.
+**The season gate is GREEN on all five seeds**, including `TI` and *the informed archetype
+tops the ladder on every seed* — the two that had been red since D63. They came back at
+d398a3d; nothing was tuned against them to achieve it. **Verify before relying on this**:
+the cause was not isolated at the time it was noticed, so treat it as an observation with a
+commit attached rather than as a settled result.
 
-**`ARR` came back into band on all five seeds** with D63's retune, after being red since
-D52a. Nothing was tuned to achieve it.
+D81 (+25% asteroid spawn) was measured against the gate and all five seeds stayed in band.
 
 **The simulator now models a game we do not ship.** Its bots act on `loginsPerDay` — every
 2.4 to 12 hours — which described an async world and does not describe a real-time one.
-That is the first suspect for the two reds, but the obvious version of the hypothesis was
-TESTED AND REFUTED: scaling `loginsPerDay` ×4 took the gate from two red to five. Re-deriving
-the simulator for real-time pacing is real work; do not guess at it, and **do not tune the
-game against these two numbers until it is done.**
+That was the first suspect while the gate was red, and the obvious version of the hypothesis
+was TESTED AND REFUTED: scaling `loginsPerDay` ×4 took the gate from two red to five. The
+gate being green does not make the pacing right — it makes it unproven in the other
+direction. Re-deriving the simulator for real-time pacing is still real work; do not guess
+at it, and **do not tune the game against these numbers until it is done.**
 
 **The design's central claim came back.** *The informed archetype tops the ladder on every
 seed* was red from D58 (RAIDER took seed 42) and is green again since D61. Nothing was
@@ -444,7 +446,6 @@ has walked it who did not build it.
 
 ## Known issues
 
-- The season gate is red on `TAX` and on seed 4242 (above).
 - **Arrival instants are rounded UP to whole minutes, and a whole minute is now up to half a
   flight.** `travelMinutes` feeds `arriveAt` for every raid and probe. At forty-minute flights
   that was 2% and invisible; since D63 it is 8–50%, it flattens short legs, and it is why the

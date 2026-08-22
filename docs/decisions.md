@@ -1190,6 +1190,46 @@ green baseline gained two new failures: seed 99 ARR fell to 0.290 and pooled TI 
 authoritative and the live cargo figures remain unchanged. Survivor cargo bounds
 and Hauler escort targeting gained direct regression coverage independently.
 
+### D81 · A denser sky — owner instruction
+
+`asteroidSpawnPerHour` 2.7 → 3.375. More of the disc is worth looking at, and the
+race for a rock happens oftener. About fifteen rocks in the sky at any moment
+against twelve, which is the rate times the mean life and is what a player
+actually experiences — the rate itself is invisible.
+
+**It re-rolls nobody.** The season's whole schedule is one deterministic pass over
+the seed and a rock's index is its position in that pass, so index `i` keeps the
+same radius, speed, level, ore, phase and height: the eight draws per rock are
+consumed in the same order whatever `count` is. What moves is the SPACING —
+`interval = span / count` — so every `appearsAt` slides 20% earlier and the set of
+rocks visible at a given instant is a different set. On a season already running,
+the field turns over once, on the next read, for everybody at once.
+
+**Safe for a run already in the air.** `resolveMiningArrival` finds its rock by
+index and does not re-check `asteroidActive`, and the count only ever grew — so the
+index still exists and still names the same orbit. The claim rows keyed by index
+stay coherent for the same reason. A player mid-decision may find a rock gone when
+they launch, which is an ordinary `ASTEROID_GONE` refusal.
+
+**The season gate held.** More rocks is more mining income, which is exactly what
+the gate measures, and all five seeds stayed in band.
+
+**And it re-locked a measured ceiling, which is the part worth remembering.** The
+reachability sweep asserts a worst-case flight in revolutions of the rock's orbit,
+and those ceilings are MEASURED maxima rather than design limits. The sweep starts
+each intercept at `appearsAt + ...`, so a change to the spacing samples the same
+orbits at different angles — the Derrick case moved from 0.67 to 0.6742 and failed
+a bound that had been locked to the previous sample. Nothing about reachability got
+worse: across 500,000 intercepts there are zero unreachable rocks and the worst
+case is still inside one revolution (0.9895 plain, 0.6742 Derrick). The bound moved
+to 0.68 and both measured maxima are now written at the site, so the next reader can
+tell a re-lock from a regression.
+
+Also new: the field had no test of its POPULATION at all — every other asteroid
+test is a property of one rock. `invariants.test.ts` now pins rate x mean life
+across five seeds and most of a season, and asserts the disc never empties, which
+is the failure a mean alone cannot show.
+
 ## Architecture
 
 A1 · One source of truth — LOCKED

@@ -908,8 +908,29 @@ export const GALAXY = {
    * So the rocks can be as fast as they need to be to read as moving.
    */
 
-  /** New rocks entering the disc per hour. PROVISIONAL. */
-  asteroidSpawnPerHour: 2.7,
+  /**
+   * New rocks entering the disc per hour. PROVISIONAL.
+   *
+   * RAISED 25% FROM 2.7, owner decision. A denser sky: more of the disc is worth
+   * looking at, and the race for a rock happens oftener.
+   *
+   * WHAT IT MOVES, BECAUSE THE FIELD IS DERIVED AND NOT STORED (A5). The whole
+   * season's schedule is one deterministic pass over the seed, and a rock's index
+   * is its position in that pass — so raising the count does NOT re-roll anybody:
+   * index `i` keeps the same radius, speed, level, ore, phase and height, because
+   * the eight draws per rock are consumed in the same order whatever `count` is.
+   *
+   * What DOES move is the spacing. `interval = span / count`, so every rock's
+   * `appearsAt` slides 20% earlier and the sky visible at any given instant is a
+   * different set of rocks than it was. On a season already in progress that means
+   * the field turns over once, on the next read, for everybody at once.
+   *
+   * It is safe for a run already in the air: `resolveMiningArrival` finds its rock
+   * by INDEX and does not re-check `asteroidActive`, and the count only ever grows,
+   * so the index still exists and still names the same orbit. The claim rows keyed
+   * by index stay coherent for the same reason.
+   */
+  asteroidSpawnPerHour: 3.375,
 
   /**
    * Game units per minute along the orbit, random inside this band and INDEPENDENT

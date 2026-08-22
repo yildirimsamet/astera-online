@@ -6,6 +6,7 @@ import {
   DISRUPTION,
   ECON,
   GALAXY,
+  SEASON,
   HULLS,
   INSTRUMENT_COST_MULT,
   INSTRUMENT_IDS,
@@ -274,6 +275,51 @@ describe('the asteroid field', () => {
   const spec = generateGalaxy(7, 40);
   const rocks = spec.asteroids;
 
+  /**
+   * HOW BUSY THE SKY IS, AND NOTHING WAS HOLDING IT.
+   *
+   * `asteroidSpawnPerHour` was raised 25% by owner decision and the suite would not
+   * have noticed either the change or a revert of it: every other test here is a
+   * property of an individual rock, and none of them counts the field.
+   *
+   * The number that matters to a player is not the spawn RATE, it is how many rocks
+   * are in the disc when they open the game. That is the rate times the mean life,
+   * and pinning it that way is what makes this a test rather than a restatement of
+   * the constant: it fails if the rate moves, if the lifetimes move, or — the case
+   * a mean alone would miss — if `generateAsteroids` ever stopped spreading spawns
+   * evenly across the season and started clumping them.
+   *
+   * Sampled across five seeds and most of a season, skipping the ramp at either
+   * end where the field is filling and draining.
+   */
+  it('holds a steady population, and never empties the sky', () => {
+    const span = SEASON.days * 24 * 60;
+    const meanLife = ((GALAXY.asteroidLifeHoursMin + GALAXY.asteroidLifeHoursMax) / 2) * 60;
+    const expected = (GALAXY.asteroidSpawnPerHour / 60) * meanLife;
+
+    const populations: number[] = [];
+    for (const seed of [7, 42, 99, 4242, 5150]) {
+      const field = generateGalaxy(seed, 50).asteroids;
+      for (let t = span * 0.05; t < span * 0.95; t += span / 200) {
+        populations.push(field.filter((a) => asteroidActive(a, t)).length);
+      }
+    }
+
+    const mean = populations.reduce((a, b) => a + b, 0) / populations.length;
+    expect(mean).toBeCloseTo(expected, 0);
+
+    /**
+     * AND EVERY SAMPLE IS A SKY WORTH LOOKING AT. A disc that empties — even for
+     * one stretch of one seed — is the failure a mean cannot show, and it is what
+     * clumped spawns would produce.
+     */
+    expect(Math.min(...populations), 'the disc emptied at some point in the season').toBeGreaterThan(0);
+    // Generous either side of the measured 11-19: this guards against a field that
+    // has quietly become a swarm or a desert, not against ordinary variance.
+    expect(Math.min(...populations)).toBeGreaterThanOrEqual(6);
+    expect(Math.max(...populations)).toBeLessThanOrEqual(30);
+  });
+
   it('spawns a level distribution that adds up', () => {
     const sum = GALAXY.asteroidLevelWeights.reduce((a, b) => a + b, 0);
     expect(sum).toBeCloseTo(1, 6);
@@ -441,10 +487,33 @@ describe('the asteroid field', () => {
     expect(Math.max(...laps)).toBeLessThan(1);
   });
 
+  /**
+   * THE CEILINGS HERE ARE MEASURED, NOT CHOSEN — so a change to the FIELD re-locks
+   * them even when it changes nothing about a craft.
+   *
+   * Raising `asteroidSpawnPerHour` 25% slid every rock's `appearsAt` 20% earlier
+   * (`interval = span / count`). The rocks are identical — index `i` keeps the same
+   * radius, speed, period and phase — but this sweep starts each intercept at
+   * `appearsAt + ...`, so it now samples the same orbits at DIFFERENT angles. The
+   * distribution did not get worse; a different part of it got sampled.
+   *
+   * The properties that are actually design rules all still hold, and with room:
+   * across 500,000 intercepts (two speeds × five seeds × every slot × 200 rocks ×
+   * five moments of each rock's life) there are ZERO unreachable rocks, and the
+   * worst case is still comfortably inside one revolution — 0.9895 laps plain and
+   * 0.6742 with a Derrick.
+   *
+   * So the Derrick ceiling moves from 0.67 to just above its new measured maximum.
+   * The figures are written down so the next reader can tell a re-lock from a
+   * regression: anything materially past these is the solver or the field changing
+   * shape, not a sample moving.
+   */
   it('keeps every generated rock reachable across the five gate seeds', () => {
     for (const [speed, maxFlight, maxLaps] of [
+      // measured max: 7.196 min, 0.9895 laps
       [prospectorSpeed([]), 8, 1.01],
-      [prospectorSpeed(['DERRICK']), 5, 0.67],
+      // measured max: 4.847 min, 0.6742 laps
+      [prospectorSpeed(['DERRICK']), 5, 0.68],
     ] as const) {
       for (const seed of [42, 7, 99, 4242, 1337]) {
         const generated = generateGalaxy(seed, 50);

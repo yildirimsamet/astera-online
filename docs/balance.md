@@ -286,7 +286,8 @@ debris        10% of destroyed non-ground value, decays over 3h   [PROVISIONAL, 
 ### Asteroids — D19
 
 ```
-spawn         2.7 new rocks per hour           [PROVISIONAL]
+spawn         3.375 new rocks per hour         [PROVISIONAL]  D81: +25% from 2.7
+              ~15 rocks in the disc at any moment (rate x mean life), was ~12
 orbit         radius 200–950, closed, constant speed 140–300 units/min
 life          3–6 hours in the disc, then gone for good
 ore by level  [—, 800, 1600, 3200, 6000, 11000]
