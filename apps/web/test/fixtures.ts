@@ -1,3 +1,4 @@
+import { RESEARCH_PROJECT_IDS, RESEARCH_PROJECTS } from '@astera/rules';
 import type { PlanetView } from '../src/api/schemas.js';
 
 /**
@@ -57,38 +58,16 @@ export function planetView(
     orbit: [],
     orbitSlots: 1,
     satelliteCosts: {},
-    research: [
-      {
-        id: 'ISOTOPE_SPECTROMETRY',
-        cost: { alloy: 0, crystal: 600, deuterium: 0 },
-        discovered: false,
-        completed: false,
-        completedAt: null,
-        available: false,
-        availableAt: new Date('2999-01-01T00:00:00.000Z'),
-        prerequisite: null,
-      },
-      {
-        id: 'DENSE_FUEL_CELLS',
-        cost: { alloy: 0, crystal: 900, deuterium: 100 },
-        discovered: false,
-        completed: false,
-        completedAt: null,
-        available: false,
-        availableAt: new Date('2999-01-01T00:00:00.000Z'),
-        prerequisite: 'ISOTOPE_SPECTROMETRY',
-      },
-      {
-        id: 'GRAVITIC_CHARGES',
-        cost: { alloy: 0, crystal: 1200, deuterium: 250 },
-        discovered: false,
-        completed: false,
-        completedAt: null,
-        available: false,
-        availableAt: new Date('2999-01-01T00:00:00.000Z'),
-        prerequisite: 'ISOTOPE_SPECTROMETRY',
-      },
-    ],
+    research: RESEARCH_PROJECT_IDS.map((id) => ({
+      id,
+      cost: RESEARCH_PROJECTS[id].cost,
+      discovered: false,
+      completed: false,
+      completedAt: null,
+      available: false,
+      availableAt: new Date('2999-01-01T00:00:00.000Z'),
+      prerequisite: RESEARCH_PROJECTS[id].prerequisite,
+    })),
     fleet: { WASP: 12 },
     ground: {},
     /** Craft that are off the planet. Empty by default: nothing is in the air. */
