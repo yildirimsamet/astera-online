@@ -3,11 +3,11 @@ import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import { PLANET_START } from '@astera/rules';
 import { registerBody } from '../auth/credentials.js';
-import { missions, planets, units } from '../db/schema.js';
+import type { Tx } from '../db/client.js';
+import { buildOrders, missions, planets, units } from '../db/schema.js';
 import { authenticate, registerAccount } from '../services/account.js';
-import { buildUnits, upgradeBuilding } from '../services/build.js';
-import { launchAttack } from '../services/mission.js';
-import { GameError } from '../services/planet.js';
+import { placeBuildingUpgrade, placeUnitBuild } from '../services/build.js';
+import { GameError, withPlanetLock, type LockedPlanet } from '../services/planet.js';
 import { planetView } from '../services/planetView.js';
 import { joinSeason } from '../services/player.js';
 import { currentPlacement, listServers, resolveJoinTarget } from '../services/servers.js';
@@ -16,15 +16,15 @@ import { openSession } from './auth.js';
 /**
  * CLAIMING THE WORLD YOU HAVE ALREADY BEEN PLAYING. D56.
  *
- * The rehearsal ends with a fleet on the pad and a target chosen, and this is the
- * one call that turns all of it into a season: an account, a seat in the frontier
- * galaxy, and every decision the visitor made, replayed. One request, because the
+ * The rehearsal ends with four staged queue commitments, and this is the one call
+ * that turns all of it into a season: an account, a seat in the frontier galaxy,
+ * and every decision the visitor made, replayed. One request, because the
  * alternative is a player who has just committed watching four round trips before
  * their world appears — and the moment the wall is crossed is the moment the game
  * has the least credit to spend.
  *
  * THE REHEARSAL DECIDED NOTHING. Every intent below goes through the ordinary
- * service — `upgradeBuilding`, `buildUnits`, `launchAttack` — with the ordinary
+ * service — `upgradeBuilding` and `buildUnits` — with the ordinary
  * locks, the ordinary rules and the ordinary refusals. The client computed the
  * same answers locally out of `@astera/rules` so the screen could keep up with a
  * finger, and that is a PREDICTION; this is the outcome. Principle 1 is intact.
@@ -32,8 +32,9 @@ import { openSession } from './auth.js';
  * A REFUSED INTENT NEVER COSTS THE PLAYER THEIR ACCOUNT. The account and the
  * planet commit first and separately; the opening is replayed afterwards, step by
  * step, and each step reports for itself. A target that crossed out of the tier
- * band while the visitor was typing a password is one line in `applied` and a
- * launch sheet on the way in — not a claim that fails and a person who leaves.
+ * refusal while the visitor was typing a password is one line in `applied`, not a
+ * claim that fails and a person who leaves. `launch` remains accepted only so a
+ * cached pre-queue rehearsal can fail that obsolete final intent cleanly.
  */
 
 /** What the visitor did during the rehearsal, in the order they did it. */
@@ -57,7 +58,7 @@ const intent = z.discriminatedUnion('kind', [
 /**
  * A CAP, BECAUSE THIS LIST ARRIVES FROM A CLIENT THAT IS NOT SIGNED IN.
  *
- * The scripted opening is six steps — three upgrades, one build and one launch,
+ * The scripted opening is four steps — three upgrades and one two-Wasp build —
  * with room to spare. Twelve is generous for anything a rehearsal can produce and
  * small enough that nobody can hand an unauthenticated endpoint a thousand
  * transactions to run.
@@ -79,7 +80,7 @@ export function registerOnboardingRoutes(app: FastifyInstance): void {
    *
    * Everything else a stranger can reach either writes nothing (`/api/preview`)
    * or creates a row that costs the world nothing. This takes a SEAT: a galaxy
-   * holds fifty worlds, galaxies open strictly in order, and that ordering is the
+   * holds three hundred commanders, galaxies open strictly in order, and that ordering is the
    * only mitigation the empty-shard risk has. Left open, a script fills the
    * frontier in the time it takes to write the loop, and every real player who
    * arrives afterwards lands in a galaxy of ghosts.
@@ -103,21 +104,27 @@ export function registerOnboardingRoutes(app: FastifyInstance): void {
       : await seatOnFrontier(app, account.id);
     const { target, joined } = seated;
 
-    const applied = (await untouched(app, joined.planetId))
-      ? await replay(app, joined.planetId, body.intents)
-      : /**
+    const applied = await withPlanetLock(
+      app.db,
+      joined.planetId,
+      app.clock,
+      async (tx, planet) => (await untouched(tx, planet))
+        ? replay(tx, planet, body.intents)
+        : /**
          * A RETRY, AND THE PLANET HAS ALREADY LIVED. Idempotency without a key.
          *
          * The one thing a repeated claim must never do is raise the Core twice or
          * launch a second fleet, and the honest test for "has this opening already
          * been applied" is the planet itself: a world nobody has acted on holds
-         * exactly the opening grant, a Command Core at 1, no ships and no missions.
+         * exactly the opening grant, no queued work, no ships and no missions.
          * `request_log` is the wrong tool here — it exists for the launch path,
          * where one player legitimately makes many similar calls and only a key can
          * tell them apart. A claim happens once per account, ever, and deriving
          * the answer from state cannot go stale the way a stored key can (A5).
          */
-        body.intents.map((i) => ({ kind: i.kind, ok: false as const, error: 'ALREADY_OPENED' }));
+          body.intents.map((i) => ({ kind: i.kind, ok: false as const, error: 'ALREADY_OPENED' })),
+      joined.playerId,
+    );
 
     const session = await openSession(app, reply, account);
 
@@ -203,7 +210,7 @@ const seatIn = async (
  * the next galaxy along, which is exactly what the frontier rule says.
  *
  * Bounded, because "every galaxy is full" is a real state and not something to spin
- * on: `SERVERS` tops out at ten, and a claim that cannot find a seat in three goes
+ * on: `SERVERS` tops out at two, and a claim that cannot find a seat in three goes
  * has met a world at capacity rather than a race.
  */
 async function seatOnFrontier(app: FastifyInstance, accountId: string): Promise<Seated> {
@@ -226,16 +233,11 @@ async function seatOnFrontier(app: FastifyInstance, accountId: string): Promise<
 /**
  * Has anything at all happened to this world yet?
  *
- * All four conditions together, because each alone has a way of being true on a
- * planet that has been played: the grant is spent by the first upgrade, the Core
- * is raised by it, ships are the second thing bought, and a mission is the third.
+ * All conditions together, because each alone has a way of being true on a planet
+ * that has been played. Active work is explicit now; resource equality remains the
+ * fast proof that no paid opening order was placed.
  */
-async function untouched(app: FastifyInstance, planetId: string): Promise<boolean> {
-  const [row] = await app.db
-    .select({ alloy: planets.alloy, crystal: planets.crystal })
-    .from(planets)
-    .where(eq(planets.id, planetId));
-  if (!row) return false;
+async function untouched(tx: Tx, planet: LockedPlanet): Promise<boolean> {
   /**
    * COMPARED AGAINST WHAT A PLANET IS CREATED WITH, not against `START`.
    *
@@ -246,19 +248,30 @@ async function untouched(app: FastifyInstance, planetId: string): Promise<boolea
    * stranger to make five choices and then silently discards all of them.
    */
   if (
-    Math.floor(row.alloy) !== PLANET_START.alloy ||
-    Math.floor(row.crystal) !== PLANET_START.crystal
+    Math.floor(planet.alloy) !== PLANET_START.alloy ||
+    Math.floor(planet.crystal) !== PLANET_START.crystal
   ) {
     return false;
   }
 
-  const [ships] = await app.db.select().from(units).where(eq(units.planetId, planetId)).limit(1);
+  const [work] = await tx
+    .select({ id: buildOrders.id })
+    .from(buildOrders)
+    .where(eq(buildOrders.planetId, planet.planetId))
+    .limit(1);
+  if (work) return false;
+
+  const [ships] = await tx
+    .select()
+    .from(units)
+    .where(eq(units.planetId, planet.planetId))
+    .limit(1);
   if (ships) return false;
 
-  const [flight] = await app.db
+  const [flight] = await tx
     .select()
     .from(missions)
-    .where(and(eq(missions.originPlanetId, planetId)))
+    .where(and(eq(missions.originPlanetId, planet.planetId)))
     .limit(1);
   return !flight;
 }
@@ -267,18 +280,21 @@ async function untouched(app: FastifyInstance, planetId: string): Promise<boolea
  * Run the opening, one decision at a time, reporting each for itself.
  *
  * SEQUENTIALLY AND IN ORDER, because the opening is a chain: the Core has to be
- * raised before the Refinery may pass it, the Shipyard exists before a hull is
- * built, and the ships exist before they can fly. Each service takes the planet's
- * row lock on its own, which is also why this is not one transaction — holding a
- * lock across five of them would serialise the whole galaxy behind a signup.
+ * queued before the Refinery may use its projected ceiling.
+ *
+ * ALL STEPS SHARE THE ONE PLANET TRANSACTION. A phone may retry at any byte of the
+ * response, and two identical claims may arrive together. The planet row lock
+ * serialises only this one new world; atomic commit means a killed process leaves
+ * either the whole replay or none of it, never a prefix that a retry mistakes for
+ * a completed opening.
  *
  * A REFUSAL STOPS THE REST. Once one step in a chain is refused the ones after it
  * are asking for something that cannot be true, and reporting five failures for
  * one cause is how an interface says nothing at all.
  */
 async function replay(
-  app: FastifyInstance,
-  planetId: string,
+  tx: Tx,
+  planet: LockedPlanet,
   intents: readonly Intent[],
 ): Promise<Applied[]> {
   const out: Applied[] = [];
@@ -291,11 +307,14 @@ async function replay(
     }
     try {
       if (step.kind === 'upgrade') {
-        await upgradeBuilding(app.db, planetId, step.building, app.clock);
+        await placeBuildingUpgrade(tx, planet, step.building);
       } else if (step.kind === 'build') {
-        await buildUnits(app.db, planetId, step.hull, step.count, app.clock);
+        await placeUnitBuild(tx, planet, step.hull, step.count);
       } else {
-        await launchAttack(app.db, planetId, step.targetPlanetId, step.fleet, app.clock);
+        // Backward compatibility for a cached pre-D4 rehearsal. New rehearsals do
+        // not emit launch: a fresh planet has no completed hulls, and manufacturing
+        // one here would be the instant-build exception the queue exists to remove.
+        throw new GameError('NOT_ENOUGH_SHIPS', 'Not enough ships at home');
       }
       out.push({ kind: step.kind, ok: true });
     } catch (err) {

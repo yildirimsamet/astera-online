@@ -350,7 +350,7 @@ export function ScanIcon(props: IconProps) {
 
 /* ── 6 · Status ─────────────────────────────────────────────────── */
 
-/** Surface works knocked offline. Buildings are never destroyed — only stopped. */
+/** Surface works knocked offline by ordinary raids; strategic damage is rendered elsewhere. */
 export function DisruptedIcon(props: IconProps) {
   return (
     <Glyph {...props}>
@@ -374,8 +374,18 @@ export function ShieldedIcon(props: IconProps) {
    Not in the original brief. These are the marks the shell needs to stop being
    a text-only tab bar, and nothing here carries gameplay meaning. */
 
-/** Drawn open at the shackle: it marks "not yet", never "never". */
+/** A real unmet prerequisite. Terminal owned states use `UnlockIcon`. */
 export function LockIcon(props: IconProps) {
+  return (
+    <Glyph {...props}>
+      <rect x="4.8" y="10.4" width="14.4" height="9.8" rx="1.6" />
+      <path d="M8.4 10.4V7.9a3.6 3.6 0 0 1 7.2 0v2.5" />
+    </Glyph>
+  );
+}
+
+/** The gate was opened and there is nothing left to buy. */
+export function UnlockIcon(props: IconProps) {
   return (
     <Glyph {...props}>
       <rect x="4.8" y="10.4" width="14.4" height="9.8" rx="1.6" />

@@ -3,9 +3,8 @@ import { useFrame } from '@react-three/fiber';
 import { useGLTF } from '@react-three/drei';
 import * as THREE from 'three';
 import type { MiningRun } from '../api/schemas.js';
-import { MODEL, MODEL_FACING } from '../ui/assets.js';
-import { orientedCraft } from './model.js';
-import { ROUTE_OPACITY, ROUTE_OPACITY_FOCUSED, Wake, useLine } from './Fleets.jsx';
+import { MODEL } from '../ui/assets.js';
+import { Hull, ROUTE_OPACITY, ROUTE_OPACITY_FOCUSED, Wake, useLine } from './Fleets.jsx';
 import { CRAFT_SCALE, runPosition, toWorld, type Vec3Tuple } from './scene.js';
 import { formationFor, slotOffset } from './Squadrons.js';
 import { markHit, wasTap } from './tap.js';
@@ -161,13 +160,10 @@ function Run({
  * would state a capacity it does not have.
  */
 function Craft({ offset }: { offset: [number, number, number] }) {
-  const { scene } = useGLTF(MODEL.drill, false);
-  const model = useMemo(() => orientedCraft(scene, MODEL_FACING[MODEL.drill] ?? '+z'), [scene]);
-
   return (
     <group position={offset}>
       <Wake scale={STYLE.scale} colour={STYLE.flame} />
-      <primitive object={model} scale={STYLE.scale} />
+      <Hull url={MODEL.drill} scale={STYLE.scale} glow={STYLE.colour} focused={false} />
     </group>
   );
 }

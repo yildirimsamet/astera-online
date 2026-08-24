@@ -26,7 +26,7 @@ export function DiscReadout({
           ) : null}
         </p>
         {online !== undefined ? (
-          <p className="flex shrink-0 items-center gap-1 text-[8px] leading-none text-dim">
+          <p className="flex shrink-0 items-center gap-1 text-[9px] leading-none text-dim">
             <span className="size-1 rounded-full bg-opportunity" aria-hidden="true" />
             {t('galaxy.online', { count: online })}
           </p>

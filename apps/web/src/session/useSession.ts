@@ -315,6 +315,19 @@ export function useSession() {
     void coldStart();
   }, [coldStart]);
 
+  /** The old planet vanished at the public rollover instant. D88. */
+  const rollover = useCallback((): void => {
+    const current = session;
+    if (current.phase !== 'ready') return;
+    queries.clear();
+    // The world already committed its successor. Move immediately; `/me` then
+    // reconciles the permanent result without putting a loading door in the way.
+    setSession({ phase: 'servers', me: { ...current.me, placement: null } });
+    void api.me().then(settle).catch((err: unknown) => {
+      setSession({ phase: 'blocked', message: messageOf(err) });
+    });
+  }, [api, queries, session, settle]);
+
   return {
     session,
     authenticate,
@@ -325,5 +338,6 @@ export function useSession() {
     leaveRehearsal,
     signInInstead,
     claim,
+    rollover,
   };
 }

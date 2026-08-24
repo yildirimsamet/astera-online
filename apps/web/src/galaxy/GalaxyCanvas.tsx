@@ -1,6 +1,6 @@
 import { Suspense, useEffect, useMemo, useRef, type ComponentRef } from 'react';
-import { Canvas, useFrame, useThree } from '@react-three/fiber';
-import { AdaptiveDpr, Html, OrbitControls, Preload } from '@react-three/drei';
+import { Canvas, useFrame, useStore, useThree } from '@react-three/fiber';
+import { Html, OrbitControls, Preload } from '@react-three/drei';
 import { Bloom, EffectComposer, Vignette } from '@react-three/postprocessing';
 import * as THREE from 'three';
 import type {
@@ -11,20 +11,23 @@ import type {
   PendingThread,
 } from '../api/schemas.js';
 import type { Focus } from './FocusPanel.js';
-import { focusIdentity, rigAction } from './follow.js';
+import { focusIdentity, rigAction, rigGestureState } from './follow.js';
 import { BrightStars, Core, Disc, Dust, Meteors, Nebula, Starfield } from './Environment.jsx';
 import { useAmbientFrames } from './frames.jsx';
 import { Wrecks, type WreckView } from './Wrecks.js';
 import { Asteroids, InterceptMarks } from './Asteroids.jsx';
 import { OwnFleets, Traffic, WatchBeams, threadKey } from './Fleets.jsx';
+import { DeathStarImpacts } from './DeathStarImpact.jsx';
 import { PlanetField } from './PlanetField.jsx';
 import { Satellites, Shields } from './Satellites.jsx';
 import { MiningFlights } from './MiningFlights.jsx';
 import {
   DISC_RADIUS,
+  activeWorldPosition,
   asteroidWorldPosition,
   clearOfWorlds,
   contactPosition,
+  isRivalNode,
   legStandoff,
   planetNodes,
   runPosition,
@@ -34,6 +37,8 @@ import {
 } from './scene.js';
 import { installTapGuard, wasMiss, wasTap } from './tap.js';
 import { serverNow } from '../lib/clock.js';
+import { useReducedMotionPreference } from './motion.js';
+import { useTranslation } from 'react-i18next';
 
 /**
  * THE GAME SURFACE.
@@ -50,8 +55,9 @@ import { serverNow } from '../lib/clock.js';
  *     battery drain a page can have, and this scene is usually still. The camera
  *     invalidates itself while it moves; a slow ticker invalidates for the
  *     asteroids and the dust. When nothing is happening, nothing renders.
- *   · `AdaptiveDpr` drops resolution while the camera moves and restores it when
- *     it settles, which is where a mid-range phone actually wins its frames.
+ *   · Display resolution stays fixed while the player moves the camera. Thin
+ *     trails and small hulls cannot visibly blur during the most tactile gesture.
+ *     Performance is bought by batching and effect density, not temporary blur.
  */
 
 /**
@@ -75,13 +81,13 @@ const LEASH = DISC_RADIUS * 1.15;
 const EASE = 0.5;
 
 /**
- * How close the camera comes when it flies home from the wide opening. D56.
+ * How close the camera comes whenever it flies home. D56.
  *
  * MUCH CLOSER THAN THE ORDINARY FRAMING, on the owner's instruction, and the
- * reason is what the flight is FOR. A returning commander opens at about 26 units
- * because they want their neighbourhood: their world and everything they might
- * send a fleet at. A stranger pressing "show me my world" is being answered, and
- * an answer that stops a disc-width away shows them a dot among dots.
+ * reason is what the flight is FOR. A returning commander may open wider because
+ * they want their neighbourhood. Pressing Home is different: it explicitly asks
+ * to see the active world. Moving only the pivot while preserving a disc-wide
+ * camera range technically centred the coordinate and visibly showed empty space.
  *
  * Well clear of `minDistance`, so the rig lands rather than being caught by a
  * clamp — and the player can pull straight back out, because the approach is
@@ -113,9 +119,14 @@ export interface GalaxyCanvasProps {
   wrecks: readonly WreckView[];
   /** Where your own craft launch from, for drawing mining legs. */
   homePosition: { x: number; y: number; z: number } | undefined;
+  /** The controlled world Camera Home resolves inside the rendered galaxy list. */
+  activePlanetId?: string | null;
   /** Your Aegis level. Only ever your own — D15 keeps everyone else's private. */
   aegisLevel: number;
   seasonStart: Date | undefined;
+  /** The one commander whose history is pinned for this season. */
+  rivalPlanetId?: string | null;
+  rivalPlayerId?: string | null;
   focus: Focus | null;
   onFocus: (focus: Focus | null) => void;
   /** Bumped by the HOME button to re-centre on the player's own world. */
@@ -160,8 +171,11 @@ export function GalaxyCanvas({
   runs,
   wrecks,
   homePosition,
+  activePlanetId = null,
   aegisLevel,
   seasonStart,
+  rivalPlanetId = null,
+  rivalPlayerId = null,
   focus,
   onFocus,
   homeSignal,
@@ -170,10 +184,10 @@ export function GalaxyCanvas({
   onReady,
 }: GalaxyCanvasProps) {
   const nodes = useMemo(() => planetNodes(planets), [planets]);
-  const home = useMemo<[number, number, number]>(() => {
-    const self = planets.find((p) => p.isSelf);
-    return self ? toWorld(self.position) : [0, 0, 0];
-  }, [planets]);
+  const home = useMemo<[number, number, number]>(
+    () => activeWorldPosition(planets, activePlanetId, homePosition),
+    [activePlanetId, homePosition, planets],
+  );
 
   const selfId = useMemo(() => planets.find((p) => p.isSelf)?.id, [planets]);
   const selectedId = focus?.kind === 'planet' ? focus.id : null;
@@ -310,6 +324,21 @@ export function GalaxyCanvas({
       camera={{ position: [home[0] + 12, 16, home[2] + 20], fov: 45, near: 0.1, far: 600 }}
       dpr={[1, 2]}
       gl={{ antialias: true, powerPreference: 'high-performance' }}
+      onCreated={({ gl }) => {
+        /**
+         * THE COLOUR CONTRACT, stated rather than inherited from library defaults.
+         *
+         * Three works in linear-sRGB; the display is sRGB; ACES compresses values
+         * above one into photographed highlights instead of clipping them white.
+         * R3F currently chooses these defaults too, but a premium renderer cannot
+         * let a dependency upgrade silently change what every texture and plume
+         * means. The post-process target below is half-float so those highlights
+         * survive long enough for bloom to read them.
+         */
+        gl.outputColorSpace = THREE.SRGBColorSpace;
+        gl.toneMapping = THREE.ACESFilmicToneMapping;
+        gl.toneMappingExposure = 1;
+      }}
       onPointerMissed={() => {
         /**
          * Clear the selection ONLY when the gesture genuinely hit nothing.
@@ -373,6 +402,8 @@ export function GalaxyCanvas({
         <PlanetField
           nodes={nodes}
           selectedId={selectedId}
+          rivalPlanetId={rivalPlanetId}
+          rivalPlayerId={rivalPlayerId}
           onSelect={(id) => {
             // D56. Absent means every world, which is the game; the rehearsal
             // narrows it per beat so a step cannot be finished on the wrong world.
@@ -410,7 +441,13 @@ export function GalaxyCanvas({
             onFocus({ kind: 'contact', id });
           }}
         />
-        <Labels nodes={nodes} selectedId={selectedId} />
+        <DeathStarImpacts pending={pending} contacts={contacts} nodes={nodes} />
+        <Labels
+          nodes={nodes}
+          selectedId={selectedId}
+          rivalPlanetId={rivalPlanetId}
+          rivalPlayerId={rivalPlayerId}
+        />
         <Preload all />
         {onReady && <FirstFrame onDrawn={onReady} />}
       </Suspense>
@@ -420,12 +457,24 @@ export function GalaxyCanvas({
         post-process worth its cost here: everything bright in this scene is
         additive already, so a small mipmap kernel does all the work.
       */}
-      <EffectComposer enableNormalPass={false}>
-        <Bloom intensity={0.55} luminanceThreshold={0.62} luminanceSmoothing={0.35} mipmapBlur />
+      <EffectComposer
+        enableNormalPass={false}
+        frameBufferType={THREE.HalfFloatType}
+        // Two samples preserve the small hull silhouettes without paying the
+        // package default of eight samples on every full-screen mobile buffer.
+        multisampling={2}
+      >
+        <Bloom
+          intensity={0.62}
+          luminanceThreshold={0.78}
+          luminanceSmoothing={0.22}
+          mipmapBlur
+          radius={0.72}
+          levels={6}
+        />
         <Vignette eskil={false} offset={0.24} darkness={0.7} />
       </EffectComposer>
 
-      <AdaptiveDpr pixelated={false} />
       <DevBridge />
       <Rig
         home={home}
@@ -447,9 +496,25 @@ export function GalaxyCanvas({
  * becomes unreadable. Your own planet, an open window and the current selection
  * are the only three things a player looks for by name.
  */
-function Labels({ nodes, selectedId }: { nodes: readonly PlanetNode[]; selectedId: string | null }) {
+function Labels({
+  nodes,
+  selectedId,
+  rivalPlanetId,
+  rivalPlayerId,
+}: {
+  nodes: readonly PlanetNode[];
+  selectedId: string | null;
+  rivalPlanetId: string | null;
+  rivalPlayerId: string | null;
+}) {
+  const { t } = useTranslation();
   const marked = nodes.filter(
-    (node) => node.id === selectedId || node.stance === 'self' || node.stance === 'window',
+    (node) => node.id === selectedId
+      || node.isOwned
+      || node.stance === 'window'
+      || isRivalNode(node, rivalPlanetId, rivalPlayerId)
+      || node.state?.kind === 'RECOVERY'
+      || Boolean(node.claimUntil && node.claimUntil.getTime() > serverNow()),
   );
 
   return (
@@ -464,12 +529,34 @@ function Labels({ nodes, selectedId }: { nodes: readonly PlanetNode[]; selectedI
           style={{ pointerEvents: 'none' }}
         >
           <span
-            className={`whitespace-nowrap font-display text-[12px] uppercase tracking-[0.16em] ${
-              node.stance === 'window' ? 'text-opportunity' : 'text-bone'
-            }`}
+            className="flex -translate-y-1 flex-col items-center whitespace-nowrap"
             style={{ textShadow: '0 0 10px rgba(0,0,0,0.95)' }}
           >
-            {node.owner}
+            <span className="flex items-center gap-1.5 text-[9px] font-semibold uppercase tracking-[0.16em]">
+              <span className={node.kind === 'CAPITAL' ? 'text-crystal' : node.kind === 'COLONY' ? 'text-opportunity' : 'text-dim'}>
+                {t(node.kind === 'CAPITAL'
+                  ? 'galaxy.kindCapital'
+                  : node.kind === 'COLONY'
+                    ? 'galaxy.kindColony'
+                    : 'galaxy.kindNeutral', { tier: node.neutralTier ?? 1 })}
+              </span>
+              {node.isOwned && <span className="text-[#8fd6ea]">· {t('galaxy.owned')}</span>}
+              {isRivalNode(node, rivalPlanetId, rivalPlayerId) && (
+                <span className="text-[#ff7854]">· {t('galaxy.rival')}</span>
+              )}
+              {node.state?.kind === 'RECOVERY' && <span className="text-alert">· {t('galaxy.recovery')}</span>}
+              {node.claimUntil && node.claimUntil.getTime() > serverNow() && (
+                <span className="text-opportunity">· {t('galaxy.claimOpen')}</span>
+              )}
+            </span>
+            <span className={`font-display text-[12px] uppercase tracking-[0.13em] ${
+              node.stance === 'window' ? 'text-opportunity' : 'text-bone'
+            }`}>
+              {node.name}
+            </span>
+            {!node.isOwned && (
+              <span className="text-[9px] uppercase tracking-[0.1em] text-faint">{node.owner}</span>
+            )}
           </span>
         </Html>
       ))}
@@ -539,6 +626,7 @@ function Rig({
 }) {
   const ref = useRef<ComponentRef<typeof OrbitControls>>(null);
   const invalidate = useThree((state) => state.invalidate);
+  const reducedMotion = useReducedMotionPreference();
   /** Where the pivot is heading, how much ease is left, and how close to come. */
   const ease = useRef<{ to: THREE.Vector3; left: number; pullTo: number | null } | null>(null);
 
@@ -570,51 +658,21 @@ function Rig({
    * driving. The leash is a comfort rule about a player PANNING into the void, and
    * it resumes the moment they touch the controls again.
    */
-  const released = useRef(false);
+  const mode = useRef<'follow' | 'released' | 'manual'>('manual');
+  /** Whether this exact selection has existed in the scene at least once. */
+  const acquired = useRef(false);
+  /** Distinguishes initial `null` from a selection disappearing or being cleared. */
+  const previousFocusKey = useRef<string | null>(null);
+  const [homeX, homeY, homeZ] = home;
 
   const goTo = (x: number, y: number, z: number, pullTo: number | null = null): void => {
-    ease.current = { to: new THREE.Vector3(x, y, z), left: EASE, pullTo };
+    ease.current = {
+      to: new THREE.Vector3(x, y, z),
+      left: reducedMotion ? 0.001 : EASE,
+      pullTo,
+    };
     invalidate();
   };
-
-  /**
-   * HOME re-frames rather than teleports: an instant cut loses every sense of
-   * where you were, and re-orienting afterwards costs more than the half second.
-   *
-   * Note the caller clears the SELECTION before bumping this. Without that, the
-   * ease ran, finished, and then the subject-tracking below immediately dragged
-   * the camera back to whatever was focused — the button appeared to do nothing.
-   */
-  useEffect(() => {
-    const controls = ref.current;
-    if (!controls) return;
-    // An explicit instruction, so the rig is driving again.
-    released.current = false;
-    if (homeSignal === 0) {
-      if (openWide) {
-        // The disc entire, from above and outside it. Nothing is selected, so the
-        // leash below leaves this alone until the player moves.
-        controls.target.set(0, 0, 0);
-        controls.object.position.set(0, DISC_RADIUS * 1.15, DISC_RADIUS * 1.75);
-        controls.update();
-        return;
-      }
-      controls.target.set(home[0], home[1], home[2]);
-      controls.object.position.set(home[0] + 12, 16, home[2] + 20);
-      controls.update();
-      return;
-    }
-    /**
-     * COMING HOME CLOSES THE RANGE AS WELL AS MOVING THE PIVOT.
-     *
-     * Easing the pivot alone keeps whatever distance the camera was at, which is
-     * correct for the header's own "centre on your planet" — the player is already
-     * among the worlds and only wants re-centring. From the wide opening it is
-     * not: the pivot would arrive at a world still a disc-width away, and the
-     * flight that was supposed to show them their planet would show them a dot.
-     */
-    goTo(home[0], home[1], home[2], openWide ? HOME_DISTANCE : null);
-  }, [home, homeSignal, openWide]);
 
   /**
    * TAKE A NEW SUBJECT. Keyed on `focusKey`, never on `subject` — see the prop.
@@ -623,12 +681,59 @@ function Rig({
    * rig what to look at, so it is driving again and the leash is back on duty.
    */
   useEffect(() => {
-    released.current = false;
+    const previous = previousFocusKey.current;
+    previousFocusKey.current = focusKey;
+    if (focusKey === null) {
+      if (previous !== null) {
+        // Losing/clearing a selection is not permission to finish an old zoom.
+        ease.current = null;
+        mode.current = 'released';
+        acquired.current = false;
+      }
+      return;
+    }
+
+    mode.current = 'follow';
+    acquired.current = false;
+    ease.current = null;
     const at = live.current?.();
-    if (at) goTo(at[0], at[1], at[2], approach);
+    if (at) {
+      acquired.current = true;
+      goTo(at[0], at[1], at[2], approach);
+    }
     // `live` is read through a ref by design: this must not re-run when the data
     // behind the subject refetches, only when the player picks something else.
   }, [focusKey, approach]);
+
+  /**
+   * HOME re-frames rather than teleports: an instant cut loses every sense of
+   * where you were, and re-orienting afterwards costs more than the half second.
+   *
+   * This effect deliberately follows the focus effect. Home clears selection and
+   * bumps the signal in one render; the explicit home instruction must therefore
+   * win over the selection's passive disappearance.
+   */
+  useEffect(() => {
+    const controls = ref.current;
+    if (!controls) return;
+    mode.current = 'manual';
+    acquired.current = false;
+    if (homeSignal === 0) {
+      if (openWide) {
+        controls.target.set(0, 0, 0);
+        controls.object.position.set(0, DISC_RADIUS * 1.15, DISC_RADIUS * 1.75);
+        controls.update();
+        return;
+      }
+        controls.target.set(homeX, homeY, homeZ);
+        controls.object.position.set(homeX + 12, 16, homeZ + 20);
+      controls.update();
+      return;
+    }
+    goTo(homeX, homeY, homeZ, HOME_DISTANCE);
+    // Primitive coordinates are deliberate. `home` is rebuilt from every live
+    // galaxy refetch; depending on the tuple identity made broadcasts press Home.
+  }, [homeX, homeY, homeZ, homeSignal, openWide]);
 
   useFrame((_, delta) => {
     const controls = ref.current;
@@ -649,11 +754,20 @@ function Rig({
     /** Every decision the rig makes on its own, in one pure call. See `follow.ts`. */
     const act = rigAction({
       easing: ease.current !== null,
-      following: follow !== null,
+      focused: focusKey !== null,
       positioned: at !== null,
-      released: released.current,
+      acquired: acquired.current,
+      mode: mode.current,
     });
-    if (act.release) released.current = true;
+    if (act.cancelEase) ease.current = null;
+    if (act.release) {
+      mode.current = 'released';
+      return;
+    }
+    if (act.acquire && at) {
+      acquired.current = true;
+      goTo(at[0], at[1], at[2], approach);
+    }
 
     if (act.track && at) {
       const target = new THREE.Vector3(at[0], at[1], at[2]);
@@ -758,7 +872,14 @@ function Rig({
        * asking; the moment they ask, the ordinary rules apply again.
        */
       onStart={() => {
-        released.current = false;
+        // A gesture changes the framing, not the selection. Keep translating the
+        // camera with a moving focused subject after the player orbits or zooms;
+        // only a missing/unfocused subject becomes genuine free-look.
+        const at = live.current?.() ?? null;
+        const next = rigGestureState(focusKey !== null, at !== null);
+        mode.current = next.mode;
+        acquired.current = next.acquired;
+        ease.current = null;
       }}
     />
   );
@@ -774,14 +895,151 @@ function Rig({
  */
 interface DebugWindow {
   __galaxy?: unknown;
+  __galaxyMetrics?: {
+    snapshot: () => GalaxyMetricSnapshot;
+    reset: () => void;
+  };
 }
 
+interface GalaxyMetricSnapshot {
+  continuous: boolean;
+  frameIntervalMs: { samples: number; p50: number; p95: number; p99: number; max: number };
+  longTaskMs: { samples: number; p50: number; p95: number; p99: number; max: number };
+  heap: { usedBytes: number; totalBytes: number; limitBytes: number } | null;
+  renderer: {
+    calls: number;
+    triangles: number;
+    points: number;
+    lines: number;
+    geometries: number;
+    textures: number;
+    programs: number;
+  };
+  scene: { objects: number; meshes: number; instancedMeshes: number; instances: number };
+}
+
+const metricSummary = (input: readonly number[]) => {
+  if (input.length === 0) return { samples: 0, p50: 0, p95: 0, p99: 0, max: 0 };
+  const sorted = [...input].sort((a, b) => a - b);
+  const at = (percentile: number): number =>
+    sorted[Math.min(sorted.length - 1, Math.ceil(sorted.length * percentile / 100) - 1)] ?? 0;
+  return { samples: sorted.length, p50: at(50), p95: at(95), p99: at(99), max: at(100) };
+};
+
 function DevBridge() {
-  const state = useThree();
+  // The store object is stable. Subscribing to the entire RootState here made
+  // this component re-render whenever R3F replaced that state, repeatedly
+  // recreating a buffered PerformanceObserver and counting old long tasks again.
+  const store = useStore();
+  const frameTimes = useRef(new Float64Array(2048));
+  const longTasks = useRef(new Float64Array(512));
+  const frameCount = useRef(0);
+  const frameCursor = useRef(0);
+  const longTaskCount = useRef(0);
+  const longTaskCursor = useRef(0);
+  const lastFrameAt = useRef<number | null>(null);
+  const enabled = import.meta.env.DEV || import.meta.env.VITE_VISUAL_TEST === '1';
+  const continuous = import.meta.env.VITE_VISUAL_TEST === '1';
+
+  useFrame(({ invalidate }) => {
+    if (!enabled) return;
+    const now = performance.now();
+    if (lastFrameAt.current !== null) {
+      frameTimes.current[frameCursor.current] = now - lastFrameAt.current;
+      frameCursor.current = (frameCursor.current + 1) % frameTimes.current.length;
+      frameCount.current = Math.min(frameCount.current + 1, frameTimes.current.length);
+    }
+    lastFrameAt.current = now;
+    // `frameloop="demand"` intentionally idles in the real game. A visual test
+    // requests a continuous sample so frame intervals measure rendering capacity
+    // rather than the ambient ticker's chosen sleep.
+    if (continuous) invalidate();
+  });
+
   useEffect(() => {
-    if (!import.meta.env.DEV) return;
-    (window as unknown as DebugWindow).__galaxy = state;
-  }, [state]);
+    if (!enabled) return;
+    let observer: PerformanceObserver | null = null;
+    try {
+      observer = new PerformanceObserver((list) => {
+        for (const entry of list.getEntries()) {
+          longTasks.current[longTaskCursor.current] = entry.duration;
+          longTaskCursor.current = (longTaskCursor.current + 1) % longTasks.current.length;
+          longTaskCount.current = Math.min(longTaskCount.current + 1, longTasks.current.length);
+        }
+      });
+      observer.observe({ type: 'longtask', buffered: true });
+    } catch {
+      // Firefox and older WebViews do not expose the Long Tasks API. The rest of
+      // the bridge remains useful and reports an empty window.
+    }
+    if (continuous) store.getState().invalidate();
+    const debug = window as unknown as DebugWindow;
+    // Existing visual harnesses inspect the live RootState directly. A proxy
+    // keeps that API while reading the latest Zustand snapshot on every access.
+    const exposedState = new Proxy(store.getState(), {
+      get: (_target, property): unknown => {
+        const value: unknown = Reflect.get(store.getState(), property);
+        return value;
+      },
+    });
+    debug.__galaxy = exposedState;
+    const bridge = {
+      snapshot: (): GalaxyMetricSnapshot => {
+        const state = store.getState();
+        let objects = 0;
+        let meshes = 0;
+        let instancedMeshes = 0;
+        let instances = 0;
+        state.scene.traverse((object) => {
+          objects += 1;
+          if (object instanceof THREE.Mesh) meshes += 1;
+          if (object instanceof THREE.InstancedMesh) {
+            instancedMeshes += 1;
+            instances += object.count;
+          }
+        });
+        const info = state.gl.info;
+        const memory = (performance as Performance & {
+          memory?: { usedJSHeapSize: number; totalJSHeapSize: number; jsHeapSizeLimit: number };
+        }).memory;
+        return {
+          continuous,
+          frameIntervalMs: metricSummary(Array.from(frameTimes.current.slice(0, frameCount.current))),
+          longTaskMs: metricSummary(Array.from(longTasks.current.slice(0, longTaskCount.current))),
+          heap: memory
+            ? {
+                usedBytes: memory.usedJSHeapSize,
+                totalBytes: memory.totalJSHeapSize,
+                limitBytes: memory.jsHeapSizeLimit,
+              }
+            : null,
+          renderer: {
+            calls: info.render.calls,
+            triangles: info.render.triangles,
+            points: info.render.points,
+            lines: info.render.lines,
+            geometries: info.memory.geometries,
+            textures: info.memory.textures,
+            programs: info.programs?.length ?? 0,
+          },
+          scene: { objects, meshes, instancedMeshes, instances },
+        };
+      },
+      reset: (): void => {
+        frameCount.current = 0;
+        frameCursor.current = 0;
+        longTaskCount.current = 0;
+        longTaskCursor.current = 0;
+        lastFrameAt.current = null;
+      },
+    };
+    debug.__galaxyMetrics = bridge;
+    return () => {
+      observer?.disconnect();
+      if (debug.__galaxy === exposedState) delete debug.__galaxy;
+      if (debug.__galaxyMetrics === bridge) delete debug.__galaxyMetrics;
+    };
+  }, [continuous, enabled, store]);
   return null;
 }
 

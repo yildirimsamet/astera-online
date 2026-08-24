@@ -53,7 +53,7 @@ export function registerServerRoutes(app: FastifyInstance): void {
    * Every rule that can refuse this lives in `resolveJoinTarget` and `joinSeason`,
    * and both refuse with a code the interface can act on: SERVER_LOCKED names the
    * galaxy to try instead, ALREADY_PLACED means the account is spoken for, and
-   * SHARD_FULL means fifty people got there first.
+   * SHARD_FULL means the stored admission ceiling was reached.
    *
    * Idempotent for the galaxy the caller is already in — `joinSeason` returns the
    * existing planet — so a retried request on a flaky phone connection cannot

@@ -1,8 +1,8 @@
 import { and, eq } from 'drizzle-orm';
-import { COMBAT, engagementEndsAt } from '@astera/rules';
+import { COMBAT, activeAsteroids, engagementEndsAt, generateGalaxy } from '@astera/rules';
 import type { FastifyInstance } from 'fastify';
 import { pino } from 'pino';
-import { afterAll, afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterAll, afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { buildApp } from '../src/app.js';
 import { debrisFields, missions, planets } from '../src/db/schema.js';
 import { TokenService } from '../src/auth/tokens.js';
@@ -97,6 +97,7 @@ describe('galaxy traffic — motion in public, intent in private', () => {
     const built = buildApp({ env: testEnv(), logger: silent, db: f.db, clock: f.clock });
     app = built.app;
     close = built.close;
+    await built.bus.start();
     await app.ready();
 
     const tokens = new TokenService('test-secret-that-is-long-enough', 15, 30);
@@ -152,6 +153,20 @@ describe('galaxy traffic — motion in public, intent in private', () => {
   it('shows something moving out there', async () => {
     midFlight((await strangersFight()).arriveAt);
     expect(await fetchContacts()).toHaveLength(1);
+  });
+
+  it('reuses one shared traffic row snapshot while deriving motion on every read', async () => {
+    const delivered = app.bus.status().delivered;
+    midFlight((await strangersFight()).arriveAt);
+    await vi.waitFor(() => {
+      expect(app.bus.status().delivered).toBeGreaterThan(delivered);
+    });
+    const first = await fetchContacts();
+    f.clock.advance(0.1);
+    const second = await fetchContacts();
+
+    expect(first[0]?.from).not.toEqual(second[0]?.from);
+    expect(app.projections.status().traffic).toMatchObject({ misses: 1, hits: 1 });
   });
 
   /**
@@ -438,9 +453,12 @@ describe('galaxy traffic — motion in public, intent in private', () => {
       f.clock.set(new Date(departAt + span * fraction));
       const [contact] = await fetchContacts();
       expect(contact, `nothing in the air at ${String(fraction)}`).toBeDefined();
+      // Date stores whole milliseconds. Exact flight spans are fractional after
+      // D83, so compare with the instant the clock can actually represent.
+      const representedFraction = (f.clock.now().getTime() - departAt) / span;
       const expected = {
-        x: from!.x + (to!.x - from!.x) * fraction,
-        z: from!.z + (to!.z - from!.z) * fraction,
+        x: from!.x + (to!.x - from!.x) * representedFraction,
+        z: from!.z + (to!.z - from!.z) * representedFraction,
       };
       expect(contact!.from.x).toBeCloseTo(expected.x, 3);
       expect(contact!.from.z).toBeCloseTo(expected.z, 3);
@@ -621,10 +639,20 @@ describe('galaxy traffic — motion in public, intent in private', () => {
    * everybody. Hiding where a Prospector was going would hide the contest.
    */
   describe('mining runs are public in full', () => {
-    /** Returns the run so a test can move to a share of it rather than guess minutes. */
+    /**
+     * Returns the run so a test can move to a share of it rather than guess minutes.
+     *
+     * THE ROCK IS CHOSEN, NOT HARD-CODED. Index 0 used to be reliably in the disc
+     * at `SETTLED_MINUTES`; it stopped being so the moment asteroid lifetimes were
+     * re-cut, and every test in this block failed with ASTEROID_GONE for a reason
+     * that had nothing to do with traffic. Asking the field which rocks are up
+     * survives the next re-cut too.
+     */
     const strangerMines = async () => {
       await giveUnits(f.db, a, { PROSPECTOR: 3 });
-      return launchMining(f.db, a, 0, 2, f.clock);
+      const [rock] = activeAsteroids(generateGalaxy(f.seed).asteroids, SETTLED_MINUTES);
+      if (!rock) throw new Error('no rock in the disc at SETTLED_MINUTES');
+      return launchMining(f.db, a, rock.index, 2, f.clock);
     };
 
     /**
@@ -634,7 +662,7 @@ describe('galaxy traffic — motion in public, intent in private', () => {
      * traffic payload says, and `debris.test.ts` already owns the question of what
      * a battle leaves behind.
      */
-    const strangerSalvages = async (): Promise<void> => {
+    const strangerSalvages = async () => {
       const [field] = await f.db
         .insert(debrisFields)
         .values({
@@ -646,7 +674,7 @@ describe('galaxy traffic — motion in public, intent in private', () => {
         })
         .returning();
       await giveUnits(f.db, a, { PROSPECTOR: 3 });
-      await launchHarvest(f.db, a, field!.id, 2, f.clock);
+      return launchHarvest(f.db, a, field!.id, 2, f.clock);
     };
 
     it('shows the whole leg and the time left on it', async () => {
@@ -676,8 +704,9 @@ describe('galaxy traffic — motion in public, intent in private', () => {
 
     it('still excludes your own, which are drawn at full fidelity elsewhere', async () => {
       await giveUnits(f.db, mine, { PROSPECTOR: 3 });
-      await launchMining(f.db, mine, 0, 2, f.clock);
-      f.clock.advance(2);
+      const [rock] = activeAsteroids(generateGalaxy(f.seed).asteroids, SETTLED_MINUTES);
+      if (!rock) throw new Error('no rock in the disc at SETTLED_MINUTES');
+      midFlight((await launchMining(f.db, mine, rock.index, 2, f.clock)).arriveAt);
 
       expect((await fetchContacts()).filter((c) => c.kind === 'mining')).toHaveLength(0);
     });
@@ -713,8 +742,7 @@ describe('galaxy traffic — motion in public, intent in private', () => {
      * hide the contest D32 exists to create.
      */
     it('publishes a salvage run as a salvage run, in full', async () => {
-      await strangerSalvages();
-      f.clock.advance(2);
+      midFlight((await strangerSalvages()).arriveAt);
 
       const contacts = await fetchContacts();
       const run = contacts.find((c) => c.kind === 'harvest');

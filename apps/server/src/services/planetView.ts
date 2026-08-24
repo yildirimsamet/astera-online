@@ -1,25 +1,33 @@
-import { eq } from 'drizzle-orm';
+import { and, asc, desc, eq, inArray } from 'drizzle-orm';
 import {
   INSTRUMENT_IDS,
+  RESEARCH_PROJECT_IDS,
+  SHIELD,
   SATELLITE_IDS,
   alloyRate,
   collectorCap,
   crystalRate,
+  deuteriumCollectorCap,
+  deuteriumStorageCap,
   dominion,
   instrumentCost,
   productionMult,
   satelliteCost,
   satelliteSlots,
+  shieldHp,
   storageCap,
   upgradeCost,
   vaultProtects,
   type BuildingId,
+  type ResearchProjectId,
 } from '@astera/rules';
 import type { Clock } from '../clock.js';
 import type { Tx } from '../db/client.js';
-import { players } from '../db/schema.js';
+import { buildOrders, players, strategicAssets } from '../db/schema.js';
 import { baysOf } from './flight.js';
 import { awayFleet, loadLocked } from './planet.js';
+import { researchView } from './researchState.js';
+import { colonyStanding } from './ownership.js';
 
 /**
  * EVERYTHING A COMMANDER KNOWS ABOUT THEIR OWN WORLD, IN ONE PLACE. D53.
@@ -50,8 +58,25 @@ import { awayFleet, loadLocked } from './planet.js';
  * next refetch silently corrected it on screen.
  */
 export async function planetView(tx: Tx, planetId: string, clock: Clock) {
-  const p = await loadLocked(tx, planetId, clock);
-  const [player] = await tx.select().from(players).where(eq(players.id, p.playerId));
+  const p = await loadLocked(tx, planetId, clock, { requireLive: false });
+  const [[player], [strategic], queued, colonies] = await Promise.all([
+    tx.select().from(players).where(eq(players.id, p.playerId)),
+    tx
+      .select()
+      .from(strategicAssets)
+      .where(and(
+        eq(strategicAssets.planetId, planetId),
+        inArray(strategicAssets.status, ['BUILDING', 'PAUSED', 'READY']),
+      ))
+      .orderBy(desc(strategicAssets.startedAt), desc(strategicAssets.id))
+      .limit(1),
+    tx
+      .select()
+      .from(buildOrders)
+      .where(and(eq(buildOrders.planetId, planetId), eq(buildOrders.status, 'BUILDING')))
+      .orderBy(asc(buildOrders.queue), asc(buildOrders.slot)),
+    colonyStanding(tx, p.playerId),
+  ]);
 
   /**
    * THE RATES THE ECONOMY ACTUALLY RUNS AT — Foundry included. D52a.
@@ -74,16 +99,42 @@ export async function planetView(tx: Tx, planetId: string, clock: Clock) {
   const boost = productionMult(p.orbit);
   const perHourAlloy = alloyRate(p.buildings.REFINERY) * boost;
   const perHourCrystal = crystalRate(p.buildings.EXTRACTOR) * boost;
+  /**
+   * The floor is HOURS OF PRODUCTION, so it needs the producing levels as well as
+   * the Vault's. It reads the unboosted rate on purpose: a Foundry lifts the store
+   * without lifting the floor, so a bigger planet is slightly more exposed.
+   */
+  const vaultCapacity = vaultProtects(
+    p.buildings.VAULT,
+    p.buildings.REFINERY,
+    p.buildings.EXTRACTOR,
+  );
+  const vaultProtected = {
+    alloy: Math.min(Math.floor(p.alloy), vaultCapacity.alloy),
+    crystal: Math.min(Math.floor(p.crystal), vaultCapacity.crystal),
+    deuterium: Math.min(Math.floor(p.deuterium), vaultCapacity.deuterium),
+  };
+  const shieldMax = shieldHp(p.effectiveInstruments.AEGIS ?? 0);
+  const queuedResearch = new Set(
+    queued.flatMap((order) => order.queue === 'CONSTRUCTION'
+      && order.kind === 'RESEARCH'
+      && RESEARCH_PROJECT_IDS.includes(order.subject as ResearchProjectId)
+      ? [order.subject as ResearchProjectId]
+      : []),
+  );
 
   return {
     planet: {
       id: p.planetId,
       name: p.name,
+      kind: p.kind,
       position: { x: p.x, y: p.y, z: p.z },
       alloy: Math.floor(p.alloy),
       crystal: Math.floor(p.crystal),
-      alloyCap: storageCap(perHourAlloy),
-      crystalCap: storageCap(perHourCrystal),
+      deuterium: Math.floor(p.deuterium),
+      alloyCap: storageCap(perHourAlloy, p.buildings.VAULT),
+      crystalCap: storageCap(perHourCrystal, p.buildings.VAULT),
+      deuteriumCap: deuteriumStorageCap(perHourCrystal, p.buildings.VAULT),
       alloyPerHour: Math.round(perHourAlloy),
       crystalPerHour: Math.round(perHourCrystal),
       /**
@@ -94,8 +145,10 @@ export async function planetView(tx: Tx, planetId: string, clock: Clock) {
        */
       bufferAlloy: Math.floor(p.bufferAlloy),
       bufferCrystal: Math.floor(p.bufferCrystal),
+      bufferDeuterium: Math.floor(p.bufferDeuterium),
       bufferAlloyCap: collectorCap(perHourAlloy),
       bufferCrystalCap: collectorCap(perHourCrystal),
+      bufferDeuteriumCap: deuteriumCollectorCap(perHourCrystal),
       /**
        * WHAT IS ACTUALLY SAFE, AS ONE FIGURE. D61.
        *
@@ -110,10 +163,16 @@ export async function planetView(tx: Tx, planetId: string, clock: Clock) {
        * deducted that floor from each resource and the screen deducted it once.
        */
       vaultFloor:
-        Math.min(Math.floor(p.alloy), vaultProtects(p.buildings.VAULT).alloy) +
-        Math.min(Math.floor(p.crystal), vaultProtects(p.buildings.VAULT).crystal),
+        vaultProtected.alloy + vaultProtected.crystal + vaultProtected.deuterium,
+      /** Exact per-resource protection. The aggregate above remains for old verdict logic. */
+      vaultProtected,
+      vaultCapacity,
       shield: Math.floor(p.shield),
+      shieldMax,
+      shieldPerHour: Math.round(shieldMax * SHIELD.regenPerHour),
       disruptedUntil: p.disruptedUntil,
+      recoveryUntil: p.recoveryUntil,
+      protectedUntil: p.protectedUntil,
     },
     buildings: p.buildings,
     nextCosts: Object.fromEntries(
@@ -121,6 +180,7 @@ export async function planetView(tx: Tx, planetId: string, clock: Clock) {
     ),
     /** The four on the ground, with their levels. D25. */
     instruments: p.instruments,
+    effectiveInstruments: p.effectiveInstruments,
     /**
      * What the next level of each instrument costs, priced by the server.
      *
@@ -133,9 +193,28 @@ export async function planetView(tx: Tx, planetId: string, clock: Clock) {
       INSTRUMENT_IDS.map((i) => [i, instrumentCost(i, p.instruments[i] ?? 0)]),
     ),
     /** What is in orbit, and how much room there is. D25. */
-    orbit: p.orbit,
+    orbit: p.storedOrbit,
+    effectiveOrbit: p.orbit,
     orbitSlots: satelliteSlots(p.buildings.CORE),
     satelliteCosts: Object.fromEntries(SATELLITE_IDS.map((sat) => [sat, satelliteCost(sat)])),
+    /** Two immediate seasonal projects; discovery is derived, never stored. D93/D94. */
+    research: await researchView(tx, p, queuedResearch),
+    /** Absolute instants keep every client on the same queue clock. D4. */
+    queues: {
+      CONSTRUCTION: queued
+        .filter((order) => order.queue === 'CONSTRUCTION')
+        .map(buildOrderView),
+      YARD: queued.filter((order) => order.queue === 'YARD').map(buildOrderView),
+    },
+    strategic: strategic
+      ? {
+          id: strategic.id,
+          status: strategic.status,
+          readyAt: strategic.readyAt,
+          remainingSeconds: strategic.remainingSeconds,
+        }
+      : null,
+    colonies,
     fleet: p.homeFleet,
     ground: p.ground,
     /**
@@ -143,8 +222,8 @@ export async function planetView(tx: Tx, planetId: string, clock: Clock) {
      *
      * `fleet` is what is standing on the ground, so it is the wrong number to
      * count anything a player OWNS against — and `PROSPECTOR.max` is a rule about
-     * ownership. Without this the build sheet would offer a fourth Prospector to
-     * somebody whose three were away mining, and the server would refuse it: a
+     * ownership. Without this the build sheet would offer another Prospector to
+     * somebody whose two were away mining, and the server would refuse it: a
      * control that lies about what it will do.
      *
      * Yours only, and no fog question arises — it is your own planet's units.
@@ -166,6 +245,20 @@ export async function planetView(tx: Tx, planetId: string, clock: Clock) {
         lost: player?.dominionLost ?? 0,
       }),
     },
+  };
+}
+
+function buildOrderView(order: typeof buildOrders.$inferSelect) {
+  return {
+    id: order.id,
+    queue: order.queue,
+    slot: order.slot,
+    kind: order.kind,
+    subject: order.subject,
+    count: order.count,
+    startedAt: order.startedAt,
+    finishesAt: order.readyAt,
+    cost: order.cost,
   };
 }
 

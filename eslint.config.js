@@ -112,14 +112,10 @@ export default defineConfig(
     languageOptions: { globals: { ...globals.browser } },
   },
 
-  /** Tests may be looser about assertions; they are the thing making the claims. */
+  /** Tests may use assertion-focused syntax, but their data flow stays type-safe. */
   {
     files: ['**/test/**/*.ts', '**/*.test.ts'],
     rules: {
-      '@typescript-eslint/no-unsafe-assignment': 'off',
-      '@typescript-eslint/no-unsafe-argument': 'off',
-      '@typescript-eslint/no-unsafe-member-access': 'off',
-      '@typescript-eslint/no-unsafe-call': 'off',
       '@typescript-eslint/no-non-null-assertion': 'off',
       'no-restricted-syntax': 'off',
     },

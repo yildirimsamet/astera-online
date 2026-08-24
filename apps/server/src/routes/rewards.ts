@@ -1,4 +1,4 @@
-import { eq } from 'drizzle-orm';
+import { and, eq } from 'drizzle-orm';
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import { planets, players } from '../db/schema.js';
@@ -23,7 +23,7 @@ export function registerRewardRoutes(app: FastifyInstance): void {
     const rows = await app.db
       .select({ planetId: planets.id })
       .from(planets)
-      .innerJoin(players, eq(planets.playerId, players.id))
+      .innerJoin(players, and(eq(planets.controllerPlayerId, players.id), eq(planets.kind, 'CAPITAL')))
       .where(eq(players.accountId, accountId))
       .limit(1);
     const planetId = rows[0]?.planetId;

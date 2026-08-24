@@ -16,7 +16,7 @@
  */
 
 export const landing = {
-  populationHeld: '<0>{{amount}}</0> komutanın bir gezegeni var',
+  populationHeld: '<0>{{amount}}</0> komutan capital’ını tutuyor',
   populationOnline: '<0>{{amount}}</0> şu an oyunda',
   register: 'Gezegenini İncele',
   signIn: 'Zaten bir komutanım var',
@@ -26,7 +26,7 @@ export const landing = {
    * Dönen komutanın kapısı. Bu cihazda daha önce komutan olmuş biri için iki
    * düğmenin ağırlığı yer değiştirir; giriş öne geçer.
    */
-  welcomeBack: 'Gezegenin bıraktığın yerde duruyor',
+  welcomeBack: 'Capital’ın bıraktığın yerde duruyor',
   signInPrimary: 'Giriş yap',
   returningHint: 'Aynı komutan, aynı galaksi; hangi tarayıcıdan girersen gir.',
   newCommander: 'Bunun yerine yeni bir komutan başlat',
@@ -63,7 +63,7 @@ export const servers = {
   commanderLabel: 'Komutan',
   signOut: 'Çıkış yap',
   rule:
-    'Her galakside en fazla elli komutan var ve galaksiler sırayla doluyor. Yani katıldığın yerde seni bekleyen insanlar oluyor.',
+    'Her galakside en fazla 300 komutan var ve galaksiler sırayla doluyor. Yani katıldığın yerde seni bekleyen insanlar oluyor.',
   loading: 'Gökyüzü taranıyor',
   unreachable: 'Galaksilere ulaşılamadı.',
   retry: 'Tekrar dene',
@@ -97,7 +97,7 @@ export const loading = {
 } as const;
 
 export const document = {
-  description: 'Tek bir gezegenin var. Başkalarının elinde ne olduğunu göremezsin.',
+  description: 'Korunan capital’ını yönet, koloniler kazan ve rakiplerinin elindekini keşfet.',
   manifest: '/manifest.tr.webmanifest',
 } as const;
 

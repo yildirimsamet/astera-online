@@ -7,6 +7,8 @@ const schema = z.object({
   ROLE: z.enum(['api', 'worker', 'both']).default('both'),
   PORT: z.coerce.number().default(3000),
   DATABASE_URL: z.string().min(1),
+  /** Request-pool budget per process; LISTEN uses one additional connection. */
+  DB_POOL_MAX: z.coerce.number().int().min(1).max(50).default(10),
   /**
    * Rotating this invalidates every session. Must be set in production.
    *
@@ -61,12 +63,17 @@ const schema = z.object({
    * A NEW ACCOUNT TAKES A SEAT, AND SEATS ARE THE SCARCE THING. D21/D56.
    *
    * `/api/onboarding/claim` is unauthenticated and creates an account, a planet
-   * and a place in the frontier galaxy in one call. A galaxy holds fifty worlds
-   * and galaxies fill strictly in order, so a script left alone with this endpoint
-   * empties the only mitigation the empty-shard risk has. Six an hour per address
+   * and a place in the frontier galaxy in one call. A galaxy holds three hundred
+   * commander seats and galaxies fill strictly in order, so a script left alone
+   * with this endpoint empties the only mitigation the empty-shard risk has. Six an hour per address
    * is generous for a household and useless for a script.
    */
   RATE_LIMIT_SIGNUP_MAX: z.coerce.number().default(6),
+  /** Set on replicated API deployments; absent keeps local/test in-memory limits. */
+  RATE_LIMIT_REDIS_URL: z.preprocess(
+    (value) => value === '' || value === null ? undefined : value,
+    z.string().url().optional(),
+  ),
   /**
    * HOW LATE THE WORLD IS ALLOWED TO BE. D52.
    *
@@ -85,6 +92,18 @@ const schema = z.object({
   WORKER_BATCH: z.coerce.number().default(100),
   /** A claim older than this is assumed dead and returned to the queue. */
   WORKER_STALE_MINUTES: z.coerce.number().default(5),
+  PROJECTION_CACHE_ENABLED: z
+    .enum(['true', 'false'])
+    .default('true')
+    .transform((value) => value === 'true'),
+  PROJECTION_CACHE_MAX_SEASONS: z.coerce.number().int().min(1).max(100).default(16),
+  PROJECTION_CACHE_MAX_ACCOUNTS: z.coerce.number().int().min(300).max(100_000).default(1024),
+  COMMANDER_CACHE_TTL_MS: z.coerce.number().int().min(1000).max(300_000).default(30_000),
+  PUBLIC_CACHE_TTL_MS: z.coerce.number().int().min(1000).max(300_000).default(30_000),
+  TRAFFIC_CACHE_TTL_MS: z.coerce.number().int().min(250).max(60_000).default(5_000),
+  MINING_CACHE_TTL_MS: z.coerce.number().int().min(250).max(60_000).default(5_000),
+  /** A slow phone is disconnected before its SSE socket can grow without bound. */
+  SSE_MAX_BUFFER_BYTES: z.coerce.number().int().min(4096).max(1_048_576).default(65_536),
   LOG_LEVEL: z.string().default('info'),
 });
 

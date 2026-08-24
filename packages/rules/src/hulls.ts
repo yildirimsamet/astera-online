@@ -2,90 +2,92 @@ import { COMBAT } from './constants.js';
 import type { Fleet, GroundHullId, Hull, HullClass, HullId, MobileHullId } from './types.js';
 
 /**
- * Four combat hulls, two turrets and a mining craft, derived from the combat
- * formula rather than chosen for flavour. Three fill the counter cycle; the
- * Hauler exists to make looting expensive, and the two ground guns exist because
- * they can never leave — and because a defender with only one of them has no
- * decision to make (D27). D82 raises only the crystal component by 25%; alloy and
- * every capability below remain fixed.
+ * Four combat hulls, two turrets and a mining craft, priced on equal-budget power
+ * rather than chosen for flavour. Three fill the counter cycle; the Hauler exists
+ * to make looting expensive, and the two ground guns exist because they can never
+ * leave — and because a defender with only one of them has no decision to make
+ * (D27).
+ *
+ * THE WHOLE TABLE IS DERIVED FROM `atk × hp / value²` — see the Bulwark below for
+ * why that quantity and not attack-per-resource. Speeds are set from one figure:
+ * a raid on a neighbouring world is an 11-16 minute round trip on the R=2500 disc,
+ * which is the tempo the owner chose with the numbers in front of them.
  */
 export const HULLS: Record<HullId, Hull> = {
-  WASP: { id: 'WASP', name: 'Wasp', cls: 'SKIRMISHER', atk: 14, hp: 24, speed: 435, cargo: 40, alloy: 260, crystal: 0, minShipyard: 0, ground: false },
-  LANCE: { id: 'LANCE', name: 'Lance', cls: 'LANCE', atk: 46, hp: 62, speed: 322, cargo: 50, alloy: 950, crystal: 238, minShipyard: 2, ground: false },
+  WASP: { id: 'WASP', name: 'Wasp', cls: 'SKIRMISHER', atk: 15, hp: 25, speed: 130, cargo: 45, alloy: 240, crystal: 0, deuterium: 0, minShipyard: 0, ground: false },
+  LANCE: { id: 'LANCE', name: 'Lance', cls: 'LANCE', atk: 78, hp: 112, speed: 100, cargo: 60, alloy: 820, crystal: 260, deuterium: 0, minShipyard: 2, ground: false },
   /**
-   * ATTACK DELIBERATELY LEFT AT 26, AND THAT IS A MEASURED DECISION. D27.
+   * THE BULWARK IS NOW COMPETITIVE AT EQUAL BUDGET, AND THAT IS THE CHANGE.
    *
-   * It is true and easily reproduced that a Bulwark loses every equal-budget
-   * matchup in the game, including against the Lance it counters — 4.2 attack per
-   * 1,000 resources against a Wasp's 26.9, a gap no 1.6x counter can cover. The
-   * obvious repair is to raise the number, and it was tried across the whole range.
+   * `docs/balance.md` recorded a known problem it declined to fix: the Bulwark had
+   * 4.2 attack per 1,000 resources against a Wasp's 26.9, so at equal budget it
+   * lost every matchup in the game INCLUDING against the Lance it counters. Raising
+   * its attack alone was measured across the whole range and handed the season to
+   * whoever accumulated most — a subsidy to the largest stockpile, which is the
+   * wealth-ladder failure arriving through a hull stat.
    *
-   * IT HANDS THE SEASON TO WHOEVER ACCUMULATES MOST. Measured on five seeds at 50
-   * players, with everything else held: at 26 the informed archetype tops the
-   * ladder 5/5; at 32 it drops to 2/5; at 52 it is 0/5 and the board reads
-   * RAIDER RAIDER RAIDER RAIDER TURTLE. Buffing the dearest hull in the game is a
-   * subsidy to the player with the largest stockpile, which is the wealth-ladder
-   * failure `docs/balance.md` exists to prevent, arriving through a hull stat
-   * instead of through a score.
+   * THE FIX IS TO PRICE THE WHOLE TABLE ON THE RIGHT QUANTITY. With damage spread
+   * across a force, equal-budget power goes as `atk × hp / value²`, not as attack
+   * per resource. Holding that near-constant makes an expensive hull worth building
+   * without subsidising anybody:
    *
-   * SO THE BULWARK IS NOT AN EXCHANGE HULL. Its 210 hit points are what it sells:
-   * it survives to carry loot home and to raid again, and `fleetValue` exchange
-   * ratios cannot see that. Read the low attack as the price of the durability,
-   * not as a bug awaiting a fix.
+   *   Wasp 6,510   ·   Lance 7,490   ·   Bulwark 8,460      (×10⁶)
+   *
+   * so each tech tier buys about 15% equal-budget power. THE COUNTER CYCLE BUYS
+   * 156% (1.6 against 0.625), which is the point: information beats tech by
+   * construction, and that is the claim the whole game rests on.
    */
-  BULWARK: { id: 'BULWARK', name: 'Bulwark', cls: 'BULWARK', atk: 26, hp: 210, speed: 199, cargo: 70, alloy: 2500, crystal: 775, minShipyard: 4, ground: false },
-  HAULER: { id: 'HAULER', name: 'Hauler', cls: 'SUPPORT', atk: 0, hp: 80, speed: 284, cargo: 1800, alloy: 1150, crystal: 163, minShipyard: 1, ground: false },
+  BULWARK: { id: 'BULWARK', name: 'Bulwark', cls: 'BULWARK', atk: 106, hp: 662, speed: 65, cargo: 90, alloy: 2150, crystal: 730, deuterium: 0, minShipyard: 4, ground: false },
+  HAULER: { id: 'HAULER', name: 'Hauler', cls: 'SUPPORT', atk: 0, hp: 210, speed: 85, cargo: 2200, alloy: 1100, crystal: 200, deuterium: 0, minShipyard: 1, ground: false },
+  /** Fast, expensive capacity. It shortens exposure; it never replaces a Hauler. D94. */
+  RUNNER: { id: 'RUNNER', name: 'Runner', cls: 'SUPPORT', atk: 0, hp: 120, speed: 125, cargo: 380, alloy: 560, crystal: 250, deuterium: 90, minShipyard: 2, ground: false },
+  /** Shield specialist. Its extra damage is resolved only against a live shield. D95. */
+  BREACHER: { id: 'BREACHER', name: 'Breacher', cls: 'LANCE', atk: 55, hp: 300, speed: 78, cargo: 0, alloy: 1250, crystal: 550, deuterium: 200, minShipyard: 3, ground: false },
   /**
    * THE HEAVY GUN. Bulwark-class, so a swarm of Wasps overwhelms it and a Lance
    * breaks against it. Expensive, slow to accumulate, and what a planet buys when
    * it expects to be hit by something serious.
    */
-  BASTION: { id: 'BASTION', name: 'Bastion', cls: 'BULWARK', atk: 34, hp: 260, speed: 0, cargo: 0, alloy: 1700, crystal: 475, minShipyard: 1, ground: true },
+  BASTION: { id: 'BASTION', name: 'Bastion', cls: 'BULWARK', atk: 118, hp: 906, speed: 0, cargo: 0, alloy: 2400, crystal: 800, deuterium: 0, minShipyard: 1, ground: true },
   /**
    * THE LIGHT GUN. D27. Skirmisher-class, so it tears into heavy hulls and is
    * picked apart by Lances — the exact inverse of the Bastion, which is its whole
    * reason to exist.
    *
    * Buildable from the first minute (`minShipyard: 0`) on purpose: a new commander
-   * has no way to defend anything at all today, and `ABUSE.tierBand` is the only
-   * thing standing between them and a developed neighbour. A gun a beginner can
-   * actually afford is a decision they can actually make.
+   * has no other way to defend anything, and `ABUSE.tierBand` is all that stands
+   * between them and a developed neighbour.
    *
-   * THE PRICE IS THE WHOLE BALANCE, and it was swept rather than chosen. Ground
-   * defence that works makes raiding less profitable, so the question is only how
-   * much. Measured across five seeds at 50 players, holding the stats and moving
-   * the price alone:
-   *
-   *     920  -> RR 0.96   raiding is net-negative; the loop stops paying
-   *   1,380  -> RR 1.21   still under the 1.30 floor
-   *   1,840  -> RR 1.40   in band, TAX 0.100, informed archetype tops all five
-   *   2,300  -> RR 1.36   in band, but the informed archetype falls to 3/5
-   *
-   * 1,840 was the derived base point. D82 adds only the owner-directed crystal
-   * surcharge, taking the resource-value price to 1,900 without moving the gun's
-   * combat behaviour.
+   * BOTH GROUND HULLS ARE PRICED AT 1.6× EQUAL-BUDGET POWER, and that multiplier is
+   * what they are paid for never leaving: they cannot loot, cannot take Dominion,
+   * and cannot be part of a decision made anywhere but at home. The two sit in
+   * OPPOSITE CLASSES so that "how much defence" becomes "what KIND" — a question
+   * only the information layer can answer.
    */
-  THORN: { id: 'THORN', name: 'Thorn', cls: 'SKIRMISHER', atk: 16, hp: 60, speed: 0, cargo: 0, alloy: 800, crystal: 150, minShipyard: 0, ground: true },
+  THORN: { id: 'THORN', name: 'Thorn', cls: 'SKIRMISHER', atk: 49, hp: 174, speed: 0, cargo: 0, alloy: 700, crystal: 200, deuterium: 0, minShipyard: 0, ground: true },
   /**
    * The mining craft. D19.
    *
-   * `speed` and `cargo` here are its NOMINAL figures — what it does with a Drill at
-   * L1 — and they exist so a ship card has something honest to print. The live
-   * values come from `prospectorSpeed()` and `prospectorHold()`, because raising
-   * the Drill upgrades every craft the player already owns.
+   * `speed` and `cargo` here are its NOMINAL figures — what it does with no Derrick
+   * — and they exist so a ship card has something honest to print. The live values
+   * come from `prospectorSpeed()` and `prospectorHold()`, because a Derrick lifts
+   * every craft the player already owns. `speed` MUST equal `PROSPECTOR.speed`.
    *
-   * SUPPORT class, so it is shielded while any combat hull on its side survives
-   * and is prey to everything once they are gone. A Prospector sitting at home when
-   * a raid lands is lost with the rest of the garrison — mining is not free money,
-   * it is capital parked outdoors.
+   * SUPPORT class, so it is shielded while any combat hull on its side survives and
+   * is prey to everything once they are gone. A Prospector sitting at home when a
+   * raid lands is lost with the rest of the garrison — mining is not free money, it
+   * is capital parked outdoors.
    */
-  PROSPECTOR: { id: 'PROSPECTOR', name: 'Prospector', cls: 'SUPPORT', atk: 0, hp: 70, speed: 330, cargo: 1800, alloy: 700, crystal: 150, minShipyard: 1, ground: false },
+  PROSPECTOR: { id: 'PROSPECTOR', name: 'Prospector', cls: 'SUPPORT', atk: 0, hp: 150, speed: 825, cargo: 1800, alloy: 650, crystal: 200, deuterium: 0, minShipyard: 1, ground: false },
 };
 
 /** What may be put in an attack fleet. A Prospector is deliberately not here. */
-export const MOBILE_HULLS: readonly MobileHullId[] = ['WASP', 'LANCE', 'BULWARK', 'HAULER'];
+export const MOBILE_HULLS: readonly MobileHullId[] = [
+  'WASP', 'LANCE', 'BULWARK', 'HAULER', 'RUNNER', 'BREACHER',
+];
 export const ALL_HULLS: readonly HullId[] = [
-  'WASP', 'LANCE', 'BULWARK', 'HAULER', 'BASTION', 'THORN', 'PROSPECTOR',
+  'WASP', 'LANCE', 'BULWARK', 'HAULER', 'RUNNER', 'BREACHER',
+  'BASTION', 'THORN', 'PROSPECTOR',
 ];
 
 /** Every gun that never leaves the ground. Derived, so a third would be picked up. */
@@ -130,7 +132,7 @@ export function fleetValue(fleet: Fleet): number {
   let v = 0;
   for (const [id, n] of fleetEntries(fleet)) {
     const h = HULLS[id];
-    v += n * (h.alloy + h.crystal);
+    v += n * (h.alloy + h.crystal + h.deuterium);
   }
   return v;
 }

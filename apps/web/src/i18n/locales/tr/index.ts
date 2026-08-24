@@ -1,12 +1,14 @@
 import { app, document, landing, loading, servers, settings } from './entry.js';
-import { chat, leaderboard, menu, pendingStrip, sheet, signals, statusBar, surface } from './shell.js';
+import { chat, leaderboard, menu, pendingStrip, sheet, signals, statusBar, surface, toast } from './shell.js';
 import { focus, galaxy } from './world.js';
-import { action, itemSheet, launch, planet, planetHero, upgradeRow } from './planet.js';
+import { action, itemSheet, launch, planet, planetHero, transfer, upgradeRow } from './planet.js';
 import { clarity, dossier, intel, reports } from './intel.js';
 import { directives, gains, notifications, units, vocabulary } from './data.js';
 import { errors } from './errors.js';
 import { onboarding } from './onboarding.js';
 import { rewards } from './rewards.js';
+import { seasonRecap } from './season.js';
+import { chronicle } from './chronicle.js';
 import type { Resources } from '../en/index.js';
 
 /**
@@ -31,6 +33,7 @@ export const tr: Resources = {
   pendingStrip,
   signals,
   sheet,
+  toast,
   surface,
   galaxy,
   focus,
@@ -40,6 +43,7 @@ export const tr: Resources = {
   action,
   planetHero,
   launch,
+  transfer,
   intel,
   reports,
   clarity,
@@ -52,4 +56,6 @@ export const tr: Resources = {
   errors,
   onboarding,
   rewards,
+  seasonRecap,
+  chronicle,
 };

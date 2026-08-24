@@ -57,7 +57,7 @@ await page.getByLabel(/commander name/i).fill(NAME);
 await page.getByLabel(/password/i).fill('screenshot-password');
 await page.getByRole('button', { name: /create commander/i }).click();
 
-// The server list: ten galaxies, one of them open.
+// The server list: two galaxies, one of them open.
 await page.waitForTimeout(1500);
 await shot('01c-servers');
 

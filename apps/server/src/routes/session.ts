@@ -1,4 +1,4 @@
-import { eq } from 'drizzle-orm';
+import { and, eq } from 'drizzle-orm';
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import { planets, players } from '../db/schema.js';
@@ -23,7 +23,7 @@ export function registerSessionRoutes(app: FastifyInstance): void {
     const rows = await app.db
       .select({ playerId: players.id })
       .from(players)
-      .innerJoin(planets, eq(planets.playerId, players.id))
+      .innerJoin(planets, and(eq(planets.controllerPlayerId, players.id), eq(planets.kind, 'CAPITAL')))
       .where(eq(players.accountId, accountId))
       .limit(1);
     const playerId = rows[0]?.playerId;
@@ -43,7 +43,7 @@ export function registerSessionRoutes(app: FastifyInstance): void {
     const rows = await app.db
       .select({ playerId: players.id, seasonId: players.seasonId })
       .from(players)
-      .innerJoin(planets, eq(planets.playerId, players.id))
+      .innerJoin(planets, and(eq(planets.controllerPlayerId, players.id), eq(planets.kind, 'CAPITAL')))
       .where(eq(players.accountId, accountId))
       .limit(1);
     const row = rows[0];
@@ -74,7 +74,7 @@ export function registerSessionRoutes(app: FastifyInstance): void {
     const rows = await app.db
       .select({ planetId: planets.id })
       .from(planets)
-      .innerJoin(players, eq(planets.playerId, players.id))
+      .innerJoin(players, and(eq(planets.controllerPlayerId, players.id), eq(planets.kind, 'CAPITAL')))
       .where(eq(players.accountId, req.accountId!))
       .limit(1);
     const planetId = rows[0]?.planetId;
@@ -92,7 +92,7 @@ export function registerSessionRoutes(app: FastifyInstance): void {
       .object({ limit: z.coerce.number().int().min(1).max(50).default(20) })
       .parse(req.query);
     const playerId = await me(req.accountId!);
-    return { reports: await readBattleReports(app.db, playerId, query.limit) };
+    return readBattleReports(app.db, playerId, query.limit);
   });
 
   app.get('/api/session/unlocks', { preHandler: requireAuth }, async (req) => {
@@ -163,7 +163,7 @@ export function registerSessionRoutes(app: FastifyInstance): void {
    * already entitled to read, sooner. See `bus.ts`.
    *
    * Still a few hundred bytes an hour for the player topic, and a shard topic that
-   * costs one line per real event in a galaxy of fifty.
+   * costs one line per real event in a galaxy of three hundred commanders.
    */
   app.get('/api/stream', { preHandler: requireAuth }, async (req, reply) => {
     const { playerId, seasonId } = await whoAndWhere(req.accountId!);
@@ -176,26 +176,50 @@ export function registerSessionRoutes(app: FastifyInstance): void {
       // Tells nginx and friends not to buffer, which would defeat the whole point.
       'X-Accel-Buffering': 'no',
     });
-    reply.raw.write(`: connected\n\n`);
+    let cleanup: (reason?: 'client' | 'error' | 'slow' | 'shutdown') => void = () => undefined;
+    const write = (frame: string): boolean => {
+      if (reply.raw.destroyed || reply.raw.writableEnded) return false;
+      reply.raw.write(frame);
+      app.streams.wrote(Buffer.byteLength(frame));
+      if (reply.raw.writableLength > app.sseMaxBufferBytes) {
+        cleanup('slow');
+        reply.raw.destroy();
+        return false;
+      }
+      return true;
+    };
+    write(`: connected\n\n`);
 
     const send = (event: { kind: string }): void => {
-      reply.raw.write(`event: ${event.kind}\ndata: ${JSON.stringify(event)}\n\n`);
+      write(`event: ${event.kind}\ndata: ${JSON.stringify(event)}\n\n`);
     };
     const unsubscribe = app.bus.subscribe(playerId, send);
     const unsubscribeShard = app.bus.subscribeShard(seasonId, send);
 
     const heartbeat = setInterval(() => {
-      reply.raw.write(`: ping\n\n`);
+      write(`: ping\n\n`);
     }, HEARTBEAT_MS);
 
-    const cleanup = (): void => {
+    const lease = app.streams.open(() => {
+      cleanup('shutdown');
+      if (!reply.raw.destroyed && !reply.raw.writableEnded) reply.raw.end();
+    });
+    let cleaned = false;
+    cleanup = (reason = 'client'): void => {
+      if (cleaned) return;
+      cleaned = true;
       clearInterval(heartbeat);
       unsubscribe();
       unsubscribeShard();
+      lease.release(reason);
     };
     // Both events matter: 'close' for a client that goes away, 'error' for a
     // socket that dies. Leaking a subscription leaks a listener per reconnect.
-    req.raw.on('close', cleanup);
-    req.raw.on('error', cleanup);
+    req.raw.on('close', () => {
+      cleanup('client');
+    });
+    req.raw.on('error', () => {
+      cleanup('error');
+    });
   });
 }

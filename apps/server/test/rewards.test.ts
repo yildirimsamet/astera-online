@@ -22,6 +22,7 @@ import {
   grant,
   levelWorld,
   seedWorld,
+  settleBuilds,
   setLevel,
   testDb,
   type Fixture,
@@ -196,6 +197,7 @@ describe('rewards', () => {
     await grant(f.db, mine, 20_000, 8_000);
     await setLevel(f.db, mine, 'SHIPYARD', 1);
     await buildUnits(f.db, mine, 'WASP', 6, f.clock);
+    await settleBuilds(f, mine);
 
     expect((await chainOf('SHIPS')).progress).toBe(6);
     expect(await stateOf('SHIPS', 5)).toBe('claimable');
@@ -210,6 +212,7 @@ describe('rewards', () => {
     await setLevel(f.db, mine, 'SHIPYARD', 2);
     await buildUnits(f.db, mine, 'WASP', 2, f.clock);
     await buildUnits(f.db, mine, 'PROSPECTOR', 1, f.clock);
+    await settleBuilds(f, mine);
 
     const [row] = await f.db.select().from(planets).where(eq(planets.id, mine));
     expect(row?.builtEver).toEqual({ WASP: 2, PROSPECTOR: 1 });
@@ -225,7 +228,11 @@ describe('rewards', () => {
     const result = await claimReward(f.db, mine, rewardId('CORE', 3), f.clock);
     const tier = REWARD_CHAINS.find((c) => c.id === 'CORE')!.tiers[0]!.reward;
 
-    expect(result.granted).toEqual({ alloy: tier.alloy, crystal: tier.crystal });
+    expect(result.granted).toEqual({
+      alloy: tier.alloy,
+      crystal: tier.crystal,
+      deuterium: tier.deuterium,
+    });
 
     const [after] = await f.db.select().from(planets).where(eq(planets.id, mine));
     expect(after!.alloy).toBeCloseTo(before!.alloy + tier.alloy, 4);
@@ -249,7 +256,11 @@ describe('rewards', () => {
       .select()
       .from(buildings)
       .where(and(eq(buildings.planetId, mine), eq(buildings.type, 'REFINERY')));
-    const cap = storageCap(alloyRate(refinery?.level ?? 0));
+    const [vault] = await f.db
+      .select()
+      .from(buildings)
+      .where(and(eq(buildings.planetId, mine), eq(buildings.type, 'VAULT')));
+    const cap = storageCap(alloyRate(refinery?.level ?? 0), vault?.level ?? 0);
     await f.db.update(planets).set({ alloy: cap }).where(eq(planets.id, mine));
 
     const tier = REWARD_CHAINS.find((c) => c.id === 'CORE')!.tiers[0]!.reward;
@@ -437,6 +448,7 @@ describe('rewards', () => {
     await grant(f.db, other, 20_000, 8_000);
     await setLevel(f.db, other, 'SHIPYARD', 1);
     await buildUnits(f.db, other, 'WASP', 9, f.clock);
+    await settleBuilds(f, other);
 
     expect((await chainOf('SHIPS')).progress).toBe(0);
   });

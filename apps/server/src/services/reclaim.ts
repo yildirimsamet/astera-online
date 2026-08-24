@@ -2,16 +2,20 @@ import { and, eq, inArray, lt, ne, or, sql } from 'drizzle-orm';
 import { SERVERS } from '@astera/rules';
 import type { Clock } from '../clock.js';
 import type { Db, Tx } from '../db/client.js';
+import { publishShard } from '../stream/bus.js';
 import {
   accounts,
   battleReports,
+  buildOrders,
   buildings,
   chatMessages,
   debrisFields,
   miningRuns,
   missions,
   notifications,
+  neutralPlanetState,
   planets,
+  planetResearch,
   players,
   probeReports,
   requestLog,
@@ -20,6 +24,7 @@ import {
   scanEvents,
   scheduledEvents,
   seasons,
+  strategicAssets,
   units,
   watches,
 } from '../db/schema.js';
@@ -30,10 +35,10 @@ import {
  * *"Bir oyuncu 3 gün boyunca oyuna girmezse gezegeni silinsin ve böylece
  * serverlarda yer açılır. Pasif hesaplar birikmez."*
  *
- * WHY THIS IS WORTH THE RISK IT CARRIES. A galaxy holds fifty worlds and galaxies
+ * WHY THIS IS WORTH THE RISK IT CARRIES. A galaxy holds three hundred seats and galaxies
  * fill strictly in order — that ordering is the ONLY mitigation the empty-shard
  * risk has, and it inverts completely once seats are held by people who signed up
- * and never returned. Fifty commanders of whom forty are inert is not a full
+ * and never returned. Three hundred inert commanders are not a full
  * galaxy; it is an empty one that nobody can join. The live shard already looks
  * like this: a hundred accounts created in two days, and worlds that read as bots
  * to the owner because nothing has happened on them since.
@@ -101,15 +106,20 @@ export interface ReclaimResult {
  * elsewhere — and a harvest run pointed at either is a flight that must be left
  * alone.
  */
-async function worldRows(
+async function commanderRows(
   tx: Tx,
-  planetId: string,
+  planetIds: string[],
+  playerId: string,
 ): Promise<{ missionIds: string[]; fieldIds: string[]; runIds: string[] }> {
   const missionIds = (
     await tx
       .select({ id: missions.id })
       .from(missions)
-      .where(or(eq(missions.originPlanetId, planetId), eq(missions.targetPlanetId, planetId)))
+      .where(or(
+        eq(missions.ownerPlayerId, playerId),
+        inArray(missions.originPlanetId, planetIds),
+        inArray(missions.targetPlanetId, planetIds),
+      ))
   ).map((r) => r.id);
 
   const fieldIds = (
@@ -118,8 +128,8 @@ async function worldRows(
       .from(debrisFields)
       .where(
         missionIds.length > 0
-          ? or(eq(debrisFields.planetId, planetId), inArray(debrisFields.missionId, missionIds))
-          : eq(debrisFields.planetId, planetId),
+          ? or(inArray(debrisFields.planetId, planetIds), inArray(debrisFields.missionId, missionIds))
+          : inArray(debrisFields.planetId, planetIds),
       )
   ).map((r) => r.id);
 
@@ -129,8 +139,8 @@ async function worldRows(
       .from(miningRuns)
       .where(
         fieldIds.length > 0
-          ? or(eq(miningRuns.planetId, planetId), inArray(miningRuns.debrisFieldId, fieldIds))
-          : eq(miningRuns.planetId, planetId),
+          ? or(inArray(miningRuns.planetId, planetIds), inArray(miningRuns.debrisFieldId, fieldIds))
+          : inArray(miningRuns.planetId, planetIds),
       )
   ).map((r) => r.id);
 
@@ -146,7 +156,8 @@ async function worldRows(
  */
 async function busy(
   tx: Tx,
-  planetId: string,
+  planetIds: string[],
+  playerId: string,
   rows: { runIds: string[] },
 ): Promise<boolean> {
   const [flight] = await tx
@@ -155,7 +166,11 @@ async function busy(
     .where(
       and(
         eq(missions.status, 'in_flight'),
-        or(eq(missions.originPlanetId, planetId), eq(missions.targetPlanetId, planetId)),
+        or(
+          eq(missions.ownerPlayerId, playerId),
+          inArray(missions.originPlanetId, planetIds),
+          inArray(missions.targetPlanetId, planetIds),
+        ),
       ),
     )
     .limit(1);
@@ -208,7 +223,7 @@ async function foldRecord(
  */
 async function demolish(
   tx: Tx,
-  planetId: string,
+  planetIds: string[],
   playerId: string,
   rows: { missionIds: string[]; fieldIds: string[]; runIds: string[] },
 ): Promise<void> {
@@ -224,15 +239,15 @@ async function demolish(
    */
   await tx
     .delete(watches)
-    .where(or(eq(watches.observerPlayerId, playerId), eq(watches.targetPlanetId, planetId)));
+    .where(or(eq(watches.observerPlayerId, playerId), inArray(watches.targetPlanetId, planetIds)));
   await tx
     .delete(probeReports)
     .where(
-      or(eq(probeReports.observerPlayerId, playerId), eq(probeReports.targetPlanetId, planetId)),
+      or(eq(probeReports.observerPlayerId, playerId), inArray(probeReports.targetPlanetId, planetIds)),
     );
   await tx
     .delete(scanEvents)
-    .where(or(eq(scanEvents.targetPlanetId, planetId), eq(scanEvents.originPlanetId, planetId)));
+    .where(or(inArray(scanEvents.targetPlanetId, planetIds), inArray(scanEvents.originPlanetId, planetIds)));
   await tx
     .delete(battleReports)
     .where(
@@ -249,19 +264,39 @@ async function demolish(
    * wakes the worker, finds nothing, and — depending on the handler — either logs
    * or retries until its budget runs out.
    */
-  const refs = [...missionIds, ...runIds];
+  const assetIds = (await tx
+    .select({ id: strategicAssets.id })
+    .from(strategicAssets)
+    .where(or(
+      inArray(strategicAssets.planetId, planetIds),
+      ...(missionIds.length > 0 ? [inArray(strategicAssets.missionId, missionIds)] : []),
+    ))).map((asset) => asset.id);
+  const buildOrderIds = (await tx
+    .select({ id: buildOrders.id })
+    .from(buildOrders)
+    .where(inArray(buildOrders.planetId, planetIds))).map((order) => order.id);
+  const refs = [...missionIds, ...runIds, ...planetIds, ...assetIds, ...buildOrderIds];
   if (refs.length > 0) {
     await tx.delete(scheduledEvents).where(inArray(scheduledEvents.refId, refs));
   }
 
   if (runIds.length > 0) await tx.delete(miningRuns).where(inArray(miningRuns.id, runIds));
   if (fieldIds.length > 0) await tx.delete(debrisFields).where(inArray(debrisFields.id, fieldIds));
+  if (assetIds.length > 0) await tx.delete(strategicAssets).where(inArray(strategicAssets.id, assetIds));
+  if (buildOrderIds.length > 0) {
+    await tx.delete(buildOrders).where(inArray(buildOrders.id, buildOrderIds));
+  }
   if (missionIds.length > 0) await tx.delete(missions).where(inArray(missions.id, missionIds));
 
-  await tx.delete(units).where(eq(units.planetId, planetId));
-  await tx.delete(satellites).where(eq(satellites.planetId, planetId));
-  await tx.delete(buildings).where(eq(buildings.planetId, planetId));
-  await tx.delete(planets).where(eq(planets.id, planetId));
+  await tx.delete(units).where(or(
+    inArray(units.planetId, planetIds),
+    eq(units.ownerPlayerId, playerId),
+  ));
+  await tx.delete(satellites).where(inArray(satellites.planetId, planetIds));
+  await tx.delete(buildings).where(inArray(buildings.planetId, planetIds));
+  await tx.delete(planetResearch).where(inArray(planetResearch.planetId, planetIds));
+  await tx.delete(neutralPlanetState).where(inArray(neutralPlanetState.planetId, planetIds));
+  await tx.delete(planets).where(inArray(planets.id, planetIds));
   await tx.delete(players).where(eq(players.id, playerId));
 }
 
@@ -292,6 +327,7 @@ export async function reclaimIdleSeats(
     .select({
       playerId: players.id,
       accountId: players.accountId,
+      seasonId: players.seasonId,
       planetId: planets.id,
       planetName: planets.name,
       taken: players.dominionTaken,
@@ -299,11 +335,12 @@ export async function reclaimIdleSeats(
       wealth: players.wealth,
     })
     .from(players)
-    .innerJoin(planets, eq(planets.playerId, players.id))
+    .innerJoin(planets, eq(planets.controllerPlayerId, players.id))
     .innerJoin(seasons, eq(seasons.id, players.seasonId))
     .where(
       and(
         eq(seasons.status, 'live'),
+        eq(planets.kind, 'CAPITAL'),
         lt(players.lastActiveAt, cutoff),
         lt(players.joinedAt, cutoff),
       ),
@@ -331,11 +368,24 @@ export async function reclaimIdleSeats(
          * Read ONCE and used by both, so what is checked for quiet and what is
          * deleted can never be different sets. See `worldRows`.
          */
-        const rows = await worldRows(tx, row.planetId);
-        if (await busy(tx, row.planetId, rows)) return 'busy' as const;
+        const controlled = await tx
+          .select({ id: planets.id })
+          .from(planets)
+          .where(eq(planets.controllerPlayerId, row.playerId));
+        const planetIds = controlled.map((world) => world.id);
+        if (planetIds.length === 0) return 'came-back' as const;
+        const rows = await commanderRows(tx, planetIds, row.playerId);
+        if (await busy(tx, planetIds, row.playerId, rows)) return 'busy' as const;
 
         await foldRecord(tx, row.accountId, row);
-        await demolish(tx, row.planetId, row.playerId, rows);
+        await demolish(tx, planetIds, row.playerId, rows);
+        // Reclaim removes a public world, its ladder row, its authored chat and
+        // any dormant wreck fields. Those are distinct query families; the
+        // client's 250ms coalescer turns the transactional broadcasts into one
+        // visible refresh without making one event kind lie about what changed.
+        await publishShard(tx, row.seasonId, 'world');
+        await publishShard(tx, row.seasonId, 'mining');
+        await publishShard(tx, row.seasonId, 'chat');
         return 'reclaimed' as const;
       });
 

@@ -12,9 +12,11 @@ import {
 import {
   battleReports,
   debrisFields,
+  galaxyEvents,
   miningRuns,
   players,
   scheduledEvents,
+  type GalaxyEventPayload,
   units,
 } from '../src/db/schema.js';
 import { launchAttack } from '../src/services/mission.js';
@@ -28,12 +30,18 @@ import { fail } from '../src/worker/queue.js';
 import {
   giveUnits,
   grant,
+  levelWorld,
   seedWorld,
   setLevel,
   settledAt,
   testDb,
   type Fixture,
 } from './helpers.js';
+
+const publicPlanetName = (payload: GalaxyEventPayload): string => {
+  if (!('planetName' in payload)) throw new Error('expected a public planet identity payload');
+  return payload.planetName;
+};
 
 const silent = pino({ level: 'silent' });
 
@@ -71,11 +79,22 @@ describe('wreck fields', () => {
   });
 
   /** A raid big enough on both sides to leave a field worth flying to. */
+  /**
+   * THE ATTACKING FLEET IS DERIVED, NOT PICKED. It has to win DECISIVELY, because
+   * everything in this file is downstream of a fight that actually happened.
+   *
+   * Sixty Wasps was enough against the old hull table and is REPELLED against the
+   * current one — ground defence is now priced at 1.6x equal-budget power, so six
+   * Bastions are worth 19,200 rather than 13,050. Measured against the real
+   * resolver: 60 is repelled, 90 is partial, 120 is decisive and leaves a field of
+   * about 5,600.
+   */
   const fight = async (): Promise<typeof debrisFields.$inferSelect> => {
     await grant(f.db, theirs, 60_000, 6_000);
     await giveUnits(f.db, theirs, { BASTION: 6, WASP: 20 });
-    await giveUnits(f.db, mine, { WASP: 60, HAULER: 3 });
-    const launch = await launchAttack(f.db, mine, theirs, { WASP: 60, HAULER: 3 }, f.clock);
+    await giveUnits(f.db, mine, { WASP: 120, HAULER: 3 });
+    await levelWorld(f.db, f.planetIds);
+    const launch = await launchAttack(f.db, mine, theirs, { WASP: 120, HAULER: 3 }, f.clock);
     f.clock.set(settledAt(launch.arriveAt));
     await worker().tick();
     const [field] = await f.db.select().from(debrisFields);
@@ -175,6 +194,40 @@ describe('wreck fields', () => {
 
     const [after] = await f.db.select().from(debrisFields).where(eq(debrisFields.id, field!.id));
     expect(after!.takenAlloy + after!.takenCrystal).toBeCloseTo(took, 4);
+    const exhausted = await f.db
+      .select()
+      .from(galaxyEvents)
+      .where(eq(galaxyEvents.kind, 'wreck_exhausted'));
+    expect(exhausted).toHaveLength(1);
+    expect(Object.keys(exhausted[0]!.payload).sort()).toEqual(['commanderName', 'planetName']);
+  });
+
+  it('chronicles a new public wreck and a changed Dominion leader without combat intel', async () => {
+    // Make a different world the leader before the raid; the attacker must earn
+    // the transition rather than inheriting the all-zero joined-at tie-break.
+    await f.db
+      .update(players)
+      .set({ dominionTaken: 1 })
+      .where(eq(players.id, f.playerIds[2]!));
+    const field = await fight();
+
+    const events = await f.db.select().from(galaxyEvents);
+    const formed = events.find((event) => event.kind === 'wreck_formed');
+    expect(formed).toMatchObject({
+      refId: field.id,
+      subjectPlanetId: theirs,
+      payload: { commanderName: 'Tester1' },
+    });
+    expect(typeof publicPlanetName(formed!.payload)).toBe('string');
+    expect(Object.keys(formed!.payload).sort()).toEqual(['commanderName', 'planetName']);
+
+    const leader = events.find((event) => event.kind === 'dominion_leader');
+    expect(leader).toMatchObject({
+      subjectPlanetId: mine,
+      payload: { commanderName: 'Tester0' },
+    });
+    expect(typeof publicPlanetName(leader!.payload)).toBe('string');
+    expect(JSON.stringify(events)).not.toMatch(/fleet|loot|attacker/i);
   });
 
   /**

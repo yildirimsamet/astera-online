@@ -3,7 +3,7 @@
 > The fleet is the bet. The information is the game. The planet is the stake.
 
 An asynchronous multiplayer space strategy game where the core tension is
-*seeing and being seen*. One planet each, real 3D coordinates, fleets that
+*seeing and being seen*. One commander with a protected capital and won colonies, real 3D coordinates, fleets that
 physically travel, and combat that resolves while you are asleep.
 
 **Design docs:** [Game Design Document](https://claude.ai/code/artifact/a905cdce-d370-463b-9295-6eb838ff0bee)
@@ -63,8 +63,8 @@ pnpm season create --shard EU-1 --seed 4242 --unattended 8
 pnpm dev                  # API on :3100, client on :5173
 ```
 
-`--unattended N` places N inert commanders, already past newcomer grace, so a solo
-developer has something to scout and raid. They never act. **Anything they appear to
+`--unattended N` places N inert commanders, already past newcomer grace, so the development
+team has something to scout and raid. They never act. **Anything they appear to
 teach you about balance is a lie.**
 
 ### On a phone
@@ -184,7 +184,7 @@ provably inert. Three changes, in this order:
 
 **DISRUPTION.** A successful raid knocks the target's surface works offline — 180 min
 on DECISIVE, 60 on PARTIAL, refreshing rather than stacking, capped at 240 min pending.
-Buildings are never damaged, so the ownership pillar holds, but the victim now loses
+Ordinary raids never damage buildings, so the ownership pillar holds, but the victim now loses
 *compounding* rather than merely stock. Raid tax 0.06 → 0.18.
 
 **DOMINION replaces Empire Value as the ladder.**

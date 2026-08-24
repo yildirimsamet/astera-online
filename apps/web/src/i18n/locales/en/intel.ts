@@ -4,6 +4,7 @@
  */
 
 export const intel = {
+  openOrbit: 'Open Orbit',
   tabs: {
     label: 'Intel reports',
   },
@@ -27,6 +28,8 @@ export const intel = {
   watching: {
     heading: 'Watching',
     slotsUsed: '{{used}}/{{total}} slots used',
+    slotLabel: 'Slot {{slot}}',
+    slotEmpty: 'Idle',
     missingNoSlot: 'No slot is pointed at anything',
     missingNoTelescope: 'You have no Telescope',
     gives: "Tells you the moment a planet's fleet leaves — the one fact that decides every raid.",
@@ -106,6 +109,7 @@ export const reports = {
   howItWent: 'How it went',
   roundLine: 'you dealt <0>{{dealt}}</0>, took <1>{{took}}</1>',
   shield: 'shield {{amount}}',
+  breacherShield: 'Breacher +{{amount}}',
   /** The three outcomes the whole combat model produces. */
   gradeDecisive: 'DECISIVE',
   gradePartial: 'PARTIAL',

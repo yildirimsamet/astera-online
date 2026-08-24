@@ -1,3 +1,4 @@
+import { GameActions } from '../session/seasonLock.js';
 import { PROBE, radarDetectsFleets, radarRange, telescopeSlots } from '@astera/rules';
 import { useRef, useState, type KeyboardEvent } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -9,6 +10,7 @@ import { BattleReports } from './BattleReports.jsx';
 import { Reading } from '../ui/Clarity.js';
 import { Note, Panel, Section } from '../ui/primitives.js';
 import { Unreachable, Waiting } from '../ui/kit/Surface.js';
+import type { IntelView } from '../api/schemas.js';
 
 /**
  * WHAT YOU KNOW — and, more importantly, what you do not.
@@ -22,7 +24,7 @@ import { Unreachable, Waiting } from '../ui/kit/Surface.js';
  * the first hour they are the entire screen. Each one names the instrument that
  * would fill it and what that instrument would tell them.
  */
-export function IntelScreen() {
+export function IntelScreen({ onOpenOrbit }: { onOpenOrbit?: () => void }) {
   const { t } = useTranslation();
   const intel = useIntel();
   const planet = usePlanet();
@@ -64,12 +66,14 @@ export function IntelScreen() {
   const { watching, probeReports, radarLog } = intel.data;
   const neighbours = (galaxy.data?.planets ?? []).filter((p) => !p.isSelf).length;
   const seen = watching.length;
+  const slots = telescopeSlots(telescope);
 
   return (
-    <div className="px-4 pt-4">
+    <GameActions>
+      <div className="px-4 pt-4">
       <Coverage
         seen={seen}
-        slots={telescopeSlots(telescope)}
+        slots={slots}
         neighbours={neighbours}
         telescope={telescope}
         radar={radar}
@@ -79,50 +83,23 @@ export function IntelScreen() {
         label={t('intel.watching.heading')}
         aside={
           telescope > 0
-            ? t('intel.watching.slotsUsed', { used: seen, total: telescope })
+            ? t('intel.watching.slotsUsed', { used: seen, total: slots })
             : undefined
         }
       >
-        {watching.length === 0 ? (
+        {telescope === 0 ? (
           <Instrument
+            kind="telescope"
             art={instrumentArt('TELESCOPE', 1)}
-            missing={t(
-              telescope > 0
-                ? 'intel.watching.missingNoSlot'
-                : 'intel.watching.missingNoTelescope',
-            )}
+            missing={t('intel.watching.missingNoTelescope')}
             gives={t('intel.watching.gives')}
-            cost={t(
-              telescope > 0 ? 'intel.watching.costPoint' : 'intel.watching.costInstall',
-            )}
+            cost={t('intel.watching.costInstall')}
+            {...(onOpenOrbit ? { onAct: onOpenOrbit, action: t('intel.openOrbit') } : {})}
           />
         ) : (
-          <Panel className="py-1">
-            {watching.map((watch) => (
-              <div key={watch.slot} className="border-b border-line-soft py-3 last:border-b-0">
-                <div className="flex items-baseline gap-2">
-                  <span className="font-display text-[14px] uppercase tracking-wide text-bone">
-                    {watch.ownerName}
-                  </span>
-                  <span className="text-[12px] text-faint">{watch.targetName}</span>
-                </div>
-                <div className="mt-1.5">
-                  <Reading
-                    status={watch.reading.status}
-                    staleMinutes={watch.reading.staleMinutes}
-                    etaMinutes={watch.reading.etaMinutes}
-                    state={watch.reading.state}
-                  />
-                </div>
-                {watch.reading.status === 'AWAY' && (
-                  <p className="mt-1.5 text-[12px] text-opportunity">
-                    {t('intel.watching.away')}
-                  </p>
-                )}
-              </div>
-            ))}
-          </Panel>
+          <TelescopeRack slots={slots} watching={watching} />
         )}
+        {telescope > 0 && watching.length === 0 && <Note>{t('intel.watching.costPoint')}</Note>}
         {watching.some((w) => w.reading.state === 'INTERMITTENT') && (
           <Note>{t('intel.watching.intermittent')}</Note>
         )}
@@ -175,6 +152,7 @@ export function IntelScreen() {
         >
         {probeReports.length === 0 ? (
           <Instrument
+            kind="probe"
             art="/assets/images/ships/explorer_ship.png"
             missing={t('intel.probes.missing')}
             gives={t('intel.probes.gives')}
@@ -252,10 +230,12 @@ export function IntelScreen() {
       >
         {radar < 1 ? (
           <Instrument
+            kind="radar"
             art={instrumentArt('RADAR', 1)}
             missing={t('intel.radar.missing')}
             gives={t('intel.radar.gives')}
             cost={t('intel.radar.cost')}
+            {...(onOpenOrbit ? { onAct: onOpenOrbit, action: t('intel.openOrbit') } : {})}
           />
         ) : radarLog.length === 0 ? (
           <Panel>
@@ -305,7 +285,63 @@ export function IntelScreen() {
           </Note>
         )}
       </Section>
-    </div>
+      </div>
+    </GameActions>
+  );
+}
+
+function TelescopeRack({
+  slots,
+  watching,
+}: {
+  slots: number;
+  watching: IntelView['watching'];
+}) {
+  const { t } = useTranslation();
+  return (
+    <Panel className="grid gap-2 p-2">
+      {Array.from({ length: slots }, (_, slot) => {
+        const watch = watching.find((item) => item.slot === slot);
+        return (
+          <div
+            key={slot}
+            className={`relative min-h-16 rounded-sm border px-3 py-2.5 ${
+              watch ? 'border-crystal/25 bg-crystal/[0.04]' : 'border-dashed border-line bg-void/30'
+            }`}
+          >
+            <span className="num absolute right-2.5 top-2 text-[9px] text-faint">
+              {t('intel.watching.slotLabel', { slot: slot + 1 })}
+            </span>
+            {watch ? (
+              <>
+                <div className="flex items-baseline gap-2 pr-14">
+                  <span className="truncate font-display text-[14px] uppercase tracking-wide text-bone">
+                    {watch.ownerName}
+                  </span>
+                  <span className="truncate text-[11px] text-faint">{watch.targetName}</span>
+                </div>
+                <div className="mt-1.5">
+                  <Reading
+                    status={watch.reading.status}
+                    staleMinutes={watch.reading.staleMinutes}
+                    etaMinutes={watch.reading.etaMinutes}
+                    state={watch.reading.state}
+                  />
+                </div>
+                {watch.reading.status === 'AWAY' && (
+                  <p className="mt-1 text-[11px] text-opportunity">{t('intel.watching.away')}</p>
+                )}
+              </>
+            ) : (
+              <div className="flex min-h-11 items-center gap-2 text-faint">
+                <span aria-hidden className="grid size-7 place-items-center rounded-full border border-dashed border-line text-lg">+</span>
+                <span className="text-[12px]">{t('intel.watching.slotEmpty')}</span>
+              </div>
+            )}
+          </div>
+        );
+      })}
+    </Panel>
   );
 }
 
@@ -402,27 +438,79 @@ function Coverage({
  * finish reading it wanting the thing.
  */
 function Instrument({
+  kind,
   art,
   missing,
   gives,
   cost,
+  action,
+  onAct,
 }: {
+  kind: 'telescope' | 'radar' | 'probe';
   /** null where an instrument has no render of its own — the well just stays empty. */
   art: string | null;
   missing: string;
   gives: string;
   cost: string;
+  action?: string;
+  onAct?: () => void;
 }) {
   return (
-    <div className="group flex items-start gap-3.5 p-3.5">
-      <div className="art-well flex size-14 shrink-0 items-center justify-center rounded">
-        {art && <img src={art} alt="" aria-hidden className="size-13 object-contain" />}
-      </div>
+    <div className="plate group grid grid-cols-[104px_1fr] items-center gap-4 p-3.5">
+      <InstrumentDiagram kind={kind} art={art} />
       <div className="min-w-0 flex-1">
         <p className="text-[14px] text-alloy">{missing}</p>
         <p className="mt-1 text-[13px] leading-snug text-bone">{gives}</p>
-        <p className="mt-1.5 text-[12px] leading-snug text-faint">{cost}</p>
+        <p className="mt-1.5 text-[12px] leading-relaxed text-dim">{cost}</p>
+        {onAct && action && (
+          <button type="button" className="slab slab-ghost mt-3 w-full" onClick={onAct}>
+            {action}
+            <span aria-hidden>→</span>
+          </button>
+        )}
       </div>
+    </div>
+  );
+}
+
+function InstrumentDiagram({
+  kind,
+  art,
+}: {
+  kind: 'telescope' | 'radar' | 'probe';
+  art: string | null;
+}) {
+  return (
+    <div
+      data-instrument-diagram={kind}
+      className="art-well relative grid size-[104px] shrink-0 place-items-center overflow-hidden rounded-sm"
+      aria-hidden
+    >
+      {kind === 'radar' && (
+        <>
+          <span className="absolute size-[88px] rounded-full border border-crystal/20" />
+          <span className="absolute size-[62px] rounded-full border border-crystal/35" />
+          <span className="absolute right-2 top-5 size-2 rotate-45 border border-alloy bg-alloy/35 shadow-[0_0_6px_var(--color-alloy)]" />
+        </>
+      )}
+      {kind === 'telescope' && (
+        <>
+          <span className="absolute left-[54px] top-[18px] h-px w-11 -rotate-[28deg] bg-gradient-to-r from-crystal/70 to-transparent" />
+          <span className="absolute right-2 top-2 size-3 rounded-full border border-crystal/60" />
+          <span className="absolute bottom-2 right-2 flex gap-1">
+            <i className="size-1.5 rounded-full bg-crystal" />
+            <i className="size-1.5 rounded-full border border-crystal/50" />
+            <i className="size-1.5 rounded-full border border-crystal/50" />
+          </span>
+        </>
+      )}
+      {kind === 'probe' && (
+        <>
+          <span className="absolute inset-x-3 top-1/2 border-t border-dashed border-opportunity/40" />
+          <span className="absolute right-2 top-[47px] size-2 rotate-45 border-r border-t border-opportunity" />
+        </>
+      )}
+      {art && <img src={art} alt="" className="relative z-[1] size-[88px] object-contain" />}
     </div>
   );
 }

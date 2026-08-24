@@ -1,15 +1,16 @@
-import { eq, sql } from 'drizzle-orm';
 import {
   HULLS,
   PROSPECTOR,
+  buildMinutes,
   collect,
-  coreTier,
+  defenceMinutes,
   instrumentCost,
   instrumentMaxed,
   productionMult,
   satelliteCost,
   satelliteSlots,
   seeingUnlocked,
+  shipMinutes,
   upgradeCost,
   type BuildingId,
   type HullId,
@@ -18,26 +19,20 @@ import {
 } from '@astera/rules';
 import type { Clock } from '../clock.js';
 import type { Db, Tx } from '../db/client.js';
-import { planets, satellites } from '../db/schema.js';
-import { publishShard } from '../stream/bus.js';
+import { buildQueueContext, placeBuildOrder } from './buildQueue.js';
 import { planetView, type PlanetView } from './planetView.js';
 import {
   GameError,
-  addUnits,
+  assertWorldOperational,
   refreshWealth,
   saveResources,
-  setBuildingLevel,
-  totalUnitsOf,
   withPlanetLock,
+  type LockedPlanet,
 } from './planet.js';
 
 /**
- * Construction is INSTANT on payment. There are no build timers and no queues.
- *
- * A timer's return hook is "a bar filled up" — the weakest one available — and it
- * would be a whole state machine plus a permanent temptation to sell speed-ups.
- * It also makes the panic session better: converting stock into Bastions in the
- * nine minutes before a fleet lands is a real emergency option.
+ * Ordinary purchases commit into one of two queues. This file owns the item gates
+ * and prices; `buildQueue.ts` owns timing, persistence, cancellation and completion.
  */
 
 /**
@@ -48,7 +43,7 @@ import {
  * what had actually happened. Two round trips for one tap, in a game whose entire
  * construction model is "instant on payment, no build timers": on a phone that is
  * three to eight hundred milliseconds of a dead button after a decision the design
- * promises is immediate.
+ * promises agrees with the tap.
  *
  * The view is free here — see `planetView` — and it is authoritative, because it
  * is built inside the same transaction under the same row lock. The fragment stays
@@ -60,13 +55,15 @@ export interface WithPlanet {
 }
 
 export interface CollectResult extends WithPlanet {
-  moved: { alloy: number; crystal: number };
+  moved: { alloy: number; crystal: number; deuterium: number };
   /** Would not fit; still sitting in the works. */
-  blocked: { alloy: number; crystal: number };
+  blocked: { alloy: number; crystal: number; deuterium: number };
   alloy: number;
   crystal: number;
+  deuterium: number;
   bufferAlloy: number;
   bufferCrystal: number;
+  bufferDeuterium: number;
 }
 
 /**
@@ -85,14 +82,18 @@ export async function collectWorks(
   db: Db,
   planetId: string,
   clock: Clock,
+  expectedPlayerId?: string,
 ): Promise<CollectResult> {
   return withPlanetLock(db, planetId, clock, async (tx, planet) => {
+    assertWorldOperational(planet);
     const result = collect(
       {
         alloy: planet.alloy,
         crystal: planet.crystal,
+        deuterium: planet.deuterium,
         bufferAlloy: planet.bufferAlloy,
         bufferCrystal: planet.bufferCrystal,
+        bufferDeuterium: planet.bufferDeuterium,
         shield: planet.shield,
         lastTickMinutes: planet.nowMinutes,
         disruptedUntilMinutes: 0,
@@ -100,7 +101,8 @@ export async function collectWorks(
       {
         refineryLevel: planet.buildings.REFINERY,
         extractorLevel: planet.buildings.EXTRACTOR,
-        aegisLevel: planet.instruments.AEGIS ?? 0,
+        vaultLevel: planet.buildings.VAULT,
+        aegisLevel: planet.effectiveInstruments.AEGIS ?? 0,
         production: productionMult(planet.orbit),
       },
     );
@@ -108,14 +110,18 @@ export async function collectWorks(
     await saveResources(tx, planetId, {
       alloy: result.state.alloy,
       crystal: result.state.crystal,
+      deuterium: result.state.deuterium,
       bufferAlloy: result.state.bufferAlloy,
       bufferCrystal: result.state.bufferCrystal,
+      bufferDeuterium: result.state.bufferDeuterium,
     });
 
     planet.alloy = result.state.alloy;
     planet.crystal = result.state.crystal;
+    planet.deuterium = result.state.deuterium;
     planet.bufferAlloy = result.state.bufferAlloy;
     planet.bufferCrystal = result.state.bufferCrystal;
+    planet.bufferDeuterium = result.state.bufferDeuterium;
     // Collected ore does not change what the player OWNS, only which pile it is
     // in — but Wealth is denormalised and the rank floor reads it, so it is
     // refreshed here rather than left to drift.
@@ -126,11 +132,38 @@ export async function collectWorks(
       blocked: result.blocked,
       alloy: result.state.alloy,
       crystal: result.state.crystal,
+      deuterium: result.state.deuterium,
       bufferAlloy: result.state.bufferAlloy,
       bufferCrystal: result.state.bufferCrystal,
+      bufferDeuterium: result.state.bufferDeuterium,
       planet: await planetView(tx, planetId, clock),
     };
+  }, expectedPlayerId);
+}
+
+/** Place one building commitment inside an already-held planet transaction. */
+export async function placeBuildingUpgrade(
+  tx: Tx,
+  planet: LockedPlanet,
+  type: BuildingId,
+): Promise<number> {
+  assertWorldOperational(planet);
+  const context = await buildQueueContext(tx, planet, 'CONSTRUCTION');
+  const level = context.projected.buildings[type];
+
+  if (type !== 'CORE' && level >= context.projected.buildings.CORE) {
+    throw new GameError('CORE_CEILING', 'Command Core must be raised first');
+  }
+
+  const cost = upgradeCost(level);
+  await placeBuildOrder(tx, planet, context, {
+    kind: 'BUILDING',
+    subject: type,
+    count: 1,
+    cost,
+    minutes: buildMinutes(cost, context.projected.buildings.CORE),
   });
+  return level + 1;
 }
 
 export async function upgradeBuilding(
@@ -138,69 +171,45 @@ export async function upgradeBuilding(
   planetId: string,
   type: BuildingId,
   clock: Clock,
+  expectedPlayerId?: string,
 ): Promise<WithPlanet & { type: BuildingId; level: number; alloy: number; crystal: number }> {
   return withPlanetLock(db, planetId, clock, async (tx, planet) => {
-    const level = planet.buildings[type];
-
-    if (type !== 'CORE' && level >= planet.buildings.CORE) {
-      throw new GameError('CORE_CEILING', 'Command Core must be raised first');
-    }
-
-    const cost = upgradeCost(level);
-    if (planet.alloy < cost.alloy || planet.crystal < cost.crystal) {
-      throw new GameError('INSUFFICIENT_RESOURCES', 'Not enough resources');
-    }
-
-    const alloy = planet.alloy - cost.alloy;
-    const crystal = planet.crystal - cost.crystal;
-    await saveResources(tx, planetId, { alloy, crystal });
-    await setBuildingLevel(tx, planetId, type, level + 1);
-
-    planet.buildings[type] = level + 1;
-    planet.alloy = alloy;
-    planet.crystal = crystal;
-    await refreshWealth(tx, planet);
-
-    /**
-     * THE DISC IS TOLD ONLY WHEN THE DISC ACTUALLY CHANGED. D53.
-     *
-     * The rule for every shard broadcast is that it fires exactly when the public
-     * payload it points at has moved, and no other time. `/api/galaxy` publishes
-     * `coreTier` — a three-level bucket — and nothing else about a building, so a
-     * Refinery going to L7 changes nothing anybody else can read, and a Core going
-     * from 3 to 4 changes the silhouette of a world for the whole galaxy.
-     *
-     * Announcing every upgrade would have been simpler and would have leaked the
-     * one thing this channel is careful not to carry: a timing signal for something
-     * a refetch could not show. Fifty clients refetching a payload identical to the
-     * one they hold is also just waste.
-     */
-    if (type === 'CORE' && coreTier(level + 1) !== coreTier(level)) {
-      await publishShard(tx, planet.seasonId, 'world');
-    }
-
-    return { type, level: level + 1, alloy, crystal, planet: await planetView(tx, planetId, clock) };
-  });
+    const level = await placeBuildingUpgrade(tx, planet, type);
+    return {
+      type,
+      level,
+      alloy: planet.alloy,
+      crystal: planet.crystal,
+      planet: await planetView(tx, planetId, clock),
+    };
+  }, expectedPlayerId);
 }
 
-export async function buildUnits(
-  db: Db,
-  planetId: string,
+/** Place one hull batch inside an already-held planet transaction. */
+export async function placeUnitBuild(
+  tx: Tx,
+  planet: LockedPlanet,
   hull: HullId,
   count: number,
-  clock: Clock,
-): Promise<WithPlanet & { hull: HullId; built: number; alloy: number; crystal: number }> {
+): Promise<void> {
   if (!Number.isInteger(count) || count < 1) {
     throw new GameError('BAD_COUNT', 'Count must be a positive integer');
   }
 
-  return withPlanetLock(db, planetId, clock, async (tx, planet) => {
-    const spec = HULLS[hull];
-    if (planet.buildings.SHIPYARD < spec.minShipyard) {
-      throw new GameError('SHIPYARD_TOO_LOW', `Needs Shipyard L${spec.minShipyard}`, 400, {
-        level: spec.minShipyard,
-      });
-    }
+  assertWorldOperational(planet);
+  const context = await buildQueueContext(tx, planet, 'YARD');
+  const spec = HULLS[hull];
+  if (hull === 'RUNNER' && !context.projected.research.has('DENSE_FUEL_CELLS')) {
+    throw new GameError('NEEDS_DENSE_FUEL_CELLS', 'Research Dense Fuel Cells first', 403);
+  }
+  if (hull === 'BREACHER' && !context.projected.research.has('GRAVITIC_CHARGES')) {
+    throw new GameError('NEEDS_GRAVITIC_CHARGES', 'Research Gravitic Charges first', 403);
+  }
+  if (context.projected.buildings.SHIPYARD < spec.minShipyard) {
+    throw new GameError('SHIPYARD_TOO_LOW', `Needs Shipyard L${spec.minShipyard}`, 400, {
+      level: spec.minShipyard,
+    });
+  }
     /**
      * A DRILL IS A CRAFT, AND THE SHIPYARD BUILDS CRAFT. D25.
      *
@@ -222,65 +231,56 @@ export async function buildUnits(
      * for the last one. This is the same check-then-act shape `assertFreeBay`
      * exists for, and it gets the same treatment.
      */
-    if (hull === 'PROSPECTOR') {
-      const have = (await totalUnitsOf(tx, planetId)).PROSPECTOR ?? 0;
-      if (have + count > PROSPECTOR.max) {
-        throw new GameError(
-          'PROSPECTOR_CAP',
-          have >= PROSPECTOR.max
-            ? `You already have ${String(PROSPECTOR.max)} Prospectors. That is the limit.`
-            : `You may hold ${String(PROSPECTOR.max)} Prospectors, and you have ${String(have)}.`,
-          400,
-          // `context` picks the variant client-side, the same way it picks the
-          // wording here. i18next reads it off the params like any other value.
-          { max: PROSPECTOR.max, have, ...(have >= PROSPECTOR.max ? { context: 'atLimit' } : {}) },
-        );
-      }
+  if (hull === 'PROSPECTOR') {
+    const have = context.projected.units.PROSPECTOR ?? 0;
+    if (have + count > PROSPECTOR.max) {
+      throw new GameError(
+        'PROSPECTOR_CAP',
+        have >= PROSPECTOR.max
+          ? `You already have ${String(PROSPECTOR.max)} Prospectors. That is the limit.`
+          : `You may hold ${String(PROSPECTOR.max)} Prospectors, and you have ${String(have)}.`,
+        400,
+        // `context` picks the variant client-side, the same way it picks the
+        // wording here. i18next reads it off the params like any other value.
+        { max: PROSPECTOR.max, have, ...(have >= PROSPECTOR.max ? { context: 'atLimit' } : {}) },
+      );
     }
+  }
 
-    const totalAlloy = spec.alloy * count;
-    const totalCrystal = spec.crystal * count;
-    if (planet.alloy < totalAlloy || planet.crystal < totalCrystal) {
-      throw new GameError('INSUFFICIENT_RESOURCES', 'Not enough resources');
-    }
-
-    const alloy = planet.alloy - totalAlloy;
-    const crystal = planet.crystal - totalCrystal;
-    await saveResources(tx, planetId, { alloy, crystal });
-    await addUnits(tx, planetId, { [hull]: count });
-
-    /**
-     * THE ONLY PLACE A HULL COMES INTO EXISTENCE, so it is the only place that
-     * has to remember one did.
-     *
-     * `units` is a live count and it goes DOWN — a squadron that dies takes its
-     * row with it — so nothing downstream can ever reconstruct how many were
-     * built. The reward panel's ships chain needs exactly that figure, and this
-     * is the single write that keeps it. See `planets.builtEver` in the schema
-     * for why it is the one derived-progress exception in the feature.
-     *
-     * Done in SQL rather than by reading the column and writing it back: this
-     * transaction already holds the row lock, but expressing it as an update
-     * against the stored value means the tally cannot be lost to a stale read if
-     * that ever stops being true.
-     */
-    await tx
-      .update(planets)
-      .set({
-        builtEver: sql`jsonb_set(
-          ${planets.builtEver}, ${`{${hull}}`},
-          to_jsonb(coalesce((${planets.builtEver} ->> ${hull})::int, 0) + ${count}), true)`,
-      })
-      .where(eq(planets.id, planetId));
-
-    const bucket = spec.ground ? planet.ground : planet.homeFleet;
-    bucket[hull] = (bucket[hull] ?? 0) + count;
-    planet.alloy = alloy;
-    planet.crystal = crystal;
-    await refreshWealth(tx, planet);
-
-    return { hull, built: count, alloy, crystal, planet: await planetView(tx, planetId, clock) };
+  const cost = {
+    alloy: spec.alloy * count,
+    crystal: spec.crystal * count,
+    deuterium: spec.deuterium * count,
+  };
+  await placeBuildOrder(tx, planet, context, {
+    kind: 'HULL',
+    subject: hull,
+    count,
+    cost,
+    minutes: spec.ground
+      ? defenceMinutes(cost, context.projected.buildings.SHIPYARD)
+      : shipMinutes(cost, context.projected.buildings.SHIPYARD),
   });
+}
+
+export async function buildUnits(
+  db: Db,
+  planetId: string,
+  hull: HullId,
+  count: number,
+  clock: Clock,
+  expectedPlayerId?: string,
+): Promise<WithPlanet & { hull: HullId; built: number; alloy: number; crystal: number }> {
+  return withPlanetLock(db, planetId, clock, async (tx, planet) => {
+    await placeUnitBuild(tx, planet, hull, count);
+    return {
+      hull,
+      built: count,
+      alloy: planet.alloy,
+      crystal: planet.crystal,
+      planet: await planetView(tx, planetId, clock),
+    };
+  }, expectedPlayerId);
 }
 
 /**
@@ -300,14 +300,17 @@ export async function raiseInstrument(
   planetId: string,
   type: InstrumentId,
   clock: Clock,
+  expectedPlayerId?: string,
 ): Promise<WithPlanet & { type: InstrumentId; level: number }> {
   return withPlanetLock(db, planetId, clock, async (tx, planet) => {
-    const level = planet.instruments[type] ?? 0;
+    assertWorldOperational(planet);
+    const context = await buildQueueContext(tx, planet, 'CONSTRUCTION');
+    const level = context.projected.instruments[type] ?? 0;
 
-    if (NEEDS_UPLINK.has(type) && !seeingUnlocked(planet.orbit)) {
+    if (NEEDS_UPLINK.has(type) && !seeingUnlocked(context.projected.effectiveOrbit)) {
       throw new GameError('NEEDS_UPLINK', 'Put an Uplink in orbit first', 403);
     }
-    if (level >= planet.buildings.CORE) {
+    if (level >= context.projected.buildings.CORE) {
       throw new GameError('CORE_CEILING', 'Command Core must be raised first');
     }
 
@@ -332,22 +335,16 @@ export async function raiseInstrument(
     }
 
     const cost = instrumentCost(type, level);
-    if (planet.alloy < cost.alloy || planet.crystal < cost.crystal) {
-      throw new GameError('INSUFFICIENT_RESOURCES', 'Not enough resources');
-    }
-
-    const alloy = planet.alloy - cost.alloy;
-    const crystal = planet.crystal - cost.crystal;
-    await saveResources(tx, planetId, { alloy, crystal });
-    await writeInstalled(tx, planetId, type, level + 1);
-
-    planet.instruments[type] = level + 1;
-    planet.alloy = alloy;
-    planet.crystal = crystal;
-    await refreshWealth(tx, planet);
+    await placeBuildOrder(tx, planet, context, {
+      kind: 'INSTRUMENT',
+      subject: type,
+      count: 1,
+      cost,
+      minutes: buildMinutes(cost, context.projected.buildings.CORE),
+    });
 
     return { type, level: level + 1, planet: await planetView(tx, planetId, clock) };
-  });
+  }, expectedPlayerId);
 }
 
 /** The two that hang off the Uplink. The Aegis and the Veil stand on their own. */
@@ -370,67 +367,30 @@ export async function installSatellite(
   planetId: string,
   type: SatelliteId,
   clock: Clock,
+  expectedPlayerId?: string,
 ): Promise<WithPlanet & { type: SatelliteId; slot: number }> {
   return withPlanetLock(db, planetId, clock, async (tx, planet) => {
-    if (planet.orbit.includes(type)) {
+    assertWorldOperational(planet);
+    const context = await buildQueueContext(tx, planet, 'CONSTRUCTION');
+    if (context.projected.orbit.includes(type)) {
       throw new GameError('ALREADY_IN_ORBIT', 'That satellite is already in orbit', 409);
     }
-    if (planet.orbit.length >= satelliteSlots(planet.buildings.CORE)) {
+    if (
+      context.projected.orbit.length
+      >= satelliteSlots(context.projected.buildings.CORE)
+    ) {
       throw new GameError('NO_FREE_SLOT', 'Raise the Command Core for another orbit slot');
     }
 
     const cost = satelliteCost(type);
-    if (planet.alloy < cost.alloy || planet.crystal < cost.crystal) {
-      throw new GameError('INSUFFICIENT_RESOURCES', 'Not enough resources');
-    }
-
-    const alloy = planet.alloy - cost.alloy;
-    const crystal = planet.crystal - cost.crystal;
-    await saveResources(tx, planetId, { alloy, crystal });
-    const slot = await writeInstalled(tx, planetId, type, 1);
-
-    planet.orbit = [...planet.orbit, type];
-    planet.alloy = alloy;
-    planet.crystal = crystal;
-    await refreshWealth(tx, planet);
-
-    /**
-     * Hardware in orbit is public (D15) and the disc draws it, so a satellite going
-     * up changes what every other commander can see around this world. Always, not
-     * conditionally: there is no bucketing here, every install is a new body.
-     */
-    await publishShard(tx, planet.seasonId, 'world');
-
-    return { type, slot, planet: await planetView(tx, planetId, clock) };
-  });
-}
-
-/**
- * Write one installed thing, instrument or satellite, into its own row.
- *
- * The `satellites` table is keyed on `(planetId, slot)`, so a thing that is already
- * installed keeps the slot it had and anything new takes the next one. The slot
- * number is storage, not gameplay: what rations orbit is `satelliteSlots`, counted
- * against what is actually up there.
- */
-async function writeInstalled(
-  tx: Tx,
-  planetId: string,
-  type: string,
-  level: number,
-): Promise<number> {
-  const existing = await tx.select().from(satellites).where(eq(satellites.planetId, planetId));
-  const slot =
-    existing.find((s) => s.type === type)?.slot ??
-    (existing.length > 0 ? Math.max(...existing.map((s) => s.slot)) + 1 : 0);
-
-  await tx
-    .insert(satellites)
-    .values({ planetId, slot, type, level })
-    .onConflictDoUpdate({
-      target: [satellites.planetId, satellites.slot],
-      set: { type, level },
+    const slot = context.projected.orbit.length;
+    await placeBuildOrder(tx, planet, context, {
+      kind: 'SATELLITE',
+      subject: type,
+      count: 1,
+      cost,
+      minutes: buildMinutes(cost, context.projected.buildings.CORE),
     });
-
-  return slot;
+    return { type, slot, planet: await planetView(tx, planetId, clock) };
+  }, expectedPlayerId);
 }

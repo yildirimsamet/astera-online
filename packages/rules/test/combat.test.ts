@@ -5,6 +5,7 @@ import {
   HULLS,
   computeLoot,
   counterMult,
+  deuteriumOf,
   emptyLedger,
   bookBattle,
   dominion,
@@ -22,17 +23,40 @@ const rng = () => mulberry32(12345);
 const flat = () => () => 0.5;
 
 describe('counter cycle', () => {
-  it('Wasps break Bastions cheaply — the anti-turtle tool', () => {
-    const r = resolveCombat({ WASP: 60 }, { BASTION: 4 }, 0, flat());
+  /**
+   * THE ANTI-TURTLE TOOL, AND IT IS NO LONGER FREE. Economy v2 prices both ground
+   * guns at 1.6x equal-budget power, because they can never leave, never loot and
+   * never take Dominion — so breaking a wall now costs the attacker something.
+   *
+   * Measured: at budget parity a Wasp swarm only manages PARTIAL. It needs about a
+   * third more than the defence is worth to clear it outright, and then it destroys
+   * a bit over twice what it loses. That is what "cheaply" has to mean once defence
+   * actually works — an exchange the attacker wins, not one they walk.
+   */
+  it('Wasps break Bastions at a favourable exchange — the anti-turtle tool', () => {
+    const parity = resolveCombat({ WASP: 53 }, { BASTION: 4 }, 0, flat());
+    expect(parity.grade).toBe('PARTIAL');
+
+    const r = resolveCombat({ WASP: 70 }, { BASTION: 4 }, 0, flat());
     expect(r.grade).toBe('DECISIVE');
-    // The defence still gets one round of fire in; the point is the exchange rate.
-    expect(fleetValue(r.attackerLosses)).toBeLessThan(fleetValue(r.defenderLosses) / 5);
+    expect(fleetValue(r.attackerLosses)).toBeLessThan(fleetValue(r.defenderLosses) / 2);
   });
 
-  it('a lone Bastion cannot even scratch a Wasp swarm', () => {
-    // 34 ATK x 0.625 into Skirmishers = 21 damage, under a Wasp's 24 HP.
+  /**
+   * A LONE GUN IS OVERWHELMED, AND TAKES A FEW WITH IT.
+   *
+   * It used to take none: 34 ATK x 0.625 into Skirmishers was 21 damage against a
+   * Wasp's 24 HP, so a Bastion facing a swarm was decoration that had been paid
+   * for. At 118 ATK it kills five of twenty-six — still hopeless against the
+   * counter, but never free. A defence nobody has to respect is not a decision.
+   *
+   * And one gun is not a wall: the swarm still clears it outright.
+   */
+  it('is overwhelmed by a Wasp swarm, but never for free', () => {
     const r = resolveCombat({ WASP: 26 }, { BASTION: 1 }, 0, flat());
-    expect(fleetCount(r.attackerLosses)).toBe(0);
+    expect(r.grade).toBe('DECISIVE');
+    expect(fleetCount(r.attackerLosses)).toBeGreaterThan(0);
+    expect(fleetCount(r.attackerLosses)).toBeLessThan(10);
   });
 
   it('Lances lose badly into Bastions', () => {
@@ -111,15 +135,24 @@ describe('ground defence is a choice, not a quantity', () => {
 
 describe('grading uses value, not power', () => {
   /**
-   * REGRESSION: grading once used Sum(count x ATK x HP). 26 Wasps (power 8.7) and
-   * 1 Bastion (power 8.8) read as equal under that metric while the Wasps
-   * annihilate it, so every fight involving a counter was mis-scored.
+   * REGRESSION: grading once used Sum(count x ATK x HP). Under that metric a pile
+   * of Wasps and one Bastion read as EQUAL while the Wasps annihilate it, so every
+   * fight involving a counter was mis-scored.
+   *
+   * The gap is starker since Economy v2, which is the useful part: the two fleets
+   * that `fleetPower` calls equal differ by more than twenty times in what they
+   * cost. The count is DERIVED from the metric rather than written down, so this
+   * keeps testing the property after the next re-cut of the hull table.
    */
-  it('power says these are equal; combat says otherwise', () => {
-    expect(fleetPower({ WASP: 26 })).toBeCloseTo(fleetPower({ BASTION: 1 }), 0);
-    const r = resolveCombat({ WASP: 26 }, { BASTION: 1 }, 0, flat());
+  it('power says these are equal; combat and the price list both say otherwise', () => {
+    const wasps = Math.round(fleetPower({ BASTION: 1 }) / fleetPower({ WASP: 1 }));
+    expect(fleetPower({ WASP: wasps })).toBeCloseTo(fleetPower({ BASTION: 1 }), 0);
+
+    // Equal by power; nowhere near equal by what they cost.
+    expect(fleetValue({ WASP: wasps })).toBeGreaterThan(fleetValue({ BASTION: 1 }) * 10);
+
+    const r = resolveCombat({ WASP: wasps }, { BASTION: 1 }, 0, flat());
     expect(r.grade).toBe('DECISIVE');
-    expect(fleetCount(r.attackerLosses)).toBe(0);
   });
 });
 
@@ -170,6 +203,29 @@ describe('shields', () => {
     expect(fleetCount(r.defenderLosses)).toBe(0);
     expect(r.shieldLeft).toBeGreaterThan(0);
   });
+
+  describe('Breacher', () => {
+    it('records shield-only bonus damage and can break a bare Aegis', () => {
+      const r = resolveCombat({ BREACHER: 1 }, {}, 100, flat());
+      expect(r.grade).toBe('DECISIVE');
+      expect(r.shieldLeft).toBe(0);
+      expect(r.rounds.reduce((sum, round) => sum + round.shieldAbsorbed, 0)).toBe(100);
+      expect(r.rounds.reduce((sum, round) => sum + round.breacherShieldDamage, 0)).toBeGreaterThan(0);
+    });
+
+    it('has no bonus at all when there is no shield', () => {
+      const r = resolveCombat({ BREACHER: 4 }, { BASTION: 1 }, 0, flat());
+      expect(r.rounds.every((round) => round.breacherShieldDamage === 0)).toBe(true);
+    });
+
+    it('never spills bonus overkill into units', () => {
+      const withoutShield = resolveCombat({ BREACHER: 4 }, { BASTION: 1 }, 0, flat());
+      const almostEmptyShield = resolveCombat({ BREACHER: 4 }, { BASTION: 1 }, 1, flat());
+      expect(almostEmptyShield.defenderSurvivors).toEqual(withoutShield.defenderSurvivors);
+      expect(almostEmptyShield.defenderLosses).toEqual(withoutShield.defenderLosses);
+      expect(almostEmptyShield.rounds[0]?.breacherShieldDamage).toBe(1);
+    });
+  });
 });
 
 describe('defence salvage', () => {
@@ -214,15 +270,19 @@ describe('outcome grades', () => {
 });
 
 describe('loot', () => {
-  const stock = { alloy: 60_000, crystal: 8_000 };
-  const empty = { alloy: 0, crystal: 0 };
+  const stock = { alloy: 60_000, crystal: 8_000, deuterium: 0 };
+  const empty = { alloy: 0, crystal: 0, deuterium: 0 };
   /**
    * The same floor on both resources. Real play never looks like this — the
    * crystal floor is a fraction of the alloy one (D61) — but a test about the
    * SHARE, the cargo cap or the repeat decay has no business varying two numbers
    * at once, and saying so here is clearer than two literals at every call.
    */
-  const both = (n: number) => ({ alloy: n, crystal: n });
+  const both = (n: number) => ({ alloy: n, crystal: n, deuterium: 0 });
+
+  it('normalises pre-Deuterium JSON at the read boundary', () => {
+    expect(deuteriumOf({ alloy: 10, crystal: 5 })).toBe(0);
+  });
 
   /**
    * Asserted against the constant, not against a literal. The share was 0.5 for
@@ -240,9 +300,40 @@ describe('loot', () => {
   });
 
   it('cannot touch anything below the vault floor', () => {
-    const loot = computeLoot({ alloy: 500, crystal: 100 }, empty, both(5_000), 'DECISIVE', 99_999);
+    const loot = computeLoot(
+      { alloy: 500, crystal: 100, deuterium: 0 },
+      empty,
+      both(5_000),
+      'DECISIVE',
+      99_999,
+    );
     expect(loot.alloy).toBe(0);
     expect(loot.crystal).toBe(0);
+  });
+
+  it('never lets the Vault protect Deuterium', () => {
+    const loot = computeLoot(
+      { alloy: 0, crystal: 0, deuterium: 1_000 },
+      empty,
+      { alloy: 1_000_000, crystal: 1_000_000, deuterium: 0 },
+      'DECISIVE',
+      1_000_000,
+    );
+
+    expect(loot.deuterium).toBe(1_000 * COMBAT.lootDecisive);
+    expect(loot.fromStock.deuterium).toBe(loot.deuterium);
+  });
+
+  it('charges Deuterium against the same cargo hold', () => {
+    const loot = computeLoot(
+      { alloy: 1_000, crystal: 1_000, deuterium: 1_000 },
+      empty,
+      both(0),
+      'DECISIVE',
+      300,
+    );
+    expect(loot.alloy + loot.crystal + loot.deuterium).toBeLessThanOrEqual(300);
+    expect(loot.deuterium).toBeGreaterThan(0);
   });
 
   /**
@@ -259,7 +350,13 @@ describe('loot', () => {
     let alloy = 80_000;
     const taken: number[] = [];
     for (let i = 0; i < 3; i++) {
-      const loot = computeLoot({ alloy, crystal: 0 }, empty, both(0), 'DECISIVE', 1_000_000);
+      const loot = computeLoot(
+        { alloy, crystal: 0, deuterium: 0 },
+        empty,
+        both(0),
+        'DECISIVE',
+        1_000_000,
+      );
       taken.push(loot.alloy);
       alloy -= loot.alloy;
     }
@@ -268,7 +365,13 @@ describe('loot', () => {
   });
 
   it('a repelled raid takes nothing', () => {
-    const loot = computeLoot(stock, { alloy: 9_000, crystal: 0 }, both(0), 'REPELLED', 99_999);
+    const loot = computeLoot(
+      stock,
+      { alloy: 9_000, crystal: 0, deuterium: 0 },
+      both(0),
+      'REPELLED',
+      99_999,
+    );
     expect(loot.alloy).toBe(0);
     expect(loot.crystal).toBe(0);
   });
@@ -276,8 +379,12 @@ describe('loot', () => {
   /* ── the uncollected works, D16 ──────────────────────────── */
 
   it('takes uncollected ore at half the rate it takes storage', () => {
-    const fromStore = computeLoot({ alloy: 10_000, crystal: 0 }, empty, both(0), 'DECISIVE', 1e9);
-    const fromWorks = computeLoot(empty, { alloy: 10_000, crystal: 0 }, both(0), 'DECISIVE', 1e9);
+    const fromStore = computeLoot(
+      { alloy: 10_000, crystal: 0, deuterium: 0 }, empty, both(0), 'DECISIVE', 1e9,
+    );
+    const fromWorks = computeLoot(
+      empty, { alloy: 10_000, crystal: 0, deuterium: 0 }, both(0), 'DECISIVE', 1e9,
+    );
     expect(fromWorks.alloy).toBe(fromStore.alloy * COMBAT.lootBufferShare);
   });
 
@@ -288,7 +395,13 @@ describe('loot', () => {
    * D13 already had to be rescued from once.
    */
   it('the vault floor does not cover the works', () => {
-    const loot = computeLoot(empty, { alloy: 4_000, crystal: 0 }, both(50_000), 'DECISIVE', 1e9);
+    const loot = computeLoot(
+      empty,
+      { alloy: 4_000, crystal: 0, deuterium: 0 },
+      both(50_000),
+      'DECISIVE',
+      1e9,
+    );
     expect(loot.alloy).toBeGreaterThan(0);
     expect(loot.fromStock.alloy).toBe(0);
     expect(loot.fromBuffer.alloy).toBe(loot.alloy);
@@ -296,8 +409,8 @@ describe('loot', () => {
 
   it('reports the split so the caller can debit both columns', () => {
     const loot = computeLoot(
-      { alloy: 20_000, crystal: 4_000 },
-      { alloy: 6_000, crystal: 1_000 },
+      { alloy: 20_000, crystal: 4_000, deuterium: 0 },
+      { alloy: 6_000, crystal: 1_000, deuterium: 0 },
       both(0),
       'DECISIVE',
       1e9,
@@ -315,8 +428,8 @@ describe('loot', () => {
    */
   it('scales all four piles together when cargo runs out', () => {
     const loot = computeLoot(
-      { alloy: 40_000, crystal: 40_000 },
-      { alloy: 40_000, crystal: 40_000 },
+      { alloy: 40_000, crystal: 40_000, deuterium: 0 },
+      { alloy: 40_000, crystal: 40_000, deuterium: 0 },
       both(0),
       'DECISIVE',
       1_000,

@@ -8,6 +8,7 @@ import { duration } from '../lib/time.js';
 import { Button } from '../ui/kit/index.js';
 import {
   ChevronIcon,
+  GalaxyIcon,
   IntelIcon,
   LeaderboardIcon,
   RewardIcon,
@@ -51,12 +52,24 @@ export function MenuPanel({
   galaxy,
   shard,
   endsAt,
+  ended = false,
+  hasSeasonResult = false,
+  rival = null,
+  rivalLost = false,
+  onFocusRival,
+  onClearRival,
   onOpen,
   onSignOut,
 }: {
   galaxy: string | null;
   shard: string | null;
   endsAt: Date | null;
+  ended?: boolean;
+  hasSeasonResult?: boolean;
+  rival?: { owner: string; name: string } | null;
+  rivalLost?: boolean;
+  onFocusRival?: () => void;
+  onClearRival?: () => void;
   onOpen: (panel: Panel) => void;
   onSignOut: () => void;
 }) {
@@ -80,6 +93,32 @@ export function MenuPanel({
        * came here to check.
        */}
       <div className="flex flex-col gap-2">
+        {hasSeasonResult && (
+          <MenuRow
+            icon={<GalaxyIcon className="size-5" />}
+            label={t('seasonRecap.menuLabel')}
+            hint={t('seasonRecap.menuHint')}
+            onClick={() => {
+              onOpen('recap');
+            }}
+          />
+        )}
+        {rival && onFocusRival && (
+          <MenuRow
+            icon={<GalaxyIcon className="size-5" />}
+            label={t('menu.rivalLabel', { commander: rival.owner })}
+            hint={t('menu.rivalHint', { planet: rival.name })}
+            onClick={onFocusRival}
+          />
+        )}
+        {rivalLost && onClearRival && (
+          <MenuRow
+            icon={<GalaxyIcon className="size-5" />}
+            label={t('menu.rivalLostLabel')}
+            hint={t('menu.rivalLostHint')}
+            onClick={onClearRival}
+          />
+        )}
         <MenuRow
           icon={<IntelIcon className="size-5" />}
           label={t('menu.intelLabel')}
@@ -120,9 +159,13 @@ export function MenuPanel({
           )}
         </div>
         <div className="plate plate-cut plate-cut-sm p-3">
-          <p className="legend">{t('galaxy.commander.endsLabel')}</p>
+          <p className="legend">
+            {ended ? t('seasonRecap.seasonLabel') : t('galaxy.commander.endsLabel')}
+          </p>
           <p className="readout mt-1 text-[15px] text-bone">
-            {hoursLeft === null
+            {ended
+              ? t('seasonRecap.ended')
+              : hoursLeft === null
               ? t('galaxy.commander.endsUnknown')
               : duration(Math.max(0, hoursLeft) * 60)}
           </p>

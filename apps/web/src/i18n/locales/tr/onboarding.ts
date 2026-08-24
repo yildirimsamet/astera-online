@@ -13,7 +13,7 @@ export const onboarding = {
   beats: {
     wide: {
       title: '{{shard}}',
-      line: 'Elli dünyanın {{planets}} tanesi tutulmuş, hepsi gerçek insanlarda. Diskte gördüğün her hareket şu anda oluyor.',
+      line: '{{capacity}} komutan yerinin {{planets}} tanesi tutulmuş, hepsi gerçek insanlarda. Diskte gördüğün her hareket şu anda oluyor.',
       action: 'Gezegenimi göster',
     },
     yours: {
@@ -31,11 +31,11 @@ export const onboarding = {
     },
     core: {
       title: '{{alloy}} alaşım, {{crystal}} kristal',
-      line: 'Bütçenin tamamı bu. Önce Komuta Çekirdeği’ni yükselt; hiçbir yapı ondan yüksek olamaz, o yüzden o kalkmadan başka hiçbir şey kıpırdamaz.',
+      line: 'Bütçenin tamamı bu. Önce Komuta Çekirdeği’ni sıraya koy; hiçbir yapı onu geçemez, sonraki sipariş yeni tavanı hesaba katar.',
     },
     refinery: {
       title: 'Sıra Rafineri’de',
-      line: 'Çekirdek yükseldi, tavan da onunla birlikte kalktı. Alaşımı Rafineri üretir.',
+      line: 'Çekirdek sırada önde; bu sipariş onun açacağı tavanı kullanabilir. Alaşımı Rafineri üretir.',
     },
     extractor: {
       title: 'Ve Kristal Ekstraktörü',
@@ -43,16 +43,7 @@ export const onboarding = {
     },
     fleet: {
       title: 'Kristalin bitti. Tam olarak.',
-      line: 'Bu bir tesadüf değil; açılış bütçesi birim birim üç yükseltme ve iki gemi eder. Kalanla İKİ {{ship}} birden kur.',
-    },
-    target: {
-      title: 'Filo, riske attığın şeydir',
-      line: 'Bir dünyaya dokun, panelini aç ve elindeki her şeyi gönder. Orada ne olduğunu bilmiyorsun; öğrenmenin bir yolu bakmak, öbürü gitmek.',
-    },
-    targetAlone: {
-      title: 'Menzilinde kimse yok',
-      line: 'Gemilerin hazır, uçuş yuvan boş. Bu galakside ilk hamleyi yapacak olan sensin.',
-      action: 'Dünyamı sahiplen',
+      line: 'Bu bir tesadüf değil; açılış bütçesi birim birim üç yükseltme ve iki gemi eder. Kalanla İKİ {{ship}}yı birden sıraya koy.',
     },
   },
 
@@ -62,7 +53,7 @@ export const onboarding = {
   claim: {
     eyebrowName: 'Son adım',
     headingName: 'Dünyayı adınla imzala',
-    lineName: 'Filon yola çıktı. Arkasında bir komutan olduğu anda {{name}} senin kalır.',
+    lineName: 'Dört siparişin hazır. {{name}} senin olduğunda gerçek sayaçları birlikte başlar.',
     nameLabel: 'Komutan adı',
     next: 'Devam',
 
@@ -79,6 +70,6 @@ export const onboarding = {
     noFrontier: 'Şu anda bütün galaksiler dolu. Yeni bir sezon açılana kadar prova yapılamıyor.',
     unreachable: 'Galaksiye ulaşılamadı.',
     retry: 'Tekrar dene',
-    partial: 'Dünya senin. Bir emir yolda kaldı; sen imzalarken galakside işler değişti.',
+    partial: 'Dünya senin. Hazırladığın siparişlerden biri gerçek sıralar başlarken reddedildi.',
   },
 } as const;

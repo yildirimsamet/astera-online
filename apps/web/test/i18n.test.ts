@@ -75,6 +75,7 @@ const IDENTICAL_ON_PURPOSE = new Set([
   'focus.contact.craftUnknown',
   'launch.oneWayUnknown',
   'action.statCargoNone',
+  'planetHero.shieldValue',
   'servers.joining',
   'units.rangeJoin',
   'units.plus',

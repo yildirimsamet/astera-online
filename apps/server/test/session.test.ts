@@ -16,6 +16,7 @@ import { EventWorker } from '../src/worker/loop.js';
 import {
   TEST_DATABASE_URL,
   giveInstrument,
+  giveSatellite,
   giveUnits,
   grant,
   placeAt,
@@ -98,6 +99,7 @@ describe('the unlock cascade', () => {
     myPlayer = f.playerIds[0]!;
     await setLevel(f.db, mine, 'CORE', 8);
     await setLevel(f.db, theirs, 'CORE', 8);
+    await giveSatellite(f.db, mine, 'UPLINK');
     f.clock.advance(SETTLED_MINUTES);
   });
 
@@ -179,6 +181,7 @@ describe('the return payload', () => {
     myPlayer = f.playerIds[0]!;
     await setLevel(f.db, mine, 'CORE', 8);
     await setLevel(f.db, theirs, 'CORE', 8);
+    await giveSatellite(f.db, mine, 'UPLINK');
     f.clock.advance(SETTLED_MINUTES);
   });
 
@@ -286,7 +289,12 @@ describe('the return payload', () => {
   it('announces an unlock the live path has not reached, then never again', async () => {
     await f.db
       .insert(watches)
-      .values({ observerPlayerId: myPlayer, slot: 0, targetPlanetId: theirs });
+      .values({
+        observerPlayerId: myPlayer,
+        observerPlanetId: f.planetIds[0]!,
+        slot: 0,
+        targetPlanetId: theirs,
+      });
 
     const first = await buildReturnPayload(f.db, myPlayer, f.clock);
     expect(first.newUnlocks).toContain('EXPLORER');
@@ -672,7 +680,7 @@ describe('the shard channel', () => {
    * TWO GALAXIES ARE TWO GALAXIES.
    *
    * Ten shards run on one deployment (D21) and they share this one Postgres
-   * channel. A launch in galaxy 3 reaching galaxy 7 would send fifty clients to
+   * channel. A launch in galaxy 3 reaching galaxy 7 would send three hundred clients to
    * refetch a payload that cannot have moved — and, worse, would be a timing
    * signal crossing a boundary the whole season structure exists to draw.
    */

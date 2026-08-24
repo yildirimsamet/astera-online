@@ -10,6 +10,7 @@ import { galaxyTraffic } from '../src/services/traffic.js';
 import { EventWorker } from '../src/worker/loop.js';
 import {
   giveInstrument,
+  giveSatellite,
   giveUnits,
   grant,
   placeAt,
@@ -66,6 +67,7 @@ describe('what is in flight', () => {
    * second copy of the arithmetic.
    */
   const raid = async (radar = 5): Promise<{ arriveAt: Date; lead: number }> => {
+    if (radar > 0) await giveSatellite(f.db, theirs, 'UPLINK');
     await giveInstrument(f.db, theirs, 'RADAR', radar);
     const launch = await launchAttack(f.db, mine, theirs, { WASP: 20 }, f.clock);
     const [row] = await f.db.select().from(missions).where(eq(missions.id, launch.missionId));
@@ -136,6 +138,14 @@ describe('what is in flight', () => {
     expect(await pendingThreads(f.db, theirs, f.clock.now())).toEqual([]);
   });
 
+  it('keeps a stored radar silent while its Uplink is absent', async () => {
+    await giveInstrument(f.db, theirs, 'RADAR', 5);
+    const launch = await launchAttack(f.db, mine, theirs, { WASP: 20 }, f.clock);
+    f.clock.set(new Date(launch.arriveAt.getTime() - 1000));
+
+    expect(await pendingThreads(f.db, theirs, f.clock.now())).toEqual([]);
+  });
+
   it('stays silent until the warning would have fired, then speaks', async () => {
     const { arriveAt, lead } = await raid(5);
     expect(lead).toBeGreaterThan(1);
@@ -196,6 +206,8 @@ describe('what is in flight', () => {
     await placeAt(w.db, slowAt, { x: 0, z: 900 });
     await giveInstrument(w.db, fastAt, 'RADAR', 5);
     await giveInstrument(w.db, slowAt, 'RADAR', 5);
+    await giveSatellite(w.db, fastAt, 'UPLINK');
+    await giveSatellite(w.db, slowAt, 'UPLINK');
     await giveUnits(w.db, fastFrom, { WASP: 20 });
     await giveUnits(w.db, slowFrom, { BULWARK: 4 });
     w.clock.advance(200);
@@ -235,9 +247,9 @@ describe('what is in flight', () => {
     const caughtFast = await caughtAt(fast.missionId, fastAt);
     const caughtSlow = await caughtAt(slow.missionId, slowAt);
 
-    // The same circle, to within the tenth of a minute the sweep steps in.
-    expect(caughtFast.distance).toBeCloseTo(radarRange(5), -1);
-    expect(caughtSlow.distance).toBeCloseTo(radarRange(5), -1);
+    // The same circle, to within the five game-unit sweep step above.
+    expect(Math.abs(caughtFast.distance - radarRange(5))).toBeLessThanOrEqual(5.01);
+    expect(Math.abs(caughtSlow.distance - radarRange(5))).toBeLessThanOrEqual(5.01);
     // And therefore a very different amount of warning.
     expect(caughtSlow.lead).toBeGreaterThan(caughtFast.lead * 1.5);
   });
@@ -249,8 +261,8 @@ describe('what is in flight', () => {
    * modified client: there is no field carrying the answer, not a nulled one.
    */
   it('never tells the defender what is in it or where it came from', async () => {
-    const { arriveAt } = await raid();
-    f.clock.set(new Date(arriveAt.getTime() - 2 * 60_000));
+    const { arriveAt, lead } = await raid();
+    f.clock.set(new Date(arriveAt.getTime() - (lead / 2) * 60_000));
     const [inbound] = await pendingThreads(f.db, theirs, f.clock.now());
 
     expect(inbound!.fleet).toBeUndefined();
@@ -261,8 +273,8 @@ describe('what is in flight', () => {
   });
 
   it('tells you everything about your own craft, because you packed it', async () => {
-    const { arriveAt } = await raid();
-    f.clock.set(new Date(arriveAt.getTime() - 2 * 60_000));
+    const { arriveAt, lead } = await raid();
+    f.clock.set(new Date(arriveAt.getTime() - (lead / 2) * 60_000));
     const [own] = await pendingThreads(f.db, mine, f.clock.now());
 
     expect(own!.kind).toBe('fleet');
@@ -300,6 +312,7 @@ describe('what is in flight', () => {
   it('brings home only what survived, so the drawn squadron shrinks', async () => {
     // A defence that will certainly kill some of the attackers.
     await giveUnits(f.db, theirs, { BASTION: 8, THORN: 20 });
+    await giveSatellite(f.db, theirs, 'UPLINK');
     await giveInstrument(f.db, theirs, 'RADAR', 5);
     const launch = await launchAttack(f.db, mine, theirs, { WASP: 20 }, f.clock);
 
@@ -325,6 +338,7 @@ describe('what is in flight', () => {
    */
   it('leaves no thread at all when the whole fleet is destroyed', async () => {
     await giveUnits(f.db, theirs, { BASTION: 40, THORN: 60 });
+    await giveSatellite(f.db, theirs, 'UPLINK');
     await giveInstrument(f.db, theirs, 'RADAR', 5);
     const launch = await launchAttack(f.db, mine, theirs, { WASP: 3 }, f.clock);
 
@@ -463,6 +477,7 @@ describe('whose craft is in flight', () => {
    * radar has caught it. This is the branch the fix must not have taken with it.
    */
   it('still warns a defender about an inbound raid, and only about that', async () => {
+    await giveSatellite(f.db, theirs, 'UPLINK');
     await giveInstrument(f.db, theirs, 'RADAR', 5);
     const launch = await launchAttack(f.db, mine, theirs, { WASP: 20 }, f.clock);
     f.clock.set(new Date(launch.arriveAt.getTime() - 1000));

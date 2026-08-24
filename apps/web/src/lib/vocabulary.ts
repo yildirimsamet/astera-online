@@ -59,5 +59,6 @@ export const SATELLITE_ORDER: readonly SatelliteId[] = [
 ];
 
 export const HULL_ORDER: readonly HullId[] = [
-  'WASP', 'LANCE', 'BULWARK', 'HAULER', 'BASTION', 'THORN', 'PROSPECTOR',
+  'WASP', 'LANCE', 'BULWARK', 'BREACHER', 'HAULER', 'RUNNER',
+  'BASTION', 'THORN', 'PROSPECTOR',
 ];

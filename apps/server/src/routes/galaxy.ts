@@ -4,8 +4,7 @@ import type { FastifyInstance } from 'fastify';
 import { accounts, buildings, planets, players, seasons, shards } from '../db/schema.js';
 import { GameError } from '../services/planet.js';
 import { readTelescopes } from '../services/intel.js';
-import { publicWorlds } from '../services/publicGalaxy.js';
-import { galaxyTraffic } from '../services/traffic.js';
+import { projectGalaxyTraffic } from '../services/traffic.js';
 import { requireAuth } from './auth.js';
 
 /**
@@ -28,27 +27,29 @@ export function registerGalaxyRoutes(app: FastifyInstance): void {
    * payload for a modified client to reveal.
    */
   app.get('/api/galaxy', { preHandler: requireAuth }, async (req) => {
-    const mine = await app.db
-      .select({ player: players, planet: planets })
-      .from(players)
-      .innerJoin(planets, eq(planets.playerId, players.id))
-      .where(eq(players.accountId, req.accountId!))
-      .limit(1);
-    const self = mine[0];
-    if (!self) throw new GameError('NO_PLANET', 'Join a galaxy first', 404);
+    const self = await app.projections.commander(req.accountId!);
 
-    const worlds = await publicWorlds(app.db, self.player.seasonId);
-
-    const watching = await readTelescopes(app.db, self.player.id, app.clock);
+    const [worlds, watching] = await Promise.all([
+      app.projections.worlds(self.seasonId, app.clock.now()),
+      readTelescopes(app.db, self.playerId, app.clock),
+    ]);
+    const mineSet = new Set(self.planetIds);
     const byTarget = new Map(watching.map((w) => [w.targetPlanetId, w]));
 
     return {
-      you: { planetId: self.planet.id, playerId: self.player.id },
+      you: {
+        planetId: self.capitalPlanetId,
+        playerId: self.playerId,
+        capitalPlanetId: self.capitalPlanetId,
+        planetIds: self.planetIds,
+      },
       planets: worlds.map((world) => {
         const watch = byTarget.get(world.id);
         return {
           ...world,
-          isSelf: world.id === self.planet.id,
+          isSelf: world.id === self.capitalPlanetId,
+          isOwned: mineSet.has(world.id),
+          isCapital: world.kind === 'CAPITAL',
           // Present only where earned. Absent is not "unknown" — it is "you are
           // not looking at this planet".
           ...(watch
@@ -75,21 +76,16 @@ export function registerGalaxyRoutes(app: FastifyInstance): void {
    * `services/traffic.ts` for why each of those three rules is load-bearing.
    */
   app.get('/api/galaxy/traffic', { preHandler: requireAuth }, async (req) => {
-    const mine = await app.db
-      .select({ player: players, planet: planets })
-      .from(players)
-      .innerJoin(planets, eq(planets.playerId, players.id))
-      .where(eq(players.accountId, req.accountId!))
-      .limit(1);
-    const self = mine[0];
-    if (!self) throw new GameError('NO_PLANET', 'Join a galaxy first', 404);
+    const self = await app.projections.commander(req.accountId!);
+    const snapshot = await app.projections.trafficSnapshot(self.seasonId);
 
     return {
-      contacts: await galaxyTraffic(
-        app.db,
-        self.player.seasonId,
-        self.planet.id,
+      contacts: projectGalaxyTraffic(
+        snapshot,
+        self.capitalPlanetId,
         app.clock.now(),
+        self.playerId,
+        self.planetIds,
       ),
     };
   });
@@ -123,7 +119,10 @@ export function registerGalaxyRoutes(app: FastifyInstance): void {
       })
       .from(players)
       .innerJoin(accounts, eq(players.accountId, accounts.id))
-      .innerJoin(planets, eq(planets.playerId, players.id))
+      .innerJoin(
+        planets,
+        and(eq(planets.controllerPlayerId, players.id), eq(planets.kind, 'CAPITAL')),
+      )
       .innerJoin(buildings, and(eq(buildings.planetId, planets.id), eq(buildings.type, 'CORE')))
       .where(eq(players.seasonId, self.seasonId))
       .orderBy(desc(score), asc(players.joinedAt), asc(players.id))

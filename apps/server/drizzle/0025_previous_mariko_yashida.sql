@@ -1,0 +1,1 @@
+ALTER TABLE "missions" ADD COLUMN "death_star_capture" boolean DEFAULT false NOT NULL;

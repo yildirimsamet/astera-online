@@ -4,14 +4,18 @@ import {
   type BuildingId,
   type InstrumentId,
   type SatelliteId,
+  type BuildingLevels,
 } from '@astera/rules';
 import { useTranslation } from 'react-i18next';
 import type { PlanetView } from '../api/schemas.js';
 import i18n from '../i18n/index.js';
 import { satelliteBlurb } from '../i18n/names.js';
 import { compact } from '../lib/format.js';
-import { ActionButton } from './Action.js';
-import { buildingGain, instrumentGain, satelliteGain, type Gain } from '../lib/gains.js';
+import { projectedQueueState } from '../lib/predict.js';
+import { ActionButton, ResourceAmounts } from './Action.js';
+import {
+  buildingGain, instrumentGain, satelliteGain, type Gain,
+} from '../lib/gains.js';
 import { RESOURCE_ART, SATELLITE_ART, buildingArt, instrumentArt, tierOf } from './assets.js';
 import { CoreMark, VaultMark } from './marks.js';
 import { Sheet } from './Sheet.js';
@@ -26,7 +30,7 @@ import type { Blocked } from './UpgradeRow.js';
  * art it will be wearing — so a Telescope at L1 is visibly a small dish that
  * becomes an array, and the player can see the array before paying for it.
  *
- * It is also the commit surface. Construction is instant (D4), so a purchase gets
+ * It is also the commit surface. Ordinary construction is instant (D4/D97), so a purchase gets
  * its weight from being considered rather than from being waited out: you open the
  * thing, you see the before and the after, you press once.
  */
@@ -54,6 +58,8 @@ export function ItemSheet({
   planet,
   held,
   blocked,
+  completed,
+  queued,
   pending,
   onAct,
   onClose,
@@ -64,12 +70,24 @@ export function ItemSheet({
   planet: PlanetView;
   held: { alloy: number; crystal: number };
   blocked?: Blocked;
+  completed?: string;
+  queued?: string;
   pending: boolean;
   onAct: () => void;
   onClose: () => void;
 }) {
   const { t } = useTranslation();
-  const level = levelOf(planet, item);
+  const durableLevel = levelOf(planet, item);
+  const projected = projectedQueueState(planet, 'CONSTRUCTION');
+  const level = item.kind === 'building'
+    ? projected.buildings[item.id]
+    : item.kind === 'instrument'
+      ? projected.instruments[item.id] ?? 0
+      : projected.orbit.includes(item.id) ? 1 : 0;
+  const levels = projected.buildings;
+  // A satellite is a one-time purchase. Buildings and instruments keep their
+  // action live while earlier levels wait in the same queue.
+  const terminal = completed ?? (item.kind === 'satellite' ? queued : undefined);
   const cost = costFor(planet, item, level);
   const short = {
     alloy: Math.max(0, cost.alloy - held.alloy),
@@ -83,12 +101,12 @@ export function ItemSheet({
     <Sheet
       eyebrow={
         item.kind === 'satellite'
-          ? level === 0
+          ? durableLevel === 0
             ? t('itemSheet.eyebrowNotInOrbit')
             : t('itemSheet.eyebrowInOrbit')
-          : level === 0
+          : durableLevel === 0
             ? t('itemSheet.eyebrowNotInstalled')
-            : t('itemSheet.eyebrowLevel', { level })
+            : t('itemSheet.eyebrowLevel', { level: durableLevel })
       }
       title={name}
       onClose={onClose}
@@ -99,6 +117,7 @@ export function ItemSheet({
           held={held}
           full
           pending={pending}
+          {...(terminal ? { completed: terminal } : {})}
           {...(blocked
             ? {
                 blocked: {
@@ -130,17 +149,23 @@ export function ItemSheet({
         />
       }
     >
-      <Portrait item={item} level={level} />
+      <Portrait item={item} level={durableLevel} />
 
       <p className="mt-4 text-[13px] leading-relaxed text-dim">{role}</p>
 
-      {blocked && (
+      {queued && (
+        <p className="mt-3 border border-crystal/30 bg-crystal/10 px-3 py-2 text-[12px] text-crystal">
+          {queued}
+        </p>
+      )}
+
+      {blocked && !terminal && (
         <p className="mt-3 border border-threat/30 bg-threat/10 px-3 py-2 text-[12px] text-threat">
           {t('itemSheet.lockedNote', { reason: blocked.reason })}
         </p>
       )}
 
-      {!blocked && !affordable && (
+      {!blocked && !terminal && !affordable && (
         /*
           ONE SENTENCE, ASSEMBLED IN THE RESOURCE — not three JSX fragments.
           The old form hard-coded where "Short" sits and where "and" goes, which
@@ -167,7 +192,7 @@ export function ItemSheet({
           slots={planet.orbitSlots}
           used={planet.orbit.length}
         />
-      ) : (
+      ) : terminal ? null : (
         <div className="mt-6">
           <p className="legend mb-2">{t('itemSheet.ladderHeading')}</p>
           <div className="frame">
@@ -181,7 +206,9 @@ export function ItemSheet({
                 // Several levels of the same instrument sell the same capability,
                 // and printing that sentence three times turns the ladder into
                 // wallpaper. A rung states its unlock only when it is a new one.
-                repeats={rung > level + 1 && gainFor(item, rung - 1).unlocks === gainFor(item, rung - 2).unlocks}
+                repeats={rung > level + 1 && gainFor(item, rung - 1, levels).unlocks
+                  === gainFor(item, rung - 2, levels).unlocks}
+                levels={levels}
               />
             ))}
           </div>
@@ -226,6 +253,7 @@ function Rung({
   cost,
   next,
   repeats,
+  levels,
 }: {
   item: ItemRef;
   level: number;
@@ -233,9 +261,15 @@ function Rung({
   next: boolean;
   /** True when this rung's unlock line is the same one the rung above already made. */
   repeats: boolean;
+  /**
+   * The whole building record, because two rows cannot be priced without their
+   * siblings: the store's ceiling scales with the Vault, and the Vault's floor is
+   * hours of the Refinery's and Extractor's production.
+   */
+  levels: BuildingLevels;
 }) {
   const { t } = useTranslation();
-  const gain = gainFor(item, level - 1);
+  const gain = gainFor(item, level - 1, levels);
   /**
    * EVERY RUNG WEARS ITS OWN PICTURE.
    *
@@ -286,7 +320,9 @@ function Rung({
       <div className="min-w-0 flex-1">
         <p className="num text-[13px]">
           <span className="text-faint">{gain.label} </span>
-          <span className={next ? 'text-bone' : 'text-dim'}>{gain.next}</span>
+          {gain.resourcePair
+            ? <ResourceAmounts resources={gain.resourcePair.next} label={gain.next} />
+            : <span className={next ? 'text-bone' : 'text-dim'}>{gain.next}</span>}
         </p>
         {gain.unlocks && !repeats && (
           <p className="mt-1 text-[11px] leading-snug text-crystal/80">{gain.unlocks}</p>
@@ -441,9 +477,9 @@ function costFor(
   return item.kind === 'instrument' ? instrumentCost(item.id, from) : upgradeCost(from);
 }
 
-const gainFor = (item: ItemRef, level: number): Gain =>
+const gainFor = (item: ItemRef, level: number, levels: BuildingLevels): Gain =>
   item.kind === 'building'
-    ? buildingGain(item.id, level, 0)
+    ? buildingGain(item.id, level, 0, levels)
     : item.kind === 'instrument'
       ? instrumentGain(item.id, level)
       : satelliteGain(item.id);

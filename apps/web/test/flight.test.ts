@@ -87,6 +87,7 @@ describe('a mining run', () => {
     intercept: { x: 0, y: 0, z: 600 },
     minedAlloy: 0,
     minedCrystal: 0,
+    minedDeuterium: 0,
     ...over,
   });
 
@@ -158,6 +159,7 @@ describe('a drill and its rock, at the instant they meet', () => {
             intercept: hit.at,
             minedAlloy: 0,
             minedCrystal: 0,
+            minedDeuterium: 0,
           },
         });
         break;

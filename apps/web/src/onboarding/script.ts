@@ -1,7 +1,7 @@
 import type { Focus } from '../galaxy/FocusPanel.jsx';
 import type { PlanetGroup } from '../lib/directives.js';
 import type { Panel } from '../screens/GalaxyView.jsx';
-import type { RehearsalWorld } from './world.js';
+import { queuedCount, type RehearsalWorld } from './world.js';
 
 /**
  * THE REHEARSAL, AS A LIST OF THINGS THE PLAYER DOES. D56.
@@ -36,7 +36,9 @@ import type { RehearsalWorld } from './world.js';
  * the moment attention is most expensive, and `lib/directives.ts` already answers
  * "what should I do next" for the whole rest of the season. Only GROW and REACH
  * are visited, because they are the only two the opening grant can act in; the
- * other two introduce themselves when the player can afford them.
+ * other two introduce themselves when the player can afford them. D4 changes the
+ * ending: the rehearsal stages paid queue commitments and never invents their
+ * completion or an in-flight fleet before the server has created either one.
  */
 
 export type BeatId =
@@ -47,7 +49,6 @@ export type BeatId =
   | 'extractor'
   | 'fleet'
   | 'fog'
-  | 'target'
   | 'claim';
 
 export interface BeatState {
@@ -55,8 +56,6 @@ export interface BeatState {
   focus: Focus | null;
   /** Beats already completed. A transient fact, once true, stays true. */
   done: ReadonlySet<BeatId>;
-  /** Worlds this planet may legally attack right now. */
-  targets: readonly string[];
 }
 
 /**
@@ -73,10 +72,7 @@ export interface BeatState {
  * inside a surface they could not act on. The list exists for the same reason in
  * reverse — pressing "build" opens a sheet with a count picker on it, and that
  * sheet has to be live or the beat cannot be finished.
- * `open` — nothing is blocked. For the beats where the player is working the real
- * interface: choosing a target opens the focus rail and then the launch sheet, and
- * gating those would be gating the game itself. The world filter still applies,
- * which is the part that matters.
+ * `open` — nothing is blocked. The claim dialog is the whole surface at that point.
  */
 export type GateTarget =
   | { kind: 'disc' }
@@ -102,10 +98,8 @@ export type GateTarget =
       /**
        * Whether to darken everything that is not lit. Defaults to true.
        *
-       * FALSE WHEN THE WHOLE SURFACE IS THE DECISION. Choosing a target is made by
-       * READING THE DISC — every world inside the tier band is a legal answer — and
-       * a scrim over it greys out the one thing the beat is asking to be looked at.
-       * The rings still say where the controls are.
+       * FALSE WHEN THE WHOLE SURFACE IS THE DECISION. The rings still say where the
+       * controls are.
        */
       dim?: boolean;
     }
@@ -127,7 +121,7 @@ export interface Beat {
   worlds?: (s: BeatState) => (planetId: string) => boolean;
 }
 
-/** How many Wasps the opening grant buys, exactly. Asserted in `rehearsal.test.ts`. */
+/** How many Wasps the opening grant commits, exactly. Asserted in onboarding tests. */
 export const OPENING_WASPS = 2;
 
 export const BEATS: readonly Beat[] = [
@@ -174,7 +168,7 @@ export const BEATS: readonly Beat[] = [
       selectors: ['#row-CORE [data-act]'],
       lit: ['[data-tab="grow"]', '#row-CORE [data-act]'],
     },
-    achieved: (s) => s.world.buildings.CORE >= 2,
+    achieved: (s) => queuedCount(s.world, 'CONSTRUCTION', 'BUILDING', 'CORE') >= 1,
   },
   {
     id: 'refinery',
@@ -185,7 +179,7 @@ export const BEATS: readonly Beat[] = [
       selectors: ['#row-REFINERY [data-act]'],
       lit: ['[data-tab="grow"]', '#row-REFINERY [data-act]'],
     },
-    achieved: (s) => s.world.buildings.REFINERY >= 2,
+    achieved: (s) => queuedCount(s.world, 'CONSTRUCTION', 'BUILDING', 'REFINERY') >= 1,
   },
   /** The third one empties the crystal exactly, which is the beat's whole line. */
   {
@@ -197,7 +191,7 @@ export const BEATS: readonly Beat[] = [
       selectors: ['#row-EXTRACTOR [data-act]'],
       lit: ['[data-tab="grow"]', '#row-EXTRACTOR [data-act]'],
     },
-    achieved: (s) => s.world.buildings.EXTRACTOR >= 2,
+    achieved: (s) => queuedCount(s.world, 'CONSTRUCTION', 'BUILDING', 'EXTRACTOR') >= 1,
   },
 
   /** What the leftover alloy was always for. */
@@ -230,7 +224,7 @@ export const BEATS: readonly Beat[] = [
         '[data-build-sheet] [data-commit][data-ready]',
       ],
     },
-    achieved: (s) => (s.world.fleet.WASP ?? 0) >= OPENING_WASPS,
+    achieved: (s) => queuedCount(s.world, 'YARD', 'HULL', 'WASP') >= OPENING_WASPS,
   },
 
   /**
@@ -257,72 +251,7 @@ export const BEATS: readonly Beat[] = [
     worlds: (s) => (id) => id !== s.world.reserved.id,
     achieved: (s) => s.focus?.kind === 'planet' && s.focus.id !== s.world.reserved.id,
   },
-
-
-  /**
-   * The bet. The panel closes, the disc comes back, and the choice is made on the
-   * only thing that is public — how developed a world is, and how far away.
-   *
-   * ONLY WORLDS INSIDE THE TIER BAND ARE LIVE, which is not the tutorial being
-   * protective: it is the same rule the launch endpoint enforces, applied where
-   * the player can see it rather than as a refusal after they have picked.
-   */
-  {
-    id: 'target',
-    panel: null,
-    /**
-     * THE GATE FOLLOWS THE COMMITMENT DOWN.
-     *
-     * Choosing is a tap on the disc, but SENDING is two surfaces deeper: the focus
-     * rail carries the order and the launch sheet carries the fleet. Listing all
-     * three shallow-to-deep leaves every step of the one decision live and nothing
-     * else — and it is also what lets the light move with the player, since the
-     * spotlight takes whichever of them is on top.
-     */
-    gate: {
-      kind: 'element',
-      /**
-       * THE DISC, THE RAIL'S TOGGLE, THE ATTACK, AND THE SHEET — and nothing else
-       * on the rail.
-       *
-       * A dossier offers a probe and a telescope beside the attack, and NEITHER is
-       * affordable out of the opening grant: the three mandatory upgrades spend
-       * every unit of crystal, and a probe costs fifty of it. Leaving them
-       * pressable let a player buy something the rehearsal cannot honour and meet a
-       * raw refusal on the one screen that is supposed to be teaching them.
-       */
-      selectors: [
-        'canvas',
-        '[data-focus-rail] button[aria-expanded]',
-        '[data-focus-rail] [data-attack]',
-        '[data-launch-sheet] [data-sheet-panel]',
-      ],
-      /**
-       * THE LIGHT FOLLOWS THE RAIL OPEN.
-       *
-       * A rail arrives COLLAPSED — a name, what is known, and a toggle — and the
-       * commitment is inside it. Lighting only the attack meant the rail itself sat
-       * unmarked at the bottom of the screen with nothing to say it was the way in.
-       * The two selectors are mutually exclusive by `aria-expanded`, so exactly one
-       * of them resolves at a time and the light moves from "open this" to "press
-       * this" without a second beat to carry the change.
-       *
-       * The canvas is deliberately not on this list: it is the surface the decision
-       * is READ from, not a control.
-       */
-      lit: [
-        '[data-focus-rail] button[aria-expanded="false"]',
-        '[data-focus-rail] [data-attack]',
-        '[data-launch-sheet] [data-sheet-panel]',
-      ],
-      // The disc IS the decision here; see `dim` on `GateTarget`.
-      dim: false,
-    },
-    worlds: (s) => (id) => s.targets.includes(id),
-    achieved: (s) => s.world.launch !== null,
-  },
-
-  /** The wall, at the one moment the player wants something. */
+  /** The wall, once every opening resource has an honest queued destination. */
   { id: 'claim', panel: null, gate: { kind: 'open' } },
 ];
 

@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Api } from '../src/api/client.js';
@@ -88,10 +88,13 @@ describe('galaxy chat surface', () => {
     expect(composer).toHaveValue('');
   });
 
-  it('keeps a Unicode draft to 280 visible characters', async () => {
+  it('keeps a Unicode draft to 280 visible characters', () => {
     show();
     const composer = screen.getByRole('textbox', { name: 'Message the galaxy' });
-    await userEvent.setup().type(composer, '🌌'.repeat(281));
+    // One change event tests the Unicode clipping rule directly. Typing 281
+    // surrogate-pair glyphs through user-event made this deterministic assertion
+    // consume the whole five-second file budget under concurrent package load.
+    fireEvent.change(composer, { target: { value: '🌌'.repeat(281) } });
     expect(Array.from((composer as HTMLTextAreaElement).value)).toHaveLength(280);
     expect(screen.getByText('0 characters left')).toBeInTheDocument();
   });

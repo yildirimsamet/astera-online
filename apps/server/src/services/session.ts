@@ -3,6 +3,7 @@ import { alias } from 'drizzle-orm/pg-core';
 import {
   alloyRate,
   crystalRate,
+  deuteriumOf,
   fleetCount,
   radarDetectsFleets,
   radarLead,
@@ -18,14 +19,13 @@ import {
   notifications,
   planets,
   players,
-  satellites,
   scanEvents,
   seasons,
   watches,
 } from '../db/schema.js';
-import { legBelongsTo } from './flight.js';
 import { announceUnlocks } from './notifications.js';
 import { GameError } from './planet.js';
+import { instrumentLevels, levelOf } from './intel.js';
 
 /* ── the unlock cascade ─────────────────────────────────────── */
 
@@ -88,7 +88,7 @@ export async function currentUnlocks(db: Queryable, playerId: string): Promise<U
       .select({ n: sql<number>`count(*)::int` })
       .from(scanEvents)
       .innerJoin(planets, eq(scanEvents.targetPlanetId, planets.id))
-      .where(and(eq(planets.playerId, playerId), eq(scanEvents.detected, true))),
+      .where(and(eq(planets.controllerPlayerId, playerId), eq(scanEvents.detected, true))),
     db
       .select({ n: sql<number>`count(*)::int` })
       .from(watches)
@@ -131,7 +131,7 @@ export interface ReturnEntry {
 export interface PendingThread {
   /** The mission's own id — YOUR OWN CRAFT ONLY. Absent on `incoming`. See below. */
   id?: string;
-  kind: 'fleet' | 'probe' | 'incoming';
+  kind: 'fleet' | 'probe' | 'incoming' | 'transfer' | 'settlement' | 'death_star';
   targetName: string;
   minutesRemaining: number;
   /**
@@ -217,8 +217,13 @@ export async function buildReturnPayload(
 ): Promise<ReturnPayload> {
   const [player] = await db.select().from(players).where(eq(players.id, playerId));
   if (!player) throw new GameError('PLAYER_NOT_FOUND', 'No such player', 404);
-  const [planet] = await db.select().from(planets).where(eq(planets.playerId, playerId));
+  const ownedWorlds = await db
+    .select()
+    .from(planets)
+    .where(eq(planets.controllerPlayerId, playerId));
+  const planet = ownedWorlds.find((world) => world.kind === 'CAPITAL');
   if (!planet) throw new GameError('NO_PLANET', 'Join a galaxy first', 404);
+  const ownedIds = ownedWorlds.map((world) => world.id);
 
   const now = clock.now();
   const since = player.lastSeenAt;
@@ -244,7 +249,7 @@ export async function buildReturnPayload(
 
   for (const r of reports) {
     const mine = r.attackerPlayerId === playerId;
-    const loot = r.loot.alloy + r.loot.crystal;
+    const loot = r.loot.alloy + r.loot.crystal + deuteriumOf(r.loot);
     const lost = fleetCount(mine ? r.attackerLosses : r.defenderLosses);
     entries.push(
       mine
@@ -272,7 +277,7 @@ export async function buildReturnPayload(
     .from(scanEvents)
     .where(
       and(
-        eq(scanEvents.targetPlanetId, planet.id),
+        inArray(scanEvents.targetPlanetId, ownedIds),
         eq(scanEvents.detected, true),
         gt(scanEvents.createdAt, since),
       ),
@@ -292,14 +297,16 @@ export async function buildReturnPayload(
     const levels = await db
       .select()
       .from(buildings)
-      .where(eq(buildings.planetId, planet.id));
-    const refinery = levels.find((b) => b.type === 'REFINERY')?.level ?? 0;
-    const extractor = levels.find((b) => b.type === 'EXTRACTOR')?.level ?? 0;
+      .where(inArray(buildings.planetId, ownedIds));
     const hours = awayMinutes / 60;
     // An estimate by design: the exact figure is on the planet screen, and this
     // line exists to say "time passed and it mattered", not to be audited.
-    const alloy = alloyRate(refinery) * hours;
-    const crystal = crystalRate(extractor) * hours;
+    const alloy = levels
+      .filter((building) => building.type === 'REFINERY')
+      .reduce((total, building) => total + alloyRate(building.level) * hours, 0);
+    const crystal = levels
+      .filter((building) => building.type === 'EXTRACTOR')
+      .reduce((total, building) => total + crystalRate(building.level) * hours, 0);
     if (alloy >= 1) {
       entries.push({
         kind: 'accrued',
@@ -380,7 +387,17 @@ export async function pendingThreads(
   const originPlanet = alias(planets, 'pending_origin');
   const targetPlanet = alias(planets, 'pending_target');
 
-  const [inFlight, radarRow] = await Promise.all([
+  const [observer] = await db
+    .select({ playerId: planets.controllerPlayerId })
+    .from(planets)
+    .where(eq(planets.id, planetId));
+  const playerId = observer?.playerId;
+  const ownedIds = playerId
+    ? (await db.select({ id: planets.id }).from(planets)
+        .where(eq(planets.controllerPlayerId, playerId))).map((world) => world.id)
+    : [planetId];
+
+  const [inFlight, levels] = await Promise.all([
     db
       .select({
         mission: missions,
@@ -399,18 +416,16 @@ export async function pendingThreads(
       .where(
         and(
           eq(missions.status, 'in_flight'),
-          or(eq(missions.originPlanetId, planetId), eq(missions.targetPlanetId, planetId)),
+          or(
+            ...(playerId ? [eq(missions.ownerPlayerId, playerId)] : []),
+            inArray(missions.targetPlanetId, ownedIds),
+          ),
         ),
       ),
-    db
-      .select({ level: satellites.level })
-      .from(satellites)
-      .where(and(eq(satellites.planetId, planetId), eq(satellites.type, 'RADAR')))
-      .limit(1),
+    instrumentLevels(db, ownedIds),
   ]);
 
-  const radar = radarRow[0]?.level ?? 0;
-  const reach = radarRange(radar);
+  const radarByPlanet = new Map(ownedIds.map((id) => [id, levelOf(levels, id, 'RADAR')]));
   const pending: PendingThread[] = [];
 
   for (const row of inFlight) {
@@ -443,14 +458,16 @@ export async function pendingThreads(
      * caller genuinely owns. So the same mission was drawn twice on one disc, in two
      * different places, from two payloads that disagreed about what it was.
      */
-    if (!legBelongsTo(m, planetId)) {
+    if (!playerId || m.ownerPlayerId !== playerId) {
       /**
        * SOMEBODY ELSE'S LEG. The only thing this payload may ever say about one is
        * that a raid is coming, and only once the radar has actually caught it.
        * Everything else about a foreign craft belongs to the public contact list,
        * where it arrives with no owner, no route and no name.
        */
-      if (m.kind !== 'attack' || m.targetPlanetId !== planetId) continue;
+      if ((m.kind !== 'attack' && m.kind !== 'death_star') || !ownedIds.includes(m.targetPlanetId)) continue;
+      const radar = radarByPlanet.get(m.targetPlanetId) ?? 0;
+      const reach = radarRange(radar);
       const oneWay = (m.arriveAt.getTime() - m.departAt.getTime()) / 60_000;
       const lead = radarLead(reach, m.distance, oneWay);
       // Measured unrounded: `minutes` is rounded for display and comparing a
@@ -487,7 +504,11 @@ export async function pendingThreads(
        * Never on an `incoming` thread, which returns above and carries nothing.
        */
       id: m.id,
-      kind: m.kind === 'probe' ? 'probe' : 'fleet',
+      kind: m.kind === 'probe'
+        ? 'probe'
+        : m.kind === 'transfer' || m.kind === 'settlement' || m.kind === 'death_star'
+          ? m.kind
+          : 'fleet',
       targetName: returning ? row.originName : row.targetName,
       minutesRemaining: minutes,
       arriveAt: m.arriveAt,

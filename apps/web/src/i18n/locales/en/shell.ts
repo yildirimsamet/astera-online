@@ -4,8 +4,12 @@
  */
 
 export const statusBar = {
+  activeWorld: 'Active world',
+  capitalWorld: 'CAPITAL · {{name}}',
+  colonyWorld: 'COLONY · {{name}}',
   alloyLabel: 'Alloy',
   crystalLabel: 'Crystal',
+  deuteriumLabel: 'Deuterium',
   /** The store's ceiling, stated as space. */
   storeFull: 'FULL',
   storeFree: '{{amount}} free',
@@ -40,8 +44,14 @@ export const pendingStrip = {
   empty: 'Nothing in flight',
   incoming: 'Inbound fleet',
   probe: 'Your probe → {{target}}',
+  deathStar: 'Your Death Star → {{target}}',
+  settlement: 'Settlement → {{target}}',
+  transfer: 'Transfer → {{target}}',
   fleetHome: 'Your fleet home from {{target}}',
   fleetOut: 'Your fleet → {{target}}',
+  outboundLeg: 'Outbound',
+  returnLeg: 'Return',
+  engaging: 'Engaging',
   more: '+{{count}}',
 } as const;
 
@@ -76,6 +86,10 @@ export const sheet = {
   dismiss: 'Close',
 } as const;
 
+export const toast = {
+  dismiss: 'Dismiss message',
+} as const;
+
 /** Loading, failure and emptiness, wherever a whole surface is in one of them. */
 export const surface = {
   unreachable: 'Could not reach {{what}}.',
@@ -87,10 +101,12 @@ export const surface = {
   whatRewards: 'your rewards',
   whatLeaderboard: 'the Dominion ladder',
   whatChat: 'galaxy chat',
+  whatChronicle: 'the Galaxy Chronicle',
   waitingPlanet: 'Reading planet',
   waitingIntel: 'Collecting',
   waitingLeaderboard: 'Ranking the galaxy',
   waitingChat: 'Opening galaxy chat',
+  waitingChronicle: 'Reading the galaxy',
   /** The generated crest a world wears. One element, used on two surfaces. */
   planetSigil: 'Planet',
 } as const;
@@ -111,6 +127,11 @@ export const menu = {
   rewardsWaiting: '{{count}} ready',
   leaderboardLabel: 'Leaderboard',
   leaderboardHint: 'Every commander ranked by Dominion',
+  rivalLabel: 'Rival · {{commander}}',
+  rivalHint: 'Focus {{planet}} and choose your next move',
+  rivalLostLabel: 'Rival signal lost',
+  rivalLostHint: 'That world is gone. Clear the marker.',
+  rivalCleared: 'The lost Rival marker was cleared.',
   accountHeading: 'Account',
   soundLabel: 'Sound',
   soundOn: 'The score is playing.',

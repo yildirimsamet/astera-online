@@ -13,7 +13,7 @@ import {
   type BeatId,
   type BeatState,
 } from '../src/onboarding/script.js';
-import { build, launch, openWorld, upgrade } from '../src/onboarding/world.js';
+import { build, openWorld, upgrade } from '../src/onboarding/world.js';
 
 /**
  * THE GUIDED HALF OF THE REHEARSAL. D56.
@@ -54,7 +54,6 @@ const stateOf = (over: Partial<BeatState> = {}): BeatState => ({
   world: openWorld(previewOf()),
   focus: null,
   done: new Set<BeatId>(),
-  targets: [],
   ...over,
 });
 
@@ -77,7 +76,6 @@ describe('the beat script', () => {
       'extractor',
       'fleet',
       'fog',
-      'target',
       'claim',
     ]);
   });
@@ -103,10 +101,10 @@ describe('the beat script', () => {
 
   /**
    * The opening grant is arithmetic, and so is the script: the Core has to move
-   * before the Refinery may, so each of the three beats reads the level it is
-   * about rather than counting presses.
+   * before the Refinery may, so each of the three beats reads the staged order it
+   * is about rather than pretending the durable level already changed.
    */
-  it('finishes each upgrade beat on the level it is about, and not before', () => {
+  it('finishes each upgrade beat on its staged order, and not before', () => {
     let world = openWorld(previewOf());
     expect(beatAchieved(beatNamed('core'), stateOf({ world }))).toBe(false);
 
@@ -118,7 +116,7 @@ describe('the beat script', () => {
     expect(beatAchieved(beatNamed('refinery'), stateOf({ world }))).toBe(true);
   });
 
-  it('finishes the fleet beat on two ships, never on one', () => {
+  it('finishes the fleet beat on two committed ships, never on one', () => {
     let world = openWorld(previewOf());
     world = upgrade(world, 'CORE');
     world = upgrade(world, 'REFINERY');
@@ -129,18 +127,6 @@ describe('the beat script', () => {
 
     world = build(world, 'WASP', 1);
     expect(beatAchieved(beatNamed('fleet'), stateOf({ world }))).toBe(true);
-  });
-
-  it('finishes the target beat only once a fleet is actually committed', () => {
-    let world = build(
-      upgrade(upgrade(upgrade(openWorld(previewOf()), 'CORE'), 'REFINERY'), 'EXTRACTOR'),
-      'WASP',
-      2,
-    );
-    expect(beatAchieved(beatNamed('target'), stateOf({ world }))).toBe(false);
-
-    world = launch(world, 'somebody', { WASP: 2 });
-    expect(beatAchieved(beatNamed('target'), stateOf({ world }))).toBe(true);
   });
 
   /**
@@ -174,7 +160,7 @@ describe('the beat script', () => {
     expect(beatNamed('core').panel).toBe('planet');
     expect(beatNamed('core').group).toBe('grow');
     expect(beatNamed('fleet').group).toBe('reach');
-    expect(beatNamed('target').panel).toBeNull();
+    expect(beatNamed('fog').panel).toBeNull();
   });
 
   /**
@@ -210,16 +196,6 @@ describe('the worlds a beat leaves live', () => {
     const allow = beatAllowsWorld(beatNamed('fog'), stateOf());
     expect(allow('reserved')).toBe(false);
     expect(allow('somebody')).toBe(true);
-  });
-
-  /**
-   * The same rule the launch endpoint enforces (D49), applied where the player can
-   * see it — so a target is refused before a fleet is packed rather than after.
-   */
-  it('leaves only worlds inside the tier band live while a target is chosen', () => {
-    const allow = beatAllowsWorld(beatNamed('target'), stateOf({ targets: ['inband'] }));
-    expect(allow('inband')).toBe(true);
-    expect(allow('outofband')).toBe(false);
   });
 
   it('leaves none live while a panel is open over the disc', () => {

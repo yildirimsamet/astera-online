@@ -9,11 +9,11 @@ import {
   generateGalaxy,
   upgradeCost,
 } from '@astera/rules';
-import { Api, ApiError } from '../src/api/client.js';
+import { Api } from '../src/api/client.js';
 import {
+  buildSchema,
   galaxySchema,
   intelSchema,
-  launchSchema,
   miningSchema,
   pendingSchema,
   planetSchema,
@@ -25,10 +25,8 @@ import {
 import { rehearsalFetch } from '../src/onboarding/rehearsalFetch.js';
 import {
   build,
-  launch,
   openWorld,
   planetOf,
-  reachableTargets,
   refusesBuild,
   refusesUpgrade,
   upgrade,
@@ -139,6 +137,7 @@ describe('the opening budget', () => {
     expect(w.alloy).toBe(START.alloy);
     expect(w.crystal).toBe(START.crystal);
     expect(w.buildings).toEqual(START_BUILDINGS);
+    expect(w.queues).toEqual({ CONSTRUCTION: [], YARD: [] });
     expect(w.intents).toEqual([]);
 
     // And the difference between the two is the cushion, whole.
@@ -169,7 +168,9 @@ describe('the opening budget', () => {
     const armed = build(three, 'WASP', 2);
     expect(armed.alloy).toBe(0);
     expect(armed.crystal).toBe(0);
-    expect(armed.fleet.WASP).toBe(2);
+    expect(armed.queues.YARD).toMatchObject([
+      { kind: 'HULL', subject: 'WASP', count: 2, staged: true },
+    ]);
   });
 
   /**
@@ -179,14 +180,14 @@ describe('the opening budget', () => {
    * REHEARSAL, the beat is lying and this is where it is caught. The cushion (D58)
    * does not reach here: it is added to the real planet, not to this one.
    */
-  it('leaves nothing for a probe, which is why the fleet is the first flight', () => {
+  it('leaves nothing for a probe after the three construction commitments', () => {
     const three = opened();
     expect(three.crystal).toBeLessThan(PROBE.crystal);
   });
 
-  it('refuses a fourth upgrade on price rather than pretending', () => {
+  it('refuses a fourth construction order because the real queue is three deep', () => {
     const three = opened();
-    expect(refusesUpgrade(three, 'CORE')).toBe('INSUFFICIENT_RESOURCES');
+    expect(refusesUpgrade(three, 'CORE')).toBe('QUEUE_FULL');
   });
 
   it('refuses a hull the Shipyard cannot build, and one that is not affordable', () => {
@@ -216,89 +217,29 @@ describe('the opening budget', () => {
   });
 });
 
-/* ── the bet ────────────────────────────────────────────────── */
+/* ── staging, without inventing an outcome ──────────────────── */
 
-describe('committing the fleet', () => {
-  const armed = () => build(opened(), 'WASP', 2);
+describe('the staged queues', () => {
+  it('projects the Core gate while durable levels remain unchanged', () => {
+    const initial = openWorld(previewOf());
+    const core = upgrade(initial, 'CORE');
 
-  it('moves the hulls off the planet and remembers the intent', () => {
-    const sent = launch(armed(), 'target', { WASP: 2 });
-    expect(sent.fleet.WASP).toBe(0);
-    expect(sent.away.WASP).toBe(2);
-    expect(sent.launch).toEqual({ targetPlanetId: 'target', fleet: { WASP: 2 } });
-    expect(sent.intents.at(-1)).toEqual({
-      kind: 'launch',
-      targetPlanetId: 'target',
-      fleet: { WASP: 2 },
+    expect(core.buildings).toEqual(START_BUILDINGS);
+    expect(refusesUpgrade(core, 'REFINERY')).toBeNull();
+    expect(core.queues.CONSTRUCTION[0]).toMatchObject({
+      kind: 'BUILDING', subject: 'CORE', slot: 0, staged: true,
     });
   });
 
-  /**
-   * Principle 3: a launched fleet cannot be recalled. Letting the rehearsal take
-   * it back would teach the opposite of the one rule the risk layer rests on.
-   */
-  it('refuses a second launch, because the first cannot be taken back', () => {
-    const sent = launch(armed(), 'target', { WASP: 2 });
-    expect(launch(sent, 'other', { WASP: 1 })).toBe(sent);
-  });
-
-  it('refuses an empty fleet and one that is bigger than what is home', () => {
-    const w = armed();
-    expect(launch(w, 'target', {})).toBe(w);
-    expect(launch(w, 'target', { WASP: 0 })).toBe(w);
-    expect(launch(w, 'target', { WASP: 3 })).toBe(w);
-    expect(launch(w, 'target', { LANCE: 1 })).toBe(w);
-  });
-
-  it('leaves a partial fleet at home when only some of it is sent', () => {
-    const sent = launch(armed(), 'target', { WASP: 1 });
-    expect(sent.fleet.WASP).toBe(1);
-    expect(sent.away.WASP).toBe(1);
-  });
-});
-
-/* ── who may be hit ─────────────────────────────────────────── */
-
-describe('the targets the disc lights up', () => {
-  it('offers everyone inside the tier band, nearest first', () => {
-    const w = openWorld(previewOf());
-    const targets = reachableTargets(w, [
-      ...previewOf().galaxy.planets,
-      neighbour('far', 800),
-      neighbour('near', 200),
+  it('stages exactly three Construction orders and one two-Wasp Yard order', () => {
+    const staged = build(opened(), 'WASP', 2);
+    expect(staged.queues.CONSTRUCTION.map((order) => order.subject))
+      .toEqual(['CORE', 'REFINERY', 'EXTRACTOR']);
+    expect(staged.queues.YARD).toMatchObject([
+      { kind: 'HULL', subject: 'WASP', count: 2, slot: 0, staged: true },
     ]);
-    expect(targets.map((t) => t.id)).toEqual(['near', 'far']);
-  });
-
-  /**
-   * A fresh planet is tier 1, so tier 4 and up is out of reach — which is exactly
-   * what stops a newcomer being handed a target the claim would refuse.
-   */
-  it('leaves out anything beyond ±2 tiers', () => {
-    const w = openWorld(previewOf());
-    const targets = reachableTargets(w, [
-      neighbour('inband', 100, 3),
-      neighbour('outofband', 120, 4),
-    ]);
-    expect(targets.map((t) => t.id)).toEqual(['inband']);
-  });
-
-  it('never offers the visitor their own world, or an empty slot', () => {
-    const w = openWorld(previewOf());
-    const targets = reachableTargets(w, [
-      ...previewOf().galaxy.planets,
-      { ...neighbour('unowned', 100), owner: '' },
-    ]);
-    expect(targets).toHaveLength(0);
-  });
-
-  /** Raising the Core moves the band with it, both ways. */
-  it('follows the band as the Core rises', () => {
-    let w = openWorld(previewOf());
-    expect(reachableTargets(w, [neighbour('big', 100, 4)])).toHaveLength(0);
-    // Core 4 is tier 2, which reaches tier 4.
-    w = { ...w, buildings: { ...w.buildings, CORE: 4 } };
-    expect(reachableTargets(w, [neighbour('big', 100, 4)])).toHaveLength(1);
+    expect(staged.queues.CONSTRUCTION.every((order) => order.finishesAt === undefined)).toBe(true);
+    expect(staged.queues.YARD.every((order) => order.finishesAt === undefined)).toBe(true);
   });
 });
 
@@ -329,12 +270,18 @@ describe('the planet it renders', () => {
     expect(view.planet.bufferAlloyCap).toBeGreaterThan(0);
   });
 
-  it('counts a committed fleet as away and as a bay in use', () => {
-    const sent = launch(build(opened(), 'WASP', 2), 'target', { WASP: 2 });
-    const view = planetOf(sent);
-    expect(view.fleetAway.WASP).toBe(2);
-    expect(view.flight.used).toBe(1);
+  it('shows staged work without granting a level, a hull or a fake flight', () => {
+    const before = planetOf(openWorld(previewOf()));
+    const view = planetOf(build(opened(), 'WASP', 2));
+    expect(view.buildings).toEqual(START_BUILDINGS);
+    expect(view.fleet.WASP ?? 0).toBe(0);
+    expect(view.fleetAway.WASP ?? 0).toBe(0);
+    expect(view.flight.used).toBe(0);
     expect(view.flight.total).toBeGreaterThan(0);
+    expect(view.queues?.CONSTRUCTION).toHaveLength(3);
+    expect(view.queues?.YARD).toHaveLength(1);
+    // Committed resources remain Wealth, just as they do on the server.
+    expect(view.score.wealth).toBe(before.score.wealth);
   });
 });
 
@@ -397,8 +344,9 @@ describe('the rehearsal fetch', () => {
 
     const result = upgradeSchema.parse(await api.upgrade('CORE'));
     expect(result.level).toBe(2);
-    expect(result.planet.buildings.CORE).toBe(2);
-    expect(now().buildings.CORE).toBe(2);
+    expect(result.planet.buildings.CORE).toBe(1);
+    expect(result.planet.queues?.CONSTRUCTION).toHaveLength(1);
+    expect(now().buildings.CORE).toBe(1);
     expect(now().intents).toEqual([{ kind: 'upgrade', building: 'CORE' }]);
   });
 
@@ -410,55 +358,18 @@ describe('the rehearsal fetch', () => {
     });
   });
 
-  it('launches, and answers with a pending thread the disc can draw', async () => {
-    const { api } = harness();
+  it('returns the four staged orders in production shapes, with no invented pending flight', async () => {
+    const { api, now } = harness();
     await api.upgrade('CORE');
     await api.upgrade('REFINERY');
     await api.upgrade('EXTRACTOR');
-    await api.build('WASP', 2);
+    const built = buildSchema.parse(await api.build('WASP', 2));
 
-    const result = launchSchema.parse(await api.launch('target', { WASP: 2 }));
-    expect(result.pending).toHaveLength(1);
-    const [thread] = result.pending;
-    expect(thread?.targetName).toBe('World-target');
-    // The path is what the disc interpolates the leg from; both ends are public.
-    expect(thread?.path?.from).toEqual({ x: 0, y: 0, z: 0 });
-    expect(thread?.path?.to).toEqual({ x: 200, y: 0, z: 0 });
-    expect(thread?.arriveAt.getTime()).toBeGreaterThan(thread?.path?.departAt.getTime() ?? 0);
-  });
-
-  /**
-   * A LEG THAT RE-READS ITS OWN DEPARTURE PARKS ON THE PAD.
-   *
-   * Every leg is drawn by interpolating between `departAt` and `arriveAt` against
-   * `serverNow()`. If the departure were recomputed as "now" on each read, the
-   * fraction would stay at zero for the whole flight and the squadron would sit on
-   * its own world — which is precisely the failure D50 and D52 were about.
-   */
-  it('freezes the departure instant, so the craft actually moves', async () => {
-    const { api } = harness();
-    await api.upgrade('CORE');
-    await api.upgrade('REFINERY');
-    await api.upgrade('EXTRACTOR');
-    await api.build('WASP', 2);
-    await api.launch('target', { WASP: 2 });
-
-    const first = (await api.pending()).pending[0]?.path?.departAt.getTime();
-    await new Promise((r) => setTimeout(r, 12));
-    const second = (await api.pending()).pending[0]?.path?.departAt.getTime();
-
-    expect(first).toBe(second);
-  });
-
-  it('refuses a second launch: there is no recall, and there is one bay', async () => {
-    const { api } = harness();
-    await api.upgrade('CORE');
-    await api.upgrade('REFINERY');
-    await api.upgrade('EXTRACTOR');
-    await api.build('WASP', 2);
-    await api.launch('target', { WASP: 1 });
-
-    await expect(api.launch('target', { WASP: 1 })).rejects.toBeInstanceOf(ApiError);
+    expect(built.planet.queues?.CONSTRUCTION).toHaveLength(3);
+    expect(built.planet.queues?.YARD).toHaveLength(1);
+    expect(now().intents).toHaveLength(4);
+    expect((await api.pending()).pending).toEqual([]);
+    expect(built.planet.fleet.WASP ?? 0).toBe(0);
   });
 
   /**
@@ -470,6 +381,9 @@ describe('the rehearsal fetch', () => {
     await expect(api.probe('target')).rejects.toMatchObject({ code: 'REHEARSAL_ONLY' });
     await expect(api.collect()).rejects.toMatchObject({ code: 'REHEARSAL_ONLY' });
     await expect(api.mine(1, 1)).rejects.toMatchObject({ code: 'REHEARSAL_ONLY' });
+    await expect(api.launch('target', { WASP: 2 })).rejects.toMatchObject({
+      code: 'REHEARSAL_ONLY',
+    });
     await expect(api.installSatellite('FOUNDRY')).rejects.toMatchObject({
       code: 'REHEARSAL_ONLY',
     });

@@ -41,7 +41,7 @@ export function LanguageSwitch({ compact = false }: { compact?: boolean }) {
       <div
         role="group"
         aria-label={t('settings.choose')}
-        className="flex overflow-hidden rounded-full border border-line/70 bg-void/45 backdrop-blur-sm"
+        className="flex overflow-hidden rounded-full border border-line/70 bg-void/45"
       >
         {LANGUAGES.map((language) => {
           const on = language === active;

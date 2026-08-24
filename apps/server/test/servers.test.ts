@@ -1,5 +1,5 @@
 import { eq } from 'drizzle-orm';
-import { PLANET_START as GRANT } from '@astera/rules';
+import { PLANET_START as GRANT, SERVERS } from '@astera/rules';
 import type { FastifyInstance } from 'fastify';
 import { pino } from 'pino';
 import { afterAll, afterEach, beforeEach, describe, expect, it } from 'vitest';
@@ -12,6 +12,7 @@ import {
   listServers,
   wipeAllServers,
 } from '../src/services/servers.js';
+import { joinSeason } from '../src/services/player.js';
 import { testDb, testEnv, truncateAll, type Fixture } from './helpers.js';
 
 const silent = pino({ level: 'silent' });
@@ -54,12 +55,12 @@ afterAll(async () => {
 });
 
 /**
- * TEN GALAXIES, FIFTY WORLDS EACH, FILLED IN ORDER. D21.
+ * TWO LIVE GALAXIES, FILLED IN ORDER. D21/D99/D100.
  *
  * Everything here is about the two rules that decide where a player ends up: a
- * galaxy takes fifty planets and no more, and only one galaxy is ever open at a
- * time. Both are enforced by the database rather than by a prior check, so most of
- * these tests are about what happens when two requests arrive together.
+ * galaxy takes its stored capacity and no more, and only one galaxy is ever open
+ * at a time. Most race tests use deliberately tiny explicit capacities; the
+ * database default is separately pinned to the 300-seat production decision.
  */
 describe('servers', () => {
   let db: Fixture['db'];
@@ -83,7 +84,7 @@ describe('servers', () => {
   });
 
   /** A world of `count` galaxies, each holding `capacity` planets. */
-  const openWorld = (count = 3, capacity = 2) =>
+  const openWorld = (count: number = SERVERS.count, capacity = 2) =>
     bootstrapServers(db, clock, { count, capacity, seedBase: 1000 });
 
   const register = async (): Promise<Session> => {
@@ -121,9 +122,9 @@ describe('servers', () => {
       await openWorld();
       const body = await list();
 
-      expect(body.servers).toHaveLength(3);
+      expect(body.servers).toHaveLength(2);
       expect(body.placement).toBeNull();
-      expect(body.servers.map((s) => s.ordinal)).toEqual([1, 2, 3]);
+      expect(body.servers.map((s) => s.ordinal)).toEqual([1, 2]);
     });
 
     it('names each galaxy and states how full it is', async () => {
@@ -137,10 +138,10 @@ describe('servers', () => {
     });
 
     it('opens exactly one galaxy and locks the rest', async () => {
-      await openWorld(3, 2);
+      await openWorld(2, 2);
       const body = await list();
 
-      expect(body.servers.map((s) => s.status)).toEqual(['open', 'locked', 'locked']);
+      expect(body.servers.map((s) => s.status)).toEqual(['open', 'locked']);
     });
 
     it('counts planets as they are taken', async () => {
@@ -236,7 +237,7 @@ describe('servers', () => {
 
   describe('filling in order', () => {
     it('refuses the second galaxy while the first has room', async () => {
-      await openWorld(3, 2);
+      await openWorld(2, 2);
       const res = await join(await register(), 'EU-2');
 
       expect(res.statusCode).toBe(409);
@@ -247,17 +248,17 @@ describe('servers', () => {
     });
 
     it('opens the second galaxy the moment the first is full', async () => {
-      await openWorld(3, 2);
+      await openWorld(2, 2);
       expect((await join(await register(), 'EU-1')).statusCode).toBe(200);
       expect((await join(await register(), 'EU-1')).statusCode).toBe(200);
 
       const body = await list();
-      expect(body.servers.map((s) => s.status)).toEqual(['full', 'open', 'locked']);
+      expect(body.servers.map((s) => s.status)).toEqual(['full', 'open']);
       expect((await join(await register(), 'EU-2')).statusCode).toBe(200);
     });
 
     it('refuses a full galaxy by name rather than silently redirecting', async () => {
-      await openWorld(3, 1);
+      await openWorld(2, 1);
       await join(await register(), 'EU-1');
 
       const res = await join(await register(), 'EU-1');
@@ -270,6 +271,47 @@ describe('servers', () => {
       const res = await join(await register(), 'EU-404');
       expect(res.statusCode).toBe(404);
       expect(res.json<{ error: string }>().error).toBe('NO_SUCH_SERVER');
+    });
+
+    it('does not admit into a retired historical shard row', async () => {
+      await openWorld(3, 2);
+      const res = await join(await register(), 'EU-3');
+
+      expect(res.statusCode).toBe(404);
+      expect(res.json<{ error: string }>().error).toBe('NO_SUCH_SERVER');
+    });
+
+    it('cannot evade the two-galaxy ceiling by renaming a third live shard', async () => {
+      await openWorld(2, 2);
+      await bootstrapServers(db, clock, { count: 3, capacity: 2, seedBase: 2000 });
+      await db.update(shards).set({ code: 'PRIVATE-FRONTIER' }).where(eq(shards.ordinal, 3));
+
+      expect((await list()).servers.map((server) => server.code)).toEqual(['EU-1', 'EU-2']);
+      const res = await join(await register(), 'PRIVATE-FRONTIER');
+      expect(res.statusCode).toBe(404);
+    });
+
+    it('keeps an existing commander in a retired shard playable until rollover', async () => {
+      await openWorld(3, 2);
+      const me = await register();
+      const [legacy] = await db
+        .select({ seasonId: seasons.id })
+        .from(seasons)
+        .innerJoin(shards, eq(seasons.shardId, shards.id))
+        .where(eq(shards.code, 'EU-3'));
+      if (!legacy) throw new Error('EU-3 fixture was not created');
+      await joinSeason(db, me.accountId, legacy.seasonId, clock);
+
+      const body = await list(me);
+      expect(body.servers.some((server) => server.code === 'EU-3')).toBe(false);
+      expect(body.placement).toEqual({ shard: 'EU-3', name: 'Halcyon' });
+
+      const planet = await app.inject({
+        method: 'GET',
+        url: '/api/planet',
+        headers: { authorization: `Bearer ${me.accessToken}` },
+      });
+      expect(planet.statusCode).toBe(200);
     });
 
     it('refuses everyone once every galaxy is full', async () => {
@@ -369,7 +411,7 @@ describe('servers', () => {
       const res = await join(me, 'EU-2');
       expect(res.statusCode).toBe(409);
       expect(res.json<{ error: string }>().error).toBe('ALREADY_PLACED');
-      expect(await db.select().from(planets)).toHaveLength(1);
+      expect(await db.select().from(planets).where(eq(planets.kind, 'CAPITAL'))).toHaveLength(1);
     });
 
     /**
@@ -402,7 +444,7 @@ describe('servers', () => {
       expect([a.statusCode, b.statusCode]).toEqual([200, 200]);
       expect(a.json<Placement>().planetId).toBe(b.json<Placement>().planetId);
       expect(await db.select().from(players).where(eq(players.accountId, me.accountId))).toHaveLength(1);
-      expect(await db.select().from(planets)).toHaveLength(1);
+      expect(await db.select().from(planets).where(eq(planets.kind, 'CAPITAL'))).toHaveLength(1);
     });
 
     /**
@@ -418,7 +460,7 @@ describe('servers', () => {
       ]);
 
       expect([a.statusCode, b.statusCode].sort((x, y) => x - y)).toEqual([200, 409]);
-      expect(await db.select().from(planets)).toHaveLength(1);
+      expect(await db.select().from(planets).where(eq(planets.kind, 'CAPITAL'))).toHaveLength(1);
     });
 
     it('will not place an unauthenticated caller', async () => {
@@ -534,6 +576,15 @@ describe('servers', () => {
   /* ── opening and ending the world ─────────────────────────── */
 
   describe('bootstrap', () => {
+    it('keeps the database default aligned with the D99 admission ceiling', async () => {
+      const [row] = await db
+        .insert(shards)
+        .values({ code: 'EU-DEFAULT', name: 'Default', ordinal: 99 })
+        .returning({ playerCap: shards.playerCap });
+
+      expect(row?.playerCap).toBe(SERVERS.capacity);
+    });
+
     it('opens the whole world in one command', async () => {
       const result = await bootstrapServers(db, clock, { count: 10, capacity: 50 });
 
@@ -579,7 +630,7 @@ describe('servers', () => {
       expect(result.playersCleared).toBe(2);
       expect(result.seasonsWiped).toBe(2);
       expect(await db.select().from(players)).toHaveLength(0);
-      expect(await db.select().from(planets)).toHaveLength(0);
+      expect(await db.select().from(planets).where(eq(planets.kind, 'CAPITAL'))).toHaveLength(0);
       expect(await db.select().from(chatMessages)).toHaveLength(0);
 
       // And the world is open again, from the first galaxy.
@@ -613,6 +664,7 @@ describe('servers', () => {
         .values({
           seasonId: placement.seasonId,
           kind: 'attack',
+          ownerPlayerId: placement.playerId,
           originPlanetId: placement.planetId,
           targetPlanetId: theirs.planetId,
           fleet: { WASP: 4 },
@@ -636,7 +688,7 @@ describe('servers', () => {
       expect(result.playersCleared).toBe(2);
       expect(await db.select().from(debrisFields)).toHaveLength(0);
       expect(await db.select().from(missions)).toHaveLength(0);
-      expect(await db.select().from(planets)).toHaveLength(0);
+      expect(await db.select().from(planets).where(eq(planets.kind, 'CAPITAL'))).toHaveLength(0);
     });
 
     it('releases the one-planet rule, so a commander may choose again', async () => {
@@ -733,11 +785,11 @@ describe('servers', () => {
   /* ── the service, directly ────────────────────────────────── */
 
   describe('listServers', () => {
-    it('is three queries whatever the number of galaxies', async () => {
+    it('keeps retired historical shards out of the live list', async () => {
       await bootstrapServers(db, clock, { count: 10, capacity: 50 });
       const rows = await listServers(db, clock);
-      expect(rows).toHaveLength(10);
-      expect(rows.map((r) => r.ordinal)).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
+      expect(rows).toHaveLength(SERVERS.count);
+      expect(rows.map((r) => r.ordinal)).toEqual([1, 2]);
     });
 
     it('reports nothing at all before the world has been opened', async () => {

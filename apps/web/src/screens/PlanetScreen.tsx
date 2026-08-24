@@ -1,17 +1,24 @@
-import { useEffect, useState } from 'react';
+import { GameActions } from '../session/seasonLock.js';
+import { useEffect, useState, type ReactNode } from 'react';
 import { Trans, useTranslation } from 'react-i18next';
 import { Unreachable, Waiting } from '../ui/kit/Surface.js';
 import {
+  BUILD,
   HULLS,
+  DEATH_STAR,
   PROSPECTOR,
+  cancelRefund,
   fleetCount,
   instrumentCost,
   instrumentMaxed,
+  satelliteSlots,
   satelliteCost,
   upgradeCost,
   type BuildingId,
+  type BuildingLevels,
   type HullId,
   type InstrumentId,
+  type ResearchProjectId,
   type SatelliteId,
 } from '@astera/rules';
 import {
@@ -20,18 +27,25 @@ import {
   usePending,
   usePlanet,
   useBuild,
+  useCancelBuildOrder,
+  useCompleteResearch,
   useInstallSatellite,
   useRaiseInstrument,
   useUpgrade,
+  useBuildDeathStar,
 } from '../api/queries.js';
-import type { PlanetView } from '../api/schemas.js';
+import type { BuildOrderView, PlanetView } from '../api/schemas.js';
 
 import { directives, primary, type PlanetGroup } from '../lib/directives.js';
-import { compact } from '../lib/format.js';
+import { compact, full } from '../lib/format.js';
+import { serverNow } from '../lib/clock.js';
+import { countdown, duration, useNow } from '../lib/time.js';
+import { projectedQueueState } from '../lib/predict.js';
 import { buildingGain, instrumentGain, satelliteGain } from '../lib/gains.js';
 import { useProjected, type Projected } from '../lib/projection.js';
 import {
   HULL_ART,
+  RESEARCH_ART,
   RESOURCE_ART,
   SATELLITE_ART,
   buildingArt,
@@ -116,6 +130,8 @@ export interface SheetSpec {
   name: string;
   role: string;
   blocked?: Blocked;
+  completed?: string;
+  queued?: string;
   pending: boolean;
   act: () => void;
 }
@@ -138,6 +154,63 @@ export function PlanetScreen({
   const [focused, setFocused] = useState<string | null>(null);
   // Set for a moment after a purchase lands, so the row can acknowledge it.
   const [flashed, setFlashed] = useState<string | null>(null);
+
+  // The first project opens on the shared season clock. Wake on that exact
+  // instant so the row becomes actionable without a poll or a page reload.
+  useEffect(() => {
+    const isotope = data?.research.find(
+      (project) => project.id === 'ISOTOPE_SPECTROMETRY',
+    );
+    if (!isotope || isotope.discovered || isotope.completed) return;
+    const delay = Math.max(0, isotope.availableAt.getTime() - serverNow());
+    const id = window.setTimeout(() => {
+      void refetch();
+    }, Math.min(delay, 2_147_483_647));
+    return () => { window.clearTimeout(id); };
+  }, [data?.research, refetch]);
+
+  // Private strategic readiness and recovery are both server-authoritative, but
+  // their payload already names the exact instant. Wake there even if SSE is late.
+  useEffect(() => {
+    const queueInstants = data?.queues
+      ? [...data.queues.CONSTRUCTION, ...data.queues.YARD].map((order) => order.finishesAt)
+      : [];
+    const instants = [
+      data?.planet.recoveryUntil,
+      data?.strategic?.status === 'BUILDING' ? data.strategic.readyAt : null,
+      ...queueInstants,
+    ]
+      .filter((instant): instant is Date => instant instanceof Date)
+      .map((instant) => instant.getTime())
+      .sort((a, b) => a - b);
+    if (instants.length === 0) return;
+
+    let stopped = false;
+    let timer: number | null = null;
+    let overdueAttempts = 0;
+    const arm = (): void => {
+      const now = serverNow();
+      const overdue = instants.some((instant) => instant <= now);
+      const next = instants.find((instant) => instant > now);
+      if (!overdue && next === undefined) return;
+
+      // A wake can beat the worker's one-second poll and receive the unchanged
+      // active order. Retry overdue state with a bounded backoff instead of
+      // leaving a 00:00 queue parked until SSE or a page reload rescues it.
+      const delay = overdue
+        ? Math.min(1000 * 2 ** overdueAttempts++, 10_000)
+        : Math.min(Math.max(0, next! - now) + 50, 2_147_483_647);
+      timer = window.setTimeout(() => {
+        void refetch();
+        if (!stopped) arm();
+      }, delay);
+    };
+    arm();
+    return () => {
+      stopped = true;
+      if (timer !== null) window.clearTimeout(timer);
+    };
+  }, [data?.planet.recoveryUntil, data?.queues, data?.strategic, refetch]);
 
   useEffect(() => {
     if (!flashed) return;
@@ -184,6 +257,9 @@ export function PlanetScreen({
 
   const recommended = advice ?? groupOrder(data, focusGroup)[0] ?? 'grow';
   const active = tab ?? focusGroup ?? recommended;
+  const recovering = data.planet.recoveryUntil !== null
+    && data.planet.recoveryUntil !== undefined
+    && data.planet.recoveryUntil.getTime() > serverNow();
 
   const shared = {
     planet: data,
@@ -208,17 +284,38 @@ export function PlanetScreen({
   };
 
   return (
-    <div className="px-4 pt-4">
+    <GameActions>
+      <div className="px-4 pt-4">
       <PlanetHero planet={data} compact={embedded} />
 
-      <Tabs active={active} onSelect={setTab} held={held} />
+      <BuildQueues planet={data} />
 
+      {recovering && (
+        <div className="mb-3 rounded border border-alert/40 bg-alert/10 px-3 py-2 text-[12px] text-alert">
+          {t('planet.recovery', { duration: duration((data.planet.recoveryUntil!.getTime() - serverNow()) / 60_000) })}
+        </div>
+      )}
+
+      {data.strategic && <DeathStarForge planet={data} held={held} recovering={recovering} />}
+
+      <Tabs
+        active={active}
+        onSelect={setTab}
+        held={held}
+      />
+
+      {active === 'reach' && !data.strategic && (
+        <DeathStarForge planet={data} held={held} recovering={recovering} />
+      )}
+
+      <div className={recovering ? 'pointer-events-none opacity-50' : ''} aria-disabled={recovering}>
       <DecisionGroup problem={t(GROUPS[active].problem)} question={t(GROUPS[active].question)}>
         {active === 'defend' && <Defend {...shared} onBuild={setBuilding} />}
         {active === 'orbit' && <Orbit {...shared} />}
         {active === 'reach' && <Reach {...shared} onBuild={setBuilding} />}
         {active === 'grow' && <Grow {...shared} />}
       </DecisionGroup>
+      </div>
 
       {sheet && (
         <ItemSheet
@@ -228,6 +325,8 @@ export function PlanetScreen({
           planet={data}
           held={held}
           {...(sheet.blocked ? { blocked: sheet.blocked } : {})}
+          {...(sheet.completed ? { completed: sheet.completed } : {})}
+          {...(sheet.queued ? { queued: sheet.queued } : {})}
           pending={sheet.pending}
           onAct={sheet.act}
           onClose={() => {
@@ -250,7 +349,8 @@ export function PlanetScreen({
         />
         </div>
       )}
-    </div>
+      </div>
+    </GameActions>
   );
 }
 
@@ -298,6 +398,8 @@ export const TAB_OF: Record<string, GroupId | undefined> = {
   DERRICK: 'orbit',
   BEACON: 'orbit',
   SHIPYARD: 'reach',
+  ISOTOPE_SPECTROMETRY: 'reach',
+  DENSE_FUEL_CELLS: 'reach',
 };
 
 /**
@@ -325,7 +427,8 @@ export const TAB_OF: Record<string, GroupId | undefined> = {
  * quietly restore the belief that the collector exists to break.
  */
 function Wallet({ held }: { held: Projected }) {
-  const waiting = Math.round(held.bufferAlloy + held.bufferCrystal);
+  const { t } = useTranslation();
+  const waiting = Math.round(held.bufferAlloy + held.bufferCrystal + held.bufferDeuterium);
 
   return (
     <div className="flex items-center gap-3 px-4 pb-1.5 pt-2 text-[13px]">
@@ -336,6 +439,13 @@ function Wallet({ held }: { held: Projected }) {
       <span className="flex items-center gap-1.5">
         <img src={RESOURCE_ART.crystal} alt="" aria-hidden className="size-4 object-contain" />
         <span className="num text-crystal">{compact(held.crystal)}</span>
+      </span>
+      <span
+        className="flex items-center gap-1.5"
+        aria-label={t('statusBar.deuteriumLabel')}
+      >
+        <img src={RESOURCE_ART.deuterium} alt="" aria-hidden className="size-4 object-contain" />
+        <span className="num text-deuterium">{compact(held.deuterium)}</span>
       </span>
       {waiting >= 1 && (
         <span className="ml-auto text-[11px] text-faint">
@@ -349,6 +459,288 @@ function Wallet({ held }: { held: Projected }) {
         </span>
       )}
     </div>
+  );
+}
+
+/** Two independent commitments, kept visible while the player makes the next one. */
+function BuildQueues({ planet }: { planet: PlanetView }) {
+  const { t } = useTranslation();
+  const now = useNow(1000);
+  const cancel = useCancelBuildOrder();
+  const say = useToast();
+  const queues = planet.queues ?? { CONSTRUCTION: [], YARD: [] };
+
+  return (
+    <section className="mb-3 mt-3 frame" aria-label={t('planet.queue.title')}>
+      <header className="flex items-baseline gap-2 border-b border-line-soft px-3 py-2">
+        <h2 className="font-display text-[11px] uppercase tracking-[0.16em] text-bone">
+          {t('planet.queue.title')}
+        </h2>
+        <span className="h-px flex-1 bg-gradient-to-r from-line-soft to-transparent" />
+        <span className="num text-[10px] text-faint">
+          {t('planet.queue.capacity', { count: BUILD.queueDepth })}
+        </span>
+      </header>
+      <BuildQueueLane
+        label={t('planet.queue.construction')}
+        orders={queues.CONSTRUCTION}
+        now={now}
+        cancelling={cancel.isPending ? cancel.variables : undefined}
+        onCancel={(order) => {
+          cancel.mutate(order.id, {
+            onSuccess: (result) => {
+              say(t('planet.queue.cancelled', {
+                alloy: full(result.refund.alloy),
+                crystal: full(result.refund.crystal),
+                deuterium: full(result.refund.deuterium),
+              }));
+            },
+            onError: (error) => { say(describe(error), 'error'); },
+          });
+        }}
+      />
+      <BuildQueueLane
+        label={t('planet.queue.yard')}
+        orders={queues.YARD}
+        now={now}
+        cancelling={cancel.isPending ? cancel.variables : undefined}
+        onCancel={(order) => {
+          cancel.mutate(order.id, {
+            onSuccess: (result) => {
+              say(t('planet.queue.cancelled', {
+                alloy: full(result.refund.alloy),
+                crystal: full(result.refund.crystal),
+                deuterium: full(result.refund.deuterium),
+              }));
+            },
+            onError: (error) => { say(describe(error), 'error'); },
+          });
+        }}
+      />
+    </section>
+  );
+}
+
+function BuildQueueLane({
+  label,
+  orders,
+  now,
+  cancelling,
+  onCancel,
+}: {
+  label: string;
+  orders: readonly BuildOrderView[];
+  now: number;
+  cancelling?: string;
+  onCancel: (order: BuildOrderView) => void;
+}) {
+  const { t } = useTranslation();
+  return (
+    <div className="border-b border-line-soft px-3 py-2.5 last:border-b-0">
+      <div className="mb-2 flex items-baseline justify-between gap-2">
+        <h3 className="text-[10px] font-bold uppercase tracking-[0.14em] text-crystal/80">
+          {label}
+        </h3>
+        <span className="num text-[10px] text-faint">
+          {orders.length}/{BUILD.queueDepth}
+        </span>
+      </div>
+      {orders.length === 0 ? (
+        <p className="text-[11px] text-faint">{t('planet.queue.empty')}</p>
+      ) : (
+        <ol className="space-y-2">
+          {orders.map((order, index) => {
+            const startedAt = order.startedAt;
+            const finishesAt = order.finishesAt;
+            const timed = startedAt instanceof Date && finishesAt instanceof Date;
+            const staged = 'staged' in order && order.staged;
+            const total = timed ? finishesAt.getTime() - startedAt.getTime() : 0;
+            const elapsed = timed ? now - startedAt.getTime() : 0;
+            const progress = index === 0 && total > 0
+              ? Math.max(0, Math.min(1, elapsed / total))
+              : 0;
+            const refund = cancelRefund(order.cost);
+            return (
+              <li key={order.id} className="rounded-sm border border-line-soft bg-void/25 px-2.5 py-2">
+                <div className="flex items-center gap-2">
+                  <span className="num text-[10px] text-faint">{index + 1}</span>
+                  <span className="min-w-0 flex-1 truncate text-[12px] text-bone">
+                    {order.count > 1 ? `${String(order.count)} × ` : ''}{buildOrderName(order)}
+                  </span>
+                  <span className="num shrink-0 text-[11px] text-crystal">
+                    {timed
+                      ? countdown(finishesAt.getTime() - now)
+                      : staged
+                        ? t('planet.queue.staged')
+                        : t('planet.queue.committing')}
+                  </span>
+                  <button
+                    type="button"
+                    disabled={!timed || cancelling !== undefined}
+                    title={t('planet.queue.refund', {
+                      alloy: full(refund.alloy),
+                      crystal: full(refund.crystal),
+                      deuterium: full(refund.deuterium),
+                    })}
+                    className="min-h-8 rounded-sm border border-alert/35 px-2 text-[10px] uppercase tracking-[0.08em] text-alert disabled:opacity-45"
+                    onClick={() => {
+                      // An optimistic marker has no server id yet. Let the
+                      // placement response replace it before cancellation is
+                      // offered, or this button can only send a guaranteed 404.
+                      if (timed) onCancel(order);
+                    }}
+                  >
+                    {cancelling === order.id ? t('planet.queue.cancelling') : t('planet.queue.cancel')}
+                  </button>
+                </div>
+                {index === 0 && (
+                  <div className="mt-1.5 h-1 overflow-hidden rounded-full bg-black/45">
+                    <span
+                      className="block h-full bg-gradient-to-r from-crystal/45 to-crystal transition-[width] duration-1000"
+                      style={{ width: `${String(Math.max(timed ? 2 : 8, progress * 100))}%` }}
+                    />
+                  </div>
+                )}
+              </li>
+            );
+          })}
+        </ol>
+      )}
+    </div>
+  );
+}
+
+function buildOrderName(order: BuildOrderView): string {
+  if (order.kind === 'BUILDING') return buildingName(order.subject as BuildingId);
+  if (order.kind === 'HULL') return hullLabel(order.subject as HullId);
+  if (order.kind === 'INSTRUMENT') return instrumentLabel(order.subject as InstrumentId);
+  if (order.kind === 'SATELLITE') return satelliteLabel(order.subject as SatelliteId);
+  if (order.subject === 'ISOTOPE_SPECTROMETRY') return i18n.t('planet.reach.isotopeName');
+  if (order.subject === 'DENSE_FUEL_CELLS') return i18n.t('planet.reach.denseName');
+  if (order.subject === 'GRAVITIC_CHARGES') return i18n.t('planet.reach.graviticName');
+  if (order.subject === 'DEATH_STAR_PROTOCOL') return i18n.t('planet.reach.deathStarName');
+  return order.subject;
+}
+
+function DeathStarForge({
+  planet,
+  held,
+  recovering,
+}: {
+  planet: PlanetView;
+  held: Projected;
+  recovering: boolean;
+}) {
+  const { t } = useTranslation();
+  const say = useToast();
+  const strategicBuild = useBuildDeathStar();
+  const protocol = planet.research.some(
+    (project) => project.id === 'DEATH_STAR_PROTOCOL' && project.completed,
+  );
+  const core = (planet.buildings.CORE ?? 0) >= DEATH_STAR.requiredCore;
+  const yard = (planet.buildings.SHIPYARD ?? 0) >= DEATH_STAR.requiredShipyard;
+  const affordable = held.alloy >= DEATH_STAR.cost.alloy
+    && held.crystal >= DEATH_STAR.cost.crystal
+    && held.deuterium >= DEATH_STAR.cost.deuterium;
+  const live = planet.strategic !== null && planet.strategic !== undefined;
+
+  return (
+    <div
+      data-strategic-state={planet.strategic?.status ?? 'LOCKED'}
+      className={`death-star-forge mb-3 mt-3 ${planet.strategic?.status === 'READY' ? 'death-star-forge-ready' : ''}`}
+    >
+      <div className="relative z-[1] flex items-start gap-3">
+        <div className={`death-star-art relative grid shrink-0 place-items-center overflow-hidden rounded-sm ${live ? 'size-[72px]' : 'size-24'}`}>
+          <span className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-alloy/70 to-transparent" />
+          <img
+            src={RESEARCH_ART.DEATH_STAR_PROTOCOL}
+            alt=""
+            aria-hidden
+            className={`${live ? 'size-16' : 'size-[88px]'} object-contain drop-shadow-[0_9px_14px_rgba(0,0,0,0.75)]`}
+          />
+        </div>
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-2">
+            <span className="death-star-danger-light" aria-hidden />
+            <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-alloy">
+              {t('planet.deathStar.eyebrow')}
+            </p>
+          </div>
+          <p className="mt-1 font-display text-[16px] uppercase tracking-[0.08em] text-bone">
+            {planet.strategic?.status === 'READY'
+              ? t('planet.deathStar.ready')
+              : planet.strategic?.status === 'PAUSED'
+                ? t('planet.deathStar.paused')
+                : planet.strategic?.status === 'BUILDING'
+                  ? t('planet.deathStar.building', {
+                      duration: planet.strategic.readyAt
+                        ? duration(Math.max(0, planet.strategic.readyAt.getTime() - serverNow()) / 60_000)
+                        : duration((planet.strategic.remainingSeconds ?? 0) / 60),
+                    })
+                  : t('planet.deathStar.none')}
+          </p>
+          <p className="mt-1 text-[12px] leading-snug text-dim">
+            {t(planet.strategic?.status === 'READY'
+              ? 'planet.deathStar.readyHint'
+              : 'planet.deathStar.dangerHint')}
+          </p>
+        </div>
+      </div>
+
+      {!live && (
+        <div className="relative z-[1] mt-3 border-t border-line-soft pt-3">
+          <div className="grid grid-cols-2 gap-1.5" role="list">
+            <DeathStarNeed ok={protocol}>{t('planet.deathStar.needProtocol')}</DeathStarNeed>
+            <DeathStarNeed ok={core}>{t('planet.deathStar.needCore')}</DeathStarNeed>
+            <DeathStarNeed ok={yard}>{t('planet.deathStar.needShipyard')}</DeathStarNeed>
+            <DeathStarNeed ok={!recovering}>{t('planet.deathStar.needOperational')}</DeathStarNeed>
+          </div>
+          <div className="mt-3 flex items-center justify-between gap-3">
+            <div>
+              <Price cost={DEATH_STAR.cost} held={held} />
+              <p className="mt-1 text-[11px] uppercase tracking-[0.12em] text-faint">
+                {t('planet.deathStar.buildTime')}
+              </p>
+            </div>
+            <button
+              type="button"
+              className="death-star-build min-h-11"
+              disabled={recovering || strategicBuild.isPending || !protocol
+                || !core || !yard || !affordable}
+              onClick={() => { strategicBuild.mutate(undefined, {
+                onSuccess: () => { say(t('planet.deathStar.started')); },
+                onError: (error) => { say(describe(error), 'error'); },
+              }); }}
+            >
+              {t('planet.deathStar.build')}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {planet.strategic?.status === 'BUILDING' && (
+        <div className="relative z-[1] mt-3 h-1.5 overflow-hidden rounded-full bg-black/45">
+          <span
+            className="block h-full bg-gradient-to-r from-alloy/45 via-alloy to-bone"
+            style={{ width: `${String(Math.max(2, Math.min(100,
+              100 * (1 - (planet.strategic.remainingSeconds ?? 3600) / 3600))))}%` }}
+          />
+        </div>
+      )}
+    </div>
+  );
+}
+
+function DeathStarNeed({ ok, children }: { ok: boolean; children: ReactNode }) {
+  return (
+    <span
+      role="listitem"
+      data-met={ok ? 'true' : 'false'}
+      className="death-star-need flex min-h-9 items-center gap-1.5 rounded-sm border px-2 py-1 text-[11px] uppercase tracking-[0.08em]"
+    >
+      <span aria-hidden>{ok ? '●' : '○'}</span>
+      {children}
+    </span>
   );
 }
 
@@ -372,7 +764,7 @@ function Tabs({
 }) {
   const { t } = useTranslation();
   return (
-    <div className="sticky top-0 z-20 -mx-4 mb-5 border-y border-line-soft bg-deep/95 backdrop-blur">
+    <div className="sticky top-0 z-20 -mx-4 mb-5 border-y border-line-soft bg-deep/95">
       <Wallet held={held} />
       <div className="grid grid-cols-4 gap-1 px-4 pb-2">
       {TABS.map((id) => {
@@ -412,7 +804,13 @@ function Tabs({
 function groupOrder(planet: PlanetView, focus?: GroupId): GroupId[] {
   const score: Record<GroupId, number> = { defend: 0, orbit: 0, reach: 0, grow: 10 };
 
-  const exposed = Math.max(0, planet.planet.alloy + planet.planet.crystal - planet.planet.vaultFloor);
+  const exposed = Math.max(
+    0,
+    planet.planet.alloy
+      + planet.planet.crystal
+      + planet.planet.deuterium
+      - planet.planet.vaultFloor,
+  );
   if (fleetCount(planet.ground) === 0) score.defend += 60;
   if (exposed > planet.planet.vaultFloor * 3) score.defend += 40;
   if ((planet.instruments.TELESCOPE ?? 0) === 0) score.orbit += 55;
@@ -430,7 +828,7 @@ function groupOrder(planet: PlanetView, focus?: GroupId): GroupId[] {
 
 interface GroupProps {
   planet: PlanetView;
-  held: { alloy: number; crystal: number };
+  held: { alloy: number; crystal: number; deuterium: number };
   income: { alloyPerHour: number; crystalPerHour: number };
   focused: string | null;
   flashed: string | null;
@@ -444,47 +842,69 @@ const spec = (
   item: ItemRef,
   name: string,
   role: string,
-  action: { blocked?: Blocked; pending: boolean; act: () => void },
+  action: {
+    blocked?: Blocked;
+    completed?: string;
+    queued?: string;
+    pending: boolean;
+    act: () => void;
+  },
 ): SheetSpec => ({
   item,
   name,
   role,
   ...(action.blocked ? { blocked: action.blocked } : {}),
+  ...(action.completed ? { completed: action.completed } : {}),
+  ...(action.queued ? { queued: action.queued } : {}),
   pending: action.pending,
   act: action.act,
 });
 
-const cappedCount = (planet: PlanetView): number =>
+const cappedCountOf = (levels: BuildingLevels): number =>
   (['REFINERY', 'EXTRACTOR', 'VAULT', 'SHIPYARD'] as const).filter(
-    (id) => (planet.buildings[id] ?? 0) >= (planet.buildings.CORE ?? 0),
+    (id) => levels[id] >= levels.CORE,
   ).length;
 
 function useBuildingAction(planet: PlanetView, onFlash: (id: string) => void) {
   const upgrade = useUpgrade();
   const say = useToast();
-  const core = planet.buildings.CORE ?? 0;
+  const projected = projectedQueueState(planet, 'CONSTRUCTION');
+  const core = projected.buildings.CORE;
+  const orders = planet.queues?.CONSTRUCTION ?? [];
 
   return (id: BuildingId, name: string, onNeed: (row: string) => void) => {
     const level = planet.buildings[id] ?? 0;
-    const cost = planet.nextCosts[id] ?? upgradeCost(level);
+    const nextLevel = projected.buildings[id];
+    const cost = upgradeCost(nextLevel);
+    const queuedCount = orders.filter(
+      (order) => order.kind === 'BUILDING' && order.subject === id,
+    ).length;
+    const queued = queuedCount > 0
+      ? i18n.t('planet.queue.queued', { count: queuedCount })
+      : undefined;
     const blocked: Blocked | undefined =
-      id !== 'CORE' && level >= core
+      id !== 'CORE' && nextLevel >= core
         ? {
             reason: i18n.t('planet.blocked.core', { level: core + 1 }),
             onFix: () => { onNeed('CORE'); },
           }
+        : orders.length >= BUILD.queueDepth
+          ? { reason: i18n.t('planet.blocked.queueFull') }
         : undefined;
 
     return {
       level,
+      actionLevel: nextLevel,
+      projectedLevels: projected.buildings,
       cost,
       blocked,
+      queued,
       pending: upgrade.isPending,
       act: () => {
         upgrade.mutate(id, {
           onSuccess: (r) => {
             onFlash(id);
-            say(i18n.t('planet.done.raised', { name, level: r.level }));
+            say(i18n.t('planet.done.queued', { name, level: r.level }));
           },
           onError: (err) => {
             say(describe(err), 'error');
@@ -509,15 +929,24 @@ function useBuildingAction(planet: PlanetView, onFlash: (id: string) => void) {
 function useInstrumentAction(planet: PlanetView, onFlash: (id: string) => void) {
   const raise = useRaiseInstrument();
   const say = useToast();
-  const core = planet.buildings.CORE ?? 0;
-  const uplink = planet.orbit.includes('UPLINK');
+  const projected = projectedQueueState(planet, 'CONSTRUCTION');
+  const core = projected.buildings.CORE;
+  const uplink = projected.effectiveOrbit.includes('UPLINK');
+  const orders = planet.queues?.CONSTRUCTION ?? [];
 
   return (id: InstrumentId, name: string, onNeed: (row: string) => void) => {
     const level = planet.instruments[id] ?? 0;
+    const nextLevel = projected.instruments[id] ?? level;
     // Server-priced, for the same reason buildings are: the endpoint is the
     // authority and a screen quoting its own arithmetic can offer a purchase that
     // will be refused.
-    const cost = planet.instrumentCosts[id] ?? instrumentCost(id, level);
+    const cost = instrumentCost(id, nextLevel);
+    const queuedCount = orders.filter(
+      (order) => order.kind === 'INSTRUMENT' && order.subject === id,
+    ).length;
+    const queued = queuedCount > 0
+      ? i18n.t('planet.queue.queued', { count: queuedCount })
+      : undefined;
 
     const needsUplink = INSTRUMENT_NEEDS_UPLINK.includes(id) && !uplink;
     /**
@@ -531,27 +960,35 @@ function useInstrumentAction(planet: PlanetView, onFlash: (id: string) => void) 
      * It is FIRST because a maxed instrument under a low Core would otherwise say
      * "Core L7" and send the player off to raise a Core that buys them nothing.
      */
-    const blocked: Blocked | undefined = instrumentMaxed(id, level)
-      ? { reason: i18n.t('planet.blocked.maxed') }
+    const completed = instrumentMaxed(id, nextLevel)
+      ? i18n.t('planet.blocked.maxed')
+      : undefined;
+    const blocked: Blocked | undefined = completed
+      ? undefined
       : needsUplink
         ? { reason: i18n.t('planet.blocked.uplink'), onFix: () => { onNeed('UPLINK'); } }
-        : level >= core
+        : nextLevel >= core
           ? {
               reason: i18n.t('planet.blocked.core', { level: core + 1 }),
               onFix: () => { onNeed('CORE'); },
             }
-          : undefined;
+          : orders.length >= BUILD.queueDepth
+            ? { reason: i18n.t('planet.blocked.queueFull') }
+            : undefined;
 
     return {
       level,
+      actionLevel: nextLevel,
       cost,
       blocked,
+      ...(completed ? { completed } : {}),
+      queued,
       pending: raise.isPending,
       act: () => {
         raise.mutate(id, {
           onSuccess: (r) => {
             onFlash(id);
-            say(i18n.t('planet.done.instrument', { name, level: r.level }));
+            say(i18n.t('planet.done.queued', { name, level: r.level }));
           },
           onError: (err) => { say(describe(err), 'error'); },
         });
@@ -571,27 +1008,38 @@ function useInstrumentAction(planet: PlanetView, onFlash: (id: string) => void) 
 function useOrbitAction(planet: PlanetView, onFlash: (id: string) => void) {
   const install = useInstallSatellite();
   const say = useToast();
-  const free = planet.orbitSlots - planet.orbit.length;
+  const projected = projectedQueueState(planet, 'CONSTRUCTION');
+  const free = satelliteSlots(projected.buildings.CORE) - projected.orbit.length;
+  const orders = planet.queues?.CONSTRUCTION ?? [];
 
   return (id: SatelliteId, name: string, onNeed: (row: string) => void) => {
     const owned = planet.orbit.includes(id);
+    const queued = orders.some(
+      (order) => order.kind === 'SATELLITE' && order.subject === id,
+    )
+      ? i18n.t('planet.queue.queued', { count: 1 })
+      : undefined;
     const cost = planet.satelliteCosts[id] ?? satelliteCost(id);
 
     const blocked: Blocked | undefined =
       !owned && free <= 0
         ? { reason: i18n.t('planet.blocked.orbitSlot'), onFix: () => { onNeed('CORE'); } }
+        : orders.length >= BUILD.queueDepth
+          ? { reason: i18n.t('planet.blocked.queueFull') }
         : undefined;
 
     return {
       owned,
       cost,
       blocked,
+      ...(owned ? { completed: i18n.t('planet.orbit.alreadyInOrbit') } : {}),
+      queued,
       pending: install.isPending,
       act: () => {
         install.mutate(id, {
           onSuccess: () => {
             onFlash(id);
-            say(i18n.t('planet.done.satellite', { name }));
+            say(i18n.t('planet.done.queuedSimple', { name }));
           },
           onError: (err) => { say(describe(err), 'error'); },
         });
@@ -634,6 +1082,13 @@ function Defend({
   const shipyard = planet.buildings.SHIPYARD ?? 0;
   const bastion = HULLS.BASTION;
   const thorn = HULLS.THORN;
+  const yardOrders = planet.queues?.YARD ?? [];
+  const queuedThorns = yardOrders
+    .filter((order) => order.kind === 'HULL' && order.subject === 'THORN')
+    .reduce((sum, order) => sum + order.count, 0);
+  const queuedBastions = yardOrders
+    .filter((order) => order.kind === 'HULL' && order.subject === 'BASTION')
+    .reduce((sum, order) => sum + order.count, 0);
   const ground = fleetCount(planet.ground);
   /**
    * How many guns of each kind are on the plate.
@@ -650,7 +1105,7 @@ function Defend({
       <div id="row-VAULT">
         <UpgradeRow
           art={buildingArt('VAULT', Math.max(1, vault.level))}
-          nextArt={nextBuildingArt('VAULT', vault.level)}
+          nextArt={nextBuildingArt('VAULT', vault.actionLevel)}
           name={buildingName('VAULT')}
           tag={buildingTag('VAULT')}
           level={vault.level}
@@ -660,11 +1115,18 @@ function Defend({
               spec({ kind: 'building', id: 'VAULT' }, buildingName('VAULT'), vaultRole(), vault),
             );
           }}
-          gain={buildingGain('VAULT', vault.level, cappedCount(planet))}
+          gain={buildingGain(
+            'VAULT',
+            vault.actionLevel,
+            cappedCountOf(vault.projectedLevels),
+            vault.projectedLevels,
+          )}
           cost={vault.cost}
           held={held}
           income={income}
           {...(vault.blocked ? { blocked: vault.blocked } : {})}
+          {...(vault.queued ? { queued: vault.queued } : {})}
+          queuedActionable
           verb="raise"
           onAct={vault.act}
           pending={vault.pending}
@@ -704,6 +1166,13 @@ function Defend({
         income={income}
         verb="build"
         onAct={() => { onBuild('THORN'); }}
+        {...(yardOrders.length >= BUILD.queueDepth
+          ? { blocked: { reason: t('planet.blocked.queueFull') } satisfies Blocked }
+          : {})}
+        {...(queuedThorns > 0
+          ? { queued: t('planet.queue.unitsQueued', { count: queuedThorns }) }
+          : {})}
+        queuedActionable
       />
 
       <UpgradeRow
@@ -732,7 +1201,15 @@ function Defend({
                 onFix: () => { onNeed('SHIPYARD'); },
               } satisfies Blocked,
             }
+          : yardOrders.length >= BUILD.queueDepth
+            ? {
+                blocked: { reason: t('planet.blocked.queueFull') } satisfies Blocked,
+              }
+            : {})}
+        {...(queuedBastions > 0
+          ? { queued: t('planet.queue.unitsQueued', { count: queuedBastions }) }
           : {})}
+        queuedActionable
         verb="build"
         onAct={() => { onBuild('BASTION'); }}
       />
@@ -790,22 +1267,26 @@ function Orbit({ planet, held, income, focused, flashed, onNeed, onFlash, onOpen
   const { t } = useTranslation();
   const orbit = useOrbitAction(planet, onFlash);
   const instrument = useInstrumentAction(planet, onFlash);
-  const free = planet.orbitSlots - planet.orbit.length;
+  const projected = projectedQueueState(planet, 'CONSTRUCTION');
+  const projectedSlots = satelliteSlots(projected.buildings.CORE);
+  const free = projectedSlots - projected.orbit.length;
 
   return (
     <>
       <Band
         label={t('planet.orbit.inOrbitBand')}
         note={t('planet.orbit.inOrbitNote')}
-        aside={
-          <SlotPips slots={planet.orbitSlots} used={planet.orbit.length} core={planet.buildings.CORE ?? 0} />
-        }
+        aside={<OrbitSlotCount slots={projectedSlots} used={projected.orbit.length} core={projected.buildings.CORE} />}
       />
+
+      <OrbitRack slots={planet.orbitSlots} orbit={planet.orbit} />
 
       {SATELLITE_ORDER.map((id) => {
         const name = satelliteLabel(id);
         const action = orbit(id, name, onNeed);
         const role = satelliteRole(id);
+        const inactive = planet.orbit.includes(id)
+          && !(planet.effectiveOrbit ?? planet.orbit).includes(id);
         return (
           <div key={id} id={`row-${id}`}>
             <UpgradeRow
@@ -820,6 +1301,8 @@ function Orbit({ planet, held, income, focused, flashed, onNeed, onFlash, onOpen
               cost={action.cost}
               held={held}
               income={income}
+              unowned={!action.owned}
+              {...(inactive ? { inactive: t('planet.orbit.inactiveSatellite') } : {})}
               {...(action.blocked ? { blocked: action.blocked } : {})}
               verb="install"
               onAct={action.act}
@@ -832,9 +1315,8 @@ function Orbit({ planet, held, income, focused, flashed, onNeed, onFlash, onOpen
                * level to sell — that is the whole difference between these four
                * and the four below.
                */
-              {...(action.owned
-                ? { blocked: { reason: t('planet.orbit.alreadyInOrbit') } satisfies Blocked }
-                : {})}
+              {...(action.completed ? { completed: action.completed } : {})}
+              {...(action.queued ? { queued: action.queued } : {})}
             />
           </div>
         );
@@ -854,7 +1336,13 @@ function Orbit({ planet, held, income, focused, flashed, onNeed, onFlash, onOpen
         const name = instrumentLabel(id);
         const action = instrument(id, name, onNeed);
         const role = instrumentPitch(id, action.level);
-        const next = nextInstrumentArt(id, action.level);
+        const next = nextInstrumentArt(id, action.actionLevel);
+        const effectiveLevel = planet.effectiveInstruments?.[id] ?? action.level;
+        const inactive = action.level > effectiveLevel;
+        const inactiveReason = (id === 'TELESCOPE' || id === 'RADAR')
+          && !(planet.effectiveOrbit ?? planet.orbit).includes('UPLINK')
+          ? t('planet.orbit.inactiveUplink', { owned: action.level })
+          : t('planet.orbit.inactiveCore', { owned: action.level, active: effectiveLevel });
         return (
           <div key={id} id={`row-${id}`}>
             <UpgradeRow
@@ -867,12 +1355,17 @@ function Orbit({ planet, held, income, focused, flashed, onNeed, onFlash, onOpen
               onOpen={() => {
                 onOpen(spec({ kind: 'instrument', id }, name, role, action));
               }}
-              gain={instrumentGain(id, action.level)}
+              gain={instrumentGain(id, action.actionLevel)}
               cost={action.cost}
               held={held}
               income={income}
+              unowned={action.level === 0}
+              {...(inactive ? { inactive: inactiveReason } : {})}
               {...(action.blocked ? { blocked: action.blocked } : {})}
-              verb={action.level === 0 ? 'install' : 'raise'}
+              {...(action.completed ? { completed: action.completed } : {})}
+              {...(action.queued ? { queued: action.queued } : {})}
+              queuedActionable
+              verb={action.actionLevel === 0 ? 'install' : 'raise'}
               onAct={action.act}
               pending={action.pending}
               highlighted={focused === id}
@@ -893,27 +1386,59 @@ function Orbit({ planet, held, income, focused, flashed, onNeed, onFlash, onOpen
  * Core level that opens the next one. A player who reads this before shopping never
  * meets the refusal.
  */
-function SlotPips({ slots, used, core }: { slots: number; used: number; core: number }) {
+function OrbitSlotCount({ slots, used, core }: { slots: number; used: number; core: number }) {
   const { t } = useTranslation();
   const next = ORBIT_UNLOCKS.find((level) => level > core);
 
   return (
-    <span className="flex items-center gap-2">
-      <span className="flex gap-1">
-        {Array.from({ length: Math.max(slots, 1) }, (_, i) => (
-          <span
-            key={i}
-            className={`h-1.5 w-5 rounded-full ${i < used ? 'bg-crystal/70' : 'bg-line-soft'}`}
-          />
-        ))}
-      </span>
-      <span className="num text-[11px] text-dim">
-        {t('planet.orbit.slotsUsed', { used, total: slots })}
-        {next !== undefined && (
-          <span className="text-faint">{t('planet.orbit.slotsNext', { level: next })}</span>
-        )}
-      </span>
+    <span className="num text-[11px] text-dim">
+      {t('planet.orbit.slotsUsed', { used, total: slots })}
+      {next !== undefined && (
+        <span className="text-faint">{t('planet.orbit.slotsNext', { level: next })}</span>
+      )}
     </span>
+  );
+}
+
+function OrbitRack({ slots, orbit }: { slots: number; orbit: SatelliteId[] }) {
+  const { t } = useTranslation();
+  return (
+    <div
+      className="grid gap-1.5 border-b border-line-soft bg-void/15 p-2.5"
+      style={{ gridTemplateColumns: `repeat(${String(Math.max(1, slots))}, minmax(0, 1fr))` }}
+      aria-label={t('planet.orbit.rackLabel')}
+    >
+      {Array.from({ length: Math.max(1, slots) }, (_, index) => {
+        const satellite = orbit[index];
+        return (
+          <div
+            key={index}
+            className={`relative flex min-h-16 min-w-0 flex-col items-center justify-center rounded-sm border px-1 py-1.5 ${
+              satellite
+                ? 'border-crystal/30 bg-crystal/[0.06]'
+                : 'border-dashed border-line bg-void/30'
+            }`}
+          >
+            <span className="num absolute left-1.5 top-1 text-[9px] text-faint">{index + 1}</span>
+            {satellite ? (
+              <>
+                <img
+                  src={SATELLITE_ART[satellite]}
+                  alt=""
+                  aria-hidden
+                  className="size-8 object-contain"
+                />
+                <span className="mt-1 w-full truncate text-center font-display text-[9px] uppercase tracking-wide text-bone">
+                  {satelliteLabel(satellite)}
+                </span>
+              </>
+            ) : (
+              <span className="text-[10px] text-faint">{t('planet.orbit.slotEmpty')}</span>
+            )}
+          </div>
+        );
+      })}
+    </div>
   );
 }
 
@@ -943,12 +1468,139 @@ function Reach({
 }: GroupProps & { onBuild: (hull: HullId) => void }) {
   const { t } = useTranslation();
   const building = useBuildingAction(planet, onFlash);
+  const completeResearch = useCompleteResearch();
+  const say = useToast();
   const shipyard = building('SHIPYARD', buildingName('SHIPYARD'), onNeed);
   const level = planet.buildings.SHIPYARD ?? 0;
+  const constructionOrders = planet.queues?.CONSTRUCTION ?? [];
+  const yardOrders = planet.queues?.YARD ?? [];
+  const yardProjection = projectedQueueState(planet, 'YARD');
+  const isotope = planet.research.find((project) => project.id === 'ISOTOPE_SPECTROMETRY');
+  const dense = planet.research.find((project) => project.id === 'DENSE_FUEL_CELLS');
+  const gravitic = planet.research.find((project) => project.id === 'GRAVITIC_CHARGES');
+  const denseComplete = dense?.completed ?? false;
+  const graviticComplete = gravitic?.completed ?? false;
+
+  const project = (id: ResearchProjectId) => {
+    const state = planet.research.find((candidate) => candidate.id === id);
+    if (!state) return null;
+    const copy = {
+      ISOTOPE_SPECTROMETRY: {
+        name: t('planet.reach.isotopeName'),
+        tag: t('planet.reach.isotopeTag'),
+        role: t('planet.reach.isotopeRole'),
+      },
+      DENSE_FUEL_CELLS: {
+        name: t('planet.reach.denseName'),
+        tag: t('planet.reach.denseTag'),
+        role: t('planet.reach.denseRole'),
+      },
+      GRAVITIC_CHARGES: {
+        name: t('planet.reach.graviticName'),
+        tag: t('planet.reach.graviticTag'),
+        role: t('planet.reach.graviticRole'),
+      },
+      DEATH_STAR_PROTOCOL: {
+        name: t('planet.reach.deathStarName'),
+        tag: t('planet.reach.deathStarTag'),
+        role: t('planet.reach.deathStarRole'),
+      },
+    } satisfies Record<ResearchProjectId, { name: string; tag: string; role: string }>;
+    const discoveryReason = id === 'DENSE_FUEL_CELLS'
+      ? t('planet.reach.researchCargoInsight')
+      : id === 'DEATH_STAR_PROTOCOL'
+        ? t('planet.reach.researchGraviticFirst')
+        : t('planet.reach.researchShieldInsight');
+    const { name, tag, role } = copy[id];
+    const completed = state.completed ? t('planet.reach.researchComplete') : undefined;
+    const queued = constructionOrders.some(
+      (order) => order.kind === 'RESEARCH' && order.subject === id,
+    )
+      ? t('planet.queue.queued', { count: 1 })
+      : undefined;
+    const queueAvailable = state.queueAvailable ?? state.available;
+    const warGate = id === 'DEATH_STAR_PROTOCOL' && (gravitic?.completed ?? false);
+    const blocked: Blocked | undefined = completed
+      ? undefined
+      : constructionOrders.length >= BUILD.queueDepth
+        ? { reason: t('planet.blocked.queueFull') }
+      : queueAvailable
+        ? undefined
+        : !state.discovered
+        ? {
+            reason: warGate
+              ? t('planet.reach.researchWarAt', {
+                  duration: duration(
+                    Math.max(0, (state.availableAt.getTime() - serverNow()) / 60_000),
+                  ),
+                })
+              : id === 'ISOTOPE_SPECTROMETRY'
+              ? t('planet.reach.researchAt', {
+                  duration: duration(
+                    Math.max(0, (state.availableAt.getTime() - serverNow()) / 60_000),
+                  ),
+                })
+              : isotope?.completed
+                ? discoveryReason
+                : t('planet.reach.researchIsotopeFirst'),
+            ...(id !== 'ISOTOPE_SPECTROMETRY' && !isotope?.completed
+              ? { onFix: () => { onNeed('ISOTOPE_SPECTROMETRY'); } }
+              : id === 'DEATH_STAR_PROTOCOL' && !gravitic?.completed
+                ? { onFix: () => { onNeed('GRAVITIC_CHARGES'); } }
+              : {}),
+          }
+        : !state.available
+          ? { reason: discoveryReason }
+          : undefined;
+
+    return (
+      <div key={id} id={`row-${id}`}>
+        <UpgradeRow
+          art={RESEARCH_ART[id]}
+          name={name}
+          tag={tag}
+          role={role}
+          cost={state.cost}
+          held={held}
+          income={income}
+          unowned={!state.completed}
+          {...(blocked ? { blocked } : {})}
+          {...(completed ? { completed } : {})}
+          {...(queued ? { queued } : {})}
+          verb="install"
+          actionLabel={t('planet.reach.researchAct')}
+          onAct={() => {
+            completeResearch.mutate(id, {
+              onSuccess: () => {
+                onFlash(id);
+                say(t('planet.done.queuedSimple', { name }));
+              },
+              onError: (error) => { say(describe(error), 'error'); },
+            });
+          }}
+          pending={completeResearch.isPending}
+          highlighted={focused === id}
+          flash={flashed === id}
+        />
+      </div>
+    );
+  };
 
   const hull = (id: HullId) => {
     const hullSpec = HULLS[id];
-    const owned = planet.fleet[id] ?? 0;
+    // "You have" is ownership, not readiness. A craft in flight is still owned,
+    // and for the Prospector that distinction is also the hard build cap.
+    const owned = (planet.fleet[id] ?? 0)
+      + (planet.ground[id] ?? 0)
+      + (planet.fleetAway[id] ?? 0);
+    const committed = yardProjection.units[id] ?? owned;
+    const prospectorCapped = id === 'PROSPECTOR' && committed >= PROSPECTOR.max;
+    const queuedCount = yardOrders
+      .filter((order) => order.kind === 'HULL' && order.subject === id)
+      .reduce((sum, order) => sum + order.count, 0);
+    const queued = queuedCount > 0
+      ? t('planet.queue.unitsQueued', { count: queuedCount })
+      : undefined;
     return (
       // Wrapped and identified like every building row, so a hull can be scrolled
       // to and pointed at by anything that has to name one.
@@ -974,8 +1626,19 @@ function Reach({
           cargo: hullSpec.cargo,
         }}
         role={hullPitch(id)}
-        gain={{ label: t('planet.reach.ownedGain'), now: String(owned), next: String(owned + 1) }}
-        cost={{ alloy: hullSpec.alloy, crystal: hullSpec.crystal }}
+        gain={{
+          label: queued ? t('planet.queue.afterQueue') : t('planet.reach.ownedGain'),
+          now: String(queued ? committed : owned),
+          next: String(committed + 1),
+        }}
+        {...(prospectorCapped
+          ? { completed: t('planet.reach.prospectorLimit', { owned: committed, max: PROSPECTOR.max }) }
+          : {})}
+        cost={{
+          alloy: hullSpec.alloy,
+          crystal: hullSpec.crystal,
+          deuterium: hullSpec.deuterium,
+        }}
         held={held}
         income={income}
         /**
@@ -987,14 +1650,34 @@ function Reach({
          * all-or-nothing detour. The Derrick in orbit is what makes the craft
          * BETTER; nothing makes it impossible.
          */
-        {...(level < hullSpec.minShipyard
+        {...(id === 'RUNNER' && !denseComplete
+          ? {
+              blocked: {
+                reason: t('planet.reach.researchDenseFirst'),
+                onFix: () => { onNeed('DENSE_FUEL_CELLS'); },
+              } satisfies Blocked,
+            }
+          : id === 'BREACHER' && !graviticComplete
+          ? {
+              blocked: {
+                reason: t('planet.reach.researchGraviticFirst'),
+                onFix: () => { onNeed('GRAVITIC_CHARGES'); },
+              } satisfies Blocked,
+            }
+          : level < hullSpec.minShipyard
           ? {
               blocked: {
                 reason: t('planet.blocked.shipyard', { level: hullSpec.minShipyard }),
                 onFix: () => { onNeed('SHIPYARD'); },
               } satisfies Blocked,
             }
+          : yardOrders.length >= BUILD.queueDepth
+          ? {
+              blocked: { reason: t('planet.blocked.queueFull') } satisfies Blocked,
+            }
           : {})}
+        {...(queued ? { queued } : {})}
+        queuedActionable
         verb="build"
         onAct={() => { onBuild(id); }}
       />
@@ -1007,7 +1690,7 @@ function Reach({
       <div id="row-SHIPYARD">
         <UpgradeRow
           art={buildingArt('SHIPYARD', Math.max(1, shipyard.level))}
-          nextArt={nextBuildingArt('SHIPYARD', shipyard.level)}
+          nextArt={nextBuildingArt('SHIPYARD', shipyard.actionLevel)}
           name={buildingName('SHIPYARD')}
           tag={buildingTag('SHIPYARD')}
           level={shipyard.level}
@@ -1022,11 +1705,18 @@ function Reach({
               ),
             );
           }}
-          gain={buildingGain('SHIPYARD', shipyard.level, cappedCount(planet))}
+          gain={buildingGain(
+            'SHIPYARD',
+            shipyard.actionLevel,
+            cappedCountOf(shipyard.projectedLevels),
+            shipyard.projectedLevels,
+          )}
           cost={shipyard.cost}
           held={held}
           income={income}
           {...(shipyard.blocked ? { blocked: shipyard.blocked } : {})}
+          {...(shipyard.queued ? { queued: shipyard.queued } : {})}
+          queuedActionable
           verb="raise"
           onAct={shipyard.act}
           pending={shipyard.pending}
@@ -1035,11 +1725,18 @@ function Reach({
         />
       </div>
 
+      <Band label={t('planet.reach.frontierBand')} note={t('planet.reach.frontierNote')} />
+      {project('ISOTOPE_SPECTROMETRY')}
+      {project('DENSE_FUEL_CELLS')}
+      {project('GRAVITIC_CHARGES')}
+      {project('DEATH_STAR_PROTOCOL')}
+
       <Band label={t('planet.reach.warshipsBand')} note={t('planet.reach.warshipsNote')} />
-      {(['WASP', 'LANCE', 'BULWARK'] as const).map(hull)}
+      {(['WASP', 'LANCE', 'BULWARK', 'BREACHER'] as const).map(hull)}
 
       <Band label={t('planet.reach.supportBand')} note={t('planet.reach.supportNote')} />
       {hull('HAULER')}
+      {hull('RUNNER')}
 
       <Band label={t('planet.reach.miningBand')} note={t('planet.reach.miningNote')} />
       {hull('PROSPECTOR')}
@@ -1071,14 +1768,14 @@ function Grow({ planet, held, income, focused, flashed, onFlash, onOpen }: Group
   const core = building('CORE', buildingName('CORE'), noop);
   const refinery = building('REFINERY', buildingName('REFINERY'), noop);
   const extractor = building('EXTRACTOR', buildingName('EXTRACTOR'), noop);
-  const capped = cappedCount(planet);
+  const capped = cappedCountOf(core.projectedLevels);
 
   return (
     <>
       <div id="row-CORE">
         <UpgradeRow
           art={buildingArt('CORE', Math.max(1, core.level))}
-          nextArt={nextBuildingArt('CORE', core.level)}
+          nextArt={nextBuildingArt('CORE', core.actionLevel)}
           name={buildingName('CORE')}
           tag={buildingTag('CORE')}
           level={core.level}
@@ -1088,13 +1785,15 @@ function Grow({ planet, held, income, focused, flashed, onFlash, onOpen }: Group
               spec({ kind: 'building', id: 'CORE' }, buildingName('CORE'), coreRole(capped), core),
             );
           }}
-          gain={buildingGain('CORE', core.level, capped)}
+          gain={buildingGain('CORE', core.actionLevel, capped, core.projectedLevels)}
           cost={core.cost}
           held={held}
           income={income}
           verb="raise"
           onAct={core.act}
           pending={core.pending}
+          {...(core.queued ? { queued: core.queued } : {})}
+          queuedActionable
           highlighted={focused === 'CORE'}
           flash={flashed === 'CORE'}
         />
@@ -1123,11 +1822,18 @@ function Grow({ planet, held, income, focused, flashed, onFlash, onOpen }: Group
             ),
           );
         }}
-        gain={buildingGain('REFINERY', refinery.level, capped)}
+        gain={buildingGain(
+          'REFINERY',
+          refinery.actionLevel,
+          capped,
+          refinery.projectedLevels,
+        )}
         cost={refinery.cost}
         held={held}
         income={income}
         {...(refinery.blocked ? { blocked: refinery.blocked } : {})}
+        {...(refinery.queued ? { queued: refinery.queued } : {})}
+        queuedActionable
         verb="raise"
         onAct={refinery.act}
         pending={refinery.pending}
@@ -1153,11 +1859,18 @@ function Grow({ planet, held, income, focused, flashed, onFlash, onOpen }: Group
             ),
           );
         }}
-        gain={buildingGain('EXTRACTOR', extractor.level, capped)}
+        gain={buildingGain(
+          'EXTRACTOR',
+          extractor.actionLevel,
+          capped,
+          extractor.projectedLevels,
+        )}
         cost={extractor.cost}
         held={held}
         income={income}
         {...(extractor.blocked ? { blocked: extractor.blocked } : {})}
+        {...(extractor.queued ? { queued: extractor.queued } : {})}
+        queuedActionable
         verb="raise"
         onAct={extractor.act}
         pending={extractor.pending}
@@ -1179,7 +1892,7 @@ function BuildSheet({
 }: {
   hull: HullId;
   planet: PlanetView;
-  held: { alloy: number; crystal: number };
+  held: { alloy: number; crystal: number; deuterium: number };
   onClose: () => void;
 }) {
   const { t } = useTranslation();
@@ -1193,18 +1906,28 @@ function BuildSheet({
    * `PROSPECTOR.max` is a hard limit on how many a planet may OWN, so it counts
    * craft that are away mining as well as those on the ground — the server does the
    * same, and this is the only reason `fleetAway` is on the payload. Without it the
-   * picker offered 1 / 5 / 25 / Max for a hull you may hold three of.
+   * picker offered 1 / 5 / 25 / Max for a hull you may hold two of.
    *
    * The server refuses over the cap regardless (Principle 1 — the client never
    * decides an outcome); this exists so the control never offers what will be
    * refused.
    */
-  const owned = (planet.fleet[hull] ?? 0) + (planet.fleetAway[hull] ?? 0);
-  const cap = hull === 'PROSPECTOR' ? Math.max(0, PROSPECTOR.max - owned) : Number.MAX_SAFE_INTEGER;
+  const yardProjection = projectedQueueState(planet, 'YARD');
+  const owned = (planet.fleet[hull] ?? 0)
+    + (planet.ground[hull] ?? 0)
+    + (planet.fleetAway[hull] ?? 0);
+  const committed = yardProjection.units[hull] ?? owned;
+  const cap = hull === 'PROSPECTOR'
+    ? Math.max(0, PROSPECTOR.max - committed)
+    : Number.MAX_SAFE_INTEGER;
+  const prospectorCapped = hull === 'PROSPECTOR' && cap === 0;
 
   const affordable = Math.min(
     Math.floor(held.alloy / spec.alloy),
     spec.crystal > 0 ? Math.floor(held.crystal / spec.crystal) : Number.MAX_SAFE_INTEGER,
+    spec.deuterium > 0
+      ? Math.floor(held.deuterium / spec.deuterium)
+      : Number.MAX_SAFE_INTEGER,
   );
   const room = Math.min(affordable, cap);
   const ceiling = Math.max(1, room);
@@ -1217,7 +1940,8 @@ function BuildSheet({
   const clamped = Math.min(count, ceiling);
   const totalAlloy = spec.alloy * clamped;
   const totalCrystal = spec.crystal * clamped;
-  const defenceNow = fleetCount(planet.fleet) + fleetCount(planet.ground);
+  const totalDeuterium = spec.deuterium * clamped;
+  const defenceAfterQueue = fleetCount(yardProjection.units);
   /**
    * The picture at the top of the sheet.
    *
@@ -1237,7 +1961,7 @@ function BuildSheet({
       }
       title={hullLabel(hull)}
       onClose={onClose}
-      footer={
+      footer={prospectorCapped ? undefined : (
         /*
           `data-commit` is this sheet's own commitment, and `data-ready` appears
           only once the count is at the ceiling. The onboarding lights the ceiling
@@ -1247,9 +1971,12 @@ function BuildSheet({
         <span data-commit {...(clamped === ceiling ? { 'data-ready': true } : {})}>
         <ActionButton
           verb="build"
-          cost={{ alloy: totalAlloy, crystal: totalCrystal }}
+          cost={{ alloy: totalAlloy, crystal: totalCrystal, deuterium: totalDeuterium }}
           held={held}
           pending={build.isPending}
+          {...((planet.queues?.YARD.length ?? 0) >= BUILD.queueDepth
+            ? { blocked: { reason: t('planet.blocked.queueFull') } }
+            : {})}
           full
           label={t('planet.buildSheet.build', { count: clamped })}
           onAct={() => {
@@ -1257,7 +1984,7 @@ function BuildSheet({
               { hull, count: clamped },
               {
                 onSuccess: () => {
-                  say(t('planet.done.built', { count: clamped, name: hullLabel(hull) }));
+                  say(t('planet.done.unitsQueued', { count: clamped, name: hullLabel(hull) }));
                   onClose();
                 },
                 onError: (err) => {
@@ -1268,7 +1995,7 @@ function BuildSheet({
           }}
         />
         </span>
-      }
+      )}
     >
       {art && (
         <div className="art-well -mx-4 -mt-4 mb-4 flex justify-center py-4">
@@ -1286,10 +2013,10 @@ function BuildSheet({
         <p className="legend mb-2">{t('planet.buildSheet.howMany')}</p>
         {room === 0 ? (
           <p className="text-[13px] leading-relaxed text-amber">
-            {t('planet.buildSheet.capped', { count: owned })}
+            {t('planet.buildSheet.capped', { count: committed })}
           </p>
         ) : (
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 mb-1">
             {steps.map((n, i) => (
               <button
                 key={`${String(n)}-${String(i)}`}
@@ -1313,17 +2040,20 @@ function BuildSheet({
         )}
         {cap !== Number.MAX_SAFE_INTEGER && room > 0 && (
           <p className="mt-2 text-[12px] text-faint">
-            {t('planet.buildSheet.heldOfMax', { owned, max: PROSPECTOR.max })}
+            {t('planet.buildSheet.heldOfMax', { owned: committed, max: PROSPECTOR.max })}
           </p>
         )}
       </div>
 
-      <div className="mt-5 flex items-baseline justify-between gap-3">
-        <Price cost={{ alloy: totalAlloy, crystal: totalCrystal }} held={held} />
+      {!prospectorCapped && <div className="mt-5 flex items-baseline justify-between gap-3">
+        <Price
+          cost={{ alloy: totalAlloy, crystal: totalCrystal, deuterium: totalDeuterium }}
+          held={held}
+        />
         <p className="num text-[12px] text-faint">
-          {t('planet.buildSheet.defenceAfter', { count: defenceNow + clamped })}
+          {t('planet.buildSheet.defenceAfter', { count: defenceAfterQueue + clamped })}
         </p>
-      </div>
+      </div>}
     </Sheet>
   );
 }

@@ -1,6 +1,17 @@
+import { GameActions } from '../session/seasonLock.js';
 import { useEffect, useState, type ReactNode } from 'react';
 import { useTranslation, Trans } from 'react-i18next';
-import { PROBE, fleetCount, telescopeSlots, type HullId } from '@astera/rules';
+import {
+  DEATH_STAR,
+  MULTI_WORLD,
+  PROBE,
+  distance,
+  fleetCount,
+  fleetTravelExact,
+  telescopeSlots,
+  travelExact,
+  type HullId,
+} from '@astera/rules';
 import type {
   AsteroidView,
   BattleReport,
@@ -10,8 +21,9 @@ import type {
   MiningRun,
   PendingThread,
   PlanetView,
+  RivalSummary,
 } from '../api/schemas.js';
-import { useProbe, useWatch } from '../api/queries.js';
+import { useProbe, useSetRival, useWatch } from '../api/queries.js';
 import { hullLabel, hullName, satelliteLabel } from '../i18n/names.js';
 import { compact } from '../lib/format.js';
 import {
@@ -29,6 +41,7 @@ import { reachMinutes } from '../lib/navigation.js';
 import { HullMark } from '../ui/icons/hulls.js';
 import { AttackIcon, EyeIcon } from '../ui/icons/index.js';
 import { PlanetSigil } from '../ui/PlanetSigil.js';
+import { RESOURCE_ART } from '../ui/assets.js';
 import { describe, useToast } from '../ui/Toast.js';
 
 /**
@@ -106,7 +119,7 @@ function Shell({
        * commitment is inside it — without leaving the rest of the screen live too.
        */
       data-focus-rail
-      className="pointer-events-auto absolute inset-x-0 bottom-0 z-20 border-t border-line bg-void/92 backdrop-blur-md"
+      className="pointer-events-auto absolute inset-x-0 bottom-0 z-20 border-t border-line bg-void/92"
       aria-label={t('focus.shellLabel', { title })}
     >
       {/* The rail. Always present, and the whole control when collapsed. */}
@@ -138,7 +151,7 @@ function Shell({
           type="button"
           aria-label={t('focus.clear')}
           onClick={onClose}
-          className="shrink-0 rounded-sm px-1.5 py-1 text-[16px] leading-none text-faint hover:text-bone"
+          className="flex size-11 shrink-0 items-center justify-center rounded-sm text-[20px] leading-none text-faint hover:bg-raised hover:text-bone"
         >
           &times;
         </button>
@@ -146,12 +159,20 @@ function Shell({
 
       {open && (
         <div className="max-h-[52dvh] overflow-y-auto overscroll-contain border-t border-line-soft">
-          <div className="px-4 py-3">{children}</div>
-          {actions && (
-            <div className="sticky bottom-0 flex gap-2 border-t border-line-soft bg-void/95 px-4 py-3 pb-[calc(12px+env(safe-area-inset-bottom))] backdrop-blur">
-              {actions}
-            </div>
-          )}
+          {/*
+            Every focus card goes through this shell, so wrapping it here is what
+            stops a frozen season offering launches, probes and settlements it
+            would refuse. The clear (x) above sits OUTSIDE it on purpose: looking
+            around the final galaxy is the one thing still on offer.
+          */}
+          <GameActions>
+            <div className="px-4 py-3">{children}</div>
+            {actions && (
+              <div className="sticky bottom-0 flex gap-2 border-t border-line-soft bg-void/95 px-4 py-3 pb-[calc(12px+env(safe-area-inset-bottom))]">
+                {actions}
+              </div>
+            )}
+          </GameActions>
         </div>
       )}
 
@@ -254,9 +275,14 @@ export function PlanetFocus({
   planet,
   intel,
   reports,
+  rival,
+  isRival = false,
   now,
   onClose,
   onAttack,
+  onSettle,
+  onDeathStar,
+  onTransfer,
   onInstallTelescope,
   onLaunched,
   open,
@@ -266,9 +292,14 @@ export function PlanetFocus({
   planet: PlanetView;
   intel: IntelView | undefined;
   reports: readonly BattleReport[];
+  rival?: RivalSummary;
+  isRival?: boolean;
   now: number;
   onClose: () => void;
   onAttack: () => void;
+  onSettle?: () => void;
+  onDeathStar?: () => void;
+  onTransfer?: () => void;
   /** Takes the player to the orbit surface, where the instrument is bought. */
   onInstallTelescope: () => void;
   /** Called with the target's name once a probe is away, so the disc can follow it. */
@@ -277,10 +308,72 @@ export function PlanetFocus({
   onToggle: () => void;
 }) {
   const { t } = useTranslation();
-  const read = dossier({ target, planet, intel, reports, now });
+  const setRival = useSetRival();
+  const say = useToast();
+  const read = dossier({ target, planet, intel, reports, ...(rival ? { rival } : {}), now });
   const reach = reachMinutes(planet.planet.position, target.position, planet.fleet);
   const away = target.fleet?.status === 'AWAY';
   const known = headline(read, target);
+  const originRecovering = Boolean(
+    planet.planet.recoveryUntil && planet.planet.recoveryUntil.getTime() > now,
+  );
+  const claimUntil = target.kind === 'NEUTRAL' ? target.neutral?.claimUntil : null;
+  const claimActive = Boolean(claimUntil && claimUntil.getTime() > now);
+  const settlementEta = fleetTravelExact(
+    distance(planet.planet.position, target.position),
+    { HAULER: MULTI_WORLD.settlement.haulers },
+  );
+  const settlementCanArrive = Boolean(
+    claimUntil && now + settlementEta * 60_000 < claimUntil.getTime(),
+  );
+  const colonyStanding = planet.colonies ?? {
+    colonies: 0,
+    reservations: 0,
+    capacity: 0,
+    highestCore: planet.buildings.CORE ?? 0,
+  };
+  const colonySlotOpen = colonyStanding.colonies + colonyStanding.reservations
+    < colonyStanding.capacity;
+  const flightBayOpen = planet.flight.used < planet.flight.total;
+  const settlementBlock = originRecovering
+    ? t('focus.planet.settleRecovering')
+    : !colonySlotOpen
+      ? t('focus.planet.settleNeedSlot')
+      : !flightBayOpen
+        ? t('focus.planet.settleNeedBay')
+        : (planet.fleet.HAULER ?? 0) < MULTI_WORLD.settlement.haulers
+          ? t('focus.planet.settleNeedHauler')
+          : planet.planet.alloy < MULTI_WORLD.settlement.cost.alloy
+            ? t('focus.planet.settleNeedAlloy')
+            : planet.planet.crystal < MULTI_WORLD.settlement.cost.crystal
+              ? t('focus.planet.settleNeedCrystal')
+              : !settlementCanArrive
+                ? t('focus.planet.settleTooLate')
+                : null;
+  const settlementReady = claimActive && settlementBlock === null;
+  const captureAttempt = target.kind !== 'CAPITAL' && target.state?.kind === 'RECOVERY';
+  const deathStarEta = travelExact(
+    distance(planet.planet.position, target.position),
+    DEATH_STAR.speed,
+  );
+  const recoveryCanArrive = !captureAttempt
+    || (target.state?.kind === 'RECOVERY'
+      && now + deathStarEta * 60_000 < target.state.until.getTime());
+  const deathStarReady = planet.strategic?.status === 'READY';
+  const deathStarBlock = !deathStarReady
+    ? t('focus.planet.deathStarUnavailable')
+    : target.state?.kind === 'PROTECTED'
+      ? t('focus.planet.deathStarProtected')
+      : originRecovering
+        ? t('focus.planet.deathStarOriginRecovering')
+        : !flightBayOpen
+          ? t('focus.planet.deathStarNeedBay')
+          : !recoveryCanArrive
+            ? t('focus.planet.deathStarTooLate')
+            : captureAttempt && !colonySlotOpen
+              ? t('focus.planet.deathStarNeedSlot')
+              : null;
+  const deathStarEnabled = deathStarBlock === null;
 
   return (
     <Shell
@@ -290,7 +383,12 @@ export function PlanetFocus({
       open={open}
       onToggle={onToggle}
       onClose={onClose}
-      summary={<Headline of={known} />}
+      summary={(
+        <span className="flex flex-col items-end gap-0.5">
+          <WorldKind target={target} rival={isRival} />
+          <Headline of={known} />
+        </span>
+      )}
       /**
        * THE COMMITMENT, AND WHEN IT IS NOT ON OFFER. D49.
        *
@@ -302,15 +400,68 @@ export function PlanetFocus({
        * the reason is on the Development row above it.
        */
       actions={
-        read.inBand ? (
+        <>
+          {target.isOwned ? (
+            <button
+              type="button"
+              className="slab slab-primary flex-1 text-[9px]"
+              disabled={originRecovering}
+              onClick={onTransfer}
+            >
+              {t('focus.planet.transfer')}
+            </button>
+          ) : (
+          <>
+          {target.kind !== 'NEUTRAL' && (
           <button
+            type="button"
+            className={`slab slab-ghost min-w-0 flex-1 px-2 text-[9px] ${isRival ? 'text-alloy' : ''}`}
+            disabled={setRival.isPending}
+            onClick={() => {
+              setRival.mutate(isRival ? null : target.id, {
+                onSuccess: () => {
+                  say(t(isRival ? 'focus.planet.rivalCleared' : 'focus.planet.rivalMarked', {
+                    commander: target.owner,
+                  }));
+                },
+                onError: (error) => { say(describe(error), 'error'); },
+              });
+            }}
+          >
+            {t(isRival ? 'focus.planet.rivalMarkedAction' : 'focus.planet.markRival')}
+          </button>
+          )}
+          {onSettle && target.kind === 'NEUTRAL' && claimActive && (
+            <button
+              type="button"
+              className="slab slab-primary flex-1 text-[9px]"
+              disabled={!settlementReady}
+              onClick={onSettle}
+            >
+              {settlementBlock ?? t('focus.planet.settle')}
+            </button>
+          )}
+          {onDeathStar && (
+            <button
+              type="button"
+              className="slab slab-commit flex-1 text-[9px]"
+              disabled={!deathStarEnabled}
+              onClick={onDeathStar}
+            >
+              {deathStarBlock ?? t(captureAttempt
+                ? 'focus.planet.deathStarCapture'
+                : 'focus.planet.deathStarStrike')}
+            </button>
+          )}
+          {target.kind === 'NEUTRAL' || read.inBand ? <button
             type="button"
             // Marked so a surface outside this panel can point at the commitment.
             // The onboarding opens exactly this path and refuses the rest of the
             // rail, because nothing else on it is affordable out of the opening
             // grant — a probe alone needs crystal the mandatory upgrades spent.
             data-attack
-            className="slab slab-commit flex-1"
+            className="slab slab-commit flex-1 text-[9px]"
+            disabled={originRecovering}
             onClick={onAttack}
           >
             {/*
@@ -324,9 +475,12 @@ export function PlanetFocus({
               layout of its own.
             */}
             <AttackIcon className="size-[18px] shrink-0" />
-            {t('focus.planet.attack')}
-          </button>
-        ) : (
+            {t(originRecovering
+              ? 'focus.planet.attackOriginRecovering'
+              : target.kind === 'NEUTRAL' && claimActive
+                ? 'focus.planet.attackNeutralAgain'
+                : 'focus.planet.attack')}
+          </button> : (
           <span className="slab slab-ghost flex-1 cursor-default text-center opacity-60">
             {t('focus.planet.outOfBand', {
               tier: target.coreTier,
@@ -334,9 +488,24 @@ export function PlanetFocus({
               high: read.band.high,
             })}
           </span>
-        )
+          )}
+          </>
+          )}
+        </>
       }
     >
+      <StrategicWorldGuide
+        target={target}
+        planet={planet}
+        now={now}
+        colonySlotOpen={colonySlotOpen}
+        flightBayOpen={flightBayOpen}
+        settlementEta={settlementEta}
+        settlementCanArrive={settlementCanArrive}
+        claimActive={claimActive}
+        deathStarEta={deathStarEta}
+        isRival={isRival}
+      />
       {away && (
         <p className="mb-3 rounded border border-opportunity/40 bg-opportunity/10 px-3 py-2 text-[13px] text-opportunity">
           {t('focus.planet.windowOpen')}
@@ -358,6 +527,15 @@ export function PlanetFocus({
         />
       </div>
 
+      {(isRival || rival) && (
+        <RivalHistory
+          summary={rival}
+          probeAt={intel?.probeReports.find((report) => report.targetPlanetId === target.id)?.at}
+          now={now}
+          marked={isRival}
+        />
+      )}
+
       <div className="space-y-2">
         {read.facts.map((fact) => (
           <FactRow key={fact.key} fact={fact} />
@@ -374,6 +552,7 @@ export function PlanetFocus({
                 gap={gap}
                 target={target}
                 telescope={planet.instruments.TELESCOPE ?? 0}
+                observerPlanetId={planet.planet.id}
                 intel={intel}
                 onInstallTelescope={onInstallTelescope}
                 onLaunched={onLaunched}
@@ -383,6 +562,305 @@ export function PlanetFocus({
         ))}
       </div>
     </Shell>
+  );
+}
+
+function WorldKind({ target, rival }: { target: GalaxyPlanet; rival: boolean }) {
+  const { t } = useTranslation();
+  return (
+    <span className="flex items-center gap-1 text-[9px] font-semibold uppercase tracking-[0.14em]">
+      <span className={target.kind === 'CAPITAL'
+        ? 'text-crystal'
+        : target.kind === 'COLONY' ? 'text-opportunity' : 'text-dim'}>
+        {t(target.kind === 'CAPITAL'
+          ? 'focus.planet.kindCapital'
+          : target.kind === 'COLONY'
+            ? 'focus.planet.kindColony'
+            : 'focus.planet.kindNeutral')}
+      </span>
+      {rival && <span className="text-[#ff7854]">· {t('focus.planet.rivalMarkedAction')}</span>}
+    </span>
+  );
+}
+
+function Requirement({ ok, children }: { ok: boolean; children: ReactNode }) {
+  return (
+    <span className={`flex min-h-7 items-center gap-1.5 rounded-sm border px-2 text-[10px] ${
+      ok
+        ? 'border-opportunity/35 bg-opportunity/10 text-opportunity'
+        : 'border-alert/35 bg-alert/10 text-[#ffad9f]'
+    }`}>
+      <span aria-hidden className="text-[9px]">{ok ? '●' : '○'}</span>
+      {children}
+    </span>
+  );
+}
+
+function StrategicWorldGuide({
+  target,
+  planet,
+  now,
+  colonySlotOpen,
+  flightBayOpen,
+  settlementEta,
+  settlementCanArrive,
+  claimActive,
+  deathStarEta,
+  isRival,
+}: {
+  target: GalaxyPlanet;
+  planet: PlanetView;
+  now: number;
+  colonySlotOpen: boolean;
+  flightBayOpen: boolean;
+  settlementEta: number;
+  settlementCanArrive: boolean;
+  claimActive: boolean;
+  deathStarEta: number;
+  isRival: boolean;
+}) {
+  const { t } = useTranslation();
+  const standing = planet.colonies;
+
+  if (target.isOwned) {
+    return (
+      <div className="mb-3 flex items-center gap-3 rounded border border-[#8fd6ea]/35 bg-[#8fd6ea]/8 px-3 py-2.5">
+        <span className="grid size-8 shrink-0 place-items-center rounded-full border border-[#8fd6ea]/50 text-[#8fd6ea]">
+          {target.kind === 'CAPITAL' ? '◆' : '▲'}
+        </span>
+        <div className="min-w-0 flex-1">
+          <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-[#8fd6ea]">
+            {t(target.kind === 'CAPITAL' ? 'focus.planet.yourCapital' : 'focus.planet.yourColony')}
+          </p>
+          <p className="mt-0.5 text-[11px] text-dim">{t('focus.planet.transferHint')}</p>
+        </div>
+        {standing && (
+          <span className="num shrink-0 text-[10px] text-[#8fd6ea]">
+            {standing.colonies + standing.reservations}/{standing.capacity}
+          </span>
+        )}
+      </div>
+    );
+  }
+
+  if (target.kind === 'CAPITAL') {
+    const recovery = target.state?.kind === 'RECOVERY' ? target.state : null;
+    return (
+      <div className={`mb-3 flex items-center gap-3 rounded border px-3 py-2.5 ${
+        recovery ? 'border-alert/55 bg-alert/12' : 'border-crystal/30 bg-crystal/8'
+      }`}>
+        <span className="grid size-8 shrink-0 place-items-center rounded-full border border-crystal/45 text-crystal">◆</span>
+        <div className="min-w-0 flex-1">
+          <p className={`text-[10px] font-semibold uppercase tracking-[0.16em] ${
+            recovery ? 'text-alert' : 'text-crystal'
+          }`}>
+            {t(recovery ? 'focus.planet.capitalRecovering' : 'focus.planet.capitalProtected')}
+          </p>
+          <p className="mt-0.5 text-[11px] text-dim">
+            {t(recovery ? 'focus.planet.capitalRecoveringHint' : 'focus.planet.capitalProtectedHint')}
+          </p>
+        </div>
+        {recovery && (
+          <span className="num shrink-0 text-[11px] text-[#ffad9f]">
+            {duration((recovery.until.getTime() - now) / 60_000)}
+          </span>
+        )}
+      </div>
+    );
+  }
+
+  if (target.kind === 'NEUTRAL') {
+    const until = target.neutral?.claimUntil;
+    const hauler = (planet.fleet.HAULER ?? 0) >= MULTI_WORLD.settlement.haulers;
+    const alloy = planet.planet.alloy >= MULTI_WORLD.settlement.cost.alloy;
+    const crystal = planet.planet.crystal >= MULTI_WORLD.settlement.cost.crystal;
+    return (
+      <div className={`mb-3 rounded border px-3 py-3 ${
+        claimActive ? 'border-opportunity/50 bg-opportunity/10' : 'border-line-soft bg-deep/65'
+      }`}>
+        <div className="flex items-center justify-between gap-2">
+          <p className={`text-[10px] font-semibold uppercase tracking-[0.16em] ${
+            claimActive ? 'text-opportunity' : 'text-bone'
+          }`}>
+            {t(claimActive ? 'focus.planet.claimOpen' : 'focus.planet.colonyRoute')}
+          </p>
+          {standing && (
+            <span className={`num text-[10px] ${colonySlotOpen ? 'text-opportunity' : 'text-alert'}`}>
+              {t('focus.planet.colonySlots', {
+                used: standing.colonies + standing.reservations,
+                total: standing.capacity,
+              })}
+            </span>
+          )}
+        </div>
+        <div className="mt-2 grid grid-cols-[1fr_auto_1fr_auto_1fr] items-center gap-1 text-center">
+          <RouteStep active={!claimActive} number="1" label={t('focus.planet.routeRaid')} />
+          <span className="text-faint">→</span>
+          <RouteStep active={claimActive} number="2" label={t('focus.planet.routeClaim')} />
+          <span className="text-faint">→</span>
+          <RouteStep active={claimActive} number="3" label={t('focus.planet.routeSettle')} />
+        </div>
+        {claimActive && until && (
+          <p className="num mt-2 text-center text-[13px] text-opportunity">
+            {t('focus.planet.claimCloses', { duration: duration((until.getTime() - now) / 60_000) })}
+          </p>
+        )}
+        <div className="mt-2 flex flex-wrap gap-1.5">
+          <Requirement ok={colonySlotOpen}>{t('focus.planet.openColonySlot')}</Requirement>
+          <Requirement ok={flightBayOpen}>{t('focus.planet.openFlightBay')}</Requirement>
+          <Requirement ok={hauler}>{t('focus.planet.haulerCount')}</Requirement>
+          <Requirement ok={alloy}>
+            <img src={RESOURCE_ART.alloy} alt="" aria-hidden className="size-3.5 object-contain" />
+            {compact(MULTI_WORLD.settlement.cost.alloy)}
+          </Requirement>
+          <Requirement ok={crystal}>
+            <img src={RESOURCE_ART.crystal} alt="" aria-hidden className="size-3.5 object-contain" />
+            {compact(MULTI_WORLD.settlement.cost.crystal)}
+          </Requirement>
+          <Requirement ok={claimActive ? settlementCanArrive : settlementEta < MULTI_WORLD.claimMinutes}>
+            {t('focus.planet.arrivesIn', { duration: duration(settlementEta) })}
+          </Requirement>
+        </div>
+        {claimActive && (
+          <div className="mt-2 grid gap-1 border-t border-opportunity/20 pt-2 text-[11px] leading-snug text-dim">
+            <p className="flex items-start gap-1.5">
+              <AttackIcon className="mt-0.5 size-3.5 shrink-0 text-alloy" />
+              <span>{t('focus.planet.claimRaidStillOpen')}</span>
+            </p>
+            <p className="flex items-start gap-1.5">
+              <span aria-hidden className="mt-px shrink-0 text-alert">◆</span>
+              <span>{t('focus.planet.claimDeathStarConsequence')}</span>
+            </p>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  const recovery = target.state?.kind === 'RECOVERY' ? target.state : null;
+  const protectedState = target.state?.kind === 'PROTECTED' ? target.state : null;
+  return (
+    <div className={`mb-3 rounded border px-3 py-3 ${
+      recovery
+        ? 'border-alert/55 bg-alert/12'
+        : isRival ? 'border-[#ff6b43]/45 bg-[#ff6b43]/8' : 'border-line-soft bg-deep/65'
+    }`}>
+      <div className="flex items-center justify-between gap-2">
+        <p className={`text-[10px] font-semibold uppercase tracking-[0.16em] ${recovery ? 'text-alert' : 'text-bone'}`}>
+          {t(recovery
+            ? 'focus.planet.recoveryBreach'
+            : protectedState
+              ? 'focus.planet.occupationProtected'
+              : 'focus.planet.deathStarRoute')}
+        </p>
+        {recovery && <span className="num text-[11px] text-[#ffad9f]">{duration((recovery.until.getTime() - now) / 60_000)}</span>}
+      </div>
+      {protectedState ? (
+        <p className="mt-1 text-[11px] text-dim">
+          {t('focus.planet.protectedFor', { duration: duration((protectedState.until.getTime() - now) / 60_000) })}
+        </p>
+      ) : (
+        <div className="mt-2 grid grid-cols-[1fr_auto_1fr] items-center gap-2 text-center">
+          <RouteStep active={!recovery} number="1" label={t('focus.planet.firstImpact')} danger />
+          <span className="text-alert">→</span>
+          <RouteStep active={Boolean(recovery)} number="2" label={t('focus.planet.secondImpact')} danger />
+        </div>
+      )}
+      {recovery && (
+        <div className="mt-2 flex flex-wrap gap-1.5">
+          <Requirement ok={colonySlotOpen}>{t('focus.planet.openColonySlot')}</Requirement>
+          <Requirement ok={planet.strategic?.status === 'READY'}>{t('focus.planet.deathStarReadyRequirement')}</Requirement>
+          <Requirement ok={now + deathStarEta * 60_000 < recovery.until.getTime()}>
+            {t('focus.planet.arrivesIn', { duration: duration(deathStarEta) })}
+          </Requirement>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function RouteStep({
+  active,
+  number,
+  label,
+  danger = false,
+}: {
+  active: boolean;
+  number: string;
+  label: string;
+  danger?: boolean;
+}) {
+  const tone = active ? (danger ? 'text-alert' : 'text-opportunity') : 'text-faint';
+  return (
+    <span className={tone}>
+      <span className="mx-auto grid size-7 place-items-center rounded-full border border-current text-[10px]">{number}</span>
+      <span className="mt-1 block text-[9px] uppercase tracking-wide">{label}</span>
+    </span>
+  );
+}
+
+function RivalHistory({
+  summary,
+  probeAt,
+  now,
+  marked,
+}: {
+  summary: RivalSummary | undefined;
+  probeAt: Date | undefined;
+  now: number;
+  marked: boolean;
+}) {
+  const { t } = useTranslation();
+  const battleAt = summary?.lastInteractionAt.getTime() ?? 0;
+  const probeTime = probeAt?.getTime() ?? 0;
+  const lastAt = Math.max(battleAt, probeTime);
+  const story = !summary
+    ? probeAt
+      ? t('focus.planet.rivalProbeOnly')
+      : t('focus.planet.rivalNoContact')
+    : summary.battles >= 3
+      ? t('focus.planet.rivalFeud', { count: summary.battles })
+      : summary.dominionGained > summary.dominionLost
+        ? t('focus.planet.rivalAhead')
+        : summary.dominionLost > summary.dominionGained
+          ? t('focus.planet.rivalBehind')
+          : t('focus.planet.rivalEven');
+
+  return (
+    <section
+      className="mb-3 rounded border border-alloy/25 bg-alloy/5 px-3 py-2.5"
+      aria-label={t('focus.planet.rivalHeading')}
+    >
+      <div className="flex items-baseline gap-2">
+        <h3 className="legend text-alloy">{t('focus.planet.rivalHeading')}</h3>
+        {marked && (
+          <span className="ml-auto text-[9px] uppercase tracking-wider text-alloy">
+            {t('focus.planet.rivalMarkedBadge')}
+          </span>
+        )}
+      </div>
+      <p className="mt-1 text-[12px] leading-snug text-dim">{story}</p>
+      {marked && <p className="mt-1.5 text-[10px] leading-snug text-faint">{t('focus.planet.rivalPurpose')}</p>}
+      {summary && (
+        <div className="mt-2 grid grid-cols-4 gap-2">
+          <Figure label={t('focus.planet.rivalEncounters')} value={String(summary.battles)} />
+          <Figure label={t('focus.planet.rivalYourRaids')} value={String(summary.attacks)} />
+          <Figure label={t('focus.planet.rivalTheirRaids')} value={String(summary.defences)} />
+          <Figure
+            label={t('focus.planet.rivalDominion')}
+            value={t('focus.planet.rivalDominionValue', {
+              gained: compact(summary.dominionGained),
+              lost: compact(summary.dominionLost),
+            })}
+          />
+        </div>
+      )}
+      {lastAt > 0 && (
+        <p className="mt-2 text-[10px] uppercase tracking-wider text-faint">
+          {t('focus.planet.rivalLastContact', { age: staleness((now - lastAt) / 60_000) })}
+        </p>
+      )}
+    </section>
   );
 }
 
@@ -426,6 +904,7 @@ function CloseGap({
   gap,
   target,
   telescope,
+  observerPlanetId,
   intel,
   onInstallTelescope,
   onLaunched,
@@ -433,6 +912,7 @@ function CloseGap({
   gap: Gap;
   target: GalaxyPlanet;
   telescope: number;
+  observerPlanetId: string;
   intel: IntelView | undefined;
   onInstallTelescope: () => void;
   /** Called with the target's name once a probe is away, so the disc can follow it. */
@@ -454,7 +934,8 @@ function CloseGap({
     return (
       <div className="flex flex-wrap gap-2">
         {Array.from({ length: telescopeSlots(telescope) }, (_, slot) => {
-          const current = intel?.watching.find((w) => w.slot === slot);
+          const current = intel?.watching.find((w) =>
+            w.slot === slot && (!w.observerPlanetId || w.observerPlanetId === observerPlanetId));
           return (
             <button
               key={slot}
@@ -528,9 +1009,10 @@ function CloseGap({
 /**
  * ASTEROID FOCUS — D19.
  *
- * Everything here is public and everyone sees the same numbers, because the race
- * only means something if the prize is visible to all of it. The two lines that
- * decide whether to go are the ore left and the time left, so they lead.
+ * Its trajectory, remaining ore and anomaly signature are public because the race
+ * only means something if everyone can see it. Spectrometry alone reveals the
+ * isotope mix and permits launch. The two lines that decide whether to go are the
+ * ore left and the time left, so they lead.
  */
 export function AsteroidFocus({
   rock,
@@ -577,6 +1059,8 @@ export function AsteroidFocus({
 }) {
   const { t } = useTranslation();
   const crystal = Math.round(rock.crystalShare * 100);
+  const deuterium = Math.round((rock.deuteriumShare ?? 0) * 100);
+  const needsSpectrometry = rock.isotopeRich && rock.deuteriumShare === null;
   // What a full squadron could actually take, which is the number that decides
   // how many to send — not the rock's total.
   const canCarry = craftHold * craftAvailable;
@@ -605,7 +1089,7 @@ export function AsteroidFocus({
       summary={
         <span>
           <Trans
-            i18nKey="focus.asteroid.summaryOre"
+            i18nKey={rock.isotopeRich ? 'focus.asteroid.summaryAnomaly' : 'focus.asteroid.summaryOre'}
             values={{ amount: compact(rock.oreRemaining) }}
             components={[<span key="n" className="text-crystal" />]}
           />
@@ -637,22 +1121,24 @@ export function AsteroidFocus({
         ) : (
           <button
             type="button"
-            className="slab slab-primary flex-1"
-            disabled={busy || craftAvailable < 1 || tooLate}
+            className="slab slab-primary flex-1 text-[9px]"
+            disabled={busy || needsSpectrometry || craftAvailable < 1 || tooLate}
             onClick={() => {
               onSend(sending);
             }}
           >
-            {craftAvailable < 1
-              ? t('focus.asteroid.noCraft')
-              : tooLate
-                ? t('focus.asteroid.tooLate')
-                : t('focus.asteroid.send', { count: sending, duration: duration(reach) })}
+            {needsSpectrometry
+              ? t('focus.asteroid.researchNeeded')
+              : craftAvailable < 1
+                ? t('focus.asteroid.noCraft')
+                : tooLate
+                  ? t('focus.asteroid.tooLate')
+                  : t('focus.asteroid.send', { count: sending, duration: duration(reach) })}
           </button>
         )
       }
     >
-      {!run && (
+      {!run && !needsSpectrometry && (
         <CraftPicker
           available={craftAvailable}
           value={sending}
@@ -673,13 +1159,28 @@ export function AsteroidFocus({
         />
         <Figure
           label={t('focus.asteroid.composition')}
-          value={t('focus.asteroid.compositionValue', { percent: crystal })}
+          value={
+            rock.isotopeRich
+              ? rock.deuteriumShare === null
+                ? t('focus.asteroid.compositionUnknown')
+                : t('focus.asteroid.compositionIsotope', {
+                    crystal,
+                    deuterium,
+                  })
+              : t('focus.asteroid.compositionValue', { percent: crystal })
+          }
         />
         <Figure
           label={t('focus.asteroid.speed')}
           value={t('focus.asteroid.speedValue', { rate: rock.speed.toFixed(1) })}
         />
       </div>
+
+      {rock.isotopeRich && (
+        <p className="mt-3 border-l border-deuterium/60 pl-3 text-[12px] leading-snug text-deuterium">
+          {t('focus.asteroid.deuteriumRoute')}
+        </p>
+      )}
 
       {spill > 0 && !run && (
         /**
@@ -822,11 +1323,17 @@ export function RunFocus({
 
       {returning ? (
         <p className="mt-3 text-[13px] leading-snug text-bone">
-          {run.minedAlloy + run.minedCrystal > 0
-            ? t('focus.run.carrying', {
-                alloy: compact(run.minedAlloy),
-                crystal: compact(run.minedCrystal),
-              })
+          {run.minedAlloy + run.minedCrystal + run.minedDeuterium > 0
+            ? t(
+                run.minedDeuterium > 0
+                  ? 'focus.run.carryingDeuterium'
+                  : 'focus.run.carrying',
+                {
+                  alloy: compact(run.minedAlloy),
+                  crystal: compact(run.minedCrystal),
+                  deuterium: compact(run.minedDeuterium),
+                },
+              )
             : t(salvage ? 'focus.run.emptySalvage' : 'focus.run.emptyRock')}
         </p>
       ) : salvage ? (
@@ -1190,7 +1697,13 @@ export function DebrisFocus({
   open,
   onToggle,
 }: {
-  field: { id: string; alloy: number; crystal: number; minutesLeft: number };
+  field: {
+    id: string;
+    alloy: number;
+    crystal: number;
+    deuterium: number;
+    minutesLeft: number;
+  };
   planetName: string | undefined;
   craftAvailable: number;
   craftHold: number;
@@ -1204,7 +1717,7 @@ export function DebrisFocus({
   onToggle: () => void;
 }) {
   const { t } = useTranslation();
-  const left = field.alloy + field.crystal;
+  const left = field.alloy + field.crystal + field.deuterium;
   const canCarry = craftHold * craftAvailable;
   const worthSending = Math.max(
     1,
@@ -1257,7 +1770,7 @@ export function DebrisFocus({
         ) : (
           <button
             type="button"
-            className="slab slab-primary flex-1"
+            className="slab slab-primary flex-1 text-[9px]"
             disabled={busy || craftAvailable < 1 || tooLate}
             onClick={() => {
               onSend(sending);
@@ -1287,6 +1800,13 @@ export function DebrisFocus({
           value={compact(field.crystal)}
           tone="crystal"
         />
+        {field.deuterium > 0 && (
+          <Figure
+            label={t('focus.debris.deuteriumLeft')}
+            value={compact(field.deuterium)}
+            tone="opportunity"
+          />
+        )}
         <Figure
           label={t('focus.debris.goneIn')}
           value={duration(field.minutesLeft)}
@@ -1312,6 +1832,7 @@ const CONTACT_TITLE = {
   probe: 'focus.contact.titleProbe',
   mining: 'focus.contact.titleMining',
   harvest: 'focus.contact.titleHarvest',
+  death_star: 'focus.contact.titleDeathStar',
 } as const satisfies Record<Contact['kind'], string>;
 
 /* ── shared ──────────────────────────────────────────────────── */
@@ -1326,13 +1847,15 @@ function Figure({
   // `alloy` since D32: a wreck field is priced in both metals, and showing the two
   // piles in the palette the whole game uses for them is what makes it readable at
   // a glance as "salvage" rather than as an abstract number.
-  tone?: 'crystal' | 'alloy' | 'threat';
+  tone?: 'crystal' | 'alloy' | 'opportunity' | 'threat';
 }) {
   const colour =
     tone === 'crystal'
       ? 'text-crystal'
       : tone === 'alloy'
         ? 'text-alloy'
+        : tone === 'opportunity'
+          ? 'text-opportunity'
         : tone === 'threat'
           ? 'text-threat'
           : 'text-bone';

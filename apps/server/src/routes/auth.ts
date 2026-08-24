@@ -2,6 +2,7 @@ import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import { loginBody, registerBody } from '../auth/credentials.js';
 import { authenticate, findAccount, registerAccount } from '../services/account.js';
 import { currentPlacement } from '../services/servers.js';
+import { latestSeasonResult } from '../services/season.js';
 import { GameError } from '../services/planet.js';
 
 const REFRESH_COOKIE = 'bs_refresh';
@@ -149,7 +150,10 @@ export function registerAuthRoutes(app: FastifyInstance): void {
     const account = await findAccount(app.db, req.accountId!);
     if (!account) throw new GameError('BAD_SESSION', 'Session is invalid', 401);
 
-    const placement = await currentPlacement(app.db, account.id);
+    const [placement, latestResult] = await Promise.all([
+      currentPlacement(app.db, account.id),
+      latestSeasonResult(app.db, account.id),
+    ]);
     return {
       accountId: account.id,
       username: account.username,
@@ -161,6 +165,7 @@ export function registerAuthRoutes(app: FastifyInstance): void {
             planetName: placement.planetName,
           }
         : null,
+      latestResult,
     };
   });
 }
@@ -176,6 +181,10 @@ export function registerAuthRoutes(app: FastifyInstance): void {
  * would also fire for the health check and the login form.
  */
 export async function requireAuth(req: FastifyRequest): Promise<void> {
+  if (req.accountId) {
+    await req.server.presence.touch(req.accountId);
+    return;
+  }
   const header = req.headers.authorization;
   if (!header?.startsWith('Bearer ')) {
     throw new GameError('UNAUTHENTICATED', 'Sign in first', 401);
@@ -198,6 +207,10 @@ export async function requireAuth(req: FastifyRequest): Promise<void> {
  * which says one extra thing to somebody signed in: which galaxy is already theirs.
  */
 export async function optionalAuth(req: FastifyRequest): Promise<void> {
+  if (req.accountId) {
+    await req.server.presence.touch(req.accountId);
+    return;
+  }
   const header = req.headers.authorization;
   if (!header?.startsWith('Bearer ')) return;
   try {

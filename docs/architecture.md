@@ -44,7 +44,7 @@ legacy/                                 Phase 0 JS prototype, still runnable
 | Database | PostgreSQL 16 | Transactions are the whole point here |
 | Realtime | **SSE only** | Client→server is REST; server→client is rare events |
 | Client | React 19 + Vite + R3F + Tailwind + TanStack Query | Composes 3D and DOM UI in one tree |
-| Hosting | Fly.io (app + worker) · Neon (Postgres) | A solo dev should not be doing failover |
+| Hosting | One VPS: host Nginx · 3 API containers · 1 worker · PostgreSQL 16 · Valkey | D99 uses the existing six cores without introducing a cluster; every public port still terminates at one same-origin proxy |
 
 Rejected engines and the reasoning: `decisions.md` A2.
 
@@ -87,7 +87,9 @@ UPDATE scheduled_events
 RETURNING *
 ```
 
-`SKIP LOCKED` makes it crash-safe and horizontally scalable with **zero coordination**.
+`SKIP LOCKED` makes a redelivered claim crash-safe with **zero coordination**. Production
+deliberately runs exactly one worker: horizontal queue safety is not a reason to duplicate
+housekeeping, database load or operational ownership.
 `tick()` is a plain method, not something buried in a timer, so tests drive it step by step
 rather than racing a scheduler.
 
@@ -117,7 +119,8 @@ Refinery reaching L7 does not. A satellite going up publishes; a Telescope going
 because a ground instrument is private (D15/D25) and a broadcast timed to it would be the one fact
 on this channel a refetch could not have shown. Building ships publishes nothing.
 
-The season is the shard key because `/api/traffic`, `/api/galaxy` and `/api/mining` are already
+The season is the shard key because `/api/galaxy/traffic`, `/api/galaxy` and
+`/api/mining/field` are already
 scoped by it, and it is read from the PLAYER row — never from anything a client can influence.
 
 **Not an in-memory emitter.** The API and the worker are separate process groups: the worker
@@ -148,8 +151,10 @@ Three mechanisms, in order of precision, and the shortest is not the timer.
 everything that happened while the socket was down was never delivered and nothing in the payloads
 says so. Until D72 the only thing closing that gap was mechanism 3, so a dropped socket left the
 disc up to a minute stale with craft parked on their destinations. `api.stream` now reports when
-the socket is actually up, and every open AFTER the first re-reads the live set. The first is
-exempt on purpose: the queries have only just fetched, and doubling a cold start buys nothing.
+the socket is actually up. Every open AFTER the first schedules one catch-up pass with 0–5 seconds
+of full jitter, while the socket immediately resumes new live events. Repeated short reconnects
+coalesce into that one pass. The first open is exempt: the queries have only just fetched, and
+doubling a cold start buys nothing.
 
 **A window on a foreign craft expiring is not an arrival — D72.** A contact carries a bearing
 window and the client asks for the next one when it runs out. That wake used to sit in the same
@@ -161,6 +166,22 @@ The client coalesces shard events over 250ms and maps each kind to the one or tw
 A launch does not refetch `/api/galaxy`: that payload carries a telescope reading per watched world
 and a flight cannot change it. Measured: seven events cost 56 invalidations under a blanket
 refresh and 2 under the routed one.
+
+### Bounded read projections — D99
+
+Three API replicas must not independently rebuild the same 351-world answer for every listener.
+Each replica therefore keeps bounded, single-flight projections for public galaxy shape, public
+traffic and the public mining field. They are keyed by season/version, invalidated only after the
+payload they represent commits, and guarded by short TTLs. Cache eviction or disabling the cache
+changes cost, never meaning.
+
+The private half never enters those shared values. Telescope/fog fields are layered onto the
+public galaxy per caller; ownership filtering is layered onto traffic. Mining is explicitly split:
+`/api/mining/field` carries the shared asteroid/debris surface, while `/api/mining/status` carries
+only the caller's orbit, runs, research effects and isotope knowledge. A small bounded
+account-topology cache stores only that account's own world ids and active world; committed control,
+season and reclaim changes invalidate it. When the transactional bus is unhealthy, private
+topology caching is bypassed rather than trusted past an invalidation it may have missed.
 
 Refetching `/api/galaxy` at all is safe for the intel layer, and it is worth saying why since it
 looks like it should not be: a telescope read is seeded per `(watchId, timeWindow)`, so asking
@@ -203,6 +224,12 @@ phone. Every response carries `x-server-time` (epoch milliseconds, off the injec
 client keeps a smoothed, round-trip-debiased offset and every animation, interpolation and
 countdown reads `serverNow()`. `Date.now()` is correct only for durations that never leave the
 device — an animation's own elapsed time, a debounce, a round trip.
+
+**Flights land on the continuous answer — D83.** `travelExact` determines the
+stored `arriveAt` for every fixed destination; `travelMinutes` is only the
+rounded-up label a human may read. The distinction became load-bearing when D63
+shortened flights enough for one rounded minute to flatten different hull speeds.
+Mining interception already obeyed the continuous model.
 
 A scheduled moment is late by at most one `WORKER_POLL_MS`, which is why it is **one second**:
 that latency is directly visible as a squadron holding over a world it has finished bombarding.
@@ -267,11 +294,12 @@ handling for no benefit.
 
 ## Data model
 
-Eighteen tables, and **nothing stores a value derivable from a formula and a clock**:
+Twenty-four tables, and **nothing stores a value derivable from a formula and a clock**:
 
-`accounts` · `shards` · `seasons` · `players` · `planets` · `buildings` · `satellites` ·
-`units` · `missions` · `scheduled_events` · `battle_reports` · `scan_events` ·
-`probe_reports` · `watches` · `asteroid_claims` · `mining_runs` · `notifications` ·
+`accounts` · `shards` · `seasons` · `season_results` · `players` · `chat_messages` ·
+`galaxy_events` · `planets` · `neutral_planet_state` · `strategic_assets` · `buildings` · `satellites` · `units` · `missions` ·
+`build_orders` · `scheduled_events` · `battle_reports` · `scan_events` · `probe_reports` · `watches` ·
+`asteroid_claims` · `mining_runs` · `debris_fields` · `notifications` · `reward_grants` ·
 `request_log`
 
 Schema: `apps/server/src/db/schema.ts`. Migrations: `apps/server/drizzle/`.
@@ -279,14 +307,29 @@ Schema: `apps/server/src/db/schema.ts`. Migrations: `apps/server/drizzle/`.
 **Time model.** Everything in the database is `timestamptz`; the rules work in minutes since
 season start. `apps/server/src/clock.ts` is the **only** place those two meet.
 
+**Build queues.** `build_orders` holds what a world is making: two queues (`CONSTRUCTION`,
+`YARD`), three orders deep, kept compact by `slot` under a partial unique index on the active
+rows. Cost is committed at order time and lives on the row, so Wealth can count it and a refund
+knows what to return. Each order schedules one `build_complete` event at its `readyAt`; the
+handler matches that instant before applying, exactly as `death_star_ready` does, so a
+redelivery is inert. Cancelling or abandoning re-flows the tail and rewrites both the rows and
+their events together — an event whose `expectedReadyAt` no longer matches is a no-op by
+construction.
+
 **Unit ownership.** `units` rows are authoritative, with `location` = `'home'` or a mission
 id. A fleet in flight is still owned by its planet (so it still counts toward Wealth) but is
 demonstrably not defending it. The mission's `fleet` jsonb is a snapshot for the battle report
 and is never read for state.
 
-**`shards` is ten rows.** `ordinal` carries the fill order and is the whole of the
+**Only shard ordinals 1–2 are active.** Historical shard rows remain because permanent season
+results reference them; they are not admission targets or server-list entries (D100). `ordinal`
+carries the fill order and is the whole of the
 sequential-fill rule; `players.account_id` is unique across every season, which is the whole
-of the one-planet rule (D21).
+of the one-commander-per-galaxy rule (D21/D97). Planet ownership itself is explicit:
+`CAPITAL`, `COLONY` or controller-less `NEUTRAL`. Cross-world transactions lock the season,
+then the commander's capital serialization anchor, then every touched planet id ascending.
+Away units and missions carry commander ownership separately from their station/home world,
+so a control transfer cannot steal craft already in flight.
 
 ## Platform traps already paid for
 
@@ -338,7 +381,8 @@ worked example. **The server refuses to boot against a database it is ahead of**
   otherwise the endpoint enumerates who plays this game, by text or by clock.
 - **Sign-out clears the cookie and nothing else.** Stateless JWTs; the refresh token stays
   valid until it expires. A known limitation, not an oversight (D21).
-- Nothing further in MVP. On a 50-player galaxy, social visibility catches more than code.
+- Shared abuse counters live in Valkey, so switching API replicas cannot reset a caller's quota.
+  Valkey is disposable and never stores a player, outcome or authoritative game fact.
 
 ## Commands
 
@@ -347,7 +391,7 @@ pnpm install
 docker compose up -d      # Postgres on :5433
 
 pnpm verify               # typecheck + lint + all tests
-pnpm sim -- --players=50 --seed=7
+pnpm sim -- --players=50 --seed=7    # balance regression model; not a capacity test
 
 pnpm --filter @astera/server db:generate   # after a schema change
 pnpm dev                                       # server + web together
@@ -356,7 +400,7 @@ node tools/visual.mjs out/visual               # drive and measure the running c
 
 # The world. `bootstrap` is idempotent — running it twice creates nothing.
 pnpm season migrate
-pnpm season bootstrap                  # ten galaxies of fifty
+pnpm season bootstrap                  # two galaxies of 300 + 51 neutrals each
 pnpm season bootstrap --unattended 12  # DEV ONLY: inert commanders to scout
 pnpm season status                     # every galaxy, its population, who is on it
 pnpm season wipe --yes                 # END EVERYTHING and open fresh galaxies

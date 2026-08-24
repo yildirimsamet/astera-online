@@ -1,19 +1,23 @@
 import { and, asc, eq, gte, inArray, sql } from 'drizzle-orm';
 import { SEASON, SERVERS } from '@astera/rules';
-import type { Db } from '../db/client.js';
+import type { Db, Tx } from '../db/client.js';
 import type { Clock } from '../clock.js';
 import { addMinutes } from '../clock.js';
 import {
   accounts,
   asteroidClaims,
   battleReports,
+  buildOrders,
   buildings,
   chatMessages,
   debrisFields,
+  galaxyEvents,
   miningRuns,
   missions,
+  neutralPlanetState,
   notifications,
   planets,
+  planetResearch,
   players,
   probeReports,
   requestLog,
@@ -24,15 +28,17 @@ import {
   seasons,
   shards,
   units,
+  strategicAssets,
   watches,
 } from '../db/schema.js';
-import { createSeason } from './season.js';
+import { createSeasonIn } from './season.js';
 import { GameError } from './planet.js';
+import { publishShard } from '../stream/bus.js';
 
 /**
  * THE GALAXIES, AS A PLACE YOU CHOOSE. D21.
  *
- * Ten of them, fifty worlds each, filled strictly in order. Every rule about which
+ * At most two live ones, three hundred commander seats each, filled strictly in order. Every rule about which
  * one a player may enter lives in this file, and there is exactly one function that
  * decides it — `frontierOrdinal` — so the list the player reads and the check that
  * admits them can never disagree about which galaxy is open.
@@ -79,7 +85,7 @@ export const shardNameFor = (ordinal: number): string =>
  *
  * THREE QUERIES, NEVER THIRTY. The shards, then one grouped count of planets per
  * season, then one grouped count of active players — rather than a pair of counts
- * per shard. Ten servers make an N+1 here look harmless; it is the same mistake at
+ * per shard. Two servers can still make an N+1 here look harmless; it is the same mistake at
  * fifty, and this endpoint is the one every player hits before they can play.
  */
 export async function listServers(db: Db, clock: Clock): Promise<ServerSummary[]> {
@@ -89,12 +95,22 @@ export async function listServers(db: Db, clock: Clock): Promise<ServerSummary[]
     .leftJoin(seasons, and(eq(seasons.shardId, shards.id), eq(seasons.status, 'live')))
     .orderBy(asc(shards.ordinal));
 
+  // The supported official range wins whenever it exists. A scratch database
+  // may contain only one-off codes (EU-TEST, EU-MULTI); keep up to two of those
+  // usable in isolation without creating a production escape hatch where a
+  // renamed third shard becomes publicly admissible.
+  const official = rows.filter(({ shard }) => (
+    shard.ordinal >= 1 && shard.ordinal <= SERVERS.count
+  ));
+  const visibleRows = (official.length > 0 ? official : rows).slice(0, SERVERS.count);
+
   const since = addMinutes(clock.now(), -SERVERS.onlineWindowMinutes);
 
   const [taken, active] = await Promise.all([
     db
       .select({ seasonId: planets.seasonId, n: sql<number>`count(*)::int` })
       .from(planets)
+      .where(eq(planets.kind, 'CAPITAL'))
       .groupBy(planets.seasonId),
     db
       .select({ seasonId: players.seasonId, n: sql<number>`count(*)::int` })
@@ -109,7 +125,7 @@ export async function listServers(db: Db, clock: Clock): Promise<ServerSummary[]
   // Status is deliberately not computed in this pass: whether a galaxy is `open`
   // or `locked` depends on every OTHER galaxy, so it cannot be known one row at a
   // time. Build the facts first, decide the frontier once, then label.
-  const facts = rows.map(({ shard, season }) => ({
+  const facts = visibleRows.map(({ shard, season }) => ({
     code: shard.code,
     name: shard.name === '' ? shard.code : shard.name,
     ordinal: shard.ordinal,
@@ -139,8 +155,8 @@ interface Fillable {
  *
  * Why a rule and not a preference: `KNOWN RISKS` puts the empty shard second on
  * the list — "async PvP with 12 players is nothing" — and its mitigation is not to
- * open a second galaxy until the first fills. Ten galaxies offered freely on day
- * one is ten empty rooms, which is the failure the risk describes, arrived at by
+ * open a second galaxy until the first fills. Multiple galaxies offered freely on day
+ * one are empty rooms, which is the failure the risk describes, arrived at by
  * giving players a choice they have no way to make well.
  *
  * Returns null when every galaxy is full, which is a real state and not an error:
@@ -255,7 +271,7 @@ export async function currentPlacement(db: Db, accountId: string): Promise<Place
       planetName: planets.name,
     })
     .from(players)
-    .innerJoin(planets, eq(planets.playerId, players.id))
+    .innerJoin(planets, and(eq(planets.controllerPlayerId, players.id), eq(planets.kind, 'CAPITAL')))
     .innerJoin(seasons, eq(players.seasonId, seasons.id))
     .innerJoin(shards, eq(seasons.shardId, shards.id))
     .where(eq(players.accountId, accountId))
@@ -300,6 +316,15 @@ export async function bootstrapServers(
   clock: Clock,
   opts: BootstrapOptions = {},
 ): Promise<BootstrapResult> {
+  return db.transaction((tx) => bootstrapServersIn(tx, clock, opts));
+}
+
+/** The same idempotent bootstrap, composable inside the atomic wipe. D88. */
+async function bootstrapServersIn(
+  tx: Tx,
+  clock: Clock,
+  opts: BootstrapOptions = {},
+): Promise<BootstrapResult> {
   const count = opts.count ?? SERVERS.count;
   const capacity = opts.capacity ?? SERVERS.capacity;
   const days = opts.days ?? SEASON.days;
@@ -310,7 +335,7 @@ export async function bootstrapServers(
 
   for (let ordinal = 1; ordinal <= count; ordinal++) {
     const code = shardCodeFor(ordinal);
-    const [live] = await db
+    const [live] = await tx
       .select({ id: seasons.id })
       .from(seasons)
       .innerJoin(shards, eq(seasons.shardId, shards.id))
@@ -322,7 +347,7 @@ export async function bootstrapServers(
       continue;
     }
 
-    await createSeason(db, {
+    await createSeasonIn(tx, {
       shardCode: code,
       shardName: shardNameFor(ordinal),
       ordinal,
@@ -344,6 +369,8 @@ export interface WipeResult {
   seasonsWiped: number;
   playersCleared: number;
   serversOpened: string[];
+  /** Automatic rollover waits rather than ending a galaxy whose snapshot is late. */
+  deferred: boolean;
 }
 
 /**
@@ -356,7 +383,7 @@ export interface WipeResult {
  *   2. Mark the old seasons `wiped` before deleting anything, so a crash halfway
  *      leaves seasons that are visibly finished rather than live seasons with no
  *      planets in them — which is what a player would otherwise log in to.
- *   3. Delete the season world. `players` going is what releases the one-planet
+ *   3. Delete every controlled world. `players` going is what releases the one-commander
  *      unique index, and therefore what lets everyone choose a galaxy again.
  *   4. Open the new seasons.
  *
@@ -368,13 +395,44 @@ export async function wipeAllServers(
   db: Db,
   clock: Clock,
   opts: BootstrapOptions = {},
+  guard?: { eventSeasonId: string; requireAllFrozen: true },
 ): Promise<WipeResult> {
-  const live = await db
-    .select({ id: seasons.id })
-    .from(seasons)
-    .where(eq(seasons.status, 'live'));
+  const wiped = await db.transaction(async (tx) => {
+    // One world transition across every worker replica. The event's old season is
+    // the idempotency guard after the first transaction opens its successors.
+    await tx.execute(sql`select pg_advisory_xact_lock(83202488)`);
+    if (guard) {
+      const [source] = await tx
+        .select({ status: seasons.status })
+        .from(seasons)
+        .where(eq(seasons.id, guard.eventSeasonId))
+        .limit(1);
+      if (!source || source.status === 'wiped') {
+        return { seasonsWiped: 0, playersCleared: 0, serversOpened: [], deferred: false };
+      }
+      const [stillLive] = await tx
+        .select({ n: sql<number>`count(*)::int` })
+        .from(seasons)
+        .where(eq(seasons.status, 'live'));
+      if ((stillLive?.n ?? 0) > 0) {
+        const [failedEnd] = await tx
+          .select({ n: sql<number>`count(*)::int` })
+          .from(scheduledEvents)
+          .where(and(
+            eq(scheduledEvents.kind, 'season_end'),
+            eq(scheduledEvents.status, 'failed'),
+          ));
+        if ((failedEnd?.n ?? 0) > 0) {
+          throw new Error('season rollover blocked by a failed season_end event');
+        }
+        return { seasonsWiped: 0, playersCleared: 0, serversOpened: [], deferred: true };
+      }
+    }
 
-  const playersCleared = await db.transaction(async (tx) => {
+    const ending = await tx
+      .select({ id: seasons.id })
+      .from(seasons)
+      .where(inArray(seasons.status, ['live', 'frozen']));
     const roster = await tx
       .select({
         id: players.id,
@@ -421,6 +479,7 @@ export async function wipeAllServers(
 
     await tx.update(seasons).set({ status: 'wiped' }).where(eq(seasons.status, 'live'));
     await tx.update(seasons).set({ status: 'wiped' }).where(eq(seasons.status, 'frozen'));
+    for (const season of ending) await publishShard(tx, season.id, 'rollover');
 
     /**
      * Child rows first. Every one of these references something below it.
@@ -441,6 +500,7 @@ export async function wipeAllServers(
     // account rather than carried over as an unclaimed grant.
     await tx.delete(rewardGrants);
     await tx.delete(chatMessages);
+    await tx.delete(galaxyEvents);
     await tx.delete(requestLog);
     await tx.delete(notifications);
     await tx.delete(scanEvents);
@@ -448,23 +508,28 @@ export async function wipeAllServers(
     await tx.delete(watches);
     await tx.delete(battleReports);
     await tx.delete(scheduledEvents);
+    await tx.delete(buildOrders);
     await tx.delete(miningRuns);
     await tx.delete(debrisFields);
+    await tx.delete(strategicAssets);
     await tx.delete(missions);
     await tx.delete(asteroidClaims);
     await tx.delete(units);
     await tx.delete(satellites);
     await tx.delete(buildings);
+    await tx.delete(planetResearch);
+    await tx.delete(neutralPlanetState);
     await tx.delete(planets);
     await tx.delete(players);
 
-    return roster.length;
+    const opened = await bootstrapServersIn(tx, clock, opts);
+    return {
+      seasonsWiped: ending.length,
+      playersCleared: roster.length,
+      serversOpened: opened.created,
+      deferred: false,
+    };
   });
 
-  const opened = await bootstrapServers(db, clock, opts);
-  return {
-    seasonsWiped: live.length,
-    playersCleared,
-    serversOpened: opened.created,
-  };
+  return wiped;
 }

@@ -1,4 +1,5 @@
 import { fleetCount } from '@astera/rules';
+import type { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { PlanetView } from '../api/schemas.js';
 import { satelliteLabel } from '../i18n/names.js';
@@ -6,6 +7,7 @@ import { compact, full } from '../lib/format.js';
 import { powerOf } from '../lib/gains.js';
 import { countdown, useNow } from '../lib/time.js';
 import { SATELLITE_ART, RESOURCE_ART } from './assets.js';
+import { Meter } from './Meter.js';
 import { PlanetSigil } from './PlanetSigil.js';
 
 /**
@@ -42,12 +44,44 @@ export function PlanetHero({
   const home = fleetCount(planet.fleet);
   const exposed = Math.max(
     0,
-    planet.planet.alloy + planet.planet.crystal - planet.planet.vaultFloor,
+    planet.planet.alloy
+      + planet.planet.crystal
+      + planet.planet.deuterium
+      - planet.planet.vaultFloor,
   );
 
   if (compactMode) {
     return (
       <div className="mb-5">
+        <div
+          data-planet-subject
+          className="mb-2 flex items-center gap-3 border-b border-line-soft pb-2"
+        >
+          <div className="relative grid size-20 shrink-0 place-items-center" aria-hidden>
+            <span
+              className={`absolute top-0 size-2.5 ${
+                planet.planet.kind === 'COLONY'
+                  ? 'rotate-180 bg-opportunity [clip-path:polygon(50%_0,100%_100%,0_100%)]'
+                  : 'rotate-45 border border-crystal bg-crystal/30'
+              }`}
+            />
+            <PlanetSigil
+              seed={planet.planet.id}
+              size={68}
+              shielded={planet.planet.shield > 0}
+            />
+          </div>
+          <div className="min-w-0">
+            <p className={`text-[11px] font-semibold uppercase tracking-[0.14em] ${
+              planet.planet.kind === 'COLONY' ? 'text-opportunity' : 'text-crystal'
+            }`}>
+              {t(planet.planet.kind === 'COLONY' ? 'planetHero.colony' : 'planetHero.capital')}
+            </p>
+            <p className="mt-1 truncate font-display text-[16px] uppercase tracking-wide text-bone">
+              {planet.planet.name}
+            </p>
+          </div>
+        </div>
         <Readouts planet={planet} />
         <Verdicts planet={planet} ground={ground} home={home} exposed={exposed} />
         {disruptedFor > 0 && <Disrupted ms={disruptedFor} />}
@@ -98,6 +132,11 @@ export function PlanetHero({
         </div>
 
         <div className="min-w-0 flex-1">
+          <p className={`mb-1 text-[9px] font-semibold uppercase tracking-[0.18em] ${
+            planet.planet.kind === 'COLONY' ? 'text-opportunity' : 'text-crystal'
+          }`}>
+            {t(planet.planet.kind === 'COLONY' ? 'planetHero.colony' : 'planetHero.capital')}
+          </p>
           <h1 className="font-display text-[20px] uppercase leading-tight tracking-[0.06em] text-bone">
             {planet.planet.name}
           </h1>
@@ -173,8 +212,11 @@ function Verdicts({
   exposed: number;
 }) {
   const { t } = useTranslation();
+  const shield = planet.planet.shield;
+  const shieldMax = planet.planet.shieldMax;
+  const shieldShare = shieldMax > 0 ? shield / shieldMax : 0;
   return (
-    <div className="mt-2 grid grid-cols-3 gap-2">
+    <div className="mt-2 grid grid-cols-2 gap-2">
       <Verdict
         label={t('planetHero.defence')}
         value={
@@ -194,21 +236,68 @@ function Verdicts({
       <Verdict
         label={t('planetHero.shield')}
         value={
-          planet.planet.shield > 0 ? compact(planet.planet.shield) : t('planetHero.shieldNone')
+          shieldMax > 0
+            ? t('planetHero.shieldValue', { current: compact(shield), max: compact(shieldMax) })
+            : t('planetHero.shieldNone')
         }
         detail={
-          planet.planet.shield > 0
-            ? t('planetHero.shieldAbsorbs')
+          shieldMax > 0
+            ? (
+                <div className="mt-1.5">
+                  <Meter
+                    value={shield}
+                    cap={shieldMax}
+                    tone="crystal"
+                    cells={8}
+                    label={t('planetHero.shieldMeter')}
+                  />
+                  <p className="mt-1 text-[10px] text-faint">
+                    {t('planetHero.shieldRegen', { amount: compact(planet.planet.shieldPerHour) })}
+                  </p>
+                </div>
+              )
             : t('planetHero.shieldNoAegis')
         }
-        tone={planet.planet.shield > 0 ? 'good' : 'neutral'}
+        tone={shieldMax === 0 ? 'neutral' : shieldShare < 0.35 ? 'warn' : 'good'}
       />
-      <Verdict
-        label={t('planetHero.atRisk')}
-        value={compact(exposed)}
-        detail={t('planetHero.atRiskSafe', { amount: compact(planet.planet.vaultFloor) })}
-        tone={exposed > planet.planet.vaultFloor * 3 ? 'warn' : 'neutral'}
+      <VaultVerdict
+        planet={planet}
+        exposed={exposed}
       />
+    </div>
+  );
+}
+
+function VaultVerdict({ planet, exposed }: { planet: PlanetView; exposed: number }) {
+  const { t } = useTranslation();
+  const protectedStock = planet.planet.vaultProtected;
+  const resources = [
+    { id: 'alloy', amount: protectedStock.alloy, tone: 'text-alloy' },
+    { id: 'crystal', amount: protectedStock.crystal, tone: 'text-crystal' },
+    { id: 'deuterium', amount: protectedStock.deuterium, tone: 'text-deuterium' },
+  ] as const;
+
+  return (
+    <div className="frame col-span-2 px-2.5 py-2">
+      <div className="flex items-baseline justify-between gap-3">
+        <p className="legend">{t('planetHero.vault')}</p>
+        <p className={`num text-[11px] ${exposed > 0 ? 'text-alloy' : 'text-opportunity'}`}>
+          {t('planetHero.atRiskValue', { amount: compact(exposed) })}
+        </p>
+      </div>
+      <div className="mt-2 grid grid-cols-3 gap-1.5">
+        {resources.map(({ id, amount, tone }) => (
+          <div
+            key={id}
+            className="flex min-w-0 items-center gap-1.5 rounded-sm border border-line-soft bg-void/35 px-2 py-1.5"
+            aria-label={t(`planetHero.${id}Safe`, { amount: full(amount) })}
+          >
+            <img src={RESOURCE_ART[id]} alt="" aria-hidden className="size-4 shrink-0 object-contain" />
+            <span className={`num truncate text-[12px] ${tone}`}>{compact(amount)}</span>
+          </div>
+        ))}
+      </div>
+      <p className="mt-1.5 text-[10px] text-faint">{t('planetHero.vaultProtected')}</p>
     </div>
   );
 }
@@ -239,14 +328,16 @@ function Verdict({
 }: {
   label: string;
   value: string;
-  detail: string;
+  detail: ReactNode;
   tone: keyof typeof TONE;
 }) {
   return (
     <div className="frame px-2.5 py-2">
       <p className="legend">{label}</p>
       <p className={`readout mt-1.5 text-[17px] ${TONE[tone]}`}>{value}</p>
-      <p className="num mt-1 text-[10px] text-faint">{detail}</p>
+      {typeof detail === 'string'
+        ? <p className="num mt-1 text-[10px] text-faint">{detail}</p>
+        : detail}
     </div>
   );
 }

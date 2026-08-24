@@ -1,0 +1,2178 @@
+{
+  "$schema": "astera-economy/v2",
+  "generatedAt": "2026-08-24",
+  "note": "From-scratch 14-day seasonal PvP economy. Replaces packages/rules/src/constants.ts. Every number here is derived; see docs/balance.md for the formula behind each one.",
+  "formulas": {
+    "production": "rate(L) = base * L * growth^L   per hour",
+    "upgradeCost": "cost(L->L+1) = { alloy: costBase * costMult^L, crystal: crystalCostBase * crystalCostMult^L }",
+    "crystalCostMult": "DERIVED = costMult * (crystalMult / alloyMult) — holds the crystal cost share at 0.79 of the crystal income share at every level",
+    "storage": "storageCap = capHours * rate ; worksCap = worksHours * rate",
+    "vault": "protects(L) = vaultFlat + vaultCoef * L * vaultMult^L  (alloy); crystal = alloy * crystalBase/alloyBase",
+    "buildTime": "minutes = min(cap, costTotal / throughput) — buildings: 200*(1+0.12*core); ships: 260*(1+0.35*yard); ground: 1000*(1+0.35*yard); research: x4",
+    "payback": "paybackHours(L) = costTotal(L) / (rate(L+1) - rate(L))",
+    "sunset": "building is rational while paybackHours < hoursRemaining * 0.4",
+    "travel": "oneWayMinutes = baseMinutes + (distance / slowestHullSpeed) * distanceFactor",
+    "radarNotice": "minutes = min(oneWay, oneWay * radarRange / distance)",
+    "loot": "raidable = max(0, storage - vaultFloor) + works * lootBufferShare ; loot = min(raidable * gradeShare, surviving cargo)",
+    "debris": "field = share * resourceValue of every destroyed NON-GROUND hull on both sides"
+  },
+  "parameters": {
+    "season": {
+      "days": 14,
+      "actShares": {
+        "war": 0.2857142857142857,
+        "consolidation": 0.5714285714285714,
+        "sunset": 0.8571428571428571
+      },
+      "investmentHorizonShare": 0.7,
+      "afterglowMinutes": 15
+    },
+    "alloyBase": 132,
+    "alloyMult": 1.1,
+    "crystalBase": 48,
+    "crystalMult": 1.09,
+    "costBase": 52,
+    "costMult": 1.56,
+    "crystalCostShare": 0.2895,
+    "crystalCostBase": 15.053999999999998,
+    "crystalCostMult": 1.5458181818181818,
+    "capHours": 12,
+    "capHoursPerVault": 0.8,
+    "worksHours": 10,
+    "queueDepth": 3,
+    "protectedHoursBase": 2,
+    "protectedHoursPerVault": 0.3,
+    "openingFloorAlloy": 840,
+    "conBase": 240,
+    "conPerCore": 0.22,
+    "yardBase": 312,
+    "yardPerYard": 0.35,
+    "defBase": 1200,
+    "defPerYard": 0.35,
+    "researchTimeMult": 4,
+    "buildCapMinutes": 360,
+    "cancelRefund": 0.5,
+    "maxLevel": {
+      "CORE": 20,
+      "REFINERY": 20,
+      "EXTRACTOR": 20,
+      "VAULT": 16,
+      "SHIPYARD": 12
+    },
+    "practicalCeiling": "A 14-day season tops out near Refinery 16-18; 20 is headroom, not a target.",
+    "combat": {
+      "rounds": 3,
+      "varianceMin": 0.92,
+      "varianceMax": 1.08,
+      "strongMult": 1.6,
+      "weakMult": 0.625,
+      "partialThreshold": 0.42,
+      "lootDecisive": 0.7,
+      "lootPartial": 0.35,
+      "lootBufferShare": 0.5,
+      "defenceSalvage": 0.6,
+      "engagementSeconds": 10
+    },
+    "travel": {
+      "baseMinutes": 1,
+      "distanceFactor": 1.2
+    },
+    "shield": {
+      "base": 60,
+      "mult": 1.5,
+      "regenPerHour": 0.35
+    },
+    "disruption": {
+      "decisiveMinutes": 20,
+      "partialMinutes": 7,
+      "maxPendingMinutes": 25
+    },
+    "debris": {
+      "share": 0.3,
+      "decayMinutes": 40,
+      "minimum": 250
+    },
+    "abuse": {
+      "bashLimit": 3,
+      "bashWindowMinutes": 720,
+      "tierBand": 2
+    },
+    "intel": {
+      "detectBase": 0.25,
+      "detectSlope": 0.18,
+      "detectMin": 0.05,
+      "detectMax": 0.95,
+      "accuracyBase": 0.55,
+      "accuracySlope": 0.12,
+      "accuracyMin": 0.3,
+      "accuracyMax": 1,
+      "intermittentRefreshMin": 20,
+      "intermittentDropRate": 0.25,
+      "degradedUnknownRate": 0.7,
+      "telescopeRange": [
+        0,
+        500,
+        725,
+        1025,
+        1525,
+        null
+      ],
+      "telescopeSlots": [
+        0,
+        1,
+        1,
+        2,
+        2,
+        3
+      ],
+      "telescopeCooldownHours": [
+        0,
+        5,
+        4,
+        3,
+        2,
+        1
+      ],
+      "radarRange": [
+        0,
+        0,
+        0,
+        190,
+        360,
+        570
+      ]
+    },
+    "instrumentLevelWorth": 2,
+    "instrumentCostMult": {
+      "TELESCOPE": 3,
+      "RADAR": 2,
+      "AEGIS": 2,
+      "VEIL": 2
+    },
+    "probe": {
+      "alloy": 50,
+      "crystal": 30,
+      "speed": 260
+    },
+    "prospector": {
+      "speed": 825,
+      "launchMinutes": 0.13,
+      "hold": 300,
+      "max": 2
+    },
+    "galaxy": {
+      "baselinePlayers": 300,
+      "baselineRadius": 2500,
+      "thickness": 300,
+      "minSeparation": 225,
+      "asteroidsPerHourPerPlayer": 0.03,
+      "asteroidSpeedMin": 350,
+      "asteroidSpeedMax": 750,
+      "asteroidOrbitMinShare": 0.2,
+      "asteroidOrbitMaxShare": 0.95,
+      "asteroidLifeHoursMin": 2.5,
+      "asteroidLifeHoursMax": 5,
+      "asteroidOreByLevel": [
+        0,
+        800,
+        1600,
+        3200,
+        6000,
+        11000
+      ],
+      "asteroidLevelWeights": [
+        0,
+        0.4,
+        0.27,
+        0.18,
+        0.1,
+        0.05
+      ],
+      "asteroidCrystalShareMin": 0.25,
+      "asteroidCrystalShareMax": 0.65,
+      "neutralPerPlayer": {
+        "1": 0.1,
+        "2": 0.05,
+        "3": 0.02
+      }
+    },
+    "deuterium": {
+      "containmentRatio": 0.5,
+      "frontierStartsAtMinutes": 2100,
+      "isotopeCadence": 9,
+      "isotopeBonusCadence": 10,
+      "isotopeShare": 0.104,
+      "graviticDiscoveryShieldShare": 0.25
+    },
+    "satellites": {
+      "UPLINK": {
+        "alloy": 900,
+        "crystal": 300,
+        "minCoreSlot": 1
+      },
+      "FOUNDRY": {
+        "alloy": 2000,
+        "crystal": 700,
+        "production": 1.06
+      },
+      "DERRICK": {
+        "alloy": 2200,
+        "crystal": 800,
+        "hold": 2.6,
+        "speed": 1.5
+      },
+      "BEACON": {
+        "alloy": 3000,
+        "crystal": 1000,
+        "speed": 1.3
+      }
+    }
+  },
+  "opening": {
+    "START": {
+      "alloy": 723,
+      "crystal": 69,
+      "deuterium": 0
+    },
+    "OPENING_BONUS": {
+      "alloy": 580,
+      "crystal": 210,
+      "deuterium": 0
+    },
+    "PLANET_START": {
+      "alloy": 1303,
+      "crystal": 279,
+      "deuterium": 0
+    }
+  },
+  "startBuildings": {
+    "CORE": 1,
+    "REFINERY": 1,
+    "EXTRACTOR": 1,
+    "VAULT": 0,
+    "SHIPYARD": 0
+  },
+  "buildings": {
+    "CORE": {
+      "maxLevel": 20,
+      "cappedByCore": false,
+      "levels": [
+        {
+          "level": 1,
+          "costAlloy": 52,
+          "costCrystal": 15,
+          "costTotal": 67,
+          "buildSeconds": 14,
+          "satelliteSlots": 1,
+          "flightBays": 3,
+          "developmentTier": 1,
+          "constructionThroughputPerMinute": 293
+        },
+        {
+          "level": 2,
+          "costAlloy": 81,
+          "costCrystal": 23,
+          "costTotal": 104,
+          "buildSeconds": 21,
+          "satelliteSlots": 1,
+          "flightBays": 3,
+          "developmentTier": 1,
+          "constructionThroughputPerMinute": 346
+        },
+        {
+          "level": 3,
+          "costAlloy": 127,
+          "costCrystal": 36,
+          "costTotal": 163,
+          "buildSeconds": 28,
+          "satelliteSlots": 2,
+          "flightBays": 4,
+          "developmentTier": 1,
+          "constructionThroughputPerMinute": 398
+        },
+        {
+          "level": 4,
+          "costAlloy": 197,
+          "costCrystal": 56,
+          "costTotal": 253,
+          "buildSeconds": 38,
+          "satelliteSlots": 2,
+          "flightBays": 4,
+          "developmentTier": 2,
+          "constructionThroughputPerMinute": 451
+        },
+        {
+          "level": 5,
+          "costAlloy": 308,
+          "costCrystal": 86,
+          "costTotal": 394,
+          "buildSeconds": 52,
+          "satelliteSlots": 3,
+          "flightBays": 4,
+          "developmentTier": 2,
+          "constructionThroughputPerMinute": 504
+        },
+        {
+          "level": 6,
+          "costAlloy": 480,
+          "costCrystal": 133,
+          "costTotal": 613,
+          "buildSeconds": 73,
+          "satelliteSlots": 3,
+          "flightBays": 5,
+          "developmentTier": 2,
+          "constructionThroughputPerMinute": 557
+        },
+        {
+          "level": 7,
+          "costAlloy": 749,
+          "costCrystal": 205,
+          "costTotal": 954,
+          "buildSeconds": 103,
+          "satelliteSlots": 3,
+          "flightBays": 5,
+          "developmentTier": 3,
+          "constructionThroughputPerMinute": 610
+        },
+        {
+          "level": 8,
+          "costAlloy": 1169,
+          "costCrystal": 318,
+          "costTotal": 1487,
+          "buildSeconds": 146,
+          "satelliteSlots": 3,
+          "flightBays": 5,
+          "developmentTier": 3,
+          "constructionThroughputPerMinute": 662
+        },
+        {
+          "level": 9,
+          "costAlloy": 1824,
+          "costCrystal": 491,
+          "costTotal": 2315,
+          "buildSeconds": 210,
+          "satelliteSlots": 4,
+          "flightBays": 6,
+          "developmentTier": 3,
+          "constructionThroughputPerMinute": 715
+        },
+        {
+          "level": 10,
+          "costAlloy": 2845,
+          "costCrystal": 759,
+          "costTotal": 3604,
+          "buildSeconds": 302,
+          "satelliteSlots": 4,
+          "flightBays": 6,
+          "developmentTier": 4,
+          "constructionThroughputPerMinute": 768
+        },
+        {
+          "level": 11,
+          "costAlloy": 4439,
+          "costCrystal": 1173,
+          "costTotal": 5612,
+          "buildSeconds": 438,
+          "satelliteSlots": 4,
+          "flightBays": 6,
+          "developmentTier": 4,
+          "constructionThroughputPerMinute": 821
+        },
+        {
+          "level": 12,
+          "costAlloy": 6924,
+          "costCrystal": 1813,
+          "costTotal": 8737,
+          "buildSeconds": 639,
+          "satelliteSlots": 4,
+          "flightBays": 7,
+          "developmentTier": 4,
+          "constructionThroughputPerMinute": 874
+        },
+        {
+          "level": 13,
+          "costAlloy": 10802,
+          "costCrystal": 2803,
+          "costTotal": 13605,
+          "buildSeconds": 934,
+          "satelliteSlots": 4,
+          "flightBays": 7,
+          "developmentTier": 5,
+          "constructionThroughputPerMinute": 926
+        },
+        {
+          "level": 14,
+          "costAlloy": 16851,
+          "costCrystal": 4332,
+          "costTotal": 21183,
+          "buildSeconds": 1372,
+          "satelliteSlots": 4,
+          "flightBays": 7,
+          "developmentTier": 5,
+          "constructionThroughputPerMinute": 979
+        },
+        {
+          "level": 15,
+          "costAlloy": 26287,
+          "costCrystal": 6697,
+          "costTotal": 32984,
+          "buildSeconds": 2021,
+          "satelliteSlots": 4,
+          "flightBays": 8,
+          "developmentTier": 5,
+          "constructionThroughputPerMinute": 1032
+        },
+        {
+          "level": 16,
+          "costAlloy": 41008,
+          "costCrystal": 10352,
+          "costTotal": 51360,
+          "buildSeconds": 2986,
+          "satelliteSlots": 4,
+          "flightBays": 8,
+          "developmentTier": 6,
+          "constructionThroughputPerMinute": 1085
+        },
+        {
+          "level": 17,
+          "costAlloy": 63973,
+          "costCrystal": 16002,
+          "costTotal": 79975,
+          "buildSeconds": 4423,
+          "satelliteSlots": 4,
+          "flightBays": 8,
+          "developmentTier": 6,
+          "constructionThroughputPerMinute": 1138
+        },
+        {
+          "level": 18,
+          "costAlloy": 99798,
+          "costCrystal": 24737,
+          "costTotal": 124535,
+          "buildSeconds": 6568,
+          "satelliteSlots": 4,
+          "flightBays": 9,
+          "developmentTier": 6,
+          "constructionThroughputPerMinute": 1190
+        },
+        {
+          "level": 19,
+          "costAlloy": 155685,
+          "costCrystal": 38239,
+          "costTotal": 193924,
+          "buildSeconds": 9774,
+          "satelliteSlots": 4,
+          "flightBays": 9,
+          "developmentTier": 7,
+          "constructionThroughputPerMinute": 1243
+        },
+        {
+          "level": 20,
+          "costAlloy": 242868,
+          "costCrystal": 59110,
+          "costTotal": 301978,
+          "buildSeconds": 14574,
+          "satelliteSlots": 4,
+          "flightBays": 9,
+          "developmentTier": 7,
+          "constructionThroughputPerMinute": 1296
+        }
+      ]
+    },
+    "REFINERY": {
+      "maxLevel": 20,
+      "cappedByCore": true,
+      "levels": [
+        {
+          "level": 1,
+          "costAlloy": 52,
+          "costCrystal": 15,
+          "costTotal": 67,
+          "buildSeconds": 14,
+          "alloyPerHour": 145,
+          "storageCapAtVault0": 1742,
+          "storageCapAtVault8": 2672,
+          "storageCapAtVault16": 3601,
+          "worksCap": 1452,
+          "paybackHours": 0.6
+        },
+        {
+          "level": 2,
+          "costAlloy": 81,
+          "costCrystal": 23,
+          "costTotal": 104,
+          "buildSeconds": 21,
+          "alloyPerHour": 319,
+          "storageCapAtVault0": 3833,
+          "storageCapAtVault8": 5878,
+          "storageCapAtVault16": 7922,
+          "worksCap": 3194,
+          "paybackHours": 0.79
+        },
+        {
+          "level": 3,
+          "costAlloy": 127,
+          "costCrystal": 36,
+          "costTotal": 163,
+          "buildSeconds": 28,
+          "alloyPerHour": 527,
+          "storageCapAtVault0": 6325,
+          "storageCapAtVault8": 9698,
+          "storageCapAtVault16": 13071,
+          "worksCap": 5271,
+          "paybackHours": 1.03
+        },
+        {
+          "level": 4,
+          "costAlloy": 197,
+          "costCrystal": 56,
+          "costTotal": 253,
+          "buildSeconds": 38,
+          "alloyPerHour": 773,
+          "storageCapAtVault0": 9277,
+          "storageCapAtVault8": 14224,
+          "storageCapAtVault16": 19172,
+          "worksCap": 7730,
+          "paybackHours": 1.36
+        },
+        {
+          "level": 5,
+          "costAlloy": 308,
+          "costCrystal": 86,
+          "costTotal": 394,
+          "buildSeconds": 52,
+          "alloyPerHour": 1063,
+          "storageCapAtVault0": 12755,
+          "storageCapAtVault8": 19558,
+          "storageCapAtVault16": 26361,
+          "worksCap": 10629,
+          "paybackHours": 1.8
+        },
+        {
+          "level": 6,
+          "costAlloy": 480,
+          "costCrystal": 133,
+          "costTotal": 613,
+          "buildSeconds": 73,
+          "alloyPerHour": 1403,
+          "storageCapAtVault0": 16837,
+          "storageCapAtVault8": 25817,
+          "storageCapAtVault16": 34796,
+          "worksCap": 14031,
+          "paybackHours": 2.4
+        },
+        {
+          "level": 7,
+          "costAlloy": 749,
+          "costCrystal": 205,
+          "costTotal": 954,
+          "buildSeconds": 103,
+          "alloyPerHour": 1801,
+          "storageCapAtVault0": 21607,
+          "storageCapAtVault8": 33131,
+          "storageCapAtVault16": 44655,
+          "worksCap": 18006,
+          "paybackHours": 3.21
+        },
+        {
+          "level": 8,
+          "costAlloy": 1169,
+          "costCrystal": 318,
+          "costTotal": 1487,
+          "buildSeconds": 146,
+          "alloyPerHour": 2264,
+          "storageCapAtVault0": 27164,
+          "storageCapAtVault8": 41651,
+          "storageCapAtVault16": 56138,
+          "worksCap": 22636,
+          "paybackHours": 4.31
+        },
+        {
+          "level": 9,
+          "costAlloy": 1824,
+          "costCrystal": 491,
+          "costTotal": 2315,
+          "buildSeconds": 210,
+          "alloyPerHour": 2801,
+          "storageCapAtVault0": 33615,
+          "storageCapAtVault8": 51543,
+          "storageCapAtVault16": 69471,
+          "worksCap": 28012,
+          "paybackHours": 5.79
+        },
+        {
+          "level": 10,
+          "costAlloy": 2845,
+          "costCrystal": 759,
+          "costTotal": 3604,
+          "buildSeconds": 302,
+          "alloyPerHour": 3424,
+          "storageCapAtVault0": 41085,
+          "storageCapAtVault8": 62997,
+          "storageCapAtVault16": 84909,
+          "worksCap": 34237,
+          "paybackHours": 7.81
+        },
+        {
+          "level": 11,
+          "costAlloy": 4439,
+          "costCrystal": 1173,
+          "costTotal": 5612,
+          "buildSeconds": 438,
+          "alloyPerHour": 4143,
+          "storageCapAtVault0": 49713,
+          "storageCapAtVault8": 76226,
+          "storageCapAtVault16": 102740,
+          "worksCap": 41427,
+          "paybackHours": 10.54
+        },
+        {
+          "level": 12,
+          "costAlloy": 6924,
+          "costCrystal": 1813,
+          "costTotal": 8737,
+          "buildSeconds": 639,
+          "alloyPerHour": 4971,
+          "storageCapAtVault0": 59655,
+          "storageCapAtVault8": 91471,
+          "storageCapAtVault16": 123288,
+          "worksCap": 49713,
+          "paybackHours": 14.28
+        },
+        {
+          "level": 13,
+          "costAlloy": 10802,
+          "costCrystal": 2803,
+          "costTotal": 13605,
+          "buildSeconds": 934,
+          "alloyPerHour": 5924,
+          "storageCapAtVault0": 71089,
+          "storageCapAtVault8": 109003,
+          "storageCapAtVault16": 146918,
+          "worksCap": 59241,
+          "paybackHours": 19.37
+        },
+        {
+          "level": 14,
+          "costAlloy": 16851,
+          "costCrystal": 4332,
+          "costTotal": 21183,
+          "buildSeconds": 1372,
+          "alloyPerHour": 7018,
+          "storageCapAtVault0": 84213,
+          "storageCapAtVault8": 129127,
+          "storageCapAtVault16": 174041,
+          "worksCap": 70178,
+          "paybackHours": 26.32
+        },
+        {
+          "level": 15,
+          "costAlloy": 26287,
+          "costCrystal": 6697,
+          "costTotal": 32984,
+          "buildSeconds": 2021,
+          "alloyPerHour": 8271,
+          "storageCapAtVault0": 99251,
+          "storageCapAtVault8": 152186,
+          "storageCapAtVault16": 205120,
+          "worksCap": 82710,
+          "paybackHours": 35.83
+        },
+        {
+          "level": 16,
+          "costAlloy": 41008,
+          "costCrystal": 10352,
+          "costTotal": 51360,
+          "buildSeconds": 2986,
+          "alloyPerHour": 9705,
+          "storageCapAtVault0": 116455,
+          "storageCapAtVault8": 178564,
+          "storageCapAtVault16": 240674,
+          "worksCap": 97046,
+          "paybackHours": 48.84
+        },
+        {
+          "level": 17,
+          "costAlloy": 63973,
+          "costCrystal": 16002,
+          "costTotal": 79975,
+          "buildSeconds": 4423,
+          "alloyPerHour": 11342,
+          "storageCapAtVault0": 136107,
+          "storageCapAtVault8": 208697,
+          "storageCapAtVault16": 281287,
+          "worksCap": 113422,
+          "paybackHours": 66.66
+        },
+        {
+          "level": 18,
+          "costAlloy": 99798,
+          "costCrystal": 24737,
+          "costTotal": 124535,
+          "buildSeconds": 6568,
+          "alloyPerHour": 13210,
+          "storageCapAtVault0": 158524,
+          "storageCapAtVault8": 243071,
+          "storageCapAtVault16": 327617,
+          "worksCap": 132104,
+          "paybackHours": 91.12
+        },
+        {
+          "level": 19,
+          "costAlloy": 155685,
+          "costCrystal": 38239,
+          "costTotal": 193924,
+          "buildSeconds": 9774,
+          "alloyPerHour": 15339,
+          "storageCapAtVault0": 184064,
+          "storageCapAtVault8": 282232,
+          "storageCapAtVault16": 380400,
+          "worksCap": 153387,
+          "paybackHours": 124.69
+        },
+        {
+          "level": 20,
+          "costAlloy": 242868,
+          "costCrystal": 59110,
+          "costTotal": 301978,
+          "buildSeconds": 14574,
+          "alloyPerHour": 17761,
+          "storageCapAtVault0": 213127,
+          "storageCapAtVault8": 326795,
+          "storageCapAtVault16": 440463,
+          "worksCap": 177606,
+          "paybackHours": 170.82
+        }
+      ]
+    },
+    "EXTRACTOR": {
+      "maxLevel": 20,
+      "cappedByCore": true,
+      "levels": [
+        {
+          "level": 1,
+          "costAlloy": 52,
+          "costCrystal": 15,
+          "costTotal": 67,
+          "buildSeconds": 14,
+          "crystalPerHour": 52,
+          "storageCapAtVault0": 628,
+          "storageCapAtVault8": 963,
+          "storageCapAtVault16": 1298,
+          "worksCap": 523,
+          "deuteriumStorageCapAtVault0": 314,
+          "deuteriumWorksCap": 262,
+          "paybackHours": 1.68
+        },
+        {
+          "level": 2,
+          "costAlloy": 81,
+          "costCrystal": 23,
+          "costTotal": 104,
+          "buildSeconds": 21,
+          "crystalPerHour": 114,
+          "storageCapAtVault0": 1369,
+          "storageCapAtVault8": 2099,
+          "storageCapAtVault16": 2829,
+          "worksCap": 1141,
+          "deuteriumStorageCapAtVault0": 685,
+          "deuteriumWorksCap": 571,
+          "paybackHours": 2.25
+        },
+        {
+          "level": 3,
+          "costAlloy": 127,
+          "costCrystal": 36,
+          "costTotal": 163,
+          "buildSeconds": 28,
+          "crystalPerHour": 186,
+          "storageCapAtVault0": 2238,
+          "storageCapAtVault8": 3431,
+          "storageCapAtVault16": 4625,
+          "worksCap": 1865,
+          "deuteriumStorageCapAtVault0": 1119,
+          "deuteriumWorksCap": 933,
+          "paybackHours": 2.99
+        },
+        {
+          "level": 4,
+          "costAlloy": 197,
+          "costCrystal": 56,
+          "costTotal": 253,
+          "buildSeconds": 38,
+          "crystalPerHour": 271,
+          "storageCapAtVault0": 3252,
+          "storageCapAtVault8": 4987,
+          "storageCapAtVault16": 6721,
+          "worksCap": 2710,
+          "deuteriumStorageCapAtVault0": 1626,
+          "deuteriumWorksCap": 1355,
+          "paybackHours": 4.01
+        },
+        {
+          "level": 5,
+          "costAlloy": 308,
+          "costCrystal": 86,
+          "costTotal": 394,
+          "buildSeconds": 52,
+          "crystalPerHour": 369,
+          "storageCapAtVault0": 4431,
+          "storageCapAtVault8": 6795,
+          "storageCapAtVault16": 9158,
+          "worksCap": 3693,
+          "deuteriumStorageCapAtVault0": 2216,
+          "deuteriumWorksCap": 1847,
+          "paybackHours": 5.39
+        },
+        {
+          "level": 6,
+          "costAlloy": 480,
+          "costCrystal": 133,
+          "costTotal": 613,
+          "buildSeconds": 73,
+          "crystalPerHour": 483,
+          "storageCapAtVault0": 5796,
+          "storageCapAtVault8": 8887,
+          "storageCapAtVault16": 11979,
+          "worksCap": 4830,
+          "deuteriumStorageCapAtVault0": 2898,
+          "deuteriumWorksCap": 2415,
+          "paybackHours": 7.27
+        },
+        {
+          "level": 7,
+          "costAlloy": 749,
+          "costCrystal": 205,
+          "costTotal": 954,
+          "buildSeconds": 103,
+          "crystalPerHour": 614,
+          "storageCapAtVault0": 7371,
+          "storageCapAtVault8": 11302,
+          "storageCapAtVault16": 15233,
+          "worksCap": 6142,
+          "deuteriumStorageCapAtVault0": 3686,
+          "deuteriumWorksCap": 3071,
+          "paybackHours": 9.85
+        },
+        {
+          "level": 8,
+          "costAlloy": 1169,
+          "costCrystal": 318,
+          "costTotal": 1487,
+          "buildSeconds": 146,
+          "crystalPerHour": 765,
+          "storageCapAtVault0": 9182,
+          "storageCapAtVault8": 14079,
+          "storageCapAtVault16": 18976,
+          "worksCap": 7651,
+          "deuteriumStorageCapAtVault0": 4591,
+          "deuteriumWorksCap": 3826,
+          "paybackHours": 13.37
+        },
+        {
+          "level": 9,
+          "costAlloy": 1824,
+          "costCrystal": 491,
+          "costTotal": 2315,
+          "buildSeconds": 210,
+          "crystalPerHour": 938,
+          "storageCapAtVault0": 11259,
+          "storageCapAtVault8": 17264,
+          "storageCapAtVault16": 23269,
+          "worksCap": 9383,
+          "deuteriumStorageCapAtVault0": 5630,
+          "deuteriumWorksCap": 4692,
+          "paybackHours": 18.19
+        },
+        {
+          "level": 10,
+          "costAlloy": 2845,
+          "costCrystal": 759,
+          "costTotal": 3604,
+          "buildSeconds": 302,
+          "crystalPerHour": 1136,
+          "storageCapAtVault0": 13636,
+          "storageCapAtVault8": 20909,
+          "storageCapAtVault16": 28181,
+          "worksCap": 11363,
+          "deuteriumStorageCapAtVault0": 6818,
+          "deuteriumWorksCap": 5682,
+          "paybackHours": 24.82
+        },
+        {
+          "level": 11,
+          "costAlloy": 4439,
+          "costCrystal": 1173,
+          "costTotal": 5612,
+          "buildSeconds": 438,
+          "crystalPerHour": 1362,
+          "storageCapAtVault0": 16350,
+          "storageCapAtVault8": 25069,
+          "storageCapAtVault16": 33789,
+          "worksCap": 13625,
+          "deuteriumStorageCapAtVault0": 8175,
+          "deuteriumWorksCap": 6813,
+          "paybackHours": 33.91
+        },
+        {
+          "level": 12,
+          "costAlloy": 6924,
+          "costCrystal": 1813,
+          "costTotal": 8737,
+          "buildSeconds": 639,
+          "crystalPerHour": 1620,
+          "storageCapAtVault0": 19441,
+          "storageCapAtVault8": 29810,
+          "storageCapAtVault16": 40178,
+          "worksCap": 16201,
+          "deuteriumStorageCapAtVault0": 9721,
+          "deuteriumWorksCap": 8101,
+          "paybackHours": 46.44
+        },
+        {
+          "level": 13,
+          "costAlloy": 10802,
+          "costCrystal": 2803,
+          "costTotal": 13605,
+          "buildSeconds": 934,
+          "crystalPerHour": 1913,
+          "storageCapAtVault0": 22957,
+          "storageCapAtVault8": 35200,
+          "storageCapAtVault16": 47444,
+          "worksCap": 19131,
+          "deuteriumStorageCapAtVault0": 11479,
+          "deuteriumWorksCap": 9566,
+          "paybackHours": 63.69
+        },
+        {
+          "level": 14,
+          "costAlloy": 16851,
+          "costCrystal": 4332,
+          "costTotal": 21183,
+          "buildSeconds": 1372,
+          "crystalPerHour": 2246,
+          "storageCapAtVault0": 26948,
+          "storageCapAtVault8": 41320,
+          "storageCapAtVault16": 55692,
+          "worksCap": 22456,
+          "deuteriumStorageCapAtVault0": 13474,
+          "deuteriumWorksCap": 11228,
+          "paybackHours": 87.5
+        },
+        {
+          "level": 15,
+          "costAlloy": 26287,
+          "costCrystal": 6697,
+          "costTotal": 32984,
+          "buildSeconds": 2021,
+          "crystalPerHour": 2623,
+          "storageCapAtVault0": 31471,
+          "storageCapAtVault8": 48256,
+          "storageCapAtVault16": 65040,
+          "worksCap": 26226,
+          "deuteriumStorageCapAtVault0": 15736,
+          "deuteriumWorksCap": 13113,
+          "paybackHours": 120.39
+        },
+        {
+          "level": 16,
+          "costAlloy": 41008,
+          "costCrystal": 10352,
+          "costTotal": 51360,
+          "buildSeconds": 2986,
+          "crystalPerHour": 3049,
+          "storageCapAtVault0": 36590,
+          "storageCapAtVault8": 56105,
+          "storageCapAtVault16": 75620,
+          "worksCap": 30492,
+          "deuteriumStorageCapAtVault0": 18295,
+          "deuteriumWorksCap": 15246,
+          "paybackHours": 165.87
+        },
+        {
+          "level": 17,
+          "costAlloy": 63973,
+          "costCrystal": 16002,
+          "costTotal": 79975,
+          "buildSeconds": 4423,
+          "crystalPerHour": 3531,
+          "storageCapAtVault0": 42376,
+          "storageCapAtVault8": 64977,
+          "storageCapAtVault16": 87577,
+          "worksCap": 35313,
+          "deuteriumStorageCapAtVault0": 21188,
+          "deuteriumWorksCap": 17657,
+          "paybackHours": 228.82
+        },
+        {
+          "level": 18,
+          "costAlloy": 99798,
+          "costCrystal": 24737,
+          "costTotal": 124535,
+          "buildSeconds": 6568,
+          "crystalPerHour": 4076,
+          "storageCapAtVault0": 48907,
+          "storageCapAtVault8": 74991,
+          "storageCapAtVault16": 101075,
+          "worksCap": 40756,
+          "deuteriumStorageCapAtVault0": 24454,
+          "deuteriumWorksCap": 20378,
+          "paybackHours": 316.04
+        },
+        {
+          "level": 19,
+          "costAlloy": 155685,
+          "costCrystal": 38239,
+          "costTotal": 193924,
+          "buildSeconds": 9774,
+          "crystalPerHour": 4689,
+          "storageCapAtVault0": 56270,
+          "storageCapAtVault8": 86281,
+          "storageCapAtVault16": 116292,
+          "worksCap": 46892,
+          "deuteriumStorageCapAtVault0": 28135,
+          "deuteriumWorksCap": 23446,
+          "paybackHours": 436.99
+        },
+        {
+          "level": 20,
+          "costAlloy": 242868,
+          "costCrystal": 59110,
+          "costTotal": 301978,
+          "buildSeconds": 14574,
+          "crystalPerHour": 5380,
+          "storageCapAtVault0": 64563,
+          "storageCapAtVault8": 98996,
+          "storageCapAtVault16": 133430,
+          "worksCap": 53802,
+          "deuteriumStorageCapAtVault0": 32282,
+          "deuteriumWorksCap": 26901,
+          "paybackHours": 604.86
+        }
+      ]
+    },
+    "VAULT": {
+      "maxLevel": 16,
+      "cappedByCore": true,
+      "levels": [
+        {
+          "level": 1,
+          "costAlloy": 52,
+          "costCrystal": 15,
+          "costTotal": 67,
+          "buildSeconds": 14,
+          "storageHours": 12.8,
+          "protectedHours": 2.3,
+          "protectedShareOfStore": 0.18,
+          "storageMultiplierVsVault0": 1.07,
+          "exampleProtectsAlloyAtRefinery12": 11434,
+          "exampleProtectsCrystalAtExtractor12": 3726
+        },
+        {
+          "level": 2,
+          "costAlloy": 81,
+          "costCrystal": 23,
+          "costTotal": 104,
+          "buildSeconds": 21,
+          "storageHours": 13.6,
+          "protectedHours": 2.6,
+          "protectedShareOfStore": 0.191,
+          "storageMultiplierVsVault0": 1.13,
+          "exampleProtectsAlloyAtRefinery12": 12925,
+          "exampleProtectsCrystalAtExtractor12": 4212
+        },
+        {
+          "level": 3,
+          "costAlloy": 127,
+          "costCrystal": 36,
+          "costTotal": 163,
+          "buildSeconds": 28,
+          "storageHours": 14.4,
+          "protectedHours": 2.9,
+          "protectedShareOfStore": 0.201,
+          "storageMultiplierVsVault0": 1.2,
+          "exampleProtectsAlloyAtRefinery12": 14417,
+          "exampleProtectsCrystalAtExtractor12": 4698
+        },
+        {
+          "level": 4,
+          "costAlloy": 197,
+          "costCrystal": 56,
+          "costTotal": 253,
+          "buildSeconds": 38,
+          "storageHours": 15.2,
+          "protectedHours": 3.2,
+          "protectedShareOfStore": 0.211,
+          "storageMultiplierVsVault0": 1.27,
+          "exampleProtectsAlloyAtRefinery12": 15908,
+          "exampleProtectsCrystalAtExtractor12": 5184
+        },
+        {
+          "level": 5,
+          "costAlloy": 308,
+          "costCrystal": 86,
+          "costTotal": 394,
+          "buildSeconds": 52,
+          "storageHours": 16,
+          "protectedHours": 3.5,
+          "protectedShareOfStore": 0.219,
+          "storageMultiplierVsVault0": 1.33,
+          "exampleProtectsAlloyAtRefinery12": 17399,
+          "exampleProtectsCrystalAtExtractor12": 5670
+        },
+        {
+          "level": 6,
+          "costAlloy": 480,
+          "costCrystal": 133,
+          "costTotal": 613,
+          "buildSeconds": 73,
+          "storageHours": 16.8,
+          "protectedHours": 3.8,
+          "protectedShareOfStore": 0.226,
+          "storageMultiplierVsVault0": 1.4,
+          "exampleProtectsAlloyAtRefinery12": 18891,
+          "exampleProtectsCrystalAtExtractor12": 6156
+        },
+        {
+          "level": 7,
+          "costAlloy": 749,
+          "costCrystal": 205,
+          "costTotal": 954,
+          "buildSeconds": 103,
+          "storageHours": 17.6,
+          "protectedHours": 4.1,
+          "protectedShareOfStore": 0.233,
+          "storageMultiplierVsVault0": 1.47,
+          "exampleProtectsAlloyAtRefinery12": 20382,
+          "exampleProtectsCrystalAtExtractor12": 6642
+        },
+        {
+          "level": 8,
+          "costAlloy": 1169,
+          "costCrystal": 318,
+          "costTotal": 1487,
+          "buildSeconds": 146,
+          "storageHours": 18.4,
+          "protectedHours": 4.4,
+          "protectedShareOfStore": 0.239,
+          "storageMultiplierVsVault0": 1.53,
+          "exampleProtectsAlloyAtRefinery12": 21874,
+          "exampleProtectsCrystalAtExtractor12": 7128
+        },
+        {
+          "level": 9,
+          "costAlloy": 1824,
+          "costCrystal": 491,
+          "costTotal": 2315,
+          "buildSeconds": 210,
+          "storageHours": 19.2,
+          "protectedHours": 4.7,
+          "protectedShareOfStore": 0.245,
+          "storageMultiplierVsVault0": 1.6,
+          "exampleProtectsAlloyAtRefinery12": 23365,
+          "exampleProtectsCrystalAtExtractor12": 7614
+        },
+        {
+          "level": 10,
+          "costAlloy": 2845,
+          "costCrystal": 759,
+          "costTotal": 3604,
+          "buildSeconds": 302,
+          "storageHours": 20,
+          "protectedHours": 5,
+          "protectedShareOfStore": 0.25,
+          "storageMultiplierVsVault0": 1.67,
+          "exampleProtectsAlloyAtRefinery12": 24856,
+          "exampleProtectsCrystalAtExtractor12": 8100
+        },
+        {
+          "level": 11,
+          "costAlloy": 4439,
+          "costCrystal": 1173,
+          "costTotal": 5612,
+          "buildSeconds": 438,
+          "storageHours": 20.8,
+          "protectedHours": 5.3,
+          "protectedShareOfStore": 0.255,
+          "storageMultiplierVsVault0": 1.73,
+          "exampleProtectsAlloyAtRefinery12": 26348,
+          "exampleProtectsCrystalAtExtractor12": 8587
+        },
+        {
+          "level": 12,
+          "costAlloy": 6924,
+          "costCrystal": 1813,
+          "costTotal": 8737,
+          "buildSeconds": 639,
+          "storageHours": 21.6,
+          "protectedHours": 5.6,
+          "protectedShareOfStore": 0.259,
+          "storageMultiplierVsVault0": 1.8,
+          "exampleProtectsAlloyAtRefinery12": 27839,
+          "exampleProtectsCrystalAtExtractor12": 9073
+        },
+        {
+          "level": 13,
+          "costAlloy": 10802,
+          "costCrystal": 2803,
+          "costTotal": 13605,
+          "buildSeconds": 934,
+          "storageHours": 22.4,
+          "protectedHours": 5.9,
+          "protectedShareOfStore": 0.263,
+          "storageMultiplierVsVault0": 1.87,
+          "exampleProtectsAlloyAtRefinery12": 29330,
+          "exampleProtectsCrystalAtExtractor12": 9559
+        },
+        {
+          "level": 14,
+          "costAlloy": 16851,
+          "costCrystal": 4332,
+          "costTotal": 21183,
+          "buildSeconds": 1372,
+          "storageHours": 23.200000000000003,
+          "protectedHours": 6.2,
+          "protectedShareOfStore": 0.267,
+          "storageMultiplierVsVault0": 1.93,
+          "exampleProtectsAlloyAtRefinery12": 30822,
+          "exampleProtectsCrystalAtExtractor12": 10045
+        },
+        {
+          "level": 15,
+          "costAlloy": 26287,
+          "costCrystal": 6697,
+          "costTotal": 32984,
+          "buildSeconds": 2021,
+          "storageHours": 24,
+          "protectedHours": 6.5,
+          "protectedShareOfStore": 0.271,
+          "storageMultiplierVsVault0": 2,
+          "exampleProtectsAlloyAtRefinery12": 32313,
+          "exampleProtectsCrystalAtExtractor12": 10531
+        },
+        {
+          "level": 16,
+          "costAlloy": 41008,
+          "costCrystal": 10352,
+          "costTotal": 51360,
+          "buildSeconds": 2986,
+          "storageHours": 24.8,
+          "protectedHours": 6.8,
+          "protectedShareOfStore": 0.274,
+          "storageMultiplierVsVault0": 2.07,
+          "exampleProtectsAlloyAtRefinery12": 33805,
+          "exampleProtectsCrystalAtExtractor12": 11017
+        }
+      ]
+    },
+    "SHIPYARD": {
+      "maxLevel": 12,
+      "cappedByCore": true,
+      "levels": [
+        {
+          "level": 1,
+          "costAlloy": 52,
+          "costCrystal": 15,
+          "costTotal": 67,
+          "buildSeconds": 14,
+          "yardThroughputPerMinute": 421,
+          "defenceThroughputPerMinute": 1620,
+          "unlocks": [
+            "HAULER",
+            "BASTION",
+            "PROSPECTOR"
+          ]
+        },
+        {
+          "level": 2,
+          "costAlloy": 81,
+          "costCrystal": 23,
+          "costTotal": 104,
+          "buildSeconds": 21,
+          "yardThroughputPerMinute": 530,
+          "defenceThroughputPerMinute": 2040,
+          "unlocks": [
+            "LANCE",
+            "RUNNER"
+          ]
+        },
+        {
+          "level": 3,
+          "costAlloy": 127,
+          "costCrystal": 36,
+          "costTotal": 163,
+          "buildSeconds": 28,
+          "yardThroughputPerMinute": 640,
+          "defenceThroughputPerMinute": 2460,
+          "unlocks": [
+            "BREACHER"
+          ]
+        },
+        {
+          "level": 4,
+          "costAlloy": 197,
+          "costCrystal": 56,
+          "costTotal": 253,
+          "buildSeconds": 38,
+          "yardThroughputPerMinute": 749,
+          "defenceThroughputPerMinute": 2880,
+          "unlocks": [
+            "BULWARK"
+          ]
+        },
+        {
+          "level": 5,
+          "costAlloy": 308,
+          "costCrystal": 86,
+          "costTotal": 394,
+          "buildSeconds": 52,
+          "yardThroughputPerMinute": 858,
+          "defenceThroughputPerMinute": 3300,
+          "unlocks": []
+        },
+        {
+          "level": 6,
+          "costAlloy": 480,
+          "costCrystal": 133,
+          "costTotal": 613,
+          "buildSeconds": 73,
+          "yardThroughputPerMinute": 967,
+          "defenceThroughputPerMinute": 3720,
+          "unlocks": []
+        },
+        {
+          "level": 7,
+          "costAlloy": 749,
+          "costCrystal": 205,
+          "costTotal": 954,
+          "buildSeconds": 103,
+          "yardThroughputPerMinute": 1076,
+          "defenceThroughputPerMinute": 4140,
+          "unlocks": []
+        },
+        {
+          "level": 8,
+          "costAlloy": 1169,
+          "costCrystal": 318,
+          "costTotal": 1487,
+          "buildSeconds": 146,
+          "yardThroughputPerMinute": 1186,
+          "defenceThroughputPerMinute": 4560,
+          "unlocks": []
+        },
+        {
+          "level": 9,
+          "costAlloy": 1824,
+          "costCrystal": 491,
+          "costTotal": 2315,
+          "buildSeconds": 210,
+          "yardThroughputPerMinute": 1295,
+          "defenceThroughputPerMinute": 4980,
+          "unlocks": []
+        },
+        {
+          "level": 10,
+          "costAlloy": 2845,
+          "costCrystal": 759,
+          "costTotal": 3604,
+          "buildSeconds": 302,
+          "yardThroughputPerMinute": 1404,
+          "defenceThroughputPerMinute": 5400,
+          "unlocks": []
+        },
+        {
+          "level": 11,
+          "costAlloy": 4439,
+          "costCrystal": 1173,
+          "costTotal": 5612,
+          "buildSeconds": 438,
+          "yardThroughputPerMinute": 1513,
+          "defenceThroughputPerMinute": 5820,
+          "unlocks": []
+        },
+        {
+          "level": 12,
+          "costAlloy": 6924,
+          "costCrystal": 1813,
+          "costTotal": 8737,
+          "buildSeconds": 639,
+          "yardThroughputPerMinute": 1622,
+          "defenceThroughputPerMinute": 6240,
+          "unlocks": []
+        }
+      ]
+    }
+  },
+  "instruments": {
+    "TELESCOPE": {
+      "maxLevel": 5,
+      "costMultiplier": 3,
+      "requiresSatellite": "UPLINK",
+      "levels": [
+        {
+          "level": 1,
+          "costAlloy": 156,
+          "costCrystal": 45,
+          "costTotal": 201,
+          "buildSeconds": 41,
+          "range": 500,
+          "watchSlots": 1,
+          "repointCooldownHours": 5
+        },
+        {
+          "level": 2,
+          "costAlloy": 381,
+          "costCrystal": 108,
+          "costTotal": 489,
+          "buildSeconds": 85,
+          "range": 725,
+          "watchSlots": 1,
+          "repointCooldownHours": 4
+        },
+        {
+          "level": 3,
+          "costAlloy": 924,
+          "costCrystal": 258,
+          "costTotal": 1182,
+          "buildSeconds": 157,
+          "range": 1025,
+          "watchSlots": 2,
+          "repointCooldownHours": 3
+        },
+        {
+          "level": 4,
+          "costAlloy": 2247,
+          "costCrystal": 615,
+          "costTotal": 2862,
+          "buildSeconds": 308,
+          "range": 1525,
+          "watchSlots": 2,
+          "repointCooldownHours": 2
+        },
+        {
+          "level": 5,
+          "costAlloy": 5472,
+          "costCrystal": 1473,
+          "costTotal": 6945,
+          "buildSeconds": 629,
+          "range": null,
+          "watchSlots": 3,
+          "repointCooldownHours": 1
+        }
+      ]
+    },
+    "RADAR": {
+      "maxLevel": 5,
+      "costMultiplier": 2,
+      "requiresSatellite": "UPLINK",
+      "levels": [
+        {
+          "level": 1,
+          "costAlloy": 104,
+          "costCrystal": 30,
+          "costTotal": 134,
+          "buildSeconds": 27,
+          "detectionRadius": 0
+        },
+        {
+          "level": 2,
+          "costAlloy": 254,
+          "costCrystal": 72,
+          "costTotal": 326,
+          "buildSeconds": 57,
+          "detectionRadius": 0
+        },
+        {
+          "level": 3,
+          "costAlloy": 616,
+          "costCrystal": 172,
+          "costTotal": 788,
+          "buildSeconds": 105,
+          "detectionRadius": 190
+        },
+        {
+          "level": 4,
+          "costAlloy": 1498,
+          "costCrystal": 410,
+          "costTotal": 1908,
+          "buildSeconds": 206,
+          "detectionRadius": 360
+        },
+        {
+          "level": 5,
+          "costAlloy": 3648,
+          "costCrystal": 982,
+          "costTotal": 4630,
+          "buildSeconds": 419,
+          "detectionRadius": 570
+        }
+      ]
+    },
+    "AEGIS": {
+      "maxLevel": 5,
+      "costMultiplier": 2,
+      "requiresSatellite": null,
+      "levels": [
+        {
+          "level": 1,
+          "costAlloy": 104,
+          "costCrystal": 30,
+          "costTotal": 134,
+          "buildSeconds": 27,
+          "shieldHp": 90,
+          "regenPerHour": 0.35
+        },
+        {
+          "level": 2,
+          "costAlloy": 254,
+          "costCrystal": 72,
+          "costTotal": 326,
+          "buildSeconds": 57,
+          "shieldHp": 135,
+          "regenPerHour": 0.35
+        },
+        {
+          "level": 3,
+          "costAlloy": 616,
+          "costCrystal": 172,
+          "costTotal": 788,
+          "buildSeconds": 105,
+          "shieldHp": 203,
+          "regenPerHour": 0.35
+        },
+        {
+          "level": 4,
+          "costAlloy": 1498,
+          "costCrystal": 410,
+          "costTotal": 1908,
+          "buildSeconds": 206,
+          "shieldHp": 304,
+          "regenPerHour": 0.35
+        },
+        {
+          "level": 5,
+          "costAlloy": 3648,
+          "costCrystal": 982,
+          "costTotal": 4630,
+          "buildSeconds": 419,
+          "shieldHp": 456,
+          "regenPerHour": 0.35
+        }
+      ]
+    },
+    "VEIL": {
+      "maxLevel": 5,
+      "costMultiplier": 2,
+      "requiresSatellite": null,
+      "levels": [
+        {
+          "level": 1,
+          "costAlloy": 104,
+          "costCrystal": 30,
+          "costTotal": 134,
+          "buildSeconds": 27,
+          "clarityPenalty": 1,
+          "accuracyPenalty": 1
+        },
+        {
+          "level": 2,
+          "costAlloy": 254,
+          "costCrystal": 72,
+          "costTotal": 326,
+          "buildSeconds": 57,
+          "clarityPenalty": 2,
+          "accuracyPenalty": 2
+        },
+        {
+          "level": 3,
+          "costAlloy": 616,
+          "costCrystal": 172,
+          "costTotal": 788,
+          "buildSeconds": 105,
+          "clarityPenalty": 3,
+          "accuracyPenalty": 3
+        },
+        {
+          "level": 4,
+          "costAlloy": 1498,
+          "costCrystal": 410,
+          "costTotal": 1908,
+          "buildSeconds": 206,
+          "clarityPenalty": 4,
+          "accuracyPenalty": 4
+        },
+        {
+          "level": 5,
+          "costAlloy": 3648,
+          "costCrystal": 982,
+          "costTotal": 4630,
+          "buildSeconds": 419,
+          "clarityPenalty": 5,
+          "accuracyPenalty": 5
+        }
+      ]
+    }
+  },
+  "satellites": {
+    "UPLINK": {
+      "alloy": 900,
+      "crystal": 300,
+      "minCoreSlot": 1,
+      "resourceValue": 1200,
+      "buildSecondsAtCore": {
+        "1": 246,
+        "3": 181,
+        "5": 143,
+        "9": 101
+      }
+    },
+    "FOUNDRY": {
+      "alloy": 2000,
+      "crystal": 700,
+      "production": 1.06,
+      "resourceValue": 2700,
+      "buildSecondsAtCore": {
+        "1": 553,
+        "3": 407,
+        "5": 321,
+        "9": 227
+      }
+    },
+    "DERRICK": {
+      "alloy": 2200,
+      "crystal": 800,
+      "hold": 2.6,
+      "speed": 1.5,
+      "resourceValue": 3000,
+      "buildSecondsAtCore": {
+        "1": 615,
+        "3": 452,
+        "5": 357,
+        "9": 252
+      }
+    },
+    "BEACON": {
+      "alloy": 3000,
+      "crystal": 1000,
+      "speed": 1.3,
+      "resourceValue": 4000,
+      "buildSecondsAtCore": {
+        "1": 820,
+        "3": 602,
+        "5": 476,
+        "9": 336
+      }
+    }
+  },
+  "hulls": {
+    "WASP": {
+      "cls": "SKIRMISHER",
+      "atk": 15,
+      "hp": 25,
+      "speed": 130,
+      "cargo": 45,
+      "alloy": 240,
+      "crystal": 0,
+      "deuterium": 0,
+      "minShipyard": 0,
+      "ground": false,
+      "research": null,
+      "resourceValue": 240,
+      "buildSecondsByShipyard": {
+        "0": 46,
+        "1": 34,
+        "2": 27,
+        "3": 23,
+        "4": 19,
+        "5": 17,
+        "6": 15,
+        "7": 13,
+        "8": 12,
+        "9": 11,
+        "10": 10,
+        "11": 10,
+        "12": 9
+      },
+      "travelMinutesOneWay": {
+        "260": 3.4,
+        "510": 5.71,
+        "755": 7.97,
+        "1300": 13,
+        "2275": 22,
+        "4800": 45.31
+      }
+    },
+    "LANCE": {
+      "cls": "LANCE",
+      "atk": 78,
+      "hp": 112,
+      "speed": 100,
+      "cargo": 60,
+      "alloy": 820,
+      "crystal": 260,
+      "deuterium": 0,
+      "minShipyard": 2,
+      "ground": false,
+      "research": null,
+      "resourceValue": 1080,
+      "buildSecondsByShipyard": {
+        "2": 122,
+        "3": 101,
+        "4": 87,
+        "5": 76,
+        "6": 67,
+        "7": 60,
+        "8": 55,
+        "9": 50,
+        "10": 46,
+        "11": 43,
+        "12": 40
+      },
+      "travelMinutesOneWay": {
+        "260": 4.12,
+        "510": 7.12,
+        "755": 10.06,
+        "1300": 16.6,
+        "2275": 28.3,
+        "4800": 58.6
+      }
+    },
+    "BULWARK": {
+      "cls": "BULWARK",
+      "atk": 106,
+      "hp": 662,
+      "speed": 65,
+      "cargo": 90,
+      "alloy": 2150,
+      "crystal": 730,
+      "deuterium": 0,
+      "minShipyard": 4,
+      "ground": false,
+      "research": null,
+      "resourceValue": 2880,
+      "buildSecondsByShipyard": {
+        "4": 231,
+        "5": 201,
+        "6": 179,
+        "7": 161,
+        "8": 146,
+        "9": 133,
+        "10": 123,
+        "11": 114,
+        "12": 107
+      },
+      "travelMinutesOneWay": {
+        "260": 5.8,
+        "510": 10.42,
+        "755": 14.94,
+        "1300": 25,
+        "2275": 43,
+        "4800": 89.62
+      }
+    },
+    "HAULER": {
+      "cls": "SUPPORT",
+      "atk": 0,
+      "hp": 210,
+      "speed": 85,
+      "cargo": 2200,
+      "alloy": 1100,
+      "crystal": 200,
+      "deuterium": 0,
+      "minShipyard": 1,
+      "ground": false,
+      "research": null,
+      "resourceValue": 1300,
+      "buildSecondsByShipyard": {
+        "1": 185,
+        "2": 147,
+        "3": 122,
+        "4": 104,
+        "5": 91,
+        "6": 81,
+        "7": 72,
+        "8": 66,
+        "9": 60,
+        "10": 56,
+        "11": 52,
+        "12": 48
+      },
+      "travelMinutesOneWay": {
+        "260": 4.67,
+        "510": 8.2,
+        "755": 11.66,
+        "1300": 19.35,
+        "2275": 33.12,
+        "4800": 68.76
+      }
+    },
+    "RUNNER": {
+      "cls": "SUPPORT",
+      "atk": 0,
+      "hp": 120,
+      "speed": 125,
+      "cargo": 380,
+      "alloy": 560,
+      "crystal": 250,
+      "deuterium": 90,
+      "minShipyard": 2,
+      "ground": false,
+      "research": "DENSE_FUEL_CELLS",
+      "resourceValue": 900,
+      "buildSecondsByShipyard": {
+        "2": 102,
+        "3": 84,
+        "4": 72,
+        "5": 63,
+        "6": 56,
+        "7": 50,
+        "8": 46,
+        "9": 42,
+        "10": 38,
+        "11": 36,
+        "12": 33
+      },
+      "travelMinutesOneWay": {
+        "260": 3.5,
+        "510": 5.9,
+        "755": 8.25,
+        "1300": 13.48,
+        "2275": 22.84,
+        "4800": 47.08
+      }
+    },
+    "BREACHER": {
+      "cls": "LANCE",
+      "atk": 55,
+      "hp": 300,
+      "speed": 78,
+      "cargo": 0,
+      "alloy": 1250,
+      "crystal": 550,
+      "deuterium": 200,
+      "minShipyard": 3,
+      "ground": false,
+      "research": "GRAVITIC_CHARGES",
+      "resourceValue": 2000,
+      "buildSecondsByShipyard": {
+        "3": 188,
+        "4": 160,
+        "5": 140,
+        "6": 124,
+        "7": 111,
+        "8": 101,
+        "9": 93,
+        "10": 85,
+        "11": 79,
+        "12": 74
+      },
+      "travelMinutesOneWay": {
+        "260": 5,
+        "510": 8.85,
+        "755": 12.62,
+        "1300": 21,
+        "2275": 36,
+        "4800": 74.85
+      }
+    },
+    "BASTION": {
+      "cls": "BULWARK",
+      "atk": 118,
+      "hp": 906,
+      "speed": 0,
+      "cargo": 0,
+      "alloy": 2400,
+      "crystal": 800,
+      "deuterium": 0,
+      "minShipyard": 1,
+      "ground": true,
+      "research": null,
+      "resourceValue": 3200,
+      "buildSecondsByShipyard": {
+        "1": 119,
+        "2": 94,
+        "3": 78,
+        "4": 67,
+        "5": 58,
+        "6": 52,
+        "7": 46,
+        "8": 42,
+        "9": 39,
+        "10": 36,
+        "11": 33,
+        "12": 31
+      },
+      "travelMinutesOneWay": null
+    },
+    "THORN": {
+      "cls": "SKIRMISHER",
+      "atk": 49,
+      "hp": 174,
+      "speed": 0,
+      "cargo": 0,
+      "alloy": 700,
+      "crystal": 200,
+      "deuterium": 0,
+      "minShipyard": 0,
+      "ground": true,
+      "research": null,
+      "resourceValue": 900,
+      "buildSecondsByShipyard": {
+        "0": 45,
+        "1": 33,
+        "2": 26,
+        "3": 22,
+        "4": 19,
+        "5": 16,
+        "6": 15,
+        "7": 13,
+        "8": 12,
+        "9": 11,
+        "10": 10,
+        "11": 9,
+        "12": 9
+      },
+      "travelMinutesOneWay": null
+    },
+    "PROSPECTOR": {
+      "cls": "SUPPORT",
+      "atk": 0,
+      "hp": 150,
+      "speed": 825,
+      "cargo": 1800,
+      "alloy": 650,
+      "crystal": 200,
+      "deuterium": 0,
+      "minShipyard": 1,
+      "ground": false,
+      "research": null,
+      "resourceValue": 850,
+      "buildSecondsByShipyard": {
+        "1": 121,
+        "2": 96,
+        "3": 80,
+        "4": 68,
+        "5": 59,
+        "6": 53,
+        "7": 47,
+        "8": 43,
+        "9": 39,
+        "10": 36,
+        "11": 34,
+        "12": 31
+      },
+      "travelMinutesOneWay": {
+        "260": 1.38,
+        "510": 1.74,
+        "755": 2.1,
+        "1300": 2.89,
+        "2275": 4.31,
+        "4800": 7.98
+      }
+    }
+  },
+  "research": {
+    "ISOTOPE_SPECTROMETRY": {
+      "alloy": 0,
+      "crystal": 900,
+      "deuterium": 0,
+      "prerequisite": null,
+      "availableAtMinutes": 2100,
+      "requiredCore": 0,
+      "costTotal": 900,
+      "researchSecondsAtCore6": 388
+    },
+    "DENSE_FUEL_CELLS": {
+      "alloy": 0,
+      "crystal": 1400,
+      "deuterium": 150,
+      "prerequisite": "ISOTOPE_SPECTROMETRY",
+      "availableAtMinutes": 2100,
+      "requiredCore": 0,
+      "costTotal": 1550,
+      "researchSecondsAtCore6": 668
+    },
+    "GRAVITIC_CHARGES": {
+      "alloy": 0,
+      "crystal": 1900,
+      "deuterium": 350,
+      "prerequisite": "ISOTOPE_SPECTROMETRY",
+      "availableAtMinutes": 2100,
+      "requiredCore": 0,
+      "costTotal": 2250,
+      "researchSecondsAtCore6": 970
+    },
+    "DEATH_STAR_PROTOCOL": {
+      "alloy": 11000,
+      "crystal": 3600,
+      "deuterium": 900,
+      "prerequisite": "GRAVITIC_CHARGES",
+      "availableAtMinutes": 5760,
+      "requiredCore": 6,
+      "costTotal": 15500,
+      "researchSecondsAtCore6": 6681
+    }
+  },
+  "strategicAssets": {
+    "DEATH_STAR": {
+      "alloy": 28000,
+      "crystal": 9000,
+      "deuterium": 2600,
+      "buildMinutes": 60,
+      "speed": 500,
+      "requiredCore": 6,
+      "requiredShipyard": 5,
+      "probeVisibilityAccuracy": 0.75
+    },
+    "SETTLEMENT": {
+      "alloy": 2000,
+      "crystal": 1000,
+      "deuterium": 0,
+      "haulers": 2,
+      "colonyCapacity": "floor(highestCore / 3), capped at 3"
+    }
+  },
+  "queues": {
+    "construction": 1,
+    "shipyard": 1,
+    "note": "Two independent queues. Cancelling refunds cancelRefund of what was committed, which is what prices \"dump resources into a queue to dodge a raid\".",
+    "cancelRefund": 0.5
+  },
+  "scaling": {
+    "200": {
+      "galaxyRadius": 2041,
+      "thickness": 300,
+      "minSeparation": 225,
+      "asteroidSpawnPerHour": 6,
+      "expectedRocksInSky": 23,
+      "neutralCounts": {
+        "1": 20,
+        "2": 10,
+        "3": 4
+      },
+      "telescopeRange": [
+        0,
+        408,
+        592,
+        837,
+        1245,
+        null
+      ],
+      "radarRange": [
+        0,
+        0,
+        0,
+        190,
+        360,
+        570
+      ],
+      "asteroidOrbitMin": 408,
+      "asteroidOrbitMax": 1939,
+      "unchanged": "every production, cost, hull, loot, combat and build-time number"
+    },
+    "300": {
+      "galaxyRadius": 2500,
+      "thickness": 300,
+      "minSeparation": 225,
+      "asteroidSpawnPerHour": 9,
+      "expectedRocksInSky": 34,
+      "neutralCounts": {
+        "1": 30,
+        "2": 15,
+        "3": 6
+      },
+      "telescopeRange": [
+        0,
+        500,
+        725,
+        1025,
+        1525,
+        null
+      ],
+      "radarRange": [
+        0,
+        0,
+        0,
+        190,
+        360,
+        570
+      ],
+      "asteroidOrbitMin": 500,
+      "asteroidOrbitMax": 2375,
+      "unchanged": "every production, cost, hull, loot, combat and build-time number"
+    },
+    "400": {
+      "galaxyRadius": 2887,
+      "thickness": 300,
+      "minSeparation": 225,
+      "asteroidSpawnPerHour": 12,
+      "expectedRocksInSky": 45,
+      "neutralCounts": {
+        "1": 40,
+        "2": 20,
+        "3": 8
+      },
+      "telescopeRange": [
+        0,
+        577,
+        837,
+        1184,
+        1761,
+        null
+      ],
+      "radarRange": [
+        0,
+        0,
+        0,
+        190,
+        360,
+        570
+      ],
+      "asteroidOrbitMin": 577,
+      "asteroidOrbitMax": 2743,
+      "unchanged": "every production, cost, hull, loot, combat and build-time number"
+    },
+    "500": {
+      "galaxyRadius": 3227,
+      "thickness": 300,
+      "minSeparation": 225,
+      "asteroidSpawnPerHour": 15,
+      "expectedRocksInSky": 56,
+      "neutralCounts": {
+        "1": 50,
+        "2": 25,
+        "3": 10
+      },
+      "telescopeRange": [
+        0,
+        645,
+        936,
+        1323,
+        1968,
+        null
+      ],
+      "radarRange": [
+        0,
+        0,
+        0,
+        190,
+        360,
+        570
+      ],
+      "asteroidOrbitMin": 645,
+      "asteroidOrbitMax": 3066,
+      "unchanged": "every production, cost, hull, loot, combat and build-time number"
+    }
+  },
+  "invariants": [
+    "vaultMult (1.08) < alloyMult (1.10) — else the vault eventually protects 100% of storage and PvP dies silently",
+    "crystalCostMult is DERIVED from costMult * (crystalMult/alloyMult) — two hand-picked multipliers drift and invert which resource is scarce",
+    "START is arithmetic: exactly Core+Refinery+Extractor 1->2 plus two Wasps",
+    "worksHours (12) >= the 2-logins-per-day gap — this single number decides whether a casual player is excluded",
+    "buildTime is priced in RESOURCES, so it moves automatically when any price moves",
+    "one Thorn must build faster than a Radar L3 warning at median distance, or the radar stops selling the window to arm",
+    "no building may exceed the Command Core",
+    "ground hulls leave no debris — they already have 60% salvage",
+    "debris is strictly downstream of combat; if raiding stops, debris stops"
+  ]
+}

@@ -115,6 +115,18 @@ export const vocabulary = {
       role: 'Carries the loot home · contributes nothing to the fight',
       pitch: 'Carries the loot home. Useless in the fight — escort it or lose it.',
     },
+    RUNNER: {
+      name: 'Runner',
+      tag: 'Fast strike cargo',
+      role: 'Fast support hold · expensive capacity for short exposure windows',
+      pitch: 'Carries less than a Hauler, but moves with a strike fleet. Speed is what you buy.',
+    },
+    BREACHER: {
+      name: 'Breacher',
+      tag: 'Breaks active shields',
+      role: 'Lance specialist. Five times its normal effect against an active shield.',
+      pitch: 'Crushes an Aegis without turning bonus damage into unit kills. Weak when no shield is standing.',
+    },
     BASTION: {
       name: 'Bastion',
       tag: 'Heavy ground guns',
@@ -138,6 +150,7 @@ export const vocabulary = {
   resource: {
     alloy: 'alloy',
     crystal: 'crystal',
+    deuterium: 'Deuterium',
   },
 
   /** The four things a season can hand you, announced the moment they open. */
@@ -181,7 +194,10 @@ export const gains = {
     storage: 'Storage {{now}} → {{next}}',
   },
   vault: {
-    label: 'Safe from any raid',
+    label: 'Vault capacity',
+    value: '{{alloy}} alloy · {{crystal}} crystal',
+    storeLabel: 'Storage ceiling',
+    storeValue: '{{hours}}h of production',
   },
   shipyard: {
     accuracyLabel: 'Probe accuracy',
@@ -214,7 +230,7 @@ export const gains = {
     origin: 'Names the planet it came from',
   },
   aegis: {
-    label: 'Shield',
+    label: 'Max shield',
     unlocks: 'Absorbs damage before your units take any. Regenerates 40% an hour',
   },
   veil: {
@@ -319,6 +335,7 @@ export const notifications = {
   incomingEta: 'ETA {{minutes}} min',
   incomingLandsIn: 'lands in {{duration}}',
   incomingHead: 'Incoming fleet · {{clock}}',
+  strategicIncomingHead: 'Strategic weapon incoming · {{clock}}',
   incomingEstimate: 'est. {{count}} ships',
   incomingFrom: 'from {{origin}}',
   commanderAt: '{{username}} at {{planet}}',
@@ -344,6 +361,7 @@ export const notifications = {
   raidNothing: 'nothing taken',
   spoilAlloy: '+{{amount}} alloy',
   spoilCrystal: '+{{amount}} crystal',
+  spoilDeuterium: '+{{amount}} Deuterium',
 
   fleetFallback: 'Your fleet is home.',
   fleetHomeLooted: 'Fleet home{{where}} · {{count}} ships · +{{amount}} looted',
@@ -366,6 +384,15 @@ export const notifications = {
   probeCaught: ' · they caught it',
 
   unlock: '{{title}} — {{body}}',
+  deathStarFallback: 'Your Death Star strike resolved.',
+  deathStar: {
+    FIRST_STRIKE: 'Death Star impact · the world entered recovery',
+    CAPTURED: 'Death Star impact · colony captured',
+    INEFFECTIVE: 'Death Star impact · no effect',
+  },
+  colonyCaptured: 'Colony secured · occupation protection is active',
+  colonyLost: 'Colony lost to a strategic strike',
+  settlementLost: 'Settlement race lost · the Hauler and cargo are returning',
 } as const;
 
 /**

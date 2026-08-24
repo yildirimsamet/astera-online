@@ -2,6 +2,8 @@ import type { ReactNode } from 'react';
 import { render, screen } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { describe, expect, it, vi } from 'vitest';
+import { MULTI_WORLD } from '@astera/rules';
+import { compact } from '../src/lib/format.js';
 import { Api } from '../src/api/client.js';
 import { ApiProvider } from '../src/api/context.js';
 import { ToastProvider } from '../src/ui/Toast.js';
@@ -64,7 +66,7 @@ const intel: IntelView = {
   watching: [],
   probeReports: [],
   radarLog: [],
-  probeCost: { alloy: 25, crystal: 25 },
+  probeCost: { alloy: 25, crystal: 25, deuterium: 0 },
 };
 
 const show = () => {
@@ -124,5 +126,308 @@ describe('the focus rail’s two commitments', () => {
     for (const svg of document.querySelectorAll('[data-attack] svg, button svg')) {
       expect(svg.getAttribute('aria-hidden')).toBe('true');
     }
+  });
+
+  it('offers a ready Death Star against neutrals, but never through occupation protection', () => {
+    const Wrapper = harness();
+    const strategic = { ...mine, strategic: {
+      id: 'asset-1',
+      status: 'READY' as const,
+      readyAt: null,
+      remainingSeconds: 0,
+    } };
+    const props = {
+      planet: strategic,
+      intel,
+      reports: [],
+      now: NOW,
+      onClose: vi.fn(),
+      onAttack: vi.fn(),
+      onDeathStar: vi.fn(),
+      onInstallTelescope: vi.fn(),
+      onLaunched: vi.fn(),
+      open: true,
+      onToggle: vi.fn(),
+    };
+    const view = render(
+      <Wrapper>
+        <PlanetFocus
+          {...props}
+          target={target({
+            kind: 'NEUTRAL',
+            controller: { kind: 'NEUTRAL', tier: 1 },
+            state: { kind: 'NORMAL' },
+            neutral: {
+              tier: 1,
+              threat: 'UNGUARDED',
+              reserve: 'RICH',
+              claimUntil: new Date(NOW + 20 * 60_000),
+              nextReinforcementAt: null,
+            },
+          })}
+        />
+      </Wrapper>,
+    );
+    expect(screen.getByRole('button', { name: /death star/i })).toBeEnabled();
+    expect(screen.getByText(/death star clears this claim/i)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /raid again.*claim unchanged/i })).toBeEnabled();
+
+    view.rerender(
+      <Wrapper>
+        <PlanetFocus
+          {...props}
+          target={target({
+            kind: 'NEUTRAL',
+            controller: { kind: 'NEUTRAL', tier: 1 },
+            state: { kind: 'PROTECTED', until: new Date(NOW + 60_000) },
+          })}
+        />
+      </Wrapper>,
+    );
+    expect(screen.getByRole('button', { name: /death star.*target protected/i })).toBeDisabled();
+  });
+
+  it('offers a destructive Death Star strike against an uncapturable capital', () => {
+    const Wrapper = harness();
+    render(
+      <Wrapper>
+        <PlanetFocus
+          target={target({ kind: 'CAPITAL', state: { kind: 'NORMAL' } })}
+          planet={{ ...mine, strategic: {
+            id: 'asset-capital',
+            status: 'READY',
+            readyAt: null,
+            remainingSeconds: 0,
+          } }}
+          intel={intel}
+          reports={[]}
+          now={NOW}
+          onClose={vi.fn()}
+          onAttack={vi.fn()}
+          onDeathStar={vi.fn()}
+          onInstallTelescope={vi.fn()}
+          onLaunched={vi.fn()}
+          open
+          onToggle={vi.fn()}
+        />
+      </Wrapper>,
+    );
+    expect(screen.getByText(/uncapturable capital/i)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /death star.*devastate/i })).toBeEnabled();
+  });
+
+  it('explains that a recovering capital can be struck again but never captured', () => {
+    const Wrapper = harness();
+    render(
+      <Wrapper>
+        <PlanetFocus
+          target={target({
+            kind: 'CAPITAL',
+            state: { kind: 'RECOVERY', until: new Date(NOW + 5 * 60_000) },
+          })}
+          planet={{ ...mine, strategic: {
+            id: 'asset-capital-repeat',
+            status: 'READY',
+            readyAt: null,
+            remainingSeconds: 0,
+          } }}
+          intel={intel}
+          reports={[]}
+          now={NOW}
+          onClose={vi.fn()}
+          onAttack={vi.fn()}
+          onDeathStar={vi.fn()}
+          onInstallTelescope={vi.fn()}
+          onLaunched={vi.fn()}
+          open
+          onToggle={vi.fn()}
+        />
+      </Wrapper>,
+    );
+    expect(screen.getByText(/capital devastated.*uncapturable/i)).toBeInTheDocument();
+    expect(screen.getByText(/strike again.*control still cannot change/i)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /death star.*devastate/i })).toBeEnabled();
+  });
+
+  it('disables outbound commitments while the active world is recovering', () => {
+    const Wrapper = harness();
+    render(
+      <Wrapper>
+        <PlanetFocus
+          target={target()}
+          planet={{
+            ...mine,
+            planet: { ...mine.planet, recoveryUntil: new Date(NOW + 60_000) },
+          }}
+          intel={intel}
+          reports={[]}
+          now={NOW}
+          onClose={vi.fn()}
+          onAttack={vi.fn()}
+          onInstallTelescope={vi.fn()}
+          onLaunched={vi.fn()}
+          open
+          onToggle={vi.fn()}
+        />
+      </Wrapper>,
+    );
+    expect(screen.getByRole('button', { name: /attack.*origin recovering/i })).toBeDisabled();
+  });
+
+  it('keeps the Death Star route visible before a weapon is ready', () => {
+    const Wrapper = harness();
+    render(
+      <Wrapper>
+        <PlanetFocus
+          target={target({ kind: 'COLONY', state: { kind: 'NORMAL' } })}
+          planet={mine}
+          intel={intel}
+          reports={[]}
+          now={NOW}
+          onClose={vi.fn()}
+          onAttack={vi.fn()}
+          onDeathStar={vi.fn()}
+          onInstallTelescope={vi.fn()}
+          onLaunched={vi.fn()}
+          open
+          onToggle={vi.fn()}
+        />
+      </Wrapper>,
+    );
+    expect(screen.getByText(/strategic capture route/i)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /no death star ready/i })).toBeDisabled();
+  });
+
+  it('shows the whole neutral claim route and unmet founding cargo at the decision', () => {
+    const Wrapper = harness();
+    render(
+      <Wrapper>
+        <PlanetFocus
+          target={target({
+            kind: 'NEUTRAL',
+            controller: { kind: 'NEUTRAL', tier: 1 },
+            state: { kind: 'NORMAL' },
+            neutral: {
+              tier: 1,
+              threat: 'UNGUARDED',
+              reserve: 'RICH',
+              claimUntil: new Date(NOW + 20 * 60_000),
+              nextReinforcementAt: null,
+            },
+          })}
+          planet={{ ...mine, colonies: { highestCore: 4, colonies: 0, reservations: 0, capacity: 1 } }}
+          intel={intel}
+          reports={[]}
+          now={NOW}
+          onClose={vi.fn()}
+          onAttack={vi.fn()}
+          onSettle={vi.fn()}
+          onInstallTelescope={vi.fn()}
+          onLaunched={vi.fn()}
+          open
+          onToggle={vi.fn()}
+        />
+      </Wrapper>,
+    );
+    expect(screen.getByText(/claim window open/i)).toBeInTheDocument();
+    expect(screen.getByText(/win raid/i)).toBeInTheDocument();
+    expect(screen.getByText(/hauler founds/i)).toBeInTheDocument();
+    expect(screen.getByText('2 Haulers')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /settle.*hauler needed/i })).toBeDisabled();
+    expect(screen.getByText(/another raid is possible.*does not extend/i)).toBeInTheDocument();
+  });
+
+  it('names the first unmet settlement requirement on the disabled action', () => {
+    const Wrapper = harness();
+    const neutral = target({
+      kind: 'NEUTRAL',
+      controller: { kind: 'NEUTRAL', tier: 1 },
+      state: { kind: 'NORMAL' },
+      neutral: {
+        tier: 1,
+        threat: 'UNGUARDED',
+        reserve: 'RICH',
+        claimUntil: new Date(NOW + 20 * 60_000),
+        nextReinforcementAt: null,
+      },
+    });
+    const props = {
+      target: neutral,
+      intel,
+      reports: [],
+      now: NOW,
+      onClose: vi.fn(),
+      onAttack: vi.fn(),
+      onSettle: vi.fn(),
+      onInstallTelescope: vi.fn(),
+      onLaunched: vi.fn(),
+      open: true,
+      onToggle: vi.fn(),
+    };
+    const view = render(
+      <Wrapper>
+        <PlanetFocus
+          {...props}
+          planet={{
+            ...mine,
+            fleet: { ...mine.fleet, HAULER: 1 },
+            colonies: { highestCore: 4, colonies: 1, reservations: 0, capacity: 1 },
+          }}
+        />
+      </Wrapper>,
+    );
+    expect(screen.getByRole('button', { name: /settle.*colony slot full/i })).toBeDisabled();
+
+    view.rerender(
+      <Wrapper>
+        <PlanetFocus
+          {...props}
+          planet={{
+            ...mine,
+            fleet: { ...mine.fleet, HAULER: 1 },
+            colonies: { highestCore: 4, colonies: 0, reservations: 0, capacity: 1 },
+            flight: { used: 1, total: 1 },
+          }}
+        />
+      </Wrapper>,
+    );
+    expect(screen.getByRole('button', { name: /settle.*flight bays full/i })).toBeDisabled();
+  });
+
+  it('shows founding requirements before the raid, so the claim cannot reveal a surprise cost', () => {
+    const Wrapper = harness();
+    render(
+      <Wrapper>
+        <PlanetFocus
+          target={target({
+            kind: 'NEUTRAL',
+            controller: { kind: 'NEUTRAL', tier: 1 },
+            state: { kind: 'NORMAL' },
+            neutral: {
+              tier: 1,
+              threat: 'UNGUARDED',
+              reserve: 'RICH',
+              claimUntil: null,
+              nextReinforcementAt: null,
+            },
+          })}
+          planet={{ ...mine, colonies: { highestCore: 4, colonies: 0, reservations: 0, capacity: 1 } }}
+          intel={intel}
+          reports={[]}
+          now={NOW}
+          onClose={vi.fn()}
+          onAttack={vi.fn()}
+          onSettle={vi.fn()}
+          onInstallTelescope={vi.fn()}
+          onLaunched={vi.fn()}
+          open
+          onToggle={vi.fn()}
+        />
+      </Wrapper>,
+    );
+    expect(screen.getByText(/route to a colony/i)).toBeInTheDocument();
+    expect(screen.getByText('2 Haulers')).toBeInTheDocument();
+    expect(document.querySelectorAll('img[src*="/resources/"]').length).toBeGreaterThanOrEqual(2);
+    expect(screen.getByText(compact(MULTI_WORLD.settlement.cost.crystal))).toBeInTheDocument();
   });
 });

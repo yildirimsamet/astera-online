@@ -166,7 +166,7 @@ function Preview() {
               <span className="text-bone">
                 <HullMark hull={h} className="size-11" />
               </span>
-              <span className="text-[8px] text-faint">{h}</span>
+              <span className="text-[9px] text-faint">{h}</span>
             </div>
           ))}
         </Plate>

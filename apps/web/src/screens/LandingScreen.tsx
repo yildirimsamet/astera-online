@@ -16,8 +16,8 @@ import { commanderKnownHere } from '../lib/returning.js';
  *
  * One screen with three jobs, in this order:
  *
- *   1. STATE THE PREMISE. "You own one planet in a galaxy of fifty real people. You
- *      cannot see what they hold." Somebody who reads nothing else must still know
+ *   1. STATE THE PREMISE. You command a protected capital, can win colonies, and
+ *      cannot see what rivals hold. Somebody who reads nothing else must still know
  *      what kind of game this is.
  *   2. SHOW THAT SOMEBODY IS IN THERE. `KNOWN RISKS` puts the empty shard second on
  *      the project's list, and the front page is where a visitor decides whether
@@ -454,7 +454,7 @@ function AuthDialog({
       <button
         type="button"
         aria-label={t('landing.form.close')}
-        className="absolute inset-0 bg-void/70 backdrop-blur-sm"
+        className="absolute inset-0 bg-void/70"
         onClick={onClose}
       />
 

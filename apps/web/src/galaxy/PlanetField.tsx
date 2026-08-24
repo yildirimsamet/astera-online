@@ -3,8 +3,11 @@ import { useFrame, useLoader, useThree, type ThreeEvent } from '@react-three/fib
 import * as THREE from 'three';
 import { planetArt } from '../ui/assets.js';
 import { limbTexture, softGlow } from './Environment.jsx';
-import { STANCE_LIGHT, type PlanetNode } from './scene.js';
+import { fireTexture, smokeTexture } from './vfx.js';
+import { STANCE_LIGHT, isRivalNode, type PlanetNode } from './scene.js';
 import { markHit, wasTap } from './tap.js';
+import { useReducedMotionPreference } from './motion.js';
+import { serverNow } from '../lib/clock.js';
 
 /**
  * Every world in the disc, in sixteen draw calls.
@@ -34,10 +37,14 @@ interface Group {
 export function PlanetField({
   nodes,
   selectedId,
+  rivalPlanetId,
+  rivalPlayerId,
   onSelect,
 }: {
   nodes: readonly PlanetNode[];
   selectedId: string | null;
+  rivalPlanetId: string | null;
+  rivalPlayerId: string | null;
   onSelect: (id: string) => void;
 }) {
   // One bucket per distinct render, so each bucket can be a single instanced draw.
@@ -58,8 +65,118 @@ export function PlanetField({
         <PlanetInstances key={group.texture} group={group} onSelect={onSelect} />
       ))}
       <Atmospheres nodes={nodes} />
-      <Highlights nodes={nodes} selectedId={selectedId} />
+      <RecoveryScars nodes={nodes} />
+      <Highlights
+        nodes={nodes}
+        selectedId={selectedId}
+        rivalPlanetId={rivalPlanetId}
+        rivalPlayerId={rivalPlayerId}
+      />
     </>
+  );
+}
+
+/** Six hours of strategic damage must remain visible for the whole galaxy. */
+function RecoveryScars({ nodes }: { nodes: readonly PlanetNode[] }) {
+  const damaged = nodes.filter((node) => node.state?.kind === 'RECOVERY');
+  return <>{damaged.map((node) => <RecoveryScar key={node.id} node={node} />)}</>;
+}
+
+function seededUnit(text: string, index: number): number {
+  let value = 2166136261 ^ index;
+  for (let i = 0; i < text.length; i++) value = Math.imul(value ^ text.charCodeAt(i), 16777619);
+  value = Math.imul(value ^ (value >>> 16), 0x85ebca6b);
+  return ((value ^ (value >>> 13)) >>> 0) / 0x1_0000_0000;
+}
+
+function RecoveryScar({ node }: { node: PlanetNode }) {
+  const root = useRef<THREE.Group>(null);
+  const smokeSprites = useRef<(THREE.Sprite | null)[]>([]);
+  const emberSprites = useRef<(THREE.Sprite | null)[]>([]);
+  const camera = useThree((state) => state.camera);
+  const smoke = useMemo(smokeTexture, []);
+  const fire = useMemo(fireTexture, []);
+  const cracks = useMemo(() => {
+    const points: number[] = [];
+    for (let ray = 0; ray < 7; ray++) {
+      const angle = seededUnit(node.id, ray) * Math.PI * 2;
+      let x = (seededUnit(node.id, ray + 20) - 0.5) * 0.12;
+      let y = (seededUnit(node.id, ray + 40) - 0.5) * 0.12;
+      for (let segment = 1; segment <= 3; segment++) {
+        const distance = 0.2 + segment * (0.17 + seededUnit(node.id, ray * 7 + segment) * 0.05);
+        const nx = Math.cos(angle + (seededUnit(node.id, ray * 11 + segment) - 0.5) * 0.32) * distance;
+        const ny = Math.sin(angle + (seededUnit(node.id, ray * 13 + segment) - 0.5) * 0.32) * distance;
+        points.push(x, y, 0, nx, ny, 0);
+        x = nx;
+        y = ny;
+      }
+    }
+    return new Float32Array(points);
+  }, [node.id]);
+
+  useFrame(({ clock }) => {
+    root.current?.quaternion.copy(camera.quaternion);
+    const time = clock.elapsedTime;
+    smokeSprites.current.forEach((sprite, i) => {
+      if (!sprite) return;
+      const phase = (seededUnit(node.id, i + 70) + time * (0.035 + i * 0.0015)) % 1;
+      const side = (seededUnit(node.id, i + 90) - 0.5) * node.radius * 0.7;
+      sprite.position.set(
+        side + Math.sin(time * 0.7 + i) * node.radius * 0.06,
+        node.radius * (0.15 + phase * 2.15),
+        0.04,
+      );
+      const size = node.radius * (0.38 + phase * 0.95);
+      sprite.scale.set(size, size, 1);
+      sprite.material.opacity = Math.sin(phase * Math.PI) * 0.3;
+      sprite.material.rotation = time * (i % 2 === 0 ? 0.045 : -0.04) + i;
+    });
+    emberSprites.current.forEach((sprite, i) => {
+      if (!sprite) return;
+      const pulse = 0.5 + Math.sin(time * (3.4 + i * 0.37) + i * 1.9) * 0.5;
+      sprite.material.opacity = 0.2 + pulse * 0.52;
+      const size = node.radius * (0.13 + pulse * 0.08);
+      sprite.scale.set(size, size, 1);
+    });
+  });
+
+  return (
+    <group ref={root} position={node.position} name={`recovery-scar-${node.id}`}>
+      <mesh position={[0, 0, 0.025]} renderOrder={3}>
+        <circleGeometry args={[node.radius * 0.93, 48]} />
+        <meshBasicMaterial color="#140406" transparent opacity={0.27} depthWrite={false} />
+      </mesh>
+      <lineSegments position={[0, 0, 0.04]} scale={node.radius} renderOrder={5}>
+        <bufferGeometry>
+          <bufferAttribute attach="attributes-position" args={[cracks, 3]} />
+        </bufferGeometry>
+        <lineBasicMaterial color="#ff6a32" transparent opacity={0.9} depthWrite={false} />
+      </lineSegments>
+      {[0, 1, 2, 3, 4].map((i) => (
+        <sprite
+          key={`ember-${String(i)}`}
+          ref={(sprite) => { emberSprites.current[i] = sprite; }}
+          position={[
+            (seededUnit(node.id, i + 110) - 0.5) * node.radius * 1.15,
+            (seededUnit(node.id, i + 130) - 0.5) * node.radius * 1.05,
+            0.05,
+          ]}
+          renderOrder={6}
+        >
+          <spriteMaterial map={fire} transparent depthWrite={false} blending={THREE.AdditiveBlending} />
+        </sprite>
+      ))}
+      {[0, 1, 2, 3, 4, 5].map((i) => (
+        <sprite
+          key={`smoke-${String(i)}`}
+          ref={(sprite) => { smokeSprites.current[i] = sprite; }}
+          renderOrder={4}
+        >
+          <spriteMaterial map={smoke} color="#5d3033" transparent depthWrite={false} />
+        </sprite>
+      ))}
+      <pointLight color="#ff351f" intensity={1.6} distance={node.radius * 3.5} decay={2} />
+    </group>
   );
 }
 
@@ -84,7 +201,7 @@ export function PlanetField({
  * as a halo it would drown that. It is warm, faint, tight to the silhouette, and it
  * never changes with focus.
  */
-export const LIMB_SCALE = 1.16;
+export const LIMB_SCALE = 1.1;
 
 /**
  * A breath so slow it is under conscious notice, and the reason it exists at all
@@ -96,7 +213,7 @@ const LIMB_BREATH_RATE = 0.35;
 const LIMB_BREATH_DEPTH = 0.015;
 
 /** Scattered light, not white: an atmosphere lit by a warm key reads warm. */
-export const LIMB_TINT = { r: 1, g: 0.83, b: 0.64 };
+export const LIMB_TINT = { r: 1, g: 0.72, b: 0.42 };
 
 function Atmospheres({ nodes }: { nodes: readonly PlanetNode[] }) {
   const ref = useRef<THREE.InstancedMesh>(null);
@@ -104,6 +221,7 @@ function Atmospheres({ nodes }: { nodes: readonly PlanetNode[] }) {
   const texture = useMemo(() => limbTexture(), []);
   const tint = useMemo(() => new THREE.Color(), []);
   const count = nodes.length;
+  const reducedMotion = useReducedMotionPreference();
 
   /**
    * IGNORANCE IS DARK HERE TOO.
@@ -132,7 +250,9 @@ function Atmospheres({ nodes }: { nodes: readonly PlanetNode[] }) {
       UP.position.set(node.position[0], node.position[1], node.position[2]);
       UP.quaternion.copy(camera.quaternion);
       // Phase off the world's own x so the field never settles into one rhythm.
-      const breath = 1 + Math.sin(t * LIMB_BREATH_RATE + node.position[0]) * LIMB_BREATH_DEPTH;
+      const breath = reducedMotion
+        ? 1
+        : 1 + Math.sin(t * LIMB_BREATH_RATE + node.position[0]) * LIMB_BREATH_DEPTH;
       UP.scale.setScalar(node.radius * 2 * LIMB_SCALE * breath);
       UP.updateMatrix();
       mesh.setMatrixAt(i, UP.matrix);
@@ -174,13 +294,15 @@ function Atmospheres({ nodes }: { nodes: readonly PlanetNode[] }) {
         depthWrite={false}
         blending={THREE.AdditiveBlending}
         toneMapped={false}
-        opacity={0.62}
+        opacity={0.4}
       />
     </instancedMesh>
   );
 }
 
 const UP = new THREE.Object3D();
+/** The axis a cone is spun about to point it down at the world it names. */
+const FORWARD = new THREE.Vector3(0, 0, 1);
 
 function PlanetInstances({ group, onSelect }: { group: Group; onSelect: (id: string) => void }) {
   const texture = useLoader(THREE.TextureLoader, group.texture);
@@ -284,8 +406,9 @@ function PlanetInstances({ group, onSelect }: { group: Group; onSelect: (id: str
        * The bounding sphere computed above makes culling correct, but each texture
        * group spans the whole disc, so a group is either entirely on screen or
        * entirely off it — and "entirely off" was being decided by a sphere that a
-       * grazing frustum could miss. With at most fifty planets in sixteen draw
-       * calls there is nothing to win by culling them, and everything to lose.
+       * grazing frustum could miss. Even at 351 worlds these remain sixteen
+       * instanced draw groups; culling a whole scattered group wins almost
+       * nothing and can hide selectable worlds.
        */
       frustumCulled={false}
     >
@@ -323,19 +446,45 @@ function PlanetInstances({ group, onSelect }: { group: Group; onSelect: (id: str
 function Highlights({
   nodes,
   selectedId,
+  rivalPlanetId,
+  rivalPlayerId,
 }: {
   nodes: readonly PlanetNode[];
   selectedId: string | null;
+  rivalPlanetId: string | null;
+  rivalPlayerId: string | null;
 }) {
   const camera = useThree((state) => state.camera);
+  const viewportHeight = useThree((state) => state.size.height);
   const marked = nodes.filter(
-    (node) => node.id === selectedId || node.stance === 'self' || node.stance === 'window',
+    (node) => node.id === selectedId
+      || node.isOwned
+      || node.stance === 'window'
+      || isRivalNode(node, rivalPlanetId, rivalPlayerId)
+      || node.state?.kind === 'RECOVERY'
+      || Boolean(node.claimUntil && node.claimUntil.getTime() > serverNow()),
   );
+
+  /**
+   * Everything that is not yours carries a pin: grey for neutral, orange for
+   * another commander. `Ring` still owns the worlds it already marked.
+   */
+  const pinned = useMemo(() => nodes.filter((node) => !node.isOwned), [nodes]);
 
   return (
     <>
+      <Pins nodes={pinned} />
       {marked.map((node) => (
-        <Ring key={node.id} node={node} camera={camera} selected={node.id === selectedId} />
+        <Ring
+          key={node.id}
+          node={node}
+          camera={camera}
+          viewportHeight={viewportHeight}
+          selected={node.id === selectedId}
+          rival={isRivalNode(node, rivalPlanetId, rivalPlayerId)}
+          claim={Boolean(node.claimUntil && node.claimUntil.getTime() > serverNow())}
+          recovering={node.state?.kind === 'RECOVERY'}
+        />
       ))}
     </>
   );
@@ -353,6 +502,104 @@ const MARK_COLOUR = { self: '#8fd6ea', window: '#5ad39b', other: '#e8e3d6' } as 
  * would be the hardest thing on screen to find. Pinned in `planet-visuals.test`.
  */
 export const SELECTION_RING = 1.34;
+export const MIN_MARKER_PX = 18;
+
+export function markerScale(
+  distance: number,
+  radius: number,
+  viewportHeight: number,
+  verticalFov: number,
+): number {
+  if (radius <= 0 || viewportHeight <= 0 || distance <= 0) return 1;
+  const visibleHeight = 2 * distance * Math.tan((verticalFov * Math.PI) / 360);
+  const wanted = (visibleHeight * MIN_MARKER_PX) / viewportHeight;
+  return Math.min(4, Math.max(1, wanted / (radius * SELECTION_RING * 2)));
+}
+
+/** Grey for a world nobody holds, orange for a world somebody else does. */
+export const PIN_COLOUR = { neutral: '#9aa6b2', rival: '#ff8a3d' } as const;
+
+/**
+ * Which pin a world wears. Public facts only: `kind` already decides the
+ * silhouette the disc draws, so naming it in a colour leaks nothing.
+ */
+export const pinColour = (kind: PlanetNode['kind']): string =>
+  kind === 'NEUTRAL' ? PIN_COLOUR.neutral : PIN_COLOUR.rival;
+
+/**
+ * A PIN ON EVERY WORLD THAT IS NOT YOURS.
+ *
+ * `Ring` marks a handful of worlds — the one you tapped, the ones you own, the ones
+ * a telescope is holding open. Most of the disc carries nothing, which is correct
+ * for a fog game but leaves a player unable to tell a neutral farm from a
+ * commander's capital without tapping each one. These say which is which, publicly
+ * and permanently: both facts are already on the map (`kind` decides the
+ * silhouette) so nothing here leaks.
+ *
+ * INSTANCED, BECAUSE THERE ARE THREE HUNDRED OF THEM. The worlds themselves are one
+ * `InstancedMesh` per texture group for exactly this reason; a per-planet mesh here
+ * would quietly make the pins the largest source of draw calls in the scene.
+ *
+ * IT SCALES THE WAY `Ring`'s MARKER DOES, through the same `markerScale`: a pin
+ * holds a floor of `MIN_MARKER_PX` on screen and is capped at 4x, so zooming out
+ * shrinks the pins with the disc instead of filling the screen with them.
+ */
+function Pins({ nodes }: { nodes: readonly PlanetNode[] }) {
+  const ref = useRef<THREE.InstancedMesh>(null);
+  const camera = useThree((state) => state.camera);
+  const viewportHeight = useThree((state) => state.size.height);
+  const tint = useMemo(() => new THREE.Color(), []);
+  const spin = useMemo(() => new THREE.Quaternion().setFromAxisAngle(FORWARD, Math.PI), []);
+  const facing = useMemo(() => new THREE.Quaternion(), []);
+  const offset = useMemo(() => new THREE.Vector3(), []);
+  const centre = useMemo(() => new THREE.Vector3(), []);
+
+  useLayoutEffect(() => {
+    const mesh = ref.current;
+    if (!mesh) return;
+    nodes.forEach((node, i) => {
+      mesh.setColorAt(i, tint.set(pinColour(node.kind)));
+    });
+    if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
+    if (!Array.isArray(mesh.material)) mesh.material.needsUpdate = true;
+  }, [nodes, tint]);
+
+  useFrame(() => {
+    const mesh = ref.current;
+    if (!mesh || !(camera instanceof THREE.PerspectiveCamera)) return;
+    facing.copy(camera.quaternion).multiply(spin);
+
+    nodes.forEach((node, i) => {
+      centre.set(node.position[0], node.position[1], node.position[2]);
+      const scale = markerScale(camera.position.distanceTo(centre), node.radius, viewportHeight, camera.fov);
+      // The pin stands off along the camera's own up axis, so it sits above the
+      // world from wherever it is being looked at — the billboard `Ring` gets from
+      // copying the camera quaternion onto a group.
+      offset.set(0, node.radius * SELECTION_RING * scale, 0).applyQuaternion(camera.quaternion);
+      UP.position.copy(centre).add(offset);
+      UP.quaternion.copy(facing);
+      UP.scale.setScalar(node.radius * scale);
+      UP.updateMatrix();
+      mesh.setMatrixAt(i, UP.matrix);
+    });
+    mesh.instanceMatrix.needsUpdate = true;
+  });
+
+  if (nodes.length === 0) return null;
+  return (
+    <instancedMesh
+      ref={ref}
+      args={[undefined, undefined, nodes.length]}
+      // The instances move with the camera every frame, so a bounding sphere
+      // computed from them is stale the moment it is written. These are tiny and
+      // there are a few hundred; drawing them all beats culling them wrongly.
+      frustumCulled={false}
+    >
+      <coneGeometry args={[0.13, 0.2, 3]} />
+      <meshBasicMaterial transparent opacity={0.85} depthWrite={false} />
+    </instancedMesh>
+  );
+}
 
 /**
  * "This one is mine."
@@ -369,19 +616,43 @@ export const SELECTION_RING = 1.34;
 function Ring({
   node,
   camera,
+  viewportHeight,
   selected,
+  rival,
+  claim,
+  recovering,
 }: {
   node: PlanetNode;
   camera: THREE.Camera;
+  viewportHeight: number;
   selected: boolean;
+  rival: boolean;
+  claim: boolean;
+  recovering: boolean;
 }) {
   const ref = useRef<THREE.Group>(null);
+  const markerRef = useRef<THREE.Group>(null);
+  const markerWorld = useMemo(() => new THREE.Vector3(), []);
   useFrame(() => {
     ref.current?.quaternion.copy(camera.quaternion);
+    if (!markerRef.current || !(camera instanceof THREE.PerspectiveCamera)) return;
+    const scale = markerScale(
+      camera.position.distanceTo(markerRef.current.getWorldPosition(markerWorld)),
+      node.radius,
+      viewportHeight,
+      camera.fov,
+    );
+    markerRef.current.scale.setScalar(scale);
   });
 
   const colour =
-    node.stance === 'self'
+    rival
+      ? '#ff6b43'
+      : recovering
+        ? '#ff405b'
+        : claim
+          ? '#5ad39b'
+      : node.stance === 'self'
       ? MARK_COLOUR.self
       : node.stance === 'window'
         ? MARK_COLOUR.window
@@ -410,11 +681,60 @@ function Ring({
         <meshBasicMaterial color={colour} transparent opacity={0.9} depthWrite={false} />
       </mesh>
 
+      <group ref={markerRef}>
       {/* The chevron: a map pin, pointing at the thing it names. */}
-      <mesh position={[0, node.radius * SELECTION_RING, 0]} rotation={[0, 0, Math.PI]}>
-        <coneGeometry args={[node.radius * 0.13, node.radius * 0.2, 3]} />
-        <meshBasicMaterial color={colour} transparent opacity={0.95} depthWrite={false} />
-      </mesh>
+      {node.isOwned && (
+        node.isCapital ? (
+          <group position={[0, node.radius * SELECTION_RING, 0]}>
+            <mesh rotation={[0, 0, Math.PI / 4]}>
+              <planeGeometry args={[node.radius * 0.22, node.radius * 0.22]} />
+              <meshBasicMaterial color={colour} transparent opacity={0.98} depthWrite={false} />
+            </mesh>
+            <mesh position={[0, node.radius * 0.2, 0]} rotation={[0, 0, Math.PI / 4]}>
+              <planeGeometry args={[node.radius * 0.1, node.radius * 0.1]} />
+              <meshBasicMaterial color={colour} transparent opacity={0.65} depthWrite={false} />
+            </mesh>
+          </group>
+        ) : (
+          <mesh position={[0, node.radius * SELECTION_RING, 0]} rotation={[0, 0, Math.PI]}>
+            <coneGeometry args={[node.radius * 0.13, node.radius * 0.2, 3]} />
+            <meshBasicMaterial color={colour} transparent opacity={0.95} depthWrite={false} />
+          </mesh>
+        )
+      )}
+
+      {rival && (
+        <group>
+          <mesh>
+            <ringGeometry args={[node.radius * 1.48, node.radius * 1.53, 64]} />
+            <meshBasicMaterial color={colour} transparent opacity={0.82} depthWrite={false} />
+          </mesh>
+          {[0, 1, 2, 3].map((quarter) => (
+            <mesh
+              key={quarter}
+              rotation={[0, 0, quarter * Math.PI / 2]}
+              position={[
+                Math.sin(quarter * Math.PI / 2) * node.radius * 1.5,
+                Math.cos(quarter * Math.PI / 2) * node.radius * 1.5,
+                0.01,
+              ]}
+            >
+              <planeGeometry args={[node.radius * 0.06, node.radius * 0.34]} />
+              <meshBasicMaterial color={colour} transparent opacity={0.95} depthWrite={false} />
+            </mesh>
+          ))}
+        </group>
+      )}
+
+      {claim && (
+        <group position={[0, node.radius * 1.58, 0]}>
+          <mesh rotation={[0, 0, Math.PI / 4]}>
+            <ringGeometry args={[node.radius * 0.13, node.radius * 0.2, 4]} />
+            <meshBasicMaterial color="#5ad39b" transparent opacity={0.98} depthWrite={false} />
+          </mesh>
+          <pointLight color="#5ad39b" intensity={0.8} distance={node.radius * 3} decay={2} />
+        </group>
+      )}
 
       {selected && (
         <mesh>
@@ -422,6 +742,7 @@ function Ring({
           <meshBasicMaterial color={colour} transparent opacity={0.55} depthWrite={false} />
         </mesh>
       )}
+      </group>
     </group>
   );
 }

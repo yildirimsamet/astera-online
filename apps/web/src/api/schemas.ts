@@ -1,11 +1,14 @@
 import { z } from 'zod';
 import type {
+  BuildQueueId,
   BuildingId,
   ClarityState,
   FleetStatus,
   Grade,
   HullId,
   InstrumentId,
+  ResearchProjectId,
+  Resources,
   SatelliteId,
 } from '@astera/rules';
 
@@ -21,7 +24,8 @@ import type {
 type Exact<A, B> = [A] extends [B] ? ([B] extends [A] ? true : never) : never;
 
 export const hullId = z.enum([
-  'WASP', 'LANCE', 'BULWARK', 'HAULER', 'BASTION', 'THORN', 'PROSPECTOR',
+  'WASP', 'LANCE', 'BULWARK', 'HAULER', 'RUNNER', 'BREACHER',
+  'BASTION', 'THORN', 'PROSPECTOR',
 ]);
 export const buildingId = z.enum(['CORE', 'REFINERY', 'EXTRACTOR', 'VAULT', 'SHIPYARD']);
 /**
@@ -36,6 +40,9 @@ export const satelliteId = z.enum(['FOUNDRY', 'UPLINK', 'DERRICK', 'BEACON']);
 export const fleetStatus = z.enum(['HOME', 'AWAY', 'UNKNOWN']);
 export const clarityState = z.enum(['FULL', 'CLEAR', 'INTERMITTENT', 'DEGRADED', 'BLIND']);
 export const grade = z.enum(['DECISIVE', 'PARTIAL', 'REPELLED']);
+export const researchProjectId = z.enum([
+  'ISOTOPE_SPECTROMETRY', 'DENSE_FUEL_CELLS', 'GRAVITIC_CHARGES', 'DEATH_STAR_PROTOCOL',
+]);
 
 // If any of these stop compiling, the rules changed and this file has not.
 const _hull: Exact<z.infer<typeof hullId>, HullId> = true;
@@ -45,12 +52,59 @@ const _satellite: Exact<z.infer<typeof satelliteId>, SatelliteId> = true;
 const _status: Exact<z.infer<typeof fleetStatus>, FleetStatus> = true;
 const _clarity: Exact<z.infer<typeof clarityState>, ClarityState> = true;
 const _grade: Exact<z.infer<typeof grade>, Grade> = true;
-void [_hull, _building, _instrument, _satellite, _status, _clarity, _grade];
+const _research: Exact<z.infer<typeof researchProjectId>, ResearchProjectId> = true;
+void [_hull, _building, _instrument, _satellite, _status, _clarity, _grade, _research];
 
 const fleet = z.record(hullId, z.number());
 const vec3 = z.object({ x: z.number(), y: z.number(), z: z.number() });
-const resources = z.object({ alloy: z.number(), crystal: z.number() });
+const resources = z.object({ alloy: z.number(), crystal: z.number(), deuterium: z.number() });
 const band = z.object({ low: z.number(), high: z.number() });
+
+const timedConstructionOrder = z.object({
+  id: z.string(),
+  queue: z.literal('CONSTRUCTION'),
+  slot: z.number().int().min(0),
+  kind: z.enum(['BUILDING', 'INSTRUMENT', 'SATELLITE', 'RESEARCH']),
+  subject: z.string(),
+  count: z.number().int().min(1),
+  startedAt: z.coerce.date(),
+  finishesAt: z.coerce.date(),
+  cost: resources,
+});
+
+const timedYardOrder = z.object({
+  id: z.string(),
+  queue: z.literal('YARD'),
+  slot: z.number().int().min(0),
+  kind: z.literal('HULL'),
+  subject: z.string(),
+  count: z.number().int().min(1),
+  startedAt: z.coerce.date(),
+  finishesAt: z.coerce.date(),
+  cost: resources,
+});
+
+/**
+ * A pre-account rehearsal can stage a commitment but cannot name its server time.
+ * The explicit discriminator keeps ordinary API payloads on the timed branch.
+ */
+const stagedConstructionOrder = timedConstructionOrder.omit({
+  startedAt: true,
+  finishesAt: true,
+}).extend({
+  staged: z.literal(true),
+  startedAt: z.undefined().optional(),
+  finishesAt: z.undefined().optional(),
+});
+
+const stagedYardOrder = timedYardOrder.omit({
+  startedAt: true,
+  finishesAt: true,
+}).extend({
+  staged: z.literal(true),
+  startedAt: z.undefined().optional(),
+  finishesAt: z.undefined().optional(),
+});
 
 /* ── identity ───────────────────────────────────────────────── */
 
@@ -69,6 +123,33 @@ export const sessionSchema = z.object({
  * to their galaxy, one without goes to the server list. Asking twice would show
  * the wrong screen for a frame.
  */
+export const seasonResultSchema = z.object({
+  seasonId: z.string(),
+  accountId: z.string(),
+  finalRank: z.number(),
+  dominion: z.number(),
+  damageDealt: z.number(),
+  damageTaken: z.number(),
+  rivalName: z.string().nullable(),
+  biggestRaid: z.number(),
+  title: z.string(),
+  recap: z.object({
+    commanderName: z.string(),
+    planetName: z.string(),
+    battles: z.number(),
+    attacks: z.number(),
+    defences: z.number(),
+    rival: z.object({ commanderName: z.string(), battles: z.number() }).nullable(),
+    biggestRaid: z.object({ value: z.number(), opponentName: z.string() }).nullable(),
+  }),
+  createdAt: z.coerce.date(),
+});
+
+export const historicalSeasonResultSchema = seasonResultSchema.extend({
+  shard: z.string(),
+  shardName: z.string(),
+});
+
 export const meSchema = z.object({
   accountId: z.string(),
   username: z.string(),
@@ -76,6 +157,8 @@ export const meSchema = z.object({
   placement: z
     .object({ shard: z.string(), shardName: z.string(), planetName: z.string() })
     .nullable(),
+  /** Added after D85; an older server still opens a session without it. */
+  latestResult: historicalSeasonResultSchema.nullable().optional(),
 });
 
 /* ── the galaxies you can choose between ────────────────────── */
@@ -130,6 +213,16 @@ export const seasonSchema = z.object({
    * rule every added field follows here.
    */
   online: z.number().optional(),
+  result: seasonResultSchema.nullable().optional(),
+  /** One seasonal identity marker; optional only for rolling-deploy compatibility. D91. */
+  rivalPlanetId: z.string().nullable().optional(),
+  /** Stable commander identity, so every world they control wears the same mark. */
+  rivalPlayerId: z.string().nullable().optional(),
+});
+
+export const rivalSetSchema = z.object({
+  rivalPlanetId: z.string().nullable(),
+  rivalPlayerId: z.string().nullable().optional(),
 });
 
 /* ── your planet ────────────────────────────────────────────── */
@@ -138,11 +231,14 @@ export const planetSchema = z.object({
   planet: z.object({
     id: z.string(),
     name: z.string(),
+    kind: z.enum(['CAPITAL', 'COLONY']).optional(),
     position: vec3,
     alloy: z.number(),
     crystal: z.number(),
+    deuterium: z.number(),
     alloyCap: z.number(),
     crystalCap: z.number(),
+    deuteriumCap: z.number(),
     alloyPerHour: z.number(),
     crystalPerHour: z.number(),
     /**
@@ -154,16 +250,25 @@ export const planetSchema = z.object({
      */
     bufferAlloy: z.number(),
     bufferCrystal: z.number(),
+    bufferDeuterium: z.number(),
     bufferAlloyCap: z.number(),
     bufferCrystalCap: z.number(),
+    bufferDeuteriumCap: z.number(),
     vaultFloor: z.number(),
+    vaultProtected: resources,
+    vaultCapacity: resources,
     shield: z.number(),
+    shieldMax: z.number(),
+    shieldPerHour: z.number(),
     disruptedUntil: z.coerce.date().nullable(),
+    recoveryUntil: z.coerce.date().nullable().optional(),
+    protectedUntil: z.coerce.date().nullable().optional(),
   }),
   buildings: z.record(buildingId, z.number()),
   nextCosts: z.record(buildingId, resources),
   /** The four on the ground, with their levels. D25. */
   instruments: z.record(instrumentId, z.number()),
+  effectiveInstruments: z.record(instrumentId, z.number()).optional(),
   /**
    * What the next level of each instrument costs, priced by the server.
    *
@@ -180,9 +285,47 @@ export const planetSchema = z.object({
    * is what the Command Core has opened — 1, 2, 3 or 4.
    */
   orbit: z.array(satelliteId),
+  effectiveOrbit: z.array(satelliteId).optional(),
   orbitSlots: z.number(),
   /** Flat, because a satellite is bought once and never raised. */
   satelliteCosts: z.record(satelliteId, resources),
+  research: z.array(z.object({
+    id: researchProjectId,
+    cost: resources,
+    discovered: z.boolean(),
+    completed: z.boolean(),
+    completedAt: z.coerce.date().nullable(),
+    available: z.boolean(),
+    /** Gates projected through earlier Construction orders; absent on an older server. */
+    queueDiscovered: z.boolean().optional(),
+    queueAvailable: z.boolean().optional(),
+    availableAt: z.coerce.date(),
+    prerequisite: researchProjectId.nullable(),
+  })),
+  /**
+   * Work already paid for, in the order the server will finish it.
+   *
+   * Optional for rolling deploys: an older server simply means an empty-looking
+   * queue, while a new server can still serve an older cached client. Completion
+   * is an absolute instant; the client derives every countdown from the shared
+   * server clock rather than accepting a second, inevitably stale duration.
+   */
+  queues: z.object({
+    CONSTRUCTION: z.array(z.union([timedConstructionOrder, stagedConstructionOrder])),
+    YARD: z.array(z.union([timedYardOrder, stagedYardOrder])),
+  }).optional(),
+  strategic: z.object({
+    id: z.string(),
+    status: z.enum(['BUILDING', 'PAUSED', 'READY']),
+    readyAt: z.coerce.date().nullable(),
+    remainingSeconds: z.number().nullable(),
+  }).nullable().optional(),
+  colonies: z.object({
+    highestCore: z.number(),
+    colonies: z.number(),
+    reservations: z.number(),
+    capacity: z.number(),
+  }).optional(),
   fleet,
   ground: fleet,
   /** Your own craft that are off the planet right now. Ownership, not readiness. */
@@ -190,6 +333,13 @@ export const planetSchema = z.object({
   /** Craft in the air, and how many bays the Command Core has opened. D28. */
   flight: z.object({ used: z.number(), total: z.number() }),
   score: z.object({ wealth: z.number(), dominion: z.number() }),
+});
+
+export const planetsSchema = z.object({
+  playerId: z.string(),
+  seasonId: z.string(),
+  capitalPlanetId: z.string(),
+  planets: z.array(planetSchema),
 });
 
 /**
@@ -223,6 +373,11 @@ export const buildSchema = z.object({
   ...withPlanet,
 });
 
+export const researchCompleteSchema = z.object({
+  projectId: researchProjectId,
+  ...withPlanet,
+});
+
 /** Raising one of the four on the ground. D25. */
 export const instrumentRaiseSchema = z.object({
   type: instrumentId,
@@ -234,6 +389,12 @@ export const instrumentRaiseSchema = z.object({
 export const satelliteInstallSchema = z.object({
   type: satelliteId,
   slot: z.number(),
+  ...withPlanet,
+});
+
+export const buildCancelSchema = z.object({
+  orderId: z.string(),
+  refund: resources,
   ...withPlanet,
 });
 
@@ -287,12 +448,22 @@ export const rewardClaimSchema = z.object({
 /* ── the galaxy, at the tier of detail you have earned ──────── */
 
 export const galaxySchema = z.object({
-  you: z.object({ planetId: z.string(), playerId: z.string() }),
+  you: z.object({
+    planetId: z.string(),
+    playerId: z.string(),
+    capitalPlanetId: z.string().optional(),
+    planetIds: z.array(z.string()).optional(),
+  }),
   planets: z.array(
     z.object({
       id: z.string(),
       name: z.string(),
       owner: z.string(),
+      kind: z.enum(['CAPITAL', 'COLONY', 'NEUTRAL']).optional(),
+      controller: z.discriminatedUnion('kind', [
+        z.object({ kind: z.literal('PLAYER'), playerId: z.string(), displayName: z.string() }),
+        z.object({ kind: z.literal('NEUTRAL'), tier: z.union([z.literal(1), z.literal(2), z.literal(3)]) }),
+      ]).optional(),
       position: vec3,
       coreTier: z.number(),
       /**
@@ -311,6 +482,20 @@ export const galaxySchema = z.object({
        */
       shielded: z.boolean(),
       isSelf: z.boolean(),
+      isOwned: z.boolean().optional(),
+      isCapital: z.boolean().optional(),
+      state: z.discriminatedUnion('kind', [
+        z.object({ kind: z.literal('NORMAL') }),
+        z.object({ kind: z.literal('RECOVERY'), until: z.coerce.date() }),
+        z.object({ kind: z.literal('PROTECTED'), until: z.coerce.date() }),
+      ]).optional(),
+      neutral: z.object({
+        tier: z.union([z.literal(1), z.literal(2), z.literal(3)]),
+        threat: z.enum(['UNGUARDED', 'GUARDED', 'FORTIFIED']),
+        reserve: z.enum(['EMPTY', 'LOW', 'RICH']),
+        claimUntil: z.coerce.date().nullable(),
+        nextReinforcementAt: z.coerce.date().nullable(),
+      }).optional(),
       /**
        * ABSENT means "you are not watching this planet" — it does not mean
        * unknown. Nothing may ever invent a value for a missing key here.
@@ -370,11 +555,87 @@ export const chatPostSchema = z.object({ message: chatMessageSchema });
 export const chatUnreadSchema = z.object({ count: z.number().int().nonnegative() });
 export const chatReadSchema = z.object({ ok: z.literal(true), readAt: z.coerce.date() });
 
+const galaxyEventSchema = z.discriminatedUnion('kind', [
+  z.object({
+    id: z.string(),
+    kind: z.literal('bombardment'),
+    subjectPlanetId: z.string().nullable(),
+    payload: z.object({ planetName: z.string(), commanderName: z.string() }),
+    occurredAt: z.coerce.date(),
+  }),
+  z.object({
+    id: z.string(),
+    kind: z.literal('core_tier'),
+    subjectPlanetId: z.string().nullable(),
+    payload: z.object({ planetName: z.string(), commanderName: z.string(), tier: z.number() }),
+    occurredAt: z.coerce.date(),
+  }),
+  z.object({
+    id: z.string(),
+    kind: z.literal('isotope_exhausted'),
+    subjectPlanetId: z.null(),
+    payload: z.object({ asteroidIndex: z.number().int().nonnegative() }),
+    occurredAt: z.coerce.date(),
+  }),
+  ...(['wreck_formed', 'wreck_exhausted', 'dominion_leader'] as const).map((kind) =>
+    z.object({
+      id: z.string(),
+      kind: z.literal(kind),
+      subjectPlanetId: z.string(),
+      payload: z.object({ planetName: z.string(), commanderName: z.string() }),
+      occurredAt: z.coerce.date(),
+    })),
+  z.object({
+    id: z.string(),
+    kind: z.literal('season_act'),
+    subjectPlanetId: z.null(),
+    payload: z.object({ act: z.enum(['war', 'consolidation', 'sunset']) }),
+    occurredAt: z.coerce.date(),
+  }),
+  z.object({
+    id: z.string(),
+    kind: z.literal('neutral_claim'),
+    subjectPlanetId: z.string(),
+    payload: z.object({
+      planetName: z.string(),
+      tier: z.number().int().min(1).max(3),
+      claimUntil: z.string(),
+    }),
+    occurredAt: z.coerce.date(),
+  }),
+  z.object({
+    id: z.string(),
+    kind: z.literal('death_star_impact'),
+    subjectPlanetId: z.string(),
+    payload: z.object({
+      planetName: z.string(),
+      outcome: z.enum(['FIRST_STRIKE', 'CAPTURED', 'INEFFECTIVE']),
+      // Events written before D98 could only name non-capitals, so `true` is the
+      // exact compatibility value rather than a guess.
+      capturable: z.boolean().optional().default(true),
+    }),
+    occurredAt: z.coerce.date(),
+  }),
+  z.object({
+    id: z.string(),
+    kind: z.literal('control_transfer'),
+    subjectPlanetId: z.string(),
+    payload: z.object({ planetName: z.string(), commanderName: z.string() }),
+    occurredAt: z.coerce.date(),
+  }),
+]);
+
+export const chroniclePageSchema = z.object({
+  events: z.array(galaxyEventSchema),
+  nextBefore: z.string().nullable(),
+});
+
 /* ── intel ──────────────────────────────────────────────────── */
 
 export const intelSchema = z.object({
   watching: z.array(
     z.object({
+      observerPlanetId: z.string().optional(),
       slot: z.number(),
       targetPlanetId: z.string(),
       targetName: z.string(),
@@ -404,9 +665,11 @@ export const intelSchema = z.object({
       at: z.coerce.date(),
       accuracy: z.number(),
       stock: band,
+      deuteriumStock: band.nullable(),
       defence: band,
       fleetSize: band,
       fleetHome: z.boolean(),
+      deathStar: z.enum(['READY', 'BUILDING', 'NONE', 'UNKNOWN']).optional(),
       detected: z.boolean(),
     }),
   ),
@@ -419,8 +682,10 @@ export const collectSchema = z.object({
   blocked: resources,
   alloy: z.number(),
   crystal: z.number(),
+  deuterium: z.number(),
   bufferAlloy: z.number(),
   bufferCrystal: z.number(),
+  bufferDeuterium: z.number(),
   ...withPlanet,
 });
 
@@ -451,7 +716,7 @@ const pendingThread = z.object({
    * own (D52).
    */
   id: z.string().optional(),
-  kind: z.enum(['fleet', 'probe', 'incoming']),
+  kind: z.enum(['fleet', 'probe', 'incoming', 'transfer', 'settlement', 'death_star']),
   targetName: z.string(),
   minutesRemaining: z.number(),
   /** The exact landing instant, on your own craft and on an inbound one alike. */
@@ -510,6 +775,26 @@ export const launchSchema = z.object({
   ...withPlanet,
 });
 
+export const movementLaunchSchema = z.object({
+  missionId: z.string(),
+  arriveAt: z.coerce.date(),
+  pending: z.array(pendingThread),
+  ...withPlanet,
+});
+
+export const deathStarBuildSchema = z.object({
+  assetId: z.string(),
+  readyAt: z.coerce.date(),
+  ...withPlanet,
+});
+
+export const deathStarLaunchSchema = z.object({
+  missionId: z.string(),
+  arriveAt: z.coerce.date(),
+  pending: z.array(pendingThread),
+  ...withPlanet,
+});
+
 export const returnSchema = z.object({
   awayMinutes: z.number(),
   entries: z.array(
@@ -545,6 +830,7 @@ export const reportsSchema = z.object({
           attackerDamage: z.number(),
           defenderDamage: z.number(),
           shieldAbsorbed: z.number(),
+          breacherShieldDamage: z.number(),
           attackerLosses: fleet,
           defenderLosses: fleet,
         }),
@@ -552,16 +838,30 @@ export const reportsSchema = z.object({
       attacking: z.boolean(),
       opponentName: z.string(),
       opponentPlanet: z.string(),
+      opponentPlanetId: z.string().nullable(),
       yourLosses: fleet,
       theirLosses: fleet,
       lootAlloy: z.number(),
       lootCrystal: z.number(),
+      lootDeuterium: z.number(),
       /** Null on reports written before the swing was recorded. */
       dominion: z.number().nullable(),
     }),
   ),
+  rivals: z.array(z.object({
+    planetId: z.string(),
+    battles: z.number().int().nonnegative(),
+    attacks: z.number().int().nonnegative(),
+    defences: z.number().int().nonnegative(),
+    dominionGained: z.number().nonnegative(),
+    dominionLost: z.number().nonnegative(),
+    lastInteractionAt: z.coerce.date(),
+    lastKnownFleet: fleet.nullable(),
+    lastKnownAt: z.coerce.date().nullable(),
+  })),
 });
 export type BattleReport = z.infer<typeof reportsSchema>['reports'][number];
+export type RivalSummary = z.infer<typeof reportsSchema>['rivals'][number];
 
 /**
  * `kind` IS A STRING, NOT AN ENUM, AND THAT IS DELIBERATE. D45.
@@ -616,6 +916,9 @@ export const asteroidSchema = z.object({
   speed: z.number(),
   appearsAt: z.number(),
   expiresAt: z.number(),
+  active: z.boolean(),
+  isotopeRich: z.boolean(),
+  deuteriumShare: z.number().nullable(),
 });
 
 export const miningSchema = z.object({
@@ -641,6 +944,7 @@ export const miningSchema = z.object({
       planetId: z.string(),
       alloy: z.number(),
       crystal: z.number(),
+      deuterium: z.number(),
       minutesLeft: z.number(),
     }),
   ),
@@ -659,9 +963,27 @@ export const miningSchema = z.object({
       intercept: vec3,
       minedAlloy: z.number(),
       minedCrystal: z.number(),
+      minedDeuterium: z.number(),
     }),
   ),
 });
+
+/** Public half fetched by every commander after a shard-wide mining event. */
+export const miningFieldSchema = miningSchema.pick({ asteroids: true, debris: true });
+
+/** Private half fetched only for this commander's selected world. */
+export const miningStatusSchema = miningSchema
+  .pick({
+    derrick: true,
+    craftSpeed: true,
+    craftHold: true,
+    derrickHold: true,
+    runs: true,
+  })
+  .extend({
+    /** Active isotope rocks this world has earned the right to recognise. */
+    isotopes: z.array(z.object({ index: z.number(), deuteriumShare: z.number() })),
+  });
 
 export const miningLaunchSchema = z.object({
   runId: z.string(),
@@ -711,7 +1033,7 @@ export const trafficSchema = z.object({
     z.object({
       /** Stable for the flight, so focus survives a refetch. Maps to nothing else. */
       id: z.string(),
-      kind: z.enum(['fleet', 'probe', 'mining', 'harvest']),
+      kind: z.enum(['fleet', 'probe', 'death_star', 'mining', 'harvest']),
       from: vec,
       to: vec,
       startAt: z.coerce.date(),
@@ -850,7 +1172,34 @@ export type ServerStatus = z.infer<typeof serverStatus>;
 export type ServerList = z.infer<typeof serverListSchema>;
 export type Placement = z.infer<typeof placementSchema>;
 export type SeasonInfo = z.infer<typeof seasonSchema>;
-export type PlanetView = z.infer<typeof planetSchema>;
+export type HistoricalSeasonResult = z.infer<typeof historicalSeasonResultSchema>;
+type ParsedPlanetView = z.infer<typeof planetSchema>;
+type ParsedQueues = NonNullable<ParsedPlanetView['queues']>;
+export type ServerBuildOrderView = ParsedQueues[keyof ParsedQueues][number];
+
+/** A tap acknowledged locally while the authoritative mutation is in flight. */
+export interface OptimisticBuildOrderView {
+  id: string;
+  queue: BuildQueueId;
+  slot: number;
+  kind: ServerBuildOrderView['kind'];
+  subject: string;
+  count: number;
+  cost: Resources;
+  optimistic: true;
+  startedAt?: undefined;
+  finishesAt?: undefined;
+}
+
+export type BuildOrderView = ServerBuildOrderView | OptimisticBuildOrderView;
+export type PlanetView = Omit<ParsedPlanetView, 'queues'> & {
+  queues?: {
+    CONSTRUCTION: BuildOrderView[];
+    YARD: BuildOrderView[];
+  };
+};
+type ParsedPlanetsView = z.infer<typeof planetsSchema>;
+export type PlanetsView = Omit<ParsedPlanetsView, 'planets'> & { planets: PlanetView[] };
 export type RewardsView = z.infer<typeof rewardsSchema>;
 export type RewardChainView = RewardsView['chains'][number];
 export type RewardTierView = z.infer<typeof rewardTier>;
@@ -859,6 +1208,8 @@ export type GalaxyPlanet = GalaxyView['planets'][number];
 export type Leaderboard = z.infer<typeof leaderboardSchema>;
 export type ChatPage = z.infer<typeof chatPageSchema>;
 export type ChatMessage = ChatPage['messages'][number];
+export type ChroniclePage = z.infer<typeof chroniclePageSchema>;
+export type GalaxyEvent = ChroniclePage['events'][number];
 export type IntelView = z.infer<typeof intelSchema>;
 export type WatchView = IntelView['watching'][number];
 export type ProbeReport = IntelView['probeReports'][number];
@@ -869,6 +1220,8 @@ export type PendingThread = z.infer<typeof pendingThread>;
 export type Unlockable = z.infer<typeof unlockable>;
 export type LaunchResult = z.infer<typeof launchSchema>;
 export type MiningView = z.infer<typeof miningSchema>;
+export type MiningFieldView = z.infer<typeof miningFieldSchema>;
+export type MiningStatusView = z.infer<typeof miningStatusSchema>;
 export type AsteroidView = z.infer<typeof asteroidSchema>;
 export type MiningRun = MiningView['runs'][number];
 export type CollectResult = z.infer<typeof collectSchema>;

@@ -8,6 +8,8 @@ import { clearMissionUnits, fleetOfMission } from '../services/mission.js';
 import { notify } from '../services/notifications.js';
 import { setUnits } from '../services/planet.js';
 import { publishShard } from '../stream/bus.js';
+import { abandonBuildOrder } from '../services/buildQueue.js';
+import { abandonDeathStarBuild } from '../services/strategic.js';
 
 /**
  * WHAT HAPPENS WHEN AN EVENT GIVES UP FOR GOOD. D28.
@@ -64,10 +66,10 @@ async function tellThemItCameBack(
   craftKind: 'fleet' | 'probe' = 'fleet',
 ): Promise<void> {
   const [planet] = await tx
-    .select({ playerId: planets.playerId })
+    .select({ playerId: planets.controllerPlayerId })
     .from(planets)
     .where(eq(planets.id, planetId));
-  if (!planet) return;
+  if (!planet?.playerId) return;
   await notify(tx, {
     playerId: planet.playerId,
     kind: 'fleet_returned',
@@ -167,6 +169,10 @@ export async function abandon(db: Db, event: EventRow, clock: Clock): Promise<bo
     case 'mining_arrival':
     case 'mining_return':
       return abandonMiningRun(db, event.refId, clock.now());
+    case 'build_complete':
+      return abandonBuildOrder(db, event.refId, clock);
+    case 'death_star_ready':
+      return abandonDeathStarBuild(db, event.refId, clock);
     default:
       // A radar warning or a season end strands nothing; letting it die is correct.
       return false;
@@ -218,11 +224,20 @@ const STRANDED_GRACE_MINUTES = 5;
  */
 export async function sweepStranded(db: Db, clock: Clock): Promise<number> {
   const now = clock.now();
-  const { missions: strandedMissions, runs: strandedRuns } = await strandedFlights(db, now);
+  const {
+    missions: strandedMissions,
+    runs: strandedRuns,
+    builds: strandedBuilds,
+    deathStars: strandedDeathStars,
+  } = await strandedState(db, now);
 
   let released = 0;
   for (const id of strandedMissions) if (await abandonMission(db, id, now)) released += 1;
   for (const id of strandedRuns) if (await abandonMiningRun(db, id, now)) released += 1;
+  for (const id of strandedBuilds) if (await abandonBuildOrder(db, id, clock)) released += 1;
+  for (const id of strandedDeathStars) {
+    if (await abandonDeathStarBuild(db, id, clock)) released += 1;
+  }
   return released;
 }
 
@@ -241,10 +256,10 @@ export async function sweepStranded(db: Db, clock: Clock): Promise<number> {
  * for home has a spent `mining_arrival` behind it — either would look like a live
  * event and keep a genuinely stranded flight invisible.
  */
-async function strandedFlights(
+async function strandedState(
   db: Db,
   now: Date,
-): Promise<{ missions: string[]; runs: string[] }> {
+): Promise<{ missions: string[]; runs: string[]; builds: string[]; deathStars: string[] }> {
   const cutoff = new Date(now.getTime() - STRANDED_GRACE_MINUTES * 60_000).toISOString();
 
   const missionRows = await db.execute<{ id: string }>(sql`
@@ -273,7 +288,32 @@ async function strandedFlights(
           and e.status in ('pending', 'processing'))
   `);
 
-  return { missions: missionRows.map((r) => r.id), runs: runRows.map((r) => r.id) };
+  const buildRows = await db.execute<{ id: string }>(sql`
+    select b.id from build_orders b
+    where b.status = 'BUILDING'
+      and b.ready_at < ${cutoff}::timestamptz
+      and not exists (
+        select 1 from scheduled_events e
+        where e.ref_id = b.id and e.kind = 'build_complete'
+          and e.status in ('pending', 'processing'))
+  `);
+
+  const deathStarRows = await db.execute<{ id: string }>(sql`
+    select a.id from strategic_assets a
+    where a.status = 'BUILDING'
+      and a.ready_at < ${cutoff}::timestamptz
+      and not exists (
+        select 1 from scheduled_events e
+        where e.ref_id = a.id and e.kind = 'death_star_ready'
+          and e.status in ('pending', 'processing'))
+  `);
+
+  return {
+    missions: missionRows.map((row) => row.id),
+    runs: runRows.map((row) => row.id),
+    builds: buildRows.map((row) => row.id),
+    deathStars: deathStarRows.map((row) => row.id),
+  };
 }
 
 /**
@@ -283,6 +323,12 @@ async function strandedFlights(
  * able to report the number on an API-only process that runs no worker at all.
  */
 export async function strandedFlightCount(db: Db, now: Date): Promise<number> {
-  const { missions: m, runs: r } = await strandedFlights(db, now);
+  const { missions: m, runs: r } = await strandedState(db, now);
   return m.length + r.length;
+}
+
+/** Ordinary and strategic builds whose completion event has disappeared. */
+export async function strandedBuildCount(db: Db, now: Date): Promise<number> {
+  const { builds, deathStars } = await strandedState(db, now);
+  return builds.length + deathStars.length;
 }

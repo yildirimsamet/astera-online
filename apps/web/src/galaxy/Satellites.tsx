@@ -1,10 +1,9 @@
-import { useMemo, useRef } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
 import { useGLTF } from '@react-three/drei';
 import * as THREE from 'three';
 import { SATELLITE_IDS, type SatelliteId } from '@astera/rules';
 import { SATELLITE_MODEL, SATELLITE_NEON } from '../ui/assets.js';
-import { softGlow } from './Environment.jsx';
 import { unitModel } from './model.js';
 import type { PlanetNode } from './scene.js';
 
@@ -22,15 +21,16 @@ import type { PlanetNode } from './scene.js';
  * the pipeline and the camera orbits freely, which is exactly the case where a
  * flat card gives itself away.
  *
- * DRAWN AS: one instanced mesh per instrument type, so the whole galaxy's hardware
- * is five draw calls however many planets carry it.
+ * DRAWN AS: one instanced body and one instanced back-face silhouette rim per
+ * instrument type, so the whole galaxy's hardware stays bounded however many
+ * planets carry it.
  */
 
 /** Bodies are drawn only this close. Past it they are noise around a dot. */
 const VISIBLE_WITHIN = 34;
 
 /**
- * A MARKER LIGHT PER SATELLITE, AND A DIFFERENT COLOUR FOR EACH. Owner decision.
+ * A SILHOUETTE RIM PER SATELLITE, AND A DIFFERENT COLOUR FOR EACH. Owner decision.
  *
  * Same reasoning as the neon on a craft: a satellite is a few hundred triangles at
  * a few dozen pixels, unlit on its far side, against a nebula that is itself
@@ -38,9 +38,9 @@ const VISIBLE_WITHIN = 34;
  * The rim is what makes it an object, and a distinct hue is what makes it a KIND of
  * object without a label.
  *
- * DELIBERATELY HALF THE DIAMETER OF A CRAFT'S. The owner's figure. A satellite is a
- * small body holding station beside a world that is hundreds of pixels across; at a
- * ship's neon size the light swamps the planet it belongs to.
+ * The earlier camera-facing point was always circular, so at close range it read
+ * as a glowing ball with hardware somewhere inside. The back-face shell expands
+ * the real model normals instead: light exists only outside the cut silhouette.
  *
  * THE HUES LIVE IN `ui/assets.ts`, beside the model each one belongs to, because
  * each is the colour that body already glows in its own render. They name a piece
@@ -53,33 +53,8 @@ const NEON = SATELLITE_NEON;
 /** How big a satellite is drawn, as a share of the planet it orbits. */
 export const BODY_SCALE = 0.3;
 
-/**
- * THE MARKER LIGHT'S DIAMETER, AS A MULTIPLE OF THE SATELLITE'S OWN. Owner's figure.
- *
- * TWO, and it has to be a ratio to the BODY rather than a length, because the body
- * is itself sized off the planet — three planet sizes exist, so a fixed length is
- * right for one of them and wrong for the other two. That is exactly what went
- * wrong: the light was one size for the whole galaxy, taken from the largest world
- * carrying that satellite, so on a big planet it disappeared INSIDE the body and on
- * a small one it swamped it.
- *
- * There was a second, quieter fault stacked on it. `pointsMaterial.size` is a
- * DIAMETER in world units and `Object3D.scale` is applied to a unit-RADIUS
- * geometry, so the old figure was being compared against half of what it looked
- * like — which is why a light nominally larger than the body still vanished behind
- * it. Both sides of the ratio below are diameters.
- */
-export const NEON_RATIO = 2;
-
-/**
- * The marker light's diameter for a satellite orbiting a planet of this radius.
- *
- * Exported so the rule can be asserted rather than re-derived: the light is a
- * fixed multiple of the BODY, and the body is a fixed share of the PLANET, so a
- * single figure shared across the galaxy is wrong for every world but one.
- */
-export const neonSizeFor = (planetRadius: number): number =>
-  planetRadius * BODY_SCALE * 2 * NEON_RATIO;
+/** Expansion in source-model units; instance scale keeps it proportional to the body. */
+export const SATELLITE_RIM_EXPANSION = 0.055;
 
 /** The satellite's own drawn diameter, for the same reason. */
 export const bodySizeFor = (planetRadius: number): number => planetRadius * BODY_SCALE * 2;
@@ -140,56 +115,54 @@ function hash(id: string): number {
 
 function Ring({ type, bodies }: { type: SatelliteId; bodies: Body[] }) {
   const mesh = useRef<THREE.InstancedMesh>(null);
+  const rimMesh = useRef<THREE.InstancedMesh>(null);
   const camera = useThree((state) => state.camera);
   const { scene } = useGLTF(SATELLITE_MODEL[type], false);
-  const glow = useMemo(() => softGlow(), []);
-
-  /**
-   * The marker lights, as one `Points` rather than a sprite each.
-   *
-   * A point is camera-facing for free and the whole ring is one draw call, which
-   * matters: this is drawn for every world in the galaxy, not only your own, and a
-   * sprite per instrument would put a few hundred objects in the scene graph to
-   * say something a few hundred pixels could.
-   */
-  /**
-   * ONE CLOUD PER PLANET SIZE, because a `Points` has one size for all its points.
-   *
-   * A per-vertex size needs a custom shader; the galaxy has exactly three planet
-   * radii, so grouping by radius gets the same result with none of the machinery.
-   * Each group is still one draw call, and there are at most three of them per
-   * satellite type however many worlds carry one.
-   */
-  const groups = useMemo(() => {
-    const byRadius = new Map<number, number[]>();
-    bodies.forEach((body, i) => {
-      const list = byRadius.get(body.planet.radius) ?? [];
-      list.push(i);
-      byRadius.set(body.planet.radius, list);
-    });
-    return [...byRadius.entries()]
-      .sort((a, b) => a[0] - b[0])
-      .map(([radius, indices]) => {
-        const g = new THREE.BufferGeometry();
-        g.setAttribute(
-          'position',
-          new THREE.BufferAttribute(new Float32Array(Math.max(1, indices.length) * 3), 3),
-        );
-        return {
-          radius,
-          indices,
-          geometry: g,
-          // Both sides are diameters: the body is drawn at `BODY_SCALE` of the
-          // planet's RADIUS, so its diameter is twice that.
-          size: neonSizeFor(radius),
-        };
-      });
-  }, [bodies]);
 
   // Normalised to unit radius. These models are quantised like the asteroids, so
   // instancing the raw geometry would size them by an arbitrary integer range
   // rather than by the number below. See `model.ts`.
   const source = useMemo(() => unitModel(scene), [scene]);
+  const bodyMaterial = useMemo(() => {
+    if (!source) return null;
+    const material = source.material.clone();
+    // Put the opaque-looking body in the transparent queue after the rim. It then
+    // masks the expanded back faces across the interior and leaves colour only on
+    // the true outside contour.
+    material.transparent = true;
+    material.depthWrite = true;
+    return material;
+  }, [source]);
+  const rimMaterial = useMemo(() => new THREE.ShaderMaterial({
+    uniforms: { uColour: { value: new THREE.Color(NEON[type]) } },
+    transparent: true,
+    depthWrite: false,
+    depthTest: false,
+    side: THREE.BackSide,
+    blending: THREE.AdditiveBlending,
+    vertexShader: `
+      void main() {
+        vec4 expanded = vec4(position + normal * ${String(SATELLITE_RIM_EXPANSION)}, 1.0);
+        #ifdef USE_INSTANCING
+          expanded = instanceMatrix * expanded;
+        #endif
+        gl_Position = projectionMatrix * modelViewMatrix * expanded;
+      }
+    `,
+    fragmentShader: `
+      uniform vec3 uColour;
+      void main() { gl_FragColor = vec4(uColour, 0.82); }
+    `,
+    toneMapped: false,
+  }), [type]);
+
+  useEffect(
+    () => () => {
+      rimMaterial.dispose();
+      bodyMaterial?.dispose();
+    },
+    [bodyMaterial, rimMaterial],
+  );
 
   /**
    * A fixed orbit per body: phase, radius and tilt.
@@ -214,19 +187,15 @@ function Ring({ type, bodies }: { type: SatelliteId; bodies: Body[] }) {
 
   useFrame(({ clock }) => {
     const node = mesh.current;
-    if (!node) return;
+    const rim = rimMesh.current;
+    if (!node || !rim) return;
     const t = (clock.elapsedTime / PERIOD) * Math.PI * 2;
     let drawn = 0;
-
-    // Which group each body's light belongs to, and how many of that group have
-    // been written this frame. A body that is culled writes nothing, so the two
-    // cursors advance independently.
-    const written = new Map<number, number>();
 
     bodies.forEach((body, i) => {
       const [px, py, pz] = body.planet.position;
       // Cheap distance gate: a satellite twenty planet-widths away is a flickering
-      // pixel, and fifty planets' worth of them is a haze over the whole disc.
+      // pixel, and 351 worlds' worth of them is a haze over the whole disc.
       const far =
         (camera.position.x - px) ** 2 +
           (camera.position.y - py) ** 2 +
@@ -248,62 +217,33 @@ function Ring({ type, bodies }: { type: SatelliteId; bodies: Body[] }) {
       dummy.scale.setScalar(body.planet.radius * BODY_SCALE);
       dummy.updateMatrix();
       node.setMatrixAt(drawn, dummy.matrix);
+      rim.setMatrixAt(drawn, dummy.matrix);
       drawn += 1;
-
-      // The light rides with the body it belongs to, in the cloud sized for that
-      // planet's radius.
-      const group = groups.find((g) => g.radius === body.planet.radius);
-      if (group) {
-        const at = written.get(group.radius) ?? 0;
-        const attr = group.geometry.getAttribute('position') as THREE.BufferAttribute;
-        attr.setXYZ(at, dummy.position.x, dummy.position.y, dummy.position.z);
-        written.set(group.radius, at + 1);
-      }
     });
 
     node.count = drawn;
+    rim.count = drawn;
     node.instanceMatrix.needsUpdate = true;
-
-    for (const group of groups) {
-      const shown = written.get(group.radius) ?? 0;
-      const attr = group.geometry.getAttribute('position') as THREE.BufferAttribute;
-      // Anything past the drawn bodies is parked at the origin rather than left
-      // holding last frame's coordinates — the same rule the asteroid tails use.
-      for (let v = shown; v < attr.count; v += 1) attr.setXYZ(v, 0, 0, 0);
-      attr.needsUpdate = true;
-      group.geometry.setDrawRange(0, shown);
-    }
+    rim.instanceMatrix.needsUpdate = true;
   });
 
-  if (!source) return null;
+  if (!source || !bodyMaterial) return null;
 
   return (
     <>
       <instancedMesh
         ref={mesh}
-        args={[source.geometry, source.material, bodies.length]}
+        args={[source.geometry, bodyMaterial, bodies.length]}
         frustumCulled={false}
         renderOrder={2}
       />
-      {groups.map((group) => (
-        <points
-          key={group.radius}
-          geometry={group.geometry}
-          frustumCulled={false}
-          renderOrder={1}
-        >
-          <pointsMaterial
-            map={glow}
-            color={NEON[type]}
-            size={group.size}
-            sizeAttenuation
-            transparent
-            opacity={0.55}
-            depthWrite={false}
-            blending={THREE.AdditiveBlending}
-          />
-        </points>
-      ))}
+      <instancedMesh
+        ref={rimMesh}
+        args={[source.geometry, rimMaterial, bodies.length]}
+        frustumCulled={false}
+        renderOrder={1}
+        name="satellite-silhouette-rim"
+      />
     </>
   );
 }

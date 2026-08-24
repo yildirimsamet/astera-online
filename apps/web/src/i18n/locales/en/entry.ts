@@ -29,7 +29,7 @@ export const landing = {
    * `register`, because they say different things — one is "come back to the world
    * you left", the other is "see what this is".
    */
-  welcomeBack: 'Your planet is where you left it',
+  welcomeBack: 'Your capital is where you left it',
   signInPrimary: 'Sign in',
   returningHint: 'Same commander, same galaxy, on any browser.',
   newCommander: 'Start a new commander instead',
@@ -66,7 +66,7 @@ export const servers = {
   commanderLabel: 'Commander',
   signOut: 'Sign out',
   rule:
-    'Every galaxy holds fifty commanders and no more. They fill in order, so the one you join is the one that already has people in it.',
+    'Every galaxy holds 300 commanders and no more. They fill in order, so the one you join is the one that already has people in it.',
   loading: 'Reading the sky',
   unreachable: 'Could not reach the galaxies.',
   retry: 'Try again',
@@ -111,7 +111,7 @@ export const loading = {
  * translated (D54).
  */
 export const document = {
-  description: 'You own one planet. You cannot see what anyone else holds.',
+  description: 'Command a protected capital, win colonies, and uncover what rivals hold.',
   manifest: '/manifest.webmanifest',
 } as const;
 

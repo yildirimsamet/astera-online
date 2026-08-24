@@ -2,7 +2,17 @@ import { and, eq } from 'drizzle-orm';
 import { pino } from 'pino';
 import { afterAll, beforeEach, describe, expect, it } from 'vitest';
 import { INTEL, PROBE } from '@astera/rules';
-import { accounts, missions, planets, players, probeReports, satellites, scanEvents, watches } from '../src/db/schema.js';
+import {
+  accounts,
+  missions,
+  planets,
+  players,
+  probeReports,
+  satellites,
+  scanEvents,
+  strategicAssets,
+  watches,
+} from '../src/db/schema.js';
 import { assignWatch, launchProbe, readRadarLog, readTelescopes } from '../src/services/intel.js';
 import { launchAttack } from '../src/services/mission.js';
 import { EventWorker } from '../src/worker/loop.js';
@@ -69,6 +79,12 @@ describe('the information layer', () => {
     myPlayer = f.playerIds[0]!;
     await setLevel(f.db, mine, 'CORE', 8);
     await setLevel(f.db, theirs, 'CORE', 8);
+    // Telescope and Radar are stored independently, but their effects only turn
+    // on while an Uplink occupies an active orbit slot.
+    await f.db.insert(satellites).values([
+      { planetId: mine, slot: 15, type: 'UPLINK', level: 1 },
+      { planetId: theirs, slot: 15, type: 'UPLINK', level: 1 },
+    ]);
   });
 
 
@@ -131,6 +147,7 @@ describe('the information layer', () => {
       const w = await seedWorld(3);
       const [a, b, c] = w.planetIds as [string, string, string];
       await setLevel(w.db, a, 'CORE', 8);
+      await w.db.insert(satellites).values({ planetId: a, slot: 15, type: 'UPLINK', level: 1 });
       await giveInstrument(w, a, 'TELESCOPE', 2);
 
       await assignWatch(w.db, a, b, 0, w.clock);
@@ -543,6 +560,37 @@ describe('the information layer', () => {
         .from(scanEvents)
         .where(and(eq(scanEvents.targetPlanetId, theirs)));
       expect(scan!.originPlanetId).toBe(mine);
+    });
+
+    it('reveals strategic inventory only at the 75% accuracy threshold', async () => {
+      await grant(f.db, mine, 100_000, 10_000);
+      await f.db.insert(strategicAssets).values({
+        planetId: theirs,
+        status: 'READY',
+        startedAt: f.clock.now(),
+        remainingSeconds: 0,
+      });
+
+      // Shipyard L1 produces 67% accuracy against no Veil: the existence of the
+      // asset itself must remain hidden.
+      await setLevel(f.db, mine, 'SHIPYARD', 1);
+      const low = await launchProbe(f.db, mine, theirs, f.clock);
+      f.clock.set(low.arriveAt);
+      await worker(f).tick();
+      const [lowReport] = await f.db.select().from(probeReports)
+        .where(eq(probeReports.missionId, low.missionId));
+      expect(lowReport).toMatchObject({ accuracy: 0.67, strategicStatus: 'UNKNOWN' });
+
+      // Let the first probe return before sending another to the same target.
+      f.clock.advance(low.flightMinutes);
+      await worker(f).tick();
+      await setLevel(f.db, mine, 'SHIPYARD', 2); // 79%, first level above the gate.
+      const high = await launchProbe(f.db, mine, theirs, f.clock);
+      f.clock.set(high.arriveAt);
+      await worker(f).tick();
+      const [highReport] = await f.db.select().from(probeReports)
+        .where(eq(probeReports.missionId, high.missionId));
+      expect(highReport).toMatchObject({ accuracy: 0.79, strategicStatus: 'READY' });
     });
   });
 

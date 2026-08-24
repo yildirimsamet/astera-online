@@ -20,7 +20,7 @@ async function chatPlayer(db: Db, accountId: string) {
     .select({ player: players, planetId: planets.id, username: accounts.displayName })
     .from(players)
     .innerJoin(accounts, eq(players.accountId, accounts.id))
-    .innerJoin(planets, eq(planets.playerId, players.id))
+    .innerJoin(planets, and(eq(planets.controllerPlayerId, players.id), eq(planets.kind, 'CAPITAL')))
     .where(eq(players.accountId, accountId))
     .limit(1);
   if (!row) throw new GameError('NO_PLANET', 'Join a galaxy first', 404);
@@ -58,7 +58,7 @@ export async function readChat(
     .from(chatMessages)
     .innerJoin(players, eq(chatMessages.authorPlayerId, players.id))
     .innerJoin(accounts, eq(players.accountId, accounts.id))
-    .innerJoin(planets, eq(planets.playerId, players.id))
+    .innerJoin(planets, and(eq(planets.controllerPlayerId, players.id), eq(planets.kind, 'CAPITAL')))
     .where(and(
       eq(chatMessages.seasonId, me.player.seasonId),
       cursor

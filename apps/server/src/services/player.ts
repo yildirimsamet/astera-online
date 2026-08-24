@@ -1,10 +1,11 @@
-import { eq } from 'drizzle-orm';
+import { and, eq } from 'drizzle-orm';
 import { BUILDING_IDS, PLANET_START, START_BUILDINGS, pickSpawnSlot } from '@astera/rules';
 import type { Db } from '../db/client.js';
 import type { Clock } from '../clock.js';
 import { accounts, buildings, planets, players, seasons, shards } from '../db/schema.js';
 import { galaxyOf, occupiedSlots } from './season.js';
 import { GameError, recomputeWealth } from './planet.js';
+import { publishShard } from '../stream/bus.js';
 
 /**
  * The rows a fresh planet is written with, from the one table that decides it.
@@ -77,7 +78,7 @@ async function readPlacement(db: Db, accountId: string): Promise<JoinResult | nu
   const [found] = await db
     .select({ player: players, planet: planets })
     .from(players)
-    .innerJoin(planets, eq(planets.playerId, players.id))
+    .innerJoin(planets, and(eq(planets.controllerPlayerId, players.id), eq(planets.kind, 'CAPITAL')))
     .where(eq(players.accountId, accountId))
     .limit(1);
 
@@ -96,7 +97,7 @@ async function readPlacement(db: Db, accountId: string): Promise<JoinResult | nu
  * SAME GALAXY IS A SUCCESS. A retried request, a reinstall, or a double-tapped
  * button on a slow phone connection must land on the same planet rather than
  * acquiring a second one or being told off for something it did itself. A
- * DIFFERENT galaxy is the one-planet rule, and the caller has to be told rather
+ * DIFFERENT galaxy is the one-commander rule, and the caller has to be told rather
  * than silently redirected — being moved to a galaxy you did not choose is worse
  * than being refused the one you did.
  */
@@ -115,10 +116,10 @@ function settle(placement: JoinResult, seasonId: string): JoinResult {
  *   · Two accounts pick the same free slot. `planets_season_slot_idx` rejects the
  *     loser, who re-picks against the now-smaller free set.
  *   · One account joins two galaxies at once from two tabs. `players_account_idx`
- *     rejects the second — this is the one-planet rule, and it is a real race, not
+ *     rejects the second — this is the one-commander rule, and it is a real race, not
  *     a theoretical one, because a double-tap on a slow connection sends two
  *     requests before either reply lands.
- *   · The fiftieth and fifty-first players join together. Both pass the capacity
+ *   · The final two contenders for one seat join together. Both pass the capacity
  *     read; the slot index then rejects one of them, and the retry finds no free
  *     slot and reports SHARD_FULL.
  *
@@ -174,7 +175,8 @@ export async function joinSeason(
         const [planet] = await tx
           .insert(planets)
           .values({
-            playerId: player.id,
+            controllerPlayerId: player.id,
+            kind: 'CAPITAL',
             seasonId,
             name: planetName,
             slotIndex: slot.index,
@@ -218,6 +220,10 @@ export async function joinSeason(
         // Without this a fresh commander's Wealth stays at the column default of
         // zero, and the rank floor then protects them from every attacker forever.
         await recomputeWealth(tx, planet.id);
+
+        // A capital has appeared in the public galaxy and leaderboard. Publish
+        // inside the transaction so every API replica invalidates only on commit.
+        await publishShard(tx, seasonId, 'world');
 
         return {
           playerId: player.id,

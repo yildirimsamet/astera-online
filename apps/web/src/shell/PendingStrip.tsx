@@ -19,8 +19,10 @@ export function PendingStrip() {
   const now = useNow(1000);
   const threads = data?.pending ?? [];
 
-  const incoming = threads.find((t) => t.kind === 'incoming');
-  const soonest = [...threads].sort((a, b) => a.minutesRemaining - b.minutesRemaining)[0];
+  const byArrival = (a: PendingThread, b: PendingThread) =>
+    arrivalOf(a) - arrivalOf(b) || (a.id ?? '').localeCompare(b.id ?? '');
+  const incoming = threads.filter((thread) => thread.kind === 'incoming').sort(byArrival)[0];
+  const soonest = [...threads].sort(byArrival)[0];
   const shown = incoming ?? soonest;
 
   return (
@@ -34,9 +36,16 @@ export function PendingStrip() {
           <span className={`legend min-w-0 truncate ${incoming ? 'text-[#e08a7c]' : ''}`}>
             {title(shown)}
           </span>
+          {shown.leg && (
+            <span className="rounded-sm border border-line-soft px-1.5 py-0.5 text-[9px] uppercase tracking-[0.13em] text-faint">
+              {t(shown.leg === 'return' ? 'pendingStrip.returnLeg' : 'pendingStrip.outboundLeg')}
+            </span>
+          )}
           <span className="h-px flex-1 bg-line-soft" />
           <span className={`num text-[13px] ${incoming ? 'text-[#ffb9ae]' : 'text-bone'}`}>
-            {countdown(arrivalOf(shown) - now)}
+            {arrivalOf(shown) <= now && shown.kind === 'fleet' && shown.leg === 'outbound'
+              ? t('pendingStrip.engaging')
+              : countdown(arrivalOf(shown) - now)}
           </span>
           {threads.length > 1 && (
             <span className="num text-[11px] text-faint">
@@ -66,6 +75,9 @@ export function PendingStrip() {
 const title = (thread: PendingThread): string => {
   if (thread.kind === 'incoming') return i18n.t('pendingStrip.incoming');
   if (thread.kind === 'probe') return i18n.t('pendingStrip.probe', { target: thread.targetName });
+  if (thread.kind === 'death_star') return i18n.t('pendingStrip.deathStar', { target: thread.targetName });
+  if (thread.kind === 'settlement') return i18n.t('pendingStrip.settlement', { target: thread.targetName });
+  if (thread.kind === 'transfer') return i18n.t('pendingStrip.transfer', { target: thread.targetName });
   return i18n.t(thread.leg === 'return' ? 'pendingStrip.fleetHome' : 'pendingStrip.fleetOut', {
     target: thread.targetName,
   });

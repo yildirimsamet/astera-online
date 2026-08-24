@@ -14,6 +14,7 @@ import { normaliseUsername } from '../auth/credentials.js';
 import { accounts, miningRuns, missions, planets, players, rewardGrants } from '../db/schema.js';
 import {
   GameError,
+  assertWorldOperational,
   loadLocked,
   refreshWealth,
   saveResources,
@@ -137,7 +138,14 @@ export interface RewardChainView {
   id: RewardChainId;
   metric: RewardMetric;
   progress: number;
-  tiers: { id: string; goal: number; alloy: number; crystal: number; state: RewardState }[];
+  tiers: {
+    id: string;
+    goal: number;
+    alloy: number;
+    crystal: number;
+    deuterium: number;
+    state: RewardState;
+  }[];
 }
 
 export interface RewardsView {
@@ -202,7 +210,14 @@ async function assemble(tx: Tx, standing: Standing): Promise<RewardsView> {
             ? 'claimable'
             : 'locked';
         if (state === 'claimable') claimable += 1;
-        return { id, goal: t.goal, alloy: t.reward.alloy, crystal: t.reward.crystal, state };
+        return {
+          id,
+          goal: t.goal,
+          alloy: t.reward.alloy,
+          crystal: t.reward.crystal,
+          deuterium: t.reward.deuterium,
+          state,
+        };
       }),
     };
   });
@@ -232,7 +247,7 @@ async function builtEverOf(tx: Tx, planetId: string): Promise<Fleet> {
 
 export async function rewardsView(db: Db, planetId: string, clock: Clock): Promise<RewardsView> {
   return db.transaction(async (tx) => {
-    const planet = await loadLocked(tx, planetId, clock);
+    const planet = await loadLocked(tx, planetId, clock, { requireLive: false });
     return assemble(tx, standingOf(planet, await builtEverOf(tx, planetId)));
   });
 }
@@ -267,7 +282,7 @@ export async function claimReward(
   id: string,
   clock: Clock,
 ): Promise<{
-  granted: { alloy: number; crystal: number };
+  granted: { alloy: number; crystal: number; deuterium: number };
   rewards: RewardsView;
   planet: Awaited<ReturnType<typeof planetView>>;
 }> {
@@ -283,6 +298,7 @@ export async function claimReward(
   const rewardKey = ref.id;
 
   return withPlanetLock(db, planetId, clock, async (tx, planet) => {
+    assertWorldOperational(planet);
     const standing = standingOf(planet, await builtEverOf(tx, planetId));
     const view = await assemble(tx, standing);
 
@@ -309,6 +325,7 @@ export async function claimReward(
 
     const alloy = planet.alloy + tier.alloy;
     const crystal = planet.crystal + tier.crystal;
+    const deuterium = planet.deuterium + tier.deuterium;
 
     /**
      * ONE STATEMENT FOR BOTH SHAPES OF ROW.
@@ -326,11 +343,17 @@ export async function claimReward(
         rewardId: rewardKey,
         alloy: tier.alloy,
         crystal: tier.crystal,
+        deuterium: tier.deuterium,
         claimedAt: planet.now,
       })
       .onConflictDoUpdate({
         target: [rewardGrants.playerId, rewardGrants.rewardId],
-        set: { claimedAt: planet.now, alloy: tier.alloy, crystal: tier.crystal },
+        set: {
+          claimedAt: planet.now,
+          alloy: tier.alloy,
+          crystal: tier.crystal,
+          deuterium: tier.deuterium,
+        },
         where: isNull(rewardGrants.claimedAt),
       })
       .returning({ id: rewardGrants.rewardId });
@@ -345,13 +368,14 @@ export async function claimReward(
       throw new GameError('REWARD_TAKEN', 'You have already taken that reward');
     }
 
-    await saveResources(tx, planetId, { alloy, crystal });
+    await saveResources(tx, planetId, { alloy, crystal, deuterium });
     planet.alloy = alloy;
     planet.crystal = crystal;
+    planet.deuterium = deuterium;
     await refreshWealth(tx, planet);
 
     return {
-      granted: { alloy: tier.alloy, crystal: tier.crystal },
+      granted: { alloy: tier.alloy, crystal: tier.crystal, deuterium: tier.deuterium },
       rewards: await assemble(tx, standing),
       planet: await planetView(tx, planetId, clock),
     };

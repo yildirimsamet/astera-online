@@ -1,7 +1,21 @@
 import {
   ABUSE,
   ALL_HULLS,
+  BUILD,
+  COMBAT,
+  DEATH_STAR,
+  DEUTERIUM,
+  MULTI_WORLD,
+  PROSPECTOR,
+  RESEARCH_PROJECTS,
+  activeAsteroids,
+  asteroidPosition,
+  claimOre,
+  colonyCapacity,
   collectorCap,
+  deuteriumCollectorCap,
+  deuteriumStorageCap,
+  defenceMinutes,
   GROUND_HULLS,
   HULLS,
   MOBILE_HULLS,
@@ -10,6 +24,7 @@ import {
   alloyRate,
   applyDisruption,
   bookBattle,
+  buildMinutes,
   canAttack,
   collect,
   computeLoot,
@@ -22,30 +37,52 @@ import {
   fleetEntries,
   fleetSpeed,
   fleetSpeedMult,
+  fleetTravelExact,
   fleetValue,
   generateGalaxy,
+  selectNeutralSlots,
   PLANET_START,
   investedInBuilding,
+  investedInInstrument,
+  instrumentMaxed,
   mulberry32,
   resolveCombat,
   instrumentCost,
+  interceptAsteroid,
   isSatellite,
   productionMult,
+  prospectorHold,
+  prospectorSpeed,
+  prospectorTravelExact,
+  researchMinutes,
+  resolveQueue,
   satelliteCost,
   satelliteSlots,
   seeingUnlocked,
+  shieldHp,
+  shipMinutes,
   storageCap,
   travelMinutes,
   upgradeCost,
+  worthInvesting,
   vaultProtects,
   wealth,
+  type BuildingId,
   type BuildingLevels,
+  type BuildQueueId,
   type Fleet,
   type Ledger,
   type Rng,
   type GroundHullId,
+  type HullId,
+  type InstrumentId,
   type InstrumentLevels,
+  type NeutralLayout,
+  type NeutralTier,
   type SatelliteId,
+  type AsteroidSpec,
+  type Resources,
+  type ResearchProjectId,
 } from '@astera/rules';
 import { ARCHETYPES, ARCHETYPE_NAMES, type ArchetypeName, type CombatHullId, type Composition } from './archetypes.js';
 import { measure, type Invariants } from './invariants.js';
@@ -61,11 +98,15 @@ export interface SimPlayer {
   orbit: SatelliteId[];
   fleet: Fleet;
   ground: Fleet;
+  /** Paid work in the two independent Economy v2 queues. */
+  queues: Record<BuildQueueId, SimBuildOrder[]>;
   alloy: number;
   crystal: number;
+  deuterium: number;
   /** Uncollected production sitting in the works. D16. */
   bufferAlloy: number;
   bufferCrystal: number;
+  bufferDeuterium: number;
   shield: number;
   lastTick: number;
   joinedAt: number;
@@ -83,6 +124,34 @@ export interface SimPlayer {
   /** What a probe last measured: what could be carried off, and what defends it. */
   intel: Map<number, { stock: number; defence: number; composition: Fleet; at: number }>;
   neighbours: { id: number; d: number }[];
+  /** Seasonal permission only; reset with this simulated world. */
+  isotopeSpectrometry: boolean;
+  denseFuelCells: boolean;
+  graviticCharges: boolean;
+  cargoLimitedSeen: boolean;
+  shieldInsightSeen: boolean;
+}
+
+export type SimBuildKind = 'BUILDING' | 'HULL' | 'INSTRUMENT' | 'SATELLITE' | 'RESEARCH';
+
+/** The simulator's in-memory mirror of one active server build order. */
+export interface SimBuildOrder {
+  queue: BuildQueueId;
+  kind: SimBuildKind;
+  subject: string;
+  count: number;
+  cost: Resources;
+  /** Full work duration, retained like `remainingSeconds` on the server row. */
+  minutes: number;
+  /** Absolute season minute; the two queues may finish independently. */
+  readyAt: number;
+}
+
+export interface SimBuildProjection {
+  buildings: BuildingLevels;
+  instruments: InstrumentLevels;
+  orbit: SatelliteId[];
+  research: Set<ResearchProjectId>;
 }
 
 export interface Mission {
@@ -93,7 +162,96 @@ export interface Mission {
   distance: number;
   scouted: boolean;
   returning: boolean;
-  loot?: { alloy: number; crystal: number };
+  loot?: Resources;
+}
+
+export interface MiningRun {
+  id: number;
+  playerId: number;
+  asteroidIndex: number;
+  craft: number;
+  holdEach: number;
+  arriveAt: number;
+  intercept: { x: number; y: number; z: number };
+  returning: boolean;
+  mined?: Resources;
+}
+
+export interface SimNeutralWorld {
+  id: number;
+  tier: NeutralTier;
+  x: number;
+  y: number;
+  z: number;
+  controllerId: number | null;
+  buildings: BuildingLevels;
+  aegis: number;
+  fleet: Fleet;
+  alloy: number;
+  crystal: number;
+  deuterium: number;
+  lastTick: number;
+  claimUntil: number | null;
+  nextReinforcement: number | null;
+  recoveryUntil: number;
+  protectedUntil: number;
+}
+
+export type StrategicMission =
+  | {
+      id: number;
+      kind: 'neutral_attack';
+      ownerId: number;
+      targetId: number;
+      arriveAt: number;
+      fleet: Fleet;
+      returning: boolean;
+      cargo?: Resources;
+    }
+  | {
+      id: number;
+      kind: 'settlement';
+      ownerId: number;
+      targetId: number;
+      arriveAt: number;
+    }
+  | {
+      id: number;
+      kind: 'transfer';
+      ownerId: number;
+      targetId: number;
+      arriveAt: number;
+      cargo: Resources;
+    }
+  | {
+      id: number;
+      kind: 'death_star';
+      ownerId: number;
+      targetId: number;
+      arriveAt: number;
+      /** Launch-time stamp: a destructive flight can never become a capture by accident. */
+      captureIntent: boolean;
+    };
+
+export interface StrategicDiagnostics {
+  neutralMinted: Record<NeutralTier, number>;
+  neutralTaken: Record<NeutralTier, number>;
+  neutralLootShare: number;
+  uniqueNeutralRaiders: number;
+  neutralRaids: number;
+  colonizedAt: Record<NeutralTier, number[]>;
+  remainingNeutral: Record<NeutralTier, number>;
+  coloniesPerPlayer: number[];
+  transferredResources: number;
+  deathStar: {
+    builds: number;
+    launches: number;
+    firstHits: number;
+    captures: number;
+    misses: number;
+  };
+  recoveryThirdPartyArrivals: number;
+  capitalHeldDeathStarValue: number;
 }
 
 export interface DayStats {
@@ -121,6 +279,22 @@ export interface SimConfig {
   seed: number;
   /** Experiment-only redistribution; total hull prices never move. */
   hullCrystalShare?: 0.25 | 0.30 | 0.35;
+  /** Balance-lab override only; omitted means the live rules price. */
+  spectrometryCrystalCost?: number;
+  /** Balance-lab counterfactual only; omitted models the live isotope field. */
+  isotopes?: boolean;
+  /** Counterfactual used only to measure the v2 layer against its unchanged baseline. */
+  strategicLayer?: boolean;
+  /** Balance-lab appetite override; it is not a production feature flag. */
+  neutralRaidChance?: number;
+  /** Balance-lab transfer appetite for commanders who already won a colony. */
+  colonyTransferChance?: number;
+  /**
+   * Fixed regression-lab layout. Omitted always models the live D99 world.
+   * This keeps the five historical 50-player seeds comparable without making
+   * their deliberately small sample the production neutral layout.
+   */
+  neutralLayout?: NeutralLayout & { slotPool: number };
 }
 
 export type CrystalSpendCategory =
@@ -129,22 +303,56 @@ export type CrystalSpendCategory =
   | 'defence'
   | 'combat'
   | 'hauler'
-  | 'prospector';
+  | 'prospector'
+  | 'research';
 
 export interface CrystalDiagnostics {
   capPlayerHours: number;
   medianUnused: number;
   spent: Record<CrystalSpendCategory, number>;
   spentShare: Record<CrystalSpendCategory, number>;
+  mining: {
+    launches: number;
+    oreClaimed: number;
+    alloyDelivered: number;
+    crystalDelivered: number;
+    deuteriumDelivered: number;
+    overflowLost: number;
+  };
+  strategic: StrategicDiagnostics;
 }
 
 export interface World {
   players: SimPlayer[];
   missions: Mission[];
+  miningRuns: MiningRun[];
+  asteroids: AsteroidSpec[];
+  asteroidClaims: Map<number, number>;
+  nextMiningRunId: number;
   rng: Rng;
+  /** Separate stream so adding mining never rewrites combat/login randomness. */
+  miningRng: Rng;
+  /** How long the whole season runs. Bots need it to know when to stop building. */
+  totalMinutes: number;
   hullCrystalShare?: SimConfig['hullCrystalShare'];
+  spectrometryCrystalCost: number;
+  isotopes: boolean;
   crystalCapPlayerMinutes: number;
   crystalSpent: Record<CrystalSpendCategory, number>;
+  mining: CrystalDiagnostics['mining'];
+  neutrals: SimNeutralWorld[];
+  strategicMissions: StrategicMission[];
+  deathStars: Map<number, { status: 'BUILDING' | 'READY'; readyAt: number }>;
+  deathStarProtocol: Set<number>;
+  neutralRaiders: Set<number>;
+  nextStrategicMissionId: number;
+  strategicRng: Rng;
+  strategicEnabled: boolean;
+  neutralRaidChance: number;
+  colonyTransferChance: number;
+  strategic: Omit<StrategicDiagnostics,
+    'neutralLootShare' | 'uniqueNeutralRaiders' | 'remainingNeutral'
+    | 'coloniesPerPlayer' | 'capitalHeldDeathStarValue'>;
 }
 
 /* ── setup ─────────────────────────────────────────────────────── */
@@ -174,8 +382,9 @@ export function buildWorld(cfg: SimConfig): World {
     // measuring a different game.
     fleet: {},
     ground: {},
-    alloy: PLANET_START.alloy, crystal: PLANET_START.crystal,
-    bufferAlloy: 0, bufferCrystal: 0,
+    queues: { CONSTRUCTION: [], YARD: [] },
+    alloy: PLANET_START.alloy, crystal: PLANET_START.crystal, deuterium: PLANET_START.deuterium,
+    bufferAlloy: 0, bufferCrystal: 0, bufferDeuterium: 0,
     shield: 0, lastTick: 0, joinedAt: 0, disruptedUntil: 0,
     nextLogin: Math.floor(rng() * 240),
     ledger: emptyLedger(),
@@ -184,7 +393,46 @@ export function buildWorld(cfg: SimConfig): World {
     wealthNow: 0, wealthHistory: [],
     recentHits: new Map(), intel: new Map(),
     neighbours: [],
+    isotopeSpectrometry: false,
+    denseFuelCells: false,
+    graviticCharges: false,
+    cargoLimitedSeen: false,
+    shieldInsightSeen: false,
   }));
+
+  const strategicGalaxy = generateGalaxy(
+    cfg.seed,
+    cfg.neutralLayout?.slotPool ?? MULTI_WORLD.neutralSlotPool,
+  );
+  const neutrals: SimNeutralWorld[] = selectNeutralSlots(
+    cfg.seed,
+    strategicGalaxy.slots,
+    cfg.neutralLayout,
+  )
+    .map((chosen) => {
+      const template = MULTI_WORLD.neutral[chosen.tier];
+      const alloyPerHour = alloyRate(template.buildings.REFINERY);
+      const crystalPerHour = crystalRate(template.buildings.EXTRACTOR);
+      return {
+        id: chosen.slot.index,
+        tier: chosen.tier,
+        x: chosen.slot.x,
+        y: chosen.slot.y,
+        z: chosen.slot.z,
+        controllerId: null,
+        buildings: { ...template.buildings },
+        aegis: chosen.tier === 3 ? 3 : 0,
+        fleet: { ...template.fleet, ...template.ground },
+        alloy: storageCap(alloyPerHour, template.buildings.VAULT),
+        crystal: storageCap(crystalPerHour, template.buildings.VAULT),
+        deuterium: deuteriumStorageCap(crystalPerHour, template.buildings.VAULT),
+        lastTick: 0,
+        claimUntil: null,
+        nextReinforcement: template.reinforcementMinutes,
+        recoveryUntil: 0,
+        protectedUntil: 0,
+      };
+    });
 
   for (const p of players) {
     p.neighbours = players
@@ -197,10 +445,52 @@ export function buildWorld(cfg: SimConfig): World {
   return {
     players,
     missions: [],
+    miningRuns: [],
+    asteroids:
+      cfg.isotopes === false
+        ? galaxy.asteroids.map((rock) => ({
+            ...rock,
+            isotopeRich: false,
+            deuteriumShare: 0,
+          }))
+        : galaxy.asteroids,
+    asteroidClaims: new Map(),
+    nextMiningRunId: 1,
     rng,
+    miningRng: mulberry32((cfg.seed ^ 0x51f15e5d) >>> 0),
+    totalMinutes: cfg.days * 1440,
     ...(cfg.hullCrystalShare === undefined ? {} : { hullCrystalShare: cfg.hullCrystalShare }),
+    spectrometryCrystalCost:
+      cfg.spectrometryCrystalCost ?? RESEARCH_PROJECTS.ISOTOPE_SPECTROMETRY.cost.crystal,
+    isotopes: cfg.isotopes ?? true,
     crystalCapPlayerMinutes: 0,
-    crystalSpent: { buildings: 0, hardware: 0, defence: 0, combat: 0, hauler: 0, prospector: 0 },
+    crystalSpent: {
+      buildings: 0, hardware: 0, defence: 0, combat: 0, hauler: 0, prospector: 0,
+      research: 0,
+    },
+    mining: {
+      launches: 0, oreClaimed: 0, alloyDelivered: 0, crystalDelivered: 0,
+      deuteriumDelivered: 0, overflowLost: 0,
+    },
+    neutrals,
+    strategicMissions: [],
+    deathStars: new Map(),
+    deathStarProtocol: new Set(),
+    neutralRaiders: new Set(),
+    nextStrategicMissionId: 1,
+    strategicRng: mulberry32((cfg.seed ^ 0xd34db33f) >>> 0),
+    strategicEnabled: cfg.strategicLayer ?? true,
+    neutralRaidChance: cfg.neutralRaidChance ?? 0.02,
+    colonyTransferChance: cfg.colonyTransferChance ?? 0.05,
+    strategic: {
+      neutralMinted: { 1: 0, 2: 0, 3: 0 },
+      neutralTaken: { 1: 0, 2: 0, 3: 0 },
+      neutralRaids: 0,
+      colonizedAt: { 1: [], 2: [], 3: [] },
+      transferredResources: 0,
+      deathStar: { builds: 0, launches: 0, firstHits: 0, captures: 0, misses: 0 },
+      recoveryThirdPartyArrivals: 0,
+    },
   };
 }
 
@@ -210,17 +500,17 @@ const REDISTRIBUTED_HULLS = new Set(['LANCE', 'BULWARK', 'HAULER', 'PROSPECTOR']
 export function redistributedHullPrice(
   id: keyof typeof HULLS,
   share?: SimConfig['hullCrystalShare'],
-): { alloy: number; crystal: number } {
+): Resources {
   const hull = HULLS[id];
   if (share === undefined || !REDISTRIBUTED_HULLS.has(id)) {
-    return { alloy: hull.alloy, crystal: hull.crystal };
+    return { alloy: hull.alloy, crystal: hull.crystal, deuterium: hull.deuterium };
   }
   const total = hull.alloy + hull.crystal;
   const crystal = Math.round(total * share);
-  return { alloy: total - crystal, crystal };
+  return { alloy: total - crystal, crystal, deuterium: hull.deuterium };
 }
 
-function hullPrice(world: World, id: keyof typeof HULLS): { alloy: number; crystal: number } {
+function hullPrice(world: World, id: keyof typeof HULLS): Resources {
   return redistributedHullPrice(id, world.hullCrystalShare);
 }
 
@@ -228,11 +518,188 @@ function spendCrystal(world: World, category: CrystalSpendCategory, amount: numb
   world.crystalSpent[category] += amount;
 }
 
+const completedResearchOf = (p: SimPlayer, world: World): Set<ResearchProjectId> => {
+  const completed = new Set<ResearchProjectId>();
+  if (p.isotopeSpectrometry) completed.add('ISOTOPE_SPECTROMETRY');
+  if (p.denseFuelCells) completed.add('DENSE_FUEL_CELLS');
+  if (p.graviticCharges) completed.add('GRAVITIC_CHARGES');
+  if (world.deathStarProtocol.has(p.id)) completed.add('DEATH_STAR_PROTOCOL');
+  return completed;
+};
+
+/** Current state plus every order already ahead in one independent queue. */
+export function projectedBuildState(
+  p: SimPlayer,
+  world: World,
+  queue: BuildQueueId,
+): SimBuildProjection {
+  const projected: SimBuildProjection = {
+    buildings: { ...p.buildings },
+    instruments: { ...p.instruments },
+    orbit: [...p.orbit],
+    research: completedResearchOf(p, world),
+  };
+  for (const order of p.queues[queue]) {
+    if (order.kind === 'BUILDING') {
+      const id = order.subject as BuildingId;
+      projected.buildings[id] += 1;
+    } else if (order.kind === 'INSTRUMENT') {
+      const id = order.subject as InstrumentId;
+      projected.instruments[id] = (projected.instruments[id] ?? 0) + 1;
+    } else if (order.kind === 'SATELLITE') {
+      const id = order.subject as SatelliteId;
+      if (!projected.orbit.includes(id)) projected.orbit.push(id);
+    } else if (order.kind === 'RESEARCH') {
+      projected.research.add(order.subject as ResearchProjectId);
+    }
+  }
+  return projected;
+}
+
+const queuedHullCount = (p: SimPlayer, hull: HullId): number =>
+  p.queues.YARD
+    .filter((order) => order.kind === 'HULL' && order.subject === hull)
+    .reduce((sum, order) => sum + order.count, 0);
+
+/**
+ * Pay and append one order, using the same depth, second rounding and season-end
+ * refusal as the server. Callers validate the subject-specific gate first.
+ */
+export function enqueueSimBuild(
+  p: SimPlayer,
+  t: number,
+  world: World,
+  input: Omit<SimBuildOrder, 'readyAt'>,
+): boolean {
+  const queue = p.queues[input.queue];
+  if ((input.kind === 'HULL') !== (input.queue === 'YARD')) return false;
+  if (queue.length >= BUILD.queueDepth) return false;
+  if (!Number.isInteger(input.count) || input.count < 1) return false;
+  if (!Number.isFinite(input.minutes) || input.minutes <= 0) return false;
+  if (
+    p.alloy < input.cost.alloy
+    || p.crystal < input.cost.crystal
+    || p.deuterium < input.cost.deuterium
+  ) return false;
+
+  // The server stores whole seconds, so the simulation must not finish a fraction
+  // earlier and compound that drift over a fourteen-day season.
+  const minutes = Math.max(1, Math.ceil(input.minutes * 60)) / 60;
+  const startsAt = queue.at(-1)?.readyAt ?? t;
+  const readyAt = resolveQueue([{ queue: input.queue, minutes }], startsAt)[0];
+  if (readyAt === undefined || readyAt > world.totalMinutes) return false;
+
+  p.alloy -= input.cost.alloy;
+  p.crystal -= input.cost.crystal;
+  p.deuterium -= input.cost.deuterium;
+  queue.push({
+    ...input,
+    cost: { ...input.cost },
+    minutes,
+    readyAt,
+  });
+  return true;
+}
+
+/** Absolute completion minute for one more order, with server-style second rounding. */
+function nextSimBuildReadyAt(
+  p: SimPlayer,
+  queue: BuildQueueId,
+  t: number,
+  minutes: number,
+): number {
+  const roundedMinutes = Math.max(1, Math.ceil(minutes * 60)) / 60;
+  return (p.queues[queue].at(-1)?.readyAt ?? t) + roundedMinutes;
+}
+
+function applySimBuild(p: SimPlayer, order: SimBuildOrder, world: World): void {
+  if (order.kind === 'BUILDING') {
+    const id = order.subject as BuildingId;
+    p.buildings[id] += 1;
+    return;
+  }
+  if (order.kind === 'HULL') {
+    const id = order.subject as HullId;
+    const stack = HULLS[id].ground ? p.ground : p.fleet;
+    stack[id] = (stack[id] ?? 0) + order.count;
+    return;
+  }
+  if (order.kind === 'INSTRUMENT') {
+    const id = order.subject as InstrumentId;
+    p.instruments[id] = (p.instruments[id] ?? 0) + 1;
+    return;
+  }
+  if (order.kind === 'SATELLITE') {
+    const id = order.subject as SatelliteId;
+    if (!p.orbit.includes(id)) p.orbit.push(id);
+    return;
+  }
+
+  const id = order.subject as ResearchProjectId;
+  if (id === 'ISOTOPE_SPECTROMETRY') p.isotopeSpectrometry = true;
+  else if (id === 'DENSE_FUEL_CELLS') p.denseFuelCells = true;
+  else if (id === 'GRAVITIC_CHARGES') p.graviticCharges = true;
+  else world.deathStarProtocol.add(p.id);
+}
+
+/** Complete due work at each order's exact instant; disruption never pauses it. */
+export function advanceBuildQueues(world: World, t: number): void {
+  for (const p of world.players) {
+    const due = [...p.queues.CONSTRUCTION, ...p.queues.YARD]
+      .filter((order) => order.readyAt <= t)
+      .sort((a, b) => a.readyAt - b.readyAt || a.queue.localeCompare(b.queue));
+    if (due.length === 0) continue;
+    const completed = new Set(due);
+    for (const order of due) {
+      // Settle production and shield recovery under the old hardware first.
+      sync(p, order.readyAt);
+      applySimBuild(p, order, world);
+    }
+    p.queues.CONSTRUCTION = p.queues.CONSTRUCTION.filter((order) => !completed.has(order));
+    p.queues.YARD = p.queues.YARD.filter((order) => !completed.has(order));
+  }
+}
+
+const queuedWealth = (p: SimPlayer): number =>
+  [...p.queues.CONSTRUCTION, ...p.queues.YARD]
+    .reduce((sum, order) => sum + resourcesTotal(order.cost), 0);
+
+function enqueueHullOrder(
+  p: SimPlayer,
+  hull: HullId,
+  count: number,
+  t: number,
+  world: World,
+  category: CrystalSpendCategory,
+): boolean {
+  if (count < 1 || p.buildings.SHIPYARD < HULLS[hull].minShipyard) return false;
+  const unit = hullPrice(world, hull);
+  const cost = {
+    alloy: unit.alloy * count,
+    crystal: unit.crystal * count,
+    deuterium: unit.deuterium * count,
+  };
+  const minutes = HULLS[hull].ground
+    ? defenceMinutes(cost, p.buildings.SHIPYARD)
+    : shipMinutes(cost, p.buildings.SHIPYARD);
+  const placed = enqueueSimBuild(p, t, world, {
+    queue: 'YARD',
+    kind: 'HULL',
+    subject: hull,
+    count,
+    cost,
+    minutes,
+  });
+  if (placed) spendCrystal(world, category, cost.crystal);
+  return placed;
+}
+
 /* ── economy ───────────────────────────────────────────────────── */
 
 const capsOf = (p: SimPlayer) => ({
-  alloy: storageCap(alloyRate(p.buildings.REFINERY)),
-  crystal: storageCap(crystalRate(p.buildings.EXTRACTOR)),
+  alloy: storageCap(alloyRate(p.buildings.REFINERY), p.buildings.VAULT),
+  crystal: storageCap(crystalRate(p.buildings.EXTRACTOR), p.buildings.VAULT),
+  deuterium: deuteriumStorageCap(crystalRate(p.buildings.EXTRACTOR), p.buildings.VAULT),
 });
 
 /**
@@ -246,6 +713,7 @@ const worksCapsOf = (p: SimPlayer) => {
   return {
     alloy: collectorCap(alloyRate(p.buildings.REFINERY) * boost),
     crystal: collectorCap(crystalRate(p.buildings.EXTRACTOR) * boost),
+    deuterium: deuteriumCollectorCap(crystalRate(p.buildings.EXTRACTOR) * boost),
   };
 };
 
@@ -253,14 +721,470 @@ const worksOf = (p: SimPlayer) => ({
   refineryLevel: p.buildings.REFINERY,
   extractorLevel: p.buildings.EXTRACTOR,
   aegisLevel: p.instruments.AEGIS ?? 0,
+  vaultLevel: p.buildings.VAULT,
   production: productionMult(p.orbit),
 });
+
+const EMPTY_RESOURCES: Resources = { alloy: 0, crystal: 0, deuterium: 0 };
+
+function syncNeutral(n: SimNeutralWorld, t: number, world: World): void {
+  if (t <= n.lastTick || n.recoveryUntil > t) {
+    n.lastTick = Math.max(n.lastTick, t);
+    return;
+  }
+  const hours = (t - n.lastTick) / 60;
+  const alloyPerHour = alloyRate(n.buildings.REFINERY);
+  const crystalPerHour = crystalRate(n.buildings.EXTRACTOR);
+  const nextAlloy = Math.min(storageCap(alloyPerHour, n.buildings.VAULT), n.alloy + alloyPerHour * hours);
+  const nextCrystal = Math.min(storageCap(crystalPerHour, n.buildings.VAULT), n.crystal + crystalPerHour * hours);
+  if (n.controllerId === null) {
+    world.strategic.neutralMinted[n.tier] += nextAlloy - n.alloy + nextCrystal - n.crystal;
+  }
+  n.alloy = nextAlloy;
+  n.crystal = nextCrystal;
+  n.lastTick = t;
+}
+
+/** Mirrors the server's strict infrastructure → Aegis → proportional garrison order. */
+function reinforceNeutralSim(n: SimNeutralWorld, t: number, world: World): void {
+  const template = MULTI_WORLD.neutral[n.tier];
+  if (template.reinforcementMinutes === null) return;
+  syncNeutral(n, t, world);
+  let blocked = false;
+  for (const type of ['CORE', 'REFINERY', 'EXTRACTOR', 'SHIPYARD'] as const) {
+    while (n.buildings[type] < template.buildings[type]) {
+      const cost = upgradeCost(n.buildings[type]);
+      if (n.alloy < cost.alloy || n.crystal < cost.crystal || n.deuterium < cost.deuterium) {
+        blocked = true;
+        break;
+      }
+      n.alloy -= cost.alloy;
+      n.crystal -= cost.crystal;
+      n.deuterium -= cost.deuterium;
+      n.buildings[type]++;
+    }
+    if (blocked) break;
+  }
+  if (n.tier === 3 && !blocked) {
+    while (n.aegis < 3) {
+      const cost = instrumentCost('AEGIS', n.aegis);
+      if (n.alloy < cost.alloy || n.crystal < cost.crystal || n.deuterium < cost.deuterium) {
+        blocked = true;
+        break;
+      }
+      n.alloy -= cost.alloy;
+      n.crystal -= cost.crystal;
+      n.deuterium -= cost.deuterium;
+      n.aegis++;
+    }
+  }
+  const target = { ...template.fleet, ...template.ground } as Fleet;
+  const tie: (keyof Fleet)[] = ['WASP', 'LANCE', 'BULWARK', 'THORN', 'BASTION'];
+  while (!blocked) {
+    const missing = tie
+      .filter((hull) => (n.fleet[hull] ?? 0) < (target[hull] ?? 0))
+      .sort((a, b) =>
+        ((n.fleet[a] ?? 0) / Math.max(1, target[a] ?? 0))
+        - ((n.fleet[b] ?? 0) / Math.max(1, target[b] ?? 0))
+        || tie.indexOf(a) - tie.indexOf(b));
+    const hull = missing[0];
+    if (!hull) break;
+    const cost = HULLS[hull];
+    if (n.alloy < cost.alloy || n.crystal < cost.crystal || n.deuterium < cost.deuterium) break;
+    n.alloy -= cost.alloy;
+    n.crystal -= cost.crystal;
+    n.deuterium -= cost.deuterium;
+    n.fleet[hull] = (n.fleet[hull] ?? 0) + 1;
+  }
+  n.nextReinforcement = t + template.reinforcementMinutes;
+}
+
+const coloniesOf = (world: World, playerId: number): SimNeutralWorld[] =>
+  world.neutrals.filter((n) => n.controllerId === playerId);
+
+function strategicReservations(world: World, playerId: number): number {
+  return world.strategicMissions.filter((mission) =>
+    mission.ownerId === playerId
+    && (mission.kind === 'settlement'
+      || (mission.kind === 'death_star' && mission.captureIntent)),
+  ).length;
+}
+
+function strategicCapacity(world: World, p: SimPlayer): number {
+  const highest = Math.max(
+    p.buildings.CORE,
+    ...coloniesOf(world, p.id).map((n) => n.buildings.CORE),
+  );
+  return colonyCapacity(highest);
+}
+
+function canReserveColony(world: World, p: SimPlayer): boolean {
+  return coloniesOf(world, p.id).length + strategicReservations(world, p.id)
+    < strategicCapacity(world, p);
+}
+
+function raidFleetFor(p: SimPlayer, tier: NeutralTier): Fleet | null {
+  const cargoHull = (p.fleet.HAULER ?? 0) > 0 ? 'HAULER'
+    : (p.fleet.RUNNER ?? 0) > 0 ? 'RUNNER' : null;
+  if (!cargoHull || (p.fleet.WASP ?? 0) <= 0) return null;
+  if (tier === 1) return { WASP: Math.min(3, p.fleet.WASP ?? 0), [cargoHull]: 1 };
+  const send: Fleet = { [cargoHull]: 1 };
+  for (const hull of COMBAT_HULLS) {
+    const count = Math.floor((p.fleet[hull] ?? 0) * 0.6);
+    if (count > 0) send[hull] = count;
+  }
+  return fleetValue(send) > 0 ? send : null;
+}
+
+export function neutralRaidEligible(
+  tier: NeutralTier,
+  archetype: ArchetypeName,
+  attackValue: number,
+  defenceValue: number,
+): boolean {
+  if (tier === 1) return attackValue > 0;
+  if (tier === 2) return attackValue >= defenceValue * 1.8;
+  return archetype === 'GRINDER' && attackValue >= defenceValue * 2.5;
+}
+
+function trySettleNeutral(p: SimPlayer, n: SimNeutralWorld, t: number, world: World): void {
+  if (n.claimUntil === null || n.claimUntil <= t || !canReserveColony(world, p)) return;
+  const haulers = MULTI_WORLD.settlement.haulers;
+  if (world.strategicRng() >= 0.18 || (p.fleet.HAULER ?? 0) < haulers) return;
+  const cost = MULTI_WORLD.settlement.cost;
+  if (p.alloy < cost.alloy || p.crystal < cost.crystal || p.deuterium < cost.deuterium) return;
+  const flight = fleetTravelExact(distance(p, n), { HAULER: haulers });
+  const arriveAt = t + flight;
+  if (arriveAt > n.claimUntil) return;
+  p.alloy -= cost.alloy;
+  p.crystal -= cost.crystal;
+  p.deuterium -= cost.deuterium;
+  p.fleet.HAULER = (p.fleet.HAULER ?? 0) - haulers;
+  world.strategicMissions.push({
+    id: world.nextStrategicMissionId++,
+    kind: 'settlement',
+    ownerId: p.id,
+    targetId: n.id,
+    arriveAt,
+  });
+}
+
+function tryNeutralRaid(p: SimPlayer, t: number, world: World): void {
+  if (world.strategicRng() >= world.neutralRaidChance) return;
+  const candidates = world.neutrals
+    .filter((n) => n.controllerId === null && n.protectedUntil <= t)
+    .sort((a, b) => distance(p, a) - distance(p, b) || a.id - b.id);
+  for (const n of candidates) {
+    if (n.recoveryUntil > t) {
+      world.strategic.recoveryThirdPartyArrivals++;
+      continue;
+    }
+    const send = raidFleetFor(p, n.tier);
+    if (!send) return;
+    const defenceValue = fleetValue(n.fleet) + shieldHp(n.aegis);
+    const attackValue = fleetValue(send);
+    // T3 is intentionally not a blind farm: only the informed archetype models a
+    // probe/counter-composition decision, and still demands a wide safety margin.
+    if (!neutralRaidEligible(n.tier, p.type, attackValue, defenceValue)) continue;
+
+    for (const [hull, count] of fleetEntries(send)) p.fleet[hull] = (p.fleet[hull] ?? 0) - count;
+    world.strategicMissions.push({
+      id: world.nextStrategicMissionId++,
+      kind: 'neutral_attack',
+      ownerId: p.id,
+      targetId: n.id,
+      arriveAt: t + fleetTravelExact(distance(p, n), send),
+      fleet: send,
+      returning: false,
+    });
+    return;
+  }
+}
+
+function tryTransferToColony(p: SimPlayer, t: number, world: World): void {
+  const colony = coloniesOf(world, p.id)[0];
+  if (!colony || world.strategicRng() >= world.colonyTransferChance || (p.fleet.HAULER ?? 0) < 1) return;
+  const cargo = {
+    alloy: Math.min(600, Math.floor(p.alloy * 0.08)),
+    crystal: Math.min(200, Math.floor(p.crystal * 0.08)),
+    deuterium: Math.min(50, Math.floor(p.deuterium * 0.08)),
+  };
+  if (cargo.alloy + cargo.crystal + cargo.deuterium <= 0) return;
+  p.alloy -= cargo.alloy;
+  p.crystal -= cargo.crystal;
+  p.deuterium -= cargo.deuterium;
+  p.fleet.HAULER = (p.fleet.HAULER ?? 0) - 1;
+  world.strategicMissions.push({
+    id: world.nextStrategicMissionId++,
+    kind: 'transfer',
+    ownerId: p.id,
+    targetId: colony.id,
+    arriveAt: t + fleetTravelExact(distance(p, colony), { HAULER: 1 }),
+    cargo,
+  });
+}
+
+export function tryDeathStar(p: SimPlayer, t: number, world: World): void {
+  const existing = world.deathStars.get(p.id);
+  if (existing?.status === 'BUILDING' && existing.readyAt <= t) {
+    existing.status = 'READY';
+  }
+  if (existing?.status === 'READY') {
+    const target = world.neutrals
+      .filter((n) => n.controllerId !== p.id && n.protectedUntil <= t)
+      .sort((a, b) => Number(b.recoveryUntil > t) - Number(a.recoveryUntil > t)
+        || distance(p, a) - distance(p, b) || a.id - b.id)[0];
+    if (!target) return;
+    const captureIntent = target.recoveryUntil > t;
+    if (captureIntent && !canReserveColony(world, p)) return;
+    const arriveAt = t + travelMinutes(distance(p, target), DEATH_STAR.speed);
+    if (captureIntent && arriveAt >= target.recoveryUntil) return;
+    world.deathStars.delete(p.id);
+    world.strategicMissions.push({
+      id: world.nextStrategicMissionId++,
+      kind: 'death_star',
+      ownerId: p.id,
+      targetId: target.id,
+      arriveAt,
+      captureIntent,
+    });
+    world.strategic.deathStar.launches++;
+    return;
+  }
+  if (existing || t < RESEARCH_PROJECTS.DEATH_STAR_PROTOCOL.availableAtMinutes) return;
+  if (!world.deathStarProtocol.has(p.id)) {
+    const projected = projectedBuildState(p, world, 'CONSTRUCTION');
+    // Already paid and waiting: the strategic asset cannot start until the
+    // research completion has made the permission durable.
+    if (projected.research.has('DEATH_STAR_PROTOCOL')) return;
+    if (
+      !projected.research.has('GRAVITIC_CHARGES')
+      || projected.buildings.CORE < (RESEARCH_PROJECTS.DEATH_STAR_PROTOCOL.requiredCore ?? 0)
+    ) return;
+    const research = RESEARCH_PROJECTS.DEATH_STAR_PROTOCOL.cost;
+    if (p.alloy < research.alloy || p.crystal < research.crystal || p.deuterium < research.deuterium) return;
+    const placed = enqueueSimBuild(p, t, world, {
+      queue: 'CONSTRUCTION',
+      kind: 'RESEARCH',
+      subject: 'DEATH_STAR_PROTOCOL',
+      count: 1,
+      cost: research,
+      minutes: researchMinutes(research, projected.buildings.CORE),
+    });
+    if (placed) spendCrystal(world, 'research', research.crystal);
+    return;
+  }
+  if (p.buildings.CORE < 6 || p.buildings.SHIPYARD < 5) return;
+  if (p.alloy < DEATH_STAR.cost.alloy || p.crystal < DEATH_STAR.cost.crystal || p.deuterium < DEATH_STAR.cost.deuterium) return;
+  p.alloy -= DEATH_STAR.cost.alloy;
+  p.crystal -= DEATH_STAR.cost.crystal;
+  p.deuterium -= DEATH_STAR.cost.deuterium;
+  spendCrystal(world, 'combat', DEATH_STAR.cost.crystal);
+  world.deathStars.set(p.id, { status: 'BUILDING', readyAt: t + DEATH_STAR.buildMinutes });
+  world.strategic.deathStar.builds++;
+}
+
+function applyStrategicDamage(n: SimNeutralWorld, t: number): void {
+  n.alloy = 0;
+  n.crystal = 0;
+  n.deuterium = 0;
+  for (const type of ['CORE', 'REFINERY', 'EXTRACTOR', 'SHIPYARD'] as const) {
+    n.buildings[type] = Math.max(0, n.buildings[type] - 1);
+  }
+  n.aegis = Math.max(0, n.aegis - 1);
+  n.fleet = Object.fromEntries(
+    fleetEntries(n.fleet).filter(([hull]) => hull === 'PROSPECTOR'),
+  );
+  n.claimUntil = null;
+  n.lastTick = t;
+}
+
+function resolveStrategicMission(mission: StrategicMission, t: number, world: World): void {
+  const p = world.players[mission.ownerId];
+  const target = world.neutrals.find((n) => n.id === mission.targetId);
+  if (!p || !target) return;
+  if (mission.kind === 'neutral_attack') {
+    if (mission.returning) {
+      for (const [hull, count] of fleetEntries(mission.fleet)) {
+        p.fleet[hull] = (p.fleet[hull] ?? 0) + count;
+      }
+      const caps = capsOf(p);
+      p.alloy = Math.min(caps.alloy, p.alloy + (mission.cargo?.alloy ?? 0));
+      p.crystal = Math.min(caps.crystal, p.crystal + (mission.cargo?.crystal ?? 0));
+      p.deuterium = Math.min(caps.deuterium, p.deuterium + (mission.cargo?.deuterium ?? 0));
+      return;
+    }
+
+    // A world can recover, become protected or change controller while the fleet
+    // is travelling. Like the server, that stale arrival returns without combat.
+    if (target.controllerId !== null || target.protectedUntil > t || target.recoveryUntil > t) {
+      if (target.recoveryUntil > t) world.strategic.recoveryThirdPartyArrivals++;
+      world.strategicMissions.push({
+        ...mission,
+        id: world.nextStrategicMissionId++,
+        arriveAt: t + fleetTravelExact(distance(p, target), mission.fleet),
+        returning: true,
+      });
+      return;
+    }
+
+    syncNeutral(target, t, world);
+    const result = resolveCombat(
+      mission.fleet,
+      target.fleet,
+      shieldHp(target.aegis),
+      mulberry32((mission.id * 104729 + t) >>> 0),
+    );
+    target.fleet = { ...result.defenderSurvivors, ...result.defenceSalvage };
+    const loot = computeLoot(
+      { alloy: target.alloy, crystal: target.crystal, deuterium: target.deuterium },
+      EMPTY_RESOURCES,
+      EMPTY_RESOURCES,
+      result.grade,
+      fleetCargo(result.attackerSurvivors),
+    );
+    target.alloy -= loot.fromStock.alloy;
+    target.crystal -= loot.fromStock.crystal;
+    target.deuterium -= loot.fromStock.deuterium;
+    const taken = loot.alloy + loot.crystal + loot.deuterium;
+    world.strategic.neutralTaken[target.tier] += taken;
+    world.strategic.neutralRaids++;
+    world.neutralRaiders.add(p.id);
+    if (result.grade === 'DECISIVE' && target.claimUntil === null) {
+      target.claimUntil = t + MULTI_WORLD.claimMinutes;
+      trySettleNeutral(p, target, t, world);
+    }
+    if (fleetValue(result.attackerSurvivors) > 0) {
+      world.strategicMissions.push({
+        id: world.nextStrategicMissionId++,
+        kind: 'neutral_attack',
+        ownerId: p.id,
+        targetId: target.id,
+        arriveAt: t + fleetTravelExact(distance(p, target), result.attackerSurvivors),
+        fleet: result.attackerSurvivors,
+        returning: true,
+        cargo: { alloy: loot.alloy, crystal: loot.crystal, deuterium: loot.deuterium },
+      });
+    }
+    return;
+  }
+  if (mission.kind === 'settlement') {
+    const haulers = MULTI_WORLD.settlement.haulers;
+    if (target.controllerId === null && target.claimUntil !== null && target.claimUntil >= t) {
+      target.controllerId = p.id;
+      target.claimUntil = null;
+      target.protectedUntil = t + MULTI_WORLD.occupationMinutes;
+      target.fleet.HAULER = (target.fleet.HAULER ?? 0) + haulers;
+      world.strategic.colonizedAt[target.tier].push(t);
+    } else {
+      p.fleet.HAULER = (p.fleet.HAULER ?? 0) + haulers;
+      p.alloy += MULTI_WORLD.settlement.cost.alloy;
+      p.crystal += MULTI_WORLD.settlement.cost.crystal;
+    }
+    return;
+  }
+  if (mission.kind === 'transfer') {
+    if (target.controllerId === p.id) {
+      target.alloy += mission.cargo.alloy;
+      target.crystal += mission.cargo.crystal;
+      target.deuterium += mission.cargo.deuterium;
+      target.fleet.HAULER = (target.fleet.HAULER ?? 0) + 1;
+      world.strategic.transferredResources +=
+        mission.cargo.alloy + mission.cargo.crystal + mission.cargo.deuterium;
+    } else {
+      p.fleet.HAULER = (p.fleet.HAULER ?? 0) + 1;
+      p.alloy += mission.cargo.alloy;
+      p.crystal += mission.cargo.crystal;
+      p.deuterium += mission.cargo.deuterium;
+    }
+    return;
+  }
+  if (target.controllerId === p.id || target.protectedUntil > t) {
+    world.strategic.deathStar.misses++;
+    return;
+  }
+  const second = mission.captureIntent && target.recoveryUntil > t;
+  applyStrategicDamage(target, t);
+  if (second) {
+    target.controllerId = p.id;
+    target.recoveryUntil = 0;
+    target.protectedUntil = t + MULTI_WORLD.occupationMinutes;
+    world.strategic.deathStar.captures++;
+  } else {
+    target.recoveryUntil = t + MULTI_WORLD.recoveryMinutes;
+    world.strategic.deathStar.firstHits++;
+  }
+}
+
+export function runStrategicSession(p: SimPlayer, t: number, world: World): void {
+  const openClaim = world.neutrals
+    .filter((n) => n.controllerId === null && n.claimUntil !== null && n.claimUntil > t)
+    .sort((a, b) => distance(p, a) - distance(p, b) || a.id - b.id)[0];
+  if (openClaim) trySettleNeutral(p, openClaim, t, world);
+  tryNeutralRaid(p, t, world);
+  tryTransferToColony(p, t, world);
+  tryDeathStar(p, t, world);
+}
+
+export function advanceStrategicLayer(world: World, t: number): void {
+  const dueStrategic = world.strategicMissions
+    .filter((mission) => mission.arriveAt <= t)
+    .sort((a, b) => a.arriveAt - b.arriveAt || a.id - b.id);
+  if (dueStrategic.length > 0) {
+    const dueIds = new Set(dueStrategic.map((mission) => mission.id));
+    world.strategicMissions = world.strategicMissions
+      .filter((mission) => !dueIds.has(mission.id));
+    for (const mission of dueStrategic) resolveStrategicMission(mission, t, world);
+  }
+  for (const neutral of world.neutrals) {
+    if (neutral.controllerId !== null || neutral.nextReinforcement === null) continue;
+    if (neutral.nextReinforcement > t) continue;
+    if (neutral.recoveryUntil > t) {
+      neutral.nextReinforcement = neutral.recoveryUntil;
+    } else {
+      reinforceNeutralSim(neutral, t, world);
+    }
+  }
+}
+
+function strategicWealth(p: SimPlayer, world: World): number {
+  let total = 0;
+  for (const n of coloniesOf(world, p.id)) {
+    total += Object.values(n.buildings)
+      .reduce((sum, level) => sum + investedInBuilding(level), 0);
+    total += investedInInstrument('AEGIS', n.aegis);
+    total += fleetValue(n.fleet) + n.alloy + n.crystal + n.deuterium;
+  }
+  if (world.deathStars.has(p.id)) total += resourcesTotal(DEATH_STAR.cost);
+  for (const mission of world.strategicMissions.filter((m) => m.ownerId === p.id)) {
+    if (mission.kind === 'death_star') total += resourcesTotal(DEATH_STAR.cost);
+    if (mission.kind === 'settlement') {
+      total += MULTI_WORLD.settlement.haulers * (HULLS.HAULER.alloy + HULLS.HAULER.crystal);
+    }
+    if (mission.kind === 'transfer') {
+      total += HULLS.HAULER.alloy + HULLS.HAULER.crystal + resourcesTotal(mission.cargo);
+    }
+    if (mission.kind === 'neutral_attack') {
+      total += fleetValue(mission.fleet) + resourcesTotal(mission.cargo ?? EMPTY_RESOURCES);
+    }
+  }
+  return total;
+}
+
+const resourcesTotal = (r: Resources): number => r.alloy + r.crystal + r.deuterium;
+
+function totalWealth(p: SimPlayer, world: World): number {
+  // Committed resources remain fully owned, as on the server. They are not in
+  // storage and therefore do not enter ARR's losable numerator while queued.
+  return wealth(holdingsOf(p)) + queuedWealth(p) + strategicWealth(p, world);
+}
 
 function sync(p: SimPlayer, t: number): void {
   const next = advanceEconomy(
     {
-      alloy: p.alloy, crystal: p.crystal,
+      alloy: p.alloy, crystal: p.crystal, deuterium: p.deuterium,
       bufferAlloy: p.bufferAlloy, bufferCrystal: p.bufferCrystal,
+      bufferDeuterium: p.bufferDeuterium,
       shield: p.shield,
       lastTickMinutes: p.lastTick, disruptedUntilMinutes: p.disruptedUntil,
     },
@@ -269,8 +1193,10 @@ function sync(p: SimPlayer, t: number): void {
   );
   p.alloy = next.alloy;
   p.crystal = next.crystal;
+  p.deuterium = next.deuterium;
   p.bufferAlloy = next.bufferAlloy;
   p.bufferCrystal = next.bufferCrystal;
+  p.bufferDeuterium = next.bufferDeuterium;
   p.shield = next.shield;
   p.lastTick = next.lastTickMinutes;
 }
@@ -288,8 +1214,9 @@ function sync(p: SimPlayer, t: number): void {
 function collectWorks(p: SimPlayer): void {
   const after = collect(
     {
-      alloy: p.alloy, crystal: p.crystal,
+      alloy: p.alloy, crystal: p.crystal, deuterium: p.deuterium,
       bufferAlloy: p.bufferAlloy, bufferCrystal: p.bufferCrystal,
+      bufferDeuterium: p.bufferDeuterium,
       shield: p.shield,
       lastTickMinutes: p.lastTick, disruptedUntilMinutes: p.disruptedUntil,
     },
@@ -298,8 +1225,10 @@ function collectWorks(p: SimPlayer): void {
 
   p.alloy = after.alloy;
   p.crystal = after.crystal;
+  p.deuterium = after.deuterium;
   p.bufferAlloy = after.bufferAlloy;
   p.bufferCrystal = after.bufferCrystal;
+  p.bufferDeuterium = after.bufferDeuterium;
 }
 
 // Uncollected ore is still owned, so it still counts as Wealth — and Wealth is
@@ -311,13 +1240,14 @@ const holdingsOf = (p: SimPlayer) => ({
   fleet: p.fleet, ground: p.ground,
   alloy: p.alloy + p.bufferAlloy,
   crystal: p.crystal + p.bufferCrystal,
+  deuterium: p.deuterium + p.bufferDeuterium,
 });
 
 /* ── what to build, and why it is derived rather than listed ───── */
 
 /** Every hull that fights. Haulers carry; ground units never leave. */
 export const COMBAT_HULLS: readonly CombatHullId[] = MOBILE_HULLS.filter(
-  (h): h is CombatHullId => h !== 'HAULER',
+  (h): h is CombatHullId => h !== 'HAULER' && h !== 'RUNNER',
 );
 
 /**
@@ -353,7 +1283,7 @@ export const GROUND_DEFENCE: Fleet = Object.fromEntries(
  */
 export function tradeScore(hull: CombatHullId, defenders: Fleet): number {
   const h = HULLS[hull];
-  const cost = h.alloy + h.crystal;
+  const cost = h.alloy + h.crystal + h.deuterium;
   if (cost <= 0 || h.atk <= 0) return 0;
 
   let hpPool = 0;
@@ -386,8 +1316,9 @@ export function adaptiveMix(
   yard: number,
   fallback: Composition,
   defence: Fleet = GROUND_DEFENCE,
+  permitted: readonly CombatHullId[] = COMBAT_HULLS,
 ): Composition {
-  const buildable = COMBAT_HULLS.filter((h) => yard >= HULLS[h].minShipyard);
+  const buildable = permitted.filter((h) => yard >= HULLS[h].minShipyard);
   if (buildable.length === 0) return fallback;
 
   const ranked = [...buildable].sort((x, y) => tradeScore(y, defence) - tradeScore(x, defence));
@@ -447,6 +1378,219 @@ function expectedDefence(p: SimPlayer, t: number, fallback: Composition): Fleet 
 const combatPart = (fleet: Fleet): Fleet =>
   Object.fromEntries(COMBAT_HULLS.map((h) => [h, fleet[h] ?? 0]));
 
+/** What may be packed into a raid: combat hulls plus cargo, never mining craft. */
+const raidingPart = (fleet: Fleet): Fleet => ({
+  ...combatPart(fleet),
+  HAULER: fleet.HAULER ?? 0,
+  RUNNER: fleet.RUNNER ?? 0,
+});
+
+const ownedProspectors = (p: SimPlayer, world: World): number =>
+  (p.fleet.PROSPECTOR ?? 0)
+  + world.miningRuns
+    .filter((run) => run.playerId === p.id)
+    .reduce((sum, run) => sum + run.craft, 0);
+
+/** Home plus every outbound/return stack still owned by this commander. */
+const ownedMissionHull = (p: SimPlayer, world: World, hull: CombatHullId | 'RUNNER'): number =>
+  (p.fleet[hull] ?? 0)
+  + world.missions
+    .filter((mission) => mission.from === p.id)
+    .reduce((sum, mission) => sum + (mission.fleet[hull] ?? 0), 0);
+
+/** Buy at most one per login, preserving the rules-level two-craft ownership cap. */
+function tryBuyProspector(p: SimPlayer, t: number, world: World): void {
+  const a = ARCHETYPES[p.type];
+  const target = Math.min(a.prospectorTarget, PROSPECTOR.max);
+  if (p.buildings.SHIPYARD < HULLS.PROSPECTOR.minShipyard) return;
+  if (ownedProspectors(p, world) + queuedHullCount(p, 'PROSPECTOR') >= target) return;
+
+  const price = hullPrice(world, 'PROSPECTOR');
+  if (p.alloy < price.alloy || p.crystal < price.crystal) return;
+  if (p.alloy - price.alloy < alloyRate(p.buildings.REFINERY) * 0.5) return;
+  enqueueHullOrder(p, 'PROSPECTOR', 1, t, world, 'prospector');
+}
+
+/**
+ * The one current project, bought only by a commander who already committed to
+ * mining. This is conservative about adoption without pretending a non-miner
+ * would burn Crystal on a permission they cannot use. D93.
+ */
+function tryResearch(p: SimPlayer, t: number, world: World): void {
+  if (!world.isotopes) return;
+  if (!ARCHETYPES[p.type].researchesIsotopes) return;
+  let projected = projectedBuildState(p, world, 'CONSTRUCTION');
+  if (!projected.research.has('ISOTOPE_SPECTROMETRY')) {
+    if (t < RESEARCH_PROJECTS.ISOTOPE_SPECTROMETRY.availableAtMinutes) return;
+    if (ownedProspectors(p, world) + queuedHullCount(p, 'PROSPECTOR') < 1) return;
+    const cost = {
+      ...RESEARCH_PROJECTS.ISOTOPE_SPECTROMETRY.cost,
+      crystal: world.spectrometryCrystalCost,
+    };
+    if (
+      p.alloy < cost.alloy
+      || p.crystal < cost.crystal
+      || p.deuterium < cost.deuterium
+    ) return;
+    const placed = enqueueSimBuild(p, t, world, {
+      queue: 'CONSTRUCTION',
+      kind: 'RESEARCH',
+      subject: 'ISOTOPE_SPECTROMETRY',
+      count: 1,
+      cost,
+      minutes: researchMinutes(cost, projected.buildings.CORE),
+    });
+    if (placed) spendCrystal(world, 'research', cost.crystal);
+    return;
+  }
+
+  if (
+    !projected.research.has('DENSE_FUEL_CELLS')
+    && ARCHETYPES[p.type].researchesRunner
+    && p.cargoLimitedSeen
+  ) {
+    const cost = RESEARCH_PROJECTS.DENSE_FUEL_CELLS.cost;
+    const affordable =
+      p.alloy >= cost.alloy
+      && p.crystal >= cost.crystal
+      && p.deuterium >= cost.deuterium;
+    if (affordable) {
+      const placed = enqueueSimBuild(p, t, world, {
+        queue: 'CONSTRUCTION',
+        kind: 'RESEARCH',
+        subject: 'DENSE_FUEL_CELLS',
+        count: 1,
+        cost,
+        minutes: researchMinutes(cost, projected.buildings.CORE),
+      });
+      if (placed) spendCrystal(world, 'research', cost.crystal);
+    }
+  }
+
+  projected = projectedBuildState(p, world, 'CONSTRUCTION');
+  if (
+    !projected.research.has('GRAVITIC_CHARGES')
+    && ARCHETYPES[p.type].researchesBreacher
+    && p.shieldInsightSeen
+  ) {
+    const cost = RESEARCH_PROJECTS.GRAVITIC_CHARGES.cost;
+    const affordable =
+      p.alloy >= cost.alloy
+      && p.crystal >= cost.crystal
+      && p.deuterium >= cost.deuterium;
+    if (affordable) {
+      const placed = enqueueSimBuild(p, t, world, {
+        queue: 'CONSTRUCTION',
+        kind: 'RESEARCH',
+        subject: 'GRAVITIC_CHARGES',
+        count: 1,
+        cost,
+        minutes: researchMinutes(cost, projected.buildings.CORE),
+      });
+      if (placed) spendCrystal(world, 'research', cost.crystal);
+    }
+  }
+}
+
+/** Compare a few nearby visible rocks, preserving shared first-arrival races. */
+function tryMine(p: SimPlayer, t: number, world: World): void {
+  const craft = p.fleet.PROSPECTOR ?? 0;
+  if (craft <= 0 || world.miningRng() >= ARCHETYPES[p.type].miningChance) return;
+
+  const speed = prospectorSpeed(p.orbit);
+  const holdEach = prospectorHold(p.orbit);
+  const shortlist = activeAsteroids(world.asteroids, t)
+    // `isotopes: false` is the experiment baseline: it must reproduce the old
+    // asteroid field exactly, not silently hide the rocks whose independent hash
+    // would have made them rich in the treatment arm.
+    .filter((rock) => !world.isotopes || !rock.isotopeRich || p.isotopeSpectrometry)
+    .filter((rock) => (world.asteroidClaims.get(rock.index) ?? 0) < rock.ore)
+    .sort((x, y) =>
+      distance(p, asteroidPosition(x, t)) - distance(p, asteroidPosition(y, t)))
+    .slice(0, 4);
+
+  let best: {
+    rock: AsteroidSpec;
+    arriveAt: number;
+    intercept: MiningRun['intercept'];
+    score: number;
+  } | null = null;
+  for (const rock of shortlist) {
+    const intercept = interceptAsteroid(p, speed, rock, t);
+    if (!intercept) continue;
+    const remaining = Math.max(0, rock.ore - (world.asteroidClaims.get(rock.index) ?? 0));
+    const outboundYield = Math.min(remaining, holdEach * craft);
+    const home = prospectorTravelExact(distance(intercept.at, p), speed);
+    const score = outboundYield / Math.max(0.01, intercept.flightMinutes + home);
+    if (!best || score > best.score) {
+      best = { rock, arriveAt: intercept.meetsAtMinutes, intercept: intercept.at, score };
+    }
+  }
+  if (!best) return;
+
+  p.fleet.PROSPECTOR = 0;
+  world.miningRuns.push({
+    id: world.nextMiningRunId++,
+    playerId: p.id,
+    asteroidIndex: best.rock.index,
+    craft,
+    holdEach,
+    arriveAt: best.arriveAt,
+    intercept: best.intercept,
+    returning: false,
+  });
+  world.mining.launches++;
+}
+
+function resolveMiningRun(run: MiningRun, t: number, world: World): void {
+  const p = world.players[run.playerId];
+  if (!p) return;
+
+  if (run.returning) {
+    sync(p, t);
+    const caps = worksCapsOf(p);
+    const mined = run.mined ?? { alloy: 0, crystal: 0, deuterium: 0 };
+    const alloy = Math.min(mined.alloy, Math.max(0, caps.alloy - p.bufferAlloy));
+    const crystal = Math.min(mined.crystal, Math.max(0, caps.crystal - p.bufferCrystal));
+    const deuterium = Math.min(
+      mined.deuterium,
+      Math.max(0, caps.deuterium - p.bufferDeuterium),
+    );
+    p.bufferAlloy += alloy;
+    p.bufferCrystal += crystal;
+    p.bufferDeuterium += deuterium;
+    p.fleet.PROSPECTOR = (p.fleet.PROSPECTOR ?? 0) + run.craft;
+    world.mining.alloyDelivered += alloy;
+    world.mining.crystalDelivered += crystal;
+    world.mining.deuteriumDelivered += deuterium;
+    world.mining.overflowLost +=
+      mined.alloy + mined.crystal + mined.deuterium - alloy - crystal - deuterium;
+    return;
+  }
+
+  const rock = world.asteroids.find((candidate) => candidate.index === run.asteroidIndex);
+  const already = world.asteroidClaims.get(run.asteroidIndex) ?? 0;
+  const claim = rock
+    ? claimOre(
+        Math.max(0, rock.ore - already),
+        run.holdEach * run.craft,
+        rock.crystalShare,
+        world.isotopes ? rock.deuteriumShare : 0,
+      )
+    : { taken: 0, alloy: 0, crystal: 0, deuterium: 0, remaining: 0 };
+  if (claim.taken > 0) world.asteroidClaims.set(run.asteroidIndex, already + claim.taken);
+  world.mining.oreClaimed += claim.taken;
+
+  // As on the server, a Derrick installed while the craft is away affects its return.
+  const home = prospectorTravelExact(distance(run.intercept, p), prospectorSpeed(p.orbit));
+  world.miningRuns.push({
+    ...run,
+    arriveAt: t + home,
+    returning: true,
+    mined: { alloy: claim.alloy, crystal: claim.crystal, deuterium: claim.deuterium },
+  });
+}
+
 /**
  * The smallest fleet worth launching, PRICED rather than counted.
  *
@@ -481,9 +1625,15 @@ function runSession(p: SimPlayer, t: number, world: World, rng: Rng): void {
    * choice an attacker has to scout to discover.
    */
   {
-    const raidable = Math.max(0, p.alloy - vaultProtects(p.buildings.VAULT).alloy);
+    const raidable = Math.max(0, p.alloy - vaultProtects(p.buildings.VAULT, p.buildings.REFINERY, p.buildings.EXTRACTOR).alloy);
     const target = raidable * a.defenceRatio;
-    const shortfall = target - fleetValue(p.ground);
+    const committedGround = { ...p.ground };
+    for (const order of p.queues.YARD) {
+      if (order.kind !== 'HULL') continue;
+      const id = order.subject as HullId;
+      if (HULLS[id].ground) committedGround[id] = (committedGround[id] ?? 0) + order.count;
+    }
+    const shortfall = target - fleetValue(committedGround);
     if (shortfall > 0) {
       for (const [id, share] of Object.entries(a.groundMix) as [GroundHullId, number][]) {
         const g = HULLS[id];
@@ -495,29 +1645,68 @@ function runSession(p: SimPlayer, t: number, world: World, rng: Rng): void {
           g.crystal > 0 ? Math.floor(p.crystal / g.crystal) : Infinity,
         );
         if (n > 0) {
-          p.ground[id] = (p.ground[id] ?? 0) + n;
-          p.alloy -= n * g.alloy;
-          p.crystal -= n * g.crystal;
-          spendCrystal(world, 'defence', n * g.crystal);
+          enqueueHullOrder(p, id, n, t, world, 'defence');
         }
       }
     }
   }
 
-  // 1. Buildings, in archetype order. CORE gates everything else.
+  /**
+   * 1. Buildings, in archetype order. CORE gates everything else.
+   *
+   * THE SUNSET IS NOW MODELLED, and before Economy v2 it was not. The bots bought
+   * an upgrade whenever they could afford one, right up to the wipe — so they ran
+   * past the level where an upgrade stops repaying, sank the whole late season into
+   * the one thing a raid can never take, and the gate read `ARR` LOW while Core
+   * climbed two rungs past anything a real commander would buy.
+   *
+   * `worthInvesting` is the rule the DESIGN already had; the model of the player
+   * simply did not know it. A commander with two days left does not build a mine
+   * that repays in four — they build fleets, which is what the last act is for.
+   */
   for (let pass = 0; pass < 3; pass++) {
     for (const key of a.buildOrder) {
-      const lvl = p.buildings[key];
-      if (key !== 'CORE' && lvl >= p.buildings.CORE) continue;
+      if (p.queues.CONSTRUCTION.length >= BUILD.queueDepth) break;
+      const projected = projectedBuildState(p, world, 'CONSTRUCTION');
+      const lvl = projected.buildings[key];
+      if (key !== 'CORE' && lvl >= projected.buildings.CORE) continue;
       const cost = upgradeCost(lvl);
+      const minutes = buildMinutes(cost, projected.buildings.CORE);
+      const readyAt = nextSimBuildReadyAt(p, 'CONSTRUCTION', t, minutes);
+
+      // A building only earns after it exists. The old instant model could use the
+      // session clock directly; doing that with a queue lets a last-hour order pass
+      // a payback test against hours in which it is still under construction.
+      let productiveHours = Math.max(0, (world.totalMinutes - readyAt) / 60);
+      if (key === 'CORE') {
+        // Core has no output of its own. It is an economy investment only when a
+        // producer is already at its ceiling, and only after that newly-unlocked
+        // producer could finish behind it. This prevents a rational bot ending the
+        // season with a paid Core whose sole payoff can no longer be constructed.
+        const producerAt = Math.max(
+          projected.buildings.REFINERY,
+          projected.buildings.EXTRACTOR,
+        );
+        if (producerAt < lvl) continue;
+        const producerMinutes = buildMinutes(upgradeCost(producerAt), lvl + 1);
+        const producerReadyAt = readyAt
+          + Math.max(1, Math.ceil(producerMinutes * 60)) / 60;
+        productiveHours = Math.max(0, (world.totalMinutes - producerReadyAt) / 60);
+      }
+      if (!worthInvesting(lvl, productiveHours)) continue;
       if (
         p.alloy >= cost.alloy && p.crystal >= cost.crystal &&
         p.alloy - cost.alloy > alloyRate(p.buildings.REFINERY) * 0.5
       ) {
-        p.alloy -= cost.alloy;
-        p.crystal -= cost.crystal;
-        spendCrystal(world, 'buildings', cost.crystal);
-        p.buildings[key] = lvl + 1;
+        const placed = enqueueSimBuild(p, t, world, {
+          queue: 'CONSTRUCTION',
+          kind: 'BUILDING',
+          subject: key,
+          count: 1,
+          cost,
+          minutes,
+        });
+        if (placed) spendCrystal(world, 'buildings', cost.crystal);
       }
     }
   }
@@ -541,20 +1730,22 @@ function runSession(p: SimPlayer, t: number, world: World, rng: Rng): void {
    * orbit while its planet stands undefended. No player does that. Reserving the
    * archetype's military share is the same discipline the building pass applies
    * with its half-hour of production.
-   */
+  */
   {
-    const room = satelliteSlots(p.buildings.CORE) - p.orbit.length;
     for (const id of a.wants) {
+      if (p.queues.CONSTRUCTION.length >= BUILD.queueDepth) break;
+      const projected = projectedBuildState(p, world, 'CONSTRUCTION');
+      const room = satelliteSlots(projected.buildings.CORE) - projected.orbit.length;
       const orbital = isSatellite(id);
       let cost;
       if (orbital) {
-        if (room <= 0 || p.orbit.includes(id)) continue;
+        if (room <= 0 || projected.orbit.includes(id)) continue;
         cost = satelliteCost(id);
       } else {
-        const lvl = p.instruments[id] ?? 0;
-        if (lvl >= p.buildings.CORE) continue;
+        const lvl = projected.instruments[id] ?? 0;
+        if (lvl >= projected.buildings.CORE || instrumentMaxed(id, lvl)) continue;
         // The two seeing instruments hang off an Uplink in orbit (D25).
-        if ((id === 'TELESCOPE' || id === 'RADAR') && !seeingUnlocked(p.orbit)) continue;
+        if ((id === 'TELESCOPE' || id === 'RADAR') && !seeingUnlocked(projected.orbit)) continue;
         cost = instrumentCost(id, lvl);
       }
 
@@ -573,14 +1764,24 @@ function runSession(p: SimPlayer, t: number, world: World, rng: Rng): void {
       if (p.alloy - cost.alloy < keepAlloy) continue;
       if (p.crystal - cost.crystal < keepCrystal) continue;
 
-      p.alloy -= cost.alloy;
-      p.crystal -= cost.crystal;
-      spendCrystal(world, 'hardware', cost.crystal);
-      if (orbital) p.orbit.push(id);
-      else p.instruments[id] = (p.instruments[id] ?? 0) + 1;
-      break;
+      const placed = enqueueSimBuild(p, t, world, {
+        queue: 'CONSTRUCTION',
+        kind: orbital ? 'SATELLITE' : 'INSTRUMENT',
+        subject: id,
+        count: 1,
+        cost,
+        minutes: buildMinutes(cost, projected.buildings.CORE),
+      });
+      if (placed) {
+        spendCrystal(world, 'hardware', cost.crystal);
+        break;
+      }
     }
   }
+
+  // 2.5. Existing D19 economy: a scarce, losable utility hull before combat spend.
+  tryBuyProspector(p, t, world);
+  tryResearch(p, t, world);
 
   /**
    * 3. Offensive hulls from what remains, to the archetype's composition.
@@ -593,10 +1794,28 @@ function runSession(p: SimPlayer, t: number, world: World, rng: Rng): void {
    * works. See `Archetype.composition`.
    */
   {
-    const budget = p.alloy * a.militaryShare;
     const yard = p.buildings.SHIPYARD;
+    const shieldedNeighbour = p.neighbours.some(
+      ({ id }) => (world.players[id]?.instruments.AEGIS ?? 0) > 0,
+    );
+    const breacherPrice = hullPrice(world, 'BREACHER');
+    const breachers = ownedMissionHull(p, world, 'BREACHER') + queuedHullCount(p, 'BREACHER');
+    if (
+      p.graviticCharges
+      && shieldedNeighbour
+      && yard >= HULLS.BREACHER.minShipyard
+      && breachers < 2
+      && p.alloy >= breacherPrice.alloy
+      && p.crystal >= breacherPrice.crystal
+      && p.deuterium >= breacherPrice.deuterium
+    ) {
+      enqueueHullOrder(p, 'BREACHER', 1, t, world, 'combat');
+    }
+
+    const budget = p.alloy * a.militaryShare;
+    const ordinaryHulls = COMBAT_HULLS.filter((hull) => hull !== 'BREACHER');
     const mix = a.adaptsComposition
-      ? adaptiveMix(yard, a.composition, expectedDefence(p, t, a.composition))
+      ? adaptiveMix(yard, a.composition, expectedDefence(p, t, a.composition), ordinaryHulls)
       : a.composition;
 
     // Only what the Shipyard can actually build, renormalised — otherwise a low
@@ -616,20 +1835,36 @@ function runSession(p: SimPlayer, t: number, world: World, rng: Rng): void {
       let carry = 0;
       for (let pass = 0; pass < 2; pass++) {
         for (const hull of order) {
+          if (p.queues.YARD.length >= BUILD.queueDepth) break;
           const price = hullPrice(world, hull);
           const spend = pass === 0 ? (budget * (mix[hull] ?? 0)) / total + carry : carry;
           if (spend < price.alloy) continue;
           let n = Math.floor(spend / price.alloy);
           n = Math.min(n, Math.floor(p.alloy / price.alloy));
           if (price.crystal > 0) n = Math.min(n, Math.floor(p.crystal / price.crystal));
+          if (price.deuterium > 0) n = Math.min(n, Math.floor(p.deuterium / price.deuterium));
+          let committed = 0;
           if (n > 0) {
-            p.fleet[hull] = (p.fleet[hull] ?? 0) + n;
-            p.alloy -= n * price.alloy;
-            p.crystal -= n * price.crystal;
-            spendCrystal(world, 'combat', n * price.crystal);
+            if (enqueueHullOrder(p, hull, n, t, world, 'combat')) committed = n;
           }
-          carry = Math.max(0, spend - n * price.alloy);
+          carry = Math.max(0, spend - committed * price.alloy);
         }
+      }
+    }
+
+    // A few fast holds first. Expensive per cargo, bounded, and paid in mined D.
+    if (p.denseFuelCells && yard >= HULLS.RUNNER.minShipyard) {
+      const price = hullPrice(world, 'RUNNER');
+      const have = ownedMissionHull(p, world, 'RUNNER') + queuedHullCount(p, 'RUNNER');
+      const target = p.type === 'GRINDER' ? 3 : 2;
+      const n = Math.min(
+        Math.max(0, target - have),
+        Math.floor((p.alloy * 0.2) / price.alloy),
+        Math.floor(p.crystal / price.crystal),
+        Math.floor(p.deuterium / price.deuterium),
+      );
+      if (n > 0) {
+        enqueueHullOrder(p, 'RUNNER', n, t, world, 'hauler');
       }
     }
 
@@ -637,24 +1872,25 @@ function runSession(p: SimPlayer, t: number, world: World, rng: Rng): void {
     if (yard >= HULLS.HAULER.minShipyard && a.attackChance > 0) {
       const price = hullPrice(world, 'HAULER');
       const nb = p.neighbours[0] ? world.players[p.neighbours[0].id] : undefined;
-      const caps = nb ? capsOf(nb) : { alloy: 5000, crystal: 1500 };
-      const want = Math.ceil(((caps.alloy + caps.crystal) * 0.25) / HULLS.HAULER.cargo);
-      const have = p.fleet.HAULER ?? 0;
+      const caps = nb ? capsOf(nb) : { alloy: 5000, crystal: 1500, deuterium: 0 };
+      const want = Math.ceil(
+        ((caps.alloy + caps.crystal + caps.deuterium) * 0.25) / HULLS.HAULER.cargo,
+      );
+      const have = (p.fleet.HAULER ?? 0) + queuedHullCount(p, 'HAULER');
       const n = Math.min(
         want - have,
         Math.floor((p.alloy * 0.3) / price.alloy),
         Math.floor(p.crystal / price.crystal),
       );
       if (n > 0) {
-        p.fleet.HAULER = have + n;
-        p.alloy -= n * price.alloy;
-        p.crystal -= n * price.crystal;
-        spendCrystal(world, 'hauler', n * price.crystal);
+        enqueueHullOrder(p, 'HAULER', n, t, world, 'hauler');
       }
     }
   }
 
+  tryMine(p, t, world);
   if (rng() < a.attackChance) tryAttack(p, t, world, rng);
+  if (world.strategicEnabled) runStrategicSession(p, t, world);
 
   p.nextLogin = t + Math.max(20, Math.round((1440 / a.loginsPerDay) * (0.6 + rng() * 0.8)));
 }
@@ -662,16 +1898,17 @@ function runSession(p: SimPlayer, t: number, world: World, rng: Rng): void {
 function tryAttack(p: SimPlayer, t: number, world: World, rng: Rng): void {
   const a = ARCHETYPES[p.type];
   // A Beacon in orbit shortens every leg this planet flies. D25.
-  const speed = fleetSpeed(p.fleet) * fleetSpeedMult(p.orbit);
-  if (speed <= 0 || fleetValue(combatPart(p.fleet)) < MIN_RAID_VALUE) return;
-  p.wealthNow = wealth(holdingsOf(p));
+  const raidFleet = raidingPart(p.fleet);
+  const speed = fleetSpeed(raidFleet) * fleetSpeedMult(p.orbit);
+  if (speed <= 0 || fleetValue(combatPart(raidFleet)) < MIN_RAID_VALUE) return;
+  p.wealthNow = totalWealth(p, world);
 
   let best: { q: SimPlayer; d: number; flight: number; score: number; scouted: boolean; defence: number | null } | null = null;
 
   for (const nb of p.neighbours.slice(0, 10)) {
     const q = world.players[nb.id];
     if (!q) continue;
-    q.wealthNow = q.wealthNow || wealth(holdingsOf(q));
+    q.wealthNow = q.wealthNow || totalWealth(q, world);
 
     const hits = (p.recentHits.get(q.id) ?? []).filter((x) => t - x < ABUSE.bashWindowMinutes).length;
     const gate = canAttack(
@@ -712,8 +1949,11 @@ function tryAttack(p: SimPlayer, t: number, world: World, rng: Rng): void {
     const stock =
       scouted && known
         ? known.stock
-        : (blindCaps.alloy + blindCaps.crystal + blindWorks.alloy + blindWorks.crystal) * 0.35;
-    const vault = vaultProtects(q.buildings.VAULT);
+        : (
+            blindCaps.alloy + blindCaps.crystal + blindCaps.deuterium
+            + blindWorks.alloy + blindWorks.crystal + blindWorks.deuterium
+          ) * 0.35;
+    const vault = vaultProtects(q.buildings.VAULT, q.buildings.REFINERY, q.buildings.EXTRACTOR);
     /**
      * `stock` above is alloy and crystal added together, so the floor deducted
      * from it has to be both floors added together too — which is what `vault * 2`
@@ -733,7 +1973,9 @@ function tryAttack(p: SimPlayer, t: number, world: World, rng: Rng): void {
     p.scoutsSent++;
     sync(best.q, t);
     p.intel.set(best.q.id, {
-      stock: best.q.alloy + best.q.crystal + best.q.bufferAlloy + best.q.bufferCrystal,
+      stock:
+        best.q.alloy + best.q.crystal + best.q.deuterium
+        + best.q.bufferAlloy + best.q.bufferCrystal + best.q.bufferDeuterium,
       defence: fleetValue({ ...best.q.fleet, ...best.q.ground }),
       composition: { ...best.q.fleet, ...best.q.ground },
       at: t + 8,
@@ -751,7 +1993,10 @@ function tryAttack(p: SimPlayer, t: number, world: World, rng: Rng): void {
   for (const k of MOBILE_HULLS) {
     const have = p.fleet[k] ?? 0;
     if (have <= 0) continue;
-    const n = k === 'HAULER' ? have : Math.floor(have * commit);
+    // The dome is public but its strength is not. A Breacher is the response to
+    // seeing that dome, never a generic fourth warship sent at bare worlds. D95.
+    if (k === 'BREACHER' && (best.q.instruments.AEGIS ?? 0) <= 0) continue;
+    const n = k === 'HAULER' || k === 'RUNNER' ? have : Math.floor(have * commit);
     if (n > 0) {
       send[k] = n;
       p.fleet[k] = have - n;
@@ -782,6 +2027,7 @@ function resolveMission(m: Mission, t: number, world: World, stats: DayStats): v
     const caps = capsOf(atk);
     atk.alloy = Math.min(caps.alloy, atk.alloy + (m.loot?.alloy ?? 0));
     atk.crystal = Math.min(caps.crystal, atk.crystal + (m.loot?.crystal ?? 0));
+    atk.deuterium = Math.min(caps.deuterium, atk.deuterium + (m.loot?.deuterium ?? 0));
     return;
   }
 
@@ -800,9 +2046,13 @@ function resolveMission(m: Mission, t: number, world: World, stats: DayStats): v
   def.shield = r.shieldLeft;
 
   const loot = computeLoot(
-    { alloy: def.alloy, crystal: def.crystal },
-    { alloy: def.bufferAlloy, crystal: def.bufferCrystal },
-    vaultProtects(def.buildings.VAULT),
+    { alloy: def.alloy, crystal: def.crystal, deuterium: def.deuterium },
+    {
+      alloy: def.bufferAlloy,
+      crystal: def.bufferCrystal,
+      deuterium: def.bufferDeuterium,
+    },
+    vaultProtects(def.buildings.VAULT, def.buildings.REFINERY, def.buildings.EXTRACTOR),
     r.grade,
     fleetCargo(r.attackerSurvivors),
   );
@@ -810,17 +2060,39 @@ function resolveMission(m: Mission, t: number, world: World, stats: DayStats): v
   // covers only one of them. D16.
   def.alloy -= loot.fromStock.alloy;
   def.crystal -= loot.fromStock.crystal;
+  def.deuterium -= loot.fromStock.deuterium;
   def.bufferAlloy -= loot.fromBuffer.alloy;
   def.bufferCrystal -= loot.fromBuffer.crystal;
+  def.bufferDeuterium -= loot.fromBuffer.deuterium;
+
+  /** History-derived Dense Fuel discovery: the hold filled and value remained. */
+  const survivingCargo = fleetCargo(r.attackerSurvivors);
+  const remainingRaidable =
+    Math.max(0, def.alloy - vaultProtects(def.buildings.VAULT, def.buildings.REFINERY, def.buildings.EXTRACTOR).alloy)
+    + Math.max(0, def.crystal - vaultProtects(def.buildings.VAULT, def.buildings.REFINERY, def.buildings.EXTRACTOR).crystal)
+    + def.deuterium
+    + (def.bufferAlloy + def.bufferCrystal + def.bufferDeuterium) * COMBAT.lootBufferShare;
+  if (survivingCargo > 0 && loot.alloy + loot.crystal + loot.deuterium >= survivingCargo - 1) {
+    if (remainingRaidable > 1) atk.cargoLimitedSeen = true;
+  }
+
+  const outgoingDamage = r.rounds.reduce((sum, round) => sum + round.attackerDamage, 0);
+  const shieldAbsorbed = r.rounds.reduce((sum, round) => sum + round.shieldAbsorbed, 0);
+  if (
+    outgoingDamage > 0
+    && shieldAbsorbed / outgoingDamage >= DEUTERIUM.graviticDiscoveryShieldShare
+  ) {
+    atk.shieldInsightSeen = true;
+  }
 
   const wasUntil = def.disruptedUntil;
   def.disruptedUntil = applyDisruption(wasUntil, t, r.grade);
   const added = Math.max(0, def.disruptedUntil - Math.max(wasUntil, t));
   def.disruptedToday += added;
 
-  bookBattle(atk.ledger, def.ledger, loot.alloy + loot.crystal, r);
+  bookBattle(atk.ledger, def.ledger, loot.alloy + loot.crystal + loot.deuterium, r);
 
-  const lootValue = loot.alloy + loot.crystal;
+  const lootValue = loot.alloy + loot.crystal + loot.deuterium;
   const gained = lootValue + r.defenderLossValue;
   stats.attacks++;
   stats.lootValue += lootValue;
@@ -864,12 +2136,26 @@ export function runSeason(cfg: SimConfig): { world: World; days: DayReport[]; di
   let stats = freshStats();
 
   for (let t = 0; t <= total; t++) {
+    // Complete at the public instant before any decision or battle at this minute.
+    // The queues run through disruption and never wait for the next login.
+    advanceBuildQueues(world, t);
+    if (world.strategicEnabled) {
+      advanceStrategicLayer(world, t);
+    }
     for (let i = world.missions.length - 1; i >= 0; i--) {
       const m = world.missions[i];
       if (m && m.arriveAt <= t) {
         world.missions.splice(i, 1);
         resolveMission(m, t, world, stats);
       }
+    }
+    const dueMining = world.miningRuns
+      .filter((run) => run.arriveAt <= t)
+      .sort((x, y) => x.arriveAt - y.arriveAt || x.id - y.id);
+    if (dueMining.length > 0) {
+      const dueIds = new Set(dueMining.map((run) => run.id));
+      world.miningRuns = world.miningRuns.filter((run) => !dueIds.has(run.id));
+      for (const run of dueMining) resolveMiningRun(run, t, world);
     }
     for (const p of world.players) {
       if (p.nextLogin <= t) runSession(p, t, world, world.rng);
@@ -880,9 +2166,10 @@ export function runSeason(cfg: SimConfig): { world: World; days: DayReport[]; di
       }
     }
     if (t > 0 && t % 1440 === 0) {
+      for (const neutral of world.neutrals) syncNeutral(neutral, t, world);
       for (const p of world.players) {
         sync(p, t);
-        p.wealthNow = wealth(holdingsOf(p));
+        p.wealthNow = totalWealth(p, world);
       }
       const day = t / 1440;
       days.push({ day, stats, invariants: measure(day, world.players, stats) });
@@ -906,6 +2193,18 @@ export function runSeason(cfg: SimConfig): { world: World; days: DayReport[]; di
   const medianUnused = unused.length % 2 === 0
     ? ((unused[middle - 1] ?? 0) + (unused[middle] ?? 0)) / 2
     : (unused[middle] ?? 0);
+  for (const neutral of world.neutrals) syncNeutral(neutral, total, world);
+  const neutralTakenTotal = Object.values(world.strategic.neutralTaken)
+    .reduce((sum, value) => sum + value, 0);
+  const miningIncome = world.mining.alloyDelivered
+    + world.mining.crystalDelivered
+    + world.mining.deuteriumDelivered;
+  const deathStarValue = resourcesTotal(DEATH_STAR.cost);
+  const capitalHeldDeathStarValue = world.deathStars.size * deathStarValue;
+  const remainingNeutral = ({ 1: 0, 2: 0, 3: 0 }) as Record<NeutralTier, number>;
+  for (const neutral of world.neutrals) {
+    if (neutral.controllerId === null) remainingNeutral[neutral.tier]++;
+  }
   return {
     world,
     days,
@@ -914,8 +2213,27 @@ export function runSeason(cfg: SimConfig): { world: World; days: DayReport[]; di
       medianUnused,
       spent: { ...world.crystalSpent },
       spentShare,
+      mining: { ...world.mining },
+      strategic: {
+        neutralMinted: { ...world.strategic.neutralMinted },
+        neutralTaken: { ...world.strategic.neutralTaken },
+        neutralLootShare: neutralTakenTotal / Math.max(1, neutralTakenTotal + miningIncome),
+        uniqueNeutralRaiders: world.neutralRaiders.size,
+        neutralRaids: world.strategic.neutralRaids,
+        colonizedAt: {
+          1: [...world.strategic.colonizedAt[1]],
+          2: [...world.strategic.colonizedAt[2]],
+          3: [...world.strategic.colonizedAt[3]],
+        },
+        remainingNeutral,
+        coloniesPerPlayer: world.players.map((p) => coloniesOf(world, p.id).length),
+        transferredResources: world.strategic.transferredResources,
+        deathStar: { ...world.strategic.deathStar },
+        recoveryThirdPartyArrivals: world.strategic.recoveryThirdPartyArrivals,
+        capitalHeldDeathStarValue,
+      },
     },
   };
 }
 
-export { dominion, investedInBuilding, capsOf, holdingsOf };
+export { dominion, investedInBuilding, capsOf, holdingsOf, totalWealth };

@@ -86,7 +86,13 @@ const planet = (telescope: number, radar: number) => ({
   fleetAway: {},
 });
 
-const show = (opts: { telescope: number; radar?: number; watching: number; worlds: number }) => {
+const show = (opts: {
+  telescope: number;
+  radar?: number;
+  watching: number;
+  worlds: number;
+  onOpenOrbit?: () => void;
+}) => {
   const { wrapper: Wrapper, queries } = harness();
   queries.setQueryData(['galaxy'], galaxy(opts.worlds));
   queries.setQueryData(['intel'], intel(opts.watching));
@@ -94,12 +100,21 @@ const show = (opts: { telescope: number; radar?: number; watching: number; world
   queries.setQueryData(['reports'], { reports: [] });
   render(
     <Wrapper>
-      <IntelScreen />
+      <IntelScreen {...(opts.onOpenOrbit ? { onOpenOrbit: opts.onOpenOrbit } : {})} />
     </Wrapper>,
   );
 };
 
 describe('the coverage panel', () => {
+  it('shows every Telescope slot with its number, target, and empty state', () => {
+    show({ telescope: 5, watching: 1, worlds: 47 });
+    expect(screen.getByText('Slot 1')).toBeInTheDocument();
+    expect(screen.getByText('Slot 2')).toBeInTheDocument();
+    expect(screen.getByText('Slot 3')).toBeInTheDocument();
+    expect(screen.getByText('World 0')).toBeInTheDocument();
+    expect(screen.getAllByText('Idle')).toHaveLength(2);
+  });
+
   it('counts against the slots you own, never against the galaxy', () => {
     show({ telescope: 3, watching: 1, worlds: 47 });
     expect(telescopeSlots(3)).toBe(2);
@@ -124,6 +139,15 @@ describe('the coverage panel', () => {
     show({ telescope: 0, watching: 0, worlds: 47 });
     expect(screen.getByText(/cannot see into a single planet/i)).toBeInTheDocument();
     expect(screen.getByText(/cheapest way to stop that/i)).toBeInTheDocument();
+  });
+
+  it('shows the missing capability as an instrument diagram and routes straight to Orbit', async () => {
+    const onOpenOrbit = vi.fn();
+    show({ telescope: 0, radar: 0, watching: 0, worlds: 47, onOpenOrbit });
+    expect(document.querySelector('[data-instrument-diagram="telescope"]')).not.toBeNull();
+    expect(document.querySelector('[data-instrument-diagram="radar"]')).not.toBeNull();
+    await userEvent.click(screen.getAllByRole('button', { name: 'Open Orbit' })[0]!);
+    expect(onOpenOrbit).toHaveBeenCalledOnce();
   });
 
   /**

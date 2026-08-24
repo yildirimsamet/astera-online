@@ -7,7 +7,7 @@ import type { IconProps } from './index.js';
  *
  * These are the one place the icon set uses fills, and `docs/visual-design.md` says
  * why: they need to read as *things* rather than as symbols. One viewing angle for all
- * five — top-down, nose up — chosen once and never mixed, because they have to be
+ * eight — top-down, nose up — chosen once and never mixed, because they have to be
  * separable **as shapes alone**:
  *
  *     WASP ▸ BULWARK ▸ LANCE ▸ WASP
@@ -20,11 +20,13 @@ import type { IconProps } from './index.js';
  *   LANCE    extremely long and thin with a spinal gun projecting past the nose
  *   BULWARK  wide, blunt, slab-sided, not a single point on it
  *   HAULER   fat, lumpy, symmetrical, visibly unarmed — it must look defenceless
+ *   RUNNER   narrow courier body with two exposed fuel-cell pods
  *   BASTION  a turret on a heavy base plate, no engines and no wings. The plate is
  *            the whole point: it is what says this thing can never leave the planet.
  *   THORN    the same base plate — because it also never leaves — carrying three
  *            thin spikes instead of one heavy barrel. Read side by side with a
  *            Bastion the plate says "ground" and the spikes say "many, light".
+ *   PROSPECTOR a deep hold with an asymmetric cutting head, unmistakably not a gun
  */
 
 function Silhouette({
@@ -93,6 +95,31 @@ export function HaulerHull(props: IconProps) {
   );
 }
 
+/** Fast strike cargo. Twin fuel cells and a narrow body distinguish it from a Hauler. */
+export function RunnerHull(props: IconProps) {
+  return (
+    <Silhouette {...props}>
+      {/* A pointed courier body with two exposed cell pods: visibly quick, still
+          unarmed, and much less hold volume than the blocky Hauler. */}
+      <path d="M24 3.2 29.2 12v21.2L24 45l-5.2-11.8V12Z" />
+      <path d="M9.2 16.2h7.2v19.6H9.2l-3.4-4.6V20.8Z" />
+      <path d="M31.6 16.2h7.2l3.4 4.6v10.4l-3.4 4.6h-7.2Z" />
+      <path d="m16.4 28.2-6.8 8.6h6.8ZM31.6 28.2l6.8 8.6h-6.8Z" />
+    </Silhouette>
+  );
+}
+
+/** Shield breaker: a compact body built around one oversized forward emitter. */
+export function BreacherHull(props: IconProps) {
+  return (
+    <Silhouette {...props}>
+      <path d="M20.5 4h7l2.2 13.2 8.8 7.8-4.2 4.8-5.2-3.2V42l-5.1 4-5.1-4V26.6l-5.2 3.2-4.2-4.8 8.8-7.8Z" />
+      <path d="M15 8.5h18l-3.5 6.2h-11Z" />
+      <circle cx="24" cy="18" r="4.2" fill="var(--icon-cutout, #05070a)" />
+    </Silhouette>
+  );
+}
+
 /** Ground defence. It can never leave, and the base plate is what says so. */
 /**
  * Shares the Bastion's plate on purpose. The plate is the family mark for "this
@@ -151,6 +178,8 @@ const HULL_ICON: Record<HullId, (props: IconProps) => ReactNode> = {
   LANCE: LanceHull,
   BULWARK: BulwarkHull,
   HAULER: HaulerHull,
+  RUNNER: RunnerHull,
+  BREACHER: BreacherHull,
   BASTION: BastionHull,
   THORN: ThornHull,
   PROSPECTOR: ProspectorHull,
@@ -160,7 +189,7 @@ const HULL_ICON: Record<HullId, (props: IconProps) => ReactNode> = {
  * The silhouette for a hull id.
  *
  * Used where a hull is chosen at runtime — the launch composer, loss lines in a battle
- * report — so those surfaces cannot drift out of sync with the five above.
+ * report — so those surfaces cannot drift out of sync with the silhouettes above.
  */
 export function HullMark({ hull, ...props }: IconProps & { hull: HullId }) {
   const Mark = HULL_ICON[hull];

@@ -3,6 +3,8 @@ import {
   alloyRate,
   collectorCap,
   crystalRate,
+  deuteriumCollectorCap,
+  deuteriumStorageCap,
   dominion,
   fleetValue,
   instrumentEntries,
@@ -70,9 +72,24 @@ export const LEVERS: Record<InvariantKey, string> = {
 
 export type Invariants = Record<InvariantKey, number>;
 
+/**
+ * Return is an additive exchange ratio, so volume has to weight the reading.
+ * Taking a median of daily ratios gives a quiet early day the same vote as a
+ * late-season war and can report LOW while every seed's total exchange is healthy.
+ */
+export function raidReturn(stats: readonly DayStats[]): number {
+  const gained = stats.reduce(
+    (sum, day) => sum + day.lootValue + day.defenderLossValue,
+    0,
+  );
+  const spent = stats.reduce((sum, day) => sum + day.attackerLossValue, 0);
+  return spent > 0 ? gained / spent : NaN;
+}
+
 const capsOf = (p: SimPlayer) => ({
-  alloy: storageCap(alloyRate(p.buildings.REFINERY)),
-  crystal: storageCap(crystalRate(p.buildings.EXTRACTOR)),
+  alloy: storageCap(alloyRate(p.buildings.REFINERY), p.buildings.VAULT),
+  crystal: storageCap(crystalRate(p.buildings.EXTRACTOR), p.buildings.VAULT),
+  deuterium: deuteriumStorageCap(crystalRate(p.buildings.EXTRACTOR), p.buildings.VAULT),
 });
 
 /**
@@ -91,25 +108,28 @@ const capsOf = (p: SimPlayer) => ({
  * dangerous kind of wrong for a balance metric.
  */
 const raidableNow = (p: SimPlayer): number => {
-  const vault = vaultProtects(p.buildings.VAULT);
+  const vault = vaultProtects(p.buildings.VAULT, p.buildings.REFINERY, p.buildings.EXTRACTOR);
   return (
     Math.max(0, p.alloy - vault.alloy) +
     Math.max(0, p.crystal - vault.crystal) +
-    (p.bufferAlloy + p.bufferCrystal) * COMBAT.lootBufferShare
+    p.deuterium +
+    (p.bufferAlloy + p.bufferCrystal + p.bufferDeuterium) * COMBAT.lootBufferShare
   );
 };
 
 /** The most a player of this development could ever have exposed at once. */
 const raidableCeiling = (p: SimPlayer): number => {
   const c = capsOf(p);
-  const vault = vaultProtects(p.buildings.VAULT);
+  const vault = vaultProtects(p.buildings.VAULT, p.buildings.REFINERY, p.buildings.EXTRACTOR);
   const ra = alloyRate(p.buildings.REFINERY);
   const rc = crystalRate(p.buildings.EXTRACTOR);
   return Math.max(
     1,
     Math.max(0, c.alloy - vault.alloy) +
       Math.max(0, c.crystal - vault.crystal) +
-      (collectorCap(ra) + collectorCap(rc)) * COMBAT.lootBufferShare,
+      c.deuterium +
+      (collectorCap(ra) + collectorCap(rc) + deuteriumCollectorCap(rc))
+        * COMBAT.lootBufferShare,
   );
 };
 
@@ -128,10 +148,16 @@ export function measure(
     ps.map((p) => {
       const risk =
         fleetValue(p.fleet) +
+        // Ground guns are durable, not invulnerable: only the salvaged share is
+        // returned after combat. Omitting the destroyed share made a commander
+        // look safer precisely when they had more defence exposed on the world.
+        fleetValue(p.ground) * (1 - COMBAT.defenceSalvage) +
         p.alloy +
         p.crystal +
+        p.deuterium +
         p.bufferAlloy +
         p.bufferCrystal +
+        p.bufferDeuterium +
         instrumentEntries(p.instruments).reduce((s, [id, l]) => s + investedInInstrument(id, l), 0) +
         p.orbit.reduce((s, id) => s + investedInSatellite(id), 0);
       return p.wealthNow > 0 ? risk / p.wealthNow : 0;
@@ -153,10 +179,7 @@ export function measure(
   const ti = activeDom > 0 ? passiveDom / activeDom : NaN;
 
   /** Dominion gained per unit spent gaining it — loot alone understates a raid. */
-  const rr =
-    stats.attackerLossValue > 0
-      ? (stats.lootValue + stats.defenderLossValue) / stats.attackerLossValue
-      : NaN;
+  const rr = raidReturn([stats]);
 
   const sv = median(
     ps.map((p) => {

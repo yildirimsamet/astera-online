@@ -6,7 +6,7 @@ import { loadLocked, withTwoPlanetLock } from '../src/services/planet.js';
 import { buildUnits, upgradeBuilding } from '../src/services/build.js';
 import { baysInUse } from '../src/services/flight.js';
 import { launchProbe } from '../src/services/intel.js';
-import { grant, seedWorld, setLevel, testDb, type Fixture } from './helpers.js';
+import { grant, seedWorld, settleBuilds, setLevel, testDb, type Fixture } from './helpers.js';
 
 /**
  * ACCEPTANCE CRITERION (build plan, phase 1):
@@ -56,6 +56,7 @@ describe('concurrency', () => {
       expect(lost[0]!.reason).toMatchObject({
         code: 'INSUFFICIENT_RESOURCES',
       });
+      await settleBuilds(f, planetId);
 
       const [row] = await f.db
         .select()
@@ -82,6 +83,7 @@ describe('concurrency', () => {
       // At least one must land, and no more than the budget allows.
       expect(won).toBeGreaterThan(0);
       expect(won).toBeLessThanOrEqual(3);
+      await settleBuilds(f, planetId);
 
       const [vault] = await f.db
         .select()
@@ -225,7 +227,7 @@ describe('concurrency', () => {
       // away produce the same planet, and it is the honest version of a cap: the
       // waste is real and the interface says so.
       expect(after.bufferAlloy).toBe(collectorCap(alloyRate(1)));
-      expect(collectorCap(alloyRate(1))).toBeLessThan(storageCap(alloyRate(1)));
+      expect(collectorCap(alloyRate(1))).toBeLessThan(storageCap(alloyRate(1), 0));
     });
 
     it('produces nothing while the surface works are disrupted', async () => {

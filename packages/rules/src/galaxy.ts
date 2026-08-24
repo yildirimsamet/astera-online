@@ -1,6 +1,7 @@
 import { DEBRIS, GALAXY, PROSPECTOR, SEASON, TRAVEL } from './constants.js';
 import { mulberry32 } from './rng.js';
 import { drillHoldMult, drillSpeedMult } from './economy.js';
+import { isotopeProfile } from './research.js';
 import { distance } from './travel.js';
 import type { SatelliteSet, Vec3 } from './types.js';
 
@@ -30,6 +31,10 @@ export interface AsteroidSpec {
   ore: number;
   /** Share of `ore` that comes home as crystal; the remainder is alloy. */
   crystalShare: number;
+  /** Share of total ore replaced by Deuterium. Zero on an ordinary rock. D93. */
+  deuteriumShare: number;
+  /** Public anomaly classification; exact composition remains research-gated. */
+  isotopeRich: boolean;
   /** Orbital radius in game units. */
   radius: number;
   /** Minutes for one revolution. Derived from radius and speed. */
@@ -109,7 +114,7 @@ export function generateGalaxy(
    * function of the season seed alone, which is what A5 needs it to be.
    */
   const field = mulberry32((seed ^ 0x9e3779b9) >>> 0);
-  return { seed, slots, asteroids: generateAsteroids(field, seasonMinutes) };
+  return { seed, slots, asteroids: generateAsteroids(field, seasonMinutes, seed) };
 }
 
 /** Minutes in a whole season. The asteroid schedule is laid out across it. */
@@ -143,7 +148,7 @@ function rollLevel(roll: number): number {
  * after the straight-pass model was retired — see the note on `GALAXY` for why it
  * went, and `interceptAsteroid` for what a closed orbit buys the solver.)
  */
-function generateAsteroids(rng: () => number, span: number): AsteroidSpec[] {
+function generateAsteroids(rng: () => number, span: number, seed: number): AsteroidSpec[] {
   const count = Math.round((GALAXY.asteroidSpawnPerHour * span) / 60);
   const interval = span / Math.max(1, count);
   const asteroids: AsteroidSpec[] = [];
@@ -160,6 +165,7 @@ function generateAsteroids(rng: () => number, span: number): AsteroidSpec[] {
         rng() * (GALAXY.asteroidLifeHoursMax - GALAXY.asteroidLifeHoursMin)) *
       60;
 
+    const isotope = isotopeProfile(seed, i, appearsAt);
     asteroids.push({
       index: i,
       level,
@@ -167,6 +173,8 @@ function generateAsteroids(rng: () => number, span: number): AsteroidSpec[] {
       crystalShare:
         GALAXY.asteroidCrystalShareMin +
         rng() * (GALAXY.asteroidCrystalShareMax - GALAXY.asteroidCrystalShareMin),
+      deuteriumShare: isotope.deuteriumShare,
+      isotopeRich: isotope.rich,
       radius,
       // Period follows from the two: speed is chosen for legibility, radius for
       // where in the disc it runs, and the revolution time is whatever that implies.
@@ -360,6 +368,7 @@ export interface OreClaim {
   taken: number;
   alloy: number;
   crystal: number;
+  deuterium: number;
   /** What is left in the rock afterwards. Zero means it is mined out. */
   remaining: number;
 }
@@ -372,13 +381,21 @@ export interface OreClaim {
  * whole race, and it is decided by arrival time alone — there is no dwell time at
  * the rock, so nobody can be beaten by a craft that arrived after them.
  */
-export function claimOre(remaining: number, hold: number, crystalShare: number): OreClaim {
+export function claimOre(
+  remaining: number,
+  hold: number,
+  crystalShare: number,
+  deuteriumShare: number,
+): OreClaim {
   const taken = Math.max(0, Math.min(remaining, hold));
-  const crystal = Math.floor(taken * crystalShare);
+  const deuterium = Math.floor(taken * deuteriumShare);
+  const ordinary = taken - deuterium;
+  const crystal = Math.floor(ordinary * crystalShare);
   return {
     taken,
-    alloy: Math.floor(taken - crystal),
+    alloy: Math.floor(ordinary - crystal),
     crystal,
+    deuterium,
     remaining: Math.max(0, remaining - taken),
   };
 }
@@ -459,12 +476,15 @@ export function debrisRemaining(
 export const debrisAlive = (
   alloy: number,
   crystal: number,
+  deuterium: number,
   takenAlloy: number,
   takenCrystal: number,
+  takenDeuterium: number,
   ageMinutes: number,
 ): boolean =>
   debrisRemaining(alloy, takenAlloy, ageMinutes) +
-    debrisRemaining(crystal, takenCrystal, ageMinutes) >
+    debrisRemaining(crystal, takenCrystal, ageMinutes) +
+    debrisRemaining(deuterium, takenDeuterium, ageMinutes) >
   1;
 
 /**
@@ -478,13 +498,16 @@ export const debrisAlive = (
 export function claimDebris(
   alloyLeft: number,
   crystalLeft: number,
+  deuteriumLeft: number,
   hold: number,
-): { alloy: number; crystal: number } {
-  const total = Math.max(0, alloyLeft) + Math.max(0, crystalLeft);
-  if (total <= 0 || hold <= 0) return { alloy: 0, crystal: 0 };
+): { alloy: number; crystal: number; deuterium: number } {
+  const total =
+    Math.max(0, alloyLeft) + Math.max(0, crystalLeft) + Math.max(0, deuteriumLeft);
+  if (total <= 0 || hold <= 0) return { alloy: 0, crystal: 0, deuterium: 0 };
   const factor = Math.min(1, hold / total);
   return {
     alloy: Math.floor(Math.max(0, alloyLeft) * factor),
     crystal: Math.floor(Math.max(0, crystalLeft) * factor),
+    deuterium: Math.floor(Math.max(0, deuteriumLeft) * factor),
   };
 }

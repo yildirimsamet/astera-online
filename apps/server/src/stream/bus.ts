@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { sql } from 'drizzle-orm';
 import postgres from 'postgres';
+import { randomUUID } from 'node:crypto';
 import type { FastifyBaseLogger } from 'fastify';
 import type { Queryable } from '../db/client.js';
 
@@ -36,6 +37,7 @@ export const CHANNEL = 'astera_events';
 const playerEvent = z.object({ playerId: z.string().min(1), kind: z.string().min(1) });
 const shardEvent = z.object({ shard: z.string().min(1), kind: z.string().min(1) });
 const eventPayload = z.union([playerEvent, shardEvent]);
+const heartbeatPayload = z.object({ heartbeat: z.string().uuid() });
 
 export type StreamEvent = z.infer<typeof eventPayload>;
 
@@ -45,7 +47,21 @@ export type StreamEvent = z.infer<typeof eventPayload>;
  * The client decides which of its own reads each one moves — that mapping is a
  * client concern and lives there. This says what HAPPENED, never what to fetch.
  */
-export type ShardEventKind = 'launch' | 'arrival' | 'mining' | 'world' | 'score' | 'chat';
+export type ShardEventKind =
+  | 'launch'
+  | 'arrival'
+  | 'mining'
+  | 'world'
+  | 'score'
+  | 'chat'
+  | 'chronicle'
+  | 'season'
+  | 'rollover'
+  | 'impact'
+  | 'control'
+  | 'transfer'
+  | 'recovery'
+  | 'protection';
 
 /**
  * Shard kinds go out prefixed, and the prefix is not decoration.
@@ -68,6 +84,19 @@ function safeJson(raw: string): unknown {
 }
 
 type Listener = (event: StreamEvent) => void;
+type ResetObserver = () => void;
+
+export interface EventBusOptions {
+  /** A self-NOTIFY proves the dedicated LISTEN socket is receiving, not merely allocated. */
+  heartbeatMs?: number;
+  /** Reads bypass projection caches once the last self-heartbeat is older than this. */
+  heartbeatTimeoutMs?: number;
+  /** Test hook for the explicit LISTEN reconnect loop. */
+  reconnectBackoffSeconds?: number;
+}
+
+const DEFAULT_HEARTBEAT_MS = 1_000;
+const DEFAULT_HEARTBEAT_TIMEOUT_MS = 3_000;
 
 /**
  * Server-sent-event fan-out, backed by Postgres LISTEN/NOTIFY.
@@ -83,40 +112,94 @@ type Listener = (event: StreamEvent) => void;
  */
 export class EventBus {
   private connection: postgres.Sql | null = null;
-  private unlisten: (() => Promise<void>) | null = null;
+  /** Distinguishes a retired postgres.js client from the one currently owned. */
+  private connectionToken: symbol | null = null;
+  private listener: postgres.ReservedSql | null = null;
+  private heartbeatTimer: ReturnType<typeof setInterval> | null = null;
+  private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
+  private heartbeatInFlight = false;
+  private connecting = false;
+  private stopping = false;
+  private registered = false;
+  private reconnectAttempt = 0;
+  private generation = 0;
+  private reconnects = 0;
+  private lastListenAt: number | null = null;
+  private lastHeartbeatAt: number | null = null;
+  private listenerPid: number | null = null;
+  private readonly heartbeatId = randomUUID();
+  private readonly heartbeatMs: number;
+  private readonly heartbeatTimeoutMs: number;
   private readonly listeners = new Map<string, Set<Listener>>();
+  /** Internal consumers run before sockets, so a refetch cannot beat cache invalidation. */
+  private readonly observers = new Set<Listener>();
+  /** A lost LISTEN can miss invalidations; every local cache must reset across that gap. */
+  private readonly resetObservers = new Set<ResetObserver>();
   /** Counters for `/health`, so a dead live path is visible from outside. */
   private delivered = 0;
+  private fanoutDeliveries = 0;
+  private maxFanout = 0;
   private lastEventAt: number | null = null;
 
   constructor(
     private readonly url: string,
     private readonly log: FastifyBaseLogger,
-  ) {}
+    private readonly options: EventBusOptions = {},
+  ) {
+    this.heartbeatMs = options.heartbeatMs ?? DEFAULT_HEARTBEAT_MS;
+    this.heartbeatTimeoutMs = options.heartbeatTimeoutMs ?? DEFAULT_HEARTBEAT_TIMEOUT_MS;
+    if (this.heartbeatMs <= 0 || this.heartbeatTimeoutMs <= this.heartbeatMs) {
+      throw new Error('EventBus heartbeat timeout must be greater than its positive interval');
+    }
+  }
 
   /** LISTEN needs its own connection — it cannot share the request pool. */
   async start(): Promise<void> {
     if (this.connection) return;
-    this.connection = postgres(this.url, { max: 1, onnotice: () => undefined });
-    const handle = await this.connection.listen(CHANNEL, (payload) => {
-      this.dispatch(payload);
-    });
-    this.unlisten = handle.unlisten.bind(handle);
-    this.log.info('event bus listening');
+    this.stopping = false;
+    const connection = this.createConnection();
+    try {
+      await this.connectListener();
+      this.heartbeatTimer = setInterval(() => {
+        void this.pulse();
+      }, this.heartbeatMs);
+      this.heartbeatTimer.unref();
+      await this.pulse();
+    } catch (err) {
+      this.stopping = true;
+      this.registered = false;
+      this.retireConnection(connection);
+      await connection.end({ timeout: 0 }).catch(() => undefined);
+      throw err;
+    }
   }
 
   async stop(): Promise<void> {
+    this.stopping = true;
+    this.registered = false;
+    if (this.heartbeatTimer) clearInterval(this.heartbeatTimer);
+    if (this.reconnectTimer) clearTimeout(this.reconnectTimer);
+    this.heartbeatTimer = null;
+    this.reconnectTimer = null;
     this.listeners.clear();
+    this.observers.clear();
+    this.resetObservers.clear();
+    const listener = this.listener;
+    this.listener = null;
     try {
-      if (this.unlisten) await this.unlisten();
+      if (listener) await listener.unsafe(`unlisten "${CHANNEL}"`);
     } catch {
       // Connection already gone; nothing to unlisten from.
     }
-    this.unlisten = null;
+    listener?.release();
     if (this.connection) {
-      await this.connection.end({ timeout: 5 });
+      const connection = this.connection;
       this.connection = null;
+      this.connectionToken = null;
+      await connection.end({ timeout: 5 });
     }
+    this.listenerPid = null;
+    this.lastHeartbeatAt = null;
   }
 
   /**
@@ -146,7 +229,25 @@ export class EventBus {
    * place to assume it.
    */
   private dispatch(payload: string): void {
-    const parsed = eventPayload.safeParse(safeJson(payload));
+    const decoded = safeJson(payload);
+    const heartbeat = heartbeatPayload.safeParse(decoded);
+    if (heartbeat.success) {
+      if (heartbeat.data.heartbeat === this.heartbeatId) {
+        const now = Date.now();
+        // A half-open socket can recover without emitting a close. Anything may
+        // have committed during the expired lease, so caches are discarded
+        // before this pulse is allowed to make the bus healthy again.
+        if (
+          this.lastHeartbeatAt !== null
+          && now - this.lastHeartbeatAt > this.heartbeatTimeoutMs
+        ) {
+          this.resetLocalState();
+        }
+        this.lastHeartbeatAt = now;
+      }
+      return;
+    }
+    const parsed = eventPayload.safeParse(decoded);
     if (!parsed.success) {
       this.log.warn({ payload }, 'unparseable event payload');
       return;
@@ -154,7 +255,20 @@ export class EventBus {
     const event = parsed.data;
     this.delivered += 1;
     this.lastEventAt = Date.now();
-    for (const listener of this.listeners.get(topicOf(event)) ?? []) {
+    for (const observer of this.observers) {
+      try {
+        observer(event);
+      } catch (err) {
+        // Projection invalidation is an optimisation boundary. A broken observer
+        // must be visible, but it must never silence the live galaxy.
+        this.log.warn({ err }, 'event bus observer threw');
+      }
+    }
+    const listeners = this.listeners.get(topicOf(event));
+    const fanout = listeners?.size ?? 0;
+    this.fanoutDeliveries += fanout;
+    this.maxFanout = Math.max(this.maxFanout, fanout);
+    for (const listener of listeners ?? []) {
       try {
         listener(event);
       } catch (err) {
@@ -177,6 +291,18 @@ export class EventBus {
    */
   subscribeShard(shard: string, listener: Listener): () => void {
     return this.listen(shardTopic(shard), listener);
+  }
+
+  /** Observe every parsed event locally; used for replica-local cache invalidation. */
+  observe(listener: Listener): () => void {
+    this.observers.add(listener);
+    return () => this.observers.delete(listener);
+  }
+
+  /** Reset replica-local derived state whenever LISTEN reconnects across a lossy gap. */
+  observeReset(listener: ResetObserver): () => void {
+    this.resetObservers.add(listener);
+    return () => this.resetObservers.delete(listener);
   }
 
   private listen(topic: string, listener: Listener): () => void {
@@ -207,11 +333,38 @@ export class EventBus {
    * an operator cannot infer from the outside is whether the socket is open, so
    * that is what is reported.
    */
-  status(): { listening: boolean; topics: number; delivered: number; idleSeconds: number | null } {
+  status(): {
+    listening: boolean;
+    generation: number;
+    reconnects: number;
+    lastListenAt: string | null;
+    heartbeatAgeSeconds: number | null;
+    topics: number;
+    subscribers: number;
+    delivered: number;
+    fanoutDeliveries: number;
+    maxFanout: number;
+    idleSeconds: number | null;
+  } {
+    const now = Date.now();
+    const heartbeatAgeMs = this.lastHeartbeatAt === null ? null : now - this.lastHeartbeatAt;
     return {
-      listening: this.connection !== null && this.unlisten !== null,
+      listening:
+        this.connection !== null
+        && this.listener !== null
+        && this.registered
+        && heartbeatAgeMs !== null
+        && heartbeatAgeMs <= this.heartbeatTimeoutMs,
+      generation: this.generation,
+      reconnects: this.reconnects,
+      lastListenAt: this.lastListenAt === null ? null : new Date(this.lastListenAt).toISOString(),
+      heartbeatAgeSeconds:
+        heartbeatAgeMs === null ? null : Math.round(heartbeatAgeMs / 100) / 10,
       topics: this.listeners.size,
+      subscribers: [...this.listeners.values()].reduce((total, set) => total + set.size, 0),
       delivered: this.delivered,
+      fanoutDeliveries: this.fanoutDeliveries,
+      maxFanout: this.maxFanout,
       /**
        * How long since anything came down the channel, or null if nothing ever has.
        *
@@ -221,8 +374,165 @@ export class EventBus {
        * neither of the other two figures can show.
        */
       idleSeconds:
-        this.lastEventAt === null ? null : Math.round((Date.now() - this.lastEventAt) / 1000),
+        this.lastEventAt === null ? null : Math.round((now - this.lastEventAt) / 1000),
     };
+  }
+
+  /** Diagnostic hook for the real reconnect integration test; never exposed by an HTTP route. */
+  listenerBackendPid(): number | null {
+    return this.listenerPid;
+  }
+
+  private async pulse(): Promise<void> {
+    if (this.stopping || this.heartbeatInFlight || !this.listener) return;
+    this.heartbeatInFlight = true;
+    try {
+      await this.listener.unsafe('select pg_notify($1, $2)', [
+        CHANNEL,
+        JSON.stringify({ heartbeat: this.heartbeatId }),
+      ]);
+    } catch {
+      // `onclose` owns the reconnect and immediate cache reset. A query can fail
+      // before that callback runs; the heartbeat lease is the second fail-closed
+      // boundary and logging every pulse would hide the useful reconnect line.
+    } finally {
+      this.heartbeatInFlight = false;
+    }
+  }
+
+  private async connectListener(): Promise<void> {
+    if (this.stopping || this.connecting) return;
+    this.connecting = true;
+    let candidate: postgres.ReservedSql | null = null;
+    const connection = this.connection ?? this.createConnection();
+    try {
+      const listener = await connection.reserve();
+      candidate = listener;
+      if (this.shouldStop() || this.connection !== connection) {
+        listener.release();
+        candidate = null;
+        return;
+      }
+      const result = await listener.unsafe(`listen "${CHANNEL}"`);
+      if (this.shouldStop() || this.connection !== connection) {
+        listener.release();
+        candidate = null;
+        return;
+      }
+      const reconnect = this.generation > 0;
+      // Clear before the socket is declared healthy. `onclose` normally already
+      // did this; repeating it makes reconnect correct even after an unusual
+      // driver path that reopens without surfacing the close callback.
+      if (reconnect) this.resetLocalState();
+      this.listener = listener;
+      candidate = null;
+      this.listenerPid = result.state.pid;
+      this.generation += 1;
+      if (reconnect) this.reconnects += 1;
+      this.reconnectAttempt = 0;
+      this.registered = true;
+      this.lastListenAt = Date.now();
+      this.lastHeartbeatAt = this.lastListenAt;
+      void this.pulse();
+      this.log.info(
+        { generation: this.generation, reconnect },
+        reconnect ? 'event bus reconnected' : 'event bus listening',
+      );
+    } catch (err) {
+      candidate?.release();
+      this.retireConnection(connection);
+      if (this.generation === 0) throw err;
+      void connection.end({ timeout: 0 }).catch(() => undefined);
+      this.log.warn({ err }, 'event bus reconnect attempt failed');
+      this.scheduleReconnect();
+    } finally {
+      this.connecting = false;
+    }
+  }
+
+  private onListenerClosed(token: symbol): void {
+    if (this.stopping || token !== this.connectionToken || !this.connection) return;
+    const wasRegistered = this.registered || this.listener !== null;
+    const connection = this.connection;
+    this.connection = null;
+    this.connectionToken = null;
+    this.registered = false;
+    this.listener = null;
+    this.listenerPid = null;
+    this.lastHeartbeatAt = null;
+    if (wasRegistered) this.resetLocalState();
+    // A killed reserved postgres.js connection can leave a subsequent
+    // `reserve()` pending forever. This client exists only for LISTEN, so retire
+    // the whole one-connection pool and reconnect with a clean client.
+    void connection.end({ timeout: 0 }).catch(() => undefined);
+    this.scheduleReconnect();
+  }
+
+  private scheduleReconnect(): void {
+    if (this.stopping || this.reconnectTimer) return;
+    this.reconnectAttempt += 1;
+    const configured = this.options.reconnectBackoffSeconds;
+    const seconds = configured ?? Math.min(30, 2 ** Math.min(this.reconnectAttempt - 1, 5));
+    const jitter = configured === undefined ? 0.75 + Math.random() * 0.5 : 1;
+    this.reconnectTimer = setTimeout(() => {
+      this.reconnectTimer = null;
+      void this.connectListener().catch((err: unknown) => {
+        this.log.warn({ err }, 'event bus reconnect failed');
+        this.scheduleReconnect();
+      });
+    }, seconds * 1000 * jitter);
+    this.reconnectTimer.unref();
+  }
+
+  /** `stop()` may run while an awaited reserve/LISTEN handshake is in flight. */
+  private shouldStop(): boolean {
+    return this.stopping;
+  }
+
+  private resetLocalState(): void {
+    for (const observer of this.resetObservers) {
+      try {
+        observer();
+      } catch (err) {
+        this.log.warn({ err }, 'event bus reset observer threw');
+      }
+    }
+  }
+
+  /** A LISTEN client owns exactly one socket and is cheap to recreate after loss. */
+  private createConnection(): postgres.Sql {
+    const token = Symbol('event-bus-connection');
+    const reconnectBackoffSeconds = this.options.reconnectBackoffSeconds;
+    const connection = postgres(this.url, {
+      max: 1,
+      idle_timeout: 0,
+      max_lifetime: 0,
+      onnotice: () => undefined,
+      // postgres.js' high-level `listen()` hides its private socket close and
+      // reconnect lifecycle. A reserved connection makes loss observable at the
+      // instant the driver sees it, which is the cache-correctness boundary.
+      onnotify: (channel: string, payload: string) => {
+        if (channel === CHANNEL) this.dispatch(payload);
+      },
+      onclose: () => {
+        this.onListenerClosed(token);
+      },
+      connection: { application_name: 'astera-api-listen' },
+      ...(reconnectBackoffSeconds === undefined
+        ? {}
+        : { backoff: () => reconnectBackoffSeconds }),
+    } as postgres.Options<Record<string, never>> & {
+      onnotify: (channel: string, payload: string) => void;
+    });
+    this.connection = connection;
+    this.connectionToken = token;
+    return connection;
+  }
+
+  private retireConnection(connection: postgres.Sql): void {
+    if (this.connection !== connection) return;
+    this.connection = null;
+    this.connectionToken = null;
   }
 }
 
@@ -253,10 +563,10 @@ export async function publish(tx: Queryable, playerId: string, kind: string): Pr
  * Announce that something happened in a galaxy, to everybody living in it. D53.
  *
  * Same transactional rule as `publish`, and the same reason: a launch that rolls
- * back must not send fifty clients to refetch a fleet that does not exist.
+ * back must not send three hundred clients to refetch a fleet that does not exist.
  *
- * The shard is the SEASON id, which is what `/api/traffic`, `/api/galaxy` and
- * `/api/mining` are all already scoped by — so a subscriber is told about exactly
+ * The shard is the SEASON id, which is what `/api/galaxy/traffic`, `/api/galaxy`
+ * and `/api/mining/field` are all already scoped by — so a subscriber is told about exactly
  * the rows it is entitled to read and never about a galaxy it is not in.
  */
 export async function publishShard(

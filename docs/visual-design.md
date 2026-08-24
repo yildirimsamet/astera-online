@@ -1,5 +1,25 @@
 # Visual Design & Asset Direction
 
+Capital, colony and neutral silhouettes must remain distinct at mobile map scale. Capitals
+carry a permanent command mark; owned colonies share the commander accent without borrowing
+that mark; neutral T1/T2/T3 worlds communicate increasing threat through scale, orbital
+activity and light density without exposing exact stock or garrison. Recovery uses a fractured,
+cooling shell and an exact countdown; occupation protection uses a clean protective dome.
+Death Star traffic always uses its dedicated model and impact language, never the ordinary
+raid missile volley. Every viewer plays impact and control transfer at the server timestamp.
+Craft, probe, Prospector drill and orbital satellite readability comes from a thin additive
+back-face rim following the model's actual silhouette; camera-facing circular neon markers are
+not used. Drive colour belongs to hull identity: ordinary combat hulls are cold, Runner is
+amber, Breacher is red and Death Star is strategic red. On command surfaces that strategic red
+is a restrained semantic accent, never a full red dashboard: scale, dense material, a dedicated
+silhouette and structural framing carry the asset's power. Formation members aim independently
+from their own slot toward the same destination rather than remaining parallel.
+
+Death Star propulsion is a turbulent layered rocket plume with a blue-white throat and a
+yellow/orange/red cooling body. Its impact is an eight-second server-timed event made from an
+irregular surface ignition, sparse shock fronts, deterministic fire lobes, hot ejecta and
+cooling smoke; perfect concentric neon target rings are explicitly avoided.
+
 Visual quality is part of this game's identity, not a finishing pass. The game should feel
 polished, cohesive and intentional — never like a working prototype with placeholder graphics.
 
@@ -53,7 +73,8 @@ a list.
 ### What is gameplay and not taste
 
 - **Hue carries category, luminance carries certainty.** Alloy warm amber, crystal cold aqua,
-  threat grease-pencil red, opportunity a jade used nowhere else.
+  Deuterium neon chartreuse, threat grease-pencil red, opportunity a bluer jade used nowhere
+  else. Isotope rocks repeat Deuterium's chartreuse; they never introduce a second fuel hue.
 - **The clarity ramp is reserved.** `FULL → CLEAR → INTERMITTENT → DEGRADED → BLIND` fades
   toward the background, so an unreliable reading is literally harder to see. Nothing outside
   the intel layer may use those five values.
@@ -78,8 +99,12 @@ When requesting one, never say "I need a ship model". Give: what it is · what i
 like · its style · shape, material and detail requirements · format and technical requirements
 · where it is used · recommended tools.
 
-**`KNOWN RISKS` forbids commissioning art mid-phase.** Use what exists; a procedural stand-in
-that is honest beats a half-finished commission.
+The three-person team may produce or commission art inside a planned milestone when the asset
+has an owner, a performance budget, an acceptance shot and a fallback. An honest procedural
+stand-in still beats integrating a half-finished asset into a load-bearing surface.
+
+Galaxy rendering budgets, required Playwright frames and the per-milestone CR gate live in
+[`visual-quality.md`](visual-quality.md). “Premium” is not accepted without that evidence.
 
 ## Technical specification for icons
 
@@ -92,7 +117,7 @@ no baked colour. Exported as React components in `apps/web/src/ui/icons/`. They 
 | Asset | Count | Used |
 |---|---|---|
 | `planets/planet_1..16` | 16 | **Everywhere a planet appears.** Chosen by hash of the planet id, so a world never changes appearance |
-| `resources/alloy`, `crystal` | 2 | Status bar, every price, the hero's per-hour readout, gain lines |
+| `resources/alloy`, `crystal`, `deuterium` | 3 | Status bar, every price, the hero's per-hour readout, gain lines |
 | `general/telescope_1..3` | 3 | Telescope row (tier by level), the intel screen's empty state, the dossier's fleet-status gap |
 | `general/radar_1..3` | 3 | Same pattern for the Radar |
 | `general/shield_1..3` | 3 | Same pattern for the Aegis |
@@ -104,6 +129,7 @@ no baked colour. Exported as React components in `apps/web/src/ui/icons/`. They 
 | `drills/drill_1..3` | 3 | The Prospector: shipyard row, build sheet, and the craft drawn in the galaxy |
 | `sattelites/sattelite_type_1..4` | 4 | **The four satellites, one render each and untiered** — a satellite has no levels (D25). Foundry / Beacon / Derrick / Uplink, in file order |
 | `ships/ship_1..4` | 4 | Wasp / Lance / Bulwark / Hauler |
+| `ships/runner`, `breacher` | 2 | Future combat hulls; 2D cards plus mobile-optimised transit models |
 | `ships/explorer_ship` | 1 | The probe |
 | `models/*.glb` | — | Every craft in transit, the four satellites in orbit, three rock bodies, the debris ring, the missile |
 | `logos/logo-lockup` | 1 | **The ASTERA ONLINE wordmark**, hung by `Wordmark` on the front door and the loading cover — the only two surfaces that state the identity |

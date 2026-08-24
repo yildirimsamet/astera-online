@@ -1,0 +1,158 @@
+# Isolated, production-shaped capacity environment. It cannot see astera_pgdata.
+# CAPACITY_PASSWORD=... docker compose -f docker-compose.capacity.yml up -d
+
+name: astera-capacity
+
+x-capacity-api: &capacity-api
+  build:
+    context: .
+    dockerfile: Dockerfile
+    target: server
+    args:
+      ASTERA_GIT_COMMIT: ${ASTERA_GIT_COMMIT:-unknown}
+  image: astera-capacity-server
+  restart: unless-stopped
+  mem_limit: 1g
+  mem_reservation: 256m
+  environment: &capacity-environment
+    NODE_ENV: production
+    ROLE: api
+    PORT: 3200
+    DATABASE_URL: postgres://astera_capacity:capacity_only@postgres:5432/astera_capacity
+    DB_POOL_MAX: 8
+    JWT_SECRET: ${CAPACITY_JWT_SECRET:-capacity-jwt-secret-never-used-outside-loopback}
+    TRUST_PROXY: 'true'
+    LOG_LEVEL: warn
+    RATE_LIMIT_MAX: 300
+    RATE_LIMIT_AUTH_MAX: 20
+    RATE_LIMIT_SIGNUP_MAX: 6
+    RATE_LIMIT_REDIS_URL: redis://valkey:6379/0
+    PROJECTION_CACHE_ENABLED: 'true'
+    PROJECTION_CACHE_MAX_SEASONS: 4
+    PROJECTION_CACHE_MAX_ACCOUNTS: 1024
+    COMMANDER_CACHE_TTL_MS: 30000
+    PUBLIC_CACHE_TTL_MS: 30000
+    TRAFFIC_CACHE_TTL_MS: 5000
+    MINING_CACHE_TTL_MS: 5000
+    SSE_MAX_BUFFER_BYTES: 65536
+  depends_on:
+    postgres: { condition: service_healthy }
+    valkey: { condition: service_healthy }
+  stop_grace_period: 30s
+  ulimits:
+    nofile: { soft: 65535, hard: 65535 }
+  healthcheck: &capacity-health
+    test: ['CMD-SHELL', 'wget -q -O- http://127.0.0.1:3200/health || exit 1']
+    interval: 10s
+    timeout: 5s
+    retries: 5
+    start_period: 15s
+  logging: &capacity-logging
+    driver: json-file
+    options: { max-size: '10m', max-file: '3' }
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    mem_limit: 4g
+    mem_reservation: 1g
+    environment:
+      POSTGRES_USER: astera_capacity
+      POSTGRES_PASSWORD: capacity_only
+      POSTGRES_DB: astera_capacity
+    volumes:
+      - capacity_pgdata:/var/lib/postgresql/data
+    ports:
+      - '127.0.0.1:${CAPACITY_POSTGRES_PORT:-5645}:5432'
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U astera_capacity -d astera_capacity']
+      interval: 3s
+      timeout: 3s
+      retries: 20
+    logging: *capacity-logging
+
+  valkey:
+    image: valkey/valkey:9.1.1-alpine
+    mem_limit: 128m
+    mem_reservation: 64m
+    command: [
+      'valkey-server', '--save', '', '--appendonly', 'no', '--protected-mode', 'no',
+      '--maxmemory', '64mb', '--maxmemory-policy', 'allkeys-lru',
+    ]
+    healthcheck:
+      test: ['CMD', 'valkey-cli', 'ping']
+      interval: 3s
+      timeout: 3s
+      retries: 20
+    logging: *capacity-logging
+
+  api1:
+    <<: *capacity-api
+    ports: ['127.0.0.1:${CAPACITY_API_PORT_1:-3300}:3200']
+
+  api2:
+    <<: *capacity-api
+    ports: ['127.0.0.1:${CAPACITY_API_PORT_2:-3301}:3200']
+
+  api3:
+    <<: *capacity-api
+    ports: ['127.0.0.1:${CAPACITY_API_PORT_3:-3302}:3200']
+
+  worker:
+    image: astera-capacity-server
+    restart: unless-stopped
+    mem_limit: 768m
+    mem_reservation: 256m
+    environment:
+      <<: *capacity-environment
+      ROLE: worker
+      PORT: 3210
+      DB_POOL_MAX: 12
+      RATE_LIMIT_REDIS_URL: ''
+      WORKER_POLL_MS: 1000
+      WORKER_BATCH: 100
+    ports: ['127.0.0.1:${CAPACITY_WORKER_PORT:-3310}:3210']
+    depends_on:
+      postgres: { condition: service_healthy }
+    stop_grace_period: 30s
+    ulimits:
+      nofile: { soft: 65535, hard: 65535 }
+    healthcheck:
+      test: ['CMD-SHELL', 'wget -q -O- http://127.0.0.1:3210/health || exit 1']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+    logging: *capacity-logging
+
+  nginx:
+    image: nginx:1.28-alpine
+    restart: unless-stopped
+    ports: ['127.0.0.1:${CAPACITY_NGINX_PORT:-3380}:8080']
+    volumes:
+      - ./deploy/nginx/capacity.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      api1: { condition: service_healthy }
+      api2: { condition: service_healthy }
+      api3: { condition: service_healthy }
+    ulimits:
+      nofile: { soft: 65535, hard: 65535 }
+    logging: *capacity-logging
+
+  seed:
+    image: astera-capacity-server
+    profiles: ['tools']
+    environment:
+      <<: *capacity-environment
+      DATABASE_URL: postgres://astera_capacity:capacity_only@postgres:5432/astera_capacity
+      CAPACITY_SEED_CONFIRM: ASTERA_STAGING_ONLY
+      # The seed CLI performs the 8–200 character check. Keeping Compose itself
+      # parseable without the secret lets operators inspect/stop the isolated
+      # stack without having to repeat it on every read-only command.
+      CAPACITY_PASSWORD: ${CAPACITY_PASSWORD:-}
+      RATE_LIMIT_REDIS_URL: ''
+    depends_on:
+      postgres: { condition: service_healthy }
+
+volumes:
+  capacity_pgdata:

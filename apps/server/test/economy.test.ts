@@ -9,6 +9,8 @@ import {
   alloyRate,
   flightSlots,
   collectorCap,
+  crystalRate,
+  deuteriumStorageCap,
   instrumentCost,
   prospectorHold,
   prospectorSpeed,
@@ -17,7 +19,7 @@ import {
   telescopeCooldownHours,
   upgradeCost,
 } from '@astera/rules';
-import { planets } from '../src/db/schema.js';
+import { battleReports, planets } from '../src/db/schema.js';
 import { collectWorks, installSatellite, raiseInstrument } from '../src/services/build.js';
 import { assignWatch, launchProbe } from '../src/services/intel.js';
 import { launchAttack } from '../src/services/mission.js';
@@ -31,6 +33,7 @@ import {
   levelWorld,
   placeAt,
   seedWorld,
+  settleBuilds,
   setLevel,
   settledAt,
   testDb,
@@ -109,7 +112,7 @@ describe('collecting the works', () => {
     // Fill storage to the brim first, then let the works fill behind it.
     await f.db
       .update(planets)
-      .set({ alloy: storageCap(alloyRate(4)) })
+      .set({ alloy: storageCap(alloyRate(4), 0) })
       .where(eq(planets.id, mine));
     f.clock.advance(60 * 20);
 
@@ -117,6 +120,20 @@ describe('collecting the works', () => {
     expect(result.moved.alloy).toBe(0);
     expect(result.blocked.alloy).toBeGreaterThan(0);
     expect(result.bufferAlloy).toBe(result.blocked.alloy);
+  });
+
+  it('collects Deuterium only up to the Extractor containment cap', async () => {
+    const cap = deuteriumStorageCap(crystalRate(4), 0);
+    await f.db
+      .update(planets)
+      .set({ deuterium: cap - 25, bufferDeuterium: 100 })
+      .where(eq(planets.id, mine));
+
+    const result = await collectWorks(f.db, mine, f.clock);
+    expect(result.moved.deuterium).toBe(25);
+    expect(result.blocked.deuterium).toBe(75);
+    expect(result.deuterium).toBe(cap);
+    expect(result.bufferDeuterium).toBe(75);
   });
 });
 
@@ -160,6 +177,20 @@ describe('a raid against the works', () => {
     const taken = before.bufferAlloy - after.bufferAlloy;
     expect(taken).toBeLessThan(before.bufferAlloy * COMBAT.lootBufferShare + 1);
   });
+
+  it('takes Deuterium through any Vault and records it in the report', async () => {
+    await setLevel(f.db, defender, 'VAULT', 10);
+    await f.db.update(planets).set({ deuterium: 1_000 }).where(eq(planets.id, defender));
+
+    const launch = await launchAttack(f.db, attacker, defender, { WASP: 60, HAULER: 8 }, f.clock);
+    f.clock.set(settledAt(launch.arriveAt));
+    await worker(f).tick();
+
+    const after = await f.db.transaction((tx) => loadLocked(tx, defender, f.clock));
+    const [report] = await f.db.select().from(battleReports);
+    expect(after.deuterium).toBeLessThan(1_000);
+    expect(report?.loot.deuterium).toBeGreaterThan(0);
+  });
 });
 
 /* ── D18 · the telescope's three gates ───────────────────────── */
@@ -174,6 +205,7 @@ describe('telescope range and cooldown', () => {
     f = await seedWorld(3);
     [mine, near, far] = f.planetIds as [string, string, string];
     for (const id of f.planetIds) await setLevel(f.db, id, 'CORE', 10);
+    await giveSatellite(f.db, mine, 'UPLINK');
     await placeAt(f.db, mine, { x: 0 });
     await placeAt(f.db, near, { x: 200 });
     // Beyond L1's reach of 420, inside L3's 950.
@@ -469,6 +501,7 @@ describe('raising ground instruments', () => {
         type: id,
         level: 1,
       });
+      await settleBuilds(f, mine);
     }
 
     const planet = await f.db.transaction((tx) => loadLocked(tx, mine, f.clock));
@@ -489,7 +522,10 @@ describe('raising ground instruments', () => {
     const raiseTo = async (id: 'TELESCOPE' | 'RADAR' | 'AEGIS' | 'VEIL', target: number) => {
       await setLevel(f.db, mine, 'CORE', target + 2);
       await grant(f.db, mine, 40_000_000, 20_000_000);
-      for (let l = 0; l < target; l++) await raiseInstrument(f.db, mine, id, f.clock);
+      for (let l = 0; l < target; l++) {
+        await raiseInstrument(f.db, mine, id, f.clock);
+        await settleBuilds(f, mine);
+      }
     };
 
     it.each(['TELESCOPE', 'RADAR'] as const)('refuses to raise a maxed %s', async (id) => {
@@ -535,7 +571,10 @@ describe('raising ground instruments', () => {
   });
 
   it('takes no orbit slot, however many are raised', async () => {
-    for (const id of INSTRUMENT_IDS) await raiseInstrument(f.db, mine, id, f.clock);
+    for (const id of INSTRUMENT_IDS) {
+      await raiseInstrument(f.db, mine, id, f.clock);
+      await settleBuilds(f, mine);
+    }
     const planet = await f.db.transaction((tx) => loadLocked(tx, mine, f.clock));
     // One Uplink is up there and nothing else. Instruments are on the ground.
     expect(planet.orbit).toEqual(['UPLINK']);
@@ -653,6 +692,7 @@ describe('putting satellites in orbit', () => {
       await expect(installSatellite(f.db, mine, wanted, f.clock)).resolves.toMatchObject({
         type: wanted,
       });
+      await settleBuilds(f, mine);
     }
     const planet = await f.db.transaction((tx) => loadLocked(tx, mine, f.clock));
     expect([...planet.orbit].sort()).toEqual(['BEACON', 'DERRICK', 'FOUNDRY', 'UPLINK']);

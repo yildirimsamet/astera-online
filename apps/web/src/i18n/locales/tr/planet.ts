@@ -11,6 +11,23 @@
  */
 
 export const planet = {
+  recovery: 'Toparlanma sürüyor · sistemler {{duration}} sonra açılır',
+  deathStar: {
+    eyebrow: 'Kısıtlı stratejik silah',
+    none: 'Bu dünyada Ölüm Yıldızı yok',
+    building: 'Üretiliyor · {{duration}}',
+    paused: 'Toparlanma sırasında üretim duraklatıldı',
+    ready: 'Fırlatmaya hazır',
+    build: 'Üret',
+    started: 'Ölüm Yıldızı üretimi başladı',
+    dangerHint: 'Tek yönlü gezegen kırıcı. Her darbe harap eder; ikinci darbe yalnız koloni veya tarafsız dünyayı ele geçirebilir.',
+    readyHint: 'Silahlı. Herhangi bir düşman dünyasını seç; ana gezegenler harap edilir ama ele geçirilemez.',
+    needProtocol: 'Protokol',
+    needCore: 'Çekirdek L6',
+    needShipyard: 'Tersane L5',
+    needOperational: 'Dünya çalışır durumda',
+    buildTime: '60 dk · tek silah · geri çağrılamaz',
+  },
   tabs: {
     defendProblem: 'Savunma',
     defendQuestion: 'Biri buraya inerse ayakta ne kalır?',
@@ -26,14 +43,33 @@ export const planet = {
     inTheWorks: 'havuzda <0>{{amount}}</0>',
   },
 
+  queue: {
+    title: 'Üretim sıraları',
+    capacity: 'her birinde {{count}} yer',
+    construction: 'İnşaat',
+    yard: 'Tersane',
+    empty: 'Bağlanmış iş yok',
+    committing: 'işleniyor…',
+    staged: 'sahiplenince başlar',
+    queued_one: '{{count}} sipariş sırada',
+    queued_other: '{{count}} sipariş sırada',
+    unitsQueued_one: '{{count}} birlik sırada',
+    unitsQueued_other: '{{count}} birlik sırada',
+    afterQueue: 'Sıra bitince',
+    cancel: 'İptal',
+    cancelling: 'İptal ediliyor…',
+    refund: 'İade: {{alloy}} alaşım · {{crystal}} kristal · {{deuterium}} döteryum',
+    cancelled: 'Sipariş iptal edildi · {{alloy}} alaşım, {{crystal}} kristal ve {{deuterium}} döteryum geri geldi',
+  },
+
   roles: {
     vault: 'Akının dokunamadığı tek stok. Üstünde kalan her şey alınabilir.',
-    shipyard: 'Daha ağır gövdeleri açar, gönderdiğin her sondayı keskinleştirir.',
+    shipyard: 'Daha ağır gövdeleri açar, onları daha hızlı üretir ve her sondayı keskinleştirir.',
     refinery: 'İnşa ettiğin her şey bu sayıyı bekliyor.',
     extractor: 'Kıt kaynak. Ağır gövdeler ve yüksek bina seviyeleri buna bakıyor.',
     coreCapped_one: '{{count}} şey tavana dayandı; bu yükselmeden açılmıyor.',
     coreCapped_other: '{{count}} şey tavana dayandı; bu yükselmeden açılmıyorlar.',
-    coreClear: 'Hiçbir bina Çekirdeği geçemez. Her şeyin tavanı o.',
+    coreClear: 'Hiçbir bina Çekirdeği geçemez. Hem tavanı hem inşaat hızını o belirler.',
   },
 
   defend: {
@@ -61,17 +97,46 @@ export const planet = {
     slotsNone: 'yörünge dolu',
     slotsUsed: '{{used}}/{{total}}',
     slotsNext: ' · Çekirdek L{{level}}’de +1',
+    rackLabel: 'Yörünge yuvaları',
+    slotEmpty: 'Boş',
+    inactiveSatellite: 'Sahipsin; Komuta Çekirdeği bu yörünge yuvasını yeniden açana kadar pasif.',
+    inactiveUplink: 'L{{owned}} sende; Uplink yeniden etkinleşene kadar pasif.',
+    inactiveCore: 'L{{owned}} sende · Komuta Çekirdeği onarılana kadar L{{active}} etkin.',
     alreadyInOrbit: 'zaten yörüngede',
   },
 
   reach: {
+    frontierBand: 'Ufuk projeleri',
+    frontierNote: 'Dört keşif. İnşaat sırasını paylaşır, onun saatinde tamamlanır.',
+    isotopeName: 'İzotop Spektrometrisi',
+    isotopeTag: 'Döteryum çıkarımını açar',
+    isotopeRole: 'Neon yeşil izotop anomalilerinin Döteryum oranını gösterir ve Kazıcı göndermeni açar. Dönüş yükünü Havuz’dan Topla.',
+    denseName: 'Yoğun Yakıt Hücreleri',
+    denseTag: 'Koşucuyu açar',
+    denseRole: 'Ambarın yetmediği bir akın tasarımı keşfettirir. Koşucu, daha kısa açıkta kalma süresi için kapasiteden vazgeçer.',
+    graviticName: 'Gravitik Yükler',
+    graviticTag: 'Delici’yi açar',
+    graviticRole: 'Kalkanın ağır bastığı bir akın tasarımı keşfettirir. Delici, bonus hasarını birliklere taşırmadan kalkanı parçalar.',
+    deathStarName: 'Ölüm Yıldızı Protokolü',
+    deathStarTag: 'Stratejik tersaneyi açar',
+    deathStarRole: 'Bu dünyada korunan tek bir stratejik varlığa izin verir. Her düşman dünyasını yıkar; yalnız koloniler ve tarafsız dünyalar ikinci darbede ele geçirilebilir.',
+    researchAct: 'Araştır',
+    researchComplete: 'tamamlandı',
+    researchAt: '{{duration}} sonra açılır',
+    researchIsotopeFirst: 'önce İzotop Spektrometrisi',
+    researchDenseFirst: 'önce Yoğun Yakıt Hücreleri',
+    researchGraviticFirst: 'önce Gravitik Yükler',
+    researchWarAt: 'Savaş perdesinde açılır · {{duration}}',
+    researchCargoInsight: 'bir akında ambarını doldur',
+    researchShieldInsight: 'güçlü bir Aegis kalkanına saldır',
     warshipsBand: 'Savaş gemileri',
     warshipsNote: 'Bunlar dövüşür. Başka bir gezegene gönderilir.',
     supportBand: 'Destek',
-    supportNote: 'Dövüşmez. Filonun aldığını taşımak için gider.',
+    supportNote: 'Dövüşmezler. Ucuz kapasite ile daha kısa açıkta kalma süresi arasında seçim yap.',
     miningBand: 'Madenci',
     miningNote: 'Gezegene değil asteroide gider. Cevheri eve getirir.',
     ownedGain: 'Elinde',
+    prospectorLimit: '{{owned}} / {{max}} · sınır',
   },
 
   blocked: {
@@ -80,6 +145,7 @@ export const planet = {
     orbitSlot: 'boş yörünge yuvası',
     shipyard: 'Tersane L{{level}}',
     maxed: 'en üst seviyede',
+    queueFull: 'o üretim sırası dolu',
   },
 
   done: {
@@ -87,6 +153,10 @@ export const planet = {
     instrument: '{{name}} L{{level}} olarak devrede',
     satellite: '{{name}} yörüngeye yerleşti',
     built: '{{count}} {{name}} yapıldı',
+    researched: '{{name}} tamamlandı',
+    queued: '{{name}} L{{level}} sıraya alındı',
+    queuedSimple: '{{name}} sıraya alındı',
+    unitsQueued: '{{count}} {{name}} sıraya alındı',
   },
 
   buildSheet: {
@@ -98,7 +168,7 @@ export const planet = {
     capped:
       'Elinde zaten {{count}} tane var, sınır bu. Dışarıdakiler de sayıldığı için bir tane daha yapamazsın.',
     heldOfMax: 'Elinde {{max}} üzerinden {{owned}} var. Dışarıdakiler de sayılıyor.',
-    defenceAfter: 'Sonrasında evde {{count}} birlik kalır',
+    defenceAfter: 'Tamamlanınca evde {{count}} birlik olur',
   },
 } as const;
 
@@ -142,6 +212,7 @@ export const action = {
   short: 'Eksik',
   shortfallAlloy: '{{amount}} alaşım',
   shortfallCrystal: '{{amount}} kristal',
+  shortfallDeuterium: '{{amount}} döteryum',
   shortfallJoin: ' ve ',
   shortfallLabel: 'Eksik: {{parts}} gerekiyor',
   statAttack: 'Saldırı',
@@ -153,6 +224,8 @@ export const action = {
 } as const;
 
 export const planetHero = {
+  capital: 'Ana gezegen',
+  colony: 'Koloni gezegeni',
   power: 'Güç',
   perHour: 'Saatte',
   perHourSuffix: '/sa',
@@ -165,10 +238,17 @@ export const planetHero = {
   defenceOnGround: 'yerde {{count}} tane',
   shield: 'Kalkan',
   shieldNone: 'Yok',
-  shieldAbsorbs: 'ilk darbeyi emer',
   shieldNoAegis: 'aegis yok',
+  shieldValue: '{{current}} / {{max}}',
+  shieldMeter: 'Aegis kalkan doluluğu',
+  shieldRegen: '+{{amount}}/sa · birliklerden önce',
+  vault: 'Kasa · güvende',
+  vaultProtected: 'Akın bu miktarlara dokunamaz',
+  alloySafe: '{{amount}} alaşım güvende',
+  crystalSafe: '{{amount}} kristal güvende',
+  deuteriumSafe: '{{amount}} döteryum güvende',
   atRisk: 'Risk altında',
-  atRiskSafe: '{{amount}} güvende',
+  atRiskValue: '{{amount}} açıkta',
 } as const;
 
 export const launch = {
@@ -196,4 +276,20 @@ export const launch = {
   warning:
     'Bunu geri çağıramazsın. Kalktıktan sonra aşağıda ne olduğunu ancak inişini izleyerek öğrenirsin; o dönene kadar gezegeninde {{count}} birlik kalıyor.',
   fleetsave: 'Havadaki gemiler yağmalanamaz. Gezegenin yağmalanabilir.',
+} as const;
+
+export const transfer = {
+  eyebrow: 'Dünyalar arası transfer',
+  eta: 'Varış',
+  capacity: 'Yük',
+  fleet: 'Gemiler',
+  homeDefence: 'Origin’de {{ships}} gemi kalır · {{power}} savunma gücü',
+  cargo: 'Kaynaklar',
+  alloy: 'Alaşım',
+  crystal: 'Kristal',
+  deuterium: 'Döteryum',
+  commit: 'Transfer et — geri çağrılamaz',
+  sending: 'Yola çıkıyor',
+  launched: 'Transfer yola çıktı · {{duration}}',
+  irreversible: 'Tek yönlüdür. Yer savunması taşınamaz; yük kapasitesini yalnız Nakliyeci ve Koşucu sağlar.',
 } as const;

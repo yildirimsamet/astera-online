@@ -81,7 +81,7 @@ export function unitModel(scene: THREE.Object3D): UnitModel | null {
  * exactly as the four named ones are. The names are the special cases: `'+x'` is
  * `noseBearing(1, 0)`, and a test asserts all four agree.
  */
-export type Facing = '+x' | '-x' | '+z' | '-z' | number;
+export type Facing = '+x' | '-x' | '+z' | '-z' | number | readonly [number, number, number];
 
 /**
  * The bearing of a nose, from the direction it points in its own file.
@@ -92,6 +92,13 @@ export type Facing = '+x' | '-x' | '+z' | '-z' | number;
  * visible there rather than being pre-baked into a radian nobody can check.
  */
 export const noseBearing = (x: number, z: number): number => Math.atan2(x, z);
+
+/** A measured 3D nose axis. Unlike a bearing, this can correct authored pitch. */
+export const noseVector = (x: number, y: number, z: number): readonly [number, number, number] =>
+  [x, y, z] as const;
+
+const isVectorFacing = (facing: Facing): facing is readonly [number, number, number] =>
+  typeof facing === 'object';
 
 /** Radians about Y that bring each named facing onto +Z, the axis `lookAt` aims. */
 const AXIS_TURN: Record<'+x' | '-x' | '+z' | '-z', number> = {
@@ -104,7 +111,32 @@ const AXIS_TURN: Record<'+x' | '-x' | '+z' | '-z', number> = {
 
 /** How far to turn a model about Y so its nose runs down +Z. */
 export const turnOnto = (facing: Facing): number =>
-  typeof facing === 'number' ? -facing : AXIS_TURN[facing];
+  isVectorFacing(facing)
+    ? -Math.atan2(facing[0], facing[2])
+    : typeof facing === 'number' ? -facing : AXIS_TURN[facing];
+
+const facingVector = (facing: Facing): THREE.Vector3 => {
+  if (isVectorFacing(facing)) return new THREE.Vector3(...facing).normalize();
+  const bearing = typeof facing === 'number' ? facing : -AXIS_TURN[facing];
+  return new THREE.Vector3(Math.sin(bearing), 0, Math.cos(bearing));
+};
+
+/**
+ * Rotation which maps the model's measured nose to +Z and its authored vertical
+ * as closely as possible to +Y. Correcting yaw alone leaves a pitched source
+ * model flying nose-up; correcting only the nose with a shortest-arc quaternion
+ * can introduce roll. Building and inverting the full orthonormal basis fixes
+ * both while retaining world-up as the level reference for every craft.
+ */
+const levelOntoForward = (facing: Facing): THREE.Matrix4 => {
+  const forward = facingVector(facing);
+  const authoredUp = Math.abs(forward.y) > 0.999
+    ? new THREE.Vector3(0, 0, 1)
+    : new THREE.Vector3(0, 1, 0);
+  const right = authoredUp.clone().cross(forward).normalize();
+  const up = forward.clone().cross(right).normalize();
+  return new THREE.Matrix4().makeBasis(right, up, forward).invert();
+};
 
 /**
  * A craft, centred, turned to face +Z, and normalised to fit a unit box.
@@ -127,8 +159,7 @@ export function orientedCraft(scene: THREE.Object3D, facing: Facing): THREE.Obje
   // object cannot be in two places.
   const model = scene.clone(true);
 
-  const turn = turnOnto(facing);
-  if (turn !== 0) model.rotateY(turn);
+  model.applyMatrix4(levelOntoForward(facing));
   model.updateWorldMatrix(true, true);
 
   const box = new THREE.Box3().setFromObject(model);

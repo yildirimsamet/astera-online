@@ -1,27 +1,35 @@
 import {
+  BUILD,
+  BUILDING_IDS,
   HULLS,
+  INSTRUMENT_IDS,
   PROSPECTOR,
+  RESEARCH_PROJECTS,
+  SATELLITE_IDS,
   instrumentCost,
   instrumentMaxed,
+  satelliteSlots,
   satelliteCost,
   seeingUnlocked,
   upgradeCost,
+  type BuildQueueId,
   type BuildingId,
+  type BuildingLevels,
   type HullId,
   type InstrumentId,
+  type InstrumentLevels,
+  type ResearchProjectId,
   type Resources,
   type SatelliteId,
 } from '@astera/rules';
-import type { PlanetView } from '../api/schemas.js';
+import type { BuildOrderView, PlanetView } from '../api/schemas.js';
 
 /**
  * WHAT A TAP DOES, BEFORE THE SERVER SAYS SO. D53.
  *
- * Construction in this game is INSTANT ON PAYMENT — no build timers, by design,
- * because "a bar filled up" is the weakest return hook there is. The interface was
- * not keeping that promise: a tap disabled its own button and waited a round trip
- * to show a decision the design says is immediate. Returning the whole view from
- * the mutation halved that. This removes the rest of it.
+ * A purchase commits immediately even though its result now finishes in a queue.
+ * The optimistic frame therefore spends the resources and shows the commitment;
+ * it never grants the building, hull or hardware before the server's named instant.
  *
  * IT IS A PREDICTION, NOT A DECISION. Principle 1 says the client never decides an
  * outcome, and nothing here does: the server validates against its own figures
@@ -46,7 +54,9 @@ import type { PlanetView } from '../api/schemas.js';
 
 /** Whether the two piles cover a price. The same test the server will apply. */
 const affordable = (view: PlanetView, cost: Resources): boolean =>
-  view.planet.alloy >= cost.alloy && view.planet.crystal >= cost.crystal;
+  view.planet.alloy >= cost.alloy
+  && view.planet.crystal >= cost.crystal
+  && view.planet.deuterium >= cost.deuterium;
 
 /** Pay for something, leaving every derived figure alone. */
 function spend(view: PlanetView, cost: Resources): PlanetView {
@@ -56,6 +66,7 @@ function spend(view: PlanetView, cost: Resources): PlanetView {
       ...view.planet,
       alloy: view.planet.alloy - cost.alloy,
       crystal: view.planet.crystal - cost.crystal,
+      deuterium: view.planet.deuterium - cost.deuterium,
     },
   };
 }
@@ -70,36 +81,163 @@ function spend(view: PlanetView, cost: Resources): PlanetView {
  */
 export type Prediction = PlanetView | null;
 
+const BUILDINGS = new Set<string>(BUILDING_IDS);
+const INSTRUMENTS = new Set<string>(INSTRUMENT_IDS);
+const SATELLITES = new Set<string>(SATELLITE_IDS);
+let optimisticOrder = 0;
+
+export interface ProjectedQueueState {
+  buildings: BuildingLevels;
+  instruments: InstrumentLevels;
+  /** Installed and queued hardware, including closed physical slots. */
+  orbit: SatelliteId[];
+  /** The prefix enabled by the projected Core level. */
+  effectiveOrbit: SatelliteId[];
+  research: Set<ResearchProjectId>;
+  units: Partial<Record<HullId, number>>;
+}
+
+const queueOrders = (view: PlanetView, queue: BuildQueueId): BuildOrderView[] =>
+  view.queues?.[queue] ?? [];
+
+/** The state after every order already ahead in one independent queue. */
+export function projectedQueueState(
+  view: PlanetView,
+  queue: BuildQueueId,
+): ProjectedQueueState {
+  const state: ProjectedQueueState = {
+    buildings: {
+      CORE: view.buildings.CORE ?? 0,
+      REFINERY: view.buildings.REFINERY ?? 0,
+      EXTRACTOR: view.buildings.EXTRACTOR ?? 0,
+      VAULT: view.buildings.VAULT ?? 0,
+      SHIPYARD: view.buildings.SHIPYARD ?? 0,
+    },
+    instruments: { ...view.instruments },
+    orbit: [...view.orbit],
+    effectiveOrbit: [...(view.effectiveOrbit ?? view.orbit)],
+    research: new Set(
+      view.research.filter((project) => project.completed).map((project) => project.id),
+    ),
+    units: Object.fromEntries(
+      Object.keys(HULLS).map((id) => {
+        const hull = id as HullId;
+        return [
+          hull,
+          (view.fleet[hull] ?? 0) + (view.ground[hull] ?? 0) + (view.fleetAway[hull] ?? 0),
+        ];
+      }),
+    ),
+  };
+
+  for (const order of queueOrders(view, queue)) {
+    if (order.kind === 'BUILDING' && BUILDINGS.has(order.subject)) {
+      const id = order.subject as BuildingId;
+      state.buildings[id] += 1;
+      if (id === 'CORE') projectEffectiveOrbit(state);
+    } else if (order.kind === 'HULL' && Object.hasOwn(HULLS, order.subject)) {
+      const id = order.subject as HullId;
+      state.units[id] = (state.units[id] ?? 0) + order.count;
+    } else if (order.kind === 'INSTRUMENT' && INSTRUMENTS.has(order.subject)) {
+      const id = order.subject as InstrumentId;
+      state.instruments[id] = (state.instruments[id] ?? 0) + 1;
+    } else if (order.kind === 'SATELLITE' && SATELLITES.has(order.subject)) {
+      const id = order.subject as SatelliteId;
+      if (!state.orbit.includes(id)) {
+        state.orbit.push(id);
+        projectEffectiveOrbit(state);
+      }
+    } else if (order.kind === 'RESEARCH' && Object.hasOwn(RESEARCH_PROJECTS, order.subject)) {
+      state.research.add(order.subject as ResearchProjectId);
+    }
+  }
+  return state;
+}
+
+const projectEffectiveOrbit = (state: ProjectedQueueState): void => {
+  state.effectiveOrbit = state.orbit.slice(0, satelliteSlots(state.buildings.CORE));
+};
+
+const queueHasRoom = (view: PlanetView, queue: BuildQueueId): boolean =>
+  queueOrders(view, queue).length < BUILD.queueDepth;
+
+/**
+ * Add only the fact the client knows: an order was pressed and paid for.
+ *
+ * No fake completion instant is attached. The mutation response replaces this
+ * short-lived marker with the server order carrying `startedAt` and `finishesAt`.
+ */
+function appendOrder(
+  view: PlanetView,
+  queue: BuildQueueId,
+  kind: BuildOrderView['kind'],
+  subject: string,
+  count: number,
+  cost: Resources,
+): PlanetView {
+  const orders = queueOrders(view, queue);
+  const marker = {
+    id: `optimistic-${String(++optimisticOrder)}`,
+    queue,
+    slot: orders.length,
+    kind,
+    subject,
+    count,
+    cost,
+    optimistic: true as const,
+  } satisfies BuildOrderView;
+  const queues = view.queues ?? { CONSTRUCTION: [], YARD: [] };
+  return {
+    ...view,
+    queues: {
+      ...queues,
+      [queue]: [...orders, marker],
+    },
+  };
+}
+
 export function predictUpgrade(view: PlanetView, type: BuildingId): Prediction {
-  const level = view.buildings[type];
-  if (level === undefined) return null;
-  const cost = view.nextCosts[type];
-  if (!cost || !affordable(view, cost)) return null;
+  if (!queueHasRoom(view, 'CONSTRUCTION')) return null;
+  const projected = projectedQueueState(view, 'CONSTRUCTION');
+  const level = projected.buildings[type];
+  // The durable next price comes from the server. Once an earlier order for this
+  // same building is already queued, the shared rule prices the projected level
+  // exactly as the server does; otherwise a second Core order would optimistically
+  // spend the first Core's cheaper price before the response corrected it.
+  const cost = level === view.buildings[type]
+    ? view.nextCosts[type]
+    : upgradeCost(level);
+  if (!cost) return null;
+  if (!affordable(view, cost)) return null;
   /**
    * THE CORE CEILING, PREDICTED TOO. Otherwise the one refusal a player meets most
    * often — raising a structure past its Command Core — would show as a successful
    * upgrade that un-happens a moment later.
    */
-  const core = view.buildings.CORE ?? 0;
+  const core = projected.buildings.CORE;
   if (type !== 'CORE' && level >= core) return null;
 
   const next = spend(view, cost);
-  return {
-    ...next,
-    buildings: { ...next.buildings, [type]: level + 1 },
-    // The row shows what the NEXT one costs, and it is the figure directly under
-    // the button that was just pressed.
-    nextCosts: { ...next.nextCosts, [type]: upgradeCost(level + 1) },
-  };
+  return appendOrder(next, 'CONSTRUCTION', 'BUILDING', type, 1, cost);
 }
 
 export function predictBuild(view: PlanetView, hull: HullId, count: number): Prediction {
+  if (!queueHasRoom(view, 'YARD')) return null;
+  const projected = projectedQueueState(view, 'YARD');
   const spec = HULLS[hull];
   if (!Number.isInteger(count) || count < 1) return null;
   // The Shipyard gate, for the same reason the Core ceiling is checked above.
-  if ((view.buildings.SHIPYARD ?? 0) < spec.minShipyard) return null;
+  if (projected.buildings.SHIPYARD < spec.minShipyard) return null;
+  const completed = (project: 'DENSE_FUEL_CELLS' | 'GRAVITIC_CHARGES') =>
+    projected.research.has(project);
+  if (hull === 'RUNNER' && !completed('DENSE_FUEL_CELLS')) return null;
+  if (hull === 'BREACHER' && !completed('GRAVITIC_CHARGES')) return null;
 
-  const cost = { alloy: spec.alloy * count, crystal: spec.crystal * count };
+  const cost = {
+    alloy: spec.alloy * count,
+    crystal: spec.crystal * count,
+    deuterium: spec.deuterium * count,
+  };
   if (!affordable(view, cost)) return null;
 
   /**
@@ -109,20 +247,19 @@ export function predictBuild(view: PlanetView, hull: HullId, count: number): Pre
    * carries `fleetAway` at all. Predicting past that cap would offer a fourth
    * drill and then take it away.
    */
-  const owned = (view.fleet[hull] ?? 0) + (view.fleetAway[hull] ?? 0);
+  const owned = projected.units[hull] ?? 0;
   if (hull === 'PROSPECTOR' && owned + count > PROSPECTOR.max) return null;
 
   const next = spend(view, cost);
-  const ground = spec.ground;
-  const stack = ground ? next.ground : next.fleet;
-  const updated = { ...stack, [hull]: (stack[hull] ?? 0) + count };
-  return ground ? { ...next, ground: updated } : { ...next, fleet: updated };
+  return appendOrder(next, 'YARD', 'HULL', hull, count, cost);
 }
 
 export function predictInstrument(view: PlanetView, type: InstrumentId): Prediction {
-  const level = view.instruments[type] ?? 0;
-  const cost = view.instrumentCosts[type];
-  if (!cost || !affordable(view, cost)) return null;
+  if (!queueHasRoom(view, 'CONSTRUCTION')) return null;
+  const projected = projectedQueueState(view, 'CONSTRUCTION');
+  const level = projected.instruments[type] ?? 0;
+  const cost = instrumentCost(type, level);
+  if (!affordable(view, cost)) return null;
   /**
    * EVERY GUARD THE SERVER WILL APPLY, APPLIED HERE FIRST.
    *
@@ -132,26 +269,42 @@ export function predictInstrument(view: PlanetView, type: InstrumentId): Predict
    * prediction that is only usually right is worse than none, because the flicker
    * lands on the one screen the whole information game is played on.
    */
-  if ((type === 'TELESCOPE' || type === 'RADAR') && !seeingUnlocked(view.orbit)) return null;
-  if (level >= (view.buildings.CORE ?? 0)) return null;
+  if (
+    (type === 'TELESCOPE' || type === 'RADAR')
+    && !seeingUnlocked(projected.effectiveOrbit)
+  ) return null;
+  if (level >= projected.buildings.CORE) return null;
   if (instrumentMaxed(type, level)) return null;
 
   const next = spend(view, cost);
-  return {
-    ...next,
-    instruments: { ...next.instruments, [type]: level + 1 },
-    instrumentCosts: { ...next.instrumentCosts, [type]: instrumentCost(type, level + 1) },
-  };
+  return appendOrder(next, 'CONSTRUCTION', 'INSTRUMENT', type, 1, cost);
 }
 
 export function predictSatellite(view: PlanetView, type: SatelliteId): Prediction {
-  if (view.orbit.includes(type)) return null;
-  if (view.orbit.length >= view.orbitSlots) return null;
+  if (!queueHasRoom(view, 'CONSTRUCTION')) return null;
+  const projected = projectedQueueState(view, 'CONSTRUCTION');
+  if (projected.orbit.includes(type)) return null;
+  const coreQueued = projected.buildings.CORE !== (view.buildings.CORE ?? 0);
+  const slots = coreQueued ? satelliteSlots(projected.buildings.CORE) : view.orbitSlots;
+  if (projected.orbit.length >= slots) return null;
   const cost = satelliteCost(type);
   if (!affordable(view, cost)) return null;
 
   const next = spend(view, cost);
-  return { ...next, orbit: [...next.orbit, type] };
+  return appendOrder(next, 'CONSTRUCTION', 'SATELLITE', type, 1, cost);
+}
+
+export function predictResearch(view: PlanetView, projectId: ResearchProjectId): Prediction {
+  if (!queueHasRoom(view, 'CONSTRUCTION')) return null;
+  const projected = projectedQueueState(view, 'CONSTRUCTION');
+  if (projected.research.has(projectId)) return null;
+  const state = view.research.find((project) => project.id === projectId);
+  if (!(state?.queueAvailable ?? state?.available)) return null;
+  const requiredCore = RESEARCH_PROJECTS[projectId].requiredCore ?? 0;
+  if (projected.buildings.CORE < requiredCore) return null;
+  const cost = RESEARCH_PROJECTS[projectId].cost;
+  if (!affordable(view, cost)) return null;
+  return appendOrder(spend(view, cost), 'CONSTRUCTION', 'RESEARCH', projectId, 1, cost);
 }
 
 /**
@@ -167,7 +320,11 @@ export function predictCollect(view: PlanetView): Prediction {
   const p = view.planet;
   const takeAlloy = Math.min(p.bufferAlloy, Math.max(0, p.alloyCap - p.alloy));
   const takeCrystal = Math.min(p.bufferCrystal, Math.max(0, p.crystalCap - p.crystal));
-  if (takeAlloy <= 0 && takeCrystal <= 0) return null;
+  const takeDeuterium = Math.min(
+    p.bufferDeuterium,
+    Math.max(0, p.deuteriumCap - p.deuterium),
+  );
+  if (takeAlloy <= 0 && takeCrystal <= 0 && takeDeuterium <= 0) return null;
 
   return {
     ...view,
@@ -175,8 +332,10 @@ export function predictCollect(view: PlanetView): Prediction {
       ...p,
       alloy: p.alloy + takeAlloy,
       crystal: p.crystal + takeCrystal,
+      deuterium: p.deuterium + takeDeuterium,
       bufferAlloy: p.bufferAlloy - takeAlloy,
       bufferCrystal: p.bufferCrystal - takeCrystal,
+      bufferDeuterium: p.bufferDeuterium - takeDeuterium,
     },
   };
 }

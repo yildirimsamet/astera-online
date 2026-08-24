@@ -1,7 +1,8 @@
 import { and, eq, gte, sql } from 'drizzle-orm';
 import type { FastifyInstance } from 'fastify';
+import { z } from 'zod';
 import { SERVERS } from '@astera/rules';
-import { planets, players, seasons, shards } from '../db/schema.js';
+import { planets, players, seasonResults, seasons, shards } from '../db/schema.js';
 import { addMinutes } from '../clock.js';
 import { GameError } from '../services/planet.js';
 import { requireAuth } from './auth.js';
@@ -11,7 +12,7 @@ import { requireAuth } from './auth.js';
  *
  * DERIVED FROM THE PLAYER, NOT FROM CONFIGURATION. Until D21 this read a
  * `SHARD_CODE` environment variable, which is correct for exactly as long as there
- * is one galaxy — the moment there are ten, an env var means every player is told
+ * is one galaxy — the moment there is more than one, an env var means every player is told
  * the season, the seed and the deadline of `EU-1` whichever galaxy they are
  * actually in. The seed is the worst of those: the client rebuilds the entire disc
  * and every asteroid orbit from it, so a wrong one draws a world the server does
@@ -20,7 +21,14 @@ import { requireAuth } from './auth.js';
 export function registerSeasonRoutes(app: FastifyInstance): void {
   app.get('/api/season', { preHandler: requireAuth }, async (req) => {
     const [row] = await app.db
-      .select({ season: seasons, shard: shards, playerId: players.id })
+      .select({
+        season: seasons,
+        shard: shards,
+        playerId: players.id,
+        accountId: players.accountId,
+        rivalPlanetId: players.rivalPlanetId,
+        rivalPlayerId: players.rivalPlayerId,
+      })
       .from(players)
       .innerJoin(seasons, eq(players.seasonId, seasons.id))
       .innerJoin(shards, eq(seasons.shardId, shards.id))
@@ -46,15 +54,22 @@ export function registerSeasonRoutes(app: FastifyInstance): void {
      * `/api/servers` to somebody who has not even signed in.
      */
     const since = addMinutes(app.clock.now(), -SERVERS.onlineWindowMinutes);
-    const [[count], [active]] = await Promise.all([
+    const [[count], [active], [result]] = await Promise.all([
       app.db
         .select({ n: sql<number>`count(*)::int` })
-        .from(planets)
-        .where(eq(planets.seasonId, row.season.id)),
+        .from(players)
+        .where(eq(players.seasonId, row.season.id)),
       app.db
         .select({ n: sql<number>`count(*)::int` })
         .from(players)
         .where(and(eq(players.seasonId, row.season.id), gte(players.lastActiveAt, since))),
+      app.db
+        .select()
+        .from(seasonResults)
+        .where(and(
+          eq(seasonResults.seasonId, row.season.id),
+          eq(seasonResults.accountId, row.accountId),
+        )),
     ]);
 
     return {
@@ -74,8 +89,52 @@ export function registerSeasonRoutes(app: FastifyInstance): void {
       startsAt: row.season.startsAt,
       endsAt: row.season.endsAt,
       playerCap: row.shard.playerCap,
+      rulesetVersion: row.season.rulesetVersion,
       players: count?.n ?? 0,
       online: active?.n ?? 0,
+      result: result ?? null,
+      rivalPlanetId: row.rivalPlanetId,
+      rivalPlayerId: row.rivalPlayerId,
     };
+  });
+
+  app.post('/api/rival', { preHandler: requireAuth }, async (req) => {
+    const body = z.object({ planetId: z.string().uuid().nullable() }).strict().parse(req.body);
+    return app.db.transaction(async (tx) => {
+      const [me] = await tx
+        .select({ playerId: players.id, seasonId: players.seasonId, planetId: planets.id })
+        .from(players)
+        .innerJoin(planets, and(eq(planets.controllerPlayerId, players.id), eq(planets.kind, 'CAPITAL')))
+        .where(eq(players.accountId, req.accountId!))
+        .for('update')
+        .limit(1);
+      if (!me) throw new GameError('NO_PLANET', 'Join a galaxy first', 404);
+
+      if (body.planetId !== null) {
+        const [target] = await tx
+          .select({ id: planets.id, playerId: planets.controllerPlayerId })
+          .from(planets)
+          .where(and(
+            eq(planets.id, body.planetId),
+            eq(planets.seasonId, me.seasonId),
+            sql`${planets.controllerPlayerId} IS NOT NULL`,
+          ))
+          .limit(1);
+        if (!target) {
+          throw new GameError('RIVAL_NOT_VISIBLE', 'That world is not in your galaxy', 404);
+        }
+        if (target.playerId === me.playerId) {
+          throw new GameError('RIVAL_SELF', 'You cannot mark your own world as a rival', 400);
+        }
+        await tx.update(players).set({
+          rivalPlanetId: body.planetId,
+          rivalPlayerId: target.playerId,
+        }).where(eq(players.id, me.playerId));
+        return { rivalPlanetId: body.planetId, rivalPlayerId: target.playerId };
+      }
+
+      await tx.update(players).set({ rivalPlanetId: null, rivalPlayerId: null }).where(eq(players.id, me.playerId));
+      return { rivalPlanetId: null, rivalPlayerId: null };
+    });
   });
 }

@@ -1,0 +1,1 @@
+ALTER TYPE "public"."event_kind" ADD VALUE 'season_rollover' BEFORE 'mining_arrival';

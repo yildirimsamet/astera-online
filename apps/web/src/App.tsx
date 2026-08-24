@@ -11,6 +11,7 @@ import { PendingStrip } from './shell/PendingStrip.js';
 import { LoadingScreen } from './shell/LoadingScreen.js';
 import { StatusBar } from './shell/StatusBar.js';
 import { useAmbientMusic } from './lib/music.js';
+import { WorldProvider } from './api/world.js';
 
 /**
  * THREE SCREENS, ONE OF WHICH IS THE GAME.
@@ -64,6 +65,7 @@ export function App() {
     leaveRehearsal,
     signInInstead,
     claim,
+    rollover,
   } = useSession();
   const ready = session.phase === 'ready';
 
@@ -77,7 +79,7 @@ export function App() {
    */
   useAmbientMusic();
 
-  useEventStream(ready);
+  useEventStream(ready, rollover);
   useLiveAlerts(ready);
 
   const [panel, setPanel] = useState<Panel>(null);
@@ -132,6 +134,7 @@ export function App() {
     return (
       <ServersScreen
         displayName={session.me.displayName}
+        latestResult={session.me.latestResult}
         onChoose={(code) => {
           void chooseServer(code);
         }}
@@ -156,6 +159,7 @@ export function App() {
   }
 
   return (
+    <WorldProvider>
     <div className="relative z-10 flex h-dvh flex-col overflow-hidden">
       <StatusBar commander={session.me.displayName} onOpen={setPanel} onFocusPlanet={focusPlanet} />
 
@@ -165,9 +169,11 @@ export function App() {
           onPanel={setPanel}
           focusRequest={planetFocus}
           commander={session.me.displayName}
+          pastResult={session.me.latestResult}
           onSignOut={() => {
             void signOut();
           }}
+          onPlacementLost={rollover}
         />
       </main>
 
@@ -175,5 +181,6 @@ export function App() {
         <PendingStrip />
       </div>
     </div>
+    </WorldProvider>
   );
 }

@@ -3,7 +3,7 @@ import type {
 } from '@astera/rules';
 
 /** A hull that fights. Haulers are cargo and are bought on their own terms. */
-export type CombatHullId = Exclude<MobileHullId, 'HAULER'>;
+export type CombatHullId = Exclude<MobileHullId, 'HAULER' | 'RUNNER'>;
 
 /** Target shares of the military budget, by hull. Need not sum to exactly 1. */
 export type Composition = Partial<Record<CombatHullId, number>>;
@@ -88,6 +88,15 @@ export interface Archetype {
   readonly adaptsComposition: boolean;
   readonly militaryShare: number;
   readonly attackChance: number;
+  /** Chance of using a login to launch an available mining squadron. */
+  readonly miningChance: number;
+  /** Desired owned Prospectors, still bounded by the rules-level ownership cap. */
+  readonly prospectorTarget: 1 | 2;
+  /** Whether this habit values isotope access enough to buy the seasonal project. */
+  readonly researchesIsotopes: boolean;
+  readonly researchesRunner: boolean;
+  /** Whether this habit turns a shield-heavy battle report into Breacher access. */
+  readonly researchesBreacher: boolean;
   readonly scouts: boolean;
 }
 
@@ -103,7 +112,8 @@ export const ARCHETYPES: Record<ArchetypeName, Archetype> = {
     composition: { WASP: 1 }, adaptsComposition: false,
     // Heavy first, and enough light guns that a swarm cannot simply walk in.
     groundMix: { BASTION: 0.65, THORN: 0.35 },
-    militaryShare: 0.35, attackChance: 0, scouts: false,
+    militaryShare: 0.35, attackChance: 0, miningChance: 0.2, prospectorTarget: 1,
+    researchesIsotopes: false, researchesRunner: false, researchesBreacher: false, scouts: false,
   },
   RAIDER: {
     share: 0.22, loginsPerDay: 6, defenceRatio: 0.35,
@@ -115,7 +125,8 @@ export const ARCHETYPES: Record<ArchetypeName, Archetype> = {
     composition: { WASP: 0.55, LANCE: 0.45 }, adaptsComposition: false,
     // Barely defends at all, so it buys the cheap gun it can afford between raids.
     groundMix: { THORN: 0.8, BASTION: 0.2 },
-    militaryShare: 0.65, attackChance: 0.55, scouts: false,
+    militaryShare: 0.65, attackChance: 0.55, miningChance: 0.25, prospectorTarget: 1,
+    researchesIsotopes: false, researchesRunner: false, researchesBreacher: false, scouts: false,
   },
   FARMER: {
     share: 0.24, loginsPerDay: 4, defenceRatio: 1.3,
@@ -125,7 +136,8 @@ export const ARCHETYPES: Record<ArchetypeName, Archetype> = {
     composition: { WASP: 0.7, LANCE: 0.3 }, adaptsComposition: false,
     // Hedged. It does not know who is coming and does not intend to find out.
     groundMix: { BASTION: 0.5, THORN: 0.5 },
-    militaryShare: 0.3, attackChance: 0.12, scouts: false,
+    militaryShare: 0.3, attackChance: 0.12, miningChance: 0.7, prospectorTarget: 2,
+    researchesIsotopes: true, researchesRunner: false, researchesBreacher: false, scouts: false,
   },
   CASUAL: {
     share: 0.24, loginsPerDay: 2, defenceRatio: 0.9,
@@ -135,7 +147,8 @@ export const ARCHETYPES: Record<ArchetypeName, Archetype> = {
     composition: { WASP: 0.8, LANCE: 0.2 }, adaptsComposition: false,
     // Two logins a day buys what is cheap and available from the first minute.
     groundMix: { THORN: 0.7, BASTION: 0.3 },
-    militaryShare: 0.4, attackChance: 0.2, scouts: false,
+    militaryShare: 0.4, attackChance: 0.2, miningChance: 0.35, prospectorTarget: 1,
+    researchesIsotopes: false, researchesRunner: false, researchesBreacher: false, scouts: false,
   },
   GRINDER: {
     share: 0.12, loginsPerDay: 10, defenceRatio: 0.45,
@@ -146,7 +159,8 @@ export const ARCHETYPES: Record<ArchetypeName, Archetype> = {
     composition: { WASP: 0.6, LANCE: 0.4 }, adaptsComposition: true,
     // Light-heavy: it expects to be hit by the same heavies it flies itself.
     groundMix: { BASTION: 0.4, THORN: 0.6 },
-    militaryShare: 0.6, attackChance: 0.7, scouts: true,
+    militaryShare: 0.6, attackChance: 0.7, miningChance: 0.85, prospectorTarget: 2,
+    researchesIsotopes: true, researchesRunner: true, researchesBreacher: true, scouts: true,
   },
 };
 

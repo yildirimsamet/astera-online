@@ -97,8 +97,28 @@ players are nearly fully protected; large players nearly fully exposed.
 taken.
 
 **Disruption** — A successful raid knocks the target's surface works offline (40 min
-DECISIVE / 60 PARTIAL). The victim loses *compounding*, not just stock. Buildings are never
-damaged.
+DECISIVE / 60 PARTIAL). The victim loses *compounding*, not just stock. Ordinary raids never
+damage buildings; D97/D98's Death Star is the named exception on any enemy world.
+
+**Capital** — A commander's first, permanent world. It represents them on the ladder, can be
+devastated by a Death Star, and cannot be abandoned or captured.
+
+**Colony** — A fully functional player-controlled world won from a neutral or by a second
+Death Star strike. A commander may retain up to three, with new acquisition capacity derived
+from their highest Command Core.
+
+**Neutral world** — One of seventeen deterministic, shared-stock worlds created with a v2
+season. It has no commander, grants no Dominion and is never replaced after capture.
+
+**Recovery** — Six hours after a first Death Star strike in which the world is readable and
+may receive its owner's arrivals, but cannot produce, buy or launch.
+
+**Occupation protection** — Six hours after control transfer in which management works but
+incoming conventional or strategic attacks cannot affect the world.
+
+**Death Star** — A one-per-world strategic asset with a sixty-minute build and irreversible
+one-way flight. Every hit devastates an enemy world. A qualifying second hit captures a neutral
+or colony; a capital is damaged again but never changes hands.
 
 **Lumpiness** — Upgrade costs being large relative to income, which forces players to sit on
 growing piles between purchases. This — not any score incentive — is what makes raiding

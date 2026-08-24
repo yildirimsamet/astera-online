@@ -18,8 +18,8 @@ Dominion = (looted + enemy value destroyed) − (lost + own value destroyed). Ne
 D3 · Disruption — LOCKED, duration PROVISIONAL
 Başarılı raid works'ü offline eder: 180 dk DECISIVE, 60 dk PARTIAL; refresh olur, stack olmaz; geçici tavan 240 dk. Çalınan alloy 1× dönerken yatırılan alloy sezon boyunca ~16× büyüdüğü için disruption raid tax'i 0.06 → 0.18 yükseltti. Binalar hasar almaz.
 
-D4 · Instant construction — LOCKED
-Build timer/queue yok. Timer sadece zayıf bir geri-dönüş sebebi ve speed-up satış mekanizması olurdu; instant build panik savunmasını mümkün kılar. Binds: Shipyard yalnızca hull tier/probe stealth'i açar, build speed'i değil.
+D4 · Two build queues replace instant construction — OWNER DECISION
+Her bina, instrument, satellite ve research CONSTRUCTION; her mobile/ground hull YARD kuyruğunda zamanla tamamlanır. Kuyruklar birbirinden bağımsız, üçer sipariş derindir; maliyet siparişte bağlanır, iptal %50 iade eder, sistem arızası %100 iade eder. Süre item maliyetinin Core/Shipyard throughput'una oranıdır ve altı saatte tavandır. Önceden sıraya giren siparişler sonraki gate'lerin projected state'idir; `builtEver` yalnız tamamlanınca artar. D4'ün panic-defence gerekçesi korunur: Shipyard 0'daki bir Thorn, en dar Radar L3 uyarısından kısa sürede bitmelidir. D63 uçuşları bir oturumdan kısa hale getirip eski dönüş saatini yok ettiği için bu karar eski instant-construction kilidini supersede eder; flight bays hâlâ eşzamanlı operasyonları sınırlar.
 
 D5 · Season = 14 days — STRUCTURE LOCKED, NUMBER PROVISIONAL
 Mevcut maliyet eğrisi ve 8–24 saatlik upgrade payback ile Core L12–14 için 300–340 saat exposure gerekir. 7 gün mid-game'i ulaştırmadı; 14 gün hafta sonu oyuncularına iki şans verir. Maliyet eğrisi değişirse yeniden türetilmeli.
@@ -45,8 +45,8 @@ D11 · Simple combat — LOCKED
 D12 · Score value destroyed, not ATK × HP — LOCKED
 fleetPower counter matrix'i görmez; örneğin 26 Wasps ve 1 Bastion eşit okunabilir ama Wasps onu yok eder. fleetPower yalnızca advisory heuristic; grading asla onunla yapılmaz.
 
-D13 · Flat vault floor; vaultMult < alloyMult — LOCKED invariant
-Flat floor küçük oyuncuyu çok, büyük oyuncuyu az korur. İlk 900 × 1.5^L tasarımında vault level 3'ten itibaren elde tutulabilecek değerin 208–301%'ini kaplayarak oyundaki her şeyi raidable olmaktan çıkardı. İlişki tersine dönemez; test gerekir.
+D13 · Vault floor is bounded — LOCKED invariant
+Koruma, koruduğu stoktan hızlı büyürse kasa er ya da geç deponun tamamını kaplar ve galakside hiçbir şey raidable kalmaz — başka hiçbir belirtisi olmadan. İlk tasarım 900 × 1.5^L ile level 3'ten itibaren elde tutulabilecek değerin 208–301%'ini kaplıyordu. Kural artık `protectedHoursPerVault / capHoursPerVault < 0.5`: hem depo hem taban aynı üretimin saati cinsinden olduğu için sınır iki sabitin oranıdır ve her seviyede geçerlidir. Eski `vaultMult < alloyMult` biçimi D101 ile bunun yerini aldı; ikisi aynı arızayı korur.
 
 D14 · No newcomer grace — OWNER DECISION
 4 saatlik immunity kaldırıldı. İlk saatlerin güvenli olması oyunun öğretmek istediği “güvenli değilsin” temasına ters. Koruma yalnızca situation-based tier band + bash limitten geliyor. Gerçek shard verisi olmadan tekrar düşünülmez.
@@ -57,8 +57,8 @@ Satellites herkesçe görülür; planet size public Core tier'dan üç seviyeli 
 D16 · Manual production collection — OWNER DECISION
 Works COLLECTOR.hours kadar buffer doldurur, sonra durur; tek tap storage'a aktarır ve üretim devam eder. Toplam accumulation 22 saat = 10 works + 12 storage. Uncollected ore LOOT.bufferShare ile %50 raid edilebilir; tamamen güvenli bırakılmaz.
 
-D17 · Income doubled — OWNER DECISION
-alloyBase 40→80, crystalBase 14→28. Sadece income'u ikiye katlamak testlerin 18/30'unu bozdu: RR 0.05, %83–91 repel, turtle +475k. Düzeltmeler: hull cost + Hauler cargo ×2; vaultBase 300→600; costMult 1.55→1.70; partialThreshold 0.60→0.45. Core 12 upgrade payback ~38 saat; playtest açık konusu.
+D17 · Income is raised, prices are never cut — OWNER DECISION
+Ekonomiyi hızlandırmanın güvenli yolu geliri çarpmaktır, maliyeti bölmek değil: bu dengenin dayandığı her ilişki bir ORAN'dır ve iki tabanı aynı katsayıyla ölçeklemek `payback = cost / gain`'i, kristal payını ve kasa oranını yerinde bırakıp yalnızca saati hızlandırır. Maliyeti kesmek her birini oynatırdı. D101'in ×1.20 hız katsayısı da bu kuralı izler. Sayılar D101 ile yeniden türetildi.
 
 D18 · Telescope range + slot cooldown — OWNER DECISION
 Telescope üç gate kullanır: level-based slots, INTEL.telescopeRange, repoint cooldown (24h L1 → 6h L5). Empty slot doldurmak ücretsiz, switching ücretli. Böylece L1 telescope 30 saniyede tüm galaxy'yi tarayamaz; range knowledge'ı, cooldown ise observation commitment'ını sınırlar. Watching sessizdir.
@@ -280,10 +280,18 @@ this is cheap here and would be reckless anywhere else — and parsed by the pro
 schemas, so a rehearsal that drifts from the contract fails where a real payload would.
 
 **It decides nothing.** Every press produces an INTENT. `POST /api/onboarding/claim` makes the
-account, takes the seat and replays those intents through `upgradeBuilding`, `buildUnits` and
-`launchAttack` with the ordinary locks and the ordinary refusals. Principle 1 is intact: the
-client rendered and sent intent, and the fact that it could also predict the outcome is what let
-the screen keep up with a finger.
+account, takes the seat and replays those intents through `upgradeBuilding` and `buildUnits` with
+the ordinary locks and the ordinary refusals. Principle 1 is intact: the client rendered and sent
+intent, and the fact that it could also predict the outcome is what let the screen keep up with a
+finger.
+
+**D4 changes the rehearsal from an outcome preview to a commitment preview.** The three building
+presses and the two-Wasp purchase are staged as the same two queue lanes the real planet uses;
+durable levels and fleet never rise locally. Claim starts those four ordinary orders. The former
+target/launch beat is gone: the real Wasps do not exist until the server-authored Yard completion
+instant, and manufacturing an in-flight fleet before then would require a fake client outcome or
+an onboarding-only instant-build rule. The ordinary post-claim surface wakes at completion and
+leads into the first real launch with no tutorial state machine to persist.
 
 **The opening it teaches is arithmetic, not a script.** `START` is 2,060 alloy and 276 crystal,
 and a fresh planet holds the Core and the Refinery both at 1 — so `1 >= 1` refuses the first
@@ -297,8 +305,8 @@ on `START`, the server creates the world with `PLANET_START`, and the difference
 and turn a lesson in scarcity into a shopping trip; what the commander finds after claiming is a
 welcome rather than a misprediction. `openWorld` says so at the site.
 
-**The wall is at the end, at the moment of most desire** — a world with a name, a fleet they
-built and a target they chose. Two steps inside ONE `<form>`: a password manager only offers to
+**The wall is at the end, at the moment of commitment** — a world with a name and four paid orders
+ready to become real. Two steps inside ONE `<form>`: a password manager only offers to
 save a credential when the username and the password are submitted together, so two forms would
 silently cost every player the thing that makes an account survive a reinstall.
 
@@ -321,8 +329,8 @@ card is always exempt:** a player who cannot find what a beat asks for has to be
 a guided opening becomes a locked door.
 
 **The gate follows the commitment down.** A beat's allowance is a LIST, shallow to deep, because
-pressing its control opens a surface: the Wasp row opens a build sheet with a count picker, and
-choosing a target opens the focus rail and then the launch sheet. Gating only the first control
+pressing its control opens a surface: the Wasp row opens a build sheet with a count picker.
+Gating only the first control
 seals the player inside the very sheet they were told to open — found by photographing it, not by
 a test. The spotlight takes whichever target is on top, and the card flips to the opposite edge so
 it never covers what it is pointing at.
@@ -477,10 +485,10 @@ crystal), granted once, when the planet is made.** One account holds one planet,
 so it cannot fire twice; there is no daily grant and no repeat.
 
 **The problem is real.** `START` is exactly what the opening COSTS and the
-rehearsal spends it to the last crystal: three mandatory upgrades and two Wasps,
-which then leave. A commander who has just been persuaded to make an account
-therefore lands on a world with no ships at home, no resources and a flight forty
-minutes out — nothing to press, at the moment the game has the least credit with
+rehearsal spends it to the last crystal: three mandatory upgrades and two Wasps.
+A commander who has just been persuaded to make an account therefore lands with
+all of the arithmetic grant committed — now visibly in the two build queues — and
+otherwise has nothing to press at the moment the game has the least credit with
 them. The owner's words were "boş boş bekliyor".
 
 **It is also exactly what D22/D29 refused, and that refusal was measured.** The
@@ -1163,12 +1171,10 @@ player-hours. The partial candidates produced 6,962 (−21.7%), 5,863 (−34.0%)
 4,656 (−47.6%) respectively.
 
 No candidate can be selected. At 30% and 35%, existing season gates regress. The
-25% result misses the cap-time target and also regresses gates, but is not a complete
-measurement: the season simulator does not model mining or Prospector procurement,
-so its Prospector spend category is deliberately zero. Pretending that row had been
-measured would make the acceptance claim false. Hull prices therefore remain
-unchanged until that model exists; no fuel, permanent upgrade or other un-losable
-sink is introduced as a substitute.
+25% result misses the cap-time target and also regresses gates. This original reading
+did not include mining or Prospector procurement; D84 adds that model, re-runs all
+four cases and reaches the same blocked conclusion with complete Prospector spend.
+No fuel, permanent upgrade or other un-losable sink is introduced as a substitute.
 
 ### D79 · Revealed commander identity is a route back to the world — owner instruction
 
@@ -1244,14 +1250,531 @@ total between alloy and crystal; D82 leaves alloy fixed and raises the total pri
 The planned research system remains a future crystal sink rather than being folded
 into this change.
 
-**Measured exception, explicitly accepted by the owner on 2026-08-22.** Across the
+**Original measured exception, explicitly accepted by the owner on 2026-08-22.** Across the
 five fixed 50-player seeds, crystal-cap time falls from D78's 8,888 player-hours to
 7,704 (−13.3%), and the median of final unused crystal falls from about 9,473 to
 9,057. All pooled gates and every other per-seed gate remain green. Seed 7 alone
 lands at ARR 0.2962205608319292, 0.0038 below the standard 0.300 floor. The global
-band is not widened: `season.test.ts` pins this one accepted reading exactly so any
-further movement fails, and the exception is to be deleted if a later balance
-change returns the seed to the normal band.
+band was not widened. D84's mining-complete model returns seed 7 to ARR
+0.3056324045916809, inside the normal band, so the temporary exact-value pin is now
+deleted as this paragraph originally required.
+
+### D83 · Fixed-destination flights land at the continuous instant — prerequisite fix
+
+Raids, probes, their return legs and salvage flights now schedule `arriveAt` from
+`travelExact` (or the Prospector's corresponding exact rule). `travelMinutes`
+remains the rounded-up human-facing estimate only. At D63's short tempo a whole
+minute was 8–50% of a leg: two different hull speeds frequently produced the same
+stored arrival, so composition stopped being a time decision on short routes and a
+future fast cargo hull could not have delivered the capability it sold.
+
+This changes no speed, distance factor, launch overhead, radar radius or combat
+window. The radar derives its lead from the stored exact leg, the client animates
+against the same timestamps, and the ten-second engagement still begins at
+`arriveAt`. Asteroid interception was already continuous. The minute-stepped
+season simulator still observes the same effective tick (`ceil(exact)`); its wider
+real-time cadence gap remains separate work rather than being hidden inside this
+timing correction.
+
+### D84 · The season simulator now contains the existing asteroid economy
+
+The simulator now buys Prospectors, preserves `PROSPECTOR.max` across home and
+in-flight craft, reconstructs the seeded asteroid schedule, solves interception with
+the shared exact rule, settles first arrival first against one cumulative claim per
+rock, and returns ore into the independent alloy/crystal Works ceilings. Overflow is
+lost exactly as on the server. Prospectors at home remain losable defenders and craft
+in flight are absent from the planet. Mining has its own seed-derived RNG stream so
+adding an adoption decision does not silently rewrite attack, composition and login
+randomness in the baseline being compared.
+
+Archetypes deliberately model adoption rather than perfect play: TURTLE, RAIDER and
+CASUAL target one craft with 20%, 25% and 35% launch chances per login; FARMER and
+GRINDER target two with 70% and 85%. A commander compares the four nearest active,
+non-empty rocks and chooses the best available ore per round-trip minute. These are
+calibration assumptions, not new live-game rules. Flight-bay contention, debris
+salvage and continuous real-time player decisions remain outside the model and may
+not be priced from this reading.
+
+Across seeds 42, 7, 99, 4242 and 1337, baseline crystal-cap time is 7,660.5
+player-hours, final median unused crystal is 9,232.6, Prospector crystal spend is
+213,600 and 3,389,700 ore is claimed. All normal pooled and per-seed gates hold and
+the informed archetype tops every seed. Seed 7 ARR rises from D82's accepted
+0.2962205608319292 to 0.3056324045916809, so its special test is removed.
+
+D78 is now complete rather than blocked on missing coverage. Same-total 25%, 30%
+and 35% crystal redistribution gives 6,821.8, 5,620.2 and 4,479.9 cap player-hours.
+The 25% candidate still misses its purpose and breaks TI plus informed-player
+dominance on seed 7; 30% additionally breaks seed 42 ARR and informed dominance on
+two seeds; 35% breaks TI and seed 99 ARR. No candidate is selectable, so D82's live
+price table remains authoritative and Frontier research gets no pre-emptive economy
+change from this experiment.
+
+### D85 · Season freeze is an atomic, permanent record — Frontier prerequisite
+
+Every season schedules exactly one `season_end` event in the same transaction that
+creates it. When that event resolves, the season row is the serialization point:
+ordinary world mutations hold a shared season lock before any planet lock, while
+the freeze holds the season row for update. The lock order is therefore always
+season → planet. A snapshot cannot finish while a mutation that began in the live
+season is still able to commit behind it.
+
+Freeze refuses to run while a mission or mining squadron is still in flight. New
+launches will separately be required to fit their complete round trip inside
+`endsAt`; the refusal at freeze is the recovery guard for old rows and worker
+ordering, not the normal clock. Once frozen, the galaxy remains readable and
+beautiful, but resource collection, construction, hardware changes, watches,
+probes, mining and raids are refused server-side. The client hiding a button is
+never the authority for this boundary.
+
+One `season_results` row per account and season stores the final rank, Dominion,
+damage dealt and taken, most-fought rival snapshot, biggest raid, a text title and
+a server-authored recap JSON. Ranking uses the live ladder's exact ordering:
+rounded Dominion descending, then joined-at and player id. Results reference the
+account and season, never the disposable player row, so wiping a world cannot wipe
+the commander's history. Titles are identity only and carry no resource, combat or
+unlock advantage into another season.
+
+This slice does not yet delete the frozen world or automatically open its
+successor. That grace-period transition is operationally separate: freezing and
+recording the only copy of the result must be proven before deletion is allowed to
+run behind it.
+
+### D86 · The season closes as a story, not a claim screen
+
+When `/api/season` first returns a frozen season with the caller's result, the live
+galaxy stays mounted underneath one full-screen personal recap. The recap is
+acknowledged per account and season in local device storage when the commander
+closes it, so a mobile browser remount cannot turn the ending into D23's recurring
+door to dismiss. It remains permanently reachable from the Commander menu while
+that frozen galaxy is readable.
+
+The surface reads only the result already carried by `/api/season`; it creates no
+second request and no client-authored outcome. Final rank and Dominion lead, while
+battles, attacks, defences, damage, most-fought rival and biggest raid turn the
+score into a memory of other people. A commander with no battles gets an honest
+quiet-season account rather than invented drama. Closing the recap means “inspect
+the final galaxy”, not “collect”: there is no reward button, currency, research,
+unlock or inherited power attached to the ending.
+
+The server's stored English title remains compatibility data for existing results;
+the visible title is derived from the same locked rank/Dominion bands and localised
+by the client. Successor creation, grace-period expiry, historical result browsing
+after wipe and cosmetics earned from records remain separate slices.
+
+### D87 · The latest record crosses the wipe with the account
+
+`/api/auth/me` carries the caller's newest `season_results` row, joined to its
+galaxy identity, whether or not that account currently owns a planet. This is the
+only payload that can put a returning commander on the correct side of a wipe in
+one round trip, so the record belongs beside placement rather than behind a second
+history request. The field is optional in the client contract for one-deploy
+compatibility and nullable for an account that has never finished a season.
+
+An unacknowledged latest result opens the same D86 recap over either the server
+list or a new live galaxy; the acknowledgement key is unchanged, so seeing it
+before the wipe cannot make it reappear afterwards. Both surfaces retain a named
+way back to the record. Only the newest result is carried on session open — a full
+cross-season archive is a later account surface, not payload added to every login.
+
+This closes the data-loss-in-the-interface prerequisite for automated cleanup: a
+commander who was offline throughout the frozen grace period can still read what
+happened after the seasonal player and planet rows are gone. It does not itself
+schedule or execute that cleanup.
+
+### D88 · Fifteen minutes of afterglow, then one atomic world rollover
+
+Every season schedules a `season_rollover` event for fifteen minutes after its
+`endsAt`, beside the existing end event and in the same creation transaction. The
+window is for watching the final galaxy and sharing the result, not for catching
+offline players — D87 makes the record survive indefinitely. A day-long frozen
+intermission would remove the game's only decisions for a day; fifteen minutes is
+long enough to inspect the ending without turning the reset into waiting.
+
+The first due rollover waits while any current season is still live. Once all are
+frozen, one database transaction folds lifetime figures, marks the old seasons
+wiped, deletes their seasonal world, creates every successor and schedules those
+successors' end and rollover events. Opening successors outside that transaction
+is forbidden: a worker crash between deletion and bootstrap would otherwise leave
+no event and no world capable of recovering itself. Duplicate rollover events are
+deleted with the old queue, so only the claimed event can perform the transition.
+
+The transaction publishes `shard:rollover` to every old season at commit. A live
+client responds by reopening its authoritative session from `/api/auth/me`, which
+moves it from the vanished planet to the server list while retaining the latest
+record. The event carries no result, identity or placement and therefore reveals
+nothing beyond the public fact that the season ended. CLI wipe uses the same
+atomic path; frozen seasons count as wiped seasons in its report.
+
+### D89 · The Chronicle remembers public moments, never hidden facts
+
+The Galaxy Chronicle is a season-scoped, server-authored record of moments the
+whole galaxy is already entitled to witness. Its first vocabulary is deliberately
+small: a bombardment reached a named world, or a Command Core crossed a public
+visual tier. A bombardment entry names only the target world and its commander;
+it never carries the attacker, route, fleet, grade, losses or loot. A Core entry
+may carry its new tier because that tier is already published by `/api/galaxy`.
+
+Rows store their public copy as a snapshot and do not foreign-key the subject
+planet. An idle seat may therefore disappear without erasing the event that made
+the galaxy feel inhabited; following an old subject may fail gracefully instead.
+Each source has one `(season, kind, ref)` identity, so worker redelivery cannot
+tell the same story twice. The insert and `shard:chronicle` publication share the
+transaction that made the moment real.
+
+The read is scoped from the authenticated commander's current season, limited to
+the previous 24 hours and cursor-paged by `(occurredAt, id)`. It is not an audit
+log, an intel shortcut, a notification inbox or a new reward system. More event
+kinds are admitted only when their complete payload is independently public and
+the moment helps a commander ask what happened in the galaxy.
+
+### D90 · Three-person team, medium-to-large trajectory — owner instruction
+
+Astera is no longer constrained to a small game one solo developer can finish. It
+is built by a three-person team and is intended to grow into a medium-to-large
+multiplayer game. This supersedes the solo-development scope in the locked product
+constraints, production risks, asset policy and infrastructure rationale.
+
+The larger production capacity does not relax the product's design discipline.
+Mobile-first portrait, web first, a real-time persistent world, one planet per
+player, server authority, simple play and depth created by interacting systems all
+remain locked. Additional people permit owned art production, stronger tooling,
+larger content and operational work; they are not by themselves evidence for a new
+gameplay system. New assets and technically ambitious presentation require an
+owner, a budget, measurable acceptance criteria and a fallback before entering a
+milestone.
+
+### D91 · One seasonal rival, built from encounters rather than a new game system
+
+A commander may mark exactly one other current-season planet as their Rival. The
+choice is stored on the seasonal player row, carries no combat, loot, score or
+intel advantage, and is replaced rather than accumulated. It is returned on the
+existing season read and changed by one authenticated intent endpoint; opening a
+dossier therefore creates no extra read or waterfall. Self and cross-season
+targets are refused. The planet id deliberately has no foreign key, so reclaiming
+a target cannot block cleanup; a missing target reads as a lost signal until the
+commander replaces or clears it.
+
+The existing dossier remains the only rival surface. Battle history is aggregated
+server-side across the full season into encounters, attacks each way, Dominion
+gained and lost, last interaction and the latest composition the opponent was
+actually seen to lose. Individual reports now identify the opponent by planet id,
+never by display text. Probe time is joined on the client from the already-loaded
+intel payload, so the story adds no request and reveals no new fact. A battle still
+says only what was fielded, never what survived or remains.
+
+The stored planet is the anchor used to choose the Rival; the stored player is the
+identity that the interface marks. Every capital and colony that commander currently
+controls therefore wears the same rival reticle and label. This is presentation of an
+already-public controller relationship, not new intel and not a gameplay modifier.
+
+### D92 · Deuterium is one ruleset, not a rollout branch
+
+Deuterium enters the current game as a mandatory third member of every resource
+value. It is never optional in TypeScript or in a newly written JSON payload; old
+JSON rows are normalised to zero at their read boundary and backfilled by the
+migration. A planet begins with zero Deuterium and produces none passively. Zero
+therefore means "none acquired", never "this server or player is outside a test".
+That zero is visible in both the permanent status bar and the planet wallet before
+Spectrometry: hiding a real resource until its first unlock makes later costs look
+like a rule the interface invented at the moment of purchase.
+
+There is no feature flag, control cohort, environment balance switch,
+`frontierVersion` or ruleset fork. The asteroid, research and hull slices may land
+in separate reviewable changes, but each completed slice becomes the one game for
+every current season. That implementation sequencing must not leak into the
+player contract as nullable fields or alternate behaviour.
+
+The Crystal Extractor will contain both Deuterium works and storage without adding
+a sixth building. The Vault protects exactly zero Deuterium. Raid, cargo, debris,
+mining and Wealth arithmetic must include the third resource from the first slice,
+so later production cannot reveal a silent two-resource path. Existing START
+arithmetic remains unchanged because every opening cost and grant carries exactly
+zero Deuterium.
+
+### D93 · Frontier begins with one door, and the door opens onto the public race
+
+The first research release contains one seasonal, instant project: Isotope
+Spectrometry. It appears in Reach when the season reaches hour 42, costs Crystal,
+has no timer or level, and is stored only as a completed `(planet, project)` pair.
+It unlocks no passive income and no stat multiplier. Its product is permission to
+read and pursue isotope-rich asteroids, so the permanent spend points straight
+back into public movement, contested mining, exposed cargo and raid opportunity.
+
+Isotope-rich rocks are derived statelessly from `(season seed, asteroid index)`
+on one seed-shifted lane in every nine eligible indexes. They consume no draw from
+the existing asteroid generator, begin no earlier than hour 42, replace 10% of the
+rock's existing ore with Deuterium, and never increase total ore. The bounded cadence
+matters: the old independent
+10% roll left roughly one live field in five with no Deuterium source at all, while
+Frontier prices already required it. An anomaly becomes visible when it becomes mineable; there is no
+separate approach window or countdown to explain. Its rock and motion trail carry
+the same crisp neon-green signature as Deuterium throughout the interface. This is
+public identification, not composition intel: only a commander with Spectrometry
+sees its Deuterium share or may launch at it. Ordinary rocks and ordinary mining
+remain unchanged.
+
+The 600 Crystal price is accepted after the simulator modelled both the spend and
+the resulting Deuterium flow: all 54 five-seed season gates remain green without
+widening a band. ARR now counts Deuterium and the actually losable 40% of durable
+ground defence; omitting either understated the live risk already present rather
+than measuring this feature. No feature flag, cohort, ruleset version, research
+timer, new building or passive Deuterium producer is introduced.
+
+### D94 · Runner is the first repeatable Deuterium sink, not a better Hauler
+
+Runner is a mobile support hull unlocked by Dense Fuel Cells after Isotope
+Spectrometry and a cargo-limited successful raid. It costs 650 Alloy, 225 Crystal
+and 75 Deuterium; carries 300; flies at 420; has 45 HP and no attack. Like a
+Hauler it is protected while combat hulls live and becomes prey when they do not.
+A support-only fleet remains illegal.
+
+The deliberately poor cargo-per-cost ratio prevents Runner replacing Hauler. It
+sells a shorter exposure window for Wasp/Lance raids, not cheaper capacity; adding
+a Bulwark still slows the whole fleet to Bulwark speed. Because the hull is lost
+in combat and returns part of all three prices to wreckage, most new Frontier spend
+can remain losable. Its price and adoption are accepted by the five-seed simulation:
+all 54 existing gates remain green and Haulers still carry most cargo.
+
+### D95 · Breacher attacks a shield condition, never the counter cycle
+
+Gravitic Charges is the third instant seasonal project. It requires Isotope
+Spectrometry and is discovered only when an attacker's real battle report records
+an Aegis absorbing at least 25% of that battle's normal outgoing damage. It costs
+1,200 Crystal and 250 Deuterium and unlocks one hull; it grants no global stat
+multiplier. Discovery remains derived from battle history rather than a stored
+flag, so PvP is the door and there is no detached research checklist.
+
+Breacher remains Lance-class: 12 normal attack, 95 HP, speed 250, no cargo, and a
+price of 1,400 Alloy, 350 Crystal and 180 Deuterium at Shipyard 3. It does not add
+a fourth counter class. While a shield exists, the Breacher adds four times its
+own class-adjusted normal damage directly to that shield, making its total shield
+effect five times normal. The extra damage is capped by the live shield and never
+passes into ships or ground defence. With no shield it is an intentionally poor
+Lance substitute. Combat rounds record the actually absorbed Breacher bonus
+separately so reports, discovery audits and later balance work never infer it.
+
+These prices and the 25% discovery share must keep every existing simulation gate
+without widening a band. Breacher adoption against shieldless targets is a
+specific rejection condition: if the simulator treats it as a generic warship,
+the feature has erased the information decision it exists to create.
+
+### D96 · Chronicle grows only at public state transitions
+
+The Chronicle adds four public moments: an isotope anomaly being exhausted, a
+wreck field forming, a wreck field being fully claimed, and the Dominion leader
+changing. Season act boundaries are scheduled server moments and join the same
+feed. Each event is idempotent by `(season, kind, refId)`, snapshots only public
+identity or public field data, and broadcasts only after its readable payload has
+changed. Mining claims and battle settlement write their Chronicle event in the
+same transaction as the state transition.
+
+There is no entry for an ordinary partial mining claim, a private research
+completion, a probe, hidden cargo, fleet composition or loot. An exhausted isotope
+field says that the public race ended; it never says who took the fuel. A leader
+event names only the commander and world already visible on the leaderboard.
+Chronicle therefore makes the galaxy feel consequential without becoming intel.
+Natural wreckage decay remains derived from the clock and creates no scheduled row;
+“exhausted” here means a Prospector claim removed the final publicly visible value.
+Existing live seasons receive missing Act events when the new worker boots, under
+the season row lock. They are not inserted by the enum migration: PostgreSQL cannot
+use an enum value in the transaction that adds it, and an old worker running during
+deploy could consume that new kind before its handler exists.
+
+### D97 · One commander holds a capital and may win up to three colonies — owner instruction
+
+The seasonal identity remains one account, one player and one galaxy. Its stake is
+now a protected `CAPITAL` plus at most three `COLONY` worlds, rather than one planet.
+The capital cannot be abandoned or captured. D98 permits destructive Death Star impacts
+against it without ever allowing control transfer. Colony capacity
+is derived from the highest Command Core the commander controls: Core 0–2 gives zero,
+3–5 one, 6–8 two and 9+ three. A lower Core never removes an existing colony; it only
+prevents another acquisition until holdings plus in-flight settlement and Death Star
+capture reservations fit again. A launch against a capturable world already in recovery is
+stamped as a capture attempt and reserves capacity; a capital launch and any other launch are
+stamped destructive and never
+transfers control, even if another impact starts recovery while that rocket is in flight.
+This keeps destructive bombardment available when colony capacity is full without allowing
+a race to exceed the cap. The leaderboard and recap continue to name the capital, while
+Wealth aggregates every controlled world and every fleet owned by that commander.
+
+A v2 season creates exactly seventeen deterministic neutral worlds outside the first
+fifty capital slots: ten T1, five T2 and two T3. They share one authoritative stock and
+garrison, start full, produce Alloy and Crystal on normal curves, never passively produce
+Deuterium and expose only `EMPTY`, `LOW` or `RICH` reserve bands publicly. T1 has L2
+Core/Refinery/Extractor and no defence; T2 has those at L5, Shipyard L2, eight Wasps and
+two Lances; T3 has them at L8, Shipyard L4, Aegis L3, sixteen Wasps, six Lances, two
+Bulwarks, six Thorns and two Bastions. T2 and T3 buy deterministic template recovery from
+their own stock every six and four hours respectively. Captured or reclaimed neutrals are
+never replaced.
+
+Neutral battles use the normal combat and loot arithmetic but never Dominion, bash,
+rival/research/reward progress, defender notification, system-funded wreckage or the
+season's largest-PvP-raid measure. The first decisive conventional raid opens one public
+thirty-minute claim window. A valid one-way settlement consumes one Hauler plus 1,000
+Alloy and 500 Crystal, must arrive before that window ends, and the first atomically valid
+arrival wins. A losing settlement returns its fleet and cargo to its origin or, if that
+world is no longer controlled, its commander's capital. Control transfer preserves the
+world's installed state and begins six hours of occupation protection.
+
+`TRANSFER` is a one-way mission between two worlds controlled by the same commander.
+Ships and Prospectors may move; ground defence may not. Resources require a Hauler or
+Runner and fit only those hulls' cargo. If the target changes controller before arrival,
+the mission returns to the mission owner's capital. The same owner identity keeps all
+ordinary away fleets with their commander when a home world changes controller.
+
+The War act adds the instant planetary `DEATH_STAR_PROTOCOL` research after Gravitic
+Charges (Core 6; 7,200 Alloy, 2,400 Crystal, 600 Deuterium). A world with that project,
+Core 6 and Shipyard 5 may spend 15,000 Alloy, 4,800 Crystal and 1,500 Deuterium on one
+Death Star. This is the single exception to instant construction: it takes sixty minutes,
+pauses during recovery, survives ordinary raids and transfers with the world. Capital
+worlds may build and launch one and may also be targeted. Launch frees the world's asset
+slot, uses one flight bay, carries no escort or cargo, cannot be recalled or intercepted,
+and resolves exactly at `arriveAt` as a public galaxy moment.
+
+A first valid Death Star strike against any enemy world clears storage, works
+and shield; lowers Core, Refinery, Extractor, Shipyard and Aegis one level; destroys every
+home Wasp, Lance, Bulwark, Hauler, Runner, Breacher, Prospector, Thorn and Bastion; preserves
+away craft, research, Vault, Telescope, Radar, Veil, satellites and any ready/building
+Death Star; clears conventional disruption and claim; and begins six hours of recovery.
+It yields no loot, Dominion or debris. During recovery the world is readable, probeable
+and may receive owner transfers or mining returns, but produces, regenerates, collects,
+buys or launches nothing; pre-launched ordinary attacks turn back without battle.
+
+A second Death Star impact before the matching recovery end repeats the damage. On a neutral
+or player colony whose launch was stamped as a capture attempt, it also gives control to that
+impact's commander, ends recovery and begins six hours of occupation protection. A capital
+instead begins a fresh recovery window and never changes hands. Neutral and player-colony
+acquisition share one atomic control-transfer primitive. Simultaneous impacts resolve by
+`(resolveAt, mission id)`; a rocket arriving during protection is consumed without effect.
+Stored research and hardware are never
+deleted by prerequisite loss: effective instrument level is capped by Core and excess
+orbit slots become inactive in numeric slot order, reactivating automatically when their
+requirements return.
+
+This decision supersedes D21/D90 only where they say one player owns one planet, D4 only
+for the sixty-minute Death Star build, the building-indestructibility rule only for the
+listed Death Star damage, and any statement that colonisation does not
+exist. Ordinary PvP still never damages buildings or changes control. The ready/building
+Death Star on a capital is an explicit owner override to the no-new-unlosable-sink result;
+no TAX, ARR or other existing acceptance band may be widened to admit it. Deployment is
+expand/backfill/contract, v2 activation occurs only at a new-season boundary, and the
+season's immutable `rulesetVersion` decides whether these worlds exist.
+
+### D98 · A Death Star destroys any enemy world; only colonies change hands — owner instruction
+
+The destructive and acquisition roles are separate. A ready Death Star may target any
+enemy capital, colony or neutral world. Every effective impact clears storage, works and
+shield, destroys the named home fleet and defence, lowers the named buildings and Aegis,
+and starts or refreshes six hours of recovery. This is true for capitals too: "protected
+capital" means uncapturable, not immune to the game's strategic weapon.
+
+Only a neutral or player colony that was already recovering when the rocket launched is a
+capture attempt. That launch reserves colony capacity and may transfer control when it
+arrives inside the same recovery window. A capital launch is always destructive, including
+during recovery; it never reserves capacity and can never transfer control. This supersedes
+D97 only where it made capitals invalid Death Star targets.
+
+The Frontier supply is raised without adding passive production or remapping the original
+seeded one-in-nine lane. One additional seed-shifted seam appears every ten lanes, raising
+the eligible isotope rate from 10/90 to 11/90 (10% more rich rocks), and a rich rock replaces
+10.4% rather than 10% of its ore with Deuterium. Total rock ore stays unchanged; expected
+Deuterium flow rises 14.4%. Five fixed 50-player seeds accept this setting with every existing
+band and the informed-player gate unchanged. A 10.5% share was rejected because the informed
+archetype lost the seed-99 ladder. This preserves contested mining, public movement, cargo
+exposure and raid theft as its only sources. It supersedes D93's two abundance figures, not
+its acquisition loop.
+
+### D99 · One galaxy admits 300 active commanders — owner instruction
+
+The production admission ceiling is three hundred commanders in one galaxy, with a
+three-hundred-and-seventy-five-connection burst gate. This replaces D21's fifty-seat ceiling;
+galaxies still fill strictly in ordinal order and an account still has one seasonal commander in
+one galaxy. The stored `shards.playerCap` remains authoritative for an already-open season, so
+the new default is applied only by a new-season bootstrap or wipe and never silently enlarges a
+live galaxy.
+
+Capacity does not silently rebalance the game. The disc keeps its radius, travel formula, fleet
+speeds, Telescope ranges, combat, economy and fog rules. D97's neutral supply is enlarged for
+this population to exactly thirty T1, fifteen T2 and six T3 worlds; a new v2 season therefore opens
+with 300 capital addresses and 51 neutral worlds. The deterministic neutral address pool begins after all 300
+capital addresses, so a neutral can never occupy a seat that a later commander is entitled to.
+The denser neighbourhood and scarcer per-commander neutral opportunity are explicit playtest
+consequences of this owner decision, not permission to tune balance constants inside a capacity
+change. This supersedes D97 only for the neutral counts and the first capital-slot boundary.
+
+The supported production shape for this target is three API replicas, one event worker, one
+PostgreSQL instance and a small shared Valkey rate-limit store. PostgreSQL `LISTEN/NOTIFY`
+continues to carry transactional shard invalidations to every API replica. Shared public
+projections may be cached only as bounded, disposable data: player-specific Telescope, ownership
+and fog fields are applied after the cache, invalidation follows the committed shard event, and a
+short TTL is only a repair net. Turning the cache off must make the service slower, never
+different. The caller's own world topology may use a separate bounded account-keyed cache, but it
+is never shared into a public projection and is bypassed whenever the invalidation bus is unhealthy.
+Mining follows the same boundary in the contract: `/api/mining/field` is the shared asteroid/debris
+surface; `/api/mining/status` contains only the caller's worlds, runs, research and isotope knowledge.
+
+"Capacity 300" is an operational claim, not the value of one constant. Opening admission at 300
+requires a repeatable 300-user real HTTP/SSE run, a 375-connection burst, worker-wave correctness,
+mobile profiling and a soak against the acceptance bounds recorded here. Until those
+gates pass, the code and deployment are 300-ready but production capacity is not certified. This
+decision supersedes D21 and every later sentence that calls fifty the galaxy seat ceiling; it
+does not supersede the five fixed 50-player simulator seeds, whose balance measurements remain a
+separate regression model. Those historical comparisons explicitly retain their 10/5/2 fixture;
+default simulation and every live v2 season use D99's 30/15/6 layout.
+
+### D100 · Production opens at most two galaxies — owner instruction
+
+The supported live world is two galaxies of three hundred commander seats each. They still fill
+strictly in ordinal order: EU-2 exists so admission can continue when EU-1 reaches 300, not as a
+day-one choice that splits the population. Bootstrap and atomic season rollover open exactly the
+first two ordinals at the current `SERVERS.capacity`; a predecessor shard row is configuration
+history, never the source of the successor count or capacity.
+
+Older EU-3 and above shard rows are retained because season results and prior seasons reference
+them, but they are retired from the public server list and cannot be selected by admission. No
+production migration deletes historical shards or rewrites their old season capacity. This
+supersedes D21/D99 only where they describe ten simultaneously available galaxies; the one-account,
+one-commander, one-galaxy constraint and sequential frontier are unchanged.
+
+### D101 · Economy v2 — the whole ruleset re-derived — owner instruction
+
+Every economic number was replaced at once, because they are derived against each other and a
+partial adoption breaks the ratios that make them safe. **A wipe-boundary change.**
+
+**Production carries a linear factor.** `base × L × g^L` instead of `base × g^L`. It is the only
+common shape that doubles output at L1→L2 — the opening a 14-day season needs — while decaying to
++16% per level by L18, which is the brake. A pure exponential has one growth rate for ever.
+
+**Prices were not cut; income was raised ×1.20** (D17's rule). Content lands around day 11 and the
+last days are war.
+
+**Strategic commitments moved with that economy.** A settlement consumes two Haulers plus
+2,000 Alloy and 1,000 Crystal; the Death Star Protocol costs 11,000 / 3,600 / 900 and the asset
+28,000 / 9,000 / 2,600. D97's earlier one-Hauler and price figures are superseded. Flight speeds
+are unchanged by this economic pass.
+
+**The disc is 2.5× wider.** The balance was tuned on a 50-planet galaxy; production runs 351 on the
+same disc, so every commander's tenth-nearest world had gone from 510 units to 204. Radius 1000 →
+2500 restores that gameplay density. The later owner-reviewed 300-player fixture keeps the web at
+50 game units per world unit, so that larger disc is visible rather than compressed back into the
+old picture. Hull speeds do NOT take the factor: the disc moved to meet them, which is what lands an
+11–16 minute neighbourhood raid. `radarRange` does not either — it is sized in warning minutes, not
+in galaxy share.
+
+**The Vault sets storage capacity as well as the floor**, and this was forced. `upgradeCost` grows
+at 1.56 while a flat store grows at `L × 1.10^L`; they cross, and above the crossing one upgrade
+costs more than a full store can hold. The pre-v2 curves crossed at L10 — the bug shipped. The
+floor is now hours of each resource's OWN production, which makes D61's alloy-figure-charged-against-
+crystal bug unrepresentable.
+
+**The hull table is priced on `atk · hp / value²`** — equal-budget power when damage is spread
+across a force. Attack-per-resource is what made the old Bulwark lose every equal-budget matchup
+including against the Lance it counters. A tech tier buys ~15%; the counter cycle buys 156%, so
+information still beats tech.
+
+**The bands did not move.** `ARR` was out of band through the pass and five constant-level levers
+failed to move it; what did was mirroring the build queue in the simulator. `docs/balance.md`
+records which five and what each cost.
 
 ## Architecture
 

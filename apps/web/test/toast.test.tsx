@@ -1,6 +1,6 @@
 import { act, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { DWELL_MS, ToastProvider, useToast } from '../src/ui/Toast.js';
+import { DWELL_MS, ERROR_DWELL_MS, ToastProvider, useToast } from '../src/ui/Toast.js';
 
 /**
  * ONE LINE AT A TIME, AND ALL OF THEM IN TURN. D45.
@@ -69,6 +69,19 @@ describe('the toast queue', () => {
     speak([['only', 'info']]);
     act(() => {
       vi.advanceTimersByTime(DWELL_MS + 100);
+    });
+    expect(screen.queryByRole('status')).not.toBeInTheDocument();
+  });
+
+  it('holds a refusal long enough to read and lets the player dismiss it', () => {
+    speak([['Command Core must be raised first', 'error']]);
+    act(() => {
+      vi.advanceTimersByTime(DWELL_MS + 100);
+    });
+    expect(screen.getByRole('status')).toHaveTextContent('Command Core must be raised first');
+    expect(ERROR_DWELL_MS).toBeGreaterThan(DWELL_MS);
+    act(() => {
+      screen.getByRole('button', { name: 'Dismiss message' }).click();
     });
     expect(screen.queryByRole('status')).not.toBeInTheDocument();
   });

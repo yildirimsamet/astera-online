@@ -19,6 +19,7 @@ describe('crystal-use experiment', () => {
     expect(redistributedHullPrice('WASP', 0.35)).toEqual({
       alloy: HULLS.WASP.alloy,
       crystal: HULLS.WASP.crystal,
+      deuterium: HULLS.WASP.deuterium,
     });
     expect(PLANET_START.alloy).toBe(START.alloy + OPENING_BONUS.alloy);
     expect(PLANET_START.crystal).toBe(START.crystal + OPENING_BONUS.crystal);
@@ -32,11 +33,28 @@ describe('crystal-use experiment', () => {
     expect(first.capPlayerHours).toBeGreaterThanOrEqual(0);
     expect(first.medianUnused).toBeGreaterThanOrEqual(0);
     expect(Object.keys(first.spent).sort()).toEqual(
-      ['buildings', 'combat', 'defence', 'hardware', 'hauler', 'prospector'].sort(),
+      ['buildings', 'combat', 'defence', 'hardware', 'hauler', 'prospector', 'research'].sort(),
     );
-    // Mining is not part of this season model yet. Keeping the zero explicit
-    // prevents a partial hull-price experiment from being reported as complete.
-    expect(first.spent.prospector).toBe(0);
+    expect(first.spent.prospector).toBeGreaterThan(0);
+    expect(first.mining.launches).toBeGreaterThan(0);
+    expect(first.mining.oreClaimed).toBeGreaterThan(0);
+    expect(first.mining.alloyDelivered + first.mining.crystalDelivered).toBeGreaterThan(0);
+    expect(first.spent.research).toBeGreaterThanOrEqual(0);
     expect(Object.values(first.spentShare).reduce((sum, share) => sum + share, 0)).toBeCloseTo(1);
+  });
+
+  it('never creates more than two owned Prospectors or over-claims a rock', () => {
+    const { world } = runSeason({ players: 20, days: 5, seed: 99 });
+    for (const player of world.players) {
+      const away = world.miningRuns
+        .filter((run) => run.playerId === player.id)
+        .reduce((sum, run) => sum + run.craft, 0);
+      expect((player.fleet.PROSPECTOR ?? 0) + away).toBeLessThanOrEqual(2);
+    }
+    for (const [index, taken] of world.asteroidClaims) {
+      const rock = world.asteroids.find((candidate) => candidate.index === index);
+      expect(rock).toBeDefined();
+      expect(taken).toBeLessThanOrEqual(rock!.ore);
+    }
   });
 });

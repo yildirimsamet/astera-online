@@ -18,11 +18,16 @@ import type { Contact, GalaxyPlanet, MiningRun, PendingThread } from '../api/sch
 /**
  * Game units per world unit.
  *
- * Halved from 100, which doubles how far apart the worlds sit on screen without
- * touching a single gameplay number: travel times, ranges and the rank floor all
- * read the game's own coordinates and are unaffected. If the DESIGN distances
- * should grow too — every flight taking twice as long — that is `GALAXY.radius` in
- * the rules package, and it moves the balance simulation with it.
+ * It converts authoritative game coordinates into Three.js world units. Travel
+ * times, ranges and the tier band all read the game's own coordinates and are
+ * unaffected by it.
+ *
+ * KEEP THIS AT 50 WHEN THE GAMEPLAY RADIUS CHANGES. Economy v2 widened the disc
+ * from 1000 to 2500 precisely so 300 commanders plus neutral worlds have readable
+ * space. Raising this divisor to 125 cancelled that expansion in the picture and
+ * piled 351 full-size map markers into the old 50-player footprint. The widest
+ * camera view derives from `DISC_RADIUS`, so the larger scene still has a complete
+ * overview; ordinary play sees a neighbourhood instead of a wall of worlds.
  */
 export const SCALE = 50;
 
@@ -75,6 +80,27 @@ export const toWorld = (p: { x: number; y: number; z: number }): Vec3Tuple => [
   p.z / SCALE,
 ];
 
+/** Camera HOME follows the selected controlled world; capital is only a fallback. */
+export function activeWorldPosition(
+  planets: readonly GalaxyPlanet[],
+  activePlanetId: string | null | undefined,
+  fallback: { x: number; y: number; z: number } | undefined,
+): Vec3Tuple {
+  const active = planets.find((planet) => planet.id === activePlanetId);
+  if (active) return toWorld(active.position);
+  if (fallback) return toWorld(fallback);
+  const capital = planets.find((planet) => planet.isSelf);
+  return capital ? toWorld(capital.position) : [0, 0, 0];
+}
+
+/** Any controlled world opens management; `isSelf` identifies only the capital. */
+export const controlledWorldId = (
+  planets: readonly GalaxyPlanet[],
+  planetId: string,
+): string | null => planets.find(
+  (planet) => planet.id === planetId && (planet.isOwned ?? planet.isSelf),
+)?.id ?? null;
+
 /**
  * What the player is allowed to know about a planet, as one word.
  *
@@ -85,7 +111,7 @@ export const toWorld = (p: { x: number; y: number; z: number }): Vec3Tuple => [
 export type Stance = 'self' | 'window' | 'watched' | 'veiled' | 'dark';
 
 export function stanceOf(planet: GalaxyPlanet): Stance {
-  if (planet.isSelf) return 'self';
+  if (planet.isOwned) return 'self';
   if (!planet.fleet) return 'dark';
   if (planet.fleet.status === 'AWAY') return 'window';
   if (planet.fleet.status === 'UNKNOWN') return 'veiled';
@@ -106,6 +132,15 @@ export interface PlanetNode {
   /** Is there a dome. The one ground instrument anyone else can see, as a boolean. */
   shielded: boolean;
   stance: Stance;
+  /** Public strategic condition; recovery is visible damage, not private intel. */
+  state: GalaxyPlanet['state'];
+  kind: NonNullable<GalaxyPlanet['kind']>;
+  isOwned: boolean;
+  isCapital: boolean;
+  /** Public controller identity; used only for owned/rival visual grouping. */
+  controllerPlayerId?: string;
+  neutralTier?: 1 | 2 | 3;
+  claimUntil?: Date | null;
 }
 
 /**
@@ -146,7 +181,27 @@ export function planetNodes(planets: readonly GalaxyPlanet[]): PlanetNode[] {
     satellites: planet.satellites,
     shielded: planet.shielded,
     stance: stanceOf(planet),
+    state: planet.state,
+    kind: planet.kind ?? 'CAPITAL',
+    isOwned: planet.isOwned ?? planet.isSelf,
+    isCapital: planet.isCapital ?? planet.kind === 'CAPITAL',
+    ...(planet.controller?.kind === 'PLAYER'
+      ? { controllerPlayerId: planet.controller.playerId }
+      : {}),
+    ...(planet.neutral ? { neutralTier: planet.neutral.tier } : {}),
+    ...(planet.neutral ? { claimUntil: planet.neutral.claimUntil } : {}),
   }));
+}
+
+/** A Rival is a commander; the chosen planet is only the backwards-compatible anchor. */
+export function isRivalNode(
+  node: PlanetNode,
+  rivalPlanetId: string | null,
+  rivalPlayerId: string | null,
+): boolean {
+  return rivalPlayerId !== null
+    ? node.controllerPlayerId === rivalPlayerId
+    : node.id === rivalPlanetId;
 }
 
 /* ── things in flight ───────────────────────────────────────── */

@@ -47,8 +47,12 @@ export function travelMinutes(dist: number, speed: number): number {
  * time, because that is what a navigation beacon does to a ship — and because
  * dividing the minutes would compound oddly against the launch overhead.
  */
+export const fleetTravelExact = (dist: number, fleet: Fleet, boost = 1): number =>
+  travelExact(dist, fleetSpeed(fleet) * boost);
+
+/** The same fleet trip rounded up for a human-facing whole-minute quote. */
 export const fleetTravelMinutes = (dist: number, fleet: Fleet, boost = 1): number =>
-  travelMinutes(dist, fleetSpeed(fleet) * boost);
+  Math.ceil(fleetTravelExact(dist, fleet, boost));
 
 /** Minutes the origin planet is left weakened: out, plus back. */
 export const exposureMinutes = (oneWay: number): number => oneWay * 2;

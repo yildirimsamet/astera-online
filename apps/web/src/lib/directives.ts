@@ -57,7 +57,7 @@ export interface Situation {
   intel: IntelView | undefined;
   pending: PendingThread[];
   /** Projected stock, so a directive agrees with the number on screen. */
-  held: { alloy: number; crystal: number };
+  held: { alloy: number; crystal: number; deuterium?: number };
 }
 
 export function directives(s: Situation): Directive[] {
@@ -66,7 +66,7 @@ export function directives(s: Situation): Directive[] {
 
   const ground = fleetCount(planet.ground);
   const home = fleetCount(planet.fleet);
-  const stock = s.held.alloy + s.held.crystal;
+  const stock = s.held.alloy + s.held.crystal + (s.held.deuterium ?? 0);
   const protectedFloor = planet.planet.vaultFloor;
   const exposed = Math.max(0, stock - protectedFloor);
 
@@ -104,7 +104,11 @@ export function directives(s: Situation): Directive[] {
   if (exposed > protectedFloor * 3) {
     // The ceiling one level up, across both stores — the same figure the upgrade
     // card quotes, so the directive and the row it sends you to agree.
-    const nextFloor = vaultProtects((planet.buildings.VAULT ?? 0) + 1);
+    const nextFloor = vaultProtects(
+      (planet.buildings.VAULT ?? 0) + 1,
+      planet.buildings.REFINERY ?? 0,
+      planet.buildings.EXTRACTOR ?? 0,
+    );
     const next = nextFloor.alloy + nextFloor.crystal;
     out.push({
       id: 'exposed-stock',
@@ -175,8 +179,11 @@ export function directives(s: Situation): Directive[] {
    */
   const alloyFull = s.held.alloy >= planet.planet.alloyCap - 1;
   const crystalFull = s.held.crystal >= planet.planet.crystalCap - 1;
-  const waiting = planet.planet.bufferAlloy + planet.planet.bufferCrystal;
-  if ((alloyFull || crystalFull) && waiting >= 1) {
+  const deuteriumFull = (s.held.deuterium ?? 0) >= planet.planet.deuteriumCap - 1;
+  const waiting = planet.planet.bufferAlloy
+    + planet.planet.bufferCrystal
+    + planet.planet.bufferDeuterium;
+  if ((alloyFull || crystalFull || deuteriumFull) && waiting >= 1) {
     out.push({
       id: 'storage-full',
       kind: 'opportunity',

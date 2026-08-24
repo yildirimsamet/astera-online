@@ -4,10 +4,9 @@ import { pickSpawnSlot } from '@astera/rules';
 import { seasons } from '../db/schema.js';
 import { GameError } from '../services/planet.js';
 import { planetNameFor } from '../services/player.js';
-import { publicWorlds } from '../services/publicGalaxy.js';
 import { galaxyOf, occupiedSlots } from '../services/season.js';
 import { listServers, resolveJoinTarget } from '../services/servers.js';
-import { galaxyTraffic } from '../services/traffic.js';
+import { projectGalaxyTraffic } from '../services/traffic.js';
 
 /**
  * THE GALAXY, BEFORE YOU HAVE AN ACCOUNT. D56.
@@ -16,7 +15,7 @@ import { galaxyTraffic } from '../services/traffic.js';
  * nothing but "see your planet" gets the real frontier galaxy, the real worlds in
  * it, the real fleets crossing it, and the slot the server would give them — and
  * NOTHING IS WRITTEN. No account, no player row, no planet, and above all no
- * SEAT: a galaxy holds fifty worlds and fills strictly in order (D21), so handing
+ * SEAT: a galaxy holds 300 commander seats and fills strictly in order (D99), so handing
  * a seat to somebody who has committed nothing is how the frontier rule — the
  * whole mitigation for the empty-shard risk — gets spent on people who never came
  * back.
@@ -69,12 +68,13 @@ export function registerPreviewRoutes(app: FastifyInstance): void {
     const slot = pickSpawnSlot(spec.slots, taken);
     if (!slot) throw new GameError('SHARD_FULL', 'This galaxy is full', 409);
 
-    const [worlds, contacts] = await Promise.all([
-      publicWorlds(app.db, target.seasonId),
-      // Nothing is excluded: the exclusion in `/api/galaxy/traffic` is "what you
-      // OWN", and a visitor owns nothing.
-      galaxyTraffic(app.db, target.seasonId, null, app.clock.now()),
+    const [worlds, traffic] = await Promise.all([
+      app.projections.worlds(target.seasonId, app.clock.now()),
+      app.projections.trafficSnapshot(target.seasonId),
     ]);
+    // Nothing is excluded: the exclusion in `/api/galaxy/traffic` is "what you
+    // OWN", and a visitor owns nothing.
+    const contacts = projectGalaxyTraffic(traffic, null, app.clock.now());
 
     const reserved = {
       id: RESERVED_ID,
@@ -101,7 +101,12 @@ export function registerPreviewRoutes(app: FastifyInstance): void {
         players: open.planets,
       },
       galaxy: {
-        you: { planetId: RESERVED_ID, playerId: RESERVED_ID },
+        you: {
+          planetId: RESERVED_ID,
+          playerId: RESERVED_ID,
+          capitalPlanetId: RESERVED_ID,
+          planetIds: [RESERVED_ID],
+        },
         planets: [
           ...worlds.map((world) => ({ ...world, isSelf: false })),
           /**
@@ -114,11 +119,20 @@ export function registerPreviewRoutes(app: FastifyInstance): void {
             id: reserved.id,
             name: reserved.name,
             owner: '',
+            kind: 'CAPITAL' as const,
+            controller: {
+              kind: 'PLAYER' as const,
+              playerId: RESERVED_ID,
+              displayName: '',
+            },
             position: reserved.position,
             coreTier: 1,
             satellites: [],
             shielded: false,
             isSelf: true,
+            isOwned: true,
+            isCapital: true,
+            state: { kind: 'NORMAL' as const },
           },
         ],
       },

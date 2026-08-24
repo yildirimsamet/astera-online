@@ -68,7 +68,10 @@ FROM manifests AS server-deps
 RUN pnpm install --frozen-lockfile --prod --filter @astera/server...
 
 FROM base AS server
+ARG ASTERA_GIT_COMMIT=unknown
+LABEL org.opencontainers.image.revision=$ASTERA_GIT_COMMIT
 ENV NODE_ENV=production
+ENV ASTERA_GIT_COMMIT=$ASTERA_GIT_COMMIT
 
 # The whole tree rather than selected folders: pnpm's node_modules is a forest of
 # symlinks into `.pnpm`, and copying parts of it produces links that resolve to

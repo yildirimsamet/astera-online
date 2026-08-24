@@ -1,9 +1,35 @@
 import { useEffect, useMemo, useRef } from 'react';
-import { useInfiniteQuery, useMutation, useQuery, useQueryClient, type InfiniteData } from '@tanstack/react-query';
+import {
+  useInfiniteQuery,
+  useMutation,
+  useQuery,
+  useQueryClient,
+  type InfiniteData,
+  type QueryClient,
+} from '@tanstack/react-query';
 import { engagementEndsAt } from '@astera/rules';
-import type { Fleet, BuildingId, HullId, InstrumentId, SatelliteId } from '@astera/rules';
+import type {
+  Fleet,
+  BuildingId,
+  HullId,
+  InstrumentId,
+  ResearchProjectId,
+  SatelliteId,
+} from '@astera/rules';
 import type { z } from 'zod';
-import type { ChatPage, Contact, MiningRun, PendingThread, PlanetView, notificationsSchema } from './schemas.js';
+import type {
+  ChatPage,
+  Contact,
+  MiningFieldView,
+  MiningRun,
+  MiningStatusView,
+  MiningView,
+  PendingThread,
+  PlanetView,
+  PlanetsView,
+  SeasonInfo,
+  notificationsSchema,
+} from './schemas.js';
 import { useApi } from './context.js';
 import { keys } from './keys.js';
 import { serverNow } from '../lib/clock.js';
@@ -12,9 +38,11 @@ import {
   predictBuild,
   predictCollect,
   predictInstrument,
+  predictResearch,
   predictSatellite,
   predictUpgrade,
 } from '../lib/predict.js';
+import { useWorld } from './world.js';
 
 /**
  * Re-exported so the fifteen call sites that read `keys` from here keep working.
@@ -50,8 +78,8 @@ type NotificationList = z.infer<typeof notificationsSchema>;
  * seconds on `traffic`, thirty on `mining` and `galaxy`. That bought liveness with
  * a poll from every client forever, whether or not anything had happened, and it
  * still could not do better than its own interval. The broadcast is both faster
- * and cheaper: at fifty commanders the old floor was a hundred and fifty requests
- * a minute standing still, and the new one is fifty plus one burst per real event.
+ * and cheaper: at 300 commanders the old floor would be nine hundred requests a
+ * minute standing still, and the new one is three hundred plus one burst per real event.
  *
  * `/health` reports whether the live channel is actually up, because a dead bus and
  * a quiet galaxy look identical from the outside and only one of them is fine.
@@ -116,7 +144,12 @@ export function useServers() {
 
 export function usePlanet() {
   const api = useApi();
-  return useQuery({ queryKey: keys.planet, queryFn: api.planet, ...READ });
+  const { activePlanetId } = useWorld();
+  return useQuery({
+    queryKey: activePlanetId ? keys.planetById(activePlanetId) : keys.planet,
+    queryFn: () => api.planet(activePlanetId ?? undefined),
+    ...READ,
+  });
 }
 
 /**
@@ -222,15 +255,53 @@ export function useTraffic() {
  * three-hour clock. Nobody acts, so there is nothing to publish — a player who left
  * the tab open should simply not be looking at a sky that emptied an hour ago.
  */
+export function mergeMiningViews(
+  field: MiningFieldView | undefined,
+  status: MiningStatusView | undefined,
+): MiningView | undefined {
+  if (!field || !status) return undefined;
+  const isotopeByIndex = new Map(
+    status.isotopes.map((rock) => [rock.index, rock.deuteriumShare]),
+  );
+  return {
+    ...status,
+    asteroids: field.asteroids.map((asteroid) => ({
+      ...asteroid,
+      isotopeRich: isotopeByIndex.has(asteroid.index),
+      deuteriumShare: isotopeByIndex.get(asteroid.index) ?? null,
+    })),
+    debris: field.debris,
+  };
+}
+
 export function useMining() {
   const api = useApi();
-  return useQuery({
-    queryKey: keys.mining,
-    queryFn: api.mining,
+  const { activePlanetId } = useWorld();
+  const field = useQuery({
+    queryKey: keys.miningField,
+    queryFn: api.miningField,
     staleTime: 15_000,
     refetchInterval: NET_MS,
     refetchOnWindowFocus: true,
   });
+  const status = useQuery({
+    queryKey: activePlanetId ? keys.miningStatusById(activePlanetId) : keys.miningStatus,
+    queryFn: () => api.miningStatus(activePlanetId ?? undefined),
+    staleTime: 15_000,
+    refetchInterval: NET_MS,
+    refetchOnWindowFocus: true,
+  });
+  const data = useMemo(
+    () => mergeMiningViews(field.data, status.data),
+    [field.data, status.data],
+  );
+  return {
+    ...status,
+    data,
+    isPending: field.isPending || status.isPending,
+    isError: field.isError || status.isError,
+    error: status.error ?? field.error,
+  };
 }
 
 export function useReports() {
@@ -270,10 +341,14 @@ export function useRewards() {
 export function useClaimReward() {
   const api = useApi();
   const client = useQueryClient();
+  const { capitalPlanetId } = useWorld();
   const invalidate = useInvalidator();
   const apply = useApplyPlanet();
+  const lane = usePlanetMutationLane(capitalPlanetId);
   return useMutation({
+    scope: lane.scope,
     mutationFn: (id: string) => api.claimReward(id),
+    onMutate: lane.enter,
     onSuccess: async (result) => {
       // Both writes come out of one answer, so both need the same protection.
       await Promise.all([apply(result.planet), client.cancelQueries({ queryKey: keys.rewards })]);
@@ -282,12 +357,27 @@ export function useClaimReward() {
       // this world's silhouette on everybody else's disc.
       invalidate(keys.leaderboard, keys.galaxy);
     },
+    onSettled: (_data, _error, _id, turn) => { lane.leave(turn); },
   });
 }
 
 export function useLeaderboard() {
   const api = useApi();
   return useQuery({ queryKey: keys.leaderboard, queryFn: api.leaderboard, staleTime: 60_000 });
+}
+
+export function useSetRival() {
+  const api = useApi();
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (planetId: string | null) => api.setRival(planetId),
+    onSuccess: async ({ rivalPlanetId, rivalPlayerId }) => {
+      await client.cancelQueries({ queryKey: keys.season });
+      client.setQueryData<SeasonInfo>(keys.season, (current) =>
+        current ? { ...current, rivalPlanetId, rivalPlayerId: rivalPlayerId ?? null } : current,
+      );
+    },
+  });
 }
 
 export function useChatMessages() {
@@ -308,6 +398,17 @@ export function useChatUnread(enabled = true) {
     queryFn: api.chatUnread,
     enabled,
     ...READ,
+  });
+}
+
+export function useChronicle() {
+  const api = useApi();
+  return useInfiniteQuery({
+    queryKey: keys.chronicle,
+    queryFn: ({ pageParam }) => api.chronicle(pageParam ?? undefined),
+    initialPageParam: null as string | null,
+    getNextPageParam: (page) => page.nextBefore,
+    staleTime: 60_000,
   });
 }
 
@@ -574,9 +675,24 @@ function useInvalidator() {
  */
 function useApplyPlanet() {
   const client = useQueryClient();
+  const { activePlanetId } = useWorld();
   return async (planet: PlanetView) => {
-    await client.cancelQueries({ queryKey: keys.planet });
-    client.setQueryData(keys.planet, planet);
+    const id = planet.planet.id;
+    const explicitKey = keys.planetById(id);
+    await Promise.all([
+      client.cancelQueries({ queryKey: explicitKey }),
+      ...(activePlanetId === null
+        ? [client.cancelQueries({ queryKey: keys.planet })]
+        : []),
+    ]);
+    client.setQueryData(explicitKey, planet);
+    // The legacy capital alias exists only when no WorldProvider selected an id.
+    // A capital-only mutation (rewards) must never overwrite a selected colony.
+    if (activePlanetId === null) client.setQueryData(keys.planet, planet);
+    client.setQueryData(keys.planets, (current: PlanetsView | undefined) =>
+      current
+        ? { ...current, planets: current.planets.map((world) => world.planet.id === id ? planet : world) }
+        : current);
   };
 }
 
@@ -595,17 +711,78 @@ function useApplyPlanet() {
  * this would overwrite the prediction with the pre-tap world and the interface
  * would appear to undo the action.
  */
-interface Rollback {
+interface MutationTurn {
+  release: () => void;
+}
+
+interface Rollback extends MutationTurn {
+  key: readonly unknown[];
   previous: PlanetView | undefined;
+  optimistic: PlanetView | undefined;
+}
+
+/**
+ * One client may send many kinds of write to the same world. The database orders
+ * them under the planet lock; the browser must preserve that order too, otherwise
+ * an older whole-planet response can overwrite a newer one.
+ *
+ * TanStack's mutation scope serialises mutation functions, but deliberately runs
+ * every `onMutate` immediately. That is wrong for stacked snapshots: the second
+ * rollback can restore the first mutation's optimistic frame after both requests
+ * failed. This small turnstile includes prediction and reconciliation in the same
+ * lane, while keeping unrelated planets independent.
+ */
+const mutationTurns = new WeakMap<QueryClient, Map<string, Promise<void>>>();
+
+async function enterMutationTurn(client: QueryClient, id: string): Promise<MutationTurn> {
+  let lanes = mutationTurns.get(client);
+  if (!lanes) {
+    lanes = new Map();
+    mutationTurns.set(client, lanes);
+  }
+  const ahead = lanes.get(id) ?? Promise.resolve();
+  let open!: () => void;
+  const gate = new Promise<void>((resolve) => { open = resolve; });
+  const tail = ahead.then(() => gate);
+  lanes.set(id, tail);
+  await ahead;
+
+  let released = false;
+  return {
+    release: () => {
+      if (released) return;
+      released = true;
+      open();
+      void tail.then(() => {
+        if (lanes.get(id) === tail) lanes.delete(id);
+      });
+    },
+  };
+}
+
+function usePlanetMutationLane(planetId: string | null) {
+  const client = useQueryClient();
+  const id = `planet:${planetId ?? 'capital'}`;
+  return {
+    scope: { id },
+    enter: () => enterMutationTurn(client, id),
+    leave: (turn: MutationTurn | undefined): void => { turn?.release(); },
+  };
 }
 
 function useOptimisticPlanet() {
   const client = useQueryClient();
+  const { activePlanetId } = useWorld();
+  const key = activePlanetId ? keys.planetById(activePlanetId) : keys.planet;
+  const lane = usePlanetMutationLane(activePlanetId);
   return {
+    scope: lane.scope,
     predict: async (of: (view: PlanetView) => PlanetView | null): Promise<Rollback> => {
-      await client.cancelQueries({ queryKey: keys.planet });
-      const previous = client.getQueryData<PlanetView>(keys.planet);
-      if (previous) {
+      const turn = await lane.enter();
+      try {
+        await client.cancelQueries({ queryKey: key });
+        const previous = client.getQueryData<PlanetView>(key);
+        if (!previous) return { ...turn, key, previous: undefined, optimistic: undefined };
         /**
          * THE WORKS COME FORWARD FIRST, AND MISSING THIS PUT A DIP IN THE METER.
          *
@@ -622,7 +799,7 @@ function useOptimisticPlanet() {
          * time somebody taps something. Advancing to now first makes the predicted
          * view what the server is about to return, less the spend.
          */
-        const fetchedAt = client.getQueryState(keys.planet)?.dataUpdatedAt ?? Date.now();
+        const fetchedAt = client.getQueryState(key)?.dataUpdatedAt ?? Date.now();
         const settled: PlanetView = {
           ...previous,
           planet: { ...previous.planet, ...worksAt(previous.planet, fetchedAt, serverNow()) },
@@ -634,8 +811,8 @@ function useOptimisticPlanet() {
          * there is nothing to undo either: handing back a rollback here would move
          * `dataUpdatedAt` on a failure for a tap that changed nothing.
          */
-        if (!predicted) return { previous: undefined };
-        client.setQueryData(keys.planet, predicted);
+        if (!predicted) return { ...turn, key, previous: undefined, optimistic: undefined };
+        const optimistic = client.setQueryData<PlanetView>(key, predicted);
         /**
          * AND THE UNDO IS THE SETTLED VIEW, NOT THE ONE THAT CAME OUT OF THE CACHE.
          *
@@ -644,23 +821,32 @@ function useOptimisticPlanet() {
          * out. The settled view is the honest world to return to: the same planet,
          * with production that really did happen counted.
          */
-        return { previous: settled };
+        return { ...turn, key, previous: settled, optimistic };
+      } catch (error) {
+        turn.release();
+        throw error;
       }
-      return { previous: undefined };
     },
     rollback: (context: Rollback | undefined): void => {
-      if (context?.previous) client.setQueryData(keys.planet, context.previous);
+      if (!context?.previous || !context.optimistic) return;
+      client.setQueryData<PlanetView>(context.key, (current) =>
+        current === context.optimistic ? context.previous : current);
     },
+    settle: lane.leave,
   };
 }
 
 export function useUpgrade() {
   const api = useApi();
+  const { activePlanetId } = useWorld();
   const invalidate = useInvalidator();
   const apply = useApplyPlanet();
-  const { predict, rollback } = useOptimisticPlanet();
+  const { scope, predict, rollback, settle } = useOptimisticPlanet();
   return useMutation({
-    mutationFn: (type: BuildingId) => api.upgrade(type),
+    scope,
+    mutationFn: (type: BuildingId) => activePlanetId
+      ? api.upgrade(activePlanetId, type)
+      : api.upgrade(type),
     onMutate: (type: BuildingId) => predict((view) => predictUpgrade(view, type)),
     onError: (_error, _type, context) => {
       rollback(context);
@@ -671,16 +857,21 @@ export function useUpgrade() {
       // for everybody, and the ladder because Wealth moved.
       invalidate(keys.galaxy, keys.leaderboard);
     },
+    onSettled: (_data, _error, _type, context) => { settle(context); },
   });
 }
 
 export function useBuild() {
   const api = useApi();
+  const { activePlanetId } = useWorld();
   const invalidate = useInvalidator();
   const apply = useApplyPlanet();
-  const { predict, rollback } = useOptimisticPlanet();
+  const { scope, predict, rollback, settle } = useOptimisticPlanet();
   return useMutation({
-    mutationFn: ({ hull, count }: { hull: HullId; count: number }) => api.build(hull, count),
+    scope,
+    mutationFn: ({ hull, count }: { hull: HullId; count: number }) => activePlanetId
+      ? api.build(activePlanetId, hull, count)
+      : api.build(hull, count),
     onMutate: ({ hull, count }: { hull: HullId; count: number }) =>
       predict((view) => predictBuild(view, hull, count)),
     onError: (_error, _vars, context) => {
@@ -690,16 +881,67 @@ export function useBuild() {
       await apply(result.planet);
       invalidate(keys.leaderboard);
     },
+    onSettled: (_data, _error, _vars, context) => { settle(context); },
+  });
+}
+
+/** Cancelling is authoritative because the refund and queue reflow are one transaction. */
+export function useCancelBuildOrder() {
+  const api = useApi();
+  const { activePlanetId } = useWorld();
+  const invalidate = useInvalidator();
+  const apply = useApplyPlanet();
+  const lane = usePlanetMutationLane(activePlanetId);
+  return useMutation({
+    scope: lane.scope,
+    mutationFn: (orderId: string) => activePlanetId
+      ? api.cancelBuildOrder(activePlanetId, orderId)
+      : api.cancelBuildOrder(orderId),
+    onMutate: lane.enter,
+    onSuccess: async (result) => {
+      await apply(result.planet);
+      invalidate(keys.leaderboard);
+    },
+    onSettled: (_data, _error, _orderId, turn) => { lane.leave(turn); },
+  });
+}
+
+/** Discovery is history-derived, so only placement of an already-visible project is predicted. */
+export function useCompleteResearch() {
+  const api = useApi();
+  const { activePlanetId } = useWorld();
+  const invalidate = useInvalidator();
+  const apply = useApplyPlanet();
+  const { scope, predict, rollback, settle } = useOptimisticPlanet();
+  return useMutation({
+    scope,
+    mutationFn: (projectId: ResearchProjectId) => activePlanetId
+      ? api.completeResearch(activePlanetId, projectId)
+      : api.completeResearch(projectId),
+    onMutate: (projectId: ResearchProjectId) =>
+      predict((view) => predictResearch(view, projectId)),
+    onError: (_error, _projectId, context) => {
+      rollback(context);
+    },
+    onSuccess: async (result) => {
+      await apply(result.planet);
+      invalidate(keys.mining, keys.leaderboard);
+    },
+    onSettled: (_data, _error, _projectId, context) => { settle(context); },
   });
 }
 
 export function useRaiseInstrument() {
   const api = useApi();
+  const { activePlanetId } = useWorld();
   const invalidate = useInvalidator();
   const apply = useApplyPlanet();
-  const { predict, rollback } = useOptimisticPlanet();
+  const { scope, predict, rollback, settle } = useOptimisticPlanet();
   return useMutation({
-    mutationFn: (type: InstrumentId) => api.raiseInstrument(type),
+    scope,
+    mutationFn: (type: InstrumentId) => activePlanetId
+      ? api.raiseInstrument(activePlanetId, type)
+      : api.raiseInstrument(type),
     onMutate: (type: InstrumentId) => predict((view) => predictInstrument(view, type)),
     onError: (_error, _type, context) => {
       rollback(context);
@@ -709,16 +951,21 @@ export function useRaiseInstrument() {
       await apply(result.planet);
       invalidate(keys.intel, keys.galaxy, keys.leaderboard);
     },
+    onSettled: (_data, _error, _type, context) => { settle(context); },
   });
 }
 
 export function useInstallSatellite() {
   const api = useApi();
+  const { activePlanetId } = useWorld();
   const invalidate = useInvalidator();
   const apply = useApplyPlanet();
-  const { predict, rollback } = useOptimisticPlanet();
+  const { scope, predict, rollback, settle } = useOptimisticPlanet();
   return useMutation({
-    mutationFn: (type: SatelliteId) => api.installSatellite(type),
+    scope,
+    mutationFn: (type: SatelliteId) => activePlanetId
+      ? api.installSatellite(activePlanetId, type)
+      : api.installSatellite(type),
     onMutate: (type: SatelliteId) => predict((view) => predictSatellite(view, type)),
     onError: (_error, _type, context) => {
       rollback(context);
@@ -732,15 +979,17 @@ export function useInstallSatellite() {
       await apply(result.planet);
       invalidate(keys.intel, keys.galaxy, keys.leaderboard);
     },
+    onSettled: (_data, _error, _type, context) => { settle(context); },
   });
 }
 
 export function useWatch() {
   const api = useApi();
+  const { activePlanetId } = useWorld();
   const invalidate = useInvalidator();
   return useMutation({
     mutationFn: ({ targetPlanetId, slot }: { targetPlanetId: string; slot: number }) =>
-      api.watch(targetPlanetId, slot),
+      api.watch(targetPlanetId, slot, activePlanetId ?? undefined),
     onSuccess: () => {
       invalidate(keys.intel, keys.galaxy, keys.unlocks);
     },
@@ -749,12 +998,17 @@ export function useWatch() {
 
 export function useProbe() {
   const api = useApi();
+  const { activePlanetId } = useWorld();
   const invalidate = useInvalidator();
+  const lane = usePlanetMutationLane(activePlanetId);
   return useMutation({
-    mutationFn: (targetPlanetId: string) => api.probe(targetPlanetId),
+    scope: lane.scope,
+    mutationFn: (targetPlanetId: string) => api.probe(targetPlanetId, activePlanetId ?? undefined),
+    onMutate: lane.enter,
     onSuccess: () => {
       invalidate(keys.planet, keys.intel, keys.pending);
     },
+    onSettled: (_data, _error, _targetPlanetId, turn) => { lane.leave(turn); },
   });
 }
 
@@ -766,11 +1020,13 @@ export function useProbe() {
  */
 export function useCollect() {
   const api = useApi();
+  const { activePlanetId } = useWorld();
   const invalidate = useInvalidator();
   const apply = useApplyPlanet();
-  const { predict, rollback } = useOptimisticPlanet();
+  const { scope, predict, rollback, settle } = useOptimisticPlanet();
   return useMutation({
-    mutationFn: () => api.collect(),
+    scope,
+    mutationFn: () => api.collect(activePlanetId ?? undefined),
     onMutate: () => predict(predictCollect),
     onError: (_error, _vars, context) => {
       rollback(context);
@@ -779,43 +1035,60 @@ export function useCollect() {
       await apply(result.planet);
       invalidate(keys.galaxy, keys.leaderboard);
     },
+    onSettled: (_data, _error, _vars, context) => { settle(context); },
   });
 }
 
 export function useMine() {
   const api = useApi();
+  const { activePlanetId } = useWorld();
   const invalidate = useInvalidator();
+  const lane = usePlanetMutationLane(activePlanetId);
   return useMutation({
+    scope: lane.scope,
     mutationFn: ({ asteroidIndex, craft }: { asteroidIndex: number; craft: number }) =>
-      api.mine(asteroidIndex, craft),
+      api.mine(asteroidIndex, craft, activePlanetId ?? undefined),
+    onMutate: lane.enter,
     onSuccess: () => {
       invalidate(keys.mining, keys.planet, keys.pending);
     },
+    onSettled: (_data, _error, _vars, turn) => { lane.leave(turn); },
   });
 }
 
 /** Send craft to a wreck field. Invalidates the same things a mining run does. */
 export function useHarvest() {
   const api = useApi();
+  const { activePlanetId } = useWorld();
   const invalidate = useInvalidator();
+  const lane = usePlanetMutationLane(activePlanetId);
   return useMutation({
+    scope: lane.scope,
     mutationFn: ({ fieldId, craft }: { fieldId: string; craft: number }) =>
-      api.harvest(fieldId, craft),
+      api.harvest(fieldId, craft, activePlanetId ?? undefined),
+    onMutate: lane.enter,
     onSuccess: () => {
       invalidate(keys.mining, keys.planet, keys.pending);
     },
+    onSettled: (_data, _error, _vars, turn) => { lane.leave(turn); },
   });
 }
 
 /** IRREVERSIBLE. The confirmation lives in the UI; the server has no recall. */
 export function useLaunch() {
   const api = useApi();
+  const { activePlanetId } = useWorld();
   const client = useQueryClient();
   const invalidate = useInvalidator();
   const apply = useApplyPlanet();
+  const lane = usePlanetMutationLane(activePlanetId);
   return useMutation({
+    scope: lane.scope,
     mutationFn: ({ targetPlanetId, fleet }: { targetPlanetId: string; fleet: Fleet }) =>
-      api.launch(targetPlanetId, fleet),
+      activePlanetId
+        ? api.launch(activePlanetId, targetPlanetId, fleet)
+        : api.launch(targetPlanetId, fleet),
+    onMutate: lane.enter,
     onSuccess: async (result) => {
       /**
        * THE SQUADRON IS ON THE DISC BEFORE THE SHEET HAS FINISHED CLOSING. D53.
@@ -840,5 +1113,82 @@ export function useLaunch() {
       client.setQueryData(keys.pending, { pending: result.pending });
       invalidate(keys.galaxy, keys.intel);
     },
+    onSettled: (_data, _error, _vars, turn) => { lane.leave(turn); },
+  });
+}
+
+export function useTransfer() {
+  const api = useApi();
+  const { activePlanetId } = useWorld();
+  const apply = useApplyPlanet();
+  const invalidate = useInvalidator();
+  const lane = usePlanetMutationLane(activePlanetId);
+  return useMutation({
+    scope: lane.scope,
+    mutationFn: ({ targetPlanetId, fleet, cargo }: {
+      targetPlanetId: string;
+      fleet: Fleet;
+      cargo: { alloy: number; crystal: number; deuterium: number };
+    }) => api.transfer(activePlanetId!, targetPlanetId, fleet, cargo),
+    onMutate: lane.enter,
+    onSuccess: async (result) => {
+      await apply(result.planet);
+      invalidate(keys.pending, keys.traffic, keys.galaxy, keys.planets);
+    },
+    onSettled: (_data, _error, _vars, turn) => { lane.leave(turn); },
+  });
+}
+
+export function useSettlement() {
+  const api = useApi();
+  const { activePlanetId } = useWorld();
+  const apply = useApplyPlanet();
+  const invalidate = useInvalidator();
+  const lane = usePlanetMutationLane(activePlanetId);
+  return useMutation({
+    scope: lane.scope,
+    mutationFn: (targetPlanetId: string) => api.settle(activePlanetId!, targetPlanetId),
+    onMutate: lane.enter,
+    onSuccess: async (result) => {
+      await apply(result.planet);
+      invalidate(keys.pending, keys.traffic, keys.galaxy, keys.planets);
+    },
+    onSettled: (_data, _error, _targetPlanetId, turn) => { lane.leave(turn); },
+  });
+}
+
+export function useBuildDeathStar() {
+  const api = useApi();
+  const { activePlanetId } = useWorld();
+  const apply = useApplyPlanet();
+  const invalidate = useInvalidator();
+  const lane = usePlanetMutationLane(activePlanetId);
+  return useMutation({
+    scope: lane.scope,
+    mutationFn: () => api.buildDeathStar(activePlanetId!),
+    onMutate: lane.enter,
+    onSuccess: async (result) => {
+      await apply(result.planet);
+      invalidate(keys.leaderboard);
+    },
+    onSettled: (_data, _error, _vars, turn) => { lane.leave(turn); },
+  });
+}
+
+export function useLaunchDeathStar() {
+  const api = useApi();
+  const { activePlanetId } = useWorld();
+  const apply = useApplyPlanet();
+  const invalidate = useInvalidator();
+  const lane = usePlanetMutationLane(activePlanetId);
+  return useMutation({
+    scope: lane.scope,
+    mutationFn: (targetPlanetId: string) => api.launchDeathStar(activePlanetId!, targetPlanetId),
+    onMutate: lane.enter,
+    onSuccess: async (result) => {
+      await apply(result.planet);
+      invalidate(keys.pending, keys.traffic, keys.galaxy, keys.planets, keys.leaderboard);
+    },
+    onSettled: (_data, _error, _targetPlanetId, turn) => { lane.leave(turn); },
   });
 }

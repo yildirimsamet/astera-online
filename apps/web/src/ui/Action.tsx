@@ -13,6 +13,7 @@ import {
   RaiseIcon,
   SendIcon,
   SpeedIcon,
+  UnlockIcon,
 } from './icons/index.js';
 import { RESOURCE_ART } from './assets.js';
 
@@ -25,10 +26,10 @@ import { RESOURCE_ART } from './assets.js';
  * direction is that the art should be in front. A price is exactly where a player
  * wants to recognise a substance at a glance rather than parse a symbol.
  */
-function Mark({ of }: { of: 'alloy' | 'crystal' }) {
+function Mark({ of }: { of: 'alloy' | 'crystal' | 'deuterium' }) {
   return (
     <img
-      src={of === 'alloy' ? RESOURCE_ART.alloy : RESOURCE_ART.crystal}
+      src={RESOURCE_ART[of]}
       alt=""
       aria-hidden
       className="size-4 shrink-0 object-contain"
@@ -88,6 +89,7 @@ const VERB_LABEL = {
 export interface Shortfall {
   alloy: number;
   crystal: number;
+  deuterium: number;
 }
 
 export function ActionButton({
@@ -95,16 +97,19 @@ export function ActionButton({
   cost,
   held,
   blocked,
+  completed,
   onAct,
   pending = false,
   label,
   full = false,
 }: {
   verb: Verb;
-  cost: { alloy: number; crystal: number };
-  held: { alloy: number; crystal: number };
+  cost: { alloy: number; crystal: number; deuterium?: number };
+  held: { alloy: number; crystal: number; deuterium?: number };
   /** A prerequisite that is not met. Takes precedence over affordability. */
   blocked?: { reason: string; onFix?: () => void };
+  /** Terminal success state; never represented as a prerequisite lock. */
+  completed?: string;
   onAct: () => void;
   pending?: boolean;
   /** Overrides the verb's own word, where the row needs something specific. */
@@ -115,8 +120,22 @@ export function ActionButton({
   const short = {
     alloy: Math.max(0, cost.alloy - held.alloy),
     crystal: Math.max(0, cost.crystal - held.crystal),
+    deuterium: Math.max(0, (cost.deuterium ?? 0) - (held.deuterium ?? 0)),
   };
-  const affordable = short.alloy === 0 && short.crystal === 0;
+  const affordable = short.alloy === 0 && short.crystal === 0 && short.deuterium === 0;
+
+  if (completed) {
+    return (
+      <span
+        className={`act act-locked ${full ? 'w-full' : ''}`}
+        data-lock-state="open"
+        role="status"
+      >
+        <UnlockIcon className="size-4 shrink-0" />
+        <span className="act-word">{completed}</span>
+      </span>
+    );
+  }
 
   /**
    * LOCKED. Not disabled — pressing it is how you find out what to do about it.
@@ -132,6 +151,7 @@ export function ActionButton({
         }}
         disabled={!blocked.onFix}
         className={`act act-locked ${full ? 'w-full' : ''}`}
+        data-lock-state="closed"
       >
         <LockIcon className="size-4 shrink-0" />
         <span className="act-word">{blocked.reason}</span>
@@ -195,6 +215,12 @@ export function ActionButton({
                 &minus;{compact(short.crystal)}
               </span>
             )}
+            {short.deuterium > 0 && (
+              <span className="act-need-part">
+                <Mark of="deuterium" />
+                &minus;{compact(short.deuterium)}
+              </span>
+            )}
           </span>
         </span>
       </button>
@@ -226,6 +252,9 @@ function shortfallLabel(short: Shortfall): string {
   }
   if (short.crystal > 0) {
     parts.push(i18n.t('action.shortfallCrystal', { amount: compact(short.crystal) }));
+  }
+  if (short.deuterium > 0) {
+    parts.push(i18n.t('action.shortfallDeuterium', { amount: compact(short.deuterium) }));
   }
   return i18n.t('action.shortfallLabel', { parts: parts.join(i18n.t('action.shortfallJoin')) });
 }
@@ -324,16 +353,17 @@ function Stat({
   );
 }
 
-/** A price, in the two resource marks. Crystal is omitted when it is free. */
+/** A price in resource marks. Zero-valued secondary resources are omitted. */
 export function Price({
   cost,
   held,
 }: {
-  cost: { alloy: number; crystal: number };
-  held?: { alloy: number; crystal: number };
+  cost: { alloy: number; crystal: number; deuterium?: number };
+  held?: { alloy: number; crystal: number; deuterium?: number };
 }) {
   const shortAlloy = held ? cost.alloy > held.alloy : false;
   const shortCrystal = held ? cost.crystal > held.crystal : false;
+  const shortDeuterium = held ? (cost.deuterium ?? 0) > (held.deuterium ?? 0) : false;
 
   return (
     <span className="price">
@@ -347,6 +377,36 @@ export function Price({
           {compact(cost.crystal)}
         </span>
       )}
+      {(cost.deuterium ?? 0) > 0 && (
+        <span className={`price-part ${shortDeuterium ? 'price-short' : ''}`}>
+          <Mark of="deuterium" />
+          {compact(cost.deuterium ?? 0)}
+        </span>
+      )}
+    </span>
+  );
+}
+
+/** A resource value, using the same learnt shapes as prices without implying a cost. */
+export function ResourceAmounts({
+  resources,
+  label,
+}: {
+  resources: { alloy: number; crystal: number };
+  label: string;
+}) {
+  return (
+    <span className="price" aria-label={label}>
+      <span aria-hidden className="contents">
+        <span className="price-part">
+          <Mark of="alloy" />
+          {compact(resources.alloy)}
+        </span>
+        <span className="price-part price-crystal">
+          <Mark of="crystal" />
+          {compact(resources.crystal)}
+        </span>
+      </span>
     </span>
   );
 }

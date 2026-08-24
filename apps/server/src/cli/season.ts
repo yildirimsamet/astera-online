@@ -77,6 +77,28 @@ function num(value: string | undefined, fallback: number): number {
   return n;
 }
 
+function galaxyCount(value: string | undefined): number {
+  const count = num(value, SERVERS.count);
+  if (!Number.isInteger(count) || count < 1 || count > SERVERS.count) {
+    throw new Error(`Galaxy count must be an integer from 1 to ${String(SERVERS.count)}`);
+  }
+  return count;
+}
+
+function galaxyCapacity(value: string | undefined, production: boolean): number {
+  const capacity = num(value, SERVERS.capacity);
+  if (!Number.isInteger(capacity) || capacity < 1) {
+    throw new Error('Galaxy capacity must be a positive integer');
+  }
+  if (production && capacity !== SERVERS.capacity) {
+    throw new Error(
+      `Production galaxy capacity is fixed at ${String(SERVERS.capacity)}; `
+      + `refusing --cap ${String(capacity)}.`,
+    );
+  }
+  return capacity;
+}
+
 async function main(): Promise<void> {
   const { values, positionals } = parseArgs({
     allowPositionals: true,
@@ -95,7 +117,10 @@ async function main(): Promise<void> {
   const command = positionals[0];
   loadDotEnv();
   const env = loadEnv();
-  const { db, close } = createDb(env.DATABASE_URL, { max: 4 });
+  const { db, close } = createDb(env.DATABASE_URL, {
+    max: 4,
+    applicationName: 'astera-season-cli',
+  });
   const shardCode = values.shard ?? 'EU-1';
 
   try {
@@ -107,9 +132,10 @@ async function main(): Promise<void> {
       }
 
       case 'bootstrap': {
+        const capacity = galaxyCapacity(values.cap, env.NODE_ENV === 'production');
         const result = await bootstrapServers(db, systemClock, {
-          count: num(values.count, SERVERS.count),
-          capacity: num(values.cap, SERVERS.capacity),
+          count: galaxyCount(values.count),
+          capacity,
           days: num(values.days, SEASON.days),
           ...(values.seed === undefined ? {} : { seedBase: num(values.seed, 0) }),
         });
@@ -117,7 +143,7 @@ async function main(): Promise<void> {
           [
             `opened     ${result.created.join(', ') || '(none)'}`,
             `already up ${result.existing.join(', ') || '(none)'}`,
-            `capacity   ${String(num(values.cap, SERVERS.capacity))} planets each`,
+            `capacity   ${String(capacity)} planets each`,
           ].join('\n'),
         );
         await placeUnattended(db, num(values.unattended, 0));
@@ -149,6 +175,19 @@ async function main(): Promise<void> {
       }
 
       case 'create': {
+        const officialOrdinal = Array.from(
+          { length: SERVERS.count },
+          (_, index) => index + 1,
+        ).find((ordinal) => shardCode === `EU-${String(ordinal)}`);
+        if (
+          env.NODE_ENV === 'production'
+          && officialOrdinal === undefined
+        ) {
+          throw new Error(
+            `Production may open only EU-1..EU-${String(SERVERS.count)}; `
+            + `${shardCode} would bypass the live-galaxy ceiling.`,
+          );
+        }
         // Refusing rather than overwriting: two live seasons on one shard would
         // make `liveSeason()` non-deterministic, and the loser would be a galaxy
         // full of players nobody can reach.
@@ -161,13 +200,15 @@ async function main(): Promise<void> {
         }
 
         const seed = num(values.seed, Math.floor(Math.random() * 1_000_000));
+        const capacity = galaxyCapacity(values.cap, env.NODE_ENV === 'production');
         const { season, galaxy } = await createSeason(db, {
           shardCode,
-          shardName: shardNameFor(1),
+          shardName: officialOrdinal === undefined ? shardCode : shardNameFor(officialOrdinal),
+          ...(officialOrdinal === undefined ? {} : { ordinal: officialOrdinal }),
           seed,
           startsAt: systemClock.now(),
           days: num(values.days, SEASON.days),
-          playerCap: num(values.cap, SERVERS.capacity),
+          playerCap: capacity,
         });
 
         console.log(
@@ -212,8 +253,8 @@ async function main(): Promise<void> {
           );
         }
         const result = await wipeAllServers(db, systemClock, {
-          count: num(values.count, SERVERS.count),
-          capacity: num(values.cap, SERVERS.capacity),
+          count: galaxyCount(values.count),
+          capacity: galaxyCapacity(values.cap, env.NODE_ENV === 'production'),
           days: num(values.days, SEASON.days),
           ...(values.seed === undefined ? {} : { seedBase: num(values.seed, 0) }),
         });

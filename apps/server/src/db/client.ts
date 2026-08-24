@@ -8,9 +8,13 @@ export type Tx = Parameters<Parameters<Db['transaction']>[0]>[0];
 /** Either works for reads; only Tx may mutate. */
 export type Queryable = Db | Tx;
 
-export function createDb(url: string, opts: { max?: number } = {}) {
+export function createDb(
+  url: string,
+  opts: { max?: number; applicationName?: string } = {},
+) {
   const sql = postgres(url, {
     max: opts.max ?? 10,
+    connection: { application_name: opts.applicationName ?? 'astera' },
     // Timestamps come back as Date objects; the clock helpers do the rest.
     transform: undefined,
     // Postgres NOTICEs are noise here — schema DDL emits them constantly during

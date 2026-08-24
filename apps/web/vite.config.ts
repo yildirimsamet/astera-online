@@ -10,6 +10,15 @@ import tailwindcss from '@tailwindcss/vite';
  * and two more things to get wrong — for no benefit in a single-deployment game.
  */
 const API = process.env.ASTERA_API ?? 'http://localhost:3100';
+const apiProxy = {
+  '/api': {
+    target: API,
+    changeOrigin: true,
+    // SSE must not be buffered by the proxy or the return moment arrives
+    // in one lump when the connection closes.
+    ws: false,
+  },
+};
 
 export default defineConfig({
   plugins: [react(), tailwindcss()],
@@ -19,15 +28,11 @@ export default defineConfig({
     // standing up, on a small screen. Testing it on a desktop only is testing
     // something else.
     host: true,
-    proxy: {
-      '/api': {
-        target: API,
-        changeOrigin: true,
-        // SSE must not be buffered by the dev proxy or the return moment arrives
-        // in one lump when the connection closes.
-        ws: false,
-      },
-    },
+    proxy: apiProxy,
   },
+  // Visual regression runs use an immutable production build. Keeping the same
+  // same-origin API seam in preview makes those captures immune to an unrelated
+  // source file being saved halfway through a Playwright frame sequence.
+  preview: { host: true, proxy: apiProxy },
   build: { target: 'es2022' },
 });

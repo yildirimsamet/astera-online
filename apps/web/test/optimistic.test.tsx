@@ -12,10 +12,9 @@ import { planetView } from './fixtures.js';
 /**
  * THE TAP, THE ANSWER, AND THE REFUSAL. D53.
  *
- * Construction is instant on payment, and the interface now says so on the frame
- * of the tap. Three things have to hold for that to be honest rather than a lie
- * with good timing, and all three are here: the prediction lands immediately, the
- * server's own answer replaces it, and a refusal puts back exactly what was there.
+ * A purchase commits on the frame of the tap. Three things have to hold for that
+ * to be honest: the spend and queue marker land immediately, the server's own
+ * order replaces them, and a refusal puts back exactly what was there.
  *
  * The third is the one that would ship broken. A rollback that half-works leaves a
  * player holding resources they have already spent, and the next action they take
@@ -51,7 +50,7 @@ describe('a spend, before the server has answered', () => {
 
   const held = (): PlanetView => client.getQueryData<PlanetView>(keys.planet)!;
 
-  it('shows the purchase on the tap, not a round trip later', async () => {
+  it('shows the commitment on the tap, not a round trip later', async () => {
     // A request that never settles: the assertion is about what is on screen
     // WHILE it is in flight, which is the whole point.
     upgrade.mockReturnValue(new Promise(() => undefined));
@@ -62,14 +61,37 @@ describe('a spend, before the server has answered', () => {
     });
 
     await waitFor(() => {
-      expect(held().buildings.REFINERY).toBe(3);
+      expect(held().queues?.CONSTRUCTION).toHaveLength(1);
     });
+    expect(held().buildings.REFINERY).toBe(2);
     expect(held().planet.alloy).toBe(500_000 - upgradeCost(2).alloy);
+    expect(held().queues?.CONSTRUCTION[0]).toMatchObject({
+      kind: 'BUILDING',
+      subject: 'REFINERY',
+      optimistic: true,
+    });
+    expect(held().queues?.CONSTRUCTION[0]).not.toHaveProperty('finishesAt');
   });
 
   it('takes the server\'s own answer when it lands', async () => {
     const authoritative = planetView(
-      { buildings: { CORE: 5, REFINERY: 3, EXTRACTOR: 2, VAULT: 1, SHIPYARD: 1 } },
+      {
+        buildings: { CORE: 5, REFINERY: 2, EXTRACTOR: 2, VAULT: 1, SHIPYARD: 1 },
+        queues: {
+          CONSTRUCTION: [{
+            id: 'order-1',
+            queue: 'CONSTRUCTION',
+            slot: 0,
+            kind: 'BUILDING',
+            subject: 'REFINERY',
+            count: 1,
+            startedAt: new Date('2026-08-24T10:00:00.000Z'),
+            finishesAt: new Date('2026-08-24T10:01:00.000Z'),
+            cost: upgradeCost(2),
+          }],
+          YARD: [],
+        },
+      },
       { alloy: 1234, crystal: 5678 },
     );
     upgrade.mockResolvedValue({ type: 'REFINERY', level: 3, alloy: 1234, crystal: 5678, planet: authoritative });
@@ -108,7 +130,7 @@ describe('a spend, before the server has answered', () => {
       expect(result.current.isError).toBe(true);
     });
     /**
-     * Every spent figure is back, and the level with it.
+     * Every spent figure is back, and the optimistic order with it.
      *
      * Not a deep equality: what a rollback restores is the settled world, whose
      * works have moved forward by however long the request took. Asserting the
@@ -119,6 +141,7 @@ describe('a spend, before the server has answered', () => {
     expect(held().planet.crystal).toBe(before.planet.crystal);
     expect(held().buildings).toEqual(before.buildings);
     expect(held().nextCosts).toEqual(before.nextCosts);
+    expect(held().queues).toEqual(before.queues);
     expect(held().planet.bufferAlloy).toBeGreaterThanOrEqual(before.planet.bufferAlloy);
   });
 
@@ -195,8 +218,9 @@ describe('a spend, before the server has answered', () => {
     });
 
     await waitFor(() => {
-      expect(held().buildings.REFINERY).toBe(3);
+      expect(held().queues?.CONSTRUCTION).toHaveLength(1);
     });
+    expect(held().buildings.REFINERY).toBe(2);
     expect(held().planet.bufferAlloy).toBeCloseTo(100, 0);
     expect(held().planet.bufferCrystal).toBeCloseTo(50, 0);
   });
@@ -262,5 +286,50 @@ describe('a spend, before the server has answered', () => {
       expect(upgrade).toHaveBeenCalled();
     });
     expect(held()).toEqual(before);
+  });
+
+  it('does not let a late refusal erase a different successful planet mutation', async () => {
+    let rejectUpgrade!: (error: Error) => void;
+    const pendingUpgrade = new Promise<never>((_resolve, reject) => {
+      rejectUpgrade = reject;
+    });
+    upgrade.mockReturnValue(pendingUpgrade);
+
+    const collected = planetView(
+      {
+        buildings: { CORE: 5, REFINERY: 2, EXTRACTOR: 2, VAULT: 1, SHIPYARD: 1 },
+        nextCosts: { REFINERY: upgradeCost(2) },
+      },
+      { alloy: 501_234, crystal: 502_345, bufferAlloy: 0, bufferCrystal: 0 },
+    );
+    collect.mockResolvedValue({ planet: collected });
+
+    const { result } = renderHook(() => ({
+      upgrade: useUpgrade(),
+      collect: useCollect(),
+    }), { wrapper });
+
+    act(() => {
+      result.current.upgrade.mutate('REFINERY');
+    });
+    await waitFor(() => {
+      expect(upgrade).toHaveBeenCalledOnce();
+    });
+
+    act(() => {
+      result.current.collect.mutate();
+    });
+    // The second intent is retained, but it must not overtake the first request
+    // or take a rollback snapshot from an uncommitted optimistic frame.
+    expect(collect).not.toHaveBeenCalled();
+
+    act(() => {
+      rejectUpgrade(new Error('INSUFFICIENT_RESOURCES'));
+    });
+    await waitFor(() => {
+      expect(result.current.upgrade.isError).toBe(true);
+      expect(collect).toHaveBeenCalledOnce();
+      expect(held()).toEqual(collected);
+    });
   });
 });

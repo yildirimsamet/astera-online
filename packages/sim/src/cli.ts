@@ -3,8 +3,16 @@
  *
  * The test suite is the regression gate; this is for looking at a season by hand.
  */
-import { dominion, median } from '@astera/rules';
-import { BANDS, LEVERS, ladderByArchetype, runSeason, verdict, type InvariantKey } from './index.js';
+import { RESEARCH_PROJECTS, dominion, median } from '@astera/rules';
+import {
+  BANDS,
+  LEVERS,
+  ladderByArchetype,
+  raidReturn,
+  runSeason,
+  verdict,
+  type InvariantKey,
+} from './index.js';
 
 const arg = (k: string, d: number): number => {
   const hit = process.argv.find((a) => a.startsWith(`--${k}=`));
@@ -28,6 +36,10 @@ const cfg = {
   days: arg('days', 14),
   seed: arg('seed', 42),
   ...(hullCrystalShare === undefined ? {} : { hullCrystalShare }),
+  spectrometryCrystalCost: arg(
+    'spectrometry-cost',
+    RESEARCH_PROJECTS.ISOTOPE_SPECTROMETRY.cost.crystal,
+  ),
 };
 const { world, days, diagnostics } = runSeason(cfg);
 const keys = Object.keys(BANDS) as InvariantKey[];
@@ -50,9 +62,16 @@ for (const d of days) {
 
 console.log(`\n${C.grey}bands  ${keys.map((k) => `${k} ${BANDS[k][0]}–${BANDS[k][1]}`).join(' · ')}${C.reset}`);
 
-const settled = days.slice(2).map((d) => d.invariants);
+const settledDays = days.slice(2);
+const settled = settledDays.map((d) => d.invariants);
+const settledSummary = Object.fromEntries(keys.map((key) => [
+  key,
+  key === 'RR'
+    ? raidReturn(settledDays.map((day) => day.stats))
+    : median(settled.map((snapshot) => snapshot[key]).filter((value) => !Number.isNaN(value))),
+])) as Record<InvariantKey, number>;
 const fails = keys
-  .map((k) => ({ k, m: median(settled.map((s) => s[k]).filter((v) => !Number.isNaN(v))) }))
+  .map((k) => ({ k, m: settledSummary[k] }))
   .filter(({ k, m }) => verdict(k, m) !== 'OK');
 
 console.log(`\n${C.bold}VERDICT${C.reset}`);
@@ -90,4 +109,29 @@ console.log(`  cap player-hours ${Math.round(diagnostics.capPlayerHours).toLocal
   `median unused ${Math.round(diagnostics.medianUnused).toLocaleString('en-US')}`);
 console.log(`  spend ${Object.entries(diagnostics.spentShare)
   .map(([category, share]) => `${category} ${(share * 100).toFixed(1)}%`)
-  .join(' · ')}\n`);
+  .join(' · ')}`);
+console.log(`  mining ${diagnostics.mining.launches.toLocaleString('en-US')} launches · ` +
+  `${Math.round(diagnostics.mining.oreClaimed).toLocaleString('en-US')} claimed · ` +
+  `${Math.round(
+    diagnostics.mining.alloyDelivered
+      + diagnostics.mining.crystalDelivered
+      + diagnostics.mining.deuteriumDelivered,
+  ).toLocaleString('en-US')} delivered · ` +
+  `${Math.round(diagnostics.mining.overflowLost).toLocaleString('en-US')} overflow\n`);
+
+const strategic = diagnostics.strategic;
+console.log(`${C.bold}MULTI-WORLD / STRATEGIC${C.reset}`);
+console.log(`  neutral raids ${strategic.neutralRaids.toLocaleString('en-US')} · ` +
+  `${strategic.uniqueNeutralRaiders.toLocaleString('en-US')} unique raiders · ` +
+  `${(strategic.neutralLootShare * 100).toFixed(1)}% of external income`);
+console.log(`  taken T1/T2/T3 ${[1, 2, 3]
+  .map((tier) => Math.round(strategic.neutralTaken[tier as 1 | 2 | 3]).toLocaleString('en-US'))
+  .join('/')} · remaining ${[1, 2, 3]
+  .map((tier) => strategic.remainingNeutral[tier as 1 | 2 | 3])
+  .join('/')}`);
+console.log(`  colonies ${strategic.coloniesPerPlayer.filter((count) => count > 0).length} commanders · ` +
+  `${Math.round(strategic.transferredResources).toLocaleString('en-US')} transferred`);
+console.log(`  Death Star ${strategic.deathStar.builds}/${strategic.deathStar.launches}/` +
+  `${strategic.deathStar.firstHits}/${strategic.deathStar.captures}/${strategic.deathStar.misses} ` +
+  `${C.dim}(build/launch/first/capture/miss)${C.reset} · ` +
+  `${Math.round(strategic.capitalHeldDeathStarValue).toLocaleString('en-US')} held at capitals\n`);

@@ -65,7 +65,7 @@ export function Sheet({
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.16 }}
-            className="absolute inset-0 bg-void/70 backdrop-blur-[3px]"
+            className="absolute inset-0 bg-void/70"
           />
 
           <m.div

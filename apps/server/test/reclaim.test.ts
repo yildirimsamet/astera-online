@@ -1,5 +1,5 @@
 import { and, eq } from 'drizzle-orm';
-import { afterAll, beforeEach, describe, expect, it } from 'vitest';
+import { afterAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { SERVERS } from '@astera/rules';
 import {
   accounts,
@@ -309,10 +309,9 @@ describe('reclaiming idle seats', () => {
     await lastSeen(f.playerIds[0]!, SERVERS.idleDays + 1);
 
     // Simulates `Presence` writing on their first authenticated request.
-    const original = f.db.transaction.bind(f.db);
     let armed = true;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (f.db as any).transaction = async (fn: any) => {
+    const transaction = vi.spyOn(f.db, 'transaction');
+    transaction.mockImplementationOnce(async (fn) => {
       if (armed) {
         armed = false;
         await f.db
@@ -320,12 +319,11 @@ describe('reclaiming idle seats', () => {
           .set({ lastActiveAt: f.clock.now() })
           .where(eq(players.id, f.playerIds[0]!));
       }
-      return original(fn);
-    };
+      return f.db.transaction(fn);
+    });
 
     const result = await reclaimIdleSeats(f.db, f.clock);
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (f.db as any).transaction = original;
+    transaction.mockRestore();
 
     expect(result.reclaimed).toHaveLength(0);
     expect(await gone(idle)).toBe(false);
@@ -392,14 +390,23 @@ describe('reclaiming idle seats', () => {
     expect(await f.db.select().from(missions)).toHaveLength(0);
     expect(await f.db.select().from(debrisFields).where(eq(debrisFields.planetId, idle))).toHaveLength(0);
     expect(await f.db.select().from(battleReports)).toHaveLength(0);
-    // No orphaned wake-ups pointing at rows that no longer exist.
-    expect(await f.db.select().from(scheduledEvents)).toHaveLength(0);
+    // No orphaned planet wake-ups. Galaxy-owned season beats and deadlines must
+    // survive reclaiming an individual seat.
+    const remainingEvents = await f.db.select().from(scheduledEvents);
+    expect(remainingEvents.map((event) => event.kind).sort()).toEqual([
+      'season_act',
+      'season_act',
+      'season_act',
+      'season_end',
+      'season_rollover',
+    ]);
   });
 
   /** Somebody else's telescope pointed at the world, and their probe report about it. */
   it('clears a watch and a probe report aimed at the reclaimed world', async () => {
     await f.db.insert(watches).values({
       observerPlayerId: f.playerIds[1]!,
+      observerPlanetId: f.planetIds[1]!,
       slot: 0,
       targetPlanetId: idle,
     });

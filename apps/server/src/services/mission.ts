@@ -6,7 +6,7 @@ import {
   fleetCount,
   fleetSpeed,
   fleetSpeedMult,
-  fleetTravelMinutes,
+  fleetTravelExact,
   maxRadarRange,
   radarLead,
   type Fleet,
@@ -25,11 +25,18 @@ import {
   units,
 } from '../db/schema.js';
 import { assertFreeBay } from './flight.js';
-import { GameError, loadLocked, setUnits } from './planet.js';
+import {
+  assertSeasonOpenThrough,
+  assertWorldOperational,
+  GameError,
+  loadLocked,
+  setUnits,
+} from './planet.js';
 import { schedule } from '../worker/queue.js';
 import { publishShard } from '../stream/bus.js';
 import { pendingThreads, type PendingThread } from './session.js';
 import { planetView, type PlanetView } from './planetView.js';
+import { lockWorlds } from './ownership.js';
 
 export interface LaunchResult {
   missionId: string;
@@ -68,6 +75,7 @@ export async function launchAttack(
   targetPlanetId: string,
   requested: Fleet,
   clock: Clock,
+  expectedPlayerId?: string,
 ): Promise<LaunchResult> {
   if (originPlanetId === targetPlanetId) {
     throw new GameError('SELF_ATTACK', 'You cannot attack your own planet');
@@ -84,7 +92,9 @@ export async function launchAttack(
   }
 
   return db.transaction(async (tx) => {
-    const origin = await loadLocked(tx, originPlanetId, clock);
+    await lockWorlds(tx, [originPlanetId, targetPlanetId]);
+    const origin = await loadLocked(tx, originPlanetId, clock, { expectedPlayerId });
+    assertWorldOperational(origin);
 
     for (const [hull, n] of Object.entries(requested) as [HullId, number][]) {
       if (HULLS[hull].ground) {
@@ -164,20 +174,23 @@ export async function launchAttack(
     }
 
     const [me] = await tx.select().from(players).where(eq(players.id, origin.playerId));
-    const [them] = await tx.select().from(players).where(eq(players.id, target.playerId));
-    if (!me || !them) throw new GameError('PLAYER_NOT_FOUND', 'No such player', 404);
-
-    const since = addMinutes(origin.now, -ABUSE.bashWindowMinutes);
-    const recent = await tx
-      .select({ n: sql<number>`count(*)::int` })
-      .from(battleReports)
-      .where(
-        and(
-          eq(battleReports.attackerPlayerId, me.id),
-          eq(battleReports.defenderPlayerId, them.id),
-          gt(battleReports.createdAt, since),
-        ),
-      );
+    if (!me) throw new GameError('PLAYER_NOT_FOUND', 'No such player', 404);
+    if (target.protectedUntil !== null && target.protectedUntil > origin.now) {
+      throw new GameError('OCCUPATION_PROTECTED', 'That world is protected', 409, {
+        until: target.protectedUntil.toISOString(),
+      });
+    }
+    if (target.recoveryUntil !== null && target.recoveryUntil > origin.now) {
+      throw new GameError('WORLD_RECOVERING', 'That world is recovering', 409, {
+        until: target.recoveryUntil.toISOString(),
+      });
+    }
+    const [them] = target.controllerPlayerId
+      ? await tx.select().from(players).where(eq(players.id, target.controllerPlayerId))
+      : [];
+    if (target.kind !== 'NEUTRAL' && !them) {
+      throw new GameError('PLAYER_NOT_FOUND', 'No such player', 404);
+    }
 
     /**
      * THE BAND IS MEASURED IN CORE LEVELS, SO BOTH HAVE TO BE READ. D49.
@@ -189,24 +202,34 @@ export async function launchAttack(
      * introduce exactly the deadlock ordering the architecture rules forbid for
      * two-planet operations.
      */
-    const [targetCore] = await tx
-      .select({ level: buildings.level })
-      .from(buildings)
-      .where(and(eq(buildings.planetId, targetPlanetId), eq(buildings.type, 'CORE')))
-      .limit(1);
-
-    const gate = canAttack(
-      { playerId: me.id, coreLevel: origin.buildings.CORE },
-      { playerId: them.id, coreLevel: targetCore?.level ?? 1 },
-      recent[0]?.n ?? 0,
-    );
-    if (!gate.ok) {
-      throw new GameError(gate.reason ?? 'FORBIDDEN', describeRefusal(gate.reason), 403);
+    if (target.kind !== 'NEUTRAL' && them) {
+      const since = addMinutes(origin.now, -ABUSE.bashWindowMinutes);
+      const recent = await tx
+        .select({ n: sql<number>`count(*)::int` })
+        .from(battleReports)
+        .where(and(
+          eq(battleReports.attackerPlayerId, me.id),
+          eq(battleReports.defenderPlayerId, them.id),
+          gt(battleReports.createdAt, since),
+        ));
+      const [targetCore] = await tx
+        .select({ level: buildings.level })
+        .from(buildings)
+        .where(and(eq(buildings.planetId, targetPlanetId), eq(buildings.type, 'CORE')))
+        .limit(1);
+      const gate = canAttack(
+        { playerId: me.id, coreLevel: origin.buildings.CORE },
+        { playerId: them.id, coreLevel: targetCore?.level ?? 1 },
+        recent[0]?.n ?? 0,
+      );
+      if (!gate.ok) {
+        throw new GameError(gate.reason ?? 'FORBIDDEN', describeRefusal(gate.reason), 403);
+      }
     }
 
     const dist = distance(origin, target);
     // The Beacon in orbit, if there is one. D25.
-    const oneWay = fleetTravelMinutes(dist, requested, fleetSpeedMult(origin.orbit));
+    const oneWay = fleetTravelExact(dist, requested, fleetSpeedMult(origin.orbit));
     const arriveAt = addMinutes(origin.now, oneWay);
     /**
      * THE ENGAGEMENT. D44.
@@ -223,12 +246,14 @@ export async function launchAttack(
      * holding for exactly as long as the fleet is actually there.
      */
     const resolveAt = new Date(engagementEndsAt(arriveAt.getTime()));
+    assertSeasonOpenThrough(origin, addMinutes(resolveAt, oneWay));
 
     const [mission] = await tx
       .insert(missions)
       .values({
         seasonId: origin.seasonId,
         kind: 'attack',
+        ownerPlayerId: origin.playerId,
         originPlanetId,
         targetPlanetId,
         fleet: requested,
@@ -272,8 +297,8 @@ export async function launchAttack(
      * the moment this fleet crosses inside the WIDEST reach the ladder sells — and
      * `onRadarWarning` reads the level at the moment it runs, hopping down
      * `RADAR_RANGES` if the defender has not earned the reach it is holding. One
-     * event per raid instead of one per radar-equipped target; at 50 worlds that
-     * is noise.
+     * event per raid instead of one per radar-equipped target; at 351 worlds that
+     * distinction is load-bearing.
      *
      * D49 MADE THAT INSTANT DEPEND ON THIS FLEET. A radar is a circle now, so when
      * a raid crosses it is a function of the leg and of the speed the attacker

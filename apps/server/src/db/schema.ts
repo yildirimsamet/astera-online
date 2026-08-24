@@ -14,10 +14,18 @@ import {
   uniqueIndex,
   uuid,
 } from 'drizzle-orm/pg-core';
-import type { CombatRound, Fleet, Grade, HullId } from '@astera/rules';
+import type {
+  CombatRound,
+  BuildQueueId,
+  Fleet,
+  Grade,
+  HullId,
+  ResearchProjectId,
+  Resources,
+} from '@astera/rules';
 
 /**
- * Twenty-one tables. Nothing here stores a value that can be derived from a formula
+ * Twenty-seven tables. Nothing here stores a value that can be derived from a formula
  * and a clock — no fleet positions, no asteroid coordinates, no resource ticks.
  *
  * TIME MODEL: everything is `timestamptz`. The rules package works in minutes
@@ -26,17 +34,33 @@ import type { CombatRound, Fleet, Grade, HullId } from '@astera/rules';
  */
 
 export const seasonStatus = pgEnum('season_status', ['pending', 'live', 'frozen', 'wiped']);
-export const missionKind = pgEnum('mission_kind', ['attack', 'probe', 'return']);
+export const planetKind = pgEnum('planet_kind', ['CAPITAL', 'COLONY', 'NEUTRAL']);
+export const missionKind = pgEnum('mission_kind', [
+  'attack', 'probe', 'return', 'transfer', 'settlement', 'death_star',
+]);
 export const missionStatus = pgEnum('mission_status', ['in_flight', 'resolved', 'cancelled']);
 export const eventStatus = pgEnum('event_status', ['pending', 'processing', 'done', 'failed']);
+export const strategicAssetStatus = pgEnum('strategic_asset_status', [
+  'BUILDING', 'PAUSED', 'READY', 'LAUNCHED', 'CONSUMED',
+]);
 export const eventKind = pgEnum('event_kind', [
   'mission_arrival',
   'radar_warning',
   'asteroid_impact',
   'season_end',
+  'season_rollover',
   /** A Prospector reaching the rock it was aimed at, and getting home again. D19. */
   'mining_arrival',
   'mining_return',
+  /** A public season-act boundary. D96. */
+  'season_act',
+  /** Multi-world ruleset v2. New enum values remain append-only. D97. */
+  'neutral_reinforce',
+  'death_star_ready',
+  'recovery_end',
+  'occupation_end',
+  /** One ordinary construction or yard order reaching its authoritative instant. D4. */
+  'build_complete',
 ]);
 /**
  * WHAT THE GAME TELLS YOU, AND NOTHING ELSE. D45.
@@ -65,6 +89,13 @@ export const notificationKind = pgEnum('notification_kind', [
   'probe_report',
   /** A system opened up. Design Law #2, which had no delivery mechanism at all. D45. */
   'unlock',
+  /** Multi-world strategic moments. D97. */
+  'strategic_incoming',
+  'death_star_result',
+  'colony_captured',
+  'colony_lost',
+  'settlement_success',
+  'settlement_lost',
 ]);
 export type NotificationKind = (typeof notificationKind.enumValues)[number];
 
@@ -101,7 +132,7 @@ export const accounts = pgTable('accounts', {
  * `ordinal` is the fill order and the whole of the sequential-fill rule: the only
  * shard anyone may join is the lowest-ordinal one that still has a free slot.
  * Storing it rather than sorting by code keeps that rule readable — and keeps
- * `EU-10` from sorting between `EU-1` and `EU-2`, which is what happens the moment
+ * a future `EU-10` from sorting between `EU-1` and `EU-2`, which is what happens the moment
  * anyone orders these by name.
  */
 export const shards = pgTable('shards', {
@@ -111,7 +142,7 @@ export const shards = pgTable('shards', {
   name: text('name').notNull().default(''),
   ordinal: integer('ordinal').notNull().default(1),
   region: text('region').notNull().default('eu'),
-  playerCap: integer('player_cap').notNull().default(50),
+  playerCap: integer('player_cap').notNull().default(300),
 }, (t) => [
   uniqueIndex('shards_code_idx').on(t.code),
   uniqueIndex('shards_ordinal_idx').on(t.ordinal),
@@ -125,7 +156,37 @@ export const seasons = pgTable('seasons', {
   status: seasonStatus('status').notNull().default('pending'),
   startsAt: timestamp('starts_at', { withTimezone: true }).notNull(),
   endsAt: timestamp('ends_at', { withTimezone: true }).notNull(),
+  /** Immutable at creation; v1 has capitals only, v2 adds D97. */
+  rulesetVersion: integer('ruleset_version').notNull().default(1),
 }, (t) => [index('seasons_shard_status_idx').on(t.shardId, t.status)]);
+
+export interface SeasonRecap {
+  commanderName: string;
+  planetName: string;
+  battles: number;
+  attacks: number;
+  defences: number;
+  rival: { commanderName: string; battles: number } | null;
+  biggestRaid: { value: number; opponentName: string } | null;
+}
+
+/** Permanent identity and story, never permanent power. D85. */
+export const seasonResults = pgTable('season_results', {
+  seasonId: uuid('season_id').notNull().references(() => seasons.id),
+  accountId: uuid('account_id').notNull().references(() => accounts.id),
+  finalRank: integer('final_rank').notNull(),
+  dominion: real('dominion').notNull(),
+  damageDealt: real('damage_dealt').notNull().default(0),
+  damageTaken: real('damage_taken').notNull().default(0),
+  rivalName: text('rival_name'),
+  biggestRaid: real('biggest_raid').notNull().default(0),
+  title: text('title').notNull(),
+  recap: jsonb('recap').$type<SeasonRecap>().notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull(),
+}, (t) => [
+  primaryKey({ columns: [t.seasonId, t.accountId] }),
+  index('season_results_account_idx').on(t.accountId, t.createdAt),
+]);
 
 /* ── the season world ───────────────────────────────────────── */
 
@@ -154,6 +215,10 @@ export const players = pgTable('players', {
   lastActiveAt: timestamp('last_active_at', { withTimezone: true }).notNull().defaultNow(),
   /** Durable across devices, but not across a season: the newest chat instant read. D77. */
   lastChatReadAt: timestamp('last_chat_read_at', { withTimezone: true }),
+  /** One identity anchor for this season; no power, and no FK so reclaim stays possible. D91. */
+  rivalPlanetId: uuid('rival_planet_id'),
+  /** Commander identity survives a target colony changing hands. D97. */
+  rivalPlayerId: uuid('rival_player_id'),
   /**
    * Which unlocks this player has already been SHOWN.
    *
@@ -164,7 +229,7 @@ export const players = pgTable('players', {
   unlocksSeen: jsonb('unlocks_seen').$type<string[]>().notNull().default([]),
 }, (t) => [
   /**
-   * ONE ACCOUNT, ONE PLANET, ONE GALAXY. D21.
+   * ONE ACCOUNT, ONE COMMANDER, ONE GALAXY. D21 + D97.
    *
    * Unique on the account ALONE, not on (account, season) as it was while a single
    * shard existed. That older index permitted exactly the thing D21 forbids: one
@@ -203,10 +268,40 @@ export const chatMessages = pgTable('chat_messages', {
   index('chat_messages_author_rate_idx').on(t.authorPlayerId, t.createdAt),
 ]);
 
+export type GalaxyEventPayload =
+  | { planetName: string; commanderName: string }
+  | { planetName: string; commanderName: string; tier: number }
+  | { planetName: string; tier: number; claimUntil: string }
+  | {
+      planetName: string;
+      outcome: 'FIRST_STRIKE' | 'CAPTURED' | 'INEFFECTIVE';
+      /** Missing only on pre-D98 events, all of which were non-capital. */
+      capturable?: boolean;
+    }
+  | { asteroidIndex: number }
+  | { act: 'war' | 'consolidation' | 'sunset' };
+
+/** Public history, not intel. Its intentionally small contract is locked by D89. */
+export const galaxyEvents = pgTable('galaxy_events', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  seasonId: uuid('season_id').notNull().references(() => seasons.id),
+  kind: text('kind').notNull(),
+  refId: text('ref_id').notNull(),
+  /** No FK: the public snapshot survives an idle seat being reclaimed. */
+  subjectPlanetId: uuid('subject_planet_id'),
+  payload: jsonb('payload').$type<GalaxyEventPayload>().notNull(),
+  occurredAt: timestamp('occurred_at', { withTimezone: true }).notNull(),
+}, (t) => [
+  uniqueIndex('galaxy_events_source_idx').on(t.seasonId, t.kind, t.refId),
+  index('galaxy_events_season_cursor_idx').on(t.seasonId, t.occurredAt, t.id),
+]);
+
 export const planets = pgTable('planets', {
   id: uuid('id').primaryKey().defaultRandom(),
-  playerId: uuid('player_id').notNull().references(() => players.id),
+  /** Physical name retained for expand/backfill compatibility. Neutral is NULL. */
+  controllerPlayerId: uuid('player_id').references(() => players.id),
   seasonId: uuid('season_id').notNull().references(() => seasons.id),
+  kind: planetKind('kind').notNull().default('CAPITAL'),
   name: text('name').notNull(),
   /** Index into the generated slot list — coordinates are derived, not stored. */
   slotIndex: integer('slot_index').notNull(),
@@ -215,6 +310,7 @@ export const planets = pgTable('planets', {
   z: real('z').notNull(),
   alloy: real('alloy').notNull().default(500),
   crystal: real('crystal').notNull().default(120),
+  deuterium: real('deuterium').notNull().default(0),
   /**
    * Production that has not been collected yet. D16.
    *
@@ -226,10 +322,13 @@ export const planets = pgTable('planets', {
    */
   bufferAlloy: real('buffer_alloy').notNull().default(0),
   bufferCrystal: real('buffer_crystal').notNull().default(0),
+  bufferDeuterium: real('buffer_deuterium').notNull().default(0),
   shield: real('shield').notNull().default(0),
   /** Lazy economy anchor. Advanced inside the row lock, never on a timer. */
   lastTickAt: timestamp('last_tick_at', { withTimezone: true }).notNull().defaultNow(),
   disruptedUntil: timestamp('disrupted_until', { withTimezone: true }),
+  recoveryUntil: timestamp('recovery_until', { withTimezone: true }),
+  protectedUntil: timestamp('protected_until', { withTimezone: true }),
   /**
    * HOW MANY OF EACH HULL THIS PLANET HAS EVER BUILT. Cumulative, never reduced.
    *
@@ -248,16 +347,48 @@ export const planets = pgTable('planets', {
    */
   builtEver: jsonb('built_ever').$type<Fleet>().notNull().default({}),
 }, (t) => [
-  uniqueIndex('planets_player_idx').on(t.playerId),
+  uniqueIndex('planets_capital_player_idx')
+    .on(t.controllerPlayerId)
+    .where(sql`${t.kind} = 'CAPITAL'`),
   uniqueIndex('planets_season_slot_idx').on(t.seasonId, t.slotIndex),
   index('planets_season_idx').on(t.seasonId),
+  index('planets_controller_idx').on(t.controllerPlayerId),
+  check(
+    'planets_controller_kind_check',
+    sql`(${t.kind} = 'NEUTRAL' AND ${t.controllerPlayerId} IS NULL)
+      OR (${t.kind} <> 'NEUTRAL' AND ${t.controllerPlayerId} IS NOT NULL)`,
+  ),
 ]);
+
+/** Shared stock/profile state for one deterministic neutral world. D97. */
+export const neutralPlanetState = pgTable('neutral_planet_state', {
+  planetId: uuid('planet_id').primaryKey().references(() => planets.id),
+  tier: integer('tier').notNull(),
+  profileSeed: integer('profile_seed').notNull(),
+  claimUntil: timestamp('claim_until', { withTimezone: true }),
+  nextReinforcementAt: timestamp('next_reinforcement_at', { withTimezone: true }),
+  economyAnchorAt: timestamp('economy_anchor_at', { withTimezone: true }).notNull(),
+}, (t) => [check('neutral_planet_tier_check', sql`${t.tier} BETWEEN 1 AND 3`)]);
 
 export const buildings = pgTable('buildings', {
   planetId: uuid('planet_id').notNull().references(() => planets.id),
   type: text('type').notNull(),
   level: integer('level').notNull().default(0),
 }, (t) => [primaryKey({ columns: [t.planetId, t.type] })]);
+
+/**
+ * THE SMALL SEASONAL FRONTIER, NOT A TECH TREE. D93.
+ *
+ * A completed project is the only durable fact. Discovery and availability are
+ * derived from the season clock, combat history and prerequisites, so they can
+ * never drift out of sync with what the player has actually done. The composite
+ * key is also the concurrency guard: two taps cannot buy the same project twice.
+ */
+export const planetResearch = pgTable('planet_research', {
+  planetId: uuid('planet_id').notNull().references(() => planets.id),
+  projectId: text('project_id').$type<ResearchProjectId>().notNull(),
+  completedAt: timestamp('completed_at', { withTimezone: true }).notNull(),
+}, (t) => [primaryKey({ columns: [t.planetId, t.projectId] })]);
 
 /**
  * EVERYTHING A PLANET HAS INSTALLED — instruments and satellites alike. D25.
@@ -281,6 +412,8 @@ export const satellites = pgTable('satellites', {
 /** One table for ships and turrets. `location` is 'home' or a mission id. */
 export const units = pgTable('units', {
   planetId: uuid('planet_id').notNull().references(() => planets.id),
+  /** Null only for a neutral system garrison. */
+  ownerPlayerId: uuid('owner_player_id').references(() => players.id),
   hull: text('hull').$type<HullId>().notNull(),
   location: text('location').notNull().default('home'),
   count: integer('count').notNull().default(0),
@@ -298,13 +431,17 @@ export const missions = pgTable('missions', {
   seasonId: uuid('season_id').notNull().references(() => seasons.id),
   kind: missionKind('kind').notNull(),
   status: missionStatus('status').notNull().default('in_flight'),
+  ownerPlayerId: uuid('owner_player_id').notNull().references(() => players.id),
   originPlanetId: uuid('origin_planet_id').notNull().references(() => planets.id),
   targetPlanetId: uuid('target_planet_id').notNull().references(() => planets.id),
   fleet: jsonb('fleet').$type<Fleet>().notNull(),
-  loot: jsonb('loot').$type<{ alloy: number; crystal: number }>(),
+  loot: jsonb('loot').$type<Resources>(),
+  cargo: jsonb('cargo').$type<Resources>(),
   distance: real('distance').notNull(),
   departAt: timestamp('depart_at', { withTimezone: true }).notNull(),
   arriveAt: timestamp('arrive_at', { withTimezone: true }).notNull(),
+  /** Frozen at launch: destructive rockets may never become accidental captures. D97. */
+  deathStarCapture: boolean('death_star_capture').notNull().default(false),
   /**
    * The outbound leg this one is coming home from.
    *
@@ -318,6 +455,70 @@ export const missions = pgTable('missions', {
   index('missions_status_arrive_idx').on(t.status, t.arriveAt),
   index('missions_origin_idx').on(t.originPlanetId),
   index('missions_target_idx').on(t.targetPlanetId),
+]);
+
+/** A strategic asset belongs to its current planet and transfers with it. D97. */
+export const strategicAssets = pgTable('strategic_assets', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  planetId: uuid('planet_id').notNull().references(() => planets.id),
+  type: text('type').notNull().default('DEATH_STAR'),
+  status: strategicAssetStatus('status').notNull(),
+  startedAt: timestamp('started_at', { withTimezone: true }).notNull(),
+  readyAt: timestamp('ready_at', { withTimezone: true }),
+  remainingSeconds: integer('remaining_seconds'),
+  missionId: uuid('mission_id').references(() => missions.id),
+}, (t) => [
+  uniqueIndex('strategic_assets_planet_active_idx')
+    .on(t.planetId)
+    .where(sql`${t.status} IN ('BUILDING', 'PAUSED', 'READY')`),
+  index('strategic_assets_mission_idx').on(t.missionId),
+  check('strategic_assets_type_check', sql`${t.type} = 'DEATH_STAR'`),
+]);
+
+export type BuildOrderKind = 'BUILDING' | 'HULL' | 'INSTRUMENT' | 'SATELLITE' | 'RESEARCH';
+export type BuildOrderStatus = 'BUILDING' | 'COMPLETED' | 'CANCELLED' | 'FAILED';
+
+/**
+ * One committed ordinary build. D4.
+ *
+ * The row stores work, not its outcome: the building level, unit stack or research
+ * row is written only when `readyAt` arrives. `slot` is deliberately constrained
+ * in the database. Together with the partial unique index it makes a queue deeper
+ * than `BUILD.queueDepth` impossible even if a future caller forgets the service
+ * guard.
+ */
+export const buildOrders = pgTable('build_orders', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  planetId: uuid('planet_id').notNull().references(() => planets.id),
+  queue: text('queue').$type<BuildQueueId>().notNull(),
+  slot: integer('slot').notNull(),
+  kind: text('kind').$type<BuildOrderKind>().notNull(),
+  subject: text('subject').notNull(),
+  count: integer('count').notNull().default(1),
+  status: text('status').$type<BuildOrderStatus>().notNull().default('BUILDING'),
+  startedAt: timestamp('started_at', { withTimezone: true }).notNull(),
+  readyAt: timestamp('ready_at', { withTimezone: true }).notNull(),
+  /** Full work duration; later orders can be re-timed after a cancellation. */
+  remainingSeconds: integer('remaining_seconds').notNull(),
+  /** Still Wealth while committed; returned in full only when the system abandons it. */
+  cost: jsonb('cost').$type<Resources>().notNull(),
+}, (t) => [
+  uniqueIndex('build_orders_planet_queue_slot_active_idx')
+    .on(t.planetId, t.queue, t.slot)
+    .where(sql`${t.status} = 'BUILDING'`),
+  index('build_orders_planet_status_idx').on(t.planetId, t.status),
+  check('build_orders_queue_check', sql`${t.queue} IN ('CONSTRUCTION', 'YARD')`),
+  check(
+    'build_orders_kind_check',
+    sql`${t.kind} IN ('BUILDING', 'HULL', 'INSTRUMENT', 'SATELLITE', 'RESEARCH')`,
+  ),
+  check(
+    'build_orders_status_check',
+    sql`${t.status} IN ('BUILDING', 'COMPLETED', 'CANCELLED', 'FAILED')`,
+  ),
+  check('build_orders_slot_check', sql`${t.slot} BETWEEN 0 AND 2`),
+  check('build_orders_count_check', sql`${t.count} > 0`),
+  check('build_orders_remaining_check', sql`${t.remainingSeconds} >= 0`),
 ]);
 
 /**
@@ -339,6 +540,9 @@ export const scheduledEvents = pgTable('scheduled_events', {
 }, (t) => [
   index('events_due_idx').on(t.status, t.resolveAt),
   index('events_claimed_idx').on(t.status, t.claimedAt),
+  uniqueIndex('events_one_season_end_idx')
+    .on(t.seasonId, t.kind)
+    .where(sql`${t.kind} = 'season_end'`),
 ]);
 
 /* ── outcomes and intel ─────────────────────────────────────── */
@@ -348,12 +552,18 @@ export const battleReports = pgTable('battle_reports', {
   seasonId: uuid('season_id').notNull().references(() => seasons.id),
   missionId: uuid('mission_id').notNull().references(() => missions.id),
   attackerPlayerId: uuid('attacker_player_id').notNull().references(() => players.id),
-  defenderPlayerId: uuid('defender_player_id').notNull().references(() => players.id),
+  defenderPlayerId: uuid('defender_player_id').references(() => players.id),
+  targetPlanetId: uuid('target_planet_id').notNull().references(() => planets.id),
+  targetKind: text('target_kind').$type<'PLAYER' | 'NEUTRAL'>().notNull().default('PLAYER'),
   grade: text('grade').$type<Grade>().notNull(),
   rounds: jsonb('rounds').$type<CombatRound[]>().notNull(),
-  loot: jsonb('loot').$type<{ alloy: number; crystal: number }>().notNull(),
+  loot: jsonb('loot').$type<Resources>().notNull(),
   attackerLosses: jsonb('attacker_losses').$type<Fleet>().notNull(),
   defenderLosses: jsonb('defender_losses').$type<Fleet>().notNull(),
+  /** True only when surviving cargo, rather than exposed stock, capped the haul. D94. */
+  cargoLimited: boolean('cargo_limited').notNull().default(false),
+  /** Auditable combat telemetry; reserved for the Breacher decision, not an unlock yet. */
+  shieldAbsorbed: real('shield_absorbed').notNull().default(0),
   /**
    * The attacker's Dominion movement, exactly as the ledger recorded it.
    *
@@ -402,9 +612,12 @@ export const probeReports = pgTable('probe_reports', {
   /** 0.30–1.00. Shown to the player so they know how much to trust the bands. */
   accuracy: real('accuracy').notNull(),
   stock: jsonb('stock').$type<{ low: number; high: number }>().notNull(),
+  /** Null until the observer has earned isotope spectroscopy. */
+  deuteriumStock: jsonb('deuterium_stock').$type<{ low: number; high: number }>(),
   defence: jsonb('defence').$type<{ low: number; high: number }>().notNull(),
   fleetSize: jsonb('fleet_size').$type<{ low: number; high: number }>().notNull(),
   fleetHome: boolean('fleet_home').notNull(),
+  strategicStatus: text('strategic_status').$type<'READY' | 'BUILDING' | 'NONE' | 'UNKNOWN'>(),
   /** Whether the target's radar caught it — the observer learns this too. */
   detected: boolean('detected').notNull(),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
@@ -425,6 +638,7 @@ export const probeReports = pgTable('probe_reports', {
 /** Telescope assignments. The target is NEVER told this row exists. */
 export const watches = pgTable('watches', {
   observerPlayerId: uuid('observer_player_id').notNull().references(() => players.id),
+  observerPlanetId: uuid('observer_planet_id').notNull().references(() => planets.id),
   slot: integer('slot').notNull(),
   targetPlanetId: uuid('target_planet_id').notNull().references(() => planets.id),
   lastStatus: text('last_status'),
@@ -440,7 +654,10 @@ export const watches = pgTable('watches', {
    * pays, and nothing about it is readable from the watched planet's side.
    */
   cooldownUntil: timestamp('cooldown_until', { withTimezone: true }),
-}, (t) => [primaryKey({ columns: [t.observerPlayerId, t.slot] })]);
+}, (t) => [
+  primaryKey({ columns: [t.observerPlanetId, t.slot] }),
+  index('watches_observer_player_idx').on(t.observerPlayerId),
+]);
 
 /**
  * How much ore has been taken out of a rock. D19.
@@ -485,8 +702,10 @@ export const debrisFields = pgTable('debris_fields', {
   missionId: uuid('mission_id').references(() => missions.id),
   alloy: real('alloy').notNull(),
   crystal: real('crystal').notNull(),
+  deuterium: real('deuterium').notNull().default(0),
   takenAlloy: real('taken_alloy').notNull().default(0),
   takenCrystal: real('taken_crystal').notNull().default(0),
+  takenDeuterium: real('taken_deuterium').notNull().default(0),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull(),
 }, (t) => [
   index('debris_season_idx').on(t.seasonId, t.createdAt),
@@ -539,6 +758,7 @@ export const miningRuns = pgTable('mining_runs', {
   /** What it actually got. Zero means it arrived to find the rock stripped. */
   minedAlloy: real('mined_alloy').notNull().default(0),
   minedCrystal: real('mined_crystal').notNull().default(0),
+  minedDeuterium: real('mined_deuterium').notNull().default(0),
 }, (t) => [
   index('mining_planet_idx').on(t.planetId, t.status),
   index('mining_season_idx').on(t.seasonId, t.status),
@@ -621,6 +841,7 @@ export const rewardGrants = pgTable('reward_grants', {
   rewardId: text('reward_id').notNull(),
   alloy: real('alloy').notNull().default(0),
   crystal: real('crystal').notNull().default(0),
+  deuterium: real('deuterium').notNull().default(0),
   /** NULL means unlocked and waiting. Only `SOCIAL` is ever seen in that state. */
   claimedAt: timestamp('claimed_at', { withTimezone: true }),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),

@@ -45,7 +45,7 @@ const planet = (over: Partial<Omit<PlanetView, 'planet'>> = {}): PlanetView =>
     },
   );
 
-const show = (over: Partial<Omit<PlanetView, 'planet'>> = {}) =>
+const show = (over: Partial<Omit<PlanetView, 'planet'>> = {}, queued?: string) =>
   render(
     <ItemSheet
       item={{ kind: 'instrument', id: 'TELESCOPE' }}
@@ -53,6 +53,7 @@ const show = (over: Partial<Omit<PlanetView, 'planet'>> = {}) =>
       role="Watches a world silently."
       planet={planet(over)}
       held={{ alloy: 100_000, crystal: 50_000 }}
+      {...(queued ? { queued } : {})}
       pending={false}
       onAct={vi.fn()}
       onClose={vi.fn()}
@@ -129,10 +130,36 @@ describe('what the ladder charges', () => {
 
   /** The server's own quote wins for the very next level, where it has one. */
   it('prefers the server quote for the step it is actually selling', () => {
-    show({ instrumentCosts: { TELESCOPE: { alloy: 4321, crystal: 0 } } });
+    show({ instrumentCosts: { TELESCOPE: { alloy: 4321, crystal: 0, deuterium: 0 } } });
     // The next level takes the server's figure; the two beyond it are the rules'.
     expect(screen.getAllByText(compact(4321)).length).toBeGreaterThan(0);
     expect(screen.queryByText(compact(instrumentCost('TELESCOPE', 0).alloy))).toBeNull();
+  });
+
+  it('sells the level after an already queued level without pretending it is installed', () => {
+    const now = new Date();
+    show({
+      instruments: { TELESCOPE: 1 },
+      queues: {
+        CONSTRUCTION: [{
+          id: 'telescope-2',
+          queue: 'CONSTRUCTION',
+          slot: 0,
+          kind: 'INSTRUMENT',
+          subject: 'TELESCOPE',
+          count: 1,
+          startedAt: now,
+          finishesAt: new Date(now.getTime() + 60_000),
+          cost: instrumentCost('TELESCOPE', 1),
+        }],
+        YARD: [],
+      },
+    }, '1 order queued');
+
+    expect(screen.getByText('1 order queued')).toBeInTheDocument();
+    expect(screen.getByText(/level 1/i)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /raise to l3/i })).toBeInTheDocument();
+    expect(document.body.textContent).toContain(compact(instrumentCost('TELESCOPE', 2).alloy));
   });
 });
 
@@ -145,7 +172,7 @@ describe('what the ladder charges', () => {
  * instead is the one thing that is actually scarce: the SLOT.
  */
 describe('a satellite, which has no levels at all', () => {
-  const showSat = (over: Partial<PlanetView> = {}) =>
+  const showSat = (over: Partial<PlanetView> = {}, completed?: string, queued?: string) =>
     render(
       <ItemSheet
         item={{ kind: 'satellite', id: 'FOUNDRY' }}
@@ -153,6 +180,8 @@ describe('a satellite, which has no levels at all', () => {
         role="EARN. Both metals, faster."
         planet={planet(over)}
         held={{ alloy: 100_000, crystal: 50_000 }}
+        {...(completed ? { completed } : {})}
+        {...(queued ? { queued } : {})}
         pending={false}
         onAct={vi.fn()}
         onClose={vi.fn()}
@@ -174,7 +203,7 @@ describe('a satellite, which has no levels at all', () => {
   });
 
   it('quotes the flat price, and never a per-level one', () => {
-    showSat({ satelliteCosts: { FOUNDRY: { alloy: 9000, crystal: 3000 } } });
+    showSat({ satelliteCosts: { FOUNDRY: { alloy: 9000, crystal: 3000, deuterium: 0 } } });
     expect(screen.getAllByText(compact(9000)).length).toBeGreaterThan(0);
   });
 
@@ -191,7 +220,32 @@ describe('a satellite, which has no levels at all', () => {
   });
 
   it('reads as done once it is up there', () => {
-    showSat({ orbit: ['FOUNDRY'], orbitSlots: 2 });
+    showSat({ orbit: ['FOUNDRY'], orbitSlots: 2 }, 'Already in orbit');
     expect(screen.getByText(/^in orbit$/i)).toBeDefined();
+    expect(screen.getByRole('status')).toHaveTextContent('Already in orbit');
+    expect(screen.queryByRole('button', { name: /already in orbit/i })).toBeNull();
+    expect(screen.queryByText(/locked/i)).toBeNull();
+  });
+
+  it('keeps a queued one-time satellite terminal until it reaches orbit', () => {
+    const now = new Date();
+    showSat({
+      queues: {
+        CONSTRUCTION: [{
+          id: 'foundry-1',
+          queue: 'CONSTRUCTION',
+          slot: 0,
+          kind: 'SATELLITE',
+          subject: 'FOUNDRY',
+          count: 1,
+          startedAt: now,
+          finishesAt: new Date(now.getTime() + 60_000),
+          cost: { alloy: 9000, crystal: 3000, deuterium: 0 },
+        }],
+        YARD: [],
+      },
+    }, undefined, '1 order queued');
+    expect(screen.getByRole('status')).toHaveTextContent('1 order queued');
+    expect(screen.queryByRole('button', { name: /put in orbit/i })).toBeNull();
   });
 });

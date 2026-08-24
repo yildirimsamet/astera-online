@@ -7,7 +7,7 @@ import { ApiProvider } from '../src/api/context.js';
 import { Api } from '../src/api/client.js';
 import { LandingScreen } from '../src/screens/LandingScreen.jsx';
 import { ServersScreen } from '../src/screens/ServersScreen.jsx';
-import type { ServerRow } from '../src/api/schemas.js';
+import type { HistoricalSeasonResult, ServerRow } from '../src/api/schemas.js';
 import type { Loader } from '../src/lib/preload.js';
 
 /**
@@ -314,6 +314,7 @@ describe('the server list', () => {
           displayName="Sable"
           onChoose={props.onChoose ?? vi.fn()}
           onSignOut={props.onSignOut ?? vi.fn()}
+          {...(props.latestResult === undefined ? {} : { latestResult: props.latestResult })}
           {...(props.error === undefined ? {} : { error: props.error })}
         />
       </Wrapper>,
@@ -388,6 +389,45 @@ describe('the server list', () => {
     expect(screen.getByRole('button', { name: /sign out/i })).toBeInTheDocument();
   });
 
+  it('shows an unseen permanent record after its planet has been wiped', async () => {
+    window.localStorage.clear();
+    const latestResult: HistoricalSeasonResult = {
+      seasonId: 'old-season',
+      accountId: 'account-1',
+      shard: 'EU-1',
+      shardName: 'Vantage',
+      finalRank: 2,
+      dominion: 184,
+      damageDealt: 12_450,
+      damageTaken: 8_200,
+      rivalName: 'Rook',
+      biggestRaid: 4_800,
+      title: 'Vanguard',
+      recap: {
+        commanderName: 'Sable',
+        planetName: 'Kestrel-12',
+        battles: 9,
+        attacks: 6,
+        defences: 3,
+        rival: { commanderName: 'Rook', battles: 4 },
+        biggestRaid: { value: 4_800, opponentName: 'Rook' },
+      },
+      createdAt: new Date('2026-08-22T18:00:00Z'),
+    };
+    show([server()], { latestResult });
+
+    expect(await screen.findByRole('heading', { name: 'Vanguard' })).toBeInTheDocument();
+    /**
+     * NOT "explore the final galaxy" — from the server list there is no galaxy
+     * behind this screen to go back to, and the season it records is gone. The
+     * button has to say what it does, and it has to be there at all: the record
+     * used to be a screen a commander could open and not get out of.
+     */
+    expect(screen.queryByRole('button', { name: /explore the final galaxy/i })).not.toBeInTheDocument();
+    await userEvent.setup().click(screen.getAllByRole('button', { name: /^close$/i })[0]!);
+    expect(screen.getByRole('button', { name: /last season record/i })).toBeInTheDocument();
+  });
+
   it('says so plainly when the whole world is full', async () => {
     show([server({ planets: 50, status: 'full' })]);
     expect(await screen.findByText(/every galaxy is full/i)).toBeInTheDocument();
@@ -431,13 +471,13 @@ describe('the server list', () => {
  * the menu, and it still says who you are to anyone who asks it.
  */
 describe('reaching the way out', () => {
-  const header = async (onOpen = vi.fn()) => {
+  const header = async (onOpen = vi.fn(), payload = planetPayload()) => {
     const { StatusBar } = await import('../src/shell/StatusBar.js');
     const { ToastProvider } = await import('../src/ui/Toast.js');
     const { wrapper: Wrapper, queries } = harness();
 
     // The header renders nothing until it knows what the player holds.
-    queries.setQueryData(['planet'], planetPayload());
+    queries.setQueryData(['planet'], payload);
     queries.setQueryData(['season'], seasonPayload());
 
     render(
@@ -455,6 +495,28 @@ describe('reaching the way out', () => {
     const control = screen.getByRole('button', { name: /commander Vantage/i });
     await userEvent.setup().click(control);
     expect(onOpen).toHaveBeenCalledWith('menu');
+  });
+
+  it('shows the real Deuterium balance before Spectrometry is complete', async () => {
+    await header();
+    expect(screen.getByLabelText('Deuterium')).toHaveTextContent('0');
+    expect(within(screen.getByLabelText('Deuterium')).getByRole('meter')).toBeInTheDocument();
+    expect(screen.getAllByRole('meter')).toHaveLength(3);
+  });
+
+  it('keeps all exact balances visible and gives the Works a third vessel', async () => {
+    const payload = planetPayload();
+    payload.planet.alloy = 27_721;
+    payload.planet.crystal = 76_687;
+    payload.planet.deuterium = 12_345;
+    await header(vi.fn(), payload);
+    const strip = document.querySelector('[data-resource-strip]');
+    expect(strip).toHaveTextContent('27,721');
+    expect(strip).toHaveTextContent('76,687');
+    expect(strip).toHaveTextContent('12,345');
+    expect(strip?.querySelector('.truncate')).toBeNull();
+    expect(document.querySelectorAll('.works-vessel')).toHaveLength(3);
+    expect(document.querySelector('.works-fill-deuterium')).not.toBeNull();
   });
 
   /**
@@ -539,6 +601,45 @@ describe('reaching the way out', () => {
     await userEvent.setup().click(screen.getByRole('button', { name: /intel/i }));
     expect(onOpen).toHaveBeenCalledWith('intel');
   });
+
+  it('offers one-tap focus for a live Rival and a clear action for a reclaimed one', async () => {
+    const { MenuPanel } = await import('../src/shell/MenuPanel.js');
+    const onFocusRival = vi.fn();
+    const onClearRival = vi.fn();
+    const { wrapper: Wrapper } = harness();
+
+    const { rerender } = render(
+      <Wrapper>
+        <MenuPanel
+          galaxy="Vantage"
+          shard="EU-1"
+          endsAt={null}
+          rival={{ owner: 'Sable', name: 'Orrery-8' }}
+          onFocusRival={onFocusRival}
+          onOpen={vi.fn()}
+          onSignOut={vi.fn()}
+        />
+      </Wrapper>,
+    );
+    await userEvent.setup().click(screen.getByRole('button', { name: /rival · sable/i }));
+    expect(onFocusRival).toHaveBeenCalledOnce();
+
+    rerender(
+      <Wrapper>
+        <MenuPanel
+          galaxy="Vantage"
+          shard="EU-1"
+          endsAt={null}
+          rivalLost
+          onClearRival={onClearRival}
+          onOpen={vi.fn()}
+          onSignOut={vi.fn()}
+        />
+      </Wrapper>,
+    );
+    await userEvent.setup().click(screen.getByRole('button', { name: /rival signal lost/i }));
+    expect(onClearRival).toHaveBeenCalledOnce();
+  });
 });
 
 /** The minimum a header needs to render. Nothing here is under test. */
@@ -550,14 +651,18 @@ function planetPayload() {
       position: { x: 0, y: 0, z: 0 },
       alloy: 500,
       crystal: 120,
+      deuterium: 0,
       alloyCap: 5000,
       crystalCap: 1000,
+      deuteriumCap: 500,
       alloyPerHour: 160,
       crystalPerHour: 56,
       bufferAlloy: 0,
       bufferCrystal: 0,
+      bufferDeuterium: 0,
       bufferAlloyCap: 640,
       bufferCrystalCap: 224,
+      bufferDeuteriumCap: 112,
       vaultFloor: 300,
       shield: 0,
       disruptedUntil: null,
@@ -570,8 +675,10 @@ function planetPayload() {
     orbitSlots: 1,
     flight: { used: 0, total: 3 },
     satelliteCosts: {},
+    research: [],
     fleet: { WASP: 12 },
     ground: {},
+    fleetAway: {},
     score: { wealth: 1200, dominion: 0 },
   };
 }

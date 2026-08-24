@@ -55,8 +55,11 @@ async function bodyOf(call: (api: Api) => Promise<unknown>): Promise<{
 const WITH_BODY: [name: string, call: (api: Api) => Promise<unknown>, expected: unknown][] = [
   ['register', (a) => a.register('vantage', 'a-long-enough-password'), { username: 'vantage', password: 'a-long-enough-password' }],
   ['login', (a) => a.login('vantage', 'a-long-enough-password'), { username: 'vantage', password: 'a-long-enough-password' }],
+  ['claim', (a) => a.claim('vantage', 'a-long-enough-password', []), { username: 'vantage', password: 'a-long-enough-password', intents: [] }],
+  ['setRival', (a) => a.setRival('p-2'), { planetId: 'p-2' }],
   ['upgrade', (a) => a.upgrade('CORE'), { type: 'CORE' }],
   ['build', (a) => a.build('WASP', 4), { hull: 'WASP', count: 4 }],
+  ['completeResearch', (a) => a.completeResearch('ISOTOPE_SPECTROMETRY'), { projectId: 'ISOTOPE_SPECTROMETRY' }],
   ['raiseInstrument', (a) => a.raiseInstrument('TELESCOPE'), { type: 'TELESCOPE' }],
   ['installSatellite', (a) => a.installSatellite('UPLINK'), { type: 'UPLINK' }],
   ['launch', (a) => a.launch('p-1', { WASP: 3 }), { targetPlanetId: 'p-1', fleet: { WASP: 3 } }],
@@ -64,6 +67,7 @@ const WITH_BODY: [name: string, call: (api: Api) => Promise<unknown>, expected: 
   ['probe', (a) => a.probe('p-1'), { targetPlanetId: 'p-1' }],
   ['postChat', (a) => a.postChat('hello'), { content: 'hello' }],
   ['markChatRead', (a) => a.markChatRead('00000000-0000-4000-8000-000000000001'), { messageId: '00000000-0000-4000-8000-000000000001' }],
+  ['claimReward', (a) => a.claimReward('first-blood'), { id: 'first-blood' }],
   // The two that were broken.
   ['mine', (a) => a.mine(7, 3), { asteroidIndex: 7, craft: 3 }],
   ['harvest', (a) => a.harvest('field-1', 3), { fieldId: 'field-1', craft: 3 }],

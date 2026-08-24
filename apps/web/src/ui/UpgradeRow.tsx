@@ -4,7 +4,7 @@ import type { Gain } from '../lib/gains.js';
 
 import { haptic } from '../lib/haptics.js';
 import { duration } from '../lib/time.js';
-import { ActionButton, Price, StatStrip, type Verb } from './Action.js';
+import { ActionButton, Price, ResourceAmounts, StatStrip, type Verb } from './Action.js';
 import { LockMark } from './marks.js';
 
 /**
@@ -56,6 +56,11 @@ export function UpgradeRow({
   held,
   income,
   blocked,
+  completed,
+  queued,
+  queuedActionable = false,
+  unowned = false,
+  inactive,
   verb,
   actionLabel,
   stats,
@@ -82,11 +87,21 @@ export function UpgradeRow({
   tag?: string;
   role: string;
   gain?: Gain;
-  cost: { alloy: number; crystal: number };
-  held: { alloy: number; crystal: number };
+  cost: { alloy: number; crystal: number; deuterium?: number };
+  held: { alloy: number; crystal: number; deuterium?: number };
   /** Production rates, so an unaffordable row can say WHEN instead of how far. */
   income?: { alloyPerHour: number; crystalPerHour: number };
   blocked?: Blocked;
+  /** Owned once, researched, or at the real final level. */
+  completed?: string;
+  /** Paid for and waiting in one of the planet's two build queues. */
+  queued?: string;
+  /** This level/batch is queued, but another order of the same repeatable item may follow it. */
+  queuedActionable?: boolean;
+  /** Available to buy, but not yet owned. Grey art without a lock. */
+  unowned?: boolean;
+  /** Owned permanently, but temporarily below its stored effect after Core damage. */
+  inactive?: string;
   /** Which act this is, so the control can carry its shape. */
   verb: Verb;
   /** Overrides the verb's own word where a row needs something specific. */
@@ -104,8 +119,11 @@ export function UpgradeRow({
   const { t } = useTranslation();
   const shortAlloy = Math.max(0, cost.alloy - held.alloy);
   const shortCrystal = Math.max(0, cost.crystal - held.crystal);
-  const affordable = shortAlloy === 0 && shortCrystal === 0;
-  const locked = blocked !== undefined;
+  const shortDeuterium = Math.max(0, (cost.deuterium ?? 0) - (held.deuterium ?? 0));
+  const affordable = shortAlloy === 0 && shortCrystal === 0 && shortDeuterium === 0;
+  const locked = blocked !== undefined
+    && completed === undefined
+    && (queued === undefined || queuedActionable);
 
   /**
    * How long until this is affordable, at the planet's current rates.
@@ -118,7 +136,9 @@ export function UpgradeRow({
    * "affordable in ∞" is worse than saying nothing at all.
    */
   const waitMinutes =
-    income && (income.alloyPerHour > 0 || income.crystalPerHour > 0)
+    shortDeuterium > 0
+      ? null
+      : income && (income.alloyPerHour > 0 || income.crystalPerHour > 0)
       ? Math.max(
           shortAlloy > 0 ? (shortAlloy / Math.max(1, income.alloyPerHour)) * 60 : 0,
           shortCrystal > 0 ? (shortCrystal / Math.max(1, income.crystalPerHour)) * 60 : 0,
@@ -127,6 +147,17 @@ export function UpgradeRow({
 
   return (
     <div
+      data-progression-state={
+        completed
+          ? 'complete'
+          : queued
+            ? 'queued'
+            : locked
+              ? 'locked'
+              : unowned
+                ? 'available-unowned'
+                : 'owned'
+      }
       className={`relative overflow-hidden border-b border-line-soft p-3 last:border-b-0 ${
         highlighted ? 'bg-crystal/10 ring-1 ring-inset ring-crystal/40' : ''
       } ${flash ? 'sweep' : ''}`}
@@ -180,19 +211,33 @@ export function UpgradeRow({
         */}
         {tag && <p className="mt-0.5 text-[11px] font-semibold leading-snug text-dim">{tag}</p>}
       </div>
+      {inactive && (
+        <p className="pointer-events-none relative z-10 mb-2 rounded border border-alert/35 bg-alert/10 px-2 py-1.5 text-[11px] leading-snug text-alert">
+          {inactive}
+        </p>
+      )}
+      {queued && (
+        <p className="pointer-events-none relative z-10 mb-2 rounded border border-crystal/30 bg-crystal/10 px-2 py-1.5 text-[11px] leading-snug text-crystal">
+          {queued}
+        </p>
+      )}
 
       <div className="pointer-events-none relative z-10 flex items-center gap-3">
-        <div className="art-well relative flex size-12 shrink-0 items-center justify-center rounded">
+        <div className="art-well relative flex size-[72px] shrink-0 items-center justify-center rounded">
           {art ? (
             <img
               src={art}
               alt=""
               aria-hidden
-              className={`size-11 object-contain ${locked ? 'opacity-35 grayscale' : ''}`}
+              className={`size-16 object-contain ${
+                locked ? 'opacity-35 grayscale' : unowned ? 'opacity-55 grayscale' : ''
+              }`}
               loading="lazy"
             />
           ) : (
-            <span className={locked ? 'opacity-35 grayscale' : ''}>{mark}</span>
+            <span className={locked ? 'opacity-35 grayscale' : unowned ? 'opacity-55 grayscale' : ''}>
+              {mark}
+            </span>
           )}
           {locked && (
             <span className="absolute inset-0 flex items-center justify-center">
@@ -207,11 +252,11 @@ export function UpgradeRow({
             <span aria-hidden className="text-[13px] text-faint">
               →
             </span>
-            <div className="art-well flex size-12 shrink-0 items-center justify-center rounded ring-1 ring-crystal/30">
+            <div className="art-well flex size-[72px] shrink-0 items-center justify-center rounded ring-1 ring-crystal/30">
               <img
                 src={nextArt}
                 alt={t('upgradeRow.nextTierAlt', { name })}
-                className="size-11 object-contain drop-shadow-[0_0_8px_rgba(111,211,224,0.35)]"
+                className="size-16 object-contain drop-shadow-[0_0_8px_rgba(111,211,224,0.35)]"
                 loading="lazy"
               />
             </div>
@@ -234,6 +279,9 @@ export function UpgradeRow({
             cost={cost}
             held={held}
             {...(blocked ? { blocked } : {})}
+            {...(completed || (queued && !queuedActionable)
+              ? { completed: completed ?? queued }
+              : {})}
             onAct={onAct}
             pending={pending}
             {...(actionLabel ? { label: actionLabel } : {})}
@@ -249,19 +297,23 @@ export function UpgradeRow({
         follows decision order.
       */}
       <div className="pointer-events-none relative z-10 mt-2 flex flex-wrap items-baseline gap-x-4 gap-y-1">
-        {gain && (
+        {gain && !completed && (!queued || queuedActionable) && (
           <p className="num text-[13px]">
             <span className="text-faint">{gain.label} </span>
-            <span className="text-dim">{gain.now}</span>
+            {gain.resourcePair
+              ? <ResourceAmounts resources={gain.resourcePair.now} label={gain.now} />
+              : <span className="text-dim">{gain.now}</span>}
             <span className="mx-1 text-faint" aria-label={t('upgradeRow.becomes')}>
               →
             </span>
-            <span className="text-bone">{gain.next}</span>
+            {gain.resourcePair
+              ? <ResourceAmounts resources={gain.resourcePair.next} label={gain.next} />
+              : <span className="text-bone">{gain.next}</span>}
           </p>
         )}
-        <Price cost={cost} held={held} />
+        {!completed && (!queued || queuedActionable) && <Price cost={cost} held={held} />}
       </div>
-      {gain?.unlocks && (
+      {gain?.unlocks && !completed && (!queued || queuedActionable) && (
         <p className="pointer-events-none relative z-10 mt-1 text-[11px] text-crystal/80">
           {gain.unlocks}
         </p>
@@ -273,9 +325,11 @@ export function UpgradeRow({
         </div>
       )}
 
-      <p className="pointer-events-none relative z-10 mt-1.5 text-[12px] leading-snug text-faint">
-        {role}
-      </p>
+      {!onOpen && (
+        <p className="pointer-events-none relative z-10 mt-1.5 text-[13px] leading-relaxed text-dim">
+          {role}
+        </p>
+      )}
 
       {/*
         WHEN, not how far along.
@@ -290,7 +344,7 @@ export function UpgradeRow({
         and the gap is a known number, so the answer is a time, and a time is
         something you can plan a session around.
       */}
-      {!affordable && !blocked && waitMinutes !== null && (
+      {!affordable && !blocked && (!queued || queuedActionable) && waitMinutes !== null && (
         <p className="pointer-events-none relative z-10 mt-2 text-[11px] text-faint">
           <Trans
             i18nKey="upgradeRow.affordableIn"

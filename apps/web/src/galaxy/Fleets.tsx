@@ -1,6 +1,6 @@
-import { Suspense, useEffect, useMemo, useRef, useState } from 'react';
+import { Suspense, useEffect, useMemo, useRef, useState, type RefObject } from 'react';
 import { useFrame } from '@react-three/fiber';
-import { useGLTF } from '@react-three/drei';
+import { Billboard, useGLTF } from '@react-three/drei';
 import * as THREE from 'three';
 import { engagementEndsAt, isEngaging } from '@astera/rules';
 import type { Contact, PendingThread } from '../api/schemas.js';
@@ -30,6 +30,14 @@ import {
 } from './Squadrons.js';
 import { markHit, wasTap } from './tap.js';
 import { serverNow } from '../lib/clock.js';
+import { useReducedMotionPreference } from './motion.js';
+import {
+  DEATH_STAR_LIGHT,
+  HULL_LIGHT,
+  TRACKING_MARK,
+  formationAimDirection,
+} from './flightVisual.js';
+import { fireTexture } from './vfx.js';
 
 /**
  * Things moving between the worlds.
@@ -162,6 +170,12 @@ const ROUTE = {
 } as const;
 
 /**
+ * Drive and silhouette colours belong to the hull, not to the mission carrying it.
+ * In particular the Runner is the fast amber courier and the Breacher is the red
+ * shield-breaker; painting an entire mixed fleet blue erased both identities.
+ */
+
+/**
  * The models are loaded with Draco off and meshopt on.
  *
  * Draco off matters: drei's default would build a DRACOLoader that pulls its
@@ -170,6 +184,7 @@ const ROUTE = {
  */
 useGLTF.preload(MODEL.probe, false);
 useGLTF.preload(MODEL.wasp, false);
+useGLTF.preload(MODEL.deathStar, false);
 
 /**
  * A hull, pointed the way it is going.
@@ -179,7 +194,17 @@ useGLTF.preload(MODEL.wasp, false);
  * this wrong and a ship crabs sideways down its own route, which is the single
  * most obvious way for a scene like this to look unfinished.
  */
-function Hull({ url, scale }: { url: string; scale: number }) {
+export function Hull({
+  url,
+  scale,
+  glow,
+  focused,
+}: {
+  url: string;
+  scale: number;
+  glow: string;
+  focused: boolean;
+}) {
   const { scene } = useGLTF(url, false);
 
   const model = useMemo(() => {
@@ -222,7 +247,56 @@ function Hull({ url, scale }: { url: string; scale: number }) {
     return clone;
   }, [scene, url]);
 
-  return <primitive object={model} scale={scale} />;
+  const { outline, outlineMaterials } = useMemo(() => {
+    const clone = model.clone(true);
+    const owned: THREE.ShaderMaterial[] = [];
+    clone.traverse((node) => {
+      if (!isMesh(node)) return;
+      const material = new THREE.ShaderMaterial({
+        uniforms: {
+          uColour: { value: new THREE.Color(glow) },
+          uOpacity: { value: focused ? 0.94 : 0.72 },
+        },
+        transparent: true,
+        depthWrite: false,
+        depthTest: false,
+        side: THREE.BackSide,
+        blending: THREE.AdditiveBlending,
+        vertexShader: `
+          void main() {
+            vec3 expanded = position + normal * 0.035;
+            gl_Position = projectionMatrix * modelViewMatrix * vec4(expanded, 1.0);
+          }
+        `,
+        fragmentShader: `
+          uniform vec3 uColour;
+          uniform float uOpacity;
+          void main() {
+            gl_FragColor = vec4(uColour, uOpacity);
+          }
+        `,
+      });
+      material.toneMapped = false;
+      node.material = material;
+      node.renderOrder = SHIP_ORDER - 1;
+      owned.push(material);
+    });
+    return { outline: clone, outlineMaterials: owned };
+  }, [model, glow, focused]);
+
+  useEffect(
+    () => () => {
+      outlineMaterials.forEach((material) => { material.dispose(); });
+    },
+    [outlineMaterials],
+  );
+
+  return (
+    <group scale={scale} name="craft-hull">
+      <primitive object={outline} name="craft-silhouette-rim" />
+      <primitive object={model} />
+    </group>
+  );
 }
 
 /**
@@ -241,9 +315,6 @@ function Hull({ url, scale }: { url: string; scale: number }) {
  */
 /** Drawn after the worlds, on a cleared depth buffer. See `Hull`. */
 const SHIP_ORDER = 999;
-
-/** The neon's diameter, as a multiple of the hull's own drawn size. Owner's eye. */
-const NEON_SIZE = 1.55 * 0.7;
 
 /**
  * `instanceof Mesh` narrows to `Mesh<any, any, any>` in three's own types, which
@@ -267,23 +338,27 @@ function materialsOf(mesh: THREE.Mesh<THREE.BufferGeometry, THREE.Material>): TH
  * separately visible. The falloff is squared so the taper closes quickly near the
  * tail, which is what a thruster actually looks like.
  */
-const PLUME_STEPS = 9;
+const PLUME_STEPS = 13;
 
 const plumeShape = (i: number) => {
   const t = i / (PLUME_STEPS - 1);
+  const expansion = Math.sin(Math.PI * Math.min(1, t * 1.08));
   return {
     at: t,
-    size: 1 - t * t * 0.92,
-    alpha: 0.34 * (1 - t) ** 1.4 + 0.03,
+    // A rocket plume leaves a small throat, expands after the nozzle and then
+    // loses density. Starting at full width was the source of the blue bubbles.
+    size: (0.32 + expansion * 0.68) * (1 - t * 0.78),
+    alpha: 0.31 * (1 - t) ** 1.55 + 0.01,
     // Toward white at the nozzle: an engine's core is hotter than its edge, and
     // hotter reads as whiter.
-    white: 0.8 * (1 - t) ** 2,
+    white: 0.55 * (1 - t) ** 2,
   };
 };
 
 function Exhaust({ colour, length, width }: { colour: string; length: number; width: number }) {
   const group = useRef<THREE.Group>(null);
   const glow = useMemo(() => softGlow(), []);
+  const reducedMotion = useReducedMotionPreference();
 
   const puffs = useMemo(
     () =>
@@ -303,7 +378,7 @@ function Exhaust({ colour, length, width }: { colour: string; length: number; wi
     const node = group.current;
     if (!node) return;
     const t = clock.elapsedTime;
-    const pulse = 1 + Math.sin(t * 17) * 0.09 + Math.sin(t * 6.3) * 0.06;
+    const pulse = reducedMotion ? 1 : 1 + Math.sin(t * 17) * 0.09 + Math.sin(t * 6.3) * 0.06;
     node.scale.set(1, 1, pulse);
   });
 
@@ -323,6 +398,150 @@ function Exhaust({ colour, length, width }: { colour: string; length: number; wi
             opacity={puff.alpha}
             depthWrite={false}
             blending={THREE.AdditiveBlending}
+          />
+        </sprite>
+      ))}
+    </group>
+  );
+}
+
+/**
+ * The Death Star is a strategic missile, not another small drive with a red tint.
+ * Two interleaved additive volumes make a hot blue/white throat inside a much
+ * fuller yellow-orange-red exhaust. The irregular offsets and independent pulse
+ * keep the plume turbulent without allocating particles on every frame.
+ */
+function StrategicExhaust({ scale }: { scale: number }) {
+  const root = useRef<THREE.Group>(null);
+  const outer = useRef<THREE.Group>(null);
+  const outerSprites = useRef<(THREE.Sprite | null)[]>([]);
+  const coreSprites = useRef<(THREE.Sprite | null)[]>([]);
+  const glow = useMemo(() => softGlow(), []);
+  const fire = useMemo(fireTexture, []);
+  const outerHot = useMemo(() => new THREE.Color('#fff5df'), []);
+  const outerTail = useMemo(() => new THREE.Color('#ff3b2f'), []);
+  const puffs = useMemo(() => {
+    return Array.from({ length: 24 }, (_, i) => {
+      const t = i / 23;
+      const colour = new THREE.Color('#fff5df').lerp(new THREE.Color('#ff3b2f'), t ** 1.2);
+      const turbulence = Math.sin(i * 8.173) * 0.05 * t;
+      return {
+        t,
+        colour,
+        x: turbulence,
+        y: Math.cos(i * 5.731) * 0.04 * t,
+        size: (0.32 + Math.sin(Math.PI * Math.min(1, t * 1.18)) * 0.8) * (1 - t * 0.45),
+        opacity: 0.32 * (1 - t) ** 0.8 + 0.035,
+      };
+    });
+  }, []);
+  const core = useMemo(
+    () => Array.from({ length: 16 }, (_, i) => {
+      const t = i / 15;
+      return {
+        t,
+        colour: new THREE.Color(t < 0.28 ? '#dffaff' : t < 0.58 ? '#fff7cf' : '#ffbd48'),
+        size: (0.28 + Math.sin(Math.PI * t) * 0.32) * (1 - t * 0.55),
+        opacity: 0.88 * (1 - t) ** 1.2,
+      };
+    }),
+    [],
+  );
+
+  useFrame(({ clock }) => {
+    const t = clock.elapsedTime;
+    if (root.current) {
+      root.current.scale.z = 1 + Math.sin(t * 19.1) * 0.1 + Math.sin(t * 7.7) * 0.06;
+    }
+    if (outer.current) {
+      const breath = 1 + Math.sin(t * 13.4) * 0.055;
+      outer.current.scale.set(breath, breath, 1);
+    }
+    for (let i = 0; i < puffs.length; i++) {
+      const sprite = outerSprites.current[i];
+      if (!sprite) continue;
+      const flow = (puffs[i]!.t + t * (0.85 + (i % 4) * 0.04)) % 1;
+      const widen = 0.035 + flow * 0.14;
+      sprite.position.set(
+        scale * (Math.sin(i * 8.173 + t * 9.1) * widen),
+        scale * (Math.cos(i * 5.731 + t * 7.3) * widen * 0.72),
+        -scale * 0.85 * flow,
+      );
+      const size = (0.32 + Math.sin(Math.PI * Math.min(1, flow * 1.18)) * 0.8)
+        * (1 - flow * 0.45);
+      sprite.scale.set(scale * 1.1 * size, scale * 1.1 * size, 1);
+      const material = sprite.material;
+      material.opacity = 0.32 * (1 - flow) ** 0.8 + 0.035;
+      material.color.copy(outerHot).lerp(outerTail, flow ** 1.2);
+    }
+    for (let i = 0; i < core.length; i++) {
+      const sprite = coreSprites.current[i];
+      if (!sprite) continue;
+      const flow = (core[i]!.t + t * (1.2 + (i % 3) * 0.05)) % 1;
+      sprite.position.set(
+        scale * Math.sin(i * 3.7 + t * 12.2) * 0.02 * flow,
+        scale * Math.cos(i * 4.1 + t * 10.8) * 0.016 * flow,
+        -scale * 0.45 * flow,
+      );
+      const size = (0.28 + Math.sin(Math.PI * flow) * 0.32) * (1 - flow * 0.55);
+      sprite.scale.set(scale * 0.6 * size, scale * 0.6 * size, 1);
+      sprite.material.opacity = 0.88 * (1 - flow) ** 1.2;
+    }
+  });
+
+  return (
+    <group
+      ref={root}
+      position={[0, 0, -scale * 0.48]}
+      name="death-star-rocket-exhaust"
+    >
+      <pointLight color="#78cfff" intensity={3.5} distance={scale * 3} decay={2} />
+      <pointLight
+        color="#ff4b21"
+        intensity={6}
+        distance={scale * 4.5}
+        decay={2}
+        position={[0, 0, -scale * 0.4]}
+      />
+      <group ref={outer}>
+        {puffs.map((puff, i) => (
+          <sprite
+            ref={(node) => { outerSprites.current[i] = node; }}
+            key={`outer-${String(i)}`}
+            renderOrder={SHIP_ORDER + 1}
+            position={[scale * puff.x, scale * puff.y, -scale * 0.85 * puff.t]}
+            scale={[scale * 1.1 * puff.size, scale * 1.1 * puff.size, 1]}
+          >
+            <spriteMaterial
+              map={fire}
+              color={puff.colour}
+              transparent
+              opacity={puff.opacity}
+              depthTest={false}
+              depthWrite={false}
+              blending={THREE.AdditiveBlending}
+              toneMapped={false}
+            />
+          </sprite>
+        ))}
+      </group>
+      {core.map((puff, i) => (
+        <sprite
+          ref={(node) => { coreSprites.current[i] = node; }}
+          key={`core-${String(i)}`}
+          renderOrder={SHIP_ORDER + 2}
+          position={[0, 0, -scale * 0.45 * puff.t]}
+          scale={[scale * 0.6 * puff.size, scale * 0.6 * puff.size, 1]}
+        >
+          <spriteMaterial
+            map={glow}
+            color={puff.colour}
+            transparent
+            opacity={puff.opacity}
+            depthTest={false}
+            depthWrite={false}
+            blending={THREE.AdditiveBlending}
+            toneMapped={false}
           />
         </sprite>
       ))}
@@ -391,8 +610,10 @@ function Flight({
 }) {
   const path = thread.path;
   const isProbe = thread.kind === 'probe';
+  const isDeathStar = thread.kind === 'death_star';
   const style = isProbe ? ROUTE.probe : ROUTE.fleet;
   const group = useRef<THREE.Group>(null);
+  const formationAim = useRef(100);
 
   const to = useMemo(() => (path ? toWorld(path.to) : ([0, 0, 0] as Vec3Tuple)), [path]);
 
@@ -433,8 +654,10 @@ function Flight({
    */
   const target = useMemo(
     () =>
-      path && !isProbe && thread.leg !== 'return' ? targetNodeOf(nodes, path.to) : undefined,
-    [path, isProbe, thread.leg, nodes],
+      path && !isProbe && !isDeathStar && thread.kind === 'fleet' && thread.leg !== 'return'
+        ? targetNodeOf(nodes, path.to)
+        : undefined,
+    [path, isProbe, isDeathStar, thread.kind, thread.leg, nodes],
   );
 
   /**
@@ -444,8 +667,8 @@ function Flight({
    * a scout would be stating a capacity it does not have.
    */
   const formation = useMemo(
-    () => (isProbe ? null : formationFor(thread.fleet ?? {})),
-    [isProbe, thread.fleet],
+    () => (isProbe || isDeathStar ? null : formationFor(thread.fleet ?? {})),
+    [isProbe, isDeathStar, thread.fleet],
   );
 
   /** Where each drawn model sits. Needed twice now: to place it, and to fire from it. */
@@ -474,6 +697,10 @@ function Flight({
     // The same helper the camera reads, so a focused squadron stays centred.
     const at = threadPosition(path, serverNow(), standoff);
     group.current.position.set(at[0], at[1], at[2]);
+    formationAim.current = Math.max(
+      0.01,
+      Math.hypot(to[0] - at[0], to[1] - at[1], to[2] - at[2]),
+    );
     /**
      * Nose on the destination.
      *
@@ -549,31 +776,66 @@ function Flight({
           <meshBasicMaterial transparent opacity={0} depthWrite={false} />
         </mesh>
 
+        <TrackingMark
+          kind={isDeathStar ? 'death_star' : isProbe ? 'probe' : 'fleet'}
+          scale={isDeathStar ? style.scale * 3.4 : style.scale}
+          colour={isDeathStar ? DEATH_STAR_LIGHT.glow : style.neon}
+          focused={focused}
+        />
+
         <Suspense fallback={null}>
           {formation ? (
-            formation.markers.map((marker, i) => (
-              <Craft
-                key={`${marker.hull}-${String(marker.ordinal)}`}
-                marker={marker}
-                offset={slots[i] ?? [0, 0, 0]}
+            <>
+              <FormationLightField
+                markers={formation.markers}
+                slots={slots}
                 scale={style.scale}
-                flame={style.flame}
-                neon={style.neon}
+                aimDistance={formationAim}
                 focused={focused}
+                showPips
               />
-            ))
+              <FormationWakes
+                markers={formation.markers}
+                slots={slots}
+                scale={style.scale}
+                aimDistance={formationAim}
+              />
+              {formation.markers.map((marker, i) => (
+                <Craft
+                  key={`${marker.hull}-${String(marker.ordinal)}`}
+                  marker={marker}
+                  offset={slots[i] ?? [0, 0, 0]}
+                  scale={style.scale}
+                  aimDistance={formationAim}
+                  focused={focused}
+                  batched
+                />
+              ))}
+            </>
           ) : (
             <>
-              <Wake scale={style.scale} colour={style.neon} />
-              <Neon colour={style.neon} scale={style.scale} lit={focused} />
-              <Hull url={style.url} scale={style.scale} />
-              <group position={[0, 0, -style.scale * 0.42]}>
-                <Exhaust
-                  colour={style.flame}
-                  length={style.scale * 0.8}
-                  width={style.scale * 0.46}
-                />
-              </group>
+              <Wake
+                scale={isDeathStar ? style.scale * 3.4 : style.scale}
+                colour={isDeathStar ? DEATH_STAR_LIGHT.glow : style.neon}
+                lengthScale={isDeathStar ? 0.5 : 1}
+              />
+              <Hull
+                url={isDeathStar ? MODEL.deathStar : style.url}
+                scale={isDeathStar ? style.scale * 3.4 : style.scale}
+                glow={isDeathStar ? DEATH_STAR_LIGHT.glow : style.neon}
+                focused={focused}
+              />
+              {isDeathStar ? (
+                <StrategicExhaust scale={style.scale * 3.4} />
+              ) : (
+                <group position={[0, 0, -style.scale * 0.42]}>
+                  <Exhaust
+                    colour={style.flame}
+                    length={style.scale * 0.8}
+                    width={style.scale * 0.46}
+                  />
+                </group>
+              )}
             </>
           )}
         </Suspense>
@@ -618,30 +880,333 @@ function Craft({
   marker,
   offset,
   scale,
-  flame,
-  neon,
+  aimDistance,
   focused,
   pips = true,
+  batched = false,
 }: {
   marker: Marker;
   offset: [number, number, number];
   scale: number;
-  flame: string;
-  neon: string;
+  aimDistance?: RefObject<number>;
   focused: boolean;
   /** False for anything that is one craft rather than a group of them. */
   pips?: boolean;
+  /** Formation-wide light and pip buffers replace this craft's individual sprites. */
+  batched?: boolean;
 }) {
+  const light = HULL_LIGHT[marker.hull];
+  const craft = useRef<THREE.Group>(null);
+  const direction = useMemo(() => new THREE.Vector3(), []);
+  const forward = useMemo(() => new THREE.Vector3(0, 0, 1), []);
+  const aimed = useRef<Vec3Tuple>([0, 0, 1]);
+  useFrame(() => {
+    if (!craft.current || !aimDistance) return;
+    formationAimDirection(offset, aimDistance.current, aimed.current);
+    direction.set(...aimed.current);
+    craft.current.quaternion.setFromUnitVectors(forward, direction);
+  });
   return (
-    <group position={offset}>
-      <Wake scale={scale} colour={neon} />
-      <Neon colour={neon} scale={scale} lit={focused} />
-      <Hull url={HULL_MODEL[marker.hull]} scale={scale} />
-      <group position={[0, 0, -scale * 0.42]}>
-        <Exhaust colour={flame} length={scale * 0.8} width={scale * 0.46} />
-      </group>
-      {pips && <Pips filled={marker.filled} scale={scale} lit={focused} />}
+    <group ref={craft} position={offset}>
+      {!batched && <Wake scale={scale} colour={light.glow} />}
+      <Hull
+        url={HULL_MODEL[marker.hull]}
+        scale={scale}
+        glow={light.glow}
+        focused={focused}
+      />
+      {!batched && (
+        <group position={[0, 0, -scale * 0.42]}>
+          <Exhaust colour={light.flame} length={scale * 0.8} width={scale * 0.46} />
+        </group>
+      )}
+      {pips && !batched && <Pips filled={marker.filled} scale={scale} lit={focused} />}
     </group>
+  );
+}
+
+/**
+ * Every soft light in a formation in one GPU draw.
+ *
+ * The previous shape was one sprite per exhaust puff, one neon sprite and five
+ * pip sprites PER DRAWN CRAFT. A nine-marker raid therefore spent 135 transparent
+ * draw calls before it fired a single round. These point buffers preserve the
+ * exact same world positions and count semantics, while the GPU expands all of
+ * them into camera-facing quads in two calls: one soft additive field, one pip
+ * field. No per-frame React work and no per-craft material instances.
+ */
+function FormationLightField({
+  markers,
+  slots,
+  scale,
+  aimDistance,
+  focused,
+  showPips,
+}: {
+  markers: readonly Marker[];
+  slots: readonly Vec3Tuple[];
+  scale: number;
+  aimDistance: RefObject<number>;
+  focused: boolean;
+  showPips: boolean;
+}) {
+  const reducedMotion = useReducedMotionPreference();
+  const aimed = useMemo<Vec3Tuple>(() => [0, 0, 1], []);
+  const lights = useMemo(() => {
+    const count = markers.length * PLUME_STEPS;
+    const positions = new Float32Array(count * 3);
+    const colours = new Float32Array(count * 3);
+    const sizes = new Float32Array(count);
+    const alphas = new Float32Array(count);
+    const pulses = new Float32Array(count);
+    const energies = new Float32Array(count);
+    const white = new THREE.Color('#ffffff');
+    let cursor = 0;
+
+    const put = (
+      position: Vec3Tuple,
+      colour: THREE.Color,
+      size: number,
+      alpha: number,
+      pulse: number,
+      energy: number,
+    ): void => {
+      positions.set(position, cursor * 3);
+      colours.set([colour.r, colour.g, colour.b], cursor * 3);
+      sizes[cursor] = size;
+      alphas[cursor] = alpha;
+      pulses[cursor] = pulse;
+      energies[cursor] = energy;
+      cursor += 1;
+    };
+
+    markers.forEach((marker, markerIndex) => {
+      const slot = slots[markerIndex] ?? [0, 0, 0];
+      const flameColour = new THREE.Color(HULL_LIGHT[marker.hull].flame);
+      for (let i = 0; i < PLUME_STEPS; i += 1) {
+        const puff = plumeShape(i);
+        const tint = flameColour.clone().lerp(white, puff.white);
+        put(
+          [slot[0], slot[1], slot[2] - scale * (0.42 + 0.8 * puff.at)],
+          tint,
+          scale * 0.46 * puff.size,
+          puff.alpha,
+          0.12,
+          0.65 + puff.white * 1.15,
+        );
+      }
+    });
+
+    const geometry = new THREE.BufferGeometry();
+    geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+    geometry.setAttribute('color', new THREE.BufferAttribute(colours, 3));
+    geometry.setAttribute('aSize', new THREE.BufferAttribute(sizes, 1));
+    geometry.setAttribute('aAlpha', new THREE.BufferAttribute(alphas, 1));
+    geometry.setAttribute('aPulse', new THREE.BufferAttribute(pulses, 1));
+    geometry.setAttribute('aEnergy', new THREE.BufferAttribute(energies, 1));
+    return geometry;
+  }, [markers, slots, scale]);
+
+  const glowMaterial = useMemo(
+    () =>
+      new THREE.ShaderMaterial({
+        uniforms: {
+          uTime: { value: 0 },
+          uProjectionScale: { value: 700 },
+          uMotion: { value: 1 },
+        },
+        vertexColors: true,
+        transparent: true,
+        depthWrite: false,
+        blending: THREE.AdditiveBlending,
+        vertexShader: `
+          attribute float aSize;
+          attribute float aAlpha;
+          attribute float aPulse;
+          attribute float aEnergy;
+          varying vec3 vColour;
+          varying float vAlpha;
+          uniform float uTime;
+          uniform float uProjectionScale;
+          uniform float uMotion;
+          void main() {
+            vColour = color * aEnergy;
+            vAlpha = aAlpha;
+            vec4 mv = modelViewMatrix * vec4(position, 1.0);
+            float beat = 1.0 + uMotion * aPulse * (sin(uTime * 17.0 + position.x * 5.0) + sin(uTime * 6.3));
+            gl_PointSize = max(1.0, aSize * beat * uProjectionScale / max(0.01, -mv.z));
+            gl_Position = projectionMatrix * mv;
+          }
+        `,
+        fragmentShader: `
+          varying vec3 vColour;
+          varying float vAlpha;
+          void main() {
+            float d = length(gl_PointCoord - vec2(0.5)) * 2.0;
+            float soft = smoothstep(1.0, 0.08, d);
+            float core = 1.0 + pow(max(0.0, 1.0 - d), 3.0) * 0.15;
+            gl_FragColor = vec4(vColour * core, vAlpha * soft);
+          }
+        `,
+      }),
+    [],
+  );
+
+  useFrame(({ clock, camera, size: viewport, gl }) => {
+    const positions = lights.getAttribute('position') as THREE.BufferAttribute;
+    let cursor = 0;
+    markers.forEach((_, markerIndex) => {
+      const slot = slots[markerIndex] ?? [0, 0, 0];
+      formationAimDirection(slot, aimDistance.current, aimed);
+      for (let i = 0; i < PLUME_STEPS; i += 1) {
+        const puff = plumeShape(i);
+        const behind = scale * (0.42 + 0.8 * puff.at);
+        positions.setXYZ(
+          cursor,
+          slot[0] - aimed[0] * behind,
+          slot[1] - aimed[1] * behind,
+          slot[2] - aimed[2] * behind,
+        );
+        cursor += 1;
+      }
+    });
+    positions.needsUpdate = true;
+    glowMaterial.uniforms.uTime!.value = clock.elapsedTime;
+    glowMaterial.uniforms.uMotion!.value = reducedMotion ? 0 : 1;
+    const perspective = camera as THREE.PerspectiveCamera;
+    const fov = THREE.MathUtils.degToRad(perspective.fov || 45);
+    glowMaterial.uniforms.uProjectionScale!.value =
+      (viewport.height * gl.getPixelRatio()) / (2 * Math.tan(fov / 2));
+  });
+
+  useEffect(
+    () => () => {
+      lights.dispose();
+      glowMaterial.dispose();
+    },
+    [lights, glowMaterial],
+  );
+
+  return (
+    <>
+      <points
+        geometry={lights}
+        material={glowMaterial}
+        frustumCulled={false}
+        renderOrder={SHIP_ORDER + 1}
+        name="formation-lights"
+      />
+      {showPips && (
+        <FormationPips markers={markers} slots={slots} scale={scale} focused={focused} />
+      )}
+    </>
+  );
+}
+
+function FormationPips({
+  markers,
+  slots,
+  scale,
+  focused,
+}: {
+  markers: readonly Marker[];
+  slots: readonly Vec3Tuple[];
+  scale: number;
+  focused: boolean;
+}) {
+  const geometry = useMemo(() => {
+    const count = markers.length * PER_MODEL;
+    const positions = new Float32Array(count * 3);
+    const colours = new Float32Array(count * 3);
+    const sizes = new Float32Array(count);
+    const lit = new THREE.Color(focused ? '#7fd4ff' : '#4aa8e8');
+    const empty = new THREE.Color('#33404f');
+    const pipSize = scale * 0.085;
+    const gap = pipSize * 1.6;
+    const width = gap * (Math.min(PER_MODEL, 5) - 1);
+    let cursor = 0;
+
+    markers.forEach((marker, markerIndex) => {
+      const slot = slots[markerIndex] ?? [0, 0, 0];
+      for (let i = 0; i < PER_MODEL; i += 1) {
+        positions.set(
+          [slot[0] + i * gap - width / 2, slot[1] + scale * 0.6, slot[2]],
+          cursor * 3,
+        );
+        const colour = i < marker.filled ? lit : empty;
+        colours.set([colour.r, colour.g, colour.b], cursor * 3);
+        sizes[cursor] = pipSize;
+        cursor += 1;
+      }
+    });
+
+    const buffer = new THREE.BufferGeometry();
+    buffer.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+    buffer.setAttribute('color', new THREE.BufferAttribute(colours, 3));
+    buffer.setAttribute('aSize', new THREE.BufferAttribute(sizes, 1));
+    return buffer;
+  }, [markers, slots, scale, focused]);
+
+  const material = useMemo(
+    () =>
+      new THREE.ShaderMaterial({
+        uniforms: {
+          uProjectionScale: { value: 700 },
+          uPixelRatio: { value: 1 },
+        },
+        vertexColors: true,
+        transparent: true,
+        depthWrite: false,
+        depthTest: false,
+        vertexShader: `
+          attribute float aSize;
+          varying vec3 vColour;
+          uniform float uProjectionScale;
+          uniform float uPixelRatio;
+          void main() {
+            vColour = color;
+            vec4 mv = modelViewMatrix * vec4(position, 1.0);
+            float projected = aSize * uProjectionScale / max(0.01, -mv.z);
+            gl_PointSize = clamp(projected, 1.0, 7.0 * uPixelRatio);
+            gl_Position = projectionMatrix * mv;
+          }
+        `,
+        fragmentShader: `
+          varying vec3 vColour;
+          void main() {
+            float edge = max(abs(gl_PointCoord.x - 0.5), abs(gl_PointCoord.y - 0.5)) * 2.0;
+            float alpha = smoothstep(1.0, 0.72, edge);
+            gl_FragColor = vec4(vColour, alpha);
+          }
+        `,
+      }),
+    [],
+  );
+
+  useFrame(({ camera, size: viewport, gl }) => {
+    const perspective = camera as THREE.PerspectiveCamera;
+    const fov = THREE.MathUtils.degToRad(perspective.fov || 45);
+    material.uniforms.uProjectionScale!.value =
+      (viewport.height * gl.getPixelRatio()) / (2 * Math.tan(fov / 2));
+    material.uniforms.uPixelRatio!.value = gl.getPixelRatio();
+  });
+
+  useEffect(
+    () => () => {
+      geometry.dispose();
+      material.dispose();
+    },
+    [geometry, material],
+  );
+
+  return (
+    <points
+      geometry={geometry}
+      material={material}
+      frustumCulled={false}
+      renderOrder={SHIP_ORDER + 2}
+      name="formation-pips"
+    />
   );
 }
 
@@ -675,17 +1240,16 @@ const WAKE_SEGMENTS = 9;
  * which is the intent — a craft should read as the object and the streak as
  * something it has shed.
  */
-const WAKE_WIDTH = 0.31 * 0.25;
+const WAKE_WIDTH = 0.11;
 
 /**
  * How far back it reaches, as a multiple of the craft's own size.
  *
- * A rock's streak spans a twenty-fourth of its orbit, which works out around
- * nineteen times its radius. Half that is the owner's figure, and it lands at
- * roughly nine times a craft's length — long enough to say which way something is
- * going from across the disc, short enough not to read as a comet.
+ * A rock's streak spans a twenty-fourth of its orbit. A drive wake is much more
+ * compact: enough to establish heading at map distance, short enough that a close
+ * formation does not tow laser lines out of the frame.
  */
-const WAKE_LENGTH = 9.5;
+const WAKE_LENGTH = 6.4;
 
 /**
  * Brightness at the craft. Additive on a near-black sky, so this is a whisper.
@@ -696,10 +1260,59 @@ const WAKE_LENGTH = 9.5;
  * The number that matters is not the ribbon's width, it is whether the ribbon
  * blooms; under the threshold it reads as the thin streak it actually is.
  */
-const WAKE_PEAK = 0.16;
+const WAKE_PEAK = 0.11;
 
-export function Wake({ scale, colour }: { scale: number; colour: string }) {
+/** Soft-edged energy shed behind a drive, shared by solo and formation ribbons. */
+function makeWakeMaterial(): THREE.ShaderMaterial {
+  return new THREE.ShaderMaterial({
+    uniforms: {
+      uTime: { value: 0 },
+      uMotion: { value: 1 },
+    },
+    vertexColors: true,
+    transparent: true,
+    depthWrite: false,
+    side: THREE.DoubleSide,
+    forceSinglePass: true,
+    blending: THREE.AdditiveBlending,
+    vertexShader: `
+      varying vec2 vUv;
+      varying vec3 vColour;
+      void main() {
+        vUv = uv;
+        vColour = color;
+        gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+      }
+    `,
+    fragmentShader: `
+      uniform float uTime;
+      uniform float uMotion;
+      varying vec2 vUv;
+      varying vec3 vColour;
+      void main() {
+        float across = abs(vUv.x * 2.0 - 1.0);
+        float softEdge = 1.0 - smoothstep(0.18, 1.0, across);
+        float tail = pow(max(0.0, 1.0 - vUv.y), 2.35);
+        float breakup = 0.94 + uMotion * 0.06 * sin(uTime * 7.3 - vUv.y * 24.0);
+        float alpha = softEdge * tail * breakup * 0.32;
+        gl_FragColor = vec4(vColour * (0.55 + tail * 0.85), alpha);
+      }
+    `,
+  });
+}
+
+export function Wake({
+  scale,
+  colour,
+  lengthScale = 1,
+}: {
+  scale: number;
+  colour: string;
+  lengthScale?: number;
+}) {
   const mesh = useRef<THREE.Mesh>(null);
+  const material = useMemo(() => makeWakeMaterial(), []);
+  const reducedMotion = useReducedMotionPreference();
 
   /** Colours and indices never change; only the vertices move. Built once. */
   const geometry = useMemo(() => {
@@ -709,18 +1322,20 @@ export function Wake({ scale, colour }: { scale: number; colour: string }) {
 
     const tint = new THREE.Color(colour);
     const colours = new Float32Array(verts * 3);
+    const uvs = new Float32Array(verts * 2);
     const index: number[] = [];
     for (let k = 0; k < WAKE_SEGMENTS; k += 1) {
       // Squared falloff, as on the rocks: a linear fade leaves a hard end,
       // because the last quad is still a quarter lit when it stops existing.
       const back = k / (WAKE_SEGMENTS - 1);
-      const lit = WAKE_PEAK * (1 - back) * (1 - back);
       const v = k * 2;
-      colours.set([tint.r * lit, tint.g * lit, tint.b * lit], v * 3);
-      colours.set([tint.r * lit, tint.g * lit, tint.b * lit], (v + 1) * 3);
+      colours.set([tint.r * WAKE_PEAK, tint.g * WAKE_PEAK, tint.b * WAKE_PEAK], v * 3);
+      colours.set([tint.r * WAKE_PEAK, tint.g * WAKE_PEAK, tint.b * WAKE_PEAK], (v + 1) * 3);
+      uvs.set([0, back, 1, back], v * 2);
       if (k < WAKE_SEGMENTS - 1) index.push(v, v + 1, v + 2, v + 1, v + 3, v + 2);
     }
     g.setAttribute('color', new THREE.BufferAttribute(colours, 3));
+    g.setAttribute('uv', new THREE.BufferAttribute(uvs, 2));
     g.setIndex(index);
     return g;
   }, [colour]);
@@ -730,14 +1345,15 @@ export function Wake({ scale, colour }: { scale: number; colour: string }) {
   useEffect(
     () => () => {
       geometry.dispose();
+      material.dispose();
     },
-    [geometry],
+    [geometry, material],
   );
 
   const eye = useMemo(() => new THREE.Vector3(), []);
   const side = useMemo(() => new THREE.Vector3(), []);
 
-  useFrame(({ camera }) => {
+  useFrame(({ camera, clock }) => {
     const node = mesh.current;
     if (!node) return;
 
@@ -762,72 +1378,151 @@ export function Wake({ scale, colour }: { scale: number; colour: string }) {
       const back = k / (WAKE_SEGMENTS - 1);
       // Tapers to a point. The hull covers the widest end, so the streak reads as
       // shed from the craft rather than bolted to it.
-      const w = scale * WAKE_WIDTH * (1 - back);
-      const z = -scale * WAKE_LENGTH * back;
+      const envelope = (0.42 + Math.sin(Math.PI * back) * 0.72) * (1 - back);
+      const w = scale * WAKE_WIDTH * envelope;
+      const flutter = reducedMotion
+        ? 0
+        : Math.sin(clock.elapsedTime * 2.7 + back * 14) * w * back * 0.22;
+      const z = -scale * WAKE_LENGTH * lengthScale * back;
       const v = k * 2;
-      position.setXYZ(v, side.x * w, side.y * w, z + side.z * w);
-      position.setXYZ(v + 1, -side.x * w, -side.y * w, z - side.z * w);
+      position.setXYZ(v, side.x * (w + flutter), side.y * (w + flutter), z + side.z * w);
+      position.setXYZ(v + 1, side.x * (-w + flutter), side.y * (-w + flutter), z - side.z * w);
     }
     position.needsUpdate = true;
+    material.uniforms.uTime!.value = clock.elapsedTime;
+    material.uniforms.uMotion!.value = reducedMotion ? 0 : 1;
   });
 
   return (
-    <mesh ref={mesh} geometry={geometry} frustumCulled={false} renderOrder={SHIP_ORDER - 2}>
-      {/*
-        Depth-tested, unlike the hull it trails. A craft is deliberately drawn over
-        everything because losing the thing you are tracking behind a planet is
-        worse than a small cheat; a streak has no such claim, and one lying across a
-        world it is nowhere near reads as a scratch on the screen.
-      */}
-      <meshBasicMaterial
-        vertexColors
-        transparent
-        opacity={0.85}
-        depthWrite={false}
-        side={THREE.DoubleSide}
-        blending={THREE.AdditiveBlending}
-      />
-    </mesh>
+    <mesh
+      ref={mesh}
+      geometry={geometry}
+      material={material}
+      frustumCulled={false}
+      renderOrder={SHIP_ORDER - 2}
+    />
   );
 }
 
-/**
- * THE RIM LIGHT THAT MAKES A CRAFT FINDABLE.
- *
- * A hull is a few hundred triangles seen from tens of world units away, unlit on
- * its far side, against a nebula that is itself bright — so at any real viewing
- * distance a ship is a dark smudge you locate by watching its exhaust move. The
- * owner's note was that craft need to be NOTICEABLE, and that a scout and a
- * warship should be distinguishable at a glance.
- *
- * A single soft additive sprite behind the model does both. It is one draw call,
- * it faces the camera from every angle so there is no direction from which the
- * ship goes dark, and because it sits BEHIND the hull it reads as a rim rather
- * than as a wash over the model — the silhouette stays sharp and the colour is
- * unmistakable.
- *
- * Deliberately small — the owner's word was *çok ufak*, and the size has been cut
- * twice on their eye rather than on an argument: 2.1× was a glow ball with a ship
- * somewhere inside it, 1.55× was still a wide circle, and this is that figure
- * taken down another 30%. Barely past the hull's own extent, so it reads as a rim
- * on a craft rather than as a bubble around one, and a formation of five reads as
- * five lights instead of one blob.
- */
-function Neon({ colour, scale, lit }: { colour: string; scale: number; lit: boolean }) {
-  const glow = useMemo(() => softGlow(), []);
+/** Parallel formation wakes share one camera-facing strip buffer and one draw. */
+function FormationWakes({
+  markers,
+  slots,
+  scale,
+  aimDistance,
+}: {
+  markers: readonly Marker[];
+  slots: readonly Vec3Tuple[];
+  scale: number;
+  aimDistance: RefObject<number>;
+}) {
+  const mesh = useRef<THREE.Mesh>(null);
+  const material = useMemo(() => makeWakeMaterial(), []);
+  const reducedMotion = useReducedMotionPreference();
+  const geometry = useMemo(() => {
+    const verticesPerWake = WAKE_SEGMENTS * 2;
+    const positions = new Float32Array(markers.length * verticesPerWake * 3);
+    const colours = new Float32Array(markers.length * verticesPerWake * 3);
+    const uvs = new Float32Array(markers.length * verticesPerWake * 2);
+    const index: number[] = [];
+    markers.forEach((marker, markerIndex) => {
+      const tint = new THREE.Color(HULL_LIGHT[marker.hull].glow);
+      const vertexBase = markerIndex * verticesPerWake;
+      for (let k = 0; k < WAKE_SEGMENTS; k += 1) {
+        const back = k / (WAKE_SEGMENTS - 1);
+        const vertex = vertexBase + k * 2;
+        colours.set([tint.r * WAKE_PEAK, tint.g * WAKE_PEAK, tint.b * WAKE_PEAK], vertex * 3);
+        colours.set([tint.r * WAKE_PEAK, tint.g * WAKE_PEAK, tint.b * WAKE_PEAK], (vertex + 1) * 3);
+        uvs.set([0, back, 1, back], vertex * 2);
+        if (k < WAKE_SEGMENTS - 1) {
+          index.push(vertex, vertex + 1, vertex + 2, vertex + 1, vertex + 3, vertex + 2);
+        }
+      }
+    });
+
+    const buffer = new THREE.BufferGeometry();
+    buffer.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+    buffer.setAttribute('color', new THREE.BufferAttribute(colours, 3));
+    buffer.setAttribute('uv', new THREE.BufferAttribute(uvs, 2));
+    buffer.setIndex(index);
+    return buffer;
+  }, [markers]);
+  const eye = useMemo(() => new THREE.Vector3(), []);
+  const side = useMemo(() => new THREE.Vector3(), []);
+  const direction = useMemo(() => new THREE.Vector3(), []);
+  const eyeFromCraft = useMemo(() => new THREE.Vector3(), []);
+  const aimed = useMemo<Vec3Tuple>(() => [0, 0, 1], []);
+
+  useFrame(({ camera, clock }) => {
+    const node = mesh.current;
+    if (!node) return;
+    node.updateWorldMatrix(true, false);
+    eye.copy(camera.position);
+    node.worldToLocal(eye);
+    side.set(0, 0, 1).cross(eye);
+    if (side.lengthSq() < 1e-12) side.set(1, 0, 0);
+    else side.normalize();
+
+    const positions = node.geometry.getAttribute('position') as THREE.BufferAttribute;
+    markers.forEach((_, markerIndex) => {
+      const slot = slots[markerIndex] ?? [0, 0, 0];
+      formationAimDirection(slot, aimDistance.current, aimed);
+      direction.set(...aimed);
+      eyeFromCraft.set(eye.x - slot[0], eye.y - slot[1], eye.z - slot[2]);
+      side.copy(direction).cross(eyeFromCraft);
+      if (side.lengthSq() < 1e-12) side.set(1, 0, 0);
+      else side.normalize();
+      const vertexBase = markerIndex * WAKE_SEGMENTS * 2;
+      for (let k = 0; k < WAKE_SEGMENTS; k += 1) {
+        const back = k / (WAKE_SEGMENTS - 1);
+        const envelope = (0.42 + Math.sin(Math.PI * back) * 0.72) * (1 - back);
+        const width = scale * WAKE_WIDTH * envelope;
+        const flutter = reducedMotion
+          ? 0
+          : Math.sin(clock.elapsedTime * 2.7 + back * 14 + markerIndex * 1.7) *
+            width *
+            back *
+            0.22;
+        const distance = scale * WAKE_LENGTH * back;
+        const centreX = slot[0] - direction.x * distance;
+        const centreY = slot[1] - direction.y * distance;
+        const centreZ = slot[2] - direction.z * distance;
+        const vertex = vertexBase + k * 2;
+        positions.setXYZ(
+          vertex,
+          centreX + side.x * (width + flutter),
+          centreY + side.y * (width + flutter),
+          centreZ + side.z * (width + flutter),
+        );
+        positions.setXYZ(
+          vertex + 1,
+          centreX + side.x * (-width + flutter),
+          centreY + side.y * (-width + flutter),
+          centreZ + side.z * (-width + flutter),
+        );
+      }
+    });
+    positions.needsUpdate = true;
+    material.uniforms.uTime!.value = clock.elapsedTime;
+    material.uniforms.uMotion!.value = reducedMotion ? 0 : 1;
+  });
+
+  useEffect(
+    () => () => {
+      geometry.dispose();
+      material.dispose();
+    },
+    [geometry, material],
+  );
 
   return (
-    <sprite renderOrder={SHIP_ORDER - 1} scale={[scale * NEON_SIZE, scale * NEON_SIZE, 1]}>
-      <spriteMaterial
-        map={glow}
-        color={colour}
-        transparent
-        opacity={lit ? 0.7 : 0.5}
-        depthWrite={false}
-        depthTest={false}
-        blending={THREE.AdditiveBlending}
-      />
-    </sprite>
+    <mesh
+      ref={mesh}
+      geometry={geometry}
+      material={material}
+      frustumCulled={false}
+      renderOrder={SHIP_ORDER - 2}
+    />
   );
 }
 
@@ -997,11 +1692,12 @@ const CONTACT_STYLE: Record<Contact['kind'], { neon: string; scale: number; flam
   // amber and goes a shade paler — recognisably the same kind of thing, visibly
   // not headed for a rock. D32.
   harvest: { neon: '#ffcf8f', scale: 0.18 * CRAFT_SCALE, flame: '#ffe9cc' },
+  death_star: { neon: '#ff4d67', scale: 0.34 * CRAFT_SCALE, flame: '#ff9cac' },
 };
 
 /** A probe is one craft; anything else is drawn from what the payload says is in it. */
 const contactFormation = (contact: Contact): Formation | null => {
-  if (contact.kind === 'probe') return null;
+  if (contact.kind === 'probe' || contact.kind === 'death_star') return null;
   // A harvest is Prospectors too, and its count is in `craft` like a mining run's.
   // Falling through to `fleet` — which a run never carries — drew NOTHING at all.
   if (contact.kind === 'mining' || contact.kind === 'harvest') {
@@ -1053,6 +1749,7 @@ function Foreign({
   onSelect: () => void;
 }) {
   const group = useRef<THREE.Group>(null);
+  const formationAim = useRef(100);
   const style = CONTACT_STYLE[contact.kind];
   const formation = useMemo(() => contactFormation(contact), [contact]);
 
@@ -1122,6 +1819,10 @@ function Foreign({
     // Aimed down its own window, which is its heading and nothing further — or, once
     // it is over a world, at the world it is putting rounds into.
     const aim = centre ?? to;
+    formationAim.current = Math.max(
+      0.01,
+      Math.hypot(aim[0] - at[0], aim[1] - at[1], aim[2] - at[2]),
+    );
     if (Math.hypot(aim[0] - from[0], aim[1] - from[1], aim[2] - from[2]) > 1e-4) {
       node.lookAt(aim[0], aim[1], aim[2]);
     }
@@ -1169,29 +1870,62 @@ function Foreign({
           <meshBasicMaterial transparent opacity={0} depthWrite={false} />
         </mesh>
 
+        <TrackingMark
+          kind={contact.kind}
+          scale={contact.kind === 'death_star' ? style.scale * 3.4 : style.scale}
+          colour={contact.kind === 'death_star' ? DEATH_STAR_LIGHT.glow : style.neon}
+          focused={focused}
+        />
+
         {formation ? (
-          formation.markers.map((marker, i) => (
-            <Craft
-              key={`${marker.hull}-${String(marker.ordinal)}`}
-              marker={marker}
-              offset={slotOffset(i, style.scale * 1.5)}
+          <>
+            <FormationLightField
+              markers={formation.markers}
+              slots={slots}
               scale={style.scale}
-              flame={style.flame}
-              neon={style.neon}
+              aimDistance={formationAim}
               focused={focused}
-              // Only a war squadron is a group of ships. A mining run is craft
-              // doing one job together and reads as one object.
-              pips={contact.kind === 'fleet'}
+              showPips={contact.kind === 'fleet'}
             />
-          ))
+            <FormationWakes
+              markers={formation.markers}
+              slots={slots}
+              scale={style.scale}
+              aimDistance={formationAim}
+            />
+            {formation.markers.map((marker, i) => (
+              <Craft
+                key={`${marker.hull}-${String(marker.ordinal)}`}
+                marker={marker}
+                offset={slots[i] ?? [0, 0, 0]}
+                scale={style.scale}
+                aimDistance={formationAim}
+                focused={focused}
+                pips={contact.kind === 'fleet'}
+                batched
+              />
+            ))}
+          </>
         ) : (
           <>
-            <Wake scale={style.scale} colour={style.neon} />
-            <Neon colour={style.neon} scale={style.scale} lit={focused} />
-            <Hull url={MODEL.probe} scale={style.scale} />
-            <group position={[0, 0, -style.scale * 0.42]}>
-              <Exhaust colour={style.flame} length={style.scale * 0.7} width={style.scale * 0.4} />
-            </group>
+            <Wake
+              scale={contact.kind === 'death_star' ? style.scale * 3.4 : style.scale}
+              colour={contact.kind === 'death_star' ? DEATH_STAR_LIGHT.glow : style.neon}
+              lengthScale={contact.kind === 'death_star' ? 0.5 : 1}
+            />
+            <Hull
+              url={contact.kind === 'death_star' ? MODEL.deathStar : MODEL.probe}
+              scale={contact.kind === 'death_star' ? style.scale * 3.4 : style.scale}
+              glow={contact.kind === 'death_star' ? DEATH_STAR_LIGHT.glow : style.neon}
+              focused={focused}
+            />
+            {contact.kind === 'death_star' ? (
+              <StrategicExhaust scale={style.scale * 3.4} />
+            ) : (
+              <group position={[0, 0, -style.scale * 0.42]}>
+                <Exhaust colour={style.flame} length={style.scale * 0.7} width={style.scale * 0.4} />
+              </group>
+            )}
           </>
         )}
 
@@ -1215,6 +1949,59 @@ function Foreign({
         )}
       </group>
     </>
+  );
+}
+
+function TrackingMark({
+  kind,
+  scale,
+  colour,
+  focused,
+}: {
+  kind: Contact['kind'] | 'fleet' | 'probe' | 'death_star';
+  scale: number;
+  colour: string;
+  focused: boolean;
+}) {
+  const radius = scale * (kind === 'death_star' ? 0.225 : TRACKING_MARK.standardRadius);
+  const opacity = focused ? 0.92 : 0.46;
+  const segments = kind === 'probe' ? 4 : kind === 'mining' || kind === 'harvest' ? 6 : 32;
+  const ringOuter = kind === 'death_star' ? 1.0175 : TRACKING_MARK.ringOuter;
+  return (
+    <Billboard follow lockX={false} lockY={false} lockZ={false}>
+      <group name={`tracking-mark-${kind}`} rotation={[0, 0, kind === 'probe' ? Math.PI / 4 : 0]}>
+        {(kind === 'probe' || kind === 'mining' || kind === 'harvest' || kind === 'death_star') && (
+          <mesh renderOrder={SHIP_ORDER + 3}>
+            <ringGeometry args={[radius, radius * ringOuter, segments]} />
+            <meshBasicMaterial color={colour} transparent opacity={opacity} depthWrite={false} />
+          </mesh>
+        )}
+        {(kind === 'fleet' || kind === 'death_star') && [0, 1, 2, 3].map((quarter) => (
+          <mesh
+            key={quarter}
+            position={[
+              Math.sin(quarter * Math.PI / 2) * radius,
+              Math.cos(quarter * Math.PI / 2) * radius,
+              0,
+            ]}
+            rotation={[0, 0, quarter * Math.PI / 2]}
+            renderOrder={SHIP_ORDER + 3}
+          >
+            <planeGeometry args={[
+              scale * (kind === 'death_star' ? 0.02 : TRACKING_MARK.fleetTickWidth),
+              scale * (kind === 'death_star' ? 0.225 : TRACKING_MARK.fleetTickLength),
+            ]} />
+            <meshBasicMaterial color={colour} transparent opacity={opacity} depthWrite={false} />
+          </mesh>
+        ))}
+        {kind === 'death_star' && (
+          <mesh renderOrder={SHIP_ORDER + 3}>
+            <ringGeometry args={[radius * 1.11, radius * 1.135, 32]} />
+            <meshBasicMaterial color={colour} transparent opacity={opacity * 0.7} depthWrite={false} />
+          </mesh>
+        )}
+      </group>
+    </Billboard>
   );
 }
 

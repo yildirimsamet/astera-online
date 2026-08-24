@@ -35,9 +35,11 @@ export interface Projected {
   /** In storage. Spendable, and steady between actions. */
   alloy: number;
   crystal: number;
+  deuterium: number;
   /** In the works. Filling, and worth nothing until it is collected. */
   bufferAlloy: number;
   bufferCrystal: number;
+  bufferDeuterium: number;
 }
 
 /**
@@ -53,7 +55,7 @@ export function worksAt(
   planet: PlanetView['planet'],
   fetchedAt: number,
   now: number,
-): { bufferAlloy: number; bufferCrystal: number } {
+): { bufferAlloy: number; bufferCrystal: number; bufferDeuterium: number } {
   /**
    * ALL THREE INSTANTS ON THE SERVER'S EPOCH — and one of them is not born there.
    *
@@ -78,6 +80,9 @@ export function worksAt(
       planet.bufferCrystalCap,
       planet.bufferCrystal + planet.crystalPerHour * hours,
     ),
+    // Deuterium is mined, never passively produced. It stays put until a
+    // server-authored mining, collection, spend or raid mutation moves it.
+    bufferDeuterium: planet.bufferDeuterium,
   };
 }
 
@@ -93,7 +98,21 @@ export function useProjected(
   intervalMs = 1000,
 ): Projected {
   const now = useNow(intervalMs);
-  if (!planet) return { alloy: 0, crystal: 0, bufferAlloy: 0, bufferCrystal: 0 };
+  if (!planet) {
+    return {
+      alloy: 0,
+      crystal: 0,
+      deuterium: 0,
+      bufferAlloy: 0,
+      bufferCrystal: 0,
+      bufferDeuterium: 0,
+    };
+  }
 
-  return { alloy: planet.alloy, crystal: planet.crystal, ...worksAt(planet, fetchedAt, now) };
+  return {
+    alloy: planet.alloy,
+    crystal: planet.crystal,
+    deuterium: planet.deuterium,
+    ...worksAt(planet, fetchedAt, now),
+  };
 }

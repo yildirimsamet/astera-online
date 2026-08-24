@@ -97,8 +97,25 @@ const POLICY = {
 
 const DEFAULT_POLICY = { texture: 512, simplify: false };
 
+/**
+ * Hulls normally keep a 512px plate, but these two arrive with three texture
+ * maps rather than one. At their 40–60px in-flight footprint, 256px preserves
+ * the read while keeping each complete GLB near the fleet's 100 KB budget.
+ */
+const PATH_POLICY = {
+  'ships/runner.glb': { texture: 256, simplify: false },
+  'ships/breacher.glb': { texture: 256, simplify: false },
+  // The strategic craft is shown larger than a normal hull, but its raw Tripo
+  // sphere spends 17k triangles and a 4K plate on grooves that collapse below a
+  // pixel in flight. Keep the silhouette and a 512px plate; simplify the surface.
+  'ships/death_star.glb': { texture: 512, simplify: true, ratio: 0.35, error: 0.01 },
+};
+
 /** The first path segment under SOURCE names the kind. */
-const policyFor = (relPath) => POLICY[relPath.split(/[\\/]/)[0]] ?? DEFAULT_POLICY;
+const policyFor = (relPath) =>
+  PATH_POLICY[relPath.replaceAll('\\', '/')] ??
+  POLICY[relPath.split(/[\\/]/)[0]] ??
+  DEFAULT_POLICY;
 
 const inspectOnly = process.argv.includes('--inspect');
 

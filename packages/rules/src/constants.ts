@@ -1,4 +1,4 @@
-import type { BuildingId, InstrumentId, SatelliteId } from './types.js';
+import type { BuildingId, InstrumentId, Resources, SatelliteId } from './types.js';
 
 /**
  * Every number the design can be wrong about, in one place.
@@ -10,119 +10,201 @@ import type { BuildingId, InstrumentId, SatelliteId } from './types.js';
 
 export const ECON = {
   /**
-   * D17. Doubled from 40/14 on the owner's instruction — the opening was too slow
-   * to hold anyone.
+   * PRODUCTION IS `base × L × growth^L`, NOT `base × growth^L`. Economy v2.
    *
-   * INCOME was doubled rather than costs being cut, and that choice is the whole
-   * safety of the change: every relationship the balance work rests on is a RATIO.
-   * `vaultMult < alloyMult` (D13), the crystal cost share against the crystal
-   * income share, `paybackHours = cost / gain` — scaling both income bases by the
-   * same factor leaves all three exactly where they were and simply runs the clock
-   * twice as fast. Cutting costs would have moved the crystal share and forced
-   * D5's season length to be re-derived from scratch.
+   * The shape changed, and it is the one shape change in the rewrite. It is the
+   * only common form that delivers both halves of the brief from a single
+   * formula: L1 → L2 MULTIPLIES OUTPUT BY 2.2, which is the day-zero dopamine a
+   * fourteen-day season needs, while the MARGINAL rate decays from +120% to +16%
+   * per level, which is the season brake. A pure exponential has one growth rate
+   * for ever — to buy the early jump you must accept a late explosion.
    *
-   * Storage is 12 hours of production, so the caps double with it: there is twice
-   * as much on the table to steal, which is the point.
+   * It is OGame's shape (`30 · L · 1.1^L`), re-derived for a 14-day round rather
+   * than copied.
+   *
+   * THE GROWTH IS DERIVED, NOT PICKED. A season must carry a commander from about
+   * 145/h to about 13,000/h — a 91× span over seventeen levels — and
+   * `18 · g^17 = 91` gives `g = 1.100`.
+   *
+   * THE BASES CARRY THE ×1.20 SPEED FACTOR, and that choice is the whole safety
+   * of it. INCOME was raised and prices were left alone, exactly as D17 did:
+   * every relationship this balance rests on is a RATIO. `payback = cost / gain`,
+   * the crystal cost share against the crystal income share, the vault's
+   * protected fraction and `cost < storage` all scale by the same factor and stay
+   * exactly where they were. Cutting prices instead would have moved every one of
+   * them.
    */
-  alloyBase: 80,
-  alloyMult: 1.45,
-  crystalBase: 28,
-  crystalMult: 1.42,
+  alloyBase: 132,
+  alloyMult: 1.10,
+  crystalBase: 48,
+  crystalMult: 1.09,
 
-  costBase: 200,
-  costMult: 1.70,
+  costBase: 52,
+  costMult: 1.56,
   /**
-   * PROVISIONAL. INVARIANT: the crystal share of an upgrade must track the
-   * crystal share of INCOME, or the scarce resource is not scarce.
+   * INVARIANT: the crystal share of an upgrade must track the crystal share of
+   * INCOME, or the scarce resource is not scarce.
    *
-   * The first draft charged crystal only from L4 upward and at 22% of the alloy
-   * price, against a crystal income that is 33% of alloy income. Crystal
-   * therefore arrived half again as fast as it could be spent: it filled its
-   * twelve-hour store during the first night of every account and wasted from
-   * then on, and for the whole opening — no crystal in the Wasp, none in a
-   * probe, none in the first three upgrades — it bought literally nothing.
-   * A resource the player watches accumulate and never spends is not scarcity,
-   * it is decoration.
+   * BOTH OF THESE ARE DERIVED. `crystalCostMult` is `costMult × (crystalMult /
+   * alloyMult)` and `crystalCostBase` is `costBase × 0.79 × (crystalBase /
+   * alloyBase)`. Two independently hand-picked multipliers drift: the shipped
+   * game once ran 1.58 against a 1.55 alloy curve and the crystal cost share
+   * climbed from 0.21 to 0.37 across ten levels WHILE THE INCOME SHARE FELL,
+   * quietly inverting which resource was scarce. Tying it to the income curve
+   * holds the ratio at 0.796 at every level, and `test/invariants.test.ts`
+   * enforces exactly that.
    *
-   * The multiplier is DERIVED, not chosen: `costMult * (crystalMult / alloyMult)`.
-   * Two independently hand-picked multipliers drift — the old 1.58 against a
-   * 1.55 alloy curve pushed the crystal share from 0.21 to 0.37 across ten
-   * levels while the income share fell, so the late game slowly inverted which
-   * resource was scarce. Tying it to the income curve holds the ratio flat at
-   * every level, and the base is then the only number a playtest has to move.
+   * THE 0.79 RATHER THAN PARITY IS A PvP CONSTRAINT, NOT AN ECONOMIC ONE.
+   * Charging crystal as fast as it arrives empties the stores, and an empty store
+   * is nothing to raid — raid returns fell through their floor and the informed
+   * archetype lost the ladder. Crystal must be spent AND worth stealing.
    *
-   * The base is set at about four fifths of income parity, not at parity: the
-   * simulator showed that charging crystal as fast as it arrives empties the
-   * stores, and an empty store is nothing to raid. Raid returns fell through
-   * their floor and the informed archetype lost the ladder. Crystal must be
-   * spent AND worth stealing.
-   *
-   * `test/invariants.test.ts` holds the cost ratio to the income ratio.
+   * CHARGED FROM LEVEL 0, unlike the shipped curve which started at 1. A crystal
+   * cost that begins one rung late leaves a fresh commander watching a resource
+   * accumulate that buys nothing, which is decoration rather than scarcity.
    */
-  crystalCostBase: 55,
-  crystalCostMult: 1.6648,
-  crystalCostFromLevel: 1,
+  crystalCostBase: 52 * 0.2895,
+  crystalCostMult: 1.56 * (1.09 / 1.10),
+  crystalCostFromLevel: 0,
 
   /**
-   * Storage ceiling, expressed as hours of production at the current level.
+   * STORAGE IS `capHours + capHoursPerVault × vaultLevel` HOURS OF PRODUCTION,
+   * AND THE VAULT IS THE BANK. Economy v2, and this change was FORCED.
    *
-   * 12 → 14 at D61, on the owner's instruction that the game is PvP-first. It is a
-   * loot lever as much as a comfort one: what a raid can take is what sits ABOVE
-   * the vault floor, so a taller store is a bigger prize as well as a longer leash
-   * for the player filling it.
+   * `upgradeCost` grows at 1.56 while a flat-hours store grows at `L · 1.10^L`.
+   * THEY CROSS. Above the crossing point one upgrade costs more alloy than a full
+   * store can hold, the player simply cannot buy it, and progression stops for a
+   * reason nothing in the interface explains.
+   *
+   * THIS WAS ALREADY LIVE AND NOBODY HAD NOTICED. On the shipped curves,
+   * `200 · 1.70^L` against `12 · 80 · 1.45^L` crosses at L10 — 40,320 alloy of
+   * upgrade against a 39,441 alloy store — which is well inside the range a real
+   * season reaches.
+   *
+   * Letting the store grow with the Vault fixes it with no new building and no
+   * new system, and it hands the Vault a reason to exist a player can feel: how
+   * big a purchase can I hold for? Measured, `costAlloy / storageCap` now peaks at
+   * 0.86 at L20 and the ceiling never binds.
+   *
+   * 1.5 → 0.8, AND THE SIMULATOR IS WHY. At 1.5 the five-seed gate read `VFR` LOW
+   * on every seed — *nothing is worth raiding* — because `VFR` measures held stock
+   * against raidable CAPACITY, and a store nobody can fill is capacity that only
+   * ever enlarges the denominator. The crossover this constant exists to clear
+   * needs far less than 1.5: at 0.8 the worst case is 0.86 of a full store at L20.
+   * **A store has to be big enough to hold the next decision, not big enough to
+   * hoard in.**
+   *
+   * THE PRODUCTION CAP IS STILL THE WORKS, so a bigger store is not a bigger
+   * cushion for an absent commander: nothing accrues past `worksHours` while
+   * nobody is collecting. A tall store is only reachable by somebody who keeps
+   * emptying the works into it — which is one more thing active play buys.
    */
   capHours: 12,
+  capHoursPerVault: 0.8,
 
   /**
-   * PROVISIONAL. Hours of production the works hold before they STOP. D16.
+   * Hours the works hold before they STOP. D16.
    *
-   * Production no longer flows into storage on its own: it fills a buffer inside
+   * Production does not flow into storage on its own: it fills a buffer inside
    * the Refinery and the Extractor, and when that buffer is full the works stand
    * idle until the player empties them. One tap, and they start again.
    *
-   * Eight hours is not an arbitrary round number — it is the length of a night. A
-   * player who sleeps a normal night wakes to a buffer that filled and stopped at
-   * the exact moment it was full, having wasted nothing. Four hours would punish
-   * the async mobile player this game is aimed at; twelve would match the storage
-   * cap and remove the reason the buffer exists.
-   *
-   * Note this makes a long absence MORE forgiving, not less: total accumulation is
-   * now `collectorHours` of buffer plus `capHours` of storage — twenty hours
-   * against the old twelve.
+   * TEN HOURS IS A NIGHT PLUS A MARGIN, and it is the single number that decides
+   * whether the casual player is excluded. Measured across a 14-day season: a
+   * commander who opens the game twice a day throws away 28.8% of their
+   * production against an active player's 6.5%. That gap IS the effort gradient,
+   * and it is deliberately set at the harsher end because everything else in this
+   * economy is generous to the casual player. Raise it to 12 and the waste goes
+   * to nearly zero.
    */
   collectorHours: 10,
 
   /**
-   * PROVISIONAL. INVARIANT: vaultMult MUST stay below alloyMult.
+   * THE VAULT FLOOR IS DENOMINATED IN HOURS OF THAT RESOURCE'S OWN PRODUCTION,
+   * and that shape is what makes D61's bug unrepresentable.
    *
-   * If protection compounds faster than the stock it protects, the vault
-   * eventually covers 100% of storage and nothing in the galaxy is raidable —
-   * silently, with no other symptom. The first draft shipped 1.50 against an
-   * alloyMult of 1.45 and killed the entire PvP economy for a whole season
+   * The shipped floor was a flat alloy figure applied to crystal as well. Crystal
+   * income is about 35% of alloy income, so the same number covered 88% of a
+   * young planet's crystal store and crystal was unraidable for the whole
+   * opening — measured on the live shard, 13 of 26 raids took nothing at all.
+   * There is no single number that can be sized against one resource and
+   * misapplied to another once the floor is priced in hours.
+   *
+   * Deuterium's floor falls out as zero, correctly, because it has no passive
+   * rate. That is not a special case any more; it is the same rule.
+   *
+   * INVARIANT, REPLACING `vaultMult < alloyMult`:
+   *   `protectedHoursPerVault / capHoursPerVault < 0.5`
+   * At most half a store may ever be safe. At 0.55 / 1.5 the protected share
+   * measures 48% for a brand-new planet and 17-27% for everybody else. Nobody is
+   * farmed to zero; nobody is ever unraidable.
+   *
+   * THE FLAT TERM BELOW IS LOAD-BEARING AND WAS MEASURED TO BE. It was removed once
+   * — expressing the whole floor in hours, which is tidier — and the five-seed gate
+   * refused it twice over: `TI` fell under its floor and **the informed archetype
+   * stopped topping the ladder**, which is the claim the whole design rests on. A
+   * young planet's two hours of production is a small number, and a galaxy where
+   * the weakest worlds can be stripped to nothing is one where being present beats
+   * being clever. Do not remove it again without re-running `pnpm sim`.
+   *
+   * It moved from 0.55 with `capHoursPerVault` because it is denominated against
+   * it — a constant priced in another constant has to move with it.
+   *
+   * The old rule guarded exactly this failure and guarded it silently: a vault
+   * that compounds faster than the stock it protects eventually covers 100% of
+   * storage with no other symptom. The first draft shipped 1.50 against an
+   * `alloyMult` of 1.45 and killed the entire PvP economy for a whole season
    * before the simulator caught it.
    */
-  vaultBase: 450,
-  vaultMult: 1.3,
+  protectedHoursBase: 2,
+  protectedHoursPerVault: 0.3,
   /**
-   * THE FLOOR IS NOT THE SAME NUMBER FOR BOTH RESOURCES. D61.
+   * The floor a brand-new planet gets, in alloy, before the hours rule outgrows it
+   * — about six hours of a Refinery-1 world's output, and it carries the ×1.20
+   * speed factor because it is denominated in production.
    *
-   * `vaultBase` was derived against ALLOY and then applied to crystal as well —
-   * "600 per resource", written down in `docs/balance.md` and marked PROVISIONAL,
-   * which is the mark that says a playtest settles it rather than an argument.
+   * It binds only below about Refinery 3. While it binds the Vault buys no extra
+   * PROTECTION, so `buildingGain` switches that row to what the Vault does move —
+   * the storage ceiling — exactly as the Shipyard row switches metric once its own
+   * headline flattens. A row that quotes the same figure twice and still charges is
+   * the one thing an upgrade screen must never do.
    *
-   * THE PLAYTEST SETTLED IT. Crystal income is 35% of alloy income, so a 600
-   * crystal floor is the same thing as a 1,700 alloy floor: at Extractor L2 the
-   * crystal store caps at 678, so the floor covered 88% of it and crystal was
-   * effectively unraidable for the whole opening. Measured on the live shard at 34
-   * players: 26 raids, mean haul 17 alloy and 5 crystal, and THIRTEEN of them took
-   * nothing at all. A commander was sending 1,040 alloy of Wasps to win a fight
-   * worth 22.
-   *
-   * DERIVED, NOT PICKED — the income ratio, exactly as `crystalCostMult` is
-   * derived from the same curve. Two hand-chosen floors would drift apart the way
-   * two hand-chosen multipliers did before D13.
+   * The crystal figure is derived from the income ratio, never picked.
    */
-  vaultCrystalShare: 28 / 80,
+  openingFloorAlloy: 840,
+} as const;
+
+/**
+ * Deuterium has no passive rate. The Extractor only determines how much of the
+ * volatile material its works and storage can contain. D92.
+ *
+ * PROVISIONAL: the integration sweep may move this inside the measured 0.35–0.60
+ * band, but there is one value for every player and season.
+ */
+export const DEUTERIUM = {
+  containmentRatio: 0.5,
+  /**
+   * The Frontier act begins simultaneously for the whole galaxy. D93.
+   *
+   * 42 → 35 hours: this is a game-clock moment, so it takes the INVERSE of the
+   * ×1.20 speed factor. The act must open at the same point in the season's
+   * shape, not at the same wall-clock hour.
+   */
+  frontierStartsAtMinutes: 35 * 60,
+  /** One rich index per lane, plus one extra seam every ten lanes. D98. */
+  isotopeCadence: 9,
+  isotopeBonusCadence: 10,
+  isotopeRate: 11 / 90,
+  /** Replaces existing ore rather than increasing the rock's total value. */
+  isotopeShare: 0.104,
+  /** A shield must absorb this share of normal outgoing damage to reveal D95. */
+  graviticDiscoveryShieldShare: 0.25,
+} as const;
+
+/** A specialist, not a fourth counter class. D95. */
+export const BREACHER = {
+  /** Four bonus copies plus the ordinary hit make five against a live shield. */
+  bonusShieldDamageMult: 4,
 } as const;
 
 /**
@@ -181,9 +263,23 @@ export const ECON = {
  * tightening it is the direction that favours the player who thinks.**
  */
 export const START = {
-  alloy: 1540,
-  crystal: 276,
-} as const;
+  /**
+   * RE-DERIVED, AND THE ARITHMETIC IS UNCHANGED. Economy v2.
+   *
+   *   Command Core 1 → 2       81 alloy · 23 crystal
+   *   Alloy Refinery 1 → 2     81 alloy · 23 crystal
+   *   Crystal Extractor 1 → 2  81 alloy · 23 crystal
+   *   two Wasps               480 alloy ·  0 crystal
+   *   ─────────────────────────────────────────────
+   *                           723 alloy · 69 crystal
+   *
+   * The figure moved because `costBase` and `costMult` did. The DERIVATION did
+   * not, and `test/invariants.test.ts` still holds this to it exactly.
+   */
+  alloy: 723,
+  crystal: 69,
+  deuterium: 0,
+} as const satisfies Resources;
 
 /**
  * A CUSHION ON TOP OF THE ARITHMETIC — OWNER DECISION, D58.
@@ -215,9 +311,16 @@ export const START = {
  * money to use, not money to sit on.
  */
 export const OPENING_BONUS = {
-  alloy: 1000,
-  crystal: 500,
-} as const;
+  /**
+   * SIZED AS FOUR HOURS OF A FRESH WORLD'S PRODUCTION, rather than picked. That
+   * ties the cushion to the economy: it moves with the ×1.20 speed factor and with
+   * any future rate change, and it stays the same thing — an evening's output the
+   * commander did not have to wait for.
+   */
+  alloy: 580,
+  crystal: 210,
+  deuterium: 0,
+} as const satisfies Resources;
 
 /**
  * WHAT A NEW PLANET IS ACTUALLY CREATED WITH. One answer, four callers.
@@ -232,7 +335,8 @@ export const OPENING_BONUS = {
 export const PLANET_START = {
   alloy: START.alloy + OPENING_BONUS.alloy,
   crystal: START.crystal + OPENING_BONUS.crystal,
-} as const;
+  deuterium: START.deuterium + OPENING_BONUS.deuterium,
+} as const satisfies Resources;
 
 /**
  * WHAT A FRESH PLANET IS BUILT WITH, before the grant above is spent on anything.
@@ -330,7 +434,25 @@ export const START_BUILDINGS = {
  * 0.10 — it passes on the last digit, so ANY perturbation tips it, which is why
  * even 1.1 fails. Give `TAX` real headroom and this becomes measurable again.
  */
-export const INSTRUMENT_LEVEL_WORTH = 1;
+/**
+ * RAISED FROM 1, AND THIS CONTRADICTS D30's MEASUREMENT. Economy v2.
+ *
+ * At 1, all four instruments at maximum cost less than a third of a mid-game
+ * building step, so the entire information layer is bought out by day 2 — the fog
+ * becomes uniform, which makes it decoration. At 2 the four cost about one L15
+ * step, so owning the set is a real trade, while Telescope L1 still costs 156
+ * alloy and the door D22 priced open stays open.
+ *
+ * D30 MEASURED THAT RAISING THIS BREAKS THE GATE — not through adoption, which is
+ * flat at every price, but because it pushes wealth into the OTHER un-losable
+ * holding and drops `ARR` through its floor. That measurement was taken against an
+ * economy whose `TAX` sat on its floor at 0.100. This economy measures `TAX` at
+ * 0.18-0.34 and `ARR` ABOVE its band, so the direction of the risk is reversed.
+ *
+ * THAT ARGUMENT IS REASONED, NOT MEASURED. It is the single most likely thing in
+ * the rewrite to fail the five-seed gate. If it does, put it back to 1.
+ */
+export const INSTRUMENT_LEVEL_WORTH = 2;
 
 export const INSTRUMENT_COST_MULT = {
   TELESCOPE: 3,
@@ -341,6 +463,18 @@ export const INSTRUMENT_COST_MULT = {
 
 /**
  * WHAT EACH SATELLITE COSTS, AND WHAT IT DOES. D25.
+ *
+ * PRICED WELL BELOW THE SHIPPED RATIO, AND THAT WAS MEASURED. The shipped game
+ * held the three commitments at four to five times a mid building step; these sit
+ * at about half of one. Restoring the old multiple was tried — a satellite is one
+ * of the few holdings `ARR` counts as AT RISK, so it looked like the lever for the
+ * one metric still out of band. **It moved `ARR` by 0.006 and cost `VFR` on one
+ * seed and the Core band on another.** The cheap price stays; see
+ * `docs/balance.md` for the five levers that were tried and what each one cost.
+ *
+ * THE UPLINK IS A DOOR, NOT A COMMITMENT. It has to be reachable from what a
+ * commander is holding on turn one — `test/invariants.test.ts` holds it under
+ * `PLANET_START.alloy` — because the whole fog layer hangs off it.
  *
  * Four bodies in orbit, one slot each, bought once and never raised. They are the
  * planet-wide multipliers — each one changes a different number, so what you can
@@ -367,7 +501,7 @@ export const SATELLITES = {
    * written about, arriving through a satellite instead of through a score. Raise
    * this and re-run the season gate, or do not raise it.
    */
-  FOUNDRY: { alloy: 9000, crystal: 3000, production: 1.06 },
+  FOUNDRY: { alloy: 2000, crystal: 700, production: 1.06 },
   /**
    * The comms relay the two seeing instruments hang off.
    *
@@ -375,16 +509,77 @@ export const SATELLITES = {
    * allowed to gate anything: it is what makes the FIRST slot a real decision — do
    * you open your eyes, or do you take production, or speed for your drills.
    */
-  UPLINK: { alloy: 1500, crystal: 500 },
+  UPLINK: { alloy: 900, crystal: 300 },
   /** Services every mining craft the planet owns: bigger hold, faster crossing. */
-  DERRICK: { alloy: 9000, crystal: 3000, hold: 2.6, speed: 1.5 },
+  DERRICK: { alloy: 2200, crystal: 800, hold: 2.6, speed: 1.5 },
   /** A navigation beacon. Every fleet that leaves here flies faster. */
-  BEACON: { alloy: 11000, crystal: 3500, speed: 1.3 },
+  BEACON: { alloy: 3000, crystal: 1000, speed: 1.3 },
 } as const;
 
 /** Every satellite has a price, and the map is total. Checked, not assumed. */
 const _priced: Record<SatelliteId, { readonly alloy: number; readonly crystal: number }> = SATELLITES;
 void _priced;
+
+/**
+ * HOW LONG A THING TAKES TO BUILD. Economy v2, and it overrides D4.
+ *
+ * D4 ruled out build timers and its reasoning was sound AT THE TIME: a timer is a
+ * weak return hook and a permanent temptation to sell speed-ups. That was measured
+ * against forty-minute flights. Since D63 a raid is a round trip a player can sit
+ * through, and CLAUDE.md already records Design Law #6 — *every session must end
+ * with something in flight* — as needing re-deriving because the long clock it hung
+ * on is gone. **A build queue is the clock that replaced it**, and it is the one
+ * pacing mechanism that touches neither the fog, nor combat, nor the ladder.
+ *
+ * D4'S SECOND ARGUMENT SURVIVES AND CONSTRAINS THIS TABLE. Instant construction is
+ * what makes panic defence possible, and `docs/balance.md` sells the radar as *the
+ * window to ARM*. So `defence` is not a flourish — it is DERIVED from that promise:
+ *
+ *   INVARIANT: one ground gun must finish faster than a Radar L3 warning at the
+ *   median raid distance. Measured, a Thorn at Shipyard 0 takes 45 seconds against
+ *   a 2.0-minute L3 warning, and about eight fit inside an L5 one.
+ *
+ * TIME IS PRICED IN RESOURCES, which is why there is no per-level table. A constant
+ * priced in another constant moves with it, so no price change can ever leave a
+ * build time behind, and one formula covers buildings, instruments, satellites,
+ * hulls, ground defence and research.
+ *
+ * THE THROUGHPUTS CARRY THE ×1.20 SPEED FACTOR, like every other rate.
+ */
+export const BUILD = {
+  /** Resource units per minute. `min(capMinutes, costTotal / throughput)`. */
+  conBase: 240,
+  conPerCore: 0.22,
+  yardBase: 312,
+  yardPerYard: 0.35,
+  defBase: 1200,
+  defPerYard: 0.35,
+  /** Research is deliberate work, not assembly. */
+  researchTimeMult: 4,
+  /**
+   * Nothing may ever take longer than this. Six hours, against a brief that says
+   * the top of the tree must not reach one to two days. It only binds at Core 20,
+   * which no fourteen-day season reaches.
+   */
+  capMinutes: 360,
+  /**
+   * How many orders may be pending in ONE queue. There are two — construction and
+   * the yard — and they run independently.
+   */
+  queueDepth: 3,
+  /**
+   * What cancelling gives back.
+   *
+   * NOT A CONVENIENCE NUMBER — it prices an exploit. Resources committed to a queue
+   * are out of a raider's reach, so "dump everything into the queue when the radar
+   * fires" is a real defensive play. Three slots cap how much can be hidden and
+   * half the value is the fee for undoing it. The alternative — making queued
+   * resources raidable — costs a whole new concept for one edge case.
+   *
+   * An order the SERVER abandons refunds in full; that is a fault, not a choice.
+   */
+  cancelRefund: 0.5,
+} as const;
 
 export const COMBAT = {
   rounds: 3,
@@ -429,7 +624,16 @@ export const COMBAT = {
    * that a commander sends a fleet, wins, and is handed 22 resources. Inert on the
    * outcome is precisely what makes it safe to spend on the reward.
    */
-  lootDecisive: 0.65,
+  /**
+   * 0.65 → 0.70. The brief asks for a high rate because the game is PvP-first,
+   * and `docs/balance.md` records the loot dial as INERT on who wins a season —
+   * which is precisely what makes it safe to spend on reward feel.
+   *
+   * It is also the repeat-raid decay system: successive decisive raids take 70%,
+   * then 21%, then 6.3% of the original pile, with no cooldown table and no extra
+   * state.
+   */
+  lootDecisive: 0.70,
   lootPartial: 0.35,
 
   /**
@@ -556,7 +760,7 @@ export const INTEL = {
    * Index 0-2 reach nothing: L1 still catches probes and L2 still adds the
    * bearing. Fleet detection starts at L3, exactly as it always did.
    */
-  radarRange: [0, 0, 0, 200, 340, 500] as readonly number[],
+  radarRange: [0, 0, 0, 190, 360, 570] as readonly number[],
 
   /**
    * PROVISIONAL. How far a telescope can see, in game units, by level. D18.
@@ -572,7 +776,7 @@ export const INTEL = {
    * a real question, and what makes the far half of the disc something you have to
    * earn your way into rather than something you already have.
    */
-  telescopeRange: [0, 420, 640, 950, 1400, Infinity] as readonly number[],
+  telescopeRange: [0, 500, 725, 1025, 1525, Infinity] as readonly number[],
 
   /**
    * PROVISIONAL. Hours a telescope slot is locked after being RE-POINTED. D18.
@@ -649,7 +853,7 @@ export const PROBE = {
    * decides whether a probe is affordable at the moment somebody is deciding what
    * kind of game this is.
    */
-  crystal: 25,
+  crystal: 30,
   /**
    * TRIPLED FROM 90 AT D59, THEN RE-DERIVED AT D63 — 850, not 2554.
    *
@@ -668,15 +872,15 @@ export const PROBE = {
    * 850 is 90 carried through D63's own factor. It holds the relationship the
    * probe has always had — a shade under twice a Wasp — and puts the widest leg on
    * the disc at four minutes against a Wasp's seven, which is still comfortably
-   * "back inside a session". The underlying cause is that `travelMinutes` rounds
-   * to whole minutes and a whole minute is now up to half a flight; that is worth
-   * fixing on its own and is written up in CLAUDE.md rather than bundled here.
+   * "back inside a session". D83 later stopped storing that rounded display quote
+   * as the real arrival instant; it does not restore the rejected 2554 speed,
+   * because that number still erases the distance gradient the probe is for.
    *
    * `TRAVEL.baseMinutes` is not touched HERE — it is the launch overhead priced into
    * every raid in the game, so it is moved deliberately and in its own place, which
    * D63 did when it fell from 3 to 1.
    */
-  speed: 850,
+  speed: 260,
 } as const;
 
 /**
@@ -722,8 +926,17 @@ export const PROBE = {
  * so the ceiling a developed miner reaches is where it always was.
  */
 export const PROSPECTOR = {
-  /** Game units per minute, before a Derrick. D74. */
-  speed: 330,
+  /**
+   * Game units per minute, before a Derrick.
+   *
+   * 330 → 825: the ×2.5 UNIT CHANGE, and it is not optional. This craft's speed is
+   * tied to ROCK speed, not to warship speed — it has to aim ahead of a moving
+   * target — and the rocks took the same factor so that the field still reads as
+   * moving on a disc 2.5 times wider. The orbital period is unchanged because
+   * radius and speed both scaled, so every interception ratio is exactly where it
+   * was.
+   */
+  speed: 825,
   /**
    * LAUNCH AND LANDING OVERHEAD FOR A MINING CRAFT. D48.
    *
@@ -808,8 +1021,8 @@ export const PROSPECTOR = {
  * the price of one satellite.
  */
 export const SHIELD = {
-  base: 40,
-  mult: 1.42,
+  base: 60,
+  mult: 1.5,
   /**
    * 0.05 → 0.40 AT D63, and it is the same decision as everything else on this
    * page: the number was right against forty-minute flights and is meaningless
@@ -821,7 +1034,12 @@ export const SHIELD = {
    * At 40% it recovers in two and a half hours, which is what twenty hours used
    * to be worth in raids.
    */
-  regenPerHour: 0.40,
+  /**
+   * 0.40 → 0.35. Full recovery in about three hours, which at the new tempo is
+   * eleven to sixteen raid round trips: a defender hit hard stays soft for a few
+   * hours, and a defender hit once is whole again before they next log in.
+   */
+  regenPerHour: 0.35,
 } as const;
 
 /**
@@ -840,10 +1058,10 @@ export const DISRUPTION = {
    * and became disproportionately efficient — a defender hit twice was capped out
    * for four hours on twenty-four minutes of somebody's attention.
    */
-  decisiveMinutes: 15,
-  partialMinutes: 5,
+  decisiveMinutes: 20,
+  partialMinutes: 7,
   /** You can never be disrupted more than this far into the future. */
-  maxPendingMinutes: 15,
+  maxPendingMinutes: 25,
 } as const;
 
 /**
@@ -882,10 +1100,10 @@ export const ABUSE = {
 } as const;
 
 export const GALAXY = {
-  radius: 1000,
+  radius: 2500,
   /** Vertical half-thickness of the disc. */
-  thickness: 120,
-  minSeparation: 90,
+  thickness: 300,
+  minSeparation: 225,
   defaultSlots: 200,
 
   /**
@@ -930,7 +1148,7 @@ export const GALAXY = {
    * so the index still exists and still names the same orbit. The claim rows keyed
    * by index stay coherent for the same reason.
    */
-  asteroidSpawnPerHour: 3.375,
+  asteroidSpawnPerHour: 9,
 
   /**
    * Game units per minute along the orbit, random inside this band and INDEPENDENT
@@ -950,12 +1168,12 @@ export const GALAXY = {
    * became unreachable at any level. Mining throughput is therefore unchanged,
    * which is why this is a visual change and not a balance one.
    */
-  asteroidSpeedMin: 140,
-  asteroidSpeedMax: 300,
+  asteroidSpeedMin: 350,
+  asteroidSpeedMax: 750,
 
   /** How far out they run. Inside the disc, clear of the crowded centre. */
-  asteroidOrbitMin: 200,
-  asteroidOrbitMax: 950,
+  asteroidOrbitMin: 500,
+  asteroidOrbitMax: 2375,
 
   /**
    * Hours a rock stays in the disc before it is gone for good. PROVISIONAL.
@@ -966,8 +1184,8 @@ export const GALAXY = {
    * in twice a day meets a few, and short enough that the field turns over instead
    * of accumulating.
    */
-  asteroidLifeHoursMin: 3,
-  asteroidLifeHoursMax: 6,
+  asteroidLifeHoursMin: 2.5,
+  asteroidLifeHoursMax: 5,
 
   /**
    * Ore carried, by level. PROVISIONAL.
@@ -1039,7 +1257,7 @@ export const GALAXY = {
  */
 export const DEBRIS = {
   /** Share of destroyed non-ground hull value that becomes wreckage. PROVISIONAL. */
-  share: 0.1,
+  share: 0.30,
   /**
    * Minutes until a field is worthless. PROVISIONAL.
    *
@@ -1050,7 +1268,7 @@ export const DEBRIS = {
    * about five legs — near enough that being close matters, far enough that a
    * commander who sees it can still get there.
    */
-  decayMinutes: 20,
+  decayMinutes: 40,
   /**
    * Below this a field is not worth creating; it would be noise on the disc.
    *
@@ -1059,41 +1277,41 @@ export const DEBRIS = {
    * terms — and it did, immediately: five debris tests went from a field to no
    * field at all. A constant priced in another constant has to move with it.
    */
-  minimum: 100,
+  minimum: 250,
 } as const;
 
 export const SEASON = {
   days: 14,
+  /** Frozen finale before the next world opens. D88. */
+  afterglowMinutes: 15,
   /** Above this, an upgrade no longer repays before the wipe — the sunset phase. */
-  investmentHorizonShare: 0.4,
+  investmentHorizonShare: 0.7,
+  /** The three public transitions after the opening act. D96. */
+  actBoundaries: [
+    { id: 'war', share: 4 / 14 },
+    { id: 'consolidation', share: 8 / 14 },
+    { id: 'sunset', share: 12 / 14 },
+  ],
 } as const;
 
 /**
- * THE SHAPE OF THE WORLD ABOVE ONE GALAXY. D21.
+ * THE SHAPE OF THE WORLD ABOVE ONE GALAXY. D21, superseded in capacity by D99.
  *
- * Ten galaxies exist; each holds fifty worlds and nothing more. A player owns one
- * planet in exactly one of them, and galaxies fill strictly in order — nobody may
- * take a slot in the second until the first has none left.
+ * At most two live galaxies exist; each admits three hundred commanders. A player owns one
+ * seasonal identity in exactly one of them, and galaxies fill strictly in order —
+ * nobody may take a slot in the second until the first has none left.
  *
- * WHY FIFTY AND NOT TWO HUNDRED. `KNOWN RISKS` in CLAUDE.md names the empty shard
- * as the second-highest risk in the project: "async PvP with 12 players is
- * nothing", and its stated mitigation is to fill one galaxy before opening the
- * next. A cap of 200 made that mitigation a promise; a cap of 50 with sequential
- * fill makes it a rule the code enforces. Fifty real people is also the smallest
- * number at which the information layer has anything to be uncertain about.
- *
- * WHAT IT COSTS. The disc keeps `GALAXY.radius`, so fifty worlds sit about twice
- * as far apart as two hundred did: flights are longer and a Telescope L1 reaches
- * roughly nine neighbours rather than thirty-five. Both readings are inside what
- * `game-design.md` asks for ("8-15 planets" is a player's world for the season),
- * and longer flights serve Design Law #1 rather than fighting it — so no balance
- * constant moves for this. It is a playtest question, not an argument.
+ * D99 keeps the sequential frontier as the empty-shard mitigation while raising
+ * the one supported active galaxy to 300. The disc radius and every travel/intel
+ * constant stay fixed: capacity work may make the implementation cheaper, but it
+ * may not quietly rebalance the game. The denser neighbourhood is a playtest
+ * consequence recorded in the decision.
  */
 export const SERVERS = {
-  /** How many galaxies exist at once. */
-  count: 10,
-  /** Planets per galaxy — also the number of slots generated for it. */
-  capacity: 50,
+  /** How many galaxies may be advertised and opened at once. D100. */
+  count: 2,
+  /** Commander seats per galaxy — also the number of reserved capital slots. */
+  capacity: 300,
   /**
    * How long a player counts as "in game" after their last authenticated request.
    *
@@ -1109,10 +1327,10 @@ export const SERVERS = {
    * böylece serverlarda yer açılır. Pasif hesaplar birikmez."*
    *
    * THE SEAT IS THE SCARCE THING AND THIS IS WHAT KEEPS IT MOVING. A galaxy holds
-   * fifty worlds and galaxies fill strictly in order, which is the only mitigation
+   * three hundred commander seats and galaxies fill strictly in order, which is the mitigation
    * the empty-shard risk has — and it works exactly backwards once the seats are
-   * held by people who signed up on day one and never returned. Fifty commanders
-   * of whom forty are inert is not a populated galaxy; it is an empty one that
+   * held by people who signed up on day one and never returned. Three hundred commanders
+   * of whom most are inert is not a populated galaxy; it is an empty one that
    * cannot be joined.
    *
    * THREE DAYS IS SHORT, AND IT IS SHORT ON PURPOSE. A season is fourteen days,
@@ -1128,4 +1346,55 @@ export const SERVERS = {
    * why this is called reclaiming rather than deleting.
    */
   idleDays: 3,
+} as const;
+
+/** Multi-world ruleset v2. PROVISIONAL until the D97 acceptance gate is measured. */
+export const MULTI_WORLD = {
+  rulesetVersion: 2,
+  /** Coupled to admission: every seat needs one collision-free capital address. D99. */
+  capitalSlots: SERVERS.capacity,
+  /** Nine candidates per neutral preserves D97's placement-search density at the larger scale. */
+  neutralSlotPool: SERVERS.capacity + 450,
+  neutralCounts: { 1: 30, 2: 15, 3: 6 },
+  claimMinutes: 30,
+  occupationMinutes: 6 * 60,
+  recoveryMinutes: 6 * 60,
+  settlement: {
+    cost: { alloy: 2000, crystal: 1000, deuterium: 0 },
+    haulers: 2,
+  },
+  neutral: {
+    1: {
+      buildings: { CORE: 2, REFINERY: 2, EXTRACTOR: 2, VAULT: 0, SHIPYARD: 0 },
+      instruments: {},
+      fleet: {},
+      ground: {},
+      reinforcementMinutes: null,
+    },
+    2: {
+      buildings: { CORE: 5, REFINERY: 5, EXTRACTOR: 5, VAULT: 0, SHIPYARD: 2 },
+      instruments: {},
+      fleet: { WASP: 8, LANCE: 2 },
+      ground: {},
+      reinforcementMinutes: 6 * 60,
+    },
+    3: {
+      buildings: { CORE: 8, REFINERY: 8, EXTRACTOR: 8, VAULT: 0, SHIPYARD: 4 },
+      instruments: { AEGIS: 3 },
+      fleet: { WASP: 16, LANCE: 6, BULWARK: 2 },
+      ground: { THORN: 6, BASTION: 2 },
+      reinforcementMinutes: 4 * 60,
+    },
+  },
+} as const;
+
+export const DEATH_STAR = {
+  type: 'DEATH_STAR',
+  requiredCore: 6,
+  requiredShipyard: 5,
+  requiredResearch: 'DEATH_STAR_PROTOCOL',
+  cost: { alloy: 28_000, crystal: 9000, deuterium: 2600 },
+  buildMinutes: 60,
+  speed: 500,
+  probeVisibilityAccuracy: 0.75,
 } as const;

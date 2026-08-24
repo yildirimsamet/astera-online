@@ -1,4 +1,4 @@
-import { COMBAT } from './constants.js';
+import { BREACHER, COMBAT } from './constants.js';
 import {
   ALL_HULLS,
   HULLS,
@@ -15,6 +15,8 @@ export interface CombatRound {
   attackerDamage: number;
   defenderDamage: number;
   shieldAbsorbed: number;
+  /** Bonus shield-only damage actually absorbed; never spills into unit HP. D95. */
+  breacherShieldDamage: number;
   attackerLosses: Fleet;
   defenderLosses: Fleet;
 }
@@ -99,6 +101,15 @@ const sum = (m: Map<HullId, number>): number => {
   return t;
 };
 
+/** Breacher damage, including the shield-only case where no unit is targetable. */
+function breacherDamage(attackers: Fleet, defenders: Fleet, roll: number): number {
+  const mapped = sum(damageMap(attackers, defenders, roll));
+  if (mapped > 0 || fleetCount(defenders) > 0) return mapped;
+  let raw = 0;
+  for (const [id, count] of fleetEntries(attackers)) raw += HULLS[id].atk * count;
+  return raw * roll;
+}
+
 /**
  * Three rounds, simultaneous fire, +/-8% variance, shield soaks everything first.
  *
@@ -130,10 +141,22 @@ export function resolveCombat(
     if (fleetCount(D) === 0 && shieldLeft <= 0) break;
 
     const span = COMBAT.varianceMax - COMBAT.varianceMin;
-    const toD = damageMap(A, D, COMBAT.varianceMin + rng() * span);
+    const attackerRoll = COMBAT.varianceMin + rng() * span;
+    const toD = damageMap(A, D, attackerRoll);
+    // Reuse the same class-adjusted map and roll. Four extra copies make the
+    // Breacher's total shield effect 5x without adding a fourth counter class.
+    const breacherNormal = shieldLeft > 0
+      ? breacherDamage({ BREACHER: A.BREACHER ?? 0 }, D, attackerRoll)
+      : 0;
     const toA = damageMap(D, A, COMBAT.varianceMin + rng() * span);
 
-    const incoming = sum(toD);
+    // With no units to target, only a Breacher has a planet-facing shield hit.
+    // This preserves the established ordinary-combat model while ensuring its
+    // advertised fivefold shield effect still exists against a bare Aegis.
+    const incoming = sum(toD) + (fleetCount(D) === 0 ? breacherNormal : 0);
+    const breacherBonus = breacherNormal * BREACHER.bonusShieldDamageMult;
+    const breacherAbsorbed = Math.min(shieldLeft, breacherBonus);
+    shieldLeft -= breacherAbsorbed;
     const absorbed = Math.min(shieldLeft, incoming);
     shieldLeft -= absorbed;
     const passRatio = incoming > 0 ? (incoming - absorbed) / incoming : 0;
@@ -145,7 +168,8 @@ export function resolveCombat(
       round: r + 1,
       attackerDamage: Math.round(incoming),
       defenderDamage: Math.round(sum(toA)),
-      shieldAbsorbed: Math.round(absorbed),
+      shieldAbsorbed: Math.round(absorbed + breacherAbsorbed),
+      breacherShieldDamage: Math.round(breacherAbsorbed),
       attackerLosses,
       defenderLosses,
     });

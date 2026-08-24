@@ -17,6 +17,7 @@ import {
   type BuildingLevels,
   type InstrumentId,
   type SatelliteId,
+  storageHours,
 } from '@astera/rules';
 import type { PlanetView } from '../api/schemas.js';
 import i18n from '../i18n/index.js';
@@ -42,6 +43,15 @@ import { compact, full, percent } from './format.js';
  * two working buildings would otherwise be shown a Power of zero, which is both
  * wrong and the single most discouraging number the interface could produce.
  */
+/** Every building level, defaulted — the shape `buildingGain` and `powerOf` need. */
+export const levelsOf = (planet: PlanetView): BuildingLevels => ({
+  CORE: planet.buildings.CORE ?? 0,
+  REFINERY: planet.buildings.REFINERY ?? 0,
+  EXTRACTOR: planet.buildings.EXTRACTOR ?? 0,
+  VAULT: planet.buildings.VAULT ?? 0,
+  SHIPYARD: planet.buildings.SHIPYARD ?? 0,
+});
+
 export function powerOf(planet: PlanetView): number {
   const buildings: BuildingLevels = {
     CORE: planet.buildings.CORE ?? 0,
@@ -58,6 +68,7 @@ export function powerOf(planet: PlanetView): number {
     ground: planet.ground,
     alloy: planet.planet.alloy,
     crystal: planet.planet.crystal,
+    deuterium: planet.planet.deuterium,
   });
 }
 
@@ -72,6 +83,11 @@ export interface Gain {
   label: string;
   now: string;
   next: string;
+  /** Resource-shaped values use the game's learnt resource art, never initials. */
+  resourcePair?: {
+    now: { alloy: number; crystal: number };
+    next: { alloy: number; crystal: number };
+  };
   /** Something new becomes possible — stated as a capability, not a rule. */
   unlocks?: string;
   /**
@@ -85,10 +101,21 @@ export interface Gain {
   maxed?: true;
 }
 
+/**
+ * WHAT ONE MORE LEVEL ACTUALLY BUYS.
+ *
+ * `levels` is the whole building record and not just the one being raised, because
+ * two of the rows cannot be priced without its siblings: the STORE's ceiling now
+ * scales with the Vault, and the Vault's own floor is denominated in hours of the
+ * Refinery's and the Extractor's production. Passing only the level being raised
+ * gave `NaN` on both rows — a screen that offered a purchase and could not say
+ * what it did.
+ */
 export function buildingGain(
   id: BuildingId,
   level: number,
   cappedCount: number,
+  levels: BuildingLevels,
 ): Gain {
   const next = level + 1;
   switch (id) {
@@ -108,8 +135,8 @@ export function buildingGain(
         now: i18n.t('gains.refinery.rate', { amount: compact(alloyRate(level)) }),
         next: i18n.t('gains.refinery.rate', { amount: compact(alloyRate(next)) }),
         unlocks: i18n.t('gains.refinery.storage', {
-          now: compact(storageCap(alloyRate(level))),
-          next: compact(storageCap(alloyRate(next))),
+          now: compact(storageCap(alloyRate(level), levels.VAULT)),
+          next: compact(storageCap(alloyRate(next), levels.VAULT)),
         }),
       };
     case 'EXTRACTOR':
@@ -118,18 +145,54 @@ export function buildingGain(
         now: i18n.t('gains.extractor.rate', { amount: compact(crystalRate(level)) }),
         next: i18n.t('gains.extractor.rate', { amount: compact(crystalRate(next)) }),
         unlocks: i18n.t('gains.extractor.storage', {
-          now: compact(storageCap(crystalRate(level))),
-          next: compact(storageCap(crystalRate(next))),
+          now: compact(storageCap(crystalRate(level), levels.VAULT)),
+          next: compact(storageCap(crystalRate(next), levels.VAULT)),
         }),
       };
-    case 'VAULT':
+    case 'VAULT': {
+      const current = vaultProtects(level, levels.REFINERY, levels.EXTRACTOR);
+      const raised = vaultProtects(next, levels.REFINERY, levels.EXTRACTOR);
+
+      /**
+       * TWO METRICS, AND THE SECOND ONE IS WHAT KEEPS THE ROW HONEST.
+       *
+       * The Vault does two jobs: it sets the floor a raid cannot reach, and it
+       * sets how tall the STORE is. On a very young world the floor is held up by
+       * `ECON.openingFloorAlloy` — a flat grant that outgrows two hours of a
+       * Refinery-1 planet's output — so the protected pair does not move for the
+       * first level or two while the capacity does.
+       *
+       * Quoting an unchanged pair and still charging an exponential price is the
+       * single worst thing an upgrade screen can do. So when protection has not
+       * moved, the row states the ceiling instead, exactly as the Shipyard row
+       * switches to Veils once its accuracy figure flattens.
+       */
+      if (current.alloy === raised.alloy && current.crystal === raised.crystal) {
+        return {
+          label: i18n.t('gains.vault.storeLabel'),
+          now: i18n.t('gains.vault.storeValue', { hours: storageHours(level) }),
+          next: i18n.t('gains.vault.storeValue', { hours: storageHours(next) }),
+        };
+      }
+
       return {
         label: i18n.t('gains.vault.label'),
-        // An upgrade card has no holdings to measure against, so it quotes the
-        // CEILING: everything this level could cover, across both stores.
-        now: full(vaultProtects(level).alloy + vaultProtects(level).crystal),
-        next: full(vaultProtects(next).alloy + vaultProtects(next).crystal),
+        // The pair must stay visible. Adding it into one number erases the rule
+        // the player is deciding against: crystal has a deliberately lower floor.
+        now: i18n.t('gains.vault.value', {
+          alloy: full(current.alloy),
+          crystal: full(current.crystal),
+        }),
+        next: i18n.t('gains.vault.value', {
+          alloy: full(raised.alloy),
+          crystal: full(raised.crystal),
+        }),
+        resourcePair: {
+          now: { alloy: current.alloy, crystal: current.crystal },
+          next: { alloy: raised.alloy, crystal: raised.crystal },
+        },
       };
+    }
     case 'SHIPYARD': {
       const unlocked = (['LANCE', 'HAULER', 'BULWARK'] as const).find(
         (hull) => HULLS[hull].minShipyard === next,

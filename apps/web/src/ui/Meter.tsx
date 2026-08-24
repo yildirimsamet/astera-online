@@ -14,24 +14,33 @@ export function Meter({
   cap,
   tone,
   cells = 12,
+  label,
 }: {
   value: number;
   cap: number;
-  tone: 'alloy' | 'crystal';
+  tone: 'alloy' | 'crystal' | 'deuterium';
   cells?: number;
+  label?: string;
 }) {
   const share = cap <= 0 ? 0 : Math.min(1, value / cap);
   const lit = Math.round(share * cells);
   const full = share >= 0.999;
 
-  const colour = tone === 'alloy' ? 'bg-alloy' : 'bg-crystal';
-  const glow =
-    tone === 'alloy' ? 'shadow-[0_0_6px_rgba(217,164,65,0.8)]' : 'shadow-[0_0_6px_rgba(111,211,224,0.8)]';
+  const colour = tone === 'alloy'
+    ? 'bg-alloy'
+    : tone === 'crystal' ? 'bg-crystal' : 'bg-deuterium';
+  const glow = tone === 'alloy'
+    ? 'shadow-[0_0_6px_rgba(217,164,65,0.8)]'
+    : tone === 'crystal'
+      ? 'shadow-[0_0_6px_rgba(111,211,224,0.8)]'
+      : 'shadow-[0_0_6px_var(--color-deuterium-glow)]';
 
   return (
     <div
-      className="flex h-[7px] gap-[2px]"
+      className="relative flex h-[7px] gap-[2px]"
       role="meter"
+      {...(label ? { 'aria-label': label } : {})}
+      data-full={full ? 'true' : 'false'}
       aria-valuenow={Math.round(share * 100)}
       aria-valuemin={0}
       aria-valuemax={100}
@@ -45,12 +54,19 @@ export function Meter({
           <span
             key={i}
             className={`flex-1 rounded-[1px] transition-colors duration-500 ${
-              full ? 'bg-threat' : on ? colour : 'bg-line/70'
-            } ${leading && !full ? glow : ''} ${full ? 'motion-safe:animate-[meter-pulse_1.6s_ease-in-out_infinite]' : ''}`}
+              on ? colour : 'bg-line/70'
+            } ${leading ? glow : ''}`}
             style={leading && !full ? undefined : { opacity: on ? 0.9 : 1 }}
           />
         );
       })}
+      {full && (
+        <span
+          aria-hidden
+          data-meter-cap
+          className="absolute -right-0.5 -top-1 h-[9px] w-[3px] rounded-[1px] border border-bone/80 bg-panel shadow-[0_0_6px_currentColor]"
+        />
+      )}
     </div>
   );
 }

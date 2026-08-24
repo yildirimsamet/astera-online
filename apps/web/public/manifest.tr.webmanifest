@@ -2,7 +2,7 @@
   "name": "Astera Online",
   "short_name": "Astera",
   "lang": "tr",
-  "description": "Bir galakside gerçek insanların arasında tek bir gezegenin var. Onların elinde ne olduğunu göremezsin.",
+  "description": "Korunan capital'ını yönet, koloniler kazan ve rakiplerinin elindekini görmeden canlı galaksiyi oku.",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",

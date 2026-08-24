@@ -1,6 +1,7 @@
 import { and, desc, eq, gt, inArray, isNotNull, ne, or } from 'drizzle-orm';
 import {
   PROBE,
+  DEATH_STAR,
   bearingBetween,
   detectChance,
   fuzzBand,
@@ -15,8 +16,10 @@ import {
   telescopeReading,
   telescopeSeed,
   telescopeSlots,
-  travelMinutes,
+  satelliteSlots,
+  travelExact,
   withinTelescopeRange,
+  seededFrom,
   type Bearing,
   type FleetStatus,
   type HullId,
@@ -29,6 +32,7 @@ import { addMinutes, minutesSince, type Clock } from '../clock.js';
 import type { Db, Queryable, Tx } from '../db/client.js';
 import {
   accounts,
+  buildings,
   missions,
   planets,
   players,
@@ -36,14 +40,24 @@ import {
   satellites,
   scanEvents,
   seasons,
+  strategicAssets,
   units,
   watches,
 } from '../db/schema.js';
 import { assertFreeBay } from './flight.js';
 import { announceUnlocks } from './notifications.js';
-import { GameError, buildingLevelsOf, loadLocked, saveResources } from './planet.js';
+import {
+  assertSeasonOpenThrough,
+  assertWorldOperational,
+  GameError,
+  buildingLevelsOf,
+  loadLocked,
+  saveResources,
+} from './planet.js';
 import { schedule } from '../worker/queue.js';
 import { publishShard } from '../stream/bus.js';
+import { hasResearch } from './researchState.js';
+import { lockWorlds } from './ownership.js';
 
 /* ── satellite levels ───────────────────────────────────────── */
 
@@ -53,16 +67,30 @@ export async function instrumentLevels(
 ): Promise<Map<string, InstrumentLevels>> {
   const out = new Map<string, InstrumentLevels>();
   if (planetIds.length === 0) return out;
-  const rows = await tx
-    .select()
-    .from(satellites)
-    .where(inArray(satellites.planetId, [...planetIds]));
+  const [rows, coreRows] = await Promise.all([
+    tx.select().from(satellites).where(inArray(satellites.planetId, [...planetIds])),
+    tx.select({ planetId: buildings.planetId, level: buildings.level })
+      .from(buildings)
+      .where(and(inArray(buildings.planetId, [...planetIds]), eq(buildings.type, 'CORE'))),
+  ]);
+  const coreByPlanet = new Map(coreRows.map((row) => [row.planetId, row.level]));
+  const activeUplink = new Set<string>();
+  for (const planetId of planetIds) {
+    const core = coreByPlanet.get(planetId) ?? 0;
+    const active = rows
+      .filter((row) => row.planetId === planetId && !KNOWN_INSTRUMENTS.has(row.type))
+      .toSorted((a, b) => a.slot - b.slot)
+      .slice(0, satelliteSlots(core));
+    if (active.some((row) => row.type === 'UPLINK')) activeUplink.add(planetId);
+  }
   for (const r of rows) {
     // The table also holds orbit satellites (D25); those carry no level anyone
     // reads, and a row naming something retired belongs to neither list.
     if (!KNOWN_INSTRUMENTS.has(r.type)) continue;
     const entry = out.get(r.planetId) ?? {};
-    entry[r.type as InstrumentId] = r.level;
+    const core = coreByPlanet.get(r.planetId) ?? 0;
+    const gated = (r.type === 'TELESCOPE' || r.type === 'RADAR') && !activeUplink.has(r.planetId);
+    entry[r.type as InstrumentId] = gated ? 0 : Math.min(r.level, core);
     out.set(r.planetId, entry);
   }
   return out;
@@ -161,6 +189,7 @@ export async function fleetTruthFor(
 /* ── telescope ──────────────────────────────────────────────── */
 
 export interface WatchView {
+  observerPlanetId: string;
   slot: number;
   targetPlanetId: string;
   targetName: string;
@@ -188,14 +217,16 @@ export async function assignWatch(
   targetPlanetId: string,
   slot: number,
   clock: Clock,
+  expectedPlayerId?: string,
 ): Promise<{ slot: number; targetPlanetId: string; cooldownUntil: Date | null }> {
   if (observerPlanetId === targetPlanetId) {
     throw new GameError('SELF_WATCH', 'You already know what your own fleet is doing');
   }
 
   return db.transaction(async (tx) => {
-    const observer = await loadLocked(tx, observerPlanetId, clock);
-    const level = observer.instruments.TELESCOPE ?? 0;
+    await lockWorlds(tx, [observerPlanetId, targetPlanetId]);
+    const observer = await loadLocked(tx, observerPlanetId, clock, { expectedPlayerId });
+    const level = observer.effectiveInstruments.TELESCOPE ?? 0;
     if (level < 1) throw new GameError('NO_TELESCOPE', 'Install a Telescope first', 403);
 
     const slots = telescopeSlots(level);
@@ -225,7 +256,7 @@ export async function assignWatch(
     const [existing] = await tx
       .select()
       .from(watches)
-      .where(and(eq(watches.observerPlayerId, observer.playerId), eq(watches.slot, slot)));
+      .where(and(eq(watches.observerPlanetId, observer.planetId), eq(watches.slot, slot)));
 
     // Re-pointing at what the slot already watches is a no-op, not a purchase.
     // Charging a day's cooldown for a double-tap would be indefensible.
@@ -257,11 +288,17 @@ export async function assignWatch(
 
     await tx
       .insert(watches)
-      .values({ observerPlayerId: observer.playerId, slot, targetPlanetId, cooldownUntil })
+      .values({
+        observerPlayerId: observer.playerId,
+        observerPlanetId: observer.planetId,
+        slot,
+        targetPlanetId,
+        cooldownUntil,
+      })
       // Re-pointing a slot discards its confirmation history — you are looking at
       // something new, so nothing is "last confirmed" about it.
       .onConflictDoUpdate({
-        target: [watches.observerPlayerId, watches.slot],
+        target: [watches.observerPlanetId, watches.slot],
         set: { targetPlanetId, lastStatus: null, lastConfirmedAt: null, cooldownUntil },
       });
 
@@ -293,30 +330,29 @@ export async function readTelescopes(
     })
     .from(watches)
     .innerJoin(planets, eq(watches.targetPlanetId, planets.id))
-    .innerJoin(players, eq(planets.playerId, players.id))
-    .innerJoin(accounts, eq(players.accountId, accounts.id))
+    .leftJoin(players, eq(planets.controllerPlayerId, players.id))
+    .leftJoin(accounts, eq(players.accountId, accounts.id))
     .where(eq(watches.observerPlayerId, playerId));
 
   if (rows.length === 0) return [];
 
   const [me] = await db.select().from(players).where(eq(players.id, playerId));
   if (!me) throw new GameError('PLAYER_NOT_FOUND', 'No such player', 404);
-  const [myPlanet] = await db.select().from(planets).where(eq(planets.playerId, playerId));
   const [season] = await db.select().from(seasons).where(eq(seasons.id, me.seasonId));
-  if (!myPlanet || !season) throw new GameError('NO_PLANET', 'Join a galaxy first', 404);
+  if (!season) throw new GameError('NO_PLANET', 'Join a galaxy first', 404);
 
   const now = clock.now();
   const nowMinutes = minutesSince(season.startsAt, now);
   const targetIds = rows.map((r) => r.planet.id);
+  const observerIds = [...new Set(rows.map((r) => r.watch.observerPlanetId))];
 
   const [levels, truth] = await Promise.all([
-    instrumentLevels(db, [myPlanet.id, ...targetIds]),
+    instrumentLevels(db, [...observerIds, ...targetIds]),
     fleetTruthFor(db, targetIds, now),
   ]);
-  const myTelescope = levelOf(levels, myPlanet.id, 'TELESCOPE');
-
   const views: WatchView[] = [];
   for (const row of rows) {
+    const myTelescope = levelOf(levels, row.watch.observerPlanetId, 'TELESCOPE');
     const target = row.planet;
     const veil = levelOf(levels, target.id, 'VEIL');
     const t = truth.get(target.id) ?? { status: 'HOME' as const, expectedHomeAt: null };
@@ -362,7 +398,7 @@ export async function readTelescopes(
           .set({ lastStatus: reading.status, lastConfirmedAt: confirmedAt })
           .where(
             and(
-              eq(watches.observerPlayerId, row.watch.observerPlayerId),
+              eq(watches.observerPlanetId, row.watch.observerPlanetId),
               eq(watches.slot, row.watch.slot),
             ),
           );
@@ -370,10 +406,11 @@ export async function readTelescopes(
     }
 
     views.push({
+      observerPlanetId: row.watch.observerPlanetId,
       slot: row.watch.slot,
       targetPlanetId: target.id,
       targetName: target.name,
-      ownerName: row.owner,
+      ownerName: row.owner ?? `Neutral ${target.name}`,
       reading,
       cooldownUntil: row.watch.cooldownUntil,
     });
@@ -403,13 +440,16 @@ export async function launchProbe(
   originPlanetId: string,
   targetPlanetId: string,
   clock: Clock,
+  expectedPlayerId?: string,
 ): Promise<ProbeLaunch> {
   if (originPlanetId === targetPlanetId) {
     throw new GameError('SELF_PROBE', 'You already know what is on your own planet');
   }
 
   return db.transaction(async (tx) => {
-    const origin = await loadLocked(tx, originPlanetId, clock);
+    await lockWorlds(tx, [originPlanetId, targetPlanetId]);
+    const origin = await loadLocked(tx, originPlanetId, clock, { expectedPlayerId });
+    assertWorldOperational(origin);
     if (origin.alloy < PROBE.alloy || origin.crystal < PROBE.crystal) {
       throw new GameError('INSUFFICIENT_RESOURCES', 'Not enough resources for a probe', 400, {
         context: 'probe',
@@ -472,12 +512,14 @@ export async function launchProbe(
     }
 
     const dist = distance(origin, target);
-    const flightMinutes = travelMinutes(dist, PROBE.speed);
+    const flightMinutes = travelExact(dist, PROBE.speed);
     const arriveAt = addMinutes(origin.now, flightMinutes);
+    assertSeasonOpenThrough(origin, addMinutes(arriveAt, flightMinutes));
 
     await saveResources(tx, originPlanetId, {
       alloy: origin.alloy - PROBE.alloy,
       crystal: origin.crystal - PROBE.crystal,
+      deuterium: origin.deuterium,
     });
 
     const [mission] = await tx
@@ -485,6 +527,7 @@ export async function launchProbe(
       .values({
         seasonId: origin.seasonId,
         kind: 'probe',
+        ownerPlayerId: origin.playerId,
         originPlanetId,
         targetPlanetId,
         fleet: {},
@@ -547,21 +590,46 @@ export async function resolveProbe(
 
   const accuracy = probeAccuracy(shipyard, veil);
   const stock = fuzzBand(target.alloy + target.crystal, accuracy, rng);
+  const readsIsotopes = await hasResearch(tx, origin.id, 'ISOTOPE_SPECTROMETRY');
+  // A separate deterministic roll keeps unlocking this field from changing the
+  // existing report bands or whether the target detects the probe.
+  const deuteriumStock = readsIsotopes
+    ? fuzzBand(target.deuterium, accuracy, seededFrom(mission.id, 0x1d50_70e))
+    : null;
   const defence = fuzzBand(fleetValue(homeFleet), accuracy, rng);
   const size = fuzzBand(fleetCount(homeFleet), accuracy, rng);
+  const [strategic] = await tx
+    .select({ status: strategicAssets.status })
+    .from(strategicAssets)
+    .where(and(
+      eq(strategicAssets.planetId, target.id),
+      inArray(strategicAssets.status, ['BUILDING', 'PAUSED', 'READY']),
+    ))
+    .limit(1);
+  const strategicStatus = accuracy < DEATH_STAR.probeVisibilityAccuracy
+    ? 'UNKNOWN' as const
+    : strategic?.status === 'READY'
+      ? 'READY' as const
+      : strategic
+        ? 'BUILDING' as const
+        : 'NONE' as const;
 
   const detected = rng() < detectChance(radar, shipyard);
   const bearing = bearingBetween(target, origin);
 
   await tx.insert(probeReports).values({
-    observerPlayerId: origin.playerId,
+    observerPlayerId: mission.ownerPlayerId,
     targetPlanetId: target.id,
     missionId: mission.id,
     accuracy,
     stock: { low: stock.low, high: stock.high },
+    deuteriumStock: deuteriumStock
+      ? { low: deuteriumStock.low, high: deuteriumStock.high }
+      : null,
     defence: { low: defence.low, high: defence.high },
     fleetSize: { low: size.low, high: size.high },
     fleetHome: !anyAway,
+    strategicStatus,
     detected,
     createdAt: now,
     // Written, but not readable until the craft is home. The snapshot is of this
@@ -625,7 +693,7 @@ export async function readRadarLog(
 
 /** Only what has actually come home. A probe in flight tells you nothing yet. */
 export async function readProbeReports(db: Db, playerId: string, limit = 10) {
-  return db
+  const rows = await db
     .select({
       report: probeReports,
       targetName: planets.name,
@@ -633,11 +701,15 @@ export async function readProbeReports(db: Db, playerId: string, limit = 10) {
     })
     .from(probeReports)
     .innerJoin(planets, eq(probeReports.targetPlanetId, planets.id))
-    .innerJoin(players, eq(planets.playerId, players.id))
-    .innerJoin(accounts, eq(players.accountId, accounts.id))
+    .leftJoin(players, eq(planets.controllerPlayerId, players.id))
+    .leftJoin(accounts, eq(players.accountId, accounts.id))
     .where(
       and(eq(probeReports.observerPlayerId, playerId), isNotNull(probeReports.deliveredAt)),
     )
     .orderBy(desc(probeReports.createdAt))
     .limit(limit);
+  return rows.map((row) => ({
+    ...row,
+    targetUsername: row.targetUsername ?? 'Neutral',
+  }));
 }

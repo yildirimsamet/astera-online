@@ -10,6 +10,7 @@ import { launchMining } from '../src/services/mining.js';
 import { activeAsteroids, generateGalaxy } from '@astera/rules';
 import {
   giveInstrument,
+  giveSatellite,
   giveUnits,
   grant,
   placeAt,
@@ -64,6 +65,8 @@ describe('a raid tells both sides', () => {
     f = await seedWorld(2);
     [attacker, defender] = f.planetIds as [string, string];
     await setLevel(f.db, attacker, 'CORE', 6);
+    await setLevel(f.db, defender, 'CORE', 6);
+    await giveSatellite(f.db, defender, 'UPLINK');
     await grant(f.db, defender, 30_000, 3_000);
   });
 
@@ -162,6 +165,8 @@ describe('the radar warning', () => {
     // so every rung of the ladder is reachable inside one flight.
     await placeAt(f.db, defender, { x: 4000 });
     await setLevel(f.db, attacker, 'CORE', 6);
+    await setLevel(f.db, defender, 'CORE', 6);
+    await giveSatellite(f.db, defender, 'UPLINK');
     await grant(f.db, defender, 30_000, 3_000);
     await giveUnits(f.db, attacker, { WASP: 40 });
     f.clock.advance(300);
@@ -532,6 +537,7 @@ describe('the unlock cascade', () => {
 
   /** "I can't tell if he's rich" — pointing a telescope is what opens the Explorer. */
   it('announces the explorer the first time a telescope is pointed at anybody', async () => {
+    await giveSatellite(f.db, f.planetIds[0]!, 'UPLINK');
     await giveInstrument(f.db, f.planetIds[0]!, 'TELESCOPE', 3);
     await assignWatch(f.db, f.planetIds[0]!, f.planetIds[1]!, 0, f.clock);
 

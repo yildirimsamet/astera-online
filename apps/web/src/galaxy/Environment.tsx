@@ -3,6 +3,7 @@ import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import { paintDiscCanvas, paintNebulaCanvas } from './nebula.js';
 import { DISC_RADIUS } from './scene.js';
+import { useReducedMotionPreference } from './motion.js';
 
 /**
  * The space the game happens in.
@@ -28,6 +29,7 @@ import { DISC_RADIUS } from './scene.js';
 export function Nebula() {
   const [texture, setTexture] = useState<THREE.Texture | null>(null);
   const material = useRef<THREE.MeshBasicMaterial>(null);
+  const reducedMotion = useReducedMotionPreference();
 
   useEffect(() => {
     let cancelled = false;
@@ -59,7 +61,8 @@ export function Nebula() {
   useFrame((_, delta) => {
     const m = material.current;
     if (!m || !texture) return;
-    if (m.opacity < 1) m.opacity = Math.min(1, m.opacity + delta * 0.9);
+    if (reducedMotion) m.opacity = 1;
+    else if (m.opacity < 1) m.opacity = Math.min(1, m.opacity + delta * 0.9);
   });
 
   if (!texture) return null;
@@ -154,7 +157,7 @@ export function limbTexture(): THREE.Texture {
      * A BAND, NOT A CLOUD, and this is the number that decides which.
      *
      * The planet's own edge sits at `1 / LIMB_SCALE` of this quad's half-width —
-     * 0.885 at the scale this is drawn with. The peak goes a hair inside it, so the
+     * 0.909 at the scale this is drawn with. The peak goes a hair inside it, so the
      * brightest part lands ON the world's rim and only its tail reaches past the
      * silhouette. Photographed first at a peak of 0.71 against a scale of 1.34,
      * which put a grey cloud half a radius deep around every world and drowned the
@@ -162,10 +165,11 @@ export function limbTexture(): THREE.Texture {
      */
     const g = ctx.createRadialGradient(c, c, 0, c, c, c);
     g.addColorStop(0, 'rgba(255,255,255,0)');
-    g.addColorStop(0.815, 'rgba(255,255,255,0.02)');
-    g.addColorStop(0.852, 'rgba(255,255,255,0.7)');
-    g.addColorStop(0.878, 'rgba(255,255,255,0.4)');
-    g.addColorStop(0.935, 'rgba(255,255,255,0.11)');
+    g.addColorStop(0.865, 'rgba(255,255,255,0.015)');
+    g.addColorStop(0.895, 'rgba(255,255,255,0.34)');
+    g.addColorStop(0.908, 'rgba(255,255,255,0.76)');
+    g.addColorStop(0.928, 'rgba(255,255,255,0.28)');
+    g.addColorStop(0.965, 'rgba(255,255,255,0.05)');
     g.addColorStop(1, 'rgba(255,255,255,0)');
     ctx.fillStyle = g;
     ctx.fillRect(0, 0, size, size);
@@ -240,6 +244,18 @@ export function Core() {
 
 /* ── stars and dust ─────────────────────────────────────────── */
 
+/** Stable scenery makes visual regression a comparison, not a new sky each run. */
+function randomStream(seed: number): () => number {
+  let state = seed >>> 0;
+  return () => {
+    state += 0x6d2b79f5;
+    let value = state;
+    value = Math.imul(value ^ (value >>> 15), value | 1);
+    value ^= value + Math.imul(value ^ (value >>> 7), value | 61);
+    return ((value ^ (value >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
 /**
  * The starfield.
  *
@@ -258,6 +274,7 @@ export function Core() {
  */
 export function Starfield() {
   const { geometry, material } = useMemo(() => {
+    const random = randomStream(0x5a17f13d);
     const count = 4200;
     const positions = new Float32Array(count * 3);
     const colours = new Float32Array(count * 3);
@@ -265,27 +282,27 @@ export function Starfield() {
     const tint = new THREE.Color();
 
     for (let i = 0; i < count; i++) {
-      const theta = Math.random() * Math.PI * 2;
+      const theta = random() * Math.PI * 2;
       // Half the sky is in the band, half is scattered everywhere.
-      const inBand = Math.random() < 0.5;
+      const inBand = random() < 0.5;
       const phi = inBand
-        ? Math.PI / 2 + (Math.random() - 0.5) * 0.42
-        : Math.acos(2 * Math.random() - 1);
-      const r = DISC_RADIUS * (2.8 + Math.random() * 2.6);
+        ? Math.PI / 2 + (random() - 0.5) * 0.42
+        : Math.acos(2 * random() - 1);
+      const r = DISC_RADIUS * (2.8 + random() * 2.6);
 
       positions[i * 3] = r * Math.sin(phi) * Math.cos(theta);
       positions[i * 3 + 1] = r * Math.cos(phi);
       positions[i * 3 + 2] = r * Math.sin(phi) * Math.sin(theta);
 
       // Magnitude: cubed uniform, so most stars are faint and a few are not.
-      const magnitude = Math.pow(Math.random(), 3);
+      const magnitude = Math.pow(random(), 3);
       // The floor matters more than the ceiling: a sky whose faint stars vanish
       // has empty patches, and empty patches read as a black screen rather than
       // as distance.
       sizes[i] = 0.058 + magnitude * 0.19;
 
       // 3000K to 11000K, roughly — orange through white to blue-white.
-      const warmth = Math.random();
+      const warmth = random();
       const hue = warmth < 0.22 ? 0.07 : warmth < 0.55 ? 0.13 : 0.58;
       const saturation = warmth < 0.55 ? 0.45 : 0.28;
       tint.setHSL(hue, saturation, 0.66 + magnitude * 0.34);
@@ -336,6 +353,21 @@ export function Starfield() {
     return { geometry: g, material: m };
   }, []);
 
+  useFrame(({ camera, size, gl }) => {
+    const perspective = camera as THREE.PerspectiveCamera;
+    const fov = THREE.MathUtils.degToRad(perspective.fov || 45);
+    material.uniforms.uScale!.value =
+      (size.height * gl.getPixelRatio()) / (2 * Math.tan(fov / 2));
+  });
+
+  useEffect(
+    () => () => {
+      geometry.dispose();
+      material.dispose();
+    },
+    [geometry, material],
+  );
+
   return <points geometry={geometry} material={material} frustumCulled={false} />;
 }
 
@@ -348,78 +380,86 @@ export function Starfield() {
  * so it costs nothing.
  */
 export function BrightStars() {
-  const texture = useMemo(() => {
-    const size = 128;
-    const canvas = document.createElement('canvas');
-    canvas.width = canvas.height = size;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return new THREE.CanvasTexture(canvas);
-
-    const c = size / 2;
-    const halo = ctx.createRadialGradient(c, c, 0, c, c, c);
-    halo.addColorStop(0, 'rgba(255,255,255,0.9)');
-    halo.addColorStop(0.1, 'rgba(220,235,255,0.32)');
-    halo.addColorStop(0.36, 'rgba(180,210,255,0.06)');
-    halo.addColorStop(1, 'rgba(0,0,0,0)');
-    ctx.fillStyle = halo;
-    ctx.fillRect(0, 0, size, size);
-
-    // The spikes themselves: two tapered bars, drawn as gradients so they fade.
-    ctx.globalCompositeOperation = 'lighter';
-    for (const vertical of [false, true]) {
-      const g = vertical
-        ? ctx.createLinearGradient(0, 0, 0, size)
-        : ctx.createLinearGradient(0, 0, size, 0);
-      g.addColorStop(0, 'rgba(255,255,255,0)');
-      g.addColorStop(0.44, 'rgba(255,255,255,0.16)');
-      g.addColorStop(0.5, 'rgba(255,255,255,0.55)');
-      g.addColorStop(0.56, 'rgba(255,255,255,0.16)');
-      g.addColorStop(1, 'rgba(255,255,255,0)');
-      ctx.fillStyle = g;
-      if (vertical) ctx.fillRect(c - 1, 0, 2, size);
-      else ctx.fillRect(0, c - 1, size, 2);
+  const { geometry, material } = useMemo(() => {
+    const random = randomStream(0xb8194a2f);
+    const count = 22;
+    const positions = new Float32Array(count * 3);
+    const colours = new Float32Array(count * 3);
+    const sizes = new Float32Array(count);
+    const tint = new THREE.Color();
+    for (let i = 0; i < count; i++) {
+      const theta = random() * Math.PI * 2;
+      const phi = Math.acos(2 * random() - 1);
+      const r = DISC_RADIUS * (3.15 + random() * 1.05);
+      positions.set(
+        [
+          r * Math.sin(phi) * Math.cos(theta),
+          r * Math.cos(phi) * 0.8,
+          r * Math.sin(phi) * Math.sin(theta),
+        ],
+        i * 3,
+      );
+      sizes[i] = DISC_RADIUS * (0.035 + random() * 0.045);
+      const temperature = random();
+      tint.set(temperature < 0.2 ? '#ffd7a6' : temperature > 0.72 ? '#c9e2ff' : '#fff4dd');
+      colours.set([tint.r, tint.g, tint.b], i * 3);
     }
 
-    return new THREE.CanvasTexture(canvas);
+    const buffer = new THREE.BufferGeometry();
+    buffer.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+    buffer.setAttribute('color', new THREE.BufferAttribute(colours, 3));
+    buffer.setAttribute('aSize', new THREE.BufferAttribute(sizes, 1));
+    const shader = new THREE.ShaderMaterial({
+      uniforms: { uScale: { value: 700 } },
+      vertexColors: true,
+      transparent: true,
+      depthWrite: false,
+      blending: THREE.AdditiveBlending,
+      fog: false,
+      vertexShader: `
+        attribute float aSize;
+        varying vec3 vColour;
+        uniform float uScale;
+        void main() {
+          vColour = color;
+          vec4 mv = modelViewMatrix * vec4(position, 1.0);
+          gl_PointSize = clamp(aSize * uScale / max(0.01, -mv.z), 2.0, 72.0);
+          gl_Position = projectionMatrix * mv;
+        }
+      `,
+      fragmentShader: `
+        varying vec3 vColour;
+        void main() {
+          vec2 p = gl_PointCoord - vec2(0.5);
+          float radius = length(p) * 2.0;
+          float halo = (1.0 - smoothstep(0.08, 1.0, radius)) * 0.2;
+          float core = 1.0 - smoothstep(0.0, 0.13, radius);
+          float horizontal = exp(-abs(p.y) * 92.0) * (1.0 - smoothstep(0.08, 0.5, abs(p.x)));
+          float vertical = exp(-abs(p.x) * 92.0) * (1.0 - smoothstep(0.08, 0.5, abs(p.y)));
+          float alpha = clamp(halo + core + (horizontal + vertical) * 0.34, 0.0, 1.0);
+          gl_FragColor = vec4(vColour * (0.72 + core * 1.1), alpha * 0.66);
+        }
+      `,
+    });
+    return { geometry: buffer, material: shader };
   }, []);
 
-  const stars = useMemo(
-    () =>
-      Array.from({ length: 22 }, () => {
-        const theta = Math.random() * Math.PI * 2;
-        const phi = Math.acos(2 * Math.random() - 1);
-        const r = DISC_RADIUS * 3.6;
-        return {
-          position: [
-            r * Math.sin(phi) * Math.cos(theta),
-            r * Math.cos(phi) * 0.8,
-            r * Math.sin(phi) * Math.sin(theta),
-          ] as [number, number, number],
-          // Halved. At the old size a foreground star was wider than a planet and
-          // read as a lens flare stuck to the screen rather than as something far
-          // away — the giveaway that a backdrop is painted rather than deep.
-          scale: DISC_RADIUS * (0.05 + Math.random() * 0.055),
-        };
-      }),
-    [],
+  useFrame(({ camera, size, gl }) => {
+    const perspective = camera as THREE.PerspectiveCamera;
+    const fov = THREE.MathUtils.degToRad(perspective.fov || 45);
+    material.uniforms.uScale!.value =
+      (size.height * gl.getPixelRatio()) / (2 * Math.tan(fov / 2));
+  });
+
+  useEffect(
+    () => () => {
+      geometry.dispose();
+      material.dispose();
+    },
+    [geometry, material],
   );
 
-  return (
-    <>
-      {stars.map((star, i) => (
-        <sprite key={i} position={star.position} scale={[star.scale, star.scale, 1]}>
-          <spriteMaterial
-            map={texture}
-            transparent
-            depthWrite={false}
-            blending={THREE.AdditiveBlending}
-            fog={false}
-            opacity={0.42}
-          />
-        </sprite>
-      ))}
-    </>
-  );
+  return <points geometry={geometry} material={material} frustumCulled={false} />;
 }
 
 /* ── meteors ────────────────────────────────────────────────── */
@@ -485,6 +525,11 @@ const spawn = (): Meteor => {
  * meteor and no per-object overhead.
  */
 export function Meteors() {
+  const reduced = useReducedMotionPreference();
+  return reduced ? null : <MeteorField />;
+}
+
+function MeteorField() {
   const ref = useRef<THREE.LineSegments>(null);
   const meteors = useMemo(() => Array.from({ length: METEOR_POOL }, spawn), []);
 
@@ -567,36 +612,85 @@ export function Meteors() {
  */
 export function Dust() {
   const ref = useRef<THREE.Points>(null);
+  const reduced = useReducedMotionPreference();
 
   const { geometry, material } = useMemo(() => {
-    const count = 900;
+    const random = randomStream(0xd057b47a);
+    const count = 1100;
     const positions = new Float32Array(count * 3);
+    const colours = new Float32Array(count * 3);
+    const sizes = new Float32Array(count);
+    const alphas = new Float32Array(count);
+    const blue = new THREE.Color('#739ed5');
+    const warm = new THREE.Color('#c7b38b');
     for (let i = 0; i < count; i++) {
-      const r = Math.sqrt(Math.random()) * DISC_RADIUS * 1.15;
-      const theta = Math.random() * Math.PI * 2;
+      const r = Math.sqrt(random()) * DISC_RADIUS * 1.15;
+      const theta = random() * Math.PI * 2;
+      const layer = random();
+      const height = layer < 0.62 ? 0.34 : layer < 0.9 ? 0.9 : 1.8;
       positions[i * 3] = Math.cos(theta) * r;
-      positions[i * 3 + 1] = (Math.random() - 0.5) * 0.9;
+      positions[i * 3 + 1] = (random() - 0.5) * height;
       positions[i * 3 + 2] = Math.sin(theta) * r;
+      const tint = blue.clone().lerp(warm, random() * 0.22);
+      colours.set([tint.r, tint.g, tint.b], i * 3);
+      sizes[i] = 0.018 + random() ** 3 * 0.05;
+      alphas[i] = 0.12 + random() * 0.28;
     }
     const g = new THREE.BufferGeometry();
     g.setAttribute('position', new THREE.BufferAttribute(positions, 3));
-    const m = new THREE.PointsMaterial({
-      color: '#7fa6d8',
-      size: 0.03,
-      sizeAttenuation: true,
+    g.setAttribute('color', new THREE.BufferAttribute(colours, 3));
+    g.setAttribute('aSize', new THREE.BufferAttribute(sizes, 1));
+    g.setAttribute('aAlpha', new THREE.BufferAttribute(alphas, 1));
+    const m = new THREE.ShaderMaterial({
+      uniforms: { uScale: { value: 700 } },
+      vertexColors: true,
       transparent: true,
-      opacity: 0.35,
       depthWrite: false,
       blending: THREE.AdditiveBlending,
+      vertexShader: `
+        attribute float aSize;
+        attribute float aAlpha;
+        varying vec3 vColour;
+        varying float vAlpha;
+        uniform float uScale;
+        void main() {
+          vColour = color;
+          vAlpha = aAlpha;
+          vec4 mv = modelViewMatrix * vec4(position, 1.0);
+          gl_PointSize = clamp(aSize * uScale / max(0.01, -mv.z), 1.0, 7.0);
+          gl_Position = projectionMatrix * mv;
+        }
+      `,
+      fragmentShader: `
+        varying vec3 vColour;
+        varying float vAlpha;
+        void main() {
+          float d = length(gl_PointCoord - vec2(0.5)) * 2.0;
+          float alpha = (1.0 - smoothstep(0.18, 1.0, d)) * vAlpha;
+          gl_FragColor = vec4(vColour, alpha);
+        }
+      `,
     });
     return { geometry: g, material: m };
   }, []);
 
   // One slow rotation of the whole field. Cheaper than moving 900 points, and at
   // this speed indistinguishable from it.
-  useFrame((_, delta) => {
-    if (ref.current) ref.current.rotation.y += delta * 0.006;
+  useFrame(({ camera, size, gl }, delta) => {
+    if (ref.current && !reduced) ref.current.rotation.y += delta * 0.006;
+    const perspective = camera as THREE.PerspectiveCamera;
+    const fov = THREE.MathUtils.degToRad(perspective.fov || 45);
+    material.uniforms.uScale!.value =
+      (size.height * gl.getPixelRatio()) / (2 * Math.tan(fov / 2));
   });
+
+  useEffect(
+    () => () => {
+      geometry.dispose();
+      material.dispose();
+    },
+    [geometry, material],
+  );
 
   return <points ref={ref} geometry={geometry} material={material} />;
 }
@@ -634,6 +728,7 @@ export function Disc() {
       if (cancelled) return;
       const map = new THREE.CanvasTexture(paintDiscCanvas());
       map.colorSpace = THREE.SRGBColorSpace;
+      map.anisotropy = 4;
       setTexture(map);
     };
     const supportsIdle = 'requestIdleCallback' in window;
@@ -715,4 +810,3 @@ export const DISC_OPACITY = 0.18;
  * else, and each one tumbles on its own axis so they are legibly OBJECTS.
  */
 /** How far back along the orbit the tail reaches, in minutes of travel. */
-

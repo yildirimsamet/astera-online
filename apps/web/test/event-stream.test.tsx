@@ -4,7 +4,10 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ReactNode } from 'react';
 import type { Api } from '../src/api/client.js';
 import { ApiProvider } from '../src/api/context.js';
-import { useEventStream } from '../src/session/useEventStream.js';
+import {
+  RECONNECT_RESYNC_MAX_MS,
+  useEventStream,
+} from '../src/session/useEventStream.js';
 import { COALESCE_MS } from '../src/session/shardEvents.js';
 
 /**
@@ -68,10 +71,13 @@ describe('the event stream', () => {
   });
 
   afterEach(() => {
+    vi.restoreAllMocks();
     vi.useRealTimers();
   });
 
-  const mount = () => renderHook(() => { useEventStream(true); }, { wrapper: wrapper(client) });
+  const mount = (onRollover?: () => void) => renderHook(() => {
+    useEventStream(true, onRollover);
+  }, { wrapper: wrapper(client) });
 
   const fire = (kind: string): void => {
     act(() => {
@@ -94,7 +100,7 @@ describe('the event stream', () => {
    * THE ONE THAT KEEPS A LIVENESS FEATURE FROM BECOMING A LOAD PROBLEM.
    *
    * A neighbour launching changes exactly one list. If a shard event took the
-   * blanket path, fifty clients would each refetch eight payloads — including
+   * blanket path, three hundred clients would each refetch the whole live set — including
    * `/api/galaxy`, which carries a telescope reading per watched world — every
    * time anybody in the galaxy pressed launch.
    */
@@ -134,6 +140,14 @@ describe('the event stream', () => {
     // The raid is already through; only the launch is still waiting.
     expect(asked).toContain('reports');
     expect(asked).not.toEqual([]);
+  });
+
+  it('moves the session at rollover instead of refetching a vanished world', () => {
+    const onRollover = vi.fn();
+    mount(onRollover);
+    fire('shard:rollover');
+    expect(onRollover).toHaveBeenCalledOnce();
+    expect(asked).toEqual([]);
   });
 
   /* ── coming back after the channel was down ────────────────── */
@@ -193,6 +207,36 @@ describe('the event stream', () => {
     asked = [];
     await reconnect();
     expect(asked).toHaveLength(first);
+  });
+
+  it('jitter-coalesces repeated reconnects into one catch-up pass', async () => {
+    vi.spyOn(Math, 'random')
+      // First reconnect backoff: reopen immediately.
+      .mockReturnValueOnce(0)
+      // Keep the expensive catch-up pass near the end of its jitter window.
+      .mockReturnValueOnce(0.99)
+      // A second short close also reopens immediately.
+      .mockReturnValue(0);
+    mount();
+
+    await act(async () => {
+      closeSocket?.();
+      await vi.advanceTimersByTimeAsync(1);
+    });
+    expect(asked, 'catch-up ignored its jitter window').toEqual([]);
+
+    await act(async () => {
+      closeSocket?.();
+      await vi.advanceTimersByTimeAsync(1);
+    });
+    expect(asked, 'a flapping socket started a duplicate catch-up').toEqual([]);
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(RECONNECT_RESYNC_MAX_MS);
+    });
+    expect(asked.filter((key) => key === 'planet')).toHaveLength(1);
+    expect(asked.filter((key) => key === 'pending')).toHaveLength(1);
+    expect(asked.filter((key) => key === 'traffic')).toHaveLength(1);
   });
 
   /** An unmounted tab must not flush a window it armed on the way out. */

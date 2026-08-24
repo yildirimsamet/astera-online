@@ -51,6 +51,7 @@ const raided = z.object({
   grade: z.string(),
   lootAlloy: z.number(),
   lootCrystal: z.number(),
+  lootDeuterium: z.number().default(0),
   unitsLost: z.number(),
   theirLosses: z.number().optional(),
   /** Optional: rows written before the works were reported are still readable. */
@@ -66,6 +67,7 @@ const raidResult = z.object({
   targetName: z.string().optional(),
   lootAlloy: z.number(),
   lootCrystal: z.number(),
+  lootDeuterium: z.number().default(0),
   unitsLost: z.number(),
   shipsHome: z.number(),
   dominion: z.number().optional(),
@@ -89,14 +91,17 @@ const returned = z.discriminatedUnion('trip', [
     fromName: z.string().nullable().optional(),
     lootAlloy: z.number(),
     lootCrystal: z.number(),
+    lootDeuterium: z.number().default(0),
   }),
   z.object({
     trip: z.enum(['mining', 'harvest']),
     craft: z.number(),
     alloy: z.number(),
     crystal: z.number(),
+    deuterium: z.number().default(0),
     wastedAlloy: z.number(),
     wastedCrystal: z.number(),
+    wastedDeuterium: z.number().default(0),
   }),
   /**
    * A flight the server gave up on. `craftKind` says what was lost, because the
@@ -115,6 +120,7 @@ const legacyRaidReturn = z.object({
   ships: z.number(),
   lootAlloy: z.number(),
   lootCrystal: z.number(),
+  lootDeuterium: z.number().default(0),
 });
 
 const scanned = z.object({ bearing: z.string().optional() });
@@ -140,6 +146,13 @@ const unlocked = z.object({
   body: z.string(),
 });
 
+const strategicResult = z.object({
+  outcome: z.enum(['FIRST_STRIKE', 'CAPTURED', 'INEFFECTIVE']),
+  targetPlanetId: z.string(),
+});
+
+const colonyEvent = z.object({ targetPlanetId: z.string() });
+
 /* ── the sentences ──────────────────────────────────────────── */
 
 /** A hull id off the wire, in the player's language. Unknown ids pass through. */
@@ -152,10 +165,13 @@ const composition = (ships: Record<string, number>): string =>
     .map(([hull, n]) => i18n.t('notifications.composition', { count: n, hull: named(hull) }))
     .join(i18n.t('notifications.join'));
 
-const spoils = (alloy: number, crystal: number): string[] => {
+const spoils = (alloy: number, crystal: number, deuterium = 0): string[] => {
   const out: string[] = [];
   if (alloy >= 1) out.push(i18n.t('notifications.spoilAlloy', { amount: compact(alloy) }));
   if (crystal >= 1) out.push(i18n.t('notifications.spoilCrystal', { amount: compact(crystal) }));
+  if (deuterium >= 1) {
+    out.push(i18n.t('notifications.spoilDeuterium', { amount: compact(deuterium) }));
+  }
   return out;
 };
 
@@ -197,7 +213,8 @@ export interface NotificationIdentity {
 /** The identity already printed in a notification, plus its safe Galaxy route. */
 export function notificationIdentity(notification: NotificationView): NotificationIdentity | null {
   switch (notification.kind) {
-    case 'incoming_fleet': {
+    case 'incoming_fleet':
+    case 'strategic_incoming': {
       const parsed = incoming.safeParse(notification.payload);
       if (!parsed.success) return null;
       const { originPlanetId, originUsername, originPlanetName, originName } = parsed.data;
@@ -252,7 +269,8 @@ export function notificationIdentity(notification: NotificationView): Notificati
  */
 export function describeNotification(notification: NotificationView, now: number): string | null {
   switch (notification.kind) {
-    case 'incoming_fleet': {
+    case 'incoming_fleet':
+    case 'strategic_incoming': {
       const parsed = incoming.safeParse(notification.payload);
       if (!parsed.success) return i18n.t('notifications.incomingFallback');
       const {
@@ -277,7 +295,12 @@ export function describeNotification(notification: NotificationView, now: number
               duration: duration((arriveAt.getTime() - now) / 60_000),
             });
 
-      const parts = [i18n.t('notifications.incomingHead', { clock })];
+      const parts = [i18n.t(
+        notification.kind === 'strategic_incoming'
+          ? 'notifications.strategicIncomingHead'
+          : 'notifications.incomingHead',
+        { clock },
+      )];
       // Composition is the better line when radar has bought it — it says what
       // to build against, which a count cannot.
       if (ships && Object.keys(ships).length > 0) parts.push(composition(ships));
@@ -296,7 +319,7 @@ export function describeNotification(notification: NotificationView, now: number
       const parsed = raided.safeParse(notification.payload);
       if (!parsed.success) return i18n.t('notifications.raidedFallback');
       const {
-        grade, lootAlloy, lootCrystal, unitsLost, theirLosses, disruptedMinutes,
+        grade, lootAlloy, lootCrystal, lootDeuterium, unitsLost, theirLosses, disruptedMinutes,
         originUsername, originPlanetName,
       } =
         parsed.data;
@@ -333,7 +356,7 @@ export function describeNotification(notification: NotificationView, now: number
       if (disruptedMinutes !== undefined && disruptedMinutes > 0) {
         clauses.push(i18n.t('notifications.raidedWorks', { time: duration(disruptedMinutes) }));
       }
-      const loot = lootAlloy + lootCrystal;
+      const loot = lootAlloy + lootCrystal + lootDeuterium;
       if (loot > 0) {
         clauses.push(i18n.t('notifications.raidedTaken', { amount: compact(loot) }));
       }
@@ -354,7 +377,7 @@ export function describeNotification(notification: NotificationView, now: number
       if (!parsed.success) return i18n.t('notifications.raidResultFallback');
       const {
         grade, targetUsername, targetPlanetName, targetName,
-        lootAlloy, lootCrystal, unitsLost, shipsHome,
+        lootAlloy, lootCrystal, lootDeuterium, unitsLost, shipsHome,
       } = parsed.data;
       const target = identity(targetUsername, targetPlanetName, targetName);
       // The fleet is gone. This is the line the whole notification exists for —
@@ -362,7 +385,7 @@ export function describeNotification(notification: NotificationView, now: number
       if (shipsHome === 0) {
         return i18n.t('notifications.raidWiped', { target, count: unitsLost });
       }
-      const took = spoils(lootAlloy, lootCrystal);
+      const took = spoils(lootAlloy, lootCrystal, lootDeuterium);
       const detail = took.length > 0 ? took.join(JOIN()) : i18n.t('notifications.raidNothing');
       return i18n.t('notifications.raidResult', {
         grade: gradeWord(grade),
@@ -377,7 +400,8 @@ export function describeNotification(notification: NotificationView, now: number
       if (!parsed.success) {
         const legacy = legacyRaidReturn.safeParse(notification.payload);
         if (!legacy.success) return i18n.t('notifications.fleetFallback');
-        const loot = legacy.data.lootAlloy + legacy.data.lootCrystal;
+        const loot =
+          legacy.data.lootAlloy + legacy.data.lootCrystal + legacy.data.lootDeuterium;
         return i18n.t(
           loot > 0 ? 'notifications.fleetHomeLooted' : 'notifications.fleetHomeEmpty',
           { where: '', count: legacy.data.ships, amount: compact(loot) },
@@ -393,7 +417,7 @@ export function describeNotification(notification: NotificationView, now: number
         const where = trip.fromUsername || trip.fromPlanetName || trip.fromName
           ? i18n.t('notifications.fleetFrom', { origin })
           : '';
-        const loot = trip.lootAlloy + trip.lootCrystal;
+        const loot = trip.lootAlloy + trip.lootCrystal + trip.lootDeuterium;
         return i18n.t(
           loot > 0 ? 'notifications.fleetHomeLooted' : 'notifications.fleetHomeEmpty',
           { where, count: trip.ships, amount: compact(loot) },
@@ -402,8 +426,8 @@ export function describeNotification(notification: NotificationView, now: number
       const what = i18n.t(
         trip.trip === 'harvest' ? 'notifications.salvageWord' : 'notifications.oreWord',
       );
-      const landed = spoils(trip.alloy, trip.crystal);
-      const wasted = trip.wastedAlloy + trip.wastedCrystal;
+      const landed = spoils(trip.alloy, trip.crystal, trip.deuterium);
+      const wasted = trip.wastedAlloy + trip.wastedCrystal + trip.wastedDeuterium;
       if (landed.length === 0) {
         return wasted > 0
           ? i18n.t('notifications.haulWasted', { what, amount: compact(wasted) })
@@ -451,6 +475,31 @@ export function describeNotification(notification: NotificationView, now: number
       return i18n.t('notifications.unlock', { title: copy.title, body: copy.body });
     }
 
+    case 'death_star_result': {
+      const parsed = strategicResult.safeParse(notification.payload);
+      if (!parsed.success) return i18n.t('notifications.deathStarFallback');
+      return i18n.t(`notifications.deathStar.${parsed.data.outcome}`);
+    }
+
+    case 'colony_captured':
+    case 'settlement_success': {
+      const parsed = colonyEvent.safeParse(notification.payload);
+      void parsed;
+      return i18n.t('notifications.colonyCaptured');
+    }
+
+    case 'colony_lost': {
+      const parsed = colonyEvent.safeParse(notification.payload);
+      void parsed;
+      return i18n.t('notifications.colonyLost');
+    }
+
+    case 'settlement_lost': {
+      const parsed = colonyEvent.safeParse(notification.payload);
+      void parsed;
+      return i18n.t('notifications.settlementLost');
+    }
+
     /**
      * A kind this build does not know.
      *
@@ -473,6 +522,8 @@ export function describeNotification(notification: NotificationView, now: number
  */
 export const isUrgent = (notification: NotificationView): boolean =>
   notification.kind === 'incoming_fleet' ||
+  notification.kind === 'strategic_incoming' ||
+  notification.kind === 'colony_lost' ||
   notification.kind === 'raided' ||
   notification.kind === 'raid_result';
 
@@ -484,7 +535,12 @@ export const isUrgent = (notification: NotificationView): boolean =>
  * player to read red as "something happened" rather than as "something is wrong".
  */
 export const isAlarming = (notification: NotificationView): boolean => {
-  if (notification.kind === 'incoming_fleet' || notification.kind === 'raided') return true;
+  if (
+    notification.kind === 'incoming_fleet'
+    || notification.kind === 'strategic_incoming'
+    || notification.kind === 'colony_lost'
+    || notification.kind === 'raided'
+  ) return true;
   if (notification.kind !== 'raid_result') return false;
   const parsed = raidResult.safeParse(notification.payload);
   return parsed.success && parsed.data.shipsHome === 0;

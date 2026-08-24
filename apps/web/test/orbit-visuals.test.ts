@@ -2,10 +2,9 @@ import { describe, expect, it } from 'vitest';
 import { SATELLITE_IDS } from '@astera/rules';
 import { SATELLITE_NEON } from '../src/ui/assets.js';
 import {
-  NEON_RATIO,
+  SATELLITE_RIM_EXPANSION,
   SHIELD_TIER,
   bodySizeFor,
-  neonSizeFor,
   shieldTierOf,
 } from '../src/galaxy/Satellites.js';
 import { STANCE_COLOUR } from '../src/galaxy/scene.js';
@@ -79,58 +78,24 @@ describe('the satellite marker lights', () => {
   });
 });
 
-/**
- * HOW BIG A MARKER LIGHT IS — and why it cannot be one number.
- *
- * The owner reported both halves of the same fault: on a big world the light
- * disappeared INSIDE the satellite, and on a small one it swamped it. The size was
- * computed once per satellite TYPE, from the largest planet in the galaxy carrying
- * one, and then used for every instance — so it was correct for exactly one world.
- *
- * A second, quieter fault sat on top of it. `pointsMaterial.size` is a DIAMETER in
- * world units and `Object3D.scale` applies to a unit-RADIUS geometry, so the old
- * figure was being compared against half of what it appeared to be. That is why a
- * light nominally larger than the body still vanished behind it.
- *
- * The rule the owner asked for is a RATIO — twice the satellite's own size — and a
- * ratio holds at every planet size by construction.
- */
-describe('the marker light’s size', () => {
-  /** Three planet sizes exist in the galaxy; the rule has to hold for all of them. */
+describe('the satellite silhouette rim', () => {
   const RADII = [0.44, 0.82, 1.4];
 
-  it('is exactly twice the satellite’s own size, at every planet size', () => {
-    for (const r of RADII) {
-      expect(neonSizeFor(r) / bodySizeFor(r), `planet radius ${String(r)}`).toBeCloseTo(
-        NEON_RATIO,
-        6,
-      );
+  it('uses a narrow geometry expansion instead of a circular marker', () => {
+    expect(SATELLITE_RIM_EXPANSION).toBeGreaterThan(0);
+    expect(SATELLITE_RIM_EXPANSION).toBeLessThan(0.1);
+  });
+
+  it('inherits planet scale through the instanced body', () => {
+    const sizes = RADII.map(bodySizeFor);
+    for (let i = 1; i < sizes.length; i += 1) {
+      expect(sizes[i]).toBeGreaterThan(sizes[i - 1]!);
     }
+    expect(bodySizeFor(2)).toBeCloseTo(bodySizeFor(1) * 2, 6);
   });
 
-  it('is bigger than the body it marks, so it can never hide inside it', () => {
-    for (const r of RADII) expect(neonSizeFor(r)).toBeGreaterThan(bodySizeFor(r));
-  });
-
-  /**
-   * IT SCALES WITH THE WORLD, which is the part that was broken. A shared figure
-   * meant a small planet's satellite wore a big planet's light.
-   */
-  it('grows and shrinks with the planet it orbits', () => {
-    const sizes = RADII.map(neonSizeFor);
-    for (let i = 1; i < sizes.length; i++) expect(sizes[i]!).toBeGreaterThan(sizes[i - 1]!);
-    // And strictly proportionally — double the world, double the light.
-    expect(neonSizeFor(2)).toBeCloseTo(neonSizeFor(1) * 2, 6);
-  });
-
-  /** Both figures are diameters. Comparing a diameter with a radius is the old bug. */
-  it('compares like with like', () => {
+  it('still draws a unit-radius world’s body at diameter 0.6', () => {
     expect(bodySizeFor(1)).toBeCloseTo(0.6, 6);
-    expect(neonSizeFor(1)).toBeCloseTo(1.2, 6);
-  });
-
-  it('is nothing at all for a world of no size', () => {
-    expect(neonSizeFor(0)).toBe(0);
   });
 });
 

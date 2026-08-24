@@ -7,6 +7,7 @@ import { Api } from '../src/api/client.js';
 import { ApiProvider } from '../src/api/context.js';
 import { ToastProvider } from '../src/ui/Toast.js';
 import { RewardsScreen } from '../src/screens/RewardsScreen.js';
+import { planetView } from './fixtures.js';
 
 /**
  * THE REWARD PANEL, AND THE FOUR WAYS IT COULD LIE.
@@ -114,7 +115,7 @@ describe('the reward panel', () => {
     const claim = vi.spyOn(api, 'claimReward').mockResolvedValue({
       granted: { alloy: 200, crystal: 70 },
       rewards: rewards([probeChain(1, ['claimed', 'locked', 'locked'])], 0),
-      planet: undefined,
+      planet: planetView(),
     } as never);
 
     render(

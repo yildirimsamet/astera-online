@@ -57,6 +57,7 @@ const probeReport = (minutesAgo: number): NonNullable<IntelView>['probeReports']
   detected: false,
   fleetHome: true,
   stock: { low: 1000, high: 1600 },
+  deuteriumStock: null,
   defence: { low: 400, high: 700 },
   fleetSize: { low: 8, high: 14 },
 });
@@ -65,7 +66,7 @@ const intelWith = (reports: IntelView['probeReports'] = []): IntelView => ({
   watching: [],
   probeReports: reports,
   radarLog: [],
-  probeCost: { alloy: 50, crystal: 50 },
+  probeCost: { alloy: 50, crystal: 50, deuterium: 0 },
 });
 
 const fought = (minutesAgo: number): BattleReport => ({
@@ -76,10 +77,12 @@ const fought = (minutesAgo: number): BattleReport => ({
   attacking: true,
   opponentName: 'Sable',
   opponentPlanet: 'Grimhold',
+  opponentPlanetId: 'p2',
   yourLosses: {},
   theirLosses: { WASP: 4 },
   lootAlloy: 100,
   lootCrystal: 0,
+  lootDeuterium: 0,
   dominion: 400,
 });
 
@@ -204,6 +207,13 @@ describe('the headline on a world you have selected', () => {
     const t = target();
     const known = headline(read({ target: t, reports: [fought(600)] }), t);
     expect(known.kind).toBe('fought');
+  });
+
+  it('matches battle knowledge by planet id, never by a duplicated or changed name', () => {
+    const renamed = target({ id: 'different-id', name: 'Grimhold' });
+    const result = read({ target: renamed, reports: [fought(30)] });
+    expect(result.facts.some((fact) => fact.key === 'composition')).toBe(false);
+    expect(result.gaps.some((gap) => gap.key === 'composition')).toBe(true);
   });
 
   it('prefers the more precise source when both exist', () => {

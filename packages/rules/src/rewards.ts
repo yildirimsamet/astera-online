@@ -117,6 +117,12 @@ export interface RewardChain {
 }
 
 /** 200 : 70 is the ratio every line below is built on. See the docblock. */
+const reward = (alloy: number, crystal: number): Resources => ({
+  alloy,
+  crystal,
+  deuterium: 0,
+});
+
 const CHAINS: Record<RewardChainId, RewardChain> = {
   /**
    * THE BIGGEST PURSE IN THE TABLE, WITH `RAID`, AND ON PURPOSE.
@@ -131,9 +137,9 @@ const CHAINS: Record<RewardChainId, RewardChain> = {
     id: 'PROBE',
     metric: 'count',
     tiers: [
-      { goal: 1, reward: { alloy: 200, crystal: 70 } },
-      { goal: 3, reward: { alloy: 350, crystal: 120 } },
-      { goal: 5, reward: { alloy: 600, crystal: 210 } },
+      { goal: 1, reward: reward(200, 70) },
+      { goal: 3, reward: reward(350, 120) },
+      { goal: 5, reward: reward(600, 210) },
     ],
   },
 
@@ -146,9 +152,9 @@ const CHAINS: Record<RewardChainId, RewardChain> = {
     id: 'RAID',
     metric: 'count',
     tiers: [
-      { goal: 1, reward: { alloy: 300, crystal: 100 } },
-      { goal: 3, reward: { alloy: 550, crystal: 190 } },
-      { goal: 5, reward: { alloy: 900, crystal: 320 } },
+      { goal: 1, reward: reward(300, 100) },
+      { goal: 3, reward: reward(550, 190) },
+      { goal: 5, reward: reward(900, 320) },
     ],
   },
 
@@ -161,10 +167,10 @@ const CHAINS: Record<RewardChainId, RewardChain> = {
     id: 'CORE',
     metric: 'level',
     tiers: [
-      { goal: 3, reward: { alloy: 250, crystal: 90 } },
-      { goal: 5, reward: { alloy: 500, crystal: 175 } },
-      { goal: 7, reward: { alloy: 900, crystal: 315 } },
-      { goal: 9, reward: { alloy: 1600, crystal: 560 } },
+      { goal: 3, reward: reward(250, 90) },
+      { goal: 5, reward: reward(500, 175) },
+      { goal: 7, reward: reward(900, 315) },
+      { goal: 9, reward: reward(1600, 560) },
     ],
   },
 
@@ -172,9 +178,9 @@ const CHAINS: Record<RewardChainId, RewardChain> = {
     id: 'SHIPYARD',
     metric: 'level',
     tiers: [
-      { goal: 2, reward: { alloy: 200, crystal: 70 } },
-      { goal: 3, reward: { alloy: 400, crystal: 140 } },
-      { goal: 4, reward: { alloy: 700, crystal: 245 } },
+      { goal: 2, reward: reward(200, 70) },
+      { goal: 3, reward: reward(400, 140) },
+      { goal: 4, reward: reward(700, 245) },
     ],
   },
 
@@ -182,9 +188,9 @@ const CHAINS: Record<RewardChainId, RewardChain> = {
     id: 'REFINERY',
     metric: 'level',
     tiers: [
-      { goal: 3, reward: { alloy: 200, crystal: 70 } },
-      { goal: 5, reward: { alloy: 400, crystal: 140 } },
-      { goal: 7, reward: { alloy: 750, crystal: 260 } },
+      { goal: 3, reward: reward(200, 70) },
+      { goal: 5, reward: reward(400, 140) },
+      { goal: 7, reward: reward(750, 260) },
     ],
   },
 
@@ -192,9 +198,9 @@ const CHAINS: Record<RewardChainId, RewardChain> = {
     id: 'EXTRACTOR',
     metric: 'level',
     tiers: [
-      { goal: 3, reward: { alloy: 200, crystal: 70 } },
-      { goal: 5, reward: { alloy: 400, crystal: 140 } },
-      { goal: 7, reward: { alloy: 750, crystal: 260 } },
+      { goal: 3, reward: reward(200, 70) },
+      { goal: 5, reward: reward(400, 140) },
+      { goal: 7, reward: reward(750, 260) },
     ],
   },
 
@@ -216,10 +222,10 @@ const CHAINS: Record<RewardChainId, RewardChain> = {
     id: 'SHIPS',
     metric: 'count',
     tiers: [
-      { goal: 5, reward: { alloy: 200, crystal: 70 } },
-      { goal: 10, reward: { alloy: 350, crystal: 120 } },
-      { goal: 20, reward: { alloy: 600, crystal: 210 } },
-      { goal: 50, reward: { alloy: 1200, crystal: 420 } },
+      { goal: 5, reward: reward(200, 70) },
+      { goal: 10, reward: reward(350, 120) },
+      { goal: 20, reward: reward(600, 210) },
+      { goal: 50, reward: reward(1200, 420) },
     ],
   },
 
@@ -227,7 +233,7 @@ const CHAINS: Record<RewardChainId, RewardChain> = {
   AEGIS: {
     id: 'AEGIS',
     metric: 'level',
-    tiers: [{ goal: 1, reward: { alloy: 500, crystal: 175 } }],
+    tiers: [{ goal: 1, reward: reward(500, 175) }],
   },
 
   /**
@@ -241,13 +247,13 @@ const CHAINS: Record<RewardChainId, RewardChain> = {
   MINE: {
     id: 'MINE',
     metric: 'count',
-    tiers: [{ goal: 1, reward: { alloy: 300, crystal: 100 } }],
+    tiers: [{ goal: 1, reward: reward(300, 100) }],
   },
 
   SALVAGE: {
     id: 'SALVAGE',
     metric: 'count',
-    tiers: [{ goal: 1, reward: { alloy: 300, crystal: 100 } }],
+    tiers: [{ goal: 1, reward: reward(300, 100) }],
   },
 
   /**
@@ -277,7 +283,7 @@ const CHAINS: Record<RewardChainId, RewardChain> = {
   SOCIAL: {
     id: 'SOCIAL',
     metric: 'grant',
-    tiers: [{ goal: 1, reward: { alloy: 1000, crystal: 500 } }],
+    tiers: [{ goal: 1, reward: reward(1000, 500) }],
   },
 };
 
@@ -362,5 +368,5 @@ export const rewardPurse = (): Resources =>
       }
       return sum;
     },
-    { alloy: 0, crystal: 0 },
+    { alloy: 0, crystal: 0, deuterium: 0 },
   );

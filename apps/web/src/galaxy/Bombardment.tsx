@@ -1,14 +1,15 @@
-import { Suspense, useMemo, useRef } from 'react';
+import { Suspense, useEffect, useMemo, useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
 import { useGLTF } from '@react-three/drei';
 import * as THREE from 'three';
 import { MODEL, MODEL_FACING } from '../ui/assets.js';
 import { orientedCraft } from './model.js';
-import { fireTexture, plumeTexture, ringTexture, sparkTexture } from './vfx.js';
+import { fireTexture, plumeTexture, ringTexture, smokeTexture, sparkTexture } from './vfx.js';
 import {
   MISSILE_OF_SHIP,
   blastProgress,
-  emberSpray,
+  ejectaSpray,
+  flightDistance,
   impactPoint,
   shotProgress,
   volleyFor,
@@ -104,7 +105,13 @@ const PLUME_NEAR = 0.11;
 const PLUME_FAR = 0.46;
 
 /** Brightness at the nozzle. Bloom threshold is 0.62; this stays under it. */
-const PLUME_PEAK = 0.55;
+const PLUME_PEAK = 0.9;
+
+/** A rack firing is a separate beat from the engine already burning in flight. */
+const MUZZLE_SECONDS = 0.14;
+
+/** One tangent-plane quad reused by every surface shock; module-lifetime by design. */
+const SHOCK_PLANE = new THREE.PlaneGeometry(1, 1);
 
 useGLTF.preload(MODEL.missile, false);
 
@@ -192,9 +199,12 @@ function Round({
 }) {
   const body = useRef<THREE.Group>(null);
   const strip = useRef<THREE.Mesh>(null);
+  const trailMaterial = useRef<THREE.MeshBasicMaterial>(null);
   const flash = useRef<THREE.Sprite>(null);
   const fireball = useRef<THREE.Sprite>(null);
-  const shock = useRef<THREE.Sprite>(null);
+  const shock = useRef<THREE.Mesh<THREE.BufferGeometry, THREE.MeshBasicMaterial>>(null);
+  const smoke = useRef<THREE.Sprite>(null);
+  const muzzle = useRef<THREE.Sprite>(null);
   const embers = useRef<THREE.Points<THREE.BufferGeometry, THREE.PointsMaterial>>(null);
   const nozzle = useRef<THREE.Sprite>(null);
 
@@ -202,6 +212,7 @@ function Round({
   const shockMap = useMemo(() => ringTexture(), []);
   const sparkMap = useMemo(() => sparkTexture(), []);
   const plumeMap = useMemo(() => plumeTexture(), []);
+  const smokeMap = useMemo(() => smokeTexture(), []);
 
   const impact = useMemo(
     () => impactPoint(from, shot.aim, distance, radius),
@@ -229,8 +240,24 @@ function Round({
     );
   }, [impact, from]);
 
-  /** Where each ember is thrown. Fixed per round, so the spray does not re-roll. */
-  const spray = useMemo(() => emberSpray(shot), [shot]);
+  const surfaceNormal = useMemo<readonly [number, number, number]>(() => {
+    const x = impact[0];
+    const y = impact[1];
+    const z = impact[2] - distance;
+    const length = Math.hypot(x, y, z) || 1;
+    return [x / length, y / length, z / length];
+  }, [impact, distance]);
+  const surfaceFacing = useMemo(
+    () =>
+      new THREE.Quaternion().setFromUnitVectors(
+        new THREE.Vector3(0, 0, 1),
+        new THREE.Vector3(...surfaceNormal),
+      ),
+    [surfaceNormal],
+  );
+
+  /** Stable per round, and every fragment leaves the world's surface. */
+  const spray = useMemo(() => ejectaSpray(shot, surfaceNormal), [shot, surfaceNormal]);
 
   /**
    * The plume, allocated once and moved.
@@ -285,6 +312,14 @@ function Round({
     return g;
   }, [spray.length]);
 
+  useEffect(
+    () => () => {
+      trail.dispose();
+      emberGeometry.dispose();
+    },
+    [trail, emberGeometry],
+  );
+
   const here = useMemo(() => new THREE.Vector3(), []);
   const tail = useMemo(() => new THREE.Vector3(), []);
   const eye = useMemo(() => new THREE.Vector3(), []);
@@ -301,16 +336,36 @@ function Round({
     if (ribbon) ribbon.visible = flying !== null;
     if (flash.current) flash.current.visible = burning !== null;
     if (fireball.current) fireball.current.visible = burning !== null;
-    if (shock.current) shock.current.visible = burning !== null;
+    if (shock.current) shock.current.visible = burning !== null && burning < 0.42;
+    if (smoke.current) smoke.current.visible = burning !== null && burning > 0.12;
     if (embers.current) embers.current.visible = burning !== null;
 
+    const sinceLaunch = seconds - shot.launchAt;
+    if (muzzle.current) {
+      const firing = sinceLaunch >= 0 && sinceLaunch < MUZZLE_SECONDS;
+      muzzle.current.visible = firing;
+      if (firing) {
+        const t = sinceLaunch / MUZZLE_SECONDS;
+        const s = size * (1.9 + Math.sin(Math.PI * t) * 1.4);
+        muzzle.current.scale.set(s, s, 1);
+        muzzle.current.material.opacity = (1 - t) ** 1.7;
+      }
+    }
+
     if (flying !== null && round && ribbon) {
+      const travelled = flightDistance(flying);
       here.set(
-        from[0] + (impact[0] - from[0]) * flying,
-        from[1] + (impact[1] - from[1]) * flying,
-        from[2] + (impact[2] - from[2]) * flying,
+        from[0] + (impact[0] - from[0]) * travelled,
+        from[1] + (impact[1] - from[1]) * travelled,
+        from[2] + (impact[2] - from[2]) * travelled,
       );
       round.position.copy(here);
+
+      if (trailMaterial.current) {
+        const ignite = Math.min(1, flying / 0.11);
+        const contact = 1 - Math.max(0, (flying - 0.88) / 0.12);
+        trailMaterial.current.opacity = 0.92 * ignite * contact;
+      }
 
       // The engine flickers. Two rates that do not divide into each other, so it
       // never settles into a visible loop.
@@ -389,9 +444,24 @@ function Round({
       }
 
       if (shock.current) {
-        const s = wide * (0.4 + 3.1 * t ** 0.55);
+        const shockTime = Math.min(1, t / 0.42);
+        const s = wide * (0.35 + 2.1 * shockTime ** 0.55);
         shock.current.scale.set(s, s, 1);
-        shock.current.material.opacity = 0.85 * (1 - t) ** 2.4;
+        shock.current.material.opacity = 0.48 * (1 - shockTime) ** 2.7;
+      }
+
+      if (smoke.current) {
+        const appear = Math.max(0, Math.min(1, (t - 0.1) / 0.22));
+        const fade = (1 - t) ** 0.8;
+        const s = wide * (0.55 + 1.25 * t ** 0.65);
+        smoke.current.scale.set(s, s, 1);
+        smoke.current.position.set(
+          surfaceNormal[0] * wide * 0.42 * t,
+          surfaceNormal[1] * wide * 0.42 * t,
+          surfaceNormal[2] * wide * 0.42 * t,
+        );
+        smoke.current.material.opacity = appear * fade * 0.42;
+        smoke.current.material.rotation = shot.flight * 4.7 - t * 0.34;
       }
 
       if (embers.current) {
@@ -424,12 +494,14 @@ function Round({
         name="missile-trail"
       >
         <meshBasicMaterial
+          ref={trailMaterial}
           {...(plumeMap ? { map: plumeMap } : {})}
           vertexColors
           transparent
           opacity={0.95}
           depthWrite={false}
           side={THREE.DoubleSide}
+          forceSinglePass
           blending={THREE.AdditiveBlending}
         />
       </mesh>
@@ -453,6 +525,17 @@ function Round({
         </sprite>
       </group>
 
+      <sprite ref={muzzle} position={from} visible={false} renderOrder={VFX_ORDER + 2} name="muzzle-flash">
+        <spriteMaterial
+          {...(fire ? { map: fire } : {})}
+          transparent
+          opacity={0}
+          depthWrite={false}
+          depthTest={false}
+          blending={THREE.AdditiveBlending}
+        />
+      </sprite>
+
       {/*
         THE IMPACT, where the round actually crossed the surface.
 
@@ -460,16 +543,24 @@ function Round({
         sphere — z-fighting it would drop half the volley from half the angles.
       */}
       <group position={impact} name="blast">
-        <sprite ref={shock} visible={false} renderOrder={VFX_ORDER}>
-          <spriteMaterial
+        <mesh
+          ref={shock}
+          geometry={SHOCK_PLANE}
+          quaternion={surfaceFacing}
+          visible={false}
+          renderOrder={VFX_ORDER}
+        >
+          <meshBasicMaterial
             {...(shockMap ? { map: shockMap } : {})}
             transparent
             opacity={0}
             depthWrite={false}
             depthTest={false}
+            side={THREE.DoubleSide}
+            forceSinglePass
             blending={THREE.AdditiveBlending}
           />
-        </sprite>
+        </mesh>
         <sprite ref={fireball} visible={false} renderOrder={VFX_ORDER + 1}>
           <spriteMaterial
             {...(fire ? { map: fire } : {})}
@@ -478,6 +569,16 @@ function Round({
             depthWrite={false}
             depthTest={false}
             blending={THREE.AdditiveBlending}
+          />
+        </sprite>
+        <sprite ref={smoke} visible={false} renderOrder={VFX_ORDER + 1}>
+          <spriteMaterial
+            {...(smokeMap ? { map: smokeMap } : {})}
+            transparent
+            opacity={0}
+            depthWrite={false}
+            depthTest={false}
+            blending={THREE.NormalBlending}
           />
         </sprite>
         <sprite ref={flash} visible={false} renderOrder={VFX_ORDER + 2}>

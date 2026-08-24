@@ -1,31 +1,78 @@
-# Astera Online — production.
+# Astera Online — production topology certified by D99.
 #
-# NOT the file beside it. `docker-compose.yml` runs a throwaway Postgres on tmpfs
-# for tests and local play; it keeps nothing across a restart and its password is
-# the word "astera". Copying it to a server would put the database on the public
-# internet and lose the season on the first reboot.
-#
-#   docker compose -f docker-compose.prod.yml up -d
-#
-# Everything binds to 127.0.0.1. Nothing here is reachable from outside the box
-# except through nginx, which is what makes TRUST_PROXY safe to turn on: the only
-# thing that can set `X-Forwarded-For` is the proxy that sets it honestly.
+# Three API event loops share PostgreSQL and an ephemeral Valkey rate-limit store;
+# exactly one worker resolves scheduled moments. Every published port is loopback
+# only. Nginx is the sole public entry point.
 
 name: astera
+
+x-api: &api
+  build:
+    context: .
+    dockerfile: Dockerfile
+    target: server
+    args:
+      ASTERA_GIT_COMMIT: ${ASTERA_GIT_COMMIT:-unknown}
+  image: astera-server
+  restart: unless-stopped
+  # A runaway API must be killed before it can force PostgreSQL out of memory.
+  # Three 1 GiB ceilings leave ample room on the 11.7 GiB D99 host.
+  mem_limit: ${API_MEMORY_LIMIT:-1g}
+  mem_reservation: ${API_MEMORY_RESERVATION:-256m}
+  environment: &api-environment
+    NODE_ENV: production
+    ROLE: api
+    PORT: 3200
+    DATABASE_URL: postgres://${POSTGRES_USER:-astera}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-astera}
+    DB_POOL_MAX: ${API_DB_POOL_MAX:-8}
+    JWT_SECRET: ${JWT_SECRET:?set JWT_SECRET in .env}
+    TRUST_PROXY: 'true'
+    LOG_LEVEL: ${LOG_LEVEL:-info}
+    RATE_LIMIT_MAX: ${RATE_LIMIT_MAX:-300}
+    RATE_LIMIT_AUTH_MAX: ${RATE_LIMIT_AUTH_MAX:-20}
+    RATE_LIMIT_SIGNUP_MAX: ${RATE_LIMIT_SIGNUP_MAX:-6}
+    RATE_LIMIT_REDIS_URL: redis://valkey:6379/0
+    PROJECTION_CACHE_ENABLED: ${PROJECTION_CACHE_ENABLED:-true}
+    PROJECTION_CACHE_MAX_SEASONS: ${PROJECTION_CACHE_MAX_SEASONS:-16}
+    PROJECTION_CACHE_MAX_ACCOUNTS: ${PROJECTION_CACHE_MAX_ACCOUNTS:-1024}
+    COMMANDER_CACHE_TTL_MS: ${COMMANDER_CACHE_TTL_MS:-30000}
+    PUBLIC_CACHE_TTL_MS: ${PUBLIC_CACHE_TTL_MS:-30000}
+    TRAFFIC_CACHE_TTL_MS: ${TRAFFIC_CACHE_TTL_MS:-5000}
+    MINING_CACHE_TTL_MS: ${MINING_CACHE_TTL_MS:-5000}
+    SSE_MAX_BUFFER_BYTES: ${SSE_MAX_BUFFER_BYTES:-65536}
+  depends_on:
+    postgres:
+      condition: service_healthy
+    valkey:
+      condition: service_healthy
+  stop_grace_period: 30s
+  ulimits:
+    nofile:
+      soft: 65535
+      hard: 65535
+  healthcheck: &api-healthcheck
+    test: ['CMD-SHELL', 'wget -q -O- http://127.0.0.1:3200/health || exit 1']
+    interval: 30s
+    timeout: 10s
+    retries: 3
+    start_period: 20s
+  logging: &app-logging
+    driver: json-file
+    options: { max-size: '10m', max-file: '5' }
 
 services:
   postgres:
     image: postgres:16-alpine
     container_name: astera-postgres-prod
     restart: unless-stopped
+    mem_limit: ${POSTGRES_MEMORY_LIMIT:-4g}
+    mem_reservation: ${POSTGRES_MEMORY_RESERVATION:-1g}
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-astera}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
       POSTGRES_DB: ${POSTGRES_DB:-astera}
     volumes:
       - astera_pgdata:/var/lib/postgresql/data
-    # Published on loopback so `season status`, a pg_dump and psql all work from
-    # the host without entering the container. Never widen this.
     ports:
       - '127.0.0.1:${POSTGRES_PORT:-5545}:5432'
     healthcheck:
@@ -37,52 +84,85 @@ services:
       driver: json-file
       options: { max-size: '10m', max-file: '3' }
 
-  api:
-    build:
-      context: .
-      dockerfile: Dockerfile
-      target: server
-    image: astera-server
-    container_name: astera-api-prod
+  # Rate-limit counters are disposable. No host port and no persistence: losing
+  # this container loses counters, never a player or an outcome.
+  valkey:
+    image: valkey/valkey:9.1.1-alpine
+    container_name: astera-valkey-prod
     restart: unless-stopped
-    environment:
-      NODE_ENV: production
-      # ONE PROCESS SERVES BOTH HALVES. The split exists (`ROLE=api` and
-      # `ROLE=worker` run the same image) and is worth taking when one shard is
-      # not enough; at fifty players a second container is a second thing to
-      # watch for no measurable gain. See docs/deployment.md to split it.
-      ROLE: both
-      PORT: 3200
-      DATABASE_URL: postgres://${POSTGRES_USER:-astera}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-astera}
-      JWT_SECRET: ${JWT_SECRET:?set JWT_SECRET in .env}
-      # Behind nginx `req.ip` is the proxy unless this is on, and a rate limiter
-      # that sees one address for the whole internet locks out every player at
-      # once. Safe here only because the port above is loopback-only.
-      TRUST_PROXY: 'true'
-      WORKER_POLL_MS: ${WORKER_POLL_MS:-1000}
-      LOG_LEVEL: ${LOG_LEVEL:-info}
-      RATE_LIMIT_MAX: ${RATE_LIMIT_MAX:-300}
-      RATE_LIMIT_AUTH_MAX: ${RATE_LIMIT_AUTH_MAX:-20}
-      RATE_LIMIT_SIGNUP_MAX: ${RATE_LIMIT_SIGNUP_MAX:-6}
+    mem_limit: ${VALKEY_MEMORY_LIMIT:-128m}
+    mem_reservation: ${VALKEY_MEMORY_RESERVATION:-64m}
+    command:
+      - valkey-server
+      - --save
+      - ''
+      - --appendonly
+      - 'no'
+      - --protected-mode
+      - 'no'
+      - --maxmemory
+      - 64mb
+      - --maxmemory-policy
+      - allkeys-lru
+    healthcheck:
+      test: ['CMD', 'valkey-cli', 'ping']
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    logging:
+      driver: json-file
+      options: { max-size: '5m', max-file: '2' }
+
+  api1:
+    <<: *api
+    container_name: astera-api1-prod
     ports:
-      - '127.0.0.1:${API_PORT:-3200}:3200'
+      - '127.0.0.1:${API_PORT_1:-3200}:3200'
+
+  api2:
+    <<: *api
+    container_name: astera-api2-prod
+    ports:
+      - '127.0.0.1:${API_PORT_2:-3201}:3200'
+
+  api3:
+    <<: *api
+    container_name: astera-api3-prod
+    ports:
+      - '127.0.0.1:${API_PORT_3:-3202}:3200'
+
+  worker:
+    image: astera-server
+    container_name: astera-worker-prod
+    restart: unless-stopped
+    mem_limit: ${WORKER_MEMORY_LIMIT:-768m}
+    mem_reservation: ${WORKER_MEMORY_RESERVATION:-256m}
+    environment:
+      <<: *api-environment
+      ROLE: worker
+      PORT: 3210
+      DB_POOL_MAX: ${WORKER_DB_POOL_MAX:-12}
+      WORKER_POLL_MS: ${WORKER_POLL_MS:-1000}
+      WORKER_BATCH: ${WORKER_BATCH:-100}
+      # The worker registers no public routes, so it needs no shared limiter.
+      RATE_LIMIT_REDIS_URL: ''
+    ports:
+      - '127.0.0.1:${WORKER_PORT:-3210}:3210'
     depends_on:
       postgres:
         condition: service_healthy
+    stop_grace_period: 30s
+    ulimits:
+      nofile:
+        soft: 65535
+        hard: 65535
     healthcheck:
-      # REPORTS, NEVER RESTARTS. `/health` answers 503 for a stalled queue, a
-      # failed event or a stranded flight — all real faults, none of them fixed
-      # by killing the process. Compose does not restart on unhealthy, and
-      # nothing should be wired up to make it: a restart loop would clear the
-      # very state an operator needs to read. Watch it, do not act on it.
-      test: ['CMD-SHELL', 'wget -q -O- http://127.0.0.1:3200/health || exit 1']
-      interval: 30s
+      test: ['CMD-SHELL', 'wget -q -O- http://127.0.0.1:3210/health || exit 1']
+      interval: 15s
       timeout: 10s
       retries: 3
       start_period: 20s
-    logging:
-      driver: json-file
-      options: { max-size: '10m', max-file: '5' }
+    logging: *app-logging
 
 volumes:
   astera_pgdata:

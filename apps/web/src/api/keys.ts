@@ -13,12 +13,15 @@
 export const keys = {
   servers: ['servers'],
   season: ['season'],
+  planets: ['planets'],
   planet: ['planet'],
+  planetById: (planetId: string) => ['planet', planetId] as const,
   galaxy: ['galaxy'],
   intel: ['intel'],
   leaderboard: ['leaderboard'],
   chatMessages: ['chat', 'messages'],
   chatUnread: ['chat', 'unread'],
+  chronicle: ['chronicle'],
   notifications: ['notifications'],
   unlocks: ['unlocks'],
   pending: ['pending'],
@@ -26,4 +29,7 @@ export const keys = {
   reports: ['reports'],
   rewards: ['rewards'],
   mining: ['mining'],
+  miningField: ['mining', 'field'],
+  miningStatus: ['mining', 'status'],
+  miningStatusById: (planetId: string) => ['mining', 'status', planetId] as const,
 } as const;

@@ -144,7 +144,7 @@ const APPROACH_MS = 60_000;
  * place everybody can already see, so hiding the route would conceal nothing and
  * cost the disc a visible race.
  */
-export type ContactKind = 'fleet' | 'probe' | 'mining' | 'harvest';
+export type ContactKind = 'fleet' | 'probe' | 'death_star' | 'mining' | 'harvest';
 
 export interface Contact {
   /**
@@ -344,12 +344,21 @@ function windowOf(
  * rather than as an id that matches no row, because the id has to reach a `uuid`
  * column — a sentinel string is a 500 from the driver, which is how this was found.
  */
-export async function galaxyTraffic(
-  db: Db,
-  seasonId: string,
-  ownPlanetId: string | null,
-  now: Date,
-): Promise<Contact[]> {
+export interface TrafficSnapshot {
+  missionRows: { mission: typeof missions.$inferSelect }[];
+  miningRows: { run: typeof miningRuns.$inferSelect }[];
+  positions: ReadonlyMap<string, Vec3>;
+}
+
+/**
+ * The common row set behind every caller's traffic view.
+ *
+ * It deliberately stops before ownership exclusion and before any time-derived
+ * bearing window. Those are evaluated for the current caller and current instant
+ * by `projectGalaxyTraffic`, so sharing this work cannot freeze motion or turn one
+ * commander's filter into another's.
+ */
+export async function loadTrafficSnapshot(db: Db, seasonId: string): Promise<TrafficSnapshot> {
   const [missionRows, miningRows] = await Promise.all([
     db
       .select({ mission: missions })
@@ -358,13 +367,7 @@ export async function galaxyTraffic(
     db
       .select({ run: miningRuns })
       .from(miningRuns)
-      .where(
-        and(
-          eq(miningRuns.seasonId, seasonId),
-          ne(miningRuns.status, 'done'),
-          ...(ownPlanetId === null ? [] : [ne(miningRuns.planetId, ownPlanetId)]),
-        ),
-      ),
+      .where(and(eq(miningRuns.seasonId, seasonId), ne(miningRuns.status, 'done'))),
   ]);
 
   const ids = new Set<string>();
@@ -373,20 +376,51 @@ export async function galaxyTraffic(
     ids.add(mission.targetPlanetId);
   }
   for (const { run } of miningRows) ids.add(run.planetId);
-  if (ids.size === 0) return [];
+  if (ids.size === 0) return { missionRows, miningRows, positions: new Map() };
 
   const planetRows = await db
     .select({ id: planets.id, x: planets.x, y: planets.y, z: planets.z })
     .from(planets)
     .where(inArray(planets.id, [...ids]));
   const positions = new Map<string, Vec3>(
-    planetRows.map((p) => [p.id, { x: p.x, y: p.y, z: p.z }]),
+    planetRows.map((planet) => [
+      planet.id,
+      { x: planet.x, y: planet.y, z: planet.z },
+    ]),
   );
+  return { missionRows, miningRows, positions };
+}
+
+export async function galaxyTraffic(
+  db: Db,
+  seasonId: string,
+  ownPlanetId: string | null,
+  now: Date,
+  ownPlayerId: string | null = null,
+  ownPlanetIds: string[] = ownPlanetId === null ? [] : [ownPlanetId],
+): Promise<Contact[]> {
+  const snapshot = await loadTrafficSnapshot(db, seasonId);
+  return projectGalaxyTraffic(snapshot, ownPlanetId, now, ownPlayerId, ownPlanetIds);
+}
+
+/** Apply the authoritative caller filter and current clock to one shared snapshot. */
+export function projectGalaxyTraffic(
+  snapshot: TrafficSnapshot,
+  ownPlanetId: string | null,
+  now: Date,
+  ownPlayerId: string | null = null,
+  ownPlanetIds: string[] = ownPlanetId === null ? [] : [ownPlanetId],
+): Contact[] {
+  const { missionRows, miningRows, positions } = snapshot;
+  const ownedPlanets = new Set(ownPlanetIds);
 
   const out: Contact[] = [];
 
   for (const { mission } of missionRows) {
-    if (ownPlanetId !== null && legBelongsTo(mission, ownPlanetId)) continue;
+    if (
+      (ownPlayerId !== null && mission.ownerPlayerId === ownPlayerId)
+      || (ownPlayerId === null && ownPlanetId !== null && legBelongsTo(mission, ownPlanetId))
+    ) continue;
     const origin = positions.get(mission.originPlanetId);
     const target = positions.get(mission.targetPlanetId);
     if (!origin || !target) continue;
@@ -431,7 +465,11 @@ export async function galaxyTraffic(
       id: mission.id,
       // A return leg is still a fleet: the hull is what the neon names, and a
       // squadron flying home is exactly as much of a fact as one flying out.
-      kind: mission.kind === 'probe' ? 'probe' : 'fleet',
+      kind: mission.kind === 'probe'
+        ? 'probe'
+        : mission.kind === 'death_star'
+          ? 'death_star'
+          : 'fleet',
       ...slice,
       // Composition, and never the loot it may be carrying home.
       fleet: mission.fleet,
@@ -446,6 +484,7 @@ export async function galaxyTraffic(
    * Prospector is heading would hide the race itself.
    */
   for (const { run } of miningRows) {
+    if (ownedPlanets.has(run.planetId)) continue;
     const home = positions.get(run.planetId);
     if (!home) continue;
     const meet = { x: run.interceptX, y: run.interceptY, z: run.interceptZ };

@@ -7,7 +7,7 @@ import {
   HULLS,
   distance,
   engagementEndsAt,
-  fleetTravelMinutes,
+  fleetTravelExact,
   travelExact,
 } from '@astera/rules';
 import { missions, notifications, planets, scheduledEvents, units } from '../src/db/schema.js';
@@ -240,7 +240,7 @@ describe('launching a fleet', () => {
       const launch = await launchAttack(f.db, attacker, defender, { WASP: 10 }, f.clock);
       const [a] = await f.db.select().from(planets).where(eq(planets.id, attacker));
       const [b] = await f.db.select().from(planets).where(eq(planets.id, defender));
-      const oneWay = fleetTravelMinutes(distance(a!, b!), { WASP: 10 });
+      const oneWay = fleetTravelExact(distance(a!, b!), { WASP: 10 });
       expect(launch.exposureMinutes).toBe(oneWay * 2);
     });
 
@@ -253,15 +253,10 @@ describe('launching a fleet', () => {
     /**
      * COMPOSITION IS A TIME DECISION — AND SINCE D63 IT IS A RATIO, NOT A GAP.
      *
-     * Hull speeds went up 9.46×, so the difference between the fastest and slowest
-     * hull shrank by the same factor: a Bulwark still takes 1.75× a Wasp's flight,
-     * but on a SHORT leg both round to the same whole minute. This test read
-     * `expected 4 to be greater than 4` the day the speeds landed.
-     *
-     * That is rounding, not the rule breaking, so the strict claim is made where
-     * the rule actually lives — `travelExact`, which is continuous — and the
-     * service is held to being consistent with it rather than to a gap the tempo
-     * no longer produces on every leg.
+     * Hull speeds went up 9.46× at D63, which made whole-minute scheduling flatten
+     * short routes: a Bulwark and a Wasp could both be stored as four-minute legs.
+     * The service now schedules the continuous answer, so composition remains a
+     * time decision even where the interface rounds both labels to the same minute.
      */
     it('a slower fleet takes longer — composition is a time decision', async () => {
       await giveUnits(f.db, attacker, { WASP: 50, HAULER: 5, BULWARK: 2 });
@@ -277,7 +272,7 @@ describe('launching a fleet', () => {
         travelExact(leg, HULLS.WASP.speed),
       );
       // And the service never contradicts it.
-      expect(slow.exposureMinutes).toBeGreaterThanOrEqual(fast.exposureMinutes);
+      expect(slow.exposureMinutes).toBeGreaterThan(fast.exposureMinutes);
     });
 
     /**
@@ -308,19 +303,21 @@ describe('launching a fleet', () => {
     });
 
     /**
-     * AND THE ETA THE PLAYER READS IS UNCHANGED BY IT.
+     * AND THE FLIGHT ITSELF IS NOT ROUNDED TO PAY FOR IT.
      *
-     * The engagement is deliberately far below the granularity of every clock in
-     * the interface — ETAs are whole minutes — so a ten-second window must not
-     * show up as an extra minute anywhere. This is what stops a piece of theatre
-     * quietly rewriting the travel model.
+     * The interface formats a duration at its edge; the mission keeps the exact
+     * instant. The ten-second engagement starts after that instant and must never
+     * be folded into either travel or exposure.
      */
-    it('does not lengthen the flight the player was quoted', async () => {
+    it('does not round or lengthen the scheduled flight', async () => {
       const departedAt = f.clock.now().getTime();
       const launch = await launchAttack(f.db, attacker, defender, { WASP: 10 }, f.clock);
-      const quoted = (launch.arriveAt.getTime() - departedAt) / 60_000;
-      expect(quoted).toBe(Math.ceil(quoted));
-      expect(launch.exposureMinutes).toBe(quoted * 2);
+      const exact = (launch.arriveAt.getTime() - departedAt) / 60_000;
+      expect(exact).not.toBe(Math.ceil(exact));
+      // PostgreSQL/JS timestamps stop at a millisecond while the pure rule keeps
+      // the full float. That boundary may lose less than one millisecond per leg,
+      // never a gameplay-sized fraction of a minute.
+      expect(Math.abs(launch.exposureMinutes - exact * 2)).toBeLessThan(2 / 60_000);
     });
 
     /** A probe has no engagement: it resolves the instant it gets there. */

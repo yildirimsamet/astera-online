@@ -1,29 +1,35 @@
 import {
+  BUILD,
   BUILDING_IDS,
   HULLS,
   INSTRUMENT_IDS,
+  RESEARCH_PROJECTS,
   SATELLITE_IDS,
   START,
   START_BUILDINGS,
   alloyRate,
   collectorCap,
   crystalRate,
-  fleetCount,
+  deuteriumCollectorCap,
+  deuteriumStorageCap,
   flightSlots,
   instrumentCost,
   productionMult,
   satelliteCost,
   satelliteSlots,
   storageCap,
-  tiersWithinBand,
   upgradeCost,
   vaultProtects,
   wealth,
   type BuildingId,
-  type Fleet,
   type HullId,
 } from '@astera/rules';
-import type { ClaimIntent, GalaxyPlanet, PlanetView, Preview } from '../api/schemas.js';
+import type {
+  BuildOrderView,
+  ClaimIntent,
+  PlanetView,
+  Preview,
+} from '../api/schemas.js';
 
 /**
  * THE REHEARSAL'S WORLD. D56.
@@ -53,14 +59,10 @@ export interface RehearsalWorld {
   buildings: Record<BuildingId, number>;
   alloy: number;
   crystal: number;
-  /** Hulls standing on the planet. */
-  fleet: Fleet;
-  /** Hulls that have been sent. Owned, and demonstrably not defending. */
-  away: Fleet;
+  /** Paid decisions staged locally; claim gives them their server-authored clocks. */
+  queues: NonNullable<PlanetView['queues']>;
   /** What was pressed, in the order it was pressed. This is what travels. */
   intents: ClaimIntent[];
-  /** The one flight the opening budget funds, once it has been committed. */
-  launch: { targetPlanetId: string; fleet: Fleet } | null;
 }
 
 export function openWorld(preview: Preview): RehearsalWorld {
@@ -85,17 +87,41 @@ export function openWorld(preview: Preview): RehearsalWorld {
      */
     alloy: START.alloy,
     crystal: START.crystal,
-    fleet: {},
-    away: {},
+    queues: { CONSTRUCTION: [], YARD: [] },
     intents: [],
-    launch: null,
   };
 }
 
 /* ── what may be pressed ────────────────────────────────────── */
 
 /** Why an opening step is refused, in the server's own vocabulary. */
-export type Refusal = 'CORE_CEILING' | 'INSUFFICIENT_RESOURCES' | 'SHIPYARD_TOO_LOW';
+export type Refusal =
+  | 'CORE_CEILING'
+  | 'INSUFFICIENT_RESOURCES'
+  | 'QUEUE_FULL'
+  | 'SHIPYARD_TOO_LOW';
+
+/** Durable state plus earlier staged Construction orders, exactly like the server gate. */
+export function projectedBuildings(w: RehearsalWorld): Record<BuildingId, number> {
+  const projected = { ...w.buildings };
+  for (const order of w.queues.CONSTRUCTION) {
+    if (order.kind !== 'BUILDING' || !BUILDING_IDS.includes(order.subject as BuildingId)) continue;
+    const id = order.subject as BuildingId;
+    projected[id] += 1;
+  }
+  return projected;
+}
+
+export function queuedCount(
+  w: RehearsalWorld,
+  queue: 'CONSTRUCTION' | 'YARD',
+  kind: BuildOrderView['kind'],
+  subject: string,
+): number {
+  return w.queues[queue]
+    .filter((order) => order.kind === kind && order.subject === subject)
+    .reduce((sum, order) => sum + order.count, 0);
+}
 
 /**
  * The Core ceiling and the price, checked in that order — which is the order
@@ -103,14 +129,17 @@ export type Refusal = 'CORE_CEILING' | 'INSUFFICIENT_RESOURCES' | 'SHIPYARD_TOO_
  * they would have got.
  */
 export function refusesUpgrade(w: RehearsalWorld, type: BuildingId): Refusal | null {
-  const level = w.buildings[type];
-  if (type !== 'CORE' && level >= w.buildings.CORE) return 'CORE_CEILING';
+  if (w.queues.CONSTRUCTION.length >= BUILD.queueDepth) return 'QUEUE_FULL';
+  const projected = projectedBuildings(w);
+  const level = projected[type];
+  if (type !== 'CORE' && level >= projected.CORE) return 'CORE_CEILING';
   const cost = upgradeCost(level);
   if (w.alloy < cost.alloy || w.crystal < cost.crystal) return 'INSUFFICIENT_RESOURCES';
   return null;
 }
 
 export function refusesBuild(w: RehearsalWorld, hull: HullId, count: number): Refusal | null {
+  if (w.queues.YARD.length >= BUILD.queueDepth) return 'QUEUE_FULL';
   const spec = HULLS[hull];
   if (w.buildings.SHIPYARD < spec.minShipyard) return 'SHIPYARD_TOO_LOW';
   if (w.alloy < spec.alloy * count || w.crystal < spec.crystal * count) {
@@ -123,12 +152,26 @@ export function refusesBuild(w: RehearsalWorld, hull: HullId, count: number): Re
 
 export function upgrade(w: RehearsalWorld, type: BuildingId): RehearsalWorld {
   if (refusesUpgrade(w, type)) return w;
-  const cost = upgradeCost(w.buildings[type]);
+  const projected = projectedBuildings(w);
+  const cost = upgradeCost(projected[type]);
+  const order = {
+    id: `rehearsal-construction-${String(w.queues.CONSTRUCTION.length)}`,
+    queue: 'CONSTRUCTION' as const,
+    slot: w.queues.CONSTRUCTION.length,
+    kind: 'BUILDING' as const,
+    subject: type,
+    count: 1,
+    cost,
+    staged: true as const,
+  } satisfies BuildOrderView;
   return {
     ...w,
     alloy: w.alloy - cost.alloy,
     crystal: w.crystal - cost.crystal,
-    buildings: { ...w.buildings, [type]: w.buildings[type] + 1 },
+    queues: {
+      ...w.queues,
+      CONSTRUCTION: [...w.queues.CONSTRUCTION, order],
+    },
     intents: [...w.intents, { kind: 'upgrade', building: type }],
   };
 }
@@ -136,79 +179,32 @@ export function upgrade(w: RehearsalWorld, type: BuildingId): RehearsalWorld {
 export function build(w: RehearsalWorld, hull: HullId, count: number): RehearsalWorld {
   if (refusesBuild(w, hull, count)) return w;
   const spec = HULLS[hull];
+  const cost = {
+    alloy: spec.alloy * count,
+    crystal: spec.crystal * count,
+    deuterium: spec.deuterium * count,
+  };
+  const order = {
+    id: `rehearsal-yard-${String(w.queues.YARD.length)}`,
+    queue: 'YARD' as const,
+    slot: w.queues.YARD.length,
+    kind: 'HULL' as const,
+    subject: hull,
+    count,
+    cost,
+    staged: true as const,
+  } satisfies BuildOrderView;
   return {
     ...w,
-    alloy: w.alloy - spec.alloy * count,
-    crystal: w.crystal - spec.crystal * count,
-    fleet: { ...w.fleet, [hull]: (w.fleet[hull] ?? 0) + count },
+    alloy: w.alloy - cost.alloy,
+    crystal: w.crystal - cost.crystal,
+    queues: {
+      ...w.queues,
+      YARD: [...w.queues.YARD, order],
+    },
     intents: [...w.intents, { kind: 'build', hull, count }],
   };
 }
-
-/**
- * Commit the fleet. IRREVERSIBLE, here as well as there.
- *
- * The rehearsal could let a visitor take it back — nothing has happened yet — and
- * it deliberately does not. A launch that can be undone during the tutorial and
- * never again afterwards teaches the wrong thing about the one rule the whole risk
- * layer rests on (Principle 3).
- */
-export function launch(
-  w: RehearsalWorld,
-  targetPlanetId: string,
-  fleet: Fleet,
-): RehearsalWorld {
-  if (w.launch) return w;
-  if (fleetCount(fleet) === 0) return w;
-  const away: Fleet = { ...w.away };
-  const home: Fleet = { ...w.fleet };
-  for (const [hull, n] of Object.entries(fleet) as [HullId, number][]) {
-    if ((home[hull] ?? 0) < n) return w;
-    home[hull] = (home[hull] ?? 0) - n;
-    away[hull] = (away[hull] ?? 0) + n;
-  }
-  return {
-    ...w,
-    fleet: home,
-    away,
-    launch: { targetPlanetId, fleet },
-    intents: [...w.intents, { kind: 'launch', targetPlanetId, fleet }],
-  };
-}
-
-/* ── who may be hit ─────────────────────────────────────────── */
-
-/**
- * The worlds this planet may attack, nearest first. D49.
- *
- * FILTERED BY THE RULE, RANKED BY THE ONLY COST A NEWCOMER CAN READ. The tier band
- * is public on every world, so this is checkable off the map before a fleet is
- * packed — which is exactly why D49 replaced a Wealth floor with it.
- *
- * IT DOES NOT RANK BY WEAKNESS, and it must never be made to. The whole point of
- * the beat this feeds is that the choice is blind: nobody knows what is down there,
- * and an interface that hinted would answer for free the question the Telescope is
- * sold to answer.
- *
- * The bash limit is deliberately not modelled. How often a world has been hit
- * recently is not public, publishing it would be a new leak, and the honest place
- * to discover it is the claim — which reports the refusal and re-opens the choice.
- */
-export function reachableTargets(
-  w: RehearsalWorld,
-  worlds: readonly GalaxyPlanet[],
-): GalaxyPlanet[] {
-  const tier = Math.max(1, Math.ceil(w.buildings.CORE / 3));
-  const from = w.reserved.position;
-  return worlds
-    .filter((p) => !p.isSelf && p.owner !== '' && tiersWithinBand(tier, p.coreTier))
-    .sort((a, b) => squared(from, a.position) - squared(from, b.position));
-}
-
-const squared = (
-  a: { x: number; y: number; z: number },
-  b: { x: number; y: number; z: number },
-): number => (a.x - b.x) ** 2 + (a.y - b.y) ** 2 + (a.z - b.z) ** 2;
 
 /* ── rendering it ───────────────────────────────────────────── */
 
@@ -224,7 +220,16 @@ const squared = (
 export function planetOf(w: RehearsalWorld): PlanetView {
   const boost = productionMult([]);
   const perHourAlloy = alloyRate(w.buildings.REFINERY) * boost;
+  // The floor is hours of each resource's OWN production, so it needs the
+  // producing levels as well as the Vault's. One call, three readings.
+  const floor = vaultProtects(w.buildings.VAULT, w.buildings.REFINERY, w.buildings.EXTRACTOR);
   const perHourCrystal = crystalRate(w.buildings.EXTRACTOR) * boost;
+  const committed = [...w.queues.CONSTRUCTION, ...w.queues.YARD]
+    .reduce((sum, order) => ({
+      alloy: sum.alloy + order.cost.alloy,
+      crystal: sum.crystal + order.cost.crystal,
+      deuterium: sum.deuterium + order.cost.deuterium,
+    }), { alloy: 0, crystal: 0, deuterium: 0 });
 
   return {
     planet: {
@@ -233,8 +238,10 @@ export function planetOf(w: RehearsalWorld): PlanetView {
       position: w.reserved.position,
       alloy: Math.floor(w.alloy),
       crystal: Math.floor(w.crystal),
-      alloyCap: storageCap(perHourAlloy),
-      crystalCap: storageCap(perHourCrystal),
+      deuterium: 0,
+      alloyCap: storageCap(perHourAlloy, w.buildings.VAULT),
+      crystalCap: storageCap(perHourCrystal, w.buildings.VAULT),
+      deuteriumCap: deuteriumStorageCap(perHourCrystal, w.buildings.VAULT),
       alloyPerHour: Math.round(perHourAlloy),
       crystalPerHour: Math.round(perHourCrystal),
       /**
@@ -248,13 +255,22 @@ export function planetOf(w: RehearsalWorld): PlanetView {
        */
       bufferAlloy: 0,
       bufferCrystal: 0,
+      bufferDeuterium: 0,
       bufferAlloyCap: collectorCap(perHourAlloy),
       bufferCrystalCap: collectorCap(perHourCrystal),
+      bufferDeuteriumCap: deuteriumCollectorCap(perHourCrystal),
       // The same figure the server sends: what is actually safe, not the floor.
       vaultFloor:
-        Math.min(w.alloy, vaultProtects(w.buildings.VAULT).alloy) +
-        Math.min(w.crystal, vaultProtects(w.buildings.VAULT).crystal),
+        Math.min(w.alloy, floor.alloy) + Math.min(w.crystal, floor.crystal),
+      vaultProtected: {
+        alloy: Math.min(w.alloy, floor.alloy),
+        crystal: Math.min(w.crystal, floor.crystal),
+        deuterium: 0,
+      },
+      vaultCapacity: floor,
       shield: 0,
+      shieldMax: 0,
+      shieldPerHour: 0,
       disruptedUntil: null,
     },
     buildings: { ...w.buildings },
@@ -268,19 +284,43 @@ export function planetOf(w: RehearsalWorld): PlanetView {
     orbit: [],
     orbitSlots: satelliteSlots(w.buildings.CORE),
     satelliteCosts: Object.fromEntries(SATELLITE_IDS.map((s) => [s, satelliteCost(s)])),
-    fleet: { ...w.fleet },
+    research: [
+      {
+        id: 'ISOTOPE_SPECTROMETRY',
+        cost: RESEARCH_PROJECTS.ISOTOPE_SPECTROMETRY.cost,
+        discovered: false,
+        completed: false,
+        completedAt: null,
+        available: false,
+        availableAt: new Date('2999-01-01T00:00:00.000Z'),
+        prerequisite: null,
+      },
+      {
+        id: 'DENSE_FUEL_CELLS',
+        cost: RESEARCH_PROJECTS.DENSE_FUEL_CELLS.cost,
+        discovered: false,
+        completed: false,
+        completedAt: null,
+        available: false,
+        availableAt: new Date('2999-01-01T00:00:00.000Z'),
+        prerequisite: 'ISOTOPE_SPECTROMETRY',
+      },
+    ],
+    queues: w.queues,
+    fleet: {},
     ground: {},
-    fleetAway: { ...w.away },
-    flight: { used: w.launch ? 1 : 0, total: flightSlots(w.buildings.CORE) },
+    fleetAway: {},
+    flight: { used: 0, total: flightSlots(w.buildings.CORE) },
     score: {
       wealth: wealth({
         buildings: w.buildings,
         instruments: {},
         satellites: [],
-        fleet: { ...w.fleet, ...w.away },
+        fleet: {},
         ground: {},
-        alloy: w.alloy,
-        crystal: w.crystal,
+        alloy: w.alloy + committed.alloy,
+        crystal: w.crystal + committed.crystal,
+        deuterium: committed.deuterium,
       }),
       // Only combat makes Dominion, and none has happened.
       dominion: 0,

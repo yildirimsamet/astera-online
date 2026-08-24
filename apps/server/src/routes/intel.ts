@@ -1,4 +1,4 @@
-import { eq } from 'drizzle-orm';
+import { and, eq } from 'drizzle-orm';
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import { PROBE } from '@astera/rules';
@@ -12,20 +12,22 @@ import {
   readTelescopes,
 } from '../services/intel.js';
 import { requireAuth } from './auth.js';
+import { ownedPlanet } from '../services/ownership.js';
 
 const watchBody = z.object({
+  observerPlanetId: z.string().uuid().optional(),
   targetPlanetId: z.string().uuid(),
   slot: z.number().int().min(0).max(15).default(0),
 });
 
-const probeBody = z.object({ targetPlanetId: z.string().uuid() });
+const probeBody = z.object({ originPlanetId: z.string().uuid().optional(), targetPlanetId: z.string().uuid() });
 
 export function registerIntelRoutes(app: FastifyInstance): void {
   const me = async (accountId: string): Promise<{ playerId: string; planetId: string }> => {
     const rows = await app.db
       .select({ playerId: players.id, planetId: planets.id })
       .from(players)
-      .innerJoin(planets, eq(planets.playerId, players.id))
+      .innerJoin(planets, and(eq(planets.controllerPlayerId, players.id), eq(planets.kind, 'CAPITAL')))
       .where(eq(players.accountId, accountId))
       .limit(1);
     const row = rows[0];
@@ -59,20 +61,33 @@ export function registerIntelRoutes(app: FastifyInstance): void {
         // Rounded so the UI cannot imply more precision than the probe bought.
         accuracy: Math.round(r.report.accuracy * 100) / 100,
         stock: r.report.stock,
+        deuteriumStock: r.report.deuteriumStock,
         defence: r.report.defence,
         fleetSize: r.report.fleetSize,
         fleetHome: r.report.fleetHome,
+        deathStar: r.report.strategicStatus ?? 'UNKNOWN',
         detected: r.report.detected,
       })),
-      probeCost: { alloy: PROBE.alloy, crystal: PROBE.crystal },
+      probeCost: { alloy: PROBE.alloy, crystal: PROBE.crystal, deuterium: 0 },
     };
   });
 
   /** Point a telescope slot at a planet. Silent — the target is never told. */
   app.post('/api/intel/watch', { preHandler: requireAuth }, async (req) => {
     const body = watchBody.parse(req.body);
-    const { planetId } = await me(req.accountId!);
-    return assignWatch(app.db, planetId, body.targetPlanetId, body.slot, app.clock);
+    const { planetId, playerId } = await me(req.accountId!);
+    const observerPlanetId = body.observerPlanetId ?? planetId;
+    const owner = body.observerPlanetId
+      ? await ownedPlanet(app.db, req.accountId!, observerPlanetId)
+      : { playerId };
+    return assignWatch(
+      app.db,
+      observerPlanetId,
+      body.targetPlanetId,
+      body.slot,
+      app.clock,
+      owner.playerId,
+    );
   });
 
   /**
@@ -84,7 +99,17 @@ export function registerIntelRoutes(app: FastifyInstance): void {
    */
   app.post('/api/intel/probe', { preHandler: requireAuth }, async (req) => {
     const body = probeBody.parse(req.body);
-    const { planetId } = await me(req.accountId!);
-    return launchProbe(app.db, planetId, body.targetPlanetId, app.clock);
+    const { planetId, playerId } = await me(req.accountId!);
+    const originPlanetId = body.originPlanetId ?? planetId;
+    const owner = body.originPlanetId
+      ? await ownedPlanet(app.db, req.accountId!, originPlanetId)
+      : { playerId };
+    return launchProbe(
+      app.db,
+      originPlanetId,
+      body.targetPlanetId,
+      app.clock,
+      owner.playerId,
+    );
   });
 }

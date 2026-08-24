@@ -6,9 +6,11 @@ creates** — a system that creates no decision does not belong here.
 Formulas and constants: `balance.md`. Why each choice was made: `decisions.md`. Unfamiliar
 terms: `glossary.md`.
 
-> Everything below is built and playable except **asteroid impacts**, the **scheduled season
-> end**, and the **Dominion ladder**, which is computed and served but has no client surface.
-> `roadmap.md` is what exists today.
+> Everything below is built and playable except **asteroid impacts**. Season freeze, personal
+> records, the fifteen-minute afterglow and atomic successor rollover are live. The first
+> Frontier slice is also live: research access, isotope asteroids, contested Deuterium and
+> the Deuterium-priced Runner and shield-specialist Breacher all use the same
+> ruleset as the rest of the galaxy.
 
 ## The loop
 
@@ -33,9 +35,13 @@ investment stops being rational on the final day. Every player independently rea
 conclusion, so the whole galaxy is simultaneously rich and undefended. The economy produces
 the finale.
 
-## Ownership — the planet
+## Ownership — the worlds
 
-One planet per player. Named, at fixed 3D coordinates, **structurally indestructible**.
+One commander per galaxy, with one uncapturable **capital** and up to three captured
+**colonies**. Every controlled world is named, fixed in 3D and runs the complete planetary
+economy. Ordinary raids are structurally non-destructive; only a Death Star can apply the
+specific permanent level loss in D97/D98. A capital may be devastated but never captured;
+colonies and neutral worlds may also transfer control on a qualifying second impact.
 
 Raids take shields, satellites, units, stock and *production time*. They never touch
 buildings. This is the mechanical guarantee behind ownership: **you can be robbed and set
@@ -57,29 +63,42 @@ fight.
 | **Command Core** | Level ceiling, orbit slots, flight bays | Breadth now, or depth now? |
 | **Alloy Refinery** | Alloy/hr and alloy storage | The default safe investment |
 | **Crystal Extractor** | Crystal/hr and crystal storage | Slow, but gates everything interesting |
-| **Vault** | Protected, un-raidable stock | Pure safety, zero yield — insurance you hope to waste |
-| **Shipyard** | Unlocks hulls, sets probe stealth | Reach vs growth |
+| **Vault** | Storage capacity and protected stock | A larger purchase window vs investment elsewhere |
+| **Shipyard** | Unlocks hulls, sets probe stealth and build throughput | Reach vs growth |
 
 Five numbers, one portrait screen, no scrolling. **A hard cap.**
 
-**Construction is instant on payment.** No timers, no queues (D4).
+**Construction is committed on payment and completes through two independent queues** (D4).
+Buildings, instruments, satellites and research share CONSTRUCTION; mobile hulls and ground
+defence share YARD. Each queue is three orders deep and processes one order at a time. Cancelling
+is a decision, not an undo: it refunds half the committed resources. A system-abandoned order
+refunds everything. The Death Star keeps its separate sixty-minute strategic build (D97).
 
-### Flight bays — what occupies time instead of a timer
+Queue gates read the world projected through every earlier order. A commander may therefore queue
+Core 1→2 and then Refinery 1→2; they may not use a later order to justify an earlier one. Core and
+Shipyard now sell throughput as well as access. Ground defence uses a faster derived throughput so
+one Thorn at Shipyard 0 still completes inside the narrowest Radar L3 warning.
+
+### Flight bays — concurrent operations, not construction
 
 `bays = 3 + floor(core / 3)`. Every craft that leaves — a raid, a probe, a mining run — holds
 one for its whole round trip. A squadron is one bay, because a squadron is one decision.
 
-This is what D4 left unfilled: timers were removed correctly, and nothing took over the job of
-*occupying* time, so a session could end with nothing pending. A bay count makes Design Law #1
-a state the interface can read, and a dark bay is the honest return hook — a fact about your
-own planet rather than a notification.
+Build queues pace conversion of resources into holdings; flight bays ration concurrent operations
+away from a world. They are deliberately separate constraints. A bay count remains a state the
+interface can read, and a dark bay is an honest fact about the commander's current commitments.
 
-## Economy — two resources
+## Economy — two produced resources, one contested material
 
 **Alloy** (common, builds everything) and **Crystal** (scarce, gates advanced hulls,
-satellites and high building levels). One resource makes every decision linear; three creates
-bookkeeping without a third real choice. Two creates *composition* pressure — the minimum
-viable interesting economy.
+satellites and high building levels) are the two resources a planet produces. Their different
+curves create composition pressure rather than one linear pile.
+
+**Deuterium is never produced passively.** A planet begins with none. The Crystal Extractor
+sets the containment ceiling for its storage and works without adding a sixth building. It is
+fully raidable — the Vault protects zero — and it occupies the same fleet cargo as any other
+material. Isotope Spectrometry reveals its contested asteroid source; the Runner consumes it
+in a repeatable, losable hull rather than turning it into permanent background power.
 
 **Production fills the works and stops there (D16).** One tap moves it into storage. Storage
 caps at 12 hours of production, the works at 10, so a normal night wastes nothing and a long
@@ -87,16 +106,16 @@ absence still tops out.
 
 ### Why players hold raidable stock at all
 
-Holding liquid resources is *strictly dominated* by spending them: score is identical the
-instant you press the button, and the spender out-earns the hoarder from then on with no raid
-exposure. **Hoarding for score is not a viable strategy.**
+Holding liquid resources is not a score strategy: Dominion is unchanged by either holding or
+spending. A queue deliberately limits how quickly stock can become a building or fleet, so
+committed work remains Wealth while uncommitted stock stays exposed to raids.
 
-Players nonetheless sit on growing piles constantly, because **upgrade costs are lumpy** — at
-level 10 an upgrade costs about seven hours of production. The store fills, gets spent to
-near-zero, refills. That involuntary sawtooth, not any score incentive, is what makes raiding
-worth doing. **Cost lumpiness is a hard requirement, not a tuning preference.**
+Players sit on growing piles because **upgrade costs are lumpy** and both queues are bounded. The
+store fills, an order commits part of it, and production continues while that order runs. That
+involuntary sawtooth, not any score incentive, is what makes raiding worth doing. **Cost lumpiness
+and bounded build throughput are hard requirements, not tuning preferences.**
 
-## Fleet — four hulls and two ground guns
+## Fleet — seven spacefaring hulls and two ground guns
 
 | Hull | Class | Mathematical job | Cost of using it |
 |---|---|---|---|
@@ -104,6 +123,8 @@ worth doing. **Cost lumpiness is a hard requirement, not a tuning preference.**
 | **Lance** | Lance | Highest raw attack. 1.6× into Wasps — the answer to a swarm. 50 cargo | 0.625× into Bulwark-class; useless against a fortified planet |
 | **Bulwark** | Bulwark | The durability anchor. 1.6× into Lances. 70 cargo | Speed 199 gives the longest exposure on any route |
 | **Hauler** | Support | 1,800 cargo. **The dedicated cargo hull; it contributes nothing to the fight** | Every Hauler slot is a combat slot you did not bring |
+| **Runner** | Support | 300 cargo at speed 420. Lets light strike fleets trade capacity for a shorter exposure window | Dense Fuel Cells and contested Deuterium; poor cargo-per-cost means it cannot replace the Hauler |
+| **Breacher** | Lance | Five times its normal effect against an active shield; the extra damage cannot spill into units | Gravitic Charges, contested Deuterium and no cargo; without a shield its 12 attack is deliberately inefficient |
 | **Bastion** | Bulwark, ground | 1.35× more HP per resource than any ship, because it can never leave. Breaks Lances | Cannot attack. Swarms overwhelm it |
 | **Thorn** | Skirmisher, ground | Light, cheap, buildable at Shipyard 0. Tears into heavy hulls | Lances pick it apart |
 | **Prospector** | Support, mining | Mines rocks and harvests wreckage. Two per planet, ever | Dies with the garrison; competes for the same bays |
@@ -144,6 +165,13 @@ matrix, so 26 Wasps and 1 Bastion read as equal "power" while one annihilates th
 Three grades rather than win/lose: binary outcomes make marginal attacks worthless and punish
 good-but-imperfect reads.
 
+**Breacher does not change the counter cycle.** It is Lance-class and its ordinary
+12 attack resolves through the same damage map as every other ship. While an Aegis
+shield remains, four additional copies of that class-adjusted damage hit only the
+shield. The bonus is capped at the shield left in that round and never overkills
+into ships or ground guns. Scouting an Aegis creates the choice; sending Breachers
+blind is intentionally expensive and weak.
+
 **A raid takes ten seconds to land (D44), and the whole galaxy watches it (D52).** The fleet is
 over the target at `arriveAt` and the battle is settled ten seconds later; in between the
 squadron holds in orbit and fires on the world. It is a real server window, not an animation —
@@ -181,8 +209,10 @@ blind raiding never fails there is nothing for information to reduce.
 ### Disruption
 
 A successful raid knocks the target's works offline: 15 min on DECISIVE, 5 on PARTIAL and 0 on REPELLED (D73). A later raid refreshes this window but cannot stack it beyond 15 minutes from now.
-Refreshes rather than stacks, capped at 15 min pending. **Buildings are never damaged** — the
-ownership pillar holds — but the victim loses *compounding* rather than merely stock. It is
+Refreshes rather than stacks, capped at 15 min pending. **Ordinary raids never damage
+buildings** — the ownership pillar holds — but the victim loses *compounding* rather than
+merely stock. Death Star damage is the explicit exception in D97/D98. It may damage any
+enemy world, while control transfer remains impossible for capitals. It is
 the only thing that makes raiding competitive with building over a season.
 
 ### Wreckage
@@ -285,16 +315,33 @@ because deterrence only works if it is legible. How strong it is still costs a p
 
 ## Galaxy, travel and mining
 
-**A thin disc**, radius 1000, ±120 thickness — legible on a portrait phone at any zoom, and it
+**A thin disc**, radius 2500, ±300 thickness — legible on a portrait phone at any zoom, and it
 looks like a galaxy. Designed skeleton, randomised placement, **deterministic from the season
 seed**, so the client regenerates the static layout instead of downloading it.
 
-Ten galaxies of fifty worlds, filled strictly in order (D21). Each player has a handful of
-worlds within a few minutes' travel; that set is their world for the season.
+The larger radius is also a larger navigable scene. The client keeps the established conversion of
+50 game units per rendered world unit; it must not raise that divisor with the gameplay radius and
+compress 351 worlds back into the old 50-player picture. At the widest camera distance the whole
+disc remains available as an overview, while ordinary play opens on a readable neighbourhood.
+
+At most two galaxies of 300 commander seats, filled strictly in order (D99/D100). A v2 season also contains
+51 neutral worlds: thirty T1, fifteen T2 and six T3. The disc radius and travel rules do not scale with
+population; the denser neighbourhood is an explicit consequence of the 300-player world, not a
+hidden balance adjustment.
+
+The population is spread across the whole disc, not filled from one neighbourhood outwards. Capital
+addresses use the seeded Poisson layout and each arriving commander takes the address furthest from
+the commanders already present. Neutral placement is stratified as well: T1 worlds cover the playable
+disc, T2 worlds form an evenly spaced middle ring, and the six T3 worlds share the contested centre.
+The season seed rotates and perturbs those patterns, but may never leave a broad empty wedge or put a
+tier into one visible clump.
 
 ```
-travelMinutes = 3 + (distance / slowestShipSpeed) × 1.2
+travelExact = 1 + (distance / slowestShipSpeed) × 1.2
 ```
+
+The mission lands at that continuous instant. A whole-minute ETA is a display
+quote rounded at the edge, never the time stored on the mission (D83).
 
 Distance is the real map boundary — no artificial range cap is needed, because a cross-galaxy
 round trip in Bulwarks already costs two hours of being undefended.
@@ -351,6 +398,14 @@ because a badge that cannot be cleared teaches people to ignore badges.
 
 **There is no return overlay** (D23). What happened is in Signals, read when the player
 chooses; what is still in flight is on the strip, permanently.
+
+The **Galaxy Chronicle** is separate from private notifications. It remembers only public
+state transitions from the last 24 hours: bombardments, Core tier crossings, isotope races
+ending, wreckage appearing or being fully claimed, Dominion leadership changes and the War,
+Consolidation and Sunset act boundaries. It never names who mined or salvaged, and never
+records probes, research, cargo, composition, loot or launch intent. An entry may lead back
+to a world only while that world still exists; an exhausted asteroid is history, not a dead
+action button.
 
 ## The unlock cascade
 

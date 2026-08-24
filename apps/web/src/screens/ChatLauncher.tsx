@@ -24,7 +24,7 @@ export function ChatLauncher({ onOpen }: { onOpen: () => void }) {
         haptic('tap');
         onOpen();
       }}
-      className="pointer-events-auto absolute bottom-3 right-3 z-20 grid size-11 place-items-center rounded-md border border-line bg-deep/95 text-dim shadow-[0_10px_30px_rgba(0,0,0,0.4)] backdrop-blur-md transition-colors hover:border-crystal/60 hover:text-bone active:scale-95"
+      className="pointer-events-auto absolute bottom-3 right-3 z-20 grid size-11 place-items-center rounded-md border border-line bg-deep/95 text-dim shadow-[0_10px_30px_rgba(0,0,0,0.4)] transition-colors hover:border-crystal/60 hover:text-bone active:scale-95"
     >
       <ChatIcon className="size-5" />
       {unread > 0 && (

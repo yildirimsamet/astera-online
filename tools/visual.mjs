@@ -97,10 +97,20 @@ const PASSWORD = 'correct-horse-battery';
  */
 // The front door waits for its own sky (D23), so the buttons are not there at once.
 const signInDoor = page.getByRole('button', { name: /already have a commander/i }).first();
-await signInDoor.waitFor({ timeout: 40_000 });
-await signInDoor.click();
-await page.getByRole('button', { name: /i need a commander/i }).first().click();
-await page.getByLabel(/commander name/i).fill(COMMANDER);
+const commanderField = page.getByLabel(/commander name/i);
+for (let attempt = 0; attempt < 3 && !(await commanderField.isVisible().catch(() => false)); attempt += 1) {
+  await signInDoor.waitFor({ timeout: 40_000 });
+  // Vite may optimise a dependency and reload the first page opened after a code
+  // change. Do not let Playwright wait on that dev-only navigation forever; if it
+  // resets the front door, this loop simply walks through it again.
+  await signInDoor.click({ noWaitAfter: true });
+  const registerDoor = page.getByRole('button', { name: /i need a commander/i }).first();
+  await registerDoor.waitFor({ timeout: 20_000 });
+  await registerDoor.click({ noWaitAfter: true });
+  await page.waitForTimeout(1500);
+}
+await commanderField.waitFor({ timeout: 20_000 });
+await commanderField.fill(COMMANDER);
 await page.getByLabel(/password/i).fill(PASSWORD);
 await page.getByRole('button', { name: /create commander/i }).click();
 
@@ -212,25 +222,104 @@ if (before.rocks.length && before.rocks.length === after.rocks.length) {
   console.log(`  SKIP  asteroids visibly move — ${before.rocks.length} → ${after.rocks.length} rocks in this field window`);
 }
 
+/* ── 1b · a focused moving object stays camera-locked ─────────
+   A state test can prove the rig CHOOSES `track`; only the live scene can prove
+   OrbitControls and the frame loop continue applying the same delta. Pick a rock
+   away from worlds, let the initial ease finish, then compare the rock, target and
+   camera translations over the same interval. All three must be the same vector. */
+{
+  const clearRock = after.rocks
+    .map((rock, index) => ({ rock, index }))
+    .filter(({ rock }) => {
+      const [x, y] = rock.screen;
+      if (!(x > 30 && x < PHONE.width - 30 && y > 320 && y < PHONE.height - 160)) return false;
+      return after.planets.every((planet) => Math.hypot(
+        rock.screen[0] - planet.screen[0],
+        rock.screen[1] - planet.screen[1],
+      // Enough clearance to stop a planet stealing the raycast, while still
+      // producing a subject on dense procedural seeds.
+      ) > 55);
+    })[0];
+
+  if (!clearRock) {
+    console.log('  SKIP  focused asteroid remains camera-locked — no isolated rock in frame');
+  } else {
+    await page.mouse.click(clearRock.rock.screen[0], clearRock.rock.screen[1]);
+    await settle(1400);
+    const rail = page.locator('[data-focus-rail]').first();
+    const railOpen = await rail.count() > 0;
+    const railLabel = railOpen ? await rail.getAttribute('aria-label') : null;
+    const asteroidFocused = /(asteroid|rock)/i.test(railLabel ?? '');
+    // Reframe it by hand while it is selected. This is the regression: the old
+    // `onStart` changed follow → manual, so the rock escaped immediately after an
+    // orbit/zoom even though its focus rail stayed open.
+    await page.mouse.move(PHONE.width * 0.52, PHONE.height * 0.48);
+    await page.mouse.down();
+    await page.mouse.move(PHONE.width * 0.58, PHONE.height * 0.48, { steps: 5 });
+    await page.mouse.up();
+    // OrbitControls intentionally keeps damping after pointer-up. Measure the
+    // follow once that requested orbit has settled, not while the camera is still
+    // completing the player's gesture.
+    await settle(1800);
+    const start = await survey();
+    const startRig = await page.evaluate(() => ({
+      camera: window.__galaxy.camera.position.toArray(),
+      target: window.__galaxy.controls.target.toArray(),
+    }));
+    await settle(2600);
+    const end = await survey();
+    const endRig = await page.evaluate(() => ({
+      camera: window.__galaxy.camera.position.toArray(),
+      target: window.__galaxy.controls.target.toArray(),
+    }));
+    const delta = (a, b) => a.map((n, i) => b[i] - n);
+    const residual = (a, b) => Math.hypot(...a.map((n, i) => n - b[i]));
+    const rockDelta = delta(start.rocks[clearRock.index].world, end.rocks[clearRock.index].world);
+    const targetDelta = delta(startRig.target, endRig.target);
+    const cameraDelta = delta(startRig.camera, endRig.camera);
+    const targetError = residual(rockDelta, targetDelta);
+    const cameraError = residual(rockDelta, cameraDelta);
+    check(
+      'focused asteroid remains camera-locked',
+      railOpen && asteroidFocused
+        && Math.hypot(...rockDelta) > 0.02 && targetError < 0.06 && cameraError < 0.06,
+      `${railLabel ?? 'no focus'} · target error ${targetError.toFixed(3)} · camera error ${cameraError.toFixed(3)}`,
+    );
+  }
+}
+
 /* ── 2 · focus opens, every time, and opens CLOSED ─────────────
    Re-surveyed before every tap: focusing eases the camera onto the subject, so a
    screen position measured before the previous tap is pointing at empty space by
    the time this one lands. That is the harness's problem, not the game's — but it
    is also exactly how a real thumb misses, so aim at what is on screen NOW. */
-const inFrame = ([x, y]) => x > 24 && x < PHONE.width - 24 && y > 230 && y < PHONE.height - 150;
+// The permanent resource/Works header occupies the first ~300px in portrait.
+// A projected world behind it is visible to the scene but not tappable by the
+// player; aiming there tests DOM interception rather than galaxy focus.
+const inFrame = ([x, y]) => x > 24 && x < PHONE.width - 24 && y > 320 && y < PHONE.height - 150;
 
 let taps = 0;
 let opened = 0;
 let selfTaps = 0;
+let twoTapChecked = false;
+let twoTapOpened = false;
 const misses = [];
 for (let round = 0; round < 6; round += 1) {
   await dismiss();
+  const clearFocus = page.getByRole('button', { name: /clear selection/i });
+  if (await clearFocus.isVisible().catch(() => false)) {
+    await clearFocus.click();
+    await settle(400);
+  }
   const now = await survey();
-  const pool = [...now.planets, ...now.rocks].filter((t) => inFrame(t.screen));
+  const pool = [
+    ...now.planets.map((subject) => ({ kind: 'planet', subject })),
+    ...now.rocks.map((subject) => ({ kind: 'rock', subject })),
+  ].filter(({ subject }) => inFrame(subject.screen));
   if (pool.length === 0) break;
   const target = pool[Math.floor((round / 6) * pool.length)];
 
-  await page.mouse.click(target.screen[0], target.screen[1]);
+  await page.mouse.click(target.subject.screen[0], target.subject.screen[1]);
   await settle(1800);
   const rail = page.locator('[data-focus-rail]');
   const hit = await rail.count();
@@ -241,6 +330,27 @@ for (let round = 0; round < 6; round += 1) {
     // shows the galaxy rather than a wall of panel.
     const expanded = await rail.getByRole('button', { expanded: true }).count();
     if (round === 0) console.log(`    panel opens ${expanded > 0 ? 'EXPANDED' : 'collapsed'}`);
+    if (!twoTapChecked) {
+      // The camera has moved since the first tap, so project the same world-space
+      // subject again before tapping it. Nearest is stable for planets and for a
+      // rock over this short interval, while tapping the old pixel would test air.
+      const reframed = await survey();
+      const candidates = target.kind === 'planet' ? reframed.planets : reframed.rocks;
+      const same = candidates.reduce((nearest, candidate) => {
+        const distance = Math.hypot(...candidate.world.map(
+          (n, i) => n - target.subject.world[i],
+        ));
+        return !nearest || distance < nearest.distance ? { candidate, distance } : nearest;
+      }, null);
+      if (same && inFrame(same.candidate.screen)) {
+        await page.mouse.click(same.candidate.screen[0], same.candidate.screen[1]);
+        await settle(700);
+        twoTapOpened = await rail.getByRole('button', { expanded: true }).count() > 0;
+        twoTapChecked = true;
+        await page.getByRole('button', { name: /clear selection/i }).click();
+        await settle(500);
+      }
+    }
   } else if (await page.getByRole('button', { name: /^close$/i }).first().isVisible().catch(() => false)) {
     // Tapping your own world deliberately opens the planet sheet, not a foreign
     // focus rail. It shares an instanced batch with the other worlds, so the
@@ -248,25 +358,51 @@ for (let round = 0; round < 6; round += 1) {
     selfTaps += 1;
   } else {
     taps += 1;
-    misses.push(target.screen.map((n) => Math.round(n)).join(','));
+    misses.push(target.subject.screen.map((n) => Math.round(n)).join(','));
   }
 }
 check(
-  'focus panel opens on every foreign-world tap',
+  'first tap creates a collapsed focus rail',
   taps > 0 && opened === taps,
   `${String(opened)}/${String(taps)}${selfTaps ? ` · ${String(selfTaps)} self-world sheet` : ''}${misses.length ? ` · missed at ${misses.join(' ')}` : ''}`,
 );
+check('second tap on the same object opens detail', twoTapChecked && twoTapOpened);
 await shot('03-focus');
 
 /* ── 3 · home works while something is focused ───────────────── */
+// The last sampled instance may be the commander's own world, which opens the
+// management sheet by design. Close it before testing the map-level Home control.
 await dismiss();
 const camBefore = await page.evaluate(() => window.__galaxy.camera.position.toArray());
-await page.getByRole('button', { name: /centre on your planet/i }).click();
+await page.getByRole('button', { name: /centre on (your planet|active world)/i }).click();
 await settle(3000);
 const camAfter = await page.evaluate(() => window.__galaxy.camera.position.toArray());
 const homeTarget = await page.evaluate(() => window.__galaxy.controls?.target?.toArray() ?? null);
 const flew = Math.hypot(...camBefore.map((n, i) => n - camAfter[i]));
 check('home button moves the camera', flew > 0.5, `moved ${flew.toFixed(2)} units`);
+/**
+ * MOVING IS NOT ENOUGH. Multi-world Home once passed the check above while
+ * centring empty space: the target came from a stale private planet payload and
+ * the bodies came from the live galaxy payload. Resolve the selected id against
+ * the same public list and prove both the target and the readable framing.
+ */
+const activeWorldId = await page.locator('select[aria-label="Active world"], select[aria-label="Aktif gezegen"]').inputValue();
+const expectedHome = await page.evaluate(async (planetId) => {
+  const response = await fetch('/api/galaxy');
+  const galaxy = await response.json();
+  const world = galaxy.planets?.find((planet) => planet.id === planetId);
+  if (!world) return null;
+  return [world.position.x / 50, (world.position.y * 3.5) / 50, world.position.z / 50];
+}, activeWorldId);
+const homeRange = await page.evaluate(() => {
+  const g = window.__galaxy;
+  return g.controls?.object.position.distanceTo(g.controls.target) ?? null;
+});
+const homeError = expectedHome && homeTarget
+  ? Math.hypot(...expectedHome.map((n, i) => n - homeTarget[i]))
+  : Infinity;
+check('home targets the active rendered world', homeError < 0.05, `error ${homeError.toFixed(3)}`);
+check('home frames the world at a readable distance', homeRange !== null && homeRange <= 7.1, `${homeRange?.toFixed(2) ?? 'n/a'} units`);
 await settle(2000);
 await shot('04-home');
 console.log('  camera target after home:', homeTarget?.map((n) => n.toFixed(1)).join(', ') ?? 'n/a');
@@ -328,6 +464,14 @@ for (const tab of ['GROW', 'ORBIT', 'DEFEND', 'REACH']) {
   console.log(`  ${tab}: ${String(n)} "affordable in", ${String(s2)} old bars`);
   anyWhen += n;
   await shot(`06-planet-${tab.toLowerCase()}`);
+  if (tab === 'REACH') {
+    const strategic = page.locator('[data-strategic-state]').first();
+    if (await strategic.isVisible().catch(() => false)) {
+      await strategic.scrollIntoViewIfNeeded();
+      await settle(700);
+      await shot('06-strategic-foundry');
+    }
+  }
   if (n > 0) {
     // Photograph the line itself, not the tab it happens to be on.
     const line = page.getByText(/affordable in/i).first();

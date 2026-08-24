@@ -22,7 +22,7 @@ const fromServer = createRequire(new URL('../apps/server/package.json', import.m
 const postgres = (await import(fromServer.resolve('postgres'))).default;
 
 const WEB = process.env.WEB ?? 'http://localhost:5174';
-const OUT = process.argv[2] ?? 'out/engagement';
+const OUT = process.argv.slice(2).find((argument) => argument !== '--') ?? 'out/engagement';
 const DB = process.env.DATABASE_URL;
 if (!DB) throw new Error('set DATABASE_URL');
 
@@ -76,16 +76,23 @@ const NAME = `raider${String(Date.now()).slice(-8)}`;
 console.log(`opening ${WEB} as ${NAME}`);
 await page.bringToFront();
 await page.goto(WEB, { waitUntil: 'domcontentloaded' });
+await page.waitForFunction(() => window.__api !== undefined, undefined, { timeout: 40_000 });
 
-await page.getByRole('button', { name: /^take a planet$/i }).first().waitFor({ timeout: 60_000 });
-await page.getByRole('button', { name: /^take a planet$/i }).first().click();
-await page.getByLabel(/commander name/i).fill(NAME);
-await page.getByLabel(/password/i).fill('correct-horse-battery');
-await page.getByRole('button', { name: /create commander/i }).click();
+// Registration moved behind the write-free rehearsal in D56. A camera rig must
+// not replay a two-minute tutorial to arrange a shot, so it uses the same dev-only
+// API handle as the other visual tools: a real account, a real join, no UI-copy
+// dependency.
+const placement = await page.evaluate(async ([username]) => {
+  const api = window.__api;
+  await api.register(username, 'correct-horse-battery');
+  const list = await api.servers();
+  const open = list.servers.find((server) => server.status === 'open');
+  if (!open) throw new Error('No open galaxy for the engagement camera');
+  return api.joinServer(open.code);
+}, [NAME]);
+console.log('placed on', placement.shardName, placement.planetName);
 
-const open = page.getByRole('button', { name: /^(join|enter)$/i }).first();
-await open.waitFor({ timeout: 40_000 });
-await open.click();
+await page.reload({ waitUntil: 'domcontentloaded' });
 await page.waitForSelector('canvas', { timeout: 60_000 });
 await settle(4000);
 
@@ -150,6 +157,7 @@ await page.waitForFunction(
     });
     return found;
   },
+  undefined,
   { timeout: 60_000 },
 );
 
@@ -311,7 +319,17 @@ for (const want of WANT) {
       }
       if (o.name === 'blast') fires += o.children.filter((c) => c.visible).length;
     });
-    return { rounds, fires, mounted };
+    g.gl.setRenderTarget(null);
+    g.gl.info.reset();
+    g.gl.render(g.scene, g.camera);
+    return {
+      rounds,
+      fires,
+      mounted,
+      calls: g.gl.info.render.calls,
+      triangles: g.gl.info.render.triangles,
+      textures: g.gl.info.memory.textures,
+    };
   });
   frames.push({ at: actual, ...census });
   // Mid-window, take one round from close enough to read its nose.
@@ -319,6 +337,7 @@ for (const want of WANT) {
   console.log(
     `  · +${String(actual).padStart(5)}ms  ${String(census.rounds)} in the air, ` +
       `${String(census.fires)} burning, ${String(census.mounted)} mounted  ` +
+      `| ${String(census.calls)} calls, ${String(census.triangles)} triangles ` +
       `| camera ${JSON.stringify(framed)}`,
   );
 }
@@ -327,6 +346,8 @@ console.log(
   frames.reduce((n, f) => n + f.rounds, 0),
   '· fires seen:',
   frames.reduce((n, f) => n + f.fires, 0),
+  '· peak calls:',
+  Math.max(0, ...frames.map((frame) => frame.calls)),
 );
 
 // The worker polls; give it a beat before asking whether the battle happened.

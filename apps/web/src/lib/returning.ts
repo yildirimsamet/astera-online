@@ -9,7 +9,7 @@
  * THE SERVER WAS NEVER WRONG, AND THAT IS WHY THIS FILE IS ON THE CLIENT.
  * Reproduced against the real API: a returning player who types the SAME name and
  * password into the claim dialog is recognised, handed back their own planet, and
- * has nothing replayed. One account, one planet, one galaxy held throughout —
+ * has nothing replayed. One account, one commander, one galaxy held throughout —
  * `settle()` in `player.ts` still throws `ALREADY_PLACED` for a second galaxy, and
  * `joinSeason` still returns the existing placement. Every rule survived.
  *
@@ -20,7 +20,7 @@
  * and the dialog at the end of the rehearsal asks them to CREATE a commander, so
  * the natural thing to type is a new name. A new name is a new account, and a new
  * account is legitimately entitled to a seat in the frontier galaxy. Every step
- * behaved exactly as designed and the result was a second planet.
+ * behaved exactly as designed and the result was a second commander placement.
  *
  * So the door remembers. One boolean, per device, per origin.
  *

@@ -44,13 +44,15 @@ what the game is trying to be.
 | [balance.md](balance.md) | Where did every number come from, and what did the simulator prove? |
 | [architecture.md](architecture.md) | How is it built, and which platform traps are already paid for? |
 | [engineering-standards.md](engineering-standards.md) | **Typing, lint, testing. Project law.** |
-| [roadmap.md](roadmap.md) | What is done, what is next, what "done" means |
 | [interface.md](interface.md) | How the screens are built and why |
 | [visual-design.md](visual-design.md) | Art direction, the asset inventory, and what is missing |
 | [playtest-log.md](playtest-log.md) | How to run a real play session, and what to record |
+| [deployment.md](deployment.md) | How it ships, and what must never happen in the wrong order |
+| [visual-quality.md](visual-quality.md) | What a frame has to look like before it counts as done |
 | [glossary.md](glossary.md) | Dominion? Clarity? Veil? Salvage? |
+| [economy-v2.json](economy-v2.json) | Generated: every level of every building, hull and project. `node tools/economy-v2-model.mjs --json` |
 
-**In a hurry:** `CLAUDE.md` → `roadmap.md` → `decisions.md`.
+**In a hurry:** `CLAUDE.md` → `decisions.md` → `balance.md`.
 **Lost context mid-task:** add the code and `git log` to the end of that list. Never re-invent
 lost context by guessing.
 

@@ -65,7 +65,7 @@ export const LANDING_ASSETS: readonly string[] = [
  * a single world. The cover came off over exactly that, which is the bug the owner
  * reported as "the loading screen goes before the map is ready".
  *
- * A galaxy of fifty worlds uses most of the sixteen anyway, they are ~60KB each,
+ * A 351-world galaxy uses all sixteen repeatedly, they are ~60KB each,
  * and this list is measured on screen by a real progress bar. A second of honest
  * waiting is cheaper than a second of empty disc.
  *

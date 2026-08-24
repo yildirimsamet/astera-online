@@ -40,9 +40,10 @@ export function Sheet({
     <div className="fixed inset-0 z-40 flex flex-col justify-end">
       <button
         type="button"
-        aria-label={t('sheet.dismiss')}
+        aria-hidden="true"
+        tabIndex={-1}
         onClick={onClose}
-        className="absolute inset-0 animate-[fade-in_140ms_ease-out] bg-void/80 backdrop-blur-[2px]"
+        className="absolute inset-0 animate-[fade-in_140ms_ease-out] bg-void/80"
       />
       {/*
         THE HEADER IS NOT PART OF THE SCROLL, and that is a structural fact rather

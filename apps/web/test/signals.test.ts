@@ -51,8 +51,10 @@ const view = (over: Partial<PlanetView['planet']> = {}): PlanetView =>
 const holding = (over: Partial<Projected> = {}): Projected => ({
   alloy: 100,
   crystal: 50,
+  deuterium: 0,
   bufferAlloy: 0,
   bufferCrystal: 0,
+  bufferDeuterium: 0,
   ...over,
 });
 

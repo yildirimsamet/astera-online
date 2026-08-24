@@ -20,6 +20,9 @@ interface PreviewWorld {
   satellites: string[];
   shielded: boolean;
   isSelf: boolean;
+  kind: 'CAPITAL' | 'COLONY' | 'NEUTRAL';
+  isOwned?: boolean;
+  isCapital?: boolean;
 }
 
 interface Preview {
@@ -55,7 +58,7 @@ afterAll(async () => {
  *
  * Two claims are load-bearing and everything here exists to hold them: this
  * endpoint TAKES NOTHING — no account, no player, no planet and above all no seat
- * in a galaxy that only has fifty — and it SAYS NOTHING a signed-in player would
+ * in a galaxy that admits only three hundred commanders — and it SAYS NOTHING a signed-in player would
  * not already be told about everybody else.
  */
 describe('preview', () => {
@@ -123,7 +126,7 @@ describe('preview', () => {
   /**
    * THE WHOLE REASON THE REHEARSAL IS A REHEARSAL.
    *
-   * A galaxy holds fifty worlds and fills strictly in order, and that rule is the
+   * A galaxy admits three hundred commanders and fills strictly in order, and that rule is the
    * only mitigation the empty-shard risk has. If looking cost a seat, a hundred
    * visitors who never came back would close Vantage.
    */
@@ -134,7 +137,7 @@ describe('preview', () => {
 
     expect(await db.select().from(accounts)).toHaveLength(0);
     expect(await db.select().from(players)).toHaveLength(0);
-    expect(await db.select().from(planets)).toHaveLength(0);
+    expect(await db.select().from(planets).where(eq(planets.kind, 'CAPITAL'))).toHaveLength(0);
   });
 
   it('refuses when every galaxy is full, rather than rehearsing something unclaimable', async () => {
@@ -185,7 +188,8 @@ describe('preview', () => {
     // rehearsal lights up is the band the claim will actually accept.
     expect(self[0]?.coreTier).toBe(1);
     expect(body.galaxy.you.planetId).toBe(body.reserved.id);
-    expect(body.galaxy.planets.filter((p) => !p.isSelf)).toHaveLength(1);
+    // One real commander plus the fixed 51-world neutral pool.
+    expect(body.galaxy.planets.filter((p) => !p.isSelf)).toHaveLength(52);
   });
 
   it('carries the real commanders, by name and position', async () => {
@@ -218,15 +222,20 @@ describe('preview', () => {
 
     for (const world of (await preview()).galaxy.planets) {
       expect(Object.keys(world).sort()).toEqual([
+        'controller',
         'coreTier',
         'id',
+        ...(world.isSelf ? ['isCapital', 'isOwned'] : []),
         'isSelf',
+        'kind',
         'name',
+        ...(world.kind === 'NEUTRAL' ? ['neutral'] : []),
         'owner',
         'position',
         'satellites',
         'shielded',
-      ]);
+        'state',
+      ].sort());
     }
   });
 

@@ -2,11 +2,12 @@ import { pino } from 'pino';
 import { buildApp } from './app.js';
 import { assertSchemaCurrent } from './db/migrate.js';
 import { loadDotEnv, loadEnv } from './env.js';
+import { ensureSeasonActs } from './services/season.js';
 
 loadDotEnv();
 const env = loadEnv();
 const log = pino({ level: env.LOG_LEVEL });
-const { app, db, worker, bus, close } = buildApp({ env, logger: log });
+const { app, db, worker, bus, rateLimitBackend, close } = buildApp({ env, logger: log });
 
 /**
  * One image, two roles. The api and worker process groups run the same build;
@@ -31,15 +32,30 @@ async function main(): Promise<void> {
   await assertSchemaCurrent(db);
 
   if (env.ROLE === 'worker' || env.ROLE === 'both') {
+    const actsScheduled = await ensureSeasonActs(db);
+    if (actsScheduled > 0) {
+      log.info({ actsScheduled }, 'scheduled missing season acts');
+    }
     worker.start();
     log.info('event worker started');
   }
   if (env.ROLE === 'api' || env.ROLE === 'both') {
+    try {
+      await rateLimitBackend.start();
+    } catch (err) {
+      // Gameplay buckets are fail-open and strict auth/seat buckets fail closed.
+      // A disposable counter outage must not take every API replica down at boot;
+      // ioredis keeps reconnecting in the background.
+      log.error({ err }, 'shared rate-limit store unavailable; gameplay is fail-open, auth is fail-closed');
+    }
     // Only the API serves streams, so only the API needs to LISTEN.
     await bus.start();
-    await app.listen({ port: env.PORT, host: '0.0.0.0' });
-    log.info({ port: env.PORT }, 'api listening');
   }
+  // The worker exposes only `/health` and `/metrics` (see app.ts), bound by the
+  // production compose file to host loopback. This makes its tick duration and
+  // queue state observable without turning it into a public API replica.
+  await app.listen({ port: env.PORT, host: '0.0.0.0' });
+  log.info({ port: env.PORT, role: env.ROLE }, 'server listening');
 }
 
 for (const signal of ['SIGTERM', 'SIGINT'] as const) {

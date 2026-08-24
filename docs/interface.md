@@ -8,9 +8,10 @@ code. Read with `visual-design.md`, which governs art rather than layout.
 ## The five findings this rests on
 
 1. **Progression UI is a state machine, and the states must be visible.** Every purchasable is
-   in exactly one of four states — owned, affordable, unaffordable, locked — and the standard
-   failure is rendering the last two identically. A player who cannot tell "I can't afford
-   this yet" from "this needs something else first" cannot plan.
+   in exactly one of four states — owned/complete, affordable, unaffordable, locked — and the
+   standard failure is collapsing any two of them. A player who cannot tell "I already have
+   this" from "I cannot have this yet" cannot read their own progress; one who cannot tell
+   "I can't afford this yet" from "this needs something else first" cannot plan.
 2. **Preview before commit.** Show what a node *will* give before it is bought, and the tier
    beyond that. A tree that only displays what you own is a list of receipts.
 3. **Progressive disclosure.** Reveal by stage and by demand, rather than stacking four
@@ -28,11 +29,55 @@ surfaces lead with the commander username; planet names are secondary location
 copy. Intel and reports follow the same order without widening their existing fog
 projection.
 
+### I0 · Strategic state is read from shape before copy
+
+The disc uses one persistent visual grammar wherever ownership can change: a cyan diamond
+means your protected capital, a cyan triangle means your colony, an orange four-tick reticle
+means every world controlled by your marked Rival, green means a neutral claim is open, and
+red cracks/smoke mean a world is in Death Star recovery. Labels repeat the world kind and
+state, but they are confirmation rather than the only explanation.
+
+A neutral focus always shows the complete three-beat route — win the raid, open the claim,
+send the Hauler — and shows the slot, ship, cargo and travel requirements before the raid as
+well as during the claim. Every foreign world exposes Death Star devastation. A foreign colony
+shows the two-impact capture route; a recovery colony adds the live capture deadline and whether
+the ready Death Star can arrive inside it. A capital explicitly says that impact destroys stock,
+fleet and levels but can never transfer control.
+Unavailable actions stay visible with their reason instead of disappearing.
+The settlement control names its first unmet requirement directly — colony slot, flight bay,
+Hauler, founding cargo, arrival window or origin recovery — rather than relying on a disabled
+state or colour-coded chips. While a neutral claim is open, the panel also states that another
+ordinary raid is still possible but does not extend the claim, and that a Death Star impact
+clears the claim and starts recovery instead of settling the world immediately.
+
+Focus is a two-tap spatial interaction for every object the commander does not control. The
+first tap selects it, zooms/follows it and shows only the collapsed rail; a second tap on that
+same object expands its detail. Tapping a different object always starts again collapsed.
+The commander's capital and colonies are the deliberate exception: their first tap opens the
+planet management surface directly.
+
+Storage capacity is not a hostile state. A full Alloy or Crystal meter keeps its
+resource hue and closes with a hard end-cap; threat red remains reserved for an
+attack, disruption, recovery or another state that can harm the commander. The
+word "full" may confirm the shape, but it may not be the only way to read it.
+
 ### I1 · Locked reads as locked — art desaturates, copy does not
 
 **The artwork carries the state; the words carry the promise.** A locked item's art is
 desaturated and dimmed behind a lock; its name, its payload line and its requirement stay at
 full strength, and the requirement is a button that takes you to whatever unlocks it.
+
+**Owned or complete never reads as locked.** Its art remains in full colour with no badge or
+success tint. Its terminal control keeps the same quiet, dashed hardware treatment as a lock
+control but carries an open-lock glyph and the owned/max/complete label. A real unmet
+prerequisite carries the closed-lock glyph. It has no prerequisite copy, price shortfall or
+route forward. This applies equally to a satellite bought once, an instrument at the end of
+its table and a completed Frontier project.
+
+**Available but not owned is quiet, not locked.** Its art is greyed to say “not yours yet”, but
+there is no lock mark because the player can buy it now. Only a real unmet prerequisite adds
+the lock. Once an item exists at any level its current art is full colour; the next tier remains
+the thing being offered.
 
 This reverses an earlier rule that nothing is ever greyed out. That rule aimed at a real
 failure — fading a whole row to 45% deletes the ambition the game runs on — and overcorrected
@@ -82,6 +127,20 @@ Tapping a row opens the full picture: the tier ladder with art, what each level 
 unlocks, the price, and the button. Buying from the sheet is what gives a purchase weight now
 that build timers are gone — the weight comes from a considered commit and a visible
 before-and-after, not from a wait.
+
+The compact row is a scanner, not the full argument. It leads with the current and
+next renders, the primary numeric delta and the action. The role sentence remains
+available in the detail sheet; repeating it under every row is text doing the art's
+job. Strategic hardware follows the same hierarchy: an unbuilt Death Star lives in
+Reach with the other projects, while a building, paused or ready one rises above the
+tabs because it has become live planetary state. Its plate is premium through mass,
+material and silhouette; strategic red remains a small danger signal rather than
+filling the whole card.
+
+The permanent resource strip and Works use the same three-member order everywhere:
+Alloy, Crystal, Deuterium. All three stores retain exact spendable figures without
+ellipsis, and all three Works vessels remain visible even at zero so a Prospector
+return cannot appear to land in an invisible pool.
 
 ### I4 · One notification centre, holding status as well as events
 
@@ -159,6 +218,38 @@ Probe and battle reports share one position below Watching as two tabs, with Pro
 the default. Battle history must always be one tap away even when the probe history is long.
 The controls are real tabs: selected state is announced, only the active panel is exposed, and
 Left/Right/Home/End move both focus and selection. Radar remains below the report switcher.
+
+An empty Intel surface demonstrates the missing capability before it explains it.
+The Telescope is a lens with owned watch sockets; the Radar is a radius crossed by
+a contact. Their renders are the subject of the plate, and the plate routes directly
+to Orbit when installation is the next action. Reports lead with a visual verdict:
+combat outcome, surviving/lost formations and round balance precede prose.
+
+### I6a · Feedback stays where the state changed
+
+A mutation's authoritative planet view remains the outcome, and the changed meter,
+render, count or world state acknowledges it in place. A toast is supporting speech,
+not the only evidence. Informational speech remains long enough to perceive; a refusal
+remains longer and can be dismissed. Reduced-motion users receive the same state change
+without depending on a sweep, pulse or morph.
+
+### I6b · Capacity, condition and protection are shapes before they are prose
+
+Anything rationed into slots is rendered as a **rack**, with every owned slot in a stable
+position and its occupant inside it. An empty slot remains visible and visibly empty. A fraction
+may confirm the rack, but a row of generic filled pips is not enough: it says that something is
+used without saying what is using it. Orbit names the satellite in each socket; Telescope names
+the world in each watch socket.
+
+Anything depleted and restored is rendered as **current / maximum** with a meter. The Aegis is
+not merely an owned level or a prose promise: its standing shield, full capacity and hourly
+recovery are visible together. Zero remains a valid condition of an owned Aegis, never the same
+state as having no Aegis.
+
+Anything that protects unlike resources by unlike amounts is rendered **per resource**. The
+Vault shows how much alloy, crystal and deuterium in the present stock is safe, including a real
+zero. A combined safe/risk total may lead as the verdict, but it may never be the only figure;
+otherwise the interface erases the asymmetric rule the player must make decisions against.
 
 ### I7 · A string in a component is a string that exists in one language
 

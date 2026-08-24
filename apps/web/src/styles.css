@@ -3,6 +3,157 @@
 @import '@fontsource-variable/saira/standard.css';
 @import './styles/chrome.css';
 
+.transfer-cargo-slider {
+  height: 1.5rem;
+  appearance: none;
+  cursor: pointer;
+  background: transparent;
+}
+
+.transfer-cargo-slider::-webkit-slider-runnable-track {
+  height: 0.45rem;
+  border: 1px solid color-mix(in srgb, var(--color-line) 80%, transparent);
+  border-radius: 999px;
+  background: linear-gradient(
+    90deg,
+    var(--cargo-tone) 0 var(--cargo-fill),
+    var(--color-deep) var(--cargo-fill) 100%
+  );
+}
+
+.transfer-cargo-slider::-webkit-slider-thumb {
+  width: 1.25rem;
+  height: 1.25rem;
+  margin-top: -0.45rem;
+  appearance: none;
+  border: 2px solid var(--color-bone);
+  border-radius: 50%;
+  background: var(--cargo-tone);
+  box-shadow: 0 0 12px color-mix(in srgb, var(--cargo-tone) 68%, transparent);
+}
+
+.transfer-cargo-slider::-moz-range-track {
+  height: 0.45rem;
+  border: 1px solid color-mix(in srgb, var(--color-line) 80%, transparent);
+  border-radius: 999px;
+  background: var(--color-deep);
+}
+
+.transfer-cargo-slider::-moz-range-progress {
+  height: 0.45rem;
+  border-radius: 999px;
+  background: var(--cargo-tone);
+}
+
+.transfer-cargo-slider::-moz-range-thumb {
+  width: 1.1rem;
+  height: 1.1rem;
+  border: 2px solid var(--color-bone);
+  border-radius: 50%;
+  background: var(--cargo-tone);
+}
+
+.transfer-cargo-alloy { --cargo-tone: var(--color-alloy); }
+.transfer-cargo-crystal { --cargo-tone: var(--color-crystal); }
+.transfer-cargo-deuterium { --cargo-tone: var(--color-deuterium); }
+
+.death-star-forge {
+  position: relative;
+  overflow: hidden;
+  padding: 0.8rem;
+  border: 1px solid color-mix(in srgb, var(--color-alloy) 24%, var(--color-line));
+  border-radius: 0.28rem;
+  background:
+    radial-gradient(circle at 12% 18%, rgb(217 164 65 / 8%), transparent 34%),
+    linear-gradient(120deg, rgb(15 21 33 / 98%), rgb(7 10 17 / 99%) 58%, rgb(13 17 27 / 98%)),
+    var(--color-deep);
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 4%),
+    inset 0 -32px 58px rgb(0 0 0 / 24%),
+    0 14px 34px -28px rgb(0 0 0 / 95%);
+}
+
+.death-star-forge::before {
+  position: absolute;
+  inset: 0 0 auto;
+  height: 1px;
+  content: '';
+  background: linear-gradient(90deg, transparent, var(--color-alloy) 18%, var(--color-bone) 50%, var(--color-alloy) 82%, transparent);
+  opacity: 0.62;
+}
+
+.death-star-forge::after {
+  position: absolute;
+  inset: 0;
+  content: '';
+  pointer-events: none;
+  background: repeating-radial-gradient(
+    circle at 46px 46px,
+    transparent 0 29px,
+    rgb(217 164 65 / 4%) 30px,
+    transparent 31px 43px
+  );
+  mask-image: linear-gradient(90deg, black, transparent 62%);
+}
+
+.death-star-forge-ready {
+  border-color: color-mix(in srgb, var(--color-crystal) 48%, var(--color-line));
+  box-shadow:
+    inset 0 0 30px rgb(111 211 224 / 7%),
+    0 12px 32px -26px rgb(111 211 224 / 55%);
+}
+
+.death-star-art {
+  border: 1px solid color-mix(in srgb, var(--color-alloy) 24%, var(--color-line));
+  background:
+    radial-gradient(circle at 50% 44%, rgb(255 255 255 / 5%), transparent 52%),
+    rgb(3 6 11 / 72%);
+  box-shadow: inset 0 0 24px rgb(0 0 0 / 56%);
+}
+
+.death-star-danger-light {
+  width: 0.28rem;
+  height: 0.62rem;
+  flex: none;
+  border-radius: 1px;
+  background: color-mix(in srgb, var(--color-alert) 72%, var(--color-alloy));
+  box-shadow: 0 0 7px rgb(255 90 85 / 38%);
+}
+
+.death-star-need {
+  border-color: var(--color-line-soft);
+  background: rgb(0 0 0 / 18%);
+  color: var(--color-dim);
+}
+
+.death-star-need[data-met='true'] {
+  border-color: color-mix(in srgb, var(--color-deuterium) 22%, var(--color-line));
+  color: color-mix(in srgb, var(--color-deuterium) 62%, var(--color-bone));
+}
+
+.death-star-build {
+  min-height: 2.7rem;
+  padding: 0.55rem 1rem;
+  border: 1px solid color-mix(in srgb, var(--color-alloy) 62%, var(--color-bone));
+  border-radius: 0.16rem;
+  background: linear-gradient(180deg, color-mix(in srgb, var(--color-alloy) 56%, #17202d), #55401e);
+  color: #fff8e8;
+  font-family: var(--font-display);
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+  box-shadow: inset 0 1px rgb(255 255 255 / 16%), 0 8px 18px -12px rgb(217 164 65 / 68%);
+}
+
+.death-star-build:disabled {
+  cursor: not-allowed;
+  border-color: color-mix(in srgb, var(--color-line) 78%, transparent);
+  background: #111722;
+  color: var(--color-faint);
+  box-shadow: none;
+}
+
 /**
  * ASTERA ONLINE — the COMMAND DECK.
  *
@@ -44,11 +195,12 @@
      as a terminal. */
   --color-bone: #e9e4d8;
   --color-dim: #93a0b6;
-  --color-faint: #5f6b81;
+  --color-faint: #738198;
 
   /* ── SEMANTIC · meanings are locked, do not repurpose ────── */
   --color-alloy: #d9a441;
   --color-crystal: #6fd3e0;
+  --color-deuterium: #8eea36;
   --color-alert: #e2412c;
   --color-threat: #e2412c;
   --color-opportunity: #5ad39b;
@@ -59,6 +211,7 @@
      category; this one carries the fact that something is ON. */
   --color-alloy-glow: #ffbe52;
   --color-crystal-glow: #59c8ff;
+  --color-deuterium-glow: #adff55;
   --color-threat-glow: #ff6a4d;
   --color-opportunity-glow: #6ff5b6;
 

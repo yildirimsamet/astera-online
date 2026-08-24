@@ -68,6 +68,14 @@ describe('the event stream', () => {
    */
   const PATIENCE_MS = 2000;
 
+  const isByteReadResult = (
+    value: unknown,
+  ): value is { done: boolean; value?: Uint8Array } => {
+    if (typeof value !== 'object' || value === null || !('done' in value)) return false;
+    return typeof value.done === 'boolean'
+      && (!('value' in value) || value.value === undefined || value.value instanceof Uint8Array);
+  };
+
   const listen = (want: number) => {
     const controller = new AbortController();
     const names: string[] = [];
@@ -85,9 +93,10 @@ describe('the event stream', () => {
       const decoder = new TextDecoder();
       let buffer = '';
       while (names.length < want) {
-        const { done: finished, value } = await reader.read();
-        if (finished) break;
-        buffer += decoder.decode(value, { stream: true });
+        const readResult: unknown = await reader.read();
+        if (!isByteReadResult(readResult)) throw new Error('stream returned an invalid byte chunk');
+        if (readResult.done) break;
+        buffer += decoder.decode(readResult.value, { stream: true });
         let split = buffer.indexOf('\n\n');
         while (split !== -1) {
           const frame = buffer.slice(0, split);

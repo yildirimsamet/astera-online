@@ -43,15 +43,52 @@ export function focusIdentity(focus: Focus | null): string | null {
   return `${focus.kind}:${focus.id}`;
 }
 
+/**
+ * THE SECOND TAP ASKS FOR DETAIL; THE FIRST ASKS TO LOOK.
+ *
+ * Object identity, not object reference, is the rule: every raycast creates a new
+ * focus object. A different subject must always restart collapsed, while tapping
+ * the same moving craft, rock or world expands the rail without dropping focus.
+ */
+export function repeatedFocusTap(current: Focus | null, next: Focus | null): boolean {
+  const nextIdentity = focusIdentity(next);
+  return nextIdentity !== null && nextIdentity === focusIdentity(current);
+}
+
+export type FocusTapDecision =
+  | { kind: 'manage'; planetId: string }
+  | { kind: 'focus'; focus: Focus | null; detail: boolean };
+
+/**
+ * ONE TAP STATE MACHINE FOR THE WHOLE DISC.
+ *
+ * Controlled worlds deliberately bypass the two-tap dossier because their first
+ * tap means "manage". Every other subject follows look → inspect, and clearing or
+ * changing the subject always collapses detail. Keeping this pure prevents one
+ * canvas callback from quietly inventing a third interaction rule.
+ */
+export function focusTapDecision(
+  current: Focus | null,
+  next: Focus | null,
+  controlledPlanetId: string | null,
+): FocusTapDecision {
+  if (next?.kind === 'planet' && controlledPlanetId !== null) {
+    return { kind: 'manage', planetId: controlledPlanetId };
+  }
+  return { kind: 'focus', focus: next, detail: repeatedFocusTap(current, next) };
+}
+
 export interface RigFrame {
   /** An ease is already in progress; it owns the camera until it lands. */
   easing: boolean;
-  /** There is a focused thing with a getter for its position. */
-  following: boolean;
-  /** And that getter currently returns one. False means it has ended. */
+  /** The player still has a semantic selection, even if its render row vanished. */
+  focused: boolean;
+  /** The selected subject currently has a position in the scene. */
   positioned: boolean;
-  /** The rig has already been released by a subject that ended. */
-  released: boolean;
+  /** This selection produced a position at least once. */
+  acquired: boolean;
+  /** Who currently owns the camera. */
+  mode: 'follow' | 'released' | 'manual';
 }
 
 export interface RigAction {
@@ -61,6 +98,33 @@ export interface RigAction {
   leash: boolean;
   /** Latch free-look: the subject just ended. */
   release: boolean;
+  /** A late-mounted subject can now be framed exactly once. */
+  acquire: boolean;
+  /** A disappearing subject must stop an unfinished re-frame immediately. */
+  cancelEase: boolean;
+}
+
+export interface RigGestureState {
+  mode: 'follow' | 'manual';
+  acquired: boolean;
+}
+
+/**
+ * WHAT A CAMERA GESTURE DOES TO AN EXISTING FOCUS.
+ *
+ * Orbiting or zooming changes the framing; it does not deselect the thing being
+ * watched. A moving subject therefore remains followed after the gesture, with
+ * its per-frame delta applied to both pivot and camera. Turning every gesture
+ * into `manual` mode made a fleet, rock or probe drift away while its focus rail
+ * still claimed it was selected.
+ *
+ * A missing subject is different: touching the controls after it lands is an
+ * explicit request for free-look, so manual mode is correct there.
+ */
+export function rigGestureState(focused: boolean, positioned: boolean): RigGestureState {
+  return focused && positioned
+    ? { mode: 'follow', acquired: true }
+    : { mode: 'manual', acquired: false };
 }
 
 /**
@@ -79,16 +143,25 @@ export interface RigAction {
  * absence of one.
  */
 export function rigAction(frame: RigFrame): RigAction {
-  const ended = frame.following && !frame.positioned;
+  const ended = frame.mode === 'follow' && frame.acquired && !frame.positioned;
 
   return {
-    // Nothing autonomous happens while an ease is running: it owns the camera.
-    track: !frame.easing && frame.positioned && !frame.released,
+    track:
+      frame.mode === 'follow' &&
+      frame.acquired &&
+      frame.positioned &&
+      !frame.easing,
     /**
      * The leash runs for a genuinely free camera only — never for one that has
      * just lost what it was watching, and never once released.
      */
-    leash: !frame.easing && !frame.positioned && !frame.released && !ended,
+    leash: frame.mode === 'manual' && !frame.easing,
     release: ended,
+    acquire:
+      frame.mode === 'follow' &&
+      frame.focused &&
+      frame.positioned &&
+      !frame.acquired,
+    cancelEase: ended && frame.easing,
   };
 }

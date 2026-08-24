@@ -8,6 +8,14 @@ import { isShardEvent, shardCoalescer } from './shardEvents.js';
 const HEALTHY_MS = 5000;
 
 /**
+ * A deploy can return every open tab to the stream at once. The socket should
+ * reconnect promptly so new events are live again, but replaying the missed read
+ * set from every tab in the same instant turns recovery into an API stampede.
+ * Spread only that catch-up pass; ordinary player and shard events stay immediate.
+ */
+export const RECONNECT_RESYNC_MAX_MS = 5000;
+
+/**
  * Every read a player event can move — and the same set a RECONNECTION moves.
  *
  * A craft is drawn from whichever of these carries it: your own fleets from
@@ -24,16 +32,19 @@ const HEALTHY_MS = 5000;
  */
 const LIVE_READS = [
   keys.planet,
+  keys.planets,
   keys.galaxy,
   keys.intel,
   keys.notifications,
   keys.pending,
   keys.reports,
   keys.traffic,
-  keys.mining,
+  keys.miningField,
+  keys.miningStatus,
   keys.rewards,
   keys.chatMessages,
   keys.chatUnread,
+  keys.chronicle,
 ] as const;
 
 /** Full jitter, capped. A shard restarting must not be hit by 200 synchronised retries. */
@@ -56,7 +67,7 @@ const backoffMs = (attempt: number): number =>
  *     half no event could ever announce before: a neighbour launching, a rival's
  *     drill reaching a rock first, a raid landing on a world across the disc. It
  *     is namespaced `shard:` on the wire and goes through a coalescer, because
- *     fifty clients hearing one launch must not become fifty simultaneous reads.
+ *     three hundred clients hearing one launch must not become three hundred simultaneous reads.
  *
  * The second used to be a timer. The timers are still there as a floor, at sixty
  * seconds — see the read policy in `queries.ts`.
@@ -69,7 +80,7 @@ const backoffMs = (attempt: number): number =>
  * parked on their destinations, until the safety net came round. Every open after
  * the first re-reads `LIVE_READS`; see the loop below for why the first is exempt.
  */
-export function useEventStream(enabled: boolean): void {
+export function useEventStream(enabled: boolean, onRollover?: () => void): void {
   const api = useApi();
   const client = useQueryClient();
 
@@ -93,7 +104,22 @@ export function useEventStream(enabled: boolean): void {
       for (const key of LIVE_READS) void client.invalidateQueries({ queryKey: key });
     };
 
+    let reconnectResyncTimer: ReturnType<typeof setTimeout> | null = null;
+    const scheduleReconnectResync = (): void => {
+      // Several short-lived reconnects before the timer fires still describe one
+      // gap. The eventual pass catches up through the latest successful open.
+      if (reconnectResyncTimer !== null) return;
+      reconnectResyncTimer = setTimeout(() => {
+        reconnectResyncTimer = null;
+        if (!controller.signal.aborted) resync();
+      }, Math.random() * RECONNECT_RESYNC_MAX_MS);
+    };
+
     const refresh = (kind: string): void => {
+      if (kind === 'shard:rollover') {
+        onRollover?.();
+        return;
+      }
       /**
        * A GALAXY-WIDE EVENT IS NOT ABOUT YOU, AND MUST NOT COST WHAT ONE IS. D53.
        *
@@ -165,7 +191,7 @@ export function useEventStream(enabled: boolean): void {
         try {
           await api.stream(refresh, controller.signal, () => {
             opens += 1;
-            if (opens > 1) resync();
+            if (opens > 1) scheduleReconnectResync();
           });
         } catch {
           // Fall through: a connection that threw and one that closed instantly
@@ -187,7 +213,8 @@ export function useEventStream(enabled: boolean): void {
 
     return () => {
       controller.abort();
+      if (reconnectResyncTimer !== null) clearTimeout(reconnectResyncTimer);
       shard.cancel();
     };
-  }, [api, client, enabled]);
+  }, [api, client, enabled, onRollover]);
 }

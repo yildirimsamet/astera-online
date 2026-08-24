@@ -1,13 +1,14 @@
 import { randomUUID } from 'node:crypto';
-import { sql } from 'drizzle-orm';
+import { and, asc, eq, sql } from 'drizzle-orm';
 import { createDb, type Db } from '../src/db/client.js';
 import { runMigrations } from '../src/db/migrate.js';
 import { loadEnv, type Env } from '../src/env.js';
 import { FixedClock } from '../src/clock.js';
 import { createSeason } from '../src/services/season.js';
 import { joinSeason } from '../src/services/player.js';
-import { accounts } from '../src/db/schema.js';
+import { accounts, buildOrders, scheduledEvents } from '../src/db/schema.js';
 import { engagementEndsAt } from '@astera/rules';
+import { applyBuildCompletion } from '../src/services/buildQueue.js';
 
 export const TEST_DATABASE_URL =
   process.env.DATABASE_URL ?? 'postgres://astera:astera@localhost:5433/astera_test';
@@ -70,8 +71,10 @@ export async function truncateAll(db: Db): Promise<void> {
   await db.execute(sql`
     TRUNCATE reward_grants, request_log, notifications, scan_events, probe_reports, watches,
              battle_reports,
-             scheduled_events, missions, mining_runs, asteroid_claims, units, satellites,
-             buildings, planets, players, seasons, shards, accounts
+             scheduled_events, build_orders, strategic_assets, missions, mining_runs,
+             asteroid_claims, units,
+             satellites, buildings, planet_research, neutral_planet_state, planets, players,
+             seasons, shards, accounts
     RESTART IDENTITY CASCADE
   `);
 }
@@ -80,9 +83,46 @@ export interface Fixture {
   db: Db;
   clock: FixedClock;
   seasonId: string;
+  /** The season seed, so a test can ask the field which rocks are actually up. */
+  seed: number;
   planetIds: string[];
   playerIds: string[];
   accountIds: string[];
+}
+
+/**
+ * Finish queued construction while arranging a test that is about something else.
+ *
+ * Queue/worker behaviour has its own suite. Older service tests need the same
+ * explicit boundary a real player crosses: place the order, advance to the named
+ * instant, apply the event. Keeping that in one helper makes an accidental return
+ * to instant construction impossible to hide in test setup.
+ */
+export async function settleBuilds(fixture: Fixture, planetId?: string): Promise<void> {
+  for (let guard = 0; guard < 100; guard += 1) {
+    const [order] = await fixture.db
+      .select()
+      .from(buildOrders)
+      .where(and(
+        eq(buildOrders.status, 'BUILDING'),
+        ...(planetId ? [eq(buildOrders.planetId, planetId)] : []),
+      ))
+      .orderBy(asc(buildOrders.readyAt))
+      .limit(1);
+    if (!order) return;
+    if (order.readyAt > fixture.clock.now()) fixture.clock.set(order.readyAt);
+    await fixture.db.transaction(async (tx) => {
+      await applyBuildCompletion(tx, order.id, order.readyAt.toISOString(), fixture.clock);
+      await tx
+        .update(scheduledEvents)
+        .set({ status: 'done', claimedAt: null })
+        .where(and(
+          eq(scheduledEvents.kind, 'build_complete'),
+          eq(scheduledEvents.refId, order.id),
+        ));
+    });
+  }
+  throw new Error('settleBuilds exceeded 100 orders');
 }
 
 /**
@@ -117,6 +157,7 @@ export async function seedWorld(count = 2, seed = 4242): Promise<Fixture> {
     seed,
     startsAt: start,
     playerCap: 60,
+    rulesetVersion: 1,
   });
 
   const accountIds: string[] = [];
@@ -147,7 +188,7 @@ export async function seedWorld(count = 2, seed = 4242): Promise<Fixture> {
    */
   await placeInCluster(db, planetIds);
 
-  return { db, clock, seasonId: season.id, planetIds, playerIds, accountIds };
+  return { db, clock, seasonId: season.id, seed, planetIds, playerIds, accountIds };
 }
 
 /** Spacing between test planets. Inside Telescope L1's reach, outside minSeparation. */
@@ -198,9 +239,17 @@ export async function grant(
   const { eq } = await import('drizzle-orm');
   const { alloyRate, crystalRate, storageCap } = await import('@astera/rules');
 
+  /**
+   * Sized against the VAULT-0 ceiling, deliberately.
+   *
+   * The store grows with the Vault now, so a level chosen against a tall store
+   * would not actually hold the grant on a planet with no Vault — and this helper
+   * never raises the Vault. Choosing the conservative level means the grant always
+   * fits, whatever the test has done to the planet.
+   */
   const levelFor = (amount: number, rate: (l: number) => number): number => {
     let level = 1;
-    while (level < 40 && storageCap(rate(level)) < amount) level++;
+    while (level < 40 && storageCap(rate(level), 0) < amount) level++;
     return level;
   };
   const refinery = levelFor(alloy, alloyRate);
@@ -335,14 +384,20 @@ export async function giveUnits(
   fleet: Record<string, number>,
   location = 'home',
 ): Promise<void> {
-  const { units } = await import('../src/db/schema.js');
+  const { planets, units } = await import('../src/db/schema.js');
+  const { eq } = await import('drizzle-orm');
+  const [world] = await db
+    .select({ ownerPlayerId: planets.controllerPlayerId })
+    .from(planets)
+    .where(eq(planets.id, planetId));
+  if (!world?.ownerPlayerId) throw new Error('giveUnits needs a controlled planet');
   for (const [hull, count] of Object.entries(fleet)) {
     await db
       .insert(units)
-      .values({ planetId, hull: hull as 'WASP', location, count })
+      .values({ planetId, ownerPlayerId: world.ownerPlayerId, hull: hull as 'WASP', location, count })
       .onConflictDoUpdate({
         target: [units.planetId, units.hull, units.location],
-        set: { count },
+        set: { ownerPlayerId: world.ownerPlayerId, count },
       });
   }
 }

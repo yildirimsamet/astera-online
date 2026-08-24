@@ -23,7 +23,7 @@ import {
   type BeatId,
   type BeatState,
 } from './script.js';
-import { openWorld, reachableTargets, type RehearsalWorld } from './world.js';
+import { openWorld, type RehearsalWorld } from './world.js';
 
 /**
  * NINETY SECONDS OF THE REAL GAME, BEFORE THERE IS AN ACCOUNT. D56.
@@ -120,21 +120,7 @@ export function Rehearsal({
     [preview],
   );
 
-  /**
-   * WHO THIS PLANET MAY ACTUALLY ATTACK, recomputed as the Core rises.
-   *
-   * The same rule the launch endpoint enforces (D49), applied where the player can
-   * see it. In a galaxy that is nearly empty — the first evening of a season,
-   * which is when the people who matter most arrive — this is empty, and two of
-   * the beats have an honest alternative rather than a promise the disc cannot
-   * keep.
-   */
-  const targets = useMemo(
-    () => reachableTargets(world, preview.galaxy.planets).map((p) => p.id),
-    [world, preview],
-  );
-
-  const state: BeatState = { world, focus, done, targets };
+  const state: BeatState = { world, focus, done };
   const beat = currentBeat(state);
 
   /**
@@ -282,7 +268,7 @@ export function Rehearsal({
     [onClaim],
   );
 
-  const alone = targets.length === 0;
+  const alone = !preview.galaxy.planets.some((planet) => !planet.isSelf && planet.owner !== '');
   const copy = COPY[wording(beat.id, alone)];
   const step = BEATS.findIndex((b) => b.id === beat.id);
 
@@ -296,6 +282,7 @@ export function Rehearsal({
     shard: preview.shard.name,
     name: preview.reserved.name,
     planets: full(preview.shard.planets),
+    capacity: full(preview.shard.capacity),
     free: full(Math.max(0, preview.shard.capacity - preview.shard.planets)),
     online: full(preview.shard.online),
     alloy: full(world.alloy),
@@ -399,12 +386,11 @@ export function Rehearsal({
  * Only two beats have a second version, and both are the ones that talk about
  * other people: what to say when there are none.
  */
-type Wording = BeatId | 'fogAlone' | 'targetAlone';
+type Wording = BeatId | 'fogAlone';
 
 function wording(id: BeatId, alone: boolean): Wording {
   if (!alone) return id;
   if (id === 'fog') return 'fogAlone';
-  if (id === 'target') return 'targetAlone';
   return id;
 }
 
@@ -420,8 +406,7 @@ function wording(id: BeatId, alone: boolean): Wording {
  * A BEAT WITH AN `action` IS A BEAT WITH NOTHING TO DO. The presence of the key IS
  * the rule: a beat the player can finish by playing must never carry a control
  * beside it, because a "next" is an invitation to read the tutorial instead of
- * doing the thing. Three qualify — the wide opening, whose control is the flight
- * in, and the two endings for a galaxy with nobody in it yet.
+   * doing the thing. The wide opening and an empty galaxy's fog sentence qualify.
  */
 const COPY = {
   wide: {
@@ -446,12 +431,6 @@ const COPY = {
     line: 'onboarding.beats.extractor.line',
   },
   fleet: { title: 'onboarding.beats.fleet.title', line: 'onboarding.beats.fleet.line' },
-  target: { title: 'onboarding.beats.target.title', line: 'onboarding.beats.target.line' },
-  targetAlone: {
-    title: 'onboarding.beats.targetAlone.title',
-    line: 'onboarding.beats.targetAlone.line',
-    action: 'onboarding.beats.targetAlone.action',
-  },
   /** The claim beat has no card: the dialog is the whole of it. */
-  claim: { title: 'onboarding.beats.target.title', line: 'onboarding.beats.target.line' },
+  claim: { title: 'onboarding.beats.fleet.title', line: 'onboarding.beats.fleet.line' },
 } as const satisfies Record<Wording, { title: string; line: string; action?: string }>;

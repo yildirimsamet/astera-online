@@ -1,5 +1,5 @@
 import { and, eq, sql } from 'drizzle-orm';
-import { fleetCargo } from '@astera/rules';
+import { DISRUPTION, fleetCargo } from '@astera/rules';
 import { pino } from 'pino';
 import { afterAll, beforeEach, describe, expect, it } from 'vitest';
 import { battleReports, missions, planets, players, scheduledEvents, units } from '../src/db/schema.js';
@@ -13,6 +13,7 @@ import {
   giveSatellite,
   giveUnits,
   grant,
+  levelWorld,
   placeAt,
   seedWorld,
   setLevel,
@@ -54,7 +55,7 @@ describe('event worker', () => {
     it('does not claim an event before it is due', async () => {
       await schedule(f.db, {
         seasonId: f.seasonId,
-        kind: 'season_end',
+        kind: 'asteroid_impact',
         resolveAt: new Date(f.clock.now().getTime() + 60_000),
       });
       expect(await claimDue(f.db, 10, f.clock.now())).toHaveLength(0);
@@ -63,7 +64,7 @@ describe('event worker', () => {
     it('claims an event the moment it is due', async () => {
       await schedule(f.db, {
         seasonId: f.seasonId,
-        kind: 'season_end',
+        kind: 'asteroid_impact',
         resolveAt: f.clock.now(),
       });
       expect(await claimDue(f.db, 10, f.clock.now())).toHaveLength(1);
@@ -73,7 +74,7 @@ describe('event worker', () => {
       for (let i = 0; i < 20; i++) {
         await schedule(f.db, {
           seasonId: f.seasonId,
-          kind: 'season_end',
+          kind: 'asteroid_impact',
           resolveAt: f.clock.now(),
         });
       }
@@ -93,7 +94,7 @@ describe('event worker', () => {
       for (const offset of [-30, -10, -20]) {
         await schedule(f.db, {
           seasonId: f.seasonId,
-          kind: 'season_end',
+          kind: 'asteroid_impact',
           payload: { offset },
           resolveAt: new Date(base + offset * 60_000),
         });
@@ -105,7 +106,7 @@ describe('event worker', () => {
 
     it('respects the batch size', async () => {
       for (let i = 0; i < 5; i++) {
-        await schedule(f.db, { seasonId: f.seasonId, kind: 'season_end', resolveAt: f.clock.now() });
+        await schedule(f.db, { seasonId: f.seasonId, kind: 'asteroid_impact', resolveAt: f.clock.now() });
       }
       expect(await claimDue(f.db, 2, f.clock.now())).toHaveLength(2);
     });
@@ -113,7 +114,7 @@ describe('event worker', () => {
 
   describe('failure handling', () => {
     it('returns a failed event to pending so it retries', async () => {
-      await schedule(f.db, { seasonId: f.seasonId, kind: 'season_end', resolveAt: f.clock.now() });
+      await schedule(f.db, { seasonId: f.seasonId, kind: 'asteroid_impact', resolveAt: f.clock.now() });
       const [event] = await claimDue(f.db, 1, f.clock.now());
 
       await fail(f.db, event!.id, new Error('transient'));
@@ -128,7 +129,7 @@ describe('event worker', () => {
     });
 
     it('gives up after the attempt budget rather than spinning forever', async () => {
-      await schedule(f.db, { seasonId: f.seasonId, kind: 'season_end', resolveAt: f.clock.now() });
+      await schedule(f.db, { seasonId: f.seasonId, kind: 'asteroid_impact', resolveAt: f.clock.now() });
       let id = '';
       for (let attempt = 0; attempt < 5; attempt++) {
         const [event] = await claimDue(f.db, 1, f.clock.now());
@@ -143,7 +144,7 @@ describe('event worker', () => {
     });
 
     it('an unknown event kind is completed, not retried forever', async () => {
-      await schedule(f.db, { seasonId: f.seasonId, kind: 'season_end', resolveAt: f.clock.now() });
+      await schedule(f.db, { seasonId: f.seasonId, kind: 'asteroid_impact', resolveAt: f.clock.now() });
       const result = await makeWorker(f).tick();
       expect(result.claimed).toBe(1);
       expect(result.failed).toBe(0);
@@ -153,6 +154,25 @@ describe('event worker', () => {
         .from(scheduledEvents)
         .where(eq(scheduledEvents.status, 'done'));
       expect(rows).toHaveLength(1);
+    });
+
+    it('reports resolve-at lateness instead of mistaking handler duration for queue lag', async () => {
+      await schedule(f.db, {
+        seasonId: f.seasonId,
+        kind: 'asteroid_impact',
+        resolveAt: new Date(f.clock.now().getTime() - 1_500),
+      });
+      const worker = makeWorker(f);
+
+      await worker.tick();
+
+      expect(worker.status().latenessMs).toEqual({
+        samples: 1,
+        p50: 1_500,
+        p95: 1_500,
+        p99: 1_500,
+        max: 1_500,
+      });
     });
   });
 
@@ -228,6 +248,7 @@ describe('event worker', () => {
         .values({
           seasonId: f.seasonId,
           kind: 'attack',
+          ownerPlayerId: f.playerIds[0]!,
           originPlanetId: attacker,
           targetPlanetId: defender,
           fleet: { WASP: 1 },
@@ -340,8 +361,8 @@ describe('event worker', () => {
 
   describe('crash recovery', () => {
     it('the reaper returns an abandoned claim to the queue', async () => {
-      await schedule(f.db, { seasonId: f.seasonId, kind: 'season_end', resolveAt: f.clock.now() });
-      await claimDue(f.db, 1, f.clock.now()); // worker claims, then "dies"
+      await schedule(f.db, { seasonId: f.seasonId, kind: 'asteroid_impact', resolveAt: f.clock.now() });
+      const [event] = await claimDue(f.db, 1, f.clock.now()); // worker claims, then "dies"
 
       // Too soon: a live worker mid-transaction must not be stolen from.
       expect(await reap(f.db, 5, f.clock.now())).toBe(0);
@@ -349,7 +370,10 @@ describe('event worker', () => {
       f.clock.advance(6);
       expect(await reap(f.db, 5, f.clock.now())).toBe(1);
 
-      const [after] = await f.db.select().from(scheduledEvents);
+      const [after] = await f.db
+        .select()
+        .from(scheduledEvents)
+        .where(eq(scheduledEvents.id, event!.id));
       expect(after!.status).toBe('pending');
       expect(after!.claimedAt).toBeNull();
     });
@@ -389,7 +413,7 @@ describe('event worker', () => {
       for (const minutesAgo of [300, 60, 180]) {
         await schedule(f.db, {
           seasonId: f.seasonId,
-          kind: 'season_end',
+          kind: 'asteroid_impact',
           payload: { minutesAgo },
           resolveAt: new Date(base - minutesAgo * 60_000),
         });
@@ -441,6 +465,9 @@ describe('event worker', () => {
       await giveUnits(f.db, attacker, { WASP: 120, HAULER: 8 });
       await grant(f.db, defender, 60_000, 6_000);
       await grant(f.db, attacker, 0, 0);
+      // `grant` raises a Core to whatever holds the resources, which on a rich
+      // defender puts it outside the attacker's tier band. See `levelWorld`.
+      await levelWorld(f.db, [attacker, defender]);
       f.clock.advance(300);
 
       const before = await f.db.select().from(planets).where(eq(planets.id, defender));
@@ -494,7 +521,8 @@ describe('event worker', () => {
       const [after] = await f.db.select().from(planets).where(eq(planets.id, defender));
       expect(after!.alloy).toBeLessThan(before[0]!.alloy);
       expect(after!.disruptedUntil).not.toBeNull();
-      expect(after!.disruptedUntil!.getTime() - f.clock.now().getTime()).toBe(15 * 60_000);
+      expect(after!.disruptedUntil!.getTime() - f.clock.now().getTime())
+        .toBe(DISRUPTION.decisiveMinutes * 60_000);
 
       // Dominion is zero-sum across the pair.
       const rows = await f.db.select().from(players);
@@ -593,13 +621,16 @@ describe('event worker', () => {
 
   describe('queue completion', () => {
     it('marks a handled event done and clears its error', async () => {
-      await schedule(f.db, { seasonId: f.seasonId, kind: 'season_end', resolveAt: f.clock.now() });
+      await schedule(f.db, { seasonId: f.seasonId, kind: 'asteroid_impact', resolveAt: f.clock.now() });
       const [event] = await claimDue(f.db, 1, f.clock.now());
       await fail(f.db, event!.id, new Error('first go'));
       const [retry] = await claimDue(f.db, 1, f.clock.now());
       await complete(f.db, retry!.id);
 
-      const [after] = await f.db.select().from(scheduledEvents);
+      const [after] = await f.db
+        .select()
+        .from(scheduledEvents)
+        .where(eq(scheduledEvents.id, retry!.id));
       expect(after!.status).toBe('done');
       expect(after!.lastError).toBeNull();
     });

@@ -1,7 +1,7 @@
 import { eq } from 'drizzle-orm';
 import type { FastifyInstance } from 'fastify';
 import { pino } from 'pino';
-import { afterAll, afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterAll, afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { buildApp } from '../src/app.js';
 import { TokenService } from '../src/auth/tokens.js';
 import { accounts, players, satellites } from '../src/db/schema.js';
@@ -9,8 +9,10 @@ import { launchAttack } from '../src/services/mission.js';
 import { assignWatch } from '../src/services/intel.js';
 import { createSeason } from '../src/services/season.js';
 import { joinSeason } from '../src/services/player.js';
+import { publishShard } from '../src/stream/bus.js';
 import {
   giveInstrument,
+  giveSatellite,
   giveUnits,
   makeAccount,
   seedWorld,
@@ -72,10 +74,12 @@ describe('GET /api/galaxy — fog enforced in the response', () => {
     f = await seedWorld(3);
     [mine, theirs] = f.planetIds as [string, string];
     await setLevel(f.db, mine, 'CORE', 8);
+    await giveSatellite(f.db, mine, 'UPLINK');
 
     const built = buildApp({ env: testEnv(), logger: silent, db: f.db, clock: f.clock });
     app = built.app;
     close = built.close;
+    await built.bus.start();
     await app.ready();
 
     const tokens = new TokenService('test-secret-that-is-long-enough', 15, 30);
@@ -122,6 +126,80 @@ describe('GET /api/galaxy — fog enforced in the response', () => {
     expect(JSON.stringify(target)).not.toContain('STALE-SEASON-NAME');
   });
 
+  it('single-flights the shared floor and invalidates it on the committed shard event', async () => {
+    await galaxy();
+    await galaxy();
+    expect(app.projections.status().publicGalaxy).toMatchObject({ misses: 1, hits: 1 });
+    expect(app.projections.status().commander).toMatchObject({ misses: 1, hits: 1 });
+
+    await f.db.transaction(async (tx) => {
+      await tx
+        .update(accounts)
+        .set({ displayName: 'Yeni Kumandan' })
+        .where(eq(accounts.id, f.accountIds[1]!));
+      await publishShard(tx, f.seasonId, 'world');
+    });
+    await vi.waitFor(() => {
+      expect(app.projections.status().publicGalaxy.invalidations).toBe(1);
+      expect(app.projections.status().commander.invalidations).toBe(1);
+    });
+
+    const target = (await galaxy()).find((planet) => planet.id === theirs);
+    expect(target?.owner).toBe('Yeni Kumandan');
+    expect(app.projections.status().publicGalaxy.misses).toBe(2);
+    expect(app.projections.status().commander.misses).toBe(2);
+  });
+
+  it('invalidates the shared floor when a new commander takes a seat', async () => {
+    expect(await galaxy()).toHaveLength(3);
+    const newcomer = await makeAccount(f.db, 'Newcomer');
+    await joinSeason(f.db, newcomer.id, f.seasonId, f.clock);
+
+    await vi.waitFor(() => {
+      expect(app.projections.status().publicGalaxy.invalidations).toBe(1);
+    });
+    expect(await galaxy()).toHaveLength(4);
+  });
+
+  it('shares only the public floor; ownership and telescope fog stay caller-local', async () => {
+    await giveTelescope(mine, 2);
+    await assignWatch(f.db, mine, theirs, 0, f.clock);
+
+    const first = await galaxy();
+    const tokens = new TokenService('test-secret-that-is-long-enough', 15, 30);
+    const secondAuth = {
+      authorization: `Bearer ${await tokens.issueAccess(f.accountIds[1]!)}`,
+    };
+    const secondResponse = await app.inject({
+      method: 'GET',
+      url: '/api/galaxy',
+      headers: secondAuth,
+    });
+    expect(secondResponse.statusCode).toBe(200);
+    const second = secondResponse.json<{ planets: GalaxyPlanet[] }>().planets;
+
+    expect(first.find((planet) => planet.id === theirs)?.fleet).toBeDefined();
+    expect(second.find((planet) => planet.id === mine)).not.toHaveProperty('fleet');
+    expect(first.find((planet) => planet.id === mine)).toMatchObject({ isSelf: true, isOwned: true });
+    expect(second.find((planet) => planet.id === theirs)).toMatchObject({ isSelf: true, isOwned: true });
+    expect(app.projections.status().publicGalaxy).toMatchObject({ misses: 1, hits: 1 });
+  });
+
+  it('does not throw away the galaxy projection for an unrelated chat event', async () => {
+    await galaxy();
+    const delivered = app.bus.status().delivered;
+    await publishShard(f.db, f.seasonId, 'chat');
+    await vi.waitFor(() => {
+      expect(app.bus.status().delivered).toBeGreaterThan(delivered);
+    });
+    await galaxy();
+    expect(app.projections.status().publicGalaxy).toMatchObject({
+      misses: 1,
+      hits: 1,
+      invalidations: 0,
+    });
+  });
+
   it('a planet you are not watching has NO fleet key at all', async () => {
     // Their fleet is genuinely away — the truth exists, it is just not yours.
     await giveUnits(f.db, theirs, { WASP: 30 });
@@ -146,6 +224,7 @@ describe('GET /api/galaxy — fog enforced in the response', () => {
 
   it('a Veil that outmatches your telescope yields UNKNOWN, never the truth', async () => {
     await giveTelescope(mine, 1);
+    await setLevel(f.db, theirs, 'CORE', 3);
     await f.db
       .insert(satellites)
       .values({ planetId: theirs, slot: 0, type: 'VEIL', level: 3 })
@@ -256,7 +335,10 @@ describe('GET /api/galaxy — fog enforced in the response', () => {
      * it is a boolean and not a number is that the level is what decides the raid.
      */
     expect(keys.sort()).toEqual(
-      ['coreTier', 'fleet', 'id', 'isSelf', 'name', 'owner', 'position', 'satellites', 'shielded'].sort(),
+      [
+        'controller', 'coreTier', 'fleet', 'id', 'isCapital', 'isOwned', 'isSelf',
+        'kind', 'name', 'owner', 'position', 'satellites', 'shielded', 'state',
+      ].sort(),
     );
   });
 
@@ -273,7 +355,13 @@ describe('GET /api/galaxy — fog enforced in the response', () => {
     expect(before.satellites).not.toContain('AEGIS');
 
     const LEVEL = 7;
+    // The helper writes fixture state directly rather than going through the
+    // production service, so publish the public change it deliberately bypasses.
     await giveInstrument(f.db, theirs, 'AEGIS', LEVEL);
+    await publishShard(f.db, f.seasonId, 'world');
+    await vi.waitFor(() => {
+      expect(app.projections.status().publicGalaxy.invalidations).toBe(1);
+    });
 
     const after = (await galaxy()).find((p) => p.id === theirs)!;
     expect(after.shielded).toBe(true);

@@ -59,7 +59,7 @@ export function LaunchSheet({
           <div className="flex gap-2">
             <button
               type="button"
-              className="btn flex-1"
+              className="btn flex-1 text-[9px]"
               onClick={() => {
                 setConfirming(false);
               }}
@@ -68,7 +68,7 @@ export function LaunchSheet({
             </button>
             <button
               type="button"
-              className="btn btn-commit flex-[2]"
+              className="btn btn-commit flex-[2] text-[9px]"
               disabled={launch.isPending}
               onClick={() => {
                 launch.mutate(
@@ -109,7 +109,7 @@ export function LaunchSheet({
       }
     >
       {/* THE LINE. Everything else on this sheet is supporting detail. */}
-      <div className="panel border-alert/25 bg-alert/5 px-3.5 py-3">
+      <div className="panel border-alert/25 bg-alert/5 px-3.5 py-3 mt-1">
         <p className="legend text-[#e08a7c]">{t('launch.whileAway')}</p>
         <p className="num mt-1.5 text-[19px] leading-tight text-bone">
           {t('launch.defending', { count: route.homeDefenceAfter })}
@@ -141,7 +141,7 @@ export function LaunchSheet({
           return (
             <div
               key={hull}
-              className={`border-b border-line-soft py-2.5 ${chosen > 0 ? 'bg-crystal/[0.05]' : ''}`}
+              className={`border-b border-line-soft py-2.5 px-1 ${chosen > 0 ? 'bg-crystal/[0.05]' : ''}`}
             >
               {/*
                 THE SHIP, NOT ITS NAME.

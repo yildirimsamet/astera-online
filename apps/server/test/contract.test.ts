@@ -2,8 +2,21 @@ import type { FastifyInstance } from 'fastify';
 import { pino } from 'pino';
 import { afterAll, beforeEach, describe, expect, it } from 'vitest';
 import { and, eq } from 'drizzle-orm';
-import { REWARD_CHAINS, alloyRate, flightSlots, rewardId } from '@astera/rules';
-import { buildings, debrisFields, notifications, planets, shards } from '../src/db/schema.js';
+import {
+  DISRUPTION, REWARD_CHAINS, SHIELD, alloyRate, flightSlots, rewardId, shieldHp, vaultProtects,
+} from '@astera/rules';
+import {
+  buildings,
+  debrisFields,
+  galaxyEvents,
+  neutralPlanetState,
+  notifications,
+  planetResearch,
+  planets,
+  shards,
+  strategicAssets,
+  units,
+} from '../src/db/schema.js';
 import { EventWorker } from '../src/worker/loop.js';
 import { launchAttack } from '../src/services/mission.js';
 import { launchProbe } from '../src/services/intel.js';
@@ -13,10 +26,12 @@ import { SHARD_PREFIX } from '../src/stream/bus.js';
 import { TokenService } from '../src/auth/tokens.js';
 import {
   buildSchema,
+  buildCancelSchema,
   chatPageSchema,
   chatPostSchema,
   chatReadSchema,
   chatUnreadSchema,
+  chroniclePageSchema,
   claimSchema,
   collectSchema,
   galaxySchema,
@@ -27,17 +42,23 @@ import {
   markedSchema,
   meSchema,
   miningLaunchSchema,
+  miningFieldSchema,
   miningSchema,
+  miningStatusSchema,
+  movementLaunchSchema,
   notificationsSchema,
   okSchema,
   pendingSchema,
   placementSchema,
   planetSchema,
+  planetsSchema,
   previewSchema,
   probeSchema,
   reportsSchema,
+  researchCompleteSchema,
   returnSchema,
   rewardClaimSchema,
+  rivalSetSchema,
   rewardsSchema,
   satelliteInstallSchema,
   seasonSchema,
@@ -47,6 +68,8 @@ import {
   unlocksSchema,
   upgradeSchema,
   watchSchema,
+  deathStarBuildSchema,
+  deathStarLaunchSchema,
 } from '../../web/src/api/schemas.js';
 import { describeNotification } from '../../web/src/lib/notifications.js';
 import {
@@ -155,6 +178,18 @@ describe('every payload the client parses', () => {
     expect(parsed.instruments.TELESCOPE).toBe(2);
     expect(parsed.orbit).toContain('UPLINK');
     expect(parsed.orbitSlots).toBeGreaterThan(0);
+    expect(parsed.planet.vaultCapacity).toEqual(
+      vaultProtects(
+        parsed.buildings.VAULT ?? 0,
+        parsed.buildings.REFINERY ?? 0,
+        parsed.buildings.EXTRACTOR ?? 0,
+      ),
+    );
+    expect(parsed.planet.vaultProtected.alloy).toBeLessThanOrEqual(parsed.planet.alloy);
+    expect(parsed.planet.vaultProtected.crystal).toBeLessThanOrEqual(parsed.planet.crystal);
+    expect(parsed.planet.vaultProtected.deuterium).toBe(0);
+    expect(parsed.planet.shieldMax).toBe(shieldHp(3));
+    expect(parsed.planet.shieldPerHour).toBe(Math.round(shieldHp(3) * SHIELD.regenPerHour));
     // Both ground guns, because D27 made ground defence a composition and a payload
     // that can only carry one of them would hide half of it.
     expect(parsed.ground.BASTION).toBe(3);
@@ -167,6 +202,53 @@ describe('every payload the client parses', () => {
     expect(parsed.flight.total).toBe(flightSlots(core ?? 0));
     expect(parsed.flight.used).toBe(0);
     expect(parsed.ground.THORN).toBe(5);
+  });
+
+  it('never accepts another commander planet id on explicit reads or mutations', async () => {
+    const foreign = f.planetIds[1]!;
+    const read = await app.inject({
+      method: 'GET',
+      url: `/api/planets/${foreign}`,
+      headers: auth,
+    });
+    expect(read.statusCode).toBe(403);
+    expect(read.json()).toMatchObject({ error: 'PLANET_NOT_OWNED' });
+
+    const mutate = await app.inject({
+      method: 'POST',
+      url: `/api/planets/${foreign}/upgrade`,
+      headers: auth,
+      payload: { type: 'CORE' },
+    });
+    expect(mutate.statusCode).toBe(403);
+    expect(mutate.json()).toMatchObject({ error: 'PLANET_NOT_OWNED' });
+  });
+
+  it('GET /api/planets and the explicit planet view parse', async () => {
+    const list = planetsSchema.parse(await get('/api/planets'));
+    expect(list.capitalPlanetId).toBe(f.planetIds[0]);
+    expect(list.planets).toHaveLength(1);
+    expect(list.planets[0]?.planet.kind).toBe('CAPITAL');
+    planetSchema.parse(await get(`/api/planets/${list.capitalPlanetId}`));
+  });
+
+  it('serves overlapping world-list and explicit reads without a lock-upgrade deadlock', async () => {
+    const planetId = f.planetIds[0]!;
+    const requests = Array.from({ length: 12 }, (_, index) => app.inject({
+      method: 'GET',
+      url: index % 2 === 0 ? '/api/planets' : `/api/planets/${planetId}`,
+      headers: auth,
+    }));
+    const responses = await Promise.all(requests);
+    expect(responses.map((response) => response.statusCode)).toEqual(Array(12).fill(200));
+  });
+
+  it('an explicit planet mutation returns the exact explicit GET view', async () => {
+    const planetId = f.planetIds[0]!;
+    f.clock.advance(120);
+    const mutated = collectSchema.parse(await post(`/api/planets/${planetId}/collect`, {}));
+    const fetched = planetSchema.parse(await get(`/api/planets/${planetId}`));
+    expect(mutated.planet).toEqual(fetched);
   });
 
   it('GET /api/galaxy parses', async () => {
@@ -220,7 +302,9 @@ describe('every payload the client parses', () => {
 
     const parsed = claimSchema.parse(res.json());
     expect(parsed.applied.map((a) => a.ok)).toEqual([true, true]);
-    expect(parsed.planet.buildings.CORE).toBe(2);
+    expect(parsed.planet.buildings.CORE).toBe(1);
+    expect(parsed.planet.queues?.CONSTRUCTION.map((order) => order.subject))
+      .toEqual(['CORE', 'REFINERY']);
     expect(parsed.placement.planetName).not.toBe('');
     // The session half is the same shape `/api/auth/register` answers with.
     sessionSchema.parse({
@@ -251,6 +335,15 @@ describe('every payload the client parses', () => {
       parsed.asteroids.length,
       'no rocks in a ten-hour-old season — the field or the clock is wrong',
     ).toBeGreaterThan(0);
+  });
+
+  it('GET /api/mining/field and /status preserve the public/private split', async () => {
+    const field = miningFieldSchema.parse(await get('/api/mining/field'));
+    const status = miningStatusSchema.parse(await get('/api/mining/status'));
+    expect(field.asteroids.length).toBeGreaterThan(0);
+    expect(field.asteroids.every((asteroid) => !asteroid.isotopeRich)).toBe(true);
+    expect(status.derrick).toBe(true);
+    expect(status.isotopes).toEqual([]);
   });
 
   /**
@@ -448,6 +541,7 @@ describe('every payload the client parses', () => {
     ['/api/leaderboard', leaderboardSchema],
     ['/api/chat/messages', chatPageSchema],
     ['/api/chat/unread', chatUnreadSchema],
+    ['/api/chronicle', chroniclePageSchema],
     ['/api/intel', intelSchema],
     ['/api/notifications', notificationsSchema],
     ['/api/session/return', returnSchema],
@@ -457,11 +551,43 @@ describe('every payload the client parses', () => {
     schema.parse(await get(url));
   });
 
+  it('GET /api/chronicle parses every public event variant', async () => {
+    const [planetId] = f.planetIds as [string];
+    const identity = { planetName: 'Kestrel', commanderName: 'Tester0' };
+    await f.db.insert(galaxyEvents).values([
+      { seasonId: f.seasonId, kind: 'isotope_exhausted', refId: 'iso', subjectPlanetId: null, payload: { asteroidIndex: 7 }, occurredAt: f.clock.now() },
+      { seasonId: f.seasonId, kind: 'wreck_formed', refId: 'wreck-new', subjectPlanetId: planetId, payload: identity, occurredAt: f.clock.now() },
+      { seasonId: f.seasonId, kind: 'wreck_exhausted', refId: 'wreck-gone', subjectPlanetId: planetId, payload: identity, occurredAt: f.clock.now() },
+      { seasonId: f.seasonId, kind: 'dominion_leader', refId: 'leader', subjectPlanetId: planetId, payload: identity, occurredAt: f.clock.now() },
+      { seasonId: f.seasonId, kind: 'season_act', refId: 'act', subjectPlanetId: null, payload: { act: 'war' }, occurredAt: f.clock.now() },
+      { seasonId: f.seasonId, kind: 'neutral_claim', refId: 'claim', subjectPlanetId: planetId, payload: { planetName: 'Neutral', tier: 1, claimUntil: f.clock.now().toISOString() }, occurredAt: f.clock.now() },
+      { seasonId: f.seasonId, kind: 'death_star_impact', refId: 'impact', subjectPlanetId: planetId, payload: { planetName: 'Kestrel', outcome: 'FIRST_STRIKE', capturable: true }, occurredAt: f.clock.now() },
+      { seasonId: f.seasonId, kind: 'control_transfer', refId: 'control', subjectPlanetId: planetId, payload: identity, occurredAt: f.clock.now() },
+    ]);
+
+    const page = chroniclePageSchema.parse(await get('/api/chronicle'));
+    expect(new Set(page.events.map((event) => event.kind))).toEqual(new Set([
+      'isotope_exhausted',
+      'wreck_formed',
+      'wreck_exhausted',
+      'dominion_leader',
+      'season_act',
+      'neutral_claim',
+      'death_star_impact',
+      'control_transfer',
+    ]));
+  });
+
   it('POST /api/chat/messages and /api/chat/read parse', async () => {
     const sent = chatPostSchema.parse(await post('/api/chat/messages', { content: 'hello galaxy' }));
     expect(sent.message.self).toBe(true);
     const marked = chatReadSchema.parse(await post('/api/chat/read', { messageId: sent.message.id }));
     expect(marked.ok).toBe(true);
+  });
+
+  it('POST /api/rival parses', async () => {
+    const parsed = rivalSetSchema.parse(await post('/api/rival', { planetId: f.planetIds[1] }));
+    expect(parsed.rivalPlanetId).toBe(f.planetIds[1]);
   });
 
   /**
@@ -488,6 +614,14 @@ describe('every payload the client parses', () => {
   it('POST /api/planet/build parses', async () => {
     const parsed = buildSchema.parse(await post('/api/planet/build', { hull: 'WASP', count: 2 }));
     expect(parsed.built).toBe(2);
+  });
+
+  it('POST /api/planet/research parses', async () => {
+    f.clock.advance(42 * 60);
+    const parsed = researchCompleteSchema.parse(
+      await post('/api/planet/research', { projectId: 'ISOTOPE_SPECTROMETRY' }),
+    );
+    expect(parsed.projectId).toBe('ISOTOPE_SPECTROMETRY');
   });
 
   it('POST /api/planet/collect parses', async () => {
@@ -535,6 +669,73 @@ describe('every payload the client parses', () => {
     );
   });
 
+  it('POST /api/fleet/transfer parses with a full origin view and pending flight', async () => {
+    const [origin, , colony] = f.planetIds as [string, string, string];
+    await f.db.update(planets)
+      .set({ controllerPlayerId: f.playerIds[0], kind: 'COLONY' })
+      .where(eq(planets.id, colony));
+    await f.db.update(units).set({ ownerPlayerId: f.playerIds[0] }).where(eq(units.planetId, colony));
+
+    const parsed = movementLaunchSchema.parse(await post('/api/fleet/transfer', {
+      originPlanetId: origin,
+      targetPlanetId: colony,
+      fleet: { WASP: 1 },
+      cargo: { alloy: 0, crystal: 0, deuterium: 0 },
+    }));
+    expect(parsed.pending.some((thread) => thread.id === parsed.missionId)).toBe(true);
+    expect(parsed.planet.planet.id).toBe(origin);
+  });
+
+  it('POST /api/fleet/settle parses the shared movement contract', async () => {
+    const [origin, , target] = f.planetIds as [string, string, string];
+    await f.db.update(planets)
+      .set({ controllerPlayerId: null, kind: 'NEUTRAL' })
+      .where(eq(planets.id, target));
+    await f.db.update(units).set({ ownerPlayerId: null }).where(eq(units.planetId, target));
+    await f.db.insert(neutralPlanetState).values({
+      planetId: target,
+      tier: 1,
+      profileSeed: 7,
+      claimUntil: new Date(f.clock.now().getTime() + 30 * 60_000),
+      nextReinforcementAt: null,
+      economyAnchorAt: f.clock.now(),
+    });
+
+    const parsed = movementLaunchSchema.parse(await post('/api/fleet/settle', {
+      originPlanetId: origin,
+      targetPlanetId: target,
+    }));
+    expect(parsed.pending.some((thread) => thread.id === parsed.missionId)).toBe(true);
+  });
+
+  it('POST Death Star build and launch routes parse their exact contracts', async () => {
+    const [origin, target] = f.planetIds as [string, string];
+    await setLevel(f.db, origin, 'CORE', 10);
+    await setLevel(f.db, origin, 'SHIPYARD', 5);
+    await f.db.update(planets)
+      .set({ alloy: 100_000, crystal: 50_000, deuterium: 10_000 })
+      .where(eq(planets.id, origin));
+    await f.db.insert(planetResearch).values([
+      { planetId: origin, projectId: 'ISOTOPE_SPECTROMETRY', completedAt: f.clock.now() },
+      { planetId: origin, projectId: 'GRAVITIC_CHARGES', completedAt: f.clock.now() },
+      { planetId: origin, projectId: 'DEATH_STAR_PROTOCOL', completedAt: f.clock.now() },
+    ]);
+    const built = deathStarBuildSchema.parse(
+      await post(`/api/planets/${origin}/death-star/build`, {}),
+    );
+    expect(built.planet.strategic?.status).toBe('BUILDING');
+
+    await f.db.update(strategicAssets)
+      .set({ status: 'READY', readyAt: f.clock.now(), remainingSeconds: 0 })
+      .where(eq(strategicAssets.id, built.assetId));
+    await f.db.update(planets).set({ kind: 'COLONY' }).where(eq(planets.id, target));
+    const launched = deathStarLaunchSchema.parse(await post('/api/death-star/launch', {
+      originPlanetId: origin,
+      targetPlanetId: target,
+    }));
+    expect(launched.pending.some((thread) => thread.id === launched.missionId)).toBe(true);
+  });
+
   /**
    * THE VIEW A MUTATION RETURNS IS THE VIEW THE GET WOULD HAVE RETURNED. D53.
    *
@@ -548,9 +749,11 @@ describe('every payload the client parses', () => {
    * Asserted for every mutation that carries one, and against the real GET.
    */
   it('answers every mutation with exactly what GET /api/planet would say', async () => {
+    f.clock.advance(42 * 60);
     const cases: { url: string; body: Record<string, unknown> }[] = [
       { url: '/api/planet/upgrade', body: { type: 'VAULT' } },
       { url: '/api/planet/build', body: { hull: 'WASP', count: 1 } },
+      { url: '/api/planet/research', body: { projectId: 'ISOTOPE_SPECTROMETRY' } },
       { url: '/api/planet/collect', body: {} },
       { url: '/api/planet/instrument', body: { type: 'RADAR' } },
       { url: '/api/rewards/claim', body: { id: rewardId('CORE', 3) } },
@@ -563,6 +766,29 @@ describe('every payload the client parses', () => {
       const fetched = planetSchema.parse(await get('/api/planet'));
       expect(answered, `${url} answered with a view GET disagrees with`).toEqual(fetched);
     }
+
+    const activePlanet = planetSchema.parse(await get('/api/planet'));
+    const construction = activePlanet.queues?.CONSTRUCTION ?? [];
+    const first = construction[0];
+    if (!first) throw new Error('contract setup did not create a construction order');
+    const cancelled = buildCancelSchema.parse(
+      await post(`/api/planet/build-orders/${first.id}/cancel`, {}),
+    );
+    expect(cancelled.planet).toEqual(planetSchema.parse(await get('/api/planet')));
+
+    const planetId = f.planetIds[0]!;
+    await grant(f.db, planetId, 10_000, 5_000);
+    const placed = upgradeSchema.parse(
+      await post(`/api/planets/${planetId}/upgrade`, { type: 'VAULT' }),
+    );
+    const order = placed.planet.queues?.CONSTRUCTION.at(-1);
+    if (!order) throw new Error('multi-world contract setup did not create an order');
+    const cancelledById = buildCancelSchema.parse(
+      await post(`/api/planets/${planetId}/build-orders/${order.id}/cancel`, {}),
+    );
+    expect(cancelledById.planet).toEqual(
+      planetSchema.parse(await get(`/api/planets/${planetId}`)),
+    );
   });
 
   /**
@@ -830,7 +1056,15 @@ describe('every payload the client parses', () => {
     expect(payload.lootAlloy + payload.lootCrystal).toBe(0);
     expect(payload.unitsLost).toBe(0);
     // And the thing that did happen, which used not to travel at all.
-    expect(payload.disruptedMinutes, 'the works were knocked down and nobody said so').toBe(15);
+    /**
+     * THE CAP, NOT THE RAID'S OWN LENGTH — because this planet was already down.
+     * `applyDisruption` refreshes rather than stacks and clamps to
+     * `maxPendingMinutes`, so a second raid of the evening reports the ceiling.
+     * The two constants used to be the same number, which is why this assertion
+     * could not previously tell which one it was reading.
+     */
+    expect(payload.disruptedMinutes, 'the works were knocked down and nobody said so')
+      .toBe(DISRUPTION.maxPendingMinutes);
 
     const now = f.clock.now().getTime();
     const view = (over: Record<string, unknown>) =>
@@ -861,6 +1095,7 @@ describe('every payload the client parses', () => {
     );
 
     // A raid, both sides of it, with the defender able to see it coming.
+    await giveSatellite(f.db, theirs, 'UPLINK');
     await giveInstrument(f.db, theirs, 'RADAR', 5);
     await grant(f.db, theirs, 60_000, 20_000);
     // Rich means tall, and tall means out of the tier band (D49). This test is

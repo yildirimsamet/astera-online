@@ -26,6 +26,8 @@ import {
   fleetHp,
   fleetSpeed,
   fleetSpeedMult,
+  fleetTravelExact,
+  fleetTravelMinutes,
   gradeMultiplier,
   hasSatellite,
   hashSeed,
@@ -198,10 +200,10 @@ describe('loot grading', () => {
 
 describe('disruption', () => {
   it('lasts longest after a decisive loss and not at all after a repel', () => {
-    expect(disruptionMinutes('DECISIVE')).toBe(15);
-    expect(disruptionMinutes('PARTIAL')).toBe(5);
+    expect(disruptionMinutes('DECISIVE')).toBe(DISRUPTION.decisiveMinutes);
+    expect(disruptionMinutes('PARTIAL')).toBe(DISRUPTION.partialMinutes);
     expect(disruptionMinutes('REPELLED')).toBe(0);
-    expect(DISRUPTION.maxPendingMinutes).toBe(15);
+    expect(DISRUPTION.maxPendingMinutes).toBeGreaterThanOrEqual(DISRUPTION.decisiveMinutes);
     expect(disruptionMinutes('DECISIVE')).toBeGreaterThan(disruptionMinutes('PARTIAL'));
   });
 });
@@ -355,6 +357,12 @@ describe('fleet arithmetic', () => {
    */
   it('ignores a hull listed at zero', () => {
     expect(fleetSpeed({ WASP: 2, HAULER: 0 })).toBe(HULLS.WASP.speed);
+  });
+
+  it('keeps the exact fleet instant separate from the rounded display quote', () => {
+    const exact = fleetTravelExact(500, { WASP: 2 });
+    expect(exact).not.toBe(Math.ceil(exact));
+    expect(fleetTravelMinutes(500, { WASP: 2 })).toBe(Math.ceil(exact));
   });
 
   it('reports losses as before minus after, never a negative', () => {
@@ -604,12 +612,17 @@ describe('neighboursWithin', () => {
  *
  * A quarter of everything destroyed was too much: fields came out worth more than
  * the raid that made them, which is the expedition failure the whole mechanic is
- * built to avoid. Ten per cent of the value of every non-ground hull destroyed on
- * BOTH sides.
+ * built to avoid. Thirty per cent of the value of every non-ground hull destroyed
+ * on BOTH sides.
  */
 describe('what a battle leaves behind', () => {
-  it('is a tenth of what was destroyed', () => {
-    expect(DEBRIS.share).toBeCloseTo(0.1, 6);
+  /**
+   * 0.30, which is OGame's own default and triple what this game shipped. A
+   * partly-refunded loss is a loss people will take, and that is what makes
+   * commanders throw fleets at each other in the last days instead of hoarding.
+   */
+  it('returns a documented share of what was destroyed', () => {
+    expect(DEBRIS.share).toBeCloseTo(0.30, 6);
   });
 
   /**
@@ -634,22 +647,22 @@ describe('what a battle leaves behind', () => {
 
 describe('debrisAlive', () => {
   it('is true for a fresh field and false for an empty one', () => {
-    expect(debrisAlive(1000, 500, 0, 0, 0)).toBe(true);
-    expect(debrisAlive(0, 0, 0, 0, 0)).toBe(false);
+    expect(debrisAlive(1000, 500, 0, 0, 0, 0, 0)).toBe(true);
+    expect(debrisAlive(0, 0, 0, 0, 0, 0, 0)).toBe(false);
   });
 
   it('is false once everything has been carried off', () => {
-    expect(debrisAlive(1000, 500, 1000, 500, 0)).toBe(false);
+    expect(debrisAlive(1000, 500, 0, 1000, 500, 0, 0)).toBe(false);
   });
 
   /** Agrees with the launch check: a field worth under a unit is not worth a trip. */
   it('is false for a residue too small to be worth flying to', () => {
-    expect(debrisAlive(1000, 0, 999.6, 0, 0)).toBe(false);
-    expect(debrisAlive(1000, 0, 990, 0, 0)).toBe(true);
+    expect(debrisAlive(1000, 0, 0, 999.6, 0, 0, 0)).toBe(false);
+    expect(debrisAlive(1000, 0, 0, 990, 0, 0, 0)).toBe(true);
   });
 
   it('is false once the field has outlived its decay', () => {
-    expect(debrisAlive(100_000, 50_000, 0, 0, 10_000)).toBe(false);
+    expect(debrisAlive(100_000, 50_000, 0, 0, 0, 0, 10_000)).toBe(false);
   });
 });
 

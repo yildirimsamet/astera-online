@@ -1,10 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { COMBAT, engagementEndsAt, isEngaging } from '@astera/rules';
+import { COMBAT, GALAXY, engagementEndsAt, isEngaging } from '@astera/rules';
 import {
   BLAST_SECONDS,
   MISSILE_OF_SHIP,
   blastProgress,
+  ejectaSpray,
   emberSpray,
+  flightDistance,
   impactAt,
   impactPoint,
   shotProgress,
@@ -25,6 +27,18 @@ import {
 } from '../src/galaxy/scene.js';
 import { slotOffset } from '../src/galaxy/Squadrons.js';
 import type { GalaxyPlanet, PendingThread } from '../src/api/schemas.js';
+
+/**
+ * The other world, in GAME units, as a share of the disc.
+ *
+ * It used to be a literal 600, which was a long leg when the disc had a radius of
+ * 1000 and became a neighbourhood hop when Economy v2 widened it to 2500. That
+ * matters here because `legEnd` clamps the orbit standoff to half the leg — so on
+ * a short leg the squadron stops at the midpoint instead of one standoff out, and
+ * every assertion about the standoff reads the clamp instead. Expressed against
+ * the disc, this stays a long leg whatever the radius does.
+ */
+const FAR = { x: GALAXY.radius * 0.6, y: 0, z: 0 };
 
 /**
  * THE TEN SECONDS A RAID TAKES TO LAND. D44.
@@ -194,6 +208,15 @@ describe('a round in flight', () => {
     expect(shotProgress(shot!, shot!.launchAt + shot!.flight / 2)).toBeCloseTo(0.5, 6);
   });
 
+  it('ignites visibly, then covers the gap under acceleration', () => {
+    expect(flightDistance(0)).toBe(0);
+    expect(flightDistance(1)).toBe(1);
+    expect(flightDistance(0.5)).toBeLessThan(0.5);
+    expect(flightDistance(0.75)).toBeGreaterThan(flightDistance(0.5));
+    expect(flightDistance(-1)).toBe(0);
+    expect(flightDistance(2)).toBe(1);
+  });
+
   /** Null rather than a clamp: a clamped round would sit on the surface for ever. */
   it('is gone the instant it lands', () => {
     expect(shotProgress(shot!, impactAt(shot!) + 1e-9)).toBeNull();
@@ -260,6 +283,16 @@ describe('an ember spray', () => {
     expect(emberSpray(shot!)).toEqual(emberSpray(shot!));
     expect(emberSpray(shot!)).not.toEqual(emberSpray(other!));
   });
+
+  it('throws surface ejecta out of the world, never through it', () => {
+    const normal = [0.2, -0.3, -0.93] as const;
+    const length = Math.hypot(...normal);
+    for (const [x, y, z] of ejectaSpray(shot!, normal)) {
+      const outward = (x * normal[0] + y * normal[1] + z * normal[2]) / length;
+      expect(outward).toBeGreaterThanOrEqual(-1e-12);
+      expect(Math.hypot(x, y, z)).toBeCloseTo(1, 6);
+    }
+  });
 });
 
 /**
@@ -320,7 +353,7 @@ describe('a leg that ends at a world', () => {
       id: 'p2',
       name: 'Tharsis',
       owner: 'someone',
-      position: { x: 600, y: 0, z: 0 },
+      position: FAR,
       coreTier: 4,
       satellites: [],
       shielded: false,
@@ -343,7 +376,7 @@ describe('a leg that ends at a world', () => {
     fleet: { WASP: 20 },
     path: {
       from: { x: 0, y: 0, z: 0 },
-      to: { x: 600, y: 0, z: 0 },
+      to: FAR,
       departAt: new Date('2026-04-01T12:00:00.000Z'),
       arriveAt: new Date('2026-04-01T12:40:00.000Z'),
     },
@@ -360,7 +393,7 @@ describe('a leg that ends at a world', () => {
     thread({
       leg: 'return',
       path: {
-        from: { x: 600, y: 0, z: 0 },
+        from: FAR,
         to: { x: 0, y: 0, z: 0 },
         departAt: new Date('2026-04-01T12:40:00.000Z'),
         arriveAt: new Date('2026-04-01T13:20:00.000Z'),
@@ -368,14 +401,14 @@ describe('a leg that ends at a world', () => {
     });
 
   it('finds the world it is aimed at, from coordinates alone', () => {
-    const found = targetNodeOf(nodes, { x: 600, y: 0, z: 0 });
+    const found = targetNodeOf(nodes, FAR);
     expect(found?.id).toBe('p2');
     expect(targetNodeOf(nodes, { x: 123, y: 45, z: 6 })).toBeUndefined();
   });
 
   it('stops clear of the world rather than inside it', () => {
     const end = legEnd(thread().path!, legStandoff(thread(), nodes).end);
-    const centre = toWorld({ x: 600, y: 0, z: 0 });
+    const centre = toWorld(FAR);
     const gap = Math.hypot(end[0] - centre[0], end[1] - centre[1], end[2] - centre[2]);
     // A heavyweight world is drawn at 1.4 across; the squadron must be outside it.
     expect(gap).toBeGreaterThan(1.4);
@@ -484,7 +517,7 @@ describe('craft and the worlds they pass', () => {
       id: 'p1',
       name: 'Tharsis',
       owner: 'Vale',
-      position: { x: 600, y: 0, z: 0 },
+      position: FAR,
       coreTier: 5,
       satellites: [],
       shielded: false,
@@ -494,7 +527,7 @@ describe('craft and the worlds they pass', () => {
     }) as GalaxyPlanet;
 
   const nodes = planetNodes([planet()]);
-  const centre = toWorld({ x: 600, y: 0, z: 0 });
+  const centre = toWorld(FAR);
   const radius = nodes[0]!.radius;
   const from = (p: readonly [number, number, number]) =>
     Math.hypot(p[0] - centre[0], p[1] - centre[1], p[2] - centre[2]);
@@ -539,7 +572,7 @@ describe('craft and the worlds they pass', () => {
   it('leaves a squadron at its own standoff alone', () => {
     const thread = {
       from: { x: 0, y: 0, z: 0 },
-      to: { x: 600, y: 0, z: 0 },
+      to: FAR,
       departAt: new Date('2026-04-01T12:00:00.000Z'),
       arriveAt: new Date('2026-04-01T12:40:00.000Z'),
     };
@@ -564,7 +597,7 @@ describe('a raid landing, from both sides', () => {
       id: 'p2',
       name: 'Tharsis',
       owner: 'Vale',
-      position: { x: 600, y: 0, z: 0 },
+      position: FAR,
       coreTier: 3,
       satellites: [],
       shielded: false,
@@ -579,7 +612,7 @@ describe('a raid landing, from both sides', () => {
   ]);
 
   const home = { x: 0, y: 0, z: 0 };
-  const target = { x: 600, y: 0, z: 0 };
+  const target = FAR;
 
   /** The attacker's own leg, drawn from `path`. */
   const attackerSees = (): [number, number, number] => {
@@ -626,8 +659,11 @@ describe('a raid landing, from both sides', () => {
   it('holds it on the side the fleet came in on', () => {
     // Approaching from −x, so the squadron sits on the −x face.
     expect(bystanderSees()[0]).toBeLessThan(toWorld(target)[0]);
-    // And from the other side, on the other face.
-    const other = engagementHold(target, { x: 600 + 25, y: 0, z: 0 }, nodes);
+    // And from the other side, on the other face. The approach point has to be a
+    // real distance beyond the world, not a few game units: `toWorld` divides by
+    // `SCALE`, so a small offset lands INSIDE the drawn sphere and there is no
+    // "other side" to hold on.
+    const other = engagementHold(target, { x: FAR.x * 2, y: 0, z: 0 }, nodes);
     expect(other[0]).toBeGreaterThan(toWorld(target)[0]);
   });
 

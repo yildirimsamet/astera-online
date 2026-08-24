@@ -47,7 +47,7 @@ const FLIGHT_MAX = 1.05;
  * The launch window shortens to pay for it (`LAST_LAUNCH`), so the last fire is
  * still out before the battle resolves.
  */
-export const BLAST_SECONDS = 0.9;
+export const BLAST_SECONDS = 1;
 
 /**
  * The last second at which anything may be launched.
@@ -256,6 +256,18 @@ export function shotProgress(shot: Shot, seconds: number): number | null {
 }
 
 /**
+ * Distance covered by an ignited round.
+ *
+ * The schedule clock remains linear and authoritative; only the presentation is
+ * eased. A power curve gives launch a readable ignition beat and makes contact
+ * arrive with speed instead of sliding across the gap at a constant UI tween.
+ */
+export function flightDistance(progress: number): number {
+  const t = Math.max(0, Math.min(1, progress));
+  return t ** 1.28;
+}
+
+/**
  * How far through its burn a burst is, 0 to 1 — and null once it is out.
  *
  * LINEAR, AND SHAPED BY THE CALLER. It used to return a brightness with the
@@ -297,6 +309,29 @@ export function emberSpray(shot: Shot): [number, number, number][] {
     out.push([Math.cos(angle) * r, y, Math.sin(angle) * r]);
   }
   return out;
+}
+
+/**
+ * Turn the spherical seed pattern into surface ejecta.
+ *
+ * Half of a spherical spray travels into the planet. With depth disabled for the
+ * surface burst those particles remained visible anyway, crossing the world like
+ * sparks pasted over a photograph. Reflecting the inward half over the local
+ * tangent plane produces the physical answer: everything leaves the surface,
+ * while the stable shot seed still gives every observer the same spray.
+ */
+export function ejectaSpray(
+  shot: Shot,
+  normal: readonly [number, number, number],
+): [number, number, number][] {
+  const length = Math.hypot(normal[0], normal[1], normal[2]);
+  if (length <= 1e-9) return emberSpray(shot);
+  const n = [normal[0] / length, normal[1] / length, normal[2] / length] as const;
+  return emberSpray(shot).map(([x, y, z]) => {
+    const dot = x * n[0] + y * n[1] + z * n[2];
+    if (dot >= 0) return [x, y, z];
+    return [x - 2 * dot * n[0], y - 2 * dot * n[1], z - 2 * dot * n[2]];
+  });
 }
 
 /**

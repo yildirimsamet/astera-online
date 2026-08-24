@@ -9,11 +9,13 @@ Operating manual for a cold agent. Read it first, every session. Detail lives in
 
 ## The product
 
-A small, fast, **mobile-first multiplayer space game** a solo developer can finish, that
-makes a player think *"I wonder what happened"* after they close it.
+A fast, **mobile-first multiplayer space game**, built by a three-person team and growing
+toward medium-to-large scope, that makes a player think *"I wonder what happened"* after
+they close it.
 
-Each player owns one planet in a galaxy of ~50 real people. Nobody can see what anyone else
-holds. **Everything either side does about that is the game.**
+Each commander controls one protected capital and may win up to three colonies in a galaxy
+of up to 300 real people. Nobody can see what anyone else holds. **Everything either side does
+about that is the game.**
 
 > **The fleet is the bet. The information is the game. The planet is the stake.**
 
@@ -60,8 +62,9 @@ activity, the product has regressed.
 ## Non-negotiable principles
 
 1. **The client never decides an outcome.** It renders and sends intent.
-2. **Buildings are never destroyed.** Raids take shields, satellites, units, stock and
-   production time. You can be robbed; you cannot be un-made.
+2. **Ordinary raids never damage buildings.** Death Star strikes are the D97/D98 exception:
+   they lower only the named levels on any enemy world. A capital can be devastated but
+   never captured; only a non-capital can transfer control on a second hit.
 3. **A launched fleet cannot be recalled.** Commitment must be irreversible or risk is theatre.
 4. **Watching is silent; probing is loud.** You are never told who is watching you; you
    *are* told when someone probed you. That asymmetry produces the dread.
@@ -85,8 +88,10 @@ activity, the product has regressed.
 ## Source of truth
 
 When two disagree, the higher wins: **locked product constraints** (mobile-first portrait,
-solo-dev scope, web first, **real-time persistent world** (async retired at D63), one planet per player,
-server-authoritative) → `docs/game-design.md` → `docs/decisions.md` → the code → anything
+three-person team, medium-to-large product trajectory, web first, **real-time persistent world**
+(async retired at D63), one commander with a capital and up to three colonies,
+server-authoritative) → `docs/game-design.md`
+→ `docs/decisions.md` → the code → anything
 marked `PROVISIONAL` → agent preference (lowest).
 
 **If the code disagrees with the design, the code is not automatically right.** Find out
@@ -102,16 +107,17 @@ Each was paid for in iteration. `docs/decisions.md` holds the evidence.
 |---|---|
 | Score is Dominion, not net worth | Wealth ladders reward passive play — builders finished at 2.1× raiders' net worth |
 | Wreckage is Wealth, never Dominion | Dominion is zero-sum and only combat makes it; debris was taken from nobody |
-| `vaultMult < alloyMult` | Above it the vault protects 100% of storage and all PvP silently dies |
+| `protectedHoursPerVault / capHoursPerVault < 0.5` | At most half a store is ever safe. Above it the vault protects everything and all PvP silently dies. This replaced `vaultMult < alloyMult`; both guard the same failure |
+| `upgradeCost(L).alloy < storageCap(L, vault)` | If one upgrade costs more than a full store holds, the player cannot buy it and progression stops with nothing on screen to explain why. The pre-v2 curves crossed at L10 — this shipped |
 | `SATELLITES.FOUNDRY.production` stays 1.06 | It compounds twice; at 1.08 TURTLE tops every gate seed |
-| `BULWARK.atk` stays 26 | Raising it subsidises whoever accumulates most: informed wins 5/5 → 0/5 |
+| The hull table is priced on `atk · hp / value²` | Equal-budget power when damage is spread across a force. Attack-per-resource is the quantity that made the old Bulwark lose every equal-budget matchup, including against the Lance it counters. A tech tier buys ~15%; the counter cycle buys 156% |
 | `START` is arithmetic | Exactly Core + Refinery + Extractor to L2 plus two Wasps. A test enforces it, and the REHEARSAL still runs on it — a beat says the crystal is gone exactly, and that has to stay true |
 | **A planet is created with `PLANET_START` = `START` + `OPENING_BONUS`** | Owner decision D58, overriding "do not enlarge the opening grant". Granted once, at planet creation. The opening spends `START`; the cushion is what a commander finds when onboarding ends, instead of nothing to press. **It cost the central claim on one seed of five** — see below |
 | `untouched()` compares against `PLANET_START`, never `START` | It is the claim's idempotency guard. Reading the wrong one makes every fresh planet look already-played, so the replay is skipped and all five rehearsal decisions are silently discarded |
 | `DEBRIS.share` < 1 | Or a field is worth more than the fleets that died for it |
-| **The vault floor is a PAIR, never one number** | It was derived against alloy and charged against crystal too, which made crystal unraidable for the whole opening — 13 of 26 live raids took nothing. `vaultProtects` returns `{alloy, crystal}` so the compiler catches the next caller who assumes symmetry (D61) |
-| A constant priced in another constant moves with it | Hull prices halved at D61; `DEBRIS.minimum` and `START.alloy` are both denominated in ship value and had to halve too. Five debris tests failed the moment one did not |
-| **No new un-losable sink fits the gate** | A research tree, a permanent upgrade or a dearer instrument all push wealth into what a raid cannot take. Measured twice: an instrument curve ≥1.1, and a sink worth 2% of Wealth. `TAX` and `ARR` have no headroom — **never widen a band to admit a feature** |
+| **The vault floor is HOURS of each resource's own production** | One flat alloy figure was charged against crystal too, and crystal was unraidable for the whole opening — 13 of 26 live raids took nothing. Pricing the floor in hours makes that unrepresentable. `openingFloorAlloy` is the one flat term, it binds only on a very young world, and removing it cost `TI` and the informed archetype |
+| A constant priced in another constant moves with it | `DEBRIS.minimum` and `START.alloy` are denominated in ship value; `DEBRIS.decayMinutes` in typical legs; build time in resources. Move one and the others follow, or a test fails somewhere unrelated |
+| **Never widen a health band to admit a feature** | `ARR` was out of band through the whole v2 pass. Five constant-level levers were tried and none moved it; what did was modelling the build queue in the simulator. The bands did not move |
 | Two levers are proven inert | The loot dial and `COMBAT.defenceSalvage`. What a loss COSTS cannot fix what an attack ACHIEVES |
 
 **Combat and defence**
@@ -146,12 +152,13 @@ Each was paid for in iteration. `docs/decisions.md` holds the evidence.
 | Rule | Why |
 |---|---|
 | You may attack within ±2 development tiers (D49) | `coreTier` is public on every world, so the rule is readable off the map before a fleet is packed |
-| One account, one planet, one galaxy; galaxies fill strictly in order | Both enforced in the database — a service check and its insert cannot be made atomic, and ten galaxies offered at once is ten empty rooms |
+| One account, one commander, one galaxy; galaxies fill strictly in order | The commander is one `players` row; D97 permits one capital and up to three colonies under it. The account/galaxy constraint remains database-enforced. |
 | `/api/season` derives the galaxy from the caller, never from config | It carries the seed the client rebuilds the whole disc from |
-| Construction is instant — no build timers | "A bar filled up" is the weakest return hook there is, and timers invite pay-to-skip |
-| A planet owns at most three Prospectors, counted wherever they are | Otherwise mining scales with wealth instead of with the which-rock-and-when decision |
+| **Everything is built in one of two queues, three orders deep** | CONSTRUCTION takes buildings, instruments, satellites and research; YARD takes hulls. Cost is committed at order, cancel returns half, a system fault returns all. Gates read the projected state of the SAME queue only — the two run in parallel, so neither is ahead of the other (D4) |
+| A ground gun finishes inside the narrowest radar warning it sells | That is the surviving half of the old instant-construction rule: 45 s against 2.0 min. Break it and the radar stops selling the window to arm |
+| A planet owns at most two Prospectors, counted wherever they are | Otherwise mining scales with wealth instead of with the which-rock-and-when decision |
 | Mined ore lands in the WORKS, never in storage | Risk-free banked income decoupled from war is what emptied OGame's PvP |
-| A Prospector flies at 3× the mean asteroid speed, and has its own launch overhead | Arithmetic: it makes the intercept root unique and the lead shot legible. Its overhead is a RATIO of `TRAVEL.baseMinutes` (under a quarter) and moves with it — D63 moved both |
+| A Prospector outruns the rocks it hunts, and has its own launch overhead | It has to aim ahead of a moving target, so its speed is tied to the asteroid band and not to warship speed. The overhead is a RATIO of `TRAVEL.baseMinutes` (under a quarter) and moves with it |
 | A flight bay is counted under the planet row lock | Check-then-act outside the lock lets two racing launches see the same free bay |
 | An outbound leg belongs to its origin; a return leg to its target | Return legs are stored with the two SWAPPED |
 | Every notification is idempotent by `(player_id, kind, ref_id)` | A worker killed between COMMIT and `complete()` has its event redelivered |
@@ -219,9 +226,9 @@ Each was paid for in iteration. `docs/decisions.md` holds the evidence.
 | **Routes are registered inside `app.after()`** | `register` QUEUES a plugin; routes added synchronously afterwards exist before it does. Registered the obvious way, every per-route rate limit was silently ignored — 200 to an unlimited flood, green typecheck, green tests |
 | **A rate-limit refusal is a `GameError`** | Whatever `errorResponseBuilder` returns IS the error the handler receives, and a plain object arrives with no `statusCode` — so the handler cannot tell it from a bug and answers 500 |
 | `TRUST_PROXY` is off unless nothing but the proxy can reach the port | Behind nginx `req.ip` is the proxy, so one bucket holds the whole internet and the first burst locks out every player. On a directly reachable server it is a limiter anyone walks past by inventing an address |
-| **A seat idle for `SERVERS.idleDays` goes back to the galaxy, and the ACCOUNT survives** | Fifty commanders of whom forty are inert is not a full galaxy, it is an empty one nobody can join. The season presence is reclaimed and the record folds into `accounts.lifetime`; the commander signs back in and joins whatever is open (D70) |
+| **A seat idle for `SERVERS.idleDays` goes back to the galaxy, and the ACCOUNT survives** | Three hundred commanders of whom most are inert is not a full galaxy, it is an empty one nobody can join. The season presence is reclaimed and the record folds into `accounts.lifetime`; the commander signs back in and joins whatever is open (D70/D99) |
 | **The reclaim sweep NEVER touches a world with anything in the air that names it** | Including a raid an active player launched at it thirty seconds ago. Deleting a mission out from under a live fleet stranded a real player's ships on this database once; an idle world is deferred to a later sweep instead (D70) |
-| **The seat ceiling is the empty-shard mitigation** | `/api/onboarding/claim` is unauthenticated and takes one of fifty seats, filled strictly in order. Unlimited, a script spends the frontier in seconds |
+| **The seat ceiling is the empty-shard mitigation** | `/api/onboarding/claim` is unauthenticated and takes one of 300 seats, filled strictly in order. Unlimited, a script spends the frontier in seconds (D99) |
 | Migrations run BEFORE the new image serves | The server refuses to start against a database it is ahead of (D47), and that refusal is the good outcome. The reverse order answers every request and fails every worker tick |
 | **`/health` reports; it never restarts anything** | Every 503 it produces describes state a restart would clear without fixing — and clearing it destroys the only evidence |
 | `docker-compose.yml` is NOT the production file | It is tmpfs and its password is the word "astera". `docker-compose.prod.yml` is the one with a volume |
@@ -250,7 +257,7 @@ season structure, progression, the game's identity, or a locked constraint.
 uncertainty before building, or redesign a working system because something better might
 exist. Small, low-risk and reversible → pick the simplest option and move.
 
-**When context is lost:** this file → `docs/roadmap.md` → `docs/decisions.md` → the code →
+**When context is lost:** this file → `docs/decisions.md` → `docs/balance.md` → the code →
 `git log`. Never re-invent lost context by guessing.
 
 ### Change discipline
@@ -359,45 +366,28 @@ own, and seats that come back (D68–D71); one craft, one marker — the real-ti
 movement pass (D72).
 
 ```
-pnpm verify  →  0 type errors · 0 lint errors · 1,758 tests
-                rules 253 · sim 53 · server 571 · web 881
+pnpm verify  →  0 type errors · 0 lint errors · 2,033 tests
+                rules 293 · sim 67 · server 672 · web 1,001
 ```
 
-**The season gate is GREEN on all five seeds**, including `TI` and *the informed archetype
-tops the ladder on every seed* — the two that had been red since D63. They came back at
-d398a3d; nothing was tuned against them to achieve it. **Verify before relying on this**:
-the cause was not isolated at the time it was noticed, so treat it as an observation with a
-commit attached rather than as a settled result.
+**The season gate is GREEN on all five seeds, with the bands unchanged.** `ARR` was the last
+metric to come in and no constant moved it — five were tried. What moved it was modelling the
+build queue in the simulator: a queue rate-limits how fast resources become buildings, so they
+sit in the store, which is the losable side. `docs/balance.md` records the five levers that failed.
 
-D81 (+25% asteroid spawn) was measured against the gate and all five seeds stayed in band.
-
-**The simulator now models a game we do not ship.** Its bots act on `loginsPerDay` — every
-2.4 to 12 hours — which described an async world and does not describe a real-time one.
-That was the first suspect while the gate was red, and the obvious version of the hypothesis
-was TESTED AND REFUTED: scaling `loginsPerDay` ×4 took the gate from two red to five. The
-gate being green does not make the pacing right — it makes it unproven in the other
-direction. Re-deriving the simulator for real-time pacing is still real work; do not guess
-at it, and **do not tune the game against these numbers until it is done.**
-
-**The design's central claim came back.** *The informed archetype tops the ladder on every
-seed* was red from D58 (RAIDER took seed 42) and is green again since D61. Nothing was
-tuned to achieve it in either direction — D58 enlarged the opening and cost it, D61 halved
-hull prices and fixed the vault floor and won it back.
-
-They used to be pooled `TAX` (0.0717 against a floor of 0.10) and the informed archetype
-losing seed 4242 to RAIDER. **Both of those now pass**, and nothing was tuned to make them:
-the blind attacker's target valuation counted storage only, while its own docblock claimed
-it counted the works as well — so every unscouted target was under-valued by roughly the
-collector ceiling and blind raiding was suppressed. Fixing the expression to match the
-stated rule lifted `TAX` into band and put the informed archetype back on top of every
-seed. `ARR` was always the next thing to re-derive; it is now the only thing.
+**The simulator still models a game we do not ship.** Its bots act on `loginsPerDay` — every 2.4
+to 12 hours — which described an async world. Scaling it ×4 was tested and refuted. The gate
+being green does not make the pacing right; it makes it unproven in the other direction. **Do not
+tune the game against these numbers**, and note `ARR` passes as a median while dipping to
+0.26–0.27 around days 7–10.
 
 | Area | State |
 |---|---|
 | `packages/rules` | Complete. Economy, combat, travel, intel, loot, dominion, galaxy generation, disruption |
-| `packages/sim` | Complete. Five-seed season gate at 50 players — see above |
-| Auth · servers | Username and password, scrypt, refresh rotation. Ten galaxies of fifty, filled in order |
+| `packages/sim` | Complete, and it mirrors the build queue. Five-seed season gate at 50 players — see above |
+| Auth · servers | Username and password, scrypt, refresh rotation. At most two galaxies of 300, filled in order (D99/D100) |
 | Planet | Five buildings, two ground guns, four instruments, four satellites. Lazy economy under row locks |
+| Build queues | Two per world, three deep: CONSTRUCTION and YARD. Cost committed at order, half back on cancel, all back on a system fault. Completion is a scheduled event with the same idempotency guard the Death Star uses; `/health` reports stranded orders (D4) |
 | Fleet · worker | Launch guards, arrival → combat → loot → disruption → return. `SKIP LOCKED` claim, reaper, crash recovery tested |
 | Intel | Telescope with clarity gradient and windowed seeding, probes with detection and bands, radar as a detection radius, veil applied server-side |
 | Notifications | Seven kinds, both sides of everything, idempotent, payloads held by a contract test |
@@ -423,15 +413,11 @@ has walked it who did not build it.
 
 1. **Play it for two days in real gaps**, on a phone, then fix what that reveals — see
    `docs/playtest-log.md`. Everything below is smaller than one real session.
-2. **Win seed 42 back for the informed archetype.** D58 enlarged the opening by owner
-   decision and RAIDER now tops that seed — the design's central claim, 4 of 5 instead of
-   5 of 5. `ARR` and `TAX` are both in band, so the levers are free; the question is
-   whether the intel layer can be made to pay for itself at the looser opening rather than
-   whether the opening should be tightened again.
-3. **Season lifecycle** — a `season_end` handler and freeze, so a season finishes on its
-   own rather than when someone runs a command.
-4. **Asteroid impacts and the Drill** — generated and stored, never scheduled.
-5. **Idempotency keys on the launch path** — `request_log` exists and is unused.
+2. **Re-derive the simulator for real-time pacing.** Its bots still act on `loginsPerDay`.
+   Until that is done, every gate reading is an indicator rather than a result.
+3. **Asteroid impacts and the Drill** — generated and stored, never scheduled.
+4. **Idempotency keys on the launch path** — `request_log` exists and is unused, so a
+   double-tapped order on a flaky connection places two.
 
 ## Known risks
 
@@ -440,24 +426,21 @@ has walked it who did not build it.
 | **Information is invisible.** If the intel feed reads as a boring list, there is no game | Highest | Disproportionate UX effort there. Test with people who are not you |
 | **Empty shard.** Async PvP with twelve players is nothing | High | Enforced by the frontier rule; still pre-fill galaxy 1 by invitation |
 | **Nobody scouts** — the game degrades into a worse OGame | High | Track scout-before-attack rate; target ≥50% by day 3 |
-| **3D scope creep** on a load-bearing surface | High | Instanced spheres, lines, DOM labels. Use assets that exist; commission nothing mid-phase |
+| **3D production outruns the frame and art direction** | High | Give assets owners, budgets and acceptance shots; profile every milestone before scaling it |
 | **Casual players get farmed** — the 2-logins/day archetype finishes at −10k to −19k Dominion | Open | The only unresolved *design* problem. Needs real players, not more simulation |
-| **Solo burnout** at month four | Real | Ship something two people can play early, even if ugly |
+| **Three-person key-person bottlenecks** | Real | Explicit ownership, reviewable milestones and docs for every critical production path |
 
 ## Known issues
 
-- **Arrival instants are rounded UP to whole minutes, and a whole minute is now up to half a
-  flight.** `travelMinutes` feeds `arriveAt` for every raid and probe. At forty-minute flights
-  that was 2% and invisible; since D63 it is 8–50%, it flattens short legs, and it is why the
-  probe had to be slowed rather than left at 2,554 (every probe on the disc landed at exactly
-  two minutes). The fix is to schedule on `travelExact` and keep the rounding for the ETA a
-  player READS — tried, and it moves nine server tests, so it wants its own pass and its own
-  measurement rather than being bundled into a tuning change.
-- `request_log` exists but idempotency keys are not wired into the launch path.
+- `request_log` exists but idempotency keys are not wired into the launch or order path.
 - Mining and salvage launches still cost two round trips. Every other mutation answers with the
   planet view (D53); making these one means returning `mining` and `pending` as well.
 - `PROVISIONAL` constants: vault floor, disruption duration, shield curve, season length,
   asteroid parameters. Settled by playtest, not by argument. Marked in `constants.ts`.
+- `build_orders_slot_check` hard-codes `BETWEEN 0 AND 2` in SQL while `BUILD.queueDepth` lives
+  in the rules. Nothing binds the two; changing the constant needs a migration.
+- A captured colony keeps the previous owner's in-flight build orders. Plausible, untested,
+  and unstated — reclaim clears them explicitly, capture does not.
 - Simulator bots have no skill variance. **Do not tune ladder spread against the simulator.**
 
 ### Dev-loop traps that look like broken code
@@ -488,7 +471,6 @@ has walked it who did not build it.
 | `docs/architecture.md` | Before writing server code |
 | `docs/deployment.md` | Before shipping a change, and before touching anything that runs on the server |
 | `docs/engineering-standards.md` | **Before writing any code at all** |
-| `docs/roadmap.md` | To find the next job and what "done" means for it |
 | `docs/interface.md` | Before changing a screen |
 | `docs/visual-design.md` | Before making or asking for art |
 | `docs/playtest-log.md` | Before and during a real play session |
@@ -498,5 +480,5 @@ has walked it who did not build it.
 
 The goal is not to finish the features.
 
-> **It is to make a small multiplayer game that leaves the player, some time after closing
+> **It is to make a multiplayer game that leaves the player, some time after closing
 > it, thinking: "I wonder what happened."**

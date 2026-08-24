@@ -2,7 +2,7 @@ import { existsSync, readFileSync, statSync } from 'node:fs';
 import { resolve } from 'node:path';
 import * as THREE from 'three';
 import { describe, expect, it } from 'vitest';
-import { noseBearing, orientedCraft, turnOnto } from '../src/galaxy/model.js';
+import { noseBearing, noseVector, orientedCraft, turnOnto } from '../src/galaxy/model.js';
 import { CRAFT_MODELS, HULL_MODEL, MODEL, MODEL_FACING, PROP_MODELS } from '../src/ui/assets.js';
 
 /**
@@ -142,6 +142,25 @@ describe('orientedCraft', () => {
     },
   );
 
+  it.each([
+    { measured: [0.7101, 0.408, -0.5736] as const },
+    { measured: [0.8332, -0.044, 0.5512] as const },
+    { measured: [-0.45, 0.31, 0.84] as const },
+  ])('levels a pitched $measured nose and sends it down +Z', ({ measured }) => {
+    const native = new THREE.Vector3(...measured).normalize();
+    const wrapper = orientedCraft(
+      craftAlong(native),
+      noseVector(native.x, native.y, native.z),
+    );
+    wrapper.updateMatrixWorld(true);
+    const tip = wrapper.getObjectByName('nose');
+    if (!tip) throw new Error('nose marker lost');
+    const at = tip.getWorldPosition(new THREE.Vector3()).normalize();
+    expect(at.z).toBeCloseTo(1, 5);
+    expect(at.x).toBeCloseTo(0, 5);
+    expect(at.y).toBeCloseTo(0, 5);
+  });
+
   /**
    * THE FOUR NAMES ARE THE SPECIAL CASES, not a parallel system.
    *
@@ -242,8 +261,24 @@ describe('the facing table', () => {
    */
   it('declares the missile at the bearing its geometry was measured at', () => {
     const facing = MODEL_FACING[MODEL.missile];
-    expect(typeof facing).toBe('number');
-    expect((facing as number) * (180 / Math.PI)).toBeCloseTo(56.5, 1);
+    expect(facing).toEqual([0.8332, -0.044, 0.5512]);
+  });
+
+  it('declares the Death Star at its measured diagonal bearing', () => {
+    const facing = MODEL_FACING[MODEL.deathStar];
+    expect(facing).toEqual([0.7101, 0.408, -0.5736]);
+  });
+
+  it('declares the Drill on its measured pitched body axis', () => {
+    const facing = MODEL_FACING[MODEL.drill];
+    expect(facing).toEqual([0.8652, -0.5010, 0.0208]);
+  });
+
+  it('keeps Runner and Breacher on their native -X nose axes', () => {
+    const runner = MODEL_FACING[MODEL.runner];
+    const breacher = MODEL_FACING[MODEL.breacher];
+    expect(runner).toBe('-x');
+    expect(breacher).toBe('-x');
   });
 
   it('covers every hull a player can build', () => {
@@ -313,5 +348,12 @@ describe('the model files', () => {
         400,
       );
     }
+  });
+
+  /** Three-map future hulls still obey the fleet's practical mobile target. */
+  it.each(['runner', 'breacher'] as const)('keeps %s near 100 KB', (name) => {
+    const url = MODEL[name];
+    const path = resolve(process.cwd(), 'public', url.replace(/^\//, ''));
+    expect(statSync(path).size / 1024).toBeLessThan(110);
   });
 });

@@ -1,7 +1,7 @@
 /** Shared vocabulary for the whole game. No behaviour lives here. */
 
 export type HullId =
-  | 'WASP' | 'LANCE' | 'BULWARK' | 'HAULER'
+  | 'WASP' | 'LANCE' | 'BULWARK' | 'HAULER' | 'RUNNER' | 'BREACHER'
   | 'BASTION' | 'THORN'
   | 'PROSPECTOR';
 
@@ -82,7 +82,19 @@ export function isSatellite(id: InstrumentId | SatelliteId): id is SatelliteId {
 export type Grade = 'DECISIVE' | 'PARTIAL' | 'REPELLED';
 export type ClarityState = 'FULL' | 'CLEAR' | 'INTERMITTENT' | 'DEGRADED' | 'BLIND';
 export type FleetStatus = 'HOME' | 'AWAY' | 'UNKNOWN';
-export type MissionKind = 'attack' | 'probe' | 'return';
+export type MissionKind =
+  | 'attack'
+  | 'probe'
+  | 'return'
+  | 'transfer'
+  | 'settlement'
+  | 'death_star';
+
+export type PlanetKind = 'CAPITAL' | 'COLONY' | 'NEUTRAL';
+export type NeutralTier = 1 | 2 | 3;
+export type NeutralReserve = 'EMPTY' | 'LOW' | 'RICH';
+export type NeutralThreat = 'UNGUARDED' | 'GUARDED' | 'FORTIFIED';
+export type StrategicAssetStatus = 'BUILDING' | 'PAUSED' | 'READY' | 'LAUNCHED' | 'CONSUMED';
 
 /** A pile of ships. Absent keys mean zero. */
 export type Fleet = Partial<Record<HullId, number>>;
@@ -90,7 +102,21 @@ export type Fleet = Partial<Record<HullId, number>>;
 export interface Resources {
   alloy: number;
   crystal: number;
+  deuterium: number;
 }
+
+/** Seasonal permissions, never account power and never levelled. D93. */
+export type ResearchProjectId =
+  | 'ISOTOPE_SPECTROMETRY'
+  | 'DENSE_FUEL_CELLS'
+  | 'GRAVITIC_CHARGES'
+  | 'DEATH_STAR_PROTOCOL';
+export const RESEARCH_PROJECT_IDS = [
+  'ISOTOPE_SPECTROMETRY',
+  'DENSE_FUEL_CELLS',
+  'GRAVITIC_CHARGES',
+  'DEATH_STAR_PROTOCOL',
+] as const;
 
 export interface Hull {
   readonly id: HullId;
@@ -103,6 +129,7 @@ export interface Hull {
   readonly cargo: number;
   readonly alloy: number;
   readonly crystal: number;
+  readonly deuterium: number;
   readonly minShipyard: number;
   readonly ground: boolean;
 }
@@ -139,6 +166,7 @@ export interface Holdings {
   ground: Fleet;
   alloy: number;
   crystal: number;
+  deuterium: number;
 }
 
 /** Running tally behind the Dominion ladder. Sums to zero across a battle. */

@@ -6,6 +6,8 @@ import {
   SATELLITE_IDS,
   instrumentMaxed,
   telescopeSlots,
+  type BuildingLevels,
+  START_BUILDINGS,
 } from '@astera/rules';
 import { buildingGain, instrumentGain, satelliteGain } from '../src/lib/gains.js';
 
@@ -38,10 +40,29 @@ import { buildingGain, instrumentGain, satelliteGain } from '../src/lib/gains.js
 /** Deep enough to pass every table's end and every clamp in the game. */
 const LEVELS = Array.from({ length: 15 }, (_, i) => i);
 
+/**
+ * The sibling levels a row needs to price itself.
+ *
+ * A building row cannot be described from its own level alone: the STORE's ceiling
+ * scales with the Vault, and the Vault's floor is denominated in hours of the
+ * Refinery's and the Extractor's production. Held at the level under test so each
+ * row is read against a world that is actually that developed.
+ */
+const at = (level: number): BuildingLevels => ({
+  // Never below what a planet is CREATED with. A world with a Refinery of zero
+  // cannot exist, and asking what a row says on one produces a rate of zero and a
+  // Vault that protects nothing — a failure of the fixture, not of the row.
+  CORE: Math.max(START_BUILDINGS.CORE, level),
+  REFINERY: Math.max(START_BUILDINGS.REFINERY, level),
+  EXTRACTOR: Math.max(START_BUILDINGS.EXTRACTOR, level),
+  VAULT: Math.max(START_BUILDINGS.VAULT, level),
+  SHIPYARD: Math.max(START_BUILDINGS.SHIPYARD, level),
+});
+
 describe('every upgrade row states something that actually changes', () => {
   it.each(BUILDING_IDS)('%s, at every level', (id) => {
     for (const level of LEVELS) {
-      const gain = buildingGain(id, level, 0);
+      const gain = buildingGain(id, level, 0, at(level));
       expect(
         gain.now !== gain.next,
         `${id} L${String(level)} shows "${gain.now}" -> "${gain.next}" and still charges for it`,
@@ -70,7 +91,7 @@ describe('every upgrade row states something that actually changes', () => {
   /** And every row names its quantity — an unlabelled figure is a number, not a decision. */
   it('labels every figure it shows', () => {
     for (const id of BUILDING_IDS) {
-      for (const level of LEVELS) expect(buildingGain(id, level, 0).label).not.toBe('');
+      for (const level of LEVELS) expect(buildingGain(id, level, 0, at(level)).label).not.toBe('');
     }
     for (const id of INSTRUMENT_IDS) {
       for (const level of LEVELS) expect(instrumentGain(id, level).label).not.toBe('');
@@ -147,7 +168,7 @@ describe('the instrument ceiling', () => {
  */
 describe('the rows that switch metric once their headline flattens', () => {
   it('the Shipyard keeps naming a bigger number at every level', () => {
-    const seen = LEVELS.map((l) => buildingGain('SHIPYARD', l, 0));
+    const seen = LEVELS.map((l) => buildingGain('SHIPYARD', l, 0, at(l)));
     for (const [i, gain] of seen.entries()) {
       expect(gain.now, `L${String(i)}`).not.toBe(gain.next);
     }

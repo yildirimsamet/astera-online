@@ -52,14 +52,24 @@ export function readsForShardEvent(kind: string): readonly (readonly string[])[]
      * battle left behind, because a debris field is published on that payload.
      */
     case 'arrival':
-      return [keys.traffic, keys.mining];
+      return [keys.traffic, keys.miningField];
+    case 'transfer':
+      return [keys.traffic, keys.pending, keys.planet, keys.planets];
+    case 'impact':
+      return [keys.traffic, keys.galaxy, keys.planet, keys.pending];
+    case 'control':
+      return [keys.traffic, keys.galaxy, keys.planet, keys.planets, keys.pending, keys.leaderboard];
+    case 'recovery':
+    case 'protection':
+      return [keys.galaxy, keys.planet];
     /**
-     * A mining or salvage run started, turned for home, or landed. Both lists
-     * carry it: `mining` for the owner's own run and every rock and wreck in the
-     * galaxy, `traffic` for the public contact everybody else sees.
+     * A mining or salvage run started, turned for home, or landed. The shard-wide
+     * half refreshes only the common rock/wreck field and public traffic. The one
+     * owner receives a player event (or their launch response) for private runs,
+     * research and orbit; making everybody query those rows was the D99 fan-out.
      */
     case 'mining':
-      return [keys.mining, keys.traffic];
+      return [keys.miningField, keys.traffic];
     /** A world changed shape or gained hardware — the only public change to a world. */
     case 'world':
       return [keys.galaxy, keys.leaderboard];
@@ -69,6 +79,12 @@ export function readsForShardEvent(kind: string): readonly (readonly string[])[]
     /** A season-scoped message changed both the open conversation and closed dot. */
     case 'chat':
       return [keys.chatMessages, keys.chatUnread];
+    /** A public moment was committed to the galaxy's 24-hour memory. */
+    case 'chronicle':
+      return [keys.chronicle];
+    /** The deadline landed: freeze controls, standings and the permanent recap. */
+    case 'season':
+      return [keys.season, keys.planet, keys.pending, keys.leaderboard];
     default:
       return [];
   }
@@ -78,7 +94,7 @@ export function readsForShardEvent(kind: string): readonly (readonly string[])[]
  * HOW LONG TO GATHER BEFORE ASKING. D53.
  *
  * The thing a broadcast makes possible is also the thing it makes easy to get
- * wrong: fifty clients hearing the same event and all refetching in the same
+ * wrong: three hundred clients hearing the same event and all refetching in the same
  * instant is fifty queries per launch, and a galaxy where four things happen at
  * once is four times that from every one of them.
  *

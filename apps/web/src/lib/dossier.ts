@@ -14,6 +14,7 @@ import type {
   GalaxyPlanet,
   IntelView,
   PlanetView,
+  RivalSummary,
 } from '../api/schemas.js';
 import i18n from '../i18n/index.js';
 import { hullLabel, satelliteLabel } from '../i18n/names.js';
@@ -128,14 +129,14 @@ export function describeFleet(fleet: Fleet): string {
  * there and never a ceiling. Phrased that way in the UI too: "at least", because
  * quietly presenting a floor as a total is how a player loses a fleet.
  */
-function fieldedAtLeast(reports: readonly BattleReport[], planetName: string): {
+function fieldedAtLeast(reports: readonly BattleReport[], planetId: string): {
   fleet: Fleet;
   atMinutes: number;
 } | null {
   let best: { fleet: Fleet; at: number } | null = null;
 
   for (const report of reports) {
-    if (report.opponentPlanet !== planetName) continue;
+    if (report.opponentPlanetId !== planetId) continue;
     const theirs = report.theirLosses;
     const total = ALL_HULLS.reduce((s, id) => s + (theirs[id] ?? 0), 0);
     if (total === 0) continue;
@@ -152,6 +153,7 @@ export interface DossierInput {
   planet: PlanetView;
   intel: IntelView | undefined;
   reports: readonly BattleReport[];
+  rival?: RivalSummary;
   /** Epoch millis. Passed in so this stays pure. */
   now: number;
 }
@@ -163,7 +165,7 @@ export interface DossierInput {
  * arrives with no `fleet` key at all, and probe bands are stored pre-fuzzed. This
  * only ARRANGES what came back; it never infers a value the payload withheld.
  */
-export function dossier({ target, planet, intel, reports, now }: DossierInput): Dossier {
+export function dossier({ target, planet, intel, reports, rival, now }: DossierInput): Dossier {
   const facts: Fact[] = [];
   const gaps: Gap[] = [];
   const range = distance(planet.planet.position, target.position);
@@ -322,7 +324,9 @@ export function dossier({ target, planet, intel, reports, now }: DossierInput): 
 
   /* ── battle ─────────────────────────────────────────────── */
 
-  const fought = fieldedAtLeast(reports, target.name);
+  const fought = rival?.lastKnownFleet && rival.lastKnownAt
+    ? { fleet: rival.lastKnownFleet, atMinutes: rival.lastKnownAt.getTime() }
+    : fieldedAtLeast(reports, target.id);
   if (fought) {
     facts.push({
       key: 'composition',

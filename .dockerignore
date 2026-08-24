@@ -13,6 +13,7 @@ node_modules
 dist
 **/dist
 out
+.deploy-web
 
 # Source art and rendering scratch. `apps/web/public/assets` holds the exported
 # copies the client actually loads; this is the 25 MB it was exported FROM.

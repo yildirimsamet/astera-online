@@ -1,3 +1,5 @@
+import { SeasonLockProvider } from '../session/seasonLock.js';
+import { NextSeason } from '../ui/NextSeason.js';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
@@ -12,10 +14,13 @@ import {
   usePlanet,
   useReports,
   useSeason,
+  useSetRival,
   useTraffic,
   useContactWindows,
+  useLaunchDeathStar,
+  useSettlement,
 } from '../api/queries.js';
-import type { AsteroidView, MiningRun, MiningView } from '../api/schemas.js';
+import type { AsteroidView, HistoricalSeasonResult, MiningRun, MiningView } from '../api/schemas.js';
 import { GalaxyCanvas } from '../galaxy/GalaxyCanvas.jsx';
 import {
   AsteroidFocus,
@@ -34,6 +39,7 @@ import { haptic } from '../lib/haptics.js';
 import { minutesLeft, useNow } from '../lib/time.js';
 import { distance, engagementEndsAt, interceptAsteroid, travelMinutes } from '@astera/rules';
 import { LaunchSheet } from './LaunchSheet.jsx';
+import { TransferSheet } from './TransferSheet.js';
 import { PlanetScreen } from './PlanetScreen.jsx';
 import { IntelScreen } from './IntelScreen.jsx';
 import { RewardsScreen } from './RewardsScreen.jsx';
@@ -41,12 +47,19 @@ import { MenuPanel } from '../shell/MenuPanel.jsx';
 import { LeaderboardScreen } from './LeaderboardScreen.jsx';
 import { ChatScreen } from './ChatScreen.jsx';
 import { ChatLauncher } from './ChatLauncher.jsx';
+import { ChronicleLauncher } from './ChronicleLauncher.jsx';
+import { ChronicleScreen } from './ChronicleScreen.jsx';
 import { Sheet } from '../ui/Sheet.js';
 import { describe, useToast } from '../ui/Toast.js';
 import { GALAXY_ASSETS, usePreload } from '../lib/preload.js';
 import { LoadingScreen } from '../shell/LoadingScreen.js';
 import { useArrivals } from '../session/useArrivals.js';
 import { DiscReadout } from './DiscReadout.jsx';
+import { SeasonRecap, useSeasonRecapOpening } from './SeasonRecap.jsx';
+import { ApiError } from '../api/client.js';
+import { useWorld } from '../api/world.js';
+import { controlledWorldId } from '../galaxy/scene.js';
+import { focusTapDecision } from '../galaxy/follow.js';
 
 /**
  * THE GALAXY IS THE GAME. D20.
@@ -61,19 +74,21 @@ import { DiscReadout } from './DiscReadout.jsx';
  * VISIT, and D1 has said since the design phase that the information game "makes
  * the 3D galaxy an interface rather than a target list".
  *
- * FOCUS IS THE PRIMITIVE. Tapping anything selects it, points the camera at it —
- * following, if it is moving — and opens a panel stating exactly what the player
- * is entitled to know about that object and how they came to know it.
+ * FOCUS IS THE PRIMITIVE. The first tap selects and frames an object — following,
+ * if it moves — while the second tap on that same object opens its detail. A world
+ * the commander controls is the exception: it opens management immediately.
  */
 
-export type Panel = 'planet' | 'intel' | 'leaderboard' | 'chat' | 'rewards' | 'menu' | null;
+export type Panel = 'planet' | 'intel' | 'leaderboard' | 'chat' | 'chronicle' | 'rewards' | 'recap' | 'menu' | null;
 
 export function GalaxyView({
   panel,
   onPanel,
   focusRequest,
   commander,
+  pastResult,
   onSignOut,
+  onPlacementLost,
   onFocused,
   planetGroup,
   openWide,
@@ -88,7 +103,11 @@ export function GalaxyView({
   focusRequest?: { planetId: string; request: number } | null;
   /** Who is signed in. Shown on the one surface that is about you rather than the world. */
   commander: string;
+  /** The newest permanent record, still readable after its world was wiped. D87. */
+  pastResult?: HistoricalSeasonResult | null;
   onSignOut: () => void;
+  /** Safety net when the rollover broadcast was missed while this tab slept. */
+  onPlacementLost?: () => void;
   /**
    * What the player just selected, reported to whoever is watching. D56.
    *
@@ -125,10 +144,19 @@ export function GalaxyView({
   const traffic = useTraffic();
   const mining = useMining();
   const reports = useReports();
+  const setRival = useSetRival();
   const mine = useMine();
   const harvest = useHarvest();
+  const settlement = useSettlement();
+  const deathStar = useLaunchDeathStar();
+  const { activePlanetId, selectPlanet } = useWorld();
   const say = useToast();
   const now = useNow(5_000);
+  const [requestedPlanetGroup, setRequestedPlanetGroup] = useState<PlanetGroup | null>(null);
+
+  useEffect(() => {
+    if (panel === null) setRequestedPlanetGroup(null);
+  }, [panel]);
 
   /**
    * WAKE UP WHEN SOMETHING LANDS. D48.
@@ -152,6 +180,7 @@ export function GalaxyView({
   useContactWindows(traffic.data?.contacts);
 
   const [focus, setFocus] = useState<Focus | null>(null);
+  const [transferTargetId, setTransferTargetId] = useState<string | null>(null);
   /**
    * Whether the focus rail is expanded. Reset to closed on every new selection —
    * a panel that stayed open as the player swept from world to world would undo
@@ -160,6 +189,34 @@ export function GalaxyView({
   const [detail, setDetail] = useState(false);
   const [attacking, setAttacking] = useState(false);
   const [homeSignal, setHomeSignal] = useState(0);
+  const reportedLostPlacement = useRef(false);
+  useEffect(() => {
+    if (
+      reportedLostPlacement.current ||
+      !(season.error instanceof ApiError) ||
+      season.error.code !== 'NO_PLANET'
+    ) return;
+    reportedLostPlacement.current = true;
+    onPlacementLost?.();
+  }, [onPlacementLost, season.error]);
+
+  /**
+   * THE ONE ENDING, ONCE. D86.
+   *
+   * The season event invalidates this existing query through `shard:season`; no
+   * second result request and no polling loop is introduced. Local storage only
+   * remembers that this person closed this season's ceremony — it never stores an
+   * outcome. `shownRecap` also prevents repeated effects before storage settles.
+   */
+  const openSeasonRecap = useCallback(() => {
+    onPanel('recap');
+  }, [onPanel]);
+  const recapResult = season.data?.result ?? pastResult;
+  useSeasonRecapOpening(
+    season.data?.result ? season.data.status : pastResult ? 'frozen' : undefined,
+    recapResult,
+    openSeasonRecap,
+  );
 
   /**
    * FLY HOME WHEN SOMEBODY OUTSIDE ASKS. D56.
@@ -237,6 +294,19 @@ export function GalaxyView({
   }, [drawn, armed]);
 
   const planets = useMemo(() => galaxy.data?.planets ?? [], [galaxy.data]);
+  /**
+   * CAMERA HOME COMES FROM THE DISC IT MOVES OVER.
+   *
+   * Multi-world selection made `planet.data` and `galaxy.data` two independently
+   * refreshing views of the active world. Using the former to aim at a body drawn
+   * from the latter let one stale frame send Home to coordinates with no rendered
+   * planet. Resolve the active id inside the exact array the canvas renders.
+   */
+  const activeWorldPosition = useMemo(
+    () => planets.find((world) => world.id === activePlanetId)?.position
+      ?? planet.data?.planet.position,
+    [activePlanetId, planet.data, planets],
+  );
   const asteroids = useMemo(() => mining.data?.asteroids ?? [], [mining.data]);
   const runs = useMemo(() => mining.data?.runs ?? [], [mining.data]);
   const wrecks = useMemo(() => mining.data?.debris ?? [], [mining.data]);
@@ -274,23 +344,48 @@ export function GalaxyView({
   const onFocus = useCallback(
     (next: Focus | null) => {
       if (next) haptic('tap');
-      setFocus(next);
-      setDetail(false);
+      const ownedId = next?.kind === 'planet' ? controlledWorldId(planets, next.id) : null;
+      const decision = focusTapDecision(focus, next, ownedId);
+      if (decision.kind === 'manage') {
+        // A click on any controlled world means "manage this world". `isSelf`
+        // names the immutable capital identity and used to strand colonies in a
+        // focus state with no dossier and no planet sheet.
+        selectPlanet(decision.planetId);
+        setFocus(null);
+        setDetail(false);
+        setAttacking(false);
+        onPanel('planet');
+        onFocused?.(next);
+        return;
+      }
+      setFocus(decision.focus);
+      setDetail(decision.detail);
       setAttacking(false);
       onFocused?.(next);
     },
-    [onFocused],
+    [focus, onFocused, onPanel, planets, selectPlanet],
   );
   const focusPlanet = useCallback(
     (planetId: string) => {
-      if (!planets.some((candidate) => candidate.id === planetId)) return;
+      const target = planets.find((candidate) => candidate.id === planetId);
+      if (!target) return;
       const next: Focus = { kind: 'planet', id: planetId };
+      const ownedId = controlledWorldId(planets, planetId);
+      if (ownedId) {
+        selectPlanet(ownedId);
+        setFocus(null);
+        setDetail(false);
+        setAttacking(false);
+        onPanel('planet');
+        onFocused?.(next);
+        return;
+      }
       setFocus(next);
       setDetail(false);
       setAttacking(false);
       onFocused?.(next);
     },
-    [onFocused, planets],
+    [onFocused, onPanel, planets, selectPlanet],
   );
   const handledFocusRequest = useRef<number | null>(null);
   useEffect(() => {
@@ -357,15 +452,6 @@ export function GalaxyView({
   );
 
   const selected = focus?.kind === 'planet' ? planets.find((p) => p.id === focus.id) : undefined;
-
-  // Selecting your own world opens the planet surface rather than a dossier —
-  // there is nothing to find out about a planet you own.
-  useEffect(() => {
-    if (selected?.isSelf) {
-      onPanel('planet');
-      setFocus(null);
-    }
-  }, [selected, onPanel]);
 
   const close = (): void => {
     setFocus(null);
@@ -436,6 +522,7 @@ export function GalaxyView({
   };
 
   return (
+    <SeasonLockProvider locked={season.data?.status === 'frozen'}>
     <div className="absolute inset-0 overflow-hidden">
       <GalaxyCanvas
         planets={planets}
@@ -446,9 +533,12 @@ export function GalaxyView({
         runs={runs}
 
         wrecks={wrecks}
-        {...(planet.data ? { homePosition: planet.data.planet.position } : { homePosition: undefined })}
+        {...(activeWorldPosition ? { homePosition: activeWorldPosition } : { homePosition: undefined })}
+        activePlanetId={activePlanetId}
         aegisLevel={planet.data?.instruments.AEGIS ?? 0}
         {...(season.data ? { seasonStart: season.data.startsAt } : { seasonStart: undefined })}
+        rivalPlanetId={season.data?.rivalPlanetId ?? null}
+        rivalPlayerId={season.data?.rivalPlayerId ?? null}
         focus={focus}
         onReady={onReady}
         onFocus={onFocus}
@@ -531,18 +621,21 @@ export function GalaxyView({
             close();
             setHomeSignal((n) => n + 1);
           }}
-          className="pointer-events-auto flex size-10 items-center justify-center rounded-sm border border-line-soft/60 bg-void/35 text-dim backdrop-blur-sm transition-colors hover:border-line hover:text-bone active:scale-95"
+          className="pointer-events-auto flex size-10 items-center justify-center rounded-sm border border-line-soft/60 bg-void/35 text-dim transition-colors hover:border-line hover:text-bone active:scale-95"
         >
           <HomeworldIcon className="size-5" />
         </button>
       </div>
 
       {showChat && (
-        <ChatLauncher
-          onOpen={() => {
-            onPanel('chat');
-          }}
-        />
+        <>
+          <ChronicleLauncher onOpen={() => { onPanel('chronicle'); }} />
+          <ChatLauncher
+            onOpen={() => {
+              onPanel('chat');
+            }}
+          />
+        </>
       )}
 
       {/*
@@ -554,12 +647,20 @@ export function GalaxyView({
 
       {/* ── focus ───────────────────────────────────────────── */}
 
-      {focus?.kind === 'planet' && selected && !selected.isSelf && planet.data && !attacking && (
+      {focus?.kind === 'planet' && selected && selected.id !== planet.data?.planet.id && planet.data && !attacking && (
         <PlanetFocus
           target={selected}
           planet={planet.data}
           intel={intel.data}
           reports={reports.data?.reports ?? []}
+          rival={reports.data?.rivals.find((rival) => rival.planetId === selected.id)}
+          isRival={
+            (season.data?.rivalPlayerId != null
+              && selected.controller?.kind === 'PLAYER'
+              && selected.controller.playerId === season.data.rivalPlayerId)
+            || (season.data?.rivalPlayerId == null
+              && season.data?.rivalPlanetId === selected.id)
+          }
           now={now}
           onClose={close}
           onLaunched={(targetName) => {
@@ -568,6 +669,27 @@ export function GalaxyView({
           }}
           onAttack={() => {
             setAttacking(true);
+          }}
+          onTransfer={() => {
+            setTransferTargetId(selected.id);
+          }}
+          onSettle={() => {
+            settlement.mutate(selected.id, {
+              onSuccess: () => {
+                say(t('galaxy.settlementAway', { world: selected.name }));
+                close();
+              },
+              onError: (error) => { say(describe(error), 'error'); },
+            });
+          }}
+          onDeathStar={() => {
+            deathStar.mutate(selected.id, {
+              onSuccess: () => {
+                say(t('galaxy.deathStarAway', { world: selected.name }));
+                close();
+              },
+              onError: (error) => { say(describe(error), 'error'); },
+            });
           }}
           onInstallTelescope={() => {
             onPanel('planet');
@@ -583,7 +705,7 @@ export function GalaxyView({
           planets={galaxy.data?.planets ?? []}
           runs={runs}
           mining={mining.data}
-          homePosition={planet.data?.planet.position}
+          homePosition={activeWorldPosition}
           busy={harvest.isPending}
           open={detail}
           onToggle={toggle}
@@ -617,7 +739,7 @@ export function GalaxyView({
           runs={runs}
           mining={mining.data}
           seasonStart={season.data.startsAt}
-          homePosition={planet.data?.planet.position}
+          homePosition={activeWorldPosition}
           now={now}
           busy={mine.isPending}
           open={detail}
@@ -724,6 +846,12 @@ export function GalaxyView({
           );
         })()}
 
+      {season.data?.status === 'frozen' && panel === null && (
+        <div className="pointer-events-none absolute inset-x-0 bottom-[calc(96px+env(safe-area-inset-bottom))] z-30 mx-auto w-full max-w-sm px-4">
+          <NextSeason endsAt={season.data.endsAt} />
+        </div>
+      )}
+
       {/* ── full surfaces, over the live galaxy ─────────────── */}
 
       {panel === 'planet' && planet.data && (
@@ -735,7 +863,12 @@ export function GalaxyView({
           }}
         >
           <div className="-mx-4">
-            <PlanetScreen embedded {...(planetGroup ? { focusGroup: planetGroup } : {})} />
+            <PlanetScreen
+              embedded
+              {...(requestedPlanetGroup ?? planetGroup
+                ? { focusGroup: requestedPlanetGroup ?? planetGroup }
+                : {})}
+            />
           </div>
         </Sheet>
       )}
@@ -752,6 +885,22 @@ export function GalaxyView({
             galaxy={season.data?.shardName ?? null}
             shard={season.data?.shard ?? null}
             endsAt={season.data?.endsAt ?? null}
+            ended={season.data?.status === 'frozen'}
+            hasSeasonResult={recapResult != null}
+            rival={planets.find((world) => world.id === season.data?.rivalPlanetId) ?? null}
+            rivalLost={season.data?.rivalPlanetId != null && !planets.some((world) => world.id === season.data?.rivalPlanetId)}
+            onFocusRival={() => {
+              const rival = planets.find((world) => world.id === season.data?.rivalPlanetId);
+              if (!rival) return;
+              onPanel(null);
+              focusPlanet(rival.id);
+            }}
+            onClearRival={() => {
+              setRival.mutate(null, {
+                onSuccess: () => { say(t('menu.rivalCleared')); },
+                onError: (error) => { say(describe(error), 'error'); },
+              });
+            }}
             onOpen={onPanel}
             onSignOut={onSignOut}
           />
@@ -811,6 +960,28 @@ export function GalaxyView({
         </Sheet>
       )}
 
+      {showChat && panel === 'chronicle' && (
+        <Sheet
+          eyebrow={t('chronicle.eyebrow')}
+          title={t('chronicle.title')}
+          onClose={() => { onPanel(null); }}
+        >
+          <div className="-mx-4 px-4">
+            <ChronicleScreen
+              focusablePlanetIds={planets.map((candidate) => candidate.id)}
+              onFocusPlanet={(planetId) => {
+                if (planetId === planet.data?.planet.id) {
+                  onPanel('planet');
+                  return;
+                }
+                onPanel(null);
+                focusPlanet(planetId);
+              }}
+            />
+          </div>
+        </Sheet>
+      )}
+
       {panel === 'intel' && (
         <Sheet
           eyebrow={t('galaxy.panelIntelEyebrow')}
@@ -820,13 +991,32 @@ export function GalaxyView({
           }}
         >
           <div className="-mx-4">
-            <IntelScreen />
+            <IntelScreen
+              onOpenOrbit={() => {
+                setRequestedPlanetGroup('orbit');
+                onPanel('planet');
+              }}
+            />
           </div>
         </Sheet>
       )}
 
+      {panel === 'recap' && recapResult && (
+        <SeasonRecap
+          result={recapResult}
+          galaxy={season.data?.result
+            ? (season.data.shardName ?? season.data.shard)
+            : (pastResult?.shardName ?? '')}
+          {...(season.data?.result ? { players: season.data.players } : {})}
+          {...(season.data?.endsAt ? { endsAt: season.data.endsAt } : {})}
+          onClose={() => {
+            onPanel(null);
+          }}
+        />
+      )}
 
-      {attacking && selected && planet.data && (
+
+      {panel !== 'recap' && attacking && selected && planet.data && (
         // Marked for the onboarding gate (D56): it is opened BY a gated control,
         // so sealing it would trap the player inside the commitment they were
         // told to make.
@@ -845,6 +1035,21 @@ export function GalaxyView({
         </div>
       )}
 
+      {panel !== 'recap' && transferTargetId && planet.data && (() => {
+        const target = galaxy.data?.planets.find((world) => world.id === transferTargetId);
+        return target ? (
+          <TransferSheet
+            target={target}
+            planet={planet.data}
+            onClose={() => { setTransferTargetId(null); }}
+            onLaunched={() => {
+              setTransferTargetId(null);
+              close();
+            }}
+          />
+        ) : null;
+      })()}
+
       {covered && (
         <LoadingScreen
           caption={
@@ -858,6 +1063,7 @@ export function GalaxyView({
         />
       )}
     </div>
+    </SeasonLockProvider>
   );
 }
 
@@ -915,13 +1121,20 @@ function AsteroidFocusHost({
    */
   const p = planet.data?.planet;
   const worksRoom = p
-    ? Math.max(0, p.bufferAlloyCap - p.bufferAlloy) + Math.max(0, p.bufferCrystalCap - p.bufferCrystal)
+    ? Math.max(0, p.bufferAlloyCap - p.bufferAlloy)
+      + Math.max(0, p.bufferCrystalCap - p.bufferCrystal)
+      + Math.max(0, p.bufferDeuteriumCap - p.bufferDeuterium)
     : 0;
 
   const minutesNow = (now - seasonStart.getTime()) / 60_000;
   const hit =
     homePosition && speed > 0
-      ? interceptAsteroid(homePosition, speed, rock, minutesNow)
+      ? interceptAsteroid(
+          homePosition,
+          speed,
+          { ...rock, deuteriumShare: rock.deuteriumShare ?? 0 },
+          minutesNow,
+        )
       : null;
   const reach = hit ? hit.flightMinutes : null;
 
@@ -966,7 +1179,14 @@ function DebrisFocusHost({
   onClose,
   onSend,
 }: {
-  field: { id: string; planetId: string; alloy: number; crystal: number; minutesLeft: number } | undefined;
+  field: {
+    id: string;
+    planetId: string;
+    alloy: number;
+    crystal: number;
+    deuterium: number;
+    minutesLeft: number;
+  } | undefined;
   planets: readonly { id: string; name: string; position: { x: number; y: number; z: number } }[];
   runs: readonly MiningRun[];
   mining: MiningView | undefined;
@@ -989,7 +1209,9 @@ function DebrisFocusHost({
 
   const p = planetQuery.data?.planet;
   const worksRoom = p
-    ? Math.max(0, p.bufferAlloyCap - p.bufferAlloy) + Math.max(0, p.bufferCrystalCap - p.bufferCrystal)
+    ? Math.max(0, p.bufferAlloyCap - p.bufferAlloy)
+      + Math.max(0, p.bufferCrystalCap - p.bufferCrystal)
+      + Math.max(0, p.bufferDeuteriumCap - p.bufferDeuterium)
     : 0;
 
   return (

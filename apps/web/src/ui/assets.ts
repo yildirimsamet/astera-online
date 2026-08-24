@@ -3,9 +3,10 @@ import type {
   GroundHullId,
   HullId,
   InstrumentId,
+  ResearchProjectId,
   SatelliteId,
 } from '@astera/rules';
-import { noseBearing, type Facing } from '../galaxy/model.js';
+import { noseVector, type Facing } from '../galaxy/model.js';
 
 /**
  * The art, mapped to the game.
@@ -30,6 +31,7 @@ export const tierOf = (level: number): 1 | 2 | 3 => (level >= 5 ? 3 : level >= 3
 export const RESOURCE_ART = {
   alloy: `${BASE}/resources/alloy.png`,
   crystal: `${BASE}/resources/crystal.png`,
+  deuterium: `${BASE}/resources/deuterium.png`,
 } as const;
 
 /**
@@ -77,8 +79,8 @@ export const planetArt = (planetId: string): string =>
 /**
  * Every world render there is.
  *
- * Which planet gets which is decided from its id, so a galaxy of fifty worlds
- * uses most of these and there is no way to know which until the payload arrives.
+ * Which planet gets which is decided from its id, so a 351-world galaxy reuses
+ * all of these and there is no way to know which until the payload arrives.
  * Derived from `PLANET_COUNT` rather than listed, so a seventeenth render is
  * picked up by whatever preloads them.
  */
@@ -94,6 +96,8 @@ export const HULL_ART: Record<HullId, string | null> = {
   LANCE: `${BASE}/ships/ship_2.png`,
   BULWARK: `${BASE}/ships/ship_3.png`,
   HAULER: `${BASE}/ships/ship_4.png`,
+  RUNNER: `${BASE}/ships/runner.png`,
+  BREACHER: `${BASE}/ships/breacher.png`,
   /**
    * THE TURRET ITSELF, AT ITS FIRST TIER. No longer a borrow and no longer blank.
    *
@@ -116,6 +120,14 @@ export const HULL_ART: Record<HullId, string | null> = {
    * sheet, where the level is the thing being sold.
    */
   PROSPECTOR: `${BASE}/drills/drill_1.png`,
+};
+
+/** Owner-supplied Frontier menu art. The source filename keeps its original spelling. */
+export const RESEARCH_ART: Record<ResearchProjectId, string> = {
+  ISOTOPE_SPECTROMETRY: `${BASE}/lab/iotope_spectrometry.png`,
+  DENSE_FUEL_CELLS: `${BASE}/lab/dense_fuel_cells.png`,
+  GRAVITIC_CHARGES: `${BASE}/lab/gravitational_charges.png`,
+  DEATH_STAR_PROTOCOL: `${BASE}/ships/death_star.png`,
 };
 
 export const PROBE_ART = `${BASE}/ships/explorer_ship.png`;
@@ -162,6 +174,10 @@ export const MODEL = {
   lance: '/assets/models/ships/ship_2.glb',
   bulwark: '/assets/models/ships/ship_3.glb',
   hauler: '/assets/models/ships/ship_4.glb',
+  /** Future combat hulls; registered now so their files and measured facing stay tested. */
+  runner: '/assets/models/ships/runner.glb',
+  breacher: '/assets/models/ships/breacher.glb',
+  deathStar: '/assets/models/ships/death_star.glb',
   /** The mining craft, and the Drill's own body. Owner-supplied; no longer a borrow. */
   drill: '/assets/models/drills/drill.glb',
   /**
@@ -199,14 +215,18 @@ export const MODEL_FACING: Record<string, Facing> = {
   [MODEL.lance]: '-x',
   [MODEL.bulwark]: '-x',
   [MODEL.hauler]: '-x',
+  /** Native top renders put both engine-to-nose centre lines exactly on -X. */
+  [MODEL.runner]: '-x',
+  [MODEL.breacher]: '-x',
   /**
-   * The drill bit leads. Measured, not assumed: rendered from six sides at
-   * `/facing.html`, where the +X face is the spiral bit head-on and the −X face is
-   * a domed back with nothing on it. Its longest axis is X (0.98 against 0.71 and
-   * 0.57), which for once agrees with the nose — but the six views are what settled
-   * it, because a bounding box cannot tell a drill from a tail.
+   * The drill bit leads, but its authored body is pitched rather than lying on X.
+   * A principal-component fit over all 2,189 vertices gives the body axis below;
+   * the positive end is the bit (the six-side view settles the sign). Declaring
+   * only `+x` preserved the native −30° pitch, so a horizontal route visibly had
+   * the bit pointing below its destination. The full vector lets `orientedCraft`
+   * level that pitch before the parent aims its canonical +Z at the route.
    */
-  [MODEL.drill]: '+x',
+  [MODEL.drill]: noseVector(0.8652, -0.5010, 0.0208),
   /**
    * THE ONE NOSE IN THE GAME THAT IS NOT ON AN AXIS. D44.
    *
@@ -217,10 +237,18 @@ export const MODEL_FACING: Record<string, Facing> = {
    * which end is the nose by cross-section — the +axis end closes to a radius of
    * 0.05 where the other flares to 0.14 for the fins and the nozzle.
    *
-   * The 2.5° of pitch in that axis is left alone: `Facing` turns about Y and only
-   * about Y, which is what keeps every hull level against world up.
+   * The small −Y component is part of the source geometry and must be corrected;
+   * otherwise a route may be straight while the visible missile climbs through it.
    */
-  [MODEL.missile]: noseBearing(0.8332, 0.5512),
+  [MODEL.missile]: noseVector(0.8332, -0.044, 0.5512),
+  /**
+   * The strategic hull is diagonal too. A fit over its 12,490 vertices gives the
+   * long axis (0.710, 0.408, -0.574); the pointed end in the six-side render is
+   * the positive-X/positive-Y/negative-Z end. Keeping only its XZ projection
+   * corrected the sideways crab but left the 24° source pitch intact, so the
+   * weapon visibly travelled nose-up. The full vector is levelled onto +Z.
+   */
+  [MODEL.deathStar]: noseVector(0.7101, 0.408, -0.5736),
 };
 
 /**
@@ -236,6 +264,8 @@ export const HULL_MODEL: Record<HullId, string> = {
   LANCE: MODEL.lance,
   BULWARK: MODEL.bulwark,
   HAULER: MODEL.hauler,
+  RUNNER: MODEL.runner,
+  BREACHER: MODEL.breacher,
   // Ground defence never travels, so it is never drawn in transit. Present only
   // so the map is total and nothing has to guard against a missing key.
   BASTION: MODEL.bulwark,
@@ -263,8 +293,11 @@ export const CRAFT_MODELS: readonly string[] = [
   MODEL.lance,
   MODEL.bulwark,
   MODEL.hauler,
+  MODEL.runner,
+  MODEL.breacher,
   MODEL.drill,
   MODEL.missile,
+  MODEL.deathStar,
 ];
 
 /** Drawn, never aimed. Scenery and wreckage. */

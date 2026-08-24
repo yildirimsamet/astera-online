@@ -73,6 +73,7 @@ describe('a run of your own', () => {
     intercept: { x: 100, y: 0, z: 0 },
     minedAlloy: 0,
     minedCrystal: 0,
+    minedDeuterium: 0,
     ...over,
   });
 

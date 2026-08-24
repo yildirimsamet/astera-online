@@ -5,6 +5,7 @@ import { HANDLERS } from './handlers.js';
 import { abandon, sweepStranded } from './abandon.js';
 import { reclaimIdleSeats } from '../services/reclaim.js';
 import { claimDue, complete, fail, reap } from './queue.js';
+import { performance } from 'node:perf_hooks';
 
 export interface WorkerOptions {
   pollMs: number;
@@ -26,6 +27,29 @@ export interface TickResult {
   abandoned: number;
   /** Seats freed from commanders who stopped coming back. */
   reclaimed: number;
+}
+
+export interface WorkerStatus {
+  enabled: boolean;
+  running: boolean;
+  ticks: number;
+  tickErrors: number;
+  processed: number;
+  /** Event kinds this image did not know and therefore could not resolve. */
+  unknownEvents: number;
+  handlerFailures: number;
+  abandoned: number;
+  lastTickAt: string | null;
+  lastDurationMs: number | null;
+  p95DurationMs: number;
+  maxDurationMs: number;
+  latenessMs: {
+    samples: number;
+    p50: number;
+    p95: number;
+    p99: number;
+    max: number;
+  };
 }
 
 /**
@@ -73,6 +97,16 @@ export class EventWorker {
    * on its first tick. It waits its full interval like any other run.
    */
   private reclaimedAt = 0;
+  private ticks = 0;
+  private tickErrors = 0;
+  private processed = 0;
+  private unknownEvents = 0;
+  private handlerFailures = 0;
+  private abandoned = 0;
+  private lastTickAt: Date | null = null;
+  private lastDurationMs: number | null = null;
+  private readonly durations: number[] = [];
+  private readonly lateness: number[] = [];
 
   constructor(
     private readonly db: Db,
@@ -82,6 +116,27 @@ export class EventWorker {
   ) {}
 
   async tick(): Promise<TickResult> {
+    const started = performance.now();
+    try {
+      const result = await this.executeTick();
+      this.ticks += 1;
+      this.processed += result.processed;
+      this.handlerFailures += result.failed;
+      this.abandoned += result.abandoned;
+      this.lastTickAt = new Date();
+      return result;
+    } catch (error) {
+      this.tickErrors += 1;
+      throw error;
+    } finally {
+      const duration = performance.now() - started;
+      this.lastDurationMs = duration;
+      this.durations.push(duration);
+      if (this.durations.length > 512) this.durations.shift();
+    }
+  }
+
+  private async executeTick(): Promise<TickResult> {
     const now = this.clock.now();
     const reaped = await reap(this.db, this.opts.staleMinutes, now);
     if (reaped > 0) {
@@ -174,11 +229,14 @@ export class EventWorker {
     let abandoned = 0;
 
     for (const event of due) {
+      this.lateness.push(Math.max(0, this.clock.now().getTime() - event.resolveAt.getTime()));
+      if (this.lateness.length > 512) this.lateness.shift();
       const handler = HANDLERS[event.kind];
       if (!handler) {
         // An unknown kind is a deploy-skew bug, not a transient failure. Mark it
         // done so it cannot spin forever, and shout about it.
         this.log.error({ kind: event.kind, id: event.id }, 'no handler for event kind');
+        this.unknownEvents += 1;
         await complete(this.db, event.id);
         continue;
       }
@@ -212,6 +270,41 @@ export class EventWorker {
       reaped,
       abandoned: abandoned + stranded,
       reclaimed,
+    };
+  }
+
+  status(): WorkerStatus {
+    const sorted = [...this.durations].sort((a, b) => a - b);
+    const p95Index = Math.max(0, Math.ceil(sorted.length * 0.95) - 1);
+    const lateness = [...this.lateness].sort((a, b) => a - b);
+    const latenessAt = (percentile: number): number => {
+      if (lateness.length === 0) return 0;
+      const index = Math.min(
+        lateness.length - 1,
+        Math.max(0, Math.ceil(lateness.length * percentile) - 1),
+      );
+      return lateness[index] ?? 0;
+    };
+    return {
+      enabled: this.timer !== null,
+      running: this.running,
+      ticks: this.ticks,
+      tickErrors: this.tickErrors,
+      processed: this.processed,
+      unknownEvents: this.unknownEvents,
+      handlerFailures: this.handlerFailures,
+      abandoned: this.abandoned,
+      lastTickAt: this.lastTickAt?.toISOString() ?? null,
+      lastDurationMs: this.lastDurationMs,
+      p95DurationMs: sorted[p95Index] ?? 0,
+      maxDurationMs: sorted.at(-1) ?? 0,
+      latenessMs: {
+        samples: lateness.length,
+        p50: latenessAt(0.5),
+        p95: latenessAt(0.95),
+        p99: latenessAt(0.99),
+        max: lateness.at(-1) ?? 0,
+      },
     };
   }
 

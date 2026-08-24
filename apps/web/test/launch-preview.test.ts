@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { HULLS, distance, exposureMinutes, fleetTravelMinutes } from '@astera/rules';
+import { HULLS, distance, exposureMinutes, fleetTravelExact } from '@astera/rules';
 import { planRoute, reachMinutes } from '../src/lib/navigation.js';
 
 /**
@@ -20,7 +20,7 @@ describe('the launch preview', () => {
     const route = planRoute(HERE, THERE, sending, { WASP: 20 }, {});
 
     expect(route.distance).toBe(distance(HERE, THERE));
-    expect(route.oneWayMinutes).toBe(fleetTravelMinutes(route.distance, sending));
+    expect(route.oneWayMinutes).toBe(fleetTravelExact(route.distance, sending));
     expect(route.exposureMinutes).toBe(exposureMinutes(route.oneWayMinutes));
   });
 

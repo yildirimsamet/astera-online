@@ -2,19 +2,22 @@ import { eq } from 'drizzle-orm';
 import { pino } from 'pino';
 import { afterAll, afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { activeAsteroids, generateGalaxy } from '@astera/rules';
-import { planets, scheduledEvents } from '../src/db/schema.js';
+import { buildOrders, planets, scheduledEvents } from '../src/db/schema.js';
 import { EventBus } from '../src/stream/bus.js';
 import { launchAttack } from '../src/services/mission.js';
 import { launchProbe } from '../src/services/intel.js';
 import { launchMining } from '../src/services/mining.js';
 import { buildUnits, installSatellite, raiseInstrument, upgradeBuilding } from '../src/services/build.js';
+import { joinSeason } from '../src/services/player.js';
 import { EventWorker } from '../src/worker/loop.js';
 import { sweepStranded } from '../src/worker/abandon.js';
 import {
   TEST_DATABASE_URL,
   giveUnits,
   grant,
+  makeAccount,
   seedWorld,
+  settleBuilds,
   setLevel,
   testDb,
   type Fixture,
@@ -73,6 +76,14 @@ describe('the shard broadcast', () => {
 
   /* ── what a live galaxy has to announce ──────────────────────── */
 
+  it('announces a newly seated commander so open galaxy views gain the planet', async () => {
+    const newcomer = await makeAccount(f.db, 'Newcomer');
+    heard = [];
+    await joinSeason(f.db, newcomer.id, f.seasonId, f.clock);
+    await settle();
+    expect(heard).toEqual(['shard:world']);
+  });
+
   it('announces a raid leaving, so the disc shows it at once', async () => {
     await giveUnits(f.db, f.planetIds[0]!, { WASP: 6 });
     await launchAttack(f.db, f.planetIds[0]!, f.planetIds[1]!, { WASP: 5 }, f.clock);
@@ -113,6 +124,7 @@ describe('the shard broadcast', () => {
     await setLevel(f.db, f.planetIds[0]!, 'CORE', 10);
     await setLevel(f.db, f.planetIds[0]!, 'SHIPYARD', 3);
     await buildUnits(f.db, f.planetIds[0]!, 'PROSPECTOR', 1, f.clock);
+    await settleBuilds(f, f.planetIds[0]);
     const index = waitForRock();
 
     await settle();
@@ -148,6 +160,7 @@ describe('the shard broadcast', () => {
     await settle();
     expect(heard).toContain('shard:arrival');
     expect(heard).toContain('shard:score');
+    expect(heard).toContain('shard:chronicle');
   });
 
   it('announces a satellite going up — hardware in orbit is public', async () => {
@@ -155,6 +168,7 @@ describe('the shard broadcast', () => {
     await setLevel(f.db, f.planetIds[0]!, 'CORE', 9);
     heard = [];
     await installSatellite(f.db, f.planetIds[0]!, 'FOUNDRY', f.clock);
+    await settleBuilds(f, f.planetIds[0]);
     await settle();
     expect(heard).toEqual(['shard:world']);
   });
@@ -174,6 +188,7 @@ describe('the shard broadcast', () => {
     await grant(f.db, f.planetIds[0]!, 200_000);
     await setLevel(f.db, f.planetIds[0]!, 'CORE', 9);
     await installSatellite(f.db, f.planetIds[0]!, 'UPLINK', f.clock);
+    await settleBuilds(f, f.planetIds[0]);
 
     // The install publishes, and NOTIFY lands asynchronously — so it has to be
     // allowed to arrive before the log is cleared, or this passes by racing it.
@@ -181,6 +196,7 @@ describe('the shard broadcast', () => {
     heard = [];
     await raiseInstrument(f.db, f.planetIds[0]!, 'TELESCOPE', f.clock);
     await raiseInstrument(f.db, f.planetIds[0]!, 'VEIL', f.clock);
+    await settleBuilds(f, f.planetIds[0]);
     await settle();
     expect(heard).toEqual([]);
   });
@@ -188,7 +204,7 @@ describe('the shard broadcast', () => {
   /**
    * `/api/galaxy` publishes `coreTier` — a three-level bucket — and no other fact
    * about a building. So a Refinery reaching L7 changes nothing anybody else can
-   * read, and announcing it would be a timing signal plus fifty pointless refetches
+   * read, and announcing it would be a timing signal plus three hundred pointless refetches
    * of the most expensive payload in the game.
    */
   it('says nothing when an upgrade does not change the public silhouette', async () => {
@@ -200,6 +216,7 @@ describe('the shard broadcast', () => {
     // appears anywhere in `/api/galaxy`.
     await upgradeBuilding(f.db, f.planetIds[0]!, 'VAULT', f.clock);
     await upgradeBuilding(f.db, f.planetIds[0]!, 'SHIPYARD', f.clock);
+    await settleBuilds(f, f.planetIds[0]);
     await settle();
     expect(heard).toEqual([]);
   });
@@ -212,12 +229,14 @@ describe('the shard broadcast', () => {
     heard = [];
     // 5 → 6 stays inside tier 2; 6 → 7 opens tier 3.
     await upgradeBuilding(f.db, f.planetIds[0]!, 'CORE', f.clock);
+    await settleBuilds(f, f.planetIds[0]);
     await settle();
     expect(heard).toEqual([]);
 
     await upgradeBuilding(f.db, f.planetIds[0]!, 'CORE', f.clock);
+    await settleBuilds(f, f.planetIds[0]);
     await settle();
-    expect(heard).toEqual(['shard:world']);
+    expect(heard).toEqual(['shard:world', 'shard:chronicle']);
   });
 
   /**
@@ -231,18 +250,38 @@ describe('the shard broadcast', () => {
   it('says nothing when ships are built', async () => {
     await grant(f.db, f.planetIds[0]!, 200_000);
     await setLevel(f.db, f.planetIds[0]!, 'SHIPYARD', 3);
+    const privateHeard: string[] = [];
+    const offPlayer = bus.subscribe(f.playerIds[0]!, (event) => {
+      privateHeard.push(event.kind);
+    });
 
     heard = [];
     await buildUnits(f.db, f.planetIds[0]!, 'WASP', 10, f.clock);
+    const [order] = await f.db
+      .select({ readyAt: buildOrders.readyAt })
+      .from(buildOrders)
+      .where(eq(buildOrders.planetId, f.planetIds[0]!))
+      .limit(1);
+    expect(order).toBeDefined();
+    f.clock.set(order!.readyAt);
+    const worker = new EventWorker(
+      f.db,
+      f.clock,
+      { pollMs: 1000, batch: 100, staleMinutes: 5 },
+      silent,
+    );
+    await worker.tick();
     await settle();
     expect(heard).toEqual([]);
+    expect(privateHeard).toContain('build_complete');
+    offPlayer();
   });
 
   /**
    * AND A ROLLED-BACK LAUNCH IS NEVER ANNOUNCED.
    *
    * `publishShard` runs inside the transaction, so NOTIFY fires on COMMIT. A raid
-   * refused for a rule violation must not send fifty clients to refetch a fleet
+   * refused for a rule violation must not send three hundred clients to refetch a fleet
    * that does not exist — and this is the cheapest possible way for that to go
    * wrong, since the refusal happens after some of the work.
    */

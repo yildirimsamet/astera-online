@@ -1,0 +1,1 @@
+ALTER TABLE "players" ADD COLUMN "rival_planet_id" uuid;

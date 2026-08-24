@@ -9,11 +9,10 @@
 # It never touches another project on this box — every command below is scoped to
 # the `astera` compose project or to /var/www/astera.
 #
-# THE ORDER IS THE WHOLE POINT. Migrations run BEFORE the new image serves
-# traffic, because the server refuses to start against a database it is ahead of
-# (D47) — and that refusal is the good outcome. The bad one is the reverse order:
-# an old image against a new schema answers every request and fails every worker
-# tick, so the API looks healthy while no fleet in the galaxy ever lands again.
+# THE ORDER IS THE WHOLE POINT. No application process runs across a migration.
+# An old worker can consume a newly backfilled event kind as unknown before the
+# new image starts; a new server refuses to start against a database it is ahead
+# of (D47). Stop old, migrate, then start new.
 
 set -euo pipefail
 
@@ -46,11 +45,14 @@ if [[ "${1:-}" != "--local" && "${ASTERA_DEPLOY_REEXEC:-}" != "1" ]]; then
 fi
 echo "  at $(git rev-parse --short HEAD) — $(git log -1 --format=%s)"
 
-say "Building the server image"
-$COMPOSE build api
+say "Checking the D99 host budget"
+./deploy/host-capacity-preflight.sh
 
-say "Starting the database"
-$COMPOSE up -d postgres
+say "Building the server image"
+$COMPOSE build api1
+
+say "Starting PostgreSQL and Valkey"
+$COMPOSE up -d postgres valkey
 # `up -d` returns as soon as the container is created; the healthcheck is what
 # says the socket is actually accepting. Migrating before that is a race that
 # only shows up on a cold box.
@@ -61,16 +63,56 @@ for _ in $(seq 1 60); do
 done
 [[ "$status" == healthy ]] || { echo "Postgres did not become healthy."; exit 1; }
 echo "  postgres healthy"
+for _ in $(seq 1 30); do
+  valkey_status=$(docker inspect -f '{{.State.Health.Status}}' astera-valkey-prod 2>/dev/null || echo starting)
+  [[ "$valkey_status" == healthy ]] && break
+  sleep 1
+done
+[[ "$valkey_status" == healthy ]] || { echo "Valkey did not become healthy."; exit 1; }
+echo "  valkey healthy"
+
+say "Stopping every application role for migration"
+# The worker must not see rows authored by a
+# migration for code it does not yet know; unknown scheduled events are completed
+# deliberately, so even a few seconds of version skew can erase a public moment.
+$COMPOSE stop api1 api2 api3 worker
+# First D99 deploy leaves the old single-process service as a Compose orphan. Stop
+# it explicitly before migration; `--remove-orphans` below removes only its
+# stateless container, never the PostgreSQL volume.
+docker stop astera-api-prod >/dev/null 2>&1 || true
 
 say "Applying migrations"
 # A one-off container on the same network, running the same image. Deliberately
 # NOT run at boot inside the server: N replicas racing the same DDL is worse than
 # a deploy that stops here and says so.
-$COMPOSE run --rm --no-deps api \
+$COMPOSE run --rm --no-deps api1 \
   apps/server/node_modules/.bin/tsx apps/server/src/cli/season.ts migrate
 
-say "Restarting the API"
-$COMPOSE up -d api
+say "Starting one worker and three API replicas"
+$COMPOSE up -d --remove-orphans worker api1 api2 api3
+
+say "Installing the three-replica Nginx route"
+nginx_live=/etc/nginx/sites-available/astera
+nginx_previous=$(mktemp -p /tmp astera-vhost.XXXXXX)
+nginx_had_previous=false
+if sudo test -e "$nginx_live"; then
+  sudo cp -a "$nginx_live" "$nginx_previous"
+  nginx_had_previous=true
+fi
+sudo install -o root -g root -m 0644 deploy/nginx/astera.conf "$nginx_live"
+if ! sudo nginx -t; then
+  echo "Nginx rejected the new route; restoring the pre-deploy file." >&2
+  if [[ "$nginx_had_previous" == true ]]; then
+    sudo cp -a "$nginx_previous" "$nginx_live"
+  else
+    sudo rm -f "$nginx_live"
+  fi
+  sudo nginx -t
+  sudo rm -f "$nginx_previous"
+  exit 1
+fi
+sudo systemctl reload nginx
+sudo rm -f "$nginx_previous"
 
 say "Building the client"
 # Exported to a directory rather than an image: nginx serves these files
@@ -116,20 +158,27 @@ sudo chown -R www-data:www-data "$WEBROOT"
 rm -rf "$STAGE"
 
 say "Checking the deployment"
-API_PORT=$(grep -E '^API_PORT=' .env | cut -d= -f2 || echo 3200)
-for _ in $(seq 1 30); do
-  if curl -fsS "http://127.0.0.1:${API_PORT}/health" >/dev/null 2>&1; then break; fi
-  sleep 1
-done
-health=$(curl -sS "http://127.0.0.1:${API_PORT}/health" || echo '{}')
-echo "$health" | jq . 2>/dev/null || echo "$health"
+ports=(
+  "$(grep -E '^API_PORT_1=' .env | cut -d= -f2 || echo 3200)"
+  "$(grep -E '^API_PORT_2=' .env | cut -d= -f2 || echo 3201)"
+  "$(grep -E '^API_PORT_3=' .env | cut -d= -f2 || echo 3202)"
+  "$(grep -E '^WORKER_PORT=' .env | cut -d= -f2 || echo 3210)"
+)
+for port in "${ports[@]}"; do
+  for _ in $(seq 1 30); do
+    if curl -fsS "http://127.0.0.1:${port}/health" >/dev/null 2>&1; then break; fi
+    sleep 1
+  done
+  health=$(curl -sS "http://127.0.0.1:${port}/health" || echo '{}')
+  echo "  :${port}"
+  echo "$health" | jq . 2>/dev/null || echo "$health"
 
-# `ok:false` is not necessarily a failed deploy — a stranded flight from before
-# this deploy will say so — but it must never scroll past unread.
-if [[ "$(echo "$health" | jq -r '.ok' 2>/dev/null)" != "true" ]]; then
-  echo
-  echo "  ⚠  /health is not ok. The API is serving; something in the queue is not."
-  echo "     Read the checks above before walking away."
-fi
+  # `ok:false` is not necessarily a failed deploy — a stranded flight from before
+  # this deploy will say so — but it must never scroll past unread.
+  if [[ "$(echo "$health" | jq -r '.ok' 2>/dev/null)" != "true" ]]; then
+    echo
+    echo "  ⚠  :${port}/health is not ok. Read the checks above before walking away."
+  fi
+done
 
 say "Deployed $(git rev-parse --short HEAD)"

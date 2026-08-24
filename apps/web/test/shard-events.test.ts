@@ -11,7 +11,7 @@ import {
  * WHAT A GALAXY-WIDE EVENT COSTS THIS CLIENT. D53.
  *
  * The broadcast is the thing that makes the disc live, and it is also the easiest
- * way to turn one launch into fifty simultaneous reads from fifty clients. Both
+ * way to turn one launch into three hundred simultaneous reads. Both
  * halves are asserted here: that an event moves the right payload, and that a
  * burst of them moves it once.
  */
@@ -35,11 +35,11 @@ describe('what a shard event asks the client to read', () => {
 
   /** A resolved raid empties the contact AND leaves a debris field behind. */
   it('sends an arrival to traffic and to the field it may have created', () => {
-    expect(readsForShardEvent('shard:arrival')).toEqual([keys.traffic, keys.mining]);
+    expect(readsForShardEvent('shard:arrival')).toEqual([keys.traffic, keys.miningField]);
   });
 
   it('sends a mining run to both lists it appears on', () => {
-    expect(readsForShardEvent('shard:mining')).toEqual([keys.mining, keys.traffic]);
+    expect(readsForShardEvent('shard:mining')).toEqual([keys.miningField, keys.traffic]);
   });
 
   /**
@@ -57,6 +57,7 @@ describe('what a shard event asks the client to read', () => {
     expect(readsForShardEvent('shard:world')).toEqual([keys.galaxy, keys.leaderboard]);
     expect(readsForShardEvent('shard:score')).toEqual([keys.leaderboard]);
     expect(readsForShardEvent('shard:chat')).toEqual([keys.chatMessages, keys.chatUnread]);
+    expect(readsForShardEvent('shard:chronicle')).toEqual([keys.chronicle]);
   });
 
   /**
@@ -107,7 +108,7 @@ describe('the coalescer', () => {
     const reads = flush.mock.calls[0]?.[0] as readonly (readonly string[])[];
     expect(reads).toHaveLength(4);
     expect(reads).toContainEqual(keys.traffic);
-    expect(reads).toContainEqual(keys.mining);
+    expect(reads).toContainEqual(keys.miningField);
     expect(reads).toContainEqual(keys.galaxy);
     expect(reads).toContainEqual(keys.leaderboard);
   });

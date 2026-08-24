@@ -96,6 +96,9 @@ describe('the signals beacon', () => {
     mount([notification({ id: 'a' })]);
     await userEvent.click(screen.getByRole('button', { name: 'Signals — 1 unread' }));
     expect(screen.getByText(/Raided · −900 taken · 3 units lost/)).toBeInTheDocument();
+    const row = screen.getByTestId('signal-event');
+    expect(row.querySelector('svg')).not.toBeNull();
+    expect(row.querySelector('.size-9')).not.toBeNull();
   });
 
   it('bolds a revealed identity and closes Signals through its planet focus route', async () => {

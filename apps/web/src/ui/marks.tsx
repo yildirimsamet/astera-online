@@ -37,14 +37,14 @@ export function VaultMark() {
 /**
  * The lock.
  *
- * Small and quiet on purpose: it marks a state, it does not scold. Drawn open at
- * the shackle so it reads as "not yet" rather than "never".
+ * Small and quiet on purpose: it marks a real unmet prerequisite, it does not
+ * scold. Terminal owned states use the separate open-lock action glyph.
  */
 export function LockMark() {
   return (
     <svg viewBox="0 0 24 24" className="size-5 text-faint" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden>
       <rect x="5" y="10.5" width="14" height="9.5" rx="1.5" />
-      <path d="M8.5 10.5V8a3.5 3.5 0 0 1 6.4-2" strokeLinecap="round" />
+      <path d="M8.5 10.5V8a3.5 3.5 0 0 1 7 0v2.5" strokeLinecap="round" />
     </svg>
   );
 }

@@ -1,7 +1,26 @@
 import { and, eq, inArray } from 'drizzle-orm';
-import { SATELLITE_IDS, coreTier, type SatelliteId, type Vec3 } from '@astera/rules';
+import {
+  SATELLITE_IDS,
+  alloyRate,
+  coreTier,
+  crystalRate,
+  neutralReserve,
+  neutralThreat,
+  storageCap,
+  type NeutralReserve,
+  type NeutralThreat,
+  type SatelliteId,
+  type Vec3,
+} from '@astera/rules';
 import type { Db } from '../db/client.js';
-import { accounts, buildings, planets, players, satellites } from '../db/schema.js';
+import {
+  accounts,
+  buildings,
+  neutralPlanetState,
+  planets,
+  players,
+  satellites,
+} from '../db/schema.js';
 
 /**
  * EVERY WORLD IN A SEASON, AT THE DETAIL EVERYBODY IS ENTITLED TO.
@@ -20,7 +39,7 @@ import { accounts, buildings, planets, players, satellites } from '../db/schema.
  * readable off the map before a fleet is packed.
  *
  * TWO QUERIES FOR EVERY CORE LEVEL AND EVERY SATELLITE, never one per planet, and
- * both SCOPED TO THE SEASON. With ten galaxies live in one database (D21) an
+ * both SCOPED TO THE SEASON. With multiple galaxies live in one database (D21/D100) an
  * unscoped read is ten times the rows to fetch and discard on the most frequent
  * read in the game.
  */
@@ -28,12 +47,27 @@ export interface PublicWorld {
   id: string;
   name: string;
   owner: string;
+  kind: 'CAPITAL' | 'COLONY' | 'NEUTRAL';
+  controller:
+    | { kind: 'PLAYER'; playerId: string; displayName: string }
+    | { kind: 'NEUTRAL'; tier: 1 | 2 | 3 };
   position: Vec3;
   coreTier: number;
   /** Types only. Never levels — see the note on `publicOrbit`. */
   satellites: SatelliteId[];
   /** Is there a dome. Never how strong it is. */
   shielded: boolean;
+  state:
+    | { kind: 'NORMAL' }
+    | { kind: 'RECOVERY'; until: Date }
+    | { kind: 'PROTECTED'; until: Date };
+  neutral?: {
+    tier: 1 | 2 | 3;
+    threat: NeutralThreat;
+    reserve: NeutralReserve;
+    claimUntil: Date | null;
+    nextReinforcementAt: Date | null;
+  };
 }
 
 /**
@@ -72,39 +106,84 @@ const publicOrbit = (rows: readonly { planetId: string; type: string }[]) => {
 const publicShields = (rows: readonly { planetId: string; type: string }[]) =>
   new Set(rows.filter((r) => r.type === 'AEGIS').map((r) => r.planetId));
 
-export async function publicWorlds(db: Db, seasonId: string): Promise<PublicWorld[]> {
+export async function publicWorlds(db: Db, seasonId: string, now = new Date()): Promise<PublicWorld[]> {
   const rows = await db
-    .select({ planet: planets, ownerName: accounts.displayName })
+    .select({
+      planet: planets,
+      ownerName: accounts.displayName,
+      neutral: neutralPlanetState,
+    })
     .from(planets)
-    .innerJoin(players, eq(planets.playerId, players.id))
-    .innerJoin(accounts, eq(players.accountId, accounts.id))
+    .leftJoin(players, eq(planets.controllerPlayerId, players.id))
+    .leftJoin(accounts, eq(players.accountId, accounts.id))
+    .leftJoin(neutralPlanetState, eq(neutralPlanetState.planetId, planets.id))
     .where(eq(planets.seasonId, seasonId));
 
   const ids = rows.map((r) => r.planet.id);
   if (ids.length === 0) return [];
 
-  const [coreRows, satelliteRows] = await Promise.all([
+  const [buildingRows, satelliteRows] = await Promise.all([
     db
-      .select({ planetId: buildings.planetId, level: buildings.level })
+      .select({ planetId: buildings.planetId, type: buildings.type, level: buildings.level })
       .from(buildings)
-      .where(and(eq(buildings.type, 'CORE'), inArray(buildings.planetId, ids))),
+      .where(and(inArray(buildings.type, ['CORE', 'REFINERY', 'EXTRACTOR']), inArray(buildings.planetId, ids))),
     db
       .select({ planetId: satellites.planetId, type: satellites.type })
       .from(satellites)
       .where(inArray(satellites.planetId, ids)),
   ]);
 
-  const cores = new Map(coreRows.map((r) => [r.planetId, r.level]));
+  const levels = new Map(buildingRows.map((r) => [`${r.planetId}:${r.type}`, r.level]));
   const installed = publicOrbit(satelliteRows);
   const shielded = publicShields(satelliteRows);
 
-  return rows.map((r) => ({
-    id: r.planet.id,
-    name: r.planet.name,
-    owner: r.ownerName,
-    position: { x: r.planet.x, y: r.planet.y, z: r.planet.z },
-    coreTier: coreTier(cores.get(r.planet.id) ?? 1),
-    satellites: installed.get(r.planet.id) ?? [],
-    shielded: shielded.has(r.planet.id),
-  }));
+  return rows.map((r) => {
+    const core = levels.get(`${r.planet.id}:CORE`) ?? 0;
+    const refinery = levels.get(`${r.planet.id}:REFINERY`) ?? 0;
+    const extractor = levels.get(`${r.planet.id}:EXTRACTOR`) ?? 0;
+    const vault = levels.get(`${r.planet.id}:VAULT`) ?? 0;
+    const tier = (r.neutral?.tier ?? 1) as 1 | 2 | 3;
+    const controller = r.planet.kind === 'NEUTRAL'
+      ? { kind: 'NEUTRAL' as const, tier }
+      : {
+          kind: 'PLAYER' as const,
+          playerId: r.planet.controllerPlayerId!,
+          displayName: r.ownerName ?? 'Unknown commander',
+        };
+    const state = r.planet.recoveryUntil && r.planet.recoveryUntil > now
+      ? { kind: 'RECOVERY' as const, until: r.planet.recoveryUntil }
+      : r.planet.protectedUntil && r.planet.protectedUntil > now
+        ? { kind: 'PROTECTED' as const, until: r.planet.protectedUntil }
+        : { kind: 'NORMAL' as const };
+    return {
+      id: r.planet.id,
+      name: r.planet.name,
+      owner: r.ownerName ?? `Neutral T${String(tier)}`,
+      kind: r.planet.kind,
+      controller,
+      position: { x: r.planet.x, y: r.planet.y, z: r.planet.z },
+      coreTier: coreTier(core),
+      satellites: installed.get(r.planet.id) ?? [],
+      shielded: shielded.has(r.planet.id),
+      state,
+      ...(r.planet.kind === 'NEUTRAL' && r.neutral
+        ? {
+            neutral: {
+              tier,
+              threat: neutralThreat(tier),
+              reserve: neutralReserve(
+                { alloy: r.planet.alloy, crystal: r.planet.crystal, deuterium: 0 },
+                {
+                  alloy: storageCap(alloyRate(refinery), vault),
+                  crystal: storageCap(crystalRate(extractor), vault),
+                  deuterium: 0,
+                },
+              ),
+              claimUntil: r.neutral.claimUntil,
+              nextReinforcementAt: r.neutral.nextReinforcementAt,
+            },
+          }
+        : {}),
+    };
+  });
 }

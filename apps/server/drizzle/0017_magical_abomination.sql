@@ -1,0 +1,1 @@
+ALTER TABLE "probe_reports" ADD COLUMN "deuterium_stock" jsonb;

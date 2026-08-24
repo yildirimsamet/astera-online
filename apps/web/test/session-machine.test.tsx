@@ -238,6 +238,61 @@ describe('the session machine', () => {
     expect(result.current.session.phase).toBe('ready');
   });
 
+  it('leaves the vanished planet immediately and reconciles its permanent record', async () => {
+    let wiped = false;
+    const latestResult = {
+      seasonId: 's1',
+      accountId: 'a1',
+      shard: 'EU-1',
+      shardName: 'Vantage',
+      finalRank: 2,
+      dominion: 80,
+      damageDealt: 100,
+      damageTaken: 40,
+      rivalName: null,
+      biggestRaid: 0,
+      title: 'Vanguard',
+      recap: {
+        commanderName: 'Vantage',
+        planetName: 'Kestrel-12',
+        battles: 0,
+        attacks: 0,
+        defences: 0,
+        rival: null,
+        biggestRaid: null,
+      },
+      createdAt: '2026-08-22T18:00:00Z',
+    };
+    const { wrapper } = harness({
+      '/api/auth/refresh': SESSION,
+      get '/api/auth/me'() {
+        return {
+          ...SESSION,
+          placement: wiped
+            ? null
+            : { shard: 'EU-1', shardName: 'Vantage', planetName: 'Kestrel-12' },
+          latestResult: wiped ? latestResult : null,
+        };
+      },
+    });
+    const { result } = renderHook(() => useSession(), { wrapper });
+    await waitFor(() => {
+      expect(result.current.session.phase).toBe('ready');
+    });
+
+    wiped = true;
+    act(() => {
+      result.current.rollover();
+    });
+    expect(result.current.session.phase).toBe('servers');
+    await waitFor(() => {
+      expect(result.current.session).toMatchObject({
+        phase: 'servers',
+        me: { latestResult: { seasonId: 's1' } },
+      });
+    });
+  });
+
   /**
    * A galaxy that filled up while the list was on screen is a refusal the player
    * can act on — by picking again. Sending them back to the login form would make

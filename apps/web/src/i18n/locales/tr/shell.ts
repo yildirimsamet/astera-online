@@ -8,8 +8,12 @@
  */
 
 export const statusBar = {
+  activeWorld: 'Aktif dünya',
+  capitalWorld: 'ANA GEZEGEN · {{name}}',
+  colonyWorld: 'KOLONİ · {{name}}',
   alloyLabel: 'Alaşım',
   crystalLabel: 'Kristal',
+  deuteriumLabel: 'Döteryum',
   storeFull: 'DOLU',
   storeFree: '{{amount}} yer var',
   menuHint: 'Komutan {{name}}; istihbarat, liderlik tablosu, ödüller ve hesap',
@@ -36,8 +40,14 @@ export const pendingStrip = {
   empty: 'Havada bir şey yok',
   incoming: 'Filo geliyor',
   probe: 'Sondan → {{target}}',
+  deathStar: 'Ölüm Yıldızın → {{target}}',
+  settlement: 'Yerleşim → {{target}}',
+  transfer: 'Aktarım → {{target}}',
   fleetHome: 'Filon dönüyor · {{target}}',
   fleetOut: 'Filon → {{target}}',
+  outboundLeg: 'Gidiş',
+  returnLeg: 'Dönüş',
+  engaging: 'Çatışıyor',
   more: '+{{count}}',
 } as const;
 
@@ -70,6 +80,10 @@ export const sheet = {
   dismiss: 'Kapat',
 } as const;
 
+export const toast = {
+  dismiss: 'Mesajı kapat',
+} as const;
+
 export const surface = {
   unreachable: '{{what}} okunamadı.',
   retry: 'Tekrar dene',
@@ -79,10 +93,12 @@ export const surface = {
   whatRewards: 'Ödüllerin',
   whatLeaderboard: 'Hâkimiyet sıralaması',
   whatChat: 'galaksi sohbeti',
+  whatChronicle: 'Galaksi Nabzı',
   waitingPlanet: 'Gezegen okunuyor',
   waitingIntel: 'Toplanıyor',
   waitingLeaderboard: 'Galaksi sıralanıyor',
   waitingChat: 'Galaksi sohbeti açılıyor',
+  waitingChronicle: 'Galaksi okunuyor',
   planetSigil: 'Gezegen',
 } as const;
 
@@ -102,6 +118,11 @@ export const menu = {
   rewardsWaiting: '{{count}} hazır',
   leaderboardLabel: 'Liderlik tablosu',
   leaderboardHint: 'Bütün komutanların Hâkimiyet sırası',
+  rivalLabel: 'Rakibin · {{commander}}',
+  rivalHint: '{{planet}} dünyasına odaklan ve sonraki hamleni seç',
+  rivalLostLabel: 'Rakip sinyali kayboldu',
+  rivalLostHint: 'O dünya artık yok. İşareti temizle.',
+  rivalCleared: 'Kayıp Rakip işareti temizlendi.',
   accountHeading: 'Hesap',
   soundLabel: 'Ses',
   soundOn: 'Müzik çalıyor.',

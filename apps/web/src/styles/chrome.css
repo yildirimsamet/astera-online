@@ -236,10 +236,8 @@
       color-mix(in srgb, var(--color-crystal-glow) 80%, transparent) 74%,
       transparent 88%
     );
-    /* Blurred, so it reads as a light source turning behind the plate rather than
-       as a wedge with an edge. Without it the conic gradient's boundary is a hard
-       diagonal across the face. */
-    filter: blur(18px);
+    /* The wide transparent stops feather the source without a blur pass, keeping
+       the plate and every neighbouring edge optically sharp. */
     animation: enter-orbit 12s linear infinite;
   }
 
@@ -324,7 +322,7 @@
     border: 0;
     border-radius: 8px;
     padding: 11px 16px;
-    min-height: 42px;
+    min-height: 44px;
     font-family: var(--font-display);
     font-weight: 700;
     font-stretch: 92%;
@@ -516,19 +514,15 @@
 
   /**
    * The galaxy never closes (interface.md I5), so every panel is something you look
-   * THROUGH at the world rather than a page that replaced it. Blur plus a dark tint
-   * keeps the disc readable behind without letting it compete with the content.
+   * THROUGH at the world rather than a page that replaced it. A dark tint keeps
+   * content readable while the galaxy itself remains optically sharp.
    */
   .glass {
     background: linear-gradient(180deg, rgb(9 14 24 / 88%) 0%, rgb(4 6 12 / 96%) 100%);
-    backdrop-filter: blur(20px) saturate(1.15);
-    -webkit-backdrop-filter: blur(20px) saturate(1.15);
   }
   /** Lighter, for HUD furniture that should not black out the view behind it. */
   .glass-thin {
     background: linear-gradient(180deg, rgb(11 17 29 / 72%) 0%, rgb(6 10 18 / 80%) 100%);
-    backdrop-filter: blur(14px) saturate(1.1);
-    -webkit-backdrop-filter: blur(14px) saturate(1.1);
   }
 
   /* ─────────────────────────────────────────────────────────────
@@ -695,7 +689,7 @@
     border: 0;
     border-radius: 8px;
     padding: 11px 16px;
-    min-height: 42px;
+    min-height: 44px;
     font-family: var(--font-display);
     font-weight: 700;
     font-stretch: 92%;
@@ -832,7 +826,6 @@
   border: 1px solid color-mix(in srgb, var(--color-crystal) 45%, var(--color-line));
   border-radius: 5px;
   background: color-mix(in srgb, var(--color-void) 88%, transparent);
-  backdrop-filter: blur(6px);
   box-shadow: 0 2px 10px rgb(0 0 0 / 55%);
   white-space: nowrap;
   cursor: pointer;
@@ -937,7 +930,7 @@
 }
 
 /* ── the works · D16 ──────────────────────────────────────────
-   Two small vessels beside two big storage bars. The size difference IS the
+   Three small vessels beside three storage bars. The size difference IS the
    lesson: what production lands in is a fraction of what it ends up in. See
    shell/StatusBar.tsx.                                                     */
 
@@ -981,6 +974,7 @@
 
 .works-fill-alloy { background: linear-gradient(to top, #b3771f, #f0c070); }
 .works-fill-crystal { background: linear-gradient(to top, #2a7f96, #7fdcf0); }
+.works-fill-deuterium { background: linear-gradient(to top, #326e18, var(--color-deuterium)); }
 
 /* Inflow, running only while the works run. Its absence is how a player sees
    that production has actually stopped rather than merely reached a number. */
@@ -997,6 +991,7 @@
 
 .works-drip-alloy { background: #f0c070; }
 .works-drip-crystal { background: #7fdcf0; animation-delay: 0.5s; }
+.works-drip-deuterium { background: var(--color-deuterium-glow); animation-delay: 0.8s; }
 
 .works-body { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
 .works-amount { font-size: 13px; line-height: 1.1; }
@@ -1052,7 +1047,7 @@
   flex-shrink: 1;
   min-width: 0;
   max-width: 100%;
-  min-height: 34px;
+  min-height: 44px;
   padding: 0 11px;
   border: 1px solid transparent;
   border-radius: 3px;

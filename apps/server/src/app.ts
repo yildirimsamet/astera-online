@@ -1,9 +1,11 @@
 import cookie from '@fastify/cookie';
-import rateLimit from '@fastify/rate-limit';
+import rateLimit, { normalizeIP } from '@fastify/rate-limit';
 import Fastify, {
+  LogController,
   type FastifyBaseLogger,
   type FastifyError,
   type FastifyInstance,
+  type FastifyRequest,
 } from 'fastify';
 import { ZodError } from 'zod';
 import { pino } from 'pino';
@@ -28,7 +30,14 @@ import { registerServerRoutes } from './routes/servers.js';
 import { registerPreviewRoutes } from './routes/preview.js';
 import { registerOnboardingRoutes } from './routes/onboarding.js';
 import { registerChatRoutes } from './routes/chat.js';
+import { registerChronicleRoutes } from './routes/chronicle.js';
 import { Presence } from './services/presence.js';
+import { Projections } from './services/projections.js';
+import { RateLimitBackend } from './services/rateLimitBackend.js';
+import { RuntimeMetrics } from './services/runtimeMetrics.js';
+import { StreamRegistry } from './services/streamRegistry.js';
+import { DatabasePoolProbe } from './services/databasePoolProbe.js';
+import { performance } from 'node:perf_hooks';
 
 /**
  * THE TWO ROUTES THAT COST MORE THAN THEY LOOK, AND THEIR WINDOWS.
@@ -37,7 +46,7 @@ import { Presence } from './services/presence.js';
  * WINDOWS are not, because they are the reasoning rather than the tuning. A ten
  * minute window on signing in is what turns "twenty tries" into a rate slow
  * enough that a password list is useless; an hour on taking a seat is what makes
- * exhausting a fifty-world galaxy take a day of sustained effort from fifty
+ * exhausting a three-hundred-seat galaxy take sustained effort from many
  * different addresses instead of four seconds from one.
  */
 const AUTH_WINDOW = '10 minutes';
@@ -46,10 +55,12 @@ const SIGNUP_WINDOW = '1 hour';
 /** What a route asks for when it wants one of the strict buckets. */
 export interface RouteLimits {
   /** Signing in and exchanging a refresh cookie. */
-  auth: { max: number; timeWindow: string };
+  auth: { max: number; timeWindow: string; skipOnError: false; keyGenerator: typeof ipLimitKey };
   /** Anything that creates an account — and therefore takes a seat. */
-  signup: { max: number; timeWindow: string };
+  signup: { max: number; timeWindow: string; skipOnError: false; keyGenerator: typeof ipLimitKey };
 }
+
+const ipLimitKey = (req: FastifyRequest): string => `ip:${normalizeIP(req.ip)}`;
 
 declare module 'fastify' {
   interface FastifyInstance {
@@ -59,11 +70,19 @@ declare module 'fastify' {
     presence: Presence;
     worker: EventWorker;
     bus: EventBus;
+    projections: Projections;
+    rateLimitBackend: RateLimitBackend;
+    metrics: RuntimeMetrics;
+    streams: StreamRegistry;
+    sseMaxBufferBytes: number;
+    dbPoolMax: number;
     limits: RouteLimits;
   }
   interface FastifyRequest {
     /** Set by `requireAuth`. Absent on public routes. */
     accountId?: string;
+    capacityStartedAt?: number;
+    capacityResponseBytes?: number;
   }
 }
 
@@ -80,6 +99,10 @@ export interface BuiltApp {
   db: Db;
   worker: EventWorker;
   bus: EventBus;
+  projections: Projections;
+  rateLimitBackend: RateLimitBackend;
+  metrics: RuntimeMetrics;
+  streams: StreamRegistry;
   close: () => Promise<void>;
 }
 
@@ -90,12 +113,15 @@ export function buildApp(opts: BuildAppOptions): BuiltApp {
   // into every route signature in the app; pino satisfies this interface anyway.
   const log: FastifyBaseLogger = opts.logger ?? pino({ level: opts.env.LOG_LEVEL });
 
-  const owned = opts.db ? null : createDb(opts.env.DATABASE_URL);
+  const owned = opts.db ? null : createDb(opts.env.DATABASE_URL, {
+    max: opts.env.DB_POOL_MAX,
+    applicationName: `astera-${opts.env.ROLE}`,
+  });
   const db = opts.db ?? owned!.db;
 
   const app = Fastify({
     loggerInstance: log,
-    disableRequestLogging: opts.env.NODE_ENV === 'test',
+    logController: new LogController({ disableRequestLogging: opts.env.NODE_ENV === 'test' }),
     /**
      * Behind the production proxy `req.ip` must be the CALLER, not nginx. See
      * `TRUST_PROXY` in env.ts for why this is off unless a deployment says so.
@@ -125,9 +151,46 @@ export function buildApp(opts: BuildAppOptions): BuiltApp {
   app.decorate('worker', worker);
   const bus = new EventBus(opts.env.DATABASE_URL, log);
   app.decorate('bus', bus);
+  const projections = new Projections(db, bus, {
+    enabled: opts.env.PROJECTION_CACHE_ENABLED,
+    maxSeasons: opts.env.PROJECTION_CACHE_MAX_SEASONS,
+    maxAccounts: opts.env.PROJECTION_CACHE_MAX_ACCOUNTS,
+    commanderTtlMs: opts.env.COMMANDER_CACHE_TTL_MS,
+    publicTtlMs: opts.env.PUBLIC_CACHE_TTL_MS,
+    trafficTtlMs: opts.env.TRAFFIC_CACHE_TTL_MS,
+    miningTtlMs: opts.env.MINING_CACHE_TTL_MS,
+  });
+  app.decorate('projections', projections);
+  const rateLimitBackend = new RateLimitBackend(opts.env.RATE_LIMIT_REDIS_URL);
+  app.decorate('rateLimitBackend', rateLimitBackend);
+  const metrics = new RuntimeMetrics();
+  app.decorate('metrics', metrics);
+  const databasePoolProbe = owned === null
+    ? null
+    : new DatabasePoolProbe(owned.sql, metrics);
+  if (databasePoolProbe) {
+    app.addHook('onReady', (done) => {
+      databasePoolProbe.start();
+      done();
+    });
+  }
+  const streams = new StreamRegistry();
+  app.decorate('streams', streams);
+  app.decorate('sseMaxBufferBytes', opts.env.SSE_MAX_BUFFER_BYTES);
+  app.decorate('dbPoolMax', opts.env.DB_POOL_MAX);
   app.decorate('limits', {
-    auth: { max: opts.env.RATE_LIMIT_AUTH_MAX, timeWindow: AUTH_WINDOW },
-    signup: { max: opts.env.RATE_LIMIT_SIGNUP_MAX, timeWindow: SIGNUP_WINDOW },
+    auth: {
+      max: opts.env.RATE_LIMIT_AUTH_MAX,
+      timeWindow: AUTH_WINDOW,
+      skipOnError: false,
+      keyGenerator: ipLimitKey,
+    },
+    signup: {
+      max: opts.env.RATE_LIMIT_SIGNUP_MAX,
+      timeWindow: SIGNUP_WINDOW,
+      skipOnError: false,
+      keyGenerator: ipLimitKey,
+    },
   });
 
   void app.register(cookie);
@@ -154,16 +217,28 @@ export function buildApp(opts: BuildAppOptions): BuiltApp {
    * server fault. Returning the project's own error type means the branch that
    * already knows how to answer a refusal answers this one too.
    *
-   * IN-MEMORY, ON PURPOSE. The store is per process, so two API processes would
-   * each allow the full ceiling. That is the correct trade at this size: one
-   * process serves every galaxy, and a Redis dependency bought to halve a number
-   * that is already an order of magnitude clear of real play is a dependency for
-   * nothing.
+   * The production D99 topology supplies a shared Valkey store below this plugin;
+   * tests and single-process development deliberately use its in-memory fallback.
    */
   void app.register(rateLimit, {
     global: true,
     max: opts.env.RATE_LIMIT_MAX,
     timeWindow: '1 minute',
+    redis: rateLimitBackend.client ?? undefined,
+    // Gameplay remains available if the transient counter service fails. Login
+    // and seat-taking override this to fail closed above.
+    skipOnError: true,
+    keyGenerator: async (req) => {
+      const header = req.headers.authorization;
+      if (!header?.startsWith('Bearer ')) return ipLimitKey(req);
+      try {
+        const accountId = await tokens.verify(header.slice(7), 'access');
+        req.accountId = accountId;
+        return `account:${accountId}`;
+      } catch {
+        return ipLimitKey(req);
+      }
+    },
     errorResponseBuilder: (_req, context) => {
       // `ttl` is milliseconds until the bucket refills. Kept as a figure rather
       // than a sentence so the client can say it in the player's own language.
@@ -200,6 +275,29 @@ export function buildApp(opts: BuildAppOptions): BuiltApp {
   app.addHook('onSend', (_req, reply, payload, done) => {
     reply.header('x-server-time', String(clock.now().getTime()));
     done(null, payload);
+  });
+
+  app.addHook('onRequest', (req, _reply, done) => {
+    req.capacityStartedAt = performance.now();
+    done();
+  });
+  app.addHook('onSend', (req, _reply, payload, done) => {
+    req.capacityResponseBytes = typeof payload === 'string'
+      ? Buffer.byteLength(payload)
+      : Buffer.isBuffer(payload)
+        ? payload.byteLength
+        : 0;
+    done(null, payload);
+  });
+  app.addHook('onResponse', (req, reply, done) => {
+    metrics.observeRoute(
+      req.method,
+      req.routeOptions.url ?? req.url,
+      reply.statusCode,
+      performance.now() - (req.capacityStartedAt ?? performance.now()),
+      req.capacityResponseBytes ?? 0,
+    );
+    done();
   });
 
   /**
@@ -262,7 +360,13 @@ export function buildApp(opts: BuildAppOptions): BuiltApp {
    * never wrapped in a plugin of their own.
    */
   app.after(() => {
-    registerHealthRoutes(app);
+    registerHealthRoutes(app, {
+      streamRequired: opts.env.ROLE === 'api',
+      role: opts.env.ROLE,
+    });
+    // A worker exposes only its loopback operations surface. It must never become
+    // an accidental fourth public API replica merely because metrics need a port.
+    if (opts.env.ROLE === 'worker') return;
     registerAuthRoutes(app);
     registerServerRoutes(app);
     registerPreviewRoutes(app);
@@ -275,6 +379,7 @@ export function buildApp(opts: BuildAppOptions): BuiltApp {
     registerMiningRoutes(app);
     registerSessionRoutes(app);
     registerChatRoutes(app);
+    registerChronicleRoutes(app);
   });
 
   return {
@@ -283,10 +388,20 @@ export function buildApp(opts: BuildAppOptions): BuiltApp {
     db,
     worker,
     bus,
+    projections,
+    rateLimitBackend,
+    metrics,
+    streams,
     close: async () => {
+      await databasePoolProbe?.stop();
       await worker.stop();
+      const closing = app.close();
+      streams.drain();
+      await closing;
+      projections.close();
       await bus.stop();
-      await app.close();
+      await rateLimitBackend.stop();
+      metrics.close();
       if (owned) await owned.close();
     },
   };

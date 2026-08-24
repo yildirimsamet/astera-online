@@ -1,18 +1,20 @@
-import { useState } from 'react';
+import { useCallback, useState } from 'react';
 import { Trans, useTranslation } from 'react-i18next';
 import { useServers } from '../api/queries.js';
-import type { ServerRow } from '../api/schemas.js';
+import type { HistoricalSeasonResult, ServerRow } from '../api/schemas.js';
 import { Button } from '../ui/kit/index.js';
+import { SeasonRecap, useSeasonRecapOpening } from './SeasonRecap.js';
+import { NextSeason } from '../ui/NextSeason.js';
 
 /**
  * CHOOSING A GALAXY. D21.
  *
- * Ten galaxies, fifty worlds each, and exactly one of them will take you. The list
+ * Two galaxies, 300 commander seats each, and exactly one of them will take you. The list
  * could therefore have been a single button — and it deliberately is not.
  *
- * WHY SHOW ALL TEN WHEN NINE ARE REFUSED. Because the shape of the world is the
- * first thing this game says about itself. A player who sees `Vantage 38/50` above
- * nine locked doors learns three things before they have pressed anything: that
+ * WHY SHOW BOTH WHEN ONE MAY BE REFUSED. Because the shape of the world is the
+ * first thing this game says about itself. A player who sees `Vantage 238/300` above
+ * one locked door learns three things before they have pressed anything: that
  * there is a finite number of people in here, that they are being put with everyone
  * else rather than sprinkled across empty rooms, and that the galaxy they are about
  * to enter is nearly full of real commanders. A lone "Play" button says none of it.
@@ -25,19 +27,35 @@ export function ServersScreen({
   displayName,
   onChoose,
   onSignOut,
+  latestResult,
   error,
 }: {
   displayName: string;
   onChoose: (code: string) => void;
   onSignOut: () => void;
+  latestResult?: HistoricalSeasonResult | null;
   error?: string;
 }) {
   const { t } = useTranslation();
   const servers = useServers();
   const [chosen, setChosen] = useState<string | null>(null);
+  const [recordOpen, setRecordOpen] = useState(false);
+  const openRecord = useCallback(() => {
+    setRecordOpen(true);
+  }, []);
+  useSeasonRecapOpening(latestResult ? 'frozen' : undefined, latestResult, openRecord);
 
   const rows = servers.data?.servers ?? [];
   const open = rows.find((s) => s.status === 'open');
+  /**
+   * A galaxy that has frozen but not yet rolled over. Somebody arriving in that
+   * window sees a list with nothing to join and no reason given; this is the reason.
+   *
+   * `closed` is the only status that means the season is not live. `full` and
+   * `locked` are live galaxies with no seat for THIS caller, which is a different
+   * sentence entirely — saying "a new galaxy is opening" there would be a lie.
+   */
+  const settling = rows.find((s) => s.status === 'closed' && s.endsAt !== null);
 
   return (
     <main className="min-h-dvh bg-void px-5 pb-[calc(28px+env(safe-area-inset-bottom))] pt-[calc(28px+env(safe-area-inset-top))]">
@@ -54,6 +72,19 @@ export function ServersScreen({
       </header>
 
       <p className="mt-6 max-w-md text-[14px] leading-relaxed text-dim">{t('servers.rule')}</p>
+
+      {latestResult && (
+        <button
+          type="button"
+          className="plate plate-cut plate-cut-sm mt-4 w-full max-w-md px-4 py-3 text-left transition-colors hover:border-line"
+          onClick={openRecord}
+        >
+          <span className="block font-display text-[13px] font-semibold uppercase tracking-[0.04em] text-bone">
+            {t('seasonRecap.latestLabel')}
+          </span>
+          <span className="mt-0.5 block text-[11px] text-faint">{t('seasonRecap.latestHint')}</span>
+        </button>
+      )}
 
       {error !== undefined && (
         <p className="mt-4 text-[13px] text-alert" role="alert">
@@ -96,8 +127,24 @@ export function ServersScreen({
         <p className="mt-8 text-[14px] text-dim">{t('servers.noneOpen')}</p>
       )}
 
-      {servers.isSuccess && rows.length > 0 && !open && (
+      {servers.isSuccess && !open && settling?.endsAt && (
+        <NextSeason endsAt={settling.endsAt} className="mt-6" />
+      )}
+
+      {servers.isSuccess && rows.length > 0 && !open && !settling && (
         <p className="mt-6 text-[13px] text-faint">{t('servers.allFull')}</p>
+      )}
+
+      {recordOpen && latestResult && (
+        <SeasonRecap
+          result={latestResult}
+          galaxy={latestResult.shardName}
+          canExplore={false}
+          {...(settling?.endsAt ? { endsAt: settling.endsAt } : {})}
+          onClose={() => {
+            setRecordOpen(false);
+          }}
+        />
       )}
     </main>
   );

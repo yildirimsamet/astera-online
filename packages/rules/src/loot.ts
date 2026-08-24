@@ -8,6 +8,12 @@ export const gradeMultiplier = (grade: Grade): number =>
       ? COMBAT.lootPartial
       : 0;
 
+/** Compatibility boundary for JSON rows written before D92. */
+export const deuteriumOf = (resources: Partial<Resources>): number => {
+  const value = resources.deuterium;
+  return typeof value === 'number' && Number.isFinite(value) ? value : 0;
+};
+
 export interface Loot extends Resources {
   /** The part taken out of STORAGE — after the vault floor. */
   fromStock: Resources;
@@ -18,8 +24,9 @@ export interface Loot extends Resources {
 export const NO_LOOT: Loot = {
   alloy: 0,
   crystal: 0,
-  fromStock: { alloy: 0, crystal: 0 },
-  fromBuffer: { alloy: 0, crystal: 0 },
+  deuterium: 0,
+  fromStock: { alloy: 0, crystal: 0, deuterium: 0 },
+  fromBuffer: { alloy: 0, crystal: 0, deuterium: 0 },
 };
 
 /**
@@ -57,10 +64,12 @@ export function computeLoot(
   const share = COMBAT.lootBufferShare;
   const stockA = Math.max(0, stock.alloy - vaultFloor.alloy) * mult;
   const stockC = Math.max(0, stock.crystal - vaultFloor.crystal) * mult;
+  const stockD = Math.max(0, stock.deuterium) * mult;
   const bufferA = Math.max(0, buffer.alloy) * mult * share;
   const bufferC = Math.max(0, buffer.crystal) * mult * share;
+  const bufferD = Math.max(0, buffer.deuterium) * mult * share;
 
-  const total = stockA + stockC + bufferA + bufferC;
+  const total = stockA + stockC + stockD + bufferA + bufferC + bufferD;
   if (total <= 0) return NO_LOOT;
 
   // One scale factor across all four piles, so a cargo shortfall costs each of
@@ -69,15 +78,18 @@ export function computeLoot(
   const fromStock = {
     alloy: Math.floor(stockA * factor),
     crystal: Math.floor(stockC * factor),
+    deuterium: Math.floor(stockD * factor),
   };
   const fromBuffer = {
     alloy: Math.floor(bufferA * factor),
     crystal: Math.floor(bufferC * factor),
+    deuterium: Math.floor(bufferD * factor),
   };
 
   return {
     alloy: fromStock.alloy + fromBuffer.alloy,
     crystal: fromStock.crystal + fromBuffer.crystal,
+    deuterium: fromStock.deuterium + fromBuffer.deuterium,
     fromStock,
     fromBuffer,
   };

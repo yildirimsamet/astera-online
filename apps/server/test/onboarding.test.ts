@@ -4,7 +4,7 @@ import { pino } from 'pino';
 import { afterAll, afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { OPENING_BONUS, PLANET_START, START, upgradeCost, HULLS } from '@astera/rules';
 import { buildApp } from '../src/app.js';
-import { accounts, buildings, missions, planets, players, units } from '../src/db/schema.js';
+import { accounts, buildOrders, missions, planets, players, units } from '../src/db/schema.js';
 import { FixedClock } from '../src/clock.js';
 import { bootstrapServers } from '../src/services/servers.js';
 import { testDb, testEnv, truncateAll, type Fixture } from './helpers.js';
@@ -28,6 +28,14 @@ interface Claim {
   planet: {
     planet: { alloy: number; crystal: number; name: string };
     buildings: Record<string, number>;
+    queues: {
+      CONSTRUCTION: {
+        kind: string; subject: string; count: number; startedAt: string; finishesAt: string;
+      }[];
+      YARD: {
+        kind: string; subject: string; count: number; startedAt: string; finishesAt: string;
+      }[];
+    };
   };
 }
 
@@ -93,12 +101,11 @@ describe('onboarding claim', () => {
    * only order the rules permit. Nothing may exceed the Command Core, so the Core
    * is first and the other two follow; what is left over is exactly two Wasps.
    */
-  const OPENING = (targetPlanetId: string) => [
+  const OPENING = () => [
     { kind: 'upgrade', building: 'CORE' },
     { kind: 'upgrade', building: 'REFINERY' },
     { kind: 'upgrade', building: 'EXTRACTOR' },
     { kind: 'build', hull: 'WASP', count: 2 },
-    { kind: 'launch', targetPlanetId, fleet: { WASP: 2 } },
   ];
 
   /* ── the arithmetic the whole rehearsal stands on ─────────── */
@@ -138,18 +145,32 @@ describe('onboarding claim', () => {
 
   it('replays the whole opening, and the planet ends where the rehearsal said it would', async () => {
     await openWorld();
-    const target = await neighbour();
 
     const body = (await claim({
       username: 'kaptan',
       password: 'correct-horse-battery',
-      intents: OPENING(target.planetId),
+      intents: OPENING(),
     })).json<Claim>();
 
     expect(body.applied.every((a) => a.ok)).toBe(true);
-    expect(body.planet.buildings.CORE).toBe(2);
-    expect(body.planet.buildings.REFINERY).toBe(2);
-    expect(body.planet.buildings.EXTRACTOR).toBe(2);
+    expect(body.planet.buildings.CORE).toBe(1);
+    expect(body.planet.buildings.REFINERY).toBe(1);
+    expect(body.planet.buildings.EXTRACTOR).toBe(1);
+    expect(body.planet.queues.CONSTRUCTION.map((order) => order.subject))
+      .toEqual(['CORE', 'REFINERY', 'EXTRACTOR']);
+    expect(body.planet.queues.YARD).toMatchObject([
+      { kind: 'HULL', subject: 'WASP', count: 2 },
+    ]);
+    const constructionFinishes = body.planet.queues.CONSTRUCTION
+      .map((order) => new Date(order.finishesAt).getTime());
+    expect(constructionFinishes[0]).toBeLessThan(constructionFinishes[1]!);
+    expect(constructionFinishes[1]).toBeLessThan(constructionFinishes[2]!);
+    expect(body.planet.queues.CONSTRUCTION[1]?.startedAt)
+      .toBe(body.planet.queues.CONSTRUCTION[0]?.finishesAt);
+    expect(body.planet.queues.CONSTRUCTION[2]?.startedAt)
+      .toBe(body.planet.queues.CONSTRUCTION[1]?.finishesAt);
+    expect(body.planet.queues.YARD[0]?.startedAt)
+      .toBe(body.planet.queues.CONSTRUCTION[0]?.startedAt);
     /**
          * THE ARITHMETIC GRANT IS SPENT TO THE LAST UNIT — that is the lesson the
          * beat teaches, and it still holds. WHAT IS LEFT IS THE CUSHION, exactly
@@ -167,22 +188,21 @@ describe('onboarding claim', () => {
       .select()
       .from(missions)
       .where(eq(missions.originPlanetId, body.placement.planetId));
-    expect(flying).toHaveLength(1);
-    expect(flying[0]?.status).toBe('in_flight');
+    expect(flying).toHaveLength(0);
+
+    const stored = await db.select().from(buildOrders)
+      .where(eq(buildOrders.planetId, body.placement.planetId));
+    expect(stored).toHaveLength(4);
+    expect(stored.every((order) => order.status === 'BUILDING')).toBe(true);
   });
 
-  /**
-   * Design Law #6: every session ends with something in flight. The onboarding's
-   * whole shape exists to make the FIRST one end that way.
-   */
-  it('leaves the first session with a fleet in the air', async () => {
+  it('leaves the first session with paid work pending and no hull granted early', async () => {
     await openWorld();
-    const target = await neighbour();
 
     const body = (await claim({
       username: 'kaptan',
       password: 'correct-horse-battery',
-      intents: OPENING(target.planetId),
+      intents: OPENING(),
     })).json<Claim>();
 
     const rows = await db
@@ -190,12 +210,10 @@ describe('onboarding claim', () => {
       .from(units)
       .where(eq(units.planetId, body.placement.planetId));
 
-    // Still owned by the planet — and demonstrably not defending it. The `home`
-    // row is emptied rather than deleted, so the count is what to read.
-    const home = rows.filter((r) => r.location === 'home').reduce((n, r) => n + r.count, 0);
-    const away = rows.filter((r) => r.location !== 'home').reduce((n, r) => n + r.count, 0);
-    expect(home).toBe(0);
-    expect(away).toBe(2);
+    expect(rows.reduce((n, row) => n + row.count, 0)).toBe(0);
+    expect(body.planet.queues.YARD).toMatchObject([
+      { kind: 'HULL', subject: 'WASP', count: 2 },
+    ]);
   });
 
   /* ── a refusal must not cost the player their account ─────── */
@@ -213,33 +231,33 @@ describe('onboarding claim', () => {
     expect(body.applied[0]?.ok).toBe(false);
     expect(body.applied[0]?.error).toBe('CORE_CEILING');
     expect(body.accessToken).not.toBe('');
-    expect(await db.select().from(planets)).toHaveLength(1);
+    expect(await db.select().from(planets).where(eq(planets.kind, 'CAPITAL'))).toHaveLength(1);
   });
 
   /**
-   * A target can cross out of the tier band, or fill its bash limit, in the two
-   * minutes somebody spends choosing a password. The steps before it still stand.
+   * A cached old client may still append the former launch intent. The real queue
+   * means those hulls do not exist yet; the claim must keep the valid commitments
+   * and report that final legacy step rather than manufacturing the fleet.
    */
   it('reports the refused step and stops, rather than failing the whole claim', async () => {
     await openWorld();
     const target = await neighbour();
-    // Raise the neighbour out of the ±2 tier band: Core 10 is tier 4 against a
-    // fresh planet's tier 1.
-    await db
-      .update(buildings)
-      .set({ level: 10 })
-      .where(eq(buildings.planetId, target.planetId));
 
     const body = (await claim({
       username: 'kaptan',
       password: 'correct-horse-battery',
-      intents: OPENING(target.planetId),
+      intents: [
+        ...OPENING(),
+        { kind: 'launch', targetPlanetId: target.planetId, fleet: { WASP: 2 } },
+      ],
     })).json<Claim>();
 
     expect(body.applied.slice(0, 4).every((a) => a.ok)).toBe(true);
-    expect(body.applied[4]).toMatchObject({ kind: 'launch', ok: false, error: 'TIER_BAND' });
-    // The ships were still built; they are at home waiting for a target.
-    expect(body.planet.buildings.CORE).toBe(2);
+    expect(body.applied[4]).toMatchObject({
+      kind: 'launch', ok: false, error: 'NOT_ENOUGH_SHIPS',
+    });
+    expect(body.planet.queues.CONSTRUCTION).toHaveLength(3);
+    expect(body.planet.queues.YARD).toHaveLength(1);
   });
 
   it('skips the rest of a chain once one link is refused', async () => {
@@ -268,11 +286,11 @@ describe('onboarding claim', () => {
    */
   it('is idempotent: the same claim twice makes one account, one planet, one opening', async () => {
     await openWorld();
-    const target = await neighbour();
+    await neighbour();
     const payload = {
       username: 'kaptan',
       password: 'correct-horse-battery',
-      intents: OPENING(target.planetId),
+      intents: OPENING(),
     };
 
     const first = await claim(payload);
@@ -283,14 +301,38 @@ describe('onboarding claim', () => {
     const body = second.json<Claim>();
     expect(await db.select().from(accounts)).toHaveLength(2); // the neighbour and this one
     expect(await db.select().from(players)).toHaveLength(2);
-    expect(body.planet.buildings.CORE).toBe(2);
+    expect(body.planet.buildings.CORE).toBe(1);
     expect(body.applied.every((a) => !a.ok && a.error === 'ALREADY_OPENED')).toBe(true);
 
-    const flying = await db
-      .select()
-      .from(missions)
-      .where(eq(missions.originPlanetId, body.placement.planetId));
-    expect(flying).toHaveLength(1);
+    const queued = await db.select().from(buildOrders)
+      .where(eq(buildOrders.planetId, body.placement.planetId));
+    expect(queued).toHaveLength(4);
+  });
+
+  it('serializes two simultaneous retries into one complete opening', async () => {
+    await openWorld();
+    const payload = {
+      username: 'simul_claim',
+      password: 'correct-horse-battery',
+      intents: OPENING(),
+    };
+
+    const [first, second] = await Promise.all([claim(payload), claim(payload)]);
+
+    expect(first.statusCode).toBe(200);
+    expect(second.statusCode).toBe(200);
+    const bodies = [first.json<Claim>(), second.json<Claim>()];
+    expect(bodies.some((body) => body.applied.every((step) => step.ok))).toBe(true);
+    expect(bodies.some((body) => body.applied.every(
+      (step) => !step.ok && step.error === 'ALREADY_OPENED',
+    ))).toBe(true);
+    const rows = await db.select().from(buildOrders);
+    expect(rows).toHaveLength(4);
+    expect(rows.filter((row) => row.queue === 'CONSTRUCTION').map((row) => row.subject).sort())
+      .toEqual(['CORE', 'EXTRACTOR', 'REFINERY']);
+    expect(rows.filter((row) => row.queue === 'YARD')).toMatchObject([
+      { subject: 'WASP', count: 2 },
+    ]);
   });
 
   it('still refuses a name that belongs to somebody else', async () => {
@@ -342,41 +384,29 @@ describe('onboarding claim', () => {
   /**
    * THE POINT OF THE CUSHION, ASSERTED AS A CONSEQUENCE RATHER THAN AS A NUMBER.
    *
-   * The complaint it answers was precise: onboarding ends with the grant spent to
-   * the last crystal, both Wasps gone, and a flight forty minutes out — so a
-   * commander who has just been persuaded to make an account has nothing at all to
-   * press. This checks the thing that actually matters at that moment: that what
-   * is left is enough to DO something with.
-   *
-   * The two things reachable at that point are a fourth building level and a
-   * Shipyard, so those are what it prices. If a future balance pass makes the
-   * cushion too small to buy either, this fails here rather than in front of the
-   * next fifty players.
+   * Construction is full with the three taught orders, but Yard still has room.
+   * Prove the cushion creates a real fifth decision through the ordinary endpoint,
+   * rather than merely comparing it with a price in this test.
    */
   it('leaves a freshly onboarded commander able to act', async () => {
     await openWorld();
-    const target = await neighbour();
 
     const body = (await claim({
       username: 'kaptan',
       password: 'correct-horse-battery',
-      intents: OPENING(target.planetId),
+      intents: OPENING(),
     })).json<Claim>();
 
-    const left = { alloy: body.planet.planet.alloy, crystal: body.planet.planet.crystal };
-
-    // A fourth level on any of the three buildings the opening raised to L2.
-    const nextLevel = upgradeCost(2);
-    expect(left.alloy).toBeGreaterThanOrEqual(nextLevel.alloy);
-    expect(left.crystal).toBeGreaterThanOrEqual(nextLevel.crystal);
-
-    // Or the first building the opening never touches, which is what unlocks
-    // every hull beyond the Wasp.
-    const firstNewBuilding = upgradeCost(0);
-    expect(left.alloy).toBeGreaterThanOrEqual(firstNewBuilding.alloy);
-
-    // And a replacement for a Wasp, since both of the opening's are in the air.
-    expect(left.alloy).toBeGreaterThanOrEqual(HULLS.WASP.alloy);
+    const action = await app.inject({
+      method: 'POST',
+      url: '/api/planet/build',
+      headers: { authorization: `Bearer ${body.accessToken}` },
+      payload: { hull: 'WASP', count: 1 },
+    });
+    expect(action.statusCode).toBe(200);
+    const queued = await db.select().from(buildOrders)
+      .where(eq(buildOrders.planetId, body.placement.planetId));
+    expect(queued.filter((order) => order.queue === 'YARD')).toHaveLength(2);
   });
 
   /** Nothing to replay is a real claim, not a malformed one. */
@@ -411,8 +441,9 @@ describe('onboarding claim', () => {
 
     expect(body.applied[0]?.ok).toBe(true);
     expect(body.applied[1]?.ok).toBe(false);
-    expect(body.planet.buildings.CORE).toBe(2);
-    expect(await db.select().from(planets)).toHaveLength(1);
+    expect(body.planet.buildings.CORE).toBe(1);
+    expect(body.planet.queues.CONSTRUCTION).toHaveLength(1);
+    expect(await db.select().from(planets).where(eq(planets.kind, 'CAPITAL'))).toHaveLength(1);
   });
 
   it('refuses a malformed intent at the boundary rather than part-way through', async () => {

@@ -1,4 +1,4 @@
-import { useLayoutEffect, useMemo, useRef } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef } from 'react';
 import { useFrame, type ThreeEvent } from '@react-three/fiber';
 import { useGLTF } from '@react-three/drei';
 import * as THREE from 'three';
@@ -8,6 +8,8 @@ import { asteroidRadius, asteroidWorldPosition, toWorld } from './scene.js';
 import { unitModel } from './model.js';
 import { markHit, wasTap } from './tap.js';
 import { serverNow } from '../lib/clock.js';
+import { useReducedMotionPreference } from './motion.js';
+import { asteroidBodyColour, asteroidTrailColour } from './asteroidSignal.js';
 
 /** No hit target smaller than this, whatever the rock. A fingertip is ~44 CSS px. */
 const MIN_TOUCH = 0.42;
@@ -22,8 +24,9 @@ const MIN_TOUCH = 0.42;
  *
  * SIZE IS THE MESSAGE. Ore is a pure function of level, so a bigger rock is
  * literally worth more — a player sweeping the galaxy can pick a target without
- * opening a single panel. Nothing else about a rock is encoded visually, because
- * nothing else about it is free: how much is LEFT needs the panel.
+ * opening a single panel. Isotope-rich rocks carry a crisp neon-green body and trail;
+ * that anomaly is public before research, while its exact composition and amount
+ * left still require the panel and Spectrometry.
  *
  * The tail is not decoration either. These move slowly enough to read as static in
  * a four-minute session, and a rock whose direction you cannot see is a rock you
@@ -131,7 +134,7 @@ function RockBucket({
       // Focus is a brightening rather than an outline: an outline on a tumbling
       // lump reads as a rendering fault, and these are already small.
       const lit = rock.index === focusedIndex ? 1.9 : 1;
-      node.setColorAt(i, tint.setRGB(lit, lit, lit));
+      node.setColorAt(i, tint.setRGB(...asteroidBodyColour(rock.isotopeRich, lit)));
     });
     if (node.instanceColor) node.instanceColor.needsUpdate = true;
     if (!Array.isArray(node.material)) node.material.needsUpdate = true;
@@ -285,7 +288,7 @@ function RockBucket({
 const SEGMENTS = 11;
 
 /** Brightness at the rock. Additive on a near-black sky, so this is a whisper. */
-const TAIL_PEAK = 0.3;
+const TAIL_PEAK = 0.38;
 
 /**
  * Half-width at the rock, as a multiple of its radius.
@@ -296,6 +299,9 @@ const TAIL_PEAK = 0.3;
  */
 const TAIL_WIDTH = 0.31;
 
+/** A handful of grains per rock is enough to break a ribbon into shed material. */
+const DUST_PER_ROCK = 6;
+
 function Tails({
   asteroids,
   seasonStart,
@@ -304,6 +310,8 @@ function Tails({
   seasonStart: Date;
 }) {
   const mesh = useRef<THREE.Mesh>(null);
+  const grains = useRef<THREE.Points>(null);
+  const reducedMotion = useReducedMotionPreference();
 
   /**
    * One strip per rock, all in one buffer.
@@ -318,23 +326,138 @@ function Tails({
     g.setAttribute('position', new THREE.BufferAttribute(new Float32Array(verts * 3), 3));
 
     const colours = new Float32Array(verts * 3);
+    const uvs = new Float32Array(verts * 2);
     const index: number[] = [];
     for (let r = 0; r < rocks; r += 1) {
       for (let k = 0; k < SEGMENTS; k += 1) {
         // Squared falloff. A linear fade leaves a visible hard end, because the
         // last quad is still a quarter lit at the moment it stops existing.
         const back = k / (SEGMENTS - 1);
-        const lit = TAIL_PEAK * (1 - back) * (1 - back);
         const v = (r * SEGMENTS + k) * 2;
-        colours.set([lit, lit * 1.03, lit * 1.14], v * 3);
-        colours.set([lit, lit * 1.03, lit * 1.14], (v + 1) * 3);
+        const lit = TAIL_PEAK;
+        const colour = asteroidTrailColour(asteroids[r]?.isotopeRich ?? false, lit, back);
+        colours.set(colour, v * 3);
+        colours.set(colour, (v + 1) * 3);
+        uvs.set([0, back, 1, back], v * 2);
         if (k < SEGMENTS - 1) index.push(v, v + 1, v + 2, v + 1, v + 3, v + 2);
       }
     }
     g.setAttribute('color', new THREE.BufferAttribute(colours, 3));
+    g.setAttribute('uv', new THREE.BufferAttribute(uvs, 2));
     g.setIndex(index);
     return g;
-  }, [asteroids.length]);
+  }, [asteroids]);
+
+  const tailMaterial = useMemo(
+    () =>
+      new THREE.ShaderMaterial({
+        uniforms: {
+          uTime: { value: 0 },
+          uMotion: { value: 1 },
+        },
+        vertexColors: true,
+        transparent: true,
+        depthWrite: false,
+        side: THREE.DoubleSide,
+        blending: THREE.AdditiveBlending,
+        vertexShader: `
+          varying vec2 vUv;
+          varying vec3 vColour;
+          void main() {
+            vUv = uv;
+            vColour = color;
+            gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+          }
+        `,
+        fragmentShader: `
+          uniform float uTime;
+          uniform float uMotion;
+          varying vec2 vUv;
+          varying vec3 vColour;
+          void main() {
+            float across = abs(vUv.x * 2.0 - 1.0);
+            float edge = 1.0 - smoothstep(0.12, 1.0, across);
+            float fade = pow(max(0.0, 1.0 - vUv.y), 1.8);
+            float texture = 0.92 + uMotion * 0.08 * sin(vUv.y * 31.0 - uTime * 1.7);
+            gl_FragColor = vec4(vColour, edge * fade * texture * 0.62);
+          }
+        `,
+      }),
+    [],
+  );
+
+  const grainGeometry = useMemo(() => {
+    const count = asteroids.length * DUST_PER_ROCK;
+    const g = new THREE.BufferGeometry();
+    g.setAttribute('position', new THREE.BufferAttribute(new Float32Array(count * 3), 3));
+    const colours = new Float32Array(count * 3);
+    const sizes = new Float32Array(count);
+    const alphas = new Float32Array(count);
+    asteroids.forEach((rock, rockIndex) => {
+      const radius = asteroidRadius(rock.level);
+      for (let p = 0; p < DUST_PER_ROCK; p += 1) {
+        const i = rockIndex * DUST_PER_ROCK + p;
+        const back = (p + 0.6) / DUST_PER_ROCK;
+        colours.set(
+          rock.isotopeRich
+            ? asteroidTrailColour(true, 0.82, back)
+            : [0.82 - back * 0.42, 0.58 - back * 0.22, 0.3 + back * 0.28],
+          i * 3,
+        );
+        sizes[i] = radius * (0.09 + (1 - back) * 0.11);
+        alphas[i] = (1 - back) ** 1.5 * 0.72;
+      }
+    });
+    g.setAttribute('color', new THREE.BufferAttribute(colours, 3));
+    g.setAttribute('aSize', new THREE.BufferAttribute(sizes, 1));
+    g.setAttribute('aAlpha', new THREE.BufferAttribute(alphas, 1));
+    return g;
+  }, [asteroids]);
+
+  const grainMaterial = useMemo(
+    () =>
+      new THREE.ShaderMaterial({
+        uniforms: { uScale: { value: 700 } },
+        vertexColors: true,
+        transparent: true,
+        depthWrite: false,
+        blending: THREE.AdditiveBlending,
+        vertexShader: `
+          attribute float aSize;
+          attribute float aAlpha;
+          varying vec3 vColour;
+          varying float vAlpha;
+          uniform float uScale;
+          void main() {
+            vColour = color;
+            vAlpha = aAlpha;
+            vec4 mv = modelViewMatrix * vec4(position, 1.0);
+            gl_PointSize = clamp(aSize * uScale / max(0.01, -mv.z), 1.0, 8.0);
+            gl_Position = projectionMatrix * mv;
+          }
+        `,
+        fragmentShader: `
+          varying vec3 vColour;
+          varying float vAlpha;
+          void main() {
+            float d = length(gl_PointCoord - vec2(0.5)) * 2.0;
+            float alpha = (1.0 - smoothstep(0.12, 1.0, d)) * vAlpha;
+            gl_FragColor = vec4(vColour * 1.15, alpha);
+          }
+        `,
+      }),
+    [],
+  );
+
+  useEffect(
+    () => () => {
+      geometry.dispose();
+      tailMaterial.dispose();
+      grainGeometry.dispose();
+      grainMaterial.dispose();
+    },
+    [geometry, tailMaterial, grainGeometry, grainMaterial],
+  );
 
   const tangent = useMemo(() => new THREE.Vector3(), []);
   const toEye = useMemo(() => new THREE.Vector3(), []);
@@ -342,11 +465,14 @@ function Tails({
   const here = useMemo(() => new THREE.Vector3(), []);
   const ahead = useMemo(() => new THREE.Vector3(), []);
 
-  useFrame(({ camera }) => {
+  useFrame(({ camera, clock, size, gl }) => {
     const node = mesh.current;
     if (!node) return;
     const now = serverNow();
     const position = node.geometry.getAttribute('position') as THREE.BufferAttribute;
+    const grainPosition = grains.current?.geometry.getAttribute('position') as
+      | THREE.BufferAttribute
+      | undefined;
 
     asteroids.forEach((rock, i) => {
       const half = asteroidRadius(rock.level) * TAIL_WIDTH;
@@ -378,10 +504,27 @@ function Tails({
 
         // Tapers to a point. The rock's own body covers the widest end, so the
         // ribbon reads as shed from it rather than stuck to it.
-        const w = half * (1 - back);
+        const envelope = (0.46 + Math.sin(Math.PI * back) * 0.72) * (1 - back);
+        const w = half * envelope;
         const v = (i * SEGMENTS + k) * 2;
         position.setXYZ(v, here.x + side.x * w, here.y + side.y * w, here.z + side.z * w);
         position.setXYZ(v + 1, here.x - side.x * w, here.y - side.y * w, here.z - side.z * w);
+      }
+
+      if (grainPosition) {
+        const radius = asteroidRadius(rock.level);
+        for (let p = 0; p < DUST_PER_ROCK; p += 1) {
+          const back = 0.04 + ((p + 0.6) / DUST_PER_ROCK) * 0.72;
+          const at = asteroidWorldPosition(rock, seasonStart, now - span * back);
+          const phase = rock.index * 12.9898 + p * 2.331;
+          const spread = radius * (0.06 + back * 0.28);
+          grainPosition.setXYZ(
+            i * DUST_PER_ROCK + p,
+            at[0] + Math.sin(phase) * spread,
+            at[1] + Math.cos(phase * 1.7) * spread * 0.55,
+            at[2] + Math.sin(phase * 0.73) * spread,
+          );
+        }
       }
     });
 
@@ -391,19 +534,32 @@ function Tails({
       position.setXYZ(v, 0, 0, 0);
     }
     position.needsUpdate = true;
+    if (grainPosition) grainPosition.needsUpdate = true;
+    tailMaterial.uniforms.uTime!.value = clock.elapsedTime;
+    tailMaterial.uniforms.uMotion!.value = reducedMotion ? 0 : 1;
+    const perspective = camera as THREE.PerspectiveCamera;
+    const fov = THREE.MathUtils.degToRad(perspective.fov || 45);
+    grainMaterial.uniforms.uScale!.value =
+      (size.height * gl.getPixelRatio()) / (2 * Math.tan(fov / 2));
   });
 
   return (
-    <mesh ref={mesh} name="asteroid-dust" geometry={geometry} frustumCulled={false}>
-      <meshBasicMaterial
-        vertexColors
-        transparent
-        opacity={0.9}
-        depthWrite={false}
-        side={THREE.DoubleSide}
-        blending={THREE.AdditiveBlending}
+    <>
+      <mesh
+        ref={mesh}
+        name="asteroid-dust"
+        geometry={geometry}
+        material={tailMaterial}
+        frustumCulled={false}
       />
-    </mesh>
+      <points
+        ref={grains}
+        name="asteroid-grains"
+        geometry={grainGeometry}
+        material={grainMaterial}
+        frustumCulled={false}
+      />
+    </>
   );
 }
 

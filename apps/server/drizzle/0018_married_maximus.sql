@@ -1,0 +1,1 @@
+ALTER TABLE "reward_grants" ADD COLUMN "deuterium" real DEFAULT 0 NOT NULL;

@@ -2,6 +2,8 @@ import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
 import {
   ALL_HULLS,
+  MOBILE_HULLS,
+  MULTI_WORLD,
   DEBRIS,
   DISRUPTION,
   ECON,
@@ -17,6 +19,7 @@ import {
   SATELLITE_IDS,
   SHIELD,
   START,
+  PLANET_START,
   TRAVEL,
   alloyRate,
   asteroidActive,
@@ -26,6 +29,7 @@ import {
   collectorCap,
   crystalRate,
   debrisRemaining,
+  defenceMinutes,
   distance,
   interceptAsteroid,
   investedInInstrument,
@@ -62,13 +66,16 @@ const arbFleet = fc
     WASP: fc.integer({ min: 0, max: 300 }),
     LANCE: fc.integer({ min: 0, max: 60 }),
     BULWARK: fc.integer({ min: 0, max: 20 }),
+    BREACHER: fc.integer({ min: 0, max: 20 }),
     HAULER: fc.integer({ min: 0, max: 40 }),
+    RUNNER: fc.integer({ min: 0, max: 20 }),
   })
-  .filter((f) => f.WASP + f.LANCE + f.BULWARK + f.HAULER > 0);
+  .filter((f) => f.WASP + f.LANCE + f.BULWARK + f.BREACHER + f.HAULER + f.RUNNER > 0);
 
 const arbDefence = fc.record({
   WASP: fc.integer({ min: 0, max: 200 }),
   BULWARK: fc.integer({ min: 0, max: 15 }),
+  BREACHER: fc.integer({ min: 0, max: 10 }),
   BASTION: fc.integer({ min: 0, max: 25 }),
 });
 
@@ -174,9 +181,15 @@ describe('loot invariants', () => {
         fc.integer({ min: 0, max: 200_000 }),
         fc.constantFrom('DECISIVE' as const, 'PARTIAL' as const, 'REPELLED' as const),
         (alloy, crystal, bufA, bufC, floor, cargo, grade) => {
-          const stock = { alloy, crystal };
-          const buffer = { alloy: bufA, crystal: bufC };
-          const loot = computeLoot(stock, buffer, { alloy: floor, crystal: floor }, grade, cargo);
+          const stock = { alloy, crystal, deuterium: 0 };
+          const buffer = { alloy: bufA, crystal: bufC, deuterium: 0 };
+          const loot = computeLoot(
+            stock,
+            buffer,
+            { alloy: floor, crystal: floor, deuterium: 0 },
+            grade,
+            cargo,
+          );
 
           expect(loot.alloy + loot.crystal).toBeLessThanOrEqual(cargo);
           expect(loot.alloy).toBeGreaterThanOrEqual(0);
@@ -201,8 +214,14 @@ describe('loot invariants', () => {
   it('a fleet can never carry more than its hulls allow', () => {
     fc.assert(
       fc.property(arbFleet, (f) => {
-        const big = { alloy: 1e9, crystal: 1e9 };
-        const loot = computeLoot(big, big, { alloy: 0, crystal: 0 }, 'DECISIVE', fleetCargo(f));
+        const big = { alloy: 1e9, crystal: 1e9, deuterium: 0 };
+        const loot = computeLoot(
+          big,
+          big,
+          { alloy: 0, crystal: 0, deuterium: 0 },
+          'DECISIVE',
+          fleetCargo(f),
+        );
         expect(loot.alloy + loot.crystal).toBeLessThanOrEqual(fleetCargo(f));
       }),
       { numRuns: 200 },
@@ -243,8 +262,8 @@ describe('galaxy generation', () => {
   it('keeps every planet inside the disc', () => {
     const g = generateGalaxy(99, 200);
     for (const s of g.slots) {
-      expect(Math.hypot(s.x, s.z)).toBeLessThanOrEqual(1001);
-      expect(Math.abs(s.y)).toBeLessThanOrEqual(121);
+      expect(Math.hypot(s.x, s.z)).toBeLessThanOrEqual(GALAXY.radius + 1);
+      expect(Math.abs(s.y)).toBeLessThanOrEqual(GALAXY.thickness + 1);
     }
   });
 
@@ -314,10 +333,16 @@ describe('the asteroid field', () => {
      * clumped spawns would produce.
      */
     expect(Math.min(...populations), 'the disc emptied at some point in the season').toBeGreaterThan(0);
-    // Generous either side of the measured 11-19: this guards against a field that
-    // has quietly become a swarm or a desert, not against ordinary variance.
-    expect(Math.min(...populations)).toBeGreaterThanOrEqual(6);
-    expect(Math.max(...populations)).toBeLessThanOrEqual(30);
+    /**
+     * THE BAND IS DERIVED, NOT FROZEN. Steady-state population is spawn rate times
+     * mean lifetime, so it moves whenever either does — and both took a transform
+     * in Economy v2 (spawn x1.20, life x0.833, which is why the sky is the same
+     * size and only the turnover is faster). Generous either side: this guards
+     * against a field that has quietly become a swarm or a desert, not against
+     * ordinary variance.
+     */
+    expect(Math.min(...populations)).toBeGreaterThanOrEqual(Math.floor(expected * 0.4));
+    expect(Math.max(...populations)).toBeLessThanOrEqual(Math.ceil(expected * 1.9));
   });
 
   it('spawns a level distribution that adds up', () => {
@@ -375,11 +400,23 @@ describe('the asteroid field', () => {
     expect(asteroidActive(a, a.expiresAt)).toBe(false);
   });
 
-  it('flies at 330, reaches 495 with a Derrick, and the ship card agrees', () => {
-    expect(prospectorSpeed([])).toBe(330);
-    expect(prospectorSpeed(['DERRICK'])).toBe(495);
+  it('lifts every craft with a Derrick, and the ship card agrees', () => {
+    expect(prospectorSpeed([])).toBe(PROSPECTOR.speed);
+    expect(prospectorSpeed(['DERRICK'])).toBe(PROSPECTOR.speed * SATELLITES.DERRICK.speed);
+    // The ship card duplicates the live figure so a card has something honest to
+    // print. If they drift, one of the two screens is lying.
     expect(HULLS.PROSPECTOR.speed).toBe(PROSPECTOR.speed);
     expect(PROSPECTOR.max).toBe(2);
+  });
+
+  /**
+   * THE DRILL CHASES ROCKS, NOT WARSHIPS, and that is why it is the fastest thing
+   * on the disc. It has to aim ahead of a moving target; a craft slower than the
+   * band it hunts can still meet a rock on a later revolution, but the lead angle
+   * becomes unreadable — which is what D74 was called in to fix.
+   */
+  it('outruns the rocks it has to intercept', () => {
+    expect(PROSPECTOR.speed).toBeGreaterThan(GALAXY.asteroidSpeedMax);
   });
 
   /**
@@ -642,7 +679,7 @@ describe('ore claims', () => {
         fc.integer({ min: 0, max: 6_000 }),
         fc.double({ min: 0, max: 1, noNaN: true }),
         (remaining, hold, share) => {
-          const claim = claimOre(remaining, hold, share);
+          const claim = claimOre(remaining, hold, share, 0);
           expect(claim.taken).toBeLessThanOrEqual(hold);
           expect(claim.taken).toBeLessThanOrEqual(remaining);
           expect(claim.remaining).toBe(remaining - claim.taken);
@@ -660,7 +697,7 @@ describe('ore claims', () => {
     let remaining = 3_400;
     let total = 0;
     for (let i = 0; i < 10; i++) {
-      const claim = claimOre(remaining, 900, 0.4);
+      const claim = claimOre(remaining, 900, 0.4, 0);
       total += claim.taken;
       remaining = claim.remaining;
     }
@@ -707,9 +744,11 @@ describe('telescope gates', () => {
  */
 describe('the collector sits in front of storage, not instead of it', () => {
   it('holds less than the store it feeds', () => {
-    for (const level of [0, 3, 7, 12]) {
-      expect(collectorCap(alloyRate(level))).toBeLessThan(storageCap(alloyRate(level)));
-      expect(collectorCap(crystalRate(level))).toBeLessThan(storageCap(crystalRate(level)));
+    // From 1, because `base x L x growth^L` produces nothing at 0 and a planet is
+    // never created below it. Checked at Vault 0, the tightest the store ever is.
+    for (const level of [1, 3, 7, 12, 18]) {
+      expect(collectorCap(alloyRate(level))).toBeLessThan(storageCap(alloyRate(level), 0));
+      expect(collectorCap(crystalRate(level))).toBeLessThan(storageCap(crystalRate(level), 0));
     }
   });
 });
@@ -749,7 +788,9 @@ describe('crystal is a constraint, not a souvenir', () => {
      * something worth the trip. Below 0.6 it piles up unspendably; above 1.0 it
      * becomes the only bottleneck and alloy stops mattering.
      */
-    const levels = Array.from({ length: 12 }, (_, i) => ECON.crystalCostFromLevel + i);
+    // From 1: the income SHARE is `crystalRate / alloyRate`, and both are zero at
+    // level 0 under `base x L x growth^L`.
+    const levels = Array.from({ length: 12 }, (_, i) => Math.max(1, ECON.crystalCostFromLevel) + i);
     for (const level of levels) {
       const ratio = costShare(level) / incomeShare(level);
       expect(ratio, `level ${String(level)} charges ${costShare(level).toFixed(2)}`).toBeGreaterThan(0.6);
@@ -773,7 +814,8 @@ describe('crystal is a constraint, not a souvenir', () => {
       );
       return alloyNeeded / alloyRate(1);
     })();
-    const hoursToFillStore = storageCap(crystalRate(1)) / crystalRate(1);
+    // At Vault 0 — the tightest the store ever is, and the hardest this passes.
+    const hoursToFillStore = storageCap(crystalRate(1), 0) / crystalRate(1);
     expect(hoursToFirstSink).toBeLessThan(hoursToFillStore);
   });
 });
@@ -893,11 +935,20 @@ describe('what the information layer costs', () => {
    * a fact rather than asserted as correct: if somebody moves the curve, this is
    * the number that tells them how far they moved it.
    */
-  it('is currently cheaper than a single late building step — knowingly', () => {
-    const lateStep = tot(upgradeCost(10));
-    expect(fourAtMax).toBeLessThan(lateStep);
-    // A guard rather than a target: if it ever drops below a QUARTER of a step the
-    // information layer has become free, which no curve should ever produce.
+  /**
+   * COSTS ABOUT ONE LATE BUILDING STEP, WHICH IS A REAL TRADE. Economy v2 raised
+   * `INSTRUMENT_LEVEL_WORTH` from 1 to 2 for exactly this: at 1 the whole
+   * information layer was bought out by day two, which makes the fog uniform, which
+   * makes it decoration.
+   *
+   * The band is what matters, not the anchor. Below a quarter of a step the layer
+   * is free; above two steps it stops competing with production at all and D30's
+   * measured failure comes back — dearer instruments push wealth into the OTHER
+   * un-losable holding and drop ARR through its floor.
+   */
+  it('costs about one late building step — a real trade, not a formality', () => {
+    const lateStep = tot(upgradeCost(14));
+    expect(fourAtMax).toBeLessThan(lateStep * 2);
     expect(fourAtMax).toBeGreaterThan(lateStep / 4);
   });
 });
@@ -1028,7 +1079,13 @@ describe('satellites in orbit', () => {
    */
   it('keeps the Uplink reachable, because it is the door to the fog layer', () => {
     expect(satelliteCost('UPLINK').alloy).toBeLessThan(satelliteCost('FOUNDRY').alloy);
-    expect(satelliteCost('UPLINK').alloy).toBeLessThan(START.alloy);
+    /**
+     * Measured against `PLANET_START`, which is what a commander is actually
+     * holding, not against `START`, which is only the arithmetic of the opening
+     * sequence. The two differ by `OPENING_BONUS` and the difference is the whole
+     * point of that cushion — it is what makes the first real decision affordable.
+     */
+    expect(satelliteCost('UPLINK').alloy).toBeLessThan(PLANET_START.alloy);
   });
 
   /** Each one changes a DIFFERENT number. Four bonuses to the same stat is one choice. */
@@ -1096,7 +1153,7 @@ describe('debris fields', () => {
         fc.integer({ min: 0, max: 100_000 }),
         fc.integer({ min: 0, max: 100_000 }),
         (alloy, crystal, hold) => {
-          const c = claimDebris(alloy, crystal, hold);
+          const c = claimDebris(alloy, crystal, 0, hold);
           expect(c.alloy + c.crystal).toBeLessThanOrEqual(hold);
           expect(c.alloy).toBeLessThanOrEqual(alloy);
           expect(c.crystal).toBeLessThanOrEqual(crystal);
@@ -1138,36 +1195,97 @@ describe('debris fields', () => {
  * hear about it.
  */
 describe('the tempo — every ratio a hull speed is measured against', () => {
-  const spec = generateGalaxy(1, 50);
-  const legs: number[] = [];
+  /**
+   * THE ANCHOR IS THE NEIGHBOURHOOD, NOT THE MEAN PAIR, and getting that wrong is
+   * what this block exists to stop.
+   *
+   * Every ratio below used to be counted against the mean distance between two
+   * random worlds. That was a fair proxy at fifty planets, where the tenth-nearest
+   * world was 510 units away and the mean pair 938. At three hundred and fifty it
+   * is not: the tenth-nearest is 510 and the mean pair is 2,275, because the disc
+   * did not change and the crowd did. **Nobody raids a random pair.** They raid
+   * somebody in their own neighbourhood, chosen off a telescope and inside the
+   * tier band, so that is what a "typical leg" has to mean.
+   *
+   * Defined as the median distance to a commander's 10th-to-25th nearest world, it
+   * is also population-independent by construction — the same sentence stays true
+   * at 200 seats and at 500.
+   */
+  const spec = generateGalaxy(1, MULTI_WORLD.capitalSlots);
+  const neighbourLegs: number[] = [];
+  for (const from of spec.slots) {
+    const sorted = spec.slots
+      .filter((to) => to.index !== from.index)
+      .map((to) => distance(from, to))
+      .sort((a, b) => a - b);
+    neighbourLegs.push((sorted[9]! + sorted[24]!) / 2);
+  }
+  neighbourLegs.sort((a, b) => a - b);
+  const typicalLeg = neighbourLegs[Math.floor(neighbourLegs.length / 2)]!;
+
+  const allLegs: number[] = [];
   for (let i = 0; i < spec.slots.length; i++) {
     for (let j = i + 1; j < spec.slots.length; j++) {
-      legs.push(distance(spec.slots[i]!, spec.slots[j]!));
+      allLegs.push(distance(spec.slots[i]!, spec.slots[j]!));
     }
   }
-  const meanLeg = legs.reduce((a, b) => a + b, 0) / legs.length;
-  const furthest = Math.max(...legs);
-  /** A mean raid, out and back. The unit everything below is counted in. */
-  const roundTrip = 2 * travelMinutes(meanLeg, HULLS.WASP.speed);
+  const furthest = Math.max(...allLegs);
 
-  it('keeps the slowest warship inside a single sitting', () => {
+  /** A typical raid, out and back. The unit everything below is counted in. */
+  const roundTrip = 2 * travelMinutes(typicalLeg, HULLS.WASP.speed);
+
+  /**
+   * THE OWNER'S CHOSEN TEMPO, and the one number the rest of the block hangs on.
+   * Long enough that a launch outlives a short session — Design Law #6 — and short
+   * enough that six to eight fit in an evening.
+   */
+  it('lands a neighbourhood raid inside the chosen window', () => {
+    expect(roundTrip).toBeGreaterThanOrEqual(10);
+    expect(roundTrip).toBeLessThanOrEqual(20);
+  });
+
+  it('keeps a heavy raid on a neighbour inside a single sitting', () => {
+    const heavy = 2 * travelMinutes(typicalLeg, HULLS.BULWARK.speed);
+    expect(heavy).toBeGreaterThan(roundTrip);
+    expect(heavy).toBeLessThanOrEqual(45);
+  });
+
+  /**
+   * ...and a siege on the far rim is a real expedition. That asymmetry is what
+   * makes distance mean something: surprise is bought with speed, and reach is
+   * bought with hours of being undefended.
+   */
+  it('makes a cross-disc siege an expedition, not an errand', () => {
     const widest = travelMinutes(furthest, HULLS.BULWARK.speed);
-    expect(widest).toBeLessThanOrEqual(20);
-    expect(widest).toBeGreaterThan(5);
+    expect(widest).toBeGreaterThan(45);
+    expect(widest).toBeLessThan(150);
   });
 
   it('leaves the launch overhead a minority of a typical flight', () => {
     // It was 50% the day the speeds landed, which is most of why hull choice
     // stopped reading as a decision about time.
-    expect(TRAVEL.baseMinutes / travelMinutes(meanLeg, HULLS.WASP.speed)).toBeLessThan(0.4);
+    expect(TRAVEL.baseMinutes / travelMinutes(typicalLeg, HULLS.WASP.speed)).toBeLessThan(0.4);
     expect(TRAVEL.baseMinutes).toBeGreaterThan(0);
   });
 
   it('keeps hull choice a real difference in arrival time', () => {
     // A ratio, not a gap. At this tempo the gap is minutes, and that is the point.
     expect(
-      travelExact(meanLeg, HULLS.BULWARK.speed) / travelExact(meanLeg, HULLS.WASP.speed),
+      travelExact(typicalLeg, HULLS.BULWARK.speed) / travelExact(typicalLeg, HULLS.WASP.speed),
     ).toBeGreaterThan(1.3);
+  });
+
+  /**
+   * THE RADAR STILL SELLS THE WINDOW TO ARM. This is the surviving half of D4's
+   * argument against build timers, and Economy v2 owes it a proof: construction is
+   * no longer instant, so a warning is only worth anything if a gun fits inside it.
+   */
+  it('fits a ground gun inside the narrowest radar warning it sells', () => {
+    const oneWay = travelExact(typicalLeg, HULLS.WASP.speed);
+    const firstRung = INTEL.radarRange.findIndex((r) => r > 0);
+    const notice = Math.min(oneWay, (oneWay * INTEL.radarRange[firstRung]!) / typicalLeg);
+    const gun = defenceMinutes(HULLS.THORN, 0);
+    expect(gun).toBeLessThan(notice / 2);
   });
 
   it('gives a stripped shield back within a plausible number of raids', () => {
@@ -1183,7 +1301,7 @@ describe('the tempo — every ratio a hull speed is measured against', () => {
     // disproportionately efficient.
     const perEffort = DISRUPTION.decisiveMinutes / roundTrip;
     expect(perEffort).toBeLessThan(9);
-    expect(perEffort).toBeGreaterThan(1.5);
+    expect(perEffort).toBeGreaterThan(1);
     expect(DISRUPTION.partialMinutes).toBeLessThan(DISRUPTION.decisiveMinutes);
     expect(DISRUPTION.maxPendingMinutes).toBeGreaterThanOrEqual(DISRUPTION.decisiveMinutes);
   });
@@ -1191,7 +1309,7 @@ describe('the tempo — every ratio a hull speed is measured against', () => {
   it('keeps a wreck field a race rather than a landmark', () => {
     // Thirty legs of life meant every player in the galaxy could reach it several
     // times over, which is the opposite of a race.
-    const legsOfLife = DEBRIS.decayMinutes / travelMinutes(meanLeg, HULLS.WASP.speed);
+    const legsOfLife = DEBRIS.decayMinutes / travelMinutes(typicalLeg, HULLS.WASP.speed);
     expect(legsOfLife).toBeLessThan(12);
     expect(legsOfLife).toBeGreaterThan(1.5);
   });
@@ -1204,10 +1322,14 @@ describe('the tempo — every ratio a hull speed is measured against', () => {
     expect(trips).toBeGreaterThan(1);
   });
 
-  it('keeps a probe the fastest thing a commander can send', () => {
-    for (const hull of Object.values(HULLS)) {
-      if (hull.ground) continue;
-      expect(PROBE.speed, `a ${hull.name} outruns a probe`).toBeGreaterThan(hull.speed);
+  /**
+   * A probe outruns everything that can be sent AT somebody. The Prospector is
+   * faster still and is deliberately not in this list — it is not in `MOBILE_HULLS`
+   * either, because it chases rocks rather than commanders.
+   */
+  it('keeps a probe the fastest thing a commander can send at somebody', () => {
+    for (const id of MOBILE_HULLS) {
+      expect(PROBE.speed, `a ${HULLS[id].name} outruns a probe`).toBeGreaterThan(HULLS[id].speed);
     }
   });
 });

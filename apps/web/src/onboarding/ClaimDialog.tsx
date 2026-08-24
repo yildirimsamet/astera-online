@@ -95,7 +95,7 @@ export function ClaimDialog({
       aria-modal="true"
       aria-label={t('onboarding.claim.headingName')}
     >
-      <div className="absolute inset-0 bg-void/70 backdrop-blur-sm" />
+      <div className="absolute inset-0 bg-void/70" />
 
       <form
         className="plate plate-cut relative w-full max-w-md p-6 pb-[calc(24px+env(safe-area-inset-bottom))]"

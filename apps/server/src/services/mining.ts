@@ -1,17 +1,17 @@
 import { and, eq, gt, inArray } from 'drizzle-orm';
 import {
-  activeAsteroids,
   asteroidActive,
   claimOre,
   interceptAsteroid,
   prospectorHold,
   prospectorSpeed,
-  prospectorTravelMinutes,
+  prospectorTravelExact,
   DEBRIS,
   claimDebris,
   collectorCap,
   debrisAlive,
   debrisRemaining,
+  deuteriumCollectorCap,
   productionMult,
   alloyRate,
   crystalRate,
@@ -23,10 +23,20 @@ import { addMinutes, atMinute, minutesSince, type Clock } from '../clock.js';
 import type { Db, Queryable, Tx } from '../db/client.js';
 import { asteroidClaims, debrisFields, miningRuns, planets, seasons, units } from '../db/schema.js';
 import { assertFreeBay } from './flight.js';
-import { GameError, loadLocked, orbitOf, saveResources, setUnits } from './planet.js';
+import {
+  assertSeasonOpenThrough,
+  assertWorldOperational,
+  GameError,
+  loadLocked,
+  orbitOf,
+  saveResources,
+  setUnits,
+} from './planet.js';
 import { galaxyOf } from './season.js';
 import { schedule } from '../worker/queue.js';
-import { publishShard } from '../stream/bus.js';
+import { publish, publishShard } from '../stream/bus.js';
+import { hasResearch } from './researchState.js';
+import { publicPlanetIdentity, recordGalaxyEvent } from './chronicle.js';
 
 /**
  * MINING — D19.
@@ -55,43 +65,111 @@ async function fieldOf(tx: Queryable, seasonId: string): Promise<{
   return { asteroids: galaxyOf(seasonId, season.seed).asteroids, startsAt: season.startsAt };
 }
 
-export interface AsteroidView extends AsteroidSpec {
+export interface AsteroidView extends Omit<AsteroidSpec, 'isotopeRich' | 'deuteriumShare'> {
   /** Ore still in it. Public — everyone races for the same rock. */
   oreRemaining: number;
+  /** Visible rocks are active; retained in the wire shape for client compatibility. */
+  active: boolean;
+  /** Hidden until spectroscopy; a normal-looking active rock reveals no fuel. */
+  isotopeRich: boolean;
+  deuteriumShare: number | null;
+}
+
+/**
+ * The public, caller-independent half of `/api/mining`. D99.
+ *
+ * It intentionally carries raw asteroid/debris facts rather than a response:
+ * activity, decay and isotope visibility are derived at request time. Nothing
+ * about a player's research, orbit or own runs can enter this shared snapshot.
+ */
+export interface MiningSnapshot {
+  asteroids: AsteroidSpec[];
+  startsAt: Date;
+  oreTaken: ReadonlyMap<number, number>;
+  debris: (typeof debrisFields.$inferSelect)[];
+}
+
+export async function loadMiningSnapshot(
+  db: Queryable,
+  seasonId: string,
+  now: Date,
+): Promise<MiningSnapshot> {
+  const field = await fieldOf(db, seasonId);
+  const oldest = new Date(now.getTime() - DEBRIS.decayMinutes * 60_000);
+  const [claims, debris] = await Promise.all([
+    db.select().from(asteroidClaims).where(eq(asteroidClaims.seasonId, seasonId)),
+    db
+      .select()
+      .from(debrisFields)
+      .where(and(eq(debrisFields.seasonId, seasonId), gt(debrisFields.createdAt, oldest))),
+  ]);
+  return {
+    ...field,
+    oreTaken: new Map(claims.map((claim) => [claim.index, claim.oreTaken])),
+    debris,
+  };
+}
+
+export function projectVisibleAsteroids(
+  snapshot: MiningSnapshot,
+  now: Date,
+  revealIsotopes = false,
+): AsteroidView[] {
+  const nowMinutes = minutesSince(snapshot.startsAt, now);
+  return snapshot.asteroids
+    .filter((asteroid) => asteroidActive(asteroid, nowMinutes))
+    .map((asteroid) => ({
+      index: asteroid.index,
+      level: asteroid.level,
+      ore: asteroid.ore,
+      crystalShare: asteroid.crystalShare,
+      radius: asteroid.radius,
+      period: asteroid.period,
+      phase: asteroid.phase,
+      y: asteroid.y,
+      speed: asteroid.speed,
+      appearsAt: asteroid.appearsAt,
+      expiresAt: asteroid.expiresAt,
+      oreRemaining: Math.max(0, asteroid.ore - (snapshot.oreTaken.get(asteroid.index) ?? 0)),
+      active: true,
+      isotopeRich: asteroid.isotopeRich,
+      deuteriumShare: revealIsotopes ? asteroid.deuteriumShare : null,
+    }))
+    .filter((asteroid) => asteroid.oreRemaining > 0);
+}
+
+export function projectVisibleDebris(snapshot: MiningSnapshot, now: Date) {
+  return snapshot.debris
+    .map((field) => {
+      const age = (now.getTime() - field.createdAt.getTime()) / 60_000;
+      return {
+        id: field.id,
+        planetId: field.planetId,
+        alloy: debrisRemaining(field.alloy, field.takenAlloy, age),
+        crystal: debrisRemaining(field.crystal, field.takenCrystal, age),
+        deuterium: debrisRemaining(field.deuterium, field.takenDeuterium, age),
+        minutesLeft: Math.max(0, DEBRIS.decayMinutes - age),
+        createdAt: field.createdAt,
+      };
+    })
+    .filter((field) => field.alloy + field.crystal + field.deuterium > 1);
 }
 
 /**
  * Every rock in the disc right now, with what is left in it.
  *
- * PUBLIC BY DESIGN. Asteroids are not part of the fog: they are physical objects
- * on open trajectories and the race only works if everyone can see the same prize.
- * Nothing here reveals anything about a player.
+ * PUBLIC BY DESIGN. Active asteroids are physical objects on open trajectories.
+ * Spectrometry reveals an anomaly's fuel share and permission to pursue it, never
+ * whether the moving object exists. Nothing here reveals a fact about another
+ * player.
  */
 export async function visibleAsteroids(
-  db: Db,
+  db: Queryable,
   seasonId: string,
   now: Date,
+  revealIsotopes = false,
 ): Promise<AsteroidView[]> {
-  const { asteroids, startsAt } = await fieldOf(db, seasonId);
-  const live = activeAsteroids(asteroids, minutesSince(startsAt, now));
-  if (live.length === 0) return [];
-
-  const claims = await db
-    .select()
-    .from(asteroidClaims)
-    .where(
-      and(
-        eq(asteroidClaims.seasonId, seasonId),
-        inArray(asteroidClaims.index, live.map((a) => a.index)),
-      ),
-    );
-  const taken = new Map(claims.map((c) => [c.index, c.oreTaken]));
-
-  return live
-    .map((a) => ({ ...a, oreRemaining: Math.max(0, a.ore - (taken.get(a.index) ?? 0)) }))
-    // A rock that has been stripped is gone as far as anyone is concerned; leaving
-    // it on the map would advertise a trip that pays nothing.
-    .filter((a) => a.oreRemaining > 0);
+  return projectVisibleAsteroids(await loadMiningSnapshot(db, seasonId, now), now, revealIsotopes);
 }
 
 export interface MiningLaunch {
@@ -119,6 +197,7 @@ export async function launchMining(
   asteroidIndex: number,
   craft: number,
   clock: Clock,
+  expectedPlayerId?: string,
 ): Promise<MiningLaunch> {
   if (!Number.isInteger(craft) || craft < 1) {
     throw new GameError('BAD_COUNT', 'Send at least one Prospector', 400, {
@@ -127,7 +206,8 @@ export async function launchMining(
   }
 
   return db.transaction(async (tx) => {
-    const origin = await loadLocked(tx, planetId, clock);
+    const origin = await loadLocked(tx, planetId, clock, { expectedPlayerId });
+    assertWorldOperational(origin);
 
     /**
      * NO GATE ON SENDING. D25.
@@ -154,6 +234,16 @@ export async function launchMining(
     const nowMinutes = minutesSince(startsAt, origin.now);
     if (!asteroidActive(rock, nowMinutes)) {
       throw new GameError('ASTEROID_GONE', 'That rock is not in the disc', 409);
+    }
+    if (
+      rock.isotopeRich
+      && !(await hasResearch(tx, planetId, 'ISOTOPE_SPECTROMETRY'))
+    ) {
+      throw new GameError(
+        'NEEDS_ISOTOPE_SPECTROMETRY',
+        'Research Isotope Spectrometry before mining this anomaly',
+        403,
+      );
     }
 
     // Already stripped? Refuse before charging anyone a round trip for nothing.
@@ -200,6 +290,8 @@ export async function launchMining(
     }
 
     const arriveAt = atMinute(startsAt, hit.meetsAtMinutes);
+    const homeMinutes = prospectorTravelExact(distance(hit.at, origin), speed);
+    assertSeasonOpenThrough(origin, addMinutes(arriveAt, homeMinutes));
     const holdEach = prospectorHold(origin.orbit);
 
     const [run] = await tx
@@ -276,11 +368,11 @@ export async function resolveMiningArrival(tx: Tx, runId: string, now: Date): Pr
    * Published from HERE rather than from the worker handler, because the claim
    * above is the thing that decides whether any work happened at all: a redelivered
    * event finds the row already `returning`, claims nothing, and must not send
-   * fifty clients to refetch a world that has not moved.
+   * three hundred clients to refetch a world that has not moved.
    */
   await publishShard(tx, run.seasonId, 'mining');
 
-  let mined = { alloy: 0, crystal: 0 };
+  let mined = { alloy: 0, crystal: 0, deuterium: 0 };
 
   /**
    * Branch on the COLUMN, never on `targetKind`.
@@ -322,8 +414,13 @@ export async function resolveMiningArrival(tx: Tx, runId: string, now: Date): Pr
 
     const alreadyTaken = existing?.oreTaken ?? 0;
     const remaining = Math.max(0, rock.ore - alreadyTaken);
-    const claim = claimOre(remaining, run.holdEach * run.craft, rock.crystalShare);
-    mined = { alloy: claim.alloy, crystal: claim.crystal };
+    const claim = claimOre(
+      remaining,
+      run.holdEach * run.craft,
+      rock.crystalShare,
+      rock.deuteriumShare,
+    );
+    mined = { alloy: claim.alloy, crystal: claim.crystal, deuterium: claim.deuterium };
 
     if (claim.taken > 0) {
       await tx
@@ -338,6 +435,16 @@ export async function resolveMiningArrival(tx: Tx, runId: string, now: Date): Pr
           target: [asteroidClaims.seasonId, asteroidClaims.index],
           set: { oreTaken: alreadyTaken + claim.taken, updatedAt: now },
         });
+      if (rock.isotopeRich && remaining - claim.taken <= 0) {
+        await recordGalaxyEvent(tx, {
+          seasonId: run.seasonId,
+          kind: 'isotope_exhausted',
+          refId: `${run.seasonId}:${String(rockIndex)}`,
+          subjectPlanetId: null,
+          payload: { asteroidIndex: rockIndex },
+          occurredAt: now,
+        });
+      }
     }
   }
 
@@ -345,8 +452,14 @@ export async function resolveMiningArrival(tx: Tx, runId: string, now: Date): Pr
   // from the meeting point rather than from wherever the rock is now.
   const [home] = await tx.select().from(planets).where(eq(planets.id, run.planetId));
   if (!home) throw new Error(`mining run ${runId} references a missing planet`);
+  if (home.controllerPlayerId) {
+    // The shard event refreshes only public field/traffic data at D99 scale. The
+    // owner gets a private wake as well so their own run turns around on the same
+    // committed instant, without making every other commander query private rows.
+    await publish(tx, home.controllerPlayerId, 'mining_arrival');
+  }
 
-  const back = prospectorTravelMinutes(
+  const back = prospectorTravelExact(
     Math.hypot(run.interceptX - home.x, run.interceptY - home.y, run.interceptZ - home.z),
     // Re-read from what is CURRENTLY in orbit on purpose: the craft is a real
     // object being flown home, and a Derrick that lands while it is out
@@ -357,7 +470,12 @@ export async function resolveMiningArrival(tx: Tx, runId: string, now: Date): Pr
 
   await tx
     .update(miningRuns)
-    .set({ minedAlloy: mined.alloy, minedCrystal: mined.crystal, homeAt })
+    .set({
+      minedAlloy: mined.alloy,
+      minedCrystal: mined.crystal,
+      minedDeuterium: mined.deuterium,
+      homeAt,
+    })
     .where(eq(miningRuns.id, runId));
 
   await schedule(tx, {
@@ -373,9 +491,9 @@ export interface MiningDelivery {
   runId: string;
   craft: number;
   /** What actually reached the store. */
-  delivered: { alloy: number; crystal: number };
+  delivered: { alloy: number; crystal: number; deuterium: number };
   /** What was mined but would not fit — the store was already full. */
-  wasted: { alloy: number; crystal: number };
+  wasted: { alloy: number; crystal: number; deuterium: number };
 }
 
 /**
@@ -447,14 +565,22 @@ export async function resolveMiningReturn(
     0,
     collectorCap(crystalRate(planet.buildings.EXTRACTOR) * boost) - planet.bufferCrystal,
   );
+  const roomDeuterium = Math.max(
+    0,
+    deuteriumCollectorCap(crystalRate(planet.buildings.EXTRACTOR) * boost)
+      - planet.bufferDeuterium,
+  );
   const gotAlloy = Math.min(run.minedAlloy, roomAlloy);
   const gotCrystal = Math.min(run.minedCrystal, roomCrystal);
+  const gotDeuterium = Math.min(run.minedDeuterium, roomDeuterium);
 
   await saveResources(tx, run.planetId, {
     alloy: planet.alloy,
     crystal: planet.crystal,
+    deuterium: planet.deuterium,
     bufferAlloy: planet.bufferAlloy + gotAlloy,
     bufferCrystal: planet.bufferCrystal + gotCrystal,
+    bufferDeuterium: planet.bufferDeuterium + gotDeuterium,
   });
 
   // The craft rejoin the garrison, and their in-flight row goes away. Read the
@@ -478,10 +604,11 @@ export async function resolveMiningReturn(
   return {
     runId,
     craft: run.craft,
-    delivered: { alloy: gotAlloy, crystal: gotCrystal },
+    delivered: { alloy: gotAlloy, crystal: gotCrystal, deuterium: gotDeuterium },
     wasted: {
       alloy: run.minedAlloy - gotAlloy,
       crystal: run.minedCrystal - gotCrystal,
+      deuterium: run.minedDeuterium - gotDeuterium,
     },
   };
 }
@@ -525,27 +652,61 @@ export async function claimFromDebris(
   fieldId: string,
   hold: number,
   now: Date,
-): Promise<{ alloy: number; crystal: number }> {
+): Promise<{ alloy: number; crystal: number; deuterium: number }> {
   const [field] = await tx
     .select()
     .from(debrisFields)
     .where(eq(debrisFields.id, fieldId))
     .for('update');
-  if (!field) return { alloy: 0, crystal: 0 };
+  if (!field) return { alloy: 0, crystal: 0, deuterium: 0 };
 
   const age = (now.getTime() - field.createdAt.getTime()) / 60_000;
   const alloyLeft = debrisRemaining(field.alloy, field.takenAlloy, age);
   const crystalLeft = debrisRemaining(field.crystal, field.takenCrystal, age);
-  const claim = claimDebris(alloyLeft, crystalLeft, hold);
+  const deuteriumLeft = debrisRemaining(field.deuterium, field.takenDeuterium, age);
+  const claim = claimDebris(alloyLeft, crystalLeft, deuteriumLeft, hold);
 
-  if (claim.alloy > 0 || claim.crystal > 0) {
+  if (claim.alloy > 0 || claim.crystal > 0 || claim.deuterium > 0) {
     await tx
       .update(debrisFields)
       .set({
         takenAlloy: field.takenAlloy + claim.alloy,
         takenCrystal: field.takenCrystal + claim.crystal,
+        takenDeuterium: field.takenDeuterium + claim.deuterium,
       })
       .where(eq(debrisFields.id, fieldId));
+
+    /**
+     * EXHAUSTED IS PER COLUMN, NOT A SINGLE TOTAL — and the total was a latent bug.
+     *
+     * `claimDebris` floors each resource separately, so a fully drained field can
+     * still show a fractional residue in every column at once: up to just under
+     * three in total, against a threshold of one. The event therefore fired only
+     * when the decay arithmetic happened to land favourably, and a two-column field
+     * that had been swept clean routinely announced nothing.
+     *
+     * A column holding less than one whole unit can never be claimed again, because
+     * the floor takes it to zero. So "every column is under one" is the exact
+     * statement of finished, and it cannot be knocked out by rounding.
+     */
+    const leftAfter = Math.max(
+      alloyLeft - claim.alloy,
+      crystalLeft - claim.crystal,
+      deuteriumLeft - claim.deuterium,
+    );
+    if (leftAfter < 1) {
+      const identity = await publicPlanetIdentity(tx, field.planetId);
+      if (identity) {
+        await recordGalaxyEvent(tx, {
+          seasonId: field.seasonId,
+          kind: 'wreck_exhausted',
+          refId: field.id,
+          subjectPlanetId: field.planetId,
+          payload: identity,
+          occurredAt: now,
+        });
+      }
+    }
   }
   return claim;
 }
@@ -562,25 +723,7 @@ export async function visibleDebris(db: Queryable, seasonId: string, now: Date) 
    * has ever fought on every read of the disc. `debris_season_idx` is
    * `(season_id, created_at)` and serves this exactly.
    */
-  const oldest = new Date(now.getTime() - DEBRIS.decayMinutes * 60_000);
-  const rows = await db
-    .select()
-    .from(debrisFields)
-    .where(and(eq(debrisFields.seasonId, seasonId), gt(debrisFields.createdAt, oldest)));
-
-  return rows
-    .map((d) => {
-      const age = (now.getTime() - d.createdAt.getTime()) / 60_000;
-      return {
-        id: d.id,
-        planetId: d.planetId,
-        alloy: debrisRemaining(d.alloy, d.takenAlloy, age),
-        crystal: debrisRemaining(d.crystal, d.takenCrystal, age),
-        minutesLeft: Math.max(0, DEBRIS.decayMinutes - age),
-        createdAt: d.createdAt,
-      };
-    })
-    .filter((d) => d.alloy + d.crystal > 1);
+  return projectVisibleDebris(await loadMiningSnapshot(db, seasonId, now), now);
 }
 
 /**
@@ -598,13 +741,15 @@ export async function launchHarvest(
   fieldId: string,
   craft: number,
   clock: Clock,
+  expectedPlayerId?: string,
 ): Promise<MiningLaunch> {
   if (!Number.isInteger(craft) || craft < 1) {
     throw new GameError('BAD_COUNT', 'Send at least one craft', 400, { context: 'craft' });
   }
 
   return db.transaction(async (tx) => {
-    const origin = await loadLocked(tx, planetId, clock);
+    const origin = await loadLocked(tx, planetId, clock, { expectedPlayerId });
+    assertWorldOperational(origin);
 
     const available = origin.homeFleet.PROSPECTOR ?? 0;
     if (available < craft) {
@@ -623,7 +768,15 @@ export async function launchHarvest(
 
     const age = (origin.now.getTime() - field.createdAt.getTime()) / 60_000;
     if (
-      !debrisAlive(field.alloy, field.crystal, field.takenAlloy, field.takenCrystal, age)
+      !debrisAlive(
+        field.alloy,
+        field.crystal,
+        field.deuterium,
+        field.takenAlloy,
+        field.takenCrystal,
+        field.takenDeuterium,
+        age,
+      )
     ) {
       throw new GameError('FIELD_GONE', 'There is nothing left of it', 409);
     }
@@ -648,8 +801,9 @@ export async function launchHarvest(
     const dist = distance(origin, target);
     // A harvest is the same craft on a different errand, so it flies by the same
     // rule as a mining run — mining's own launch overhead, not a warship's. D48.
-    const oneWay = prospectorTravelMinutes(dist, speed);
+    const oneWay = prospectorTravelExact(dist, speed);
     const arriveAt = addMinutes(origin.now, oneWay);
+    assertSeasonOpenThrough(origin, addMinutes(arriveAt, oneWay));
     const holdEach = prospectorHold(origin.orbit);
 
     const [run] = await tx

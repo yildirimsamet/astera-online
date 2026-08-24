@@ -43,5 +43,5 @@ what happened"** after closing it.
 **Why:** the project has a large written record precisely so context loss does not cost
 another design cycle; reconstructing it from memory would produce a subtly different game.
 
-**How to apply:** read `CLAUDE.md` first, then `docs/roadmap.md` for the next job. See
+**How to apply:** read `CLAUDE.md` first, then `docs/decisions.md` and `docs/balance.md`. See
 [[user-execution-mode]] and [[user-code-quality-bar]] for how this user wants work done.

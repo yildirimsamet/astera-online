@@ -14,6 +14,18 @@
  */
 
 export const errors = {
+  PLANET_NOT_OWNED: 'You do not control that world',
+  WORLD_RECOVERING: 'That world is recovering',
+  OCCUPATION_PROTECTED: 'That world is under occupation protection',
+  COLONY_CAP: 'Your Command Core cannot hold another colony',
+  NO_ACTIVE_CLAIM: 'No settlement claim is open',
+  CLAIM_EXPIRED: 'The settlement claim has expired',
+  TARGET_CHANGED: 'That world changed controller first',
+  SETTLEMENT_REQUIREMENTS: 'A settlement needs two Haulers and its founding cargo',
+  DEATH_STAR_EXISTS: 'This world already has a Death Star',
+  DEATH_STAR_NOT_READY: 'No Death Star is ready on this world',
+  DEATH_STAR_LOCKED: 'Death Star prerequisites are not met',
+  RECOVERY_WINDOW_TOO_SHORT: 'The recovery or claim window closes before arrival',
   /** What is shown when nothing else is known. */
   unknown: 'Something went wrong',
   unreachable: 'Lost contact with the server. Try again in a moment.',
@@ -34,6 +46,9 @@ export const errors = {
   BAD_REQUEST: 'That request could not be read',
   BAD_SESSION: 'Session is invalid or expired',
   BAD_SLOT: 'Telescope L{{level}} can watch {{slots}} planet(s)',
+  BUILD_ORDER_FINISHED: 'That order has already finished',
+  BUILD_ORDER_HAS_DEPENDENTS: 'Cancel the dependent orders behind this one first',
+  BUILD_ORDER_NOT_FOUND: 'No active build order by that id',
   BASH_LIMIT: 'You have hit this planet too many times recently',
   CANNOT_INTERCEPT: 'It will leave the disc before your craft could reach it',
   CHAT_RATE_LIMIT: 'Send at most five messages every {{seconds}} seconds.',
@@ -51,6 +66,9 @@ export const errors = {
   INSUFFICIENT_RESOURCES_probe: 'Not enough resources for a probe',
   INTERNAL: 'Something went wrong',
   NEEDS_UPLINK: 'Put an Uplink in orbit first',
+  NEEDS_DENSE_FUEL_CELLS: 'Research Dense Fuel Cells first',
+  NEEDS_GRAVITIC_CHARGES: 'Research Gravitic Charges first',
+  NEEDS_ISOTOPE_SPECTROMETRY: 'Research Isotope Spectrometry before mining this anomaly',
   NO_FREE_BAY: 'All {{total}} flight bays are in use. Something has to land first.',
   NO_FREE_SLOT: 'Raise the Command Core for another orbit slot',
   NO_PLANET: 'Join a galaxy first',
@@ -69,6 +87,8 @@ export const errors = {
   PROBE_ALREADY_OUT: 'You already have a probe working that planet',
   PROSPECTOR_CAP: 'You may hold {{max}} Prospectors, and you have {{have}}.',
   PROSPECTOR_CAP_atLimit: 'You already have {{max}} Prospectors. That is the limit.',
+  QUEUE_FULL: 'The {{queue}} queue is full',
+  QUEUE_SETTLING: 'The completed order is settling now',
   /**
    * The rehearsal cannot honour that, and it should never have been offered.
    *
@@ -76,7 +96,15 @@ export const errors = {
    * reaching this means one slipped through. Better a sentence than the code.
    */
   RATE_LIMITED: 'Too many requests. Try again in {{seconds}} seconds.',
+  RESEARCH_ALREADY_COMPLETE: 'That research is already complete',
+  RESEARCH_NOT_DISCOVERED: 'That research has not been discovered',
+  RESEARCH_UNAVAILABLE: 'That research is not available yet',
+  RIVAL_NOT_VISIBLE: 'That world is not in your galaxy',
+  RIVAL_SELF: 'You cannot mark your own world as a rival',
   REHEARSAL_ONLY: 'Not until this world is yours',
+  SEASON_ENDS_BEFORE_RETURN: 'That squadron cannot return before the season ends',
+  SEASON_ENDS_BEFORE_BUILD: 'That order cannot finish before the season ends',
+  SEASON_FROZEN: 'That season is over',
   SEASON_NOT_FOUND: 'No such season',
   SELF_ATTACK: 'You cannot attack your own planet',
   SELF_PROBE: 'You already know what is on your own planet',

@@ -170,6 +170,46 @@ describe('rate limiting', () => {
     }
   });
 
+  it('takes an API replica out of health while its LISTEN channel is down', async () => {
+    await build({ ROLE: 'api' });
+
+    const down = await app.inject({ method: 'GET', url: '/health' });
+    expect(down.statusCode).toBe(503);
+    expect(down.json<{ ok: boolean; checks: { stream: string } }>()).toMatchObject({
+      ok: false,
+      checks: { stream: 'not listening' },
+    });
+
+    await app.bus.start();
+    const up = await app.inject({ method: 'GET', url: '/health' });
+    expect(up.statusCode).toBe(200);
+    expect(up.json<{ checks: { stream: string } }>().checks.stream).toBe('ok');
+    const metrics = await app.inject({ method: 'GET', url: '/metrics' });
+    expect(metrics.statusCode).toBe(200);
+    const metricBody = metrics.json<{
+      service: { role: string };
+      host: { cpu: { cores: number; idleMilliseconds: number; totalMilliseconds: number } };
+      runtime: { instanceId: string };
+    }>();
+    expect(metricBody.service.role).toBe('api');
+    expect(metricBody.host.cpu.cores).toBeGreaterThan(0);
+    expect(metricBody.host.cpu.totalMilliseconds).toBeGreaterThan(
+      metricBody.host.cpu.idleMilliseconds,
+    );
+    expect(metricBody.runtime.instanceId).toMatch(/^[0-9a-f-]{36}$/);
+
+    const originalRateLimitStatus = app.rateLimitBackend.status.bind(app.rateLimitBackend);
+    app.rateLimitBackend.status = () => ({ mode: 'shared', status: 'reconnecting' });
+    const limiterDown = await app.inject({ method: 'GET', url: '/health' });
+    expect(limiterDown.statusCode).toBe(503);
+    expect(limiterDown.json<{ checks: { rateLimit: { status: string } } }>()
+      .checks.rateLimit.status).toBe('reconnecting');
+    app.rateLimitBackend.status = originalRateLimitStatus;
+
+    await app.bus.stop();
+    expect((await app.inject({ method: 'GET', url: '/health' })).statusCode).toBe(503);
+  });
+
   /**
    * THE GLOBAL CEILING IS A NET UNDER EVERYTHING ELSE, so it has to apply to the
    * ordinary public routes too — the ones with no strict bucket of their own.

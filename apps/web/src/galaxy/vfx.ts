@@ -209,6 +209,48 @@ export function sparkTexture(): THREE.Texture | null {
   return (spark = finish(canvas));
 }
 
+/* ── cooling smoke ─────────────────────────────────────────── */
+
+let smoke: Cache | undefined;
+
+/**
+ * The low-energy body left after an impact's white flash.
+ *
+ * Additive fire alone can only become more light. Real impacts also leave a
+ * warm, light-absorbing cloud, and that dark middle is what gives the bright edge
+ * volume. This texture uses ordinary alpha blending in the renderer: soft enough
+ * not to become a decal, broken up enough not to become a grey circle.
+ */
+export function smokeTexture(): THREE.Texture | null {
+  if (smoke !== undefined) return smoke;
+  const made = surface(128);
+  if (!made) return (smoke = null);
+  const { canvas, ctx } = made;
+  const size = 128;
+  const coarse = noiseField(size, 5, 0x8da6f1);
+  const fine = noiseField(size, 14, 0x42be91);
+  const image = ctx.createImageData(size, size);
+
+  for (let y = 0; y < size; y++) {
+    for (let x = 0; x < size; x++) {
+      const i = y * size + x;
+      const dx = (x + 0.5) / size - 0.5;
+      const dy = (y + 0.5) / size - 0.5;
+      const radius = Math.hypot(dx, dy) * 2;
+      const torn = radius + ((coarse[i] ?? 0.5) - 0.5) * 0.4 + ((fine[i] ?? 0.5) - 0.5) * 0.12;
+      const density = Math.max(0, 1 - torn) ** 1.8;
+      const heat = Math.max(0, 1 - radius * 1.7) * density;
+      const o = i * 4;
+      image.data[o] = Math.round((0.24 + heat * 0.34) * 255);
+      image.data[o + 1] = Math.round((0.27 + heat * 0.16) * 255);
+      image.data[o + 2] = Math.round((0.31 + heat * 0.05) * 255);
+      image.data[o + 3] = Math.round(density * 0.72 * 255);
+    }
+  }
+  ctx.putImageData(image, 0, 0);
+  return (smoke = finish(canvas));
+}
+
 /* ── the plume ──────────────────────────────────────────────── */
 
 let plume: Cache | undefined;

@@ -39,7 +39,7 @@ const api = new Api();
  * and driving them through the interface is slow and brittle. Stripped from
  * production by the `DEV` guard.
  */
-if (import.meta.env.DEV) {
+if (import.meta.env.DEV || import.meta.env.VITE_VISUAL_TEST === '1') {
   (window as unknown as { __api?: Api }).__api = api;
 }
 

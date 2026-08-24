@@ -51,10 +51,12 @@ is a licence to add systems. **Simple implementation, magnificent presentation.*
 
 ## What this is not
 
-Not a 4X. Not an MMO. Not an OGame clone. Not AAA. There is no colonisation, no alliance
+Not a 4X. Not an MMO. Not an OGame clone. Not AAA. There is no alliance
 diplomacy, no tech tree, no fleet micro-management, no manual combat.
 
-The constraint that shapes everything: **one developer must be able to finish it.**
+The production constraint that shapes everything: **a three-person team must be able to
+build, operate and grow this into a medium-to-large game without losing coherence.** Team
+growth expands production capacity; it does not justify systems that weaken the core loop.
 
 ## Who it is for
 
@@ -70,7 +72,7 @@ that is supposed to produce it, so you can check whether it still does.
 
 | Emotion | Produced by |
 |---|---|
-| **Ownership** | One planet, named, at fixed coordinates, structurally indestructible |
+| **Ownership** | One protected capital and up to three won colonies, named at fixed coordinates |
 | **Curiosity** | The clarity gradient — information that is real but possibly stale |
 | **Competition** | The first attacker becomes a named antagonist, on purpose, by design |
 | **Ambition** | Dominion is one legible integer where every action lands |
@@ -103,9 +105,10 @@ alternatives (see [decisions.md](decisions.md), D1). The reasoning:
 
 1. **It is the differentiator.** Every async space game has fleets and raids. Almost none
    make *seeing and being seen* the core mechanic.
-2. **It is the cheap one.** A telescope is a database query with a visibility predicate. A
-   radar is an event log. Neither needs physics, simulation, or a combat renderer — which
-   is precisely why one person can ship this. Combat, by contrast, is weeks of tuning.
+2. **It is the leverage point.** A telescope is a database query with a visibility predicate.
+   A radar is an event log. Neither needs physics, simulation, or a combat renderer — which
+   is precisely where a three-person team can spend production capacity without multiplying
+   systems. Combat, by contrast, is weeks of tuning.
 3. **Its return moment refreshes itself.** Most async games return you to the *same*
    question every session: *did my thing finish?* Astera Online returns you to *new material* —
    sightings, absences, scans from a bearing you do not recognise, patterns that only mean
@@ -133,7 +136,7 @@ Everything is measured against this. It is testable, and it is the gate.
 At the end of MVP, what exists should not be *"a lot of features in a working prototype."*
 It should be:
 
-> **A small multiplayer game that makes the player want to check it again.**
+> **A growing multiplayer game that makes the player want to check it again.**
 
 A player closes the app, and some time later thinks: **"I wonder what happened."**
 That is the retention loop. Everything else serves it.

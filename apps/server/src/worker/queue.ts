@@ -33,7 +33,7 @@ export async function claimDue(db: Db, batch: number, now: Date): Promise<EventR
        SELECT id FROM scheduled_events
         WHERE status = 'pending'
           AND resolve_at <= ${ts(now)}::timestamptz
-        ORDER BY resolve_at
+        ORDER BY resolve_at, ref_id, id
           FOR UPDATE SKIP LOCKED
         LIMIT ${batch}
      )
@@ -45,7 +45,10 @@ export async function claimDue(db: Db, batch: number, now: Date): Promise<EventR
   // PostgreSQL makes no guarantee about RETURNING order. Processing order does
   // matter — two arrivals at the same planet must resolve oldest-first — so sort
   // explicitly rather than relying on an accident of the query plan.
-  return [...rows].map(fromRow).sort((a, b) => a.resolveAt.getTime() - b.resolveAt.getTime());
+  return [...rows].map(fromRow).sort((a, b) =>
+    a.resolveAt.getTime() - b.resolveAt.getTime()
+    || (a.refId ?? '').localeCompare(b.refId ?? '')
+    || a.id.localeCompare(b.id));
 }
 
 interface RawEventRow {

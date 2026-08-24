@@ -40,7 +40,10 @@ const SESSION = {
  * thing under test.
  */
 const PLANET = planetView(
-  { nextCosts: { CORE: { alloy: 200, crystal: 0 } }, score: { wealth: 1200, dominion: 0 } },
+  {
+    nextCosts: { CORE: { alloy: 200, crystal: 0, deuterium: 0 } },
+    score: { wealth: 1200, dominion: 0 },
+  },
   {
     position: { x: 1, y: 2, z: 3 },
     alloy: 100,
@@ -256,6 +259,32 @@ describe('the API client', () => {
         code: 'NO_SUCH_SERVER',
       });
       expect(calls[0]).toBe('/api/servers/EU-1%2F..%2Fadmin/join');
+    });
+  });
+
+  describe('cancelling a queued build', () => {
+    it('escapes both identifiers and supports the active and explicit planet routes', async () => {
+      const seen: { path: string; method: string | undefined }[] = [];
+      const fetch = vi.fn((url: string | URL | Request, init?: RequestInit) => {
+        seen.push({ path: pathOf(url), method: init?.method });
+        return json({
+          orderId: 'order-1',
+          refund: { alloy: 50, crystal: 10, deuterium: 0 },
+          planet: PLANET,
+        });
+      });
+
+      const api = new Api({ fetch: fetch as unknown as typeof globalThis.fetch });
+      await api.cancelBuildOrder('order/active');
+      await api.cancelBuildOrder('planet/colony', 'order/colony');
+
+      expect(seen).toEqual([
+        { path: '/api/planet/build-orders/order%2Factive/cancel', method: 'POST' },
+        {
+          path: '/api/planets/planet%2Fcolony/build-orders/order%2Fcolony/cancel',
+          method: 'POST',
+        },
+      ]);
     });
   });
 

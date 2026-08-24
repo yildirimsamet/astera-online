@@ -6,7 +6,7 @@ import {
   fleetCargo,
   fleetCount,
   fleetSpeed,
-  fleetTravelMinutes,
+  fleetTravelExact,
   travelMinutes,
   type Fleet,
   type MobileHullId,
@@ -38,7 +38,7 @@ export function planRoute(
   ground: Fleet,
 ): Route {
   const dist = distance(origin, target);
-  const oneWay = fleetSpeed(sending) > 0 ? fleetTravelMinutes(dist, sending) : 0;
+  const oneWay = fleetSpeed(sending) > 0 ? fleetTravelExact(dist, sending) : 0;
   const remaining = fleetCount(homeFleet) - fleetCount(sending);
 
   return {

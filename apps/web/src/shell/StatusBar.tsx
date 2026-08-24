@@ -12,6 +12,7 @@ import { describe, useToast } from '../ui/Toast.js';
 import type { PlanetView } from '../api/schemas.js';
 import { Signals } from './Signals.js';
 import type { Panel } from '../screens/GalaxyView.jsx';
+import { useWorld } from '../api/world.js';
 
 /**
  * What you hold, what is waiting, and how long the season has left.
@@ -38,6 +39,7 @@ export function StatusBar({
   onFocusPlanet: (planetId: string) => void;
 }) {
   const { t } = useTranslation();
+  const { activePlanetId, capitalPlanetId, worlds, selectPlanet } = useWorld();
   const { data, dataUpdatedAt } = usePlanet();
   const held = useProjected(data?.planet, dataUpdatedAt);
   /**
@@ -48,31 +50,56 @@ export function StatusBar({
   const waiting = useRewards().data?.claimable ?? 0;
 
   if (!data) return <div className="h-[70px]" />;
-
   return (
     <header className="relative shrink-0 border-b border-line bg-gradient-to-b from-[#0b1120] to-void px-3 pb-2 pt-[calc(10px+env(safe-area-inset-top))]">
-      <div className="flex items-end gap-3">
-        <Stock
-          label={t('statusBar.alloyLabel')}
-          value={held.alloy}
-          cap={data.planet.alloyCap}
-          rate={data.planet.alloyPerHour}
-          tone="alloy"
-        />
-        <Stock
-          label={t('statusBar.crystalLabel')}
-          value={held.crystal}
-          cap={data.planet.crystalCap}
-          rate={data.planet.crystalPerHour}
-          tone="crystal"
-        />
-        <div className="flex shrink-0 items-end gap-2 pb-0.5">
+      <label className="mb-1.5 flex items-center gap-2 text-[10px] uppercase tracking-[0.16em] text-dim">
+        <span>{t('statusBar.activeWorld')}</span>
+        <select
+          aria-label={t('statusBar.activeWorld')}
+          value={activePlanetId ?? ''}
+          onChange={(event) => { selectPlanet(event.currentTarget.value); }}
+          className="min-h-8 flex-1 rounded-sm border border-line-soft bg-deep px-2 text-[12px] normal-case tracking-normal text-bone"
+        >
+          {worlds.map((world) => (
+            <option key={world.planet.id} value={world.planet.id}>
+              {world.planet.id === capitalPlanetId
+                ? t('statusBar.capitalWorld', { name: world.planet.name })
+                : t('statusBar.colonyWorld', { name: world.planet.name })}
+            </option>
+          ))}
+        </select>
+      </label>
+      <div className="flex items-end gap-2">
+        <div className="flex min-w-0 flex-1 items-end gap-1.5" data-resource-strip>
+          <Stock
+            label={t('statusBar.alloyLabel')}
+            value={held.alloy}
+            cap={data.planet.alloyCap}
+            rate={data.planet.alloyPerHour}
+            tone="alloy"
+          />
+          <Stock
+            label={t('statusBar.crystalLabel')}
+            value={held.crystal}
+            cap={data.planet.crystalCap}
+            rate={data.planet.crystalPerHour}
+            tone="crystal"
+          />
+          <Stock
+            label={t('statusBar.deuteriumLabel')}
+            value={held.deuterium}
+            cap={data.planet.deuteriumCap}
+            rate={0}
+            tone="deuterium"
+          />
+        </div>
+        <div className="flex shrink-0 items-end gap-1.5 pb-0.5">
           {/**
            * TWO CONTROLS, AND THERE USED TO BE FOUR. Owner decision.
            *
            * The right-hand end of this header had grown a commander button, an
            * intel button and the beacon, and the rewards panel would have been a
-           * fourth — on a phone, beside two stock columns that the `Stock`
+           * fourth — on a phone, beside three stock columns that the `Stock`
            * docblock below already records as starved for width at five digits.
            *
            * So everything that is not NEWS went behind one control. What is left
@@ -101,7 +128,7 @@ export function StatusBar({
               haptic('tap');
               onOpen('menu');
             }}
-            className="relative flex size-9 items-center justify-center rounded-sm border border-line-soft bg-deep text-dim transition-colors hover:border-line hover:text-bone"
+            className="relative flex size-11 items-center justify-center rounded-sm border border-line-soft bg-deep text-dim transition-colors hover:border-line hover:text-bone"
           >
             <MenuIcon className="size-5" />
             {/*
@@ -184,7 +211,7 @@ export function Bays({ flight }: { flight: { used: number; total: number } }) {
  *
  * SO THE SHAPE CARRIES THE ARGUMENT:
  *
- *   · TWO SMALL VESSELS, beside two big storage bars. The size difference is the
+ *   · THREE SMALL VESSELS, beside three storage bars. The size difference is the
  *     lesson — the thing production lands in is visibly a fraction of the thing it
  *     ends up in, so "I have to move it across, and it will not wait forever" is
  *     obvious before anyone explains it.
@@ -218,19 +245,27 @@ function Works({
   const collect = useCollect();
   const say = useToast();
 
-  const { bufferAlloyCap, bufferCrystalCap } = planet.planet;
-  const { bufferAlloy, bufferCrystal } = held;
-  const waiting = bufferAlloy + bufferCrystal;
+  const { bufferAlloyCap, bufferCrystalCap, bufferDeuteriumCap } = planet.planet;
+  const { bufferAlloy, bufferCrystal, bufferDeuterium } = held;
+  const waiting = bufferAlloy + bufferCrystal + bufferDeuterium;
   const alloyFill = bufferAlloyCap > 0 ? Math.min(1, bufferAlloy / bufferAlloyCap) : 0;
   const crystalFill = bufferCrystalCap > 0 ? Math.min(1, bufferCrystal / bufferCrystalCap) : 0;
-  const full = alloyFill >= 0.995 || crystalFill >= 0.995;
+  const deuteriumFill = bufferDeuteriumCap > 0
+    ? Math.min(1, bufferDeuterium / bufferDeuteriumCap)
+    : 0;
+  const deuteriumFull = bufferDeuteriumCap > 0 && bufferDeuterium >= bufferDeuteriumCap * 0.995;
+  const full = alloyFill >= 0.995 || crystalFill >= 0.995 || deuteriumFull;
   const something = waiting >= 1;
 
   // Whether the store can actually take it. Collecting into a full store moves
   // nothing and holds the rest back, so the button says so before it is pressed.
   const roomAlloy = Math.max(0, planet.planet.alloyCap - planet.planet.alloy);
   const roomCrystal = Math.max(0, planet.planet.crystalCap - planet.planet.crystal);
-  const blocked = something && bufferAlloy > roomAlloy + 1 && bufferCrystal > roomCrystal + 1;
+  const roomDeuterium = Math.max(0, planet.planet.deuteriumCap - planet.planet.deuterium);
+  const movable = Math.min(bufferAlloy, roomAlloy)
+    + Math.min(bufferCrystal, roomCrystal)
+    + Math.min(bufferDeuterium, roomDeuterium);
+  const blocked = something && movable < 1;
 
   return (
     <div className="mt-2 flex items-stretch gap-2">
@@ -246,8 +281,8 @@ function Works({
           haptic('commit');
           collect.mutate(undefined, {
             onSuccess: (r) => {
-              const moved = Math.round(r.moved.alloy + r.moved.crystal);
-              const held = Math.round(r.blocked.alloy + r.blocked.crystal);
+              const moved = Math.round(r.moved.alloy + r.moved.crystal + r.moved.deuterium);
+              const held = Math.round(r.blocked.alloy + r.blocked.crystal + r.blocked.deuterium);
               say(
                 held > 0
                   ? t('statusBar.works.collectedPartly', {
@@ -271,6 +306,13 @@ function Works({
             fill={crystalFill}
             tone="crystal"
             flowing={!full && planet.planet.crystalPerHour > 0}
+          />
+          <Vessel
+            fill={deuteriumFill}
+            tone="deuterium"
+            // Deuterium arrives in mined lumps rather than passive drips. The
+            // vessel is permanent; an inflow animation here would teach a lie.
+            flowing={false}
           />
         </span>
 
@@ -312,7 +354,7 @@ function Vessel({
   flowing,
 }: {
   fill: number;
-  tone: 'alloy' | 'crystal';
+  tone: 'alloy' | 'crystal' | 'deuterium';
   flowing: boolean;
 }) {
   return (
@@ -360,22 +402,28 @@ function Stock({
   value: number;
   cap: number;
   rate: number;
-  tone: 'alloy' | 'crystal';
+  tone: 'alloy' | 'crystal' | 'deuterium';
 }) {
   const { t } = useTranslation();
-  const atCap = value >= cap - 0.5;
+  const atCap = cap > 0 && value >= cap - 0.5;
   const near = !atCap && rate > 0 && value > cap * 0.8;
-  const colour = tone === 'alloy' ? 'text-alloy' : 'text-crystal';
+  const colour = tone === 'alloy'
+    ? 'text-alloy'
+    : tone === 'crystal' ? 'text-crystal' : 'text-deuterium';
   const pop = useJump(value);
 
   return (
-    <div className="min-w-0 flex-1" style={{ containerType: 'inline-size' }}>
+    <div
+      className="min-w-0 flex-1"
+      style={{ containerType: 'inline-size' }}
+      aria-label={label}
+    >
       <div className="flex items-center gap-1.5">
         <img
-          src={tone === 'alloy' ? RESOURCE_ART.alloy : RESOURCE_ART.crystal}
+          src={RESOURCE_ART[tone]}
           alt=""
           aria-hidden
-          className="size-5 shrink-0 object-contain drop-shadow-[0_0_5px_rgba(120,160,220,0.35)]"
+          className="size-4 shrink-0 object-contain drop-shadow-[0_0_5px_rgba(120,160,220,0.35)]"
         />
         {/*
           Still `full()` and never `compact()`. This is what the player is holding
@@ -383,8 +431,8 @@ function Stock({
           checked against a price of 9,240.
         */}
         <span
-          className={`readout min-w-0 truncate ${colour} ${pop ? 'pop' : ''}`}
-          style={{ fontSize: 'clamp(13px, 22cqi, 18px)' }}
+          className={`readout min-w-0 whitespace-nowrap ${colour} ${pop ? 'pop' : ''}`}
+          style={{ fontSize: 'clamp(11px, 19cqi, 16px)' }}
         >
           {full(value)}
         </span>
@@ -399,7 +447,7 @@ function Stock({
       */}
       <div className="mt-1.5 flex items-center gap-1.5">
         <span className="min-w-0 flex-1">
-          <Meter value={value} cap={cap} tone={tone} cells={10} />
+          <Meter value={value} cap={cap} tone={tone} cells={8} />
         </span>
         <span
           className={`num shrink-0 text-[10px] leading-none ${

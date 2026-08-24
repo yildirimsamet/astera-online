@@ -158,6 +158,18 @@ export const vocabulary = {
       role: 'Ganimeti eve getirir, dövüşe hiçbir katkısı olmaz.',
       pitch: 'Ganimeti eve getirir. Dövüşte bir işe yaramaz; ya yanına koruma ver ya da kaybetmeyi göze al.',
     },
+    RUNNER: {
+      name: 'Koşucu',
+      tag: 'Hızlı akın ambarı',
+      role: 'Hızlı destek ambarı. Kısa açıkta kalma süresi için pahalı kapasite.',
+      pitch: 'Şilepten az taşır ama vurucu filoyla aynı hızda gider. Satın aldığın şey hızdır.',
+    },
+    BREACHER: {
+      name: 'Delici',
+      tag: 'Aktif kalkanları kırar',
+      role: 'Mızrak uzmanı. Aktif kalkana karşı normal etkisinin beş katını uygular.',
+      pitch: 'Aegis’i ezer ama bonus hasarı birliklere taşımaz. Kalkan yoksa verimsiz kalır.',
+    },
     BASTION: {
       name: 'Tabya',
       tag: 'Ağır yer topu',
@@ -181,6 +193,7 @@ export const vocabulary = {
   resource: {
     alloy: 'alaşım',
     crystal: 'kristal',
+    deuterium: 'Döteryum',
   },
 
   unlock: {
@@ -225,7 +238,10 @@ export const gains = {
     storage: 'Depo {{now}} → {{next}}',
   },
   vault: {
-    label: 'Akında güvende kalan',
+    label: 'Kasa kapasitesi',
+    value: '{{alloy}} alaşım · {{crystal}} kristal',
+    storeLabel: 'Depo tavanı',
+    storeValue: '{{hours}} saatlik üretim',
   },
   shipyard: {
     accuracyLabel: 'Sonda isabeti',
@@ -258,7 +274,7 @@ export const gains = {
     origin: 'Geldiği gezegenin adını verir',
   },
   aegis: {
-    label: 'Kalkan',
+    label: 'Azami kalkan',
     unlocks: 'Birliklerin hasar almadan önce o emer, saatte %40 dolar',
   },
   veil: {
@@ -362,6 +378,7 @@ export const notifications = {
   incomingEta: 'Tahmini {{minutes}} dk',
   incomingLandsIn: '{{duration}} sonra iniyor',
   incomingHead: 'Filo geliyor · {{clock}}',
+  strategicIncomingHead: 'Stratejik silah geliyor · {{clock}}',
   incomingEstimate: 'yaklaşık {{count}} gemi',
   incomingFrom: 'kalkış: {{origin}}',
   commanderAt: '{{username}} · {{planet}} gezegeni',
@@ -387,6 +404,7 @@ export const notifications = {
   raidNothing: 'eli boş döndün',
   spoilAlloy: '+{{amount}} alaşım',
   spoilCrystal: '+{{amount}} kristal',
+  spoilDeuterium: '+{{amount}} Döteryum',
 
   fleetFallback: 'Filon evde.',
   fleetHomeLooted: 'Filo evde{{where}} · {{count}} gemi · +{{amount}} ganimet',
@@ -409,6 +427,15 @@ export const notifications = {
   probeCaught: ' · sondayı yakaladılar',
 
   unlock: '{{title}} — {{body}}',
+  deathStarFallback: 'Death Star darben sonuçlandı.',
+  deathStar: {
+    FIRST_STRIKE: 'Death Star darbesi · dünya recovery durumuna girdi',
+    CAPTURED: 'Death Star darbesi · koloni ele geçirildi',
+    INEFFECTIVE: 'Death Star darbesi · etkisiz kaldı',
+  },
+  colonyCaptured: 'Koloni kuruldu · işgal koruması aktif',
+  colonyLost: 'Koloni stratejik darbeyle kaybedildi',
+  settlementLost: 'Yerleşim yarışı kaybedildi · Hauler ve kargo geri dönüyor',
 } as const;
 
 /**

@@ -1,6 +1,22 @@
+import { GALAXY } from '@astera/rules';
 import { describe, expect, it } from 'vitest';
-import { LIMB_SCALE, LIMB_TINT, SELECTION_RING } from '../src/galaxy/PlanetField.js';
-import { STANCE_LIGHT } from '../src/galaxy/scene.js';
+import {
+  LIMB_SCALE,
+  LIMB_TINT,
+  MIN_MARKER_PX,
+  SELECTION_RING,
+  markerScale,
+} from '../src/galaxy/PlanetField.js';
+import {
+  STANCE_LIGHT,
+  SCALE,
+  activeWorldPosition,
+  controlledWorldId,
+  isRivalNode,
+  planetNodes,
+  toWorld,
+} from '../src/galaxy/scene.js';
+import { focusTapDecision } from '../src/galaxy/follow.js';
 
 /**
  * THE AIR AROUND A WORLD, AND WHAT IT IS NOT ALLOWED TO BECOME. D53a.
@@ -71,5 +87,155 @@ describe('the atmosphere limb', () => {
     // The value the component multiplies by, asserted as the relationship it has
     // to hold rather than as a repeat of the arithmetic.
     expect(LIMB_TINT.r * darkest).toBeLessThan(LIMB_TINT.r * brightest);
+  });
+});
+
+describe('the camera home world', () => {
+  it('uses the active colony position instead of the immutable capital marker', () => {
+    const capital = {
+      id: 'capital',
+      name: 'Origin',
+      owner: 'Commander',
+      position: { x: 100, y: 0, z: 200 },
+      coreTier: 1,
+      satellites: [],
+      shielded: false,
+      isSelf: true,
+    };
+    const colonyPosition = { x: -450, y: 20, z: 350 };
+    const colony = { ...capital, id: 'colony', position: colonyPosition, isSelf: false, isOwned: true };
+    expect(activeWorldPosition([capital, colony], colony.id, capital.position)).toEqual(toWorld(colonyPosition));
+    expect(activeWorldPosition([capital, colony], colony.id, capital.position)).not.toEqual(toWorld(capital.position));
+  });
+
+  it('uses the rendered world record even when a stale private payload has another position', () => {
+    const capital = {
+      id: 'capital',
+      name: 'Origin',
+      owner: 'Commander',
+      position: { x: 100, y: 0, z: 200 },
+      coreTier: 1,
+      satellites: [],
+      shielded: false,
+      isSelf: true,
+    };
+    const colony = {
+      ...capital,
+      id: 'colony',
+      position: { x: -450, y: 20, z: 350 },
+      isSelf: false,
+      isOwned: true,
+    };
+    expect(activeWorldPosition([capital, colony], colony.id, capital.position))
+      .toEqual(toWorld(colony.position));
+  });
+
+  it('recognises an owned colony as manageable even though it is not isSelf', () => {
+    const colony = {
+      id: 'colony',
+      name: 'Haven',
+      owner: 'Commander',
+      position: { x: -200, y: 0, z: 100 },
+      coreTier: 1,
+      satellites: [],
+      shielded: false,
+      isSelf: false,
+      isOwned: true,
+    };
+    const colonyId = controlledWorldId([colony], colony.id);
+    expect(colonyId).toBe(colony.id);
+    expect(focusTapDecision(null, { kind: 'planet', id: colony.id }, colonyId)).toEqual({
+      kind: 'manage',
+      planetId: colony.id,
+    });
+    const capital = {
+      id: 'preview-capital',
+      name: 'Origin',
+      owner: 'Commander',
+      position: { x: 0, y: 0, z: 0 },
+      coreTier: 1,
+      satellites: [],
+      shielded: false,
+      isSelf: true,
+    };
+    const capitalId = controlledWorldId([capital], capital.id);
+    expect(capitalId).toBe(capital.id);
+    expect(focusTapDecision(null, { kind: 'planet', id: capital.id }, capitalId)).toEqual({
+      kind: 'manage',
+      planetId: capital.id,
+    });
+  });
+});
+
+describe('world identity on the disc', () => {
+  it('renders the expanded 300-player galaxy as expanded space', () => {
+    const [largest] = planetNodes([{
+      id: 'heavy-world',
+      name: 'Heavy World',
+      owner: 'Commander',
+      position: { x: 0, y: 0, z: 0 },
+      coreTier: 4,
+      satellites: [],
+      shielded: false,
+      isSelf: false,
+    }]);
+
+    // The placement floor must leave daylight between even the largest public
+    // silhouettes. Scaling the 2500-unit radius back into the old 20-unit picture
+    // made this ratio fail and piled 351 readable markers over one another.
+    expect(GALAXY.minSeparation / SCALE)
+      .toBeGreaterThan(largest!.radius * 2 * LIMB_SCALE);
+  });
+
+  it('gives strategic markers a screen-space floor without enlarging close worlds', () => {
+    expect(MIN_MARKER_PX).toBeGreaterThanOrEqual(16);
+    expect(markerScale(10, 1, 844, 50)).toBe(1);
+    expect(markerScale(1200, 0.5, 844, 50)).toBeGreaterThan(1);
+    expect(markerScale(100_000, 0.01, 844, 50)).toBeLessThanOrEqual(4);
+  });
+
+  it('marks every owned colony as self and preserves capital/colony identity', () => {
+    const [capital, colony] = planetNodes([
+      {
+        id: 'capital', name: 'Origin', owner: 'Commander', kind: 'CAPITAL',
+        controller: { kind: 'PLAYER', playerId: 'p1', displayName: 'Commander' },
+        position: { x: 0, y: 0, z: 0 }, coreTier: 2, satellites: [], shielded: false,
+        isSelf: true, isOwned: true, isCapital: true, state: { kind: 'NORMAL' },
+      },
+      {
+        id: 'colony', name: 'Haven', owner: 'Commander', kind: 'COLONY',
+        controller: { kind: 'PLAYER', playerId: 'p1', displayName: 'Commander' },
+        position: { x: 100, y: 0, z: 0 }, coreTier: 1, satellites: [], shielded: false,
+        isSelf: false, isOwned: true, isCapital: false, state: { kind: 'NORMAL' },
+      },
+    ]);
+    expect(capital).toMatchObject({ stance: 'self', kind: 'CAPITAL', isCapital: true });
+    expect(colony).toMatchObject({ stance: 'self', kind: 'COLONY', isCapital: false });
+  });
+
+  it('marks every world controlled by the rival commander, not only the chosen anchor', () => {
+    const [capital, colony, stranger] = planetNodes([
+      {
+        id: 'rival-capital', name: 'Origin', owner: 'Sable', kind: 'CAPITAL',
+        controller: { kind: 'PLAYER', playerId: 'rival-player', displayName: 'Sable' },
+        position: { x: 0, y: 0, z: 0 }, coreTier: 2, satellites: [], shielded: false,
+        isSelf: false, state: { kind: 'NORMAL' },
+      },
+      {
+        id: 'rival-colony', name: 'Reach', owner: 'Sable', kind: 'COLONY',
+        controller: { kind: 'PLAYER', playerId: 'rival-player', displayName: 'Sable' },
+        position: { x: 100, y: 0, z: 0 }, coreTier: 1, satellites: [], shielded: false,
+        isSelf: false, state: { kind: 'NORMAL' },
+      },
+      {
+        id: 'other', name: 'Other', owner: 'Nova', kind: 'CAPITAL',
+        controller: { kind: 'PLAYER', playerId: 'other-player', displayName: 'Nova' },
+        position: { x: 200, y: 0, z: 0 }, coreTier: 1, satellites: [], shielded: false,
+        isSelf: false, state: { kind: 'NORMAL' },
+      },
+    ]);
+    expect(isRivalNode(capital!, 'rival-capital', 'rival-player')).toBe(true);
+    expect(isRivalNode(colony!, 'rival-capital', 'rival-player')).toBe(true);
+    expect(isRivalNode(stranger!, 'rival-capital', 'rival-player')).toBe(false);
   });
 });

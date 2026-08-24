@@ -1,0 +1,1 @@
+ALTER TABLE "shards" ALTER COLUMN "player_cap" SET DEFAULT 300;

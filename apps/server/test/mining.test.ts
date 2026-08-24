@@ -13,7 +13,14 @@ import {
   prospectorTravelExact,
   type AsteroidSpec,
 } from '@astera/rules';
-import { asteroidClaims, miningRuns, planets, units } from '../src/db/schema.js';
+import {
+  asteroidClaims,
+  galaxyEvents,
+  miningRuns,
+  planetResearch,
+  planets,
+  units,
+} from '../src/db/schema.js';
 import { launchMining, visibleAsteroids } from '../src/services/mining.js';
 import { buildUnits } from '../src/services/build.js';
 import { EventWorker } from '../src/worker/loop.js';
@@ -22,6 +29,7 @@ import {
   grant,
   placeAt,
   seedWorld,
+  settleBuilds,
   setLevel,
   testDb,
   type Fixture,
@@ -163,6 +171,7 @@ describe('mining', () => {
       it('counts craft that are away, not just the ones standing at home', async () => {
         await grant(f.db, mine, 500_000, 200_000);
         await buildUnits(f.db, mine, 'PROSPECTOR', PROSPECTOR.max, f.clock);
+        await settleBuilds(f, mine);
 
         const rock = waitForRock();
         await launchMining(f.db, mine, rock.index, PROSPECTOR.max, f.clock);
@@ -193,6 +202,7 @@ describe('mining', () => {
           buildUnits(f.db, mine, 'PROSPECTOR', 1, f.clock),
         ]);
         expect(results.filter((r) => r.status === 'fulfilled')).toHaveLength(1);
+        await settleBuilds(f, mine);
 
         const owned = await f.db
           .select()
@@ -428,6 +438,41 @@ describe('mining', () => {
   /* ── the race ─────────────────────────────────────────────── */
 
   describe('the race for a rock', () => {
+    it('chronicles an exhausted isotope without naming who took its Deuterium', async () => {
+      const rich = generateGalaxy(4242, 60).asteroids.find((rock) => rock.isotopeRich);
+      expect(rich).toBeDefined();
+      const minute = rich!.appearsAt + 1;
+      f.clock.set(new Date(new Date('2026-01-01T00:00:00.000Z').getTime() + minute * 60_000));
+      await placeAt(f.db, mine, asteroidPosition(rich!, minute));
+      await giveUnits(f.db, mine, { PROSPECTOR: 1 });
+      await f.db.insert(planetResearch).values({
+        planetId: mine,
+        projectId: 'ISOTOPE_SPECTROMETRY',
+        completedAt: f.clock.now(),
+      });
+      await f.db.insert(asteroidClaims).values({
+        seasonId: f.seasonId,
+        index: rich!.index,
+        oreTaken: rich!.ore - 1,
+        updatedAt: f.clock.now(),
+      });
+
+      const run = await launchMining(f.db, mine, rich!.index, 1, f.clock);
+      f.clock.set(run.arriveAt);
+      await worker(f).tick();
+
+      const events = await f.db
+        .select()
+        .from(galaxyEvents)
+        .where(eq(galaxyEvents.kind, 'isotope_exhausted'));
+      expect(events).toHaveLength(1);
+      expect(events[0]).toMatchObject({
+        subjectPlanetId: null,
+        payload: { asteroidIndex: rich!.index },
+      });
+      expect(Object.keys(events[0]!.payload)).toEqual(['asteroidIndex']);
+    });
+
     /**
      * "First to arrive takes what it can carry; the next takes what is left; one
      * that finds it empty goes home with nothing." That sentence is the feature,
@@ -494,7 +539,7 @@ describe('mining', () => {
   /* ── what the field looks like ────────────────────────────── */
 
   describe('the visible field', () => {
-    it('shows only rocks that are crossing right now', async () => {
+    it('shows only rocks that can already be mined', async () => {
       waitForRock();
       const field = await visibleAsteroids(f.db, f.seasonId, f.clock.now());
       expect(field.length).toBeGreaterThan(0);
@@ -502,6 +547,7 @@ describe('mining', () => {
       const minutes =
         (f.clock.now().getTime() - new Date('2026-01-01T00:00:00.000Z').getTime()) / 60_000;
       for (const a of field) {
+        expect(a.active).toBe(true);
         expect(a.appearsAt).toBeLessThanOrEqual(minutes);
         expect(a.expiresAt).toBeGreaterThan(minutes);
         expect(a.oreRemaining).toBeGreaterThan(0);

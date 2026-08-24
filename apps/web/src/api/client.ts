@@ -1,5 +1,12 @@
 import type { z } from 'zod';
-import type { Fleet, BuildingId, HullId, InstrumentId, SatelliteId } from '@astera/rules';
+import type {
+  Fleet,
+  BuildingId,
+  HullId,
+  InstrumentId,
+  ResearchProjectId,
+  SatelliteId,
+} from '@astera/rules';
 import { noteServerTime } from '../lib/clock.js';
 import {
   claimSchema,
@@ -8,32 +15,42 @@ import {
   galaxySchema,
   intelSchema,
   miningLaunchSchema,
+  miningFieldSchema,
   miningSchema,
+  miningStatusSchema,
   launchSchema,
   leaderboardSchema,
   chatPageSchema,
   chatPostSchema,
   chatReadSchema,
   chatUnreadSchema,
+  chroniclePageSchema,
   meSchema,
   notificationsSchema,
   okSchema,
   pendingSchema,
   placementSchema,
   planetSchema,
+  planetsSchema,
+  movementLaunchSchema,
+  deathStarBuildSchema,
+  deathStarLaunchSchema,
   previewSchema,
   probeSchema,
   reportsSchema,
+  researchCompleteSchema,
   rewardClaimSchema,
   rewardsSchema,
   returnSchema,
   instrumentRaiseSchema,
   satelliteInstallSchema,
   seasonSchema,
+  rivalSetSchema,
   serverListSchema,
   sessionSchema,
   trafficSchema,
   buildSchema,
+  buildCancelSchema,
   markedSchema,
   unlocksSchema,
   upgradeSchema,
@@ -283,7 +300,13 @@ export class Api {
   /* ── world ────────────────────────────────────────────────── */
 
   season = () => this.send('/api/season', seasonSchema);
-  planet = () => this.send('/api/planet', planetSchema);
+  setRival = (planetId: string | null) =>
+    this.send('/api/rival', rivalSetSchema, { method: 'POST', body: { planetId } });
+  planets = () => this.send('/api/planets', planetsSchema);
+  planet = (planetId?: string) => this.send(
+    planetId ? `/api/planets/${encodeURIComponent(planetId)}` : '/api/planet',
+    planetSchema,
+  );
   galaxy = () => this.send('/api/galaxy', galaxySchema);
   traffic = () => this.send('/api/galaxy/traffic', trafficSchema);
   leaderboard = () => this.send('/api/leaderboard', leaderboardSchema);
@@ -294,39 +317,102 @@ export class Api {
   chatUnread = () => this.send('/api/chat/unread', chatUnreadSchema);
   markChatRead = (messageId: string) =>
     this.send('/api/chat/read', chatReadSchema, { method: 'POST', body: { messageId } });
+  chronicle = (before?: string) =>
+    this.send(`/api/chronicle?limit=30${before ? `&before=${encodeURIComponent(before)}` : ''}`, chroniclePageSchema);
   intel = () => this.send('/api/intel', intelSchema);
   /** The closing link of the loop: what a fight actually taught you. */
   reports = () => this.send('/api/reports?limit=20', reportsSchema);
 
-  upgrade = (type: BuildingId) =>
-    this.send('/api/planet/upgrade', upgradeSchema, { method: 'POST', body: { type } });
+  upgrade = (planetIdOrType: string, explicitType?: BuildingId) => {
+    const type = explicitType ?? planetIdOrType as BuildingId;
+    const path = explicitType
+      ? `/api/planets/${encodeURIComponent(planetIdOrType)}/upgrade`
+      : '/api/planet/upgrade';
+    return this.send(path, upgradeSchema, { method: 'POST', body: { type } });
+  };
 
-  build = (hull: HullId, count: number) =>
-    this.send('/api/planet/build', buildSchema, { method: 'POST', body: { hull, count } });
+  build = (planetIdOrHull: string, explicitHullOrCount: HullId | number, explicitCount?: number) => {
+    const hull = (explicitCount === undefined ? planetIdOrHull : explicitHullOrCount) as HullId;
+    const count = explicitCount ?? explicitHullOrCount as number;
+    const path = explicitCount === undefined
+      ? '/api/planet/build'
+      : `/api/planets/${encodeURIComponent(planetIdOrHull)}/build`;
+    return this.send(path, buildSchema, { method: 'POST', body: { hull, count } });
+  };
 
-  /** Raise one of the four on the ground. D25. */
-  raiseInstrument = (type: InstrumentId) =>
-    this.send('/api/planet/instrument', instrumentRaiseSchema, { method: 'POST', body: { type } });
+  cancelBuildOrder = (planetIdOrOrderId: string, explicitOrderId?: string) => {
+    const orderId = explicitOrderId ?? planetIdOrOrderId;
+    const path = explicitOrderId
+      ? `/api/planets/${encodeURIComponent(planetIdOrOrderId)}/build-orders/${encodeURIComponent(orderId)}/cancel`
+      : `/api/planet/build-orders/${encodeURIComponent(orderId)}/cancel`;
+    return this.send(path, buildCancelSchema, { method: 'POST' });
+  };
 
-  /** Put one of the four in orbit. Bought once — there is no second call. D25. */
-  installSatellite = (type: SatelliteId) =>
-    this.send('/api/planet/satellite', satelliteInstallSchema, { method: 'POST', body: { type } });
-
-  /** IRREVERSIBLE. There is no recall endpoint, by design. */
-  launch = (targetPlanetId: string, fleet: Fleet) =>
-    this.send('/api/fleet/launch', launchSchema, {
+  completeResearch = (planetIdOrProject: string, explicitProject?: ResearchProjectId) =>
+    this.send(explicitProject
+      ? `/api/planets/${encodeURIComponent(planetIdOrProject)}/research`
+      : '/api/planet/research', researchCompleteSchema, {
       method: 'POST',
-      body: { targetPlanetId, fleet },
+      body: { projectId: explicitProject ?? planetIdOrProject as ResearchProjectId },
     });
 
-  watch = (targetPlanetId: string, slot: number) =>
+  /** Raise one of the four on the ground. D25. */
+  raiseInstrument = (planetIdOrType: string, explicitType?: InstrumentId) =>
+    this.send(explicitType
+      ? `/api/planets/${encodeURIComponent(planetIdOrType)}/instrument`
+      : '/api/planet/instrument', instrumentRaiseSchema, {
+      method: 'POST', body: { type: explicitType ?? planetIdOrType as InstrumentId },
+    });
+
+  /** Put one of the four in orbit. Bought once — there is no second call. D25. */
+  installSatellite = (planetIdOrType: string, explicitType?: SatelliteId) =>
+    this.send(explicitType
+      ? `/api/planets/${encodeURIComponent(planetIdOrType)}/satellite`
+      : '/api/planet/satellite', satelliteInstallSchema, {
+      method: 'POST', body: { type: explicitType ?? planetIdOrType as SatelliteId },
+    });
+
+  /** IRREVERSIBLE. There is no recall endpoint, by design. */
+  launch = (originOrTargetPlanetId: string, targetOrFleet: string | Fleet, explicitFleet?: Fleet) =>
+    this.send('/api/fleet/launch', launchSchema, {
+      method: 'POST',
+      body: explicitFleet
+        ? { originPlanetId: originOrTargetPlanetId, targetPlanetId: targetOrFleet, fleet: explicitFleet }
+        : { targetPlanetId: originOrTargetPlanetId, fleet: targetOrFleet },
+    });
+
+  watch = (targetPlanetId: string, slot: number, observerPlanetId?: string) =>
     this.send('/api/intel/watch', watchSchema, {
       method: 'POST',
-      body: { targetPlanetId, slot },
+      body: { targetPlanetId, slot, ...(observerPlanetId ? { observerPlanetId } : {}) },
     });
 
   /** Empty the works into storage. D16 — the one manual step in the economy. */
-  collect = () => this.send('/api/planet/collect', collectSchema, { method: 'POST' });
+  collect = (planetId?: string) => this.send(
+    planetId ? `/api/planets/${encodeURIComponent(planetId)}/collect` : '/api/planet/collect',
+    collectSchema,
+    { method: 'POST' },
+  );
+
+  transfer = (originPlanetId: string, targetPlanetId: string, fleet: Fleet, cargo: { alloy: number; crystal: number; deuterium: number }) =>
+    this.send('/api/fleet/transfer', movementLaunchSchema, {
+      method: 'POST', body: { originPlanetId, targetPlanetId, fleet, cargo },
+    });
+
+  settle = (originPlanetId: string, targetPlanetId: string) =>
+    this.send('/api/fleet/settle', movementLaunchSchema, {
+      method: 'POST', body: { originPlanetId, targetPlanetId },
+    });
+
+  buildDeathStar = (planetId: string) =>
+    this.send(`/api/planets/${encodeURIComponent(planetId)}/death-star/build`, deathStarBuildSchema, {
+      method: 'POST', body: {},
+    });
+
+  launchDeathStar = (originPlanetId: string, targetPlanetId: string) =>
+    this.send('/api/death-star/launch', deathStarLaunchSchema, {
+      method: 'POST', body: { originPlanetId, targetPlanetId },
+    });
 
   rewards = () => this.send('/api/rewards', rewardsSchema);
 
@@ -337,23 +423,35 @@ export class Api {
   claimReward = (id: string) =>
     this.send('/api/rewards/claim', rewardClaimSchema, { method: 'POST', body: { id } });
 
-  mining = () => this.send('/api/mining', miningSchema);
+  mining = (planetId?: string) => this.send(
+    `/api/mining${planetId ? `?planetId=${encodeURIComponent(planetId)}` : ''}`,
+    miningSchema,
+  );
 
-  mine = (asteroidIndex: number, craft: number) =>
+  miningField = () => this.send('/api/mining/field', miningFieldSchema);
+
+  miningStatus = (planetId?: string) => this.send(
+    `/api/mining/status${planetId ? `?planetId=${encodeURIComponent(planetId)}` : ''}`,
+    miningStatusSchema,
+  );
+
+  mine = (asteroidIndex: number, craft: number, originPlanetId?: string) =>
     this.send('/api/mining/launch', miningLaunchSchema, {
       method: 'POST',
-      body: { asteroidIndex, craft },
+      body: { asteroidIndex, craft, ...(originPlanetId ? { originPlanetId } : {}) },
     });
 
   /** Send craft to a wreck field. D32 — the same craft, a different errand. */
-  harvest = (fieldId: string, craft: number) =>
+  harvest = (fieldId: string, craft: number, originPlanetId?: string) =>
     this.send('/api/mining/harvest', miningLaunchSchema, {
       method: 'POST',
-      body: { fieldId, craft },
+      body: { fieldId, craft, ...(originPlanetId ? { originPlanetId } : {}) },
     });
 
-  probe = (targetPlanetId: string) =>
-    this.send('/api/intel/probe', probeSchema, { method: 'POST', body: { targetPlanetId } });
+  probe = (targetPlanetId: string, originPlanetId?: string) =>
+    this.send('/api/intel/probe', probeSchema, {
+      method: 'POST', body: { targetPlanetId, ...(originPlanetId ? { originPlanetId } : {}) },
+    });
 
   /* ── session ──────────────────────────────────────────────── */
 

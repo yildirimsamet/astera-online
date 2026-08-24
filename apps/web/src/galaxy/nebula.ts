@@ -161,15 +161,20 @@ export function paintNebulaCanvas(): HTMLCanvasElement {
       const wx = fbm(cx + 5.2, cy + 1.3, cz, 3) * 2.4;
       const wy = fbm(cx - 3.7, cy + 9.1, cz + 4.4, 3) * 2.4;
 
-      let density = fbm(cx + wx, cy + wy, cz + wx * 0.4, 5);
+      const body = fbm(cx + wx, cy + wy, cz + wx * 0.4, 5);
+      // A narrow isodensity ridge over the broad body. Real emission fronts form
+      // lit fibres and torn rims; another blanket of low-frequency noise would
+      // only make thicker fog.
+      const ridgeField = fbm(cx * 1.55 + wx + 7.4, cy * 1.55 + wy - 2.8, cz * 1.35, 4);
+      const ridge = Math.pow(Math.max(0, 1 - Math.abs(ridgeField - 0.53) * 7.2), 3.4);
       // Steep gamma, modest gain. Contrast is what makes gas look like gas; a high
       // gain just makes the whole sphere glow.
-      density = Math.pow(density, 3.2) * band * 1.5;
+      let density = (Math.pow(body, 3.35) * 1.38 + ridge * 0.13) * band;
 
       // Absorption. Independent field, subtracts — the dark lanes are half of why
       // a real nebula reads as three-dimensional.
       const dust = fbm(cx * 1.9 - 11.0, cy * 1.9 + 6.0, cz * 1.9, 4);
-      density *= 1 - Math.pow(Math.max(0, dust - 0.42) / 0.58, 1.1) * 0.85;
+      density *= 1 - Math.pow(Math.max(0, dust - 0.42) / 0.58, 1.1) * 0.92;
 
       palette(density, rgb);
 

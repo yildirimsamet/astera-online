@@ -21,7 +21,7 @@ export function wealth(h: Holdings): number {
   for (const id of h.satellites) v += investedInSatellite(id);
   v += fleetValue(h.fleet);
   v += fleetValue(h.ground);
-  v += h.alloy + h.crystal;
+  v += h.alloy + h.crystal + h.deuterium;
   return Math.round(v);
 }
 

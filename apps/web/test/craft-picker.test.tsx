@@ -31,9 +31,12 @@ const ROCK = {
   speed: 9.2,
   appearsAt: 0,
   expiresAt: 999,
+  active: true,
+  isotopeRich: false,
+  deuteriumShare: null,
 };
 
-const FIELD = { id: 'f1', alloy: 9_000, crystal: 3_000, minutesLeft: 120 };
+const FIELD = { id: 'f1', alloy: 9_000, crystal: 3_000, deuterium: 0, minutesLeft: 120 };
 
 const shell = {
   onClose: vi.fn(),
@@ -148,6 +151,31 @@ describe.each([
   });
 });
 
+describe('a public isotope anomaly without Spectrometry', () => {
+  it('builds anticipation without offering a launch the server will refuse', () => {
+    render(
+      <AsteroidFocus
+        rock={{ ...ROCK, isotopeRich: true, deuteriumShare: null }}
+        craftAvailable={2}
+        craftHold={300}
+        derrick={false}
+        derrickHold={780}
+        minutesLeft={400}
+        reachMinutes={12}
+        worksRoom={100_000}
+        run={undefined}
+        onSend={vi.fn()}
+        {...shell}
+      />,
+    );
+
+    expect(screen.getByRole('button', { name: /Research Isotope Spectrometry first/i })).toBeDisabled();
+    expect(screen.getByText('Isotope composition unknown')).toBeInTheDocument();
+    expect(screen.getByText(/The return haul lands in the Works; Collect it into storage/i)).toBeInTheDocument();
+    expect(options()).toHaveLength(0);
+  });
+});
+
 /**
  * A target you are already working is not a target you can send more at — one run
  * per planet per rock, and per field (D19, D32). The picker must not appear there,
@@ -167,6 +195,7 @@ describe('a target already being worked', () => {
     intercept: { x: 0, y: 0, z: 0 },
     minedAlloy: 0,
     minedCrystal: 0,
+    minedDeuterium: 0,
   };
 
   it('shows no picker on a rock you already have craft at', () => {

@@ -11,6 +11,18 @@ import { duration, staleness, useNow } from '../lib/time.js';
 import { Sheet } from '../ui/Sheet.js';
 import type { Panel } from '../screens/GalaxyView.jsx';
 import { serverNow } from '../lib/clock.js';
+import {
+  AlloyIcon,
+  BellIcon,
+  CrystalIcon,
+  DisruptedIcon,
+  IncomingIcon,
+  RaidedIcon,
+  RefineryIcon,
+  ReturnedIcon,
+  ScanIcon,
+  UnlockIcon,
+} from '../ui/icons/index.js';
 
 /**
  * SIGNALS — everything the galaxy said while you were not reading.
@@ -33,6 +45,7 @@ import { serverNow } from '../lib/clock.js';
  */
 
 export interface Status {
+  kind: 'disrupted' | 'works-full' | 'alloy-full' | 'crystal-full';
   tone: 'threat' | 'alloy' | 'crystal';
   line: string;
   detail: string;
@@ -115,7 +128,7 @@ export function Signals({
          * new, and a badge that can never be cleared teaches people to ignore
          * badges.
          */
-        className={`relative flex size-9 items-center justify-center rounded-sm border transition-colors ${
+        className={`relative flex size-11 items-center justify-center rounded-sm border transition-colors ${
           unseen > 0
             ? 'border-threat/70 bg-threat/15 motion-safe:animate-pulse'
             : status.length > 0
@@ -166,15 +179,15 @@ export function Signals({
                     }}
                     className="flex w-full items-start gap-3 border-b border-line-soft p-3 text-left last:border-b-0"
                   >
-                    <span
-                      className={`mt-1 size-2 shrink-0 rounded-full ${
-                        item.tone === 'threat'
-                          ? 'bg-threat'
-                          : item.tone === 'alloy'
-                            ? 'bg-alloy'
-                            : 'bg-crystal'
-                      }`}
-                    />
+                    <span className={`mt-0.5 grid size-9 shrink-0 place-items-center rounded-sm border ${
+                      item.tone === 'threat'
+                        ? 'border-threat/45 bg-threat/10 text-threat'
+                        : item.tone === 'alloy'
+                          ? 'border-alloy/35 bg-alloy/10 text-alloy'
+                          : 'border-crystal/35 bg-crystal/10 text-crystal'
+                    }`} aria-hidden>
+                      <StatusGlyph kind={item.kind} />
+                    </span>
                     <span className="min-w-0 flex-1">
                       <span className="block text-[13px] text-bone">{item.line}</span>
                       <span className="mt-0.5 block text-[12px] text-faint">{item.detail}</span>
@@ -192,9 +205,10 @@ export function Signals({
 
           <p className="legend mb-2">{t('signals.eventsHeading')}</p>
           {events.length === 0 ? (
-            <p className="border border-dashed border-line-soft px-3.5 py-6 text-center text-[13px] text-dim">
-              {t('signals.empty')}
-            </p>
+            <div className="grid justify-items-center gap-3 border border-dashed border-line-soft px-5 py-7 text-center text-dim">
+              <BellIcon className="size-10 text-faint" />
+              <p className="max-w-[28ch] text-[13px] leading-relaxed">{t('signals.empty')}</p>
+            </div>
           ) : (
             <div className="frame">
               {groups.map((entry) => (
@@ -309,11 +323,15 @@ function Event({
           className="absolute inset-0"
         />
       )}
-      <span
-        className={`mt-1 size-2 shrink-0 rounded-full ${
-          !unread ? 'bg-line' : bad ? 'bg-threat' : 'bg-crystal'
-        }`}
-      />
+      <span className={`mt-0.5 grid size-9 shrink-0 place-items-center rounded-sm border ${
+        !unread
+          ? 'border-line-soft bg-deep text-faint'
+          : bad
+            ? 'border-threat/45 bg-threat/10 text-threat'
+            : 'border-crystal/40 bg-crystal/10 text-crystal'
+      }`} aria-hidden>
+        <EventGlyph kind={event.kind} />
+      </span>
       <span className="pointer-events-none relative min-w-0 flex-1">
         <span className={`relative block text-[13px] ${bad ? 'text-[#ff9d8f]' : 'text-bone'}`}>
           {subject && subjectAt >= 0 ? (
@@ -366,6 +384,7 @@ export function statusOf(planet: PlanetView, held: Projected): Status[] {
 
   if (p.disruptedUntil && p.disruptedUntil.getTime() > serverNow()) {
     out.push({
+      kind: 'disrupted',
       tone: 'threat',
       line: i18n.t('signals.status.disruptedLine'),
       detail: i18n.t('signals.status.disruptedDetail', {
@@ -388,6 +407,7 @@ export function statusOf(planet: PlanetView, held: Projected): Status[] {
     held.bufferAlloy >= p.bufferAlloyCap - 0.5 || held.bufferCrystal >= p.bufferCrystalCap - 0.5;
   if (worksFull) {
     out.push({
+      kind: 'works-full',
       tone: 'alloy',
       line: i18n.t('signals.status.worksStoppedLine'),
       detail: i18n.t('signals.status.worksStoppedDetail', {
@@ -403,6 +423,7 @@ export function statusOf(planet: PlanetView, held: Projected): Status[] {
   for (const store of stores(planet, held)) {
     if (store.value >= store.cap - 0.5 && store.waiting > 0) {
       out.push({
+        kind: store.tone === 'alloy' ? 'alloy-full' : 'crystal-full',
         tone: store.tone,
         line: i18n.t(store.line),
         detail: i18n.t('signals.status.storeDetail', { amount: compact(store.waiting) }),
@@ -412,6 +433,22 @@ export function statusOf(planet: PlanetView, held: Projected): Status[] {
   }
 
   return out;
+}
+
+function StatusGlyph({ kind }: { kind: Status['kind'] }) {
+  if (kind === 'disrupted') return <DisruptedIcon className="size-5" />;
+  if (kind === 'works-full') return <RefineryIcon className="size-5" />;
+  if (kind === 'alloy-full') return <AlloyIcon className="size-5" />;
+  return <CrystalIcon className="size-5" />;
+}
+
+function EventGlyph({ kind }: { kind: string }) {
+  if (kind === 'incoming_fleet') return <IncomingIcon className="size-5" />;
+  if (kind === 'fleet_returned') return <ReturnedIcon className="size-5" />;
+  if (kind === 'raided' || kind === 'raid_result') return <RaidedIcon className="size-5" />;
+  if (kind === 'scan_detected' || kind === 'probe_report') return <ScanIcon className="size-5" />;
+  if (kind === 'unlock') return <UnlockIcon className="size-5" />;
+  return <BellIcon className="size-5" />;
 }
 
 function stores(planet: PlanetView, held: Projected) {

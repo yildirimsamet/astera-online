@@ -1,5 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from 'react';
+import { useTranslation } from 'react-i18next';
 import { describeError } from '../i18n/errors.js';
+import { CloseIcon } from './icons/index.js';
 
 type Tone = 'info' | 'error';
 interface Message {
@@ -18,7 +20,8 @@ const ToastContext = createContext<((text: string, tone?: Tone) => void) | null>
  * every time this is tuned. A test that hard-codes the number goes red on a
  * change of pacing and says nothing about the behaviour it exists to protect.
  */
-export const DWELL_MS = 750;
+export const DWELL_MS = 2400;
+export const ERROR_DWELL_MS = 6000;
 
 let sequence = 0;
 
@@ -43,6 +46,7 @@ let sequence = 0;
  * current one does not restart its four seconds.
  */
 export function ToastProvider({ children }: { children: ReactNode }) {
+  const { t } = useTranslation();
   const [queue, setQueue] = useState<Message[]>([]);
   const message = queue[0] ?? null;
 
@@ -52,15 +56,16 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const head = message?.id;
+  const dwell = message?.tone === 'error' ? ERROR_DWELL_MS : DWELL_MS;
   useEffect(() => {
     if (head === undefined) return;
     const id = setTimeout(() => {
       setQueue((current) => current.slice(1));
-    }, DWELL_MS);
+    }, dwell);
     return () => {
       clearTimeout(id);
     };
-  }, [head]);
+  }, [dwell, head]);
 
   return (
     <ToastContext.Provider value={say}>
@@ -68,6 +73,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
       {message && (
         <div
           role="status"
+          aria-live={message.tone === 'error' ? 'assertive' : 'polite'}
           /**
            * LIFTED OVER WHATEVER IS ALREADY SPEAKING. D56.
            *
@@ -79,14 +85,22 @@ export function ToastProvider({ children }: { children: ReactNode }) {
            */
           className="pointer-events-none fixed inset-x-0 bottom-[calc(var(--toast-lift,112px)+env(safe-area-inset-bottom))] z-50 flex justify-center px-4"
         >
-          <p
+          <div
             key={message.id}
-            className={`panel max-w-sm px-3.5 py-2.5 text-[13px] shadow-lg ${
+            className={`panel pointer-events-auto flex max-w-sm items-center gap-2 px-3.5 py-2.5 text-[13px] shadow-lg ${
               message.tone === 'error' ? 'border-alert/50 text-[#ffb9ae]' : 'text-bone'
             }`}
           >
-            {message.text}
-          </p>
+            <p className="min-w-0 flex-1">{message.text}</p>
+            <button
+              type="button"
+              aria-label={t('toast.dismiss')}
+              className="flex size-10 shrink-0 items-center justify-center rounded-sm text-current/75 hover:bg-raised hover:text-current"
+              onClick={() => { setQueue((current) => current.slice(1)); }}
+            >
+              <CloseIcon className="size-5" />
+            </button>
+          </div>
         </div>
       )}
     </ToastContext.Provider>

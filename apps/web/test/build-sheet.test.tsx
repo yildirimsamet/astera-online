@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { render, screen, within } from '@testing-library/react';
+import { act, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import { PROSPECTOR } from '@astera/rules';
@@ -14,7 +14,7 @@ import { planetView } from './fixtures.js';
  * The quantity picker offered a fixed `1 · 5 · 25 · Max` for every hull. That is
  * right for warships and wrong for the Prospector, which is rationed to
  * `PROSPECTOR.max` — so the sheet was offering to build twenty-five of something a
- * planet may hold three of, and the server refused on the way through.
+ * planet may hold two of, and the server refused on the way through.
  *
  * A control that offers what will be refused is worse than one that refuses early:
  * it teaches the player a rule that is not true, and then contradicts them.
@@ -25,7 +25,10 @@ import { planetView } from './fixtures.js';
  * real database, in `apps/server/test/mining.test.ts`.
  */
 
-const rich = (over: Partial<Omit<PlanetView, 'planet'>> = {}): PlanetView =>
+const rich = (
+  over: Partial<Omit<PlanetView, 'planet'>> = {},
+  stock: Partial<PlanetView['planet']> = {},
+): PlanetView =>
   planetView(
     {
       buildings: { CORE: 6, REFINERY: 3, EXTRACTOR: 3, VAULT: 1, SHIPYARD: 4 },
@@ -35,39 +38,294 @@ const rich = (over: Partial<Omit<PlanetView, 'planet'>> = {}): PlanetView =>
       score: { wealth: 10_000, dominion: 0 },
       ...over,
     },
-    { alloy: 900_000, crystal: 400_000, alloyCap: 2_000_000, crystalCap: 900_000 },
+    {
+      alloy: 900_000,
+      crystal: 400_000,
+      alloyCap: 2_000_000,
+      crystalCap: 900_000,
+      ...stock,
+    },
   );
 
 vi.mock('../src/api/queries.js', async () => {
   const actual = await vi.importActual<Record<string, unknown>>('../src/api/queries.js');
   return {
     ...actual,
-    usePlanet: () => ({ data: current, dataUpdatedAt: Date.now(), isPending: false }),
+    usePlanet: () => ({ data: current, dataUpdatedAt: Date.now(), isPending: false, refetch }),
     useGalaxy: () => ({ data: undefined }),
     useIntel: () => ({ data: undefined }),
     usePending: () => ({ data: undefined }),
     useReports: () => ({ data: undefined }),
-    useUpgrade: () => ({ mutate: vi.fn(), isPending: false }),
+    useUpgrade: () => ({ mutate: upgrade, isPending: false }),
     useBuild: () => ({ mutate: build, isPending: false }),
+    useCompleteResearch: () => ({ mutate: completeResearch, isPending: false }),
     useInstallSatellite: () => ({ mutate: vi.fn(), isPending: false }),
     useRaiseInstrument: () => ({ mutate: vi.fn(), isPending: false }),
+    useCancelBuildOrder: () => ({ mutate: cancelOrder, isPending: false }),
+    useBuildDeathStar: () => ({ mutate: vi.fn(), isPending: false }),
   };
 });
 
 let current: PlanetView = rich();
-const build = vi.fn();
+type MutationMock = (variables: unknown, options?: unknown) => void;
 
-const show = (over: Partial<Omit<PlanetView, 'planet'>> = {}) => {
-  current = rich(over);
+const build = vi.fn<MutationMock>();
+const cancelOrder = vi.fn<MutationMock>();
+const upgrade = vi.fn<MutationMock>();
+const completeResearch = vi.fn<MutationMock>();
+const refetch = vi.fn();
+
+function expectMutationCallbacks(value: unknown): void {
+  if (typeof value !== 'object' || value === null) {
+    throw new Error('mutation callbacks were not supplied');
+  }
+  expect(typeof Reflect.get(value, 'onSuccess')).toBe('function');
+  expect(typeof Reflect.get(value, 'onError')).toBe('function');
+}
+
+const show = (
+  over: Partial<Omit<PlanetView, 'planet'>> = {},
+  focusGroup: 'grow' | 'orbit' | 'defend' | 'reach' = 'reach',
+  stock: Partial<PlanetView['planet']> = {},
+) => {
+  current = rich(over, stock);
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
     <QueryClientProvider client={client}>
       <ToastProvider>
-        <PlanetScreen focusGroup="reach" />
+        <PlanetScreen focusGroup={focusGroup} />
       </ToastProvider>
     </QueryClientProvider>,
   );
 };
+
+describe('strategic hardware hierarchy', () => {
+  it('keeps an unbuilt Death Star inside Reach instead of leading every planet visit', async () => {
+    const view = show({}, 'grow');
+    expect(view.container.querySelector('[data-strategic-state]')).toBeNull();
+    await userEvent.click(screen.getByRole('button', { name: 'Reach' }));
+    expect(view.container.querySelector('[data-strategic-state="LOCKED"]')).not.toBeNull();
+  });
+
+  it('raises a live strategic asset above every tab because it is now planet state', () => {
+    const view = show({
+      strategic: {
+        id: 'asset-1',
+        status: 'READY',
+        readyAt: null,
+        remainingSeconds: 0,
+      },
+    }, 'grow');
+    const forge = view.container.querySelector('[data-strategic-state="READY"]');
+    const tabs = screen.getByRole('button', { name: 'Grow' }).parentElement?.parentElement ?? null;
+    expect(forge).not.toBeNull();
+    expect(tabs).not.toBeNull();
+    if (!forge || !tabs) throw new Error('strategic state and tabs must both render');
+    expect(forge.compareDocumentPosition(tabs) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+});
+
+describe('the two build queues', () => {
+  it('shows both independent lanes, the server clock and the exact cancellation refund', async () => {
+    cancelOrder.mockClear();
+    const now = Date.now();
+    show({
+      queues: {
+        CONSTRUCTION: [{
+          id: 'construction-1',
+          queue: 'CONSTRUCTION',
+          slot: 0,
+          kind: 'BUILDING',
+          subject: 'CORE',
+          count: 1,
+          startedAt: new Date(now - 10_000),
+          finishesAt: new Date(now + 50_000),
+          cost: { alloy: 101, crystal: 45, deuterium: 3 },
+        }],
+        YARD: [{
+          id: 'yard-1',
+          queue: 'YARD',
+          slot: 0,
+          kind: 'HULL',
+          subject: 'WASP',
+          count: 2,
+          startedAt: new Date(now - 5_000),
+          finishesAt: new Date(now + 55_000),
+          cost: { alloy: 480, crystal: 0, deuterium: 0 },
+        }],
+      },
+    }, 'grow');
+
+    const queues = screen.getByRole('region', { name: 'Build queues' });
+    expect(within(queues).getByText('Construction')).toBeInTheDocument();
+    expect(within(queues).getByText('Yard')).toBeInTheDocument();
+    expect(within(queues).getByText('Command Core')).toBeInTheDocument();
+    expect(within(queues).getByText('2 × Wasp')).toBeInTheDocument();
+    expect(within(queues).queryByText('committing…')).toBeNull();
+
+    const [cancel] = within(queues).getAllByRole('button', { name: 'Cancel' });
+    expect(cancel).toHaveAttribute(
+      'title',
+      'Refund: 50 alloy · 22 crystal · 1 Deuterium',
+    );
+    await userEvent.click(cancel!);
+    expect(cancelOrder).toHaveBeenCalledOnce();
+    expect(cancelOrder.mock.calls[0]?.[0]).toBe('construction-1');
+    expectMutationCallbacks(cancelOrder.mock.calls[0]?.[1]);
+  });
+
+  it('does not offer a fake cancellation before the placement response supplies an id', () => {
+    cancelOrder.mockClear();
+    show({
+      queues: {
+        CONSTRUCTION: [{
+          id: 'optimistic-1',
+          queue: 'CONSTRUCTION',
+          slot: 0,
+          kind: 'BUILDING',
+          subject: 'REFINERY',
+          count: 1,
+          cost: { alloy: 100, crystal: 25, deuterium: 0 },
+          optimistic: true,
+        }],
+        YARD: [],
+      },
+    }, 'grow');
+
+    const queues = screen.getByRole('region', { name: 'Build queues' });
+    expect(within(queues).getByText('committing…')).toBeInTheDocument();
+    expect(within(queues).getByRole('button', { name: 'Cancel' })).toBeDisabled();
+    expect(cancelOrder).not.toHaveBeenCalled();
+  });
+
+  it('shows the durable level while keeping the next projected order actionable', async () => {
+    upgrade.mockClear();
+    const now = Date.now();
+    const view = show({
+      buildings: { CORE: 6, REFINERY: 3, EXTRACTOR: 3, VAULT: 1, SHIPYARD: 4 },
+      queues: {
+        CONSTRUCTION: [{
+          id: 'refinery-1',
+          queue: 'CONSTRUCTION',
+          slot: 0,
+          kind: 'BUILDING',
+          subject: 'REFINERY',
+          count: 1,
+          startedAt: new Date(now),
+          finishesAt: new Date(now + 60_000),
+          cost: { alloy: 100, crystal: 25, deuterium: 0 },
+        }],
+        YARD: [],
+      },
+    }, 'grow');
+
+    const row = view.container.querySelector('#row-REFINERY [data-progression-state]');
+    expect(row).toHaveAttribute('data-progression-state', 'queued');
+    expect(row).toHaveTextContent('L3');
+    expect(row).toHaveTextContent('1 order queued');
+    const raise = within(row as HTMLElement).getByRole('button', { name: 'Raise' });
+    await userEvent.click(raise);
+    expect(upgrade).toHaveBeenCalledOnce();
+    expect(upgrade.mock.calls[0]?.[0]).toBe('REFINERY');
+    expectMutationCallbacks(upgrade.mock.calls[0]?.[1]);
+  });
+
+  it('keeps a repeatable hull actionable while an earlier batch is queued', () => {
+    const now = new Date();
+    const view = show({
+      fleet: { WASP: 2 },
+      queues: {
+        CONSTRUCTION: [],
+        YARD: [{
+          id: 'wasp-batch-1',
+          queue: 'YARD',
+          slot: 0,
+          kind: 'HULL',
+          subject: 'WASP',
+          count: 3,
+          startedAt: now,
+          finishesAt: new Date(now.getTime() + 60_000),
+          cost: { alloy: 720, crystal: 0, deuterium: 0 },
+        }],
+      },
+    }, 'reach');
+    const row = view.container.querySelector('#row-WASP [data-progression-state]');
+    expect(row).toHaveAttribute('data-progression-state', 'queued');
+    expect(row).toHaveTextContent('3 units queued');
+    expect(within(row as HTMLElement).getByRole('button', { name: 'Build' })).toBeInTheDocument();
+  });
+
+  it('wakes at the server-named completion instant instead of waiting for a poll', () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-08-24T12:00:00.000Z'));
+    refetch.mockClear();
+    const startsAt = new Date(Date.now() - 1_000);
+    const finishesAt = new Date(Date.now() + 2_000);
+    const view = show({
+      queues: {
+        CONSTRUCTION: [{
+          id: 'core-wake',
+          queue: 'CONSTRUCTION',
+          slot: 0,
+          kind: 'BUILDING',
+          subject: 'CORE',
+          count: 1,
+          startedAt: startsAt,
+          finishesAt,
+          cost: { alloy: 81, crystal: 23, deuterium: 0 },
+        }],
+        YARD: [],
+      },
+    }, 'grow');
+
+    act(() => { vi.advanceTimersByTime(2_049); });
+    expect(refetch).not.toHaveBeenCalled();
+    act(() => { vi.advanceTimersByTime(2); });
+    expect(refetch).toHaveBeenCalledOnce();
+
+    // The first read can beat the one-second worker poll and return the same
+    // still-active order. Keep reconciling instead of leaving it at 00:00 until
+    // an SSE event or a page reload happens to rescue the screen.
+    act(() => { vi.advanceTimersByTime(1_001); });
+    expect(refetch).toHaveBeenCalledTimes(2);
+    view.unmount();
+    vi.useRealTimers();
+  });
+
+  it('offers research unlocked by the queued world, not only by durable state', async () => {
+    completeResearch.mockClear();
+    const base = rich();
+    const now = new Date();
+    const view = show({
+      research: base.research.map((project) => project.id === 'DENSE_FUEL_CELLS'
+        ? { ...project, queueDiscovered: true, queueAvailable: true }
+        : project),
+      queues: {
+        CONSTRUCTION: [{
+          id: 'queued-isotope',
+          queue: 'CONSTRUCTION',
+          slot: 0,
+          kind: 'RESEARCH',
+          subject: 'ISOTOPE_SPECTROMETRY',
+          count: 1,
+          startedAt: now,
+          finishesAt: new Date(now.getTime() + 60_000),
+          cost: { alloy: 0, crystal: 600, deuterium: 0 },
+        }],
+        YARD: [],
+      },
+    }, 'reach', { deuterium: 1_000 });
+
+    const row = view.container.querySelector('#row-DENSE_FUEL_CELLS');
+    expect(row).not.toBeNull();
+    const action = within(row as HTMLElement).getByRole('button', { name: 'Research' });
+    expect(action).toBeEnabled();
+    await userEvent.click(action);
+    expect(completeResearch).toHaveBeenCalledOnce();
+    expect(completeResearch.mock.calls[0]?.[0]).toBe('DENSE_FUEL_CELLS');
+    expectMutationCallbacks(completeResearch.mock.calls[0]?.[1]);
+  });
+});
 
 /**
  * Open the build sheet for a hull, the way a player does: find that hull's row and
@@ -78,15 +336,11 @@ const show = (over: Partial<Omit<PlanetView, 'planet'>> = {}) => {
 async function openSheet(name: string): Promise<void> {
   const user = userEvent.setup();
   const heading = screen.getByRole('heading', { name });
-  let node: HTMLElement | null = heading;
-  let button: HTMLButtonElement | null = null;
-  while (node && !button) {
-    node = node.parentElement;
-    button =
-      [...(node ? node.querySelectorAll('button') : [])].find(
-        (b) => b.textContent.trim().toLowerCase() === 'build',
-      ) ?? null;
-  }
+  const row = heading.closest(`#row-${name.toUpperCase()}`)
+    ?? heading.closest('[id^="row-"]');
+  const button = [...(row?.querySelectorAll('button') ?? [])].find(
+    (candidate) => candidate.textContent.trim().toLowerCase() === 'build',
+  ) ?? null;
   if (!button) throw new Error(`no build control in the ${name} row`);
   await user.click(button);
 }
@@ -133,22 +387,31 @@ describe('the quantity picker', () => {
    * THE ONE THAT NEEDED A NEW FIELD ON THE PAYLOAD.
    *
    * `fleet` is what is standing on the ground, and craft that are away mining are
-   * not in it. Counting only that, the sheet would cheerfully offer three more to
+   * not in it. Counting only that, the row would cheerfully offer another one to
    * somebody whose craft were in the air — and the server, which counts what you
    * OWN, would refuse every one of them.
    */
-  it('counts craft that are away mining, not just the ones at home', async () => {
+  it('removes the row action when all owned Prospectors are away mining', () => {
     show({ fleet: {}, fleetAway: { PROSPECTOR: PROSPECTOR.max } });
-    await openSheet('Prospector');
-    expect(steps()).toEqual([]);
-    expect(screen.getByText(/the limit/i)).toBeInTheDocument();
+    const row = screen.getByRole('heading', { name: 'Prospector' })
+      .closest('#row-PROSPECTOR');
+    expect(row).not.toBeNull();
+    if (!(row instanceof HTMLElement)) throw new Error('Prospector row must render');
+    expect(within(row).queryByRole('button', { name: /build/i })).toBeNull();
+    expect(within(row).getByRole('status')).toHaveTextContent(
+      new RegExp(`${String(PROSPECTOR.max)} / ${String(PROSPECTOR.max)}.*limit`, 'i'),
+    );
   });
 
-  it('says why there is nothing to choose, rather than showing an empty row', async () => {
+  it('shows the ownership limit instead of a false 2-to-3 gain or Build button', () => {
     show({ fleet: { PROSPECTOR: PROSPECTOR.max } });
-    await openSheet('Prospector');
-    expect(screen.getByText(/already hold/i)).toBeInTheDocument();
-    expect(steps()).toEqual([]);
+    const row = screen.getByRole('heading', { name: 'Prospector' })
+      .closest('#row-PROSPECTOR');
+    expect(row).not.toBeNull();
+    if (!(row instanceof HTMLElement)) throw new Error('Prospector row must render');
+    expect(within(row).queryByRole('button', { name: /build/i })).toBeNull();
+    expect(within(row).queryByText(String(PROSPECTOR.max + 1))).toBeNull();
+    expect(within(row).getByRole('status')).toHaveTextContent(/limit/i);
   });
 
   /** And it states the holding, so the number is never a surprise. */

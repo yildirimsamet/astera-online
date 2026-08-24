@@ -8,6 +8,7 @@
  */
 
 export const intel = {
+  openOrbit: 'Yörüngeyi aç',
   tabs: {
     label: 'İstihbarat raporları',
   },
@@ -31,6 +32,8 @@ export const intel = {
   watching: {
     heading: 'İzlediklerin',
     slotsUsed: '{{total}} yuvadan {{used}} tanesi dolu',
+    slotLabel: 'Yuva {{slot}}',
+    slotEmpty: 'Boşta',
     missingNoSlot: 'Hiçbir yuva bir yere bakmıyor',
     missingNoTelescope: 'Teleskopun yok',
     gives: 'Bir gezegenin filosu havalandığı an sana söyler. Her akını belirleyen bilgi bu.',
@@ -101,6 +104,7 @@ export const reports = {
   howItWent: 'Çatışma nasıl geçti',
   roundLine: '<0>{{dealt}}</0> vurdun, <1>{{took}}</1> yedin',
   shield: 'kalkan {{amount}}',
+  breacherShield: 'Delici +{{amount}}',
   gradeDecisive: 'KESİN',
   gradePartial: 'KISMİ',
   gradeRepelled: 'PÜSKÜRTÜLDÜ',

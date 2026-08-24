@@ -200,8 +200,16 @@ describe('the radar ladder', () => {
   const DIST = 900;
   const ONE_WAY = 60;
 
+  /**
+   * DERIVED FROM THE TABLE, never restated. `INTEL.radarRange` is sized in warning
+   * MINUTES rather than in galaxy share, so it is one of the few intel constants
+   * that did NOT take Economy v2's x2.5 unit change — and a test that froze its
+   * figures would have to be edited every time the tempo moved, which is exactly
+   * how a guard stops guarding.
+   */
   it('lists every reach the table sells, widest first, without repeats', () => {
-    expect(RADAR_RANGES).toEqual([500, 340, 200]);
+    const fromTable = [...new Set(INTEL.radarRange.filter((r) => r > 0))].sort((a, b) => b - a);
+    expect(RADAR_RANGES).toEqual(fromTable);
   });
 
   /** DERIVED, so a sixth level or a changed figure is picked up rather than copied. */
@@ -218,9 +226,10 @@ describe('the radar ladder', () => {
 
   it('hops to the next rung whose crossing is still ahead', () => {
     const lead = (range: number) => radarLead(range, DIST, ONE_WAY);
-    expect(nextRadarCheck(ONE_WAY, DIST, ONE_WAY)).toBe(500);
-    expect(nextRadarCheck(lead(500), DIST, ONE_WAY)).toBe(340);
-    expect(nextRadarCheck(lead(340), DIST, ONE_WAY)).toBe(200);
+    const [widest, middle, narrowest] = RADAR_RANGES as [number, number, number];
+    expect(nextRadarCheck(ONE_WAY, DIST, ONE_WAY)).toBe(widest);
+    expect(nextRadarCheck(lead(widest), DIST, ONE_WAY)).toBe(middle);
+    expect(nextRadarCheck(lead(middle), DIST, ONE_WAY)).toBe(narrowest);
   });
 
   /**
@@ -229,7 +238,8 @@ describe('the radar ladder', () => {
    * reschedules itself for the rest of the season.
    */
   it('gives up once the fleet is inside the narrowest reach', () => {
-    expect(nextRadarCheck(radarLead(200, DIST, ONE_WAY), DIST, ONE_WAY)).toBeNull();
+    const narrowest = RADAR_RANGES[RADAR_RANGES.length - 1]!;
+    expect(nextRadarCheck(radarLead(narrowest, DIST, ONE_WAY), DIST, ONE_WAY)).toBeNull();
     expect(nextRadarCheck(1, DIST, ONE_WAY)).toBeNull();
     expect(nextRadarCheck(0, DIST, ONE_WAY)).toBeNull();
   });

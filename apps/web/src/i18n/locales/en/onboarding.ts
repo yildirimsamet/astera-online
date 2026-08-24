@@ -13,7 +13,7 @@ export const onboarding = {
   beats: {
     wide: {
       title: '{{shard}}',
-      line: '{{planets}} of fifty worlds are taken, by people. Everything moving out there is real, and it is happening now.',
+      line: '{{planets}} of {{capacity}} commander seats are taken, by people. Everything moving out there is real, and it is happening now.',
       action: 'Show me my world',
     },
     yours: {
@@ -31,11 +31,11 @@ export const onboarding = {
     },
     core: {
       title: '{{alloy}} alloy, {{crystal}} crystal',
-      line: 'That is the whole budget. Raise the Command Core first — nothing may stand higher than it, so nothing else will move until it does.',
+      line: 'That is the whole budget. Queue the Command Core first — nothing may stand higher, and the next order will inherit its new ceiling.',
     },
     refinery: {
       title: 'Now the Refinery',
-      line: 'The ceiling moved with the Core. The Refinery is what makes alloy.',
+      line: 'The Core is ahead in the queue, so this order may use its new ceiling. The Refinery is what makes alloy.',
     },
     extractor: {
       title: 'And the Crystal Extractor',
@@ -43,16 +43,7 @@ export const onboarding = {
     },
     fleet: {
       title: 'Your crystal is gone. Exactly.',
-      line: 'That is not a coincidence — the grant is three upgrades and two ships, to the unit. Take BOTH {{ship}}s with what is left.',
-    },
-    target: {
-      title: 'The fleet is the bet',
-      line: 'Tap a world, open it, and send everything you have. You do not know what is down there — looking is one way to find out and going is the other.',
-    },
-    targetAlone: {
-      title: 'Nothing is in range',
-      line: 'Your ships are built and your bay is empty. In this galaxy, the first move will be yours to make.',
-      action: 'Claim my world',
+      line: 'That is not a coincidence — the grant is three upgrades and two ships, to the unit. Queue BOTH {{ship}}s with what is left.',
     },
   },
 
@@ -64,7 +55,7 @@ export const onboarding = {
   claim: {
     eyebrowName: 'Last step',
     headingName: 'Sign the world with your name',
-    lineName: 'Your fleet is away. {{name}} stays yours once there is a commander behind it.',
+    lineName: 'Your four orders are staged. Claim {{name}} and their real clocks start together.',
     nameLabel: 'Commander name',
     next: 'Continue',
 
@@ -83,6 +74,6 @@ export const onboarding = {
     unreachable: 'Could not reach the galaxy.',
     retry: 'Try again',
     /** One or more replayed decisions were refused once the server ran them. */
-    partial: 'Your world is yours. One order did not survive the trip — the galaxy moved while you were signing.',
+    partial: 'Your world is yours. One staged order was refused when the real queues started.',
   },
 } as const;

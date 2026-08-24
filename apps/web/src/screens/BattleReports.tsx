@@ -133,7 +133,7 @@ function GradeMark({ report }: { report: BattleReport }) {
 
 function ReportSheet({ report, onClose }: { report: BattleReport; onClose: () => void }) {
   const { t } = useTranslation();
-  const looted = report.lootAlloy + report.lootCrystal;
+  const looted = report.lootAlloy + report.lootCrystal + report.lootDeuterium;
 
   return (
     <Sheet
@@ -143,6 +143,8 @@ function ReportSheet({ report, onClose }: { report: BattleReport; onClose: () =>
       title={gradeWord(report.grade)}
       onClose={onClose}
     >
+      <BattleVerdict report={report} />
+
       <p className="text-[13px] leading-relaxed text-dim">
         {report.attacking
           ? t(report.grade === 'REPELLED' ? 'reports.heldAgainstYou' : 'reports.brokenByYou', {
@@ -185,6 +187,16 @@ function ReportSheet({ report, onClose }: { report: BattleReport; onClose: () =>
             />
             {signed(report.lootCrystal)}
           </span>
+          {report.lootDeuterium !== 0 && (
+            <span className="flex items-center gap-1 text-opportunity">
+              <img
+                src={RESOURCE_ART.deuterium}
+                alt={t('vocabulary.resource.deuterium')}
+                className="size-4 object-contain"
+              />
+              {signed(report.lootDeuterium)}
+            </span>
+          )}
         </p>
       )}
 
@@ -206,12 +218,14 @@ function ReportSheet({ report, onClose }: { report: BattleReport; onClose: () =>
         {report.rounds.map((round) => (
           <div
             key={round.round}
-            className="flex items-center gap-3 border-b border-line-soft px-3 py-2 last:border-b-0"
+            className="grid grid-cols-[24px_1fr_auto] items-center gap-3 border-b border-line-soft px-3 py-2.5 last:border-b-0"
           >
             <span className="num w-6 text-[11px] text-faint">{round.round}</span>
-            <span className="num flex-1 text-[12px] text-dim">
-              {/* One sentence with two figures in it. Turkish puts both verbs at
-                  the end, so the clauses cannot be spliced in JSX. */}
+            <RoundBalance
+              dealt={report.attacking ? round.attackerDamage : round.defenderDamage}
+              took={report.attacking ? round.defenderDamage : round.attackerDamage}
+            />
+            <span className="sr-only">
               <Trans
                 i18nKey="reports.roundLine"
                 values={{
@@ -225,14 +239,117 @@ function ReportSheet({ report, onClose }: { report: BattleReport; onClose: () =>
               />
             </span>
             {round.shieldAbsorbed > 0 && (
-              <span className="num text-[11px] text-crystal">
-                {t('reports.shield', { amount: compact(round.shieldAbsorbed) })}
+              <span className="flex flex-col items-end gap-0.5">
+                <span className="num text-[11px] text-crystal">
+                  {t('reports.shield', { amount: compact(round.shieldAbsorbed) })}
+                </span>
+                {round.breacherShieldDamage > 0 && (
+                  <span className="num text-[10px] text-deuterium">
+                    {t('reports.breacherShield', {
+                      amount: compact(round.breacherShieldDamage),
+                    })}
+                  </span>
+                )}
               </span>
             )}
           </div>
         ))}
       </div>
     </Sheet>
+  );
+}
+
+function BattleVerdict({ report }: { report: BattleReport }) {
+  const won = report.attacking ? report.grade !== 'REPELLED' : report.grade === 'REPELLED';
+  const yours = fleetEntries(report.yourLosses).reduce((sum, [, count]) => sum + count, 0);
+  const theirs = fleetEntries(report.theirLosses).reduce((sum, [, count]) => sum + count, 0);
+  const bars = report.grade === 'DECISIVE' ? 3 : report.grade === 'PARTIAL' ? 2 : 1;
+
+  return (
+    <div
+      data-battle-verdict={report.grade}
+      className={`plate mb-4 grid grid-cols-[1fr_92px_1fr] items-center gap-3 p-3 ${
+        won ? 'border-opportunity/35' : 'border-threat/35'
+      }`}
+      role="img"
+      aria-label={gradeWord(report.grade)}
+    >
+      <LossStack fleet={report.yourLosses} count={yours} align="left" />
+      <div className="grid justify-items-center gap-2">
+        <div className={`relative grid size-[72px] place-items-center rounded-full border ${
+          won
+            ? 'border-opportunity/55 bg-opportunity/10 text-opportunity'
+            : 'border-threat/55 bg-threat/10 text-threat'
+        }`}>
+          <span className="absolute inset-2 rounded-full border border-current/20" />
+          <span className="flex items-end gap-1" aria-hidden>
+            {[1, 2, 3].map((bar) => (
+              <i
+                key={bar}
+                className={`w-2 skew-x-[-12deg] border border-current ${bar <= bars ? 'bg-current/65' : 'bg-transparent opacity-25'}`}
+                style={{ height: `${String(10 + bar * 7)}px` }}
+              />
+            ))}
+          </span>
+        </div>
+        <span className="font-display text-[11px] uppercase tracking-[0.14em] text-bone">
+          {gradeWord(report.grade)}
+        </span>
+      </div>
+      <LossStack fleet={report.theirLosses} count={theirs} align="right" />
+    </div>
+  );
+}
+
+function LossStack({
+  fleet,
+  count,
+  align,
+}: {
+  fleet: BattleReport['yourLosses'];
+  count: number;
+  align: 'left' | 'right';
+}) {
+  const art = fleetEntries(fleet).flatMap(([hull, amount]) => {
+    const source = HULL_ART[hull];
+    return source ? Array.from({ length: Math.min(3, amount) }, () => source) : [];
+  }).slice(0, 3);
+  return (
+    <div className={`min-w-0 ${align === 'right' ? 'text-right' : ''}`} aria-hidden>
+      <div className={`flex ${align === 'right' ? 'justify-end' : ''}`}>
+        {art.length === 0 ? (
+          <span className="block size-8 rounded-full border border-line-soft" />
+        ) : art.map((src, index) => (
+          <img
+            key={`${src}-${String(index)}`}
+            src={src}
+            alt=""
+            className={`size-10 object-contain opacity-75 grayscale ${index > 0 ? '-ml-4' : ''}`}
+          />
+        ))}
+      </div>
+      <p className={`num mt-1 text-[18px] ${count > 0 ? 'text-threat' : 'text-dim'}`}>−{full(count)}</p>
+    </div>
+  );
+}
+
+function RoundBalance({ dealt, took }: { dealt: number; took: number }) {
+  const top = Math.max(1, dealt, took);
+  return (
+    <span className="grid gap-1.5" aria-hidden>
+      <span className="flex items-center gap-2">
+        <span className="h-1.5 flex-1 overflow-hidden rounded-[1px] bg-line-soft">
+          <span className="block h-full bg-opportunity" style={{ width: `${String((dealt / top) * 100)}%` }} />
+        </span>
+        <span className="num w-10 text-right text-[11px] text-bone">{compact(dealt)}</span>
+      </span>
+      <span className="flex items-center gap-2">
+        <span className="h-1.5 flex-1 overflow-hidden rounded-[1px] bg-line-soft">
+          <span className="block h-full bg-threat" style={{ width: `${String((took / top) * 100)}%` }} />
+        </span>
+        <span className="num w-10 text-right text-[11px] text-bone">{compact(took)}</span>
+      </span>
+    </span>
   );
 }
 
