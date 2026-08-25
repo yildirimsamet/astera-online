@@ -2280,6 +2280,44 @@ and `fleet` carries the Prospector — so a world whose only craft at home was a
 an empty list with no sentence under it, which is exactly the confusion the caption exists
 to end. It counts MOBILE hulls at home now. Three tests hold the three cases.
 
+### D116 · A deploy stops the world only when the release forces it — owner instruction
+
+**The runbook took downtime on every release, and almost none of them needed it.** Its stop
+existed for two reasons and both are conditional: the final dump has to be a rollback boundary
+no player write can be newer than (rule 4), and no process may span a migration (rule 5). A
+release that applies no DDL has neither problem — it never rolls the database back at all, it
+rolls the IMAGE and the WEBROOT back, and rule 10 retains both. The third reason, keeping Nginx
+down while the client is replaced (rule 7), is a property of replacing files IN PLACE; renaming
+a fully-built directory into place closes the same window with two renames on one filesystem.
+
+**Step 6 is now a gate that is answered from the release, not from habit.** Four things force a
+stop: pending DDL, old and new server code that cannot both be live (a removed or reshaped route,
+a changed event kind), a worker that must not process events under old code, and a data repair or
+season operation riding along. Each row says how to CHECK it — step 5 already runs `migrate` with
+the new image against the restored production shape, so "is there DDL" is a measurement, and
+`git diff --stat "$previous..$release" -- apps/server packages/rules` answers the second. None
+true takes the rolling path; any true takes the quiesced one; both converge on internal
+acceptance and the external proof, which did not move.
+
+**The rolling path leans on what the vhost already does.** Nginx balances `least_conn` across the
+three API replicas with `max_fails=2 fail_timeout=5s`, so it routes around one that is restarting.
+Replicas go one at a time and each must be healthy AND reporting the release SHA before the next
+is touched — two down out of three is a capacity event even when it is not an outage. The worker
+is a singleton and cannot be rolled: it takes a real ten-to-twenty-second gap, which is not
+user-facing because a scheduled event is claimed with `SKIP LOCKED` and simply runs that late,
+the same lateness `WORKER_POLL_MS` already admits. It goes last, so the APIs are already on the
+new image when it returns. Rule 1's single-SHA identity is unaffected — all four containers, the
+image label, both git refs and the web release marker still have to agree.
+
+**First used for D115, with 16 commanders mid-session.** Client-only release, no DDL: the
+rehearsal left the restored copy at 31 migrations, which is the measurement rule 5 now asks for.
+All four containers rolled to `31f4c0c` and stayed healthy, the public root answered 200 at every
+step including across the webroot rename, and the eight identities agreed afterwards. The world
+kept running through it: in-flight missions held at 13 while mining runs went 2 → 3 and build
+orders 1 → 4. That last part is the acceptance note step 11 now carries — on a rolling release
+the after-counts should be HIGHER than the before-counts, and a set that did not move while
+players were active is itself worth investigating.
+
 ## Architecture
 
 A1 · One source of truth — LOCKED

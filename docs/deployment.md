@@ -10,6 +10,10 @@ and the rollback boundary. It is deliberately not a release history.
 > process, against the intended schema, with the world still internally consistent and the
 > public client serving the same release.
 
+> **Downtime is a cost, not a ritual.** Nothing in the definition above requires the site to
+> stop. Take a stop only when the release cannot be applied while serving, and say which rule
+> forced it — the world is live and real people are in it.
+
 ## Current production contract
 
 ```
@@ -68,17 +72,26 @@ These are stop conditions, not suggestions.
 3. **Prove rollback before mutation.** A dump that merely exists is not a rollback. Restore it
    into a disposable database and, when migrations exist, run the new image's migrations against
    that restored copy before touching production.
-4. **Quiesce before the final dump.** Block public writes, stop every API and the worker, then
-   take the final rollback dump. Never restore a backup over a world that has accepted newer
-   player writes.
+4. **A dump is only a rollback boundary if nothing wrote after it.** On the **quiesced path**
+   that means blocking public writes, stopping every API and the worker, and only then taking
+   the final dump: never restore a backup over a world that has accepted newer player writes.
+   On the **rolling path** there is no such boundary to protect, because a release that applies
+   no DDL never rolls the database back — it rolls the IMAGE and the WEBROOT back, and both are
+   retained by rule 10. Rehearse the restore anyway (step 5): it is what proves the dump is
+   complete and the data shape is valid.
 5. **No process spans a migration.** Stop old APIs and especially the old worker before applying
    DDL. An old worker can consume a newly backfilled event kind as unknown and complete it before
-   the new worker sees it.
+   the new worker sees it. This is the rule that most often forces a stop — and it does not
+   apply at all to a release with no pending migration, which step 5 measures rather than
+   assumes.
 6. **Migrate with the image that will run.** Migrations are an explicit one-off command, never an
    application startup side effect and never N replicas racing the same DDL.
-7. **API before web.** Start and validate the three APIs and singleton worker before publishing
-   the already-built client. Keep Nginx stopped while files are replaced, so nobody can observe a
-   mixed web artifact.
+7. **API before web, and never a mixed web artifact.** Validate the three APIs and singleton
+   worker on the new image before publishing the already-built client. The public must never be
+   able to request an `index.html` from one build and an asset directory from another. Stopping
+   Nginx is one way to guarantee that and it is the right one when the files are replaced IN
+   PLACE. Swapping a fully-built directory in by rename is another, and it closes the window
+   without a stop: two renames on one filesystem, `index.html` and its assets moving together.
 8. **Health is blocking.** All four `/health` documents must parse and have `.ok == true`. A 200
    from one route or a script printing `Deployed` is not evidence.
 9. **A season transition is separate.** Shortening a deadline, freezing, recapping and rolling
@@ -287,9 +300,22 @@ This proves three different things: the dump is complete enough to restore, the 
 valid, and the intended image can perform every pending migration. None can substitute for the
 others.
 
-### 6. Record live work, then block writes
+### 6. Decide whether this release needs a stop
 
-Before downtime, record what must still exist afterwards:
+Ask it once, in writing, and answer it from the release rather than from habit. **A stop is
+forced only if one of these is true:**
+
+| Forces a stop | How to check it, not guess it |
+| --- | --- |
+| The release applies DDL | Step 5 ran `migrate` against the restored production shape with the NEW image. If the applied-migration count did not move, there is no DDL |
+| Old and new server code cannot both be live | A removed or reshaped API route, a changed event `kind`, a payload an old replica would reject. `git diff --stat "$previous_commit..$release_sha" -- apps/server packages/rules` is empty on a client-only release |
+| The worker must not process events under old code | Follows from DDL or a new event kind; nothing else |
+| A data repair, backfill or season operation is part of the release | Rule 9 keeps season transitions out of a deploy; a repair is an owner operation with its own plan |
+
+If none is true, take **the rolling path (step 7)** and skip step 8. If any is true, take **the
+quiesced path (step 8)** and skip step 7. Both converge on step 9.
+
+Record what is live either way; the same snapshot is the after-comparison on both paths:
 
 ```bash
 for port in 3200 3201 3202 3210; do
@@ -303,8 +329,75 @@ docker exec astera-postgres-prod psql -U astera -d astera -tAc \
          (select count(*) from players where last_active_at > now() - interval '15 minutes') as active;"
 ```
 
-Stop Nginx first so no new mutation can enter, then stop every application role gracefully.
-PostgreSQL and Valkey stay up.
+That last column is a count of real people mid-session. It is the number a stop costs.
+
+### 7. Rolling path — the default
+
+Nginx balances `least_conn` across `127.0.0.1:3200/3201/3202` with `max_fails=2 fail_timeout=5s`,
+so it routes around a replica that is restarting. Replace them **one at a time**, and require each
+one healthy and reporting the release SHA before touching the next. Never roll two at once: two
+down out of three is a capacity event even when it is not an outage.
+
+```bash
+new_image_id="$(docker image inspect astera-server:latest --format '{{.Id}}')"
+export ASTERA_GIT_COMMIT="$release_sha"
+
+roll() {
+  local name="$1" port="$2" health=''
+  docker compose -f docker-compose.prod.yml up -d --no-build --no-deps "$name"
+  for attempt in $(seq 1 90); do
+    health="$(curl -sS "http://127.0.0.1:$port/health" || true)"
+    jq -e '.ok == true' <<< "$health" >/dev/null 2>&1 && break
+    sleep 1
+  done
+  jq -e '.ok == true' <<< "$health" >/dev/null
+  test "$(docker inspect "astera-${name}-prod" --format '{{.Image}}')" = "$new_image_id"
+  test "$(curl -fsS "http://127.0.0.1:$port/metrics" | jq -er '.service.commit')" = "$release_sha"
+  test "$(curl -sS -o /dev/null -w '%{http_code}' https://asteraonline.space/)" = 200
+}
+
+roll api1 3200 && sleep 3
+roll api2 3201 && sleep 3
+roll api3 3202 && sleep 3
+roll worker 3210
+```
+
+The worker is a singleton, so it has a real gap of roughly ten to twenty seconds and there is no
+way to roll it. That gap is not user-facing: a scheduled event is claimed with `SKIP LOCKED` and
+simply runs that much late, which is the same lateness `WORKER_POLL_MS` already admits. Roll it
+LAST, so the APIs are already answering on the new image when it comes back.
+
+Then swap the client by rename rather than by copy. Stage on the SAME filesystem as the live root
+or the rename is a copy and the window comes back:
+
+```bash
+sudo rm -rf /var/www/astera-next
+sudo cp -a "$web_stage" /var/www/astera-next
+sudo chown -R www-data:www-data /var/www/astera-next
+sudo chmod -R a+rX /var/www/astera-next
+test -f /var/www/astera-next/index.html
+test "$(cat /var/www/astera-next/release.txt)" = "$release_sha"
+
+sudo rm -rf /var/www/astera-previous
+sudo mv /var/www/astera /var/www/astera-previous
+sudo mv /var/www/astera-next  /var/www/astera
+sudo systemctl reload nginx
+```
+
+`/var/www/astera-previous` is the rolling path's rule-10 webroot copy; keep it for the observation
+window. The `reload` is not what publishes the files — Nginx stats the root per request — it is
+there to drop any open descriptor on the directory that has just been moved aside.
+
+If the vhost itself changed, install and validate it as in step 10 BEFORE the rename, and restore
+the saved copy if `nginx -t` fails. A vhost that fails validation on the rolling path is a stop
+condition: do not reload a broken configuration over a live site.
+
+Skip step 8 entirely. Continue at step 9.
+
+### 8. Quiesced path — when step 6 forced a stop
+
+The step 6 snapshot is your before-picture. Stop Nginx first so no new mutation can enter, then
+stop every application role gracefully. PostgreSQL and Valkey stay up.
 
 ```bash
 sudo systemctl stop nginx
@@ -324,7 +417,7 @@ Trust the listener/process checks, not only a systemd label. A stopped Nginx uni
 `failed` state; `reset-failed` before the later start is harmless. An unexpected legacy or orphan
 application container is a blocker until its image and purpose are identified.
 
-### 7. Take the final quiesced backup and migrate production
+#### 8b. Take the final quiesced backup and migrate production
 
 The final dump is the rollback boundary because no newer player write can exist after it:
 
@@ -368,7 +461,9 @@ Apply migrations to production only after that succeeds:
 Run the release-specific post-migration assertions now. A migration command returning zero proves
 that its SQL committed; it does not prove a backfill selected every intended row.
 
-### 8. Start the exact image and require internal acceptance
+#### 8c. Start the exact image
+
+On the rolling path this already happened in step 7; go to step 9.
 
 ```bash
 "${compose[@]}" up -d --no-build worker api1 api2 api3
@@ -394,6 +489,8 @@ for port in 3200 3201 3202 3210; do
 done
 ```
 
+### 9. Require internal acceptance — BOTH PATHS
+
 Expected health contract:
 
 | Process | Required |
@@ -411,11 +508,14 @@ docker exec astera-postgres-prod psql -v ON_ERROR_STOP=1 -U astera -d astera -c 
     from missions where status='in_flight' and arrive_at < now() - interval '2 minutes';"
 ```
 
-`processing` may be a claim interrupted by the stop and should return through the reaper; do not
-hide it with a restart. `failed`, a growing queue lag, stranded state or an unknown worker event is
-a stop and investigation, not an automatic restart condition.
+`processing` may be a claim interrupted by a stop or by the worker roll, and should return through
+the reaper; do not hide it with a restart. `failed`, a growing queue lag, stranded state or an
+unknown worker event is a stop and investigation, not an automatic restart condition.
 
-### 9. Install Nginx, publish web, then reopen traffic
+### 10. Install Nginx, publish web, then reopen traffic — QUIESCED PATH ONLY
+
+The rolling path published its client by rename in step 7 and never stopped Nginx. This section is
+the in-place replacement, which is why it requires Nginx to be down.
 
 Install the repository vhost and validate the whole host configuration. Restore the saved vhost
 if validation fails. Pre-existing warnings must be understood; an unexpected warning is not
@@ -443,7 +543,7 @@ Nginx remains stopped throughout the file replacement, so the public cannot requ
 `index.html` from one build and an asset directory from another. `--chmod=D755,F644` is required:
 Docker's local output can leave the staging root mode 0700, while Nginx runs as `www-data`.
 
-### 10. Prove the release from outside
+### 11. Prove the release from outside — BOTH PATHS
 
 ```bash
 test "$(curl -fsS -H 'Cache-Control: no-cache' \
@@ -462,7 +562,8 @@ different instants.
 
 Finally rerun internal health, queue/overdue checks, `host-capacity-preflight.sh`, database
 connection metrics, and the live-shard query below. Compare the in-flight/build counts with the
-pre-stop snapshot. Remove only obsolete **stateless** containers after all checks pass; retain the
+step 6 snapshot. On the rolling path they should be higher, not equal: the world kept running,
+and a set of counts that did NOT move while players were active is itself worth investigating. Remove only obsolete **stateless** containers after all checks pass; retain the
 old image, web copy, Nginx copy and final dump.
 
 Also inspect the first observation window by status, route and client rather than looking only for
@@ -627,6 +728,14 @@ The schema guard is **one-way**: a new image refuses to start when the database 
 migration journal. It does not prove that an old image is safe against a newer database. Never
 assume a previous container will reject an incompatible forward schema.
 
+- **A rolling release, which by definition applied no DDL:** the database was never touched, so
+  the rollback is the image and the client and nothing else. Retag the retained
+  `astera-server:rollback-$previous_commit` as `astera-server:latest`, roll the four containers
+  back one at a time exactly as step 7 rolled them forward, then rename
+  `/var/www/astera-previous` back over `/var/www/astera` and reload Nginx. It costs no downtime
+  either, and it is the reason the rolling path keeps a previous webroot under its own name
+  rather than under the timestamped `/var/www/astera-releases/` copy taken in step 2. Both exist;
+  either will do.
 - **Before migrations:** retag/restart the retained old image and restore the prior web/Nginx
   files. The database has not changed.
 - **After migration but before public traffic:** keep Nginx stopped, stop new processes, recreate
