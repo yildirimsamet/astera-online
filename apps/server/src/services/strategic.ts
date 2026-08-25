@@ -24,7 +24,9 @@ import {
 } from '../db/schema.js';
 import { publishShard } from '../stream/bus.js';
 import { schedule } from '../worker/queue.js';
+import { destroyBuildingOrders } from './buildQueue.js';
 import { assertFreeBay } from './flight.js';
+import { advanceNeutralEconomy } from './neutral.js';
 import { assertColonyCapacity, capitalPlanet, lockWorlds, transferPlanetControl } from './ownership.js';
 import {
   GameError,
@@ -38,10 +40,25 @@ import { planetView } from './planetView.js';
 import { hasResearch } from './researchState.js';
 import { pendingThreads } from './session.js';
 
-const DAMAGED_BUILDINGS = ['CORE', 'REFINERY', 'EXTRACTOR', 'SHIPYARD'] as const;
+/**
+ * WHAT AN IMPACT COSTS THE WORLD IT LANDS ON. D113.
+ *
+ * The Core is the only building a strike lowers directly. Every other building
+ * is bound by `CORE_CEILING` — `build.ts` refuses to raise one to or past the
+ * Core — so a Core that has just fallen leaves anything sitting on the old
+ * ceiling one level above a limit the game will not otherwise let you reach.
+ * Those are clamped back to the new Core, which is why a Refinery sometimes
+ * drops with the Core and sometimes does not: it drops exactly when the Core
+ * required it to.
+ */
+const CORE_BOUND_BUILDINGS = ['REFINERY', 'EXTRACTOR', 'VAULT', 'SHIPYARD'] as const;
 const DESTROYED_HOME = [
   'WASP', 'LANCE', 'BULWARK', 'HAULER', 'RUNNER', 'BREACHER', 'PROSPECTOR', 'THORN', 'BASTION',
 ] as const;
+
+/** Half of a stale figure is not half of what is there — see `stockShareDestroyed`. */
+const survives = (amount: number): number =>
+  Math.floor(amount * (1 - DEATH_STAR.stockShareDestroyed));
 
 export async function buildDeathStar(db: Db, planetId: string, clock: Clock, expectedPlayerId?: string) {
   return db.transaction(async (tx) => {
@@ -270,10 +287,17 @@ export async function applyDeathStarStrike(
     };
   }
 
-  // Production is lazy. A commander does not have to open the target world for
-  // its Works to exist, so advance an owned target under the lock before measuring
-  // and clearing it. Otherwise Death Star damage depends on when the defender last
-  // made an API request rather than on the shared server clock.
+  /**
+   * PRODUCTION IS LAZY, AND HALVING MAKES THAT LOAD-BEARING. D113.
+   *
+   * A commander does not have to open a world for its Works to exist, so the
+   * stored row is whatever it was at the last tick. Zeroing a stale figure and
+   * zeroing a current one give the same answer, which is why this only ever had
+   * to advance an OWNED target — to get the damage number right. Halving does
+   * not: half of a figure an hour old leaves the defender with less than half of
+   * what they actually had, silently. So both kinds of world are brought to
+   * `now` first, a neutral through its own advance because nothing else does it.
+   */
   const advancedTarget = target.controllerPlayerId && target.kind !== 'NEUTRAL'
     ? await loadLocked(
         tx,
@@ -282,12 +306,21 @@ export async function applyDeathStarStrike(
         { expectedPlayerId: target.controllerPlayerId },
       )
     : null;
+  const advancedNeutral = target.kind === 'NEUTRAL'
+    ? await advanceNeutralEconomy(tx, target.id, now)
+    : null;
+  const held = {
+    alloy: advancedTarget?.alloy ?? advancedNeutral?.alloy ?? target.alloy,
+    crystal: advancedTarget?.crystal ?? advancedNeutral?.crystal ?? target.crystal,
+    // A neutral never passively produces Deuterium (D97), so its row is current.
+    deuterium: advancedTarget?.deuterium ?? target.deuterium,
+    bufferAlloy: advancedTarget?.bufferAlloy ?? target.bufferAlloy,
+    bufferCrystal: advancedTarget?.bufferCrystal ?? target.bufferCrystal,
+    bufferDeuterium: advancedTarget?.bufferDeuterium ?? target.bufferDeuterium,
+  };
 
   const [buildingRows, aegisRows, homeRows] = await Promise.all([
-    tx.select().from(buildings).where(and(
-      eq(buildings.planetId, target.id),
-      inArray(buildings.type, [...DAMAGED_BUILDINGS]),
-    )),
+    tx.select().from(buildings).where(eq(buildings.planetId, target.id)),
     tx.select().from(satellites).where(and(
       eq(satellites.planetId, target.id),
       eq(satellites.type, 'AEGIS'),
@@ -302,23 +335,40 @@ export async function applyDeathStarStrike(
   for (const row of homeRows) {
     if (row.count > 0) destroyedFleet[row.hull] = row.count;
   }
-  const resourcesDestroyed = advancedTarget
-    ? advancedTarget.alloy + advancedTarget.crystal + advancedTarget.deuterium
-      + advancedTarget.bufferAlloy + advancedTarget.bufferCrystal
-      + advancedTarget.bufferDeuterium
-    : target.alloy + target.crystal + target.deuterium
-      + target.bufferAlloy + target.bufferCrystal + target.bufferDeuterium;
+
+  const coreBefore = buildingRows.find((row) => row.type === 'CORE')?.level ?? 0;
+  const coreAfter = Math.max(0, coreBefore - 1);
+  /**
+   * The Core, plus whatever the Core's fall pulled down with it. Reported rather
+   * than assumed: a Refinery two levels under the ceiling loses nothing, and the
+   * `damage` figure has to say so or the impact record overstates what happened.
+   */
   const buildingDamage = buildingRows.reduce((sum, row) => {
-    if (row.level <= 0) return sum;
-    const cost = upgradeCost(row.level - 1);
-    return sum + cost.alloy + cost.crystal + cost.deuterium;
+    const after = row.type === 'CORE' ? coreAfter : Math.min(row.level, coreAfter);
+    let lost = 0;
+    for (let level = after; level < row.level; level++) {
+      const cost = upgradeCost(level);
+      lost += cost.alloy + cost.crystal + cost.deuterium;
+    }
+    return sum + lost;
   }, 0);
   const aegisDamage = aegisRows.reduce((sum, row) => {
-    if (row.level <= 0) return sum;
-    const cost = instrumentCost('AEGIS', row.level - 1);
-    return sum + cost.alloy + cost.crystal + cost.deuterium;
+    const after = Math.max(0, row.level - DEATH_STAR.aegisLevelsLost);
+    let lost = 0;
+    for (let level = after; level < row.level; level++) {
+      const cost = instrumentCost('AEGIS', level);
+      lost += cost.alloy + cost.crystal + cost.deuterium;
+    }
+    return sum + lost;
   }, 0);
-  const damage = resourcesDestroyed + buildingDamage + aegisDamage + fleetValue(destroyedFleet);
+  const resourcesDestroyed =
+    (held.alloy - survives(held.alloy))
+    + (held.crystal - survives(held.crystal))
+    + (held.deuterium - survives(held.deuterium))
+    + (held.bufferAlloy - survives(held.bufferAlloy))
+    + (held.bufferCrystal - survives(held.bufferCrystal))
+    + (held.bufferDeuterium - survives(held.bufferDeuterium));
+  const strippedValue = resourcesDestroyed + buildingDamage + aegisDamage + fleetValue(destroyedFleet);
 
   const secondStrike = target.kind !== 'CAPITAL'
     && mission.deathStarCapture
@@ -327,12 +377,12 @@ export async function applyDeathStarStrike(
   await tx
     .update(planets)
     .set({
-      alloy: 0,
-      crystal: 0,
-      deuterium: 0,
-      bufferAlloy: 0,
-      bufferCrystal: 0,
-      bufferDeuterium: 0,
+      alloy: survives(held.alloy),
+      crystal: survives(held.crystal),
+      deuterium: survives(held.deuterium),
+      bufferAlloy: survives(held.bufferAlloy),
+      bufferCrystal: survives(held.bufferCrystal),
+      bufferDeuterium: survives(held.bufferDeuterium),
       shield: 0,
       disruptedUntil: null,
       lastTickAt: now,
@@ -340,11 +390,18 @@ export async function applyDeathStarStrike(
     .where(eq(planets.id, target.id));
   await tx
     .update(buildings)
-    .set({ level: sql`GREATEST(0, ${buildings.level} - 1)` })
-    .where(and(eq(buildings.planetId, target.id), inArray(buildings.type, [...DAMAGED_BUILDINGS])));
+    .set({ level: coreAfter })
+    .where(and(eq(buildings.planetId, target.id), eq(buildings.type, 'CORE')));
+  await tx
+    .update(buildings)
+    .set({ level: sql`LEAST(${buildings.level}, ${coreAfter})` })
+    .where(and(
+      eq(buildings.planetId, target.id),
+      inArray(buildings.type, [...CORE_BOUND_BUILDINGS]),
+    ));
   await tx
     .update(satellites)
-    .set({ level: sql`GREATEST(0, ${satellites.level} - 1)` })
+    .set({ level: sql`GREATEST(0, ${satellites.level} - ${DEATH_STAR.aegisLevelsLost})` })
     .where(and(eq(satellites.planetId, target.id), eq(satellites.type, 'AEGIS')));
   await tx
     .delete(units)
@@ -357,6 +414,20 @@ export async function applyDeathStarStrike(
     .update(neutralPlanetState)
     .set({ claimUntil: null })
     .where(eq(neutralPlanetState.planetId, target.id));
+  /**
+   * The scaffolding goes with everything else, and nothing comes back. Owner
+   * instruction at D113. It is also what stops a building order placed under a
+   * high Core from completing after the strike and standing above the low one —
+   * `applyOrderEffect` never re-reads the ceiling. See `destroyBuildingOrders`.
+   */
+  const burned = await destroyBuildingOrders(tx, target.id, now);
+  const burnedValue = burned.reduce(
+    (sum, order) => sum + order.cost.alloy + order.cost.crystal + order.cost.deuterium,
+    0,
+  );
+  // The impact record counts the scaffolding, because the defender paid for it and
+  // it is as gone as the fleet standing beside it.
+  const damage = strippedValue + burnedValue;
   await pauseBuildingAsset(tx, target.id, now);
 
   if (secondStrike) {

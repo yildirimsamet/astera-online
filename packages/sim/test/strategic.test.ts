@@ -123,7 +123,7 @@ describe('multi-world strategic simulation', () => {
     const attacker = world.players[0]!;
     const target = world.neutrals[0]!;
     world.neutrals = [target];
-    attacker.buildings.CORE = 9;
+    attacker.buildings.CORE = DEATH_STAR.requiredCore;
     world.deathStars.set(attacker.id, { status: 'READY', readyAt: 0 });
     tryDeathStar(attacker, 0, world);
     const flight = world.strategicMissions.find((mission) => mission.kind === 'death_star')!;
@@ -139,8 +139,8 @@ describe('multi-world strategic simulation', () => {
     const attacker = world.players[0]!;
     const target = world.neutrals[0]!;
     world.neutrals = [target];
-    attacker.buildings.CORE = 9;
-    attacker.buildings.SHIPYARD = 5;
+    attacker.buildings.CORE = DEATH_STAR.requiredCore;
+    attacker.buildings.SHIPYARD = DEATH_STAR.requiredShipyard;
     attacker.graviticCharges = true;
     // This case starts after the ordinary Construction queue has completed the
     // protocol; build-queue.test.ts owns the research timing itself.

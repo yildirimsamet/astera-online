@@ -1,7 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import { generateGalaxy, pickSpawnSlot, type PlanetSlot } from '../src/galaxy.js';
 import { GALAXY, MULTI_WORLD, SERVERS } from '../src/constants.js';
+import { distance, fleetTravelExact } from '../src/travel.js';
 import {
+  GALAXY_SPAN,
+  SETTLEMENT_CLAIM_MINUTES,
   colonyCapacity,
   hasColonyCapacity,
   neutralReserve,
@@ -9,6 +12,8 @@ import {
   selectNeutralSlots,
   transferCargoCapacity,
 } from '../src/strategic.js';
+
+const settlementFleet = { HAULER: MULTI_WORLD.settlement.haulers };
 
 /** The widest empty angular wedge, in degrees. A whole tier can look clustered while averages pass. */
 function largestAngularGap(slots: readonly PlanetSlot[]): number {
@@ -32,6 +37,35 @@ describe('multi-world strategic rules', () => {
       cost: { alloy: 2000, crystal: 1000, deuterium: 0 },
       haulers: 2,
     });
+  });
+
+  /**
+   * D111. Stated as a RELATION rather than as a figure, because the figure is the
+   * thing that went stale: any of `GALAXY.radius`, `GALAXY.thickness`,
+   * `TRAVEL.*`, `HULLS.HAULER.speed` or the Hauler count moves this window, and
+   * a test asserting "73" would have to be edited by whoever broke it.
+   */
+  it('holds the claim window open for the widest settlement flight the disc can produce', () => {
+    expect(GALAXY_SPAN).toBeGreaterThanOrEqual(2 * GALAXY.radius);
+    expect(fleetTravelExact(GALAXY_SPAN, settlementFleet))
+      .toBeLessThanOrEqual(SETTLEMENT_CLAIM_MINUTES);
+    // And no wider than it has to be: one whole minute of rounding, never two.
+    expect(fleetTravelExact(GALAXY_SPAN, settlementFleet))
+      .toBeGreaterThan(SETTLEMENT_CLAIM_MINUTES - 1);
+  });
+
+  it('leaves every capital able to settle every neutral world in the shipped layout', () => {
+    for (const seed of [1, 2, 3]) {
+      const galaxy = generateGalaxy(seed, MULTI_WORLD.neutralSlotPool);
+      const capitals = galaxy.slots.filter((slot) => slot.index < MULTI_WORLD.capitalSlots);
+      const neutrals = selectNeutralSlots(seed, galaxy.slots);
+      expect(neutrals.length).toBeGreaterThan(0);
+      const worst = Math.max(...capitals.flatMap(
+        (capital) => neutrals.map((neutral) => distance(capital, neutral.slot)),
+      ));
+      // Strictly inside: `launchSettlement` refuses an arrival AT the boundary.
+      expect(fleetTravelExact(worst, settlementFleet)).toBeLessThan(SETTLEMENT_CLAIM_MINUTES);
+    }
   });
 
   it.each([

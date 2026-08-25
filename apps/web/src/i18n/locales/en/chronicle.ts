@@ -31,7 +31,7 @@ export const chronicle = {
   dominionLeader: '{{commander}} took the Dominion lead',
   dominionLeaderDetail: '{{planet}} now stands at the top of the public ladder.',
   neutralClaim: 'Claim window opened at {{planet}} · T{{tier}}',
-  neutralClaimDetail: 'A decisive raid opened a public thirty-minute settlement race.',
+  neutralClaimDetail: 'A decisive raid opened a public settlement race for this world.',
   deathStarImpact: 'Death Star impact at {{planet}}',
   deathStarOutcome: {
     FIRST_STRIKE: 'The world entered recovery. A second impact may transfer control.',

@@ -1617,8 +1617,9 @@ never replaced.
 Neutral battles use the normal combat and loot arithmetic but never Dominion, bash,
 rival/research/reward progress, defender notification, system-funded wreckage or the
 season's largest-PvP-raid measure. The first decisive conventional raid opens one public
-thirty-minute claim window. A valid one-way settlement consumes one Hauler plus 1,000
-Alloy and 500 Crystal, must arrive before that window ends, and the first atomically valid
+claim window; D111 re-derives its length from the widest settlement flight the disc can
+produce, so this thirty-minute figure no longer holds. A valid one-way settlement consumes
+one Hauler plus 1,000 Alloy and 500 Crystal, must arrive before that window ends, and the first atomically valid
 arrival wins. A losing settlement returns its fleet and cargo to its origin or, if that
 world is no longer controlled, its commander's capital. Control transfer preserves the
 world's installed state and begins six hours of occupation protection.
@@ -2068,6 +2069,144 @@ second 1.35/hour lane supplies new indices between it. That prevents a balance c
 from moving or deleting a target already visible in a live season. Capacity modelling
 uses the matching per-player rate, 0.030 to 0.0345, so every documented galaxy size
 receives the same proportional increase.
+
+### D111 · The claim window is derived from the widest settlement flight, not typed
+
+`MULTI_WORLD.claimMinutes = 30` is replaced by `SETTLEMENT_CLAIM_MINUTES`, computed in
+`packages/rules/src/strategic.ts` as the two-Hauler flight time across `GALAXY_SPAN` —
+the corner-to-corner bound of the disc — rounded up to a whole minute. At the shipped
+radius that is 73 minutes. The literal is gone from `constants.ts` and may not be typed
+back in: any change to the disc radius, the disc thickness, `TRAVEL`, the Hauler's speed
+or the settlement's Hauler count now moves the window with it.
+
+**Thirty was this same derivation with the arithmetic already done.** At radius 1000 the
+widest crossing was a little over 2,000 units and two Haulers covered it in 29.2 minutes.
+D101 then widened the disc 2.5× and named every constant that did and did not take the
+factor — hull speeds no, `radarRange` no, the Prospector and the rocks yes — and the claim
+window was never in that list. The widest crossing became 71.1 minutes against an unchanged
+thirty-minute window, so the window stopped covering the flight it exists to contain.
+
+**What it cost**, measured across seeds 1-3 at the shipped 300-capital / 51-neutral layout:
+48% of all (capital, neutral) pairs were settleable at all; the median pair missed by 0.8
+minutes; the worst pair needed 71 minutes; and the six T3 worlds at the contested centre —
+the whole strategic prize — sat 21 to 33 minutes from a rim capital. A commander could win
+a decisive raid and then watch the world's one window close with their Haulers still in the
+air, and because the opener is public, decisively raiding a distant neutral was a gift to a
+nearer rival. Every settlement test in the suite placed its two worlds 20 to 150 units
+apart, which is why this shipped green.
+
+**Proximity still decides the race**, because the first valid arrival wins and a nearer
+commander still arrives first. What changed is that distance no longer decides who may
+enter it. The ceiling is the only slack a commander at the extreme rim gets — about a
+minute at a real seed's widest pair — and that is deliberate.
+
+This does not supersede D97's "one public claim window per neutral world"; it only
+re-derives its length. In the 50-player regression fixture the change raises total
+settlements across the five seeds from 8 to 20, with every acceptance band unchanged.
+
+### D112 · A claim window that has closed reopens; a live one is never extended — owner instruction
+
+`resolveNeutralBattle` opened a claim only where `claim_until IS NULL`, and nothing in the
+system ever puts an EXPIRED claim back to null. A neutral world whose window ran out was
+therefore un-settleable for the rest of the season: still raidable, still lootable, and
+worth nothing to take. The only thing that could undo it was a Death Star landing on that
+world, which clears the claim as part of its damage. Fifty-one neutral worlds retired one
+at a time, each on the first occasion nobody's Haulers made it.
+
+The guard is now "null OR already past". The half that always mattered is kept exactly: a
+decisive raid landing while the window is OPEN does not push its end back, or a commander
+with a spare squadron holds a claim open indefinitely and nobody else's Haulers ever beat
+theirs. Only a window that has closed opens again, and it opens at full length.
+
+This supersedes D97's "the FIRST decisive conventional raid opens ONE public claim window"
+in one respect only — a world may host more than one window across a season, never more
+than one at a time. Everything else about the claim is unchanged: it is public, it is
+opened only by a decisive conventional raid, and the first atomically valid settlement
+arrival wins it. D111 sets its length.
+
+`packages/sim` carries the same rule. Together with D111 the two changes raise total
+settlements in the 50-player regression fixture from 8 to 20 across the five seeds, with
+every acceptance band unchanged.
+
+**A note on the one red test.** `packages/sim/test/season.test.ts` →
+"surfaces Gravitic Charges and Breachers without turning them into a default fleet" now
+fails, and it is being left failing on the owner's instruction. It is not a colonisation
+regression. Measured on unmodified master, across 15 seeds x 50 players x 14 days — 750
+bot-seasons — exactly ONE bot ever researches Gravitic Charges, and only on seed 99, which
+the five-seed gate happens to include. The assertion is `researched.length > 0`, so it
+rides on that single coincidence and any change that moves the simulation's trajectory
+drops it to zero. The mechanism itself is intact: 18 to 25 players per seed still reach
+`shieldInsightSeen`, and 21 of 50 still field an Aegis. What never happens is the specific
+event the chain needs — a GRINDER, the only archetype with `researchesBreacher`, raiding a
+defender whose shield absorbs a quarter of its outgoing damage.
+
+**What leaving it red costs.** `pnpm verify` is red, and because `pnpm -r test` stops at the
+first failing package, the server and web suites do not run under that one command at all —
+they must be run per package, where both are green (server 693, web 1,093, rules 316). So
+the cost is not one missing assertion; it is that the standard verification command stops
+covering 1,786 other tests. Until this is settled, verify with `pnpm typecheck && pnpm lint`
+and then each package's `test` script separately.
+
+### D113 · The Death Star is re-specified, and says what it does — owner instruction
+
+**The weapon.** It costs 15,000 Alloy, 15,000 Crystal and 3,000 Deuterium, and both
+gates — `DEATH_STAR_PROTOCOL` and the craft itself — are Command Core 12. The research
+reads `DEATH_STAR.requiredCore` rather than carrying its own figure, so permission and
+capability cannot drift apart. Shipyard 5 and the sixty-minute build are unchanged.
+
+**What an impact does, and the list is now closed.** Every ship and gun standing on the
+world is destroyed; half of everything stored and in the works is destroyed; the Command
+Core loses one level; the Aegis loses two and the shield drops to nothing; every queued
+building order is cancelled with no refund; and the world produces, collects, buys and
+launches nothing for two hours. Away craft, research, and every other building and orbit
+instrument survive — the Core's fall pulls a building down only where `CORE_CEILING`
+requires it, so a Refinery on the old ceiling drops and one two levels under it does not.
+
+**Halving replaces zeroing, and that is what makes a second strike a decision.** A second
+impact inside the recovery window takes half of what is LEFT, so the arithmetic composes
+instead of repeating an already-total loss. It also makes the lazy economy load-bearing:
+zeroing a stale row and zeroing a current one give the same answer, halving does not, so
+the target is advanced to `now` first — an owned world through `loadLocked`, a neutral
+through `advanceNeutralEconomy`, which nothing else was calling on this path.
+
+**Recovery falls from six hours to two.** It is also the window a capture has to arrive
+in, and that is why shortening it was safe rather than reckless: a Death Star crosses the
+whole disc in 13.1 minutes and the second one takes sixty to build, so the capture leg is
+73.1 minutes against a 120-minute window. Six hours had made the punishment an
+evening-long outage.
+
+**The queued-order burn is a fix as well as a rule.** `applyOrderEffect` raises a building
+to `before + 1` without re-reading the Core ceiling, so an order placed at Core 12 could
+complete after a strike had left Core 11 and stand at a level `build.ts` refuses to sell.
+Cancelling those orders removes the only path to that state. `destroyBuildingOrders`
+touches BUILDING orders only: instruments are effective-capped by the Core already (D97),
+satellites are gated by slot count rather than level, research carries no level, and hulls
+are in the other queue, which a strike does not touch.
+
+**The interface says all of it, on both sides.** The forge card tells the owner what they
+are buying before they spend 33,000; the focus rail tells the attacker what the rocket
+does to the world under the crosshair, capital included. Two surfaces, two sets of strings
+(D55), every figure read from `DEATH_STAR` and `MULTI_WORLD`. Both blocks are
+`plate plate-inset` and not `plate-threat`: the lit states belong to a plate that is doing
+something now, and an explanation is reference, not state. Raising the research gate to
+Core 12 also forced the research row to show it — `researchState` computes availability
+from discovery, prerequisite and the act clock and never from `requiredCore`, so the row
+rendered as buyable and the tap came back `RESEARCH_UNAVAILABLE`. Survivable at Core 6;
+the ordinary case at Core 12.
+
+**Measured, on real rows and on the five gate seeds.** A Core 12 / Refinery 12 /
+Extractor 10 / Vault 8 / Shipyard 5 world holding 40,000 Alloy: after one impact it holds
+20,000, Core 11, Refinery 11, Extractor 10, Vault 8, Shipyard 5, Aegis 1, no home fleet,
+its away fleet and research intact, its queued Extractor cancelled, and 120 minutes of
+recovery. A second impact thirty minutes later leaves 10,000 and Core 10. On admission:
+36 of 50 simulated commanders stand at Core 12 + Shipyard 5 by day 7 and 41 by day 9,
+against a War act that opens on day 4 — a real gate, three days into the act, not dead
+content. Median end-of-season Crystal is 42,000-72,000 against a 15,000 craft.
+
+Economic balance was explicitly not measured on the owner's instruction. Note that the
+simulator has never once built a Death Star on any seed: its bots reach it through
+`GRAVITIC_CHARGES`, which needs a GRINDER to raid a shielded defender, and that has
+happened once in 750 bot-seasons. The strategic layer's own tests cover the path instead.
 
 ## Architecture
 

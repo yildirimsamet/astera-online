@@ -1351,9 +1351,28 @@ export const MULTI_WORLD = {
   /** Nine candidates per neutral preserves D97's placement-search density at the larger scale. */
   neutralSlotPool: SERVERS.capacity + 450,
   neutralCounts: { 1: 30, 2: 15, 3: 6 },
-  claimMinutes: 30,
+  /**
+   * `claimMinutes` IS NOT HERE, AND MUST NEVER BE TYPED BACK IN.
+   *
+   * The public claim window has to contain a settlement flight, so it is a
+   * duration measured against a DISTANCE and belongs with the arithmetic that
+   * knows both — `SETTLEMENT_CLAIM_MINUTES` in `strategic.ts`. Written here as a
+   * literal it was 30, sized when the disc had radius 1000, and D101 widened the
+   * disc 2.5× without it (D111).
+   */
   occupationMinutes: 6 * 60,
-  recoveryMinutes: 6 * 60,
+  /**
+   * How long a struck world is dark: no production, no regeneration, no
+   * collection, no purchase, no launch. TWO HOURS AT D113, from six.
+   *
+   * It is also the window a second impact has to arrive in to take control, and
+   * that is why it was worth shortening rather than lengthening: six hours put
+   * the capture leg on the far side of most people's evening, while a Death Star
+   * crosses the whole disc in thirteen minutes. Two hours is still ten crossings
+   * wide, so the capture route survives intact and the punishment stops being an
+   * evening-long outage for the world that took the hit.
+   */
+  recoveryMinutes: 2 * 60,
   settlement: {
     cost: { alloy: 2000, crystal: 1000, deuterium: 0 },
     haulers: 2,
@@ -1383,14 +1402,54 @@ export const MULTI_WORLD = {
   },
 } as const;
 
+/**
+ * THE STRATEGIC WEAPON, RE-SPECIFIED AT D113 — owner instruction.
+ *
+ * What an impact DOES is now four things and no more, so it can be said in one
+ * sentence on the screen before anybody spends 33,000 resources on it: every
+ * fleet on the ground dies, half of everything stored is gone, the Command Core
+ * loses a level, and the world produces nothing for two hours.
+ *
+ * The old strike zeroed the stores and lowered four buildings, which was both
+ * harder to describe and effectively unrecoverable. Halving is a rule a player
+ * can hold in their head and reason about twice: hit again inside the window and
+ * half of what is LEFT goes, so a second strike is a real decision rather than a
+ * repeat of an already-total loss.
+ */
 export const DEATH_STAR = {
   type: 'DEATH_STAR',
-  requiredCore: 6,
+  /**
+   * BOTH GATES ARE CORE 12 (D113) — the research and the weapon alike.
+   *
+   * Measured on the five gate seeds: every simulated commander finishes at Core
+   * 17-18 and 41 of 50 also hold Shipyard 5, so this is a late gate rather than
+   * dead content. `RESEARCH_PROJECTS.DEATH_STAR_PROTOCOL.requiredCore` carries
+   * the same figure and reads it from here.
+   */
+  requiredCore: 12,
   requiredShipyard: 5,
   requiredResearch: 'DEATH_STAR_PROTOCOL',
-  cost: { alloy: 28_000, crystal: 9000, deuterium: 2600 },
+  cost: { alloy: 15_000, crystal: 15_000, deuterium: 3000 },
   buildMinutes: 60,
   speed: 500,
+  /**
+   * Share of the target's stores an impact destroys, stock and works alike.
+   *
+   * A SHARE AND NOT A WIPE, so the arithmetic composes: a second impact inside
+   * the recovery window takes half of the remainder. Anything that reads this
+   * must advance the world's lazy economy FIRST — half of a figure that is one
+   * tick stale is not half of what is there.
+   */
+  stockShareDestroyed: 0.5,
+  /**
+   * Levels an impact takes off the Aegis. Owner decision at D113.
+   *
+   * The one instrument a strike still touches directly, because it is the thing
+   * that would otherwise blunt the next one. Everything else in orbit is only
+   * ever capped by the Core it hangs off — stored levels survive, exactly as D97
+   * requires, and come back when the Core does.
+   */
+  aegisLevelsLost: 2,
   /** Recent resolved impacts remain public this long so reconnecting tabs see the event. */
   impactSeconds: 8,
   probeVisibilityAccuracy: 0.75,

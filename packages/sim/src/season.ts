@@ -6,6 +6,7 @@ import {
   DEATH_STAR,
   DEUTERIUM,
   MULTI_WORLD,
+  SETTLEMENT_CLAIM_MINUTES,
   PROSPECTOR,
   RESEARCH_PROJECTS,
   activeAsteroids,
@@ -974,7 +975,10 @@ export function tryDeathStar(p: SimPlayer, t: number, world: World): void {
     if (placed) spendCrystal(world, 'research', research.crystal);
     return;
   }
-  if (p.buildings.CORE < 6 || p.buildings.SHIPYARD < 5) return;
+  if (
+    p.buildings.CORE < DEATH_STAR.requiredCore
+    || p.buildings.SHIPYARD < DEATH_STAR.requiredShipyard
+  ) return;
   if (p.alloy < DEATH_STAR.cost.alloy || p.crystal < DEATH_STAR.cost.crystal || p.deuterium < DEATH_STAR.cost.deuterium) return;
   p.alloy -= DEATH_STAR.cost.alloy;
   p.crystal -= DEATH_STAR.cost.crystal;
@@ -984,14 +988,20 @@ export function tryDeathStar(p: SimPlayer, t: number, world: World): void {
   world.strategic.deathStar.builds++;
 }
 
+/** D113. Mirrors `applyDeathStarStrike`: half the stores, the Core, and the Aegis. */
 function applyStrategicDamage(n: SimNeutralWorld, t: number): void {
-  n.alloy = 0;
-  n.crystal = 0;
-  n.deuterium = 0;
-  for (const type of ['CORE', 'REFINERY', 'EXTRACTOR', 'SHIPYARD'] as const) {
-    n.buildings[type] = Math.max(0, n.buildings[type] - 1);
+  const survives = (amount: number) =>
+    Math.floor(amount * (1 - DEATH_STAR.stockShareDestroyed));
+  n.alloy = survives(n.alloy);
+  n.crystal = survives(n.crystal);
+  n.deuterium = survives(n.deuterium);
+  const core = Math.max(0, n.buildings.CORE - 1);
+  n.buildings.CORE = core;
+  // Only what the Core ceiling forces down comes down with it.
+  for (const type of ['REFINERY', 'EXTRACTOR', 'VAULT', 'SHIPYARD'] as const) {
+    n.buildings[type] = Math.min(n.buildings[type], core);
   }
-  n.aegis = Math.max(0, n.aegis - 1);
+  n.aegis = Math.max(0, n.aegis - DEATH_STAR.aegisLevelsLost);
   n.fleet = Object.fromEntries(
     fleetEntries(n.fleet).filter(([hull]) => hull === 'PROSPECTOR'),
   );
@@ -1050,8 +1060,9 @@ function resolveStrategicMission(mission: StrategicMission, t: number, world: Wo
     world.strategic.neutralTaken[target.tier] += taken;
     world.strategic.neutralRaids++;
     world.neutralRaiders.add(p.id);
-    if (result.grade === 'DECISIVE' && target.claimUntil === null) {
-      target.claimUntil = t + MULTI_WORLD.claimMinutes;
+    // D112: a closed window reopens; a live one is never pushed back.
+    if (result.grade === 'DECISIVE' && (target.claimUntil === null || target.claimUntil <= t)) {
+      target.claimUntil = t + SETTLEMENT_CLAIM_MINUTES;
       trySettleNeutral(p, target, t, world);
     }
     if (fleetValue(result.attackerSurvivors) > 0) {

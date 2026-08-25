@@ -1,4 +1,4 @@
-import { DEUTERIUM, SEASON } from './constants.js';
+import { DEATH_STAR, DEUTERIUM, SEASON } from './constants.js';
 import type { ResearchProjectId, Resources } from './types.js';
 
 export interface ResearchProject {
@@ -36,7 +36,12 @@ export const RESEARCH_PROJECTS: Record<ResearchProjectId, ResearchProject> = {
       SEASON.actBoundaries.find((boundary) => boundary.id === 'war')!.share
       * SEASON.days * 24 * 60,
     prerequisite: 'GRAVITIC_CHARGES',
-    requiredCore: 6,
+    /**
+     * ONE FIGURE, READ FROM THE WEAPON IT AUTHORISES (D113). Permission and
+     * capability moved together on the owner's instruction; typed twice they
+     * would drift the first time only one of them was edited.
+     */
+    requiredCore: DEATH_STAR.requiredCore,
   },
 };
 

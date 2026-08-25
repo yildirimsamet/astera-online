@@ -2,7 +2,8 @@ import type { ReactNode } from 'react';
 import { render, screen } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { describe, expect, it, vi } from 'vitest';
-import { MULTI_WORLD } from '@astera/rules';
+import { DEATH_STAR, GALAXY_SPAN, MULTI_WORLD } from '@astera/rules';
+import { duration } from '../src/lib/time.js';
 import { compact } from '../src/lib/format.js';
 import { Api } from '../src/api/client.js';
 import { ApiProvider } from '../src/api/context.js';
@@ -185,6 +186,57 @@ describe('the focus rail’s two commitments', () => {
       </Wrapper>,
     );
     expect(screen.getByRole('button', { name: /death star.*target protected/i })).toBeDisabled();
+  });
+
+  /**
+   * D113. The rail said "Damage" then "Control transfers" — the sequence, never
+   * the effect — and the capital card said nothing at all. Both now carry the
+   * five consequences, and both read their figures from the rules rather than
+   * from a sentence somebody typed.
+   */
+  it('spells out what an impact does on both the colony route and the capital card', () => {
+    const Wrapper = harness();
+    const props = {
+      planet: mine,
+      intel,
+      reports: [],
+      now: NOW,
+      onClose: vi.fn(),
+      onAttack: vi.fn(),
+      onDeathStar: vi.fn(),
+      onInstallTelescope: vi.fn(),
+      onLaunched: vi.fn(),
+      open: true,
+      onToggle: vi.fn(),
+    };
+    const view = render(
+      <Wrapper>
+        <PlanetFocus {...props} target={target({ kind: 'COLONY', state: { kind: 'NORMAL' } })} />
+      </Wrapper>,
+    );
+    expect(screen.getByText(/what this impact does/i)).toBeInTheDocument();
+    expect(screen.getByText(/every ship and gun on the ground is destroyed/i)).toBeInTheDocument();
+    expect(screen.getByText(/half of everything stored is destroyed/i)).toBeInTheDocument();
+    expect(screen.getByText(/command core loses a level/i)).toBeInTheDocument();
+    expect(screen.getByText(
+      new RegExp(`aegis loses ${String(DEATH_STAR.aegisLevelsLost)} levels`, 'i'),
+    )).toBeInTheDocument();
+    // The window is the recovery, and it is read from the constant.
+    expect(screen.getByText(
+      new RegExp(`nothing is produced or launched there for ${duration(MULTI_WORLD.recoveryMinutes)}`, 'i'),
+    )).toBeInTheDocument();
+    expect(screen.getByText(/second impact inside that window takes control/i)).toBeInTheDocument();
+
+    view.rerender(
+      <Wrapper>
+        <PlanetFocus {...props} target={target({ kind: 'CAPITAL', state: { kind: 'NORMAL' } })} />
+      </Wrapper>,
+    );
+    expect(screen.getByText(/what this impact does/i)).toBeInTheDocument();
+    expect(screen.getByText(/half of everything stored is destroyed/i)).toBeInTheDocument();
+    // A capital gets the opposite closing line, because it can never be taken.
+    expect(screen.getByText(/never captured/i)).toBeInTheDocument();
+    expect(screen.queryByText(/takes control/i)).toBeNull();
   });
 
   it('offers a destructive Death Star strike against an uncapturable capital', () => {
@@ -429,5 +481,76 @@ describe('the focus rail’s two commitments', () => {
     expect(screen.getByText('2 Haulers')).toBeInTheDocument();
     expect(document.querySelectorAll('img[src*="/resources/"]').length).toBeGreaterThanOrEqual(2);
     expect(screen.getByText(compact(MULTI_WORLD.settlement.cost.crystal))).toBeInTheDocument();
+  });
+
+  /**
+   * D111, ON THE CLIENT. The screen refuses a settlement before the server does,
+   * off the same arithmetic, so the two must agree about how far a claim reaches.
+   * Both branches of that one condition are asserted here because neither was:
+   * every other settlement case in this file sits 200 units away, where the answer
+   * is yes whatever the window is.
+   */
+  const neutralAt = (x: number, claimUntil: Date | null) => target({
+    kind: 'NEUTRAL',
+    position: { x, y: 0, z: 0 },
+    controller: { kind: 'NEUTRAL', tier: 1 },
+    state: { kind: 'NORMAL' },
+    neutral: {
+      tier: 1,
+      threat: 'UNGUARDED',
+      reserve: 'RICH',
+      claimUntil,
+      nextReinforcementAt: null,
+    },
+  });
+
+  const settlementRig = (world: GalaxyPlanet) => {
+    const Wrapper = harness();
+    return render(
+      <Wrapper>
+        <PlanetFocus
+          target={world}
+          planet={{
+            ...mine,
+            fleet: { ...mine.fleet, HAULER: MULTI_WORLD.settlement.haulers },
+            planet: { ...mine.planet, alloy: 20_000, crystal: 10_000 },
+            colonies: { highestCore: 4, colonies: 0, reservations: 0, capacity: 1 },
+          }}
+          intel={intel}
+          reports={[]}
+          now={NOW}
+          onClose={vi.fn()}
+          onAttack={vi.fn()}
+          onSettle={vi.fn()}
+          onInstallTelescope={vi.fn()}
+          onLaunched={vi.fn()}
+          open
+          onToggle={vi.fn()}
+        />
+      </Wrapper>,
+    );
+  };
+
+  /** The reach chip specifically — several other rows on this panel say "arrives". */
+  const reachChip = () => {
+    const chip = [...document.querySelectorAll('span.rounded-chip')]
+      .find((el) => /arrives/i.test(el.textContent));
+    expect(chip, 'the settlement reach requirement is not rendered at all').toBeDefined();
+    return chip!.className;
+  };
+
+  it('accepts the widest crossing the disc allows as reachable before a claim opens', () => {
+    // The far rim: the longest settlement flight the map can produce. Under the
+    // old thirty-minute window this read as unreachable and the route was a lie.
+    settlementRig(neutralAt(GALAXY_SPAN, null));
+    expect(reachChip()).toContain('opportunity');
+    expect(reachChip()).not.toContain('alert');
+  });
+
+  it('still refuses a settlement the open window cannot contain', () => {
+    // Same distance, but only ten minutes of the window are left.
+    settlementRig(neutralAt(GALAXY_SPAN, new Date(NOW + 10 * 60_000)));
+    expect(reachChip()).toContain('alert');
+    expect(screen.getByRole('button', { name: /settle.*arrives too late/i })).toBeDisabled();
   });
 });

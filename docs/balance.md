@@ -215,6 +215,37 @@ neighbours had become 2.5× too close.
 Measured tempo: a Wasp reaches its 10th-nearest world in **11 min round trip**, its 25th in **16 min**.
 A Bulwark siege across the whole disc is **three hours**.
 
+**The settlement claim window is DERIVED from this table, not chosen against it (D111).**
+`SETTLEMENT_CLAIM_MINUTES` is the two-Hauler flight across `GALAXY_SPAN` — `hypot(2·radius,
+2·thickness)` = 5,036 units — rounded up: **73 minutes**. There is no figure to tune. It was
+typed as `30`, which was exactly right at radius 1000 and became wrong the moment the disc
+moved, and the 2.5× pass listed every constant that took the factor without listing this one.
+
+| At radius 2500, seeds 1-3 | 30-min window | derived window |
+|---|---|---|
+| Settleable (capital, neutral) pairs | **47.8%** | 100% |
+| Median pair · 2,112 units | 30.8 min — misses | reaches |
+| Worst pair · 4,963 units | 71.1 min — misses | reaches |
+| Nearest T3 from the worst-placed capital | 33.2 min — misses | reaches |
+
+**What the change costs the season gate: nothing measurable.** Five seeds, 50 players, the
+10/5/2 fixture, D111 and D112 together against unmodified master:
+
+| | baseline | after |
+|---|---|---|
+| ARR (per seed, band 0.30-0.55) | .336 .331 .320 .325 .332 | .353 .337 .324 .325 .326 |
+| VFR (per seed, band 0.16-0.65) | .180 .190 .198 .193 .184 | .184 .187 .182 .193 .185 |
+| SV (per seed, band 0.10-0.30) | .212 .222 .225 .223 .220 | .205 .218 .222 .221 .220 |
+| TI (pooled, band -0.40-0.55) | median -0.256 | median -0.187 |
+| Neutral raids | 83 | 79 |
+| **Settlements completed** | **8** | **31** |
+
+Every band holds on every seed, PvP raid volume stays inside its 15% baseline check, and the
+informed archetype still tops the ladder on all five. The one thing that moved is the thing
+the change is for. Colonisation nearly quadrupling is not a balance result to trust on its
+own — these bots act on `loginsPerDay` and the simulator still models an async game — but it
+is the right direction and it moved nothing else.
+
 ---
 
 ## Information
@@ -285,10 +316,31 @@ disruption    20 / 7 / 0 min, cap 25 pending          [PROVISIONAL]
 abuse         bash 3 per attacker per target per 12 h · tier band ±2
 season        14 days · investment horizon 0.70 · acts at 4/14, 8/14, 12/14
 opening       START 723/69 · OPENING_BONUS 580/210 · PLANET_START 1303/279
-strategic     settlement 2 Haulers + 2,000/1,000 · Death Star 28,000/9,000/2,600, 60 min
+strategic     settlement 2 Haulers + 2,000/1,000 · Death Star 15,000/15,000/3,000, 60 min
+              both Death Star gates Core 12 · Shipyard 5 · recovery 2 h
 research      Isotope 900 C · Dense Fuel 1,400 C + 150 D · Gravitic 1,900 C + 350 D
               Death Star Protocol 11,000 A + 3,600 C + 900 D
 ```
+
+**The Death Star's figures moved at D113 by owner instruction, and its economic effect was
+explicitly NOT measured.** What was measured is reachability, which is a different question:
+
+| | |
+|---|---|
+| At Core 12 + Shipyard 5 by day 7 | 36 of 50, every seed |
+| …by day 9, and unchanged thereafter | 41 of 50, every seed |
+| War act opens | day 4 of 14 |
+| Median end-of-season Crystal | 42,000–72,000 against a 15,000 craft |
+
+So the gate is real — three days into the act rather than open the moment it starts — and
+it is not dead content. `recoveryMinutes` fell to two hours and the capture route survives
+by arithmetic: a Death Star crosses the whole disc in 13.1 minutes and the second one takes
+sixty to build, so the capture leg is 73.1 minutes inside a 120-minute window.
+
+**The simulator cannot speak to any of this.** It has never built a Death Star on any seed:
+its bots reach one through `GRAVITIC_CHARGES`, which needs a GRINDER to raid a shielded
+defender, and that has happened once in 750 bot-seasons. `packages/sim/test/strategic.test.ts`
+drives the strategic layer directly instead.
 
 ### Asteroids
 

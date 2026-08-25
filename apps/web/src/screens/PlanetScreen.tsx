@@ -6,7 +6,9 @@ import {
   BUILD,
   HULLS,
   DEATH_STAR,
+  MULTI_WORLD,
   PROSPECTOR,
+  RESEARCH_PROJECTS,
   cancelRefund,
   fleetCount,
   instrumentCost,
@@ -805,10 +807,15 @@ function DeathStarForge({
         <div className="relative z-[1] mt-3 border-t border-line-soft pt-3">
           <div className="grid grid-cols-2 gap-2" role="list">
             <DeathStarNeed ok={protocol}>{t('planet.deathStar.needProtocol')}</DeathStarNeed>
-            <DeathStarNeed ok={core}>{t('planet.deathStar.needCore')}</DeathStarNeed>
-            <DeathStarNeed ok={yard}>{t('planet.deathStar.needShipyard')}</DeathStarNeed>
+            <DeathStarNeed ok={core}>
+              {t('planet.deathStar.needCore', { level: DEATH_STAR.requiredCore })}
+            </DeathStarNeed>
+            <DeathStarNeed ok={yard}>
+              {t('planet.deathStar.needShipyard', { level: DEATH_STAR.requiredShipyard })}
+            </DeathStarNeed>
             <DeathStarNeed ok={!recovering}>{t('planet.deathStar.needOperational')}</DeathStarNeed>
           </div>
+          <DeathStarEffects />
           <div className="mt-3 flex items-center justify-between gap-3">
             <div>
               <Price cost={DEATH_STAR.cost} held={held} />
@@ -850,6 +857,49 @@ function DeathStarForge({
           />
         </div>
       )}
+    </div>
+  );
+}
+
+/**
+ * WHAT AN IMPACT DOES, ON THE CARD THAT SELLS IT. D113.
+ *
+ * The forge said "devastates" and left the rest to be discovered by being on the
+ * receiving end. Five consequences and one survival line, every number read from
+ * `DEATH_STAR` and `MULTI_WORLD` so the card cannot drift from the strike.
+ */
+function DeathStarEffects() {
+  const { t } = useTranslation();
+  const lines = [
+    t('planet.deathStar.effectFleet'),
+    t('planet.deathStar.effectStock'),
+    t('planet.deathStar.effectCore'),
+    t('planet.deathStar.effectAegis', { levels: DEATH_STAR.aegisLevelsLost }),
+    t('planet.deathStar.effectDark', { duration: duration(MULTI_WORLD.recoveryMinutes) }),
+  ];
+  /**
+   * `plate-inset` and NOT `plate-threat`. The lit states are reserved for a plate
+   * that is doing something right now — this one explains, which is reference and
+   * not state, so it is machined into the same face with no lift and no glow. The
+   * red lives where red belongs: on the marks and the legend, as `threat-ink`.
+   */
+  return (
+    <div className="plate plate-inset mt-3 flex flex-col gap-2 p-3">
+      <p className="legend text-threat-ink">{t('planet.deathStar.effectsTitle')}</p>
+      <ul className="flex flex-col gap-2">
+        {lines.map((line) => (
+          <li key={line} className="flex gap-2 text-caption text-bone">
+            <span aria-hidden className="text-threat-ink">▪</span>
+            <span>{line}</span>
+          </li>
+        ))}
+        {/* What a strike CANNOT take, in the opposite hue. Half of understanding
+            a weapon is knowing where it stops. */}
+        <li className="flex gap-2 text-caption text-dim">
+          <span aria-hidden className="text-opportunity">▪</span>
+          <span>{t('planet.deathStar.effectSurvives')}</span>
+        </li>
+      </ul>
     </div>
   );
 }
@@ -1700,7 +1750,18 @@ function Reach({
       : undefined;
     const queueAvailable = state.queueAvailable ?? state.available;
     const warGate = id === 'DEATH_STAR_PROTOCOL' && (gravitic?.completed ?? false);
-    const blocked: Blocked | undefined = completed
+    /**
+     * THE ONE RESEARCH GATE THE SERVER CHECKS AND THE ROW NEVER SHOWED. D113.
+     *
+     * `researchState` computes `available` from discovery, prerequisite and the
+     * act clock — not from `requiredCore` — so a project whose Core gate is unmet
+     * rendered as buyable and the tap came back `RESEARCH_UNAVAILABLE`. That was
+     * survivable while the gate was Core 6; at Core 12 the War act opens long
+     * before most commanders get there, so it would be the ordinary case.
+     */
+    const needCore = RESEARCH_PROJECTS[id].requiredCore ?? 0;
+    const coreTooLow = !completed && (planet.buildings.CORE ?? 0) < needCore;
+    const gated: Blocked | undefined = completed
       ? undefined
       : constructionOrders.length >= BUILD.queueDepth
         ? { reason: t('planet.blocked.queueFull') }
@@ -1732,6 +1793,18 @@ function Reach({
         : !state.available
           ? { reason: discoveryReason }
           : undefined;
+    /**
+     * LAST, DELIBERATELY. A project the War act has not opened yet is not one you
+     * can fix by raising anything, so its own clock has to be the sentence the
+     * row shows. The Core gate is what remains once everything else is satisfied.
+     */
+    const blocked: Blocked | undefined = gated
+      ?? (coreTooLow
+        ? {
+            reason: t('planet.reach.researchNeedCore', { level: needCore }),
+            onFix: () => { onNeed('CORE'); },
+          }
+        : undefined);
 
     return (
       <div key={id} id={`row-${id}`}>

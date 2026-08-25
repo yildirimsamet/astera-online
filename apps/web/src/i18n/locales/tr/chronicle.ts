@@ -31,7 +31,7 @@ export const chronicle = {
   dominionLeader: '{{commander}} Hâkimiyet liderliğini aldı',
   dominionLeaderDetail: '{{planet}} artık herkese açık sıralamanın tepesinde.',
   neutralClaim: '{{planet}} üzerinde hak penceresi açıldı · T{{tier}}',
-  neutralClaimDetail: 'Kesin bir akın, herkese açık otuz dakikalık yerleşim yarışını başlattı.',
+  neutralClaimDetail: 'Kesin bir akın, bu dünya için herkese açık bir yerleşim yarışı başlattı.',
   deathStarImpact: '{{planet}} üzerinde Death Star darbesi',
   deathStarOutcome: {
     FIRST_STRIKE: 'Dünya toparlanmaya girdi. İkinci darbe kontrolü devredebilir.',

@@ -129,6 +129,9 @@ Each was paid for in iteration. `docs/decisions.md` holds the evidence.
 | Two ground guns in opposite classes; the cheapest buildable at Shipyard 0 | One gun makes defence a binary. Both branches were measured and failed |
 | Ground hulls leave no wreckage | They already have 60% salvage; counting twice makes a fortress profit from being attacked |
 | A raid lands at `arriveAt` and settles ten seconds later | `COMBAT.engagementSeconds` is a real server window; the mission stays `in_flight` throughout |
+| **A Death Star HALVES; it never empties** | Zeroing a stale row and zeroing a current one give the same answer, so the old strike never had to care that production is lazy. Halving does: half of a figure one tick old is less than half of what is there, silently. Both kinds of world are advanced to `now` first — an owned one through `loadLocked`, a neutral through `advanceNeutralEconomy`, which nothing else on that path was calling. Composing is the point: a second impact takes half of what is LEFT (D113) |
+| **A strike lowers the CORE, and nothing else except what the Core drags with it** | Every non-CORE building is bound by `CORE_CEILING`, so a Core that has just fallen leaves anything on the old ceiling one level above a limit `build.ts` will not sell. Those are clamped; a building two levels under it loses nothing. Aegis is the one instrument touched directly, by two, because it is what would blunt the next one (D113) |
+| **A bombardment burns the scaffolding, and refunds nothing** | `cancelBuildOrder` returns half because cancelling is the player's own change of mind; a rocket landing on the site is not that. It is also the fix for a real hole: `applyOrderEffect` raises a building to `before + 1` without re-reading the Core, so an order placed at Core 12 could complete after a strike left Core 11 and stand where nothing could have built it. BUILDING orders only — instruments are effective-capped already, satellites are slot-gated, research has no level, hulls are in the other queue (D113) |
 | **A fleet that reaches its target ALWAYS fires** — win, lose or be annihilated | The ten seconds are the payoff of a decision made forty minutes ago. A squadron that arrives and vanishes without a shot is the loop's one visible reward, deleted |
 
 **Information**
@@ -224,6 +227,8 @@ Each was paid for in iteration. `docs/decisions.md` holds the evidence.
 | **A guided beat leaves ONE thing pressable, and the way out is never one of the things locked** | Activations outside the target are cancelled — never pointer or touch events, which would cancel the scroll or the orbit they began. The allowance is a LIST, shallow to deep, because a gated control OPENS a surface; gating only the first seals the player inside the sheet they were told to open (D56) |
 | **A rule measured in MINUTES breaks when speeds change; a rule measured in RATIOS does not** | D63 moved hull speeds ×9.46 and nine tests failed at once — none because the thing they tested had broken. `advance(10)` into a flight that was 27 minutes, a radar sweep in tenths of a minute, a lead asserted as `> 12`. Write the share, not the count |
 | **An absolute duration stops being a fraction when flights get short** | `BEARING_MINUTES` equalled a whole leg, so a contact's window became a ROUTE and gave away the destination. `LEAD_TOLERANCE` was 77% of Radar L3's lead, so every rung warned at a wider circle than it sold. Both were invisible until the tempo moved (D63) |
+| **A claim reopens once it has CLOSED, and is never extended while it is open** | The opener's guard was `claim_until IS NULL` and nothing ever puts an expired claim back to null, so a neutral world nobody reached in time was retired for the season — still raidable, worth nothing to take, and recoverable only by a Death Star landing on it. The other half of the guard is kept exactly: a raid landing inside a live window must not push its end back, or one commander with a spare squadron holds the claim open for ever (D112) |
+| **A window that has to contain a flight is DERIVED from that flight** | The public claim window was typed as thirty minutes, which was exactly the widest two-Hauler crossing of a radius-1000 disc. D101 widened the disc 2.5× and listed every constant that took the factor; this one was not on it, so 52% of (capital, neutral) pairs became unsettleable by arithmetic and the six T3 worlds at the centre went out of reach from the rim. `SETTLEMENT_CLAIM_MINUTES` is now computed from `GALAXY_SPAN` and the settlement fleet, and the literal may not be typed back in (D111) |
 | **Reward progress is COUNTED off the world, never accumulated into a counter** | Ten of eleven chains read rows the game keeps anyway — missions by kind, runs that arrived, levels standing. A chain added later is retroactive for free, nothing can drift from what it counts, and nothing on the path that produces progress has to be made idempotent (D64) |
 | **`planets.builtEver` is the one reward tally that is stored, and it has to be** | A ship does not survive the thing it describes: it dies and its `units` row goes down with it. Every other metric is recoverable from the world; this one is not |
 | **A reward id is parsed strictly and stored canonically** | The claim's once-only guarantee is a primary key on the id. `PROBE:1e0` and `PROBE:1:1` both used to resolve to `PROBE:1`, which is three keys for one tier and three payments (D64) |
@@ -384,9 +389,16 @@ one type ladder, one card word, one control per idea, with `text-[`, `tracking-[
 `rounded-[` refused by the linter.
 
 ```
-pnpm verify  →  0 type errors · 0 lint errors · 2,162 tests
-                rules 312 · sim 67 · server 691 · web 1,092
+0 type errors · 0 lint errors · 2,173 of 2,174 tests
+rules 316 · server 695 · web 1,096 · sim 66 of 67
 ```
+
+**`pnpm verify` is RED on one simulator assertion, deliberately (D112).** `pnpm -r test`
+stops at the first failing package, so that one failure also stops the server and web
+suites from running under it — run `pnpm typecheck && pnpm lint` and then each package's
+own `test`. The assertion rides on a single coincidence: on unmodified master exactly one
+bot in 750 bot-seasons researches Gravitic Charges, and only on seed 99. D112 records the
+measurement and what leaving it red costs.
 
 **The season gate is GREEN on all five seeds, with the bands unchanged.** `ARR` was the last
 metric to come in and no constant moved it — five were tried. What moved it was modelling the

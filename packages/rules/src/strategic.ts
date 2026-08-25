@@ -1,5 +1,6 @@
 import { HULLS } from './hulls.js';
 import { GALAXY, MULTI_WORLD } from './constants.js';
+import { fleetTravelExact } from './travel.js';
 import type { PlanetSlot } from './galaxy.js';
 import type {
   Fleet,
@@ -8,6 +9,52 @@ import type {
   NeutralTier,
   Resources,
 } from './types.js';
+
+/**
+ * The widest crossing the disc can contain, corner to corner.
+ *
+ * A slot is placed at radius `≤ GALAXY.radius` and height `|y| ≤ GALAXY.thickness`,
+ * so no two worlds are ever further apart than this. It is the bound, not a
+ * measurement: real seeds land a little inside it — the widest capital-to-neutral
+ * pair across seeds 1-3 is 4,963 against this 5,036 — and that difference is
+ * slack rather than something to rely on.
+ */
+export const GALAXY_SPAN = Math.hypot(2 * GALAXY.radius, 2 * GALAXY.thickness);
+
+/**
+ * HOW LONG A PUBLIC CLAIM STAYS OPEN. DERIVED, NEVER TYPED. D111.
+ *
+ * A claim is a race that only a SETTLEMENT can win, and a settlement is two
+ * Haulers — the slowest thing that flies. So the window is not a taste in
+ * minutes: it is the longest settlement flight the map can produce, or the far
+ * half of the galaxy is unreachable by arithmetic and the race is decided by
+ * where a commander was seeded rather than by anything they chose.
+ *
+ * WRITTEN AS `30` IT WAS RIGHT ONCE. At radius 1000 the widest crossing was a
+ * little over 2,000 units and two Haulers covered it in 29.2 minutes, so a flat
+ * thirty was this same derivation with the arithmetic already done. D101 then
+ * widened the disc 2.5× and named every constant that did and did not take the
+ * factor — hull speeds no, `radarRange` no, the Prospector and the rocks yes —
+ * and this one was never in the list. The widest crossing became 71.1 minutes
+ * against an unchanged thirty-minute window.
+ *
+ * WHAT THAT COST, measured over seeds 1-3 at the shipped 300/51 layout: 48% of
+ * all (capital, neutral) pairs were settleable at all, the median pair missed by
+ * 0.8 minutes, and the six T3 worlds at the contested centre — the whole strategic
+ * prize — sat 21 to 33 minutes from a rim capital. A commander could decisively
+ * raid a world and then watch its one window close with their Haulers still in
+ * the air. This is the class of failure D63 named: an absolute duration stops
+ * being a fraction of the thing it has to cover as soon as the map moves.
+ *
+ * THE CEILING IS THE ONLY SLACK, and it is deliberate. A commander at the extreme
+ * rim gets the rounding — about a minute at a real seed's widest pair — to see the
+ * claim and press. Anyone nearer gets the difference between their flight and this
+ * one, which is what still makes proximity worth having: the first valid arrival
+ * wins, so distance decides the RACE while no longer deciding who may enter it.
+ */
+export const SETTLEMENT_CLAIM_MINUTES = Math.ceil(
+  fleetTravelExact(GALAXY_SPAN, { HAULER: MULTI_WORLD.settlement.haulers }),
+);
 
 /** Capacity is deliberately stepwise and derived from the strongest controlled Core. */
 export function colonyCapacity(highestCore: number): number {

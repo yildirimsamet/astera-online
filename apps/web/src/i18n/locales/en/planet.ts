@@ -16,10 +16,26 @@ export const planet = {
     dangerHint: 'A one-way planet-breaker. Every impact devastates; a second can capture only a colony or neutral world.',
     readyHint: 'Armed. Select any enemy world; capitals can be devastated but never captured.',
     needProtocol: 'Protocol',
-    needCore: 'Core L6',
-    needShipyard: 'Shipyard L5',
+    needCore: 'Core L{{level}}',
+    needShipyard: 'Shipyard L{{level}}',
     needOperational: 'World operational',
     buildTime: '60 min · one weapon · no recall',
+
+    /**
+     * WHAT AN IMPACT DOES, SAID PLAINLY, BEFORE THE MONEY IS SPENT. D113.
+     *
+     * This is the most expensive thing in the game and its effect was described
+     * as "devastates" — a word that answers nothing. Five lines of consequence and
+     * one line of what SURVIVES, because knowing what a strike cannot take is
+     * what makes it a decision rather than a hope.
+     */
+    effectsTitle: 'What one impact does',
+    effectFleet: 'Destroys every ship and gun standing on the world',
+    effectStock: 'Destroys half of everything stored and in the works',
+    effectCore: 'Takes one level off the Command Core, and anything the Core was holding up falls with it',
+    effectAegis: 'Takes {{levels}} levels off the Aegis, and drops the shield to nothing',
+    effectDark: 'Stops production, collection, building and launching for {{duration}}',
+    effectSurvives: 'Every other building, all research and the rest of the orbit survive',
   },
   tabs: {
     label: 'Planet categories',
@@ -125,6 +141,7 @@ export const planet = {
     deathStarName: 'Death Star Protocol',
     deathStarTag: 'Unlock the strategic foundry',
     deathStarRole: 'Authorises one protected strategic asset on this world. It devastates any enemy world; only colonies and neutrals can be captured by a second strike.',
+    researchNeedCore: 'Command Core L{{level}} first',
     researchAct: 'Research',
     researchComplete: 'complete',
     researchAt: 'opens in {{duration}}',

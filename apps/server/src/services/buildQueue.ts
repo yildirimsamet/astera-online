@@ -364,6 +364,53 @@ export async function cancelBuildOrder(
   }, expectedPlayerId);
 }
 
+/**
+ * WHAT A BOMBARDMENT DOES TO THE WORK IN PROGRESS. D113, owner instruction.
+ *
+ * Every building order on this world is cancelled where it stands and NOTHING is
+ * returned. `cancelBuildOrder` hands back half because cancelling is the player's
+ * own change of mind; this is not that. The scaffolding was on the ground when the
+ * rocket landed, so the alloy in it is gone with everything else that was.
+ *
+ * IT IS ALSO THE FIX FOR A REAL HOLE. `applyOrderEffect` raises a building to
+ * `before + 1` without re-reading the Core ceiling, so an order placed while the
+ * Core was high could complete after a strike had lowered it and leave a Refinery
+ * standing ABOVE a Core that `build.ts` would never let it reach. Cancelling the
+ * order removes the only way that state was reachable.
+ *
+ * BUILDINGS ONLY, and that is deliberate. Instruments are effective-capped by the
+ * Core already (D97) so one stored a level high is inert and self-corrects;
+ * satellites are gated by slot count, not level; research carries no level at all;
+ * and hulls are in the other queue, which a strike does not touch. Widening this
+ * would burn resources to fix problems that do not exist.
+ */
+export async function destroyBuildingOrders(
+  tx: Tx,
+  planetId: string,
+  now: Date,
+): Promise<{ id: string; subject: string; cost: Resources }[]> {
+  const doomed = (await activeQueue(tx, planetId))
+    .filter((order) => order.queue === 'CONSTRUCTION' && order.kind === 'BUILDING');
+  if (doomed.length === 0) return [];
+  const ids = doomed.map((order) => order.id);
+  await tx
+    .update(buildOrders)
+    .set({ status: 'CANCELLED' })
+    .where(and(inArray(buildOrders.id, ids), eq(buildOrders.status, 'BUILDING')));
+  await tx
+    .update(scheduledEvents)
+    .set({ status: 'done', claimedAt: null })
+    .where(and(
+      eq(scheduledEvents.kind, 'build_complete'),
+      inArray(scheduledEvents.refId, ids),
+      inArray(scheduledEvents.status, ['pending', 'processing']),
+    ));
+  // The tail closes up behind them. `preserveFirst` is false because the head of
+  // this queue may itself be one of the orders that just went.
+  await reflowQueue(tx, planetId, 'CONSTRUCTION', now, false);
+  return doomed.map((order) => ({ id: order.id, subject: order.subject, cost: order.cost }));
+}
+
 /** The event handler's idempotent state transition. */
 export async function applyBuildCompletion(
   tx: Tx,

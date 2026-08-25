@@ -3,15 +3,20 @@ import { and, eq, inArray } from 'drizzle-orm';
 import { afterAll, beforeEach, describe, expect, it } from 'vitest';
 import {
   HULLS,
+  GALAXY,
+  GALAXY_SPAN,
   MULTI_WORLD,
   SERVERS,
+  SETTLEMENT_CLAIM_MINUTES,
   deuteriumStorageCap,
   crystalRate,
   upgradeCost,
   DEATH_STAR,
+  fleetValue,
 } from '@astera/rules';
 import {
   battleReports,
+  buildOrders,
   buildings,
   debrisFields,
   galaxyEvents,
@@ -37,6 +42,7 @@ import {
   launchDeathStar,
 } from '../src/services/strategic.js';
 import { launchSettlement, launchTransfer } from '../src/services/movement.js';
+import { upgradeBuilding } from '../src/services/build.js';
 import { reinforceNeutral } from '../src/services/neutral.js';
 import { colonyStanding } from '../src/services/ownership.js';
 import { listServers } from '../src/services/servers.js';
@@ -171,7 +177,7 @@ describe('ruleset v2 worlds', () => {
     const [state] = await f.db.select().from(neutralPlanetState).where(eq(neutralPlanetState.planetId, target.world.id));
     const [report] = await f.db.select().from(battleReports).where(eq(battleReports.targetPlanetId, target.world.id));
     const [player] = await f.db.select().from(players).where(eq(players.id, f.joined.playerId));
-    expect(state?.claimUntil?.getTime()).toBe(f.clock.now().getTime() + MULTI_WORLD.claimMinutes * 60_000);
+    expect(state?.claimUntil?.getTime()).toBe(f.clock.now().getTime() + SETTLEMENT_CLAIM_MINUTES * 60_000);
     expect(report).toMatchObject({
       grade: 'DECISIVE',
       defenderPlayerId: null,
@@ -180,6 +186,58 @@ describe('ruleset v2 worlds', () => {
     });
     expect(player?.dominionTaken).toBe(0);
     expect(player?.dominionLost).toBe(0);
+  });
+
+  /**
+   * D112. Both halves of one guard, on one world, in order: a raid landing while
+   * the window is OPEN must not push its end back, and a raid landing after it has
+   * CLOSED must open a fresh one. The second half is what the old
+   * `claim_until IS NULL` guard could not do, which retired a neutral world for
+   * the season the first time nobody's Haulers made it.
+   */
+  it('never extends a live claim, and reopens one that has closed', async () => {
+    const f = await setup();
+    const target = f.neutrals.find((row) => row.state.tier === 1)!;
+    await f.db.update(planets).set({ x: 150, y: 0, z: 0 }).where(eq(planets.id, target.world.id));
+    await f.db.update(planets).set({ x: 0, y: 0, z: 0 }).where(eq(planets.id, f.joined.planetId));
+    await setLevel(f.db, f.joined.planetId, 'CORE', 3);
+
+    /** One whole raid: out, decisive, and home again, so the next one may launch. */
+    const raid = async () => {
+      await giveUnits(f.db, f.joined.planetId, { WASP: 1 });
+      const away = await launchAttack(f.db, f.joined.planetId, target.world.id, { WASP: 1 }, f.clock);
+      f.clock.set(new Date(away.arriveAt.getTime() + 11_000));
+      await workerFor(f.db, f.clock).tick();
+      const [state] = await f.db.select().from(neutralPlanetState)
+        .where(eq(neutralPlanetState.planetId, target.world.id));
+      const settled = { claimUntil: state?.claimUntil ?? null, at: f.clock.now() };
+      const [home] = await f.db.select().from(missions).where(and(
+        eq(missions.ownerPlayerId, f.joined.playerId),
+        eq(missions.kind, 'return'),
+        eq(missions.status, 'in_flight'),
+      ));
+      if (home) {
+        f.clock.set(home.arriveAt);
+        await workerFor(f.db, f.clock).tick();
+      }
+      return settled;
+    };
+
+    const first = await raid();
+    expect(first.claimUntil?.getTime())
+      .toBe(first.at.getTime() + SETTLEMENT_CLAIM_MINUTES * 60_000);
+
+    // Still inside the window: a second decisive raid leaves the deadline alone.
+    const second = await raid();
+    expect(second.at.getTime()).toBeLessThan(first.claimUntil!.getTime());
+    expect(second.claimUntil?.getTime()).toBe(first.claimUntil?.getTime());
+
+    // Past it: the world is worth taking again.
+    f.clock.set(new Date(first.claimUntil!.getTime() + 60_000));
+    const third = await raid();
+    expect(third.claimUntil?.getTime())
+      .toBe(third.at.getTime() + SETTLEMENT_CLAIM_MINUTES * 60_000);
+    expect(third.claimUntil!.getTime()).toBeGreaterThan(first.claimUntil!.getTime());
   });
 
   it('settles atomically, preserves the neutral world and starts occupation protection', async () => {
@@ -291,6 +349,46 @@ describe('ruleset v2 worlds', () => {
       target.world.id,
       f.clock,
     )).rejects.toMatchObject({ code: 'CLAIM_EXPIRED' });
+  });
+
+  /**
+   * D111. Every other settlement test above puts its two worlds 20 to 150 units
+   * apart, which is why a window that could not cross the disc passed all of them
+   * for a release. This one is the OPPOSITE CORNERS of the disc — the longest
+   * settlement flight the map can produce — and it is the case the shipped
+   * thirty-minute window refused.
+   */
+  it('lets a settlement cross the whole disc inside one claim window', async () => {
+    const f = await setup();
+    const target = f.neutrals.find((row) => row.state.tier === 1)!;
+    await f.db.update(planets)
+      .set({ x: -GALAXY.radius, y: -GALAXY.thickness, z: 0 })
+      .where(eq(planets.id, f.joined.planetId));
+    await f.db.update(planets)
+      .set({ x: GALAXY.radius, y: GALAXY.thickness, z: 0 })
+      .where(eq(planets.id, target.world.id));
+    await setLevel(f.db, f.joined.planetId, 'CORE', 3);
+    await giveUnits(f.db, f.joined.planetId, { HAULER: MULTI_WORLD.settlement.haulers });
+    await f.db.update(planets).set({ alloy: 10_000, crystal: 5_000 })
+      .where(eq(planets.id, f.joined.planetId));
+    await f.db.update(neutralPlanetState)
+      .set({ claimUntil: new Date(f.clock.now().getTime() + SETTLEMENT_CLAIM_MINUTES * 60_000) })
+      .where(eq(neutralPlanetState.planetId, target.world.id));
+
+    const launched = await launchSettlement(
+      f.db,
+      f.joined.playerId,
+      f.joined.planetId,
+      target.world.id,
+      f.clock,
+    );
+    const [mission] = await f.db.select().from(missions).where(eq(missions.id, launched.missionId));
+    expect(mission?.distance).toBeCloseTo(GALAXY_SPAN, 2);
+
+    f.clock.set(launched.arriveAt);
+    await workerFor(f.db, f.clock).tick();
+    const [captured] = await f.db.select().from(planets).where(eq(planets.id, target.world.id));
+    expect(captured).toMatchObject({ kind: 'COLONY', controllerPlayerId: f.joined.playerId });
   });
 
   it('delivers transfer cargo above storage cap without loss', async () => {
@@ -477,10 +575,13 @@ describe('ruleset v2 worlds', () => {
       disruptedUntil: new Date(f.clock.now().getTime() + 20 * 60_000),
     }).where(eq(planets.id, target.world.id));
     await f.db.delete(neutralPlanetState).where(eq(neutralPlanetState.planetId, target.world.id));
-    for (const type of ['CORE', 'REFINERY', 'EXTRACTOR', 'SHIPYARD'] as const) {
-      await setLevel(f.db, target.world.id, type, 6);
-    }
+    // Levels chosen to separate the two building rules: CORE and REFINERY sit on
+    // the ceiling, EXTRACTOR and VAULT one under it, SHIPYARD well under.
+    await setLevel(f.db, target.world.id, 'CORE', 6);
+    await setLevel(f.db, target.world.id, 'REFINERY', 6);
+    await setLevel(f.db, target.world.id, 'EXTRACTOR', 5);
     await setLevel(f.db, target.world.id, 'VAULT', 5);
+    await setLevel(f.db, target.world.id, 'SHIPYARD', 3);
     await giveInstrument(f.db, target.world.id, 'AEGIS', 4);
     await giveInstrument(f.db, target.world.id, 'TELESCOPE', 3);
     await giveInstrument(f.db, target.world.id, 'RADAR', 2);
@@ -525,23 +626,36 @@ describe('ruleset v2 worlds', () => {
     await workerFor(f.db, f.clock).tick();
 
     const [struck] = await f.db.select().from(planets).where(eq(planets.id, target.world.id));
+    // HALF, NOT ALL (D113). The world was recovering-free and untouched since the
+    // fixture set it, so the stored figures are already current.
     expect(struck).toMatchObject({
-      alloy: 0,
-      crystal: 0,
-      deuterium: 0,
-      bufferAlloy: 0,
-      bufferCrystal: 0,
-      bufferDeuterium: 0,
+      alloy: 4_500,
+      crystal: 4_000,
+      deuterium: 350,
+      bufferAlloy: 300,
+      bufferCrystal: 250,
+      bufferDeuterium: 20,
       shield: 0,
       disruptedUntil: null,
     });
-    expect(struck?.recoveryUntil).not.toBeNull();
+    expect(struck?.recoveryUntil?.getTime())
+      .toBe(f.clock.now().getTime() + MULTI_WORLD.recoveryMinutes * 60_000);
     const levels = Object.fromEntries((await f.db.select().from(buildings)
       .where(eq(buildings.planetId, target.world.id))).map((row) => [row.type, row.level]));
-    expect(levels).toMatchObject({ CORE: 5, REFINERY: 5, EXTRACTOR: 5, SHIPYARD: 5, VAULT: 5 });
+    // CORE drops. REFINERY was ON the old ceiling so the new Core pulls it down;
+    // EXTRACTOR and VAULT are already at the new ceiling and SHIPYARD is nowhere
+    // near it, so none of the three loses anything.
+    expect(levels).toMatchObject({ CORE: 5, REFINERY: 5, EXTRACTOR: 5, VAULT: 5, SHIPYARD: 3 });
     const hardware = Object.fromEntries((await f.db.select().from(satellites)
       .where(eq(satellites.planetId, target.world.id))).map((row) => [row.type, row.level]));
-    expect(hardware).toMatchObject({ AEGIS: 3, TELESCOPE: 3, RADAR: 2, UPLINK: 1 });
+    // Aegis alone, and by two. Every other instrument keeps its stored level and
+    // is only ever capped by the Core it hangs off (D97).
+    expect(hardware).toMatchObject({
+      AEGIS: 4 - DEATH_STAR.aegisLevelsLost,
+      TELESCOPE: 3,
+      RADAR: 2,
+      UPLINK: 1,
+    });
     const survivors = await f.db.select().from(units).where(eq(units.planetId, target.world.id));
     expect(survivors.map((row) => [row.hull, row.location, row.count]).sort()).toEqual([
       ['PROSPECTOR', 'mining-away', 1],
@@ -580,8 +694,8 @@ describe('ruleset v2 worlds', () => {
     await f.db.update(planets).set({ x: 0, y: 0, z: 0, alloy: 100_000, crystal: 50_000, deuterium: 10_000 })
       .where(eq(planets.id, capital));
     await f.db.update(planets).set({ x: 20, y: 0, z: 0 }).where(eq(planets.id, target.world.id));
-    await setLevel(f.db, capital, 'CORE', 6);
-    await setLevel(f.db, capital, 'SHIPYARD', 5);
+    await setLevel(f.db, capital, 'CORE', DEATH_STAR.requiredCore);
+    await setLevel(f.db, capital, 'SHIPYARD', DEATH_STAR.requiredShipyard);
     await f.db.insert(planetResearch).values([
       { planetId: capital, projectId: 'GRAVITIC_CHARGES', completedAt: f.clock.now() },
       { planetId: capital, projectId: 'DEATH_STAR_PROTOCOL', completedAt: f.clock.now() },
@@ -593,11 +707,24 @@ describe('ruleset v2 worlds', () => {
     await worker.tick();
     const first = await launchDeathStar(f.db, capital, target.world.id, f.clock);
     const secondBuild = await buildDeathStar(f.db, capital, f.clock);
+    const [before] = await f.db.select().from(planets).where(eq(planets.id, target.world.id));
     f.clock.set(first.arriveAt);
     await worker.tick();
     let [struck] = await f.db.select().from(planets).where(eq(planets.id, target.world.id));
     expect(struck?.kind).toBe('NEUTRAL');
     expect(struck?.recoveryUntil).not.toBeNull();
+    /**
+     * AND A NEUTRAL'S ECONOMY IS ADVANCED BEFORE IT IS HALVED. D113.
+     *
+     * Nothing else advances a neutral world — its stored row is whatever the last
+     * raid or reinforcement left there, and an hour of Death Star build time has
+     * passed since. Halving the stale figure would take well over half of what the
+     * world actually holds, so the strike advances it first; that is why this is
+     * `>=` against half the pre-strike row rather than exactly half of it.
+     */
+    expect(struck!.alloy).toBeGreaterThanOrEqual(Math.floor(before!.alloy / 2));
+    expect(struck!.alloy).toBeGreaterThan(0);
+    const halvedAgain = struck!.alloy;
 
     f.clock.set(secondBuild.readyAt);
     await worker.tick();
@@ -606,6 +733,20 @@ describe('ruleset v2 worlds', () => {
     await worker.tick();
     [struck] = await f.db.select().from(planets).where(eq(planets.id, target.world.id));
     expect(struck).toMatchObject({ kind: 'COLONY', controllerPlayerId: f.joined.playerId, recoveryUntil: null });
+    /**
+     * HALF OF WHAT WAS LEFT, not half of what there once was — the whole reason
+     * the rule is a share rather than a wipe.
+     *
+     * AT MOST half rather than exactly half, and that is a real interaction worth
+     * naming: `advanceNeutralEconomy` clamps a neutral's stock DOWN to its storage
+     * cap (player worlds never do this), and the first strike lowered the Core,
+     * which pulled the Refinery down with it and shrank that cap. So the second
+     * impact halves a figure the smaller store had already trimmed. The exact
+     * halving is pinned on player worlds, where nothing clamps: see the damage
+     * matrix and the capital case above.
+     */
+    expect(struck!.alloy * 2).toBeLessThanOrEqual(halvedAgain);
+    expect(struck!.alloy).toBeGreaterThan(0);
     const consumed = await f.db.select().from(strategicAssets).where(eq(strategicAssets.status, 'CONSUMED'));
     expect(consumed).toHaveLength(2);
     const inFlight = await f.db.select().from(missions).where(and(
@@ -620,8 +761,8 @@ describe('ruleset v2 worlds', () => {
     const capital = f.joined.planetId;
     const purse = { alloy: 100_000, crystal: 50_000, deuterium: 10_000 };
     await f.db.update(planets).set(purse).where(eq(planets.id, capital));
-    await setLevel(f.db, capital, 'CORE', 6);
-    await setLevel(f.db, capital, 'SHIPYARD', 5);
+    await setLevel(f.db, capital, 'CORE', DEATH_STAR.requiredCore);
+    await setLevel(f.db, capital, 'SHIPYARD', DEATH_STAR.requiredShipyard);
     await f.db.insert(planetResearch).values({
       planetId: capital,
       projectId: 'DEATH_STAR_PROTOCOL',
@@ -717,16 +858,18 @@ describe('ruleset v2 worlds', () => {
     expect(struck).toMatchObject({
       kind: 'CAPITAL',
       controllerPlayerId: defender.playerId,
-      alloy: 0,
-      crystal: 0,
-      deuterium: 0,
+      // Halved (D113). This world was already recovering, so nothing accrued
+      // between the fixture and the impact and these are exactly half of it.
+      alloy: 10_000,
+      crystal: 4_000,
+      deuterium: 1_000,
     });
-    expect(struck?.recoveryUntil?.getTime()).toBeGreaterThan(launched.arriveAt.getTime());
-    const [core] = await f.db.select().from(buildings).where(and(
-      eq(buildings.planetId, defender.planetId),
-      eq(buildings.type, 'CORE'),
-    ));
-    expect(core?.level).toBe(4);
+    expect(struck?.recoveryUntil?.getTime())
+      .toBe(f.clock.now().getTime() + MULTI_WORLD.recoveryMinutes * 60_000);
+    const damaged = Object.fromEntries((await f.db.select().from(buildings)
+      .where(eq(buildings.planetId, defender.planetId))).map((row) => [row.type, row.level]));
+    // Core 5 → 4; the Refinery was already under the new ceiling and stays put.
+    expect(damaged).toMatchObject({ CORE: 4, REFINERY: 4 });
     expect(await f.db.select().from(units).where(eq(units.planetId, defender.planetId))).toEqual([]);
     const [impact] = await f.db.select().from(galaxyEvents).where(and(
       eq(galaxyEvents.kind, 'death_star_impact'),
@@ -745,10 +888,110 @@ describe('ruleset v2 worlds', () => {
       outcome: 'FIRST_STRIKE',
       destroyedFleet: { WASP: 5, HAULER: 1 },
     });
-    expect(ledger!.damage).toBeGreaterThan(30_000);
+    /**
+     * THE FIGURE, ITEM BY ITEM, RATHER THAN A THRESHOLD. D113.
+     *
+     * It used to read `> 30_000`, which passed both before and after the strike
+     * stopped emptying the stores — a bound loose enough to survive the change it
+     * was meant to notice. Stated as a sum it cannot: halve the wrong pile, drop
+     * a building the rule no longer drops, or count the Aegis on a world that has
+     * none, and this moves. `real` is float4, hence the tolerance.
+     */
+    const coreLoss = upgradeCost(4);
+    /**
+     * WHAT WAS DESTROYED EQUALS WHAT SURVIVED, which is the halving rule stated
+     * as an identity rather than as a number. Read off the struck world so it
+     * holds whatever the Works accrued between the fixture and the impact —
+     * roughly eleven units here, and the reason a hand-summed figure was wrong.
+     *
+     * It used to read `> 30_000`, a bound loose enough to pass both before and
+     * after the strike stopped emptying the stores.
+     */
+    const survived = struck!.alloy + struck!.crystal + struck!.deuterium
+      + struck!.bufferAlloy + struck!.bufferCrystal + struck!.bufferDeuterium;
+    expect(ledger!.damage).toBeCloseTo(
+      survived
+      + fleetValue({ WASP: 5, HAULER: 1 })
+      + coreLoss.alloy + coreLoss.crystal + coreLoss.deuterium,
+      // Six piles, each floored, against a float4 column.
+      -1,
+    );
     const [asset] = await f.db.select().from(strategicAssets)
       .where(eq(strategicAssets.planetId, f.joined.planetId));
     expect(asset?.status).toBe('CONSUMED');
+  });
+
+  /**
+   * D113, owner instruction. A bombardment destroys the work in progress and
+   * refunds nothing — `cancelBuildOrder` gives half back because that is the
+   * player's own change of mind, and this is not that.
+   *
+   * It also closes the one way a building could stand ABOVE its Core ceiling:
+   * `applyOrderEffect` raises to `before + 1` without re-reading the Core, so an
+   * order placed at Core 12 completing after a strike left Core 11 would have put
+   * a Refinery at 12 — a level `build.ts` refuses to sell.
+   */
+  it('burns every queued building order on impact and refunds nothing', async () => {
+    const f = await setup();
+    const defenderAccount = await makeAccount(f.db, 'Builder');
+    const defender = await joinSeason(f.db, defenderAccount.id, f.season.id, f.clock);
+    await f.db.update(planets).set({ x: 0, y: 0, z: 0 }).where(eq(planets.id, f.joined.planetId));
+    await f.db.update(planets).set({
+      x: 200, y: 0, z: 0, kind: 'COLONY',
+      alloy: 400_000, crystal: 200_000, deuterium: 40_000, lastTickAt: f.clock.now(),
+    }).where(eq(planets.id, defender.planetId));
+    await setLevel(f.db, defender.planetId, 'CORE', 8);
+    await setLevel(f.db, defender.planetId, 'REFINERY', 7);
+    await setLevel(f.db, f.joined.planetId, 'CORE', 2);
+
+    // Two orders in one queue: a Refinery that would land ON the old ceiling, and
+    // a research order that has no Core level and must survive.
+    await upgradeBuilding(f.db, defender.planetId, 'REFINERY', f.clock);
+    await f.db.insert(planetResearch).values({
+      planetId: defender.planetId,
+      projectId: 'ISOTOPE_SPECTROMETRY',
+      completedAt: f.clock.now(),
+    });
+    const queuedBefore = await f.db.select().from(buildOrders)
+      .where(and(eq(buildOrders.planetId, defender.planetId), eq(buildOrders.status, 'BUILDING')));
+    expect(queuedBefore).toHaveLength(1);
+    const [purse] = await f.db.select().from(planets).where(eq(planets.id, defender.planetId));
+
+    await f.db.insert(strategicAssets).values({
+      planetId: f.joined.planetId,
+      status: 'READY',
+      startedAt: f.clock.now(),
+      remainingSeconds: 0,
+    });
+    const launched = await launchDeathStar(f.db, f.joined.planetId, defender.planetId, f.clock);
+    f.clock.set(launched.arriveAt);
+    await workerFor(f.db, f.clock).tick();
+
+    const orders = await f.db.select().from(buildOrders)
+      .where(eq(buildOrders.planetId, defender.planetId));
+    expect(orders.map((row) => row.status)).toEqual(['CANCELLED']);
+    // Nothing came back: the survivor is exactly half the pre-strike purse, with
+    // no refund folded into it.
+    const [after] = await f.db.select().from(planets).where(eq(planets.id, defender.planetId));
+    expect(after?.alloy).toBe(Math.floor(purse!.alloy / 2));
+    expect(after?.crystal).toBe(Math.floor(purse!.crystal / 2));
+    // And the order can never complete into a level above the new Core.
+    const levels = Object.fromEntries((await f.db.select().from(buildings)
+      .where(eq(buildings.planetId, defender.planetId))).map((row) => [row.type, row.level]));
+    expect(levels).toMatchObject({ CORE: 7, REFINERY: 7 });
+    await workerFor(f.db, f.clock).tick();
+    const [stillSeven] = await f.db.select().from(buildings).where(and(
+      eq(buildings.planetId, defender.planetId),
+      eq(buildings.type, 'REFINERY'),
+    ));
+    expect(stillSeven?.level).toBe(7);
+    // The value it cost is counted as damage rather than quietly vanishing.
+    const [impact] = await f.db.select().from(strategicImpacts)
+      .where(eq(strategicImpacts.missionId, launched.missionId));
+    const order = queuedBefore[0]!;
+    expect(impact!.damage).toBeGreaterThan(
+      order.cost.alloy + order.cost.crystal + order.cost.deuterium,
+    );
   });
 
   it('allows a destructive Death Star strike with no colony capacity', async () => {

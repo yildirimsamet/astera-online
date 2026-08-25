@@ -1,8 +1,9 @@
-import { and, eq, inArray, sql } from 'drizzle-orm';
+import { and, eq, inArray, isNull, lte, or } from 'drizzle-orm';
 import {
   DEBRIS,
   HULLS,
   MULTI_WORLD,
+  SETTLEMENT_CLAIM_MINUTES,
   SHIELD,
   computeLoot,
   fleetCargo,
@@ -52,7 +53,7 @@ async function neutralLevels(tx: Tx, planetId: string) {
   return levels;
 }
 
-async function advanceNeutralEconomy(tx: Tx, planetId: string, now: Date) {
+export async function advanceNeutralEconomy(tx: Tx, planetId: string, now: Date) {
   const [world] = await tx.select().from(planets).where(eq(planets.id, planetId)).for('update');
   if (world?.kind !== 'NEUTRAL') return null;
   const levels = await neutralLevels(tx, planetId);
@@ -174,12 +175,33 @@ export async function resolveNeutralBattle(
     shield: result.shieldLeft,
   });
   if (result.grade === 'DECISIVE') {
-    const claimUntil = addMinutes(clock.now(), MULTI_WORLD.claimMinutes);
+    /**
+     * A CLOSED WINDOW REOPENS; A LIVE ONE IS NEVER EXTENDED. D112.
+     *
+     * The guard used to be `claim_until IS NULL`, and nothing anywhere puts an
+     * EXPIRED claim back to null — so a world whose thirty minutes ran out was
+     * un-settleable for the rest of the season, and the only thing that could
+     * undo it was a Death Star landing on it. Fifty-one neutral worlds went out
+     * one at a time, each one still raidable and no longer worth taking.
+     *
+     * The second half of the guard is the half that always mattered and is kept
+     * exactly: a raid landing while the window is OPEN must not push its end back,
+     * or a commander with a spare squadron holds a claim open indefinitely and
+     * nobody else's Haulers ever beat theirs.
+     */
+    // One instant, read once: the window's end and the test for "already closed"
+    // have to be the same NOW, or a claim expiring between two reads is judged
+    // against one clock and dated from another.
+    const now = clock.now();
+    const claimUntil = addMinutes(now, SETTLEMENT_CLAIM_MINUTES);
     const opened = await tx.update(neutralPlanetState)
       .set({ claimUntil })
       .where(and(
         eq(neutralPlanetState.planetId, neutral.id),
-        sql`${neutralPlanetState.claimUntil} IS NULL`,
+        or(
+          isNull(neutralPlanetState.claimUntil),
+          lte(neutralPlanetState.claimUntil, now),
+        ),
       ))
       .returning({ planetId: neutralPlanetState.planetId, tier: neutralPlanetState.tier });
     if (opened[0]) {

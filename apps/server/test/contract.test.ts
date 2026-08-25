@@ -3,7 +3,8 @@ import { pino } from 'pino';
 import { afterAll, beforeEach, describe, expect, it } from 'vitest';
 import { and, eq } from 'drizzle-orm';
 import {
-  DISRUPTION, REWARD_CHAINS, SHIELD, alloyRate, flightSlots, rewardId, shieldHp, vaultProtects,
+  DEATH_STAR, DISRUPTION, REWARD_CHAINS, SHIELD, alloyRate, flightSlots, rewardId, shieldHp,
+  vaultProtects,
 } from '@astera/rules';
 import {
   buildings,
@@ -710,8 +711,8 @@ describe('every payload the client parses', () => {
 
   it('POST Death Star build and launch routes parse their exact contracts', async () => {
     const [origin, target] = f.planetIds as [string, string];
-    await setLevel(f.db, origin, 'CORE', 10);
-    await setLevel(f.db, origin, 'SHIPYARD', 5);
+    await setLevel(f.db, origin, 'CORE', DEATH_STAR.requiredCore);
+    await setLevel(f.db, origin, 'SHIPYARD', DEATH_STAR.requiredShipyard);
     await f.db.update(planets)
       .set({ alloy: 100_000, crystal: 50_000, deuterium: 10_000 })
       .where(eq(planets.id, origin));

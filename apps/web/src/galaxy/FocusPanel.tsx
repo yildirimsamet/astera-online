@@ -4,6 +4,7 @@ import { useTranslation, Trans } from 'react-i18next';
 import {
   DEATH_STAR,
   MULTI_WORLD,
+  SETTLEMENT_CLAIM_MINUTES,
   PROBE,
   distance,
   fleetCount,
@@ -621,6 +622,43 @@ function Requirement({ ok, children }: { ok: boolean; children: ReactNode }) {
   );
 }
 
+/**
+ * WHAT THE ROCKET DOES, BESIDE THE CONTROL THAT FIRES IT. D113.
+ *
+ * The route strip said "Damage" and then "Control transfers", which describes
+ * the SEQUENCE and never once the effect. Same five facts as the forge card and
+ * deliberately its own strings (D55): this one is written about the world under
+ * the crosshair, not about the weapon on your own pad.
+ */
+function StrikeEffects({ capturable }: { capturable: boolean }) {
+  const { t } = useTranslation();
+  const lines = [
+    t('focus.planet.strikeFleet'),
+    t('focus.planet.strikeStock'),
+    t('focus.planet.strikeCore'),
+    t('focus.planet.strikeAegis', { levels: DEATH_STAR.aegisLevelsLost }),
+    t('focus.planet.strikeDark', { duration: duration(MULTI_WORLD.recoveryMinutes) }),
+  ];
+  return (
+    <div className="plate plate-inset mt-3 flex flex-col gap-2 p-3">
+      <p className="legend text-threat-ink">{t('focus.planet.strikeTitle')}</p>
+      <ul className="flex flex-col gap-2">
+        {lines.map((line) => (
+          <li key={line} className="flex gap-2 text-caption text-bone">
+            <span aria-hidden className="text-threat-ink">▪</span>
+            <span>{line}</span>
+          </li>
+        ))}
+        {/* What the SECOND one does, which is the only reason to plan a first. */}
+        <li className="flex gap-2 text-caption text-dim">
+          <span aria-hidden className="text-faint">▪</span>
+          <span>{t(capturable ? 'focus.planet.strikeCapture' : 'focus.planet.strikeNoCapture')}</span>
+        </li>
+      </ul>
+    </div>
+  );
+}
+
 function StrategicWorldGuide({
   target,
   planet,
@@ -671,21 +709,24 @@ function StrategicWorldGuide({
   if (target.kind === 'CAPITAL') {
     const recovery = target.state?.kind === 'RECOVERY' ? target.state : null;
     return (
-      <div className={`mb-3 flex items-center gap-3 rounded-chip border px-3 py-3 ${ recovery ? 'border-alert/55 bg-alert/12' : 'border-crystal/30 bg-crystal/8' }`}>
-        <span className="grid size-8 shrink-0 place-items-center rounded-full border border-crystal/45 text-crystal">◆</span>
-        <div className="min-w-0 flex-1">
-          <p className={`legend ${ recovery ? 'text-threat-ink' : 'text-crystal' }`}>
-            {t(recovery ? 'focus.planet.capitalRecovering' : 'focus.planet.capitalProtected')}
-          </p>
-          <p className="mt-1 text-label text-dim">
-            {t(recovery ? 'focus.planet.capitalRecoveringHint' : 'focus.planet.capitalProtectedHint')}
-          </p>
+      <div className={`mb-3 rounded-chip border px-3 py-3 ${ recovery ? 'border-alert/55 bg-alert/12' : 'border-crystal/30 bg-crystal/8' }`}>
+        <div className="flex items-center gap-3">
+          <span className="grid size-8 shrink-0 place-items-center rounded-full border border-crystal/45 text-crystal">◆</span>
+          <div className="min-w-0 flex-1">
+            <p className={`legend ${ recovery ? 'text-threat-ink' : 'text-crystal' }`}>
+              {t(recovery ? 'focus.planet.capitalRecovering' : 'focus.planet.capitalProtected')}
+            </p>
+            <p className="mt-1 text-label text-dim">
+              {t(recovery ? 'focus.planet.capitalRecoveringHint' : 'focus.planet.capitalProtectedHint')}
+            </p>
+          </div>
+          {recovery && (
+            <span className="num shrink-0 text-label text-threat-ink">
+              {duration((recovery.until.getTime() - now) / 60_000)}
+            </span>
+          )}
         </div>
-        {recovery && (
-          <span className="num shrink-0 text-label text-threat-ink">
-            {duration((recovery.until.getTime() - now) / 60_000)}
-          </span>
-        )}
+        <StrikeEffects capturable={false} />
       </div>
     );
   }
@@ -736,7 +777,7 @@ function StrategicWorldGuide({
             <img src={RESOURCE_ART.crystal} alt="" aria-hidden className="size-3.5 object-contain" />
             {compact(MULTI_WORLD.settlement.cost.crystal)}
           </Requirement>
-          <Requirement ok={claimActive ? settlementCanArrive : settlementEta < MULTI_WORLD.claimMinutes}>
+          <Requirement ok={claimActive ? settlementCanArrive : settlementEta < SETTLEMENT_CLAIM_MINUTES}>
             {t('focus.planet.arrivesIn', { duration: duration(settlementEta) })}
           </Requirement>
         </div>
@@ -748,7 +789,9 @@ function StrategicWorldGuide({
             </p>
             <p className="flex items-start gap-2">
               <span aria-hidden className="mt-px shrink-0 text-alert">◆</span>
-              <span>{t('focus.planet.claimDeathStarConsequence')}</span>
+              <span>{t('focus.planet.claimDeathStarConsequence', {
+                duration: duration(MULTI_WORLD.recoveryMinutes),
+              })}</span>
             </p>
           </div>
         )}
@@ -780,11 +823,21 @@ function StrategicWorldGuide({
         </p>
       ) : (
         <div className="mt-2 grid grid-cols-[1fr_auto_1fr] items-center gap-2 text-center">
-          <RouteStep active={!recovery} number="1" label={t('focus.planet.firstImpact')} danger />
+          <RouteStep
+            active={!recovery}
+            number="1"
+            label={t('focus.planet.firstImpact', {
+              duration: duration(MULTI_WORLD.recoveryMinutes),
+            })}
+            danger
+          />
           <span className="text-threat-ink">→</span>
           <RouteStep active={Boolean(recovery)} number="2" label={t('focus.planet.secondImpact')} danger />
         </div>
       )}
+      {/* A capital never reaches this guide — it returns above — so the second
+          impact here is always the capture route. */}
+      {!protectedState && <StrikeEffects capturable />}
       {recovery && (
         <div className="mt-2 flex flex-wrap gap-2">
           <Requirement ok={colonySlotOpen}>{t('focus.planet.openColonySlot')}</Requirement>
