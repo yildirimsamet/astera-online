@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   COMBAT,
+  DOMINION_TRANSFER_SCALE,
   GROUND_HULLS,
   HULLS,
   computeLoot,
@@ -9,6 +10,7 @@ import {
   emptyLedger,
   bookBattle,
   dominion,
+  dominionTransfer,
   fleetCount,
   fleetCargo,
   fleetPower,
@@ -458,6 +460,38 @@ describe('dominion', () => {
     bookBattle(atk, def, 0, r);
     expect(dominion(def)).toBeGreaterThan(0);
     expect(dominion(atk)).toBeLessThan(0);
+  });
+
+  it('smoothly bounds one battle without changing its direction', () => {
+    expect(dominionTransfer(1_000)).toBe(997);
+    expect(dominionTransfer(-1_000)).toBe(-997);
+    expect(dominionTransfer(10_000)).toBe(7_616);
+    expect(dominionTransfer(-10_000)).toBe(-7_616);
+    expect(dominionTransfer(100_000)).toBe(DOMINION_TRANSFER_SCALE);
+    expect(dominionTransfer(-100_000)).toBe(-DOMINION_TRANSFER_SCALE);
+  });
+
+  it('books only the bounded transfer into the ledgers', () => {
+    const atk = emptyLedger();
+    const def = emptyLedger();
+    const result = resolveCombat({ WASP: 1 }, {}, 0, rng());
+
+    const transfer = bookBattle(atk, def, 1_000_000, result);
+
+    expect(transfer).toBe(DOMINION_TRANSFER_SCALE);
+    expect(atk).toEqual({ taken: DOMINION_TRANSFER_SCALE, lost: 0 });
+    expect(def).toEqual({ taken: 0, lost: DOMINION_TRANSFER_SCALE });
+  });
+
+  it('keeps legacy ledger totals and applies the bound only to the new battle', () => {
+    const challenger = emptyLedger();
+    const incumbent = { taken: 100_000, lost: 0 };
+    const result = resolveCombat({ WASP: 1 }, {}, 0, rng());
+
+    bookBattle(challenger, incumbent, 1_000_000, result);
+
+    expect(dominion(challenger)).toBe(DOMINION_TRANSFER_SCALE);
+    expect(dominion(incumbent)).toBe(90_000);
   });
 
   it('is zero for a player who never fights', () => {

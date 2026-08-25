@@ -41,8 +41,10 @@ against a 2.0-minute warning.
 
 **Combat variance is ±8%.** If randomness dominated, intel would be worthless.
 
-**Dominion sums to exactly zero across a battle.** Property-tested. Otherwise the ladder creates
-score from nothing.
+**Dominion sums to exactly zero across a battle and one battle moves at most 10,000.** The
+attacker's raw exchange value is compressed by `round(10,000 × tanh(raw / 10,000))`, then its
+exact negative is booked to the defender. Both claims are property-tested; otherwise the ladder
+either creates score from nothing or lets one fleet erase a season.
 
 **`START` is arithmetic:** `723 alloy · 69 crystal` = Core, Refinery and Extractor each 1→2 plus two
 Wasps. Exactly the opening a new commander can finish in one sitting, and not a unit more.

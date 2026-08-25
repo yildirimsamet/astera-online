@@ -2,6 +2,7 @@ import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
 import {
   ALL_HULLS,
+  DOMINION_TRANSFER_SCALE,
   MOBILE_HULLS,
   MULTI_WORLD,
   DEBRIS,
@@ -47,6 +48,7 @@ import {
   bookBattle,
   computeLoot,
   dominion,
+  dominionTransfer,
   emptyLedger,
   fleetCargo,
   fleetCount,
@@ -165,6 +167,18 @@ describe('dominion is zero-sum for ALL battles', () => {
         },
       ),
       { numRuns: 400 },
+    );
+  });
+
+  it('is odd, direction-preserving, and bounded for every finite raw result', () => {
+    fc.assert(
+      fc.property(fc.double({ noNaN: true, noDefaultInfinity: true }), (raw) => {
+        const transfer = dominionTransfer(raw);
+        expect(dominionTransfer(-raw) + transfer).toBe(0);
+        expect(Math.abs(transfer)).toBeLessThanOrEqual(DOMINION_TRANSFER_SCALE);
+        if (transfer !== 0) expect(Math.sign(transfer)).toBe(Math.sign(raw));
+      }),
+      { numRuns: 1_000 },
     );
   });
 });

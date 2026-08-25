@@ -28,8 +28,8 @@ export function wealth(h: Holdings): number {
 /**
  * DOMINION — the season ladder.
  *
- * Everything you have taken from other players, minus everything they have taken
- * from you. Exactly zero-sum across the galaxy; only combat generates it; it
+ * The sum of your bounded positive battle transfers minus your bounded negative
+ * transfers. Exactly zero-sum across the galaxy; only combat generates it; it
  * rewards winning fights EFFICIENTLY, which is precisely what scouting buys.
  *
  * It also scores defence — repelling a raid destroys the attacker's ships, which
@@ -41,7 +41,34 @@ export const dominion = (l: Ledger): number => Math.round(l.taken - l.lost);
 export const emptyLedger = (): Ledger => ({ taken: 0, lost: 0 });
 
 /**
- * Book both sides of a resolved battle. The two deltas sum to exactly zero.
+ * The scale and hard asymptote of one battle's Dominion transfer. D2.
+ *
+ * This is deliberately a smooth bound rather than a clamp: small exchanges stay
+ * close to their economic value while progressively larger fleets buy less
+ * ladder leverage. A finite battle can never move more than this amount.
+ */
+export const DOMINION_TRANSFER_SCALE = 10_000;
+
+/** The attacker's unbounded economic result before it is converted to Dominion. */
+export function rawBattleDominion(lootValue: number, result: CombatResult): number {
+  return lootValue + result.defenderLossValue - result.attackerLossValue;
+}
+
+/** Convert an economic battle result into the signed, bounded ladder transfer. */
+export function dominionTransfer(raw: number): number {
+  if (raw === 0) return 0;
+
+  // Round the magnitude and restore the sign. Math.round is not odd at negative
+  // half-integers; doing this explicitly preserves exact zero-sum bookkeeping.
+  const magnitude = Math.round(
+    DOMINION_TRANSFER_SCALE * Math.tanh(Math.abs(raw) / DOMINION_TRANSFER_SCALE),
+  );
+  return raw < 0 ? -magnitude : magnitude;
+}
+
+/**
+ * Book both sides of a resolved battle and return the attacker's signed transfer.
+ * The two ledger deltas sum to exactly zero.
  *
  * Mutates in place — callers hold the rows under a lock already.
  */
@@ -50,12 +77,17 @@ export function bookBattle(
   defender: Ledger,
   lootValue: number,
   result: CombatResult,
-): void {
-  const gained = lootValue + result.defenderLossValue;
-  attacker.taken += gained;
-  attacker.lost += result.attackerLossValue;
-  defender.taken += result.attackerLossValue;
-  defender.lost += gained;
+): number {
+  const transfer = dominionTransfer(rawBattleDominion(lootValue, result));
+  if (transfer > 0) {
+    attacker.taken += transfer;
+    defender.lost += transfer;
+  } else if (transfer < 0) {
+    const magnitude = -transfer;
+    attacker.lost += magnitude;
+    defender.taken += magnitude;
+  }
+  return transfer;
 }
 
 /** Ladder display value. Wealth uses the same divisor so the two read comparably. */

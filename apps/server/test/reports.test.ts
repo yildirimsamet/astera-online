@@ -2,7 +2,13 @@ import type { FastifyInstance } from 'fastify';
 import { pino } from 'pino';
 import { afterAll, afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { eq } from 'drizzle-orm';
-import { DEBRIS, HULLS, fleetCount, type HullId } from '@astera/rules';
+import {
+  DEBRIS,
+  DOMINION_TRANSFER_SCALE,
+  HULLS,
+  fleetCount,
+  type HullId,
+} from '@astera/rules';
 import {
   accounts,
   battleReports,
@@ -172,6 +178,7 @@ describe('battle reports', () => {
 
     expect(attacker!.dominion).not.toBeNull();
     expect(attacker!.dominion! + defender!.dominion!).toBeCloseTo(0, 5);
+    expect(Math.abs(attacker!.dominion!)).toBeLessThanOrEqual(DOMINION_TRANSFER_SCALE);
 
     const { players } = await import('../src/db/schema.js');
     const { eq } = await import('drizzle-orm');

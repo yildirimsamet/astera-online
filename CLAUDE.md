@@ -107,6 +107,7 @@ Each was paid for in iteration. `docs/decisions.md` holds the evidence.
 |---|---|
 | Score is Dominion, not net worth | Wealth ladders reward passive play — builders finished at 2.1× raiders' net worth |
 | Wreckage is Wealth, never Dominion | Dominion is zero-sum and only combat makes it; debris was taken from nobody |
+| One battle transfers at most 10,000 Dominion | `round(10,000 × tanh(raw exchange / 10,000))` stays near-linear for small fights but one late fleet cannot erase a season; both sides receive exact opposites |
 | `protectedHoursPerVault / capHoursPerVault < 0.5` | At most half a store is ever safe. Above it the vault protects everything and all PvP silently dies. This replaced `vaultMult < alloyMult`; both guard the same failure |
 | `upgradeCost(L).alloy < storageCap(L, vault)` | If one upgrade costs more than a full store holds, the player cannot buy it and progression stops with nothing on screen to explain why. The pre-v2 curves crossed at L10 — this shipped |
 | `SATELLITES.FOUNDRY.production` stays 1.06 | It compounds twice; at 1.08 TURTLE tops every gate seed |

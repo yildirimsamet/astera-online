@@ -367,12 +367,18 @@ know they were raced.
 ## Competition — Dominion
 
 ```
-Dominion = (looted from players + value of enemy units destroyed)
-         − (looted from you     + value of your units destroyed)
+raw battle value = loot from players + enemy unit value destroyed
+                 − own unit value destroyed
+
+battle transfer = round(10,000 × tanh(raw battle value / 10,000))
+Dominion        = sum of battle transfers
 ```
 
-**Exactly zero-sum across the galaxy. Only combat generates it.** It rewards winning fights
-*efficiently*, which is what scouting buys.
+The defender receives the exact negative of the attacker's transfer. It is therefore **exactly
+zero-sum across the galaxy, only combat generates it, and one battle moves at most 10,000
+Dominion.** The smooth bound is nearly linear for small exchanges but prevents one late-season
+fleet from erasing a season's score. It still rewards winning fights *efficiently*, which is what
+scouting buys.
 
 It also **scores defence**: repelling a raid destroys the attacker's ships, which is Dominion
 for the defender. A fortress that is never attacked scores zero; a fortress that is attacked
@@ -382,6 +388,9 @@ A player who never fights scores exactly 0 and sits mid-table however rich they 
 why **no anti-turtle machinery is needed anywhere else in the design.**
 
 Net worth survives as **Wealth**: displayed, never ranked.
+
+The first live-season rollout is prospective: battles resolved before the deployment retain their
+recorded Dominion; only battles resolved afterwards use the bounded transfer.
 
 ## What the game tells you
 

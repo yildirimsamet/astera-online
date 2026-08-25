@@ -169,7 +169,7 @@ export interface Holdings {
   deuterium: number;
 }
 
-/** Running tally behind the Dominion ladder. Sums to zero across a battle. */
+/** Running positive and negative transfers behind the zero-sum Dominion ladder. */
 export interface Ledger {
   taken: number;
   lost: number;

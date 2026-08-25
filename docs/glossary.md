@@ -6,9 +6,10 @@ often you will hit them.
 
 ## Score and standing
 
-**Dominion** — The season ladder. `(looted + enemy value destroyed) − (lost + own value
-destroyed)`. Zero-sum across the galaxy; only combat generates it. A player who never fights
-scores exactly 0.
+**Dominion** — The season ladder. Each battle starts from `loot + enemy unit value destroyed −
+own unit value destroyed`, then posts `round(10,000 × tanh(raw / 10,000))` to the attacker and
+the exact negative to the defender. Zero-sum across the galaxy; only combat generates it; one
+battle moves at most 10,000. A player who never fights scores exactly 0.
 
 **Wealth** — Net worth: everything you own, valued at what it cost. **Displayed, never
 ranked.** It was the ladder for most of the design phase until the simulator killed it.
