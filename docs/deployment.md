@@ -12,7 +12,8 @@ and the rollback boundary. It is deliberately not a release history.
 
 > **Downtime is a cost, not a ritual.** Nothing in the definition above requires the site to
 > stop. Take a stop only when the release cannot be applied while serving, and say which rule
-> forced it — the world is live and real people are in it.
+> forced it — the world is live and real people are in it. The rolling path still costs at most
+> one failed request per replica; step 7 says why, and why it is not retried away.
 
 ## Current production contract
 
@@ -361,6 +362,19 @@ roll api2 3201 && sleep 3
 roll api3 3202 && sleep 3
 roll worker 3210
 ```
+
+**It is no-downtime, not no-error, and the difference is one request per replica.** Nginx OSS has
+no active health check: it ejects an upstream only after `max_fails` failures inside
+`fail_timeout`, so the first request to reach a replica in the instant between its container
+stopping and nginx noticing gets a 502. Measured on the D117 release, which rolled three replicas
+while 15 commanders were playing: exactly one 502, on a `POST /api/planets/:id/collect`.
+
+That request cannot be retried for the player. `proxy_next_upstream` would replay it on a healthy
+replica, but these are MUTATIONS and `request_log` is not wired into the write path yet — replaying
+a collect or an order without an idempotency key is how one tap becomes two. So the honest
+statement is: a rolling release costs at most one failed request per replica, the player sees an
+error and taps again, and the fix is idempotency keys rather than a retry directive. Quiescing
+does not avoid this either; it turns one failed request into several minutes of them.
 
 The worker is a singleton, so it has a real gap of roughly ten to twenty seconds and there is no
 way to roll it. That gap is not user-facing: a scheduled event is claimed with `SKIP LOCKED` and

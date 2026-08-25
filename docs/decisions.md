@@ -2309,6 +2309,14 @@ the same lateness `WORKER_POLL_MS` already admits. It goes last, so the APIs are
 new image when it returns. Rule 1's single-SHA identity is unaffected — all four containers, the
 image label, both git refs and the web release marker still have to agree.
 
+**It is no-downtime, not no-error.** Nginx OSS ejects an upstream only after `max_fails` failures
+inside `fail_timeout`, so the first request to reach a replica between its container stopping and
+nginx noticing gets a 502. The D117 release measured exactly one, on a `POST .../collect`, while 15
+commanders were playing. It cannot be retried for the player: `proxy_next_upstream` would replay a
+MUTATION and `request_log` is not wired into the write path yet, so a replayed collect or order is
+one tap becoming two. The fix is idempotency keys, which is already a known gap. Quiescing does not
+avoid this — it turns one failed request into several minutes of them.
+
 **First used for D115, with 16 commanders mid-session.** Client-only release, no DDL: the
 rehearsal left the restored copy at 31 migrations, which is the measurement rule 5 now asks for.
 All four containers rolled to `31f4c0c` and stayed healthy, the public root answered 200 at every
