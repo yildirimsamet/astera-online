@@ -2208,6 +2208,78 @@ simulator has never once built a Death Star on any seed: its bots reach it throu
 `GRAVITIC_CHARGES`, which needs a GRINDER to raid a shielded defender, and that has
 happened once in 750 bot-seasons. The strategic layer's own tests cover the path instead.
 
+### D115 · A squadron draws every ship it holds; the launch sheet says what is already away — owner instruction
+
+**The marker cap is gone.** `formationFor` truncated a formation at twelve markers and
+`markersFor` builds them in `ALL_HULLS` order, so one crowded hull ate the whole budget
+and every other hull disappeared from the disc. Reported from play: a fleet of 83 Wasps,
+4 Lances, 2 Haulers and 1 Bulwark drew as twelve full Wasp markers and nothing else —
+60 of 90 ships, one of four hulls — while the focus panel it opens spelt all four out.
+D40 required the overflow to be stated as a number instead; it never was. `Formation.hidden`
+was computed in `Squadrons.tsx`, carried through `Fleets.tsx` and read by nothing, so the
+cap's only lasting effect was to state a fleet wrongly with full confidence. `MAX_MARKERS`,
+`Formation` and `formationFor` are deleted; the four call sites take `markersFor` directly.
+
+What the cap bought was real and is now spent: a marker costs two draw calls and a depth
+clear, and the light, pip and wake fields are batched per formation but the hull is not. A
+large fleet is now a large formation. If that becomes a frame problem the answer is
+instancing the hull, not cutting ships back out of the picture — a picture that disagrees
+with the panel above it is the more expensive failure.
+
+**Removing the cap broke the bombardment, and review caught it.** `Bombardment` passes
+`slots.length` into `volleyFor`, whose ceiling is shared out as
+`perModel = max(1, floor(MAX_ROUNDS / models))` — so the `max(1, …)` floor took over past
+40 models and the volley became one round per marker with no ceiling at all. Measured on
+the real functions: 200 ships drew 40 markers and fired 40 rounds; 1,000 ships drew 200
+markers and fired **200 rounds 0.0155s apart**, against a file whose two stated properties
+are "at most `MAX_ROUNDS`" and "never two rounds inside 0.05s". Both bombardment tests said
+"at any formation size" while iterating `[1, 2, 3, 5, 8, 12]` — exactly the range the
+deleted cap guaranteed, which is why they stayed green.
+
+Past the ceiling the FIRING models are now a subset of 40, spread through the cone by
+`slotOf` rather than taken off its tip, so the volley still comes from the whole squadron.
+At or below 40 models `slotOf(i) === i` and the schedule is byte-identical to before.
+Measured after: 12 → 36 rounds at 0.1355s, 40 → 40 at 0.0690s, 60 → 40 at 0.0896s spanning
+slots 0–58, 200 → 40 at 0.0853s spanning 0–195. The size list in the tests now reaches
+`[…, 18, 39, 40, 41, 60, 200]`, and a new test holds the spread.
+
+**Two costs are accepted rather than fixed, and they are pre-existing.** A squadron's only
+hit target is one invisible sphere at its centroid of radius `max(0.45, scale × 1.6)`, and
+the formation radius grows as `sqrt(i)`: at 12 markers it was already 0.73 against a 0.47
+sphere, and at 200 it is 3.10. Craft aim is the same shape — `formationAimDirection` points
+each model at the target from its own offset, so an edge craft in a wide formation points
+inward during the ten-second hold. Both were true before this change and both are now
+larger. Neither is a break; if the tap becomes a real complaint the answer is sizing the
+sphere to the formation, which is two lines.
+
+**And the per-marker cost multiplies across foreign traffic, not just your own fleet.**
+Composition is public (D24) and `contactMarkers` draws a stranger's squadron the same way,
+while `galaxyTraffic` projects every in-flight mission in the season onto every client with
+no limit. Twenty simultaneous 100-ship raids in a 300-commander galaxy is roughly 400
+markers on one disc. Capping foreign contacts would recreate exactly the lying picture this
+decision removes, one screen removed from the player, so it is not done — but this is the
+number to watch first if the disc drops frames, and it has not been measured on a phone.
+
+**And the launch sheet says where the rest of the fleet is.** `planet.fleet` is what is
+standing on the world, which is the right thing to offer — nothing in the air can be
+launched again — but a hull entirely away loses its row, so the sheet read as a fleet that
+had shrunk with nothing on it to say why. Flights are twelve minutes and up; the player who
+sent one has often forgotten. One caption now names what is out: "83 Wasp · 2 Hauler still
+in flight." MOBILE hulls only, because `fleetAway` also carries Prospectors on a mining run
+and this sheet can never send one.
+
+The caption may not promise a return, and the first draft did: `fleetAway` is every unit of
+the world whose `location` is not `home`, which includes transfer and settlement fleets —
+`resolveTransfer` and `resolveSettlement` hand those to the destination world for good. "You
+cannot send them until they are back" was therefore false for every one-way mission. It
+states what is true of all of them instead: they are away, and only what is standing here
+can be sent.
+
+Forced by the same line: the empty-hangar sentence tested `fleetCount(planet.fleet) === 0`,
+and `fleet` carries the Prospector — so a world whose only craft at home was a miner showed
+an empty list with no sentence under it, which is exactly the confusion the caption exists
+to end. It counts MOBILE hulls at home now. Three tests hold the three cases.
+
 ## Architecture
 
 A1 · One source of truth — LOCKED

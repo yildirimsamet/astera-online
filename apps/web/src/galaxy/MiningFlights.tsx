@@ -6,7 +6,7 @@ import type { MiningRun } from '../api/schemas.js';
 import { MODEL } from '../ui/assets.js';
 import { Hull, ROUTE_OPACITY, ROUTE_OPACITY_FOCUSED, Wake, useLine } from './Fleets.jsx';
 import { CRAFT_SCALE, runPosition, toWorld, type PlanetNode, type Vec3Tuple } from './scene.js';
-import { formationFor, slotOffset } from './Squadrons.js';
+import { markersFor, slotOffset } from './Squadrons.js';
 import { markHit, wasTap } from './tap.js';
 import { serverNow } from '../lib/clock.js';
 
@@ -99,8 +99,8 @@ function Run({
     [home, run.intercept, returning],
   );
 
-  const formation = useMemo(
-    () => formationFor({ PROSPECTOR: run.craft }),
+  const markers = useMemo(
+    () => markersFor({ PROSPECTOR: run.craft }),
     [run.craft],
   );
 
@@ -149,7 +149,7 @@ function Run({
         </mesh>
 
         <Suspense fallback={null}>
-          {formation.markers.map((marker, i) => (
+          {markers.map((marker, i) => (
             <Craft key={marker.ordinal} offset={slotOffset(i, STYLE.scale * 1.5)} />
           ))}
         </Suspense>

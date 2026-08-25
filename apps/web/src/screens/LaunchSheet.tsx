@@ -45,6 +45,34 @@ export function LaunchSheet({
   const total = fleetCount(sending);
   const canSend = total > 0 && route.oneWayMinutes > 0;
 
+  /**
+   * WHERE THE REST OF THE FLEET IS. Owner report.
+   *
+   * `planet.fleet` is only what is STANDING on this world, which is the right
+   * number to offer — nothing in the air can be launched again. But a hull that
+   * is entirely away loses its row altogether, so the sheet read as a fleet that
+   * had shrunk, with nothing on it to say why. A raid is a twelve-minute round
+   * trip and a mining run is longer; players forget what they sent.
+   *
+   * MOBILE hulls only. `fleetAway` also carries Prospectors out on a run, and
+   * naming those here would promise a craft this sheet can never send.
+   *
+   * THE SENTENCE MAY NOT PROMISE A RETURN. `fleetAway` is every unit of this
+   * world whose `location` is not `home`, and a transfer or a settlement fleet
+   * never comes back — `resolveTransfer` and `resolveSettlement` hand it to the
+   * destination world for good. So the caption says what is true of every mission
+   * kind: these are away, and only what is standing here can be sent.
+   */
+  const away = MOBILE.map((hull) => ({ hull, count: planet.fleetAway[hull] ?? 0 })).filter(
+    (entry) => entry.count > 0,
+  );
+  /**
+   * Launchable ships at home — NOT `fleetCount(planet.fleet)`, which counts the
+   * Prospector too. A world whose only craft at home was a miner showed an empty
+   * list and no explanation for it.
+   */
+  const atHome = MOBILE.reduce((sum, hull) => sum + (planet.fleet[hull] ?? 0), 0);
+
   const set = (hull: MobileHullId, value: number): void => {
     const available = planet.fleet[hull] ?? 0;
     setSending((current) => ({ ...current, [hull]: Math.max(0, Math.min(available, value)) }));
@@ -136,6 +164,17 @@ export function LaunchSheet({
 
       <div className="mt-6">
         <p className="legend mb-2">{t('launch.fleetHeading')}</p>
+        {away.length > 0 && (
+          <p className="mb-3 text-caption leading-snug text-dim">
+            {t('launch.away', {
+              fleet: away
+                .map((entry) =>
+                  t('launch.awayHull', { count: entry.count, name: hullLabel(entry.hull) }),
+                )
+                .join(t('launch.awaySeparator')),
+            })}
+          </p>
+        )}
         {MOBILE.map((hull) => {
           const available = planet.fleet[hull] ?? 0;
           const chosen = sending[hull] ?? 0;
@@ -203,9 +242,7 @@ export function LaunchSheet({
             </div>
           );
         })}
-        {fleetCount(planet.fleet) === 0 && (
-          <p className="text-body text-dim">{t('launch.noShips')}</p>
-        )}
+        {atHome === 0 && <p className="text-body text-dim">{t('launch.noShips')}</p>}
       </div>
 
       {confirming && (

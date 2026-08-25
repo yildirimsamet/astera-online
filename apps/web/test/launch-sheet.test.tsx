@@ -55,3 +55,78 @@ describe('choosing a fleet to attack with', () => {
     expect(quantity).toHaveValue('200');
   });
 });
+
+/**
+ * WHAT IS ALREADY IN THE AIR. Owner report.
+ *
+ * The sheet offers what is standing on the world, which is correct — nothing in
+ * flight can be launched again. What was wrong is that a hull entirely away lost
+ * its row and the sheet simply read as a smaller fleet. A raid is a twelve-minute
+ * round trip; the player who sent it has often forgotten by the time they open
+ * this.
+ *
+ * The caption may not promise a return: `fleetAway` includes transfer and
+ * settlement fleets, which are handed to the destination world and never come
+ * home. It states what is true of every mission kind instead.
+ */
+describe('the fleet that is already away', () => {
+  it('names what is in the air, including a hull with nothing left at home', () => {
+    render(
+      <LaunchSheet
+        target={target}
+        planet={planetView({
+          fleet: { LANCE: 2 },
+          fleetAway: { WASP: 83, HAULER: 2 },
+        })}
+        onClose={vi.fn()}
+        onLaunched={vi.fn()}
+      />,
+      { wrapper },
+    );
+
+    const note = screen.getByText(/away on a flight/i);
+    expect(note).toHaveTextContent('83 Wasp');
+    expect(note).toHaveTextContent('2 Hauler');
+    // The row is genuinely gone — that is the behaviour the note explains.
+    expect(screen.queryByRole('textbox', { name: /wasp quantity/i })).toBeNull();
+    expect(screen.getByRole('textbox', { name: /lance quantity/i })).toHaveValue('0');
+  });
+
+  /**
+   * A Prospector cannot be put in an attack fleet, so listing one here would
+   * promise a craft this sheet can never send.
+   */
+  it('says nothing about a mining run', () => {
+    render(
+      <LaunchSheet
+        target={target}
+        planet={planetView({ fleet: { WASP: 4 }, fleetAway: { PROSPECTOR: 2 } })}
+        onClose={vi.fn()}
+        onLaunched={vi.fn()}
+      />,
+      { wrapper },
+    );
+
+    expect(screen.queryByText(/away on a flight/i)).toBeNull();
+  });
+
+  /**
+   * The empty-list message counted `fleet` whole, and `fleet` carries the
+   * Prospector — so a world whose only craft at home was a miner showed an empty
+   * list with no sentence under it at all.
+   */
+  it('still says the hangar is empty when the only craft at home is a miner', () => {
+    render(
+      <LaunchSheet
+        target={target}
+        planet={planetView({ fleet: { PROSPECTOR: 1 }, fleetAway: { WASP: 12 } })}
+        onClose={vi.fn()}
+        onLaunched={vi.fn()}
+      />,
+      { wrapper },
+    );
+
+    expect(screen.getByText(/no ships at home/i)).toBeInTheDocument();
+    expect(screen.getByText(/away on a flight/i)).toHaveTextContent('12 Wasp');
+  });
+});

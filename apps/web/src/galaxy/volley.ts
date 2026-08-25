@@ -168,17 +168,32 @@ export function volleyFor(key: string, models: number, planetRadius: number): Sh
   const rng = seededFrom('volley', key);
 
   /**
-   * The ceiling, shared out. Never below one, so EVERY drawn model fires.
+   * HOW MANY MODELS FIRE, AND THEN HOW MANY ROUNDS EACH.
    *
-   * Capping the finished list instead would have been simpler and drops a model
-   * altogether at large formation sizes — a twelve-model raid where one ship sits
-   * there doing nothing while the other eleven fire.
+   * `perModel` shares the ceiling out and never falls below one, so every FIRING
+   * model fires — capping the finished list instead drops a model altogether and
+   * leaves one ship in a twelve-model raid sitting there doing nothing.
+   *
+   * Above `MAX_ROUNDS` models that floor stops being free, and D115 made it
+   * reachable: removing the twelve-marker formation cap means a 200-ship raid
+   * draws 40 markers and a 1,000-ship raid draws 200. One round each is then 200
+   * rounds, and `LAST_LAUNCH` seconds cannot hold 200 rounds without putting two
+   * inside 0.05s of each other — measured at 0.0155s. That is not a bombardment,
+   * it is a stream, and it breaks the two properties this file exists to hold.
+   *
+   * So past the ceiling the FIRING models are a subset, spread THROUGH the cone
+   * by `slotOf` rather than taken off its tip — the volley still comes from the
+   * whole squadron rather than from the ships at the front. At or below the
+   * ceiling `slotOf(i) === i` and nothing about the schedule changes.
    */
-  const perModel = Math.max(1, Math.floor(MAX_ROUNDS / models));
+  const firing = Math.min(models, MAX_ROUNDS);
+  const slotOf = (i: number): number => Math.floor((i * models) / firing);
+  const perModel = Math.max(1, Math.floor(MAX_ROUNDS / firing));
 
   /** Every shot the formation will fire, before any of them has a time. */
   const pending: { slot: number; aim: readonly [number, number]; flight: number }[] = [];
-  for (let slot = 0; slot < models; slot++) {
+  for (let i = 0; i < firing; i++) {
+    const slot = slotOf(i);
     const shots = Math.min(
       perModel,
       SHOTS_MIN + Math.floor(rng() * (SHOTS_MAX - SHOTS_MIN + 1)),
@@ -208,7 +223,7 @@ export function volleyFor(key: string, models: number, planetRadius: number): Sh
     const spread = Math.sqrt(rng()) * planetRadius * SCATTER;
     const angle = rng() * Math.PI * 2;
     pending.push({
-      slot: i % models,
+      slot: slotOf(i % firing),
       aim: [Math.cos(angle) * spread, Math.sin(angle) * spread],
       flight: FLIGHT_MIN + rng() * (FLIGHT_MAX - FLIGHT_MIN),
     });

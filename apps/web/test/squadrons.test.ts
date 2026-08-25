@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { MAX_MARKERS, PER_MODEL, formationFor, leadHull, markersFor, slotOffset } from '../src/galaxy/Squadrons.js';
+import { PER_MODEL, leadHull, markersFor, slotOffset } from '../src/galaxy/Squadrons.js';
 
 /**
  * The owner stated this rule precisely, so it is tested precisely.
@@ -103,29 +103,32 @@ describe('how a fleet becomes models', () => {
 });
 
 /**
- * A cap exists because two hundred Wasps is forty markers — a swarm nobody can
- * count and a frame cost nobody asked for. What matters is that the overflow is
- * REPORTED rather than silently dropped.
+ * NOTHING IS EVER CUT. D115.
+ *
+ * The old twelve-marker cap sliced in `ALL_HULLS` order, so one crowded hull ate
+ * the whole budget and every other hull vanished from the disc — the exact fleet
+ * below drew as twelve Wasps and nothing else while the focus panel spelt all
+ * four hulls out. These hold the two properties that failure violated: every ship
+ * is drawn, and every hull the fleet contains appears.
  */
 describe('very large fleets', () => {
-  it('caps the models drawn and states what is not shown', () => {
-    const { markers, hidden } = formationFor({ WASP: 200 });
-    expect(markers.length).toBeLessThanOrEqual(12);
-    expect(markers.reduce((s, m) => s + m.filled, 0) + hidden).toBe(200);
-    expect(hidden).toBeGreaterThan(0);
+  it('draws every ship in a fleet of two hundred', () => {
+    const markers = markersFor({ WASP: 200 });
+    expect(markers.reduce((sum, marker) => sum + marker.filled, 0)).toBe(200);
+    expect(markers).toHaveLength(40);
   });
 
-  it('counts mixed-hull overflow without losing a ship', () => {
-    const { markers, hidden } = formationFor({ WASP: 31, LANCE: 27, BULWARK: 14 });
-    expect(markers).toHaveLength(MAX_MARKERS);
-    expect(markers.reduce((sum, marker) => sum + marker.filled, 0) + hidden).toBe(72);
-    expect(hidden).toBe(16);
+  it('keeps every hull when one of them is crowded', () => {
+    const markers = markersFor({ WASP: 83, LANCE: 4, HAULER: 2, BULWARK: 1 });
+    expect(markers.reduce((sum, marker) => sum + marker.filled, 0)).toBe(90);
+    expect(new Set(markers.map((marker) => marker.hull))).toEqual(
+      new Set(['WASP', 'LANCE', 'HAULER', 'BULWARK']),
+    );
   });
 
-  it('hides nothing when the fleet fits', () => {
-    const { markers, hidden } = formationFor({ WASP: 5, LANCE: 5 });
-    expect(hidden).toBe(0);
-    expect(markers).toHaveLength(2);
+  it('draws a mixed fleet without losing a ship', () => {
+    const markers = markersFor({ WASP: 31, LANCE: 27, BULWARK: 14 });
+    expect(markers.reduce((sum, marker) => sum + marker.filled, 0)).toBe(72);
   });
 });
 
@@ -150,6 +153,18 @@ describe('what a squadron reads as', () => {
  */
 describe('where each model sits', () => {
   const SPACING = 1;
+  /**
+   * TWELVE, BECAUSE THAT IS THE SIZE THE TIGHTNESS CLAIM WAS MEASURED AT.
+   *
+   * It used to be `MAX_MARKERS`, which D115 deleted. Most of what follows is a
+   * property of `slotOffset` at any size — a tip, growth with depth, a solid
+   * interior — but the two-spacings bound below is NOT: the radius grows as
+   * `sqrt(i)`, so it passes two spacings at about seventeen markers and reaches
+   * roughly seven at two hundred. That assertion is the comparison against the
+   * shallow V it replaced, and the V was measured at twelve. Read it as "tighter
+   * than the V at the size the V was judged", not as a bound on the formation.
+   */
+  const SIZE = 12;
   const slots = (n: number): [number, number, number][] =>
     Array.from({ length: n }, (_, i) => slotOffset(i, SPACING));
 
@@ -162,7 +177,7 @@ describe('where each model sits', () => {
 
   /** Every other craft is BEHIND the point. A cone has one tip, not two. */
   it('places every other craft behind the point', () => {
-    for (const [i, slot] of slots(MAX_MARKERS).entries()) {
+    for (const [i, slot] of slots(SIZE).entries()) {
       if (i === 0) continue;
       expect(slot[2], `slot ${String(i)} is not behind the tip`).toBeLessThan(0);
     }
@@ -171,8 +186,8 @@ describe('where each model sits', () => {
   /** It widens as it goes back — that is what makes it a cone rather than a column. */
   it('widens with depth', () => {
     const radiusOf = (s: [number, number, number]): number => Math.hypot(s[0], s[1]);
-    const first = slots(MAX_MARKERS).slice(1, 4).map(radiusOf);
-    const last = slots(MAX_MARKERS).slice(-3).map(radiusOf);
+    const first = slots(SIZE).slice(1, 4).map(radiusOf);
+    const last = slots(SIZE).slice(-3).map(radiusOf);
     expect(Math.max(...last)).toBeGreaterThan(Math.max(...first));
   });
 
@@ -184,7 +199,7 @@ describe('where each model sits', () => {
    * distinct values rather than clustering onto a few rings.
    */
   it('fills the interior rather than forming a shell', () => {
-    const radii = slots(MAX_MARKERS)
+    const radii = slots(SIZE)
       .slice(1)
       .map((s) => Math.hypot(s[0], s[1]))
       .map((r) => Math.round(r * 100) / 100);
@@ -193,7 +208,7 @@ describe('where each model sits', () => {
 
   /** No two craft occupy the same point, at any size. */
   it('never stacks two craft on the same spot', () => {
-    const all = slots(MAX_MARKERS);
+    const all = slots(SIZE);
     for (let i = 0; i < all.length; i++) {
       for (let j = i + 1; j < all.length; j++) {
         expect(distance(all[i]!, all[j]!), `slots ${String(i)} and ${String(j)}`).toBeGreaterThan(0.05);
@@ -207,14 +222,14 @@ describe('where each model sits', () => {
    * assertion that the owner's "biraz daha göt göte" actually happened.
    */
   it('keeps the whole formation inside two spacings of its centre', () => {
-    for (const slot of slots(MAX_MARKERS)) {
+    for (const slot of slots(SIZE)) {
       expect(Math.hypot(slot[0], slot[1], slot[2])).toBeLessThan(2 * SPACING);
     }
   });
 
   /** Wider than it is tall, because the disc is read from a shallow angle. */
   it('is flatter than it is wide', () => {
-    const all = slots(MAX_MARKERS);
+    const all = slots(SIZE);
     const width = Math.max(...all.map((s) => Math.abs(s[0])));
     const height = Math.max(...all.map((s) => Math.abs(s[1])));
     expect(height).toBeLessThan(width);
@@ -222,7 +237,7 @@ describe('where each model sits', () => {
 
   /** Scales with its spacing and with nothing else — the same shape at any size. */
   it('scales linearly with the spacing it is given', () => {
-    for (let i = 0; i < MAX_MARKERS; i++) {
+    for (let i = 0; i < SIZE; i++) {
       const one = slotOffset(i, 1);
       const three = slotOffset(i, 3);
       for (const axis of [0, 1, 2] as const) {
@@ -233,6 +248,6 @@ describe('where each model sits', () => {
 
   /** Deterministic: the same squadron must not reshuffle between frames. */
   it('gives the same answer every time', () => {
-    expect(slots(MAX_MARKERS)).toEqual(slots(MAX_MARKERS));
+    expect(slots(SIZE)).toEqual(slots(SIZE));
   });
 });

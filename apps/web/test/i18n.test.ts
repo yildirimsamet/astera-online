@@ -84,6 +84,12 @@ const IDENTICAL_ON_PURPOSE = new Set([
   // Nothing but placeholders and separators — no words of their own.
   'notifications.composition',
   'notifications.join',
+  // The away-fleet note's list: "83 Wasp · 2 Hauler". The sentence around it is
+  // translated (`launch.away`); the pair and the separator carry no words. Its
+  // own keys rather than the notification pair above, because no surface shares
+  // a string with another surface (D55).
+  'launch.awayHull',
+  'launch.awaySeparator',
   // " · {{planet}}" — a separator and a name the server supplies.
   'intel.radar.origin',
   'notifications.unlock',

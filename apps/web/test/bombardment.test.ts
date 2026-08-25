@@ -90,8 +90,20 @@ describe('a volley', () => {
     expect(counts.size).toBeGreaterThan(1);
   });
 
+  /**
+   * "AT ANY FORMATION SIZE" HAS TO MEAN ANY SIZE THAT CAN HAPPEN.
+   *
+   * These two used to iterate `[1, 2, 3, 5, 8, 12]` — exactly the range the
+   * deleted twelve-marker cap guaranteed — so they read as universal while
+   * covering only the sizes that could not fail. D115 removed that cap: a 200-ship
+   * raid is 40 markers and a 1,000-ship raid is 200. At 200 models the old
+   * scheduler produced 200 rounds 0.0155s apart, breaking both assertions below
+   * while both stayed green.
+   */
+  const SIZES = [1, 2, 3, 5, 8, 12, 18, 39, 40, 41, 60, 200];
+
   it('keeps the whole volley inside its band, at any formation size', () => {
-    for (const size of [1, 2, 3, 5, 8, 12]) {
+    for (const size of SIZES) {
       const volley = volleyFor(`band-${String(size)}`, size, RADIUS);
       expect(volley.length, `${String(size)} models`).toBeGreaterThanOrEqual(18);
       expect(volley.length, `${String(size)} models`).toBeLessThanOrEqual(40);
@@ -105,12 +117,39 @@ describe('a volley', () => {
   });
 
   /**
+   * PAST THE CEILING, THE FIRING MODELS ARE A SUBSET — AND IT IS SPREAD.
+   *
+   * Above `MAX_ROUNDS` models the window cannot give one round to each, so only
+   * some fire. Taking the first N would fire the tip of the cone and leave the
+   * whole body of the squadron silent, which reads as a small raid inside a large
+   * one. The subset must reach the back of the formation.
+   */
+  it('spreads a past-ceiling volley through the whole cone, not across its tip', () => {
+    for (const models of [60, 200]) {
+      const volley = volleyFor(`spread-${String(models)}`, models, RADIUS);
+      const slots = [...new Set(volley.map((shot) => shot.slot))].sort((a, b) => a - b);
+      expect(slots.length, `${String(models)} models`).toBe(40);
+      // The last firing model sits in the final tenth of the formation.
+      expect(slots[slots.length - 1], `${String(models)} models`).toBeGreaterThan(models * 0.9);
+      // And they are EVENLY spread, not forty in a clump somewhere: the widest
+      // step between two firing models stays at the even stride, plus one for the
+      // rounding when the count does not divide.
+      const widest = slots
+        .slice(1)
+        .reduce((worst, slot, i) => Math.max(worst, slot - slots[i]!), 0);
+      expect(widest, `${String(models)} models`).toBeLessThanOrEqual(
+        Math.ceil(models / 40) + 1,
+      );
+    }
+  });
+
+  /**
    * NOT ALL AT ONCE — the owner's first rule, and the reason the window is sliced
    * rather than sampled. Independent random times over eight seconds clump: with a
    * dozen shots, two inside a tenth of a second of each other is the common case.
    */
   it('never fires two rounds at the same instant, at any formation size', () => {
-    for (const size of [1, 2, 3, 5, 8, 12]) {
+    for (const size of SIZES) {
       const volley = volleyFor(`size-${String(size)}`, size, RADIUS);
       const times = volley.map((s) => s.launchAt).sort((a, b) => a - b);
       for (let i = 1; i < times.length; i++) {

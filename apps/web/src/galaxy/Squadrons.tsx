@@ -13,8 +13,18 @@ import { ALL_HULLS, HULLS, type Fleet, type HullId } from '@astera/rules';
  *   · one Lance  — pips ●●○○○   (2 of 5)
  *
  * Five is the current owner decision: small and medium fleets should read as a
- * group of craft sooner. `MAX_MARKERS` remains the hard render budget, and the
- * numeric overflow preserves the exact count when a large fleet exceeds it.
+ * group of craft sooner.
+ *
+ * NOTHING IS TRUNCATED. D115 removed the twelve-marker render budget, because the
+ * cap sliced markers in `ALL_HULLS` order — so one crowded hull ate the entire
+ * budget and deleted every other hull from the picture. 83 Wasps, 4 Lances, 2
+ * Haulers and 1 Bulwark drew as twelve Wasps and nothing else, while the focus
+ * panel spelt all four out. The numeric overflow D40 asked for was never drawn
+ * anywhere, so the only thing the cap ever did was state a fleet wrongly with full
+ * confidence. What it bought was real and is now spent: a marker costs two draw
+ * calls and a depth clear, so a large fleet is a large formation. If that ever
+ * becomes a frame problem the answer is instancing the hull, not cutting ships
+ * back out of the picture.
  *
  * WHY IT IS WORTH THE TROUBLE. Rendering one marker per fleet tells a player
  * nothing they did not already know; rendering one model per SHIP is unreadable
@@ -61,30 +71,6 @@ export function markersFor(fleet: Fleet): Marker[] {
   }
 
   return out;
-}
-
-/**
- * A cap on how many models one squadron may draw.
- *
- * Two hundred Wasps is forty markers, which is a swarm nobody can count and a
- * frame cost nobody asked for. Past the cap the formation is truncated and the
- * overflow is stated as a number instead — honest, and legible at a glance.
- */
-export const MAX_MARKERS = 12;
-
-export interface Formation {
-  markers: Marker[];
-  /** Ships not represented by a drawn model, because the cap was hit. */
-  hidden: number;
-}
-
-export function formationFor(fleet: Fleet): Formation {
-  const all = markersFor(fleet);
-  if (all.length <= MAX_MARKERS) return { markers: all, hidden: 0 };
-
-  const shown = all.slice(0, MAX_MARKERS);
-  const hidden = all.slice(MAX_MARKERS).reduce((sum, m) => sum + m.filled, 0);
-  return { markers: shown, hidden };
 }
 
 /**

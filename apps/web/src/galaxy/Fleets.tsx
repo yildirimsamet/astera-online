@@ -22,9 +22,8 @@ import {
 } from './scene.js';
 import {
   PER_MODEL,
-  formationFor,
+  markersFor,
   slotOffset,
-  type Formation,
   type Marker,
 } from './Squadrons.js';
 import { markHit, wasTap } from './tap.js';
@@ -650,22 +649,23 @@ function Flight({
 
   /**
    * The formation. D20 / D40: one model per `PER_MODEL` ships, pips for the rest.
+   * Every marker the fleet needs, with nothing cut — D115.
    *
    * A probe is always exactly one craft and gets no pips — empty slots above
    * a scout would be stating a capacity it does not have.
    */
-  const formation = useMemo(
-    () => (isProbe || isDeathStar ? null : formationFor(thread.fleet ?? {})),
+  const markers = useMemo(
+    () => (isProbe || isDeathStar ? null : markersFor(thread.fleet ?? {})),
     [isProbe, isDeathStar, thread.fleet],
   );
 
   /** Where each drawn model sits. Needed twice now: to place it, and to fire from it. */
   const slots = useMemo<Vec3Tuple[]>(
     () =>
-      formation
-        ? formation.markers.map((_, i) => slotOffset(i, style.scale * 1.5))
+      markers
+        ? markers.map((_, i) => slotOffset(i, style.scale * 1.5))
         : [[0, 0, 0]],
-    [formation, style.scale],
+    [markers, style.scale],
   );
 
   const engaging = useEngagement(path ? path.arriveAt.getTime() : null);
@@ -779,10 +779,10 @@ function Flight({
         />
 
         <Suspense fallback={null}>
-          {formation ? (
+          {markers ? (
             <>
               <FormationLightField
-                markers={formation.markers}
+                markers={markers}
                 slots={slots}
                 scale={style.scale}
                 aimDistance={formationAim}
@@ -790,12 +790,12 @@ function Flight({
                 showPips
               />
               <FormationWakes
-                markers={formation.markers}
+                markers={markers}
                 slots={slots}
                 scale={style.scale}
                 aimDistance={formationAim}
               />
-              {formation.markers.map((marker, i) => (
+              {markers.map((marker, i) => (
                 <Craft
                   key={`${marker.hull}-${String(marker.ordinal)}`}
                   marker={marker}
@@ -1691,14 +1691,14 @@ const CONTACT_STYLE: Record<Contact['kind'], { neon: string; scale: number; flam
 };
 
 /** A probe is one craft; anything else is drawn from what the payload says is in it. */
-const contactFormation = (contact: Contact): Formation | null => {
+const contactMarkers = (contact: Contact): Marker[] | null => {
   if (contact.kind === 'probe' || contact.kind === 'death_star') return null;
   // A harvest is Prospectors too, and its count is in `craft` like a mining run's.
   // Falling through to `fleet` — which a run never carries — drew NOTHING at all.
   if (contact.kind === 'mining' || contact.kind === 'harvest') {
-    return formationFor({ PROSPECTOR: contact.craft ?? 1 });
+    return markersFor({ PROSPECTOR: contact.craft ?? 1 });
   }
-  return formationFor(contact.fleet ?? {});
+  return markersFor(contact.fleet ?? {});
 };
 
 export function Traffic({
@@ -1746,7 +1746,7 @@ function Foreign({
   const group = useRef<THREE.Group>(null);
   const formationAim = useRef(100);
   const style = CONTACT_STYLE[contact.kind];
-  const formation = useMemo(() => contactFormation(contact), [contact]);
+  const markers = useMemo(() => contactMarkers(contact), [contact]);
 
   const from = useMemo(() => toWorld(contact.from), [contact.from]);
   const to = useMemo(() => toWorld(contact.to), [contact.to]);
@@ -1781,10 +1781,10 @@ function Foreign({
   const centre = useMemo(() => (fight ? toWorld(fight.target) : null), [fight]);
   const slots = useMemo<Vec3Tuple[]>(
     () =>
-      formation && formation.markers.length > 0
-        ? formation.markers.map((_, i) => slotOffset(i, style.scale * 1.5))
+      markers && markers.length > 0
+        ? markers.map((_, i) => slotOffset(i, style.scale * 1.5))
         : [[0, 0, 0]],
-    [formation, style.scale],
+    [markers, style.scale],
   );
 
   /**
@@ -1882,10 +1882,10 @@ function Foreign({
           focused={focused}
         />
 
-        {formation ? (
+        {markers ? (
           <>
             <FormationLightField
-              markers={formation.markers}
+              markers={markers}
               slots={slots}
               scale={style.scale}
               aimDistance={formationAim}
@@ -1893,12 +1893,12 @@ function Foreign({
               showPips={contact.kind === 'fleet'}
             />
             <FormationWakes
-              markers={formation.markers}
+              markers={markers}
               slots={slots}
               scale={style.scale}
               aimDistance={formationAim}
             />
-            {formation.markers.map((marker, i) => (
+            {markers.map((marker, i) => (
               <Craft
                 key={`${marker.hull}-${String(marker.ordinal)}`}
                 marker={marker}
