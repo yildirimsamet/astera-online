@@ -7,11 +7,20 @@ import {
   type RewardChain,
   type RewardChainId,
   type RewardMetric,
+  type RewardScope,
 } from '@astera/rules';
 import type { Clock } from '../clock.js';
 import type { Db, Tx } from '../db/client.js';
 import { normaliseUsername } from '../auth/credentials.js';
-import { accounts, miningRuns, missions, planets, players, rewardGrants } from '../db/schema.js';
+import {
+  accountRewards,
+  accounts,
+  miningRuns,
+  missions,
+  planets,
+  players,
+  rewardGrants,
+} from '../db/schema.js';
 import {
   GameError,
   assertWorldOperational,
@@ -39,9 +48,9 @@ import { planetView } from './planetView.js';
  *   CORE … EXTRACTOR      the building level standing right now
  *   AEGIS                 the instrument level standing right now
  *   SHIPS                 `planets.builtEver` — the one exception, see the schema
- *   SOCIAL                a row somebody wrote by hand
+ *   SOCIAL                a row somebody wrote by hand, against the ACCOUNT
  *
- * IT COSTS THREE QUERIES AND IT BUYS FOUR THINGS. A chain added next month is
+ * IT COSTS FOUR QUERIES AND IT BUYS FOUR THINGS. A chain added next month is
  * retroactive for everyone with no backfill. A counter cannot drift from the world
  * it counts, because it IS the world. Nothing has to be made idempotent, because
  * nothing is written on the path that produces progress. And a raid that resolves
@@ -56,6 +65,8 @@ import { planetView } from './planetView.js';
 interface Standing {
   planetId: string;
   playerId: string;
+  /** The person behind the seat. Account-scoped tiers are keyed on this, not on the player. */
+  accountId: string;
   levels: Record<string, number>;
   aegis: number;
   builtWasps: number;
@@ -120,16 +131,38 @@ async function miningCounts(tx: Tx, planetId: string): Promise<{ rocks: number; 
   return { rocks: of('asteroid'), wrecks: of('debris') };
 }
 
-/** Every grant row this player has, keyed by tier id. */
-async function grantsOf(
-  tx: Tx,
-  playerId: string,
-): Promise<Map<string, { claimed: boolean }>> {
-  const rows = await tx
-    .select({ id: rewardGrants.rewardId, claimedAt: rewardGrants.claimedAt })
-    .from(rewardGrants)
-    .where(eq(rewardGrants.playerId, playerId));
-  return new Map(rows.map((r) => [r.id, { claimed: r.claimedAt !== null }]));
+/** One tier's record, whichever ledger it was found in. */
+type Ledger = Map<string, { claimed: boolean }>;
+
+const ledgerFrom = (rows: { id: string; claimedAt: Date | null }[]): Ledger =>
+  new Map(rows.map((r) => [r.id, { claimed: r.claimedAt !== null }]));
+
+/** Every season-scoped grant row this player has, keyed by tier id. */
+async function seasonGrantsOf(tx: Tx, playerId: string): Promise<Ledger> {
+  return ledgerFrom(
+    await tx
+      .select({ id: rewardGrants.rewardId, claimedAt: rewardGrants.claimedAt })
+      .from(rewardGrants)
+      .where(eq(rewardGrants.playerId, playerId)),
+  );
+}
+
+/**
+ * Every account-scoped grant row this PERSON has, keyed by tier id.
+ *
+ * A SEPARATE QUERY AND A SEPARATE TABLE BECAUSE IT ANSWERS A DIFFERENT QUESTION:
+ * not "what has this commander done this season" but "what has this human already
+ * been paid for, ever". The season's player row is deleted by a wipe and by the
+ * idle-seat reclaim; the account is not, which is the whole reason the @JoinAstera
+ * bonus is keyed here.
+ */
+async function accountGrantsOf(tx: Tx, accountId: string): Promise<Ledger> {
+  return ledgerFrom(
+    await tx
+      .select({ id: accountRewards.rewardId, claimedAt: accountRewards.claimedAt })
+      .from(accountRewards)
+      .where(eq(accountRewards.accountId, accountId)),
+  );
 }
 
 export type RewardState = 'locked' | 'claimable' | 'claimed';
@@ -137,6 +170,8 @@ export type RewardState = 'locked' | 'claimable' | 'claimed';
 export interface RewardChainView {
   id: RewardChainId;
   metric: RewardMetric;
+  /** Season-scoped chains start again with the world; account-scoped ones never do. */
+  scope: RewardScope;
   progress: number;
   tiers: {
     id: string;
@@ -162,11 +197,26 @@ export interface RewardsView {
  * re-locking a row it owns and re-running the economy advance for nothing.
  */
 async function assemble(tx: Tx, standing: Standing): Promise<RewardsView> {
-  const [flights, mining, grants] = await Promise.all([
+  const [flights, mining, seasonGrants, accountGrants] = await Promise.all([
     flightCounts(tx, standing.planetId),
     miningCounts(tx, standing.planetId),
-    grantsOf(tx, standing.playerId),
+    seasonGrantsOf(tx, standing.playerId),
+    accountGrantsOf(tx, standing.accountId),
   ]);
+
+  /**
+   * WHICH LEDGER OWNS A CHAIN, IN ONE PLACE.
+   *
+   * Every read of a tier's state, every read of a GRANT'S PROGRESS and every
+   * write of a claim goes through this, so the panel and the payment cannot
+   * disagree about where a reward is remembered — which is the failure that would
+   * pay somebody twice. `progressOf` reached past it for `SOCIAL` in the first
+   * draft: correct today, because that chain is account-scoped, and silently
+   * wrong the moment a hand-granted chain is added for one season only — its
+   * progress would be read from one ledger and its state from the other.
+   */
+  const ledgerFor = (chain: RewardChain): Ledger =>
+    chain.scope === 'account' ? accountGrants : seasonGrants;
 
   const progressOf = (chain: RewardChain): number => {
     switch (chain.id) {
@@ -185,10 +235,12 @@ async function assemble(tx: Tx, standing: Standing): Promise<RewardsView> {
       /**
        * A GRANT'S PROGRESS IS WHETHER SOMEBODY WROTE THE ROW. There is nothing in
        * the galaxy to count — the act happened on Twitter — so the existence of
-       * the grant IS the progress, claimed or not.
+       * the grant IS the progress, claimed or not. The row is the ACCOUNT's, so a
+       * commander who took this in an earlier galaxy arrives in the next one with
+       * the card already showing as taken.
        */
       case 'SOCIAL':
-        return grants.has(rewardId('SOCIAL', 1)) ? 1 : 0;
+        return ledgerFor(chain).has(rewardId('SOCIAL', 1)) ? 1 : 0;
       default:
         return standing.levels[chain.id] ?? 0;
     }
@@ -197,13 +249,15 @@ async function assemble(tx: Tx, standing: Standing): Promise<RewardsView> {
   let claimable = 0;
   const chains = REWARD_CHAINS.map((chain) => {
     const progress = progressOf(chain);
+    const ledger = ledgerFor(chain);
     return {
       id: chain.id,
       metric: chain.metric,
+      scope: chain.scope,
       progress,
       tiers: chain.tiers.map((t) => {
         const id = rewardId(chain.id, t.goal);
-        const grant = grants.get(id);
+        const grant = ledger.get(id);
         const state: RewardState = grant?.claimed
           ? 'claimed'
           : progress >= t.goal
@@ -225,30 +279,45 @@ async function assemble(tx: Tx, standing: Standing): Promise<RewardsView> {
   return { chains, claimable };
 }
 
-const standingOf = (planet: LockedPlanet, builtEver: Fleet): Standing => ({
-  planetId: planet.planetId,
-  playerId: planet.playerId,
-  levels: planet.buildings,
-  aegis: planet.instruments.AEGIS ?? 0,
-  builtWasps: builtEver.WASP ?? 0,
-});
-
 /**
- * `loadLocked` carries everything but the tally, which is a column it has no
- * reason to know about. One extra select, on the primary key, inside the lock.
+ * `loadLocked` carries everything but two facts, and neither is a column it has
+ * any reason to know about: the ships-ever tally on the planet row, and WHO owns
+ * the seat. Two selects on primary keys, in parallel, inside the lock.
+ *
+ * The account is here rather than on `LockedPlanet` because rewards are the only
+ * feature that needs it — every other service works entirely in terms of the
+ * season's player, which is the right level for everything that dies with a world.
  */
-async function builtEverOf(tx: Tx, planetId: string): Promise<Fleet> {
-  const [row] = await tx
-    .select({ builtEver: planets.builtEver })
-    .from(planets)
-    .where(eq(planets.id, planetId));
-  return row?.builtEver ?? {};
+async function standingOf(tx: Tx, planet: LockedPlanet): Promise<Standing> {
+  const [worldRows, ownerRows] = await Promise.all([
+    tx.select({ builtEver: planets.builtEver }).from(planets).where(eq(planets.id, planet.planetId)),
+    tx.select({ accountId: players.accountId }).from(players).where(eq(players.id, planet.playerId)),
+  ]);
+  const accountId = ownerRows[0]?.accountId;
+  // A locked, owned planet always has a player row; if it does not, something has
+  // deleted a commander out from under a live world and paying a reward against it
+  // would be the least of the problems. The same code and sentence `loadLocked`
+  // uses for a world with nobody at the controls — a refusal the client already
+  // has words for, rather than a new one meaning "join a galaxy first".
+  if (accountId === undefined) {
+    throw new GameError('PLANET_NOT_OWNED', 'That world has no commander', 403);
+  }
+  const builtEver: Fleet = worldRows[0]?.builtEver ?? {};
+
+  return {
+    planetId: planet.planetId,
+    playerId: planet.playerId,
+    accountId,
+    levels: planet.buildings,
+    aegis: planet.instruments.AEGIS ?? 0,
+    builtWasps: builtEver.WASP ?? 0,
+  };
 }
 
 export async function rewardsView(db: Db, planetId: string, clock: Clock): Promise<RewardsView> {
   return db.transaction(async (tx) => {
     const planet = await loadLocked(tx, planetId, clock, { requireLive: false });
-    return assemble(tx, standingOf(planet, await builtEverOf(tx, planetId)));
+    return assemble(tx, await standingOf(tx, planet));
   });
 }
 
@@ -299,7 +368,7 @@ export async function claimReward(
 
   return withPlanetLock(db, planetId, clock, async (tx, planet) => {
     assertWorldOperational(planet);
-    const standing = standingOf(planet, await builtEverOf(tx, planetId));
+    const standing = await standingOf(tx, planet);
     const view = await assemble(tx, standing);
 
     const tier = view.chains
@@ -328,35 +397,40 @@ export async function claimReward(
     const deuterium = planet.deuterium + tier.deuterium;
 
     /**
-     * ONE STATEMENT FOR BOTH SHAPES OF ROW.
+     * ONE STATEMENT FOR BOTH SHAPES OF ROW, IN WHICHEVER LEDGER OWNS THE CHAIN.
      *
      * An earned tier has no row yet and this inserts it, already claimed. A
      * SOCIAL grant has a row with `claimedAt` NULL and this stamps it — the
      * `WHERE claimed_at IS NULL` is what makes the update a no-op on a second
      * attempt instead of re-stamping a paid reward. Either way exactly one row
      * ends up claimed, and the primary key means it cannot become two.
+     *
+     * THE TWO BRANCHES ARE THE SAME STATEMENT AGAINST TWO KEYS, and they are
+     * written out rather than abstracted because the key IS the guarantee: an
+     * account-scoped tier is paid once per person for ever, a season-scoped one
+     * once per commander per galaxy, and a helper that took the table as an
+     * argument would make that difference a parameter instead of a fact.
      */
-    const written = await tx
-      .insert(rewardGrants)
-      .values({
-        playerId: planet.playerId,
-        rewardId: rewardKey,
-        alloy: tier.alloy,
-        crystal: tier.crystal,
-        deuterium: tier.deuterium,
-        claimedAt: planet.now,
-      })
-      .onConflictDoUpdate({
-        target: [rewardGrants.playerId, rewardGrants.rewardId],
-        set: {
-          claimedAt: planet.now,
-          alloy: tier.alloy,
-          crystal: tier.crystal,
-          deuterium: tier.deuterium,
-        },
-        where: isNull(rewardGrants.claimedAt),
-      })
-      .returning({ id: rewardGrants.rewardId });
+    const claimed = { claimedAt: planet.now, alloy: tier.alloy, crystal: tier.crystal, deuterium: tier.deuterium };
+    const written = ref.chain.scope === 'account'
+      ? await tx
+        .insert(accountRewards)
+        .values({ accountId: standing.accountId, rewardId: rewardKey, ...claimed })
+        .onConflictDoUpdate({
+          target: [accountRewards.accountId, accountRewards.rewardId],
+          set: claimed,
+          where: isNull(accountRewards.claimedAt),
+        })
+        .returning({ id: accountRewards.rewardId })
+      : await tx
+        .insert(rewardGrants)
+        .values({ playerId: planet.playerId, rewardId: rewardKey, ...claimed })
+        .onConflictDoUpdate({
+          target: [rewardGrants.playerId, rewardGrants.rewardId],
+          set: claimed,
+          where: isNull(rewardGrants.claimedAt),
+        })
+        .returning({ id: rewardGrants.rewardId });
 
     /**
      * NOTHING CHANGED MEANS SOMEBODY ELSE GOT THERE FIRST. The conflict clause
@@ -394,6 +468,17 @@ export async function claimReward(
  * IDEMPOTENT. Running it twice for the same commander writes nothing the second
  * time and reports so, because the operator WILL run it twice — the input is a
  * direct message read on a phone.
+ *
+ * AND IDEMPOTENT ACROSS SEASONS, WHICH IS THE POINT OF `scope: 'account'`. The
+ * @JoinAstera bonus is paid once per PERSON: a commander who was granted it in
+ * the last galaxy is reported as `already` in the next one and no second row is
+ * written, whether or not the world they held then still exists. Before the
+ * ledger moved up to the account this said `already: false` every fortnight,
+ * because the player row it was keyed on had been deleted with the season.
+ *
+ * IT RESOLVES AN ACCOUNT, NOT A PLAYER, for the same reason: the operator is
+ * reading a direct message from a human being, and that human is entitled to the
+ * grant while they are between galaxies with no world at all.
  */
 export async function grantReward(
   db: Db,
@@ -420,29 +505,51 @@ export async function grantReward(
      * the only case-insensitivity that is safe in any alphabet.
      */
     const rows = await tx
-      .select({ id: players.id, name: accounts.displayName })
-      .from(players)
-      .innerJoin(accounts, eq(accounts.id, players.accountId))
+      .select({ accountId: accounts.id, name: accounts.displayName, playerId: players.id })
+      .from(accounts)
+      // LEFT, not INNER: an account between galaxies — reclaimed, or waiting out a
+      // rollover — has no player row, and a person who followed us is still that
+      // person while they have no world.
+      .leftJoin(players, eq(players.accountId, accounts.id))
       .where(
         or(eq(accounts.displayName, username), eq(accounts.username, normaliseUsername(username))),
       )
       .limit(1);
-    const player = rows[0];
-    if (!player) throw new GameError('PLAYER_NOT_FOUND', `No commander named ${username}`, 404);
+    const found = rows[0];
+    if (!found) throw new GameError('PLAYER_NOT_FOUND', `No commander named ${username}`, 404);
 
+    // Canonical, for the same reason `claimReward` uses it: this row IS the
+    // once-only key, and the operator types the id on a command line.
+    const values = {
+      rewardId: ref.id,
+      alloy: ref.tier.reward.alloy,
+      crystal: ref.tier.reward.crystal,
+    };
+
+    if (ref.chain.scope === 'account') {
+      const written = await tx
+        .insert(accountRewards)
+        .values({ accountId: found.accountId, ...values })
+        .onConflictDoNothing()
+        .returning({ id: accountRewards.rewardId });
+      return { player: found.name, already: written.length === 0 };
+    }
+
+    /**
+     * A SEASON-SCOPED HAND GRANT NEEDS A SEASON TO PUT IT IN. No chain is written
+     * this way today — every earned tier is counted off the world — but the id is
+     * an argument on a command line, so the case has to answer rather than write a
+     * row against a null.
+     */
+    if (found.playerId === null) {
+      throw new GameError('PLAYER_NOT_IN_SEASON', `${found.name} is not in a galaxy right now`, 409);
+    }
     const written = await tx
       .insert(rewardGrants)
-      .values({
-        playerId: player.id,
-        // Canonical, for the same reason `claimReward` uses it: this row IS the
-        // once-only key, and the operator types the id on a command line.
-        rewardId: ref.id,
-        alloy: ref.tier.reward.alloy,
-        crystal: ref.tier.reward.crystal,
-      })
+      .values({ playerId: found.playerId, ...values })
       .onConflictDoNothing()
       .returning({ id: rewardGrants.rewardId });
 
-    return { player: player.name, already: written.length === 0 };
+    return { player: found.name, already: written.length === 0 };
   });
 }

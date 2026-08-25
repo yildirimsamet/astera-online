@@ -4,7 +4,7 @@ import type { Gain } from '../lib/gains.js';
 
 import { haptic } from '../lib/haptics.js';
 import { duration } from '../lib/time.js';
-import { ActionButton, Price, ResourceAmounts, StatStrip, type Verb } from './Action.js';
+import { ActionButton, Price, ResourceAmounts, type Verb } from './Action.js';
 import { LockMark } from './marks.js';
 
 /**
@@ -45,7 +45,6 @@ export interface Blocked {
 
 export function UpgradeRow({
   art,
-  nextArt,
   mark,
   name,
   level,
@@ -63,7 +62,6 @@ export function UpgradeRow({
   inactive,
   verb,
   actionLabel,
-  stats,
   onAct,
   onOpen,
   pending = false,
@@ -124,6 +122,14 @@ export function UpgradeRow({
   const locked = blocked !== undefined
     && completed === undefined
     && (queued === undefined || queuedActionable);
+  // A requirement belongs to the NEXT action. It must never repaint something
+  // the commander already owns as if it had been taken away (interface I1).
+  const artLocked = locked && unowned;
+  // An optimistic/server queue row appears before the success acknowledgement.
+  // During that seam the NEXT purchase may already be blocked by Core/slots or a
+  // full queue; showing that refusal first makes a successful tap flash as an
+  // error. Acknowledge the order, then expose the next action after the flash.
+  const acknowledging = queued !== undefined && (pending || flash);
 
   /**
    * How long until this is affordable, at the planet's current rates.
@@ -158,7 +164,14 @@ export function UpgradeRow({
                 ? 'available-unowned'
                 : 'owned'
       }
-      className={`relative overflow-hidden border-b border-line-soft p-3 last:border-b-0 ${
+      /*
+        `group` here is Tailwind's MARKER for `group-hover:`, and for a long time
+        it was also a real card style: `chrome.css` gave `.group` a 10px radius, a
+        radial ground and a 1px inset ring, so every purchasable row in the game
+        silently drew a card background and a second ring inside the plate that
+        already had one. The legacy rule is deleted; the marker is what it says.
+      */
+      className={`group relative overflow-hidden border-b border-line-soft px-3 py-3 last:border-b-0 ${
         highlighted ? 'bg-crystal/10 ring-1 ring-inset ring-crystal/40' : ''
       } ${flash ? 'sweep' : ''}`}
     >
@@ -171,7 +184,8 @@ export function UpgradeRow({
         <button
           type="button"
           aria-label={t('upgradeRow.about', { name })}
-          className="absolute inset-0 z-0"
+          data-open-item
+          className="absolute inset-0 z-0 rounded-chip outline-none transition-colors duration-200 hover:bg-bone/[0.025] focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-crystal/70"
           onClick={() => {
             haptic('tap');
             onOpen();
@@ -193,143 +207,129 @@ export function UpgradeRow({
         of height and makes the row read in the order a player asks: what is it,
         what does it look like, what does it cost, what do I press.
       */}
-      <div className="pointer-events-none relative z-10 mb-2">
-        <div className="flex items-baseline gap-2">
-          <h3 className="min-w-0 font-display text-[15px] uppercase tracking-wide text-bone">
-            {name}
-          </h3>
-          {level !== undefined && level > 0 && (
-            <span className={`num text-[12px] text-faint ${flash ? 'pop inline-block' : ''}`}>
-              L{level}
-            </span>
-          )}
-        </div>
-        {/*
-          Small and BOLD, at the owner's direction, and deliberately not the same
-          grey as the sentence lower down: it has to survive a thumb scrolling past
-          at speed, which is the only moment it is ever read.
-        */}
-        {tag && <p className="mt-0.5 text-[11px] font-semibold leading-snug text-dim">{tag}</p>}
-      </div>
-      {inactive && (
-        <p className="pointer-events-none relative z-10 mb-2 rounded border border-alert/35 bg-alert/10 px-2 py-1.5 text-[11px] leading-snug text-alert">
-          {inactive}
-        </p>
-      )}
-      {queued && (
-        <p className="pointer-events-none relative z-10 mb-2 rounded border border-crystal/30 bg-crystal/10 px-2 py-1.5 text-[11px] leading-snug text-crystal">
-          {queued}
-        </p>
-      )}
-
       <div className="pointer-events-none relative z-10 flex items-center gap-3">
-        <div className="art-well relative flex size-[72px] shrink-0 items-center justify-center rounded">
+        {/*
+          THE ART IS THE SUBJECT, AT THE SIZE IT WAS DRAWN FOR.
+
+          `visual-design.md`: the renders are the most expensive thing this
+          project owns, they belong at 96–140px inside a lit socket, and "a render
+          used at 40px in a text row is a wasted asset and reads as a favicon".
+          This row — the most-seen surface in the game — showed them at 48px in a
+          flat radial wash. A socket at 74px is a recess with its own pool of
+          light, so the object sits IN the plate rather than on top of it.
+        */}
+        <div data-art className="socket relative size-[74px] shrink-0 rounded-control">
           {art ? (
             <img
               src={art}
               alt=""
               aria-hidden
-              className={`size-16 object-contain ${
-                locked ? 'opacity-35 grayscale' : unowned ? 'opacity-55 grayscale' : ''
+              className={`socket-art size-[86%] object-contain transition-[filter,opacity,transform] duration-300 group-hover:scale-[1.04] ${
+                artLocked ? 'opacity-35 grayscale' : unowned ? 'opacity-55 grayscale' : ''
               }`}
               loading="lazy"
             />
           ) : (
-            <span className={locked ? 'opacity-35 grayscale' : unowned ? 'opacity-55 grayscale' : ''}>
+            <span className={artLocked ? 'opacity-35 grayscale' : unowned ? 'opacity-55 grayscale' : ''}>
               {mark}
             </span>
           )}
-          {locked && (
+          {artLocked && (
             <span className="absolute inset-0 flex items-center justify-center">
               <LockMark />
             </span>
           )}
         </div>
 
-        {/* The upgrade you are being sold, shown rather than described. */}
-        {!locked && nextArt && (
-          <>
-            <span aria-hidden className="text-[13px] text-faint">
-              →
-            </span>
-            <div className="art-well flex size-[72px] shrink-0 items-center justify-center rounded ring-1 ring-crystal/30">
-              <img
-                src={nextArt}
-                alt={t('upgradeRow.nextTierAlt', { name })}
-                className="size-16 object-contain drop-shadow-[0_0_8px_rgba(111,211,224,0.35)]"
-                loading="lazy"
-              />
-            </div>
-          </>
-        )}
-
-        {/* Pushes the control to the right edge, where every row's control sits. */}
-        <div className="flex-1" />
-
         {/*
-          `data-act` marks THE control this row commits with, so a surface outside
-          the row can point at it without knowing how the row is built. The
-          onboarding gate (D56) lights exactly one control per beat and refuses
-          every other press; a selector reaching in for "the last button" would
-          break the first time a row grew a second one.
+          THE NAME GETS THE COLUMN; THE PRICE SHARES A LINE WITH THE GAIN.
+
+          The price used to sit in its own right-hand block beside the name, and
+          between them the socket, the chevron and two gaps left the name about a
+          hundred pixels — "ISOTOPE SPECT…", which names nothing. This component's
+          own docblock records that exact failure and the reason it matters: this
+          row exists to sell the thing, and a truncated label is worse than a small
+          one because the player cannot tell WHAT they are being sold.
+
+          Everything on the price's old line had a fixed width, so the name was
+          always going to be what gave. Moving the price down onto the state line —
+          where it is read in the same glance as "what does this become" — costs no
+          height at all and hands the name the whole column back.
         */}
-        <span data-act className="pointer-events-auto shrink-0">
-          <ActionButton
-            verb={verb}
-            cost={cost}
-            held={held}
-            {...(blocked ? { blocked } : {})}
-            {...(completed || (queued && !queuedActionable)
-              ? { completed: completed ?? queued }
-              : {})}
-            onAct={onAct}
-            pending={pending}
-            {...(actionLabel ? { label: actionLabel } : {})}
-          />
-        </span>
-      </div>
+        <div className="flex min-w-0 flex-1 flex-col gap-1 self-stretch py-1">
+          <div className="flex min-w-0 items-baseline gap-2">
+            <h3 className="name min-w-0 flex-1 truncate">{name}</h3>
+            {level !== undefined && level > 0 && (
+              <span className={`num shrink-0 text-label text-faint ${flash ? 'pop inline-block' : ''}`}>
+                L{level}
+              </span>
+            )}
+          </div>
+          {tag && <p className="truncate text-caption leading-snug text-dim">{tag}</p>}
 
-      {/*
-        The payload first, the explanation second.
-
-        "Safe from any raid 300 → 390" is the reason to press the button; the
-        sentence underneath is context for a player who wants it. Reading order
-        follows decision order.
-      */}
-      <div className="pointer-events-none relative z-10 mt-2 flex flex-wrap items-baseline gap-x-4 gap-y-1">
-        {gain && !completed && (!queued || queuedActionable) && (
-          <p className="num text-[13px]">
-            <span className="text-faint">{gain.label} </span>
-            {gain.resourcePair
-              ? <ResourceAmounts resources={gain.resourcePair.now} label={gain.now} />
-              : <span className="text-dim">{gain.now}</span>}
-            <span className="mx-1 text-faint" aria-label={t('upgradeRow.becomes')}>
-              →
-            </span>
-            {gain.resourcePair
-              ? <ResourceAmounts resources={gain.resourcePair.next} label={gain.next} />
-              : <span className="text-bone">{gain.next}</span>}
-          </p>
-        )}
-        {!completed && (!queued || queuedActionable) && <Price cost={cost} held={held} />}
-      </div>
-      {gain?.unlocks && !completed && (!queued || queuedActionable) && (
-        <p className="pointer-events-none relative z-10 mt-1 text-[11px] text-crystal/80">
-          {gain.unlocks}
-        </p>
-      )}
-
-      {stats && (
-        <div className="pointer-events-none relative z-10 mt-2">
-          <StatStrip {...stats} />
+          <div className="flex min-w-0 items-baseline gap-2">
+            <div className="min-w-0 flex-1">
+            {inactive ? (
+              <p className="truncate text-caption text-alloy">{inactive}</p>
+            ) : blocked && !acknowledging ? (
+              /* A REQUIREMENT IS A DOOR, NOT AN ALARM (I1). Amber is the game's
+                 word for a gap you can close; red is something happening to you. */
+              <p className="truncate text-caption text-alloy">{blocked.reason}</p>
+            ) : queued ? (
+              <p role="status" className="truncate text-caption text-crystal">{queued}</p>
+            ) : completed ? (
+              <p role="status" className="truncate text-caption text-faint">{completed}</p>
+            ) : gain ? (
+              <p className="num truncate text-caption">
+                <span className="text-faint">{gain.label} </span>
+                {gain.resourcePair
+                  ? <ResourceAmounts resources={gain.resourcePair.now} label={gain.now} />
+                  : <span className="text-dim">{gain.now}</span>}
+                <span className="mx-1 text-faint" aria-label={t('upgradeRow.becomes')}>→</span>
+                {gain.resourcePair
+                  ? <ResourceAmounts resources={gain.resourcePair.next} label={gain.next} />
+                  : <span className="text-bone">{gain.next}</span>}
+              </p>
+            ) : (
+              <p className="truncate text-caption text-faint">{role}</p>
+            )}
+            </div>
+            {!completed && (!queued || queuedActionable) && (
+              <div className="shrink-0"><Price cost={cost} held={held} /></div>
+            )}
+          </div>
         </div>
-      )}
 
-      {!onOpen && (
-        <p className="pointer-events-none relative z-10 mt-1.5 text-[13px] leading-relaxed text-dim">
-          {role}
-        </p>
-      )}
+        <div className="flex shrink-0 items-center gap-2 text-right">
+          {onOpen ? (
+            <svg
+              aria-hidden
+              viewBox="0 0 20 20"
+              className="size-4 shrink-0 text-faint transition-transform duration-300 group-hover:translate-x-0.5 group-hover:text-crystal"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.5"
+            >
+              <path d="M7 4.5 12.5 10 7 15.5" />
+            </svg>
+          ) : (
+            <span data-act className="pointer-events-auto shrink-0">
+              <ActionButton
+                verb={verb}
+                cost={cost}
+                held={held}
+                {...(blocked && !acknowledging ? { blocked } : {})}
+                {...(completed || acknowledging || (queued && !queuedActionable)
+                  ? { completed: completed ?? queued }
+                  : {})}
+                onAct={onAct}
+                pending={pending}
+                {...(actionLabel ? { label: actionLabel } : {})}
+              />
+            </span>
+          )}
+        </div>
+      </div>
 
       {/*
         WHEN, not how far along.
@@ -344,8 +344,8 @@ export function UpgradeRow({
         and the gap is a known number, so the answer is a time, and a time is
         something you can plan a session around.
       */}
-      {!affordable && !blocked && (!queued || queuedActionable) && waitMinutes !== null && (
-        <p className="pointer-events-none relative z-10 mt-2 text-[11px] text-faint">
+      {!onOpen && !affordable && !blocked && (!queued || queuedActionable) && waitMinutes !== null && (
+        <p className="pointer-events-none relative z-10 mt-2 text-label text-faint">
           <Trans
             i18nKey="upgradeRow.affordableIn"
             values={{ duration: duration(waitMinutes) }}
@@ -371,15 +371,13 @@ export function UpgradeRow({
  */
 export function Band({ label, note, aside }: { label: string; note?: string; aside?: ReactNode }) {
   return (
-    <div className="border-b border-line-soft bg-void/30 px-3.5 py-2">
+    <div className="flex flex-col gap-1 border-b border-line-soft bg-void/30 px-3 py-2">
       <div className="flex items-baseline gap-2">
-        <h3 className="font-display text-[11px] uppercase tracking-[0.16em] text-crystal/85">
-          {label}
-        </h3>
-        <span className="h-px flex-1 bg-gradient-to-r from-line-soft to-transparent" />
+        <h3 className="legend text-crystal/85">{label}</h3>
+        <span className="rail-soft flex-1" />
         {aside}
       </div>
-      {note && <p className="mt-1 text-[11px] leading-snug text-faint">{note}</p>}
+      {note && <p className="text-caption leading-snug text-faint">{note}</p>}
     </div>
   );
 }
@@ -397,16 +395,16 @@ export function DecisionGroup({
   children: ReactNode;
 }) {
   return (
-    <section className="mb-6">
-      <header className="mb-1.5 flex items-baseline gap-3">
-        <h2 className="font-display text-[13px] uppercase tracking-[0.18em] text-bone">
-          {problem}
-        </h2>
-        <span className="h-px flex-1 bg-gradient-to-r from-line to-transparent" />
-        {aside}
-      </header>
-      <p className="mb-2.5 text-[12px] text-faint">{question}</p>
-      <div className="frame">{children}</div>
+    <section className="flex flex-col gap-3">
+      <div className="flex flex-col gap-1">
+        <header className="flex items-baseline gap-3">
+          <h2 className="headline shrink-0">{problem}</h2>
+          <span className="rail-soft flex-1" />
+          {aside}
+        </header>
+        <p className="text-caption text-faint">{question}</p>
+      </div>
+      <div className="plate plate-inset overflow-hidden">{children}</div>
     </section>
   );
 }

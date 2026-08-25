@@ -1,10 +1,19 @@
 import { eq } from 'drizzle-orm';
-import { PLANET_START as GRANT, SERVERS } from '@astera/rules';
+import { PLANET_START as GRANT, SERVERS, rewardId } from '@astera/rules';
 import type { FastifyInstance } from 'fastify';
 import { pino } from 'pino';
 import { afterAll, afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { buildApp } from '../src/app.js';
-import { chatMessages, debrisFields, missions, planets, players, seasons, shards } from '../src/db/schema.js';
+import {
+  accountRewards,
+  chatMessages,
+  debrisFields,
+  missions,
+  planets,
+  players,
+  seasons,
+  shards,
+} from '../src/db/schema.js';
 import { FixedClock } from '../src/clock.js';
 import {
   bootstrapServers,
@@ -13,6 +22,7 @@ import {
   wipeAllServers,
 } from '../src/services/servers.js';
 import { joinSeason } from '../src/services/player.js';
+import { grantReward } from '../src/services/rewards.js';
 import { testDb, testEnv, truncateAll, type Fixture } from './helpers.js';
 
 const silent = pino({ level: 'silent' });
@@ -768,6 +778,33 @@ describe('servers', () => {
       });
       expect(res.statusCode).toBe(200);
       expect(res.json<{ placement: unknown }>().placement).toBeNull();
+    });
+
+    /**
+     * A WIPE ENDS A GALAXY. IT DOES NOT UN-FOLLOW ANYBODY.
+     *
+     * The @JoinAstera bonus is paid once per person for ever, and its record is
+     * the only reward row keyed on the account rather than on the season's player.
+     * `wipeAllServers` clears `reward_grants` wholesale — correctly, since that
+     * table's progress was counted off worlds that are about to stop existing — and
+     * clearing this one alongside it would pay every follower again on the first
+     * morning of every new galaxy.
+     */
+    it('does not un-pay the follow bonus when the galaxy ends', async () => {
+      await openWorld(1, 2);
+      const me = await register();
+      await join(me, 'EU-1');
+      const { accounts } = await import('../src/db/schema.js');
+      const [account] = await db.select().from(accounts).where(eq(accounts.id, me.accountId));
+      await grantReward(db, account!.displayName, rewardId('SOCIAL', 1));
+
+      await wipeAllServers(db, clock, { count: 1, capacity: 2 });
+
+      expect(
+        await db.select().from(accountRewards).where(eq(accountRewards.accountId, me.accountId)),
+      ).toHaveLength(1);
+      // And the operator is told so on the other side of the wipe.
+      expect((await grantReward(db, account!.displayName, rewardId('SOCIAL', 1))).already).toBe(true);
     });
 
     it('marks the old seasons wiped rather than leaving them live and empty', async () => {

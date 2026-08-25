@@ -55,7 +55,7 @@ describe('the Dominion leaderboard', () => {
   it('routes another commander name to the existing Galaxy focus', async () => {
     const onFocusPlanet = await show();
     const commander = screen.getByRole('button', { name: 'Commander 0' });
-    expect(commander).toHaveClass('font-bold');
+    expect(commander).toHaveClass('name');
     await userEvent.setup().click(commander);
     expect(onFocusPlanet).toHaveBeenCalledWith('planet-0');
     expect(screen.queryByRole('button', { name: 'İzci' })).not.toBeInTheDocument();

@@ -1,49 +1,70 @@
 import { useEffect, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
-import { AnimatePresence, m } from 'motion/react';
 import { IconButton } from './Button.js';
+import { useOwnPress } from './useOwnPress.js';
 import { CloseIcon } from '../icons/index.js';
 
 /**
  * SHEET — the surface a decision is made on.
  *
  * `docs/interface.md` I3: every item has a detail sheet and the sheet is the commit
- * surface. Committing from the bottom of the screen keeps what you are deciding about
- * on screen ABOVE it while you choose — you decide while looking at what you know,
- * never on a separate page that made you forget it.
+ * surface. Committing from the bottom of the screen keeps what you are deciding
+ * about on screen ABOVE it while you choose — you decide while looking at what you
+ * know, never on a separate page that made you forget it. Since I5 the thing above
+ * is the live galaxy, so the scrim is a tint rather than paint.
  *
- * Since I5 the thing above is not just the previous panel but the live galaxy, so the
- * scrim is glass rather than paint: the world stays visible and slightly out of focus
- * behind the decision.
+ * THERE WERE TWO OF THESE AND THE UNUSED ONE WAS THE BETTER-DRESSED ONE. A kit
+ * sheet with a spring entrance, a grab handle and a glyph close sat at zero
+ * imports while all nine real sheets used a legacy panel whose entrance animation
+ * pointed at a keyframe that does not exist (`animate-[sheet-in_…]`, never
+ * defined) and whose `sheet-premium` class had no rule behind it. So every
+ * decision surface in the game arrived as a jump cut, and the fix had been
+ * written and left on a shelf.
  *
- * `open` is a prop rather than the caller conditionally rendering, because exit
- * animations only run if the element stays mounted long enough to play them, and
- * every caller getting that right independently is a bug waiting to happen.
+ * This is the merge, and it keeps what the shipping one got right:
+ *
+ *   · THREE FIXED ROWS. A head that does not scroll, a body that is the only
+ *     scroller, a foot that does not scroll. The head used to be `sticky top-0`
+ *     inside the scroller, and so was the planet screen's category bar one layer
+ *     up — two things pinned to the same edge, and the categories slid over the
+ *     title. Structure settles that argument; z-index never does.
+ *   · `data-sheet-panel`, which is how the onboarding card (D56) measures the
+ *     sheet's own box rather than the full-screen scrim it floats on.
+ *
+ * And it fixes what neither got right: WHO OWNS THE HORIZONTAL PADDING. The body
+ * pads its children by default; `bleed` hands that job to the caller. Before this
+ * the planet screen was padded by the sheet, un-padded by a `-mx-4` wrapper in
+ * `GalaxyView`, and re-padded by its own root — three declarations, net zero, and
+ * no single owner to change.
  */
 export function Sheet({
-  open,
   title,
   eyebrow,
   onClose,
   children,
   footer,
-  /**
-   * Swipe down to dismiss. OFF for anything irreversible — a launch sheet that can be
-   * closed by a stray thumb is a fleet sent by accident.
-   */
-  dismissible = true,
+  contained = false,
+  bleed = false,
 }: {
-  open: boolean;
   title: string;
   eyebrow?: string;
   onClose: () => void;
   children: ReactNode;
   footer?: ReactNode;
-  dismissible?: boolean;
+  /** Give the body a real height and let its child own scrolling. */
+  contained?: boolean;
+  /**
+   * Drop the body's own padding, because the content runs edge to edge — a
+   * portrait, full-bleed rows, a list with its own dividers. The caller then owns
+   * every inset inside it, and there is exactly one owner.
+   *
+   * This replaces fourteen negative margins. A `-mx-4` is never a layout choice;
+   * it is a note saying the padding was applied one level too high.
+   */
+  bleed?: boolean;
 }) {
   const { t } = useTranslation();
   useEffect(() => {
-    if (!open) return;
     const onKey = (event: KeyboardEvent): void => {
       if (event.key === 'Escape') onClose();
     };
@@ -51,82 +72,75 @@ export function Sheet({
     return () => {
       window.removeEventListener('keydown', onKey);
     };
-  }, [open, onClose]);
+  }, [onClose]);
+
+  /**
+   * THE SCRIM ONLY ANSWERS A GESTURE THAT BEGAN ON IT. D109a.
+   *
+   * Tapping a world opened this sheet and it shut itself again — the tap's click
+   * is dispatched after the sheet has mounted, so it lands on the scrim now under
+   * the finger. `useOwnPress` carries the reasoning and the keyboard exemption.
+   */
+  const dismiss = useOwnPress(onClose);
 
   return (
-    <AnimatePresence>
-      {open && (
-        <div className="fixed inset-0 z-40 flex flex-col justify-end">
-          <m.button
-            type="button"
-            aria-label={t('sheet.dismiss')}
-            onClick={onClose}
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.16 }}
-            className="absolute inset-0 bg-void/70"
+    <div className="fixed inset-0 z-40 flex flex-col justify-end">
+      <button
+        type="button"
+        aria-hidden="true"
+        tabIndex={-1}
+        {...dismiss}
+        className="absolute inset-0 animate-[fade-in_200ms_var(--ease-hardware)] bg-void/80"
+      />
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-label={title}
+        data-sheet-panel
+        className={`plate plate-flush relative flex animate-[sheet-in_340ms_var(--ease-hardware)] flex-col overflow-hidden rounded-b-none rounded-t-sheet pb-[env(safe-area-inset-bottom)] ${
+          contained ? 'h-[88dvh]' : 'max-h-[88dvh]'
+        }`}
+      >
+        <header className="relative flex shrink-0 items-start gap-3 px-4 pb-3 pt-4">
+          {/* The one bright seam on the sheet: a filament along the cut edge, so
+              the panel reads as machined into the frame rather than laid on it. */}
+          <span
+            aria-hidden
+            className="absolute inset-x-4 top-0 h-px bg-gradient-to-r from-crystal/70 via-crystal/15 to-transparent"
           />
+          <div className="min-w-0 flex-1">
+            {eyebrow === undefined ? null : <p className="legend mb-1 truncate">{eyebrow}</p>}
+            <h2 className="headline text-balance text-figure">{title}</h2>
+          </div>
+          {/*
+            A GLYPH, NOT A WORD. The close used to be a full slab reading CLOSE,
+            which is the heaviest control on most of these sheets and sat directly
+            beside the title competing with it. Its accessible name is still the
+            word, so a screen reader and the screenshot harness both still find it.
+          */}
+          <IconButton ariaLabel={t('sheet.close')} onClick={onClose} tone="ghost" size="sm">
+            <CloseIcon className="size-4" />
+          </IconButton>
+        </header>
 
-          <m.div
-            role="dialog"
-            aria-modal="true"
-            aria-label={title}
-            initial={{ y: '100%' }}
-            animate={{ y: 0 }}
-            exit={{ y: '100%' }}
-            transition={{ type: 'spring', stiffness: 420, damping: 38, mass: 0.9 }}
-            {...(dismissible
-              ? {
-                  drag: 'y' as const,
-                  dragConstraints: { top: 0, bottom: 0 },
-                  dragElastic: { top: 0, bottom: 0.4 },
-                  onDragEnd: (
-                    _e: unknown,
-                    info: { offset: { y: number }; velocity: { y: number } },
-                  ) => {
-                    // Distance OR speed — a slow long drag and a quick flick both read
-                    // as "put this away", and requiring both feels stuck.
-                    if (info.offset.y > 130 || info.velocity.y > 700) onClose();
-                  },
-                }
-              : {})}
-            className="glass relative max-h-[88dvh] overflow-hidden rounded-t-2xl pb-[env(safe-area-inset-bottom)] shadow-[0_-18px_46px_-12px_rgba(0,0,0,0.85)]"
-            style={{ boxShadow: 'inset 0 1px 0 rgb(255 255 255 / 12%), 0 -18px 46px -12px rgb(0 0 0 / 85%)' }}
-          >
-            {dismissible && (
-              <div className="flex justify-center pb-1 pt-2.5">
-                <span className="h-1 w-9 rounded-full bg-white/20" />
-              </div>
-            )}
+        <div className="rail-soft shrink-0" />
 
-            <div className="flex items-start gap-3 px-4 pb-3 pt-1">
-              <div className="min-w-0 flex-1">
-                {eyebrow === undefined ? null : <p className="legend mb-1">{eyebrow}</p>}
-                <h2 className="truncate font-display text-title font-bold tracking-wide text-bone etch">
-                  {title}
-                </h2>
-              </div>
-              <IconButton ariaLabel={t('sheet.close')} onClick={onClose} tone="ghost" size="sm">
-                <CloseIcon className="size-4" />
-              </IconButton>
-            </div>
-
-            <div className="rail-soft" />
-
-            <div className="max-h-[62dvh] overflow-y-auto overscroll-contain px-4 py-4">
-              {children}
-            </div>
-
-            {footer === undefined ? null : (
-              <>
-                <div className="rail-soft" />
-                <div className="bg-void/60 px-4 py-3">{footer}</div>
-              </>
-            )}
-          </m.div>
+        {/* `min-h-0` is what actually lets a flex child scroll instead of growing. */}
+        <div
+          className={`min-h-0 flex-1 ${bleed ? '' : 'px-4 py-4'} ${
+            contained ? 'overflow-hidden' : 'overflow-y-auto overscroll-contain'
+          }`}
+        >
+          {children}
         </div>
-      )}
-    </AnimatePresence>
+
+        {footer ? (
+          <>
+            <div className="rail-soft shrink-0" />
+            <div className="shrink-0 bg-void/55 px-4 py-3">{footer}</div>
+          </>
+        ) : null}
+      </div>
+    </div>
   );
 }

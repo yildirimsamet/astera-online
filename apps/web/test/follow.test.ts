@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  easedCameraRange,
   focusIdentity,
   focusTapDecision,
   repeatedFocusTap,
@@ -24,6 +25,20 @@ const frame = (over: Partial<RigFrame> = {}): RigFrame => ({
   acquired: false,
   mode: 'manual',
   ...over,
+});
+
+describe('camera range intent', () => {
+  it('pulls back from Home range for a scripted neighbourhood view', () => {
+    expect(easedCameraRange(7, 18, 0.5, true)).toBe(12.5);
+  });
+
+  it('never pushes out a close view merely because a subject was focused', () => {
+    expect(easedCameraRange(7, 18, 0.5, false)).toBe(7);
+  });
+
+  it('still pulls a distant camera inward for a small focused subject', () => {
+    expect(easedCameraRange(30, 7, 0.5, false)).toBe(18.5);
+  });
 });
 
 describe('naming what the player picked', () => {

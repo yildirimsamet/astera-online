@@ -1,7 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { describeError } from '../i18n/errors.js';
-import { CloseIcon } from './icons/index.js';
+import { CloseIcon, RaidedIcon } from './icons/index.js';
 
 type Tone = 'info' | 'error';
 interface Message {
@@ -85,17 +85,40 @@ export function ToastProvider({ children }: { children: ReactNode }) {
            */
           className="pointer-events-none fixed inset-x-0 bottom-[calc(var(--toast-lift,112px)+env(safe-area-inset-bottom))] z-50 flex justify-center px-4"
         >
+          {/*
+            A REFUSAL LOOKS LIKE A REFUSAL, AND IT USED TO LOOK LIKE THE WEATHER.
+
+            The error variant differed from the informational one by a slightly
+            pink text colour and `border-alert/50` — which drew nothing at all,
+            because `.plate` builds its edge from `box-shadow` and carries no
+            border width, so a border COLOUR is a declaration the browser drops in
+            silence. The one signal in the game that says "that did not happen"
+            was a two-shade difference inside a sentence.
+
+            It is a plate lit in the threat colour with a mark on it now, which is
+            the grammar every other state in this interface already uses: hue for
+            the category, light for the fact that it is on right now.
+          */}
           <div
             key={message.id}
-            className={`panel pointer-events-auto flex max-w-sm items-center gap-2 px-3.5 py-2.5 text-[13px] shadow-lg ${
-              message.tone === 'error' ? 'border-alert/50 text-[#ffb9ae]' : 'text-bone'
+            role={message.tone === 'error' ? 'alert' : undefined}
+            className={`plate pointer-events-auto flex max-w-sm items-center gap-3 px-3 py-3 text-body ${
+              message.tone === 'error' ? 'plate-threat text-threat-ink' : 'text-bone'
             }`}
           >
+            {message.tone === 'error' && (
+              <span
+                aria-hidden
+                className="grid size-7 shrink-0 place-items-center rounded-full bg-threat/25 text-threat-ink"
+              >
+                <RaidedIcon className="size-4" />
+              </span>
+            )}
             <p className="min-w-0 flex-1">{message.text}</p>
             <button
               type="button"
               aria-label={t('toast.dismiss')}
-              className="flex size-10 shrink-0 items-center justify-center rounded-sm text-current/75 hover:bg-raised hover:text-current"
+              className="flex size-10 shrink-0 items-center justify-center rounded-chip text-current/75 hover:bg-raised hover:text-current"
               onClick={() => { setQueue((current) => current.slice(1)); }}
             >
               <CloseIcon className="size-5" />

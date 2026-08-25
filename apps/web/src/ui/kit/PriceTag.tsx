@@ -31,14 +31,14 @@ export function PriceTag({
   size?: 'sm' | 'md';
   className?: string;
 }) {
-  const text = size === 'sm' ? 'text-micro' : 'text-[13px]';
+  const text = size === 'sm' ? 'text-micro' : 'text-body';
   const glyph = size === 'sm' ? 'size-3' : 'size-3.5';
 
   const shortAlloy = have !== undefined && alloy > have.alloy;
   const shortCrystal = have !== undefined && crystal > have.crystal;
 
   return (
-    <span className={`inline-flex items-center gap-2.5 ${className}`}>
+    <span className={`inline-flex items-center gap-3 ${className}`}>
       {alloy > 0 && (
         <span className={`inline-flex items-center gap-1 ${shortAlloy ? 'text-threat' : 'text-alloy'}`}>
           <AlloyIcon className={glyph} />
@@ -86,7 +86,7 @@ export function Amount({
   return (
     <span className={`inline-flex items-center gap-1 ${colour} ${className}`}>
       <Mark className={size === 'sm' ? 'size-3' : 'size-3.5'} />
-      <span className={`num ${size === 'sm' ? 'text-micro' : 'text-[13px]'}`}>{value}</span>
+      <span className={`num ${size === 'sm' ? 'text-micro' : 'text-body'}`}>{value}</span>
     </span>
   );
 }

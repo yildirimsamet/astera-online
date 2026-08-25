@@ -13,16 +13,26 @@ export const onboarding = {
   beats: {
     wide: {
       title: '{{shard}}',
-      line: '{{capacity}} komutan yerinin {{planets}} tanesi tutulmuş, hepsi gerçek insanlarda. Diskte gördüğün her hareket şu anda oluyor.',
+      line: 'Bu galakside gerçek insanlar oynuyor. Her gezegen bir oyuncunun evi. Gördüğün gemiler de onların gerçek filoları.',
       action: 'Gezegenimi göster',
     },
     yours: {
-      title: 'Bir dünya seni bekliyor',
-      line: '{{name}} senin adına ayrıldı. Üstüne dokun.',
+      title: 'Bu gezegen senin',
+      line: '{{name}} güvenli ana gezegenin. Burada kaynak üretir, rakipleri inceler, savunma kurar ve gemi yaparsın. Gezegenine dokun.',
+    },
+    briefing: {
+      title: 'Oyunun dört adımı var',
+      line: 'Önce kaynak üret. Sonra rakipleri incele. Gezegenini koru. Hazır olunca gemilerini gönder. Yükselttiğin her şey bu dört işi güçlendirir.',
+      action: 'İlk adımı yap',
+      mapGrow: 'Üret',
+      mapIntel: 'Gör',
+      mapDefend: 'Koru',
+      mapReach: 'Gönder',
+      mapOutcome: 'Bilgi topla · karar ver · gönder',
     },
     fog: {
-      title: 'Peki diğerlerinde ne var?',
-      line: 'Herhangi birine dokun. Adını ve ne kadar geliştiğini görürsün; elinde ne tuttuğunu göremezsin. O da seninkini göremiyor.',
+      title: 'Önce bilgi, sonra risk',
+      line: 'Başka bir gezegene dokun. Seviyesini görebilirsin; kaynaklarını, gemilerini ve savunmasını göremezsin. Önce bilgi topla, sonra saldırıp saldırmayacağına karar ver.',
     },
     fogAlone: {
       title: 'Burada henüz kimse yok',
@@ -30,20 +40,20 @@ export const onboarding = {
       action: 'Anlaşıldı',
     },
     core: {
-      title: '{{alloy}} alaşım, {{crystal}} kristal',
-      line: 'Bütçenin tamamı bu. Önce Komuta Çekirdeği’ni sıraya koy; hiçbir yapı onu geçemez, sonraki sipariş yeni tavanı hesaba katar.',
+      title: 'Önce seviye sınırını aç',
+      line: 'Komuta Çekirdeği diğer binaların çıkabileceği seviyeyi belirler. Satıra dokun. Açılan kartta 2. seviyenin ne verdiğini ve fiyatını gör; sonra sıraya koy.',
     },
     refinery: {
-      title: 'Sıra Rafineri’de',
-      line: 'Çekirdek sırada önde; bu sipariş onun açacağı tavanı kullanabilir. Alaşımı Rafineri üretir.',
+      title: 'Daha çok alaşım üret',
+      line: 'Rafineri her saat alaşım üretir. Bina ve gemi yapmak için en çok alaşım kullanırsın. Satıra dokun ve 2. seviyeyi sıraya koy.',
     },
     extractor: {
-      title: 'Ve Kristal Ekstraktörü',
-      line: 'Üçüncüsü. Satın alırken kristale dikkat et.',
+      title: 'Şimdi kristal üret',
+      line: 'Ekstraktör her saat kristal üretir. Güçlü gemiler ve istihbarat araçları için kristal gerekir. Satıra dokun ve 2. seviyeyi sıraya koy.',
     },
     fleet: {
-      title: 'Kristalin bitti. Tam olarak.',
-      line: 'Bu bir tesadüf değil; açılış bütçesi birim birim üç yükseltme ve iki gemi eder. Kalanla İKİ {{ship}}yı birden sıraya koy.',
+      title: 'Şimdi iki gemi yap',
+      line: 'Filo sekmesinde {{ship}} satırına dokun. En Fazla seçeneğini seç ve iki gemiyi sıraya koy. Bu hızlı gemileri rakipleri yoklamak veya saldırmak için kullanacaksın.',
     },
   },
 

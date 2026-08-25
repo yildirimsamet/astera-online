@@ -106,6 +106,7 @@ async function main(): Promise<void> {
     // empty application state every time; keep only Drizzle's migration journal.
     await db.execute(sql`
       truncate table
+        account_rewards,
         reward_grants,
         request_log,
         notifications,

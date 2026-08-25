@@ -24,3 +24,4 @@ export * from './galaxy.js';
 export * from './rewards.js';
 export * from './research.js';
 export * from './strategic.js';
+export * from './view.js';

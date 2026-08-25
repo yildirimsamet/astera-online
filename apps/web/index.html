@@ -2,6 +2,17 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
+    <!--
+      THIS META DOES NOT LOCK THE SCALE, AND THAT IS DELIBERATE.
+
+      The page refuses the pinch GESTURE — see `lib/viewport.ts` and the root's
+      `touch-action` — because it scales fixed chrome off the edges of the screen.
+      It does not refuse the CAPABILITY: Safari's Aa menu, keyboard zoom and
+      OS-level magnification all still work, because someone who needs this
+      interface larger must keep a way to get it. Two tests hold this line and both
+      read the raw file, so the flags they forbid are not spelled out here either —
+      `test/interface-accessibility.test.tsx` and `test/viewport-zoom.test.ts`.
+    -->
     <meta
       name="viewport"
       content="width=device-width, initial-scale=1, viewport-fit=cover"

@@ -1,4 +1,4 @@
-import { Gauge } from './Gauge.js';
+import { Meter } from './Meter.js';
 import { useJump } from './useCountUp.js';
 import { RESOURCE_ART } from '../assets.js';
 import { full } from '../../lib/format.js';
@@ -44,9 +44,9 @@ export function ResourcePill({
       : `+${full(rate)}/h`;
 
   return (
-    <div className="plate min-w-0 flex-1 px-2 pb-1.5 pt-1.5">
-      <div className="flex items-center gap-1.5">
-        <span className="socket grid size-[30px] shrink-0 place-items-center rounded-md">
+    <div className="plate min-w-0 flex-1 px-2 pb-2 pt-2">
+      <div className="flex items-center gap-2">
+        <span className="socket grid size-[30px] shrink-0 place-items-center rounded-control">
           <img
             src={kind === 'alloy' ? RESOURCE_ART.alloy : RESOURCE_ART.crystal}
             alt=""
@@ -55,14 +55,12 @@ export function ResourcePill({
           />
         </span>
 
-        <span className={`readout text-[19px] ${tone} ${popping ? 'pop' : ''} truncate`}>
+        <span className={`readout text-figure ${tone} ${popping ? 'pop' : ''} truncate`}>
           {full(value)}
         </span>
 
         <span
-          className={`num ml-auto shrink-0 pl-1 text-[9px] uppercase tracking-wide ${
-            atCap ? 'text-threat lit' : near ? 'text-alloy' : 'text-faint'
-          }`}
+          className={`legend num ml-auto shrink-0 pl-1 ${ atCap ? 'text-threat lit' : near ? 'text-alloy' : 'text-faint' }`}
         >
           {status}
         </span>
@@ -70,8 +68,8 @@ export function ResourcePill({
 
       <p className="sr-only">{kind}</p>
 
-      <div className="mt-1.5">
-        <Gauge value={value} cap={cap} tone={kind} cells={10} height={5} label={kind} />
+      <div className="mt-2">
+        <Meter value={value} cap={cap} tone={kind} cells={10} label={kind} />
       </div>
     </div>
   );

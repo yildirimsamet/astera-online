@@ -73,7 +73,7 @@ export function readsForShardEvent(kind: string): readonly (readonly string[])[]
     /** A world changed shape or gained hardware — the only public change to a world. */
     case 'world':
       return [keys.galaxy, keys.leaderboard];
-    /** A battle changed at least one rounded Dominion score. */
+    /** A battle changed at least one rounded-chip Dominion score. */
     case 'score':
       return [keys.leaderboard];
     /** A season-scoped message changed both the open conversation and closed dot. */

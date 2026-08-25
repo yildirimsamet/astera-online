@@ -86,8 +86,8 @@ export class Projections {
     return this.commanders.get(accountId, () => commanderTopology(this.db, accountId));
   }
 
-  trafficSnapshot(seasonId: string): Promise<TrafficSnapshot> {
-    return this.traffic.get(seasonId, () => loadTrafficSnapshot(this.db, seasonId));
+  trafficSnapshot(seasonId: string, now: Date = new Date()): Promise<TrafficSnapshot> {
+    return this.traffic.get(seasonId, () => loadTrafficSnapshot(this.db, seasonId, now));
   }
 
   miningSnapshot(

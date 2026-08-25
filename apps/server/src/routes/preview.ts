@@ -70,7 +70,7 @@ export function registerPreviewRoutes(app: FastifyInstance): void {
 
     const [worlds, traffic] = await Promise.all([
       app.projections.worlds(target.seasonId, app.clock.now()),
-      app.projections.trafficSnapshot(target.seasonId),
+      app.projections.trafficSnapshot(target.seasonId, app.clock.now()),
     ]);
     // Nothing is excluded: the exclusion in `/api/galaxy/traffic` is "what you
     // OWN", and a visitor owns nothing.

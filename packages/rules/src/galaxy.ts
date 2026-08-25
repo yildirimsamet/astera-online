@@ -148,26 +148,38 @@ function rollLevel(roll: number): number {
  * after the straight-pass model was retired — see the note on `GALAXY` for why it
  * went, and `interceptAsteroid` for what a closed orbit buys the solver.)
  */
-function generateAsteroids(rng: () => number, span: number, seed: number): AsteroidSpec[] {
-  const count = Math.round((GALAXY.asteroidSpawnPerHour * span) / 60);
-  const interval = span / Math.max(1, count);
-  const asteroids: AsteroidSpec[] = [];
+/** The established lane stays fixed so a density increase never moves a live rock. */
+const ASTEROID_BASE_SPAWN_PER_HOUR = 9;
+/** Independent from both planet placement and the established asteroid lane. */
+const ASTEROID_EXTRA_LANE_SEED = 0x243f6a88;
 
-  for (let i = 0; i < count; i++) {
+function appendAsteroidLane(
+  asteroids: AsteroidSpec[],
+  rng: () => number,
+  span: number,
+  seed: number,
+  count: number,
+  indexOffset: number,
+): void {
+  if (count <= 0) return;
+  const interval = span / Math.max(1, count);
+
+  for (let laneIndex = 0; laneIndex < count; laneIndex++) {
+    const index = indexOffset + laneIndex;
     const radius =
       GALAXY.asteroidOrbitMin + rng() * (GALAXY.asteroidOrbitMax - GALAXY.asteroidOrbitMin);
     const speed =
       GALAXY.asteroidSpeedMin + rng() * (GALAXY.asteroidSpeedMax - GALAXY.asteroidSpeedMin);
     const level = rollLevel(rng());
-    const appearsAt = i * interval + rng() * interval;
+    const appearsAt = laneIndex * interval + rng() * interval;
     const life =
       (GALAXY.asteroidLifeHoursMin +
         rng() * (GALAXY.asteroidLifeHoursMax - GALAXY.asteroidLifeHoursMin)) *
       60;
 
-    const isotope = isotopeProfile(seed, i, appearsAt);
+    const isotope = isotopeProfile(seed, index, appearsAt);
     asteroids.push({
-      index: i,
+      index,
       level,
       ore: GALAXY.asteroidOreByLevel[level] ?? 0,
       crystalShare:
@@ -186,6 +198,30 @@ function generateAsteroids(rng: () => number, span: number, seed: number): Aster
       expiresAt: appearsAt + life,
     });
   }
+}
+
+function generateAsteroids(rng: () => number, span: number, seed: number): AsteroidSpec[] {
+  const totalCount = Math.round((GALAXY.asteroidSpawnPerHour * span) / 60);
+  const baseCount = Math.min(
+    totalCount,
+    Math.round((ASTEROID_BASE_SPAWN_PER_HOUR * span) / 60),
+  );
+  const asteroids: AsteroidSpec[] = [];
+
+  // Preserve the established 9/hour lane byte-for-byte. Increasing the rate by
+  // squeezing one interval would move every live rock and invalidate a player's
+  // visual target between two reads. New density is additive instead: the extra
+  // lane has its own seed-shifted RNG and receives fresh indices after the stable
+  // lane, so later edits to either lane cannot re-roll the other.
+  appendAsteroidLane(asteroids, rng, span, seed, baseCount, 0);
+  appendAsteroidLane(
+    asteroids,
+    mulberry32((seed ^ ASTEROID_EXTRA_LANE_SEED) >>> 0),
+    span,
+    seed,
+    totalCount - baseCount,
+    baseCount,
+  );
 
   return asteroids;
 }
@@ -212,7 +248,7 @@ export function asteroidPosition(a: AsteroidSpec, minutes: number): Vec3 {
   };
 }
 
-/** Every rock in the disc right now, in spawn order. */
+/** Every rock in the disc right now, in stable index order. */
 export const activeAsteroids = (
   asteroids: readonly AsteroidSpec[],
   minutes: number,
@@ -388,12 +424,19 @@ export function claimOre(
   deuteriumShare: number,
 ): OreClaim {
   const taken = Math.max(0, Math.min(remaining, hold));
-  const deuterium = Math.floor(taken * deuteriumShare);
-  const ordinary = taken - deuterium;
-  const crystal = Math.floor(ordinary * crystalShare);
+  // A rock's independently seeded Crystal seam stays the same when it is isotope
+  // rich. Deuterium replaces the ordinary Alloy body, never the Crystal that
+  // makes the research path reachable. The generated maxima (65% + 25%) leave
+  // at least 10% Alloy. The clamps also keep this shared primitive conservative
+  // if a malformed caller ever supplies shares outside the generated range.
+  const crystal = Math.max(0, Math.min(taken, Math.floor(taken * crystalShare)));
+  const deuterium = Math.max(
+    0,
+    Math.min(taken - crystal, Math.floor(taken * deuteriumShare)),
+  );
   return {
     taken,
-    alloy: Math.floor(ordinary - crystal),
+    alloy: taken - crystal - deuterium,
     crystal,
     deuterium,
     remaining: Math.max(0, remaining - taken),

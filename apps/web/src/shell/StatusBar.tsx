@@ -6,8 +6,8 @@ import { compact, full } from '../lib/format.js';
 import { haptic } from '../lib/haptics.js';
 import { useProjected, type Projected } from '../lib/projection.js';
 import { RESOURCE_ART } from '../ui/assets.js';
-import { MenuIcon } from '../ui/icons/index.js';
-import { Meter } from '../ui/Meter.js';
+import { ClaimIcon, MenuIcon } from '../ui/icons/index.js';
+import { Meter } from '../ui/kit/index.js';
 import { describe, useToast } from '../ui/Toast.js';
 import type { PlanetView } from '../api/schemas.js';
 import { Signals } from './Signals.js';
@@ -52,25 +52,37 @@ export function StatusBar({
   if (!data) return <div className="h-[70px]" />;
   return (
     <header className="relative shrink-0 border-b border-line bg-gradient-to-b from-[#0b1120] to-void px-3 pb-2 pt-[calc(10px+env(safe-area-inset-top))]">
-      <label className="mb-1.5 flex items-center gap-2 text-[10px] uppercase tracking-[0.16em] text-dim">
-        <span>{t('statusBar.activeWorld')}</span>
-        <select
-          aria-label={t('statusBar.activeWorld')}
-          value={activePlanetId ?? ''}
-          onChange={(event) => { selectPlanet(event.currentTarget.value); }}
-          className="min-h-8 flex-1 rounded-sm border border-line-soft bg-deep px-2 text-[12px] normal-case tracking-normal text-bone"
-        >
-          {worlds.map((world) => (
-            <option key={world.planet.id} value={world.planet.id}>
-              {world.planet.id === capitalPlanetId
-                ? t('statusBar.capitalWorld', { name: world.planet.name })
-                : t('statusBar.colonyWorld', { name: world.planet.name })}
-            </option>
-          ))}
-        </select>
-      </label>
+      {/*
+        THE SELECTOR APPEARS WHEN THERE IS SOMETHING TO SELECT.
+
+        A commander starts with one world and may win up to three (D97), so for
+        most of a season this was a full-width control over a list of one — the
+        first thing on the screen, above the resources, offering a choice that
+        does not exist, and spending about sixty pixels of the disc on the only
+        screen the game has. It appears the moment a second world does, which is
+        also the moment it teaches that it exists.
+      */}
+      {worlds.length > 1 && (
+        <label className="mb-2 flex items-center gap-2">
+          <span className="legend shrink-0">{t('statusBar.activeWorld')}</span>
+          <select
+            aria-label={t('statusBar.activeWorld')}
+            value={activePlanetId ?? ''}
+            onChange={(event) => { selectPlanet(event.currentTarget.value); }}
+            className="field min-h-9 flex-1 py-1 text-caption"
+          >
+            {worlds.map((world) => (
+              <option key={world.planet.id} value={world.planet.id}>
+                {world.planet.id === capitalPlanetId
+                  ? t('statusBar.capitalWorld', { name: world.planet.name })
+                  : t('statusBar.colonyWorld', { name: world.planet.name })}
+              </option>
+            ))}
+          </select>
+        </label>
+      )}
       <div className="flex items-end gap-2">
-        <div className="flex min-w-0 flex-1 items-end gap-1.5" data-resource-strip>
+        <div className="flex min-w-0 flex-1 items-end gap-2" data-resource-strip>
           <Stock
             label={t('statusBar.alloyLabel')}
             value={held.alloy}
@@ -93,7 +105,7 @@ export function StatusBar({
             tone="deuterium"
           />
         </div>
-        <div className="flex shrink-0 items-end gap-1.5 pb-0.5">
+        <div className="flex shrink-0 items-end gap-2 pb-1">
           {/**
            * TWO CONTROLS, AND THERE USED TO BE FOUR. Owner decision.
            *
@@ -128,7 +140,7 @@ export function StatusBar({
               haptic('tap');
               onOpen('menu');
             }}
-            className="relative flex size-11 items-center justify-center rounded-sm border border-line-soft bg-deep text-dim transition-colors hover:border-line hover:text-bone"
+            className="relative flex size-11 items-center justify-center rounded-chip border border-line-soft bg-deep text-dim transition-colors hover:border-line hover:text-bone"
           >
             <MenuIcon className="size-5" />
             {/*
@@ -176,10 +188,19 @@ export function StatusBar({
 export function Bays({ flight }: { flight: { used: number; total: number } }) {
   const { t } = useTranslation();
   if (flight.total <= 0) return null;
+  /*
+    IT SAYS BAYS, AND IT USED TO SAY "IN FLIGHT".
+
+    Which is a different fact, already stated in words at the bottom of the same
+    screen by the pending strip — so a commander with nothing airborne read three
+    filled-looking pips under the words IN FLIGHT at the top, and NOTHING IN
+    FLIGHT fifteen hundred pixels below. This control answers "how much room do I
+    have to launch", which is the question a player has while looking at a fleet.
+  */
   const free = Math.max(0, flight.total - flight.used);
   return (
     <div
-      className="flex shrink-0 flex-col justify-center gap-1 pl-1 pr-0.5 text-right"
+      className="flex shrink-0 flex-col justify-center gap-1 pl-1 pr-1 text-right"
       role="img"
       aria-label={t('statusBar.bays.hint', { used: flight.used, total: flight.total })}
     >
@@ -190,8 +211,8 @@ export function Bays({ flight }: { flight: { used: number; total: number } }) {
             key={i}
             className={
               i < flight.used
-                ? 'h-2.5 w-[5px] rounded-[1px] bg-crystal shadow-[0_0_5px_var(--color-crystal-glow)]'
-                : 'h-2.5 w-[5px] rounded-[1px] bg-line'
+                ? 'h-2.5 w-[5px] rounded-cell bg-crystal shadow-[0_0_5px_var(--color-crystal-glow)]'
+                : 'h-2.5 w-[5px] rounded-cell bg-line'
             }
           />
         ))}
@@ -298,7 +319,7 @@ function Works({
             },
           });
         }}
-        className={`works ${full ? 'works-full' : ''} ${something ? '' : 'works-idle'}`}
+        className={`works ${full ? 'works-full' : ''} ${something ? 'works-ready' : 'works-idle'}`}
       >
         <span className="works-vessels" aria-hidden>
           <Vessel fill={alloyFill} tone="alloy" flowing={!full && planet.planet.alloyPerHour > 0} />
@@ -326,7 +347,12 @@ function Works({
         </span>
 
         <span className={`works-action ${full ? 'text-alloy' : 'text-crystal'}`}>
-          {something ? t('statusBar.works.collect') : t('statusBar.works.idle')}
+          {something ? (
+            <>
+              <ClaimIcon className="collect-mark size-4 shrink-0" />
+              {t('statusBar.works.collect')}
+            </>
+          ) : t('statusBar.works.idle')}
         </span>
       </button>
 
@@ -336,7 +362,7 @@ function Works({
           onClick={() => {
             onOpen('planet');
           }}
-          className="shrink-0 self-center text-[10px] leading-tight text-threat underline-offset-2 hover:underline"
+          className="shrink-0 self-center text-micro leading-tight text-threat underline-offset-2 hover:underline"
         >
           {t('statusBar.works.storeFull')}
         </button>
@@ -418,7 +444,7 @@ function Stock({
       style={{ containerType: 'inline-size' }}
       aria-label={label}
     >
-      <div className="flex items-center gap-1.5">
+      <div className="flex items-center gap-2">
         <img
           src={RESOURCE_ART[tone]}
           alt=""
@@ -445,13 +471,20 @@ function Stock({
         arrives in collected lumps, so "full in 3h" would be a lie and what
         matters is whether the next collection will fit.
       */}
-      <div className="mt-1.5 flex items-center gap-1.5">
+      <div className="mt-2 flex items-center gap-2">
         <span className="min-w-0 flex-1">
           <Meter value={value} cap={cap} tone={tone} cells={8} />
         </span>
+        {/*
+          A FULL STORE KEEPS ITS OWN HUE. `interface.md` I0: storage capacity is
+          not a hostile state, and threat red is reserved for something that can
+          harm the commander. The meter beside this already obeyed that — it holds
+          its colour and closes with a hard end-cap — while the figure next to it
+          went red, so one row gave two answers to "is being full an attack".
+        */}
         <span
-          className={`num shrink-0 text-[10px] leading-none ${
-            atCap ? 'text-threat' : near ? 'text-alloy' : 'text-faint'
+          className={`num shrink-0 text-micro leading-none ${
+            atCap ? colour : near ? 'text-alloy' : 'text-faint'
           }`}
         >
           {atCap ? t('statusBar.storeFull') : t('statusBar.storeFree', { amount: compact(cap - value) })}

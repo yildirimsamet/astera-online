@@ -1,4 +1,14 @@
-import { GALAXY, interpolatePosition, type SatelliteId } from '@astera/rules';
+import {
+  GALAXY,
+  VIEW,
+  interpolatePosition,
+  orbitStandoff,
+  toWorld,
+  worldRadius,
+  worldWeight,
+  type SatelliteId,
+  type Vec3Tuple,
+} from '@astera/rules';
 import type { Contact, GalaxyPlanet, MiningRun, PendingThread } from '../api/schemas.js';
 
 /**
@@ -29,7 +39,7 @@ import type { Contact, GalaxyPlanet, MiningRun, PendingThread } from '../api/sch
  * camera view derives from `DISC_RADIUS`, so the larger scene still has a complete
  * overview; ordinary play sees a neighbourhood instead of a wall of worlds.
  */
-export const SCALE = 50;
+export const SCALE = VIEW.scale;
 
 export const DISC_RADIUS = GALAXY.radius / SCALE;
 export const DISC_THICKNESS = GALAXY.thickness / SCALE;
@@ -58,27 +68,22 @@ export const DISC_THICKNESS = GALAXY.thickness / SCALE;
  */
 export const CRAFT_SCALE = 1.5;
 
-export type Vec3Tuple = [number, number, number];
-
 /**
- * Height, exaggerated.
+ * THE CONVERSION AND THE HEIGHT EXAGGERATION NOW LIVE IN `@astera/rules`. D106.
  *
- * The design's disc is deliberately thin — radius 1000, thickness ±120 — because
- * that reads as a galaxy and stays legible on a portrait phone. Rendered
- * faithfully it also reads as a single horizontal line of planets.
+ * Both are re-exported here so the hundred call sites in this folder read exactly
+ * as they did, and neither is defined here any more. The reason is the whole of
+ * D106: the SERVER has to be able to publish a point that this client will draw in
+ * the same place it draws the owner's own craft, and a conversion with a stretched
+ * height axis cannot be re-derived on the other side — it has to be the same
+ * numbers. See `packages/rules/src/view.ts`.
  *
- * This is relief exaggeration, the same trick a physical globe uses for mountains:
- * the PICTURE is stretched vertically while every distance the game computes stays
- * exactly as it was. Travel times, ranges and the rank floor all read the game's
- * own coordinates and none of them can tell the difference.
+ * The exaggeration is still relief exaggeration and still changes nothing the game
+ * computes: travel times, ranges and the rank floor all read game coordinates and
+ * none of them can tell the difference.
  */
-const VERTICAL_EXAGGERATION = 3.5;
-
-export const toWorld = (p: { x: number; y: number; z: number }): Vec3Tuple => [
-  p.x / SCALE,
-  (p.y * VERTICAL_EXAGGERATION) / SCALE,
-  p.z / SCALE,
-];
+export { toWorld };
+export type { Vec3Tuple };
 
 /** Camera HOME follows the selected controlled world; capital is only a fallback. */
 export function activeWorldPosition(
@@ -163,10 +168,7 @@ export interface PlanetNode {
  * bigger" at the distances this map is actually flown at; 0.44 against 1.40 is
  * 3.2×, and a heavyweight now looks like one from across the disc without a label.
  */
-const WEIGHT_RADIUS: Record<1 | 2 | 3, number> = { 1: 0.44, 2: 0.82, 3: 1.4 };
-
-export const weightOf = (coreTier: number): 1 | 2 | 3 =>
-  coreTier >= 4 ? 3 : coreTier >= 2 ? 2 : 1;
+export const weightOf = worldWeight;
 
 export function planetNodes(planets: readonly GalaxyPlanet[]): PlanetNode[] {
   return planets.map((planet) => ({
@@ -176,7 +178,7 @@ export function planetNodes(planets: readonly GalaxyPlanet[]): PlanetNode[] {
     position: toWorld(planet.position),
     // Map markers, not scale models. A planet at true scale in a disc 2000 units
     // across would be invisible, so these are sized to be READ.
-    radius: WEIGHT_RADIUS[weightOf(planet.coreTier)],
+    radius: worldRadius(planet.coreTier),
     weight: weightOf(planet.coreTier),
     satellites: planet.satellites,
     shielded: planet.shielded,
@@ -224,9 +226,10 @@ export function threadPosition(
   path: NonNullable<PendingThread['path']>,
   now: number,
   standoff: LegStandoff = NO_STANDOFF,
+  nodes: readonly PlanetNode[] = [],
 ): Vec3Tuple {
   if (standoff.start <= 0 && standoff.end <= 0) {
-    return toWorld(
+    return clearOfWorlds(nodes, toWorld(
       interpolatePosition(
         path.from,
         path.to,
@@ -234,7 +237,7 @@ export function threadPosition(
         path.arriveAt.getTime(),
         now,
       ),
-    );
+    ));
   }
 
   /**
@@ -250,11 +253,21 @@ export function threadPosition(
   const span = path.arriveAt.getTime() - path.departAt.getTime();
   const t =
     span <= 0 ? 1 : Math.max(0, Math.min(1, (now - path.departAt.getTime()) / span));
-  return [
+  /**
+   * THE SAME CLAMP EVERY OTHER CRAFT ON THE DISC GETS. D106.
+   *
+   * `clearOfWorlds` used to be applied to a CONTACT at its call site and never to
+   * the owner's own craft, which is how the two pictures came apart at the two
+   * moments a craft is nearest a world: a stranger's copy was pushed clear of the
+   * planet it was leaving while the owner's sat inside it. Applying it here rather
+   * than at the call site is the point — a renderer cannot forget a rule it does
+   * not have to remember.
+   */
+  return clearOfWorlds(nodes, [
     start[0] + (end[0] - start[0]) * t,
     start[1] + (end[1] - start[1]) * t,
     start[2] + (end[2] - start[2]) * t,
-  ];
+  ]);
 }
 
 /* ── stopping short of a world ──────────────────────────────── */
@@ -278,7 +291,7 @@ export function threadPosition(
  * twelve-model formation — which is nearly two spacings across — outside the
  * silhouette rather than half-embedded in it.
  */
-export const orbitStandoff = (radius: number): number => radius * 1.5 + radius * 0.5;
+export { orbitStandoff };
 
 /**
  * The planet a leg is aimed at, if the disc is drawing one there.
@@ -410,15 +423,20 @@ export function runPosition(
   run: MiningRun,
   home: { x: number; y: number; z: number },
   now: number,
+  nodes: readonly PlanetNode[] = [],
 ): Vec3Tuple {
   const returning = run.status === 'returning';
   const [from, to, departAt, arriveAt] = returning
     ? ([run.intercept, home, run.arriveAt, run.homeAt ?? run.arriveAt] as const)
     : ([home, run.intercept, run.departAt, run.arriveAt] as const);
 
-  return toWorld(
+  // The same clamp every other craft gets, for the reason in `threadPosition`: a
+  // Prospector is drawn from this payload for its owner and from a public contact
+  // for everybody else, and the two must not part company at the world it sets off
+  // from and comes back to. D106.
+  return clearOfWorlds(nodes, toWorld(
     interpolatePosition(from, to, departAt.getTime(), arriveAt.getTime(), now),
-  );
+  ));
 }
 
 /**
@@ -475,24 +493,32 @@ export function clearOfWorlds(
 }
 
 /**
- * How far past its window a contact may be carried before it stops.
+ * How long past its window a contact may be carried before it stops.
  *
  * The client WAKES ON `endAt` and asks for the next window (`useContactWindows`),
  * with a sixty-second net under that — so this is only ever reached when a read
  * has actually failed: a tab that was backgrounded, a phone that lost signal.
- * Coasting on the last known bearing for a while is much better than a craft
+ * Coasting on the last known bearing for a moment is much better than a craft
  * stopping dead in open space, which reads as a broken game rather than as a
  * missed request. It reveals nothing: the heading is already public, and
  * extrapolating it is exactly what a player's eye does anyway.
  *
- * It does stop eventually. A craft coasting for ever would sail off the disc and
- * out past the rim, which is a worse lie than standing still.
+ * A DURATION, NOT A SHARE OF THE WINDOW. D106. It was half the window again, and a
+ * window is at least a minute — so a failed read could carry a craft up to THIRTY
+ * SECONDS of flight past where it really was. While the craft is still flying that
+ * costs nothing, because a coast runs at the true speed; the damage is all on the
+ * other side of the arrival, where the real craft has stopped and the guess sails
+ * on through the world it just landed on, during the ten seconds the whole galaxy
+ * is watching a bombardment. Three seconds is a bridge over a slow request, which
+ * is all a coast was ever for. Past that, holding is the honest picture — and a tab
+ * that comes back to the front resyncs immediately (`useEventStream`), so the hold
+ * lasts exactly as long as the failure does.
  *
  * AND IT DOES NOT APPLY TO AN ARRIVAL AT ALL. D72. A window clamped to the landing
  * has no more flight to coast into, so extrapolating it flies the craft through
  * the world it is arriving at. `contact.landing` is what tells the two apart.
  */
-const COAST = 1.5;
+const COAST_MS = 3_000;
 
 /**
  * Where somebody else's craft is, this instant. D24.
@@ -521,6 +547,20 @@ export function contactPosition(
     return engagementHold(fight.target, contact.from, nodes);
   }
 
+
+  /**
+   * THE WINDOW IS ALREADY ON THE DRAWN LEG. D106.
+   *
+   * There is no correction to apply here any more, and that is the point: the
+   * server publishes a window whose endpoints sit on the same standoff-adjusted
+   * line the owner's own client flies (`visualLeg` in `@astera/rules`), so a
+   * stranger interpolating this payload lands on the same coordinates the owner
+   * does. This used to end at the world's CENTRE while the owner stopped in orbit,
+   * and the gap grew along the leg — a raid's last minutes had the owner still
+   * closing while everybody else watched it sit on the target.
+   */
+  const visualTo = toWorld(contact.to);
+
   /**
    * COAST ONLY WHERE THERE IS MORE FLIGHT TO COAST INTO.
    *
@@ -534,15 +574,17 @@ export function contactPosition(
    * The payload says which kind of window this is (`landing`), because four
    * coordinates and two instants cannot. A heading coasts; an arrival holds.
    */
-  const ceiling = contact.landing === true ? 1 : COAST;
   const span = contact.endAt.getTime() - contact.startAt.getTime();
+  const ceiling = contact.landing === true || span <= 0 ? 1 : 1 + COAST_MS / span;
   const t =
     span <= 0 ? 1 : Math.max(0, Math.min(ceiling, (now - contact.startAt.getTime()) / span));
-  return toWorld({
-    x: contact.from.x + (contact.to.x - contact.from.x) * t,
-    y: contact.from.y + (contact.to.y - contact.from.y) * t,
-    z: contact.from.z + (contact.to.z - contact.from.z) * t,
-  });
+  const visualFrom = toWorld(contact.from);
+  // Clamped here rather than at the call site, for the reason in `threadPosition`.
+  return clearOfWorlds(nodes, [
+    visualFrom[0] + (visualTo[0] - visualFrom[0]) * t,
+    visualFrom[1] + (visualTo[1] - visualFrom[1]) * t,
+    visualFrom[2] + (visualTo[2] - visualFrom[2]) * t,
+  ]);
 }
 
 /**

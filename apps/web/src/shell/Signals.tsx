@@ -8,7 +8,7 @@ import { haptic } from '../lib/haptics.js';
 import { describeNotification, isAlarming, notificationIdentity } from '../lib/notifications.js';
 import { useProjected, type Projected } from '../lib/projection.js';
 import { duration, staleness, useNow } from '../lib/time.js';
-import { Sheet } from '../ui/Sheet.js';
+import { Sheet } from '../ui/kit/index.js';
 import type { Panel } from '../screens/GalaxyView.jsx';
 import { serverNow } from '../lib/clock.js';
 import {
@@ -128,7 +128,7 @@ export function Signals({
          * new, and a badge that can never be cleared teaches people to ignore
          * badges.
          */
-        className={`relative flex size-11 items-center justify-center rounded-sm border transition-colors ${
+        className={`relative flex size-11 items-center justify-center rounded-chip border transition-colors ${
           unseen > 0
             ? 'border-threat/70 bg-threat/15 motion-safe:animate-pulse'
             : status.length > 0
@@ -143,9 +143,9 @@ export function Signals({
                 header's own gradient rather than only inside the border. */}
             <span
               aria-hidden
-              className="pointer-events-none absolute -inset-1 rounded-sm bg-threat/20 blur-[6px] motion-safe:animate-pulse"
+              className="pointer-events-none absolute -inset-1 rounded-chip bg-threat/20 blur-[6px] motion-safe:animate-pulse"
             />
-            <span className="num absolute -right-1 -top-1 min-w-[16px] rounded-full bg-threat px-1 text-center text-[10px] leading-4 text-bone shadow-[0_0_8px_rgba(224,138,124,0.9)]">
+            <span className="num absolute -right-1 -top-1 min-w-[16px] rounded-full bg-threat px-1 text-center text-micro leading-4 text-bone shadow-[0_0_8px_rgba(224,138,124,0.9)]">
               {unseen > 9 ? '9+' : unseen}
             </span>
           </>
@@ -164,9 +164,9 @@ export function Signals({
           }}
         >
           {status.length > 0 && (
-            <div className="mb-5 mt-4">
+            <div className="mb-6 mt-4">
               <p className="legend mb-2">{t('signals.statusHeading')}</p>
-              <div className="frame">
+              <div className="plate plate-inset">
                 {status.map((item) => (
                   <button
                     key={item.line}
@@ -179,21 +179,15 @@ export function Signals({
                     }}
                     className="flex w-full items-start gap-3 border-b border-line-soft p-3 text-left last:border-b-0"
                   >
-                    <span className={`mt-0.5 grid size-9 shrink-0 place-items-center rounded-sm border ${
-                      item.tone === 'threat'
-                        ? 'border-threat/45 bg-threat/10 text-threat'
-                        : item.tone === 'alloy'
-                          ? 'border-alloy/35 bg-alloy/10 text-alloy'
-                          : 'border-crystal/35 bg-crystal/10 text-crystal'
-                    }`} aria-hidden>
+                    <span className={`mt-1 grid size-9 shrink-0 place-items-center rounded-chip border ${ item.tone === 'threat' ? 'border-threat/45 bg-threat/10 text-threat' : item.tone === 'alloy' ? 'border-alloy/35 bg-alloy/10 text-alloy' : 'border-crystal/35 bg-crystal/10 text-crystal' }`} aria-hidden>
                       <StatusGlyph kind={item.kind} />
                     </span>
                     <span className="min-w-0 flex-1">
-                      <span className="block text-[13px] text-bone">{item.line}</span>
-                      <span className="mt-0.5 block text-[12px] text-faint">{item.detail}</span>
+                      <span className="block text-body text-bone">{item.line}</span>
+                      <span className="mt-1 block text-caption text-faint">{item.detail}</span>
                     </span>
                     {item.go && (
-                      <span aria-hidden className="shrink-0 text-[13px] text-faint">
+                      <span aria-hidden className="shrink-0 text-body text-faint">
                         →
                       </span>
                     )}
@@ -205,12 +199,12 @@ export function Signals({
 
           <p className="legend mb-2">{t('signals.eventsHeading')}</p>
           {events.length === 0 ? (
-            <div className="grid justify-items-center gap-3 border border-dashed border-line-soft px-5 py-7 text-center text-dim">
+            <div className="grid justify-items-center gap-3 border border-dashed border-line-soft px-6 py-8 text-center text-dim">
               <BellIcon className="size-10 text-faint" />
-              <p className="max-w-[28ch] text-[13px] leading-relaxed">{t('signals.empty')}</p>
+              <p className="max-w-[28ch] text-body leading-relaxed">{t('signals.empty')}</p>
             </div>
           ) : (
-            <div className="frame">
+            <div className="plate plate-inset">
               {groups.map((entry) => (
                 <Event
                   key={entry.event.id}
@@ -323,17 +317,11 @@ function Event({
           className="absolute inset-0"
         />
       )}
-      <span className={`mt-0.5 grid size-9 shrink-0 place-items-center rounded-sm border ${
-        !unread
-          ? 'border-line-soft bg-deep text-faint'
-          : bad
-            ? 'border-threat/45 bg-threat/10 text-threat'
-            : 'border-crystal/40 bg-crystal/10 text-crystal'
-      }`} aria-hidden>
+      <span className={`mt-1 grid size-9 shrink-0 place-items-center rounded-chip border ${ !unread ? 'border-line-soft bg-deep text-faint' : bad ? 'border-threat/45 bg-threat/10 text-threat' : 'border-crystal/40 bg-crystal/10 text-crystal' }`} aria-hidden>
         <EventGlyph kind={event.kind} />
       </span>
       <span className="pointer-events-none relative min-w-0 flex-1">
-        <span className={`relative block text-[13px] ${bad ? 'text-[#ff9d8f]' : 'text-bone'}`}>
+        <span className={`relative block text-body ${bad ? 'text-threat-ink' : 'text-bone'}`}>
           {subject && subjectAt >= 0 ? (
             <>
               {line.slice(0, subjectAt)}
@@ -358,7 +346,7 @@ function Event({
             <span className="num text-faint"> {i18n.t('signals.repeat', { count: repeats })}</span>
           )}
         </span>
-        <span className="num mt-0.5 block text-[11px] text-faint">
+        <span className="num mt-1 block text-label text-faint">
           {staleness((now - event.at.getTime()) / 60_000)}
         </span>
       </span>
@@ -480,7 +468,7 @@ function Beacon({ lit }: { lit: boolean }) {
   return (
     <svg
       viewBox="0 0 24 24"
-      className={`size-5 ${lit ? 'text-[#ffb9ae]' : 'text-faint'}`}
+      className={`size-5 ${lit ? 'text-threat-ink' : 'text-faint'}`}
       fill="none"
       stroke="currentColor"
       strokeWidth="1.5"

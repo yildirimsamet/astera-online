@@ -1,7 +1,8 @@
 import { and, eq } from 'drizzle-orm';
 import { afterAll, beforeEach, describe, expect, it } from 'vitest';
-import { REWARD_CHAINS, alloyRate, rewardId, storageCap } from '@astera/rules';
+import { REWARD_CHAINS, SERVERS, alloyRate, rewardId, storageCap } from '@astera/rules';
 import {
+  accountRewards,
   accounts,
   buildings,
   miningRuns,
@@ -14,6 +15,9 @@ import { buildUnits } from '../src/services/build.js';
 import { launchAttack } from '../src/services/mission.js';
 import { launchProbe } from '../src/services/intel.js';
 import { claimReward, grantReward, rewardsView } from '../src/services/rewards.js';
+import { reclaimIdleSeats } from '../src/services/reclaim.js';
+import { createSeason } from '../src/services/season.js';
+import { joinSeason } from '../src/services/player.js';
 import { GameError } from '../src/services/planet.js';
 import {
   giveInstrument,
@@ -366,7 +370,12 @@ describe('rewards', () => {
     expect((await grantReward(f.db, row!.name, rewardId('SOCIAL', 1))).already).toBe(false);
     expect((await grantReward(f.db, row!.name, rewardId('SOCIAL', 1))).already).toBe(true);
 
-    const rows = await f.db.select().from(rewardGrants).where(eq(rewardGrants.playerId, row!.id));
+    // Against the ACCOUNT: the follow bonus is `scope: 'account'`, so the row that
+    // makes it once-only outlives the season this commander happens to be in.
+    const rows = await f.db
+      .select()
+      .from(accountRewards)
+      .where(eq(accountRewards.accountId, row!.accountId));
     expect(rows).toHaveLength(1);
   });
 
@@ -431,6 +440,155 @@ describe('rewards', () => {
     await expect(grantReward(f.db, 'nobody-at-all', rewardId('SOCIAL', 1))).rejects.toMatchObject({
       code: 'PLAYER_NOT_FOUND',
     });
+  });
+
+  /**
+   * THE RACE THE PLANET LOCK DOES NOT COVER, AND THE ONLY GUARD LEFT STANDING.
+   *
+   * Every other claim test races two requests at ONE world, so `withPlanetLock`
+   * serialises them and the insert's conflict clause is never actually reached.
+   * Since D97 a commander holds a capital and up to three colonies, so two taps
+   * on two worlds take two DIFFERENT row locks — and for a reward paid once per
+   * account there is nothing between them but `ON CONFLICT ... WHERE claimed_at
+   * IS NULL` and the check on what it returned. That is exactly the pair the
+   * docblock calls belt and braces; this is the test that takes the belt off.
+   *
+   * One payment, one row, and the second request refused rather than quietly
+   * paying a second world.
+   */
+  it('pays the follow bonus once when two of a commander\'s worlds claim it at once', async () => {
+    const [row] = await f.db.select().from(players).where(eq(players.id, f.playerIds[0]!));
+    await grantReward(f.db, row!.name, rewardId('SOCIAL', 1));
+
+    // A second world under the same commander. Any world they control may open
+    // the panel, and the reward lands wherever it was claimed from.
+    const colony = f.planetIds[2]!;
+    await f.db
+      .update(planets)
+      .set({ kind: 'COLONY', controllerPlayerId: f.playerIds[0]! })
+      .where(eq(planets.id, colony));
+
+    const [capitalBefore] = await f.db.select().from(planets).where(eq(planets.id, mine));
+    const [colonyBefore] = await f.db.select().from(planets).where(eq(planets.id, colony));
+
+    const results = await Promise.allSettled([
+      claimReward(f.db, mine, rewardId('SOCIAL', 1), f.clock),
+      claimReward(f.db, colony, rewardId('SOCIAL', 1), f.clock),
+    ]);
+    expect(results.filter((r) => r.status === 'fulfilled')).toHaveLength(1);
+
+    expect(
+      await f.db
+        .select()
+        .from(accountRewards)
+        .where(eq(accountRewards.accountId, f.accountIds[0]!)),
+    ).toHaveLength(1);
+
+    const tier = REWARD_CHAINS.find((c) => c.id === 'SOCIAL')!.tiers[0]!.reward;
+    const [capitalAfter] = await f.db.select().from(planets).where(eq(planets.id, mine));
+    const [colonyAfter] = await f.db.select().from(planets).where(eq(planets.id, colony));
+    const paid =
+      (capitalAfter!.alloy - capitalBefore!.alloy) + (colonyAfter!.alloy - colonyBefore!.alloy);
+    expect(paid).toBeCloseTo(tier.alloy, 4);
+  });
+
+  /* ── once per person, not once per season ──────────────────── */
+
+  /**
+   * THE BONUS IS PAID TO A HUMAN BEING, AND HUMANS OUTLIVE GALAXIES. Owner
+   * instruction: *"twitter takip bonusu kişiye 1 kez verilebilmeli. her sezon her
+   * sezon alamaz."*
+   *
+   * The whole failure was one key. `reward_grants` is keyed on `players`, and a
+   * player row is deleted by a wipe and by the idle-seat reclaim — so the moment
+   * the seat turned over, the ledger said this account had never been paid, and
+   * the operator's command said `already: false` and wrote a second grant. A
+   * follower who joined in the first galaxy could collect 1,000 alloy and 500
+   * crystal every fortnight for ever, for one follow they performed once.
+   *
+   * These three tests are the fix seen from its three surfaces: where the row is
+   * written, what the panel says in the NEXT galaxy, and what the operator is told
+   * when the direct message arrives a second time.
+   */
+  it('writes the follow bonus against the account, not against the season player', async () => {
+    const [row] = await f.db.select().from(players).where(eq(players.id, f.playerIds[0]!));
+    await grantReward(f.db, row!.name, rewardId('SOCIAL', 1));
+
+    expect(
+      await f.db
+        .select()
+        .from(accountRewards)
+        .where(eq(accountRewards.accountId, f.accountIds[0]!)),
+    ).toHaveLength(1);
+    // Nothing season-scoped was written: the two ledgers must not both hold it,
+    // because two records of one payment is how a second payment starts.
+    expect(
+      await f.db.select().from(rewardGrants).where(eq(rewardGrants.playerId, f.playerIds[0]!)),
+    ).toHaveLength(0);
+  });
+
+  /**
+   * The real thing, end to end: take the bonus, lose the seat to the idle sweep,
+   * join the next galaxy with the same account, and find the card already taken.
+   */
+  it('stays taken in the next galaxy, after the seat has been reclaimed', async () => {
+    const [row] = await f.db.select().from(players).where(eq(players.id, f.playerIds[0]!));
+    await grantReward(f.db, row!.name, rewardId('SOCIAL', 1));
+    await claimReward(f.db, mine, rewardId('SOCIAL', 1), f.clock);
+
+    const away = new Date(f.clock.now().getTime() - (SERVERS.idleDays + 1) * 24 * 60 * 60_000);
+    await f.db
+      .update(players)
+      .set({ lastActiveAt: away, joinedAt: away })
+      .where(eq(players.id, f.playerIds[0]!));
+    expect((await reclaimIdleSeats(f.db, f.clock)).reclaimed).toHaveLength(1);
+
+    const { season } = await createSeason(f.db, {
+      shardCode: 'EU-TEST-NEXT',
+      seed: 909,
+      startsAt: f.clock.now(),
+      playerCap: 60,
+      rulesetVersion: 1,
+    });
+    const next = await joinSeason(f.db, f.accountIds[0]!, season.id, f.clock);
+
+    const view = await rewardsView(f.db, next.planetId, f.clock);
+    const social = view.chains.find((c) => c.id === 'SOCIAL')!;
+    expect(social.scope).toBe('account');
+    expect(social.progress).toBe(1);
+    expect(social.tiers[0]?.state).toBe('claimed');
+    await expect(
+      claimReward(f.db, next.planetId, rewardId('SOCIAL', 1), f.clock),
+    ).rejects.toMatchObject({ code: 'REWARD_TAKEN' });
+  });
+
+  /**
+   * And the operator's side of it. They are reading a direct message on a phone
+   * and have no way to know this commander was paid two galaxies ago — so the
+   * command has to be the thing that knows.
+   */
+  it('tells the operator the bonus is already theirs, seasons later', async () => {
+    const [row] = await f.db.select().from(players).where(eq(players.id, f.playerIds[0]!));
+    await grantReward(f.db, row!.name, rewardId('SOCIAL', 1));
+    await claimReward(f.db, mine, rewardId('SOCIAL', 1), f.clock);
+
+    const away = new Date(f.clock.now().getTime() - (SERVERS.idleDays + 1) * 24 * 60 * 60_000);
+    await f.db
+      .update(players)
+      .set({ lastActiveAt: away, joinedAt: away })
+      .where(eq(players.id, f.playerIds[0]!));
+    await reclaimIdleSeats(f.db, f.clock);
+
+    // Between galaxies, with no world at all — the account is still the person who
+    // followed us, and the grant still knows it.
+    const again = await grantReward(f.db, row!.name, rewardId('SOCIAL', 1));
+    expect(again.already).toBe(true);
+    expect(
+      await f.db
+        .select()
+        .from(accountRewards)
+        .where(eq(accountRewards.accountId, f.accountIds[0]!)),
+    ).toHaveLength(1);
   });
 
   /* ── the badge ─────────────────────────────────────────────── */

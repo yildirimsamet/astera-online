@@ -13,6 +13,7 @@ export const chronicle = {
   launcherDeathStar: '{{planet}} üzerinde Death Star darbesi',
   launcherControl: '{{planet}} el değiştirdi',
   list: 'Bu galaksideki herkese açık olaylar',
+  repeatCount: '{{count}} kez',
   empty: 'Galaksi şimdilik sakin. Bir sonraki kalkış bunu değiştirebilir.',
   older: 'Daha eski olayları yükle',
   loadingOlder: 'Eski olaylar okunuyor',

@@ -1,7 +1,8 @@
 import { and, eq } from 'drizzle-orm';
 import { afterAll, beforeEach, describe, expect, it, vi } from 'vitest';
-import { SERVERS } from '@astera/rules';
+import { SERVERS, rewardId } from '@astera/rules';
 import {
+  accountRewards,
   accounts,
   battleReports,
   buildings,
@@ -20,7 +21,7 @@ import {
 } from '../src/db/schema.js';
 import { idleSeatCount, reclaimIdleSeats } from '../src/services/reclaim.js';
 import { launchAttack } from '../src/services/mission.js';
-import { claimReward } from '../src/services/rewards.js';
+import { claimReward, grantReward } from '../src/services/rewards.js';
 import { EventWorker } from '../src/worker/loop.js';
 import { pino } from 'pino';
 import {
@@ -361,6 +362,34 @@ describe('reclaiming idle seats', () => {
       await f.db.select().from(notifications).where(eq(notifications.playerId, f.playerIds[0]!)),
     ).toHaveLength(0);
     expect(await f.db.select().from(players).where(eq(players.id, f.playerIds[0]!))).toHaveLength(0);
+  });
+
+  /**
+   * AND THE ONE LEDGER IT MUST NOT TOUCH.
+   *
+   * `account_rewards` records what a PERSON has been paid once and for ever — the
+   * @JoinAstera follow bonus. The account survives a reclaim by owner decision, so
+   * its record has to as well: deleting it here would hand the same follower a
+   * fresh 1,000 alloy and 500 crystal in whichever galaxy they join next, every
+   * time their seat turned over. The sweep deletes what the WORLD is the reason
+   * for, and a follow on Twitter is not that.
+   */
+  it('keeps what the person was paid once and for ever', async () => {
+    const [row] = await f.db.select().from(players).where(eq(players.id, f.playerIds[0]!));
+    await grantReward(f.db, row!.name, rewardId('SOCIAL', 1));
+    await lastSeen(f.playerIds[0]!, SERVERS.idleDays + 1);
+
+    expect((await reclaimIdleSeats(f.db, f.clock)).reclaimed).toHaveLength(1);
+
+    expect(
+      await f.db
+        .select()
+        .from(accountRewards)
+        .where(eq(accountRewards.accountId, row!.accountId)),
+    ).toHaveLength(1);
+    // The account itself is still there to own it — that is the owner decision the
+    // reclaim rests on, and the reward row is meaningless without it.
+    expect(await f.db.select().from(accounts).where(eq(accounts.id, row!.accountId))).toHaveLength(1);
   });
 
   /**

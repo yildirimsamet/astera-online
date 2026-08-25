@@ -299,6 +299,7 @@ life          2.5–5 hours, then gone for good
 ore by level  [—, 800, 1600, 3200, 6000, 11000]   weights [—, .40, .27, .18, .10, .05]
 crystal share 0.25–0.65, rolled per rock
 isotope       one seeded rock per 9 after hour 35, plus a bonus seam every 10 lanes
+              10–25% Deuterium concentration, replacing Alloy; Crystal share remains intact
 ```
 
 **Spawn is per-capita or mining dies at scale.** A flat rate tuned at 50 players is six times thinner

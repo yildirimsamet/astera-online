@@ -5,10 +5,9 @@ import { chatRelativeTime } from '../lib/chatTime.js';
 import { describeError } from '../i18n/errors.js';
 import { haptic } from '../lib/haptics.js';
 import { useNow } from '../lib/time.js';
-import { Button } from '../ui/kit/index.js';
+import { Button, EmptyState } from '../ui/kit/index.js';
 import { SendIcon } from '../ui/icons/index.js';
-import { Empty } from '../ui/primitives.js';
-import { Unreachable, Waiting } from '../ui/kit/Surface.js';
+import { Unreachable, Waiting } from '../ui/kit/index.js';
 
 export function ChatScreen({ onFocusPlanet }: { onFocusPlanet: (planetId: string) => void }) {
   const { t } = useTranslation();
@@ -67,13 +66,13 @@ export function ChatScreen({ onFocusPlanet }: { onFocusPlanet: (planetId: string
           </div>
         )}
         {messages.length === 0 ? (
-          <div className="py-8"><Empty>{t('chat.empty')}</Empty></div>
+          <div className="py-6"><EmptyState title={t('chat.empty')} /></div>
         ) : (
           <ol className="space-y-2 py-3">
             {messages.map((message) => (
               <li
                 key={message.id}
-                className={`max-w-[88%] rounded-md border px-3 py-2 ${
+                className={`max-w-[88%] rounded-control border px-3 py-2 ${
                   message.self
                     ? 'ml-auto border-crystal/25 bg-crystal/8'
                     : 'mr-auto border-line-soft bg-deep'
@@ -81,7 +80,7 @@ export function ChatScreen({ onFocusPlanet }: { onFocusPlanet: (planetId: string
               >
                 <div className="flex items-baseline justify-between gap-3">
                   {message.self ? (
-                    <strong className="truncate font-display text-[11px] font-bold uppercase tracking-wide text-crystal">
+                    <strong className="name truncate text-crystal">
                       {message.username}
                     </strong>
                   ) : (
@@ -91,7 +90,7 @@ export function ChatScreen({ onFocusPlanet }: { onFocusPlanet: (planetId: string
                         haptic('tap');
                         onFocusPlanet(message.planetId);
                       }}
-                      className="truncate font-display text-[11px] font-bold uppercase tracking-wide text-bone underline decoration-bone/35 underline-offset-2"
+                      className="name truncate text-bone underline decoration-bone/35 underline-offset-2"
                     >
                       {message.username}
                     </button>
@@ -100,7 +99,7 @@ export function ChatScreen({ onFocusPlanet }: { onFocusPlanet: (planetId: string
                     {chatRelativeTime(message.createdAt, now, t)}
                   </time>
                 </div>
-                <p className="mt-1 whitespace-pre-wrap break-words text-[13px] leading-relaxed text-dim">
+                <p className="mt-1 whitespace-pre-wrap break-words text-body leading-relaxed text-dim">
                   {message.content}
                 </p>
               </li>
@@ -119,7 +118,7 @@ export function ChatScreen({ onFocusPlanet }: { onFocusPlanet: (planetId: string
               rows={1}
               placeholder={t('chat.placeholder')}
               onChange={(event) => { setDraft(Array.from(event.target.value).slice(0, 280).join('')); }}
-              className="block w-full resize-none rounded-md border border-line-soft bg-deep px-3 py-2 text-[14px] text-bone outline-none placeholder:text-faint focus:border-crystal/50"
+              className="field block min-h-11 resize-none py-3 text-body"
             />
           </label>
           <Button
@@ -128,7 +127,7 @@ export function ChatScreen({ onFocusPlanet }: { onFocusPlanet: (planetId: string
             variant="primary"
             disabled={!draft.trim() || post.isPending}
             icon={<SendIcon className="size-4" />}
-            className="flex !min-h-[39px]"
+            className="flex"
           >
             {t('chat.send')}
           </Button>

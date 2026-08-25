@@ -204,6 +204,20 @@
       "when": 1787577268958,
       "tag": "0028_breezy_chamber",
       "breakpoints": true
+    },
+    {
+      "idx": 29,
+      "version": "7",
+      "when": 1787598905907,
+      "tag": "0029_bitter_paladin",
+      "breakpoints": true
+    },
+    {
+      "idx": 30,
+      "version": "7",
+      "when": 1787599215141,
+      "tag": "0030_mysterious_lorna_dane",
+      "breakpoints": true
     }
   ]
 }

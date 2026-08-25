@@ -1,6 +1,13 @@
 import { act, cleanup, render } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { musicEnabled, setMusicEnabled, useAmbientMusic } from '../src/lib/music.js';
+import {
+  DEFAULT_MUSIC_VOLUME,
+  musicEnabled,
+  musicVolume,
+  setMusicEnabled,
+  setMusicVolume,
+  useAmbientMusic,
+} from '../src/lib/music.js';
 
 /**
  * THE SCORE, AND THE FOUR THINGS THAT GO WRONG WITH BACKGROUND AUDIO.
@@ -43,6 +50,7 @@ const setHidden = (value: boolean): void => {
 
 beforeEach(() => {
   setMusicEnabled(true);
+  setMusicVolume(DEFAULT_MUSIC_VOLUME);
   hidden = false;
   rejectPlay = null;
   fake = {
@@ -271,5 +279,51 @@ describe('the sound switch', () => {
     expect(musicEnabled()).toBe(false);
     spy.mockRestore();
     setMusicEnabled(true);
+  });
+
+  it('changes the running element volume without rebuilding or restarting it', () => {
+    const created: HTMLAudioElement[] = [];
+    const Audio = window.Audio;
+    vi.stubGlobal(
+      'Audio',
+      class extends Audio {
+        constructor() {
+          super();
+          created.push(this);
+        }
+      },
+    );
+    render(<Harness />);
+    const plays = fake.play.mock.calls.length;
+
+    act(() => {
+      setMusicVolume(0.72);
+    });
+
+    expect(created[0]!.volume).toBeCloseTo(0.72, 5);
+    expect(fake.play).toHaveBeenCalledTimes(plays);
+    expect(fake.load).not.toHaveBeenCalled();
+    vi.unstubAllGlobals();
+  });
+
+  it('clamps and remembers volume, including silence, without changing mute state', () => {
+    setMusicEnabled(true);
+    setMusicVolume(2);
+    expect(musicVolume()).toBe(1);
+    expect(musicEnabled()).toBe(true);
+    expect(globalThis.localStorage.getItem('astera.music.volume')).toBe('1');
+
+    setMusicVolume(-1);
+    expect(musicVolume()).toBe(0);
+    expect(musicEnabled()).toBe(true);
+  });
+
+  it('ignores malformed persisted volume and survives blocked storage writes', () => {
+    const spy = vi.spyOn(globalThis, 'localStorage', 'get').mockImplementation(() => {
+      throw new Error('storage is disabled');
+    });
+    expect(() => { setMusicVolume(0.61); }).not.toThrow();
+    expect(musicVolume()).toBeCloseTo(0.61, 5);
+    spy.mockRestore();
   });
 });

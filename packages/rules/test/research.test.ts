@@ -54,9 +54,46 @@ describe('the two-project frontier', () => {
     expect(seedLanes.size).toBeGreaterThan(1);
   });
 
-  it('replaces the calibrated share of ordinary ore with Deuterium instead of creating value', () => {
-    const claim = claimOre(10_000, 2_000, 0.25, DEUTERIUM.isotopeShare);
-    expect(claim.deuterium).toBe(Math.round(2_000 * DEUTERIUM.isotopeShare));
+  it('rolls each rich rock deterministically across the inclusive 10–25% range', () => {
+    const shares: number[] = [];
+    for (let seed = 1; seed <= 50; seed += 1) {
+      for (let index = 0; index < 200; index += 1) {
+        const profile = isotopeProfile(seed, index, DEUTERIUM.frontierStartsAtMinutes);
+        if (!profile.rich) continue;
+        expect(profile.deuteriumShare).toBeGreaterThanOrEqual(DEUTERIUM.isotopeShareMin);
+        expect(profile.deuteriumShare).toBeLessThanOrEqual(DEUTERIUM.isotopeShareMax);
+        expect(profile.deuteriumShare * 100)
+          .toBeCloseTo(Math.round(profile.deuteriumShare * 100), 10);
+        shares.push(profile.deuteriumShare);
+      }
+    }
+    expect(new Set(shares).size).toBe(16);
+    expect(shares.reduce((sum, share) => sum + share, 0) / shares.length)
+      .toBeGreaterThanOrEqual(0.16);
+    expect(shares.reduce((sum, share) => sum + share, 0) / shares.length)
+      .toBeLessThanOrEqual(0.19);
+  });
+
+  it('replaces the rolled share of ordinary ore with Deuterium instead of creating value', () => {
+    const share = isotopeProfile(4242, 7, DEUTERIUM.frontierStartsAtMinutes).deuteriumShare || 0.25;
+    const claim = claimOre(10_000, 2_000, 0.25, share);
+    expect(claim.deuterium).toBe(Math.round(2_000 * share));
+    expect(claim.crystal).toBe(500);
+    expect(claim.alloy + claim.crystal + claim.deuterium).toBe(claim.taken);
+  });
+
+  it('keeps Alloy non-negative at the richest legal Crystal and isotope shares', () => {
+    expect(claimOre(10_000, 2_000, 0.65, 0.25)).toMatchObject({
+      alloy: 200,
+      crystal: 1300,
+      deuterium: 500,
+      taken: 2000,
+    });
+  });
+
+  it('never creates ore even if a malformed caller supplies overlapping shares', () => {
+    const claim = claimOre(1000, 400, 0.9, 0.9);
+    expect(claim).toMatchObject({ alloy: 0, crystal: 360, deuterium: 40, taken: 400 });
     expect(claim.alloy + claim.crystal + claim.deuterium).toBe(claim.taken);
   });
 });

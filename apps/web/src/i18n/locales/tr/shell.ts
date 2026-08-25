@@ -20,7 +20,7 @@ export const statusBar = {
   menuWaiting: '{{count}} ödül bekliyor',
   bays: {
     hint: '{{total}} rampanın {{used}} tanesi dolu',
-    label: 'Havada',
+    label: 'Rampa',
     free: '{{count}} boş',
   },
   works: {
@@ -38,6 +38,10 @@ export const statusBar = {
 
 export const pendingStrip = {
   empty: 'Havada bir şey yok',
+  openFlights: 'Havadaki araçları aç',
+  sheetEyebrow: 'Havadaki araçların',
+  sheetTitle: 'Havada',
+  sheetEmpty: 'Henüz havada bir aracın yok.',
   incoming: 'Filo geliyor',
   probe: 'Sondan → {{target}}',
   deathStar: 'Ölüm Yıldızın → {{target}}',
@@ -49,6 +53,13 @@ export const pendingStrip = {
   returnLeg: 'Dönüş',
   engaging: 'Çatışıyor',
   more: '+{{count}}',
+  drillOut: 'Delicilerin → {{index}} numaralı asteroid',
+  drillHome: 'Delicilerin eve dönüyor',
+  salvageOut: 'Delicilerin → enkaz',
+  drillCount: '{{count}} Öncü',
+  craftCount: '{{count}} araç',
+  craftUnknown: 'Araç dökümü bilinmiyor',
+  incomingHint: 'Yaklaşan tehdit · kaynak sisin ardında',
 } as const;
 
 export const signals = {
@@ -127,6 +138,8 @@ export const menu = {
   soundLabel: 'Ses',
   soundOn: 'Müzik çalıyor.',
   soundOff: 'Bu cihazda kapalı.',
+  volumeLabel: 'Müzik seviyesi',
+  volumeValue: '%{{volume}}',
 } as const;
 
 export const leaderboard = {

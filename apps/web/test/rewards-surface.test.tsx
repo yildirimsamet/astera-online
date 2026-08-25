@@ -42,9 +42,10 @@ const tier = (goal: number, state: 'locked' | 'claimable' | 'claimed', chain = '
 
 const rewards = (chains: unknown[], claimable = 0) => ({ chains, claimable });
 
-const social = (state: 'locked' | 'claimable' | 'claimed') => ({
+const social = (state: 'locked' | 'claimable' | 'claimed', scope = 'account') => ({
   id: 'SOCIAL',
   metric: 'grant',
+  scope,
   progress: state === 'locked' ? 0 : 1,
   tiers: [{ id: 'SOCIAL:1', goal: 1, alloy: 1000, crystal: 500, state }],
 });
@@ -256,6 +257,55 @@ describe('the reward panel', () => {
     const bonus = await screen.findByText(/community bonus/i);
     const goal = screen.getByText(/probes sent/i);
     expect(bonus.compareDocumentPosition(goal) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
+  /**
+   * ONCE PER ACCOUNT, AND THE CARD HAS TO SAY SO. Owner instruction: *"twitter
+   * takip bonusu kişiye 1 kez verilebilmeli. her sezon her sezon alamaz."*
+   *
+   * The server is what enforces it — the grant is keyed on the account, so the
+   * tier never comes back as claimable in a new galaxy. What this covers is the
+   * other half of the same instruction: a commander who reads the ordinary
+   * "Taken" on a fresh world would reasonably follow the account again and wait
+   * for a reply that is never going to pay. So the instructions come down, the
+   * button to another site comes down, and the card says what actually happened.
+   */
+  it('says the bonus is spent for good once the account has taken it', async () => {
+    const { wrapper: Wrapper, queries } = harness();
+    queries.setQueryData(['rewards'], rewards([social('claimed')]));
+
+    render(
+      <Wrapper>
+        <RewardsScreen commander="Vantage" />
+      </Wrapper>,
+    );
+
+    expect(await screen.findByText(/once per account/i)).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /claim your bonus/i })).not.toBeInTheDocument();
+    // The three steps and the way out of the game are a thing to DO. Nothing is
+    // left to do.
+    expect(screen.queryByRole('link', { name: /JoinAstera/i })).not.toBeInTheDocument();
+    expect(screen.queryByText(/follow @JoinAstera —/i)).not.toBeInTheDocument();
+  });
+
+  /**
+   * A SERVER ONE DEPLOY BEHIND SENDS NO `scope`, and silence has one safe reading.
+   * The card falls back to the ordinary "Taken" rather than promising, on a payload
+   * that never said so, that the reward is gone for ever.
+   */
+  it('falls back to the plain wording when the server does not say the scope', async () => {
+    const { wrapper: Wrapper, queries } = harness();
+    const { scope: _scope, ...older } = social('claimed');
+    queries.setQueryData(['rewards'], rewards([older]));
+
+    render(
+      <Wrapper>
+        <RewardsScreen commander="Vantage" />
+      </Wrapper>,
+    );
+
+    expect(await screen.findByText(/^taken$/i)).toBeInTheDocument();
+    expect(screen.queryByText(/once per account/i)).not.toBeInTheDocument();
   });
 
   it('offers the claim once a human has confirmed it', async () => {

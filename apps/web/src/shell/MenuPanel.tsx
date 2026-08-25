@@ -1,11 +1,16 @@
-import type { ReactNode } from 'react';
+import type { CSSProperties, ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useRewards } from '../api/queries.js';
-import { setMusicEnabled, useMusicEnabled } from '../lib/music.js';
+import {
+  setMusicEnabled,
+  setMusicVolume,
+  useMusicEnabled,
+  useMusicVolume,
+} from '../lib/music.js';
 import { serverNow } from '../lib/clock.js';
 import { haptic } from '../lib/haptics.js';
 import { duration } from '../lib/time.js';
-import { Button } from '../ui/kit/index.js';
+import { Button, Note, Section } from '../ui/kit/index.js';
 import {
   ChevronIcon,
   GalaxyIcon,
@@ -78,7 +83,7 @@ export function MenuPanel({
   const waiting = useRewards().data?.claimable ?? 0;
 
   return (
-    <div className="flex flex-col gap-5 mt-4">
+    <div className="flex flex-col gap-6">
       {/**
        * THE TWO WAYS IN THAT USED TO BE HEADER BUTTONS.
        *
@@ -92,7 +97,7 @@ export function MenuPanel({
        * came here to do; the galaxy name, the clock and the way out are what they
        * came here to check.
        */}
-      <div className="flex flex-col gap-2">
+      <div className="flex flex-col gap-3">
         {hasSeasonResult && (
           <MenuRow
             icon={<GalaxyIcon className="size-5" />}
@@ -146,34 +151,49 @@ export function MenuPanel({
         />
       </div>
 
-      <div>
-        <p className="legend mb-2">{t('menu.accountHeading')}</p>
+      {/*
+        NO CUT CORNERS HERE. `Plate`'s own rule: the shear is an ACCENT for the
+        directive, the commit surface, the active dock plate — never the default
+        card. These two were the only cut plates on the sheet and they are the
+        two least actionable things on it, a galaxy name and a clock, while the
+        three pressable rows above them were plain. The accent was spent exactly
+        backwards.
+      */}
+      <Section label={t('menu.accountHeading')}>
         <div className="grid grid-cols-2 gap-3">
-        <div className="plate plate-cut plate-cut-sm p-3">
-          <p className="legend">{t('galaxy.commander.galaxyLabel')}</p>
-          <p className="mt-1 truncate text-[15px] text-bone">
-            {galaxy ?? t('galaxy.commander.galaxyUnknown')}
-          </p>
-          {shard !== null && shard !== galaxy && (
-            <p className="mt-0.5 text-[11px] text-faint">{shard}</p>
-          )}
+          <div className="plate flex flex-col gap-1 p-3">
+            <p className="legend">{t('galaxy.commander.galaxyLabel')}</p>
+            <p className="name truncate">
+              {galaxy ?? t('galaxy.commander.galaxyUnknown')}
+            </p>
+            {shard !== null && shard !== galaxy && (
+              <p className="text-label text-faint">{shard}</p>
+            )}
+          </div>
+          <div className="plate flex flex-col gap-1 p-3">
+            <p className="legend">
+              {ended ? t('seasonRecap.seasonLabel') : t('galaxy.commander.endsLabel')}
+            </p>
+            <p className="readout text-figure text-bone">
+              {ended
+                ? t('seasonRecap.ended')
+                : hoursLeft === null
+                ? t('galaxy.commander.endsUnknown')
+                : duration(Math.max(0, hoursLeft) * 60)}
+            </p>
+          </div>
         </div>
-        <div className="plate plate-cut plate-cut-sm p-3">
-          <p className="legend">
-            {ended ? t('seasonRecap.seasonLabel') : t('galaxy.commander.endsLabel')}
-          </p>
-          <p className="readout mt-1 text-[15px] text-bone">
-            {ended
-              ? t('seasonRecap.ended')
-              : hoursLeft === null
-              ? t('galaxy.commander.endsUnknown')
-              : duration(Math.max(0, hoursLeft) * 60)}
-          </p>
-        </div>
-        </div>
-      </div>
+        {/*
+          ONE CLAUSE, UNDER THE CLOCK IT IS ABOUT.
 
-      <p className="text-[13px] leading-relaxed text-dim">{t('galaxy.commander.body')}</p>
+          This was three lines of prose in the middle of a settings sheet, and it
+          carried two unrelated facts: that a commander is a name and a password,
+          and that the wipe resets every galaxy. The first is reassurance nobody
+          reads twice; the second is a real rule, and it belongs beside the
+          countdown rather than in a paragraph of its own.
+        */}
+        <Note>{t('galaxy.commander.wipeNote')}</Note>
+      </Section>
 
       {/*
         THE LANGUAGE LIVES HERE, beside the galaxy and the way out.
@@ -185,10 +205,9 @@ export function MenuPanel({
         because the two most destructive controls on a screen should not be
         adjacent by accident.
       */}
-      <div>
-        <p className="legend mb-2">{t('settings.sectionLabel')}</p>
+      <Section label={t('settings.sectionLabel')}>
         <LanguageSwitch />
-        <p className="mt-2 text-[11px] leading-snug text-faint">{t('settings.hint')}</p>
+        <Note>{t('settings.hint')}</Note>
 
         {/*
           THE SOUND SWITCH, beside the language because they are the same kind of
@@ -196,7 +215,7 @@ export function MenuPanel({
           the commander or the season. Both are stored per device for that reason.
         */}
         <SoundSwitch />
-      </div>
+      </Section>
 
       <Button variant="ghost" size="lg" full onClick={onSignOut}>
         {t('galaxy.commander.signOut')}
@@ -233,19 +252,19 @@ function MenuRow({
         haptic('tap');
         onClick();
       }}
-      className="plate flex w-full items-center gap-3 px-3 py-3 text-left transition-colors hover:border-line active:bg-raised/60"
+      className="plate flex w-full items-center gap-3 px-3 py-3 text-left transition-colors hover:bg-bone/[0.03] active:bg-raised/60"
     >
-      <span className="socket grid size-9 shrink-0 place-items-center rounded-md text-dim">
+      <span className="socket grid size-9 shrink-0 place-items-center rounded-control text-dim">
         {icon}
       </span>
       <span className="min-w-0 flex-1">
-        <span className="block font-display text-[13px] font-semibold uppercase tracking-[0.04em] text-bone">
+        <span className="name block text-bone">
           {label}
         </span>
-        <span className="mt-0.5 block truncate text-[11px] leading-snug text-faint">{hint}</span>
+        <span className="mt-1 block truncate text-label leading-snug text-faint">{hint}</span>
       </span>
       {badge === undefined ? null : (
-        <span className="num shrink-0 rounded-full bg-opportunity/15 px-2 py-0.5 text-micro text-opportunity">
+        <span className="num shrink-0 rounded-full bg-opportunity/15 px-2 py-1 text-micro text-opportunity">
           {badge}
         </span>
       )}
@@ -268,32 +287,52 @@ function MenuRow({
 function SoundSwitch() {
   const { t } = useTranslation();
   const on = useMusicEnabled();
+  const volume = useMusicVolume();
+  const percent = Math.round(volume * 100);
 
   return (
-    <button
-      type="button"
-      aria-pressed={on}
-      onClick={() => {
-        haptic('tap');
-        setMusicEnabled(!on);
-      }}
-      className={`mt-3 flex w-full items-center gap-2.5 rounded-md border px-3 py-2.5 text-left transition-colors ${
-        on
-          ? 'border-line-soft bg-deep text-bone hover:border-line'
-          : 'border-line-soft bg-deep text-faint hover:border-line'
-      }`}
-    >
-      <span className="socket grid size-8 shrink-0 place-items-center rounded-md">
-        {on ? <SpeakerOnIcon className="size-[18px]" /> : <SpeakerOffIcon className="size-[18px]" />}
-      </span>
-      <span className="min-w-0 flex-1">
-        <span className="block font-display text-[12px] font-semibold uppercase tracking-[0.04em]">
-          {t('menu.soundLabel')}
+    <div className="plate">
+      <button
+        type="button"
+        aria-pressed={on}
+        onClick={() => {
+          haptic('tap');
+          setMusicEnabled(!on);
+        }}
+        className={`flex w-full items-center gap-3 px-3 py-3 text-left transition-colors hover:bg-white/[0.025] ${ on ? 'text-bone' : 'text-faint' }`}
+      >
+        <span className="socket grid size-8 shrink-0 place-items-center rounded-control">
+          {on ? <SpeakerOnIcon className="size-[18px]" /> : <SpeakerOffIcon className="size-[18px]" />}
         </span>
-        <span className="mt-0.5 block text-[11px] leading-snug text-faint">
-          {on ? t('menu.soundOn') : t('menu.soundOff')}
+        <span className="min-w-0 flex-1">
+          <span className="name block">
+            {t('menu.soundLabel')}
+          </span>
+          <span className="mt-1 block text-label leading-snug text-faint">
+            {on ? t('menu.soundOn') : t('menu.soundOff')}
+          </span>
         </span>
-      </span>
-    </button>
+      </button>
+
+      <label className="flex items-center gap-3 border-t border-line-soft px-3 py-3">
+        <span className="legend shrink-0">{t('menu.volumeLabel')}</span>
+        <input
+          type="range"
+          min={0}
+          max={100}
+          step={1}
+          value={percent}
+          aria-label={t('menu.volumeLabel')}
+          style={{ '--slider-fill': `${String(percent)}%` } as CSSProperties}
+          onChange={(event) => {
+            setMusicVolume(event.currentTarget.valueAsNumber / 100);
+          }}
+          className="slider slider-crystal min-w-0 flex-1"
+        />
+        <output className="num w-9 shrink-0 text-right text-label text-crystal">
+          {t('menu.volumeValue', { volume: percent })}
+        </output>
+      </label>
+    </div>
   );
 }

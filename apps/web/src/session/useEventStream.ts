@@ -104,6 +104,44 @@ export function useEventStream(enabled: boolean, onRollover?: () => void): void 
       for (const key of LIVE_READS) void client.invalidateQueries({ queryKey: key });
     };
 
+    // Browsers throttle timers and can suspend the event stream while a tab is in
+    // the background. Returning to the game is therefore an explicit resync edge,
+    // not something left to query staleness or the sixty-second safety net.
+    let lifecycleResyncTimer: ReturnType<typeof setTimeout> | null = null;
+    let lastLifecycleResync = 0;
+    const scheduleLifecycleResync = (): void => {
+      if (document.visibilityState === 'hidden' || lifecycleResyncTimer !== null) return;
+      lifecycleResyncTimer = setTimeout(() => {
+        lifecycleResyncTimer = null;
+        const now = Date.now();
+        if (!controller.signal.aborted && now - lastLifecycleResync >= 250) {
+          lastLifecycleResync = now;
+          resync();
+        }
+      }, 0);
+    };
+    const onVisibility = (): void => {
+      if (document.visibilityState === 'visible') scheduleLifecycleResync();
+    };
+    document.addEventListener('visibilitychange', onVisibility);
+    window.addEventListener('focus', scheduleLifecycleResync);
+    window.addEventListener('pageshow', scheduleLifecycleResync);
+    window.addEventListener('online', scheduleLifecycleResync);
+
+    // A new capital is rare and changes the most heavily cached public payload.
+    // A second, coalesced read closes the cross-replica invalidation race where the
+    // first request can reach a replica just before its transaction NOTIFY does.
+    let worldConsistencyTimer: ReturnType<typeof setTimeout> | null = null;
+    const scheduleWorldConsistencyRead = (): void => {
+      if (worldConsistencyTimer !== null) return;
+      worldConsistencyTimer = setTimeout(() => {
+        worldConsistencyTimer = null;
+        if (controller.signal.aborted) return;
+        void client.invalidateQueries({ queryKey: keys.galaxy });
+        void client.invalidateQueries({ queryKey: keys.leaderboard });
+      }, 1500);
+    };
+
     let reconnectResyncTimer: ReturnType<typeof setTimeout> | null = null;
     const scheduleReconnectResync = (): void => {
       // Several short-lived reconnects before the timer fires still describe one
@@ -135,6 +173,7 @@ export function useEventStream(enabled: boolean, onRollover?: () => void): void 
        */
       if (isShardEvent(kind)) {
         shard.note(kind);
+        if (kind === 'shard:world') scheduleWorldConsistencyRead();
         return;
       }
 
@@ -214,6 +253,12 @@ export function useEventStream(enabled: boolean, onRollover?: () => void): void 
     return () => {
       controller.abort();
       if (reconnectResyncTimer !== null) clearTimeout(reconnectResyncTimer);
+      if (lifecycleResyncTimer !== null) clearTimeout(lifecycleResyncTimer);
+      if (worldConsistencyTimer !== null) clearTimeout(worldConsistencyTimer);
+      document.removeEventListener('visibilitychange', onVisibility);
+      window.removeEventListener('focus', scheduleLifecycleResync);
+      window.removeEventListener('pageshow', scheduleLifecycleResync);
+      window.removeEventListener('online', scheduleLifecycleResync);
       shard.cancel();
     };
   }, [api, client, enabled, onRollover]);

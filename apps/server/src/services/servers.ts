@@ -29,6 +29,7 @@ import {
   shards,
   units,
   strategicAssets,
+  strategicImpacts,
   watches,
 } from '../db/schema.js';
 import { createSeasonIn } from './season.js';
@@ -498,6 +499,11 @@ export async function wipeAllServers(
     // Rewards claimed in a season die with it: the table's only foreign key is to
     // `players`, which is deleted below, and a season's record is folded into the
     // account rather than carried over as an unclaimed grant.
+    //
+    // `account_rewards` IS NOT TOUCHED, AND THAT IS THE FEATURE. It records what a
+    // PERSON has been paid once and for ever — the @JoinAstera bonus — so a wipe
+    // clearing it would pay every follower again on the first day of every new
+    // galaxy. Its only foreign key is to `accounts`, which this wipe keeps.
     await tx.delete(rewardGrants);
     await tx.delete(chatMessages);
     await tx.delete(galaxyEvents);
@@ -506,6 +512,7 @@ export async function wipeAllServers(
     await tx.delete(scanEvents);
     await tx.delete(probeReports);
     await tx.delete(watches);
+    await tx.delete(strategicImpacts);
     await tx.delete(battleReports);
     await tx.delete(scheduledEvents);
     await tx.delete(buildOrders);

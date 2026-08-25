@@ -11,6 +11,7 @@ import {
   buildOrders,
   shards,
   units,
+  strategicImpacts,
 } from '../src/db/schema.js';
 import { buildUnits, upgradeBuilding } from '../src/services/build.js';
 import { launchProbe } from '../src/services/intel.js';
@@ -76,6 +77,29 @@ describe('season lifecycle', () => {
     await f.db.update(players).set({ dominionTaken: 300 }).where(eq(players.id, f.playerIds[0]!));
     await f.db.update(players).set({ dominionTaken: 100 }).where(eq(players.id, f.playerIds[1]!));
     await f.db.update(players).set({ dominionLost: 50 }).where(eq(players.id, f.playerIds[2]!));
+    const [strike] = await f.db.insert(missions).values({
+      seasonId: f.seasonId,
+      kind: 'death_star',
+      status: 'resolved',
+      ownerPlayerId: f.playerIds[0]!,
+      originPlanetId: f.planetIds[0]!,
+      targetPlanetId: f.planetIds[1]!,
+      fleet: {},
+      distance: 100,
+      departAt: f.clock.now(),
+      arriveAt: f.clock.now(),
+    }).returning();
+    await f.db.insert(strategicImpacts).values({
+      seasonId: f.seasonId,
+      missionId: strike!.id,
+      attackerPlayerId: f.playerIds[0]!,
+      defenderPlayerId: f.playerIds[1]!,
+      targetPlanetId: f.planetIds[1]!,
+      outcome: 'FIRST_STRIKE',
+      damage: 12_345,
+      destroyedFleet: {},
+      createdAt: f.clock.now(),
+    });
     const event = await seasonEndEvent();
     const [season] = await f.db.select().from(seasons).where(eq(seasons.id, f.seasonId));
     f.clock.set(season!.endsAt);
@@ -94,6 +118,8 @@ describe('season lifecycle', () => {
     expect(results.map((row) => row.dominion)).toEqual([300, 100, -50]);
     expect(results.map((row) => row.finalRank)).toEqual([1, 2, 3]);
     expect(results[0]!.title).toContain('Sovereign');
+    expect(results[0]!.damageDealt).toBe(12_345);
+    expect(results[1]!.damageTaken).toBe(12_345);
     expect(results[0]!.recap.commanderName).toBeTruthy();
 
     const latest = await latestSeasonResult(f.db, results[0]!.accountId);

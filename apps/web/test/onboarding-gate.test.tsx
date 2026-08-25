@@ -71,6 +71,7 @@ describe('the beat script', () => {
     expect(BEATS.map((b) => b.id)).toEqual([
       'wide',
       'yours',
+      'briefing',
       'core',
       'refinery',
       'extractor',
@@ -84,6 +85,8 @@ describe('the beat script', () => {
     const done = new Set<BeatId>(['wide']);
     expect(currentBeat(stateOf({ done })).id).toBe('yours');
     done.add('yours');
+    expect(currentBeat(stateOf({ done })).id).toBe('briefing');
+    done.add('briefing');
     expect(currentBeat(stateOf({ done })).id).toBe('core');
   });
 

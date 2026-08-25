@@ -109,10 +109,34 @@ const READ = { staleTime: 15_000, refetchOnWindowFocus: true } as const;
  * screen that must not be stale.
  *
  * A minute costs one small request and makes the count honest.
+ *
+ * AND A `staleTime` ALONE NEVER ASKS AGAIN. That was the bug the paragraph above
+ * describes and did not fix: staleness only decides whether a refetch that is
+ * already happening may be served from cache, so with nothing to trigger one this
+ * query was fetched on mount and then never again. The disc read the population
+ * of the galaxy at the moment the tab was opened, for as long as it stayed open,
+ * and a manual reload was the only way to move it — which is exactly how it was
+ * reported.
+ *
+ * IT IS THE ONE READ WHERE THE TIMER IS THE MECHANISM AND NOT THE NET. Everything
+ * else on this screen is refetched from a broadcast, because everything else
+ * changes at a MOMENT the server can point at. Presence has no such moment:
+ * `lastActiveAt` is stamped at most once a minute per commander (see
+ * `services/presence.ts`) and the count is a five-minute trailing window, so
+ * nobody arrives and nobody leaves — the figure simply drifts. Broadcasting it
+ * would mean a shard event per commander per minute, three hundred a minute on a
+ * full galaxy, to move a number in a corner. `SHARD` events that refetch this
+ * payload (a rollover) still do, and they still should.
  */
 export function useSeason() {
   const api = useApi();
-  return useQuery({ queryKey: keys.season, queryFn: api.season, staleTime: NET_MS });
+  return useQuery({
+    queryKey: keys.season,
+    queryFn: api.season,
+    staleTime: NET_MS,
+    refetchInterval: NET_MS,
+    refetchOnWindowFocus: true,
+  });
 }
 
 /**
@@ -371,10 +395,12 @@ export function useSetRival() {
   const client = useQueryClient();
   return useMutation({
     mutationFn: (planetId: string | null) => api.setRival(planetId),
-    onSuccess: async ({ rivalPlanetId, rivalPlayerId }) => {
+    onSuccess: async ({ rivalPlanetId, rivalPlayerId, rivalCommitted }) => {
       await client.cancelQueries({ queryKey: keys.season });
       client.setQueryData<SeasonInfo>(keys.season, (current) =>
-        current ? { ...current, rivalPlanetId, rivalPlayerId: rivalPlayerId ?? null } : current,
+        current
+          ? { ...current, rivalPlanetId, rivalPlayerId: rivalPlayerId ?? null, rivalCommitted: rivalCommitted ?? false }
+          : current,
       );
     },
   });
@@ -536,7 +562,14 @@ export function useMarkSeen() {
  * which resolves on its own poll; landing just after it means the refetch sees the
  * new state rather than the old one and needing a second round trip to find out.
  */
-function useRefetchOnArrival(moments: readonly number[], ...groups: readonly (readonly string[])[]) {
+const ARRIVAL_SETTLE_OFFSETS = [1000] as const;
+const CONTACT_WINDOW_SETTLE_OFFSETS = [50, 750, 2500, 6000] as const;
+
+function useRefetchOnArrival(
+  moments: readonly number[],
+  groups: readonly (readonly string[])[],
+  settleOffsets: readonly number[] = ARRIVAL_SETTLE_OFFSETS,
+) {
   const client = useQueryClient();
   // Joined into a primitive so the effect re-arms when the SET of instants
   // changes, rather than on every refetch that returns an equal-but-new array.
@@ -551,18 +584,18 @@ function useRefetchOnArrival(moments: readonly number[], ...groups: readonly (re
       .filter((v) => v !== '')
       .map(Number)
       .filter((at) => at > now && at - now < 2_147_483_647)
-      .map((at) =>
+      .flatMap((at) => settleOffsets.map((offset) =>
         setTimeout(
           () => {
             for (const key of targets.current) void client.invalidateQueries({ queryKey: key });
           },
-          at - now + 1000,
+          at - now + offset,
         ),
-      );
+      ));
     return () => {
       for (const timer of timers) clearTimeout(timer);
     };
-  }, [signature, client]);
+  }, [signature, client, settleOffsets]);
 }
 
 /**
@@ -581,7 +614,7 @@ export function useMiningArrivals(runs: readonly MiningRun[] | undefined): void 
     }
     return out.sort((a, b) => a - b);
   }, [runs]);
-  useRefetchOnArrival(moments, keys.mining, keys.planet, keys.pending, keys.galaxy);
+  useRefetchOnArrival(moments, [keys.mining, keys.planet, keys.pending, keys.galaxy]);
 }
 
 /**
@@ -607,7 +640,9 @@ export function useContactWindows(contacts: readonly Contact[] | undefined): voi
     () => (contacts ?? []).map((c) => c.endAt.getTime()).sort((a, b) => a - b),
     [contacts],
   );
-  useRefetchOnArrival(moments, keys.traffic);
+  // The first read is immediate because traffic is projected, not worker-owned.
+  // The bounded follow-ups cover a stale replica/cache without parking the craft.
+  useRefetchOnArrival(moments, [keys.traffic], CONTACT_WINDOW_SETTLE_OFFSETS);
 }
 
 /**
@@ -628,7 +663,7 @@ export function useFleetArrivals(pending: readonly PendingThread[] | undefined):
     }
     return out.sort((a, b) => a - b);
   }, [pending]);
-  useRefetchOnArrival(moments, keys.pending, keys.planet, keys.galaxy, keys.reports, keys.traffic);
+  useRefetchOnArrival(moments, [keys.pending, keys.planet, keys.galaxy, keys.reports, keys.traffic]);
 }
 
 function useInvalidator() {
@@ -1120,6 +1155,7 @@ export function useLaunch() {
 export function useTransfer() {
   const api = useApi();
   const { activePlanetId } = useWorld();
+  const client = useQueryClient();
   const apply = useApplyPlanet();
   const invalidate = useInvalidator();
   const lane = usePlanetMutationLane(activePlanetId);
@@ -1132,8 +1168,12 @@ export function useTransfer() {
     }) => api.transfer(activePlanetId!, targetPlanetId, fleet, cargo),
     onMutate: lane.enter,
     onSuccess: async (result) => {
-      await apply(result.planet);
-      invalidate(keys.pending, keys.traffic, keys.galaxy, keys.planets);
+      await Promise.all([
+        apply(result.planet),
+        client.cancelQueries({ queryKey: keys.pending }),
+      ]);
+      client.setQueryData(keys.pending, { pending: result.pending });
+      invalidate(keys.traffic, keys.galaxy, keys.planets);
     },
     onSettled: (_data, _error, _vars, turn) => { lane.leave(turn); },
   });
@@ -1142,6 +1182,7 @@ export function useTransfer() {
 export function useSettlement() {
   const api = useApi();
   const { activePlanetId } = useWorld();
+  const client = useQueryClient();
   const apply = useApplyPlanet();
   const invalidate = useInvalidator();
   const lane = usePlanetMutationLane(activePlanetId);
@@ -1150,8 +1191,12 @@ export function useSettlement() {
     mutationFn: (targetPlanetId: string) => api.settle(activePlanetId!, targetPlanetId),
     onMutate: lane.enter,
     onSuccess: async (result) => {
-      await apply(result.planet);
-      invalidate(keys.pending, keys.traffic, keys.galaxy, keys.planets);
+      await Promise.all([
+        apply(result.planet),
+        client.cancelQueries({ queryKey: keys.pending }),
+      ]);
+      client.setQueryData(keys.pending, { pending: result.pending });
+      invalidate(keys.traffic, keys.galaxy, keys.planets);
     },
     onSettled: (_data, _error, _targetPlanetId, turn) => { lane.leave(turn); },
   });
@@ -1178,6 +1223,7 @@ export function useBuildDeathStar() {
 export function useLaunchDeathStar() {
   const api = useApi();
   const { activePlanetId } = useWorld();
+  const client = useQueryClient();
   const apply = useApplyPlanet();
   const invalidate = useInvalidator();
   const lane = usePlanetMutationLane(activePlanetId);
@@ -1186,8 +1232,12 @@ export function useLaunchDeathStar() {
     mutationFn: (targetPlanetId: string) => api.launchDeathStar(activePlanetId!, targetPlanetId),
     onMutate: lane.enter,
     onSuccess: async (result) => {
-      await apply(result.planet);
-      invalidate(keys.pending, keys.traffic, keys.galaxy, keys.planets, keys.leaderboard);
+      await Promise.all([
+        apply(result.planet),
+        client.cancelQueries({ queryKey: keys.pending }),
+      ]);
+      client.setQueryData(keys.pending, { pending: result.pending });
+      invalidate(keys.traffic, keys.galaxy, keys.planets, keys.leaderboard);
     },
     onSettled: (_data, _error, _targetPlanetId, turn) => { lane.leave(turn); },
   });

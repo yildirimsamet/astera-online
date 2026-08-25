@@ -1,7 +1,16 @@
-import { and, eq, inArray, ne } from 'drizzle-orm';
-import { engagementEndsAt, type Fleet, type Vec3 } from '@astera/rules';
+import { and, eq, gte, inArray, ne, or } from 'drizzle-orm';
+import {
+  DEATH_STAR,
+  coreTier,
+  engagementEndsAt,
+  orbitStandoff,
+  visualLeg,
+  worldRadius,
+  type Fleet,
+  type Vec3,
+} from '@astera/rules';
 import type { Db } from '../db/client.js';
-import { miningRuns, missions, planets } from '../db/schema.js';
+import { buildings, miningRuns, missions, planets } from '../db/schema.js';
 import { legBelongsTo } from './flight.js';
 
 /**
@@ -219,6 +228,28 @@ export interface Contact {
    */
   engagement?: { arriveAt: Date; endsAt: Date; target: Vec3 };
   /**
+   * A STRIKE LANDED HERE, AT THIS INSTANT, AND EVERYBODY WATCHES IT. D106.
+   *
+   * The same decision as `engagement`, for the weapon that had no equivalent. A
+   * raid publishes its ten seconds over the target, so every screen in the galaxy
+   * fires the same bombardment at the same moment; a Death Star published nothing,
+   * so its detonation existed only on the attacker's own client — which had the
+   * mission and could work the moment out for itself. The one genuinely
+   * spectacular thing in the game was visible to exactly one person, including the
+   * commander it happened to.
+   *
+   * IT IS A MOMENT AND A PLACE, NOT A LEG. That is the whole point of the field:
+   * an effect that is INFERRED from a flight has to be re-derived by every
+   * renderer that draws it, and the two derivations drift. Published, there is one
+   * instant and one point, and any client that has this payload draws the same
+   * explosion at the same time whether it is the attacker's, the defender's or a
+   * stranger's.
+   *
+   * `target` is the world's own centre rather than the orbit the craft held at:
+   * the explosion happens AT the planet. It is public on `/api/galaxy` already.
+   */
+  impact?: { at: Date; target: Vec3 };
+  /**
    * What is in it. Public since D24.
    *
    * Hulls and counts, and nothing else — never the cargo. A fleet coming home from
@@ -348,6 +379,18 @@ export interface TrafficSnapshot {
   missionRows: { mission: typeof missions.$inferSelect }[];
   miningRows: { run: typeof miningRuns.$inferSelect }[];
   positions: ReadonlyMap<string, Vec3>;
+  /**
+   * THE PUBLIC CORE TIER OF EVERY WORLD A LEG TOUCHES. D106.
+   *
+   * It is here for one reason: how big a world is DRAWN decides where a craft
+   * stops short of it, and a published window has to end where the owner's own
+   * client ends the same leg or the two screens disagree by more than a planet.
+   * See `packages/rules/src/view.ts`.
+   *
+   * It discloses nothing — `coreTier` is on `/api/galaxy` for every world in the
+   * disc (D49), which is exactly why the correction can be computed on both sides.
+   */
+  tiers: ReadonlyMap<string, number>;
 }
 
 /**
@@ -358,12 +401,27 @@ export interface TrafficSnapshot {
  * by `projectGalaxyTraffic`, so sharing this work cannot freeze motion or turn one
  * commander's filter into another's.
  */
-export async function loadTrafficSnapshot(db: Db, seasonId: string): Promise<TrafficSnapshot> {
+export async function loadTrafficSnapshot(
+  db: Db,
+  seasonId: string,
+  now: Date = new Date(),
+): Promise<TrafficSnapshot> {
+  const impactCutoff = new Date(now.getTime() - DEATH_STAR.impactSeconds * 1000);
   const [missionRows, miningRows] = await Promise.all([
     db
       .select({ mission: missions })
       .from(missions)
-      .where(and(eq(missions.seasonId, seasonId), eq(missions.status, 'in_flight'))),
+      .where(and(
+        eq(missions.seasonId, seasonId),
+        or(
+          eq(missions.status, 'in_flight'),
+          and(
+            eq(missions.kind, 'death_star'),
+            eq(missions.status, 'resolved'),
+            gte(missions.arriveAt, impactCutoff),
+          ),
+        ),
+      )),
     db
       .select({ run: miningRuns })
       .from(miningRuns)
@@ -376,19 +434,29 @@ export async function loadTrafficSnapshot(db: Db, seasonId: string): Promise<Tra
     ids.add(mission.targetPlanetId);
   }
   for (const { run } of miningRows) ids.add(run.planetId);
-  if (ids.size === 0) return { missionRows, miningRows, positions: new Map() };
+  if (ids.size === 0) return { missionRows, miningRows, positions: new Map(), tiers: new Map() };
 
-  const planetRows = await db
-    .select({ id: planets.id, x: planets.x, y: planets.y, z: planets.z })
-    .from(planets)
-    .where(inArray(planets.id, [...ids]));
+  const [planetRows, coreRows] = await Promise.all([
+    db
+      .select({ id: planets.id, x: planets.x, y: planets.y, z: planets.z })
+      .from(planets)
+      .where(inArray(planets.id, [...ids])),
+    db
+      .select({ planetId: buildings.planetId, level: buildings.level })
+      .from(buildings)
+      .where(and(inArray(buildings.planetId, [...ids]), eq(buildings.type, 'CORE'))),
+  ]);
   const positions = new Map<string, Vec3>(
     planetRows.map((planet) => [
       planet.id,
       { x: planet.x, y: planet.y, z: planet.z },
     ]),
   );
-  return { missionRows, miningRows, positions };
+  // The same coarse tier `/api/galaxy` publishes, from the same column.
+  const tiers = new Map<string, number>(
+    coreRows.map((row) => [row.planetId, coreTier(row.level)]),
+  );
+  return { missionRows, miningRows, positions, tiers };
 }
 
 export async function galaxyTraffic(
@@ -399,7 +467,7 @@ export async function galaxyTraffic(
   ownPlayerId: string | null = null,
   ownPlanetIds: string[] = ownPlanetId === null ? [] : [ownPlanetId],
 ): Promise<Contact[]> {
-  const snapshot = await loadTrafficSnapshot(db, seasonId);
+  const snapshot = await loadTrafficSnapshot(db, seasonId, now);
   return projectGalaxyTraffic(snapshot, ownPlanetId, now, ownPlayerId, ownPlanetIds);
 }
 
@@ -411,19 +479,89 @@ export function projectGalaxyTraffic(
   ownPlayerId: string | null = null,
   ownPlanetIds: string[] = ownPlanetId === null ? [] : [ownPlanetId],
 ): Contact[] {
-  const { missionRows, miningRows, positions } = snapshot;
+  const { missionRows, miningRows, positions, tiers } = snapshot;
   const ownedPlanets = new Set(ownPlanetIds);
+
+  /**
+   * THE LEG AS IT IS DRAWN, WHICH IS THE ONLY LEG ANYBODY EVER SEES. D106.
+   *
+   * A craft stops in ORBIT, not at a world's centre (D44) — the owner's client has
+   * drawn it that way since the engagement window made an arrival something people
+   * watch. The public window knew nothing about it, so it published the craft's
+   * true position while the owner drew it up to two planet radii further back, and
+   * the gap grew along the leg: at the end of a raid the owner watched their fleet
+   * still closing while the whole galaxy watched it sit on the target and wait.
+   *
+   * Both sides now derive the same two endpoints from the same public figures
+   * through the same function, so the pictures cannot drift apart. Which END is
+   * held off follows the same rule the client's `legStandoff` uses: an outbound leg
+   * stands off the world it is arriving at, and a leg coming HOME sets out from the
+   * point it was holding at — and a return mission is stored with its two ends
+   * swapped (D28), so the foreign world is its ORIGIN.
+   */
+  const drawnLeg = (
+    mission: typeof missions.$inferSelect,
+    origin: Vec3,
+    target: Vec3,
+  ): { from: Vec3; to: Vec3 } => {
+    const returning = mission.kind === 'return' || mission.parentMissionId !== null;
+    const foreign = returning ? mission.originPlanetId : mission.targetPlanetId;
+    const tier = tiers.get(foreign);
+    if (tier === undefined) return { from: origin, to: target };
+    const gap = orbitStandoff(worldRadius(tier));
+    return returning
+      ? visualLeg(origin, target, gap, 0)
+      : visualLeg(origin, target, 0, gap);
+  };
 
   const out: Contact[] = [];
 
   for (const { mission } of missionRows) {
+    const centres = {
+      origin: positions.get(mission.originPlanetId),
+      target: positions.get(mission.targetPlanetId),
+    };
+    if (!centres.origin || !centres.target) continue;
+    // Where the craft is DRAWN flying between. The true centres are still what an
+    // effect is anchored to — an explosion happens at the world, not in orbit.
+    const { from: origin, to: target } = drawnLeg(mission, centres.origin, centres.target);
+
+    /**
+     * A RESOLVED IMPACT IS STILL A LIVE PUBLIC MOMENT FOR ITS EFFECT WINDOW.
+     *
+     * A tab opened or resumed after the worker committed no longer sees an
+     * in-flight mission. Without this small replay window it can never reconstruct
+     * the explosion, even though every continuously open tab is watching it. The
+     * exact mission id, target and server time are enough; no owner is disclosed.
+     */
+    const arrive = mission.arriveAt.getTime();
+    const recentDeathStarImpact = mission.kind === 'death_star'
+      && mission.status === 'resolved'
+      && now.getTime() >= arrive
+      && now.getTime() < arrive + DEATH_STAR.impactSeconds * 1000;
+    if (recentDeathStarImpact) {
+      out.push({
+        id: mission.id,
+        kind: 'death_star',
+        from: lerp(
+          origin,
+          target,
+          progress(mission.departAt.getTime(), arrive, arrive - APPROACH_MS),
+        ),
+        to: target,
+        startAt: new Date(arrive - APPROACH_MS),
+        endAt: mission.arriveAt,
+        landing: true,
+        impact: { at: mission.arriveAt, target: centres.target },
+        fleet: mission.fleet,
+      });
+      continue;
+    }
+
     if (
       (ownPlayerId !== null && mission.ownerPlayerId === ownPlayerId)
       || (ownPlayerId === null && ownPlanetId !== null && legBelongsTo(mission, ownPlanetId))
     ) continue;
-    const origin = positions.get(mission.originPlanetId);
-    const target = positions.get(mission.targetPlanetId);
-    if (!origin || !target) continue;
 
     /**
      * A RAID DOES NOT VANISH THE INSTANT IT LANDS. D52.
@@ -433,7 +571,6 @@ export function projectGalaxyTraffic(
      * whole engagement, and that is exactly the ten seconds worth watching. It
      * used to blink out at `arriveAt` for everybody except the attacker.
      */
-    const arrive = mission.arriveAt.getTime();
     const engaging =
       mission.kind === 'attack' && now.getTime() >= arrive && now.getTime() < engagementEndsAt(arrive);
 
@@ -451,7 +588,7 @@ export function projectGalaxyTraffic(
         engagement: {
           arriveAt: mission.arriveAt,
           endsAt: new Date(engagementEndsAt(arrive)),
-          target,
+          target: centres.target,
         },
         fleet: mission.fleet,
       });
@@ -471,6 +608,21 @@ export function projectGalaxyTraffic(
           ? 'death_star'
           : 'fleet',
       ...slice,
+      /**
+       * THE DETONATION IS ANNOUNCED BEFORE IT HAPPENS, AND ONLY ONCE THE
+       * DESTINATION IS ALREADY CONCEDED. D106.
+       *
+       * `landing` is true only inside the final coast, where the window's own far
+       * end IS the arrival — so the target is public at that point whatever this
+       * field does, and D52 makes the same concession for a raid. What it buys is
+       * that every watching client ARMS the explosion for an instant it already
+       * knows, instead of having to notice afterwards that a mission vanished. A
+       * client that misses the moment still gets it: the resolved mission is
+       * republished for the length of the effect, above.
+       */
+      ...(mission.kind === 'death_star' && slice.landing === true
+        ? { impact: { at: mission.arriveAt, target: centres.target } }
+        : {}),
       // Composition, and never the loot it may be carrying home.
       fleet: mission.fleet,
     });

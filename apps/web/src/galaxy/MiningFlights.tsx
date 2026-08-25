@@ -5,7 +5,7 @@ import * as THREE from 'three';
 import type { MiningRun } from '../api/schemas.js';
 import { MODEL } from '../ui/assets.js';
 import { Hull, ROUTE_OPACITY, ROUTE_OPACITY_FOCUSED, Wake, useLine } from './Fleets.jsx';
-import { CRAFT_SCALE, runPosition, toWorld, type Vec3Tuple } from './scene.js';
+import { CRAFT_SCALE, runPosition, toWorld, type PlanetNode, type Vec3Tuple } from './scene.js';
 import { formationFor, slotOffset } from './Squadrons.js';
 import { markHit, wasTap } from './tap.js';
 import { serverNow } from '../lib/clock.js';
@@ -36,11 +36,14 @@ useGLTF.preload(MODEL.drill, false);
 export function MiningFlights({
   runs,
   home,
+  nodes,
   focusedId,
   onSelect,
 }: {
   runs: readonly MiningRun[];
   home: { x: number; y: number; z: number };
+  /** The worlds, so a Prospector is never drawn inside one. See `clearOfWorlds`. */
+  nodes: readonly PlanetNode[];
   focusedId: string | null;
   onSelect: (id: string) => void;
 }) {
@@ -54,6 +57,7 @@ export function MiningFlights({
           key={run.id}
           run={run}
           home={home}
+          nodes={nodes}
           focused={run.id === focusedId}
           onSelect={() => {
             onSelect(run.id);
@@ -67,11 +71,13 @@ export function MiningFlights({
 function Run({
   run,
   home,
+  nodes,
   focused,
   onSelect,
 }: {
   run: MiningRun;
   home: { x: number; y: number; z: number };
+  nodes: readonly PlanetNode[];
   focused: boolean;
   onSelect: () => void;
 }) {
@@ -105,7 +111,7 @@ function Run({
     const node = group.current;
     if (!node) return;
     // The same helper the camera reads, so a focused run stays centred.
-    const at = runPosition(run, home, serverNow());
+    const at = runPosition(run, home, serverNow(), nodes);
     node.position.set(at[0], at[1], at[2]);
     node.lookAt(to[0], to[1], to[2]);
 

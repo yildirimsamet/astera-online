@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { render, screen, waitFor, within } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { describe, expect, it, vi } from 'vitest';
@@ -519,6 +519,20 @@ describe('reaching the way out', () => {
     expect(document.querySelector('.works-fill-deuterium')).not.toBeNull();
   });
 
+  it('gives a ready Collect action a restrained cue using the house icon system', async () => {
+    const payload = planetPayload();
+    payload.planet.bufferAlloy = 120;
+    await header(vi.fn(), payload);
+
+    const collect = screen.getByRole('button', { name: /collect 120/i });
+    expect(collect).toHaveClass('works-ready');
+    const mark = collect.querySelector('.collect-mark');
+    expect(mark?.tagName.toLowerCase()).toBe('svg');
+    expect(mark).toHaveAttribute('viewBox', '0 0 24 24');
+    expect(mark).toHaveAttribute('stroke', 'currentColor');
+    expect(mark).toHaveAttribute('aria-hidden', 'true');
+  });
+
   /**
    * IT NAMES WHAT IS BEHIND IT, which is the whole of the D54 finding. A control
    * whose label describes something other than the surface it opens is not a way
@@ -563,6 +577,30 @@ describe('reaching the way out', () => {
     expect(onOpen).toHaveBeenCalledWith('intel');
     await user.click(screen.getByRole('button', { name: /leaderboard/i }));
     expect(onOpen).toHaveBeenCalledWith('leaderboard');
+  });
+
+  it('offers an accessible sound level beside the mute switch', async () => {
+    const { MenuPanel } = await import('../src/shell/MenuPanel.js');
+    const { setMusicVolume, musicVolume } = await import('../src/lib/music.js');
+    const { wrapper: Wrapper } = harness();
+    setMusicVolume(0.35);
+
+    render(
+      <Wrapper>
+        <MenuPanel
+          galaxy="Vantage"
+          shard="EU-1"
+          endsAt={null}
+          onOpen={vi.fn()}
+          onSignOut={vi.fn()}
+        />
+      </Wrapper>,
+    );
+
+    const slider = screen.getByRole('slider', { name: /music volume/i });
+    expect(slider).toHaveValue('35');
+    fireEvent.change(slider, { target: { value: '36' } });
+    expect(musicVolume()).toBeCloseTo(0.36, 5);
   });
 
   /**

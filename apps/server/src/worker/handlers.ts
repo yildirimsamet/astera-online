@@ -44,6 +44,7 @@ import {
   seasons,
   shards,
   strategicAssets,
+  strategicImpacts,
   units,
 } from '../db/schema.js';
 import {
@@ -191,6 +192,17 @@ export const onMissionArrival: Handler = async ({ db, clock }, event) => {
     if (mission.kind === 'death_star') {
       const result = await applyDeathStarStrike(tx, mission, clock.now());
       const outcome = result.outcome;
+      await tx.insert(strategicImpacts).values({
+        seasonId: mission.seasonId,
+        missionId: mission.id,
+        attackerPlayerId: mission.ownerPlayerId,
+        defenderPlayerId: result.previousPlayerId,
+        targetPlanetId: mission.targetPlanetId,
+        outcome,
+        damage: result.damage,
+        destroyedFleet: result.destroyedFleet,
+        createdAt: clock.now(),
+      }).onConflictDoNothing({ target: strategicImpacts.missionId });
       await tx
         .update(strategicAssets)
         .set({ status: 'CONSUMED' })
@@ -1224,10 +1236,10 @@ export const onSeasonEnd: Handler = async ({ db, clock }, event) => {
         and(eq(planets.controllerPlayerId, players.id), eq(planets.kind, 'CAPITAL')),
       )
       .where(eq(players.seasonId, seasonId));
-    const reports = await tx
-      .select()
-      .from(battleReports)
-      .where(eq(battleReports.seasonId, seasonId));
+    const [reports, impacts] = await Promise.all([
+      tx.select().from(battleReports).where(eq(battleReports.seasonId, seasonId)),
+      tx.select().from(strategicImpacts).where(eq(strategicImpacts.seasonId, seasonId)),
+    ]);
     const identity = new Map(roster.map((row) => [row.playerId, row]));
     const ranked = [...roster].sort((a, b) =>
       Math.round(b.taken - b.lost) - Math.round(a.taken - a.lost)
@@ -1265,6 +1277,10 @@ export const onSeasonEnd: Handler = async ({ db, clock }, event) => {
           damageDealt += fleetValue(report.attackerLosses);
           damageTaken += fleetValue(report.defenderLosses);
         }
+      }
+      for (const impact of impacts) {
+        if (impact.attackerPlayerId === player.playerId) damageDealt += impact.damage;
+        if (impact.defenderPlayerId === player.playerId) damageTaken += impact.damage;
       }
       const rivalEntry = [...rivalCounts.entries()]
         .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))[0];

@@ -140,6 +140,28 @@ describe('the reward table', () => {
     expect(rewardPurse().alloy).toBe(withSocial - social.alloy);
   });
 
+  /**
+   * WHAT IS PAID ONCE PER PERSON, AND WHAT STARTS AGAIN WITH THE GALAXY. Owner
+   * instruction: *"twitter takip bonusu kişiye 1 kez verilebilmeli. her sezon her
+   * sezon alamaz."*
+   *
+   * The ten counted chains MUST be season-scoped: their progress is read off a
+   * world that ceases to exist, so an account-scoped one would be permanently
+   * stuck at whatever the first galaxy reached. The follow bonus must be the
+   * other way round for the same reason in reverse — the act happened on Twitter
+   * and no rollover un-does it.
+   *
+   * The server keys the once-only row on this value, so a chain that changed
+   * scope silently would either pay a follower every fortnight or lock a probe
+   * reward out of every galaxy after the first.
+   */
+  it('pays exactly one chain per person rather than per galaxy', () => {
+    const forever = REWARD_CHAINS.filter((c) => c.scope === 'account');
+    expect(forever.map((c) => c.id)).toEqual(['SOCIAL']);
+    expect(REWARD_CHAINS.filter((c) => c.metric !== 'grant').every((c) => c.scope === 'season'))
+      .toBe(true);
+  });
+
   it('exports every chain exactly once, in the declared order', () => {
     expect(REWARD_CHAINS.map((c) => c.id)).toEqual([...REWARD_CHAIN_IDS]);
     expect(new Set(REWARD_CHAIN_IDS).size).toBe(REWARD_CHAIN_IDS.length);

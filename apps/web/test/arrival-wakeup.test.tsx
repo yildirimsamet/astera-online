@@ -233,8 +233,28 @@ describe('a client waiting for an arrival', () => {
     vi.advanceTimersByTime(59_000);
     expect(invalidated).toHaveLength(0);
 
-    vi.advanceTimersByTime(2_000);
+    vi.advanceTimersByTime(1100);
     expect(invalidated.map((k) => k[0])).toEqual(['traffic']);
+  });
+
+  it('retries a foreign contact window on a bounded settle schedule', () => {
+    mount({ contacts: [contact(at(Date.now() + 60_000))] });
+    vi.advanceTimersByTime(66_001);
+    expect(invalidated.map((k) => k[0])).toEqual([
+      'traffic',
+      'traffic',
+      'traffic',
+      'traffic',
+    ]);
+
+    vi.advanceTimersByTime(60_000);
+    expect(invalidated).toHaveLength(4);
+  });
+
+  it('does not multiply the authoritative owner arrival read', () => {
+    mount({ pending: [thread({ kind: 'death_star' })] });
+    vi.advanceTimersByTime(180_000);
+    expect(invalidated.map((k) => k[0]).filter((key) => key === 'pending')).toHaveLength(1);
   });
 
   it('reads nothing but traffic, however many contacts are in the air', () => {

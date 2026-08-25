@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
+import { DEATH_STAR } from '@astera/rules';
 import type { Contact, PendingThread } from '../api/schemas.js';
 import { serverNow } from '../lib/clock.js';
 import { FullRate } from './frames.jsx';
@@ -8,7 +9,7 @@ import { ringTexture, fireTexture, smokeTexture, sparkTexture } from './vfx.js';
 import { toWorld, type PlanetNode, type Vec3Tuple } from './scene.js';
 
 /** Long enough to read as an event, short enough not to obscure the next decision. */
-export const DEATH_STAR_IMPACT_MS = 8_000;
+export const DEATH_STAR_IMPACT_MS = DEATH_STAR.impactSeconds * 1000;
 
 export interface DeathStarImpactEvent {
   id: string;
@@ -20,6 +21,18 @@ export interface DeathStarImpactEvent {
 /** The clock, rather than a timer callback, decides whether the event exists. */
 export const isDeathStarImpactVisible = (at: number, now: number): boolean =>
   now >= at && now < at + DEATH_STAR_IMPACT_MS;
+
+export function mergeRetainedDeathStarImpacts(
+  current: readonly DeathStarImpactEvent[],
+  candidates: readonly DeathStarImpactEvent[],
+  now: number,
+): DeathStarImpactEvent[] {
+  const merged = new Map(current.map((event) => [event.id, event]));
+  for (const event of candidates) merged.set(event.id, event);
+  return [...merged.values()]
+    .filter((event) => event.at + DEATH_STAR_IMPACT_MS > now)
+    .sort((a, b) => a.at - b.at || a.id.localeCompare(b.id));
+}
 
 const radiusAt = (position: Vec3Tuple, nodes: readonly PlanetNode[]): number => {
   let nearest: PlanetNode | undefined;
@@ -59,12 +72,23 @@ export function deathStarImpactCandidates(
       radius: radiusAt(position, nodes),
     });
   }
+  /**
+   * A STRANGER'S EXPLOSION COMES OFF THE PUBLISHED MOMENT, NEVER OFF THE FLIGHT. D106.
+   *
+   * `impact` is an instant and a point the server states outright, exactly as
+   * `engagement` states a bombardment — so the defender's screen and every
+   * bystander's fire the same detonation, at the same second, at the same world as
+   * the attacker's. Reading it off the end of a bearing window instead is what made
+   * this effect the attacker's private cinema: only a client that happened to hold
+   * the final window could reconstruct it at all, and it drew the blast wherever
+   * that window happened to stop.
+   */
   for (const contact of contacts) {
-    if (contact.kind !== 'death_star' || contact.landing !== true) continue;
-    const position = toWorld(contact.to);
+    if (contact.kind !== 'death_star' || !contact.impact) continue;
+    const position = toWorld(contact.impact.target);
     events.set(contact.id, {
       id: contact.id,
-      at: contact.endAt.getTime(),
+      at: contact.impact.at.getTime(),
       position,
       radius: radiusAt(position, nodes),
     });
@@ -94,13 +118,7 @@ export function DeathStarImpacts({
 
   useEffect(() => {
     const now = serverNow();
-    setRetained((current) => {
-      const merged = new Map(current.map((event) => [event.id, event]));
-      for (const event of candidates) merged.set(event.id, event);
-      return [...merged.values()]
-        .filter((event) => event.at + DEATH_STAR_IMPACT_MS > now)
-        .sort((a, b) => a.at - b.at || a.id.localeCompare(b.id));
-    });
+    setRetained((current) => mergeRetainedDeathStarImpacts(current, candidates, now));
   }, [candidates]);
 
   useEffect(() => {
@@ -139,9 +157,13 @@ function TimedImpact({ event }: { event: DeathStarImpactEvent }) {
     arm(event.at);
     arm(event.at + DEATH_STAR_IMPACT_MS);
     document.addEventListener('visibilitychange', sync);
+    window.addEventListener('focus', sync);
+    window.addEventListener('pageshow', sync);
     return () => {
       timers.forEach(clearTimeout);
       document.removeEventListener('visibilitychange', sync);
+      window.removeEventListener('focus', sync);
+      window.removeEventListener('pageshow', sync);
     };
   }, [event.at]);
 

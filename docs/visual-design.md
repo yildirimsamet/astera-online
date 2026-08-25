@@ -62,9 +62,21 @@ Active things carry an emissive edge that bleeds onto what is next to them; inac
 not. **Glow is a state, never a decoration** — if everything glows, nothing is on.
 
 **4 · The art is the hero, never a bullet point.** The renders in `public/assets/images/` are
-300–450px and are the most expensive thing this project owns. They appear at 96–140px inside a
-lit socket, as the subject of a card. A render used at 40px in a text row is a wasted asset and
-reads as a favicon.
+300–450px and are the most expensive thing this project owns. A render used at 40px in a text row
+is a wasted asset and reads as a favicon.
+
+Which size a render gets follows from what the surface asks the player to do (`interface.md` I3).
+
+- **A SHEET is the argument**, so its portrait runs at 96–150px as the subject of the plate.
+- **A ROW asks you to IDENTIFY an object** among thirteen others, so its render sits in a 74px
+  socket — large enough to recognise at a glance, small enough that fourteen of them still scan.
+  This is the floor. `UpgradeRow`, the most-seen surface in the game, drew its art at 48px in a
+  flat wash until D109; that is the failure this rule was written about.
+- **A LADDER RUNG repeats an object already identified** by the portrait at the top of the same
+  sheet, so it is a thumbnail rather than a subject and may go smaller. It is showing *which level
+  changes the hardware*, not *what this thing is*.
+
+`ArtWell` publishes the sheet and row steps; nothing should sit between them.
 
 **5 · Numbers are the loudest thing on screen.** Stock, power, ETA, exposure, dominion — the
 game *is* those numbers. A display face at real size with tabular figures, never 12px mono in

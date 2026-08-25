@@ -54,7 +54,7 @@ export const rewards = {
     AEGIS: { name: 'Aegis', tag: 'A shield over your world' },
     MINE: { name: 'Asteroid drilled', tag: 'Reach a passing rock' },
     SALVAGE: { name: 'Wreck salvaged', tag: 'Take what a battle left behind' },
-    SOCIAL: { name: 'Follow @JoinAstera', tag: 'Once per commander' },
+    SOCIAL: { name: 'Follow @JoinAstera', tag: 'Once per account, ever' },
   },
 
   /**
@@ -80,5 +80,13 @@ export const rewards = {
     step3: 'We check it by hand. Once we do, the reward waits for you here.',
     pending: 'Waiting on your message',
     ready: 'Confirmed — claim your bonus',
+    /**
+     * WHAT A PLAYER WHO ALREADY HAS IT READS, and it has to say more than "Taken"
+     * — every other card in this panel says that about THIS season, and a new
+     * galaxy brings all of them back. This one does not come back, so the card
+     * says so plainly rather than leaving somebody following an account they
+     * already follow and waiting for a reply that will never pay.
+     */
+    forever: 'Already paid. This bonus is once per account — a new galaxy does not bring it back.',
   },
 } as const;

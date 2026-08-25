@@ -3,8 +3,8 @@ import { useEffect, useRef, useSyncExternalStore } from 'react';
 /**
  * THE SCORE, UNDER EVERYTHING, FOR AS LONG AS THE TAB IS IN FRONT OF SOMEBODY.
  *
- * Owner decision. One track, looped, at a fixed level, paused whenever the page
- * is not being looked at and resumed from the same instant when it is.
+ * Owner decision. One track, looped at the player's saved level, paused whenever
+ * the page is not being looked at and resumed from the same instant when it is.
  *
  * FOUR THINGS THIS HAS TO GET RIGHT, and three of them are failure modes rather
  * than features:
@@ -45,11 +45,8 @@ import { useEffect, useRef, useSyncExternalStore } from 'react';
 /** The track. A file under `public/`, so it is served by nginx and never bundled. */
 const TRACK = '/assets/musics/interstellar-main-theme-bg.mp3';
 
-/**
- * Fixed, by owner decision. There is an ON/OFF, and there is no volume slider:
- * loud enough to be there, quiet enough to talk over.
- */
-const VOLUME = 0.35;
+/** The original mix remains the default; the player may now tune it per device. */
+export const DEFAULT_MUSIC_VOLUME = 0.35;
 
 /* ── on or off, and it survives a reload ───────────────────────────────────── */
 
@@ -71,6 +68,7 @@ const VOLUME = 0.35;
  * playback path is always looking at the live value and never at a captured one.
  */
 const ENABLED_KEY = 'astera.music';
+const VOLUME_KEY = 'astera.music.volume';
 
 const store = (): Storage | null => {
   try {
@@ -90,9 +88,23 @@ let enabled = ((): boolean => {
   }
 })();
 
+let volume = ((): number => {
+  try {
+    const raw = store()?.getItem(VOLUME_KEY);
+    if (raw === null || raw === undefined || raw.trim() === '') return DEFAULT_MUSIC_VOLUME;
+    const parsed = Number(raw);
+    return Number.isFinite(parsed) && parsed >= 0 && parsed <= 1
+      ? parsed
+      : DEFAULT_MUSIC_VOLUME;
+  } catch {
+    return DEFAULT_MUSIC_VOLUME;
+  }
+})();
+
 const listeners = new Set<() => void>();
 
 export const musicEnabled = (): boolean => enabled;
+export const musicVolume = (): number => volume;
 
 export function setMusicEnabled(next: boolean): void {
   if (next === enabled) return;
@@ -101,6 +113,19 @@ export function setMusicEnabled(next: boolean): void {
     store()?.setItem(ENABLED_KEY, next ? 'on' : 'off');
   } catch {
     // A read-only store still leaves the toggle working for this session.
+  }
+  for (const notify of listeners) notify();
+}
+
+export function setMusicVolume(next: number): void {
+  if (!Number.isFinite(next)) return;
+  const clamped = Math.max(0, Math.min(1, next));
+  if (clamped === volume) return;
+  volume = clamped;
+  try {
+    store()?.setItem(VOLUME_KEY, String(clamped));
+  } catch {
+    // A read-only store still leaves the slider working for this session.
   }
   for (const notify of listeners) notify();
 }
@@ -114,6 +139,9 @@ const subscribe = (notify: () => void): (() => void) => {
 export const useMusicEnabled = (): boolean =>
   useSyncExternalStore(subscribe, musicEnabled, () => true);
 
+export const useMusicVolume = (): number =>
+  useSyncExternalStore(subscribe, musicVolume, () => DEFAULT_MUSIC_VOLUME);
+
 /** The gestures a browser will accept as "the user has interacted with this page". */
 const GESTURES = ['pointerdown', 'keydown', 'touchend'] as const;
 
@@ -125,6 +153,7 @@ const GESTURES = ['pointerdown', 'keydown', 'touchend'] as const;
  */
 export function useAmbientMusic(): void {
   const on = useMusicEnabled();
+  const level = useMusicVolume();
   /**
    * The running element's two controls, so the switch can reach them WITHOUT
    * putting `on` in the effect below's dependency list.
@@ -135,7 +164,11 @@ export function useAmbientMusic(): void {
    * again restart the track from the top. Pausing preserves the position, so the
    * switch is a pause and a resume rather than a teardown.
    */
-  const control = useRef<{ resume: () => void; pause: () => void } | null>(null);
+  const control = useRef<{
+    resume: () => void;
+    pause: () => void;
+    setVolume: (next: number) => void;
+  } | null>(null);
 
   useEffect(() => {
     let disposed = false;
@@ -145,7 +178,7 @@ export function useAmbientMusic(): void {
     const audio = new Audio();
     audio.src = TRACK;
     audio.loop = true;
-    audio.volume = VOLUME;
+    audio.volume = musicVolume();
     /**
      * `none`, not `auto`. The first frame of this app compiles a 3D scene out of a
      * 1.8 MB bundle, and 800 KB of music competing for that phone's connection is
@@ -228,6 +261,9 @@ export function useAmbientMusic(): void {
       pause: () => {
         audio.pause();
       },
+      setVolume: (next) => {
+        audio.volume = next;
+      },
     };
     attempt();
 
@@ -269,4 +305,9 @@ export function useAmbientMusic(): void {
     if (on) control.current?.resume();
     else control.current?.pause();
   }, [on]);
+
+  /** Volume changes touch the live element only: no restart, seek or download. */
+  useEffect(() => {
+    control.current?.setVolume(level);
+  }, [level]);
 }

@@ -6,7 +6,7 @@ import { full } from '../lib/format.js';
 import { MIN_PASSWORD, USERNAME_PATTERN } from '../lib/credentials.js';
 import { LANDING_ASSETS, usePreload, type Loader } from '../lib/preload.js';
 import { LoadingScreen } from '../shell/LoadingScreen.js';
-import { Button } from '../ui/kit/index.js';
+import { Button, useOwnPress } from '../ui/kit/index.js';
 import { LanguageSwitch } from '../ui/LanguageSwitch.jsx';
 import { Wordmark } from '../ui/Wordmark.jsx';
 import { commanderKnownHere } from '../lib/returning.js';
@@ -184,7 +184,7 @@ export function LandingScreen({
           <Population commanders={commanders} online={online} />
 
           {error !== undefined && mode === null && (
-            <p className="mb-3 text-[13px] text-alert" role="alert">
+            <p className="mb-3 text-body text-threat-ink" role="alert">
               {error}
             </p>
           )}
@@ -225,15 +225,15 @@ export function LandingScreen({
                 }}
               >
                 <span className="enter-orbit" aria-hidden />
-                <span className="text-[15px] tracking-[0.18em]">
+                <span className="text-title tracking-label">
                   {t('landing.signInPrimary')}
                 </span>
-                <span aria-hidden className="text-[15px] text-crystal">
+                <span aria-hidden className="text-title text-crystal">
                   &rarr;
                 </span>
               </button>
 
-              <p className="mt-3 text-center text-[11px] text-faint">
+              <p className="mt-3 text-center text-label text-faint">
                 {t('landing.returningHint')}
               </p>
 
@@ -241,7 +241,7 @@ export function LandingScreen({
                 <button
                   type="button"
                   disabled={opening}
-                  className="text-[12px] text-faint underline-offset-4 hover:underline"
+                  className="text-caption text-dim underline decoration-dim/40 underline-offset-4 transition-colors hover:text-bone hover:decoration-bone/60"
                   onClick={() => {
                     if (opening) return;
                     setOpening(true);
@@ -270,22 +270,22 @@ export function LandingScreen({
                 }}
               >
                 <span className="enter-orbit" aria-hidden />
-                <span className="text-[15px] tracking-[0.18em]">
+                <span className="text-title tracking-label">
                   {opening ? t('landing.opening') : t('landing.register')}
                 </span>
-                <span aria-hidden className="text-[15px] text-crystal">
+                <span aria-hidden className="text-title text-crystal">
                   &rarr;
                 </span>
               </button>
 
-              <p className="mt-3 text-center text-[11px] text-faint">
+              <p className="mt-3 text-center text-label text-faint">
                 {t('landing.reassurance')}
               </p>
 
               <div className="mt-2 text-center">
                 <button
                   type="button"
-                  className="text-[12px] text-faint underline-offset-4 hover:underline"
+                  className="text-caption text-dim underline decoration-dim/40 underline-offset-4 transition-colors hover:text-bone hover:decoration-bone/60"
                   onClick={() => {
                     setMode('login');
                   }}
@@ -329,7 +329,7 @@ export type Mode = 'login' | 'register';
 function Population({ commanders, online }: { commanders: number | null; online: number | null }) {
   if (commanders === null || commanders === 0) return null;
   return (
-    <p className="mb-4 text-[12px] text-faint">
+    <p className="mb-4 text-caption text-faint">
       {/*
         `Trans` rather than two fragments of a sentence: which side of the figure
         the noun sits on is a property of the language, and splitting the string
@@ -444,6 +444,10 @@ function AuthDialog({
     })();
   };
 
+  // Same shape as the sheet scrim (D109a): a dismiss control must not answer the
+  // tail of the gesture that opened the thing it dismisses.
+  const dismiss = useOwnPress(onClose);
+
   return (
     <div
       className="fixed inset-0 z-30 flex items-end justify-center sm:items-center"
@@ -455,7 +459,7 @@ function AuthDialog({
         type="button"
         aria-label={t('landing.form.close')}
         className="absolute inset-0 bg-void/70"
-        onClick={onClose}
+        {...dismiss}
       />
 
       <form
@@ -468,7 +472,7 @@ function AuthDialog({
         <p className="legend">
           {register ? t('landing.form.eyebrowRegister') : t('landing.form.eyebrowLogin')}
         </p>
-        <h2 className="mt-2 font-display text-[24px] uppercase tracking-[0.05em] text-bone">
+        <h2 className="headline text-figure mt-2 text-bone">
           {register ? t('landing.form.headingRegister') : t('landing.form.headingLogin')}
         </h2>
 
@@ -510,7 +514,7 @@ function AuthDialog({
         />
 
         {problem !== null && (
-          <p className="mt-3 text-[13px] text-alert" role="alert">
+          <p className="mt-3 text-body text-threat-ink" role="alert">
             {problem}
           </p>
         )}
@@ -528,7 +532,7 @@ function AuthDialog({
 
         <button
           type="button"
-          className="mt-4 w-full text-center text-[12px] text-faint underline-offset-4 hover:underline"
+          className="mt-4 w-full text-center text-caption text-dim underline decoration-dim/40 underline-offset-4 transition-colors hover:text-bone hover:decoration-bone/60"
           onClick={() => {
             setProblem(null);
             onMode(register ? 'login' : 'register');

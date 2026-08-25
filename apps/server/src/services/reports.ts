@@ -1,7 +1,7 @@
 import { and, desc, eq, inArray, or } from 'drizzle-orm';
 import { deuteriumOf, type CombatRound, type Fleet, type Grade } from '@astera/rules';
 import type { Db, Tx } from '../db/client.js';
-import { accounts, battleReports, planets, players } from '../db/schema.js';
+import { accounts, battleReports, planets, players, strategicImpacts } from '../db/schema.js';
 
 /**
  * BATTLE REPORTS — the closing link of the loop.
@@ -50,6 +50,7 @@ export interface BattleReportView {
 
 export interface RivalSummaryView {
   planetId: string;
+  playerId: string;
   battles: number;
   attacks: number;
   defences: number;
@@ -81,7 +82,11 @@ async function readBattleReportsIn(
     eq(battleReports.attackerPlayerId, playerId),
     eq(battleReports.defenderPlayerId, playerId),
   );
-  const [rows, history] = await Promise.all([
+  const impactMine = or(
+    eq(strategicImpacts.attackerPlayerId, playerId),
+    eq(strategicImpacts.defenderPlayerId, playerId),
+  );
+  const [rows, history, impacts] = await Promise.all([
     tx
       .select()
       .from(battleReports)
@@ -102,13 +107,20 @@ async function readBattleReportsIn(
       .from(battleReports)
       .where(mine)
       .orderBy(desc(battleReports.createdAt)),
+    tx
+      .select()
+      .from(strategicImpacts)
+      .where(impactMine)
+      .orderBy(desc(strategicImpacts.createdAt)),
   ]);
 
-  if (history.length === 0) return { reports: [], rivals: [] };
+  if (history.length === 0 && impacts.length === 0) return { reports: [], rivals: [] };
 
   // One query for every opponent rather than one per report.
   const opponentIds = history
     .map((r) => r.attackerPlayerId === playerId ? r.defenderPlayerId : r.attackerPlayerId)
+    .concat(impacts.map((r) =>
+      r.attackerPlayerId === playerId ? r.defenderPlayerId : r.attackerPlayerId))
     .filter((id): id is string => id !== null);
   const opponents = await tx
     .select({ id: players.id, name: accounts.displayName, planet: planets.name, planetId: planets.id })
@@ -180,6 +192,7 @@ async function readBattleReportsIn(
     if (!current) {
       rivals.set(opponent.planetId, {
         planetId: opponent.planetId,
+        playerId: opponent.id,
         battles: 1,
         attacks: attacking ? 1 : 0,
         defences: attacking ? 0 : 1,
@@ -200,6 +213,39 @@ async function readBattleReportsIn(
     if (current.lastKnownFleet === null && hasKnownFleet) {
       current.lastKnownFleet = theirs;
       current.lastKnownAt = row.createdAt;
+    }
+  }
+
+  for (const impact of impacts) {
+    const attacking = impact.attackerPlayerId === playerId;
+    const opponentId = attacking ? impact.defenderPlayerId : impact.attackerPlayerId;
+    const opponent = opponentId === null ? undefined : byId.get(opponentId);
+    if (!opponent) continue;
+    const theirs = attacking ? impact.destroyedFleet : {};
+    const hasKnownFleet = Object.values(theirs).some((count) => count > 0);
+    const current = rivals.get(opponent.planetId);
+    if (!current) {
+      rivals.set(opponent.planetId, {
+        planetId: opponent.planetId,
+        playerId: opponent.id,
+        battles: 1,
+        attacks: attacking ? 1 : 0,
+        defences: attacking ? 0 : 1,
+        dominionGained: 0,
+        dominionLost: 0,
+        lastInteractionAt: impact.createdAt,
+        lastKnownFleet: hasKnownFleet ? theirs : null,
+        lastKnownAt: hasKnownFleet ? impact.createdAt : null,
+      });
+      continue;
+    }
+    current.battles += 1;
+    current.attacks += attacking ? 1 : 0;
+    current.defences += attacking ? 0 : 1;
+    if (impact.createdAt > current.lastInteractionAt) current.lastInteractionAt = impact.createdAt;
+    if (hasKnownFleet && (!current.lastKnownAt || impact.createdAt > current.lastKnownAt)) {
+      current.lastKnownFleet = theirs;
+      current.lastKnownAt = impact.createdAt;
     }
   }
 

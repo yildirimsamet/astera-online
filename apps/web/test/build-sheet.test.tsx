@@ -11,10 +11,9 @@ import { planetView } from './fixtures.js';
 /**
  * HOW MANY, AND THE ONE HULL WHERE THE ANSWER IS NOT "AS MANY AS YOU CAN AFFORD".
  *
- * The quantity picker offered a fixed `1 · 5 · 25 · Max` for every hull. That is
- * right for warships and wrong for the Prospector, which is rationed to
- * `PROSPECTOR.max` — so the sheet was offering to build twenty-five of something a
- * planet may hold two of, and the server refused on the way through.
+ * The quantity picker must expose every valid integer and respect the one hull
+ * whose answer is not simply "as many as you can afford": the Prospector is also
+ * rationed to `PROSPECTOR.max`.
  *
  * A control that offers what will be refused is worse than one that refuses early:
  * it teaches the player a rule that is not true, and then contradicts them.
@@ -100,10 +99,10 @@ const show = (
 };
 
 describe('strategic hardware hierarchy', () => {
-  it('keeps an unbuilt Death Star inside Reach instead of leading every planet visit', async () => {
+  it('keeps an unbuilt Death Star inside Fleet instead of leading every planet visit', async () => {
     const view = show({}, 'grow');
     expect(view.container.querySelector('[data-strategic-state]')).toBeNull();
-    await userEvent.click(screen.getByRole('button', { name: 'Reach' }));
+    await userEvent.click(screen.getByRole('tab', { name: 'Fleet' }));
     expect(view.container.querySelector('[data-strategic-state="LOCKED"]')).not.toBeNull();
   });
 
@@ -117,7 +116,7 @@ describe('strategic hardware hierarchy', () => {
       },
     }, 'grow');
     const forge = view.container.querySelector('[data-strategic-state="READY"]');
-    const tabs = screen.getByRole('button', { name: 'Grow' }).parentElement?.parentElement ?? null;
+    const tabs = screen.getByRole('tab', { name: 'Production' }).parentElement?.parentElement ?? null;
     expect(forge).not.toBeNull();
     expect(tabs).not.toBeNull();
     if (!forge || !tabs) throw new Error('strategic state and tabs must both render');
@@ -223,8 +222,8 @@ describe('the two build queues', () => {
     expect(row).toHaveAttribute('data-progression-state', 'queued');
     expect(row).toHaveTextContent('L3');
     expect(row).toHaveTextContent('1 order queued');
-    const raise = within(row as HTMLElement).getByRole('button', { name: 'Raise' });
-    await userEvent.click(raise);
+    await userEvent.click(within(row as HTMLElement).getByRole('button', { name: /about alloy refinery/i }));
+    await userEvent.click(screen.getByRole('button', { name: /raise to l5/i }));
     expect(upgrade).toHaveBeenCalledOnce();
     expect(upgrade.mock.calls[0]?.[0]).toBe('REFINERY');
     expectMutationCallbacks(upgrade.mock.calls[0]?.[1]);
@@ -252,7 +251,7 @@ describe('the two build queues', () => {
     const row = view.container.querySelector('#row-WASP [data-progression-state]');
     expect(row).toHaveAttribute('data-progression-state', 'queued');
     expect(row).toHaveTextContent('3 units queued');
-    expect(within(row as HTMLElement).getByRole('button', { name: 'Build' })).toBeInTheDocument();
+    expect(within(row as HTMLElement).getByRole('button', { name: /about wasp/i })).toBeInTheDocument();
   });
 
   it('wakes at the server-named completion instant instead of waiting for a poll', () => {
@@ -318,7 +317,8 @@ describe('the two build queues', () => {
 
     const row = view.container.querySelector('#row-DENSE_FUEL_CELLS');
     expect(row).not.toBeNull();
-    const action = within(row as HTMLElement).getByRole('button', { name: 'Research' });
+    await userEvent.click(within(row as HTMLElement).getByRole('button', { name: /about dense fuel cells/i }));
+    const action = screen.getByRole('button', { name: 'Research' });
     expect(action).toBeEnabled();
     await userEvent.click(action);
     expect(completeResearch).toHaveBeenCalledOnce();
@@ -329,7 +329,7 @@ describe('the two build queues', () => {
 
 /**
  * Open the build sheet for a hull, the way a player does: find that hull's row and
- * press its own BUILD control. Every row on the tab carries one, so the button has
+ * press the compact row. The build commitment exists only in the sheet, so the row
  * to be found relative to the NAME rather than by index — an index would silently
  * start testing a different hull the day a band is reordered.
  */
@@ -338,49 +338,38 @@ async function openSheet(name: string): Promise<void> {
   const heading = screen.getByRole('heading', { name });
   const row = heading.closest(`#row-${name.toUpperCase()}`)
     ?? heading.closest('[id^="row-"]');
-  const button = [...(row?.querySelectorAll('button') ?? [])].find(
-    (candidate) => candidate.textContent.trim().toLowerCase() === 'build',
-  ) ?? null;
-  if (!button) throw new Error(`no build control in the ${name} row`);
+  const button = row ? within(row as HTMLElement).getByRole('button', { name: new RegExp(`about ${name}`, 'i') }) : null;
+  if (!button) throw new Error(`no detail control in the ${name} row`);
   await user.click(button);
 }
 
-/** The quantity buttons currently on offer, in order. */
-const steps = (): string[] =>
-  screen
-    .getAllByRole('button')
-    .map((b) => b.textContent.trim())
-    .filter((t) => /^\d+$/.test(t) || /^Max \d+$/.test(t));
-
 describe('the quantity picker', () => {
-  it('offers the full ladder for a warship', async () => {
+  it('offers minus, plus and Max around a read-only quantity for a warship', async () => {
     show();
     await openSheet('Wasp');
-    const offered = steps();
-    expect(offered).toContain('1');
-    expect(offered).toContain('5');
-    expect(offered).toContain('25');
-    expect(offered.some((s) => s.startsWith('Max'))).toBe(true);
+    expect(screen.getByRole('button', { name: /fewer wasp/i })).toBeDisabled();
+    expect(screen.getByRole('button', { name: /more wasp/i })).toBeEnabled();
+    expect(screen.getByRole('button', { name: /max wasp/i })).toBeEnabled();
+    expect(screen.getByRole('textbox', { name: /wasp quantity/i })).toHaveValue('1');
+    expect(screen.getByRole('textbox', { name: /wasp quantity/i })).toHaveAttribute('readonly');
   });
 
   /** THE COMPLAINT, ASSERTED: the ownership cap is also the picker's ceiling. */
   it('never offers more Prospectors than a planet may hold', async () => {
     show();
     await openSheet('Prospector');
-    for (const n of steps()) {
-      const value = Number(n.replace('Max ', ''));
-      expect(value, `the picker offered ${n}, over the cap`).toBeLessThanOrEqual(PROSPECTOR.max);
-    }
-    expect(steps()).not.toContain('5');
-    expect(steps()).not.toContain('25');
-    expect(steps()).toContain(`Max ${String(PROSPECTOR.max)}`);
+    await userEvent.setup().click(screen.getByRole('button', { name: /max prospector/i }));
+    expect(screen.getByRole('textbox', { name: /prospector quantity/i }))
+      .toHaveValue(String(PROSPECTOR.max));
+    expect(screen.getByRole('button', { name: /more prospector/i })).toBeDisabled();
   });
 
   it('shrinks the offer as craft are built', async () => {
     show({ fleet: { PROSPECTOR: PROSPECTOR.max - 1 } });
     await openSheet('Prospector');
-    const offered = steps().map((s) => Number(s.replace('Max ', '')));
-    expect(Math.max(...offered)).toBe(1);
+    expect(screen.getByRole('textbox', { name: /prospector quantity/i })).toHaveValue('1');
+    expect(screen.getByRole('button', { name: /max prospector/i })).toBeDisabled();
+    expect(screen.getByRole('button', { name: /more prospector/i })).toBeDisabled();
   });
 
   /**
@@ -421,14 +410,6 @@ describe('the quantity picker', () => {
     expect(screen.getByText(new RegExp(`1 of ${String(PROSPECTOR.max)} held`, 'i'))).toBeInTheDocument();
   });
 
-  /** No duplicate rungs: a ceiling that lands on 1 must not offer "1 · Max 1". */
-  it('never offers the same number twice', async () => {
-    show({ fleet: { PROSPECTOR: PROSPECTOR.max - 1 } });
-    await openSheet('Prospector');
-    const values = steps().map((s) => Number(s.replace('Max ', '')));
-    expect(new Set(values).size).toBe(values.length);
-  });
-
   /**
    * A HULL YOU CANNOT AFFORD DOES NOT OPEN A SHEET AT ALL. D26.
    *
@@ -439,7 +420,7 @@ describe('the quantity picker', () => {
    * button, and if the sheet WERE reachable while short, that button would invite a
    * purchase the player cannot make.
    */
-  it('does not open at all for a hull the planet cannot afford', async () => {
+  it('opens for an unaffordable hull and explains the shortfall before commit', async () => {
     current = planetView(
       { buildings: { CORE: 6, REFINERY: 3, EXTRACTOR: 3, VAULT: 1, SHIPYARD: 4 }, fleet: {} },
       { alloy: 0, crystal: 0 },
@@ -453,13 +434,22 @@ describe('the quantity picker', () => {
       </QueryClientProvider>,
     );
 
-    await expect(openSheet('Wasp')).rejects.toThrow(/no build control/);
-    // The control is present, disabled, and says what is wrong.
+    await openSheet('Wasp');
+    // The sheet remains informative while its commitment states the shortfall.
     const short = screen.getAllByRole('button', { name: /short/i });
     expect(short.length).toBeGreaterThan(0);
     expect(short[0]).toBeDisabled();
-    // And nothing opened, so there is no picker to press.
-    expect(steps()).toEqual([]);
+    expect(screen.getByRole('textbox', { name: /quantity/i })).toBeInTheDocument();
+  });
+
+  it('increments large warship orders one at a time', async () => {
+    show();
+    await openSheet('Wasp');
+    const user = userEvent.setup();
+    const more = screen.getByRole('button', { name: /more wasp/i });
+    await user.click(more);
+    await user.click(more);
+    expect(screen.getByRole('textbox', { name: /wasp quantity/i })).toHaveValue('3');
   });
 
   it('builds the number that was chosen', async () => {
@@ -467,7 +457,7 @@ describe('the quantity picker', () => {
     show();
     const user = userEvent.setup();
     await openSheet('Prospector');
-    await user.click(screen.getByRole('button', { name: `Max ${String(PROSPECTOR.max)}` }));
+    await user.click(screen.getByRole('button', { name: /max prospector/i }));
     const act = screen.getByRole('button', { name: new RegExp(`Build ${String(PROSPECTOR.max)}`, 'i') });
     await user.click(within(act).getByText(new RegExp(`Build ${String(PROSPECTOR.max)}`, 'i')).closest('button') ?? act);
     expect(build).toHaveBeenCalledWith(

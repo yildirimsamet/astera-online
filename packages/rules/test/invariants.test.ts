@@ -294,10 +294,34 @@ describe('the asteroid field', () => {
   const spec = generateGalaxy(7, 40);
   const rocks = spec.asteroids;
 
+  it('spawns rocks at the owner-set fifteen-percent-higher rate', () => {
+    expect(GALAXY.asteroidSpawnPerHour).toBe(10.35);
+  });
+
+  it('adds the higher rate as a new lane without squeezing established spawn times', () => {
+    const span = SEASON.days * 24 * 60;
+    const baseCount = Math.round((9 * span) / 60);
+    const totalCount = Math.round((GALAXY.asteroidSpawnPerHour * span) / 60);
+    const baseInterval = span / baseCount;
+    const extraInterval = span / (totalCount - baseCount);
+
+    expect(rocks).toHaveLength(totalCount);
+    for (const index of [0, 1, Math.floor(baseCount / 2), baseCount - 1]) {
+      expect(rocks[index]?.appearsAt).toBeGreaterThanOrEqual(index * baseInterval);
+      expect(rocks[index]?.appearsAt).toBeLessThan((index + 1) * baseInterval);
+    }
+    for (const laneIndex of [0, 1, totalCount - baseCount - 1]) {
+      const rock = rocks[baseCount + laneIndex];
+      expect(rock?.index).toBe(baseCount + laneIndex);
+      expect(rock?.appearsAt).toBeGreaterThanOrEqual(laneIndex * extraInterval);
+      expect(rock?.appearsAt).toBeLessThan((laneIndex + 1) * extraInterval);
+    }
+  });
+
   /**
    * HOW BUSY THE SKY IS, AND NOTHING WAS HOLDING IT.
    *
-   * `asteroidSpawnPerHour` was raised 25% by owner decision and the suite would not
+   * `asteroidSpawnPerHour` was raised 15% by owner decision and the suite would not
    * have noticed either the change or a revert of it: every other test here is a
    * property of an individual rock, and none of them counts the field.
    *
@@ -528,11 +552,10 @@ describe('the asteroid field', () => {
    * THE CEILINGS HERE ARE MEASURED, NOT CHOSEN — so a change to the FIELD re-locks
    * them even when it changes nothing about a craft.
    *
-   * Raising `asteroidSpawnPerHour` 25% slid every rock's `appearsAt` 20% earlier
-   * (`interval = span / count`). The rocks are identical — index `i` keeps the same
-   * radius, speed, period and phase — but this sweep starts each intercept at
-   * `appearsAt + ...`, so it now samples the same orbits at DIFFERENT angles. The
-   * distribution did not get worse; a different part of it got sampled.
+   * Raising `asteroidSpawnPerHour` now appends a deterministic lane rather than
+   * squeezing the established lane. Existing rocks retain their `appearsAt`; this
+   * sweep additionally covers the new indices and therefore still re-measures the
+   * field rather than assuming added density cannot expose a reachability edge.
    *
    * The properties that are actually design rules all still hold, and with room:
    * across 500,000 intercepts (two speeds × five seeds × every slot × 200 rocks ×

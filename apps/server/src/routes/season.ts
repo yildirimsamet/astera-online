@@ -1,11 +1,85 @@
-import { and, eq, gte, sql } from 'drizzle-orm';
+import { and, eq, gte, or, sql } from 'drizzle-orm';
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import { SERVERS } from '@astera/rules';
-import { planets, players, seasonResults, seasons, shards } from '../db/schema.js';
+import {
+  battleReports,
+  planets,
+  players,
+  probeReports,
+  seasonResults,
+  seasons,
+  shards,
+  strategicImpacts,
+} from '../db/schema.js';
+import type { Db, Tx } from '../db/client.js';
 import { addMinutes } from '../clock.js';
 import { GameError } from '../services/planet.js';
 import { requireAuth } from './auth.js';
+
+async function rivalIsCommitted(
+  tx: Db | Tx,
+  playerId: string,
+  rivalPlayerId: string,
+): Promise<boolean> {
+  const [battle, impact, myProbe, theirProbe] = await Promise.all([
+    tx
+      .select({ id: battleReports.id })
+      .from(battleReports)
+      .where(
+        or(
+          and(
+            eq(battleReports.attackerPlayerId, playerId),
+            eq(battleReports.defenderPlayerId, rivalPlayerId),
+          ),
+          and(
+            eq(battleReports.attackerPlayerId, rivalPlayerId),
+            eq(battleReports.defenderPlayerId, playerId),
+          ),
+        ),
+      )
+      .limit(1),
+    tx
+      .select({ id: strategicImpacts.id })
+      .from(strategicImpacts)
+      .where(
+        or(
+          and(
+            eq(strategicImpacts.attackerPlayerId, playerId),
+            eq(strategicImpacts.defenderPlayerId, rivalPlayerId),
+          ),
+          and(
+            eq(strategicImpacts.attackerPlayerId, rivalPlayerId),
+            eq(strategicImpacts.defenderPlayerId, playerId),
+          ),
+        ),
+      )
+      .limit(1),
+    tx
+      .select({ id: probeReports.id })
+      .from(probeReports)
+      .innerJoin(planets, eq(probeReports.targetPlanetId, planets.id))
+      .where(
+        and(
+          eq(probeReports.observerPlayerId, playerId),
+          eq(planets.controllerPlayerId, rivalPlayerId),
+        ),
+      )
+      .limit(1),
+    tx
+      .select({ id: probeReports.id })
+      .from(probeReports)
+      .innerJoin(planets, eq(probeReports.targetPlanetId, planets.id))
+      .where(
+        and(
+          eq(probeReports.observerPlayerId, rivalPlayerId),
+          eq(planets.controllerPlayerId, playerId),
+        ),
+      )
+      .limit(1),
+  ]);
+  return [battle, impact, myProbe, theirProbe].some((rows) => rows.length > 0);
+}
 
 /**
  * The clock of the galaxy the caller is standing in.
@@ -72,6 +146,10 @@ export function registerSeasonRoutes(app: FastifyInstance): void {
         )),
     ]);
 
+    const rivalCommitted = row.rivalPlayerId
+      ? await rivalIsCommitted(app.db, row.playerId, row.rivalPlayerId)
+      : false;
+
     return {
       seasonId: row.season.id,
       shard: row.shard.code,
@@ -95,6 +173,7 @@ export function registerSeasonRoutes(app: FastifyInstance): void {
       result: result ?? null,
       rivalPlanetId: row.rivalPlanetId,
       rivalPlayerId: row.rivalPlayerId,
+      rivalCommitted,
     };
   });
 
@@ -109,6 +188,22 @@ export function registerSeasonRoutes(app: FastifyInstance): void {
         .for('update')
         .limit(1);
       if (!me) throw new GameError('NO_PLANET', 'Join a galaxy first', 404);
+
+      const [current] = await tx
+        .select({ rivalPlanetId: players.rivalPlanetId, rivalPlayerId: players.rivalPlayerId })
+        .from(players)
+        .where(eq(players.id, me.playerId));
+      const committed = current?.rivalPlayerId
+        ? await rivalIsCommitted(tx, me.playerId, current.rivalPlayerId)
+        : false;
+      const changesCurrent = body.planetId !== current?.rivalPlanetId;
+      if (committed && changesCurrent) {
+        throw new GameError(
+          'RIVAL_COMMITTED',
+          'Your first shared move committed this Rival for the season',
+          409,
+        );
+      }
 
       if (body.planetId !== null) {
         const [target] = await tx
@@ -126,15 +221,25 @@ export function registerSeasonRoutes(app: FastifyInstance): void {
         if (target.playerId === me.playerId) {
           throw new GameError('RIVAL_SELF', 'You cannot mark your own world as a rival', 400);
         }
+        if (!target.playerId) {
+          throw new GameError('RIVAL_NOT_VISIBLE', 'That world has no commander', 404);
+        }
         await tx.update(players).set({
           rivalPlanetId: body.planetId,
           rivalPlayerId: target.playerId,
         }).where(eq(players.id, me.playerId));
-        return { rivalPlanetId: body.planetId, rivalPlayerId: target.playerId };
+        return {
+          rivalPlanetId: body.planetId,
+          rivalPlayerId: target.playerId,
+          rivalCommitted: await rivalIsCommitted(tx, me.playerId, target.playerId),
+        };
       }
 
-      await tx.update(players).set({ rivalPlanetId: null, rivalPlayerId: null }).where(eq(players.id, me.playerId));
-      return { rivalPlanetId: null, rivalPlayerId: null };
+      await tx
+        .update(players)
+        .set({ rivalPlanetId: null, rivalPlayerId: null })
+        .where(eq(players.id, me.playerId));
+      return { rivalPlanetId: null, rivalPlayerId: null, rivalCommitted: false };
     });
   });
 }

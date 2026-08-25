@@ -1,63 +1,167 @@
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { usePending } from '../api/queries.js';
-import type { PendingThread } from '../api/schemas.js';
+import { fleetCount } from '@astera/rules';
+import { useMining, usePending } from '../api/queries.js';
+import type { MiningRun, PendingThread } from '../api/schemas.js';
+import { threadKey } from '../galaxy/threadKey.js';
+import type { CraftFocus } from '../galaxy/ownCraft.js';
 import i18n from '../i18n/index.js';
 import { countdown, useNow } from '../lib/time.js';
+import { Sheet } from '../ui/kit/index.js';
 
 /**
  * DESIGN LAW #1, made visible.
  *
  * "Every session must end with something in flight." A player can only act on
- * that if they can see it, so this strip is always on screen, above the tabs,
- * counting down. When it is empty it says so plainly — an empty strip is the
- * game telling you there is no reason to come back yet, which is a prompt, not a
- * decoration.
+ * that if they can see it, so this strip is always on screen, counting down. Its
+ * sheet is the complete owned-flight roster: mission threads and mining runs meet
+ * here even though the API keeps them separate. When it is empty it says so
+ * plainly — an empty strip is a prompt, not decoration.
  */
-export function PendingStrip() {
+export function PendingStrip({ onFocus }: { onFocus?: (focus: CraftFocus) => void }) {
   const { t } = useTranslation();
   const { data } = usePending();
+  const mining = useMining();
   const now = useNow(1000);
   const threads = data?.pending ?? [];
+  const runs = (mining.data?.runs ?? []).filter((run) => run.status !== 'done');
+  const [open, setOpen] = useState(false);
 
-  const byArrival = (a: PendingThread, b: PendingThread) =>
-    arrivalOf(a) - arrivalOf(b) || (a.id ?? '').localeCompare(b.id ?? '');
-  const incoming = threads.filter((thread) => thread.kind === 'incoming').sort(byArrival)[0];
-  const soonest = [...threads].sort(byArrival)[0];
+  const items: AirborneItem[] = [
+    ...threads.map((thread, index): AirborneItem => ({
+      key: `thread:${threadKey(thread, index)}`,
+      title: title(thread),
+      detail: thread.fleet
+        ? t('pendingStrip.craftCount', { count: fleetCount(thread.fleet) })
+        : thread.kind === 'incoming'
+          ? t('pendingStrip.incomingHint')
+          : t('pendingStrip.craftUnknown'),
+      arrival: arrivalOf(thread),
+      leg: thread.leg,
+      incoming: thread.kind === 'incoming',
+      engages: thread.kind === 'fleet' && thread.leg === 'outbound',
+      ...(thread.path
+        ? { focus: { kind: 'thread', key: threadKey(thread, index) } }
+        : {}),
+    })),
+    ...runs.map((run): AirborneItem => ({
+      key: `run:${run.id}`,
+      title: runTitle(run),
+      detail: t('pendingStrip.drillCount', { count: run.craft }),
+      arrival: runArrival(run),
+      leg: run.status === 'returning' ? 'return' : 'outbound',
+      incoming: false,
+      engages: false,
+      focus: { kind: 'run', id: run.id },
+    })),
+  ].sort((a, b) => a.arrival - b.arrival || a.key.localeCompare(b.key));
+
+  const incoming = items.find((item) => item.incoming);
+  const soonest = items[0];
   const shown = incoming ?? soonest;
 
   return (
-    <div
-      className={`border-t px-4 py-2 ${
-        incoming ? 'border-alert/40 bg-alert/10' : 'border-line-soft bg-deep/80'
-      }`}
-    >
-      {shown ? (
-        <div className="flex items-center gap-3">
-          <span className={`legend min-w-0 truncate ${incoming ? 'text-[#e08a7c]' : ''}`}>
-            {title(shown)}
-          </span>
-          {shown.leg && (
-            <span className="rounded-sm border border-line-soft px-1.5 py-0.5 text-[9px] uppercase tracking-[0.13em] text-faint">
-              {t(shown.leg === 'return' ? 'pendingStrip.returnLeg' : 'pendingStrip.outboundLeg')}
+    <>
+      <button
+        type="button"
+        aria-label={t('pendingStrip.openFlights')}
+        onClick={() => { setOpen(true); }}
+        className={`w-full border-t px-4 py-2 text-left transition-colors hover:bg-raised/60 ${
+          incoming ? 'border-alert/40 bg-alert/10' : 'border-line-soft bg-deep/80'
+        }`}
+      >
+        {shown ? (
+          <span className="flex items-center gap-3">
+            <span className={`legend min-w-0 truncate ${incoming ? 'text-threat-ink' : ''}`}>
+              {shown.title}
             </span>
-          )}
-          <span className="h-px flex-1 bg-line-soft" />
-          <span className={`num text-[13px] ${incoming ? 'text-[#ffb9ae]' : 'text-bone'}`}>
-            {arrivalOf(shown) <= now && shown.kind === 'fleet' && shown.leg === 'outbound'
-              ? t('pendingStrip.engaging')
-              : countdown(arrivalOf(shown) - now)}
-          </span>
-          {threads.length > 1 && (
-            <span className="num text-[11px] text-faint">
-              {t('pendingStrip.more', { count: threads.length - 1 })}
+            {shown.leg && (
+              <span className="legend rounded-chip border border-line-soft px-2 py-1">
+                {t(shown.leg === 'return' ? 'pendingStrip.returnLeg' : 'pendingStrip.outboundLeg')}
+              </span>
+            )}
+            <span className="h-px flex-1 bg-line-soft" />
+            <span className={`num text-caption whitespace-nowrap ${incoming ? 'text-threat-ink' : 'text-bone'}`}>
+              {shown.arrival <= now && shown.engages
+                ? t('pendingStrip.engaging')
+                : countdown(shown.arrival - now)}
             </span>
+            {items.length > 1 && (
+              <span className="num text-label text-faint">
+                {t('pendingStrip.more', { count: items.length - 1 })}
+              </span>
+            )}
+            <span aria-hidden className="text-faint">⌃</span>
+          </span>
+        ) : (
+          <span className="flex items-center justify-between gap-3">
+            <span className="legend text-faint">{t('pendingStrip.empty')}</span>
+            <span aria-hidden className="text-faint">⌃</span>
+          </span>
+        )}
+      </button>
+
+      {open && (
+        <Sheet
+          eyebrow={t('pendingStrip.sheetEyebrow')}
+          title={t('pendingStrip.sheetTitle')}
+          onClose={() => { setOpen(false); }}
+        >
+          {items.length === 0 ? (
+            <p className="pt-4 text-body text-dim">{t('pendingStrip.sheetEmpty')}</p>
+          ) : (
+            <div className="space-y-2 pt-4">
+              {items.map((item) => {
+                const focus = item.focus;
+                const body = (
+                  <>
+                    <span className="min-w-0 flex-1">
+                      <span className="name block truncate text-bone">
+                        {item.title}
+                      </span>
+                      <span className="mt-1 block text-label text-faint">{item.detail}</span>
+                    </span>
+                    <span className="num shrink-0 text-caption text-crystal">
+                      {countdown(item.arrival - now)}
+                    </span>
+                    {focus && <span aria-hidden className="text-faint">›</span>}
+                  </>
+                );
+                return focus ? (
+                  <button
+                    key={item.key}
+                    type="button"
+                    onClick={() => {
+                      setOpen(false);
+                      onFocus?.(focus);
+                    }}
+                    className="plate flex min-h-14 w-full items-center gap-3 px-3 py-3 text-left transition-colors hover:bg-bone/[0.03] active:bg-raised/60"
+                  >
+                    {body}
+                  </button>
+                ) : (
+                  <div key={item.key} className="plate flex min-h-14 items-center gap-3 px-3 py-3">
+                    {body}
+                  </div>
+                );
+              })}
+            </div>
           )}
-        </div>
-      ) : (
-        <p className="legend text-faint">{t('pendingStrip.empty')}</p>
+        </Sheet>
       )}
-    </div>
+    </>
   );
+}
+
+interface AirborneItem {
+  key: string;
+  title: string;
+  detail: string;
+  arrival: number;
+  leg?: 'outbound' | 'return';
+  incoming: boolean;
+  engages: boolean;
+  focus?: CraftFocus;
 }
 
 /**
@@ -69,8 +173,8 @@ export function PendingStrip() {
  * anything that is NOT yours, which is most of the disc, and the strip was quietly
  * attributing your own fleet's clock to somebody else's craft.
  *
- * Nothing about the strip changed except that every line now begins with "Your".
- * That is the whole fix: the countdown never moved, it was only ever unlabelled.
+ * Every owned line therefore names the owner; the anonymous inbound warning is
+ * the deliberate exception.
  */
 const title = (thread: PendingThread): string => {
   if (thread.kind === 'incoming') return i18n.t('pendingStrip.incoming');
@@ -82,6 +186,15 @@ const title = (thread: PendingThread): string => {
     target: thread.targetName,
   });
 };
+
+const runTitle = (run: MiningRun): string => {
+  if (run.status === 'returning') return i18n.t('pendingStrip.drillHome');
+  if (run.targetKind === 'debris') return i18n.t('pendingStrip.salvageOut');
+  return i18n.t('pendingStrip.drillOut', { index: run.asteroidIndex ?? '—' });
+};
+
+const runArrival = (run: MiningRun): number =>
+  (run.status === 'returning' ? run.homeAt ?? run.arriveAt : run.arriveAt).getTime();
 
 /**
  * THE INSTANT ITSELF, not a figure rebuilt from a rounded one.

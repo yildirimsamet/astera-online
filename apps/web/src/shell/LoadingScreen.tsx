@@ -108,7 +108,7 @@ export function LoadingScreen({
         </div>
 
         {known && (
-          <p className="num mt-2 text-[11px] tabular-nums text-faint">{pct}%</p>
+          <p className="num mt-2 text-label tabular-nums text-faint">{pct}%</p>
         )}
       </div>
     </main>

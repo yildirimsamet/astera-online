@@ -386,7 +386,20 @@ check('home button moves the camera', flew > 0.5, `moved ${flew.toFixed(2)} unit
  * the bodies came from the live galaxy payload. Resolve the selected id against
  * the same public list and prove both the target and the readable framing.
  */
-const activeWorldId = await page.locator('select[aria-label="Active world"], select[aria-label="Aktif gezegen"]').inputValue();
+/**
+ * The selector only exists once there is a second world to pick, so a fresh
+ * commander has no `<select>` on the header at all. Read it when it is there and
+ * fall back to the planet payload — which is the same answer either way, and the
+ * only answer available on the state a first session is actually in.
+ */
+const worldSelect = page.locator('select[aria-label="Active world"], select[aria-label="Aktif gezegen"]');
+const activeWorldId = (await worldSelect.count())
+  ? await worldSelect.inputValue()
+  : await page.evaluate(async () => {
+      const response = await fetch('/api/planet');
+      const view = await response.json();
+      return view.planet.id;
+    });
 const expectedHome = await page.evaluate(async (planetId) => {
   const response = await fetch('/api/galaxy');
   const galaxy = await response.json();

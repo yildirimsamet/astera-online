@@ -36,10 +36,10 @@ const VARIANT: Record<ButtonVariant, string> = {
 };
 
 const SIZE: Record<ButtonSize, string> = {
-  sm: 'min-h-8 px-3 py-1.5 text-[11px]',
-  md: 'min-h-[42px] px-4 py-2.5 text-[13px]',
-  lg: 'min-h-[52px] px-5 py-3 text-[14px]',
-  hero: 'min-h-[60px] px-6 py-4 text-[16px] tracking-[0.12em]',
+  sm: 'min-h-8 px-3 py-2 text-label',
+  md: 'min-h-[42px] px-4 py-3 text-body',
+  lg: 'min-h-[52px] px-6 py-3 text-body',
+  hero: 'min-h-[60px] px-6 py-4 text-title tracking-label',
 };
 
 export function Button({

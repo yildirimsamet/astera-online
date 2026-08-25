@@ -33,6 +33,7 @@ export function BeatCard({
   progress,
   nudge,
   place = 'bottom',
+  concept,
 }: {
   title: string;
   line: string;
@@ -63,6 +64,8 @@ export function BeatCard({
    * the live target and sends the card to the other end.
    */
   place?: 'top' | 'bottom';
+  /** The one systems map in the opening; shown once, never as permanent chrome. */
+  concept?: { steps: readonly string[]; outcome: string };
 }): ReactNode {
   /**
    * Publish this card's height so anything else that speaks from the bottom edge
@@ -137,7 +140,7 @@ export function BeatCard({
           and a number invites them to work out how much is left instead of doing
           the step in front of them.
         */}
-        <div className="flex items-center gap-1.5" aria-hidden>
+        <div className="flex items-center gap-2" aria-hidden>
           {Array.from({ length: progress.total }, (_, i) => (
             <span
               key={i}
@@ -148,10 +151,31 @@ export function BeatCard({
           ))}
         </div>
 
-        <p className="mt-3 font-display text-[17px] uppercase leading-tight tracking-[0.04em] text-bone">
+        <p className="headline mt-3 leading-tight text-bone">
           {title}
         </p>
-        <p className="mt-1.5 text-[13px] leading-snug text-dim">{line}</p>
+        <p className="mt-2 text-body leading-snug text-dim">{line}</p>
+
+        {concept && (
+          <div className="mt-4 border-y border-line-soft py-3" aria-label={concept.outcome}>
+            <div className="grid grid-cols-4 gap-1">
+              {concept.steps.map((label, index) => (
+                <div key={label} className="relative min-w-0 text-center">
+                  <span className="num block text-micro text-faint">0{index + 1}</span>
+                  <span className="legend mt-1 block truncate text-bone">
+                    {label}
+                  </span>
+                  {index < concept.steps.length - 1 && (
+                    <span aria-hidden className="absolute -right-1 top-3 text-micro text-crystal/60">›</span>
+                  )}
+                </div>
+              ))}
+            </div>
+            <p className="legend mt-2 text-center text-crystal">
+              {concept.outcome}
+            </p>
+          </div>
+        )}
 
         {action !== undefined && onAction && (
           <Button variant="primary" size="lg" full className="mt-4" onClick={onAction}>
@@ -162,14 +186,14 @@ export function BeatCard({
         <div className="mt-3 flex items-center justify-between gap-3">
           <button
             type="button"
-            className="text-[11px] text-faint underline-offset-4 hover:underline"
+            className="text-label text-faint underline-offset-4 hover:underline"
             onClick={onSecondary}
           >
             {secondary}
           </button>
           <button
             type="button"
-            className="text-[11px] text-faint underline-offset-4 hover:underline"
+            className="text-label text-faint underline-offset-4 hover:underline"
             onClick={onSkip}
           >
             {skipLabel}

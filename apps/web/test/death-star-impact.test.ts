@@ -5,6 +5,7 @@ import {
   deathStarBurstLayout,
   deathStarImpactCandidates,
   isDeathStarImpactVisible,
+  mergeRetainedDeathStarImpacts,
 } from '../src/galaxy/DeathStarImpact.js';
 import { toWorld, type PlanetNode } from '../src/galaxy/scene.js';
 
@@ -72,17 +73,35 @@ describe('the public Death Star impact', () => {
     }]);
   });
 
-  it('only treats a foreign destination-clamped window as an impact', () => {
+  /**
+   * A STRANGER'S EXPLOSION COMES OFF THE PUBLISHED MOMENT. D106.
+   *
+   * It used to be inferred from the shape of a bearing window — a `landing` flag
+   * and wherever that window happened to stop — which meant only a client holding
+   * the final window could reconstruct it at all, and it drew the blast at the
+   * orbit the craft held rather than at the world. The server states the instant
+   * and the place now, exactly as it states a bombardment, so every screen fires
+   * the same effect at the same second whatever window it happens to hold.
+   */
+  it('takes a stranger’s explosion from the published moment, not from the window', () => {
     const base: Contact = {
       id: 'foreign',
       kind: 'death_star',
       from: { x: 0, y: 0, z: 0 },
-      to: path.to,
+      // Where the craft STOPS, which is in orbit and is not where the blast is.
+      to: { x: 90, y: 90, z: 270 },
       startAt: new Date(9_000),
       endAt: path.arriveAt,
+      landing: true,
     };
     expect(deathStarImpactCandidates([], [base], nodes)).toEqual([]);
-    expect(deathStarImpactCandidates([], [{ ...base, landing: true }], nodes)).toEqual([{
+    expect(
+      deathStarImpactCandidates(
+        [],
+        [{ ...base, impact: { at: path.arriveAt, target: TARGET } }],
+        nodes,
+      ),
+    ).toEqual([{
       id: 'foreign',
       at: 10_000,
       position: toWorld(TARGET),
@@ -99,6 +118,7 @@ describe('the public Death Star impact', () => {
       startAt: new Date(9_000),
       endAt: path.arriveAt,
       landing: true,
+      impact: { at: path.arriveAt, target: TARGET },
     }));
     expect(deathStarImpactCandidates([], contacts, nodes).map((event) => event.id)).toEqual([
       'a-impact',
@@ -111,5 +131,16 @@ describe('the public Death Star impact', () => {
     expect(isDeathStarImpactVisible(10_000, 10_000)).toBe(true);
     expect(isDeathStarImpactVisible(10_000, 10_000 + DEATH_STAR_IMPACT_MS - 1)).toBe(true);
     expect(isDeathStarImpactVisible(10_000, 10_000 + DEATH_STAR_IMPACT_MS)).toBe(false);
+  });
+
+  it('retains a known impact when a resolving traffic refetch removes its mission', () => {
+    const event = { id: 'mission-1', at: 10_000, position: toWorld(TARGET), radius: 1.4 };
+    expect(mergeRetainedDeathStarImpacts([], [event], 9_000)).toEqual([event]);
+    expect(mergeRetainedDeathStarImpacts([event], [], 10_001)).toEqual([event]);
+    expect(mergeRetainedDeathStarImpacts(
+      [event],
+      [],
+      event.at + DEATH_STAR_IMPACT_MS,
+    )).toEqual([]);
   });
 });

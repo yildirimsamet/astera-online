@@ -1,6 +1,6 @@
 import { GameActions } from '../session/seasonLock.js';
 import { PROBE, radarDetectsFleets, radarRange, telescopeSlots } from '@astera/rules';
-import { useRef, useState, type KeyboardEvent } from 'react';
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useGalaxy, useIntel, usePlanet } from '../api/queries.js';
 import { full, percent, range } from '../lib/format.js';
@@ -8,8 +8,7 @@ import { staleness, useNow } from '../lib/time.js';
 import { instrumentArt } from '../ui/assets.js';
 import { BattleReports } from './BattleReports.jsx';
 import { Reading } from '../ui/Clarity.js';
-import { Note, Panel, Section } from '../ui/primitives.js';
-import { Unreachable, Waiting } from '../ui/kit/Surface.js';
+import { Note, Plate, Section, Segmented, Unreachable, Waiting } from '../ui/kit/index.js';
 import type { IntelView } from '../api/schemas.js';
 
 /**
@@ -31,21 +30,7 @@ export function IntelScreen({ onOpenOrbit }: { onOpenOrbit?: () => void }) {
   const galaxy = useGalaxy();
   const now = useNow(30_000);
   const [reportTab, setReportTab] = useState<'probes' | 'battles'>('probes');
-  const probeTab = useRef<HTMLButtonElement>(null);
-  const battleTab = useRef<HTMLButtonElement>(null);
 
-  const onReportTabKeyDown = (event: KeyboardEvent<HTMLButtonElement>) => {
-    let next: 'probes' | 'battles' | null = null;
-    if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') {
-      next = reportTab === 'probes' ? 'battles' : 'probes';
-    }
-    if (event.key === 'Home') next = 'probes';
-    if (event.key === 'End') next = 'battles';
-    if (next === null) return;
-    event.preventDefault();
-    setReportTab(next);
-    (next === 'probes' ? probeTab : battleTab).current?.focus();
-  };
 
   // Same distinction as the planet sheet: an error leaves `data` undefined but is
   // not a load in progress, and a pulse over a dead request is the interface lying.
@@ -70,7 +55,7 @@ export function IntelScreen({ onOpenOrbit }: { onOpenOrbit?: () => void }) {
 
   return (
     <GameActions>
-      <div className="px-4 pt-4">
+      <div className="flex flex-col gap-6 px-4 py-4">
       <Coverage
         seen={seen}
         slots={slots}
@@ -105,40 +90,18 @@ export function IntelScreen({ onOpenOrbit }: { onOpenOrbit?: () => void }) {
         )}
       </Section>
 
-      <div
+      <Segmented
         role="tablist"
-        aria-label={t('intel.tabs.label')}
-        className="mx-0 mt-6 grid grid-cols-2 gap-1 rounded border border-line-soft bg-void/60 p-1"
-      >
-        <button
-          ref={probeTab}
-          id="intel-tab-probes"
-          type="button"
-          role="tab"
-          aria-selected={reportTab === 'probes'}
-          aria-controls="intel-panel-probes"
-          tabIndex={reportTab === 'probes' ? 0 : -1}
-          onClick={() => { setReportTab('probes'); }}
-          onKeyDown={onReportTabKeyDown}
-          className={`rounded px-2 py-2 font-display text-[11px] uppercase tracking-wide transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-crystal ${reportTab === 'probes' ? 'bg-crystal/12 text-crystal' : 'text-faint'}`}
-        >
-          {t('intel.probes.heading')}
-        </button>
-        <button
-          ref={battleTab}
-          id="intel-tab-battles"
-          type="button"
-          role="tab"
-          aria-selected={reportTab === 'battles'}
-          aria-controls="intel-panel-battles"
-          tabIndex={reportTab === 'battles' ? 0 : -1}
-          onClick={() => { setReportTab('battles'); }}
-          onKeyDown={onReportTabKeyDown}
-          className={`rounded px-2 py-2 font-display text-[11px] uppercase tracking-wide transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-crystal ${reportTab === 'battles' ? 'bg-crystal/12 text-crystal' : 'text-faint'}`}
-        >
-          {t('reports.heading')}
-        </button>
-      </div>
+        label={t('intel.tabs.label')}
+        segments={[
+          { id: 'probes', label: t('intel.probes.heading') },
+          { id: 'battles', label: t('reports.heading') },
+        ]}
+        value={reportTab}
+        onSelect={setReportTab}
+        tabId={(id) => `intel-tab-${id}`}
+        panelId={(id) => `intel-panel-${id}`}
+      />
 
       <div
         id="intel-panel-probes"
@@ -170,18 +133,18 @@ export function IntelScreen({ onOpenOrbit }: { onOpenOrbit?: () => void }) {
             })}
           />
         ) : (
-          <Panel className="py-1">
+          <Plate className="px-3 py-1">
             {probeReports.map((report) => (
               <div
                 key={`${report.targetPlanetId}-${String(report.at.getTime())}`}
                 className="border-b border-line-soft py-3 last:border-b-0"
               >
                 <div className="flex items-baseline justify-between gap-2">
-                  <span className="font-display text-[14px] uppercase tracking-wide text-bone">
+                  <span className="name text-bone">
                     {report.targetUsername}
                   </span>
-                  <span className="truncate text-[12px] text-faint">{report.targetName}</span>
-                  <span className="num text-[11px] text-faint">
+                  <span className="truncate text-caption text-faint">{report.targetName}</span>
+                  <span className="num text-label text-faint">
                     {staleness((now - report.at.getTime()) / 60_000)}
                   </span>
                 </div>
@@ -199,7 +162,7 @@ export function IntelScreen({ onOpenOrbit }: { onOpenOrbit?: () => void }) {
                     value={range(report.fleetSize.low, report.fleetSize.high)}
                   />
                 </dl>
-                <p className="num mt-2 text-[11px] text-faint">
+                <p className="num mt-2 text-label text-faint">
                   {t(
                     report.fleetHome ? 'intel.probes.accuracyHome' : 'intel.probes.accuracyOut',
                     { percent: percent(report.accuracy) },
@@ -210,7 +173,7 @@ export function IntelScreen({ onOpenOrbit }: { onOpenOrbit?: () => void }) {
                 </p>
               </div>
             ))}
-          </Panel>
+          </Plate>
         )}
         </Section>
       </div>
@@ -238,17 +201,17 @@ export function IntelScreen({ onOpenOrbit }: { onOpenOrbit?: () => void }) {
             {...(onOpenOrbit ? { onAct: onOpenOrbit, action: t('intel.openOrbit') } : {})}
           />
         ) : radarLog.length === 0 ? (
-          <Panel>
-            <p className="text-[13px] text-dim">{t('intel.radar.quiet', { level: radar })}</p>
-          </Panel>
+          <Plate className="p-3">
+            <p className="text-body text-dim">{t('intel.radar.quiet', { level: radar })}</p>
+          </Plate>
         ) : (
-          <Panel className="py-1">
+          <Plate className="px-3 py-1">
             {radarLog.map((scan) => (
               <div
                 key={scan.at.getTime()}
-                className="flex items-baseline justify-between gap-3 border-b border-line-soft py-2.5 last:border-b-0"
+                className="flex items-baseline justify-between gap-3 border-b border-line-soft py-3 last:border-b-0"
               >
-                <span className="text-[13px] text-bone">
+                <span className="text-body text-bone">
                   {t('intel.radar.scan')}
                   {scan.bearing && (
                     <span className="text-dim">
@@ -261,12 +224,12 @@ export function IntelScreen({ onOpenOrbit }: { onOpenOrbit?: () => void }) {
                     </span>
                   )}
                 </span>
-                <span className="num shrink-0 text-[11px] text-faint">
+                <span className="num shrink-0 text-label text-faint">
                   {staleness((now - scan.at.getTime()) / 60_000)}
                 </span>
               </div>
             ))}
-          </Panel>
+          </Plate>
         )}
         {radar > 0 && (
           <Note>
@@ -299,28 +262,26 @@ function TelescopeRack({
 }) {
   const { t } = useTranslation();
   return (
-    <Panel className="grid gap-2 p-2">
+    <Plate className="grid gap-2 p-2">
       {Array.from({ length: slots }, (_, slot) => {
         const watch = watching.find((item) => item.slot === slot);
         return (
           <div
             key={slot}
-            className={`relative min-h-16 rounded-sm border px-3 py-2.5 ${
-              watch ? 'border-crystal/25 bg-crystal/[0.04]' : 'border-dashed border-line bg-void/30'
-            }`}
+            className={`relative min-h-16 rounded-chip border px-3 py-3 ${ watch ? 'border-crystal/25 bg-crystal/[0.04]' : 'border-dashed border-line bg-void/30' }`}
           >
-            <span className="num absolute right-2.5 top-2 text-[9px] text-faint">
+            <span className="num absolute right-2.5 top-2 text-micro text-faint">
               {t('intel.watching.slotLabel', { slot: slot + 1 })}
             </span>
             {watch ? (
               <>
                 <div className="flex items-baseline gap-2 pr-14">
-                  <span className="truncate font-display text-[14px] uppercase tracking-wide text-bone">
+                  <span className="name truncate text-bone">
                     {watch.ownerName}
                   </span>
-                  <span className="truncate text-[11px] text-faint">{watch.targetName}</span>
+                  <span className="truncate text-label text-faint">{watch.targetName}</span>
                 </div>
-                <div className="mt-1.5">
+                <div className="mt-2">
                   <Reading
                     status={watch.reading.status}
                     staleMinutes={watch.reading.staleMinutes}
@@ -329,19 +290,19 @@ function TelescopeRack({
                   />
                 </div>
                 {watch.reading.status === 'AWAY' && (
-                  <p className="mt-1 text-[11px] text-opportunity">{t('intel.watching.away')}</p>
+                  <p className="mt-1 text-label text-opportunity">{t('intel.watching.away')}</p>
                 )}
               </>
             ) : (
               <div className="flex min-h-11 items-center gap-2 text-faint">
-                <span aria-hidden className="grid size-7 place-items-center rounded-full border border-dashed border-line text-lg">+</span>
-                <span className="text-[12px]">{t('intel.watching.slotEmpty')}</span>
+                <span aria-hidden className="grid size-7 place-items-center rounded-full border border-dashed border-line text-title">+</span>
+                <span className="text-caption">{t('intel.watching.slotEmpty')}</span>
               </div>
             )}
           </div>
         );
       })}
-    </Panel>
+    </Plate>
   );
 }
 
@@ -385,9 +346,9 @@ function Coverage({
   const more = slots > 0 && telescopeSlots(telescope + 1) > slots;
 
   return (
-    <div className="panel mb-6 px-3.5 py-3.5">
+    <div className="plate mb-6 px-4 py-4">
       <p className="legend">{t('intel.coverage.label')}</p>
-      <p className="mt-1.5 text-[17px] leading-tight text-bone">
+      <p className="mt-2 text-title leading-tight text-bone">
         {slots === 0
           ? t('intel.coverage.blind')
           : idle > 0
@@ -396,14 +357,14 @@ function Coverage({
       </p>
 
       {slots > 0 && (
-        <div className="mt-2.5 flex h-1.5 gap-1">
+        <div className="mt-3 flex h-1.5 gap-1">
           {Array.from({ length: slots }, (_, i) => (
-            <span key={i} className={`flex-1 rounded-[1px] ${i < seen ? 'bg-crystal' : 'bg-line'}`} />
+            <span key={i} className={`flex-1 rounded-cell ${i < seen ? 'bg-crystal' : 'bg-line'}`} />
           ))}
         </div>
       )}
 
-      <p className="mt-2.5 text-[12px] leading-snug text-dim">
+      <p className="mt-3 text-caption leading-snug text-dim">
         {slots === 0
           ? t('intel.coverage.blindHint')
           : idle > 0
@@ -418,13 +379,13 @@ function Coverage({
       </p>
 
       {more && (
-        <p className="mt-1.5 text-[12px] text-crystal">
+        <p className="mt-2 text-caption text-crystal">
           {t('intel.coverage.oneMore', { level: telescope + 1 })}
         </p>
       )}
 
       {radar === 0 && (
-        <p className="mt-1.5 text-[12px] text-alloy">{t('intel.coverage.noRadar')}</p>
+        <p className="mt-2 text-caption text-alloy">{t('intel.coverage.noRadar')}</p>
       )}
     </div>
   );
@@ -456,12 +417,12 @@ function Instrument({
   onAct?: () => void;
 }) {
   return (
-    <div className="plate group grid grid-cols-[104px_1fr] items-center gap-4 p-3.5">
+    <div className="plate group grid grid-cols-[104px_1fr] items-center gap-4 p-4">
       <InstrumentDiagram kind={kind} art={art} />
       <div className="min-w-0 flex-1">
-        <p className="text-[14px] text-alloy">{missing}</p>
-        <p className="mt-1 text-[13px] leading-snug text-bone">{gives}</p>
-        <p className="mt-1.5 text-[12px] leading-relaxed text-dim">{cost}</p>
+        <p className="text-body text-alloy">{missing}</p>
+        <p className="mt-1 text-body leading-snug text-bone">{gives}</p>
+        <p className="mt-2 text-caption leading-relaxed text-dim">{cost}</p>
         {onAct && action && (
           <button type="button" className="slab slab-ghost mt-3 w-full" onClick={onAct}>
             {action}
@@ -483,7 +444,8 @@ function InstrumentDiagram({
   return (
     <div
       data-instrument-diagram={kind}
-      className="art-well relative grid size-[104px] shrink-0 place-items-center overflow-hidden rounded-sm"
+      data-art
+      className="socket relative size-[104px] shrink-0 overflow-hidden rounded-control"
       aria-hidden
     >
       {kind === 'radar' && (
@@ -519,7 +481,7 @@ function Band({ label, value }: { label: string; value: string }) {
   return (
     <div>
       <dt className="legend">{label}</dt>
-      <dd className="num mt-0.5 text-[15px] text-bone">{value}</dd>
+      <dd className="num mt-1 text-body text-bone">{value}</dd>
     </div>
   );
 }

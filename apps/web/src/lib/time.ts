@@ -46,14 +46,14 @@ export function countdown(ms: number): string {
 }
 
 /**
- * MINUTES LEFT, OFF THE INSTANT ITSELF — never off a figure the server rounded.
+ * MINUTES LEFT, OFF THE INSTANT ITSELF — never off a figure the server rounded-chip.
  *
  * Every payload that carries a flight carries both: an exact `arriveAt` and a
- * `minutesRemaining` computed and rounded when the request was answered. Reading
+ * `minutesRemaining` computed and rounded-chip when the request was answered. Reading
  * the second one is what put two disagreeing clocks on screen at once — the focus
  * rail sat on a whole-minute figure that was up to a poll stale while the pending
  * strip directly beneath it counted the same craft down in seconds. An absolute
- * timestamp needs no anchor and cannot go stale; the rounded figure is display
+ * timestamp needs no anchor and cannot go stale; the rounded-chip figure is display
  * data, and only the surface that is genuinely offline should ever read it.
  */
 export const minutesLeft = (arriveAt: Date, now: number): number =>

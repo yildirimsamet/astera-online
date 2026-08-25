@@ -5,6 +5,7 @@ import { full, signed } from '../lib/format.js';
 import { haptic } from '../lib/haptics.js';
 import { AttackIcon, GalaxyIcon, LeaderboardIcon, ShieldedIcon } from '../ui/icons/index.js';
 import { NextSeason } from '../ui/NextSeason.js';
+import { useOwnPress } from '../ui/kit/index.js';
 
 export type SeasonResult = Exclude<SeasonInfo['result'], null | undefined>;
 
@@ -85,6 +86,10 @@ export function SeasonRecap({
     };
   }, [close]);
 
+  // The recap covers the screen the moment a season result lands, so its close is
+  // another control that can appear under a finger already mid-gesture (D109a).
+  const dismiss = useOwnPress(close);
+
   const title =
     result.finalRank === 1
       ? t('seasonRecap.titles.sovereign', { galaxy })
@@ -107,8 +112,8 @@ export function SeasonRecap({
         <button
           type="button"
           aria-label={t('seasonRecap.close')}
-          onClick={close}
-          className="absolute right-3 top-[calc(20px+env(safe-area-inset-top))] flex size-11 items-center justify-center rounded-sm text-[20px] leading-none text-faint hover:bg-raised hover:text-bone"
+          {...dismiss}
+          className="absolute right-3 top-[calc(20px+env(safe-area-inset-top))] flex size-11 items-center justify-center rounded-chip text-figure leading-none text-faint hover:bg-raised hover:text-bone"
         >
           &times;
         </button>
@@ -116,16 +121,16 @@ export function SeasonRecap({
         <header className="text-center">
           <GalaxyIcon className="mx-auto size-8 text-crystal drop-shadow-[0_0_12px_var(--color-crystal-glow)]" />
           <p className="legend mt-4 text-crystal">{t('seasonRecap.eyebrow')}</p>
-          <p className="mt-1 text-[11px] uppercase tracking-[0.16em] text-faint">
+          <p className="legend mt-1">
             {t('seasonRecap.finalRecord', { galaxy })}
           </p>
           <h1
             id="season-recap-title"
-            className="mt-7 font-display text-[clamp(32px,10vw,48px)] font-semibold leading-[0.95] tracking-wide text-bone"
+            className="headline mt-6 text-hero"
           >
             {title}
           </h1>
-          <p className="mt-3 text-[13px] text-dim">
+          <p className="mt-3 text-body text-dim">
             {t('seasonRecap.planet', {
               commander: result.recap.commanderName,
               planet: result.recap.planetName,
@@ -211,7 +216,7 @@ function HeroFigure({ icon, label, value }: { icon: ReactNode; label: string; va
   return (
     <div className="plate plate-cut flex min-h-28 flex-col items-center justify-center px-3 py-4 text-center">
       <span className="text-crystal">{icon}</span>
-      <p className="readout mt-2 text-[30px] text-bone">{value}</p>
+      <p className="readout mt-2 text-readout text-bone">{value}</p>
       <p className="legend mt-1">{label}</p>
     </div>
   );
@@ -220,7 +225,7 @@ function HeroFigure({ icon, label, value }: { icon: ReactNode; label: string; va
 function Figure({ label, value }: { label: string; value: string }) {
   return (
     <div className="px-2 text-center">
-      <p className="readout text-[22px] text-bone">{value}</p>
+      <p className="readout text-figure text-bone">{value}</p>
       <p className="legend mt-1">{label}</p>
     </div>
   );
@@ -232,7 +237,7 @@ function SmallFigure({ icon, label, value }: { icon: ReactNode; label: string; v
       {icon}
       <div className="min-w-0">
         <p className="legend">{label}</p>
-        <p className="readout mt-1 text-[18px] text-bone">{value}</p>
+        <p className="readout mt-1 text-title text-bone">{value}</p>
       </div>
     </div>
   );
@@ -242,7 +247,7 @@ function Story({ heading, body }: { heading: string; body: string }) {
   return (
     <div className="plate mt-3 px-4 py-3 sm:mt-0">
       <p className="legend text-opportunity">{heading}</p>
-      <p className="mt-1 text-[14px] leading-relaxed text-bone">{body}</p>
+      <p className="mt-1 text-body leading-relaxed text-bone">{body}</p>
     </div>
   );
 }

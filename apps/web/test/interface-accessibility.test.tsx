@@ -1,8 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
-import { Meter } from '../src/ui/Meter.js';
-import { Sheet } from '../src/ui/Sheet.js';
+import { Meter, Sheet } from '../src/ui/kit/index.js';
 import { PlanetHero } from '../src/ui/PlanetHero.js';
 import { planetView } from './fixtures.js';
 

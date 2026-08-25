@@ -239,7 +239,7 @@ D55 · Turkish + English localization — OWNER INSTRUCTION
 
 Türkçe/İngilizce device-detected, 2 tap ile değişebilir; runtime string fetch yok. i18next + react-i18next, bundle içi resources. Detection sırası stored choice → navigator.languages → Turkish fallback.
 
-Her UI element kendi key alanına sahiptir; farklı yüzeylerdeki aynı İngilizce ifade bile ayrı key olabilir. Türkçe dictionary translation değil, yeniden yazımdır: tam cümleler, verb-based phrasing, dash yerine semicolon/full stop, dictionary equivalent yerine doğal ifade. Tab'ler Türkçe'de noun formatında: Üretim · Yörünge · Savunma · Filo.
+Her UI element kendi key alanına sahiptir; farklı yüzeylerdeki aynı İngilizce ifade bile ayrı key olabilir. Türkçe dictionary translation değil, yeniden yazımdır: tam cümleler, verb-based phrasing, dash yerine semicolon/full stop, dictionary equivalent yerine doğal ifade. Tab'ler Türkçe'de noun formatında: Üretim · Bilgi · Savunma · Filo.
 
 Ship isimleri de çevrilir: Atmaca, Mızrak, Siper, Şilep, Tabya, Diken, Kazıcı. Rules package language-free kalır.
 
@@ -772,8 +772,11 @@ alloy.
 
 ### D64a · The Twitter bonus is a human reading a message — owner instruction
 
-Follow `@JoinAstera`, send the commander name by direct message, claim 500 alloy
-and 250 crystal, once per commander.
+Follow `@JoinAstera`, send the commander name by direct message, claim the bonus
+from the panel — once per commander. **D104 made "once" mean once per ACCOUNT,
+for ever**: keyed on the season's player row, as it was written here, the grant
+died with every wipe and every idle-seat reclaim and the same follower could be
+paid again in the next galaxy.
 
 There is no Twitter API in this project and there is not going to be one: a
 marketing integration is not a game system, and the honest implementation of "a
@@ -822,8 +825,10 @@ disagreeing is the silent half of the fog disagreeing with the loud half.
 
 ### D66 · The score, and the four ways background audio breaks — owner instruction
 
-One track, looped, at a fixed 0.35, paused whenever the page is not being looked
-at and resumed from the same instant. What the implementation is actually about is
+One track, looped, defaulting to 0.35, paused whenever the page is not being looked
+at and resumed from the same instant. The level is adjustable and remembered on
+the device; changing it updates the live element without restarting the track.
+What the implementation is actually about is
 lifecycle:
 
 · **Autoplay is blocked, and that is not an error.** Every current browser refuses
@@ -845,8 +850,9 @@ lifecycle:
 part of it: `blur` also fires for devtools and the address bar, neither of which
 means the player stopped watching.
 
-**There is no mute control**, by owner instruction that the volume stays fixed.
-Worth revisiting the first time somebody plays this in public.
+The menu carries both an immediate mute/resume control and a 0–100 level slider.
+They are separate preferences: moving the level does not silently undo a mute,
+and neither operation rebuilds or seeks the audio element.
 
 ### D67 · Google Analytics, loaded the way Next.js would load it — owner instruction
 
@@ -990,7 +996,8 @@ than their sum, because they are claimed one at a time.
 **A sound switch in the menu**, beside the language because both are preferences
 about the device rather than about the commander. It is a pause and a resume on
 the element that is already there, never a rebuild — so the track carries on from
-where it was silenced rather than restarting.
+where it was silenced rather than restarting. D107 extends the same control with a
+persisted level without changing that lifecycle.
 
 ### D72 · One craft, one marker — the real-time movement pass
 
@@ -1775,6 +1782,292 @@ information still beats tech.
 **The bands did not move.** `ARR` was out of band through the pass and five constant-level levers
 failed to move it; what did was mirroring the build queue in the simulator. `docs/balance.md`
 records which five and what each cost.
+
+### D102 · Isotope concentration is seeded per asteroid between 10% and 25% — owner instruction
+
+An isotope-rich asteroid no longer carries the same Deuterium concentration as every other rich
+asteroid. Its concentration is a deterministic, whole-percent roll in the inclusive 10–25% range,
+derived from the season seed and asteroid index without consuming or moving the galaxy RNG. The
+same asteroid therefore has one value for the server, simulator and every entitled client, while
+different rocks create materially different public races. The asteroid's independently seeded
+Crystal share remains intact; Deuterium replaces its Alloy body. This prevents a richer isotope seam
+from silently erasing the resource needed to enter the research path, and the generated maxima still
+leave at least 10% Alloy. Total ore remains unchanged. This supersedes D98's fixed 10.4% share;
+isotope cadence and bonus-seam frequency do not change.
+
+### D103 · A Rival choice commits on the first shared move, and strategic strikes are history
+
+A Rival marker may be corrected or cleared only while the two commanders have no recorded probe,
+battle or Death Star impact between them. The first such interaction commits that opponent for the
+rest of the season; after commitment the endpoint refuses replacement and removal. This preserves
+misclick recovery without making Rival a freely swappable label chosen after every result. Encounter
+history remains opponent history whether or not that opponent was marked at the time.
+
+A resolved Death Star writes one idempotent strategic-impact row containing both commander
+identities, the target, outcome, destroyed home force and destroyed economic value. The value is
+the cleared storage/works plus the replacement prices of the building and Aegis levels removed and
+the destroyed home force; regenerated shield is excluded. Rival dossiers count the strike as an
+interaction, and the same stored value contributes to season damage dealt/taken. This extends D85
+and D91: a strategic weapon can no longer destroy a world while leaving both histories unchanged.
+
+### D104 · The follow bonus is paid once per person, and the population figure is live — owner instruction
+
+*"Twitter takip bonusu kişiye 1 kez verilebilmeli. Her sezon her sezon alamaz."* The @JoinAstera
+grant now lives in `account_rewards`, keyed on the ACCOUNT, and every reward chain declares a
+`scope`: `season` for the ten counted chains, `account` for this one. `reward_grants` keeps the
+season-scoped tiers and keeps dying with the world, which is right — their progress is counted off
+worlds that cease to exist. Nothing deletes from `account_rewards`: not `wipeAllServers`, not the
+idle-seat reclaim (D70), not a rollover. The failure it closes was one key: a player row is deleted
+by both of those, so after every turnover the ledger said the account had never been paid and the
+operator's command reported `already: false` — 1,000 alloy and 500 crystal a fortnight, for ever,
+for one follow performed once. `grantReward` now resolves an ACCOUNT rather than a player, so a
+commander between galaxies can still be granted the bonus. The card states the rule where the
+player reads it: once taken, the three instructions and the link to X come down and it says the
+bonus does not come back with a new galaxy.
+
+`useSeason` carried a `staleTime` and no refetch. Staleness only decides whether a refetch may be
+served from cache, so `online` — the population figure in the corner of the disc — was read once on
+mount and then frozen for the life of the tab; a manual reload was the only way to move it. It is
+the one read in the client where the TIMER is the mechanism rather than the safety net under a
+broadcast (D53): presence has no moment to publish. `lastActiveAt` is stamped at most once a minute
+per commander and the count is a five-minute trailing window, so nobody arrives and nobody leaves —
+the figure drifts. Broadcasting it would be one shard event per commander per minute, three hundred
+a minute on a full galaxy, to move a number in a corner.
+
+### D105 · A resolved Death Star impact remains reconstructible for its public effect window
+
+The explosion is a server-clock event, not a callback owned by the sender's tab. An in-flight Death
+Star supplies every observer with the same mission id, target and arrival timestamp; after resolution,
+traffic continues to expose that anonymous contact for `DEATH_STAR.impactSeconds`. This short replay
+window is necessary for a tab opened, focused, restored from bfcache or reconnected just after the
+worker commits: without it the mission has already left the in-flight query and that client can never
+reconstruct an explosion which continuously open clients are still showing. The contact discloses no
+owner or origin, expires at the same strict edge as the visual, and uses one rules-level duration on
+server and client. Client lifecycle edges resynchronise all live reads, while contact-window expiry
+uses bounded consistency retries; neither vehicle motion nor effect timing depends on timer delivery.
+
+### D106 · One galaxy, one clock: every viewer draws the same craft in the same place
+
+*"Herkes aynı anda aynı şeyi görmeli."* A craft in flight was drawn by two independent pieces
+of code — the owner interpolated its whole leg out of `pending`, everybody else interpolated a
+bearing window out of `/api/galaxy/traffic` — and both were correct against their own inputs
+while disagreeing with each other by more than a planet's width. The owner's renderer has
+stopped its legs short of a world since D44, because a craft drawn at a planet's coordinates is
+drawn inside it; the public window knew nothing about that rule and published the physical
+position. The gap grows along the leg and is widest at the arrival, which is the moment the
+whole galaxy is looking: the attacker watched their fleet still closing while everyone else
+watched it sit on the target and wait.
+
+**The visual leg is now one definition, in `packages/rules/src/view.ts`.** The unit conversion,
+the height exaggeration, the three drawn world sizes and the orbital standoff live there; the
+server publishes every bearing window ON that leg, and the client draws its own craft ALONG it.
+Both sides derive it from the same public `coreTier`, so the two pictures are the same line by
+construction rather than by agreement. Drawing geometry is allowed in the rules package for one
+reason only, and it is the same test everything else there passes: two processes must agree on
+it. `clearOfWorlds` moved inside `threadPosition`, `contactPosition` and `runPosition` for the
+same reason — a renderer cannot forget a rule it does not have to remember.
+
+**An effect is a PUBLISHED moment and place, never one inferred from a flight.** A raid has
+said "I am bombarding this world, from here until here" since D52; a Death Star said nothing, so
+its detonation existed only on the attacker's client — the one payload it could be worked out
+from. `Contact.impact` gives it the same shape as `engagement`, armed on the final approach where
+the destination is already conceded and carried by D105's replay window after the mission
+resolves, so a tab that was elsewhere can still play it — D105 kept the contact alive, and this
+is the field that says what it MEANS, rather than leaving each renderer to infer an instant and
+a place from the shape of a bearing window. The rule generalises: any
+future effect everybody is meant to watch together is published, not derived.
+
+**A Death Star does not survive its own strike.** Owner instruction. The weapon IS the
+explosion, and it lingered for eight seconds on every screen because both payloads legitimately
+still described it — the attacker's mission is only resolved on the worker's next tick, and the
+resolved mission is republished to carry the effect. `useStrikeConsumed` states what those
+payloads mean and both renderers ask it.
+
+**The coast is a bridge over a late read, not a substitute for one.** It was half the published
+window again — and a window is at least a minute, so a failed refetch could draw a craft thirty
+seconds of flight past where it was. That costs nothing while the craft is still flying, because
+a coast runs at the true speed; the damage is all on the other side of the arrival, where the
+real craft has stopped and the guess sails on through the world it just landed on. It is three
+seconds now, and a tab that comes back to the front resyncs immediately (D104's lifecycle edge).
+
+`apps/server/test/one-galaxy.test.ts` is what makes this stay true. It walks a raid, a probe, a
+Death Star, a mining run and a leg coming home second by second, computing the owner's picture
+and a stranger's picture with the REAL renderers imported across the package boundary, and
+fails if they differ by a fifth of a world unit. It is also where the next craft kind gets
+asked the only question that matters: does everybody see the same thing.
+
+### D107 · The foot strip is the fleet roster, and departure focus is capability-based — owner instruction
+
+The permanent in-flight strip now reads both mission threads and mining/salvage runs. A Prospector
+in `mining.runs` is therefore the same visible reason to return as a fleet, probe, transfer,
+settlement craft or Death Star in `pending`; an empty mission list can no longer state that nothing
+is airborne while drills cross the disc. Pressing the strip opens the complete live roster. Every
+owned drawable row focuses the craft already rendered by the disc, while an anonymous inbound
+warning remains visible without inventing a route the Radar did not reveal.
+
+Focus after departure is no longer wired into individual launch callbacks. The client baselines the
+first complete payload without moving the camera, then follows any newly appearing owned drawable:
+a pending row with a path or a live mining row. The identity is remembered across stale disappearances
+and return legs, so a refetch cannot focus the same mission twice. A future craft that uses either
+payload capability inherits launch focus without another vehicle-kind branch.
+
+Build and combat launch sheets share one exact quantity control: minus and plus move by one, Max
+jumps to the server-visible ceiling, and the figure is a read-only input. This replaces fixed ladders
+and size-dependent jumps, both of which made intermediate quantities unreachable. The galactic dust
+plate rotates only from client frame deltas; its slow ambient turn remains active even when reduced
+motion is enabled, while the scene's faster effects still respect that preference. It is presentation and
+never a server-clock fact. The music control keeps mute/resume and adds a persisted 0–100 device-level
+slider that mutates the live audio element rather than recreating it.
+
+### D108 · Progression is organised by player intent, and every commitment opens — owner instruction
+
+The planet tabs no longer mirror implementation kinds. Their player-facing model is Production,
+Intel, Defend and Fleet; Turkish uses Üretim, Bilgi, Savunma and Filo. Foundry lives with production; Uplink, Telescope, Radar and Veil live with
+information; Vault, Aegis and both ground batteries live with survival; Derrick, Beacon, research,
+Shipyard and mobile hulls live with operations beyond the world. Aegis under Orbit was the clearest
+failure: the code was correctly calling it a ground instrument while the interface asked a player
+looking for a shield to search the sky.
+
+The four satellites still compete for the same Core-opened sockets. That comparison moves out of
+their former shared list and into a persistent orbit rack above the category content; every satellite
+sheet names the same slot cost. The strategic identity choice therefore survives the information
+architecture change instead of being hidden by it.
+
+Every progression row is now a compact scanner and never a commit control. Pressing a building,
+instrument, satellite, research project, mobile hull or ground battery opens its bottom sheet. The
+sheet owns the role, present condition, next outcome, later ladder or milestones, exact price,
+requirements and final action. This is also the new rehearsal grammar: a guided beat opens the item,
+explains why that step matters to the larger loop, then commits from the real sheet. A list can be
+scanned quickly; a purchase cannot be made without seeing what it is for.
+
+The rehearsal gates activation rather than gestures: scrolling, pinching and orbiting stay live,
+but an unrelated menu or item cannot change the staged world. Closing a detail sheet is recoverable;
+the same highlighted row opens it again. Skip and existing-account entry remain deliberate exits.
+After the fleet beat, the camera eases back to the full disc before asking for another planet, so a
+player cannot be asked to tap a world that the previous close-up left off-screen.
+
+### D109 · One ladder, one card word, one control per idea — the interface system, enforced
+
+An audit measured what the design system was actually doing rather than what its comments said,
+and the answer was that it had forked. The vocabulary was right and half the interface had never
+been moved onto it.
+
+**What was measured.** 346 hand-written `text-[Npx]` declarations across eighteen distinct sizes,
+against nineteen uses of the seven tokens `styles.css` had defined for exactly that purpose — with
+a comment saying the scale existed "so the sprawl of arbitrary text-[13px] can end". An `<h2>` was
+rendered at 11, 13, 18 or 21px depending on the file. Forty-eight distinct hand-built uppercase
+label recipes stood beside `.legend`. Eighteen letter-spacings, two of them the same number spelled
+differently (`0.1em`, `0.10em`). Thirteen corner radii in the stylesheet, nine of them live on one
+screen, with `rounded` and `rounded-sm` resolving to the same four pixels in Tailwind v4. Three card
+materials (`plate`, `frame`, `panel`) at seventeen, seventeen and nine uses. Five button systems.
+Three segmented controls with three different grammars for "this one is selected" and three
+different things said to a screen reader. Five off-palette reds for one idea.
+
+**Where the fork ran.** `plate`, the new material, had reached the commander menu, the server list,
+the season recap and the leaderboard. It had reached none of PlanetHero, ItemSheet, UpgradeRow,
+PlanetScreen or FocusPanel — the five files that are ninety per cent of the game. The kit's own
+`Sheet`, the better-dressed of the two, sat at zero imports while all nine real sheets used a legacy
+panel whose entrance animation named a keyframe that had never been written.
+
+**What is settled.**
+
+*Type* is eight steps, each tied to a role rather than a size: `hero · readout · figure · title ·
+body · caption · label · micro`. `caption` (12px) is the one step added. Uppercase is three
+component classes and nothing else — `.legend` for an engraved caption, `.name` for what a thing
+is, `.headline` for a section that owns the block under it. Tracking is two values, radius is six,
+and spacing is `4 · 8 · 12 · 16 · 24 · 32` with every half-step snapped onto it.
+
+*Material* is one card word. `.plate` with four states — raised, `flush`, `inset` (what `frame`
+was), `sunk` — and `.slab` for anything pressed. `frame`, `panel`, `btn`, `group`, `art-well`,
+`bracket`, `scan`, `rail`, `glass-thin` and the whole claim-badge block are deleted.
+
+*One control per idea.* `Segmented` is the only segmented control: the selected segment is the one
+that is lit and raised, `role` picks tablist or group semantics, and the keyboard contract the intel
+tabs implemented by hand now belongs to every one of them. `Sheet` is the only bottom sheet, and it
+owns its own padding — `bleed` hands that job to the caller, which is what replaced fourteen
+negative margins whose only purpose was to cancel a gutter applied one level too high.
+
+**The rule has teeth this time.** `text-[`, `tracking-[` and `rounded-[` are refused by ESLint in
+`apps/web/src`. A convention that is only written down decays back to whatever each author types,
+and this one had already proved it once.
+
+**Four things were drawing wrongly and nobody could see why.** `chrome.css` gave `.group` a card
+background and a 1px inset ring while Tailwind uses the same class as its `group-hover:` marker, so
+every purchasable row in the game drew an unintended card inside the plate that already had one.
+Eight `border-*` colour utilities sat on box-shadow shapes with no border width, so they drew
+nothing — including the only thing distinguishing an error toast from an informational one. Every
+bottom sheet arrived as a jump cut against a keyframe that did not exist. And the disc drew a name
+for every marked world with no screen-space collision test at all, so worlds that clustered wrote
+three labels into the same forty pixels and ran off the edge of the phone; labels are placed in
+priority order now — selection, own worlds, rival, a world on a clock, an open window — and one that
+would overlap a placed label is not drawn.
+
+**Three interface rules were being broken by the code that documented them.** A full store went
+threat-red beside a meter that correctly kept its hue (I0). The planet sheet's own wallet, which
+exists so a price can be checked without closing the sheet, rendered the same three figures with
+`compact()` while the header above it used `full()` — both on screen at once. And DEFENCE and SHIELD
+sat side by side both reading "None", one in red and one in bone; an absent system is a GAP, amber,
+and red is reserved for something happening to you.
+
+### D109a · A dismiss control answers only a gesture that began on it
+
+Tapping a world on the disc opened the planet sheet and it shut itself again. The
+event trace, from the running client:
+
+```
+pointerdown → canvas          the finger lands on the world
+pointerup   → canvas
+SHEET OPEN                    React mounts the sheet ~98ms later
+touchend    → canvas
+click       → button[scrim]   the browser dispatches the tap's click NOW,
+sheet gone                    and the scrim is what is under the finger
+```
+
+A synthesised click is delivered to whatever occupies the point at DISPATCH time,
+not to what was there when the finger went down — so the scrim was closing a sheet
+on the tail of the very gesture that asked for it. Opening the same sheet from a
+DOM control never failed, because there the click is consumed by the button that
+was pressed; the owner reported exactly that asymmetry.
+
+It is a race, which is why it reached a phone first and a desktop second, and why
+it surfaced with D109: giving the sheet the entrance animation it had been
+declaring against a keyframe that did not exist means that for its first 340ms the
+point under the finger is still scrim rather than panel. The animation is right.
+The scrim was always wrong.
+
+A DELAY WOULD ONLY MOVE THE RACE. What settles it is the rule the control should
+have had: a press belongs to the surface it STARTED on. `useOwnPress` records the
+control's own `pointerdown` and ignores any click without one, which is
+timing-independent and costs nothing.
+
+**THE CLASS, NOT THE INSTANCE.** The sheet was found by playing; the question that
+mattered more was whether the same thing sits somewhere nobody has tapped yet. It
+does. The focus rail mounts along the bottom edge the instant a world is selected,
+and a world can be tapped there — so the stray click lands on one of its two
+controls: the toggle, which EXPANDS a rail the owner decided must open closed, or
+CLEAR, which deselects the world the player just chose, on the same gesture that
+chose it. The front door's dialog scrim and the season recap's close are the same
+shape and are guarded before anyone meets them.
+
+KEYBOARD ACTIVATION IS NOT A POINTER PRESS. Enter or Space on a focused button
+fires a click with no `pointerdown` — exactly the shape being refused — so the
+guard exempts `detail === 0`. Measured rather than assumed: a touch tap and a
+mouse click both carry `detail: 1`, a keyboard activation carries `0`. Without
+that exemption the guard would have made every one of these controls keyboard-dead.
+
+`test/sheet-dismiss.test.tsx` holds the sheet's behaviour; `test/stray-click.test.tsx`
+holds the primitive and audits the four surfaces by name, so the next overlay is
+added by copying one that already carries the fix.
+
+### D110 · Asteroids enter the galaxy fifteen percent faster — owner instruction
+
+The asteroid arrival rate rises from 9 to 10.35 per hour. This is a rate increase,
+not a fifteen-percent cut to the interval. The established 9/hour deterministic lane
+is left byte-for-byte intact — indices, rolls and appearance times included — and a
+second 1.35/hour lane supplies new indices between it. That prevents a balance change
+from moving or deleting a target already visible in a live season. Capacity modelling
+uses the matching per-player rate, 0.030 to 0.0345, so every documented galaxy size
+receives the same proportional increase.
 
 ## Architecture
 

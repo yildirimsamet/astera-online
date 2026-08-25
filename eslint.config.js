@@ -112,6 +112,50 @@ export default defineConfig(
     languageOptions: { globals: { ...globals.browser } },
   },
 
+  /**
+   * THE SCALES ARE ENFORCED, BECAUSE THEY WERE ONCE ONLY WRITTEN DOWN.
+   *
+   * `styles.css` has carried a type scale for a long time, with a comment saying
+   * it existed "so the sprawl of arbitrary text-[13px] can end". It did not end:
+   * a later audit counted 346 hand-written `text-[Npx]` declarations in eighteen
+   * distinct sizes against nineteen uses of the tokens, eighteen different
+   * letter-spacings (two of them the same number spelled differently), and nine
+   * corner radii live on a single screen.
+   *
+   * A convention that is only documented decays back to whatever each author
+   * types. This is the same rule with teeth: use `text-title`, not `text-[18px]`.
+   * If a new step is genuinely needed, add it to `@theme` where the whole
+   * interface can see it — that is the change the arbitrary value was avoiding.
+   *
+   * Arbitrary values for things that are NOT on a scale — a one-off `size-[74px]`
+   * socket, a `max-w-[34ch]` measure, a `shadow-[…]` — stay allowed. Only the
+   * three sprawling scales are closed.
+   */
+  {
+    files: ['apps/web/src/**/*.{ts,tsx}'],
+    rules: {
+      'no-restricted-syntax': [
+        'error',
+        {
+          selector:
+            'Literal[value=/(?:^|[\\s"\'`])(?:text|tracking|rounded)-\\[/]',
+          message:
+            'Use the scale: text-{micro,label,caption,body,title,figure,readout,hero}, '
+            + 'tracking-{label,wide}, rounded-{cell,chip,control,plate,sheet,pill}. '
+            + 'A new step goes in @theme, not in a class.',
+        },
+        {
+          selector:
+            'TemplateElement[value.raw=/(?:^|[\\s"\'`])(?:text|tracking|rounded)-\\[/]',
+          message:
+            'Use the scale: text-{micro,label,caption,body,title,figure,readout,hero}, '
+            + 'tracking-{label,wide}, rounded-{cell,chip,control,plate,sheet,pill}. '
+            + 'A new step goes in @theme, not in a class.',
+        },
+      ],
+    },
+  },
+
   /** Tests may use assertion-focused syntax, but their data flow stays type-safe. */
   {
     files: ['**/test/**/*.ts', '**/*.test.ts'],

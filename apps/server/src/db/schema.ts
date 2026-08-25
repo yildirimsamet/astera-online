@@ -582,6 +582,24 @@ export const battleReports = pgTable('battle_reports', {
   uniqueIndex('reports_mission_idx').on(t.missionId),
 ]);
 
+/** A Death Star's durable private history and season damage ledger. D103. */
+export const strategicImpacts = pgTable('strategic_impacts', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  seasonId: uuid('season_id').notNull().references(() => seasons.id),
+  missionId: uuid('mission_id').notNull().references(() => missions.id),
+  attackerPlayerId: uuid('attacker_player_id').notNull().references(() => players.id),
+  defenderPlayerId: uuid('defender_player_id').references(() => players.id),
+  targetPlanetId: uuid('target_planet_id').notNull().references(() => planets.id),
+  outcome: text('outcome').$type<'FIRST_STRIKE' | 'CAPTURED' | 'INEFFECTIVE'>().notNull(),
+  damage: real('damage').notNull().default(0),
+  destroyedFleet: jsonb('destroyed_fleet').$type<Fleet>().notNull().default({}),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [
+  uniqueIndex('strategic_impacts_mission_idx').on(t.missionId),
+  index('strategic_impacts_attacker_idx').on(t.attackerPlayerId, t.createdAt),
+  index('strategic_impacts_defender_idx').on(t.defenderPlayerId, t.createdAt),
+]);
+
 /** `originPlanetId` is never exposed below Radar L5. Watching is silent; probing is loud. */
 export const scanEvents = pgTable('scan_events', {
   id: uuid('id').primaryKey().defaultRandom(),
@@ -825,10 +843,11 @@ export const requestLog = pgTable('request_log', {
  *     `claimedAt` set. Eligibility itself is never stored — it is counted from
  *     missions, runs and levels every time the panel is read — so a row here
  *     means "paid", full stop.
- *   · For `SOCIAL` there is nothing in the galaxy to count. The operator writes
- *     the row with `claimedAt` NULL, which is the grant: it says a human checked
- *     the direct message. The player then claims it down the identical path, and
- *     the same primary key stops it being claimed twice.
+ *   · `SOCIAL` NO LONGER LIVES HERE — see `accountRewards` directly below. It is
+ *     the one reward that is paid once per PERSON rather than once per season,
+ *     and a row keyed on `players` cannot express that: the player row is deleted
+ *     by a wipe and by the idle-seat reclaim, so the grant went with it and the
+ *     same commander could be paid again every fortnight for one follow.
  *
  * The amounts are stored rather than re-read from `@astera/rules` at display
  * time, for the reason every ledger stores them: what a tier pays may be retuned,
@@ -842,7 +861,40 @@ export const rewardGrants = pgTable('reward_grants', {
   alloy: real('alloy').notNull().default(0),
   crystal: real('crystal').notNull().default(0),
   deuterium: real('deuterium').notNull().default(0),
-  /** NULL means unlocked and waiting. Only `SOCIAL` is ever seen in that state. */
+  /** NULL means unlocked and waiting. Season-scoped tiers are only ever written claimed. */
   claimedAt: timestamp('claimed_at', { withTimezone: true }),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 }, (t) => [primaryKey({ columns: [t.playerId, t.rewardId] })]);
+
+/**
+ * A REWARD THAT IS PAID ONCE PER PERSON, FOR EVER. Owner instruction: *"twitter
+ * takip bonusu kişiye 1 kez verilebilmeli. her sezon her sezon alamaz."*
+ *
+ * IT IS THE SAME SHAPE AS `reward_grants` KEYED ONE LEVEL UP, and that is the
+ * whole feature. The account is the only identity in this database that outlives
+ * a galaxy: `players` is deleted by `wipeAllServers` and by the idle-seat reclaim
+ * (D70), which is exactly right for progress counted off a world that no longer
+ * exists, and exactly wrong for an act performed on Twitter by a human being.
+ *
+ * SO NOTHING MAY DELETE FROM THIS TABLE. Not the wipe, not the reclaim, not the
+ * season rollover. A row here is the sentence "this person has already been paid
+ * for following us", and it is only true for as long as it is kept — which is why
+ * the wipe's `delete(rewardGrants)` is deliberately NOT mirrored here, and why
+ * that omission is stated at both sites rather than left to be noticed.
+ *
+ * `claimedAt` NULL means the operator has confirmed the follow and the commander
+ * has not yet pressed the button. It stays NULL across a rollover, so somebody who
+ * was granted the bonus on the last day of a season can still take it on the first
+ * day of the next — paid once, but not lost.
+ */
+export const accountRewards = pgTable('account_rewards', {
+  accountId: uuid('account_id').notNull().references(() => accounts.id),
+  /** `CHAIN:GOAL`, built by `rewardId()`. Only chains with `scope: 'account'` land here. */
+  rewardId: text('reward_id').notNull(),
+  alloy: real('alloy').notNull().default(0),
+  crystal: real('crystal').notNull().default(0),
+  deuterium: real('deuterium').notNull().default(0),
+  /** NULL means granted and waiting to be taken. */
+  claimedAt: timestamp('claimed_at', { withTimezone: true }),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [primaryKey({ columns: [t.accountId, t.rewardId] })]);

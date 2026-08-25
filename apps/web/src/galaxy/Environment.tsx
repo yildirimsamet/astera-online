@@ -272,7 +272,22 @@ function randomStream(seed: number): () => number {
  *   is what you see from inside a galaxy, and it ties the sky to the playfield
  *   instead of floating unrelated behind it.
  */
+/** Twenty-five per cent above the approved twelve-minute celestial turn. */
+export const STARFIELD_ROTATION_RADIANS_PER_SECOND = ((Math.PI * 2) / (12 * 60)) * 1.25;
+
+export function advanceStarfieldRotation(current: number, delta: number): number {
+  if (!Number.isFinite(delta) || delta <= 0) return current;
+  return current + delta * STARFIELD_ROTATION_RADIANS_PER_SECOND;
+}
+
+/** A sky, not scenery in the playfield: translate with the eye and only rotate around it. */
+export function syncStarShell(shell: THREE.Object3D, camera: THREE.Camera, delta: number): void {
+  shell.position.copy(camera.position);
+  shell.rotation.y = advanceStarfieldRotation(shell.rotation.y, delta);
+}
+
 export function Starfield() {
+  const ref = useRef<THREE.Points>(null);
   const { geometry, material } = useMemo(() => {
     const random = randomStream(0x5a17f13d);
     const count = 4200;
@@ -353,7 +368,8 @@ export function Starfield() {
     return { geometry: g, material: m };
   }, []);
 
-  useFrame(({ camera, size, gl }) => {
+  useFrame(({ camera, size, gl }, delta) => {
+    if (ref.current) syncStarShell(ref.current, camera, delta);
     const perspective = camera as THREE.PerspectiveCamera;
     const fov = THREE.MathUtils.degToRad(perspective.fov || 45);
     material.uniforms.uScale!.value =
@@ -368,7 +384,15 @@ export function Starfield() {
     [geometry, material],
   );
 
-  return <points geometry={geometry} material={material} frustumCulled={false} />;
+  return (
+    <points
+      ref={ref}
+      name="background-starfield"
+      geometry={geometry}
+      material={material}
+      frustumCulled={false}
+    />
+  );
 }
 
 /**
@@ -380,6 +404,7 @@ export function Starfield() {
  * so it costs nothing.
  */
 export function BrightStars() {
+  const ref = useRef<THREE.Points>(null);
   const { geometry, material } = useMemo(() => {
     const random = randomStream(0xb8194a2f);
     const count = 22;
@@ -444,7 +469,8 @@ export function BrightStars() {
     return { geometry: buffer, material: shader };
   }, []);
 
-  useFrame(({ camera, size, gl }) => {
+  useFrame(({ camera, size, gl }, delta) => {
+    if (ref.current) syncStarShell(ref.current, camera, delta);
     const perspective = camera as THREE.PerspectiveCamera;
     const fov = THREE.MathUtils.degToRad(perspective.fov || 45);
     material.uniforms.uScale!.value =
@@ -459,7 +485,15 @@ export function BrightStars() {
     [geometry, material],
   );
 
-  return <points geometry={geometry} material={material} frustumCulled={false} />;
+  return (
+    <points
+      ref={ref}
+      name="background-bright-stars"
+      geometry={geometry}
+      material={material}
+      frustumCulled={false}
+    />
+  );
 }
 
 /* ── meteors ────────────────────────────────────────────────── */
@@ -469,7 +503,7 @@ const METEOR_POOL = 3;
 /** Seconds a streak is visible. */
 const METEOR_LIFE = 1.15;
 /** Seconds of empty sky between one and the next, per slot. */
-const METEOR_GAP = [7, 26] as const;
+export const METEOR_GAP = [3.5, 13] as const;
 
 interface Meteor {
   from: THREE.Vector3;
@@ -729,6 +763,9 @@ export function Disc() {
       const map = new THREE.CanvasTexture(paintDiscCanvas());
       map.colorSpace = THREE.SRGBColorSpace;
       map.anisotropy = 4;
+      // Rotate the painted spiral itself around its centre. Moving UVs rather than
+      // the already-tilted mesh makes the visible dust arms the source of truth.
+      map.center.set(0.5, 0.5);
       setTexture(map);
     };
     const supportsIdle = 'requestIdleCallback' in window;
@@ -746,6 +783,7 @@ export function Disc() {
     const m = material.current;
     if (!m || !texture) return;
     if (m.opacity < DISC_OPACITY) m.opacity = Math.min(DISC_OPACITY, m.opacity + delta * 0.5);
+    texture.rotation = advanceDiscRotation(texture.rotation, delta);
   });
 
   if (!texture) return null;
@@ -756,7 +794,11 @@ export function Disc() {
      * galaxy and look up at it, so a single-sided plate would leave the underside
      * of the disc missing.
      */
-    <mesh rotation={[-Math.PI / 2, 0, 0]} renderOrder={-80}>
+    <mesh
+      name="galactic-dust-disc"
+      rotation={[-Math.PI / 2, 0, 0]}
+      renderOrder={-80}
+    >
       <planeGeometry args={[DISC_RADIUS * 2.1, DISC_RADIUS * 2.1]} />
       <meshBasicMaterial
         ref={material}
@@ -795,6 +837,15 @@ export function Disc() {
  * because the number is a taste and the relationship is the decision.
  */
 export const DISC_OPACITY = 0.18;
+
+/** One turn every two minutes: smooth, visible life in the galactic plane. */
+export const DISC_ROTATION_RADIANS_PER_SECOND = (Math.PI * 2) / (2 * 60);
+
+/** Pure so bad frame deltas are held outside the WebGL loop. */
+export function advanceDiscRotation(current: number, delta: number): number {
+  if (!Number.isFinite(delta) || delta <= 0) return current;
+  return current + delta * DISC_ROTATION_RADIANS_PER_SECOND;
+}
 
 /* ── asteroids ──────────────────────────────────────────────── */
 

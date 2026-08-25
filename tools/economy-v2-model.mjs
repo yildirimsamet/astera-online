@@ -92,7 +92,7 @@ const P = {
 
   galaxy: {
     baselinePlayers: 300, baselineRadius: 2500, thickness: 300, minSeparation: 225,
-    asteroidsPerHourPerPlayer: 0.030,
+    asteroidsPerHourPerPlayer: 0.0345,
     asteroidSpeedMin: 350, asteroidSpeedMax: 750,
     asteroidOrbitMinShare: 0.20, asteroidOrbitMaxShare: 0.95,
     asteroidLifeHoursMin: 2.5, asteroidLifeHoursMax: 5,
@@ -103,7 +103,8 @@ const P = {
   },
 
   deuterium: { containmentRatio: 0.5, frontierStartsAtMinutes: 35 * 60,
-               isotopeCadence: 9, isotopeBonusCadence: 10, isotopeShare: 0.104,
+               isotopeCadence: 9, isotopeBonusCadence: 10,
+               isotopeShareMin: 0.10, isotopeShareMax: 0.25,
                graviticDiscoveryShieldShare: 0.25 },
 
   satellites: {
@@ -200,7 +201,8 @@ const RESEARCH = {
 };
 
 const DEATH_STAR = { alloy:28000, crystal:9000, deuterium:2600, buildMinutes:60, speed:500,
-                     requiredCore:6, requiredShipyard:5, probeVisibilityAccuracy:0.75 };
+                     requiredCore:6, requiredShipyard:5, impactSeconds:8,
+                     probeVisibilityAccuracy:0.75 };
 
 /**
  * THE COLONY IS THE LATE-GAME UN-LOSABLE SINK, and it has to be priced like one.

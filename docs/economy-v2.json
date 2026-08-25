@@ -1,6 +1,6 @@
 {
   "$schema": "astera-economy/v2",
-  "generatedAt": "2026-08-24",
+  "generatedAt": "2026-08-25",
   "note": "From-scratch 14-day seasonal PvP economy. Replaces packages/rules/src/constants.ts. Every number here is derived; see docs/balance.md for the formula behind each one.",
   "formulas": {
     "production": "rate(L) = base * L * growth^L   per hour",
@@ -165,7 +165,7 @@
       "baselineRadius": 2500,
       "thickness": 300,
       "minSeparation": 225,
-      "asteroidsPerHourPerPlayer": 0.03,
+      "asteroidsPerHourPerPlayer": 0.0345,
       "asteroidSpeedMin": 350,
       "asteroidSpeedMax": 750,
       "asteroidOrbitMinShare": 0.2,
@@ -201,7 +201,8 @@
       "frontierStartsAtMinutes": 2100,
       "isotopeCadence": 9,
       "isotopeBonusCadence": 10,
-      "isotopeShare": 0.104,
+      "isotopeShareMin": 0.1,
+      "isotopeShareMax": 0.25,
       "graviticDiscoveryShieldShare": 0.25
     },
     "satellites": {
@@ -2022,6 +2023,7 @@
       "speed": 500,
       "requiredCore": 6,
       "requiredShipyard": 5,
+      "impactSeconds": 8,
       "probeVisibilityAccuracy": 0.75
     },
     "SETTLEMENT": {
@@ -2043,8 +2045,8 @@
       "galaxyRadius": 2041,
       "thickness": 300,
       "minSeparation": 225,
-      "asteroidSpawnPerHour": 6,
-      "expectedRocksInSky": 23,
+      "asteroidSpawnPerHour": 6.9,
+      "expectedRocksInSky": 26,
       "neutralCounts": {
         "1": 20,
         "2": 10,
@@ -2074,8 +2076,8 @@
       "galaxyRadius": 2500,
       "thickness": 300,
       "minSeparation": 225,
-      "asteroidSpawnPerHour": 9,
-      "expectedRocksInSky": 34,
+      "asteroidSpawnPerHour": 10.35,
+      "expectedRocksInSky": 39,
       "neutralCounts": {
         "1": 30,
         "2": 15,
@@ -2105,8 +2107,8 @@
       "galaxyRadius": 2887,
       "thickness": 300,
       "minSeparation": 225,
-      "asteroidSpawnPerHour": 12,
-      "expectedRocksInSky": 45,
+      "asteroidSpawnPerHour": 13.8,
+      "expectedRocksInSky": 52,
       "neutralCounts": {
         "1": 40,
         "2": 20,
@@ -2136,8 +2138,8 @@
       "galaxyRadius": 3227,
       "thickness": 300,
       "minSeparation": 225,
-      "asteroidSpawnPerHour": 15,
-      "expectedRocksInSky": 56,
+      "asteroidSpawnPerHour": 17.25,
+      "expectedRocksInSky": 65,
       "neutralCounts": {
         "1": 50,
         "2": 25,

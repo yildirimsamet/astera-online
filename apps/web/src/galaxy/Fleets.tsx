@@ -9,7 +9,6 @@ import { Bombardment } from './Bombardment.jsx';
 import { softGlow } from './Environment.jsx';
 import { orientedCraft } from './model.js';
 import {
-  clearOfWorlds,
   contactPosition,
   CRAFT_SCALE,
   engagementHold,
@@ -38,6 +37,9 @@ import {
   formationAimDirection,
 } from './flightVisual.js';
 import { fireTexture } from './vfx.js';
+import { threadKey } from './threadKey.js';
+
+export { threadKey } from './threadKey.js';
 
 /**
  * Things moving between the worlds.
@@ -98,20 +100,6 @@ export function OwnFleets({
     </>
   );
 }
-
-/** Stable enough to survive a refetch, which is what focus needs to persist. */
-/**
- * THE MISSION'S OWN ID WHERE THERE IS ONE. D52.
- *
- * It is focus's identity AND the volley's seed, and the fallback is neither stable
- * nor shared: `fleet:outbound:Tharsis:0` changes if the list reorders, and it can
- * never match the key a bystander's client uses for the same raid — so the two of
- * them generated different bombardments of the same world. Your own threads carry
- * the id now; the fallback survives only for an `incoming` thread, which is
- * deliberately anonymous and never draws a craft anyway.
- */
-export const threadKey = (thread: PendingThread, i: number): string =>
-  thread.id ?? `${thread.kind}:${thread.leg ?? 'out'}:${thread.targetName}:${String(i)}`;
 
 /**
  * A probe reads differently from a fleet, on purpose.
@@ -681,6 +669,13 @@ function Flight({
   );
 
   const engaging = useEngagement(path ? path.arriveAt.getTime() : null);
+  /**
+   * A Death Star is spent at the instant it lands: it is the explosion. Kept here
+   * rather than left to the payload because the mission is only resolved on the
+   * worker's next tick, and until then this craft is still in `pending` — which
+   * drew the weapon hovering over the world it had just detonated on.
+   */
+  const spent = useStrikeConsumed(isDeathStar && path ? path.arriveAt.getTime() : null);
 
   /**
    * THE ROUTE IS ONLY EVER WHAT IS LEFT TO FLY.
@@ -695,7 +690,7 @@ function Flight({
   useFrame(() => {
     if (!path || !group.current) return;
     // The same helper the camera reads, so a focused squadron stays centred.
-    const at = threadPosition(path, serverNow(), standoff);
+    const at = threadPosition(path, serverNow(), standoff, nodes);
     group.current.position.set(at[0], at[1], at[2]);
     formationAim.current = Math.max(
       0.01,
@@ -736,7 +731,7 @@ function Flight({
     points.needsUpdate = true;
   });
 
-  if (!path) return null;
+  if (!path || spent) return null;
 
   return (
     <>
@@ -1767,6 +1762,14 @@ function Foreign({
    */
   const fight = contact.engagement;
   const engaging = useEngagement(fight ? fight.arriveAt.getTime() : null);
+  /**
+   * And the same rule from the other side of the payload. The finished mission is
+   * republished for the length of the explosion so a client that was elsewhere can
+   * still play it (`Contact.impact`) — the effect is what that contact is FOR, and
+   * drawing a craft for it as well left a spent weapon parked over the world on
+   * every screen in the galaxy.
+   */
+  const spent = useStrikeConsumed(contact.impact ? contact.impact.at.getTime() : null);
   const world = useMemo(
     () => (fight ? targetNodeOf(nodes, fight.target) : undefined),
     [fight, nodes],
@@ -1814,7 +1817,7 @@ function Foreign({
      * minute of a raid the truth is INSIDE the world being attacked. See
      * `clearOfWorlds`.
      */
-    const at = clearOfWorlds(nodes, contactPosition(contact, serverNow(), nodes));
+    const at = contactPosition(contact, serverNow(), nodes);
     node.position.set(at[0], at[1], at[2]);
     // Aimed down its own window, which is its heading and nothing further — or, once
     // it is over a world, at the world it is putting rounds into.
@@ -1836,6 +1839,8 @@ function Foreign({
       points.needsUpdate = true;
     }
   });
+
+  if (spent) return null;
 
   return (
     <>
@@ -2022,6 +2027,65 @@ function TrackingMark({
  * Exported for its own test. It decides whether a `Bombardment` EXISTS, which is
  * the one thing on this disc that cannot be checked by looking at a still frame.
  */
+/**
+ * A DEATH STAR DOES NOT SURVIVE ITS OWN STRIKE. Owner instruction. D106.
+ *
+ * *"Hedefe vardı → kendisi yok oldu → patlama animasyonu göründü."* The craft IS
+ * the explosion: there is nothing left to hover, and a missile parked over a world
+ * it has just detonated on is the single most confusing thing the disc can draw —
+ * the player has watched the blast and is still looking at the weapon.
+ *
+ * It lingered for two different reasons, one on each side of the payload. The
+ * attacker's own thread lives until the worker resolves the mission, which is up to
+ * a poll later; and the finished mission is REPUBLISHED to the whole galaxy for the
+ * length of the effect (see `Contact.impact`), so every other screen had a craft to
+ * draw for those eight seconds. Both are correct payloads. What was missing was the
+ * rule about what they MEAN, so it is stated once, here, and both renderers ask it.
+ *
+ * The instant is the authority and the timer only says when to look, exactly as in
+ * `useEngagement` — including the wake on visibility, because a tab that was in the
+ * background for the whole strike comes back holding the answer it had when it
+ * left.
+ */
+export function useStrikeConsumed(at: number | null): boolean {
+  const [consumed, setConsumed] = useState(() => at !== null && serverNow() >= at);
+
+  useEffect(() => {
+    if (at === null) {
+      setConsumed(false);
+      return;
+    }
+
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const settle = (): void => {
+      if (timer !== undefined) clearTimeout(timer);
+      const now = serverNow();
+      setConsumed(now >= at);
+      const delay = at - now;
+      if (delay > 0 && delay <= 2_147_483_647) {
+        timer = setTimeout(() => {
+          setConsumed(true);
+        }, delay);
+      }
+    };
+
+    settle();
+    const wake = (): void => {
+      if (document.visibilityState === 'visible') settle();
+    };
+    document.addEventListener('visibilitychange', wake);
+    window.addEventListener('pageshow', wake);
+
+    return () => {
+      document.removeEventListener('visibilitychange', wake);
+      window.removeEventListener('pageshow', wake);
+      if (timer !== undefined) clearTimeout(timer);
+    };
+  }, [at]);
+
+  return consumed;
+}
+
 export function useEngagement(arriveAt: number | null): boolean {
   const [engaging, setEngaging] = useState(
     () => arriveAt !== null && isEngaging(arriveAt, serverNow()),

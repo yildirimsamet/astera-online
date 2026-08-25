@@ -22,15 +22,15 @@ export const planet = {
     buildTime: '60 min · one weapon · no recall',
   },
   tabs: {
+    label: 'Planet categories',
     defendProblem: 'Defend',
-    defendQuestion: 'What survives if someone lands here?',
-    orbitProblem: 'Orbit',
-    orbitQuestion:
-      'Four satellites overhead, four instruments on the ground. Any of them, in any order.',
-    reachProblem: 'Reach',
-    reachQuestion: 'What can you send, and how far?',
-    growProblem: 'Grow',
-    growQuestion: 'How much ore you make, and how high you can build.',
+    defendQuestion: 'Strengthen your shield, vault and planet guns here.',
+    orbitProblem: 'Intel',
+    orbitQuestion: 'Build the tools that help you see rivals.',
+    reachProblem: 'Fleet',
+    reachQuestion: 'Develop your ships, range and special projects here.',
+    growProblem: 'Production',
+    growQuestion: 'Grow your resources and building level limit here.',
   },
 
   wallet: {
@@ -42,6 +42,7 @@ export const planet = {
     capacity: '{{count}} slots each',
     construction: 'Construction',
     yard: 'Yard',
+    slotFree: 'Free',
     empty: 'No work committed',
     committing: 'committing…',
     staged: 'starts when claimed',
@@ -68,6 +69,8 @@ export const planet = {
   },
 
   defend: {
+    shieldBand: 'Shield',
+    shieldNote: 'Aegis absorbs damage before it reaches your units; each level raises charge and recovery.',
     groundBand: 'On the ground',
     groundNote:
       'They never leave. Each is strong against what the other is weak to — build one kind and a raider who scouts you will bring its counter.',
@@ -82,6 +85,11 @@ export const planet = {
   },
 
   orbit: {
+    contextLabel: 'Orbit network',
+    networkBand: 'Connection',
+    networkNote: 'The Uplink spends one socket to unlock the Telescope and Radar.',
+    intelBand: 'Planet instruments',
+    intelNote: 'They gain levels and never consume an orbit socket.',
     inOrbitBand: 'In orbit',
     inOrbitNote: 'Each one takes a slot. Built once — they have no levels.',
     onPlanetBand: 'On the planet',
@@ -101,6 +109,8 @@ export const planet = {
   },
 
   reach: {
+    orbitBand: 'Operations satellites',
+    orbitNote: 'Lift your Prospector or every fleet; each consumes one socket in the shared orbit network.',
     frontierBand: 'Frontier projects',
     frontierNote: 'Four discoveries. They share Construction and complete on its clock.',
     isotopeName: 'Isotope Spectrometry',
@@ -134,6 +144,18 @@ export const planet = {
     prospectorLimit: '{{owned}} / {{max}} · limit',
   },
 
+  grow: {
+    multiplierBand: 'Production satellite',
+    multiplierNote: 'The Foundry accelerates both ore streams and consumes one socket in the shared orbit network.',
+  },
+
+  projectSheet: {
+    frontier: 'Frontier project',
+    complete: 'Discovery complete',
+    cost: 'Research cost',
+    once: 'Researched once; uses the Construction queue.',
+  },
+
   /** Why a row cannot be pressed yet. Each is a door, so each names its fix. */
   blocked: {
     core: 'Core L{{level}}',
@@ -160,7 +182,11 @@ export const planet = {
     eyebrowGround: 'Ground defence · never leaves',
     eyebrowMobile: 'Mobile hull',
     howMany: 'How many',
-    max: 'Max {{count}}',
+    fewer: 'Fewer {{name}}',
+    more: 'More {{name}}',
+    quantity: '{{name}} quantity',
+    max: 'Max {{name}}',
+    maxShort: 'Max',
     build: 'Build {{count}}',
     capped:
       'You already hold {{count}} — the limit. Craft that are out still count, so you cannot build another.',
@@ -243,8 +269,7 @@ export const planetHero = {
   shieldValue: '{{current}} / {{max}}',
   shieldMeter: 'Aegis shield charge',
   shieldRegen: '+{{amount}}/h · before units',
-  vault: 'Vault · safe',
-  vaultProtected: 'A raid cannot touch these amounts',
+  vaultSafe: 'Safe in the vault',
   alloySafe: '{{amount}} alloy safe',
   crystalSafe: '{{amount}} crystal safe',
   deuteriumSafe: '{{amount}} deuterium safe',
@@ -273,7 +298,9 @@ export const launch = {
   atHome: '{{count}} home',
   fewer: 'Fewer {{name}}',
   more: 'More {{name}}',
-  all: 'All',
+  quantity: '{{name}} quantity',
+  max: 'Max {{name}}',
+  maxShort: 'Max',
   noShips: 'No ships at home. Build some in the shipyard, or wait for a fleet to come back.',
   warning:
     'This cannot be recalled. Once it leaves, the only way to find out what was down there is to watch it land — and your planet holds {{count}} units until it comes back.',

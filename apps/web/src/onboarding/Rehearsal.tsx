@@ -52,7 +52,17 @@ import { openWorld, type RehearsalWorld } from './world.js';
  * screen.
  */
 /** Roughly how tall the beat card is with its controls. See `place` below. */
-const CARD_BAND = 210;
+const CARD_BAND = 260;
+
+/**
+ * The neighbourhood range for “Learn first, risk later”.
+ *
+ * The opening overview shows the whole disc, but repeating that view here makes
+ * the world the player must tap too small. Staying at the seven-unit Home range
+ * has the opposite problem: the selected neighbour fills the view. Eighteen
+ * keeps several nearby worlds readable while leaving the tapped world in context.
+ */
+const LEARN_FIRST_DISTANCE = 18;
 
 export function Rehearsal({
   preview,
@@ -325,7 +335,8 @@ export function Rehearsal({
               commander={preview.reserved.name}
               onSignOut={onLeave}
               onFocused={setFocus}
-              openWide
+              openWide={beat.id === 'wide' || beat.id === 'fog'}
+              {...(beat.id === 'fog' ? { wideDistance: LEARN_FIRST_DISTANCE } : {})}
               allowFocus={allowFocus}
               goHome={goHome}
               {...(beat.group ? { planetGroup: beat.group } : {})}
@@ -358,6 +369,19 @@ export function Rehearsal({
               : {})}
             progress={{ step, total: BEATS.length }}
             nudge={nudge}
+            {...(beat.id === 'briefing'
+              ? {
+                  concept: {
+                    steps: [
+                      t('onboarding.beats.briefing.mapGrow'),
+                      t('onboarding.beats.briefing.mapIntel'),
+                      t('onboarding.beats.briefing.mapDefend'),
+                      t('onboarding.beats.briefing.mapReach'),
+                    ],
+                    outcome: t('onboarding.beats.briefing.mapOutcome'),
+                  },
+                }
+              : {})}
             place={place}
             skipLabel={t('onboarding.skip')}
             onSkip={onLeave}
@@ -415,6 +439,11 @@ const COPY = {
     action: 'onboarding.beats.wide.action',
   },
   yours: { title: 'onboarding.beats.yours.title', line: 'onboarding.beats.yours.line' },
+  briefing: {
+    title: 'onboarding.beats.briefing.title',
+    line: 'onboarding.beats.briefing.line',
+    action: 'onboarding.beats.briefing.action',
+  },
   fog: { title: 'onboarding.beats.fog.title', line: 'onboarding.beats.fog.line' },
   fogAlone: {
     title: 'onboarding.beats.fogAlone.title',

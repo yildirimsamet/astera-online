@@ -1,5 +1,6 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import { HULLS, INSTRUMENT_MAX_LEVEL, SATELLITES, satelliteSlots } from '@astera/rules';
 import { PlanetScreen } from '../src/screens/PlanetScreen.js';
@@ -100,8 +101,8 @@ describe('the orbit surface', () => {
     }, 'orbit');
     expect(screen.getByText(/owned, but inactive until the Command Core/i)).toBeInTheDocument();
     expect(screen.getByText(/L3 owned, but inactive until an Uplink/i)).toBeInTheDocument();
-    expect(view.container.querySelector('#row-TELESCOPE [data-lock-state="closed"]'))
-      .toHaveTextContent(/an Uplink in orbit/i);
+    expect(view.container.querySelector('#row-TELESCOPE [data-progression-state="locked"]'))
+      .toBeInTheDocument();
   });
 
   it('keeps Deuterium in the sheet wallet before its research door opens', () => {
@@ -109,25 +110,27 @@ describe('the orbit surface', () => {
     expect(screen.getByLabelText('Deuterium')).toHaveTextContent('0');
   });
 
-  it('offers all four satellites and all four instruments, with no ordering', () => {
+  it('places every item under the outcome a player is looking for', async () => {
     show();
-    for (const name of ['Uplink', 'Foundry', 'Derrick', 'Beacon']) {
-      expect(screen.getByText(name), `${name} is missing`).toBeInTheDocument();
+    for (const name of ['Uplink', 'Telescope', 'Radar', 'Veil']) {
+      expect(screen.getByRole('heading', { name }), `${name} is missing from Intel`).toBeInTheDocument();
     }
-    for (const name of ['Telescope', 'Radar', 'Aegis', 'Veil']) {
-      expect(screen.getByText(name), `${name} is missing`).toBeInTheDocument();
-    }
+    expect(screen.queryByRole('heading', { name: 'Aegis' })).toBeNull();
+    await userEvent.click(screen.getByRole('tab', { name: 'Defend' }));
+    expect(screen.getByRole('heading', { name: 'Aegis' })).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('tab', { name: 'Production' }));
+    expect(screen.getByRole('heading', { name: 'Foundry' })).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('tab', { name: 'Fleet' }));
+    expect(screen.getByRole('heading', { name: 'Derrick' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Beacon' })).toBeInTheDocument();
   });
 
-  it('uses the owned and next renders as the row subject instead of favicon-sized bullets', () => {
+  it('uses one compact render and leaves the future ladder to the sheet', () => {
     const view = show({ orbit: ['UPLINK'], instruments: { TELESCOPE: 1 } });
     const row = view.container.querySelector('#row-TELESCOPE');
     expect(row).not.toBeNull();
-    expect(row?.querySelectorAll('.size-\\[72px\\]').length).toBeGreaterThanOrEqual(1);
-    expect(row?.querySelector('.size-12')).toBeNull();
-    for (const image of row?.querySelectorAll('.size-\\[72px\\] img') ?? []) {
-      expect(image).toHaveClass('size-16');
-    }
+    expect(row?.querySelector('[data-art] img')).not.toBeNull();
+    expect(row?.querySelectorAll('[data-art]').length).toBe(1);
   });
 
   /**
@@ -184,25 +187,21 @@ describe('the orbit surface', () => {
    * player has to be able to tell which is which before choosing. That was carried
    * by a paragraph between the cards, which is a paragraph nobody reads.
    */
-  it('bands the two kinds apart and states the rule for each', () => {
+  it('separates the network gate from the levelled intel instruments', () => {
     show();
-    expect(screen.getByText(/^in orbit$/i)).toBeInTheDocument();
-    expect(screen.getByText(/^on the planet$/i)).toBeInTheDocument();
-    expect(screen.getByText(/each one takes a slot/i)).toBeInTheDocument();
-    expect(screen.getByText(/no slot needed/i)).toBeInTheDocument();
+    expect(screen.getByText(/^connection$/i)).toBeInTheDocument();
+    expect(screen.getByText(/^planet instruments$/i)).toBeInTheDocument();
+    expect(screen.getByText(/spends one socket/i)).toBeInTheDocument();
+    expect(screen.getByText(/never consume an orbit socket/i)).toBeInTheDocument();
   });
 
   /** Owner request: every card says what it is, in words a child can read. */
-  it('tags every card with what it is', () => {
+  it('tags every Intel card with what it is', () => {
     show();
     for (const tag of [
       'Unlocks Telescope and Radar',
-      'More ore every hour',
-      'Better mining craft',
-      'Faster fleets',
       'Watch other planets',
       'See who is coming',
-      'Shield for your planet',
       'Hide from telescopes',
     ]) {
       expect(screen.getByText(tag), `${tag} is missing`).toBeInTheDocument();
@@ -226,43 +225,45 @@ describe('the orbit surface', () => {
      * them would put back the ordering the split removed.
      */
     it('never gates the Aegis or the Veil on anything in orbit', () => {
-      show({ orbit: [] });
+      const defence = show({ orbit: [] }, 'defend');
       const aegis = screen.getByText('Aegis').closest('div');
-      const veil = screen.getByText('Veil').closest('div');
       expect(aegis?.textContent).not.toMatch(/uplink/i);
+      defence.unmount();
+      show({ orbit: [] }, 'orbit');
+      const veil = screen.getByText('Veil').closest('div');
       expect(veil?.textContent).not.toMatch(/uplink/i);
     });
   });
 
   /** A satellite is up or it is not. A level on one of these rows is a bug. */
   it('never shows a level on a satellite', () => {
-    const view = show({ orbit: ['FOUNDRY'] });
+    const view = show({ orbit: ['FOUNDRY'] }, 'grow');
     const row = view.container.querySelector('#row-FOUNDRY');
     expect(row?.textContent).not.toMatch(/\bL[0-9]\b/);
   });
 
   it('offers a satellite that is already up as done rather than as a purchase', () => {
-    const view = show({ orbit: ['BEACON'] });
+    const view = show({ orbit: ['BEACON'] }, 'reach');
     expect(screen.getByText(/already in orbit/i)).toBeInTheDocument();
     expect(view.container.querySelector('#row-BEACON [data-progression-state]'))
       .toHaveAttribute('data-progression-state', 'complete');
     expect(view.container.querySelector('#row-BEACON .grayscale')).toBeNull();
-    expect(view.container.querySelector('#row-BEACON [data-lock-state="open"]')).toBeInTheDocument();
+    expect(view.container.querySelector('#row-BEACON [data-open-item]')).toBeInTheDocument();
   });
 
   it('greys an available unowned satellite without calling it locked', () => {
-    const view = show({ orbit: [] });
+    const view = show({ orbit: [] }, 'reach');
     const row = view.container.querySelector('#row-BEACON [data-progression-state]');
     expect(row).toHaveAttribute('data-progression-state', 'available-unowned');
     expect(view.container.querySelector('#row-BEACON .grayscale')).toBeInTheDocument();
-    expect(view.container.querySelector('#row-BEACON [data-lock-state]')).toBeNull();
+    expect(view.container.querySelector('#row-BEACON [data-open-item]')).toBeInTheDocument();
   });
 
   it('adds a lock only when an unowned satellite has a real unmet requirement', () => {
-    const view = show({ orbit: ['UPLINK', 'FOUNDRY', 'DERRICK'], orbitSlots: 3 });
+    const view = show({ orbit: ['UPLINK', 'FOUNDRY', 'DERRICK'], orbitSlots: 3 }, 'reach');
     expect(view.container.querySelector('#row-BEACON [data-progression-state]'))
       .toHaveAttribute('data-progression-state', 'locked');
-    expect(view.container.querySelector('#row-BEACON [data-lock-state="closed"]')).toBeInTheDocument();
+    expect(view.container.querySelector('#row-BEACON')).toHaveTextContent(/free orbit slot/i);
   });
 
   it('shows a maxed instrument as complete rather than locked', () => {
@@ -271,7 +272,7 @@ describe('the orbit surface', () => {
     const view = show({ instruments: { RADAR: max ?? 0 }, orbit: ['UPLINK'] });
     expect(view.container.querySelector('#row-RADAR [data-progression-state]'))
       .toHaveAttribute('data-progression-state', 'complete');
-    expect(view.container.querySelector('#row-RADAR [data-lock-state="open"]')).toBeInTheDocument();
+    expect(view.container.querySelector('#row-RADAR [data-open-item]')).toBeInTheDocument();
   });
 });
 
@@ -338,7 +339,7 @@ describe('the reach surface', () => {
     for (const id of ['ISOTOPE_SPECTROMETRY', 'DENSE_FUEL_CELLS', 'GRAVITIC_CHARGES']) {
       expect(view.container.querySelector(`#row-${id} [data-progression-state]`))
         .toHaveAttribute('data-progression-state', 'complete');
-      expect(view.container.querySelector(`#row-${id} [data-lock-state="open"]`)).toBeInTheDocument();
+      expect(view.container.querySelector(`#row-${id} [data-open-item]`)).toBeInTheDocument();
     }
   });
 
@@ -428,7 +429,8 @@ describe('the reach surface', () => {
   it('gates a Prospector on the Shipyard and on nothing else', () => {
     show({ buildings: { CORE: 9, REFINERY: 3, EXTRACTOR: 3, VAULT: 1, SHIPYARD: 6 }, orbit: [] }, 'reach');
     expect(screen.queryByText(/needs a drill/i)).toBeNull();
-    expect(screen.queryByText(/derrick/i)).toBeNull();
+    expect(screen.getByRole('heading', { name: 'Derrick' })).toBeInTheDocument();
+    expect(screen.getByText(/sent at an asteroid, not at a planet/i)).toBeInTheDocument();
   });
 });
 
@@ -440,28 +442,48 @@ describe('the reach surface', () => {
  * thing lives somewhere else for a good reason nobody wrote down.
  */
 describe('finding things', () => {
-  it('asks the Grow question in terms of what the player has, not what the system does', () => {
+  it('explains Production in plain language', () => {
     show({}, 'grow');
-    expect(screen.getByText(/how much ore you make/i)).toBeInTheDocument();
+    expect(screen.getByText(/grow your resources/i)).toBeInTheDocument();
   });
 
-  /**
-   * The Aegis is the only shield in the game and it is not on the Defend tab,
-   * because D22 keeps every piece of hardware on one surface. That is defensible
-   * and it is invisible — so Defend has to say it out loud.
-   */
-  it('points at the Aegis from Defend, where a player goes looking for a shield', () => {
+  it('puts the Aegis itself under Defend, where a player looks for a shield', () => {
     show({}, 'defend');
-    const pointer = screen.getByText(/a shield is hardware/i);
-    expect(pointer).toBeInTheDocument();
-    expect(pointer.textContent).toMatch(/aegis/i);
-    expect(pointer.textContent).toMatch(/orbit/i);
+    expect(screen.getByRole('heading', { name: 'Aegis' })).toBeInTheDocument();
+    expect(screen.getByText('Shield for your planet')).toBeInTheDocument();
+    expect(screen.queryByText(/under Orbit/i)).toBeNull();
   });
 
   it('tags the buildings too, not only the hardware', () => {
     show({}, 'grow');
     for (const tag of ['Unlocks higher levels', 'Makes alloy', 'Makes crystal']) {
       expect(screen.getByText(tag), `${tag} is missing`).toBeInTheDocument();
+    }
+  });
+});
+
+describe('the compact row and sheet grammar', () => {
+  it('opens every item kind before it offers a commitment', async () => {
+    const user = userEvent.setup();
+    const cases = [
+      ['grow', 'Command Core'],
+      ['grow', 'Foundry'],
+      ['orbit', 'Telescope'],
+      ['defend', 'Aegis'],
+      ['defend', 'Thorn'],
+      ['reach', 'Isotope Spectrometry'],
+      ['reach', 'Wasp'],
+    ] as const;
+
+    for (const [tab, name] of cases) {
+      const view = show({}, tab);
+      const row = screen.getByRole('heading', { name }).closest('[id^="row-"]');
+      expect(row).not.toBeNull();
+      if (!(row instanceof HTMLElement)) throw new Error(`${name} row must render`);
+      expect(within(row).queryByRole('button', { name: /^(raise|build|research|install)$/i })).toBeNull();
+      await user.click(within(row).getByRole('button', { name: new RegExp(`about ${name}`, 'i') }));
+      expect(screen.getByRole('dialog', { name })).toBeInTheDocument();
+      view.unmount();
     }
   });
 });

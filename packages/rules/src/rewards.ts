@@ -104,6 +104,30 @@ export type RewardChainId = (typeof REWARD_CHAIN_IDS)[number];
  */
 export type RewardMetric = 'count' | 'level' | 'grant';
 
+/**
+ * HOW LONG A CHAIN REMEMBERS, and it is the difference between a reward that is
+ * earned and one that is given. Owner instruction: *"twitter takip bonusu kişiye
+ * 1 kez verilebilmeli. her sezon her sezon alamaz."*
+ *
+ *   `season`   the ten counted chains. Progress is read off THIS season's world —
+ *              probes flown, levels standing — so it necessarily starts again
+ *              when the world does, and it should: a new galaxy is a new game and
+ *              the first probe in it is a real first probe.
+ *   `account`  the commander behind the seat, for ever. Following @JoinAstera is
+ *              done ONCE by a person; a galaxy rolling over does not un-follow
+ *              anybody, so paying for it again would be paying twice for one act
+ *              — and paying every fortnight for ever to somebody who pressed a
+ *              button in April.
+ *
+ * IT IS A PROPERTY OF THE CHAIN AND NOT OF `metric`. The two happen to coincide
+ * today — the only account-scoped chain is also the only hand-granted one — and
+ * writing `metric === 'grant'` at the four sites that need this would have tied
+ * "a human confirms it" to "it is paid once ever", which are different facts. A
+ * hand-checked reward for a single season is a thing this table must stay able to
+ * express.
+ */
+export type RewardScope = 'season' | 'account';
+
 export interface RewardTier {
   /** The cumulative figure that unlocks it. */
   goal: number;
@@ -113,6 +137,8 @@ export interface RewardTier {
 export interface RewardChain {
   id: RewardChainId;
   metric: RewardMetric;
+  /** Where the once-only record lives: the season's player, or the account. */
+  scope: RewardScope;
   tiers: readonly RewardTier[];
 }
 
@@ -136,6 +162,7 @@ const CHAINS: Record<RewardChainId, RewardChain> = {
   PROBE: {
     id: 'PROBE',
     metric: 'count',
+    scope: 'season',
     tiers: [
       { goal: 1, reward: reward(200, 70) },
       { goal: 3, reward: reward(350, 120) },
@@ -151,6 +178,7 @@ const CHAINS: Record<RewardChainId, RewardChain> = {
   RAID: {
     id: 'RAID',
     metric: 'count',
+    scope: 'season',
     tiers: [
       { goal: 1, reward: reward(300, 100) },
       { goal: 3, reward: reward(550, 190) },
@@ -166,6 +194,7 @@ const CHAINS: Record<RewardChainId, RewardChain> = {
   CORE: {
     id: 'CORE',
     metric: 'level',
+    scope: 'season',
     tiers: [
       { goal: 3, reward: reward(250, 90) },
       { goal: 5, reward: reward(500, 175) },
@@ -177,6 +206,7 @@ const CHAINS: Record<RewardChainId, RewardChain> = {
   SHIPYARD: {
     id: 'SHIPYARD',
     metric: 'level',
+    scope: 'season',
     tiers: [
       { goal: 2, reward: reward(200, 70) },
       { goal: 3, reward: reward(400, 140) },
@@ -187,6 +217,7 @@ const CHAINS: Record<RewardChainId, RewardChain> = {
   REFINERY: {
     id: 'REFINERY',
     metric: 'level',
+    scope: 'season',
     tiers: [
       { goal: 3, reward: reward(200, 70) },
       { goal: 5, reward: reward(400, 140) },
@@ -197,6 +228,7 @@ const CHAINS: Record<RewardChainId, RewardChain> = {
   EXTRACTOR: {
     id: 'EXTRACTOR',
     metric: 'level',
+    scope: 'season',
     tiers: [
       { goal: 3, reward: reward(200, 70) },
       { goal: 5, reward: reward(400, 140) },
@@ -221,6 +253,7 @@ const CHAINS: Record<RewardChainId, RewardChain> = {
   SHIPS: {
     id: 'SHIPS',
     metric: 'count',
+    scope: 'season',
     tiers: [
       { goal: 5, reward: reward(200, 70) },
       { goal: 10, reward: reward(350, 120) },
@@ -233,6 +266,7 @@ const CHAINS: Record<RewardChainId, RewardChain> = {
   AEGIS: {
     id: 'AEGIS',
     metric: 'level',
+    scope: 'season',
     tiers: [{ goal: 1, reward: reward(500, 175) }],
   },
 
@@ -247,12 +281,14 @@ const CHAINS: Record<RewardChainId, RewardChain> = {
   MINE: {
     id: 'MINE',
     metric: 'count',
+    scope: 'season',
     tiers: [{ goal: 1, reward: reward(300, 100) }],
   },
 
   SALVAGE: {
     id: 'SALVAGE',
     metric: 'count',
+    scope: 'season',
     tiers: [{ goal: 1, reward: reward(300, 100) }],
   },
 
@@ -283,6 +319,7 @@ const CHAINS: Record<RewardChainId, RewardChain> = {
   SOCIAL: {
     id: 'SOCIAL',
     metric: 'grant',
+    scope: 'account',
     tiers: [{ goal: 1, reward: reward(1000, 500) }],
   },
 };

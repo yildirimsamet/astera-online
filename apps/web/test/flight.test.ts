@@ -12,6 +12,7 @@ import {
   runPosition,
   threadPosition,
   toWorld,
+  type PlanetNode,
 } from '../src/galaxy/scene.js';
 import type { Contact, MiningRun, PendingThread } from '../src/api/schemas.js';
 
@@ -285,6 +286,47 @@ describe('a contact in the galaxy', () => {
     expect(contactPosition(landing, END.getTime())).toEqual(end);
     expect(contactPosition(landing, END.getTime() + 30_000)).toEqual(end);
     expect(contactPosition(landing, END.getTime() + 10 * 60_000)).toEqual(end);
+  });
+
+  /**
+   * THE WINDOW ALREADY ENDS WHERE THE CRAFT STOPS, AND THE DISC DOES NOT SECOND-GUESS IT. D106.
+   *
+   * A published window's far end is a point on the SAME standoff-adjusted line the
+   * owner's own client flies (`visualLeg` in `@astera/rules`), so the renderer's
+   * only job is to interpolate it. It used to end at the world's centre while the
+   * owner stopped in orbit, and a correction here tried to make up the difference
+   * for the final window alone — which left the whole approach before it drawn a
+   * planet's width ahead of where the owner saw it. The fix belongs where the
+   * numbers are published, not where they are drawn.
+   */
+  it('lands exactly on the point its window names, and holds there', () => {
+    const target: PlanetNode = {
+      id: 'target',
+      name: 'Target',
+      owner: 'Defender',
+      position: toWorld({ x: 400, y: 0, z: 0 }),
+      radius: 1,
+      weight: 2,
+      satellites: [],
+      shielded: false,
+      stance: 'dark',
+      state: { kind: 'NORMAL' },
+      kind: 'CAPITAL',
+      isOwned: false,
+      isCapital: true,
+    };
+    // As the server publishes it: the far end is the orbit the craft holds at,
+    // two world units short of a world drawn at radius 1.
+    const landing = contact({ landing: true, to: { x: 300, y: 0, z: 0 } });
+    const early = contactPosition(landing, START.getTime(), [target]);
+    const late = contactPosition(landing, END.getTime() - 1, [target]);
+    const arrived = contactPosition(landing, END.getTime(), [target]);
+
+    expect(late[0]).toBeGreaterThan(early[0]);
+    expect(arrived[0]).toBeGreaterThan(late[0]);
+    expect(arrived).toEqual([6, 0, 0]);
+    // And it stays there rather than coasting into the world it just reached.
+    expect(contactPosition(landing, END.getTime() + 60_000, [target])).toEqual([6, 0, 0]);
   });
 
   it('still coasts when the window is only a heading', () => {

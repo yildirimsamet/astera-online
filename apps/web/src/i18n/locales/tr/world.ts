@@ -41,8 +41,7 @@ export const galaxy = {
     galaxyUnknown: '—',
     endsLabel: 'Sezonun bitmesine',
     endsUnknown: '—',
-    body:
-      'Komutanın bir ad ve bir paroladan ibaret; gezegenin, giriş yaptığın her tarayıcıda seni bekliyor. Sıfırlamada bütün galaksiler baştan kuruluyor ve herkes yeniden başlıyor.',
+    wipeNote: 'Sıfırlamada bütün galaksiler baştan kuruluyor ve herkes yeniden başlıyor.',
     signOut: 'Çıkış yap',
   },
 } as const;
@@ -130,6 +129,7 @@ export const focus = {
     probeAway: 'Sonda kalktı · {{duration}} sonra rapor verecek',
     markRival: 'Rakip olarak işaretle',
     rivalMarkedAction: 'Rakibin',
+    rivalCommittedAction: 'Rakip sabitlendi',
     rivalMarked: '{{commander}} artık Rakibin.',
     rivalCleared: '{{commander}} artık Rakip olarak işaretli değil.',
     rivalHeading: 'Bu sezonki hikâyeniz',

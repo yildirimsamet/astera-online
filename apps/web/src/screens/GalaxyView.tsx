@@ -32,7 +32,7 @@ import {
   minutesLeftFor,
   type Focus,
 } from '../galaxy/FocusPanel.jsx';
-import { threadKey } from '../galaxy/Fleets.jsx';
+import { threadKey } from '../galaxy/threadKey.js';
 import type { PlanetGroup } from '../lib/directives.js';
 import { HomeworldIcon } from '../ui/icons/index.js';
 import { haptic } from '../lib/haptics.js';
@@ -49,7 +49,7 @@ import { ChatScreen } from './ChatScreen.jsx';
 import { ChatLauncher } from './ChatLauncher.jsx';
 import { ChronicleLauncher } from './ChronicleLauncher.jsx';
 import { ChronicleScreen } from './ChronicleScreen.jsx';
-import { Sheet } from '../ui/Sheet.js';
+import { Sheet } from '../ui/kit/index.js';
 import { describe, useToast } from '../ui/Toast.js';
 import { GALAXY_ASSETS, usePreload } from '../lib/preload.js';
 import { LoadingScreen } from '../shell/LoadingScreen.js';
@@ -60,6 +60,7 @@ import { ApiError } from '../api/client.js';
 import { useWorld } from '../api/world.js';
 import { controlledWorldId } from '../galaxy/scene.js';
 import { focusTapDecision } from '../galaxy/follow.js';
+import { reconcileOwnCraft, type CraftFocus } from '../galaxy/ownCraft.js';
 
 /**
  * THE GALAXY IS THE GAME. D20.
@@ -85,6 +86,7 @@ export function GalaxyView({
   panel,
   onPanel,
   focusRequest,
+  craftFocusRequest,
   commander,
   pastResult,
   onSignOut,
@@ -92,6 +94,7 @@ export function GalaxyView({
   onFocused,
   planetGroup,
   openWide,
+  wideDistance,
   allowFocus,
   goHome,
   showChat = true,
@@ -101,6 +104,8 @@ export function GalaxyView({
   onPanel: (panel: Panel) => void;
   /** A route from an already-revealed identity back to its world. */
   focusRequest?: { planetId: string; request: number } | null;
+  /** A route from the permanent in-flight sheet to a craft already on the disc. */
+  craftFocusRequest?: { focus: CraftFocus; request: number } | null;
   /** Who is signed in. Shown on the one surface that is about you rather than the world. */
   commander: string;
   /** The newest permanent record, still readable after its world was wiped. D87. */
@@ -122,6 +127,8 @@ export function GalaxyView({
   planetGroup?: PlanetGroup;
   /** Open on the whole disc with nothing selected, for the rehearsal. D56. */
   openWide?: boolean;
+  /** Exact range for a scripted wide re-frame; used by the rehearsal's neighbourhood beat. */
+  wideDistance?: number;
   /** Which worlds may be selected. Absent means all of them, which is the game. */
   allowFocus?: (planetId: string) => boolean;
   /**
@@ -313,6 +320,43 @@ export function GalaxyView({
   const threads = useMemo(() => pending.data?.pending ?? [], [pending.data]);
 
   /**
+   * FOLLOW EVERY NEW OWNED CRAFT, not a list of launch buttons.
+   *
+   * `reconcileOwnCraft` recognises payload capabilities — a pending row with a
+   * path, or a live mining run — so Death Stars, probes and future vehicle kinds
+   * all take the same route. The first complete payload is only a baseline: opening
+   * the game must never snap the camera onto something launched yesterday.
+   */
+  const seenOwnCraft = useRef<ReadonlySet<string> | null>(null);
+  const ownCraftReady = pending.data !== undefined && mining.data !== undefined;
+  useEffect(() => {
+    if (!ownCraftReady) return;
+    const result = reconcileOwnCraft(seenOwnCraft.current, threads, runs);
+    seenOwnCraft.current = result.seen;
+    if (!result.focus) return;
+    setFocus(result.focus);
+    setDetail(false);
+    setAttacking(false);
+  }, [ownCraftReady, runs, threads]);
+
+  const handledCraftFocusRequest = useRef<number | null>(null);
+  useEffect(() => {
+    if (
+      !craftFocusRequest
+      || handledCraftFocusRequest.current === craftFocusRequest.request
+    ) return;
+    const requested = craftFocusRequest.focus;
+    const exists = requested.kind === 'run'
+      ? runs.some((run) => run.id === requested.id && run.status !== 'done')
+      : threads.some((thread, index) => threadKey(thread, index) === requested.key && thread.path);
+    if (!exists) return;
+    handledCraftFocusRequest.current = craftFocusRequest.request;
+    setFocus(requested);
+    setDetail(false);
+    setAttacking(false);
+  }, [craftFocusRequest, runs, threads]);
+
+  /**
    * EVERY PROP THE DISC TAKES IS STABLE, AND TWO OF THEM WERE NOT. D53.
    *
    * This component holds a clock, so it re-renders on a timer whether or not
@@ -459,64 +503,6 @@ export function GalaxyView({
     setAttacking(false);
   };
 
-  /**
-   * FOLLOW WHAT YOU JUST SENT. Owner decision.
-   *
-   * Committing a fleet is the biggest thing a player does — it cannot be recalled
-   * (Principle 3) — and until now the reward for it was a sheet closing and a line
-   * of toast. The camera stayed exactly where it was, and the craft the player had
-   * just paid for left without them.
-   *
-   * IT CANNOT BE FOCUSED IMMEDIATELY, and that is the awkward part. A launch
-   * returns before the craft exists in any list the disc draws from: the mutation
-   * invalidates `pending` or `mining`, the refetch lands a moment later, and only
-   * then is there something to point at. So the intent is REMEMBERED and resolved
-   * on the first render that actually has the craft in it.
-   *
-   * Matched on target rather than on id because a thread's key is positional —
-   * `threadKey` includes its index — so there is no id a launch could return that
-   * would identify it in a list that does not exist yet. A mining run does have
-   * one, and uses it.
-   */
-  const [awaiting, setAwaiting] = useState<
-    { kind: 'outbound'; targetName: string } | { kind: 'run'; id: string } | null
-  >(null);
-
-  useEffect(() => {
-    if (!awaiting) return;
-
-    if (awaiting.kind === 'run') {
-      if (runs.some((r) => r.id === awaiting.id)) {
-        setFocus({ kind: 'run', id: awaiting.id });
-        setAwaiting(null);
-      }
-    } else {
-      const i = threads.findIndex(
-        (t) => t.leg === 'outbound' && t.targetName === awaiting.targetName,
-      );
-      if (i >= 0) {
-        setFocus({ kind: 'thread', key: threadKey(threads[i]!, i) });
-        setAwaiting(null);
-      }
-    }
-  }, [awaiting, threads, runs]);
-
-  /**
-   * Give up after a few seconds rather than hanging on a craft that never arrives.
-   * A refused launch, a dropped refetch or a craft that resolved before the list
-   * came back would otherwise leave the intent armed, and the NEXT unrelated
-   * refetch would snap the camera onto something the player did not ask for.
-   */
-  useEffect(() => {
-    if (!awaiting) return;
-    const timer = setTimeout(() => {
-      setAwaiting(null);
-    }, 8000);
-    return () => {
-      clearTimeout(timer);
-    };
-  }, [awaiting]);
-
   const toggle = (): void => {
     setDetail((open) => !open);
   };
@@ -544,6 +530,7 @@ export function GalaxyView({
         onFocus={onFocus}
         homeSignal={homeSignal}
         openWide={openWide ?? false}
+        {...(wideDistance !== undefined ? { wideDistance } : {})}
         {...(allowFocus ? { allowFocus } : {})}
       />
 
@@ -621,7 +608,7 @@ export function GalaxyView({
             close();
             setHomeSignal((n) => n + 1);
           }}
-          className="pointer-events-auto flex size-10 items-center justify-center rounded-sm border border-line-soft/60 bg-void/35 text-dim transition-colors hover:border-line hover:text-bone active:scale-95"
+          className="pointer-events-auto flex size-10 items-center justify-center rounded-chip border border-line-soft/60 bg-void/35 text-dim transition-colors hover:border-line hover:text-bone active:scale-95"
         >
           <HomeworldIcon className="size-5" />
         </button>
@@ -653,7 +640,10 @@ export function GalaxyView({
           planet={planet.data}
           intel={intel.data}
           reports={reports.data?.reports ?? []}
-          rival={reports.data?.rivals.find((rival) => rival.planetId === selected.id)}
+          rival={reports.data?.rivals.find((rival) =>
+            selected.controller?.kind === 'PLAYER'
+              ? rival.playerId === selected.controller.playerId
+              : rival.planetId === selected.id)}
           isRival={
             (season.data?.rivalPlayerId != null
               && selected.controller?.kind === 'PLAYER'
@@ -661,11 +651,11 @@ export function GalaxyView({
             || (season.data?.rivalPlayerId == null
               && season.data?.rivalPlanetId === selected.id)
           }
+          rivalCommitted={season.data?.rivalCommitted ?? false}
           now={now}
           onClose={close}
-          onLaunched={(targetName) => {
+          onLaunched={() => {
             close();
-            setAwaiting({ kind: 'outbound', targetName });
           }}
           onAttack={() => {
             setAttacking(true);
@@ -722,7 +712,6 @@ export function GalaxyView({
                     }),
                   );
                   close();
-                  setAwaiting({ kind: 'run', id: r.runId });
                 },
                 onError: (err) => {
                   say(describe(err), 'error');
@@ -757,7 +746,6 @@ export function GalaxyView({
                     }),
                   );
                   close();
-                  setAwaiting({ kind: 'run', id: r.runId });
                 },
                 onError: (err) => {
                   say(describe(err), 'error');
@@ -856,20 +844,19 @@ export function GalaxyView({
 
       {panel === 'planet' && planet.data && (
         <Sheet
+          bleed
           eyebrow={planet.data.planet.name}
           title={commander}
           onClose={() => {
             onPanel(null);
           }}
         >
-          <div className="-mx-4">
-            <PlanetScreen
-              embedded
-              {...(requestedPlanetGroup ?? planetGroup
-                ? { focusGroup: requestedPlanetGroup ?? planetGroup }
-                : {})}
-            />
-          </div>
+          <PlanetScreen
+            embedded
+            {...(requestedPlanetGroup ?? planetGroup
+              ? { focusGroup: requestedPlanetGroup ?? planetGroup }
+              : {})}
+          />
         </Sheet>
       )}
 
@@ -915,48 +902,44 @@ export function GalaxyView({
             onPanel(null);
           }}
         >
-          <div className="-mx-4 px-4">
-            <RewardsScreen commander={commander} />
-          </div>
+          <RewardsScreen commander={commander} />
         </Sheet>
       )}
 
       {panel === 'leaderboard' && (
         <Sheet
+          bleed
           eyebrow={t('leaderboard.eyebrow')}
           title={t('leaderboard.title')}
           onClose={() => {
             onPanel(null);
           }}
         >
-          <div className="-mx-4">
-            <LeaderboardScreen
-              onFocusPlanet={(planetId) => {
-                onPanel(null);
-                focusPlanet(planetId);
-              }}
-            />
-          </div>
+          <LeaderboardScreen
+            onFocusPlanet={(planetId) => {
+              onPanel(null);
+              focusPlanet(planetId);
+            }}
+          />
         </Sheet>
       )}
 
       {showChat && panel === 'chat' && (
         <Sheet
           contained
+          bleed
           eyebrow={t('chat.eyebrow')}
           title={t('chat.title')}
           onClose={() => {
             onPanel(null);
           }}
         >
-          <div className="-mx-4 h-full">
-            <ChatScreen
-              onFocusPlanet={(planetId) => {
-                onPanel(null);
-                focusPlanet(planetId);
-              }}
-            />
-          </div>
+          <ChatScreen
+            onFocusPlanet={(planetId) => {
+              onPanel(null);
+              focusPlanet(planetId);
+            }}
+          />
         </Sheet>
       )}
 
@@ -966,8 +949,7 @@ export function GalaxyView({
           title={t('chronicle.title')}
           onClose={() => { onPanel(null); }}
         >
-          <div className="-mx-4 px-4">
-            <ChronicleScreen
+          <ChronicleScreen
               focusablePlanetIds={planets.map((candidate) => candidate.id)}
               onFocusPlanet={(planetId) => {
                 if (planetId === planet.data?.planet.id) {
@@ -977,27 +959,25 @@ export function GalaxyView({
                 onPanel(null);
                 focusPlanet(planetId);
               }}
-            />
-          </div>
+          />
         </Sheet>
       )}
 
       {panel === 'intel' && (
         <Sheet
+          bleed
           eyebrow={t('galaxy.panelIntelEyebrow')}
           title={t('galaxy.panelIntelTitle')}
           onClose={() => {
             onPanel(null);
           }}
         >
-          <div className="-mx-4">
-            <IntelScreen
-              onOpenOrbit={() => {
-                setRequestedPlanetGroup('orbit');
-                onPanel('planet');
-              }}
-            />
-          </div>
+          <IntelScreen
+            onOpenOrbit={() => {
+              setRequestedPlanetGroup('orbit');
+              onPanel('planet');
+            }}
+          />
         </Sheet>
       )}
 
@@ -1029,7 +1009,6 @@ export function GalaxyView({
           }}
           onLaunched={() => {
             close();
-            setAwaiting({ kind: 'outbound', targetName: selected.name });
           }}
         />
         </div>

@@ -3,155 +3,154 @@
 @import '@fontsource-variable/saira/standard.css';
 @import './styles/chrome.css';
 
-.transfer-cargo-slider {
-  height: 1.5rem;
-  appearance: none;
-  cursor: pointer;
-  background: transparent;
-}
+/**
+ * TWO SURFACES THAT NO UTILITY CAN REACH.
+ *
+ * THE SLIDER, and there is exactly one of it. A native range needs vendor
+ * pseudo-elements, so it cannot be built out of classes — which is how the game
+ * ended up with two: a fully machined track on the transfer sheet's cargo dial,
+ * and a bare `accent-color` on the music volume, so the same gesture had two
+ * different pieces of hardware under it. `--slider-tone` is what varies; the
+ * object does not. It was named `transfer-cargo-*` while it was the only one.
+ *
+ * THE DEATH STAR FORGE, one plate whose mass, radial machining and danger light
+ * ARE the argument that this is the most expensive thing a commander buys.
+ *
+ * THEY LIVE IN THE COMPONENTS LAYER, and that is a correctness fact rather than
+ * tidiness. Unlayered CSS beats every layered rule in the cascade, so while these
+ * sat outside a layer they silently outranked the utility classes written beside
+ * them in the markup — a `text-alloy` on a `.death-star-need` did nothing, and
+ * nothing said why.
+ */
+@layer components {
+  .slider {
+    height: 1.5rem;
+    appearance: none;
+    cursor: pointer;
+    background: transparent;
+  }
 
-.transfer-cargo-slider::-webkit-slider-runnable-track {
-  height: 0.45rem;
-  border: 1px solid color-mix(in srgb, var(--color-line) 80%, transparent);
-  border-radius: 999px;
-  background: linear-gradient(
-    90deg,
-    var(--cargo-tone) 0 var(--cargo-fill),
-    var(--color-deep) var(--cargo-fill) 100%
-  );
-}
+  .slider::-webkit-slider-runnable-track {
+    height: 0.45rem;
+    border: 1px solid color-mix(in srgb, var(--color-line) 80%, transparent);
+    border-radius: var(--radius-pill);
+    background: linear-gradient(
+      90deg,
+      var(--slider-tone) 0 var(--slider-fill),
+      var(--color-deep) var(--slider-fill) 100%
+    );
+  }
 
-.transfer-cargo-slider::-webkit-slider-thumb {
-  width: 1.25rem;
-  height: 1.25rem;
-  margin-top: -0.45rem;
-  appearance: none;
-  border: 2px solid var(--color-bone);
-  border-radius: 50%;
-  background: var(--cargo-tone);
-  box-shadow: 0 0 12px color-mix(in srgb, var(--cargo-tone) 68%, transparent);
-}
+  .slider::-webkit-slider-thumb {
+    width: 1.25rem;
+    height: 1.25rem;
+    margin-top: -0.45rem;
+    appearance: none;
+    border: 2px solid var(--color-bone);
+    border-radius: 50%;
+    background: var(--slider-tone);
+    box-shadow: 0 0 12px color-mix(in srgb, var(--slider-tone) 68%, transparent);
+  }
 
-.transfer-cargo-slider::-moz-range-track {
-  height: 0.45rem;
-  border: 1px solid color-mix(in srgb, var(--color-line) 80%, transparent);
-  border-radius: 999px;
-  background: var(--color-deep);
-}
+  .slider::-moz-range-track {
+    height: 0.45rem;
+    border: 1px solid color-mix(in srgb, var(--color-line) 80%, transparent);
+    border-radius: var(--radius-pill);
+    background: var(--color-deep);
+  }
 
-.transfer-cargo-slider::-moz-range-progress {
-  height: 0.45rem;
-  border-radius: 999px;
-  background: var(--cargo-tone);
-}
+  .slider::-moz-range-progress {
+    height: 0.45rem;
+    border-radius: var(--radius-pill);
+    background: var(--slider-tone);
+  }
 
-.transfer-cargo-slider::-moz-range-thumb {
-  width: 1.1rem;
-  height: 1.1rem;
-  border: 2px solid var(--color-bone);
-  border-radius: 50%;
-  background: var(--cargo-tone);
-}
+  .slider::-moz-range-thumb {
+    width: 1.1rem;
+    height: 1.1rem;
+    border: 2px solid var(--color-bone);
+    border-radius: 50%;
+    background: var(--slider-tone);
+  }
 
-.transfer-cargo-alloy { --cargo-tone: var(--color-alloy); }
-.transfer-cargo-crystal { --cargo-tone: var(--color-crystal); }
-.transfer-cargo-deuterium { --cargo-tone: var(--color-deuterium); }
+  .slider-alloy { --slider-tone: var(--color-alloy); }
+  .slider-crystal { --slider-tone: var(--color-crystal); }
+  .slider-deuterium { --slider-tone: var(--color-deuterium); }
 
-.death-star-forge {
-  position: relative;
-  overflow: hidden;
-  padding: 0.8rem;
-  border: 1px solid color-mix(in srgb, var(--color-alloy) 24%, var(--color-line));
-  border-radius: 0.28rem;
-  background:
-    radial-gradient(circle at 12% 18%, rgb(217 164 65 / 8%), transparent 34%),
-    linear-gradient(120deg, rgb(15 21 33 / 98%), rgb(7 10 17 / 99%) 58%, rgb(13 17 27 / 98%)),
-    var(--color-deep);
-  box-shadow:
-    inset 0 1px 0 rgb(255 255 255 / 4%),
-    inset 0 -32px 58px rgb(0 0 0 / 24%),
-    0 14px 34px -28px rgb(0 0 0 / 95%);
-}
+  .death-star-forge {
+    position: relative;
+    overflow: hidden;
+    padding: 0.8rem;
+    border: 1px solid color-mix(in srgb, var(--color-alloy) 24%, var(--color-line));
+    border-radius: var(--radius-chip);
+    background:
+      radial-gradient(circle at 12% 18%, rgb(217 164 65 / 8%), transparent 34%),
+      linear-gradient(120deg, rgb(15 21 33 / 98%), rgb(7 10 17 / 99%) 58%, rgb(13 17 27 / 98%)),
+      var(--color-deep);
+    box-shadow:
+      inset 0 1px 0 rgb(255 255 255 / 4%),
+      inset 0 -32px 58px rgb(0 0 0 / 24%),
+      0 14px 34px -28px rgb(0 0 0 / 95%);
+  }
 
-.death-star-forge::before {
-  position: absolute;
-  inset: 0 0 auto;
-  height: 1px;
-  content: '';
-  background: linear-gradient(90deg, transparent, var(--color-alloy) 18%, var(--color-bone) 50%, var(--color-alloy) 82%, transparent);
-  opacity: 0.62;
-}
+  .death-star-forge::before {
+    position: absolute;
+    inset: 0 0 auto;
+    height: 1px;
+    content: '';
+    background: linear-gradient(90deg, transparent, var(--color-alloy) 18%, var(--color-bone) 50%, var(--color-alloy) 82%, transparent);
+    opacity: 0.62;
+  }
 
-.death-star-forge::after {
-  position: absolute;
-  inset: 0;
-  content: '';
-  pointer-events: none;
-  background: repeating-radial-gradient(
-    circle at 46px 46px,
-    transparent 0 29px,
-    rgb(217 164 65 / 4%) 30px,
-    transparent 31px 43px
-  );
-  mask-image: linear-gradient(90deg, black, transparent 62%);
-}
+  .death-star-forge::after {
+    position: absolute;
+    inset: 0;
+    content: '';
+    pointer-events: none;
+    background: repeating-radial-gradient(
+      circle at 46px 46px,
+      transparent 0 29px,
+      rgb(217 164 65 / 4%) 30px,
+      transparent 31px 43px
+    );
+    mask-image: linear-gradient(90deg, black, transparent 62%);
+  }
 
-.death-star-forge-ready {
-  border-color: color-mix(in srgb, var(--color-crystal) 48%, var(--color-line));
-  box-shadow:
-    inset 0 0 30px rgb(111 211 224 / 7%),
-    0 12px 32px -26px rgb(111 211 224 / 55%);
-}
+  .death-star-forge-ready {
+    border-color: color-mix(in srgb, var(--color-crystal) 48%, var(--color-line));
+    box-shadow:
+      inset 0 0 30px rgb(111 211 224 / 7%),
+      0 12px 32px -26px rgb(111 211 224 / 55%);
+  }
 
-.death-star-art {
-  border: 1px solid color-mix(in srgb, var(--color-alloy) 24%, var(--color-line));
-  background:
-    radial-gradient(circle at 50% 44%, rgb(255 255 255 / 5%), transparent 52%),
-    rgb(3 6 11 / 72%);
-  box-shadow: inset 0 0 24px rgb(0 0 0 / 56%);
-}
+  .death-star-art {
+    border: 1px solid color-mix(in srgb, var(--color-alloy) 24%, var(--color-line));
+    background:
+      radial-gradient(ellipse 40% 11% at 50% 86%, rgb(0 0 0 / 55%), transparent 74%),
+      radial-gradient(circle at 50% 44%, rgb(255 255 255 / 5%), transparent 52%),
+      rgb(3 6 11 / 72%);
+    box-shadow: inset 0 0 24px rgb(0 0 0 / 56%);
+  }
 
-.death-star-danger-light {
-  width: 0.28rem;
-  height: 0.62rem;
-  flex: none;
-  border-radius: 1px;
-  background: color-mix(in srgb, var(--color-alert) 72%, var(--color-alloy));
-  box-shadow: 0 0 7px rgb(255 90 85 / 38%);
-}
+  .death-star-danger-light {
+    width: 0.28rem;
+    height: 0.62rem;
+    flex: none;
+    border-radius: var(--radius-cell);
+    background: color-mix(in srgb, var(--color-alert) 72%, var(--color-alloy));
+    box-shadow: 0 0 7px rgb(255 90 85 / 38%);
+  }
 
-.death-star-need {
-  border-color: var(--color-line-soft);
-  background: rgb(0 0 0 / 18%);
-  color: var(--color-dim);
-}
+  .death-star-need {
+    border-color: var(--color-line-soft);
+    background: rgb(0 0 0 / 18%);
+    color: var(--color-dim);
+  }
 
-.death-star-need[data-met='true'] {
-  border-color: color-mix(in srgb, var(--color-deuterium) 22%, var(--color-line));
-  color: color-mix(in srgb, var(--color-deuterium) 62%, var(--color-bone));
-}
-
-.death-star-build {
-  min-height: 2.7rem;
-  padding: 0.55rem 1rem;
-  border: 1px solid color-mix(in srgb, var(--color-alloy) 62%, var(--color-bone));
-  border-radius: 0.16rem;
-  background: linear-gradient(180deg, color-mix(in srgb, var(--color-alloy) 56%, #17202d), #55401e);
-  color: #fff8e8;
-  font-family: var(--font-display);
-  font-size: 0.68rem;
-  font-weight: 700;
-  letter-spacing: 0.13em;
-  text-transform: uppercase;
-  box-shadow: inset 0 1px rgb(255 255 255 / 16%), 0 8px 18px -12px rgb(217 164 65 / 68%);
-}
-
-.death-star-build:disabled {
-  cursor: not-allowed;
-  border-color: color-mix(in srgb, var(--color-line) 78%, transparent);
-  background: #111722;
-  color: var(--color-faint);
-  box-shadow: none;
+  .death-star-need[data-met='true'] {
+    border-color: color-mix(in srgb, var(--color-deuterium) 22%, var(--color-line));
+    color: color-mix(in srgb, var(--color-deuterium) 62%, var(--color-bone));
+  }
 }
 
 /**
@@ -205,6 +204,20 @@
   --color-threat: #e2412c;
   --color-opportunity: #5ad39b;
 
+  /**
+   * THREAT, AT TEXT SIZE. One token, and it replaces five hand-written hexes.
+   *
+   * `--color-threat` is a grease-pencil red made for a fill, an edge or a mark.
+   * Set as TYPE at eleven or twelve pixels on a near-black plate it falls under
+   * three and a half to one and stops being readable, so five different lighter
+   * reds — `#ff9d8f`, `#ffb9ae`, `#e08a7c`, `#ffad9f`, `#ffb0a2` — grew up beside
+   * it, one per author, and a single idea ended up spread over eight values.
+   *
+   * The need was real; the sprawl was not. This is that need, named once. It is
+   * the ONLY red allowed on type. Fills, edges and marks keep `--color-threat`.
+   */
+  --color-threat-ink: #ffb0a2;
+
   /* ── EMISSIVE · light only, never meaning ───────────────────
      Each semantic hue gets a brighter sibling used exclusively for
      glow, rim light and lit edges. The flat token still carries the
@@ -234,7 +247,28 @@
      existing tabular number inherits the new face without a rewrite. */
   --font-mono: 'Saira Variable', ui-sans-serif, system-ui, sans-serif;
 
-  /* Scale, so the sprawl of arbitrary text-[13px] can end. */
+  /**
+   * THE LADDER. Eight steps, each tied to a ROLE rather than to a size.
+   *
+   * This scale existed before and was ignored: 346 hand-written `text-[Npx]`
+   * declarations in eighteen distinct sizes stood beside nineteen uses of these
+   * tokens, and one heading level was rendered at 11, 13, 18 and 21px depending
+   * on which file you were in. What makes it stick this time is a lint rule —
+   * `text-[`, `tracking-[` and `rounded-[` are refused in `apps/web/src`.
+   *
+   * Pick the step by asking what the text IS, never how big it should look:
+   *
+   *   hero     the front door, and nothing else
+   *   readout  the ONE number a surface is about — stock, power, dominion
+   *   figure   a sheet's title; a secondary number that still has to be found
+   *   title    a section or card name that owns the block under it
+   *   body     every sentence a player reads, and every row or card NAME
+   *   caption  secondary prose: a note, a hint, a sub-line, a rule clause
+   *   label    the engraved uppercase caption — always through `.legend`
+   *   micro    timestamps, counts, unit suffixes
+   *
+   * There is no ninth step. If something does not fit, it is the wrong role.
+   */
   --text-hero: 46px;
   --text-hero--line-height: 0.92;
   --text-readout: 30px;
@@ -245,10 +279,37 @@
   --text-title--line-height: 1.2;
   --text-body: 14px;
   --text-body--line-height: 1.5;
+  --text-caption: 12px;
+  --text-caption--line-height: 1.45;
   --text-label: 11px;
   --text-label--line-height: 1.2;
   --text-micro: 10px;
   --text-micro--line-height: 1.2;
+
+  /**
+   * TRACKING. Two values, and which one you get follows from the size.
+   *
+   * Small uppercase needs air or it sets solid; large uppercase needs almost
+   * none or it falls apart into letters. Eighteen values were in use, two of
+   * them the same number spelled differently (`0.1em` and `0.10em`), which is
+   * two CSS classes for one visual result.
+   */
+  --tracking-label: 0.14em;
+  --tracking-wide: 0.05em;
+
+  /**
+   * RADIUS. One value per KIND OF OBJECT, so a corner says what it is.
+   *
+   * Thirteen values were in the stylesheet and nine of them rendered on a single
+   * screen. `rounded` and `rounded-sm` are the same four pixels in Tailwind v4,
+   * so fifty-six declarations were split across two spellings of one radius.
+   */
+  --radius-cell: 2px;
+  --radius-chip: 4px;
+  --radius-control: 8px;
+  --radius-plate: 10px;
+  --radius-sheet: 18px;
+  --radius-pill: 999px;
 
   /* ── MOTION ─────────────────────────────────────────────────
      One ease for everything mechanical: fast out of the gate, settles
@@ -290,6 +351,20 @@
 @keyframes fade-in {
   from {
     opacity: 0;
+  }
+}
+
+/**
+ * A SHEET ARRIVING. It had a name and no keyframe.
+ *
+ * Every bottom sheet in the game declared `animate-[sheet-in_360ms_…]` against a
+ * rule that was never written, so the one surface every decision is made on
+ * appeared as a jump cut. Translate only — a sheet is a physical panel sliding up
+ * into the frame, and it composites on the GPU over a live WebGL canvas.
+ */
+@keyframes sheet-in {
+  from {
+    transform: translateY(100%);
   }
 }
 
@@ -350,7 +425,18 @@
     background-color: var(--color-void);
     /* No rubber-banding: this is an app surface, not a document. */
     overscroll-behavior: none;
-    -webkit-text-size-adjust: 100%;
+    /*
+      THE PAGE DOES NOT ZOOM; THE GALAXY DOES. `pan-x pan-y` leaves scrolling and
+      panning alone while refusing pinch-zoom and double-tap-to-zoom — and unlike
+      `user-scalable=no` it is honoured by iOS Safari. The canvas asks for `none`,
+      which is more restrictive, so `OrbitControls` still owns every gesture over
+      the disc. See `lib/viewport.ts` for the two routes this does not close.
+    */
+    touch-action: pan-x pan-y;
+    /* This is a fixed app viewport. Mobile text inflation otherwise paints an
+       oversized first frame and corrects it only after the first gesture. */
+    -webkit-text-size-adjust: none;
+    text-size-adjust: none;
   }
 
   /**
@@ -428,6 +514,23 @@
 
 @layer components {
   /**
+   * THREE TYPE COMPONENTS, AND THE UPPERCASE VOCABULARY IS ALL OF IT.
+   *
+   * Forty-eight distinct hand-built uppercase recipes stood beside `.legend`
+   * before this — every one of them a slightly different size, weight, width and
+   * tracking for the same job. These three are what those forty-eight were
+   * trying to be, and nothing in `apps/web/src` may set `text-transform:
+   * uppercase` outside them.
+   *
+   *   .legend    the engraved caption above a reading
+   *   .name      what a row, card or object IS
+   *   .headline  what a section is, where the section owns the block under it
+   *
+   * Colour is NOT part of them: `.legend` is faint by default and any of the
+   * three takes a hue class where the hue is carrying state.
+   */
+
+  /**
    * An engraved label: the small stamped caption above a reading.
    *
    * Condensed via the width axis and pushed into the surface with a one-pixel
@@ -438,11 +541,64 @@
     font-weight: 600;
     font-stretch: 88%;
     text-transform: uppercase;
-    letter-spacing: 0.14em;
+    letter-spacing: var(--tracking-label);
     font-size: var(--text-label);
     line-height: 1.2;
     color: var(--color-faint);
     text-shadow: 0 1px 0 rgb(0 0 0 / 60%);
+  }
+
+  /**
+   * The NAME of a thing: a row, a card, an object in the world.
+   *
+   * Body size, because a name is read rather than scanned past, and it is the
+   * one piece of copy on a dense row that must never be the thing that gives
+   * when the row runs out of width.
+   */
+  .name {
+    font-family: var(--font-display);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: var(--tracking-wide);
+    font-size: var(--text-body);
+    line-height: 1.25;
+    color: var(--color-bone);
+    text-shadow: 0 1px 0 rgb(0 0 0 / 55%);
+  }
+
+  /**
+   * A section heading, where the section owns everything beneath it.
+   *
+   * The only step between `.name` and a readout, and the only place a heading is
+   * allowed to be large. Tracking drops as the size rises: 0.14em at eighteen
+   * pixels reads as spaced-out letters rather than as a word.
+   */
+  .headline {
+    font-family: var(--font-display);
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: var(--tracking-wide);
+    font-size: var(--text-title);
+    line-height: 1.15;
+    color: var(--color-bone);
+    text-shadow: 0 1px 0 rgb(0 0 0 / 55%);
+  }
+
+  /**
+   * The small trailing qualifier on a figure: /h, min, ×.
+   *
+   * Sized in `em` on purpose, so it stays the same fraction of whatever readout
+   * it hangs off. It is the one place in the interface where a relative size is
+   * right, because the thing it must never do is compete with its own number.
+   */
+  .unit {
+    margin-left: 0.25em;
+    font-size: 0.44em;
+    font-weight: 600;
+    letter-spacing: var(--tracking-label);
+    text-transform: uppercase;
+    vertical-align: baseline;
+    opacity: 0.6;
   }
 
   /** Every number in the game. Tabular so a ticking value does not jitter. */

@@ -11,12 +11,14 @@
 
 export { Plate, type PlateTone } from './Plate.js';
 export { Button, IconButton, type ButtonVariant, type ButtonSize } from './Button.js';
-export { Gauge, Progress, Bars, type GaugeTone } from './Gauge.js';
+export { Meter, Progress, Bars } from './Meter.js';
 export { ArtWell, type WellTone } from './ArtWell.js';
 export { ResourcePill } from './ResourcePill.js';
 export { Readout, Stat, type ReadoutSize } from './Readout.js';
 export { PriceTag, Amount } from './PriceTag.js';
-export { SectionHead, Chip, EmptyState, Skeleton, SkeletonText, Waiting, Note, Unreachable, type ChipTone } from './Surface.js';
+export { SectionHead, Section, Chip, EmptyState, Skeleton, SkeletonText, Waiting, Note, Unreachable, type ChipTone } from './Surface.js';
 export { GradeStamp, wentYourWay } from './GradeStamp.js';
 export { Sheet } from './Sheet.js';
+export { Segmented, type Segment } from './Segmented.js';
 export { useCountUp, useJump } from './useCountUp.js';
+export { useOwnPress } from './useOwnPress.js';

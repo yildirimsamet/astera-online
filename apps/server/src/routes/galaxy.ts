@@ -77,13 +77,14 @@ export function registerGalaxyRoutes(app: FastifyInstance): void {
    */
   app.get('/api/galaxy/traffic', { preHandler: requireAuth }, async (req) => {
     const self = await app.projections.commander(req.accountId!);
-    const snapshot = await app.projections.trafficSnapshot(self.seasonId);
+    const now = app.clock.now();
+    const snapshot = await app.projections.trafficSnapshot(self.seasonId, now);
 
     return {
       contacts: projectGalaxyTraffic(
         snapshot,
         self.capitalPlanetId,
-        app.clock.now(),
+        now,
         self.playerId,
         self.planetIds,
       ),

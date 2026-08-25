@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
+import { Button } from './Button.js';
 
 /**
  * The furniture: headings, dividers, empty states, loading states.
@@ -20,7 +21,7 @@ export function SectionHead({
   icon?: ReactNode;
 }) {
   return (
-    <header className="mb-3 flex items-center gap-2.5">
+    <header className="flex items-center gap-2">
       {icon === undefined ? null : <span className="text-faint">{icon}</span>}
       <h2 className="legend shrink-0">{label}</h2>
       <span className="rail-soft flex-1" />
@@ -28,6 +29,39 @@ export function SectionHead({
         <span className="num shrink-0 text-micro text-faint">{aside}</span>
       )}
     </header>
+  );
+}
+
+/**
+ * A section: its rule, and everything under it.
+ *
+ * THE GAP IS THE COMPONENT'S, NOT THE CHILDREN'S. There were two of these — one
+ * in the kit that was only a header, one in a `primitives` file that was a header
+ * plus a block — and they disagreed about every measurement: `mb-6` against
+ * `mb-3`, `gap-3` against `gap-2.5`, a gradient rule against a hairline. Both are
+ * this. Spacing comes from `gap` on a column rather than from margins on the
+ * pieces, so nothing collapses and nothing doubles.
+ */
+export function Section({
+  label,
+  aside,
+  icon,
+  children,
+}: {
+  label: string;
+  aside?: ReactNode;
+  icon?: ReactNode;
+  children: ReactNode;
+}) {
+  return (
+    <section className="flex flex-col gap-3">
+      <SectionHead
+        label={label}
+        {...(aside === undefined ? {} : { aside })}
+        {...(icon === undefined ? {} : { icon })}
+      />
+      {children}
+    </section>
   );
 }
 
@@ -81,15 +115,24 @@ export function EmptyState({
   action?: ReactNode;
 }) {
   return (
-    <div className="plate plate-sunk flex flex-col items-center gap-3 px-5 py-8 text-center">
+    <div className="plate plate-sunk flex flex-col items-center gap-3 px-4 py-8 text-center">
       {icon === undefined ? null : (
         <span className="socket grid size-14 place-items-center text-faint">{icon}</span>
       )}
-      <p className="font-display text-[15px] font-semibold tracking-wide text-bone">{title}</p>
+      {/*
+        AN EMPTY STATE IS A SENTENCE, NOT A NAME.
+
+        `title` here is the instruction — "the galaxy is quiet for now, the next
+        launch may change that" — and it was being set in `.name`, which is the
+        uppercase display face reserved for what a thing IS. Two shouted sentences
+        across the middle of a sheet read as an error message rather than as the
+        quiet fact they are.
+      */}
+      <p className="max-w-[34ch] text-body text-bone">{title}</p>
       {children === undefined ? null : (
-        <p className="max-w-[34ch] text-[13px] leading-relaxed text-dim">{children}</p>
+        <p className="max-w-[34ch] text-caption leading-relaxed text-dim">{children}</p>
       )}
-      {action === undefined ? null : <div className="mt-1">{action}</div>}
+      {action === undefined ? null : action}
     </div>
   );
 }
@@ -102,19 +145,19 @@ export function EmptyState({
  */
 export function Skeleton({
   className = '',
-  rounded = 'rounded-lg',
+  radius = 'rounded-plate',
 }: {
   className?: string;
-  rounded?: string;
+  radius?: string;
 }) {
-  return <div className={`plate-sunk shimmer ${rounded} ${className}`} />;
+  return <div className={`plate-sunk shimmer ${radius} ${className}`} />;
 }
 
 export function SkeletonText({ lines = 3, className = '' }: { lines?: number; className?: string }) {
   return (
     <div className={`space-y-2 ${className}`} aria-hidden>
       {Array.from({ length: lines }, (_, i) => (
-        <Skeleton key={i} className="h-3" rounded="rounded" />
+        <Skeleton key={i} className="h-3" radius="rounded-chip" />
       ))}
     </div>
   );
@@ -152,20 +195,15 @@ export function Unreachable({ what, onRetry }: { what: string; onRetry: () => vo
     <div className="px-4 py-6" role="alert">
       {/* `what` arrives already translated from the caller, which is the one that
           knows WHICH surface failed. The sentence around it is this component's. */}
-      <p className="text-[14px] text-alert">{t('surface.unreachable', { what })}</p>
-      <button
-        type="button"
-        className="btn mt-3"
-        onClick={() => {
-          onRetry();
-        }}
-      >
+      <p className="text-body text-threat-ink">{t('surface.unreachable', { what })}</p>
+      <Button className="mt-3" onClick={onRetry}>
         {t('surface.retry')}
-      </button>
+      </Button>
     </div>
   );
 }
 
+/** One clause of rule under the thing it qualifies. Never two. */
 export function Note({ children }: { children: ReactNode }) {
-  return <p className="mt-2 text-micro leading-relaxed text-faint">{children}</p>;
+  return <p className="text-caption leading-snug text-faint">{children}</p>;
 }

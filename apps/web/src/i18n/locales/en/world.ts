@@ -42,8 +42,7 @@ export const galaxy = {
     galaxyUnknown: '—',
     endsLabel: 'Season ends in',
     endsUnknown: '—',
-    body:
-      'Your commander is a name and a password, so this planet is waiting on any browser you sign into. At the wipe every galaxy resets and everyone starts again.',
+    wipeNote: 'At the wipe every galaxy resets and everyone starts again.',
     signOut: 'Sign out',
   },
 } as const;
@@ -133,6 +132,7 @@ export const focus = {
     probeAway: 'Probe away · reports back in {{duration}}',
     markRival: 'Mark rival',
     rivalMarkedAction: 'Rival',
+    rivalCommittedAction: 'Rival fixed',
     rivalMarked: '{{commander}} is now your Rival.',
     rivalCleared: '{{commander}} is no longer marked as your Rival.',
     rivalHeading: 'Your story this season',

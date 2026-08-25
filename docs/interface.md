@@ -84,10 +84,21 @@ failure — fading a whole row to 45% deletes the ambition the game runs on — 
 into a screen where a Bulwark you cannot build looked exactly like a Wasp you can, so the
 player concluded they already had everything.
 
-### I2 · Four categories, four tabs, fixed order
+### I2 · Four player goals, four tabs, fixed order
 
-`Grow · Orbit · Defend · Reach`, always in that order, as a segmented control rather than a
-scroll. **Order is fixed because a control that reorders itself destroys muscle memory.**
+`Production · Intel · Defend · Fleet` (`Üretim · Bilgi · Savunma · Filo`), always in that order, as a segmented control rather than a
+scroll. **Order is fixed because a control that reorders itself destroys muscle memory.** An
+item lives where a player would look for its outcome, never where the code stores its type:
+
+- Production: Core, Refinery, Extractor and the production Foundry.
+- Intel: Uplink, Telescope, Radar and Veil.
+- Defend: Vault, Aegis and both ground batteries.
+- Fleet: Shipyard, Derrick, Beacon, research and every mobile hull.
+
+The four satellites therefore no longer sit together. Their shared constraint does: an orbit
+rack remains visible above the category content, names every occupied socket and states that any
+satellite consumes one of the same scarce slots. This preserves the identity choice without
+making a player learn that an Aegis shield is somehow an orbital concern.
 
 **Nothing on the bar gives advice.** A pip used to mark whichever problem the situation engine
 ranked highest, and it was removed by owner decision (D56a): the tabs say what they ARE and the
@@ -95,16 +106,10 @@ choosing is the player's, rather than a second opinion sitting beside whatever e
 screen. What survives of the ranking is which tab the screen OPENS on — a default, not a
 recommendation.
 
-**Where a tab holds more than one kind of thing, a BAND separates them** (D26). Orbit carries
-four satellites that each cost a slot and four instruments that do not; Reach carries hulls
-that fight, one that carries and one that mines. Those distinctions used to be prose between
-the cards, which is prose nobody reads while scrolling. A band is a short label and one clause
-of rule, and it is the only sub-heading level these surfaces have.
-
-**Where a tab is deliberately incomplete, it says so and points.** The Aegis is the only shield
-in the game and lives under Orbit, because all hardware stays on one surface for comparison —
-so Defend ends with a pointer row to it, rather than a player concluding the game has no
-shields.
+**Where a tab holds more than one kind of thing, a BAND separates them** (D26). Reach carries
+research, hulls that fight, craft that carry and one that mines. Those distinctions used to be
+prose between the cards, which is prose nobody reads while scrolling. A band is a short label
+and one clause of rule, and it is the only sub-heading level these surfaces have.
 
 ### I2b · Every card answers "what is this" before "what does it cost"
 
@@ -121,26 +126,33 @@ the word RAISE — so it is `flex-shrink: 1` with `min-width: 0`, and the SHORT 
 two lines rather than growing sideways off the card. The failure this replaces was a price
 rendered with its last digit cut off, which is worse than no price: it is a wrong one.
 
-### I3 · Every item has a detail sheet, and the sheet is the commit surface
+### I3 · Every item has a detail sheet, and only the sheet commits
 
-Tapping a row opens the full picture: the tier ladder with art, what each level gives, what it
-unlocks, the price, and the button. Buying from the sheet is what gives a purchase weight now
-that build timers are gone — the weight comes from a considered commit and a visible
-before-and-after, not from a wait.
+Tapping any row — building, instrument, satellite, research, ship or ground battery — opens the
+full picture: what it is for, its current state, the next outcome, later levels or related
+milestones, requirements, exact price and the button. The row never commits directly. Buying
+from the sheet gives a purchase weight now that construction is queued: the weight comes from a
+considered commitment and a visible before-and-after, not from hiding information in a dense
+list.
 
-The compact row is a scanner, not the full argument. It leads with the current and
-next renders, the primary numeric delta and the action. The role sentence remains
-available in the detail sheet; repeating it under every row is text doing the art's
-job. Strategic hardware follows the same hierarchy: an unbuilt Death Star lives in
-Reach with the other projects, while a building, paused or ready one rises above the
-tabs because it has become live planetary state. Its plate is premium through mass,
-material and silhouette; strategic red remains a small danger signal rather than
-filling the whole card.
+The compact row is a scanner, not the full argument. It carries one render, name and tag, current
+state or the primary next delta, a compact price/status, and an explicit detail affordance. The
+role sentence, stat block, future ladder and commit control live in the sheet. Repeating them
+under every row is text doing the art's job and makes comparison slower. Strategic hardware
+follows the same hierarchy: an unbuilt Death Star lives in Reach with the other projects, while
+a building, paused or ready one rises above the tabs because it has become live planetary state.
+Its plate is premium through mass, material and silhouette; strategic red remains a small danger
+signal rather than filling the whole card.
 
 The permanent resource strip and Works use the same three-member order everywhere:
 Alloy, Crystal, Deuterium. All three stores retain exact spendable figures without
 ellipsis, and all three Works vessels remain visible even at zero so a Prospector
 return cannot appear to land in an invisible pool.
+
+Any ship quantity committed from a build or combat launch sheet uses the same
+four-part control: minus, a read-only exact figure, plus and Max. Minus and plus
+move by one, including for large fleets; fixed rungs may not make an intermediate
+quantity unreachable.
 
 ### I4 · One notification centre, holding status as well as events
 
@@ -175,6 +187,10 @@ Every full surface now hangs off the header, which is the one piece of chrome th
 leaves: the works and its collect control, the **commander** control, **Intel**, and Signals.
 Your own planet opens by tapping your own world, and every other surface opens by focusing the
 thing it is about.
+
+The permanent in-flight strip is also the way into the commander's airborne roster.
+It combines mission threads with mining and salvage runs, opens as a bottom sheet,
+and every owned drawable row closes the sheet and focuses that craft on the disc.
 
 The disc caption names the room as well as the map: `The disc · Vantage (EU-1)` / `Disk ·
 Vantage (EU-1)`. The live online count keeps the opposite edge. A client talking to a server
@@ -267,6 +283,39 @@ the sign on, so even that is a translated string rather than a template literal.
 **The exception is a proper noun the product owns.** "Astera Online" is the name of the game (D54)
 and does not get a Turkish form. Everything else does, including ship classes — "Wasp" carries
 *cheap, fast, swarm* to an English reader and nothing at all to a Turkish one, so it is Atmaca.
+
+### I7b · One ladder, one card word, one control per idea (D109)
+
+**Type is eight steps and each one is a ROLE.** `hero · readout · figure · title · body · caption ·
+label · micro`, defined in `styles.css` and refused by ESLint in any other form. Pick the step by
+asking what the text IS, never how big it should look. A ninth step means the role is wrong.
+
+**Uppercase is three classes and nothing else.** `.legend` is the engraved caption above a reading;
+`.name` is what a row, card or object IS; `.headline` is a section that owns the block beneath it.
+Nothing else in `apps/web/src` sets `text-transform: uppercase`. An empty state is a sentence and
+therefore takes none of them.
+
+**One card word.** `.plate`, with four states: raised (it floats over the world), `flush` (it fills
+the screen), `inset` (it sits inside another plate), `sunk` (a well, a track). A drop shadow is a
+claim about distance from the world; a card nested in a sheet has none. `.slab` is the only surface
+you press, and `commit` styling stays reserved for the irreversible.
+
+**One control per idea.** There is one `Segmented`, one `Sheet`, one `Meter`. The selected segment
+is the one that is LIT AND RAISED — the same physical language a pressed slab uses, read in reverse
+— and that grammar does not change with the ARIA role the control is given.
+
+**A surface owns its own inset, and only one level does.** The sheet pads its body; `bleed` hands
+that job to the caller where content runs edge to edge. A negative margin is never a layout choice.
+It is a note saying the padding was applied one level too high.
+
+**Spacing is `4 · 8 · 12 · 16 · 24 · 32`, and each step is a relationship** — inside a control,
+between rows of one card, a card's own inset, a surface edge, between cards, between sections.
+Vertical rhythm comes from the parent's `gap`, never from margins on the pieces.
+
+**Red on TYPE is `--color-threat-ink` and nothing else.** `--color-threat` is made for a fill, an
+edge or a mark; set as eleven-pixel type on a near-black plate it falls under 3.5:1, which is how
+five different lighter reds grew up beside it. A GAP — a system you have not built — is amber. Red
+belongs to something happening to you.
 
 ### I8 · The language control is visible, not buried
 

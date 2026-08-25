@@ -2,6 +2,7 @@ import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { LazyMotion, MotionConfig, domMax } from 'motion/react';
+import { lockViewportZoom } from './lib/viewport.js';
 import { I18nextProvider } from 'react-i18next';
 /**
  * FIRST, AND BEFORE ANYTHING THAT RENDERS. The instance initialises at import
@@ -69,6 +70,9 @@ const client = new QueryClient({
 
 const root = document.getElementById('root');
 if (!root) throw new Error('no #root element');
+
+// Refuses the two zoom gestures the viewport meta and `touch-action` cannot.
+lockViewportZoom();
 
 /**
  * Motion, loaded the small way.

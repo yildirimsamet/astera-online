@@ -3,9 +3,13 @@ import {
   DEATH_STAR,
   MULTI_WORLD,
   distance,
+  fleetValue,
+  instrumentCost,
   maxRadarRange,
   radarLead,
   travelExact,
+  upgradeCost,
+  type Fleet,
 } from '@astera/rules';
 import { addMinutes, type Clock } from '../clock.js';
 import type { Db, Tx } from '../db/client.js';
@@ -238,6 +242,8 @@ export async function applyDeathStarStrike(
 ): Promise<{
   outcome: 'FIRST_STRIKE' | 'CAPTURED' | 'INEFFECTIVE';
   previousPlayerId: string | null;
+  damage: number;
+  destroyedFleet: Fleet;
 }> {
   const [target] = await tx
     .select()
@@ -245,14 +251,74 @@ export async function applyDeathStarStrike(
     .where(eq(planets.id, mission.targetPlanetId))
     .for('update');
   if (!target) {
-    return { outcome: 'INEFFECTIVE', previousPlayerId: null };
+    return { outcome: 'INEFFECTIVE', previousPlayerId: null, damage: 0, destroyedFleet: {} };
   }
   if (target.controllerPlayerId === mission.ownerPlayerId) {
-    return { outcome: 'INEFFECTIVE', previousPlayerId: target.controllerPlayerId };
+    return {
+      outcome: 'INEFFECTIVE',
+      previousPlayerId: target.controllerPlayerId,
+      damage: 0,
+      destroyedFleet: {},
+    };
   }
   if (target.protectedUntil !== null && target.protectedUntil > now) {
-    return { outcome: 'INEFFECTIVE', previousPlayerId: target.controllerPlayerId };
+    return {
+      outcome: 'INEFFECTIVE',
+      previousPlayerId: target.controllerPlayerId,
+      damage: 0,
+      destroyedFleet: {},
+    };
   }
+
+  // Production is lazy. A commander does not have to open the target world for
+  // its Works to exist, so advance an owned target under the lock before measuring
+  // and clearing it. Otherwise Death Star damage depends on when the defender last
+  // made an API request rather than on the shared server clock.
+  const advancedTarget = target.controllerPlayerId && target.kind !== 'NEUTRAL'
+    ? await loadLocked(
+        tx,
+        target.id,
+        { now: () => now },
+        { expectedPlayerId: target.controllerPlayerId },
+      )
+    : null;
+
+  const [buildingRows, aegisRows, homeRows] = await Promise.all([
+    tx.select().from(buildings).where(and(
+      eq(buildings.planetId, target.id),
+      inArray(buildings.type, [...DAMAGED_BUILDINGS]),
+    )),
+    tx.select().from(satellites).where(and(
+      eq(satellites.planetId, target.id),
+      eq(satellites.type, 'AEGIS'),
+    )),
+    tx.select().from(units).where(and(
+      eq(units.planetId, target.id),
+      eq(units.location, 'home'),
+      inArray(units.hull, [...DESTROYED_HOME]),
+    )),
+  ]);
+  const destroyedFleet: Fleet = {};
+  for (const row of homeRows) {
+    if (row.count > 0) destroyedFleet[row.hull] = row.count;
+  }
+  const resourcesDestroyed = advancedTarget
+    ? advancedTarget.alloy + advancedTarget.crystal + advancedTarget.deuterium
+      + advancedTarget.bufferAlloy + advancedTarget.bufferCrystal
+      + advancedTarget.bufferDeuterium
+    : target.alloy + target.crystal + target.deuterium
+      + target.bufferAlloy + target.bufferCrystal + target.bufferDeuterium;
+  const buildingDamage = buildingRows.reduce((sum, row) => {
+    if (row.level <= 0) return sum;
+    const cost = upgradeCost(row.level - 1);
+    return sum + cost.alloy + cost.crystal + cost.deuterium;
+  }, 0);
+  const aegisDamage = aegisRows.reduce((sum, row) => {
+    if (row.level <= 0) return sum;
+    const cost = instrumentCost('AEGIS', row.level - 1);
+    return sum + cost.alloy + cost.crystal + cost.deuterium;
+  }, 0);
+  const damage = resourcesDestroyed + buildingDamage + aegisDamage + fleetValue(destroyedFleet);
 
   const secondStrike = target.kind !== 'CAPITAL'
     && mission.deathStarCapture
@@ -312,7 +378,12 @@ export async function applyDeathStarStrike(
     await resumePausedAsset(tx, target.id, mission.seasonId, now);
     if (target.controllerPlayerId) await recomputePlayerWealth(tx, target.controllerPlayerId);
     await recomputePlayerWealth(tx, mission.ownerPlayerId);
-    return { outcome: 'CAPTURED', previousPlayerId: target.controllerPlayerId };
+    return {
+      outcome: 'CAPTURED',
+      previousPlayerId: target.controllerPlayerId,
+      damage,
+      destroyedFleet,
+    };
   }
 
   const recoveryUntil = addMinutes(now, MULTI_WORLD.recoveryMinutes);
@@ -328,7 +399,12 @@ export async function applyDeathStarStrike(
     resolveAt: recoveryUntil,
   });
   if (target.controllerPlayerId) await recomputePlayerWealth(tx, target.controllerPlayerId);
-  return { outcome: 'FIRST_STRIKE', previousPlayerId: target.controllerPlayerId };
+  return {
+    outcome: 'FIRST_STRIKE',
+    previousPlayerId: target.controllerPlayerId,
+    damage,
+    destroyedFleet,
+  };
 }
 
 async function resumePausedAsset(

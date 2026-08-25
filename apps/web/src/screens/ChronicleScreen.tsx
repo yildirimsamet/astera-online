@@ -12,9 +12,8 @@ import {
   LeaderboardIcon,
   PlanetIcon,
 } from '../ui/icons/index.js';
-import { Button } from '../ui/kit/index.js';
-import { Unreachable, Waiting } from '../ui/kit/Surface.js';
-import { Empty } from '../ui/primitives.js';
+import { Button, EmptyState } from '../ui/kit/index.js';
+import { Unreachable, Waiting } from '../ui/kit/index.js';
 
 const GROUP_MS = 8 * 60_000;
 
@@ -29,22 +28,25 @@ export function ChronicleScreen({
   const { t } = useTranslation();
   const chronicle = useChronicle();
   const now = useNow(30_000);
+  /**
+   * A RUN OF THE SAME THING IS ONE ROW WITH A COUNT. `interface.md` I4.
+   *
+   * The rule was written for Signals and implemented here for exactly one kind —
+   * bombardment — so a galaxy in which several Death Stars landed inside a few
+   * minutes printed the same headline and the same twelve-word sentence seven
+   * times down a phone. Everything after the first row was the reader learning
+   * nothing. Any kind folds now, against the same subject and the same window.
+   */
   const events = useMemo(() => {
     const rows = (chronicle.data?.pages ?? []).flatMap((page) => page.events);
     const grouped: { event: (typeof rows)[number]; count: number }[] = [];
     for (const event of rows) {
       const previous = grouped.find((entry) =>
-        entry.event.kind === 'bombardment'
+        entry.event.kind === event.kind
         && entry.event.subjectPlanetId === event.subjectPlanetId
         && entry.event.occurredAt.getTime() - event.occurredAt.getTime() <= GROUP_MS);
-      if (
-        event.kind === 'bombardment'
-        && previous?.event.kind === 'bombardment'
-      ) {
-        previous.count += 1;
-      } else {
-        grouped.push({ event, count: 1 });
-      }
+      if (previous) previous.count += 1;
+      else grouped.push({ event, count: 1 });
     }
     return grouped;
   },
@@ -57,9 +59,9 @@ export function ChronicleScreen({
   if (!chronicle.data) return <Waiting>{t('surface.waitingChronicle')}</Waiting>;
 
   return (
-    <div role="log" aria-label={t('chronicle.list')} aria-live="polite" className="pb-4">
+    <div role="log" aria-label={t('chronicle.list')} aria-live="polite" className="py-2">
       {events.length === 0 ? (
-        <div className="py-8"><Empty>{t('chronicle.empty')}</Empty></div>
+        <div className="py-6"><EmptyState title={t('chronicle.empty')} /></div>
       ) : (
         <ol className="divide-y divide-line-soft">
           {events.map(({ event, count }) => {
@@ -137,27 +139,42 @@ export function ChronicleScreen({
                 ? () => { onFocusPlanet(event.subjectPlanetId!); }
                 : null;
             return (
-              <li key={event.id} className="flex gap-3 py-3">
-                <div className={`mt-0.5 grid size-9 shrink-0 place-items-center rounded-full border ${tone}`}>
+              <li key={event.id} className="flex gap-3 px-4 py-3">
+                <div className={`mt-1 grid size-9 shrink-0 place-items-center rounded-full border ${tone}`}>
                   {icon}
                 </div>
-                <div className="min-w-0 flex-1">
-                  {focus ? (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        haptic('tap');
-                        focus();
-                      }}
-                      className="text-left font-display text-[12px] font-bold uppercase tracking-wide text-bone underline decoration-bone/25 underline-offset-2"
+                <div className="flex min-w-0 flex-1 flex-col gap-1">
+                  {/*
+                    WHEN sits on the headline's own line rather than under the
+                    body. It is the second thing read on every row of a log and it
+                    was the last, three lines down, in the faintest ink on screen.
+                  */}
+                  <div className="flex items-baseline gap-2">
+                    {focus ? (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          haptic('tap');
+                          focus();
+                        }}
+                        className="name min-w-0 flex-1 text-left text-bone underline decoration-transparent underline-offset-2 transition-colors hover:decoration-bone/40"
+                      >
+                        {title}
+                      </button>
+                    ) : <p className="name min-w-0 flex-1 text-bone">{title}</p>}
+                    {count > 1 && (
+                      <span className="chip shrink-0" aria-label={t('chronicle.repeatCount', { count })}>
+                        ×{count}
+                      </span>
+                    )}
+                    <time
+                      className="num shrink-0 text-micro text-faint"
+                      dateTime={event.occurredAt.toISOString()}
                     >
-                      {title}
-                    </button>
-                  ) : <p className="font-display text-[12px] font-bold uppercase tracking-wide text-bone">{title}</p>}
-                  <p className="mt-1 text-[12px] leading-relaxed text-dim">{detail}</p>
-                  <time className="mt-1 block text-micro text-faint" dateTime={event.occurredAt.toISOString()}>
-                    {chatRelativeTime(event.occurredAt, now, t)}
-                  </time>
+                      {chatRelativeTime(event.occurredAt, now, t)}
+                    </time>
+                  </div>
+                  <p className="text-caption leading-snug text-dim">{detail}</p>
                 </div>
               </li>
             );
@@ -165,7 +182,7 @@ export function ChronicleScreen({
         </ol>
       )}
       {chronicle.hasNextPage && (
-        <div className="pt-4 text-center">
+        <div className="px-4 pt-4 text-center">
           <Button size="sm" variant="ghost" disabled={chronicle.isFetchingNextPage} onClick={() => { void chronicle.fetchNextPage(); }}>
             {chronicle.isFetchingNextPage ? t('chronicle.loadingOlder') : t('chronicle.older')}
           </Button>

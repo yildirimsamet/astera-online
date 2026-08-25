@@ -28,7 +28,7 @@ export function DirectiveCard({
 
   const accent =
     directive.kind === 'threat'
-      ? 'text-[#ff9d8f]'
+      ? 'text-threat-ink'
       : directive.kind === 'opportunity'
         ? 'text-opportunity'
         : 'text-dim';
@@ -42,10 +42,10 @@ export function DirectiveCard({
       className={`directive directive-${directive.kind} block w-full text-left`}
     >
       <span className={`legend ${accent}`}>{label}</span>
-      <p className="mt-1.5 text-[17px] leading-tight text-bone">{directive.title}</p>
-      <p className="mt-1.5 text-[13px] leading-snug text-dim">{directive.detail}</p>
+      <p className="mt-2 text-title leading-tight text-bone">{directive.title}</p>
+      <p className="mt-2 text-body leading-snug text-dim">{directive.detail}</p>
       <span
-        className={`mt-3 inline-flex items-center gap-1.5 font-display text-[12px] uppercase tracking-[0.12em] ${accent}`}
+        className={`name mt-3 inline-flex items-center gap-2 ${accent}`}
       >
         {directive.action.label}
         <span aria-hidden>→</span>
@@ -76,7 +76,7 @@ export function DirectiveStrip({
       onClick={() => {
         onAct(directive);
       }}
-      className="flex w-full items-center gap-3 border-b border-line-soft py-2.5 text-left"
+      className="flex w-full items-center gap-3 border-b border-line-soft py-3 text-left"
     >
       {/* The KIND as a word, not the enum. The strip used to print `threat` —
           the machine's name for it — which was already wrong in English. */}
@@ -91,7 +91,7 @@ export function DirectiveStrip({
                 : 'directives.kindIdle',
         )}
       </span>
-      <span className="min-w-0 flex-1 truncate text-[13px] text-bone">{directive.title}</span>
+      <span className="min-w-0 flex-1 truncate text-body text-bone">{directive.title}</span>
       <span aria-hidden className="text-faint">
         →
       </span>

@@ -1,6 +1,15 @@
 import { describe, expect, it } from 'vitest';
+import * as THREE from 'three';
 import { discProfile } from '../src/galaxy/nebula.js';
-import { DISC_OPACITY } from '../src/galaxy/Environment.jsx';
+import {
+  DISC_OPACITY,
+  DISC_ROTATION_RADIANS_PER_SECOND,
+  METEOR_GAP,
+  STARFIELD_ROTATION_RADIANS_PER_SECOND,
+  advanceDiscRotation,
+  advanceStarfieldRotation,
+  syncStarShell,
+} from '../src/galaxy/Environment.jsx';
 import { STANCE_LIGHT } from '../src/galaxy/scene.js';
 
 /**
@@ -79,5 +88,48 @@ describe('the galactic plane', () => {
    */
   it('stays clearly subordinate to the dimmest world it sits behind', () => {
     expect(DISC_OPACITY).toBeLessThanOrEqual(STANCE_LIGHT.dark / 2);
+  });
+
+  it('turns the dust plate slowly and smoothly from client frame deltas', () => {
+    expect(DISC_ROTATION_RADIANS_PER_SECOND).toBeGreaterThan(0);
+    expect((Math.PI * 2) / DISC_ROTATION_RADIANS_PER_SECOND).toBeCloseTo(2 * 60, 8);
+    expect(advanceDiscRotation(0.4, 0.5)).toBeCloseTo(
+      0.4 + DISC_ROTATION_RADIANS_PER_SECOND * 0.5,
+      8,
+    );
+  });
+
+  it('ignores bad frame deltas without allowing motion preferences to freeze the cloud', () => {
+    expect(advanceDiscRotation(0.4, -1)).toBe(0.4);
+    expect(advanceDiscRotation(0.4, Number.NaN)).toBe(0.4);
+  });
+
+  it('runs the camera-centred starfield twenty-five per cent faster', () => {
+    expect((Math.PI * 2) / STARFIELD_ROTATION_RADIANS_PER_SECOND).toBeCloseTo(9.6 * 60, 8);
+    expect(advanceStarfieldRotation(0.4, 1)).toBeCloseTo(
+      0.4 + STARFIELD_ROTATION_RADIANS_PER_SECOND,
+      8,
+    );
+    expect(advanceStarfieldRotation(0.4, -1)).toBe(0.4);
+    expect(advanceStarfieldRotation(0.4, Number.NaN)).toBe(0.4);
+  });
+
+  it('keeps the rotating star shell centred on the camera, never inside the galaxy', () => {
+    const shell = new THREE.Object3D();
+    const camera = new THREE.PerspectiveCamera();
+    camera.position.set(14, 3, -8);
+
+    syncStarShell(shell, camera, 1);
+
+    expect(shell.position.toArray()).toEqual([14, 3, -8]);
+    expect(shell.rotation.y).toBeCloseTo(STARFIELD_ROTATION_RADIANS_PER_SECOND, 8);
+
+    camera.position.set(-20, 7, 11);
+    syncStarShell(shell, camera, 0.5);
+    expect(shell.position.toArray()).toEqual([-20, 7, 11]);
+  });
+
+  it('halves both meteor gaps to double the random shooting-star cadence', () => {
+    expect(METEOR_GAP).toEqual([3.5, 13]);
   });
 });

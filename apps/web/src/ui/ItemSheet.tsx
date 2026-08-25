@@ -18,7 +18,7 @@ import {
 } from '../lib/gains.js';
 import { RESOURCE_ART, SATELLITE_ART, buildingArt, instrumentArt, tierOf } from './assets.js';
 import { CoreMark, VaultMark } from './marks.js';
-import { Sheet } from './Sheet.js';
+import { Sheet } from './kit/index.js';
 import type { Blocked } from './UpgradeRow.js';
 
 /**
@@ -30,9 +30,11 @@ import type { Blocked } from './UpgradeRow.js';
  * art it will be wearing — so a Telescope at L1 is visibly a small dish that
  * becomes an array, and the player can see the array before paying for it.
  *
- * It is also the commit surface. Ordinary construction is instant (D4/D97), so a purchase gets
- * its weight from being considered rather than from being waited out: you open the
- * thing, you see the before and the after, you press once.
+ * It is also the commit surface. Construction is QUEUED (D4) — cost committed at
+ * order, three deep, half back on cancel — so a purchase gets its weight from being
+ * considered rather than from being waited out: you open the thing, you see the
+ * before and the after, you press once, and the order joins the rack on the planet
+ * screen. This docblock said "instant" for two decisions after the queue shipped.
  */
 
 /**
@@ -98,6 +100,7 @@ export function ItemSheet({
   const rungs = Array.from({ length: HORIZON }, (_, i) => level + 1 + i);
 
   return (
+    <div data-item-sheet>
     <Sheet
       eyebrow={
         item.kind === 'satellite'
@@ -111,6 +114,7 @@ export function ItemSheet({
       title={name}
       onClose={onClose}
       footer={
+        <span data-act className="block">
         <ActionButton
           verb={level === 0 ? 'install' : 'raise'}
           cost={cost}
@@ -147,20 +151,21 @@ export function ItemSheet({
             onClose();
           }}
         />
+        </span>
       }
     >
-      <Portrait item={item} level={durableLevel} />
+      <Portrait item={item} level={durableLevel} name={name} />
 
-      <p className="mt-4 text-[13px] leading-relaxed text-dim">{role}</p>
+      <p className="mt-4 text-body leading-relaxed text-dim">{role}</p>
 
       {queued && (
-        <p className="mt-3 border border-crystal/30 bg-crystal/10 px-3 py-2 text-[12px] text-crystal">
+        <p className="mt-3 border border-crystal/30 bg-crystal/10 px-3 py-2 text-caption text-crystal">
           {queued}
         </p>
       )}
 
       {blocked && !terminal && (
-        <p className="mt-3 border border-threat/30 bg-threat/10 px-3 py-2 text-[12px] text-threat">
+        <p className="mt-3 border border-threat/30 bg-threat/10 px-3 py-2 text-caption text-threat">
           {t('itemSheet.lockedNote', { reason: blocked.reason })}
         </p>
       )}
@@ -173,7 +178,7 @@ export function ItemSheet({
           ("... eksik"), so the sentence has to be built from its parts by the
           translation rather than by the layout.
         */
-        <p className="mt-3 text-[12px] text-alloy">
+        <p className="mt-3 text-caption text-alloy">
           {t('itemSheet.shortNote', {
             parts: [
               ...(short.alloy > 0 ? [t('itemSheet.shortAlloy', { amount: compact(short.alloy) })] : []),
@@ -195,7 +200,7 @@ export function ItemSheet({
       ) : terminal ? null : (
         <div className="mt-6">
           <p className="legend mb-2">{t('itemSheet.ladderHeading')}</p>
-          <div className="frame">
+          <div className="plate plate-inset">
             {rungs.map((rung) => (
               <Rung
                 key={rung}
@@ -215,25 +220,27 @@ export function ItemSheet({
         </div>
       )}
     </Sheet>
+    </div>
   );
 }
 
 /** The current tier, at the size the art was drawn for. */
-function Portrait({ item, level }: { item: ItemRef; level: number }) {
+function Portrait({ item, level, name }: { item: ItemRef; level: number; name: string }) {
   const art = artFor(item, Math.max(1, level));
   const mark = markFor(item);
 
   return (
-    <div className="art-well -mx-4 -mt-4 flex h-40 items-center justify-center">
+    <div className="item-portrait flex h-48 items-center justify-center overflow-hidden">
+      <span aria-hidden className="item-portrait-orbit" />
+      <span aria-hidden className="item-portrait-index num">{String(Math.max(0, level)).padStart(2, '0')}</span>
       {art ? (
         <img
           src={art}
-          alt=""
-          aria-hidden
-          className={`h-32 object-contain ${level === 0 ? 'opacity-45 grayscale' : ''}`}
+          alt={name}
+          className={`relative z-[1] h-36 object-contain ${level === 0 ? 'opacity-45 grayscale' : ''}`}
         />
       ) : (
-        <div className={level === 0 ? 'opacity-45 grayscale' : ''}>{mark}</div>
+        <div className={`relative z-[1] ${level === 0 ? 'opacity-45 grayscale' : ''}`}>{mark}</div>
       )}
     </div>
   );
@@ -292,15 +299,15 @@ function Rung({
         next ? '' : 'opacity-65'
       }`}
     >
-      <div className="w-9 shrink-0 pt-0.5">
-        <span className={`num text-[13px] ${next ? 'text-crystal' : 'text-faint'}`}>
+      <div className="w-9 shrink-0 pt-1">
+        <span className={`num text-body ${next ? 'text-crystal' : 'text-faint'}`}>
           {t('itemSheet.rungLevel', { level })}
         </span>
       </div>
 
       {art && (
         <div
-          className={`art-well flex size-11 shrink-0 items-center justify-center rounded ${
+          className={`socket size-11 shrink-0 rounded-control ${
             upgrades ? 'ring-1 ring-crystal/40' : ''
           }`}
           title={upgrades ? t('itemSheet.rungNewHardware', { level }) : undefined}
@@ -318,18 +325,18 @@ function Rung({
       )}
 
       <div className="min-w-0 flex-1">
-        <p className="num text-[13px]">
+        <p className="num text-body">
           <span className="text-faint">{gain.label} </span>
           {gain.resourcePair
             ? <ResourceAmounts resources={gain.resourcePair.next} label={gain.next} />
             : <span className={next ? 'text-bone' : 'text-dim'}>{gain.next}</span>}
         </p>
         {gain.unlocks && !repeats && (
-          <p className="mt-1 text-[11px] leading-snug text-crystal/80">{gain.unlocks}</p>
+          <p className="mt-1 text-label leading-snug text-crystal/80">{gain.unlocks}</p>
         )}
       </div>
 
-      <span className="num shrink-0 pt-0.5 text-right text-[11px] text-faint">
+      <span className="num shrink-0 pt-1 text-right text-label text-faint">
         <span className="flex items-center gap-1">
           <img
             src={RESOURCE_ART.alloy}
@@ -339,7 +346,7 @@ function Rung({
           {compact(cost.alloy)}
         </span>
         {cost.crystal > 0 && (
-          <span className="mt-0.5 flex items-center gap-1 text-crystal/70">
+          <span className="mt-1 flex items-center gap-1 text-crystal/70">
             <img
               src={RESOURCE_ART.crystal}
               alt={i18n.t('vocabulary.resource.crystal')}
@@ -380,19 +387,19 @@ function Orbital({
   return (
     <div className="mt-6">
       <p className="legend mb-2">{t('itemSheet.orbitalDoesHeading')}</p>
-      <div className="frame p-3">
-        <p className="num text-[13px]">
+      <div className="plate plate-inset p-3">
+        <p className="num text-body">
           <span className="text-faint">{gain.label} </span>
           <span className="text-bone">{gain.next}</span>
         </p>
         {gain.unlocks && (
-          <p className="mt-1 text-[11px] leading-snug text-crystal/80">{gain.unlocks}</p>
+          <p className="mt-1 text-label leading-snug text-crystal/80">{gain.unlocks}</p>
         )}
-        <p className="mt-3 text-[12px] leading-relaxed text-dim">{satelliteBlurb(id)}</p>
+        <p className="mt-3 text-caption leading-relaxed text-dim">{satelliteBlurb(id)}</p>
       </div>
 
-      <p className="legend mb-2 mt-5">{t('itemSheet.orbitalCostHeading')}</p>
-      <div className="frame p-3">
+      <p className="legend mb-2 mt-6">{t('itemSheet.orbitalCostHeading')}</p>
+      <div className="plate plate-inset p-3">
         {/*
           THE ORE PRICE LIVES HERE BECAUSE THERE IS NO RUNG TO PUT IT ON.
           An instrument's ladder prints a price beside every level. A satellite has
@@ -400,7 +407,7 @@ function Orbital({
           commit surface that never says what it charges.
         */}
         <div className="flex items-center gap-4 border-b border-line-soft pb-3">
-          <span className="num flex items-center gap-1.5 text-[15px] text-bone">
+          <span className="num flex items-center gap-2 text-body text-bone">
             <img
               src={RESOURCE_ART.alloy}
               alt={i18n.t('vocabulary.resource.alloy')}
@@ -409,7 +416,7 @@ function Orbital({
             {compact(cost.alloy)}
           </span>
           {cost.crystal > 0 && (
-            <span className="num flex items-center gap-1.5 text-[15px] text-crystal">
+            <span className="num flex items-center gap-2 text-body text-crystal">
               <img
                 src={RESOURCE_ART.crystal}
                 alt={i18n.t('vocabulary.resource.crystal')}
@@ -418,11 +425,11 @@ function Orbital({
               {compact(cost.crystal)}
             </span>
           )}
-          <span className="text-[12px] text-faint">{t('itemSheet.orbitalOnce')}</span>
+          <span className="text-caption text-faint">{t('itemSheet.orbitalOnce')}</span>
         </div>
 
         <div className="flex items-center justify-between pt-3">
-        <div className="flex gap-1.5">
+        <div className="flex gap-2">
           {Array.from({ length: Math.max(slots, 1) }, (_, i) => (
             <span
               key={i}
@@ -430,7 +437,7 @@ function Orbital({
             />
           ))}
         </div>
-        <span className="num text-[12px] text-dim">
+        <span className="num text-caption text-dim">
           {free > 0
             ? t('itemSheet.orbitalFree', { free, total: slots })
             : t('itemSheet.orbitalNoSlot')}

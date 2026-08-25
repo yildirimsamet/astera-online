@@ -195,8 +195,9 @@ export const DEUTERIUM = {
   isotopeCadence: 9,
   isotopeBonusCadence: 10,
   isotopeRate: 11 / 90,
-  /** Replaces existing ore rather than increasing the rock's total value. */
-  isotopeShare: 0.104,
+  /** Inclusive seeded range; replaces ore rather than increasing total value. D102. */
+  isotopeShareMin: 0.10,
+  isotopeShareMax: 0.25,
   /** A shield must absorb this share of normal outgoing damage to reveal D95. */
   graviticDiscoveryShieldShare: 0.25,
 } as const;
@@ -1129,26 +1130,20 @@ export const GALAXY = {
   /**
    * New rocks entering the disc per hour. PROVISIONAL.
    *
-   * RAISED 25% FROM 2.7, owner decision. A denser sky: more of the disc is worth
-   * looking at, and the race for a rock happens oftener.
+   * RAISED 15% FROM 9 TO 10.35, owner decision. A denser sky: more of the disc is
+   * worth looking at, and the race for a rock happens oftener.
    *
-   * WHAT IT MOVES, BECAUSE THE FIELD IS DERIVED AND NOT STORED (A5). The whole
-   * season's schedule is one deterministic pass over the seed, and a rock's index
-   * is its position in that pass — so raising the count does NOT re-roll anybody:
-   * index `i` keeps the same radius, speed, level, ore, phase and height, because
-   * the eight draws per rock are consumed in the same order whatever `count` is.
-   *
-   * What DOES move is the spacing. `interval = span / count`, so every rock's
-   * `appearsAt` slides 20% earlier and the sky visible at any given instant is a
-   * different set of rocks than it was. On a season already in progress that means
-   * the field turns over once, on the next read, for everybody at once.
+   * WHAT IT MOVES, BECAUSE THE FIELD IS DERIVED AND NOT STORED (A5). The existing
+   * 9/hour lane keeps its indices, rolls and appearance times. The extra 1.35/hour
+   * is a second deterministic lane with new indices, so increasing density adds
+   * rocks without making a live target jump or disappear between two reads.
    *
    * It is safe for a run already in the air: `resolveMiningArrival` finds its rock
-   * by INDEX and does not re-check `asteroidActive`, and the count only ever grows,
-   * so the index still exists and still names the same orbit. The claim rows keyed
-   * by index stay coherent for the same reason.
+   * by INDEX and does not re-check `asteroidActive`; all established indices still
+   * name the same orbit. The claim rows keyed by index stay coherent for the same
+   * reason.
    */
-  asteroidSpawnPerHour: 9,
+  asteroidSpawnPerHour: 10.35,
 
   /**
    * Game units per minute along the orbit, random inside this band and INDEPENDENT
@@ -1396,5 +1391,7 @@ export const DEATH_STAR = {
   cost: { alloy: 28_000, crystal: 9000, deuterium: 2600 },
   buildMinutes: 60,
   speed: 500,
+  /** Recent resolved impacts remain public this long so reconnecting tabs see the event. */
+  impactSeconds: 8,
   probeVisibilityAccuracy: 0.75,
 } as const;

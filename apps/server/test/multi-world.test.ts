@@ -24,6 +24,7 @@ import {
   satellites,
   seasons,
   strategicAssets,
+  strategicImpacts,
   units,
 } from '../src/db/schema.js';
 import { createSeason } from '../src/services/season.js';
@@ -735,6 +736,16 @@ describe('ruleset v2 worlds', () => {
       outcome: 'FIRST_STRIKE',
       capturable: false,
     });
+    const [ledger] = await f.db.select().from(strategicImpacts)
+      .where(eq(strategicImpacts.missionId, launched.missionId));
+    expect(ledger).toMatchObject({
+      attackerPlayerId: f.joined.playerId,
+      defenderPlayerId: defender.playerId,
+      targetPlanetId: defender.planetId,
+      outcome: 'FIRST_STRIKE',
+      destroyedFleet: { WASP: 5, HAULER: 1 },
+    });
+    expect(ledger!.damage).toBeGreaterThan(30_000);
     const [asset] = await f.db.select().from(strategicAssets)
       .where(eq(strategicAssets.planetId, f.joined.planetId));
     expect(asset?.status).toBe('CONSUMED');
@@ -769,6 +780,55 @@ describe('ruleset v2 worlds', () => {
       colonies: 0,
       reservations: 0,
     });
+  });
+
+  it('counts lazily accrued Works in Death Star damage without a defender refresh', async () => {
+    const f = await setup();
+    const defenderAccount = await makeAccount(f.db, 'Sleeping Defender');
+    const defender = await joinSeason(f.db, defenderAccount.id, f.season.id, f.clock);
+    await f.db.update(planets).set({ x: 0, y: 0, z: 0 })
+      .where(eq(planets.id, f.joined.planetId));
+    await f.db.update(planets).set({
+      x: 200,
+      y: 0,
+      z: 0,
+      alloy: 0,
+      crystal: 0,
+      deuterium: 0,
+      bufferAlloy: 0,
+      bufferCrystal: 0,
+      bufferDeuterium: 0,
+      lastTickAt: f.clock.now(),
+    }).where(eq(planets.id, defender.planetId));
+    await setLevel(f.db, defender.planetId, 'CORE', 5);
+    await setLevel(f.db, defender.planetId, 'REFINERY', 5);
+    await setLevel(f.db, defender.planetId, 'EXTRACTOR', 5);
+    await setLevel(f.db, f.joined.planetId, 'CORE', 2);
+    await f.db.insert(strategicAssets).values({
+      planetId: f.joined.planetId,
+      status: 'READY',
+      startedAt: f.clock.now(),
+      remainingSeconds: 0,
+    });
+
+    const launched = await launchDeathStar(
+      f.db,
+      f.joined.planetId,
+      defender.planetId,
+      f.clock,
+    );
+    f.clock.set(launched.arriveAt);
+    await workerFor(f.db, f.clock).tick();
+
+    const [ledger] = await f.db.select().from(strategicImpacts)
+      .where(eq(strategicImpacts.missionId, launched.missionId));
+    const replacement = ['CORE', 'REFINERY', 'EXTRACTOR']
+      .map(() => upgradeCost(4))
+      .reduce(
+        (sum, cost) => sum + cost.alloy + cost.crystal + cost.deuterium,
+        0,
+      );
+    expect(ledger!.damage).toBeGreaterThan(replacement);
   });
 
   it('also requires colony capacity when a Death Star targets an already recovering world', async () => {

@@ -8,9 +8,8 @@ import { hullLabel } from '../i18n/names.js';
 import { compact, full, signed } from '../lib/format.js';
 import { staleness, useNow } from '../lib/time.js';
 import { HULL_ART, RESOURCE_ART } from '../ui/assets.js';
-import { Empty, Section } from '../ui/primitives.js';
-import { Unreachable } from '../ui/kit/Surface.js';
-import { Sheet } from '../ui/Sheet.js';
+import { EmptyState, Section, Unreachable } from '../ui/kit/index.js';
+import { Sheet } from '../ui/kit/index.js';
 
 /**
  * THE CLOSING LINK OF THE LOOP.
@@ -66,9 +65,9 @@ export function BattleReports() {
           }}
         />
       ) : isPending ? null : reports.length === 0 ? (
-        <Empty>{t('reports.empty')}</Empty>
+        <EmptyState title={t('reports.empty')} />
       ) : (
-        <div className="frame">
+        <div className="plate plate-inset">
           {reports.map((report) => (
             <button
               key={report.id}
@@ -80,18 +79,18 @@ export function BattleReports() {
             >
               <GradeMark report={report} />
               <div className="min-w-0 flex-1">
-                <p className="truncate text-[14px] text-bone">
+                <p className="truncate text-body text-bone">
                   {t(report.attacking ? 'reports.youRaided' : 'reports.raidedBy')}
                   <span className="text-dim">{report.opponentName}</span>
                 </p>
-                <p className="num mt-0.5 text-[11px] text-faint">
+                <p className="num mt-1 text-label text-faint">
                   {report.opponentPlanet} · {staleness((now - report.at.getTime()) / 60_000)} ·{' '}
                   {t('reports.rounds', { count: report.rounds.length })}
                 </p>
               </div>
               {report.dominion !== null && (
                 <span
-                  className={`num text-[13px] ${report.dominion >= 0 ? 'text-opportunity' : 'text-threat'}`}
+                  className={`num text-body ${report.dominion >= 0 ? 'text-opportunity' : 'text-threat'}`}
                 >
                   {signed(report.dominion)}
                 </span>
@@ -145,7 +144,7 @@ function ReportSheet({ report, onClose }: { report: BattleReport; onClose: () =>
     >
       <BattleVerdict report={report} />
 
-      <p className="text-[13px] leading-relaxed text-dim">
+      <p className="text-body leading-relaxed text-dim">
         {report.attacking
           ? t(report.grade === 'REPELLED' ? 'reports.heldAgainstYou' : 'reports.brokenByYou', {
               planet: report.opponentPlanet,
@@ -153,7 +152,7 @@ function ReportSheet({ report, onClose }: { report: BattleReport; onClose: () =>
           : t(report.grade === 'REPELLED' ? 'reports.youHeld' : 'reports.youFell')}
       </p>
 
-      <div className="mt-5 grid grid-cols-3 gap-3">
+      <div className="mt-6 grid grid-cols-3 gap-3">
         <Figure label={t('reports.roundsLabel')} value={String(report.rounds.length)} />
         <Figure
           label={t(looted >= 0 ? 'reports.taken' : 'reports.lost')}
@@ -170,7 +169,7 @@ function ReportSheet({ report, onClose }: { report: BattleReport; onClose: () =>
       </div>
 
       {looted !== 0 && (
-        <p className="num mt-3 flex items-center gap-3 text-[12px]">
+        <p className="num mt-3 flex items-center gap-3 text-caption">
           <span className="flex items-center gap-1 text-alloy">
             <img
               src={RESOURCE_ART.alloy}
@@ -207,20 +206,20 @@ function ReportSheet({ report, onClose }: { report: BattleReport; onClose: () =>
         gets — no bands, no staleness, no clarity gradient. It is what makes the
         fight you just had worth something the next time you look at that planet.
       */}
-      <h3 className="legend mt-7">{t('reports.theirs')}</h3>
+      <h3 className="legend mt-8">{t('reports.theirs')}</h3>
       <Losses fleet={report.theirLosses} tone="text-bone" empty={t('reports.theirsEmpty')} />
 
       <h3 className="legend mt-6">{t('reports.yours')}</h3>
-      <Losses fleet={report.yourLosses} tone="text-[#ff9d8f]" empty={t('reports.yoursEmpty')} />
+      <Losses fleet={report.yourLosses} tone="text-threat-ink" empty={t('reports.yoursEmpty')} />
 
-      <h3 className="legend mt-7">{t('reports.howItWent')}</h3>
-      <div className="frame mt-2">
+      <h3 className="legend mt-8">{t('reports.howItWent')}</h3>
+      <div className="plate plate-inset mt-2">
         {report.rounds.map((round) => (
           <div
             key={round.round}
-            className="grid grid-cols-[24px_1fr_auto] items-center gap-3 border-b border-line-soft px-3 py-2.5 last:border-b-0"
+            className="grid grid-cols-[24px_1fr_auto] items-center gap-3 border-b border-line-soft px-3 py-3 last:border-b-0"
           >
-            <span className="num w-6 text-[11px] text-faint">{round.round}</span>
+            <span className="num w-6 text-label text-faint">{round.round}</span>
             <RoundBalance
               dealt={report.attacking ? round.attackerDamage : round.defenderDamage}
               took={report.attacking ? round.defenderDamage : round.attackerDamage}
@@ -239,12 +238,12 @@ function ReportSheet({ report, onClose }: { report: BattleReport; onClose: () =>
               />
             </span>
             {round.shieldAbsorbed > 0 && (
-              <span className="flex flex-col items-end gap-0.5">
-                <span className="num text-[11px] text-crystal">
+              <span className="flex flex-col items-end gap-1">
+                <span className="num text-label text-crystal">
                   {t('reports.shield', { amount: compact(round.shieldAbsorbed) })}
                 </span>
                 {round.breacherShieldDamage > 0 && (
-                  <span className="num text-[10px] text-deuterium">
+                  <span className="num text-micro text-deuterium">
                     {t('reports.breacherShield', {
                       amount: compact(round.breacherShieldDamage),
                     })}
@@ -269,7 +268,7 @@ function BattleVerdict({ report }: { report: BattleReport }) {
     <div
       data-battle-verdict={report.grade}
       className={`plate mb-4 grid grid-cols-[1fr_92px_1fr] items-center gap-3 p-3 ${
-        won ? 'border-opportunity/35' : 'border-threat/35'
+        won ? 'plate-opportunity' : 'plate-threat'
       }`}
       role="img"
       aria-label={gradeWord(report.grade)}
@@ -292,7 +291,7 @@ function BattleVerdict({ report }: { report: BattleReport }) {
             ))}
           </span>
         </div>
-        <span className="font-display text-[11px] uppercase tracking-[0.14em] text-bone">
+        <span className="legend text-bone">
           {gradeWord(report.grade)}
         </span>
       </div>
@@ -328,7 +327,7 @@ function LossStack({
           />
         ))}
       </div>
-      <p className={`num mt-1 text-[18px] ${count > 0 ? 'text-threat' : 'text-dim'}`}>−{full(count)}</p>
+      <p className={`num mt-1 text-title ${count > 0 ? 'text-threat' : 'text-dim'}`}>−{full(count)}</p>
     </div>
   );
 }
@@ -336,18 +335,18 @@ function LossStack({
 function RoundBalance({ dealt, took }: { dealt: number; took: number }) {
   const top = Math.max(1, dealt, took);
   return (
-    <span className="grid gap-1.5" aria-hidden>
+    <span className="grid gap-2" aria-hidden>
       <span className="flex items-center gap-2">
-        <span className="h-1.5 flex-1 overflow-hidden rounded-[1px] bg-line-soft">
+        <span className="h-1.5 flex-1 overflow-hidden rounded-cell bg-line-soft">
           <span className="block h-full bg-opportunity" style={{ width: `${String((dealt / top) * 100)}%` }} />
         </span>
-        <span className="num w-10 text-right text-[11px] text-bone">{compact(dealt)}</span>
+        <span className="num w-10 text-right text-label text-bone">{compact(dealt)}</span>
       </span>
       <span className="flex items-center gap-2">
-        <span className="h-1.5 flex-1 overflow-hidden rounded-[1px] bg-line-soft">
+        <span className="h-1.5 flex-1 overflow-hidden rounded-cell bg-line-soft">
           <span className="block h-full bg-threat" style={{ width: `${String((took / top) * 100)}%` }} />
         </span>
-        <span className="num w-10 text-right text-[11px] text-bone">{compact(took)}</span>
+        <span className="num w-10 text-right text-label text-bone">{compact(took)}</span>
       </span>
     </span>
   );
@@ -356,20 +355,20 @@ function RoundBalance({ dealt, took }: { dealt: number; took: number }) {
 function Losses({ fleet, tone, empty }: { fleet: BattleReport['yourLosses']; tone: string; empty: string }) {
   const entries = fleetEntries(fleet);
   if (entries.length === 0) {
-    return <p className="mt-2 text-[13px] text-faint">{empty}</p>;
+    return <p className="mt-2 text-body text-faint">{empty}</p>;
   }
 
   return (
     <div className="mt-2 flex flex-wrap gap-3">
       {entries.map(([hull, count]) => (
-        <div key={hull} className="frame flex items-center gap-2.5 px-3 py-2">
+        <div key={hull} className="plate plate-inset flex items-center gap-3 px-3 py-2">
           {HULL_ART[hull] ? (
             <img src={HULL_ART[hull]} alt="" aria-hidden className="size-8 object-contain" />
           ) : (
             <span className="legend">GRD</span>
           )}
           <div>
-            <p className={`num text-[16px] leading-none ${tone}`}>{full(count)}</p>
+            <p className={`num text-title leading-none ${tone}`}>{full(count)}</p>
             <p className="legend mt-1">{hullLabel(hull)}</p>
           </div>
         </div>
@@ -382,7 +381,7 @@ function Figure({ label, value, tone = 'text-bone' }: { label: string; value: st
   return (
     <div>
       <p className="legend">{label}</p>
-      <p className={`readout mt-1 text-[17px] ${tone}`}>{value}</p>
+      <p className={`readout mt-1 text-title ${tone}`}>{value}</p>
     </div>
   );
 }

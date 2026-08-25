@@ -25,6 +25,7 @@ import {
   scheduledEvents,
   seasons,
   strategicAssets,
+  strategicImpacts,
   units,
   watches,
 } from '../db/schema.js';
@@ -229,6 +230,13 @@ async function demolish(
 ): Promise<void> {
   const { missionIds, fieldIds, runIds } = rows;
 
+  /**
+   * Season-scoped only, and `account_rewards` is deliberately absent from this
+   * function. Rewards claimed for what happened on THIS world die with it — the
+   * progress they were counted from is about to stop existing — but the
+   * @JoinAstera bonus is paid once per person for ever, and deleting its row here
+   * would hand the same commander a fresh one in whichever galaxy they join next.
+   */
   await tx.delete(rewardGrants).where(eq(rewardGrants.playerId, playerId));
   await tx.delete(requestLog).where(eq(requestLog.playerId, playerId));
   await tx.delete(notifications).where(eq(notifications.playerId, playerId));
@@ -248,6 +256,14 @@ async function demolish(
   await tx
     .delete(scanEvents)
     .where(or(inArray(scanEvents.targetPlanetId, planetIds), inArray(scanEvents.originPlanetId, planetIds)));
+  await tx
+    .delete(strategicImpacts)
+    .where(
+      or(
+        eq(strategicImpacts.attackerPlayerId, playerId),
+        eq(strategicImpacts.defenderPlayerId, playerId),
+      ),
+    );
   await tx
     .delete(battleReports)
     .where(

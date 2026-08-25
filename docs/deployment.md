@@ -1,166 +1,640 @@
 # Deployment
 
-Production VPS connection: ssh yildirim@hoofywood.com
+Production VPS: `ssh yildirim@hoofywood.com`
 
-How Astera Online runs in production, and how a change safely gets there.
-Read `docs/architecture.md` first if you have not.
+Astera Online is live at `https://asteraonline.space`. This is the production runbook: it
+describes the topology that actually runs, the evidence required before opening it to players,
+and the rollback boundary. It is deliberately not a release history.
 
-**Live at** `https://asteraonline.space`. The box also hosts HoofyWood and Candely, but
-D99/D100's two-galaxy, 600-player host budget assumes those workloads are stopped. The Astera deploy itself
-still reaches only the `astera` Compose project, `/var/www/astera` and its own Nginx vhost.
+> A green command is not a deploy. A deploy is the intended, pushed commit running on every
+> process, against the intended schema, with the world still internally consistent and the
+> public client serving the same release.
 
-> There are real people in the galaxy. A season is fourteen days of decisions that
-> exist nowhere else and are derivable from nothing.
-
-## Short deploy note
-
-**Current go/no-go: do not treat `deploy/deploy.sh` as a production release gate yet.** It
-still has four blocking gaps: the web build happens after the API restart, health failures do
-not stop the script, the server image tag is mutable, and a backup is created without proving
-that it can be restored. Until those are closed, a printed `Deployed` line is not evidence of a
-safe release.
-
-Before a production deploy:
-
-1. Require a clean, pushed commit; record its full SHA. Run `pnpm verify`, `pnpm build`, and the
-   real-HTTP/browser smoke tools against a scratch database. Any failure is a stop.
-2. Build **both** the server image and web artifact from that same SHA before interrupting the
-   running application. The image label, runtime `/health` commit and intended SHA must agree.
-3. Run the host preflight. For a D99/D100 capacity cutover, stop HoofyWood and Candely explicitly;
-   the Astera deploy never has authority to stop them itself.
-4. Take a fresh database dump and restore it into a disposable PostgreSQL database. A dump that
-   merely exists is not a rollback.
-
-During the deploy, keep the order strict: block writes → stop all APIs and the worker → migrate →
-start exactly one worker and three APIs → require `.ok == true` from all four health endpoints →
-publish the already-built web artifact atomically → run the external smoke checks. Do not publish
-the new web client while any internal health check is red.
-
-Afterwards, verify the running SHA, queue/event state, overdue flights, `/api/preview`,
-`x-server-time`, and the web release identity. A season deadline, rollover or wipe is a separate
-owner operation and is never part of an ordinary code deploy.
-
-If rollback is needed, keep writes blocked. With no migration, revert forward and redeploy. With
-a migration, stop the new processes, restore the already-rehearsed dump, then start the previous
-immutable image. Never restore over a world that has accepted newer player writes.
-
----
-
-## The shape of it
+## Current production contract
 
 ```
           443 ┌────────────────────────────────────────────────┐
-   ───────────│ nginx (host, least_conn, SSE unbuffered)       │
-              │ / → static · /api → 3200/3201/3202             │
+   ───────────│ nginx on the host                              │
+              │ / → static · /api → least_conn upstream       │
               └───────────────┬────────────────────────────────┘
                     ┌─────────┼─────────┐
                     ▼         ▼         ▼
-                 API-1      API-2      API-3       ROLE=api
+          astera-api1-prod astera-api2-prod astera-api3-prod   ROLE=api
+                 :3200            :3201            :3202
                     └─────────┼─────────┘
                               ▼
-              ┌───────────────────────────────────┐
-              │ PostgreSQL 16                     │
-              │ durable world + transactional bus │
-              └──────────────┬────────────────────┘
-                             ▼
-                       Worker-1                    ROLE=worker
+                    astera-postgres-prod              PostgreSQL 16
+                              ▲
+                              │
+                    astera-worker-prod :3210          ROLE=worker
 
-              Valkey: disposable shared rate-limit counters
+                    astera-valkey-prod                rate limits only
 ```
 
-**One origin, and it is load-bearing.** `fetch` sends `credentials: 'same-origin'`,
-the refresh cookie is `SameSite=Lax`, and there is no CORS. Moving the API to
-`api.` breaks two things quietly: every session ends at the first token expiry, and
-`x-server-time` becomes unreadable — which drops the client onto the _device_ clock
-and draws every fleet, countdown and bombardment at the wrong instant, differently
-on each phone (D52). `www.`, `api.` and `socket.` all 301 to the apex. `socket.` is
-unused; the only realtime surface is SSE on `/api/stream`, ordinary HTTP.
+- There are exactly three stateless API replicas and exactly one worker. Never scale the worker
+  casually: a second one buys no API capacity and duplicates housekeeping work.
+- Every published application/database port is bound to `127.0.0.1`. Nginx is the only public
+  entry point. The API replicas use 3200/3201/3202, worker health uses 3210 and PostgreSQL uses
+  5545 on the host.
+- The client and API use one origin. Refresh cookies are `SameSite=Lax`, requests use
+  `credentials: 'same-origin'`, and there is no CORS. `api.`, `www.` and `socket.` redirect to
+  the apex; realtime is SSE at `/api/stream`, not a separate socket service.
+- PostgreSQL is the durable world and transactional event bus. Valkey contains only disposable,
+  shared rate-limit counters. It is not a gameplay cache or source of truth.
+- An API replica without its PostgreSQL `LISTEN` connection is not ready. The connection carries
+  realtime events **and cache invalidations**; serving cached reads after missing an invalidation
+  can return false world state. `/health` therefore returns 503 for `stream: not listening` on an
+  API. The worker intentionally has no LISTEN socket, so that value is expected on port 3210.
+- Production admits at most two live galaxies, each with 300 real-player seats, filled strictly
+  in order. Each new galaxy also has 30 tier-1, 15 tier-2 and 6 tier-3 neutral worlds; those 51
+  worlds do not consume player seats.
+- The certified host budget assumes HoofyWood and Candely remain stopped. Astera deployment has
+  no authority to delete their containers or volumes, and they must not be restarted casually
+  while this capacity contract is in force.
 
-**One image, two roles.** Three API containers use the host's cores and hold SSE clients;
-exactly one worker resolves scheduled moments. Valkey shares only rate-limit counters. Player
-state, cache truth and outcomes remain in PostgreSQL.
+The production Compose file is `docker-compose.prod.yml`. Never substitute `docker-compose.yml`:
+that file is for development, uses tmpfs and has a trivial database password.
 
-**The server runs TypeScript.** `@astera/rules` is consumed as source so server,
-simulator and browser cannot drift — so `tsx` is a _dependency_ of `apps/server`,
-not a dev tool.
+## Release rules
 
-**Ports** (all bound to `127.0.0.1`; check `ss -tlnp` before taking a new one):
-`3000 · 4000 · 8090 · 5544` candely · `3100 · 3101 · 8100` hoofywood ·
-**`3200 · 3201 · 3202` Astera API** · **`3210` worker health** ·
-**`5545` Astera PostgreSQL**.
+These are stop conditions, not suggestions.
 
----
+1. **One immutable input.** Deploy a clean, pushed full commit SHA. The VPS HEAD,
+   `origin/master`, OCI image revision, runtime metrics commit, all four application container
+   image IDs, and the public web release marker must identify that same SHA.
+2. **Build before downtime.** Build both the server image and web artifact before blocking
+   traffic. A client build that begins after API restart can fail and leave a new API serving an
+   old client.
+3. **Prove rollback before mutation.** A dump that merely exists is not a rollback. Restore it
+   into a disposable database and, when migrations exist, run the new image's migrations against
+   that restored copy before touching production.
+4. **Quiesce before the final dump.** Block public writes, stop every API and the worker, then
+   take the final rollback dump. Never restore a backup over a world that has accepted newer
+   player writes.
+5. **No process spans a migration.** Stop old APIs and especially the old worker before applying
+   DDL. An old worker can consume a newly backfilled event kind as unknown and complete it before
+   the new worker sees it.
+6. **Migrate with the image that will run.** Migrations are an explicit one-off command, never an
+   application startup side effect and never N replicas racing the same DDL.
+7. **API before web.** Start and validate the three APIs and singleton worker before publishing
+   the already-built client. Keep Nginx stopped while files are replaced, so nobody can observe a
+   mixed web artifact.
+8. **Health is blocking.** All four `/health` documents must parse and have `.ok == true`. A 200
+   from one route or a script printing `Deployed` is not evidence.
+9. **A season transition is separate.** Shortening a deadline, freezing, recapping and rolling
+   over the world are owner operations after a successful code deploy, never hidden inside it.
+10. **Keep the way back.** Retain the previous image by ID, the previous webroot, the previous
+    Nginx vhost and the verified final dump until the release has passed its observation window.
+11. **Already-open clients are part of the release.** A phone can keep the previous JavaScript
+    bundle alive across a deploy. Do not remove or rename an API route that bundle calls in the
+    same release unless the server keeps a compatibility alias or the client has a tested
+    version-mismatch reload path. A successful cold-browser smoke does not cover this case.
 
-## Before you ship
+### Why `deploy/deploy.sh` is not the production path yet
 
-Every gate, in order. A skipped gate is paid for on the box instead.
+Do not use `deploy/deploy.sh` for a live release. It is useful development scaffolding, but it
+currently:
 
-| #   | Gate                                    |                                                                                                                                                                                                                                                                                                                                         |
-| --- | --------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 1   | **Review the diff, including your own** | Did a moved docblock land on the right thing? Did the change make an existing comment false — grep the numbers you changed. Does every new test fail against the old code? Revert the fix, watch it go red, put it back.                                                                                                                |
-| 2   | `pnpm verify`                           | 0 type errors, 0 lint errors, every suite and the five-seed simulation gate green. Any red is a stop.                                                                                                                                                                                                                                   |
-| 3   | `pnpm build`                            | **Not optional** — see below.                                                                                                                                                                                                                                                                                                           |
-| 4   | Drive it running                        | `tools/loop-check.mjs` (the loop over real HTTP as two commanders), `tools/movement.mjs` (craft actually move on two real screens, nothing drawn twice), `tools/visual.mjs` (the disc comes up). Against an isolated scratch database, never the one you play. Raise `RATE_LIMIT_*` on the throwaway API or the harnesses die on a 429. |
-| 5   | Docs in the same pass                   | Invariant table, a decision, the test counts. A stale doc is worse than no doc.                                                                                                                                                                                                                                                         |
+- hard-resets without first requiring the operator to review tracked and untracked VPS files;
+- builds a mutable `astera-server` tag and records `unknown` unless
+  `ASTERA_GIT_COMMIT` was supplied from outside;
+- has no database backup or restore rehearsal;
+- starts and exposes the new API before building the web client;
+- reloads Nginx before internal acceptance;
+- only warns when `.ok` is false and still prints `Deployed`;
+- has no external smoke or public release-identity check; and
+- permits an uncommitted working tree through `--local`.
 
-For a D99 production cutover, the host gate is additional and blocking:
+Until those properties change, the manual fail-closed sequence below is canonical. Do not quote
+the script's final line as proof of deployment.
+
+## Production deploy, in order
+
+### 1. Qualify the commit locally
 
 ```bash
-./deploy/configure-capacity-host.sh   # one-time; Nginx worker_connections → 8192
-./deploy/host-capacity-preflight.sh   # read-only; must report zero failures
+git status --short
+git fetch origin
+test "$(git rev-parse HEAD)" = "$(git rev-parse origin/master)"
+pnpm verify
+pnpm build
 ```
 
-The preflight deliberately fails while HoofyWood/Candely containers are running, while Nginx or
-container file limits are too low, or while the six-core/10-GiB/20-GiB resource floor is absent.
-
-**Why the local build is a gate:** `deploy.sh` builds the client _after_ it has
-already restarted the API. A failing client build therefore leaves the new server
-serving the **old** client with the script stopped half-way. Survivable — payload
-additions are optional and Zod strips unknown keys — but survivable by accident.
-
----
-
-## Deploying
-
-> **Current warning:** this script is not a production release gate yet. Close the four blockers
-> in [Short deploy note](#short-deploy-note) before using it for a live release.
-
-The deploy runs **on the box** and fetches `origin/master`, so an unpushed change
-does not exist.
+Review the complete diff, including migrations and documentation. If a public response shape
+changed, its route must be covered in `apps/server/test/contract.test.ts`. Run the real-HTTP and
+browser harnesses against an isolated scratch database, never production:
 
 ```bash
-git push origin master
-ssh <the box> 'cd ~/astera && ./deploy/deploy.sh'
+node tools/loop-check.mjs
+node tools/movement.mjs
+node tools/visual.mjs
 ```
 
-Fetch and hard-reset → run the host preflight → build one image → start PostgreSQL and Valkey →
-**stop every old API/worker** → **migrate** → start one worker and three APIs → validate and reload
-the three-upstream Nginx vhost → build and publish the client → print all four `/health` views.
+Set higher `RATE_LIMIT_*` values only on that throwaway API if a harness would otherwise hit a
+429. A production release starts only after the commit is pushed.
 
-**No application process runs across a migration.** The server refuses to start
-against a database it is ahead of (D47), and that refusal is the good outcome. The
-old process must stop too: a compatible-looking migration can add a scheduled event
-kind that the old worker does not know, and that worker deliberately completes
-unknown events so they cannot spin forever. Leaving it alive during the migration
-can therefore erase a newly backfilled public moment before the new worker starts.
-The short maintenance window is the honest cost of a schema-changing deploy. The
-reverse order is worse: an old image against a new schema can answer requests while
-every worker tick fails, so the API looks healthy while no fleet ever lands again.
+### 2. Inventory the VPS before changing it
 
-The script re-execs itself after the fetch, because `git reset --hard` rewrites it
-while bash is part-way through reading it by byte offset — without the re-exec a
-deploy that adds a step runs a spliced mixture of two versions.
+```bash
+ssh yildirim@hoofywood.com
+cd ~/astera
 
-`--local` deploys the working tree without fetching. Debugging only: what it ships
-is not in git, so nobody can tell later what was running.
+git status --short
+git fetch origin
+release_sha="$(git rev-parse origin/master)"
+printf 'release %s\n' "$release_sha"
 
----
+docker ps --format '{{.Names}} {{.Image}} {{.Status}}'
+sudo ss -ltnp
+df -h /
+free -h
+```
 
-## D99/D100 capacity rehearsal and cutover
+Review every VPS worktree entry. `.env` is intentionally untracked/ignored; an operator backup
+such as `.env.bak.*` may also be present. Preserve them. Never use `git clean`, and never assume an
+untracked file is disposable.
 
-The isolated fixture refuses a production database name and the load tool refuses production
-origins. Every invocation reseeds exactly two seasons; users 1–300 enter EU-1 and users 301–600
-enter EU-2. Each season always contains exactly 30/15/6 neutral worlds. First certify one shard:
+Before replacing the mutable server tag, retain the exact image currently running and record the
+current runtime commit:
+
+```bash
+previous_commit="$(curl -fsS http://127.0.0.1:3200/metrics | jq -er '.service.commit')"
+previous_image_id="$(docker inspect astera-api1-prod --format '{{.Image}}')"
+docker tag "$previous_image_id" "astera-server:rollback-$previous_commit"
+```
+
+Also retain the public files and Nginx route. Use a unique timestamp and do not overwrite a prior
+rollback copy:
+
+```bash
+rollback_stamp="$(date -u +%Y%m%d-%H%M%S)"
+web_rollback="/var/www/astera-releases/pre-${release_sha:0:12}-$rollback_stamp"
+nginx_rollback="/etc/nginx/sites-available/astera.pre-${release_sha:0:12}-$rollback_stamp"
+sudo install -d -m 0755 /var/www/astera-releases
+sudo cp -a /var/www/astera "$web_rollback"
+sudo cp -a /etc/nginx/sites-available/astera "$nginx_rollback"
+```
+
+### 3. Reserve the certified host budget
+
+Record the other stacks before stopping them. Use `stop`, never `down`; their volumes are outside
+this release and must remain untouched.
+
+```bash
+docker ps --format '{{.Names}} {{.Status}}' > "$HOME/pre-astera-containers.txt"
+(cd ~/candely && docker compose stop)
+(cd ~/hoofywood && docker compose -f docker-compose.prod.yml stop)
+
+cd ~/astera
+./deploy/host-capacity-preflight.sh
+```
+
+The preflight is read-only and must report zero failures. It checks the 3 API + 1 worker topology,
+memory ceilings, six-core/10-GiB/20-GiB host floors, PostgreSQL's 100-connection ceiling, container
+and Nginx file limits, `worker_connections >= 8192`, and absence of HoofyWood or Candely containers
+from the capacity budget.
+
+The one-time Nginx host adjustment is:
+
+```bash
+./deploy/configure-capacity-host.sh
+./deploy/host-capacity-preflight.sh
+```
+
+Do not run the mutating configurator routinely; the second command is the ordinary gate.
+
+### 4. Pin the VPS checkout and build both artifacts
+
+Only after the worktree inventory is understood:
+
+```bash
+git checkout master
+git reset --hard "$release_sha"
+test "$(git rev-parse HEAD)" = "$release_sha"
+
+export ASTERA_GIT_COMMIT="$release_sha"
+compose=(docker compose -f docker-compose.prod.yml)
+
+"${compose[@]}" build api1
+new_image_id="$(docker image inspect astera-server:latest --format '{{.Id}}')"
+docker tag "$new_image_id" "astera-server:$release_sha"
+test "$(docker image inspect astera-server:latest \
+  --format '{{index .Config.Labels "org.opencontainers.image.revision"}}')" = "$release_sha"
+```
+
+Build the client to a private staging directory before downtime. `VITE_GA_ID` is inlined at build
+time; changing it requires a rebuild, not a restart. The release marker makes the public artifact
+auditable.
+
+```bash
+web_stage="$(mktemp -d "/tmp/astera-web-${release_sha:0:12}.XXXXXXXX")"
+ga_id="$(sed -n 's/^VITE_GA_ID=//p' .env | tail -n 1)"
+
+docker build --target web-dist \
+  --build-arg "VITE_GA_ID=$ga_id" \
+  --output "type=local,dest=$web_stage" .
+
+test -f "$web_stage/index.html"
+printf '%s\n' "$release_sha" > "$web_stage/release.txt"
+find "$web_stage" -type f \
+  \( -name '*.js' -o -name '*.css' -o -name '*.svg' -o -name '*.json' \
+     -o -name '*.webmanifest' -o -name '*.html' \) \
+  -size +1k -exec gzip -9 -k -f {} +
+```
+
+Do not delete `web_stage` until external acceptance succeeds.
+
+### 5. Rehearse backup restore and migrations while production still serves
+
+Ensure PostgreSQL and Valkey are healthy, create a fresh dump, validate its checksum, and restore
+it into a disposable database:
+
+```bash
+"${compose[@]}" up -d postgres valkey
+./deploy/backup.sh
+backup_file="$(ls -1t "$HOME"/backups/astera-*.sql.gz | head -n 1)"
+chmod 600 "$backup_file"
+gzip -t "$backup_file"
+sha256sum "$backup_file" | tee "$backup_file.sha256"
+
+restore_db="astera_restore_${release_sha:0:12}"
+docker exec astera-postgres-prod createdb -U astera "$restore_db"
+gunzip -c "$backup_file" | docker exec -i astera-postgres-prod \
+  psql -v ON_ERROR_STOP=1 -U astera -d "$restore_db"
+```
+
+Compare release-relevant counts and invariants between `astera` and the restored database. At a
+minimum inspect accounts, live seasons, players, missions and the migration journal; every
+migration that backfills or contracts a column needs its own zero-null/assertion query.
+
+Then prove the **new image** can migrate the restored production shape:
+
+```bash
+POSTGRES_DB="$restore_db" "${compose[@]}" run --rm --no-deps api1 \
+  apps/server/node_modules/.bin/tsx apps/server/src/cli/season.ts migrate
+
+docker exec astera-postgres-prod psql -v ON_ERROR_STOP=1 -U astera -d "$restore_db" -c \
+  'select count(*) as applied_migrations from drizzle.__drizzle_migrations;'
+docker exec astera-postgres-prod dropdb -U astera --force "$restore_db"
+```
+
+This proves three different things: the dump is complete enough to restore, the old data shape is
+valid, and the intended image can perform every pending migration. None can substitute for the
+others.
+
+### 6. Record live work, then block writes
+
+Before downtime, record what must still exist afterwards:
+
+```bash
+for port in 3200 3201 3202 3210; do
+  curl -fsS "http://127.0.0.1:$port/health" | jq
+done
+
+docker exec astera-postgres-prod psql -U astera -d astera -tAc \
+ "select (select count(*) from missions where status='in_flight') as missions,
+         (select count(*) from mining_runs where status in ('outbound','returning')) as runs,
+         (select count(*) from build_orders where status='BUILDING') as builds,
+         (select count(*) from players where last_active_at > now() - interval '15 minutes') as active;"
+```
+
+Stop Nginx first so no new mutation can enter, then stop every application role gracefully.
+PostgreSQL and Valkey stay up.
+
+```bash
+sudo systemctl stop nginx
+if sudo ss -ltnp | rg -q ':(80|443)\b'; then
+  echo 'public listeners still exist; stop here' >&2
+  exit 1
+fi
+
+"${compose[@]}" stop api1 api2 api3 worker
+docker ps --format '{{.Names}}' | rg '^astera-(api|worker)' && {
+  echo 'an application process still spans the migration' >&2
+  exit 1
+}
+```
+
+Trust the listener/process checks, not only a systemd label. A stopped Nginx unit can remain in a
+`failed` state; `reset-failed` before the later start is harmless. An unexpected legacy or orphan
+application container is a blocker until its image and purpose are identified.
+
+### 7. Take the final quiesced backup and migrate production
+
+The final dump is the rollback boundary because no newer player write can exist after it:
+
+```bash
+./deploy/backup.sh
+final_backup="$(ls -1t "$HOME"/backups/astera-*.sql.gz | head -n 1)"
+chmod 600 "$final_backup"
+gzip -t "$final_backup"
+sha256sum "$final_backup" | tee "$final_backup.sha256"
+```
+
+For a schema-changing release, restore this exact final dump to the disposable database and run
+the migration rehearsal once more. The database is small; the extra downtime is cheaper than
+discovering that the only rollback artifact differs from the one tested before quiescence.
+
+```bash
+final_restore_db="astera_final_restore_${release_sha:0:10}"
+docker exec astera-postgres-prod createdb -U astera "$final_restore_db"
+gunzip -c "$final_backup" | docker exec -i astera-postgres-prod \
+  psql -v ON_ERROR_STOP=1 -U astera -d "$final_restore_db"
+POSTGRES_DB="$final_restore_db" "${compose[@]}" run --rm --no-deps api1 \
+  apps/server/node_modules/.bin/tsx apps/server/src/cli/season.ts migrate
+docker exec astera-postgres-prod psql -v ON_ERROR_STOP=1 -U astera \
+  -d "$final_restore_db" -c \
+  'select count(*) as applied_migrations from drizzle.__drizzle_migrations;'
+docker exec astera-postgres-prod dropdb -U astera --force "$final_restore_db"
+```
+
+Apply migrations to production only after that succeeds:
+
+```bash
+"${compose[@]}" run --rm --no-deps api1 \
+  apps/server/node_modules/.bin/tsx apps/server/src/cli/season.ts migrate
+```
+
+Run the release-specific post-migration assertions now. A migration command returning zero proves
+that its SQL committed; it does not prove a backfill selected every intended row.
+
+### 8. Start the exact image and require internal acceptance
+
+```bash
+"${compose[@]}" up -d --no-build worker api1 api2 api3
+
+for container in astera-api1-prod astera-api2-prod astera-api3-prod astera-worker-prod; do
+  test "$(docker inspect "$container" --format '{{.Image}}')" = "$new_image_id"
+done
+
+for port in 3200 3201 3202 3210; do
+  health=''
+  for attempt in $(seq 1 60); do
+    health="$(curl -sS "http://127.0.0.1:$port/health" || true)"
+    jq -e '.ok == true' <<< "$health" >/dev/null 2>&1 && break
+    sleep 1
+  done
+  jq -e '.ok == true' <<< "$health" >/dev/null
+  jq . <<< "$health"
+done
+
+for port in 3200 3201 3202 3210; do
+  test "$(curl -fsS "http://127.0.0.1:$port/metrics" | jq -er '.service.commit')" \
+    = "$release_sha"
+done
+```
+
+Expected health contract:
+
+| Process | Required |
+| --- | --- |
+| API 3200/3201/3202 | `.ok=true`, database/queue/stream `ok`, shared rate limiter `ready` |
+| Worker 3210 | `.ok=true`, queue `ok`, `stream="not listening"`, `unknownEvents=0` |
+| All four | Same image ID and full runtime commit |
+
+Also require zero failed events and no overdue state before exposing traffic:
+
+```bash
+docker exec astera-postgres-prod psql -v ON_ERROR_STOP=1 -U astera -d astera -c \
+ "select status, count(*) from scheduled_events group by status order by status;
+  select count(*) as overdue_missions
+    from missions where status='in_flight' and arrive_at < now() - interval '2 minutes';"
+```
+
+`processing` may be a claim interrupted by the stop and should return through the reaper; do not
+hide it with a restart. `failed`, a growing queue lag, stranded state or an unknown worker event is
+a stop and investigation, not an automatic restart condition.
+
+### 9. Install Nginx, publish web, then reopen traffic
+
+Install the repository vhost and validate the whole host configuration. Restore the saved vhost
+if validation fails. Pre-existing warnings must be understood; an unexpected warning is not
+automatically safe merely because `nginx -t` exits zero.
+
+```bash
+sudo install -o root -g root -m 0644 deploy/nginx/astera.conf \
+  /etc/nginx/sites-available/astera
+if ! sudo nginx -t; then
+  sudo cp -a "$nginx_rollback" /etc/nginx/sites-available/astera
+  sudo nginx -t
+  exit 1
+fi
+
+sudo rsync -a --delete-delay --delay-updates --chmod=D755,F644 \
+  "$web_stage"/ /var/www/astera/
+sudo chown -R www-data:www-data /var/www/astera
+
+sudo systemctl reset-failed nginx
+sudo systemctl start nginx
+sudo systemctl is-active --quiet nginx
+```
+
+Nginx remains stopped throughout the file replacement, so the public cannot request an
+`index.html` from one build and an asset directory from another. `--chmod=D755,F644` is required:
+Docker's local output can leave the staging root mode 0700, while Nginx runs as `www-data`.
+
+### 10. Prove the release from outside
+
+```bash
+test "$(curl -fsS -H 'Cache-Control: no-cache' \
+  https://asteraonline.space/release.txt)" = "$release_sha"
+
+curl -fsS https://asteraonline.space/ \
+  | rg -o 'index-[A-Za-z0-9_-]+\.js'
+curl -fsS -D - -o /dev/null https://asteraonline.space/api/preview \
+  | rg -i '^x-server-time:'
+curl -fsS https://asteraonline.space/api/servers | jq
+```
+
+`/api/preview` must remain write-free and take no seat. Do not create a test account in a live
+galaxy. Without `x-server-time`, phones fall back to their device clock and draw movement at
+different instants.
+
+Finally rerun internal health, queue/overdue checks, `host-capacity-preflight.sh`, database
+connection metrics, and the live-shard query below. Compare the in-flight/build counts with the
+pre-stop snapshot. Remove only obsolete **stateless** containers after all checks pass; retain the
+old image, web copy, Nginx copy and final dump.
+
+Also inspect the first observation window by status, route and client rather than looking only for
+5xx. In particular, a cluster of 404s on routes that existed in the previous client means an
+already-open tab is running against the new API. `NO_PLANET` responses concentrated at a season
+rollover are expected, but route-not-found responses from an old bundle are a compatibility bug.
+Do not dismiss all 4xx as player mistakes.
+
+```bash
+sudo awk '$7 ~ /^\/api\// {status[$9]++} END {for (s in status) print s, status[s]}' \
+  /var/log/nginx/access.log | sort -n
+
+sudo awk '$7 ~ /^\/api\// && $9 == 404 {key=$1 " " $6 " " $7; count[key]++} \
+  END {for (k in count) print count[k], k}' /var/log/nginx/access.log | sort -nr
+```
+
+The deployment is complete only at this point. The season remains untouched.
+
+The staging directory was created by the explicit `mktemp` command above and can now be removed:
+
+```bash
+rm -rf -- "$web_stage"
+```
+
+## Live galaxy acceptance
+
+This query verifies the capacity contract directly rather than inferring it from a healthy API:
+
+```sql
+SELECT sh.ordinal,
+       sh.code,
+       sh.player_cap,
+       s.id AS season_id,
+       s.ruleset_version,
+       count(DISTINCT p.id) FILTER (WHERE p.kind = 'CAPITAL') AS capitals,
+       count(DISTINCT p.id) FILTER (WHERE p.kind = 'NEUTRAL') AS neutrals,
+       count(DISTINCT n.planet_id) FILTER (WHERE n.tier = 1) AS tier1,
+       count(DISTINCT n.planet_id) FILTER (WHERE n.tier = 2) AS tier2,
+       count(DISTINCT n.planet_id) FILTER (WHERE n.tier = 3) AS tier3
+  FROM shards sh
+  JOIN seasons s ON s.shard_id = sh.id AND s.status = 'live'
+  LEFT JOIN planets p ON p.season_id = s.id
+  LEFT JOIN neutral_planet_state n ON n.planet_id = p.id
+ GROUP BY sh.ordinal, sh.code, sh.player_cap, s.id, s.ruleset_version
+ ORDER BY sh.ordinal;
+```
+
+Required: exactly two rows, ordinals 1 and 2; `player_cap=300`; `ruleset_version=2`; and on each
+row `neutrals=51`, `tier1=30`, `tier2=15`, `tier3=6`. Capital count is the current real population,
+not a fixed acceptance value. `/api/servers` must show only the lowest non-full ordinal as `open`;
+the next remains `locked` until the frontier fills.
+
+## Manual five-minute season cutoff
+
+This is a separate, explicitly authorized owner operation. It was exercised successfully in
+production: active fleets/builds were allowed to settle, late galaxies deferred their freeze, and
+rollover waited until every live galaxy was frozen before atomically opening two successors.
+
+Do not use `season wipe --yes` for the normal lifecycle; that skips the scheduled deadline and
+afterglow. Do not reuse the one-off legacy ten-galaxy insert from the capacity cutover. Current
+seasons already have one `season_end` and one `season_rollover` event each, so shorten those rows
+in place.
+
+Take a fresh backup first. Confirm the current code still uses a 15-minute afterglow, then run the
+following interactively. It fails unless exactly two live seasons and exactly one pending end and
+rollover event per season exist:
+
+```sql
+BEGIN;
+
+DO $cutoff$
+DECLARE
+  live_ids uuid[];
+  cutoff_at timestamptz := clock_timestamp() + interval '5 minutes';
+  rollover_at timestamptz;
+  affected integer;
+BEGIN
+  rollover_at := cutoff_at + interval '15 minutes';
+
+  SELECT array_agg(id ORDER BY id)
+    INTO live_ids
+    FROM (
+      SELECT id
+        FROM seasons
+       WHERE status = 'live'
+       ORDER BY id
+       FOR UPDATE
+    ) locked;
+
+  IF coalesce(cardinality(live_ids), 0) <> 2 THEN
+    RAISE EXCEPTION 'expected exactly 2 live seasons, found %',
+      coalesce(cardinality(live_ids), 0);
+  END IF;
+
+  SELECT count(*)
+    INTO affected
+    FROM scheduled_events
+   WHERE season_id = ANY(live_ids)
+     AND kind IN ('season_end', 'season_rollover')
+     AND status = 'pending';
+
+  IF affected <> 4 THEN
+    RAISE EXCEPTION 'expected 4 pending lifecycle events, found %', affected;
+  END IF;
+
+  SELECT count(*)
+    INTO affected
+    FROM scheduled_events
+   WHERE season_id = ANY(live_ids)
+     AND kind IN ('season_end', 'season_rollover');
+
+  IF affected <> 4 THEN
+    RAISE EXCEPTION 'duplicate/non-pending lifecycle events exist: % total', affected;
+  END IF;
+
+  UPDATE seasons
+     SET ends_at = cutoff_at
+   WHERE id = ANY(live_ids);
+  GET DIAGNOSTICS affected = ROW_COUNT;
+  IF affected <> 2 THEN
+    RAISE EXCEPTION 'updated % seasons, expected 2', affected;
+  END IF;
+
+  UPDATE scheduled_events
+     SET resolve_at = CASE kind
+       WHEN 'season_end' THEN cutoff_at
+       ELSE rollover_at
+     END
+   WHERE season_id = ANY(live_ids)
+     AND kind IN ('season_end', 'season_rollover')
+     AND status = 'pending';
+  GET DIAGNOSTICS affected = ROW_COUNT;
+  IF affected <> 4 THEN
+    RAISE EXCEPTION 'updated % lifecycle events, expected 4', affected;
+  END IF;
+END
+$cutoff$;
+
+SELECT s.id, s.status, s.ends_at, e.kind, e.status, e.resolve_at
+  FROM seasons s
+  JOIN scheduled_events e ON e.season_id = s.id
+ WHERE s.status = 'live'
+   AND e.kind IN ('season_end', 'season_rollover')
+ ORDER BY s.id, e.resolve_at;
+
+COMMIT;
+```
+
+After the cutoff, watch all four health endpoints and lifecycle events. A season may remain `live`
+past `ends_at` while a committed mission, mining run, build or strategic build finishes; the
+worker retries the freeze every second. Rollover likewise retries until all live seasons are
+frozen. Never delete that work to force the deadline.
+
+After rollover require: two new live v2 seasons; old seasons `wiped`; no live missions/builds from
+the old world; no failed/processing lifecycle events; one pending end, one pending rollover and
+the expected season-act events per successor; and the 300 + 30/15/6 query above. Account identity
+and season results survive; disposable player/world rows do not.
+
+## Rollback
+
+The schema guard is **one-way**: a new image refuses to start when the database is behind its
+migration journal. It does not prove that an old image is safe against a newer database. Never
+assume a previous container will reject an incompatible forward schema.
+
+- **Before migrations:** retag/restart the retained old image and restore the prior web/Nginx
+  files. The database has not changed.
+- **After migration but before public traffic:** keep Nginx stopped, stop new processes, recreate
+  the production database from the verified final dump, retag the retained image as
+  `astera-server:latest`, start the old topology, restore web/Nginx, then run full acceptance.
+- **After new writes were accepted:** restoring the pre-release dump discards player decisions.
+  Prefer a forward fix or a migration-compatible code revert. A destructive restore requires an
+  explicit owner decision about the lost interval.
+
+Never rewrite Git history on the VPS. For a code-only failure, revert forward in Git, push, and
+deploy that new SHA through the same gates. Do not prune rollback images or dumps in the same
+session that created them.
+
+## Capacity qualification
+
+Capacity qualification is not a production smoke test. Run it against the isolated fixture; the
+tool refuses production database names/origins. A normal deploy does not become a 600-player
+capacity result merely because four health endpoints are green.
 
 ```bash
 CAPACITY_PASSWORD='<staging-only-secret>' ./deploy/capacity.sh 300 99300
@@ -173,7 +647,6 @@ CAPACITY_PASSWORD='<staging-only-secret>' pnpm capacity:test -- \
   --users 300 --connections 300 --scenario normal --duration-seconds 3600 \
   --report artifacts/capacity/normal-300-60m.json
 
-# Reseed both shards at their production ceiling before the host-wide runs.
 CAPACITY_PASSWORD='<staging-only-secret>' ./deploy/capacity.sh 600 99600
 
 CAPACITY_PASSWORD='<staging-only-secret>' pnpm capacity:test -- \
@@ -194,305 +667,110 @@ CAPACITY_PASSWORD='<staging-only-secret>' pnpm capacity:test -- \
   --report artifacts/capacity/overflow-750-10m.json
 ```
 
-A report is invalid unless `worktreeDirty=false`; HEAD, OCI revision, runtime commit and all four
-running app-container image ids agree; exactly 3 API + 1 worker instance is observed; every
-requested metrics endpoint and client response schema parses; semantic samples are non-zero; host
-CPU/RAM gates and DB reconciliation pass. An HTTP-only green summary is not a capacity result.
+A report is invalid unless the worktree is clean; HEAD, OCI revision, runtime commit and all four
+container image IDs agree; exactly 3 API + 1 worker is observed; every requested metrics endpoint
+and client schema parses; semantic samples are non-zero; and host, database reconciliation,
+rate-limit, LISTEN/cache and queue gates pass. This is what prevents an HTTP-only tool from
+incorrectly printing success.
 
-`capacity:client` is a useful 390×844 hardware-GPU diagnostic, not Android proof. Run it headed;
-headless Chromium normally uses SwiftShader and its frame result is not an acceptance signal.
-
-```bash
-VITE_VISUAL_TEST=1 ASTERA_API=http://127.0.0.1:3380 pnpm --filter @astera/web dev
-CAPACITY_PASSWORD='<staging-only-secret>' pnpm capacity:client -- --headed --duration-seconds 60
-```
-
-The production VPS has the required resources only when the other two product stacks are out of
-the capacity budget. Record their current state and confirm their own backup/restart procedures,
-then stop them explicitly; the Astera deploy never does this on its own:
-
-```bash
-docker ps --format '{{.Names}} {{.Status}}' > ~/pre-astera-d99-containers.txt
-(cd ~/candely && docker compose stop)
-(cd ~/hoofywood && docker compose -f docker-compose.prod.yml stop)
-
-cd ~/astera
-./deploy/host-capacity-preflight.sh
-./deploy/backup.sh
-./deploy/deploy.sh
-
-# Restore the other stacks if the dedicated-host decision is rolled back:
-(cd ~/candely && docker compose up -d)
-(cd ~/hoofywood && docker compose -f docker-compose.prod.yml up -d)
-```
-
-Ending the current season cohort is a separate manual decision. It is not a deploy step, a direct
-`wipe`, or a rollback mechanism. The five-minute deadline operation is not implemented or
-rehearsed yet; do not improvise it on production. Once implemented, it must update every live
-season and its `season_end`/rollover events atomically, then let the ordinary
-freeze/recap/afterglow path run.
-
-An empty new galaxy has no capitals yet; it must have a 300-seat admission ceiling and 30/15/6
-neutral worlds. Verify every live shard directly before opening signups:
-
-```sql
-SELECT sh.code, sh.player_cap,
-       count(*) FILTER (WHERE n.tier = 1) AS tier1,
-       count(*) FILTER (WHERE n.tier = 2) AS tier2,
-       count(*) FILTER (WHERE n.tier = 3) AS tier3
-  FROM shards sh
-  JOIN seasons s ON s.shard_id = sh.id AND s.status = 'live'
-  LEFT JOIN planets p ON p.season_id = s.id
-  LEFT JOIN neutral_planet_state n ON n.planet_id = p.id
- GROUP BY sh.code, sh.player_cap
- ORDER BY min(sh.ordinal);
-```
-
-Wanted on each row: `player_cap=300`, `tier1=30`, `tier2=15`, `tier3=6`.
-
----
-
-## Not losing the world
-
-**A deploy with no migration cannot alter a row.** Postgres is a separate container
-on a named volume that the deploy only starts and waits for. So the first question
-is always:
-
-```bash
-git diff --stat origin/master -- apps/server/src/db/schema.ts apps/server/drizzle/
-```
-
-**Back up anyway, every time.** Seconds, a few hundred KB. The nightly cron dump can
-be up to twenty-four hours old — which is a day of real decisions.
-
-```bash
-./deploy/backup.sh                                    # keeps the last fourteen
-crontab -e →  17 3 * * * cd ~/astera && ./deploy/backup.sh >> ~/backups/astera-backup.log 2>&1
-gunzip -c ~/backups/astera-<stamp>.sql.gz | docker exec -i astera-postgres-prod psql -U astera -d astera
-```
-
-**`git reset --hard` destroys uncommitted work _on the box_.** Check
-`git status --short` there before deploying. Untracked files survive (reset is not
-`clean`); tracked modifications do not. `.env` is untracked, holds
-`POSTGRES_PASSWORD`, `JWT_SECRET` and `VITE_GA_ID`, is never in git and exists in
-exactly one place.
-
----
-
-## Not hurting the people playing
-
-**Know who is in there first.** The sum of `stream.active` across the three API metrics
-views is how many people are looking at the disc this second; the counts below are committed
-decisions mid-air. None of it is a reason not to deploy — it is what you compare against
-afterwards.
-
-```bash
-for port in 3200 3201 3202 3210; do curl -sS "http://127.0.0.1:$port/health" | jq; done
-docker exec astera-postgres-prod psql -U astera -d astera -tAc \
- "select (select count(*) from missions where status='in_flight') as missions,
-         (select count(*) from mining_runs where status in ('outbound','returning')) as runs,
-         (select count(*) from players where last_active_at > now() - interval '15 minutes') as active;"
-```
-
-| What a restart does             | Why it is safe                                                                                                                               |
-| ------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
-| API unreachable a few seconds   | The client reports `UNREACHABLE` — "lost contact, try again" — not a refusal                                                                 |
-| Every SSE connection drops      | Clients reconnect with jitter, resume new events immediately and spread one catch-up read over 0–5 seconds                                   |
-| Worker stops mid-tick           | `SIGTERM` → graceful close that waits for the in-flight tick                                                                                 |
-| A flight was due during it      | Every event carries the instant it was meant to fire at; the worker drains overdue events in `resolve_at` order on startup. Late, never lost |
-| Players still on the OLD client | They keep it until they reload — so the new server must answer it correctly                                                                  |
-
-**Both directions have to work.** Adding an _optional_ field is safe: Zod strips
-unknown keys, so an old client ignores it. **Removing, renaming or retyping a field
-is not safe in one deploy** — ship the addition, let clients turn over, remove later.
-Any route whose shape moves must be in `apps/server/test/contract.test.ts`, the only
-thing standing between a moved payload and a route that answers 200, typechecks,
-passes both suites and goes dark.
-
-**Never create a test account in a live galaxy.** Nothing in the schema cascades, and
-a mission aimed at the test planet belongs to somebody _else_ — deleting one stranded
-a real commander's two Wasps where no safety net could reach them (`abandon()` reads
-the event, `sweepStranded` reads the mission, both were gone). Verify against
-`/api/preview` and the rehearsal instead: they write nothing and take no seat (D56).
-A seat spent on a throwaway commander is spent for the season.
-
-The repair, if it happens again:
-
-```sql
-WITH stranded AS (
-  DELETE FROM units u
-  WHERE u.location <> 'home' AND u.location NOT IN (SELECT id::text FROM missions)
-  RETURNING u.planet_id, u.hull, u.count)
-INSERT INTO units (planet_id, hull, location, count)
-SELECT planet_id, hull, 'home', count FROM stranded
-ON CONFLICT (planet_id, hull, location) DO UPDATE SET count = units.count + EXCLUDED.count;
-```
-
----
-
-## After it lands
-
-`/health` says the API is serving. It does not say the restart cost nobody anything.
-
-```bash
-cd ~/astera && git log --oneline -1
-docker exec astera-postgres-prod psql -U astera -d astera -tAc \
- "select status, count(*) from scheduled_events group by status order by status;"
-docker exec astera-postgres-prod psql -U astera -d astera -tAc \
- "select count(*) filter (where arrive_at < now() - interval '2 minutes') as overdue,
-         count(*) as in_flight from missions where status='in_flight';"
-```
-
-| Read               | Wanted                    | If not                                                                                                                          |
-| ------------------ | ------------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
-| The commit         | The one you pushed        | The fetch did not take                                                                                                          |
-| `scheduled_events` | Only `pending` and `done` | `processing` = a claim the restart interrupted; the reaper returns it in five minutes. `failed` = a stranded flight             |
-| Overdue missions   | `0`                       | An arrival has passed and the mission is still in the air. The worker is not draining — the failure that leaves no other signal |
-| `stream`           | `ok`                      | Degraded, not down: the galaxy runs on its sixty-second polls. Not a rollback                                                   |
-
-From outside, because the above is loopback-only:
-
-```bash
-curl -s https://asteraonline.space/ | grep -o 'index-[A-Za-z0-9_-]*\.js'      # the new bundle
-curl -s -o /dev/null -D - https://asteraonline.space/api/preview | grep -i x-server-time
-```
-
-Without `x-server-time` the client falls back to the device clock and draws the
-galaxy at the wrong instant on every phone (D52).
-
-> **`/health` reports; it never restarts anything.** Nothing may be wired to restart
-> on a 503: every 503 describes state a restart would clear without fixing, and
-> clearing it destroys the only evidence. Point a monitor at it and _read_ it.
-
----
-
-## Going back
-
-**Revert forward. Never rewrite history on the box** — the next deploy hard-resets
-it back to whatever you were escaping.
-
-```bash
-git revert <bad-commit> && git push origin master
-ssh <the box> 'cd ~/astera && ./deploy/deploy.sh'
-```
-
-**A revert does not undo a migration.** Migrations are forward-only and the server
-refuses to start against a database it is ahead of, so reverting past one takes the
-API down rather than rolling it back. The way back is the dump you took first.
-A client-only revert is free.
-
----
+`capacity:client` is a headed 390×844 hardware-GPU diagnostic, not Android proof. Headless
+Chromium normally uses SwiftShader, so its frame result is not an acceptance signal.
 
 ## First install
 
 ```bash
-git clone git@github.com:yildirimsamet/astera-online.git ~/astera && cd ~/astera
-cp .env.production.example .env && chmod 600 .env    # POSTGRES_PASSWORD, JWT_SECRET
-docker compose -f docker-compose.prod.yml up -d postgres valkey
-docker compose -f docker-compose.prod.yml build api1
-docker compose -f docker-compose.prod.yml run --rm --no-deps api1 \
-  apps/server/node_modules/.bin/tsx apps/server/src/cli/season.ts migrate
-docker compose -f docker-compose.prod.yml run --rm --no-deps api1 \
-  apps/server/node_modules/.bin/tsx apps/server/src/cli/season.ts bootstrap
-docker compose -f docker-compose.prod.yml up -d worker api1 api2 api3
+git clone git@github.com:yildirimsamet/astera-online.git ~/astera
+cd ~/astera
+cp .env.production.example .env
+chmod 600 .env
 ```
 
-`bootstrap` takes **no arguments** in production; `--unattended N` is a development
-aid and a live galaxy is empty until real people enter it.
+Fill `POSTGRES_PASSWORD` and `JWT_SECRET`, set the loopback ports, and optionally set
+`VITE_GA_ID`. Rotating `JWT_SECRET` signs every player out.
 
-The certificate must exist before nginx gets the 443 blocks or `nginx -t` fails:
+Start durable dependencies, build the pinned image, migrate, and bootstrap exactly two empty
+galaxies. `bootstrap` takes no arguments in production; `--unattended` is development-only.
+
+```bash
+export ASTERA_GIT_COMMIT="$(git rev-parse HEAD)"
+compose=(docker compose -f docker-compose.prod.yml)
+"${compose[@]}" up -d postgres valkey
+"${compose[@]}" build api1
+"${compose[@]}" run --rm --no-deps api1 \
+  apps/server/node_modules/.bin/tsx apps/server/src/cli/season.ts migrate
+"${compose[@]}" run --rm --no-deps api1 \
+  apps/server/node_modules/.bin/tsx apps/server/src/cli/season.ts bootstrap
+"${compose[@]}" up -d worker api1 api2 api3
+```
+
+Then build/publish the web artifact and run internal plus external acceptance using steps 4 and
+8–10 above. A first install has no rollback copy, which makes its backup and acceptance gates more
+important, not less.
+
+The TLS certificate must exist before enabling the 443 vhost:
 
 ```bash
 sudo certbot certonly --webroot -w /var/www/html \
-  -d asteraonline.space -d www.asteraonline.space -d api.asteraonline.space -d socket.asteraonline.space
-sudo cp deploy/nginx/astera.conf /etc/nginx/sites-available/astera
-sudo ln -s /etc/nginx/sites-available/astera /etc/nginx/sites-enabled/
+  -d asteraonline.space -d www.asteraonline.space \
+  -d api.asteraonline.space -d socket.asteraonline.space
+sudo install -o root -g root -m 0644 deploy/nginx/astera.conf \
+  /etc/nginx/sites-available/astera
+sudo ln -s /etc/nginx/sites-available/astera /etc/nginx/sites-enabled/astera
 sudo nginx -t && sudo systemctl reload nginx
 ```
 
-`certonly --webroot` rather than `--nginx`, so the vhost in this repo stays the
-vhost on the server.
+Certbot renewal needs a deploy hook that reloads Nginx after writing a new certificate. Verify it
+with `sudo certbot renew --cert-name asteraonline.space --dry-run`.
 
-**Renewal needs a reload and nothing was doing it.** certbot writes the new
-certificate and stops; nginx serves the one it loaded at startup, the timer reports
-success, and the site serves an expired certificate thirty days later with nothing
-saying so. `/etc/letsencrypt/renewal-hooks/deploy/reload-nginx.sh` fixes it for every
-certificate on the box. Verify with
-`sudo certbot renew --cert-name asteraonline.space --dry-run`.
+## Routine operations
 
----
-
-## Operating
-
-**Watching:**
+Health, logs and season status:
 
 ```bash
-for port in 3200 3201 3202 3210; do curl -s "localhost:$port/health" | jq; done
+cd ~/astera
+for port in 3200 3201 3202 3210; do curl -fsS "localhost:$port/health" | jq; done
 docker compose -f docker-compose.prod.yml logs -f api1 api2 api3 worker
 docker compose -f docker-compose.prod.yml run --rm --no-deps api1 \
   apps/server/node_modules/.bin/tsx apps/server/src/cli/season.ts status
 ```
 
-**Analytics.** `VITE_GA_ID` in `.env`; empty means no tag, no third-party request, no
-globals. **Inlined at build time**, so changing it needs a redeploy, not a restart.
-Two events, GA4's own: `sign_up` and `login`, with `method` separating the front door
-from the rehearsal claim. Nothing about a player is sent.
-
-**The @JoinAstera bonus.** A human reads a DM and runs, on the box:
+Nightly backup, retaining the last fourteen dumps:
 
 ```bash
+./deploy/backup.sh
+```
+
+```cron
+17 3 * * * cd /home/yildirim/astera && ./deploy/backup.sh >> /home/yildirim/backups/astera-backup.log 2>&1
+```
+
+Grant the hand-checked @JoinAstera reward by exact, case-sensitive public display name. The command
+is idempotent and only unlocks the grant; the player claims it in the rewards panel. The old
+`astera-api-prod` container no longer exists.
+
+It is idempotent ACROSS SEASONS as well (D104): the grant is written against the account, so a
+commander paid in an earlier galaxy is reported as already holding it, and one who is between
+galaxies with no world at all can still be granted it ready for the next.
+
+```bash
+# On the VPS:
 docker compose -f docker-compose.prod.yml exec api1 \
-  apps/server/node_modules/.bin/tsx apps/server/src/cli/season.ts reward 'Vantage'
+  apps/server/node_modules/.bin/tsx apps/server/src/cli/season.ts reward 'WARRIOR'
+
+# From another machine over SSH (no pseudo-TTY):
+ssh yildirim@hoofywood.com \
+  "cd ~/astera && docker compose -f docker-compose.prod.yml exec -T api1 \
+  apps/server/node_modules/.bin/tsx apps/server/src/cli/season.ts reward 'WARRIOR'"
 ```
 
-That writes the grant; the player still claims it from the rewards panel, so the
-ordinary path does the locking and the once-only key. Idempotent — you will run it
-twice. **Type the name exactly as they wrote it:** the display name is deliberately
-not case-folded, because `İ` does not fold to `i` in Postgres any more than in
-JavaScript and half this game's players are Turkish. There is no HTTP route for it,
-so no admin credential lives in a public API's environment.
+## Remaining operational gaps
 
-**Idle seats.** A commander who has not opened the game for three days has their world
-reclaimed and their seat returned; the worker does it on a ten-minute clock. The
-account survives — only the season presence goes, folding into `accounts.lifetime`.
-It never touches a world with a flight in the air that names it. `/health` reports
-`idleSeats`, how many are eligible right now without touching any: a number that stays
-high means the sweep has stopped, which nothing else would show.
-
-```bash
-docker compose -f docker-compose.prod.yml exec postgres psql -U astera -d astera -c \
-  "select a.username, p.last_active_at, now() - p.last_active_at as away
-     from players p join accounts a on a.id = p.account_id order by p.last_active_at;"
-```
-
-**Rate limits.** Three buckets keyed by caller address. `TRUST_PROXY=true` is what
-makes that the caller rather than nginx — without it the whole internet shares one
-bucket and the first burst locks every player out. Safe only because the API port is
-loopback, so nothing but the proxy can set `X-Forwarded-For`.
-
-| Bucket         | Default | Why                                                                                                                                                                |
-| -------------- | ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| global, 1 min  | 300     | A net under everything. Real play peaks near forty                                                                                                                 |
-| login, 10 min  | 20      | The only brute-force defence — stateless JWTs, no lockout. Every attempt burns a full scrypt, including for a name that does not exist                             |
-| signup, 1 hour | 6       | `/api/onboarding/claim` is unauthenticated and takes a **seat**. Three hundred a galaxy, filled in order — that ordering is the empty-shard risk's only mitigation |
-
-`/health` is exempt: a 429 there reads as an outage. A refusal is `RATE_LIMITED` plus
-`{ seconds }`, localised off `i18n/errors.ts` (D55).
-
-**The worker is a singleton by deployment rule.** `SKIP LOCKED` keeps redelivery safe, but a
-second production worker would duplicate housekeeping and spend the connection/CPU budget without
-buying API capacity. Scale the three stateless API replicas; do not scale `worker` casually.
-
----
-
-## Still missing
-
-- **`request_log` is unused.** Idempotency keys are not wired into the launch path.
-- **No external alerting.** `/health` now fails for queue/data failures, an API LISTEN gap, an
-  unavailable configured shared limiter and an unknown worker event, but nothing production-side
-  reads it on a schedule or pages the team yet.
-- **The production deploy script is not a release gate yet.** It still builds the web client after
-  restarting the API, permits dirty/untracked input through `--local`, publishes before blocking
-  health/external smoke, uses a mutable server tag and has no verified backup-restore rollback.
-- **The five-minute live-season cutoff is still a reviewed plan, not an implemented/rehearsed
-  operation.** It must update the whole live cohort and its end/rollover events atomically.
+- `deploy/deploy.sh` is not a production release gate; the manual sequence remains canonical.
+- There is no external alerting or paging for `/health`, queue failure, LISTEN/cache invalidation
+  loss, Valkey readiness or unknown worker events.
+- There is no explicit client/API version handshake or forced-reload path. Until one exists,
+  breaking route changes require a one-release compatibility window for already-open tabs.
+- The five-minute cutoff is production-rehearsed but remains an explicit SQL owner operation; it
+  is not a first-class fail-closed CLI command.
+- Capacity soak is an isolated, long-running qualification and is not part of the ordinary deploy
+  sequence. Rerun it before claiming a new capacity result after a capacity-sensitive change.

@@ -1,17 +1,27 @@
 import { and, eq } from 'drizzle-orm';
-import { COMBAT, activeAsteroids, engagementEndsAt, generateGalaxy } from '@astera/rules';
+import {
+  COMBAT,
+  DEATH_STAR,
+  activeAsteroids,
+  coreTier,
+  engagementEndsAt,
+  generateGalaxy,
+  orbitStandoff,
+  visualLeg,
+  worldRadius,
+} from '@astera/rules';
 import type { FastifyInstance } from 'fastify';
 import { pino } from 'pino';
 import { afterAll, afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { buildApp } from '../src/app.js';
-import { debrisFields, missions, planets } from '../src/db/schema.js';
+import { buildings, debrisFields, missions, planets } from '../src/db/schema.js';
 import { TokenService } from '../src/auth/tokens.js';
 import { launchAttack } from '../src/services/mission.js';
 import { launchProbe } from '../src/services/intel.js';
 import { pendingThreads } from '../src/services/session.js';
 import { EventWorker } from '../src/worker/loop.js';
 import { launchHarvest, launchMining } from '../src/services/mining.js';
-import { galaxyTraffic } from '../src/services/traffic.js';
+import { galaxyTraffic, loadTrafficSnapshot } from '../src/services/traffic.js';
 import {
   grant,
   giveUnits,
@@ -38,7 +48,7 @@ const silent = pino({ level: 'silent' });
 
 interface Contact {
   id: string;
-  kind: 'fleet' | 'probe' | 'mining' | 'harvest';
+  kind: 'fleet' | 'probe' | 'death_star' | 'mining' | 'harvest';
   fleet?: Record<string, number>;
   craft?: number;
   from: { x: number; y: number; z: number };
@@ -213,6 +223,65 @@ describe('galaxy traffic — motion in public, intent in private', () => {
     const second = await fetchContacts();
     expect(first[0]?.id).toBeTruthy();
     expect(second[0]?.id).toBe(first[0]?.id);
+  });
+
+  it('replays a resolved Death Star impact for the exact public effect window', async () => {
+    const arriveAt = f.clock.now();
+    const [impact] = await f.db.insert(missions).values({
+      seasonId: f.seasonId,
+      kind: 'death_star',
+      status: 'resolved',
+      ownerPlayerId: f.playerIds[1]!,
+      originPlanetId: a,
+      targetPlanetId: b,
+      fleet: {},
+      distance: 1200,
+      departAt: new Date(arriveAt.getTime() - 120_000),
+      arriveAt,
+    }).returning();
+    const [staleImpact] = await f.db.insert(missions).values({
+      seasonId: f.seasonId,
+      kind: 'death_star',
+      status: 'resolved',
+      ownerPlayerId: f.playerIds[1]!,
+      originPlanetId: a,
+      targetPlanetId: b,
+      fleet: {},
+      distance: 1200,
+      departAt: new Date(arriveAt.getTime() - 240_000),
+      arriveAt: new Date(arriveAt.getTime() - DEATH_STAR.impactSeconds * 1000 - 1),
+    }).returning();
+
+    f.clock.set(new Date(arriveAt.getTime() + 1));
+    const snapshot = await loadTrafficSnapshot(f.db, f.seasonId, f.clock.now());
+    expect(snapshot.missionRows.map(({ mission }) => mission.id)).toContain(impact!.id);
+    expect(snapshot.missionRows.map(({ mission }) => mission.id)).not.toContain(staleImpact!.id);
+    const observer = await galaxyTraffic(
+      f.db,
+      f.seasonId,
+      mine,
+      f.clock.now(),
+      f.playerIds[0],
+      [mine],
+    );
+    const sender = await galaxyTraffic(
+      f.db,
+      f.seasonId,
+      a,
+      f.clock.now(),
+      f.playerIds[1],
+      [a],
+    );
+    expect(observer).toContainEqual(expect.objectContaining({
+      id: impact!.id,
+      kind: 'death_star',
+      landing: true,
+      endAt: arriveAt,
+    }));
+    expect(sender).toContainEqual(expect.objectContaining({ id: impact!.id }));
+
+    f.clock.set(new Date(arriveAt.getTime() + DEATH_STAR.impactSeconds * 1000));
+    expect(await galaxyTraffic(f.db, f.seasonId, mine, f.clock.now())).toEqual([]);
   });
 
   /**
@@ -440,7 +509,22 @@ describe('galaxy traffic — motion in public, intent in private', () => {
    * surface. What this test guards is the input to that — that the figure published
    * here is the real one.
    */
-  it('publishes the craft’s true position at every point of the flight', async () => {
+  /**
+   * THE POSITION PUBLISHED IS THE POSITION DRAWN, AND THAT IS THE POINT. D106.
+   *
+   * This used to assert the craft's TRUE centre-to-centre position, and that is
+   * exactly what made two screens disagree: the owner's client has stopped its own
+   * legs short of a world since D44 — a craft drawn at a planet's coordinates is
+   * drawn inside it — so the published figure was right about physics and wrong
+   * about the only thing this payload is for. The gap grew along the leg and
+   * reached more than a planet's width at the arrival, which is the moment the
+   * whole galaxy is looking.
+   *
+   * The physical position is unchanged and still decides everything the SERVER
+   * decides: arrival, combat, loot. What is published is where the craft is drawn,
+   * derived from the same public figures on both sides (`visualLeg`).
+   */
+  it('publishes the craft’s drawn position at every point of the flight', async () => {
     await giveUnits(f.db, a, { WASP: 30 });
     const launch = await launchAttack(f.db, a, b, { WASP: 30 }, f.clock);
     const departAt = f.clock.now().getTime();
@@ -448,6 +532,16 @@ describe('galaxy traffic — motion in public, intent in private', () => {
 
     const [from] = await f.db.select().from(planets).where(eq(planets.id, a));
     const [to] = await f.db.select().from(planets).where(eq(planets.id, b));
+    const [core] = await f.db
+      .select({ level: buildings.level })
+      .from(buildings)
+      .where(and(eq(buildings.planetId, b), eq(buildings.type, 'CORE')));
+    const drawn = visualLeg(
+      { x: from!.x, y: from!.y, z: from!.z },
+      { x: to!.x, y: to!.y, z: to!.z },
+      0,
+      orbitStandoff(worldRadius(coreTier(core?.level ?? 0))),
+    );
 
     for (const fraction of [0.1, 0.5, 0.9, 0.99]) {
       f.clock.set(new Date(departAt + span * fraction));
@@ -457,8 +551,8 @@ describe('galaxy traffic — motion in public, intent in private', () => {
       // D83, so compare with the instant the clock can actually represent.
       const representedFraction = (f.clock.now().getTime() - departAt) / span;
       const expected = {
-        x: from!.x + (to!.x - from!.x) * representedFraction,
-        z: from!.z + (to!.z - from!.z) * representedFraction,
+        x: drawn.from.x + (drawn.to.x - drawn.from.x) * representedFraction,
+        z: drawn.from.z + (drawn.to.z - drawn.from.z) * representedFraction,
       };
       expect(contact!.from.x).toBeCloseTo(expected.x, 3);
       expect(contact!.from.z).toBeCloseTo(expected.z, 3);
@@ -594,10 +688,16 @@ describe('galaxy traffic — motion in public, intent in private', () => {
      * that stopped short would hold it in mid-air. The approach segment exists only
      * to give the bearing it came in on.
      */
-    it('gives the bearing it came in on, ending at the world itself', async () => {
+    /**
+     * The window ends at the ORBIT the squadron holds at, and the engagement names
+     * the WORLD. Two different points on purpose since D106: the hold is where the
+     * craft is drawn, the world is what the volley is fired at and what an effect
+     * is anchored to.
+     */
+    it('gives the bearing it came in on, and names the world it is over', async () => {
       const [contact] = await landed(1);
       const [target] = await f.db.select().from(planets).where(eq(planets.id, b));
-      expect(contact?.to).toEqual({ x: target!.x, y: target!.y, z: target!.z });
+      expect(contact?.engagement?.target).toEqual({ x: target!.x, y: target!.y, z: target!.z });
       const gap = Math.hypot(
         contact!.to.x - contact!.from.x,
         contact!.to.y - contact!.from.y,

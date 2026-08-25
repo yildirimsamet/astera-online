@@ -17,7 +17,7 @@ const SIZE: Record<ReadoutSize, string> = {
   hero: 'text-hero',
   lg: 'text-readout',
   md: 'text-figure',
-  sm: 'text-[15px]',
+  sm: 'text-body',
 };
 
 export function Readout({
@@ -54,7 +54,7 @@ export function Readout({
     <span className={`readout ${SIZE[size]} ${colour} ${glow ? 'lit' : 'etch'} ${className}`}>
       {children}
       {unit === undefined ? null : (
-        <span className="ml-1 align-baseline text-[0.44em] font-semibold uppercase tracking-[0.14em] opacity-60">
+        <span className="unit">
           {unit}
         </span>
       )}
@@ -87,7 +87,7 @@ export function Stat({
   return (
     <div className={`min-w-0 ${justify}`}>
       <p className="legend truncate">{label}</p>
-      <p className="mt-1.5">
+      <p className="mt-2">
         <Readout size={size} tone={tone}>
           {value}
         </Readout>

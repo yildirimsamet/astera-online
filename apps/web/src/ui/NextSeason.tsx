@@ -33,7 +33,7 @@ export function NextSeason({
           ? t('seasonRecap.nextIn', { duration: countdown(left) })
           : t('seasonRecap.nextNow')}
       </p>
-      <p className="mt-1 text-[12px] leading-snug text-dim">{t('seasonRecap.nextWhy')}</p>
+      <p className="mt-1 text-caption leading-snug text-dim">{t('seasonRecap.nextWhy')}</p>
     </div>
   );
 }

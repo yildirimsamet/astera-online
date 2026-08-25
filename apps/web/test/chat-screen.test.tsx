@@ -69,7 +69,7 @@ describe('galaxy chat surface', () => {
   it('routes another commander name back to their planet', async () => {
     const { onFocusPlanet } = show();
     const username = screen.getByRole('button', { name: 'İzci' });
-    expect(username).toHaveClass('font-bold');
+    expect(username).toHaveClass('name');
     await userEvent.setup().click(username);
     expect(onFocusPlanet).toHaveBeenCalledWith('other-planet');
     expect(screen.queryByRole('button', { name: 'Vantage' })).not.toBeInTheDocument();

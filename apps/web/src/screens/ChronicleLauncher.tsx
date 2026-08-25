@@ -52,10 +52,10 @@ export function ChronicleLauncher({ onOpen }: { onOpen: () => void }) {
         haptic('tap');
         onOpen();
       }}
-      className="pointer-events-auto absolute bottom-3 right-16 z-20 flex h-11 max-w-[min(14rem,calc(100vw-8rem))] items-center gap-2 rounded-md border border-line bg-deep/95 px-3 text-opportunity shadow-[0_10px_30px_rgba(0,0,0,0.4)] transition-colors hover:border-opportunity/60 hover:text-bone active:scale-95"
+      className="pointer-events-auto absolute bottom-3 right-16 z-20 flex h-11 max-w-[min(14rem,calc(100vw-8rem))] items-center gap-2 rounded-control border border-line bg-deep/95 px-3 text-opportunity shadow-[0_10px_30px_rgba(0,0,0,0.4)] transition-colors hover:border-opportunity/60 hover:text-bone active:scale-95"
     >
       <GalaxyIcon className="size-5 shrink-0" />
-      <span className="truncate font-display text-[10px] font-bold uppercase tracking-wide">{line}</span>
+      <span className="legend truncate">{line}</span>
     </button>
   );
 }

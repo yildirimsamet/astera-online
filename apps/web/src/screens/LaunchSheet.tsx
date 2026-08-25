@@ -10,7 +10,8 @@ import { MOBILE, planRoute } from '../lib/navigation.js';
 import { StatStrip } from '../ui/Action.js';
 import { HULL_ART } from '../ui/assets.js';
 import { HullMark } from '../ui/icons/hulls.js';
-import { Sheet } from '../ui/Sheet.js';
+import { QuantityStepper } from '../ui/QuantityStepper.js';
+import { Button, Sheet } from '../ui/kit/index.js';
 import { describe, useToast } from '../ui/Toast.js';
 
 /**
@@ -57,18 +58,18 @@ export function LaunchSheet({
       footer={
         confirming ? (
           <div className="flex gap-2">
-            <button
-              type="button"
-              className="btn flex-1 text-[9px]"
+            <Button
+              className="flex-1"
               onClick={() => {
                 setConfirming(false);
               }}
             >
               {t('launch.back')}
-            </button>
-            <button
-              type="button"
-              className="btn btn-commit flex-[2] text-[9px]"
+            </Button>
+            <Button
+              variant="commit"
+              size="lg"
+              className="flex-[2]"
               disabled={launch.isPending}
               onClick={() => {
                 launch.mutate(
@@ -92,36 +93,37 @@ export function LaunchSheet({
               }}
             >
               {launch.isPending ? t('launch.launching') : t('launch.commit')}
-            </button>
+            </Button>
           </div>
         ) : (
-          <button
-            type="button"
-            className="btn btn-commit w-full"
+          <Button
+            variant="commit"
+            size="lg"
+            full
             disabled={!canSend}
             onClick={() => {
               setConfirming(true);
             }}
           >
             {total === 0 ? t('launch.chooseFleet') : t('launch.send', { count: total })}
-          </button>
+          </Button>
         )
       }
     >
       {/* THE LINE. Everything else on this sheet is supporting detail. */}
-      <div className="panel border-alert/25 bg-alert/5 px-3.5 py-3 mt-1">
-        <p className="legend text-[#e08a7c]">{t('launch.whileAway')}</p>
-        <p className="num mt-1.5 text-[19px] leading-tight text-bone">
+      <div className="plate plate-threat mt-1 px-3 py-3">
+        <p className="legend text-threat-ink">{t('launch.whileAway')}</p>
+        <p className="num mt-2 text-figure leading-tight text-bone">
           {t('launch.defending', { count: route.homeDefenceAfter })}
         </p>
-        <p className="num mt-1 text-[13px] text-[#e08a7c]">
+        <p className="num mt-1 text-body text-threat-ink">
           {total === 0
             ? t('launch.nothingSent')
             : t('launch.exposedFor', { duration: duration(route.exposureMinutes) })}
         </p>
       </div>
 
-      <div className="mt-5 grid grid-cols-3 gap-3">
+      <div className="mt-6 grid grid-cols-3 gap-3">
         <Figure
           label={t('launch.oneWay')}
           value={
@@ -141,7 +143,7 @@ export function LaunchSheet({
           return (
             <div
               key={hull}
-              className={`border-b border-line-soft py-2.5 px-1 ${chosen > 0 ? 'bg-crystal/[0.05]' : ''}`}
+              className={`border-b border-line-soft py-3 px-1 ${chosen > 0 ? 'bg-crystal/[0.05]' : ''}`}
             >
               {/*
                 THE SHIP, NOT ITS NAME.
@@ -151,7 +153,7 @@ export function LaunchSheet({
                 the whole of combat, and it is decided by these four numbers.
               */}
               <div className="flex items-center gap-3">
-                <div className="art-well flex size-12 shrink-0 items-center justify-center rounded">
+                <div data-art className="socket size-12 shrink-0 rounded-control">
                   {HULL_ART[hull] ? (
                     <img
                       src={HULL_ART[hull]}
@@ -167,10 +169,10 @@ export function LaunchSheet({
 
                 <div className="min-w-0 flex-1">
                   <div className="flex items-baseline gap-2">
-                    <p className="font-display text-[14px] uppercase tracking-wide text-bone">
+                    <p className="name text-bone">
                       {hullLabel(hull)}
                     </p>
-                    <span className="num text-[11px] text-faint">
+                    <span className="num text-label text-faint">
                       {t('launch.atHome', { count: available })}
                     </span>
                   </div>
@@ -185,45 +187,30 @@ export function LaunchSheet({
                 </div>
               </div>
 
-              <div className="mt-2 flex items-center justify-end gap-1">
-                <StepButton
-                  label={t('launch.fewer', { name: hullLabel(hull) })}
-                  onClick={() => {
-                    set(hull, chosen - stepFor(available));
-                  }}
-                >
-                  −
-                </StepButton>
-                <span className="num w-12 text-center text-[16px] text-bone">{String(chosen)}</span>
-                <StepButton
-                  label={t('launch.more', { name: hullLabel(hull) })}
-                  onClick={() => {
-                    set(hull, chosen + stepFor(available));
-                  }}
-                >
-                  +
-                </StepButton>
-                <button
-                  type="button"
-                  className="btn ml-1 px-2.5"
-                  onClick={() => {
-                    set(hull, chosen === available ? 0 : available);
-                  }}
-                >
-                  {t('launch.all')}
-                </button>
+              <div className="mt-2">
+                <QuantityStepper
+                  value={chosen}
+                  min={0}
+                  max={available}
+                  onChange={(value) => { set(hull, value); }}
+                  decreaseLabel={t('launch.fewer', { name: hullLabel(hull) })}
+                  increaseLabel={t('launch.more', { name: hullLabel(hull) })}
+                  valueLabel={t('launch.quantity', { name: hullLabel(hull) })}
+                  maxLabel={t('launch.max', { name: hullLabel(hull) })}
+                  maxText={t('launch.maxShort')}
+                />
               </div>
             </div>
           );
         })}
         {fleetCount(planet.fleet) === 0 && (
-          <p className="text-[13px] text-dim">{t('launch.noShips')}</p>
+          <p className="text-body text-dim">{t('launch.noShips')}</p>
         )}
       </div>
 
       {confirming && (
         <>
-          <p className="mt-5 text-[13px] leading-relaxed text-[#e08a7c]">
+          <p className="mt-6 text-body leading-relaxed text-threat-ink">
             {t('launch.warning', { count: route.homeDefenceAfter })}
           </p>
           {/*
@@ -240,30 +227,10 @@ export function LaunchSheet({
             the only way to make your fleet safe. That is a real decision, and it
             costs one line of text.
           */}
-          <p className="mt-2 text-[13px] leading-relaxed text-dim">{t('launch.fleetsave')}</p>
+          <p className="mt-2 text-body leading-relaxed text-dim">{t('launch.fleetsave')}</p>
         </>
       )}
     </Sheet>
-  );
-}
-
-/** Big fleets need big steps; ten taps to send 200 Wasps is a design failure. */
-const stepFor = (available: number): number =>
-  available >= 200 ? 25 : available >= 50 ? 10 : available >= 20 ? 5 : 1;
-
-function StepButton({
-  children,
-  label,
-  onClick,
-}: {
-  children: string;
-  label: string;
-  onClick: () => void;
-}) {
-  return (
-    <button type="button" aria-label={label} className="btn px-3 py-1.5 text-[16px]" onClick={onClick}>
-      {children}
-    </button>
   );
 }
 
@@ -271,7 +238,7 @@ function Figure({ label, value }: { label: string; value: string }) {
   return (
     <div>
       <p className="legend">{label}</p>
-      <p className="num mt-0.5 text-[16px] text-bone">{value}</p>
+      <p className="num mt-1 text-title text-bone">{value}</p>
     </div>
   );
 }

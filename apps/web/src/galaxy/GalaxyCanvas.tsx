@@ -11,12 +11,13 @@ import type {
   PendingThread,
 } from '../api/schemas.js';
 import type { Focus } from './FocusPanel.js';
-import { focusIdentity, rigAction, rigGestureState } from './follow.js';
+import { easedCameraRange, focusIdentity, rigAction, rigGestureState } from './follow.js';
 import { BrightStars, Core, Disc, Dust, Meteors, Nebula, Starfield } from './Environment.jsx';
-import { useAmbientFrames } from './frames.jsx';
+import { useAmbientFrames, useCommittedDemandFrame } from './frames.jsx';
 import { Wrecks, type WreckView } from './Wrecks.js';
 import { Asteroids, InterceptMarks } from './Asteroids.jsx';
-import { OwnFleets, Traffic, WatchBeams, threadKey } from './Fleets.jsx';
+import { OwnFleets, Traffic, WatchBeams } from './Fleets.jsx';
+import { threadKey } from './threadKey.js';
 import { DeathStarImpacts } from './DeathStarImpact.jsx';
 import { PlanetField } from './PlanetField.jsx';
 import { Satellites, Shields } from './Satellites.jsx';
@@ -25,7 +26,6 @@ import {
   DISC_RADIUS,
   activeWorldPosition,
   asteroidWorldPosition,
-  clearOfWorlds,
   contactPosition,
   isRivalNode,
   legStandoff,
@@ -91,7 +91,7 @@ const EASE = 0.5;
  *
  * Well clear of `minDistance`, so the rig lands rather than being caught by a
  * clamp — and the player can pull straight back out, because the approach is
- * one-way (see `pullTo`) and never pushes anybody off a view they went and got.
+ * one-way (see `rangeTo`) and never pushes anybody off a view they went and got.
  */
 const HOME_DISTANCE = 7;
 
@@ -103,6 +103,10 @@ const HOME_DISTANCE = 7;
  * shot. Planets are exempt: they are already the size the map is drawn at.
  */
 const CRAFT_DISTANCE = 7;
+
+/** Distance and angle of the opening whole-disc composition. */
+const WIDE_TILT = Math.hypot(1.15, 1.75);
+const WHOLE_DISC_DISTANCE = DISC_RADIUS * WIDE_TILT;
 
 export interface GalaxyCanvasProps {
   planets: readonly GalaxyPlanet[];
@@ -139,6 +143,8 @@ export interface GalaxyCanvasProps {
    * who has never seen this galaxy.
    */
   openWide?: boolean;
+  /** Exact camera range for an animated wide re-frame. Defaults to the whole disc. */
+  wideDistance?: number;
   /**
    * Which worlds may be selected at all. D56.
    *
@@ -180,6 +186,7 @@ export function GalaxyCanvas({
   onFocus,
   homeSignal,
   openWide = false,
+  wideDistance = WHOLE_DISC_DISTANCE,
   allowFocus,
   onReady,
 }: GalaxyCanvasProps) {
@@ -250,13 +257,13 @@ export function GalaxyCanvas({
        * engagement.
        */
       const standoff = legStandoff(thread, nodes);
-      return () => threadPosition(path, serverNow(), standoff);
+      return () => threadPosition(path, serverNow(), standoff, nodes);
     }
 
     if (focus.kind === 'run' && homePosition) {
       const run = runs.find((r) => r.id === focus.id);
       if (!run) return null;
-      return () => runPosition(run, homePosition, serverNow());
+      return () => runPosition(run, homePosition, serverNow(), nodes);
     }
 
     /**
@@ -270,7 +277,7 @@ export function GalaxyCanvas({
       if (!contact) return null;
       // Corrected exactly as the renderer corrects it, or the rig would centre on
       // a point inside a world while the craft is drawn on its surface.
-      return () => clearOfWorlds(nodes, contactPosition(contact, serverNow(), nodes));
+      return () => contactPosition(contact, serverNow(), nodes);
     }
 
     return null;
@@ -301,7 +308,7 @@ export function GalaxyCanvas({
    * sixty-second net — so the memo produced a NEW FUNCTION several times a minute
    * without the player touching anything. The rig's "ease onto a new subject"
    * effect was keyed on that function, so it fired each time: the pivot re-eased
-   * and, worse, `pullTo` dollied the camera back in to `CRAFT_DISTANCE`, undoing
+   * and, worse, `rangeTo` dollied the camera back in to `CRAFT_DISTANCE`, undoing
    * whatever framing the player had chosen. The docblock on that effect claimed it
    * "fires on a change of subject and not on every render", which was the
    * intention and was never true.
@@ -426,6 +433,7 @@ export function GalaxyCanvas({
           <MiningFlights
             runs={runs}
             home={homePosition}
+            nodes={nodes}
             focusedId={focus?.kind === 'run' ? focus.id : null}
             onSelect={(id) => {
               onFocus({ kind: 'run', id });
@@ -483,6 +491,7 @@ export function GalaxyCanvas({
         focusKey={focusKey}
         approach={approach}
         openWide={openWide}
+        wideDistance={wideDistance}
       />
       <AmbientTicker />
     </Canvas>
@@ -490,12 +499,50 @@ export function GalaxyCanvas({
 }
 
 /**
- * Names, only where they earn the pixels.
+ * Names, only where they earn the pixels — AND ONLY WHERE THEY FIT.
  *
- * Semantic zoom: labelling every world at every distance is how a galaxy map
- * becomes unreadable. Your own planet, an open window and the current selection
- * are the only three things a player looks for by name.
+ * Semantic zoom was the whole idea and only half of it was implemented. The
+ * filter picked which worlds DESERVE a name — yours, an open window, the current
+ * selection, your marked rival, a world in recovery, a claim on the clock — and
+ * then drew every one of them, at every distance, with no idea where the others
+ * had landed. Three recovering worlds falling into the same corner of the disc
+ * wrote three names into the same forty pixels, and the map's most important
+ * labels became a smear that also ran off the left edge of a phone.
+ *
+ * A LABEL IS PLACED IN SCREEN SPACE, NOT WORLD SPACE, so this is settled where the
+ * collision actually happens:
+ *
+ *   · PRIORITY, highest first — the selection, then your own worlds, then the
+ *     rival, then a world that is on a clock (recovery or an open claim), then an
+ *     open window. When two labels cannot both be drawn, the one the player is
+ *     less likely to be looking for is the one that goes.
+ *   · A GREEDY KEEP. Walk that order, project each anchor to CSS pixels, and drop
+ *     any whose box would overlap one already placed. Nothing is ever half drawn.
+ *   · OFF-SCREEN AND FAR-AWAY GO FIRST, because a name you cannot read is a name
+ *     that is only costing the frame.
+ *
+ * It runs in `useFrame` against DOM refs rather than through React state: the
+ * camera moves every frame, and re-rendering the label set at frame rate would put
+ * a list rebuild on the disc's own budget. Nothing above this re-renders at all.
  */
+const LABEL_BOX = { w: 132, h: 46 };
+/** Past this the type is smaller than the disc's own dust. */
+const LABEL_MAX_RANGE = 26;
+
+function labelRank(
+  node: PlanetNode,
+  selectedId: string | null,
+  rivalPlanetId: string | null,
+  rivalPlayerId: string | null,
+): number {
+  if (node.id === selectedId) return 0;
+  if (node.isOwned) return 1;
+  if (isRivalNode(node, rivalPlanetId, rivalPlayerId)) return 2;
+  if (node.state?.kind === 'RECOVERY') return 3;
+  if (node.claimUntil && node.claimUntil.getTime() > serverNow()) return 3;
+  return 4;
+}
+
 function Labels({
   nodes,
   selectedId,
@@ -517,22 +564,105 @@ function Labels({
       || Boolean(node.claimUntil && node.claimUntil.getTime() > serverNow()),
   );
 
+  const labelIdentity = marked
+    .map((node) => `${node.id}:${node.state?.kind ?? 'NONE'}`)
+    .join('|');
+
+  // Recovery labels can join this list after the camera has rendered its last
+  // demand frame. Give every newly committed label one projection frame so its
+  // distanceFactor is correct before the player can see or touch it.
+  useCommittedDemandFrame(labelIdentity);
+
+  /**
+   * The draw order, and it is also the DROP order.
+   *
+   * Deliberately NOT memoised. A handful of worlds carry a name and sorting them
+   * costs nothing, while a memo would have to be keyed on every field the label
+   * reads — stance, claim clock, controller, position — and the first one left
+   * out is a label frozen at a value that has already changed.
+   */
+  const ordered = [...marked].sort(
+    (a, b) =>
+      labelRank(a, selectedId, rivalPlanetId, rivalPlayerId)
+      - labelRank(b, selectedId, rivalPlanetId, rivalPlayerId),
+  );
+
+  const boxes = useRef(new Map<string, HTMLElement | null>());
+  const anchor = useRef(new THREE.Vector3());
+  const placed = useRef<{ x: number; y: number }[]>([]);
+  const clock = useRef(0);
+
+  useFrame(({ camera, size }, delta) => {
+    // Ten times a second. The camera eases rather than jumps, so a label that
+    // settles a frame late is invisible; a projection per world per frame is not.
+    clock.current += delta;
+    if (clock.current < 0.1) return;
+    clock.current = 0;
+
+    placed.current.length = 0;
+    for (const node of ordered) {
+      const element = boxes.current.get(node.id);
+      if (!element) continue;
+      anchor.current.set(node.position[0], node.position[1], node.position[2]);
+      const range = camera.position.distanceTo(anchor.current);
+      anchor.current.project(camera);
+      const x = ((anchor.current.x + 1) / 2) * size.width;
+      const y = ((1 - anchor.current.y) / 2) * size.height;
+
+      const onScreen =
+        anchor.current.z < 1
+        && x > -LABEL_BOX.w
+        && x < size.width + LABEL_BOX.w
+        && y > 0
+        && y < size.height;
+      let show = onScreen && range < LABEL_MAX_RANGE;
+      if (show) {
+        for (const other of placed.current) {
+          if (Math.abs(other.x - x) < LABEL_BOX.w && Math.abs(other.y - y) < LABEL_BOX.h) {
+            show = false;
+            break;
+          }
+        }
+      }
+      if (show) placed.current.push({ x, y });
+      // `visibility` rather than `display`: drei keeps measuring the wrapper, and
+      // a box that collapses to zero would flip the answer on the next frame.
+      const next = show ? 'visible' : 'hidden';
+      if (element.style.visibility !== next) element.style.visibility = next;
+    }
+  });
+
   return (
     <>
-      {marked.map((node) => (
+      {ordered.map((node) => (
         <Html
           key={node.id}
           position={[node.position[0], node.position[1] + node.radius * 1.85, node.position[2]]}
           center
           distanceFactor={6}
+          // OrbitControls zooms a perspective camera by moving it, so a centred
+          // recovery label can keep the same projected x/y while its distance
+          // changes. Force Drei to refresh the HTML scale on every requested
+          // demand frame, including the first committed recovery-label frame.
+          eps={-1}
           zIndexRange={[10, 0]}
           style={{ pointerEvents: 'none' }}
         >
+          {/*
+            THE WHOLE BLOCK SITS ABOVE THE ANCHOR. drei centres an `Html` on its
+            point, so half of a three-line label hung BELOW it — across the world's
+            own selection marker and over the top of the sphere. Translating by
+            half its own height puts its baseline on the standoff instead, which
+            is what the standoff was measured for.
+          */}
           <span
-            className="flex -translate-y-1 flex-col items-center whitespace-nowrap"
+            ref={(element) => {
+              boxes.current.set(node.id, element);
+            }}
+            className="flex -translate-y-1/2 flex-col items-center whitespace-nowrap"
             style={{ textShadow: '0 0 10px rgba(0,0,0,0.95)' }}
           >
-            <span className="flex items-center gap-1.5 text-[9px] font-semibold uppercase tracking-[0.16em]">
+            <span className="legend flex items-center gap-2">
               <span className={node.kind === 'CAPITAL' ? 'text-crystal' : node.kind === 'COLONY' ? 'text-opportunity' : 'text-dim'}>
                 {t(node.kind === 'CAPITAL'
                   ? 'galaxy.kindCapital'
@@ -540,23 +670,19 @@ function Labels({
                     ? 'galaxy.kindColony'
                     : 'galaxy.kindNeutral', { tier: node.neutralTier ?? 1 })}
               </span>
-              {node.isOwned && <span className="text-[#8fd6ea]">· {t('galaxy.owned')}</span>}
+              {node.isOwned && <span className="text-crystal">· {t('galaxy.owned')}</span>}
               {isRivalNode(node, rivalPlanetId, rivalPlayerId) && (
-                <span className="text-[#ff7854]">· {t('galaxy.rival')}</span>
+                <span className="text-alloy-glow">· {t('galaxy.rival')}</span>
               )}
-              {node.state?.kind === 'RECOVERY' && <span className="text-alert">· {t('galaxy.recovery')}</span>}
+              {node.state?.kind === 'RECOVERY' && <span className="text-threat-ink">· {t('galaxy.recovery')}</span>}
               {node.claimUntil && node.claimUntil.getTime() > serverNow() && (
                 <span className="text-opportunity">· {t('galaxy.claimOpen')}</span>
               )}
             </span>
-            <span className={`font-display text-[12px] uppercase tracking-[0.13em] ${
-              node.stance === 'window' ? 'text-opportunity' : 'text-bone'
-            }`}>
-              {node.name}
+            <span className={`name ${node.stance === 'window' ? 'text-opportunity' : 'text-bone'}`}>
+              {node.owner}
             </span>
-            {!node.isOwned && (
-              <span className="text-[9px] uppercase tracking-[0.1em] text-faint">{node.owner}</span>
-            )}
+            <span className="legend">{node.name}</span>
           </span>
         </Html>
       ))}
@@ -591,6 +717,7 @@ function Rig({
   focusKey,
   approach,
   openWide = false,
+  wideDistance,
 }: {
   home: [number, number, number];
   homeSignal: number;
@@ -623,12 +750,19 @@ function Rig({
    * gives that first instruction something to be.
    */
   openWide?: boolean;
+  /** The range an animated wide re-frame must reach, even when that means pulling back. */
+  wideDistance: number;
 }) {
   const ref = useRef<ComponentRef<typeof OrbitControls>>(null);
   const invalidate = useThree((state) => state.invalidate);
   const reducedMotion = useReducedMotionPreference();
-  /** Where the pivot is heading, how much ease is left, and how close to come. */
-  const ease = useRef<{ to: THREE.Vector3; left: number; pullTo: number | null } | null>(null);
+  /** Where the pivot is heading, how much ease is left, and how to frame it. */
+  const ease = useRef<{
+    to: THREE.Vector3;
+    left: number;
+    rangeTo: number | null;
+    exactRange: boolean;
+  } | null>(null);
 
   /**
    * The live getter, mirrored so the frame loop reads the current one WITHOUT the
@@ -665,11 +799,18 @@ function Rig({
   const previousFocusKey = useRef<string | null>(null);
   const [homeX, homeY, homeZ] = home;
 
-  const goTo = (x: number, y: number, z: number, pullTo: number | null = null): void => {
+  const goTo = (
+    x: number,
+    y: number,
+    z: number,
+    rangeTo: number | null = null,
+    exactRange = false,
+  ): void => {
     ease.current = {
       to: new THREE.Vector3(x, y, z),
       left: reducedMotion ? 0.001 : EASE,
-      pullTo,
+      rangeTo,
+      exactRange,
     };
     invalidate();
   };
@@ -718,22 +859,39 @@ function Rig({
     if (!controls) return;
     mode.current = 'manual';
     acquired.current = false;
-    if (homeSignal === 0) {
-      if (openWide) {
+    if (openWide) {
+      if (homeSignal === 0) {
         controls.target.set(0, 0, 0);
-        controls.object.position.set(0, DISC_RADIUS * 1.15, DISC_RADIUS * 1.75);
+        controls.object.position.set(
+          0,
+          wideDistance * (1.15 / WIDE_TILT),
+          wideDistance * (1.75 / WIDE_TILT),
+        );
         controls.update();
-        return;
+        // The scene renders on demand. `<Html distanceFactor>` measured the
+        // default camera on its first frame and otherwise kept that stale scale
+        // until the first gesture. Draw once more after the initial camera snap
+        // so world labels and WebGL start on the same projection.
+        invalidate();
+      } else {
+        // Returning to a wide tutorial beat must also be allowed to pull the
+        // camera OUT. Ordinary focus ranges are one-way so a deliberate close
+        // view is preserved; this is a scripted change of framing, not a focus.
+        goTo(0, 0, 0, wideDistance, true);
       }
-        controls.target.set(homeX, homeY, homeZ);
-        controls.object.position.set(homeX + 12, 16, homeZ + 20);
+      return;
+    }
+    if (homeSignal === 0) {
+      controls.target.set(homeX, homeY, homeZ);
+      controls.object.position.set(homeX + 12, 16, homeZ + 20);
       controls.update();
+      invalidate();
       return;
     }
     goTo(homeX, homeY, homeZ, HOME_DISTANCE);
     // Primitive coordinates are deliberate. `home` is rebuilt from every live
     // galaxy refetch; depending on the tuple identity made broadcasts press Home.
-  }, [homeX, homeY, homeZ, homeSignal, openWide]);
+  }, [homeX, homeY, homeZ, homeSignal, openWide, wideDistance]);
 
   useFrame((_, delta) => {
     const controls = ref.current;
@@ -811,18 +969,23 @@ function Rig({
     controls.object.position.add(controls.target.clone().sub(previous));
 
     /**
-     * And close the distance, on the same curve.
+     * And adjust the distance, on the same curve.
      *
      * Applied along the camera's own view vector, so the angle the player chose is
-     * untouched and only the range changes. One-way: if they are already closer
-     * than the approach distance, nothing happens — the rig never pushes a player
-     * back out of a view they went and got.
+     * untouched and only the range changes. Focus is one-way: if they are already
+     * closer than the approach distance, nothing happens. A scripted overview is
+     * exact and may pull back, because the wider composition is the instruction.
      */
-    if (move.pullTo !== null) {
+    if (move.rangeTo !== null) {
       const out = controls.object.position.clone().sub(controls.target);
       const range = out.length();
-      if (range > move.pullTo) {
-        const wanted = Math.max(move.pullTo, range + (move.pullTo - range) * Math.min(1, step));
+      if (move.exactRange || range > move.rangeTo) {
+        const wanted = easedCameraRange(
+          range,
+          move.rangeTo,
+          Math.min(1, step),
+          move.exactRange,
+        );
         controls.object.position.copy(
           controls.target.clone().add(out.setLength(wanted)),
         );
@@ -834,7 +997,11 @@ function Rig({
 
     move.left -= delta;
     if (move.left <= 0 || controls.target.distanceToSquared(move.to) < 0.0004) {
+      const out = controls.object.position.clone().sub(controls.target);
       controls.target.copy(move.to);
+      if (move.exactRange && move.rangeTo !== null && out.lengthSq() > 1e-10) {
+        controls.object.position.copy(controls.target.clone().add(out.setLength(move.rangeTo)));
+      }
       controls.update();
       ease.current = null;
     }

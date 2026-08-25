@@ -71,6 +71,7 @@ describe('the event stream', () => {
   });
 
   afterEach(() => {
+    Reflect.deleteProperty(document, 'visibilityState');
     vi.restoreAllMocks();
     vi.useRealTimers();
   });
@@ -148,6 +149,64 @@ describe('the event stream', () => {
     fire('shard:rollover');
     expect(onRollover).toHaveBeenCalledOnce();
     expect(asked).toEqual([]);
+  });
+
+  it('resyncs immediately when a suspended page is shown again', () => {
+    mount();
+    act(() => {
+      window.dispatchEvent(new Event('pageshow'));
+      vi.advanceTimersByTime(0);
+    });
+    expect(asked).toContain('traffic');
+    expect(asked).toContain('pending');
+    expect(asked).toContain('galaxy');
+  });
+
+  it('coalesces visible lifecycle edges and ignores them while hidden', () => {
+    mount();
+    Object.defineProperty(document, 'visibilityState', { configurable: true, value: 'hidden' });
+    act(() => {
+      window.dispatchEvent(new Event('focus'));
+      window.dispatchEvent(new Event('online'));
+      document.dispatchEvent(new Event('visibilitychange'));
+      vi.advanceTimersByTime(0);
+    });
+    expect(asked).toEqual([]);
+
+    Object.defineProperty(document, 'visibilityState', { configurable: true, value: 'visible' });
+    act(() => {
+      document.dispatchEvent(new Event('visibilitychange'));
+      window.dispatchEvent(new Event('focus'));
+      window.dispatchEvent(new Event('online'));
+      window.dispatchEvent(new Event('pageshow'));
+      vi.advanceTimersByTime(0);
+    });
+    expect(asked.filter((key) => key === 'planet')).toHaveLength(1);
+    expect(asked.filter((key) => key === 'traffic')).toHaveLength(1);
+    expect(asked.filter((key) => key === 'galaxy')).toHaveLength(1);
+  });
+
+  it('removes lifecycle listeners when the galaxy view unmounts', () => {
+    const view = mount();
+    view.unmount();
+    act(() => {
+      window.dispatchEvent(new Event('focus'));
+      window.dispatchEvent(new Event('online'));
+      window.dispatchEvent(new Event('pageshow'));
+      vi.advanceTimersByTime(0);
+    });
+    expect(asked).toEqual([]);
+  });
+
+  it('rechecks a new world after cross-replica caches have observed the commit', () => {
+    mount();
+    fire('shard:world');
+    act(() => { vi.advanceTimersByTime(COALESCE_MS); });
+    expect(asked.filter((key) => key === 'galaxy')).toHaveLength(1);
+
+    act(() => { vi.advanceTimersByTime(1500 - COALESCE_MS); });
+    expect(asked.filter((key) => key === 'galaxy')).toHaveLength(2);
+    expect(asked.filter((key) => key === 'leaderboard')).toHaveLength(2);
   });
 
   /* ── coming back after the channel was down ────────────────── */

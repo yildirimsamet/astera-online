@@ -13,6 +13,7 @@ export const chronicle = {
   launcherDeathStar: 'Death Star impact at {{planet}}',
   launcherControl: '{{planet}} changed control',
   list: 'Public events in this galaxy',
+  repeatCount: '{{count}} times',
   empty: 'The galaxy is quiet for now. The next launch may change that.',
   older: 'Load earlier events',
   loadingOlder: 'Reading earlier events',

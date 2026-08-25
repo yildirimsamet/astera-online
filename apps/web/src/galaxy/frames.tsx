@@ -160,6 +160,23 @@ export function useAmbientFrames(): void {
 }
 
 /**
+ * Draw once after a DOM-backed scene element has committed.
+ *
+ * Drei's `<Html distanceFactor>` learns its screen scale in a render frame. In a
+ * demand canvas, an HTML label that appears because fresh server state arrived
+ * can commit after the camera's last frame and keep its unprojected first size
+ * until the player touches the controls. Keying this hook to the mounted labels
+ * buys exactly the missing post-commit frame and nothing while they stay put.
+ */
+export function useCommittedDemandFrame(identity: string): void {
+  const invalidate = useThree((state) => state.invalidate);
+
+  useEffect(() => {
+    invalidate();
+  }, [identity, invalidate]);
+}
+
+/**
  * EVERY FRAME THE DISPLAY WILL GIVE, FOR AS LONG AS THIS IS MOUNTED.
  *
  * For the moments the ambient floor is far too slow for. The one that matters is

@@ -44,6 +44,7 @@ import { queuedCount, type RehearsalWorld } from './world.js';
 export type BeatId =
   | 'wide'
   | 'yours'
+  | 'briefing'
   | 'core'
   | 'refinery'
   | 'extractor'
@@ -155,6 +156,22 @@ export const BEATS: readonly Beat[] = [
   },
 
   /**
+   * THE FOUR MENUS, AS ONE PURPOSE.
+   *
+   * This is the missing sentence between finding a world and spending its stock:
+   * upgrades are not the game, they prepare information, protection and reach for
+   * the next irreversible fleet decision. It is a reading beat because no single
+   * tap can honestly demonstrate all four relationships.
+   */
+  {
+    id: 'briefing',
+    panel: 'planet',
+    group: 'grow',
+    gate: { kind: 'disc' },
+    worlds: () => () => false,
+  },
+
+  /**
    * The Core first, because nothing else can be. A new planet holds the Core and
    * the Refinery both at 1, so `1 >= 1` refuses the first upgrade a commander
    * reaches for — and being told why is the first rule of the game they learn.
@@ -165,8 +182,9 @@ export const BEATS: readonly Beat[] = [
     group: 'grow',
     gate: {
       kind: 'element',
-      selectors: ['#row-CORE [data-act]'],
-      lit: ['[data-tab="grow"]', '#row-CORE [data-act]'],
+      selectors: ['#row-CORE [data-open-item]', '[data-item-sheet] [data-sheet-panel]'],
+      lit: ['[data-tab="grow"]', '#row-CORE [data-open-item]', '[data-item-sheet] [data-act]'],
+      dim: false,
     },
     achieved: (s) => queuedCount(s.world, 'CONSTRUCTION', 'BUILDING', 'CORE') >= 1,
   },
@@ -176,8 +194,9 @@ export const BEATS: readonly Beat[] = [
     group: 'grow',
     gate: {
       kind: 'element',
-      selectors: ['#row-REFINERY [data-act]'],
-      lit: ['[data-tab="grow"]', '#row-REFINERY [data-act]'],
+      selectors: ['#row-REFINERY [data-open-item]', '[data-item-sheet] [data-sheet-panel]'],
+      lit: ['[data-tab="grow"]', '#row-REFINERY [data-open-item]', '[data-item-sheet] [data-act]'],
+      dim: false,
     },
     achieved: (s) => queuedCount(s.world, 'CONSTRUCTION', 'BUILDING', 'REFINERY') >= 1,
   },
@@ -188,8 +207,9 @@ export const BEATS: readonly Beat[] = [
     group: 'grow',
     gate: {
       kind: 'element',
-      selectors: ['#row-EXTRACTOR [data-act]'],
-      lit: ['[data-tab="grow"]', '#row-EXTRACTOR [data-act]'],
+      selectors: ['#row-EXTRACTOR [data-open-item]', '[data-item-sheet] [data-sheet-panel]'],
+      lit: ['[data-tab="grow"]', '#row-EXTRACTOR [data-open-item]', '[data-item-sheet] [data-act]'],
+      dim: false,
     },
     achieved: (s) => queuedCount(s.world, 'CONSTRUCTION', 'BUILDING', 'EXTRACTOR') >= 1,
   },
@@ -208,7 +228,7 @@ export const BEATS: readonly Beat[] = [
        * wrapper has no box of its own: its child is the sheet's `fixed inset-0`
        * root, and measuring the wrapper gives an empty rectangle.
        */
-      selectors: ['#row-WASP [data-act]', '[data-build-sheet] [data-sheet-panel]'],
+      selectors: ['#row-WASP [data-open-item]', '[data-build-sheet] [data-sheet-panel]'],
       /**
        * The light follows the DECISION rather than the surface: the tab, then the
        * row's control, then — once the sheet is up — the CEILING option, because
@@ -217,12 +237,13 @@ export const BEATS: readonly Beat[] = [
        */
       lit: [
         '[data-tab="reach"]',
-        '#row-WASP [data-act]',
+        '#row-WASP [data-open-item]',
         '[data-build-sheet] [data-count-max]',
         // Resolves only once the ceiling is chosen, which is what moves the light
         // from "how many" to "do it" without a second beat to carry the change.
         '[data-build-sheet] [data-commit][data-ready]',
       ],
+      dim: false,
     },
     achieved: (s) => queuedCount(s.world, 'YARD', 'HULL', 'WASP') >= OPENING_WASPS,
   },

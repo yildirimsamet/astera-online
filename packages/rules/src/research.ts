@@ -80,5 +80,9 @@ export function isotopeProfile(
     DEUTERIUM.isotopeCadence * DEUTERIUM.isotopeBonusCadence
   ) === bonusCycle * DEUTERIUM.isotopeCadence + bonusSlot;
   const rich = eligible && (primary || bonus);
-  return { rich, deuteriumShare: rich ? DEUTERIUM.isotopeShare : 0 };
+  const minPercent = Math.round(DEUTERIUM.isotopeShareMin * 100);
+  const maxPercent = Math.round(DEUTERIUM.isotopeShareMax * 100);
+  const concentration = minPercent
+    + isotopeHash(seed ^ 0xa341316c, asteroidIndex) % (maxPercent - minPercent + 1);
+  return { rich, deuteriumShare: rich ? concentration / 100 : 0 };
 }

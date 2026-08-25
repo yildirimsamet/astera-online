@@ -78,7 +78,7 @@ export function ClarityBars({ state }: { state: ClarityState }) {
       {[0, 1, 2, 3, 4].map((i) => (
         <span
           key={i}
-          className={`w-[3px] rounded-[1px] ${i < lit ? FILL[state] : 'bg-line'}`}
+          className={`w-[3px] rounded-cell ${i < lit ? FILL[state] : 'bg-line'}`}
           style={{ height: `${String(4 + i * 2)}px` }}
         />
       ))}
@@ -105,11 +105,11 @@ export function Reading({ status, staleMinutes, etaMinutes, state }: ReadingProp
   return (
     <span className="flex items-center gap-2">
       <ClarityBars state={state} />
-      <span className={`num text-[13px] tracking-wide ${TONE[state]}`}>
+      <span className={`num text-body tracking-wide ${TONE[state]}`}>
         {t(FLEET_WORD[status])}
       </span>
       {!unknown && (
-        <span className="num text-[11px] text-faint">
+        <span className="num text-label text-faint">
           {staleness(staleMinutes)}
           {etaMinutes !== null && t('clarity.backIn', { minutes: etaMinutes })}
         </span>
@@ -121,5 +121,5 @@ export function Reading({ status, staleMinutes, etaMinutes, state }: ReadingProp
 /** What a planet you have never pointed anything at looks like. */
 export function Unwatched() {
   const { t } = useTranslation();
-  return <span className="num text-[12px] text-faint">{t('clarity.unwatched')}</span>;
+  return <span className="num text-caption text-faint">{t('clarity.unwatched')}</span>;
 }

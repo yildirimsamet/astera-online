@@ -101,6 +101,7 @@ export const errors = {
   RESEARCH_UNAVAILABLE: 'That research is not available yet',
   RIVAL_NOT_VISIBLE: 'That world is not in your galaxy',
   RIVAL_SELF: 'You cannot mark your own world as a rival',
+  RIVAL_COMMITTED: 'Your first shared move fixed this Rival for the season',
   REHEARSAL_ONLY: 'Not until this world is yours',
   SEASON_ENDS_BEFORE_RETURN: 'That squadron cannot return before the season ends',
   SEASON_ENDS_BEFORE_BUILD: 'That order cannot finish before the season ends',

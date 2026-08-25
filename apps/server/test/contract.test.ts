@@ -833,6 +833,21 @@ describe('every payload the client parses', () => {
     // Every chain the rules declare is on the wire; a missing one is a card the
     // player can never see and progress that silently stops being counted.
     expect(parsed.chains).toHaveLength(REWARD_CHAINS.length);
+
+    /**
+     * AND EVERY CHAIN SAYS HOW LONG IT REMEMBERS. The card for the follow bonus
+     * reads `scope` to decide whether "Taken" means this galaxy or for ever, and
+     * the field is optional on the client so an older server costs one plain
+     * sentence rather than an empty panel — which is exactly the shape that could
+     * go dark without this line: the server could stop sending it, everything
+     * would parse, and the card would quietly start saying the wrong thing.
+     */
+    for (const chain of parsed.chains) {
+      expect(chain.scope, `${chain.id} sent no scope`).toBe(
+        REWARD_CHAINS.find((c) => c.id === chain.id)?.scope,
+      );
+    }
+    expect(parsed.chains.find((c) => c.id === 'SOCIAL')?.scope).toBe('account');
   });
 
   it('POST /api/rewards/claim parses, and carries the panel as well as the planet', async () => {

@@ -50,7 +50,7 @@ export const rewards = {
     AEGIS: { name: 'Aegis', tag: 'Dünyanın üstünde bir kalkan' },
     MINE: { name: 'Delinen asteroit', tag: 'Geçen bir kayaya yetiş' },
     SALVAGE: { name: 'Toplanan enkaz', tag: 'Savaştan kalanı al' },
-    SOCIAL: { name: '@JoinAstera hesabını takip et', tag: 'Komutan başına bir kez' },
+    SOCIAL: { name: '@JoinAstera hesabını takip et', tag: 'Hesap başına, bir kez' },
   },
 
   /**
@@ -69,5 +69,12 @@ export const rewards = {
     step3: 'Elle kontrol ediyoruz. Onayladığımız anda ödül burada seni bekliyor olacak.',
     pending: 'Mesajın bekleniyor',
     ready: 'Onaylandı; ödülünü al',
+    /**
+     * Bunu zaten almış oyuncu okur. "Alındı" demek yetmiyor: paneldeki diğer her
+     * kart bunu BU sezon için söyler ve yeni galakside hepsi geri gelir. Bu
+     * gelmez; kart da bunu açıkça söylüyor ki kimse zaten takip ettiği hesabı
+     * yeniden takip edip gelmeyecek bir onayı beklemesin.
+     */
+    forever: 'Ödendi. Bu bonusu hesap başına bir kez veriyoruz; yeni galakside geri gelmez.',
   },
 } as const;

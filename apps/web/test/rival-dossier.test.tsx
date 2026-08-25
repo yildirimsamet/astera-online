@@ -29,6 +29,7 @@ const intel: IntelView = {
 };
 const rival: RivalSummary = {
   planetId: target.id,
+  playerId: 'rival-player',
   battles: 4,
   attacks: 3,
   defences: 1,

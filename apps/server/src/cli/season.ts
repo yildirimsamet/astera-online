@@ -59,6 +59,11 @@ panel, so the resources arrive while they are looking at them and the ordinary
 claim path does the locking, the once-only key and the toast. Idempotent: running
 it twice for the same commander is a no-op and says so.
 
+ONCE PER PERSON, NOT ONCE PER SEASON. The grant is written against the ACCOUNT, so
+somebody who was paid in an earlier galaxy is reported as already holding it — and
+a commander between galaxies, with no world at all, can still be granted it ready
+for whichever one they join next.
+
 There is no HTTP route for this on purpose. An admin endpoint would put an admin
 credential in the environment of a public API for the sake of a few dozen manual
 grants a season; a command on a box only the operator can reach does the same job

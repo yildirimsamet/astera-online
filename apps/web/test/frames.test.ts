@@ -1,6 +1,12 @@
 import { act, renderHook } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { AMBIENT_FPS, FullRate, frameStride, useAmbientFrames } from '../src/galaxy/frames.js';
+import {
+  AMBIENT_FPS,
+  FullRate,
+  frameStride,
+  useAmbientFrames,
+  useCommittedDemandFrame,
+} from '../src/galaxy/frames.js';
 
 /**
  * `useAmbientFrames` reads one thing off the R3F store and nothing else, so the
@@ -13,11 +19,43 @@ let frameCallback: ((state: { invalidate: () => void }) => void) | null = null;
 
 vi.mock('@react-three/fiber', () => ({
   useThree: (select: (state: { invalidate: (frames?: number) => void }) => unknown) =>
-    select({ invalidate: (frames?: number) => { invalidate(frames); } }),
+    select({ invalidate }),
   useFrame: (cb: (state: { invalidate: () => void }) => void) => {
     frameCallback = cb;
   },
 }));
+
+describe('DOM-backed demand frames', () => {
+  afterEach(() => {
+    invalidate.mockClear();
+  });
+
+  it('draws after a recovery label joins the committed scene', () => {
+    const view = renderHook(
+      ({ labels }) => {
+        useCommittedDemandFrame(labels);
+      },
+      { initialProps: { labels: 'owned:NORMAL' } },
+    );
+    expect(invalidate).toHaveBeenCalledTimes(1);
+
+    view.rerender({ labels: 'owned:NORMAL|stranger:RECOVERY' });
+    expect(invalidate).toHaveBeenCalledTimes(2);
+  });
+
+  it('does not keep drawing while the label set stays unchanged', () => {
+    const view = renderHook(
+      ({ labels }) => {
+        useCommittedDemandFrame(labels);
+      },
+      { initialProps: { labels: 'stranger:RECOVERY' } },
+    );
+    expect(invalidate).toHaveBeenCalledTimes(1);
+
+    view.rerender({ labels: 'stranger:RECOVERY' });
+    expect(invalidate).toHaveBeenCalledTimes(1);
+  });
+});
 
 /**
  * WHO ASKS THE GALAXY TO DRAW ITSELF, AND HOW OFTEN. D53.

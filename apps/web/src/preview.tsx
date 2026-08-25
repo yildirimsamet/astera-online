@@ -8,7 +8,7 @@ import {
   Button,
   Chip,
   EmptyState,
-  Gauge,
+  Meter,
   GradeStamp,
   IconButton,
   Plate,
@@ -21,7 +21,7 @@ import {
   Stat,
 } from './ui/kit/index.js';
 import { instrumentArt, HULL_ART, planetArt, buildingArt, nextBuildingArt } from './ui/assets.js';
-import { Sheet } from './ui/Sheet.js';
+import { Sheet } from './ui/kit/index.js';
 import { UpgradeRow } from './ui/UpgradeRow.js';
 import './styles.css';
 
@@ -74,18 +74,18 @@ function LayoutChecks() {
     <>
       <section>
         <SectionHead label="Sheet · sticky child" aside="must not cover the header" />
-        <div className="relative h-[300px] overflow-hidden rounded border border-line-soft">
+        <div className="relative h-[300px] overflow-hidden rounded-chip border border-line-soft">
           <div className="absolute inset-0">
             <Sheet title="Marrow-81" eyebrow="Your planet" onClose={() => undefined}>
               <div className="sticky top-0 -mx-4 grid grid-cols-4 gap-1 border-y border-line-soft bg-deep/95 px-4 py-2">
                 {['Grow', 'See', 'Defend', 'Reach'].map((t) => (
-                  <span key={t} className="py-2 text-center font-display text-[11px] uppercase tracking-[0.14em] text-faint">
+                  <span key={t} className="legend py-2 text-center">
                     {t}
                   </span>
                 ))}
               </div>
               {Array.from({ length: 14 }, (_, i) => (
-                <p key={i} className="py-3 text-[13px] text-dim">
+                <p key={i} className="py-3 text-body text-dim">
                   Scroll me — row {String(i + 1)}
                 </p>
               ))}
@@ -130,7 +130,7 @@ function LayoutChecks() {
 
 function Preview() {
   return (
-    <div className="mx-auto max-w-[390px] space-y-7 px-4 py-6">
+    <div className="mx-auto max-w-[390px] space-y-8 px-4 py-6">
       <LayoutChecks />
 
       <section>
@@ -141,7 +141,7 @@ function Preview() {
               <span className="text-dim">
                 <Icon className="size-5" />
               </span>
-              <span className="text-[7px] text-faint">{name}</span>
+              <span className="text-micro text-faint">{name}</span>
             </div>
           ))}
         </Plate>
@@ -162,11 +162,11 @@ function Preview() {
         <SectionHead label="Hulls · silhouettes" aside="wasp ▸ bulwark ▸ lance" />
         <Plate className="flex items-end justify-around p-3">
           {(['WASP', 'LANCE', 'BULWARK', 'HAULER', 'BASTION'] as const).map((h) => (
-            <div key={h} className="flex flex-col items-center gap-1.5">
+            <div key={h} className="flex flex-col items-center gap-2">
               <span className="text-bone">
                 <HullMark hull={h} className="size-11" />
               </span>
-              <span className="text-[9px] text-faint">{h}</span>
+              <span className="text-micro text-faint">{h}</span>
             </div>
           ))}
         </Plate>
@@ -209,18 +209,18 @@ function Preview() {
       <section>
         <SectionHead label="Plates & tones" />
         <div className="space-y-2">
-          <Plate className="p-3.5" tone="threat">
+          <Plate className="p-4" tone="threat">
             <Chip tone="threat" icon={<I.IncomingIcon className="size-3" />}>
               Threat
             </Chip>
-            <p className="mt-2 text-[15px] text-bone">Nothing is defending this planet</p>
-            <p className="mt-1 text-[12px] text-dim">508 above your vault floor.</p>
+            <p className="mt-2 text-body text-bone">Nothing is defending this planet</p>
+            <p className="mt-1 text-caption text-dim">508 above your vault floor.</p>
           </Plate>
-          <Plate className="p-3.5" tone="opportunity">
+          <Plate className="p-4" tone="opportunity">
             <Chip tone="opportunity">Window</Chip>
-            <p className="mt-2 text-[15px] text-bone">KESTREL-0 has no fleet at home</p>
+            <p className="mt-2 text-body text-bone">KESTREL-0 has no fleet at home</p>
           </Plate>
-          <Plate cut className="p-3.5" tone="lit">
+          <Plate cut className="p-4" tone="lit">
             <p className="legend">Cut plate · accent only</p>
             <Readout size="lg" tone="crystal" glow>
               3,748
@@ -241,13 +241,13 @@ function Preview() {
 
       <section>
         <SectionHead label="Readings" />
-        <Plate className="space-y-3 p-3.5">
+        <Plate className="space-y-3 p-4">
           <div className="flex justify-between">
             <Stat label="Power" value="3,748" size="lg" />
             <Stat label="At risk" value="508" tone="threat" size="lg" align="right" />
           </div>
           <Progress have={390} need={620} label="saving for Vault L4" />
-          <Gauge value={9} cap={10} cells={12} tone="alloy" />
+          <Meter value={9} cap={10} cells={12} tone="alloy" />
           <div className="flex items-center gap-3">
             <span className="text-clarity-clear">
               <Bars lit={4} />

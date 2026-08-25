@@ -107,12 +107,12 @@ export function ClaimDialog({
         <p className="legend">
           {naming ? t('onboarding.claim.eyebrowName') : t('onboarding.claim.eyebrowPassword')}
         </p>
-        <h2 className="mt-2 font-display text-[22px] uppercase leading-tight tracking-[0.05em] text-bone">
+        <h2 className="headline text-figure mt-2 leading-tight text-bone">
           {naming
             ? t('onboarding.claim.headingName')
             : t('onboarding.claim.headingPassword', { name: planetName })}
         </h2>
-        <p className="mt-2 text-[13px] leading-snug text-dim">
+        <p className="mt-2 text-body leading-snug text-dim">
           {naming
             ? t('onboarding.claim.lineName', { name: planetName })
             : t('onboarding.claim.linePassword')}
@@ -171,7 +171,7 @@ export function ClaimDialog({
         )}
 
         {complaint !== undefined && (
-          <p className="mt-3 text-[13px] text-alert" role="alert">
+          <p className="mt-3 text-body text-threat-ink" role="alert">
             {complaint}
           </p>
         )}
@@ -187,7 +187,7 @@ export function ClaimDialog({
         <div className="mt-4 flex items-center justify-between gap-3">
           <button
             type="button"
-            className="text-[12px] text-faint underline-offset-4 hover:underline"
+            className="text-caption text-faint underline-offset-4 hover:underline"
             onClick={onSignIn}
           >
             {t('onboarding.haveAccount')}
@@ -195,7 +195,7 @@ export function ClaimDialog({
           {!naming && (
             <button
               type="button"
-              className="text-[12px] text-faint underline-offset-4 hover:underline"
+              className="text-caption text-faint underline-offset-4 hover:underline"
               onClick={() => {
                 setProblem(null);
                 setStep('name');

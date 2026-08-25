@@ -3,7 +3,16 @@ import { pino } from 'pino';
 import { afterAll, afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { eq } from 'drizzle-orm';
 import { DEBRIS, HULLS, fleetCount, type HullId } from '@astera/rules';
-import { accounts, battleReports, debrisFields, miningRuns, missions, planets, players } from '../src/db/schema.js';
+import {
+  accounts,
+  battleReports,
+  debrisFields,
+  miningRuns,
+  missions,
+  planets,
+  players,
+  strategicImpacts,
+} from '../src/db/schema.js';
 import { buildApp } from '../src/app.js';
 import { TokenService } from '../src/auth/tokens.js';
 import { launchAttack } from '../src/services/mission.js';
@@ -211,6 +220,30 @@ describe('battle reports', () => {
       dominionSwing: -50,
       createdAt: f.clock.now(),
     });
+    f.clock.advance(1);
+    const [strike] = await f.db.insert(missions).values({
+      seasonId: f.seasonId,
+      kind: 'death_star',
+      ownerPlayerId: f.playerIds[0]!,
+      status: 'resolved',
+      originPlanetId: mine,
+      targetPlanetId: theirs,
+      fleet: {},
+      distance: 100,
+      departAt: f.clock.now(),
+      arriveAt: f.clock.now(),
+    }).returning();
+    await f.db.insert(strategicImpacts).values({
+      seasonId: f.seasonId,
+      missionId: strike!.id,
+      attackerPlayerId: f.playerIds[0]!,
+      defenderPlayerId: f.playerIds[1]!,
+      targetPlanetId: theirs,
+      outcome: 'FIRST_STRIKE',
+      damage: 12_000,
+      destroyedFleet: { BASTION: 2 },
+      createdAt: f.clock.now(),
+    });
     const auth = { authorization: `Bearer ${await tokens.issueAccess(f.accountIds[0]!)}` };
     const body = (await app.inject({ method: 'GET', url: '/api/reports?limit=1', headers: auth })).json<{
       reports: ReportView[];
@@ -228,14 +261,15 @@ describe('battle reports', () => {
     expect(body.rivals).toEqual([
       expect.objectContaining({
         planetId: theirs,
-        battles: 2,
-        attacks: 2,
+        playerId: f.playerIds[1],
+        battles: 3,
+        attacks: 3,
         defences: 0,
         dominionGained: Math.max(0, firstBattle!.dominionSwing ?? 0),
         dominionLost: 50 + Math.max(0, -(firstBattle!.dominionSwing ?? 0)),
-        // The newest fight destroyed none of their ships, so the latest useful
-        // composition remains the earlier real battle rather than becoming empty.
-        lastKnownFleet: firstBattle!.defenderLosses,
+        // A strategic strike is also confirmed destruction and becomes the latest
+        // useful composition without inventing a conventional battle report.
+        lastKnownFleet: { BASTION: 2 },
       }),
     ]);
   });

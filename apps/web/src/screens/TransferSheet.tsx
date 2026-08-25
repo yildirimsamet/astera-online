@@ -16,7 +16,7 @@ import type { GalaxyPlanet, PlanetView } from '../api/schemas.js';
 import { hullName } from '../i18n/names.js';
 import { compact } from '../lib/format.js';
 import { duration } from '../lib/time.js';
-import { Sheet } from '../ui/Sheet.js';
+import { Button, Sheet } from '../ui/kit/index.js';
 import { describe, useToast } from '../ui/Toast.js';
 
 const MOVABLE = (Object.keys(HULLS) as HullId[]).filter((id) => !HULLS[id].ground);
@@ -93,9 +93,10 @@ export function TransferSheet({
       title={target.name}
       onClose={onClose}
       footer={(
-        <button
-          type="button"
-          className="btn btn-commit w-full text-[9px]"
+        <Button
+          variant="commit"
+          size="lg"
+          full
           disabled={!valid || transfer.isPending}
           onClick={() => { transfer.mutate({ targetPlanetId: target.id, fleet, cargo }, {
             onSuccess: () => {
@@ -106,19 +107,19 @@ export function TransferSheet({
           }); }}
         >
           {transfer.isPending ? t('transfer.sending') : t('transfer.commit')}
-        </button>
+        </Button>
       )}
     >
       <div className="grid grid-cols-2 gap-2 pt-4">
-        <p className="panel px-3 py-2 text-[12px] text-dim">
+        <p className="plate px-3 py-2 text-caption text-dim">
           {t('transfer.eta')} <strong className="text-bone">{eta > 0 ? duration(eta) : '—'}</strong>
         </p>
-        <p className="panel px-3 py-2 text-[12px] text-dim">
-          {t('transfer.capacity')} <strong className={loaded > capacity ? 'text-alert' : 'text-bone'}>{compact(loaded)} / {compact(capacity)}</strong>
+        <p className="plate px-3 py-2 text-caption text-dim">
+          {t('transfer.capacity')} <strong className={loaded > capacity ? 'text-threat-ink' : 'text-bone'}>{compact(loaded)} / {compact(capacity)}</strong>
         </p>
       </div>
       <h3 className="legend mt-4">{t('transfer.fleet')}</h3>
-      <p className="mt-1 text-[11px] text-dim">
+      <p className="mt-1 text-label text-dim">
         {t('transfer.homeDefence', {
           ships: fleetCount(remainingFleet) + fleetCount(planet.ground),
           power: compact(homeDefence),
@@ -126,27 +127,27 @@ export function TransferSheet({
       </p>
       <div className="mt-2 space-y-2">
         {MOVABLE.filter((id) => (planet.fleet[id] ?? 0) > 0).map((id) => (
-          <div key={id} className="flex min-h-12 items-center gap-3 rounded border border-line-soft px-3">
-            <span className="min-w-0 flex-1 text-[13px] text-bone">{hullName(id) ?? id}</span>
-            <span className="num text-[11px] text-dim">/{planet.fleet[id] ?? 0}</span>
-            <div className="flex items-center overflow-hidden rounded border border-line bg-deep">
+          <div key={id} className="flex min-h-12 items-center gap-3 rounded-chip border border-line-soft px-3">
+            <span className="min-w-0 flex-1 text-body text-bone">{hullName(id) ?? id}</span>
+            <span className="num text-label text-dim">/{planet.fleet[id] ?? 0}</span>
+            <div className="flex items-center overflow-hidden rounded-chip border border-line bg-deep">
               <button
                 type="button"
                 aria-label={t('launch.fewer', { name: hullName(id) ?? id })}
                 disabled={(fleet[id] ?? 0) <= 0}
                 onClick={() => { setShip(id, (fleet[id] ?? 0) - 1); }}
-                className="grid size-10 place-items-center text-lg text-dim enabled:hover:bg-white/5 enabled:hover:text-bone disabled:opacity-25"
+                className="grid size-10 place-items-center text-title text-dim enabled:hover:bg-white/5 enabled:hover:text-bone disabled:opacity-25"
               >−</button>
               <output
                 aria-live="polite"
-                className="num min-w-10 border-x border-line px-2 text-center text-[13px] text-bone"
+                className="num min-w-10 border-x border-line px-2 text-center text-body text-bone"
               >{fleet[id] ?? 0}</output>
               <button
                 type="button"
                 aria-label={t('launch.more', { name: hullName(id) ?? id })}
                 disabled={(fleet[id] ?? 0) >= (planet.fleet[id] ?? 0)}
                 onClick={() => { setShip(id, (fleet[id] ?? 0) + 1); }}
-                className="grid size-10 place-items-center text-lg text-dim enabled:hover:bg-white/5 enabled:hover:text-bone disabled:opacity-25"
+                className="grid size-10 place-items-center text-title text-dim enabled:hover:bg-white/5 enabled:hover:text-bone disabled:opacity-25"
               >+</button>
             </div>
           </div>
@@ -160,12 +161,12 @@ export function TransferSheet({
           const max = Math.max(0, Math.floor(Math.min(stock, capacity - otherCargo)));
           const fill = max > 0 ? Math.min(100, (cargo[resource] / max) * 100) : 0;
           return (
-          <label key={resource} className="block rounded border border-line-soft bg-deep/55 px-3 py-2.5">
+          <label key={resource} className="block rounded-chip border border-line-soft bg-deep/55 px-3 py-3">
             <span className="flex items-baseline justify-between gap-3">
-              <span className="text-[10px] uppercase tracking-wide text-dim">
+              <span className="legend text-dim">
                 {t(`transfer.${resource}`)}
               </span>
-              <span className="num text-[12px] text-bone">
+              <span className="num text-caption text-bone">
                 {compact(cargo[resource])} <span className="text-faint">/ {compact(stock)}</span>
               </span>
             </span>
@@ -179,14 +180,14 @@ export function TransferSheet({
                 const value = Math.max(0, Math.floor(event.currentTarget.valueAsNumber || 0));
                 setCargo((current) => ({ ...current, [resource]: value }));
               }}
-              style={{ '--cargo-fill': `${String(fill)}%` } as CSSProperties}
-              className={`transfer-cargo-slider transfer-cargo-${resource} mt-2 w-full`}
+              style={{ '--slider-fill': `${String(fill)}%` } as CSSProperties}
+              className={`slider slider-${resource} mt-2 w-full`}
             />
           </label>
           );
         })}
       </div>
-      <p className="mt-3 text-[12px] text-dim">{t('transfer.irreversible')}</p>
+      <p className="mt-3 text-caption text-dim">{t('transfer.irreversible')}</p>
     </Sheet>
   );
 }

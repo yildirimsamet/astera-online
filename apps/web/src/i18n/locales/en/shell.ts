@@ -24,7 +24,7 @@ export const statusBar = {
   menuWaiting: '{{count}} rewards waiting',
   bays: {
     hint: '{{used}} of {{total}} flight bays in use',
-    label: 'In flight',
+    label: 'Bays',
     free: '{{count}} free',
   },
   works: {
@@ -42,6 +42,10 @@ export const statusBar = {
 
 export const pendingStrip = {
   empty: 'Nothing in flight',
+  openFlights: 'Open flights',
+  sheetEyebrow: 'Your airborne craft',
+  sheetTitle: 'In flight',
+  sheetEmpty: 'Nothing is airborne yet.',
   incoming: 'Inbound fleet',
   probe: 'Your probe → {{target}}',
   deathStar: 'Your Death Star → {{target}}',
@@ -53,6 +57,13 @@ export const pendingStrip = {
   returnLeg: 'Return',
   engaging: 'Engaging',
   more: '+{{count}}',
+  drillOut: 'Your drills → asteroid {{index}}',
+  drillHome: 'Your drills returning home',
+  salvageOut: 'Your drills → wreckage',
+  drillCount: '{{count}} Prospectors',
+  craftCount: '{{count}} craft',
+  craftUnknown: 'Craft manifest unavailable',
+  incomingHint: 'Inbound warning · origin hidden by fog',
 } as const;
 
 export const signals = {
@@ -136,6 +147,8 @@ export const menu = {
   soundLabel: 'Sound',
   soundOn: 'The score is playing.',
   soundOff: 'Silenced on this device.',
+  volumeLabel: 'Music volume',
+  volumeValue: '{{volume}}%',
 } as const;
 
 export const leaderboard = {

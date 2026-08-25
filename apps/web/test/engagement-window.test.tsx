@@ -1,7 +1,7 @@
 import { act, renderHook } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { engagementEndsAt } from '@astera/rules';
-import { useEngagement } from '../src/galaxy/Fleets.js';
+import { useEngagement, useStrikeConsumed } from '../src/galaxy/Fleets.js';
 import { resetClock } from '../src/lib/clock.js';
 
 /**
@@ -51,6 +51,64 @@ describe('the engagement window', () => {
       vi.advanceTimersByTime(engagementEndsAt(arriveAt) - arriveAt);
     });
     expect(result.current, 'the volley never stopped').toBe(false);
+  });
+
+  /**
+   * THE WEAPON IS THE EXPLOSION, SO THERE IS NOTHING LEFT TO DRAW. Owner
+   * instruction, after watching a strike land: *"hedefe vardı, patlama gösterildi,
+   * ama füze yok olmuyor, gezegenin üstünde 5-10 saniye öylece bekliyor."*
+   *
+   * Two payloads keep a Death Star on screen past its own detonation and both are
+   * correct: the attacker's mission is only resolved on the worker's next tick, and
+   * the finished mission is republished to the galaxy for the length of the effect
+   * so a client that was elsewhere can still play it. What was missing was the rule
+   * about what that means, and this is it.
+   */
+  describe('a strike that has landed', () => {
+    it('takes the craft off the disc on the instant, and leaves it off', () => {
+      const at = NOW + 20_000;
+      const { result } = renderHook(() => useStrikeConsumed(at));
+      expect(result.current).toBe(false);
+
+      act(() => {
+        vi.advanceTimersByTime(20_001);
+      });
+      expect(result.current, 'the weapon outlived its own explosion').toBe(true);
+
+      act(() => {
+        vi.advanceTimersByTime(60_000);
+      });
+      expect(result.current).toBe(true);
+    });
+
+    it('is already spent when a client arrives after the strike', () => {
+      const { result } = renderHook(() => useStrikeConsumed(NOW - 1_000));
+      expect(result.current).toBe(true);
+    });
+
+    /** Nothing to be spent by: an ordinary craft has no strike instant at all. */
+    it('leaves every other craft alone', () => {
+      const { result } = renderHook(() => useStrikeConsumed(null));
+      expect(result.current).toBe(false);
+    });
+
+    /**
+     * A tab whose timers were throttled through the whole strike. The clock is the
+     * authority; coming back to the front is when it gets read again.
+     */
+    it('catches up on a tab that was in the background for the strike', () => {
+      const at = NOW + 20_000;
+      const { result } = renderHook(() => useStrikeConsumed(at));
+      expect(result.current).toBe(false);
+
+      act(() => {
+        // Time passes without a single timer firing, which is what a throttled tab
+        // looks like from the inside.
+        vi.setSystemTime(at + 5_000);
+        document.dispatchEvent(new Event('visibilitychange'));
+      });
+      expect(result.current).toBe(true);
+    });
   });
 
   it('is already open when it mounts inside the window', () => {

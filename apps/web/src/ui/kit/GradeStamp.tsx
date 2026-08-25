@@ -26,18 +26,24 @@ export function GradeStamp({
 }) {
   const tone = favourable
     ? { text: 'text-opportunity', edge: 'rgb(111 245 182 / 55%)', wash: 'rgb(90 211 155 / 12%)' }
-    : { text: 'text-threat', edge: 'rgb(255 106 77 / 55%)', wash: 'rgb(226 65 44 / 14%)' };
+    : { text: 'text-threat-ink', edge: 'rgb(255 106 77 / 55%)', wash: 'rgb(226 65 44 / 14%)' };
 
+  /*
+    THE WEIGHT COMES FROM THE PLATE, NOT FROM A HEAVIER FACE. This was the one
+    `font-extrabold` in the interface — a fourth weight beside 400, 600 and 700 —
+    and the struck corner, the lit edge and the wash were already doing the work
+    it was there for.
+  */
   const box =
     size === 'sm'
-      ? 'text-[9px] px-2 py-1 tracking-[0.16em]'
+      ? 'text-micro px-2 py-1'
       : size === 'lg'
-        ? 'text-[15px] px-4 py-2 tracking-[0.22em]'
-        : 'text-[11px] px-3 py-1.5 tracking-[0.2em]';
+        ? 'text-body px-4 py-2'
+        : 'text-label px-3 py-2';
 
   return (
     <span
-      className={`inline-flex items-center font-display font-extrabold uppercase ${tone.text} ${box}`}
+      className={`headline inline-flex items-center ${tone.text} ${box}`}
       style={{
         // A struck corner on the leading edge only — a stamp pressed at an angle,
         // not a symmetrical badge.

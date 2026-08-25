@@ -12,6 +12,8 @@ import { LoadingScreen } from './shell/LoadingScreen.js';
 import { StatusBar } from './shell/StatusBar.js';
 import { useAmbientMusic } from './lib/music.js';
 import { WorldProvider } from './api/world.js';
+import { Button } from './ui/kit/index.js';
+import type { CraftFocus } from './galaxy/ownCraft.js';
 
 /**
  * THREE SCREENS, ONE OF WHICH IS THE GAME.
@@ -84,6 +86,7 @@ export function App() {
 
   const [panel, setPanel] = useState<Panel>(null);
   const [planetFocus, setPlanetFocus] = useState<{ planetId: string; request: number } | null>(null);
+  const [craftFocus, setCraftFocus] = useState<{ focus: CraftFocus; request: number } | null>(null);
   const focusPlanet = (planetId: string): void => {
     setPanel(null);
     setPlanetFocus((current) => ({ planetId, request: (current?.request ?? 0) + 1 }));
@@ -150,10 +153,8 @@ export function App() {
     return (
       <main className="flex min-h-dvh flex-col items-center justify-center gap-4 px-8 text-center">
         <p className="legend">{t('app.blockedTitle')}</p>
-        <p className="text-[15px] text-dim">{session.message}</p>
-        <button type="button" className="btn" onClick={retry}>
-          {t('app.blockedRetry')}
-        </button>
+        <p className="text-body text-dim">{session.message}</p>
+        <Button onClick={retry}>{t('app.blockedRetry')}</Button>
       </main>
     );
   }
@@ -168,6 +169,7 @@ export function App() {
           panel={panel}
           onPanel={setPanel}
           focusRequest={planetFocus}
+          craftFocusRequest={craftFocus}
           commander={session.me.displayName}
           pastResult={session.me.latestResult}
           onSignOut={() => {
@@ -178,7 +180,12 @@ export function App() {
       </main>
 
       <div className="shrink-0">
-        <PendingStrip />
+        <PendingStrip
+          onFocus={(focus) => {
+            setPanel(null);
+            setCraftFocus((current) => ({ focus, request: (current?.request ?? 0) + 1 }));
+          }}
+        />
       </div>
     </div>
     </WorldProvider>

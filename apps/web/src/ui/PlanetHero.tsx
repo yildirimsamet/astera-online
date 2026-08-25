@@ -7,7 +7,7 @@ import { compact, full } from '../lib/format.js';
 import { powerOf } from '../lib/gains.js';
 import { countdown, useNow } from '../lib/time.js';
 import { SATELLITE_ART, RESOURCE_ART } from './assets.js';
-import { Meter } from './Meter.js';
+import { Meter } from './kit/index.js';
 import { PlanetSigil } from './PlanetSigil.js';
 
 /**
@@ -52,10 +52,22 @@ export function PlanetHero({
 
   if (compactMode) {
     return (
-      <div className="mb-5">
+      <div className="flex flex-col gap-3">
+        {/*
+          THE KIND LEADS; THE NAME CONFIRMS.
+
+          The sheet above already states the world in its eyebrow and the
+          commander in its title, and this block used to repeat the world's name
+          two hundred and fifty pixels below at a LARGER size — the same word
+          twice in one glance, at two different hierarchy levels, with the bigger
+          one being the thing a commander cannot fail to know. The name stays,
+          because a planet surface that does not name its planet is worse; what
+          changes is which half is loud. CAPITAL WORLD is what the header does
+          not say.
+        */}
         <div
           data-planet-subject
-          className="mb-2 flex items-center gap-3 border-b border-line-soft pb-2"
+          className="flex items-center gap-3 border-b border-line-soft pb-3"
         >
           <div className="relative grid size-20 shrink-0 place-items-center" aria-hidden>
             <span
@@ -72,14 +84,10 @@ export function PlanetHero({
             />
           </div>
           <div className="min-w-0">
-            <p className={`text-[11px] font-semibold uppercase tracking-[0.14em] ${
-              planet.planet.kind === 'COLONY' ? 'text-opportunity' : 'text-crystal'
-            }`}>
+            <p className={`name truncate ${ planet.planet.kind === 'COLONY' ? 'text-opportunity' : 'text-crystal' }`}>
               {t(planet.planet.kind === 'COLONY' ? 'planetHero.colony' : 'planetHero.capital')}
             </p>
-            <p className="mt-1 truncate font-display text-[16px] uppercase tracking-wide text-bone">
-              {planet.planet.name}
-            </p>
+            <p className="legend mt-1 truncate">{planet.planet.name}</p>
           </div>
         </div>
         <Readouts planet={planet} />
@@ -90,7 +98,7 @@ export function PlanetHero({
   }
 
   return (
-    <div className="mb-5">
+    <div className="flex flex-col gap-3">
       {/*
         Side by side rather than stacked.
         A full-width portrait with the numbers underneath pushed every actual
@@ -132,17 +140,15 @@ export function PlanetHero({
         </div>
 
         <div className="min-w-0 flex-1">
-          <p className={`mb-1 text-[9px] font-semibold uppercase tracking-[0.18em] ${
-            planet.planet.kind === 'COLONY' ? 'text-opportunity' : 'text-crystal'
-          }`}>
+          <p className={`legend mb-1 ${ planet.planet.kind === 'COLONY' ? 'text-opportunity' : 'text-crystal' }`}>
             {t(planet.planet.kind === 'COLONY' ? 'planetHero.colony' : 'planetHero.capital')}
           </p>
-          <h1 className="font-display text-[20px] uppercase leading-tight tracking-[0.06em] text-bone">
+          <h1 className="headline text-figure leading-tight text-bone">
             {planet.planet.name}
           </h1>
-          <div className="frame mt-2 px-3 py-2">
+          <div className="plate plate-inset mt-2 px-3 py-2">
             <p className="legend">{t('planetHero.power')}</p>
-            <p className="readout mt-1 text-[24px] text-bone">{full(powerOf(planet))}</p>
+            <p className="readout mt-1 text-figure text-bone">{full(powerOf(planet))}</p>
           </div>
           <div className="mt-2 flex gap-3">
             <Rate art={RESOURCE_ART.alloy} value={planet.planet.alloyPerHour} tone="text-alloy" />
@@ -171,14 +177,14 @@ export function PlanetHero({
 function Readouts({ planet }: { planet: PlanetView }) {
   const { t } = useTranslation();
   return (
-    <div className="mt-2 flex items-stretch gap-2">
-      <div className="frame flex-1 px-3.5 py-2.5">
+    <div className="flex items-stretch gap-2">
+      <div className="plate plate-inset flex-1 px-3 py-3">
         <p className="legend">{t('planetHero.power')}</p>
-        <p className="readout mt-1.5 text-[26px] text-bone">{full(powerOf(planet))}</p>
+        <p className="readout mt-2 text-readout text-bone">{full(powerOf(planet))}</p>
       </div>
-      <div className="frame w-[142px] px-3.5 py-2.5">
+      <div className="plate plate-inset w-[142px] px-3 py-3">
         <p className="legend">{t('planetHero.perHour')}</p>
-        <div className="mt-1.5 space-y-1">
+        <div className="mt-2 space-y-1">
           <Rate art={RESOURCE_ART.alloy} value={planet.planet.alloyPerHour} tone="text-alloy" />
           <Rate
             art={RESOURCE_ART.crystal}
@@ -194,7 +200,7 @@ function Readouts({ planet }: { planet: PlanetView }) {
 function Disrupted({ ms }: { ms: number }) {
   const { t } = useTranslation();
   return (
-    <p className="num mt-2.5 rounded border border-threat/40 bg-threat/10 px-3 py-2 text-center text-[12px] text-[#ff9d8f]">
+    <p className="num mt-3 rounded-chip border border-threat/40 bg-threat/10 px-3 py-2 text-center text-caption text-threat-ink">
       {t('planetHero.disrupted', { countdown: countdown(ms) })}
     </p>
   );
@@ -216,7 +222,7 @@ function Verdicts({
   const shieldMax = planet.planet.shieldMax;
   const shieldShare = shieldMax > 0 ? shield / shieldMax : 0;
   return (
-    <div className="mt-2 grid grid-cols-2 gap-2">
+    <div className="grid grid-cols-2 gap-2">
       <Verdict
         label={t('planetHero.defence')}
         value={
@@ -231,7 +237,7 @@ function Verdicts({
             ? t('planetHero.defenceShipsOnly', { count: home })
             : t('planetHero.defenceOnGround', { count: ground })
         }
-        tone={ground === 0 ? 'bad' : ground < 5 ? 'warn' : 'good'}
+        tone={ground === 0 ? 'gap' : ground < 5 ? 'warn' : 'good'}
       />
       <Verdict
         label={t('planetHero.shield')}
@@ -243,7 +249,7 @@ function Verdicts({
         detail={
           shieldMax > 0
             ? (
-                <div className="mt-1.5">
+                <div className="mt-2">
                   <Meter
                     value={shield}
                     cap={shieldMax}
@@ -251,14 +257,14 @@ function Verdicts({
                     cells={8}
                     label={t('planetHero.shieldMeter')}
                   />
-                  <p className="mt-1 text-[10px] text-faint">
+                  <p className="mt-1 text-micro text-faint">
                     {t('planetHero.shieldRegen', { amount: compact(planet.planet.shieldPerHour) })}
                   </p>
                 </div>
               )
             : t('planetHero.shieldNoAegis')
         }
-        tone={shieldMax === 0 ? 'neutral' : shieldShare < 0.35 ? 'warn' : 'good'}
+        tone={shieldMax === 0 ? 'gap' : shieldShare < 0.35 ? 'warn' : 'good'}
       />
       <VaultVerdict
         planet={planet}
@@ -278,26 +284,36 @@ function VaultVerdict({ planet, exposed }: { planet: PlanetView; exposed: number
   ] as const;
 
   return (
-    <div className="frame col-span-2 px-2.5 py-2">
+    <div className="plate plate-inset col-span-2 flex flex-col gap-2 px-3 py-3">
+      {/*
+        ONE HEADING, ONE MEANING — AND THE SENTENCE IS GONE.
+
+        The header read "VAULT · SAFE" on the left and "463 exposed" on the right,
+        two opposite claims sharing one line, and under the figures sat "A raid
+        cannot touch these amounts", which is the left half of that header said
+        again in words. Three statements of one fact.
+
+        What is left says the fact once and shows the OTHER half beside it: this
+        much is safe, that much is not. Two figures, one rule, no prose.
+      */}
       <div className="flex items-baseline justify-between gap-3">
-        <p className="legend">{t('planetHero.vault')}</p>
-        <p className={`num text-[11px] ${exposed > 0 ? 'text-alloy' : 'text-opportunity'}`}>
+        <p className="legend">{t('planetHero.vaultSafe')}</p>
+        <p className={`num text-label ${exposed > 0 ? 'text-alloy' : 'text-opportunity'}`}>
           {t('planetHero.atRiskValue', { amount: compact(exposed) })}
         </p>
       </div>
-      <div className="mt-2 grid grid-cols-3 gap-1.5">
+      <div className="grid grid-cols-3 gap-2">
         {resources.map(({ id, amount, tone }) => (
           <div
             key={id}
-            className="flex min-w-0 items-center gap-1.5 rounded-sm border border-line-soft bg-void/35 px-2 py-1.5"
+            className="plate plate-sunk flex min-w-0 items-center gap-2 rounded-chip px-2 py-2"
             aria-label={t(`planetHero.${id}Safe`, { amount: full(amount) })}
           >
             <img src={RESOURCE_ART[id]} alt="" aria-hidden className="size-4 shrink-0 object-contain" />
-            <span className={`num truncate text-[12px] ${tone}`}>{compact(amount)}</span>
+            <span className={`num truncate text-caption ${tone}`}>{compact(amount)}</span>
           </div>
         ))}
       </div>
-      <p className="mt-1.5 text-[10px] text-faint">{t('planetHero.vaultProtected')}</p>
     </div>
   );
 }
@@ -305,16 +321,29 @@ function VaultVerdict({ planet, exposed }: { planet: PlanetView; exposed: number
 function Rate({ art, value, tone }: { art: string; value: number; tone: string }) {
   const { t } = useTranslation();
   return (
-    <p className={`num flex items-center gap-1.5 text-[14px] ${tone}`}>
+    <p className={`num flex items-center gap-2 text-body ${tone}`}>
       <img src={art} alt="" aria-hidden className="size-4 object-contain" />
       {compact(value)}
-      <span className="text-[10px] text-faint">{t('planetHero.perHourSuffix')}</span>
+      <span className="text-micro text-faint">{t('planetHero.perHourSuffix')}</span>
     </p>
   );
 }
 
+/**
+ * A GAP IS AMBER; RED IS SOMETHING HAPPENING TO YOU.
+ *
+ * DEFENCE and SHIELD sat side by side, both reading "None", and one was red while
+ * the other was bone. Two adjacent cards saying the same word in two colours
+ * teaches that one absence is dangerous and the other is normal, which is not
+ * true of either. `interface.md` I0 also reserves threat red for an attack,
+ * disruption or recovery — a system you have not built yet is none of those.
+ *
+ * So there are three readings and each means one thing: a GAP to close, a system
+ * that is thin, and a system that is holding. Red belongs to `Disrupted`, and to
+ * the raid that earns it.
+ */
 const TONE = {
-  bad: 'text-[#ff9d8f]',
+  gap: 'text-alloy',
   warn: 'text-alloy',
   good: 'text-opportunity',
   neutral: 'text-dim',
@@ -332,11 +361,11 @@ function Verdict({
   tone: keyof typeof TONE;
 }) {
   return (
-    <div className="frame px-2.5 py-2">
+    <div className="plate plate-inset px-3 py-2">
       <p className="legend">{label}</p>
-      <p className={`readout mt-1.5 text-[17px] ${TONE[tone]}`}>{value}</p>
+      <p className={`readout mt-2 text-title ${TONE[tone]}`}>{value}</p>
       {typeof detail === 'string'
-        ? <p className="num mt-1 text-[10px] text-faint">{detail}</p>
+        ? <p className="num mt-1 text-micro text-faint">{detail}</p>
         : detail}
     </div>
   );

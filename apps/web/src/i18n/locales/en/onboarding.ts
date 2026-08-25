@@ -13,16 +13,26 @@ export const onboarding = {
   beats: {
     wide: {
       title: '{{shard}}',
-      line: '{{planets}} of {{capacity}} commander seats are taken, by people. Everything moving out there is real, and it is happening now.',
+      line: 'Real people play in this galaxy. Every planet is a player’s home. The ships you see are their real fleets.',
       action: 'Show me my world',
     },
     yours: {
-      title: 'One world is yours',
-      line: '{{name}}, held for you. Tap it.',
+      title: 'This planet is yours',
+      line: '{{name}} is your safe home planet. Here you make resources, study rivals, build defences and make ships. Tap your planet.',
+    },
+    briefing: {
+      title: 'The game has four steps',
+      line: 'First, make resources. Then study rivals. Protect your planet. When you are ready, send your ships. Every upgrade makes one of these jobs stronger.',
+      action: 'Take the first step',
+      mapGrow: 'Make',
+      mapIntel: 'See',
+      mapDefend: 'Protect',
+      mapReach: 'Send',
+      mapOutcome: 'Learn · decide · send',
     },
     fog: {
-      title: 'So what is on the others?',
-      line: 'Tap anybody else. You get a name and how far they have built — never what they are holding. They cannot see yours either.',
+      title: 'Learn first, risk later',
+      line: 'Tap another planet. You can see its level, but not its resources, ships or defences. Gather information first. Then decide if you should attack.',
     },
     fogAlone: {
       title: 'Nobody else is here yet',
@@ -30,20 +40,20 @@ export const onboarding = {
       action: 'Understood',
     },
     core: {
-      title: '{{alloy}} alloy, {{crystal}} crystal',
-      line: 'That is the whole budget. Queue the Command Core first — nothing may stand higher, and the next order will inherit its new ceiling.',
+      title: 'Raise the level limit first',
+      line: 'The Command Core sets how high your other buildings can go. Tap its row. See what level 2 gives and costs, then add it to the queue.',
     },
     refinery: {
-      title: 'Now the Refinery',
-      line: 'The Core is ahead in the queue, so this order may use its new ceiling. The Refinery is what makes alloy.',
+      title: 'Make more alloy',
+      line: 'The Refinery makes alloy every hour. You use alloy for most buildings and ships. Tap its row and queue level 2.',
     },
     extractor: {
-      title: 'And the Crystal Extractor',
-      line: 'The third one. Watch the crystal as you buy it.',
+      title: 'Now make crystal',
+      line: 'The Extractor makes crystal every hour. Strong ships and intel tools need crystal. Tap its row and queue level 2.',
     },
     fleet: {
-      title: 'Your crystal is gone. Exactly.',
-      line: 'That is not a coincidence — the grant is three upgrades and two ships, to the unit. Queue BOTH {{ship}}s with what is left.',
+      title: 'Now make two ships',
+      line: 'Open the {{ship}} row under Fleet. Choose Max and queue both ships. You will use these fast ships to scout rivals or attack them.',
     },
   },
 

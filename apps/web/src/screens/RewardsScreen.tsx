@@ -144,7 +144,7 @@ export function RewardsScreen({ commander }: { commander: string }) {
 
   return (
     <div className="flex flex-col gap-4 pb-6 pt-3">
-      <p className="text-[13px] leading-relaxed text-dim">{t('rewards.intro')}</p>
+      <p className="text-body leading-relaxed text-dim">{t('rewards.intro')}</p>
 
       {/*
         NO SECOND HEADING HERE. The sheet's own eyebrow already says STANDING
@@ -167,13 +167,13 @@ export function RewardsScreen({ commander }: { commander: string }) {
         A standing warning about a state nobody is in is noise.
       */}
       {overflowing && (
-        <p className="rounded border border-alloy/40 bg-alloy/10 px-3 py-2 text-[12px] leading-relaxed text-alloy">
+        <p className="rounded-chip border border-alloy/40 bg-alloy/10 px-3 py-2 text-caption leading-relaxed text-alloy">
           {t('rewards.overCap')}
         </p>
       )}
 
       {data.claimable > 0 && (
-        <p className="flex items-center gap-2.5">
+        <p className="flex items-center gap-3">
           <span className="rail-soft flex-1" />
           <span className="num shrink-0 text-micro text-opportunity">
             {t('rewards.waiting', { count: data.claimable })}
@@ -262,9 +262,9 @@ function GoalCard({
 
   return (
     <Plate as="li" tone={waiting ? 'opportunity' : 'neutral'} className="px-3 py-3">
-      <div className="flex items-start gap-2.5">
+      <div className="flex items-start gap-3">
         <span
-          className={`socket grid size-9 shrink-0 place-items-center rounded-md ${
+          className={`socket grid size-9 shrink-0 place-items-center rounded-control ${
             waiting ? 'text-opportunity' : done ? 'text-faint' : 'text-dim'
           }`}
         >
@@ -273,7 +273,7 @@ function GoalCard({
 
         <div className="min-w-0 flex-1">
           <div className="flex items-baseline gap-2">
-            <p className="min-w-0 flex-1 truncate font-display text-[13px] font-semibold uppercase tracking-[0.04em] text-bone">
+            <p className="name min-w-0 flex-1 truncate text-bone">
               {t(`rewards.chains.${chain.id}.name` as 'rewards.chains.PROBE.name')}
             </p>
             <span
@@ -282,13 +282,13 @@ function GoalCard({
               {standing}
             </span>
           </div>
-          <p className="mt-0.5 text-[11px] leading-snug text-faint">
+          <p className="mt-1 text-label leading-snug text-faint">
             {t(`rewards.chains.${chain.id}.tag` as 'rewards.chains.PROBE.tag')}
           </p>
         </div>
       </div>
 
-      <ul className="mt-2.5 flex flex-col gap-1.5">
+      <ul className="mt-3 flex flex-col gap-2">
         {chain.tiers.map((tier) => (
           <TierRow
             key={tier.id}
@@ -327,6 +327,19 @@ function GoalCard({
  *     PLANET's name would have every player send a string the grant can never
  *     find, and the operator would be told no such commander exists while looking
  *     at their message.
+ *   · IT IS PAID ONCE PER ACCOUNT, FOR EVER, and this is the only card in the
+ *     panel where "Taken" is not a statement about the current season. Owner
+ *     instruction: *"twitter takip bonusu kişiye 1 kez verilebilmeli. her sezon
+ *     her sezon alamaz."* The server is what enforces it — the grant is keyed on
+ *     the account, so the tier simply never comes back as claimable — and this
+ *     card's job is to say so, because a commander who reads the ordinary "Taken"
+ *     on a fresh galaxy would reasonably follow the account again and wait for a
+ *     reply that is never going to pay.
+ *
+ * THE INSTRUCTIONS COME DOWN ONCE THE BONUS IS TAKEN, whichever scope it had.
+ * Three numbered steps and a button to another site are a thing to DO; leaving
+ * them under a reward that has already been paid is the panel asking for work it
+ * has already been given.
  */
 function SocialCard({
   chain,
@@ -345,13 +358,15 @@ function SocialCard({
 
   const ready = tier.state === 'claimable';
   const taken = tier.state === 'claimed';
+  /** Taken, and it is never coming back — see the docblock. */
+  const forever = taken && chain.scope === 'account';
 
   return (
     <Plate
       as="li"
       cut
       tone={ready ? 'opportunity' : 'neutral'}
-      className="relative overflow-hidden px-3.5 pb-3.5 pt-3"
+      className="relative overflow-hidden px-4 pb-4 pt-3"
     >
       {/* A single wash behind the card, warm at one corner. The only decorative
           gradient in the panel, and it is what separates "an offer from us" from
@@ -364,7 +379,7 @@ function SocialCard({
       <div className="relative">
         <div className="flex items-start gap-3">
           <span
-            className={`socket grid size-11 shrink-0 place-items-center rounded-lg ${
+            className={`socket grid size-11 shrink-0 place-items-center rounded-control ${
               ready ? 'text-opportunity' : 'text-crystal'
             }`}
           >
@@ -372,7 +387,7 @@ function SocialCard({
           </span>
           <div className="min-w-0 flex-1">
             <p className="legend text-crystal/80">{t('rewards.social.eyebrow')}</p>
-            <p className="mt-1 font-display text-[15px] font-semibold uppercase leading-tight tracking-[0.03em] text-bone">
+            <p className="name mt-1 leading-tight text-bone">
               {t('rewards.chains.SOCIAL.name')}
             </p>
           </div>
@@ -381,34 +396,38 @@ function SocialCard({
         {/* The prize, stated once and large. `full()` and not `compact()`: this is
             a figure a player checks against a price. */}
         <p className="mt-3 flex items-baseline gap-2">
-          <span className="readout text-[22px] text-alloy">{full(tier.alloy)}</span>
-          <span className="text-[11px] text-faint">{t('rewards.social.alloy')}</span>
-          <span className="readout text-[22px] text-crystal">{full(tier.crystal)}</span>
-          <span className="text-[11px] text-faint">{t('rewards.social.crystal')}</span>
+          <span className="readout text-figure text-alloy">{full(tier.alloy)}</span>
+          <span className="text-label text-faint">{t('rewards.social.alloy')}</span>
+          <span className="readout text-figure text-crystal">{full(tier.crystal)}</span>
+          <span className="text-label text-faint">{t('rewards.social.crystal')}</span>
         </p>
 
-        <ol className="mt-3 flex flex-col gap-1.5">
-          <Step n={1}>{t('rewards.social.step1')}</Step>
-          <Step n={2}>
-            <span>{t('rewards.social.step2')}</span>{' '}
-            <span className="num rounded bg-raised px-1.5 py-0.5 text-[11px] text-bone">
-              {commander}
-            </span>
-          </Step>
-          <Step n={3}>{t('rewards.social.step3')}</Step>
-        </ol>
+        {!taken && (
+          <ol className="mt-3 flex flex-col gap-2">
+            <Step n={1}>{t('rewards.social.step1')}</Step>
+            <Step n={2}>
+              <span>{t('rewards.social.step2')}</span>{' '}
+              <span className="num rounded-chip bg-raised px-2 py-1 text-label text-bone">
+                {commander}
+              </span>
+            </Step>
+            <Step n={3}>{t('rewards.social.step3')}</Step>
+          </ol>
+        )}
 
-        <a
-          href={t('rewards.social.url')}
-          target="_blank"
-          rel="noreferrer noopener"
-          className="slab slab-primary mt-3.5 w-full"
-        >
-          <ExternalIcon className="size-[18px] shrink-0" />
-          {t('rewards.social.open')}
-        </a>
+        {!taken && (
+          <a
+            href={t('rewards.social.url')}
+            target="_blank"
+            rel="noreferrer noopener"
+            className="slab slab-primary mt-4 w-full"
+          >
+            <ExternalIcon className="size-[18px] shrink-0" />
+            {t('rewards.social.open')}
+          </a>
+        )}
 
-        <div className="mt-2.5">
+        <div className="mt-3">
           {ready ? (
             <Button
               size="md"
@@ -423,13 +442,17 @@ function SocialCard({
             </Button>
           ) : (
             <p
-              className={`rounded border px-3 py-2 text-center text-[11px] ${
+              className={`rounded-chip border px-3 py-2 text-center text-label leading-relaxed ${
                 taken
                   ? 'border-line-soft bg-deep text-faint'
                   : 'border-line-soft bg-deep text-dim'
               }`}
             >
-              {taken ? t('rewards.claimed') : t('rewards.social.pending')}
+              {forever
+                ? t('rewards.social.forever')
+                : taken
+                  ? t('rewards.claimed')
+                  : t('rewards.social.pending')}
             </p>
           )}
         </div>
@@ -442,8 +465,8 @@ function SocialCard({
  *  is stripped by the CSS reset and these three have to be done in order. */
 function Step({ n, children }: { n: number; children: ReactNode }) {
   return (
-    <li className="flex gap-2.5 text-[12px] leading-relaxed text-dim">
-      <span className="num mt-[1px] grid size-[18px] shrink-0 place-items-center rounded-full bg-raised text-[10px] text-crystal">
+    <li className="flex gap-3 text-caption leading-relaxed text-dim">
+      <span className="num mt-[1px] grid size-[18px] shrink-0 place-items-center rounded-full bg-raised text-micro text-crystal">
         {n}
       </span>
       <span className="min-w-0 flex-1">{children}</span>
@@ -471,9 +494,9 @@ function TierRow({
       : t('rewards.goalCount', { n: tier.goal });
 
   return (
-    <li className="plate-sunk flex items-center gap-2 rounded-[4px] px-2 py-1.5">
+    <li className="plate-sunk flex items-center gap-2 rounded-chip px-2 py-2">
       <span
-        className={`num w-8 shrink-0 text-[11px] ${
+        className={`num w-8 shrink-0 text-label ${
           tier.state === 'claimed' ? 'text-faint line-through' : 'text-dim'
         }`}
       >
@@ -485,7 +508,7 @@ function TierRow({
         rather than `compact()`: these are figures a player checks against a price,
         and "1.2k" cannot be compared to 950.
       */}
-      <span className="min-w-0 flex-1 truncate text-[11px]">
+      <span className="min-w-0 flex-1 truncate text-label">
         <span className="num text-alloy">{full(tier.alloy)}</span>
         <span className="px-1 text-faint">·</span>
         <span className="num text-crystal">{full(tier.crystal)}</span>

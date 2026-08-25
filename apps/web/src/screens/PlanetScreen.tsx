@@ -57,8 +57,6 @@ import {
 } from '../ui/assets.js';
 import {
   INSTRUMENT_NEEDS_UPLINK,
-  INSTRUMENT_ORDER,
-  SATELLITE_ORDER,
 } from '../lib/vocabulary.js';
 import i18n from '../i18n/index.js';
 import {
@@ -79,7 +77,9 @@ import { ItemSheet, type ItemRef } from '../ui/ItemSheet.js';
 import { PlanetHero } from '../ui/PlanetHero.js';
 import { Band, DecisionGroup, UpgradeRow, type Blocked } from '../ui/UpgradeRow.js';
 import { describe, useToast } from '../ui/Toast.js';
-import { Sheet } from '../ui/Sheet.js';
+import { Sheet } from '../ui/kit/index.js';
+import { QuantityStepper } from '../ui/QuantityStepper.js';
+import { Button, Segmented } from '../ui/kit/index.js';
 
 /**
  * MY PLANET.
@@ -136,6 +136,19 @@ export interface SheetSpec {
   act: () => void;
 }
 
+interface ProjectSheetSpec {
+  name: string;
+  tag: string;
+  role: string;
+  art: string;
+  cost: { alloy: number; crystal: number; deuterium?: number };
+  blocked?: Blocked;
+  completed?: string;
+  queued?: string;
+  pending: boolean;
+  act: () => void;
+}
+
 export function PlanetScreen({
   focusGroup,
   embedded = false,
@@ -150,6 +163,7 @@ export function PlanetScreen({
   const advice = useAdvice(data, held);
   const [building, setBuilding] = useState<HullId | null>(null);
   const [sheet, setSheet] = useState<SheetSpec | null>(null);
+  const [projectSheet, setProjectSheet] = useState<ProjectSheetSpec | null>(null);
   const [tab, setTab] = useState<GroupId | null>(null);
   const [focused, setFocused] = useState<string | null>(null);
   // Set for a moment after a purchase lands, so the row can acknowledge it.
@@ -261,6 +275,12 @@ export function PlanetScreen({
     && data.planet.recoveryUntil !== undefined
     && data.planet.recoveryUntil.getTime() > serverNow();
 
+  const goToNeed = (id: string): void => {
+    const home = TAB_OF[id];
+    if (home) setTab(home);
+    setFocused(id);
+  };
+
   const shared = {
     planet: data,
     held,
@@ -272,31 +292,43 @@ export function PlanetScreen({
     },
     focused,
     flashed,
-    onNeed: (id: string) => {
-      // The thing that unblocks you may live under a different tab. Switching to
-      // it is the whole point of the requirement being a button.
-      const home = TAB_OF[id];
-      if (home) setTab(home);
-      setFocused(id);
-    },
+    // The thing that unblocks you may live under a different tab. Switching to
+    // it is the whole point of the requirement being a button.
+    onNeed: goToNeed,
     onFlash: setFlashed,
     onOpen: setSheet,
+    onOpenProject: setProjectSheet,
   };
 
   return (
     <GameActions>
+      {/*
+        WHO OWNS THE INSET. The sheet bleeds and this screen pads, block by block,
+        because ONE thing here has to run edge to edge: the sticky category bar.
+        It used to reach the edges with a `-mx-4` that cancelled a `px-4` the sheet
+        had applied and this screen had re-applied — three declarations for one
+        sixteen-pixel gutter, and no owner to change when it was wrong.
+      */}
+      <div className="flex flex-col gap-4 pb-4">
       <div className="px-4 pt-4">
-      <PlanetHero planet={data} compact={embedded} />
+        <PlanetHero planet={data} compact={embedded} />
+      </div>
 
-      <BuildQueues planet={data} />
+      <div className="px-4">
+        <BuildQueues planet={data} />
+      </div>
 
       {recovering && (
-        <div className="mb-3 rounded border border-alert/40 bg-alert/10 px-3 py-2 text-[12px] text-alert">
+        <div className="mx-4 rounded-chip border border-alert/40 bg-alert/10 px-3 py-2 text-caption text-threat-ink">
           {t('planet.recovery', { duration: duration((data.planet.recoveryUntil!.getTime() - serverNow()) / 60_000) })}
         </div>
       )}
 
-      {data.strategic && <DeathStarForge planet={data} held={held} recovering={recovering} />}
+      {data.strategic && (
+        <div className="px-4">
+          <DeathStarForge planet={data} held={held} recovering={recovering} />
+        </div>
+      )}
 
       <Tabs
         active={active}
@@ -304,17 +336,27 @@ export function PlanetScreen({
         held={held}
       />
 
+      <div className="flex flex-col gap-4 px-4">
+      <OrbitContext planet={data} />
+
       {active === 'reach' && !data.strategic && (
         <DeathStarForge planet={data} held={held} recovering={recovering} />
       )}
 
-      <div className={recovering ? 'pointer-events-none opacity-50' : ''} aria-disabled={recovering}>
+      <div
+        id={`planet-panel-${active}`}
+        role="tabpanel"
+        aria-labelledby={`planet-tab-${active}`}
+        className={recovering ? 'pointer-events-none opacity-50' : ''}
+        aria-disabled={recovering}
+      >
       <DecisionGroup problem={t(GROUPS[active].problem)} question={t(GROUPS[active].question)}>
         {active === 'defend' && <Defend {...shared} onBuild={setBuilding} />}
         {active === 'orbit' && <Orbit {...shared} />}
         {active === 'reach' && <Reach {...shared} onBuild={setBuilding} />}
         {active === 'grow' && <Grow {...shared} />}
       </DecisionGroup>
+      </div>
       </div>
 
       {sheet && (
@@ -335,6 +377,14 @@ export function PlanetScreen({
         />
       )}
 
+      {projectSheet && (
+        <ProjectSheet
+          spec={projectSheet}
+          held={held}
+          onClose={() => { setProjectSheet(null); }}
+        />
+      )}
+
       {building && (
         // `data-build-sheet` is how the onboarding gate (D56) keeps this surface
         // live: it is opened BY a gated control, so sealing it would trap.
@@ -343,6 +393,10 @@ export function PlanetScreen({
           hull={building}
           planet={data}
           held={held}
+          onNeed={(id) => {
+            setBuilding(null);
+            goToNeed(id);
+          }}
           onClose={() => {
             setBuilding(null);
           }}
@@ -391,15 +445,16 @@ export const TAB_OF: Record<string, GroupId | undefined> = {
   TELESCOPE: 'orbit',
   RADAR: 'orbit',
   VEIL: 'orbit',
-  AEGIS: 'orbit',
-  // The four satellites live on the same surface as the four instruments (D25).
+  AEGIS: 'defend',
   UPLINK: 'orbit',
-  FOUNDRY: 'orbit',
-  DERRICK: 'orbit',
-  BEACON: 'orbit',
+  FOUNDRY: 'grow',
+  DERRICK: 'reach',
+  BEACON: 'reach',
   SHIPYARD: 'reach',
   ISOTOPE_SPECTROMETRY: 'reach',
   DENSE_FUEL_CELLS: 'reach',
+  GRAVITIC_CHARGES: 'reach',
+  DEATH_STAR_PROTOCOL: 'reach',
 };
 
 /**
@@ -430,25 +485,32 @@ function Wallet({ held }: { held: Projected }) {
   const { t } = useTranslation();
   const waiting = Math.round(held.bufferAlloy + held.bufferCrystal + held.bufferDeuterium);
 
+  /*
+    `full()` AND NEVER `compact()`. The header's own store already carried that
+    rule and its reason — "a store that reads 10k cannot be checked against a
+    price of 9,240" — and this strip, which exists precisely so a price can be
+    checked without closing the sheet, was rendering the same three numbers
+    compacted. Both were on screen at once: 1,303 above and 1.3k below.
+  */
   return (
-    <div className="flex items-center gap-3 px-4 pb-1.5 pt-2 text-[13px]">
-      <span className="flex items-center gap-1.5">
+    <div className="flex items-center gap-3 px-4 pb-2 pt-2 text-body">
+      <span className="flex items-center gap-2">
         <img src={RESOURCE_ART.alloy} alt="" aria-hidden className="size-4 object-contain" />
-        <span className="num text-alloy">{compact(held.alloy)}</span>
+        <span className="num text-alloy">{full(held.alloy)}</span>
       </span>
-      <span className="flex items-center gap-1.5">
+      <span className="flex items-center gap-2">
         <img src={RESOURCE_ART.crystal} alt="" aria-hidden className="size-4 object-contain" />
-        <span className="num text-crystal">{compact(held.crystal)}</span>
+        <span className="num text-crystal">{full(held.crystal)}</span>
       </span>
       <span
-        className="flex items-center gap-1.5"
+        className="flex items-center gap-2"
         aria-label={t('statusBar.deuteriumLabel')}
       >
         <img src={RESOURCE_ART.deuterium} alt="" aria-hidden className="size-4 object-contain" />
-        <span className="num text-deuterium">{compact(held.deuterium)}</span>
+        <span className="num text-deuterium">{full(held.deuterium)}</span>
       </span>
       {waiting >= 1 && (
-        <span className="ml-auto text-[11px] text-faint">
+        <span className="ml-auto text-label text-faint">
           {/* Which side of the figure the phrase sits on is the language's call:
               English puts "in the works" after it, Turkish puts "havuzda" before. */}
           <Trans
@@ -471,13 +533,13 @@ function BuildQueues({ planet }: { planet: PlanetView }) {
   const queues = planet.queues ?? { CONSTRUCTION: [], YARD: [] };
 
   return (
-    <section className="mb-3 mt-3 frame" aria-label={t('planet.queue.title')}>
+    <section className="plate plate-inset overflow-hidden" aria-label={t('planet.queue.title')}>
       <header className="flex items-baseline gap-2 border-b border-line-soft px-3 py-2">
-        <h2 className="font-display text-[11px] uppercase tracking-[0.16em] text-bone">
+        <h2 className="legend text-bone">
           {t('planet.queue.title')}
         </h2>
         <span className="h-px flex-1 bg-gradient-to-r from-line-soft to-transparent" />
-        <span className="num text-[10px] text-faint">
+        <span className="num text-micro text-faint">
           {t('planet.queue.capacity', { count: BUILD.queueDepth })}
         </span>
       </header>
@@ -535,21 +597,73 @@ function BuildQueueLane({
   onCancel: (order: BuildOrderView) => void;
 }) {
   const { t } = useTranslation();
+
+  /**
+   * A LANE WITH NOTHING IN IT IS ONE LINE, NOT THREE.
+   *
+   * I6b still holds — every slot is visible and visibly empty — but a rack shown
+   * at the density of its contents is the point of a rack. Two idle lanes drawn
+   * as six stacked rows put two hundred pixels of dashes between a commander and
+   * the first thing they can press, on the screen where pressing something is the
+   * entire job. Empty collapses to a row of cells beside the label; the moment an
+   * order lands, the lane opens into rows that can carry a name and a clock.
+   */
+  if (orders.length === 0) {
+    return (
+      <div className="flex items-center gap-3 border-b border-line-soft px-3 py-3 last:border-b-0">
+        <h3 className="legend text-crystal/80">{label}</h3>
+        <span className="flex flex-1 gap-1" aria-label={t('planet.queue.slotFree')}>
+          {Array.from({ length: BUILD.queueDepth }, (_, slot) => (
+            <span
+              key={slot}
+              aria-hidden
+              className="h-4 flex-1 rounded-cell border border-dashed border-line-soft"
+            />
+          ))}
+        </span>
+        <span className="num shrink-0 text-micro text-faint">
+          0/{BUILD.queueDepth}
+        </span>
+      </div>
+    );
+  }
+
   return (
-    <div className="border-b border-line-soft px-3 py-2.5 last:border-b-0">
+    <div className="border-b border-line-soft px-3 py-3 last:border-b-0">
       <div className="mb-2 flex items-baseline justify-between gap-2">
-        <h3 className="text-[10px] font-bold uppercase tracking-[0.14em] text-crystal/80">
+        <h3 className="legend text-crystal/80">
           {label}
         </h3>
-        <span className="num text-[10px] text-faint">
+        <span className="num text-micro text-faint">
           {orders.length}/{BUILD.queueDepth}
         </span>
       </div>
-      {orders.length === 0 ? (
-        <p className="text-[11px] text-faint">{t('planet.queue.empty')}</p>
-      ) : (
-        <ol className="space-y-2">
-          {orders.map((order, index) => {
+      {/*
+        EVERY SLOT IS DRAWN, INCLUDING THE EMPTY ONES. `interface.md` I6b:
+        anything rationed into slots is a RACK, every owned slot holds a stable
+        position, and an empty slot stays visible and visibly empty. This lane
+        rendered a fraction and, when nothing was queued, the sentence "No work
+        committed" — an apology in the one place on the main screen where a player
+        needs to see how much room they have left. The kit's own `EmptyState`
+        docblock had already settled the principle: an empty state is an
+        instruction, never an apology. A rack does not need either.
+      */}
+      <ol className="flex flex-col gap-2">
+          {Array.from({ length: BUILD.queueDepth }, (_, slot) => {
+            const order = orders[slot];
+            if (!order) {
+              return (
+                <li
+                  key={`empty-${String(slot)}`}
+                  aria-label={t('planet.queue.slotFree')}
+                  className="flex h-7 items-center gap-2 rounded-chip border border-dashed border-line-soft px-3"
+                >
+                  <span aria-hidden className="num text-micro text-faint">{slot + 1}</span>
+                </li>
+              );
+            }
+            const index = slot;
+            return ((order) => {
             const startedAt = order.startedAt;
             const finishesAt = order.finishesAt;
             const timed = startedAt instanceof Date && finishesAt instanceof Date;
@@ -561,13 +675,13 @@ function BuildQueueLane({
               : 0;
             const refund = cancelRefund(order.cost);
             return (
-              <li key={order.id} className="rounded-sm border border-line-soft bg-void/25 px-2.5 py-2">
+              <li key={order.id} className="rounded-chip border border-line-soft bg-void/25 px-3 py-2">
                 <div className="flex items-center gap-2">
-                  <span className="num text-[10px] text-faint">{index + 1}</span>
-                  <span className="min-w-0 flex-1 truncate text-[12px] text-bone">
+                  <span className="num text-micro text-faint">{index + 1}</span>
+                  <span className="min-w-0 flex-1 truncate text-caption text-bone">
                     {order.count > 1 ? `${String(order.count)} × ` : ''}{buildOrderName(order)}
                   </span>
-                  <span className="num shrink-0 text-[11px] text-crystal">
+                  <span className="num shrink-0 text-label text-crystal">
                     {timed
                       ? countdown(finishesAt.getTime() - now)
                       : staged
@@ -582,7 +696,7 @@ function BuildQueueLane({
                       crystal: full(refund.crystal),
                       deuterium: full(refund.deuterium),
                     })}
-                    className="min-h-8 rounded-sm border border-alert/35 px-2 text-[10px] uppercase tracking-[0.08em] text-alert disabled:opacity-45"
+                    className="legend min-h-9 shrink-0 rounded-chip px-2 text-faint transition-colors hover:bg-threat/15 hover:text-threat-ink disabled:opacity-40"
                     onClick={() => {
                       // An optimistic marker has no server id yet. Let the
                       // placement response replace it before cancellation is
@@ -594,7 +708,7 @@ function BuildQueueLane({
                   </button>
                 </div>
                 {index === 0 && (
-                  <div className="mt-1.5 h-1 overflow-hidden rounded-full bg-black/45">
+                  <div className="mt-2 h-1 overflow-hidden rounded-full bg-black/45">
                     <span
                       className="block h-full bg-gradient-to-r from-crystal/45 to-crystal transition-[width] duration-1000"
                       style={{ width: `${String(Math.max(timed ? 2 : 8, progress * 100))}%` }}
@@ -603,9 +717,9 @@ function BuildQueueLane({
                 )}
               </li>
             );
+            })(order);
           })}
         </ol>
-      )}
     </div>
   );
 }
@@ -647,26 +761,26 @@ function DeathStarForge({
   return (
     <div
       data-strategic-state={planet.strategic?.status ?? 'LOCKED'}
-      className={`death-star-forge mb-3 mt-3 ${planet.strategic?.status === 'READY' ? 'death-star-forge-ready' : ''}`}
+      className={`death-star-forge ${planet.strategic?.status === 'READY' ? 'death-star-forge-ready' : ''}`}
     >
       <div className="relative z-[1] flex items-start gap-3">
-        <div className={`death-star-art relative grid shrink-0 place-items-center overflow-hidden rounded-sm ${live ? 'size-[72px]' : 'size-24'}`}>
+        <div className={`death-star-art relative grid shrink-0 place-items-center overflow-hidden rounded-chip ${live ? 'size-[72px]' : 'size-24'}`}>
           <span className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-alloy/70 to-transparent" />
           <img
             src={RESEARCH_ART.DEATH_STAR_PROTOCOL}
             alt=""
             aria-hidden
-            className={`${live ? 'size-16' : 'size-[88px]'} object-contain drop-shadow-[0_9px_14px_rgba(0,0,0,0.75)]`}
+            className={`${live ? 'size-16' : 'size-[88px]'} object-contain`}
           />
         </div>
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
             <span className="death-star-danger-light" aria-hidden />
-            <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-alloy">
+            <p className="legend text-alloy">
               {t('planet.deathStar.eyebrow')}
             </p>
           </div>
-          <p className="mt-1 font-display text-[16px] uppercase tracking-[0.08em] text-bone">
+          <p className="headline mt-1 text-bone">
             {planet.strategic?.status === 'READY'
               ? t('planet.deathStar.ready')
               : planet.strategic?.status === 'PAUSED'
@@ -679,7 +793,7 @@ function DeathStarForge({
                     })
                   : t('planet.deathStar.none')}
           </p>
-          <p className="mt-1 text-[12px] leading-snug text-dim">
+          <p className="mt-1 text-caption leading-snug text-dim">
             {t(planet.strategic?.status === 'READY'
               ? 'planet.deathStar.readyHint'
               : 'planet.deathStar.dangerHint')}
@@ -689,7 +803,7 @@ function DeathStarForge({
 
       {!live && (
         <div className="relative z-[1] mt-3 border-t border-line-soft pt-3">
-          <div className="grid grid-cols-2 gap-1.5" role="list">
+          <div className="grid grid-cols-2 gap-2" role="list">
             <DeathStarNeed ok={protocol}>{t('planet.deathStar.needProtocol')}</DeathStarNeed>
             <DeathStarNeed ok={core}>{t('planet.deathStar.needCore')}</DeathStarNeed>
             <DeathStarNeed ok={yard}>{t('planet.deathStar.needShipyard')}</DeathStarNeed>
@@ -698,13 +812,22 @@ function DeathStarForge({
           <div className="mt-3 flex items-center justify-between gap-3">
             <div>
               <Price cost={DEATH_STAR.cost} held={held} />
-              <p className="mt-1 text-[11px] uppercase tracking-[0.12em] text-faint">
+              <p className="legend mt-1">
                 {t('planet.deathStar.buildTime')}
               </p>
             </div>
-            <button
-              type="button"
-              className="death-star-build min-h-11"
+            {/*
+              THE SAME SLAB EVERY OTHER PURCHASE USES, IN THE STRATEGIC HUE.
+
+              This was a fifth button system — its own amber gradient, its own
+              2.5px radius, its own 0.68rem type and its own disabled state — so
+              the most expensive thing a commander ever buys did not look like a
+              purchase at all. The plate around it already carries the weight
+              (mass, material, the danger light); `visual-design.md` is explicit
+              that strategic red stays a restrained accent rather than a costume.
+            */}
+            <Button
+              variant="commit"
               disabled={recovering || strategicBuild.isPending || !protocol
                 || !core || !yard || !affordable}
               onClick={() => { strategicBuild.mutate(undefined, {
@@ -713,7 +836,7 @@ function DeathStarForge({
               }); }}
             >
               {t('planet.deathStar.build')}
-            </button>
+            </Button>
           </div>
         </div>
       )}
@@ -736,7 +859,7 @@ function DeathStarNeed({ ok, children }: { ok: boolean; children: ReactNode }) {
     <span
       role="listitem"
       data-met={ok ? 'true' : 'false'}
-      className="death-star-need flex min-h-9 items-center gap-1.5 rounded-sm border px-2 py-1 text-[11px] uppercase tracking-[0.08em]"
+      className="legend death-star-need flex min-h-9 items-center gap-2 rounded-chip border px-2 py-1"
     >
       <span aria-hidden>{ok ? '●' : '○'}</span>
       {children}
@@ -763,33 +886,28 @@ function Tabs({
   held: Projected;
 }) {
   const { t } = useTranslation();
+  // Opaque, because it is sticky: at 95% the rows scrolling underneath ghosted
+  // through the wallet figures, which are the one thing on it a player reads
+  // against a price.
   return (
-    <div className="sticky top-0 z-20 -mx-4 mb-5 border-y border-line-soft bg-deep/95">
+    <div className="sticky top-0 z-20 border-y border-line-soft bg-deep">
       <Wallet held={held} />
-      <div className="grid grid-cols-4 gap-1 px-4 pb-2">
-      {TABS.map((id) => {
-        const on = id === active;
-        return (
-          <button
-            key={id}
-            type="button"
-            // Marked so a surface outside this screen can point at a tab. The
-            // onboarding lights the one a beat is working in, because a dimmed
-            // screen with one live control still has to say WHERE that control is.
-            data-tab={id}
-            aria-current={on ? 'page' : undefined}
-            onClick={() => {
-              onSelect(id);
-            }}
-            className={`relative py-2 font-display text-[11px] uppercase tracking-[0.14em] transition-colors ${
-              on ? 'bg-raised text-bone' : 'text-faint'
-            }`}
-          >
-            {t(GROUPS[id].problem)}
-          </button>
-        );
-      })}
-      </div>
+      {/*
+        `data-tab` is how a surface outside this screen points at a category: the
+        onboarding lights the one a beat is working in, because a dimmed screen
+        with one live control still has to say WHERE that control is.
+      */}
+      <Segmented
+        flush
+        marker="tab"
+        role="tablist"
+        label={t('planet.tabs.label')}
+        segments={TABS.map((id) => ({ id, label: t(GROUPS[id].problem) }))}
+        value={active}
+        onSelect={onSelect}
+        tabId={(id) => `planet-tab-${id}`}
+        panelId={(id) => `planet-panel-${id}`}
+      />
     </div>
   );
 }
@@ -835,6 +953,7 @@ interface GroupProps {
   onNeed: (id: string) => void;
   onFlash: (id: string) => void;
   onOpen: (spec: SheetSpec) => void;
+  onOpenProject: (spec: ProjectSheetSpec) => void;
 }
 
 /** Gathers a row's own knowledge into the shape the detail sheet reads. */
@@ -1048,6 +1167,119 @@ function useOrbitAction(planet: PlanetView, onFlash: (id: string) => void) {
   };
 }
 
+type OrbitAction = ReturnType<ReturnType<typeof useOrbitAction>>;
+type InstrumentAction = ReturnType<ReturnType<typeof useInstrumentAction>>;
+
+function SatelliteItemRow({
+  id,
+  planet,
+  action,
+  held,
+  income,
+  focused,
+  flashed,
+  onOpen,
+}: {
+  id: SatelliteId;
+  planet: PlanetView;
+  action: OrbitAction;
+  held: GroupProps['held'];
+  income: GroupProps['income'];
+  focused: string | null;
+  flashed: string | null;
+  onOpen: GroupProps['onOpen'];
+}) {
+  const { t } = useTranslation();
+  const name = satelliteLabel(id);
+  const role = satelliteRole(id);
+  const inactive = planet.orbit.includes(id)
+    && !(planet.effectiveOrbit ?? planet.orbit).includes(id);
+  return (
+    <div id={`row-${id}`}>
+      <UpgradeRow
+        art={SATELLITE_ART[id]}
+        name={name}
+        tag={satelliteTag(id)}
+        role={role}
+        onOpen={() => { onOpen(spec({ kind: 'satellite', id }, name, role, action)); }}
+        gain={satelliteGain(id)}
+        cost={action.cost}
+        held={held}
+        income={income}
+        unowned={!action.owned}
+        {...(inactive ? { inactive: t('planet.orbit.inactiveSatellite') } : {})}
+        {...(action.blocked ? { blocked: action.blocked } : {})}
+        verb="install"
+        onAct={action.act}
+        pending={action.pending}
+        highlighted={focused === id}
+        flash={flashed === id}
+        {...(action.completed ? { completed: action.completed } : {})}
+        {...(action.queued ? { queued: action.queued } : {})}
+      />
+    </div>
+  );
+}
+
+function InstrumentItemRow({
+  id,
+  planet,
+  action,
+  held,
+  income,
+  focused,
+  flashed,
+  onOpen,
+}: {
+  id: InstrumentId;
+  planet: PlanetView;
+  action: InstrumentAction;
+  held: GroupProps['held'];
+  income: GroupProps['income'];
+  focused: string | null;
+  flashed: string | null;
+  onOpen: GroupProps['onOpen'];
+}) {
+  const { t } = useTranslation();
+  const name = instrumentLabel(id);
+  const role = instrumentPitch(id, action.level);
+  const next = nextInstrumentArt(id, action.actionLevel);
+  const effectiveLevel = planet.effectiveInstruments?.[id] ?? action.level;
+  const inactive = action.level > effectiveLevel;
+  const inactiveReason = (id === 'TELESCOPE' || id === 'RADAR')
+    && !(planet.effectiveOrbit ?? planet.orbit).includes('UPLINK')
+    ? t('planet.orbit.inactiveUplink', { owned: action.level })
+    : t('planet.orbit.inactiveCore', { owned: action.level, active: effectiveLevel });
+  return (
+    <div id={`row-${id}`}>
+      <UpgradeRow
+        art={instrumentArt(id, Math.max(1, action.level))}
+        {...(next ? { nextArt: next } : {})}
+        name={name}
+        level={action.level}
+        tag={instrumentTag(id)}
+        role={role}
+        onOpen={() => { onOpen(spec({ kind: 'instrument', id }, name, role, action)); }}
+        gain={instrumentGain(id, action.actionLevel)}
+        cost={action.cost}
+        held={held}
+        income={income}
+        unowned={action.level === 0}
+        {...(inactive ? { inactive: inactiveReason } : {})}
+        {...(action.blocked ? { blocked: action.blocked } : {})}
+        {...(action.completed ? { completed: action.completed } : {})}
+        {...(action.queued ? { queued: action.queued } : {})}
+        queuedActionable
+        verb={action.actionLevel === 0 ? 'install' : 'raise'}
+        onAct={action.act}
+        pending={action.pending}
+        highlighted={focused === id}
+        flash={flashed === id}
+      />
+    </div>
+  );
+}
+
 /* ── the four groups ────────────────────────────────────────── */
 
 /* ── what each structure is for, in one line ────────────────── */
@@ -1078,7 +1310,9 @@ function Defend({
 }: GroupProps & { onBuild: (hull: HullId) => void }) {
   const { t } = useTranslation();
   const building = useBuildingAction(planet, onFlash);
+  const instrument = useInstrumentAction(planet, onFlash);
   const vault = building('VAULT', buildingName('VAULT'), onNeed);
+  const aegis = instrument('AEGIS', instrumentLabel('AEGIS'), onNeed);
   const shipyard = planet.buildings.SHIPYARD ?? 0;
   const bastion = HULLS.BASTION;
   const thorn = HULLS.THORN;
@@ -1124,6 +1358,7 @@ function Defend({
           cost={vault.cost}
           held={held}
           income={income}
+          unowned={vault.level === 0}
           {...(vault.blocked ? { blocked: vault.blocked } : {})}
           {...(vault.queued ? { queued: vault.queued } : {})}
           queuedActionable
@@ -1135,6 +1370,18 @@ function Defend({
         />
       </div>
 
+      <Band label={t('planet.defend.shieldBand')} note={t('planet.defend.shieldNote')} />
+      <InstrumentItemRow
+        id="AEGIS"
+        planet={planet}
+        action={aegis}
+        held={held}
+        income={income}
+        focused={focused}
+        flashed={flashed}
+        onOpen={onOpen}
+      />
+
       {/*
         TWO GUNS, AND THE BAND SAYS WHY THERE ARE TWO. D27.
 
@@ -1145,6 +1392,7 @@ function Defend({
       */}
       <Band label={t('planet.defend.groundBand')} note={t('planet.defend.groundNote')} />
 
+      <div id="row-THORN">
       <UpgradeRow
         art={groundArt('THORN', Math.max(1, thornsStanding))}
         nextArt={nextGroundArt('THORN', thornsStanding)}
@@ -1164,6 +1412,8 @@ function Defend({
         cost={{ alloy: thorn.alloy, crystal: thorn.crystal }}
         held={held}
         income={income}
+        unowned={thornsStanding === 0}
+        onOpen={() => { onBuild('THORN'); }}
         verb="build"
         onAct={() => { onBuild('THORN'); }}
         {...(yardOrders.length >= BUILD.queueDepth
@@ -1174,7 +1424,9 @@ function Defend({
           : {})}
         queuedActionable
       />
+      </div>
 
+      <div id="row-BASTION">
       <UpgradeRow
         art={groundArt('BASTION', Math.max(1, bastionsStanding))}
         nextArt={nextGroundArt('BASTION', bastionsStanding)}
@@ -1194,6 +1446,8 @@ function Defend({
         cost={{ alloy: bastion.alloy, crystal: bastion.crystal }}
         held={held}
         income={income}
+        unowned={bastionsStanding === 0}
+        onOpen={() => { onBuild('BASTION'); }}
         {...(shipyard < bastion.minShipyard
           ? {
               blocked: {
@@ -1213,36 +1467,8 @@ function Defend({
         verb="build"
         onAct={() => { onBuild('BASTION'); }}
       />
+      </div>
 
-      {/*
-        THE THIRD KIND OF DEFENCE IS ON ANOTHER TAB, AND SAYING SO IS CHEAPER THAN
-        MOVING IT.
-
-        A player asking "how do I not lose my things" finds the Vault and the
-        Bastion here and no shield at all — the Aegis is hardware, and D22's whole
-        point is that every piece of hardware is weighed against the others on one
-        surface. Splitting it back out to make this tab complete would undo that.
-        A pointer costs one row and keeps both true.
-      */}
-      <button
-        type="button"
-        onClick={() => { onNeed('AEGIS'); }}
-        className="flex w-full items-center gap-2 border-b border-line-soft px-3.5 py-3 text-left last:border-b-0"
-      >
-        <span className="text-[12px] leading-snug text-dim">
-          {/* The instrument's own name comes out of the vocabulary, so it stays
-              "Aegis" in English and "Aegis" in Turkish only because that is what
-              the Turkish table says — not because it was hard-coded here. */}
-          <Trans
-            i18nKey="planet.defend.aegisPointer"
-            values={{ name: instrumentLabel('AEGIS') }}
-            components={[<span key="n" className="text-bone" />]}
-          />
-        </span>
-        <span aria-hidden className="ml-auto text-[13px] text-faint">
-          →
-        </span>
-      </button>
     </>
   );
 }
@@ -1267,113 +1493,42 @@ function Orbit({ planet, held, income, focused, flashed, onNeed, onFlash, onOpen
   const { t } = useTranslation();
   const orbit = useOrbitAction(planet, onFlash);
   const instrument = useInstrumentAction(planet, onFlash);
-  const projected = projectedQueueState(planet, 'CONSTRUCTION');
-  const projectedSlots = satelliteSlots(projected.buildings.CORE);
-  const free = projectedSlots - projected.orbit.length;
 
   return (
     <>
       <Band
-        label={t('planet.orbit.inOrbitBand')}
-        note={t('planet.orbit.inOrbitNote')}
-        aside={<OrbitSlotCount slots={projectedSlots} used={projected.orbit.length} core={projected.buildings.CORE} />}
+        label={t('planet.orbit.networkBand')}
+        note={t('planet.orbit.networkNote')}
       />
-
-      <OrbitRack slots={planet.orbitSlots} orbit={planet.orbit} />
-
-      {SATELLITE_ORDER.map((id) => {
-        const name = satelliteLabel(id);
-        const action = orbit(id, name, onNeed);
-        const role = satelliteRole(id);
-        const inactive = planet.orbit.includes(id)
-          && !(planet.effectiveOrbit ?? planet.orbit).includes(id);
-        return (
-          <div key={id} id={`row-${id}`}>
-            <UpgradeRow
-              art={SATELLITE_ART[id]}
-              name={name}
-              tag={satelliteTag(id)}
-              role={role}
-              onOpen={() => {
-                onOpen(spec({ kind: 'satellite', id }, name, role, action));
-              }}
-              gain={satelliteGain(id)}
-              cost={action.cost}
-              held={held}
-              income={income}
-              unowned={!action.owned}
-              {...(inactive ? { inactive: t('planet.orbit.inactiveSatellite') } : {})}
-              {...(action.blocked ? { blocked: action.blocked } : {})}
-              verb="install"
-              onAct={action.act}
-              pending={action.pending}
-              highlighted={focused === id}
-              flash={flashed === id}
-              /**
-               * A satellite that is up is DONE, and the row says so instead of
-               * offering a purchase the endpoint would refuse. There is no second
-               * level to sell — that is the whole difference between these four
-               * and the four below.
-               */
-              {...(action.completed ? { completed: action.completed } : {})}
-              {...(action.queued ? { queued: action.queued } : {})}
-            />
-          </div>
-        );
-      })}
+      <SatelliteItemRow
+        id="UPLINK"
+        planet={planet}
+        action={orbit('UPLINK', satelliteLabel('UPLINK'), onNeed)}
+        held={held}
+        income={income}
+        focused={focused}
+        flashed={flashed}
+        onOpen={onOpen}
+      />
 
       <Band
-        label={t('planet.orbit.onPlanetBand')}
-        note={t('planet.orbit.onPlanetNote')}
-        aside={
-          <span className="num text-[11px] text-faint">
-            {free > 0 ? t('planet.orbit.slotsFree', { count: free }) : t('planet.orbit.slotsNone')}
-          </span>
-        }
+        label={t('planet.orbit.intelBand')}
+        note={t('planet.orbit.intelNote')}
       />
 
-      {INSTRUMENT_ORDER.map((id) => {
-        const name = instrumentLabel(id);
-        const action = instrument(id, name, onNeed);
-        const role = instrumentPitch(id, action.level);
-        const next = nextInstrumentArt(id, action.actionLevel);
-        const effectiveLevel = planet.effectiveInstruments?.[id] ?? action.level;
-        const inactive = action.level > effectiveLevel;
-        const inactiveReason = (id === 'TELESCOPE' || id === 'RADAR')
-          && !(planet.effectiveOrbit ?? planet.orbit).includes('UPLINK')
-          ? t('planet.orbit.inactiveUplink', { owned: action.level })
-          : t('planet.orbit.inactiveCore', { owned: action.level, active: effectiveLevel });
-        return (
-          <div key={id} id={`row-${id}`}>
-            <UpgradeRow
-              art={instrumentArt(id, Math.max(1, action.level))}
-              {...(next ? { nextArt: next } : {})}
-              name={name}
-              level={action.level}
-              tag={instrumentTag(id)}
-              role={role}
-              onOpen={() => {
-                onOpen(spec({ kind: 'instrument', id }, name, role, action));
-              }}
-              gain={instrumentGain(id, action.actionLevel)}
-              cost={action.cost}
-              held={held}
-              income={income}
-              unowned={action.level === 0}
-              {...(inactive ? { inactive: inactiveReason } : {})}
-              {...(action.blocked ? { blocked: action.blocked } : {})}
-              {...(action.completed ? { completed: action.completed } : {})}
-              {...(action.queued ? { queued: action.queued } : {})}
-              queuedActionable
-              verb={action.actionLevel === 0 ? 'install' : 'raise'}
-              onAct={action.act}
-              pending={action.pending}
-              highlighted={focused === id}
-              flash={flashed === id}
-            />
-          </div>
-        );
-      })}
+      {(['TELESCOPE', 'RADAR', 'VEIL'] as const).map((id) => (
+        <InstrumentItemRow
+          key={id}
+          id={id}
+          planet={planet}
+          action={instrument(id, instrumentLabel(id), onNeed)}
+          held={held}
+          income={income}
+          focused={focused}
+          flashed={flashed}
+          onOpen={onOpen}
+        />
+      ))}
     </>
   );
 }
@@ -1391,9 +1546,11 @@ function OrbitSlotCount({ slots, used, core }: { slots: number; used: number; co
   const next = ORBIT_UNLOCKS.find((level) => level > core);
 
   return (
-    <span className="num text-[11px] text-dim">
+    <span className="num text-label text-dim">
       {t('planet.orbit.slotsUsed', { used, total: slots })}
-      {next !== undefined && (
+      {used >= slots ? (
+        <span className="ml-1 text-threat-ink">· {t('planet.orbit.slotsNone')}</span>
+      ) : next !== undefined && (
         <span className="text-faint">{t('planet.orbit.slotsNext', { level: next })}</span>
       )}
     </span>
@@ -1404,7 +1561,7 @@ function OrbitRack({ slots, orbit }: { slots: number; orbit: SatelliteId[] }) {
   const { t } = useTranslation();
   return (
     <div
-      className="grid gap-1.5 border-b border-line-soft bg-void/15 p-2.5"
+      className="grid gap-2 border-b border-line-soft bg-void/15 p-3"
       style={{ gridTemplateColumns: `repeat(${String(Math.max(1, slots))}, minmax(0, 1fr))` }}
       aria-label={t('planet.orbit.rackLabel')}
     >
@@ -1413,13 +1570,9 @@ function OrbitRack({ slots, orbit }: { slots: number; orbit: SatelliteId[] }) {
         return (
           <div
             key={index}
-            className={`relative flex min-h-16 min-w-0 flex-col items-center justify-center rounded-sm border px-1 py-1.5 ${
-              satellite
-                ? 'border-crystal/30 bg-crystal/[0.06]'
-                : 'border-dashed border-line bg-void/30'
-            }`}
+            className={`relative flex min-h-16 min-w-0 flex-col items-center justify-center rounded-chip border px-1 py-2 ${ satellite ? 'border-crystal/30 bg-crystal/[0.06]' : 'border-dashed border-line bg-void/30' }`}
           >
-            <span className="num absolute left-1.5 top-1 text-[9px] text-faint">{index + 1}</span>
+            <span className="num absolute left-1.5 top-1 text-micro text-faint">{index + 1}</span>
             {satellite ? (
               <>
                 <img
@@ -1428,17 +1581,42 @@ function OrbitRack({ slots, orbit }: { slots: number; orbit: SatelliteId[] }) {
                   aria-hidden
                   className="size-8 object-contain"
                 />
-                <span className="mt-1 w-full truncate text-center font-display text-[9px] uppercase tracking-wide text-bone">
+                <span className="legend mt-1 w-full truncate text-center text-bone">
                   {satelliteLabel(satellite)}
                 </span>
               </>
             ) : (
-              <span className="text-[10px] text-faint">{t('planet.orbit.slotEmpty')}</span>
+              <span className="text-micro text-faint">{t('planet.orbit.slotEmpty')}</span>
             )}
           </div>
         );
       })}
     </div>
+  );
+}
+
+/**
+ * THE SHARED COST OF FOUR DECISIONS.
+ *
+ * Satellites now live beside the outcome they create, but all four still consume
+ * the same scarce sockets. Keeping the rack above every category makes that trade
+ * visible before a player opens any one of them (D108).
+ */
+function OrbitContext({ planet }: { planet: PlanetView }) {
+  const { t } = useTranslation();
+  const projected = projectedQueueState(planet, 'CONSTRUCTION');
+  const slots = satelliteSlots(projected.buildings.CORE);
+  return (
+    <section className="plate plate-inset overflow-hidden" aria-label={t('planet.orbit.contextLabel')}>
+      <div className="flex items-baseline gap-2 border-b border-line-soft bg-void/30 px-3 py-2">
+        <h2 className="legend text-crystal/85">
+          {t('planet.orbit.contextLabel')}
+        </h2>
+        <span className="h-px flex-1 bg-gradient-to-r from-line-soft to-transparent" />
+        <OrbitSlotCount slots={slots} used={projected.orbit.length} core={projected.buildings.CORE} />
+      </div>
+      <OrbitRack slots={slots} orbit={projected.orbit} />
+    </section>
   );
 }
 
@@ -1464,10 +1642,12 @@ function Reach({
   onNeed,
   onFlash,
   onOpen,
+  onOpenProject,
   onBuild,
 }: GroupProps & { onBuild: (hull: HullId) => void }) {
   const { t } = useTranslation();
   const building = useBuildingAction(planet, onFlash);
+  const orbit = useOrbitAction(planet, onFlash);
   const completeResearch = useCompleteResearch();
   const say = useToast();
   const shipyard = building('SHIPYARD', buildingName('SHIPYARD'), onNeed);
@@ -1559,8 +1739,30 @@ function Reach({
           art={RESEARCH_ART[id]}
           name={name}
           tag={tag}
-          role={role}
-          cost={state.cost}
+        role={role}
+        onOpen={() => {
+          onOpenProject({
+            name,
+            tag,
+            role,
+            art: RESEARCH_ART[id],
+            cost: state.cost,
+            ...(blocked ? { blocked } : {}),
+            ...(completed ? { completed } : {}),
+            ...(queued ? { queued } : {}),
+            pending: completeResearch.isPending,
+            act: () => {
+              completeResearch.mutate(id, {
+                onSuccess: () => {
+                  onFlash(id);
+                  say(t('planet.done.queuedSimple', { name }));
+                },
+                onError: (error) => { say(describe(error), 'error'); },
+              });
+            },
+          });
+        }}
+        cost={state.cost}
           held={held}
           income={income}
           unowned={!state.completed}
@@ -1641,6 +1843,8 @@ function Reach({
         }}
         held={held}
         income={income}
+        unowned={owned === 0}
+        onOpen={() => { onBuild(id); }}
         /**
          * ONE GATE ON EVERY HULL, AND IT IS THE SHIPYARD. D25.
          *
@@ -1714,6 +1918,7 @@ function Reach({
           cost={shipyard.cost}
           held={held}
           income={income}
+          unowned={shipyard.level === 0}
           {...(shipyard.blocked ? { blocked: shipyard.blocked } : {})}
           {...(shipyard.queued ? { queued: shipyard.queued } : {})}
           queuedActionable
@@ -1724,6 +1929,21 @@ function Reach({
           flash={flashed === 'SHIPYARD'}
         />
       </div>
+
+      <Band label={t('planet.reach.orbitBand')} note={t('planet.reach.orbitNote')} />
+      {(['DERRICK', 'BEACON'] as const).map((id) => (
+        <SatelliteItemRow
+          key={id}
+          id={id}
+          planet={planet}
+          action={orbit(id, satelliteLabel(id), onNeed)}
+          held={held}
+          income={income}
+          focused={focused}
+          flashed={flashed}
+          onOpen={onOpen}
+        />
+      ))}
 
       <Band label={t('planet.reach.frontierBand')} note={t('planet.reach.frontierNote')} />
       {project('ISOTOPE_SPECTROMETRY')}
@@ -1760,11 +1980,13 @@ function Reach({
  */
 
 
-function Grow({ planet, held, income, focused, flashed, onFlash, onOpen }: GroupProps) {
+function Grow({ planet, held, income, focused, flashed, onNeed, onFlash, onOpen }: GroupProps) {
+  const { t } = useTranslation();
   // Nothing under Grow can be blocked by something on another tab: the Core is the
   // ceiling and the other two sit under it. There is no requirement to jump to.
   const noop = () => undefined;
   const building = useBuildingAction(planet, onFlash);
+  const orbit = useOrbitAction(planet, onFlash);
   const core = building('CORE', buildingName('CORE'), noop);
   const refinery = building('REFINERY', buildingName('REFINERY'), noop);
   const extractor = building('EXTRACTOR', buildingName('EXTRACTOR'), noop);
@@ -1789,6 +2011,7 @@ function Grow({ planet, held, income, focused, flashed, onFlash, onOpen }: Group
           cost={core.cost}
           held={held}
           income={income}
+          unowned={core.level === 0}
           verb="raise"
           onAct={core.act}
           pending={core.pending}
@@ -1831,6 +2054,7 @@ function Grow({ planet, held, income, focused, flashed, onFlash, onOpen }: Group
         cost={refinery.cost}
         held={held}
         income={income}
+        unowned={refinery.level === 0}
         {...(refinery.blocked ? { blocked: refinery.blocked } : {})}
         {...(refinery.queued ? { queued: refinery.queued } : {})}
         queuedActionable
@@ -1868,6 +2092,7 @@ function Grow({ planet, held, income, focused, flashed, onFlash, onOpen }: Group
         cost={extractor.cost}
         held={held}
         income={income}
+        unowned={extractor.level === 0}
         {...(extractor.blocked ? { blocked: extractor.blocked } : {})}
         {...(extractor.queued ? { queued: extractor.queued } : {})}
         queuedActionable
@@ -1878,21 +2103,114 @@ function Grow({ planet, held, income, focused, flashed, onFlash, onOpen }: Group
         flash={flashed === 'EXTRACTOR'}
       />
       </div>
+
+      <Band label={t('planet.grow.multiplierBand')} note={t('planet.grow.multiplierNote')} />
+      <SatelliteItemRow
+        id="FOUNDRY"
+        planet={planet}
+        action={orbit('FOUNDRY', satelliteLabel('FOUNDRY'), onNeed)}
+        held={held}
+        income={income}
+        focused={focused}
+        flashed={flashed}
+        onOpen={onOpen}
+      />
     </>
   );
 }
 
 /* ── building units ─────────────────────────────────────────── */
 
+function ProjectSheet({
+  spec,
+  held,
+  onClose,
+}: {
+  spec: ProjectSheetSpec;
+  held: GroupProps['held'];
+  onClose: () => void;
+}) {
+  const { t } = useTranslation();
+  return (
+    <div data-item-sheet>
+      <Sheet
+        eyebrow={spec.completed ? t('planet.projectSheet.complete') : t('planet.projectSheet.frontier')}
+        title={spec.name}
+        onClose={onClose}
+        footer={(
+          <span data-act className="block">
+            <ActionButton
+              verb="install"
+              cost={spec.cost}
+              held={held}
+              full
+              label={t('planet.reach.researchAct')}
+              pending={spec.pending}
+              {...(spec.completed ? { completed: spec.completed } : {})}
+              {...(spec.queued ? { completed: spec.queued } : {})}
+              {...(spec.blocked
+                ? {
+                    blocked: {
+                      reason: spec.blocked.reason,
+                      ...(spec.blocked.onFix
+                        ? {
+                            onFix: () => {
+                              spec.blocked?.onFix?.();
+                              onClose();
+                            },
+                          }
+                        : {}),
+                    },
+                  }
+                : {})}
+              onAct={() => {
+                spec.act();
+                onClose();
+              }}
+            />
+          </span>
+        )}
+      >
+        <div className="item-portrait flex h-48 items-center justify-center overflow-hidden">
+          <span aria-hidden className="item-portrait-orbit" />
+          <img
+            src={spec.art}
+            alt={spec.name}
+            className={`relative z-[1] h-36 object-contain ${spec.completed ? '' : 'opacity-60 grayscale'}`}
+          />
+        </div>
+        <p className="legend mt-4 text-crystal/85">{spec.tag}</p>
+        <p className="mt-2 text-body leading-relaxed text-dim">{spec.role}</p>
+        <div className="mt-6 grid grid-cols-[1fr_auto] items-center gap-4 border-y border-line-soft py-3">
+          <div>
+            <p className="legend">{t('planet.projectSheet.cost')}</p>
+            <p className="mt-1 text-label text-faint">{t('planet.projectSheet.once')}</p>
+          </div>
+          <Price cost={spec.cost} held={held} />
+        </div>
+        {(spec.blocked ?? spec.queued) && (
+          <p className={`mt-4 border px-3 py-2 text-caption leading-snug ${spec.blocked ? 'border-threat/30 bg-threat/10 text-threat' : 'border-crystal/30 bg-crystal/10 text-crystal'}`}>
+            {spec.blocked
+              ? t('itemSheet.lockedNote', { reason: spec.blocked.reason })
+              : spec.queued}
+          </p>
+        )}
+      </Sheet>
+    </div>
+  );
+}
+
 function BuildSheet({
   hull,
   planet,
   held,
+  onNeed,
   onClose,
 }: {
   hull: HullId;
   planet: PlanetView;
   held: { alloy: number; crystal: number; deuterium: number };
+  onNeed: (id: string) => void;
   onClose: () => void;
 }) {
   const { t } = useTranslation();
@@ -1921,6 +2239,31 @@ function BuildSheet({
     ? Math.max(0, PROSPECTOR.max - committed)
     : Number.MAX_SAFE_INTEGER;
   const prospectorCapped = hull === 'PROSPECTOR' && cap === 0;
+  const denseComplete = planet.research.some(
+    (project) => project.id === 'DENSE_FUEL_CELLS' && project.completed,
+  );
+  const graviticComplete = planet.research.some(
+    (project) => project.id === 'GRAVITIC_CHARGES' && project.completed,
+  );
+  const shipyard = planet.buildings.SHIPYARD ?? 0;
+  const blocked: Blocked | undefined = hull === 'RUNNER' && !denseComplete
+    ? {
+        reason: t('planet.reach.researchDenseFirst'),
+        onFix: () => { onNeed('DENSE_FUEL_CELLS'); },
+      }
+    : hull === 'BREACHER' && !graviticComplete
+      ? {
+          reason: t('planet.reach.researchGraviticFirst'),
+          onFix: () => { onNeed('GRAVITIC_CHARGES'); },
+        }
+      : shipyard < spec.minShipyard
+        ? {
+            reason: t('planet.blocked.shipyard', { level: spec.minShipyard }),
+            onFix: () => { onNeed('SHIPYARD'); },
+          }
+        : (planet.queues?.YARD.length ?? 0) >= BUILD.queueDepth
+          ? { reason: t('planet.blocked.queueFull') }
+          : undefined;
 
   const affordable = Math.min(
     Math.floor(held.alloy / spec.alloy),
@@ -1931,11 +2274,6 @@ function BuildSheet({
   );
   const room = Math.min(affordable, cap);
   const ceiling = Math.max(1, room);
-  /**
-   * Deduped and clamped, so the picker can never offer a number the ceiling
-   * forbids. At a ceiling of 3 that is `1 · Max 3`, not `1 · 5 · 25 · Max 3`.
-   */
-  const steps = [...new Set([1, 5, 25, ceiling].filter((n) => n <= ceiling))].sort((a, b) => a - b);
   const [count, setCount] = useState(1);
   const clamped = Math.min(count, ceiling);
   const totalAlloy = spec.alloy * clamped;
@@ -1968,14 +2306,26 @@ function BuildSheet({
           option first and then moves to here, so the opening grant is spent in one
           press rather than one ship at a time.
         */
-        <span data-commit {...(clamped === ceiling ? { 'data-ready': true } : {})}>
+        <span data-act data-commit {...(clamped === ceiling ? { 'data-ready': true } : {})}>
         <ActionButton
           verb="build"
           cost={{ alloy: totalAlloy, crystal: totalCrystal, deuterium: totalDeuterium }}
           held={held}
           pending={build.isPending}
-          {...((planet.queues?.YARD.length ?? 0) >= BUILD.queueDepth
-            ? { blocked: { reason: t('planet.blocked.queueFull') } }
+          {...(blocked
+            ? {
+                blocked: {
+                  reason: blocked.reason,
+                  ...(blocked.onFix
+                    ? {
+                        onFix: () => {
+                          blocked.onFix?.();
+                          onClose();
+                        },
+                      }
+                    : {}),
+                },
+              }
             : {})}
           full
           label={t('planet.buildSheet.build', { count: clamped })}
@@ -1998,12 +2348,18 @@ function BuildSheet({
       )}
     >
       {art && (
-        <div className="art-well -mx-4 -mt-4 mb-4 flex justify-center py-4">
+        <div className="art-well flex justify-center py-4">
           <img src={art} alt={hullLabel(hull)} className="h-28 object-contain" />
         </div>
       )}
 
-      <p className="text-[13px] leading-relaxed text-dim">{hullPitch(hull)}</p>
+      <p className="text-body leading-relaxed text-dim">{hullPitch(hull)}</p>
+
+      {blocked && (
+        <p className="mt-4 border border-threat/30 bg-threat/10 px-3 py-2 text-caption leading-snug text-threat">
+          {t('itemSheet.lockedNote', { reason: blocked.reason })}
+        </p>
+      )}
 
       <div className="mt-4">
         <StatStrip atk={spec.atk} hp={spec.hp} speed={spec.speed} cargo={spec.cargo} size="card" />
@@ -2011,46 +2367,38 @@ function BuildSheet({
 
       <div className="mt-6">
         <p className="legend mb-2">{t('planet.buildSheet.howMany')}</p>
-        {room === 0 ? (
-          <p className="text-[13px] leading-relaxed text-amber">
+        {prospectorCapped ? (
+          <p className="text-body leading-relaxed text-amber">
             {t('planet.buildSheet.capped', { count: committed })}
           </p>
         ) : (
-          <div className="flex items-center gap-2 mb-1">
-            {steps.map((n, i) => (
-              <button
-                key={`${String(n)}-${String(i)}`}
-                type="button"
-                // The ceiling, marked. It is the whole of what the opening grant
-                // can buy, and the onboarding lights it so nobody spends half a
-                // budget that was arithmetic to begin with.
-                {...(i === steps.length - 1 ? { 'data-count-max': true } : {})}
-                aria-pressed={clamped === n}
-                className={`btn flex-1 ${clamped === n ? 'border-crystal/60 text-crystal' : ''}`}
-                onClick={() => {
-                  setCount(n);
-                }}
-              >
-                {i === steps.length - 1 && steps.length > 1
-                  ? t('planet.buildSheet.max', { count: n })
-                  : String(n)}
-              </button>
-            ))}
+          <div className="mb-1">
+            <QuantityStepper
+              value={clamped}
+              min={1}
+              max={ceiling}
+              onChange={setCount}
+              decreaseLabel={t('planet.buildSheet.fewer', { name: hullLabel(hull) })}
+              increaseLabel={t('planet.buildSheet.more', { name: hullLabel(hull) })}
+              valueLabel={t('planet.buildSheet.quantity', { name: hullLabel(hull) })}
+              maxLabel={t('planet.buildSheet.max', { name: hullLabel(hull) })}
+              maxText={t('planet.buildSheet.maxShort')}
+            />
           </div>
         )}
         {cap !== Number.MAX_SAFE_INTEGER && room > 0 && (
-          <p className="mt-2 text-[12px] text-faint">
+          <p className="mt-2 text-caption text-faint">
             {t('planet.buildSheet.heldOfMax', { owned: committed, max: PROSPECTOR.max })}
           </p>
         )}
       </div>
 
-      {!prospectorCapped && <div className="mt-5 flex items-baseline justify-between gap-3">
+      {!prospectorCapped && <div className="mt-6 flex items-baseline justify-between gap-3">
         <Price
           cost={{ alloy: totalAlloy, crystal: totalCrystal, deuterium: totalDeuterium }}
           held={held}
         />
-        <p className="num text-[12px] text-faint">
+        <p className="num text-caption text-faint">
           {t('planet.buildSheet.defenceAfter', { count: defenceAfterQueue + clamped })}
         </p>
       </div>}

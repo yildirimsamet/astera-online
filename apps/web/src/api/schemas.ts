@@ -218,11 +218,14 @@ export const seasonSchema = z.object({
   rivalPlanetId: z.string().nullable().optional(),
   /** Stable commander identity, so every world they control wears the same mark. */
   rivalPlayerId: z.string().nullable().optional(),
+  /** Once the first shared move exists, the seasonal choice cannot be replaced. D103. */
+  rivalCommitted: z.boolean().optional(),
 });
 
 export const rivalSetSchema = z.object({
   rivalPlanetId: z.string().nullable(),
   rivalPlayerId: z.string().nullable().optional(),
+  rivalCommitted: z.boolean().optional(),
 });
 
 /* ── your planet ────────────────────────────────────────────── */
@@ -429,6 +432,18 @@ export const rewardsSchema = z.object({
     z.object({
       id: z.string(),
       metric: z.string(),
+      /**
+       * `season` or `account`, parsed as a plain string for the same reason `id`
+       * and `metric` are: a server one deploy ahead must cost this build one card
+       * that reads a little plainly, never an empty panel.
+       *
+       * OPTIONAL, AND ABSENT READS AS `season` AT EVERY USE SITE. An older server
+       * sends nothing, and silence has exactly one safe reading: the card then
+       * says only what it has always said. Claiming "paid once, for ever" about a
+       * reward that is not is the single wrong answer here, and it is the one
+       * answer a missing field can never produce.
+       */
+      scope: z.string().optional(),
       progress: z.number(),
       tiers: z.array(rewardTier),
     }),
@@ -850,6 +865,7 @@ export const reportsSchema = z.object({
   ),
   rivals: z.array(z.object({
     planetId: z.string(),
+    playerId: z.string(),
     battles: z.number().int().nonnegative(),
     attacks: z.number().int().nonnegative(),
     defences: z.number().int().nonnegative(),
@@ -1072,6 +1088,21 @@ export const trafficSchema = z.object({
        */
       engagement: z
         .object({ arriveAt: z.coerce.date(), endsAt: z.coerce.date(), target: vec })
+        .optional(),
+      /**
+       * A STRIKE LANDED HERE, AT THIS INSTANT. D106.
+       *
+       * The same shape as `engagement` and there for the same reason: an effect
+       * everybody is supposed to watch together is PUBLISHED as a moment and a
+       * place, never re-derived from a flight by each renderer that draws it. A
+       * Death Star's detonation used to exist only on the attacker's own client,
+       * because only the attacker held a payload it could be worked out from.
+       *
+       * Optional, so a client ahead of its server still parses and simply draws no
+       * explosion — the same rule `landing` follows.
+       */
+      impact: z
+        .object({ at: z.coerce.date(), target: vec })
         .optional(),
     }),
   ),

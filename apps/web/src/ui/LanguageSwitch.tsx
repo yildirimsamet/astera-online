@@ -1,8 +1,8 @@
 import { useTranslation } from 'react-i18next';
-import { haptic } from '../lib/haptics.js';
 import { currentLanguage } from '../i18n/index.js';
 import { setLanguage } from '../i18n/document.js';
 import { LANGUAGES, LANGUAGE_LABEL, LANGUAGE_SHORT } from '../i18n/languages.js';
+import { Segmented } from './kit/index.js';
 
 /**
  * THE WAY TO CHANGE THE LANGUAGE, AND IT IS NOT HIDDEN BEHIND A GEAR.
@@ -22,75 +22,40 @@ import { LANGUAGES, LANGUAGE_LABEL, LANGUAGE_SHORT } from '../i18n/languages.js'
  * Each option is labelled IN ITS OWN LANGUAGE — "Türkçe", never "Turkish". That is
  * the one rule of a language picker that is never negotiable: the person who needs
  * it is by definition the person who cannot read the other one.
+ *
+ * ONE CONTROL, TWO DENSITIES — AND IT USED TO BE TWO CONTROLS.
+ *
+ * The front door drew a hairline pill where the selected half was filled; the
+ * commander sheet drew two detached slabs where the selected one was distinguished
+ * by cyan TEXT and a `border-crystal/60` that never rendered, because `.btn` sets
+ * `border: 0` and a colour with no width is a declaration the browser drops in
+ * silence. So the same setting had two shapes and two different grammars for
+ * "this one is on", and on the surface where the question is loudest, half of the
+ * answer was missing.
+ *
+ * There is one track and one grammar now: THE SELECTED SEGMENT IS THE ONE THAT IS
+ * LIT AND RAISED. `compact` changes the size of the thing, never what it is.
  */
 export function LanguageSwitch({ compact = false }: { compact?: boolean }) {
   const { t } = useTranslation();
   const active = currentLanguage();
 
-  /**
-   * THE COMPACT FORM IS FURNITURE, NOT A CONTROL COMPETING FOR ATTENTION.
-   *
-   * On the front door it sits in the top corner of a page whose whole job is to
-   * make somebody press ONE thing. Two outlined pills up there read as a second
-   * decision; a single hairline segment reads as a setting, which is what it is.
-   * The full form — used on the commander sheet, where it is one of three
-   * settings in a list — is unchanged.
-   */
-  if (compact) {
-    return (
-      <div
-        role="group"
-        aria-label={t('settings.choose')}
-        className="flex overflow-hidden rounded-full border border-line/70 bg-void/45"
-      >
-        {LANGUAGES.map((language) => {
-          const on = language === active;
-          return (
-            <button
-              key={language}
-              type="button"
-              lang={language}
-              aria-pressed={on}
-              onClick={() => {
-                if (on) return;
-                haptic('tap');
-                void setLanguage(language);
-              }}
-              className={`px-2.5 py-1 font-display text-[10px] uppercase tracking-[0.14em] transition-colors ${
-                on ? 'bg-line/50 text-bone' : 'text-faint hover:text-dim'
-              }`}
-            >
-              {LANGUAGE_SHORT[language]}
-            </button>
-          );
-        })}
-      </div>
-    );
-  }
-
   return (
-    <div role="group" aria-label={t('settings.choose')} className="flex gap-2">
-      {LANGUAGES.map((language) => {
-        const on = language === active;
-        return (
-          <button
-            key={language}
-            type="button"
-            lang={language}
-            aria-pressed={on}
-            onClick={() => {
-              if (on) return;
-              haptic('tap');
-              void setLanguage(language);
-            }}
-            className={`btn flex-1 py-2 text-[13px] ${
-              on ? 'border-crystal/60 text-crystal' : 'text-dim'
-            }`}
-          >
-            {LANGUAGE_LABEL[language]}
-          </button>
-        );
-      })}
-    </div>
+    <Segmented
+      label={t('settings.choose')}
+      size={compact ? 'sm' : 'md'}
+      className={compact ? 'w-auto' : 'w-full'}
+      segments={LANGUAGES.map((language) => ({
+        id: language,
+        label: compact ? LANGUAGE_SHORT[language] : LANGUAGE_LABEL[language],
+        // The short form is an abbreviation, so the announced name stays the
+        // language's own word — the one rule of a language picker.
+        ...(compact ? { hint: LANGUAGE_LABEL[language] } : {}),
+      }))}
+      value={active}
+      onSelect={(language) => {
+        void setLanguage(language);
+      }}
+    />
   );
 }

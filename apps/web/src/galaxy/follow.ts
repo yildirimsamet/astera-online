@@ -128,6 +128,25 @@ export function rigGestureState(focused: boolean, positioned: boolean): RigGestu
 }
 
 /**
+ * ONE RANGE STEP, with the distinction between focus and scripted framing made
+ * explicit.
+ *
+ * A focus may pull IN to reveal a tiny craft but must never push out a view the
+ * player chose. A scripted overview is different: its promised composition only
+ * exists at the requested range, so it may move in either direction.
+ */
+export function easedCameraRange(
+  current: number,
+  target: number,
+  step: number,
+  exact: boolean,
+): number {
+  if (!exact && current <= target) return current;
+  const next = current + (target - current) * step;
+  return exact ? next : Math.max(target, next);
+}
+
+/**
  * WHAT THE RIG DOES THIS FRAME. The whole of the camera's autonomy, in one place.
  *
  * THE RULE THAT MATTERS IS THE THIRD ONE. A subject that HAD a position and no

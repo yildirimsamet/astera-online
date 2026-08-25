@@ -4,9 +4,9 @@
  *
  * SEKME ADLARI HEPSİ AD, HİÇBİRİ EMİR DEĞİL. İngilizcesi Defend / Orbit / Reach /
  * Grow: ikisi fiil, ikisi ad, ve İngilizcede bu karışım göze batmaz. Türkçede
- * "Savun / Yörünge / Menzil / Büyüt" diye karışık dizmek sekme çubuğunu dağıtır,
+ * "Savun / İstihbarat / Menzil / Büyüt" diye karışık dizmek sekme çubuğunu dağıtır,
  * çünkü Türkçede emir kipi doğrudan oyuncuya seslenir ve ad öyle değildir. Dördü
- * de ad oldu: Üretim · Yörünge · Savunma · Filo. Sekme "burada ne var" der,
+ * de ad oldu: Üretim · Bilgi · Savunma · Filo. Sekme "burada ne var" der,
  * altındaki soru "burada neye karar veriyorsun" der.
  */
 
@@ -29,14 +29,15 @@ export const planet = {
     buildTime: '60 dk · tek silah · geri çağrılamaz',
   },
   tabs: {
+    label: 'Gezegen bölümleri',
     defendProblem: 'Savunma',
-    defendQuestion: 'Biri buraya inerse ayakta ne kalır?',
-    orbitProblem: 'Yörünge',
-    orbitQuestion: 'Yörüngede dört uydu, gezegende dört cihaz. İstediğini, istediğin sırayla.',
+    defendQuestion: 'Kalkanını, kasanı ve gezegen toplarını burada güçlendirirsin.',
+    orbitProblem: 'Bilgi',
+    orbitQuestion: 'Rakipleri görmeni sağlayan araçları burada kurarsın.',
     reachProblem: 'Filo',
-    reachQuestion: 'Ne gönderebilirsin, nereye kadar?',
+    reachQuestion: 'Gemilerini, menzilini ve özel projelerini burada geliştirirsin.',
     growProblem: 'Üretim',
-    growQuestion: 'Ne kadar cevher çıkarıyorsun, nereye kadar inşa edebiliyorsun.',
+    growQuestion: 'Kaynaklarını ve bina seviye sınırını burada büyütürsün.',
   },
 
   wallet: {
@@ -48,6 +49,7 @@ export const planet = {
     capacity: 'her birinde {{count}} yer',
     construction: 'İnşaat',
     yard: 'Tersane',
+    slotFree: 'Boş',
     empty: 'Bağlanmış iş yok',
     committing: 'işleniyor…',
     staged: 'sahiplenince başlar',
@@ -73,6 +75,8 @@ export const planet = {
   },
 
   defend: {
+    shieldBand: 'Kalkan',
+    shieldNote: 'Aegis hasarı birliklerine ulaşmadan emer; her seviye kapasiteyi ve yenilenmeyi artırır.',
     groundBand: 'Yerdekiler',
     groundNote:
       'Buradan hiç ayrılmazlar. Biri neye zayıfsa öteki ona güçlü; tek çeşit dizersen, seni gözetleyen akıncı tam onun karşıtıyla gelir.',
@@ -87,6 +91,11 @@ export const planet = {
   },
 
   orbit: {
+    contextLabel: 'Yörünge ağı',
+    networkBand: 'Bağlantı',
+    networkNote: 'Anten bir yuva karşılığında Teleskop ve Radarı açar.',
+    intelBand: 'Gezegen cihazları',
+    intelNote: 'Seviye alırlar, yörünge yuvası kullanmazlar.',
     inOrbitBand: 'Yörüngede',
     inOrbitNote: 'Her biri bir yuva kaplar. Bir kez alınır, seviyesi yoktur.',
     onPlanetBand: 'Gezegende',
@@ -106,6 +115,8 @@ export const planet = {
   },
 
   reach: {
+    orbitBand: 'Operasyon uyduları',
+    orbitNote: 'Kazıcıyı ya da bütün filoyu hızlandırır; her biri ortak yörünge ağında bir yuva kaplar.',
     frontierBand: 'Ufuk projeleri',
     frontierNote: 'Dört keşif. İnşaat sırasını paylaşır, onun saatinde tamamlanır.',
     isotopeName: 'İzotop Spektrometrisi',
@@ -139,6 +150,18 @@ export const planet = {
     prospectorLimit: '{{owned}} / {{max}} · sınır',
   },
 
+  grow: {
+    multiplierBand: 'Üretim uydusu',
+    multiplierNote: 'Dökümhane iki cevher akışını birlikte hızlandırır ve ortak yörünge ağında bir yuva kaplar.',
+  },
+
+  projectSheet: {
+    frontier: 'Ufuk projesi',
+    complete: 'Keşif tamamlandı',
+    cost: 'Araştırma maliyeti',
+    once: 'Bir kez araştırılır; İnşaat sırasını kullanır.',
+  },
+
   blocked: {
     core: 'Çekirdek L{{level}}',
     uplink: 'yörüngede Anten',
@@ -163,7 +186,11 @@ export const planet = {
     eyebrowGround: 'Yer savunması · hiç kalkmaz',
     eyebrowMobile: 'Hareketli gövde',
     howMany: 'Kaç tane',
-    max: 'En fazla {{count}}',
+    fewer: '{{name}} azalt',
+    more: '{{name}} artır',
+    quantity: '{{name}} adedi',
+    max: '{{name}} için en fazla',
+    maxShort: 'En fazla',
     build: '{{count}} tane yap',
     capped:
       'Elinde zaten {{count}} tane var, sınır bu. Dışarıdakiler de sayıldığı için bir tane daha yapamazsın.',
@@ -242,8 +269,7 @@ export const planetHero = {
   shieldValue: '{{current}} / {{max}}',
   shieldMeter: 'Aegis kalkan doluluğu',
   shieldRegen: '+{{amount}}/sa · birliklerden önce',
-  vault: 'Kasa · güvende',
-  vaultProtected: 'Akın bu miktarlara dokunamaz',
+  vaultSafe: 'Kasada güvende',
   alloySafe: '{{amount}} alaşım güvende',
   crystalSafe: '{{amount}} kristal güvende',
   deuteriumSafe: '{{amount}} döteryum güvende',
@@ -271,7 +297,9 @@ export const launch = {
   atHome: 'evde {{count}}',
   fewer: '{{name}} azalt',
   more: '{{name}} artır',
-  all: 'Hepsi',
+  quantity: '{{name}} adedi',
+  max: '{{name}} için en fazla',
+  maxShort: 'En fazla',
   noShips: 'Evde gemi yok. Tersanede yap ya da dışarıdakilerin dönmesini bekle.',
   warning:
     'Bunu geri çağıramazsın. Kalktıktan sonra aşağıda ne olduğunu ancak inişini izleyerek öğrenirsin; o dönene kadar gezegeninde {{count}} birlik kalıyor.',

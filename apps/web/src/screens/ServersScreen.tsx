@@ -58,11 +58,11 @@ export function ServersScreen({
   const settling = rows.find((s) => s.status === 'closed' && s.endsAt !== null);
 
   return (
-    <main className="min-h-dvh bg-void px-5 pb-[calc(28px+env(safe-area-inset-bottom))] pt-[calc(28px+env(safe-area-inset-top))]">
+    <main className="min-h-dvh bg-void px-6 pb-[calc(28px+env(safe-area-inset-bottom))] pt-[calc(28px+env(safe-area-inset-top))]">
       <header className="flex items-start justify-between gap-4">
         <div>
           <p className="legend">{t('servers.commanderLabel')}</p>
-          <h1 className="mt-1 font-display text-[24px] uppercase tracking-[0.05em] text-bone">
+          <h1 className="headline text-figure mt-1 text-bone">
             {displayName}
           </h1>
         </div>
@@ -71,23 +71,23 @@ export function ServersScreen({
         </Button>
       </header>
 
-      <p className="mt-6 max-w-md text-[14px] leading-relaxed text-dim">{t('servers.rule')}</p>
+      <p className="mt-6 max-w-md text-body leading-relaxed text-dim">{t('servers.rule')}</p>
 
       {latestResult && (
         <button
           type="button"
-          className="plate plate-cut plate-cut-sm mt-4 w-full max-w-md px-4 py-3 text-left transition-colors hover:border-line"
+          className="plate plate-cut plate-cut-sm mt-4 w-full max-w-md px-4 py-3 text-left transition-[filter] hover:brightness-125"
           onClick={openRecord}
         >
-          <span className="block font-display text-[13px] font-semibold uppercase tracking-[0.04em] text-bone">
+          <span className="name block text-bone">
             {t('seasonRecap.latestLabel')}
           </span>
-          <span className="mt-0.5 block text-[11px] text-faint">{t('seasonRecap.latestHint')}</span>
+          <span className="mt-1 block text-label text-faint">{t('seasonRecap.latestHint')}</span>
         </button>
       )}
 
       {error !== undefined && (
-        <p className="mt-4 text-[13px] text-alert" role="alert">
+        <p className="mt-4 text-body text-threat-ink" role="alert">
           {error}
         </p>
       )}
@@ -96,7 +96,7 @@ export function ServersScreen({
 
       {servers.isError && (
         <div className="mt-8">
-          <p className="text-[14px] text-alert">{t('servers.unreachable')}</p>
+          <p className="text-body text-threat-ink">{t('servers.unreachable')}</p>
           <Button
             className="mt-3"
             onClick={() => {
@@ -124,7 +124,7 @@ export function ServersScreen({
       </ul>
 
       {servers.isSuccess && rows.length === 0 && (
-        <p className="mt-8 text-[14px] text-dim">{t('servers.noneOpen')}</p>
+        <p className="mt-8 text-body text-dim">{t('servers.noneOpen')}</p>
       )}
 
       {servers.isSuccess && !open && settling?.endsAt && (
@@ -132,7 +132,7 @@ export function ServersScreen({
       )}
 
       {servers.isSuccess && rows.length > 0 && !open && !settling && (
-        <p className="mt-6 text-[13px] text-faint">{t('servers.allFull')}</p>
+        <p className="mt-6 text-body text-faint">{t('servers.allFull')}</p>
       )}
 
       {recordOpen && latestResult && (
@@ -187,7 +187,7 @@ function ServerCard({
       >
         <div className="min-w-0 flex-1">
           <div className="flex items-baseline gap-2">
-            <h2 className="font-display text-[17px] uppercase tracking-[0.04em] text-bone">
+            <h2 className="headline text-bone">
               {server.name}
             </h2>
             {/* A galaxy opened outside `bootstrapServers` has no name and falls
@@ -205,12 +205,12 @@ function ServerCard({
                 style={{ width: `${String(Math.round(fill * 100))}%` }}
               />
             </div>
-            <span className="readout shrink-0 text-[12px] text-dim">
+            <span className="readout shrink-0 text-caption text-dim">
               {server.planets}/{server.capacity}
             </span>
           </div>
 
-          <p className="mt-1.5 text-[11px] text-faint">
+          <p className="mt-2 text-label text-faint">
             {server.online > 0 ? (
               <>
                 <Trans
