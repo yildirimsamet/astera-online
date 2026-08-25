@@ -130,6 +130,7 @@ await page.waitForFunction(
     g.scene.traverse((o) => { if (o.isInstancedMesh) n += 1; });
     return n > 0;
   },
+  undefined,
   { timeout: 45_000 },
 );
 await settle(3000);
@@ -148,8 +149,19 @@ const survey = () =>
     const rect = gl.domElement.getBoundingClientRect();
     /** World point → CSS pixel. The canvas is not the viewport; use its own box. */
     const toScreen = (p) => {
-      const v = camera.position.clone().set(p[0], p[1], p[2]).project(camera);
-      return [rect.left + ((v.x + 1) / 2) * rect.width, rect.top + ((1 - v.y) / 2) * rect.height];
+      const world = camera.position.clone().set(p[0], p[1], p[2]);
+      const inFront = world
+        .clone()
+        .sub(camera.position)
+        .dot(camera.getWorldDirection(camera.position.clone())) > 0;
+      const v = world.project(camera);
+      return {
+        screen: [
+          rect.left + ((v.x + 1) / 2) * rect.width,
+          rect.top + ((1 - v.y) / 2) * rect.height,
+        ],
+        visible: inFront && v.z >= -1 && v.z <= 1,
+      };
     };
 
     const kinds = [];
@@ -180,7 +192,10 @@ const survey = () =>
       }
     });
 
-    const pack = (list) => list.map((w) => ({ world: w, screen: toScreen(w) }));
+    const pack = (list) => list
+      .map((world) => ({ world, ...toScreen(world) }))
+      .filter(({ visible }) => visible)
+      .map(({ world, screen }) => ({ world, screen }));
     return {
       kinds,
       rocks: pack(rocks),
@@ -393,20 +408,37 @@ check('home button moves the camera', flew > 0.5, `moved ${flew.toFixed(2)} unit
  * only answer available on the state a first session is actually in.
  */
 const worldSelect = page.locator('select[aria-label="Active world"], select[aria-label="Aktif gezegen"]');
+const loginResponse = await fetch(`${WEB}/api/auth/login`, {
+  method: 'POST',
+  headers: { 'content-type': 'application/json' },
+  body: JSON.stringify({ username: COMMANDER, password: PASSWORD }),
+});
+if (!loginResponse.ok) throw new Error(`Harness login failed: ${String(loginResponse.status)}`);
+const session = await loginResponse.json();
+const authorization = { authorization: `Bearer ${session.accessToken}` };
+const [planetResponse, galaxyResponse] = await Promise.all([
+  fetch(`${WEB}/api/planet`, { headers: authorization }),
+  fetch(`${WEB}/api/galaxy`, { headers: authorization }),
+]);
+if (!planetResponse.ok || !galaxyResponse.ok) {
+  throw new Error(
+    `Harness world reads failed: planet ${String(planetResponse.status)}, `
+      + `galaxy ${String(galaxyResponse.status)}`,
+  );
+}
+const planetView = await planetResponse.json();
+const galaxyView = await galaxyResponse.json();
 const activeWorldId = (await worldSelect.count())
   ? await worldSelect.inputValue()
-  : await page.evaluate(async () => {
-      const response = await fetch('/api/planet');
-      const view = await response.json();
-      return view.planet.id;
-    });
-const expectedHome = await page.evaluate(async (planetId) => {
-  const response = await fetch('/api/galaxy');
-  const galaxy = await response.json();
-  const world = galaxy.planets?.find((planet) => planet.id === planetId);
-  if (!world) return null;
-  return [world.position.x / 50, (world.position.y * 3.5) / 50, world.position.z / 50];
-}, activeWorldId);
+  : planetView.planet.id;
+const activeWorld = galaxyView.planets?.find((planet) => planet.id === activeWorldId);
+const expectedHome = activeWorld
+  ? [
+      activeWorld.position.x / 50,
+      (activeWorld.position.y * 3.5) / 50,
+      activeWorld.position.z / 50,
+    ]
+  : null;
 const homeRange = await page.evaluate(() => {
   const g = window.__galaxy;
   return g.controls?.object.position.distanceTo(g.controls.target) ?? null;
@@ -447,24 +479,34 @@ check('the old "Saving for X" bar is gone', saving === 0, `${String(saving)} lef
  * now has to make one poor before it can ask the question.
  */
 {
-  const grow = page.getByRole('button', { name: /^grow$/i }).first();
+  const grow = page.getByRole('tab', { name: /^production$/i }).first();
   if (await grow.isVisible().catch(() => false)) await grow.click({ force: true });
   await settle(900);
   // The Command Core is the one row nothing else caps, so raising it repeatedly
   // is the fastest honest way to become poor.
-  const core = page.locator('#row-CORE').getByRole('button', { name: /^raise$/i }).first();
+  const core = page.locator('#row-CORE');
   for (let i = 0; i < 6; i += 1) {
-    if (!(await core.isVisible().catch(() => false))) break;
-    await core.click({ force: true }).catch(() => undefined);
-    await settle(900);
+    if (!(await core.count())) break;
+    await core.scrollIntoViewIfNeeded();
+    const openItem = core.locator('[data-open-item]');
+    if (!(await openItem.isVisible().catch(() => false))) break;
+    await openItem.click({ force: true });
+    await settle(500);
+    const act = page.locator('[data-item-sheet] [data-act] button').first();
+    if (!(await act.isEnabled().catch(() => false))) {
+      await dismiss();
+      break;
+    }
+    await act.click({ force: true });
+    await settle(1200);
   }
 }
 
 // A brand-new commander can afford everything, so the line only appears once the
 // grant has gone. Walk the tabs.
 let anyWhen = when;
-for (const tab of ['GROW', 'ORBIT', 'DEFEND', 'REACH']) {
-  const button = page.getByRole('button', { name: new RegExp(`^${tab}$`, 'i') }).first();
+for (const tab of ['PRODUCTION', 'INTEL', 'DEFEND', 'FLEET']) {
+  const button = page.getByRole('tab', { name: new RegExp(`^${tab}$`, 'i') }).first();
   if (!(await button.isVisible().catch(() => false))) continue;
   // Forced, and tolerated: a detail sheet opened by a stray row tap sits over the
   // tab strip, and a harness that dies there reports a broken control rather than
@@ -477,7 +519,7 @@ for (const tab of ['GROW', 'ORBIT', 'DEFEND', 'REACH']) {
   console.log(`  ${tab}: ${String(n)} "affordable in", ${String(s2)} old bars`);
   anyWhen += n;
   await shot(`06-planet-${tab.toLowerCase()}`);
-  if (tab === 'REACH') {
+  if (tab === 'FLEET') {
     const strategic = page.locator('[data-strategic-state]').first();
     if (await strategic.isVisible().catch(() => false)) {
       await strategic.scrollIntoViewIfNeeded();

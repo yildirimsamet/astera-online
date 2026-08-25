@@ -252,7 +252,12 @@ it into a disposable database:
 ```bash
 "${compose[@]}" up -d postgres valkey
 ./deploy/backup.sh
-backup_file="$(ls -1t "$HOME"/backups/astera-*.sql.gz | head -n 1)"
+backup_file=''
+for candidate in "$HOME"/backups/astera-*.sql.gz; do
+  [[ -e "$candidate" ]] || continue
+  [[ -z "$backup_file" || "$candidate" -nt "$backup_file" ]] && backup_file="$candidate"
+done
+test -n "$backup_file"
 chmod 600 "$backup_file"
 gzip -t "$backup_file"
 sha256sum "$backup_file" | tee "$backup_file.sha256"
@@ -325,7 +330,12 @@ The final dump is the rollback boundary because no newer player write can exist 
 
 ```bash
 ./deploy/backup.sh
-final_backup="$(ls -1t "$HOME"/backups/astera-*.sql.gz | head -n 1)"
+final_backup=''
+for candidate in "$HOME"/backups/astera-*.sql.gz; do
+  [[ -e "$candidate" ]] || continue
+  [[ -z "$final_backup" || "$candidate" -nt "$final_backup" ]] && final_backup="$candidate"
+done
+test -n "$final_backup"
 chmod 600 "$final_backup"
 gzip -t "$final_backup"
 sha256sum "$final_backup" | tee "$final_backup.sha256"

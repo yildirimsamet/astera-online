@@ -82,4 +82,16 @@ describe('shared progression presentation', () => {
     expect(view.container.querySelector('[data-art] > img')).toHaveClass('grayscale');
     expect(view.container.querySelector('[data-art] svg')).toBeInTheDocument();
   });
+
+  it('keeps the affordability time on a row that opens a detail sheet', () => {
+    const view = render(
+      <UpgradeRow
+        {...base}
+        held={{ alloy: 0, crystal: 0 }}
+        income={{ alloyPerHour: 100, crystalPerHour: 20 }}
+        onOpen={vi.fn()}
+      />,
+    );
+    expect(view.getByText(/affordable in/i)).toBeInTheDocument();
+  });
 });

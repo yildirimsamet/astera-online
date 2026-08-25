@@ -182,6 +182,7 @@ const open = async (who) => {
       });
       return n > 0;
     },
+    undefined,
     { timeout: 45_000 },
   );
   await page.waitForTimeout(3500);

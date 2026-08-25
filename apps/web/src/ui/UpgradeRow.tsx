@@ -344,7 +344,7 @@ export function UpgradeRow({
         and the gap is a known number, so the answer is a time, and a time is
         something you can plan a session around.
       */}
-      {!onOpen && !affordable && !blocked && (!queued || queuedActionable) && waitMinutes !== null && (
+      {!affordable && !blocked && (!queued || queuedActionable) && waitMinutes !== null && (
         <p className="pointer-events-none relative z-10 mt-2 text-label text-faint">
           <Trans
             i18nKey="upgradeRow.affordableIn"
