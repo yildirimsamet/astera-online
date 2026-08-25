@@ -9,19 +9,21 @@ import {
   distance,
   generateGalaxy,
   prospectorHold,
+  prospectorReturnSpeed,
   prospectorSpeed,
   prospectorTravelExact,
   type AsteroidSpec,
 } from '@astera/rules';
 import {
   asteroidClaims,
+  debrisFields,
   galaxyEvents,
   miningRuns,
   planetResearch,
   planets,
   units,
 } from '../src/db/schema.js';
-import { launchMining, visibleAsteroids } from '../src/services/mining.js';
+import { launchHarvest, launchMining, visibleAsteroids } from '../src/services/mining.js';
 import { buildUnits } from '../src/services/build.js';
 import { EventWorker } from '../src/worker/loop.js';
 import {
@@ -581,5 +583,101 @@ describe('mining', () => {
   it('rockNow agrees with the generated field', () => {
     waitForRock();
     expect(rockNow().index).toBeGreaterThanOrEqual(0);
+  });
+
+  /**
+   * THE TRIP HOME IS SLOWER THAN THE TRIP OUT. D117.
+   *
+   * A laden craft keeps `PROSPECTOR.returnSpeedFactor` of its outbound speed, and
+   * `resolveMiningArrival` is the only line that decides it. Everything else reads
+   * the `homeAt` it writes — the owner's craft interpolates to it, the public
+   * contact is built from it, the countdown comes off it, and the return event is
+   * scheduled at it — so asserting on the stored instant is asserting on all of
+   * them at once.
+   *
+   * The factor multiplies the SPEED, so only the travel term moves:
+   * `prospectorTravelExact` is `launchMinutes + travel`, and the landing overhead
+   * is the same whichever way the craft is pointed. That is why these compare
+   * against the helper rather than against a bare multiple of the outbound leg.
+   */
+  describe('the trip home', () => {
+    it('is flown at a third of the outbound speed', async () => {
+      await giveUnits(f.db, mine, { PROSPECTOR: 2 });
+      const rock = waitForRock();
+      const run = await launchMining(f.db, mine, rock.index, 2, f.clock);
+
+      f.clock.set(run.arriveAt);
+      await worker(f).tick();
+
+      const [turned] = await f.db.select().from(miningRuns).where(eq(miningRuns.id, run.runId));
+      expect(turned!.status).toBe('returning');
+
+      const [home] = await f.db.select().from(planets).where(eq(planets.id, mine));
+      const back = Math.hypot(
+        turned!.interceptX - home!.x,
+        turned!.interceptY - home!.y,
+        turned!.interceptZ - home!.z,
+      );
+      const orbit: [] = [];
+      const expected = prospectorTravelExact(back, prospectorReturnSpeed(orbit));
+      // Compared in MILLISECONDS with a one-millisecond tolerance, not as a
+      // fractional minute: `homeAt` is a Date, so the stored instant is quantised
+      // to the millisecond and no closeness in minutes is tighter than that.
+      expect(
+        Math.abs(turned!.homeAt!.getTime() - (run.arriveAt.getTime() + expected * 60_000)),
+      ).toBeLessThanOrEqual(1);
+
+      // And it really is slower than the same distance flown outbound — the
+      // overhead is shared, so the whole gap is in the travel term.
+      const actual = (turned!.homeAt!.getTime() - run.arriveAt.getTime()) / 60_000;
+      const outbound = prospectorTravelExact(back, prospectorSpeed(orbit));
+      expect(actual).toBeGreaterThan(outbound);
+      expect(actual - PROSPECTOR.launchMinutes).toBeCloseTo(
+        (outbound - PROSPECTOR.launchMinutes) / PROSPECTOR.returnSpeedFactor,
+        4,
+      );
+    });
+
+    /**
+     * A WRECK FIELD IS NOT A FASTER WAY HOME. Owner decision.
+     *
+     * Both kinds of run turn around through the same line in
+     * `resolveMiningArrival`, so this holds without a branch — and this test is
+     * what would notice if somebody added one.
+     */
+    it('is just as slow coming back from a wreck field', async () => {
+      await giveUnits(f.db, mine, { PROSPECTOR: 2 });
+      const [field] = await f.db
+        .insert(debrisFields)
+        .values({
+          seasonId: f.seasonId,
+          planetId: other,
+          alloy: 5_000,
+          crystal: 1_200,
+          createdAt: f.clock.now(),
+        })
+        .returning();
+      const run = await launchHarvest(f.db, mine, field!.id, 2, f.clock);
+
+      f.clock.set(run.arriveAt);
+      await worker(f).tick();
+
+      const [turned] = await f.db.select().from(miningRuns).where(eq(miningRuns.id, run.runId));
+      expect(turned!.status).toBe('returning');
+
+      const [home] = await f.db.select().from(planets).where(eq(planets.id, mine));
+      const back = Math.hypot(
+        turned!.interceptX - home!.x,
+        turned!.interceptY - home!.y,
+        turned!.interceptZ - home!.z,
+      );
+      const orbit: [] = [];
+      const expected = prospectorTravelExact(back, prospectorReturnSpeed(orbit));
+      expect(
+        Math.abs(turned!.homeAt!.getTime() - (run.arriveAt.getTime() + expected * 60_000)),
+      ).toBeLessThanOrEqual(1);
+      const actual = (turned!.homeAt!.getTime() - run.arriveAt.getTime()) / 60_000;
+      expect(actual).toBeGreaterThan(prospectorTravelExact(back, prospectorSpeed(orbit)));
+    });
   });
 });

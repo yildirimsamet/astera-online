@@ -2,7 +2,7 @@ import { and, eq } from 'drizzle-orm';
 import { pino } from 'pino';
 import { afterAll, beforeEach, describe, expect, it } from 'vitest';
 import { radarLead, radarRange } from '@astera/rules';
-import { missions, notifications, players, scheduledEvents } from '../src/db/schema.js';
+import { miningRuns, missions, notifications, players, scheduledEvents } from '../src/db/schema.js';
 import { EventWorker } from '../src/worker/loop.js';
 import { launchAttack } from '../src/services/mission.js';
 import { assignWatch, launchProbe } from '../src/services/intel.js';
@@ -441,7 +441,17 @@ describe('a mining run coming home', () => {
     await worker.tick();
     // The way home is the same flight again; the return event carries its own
     // instant, so advancing past it is enough.
-    f.clock.advance(run.flightMinutes + 1);
+    /**
+     * ADVANCE TO THE STORED `homeAt`, NEVER BY THE OUTBOUND FLIGHT.
+     *
+     * This read `run.flightMinutes + 1`, which quietly assumed the trip back takes
+     * the same as the trip out. D117 made it three times longer, so the clock
+     * stopped short of the return and no notification had been written yet. The
+     * row is the authority on when the craft lands — it is what schedules the
+     * event — so reading it is both correct and immune to the next change.
+     */
+    const [turned] = await f.db.select().from(miningRuns).where(eq(miningRuns.id, run.runId));
+    f.clock.set(new Date(turned!.homeAt!.getTime() + 1_000));
     await worker.tick();
 
     const rows = (await newsFor(f, f.playerIds[0]!)).filter((r) => r.kind === 'fleet_returned');

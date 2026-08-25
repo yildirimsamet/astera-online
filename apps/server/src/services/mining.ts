@@ -5,6 +5,7 @@ import {
   interceptAsteroid,
   prospectorHold,
   prospectorSpeed,
+  prospectorReturnSpeed,
   prospectorTravelExact,
   DEBRIS,
   claimDebris,
@@ -290,7 +291,12 @@ export async function launchMining(
     }
 
     const arriveAt = atMinute(startsAt, hit.meetsAtMinutes);
-    const homeMinutes = prospectorTravelExact(distance(hit.at, origin), speed);
+    // Priced at the RETURN speed, or this guard lets a player launch a run that
+    // physically cannot get home before the season closes. D117.
+    const homeMinutes = prospectorTravelExact(
+      distance(hit.at, origin),
+      prospectorReturnSpeed(origin.orbit),
+    );
     assertSeasonOpenThrough(origin, addMinutes(arriveAt, homeMinutes));
     const holdEach = prospectorHold(origin.orbit);
 
@@ -459,12 +465,26 @@ export async function resolveMiningArrival(tx: Tx, runId: string, now: Date): Pr
     await publish(tx, home.controllerPlayerId, 'mining_arrival');
   }
 
+  /**
+   * A LADEN CRAFT FLIES HOME AT A THIRD OF ITS OUTBOUND SPEED. D117.
+   *
+   * This is the only line that decides the return leg, and everything downstream
+   * reads the `homeAt` it produces rather than recomputing a speed: the owner's
+   * craft interpolates `arriveAt → homeAt` (`runPosition`), the public contact is
+   * built from the same two instants (`projectGalaxyTraffic`), the countdown comes
+   * off the instant, and the `mining_return` event is scheduled at it. So the
+   * factor belongs here and nowhere else — the two guards that also mention the
+   * trip home are proving a run can FINISH, not deciding when it does.
+   *
+   * Both kinds of run come through here — a rock and a wreck field — which is how
+   * the salvage run pays the same price without a branch.
+   */
   const back = prospectorTravelExact(
     Math.hypot(run.interceptX - home.x, run.interceptY - home.y, run.interceptZ - home.z),
     // Re-read from what is CURRENTLY in orbit on purpose: the craft is a real
     // object being flown home, and a Derrick that lands while it is out
     // legitimately gets it back sooner. Only the aim point is frozen.
-    prospectorSpeed(await orbitOf(tx, run.planetId)),
+    prospectorReturnSpeed(await orbitOf(tx, run.planetId)),
   );
   const homeAt = addMinutes(now, back);
 
@@ -801,9 +821,12 @@ export async function launchHarvest(
     const dist = distance(origin, target);
     // A harvest is the same craft on a different errand, so it flies by the same
     // rule as a mining run — mining's own launch overhead, not a warship's. D48.
-    const oneWay = prospectorTravelExact(dist, speed);
-    const arriveAt = addMinutes(origin.now, oneWay);
-    assertSeasonOpenThrough(origin, addMinutes(arriveAt, oneWay));
+    // Out at hull speed and home at a third of it, for the same reason and through
+    // the same turn-around line: a wreck field is not a faster way home. D117.
+    const outbound = prospectorTravelExact(dist, speed);
+    const homeMinutes = prospectorTravelExact(dist, prospectorReturnSpeed(origin.orbit));
+    const arriveAt = addMinutes(origin.now, outbound);
+    assertSeasonOpenThrough(origin, addMinutes(arriveAt, homeMinutes));
     const holdEach = prospectorHold(origin.orbit);
 
     const [run] = await tx
@@ -841,7 +864,7 @@ export async function launchHarvest(
       runId: run!.id,
       craft,
       arriveAt,
-      flightMinutes: oneWay,
+      flightMinutes: outbound,
       intercept: { x: target.x, y: target.y, z: target.z },
       capacity: holdEach * craft,
     };

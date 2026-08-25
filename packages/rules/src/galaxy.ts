@@ -452,6 +452,20 @@ export function claimOre(
 export const prospectorSpeed = (orbit: SatelliteSet): number =>
   PROSPECTOR.speed * drillSpeedMult(orbit);
 
+/**
+ * The speed of the trip HOME, which is not the speed of the trip out.
+ *
+ * One definition, because three processes have to agree on it: the server writes
+ * `homeAt` from it, every consumer — the owner's craft, the public contact, the
+ * scheduled return — reads that stored instant rather than recomputing, and the
+ * simulator has to price the same trip or it models a game we do not ship.
+ *
+ * A Derrick still lifts it: the multiplier is applied to the lifted speed rather
+ * than to the base, so upgrading orbit shortens both legs in the same proportion.
+ */
+export const prospectorReturnSpeed = (orbit: SatelliteSet): number =>
+  prospectorSpeed(orbit) * PROSPECTOR.returnSpeedFactor;
+
 export const prospectorHold = (orbit: SatelliteSet): number =>
   PROSPECTOR.hold * drillHoldMult(orbit);
 

@@ -354,6 +354,13 @@ never simulated. A rock carries a level that sets its ore, and interception is s
 continuous time so a craft and its rock arrive together. **First to arrive takes what it can
 carry**, which is the whole decision: which rock, and when.
 
+**A laden craft flies home at a third of the speed it went out (D117).** The trip out is a
+race and stays one; the trip back is the price of having won it. What it costs is a flight
+bay held three times as long and a craft on the disc, in the open, for the whole of it — so
+"which rock, and when" now also asks how long you are willing to be committed. It does not
+lower how much ore the galaxy takes out: the field is the bottleneck, not the round trip, and
+the same rocks are emptied either way. Salvage runs pay the same price.
+
 **Mined ore comes home into the works, not into storage (D31)** — so a miner collects like
 everyone else, their haul is raidable at half rate with no vault cover, and what they can
 absorb is set by the size of their planet rather than by how many craft they own. Mining is a

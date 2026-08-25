@@ -975,6 +975,34 @@ export const PROSPECTOR = {
    * absolute was only ever its shadow.
    */
   launchMinutes: 0.13,
+  /**
+   * HOW MUCH SLOWER A LADEN CRAFT FLIES HOME. Owner's figure: three times.
+   *
+   * A RATIO, and it has to be one. D63 moved hull speeds by 9.46 and nine tests
+   * failed at once, none because the thing they tested had broken — every rule
+   * written as an absolute number of minutes stops being the fraction it was meant
+   * to be the moment the tempo changes. This is the share of its outbound speed a
+   * craft keeps on the way back, so it survives the next time `speed` moves.
+   *
+   * IT MULTIPLIES THE SPEED, NOT THE TRIP. `prospectorTravelExact` is
+   * `launchMinutes + travel`, and only the travel term is a function of speed —
+   * so the landing overhead stays what it is and the flight itself triples. That
+   * is the honest shape: turning around at a rock does not make the approach to
+   * your own world take longer.
+   *
+   * WHAT IT COSTS THE PLAYER IS VISIBLE THE WHOLE TIME, which is why it is this
+   * rather than a cooldown. A craft is drawn for its owner and for the whole
+   * galaxy for every minute of the trip, it holds a flight bay while it flies, and
+   * `PROSPECTOR.max` already rations how many a planet may own. A lockout after
+   * landing would ration the same thing a second time, and it would do it as a
+   * timer with nothing on screen — which is the one thing the product's second
+   * test forbids outright.
+   *
+   * THE SALVAGE RUN PAYS IT TOO. Owner decision. `resolveMiningArrival` turns both
+   * kinds of run around through the same line, so a wreck field is not a faster
+   * way home than a rock.
+   */
+  returnSpeedFactor: 1 / 3,
   /** Resource units one craft carries home, before a Derrick. */
   hold: 300,
   /**

@@ -2318,6 +2318,61 @@ orders 1 → 4. That last part is the acceptance note step 11 now carries — on
 the after-counts should be HIGHER than the before-counts, and a set that did not move while
 players were active is itself worth investigating.
 
+### D117 · A laden Prospector flies home at a third of its outbound speed — owner instruction
+
+**The choice was between slowing the return leg and putting a cooldown on the craft, and the
+structure decided it.** The return leg has exactly one writer — `resolveMiningArrival` computes
+`prospectorTravelExact(distance, speed)` and stores `homeAt` — and every consumer reads that
+stored instant rather than recomputing a speed: the owner's craft interpolates `arriveAt →
+homeAt` in `runPosition`, the public contact is built from the same two instants in
+`projectGalaxyTraffic`, the countdown comes off the instant, and the `mining_return` event is
+scheduled at it. So one line moves the whole system, and the delicate part — the continuous-time
+interception solver — is outbound only and is not touched at all.
+
+A cooldown would have needed a refusal code with localised figures, an absolute `readyAt` on the
+payload, and a countdown surface, because a control may never offer what the server will refuse.
+It would also have been a second rationing system on top of `PROSPECTOR.max`, and it would have
+rationed by making the player wait at a screen with nothing on it — which the second feel test
+forbids outright. The slower leg keeps the cost visible and moving: the craft is drawn for the
+owner and for the galaxy every minute of it, and it holds a flight bay throughout.
+
+**`PROSPECTOR.returnSpeedFactor` is 1/3, and it is a RATIO for D63's reason.** It multiplies the
+SPEED, not the trip, so only the travel term moves — `prospectorTravelExact` is
+`launchMinutes + travel`, and turning around at a rock does not make the approach to your own
+world take longer. Four sites read it through one helper, `prospectorReturnSpeed`, because the
+server and the simulator have to agree: the return leg itself, the season-end guard on a mining
+launch, the season-end guard on a harvest launch, and the simulator's own turn-around plus the
+rock-scoring its bots do (they rank rocks by yield per minute of the whole round trip, so a leg
+they do not fly makes them choose wrong).
+
+**The salvage run pays it too.** Owner decision. Both kinds of run turn around through the same
+line, so it holds without a branch, and a test exists to notice if somebody adds one.
+
+**MEASURED, AND IT DOES NOT DO WHAT IT LOOKS LIKE IT DOES.** Five seeds, 50 players, 14 days,
+against the same seeds at the old symmetric speed:
+
+| | launches | ore claimed |
+|---|---|---|
+| symmetric (old) | 6,849 | 3,524,500 |
+| a third (new) | 6,865 | 3,524,000 |
+
+That is 0.01% less ore, which is noise. The reason is the one `PROSPECTOR.launchMinutes` already
+records from D43: the galaxy's mining income is bounded by the ore that EXISTS against a demand
+two orders of magnitude larger, so a longer round trip changes WHO reaches a rock first and how
+long they are committed, not what the field yields. **Do not cite this change as a mining nerf.**
+What it buys is commitment — a bay held three times as long, and a craft in the open for the
+whole of it. The season gate stayed green on all five seeds with the bands unchanged, and the
+only red assertion is still D112's.
+
+The usual simulator caveat applies and is sharper here than elsewhere: its bots relaunch the
+moment a craft lands, so they model the field emptying rather than a person deciding whether the
+trip is worth it. The structural argument above does not depend on that; the human effect does.
+
+**Two tests were bending on a symmetry that is no longer true.** `contract.test.ts` and
+`notifications.test.ts` both reached the return by advancing `run.flightMinutes + 1` — the
+OUTBOUND time — so they stopped short of the landing and found no notification. Both read the
+stored `homeAt` now, which is what schedules the event and is immune to the next change.
+
 ## Architecture
 
 A1 · One source of truth — LOCKED

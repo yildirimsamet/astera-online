@@ -10,6 +10,7 @@ import {
   buildings,
   debrisFields,
   galaxyEvents,
+  miningRuns,
   neutralPlanetState,
   notifications,
   planetResearch,
@@ -1180,7 +1181,17 @@ describe('every payload the client parses', () => {
     const run = await launchMining(f.db, mine, rock!.index, 2, f.clock);
     f.clock.set(run.arriveAt);
     await worker.tick();
-    f.clock.advance(run.flightMinutes + 1);
+    /**
+     * ADVANCE TO THE STORED `homeAt`, NEVER BY THE OUTBOUND FLIGHT.
+     *
+     * This read `run.flightMinutes + 1`, which quietly assumed the trip back takes
+     * the same as the trip out. D117 made it three times longer, so the clock
+     * stopped short of the return and no notification had been written yet. The
+     * row is the authority on when the craft lands — it is what schedules the
+     * event — so reading it is both correct and immune to the next change.
+     */
+    const [turned] = await f.db.select().from(miningRuns).where(eq(miningRuns.id, run.runId));
+    f.clock.set(new Date(turned!.homeAt!.getTime() + 1_000));
     await worker.tick();
 
     const rows = await f.db
