@@ -691,8 +691,31 @@ SELECT sh.ordinal,
  ORDER BY sh.ordinal;
 ```
 
-Required: exactly two rows, ordinals 1 and 2; `player_cap=300`; and on each row `neutrals=51`,
-`tier1=30`, `tier2=15`, `tier3=6`.
+Required: exactly two rows, ordinals 1 and 2; and `player_cap=300` on both.
+
+**The 51 / 30 / 15 / 6 pool is a SEEDING fact, not a standing one, and only a galaxy nobody has
+settled still shows it.** A settlement captures a neutral world: the row becomes a `COLONY`, its
+`neutral_planet_state` is detached, and the neutral count falls by one for the rest of the season.
+Requiring 51 on a played galaxy fails every deploy into a world where the game has happened. What
+must hold is the CONSERVATION — measured, not eyeballed:
+
+```sql
+SELECT sh.code, p.kind, count(*) AS worlds,
+       count(*) FILTER (WHERE p.player_id IS NOT NULL) AS controlled
+  FROM shards sh
+  JOIN seasons s ON s.shard_id = sh.id AND s.status = 'live'
+  JOIN planets p ON p.season_id = s.id
+ GROUP BY sh.code, p.kind ORDER BY sh.code, p.kind;
+
+SELECT count(*) AS orphaned_neutral_state
+  FROM neutral_planet_state n JOIN planets p ON p.id = n.planet_id
+ WHERE p.kind <> 'NEUTRAL';
+```
+
+Require `neutrals + colonies = 51` per live shard, every `CAPITAL` and `COLONY` controlled, every
+`NEUTRAL` uncontrolled, and `orphaned_neutral_state = 0`. A fresh galaxy satisfies it at 51/0; a
+played one at, say, 28/23. A pool that does NOT add to 51 is a world that has lost or gained a
+planet, which is the failure the flat count was reaching for and never actually tested.
 
 `ruleset_version` is whatever `MULTI_WORLD.rulesetVersion` was in the code that CREATED the season,
 so it is a fact about the galaxy's birthday rather than an acceptance constant. Seasons opened
