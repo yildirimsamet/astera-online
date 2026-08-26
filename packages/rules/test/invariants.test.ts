@@ -5,6 +5,7 @@ import {
   DOMINION_TRANSFER_SCALE,
   MOBILE_HULLS,
   MULTI_WORLD,
+  GALAXY_SPAN,
   DEBRIS,
   DISRUPTION,
   ECON,
@@ -56,7 +57,6 @@ import {
   median,
   mulberry32,
   resolveCombat,
-  prospectorTravelExact,
   travelExact,
   travelMinutes,
   type Fleet,
@@ -246,12 +246,16 @@ describe('loot invariants', () => {
 describe('travel', () => {
   it('is monotonic in distance and never instant', () => {
     fc.assert(
-      fc.property(fc.integer({ min: 0, max: 4000 }), fc.integer({ min: 1, max: 60 }), (d, s) => {
-        // The launch overhead, read from the rule rather than written out. It was
-        // the literal 3 until D63 moved it, at which point this asserted a figure
-        // the game no longer had — the invariant is "never instant", not "never
-        // under three minutes".
-        expect(travelMinutes(d, s)).toBeGreaterThanOrEqual(TRAVEL.baseMinutes);
+      fc.property(fc.integer({ min: 1, max: 4000 }), fc.integer({ min: 1, max: 60 }), (d, s) => {
+        /*
+          NEVER INSTANT, AND THE FLOOR IS THE ROUNDING NOW. D121 removed the launch
+          overhead, so the model is `distance ÷ speed` and nothing is added to it —
+          but `travelMinutes` rounds UP, so any real distance still costs a whole
+          minute on a stated ETA. The invariant was always "never instant"; it used
+          to be satisfied by a constant and is now satisfied by the ceiling.
+        */
+        expect(travelMinutes(d, s)).toBeGreaterThanOrEqual(1);
+        expect(travelExact(d, s)).toBeGreaterThan(0);
         expect(travelMinutes(d + 100, s)).toBeGreaterThanOrEqual(travelMinutes(d, s));
       }),
       { numRuns: 300 },
@@ -503,30 +507,34 @@ describe('the asteroid field', () => {
    * lap here, which is a lead shot rather than a lap of waiting.
    */
   /**
-   * THE LAUNCH OVERHEAD IS THE LEAD, and that is why it has its own figure. D48.
+   * THE LEAD SURVIVED THE OVERHEAD THAT USED TO DOMINATE IT. D121.
    *
-   * A fixed delay before a craft covers any ground is a fixed head start for the
-   * rock, and no amount of hull speed shrinks it. At `TRAVEL.baseMinutes` the
-   * overhead was 68% of a mining flight and a rock covered 660 units during it —
-   * 85% of the whole lead. Held far below the warship figure, or the aim point
-   * drifts back to somewhere unrelated whatever the drill's speed is.
+   * D48's argument for a mining-only launch figure was that a fixed delay before a
+   * craft covers any ground is a fixed head start for the rock — 68% of a mining
+   * flight, and 85% of the whole lead. That was true, and it is why the overhead
+   * had to be SMALL for mining. It was never why the lead exists: the rock moves
+   * for the whole flight too, which is what makes this a solve rather than a
+   * straight line.
+   *
+   * With the overhead gone the aim point is now pure pursuit, so the property to
+   * hold is the one that was always the point — a drill aims AHEAD of the rock,
+   * and by a readable angle rather than a lap.
    */
-  it("gives a mining craft a launch overhead far below a warship's", () => {
-    expect(PROSPECTOR.launchMinutes).toBeLessThan(TRAVEL.baseMinutes / 4);
-    expect(PROSPECTOR.launchMinutes).toBeGreaterThan(0);
-  });
-
-  /** And the overhead is a minority of a typical mining flight, not the bulk of it. */
-  it('spends most of a mining flight actually travelling', () => {
-    const shares: number[] = [];
+  it('still aims ahead of a rock rather than at it', () => {
+    const leads: number[] = [];
     for (const planet of spec.slots.slice(0, 8)) {
       for (const rock of rocks.slice(0, 120)) {
         const hit = interceptAsteroid(planet, prospectorSpeed([]), rock, rock.appearsAt + 1);
-        if (hit) shares.push(PROSPECTOR.launchMinutes / hit.flightMinutes);
+        if (!hit) continue;
+        // How far round its orbit the rock travelled while the craft was flying.
+        leads.push(hit.flightMinutes / rock.period);
       }
     }
-    expect(shares.length).toBeGreaterThan(200);
-    expect(median(shares)).toBeLessThan(0.5);
+    expect(leads.length).toBeGreaterThan(200);
+    // A lead at all — a craft aimed at where the rock IS would meet nothing.
+    expect(median(leads)).toBeGreaterThan(0);
+    // And under half a lap, which is D43's rule: a lead shot, never a lap of waiting.
+    expect(median(leads)).toBeLessThan(0.5);
   });
 
   it('keeps the live reference field below one revolution of lead', () => {
@@ -626,15 +634,16 @@ describe('the asteroid field', () => {
             // any crossing of the disc to reach it.
             const widest = 2 * GALAXY.radius;
             expect(a.expiresAt - now).toBeLessThan(
-              PROSPECTOR.launchMinutes + (widest * TRAVEL.distanceFactor) / speed + 1,
+              (widest * TRAVEL.distanceFactor) / speed + 1,
             );
             return;
           }
 
           // The rock is still there when the craft arrives.
           expect(hit.meetsAtMinutes).toBeLessThan(a.expiresAt);
-          // A MINING craft's overhead, not a warship's — see `prospectorTravelExact`.
-          expect(hit.flightMinutes).toBeGreaterThanOrEqual(PROSPECTOR.launchMinutes);
+          // A meeting takes time. D121 removed the launch overhead that used to
+          // guarantee this by construction, so it is asserted directly.
+          expect(hit.flightMinutes).toBeGreaterThan(0);
 
           /**
            * THE CRAFT ARRIVES WHEN THE ROCK DOES, TO THE SECOND.
@@ -646,7 +655,7 @@ describe('the asteroid field', () => {
            * for — and it sat at the intercept point waiting for a rock that had not
            * arrived. Both now read `travelExact`, so they agree by construction.
            */
-          const flown = prospectorTravelExact(distance(planet, hit.at), speed);
+          const flown = travelExact(distance(planet, hit.at), speed);
           expect(Math.abs(flown - hit.flightMinutes)).toBeLessThan(1e-9);
 
           // And the aim point is where the rock will be, not where it is.
@@ -691,7 +700,7 @@ describe('the asteroid field', () => {
 
     // Sweep every earlier moment: none of them can be reached in time.
     for (let t = 0.05; t < hit!.flightMinutes - 0.05; t += 0.05) {
-      const reachable = prospectorTravelExact(
+      const reachable = travelExact(
         distance(planet, asteroidPosition(rock, now + t)),
         speed,
       );
@@ -699,11 +708,18 @@ describe('the asteroid field', () => {
     }
   });
 
-  /** And it never claims a trip shorter than launch and landing themselves cost. */
-  it('never returns a flight shorter than the overhead', () => {
+  /**
+   * And it never claims a trip that takes no time at all.
+   *
+   * This used to read "shorter than the overhead", which D121 deleted. The
+   * property underneath was never about the overhead: a solver that returns zero
+   * has found the rock already touching the craft, and the caller would schedule
+   * an arrival in the same instant as the launch.
+   */
+  it('never returns an instant flight', () => {
     for (const rock of rocks.slice(0, 60)) {
       const hit = interceptAsteroid(spec.slots[0]!, prospectorSpeed(['DERRICK']), rock, rock.appearsAt + 1);
-      if (hit) expect(hit.flightMinutes).toBeGreaterThanOrEqual(PROSPECTOR.launchMinutes);
+      if (hit) expect(hit.flightMinutes).toBeGreaterThan(0);
     }
   });
 });
@@ -1298,11 +1314,22 @@ describe('the tempo — every ratio a hull speed is measured against', () => {
     expect(widest).toBeLessThan(150);
   });
 
-  it('leaves the launch overhead a minority of a typical flight', () => {
-    // It was 50% the day the speeds landed, which is most of why hull choice
-    // stopped reading as a decision about time.
-    expect(TRAVEL.baseMinutes / travelMinutes(typicalLeg, HULLS.WASP.speed)).toBeLessThan(0.4);
-    expect(TRAVEL.baseMinutes).toBeGreaterThan(0);
+  /**
+   * A FLIGHT IS DISTANCE AND SPEED, AND NOTHING IS ADDED TO IT. D121.
+   *
+   * This used to assert that the launch overhead stayed a MINORITY of a typical
+   * flight — it was 50% the day D63's speeds landed, which is most of why hull
+   * choice stopped reading as a decision about time. D121 deleted the term rather
+   * than bounding it, so the property is now the strong form: double the distance
+   * and you exactly double the trip. Any constant creeping back into the model
+   * breaks this immediately, whatever its size.
+   */
+  it('charges for distance and for nothing else', () => {
+    const near = travelExact(typicalLeg, HULLS.WASP.speed);
+    const far = travelExact(typicalLeg * 2, HULLS.WASP.speed);
+    expect(far / near).toBeCloseTo(2, 9);
+    // And halving the speed exactly doubles it, for the same reason.
+    expect(travelExact(typicalLeg, HULLS.WASP.speed / 2) / near).toBeCloseTo(2, 9);
   });
 
   it('keeps hull choice a real difference in arrival time', () => {
@@ -1368,5 +1395,74 @@ describe('the tempo — every ratio a hull speed is measured against', () => {
     for (const id of MOBILE_HULLS) {
       expect(PROBE.speed, `a ${HULLS[id].name} outruns a probe`).toBeGreaterThan(HULLS[id].speed);
     }
+  });
+
+  /**
+   * THE GRADIENT 2554 DESTROYED, AND THE REASON ×4 IS NOT THAT NUMBER. D121.
+   *
+   * At 2554 on the old radius-1000 disc every probe in the galaxy landed in
+   * exactly two minutes — measured across five legs from the closest pair to the
+   * furthest — so "who is near enough to look at cheaply" stopped being a
+   * question, and that question is what the whole intel layer is built on.
+   *
+   * This is that failure written as a property rather than as a story: crossing
+   * the disc must cost meaningfully more than looking next door. Stated as a
+   * RATIO, because D63 moved every speed in the game by 9.46 and D101 widened the
+   * disc by 2.5 — a rule written in minutes would have broken at both.
+   *
+   * THE FIXED COST WAS WHAT HAD BEEN FLATTENING IT, and three speed increases in
+   * a row proved it the expensive way. Measured spreads: 5.4× at ×4, 2.7× at ×12,
+   * and 1.60× at ×36 — the ratio got WORSE as the probe got faster, because
+   * the launch overhead was a term speed cannot divide, so raising the speed only
+   * grew the share of the flight that was identical for every leg. Deleting that
+   * one minute, at a third of the top speed tried, gives 22×.
+   *
+   * The floor stays at 2 because that is the property, not the margin. The honest
+   * way to break it now is to put an overhead back rather than to raise the speed:
+   * with no fixed term this ratio is exactly `GALAXY_SPAN / minSeparation`, and no
+   * speed anyone chooses can move it at all.
+   */
+  it('still charges a probe for distance', () => {
+    const nextDoor = travelExact(GALAXY.minSeparation, PROBE.speed);
+    const acrossTheDisc = travelExact(GALAXY_SPAN, PROBE.speed);
+    expect(acrossTheDisc / nextDoor).toBeGreaterThan(2);
+  });
+
+  /**
+   * AND NOTHING PAYS A LAUNCH OVERHEAD ANY MORE. D121.
+   *
+   * The probe was the exemption for about an hour, and then the measurement that
+   * justified the exemption turned out to apply to every craft: a flat charge
+   * nobody could feel on a raid, and a term that was only ever WIDENING a mining
+   * lead rather than creating it. Three constants and three travel functions went
+   * with it. This is the guard against them coming back one craft at a time.
+   */
+  it('leaves no launch overhead anywhere in the model', () => {
+    expect(Object.keys(TRAVEL)).toEqual(['distanceFactor']);
+    expect('launchMinutes' in PROBE).toBe(false);
+    expect('launchMinutes' in PROSPECTOR).toBe(false);
+  });
+
+  /**
+   * AND THE HOUR HAS TO OUTLAST THE FLIGHT IT RATIONS. D121.
+   *
+   * `PROBE_ALREADY_OUT` and `PROBE_COOLDOWN` are two sentences about one target.
+   * If the cooldown could expire while the probe were still in the air, the game
+   * would tell a player they may look again and then refuse them because the last
+   * look has not come home — two rules disagreeing about one control. Speed and
+   * the cooldown are set independently, so the relationship is asserted rather
+   * than assumed.
+   */
+  it('keeps the cooldown longer than the round trip it replaces', () => {
+    const widestRoundTrip = 2 * travelExact(GALAXY_SPAN, PROBE.speed);
+    expect(PROBE.retargetCooldownMinutes).toBeGreaterThan(widestRoundTrip);
+  });
+
+  /**
+   * The hour is a rationing rule, not a wall: a commander with a telescope's worth
+   * of neighbours must still be able to work through them inside a session.
+   */
+  it('leaves scouting a rhythm rather than a queue', () => {
+    expect(PROBE.retargetCooldownMinutes).toBeLessThanOrEqual(120);
   });
 });

@@ -22,6 +22,7 @@ import type {
   ChatPage,
   Contact,
   MiningFieldView,
+  MiningLaunchResult,
   MiningRun,
   MiningStatusView,
   MiningView,
@@ -1314,19 +1315,45 @@ export function useCollect() {
   });
 }
 
+/**
+ * Apply every authoritative view a mining/salvage launch moved. D120.
+ *
+ * The status key is per selected world, while the old capital-only client still
+ * reads the unqualified alias. Always seed the explicit key and seed the alias only
+ * when it is the surface this tree is using. Each older GET is cancelled before
+ * the POST answer is written, or a pre-launch run list can erase the new craft.
+ */
+function useApplyMiningLaunch(activePlanetId: string | null) {
+  const client = useQueryClient();
+  const applyPlanet = useApplyPlanet();
+  return async (result: MiningLaunchResult) => {
+    const planetId = result.planet.planet.id;
+    const statusKey = keys.miningStatusById(planetId);
+    await Promise.all([
+      applyPlanet(result.planet),
+      client.cancelQueries({ queryKey: statusKey, exact: true }),
+      client.cancelQueries({ queryKey: keys.pending }),
+      ...(activePlanetId === null
+        ? [client.cancelQueries({ queryKey: keys.miningStatus, exact: true })]
+        : []),
+    ]);
+    client.setQueryData(statusKey, result.mining);
+    if (activePlanetId === null) client.setQueryData(keys.miningStatus, result.mining);
+    client.setQueryData(keys.pending, { pending: result.pending });
+  };
+}
+
 export function useMine() {
   const api = useApi();
   const { activePlanetId } = useWorld();
-  const invalidate = useInvalidator();
+  const apply = useApplyMiningLaunch(activePlanetId);
   const lane = usePlanetMutationLane(activePlanetId);
   return useMutation({
     scope: lane.scope,
     mutationFn: ({ asteroidIndex, craft }: { asteroidIndex: number; craft: number }) =>
       api.mine(asteroidIndex, craft, activePlanetId ?? undefined),
     onMutate: lane.enter,
-    onSuccess: () => {
-      invalidate(keys.mining, keys.planet, keys.pending);
-    },
+    onSuccess: apply,
     onSettled: (_data, _error, _vars, turn) => { lane.leave(turn); },
   });
 }
@@ -1335,16 +1362,14 @@ export function useMine() {
 export function useHarvest() {
   const api = useApi();
   const { activePlanetId } = useWorld();
-  const invalidate = useInvalidator();
+  const apply = useApplyMiningLaunch(activePlanetId);
   const lane = usePlanetMutationLane(activePlanetId);
   return useMutation({
     scope: lane.scope,
     mutationFn: ({ fieldId, craft }: { fieldId: string; craft: number }) =>
       api.harvest(fieldId, craft, activePlanetId ?? undefined),
     onMutate: lane.enter,
-    onSuccess: () => {
-      invalidate(keys.mining, keys.planet, keys.pending);
-    },
+    onSuccess: apply,
     onSettled: (_data, _error, _vars, turn) => { lane.leave(turn); },
   });
 }

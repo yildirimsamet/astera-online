@@ -59,7 +59,7 @@ export function MiningFlights({
 }: {
   runs: readonly MiningRun[];
   home: { x: number; y: number; z: number };
-  /** The worlds, so a Prospector is never drawn inside one. See `clearOfWorlds`. */
+  /** The worlds, so the home endpoint uses its shared surface clearance. D120. */
   nodes: readonly PlanetNode[];
   focusedId: string | null;
   onSelect: (id: string) => void;
@@ -152,7 +152,7 @@ function Run({
 
       {/* Named like `flight` and `contact`, so the visual harness can find a run
           and photograph it rather than guessing at a sphere in the scene graph. */}
-      <group ref={group} name="mining">
+      <group ref={group} name="mining" userData={{ craftId: run.id }}>
         <mesh
           onPointerUp={(event) => {
             if (!wasTap()) return;

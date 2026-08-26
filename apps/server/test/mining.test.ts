@@ -11,7 +11,7 @@ import {
   prospectorHold,
   prospectorReturnSpeed,
   prospectorSpeed,
-  prospectorTravelExact,
+  travelExact,
   type AsteroidSpec,
 } from '@astera/rules';
 import {
@@ -279,7 +279,7 @@ describe('mining', () => {
        * the solver itself uses, so the tolerance can be exact.
        */
       const [home] = await f.db.select().from(planets).where(eq(planets.id, mine));
-      const flight = prospectorTravelExact(distance(home!, run.intercept), prospectorSpeed([]));
+      const flight = travelExact(distance(home!, run.intercept), prospectorSpeed([]));
       expect(Math.abs(flight - run.flightMinutes)).toBeLessThan(1e-6);
     });
 
@@ -619,7 +619,7 @@ describe('mining', () => {
         turned!.interceptZ - home!.z,
       );
       const orbit: [] = [];
-      const expected = prospectorTravelExact(back, prospectorReturnSpeed(orbit));
+      const expected = travelExact(back, prospectorReturnSpeed(orbit));
       // Compared in MILLISECONDS with a one-millisecond tolerance, not as a
       // fractional minute: `homeAt` is a Date, so the stored instant is quantised
       // to the millisecond and no closeness in minutes is tighter than that.
@@ -627,15 +627,16 @@ describe('mining', () => {
         Math.abs(turned!.homeAt!.getTime() - (run.arriveAt.getTime() + expected * 60_000)),
       ).toBeLessThanOrEqual(1);
 
-      // And it really is slower than the same distance flown outbound — the
-      // overhead is shared, so the whole gap is in the travel term.
+      /*
+        AND IT REALLY IS SLOWER THAN THE SAME DISTANCE FLOWN OUTBOUND.
+        The whole trip scales now: D121 removed the launch overhead, so there is no
+        fixed term to subtract before comparing and the ratio is the return factor
+        exactly. This used to net off `PROSPECTOR.launchMinutes` on both sides.
+      */
       const actual = (turned!.homeAt!.getTime() - run.arriveAt.getTime()) / 60_000;
-      const outbound = prospectorTravelExact(back, prospectorSpeed(orbit));
+      const outbound = travelExact(back, prospectorSpeed(orbit));
       expect(actual).toBeGreaterThan(outbound);
-      expect(actual - PROSPECTOR.launchMinutes).toBeCloseTo(
-        (outbound - PROSPECTOR.launchMinutes) / PROSPECTOR.returnSpeedFactor,
-        4,
-      );
+      expect(actual).toBeCloseTo(outbound / PROSPECTOR.returnSpeedFactor, 4);
     });
 
     /**
@@ -672,12 +673,12 @@ describe('mining', () => {
         turned!.interceptZ - home!.z,
       );
       const orbit: [] = [];
-      const expected = prospectorTravelExact(back, prospectorReturnSpeed(orbit));
+      const expected = travelExact(back, prospectorReturnSpeed(orbit));
       expect(
         Math.abs(turned!.homeAt!.getTime() - (run.arriveAt.getTime() + expected * 60_000)),
       ).toBeLessThanOrEqual(1);
       const actual = (turned!.homeAt!.getTime() - run.arriveAt.getTime()) / 60_000;
-      expect(actual).toBeGreaterThan(prospectorTravelExact(back, prospectorSpeed(orbit)));
+      expect(actual).toBeGreaterThan(travelExact(back, prospectorSpeed(orbit)));
     });
   });
 });

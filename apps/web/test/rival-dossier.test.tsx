@@ -18,7 +18,8 @@ const target: GalaxyPlanet = {
 };
 const mine: PlanetView = planetView({ buildings: { CORE: 4, REFINERY: 2, EXTRACTOR: 2, VAULT: 1, SHIPYARD: 1 } });
 const intel: IntelView = {
-  watching: [], radarLog: [], probeCost: { alloy: 25, crystal: 25, deuterium: 0 },
+  watching: [], radarLog: [], probeCooldowns: [],
+  probeCost: { alloy: 25, crystal: 25, deuterium: 0 },
   probeReports: [{
     targetPlanetId: target.id, targetName: target.name, targetUsername: target.owner,
     at: new Date(NOW.getTime() - 30 * 60_000), accuracy: 0.8, detected: false,

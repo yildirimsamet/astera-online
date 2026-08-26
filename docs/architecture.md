@@ -205,7 +205,10 @@ Every mutation used to return a fragment and the client refetched `/api/planet` 
 own action had done: two round trips for one tap, in a game whose construction is instant on
 payment. `planetView()` is the body of `GET /api/planet` as a function, and every mutation returns
 it — built in the same transaction under the same row lock, so it is free and authoritative.
-A launch returns its `pendingThreads` too, from the same builder the GET uses.
+A launch returns its `pendingThreads` too, from the same builder the GET uses. Mining and salvage
+launches additionally return the selected world's private mining status; the client cancels older
+reads and writes all three payloads directly, so the run, departed craft and occupied bay appear
+from the POST response without a second HTTP round trip (D120).
 
 **And the write cancels the reads it is about to overrule — D72.** `setQueryData` is the last word
 only if nothing older lands after it. A `GET` issued before the tap resolves afterwards and

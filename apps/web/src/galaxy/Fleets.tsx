@@ -22,6 +22,7 @@ import {
 } from './scene.js';
 import {
   PER_MODEL,
+  formationHitRadius,
   markersFor,
   slotOffset,
   type Marker,
@@ -690,7 +691,7 @@ function Flight({
   useFrame(() => {
     if (!path || !group.current) return;
     // The same helper the camera reads, so a focused squadron stays centred.
-    const at = threadPosition(path, serverNow(), standoff, nodes);
+    const at = threadPosition(path, serverNow(), standoff);
     group.current.position.set(at[0], at[1], at[2]);
     formationAim.current = Math.max(
       0.01,
@@ -753,7 +754,7 @@ function Flight({
         />
       </lineSegments>
 
-      <group ref={group} name="flight">
+      <group ref={group} name="flight" userData={{ craftId: id }}>
         {/*
           One generous invisible target for the whole squadron. Picking an
           individual model would be fiddly on a phone and would say the models are
@@ -767,7 +768,7 @@ function Flight({
             onSelect();
           }}
         >
-          <sphereGeometry args={[Math.max(0.45, style.scale * 1.6), 8, 6]} />
+          <sphereGeometry args={[formationHitRadius(markers?.length ?? 1, style.scale), 8, 6]} />
           <meshBasicMaterial transparent opacity={0} depthWrite={false} />
         </mesh>
 
@@ -1597,87 +1598,6 @@ function Pips({ filled, scale, lit }: { filled: number; scale: number; lit: bool
 }
 
 /**
- * WHAT YOU ARE LOOKING AT.
- *
- * A faint beam from your world to each planet a telescope slot is pointed at. Only
- * you can see it, because it is drawn from your own intel payload and nothing
- * about a watch ever leaves your client — that asymmetry is the design's, not an
- * accident: watching is silent and the target is never told.
- *
- * Tapered rather than uniform. The beam is bright where you are and fades to
- * nothing before it arrives, which reads as *looking* rather than as a link
- * between two things, and keeps it from competing with the fleet routes.
- */
-export function WatchBeams({
-  from,
-  targets,
-}: {
-  from: Vec3Tuple;
-  targets: readonly Vec3Tuple[];
-}) {
-  const material = useRef<THREE.LineBasicMaterial>(null);
-
-  const geometry = useMemo(() => {
-    if (targets.length === 0) return null;
-    const positions: number[] = [];
-    const colours: number[] = [];
-    for (const target of targets) {
-      // Stop short of the target: a line that touches the planet reads as a tether.
-      const end: Vec3Tuple = [
-        from[0] + (target[0] - from[0]) * 0.82,
-        from[1] + (target[1] - from[1]) * 0.82,
-        from[2] + (target[2] - from[2]) * 0.82,
-      ];
-      positions.push(...from, ...end);
-      colours.push(0.85, 0.92, 1, 0, 0, 0);
-    }
-    const g = new THREE.BufferGeometry();
-    g.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
-    g.setAttribute('color', new THREE.Float32BufferAttribute(colours, 3));
-    return g;
-  }, [from, targets]);
-
-  /**
-   * REBUILT WHEN THE WATCH LIST MOVES, AND THE OLD ONE HAS TO GO WITH IT.
-   *
-   * This one genuinely does have to be rebuilt — its vertex count is the number of
-   * beams — so it cannot take the `useLine` treatment. What it can do is not leak
-   * the buffer it replaces, which is the half that was missing.
-   */
-  useEffect(
-    () => () => {
-      geometry?.dispose();
-    },
-    [geometry],
-  );
-
-  // A slow breath, so the beam reads as an instrument doing something rather than
-  // a line someone drew.
-  useFrame(({ clock }) => {
-    const m = material.current;
-    if (m) m.opacity = 0.16 + Math.sin(clock.elapsedTime * 1.1) * 0.05;
-  });
-
-  if (!geometry) return null;
-
-  return (
-    // Named for the same reason the planet and rock instances are: the visual
-    // harness picks objects out of the graph by name, and "the line buffer with
-    // few vertices and a colour attribute" also describes the meteors.
-    <lineSegments name="watch-beams" geometry={geometry} frustumCulled={false}>
-      <lineBasicMaterial
-        ref={material}
-        vertexColors
-        transparent
-        opacity={0.18}
-        depthWrite={false}
-        blending={THREE.AdditiveBlending}
-      />
-    </lineSegments>
-  );
-}
-
-/**
  * OTHER PEOPLE'S CRAFT. D24.
  *
  * These used to be motes: featureless points, offset past attribution, drawn only
@@ -1725,7 +1645,7 @@ export function Traffic({
   onSelect,
 }: {
   contacts: readonly Contact[];
-  /** The worlds, so no contact is ever drawn inside one. See `clearOfWorlds`. */
+  /** The worlds are needed when a landed engagement holds in target orbit. */
   nodes: readonly PlanetNode[];
   focusedId: string | null;
   onSelect: (id: string) => void;
@@ -1733,7 +1653,7 @@ export function Traffic({
   if (contacts.length === 0) return null;
 
   return (
-    <Suspense fallback={null}>
+    <>
       {contacts.map((contact) => (
         <Foreign
           key={contact.id}
@@ -1745,7 +1665,7 @@ export function Traffic({
           }}
         />
       ))}
-    </Suspense>
+    </>
   );
 }
 
@@ -1827,12 +1747,9 @@ function Foreign({
     const node = group.current;
     if (!node) return;
     /**
-     * The same helper the camera reads, so a focused contact stays centred — and
-     * the same correction, so the craft and the rig agree about where it is.
-     *
-     * A contact's published position is the truth to the metre, and on the last
-     * minute of a raid the truth is INSIDE the world being attacked. See
-     * `clearOfWorlds`.
+     * The same helper the camera reads, so a focused contact stays centred. The
+     * published window is already on the shared visual leg; the only node-based
+     * adjustment left is the explicit hold during a landed engagement.
      */
     const at = contactPosition(contact, serverNow(), nodes);
     node.position.set(at[0], at[1], at[2]);
@@ -1873,7 +1790,7 @@ function Foreign({
         </lineSegments>
       )}
 
-      <group ref={group} name="contact">
+      <group ref={group} name="contact" userData={{ craftId: contact.id }}>
         {/*
           Tappable, exactly like your own squadrons and the rocks. D24: somebody
           else's craft is an object in the world, and an object you can see but
@@ -1888,7 +1805,16 @@ function Foreign({
             onSelect();
           }}
         >
-          <sphereGeometry args={[Math.max(0.45, style.scale * 1.6), 8, 6]} />
+          <sphereGeometry
+            args={[
+              formationHitRadius(
+                contact.kind === 'fleet' ? (markers?.length ?? 1) : 1,
+                style.scale,
+              ),
+              8,
+              6,
+            ]}
+          />
           <meshBasicMaterial transparent opacity={0} depthWrite={false} />
         </mesh>
 
@@ -1899,57 +1825,72 @@ function Foreign({
           focused={focused}
         />
 
-        {markers ? (
-          <>
-            <FormationLightField
-              markers={markers}
-              slots={slots}
-              scale={style.scale}
-              aimDistance={formationAim}
-              focused={focused}
-              showPips={contact.kind === 'fleet'}
-            />
-            <FormationWakes
-              markers={markers}
-              slots={slots}
-              scale={style.scale}
-              aimDistance={formationAim}
-            />
-            {markers.map((marker, i) => (
-              <Craft
-                key={`${marker.hull}-${String(marker.ordinal)}`}
-                marker={marker}
-                offset={slots[i] ?? [0, 0, 0]}
+        {/*
+          CONTACT FIRST, MODEL SECOND.
+
+          One Suspense boundary used to wrap the entire traffic layer. On a cold
+          device the first Wasp, Probe or Prospector decode therefore hid every
+          contact — including this already-cheap tracking mark — after the server
+          payload had arrived. Keep the live marker mounted and let only the heavy
+          hull geometry wait for its asset.
+        */}
+        <Suspense fallback={null}>
+          {markers ? (
+            <>
+              <FormationLightField
+                markers={markers}
+                slots={slots}
                 scale={style.scale}
                 aimDistance={formationAim}
                 focused={focused}
-                pips={contact.kind === 'fleet'}
-                batched
+                showPips={contact.kind === 'fleet'}
               />
-            ))}
-          </>
-        ) : (
-          <>
-            <Wake
-              scale={contact.kind === 'death_star' ? style.scale * 3.4 : style.scale}
-              colour={contact.kind === 'death_star' ? DEATH_STAR_LIGHT.glow : style.neon}
-              lengthScale={contact.kind === 'death_star' ? 0.5 : 1}
-            />
-            <Hull
-              url={contact.kind === 'death_star' ? MODEL.deathStar : MODEL.probe}
-              scale={contact.kind === 'death_star' ? style.scale * 3.4 : style.scale}
-              glow={contact.kind === 'death_star' ? DEATH_STAR_LIGHT.glow : style.neon}
-              focused={focused}
-            />
-            {contact.kind === 'death_star' ? (
-              <StrategicExhaust scale={style.scale * 3.4} />
-            ) : (
-              <group position={[0, 0, -style.scale * 0.42]}>
-                <Exhaust colour={style.flame} length={style.scale * 0.7} width={style.scale * 0.4} />
-              </group>
-            )}
-          </>
-        )}
+              <FormationWakes
+                markers={markers}
+                slots={slots}
+                scale={style.scale}
+                aimDistance={formationAim}
+              />
+              {markers.map((marker, i) => (
+                <Craft
+                  key={`${marker.hull}-${String(marker.ordinal)}`}
+                  marker={marker}
+                  offset={slots[i] ?? [0, 0, 0]}
+                  scale={style.scale}
+                  aimDistance={formationAim}
+                  focused={focused}
+                  pips={contact.kind === 'fleet'}
+                  batched
+                />
+              ))}
+            </>
+          ) : (
+            <>
+              <Wake
+                scale={contact.kind === 'death_star' ? style.scale * 3.4 : style.scale}
+                colour={contact.kind === 'death_star' ? DEATH_STAR_LIGHT.glow : style.neon}
+                lengthScale={contact.kind === 'death_star' ? 0.5 : 1}
+              />
+              <Hull
+                url={contact.kind === 'death_star' ? MODEL.deathStar : MODEL.probe}
+                scale={contact.kind === 'death_star' ? style.scale * 3.4 : style.scale}
+                glow={contact.kind === 'death_star' ? DEATH_STAR_LIGHT.glow : style.neon}
+                focused={focused}
+              />
+              {contact.kind === 'death_star' ? (
+                <StrategicExhaust scale={style.scale * 3.4} />
+              ) : (
+                <group position={[0, 0, -style.scale * 0.42]}>
+                  <Exhaust
+                    colour={style.flame}
+                    length={style.scale * 0.7}
+                    width={style.scale * 0.4}
+                  />
+                </group>
+              )}
+            </>
+          )}
+        </Suspense>
 
         {/*
           The volley, seeded from the mission id — the same key the attacker's own

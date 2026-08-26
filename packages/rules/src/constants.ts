@@ -694,18 +694,44 @@ export const COMBAT = {
   engagementSeconds: 10,
 } as const;
 
+/**
+ * A FLIGHT IS DISTANCE AND SPEED. NOTHING ELSE. D121.
+ *
+ * THE LAUNCH OVERHEAD IS GONE, AND WITH IT A WHOLE SYSTEM. There were three of
+ * them — `TRAVEL.baseMinutes` at 1 minute for warships, `PROSPECTOR.launchMinutes`
+ * at 0.13 for drills, and a third about to be added for probes — each with its own
+ * travel function, and the only rule binding them was "do not let a craft read the
+ * wrong one" (D48). Three constants, three functions and a hazard, in service of a
+ * flat charge added to every leg.
+ *
+ * WHAT IT WAS FOR, AND WHY NEITHER REASON SURVIVED.
+ *
+ *   · WEIGHT. A fleet does not reach cruise instantly. True, and it read as 8% of
+ *     a raid, which is to say it read as nothing. Nobody has ever made a decision
+ *     because of it.
+ *   · THE MINING LEAD. D48's argument, and the serious one: the rock keeps moving
+ *     while the craft is on the pad, so the overhead widens the angle a drill has
+ *     to aim ahead by. But it never CREATED that angle — the rock also moves for
+ *     the whole flight, which is what makes interception a solve rather than a
+ *     straight line. Removing the overhead narrows the lead; it does not delete
+ *     the decision. The generated-field sweep in `invariants.test.ts` still finds
+ *     every rock reachable through 90% of its life with the term at zero.
+ *
+ * WHAT FORCED IT was the probe. Three speed increases in a row — ×4, ×12, ×36 —
+ * each moved a term that was already small, because at 36× a Wasp the fixed minute
+ * was 86% of the flight and no speed divides a constant. The choice was a third
+ * overhead constant or none, and none is the one that removes a system.
+ *
+ * WHAT IT COSTS, MEASURED. Round trips on a typical neighbourhood leg shorten by
+ * 7–14%: Wasp 14.6 → 12.6 minutes, Lance 18.4 → 16.4, Bulwark 27.2 → 25.2, Hauler
+ * 21.3 → 19.3. The heavier the hull the smaller the share, so the composition
+ * decision D63 was protecting gets slightly SHARPER rather than flatter.
+ *
+ * `distanceFactor` stays. It is the tempo dial — the one number that scales every
+ * flight in the game against the map — and it is a multiplier, so a speed change
+ * moves through it instead of being swallowed by it.
+ */
 export const TRAVEL = {
-  /**
-   * Launch and landing overhead, in minutes.
-   *
-   * 3 → 1 AT D63. It was 11% of a mean Wasp leg and became 50% of one when hull
-   * speeds went up 9.46×, so half of every short flight was a fixed cost that no
-   * choice of hull could change — which is most of why composition stopped reading
-   * as a timing decision. It is still a real launch cost and still what keeps a
-   * mining intercept from being a straight line to the rock; it is simply no longer
-   * the majority of the trip.
-   */
-  baseMinutes: 1,
   distanceFactor: 1.2,
 } as const;
 
@@ -856,32 +882,68 @@ export const PROBE = {
    */
   crystal: 30,
   /**
-   * TRIPLED FROM 90 AT D59, THEN RE-DERIVED AT D63 — 850, not 2554.
+   * ×12 AT D121, ON THE OWNER'S INSTRUCTION: 260 → 3120. ×4 WAS TRIED FIRST.
    *
-   * A probe was faster than any hull and still not fast enough to be worth the
-   * wait: the answer arrived long after the decision it was meant to inform, so
-   * players raided blind instead. D59 tripled it for that, and D63 then scaled
-   * every hull in the game by 9.46 — applying both compounded to twenty-eight
-   * times the original and broke what D59 was for.
+   * THE HISTORY, BECAUSE IT IS THE REASON THIS NUMBER HAS A CEILING. D59 tripled
+   * it from 90 because the answer arrived long after the decision it was meant to
+   * inform and players raided blind instead. D63 then scaled every hull by 9.46,
+   * and the two compounded to 2554 — at which point EVERY PROBE IN THE GALAXY
+   * LANDED IN EXACTLY TWO MINUTES, measured across five legs from the closest pair
+   * on the disc to the furthest: 2, 2, 2, 2, 2. Distance had stopped meaning
+   * anything to a scout, and "who is near enough to look at cheaply" is a gradient
+   * the whole intel layer is built on. 2554 was rejected for that and only that.
    *
-   * AT 2554 EVERY PROBE IN THE GALAXY LANDED IN EXACTLY TWO MINUTES. Measured
-   * across five legs from the closest pair on the disc to the furthest: 2, 2, 2, 2,
-   * 2, against a Wasp's 2, 3, 4, 5, 7. Distance had stopped meaning anything to a
-   * scout, so "who is near enough to look at cheaply" stopped being a question —
-   * which is a gradient the intel layer is built on.
+   * 3120 IS PAST THAT NUMBER, AND THE DISC IS WHY IT IS NOT THAT OUTCOME. D101
+   * widened the galaxy 2.5×, so `GALAXY_SPAN` is 5036 against the ~2010 those five
+   * legs were measured on; 2554 on today's map is not the speed 2554 was.
    *
-   * 850 is 90 carried through D63's own factor. It holds the relationship the
-   * probe has always had — a shade under twice a Wasp — and puts the widest leg on
-   * the disc at four minutes against a Wasp's seven, which is still comfortably
-   * "back inside a session". D83 later stopped storing that rounded display quote
-   * as the real arrival instant; it does not restore the rejected 2554 speed,
-   * because that number still erases the distance gradient the probe is for.
+   * ×36 WAS TRIED AND WALKED BACK, AND THE MEASUREMENT IS THE REASON. At 9360 the
+   * one-way legs were 1.03 / 1.16 / 1.65 minutes — closest pair, neighbourhood,
+   * widest crossing — because `TRAVEL.baseMinutes` was 86% of the flight and speed
+   * could not touch it. Tripling the speed bought twenty seconds and flattened the
+   * distance gradient to 1.6×, which is D59's failure arriving by the front door.
+   * The fix was never a bigger number here; it was `launchMinutes` below.
    *
-   * `TRAVEL.baseMinutes` is not touched HERE — it is the launch overhead priced into
-   * every raid in the game, so it is moved deliberately and in its own place, which
-   * D63 did when it fell from 3 to 1.
+   * WITH THE OVERHEAD GONE, THIS NUMBER IS THE WHOLE MODEL AGAIN — a probe's
+   * flight is exactly `distance ÷ speed`, and every unit of distance is paid for.
+   * The gradient is 22× at any speed now, because with no fixed term the ratio is
+   * exactly `GALAXY_SPAN / minSeparation` and nothing here can move it: 4 seconds
+   * to the closest legal pair, 20 to the neighbourhood a commander actually
+   * watches, 78 to cross the whole disc. That is a WIDER spread than the probe has
+   * ever had, and it is faster everywhere — the fixed cost was what had been
+   * flattening it all along.
+   *
+   * 4680 IS EXACTLY 36× A WASP, which is the relationship worth remembering: a
+   * scout outruns the fastest thing anyone can send at you by a wide, stated
+   * margin. Written as a multiple rather than as a round number so the next person
+   * to move hull speeds can see what this was pegged to.
+   *
+   * IT NO LONGER RATIONS SCOUTING, AND IT WAS NEVER SUPPOSED TO. What stops a
+   * commander reading the same world over and over is stated as a rule rather than
+   * smuggled in as travel time: `retargetCooldownMinutes` below, plus the flight
+   * bay every craft in the game competes for (D28).
    */
-  speed: 260,
+  speed: 4680,
+  /**
+   * HOW LONG BEFORE THE SAME COMMANDER MAY LOOK AT THE SAME WORLD AGAIN. D121,
+   * owner instruction.
+   *
+   * Measured from the LAUNCH, not from the report, so the hour is the same hour
+   * for a neighbour and for a world on the far rim. Anything measured from the
+   * return would charge distance twice — once in the flight and again in the
+   * cooldown — and the flight is already where distance is supposed to be felt.
+   *
+   * SCOPED TO THE COMMANDER, NOT TO THE WORLD THE PROBE LEFT FROM. A commander may
+   * hold four worlds (D97), and a per-origin rule would sell the same hour four
+   * times over to whoever had colonised most — which is a wealth ladder wearing an
+   * intel rule's clothes.
+   *
+   * It replaces the rationing that travel time used to do by accident, and it is a
+   * better version of it: a flight that is too long to be worth taking hides the
+   * decision inside a wait, while a stated hour puts "is this the world I want to
+   * spend my look on" in front of the player at the moment they choose.
+   */
+  retargetCooldownMinutes: 60,
 } as const;
 
 /**
@@ -939,43 +1001,6 @@ export const PROSPECTOR = {
    */
   speed: 825,
   /**
-   * LAUNCH AND LANDING OVERHEAD FOR A MINING CRAFT. D48.
-   *
-   * `TRAVEL.baseMinutes` was 3 when this was measured, and for a raid that was 7% of a forty-minute flight
-   * and invisible. For an interception it is the whole problem. Measured over
-   * 3,744 launches on the live seed: the median mining flight is 4.44 minutes, of
-   * which **3.00 is this overhead and 1.44 is actual travel** — 68% of the trip is
-   * a craft not going anywhere.
-   *
-   * That is what made the aim point unreadable, and it is why raising the drill's
-   * SPEED (D43) could only ever half-fix it. A rock covers **660 game units during
-   * the launch overhead alone**, against a median total lead of 778: the overhead
-   * is 85% of the distance between the rock a player taps and the point their
-   * craft sets off for. No speed makes a fixed delay smaller.
-   *
-   * At 0.4 the median flight is 1.84 minutes, the lead falls from 0.29 revolutions
-   * to 0.12 — about forty degrees, which reads as aiming ahead of a moving target
-   * rather than as flying somewhere unrelated.
-   *
-   * NOT A MINING BUFF, by exactly the argument D43 already made and measured: the
-   * galaxy's mining income is bounded by the ore that EXISTS (about 6,700 an hour)
-   * against a demand two orders of magnitude larger. A shorter round trip changes
-   * who reaches a rock first, not what the field yields — and `PROSPECTOR.max`
-   * still caps a planet at two craft.
-   *
-   * IT DOES NOT TOUCH `TRAVEL.baseMinutes`, and must not. That figure is priced
-   * into every raid, every probe and the whole season simulator; this is a
-   * property of one unarmed craft on a short errand.
-   *
-   * 0.4 → 0.13 AT D63, holding the RATIO rather than the figure. The rule this
-   * number exists to satisfy is that a mining craft's overhead sits far below a
-   * warship's — `invariants.test.ts` puts it at under a quarter — and when
-   * `TRAVEL.baseMinutes` came down from 3 to 1, an unchanged 0.4 became 40% of a
-   * warship's launch and broke it. The ratio, 0.133, is what was measured; the
-   * absolute was only ever its shadow.
-   */
-  launchMinutes: 0.13,
-  /**
    * HOW MUCH SLOWER A LADEN CRAFT FLIES HOME. Owner's figure: three times.
    *
    * A RATIO, and it has to be one. D63 moved hull speeds by 9.46 and nine tests
@@ -984,11 +1009,11 @@ export const PROSPECTOR = {
    * to be the moment the tempo changes. This is the share of its outbound speed a
    * craft keeps on the way back, so it survives the next time `speed` moves.
    *
-   * IT MULTIPLIES THE SPEED, NOT THE TRIP. `prospectorTravelExact` is
-   * `launchMinutes + travel`, and only the travel term is a function of speed —
-   * so the landing overhead stays what it is and the flight itself triples. That
-   * is the honest shape: turning around at a rock does not make the approach to
-   * your own world take longer.
+   * IT MULTIPLIES THE SPEED, NOT THE TRIP. D121 removed the launch overhead from
+   * every craft in the game, so a trip is now `distance ÷ speed` and this ratio
+   * scales the whole of it. Before that it scaled only the travel term, because a
+   * flat overhead was not a function of speed — the shape changed with the term
+   * that made it necessary.
    *
    * WHAT IT COSTS THE PLAYER IS VISIBLE THE WHOLE TIME, which is why it is this
    * rather than a cooldown. A craft is drawn for its owner and for the whole

@@ -1,8 +1,9 @@
 import type { FastifyInstance } from 'fastify';
 import { pino } from 'pino';
 import { afterAll, afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { eq } from 'drizzle-orm';
+import { eq, sql } from 'drizzle-orm';
 import {
+  COMBAT,
   DEBRIS,
   DOMINION_TRANSFER_SCALE,
   HULLS,
@@ -52,17 +53,33 @@ const silent = pino({ level: 'silent' });
 
 interface ReportView {
   grade: string;
-  rounds: { round: number; attackerDamage: number; defenderDamage: number }[];
+  rounds: {
+    round: number;
+    attackerDamage: number;
+    defenderDamage: number;
+    attackerLosses: Record<string, number>;
+    defenderLosses: Record<string, number>;
+  }[];
   attacking: boolean;
   opponentName: string;
   opponentPlanet: string;
   opponentPlanetId: string | null;
+  neutral: boolean;
   yourLosses: Record<string, number>;
   theirLosses: Record<string, number>;
+  /** The caller's OWN board at contact. Never the opponent's. D121. */
+  yourFleet: Record<string, number>;
+  /** The caller's own world in this battle: launched from, or hit. */
+  yourPlanet: string;
   lootAlloy: number;
   lootCrystal: number;
   /** Null on reports written before the swing was recorded. */
   dominion: number | null;
+  shieldAbsorbed: number;
+  cargoLimited: boolean;
+  defenceSalvage: Record<string, number>;
+  disruptedMinutes: number;
+  wreckValue: number;
 }
 
 afterAll(async () => {
@@ -293,6 +310,294 @@ describe('battle reports', () => {
     for (const leak of ['survivors', 'attackerSurvivors', 'defenderSurvivors', 'shieldLeft']) {
       expect(res.body).not.toContain(leak);
     }
+  });
+
+  /**
+   * WHAT D121 ADDED, AND THE LINE IT WAS NOT ALLOWED TO CROSS.
+   *
+   * Every complaint about these reports came down to a number with no denominator
+   * or a consequence the server decided and threw away. Each one added back is a
+   * fact about ONE side, so the test that matters most is the one that proves the
+   * opponent's board is still not in the payload.
+   */
+  describe('the detail a player can actually act on', () => {
+    it('gives the attacker the squadron they sent, as a denominator for their losses', async () => {
+      await raid(40);
+      const [report] = await reportsFor(0);
+
+      expect(report!.yourFleet).toEqual({ WASP: 40, HAULER: 3 });
+      // Every loss has to be a subset of what was fielded, or the sheet draws a
+      // negative survivor count at the reader.
+      for (const [hull, lost] of Object.entries(report!.yourLosses)) {
+        expect(lost).toBeLessThanOrEqual(report!.yourFleet[hull] ?? 0);
+      }
+    });
+
+    it('gives the defender their own board — home fleet AND ground guns', async () => {
+      await raid();
+      const [report] = await reportsFor(1);
+
+      expect(report!.attacking).toBe(false);
+      // The Bastions the fixture stood on the ground are part of what defended.
+      expect(report!.yourFleet.BASTION).toBe(6);
+      for (const [hull, lost] of Object.entries(report!.yourLosses)) {
+        expect(lost).toBeLessThanOrEqual(report!.yourFleet[hull] ?? 0);
+      }
+    });
+
+    /**
+     * THE FOG, RESTATED FOR THE ONE FIELD THAT COULD HAVE BROKEN IT.
+     *
+     * `yourFleet` minus `yourLosses` is the caller's own survivors, which they may
+     * have. The identical subtraction on the OPPONENT's roster is the disclosure
+     * the whole intel layer exists to refuse — so the opponent's roster is not in
+     * the payload at all, and each side's copy of the field is its own.
+     */
+    it('never hands either side the other one\u2019s roster', async () => {
+      await raid();
+      const [attacker] = await reportsFor(0);
+      const [defender] = await reportsFor(1);
+
+      expect(attacker!.yourFleet).not.toEqual(defender!.yourFleet);
+      // The defender's Bastions are the tell: they must appear in the defender's
+      // own roster and nowhere in the attacker's payload except as losses.
+      expect(attacker!.yourFleet.BASTION).toBeUndefined();
+      expect(defender!.yourFleet.WASP ?? 0).not.toBe(40);
+    });
+
+    /**
+     * GROUND DEFENCE IS DURABLE BY DESIGN (60% salvage) and the game had never
+     * said so. A defender reading "you lost 6 Bastions" concluded the opposite of
+     * the rule those guns are priced on.
+     */
+    it('tells the defender how many guns walked out of their own wreckage', async () => {
+      // Enough attackers that several guns really die, so the figure under test
+      // is a rebuild rather than a floor() of one casualty.
+      await raid(160);
+      const [defender] = await reportsFor(1);
+      const [attacker] = await reportsFor(0);
+
+      const lostGuns = defender!.yourLosses.BASTION ?? 0;
+      expect(lostGuns).toBeGreaterThan(1);
+      expect(defender!.defenceSalvage.BASTION).toBe(
+        Math.floor(lostGuns * COMBAT.defenceSalvage),
+      );
+      // It is the defender's fact about the defender's guns. The attacker is told
+      // nothing, because a rebuild is not something they watched happen.
+      expect(attacker!.defenceSalvage).toEqual({});
+    });
+
+    /**
+     * The attacker's holds, not the defender's stock, capped the haul (D94).
+     * Stored since D94 and shown to nobody, which is the whole complaint: a raider
+     * who flew home under-loaded had no way to learn the answer was more Haulers.
+     */
+    it('tells the attacker when their own holds capped the haul, and tells the defender nothing', async () => {
+      // One Wasp of cargo against a full store: the holds are certainly the limit.
+      await grant(f.db, theirs, 40_000, 4_000);
+      await giveUnits(f.db, mine, { WASP: 60 });
+      const launch = await launchAttack(f.db, mine, theirs, { WASP: 60 }, f.clock);
+      f.clock.set(settledAt(launch.arriveAt));
+      await worker().tick();
+
+      const [attacker] = await reportsFor(0);
+      const [defender] = await reportsFor(1);
+      expect(attacker!.cargoLimited).toBe(true);
+      expect(defender!.cargoLimited).toBe(false);
+    });
+
+    /**
+     * Downtime is a pure function of the grade, which both sides already have, so
+     * both are told — and it is measured from the battle rather than stored as a
+     * deadline, because a deadline is meaningless once the report is an hour old.
+     */
+    it('reports the works this raid knocked offline, to both sides', async () => {
+      await raid();
+      const [attacker] = await reportsFor(0);
+      const [defender] = await reportsFor(1);
+
+      if (attacker!.grade === 'REPELLED') {
+        expect(attacker!.disruptedMinutes).toBe(0);
+      } else {
+        expect(attacker!.disruptedMinutes).toBeGreaterThan(0);
+      }
+      expect(defender!.disruptedMinutes).toBe(attacker!.disruptedMinutes);
+    });
+
+    /**
+     * A REPELLED RAID REPORTS NO DOWNTIME, EVEN ON A WORLD ALREADY OFFLINE.
+     *
+     * `applyDisruption` returns the EXISTING deadline untouched when a grade adds
+     * nothing, so a world still dark from an earlier raid would have handed its
+     * leftover figure to the report of the attack it had just beaten — and the
+     * defender would have read "your works were knocked offline for three hours"
+     * about a defence that worked.
+     */
+    it('reports no downtime for a raid the defence turned away', async () => {
+      // Knock the works out first, from a raid that lands and wins.
+      await raid(160);
+      const [first] = await reportsFor(0);
+      expect(first!.disruptedMinutes).toBeGreaterThan(0);
+
+      // Let the survivors dock: a fleet still in the air is committed to that
+      // world and the second launch would be refused before it could be measured.
+      f.clock.advance(60);
+      await worker().tick();
+
+      // Then throw a token squadron at a world that is still dark, and lose.
+      await giveUnits(f.db, theirs, { BASTION: 12 });
+      await giveUnits(f.db, mine, { WASP: 1 });
+      const launch = await launchAttack(f.db, mine, theirs, { WASP: 1 }, f.clock);
+      f.clock.set(settledAt(launch.arriveAt));
+      await worker().tick();
+
+      const [latest] = await reportsFor(0);
+      expect(latest!.grade).toBe('REPELLED');
+      expect(latest!.disruptedMinutes).toBe(0);
+    });
+
+    /** The wreckage is a public field; the report says what the fight left there. */
+    it('prices the wreckage against the field the fight actually created', async () => {
+      await raid();
+      const [attacker] = await reportsFor(0);
+
+      const fields = await f.db.select().from(debrisFields);
+      if (fields.length === 0) {
+        expect(attacker!.wreckValue).toBe(0);
+        return;
+      }
+      const total = fields[0]!.alloy + fields[0]!.crystal + fields[0]!.deuterium;
+      expect(attacker!.wreckValue).toBeCloseTo(total, 3);
+    });
+
+    /** Shield telemetry was stored and never surfaced; both sides watched it happen. */
+    it('sums the shield the same way both sides saw it', async () => {
+      await raid();
+      const [attacker] = await reportsFor(0);
+      const [defender] = await reportsFor(1);
+
+      const fromRounds = attacker!.rounds.reduce(
+        (sum, round) => sum + ((round as unknown as { shieldAbsorbed: number }).shieldAbsorbed),
+        0,
+      );
+      expect(attacker!.shieldAbsorbed).toBeCloseTo(fromRounds, 3);
+      expect(defender!.shieldAbsorbed).toBe(attacker!.shieldAbsorbed);
+    });
+
+    /** Per-round casualties were always in the payload; nothing may drop them. */
+    it('keeps every round\u2019s casualties, which is where a fight turned', async () => {
+      await raid();
+      const [report] = await reportsFor(0);
+
+      const perRound = report!.rounds.reduce(
+        (sum, round) => sum + fleetCount(round.defenderLosses as never),
+        0,
+      );
+      expect(perRound).toBe(fleetCount(report!.theirLosses as never));
+    });
+
+    /**
+     * THE REPORT NAMES THE WORLD THE RAID WAS ACTUALLY FOUGHT OVER.
+     *
+     * The opponent lookup finds a commander's CAPITAL, which is how this game
+     * identifies a person — right for the defender's copy, and wrong for the
+     * attacker's the moment D97 let a commander hold colonies. "Their capital did
+     * not hold" about a raid on their colony is the report describing the wrong
+     * world, and `opponentPlanetId` is what the dossier matches on, so the fleet
+     * destroyed at the colony was being filed as a floor on the capital.
+     */
+    it('names the colony that was raided, not the commander’s capital', async () => {
+      const colony = f.planetIds[2]!;
+      await f.db.update(planets)
+        .set({ kind: 'COLONY', controllerPlayerId: f.playerIds[1]! })
+        .where(eq(planets.id, colony));
+      await setLevel(f.db, colony, 'CORE', 8);
+      await grant(f.db, colony, 40_000, 4_000);
+      await giveUnits(f.db, colony, { BASTION: 2 });
+      await giveUnits(f.db, mine, { WASP: 40 });
+
+      const launch = await launchAttack(f.db, mine, colony, { WASP: 40 }, f.clock);
+      f.clock.set(settledAt(launch.arriveAt));
+      await worker().tick();
+
+      const [colonyName] = await f.db.select({ name: planets.name })
+        .from(planets).where(eq(planets.id, colony));
+      const [attacker] = await reportsFor(0);
+      expect(attacker!.opponentPlanet).toBe(colonyName!.name);
+      expect(attacker!.opponentPlanetId).toBe(colony);
+      // The commander is still named — a colony belongs to somebody.
+      expect(attacker!.opponentName).not.toBe('someone');
+
+      // And the DEFENDER is still shown who hit them, by their home world.
+      const [defender] = await reportsFor(1);
+      expect(defender!.opponentPlanetId).toBe(mine);
+    });
+
+    /**
+     * AND WHICH OF THE CALLER'S OWN WORLDS IT WAS.
+     *
+     * With one world per commander this was implicit. D97 gave them up to four,
+     * and the record of a raid could no longer say which world was hit — or,
+     * for the attacker, which one the fleet left from.
+     */
+    it('names the caller’s own world at both ends of the battle', async () => {
+      await raid();
+      const [mineName] = await f.db.select({ name: planets.name })
+        .from(planets).where(eq(planets.id, mine));
+      const [theirName] = await f.db.select({ name: planets.name })
+        .from(planets).where(eq(planets.id, theirs));
+
+      // The attacker launched from their world.
+      const [attacker] = await reportsFor(0);
+      expect(attacker!.yourPlanet).toBe(mineName!.name);
+      expect(attacker!.opponentPlanet).toBe(theirName!.name);
+
+      // The defender was hit at theirs, and the two are exact opposites.
+      const [defender] = await reportsFor(1);
+      expect(defender!.yourPlanet).toBe(theirName!.name);
+      expect(defender!.opponentPlanet).toBe(mineName!.name);
+    });
+
+    /** A world with no commander still has a name, and it is on the map. */
+    it('names an unclaimed world instead of calling it unknown', async () => {
+      const neutral = (await f.db.select().from(planets)
+        .where(eq(planets.kind, 'NEUTRAL'))).at(0);
+      if (!neutral) return; // ruleset v1 seeds no caretaker worlds
+
+      await giveUnits(f.db, mine, { WASP: 40 });
+      const launch = await launchAttack(f.db, mine, neutral.id, { WASP: 40 }, f.clock);
+      f.clock.set(settledAt(launch.arriveAt));
+      await worker().tick();
+
+      const [report] = await reportsFor(0);
+      expect(report!.neutral).toBe(true);
+      expect(report!.opponentPlanet).toBe(neutral.name);
+      expect(report!.opponentPlanetId).toBe(neutral.id);
+    });
+
+    /**
+     * A report written before D121 has no roster stored, so the payload carries an
+     * empty one and the client omits the section rather than drawing a board of
+     * nothing. The defaults on the columns are what make that true for real rows.
+     */
+    it('reads a report written before the roster existed', async () => {
+      await raid();
+      await f.db.execute(sql`
+        UPDATE battle_reports
+        SET attacker_fleet = '{}'::jsonb,
+            defender_fleet = '{}'::jsonb,
+            defence_salvage = '{}'::jsonb,
+            disrupted_minutes = 0,
+            wreck_value = 0
+      `);
+
+      const [report] = await reportsFor(0);
+      expect(report!.yourFleet).toEqual({});
+      expect(report!.defenceSalvage).toEqual({});
+      expect(report!.wreckValue).toBe(0);
+      // Everything that was always there still is.
+      expect(fleetCount(report!.theirLosses as never)).toBeGreaterThan(0);
+    });
   });
 
   it('shows a third party nothing at all', async () => {

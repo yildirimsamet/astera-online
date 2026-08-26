@@ -4,6 +4,7 @@ import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import { HULLS, INSTRUMENT_MAX_LEVEL, SATELLITES, satelliteSlots } from '@astera/rules';
 import { PlanetScreen } from '../src/screens/PlanetScreen.js';
+import i18n from '../src/i18n/index.js';
 import { ToastProvider } from '../src/ui/Toast.js';
 import type { PlanetView } from '../src/api/schemas.js';
 import { planetView } from './fixtures.js';
@@ -317,13 +318,38 @@ describe('the reach surface', () => {
 
   it('shows the short Frontier before the hulls and names its shared queue', () => {
     show({}, 'reach');
-    const [frontier = -1, warships = -1] = bodyOrder(['Frontier projects', 'Warships']);
+    const [frontier = -1, warships = -1] = bodyOrder(['Frontier research', 'Warships']);
     expect(frontier).toBeGreaterThan(-1);
     expect(warships).toBeGreaterThan(frontier);
     expect(screen.getByText('Isotope Spectrometry')).toBeInTheDocument();
     expect(screen.getByText('Dense Fuel Cells')).toBeInTheDocument();
     expect(screen.getByText('Gravitic Charges')).toBeInTheDocument();
-    expect(screen.getByText(/share Construction and complete on its clock/i)).toBeInTheDocument();
+    expect(screen.getByText(/researched once and uses Construction/i)).toBeInTheDocument();
+  });
+
+  it('states the exact Turkish raid conditions without calling a shield merely strong', async () => {
+    await i18n.changeLanguage('tr');
+    const research = planet().research.map((project) => project.id === 'ISOTOPE_SPECTROMETRY'
+      ? {
+          ...project,
+          discovered: true,
+          available: false,
+          completed: true,
+          completedAt: new Date('2026-08-23T00:00:00.000Z'),
+        }
+      : project);
+    const view = show({ research }, 'reach');
+
+    expect(view.container.querySelector('#row-DENSE_FUEL_CELLS'))
+      .toHaveTextContent('Bir akında ambarını doldur; hedefte ganimet kalsın');
+    const gravitic = view.container.querySelector('#row-GRAVITIC_CHARGES');
+    expect(gravitic)
+      .toHaveTextContent('Aegis akın hasarının en az %25’ini emsin');
+
+    const open = gravitic?.querySelector<HTMLElement>('[data-open-item]');
+    expect(open).not.toBeNull();
+    await userEvent.click(open!);
+    expect(screen.getByText(/Bir Atmaca bile yeter; kazanman gerekmez/)).toBeInTheDocument();
   });
 
   it('shows completed Frontier projects as complete rather than locked', () => {
@@ -364,7 +390,7 @@ describe('the reach surface', () => {
     });
     const view = show({ research }, 'reach');
     const protocol = view.container.querySelector('#row-DEATH_STAR_PROTOCOL');
-    expect(protocol).toHaveTextContent(/War act opens this in/i);
+    expect(protocol).toHaveTextContent(/War act opens in/i);
     expect(protocol).not.toHaveTextContent(/Gravitic Charges first/i);
   });
 

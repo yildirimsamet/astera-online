@@ -66,6 +66,7 @@ const probeReport = (minutesAgo: number): NonNullable<IntelView>['probeReports']
 const intelWith = (reports: IntelView['probeReports'] = []): IntelView => ({
   watching: [],
   probeReports: reports,
+  probeCooldowns: [],
   radarLog: [],
   probeCost: { alloy: 50, crystal: 50, deuterium: 0 },
 });
@@ -79,12 +80,20 @@ const fought = (minutesAgo: number): BattleReport => ({
   opponentName: 'Sable',
   opponentPlanet: 'Grimhold',
   opponentPlanetId: 'p2',
+  neutral: false,
+  yourPlanet: 'Vantage-3',
   yourLosses: {},
   theirLosses: { WASP: 4 },
+  yourFleet: { WASP: 10 },
   lootAlloy: 100,
   lootCrystal: 0,
   lootDeuterium: 0,
   dominion: 400,
+  shieldAbsorbed: 0,
+  cargoLimited: false,
+  defenceSalvage: {},
+  disruptedMinutes: 0,
+  wreckValue: 0,
 });
 
 const read = (over: {

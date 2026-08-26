@@ -178,9 +178,23 @@ export class Api {
     return this.token;
   }
 
+  /**
+   * `T` IS WHAT THE SCHEMA PRODUCES, NEVER WHAT IT ACCEPTS.
+   *
+   * `z.ZodType<T>` is `ZodType<T, ZodTypeDef, T>` — it demands that a schema's
+   * input and output be the same type. The moment a field carries `.default()`
+   * they stop being: the input has it optional and the output guarantees it. TS
+   * cannot satisfy both positions, so it settled on the INPUT, and every caller
+   * was handed `boolean | undefined` for a field `parse` had already filled in.
+   *
+   * It shipped: `capturable` on a Death Star chronicle entry has been optional at
+   * the call site since D98 while zod has been defaulting it to `true` all along.
+   * Widening the input slot to `unknown` binds `T` to the output, which is the
+   * only side a caller of `parse` ever sees.
+   */
   private async send<T>(
     path: string,
-    schema: z.ZodType<T>,
+    schema: z.ZodType<T, z.ZodTypeDef, unknown>,
     opts: RequestOptions = {},
   ): Promise<T> {
     /**
@@ -389,7 +403,7 @@ export class Api {
 
   private clanMutation<T>(
     path: string,
-    schema: z.ZodType<T>,
+    schema: z.ZodType<T, z.ZodTypeDef, unknown>,
     body: Record<string, unknown> = {},
   ): Promise<T> {
     return this.send(path, schema, {

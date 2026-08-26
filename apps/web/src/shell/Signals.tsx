@@ -9,7 +9,7 @@ import { describeNotification, isAlarming, notificationIdentity } from '../lib/n
 import { useProjected, type Projected } from '../lib/projection.js';
 import { duration, staleness, useNow } from '../lib/time.js';
 import { Sheet } from '../ui/kit/index.js';
-import type { Panel } from '../screens/GalaxyView.jsx';
+import type { Panel, PanelStop } from '../screens/GalaxyView.jsx';
 import { serverNow } from '../lib/clock.js';
 import {
   AlloyIcon,
@@ -56,7 +56,7 @@ export function Signals({
   onOpen,
   onFocusPlanet,
 }: {
-  onOpen: (panel: Panel) => void;
+  onOpen: (panel: Panel, stop?: PanelStop) => void;
   onFocusPlanet: (planetId: string) => void;
 }) {
   const { t } = useTranslation();
@@ -212,8 +212,8 @@ export function Signals({
                   repeats={entry.repeats}
                   unread={!entry.event.seen || justRead.has(entry.event.id)}
                   now={now}
-                  onGo={(panel) => {
-                    onOpen(panel);
+                  onGo={(panel, stop) => {
+                    onOpen(panel, stop);
                     setOpen(false);
                   }}
                   onFocusPlanet={(planetId) => {
@@ -230,18 +230,45 @@ export function Signals({
   );
 }
 
-/** Where each kind of news is actually dealt with. */
-const DESTINATION: Record<string, Panel> = {
+/**
+ * WHERE EACH KIND OF NEWS IS ACTUALLY DEALT WITH — AND WHICH SHELF. D121.
+ *
+ * A panel was not a complete answer. The Intel centre holds two lists, so every
+ * one of these landed on the probe list: "you were raided" opened the right room
+ * and then showed the reader somebody else's scouting. `stop` is the shelf, and
+ * it is only meaningful for `intel` because it is the only panel with two.
+ *
+ * FIVE KINDS USED TO HAVE NOWHERE TO GO AT ALL. A Death Star resolving, a colony
+ * taken, a colony lost, a settlement landing, a settlement lost — the most
+ * consequential things that can happen to a commander — rendered as rows with no
+ * way in, because the map was written before those kinds existed and nothing
+ * failed when they were added. A missing entry is silent by construction, which
+ * is why the exhaustiveness of this map is asserted in `notification-routes.test`.
+ */
+export const DESTINATION: Record<string, { panel: Panel; stop?: PanelStop }> = {
   // Something is coming: spend the stock, build a gun, get the fleet out.
-  incoming_fleet: 'planet',
-  fleet_returned: 'planet',
+  incoming_fleet: { panel: 'planet' },
+  strategic_incoming: { panel: 'planet' },
+  fleet_returned: { panel: 'planet' },
   // Everything that is a READING goes where readings live — the battle report
   // behind a raid, the radar log behind a scan, the report behind a probe.
-  raided: 'intel',
-  raid_result: 'intel',
-  scan_detected: 'intel',
-  probe_report: 'intel',
-  unlock: 'intel',
+  raided: { panel: 'intel', stop: 'battles' },
+  raid_result: { panel: 'intel', stop: 'battles' },
+  death_star_result: { panel: 'intel', stop: 'battles' },
+  // The radar log is its own section further down the same screen, and the probe
+  // list is the shelf it sits under.
+  scan_detected: { panel: 'intel', stop: 'probes' },
+  probe_report: { panel: 'intel', stop: 'probes' },
+  unlock: { panel: 'intel', stop: 'probes' },
+  /*
+    A WORLD CHANGED HANDS. The planet panel is where a commander's worlds are
+    managed and where a newly won or newly lost one is either developed or
+    mourned; the disc behind it is already showing the change.
+  */
+  colony_captured: { panel: 'planet' },
+  settlement_success: { panel: 'planet' },
+  colony_lost: { panel: 'planet' },
+  settlement_lost: { panel: 'planet' },
 };
 
 /**
@@ -292,7 +319,7 @@ function Event({
   /** New in THIS reading — see `justRead`. Not simply `!event.seen`. */
   unread: boolean;
   now: number;
-  onGo: (panel: Panel) => void;
+  onGo: (panel: Panel, stop?: PanelStop) => void;
   onFocusPlanet: (planetId: string) => void;
 }) {
   const line = describeNotification(event, now);
@@ -313,7 +340,7 @@ function Event({
         <button
           type="button"
           aria-label={i18n.t('signals.openEvent')}
-          onClick={() => { onGo(destination); }}
+          onClick={() => { onGo(destination.panel, destination.stop); }}
           className="absolute inset-0"
         />
       )}

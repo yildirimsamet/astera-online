@@ -2,6 +2,7 @@ import { and, eq, inArray, isNull, ne, sql } from 'drizzle-orm';
 import {
   PROBE,
   applyDisruption,
+  disruptionMinutes,
   bookBattle,
   computeLoot,
   deuteriumOf,
@@ -570,6 +571,17 @@ export const onMissionArrival: Handler = async ({ db, clock }, event) => {
       await publishShard(tx, mission.seasonId, 'score');
     }
 
+    /**
+     * PRICED HERE RATHER THAN AT THE INSERT BELOW, SO THE REPORT CAN CARRY IT.
+     *
+     * It is a pure function of the two loss lists, so computing it early moves
+     * nothing: the debris row still uses this same figure a few lines down. What
+     * it buys is a report that can say what the fight left in orbit — which is
+     * the one consequence of a battle that belongs to whoever gets there first.
+     */
+    const wreckValue =
+      (flyingValue(result.attackerLosses) + flyingValue(result.defenderLosses)) * DEBRIS.share;
+
     await tx.insert(battleReports).values({
       seasonId: mission.seasonId,
       missionId,
@@ -583,6 +595,27 @@ export const onMissionArrival: Handler = async ({ db, clock }, event) => {
       loot: { alloy: loot.alloy, crystal: loot.crystal, deuterium: loot.deuterium },
       attackerLosses: result.attackerLosses,
       defenderLosses: result.defenderLosses,
+      // The two rosters that were on the board. Each side is shown only its own.
+      attackerFleet: attackingFleet,
+      defenderFleet: defenders,
+      defenceSalvage: result.defenceSalvage,
+      /*
+        THE DOWNTIME STANDING AFTER THIS BATTLE, from its own instant — never the
+        absolute deadline, which is meaningless once the report is an hour old.
+
+        ZERO WHENEVER THE GRADE CAUSED NONE, and that guard is not decorative.
+        `applyDisruption` returns the EXISTING deadline untouched when a grade adds
+        nothing, so a raid REPELLED by a world that was already offline from an
+        earlier raid would have stored that leftover figure — and the defender's own
+        report would have read "your works were knocked offline for two hours" about
+        an attack they had just beaten.
+      */
+      disruptedMinutes: disruptionMinutes(result.grade) === 0
+        ? 0
+        : Math.max(0, disruptedUntilMinutes - defender.nowMinutes),
+      // Below `DEBRIS.minimum` no field is written at all, so the report says
+      // none rather than advertising wreckage nobody can fly out and collect.
+      wreckValue: wreckValue >= DEBRIS.minimum ? wreckValue : 0,
       cargoLimited,
       shieldAbsorbed,
       dominionSwing,
@@ -608,9 +641,9 @@ export const onMissionArrival: Handler = async ({ db, clock }, event) => {
      * WEALTH, NEVER DOMINION. Nothing here touches a ledger — wreckage was not
      * taken FROM anybody, so crediting it to the ladder would create score from
      * nothing and break the zero-sum guarantee D2 rests on.
+     *
+     * `wreckValue` is priced above the battle report, which carries the same figure.
      */
-    const wreckValue =
-      (flyingValue(result.attackerLosses) + flyingValue(result.defenderLosses)) * DEBRIS.share;
     let wreckFieldId: string | null = null;
     if (wreckValue >= DEBRIS.minimum) {
       // Split the way the hulls were priced, so each recovered material keeps the

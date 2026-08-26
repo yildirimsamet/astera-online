@@ -131,6 +131,7 @@ export const errors = {
   PLAYER_NOT_FOUND: 'Böyle bir oyuncu yok',
   PLAYER_ALREADY_IN_CLAN: 'Bu komutan zaten bir klana üye',
   PROBE_ALREADY_OUT: 'O gezegende çalışan bir sondan zaten var',
+  PROBE_COOLDOWN: 'O dünyaya az önce baktın; yeni sonda {{minutes}} dakika sonra gönderilebilir.',
   PROSPECTOR_CAP: 'En fazla {{max}} Kazıcı tutabilirsin, elinde {{have}} tane var.',
   PROSPECTOR_CAP_atLimit: 'Elinde zaten {{max}} Kazıcı var; sınır bu.',
   QUEUE_FULL: '{{queue}} üretim sırası dolu',

@@ -3,7 +3,9 @@ import {
   VIEW,
   interpolatePosition,
   orbitStandoff,
+  surfaceStandoff,
   toWorld,
+  visualLeg,
   worldRadius,
   worldWeight,
   type SatelliteId,
@@ -255,48 +257,34 @@ export function threadPosition(
   path: NonNullable<PendingThread['path']>,
   now: number,
   standoff: LegStandoff = NO_STANDOFF,
-  nodes: readonly PlanetNode[] = [],
 ): Vec3Tuple {
-  if (standoff.start <= 0 && standoff.end <= 0) {
-    return clearOfWorlds(nodes, toWorld(
-      interpolatePosition(
-        path.from,
-        path.to,
-        path.departAt.getTime(),
-        path.arriveAt.getTime(),
-        now,
-      ),
-    ));
-  }
-
   /**
-   * A leg that begins or ends in ORBIT rather than at the middle of a world.
+   * A leg that begins or ends clear of a world rather than at its centre.
    *
    * Solved in world units rather than in game units, because a standoff is a
    * drawing distance — it has to clear a sphere whose radius is a world figure,
    * and the height axis is exaggerated on the way in (`toWorld`), so the same
    * number means two different things on either side of that conversion.
    */
-  const start = legStart(path, standoff.start);
-  const end = legEnd(path, standoff.end);
+  const leg = visualLeg(path.from, path.to, standoff.start, standoff.end);
+  const start = toWorld(leg.from);
+  const end = toWorld(leg.to);
   const span = path.arriveAt.getTime() - path.departAt.getTime();
   const t =
     span <= 0 ? 1 : Math.max(0, Math.min(1, (now - path.departAt.getTime()) / span));
   /**
-   * THE SAME CLAMP EVERY OTHER CRAFT ON THE DISC GETS. D106.
+   * CLEARANCE IS AN ENDPOINT, NEVER A PER-FRAME CORRECTION. D120.
    *
-   * `clearOfWorlds` used to be applied to a CONTACT at its call site and never to
-   * the owner's own craft, which is how the two pictures came apart at the two
-   * moments a craft is nearest a world: a stranger's copy was pushed clear of the
-   * planet it was leaving while the owner's sat inside it. Applying it here rather
-   * than at the call site is the point — a renderer cannot forget a rule it does
-   * not have to remember.
+   * Projecting every interpolated point back to a world's surface maps an entire
+   * interval to one coordinate. That was the reported spawn pause, and it could
+   * happen again when a route crossed an unrelated marker. Both clearances are
+   * baked into `start` and `end` once, so every change in time changes position.
    */
-  return clearOfWorlds(nodes, [
+  return [
     start[0] + (end[0] - start[0]) * t,
     start[1] + (end[1] - start[1]) * t,
     start[2] + (end[2] - start[2]) * t,
-  ]);
+  ];
 }
 
 /* ── stopping short of a world ──────────────────────────────── */
@@ -363,15 +351,15 @@ export function targetNodeOf(
  * INTO the middle of the world it had just been holding off — and set out for home
  * from there. The owner watched a raid teleport into its target and reverse out.
  *
- * ZERO AT HOME, at whichever end home is, and that is not an oversight: a fleet
- * leaving its own world is emerging from it and one coming back LANDS — it is
- * absorbed into the garrison and stops existing, so holding it in orbit would leave
- * a squadron parked over your own planet with nothing left to happen to it.
+ * HOME USES SURFACE CLEARANCE, not the wider orbital hold. A fleet still emerges
+ * from and lands on its own world, but starting at the centre plus a per-frame
+ * surface projection made it sit still for seconds. Starting/ending on the near
+ * surface preserves that picture while keeping the interpolation continuous.
  */
 export interface LegStandoff {
-  /** Held off the world the leg departs from. Only ever a return leg. */
+  /** Clearance from the world the leg departs from. */
   start: number;
-  /** Held off the world the leg arrives at. Only ever an outbound leg. */
+  /** Clearance from the world the leg arrives at. */
   end: number;
 }
 
@@ -383,13 +371,20 @@ export function legStandoff(
 ): LegStandoff {
   if (!thread.path) return NO_STANDOFF;
   const returning = thread.leg === 'return';
-  // The world being held off is the FOREIGN one, which swaps ends with the leg:
-  // a return mission row is stored with its origin and target reversed (D28), so
-  // the raided world is `path.from` on the way home and `path.to` on the way out.
-  const node = targetNodeOf(nodes, returning ? thread.path.from : thread.path.to);
-  if (!node) return NO_STANDOFF;
-  const gap = orbitStandoff(node.radius);
-  return returning ? { start: gap, end: 0 } : { start: 0, end: gap };
+  // A return mission row is stored with the two worlds swapped (D28), so the
+  // foreign orbit is the start on the way home and the end on the way out. Home
+  // is the other endpoint and takes only the tight surface clearance (D120).
+  const startNode = targetNodeOf(nodes, thread.path.from);
+  const endNode = targetNodeOf(nodes, thread.path.to);
+  return returning
+    ? {
+        start: startNode ? orbitStandoff(startNode.radius) : 0,
+        end: endNode ? surfaceStandoff(endNode.radius) : 0,
+      }
+    : {
+        start: startNode ? surfaceStandoff(startNode.radius) : 0,
+        end: endNode ? orbitStandoff(endNode.radius) : 0,
+      };
 }
 
 /**
@@ -402,18 +397,7 @@ export function legStart(
   path: NonNullable<PendingThread['path']>,
   standoff: number,
 ): Vec3Tuple {
-  const from = toWorld(path.from);
-  if (standoff <= 0) return from;
-  const to = toWorld(path.to);
-
-  const dx = to[0] - from[0];
-  const dy = to[1] - from[1];
-  const dz = to[2] - from[2];
-  const len = Math.hypot(dx, dy, dz);
-  if (len <= 0) return from;
-
-  const push = Math.min(standoff, len * 0.5) / len;
-  return [from[0] + dx * push, from[1] + dy * push, from[2] + dz * push];
+  return toWorld(visualLeg(path.from, path.to, standoff, 0).from);
 }
 
 /**
@@ -427,18 +411,7 @@ export function legEnd(
   path: NonNullable<PendingThread['path']>,
   standoff: number,
 ): Vec3Tuple {
-  const from = toWorld(path.from);
-  const to = toWorld(path.to);
-  if (standoff <= 0) return to;
-
-  const dx = to[0] - from[0];
-  const dy = to[1] - from[1];
-  const dz = to[2] - from[2];
-  const len = Math.hypot(dx, dy, dz);
-  if (len <= 0) return to;
-
-  const pull = Math.min(standoff, len * 0.5) / len;
-  return [to[0] - dx * pull, to[1] - dy * pull, to[2] - dz * pull];
+  return toWorld(visualLeg(path.from, path.to, 0, standoff).to);
 }
 
 /**
@@ -459,66 +432,14 @@ export function runPosition(
     ? ([run.intercept, home, run.arriveAt, run.homeAt ?? run.arriveAt] as const)
     : ([home, run.intercept, run.departAt, run.arriveAt] as const);
 
-  // The same clamp every other craft gets, for the reason in `threadPosition`: a
-  // Prospector is drawn from this payload for its owner and from a public contact
-  // for everybody else, and the two must not part company at the world it sets off
-  // from and comes back to. D106.
-  return clearOfWorlds(nodes, toWorld(
-    interpolatePosition(from, to, departAt.getTime(), arriveAt.getTime(), now),
-  ));
-}
-
-/**
- * NOTHING IS EVER DRAWN INSIDE A WORLD.
- *
- * D44 gave your OWN craft a standoff, because a leg's endpoint is the target
- * planet's centre and a squadron parked in the middle of the thing it is attacking
- * is not a picture of a raid. Everybody else's craft never got one, and could not:
- * a contact carries a bearing window and no destination, so the renderer has no
- * endpoint to stop short of. What it published instead was the craft's true
- * position, which on final approach IS the target's centre — so every player in the
- * galaxy watched other people's raids fly into a planet and disappear, while the
- * attacker watched their own hold in orbit. The same disc, two different pictures.
- *
- * This is the rule stated as geometry rather than as a route, which is the only
- * form a contact can obey: a craft that would be drawn inside a world is pushed out
- * to just clear of its surface, along the line from the world's centre. It needs no
- * destination, so it discloses nothing — the planet is public, the craft's position
- * is already public, and the correction only ever moves a craft to somewhere the
- * player could already see it was.
- *
- * IT IS DELIBERATELY TIGHT. The standoff a raid holds is two planet radii; this is
- * a sixth of one, because it is not a holding position — it is the surface of the
- * sphere. Any looser and a craft passing an unrelated world on its way somewhere
- * else would visibly swerve around it, which is a worse lie than the one being
- * fixed.
- */
-const HULL_CLEARANCE = 1.15;
-
-export function clearOfWorlds(
-  nodes: readonly PlanetNode[],
-  at: Vec3Tuple,
-): Vec3Tuple {
-  for (const node of nodes) {
-    const clear = node.radius * HULL_CLEARANCE;
-    const dx = at[0] - node.position[0];
-    const dy = at[1] - node.position[1];
-    const dz = at[2] - node.position[2];
-    const d2 = dx * dx + dy * dy + dz * dz;
-    if (d2 >= clear * clear) continue;
-
-    const d = Math.sqrt(d2);
-    // Dead centre has no direction to push along. Straight up is as good as any,
-    // and it cannot happen for a craft that is actually moving.
-    if (d < 1e-6) return [node.position[0], node.position[1] + clear, node.position[2]];
-    const k = clear / d;
-    return [
-      node.position[0] + dx * k,
-      node.position[1] + dy * k,
-      node.position[2] + dz * k,
-    ];
-  }
-  return at;
+  const homeNode = targetNodeOf(nodes, home);
+  const clearance = homeNode ? surfaceStandoff(homeNode.radius) : 0;
+  const leg = returning
+    ? visualLeg(from, to, 0, clearance)
+    : visualLeg(from, to, clearance, 0);
+  return toWorld(
+    interpolatePosition(leg.from, leg.to, departAt.getTime(), arriveAt.getTime(), now),
+  );
 }
 
 /**
@@ -608,12 +529,11 @@ export function contactPosition(
   const t =
     span <= 0 ? 1 : Math.max(0, Math.min(ceiling, (now - contact.startAt.getTime()) / span));
   const visualFrom = toWorld(contact.from);
-  // Clamped here rather than at the call site, for the reason in `threadPosition`.
-  return clearOfWorlds(nodes, [
+  return [
     visualFrom[0] + (visualTo[0] - visualFrom[0]) * t,
     visualFrom[1] + (visualTo[1] - visualFrom[1]) * t,
     visualFrom[2] + (visualTo[2] - visualFrom[2]) * t,
-  ]);
+  ];
 }
 
 /**

@@ -48,6 +48,20 @@ import { ALL_HULLS, HULLS, type Fleet, type HullId } from '@astera/rules';
  */
 export const PER_MODEL = 10;
 
+/**
+ * One forgiving target for the squadron rather than one target per drawn hull.
+ *
+ * The visible formation spreads with sqrt(markerCount), so the old fixed sphere
+ * covered progressively less of it until a 500-ship force was practically
+ * selectable only at its lead craft. The smaller coefficient is deliberate: the
+ * centre gets easier to tap as the force grows, but the invisible target never
+ * expands across the entire formation and steals neighbouring selections. D122.
+ */
+export function formationHitRadius(markerCount: number, scale: number): number {
+  const base = Math.max(0.45, scale * 1.6);
+  return base + scale * 0.2 * Math.sqrt(Math.max(0, markerCount - 1));
+}
+
 export interface Marker {
   hull: HullId;
   /** How many real ships this model represents, 1..PER_MODEL. */

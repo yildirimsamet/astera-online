@@ -106,14 +106,29 @@ export const worldRadius = (coreTier: number): number => WEIGHT_RADIUS[worldWeig
 export const orbitStandoff = (radius: number): number => radius * 1.5 + radius * 0.5;
 
 /**
+ * HOW FAR FROM ITS OWN WORLD A MOVING CRAFT APPEARS. D120.
+ *
+ * This is deliberately tighter than `orbitStandoff`: a departing or returning
+ * craft is crossing the world's silhouette, not holding position over it. It used
+ * to be enforced after every interpolation by projecting the craft back to the
+ * surface. That made a whole interval of real positions collapse into one drawn
+ * position — the visible pause at the start, end or middle of a leg.
+ *
+ * Baked into the endpoint once, every elapsed millisecond remains progress along
+ * one straight leg. Both server and client need the same figure, so it belongs
+ * beside the rest of the shared visual-leg definition.
+ */
+export const surfaceStandoff = (radius: number): number => radius * 1.15;
+
+/**
  * The visual leg: where a craft is actually drawn setting off from, and where it
  * is actually drawn stopping.
  *
- * `startStandoff` is only ever non-zero on a leg coming HOME — a fleet leaves the
- * world it was holding over from the point it was holding at — and `endStandoff`
- * only on a leg going out. Both are world-space distances, applied along the leg
- * in world space and handed back in GAME coordinates, so the server can publish a
- * point the client will draw in exactly the place it draws its own.
+ * Both values are world-space distances, applied along the leg in world space and
+ * handed back in GAME coordinates, so the server can publish a point the client
+ * will draw in exactly the place it draws its own. A normal outbound mission uses
+ * surface clearance at the start and orbital clearance at the end; a return swaps
+ * those roles. Mining uses surface clearance only at its home end.
  *
  * NEITHER END MAY PASS THE MIDDLE. A hop between close neighbours would otherwise
  * finish behind where it started, which draws a craft flying backwards out of its

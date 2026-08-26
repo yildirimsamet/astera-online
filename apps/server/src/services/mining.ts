@@ -6,7 +6,7 @@ import {
   prospectorHold,
   prospectorSpeed,
   prospectorReturnSpeed,
-  prospectorTravelExact,
+  travelExact,
   DEBRIS,
   claimDebris,
   collectorCap,
@@ -18,6 +18,7 @@ import {
   crystalRate,
   distance,
   type AsteroidSpec,
+  type SatelliteSet,
   type Vec3,
 } from '@astera/rules';
 import { addMinutes, atMinute, minutesSince, type Clock } from '../clock.js';
@@ -32,12 +33,15 @@ import {
   orbitOf,
   saveResources,
   setUnits,
+  type LockedPlanet,
 } from './planet.js';
 import { galaxyOf } from './season.js';
 import { schedule } from '../worker/queue.js';
 import { publish, publishShard } from '../stream/bus.js';
 import { hasResearch } from './researchState.js';
 import { publicPlanetIdentity, recordGalaxyEvent } from './chronicle.js';
+import { pendingThreads, type PendingThread } from './session.js';
+import { planetView, type PlanetView } from './planetView.js';
 
 /**
  * MINING — D19.
@@ -173,6 +177,104 @@ export async function visibleAsteroids(
   return projectVisibleAsteroids(await loadMiningSnapshot(db, seasonId, now), now, revealIsotopes);
 }
 
+/** The caller-only half of mining, built identically for GET and launch POST. */
+export function projectPrivateMiningView(
+  orbit: SatelliteSet,
+  runs: readonly (typeof miningRuns.$inferSelect)[],
+) {
+  return {
+    /** Whether the DERRICK is in orbit. D25 — hardware, never a level. */
+    derrick: orbit.includes('DERRICK'),
+    craftSpeed: prospectorSpeed(orbit),
+    craftHold: prospectorHold(orbit),
+    derrickHold: prospectorHold(['DERRICK']),
+    runs: runs.map((run) => ({
+      id: run.id,
+      targetKind: run.targetKind,
+      asteroidIndex: run.asteroidIndex,
+      debrisFieldId: run.debrisFieldId,
+      status: run.status,
+      craft: run.craft,
+      departAt: run.departAt,
+      arriveAt: run.arriveAt,
+      homeAt: run.homeAt,
+      intercept: { x: run.interceptX, y: run.interceptY, z: run.interceptZ },
+      minedAlloy: Math.round(run.minedAlloy),
+      minedCrystal: Math.round(run.minedCrystal),
+      minedDeuterium: Math.round(run.minedDeuterium),
+    })),
+  };
+}
+
+/** The isotope subset of a private status response, from an already-authorised field. */
+export function projectIsotopeKnowledge(
+  asteroids: readonly {
+    index: number;
+    isotopeRich: boolean;
+    deuteriumShare: number | null;
+  }[],
+) {
+  return asteroids.flatMap((asteroid) =>
+    asteroid.isotopeRich && asteroid.deuteriumShare !== null
+      ? [{ index: asteroid.index, deuteriumShare: asteroid.deuteriumShare }]
+      : []);
+}
+
+export type MiningStatusView = ReturnType<typeof projectPrivateMiningView> & {
+  isotopes: ReturnType<typeof projectIsotopeKnowledge>;
+};
+
+/**
+ * The private mining view immediately after a launch, read before the transaction
+ * commits so the run in the answer is the row the mutation just created. D120.
+ */
+async function miningStatusAfterLaunch(
+  tx: Tx,
+  origin: Pick<LockedPlanet, 'planetId' | 'seasonId' | 'orbit' | 'now'>,
+): Promise<MiningStatusView> {
+  const runs = await activeMiningRuns(tx, origin.planetId);
+  const view = projectPrivateMiningView(origin.orbit, runs);
+  if (!(await hasResearch(tx, origin.planetId, 'ISOTOPE_SPECTROMETRY'))) {
+    return { ...view, isotopes: [] };
+  }
+
+  // Only the asteroid half is needed here. Pulling live debris into a planet-locked
+  // launch transaction would lengthen the lock for a payload this response does not
+  // carry; claims are the only stored fact isotope visibility needs.
+  const field = await fieldOf(tx, origin.seasonId);
+  const claims = await tx
+    .select({ index: asteroidClaims.index, oreTaken: asteroidClaims.oreTaken })
+    .from(asteroidClaims)
+    .where(eq(asteroidClaims.seasonId, origin.seasonId));
+  const taken = new Map(claims.map((claim) => [claim.index, claim.oreTaken]));
+  const nowMinutes = minutesSince(field.startsAt, origin.now);
+  const isotopes = projectIsotopeKnowledge(
+    field.asteroids
+      .filter((asteroid) => asteroidActive(asteroid, nowMinutes))
+      .filter((asteroid) => asteroid.ore - (taken.get(asteroid.index) ?? 0) > 0)
+      .map((asteroid) => ({
+        index: asteroid.index,
+        isotopeRich: asteroid.isotopeRich,
+        deuteriumShare: Math.round(asteroid.deuteriumShare * 100) / 100,
+      })),
+  );
+  return { ...view, isotopes };
+}
+
+async function launchViews(
+  tx: Tx,
+  origin: LockedPlanet,
+  clock: Clock,
+): Promise<Pick<MiningLaunch, 'mining' | 'pending' | 'planet'>> {
+  // Deliberately sequential on one transaction connection. Each is the same
+  // projection its GET endpoint uses, but no second HTTP request or second DB
+  // snapshot can race the launch.
+  const mining = await miningStatusAfterLaunch(tx, origin);
+  const pending = await pendingThreads(tx, origin.planetId, origin.now);
+  const planet = await planetView(tx, origin.planetId, clock);
+  return { mining, pending, planet };
+}
+
 export interface MiningLaunch {
   runId: string;
   /** Absent on a harvest — a wreck field is not in the generated asteroid field. */
@@ -183,6 +285,12 @@ export interface MiningLaunch {
   intercept: Vec3;
   /** Ore the squadron could carry if the rock still has it when they land. */
   capacity: number;
+  /** Private run/hardware state, in the exact shape `/api/mining/status` serves. */
+  mining: MiningStatusView;
+  /** Mission strip state, protected against an older read landing after this POST. */
+  pending: PendingThread[];
+  /** The selected world after the Prospectors and one flight bay have left it. */
+  planet: PlanetView;
 }
 
 /**
@@ -293,7 +401,7 @@ export async function launchMining(
     const arriveAt = atMinute(startsAt, hit.meetsAtMinutes);
     // Priced at the RETURN speed, or this guard lets a player launch a run that
     // physically cannot get home before the season closes. D117.
-    const homeMinutes = prospectorTravelExact(
+    const homeMinutes = travelExact(
       distance(hit.at, origin),
       prospectorReturnSpeed(origin.orbit),
     );
@@ -348,6 +456,7 @@ export async function launchMining(
       flightMinutes: hit.flightMinutes,
       intercept: hit.at,
       capacity: holdEach * craft,
+      ...await launchViews(tx, origin, clock),
     };
   });
 }
@@ -479,7 +588,7 @@ export async function resolveMiningArrival(tx: Tx, runId: string, now: Date): Pr
    * Both kinds of run come through here — a rock and a wreck field — which is how
    * the salvage run pays the same price without a branch.
    */
-  const back = prospectorTravelExact(
+  const back = travelExact(
     Math.hypot(run.interceptX - home.x, run.interceptY - home.y, run.interceptZ - home.z),
     // Re-read from what is CURRENTLY in orbit on purpose: the craft is a real
     // object being flown home, and a Derrick that lands while it is out
@@ -823,8 +932,8 @@ export async function launchHarvest(
     // rule as a mining run — mining's own launch overhead, not a warship's. D48.
     // Out at hull speed and home at a third of it, for the same reason and through
     // the same turn-around line: a wreck field is not a faster way home. D117.
-    const outbound = prospectorTravelExact(dist, speed);
-    const homeMinutes = prospectorTravelExact(dist, prospectorReturnSpeed(origin.orbit));
+    const outbound = travelExact(dist, speed);
+    const homeMinutes = travelExact(dist, prospectorReturnSpeed(origin.orbit));
     const arriveAt = addMinutes(origin.now, outbound);
     assertSeasonOpenThrough(origin, addMinutes(arriveAt, homeMinutes));
     const holdEach = prospectorHold(origin.orbit);
@@ -867,6 +976,7 @@ export async function launchHarvest(
       flightMinutes: outbound,
       intercept: { x: target.x, y: target.y, z: target.z },
       capacity: holdEach * craft,
+      ...await launchViews(tx, origin, clock),
     };
   });
 }

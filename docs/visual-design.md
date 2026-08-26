@@ -20,6 +20,13 @@ yellow/orange/red cooling body. Its impact is an eight-second server-timed event
 irregular surface ignition, sparse shock fronts, deterministic fire lobes, hot ejecta and
 cooling smoke; perfect concentric neon target rings are explicitly avoided.
 
+World ownership is the one semantic exception to the line-free galactic scenery (D122). It is
+drawn above the painted plane as several hair-thin, gently curved white filaments rather than a
+single straight stroke: more veil or string than route. The caller's worlds are always joined;
+the selected foreign commander's worlds are joined only while one of them is focused. Telescope
+watches have no beam or tether on the map. The filaments stay faint enough that worlds remain
+the subject and never borrow the orange language reserved for flight intent.
+
 Visual quality is part of this game's identity, not a finishing pass. The game should feel
 polished, cohesive and intentional — never like a working prototype with placeholder graphics.
 

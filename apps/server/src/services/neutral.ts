@@ -41,6 +41,7 @@ import { publishShard } from '../stream/bus.js';
 import { schedule } from '../worker/queue.js';
 import { clearMissionUnits, fleetOfMission } from './mission.js';
 import { recordGalaxyEvent } from './chronicle.js';
+import { notify } from './notifications.js';
 import { orbitOf, recomputePlayerWealth, saveResources, setUnits } from './planet.js';
 import { safeHomePlanet } from './ownership.js';
 
@@ -114,6 +115,21 @@ const flyingMaterial = (fleet: Fleet, key: 'alloy' | 'crystal' | 'deuterium') =>
     .filter(([hull]) => !HULLS[hull].ground)
     .reduce((sum, [hull, count]) => sum + HULLS[hull][key] * count, 0);
 
+/**
+ * What a field made of these losses would be worth, or zero if none is created.
+ *
+ * The battle report carries the same figure and is written BEFORE the field, so
+ * the threshold lives here rather than being applied twice and drifting. A report
+ * that claims wreckage nobody can go and collect is worse than one that says none.
+ */
+const attackerWreckValue = (losses: Fleet): number => {
+  const total = flyingMaterial(losses, 'alloy')
+    + flyingMaterial(losses, 'crystal')
+    + flyingMaterial(losses, 'deuterium');
+  const wreck = total * DEBRIS.share;
+  return wreck < DEBRIS.minimum || total <= 0 ? 0 : wreck;
+};
+
 async function createAttackerDebris(
   tx: Tx,
   mission: typeof missions.$inferSelect,
@@ -124,8 +140,8 @@ async function createAttackerDebris(
   const crystal = flyingMaterial(losses, 'crystal');
   const deuterium = flyingMaterial(losses, 'deuterium');
   const total = alloy + crystal + deuterium;
-  const wreck = total * DEBRIS.share;
-  if (wreck < DEBRIS.minimum || total <= 0) return;
+  const wreck = attackerWreckValue(losses);
+  if (wreck === 0) return;
   await tx.insert(debrisFields).values({
     seasonId: mission.seasonId,
     planetId: mission.targetPlanetId,
@@ -231,11 +247,58 @@ export async function resolveNeutralBattle(
     loot: { alloy: loot.alloy, crystal: loot.crystal, deuterium: loot.deuterium },
     attackerLosses: result.attackerLosses,
     defenderLosses: result.defenderLosses,
+    // The rosters that met. The garrison is the caretaker's, so nothing here is
+    // anybody's private board — but the reader is still only ever shown its own.
+    attackerFleet: attackingFleet,
+    defenderFleet: defenders,
+    /*
+      A NEUTRAL WORLD SALVAGES NOTHING AND HAS NO WORKS TO KNOCK OUT.
+      `setNeutralFleet` writes the survivors and stops; there is no owner to
+      rebuild a gun and no production to disrupt, so both stay at their defaults
+      rather than carrying a figure the caretaker never received.
+    */
+    // Attacker losses only: nothing a caretaker fields is left in orbit. See
+    // `createAttackerDebris`, which is priced on exactly this list.
+    wreckValue: attackerWreckValue(result.attackerLosses),
     cargoLimited,
     shieldAbsorbed: result.rounds.reduce((sum, round) => sum + round.shieldAbsorbed, 0),
     dominionSwing: 0,
     createdAt: clock.now(),
   });
+  /**
+   * THE RAIDER IS TOLD. D121a.
+   *
+   * A neutral battle wrote a report and notified nobody, so the closing link of
+   * the loop existed only for a commander who thought to go and look for it: no
+   * badge on the beacon, no row in Signals, and — since D121 gave every kind of
+   * news a door — no way in to the report either. Fifty-one of the worlds on the
+   * disc are caretaker worlds and the whole colonisation path runs through
+   * raiding them, so this was most of the early game happening in silence.
+   *
+   * The same `raid_result` kind and the same payload shape as a PvP raid, because
+   * it is the same event to the player who launched it. There is nobody on the
+   * other side to tell — which is the one difference, and it is the definition of
+   * a neutral world rather than a gap.
+   */
+  await notify(tx, {
+    playerId: mission.ownerPlayerId,
+    kind: 'raid_result',
+    payload: {
+      grade: result.grade,
+      targetPlanetId: neutral.id,
+      targetPlanetName: neutral.name,
+      lootAlloy: loot.alloy,
+      lootCrystal: loot.crystal,
+      lootDeuterium: loot.deuterium,
+      unitsLost: fleetCount(result.attackerLosses),
+      shipsHome: fleetCount(result.attackerSurvivors),
+      // A caretaker world is outside the ladder: taking one moves nobody's score.
+      dominion: 0,
+    },
+    at: clock.now(),
+    refId: mission.id,
+  });
+
   await createAttackerDebris(tx, mission, result.attackerLosses, clock.now());
   await clearMissionUnits(tx, mission.originPlanetId, mission.id);
   if (fleetCount(result.attackerSurvivors) > 0) {

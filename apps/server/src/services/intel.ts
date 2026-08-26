@@ -1,4 +1,4 @@
-import { and, desc, eq, gt, inArray, isNotNull, ne, or } from 'drizzle-orm';
+import { and, desc, eq, gt, inArray, isNotNull, ne } from 'drizzle-orm';
 import {
   PROBE,
   DEATH_STAR,
@@ -482,6 +482,15 @@ export async function launchProbe(
      * Return legs count. A probe on its way home is still a craft you have not got
      * back, and letting the cap reset at the halfway point would make it a cap on
      * outbound distance rather than on how much you may have in the air.
+     *
+     * SCOPED TO THE COMMANDER SINCE D121, not to the world the probe leaves from.
+     * It used to read every probe touching THIS origin, which was the whole of the
+     * rule when a commander held one world. With up to three colonies under them
+     * (D97) that sold the same target four looks at once, and it would now
+     * contradict the cooldown below — which is per commander — line for line: the
+     * colony's probe would be told the target is clear and then refused for an
+     * hour by the next check. Return legs are stored with their two ends swapped
+     * (D28), so a probe coming HOME from the target still matches on `originPlanetId`.
      */
     const inFlight = await tx
       .select({ targetPlanetId: missions.targetPlanetId, originPlanetId: missions.originPlanetId })
@@ -490,10 +499,7 @@ export async function launchProbe(
         and(
           eq(missions.kind, 'probe'),
           eq(missions.status, 'in_flight'),
-          or(
-            eq(missions.originPlanetId, originPlanetId),
-            eq(missions.targetPlanetId, originPlanetId),
-          ),
+          eq(missions.ownerPlayerId, origin.playerId),
         ),
       );
 
@@ -518,6 +524,54 @@ export async function launchProbe(
         'PROBE_ALREADY_OUT',
         'You already have a probe working that planet',
         409,
+      );
+    }
+
+    /**
+     * AND AN HOUR BEFORE THE SAME WORLD MAY BE READ AGAIN. D121, owner instruction.
+     *
+     * D121 made a probe four times faster, which took the wait out of scouting —
+     * and the wait was doing rationing work nobody had ever written down. This is
+     * that work, stated: one look per world per hour, per commander.
+     *
+     * MEASURED FROM THE LAUNCH. `departAt` is the instant of the decision, so the
+     * hour is the same hour for a neighbour and for a world on the far rim; dating
+     * it from the report would charge distance twice, once in the flight and again
+     * in the cooldown.
+     *
+     * CANCELLED FLIGHTS ARE EXCLUDED. `sweepStranded` and `abandon()` mark a probe
+     * whose event row was lost as `cancelled` and refund nothing — charging an hour
+     * for a look the game itself failed to deliver would make a server fault cost
+     * the player their turn.
+     */
+    const cooldownFrom = addMinutes(origin.now, -PROBE.retargetCooldownMinutes);
+    const [recent] = await tx
+      .select({ departAt: missions.departAt })
+      .from(missions)
+      .where(
+        and(
+          eq(missions.kind, 'probe'),
+          eq(missions.ownerPlayerId, origin.playerId),
+          eq(missions.targetPlanetId, targetPlanetId),
+          inArray(missions.status, ['in_flight', 'resolved']),
+          gt(missions.departAt, cooldownFrom),
+        ),
+      )
+      .orderBy(desc(missions.departAt))
+      .limit(1);
+    if (recent) {
+      const readyAt = addMinutes(recent.departAt, PROBE.retargetCooldownMinutes);
+      throw new GameError(
+        'PROBE_COOLDOWN',
+        'That world was probed too recently',
+        409,
+        {
+          // A CODE PLUS ITS FIGURES, never a finished sentence (D55). The client
+          // counts down against the instant; the minutes are the fallback for a
+          // surface that only has room for a number.
+          until: readyAt.toISOString(),
+          minutes: Math.max(1, Math.ceil((readyAt.getTime() - origin.now.getTime()) / 60_000)),
+        },
       );
     }
 
@@ -722,4 +776,44 @@ export async function readProbeReports(db: Db, playerId: string, limit = 10) {
     ...row,
     targetUsername: row.targetUsername ?? 'Neutral',
   }));
+}
+
+/**
+ * WHICH WORLDS THIS COMMANDER MAY NOT LOOK AT YET, AND UNTIL WHEN. D121.
+ *
+ * The cooldown is enforced in `launchProbe` under the planet lock, which is the
+ * only place it can be. This exists so the interface does not have to find out by
+ * being refused: a control that offers a launch it knows will fail is a spinner
+ * where a decision should be (principle 10), and the instant is the same instant
+ * the guard reads, so the two can never disagree by a rounding.
+ *
+ * Only rows still inside the window are returned, so the list is bounded by how
+ * many probes one commander can have launched in an hour rather than by history.
+ */
+export async function readProbeCooldowns(
+  db: Db,
+  playerId: string,
+  now: Date,
+): Promise<{ targetPlanetId: string; readyAt: Date }[]> {
+  const rows = await db
+    .select({ targetPlanetId: missions.targetPlanetId, departAt: missions.departAt })
+    .from(missions)
+    .where(
+      and(
+        eq(missions.kind, 'probe'),
+        eq(missions.ownerPlayerId, playerId),
+        inArray(missions.status, ['in_flight', 'resolved']),
+        gt(missions.departAt, addMinutes(now, -PROBE.retargetCooldownMinutes)),
+      ),
+    );
+
+  // A commander may have probed the same world twice inside an hour only if the
+  // first was cancelled, so keep the latest and let the newest launch decide.
+  const latest = new Map<string, Date>();
+  for (const row of rows) {
+    const readyAt = addMinutes(row.departAt, PROBE.retargetCooldownMinutes);
+    const held = latest.get(row.targetPlanetId);
+    if (!held || readyAt > held) latest.set(row.targetPlanetId, readyAt);
+  }
+  return [...latest].map(([targetPlanetId, readyAt]) => ({ targetPlanetId, readyAt }));
 }

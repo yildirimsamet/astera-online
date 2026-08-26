@@ -62,6 +62,7 @@ const intel = (watching: number) => ({
     reading: { status: 'HOME', staleMinutes: 0, etaMinutes: null, state: 'CLEAR', clarity: 1 },
   })),
   probeReports: [],
+  probeCooldowns: [],
   radarLog: [],
   probeCost: { alloy: 50, crystal: 50 },
 });
@@ -92,6 +93,7 @@ const show = (opts: {
   watching: number;
   worlds: number;
   onOpenOrbit?: () => void;
+  open?: { stop: 'probes' | 'battles'; request: number };
 }) => {
   const { wrapper: Wrapper, queries } = harness();
   queries.setQueryData(['galaxy'], galaxy(opts.worlds));
@@ -100,7 +102,10 @@ const show = (opts: {
   queries.setQueryData(['reports'], { reports: [] });
   render(
     <Wrapper>
-      <IntelScreen {...(opts.onOpenOrbit ? { onOpenOrbit: opts.onOpenOrbit } : {})} />
+      <IntelScreen
+        {...(opts.onOpenOrbit ? { onOpenOrbit: opts.onOpenOrbit } : {})}
+        {...(opts.open ? { open: opts.open } : {})}
+      />
     </Wrapper>,
   );
 };
@@ -251,5 +256,78 @@ describe('report tabs', () => {
     expect(screen.getByRole('tablist', { name: 'İstihbarat raporları' })).toBeVisible();
     expect(screen.getByRole('tab', { name: 'Sonda raporları' })).toBeVisible();
     expect(screen.getByRole('tab', { name: 'Savaş raporları' })).toBeVisible();
+  });
+});
+
+/**
+ * A NOTIFICATION POINTS AT A SHELF, NOT JUST A ROOM. D121.
+ *
+ * The Intel centre holds two lists and every reading-shaped notification opened
+ * it on the PROBE list — so "you were raided" landed the reader beside the battle
+ * report rather than on it. `Signals` names the shelf now; this is the end of that
+ * wire, and the counter is what makes a SECOND notification still land after the
+ * reader has moved off the tab the first one opened.
+ */
+describe('landing on the shelf that was asked for', () => {
+  it('opens on the probe list when nobody has asked for anything', () => {
+    show({ telescope: 1, watching: 0, worlds: 20 });
+    expect(screen.getByRole('tabpanel', { name: 'Probe reports' })).toBeVisible();
+  });
+
+  it('opens on the battle reports when the caller named them', () => {
+    show({ telescope: 1, watching: 0, worlds: 20, open: { stop: 'battles', request: 1 } });
+    expect(screen.getByRole('tabpanel', { name: 'Battle reports' })).toBeVisible();
+    expect(screen.queryByRole('tabpanel', { name: 'Probe reports' })).not.toBeInTheDocument();
+  });
+
+  /**
+   * THE CASE THE COUNTER EXISTS FOR. A reader lands on battles, moves to probes,
+   * and a second battle notification arrives. The requested tab has not changed,
+   * so only the bumped counter can bring them back.
+   */
+  it('lands a second request after the reader has moved away', async () => {
+    const { wrapper: Wrapper, queries } = harness();
+    queries.setQueryData(['galaxy'], galaxy(20));
+    queries.setQueryData(['intel'], intel(0));
+    queries.setQueryData(['planet'], planet(1, 0));
+    queries.setQueryData(['reports'], { reports: [] });
+    const view = render(
+      <Wrapper>
+        <IntelScreen open={{ stop: 'battles', request: 1 }} />
+      </Wrapper>,
+    );
+    expect(screen.getByRole('tabpanel', { name: 'Battle reports' })).toBeVisible();
+
+    await userEvent.click(screen.getByRole('tab', { name: 'Probe reports' }));
+    expect(screen.getByRole('tabpanel', { name: 'Probe reports' })).toBeVisible();
+
+    view.rerender(
+      <Wrapper>
+        <IntelScreen open={{ stop: 'battles', request: 2 }} />
+      </Wrapper>,
+    );
+    expect(screen.getByRole('tabpanel', { name: 'Battle reports' })).toBeVisible();
+  });
+
+  /** And a re-render that asks for nothing new must not drag the reader back. */
+  it('leaves the reader alone when nothing new has been requested', async () => {
+    const { wrapper: Wrapper, queries } = harness();
+    queries.setQueryData(['galaxy'], galaxy(20));
+    queries.setQueryData(['intel'], intel(0));
+    queries.setQueryData(['planet'], planet(1, 0));
+    queries.setQueryData(['reports'], { reports: [] });
+    const view = render(
+      <Wrapper>
+        <IntelScreen open={{ stop: 'battles', request: 1 }} />
+      </Wrapper>,
+    );
+    await userEvent.click(screen.getByRole('tab', { name: 'Probe reports' }));
+
+    view.rerender(
+      <Wrapper>
+        <IntelScreen open={{ stop: 'battles', request: 1 }} />
+      </Wrapper>,
+    );
+    expect(screen.getByRole('tabpanel', { name: 'Probe reports' })).toBeVisible();
   });
 });

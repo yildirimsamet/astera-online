@@ -1,8 +1,8 @@
-import { DEBRIS, GALAXY, PROSPECTOR, SEASON, TRAVEL } from './constants.js';
+import { DEBRIS, GALAXY, PROSPECTOR, SEASON } from './constants.js';
 import { mulberry32 } from './rng.js';
 import { drillHoldMult, drillSpeedMult } from './economy.js';
 import { isotopeProfile } from './research.js';
-import { distance } from './travel.js';
+import { distance, travelExact } from './travel.js';
 import type { SatelliteSet, Vec3 } from './types.js';
 
 export interface PlanetSlot extends Vec3 {
@@ -254,22 +254,6 @@ export const activeAsteroids = (
   minutes: number,
 ): AsteroidSpec[] => asteroids.filter((a) => asteroidActive(a, minutes));
 
-/**
- * HOW LONG A MINING CRAFT IS IN THE AIR. D48.
- *
- * The same distance rule as everything else, over a much smaller launch overhead —
- * see `PROSPECTOR.launchMinutes` for the measurement that forced it. Everything
- * mining flies must read THIS and not `travelExact`: the interception solver, the
- * trip home from a rock, and the leg to a wreck field. A leg computed one way and
- * solved the other is a craft that arrives at a time nothing agreed on.
- */
-export const prospectorTravelExact = (dist: number, speed: number): number =>
-  speed <= 0 ? Infinity : PROSPECTOR.launchMinutes + (dist / speed) * TRAVEL.distanceFactor;
-
-/** The same trip in whole minutes, rounded up so a stated ETA is never optimistic. */
-export const prospectorTravelMinutes = (dist: number, speed: number): number =>
-  Math.ceil(prospectorTravelExact(dist, speed));
-
 export interface Interception {
   /** Minutes from now until the two meet. Fractional — the meeting is exact. */
   flightMinutes: number;
@@ -336,27 +320,31 @@ export function interceptAsteroid(
 ): Interception | null {
   if (hullSpeed <= 0) return null;
 
-  const base = PROSPECTOR.launchMinutes;
-
   /**
    * Time to fly to where the rock is at `now + delta`, minus delta.
    *
-   * Reads `prospectorTravelExact` rather than re-deriving the trip, so the moment
-   * this solves for is the moment the craft actually arrives. The two used to be
+   * Reads `travelExact` rather than re-deriving the trip, so the moment this
+   * solves for is the moment the craft actually arrives. The two used to be
    * written out separately and drifted by up to a minute — enough for a craft to
-   * sit at the meeting point waiting for a rock that had not got there yet. That
-   * helper is also where the mining launch overhead lives (D48), and it is the
-   * reason this no longer aims most of a lap ahead.
+   * sit at the meeting point waiting for a rock that had not got there yet.
+   *
+   * IT USED TO READ A MINING-ONLY COPY OF THAT FUNCTION, because a drill paid a
+   * smaller launch overhead than a warship (D48). D121 removed the overhead from
+   * every craft, so there is one function again and the hazard that made the copy
+   * necessary is gone with it. The LEAD is not: the rock moves for the whole
+   * flight, which is what makes this a solve rather than a straight line — the
+   * overhead only ever widened the angle, and `invariants.test.ts` still sweeps
+   * the generated field to prove every rock stays reachable.
    */
   const f = (delta: number): number =>
-    prospectorTravelExact(
+    travelExact(
       distance(from, asteroidPosition(asteroid, nowMinutes + delta)),
       hullSpeed,
     ) - delta;
 
   // Never search past the rock's own life: a meeting after it has gone is not one.
   const horizon = asteroid.expiresAt - nowMinutes;
-  if (horizon <= base) return null;
+  if (horizon <= 0) return null;
 
   /**
    * The step index is multiplied, never accumulated.
@@ -385,7 +373,7 @@ export function interceptAsteroid(
         else hi = mid;
       }
       const meets = nowMinutes + hi;
-      if (hi < base || meets >= asteroid.expiresAt) return null;
+      if (hi <= 0 || meets >= asteroid.expiresAt) return null;
       return {
         flightMinutes: hi,
         meetsAtMinutes: meets,

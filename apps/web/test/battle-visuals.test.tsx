@@ -26,12 +26,20 @@ const report: BattleReport = {
       defenderLosses: { WASP: 6, LANCE: 1 },
     },
   ],
+  neutral: false,
+  yourPlanet: 'Vantage-3',
   yourLosses: { WASP: 2 },
   theirLosses: { WASP: 6, LANCE: 1 },
+  yourFleet: { WASP: 12, HAULER: 2 },
   lootAlloy: 300,
   lootCrystal: 80,
   lootDeuterium: 0,
   dominion: 120,
+  shieldAbsorbed: 100,
+  cargoLimited: false,
+  defenceSalvage: {},
+  disruptedMinutes: 60,
+  wreckValue: 900,
 };
 
 describe('the battle payoff', () => {

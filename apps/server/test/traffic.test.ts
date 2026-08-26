@@ -7,6 +7,7 @@ import {
   engagementEndsAt,
   generateGalaxy,
   orbitStandoff,
+  surfaceStandoff,
   visualLeg,
   worldRadius,
 } from '@astera/rules';
@@ -489,28 +490,7 @@ describe('galaxy traffic — motion in public, intent in private', () => {
   });
 
   /**
-   * AND THE POSITION IT REPORTS IS THE TRUE ONE, AT EVERY POINT OF THE FLIGHT. D50.
-   *
-   * The near end of the window is the craft's real interpolated position — the same
-   * figure the attacker's own pending payload produces from `path`, off the same two
-   * timestamps.
-   *
-   * THIS TEST USED TO CLAIM MORE THAN IT CHECKS, and the gap was a real bug. It was
-   * called "puts a craft where its owner sees it", which stopped being true when D44
-   * gave an arriving squadron a standoff: the owner draws their raid on the line
-   * `origin → target − standoff`, and this payload is on `origin → target`. The two
-   * agree at departure and diverge to two planet radii by arrival, where the true
-   * position is INSIDE the world — so a stranger watched the raid fly into the
-   * planet while the attacker watched it hold off.
-   *
-   * The payload is the half that is right: the server's job is the truth, and a
-   * drawn radius is not a server fact. The reconciliation is `clearOfWorlds` in the
-   * client, which puts any craft that would be drawn inside a world onto its
-   * surface. What this test guards is the input to that — that the figure published
-   * here is the real one.
-   */
-  /**
-   * THE POSITION PUBLISHED IS THE POSITION DRAWN, AND THAT IS THE POINT. D106.
+   * THE POSITION PUBLISHED IS THE POSITION DRAWN, AND THAT IS THE POINT. D106/D120.
    *
    * This used to assert the craft's TRUE centre-to-centre position, and that is
    * exactly what made two screens disagree: the owner's client has stopped its own
@@ -532,15 +512,16 @@ describe('galaxy traffic — motion in public, intent in private', () => {
 
     const [from] = await f.db.select().from(planets).where(eq(planets.id, a));
     const [to] = await f.db.select().from(planets).where(eq(planets.id, b));
-    const [core] = await f.db
-      .select({ level: buildings.level })
+    const cores = await f.db
+      .select({ planetId: buildings.planetId, level: buildings.level })
       .from(buildings)
-      .where(and(eq(buildings.planetId, b), eq(buildings.type, 'CORE')));
+      .where(eq(buildings.type, 'CORE'));
+    const levelByPlanet = new Map(cores.map((core) => [core.planetId, core.level]));
     const drawn = visualLeg(
       { x: from!.x, y: from!.y, z: from!.z },
       { x: to!.x, y: to!.y, z: to!.z },
-      0,
-      orbitStandoff(worldRadius(coreTier(core?.level ?? 0))),
+      surfaceStandoff(worldRadius(coreTier(levelByPlanet.get(a) ?? 0))),
+      orbitStandoff(worldRadius(coreTier(levelByPlanet.get(b) ?? 0))),
     );
 
     for (const fraction of [0.1, 0.5, 0.9, 0.99]) {
@@ -633,8 +614,11 @@ describe('galaxy traffic — motion in public, intent in private', () => {
   /** An inbound PROBE is visible for the same reason — and probing is loud anyway. */
   it('shows a probe flying at you', async () => {
     await grant(f.db, b, 5_000, 5_000);
-    await launchProbe(f.db, b, mine, f.clock);
-    f.clock.advance(1);
+    const probe = await launchProbe(f.db, b, mine, f.clock);
+    // HALF THE LEG, NOT A FIXED MINUTE. A probe pays no launch overhead since D121
+    // and crosses to a neighbour in well under a minute, so a whole minute put the
+    // clock past its arrival and there was nothing left in the air to see.
+    f.clock.advance(probe.flightMinutes / 2);
 
     const seen = await fetchContacts();
     expect(seen.map((c) => c.kind)).toEqual(['probe']);

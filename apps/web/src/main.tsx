@@ -68,6 +68,15 @@ const client = new QueryClient({
   },
 });
 
+/**
+ * Scenario harnesses sometimes commit a mutation outside the page, then need the
+ * mounted tree to read that committed state without reloading the whole WebGL
+ * scene. Development-only, like `__api` and the galaxy scene bridge.
+ */
+if (import.meta.env.DEV || import.meta.env.VITE_VISUAL_TEST === '1') {
+  (window as unknown as { __queryClient?: QueryClient }).__queryClient = client;
+}
+
 const root = document.getElementById('root');
 if (!root) throw new Error('no #root element');
 

@@ -407,6 +407,32 @@ describe('numbers and clocks follow the language', () => {
     expect(staleness(0.5)).toBe('canlı');
     await i18n.changeLanguage('en');
   });
+
+  /**
+   * A SPAN SHORTER THAN A MINUTE HAS TO SAY SO. D121.
+   *
+   * `duration` rounded to whole minutes and every span in the game was longer
+   * than one, so the case never came up. A probe that pays no launch overhead
+   * crosses to a neighbour in 29 seconds, and the sentence a player reads at the
+   * moment they commit to it said "reports back in 0m" — the interface telling
+   * somebody their craft takes no time to fly.
+   */
+  it('says the seconds when a span is shorter than a minute', async () => {
+    expect(duration(0.49)).toBe('29s');
+    expect(duration(0.087)).toBe('5s');
+    // A minute and over is untouched, so no other surface in the game moves.
+    expect(duration(1)).toBe('1m');
+    expect(duration(1.49)).toBe('1m');
+    // Zero is still nothing rather than "0s": a span of no length is not a wait.
+    expect(duration(0)).toBe('0m');
+    // And a span too short to name is one second, never zero of them.
+    expect(duration(0.004)).toBe('1s');
+
+    await i18n.changeLanguage('tr');
+    expect(duration(0.49)).toBe('29sn');
+    expect(duration(1)).toBe('1d');
+    await i18n.changeLanguage('en');
+  });
 });
 
 describe('every key the tree holds actually resolves', () => {

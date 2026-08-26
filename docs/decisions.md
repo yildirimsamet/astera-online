@@ -187,7 +187,7 @@ D50 · Contacts keep moving to arrival — BUG FIX
 Bearing window'ın sonunu 4/5 leg'de veya 45s önce kesmek craft'ları final approach'ta donduruyordu. Fixed 45s margin kullanıldı; fog'a maliyeti yoktu.
 
 D51 · One live galaxy — BUG FIXES
-Return leg başlangıcı standoff ile düzeltilir; foreign craft worlds içine girmeyecek şekilde clearOfWorlds ile yüzeye alınır; exact minutesLeft tek clock source olur; foreign arrival unknown açıkça gösterilir; salvage ContactKind=harvest ile doğru render edilir. /api/galaxy artık 60s polling ile stale kalmaz; telescope reads (watchId,timeWindow) seed'i sayesinde tekrar okumak confirmation satın almaz. useNotifications.enabled gerçekten query'yi kontrol eder.
+Return leg başlangıcı standoff ile düzeltilir; exact minutesLeft tek clock source olur; foreign arrival unknown açıkça gösterilir; salvage ContactKind=harvest ile doğru render edilir. `/api/galaxy` artık 60s polling ile stale kalmaz; telescope reads `(watchId,timeWindow)` seed'i sayesinde tekrar okumak confirmation satın almaz. `useNotifications.enabled` gerçekten query'yi kontrol eder. Bu geçişte eklenen per-frame `clearOfWorlds` yüzey clamp'i D120'de kaldırıldı: endpoint clearance korunur, fakat rota artık donmaz.
 
 D52 · Living galaxy: battle public, server clock, nothing waits — OWNER INSTRUCTION
 Ürün hedefi: “fun, utopian, epic — a NASA photograph happening right now.”
@@ -1865,8 +1865,10 @@ server publishes every bearing window ON that leg, and the client draws its own 
 Both sides derive it from the same public `coreTier`, so the two pictures are the same line by
 construction rather than by agreement. Drawing geometry is allowed in the rules package for one
 reason only, and it is the same test everything else there passes: two processes must agree on
-it. `clearOfWorlds` moved inside `threadPosition`, `contactPosition` and `runPosition` for the
-same reason — a renderer cannot forget a rule it does not have to remember.
+it. The first implementation also moved `clearOfWorlds` inside `threadPosition`,
+`contactPosition` and `runPosition`; D120 found that a per-frame radial projection flattens the
+start of every centre-origin leg into a visible pause, and replaced it with endpoint clearance
+inside this same shared visual-leg definition.
 
 **An effect is a PUBLISHED moment and place, never one inferred from a flight.** A raid has
 said "I am bombarding this world, from here until here" since D52; a Death Star said nothing, so
@@ -2640,6 +2642,192 @@ than a result, so this is worth re-reading against real players.
 The structures tumble on two axes at 150 and 233 seconds, and are NOT gated on
 `prefers-reduced-motion` — a full turn is under a degree and a half per second, well below what that
 preference exists to protect against, and the first version was gated and simply stood still.
+
+### D120 · A visual leg is continuous, and mining launches answer in one round trip
+
+The reported pause was real and deterministic, not network lag. `clearOfWorlds` ran after every
+interpolation and radially projected any craft inside `1.15 × worldRadius` back to the same point
+on the world's surface. A leg that began at a world's centre therefore produced many different raw
+positions and one identical drawn position: small worlds held a Prospector for seconds and the
+largest silhouettes could hold a slower fleet much longer. Crossing an unrelated world could
+produce the same plateau in the middle of a leg. Faster polling, more SSE messages or a higher
+render rate cannot fix geometry which deliberately returns the same coordinate.
+
+**Clearance belongs to the endpoints, never to a frame.** `surfaceStandoff(radius) = 1.15 × radius`
+lives beside `orbitStandoff` and `visualLeg` in `packages/rules`. An outbound mission starts at its
+home world's surface and stops at the existing foreign orbit; its return starts at that orbit and
+ends at its home surface. A mining or salvage run starts at the home surface, reaches its exact
+intercept, and returns to that same surface. The server publishes traffic windows on those adjusted
+endpoints and the owner interpolates the identical leg, so every elapsed millisecond maps to forward
+progress and owner/observer agreement remains true by construction. There is no per-frame
+`clearOfWorlds`: unrelated worlds are public map markers, not physical collision volumes (D119), and
+they may not bend or freeze a route they do not own.
+
+**Mining and salvage launch responses now close their own read set.** The POST builds and returns
+the authoritative `planet`, private `mining` status and `pending` list inside the launch transaction,
+using the same projection functions as the GET surfaces. The client cancels older reads before
+writing those values into React Query. This removes the second HTTP round trip and also prevents a
+GET issued before the tap from landing later and erasing the newly created run. The response is
+additive, so an older client ignores the new fields during a rolling deploy; no database, worker or
+SSE payload change is involved.
+
+Regression coverage samples the first seconds, the middle of a route through an unrelated marker,
+both mining directions and mission directions for strictly continuous progress. The cross-process
+one-galaxy test continues to compare the owner's real renderer with the public traffic renderer,
+including a Prospector, so a future attempt to fix one picture alone fails before release.
+Foreign traffic also keeps its lightweight tracking mark outside the GLTF Suspense boundary: a
+cold Wasp, Probe or Prospector model may fill in later, but decoded hull geometry can no longer hide
+an already-authoritative contact after `/api/galaxy/traffic` has arrived.
+
+### D121 · A flight is distance and speed; a probe is fast and rationed by a rule; a battle report explains itself
+
+Three owner requests in one pass, and the middle one turned into the largest change.
+
+**Battle reports say what happened, not only what was lost.** Every complaint about them came
+down to a figure the server had already decided and then discarded on the way to the screen.
+`battle_reports` gains five columns — both rosters, the ground salvage, the works downtime and
+the wreckage — and `readBattleReports` hands each side ONLY ITS OWN roster. That is the whole
+fog argument: `yourFleet − yourLosses` is the caller's own survivors, which they may have, and
+the identical subtraction on the opponent's roster is exactly the disclosure the intel layer
+exists to refuse. The opponent's roster is not in the payload at all, and the query is where
+that is enforced. `cargoLimited` (stored since D94, shown to nobody) and `shieldAbsorbed` are
+surfaced, the grade is explained in words, per-round casualties are drawn from a payload that
+has always carried them, and a neutral world is named rather than called "someone at an unknown
+world". Reports written before this read with empty rosters and the sheet omits the section.
+
+**A notification is a door, and every kind now opens one.** `Signals` mapped a kind to a PANEL,
+and the Intel centre holds two lists — so "you were raided" opened the right room and dropped
+the reader on somebody else's probe reports. Destinations carry a shelf. Five kinds had no
+destination at all (a Death Star resolving, a colony taken or lost, a settlement landing or
+lost) because the map predates D97 and a missing key is silent: the row renders and the tap
+does nothing. The server's `notificationKind` enum and the client's routing table are now
+asserted against the same list, in two tests that name each other.
+
+**A probe is ×18 and rationed by a stated rule.** `PROBE.speed` is 4680, exactly 36× a Wasp.
+What used to ration scouting was travel time, which nobody had written down; it is now one look
+per world per hour, per COMMANDER — `PROBE.retargetCooldownMinutes`, counted from the launch so
+the hour is the same for a neighbour and for the far rim, and held across every world a
+commander holds rather than sold once per colony. A flight the server abandons charges nothing.
+`/api/intel` publishes the same instant the guard enforces, so the control closes before the tap
+rather than after it.
+
+**And the launch overhead is gone from every craft in the game.** This is the part that was not
+asked for and was forced by measurement. Speed was raised three times — ×4, ×12, ×36 — and each
+increase moved a term that was already small, because `TRAVEL.baseMinutes` was 86% of a probe's
+flight and no speed divides a constant. There were three of these constants (warship 1 minute,
+drill 0.13, and a third about to be added for probes), three travel functions, and one rule
+binding them: do not let a craft read the wrong one (D48).
+
+Both jobs the overhead did turned out not to need it. The WEIGHT of a fleet leaving the ground
+read as 8% of a raid, which is to say it read as nothing. The MINING LEAD — D48's real argument
+— it only ever widened: the rock moves for the whole flight, which is what makes interception a
+solve rather than a straight line, and the generated-field sweep still finds every rock
+reachable through 90% of its life with the term at zero. `travelExact` is the one model,
+`TRAVEL.distanceFactor` the one dial, and `prospectorTravelExact`/`probeTravelExact` are deleted
+along with the hazard that made them necessary.
+
+Measured cost: round trips on a typical neighbourhood leg shorten 7–14% (Wasp 14.6 → 12.6
+minutes, Lance 18.4 → 16.4, Bulwark 27.2 → 25.2, Hauler 21.3 → 19.3). The heavier the hull the
+smaller the share, so D63's composition-as-timing decision gets slightly sharper rather than
+flatter. The five-seed season gate holds with the bands unchanged.
+
+**A side effect worth naming: `pnpm verify` is green again.** D112 left one simulator assertion
+deliberately red, riding on a coincidence — exactly one bot in 750 bot-seasons researching
+Gravitic Charges, and only on seed 99. Shorter flights moved that bot's season and the
+assertion now passes on its own terms. It was verified red before this change and green after,
+rather than assumed.
+
+The probe's flight is now about twenty seconds to a neighbour, which is shorter than every
+constant in the movement layer — the published bearing window is floored at one refetch and the
+polls are sixty seconds. `probe-motion.test.ts` walks both payloads second by second for both
+legs; nothing moves backwards, and `duration()` learned to render seconds because the sentence a
+player reads at the moment they commit said "reports back in 0m".
+
+### D122 · Ownership is a filament topology; Telescope has no map beam; fleet picking follows formation size — owner instruction
+
+The disc now answers “where are this commander's worlds?” spatially. Every pair of worlds the
+caller controls is always connected. When the focused planet is foreign and player-controlled,
+every pair of worlds controlled by that planet's commander is connected as well; a neutral focus
+adds nothing. The input is only the public `controller.playerId` already present on every world,
+so this changes presentation without widening the fog or adding a read. With at most one capital
+and three colonies, one commander contributes at most six connections and the scene draws at most
+the caller plus one selected commander.
+
+These are not routes and not galactic-plane decoration. Each connection is a small bundle of
+hair-thin, curved, translucent white filaments above the painted plate, built into one buffer and
+one draw call. D53b's photographed plane remains line-free; the filaments carry one explicit game
+fact and stay subordinate to worlds. Orange remains reserved for owned flight intent. The old
+white Telescope beam is removed completely: watching stays silent, and the Intel rack rather than
+a map tether is where its targets are read.
+
+Fleet picking now reads the formation it represents. The old invisible sphere was fixed at
+`max(0.45, scale × 1.6)`, so adding ships enlarged the visible cone while the only reliable tap
+remained on its lead model. For fleets the radius is now that base plus
+`scale × 0.20 × sqrt(markerCount − 1)`. It grows in the same sublinear family as formation spread
+but at a much smaller coefficient, making the centre progressively forgiving without covering the
+whole formation or stealing taps from neighbouring objects. Single craft keep the existing target.
+
+### D121a · The report audit, and a dead structure over a wrecked world
+
+Follow-up to D121, from the owner reading the shipped surface rather than the diff.
+
+**A dyson ring over a world in recovery stops turning and loses its colour.** A Death Star
+lowers the Core (D113), so the ladder usually takes the shell away on its own — but a commander
+deep enough in the game keeps their rings, and a megastructure tumbling serenely in full neon
+over a crater is the disc saying nothing happened. `shellLook` answers the three questions the
+component would otherwise answer in three places (seam emissive, rim colour, rotation), and a
+wreck is bucketed into its own draw group because a stage's colour lives in MATERIAL uniforms
+that every instance in a mesh shares. The rim survives, grey and dimmer: it is the only thing
+separating a few thousand dark triangles from the nebula, so deleting it would make the wreck
+invisible rather than dead. `recoveryUntil` is set in exactly one place, so the state means a
+rocket landed and nothing else.
+
+**Four things the reports were getting wrong, found by reading them rather than by testing.**
+
+1. **A raid on a caretaker world told nobody.** `resolveNeutralBattle` wrote a report and sent
+   no notification, so with fifty-one caretaker worlds on the disc and the whole colonisation
+   path running through them, most of the early game resolved in silence — no badge, no row in
+   Signals, and after D121 no door into the report either. It sends `raid_result` now, the same
+   kind and shape a PvP raid sends.
+2. **The report named the opponent's CAPITAL, not the world that was raided.** The opponent
+   lookup joins on `kind = 'CAPITAL'` because that is how this game identifies a person, which
+   is right for the defender's copy and wrong for the attacker's the moment D97 allowed
+   colonies: raid somebody's colony and the report said their capital "did not hold". Worse,
+   `opponentPlanetId` is what the dossier matches on, so a fleet destroyed at a colony was
+   filed as a floor on the capital's defences. The attacker is shown the world they raided; the
+   defender still sees the raider's home world, as every other surface names them.
+3. **A repelled raid could report downtime it did not cause.** `applyDisruption` returns the
+   existing deadline untouched when a grade adds nothing, so a raid beaten off by a world still
+   dark from an earlier one inherited that figure — and the defender's own report read "your
+   works were knocked offline for two hours" about a defence that had just worked.
+4. **A defender's wreckage was placed over the raider's world.** The field is always at the
+   world that was attacked; the line named `opponentPlanet` on both sides, which sends a
+   defender to the wrong end of the disc to collect their own dead ships.
+
+**A fifth: the report could not say which of YOUR worlds it was.** With one world per
+commander that was implicit, and D97 gave them four. `yourPlanet` is the defender's target or
+the attacker's mission origin, drawn as a route so a battle reads with the reader at one end
+of it.
+
+**And the presentation, judged by printing what a player actually reads rather than by
+looking at the diff.** Round casualties
+rendered as "−11 Wasp −3 Wasp" — both sides fly Wasps, so two identical phrases were separated
+by nothing but a colour; whose they are is a WORD now. "What they had" headed a list of what was
+DESTROYED, while its own empty state said "nothing of theirs was destroyed" — the two disagreed
+inside one block. "What it cost you" headed a table whose three columns are Sent, Lost and Left.
+And a Dominion chip printed "0" on exactly the rows where the ladder had nothing to say: every
+caretaker raid, and every raid repelled without losses.
+
+**Then the whole surface was re-read against a twelve-year-old.** The grade explanation was
+the combat model talking to itself — "more than 42% of the DEFENCE VALUE was destroyed" uses an
+internal quantity, quotes a threshold nobody can act on, and is written from nobody's point of
+view, so the commander who had just been raided read a neutral description of their own losses.
+It is plain language and side-aware now. `Rounds` led the figure row and is the least
+consequential number on the surface — at most three, decided by the model rather than by
+anything the player chose — so the row is the haul, its price in ships, and what it moved.
+
+The reading order is now: what happened · where · why, in plain words · the three numbers ·
+what it did to both worlds · what you destroyed · your own roster · the blow-by-blow.
 
 ## Architecture
 

@@ -7,6 +7,7 @@ import { GameError } from '../services/planet.js';
 import {
   assignWatch,
   launchProbe,
+  readProbeCooldowns,
   readProbeReports,
   readRadarLog,
   readTelescopes,
@@ -44,15 +45,18 @@ export function registerIntelRoutes(app: FastifyInstance): void {
    */
   app.get('/api/intel', { preHandler: requireAuth }, async (req) => {
     const { playerId, planetId } = await me(req.accountId!);
-    const [watching, radarLog, reports] = await Promise.all([
+    const [watching, radarLog, reports, cooldowns] = await Promise.all([
       readTelescopes(app.db, playerId, app.clock),
       readRadarLog(app.db, planetId),
       readProbeReports(app.db, playerId),
+      readProbeCooldowns(app.db, playerId, app.clock.now()),
     ]);
 
     return {
       watching,
       radarLog,
+      // Which worlds this commander may not look at again yet, and until when.
+      probeCooldowns: cooldowns,
       probeReports: reports.map((r) => ({
         targetPlanetId: r.report.targetPlanetId,
         targetName: r.targetName,

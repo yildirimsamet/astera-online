@@ -39,6 +39,7 @@ import {
   type Headline as HeadlineKind,
 } from '../lib/dossier.js';
 import { duration, staleness } from '../lib/time.js';
+import { serverNow } from '../lib/clock.js';
 import { reachMinutes } from '../lib/navigation.js';
 import { HullMark } from '../ui/icons/hulls.js';
 import { AttackIcon, EyeIcon } from '../ui/icons/index.js';
@@ -1138,6 +1139,30 @@ function CloseGap({
   }
 
   if (gap.closes === 'probe') {
+    /**
+     * ONE LOOK PER WORLD PER HOUR, SAID BEFORE THE TAP RATHER THAN AFTER IT. D121.
+     *
+     * The rule is enforced in `launchProbe` under the planet lock and that is the
+     * only place it can be enforced. What this does is stop the interface offering
+     * a launch it already knows will be refused — and it reads the SAME instant
+     * the guard reads, published by `/api/intel`, so the button and the server can
+     * never disagree by a rounding. `serverNow()` because a drifted phone must not
+     * open the control early (D52).
+     */
+    const readyAt = intel?.probeCooldowns.find(
+      (row) => row.targetPlanetId === target.id,
+    )?.readyAt;
+    const waiting = readyAt !== undefined && readyAt.getTime() > serverNow();
+    if (waiting) {
+      return (
+        <button type="button" className="slab w-full whitespace-normal px-3 leading-tight" disabled>
+          <EyeIcon className="size-[18px] shrink-0" />
+          {t('focus.planet.probeCooling', {
+            duration: duration((readyAt.getTime() - serverNow()) / 60_000),
+          })}
+        </button>
+      );
+    }
     return (
       <button
         type="button"

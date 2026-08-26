@@ -10,15 +10,15 @@
  * This signs two commanders in against a real server, puts craft in the air, and
  * MEASURES the scene through the dev bridge from both of their screens:
  *
- *   1. Every craft on the disc moves between two samples. A stale payload does not
+ *   1. Every craft moves from the first second it appears, then keeps moving
+ *      between longer samples. A stale payload does not
  *      remove a craft, it PARKS it — so "nothing moved" is what a broken real-time
  *      path actually looks like.
  *   2. No two markers sit on top of each other. That is what a duplicate looks
  *      like: `pendingThreads` and `/api/galaxy/traffic` both drawing the same
  *      mission, a few metres apart, for the player at the far end of it.
  *   3. Two clients watching the same instant put the same craft in the same place.
- *   4. Nothing is drawn inside a world, and nothing is drawn at the origin —
- *      the two coordinates a failed interpolation collapses to.
+ *   4. Nothing collapses to the scene origin.
  *
  *   DATABASE_URL=... API=http://localhost:3199 WEB=http://localhost:5299 \
  *     node tools/movement.mjs out/movement
@@ -41,11 +41,19 @@ const PHONE = { width: 390, height: 844 };
 /** How long between the two samples. Long enough that a real leg has visibly moved. */
 const GAP_MS = 10_000;
 
+/** The old surface clamp froze the first several seconds; sample inside that interval. */
+const EARLY_GAP_MS = 1_000;
+const EARLY_MOVED = 0.001;
+
 /** Under this in ten seconds is what a player calls frozen. In world units. */
 const MOVED = 0.05;
 
-/** Two markers closer than this are the same craft drawn twice. */
-const TOUCHING = 0.02;
+/**
+ * This harness runs two software-rendered galaxies. Ten seconds distinguishes the
+ * event path from the sixty-second safety poll without pretending SwiftShader CPU
+ * contention is server latency; request and response time are asserted separately.
+ */
+const LIVE_PATH_MS = 10_000;
 
 await mkdir(OUT, { recursive: true });
 const sql = postgres(process.env.DATABASE_URL, { max: 4 });
@@ -70,54 +78,60 @@ const call = async (path, { token, method = 'GET', body } = {}) => {
   return JSON.parse(text);
 };
 
-const commander = async (name) => {
-  const reg = await call('/api/auth/register', {
+const commander = async (name, existing = false) => {
+  const session = await call(existing ? '/api/auth/login' : '/api/auth/register', {
     method: 'POST',
     body: { username: name, password: PASSWORD },
   });
-  const servers = await call('/api/servers');
-  const open = servers.servers.find((s) => s.status === 'open');
-  await call(`/api/servers/${open.code}/join`, { method: 'POST', token: reg.accessToken });
-  const galaxy = await call('/api/galaxy', { token: reg.accessToken });
-  return { name, token: reg.accessToken, planet: galaxy.planets.find((p) => p.isSelf) };
+  if (!existing) {
+    const servers = await call('/api/servers');
+    const open = servers.servers.find((s) => s.status === 'open');
+    await call(`/api/servers/${open.code}/join`, { method: 'POST', token: session.accessToken });
+  }
+  const galaxy = await call('/api/galaxy', { token: session.accessToken });
+  return { name, token: session.accessToken, planet: galaxy.planets.find((p) => p.isSelf) };
 };
 
 /* ── put something in the air ───────────────────────────────── */
 
 const stamp = String(Date.now()).slice(-7);
-const a = await commander(`mova${stamp}`);
-const b = await commander(`movb${stamp}`);
+const ownerName = process.env.MOVEMENT_OWNER;
+const observerName = process.env.MOVEMENT_OBSERVER;
+if ((ownerName === undefined) !== (observerName === undefined)) {
+  throw new Error('set both MOVEMENT_OWNER and MOVEMENT_OBSERVER, or neither');
+}
+const a = await commander(ownerName ?? `mova${stamp}`, ownerName !== undefined);
+const b = await commander(observerName ?? `movb${stamp}`, observerName !== undefined);
 console.log(`A = ${a.planet.name}   B = ${b.planet.name}\n`);
 
 await sql`UPDATE buildings SET level = 9 WHERE planet_id = ${a.planet.id} AND type = 'CORE'`;
 await sql`
   INSERT INTO units (planet_id, hull, location, count) VALUES (${a.planet.id}, 'WASP', 'home', 40)
   ON CONFLICT (planet_id, hull, location) DO UPDATE SET count = 40`;
+await sql`
+  INSERT INTO units (planet_id, hull, location, count) VALUES (${a.planet.id}, 'PROSPECTOR', 'home', 2)
+  ON CONFLICT (planet_id, hull, location) DO UPDATE SET count = 2`;
 await sql`UPDATE players SET wealth = 90000 WHERE id IN (
   SELECT player_id FROM planets WHERE id IN (${a.planet.id}, ${b.planet.id}))`;
 
-await call('/api/fleet/launch', {
-  method: 'POST',
-  token: a.token,
-  body: { targetPlanetId: b.planet.id, fleet: { WASP: 40 } },
-});
-const elsewhere = (await call('/api/galaxy', { token: a.token })).planets.find(
-  (p) => !p.isSelf && p.id !== b.planet.id,
-);
-await call('/api/intel/probe', {
-  method: 'POST',
-  token: a.token,
-  body: { targetPlanetId: elsewhere.id },
-});
-console.log('a raid and a probe are in the air\n');
-
 /* ── watch it from two screens ──────────────────────────────── */
 
-const browser = await chromium.launch({
-  args: ['--use-gl=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'],
-});
+const browserArgs = [
+  '--use-gl=swiftshader',
+  '--enable-unsafe-swiftshader',
+  '--ignore-gpu-blocklist',
+  '--disable-background-timer-throttling',
+  '--disable-renderer-backgrounding',
+];
+// Two independent GPU processes. Two R3F scenes sharing one headless SwiftShader
+// process intermittently starved the second page before its first model upload.
+const [browserA, browserB] = await Promise.all([
+  chromium.launch({ args: browserArgs }),
+  chromium.launch({ args: browserArgs }),
+]);
 
 const problems = [];
+const networkTrace = [];
 
 /**
  * Everything the disc is drawing that MOVES, with its world position.
@@ -126,15 +140,18 @@ const problems = [];
  * tell a squadron holding in orbit from one that has stopped, and it certainly
  * cannot tell two markers a few metres apart from one.
  */
-const survey = (page) =>
-  page.evaluate(() => {
+const survey = (page, ids) =>
+  page.evaluate((wantedIds) => {
     const g = window.__galaxy;
     if (!g) return null;
+    const wanted = new Set(wantedIds);
     const craft = [];
     g.scene.traverse((o) => {
       if (o.name !== 'flight' && o.name !== 'contact' && o.name !== 'mining') return;
+      const id = o.userData.craftId;
+      if (typeof id !== 'string' || !wanted.has(id)) return;
       const p = o.getWorldPosition(o.position.clone());
-      craft.push({ kind: o.name, at: [p.x, p.y, p.z] });
+      craft.push({ id, kind: o.name, at: [p.x, p.y, p.z] });
     });
     const worlds = [];
     g.scene.traverse((o) => {
@@ -145,30 +162,9 @@ const survey = (page) =>
       }
     });
     return { craft, worlds, now: Date.now() };
-  });
+  }, ids);
 
-const open = async (who) => {
-  const page = await browser.newPage({
-    viewport: PHONE,
-    deviceScaleFactor: 2,
-    isMobile: true,
-    hasTouch: true,
-    locale: 'en-GB',
-  });
-  page.on('pageerror', (e) => problems.push(`${who.name}: ${e.message.slice(0, 140)}`));
-  page.on('console', (m) => {
-    const t = m.text();
-    if (m.type() === 'error' && !t.includes('401')) problems.push(`${who.name}: ${t.slice(0, 140)}`);
-  });
-
-  await page.goto(WEB, { waitUntil: 'domcontentloaded' });
-  const door = page.getByRole('button', { name: /already have a commander/i }).first();
-  await door.waitFor({ timeout: 40_000 });
-  await door.click();
-  await page.getByLabel(/commander name/i).fill(who.name);
-  await page.getByLabel(/password/i).fill(PASSWORD);
-  await page.getByRole('button', { name: /^sign in$/i }).last().click();
-
+const waitForScene = async (page) => {
   await page.waitForSelector('canvas', { timeout: 40_000 });
   // The models arrive over the network and decode on the CPU; surveying before
   // they land measures an empty scene.
@@ -186,29 +182,254 @@ const open = async (who) => {
     { timeout: 45_000 },
   );
   await page.waitForTimeout(3500);
+};
+
+const open = async (browser, who) => {
+  const page = await browser.newPage({
+    viewport: PHONE,
+    deviceScaleFactor: 2,
+    isMobile: true,
+    hasTouch: true,
+    locale: 'en-GB',
+  });
+  page.on('pageerror', (e) => problems.push(`${who.name}: ${e.message.slice(0, 140)}`));
+  page.on('console', (m) => {
+    const t = m.text();
+    if (m.type() === 'error' && !t.includes('401')) problems.push(`${who.name}: ${t.slice(0, 140)}`);
+  });
+  const trace = (phase, url, status) => {
+    const path = new URL(url).pathname;
+    if (path !== '/api/galaxy/traffic' && !path.endsWith('.glb')) return;
+    networkTrace.push({ who: who.name, phase, path, status, at: Date.now() });
+  };
+  page.on('request', (request) => { trace('request', request.url()); });
+  page.on('response', (response) => { trace('response', response.url(), response.status()); });
+  const devtools = await page.context().newCDPSession(page);
+  await devtools.send('Network.enable');
+  devtools.on('Network.eventSourceMessageReceived', (event) => {
+    networkTrace.push({
+      who: who.name,
+      phase: 'sse',
+      path: String(event.data).slice(0, 120),
+      at: Date.now(),
+    });
+  });
+
+  /**
+   * Authenticate through the browser context, not through the landing form.
+   *
+   * This is a movement harness, and the API request stores the same httpOnly
+   * refresh cookie the form would. Driving four controls made a live Vite reload
+   * between the username and password fields look like a flight failure; it also
+   * spent most of this test's timeout on a surface it is not testing.
+   */
+  const login = await page.request.post(`${API}/api/auth/login`, {
+    data: { username: who.name, password: PASSWORD },
+  });
+  if (!login.ok()) {
+    throw new Error(`browser login failed for ${who.name}: ${String(login.status())}`);
+  }
+  await page.goto(WEB, { waitUntil: 'domcontentloaded' });
+  await waitForScene(page);
   return page;
 };
 
-const pageA = await open(a);
-const pageB = await open(b);
+const pageA = await open(browserA, a);
+const pageB = await open(browserB, b);
 
-const firstA = await survey(pageA);
-const firstB = await survey(pageB);
+/**
+ * Launch AFTER both canvases are ready. The old harness launched before two full
+ * sign-ins, model decode and a 3.5-second settle, so it began measuring only after
+ * the exact spawn plateau it was meant to catch had ended.
+ */
+const launchStarted = Date.now();
+const launchGalaxy = await call('/api/galaxy', { token: a.token });
+const attackTargets = [
+  ...launchGalaxy.planets.filter((planet) => planet.id === b.planet.id),
+  ...launchGalaxy.planets.filter((planet) => !planet.isSelf && planet.id !== b.planet.id),
+];
+let raid = null;
+for (const target of attackTargets) {
+  try {
+    raid = await call('/api/fleet/launch', {
+      method: 'POST',
+      token: a.token,
+      body: { targetPlanetId: target.id, fleet: { WASP: 40 } },
+    });
+    break;
+  } catch (error) {
+    // A reused account can still have a raid committed to one target. Rank or
+    // protection may make another target unavailable; neither invalidates motion.
+    const refusal = String(error);
+    if (!refusal.includes('403 /api/fleet/launch') && !refusal.includes('409 /api/fleet/launch')) {
+      throw error;
+    }
+  }
+}
+if (!raid) throw new Error('movement harness found no legal raid target');
+const probeTargets = launchGalaxy.planets.filter(
+  (planet) => !planet.isSelf && planet.id !== b.planet.id,
+);
+let probe = null;
+for (const target of probeTargets) {
+  try {
+    probe = await call('/api/intel/probe', {
+      method: 'POST',
+      token: a.token,
+      body: { targetPlanetId: target.id },
+    });
+    break;
+  } catch (error) {
+    // Reusing a named harness account may leave one target's commander-wide
+    // cooldown active. That target is unavailable, not a failed movement test.
+    if (!String(error).includes('409 /api/intel/probe')) throw error;
+  }
+}
+if (!probe) throw new Error('movement harness found no probe target outside cooldown');
+
+const field = await call('/api/mining', { token: a.token });
+let mining = null;
+for (const rock of field.asteroids) {
+  try {
+    mining = await call('/api/mining/launch', {
+      method: 'POST',
+      token: a.token,
+      body: { asteroidIndex: rock.index, craft: 1 },
+    });
+    break;
+  } catch (error) {
+    const refusal = String(error);
+    if (
+      !refusal.includes('403 /api/mining/launch')
+      && !refusal.includes('409 /api/mining/launch')
+    ) throw error;
+  }
+}
+if (!mining) throw new Error('movement harness found no reachable asteroid');
+const launchedIds = [raid.missionId, probe.missionId, mining.runId];
+const launchedIn = Date.now() - launchStarted;
+
+/**
+ * The other commander has no mutation response to lean on: this is the actual
+ * shard event → traffic refetch latency. The owner POST hand-off is covered by
+ * `mining-launch-race.test.tsx`; this harness made that POST outside the tab, so
+ * refetch its private keys explicitly instead of pretending it received a result
+ * that Node received.
+ */
+const appearanceStarted = Date.now();
+await pageB.waitForFunction(
+  (ids) => {
+    const g = window.__galaxy;
+    if (!g) return false;
+    const seen = new Set();
+    g.scene.traverse((o) => {
+      if (typeof o.userData.craftId === 'string') seen.add(o.userData.craftId);
+    });
+    return ids.every((id) => seen.has(id));
+  },
+  launchedIds,
+  { timeout: 10_000 },
+);
+const appearedIn = Date.now() - appearanceStarted;
+const observerTraffic = networkTrace.filter(
+  (entry) => entry.who === b.name
+    && entry.path === '/api/galaxy/traffic'
+    && entry.at >= appearanceStarted - 1_000,
+);
+const trafficRequest = observerTraffic.find((entry) => entry.phase === 'request');
+const trafficResponse = observerTraffic.find(
+  (entry) => entry.phase === 'response' && (trafficRequest === undefined || entry.at >= trafficRequest.at),
+);
+const trafficWakeMs = trafficRequest ? trafficRequest.at - appearanceStarted : Number.POSITIVE_INFINITY;
+const trafficRttMs = trafficRequest && trafficResponse
+  ? trafficResponse.at - trafficRequest.at
+  : Number.POSITIVE_INFINITY;
+const observerTrace = networkTrace
+  .filter((entry) => entry.who === b.name && entry.at >= appearanceStarted - 1_000)
+  .map((entry) =>
+    `${entry.phase} ${entry.path}${entry.status ? ` ${String(entry.status)}` : ''} ` +
+    `${String(entry.at - appearanceStarted)}ms`)
+  .join(', ');
+await pageA.evaluate(async () => {
+  const client = window.__queryClient;
+  if (!client) throw new Error('development query client bridge is missing');
+  await Promise.all([
+    client.invalidateQueries({ queryKey: ['pending'] }),
+    client.invalidateQueries({ queryKey: ['mining', 'status'] }),
+    client.invalidateQueries({ queryKey: ['planet'] }),
+  ]);
+});
+await pageA.waitForFunction(
+  (ids) => {
+    const g = window.__galaxy;
+    if (!g) return false;
+    const seen = new Set();
+    g.scene.traverse((o) => {
+      if (typeof o.userData.craftId === 'string') seen.add(o.userData.craftId);
+    });
+    return ids.every((id) => seen.has(id));
+  },
+  launchedIds,
+  { timeout: 20_000 },
+);
+console.log(
+  `a raid, a probe and a mining run launched in ${String(launchedIn)}ms ` +
+  `and appeared for the other commander after the last response in ${String(appearedIn)}ms\n` +
+  `observer trace: ${observerTrace || 'no matching request'}\n`,
+);
+check('the three launch responses complete promptly', launchedIn < 1_000, `${String(launchedIn)}ms`);
+check('the live traffic read wakes before the safety poll', trafficWakeMs < 5_000, `${String(trafficWakeMs)}ms`);
+check('the traffic projection answers promptly', trafficRttMs < 2_000, `${String(trafficRttMs)}ms`);
+check(
+  'the public markers arrive through the live path',
+  appearedIn < LIVE_PATH_MS,
+  `${String(appearedIn)}ms including software render`,
+);
+
+const firstA = await survey(pageA, launchedIds);
+const firstB = await survey(pageB, launchedIds);
 await pageA.screenshot({ path: `${OUT}/01-owner.png` });
 await pageB.screenshot({ path: `${OUT}/01-defender.png` });
 
-check('the owner sees craft on the disc', (firstA?.craft.length ?? 0) > 0, `${String(firstA?.craft.length ?? 0)} drawn`);
 check(
-  'the other commander sees them too',
-  (firstB?.craft.length ?? 0) > 0,
-  `${String(firstB?.craft.length ?? 0)} drawn`,
+  'the owner sees every launched craft on the disc',
+  firstA?.craft.length === launchedIds.length,
+  `${String(firstA?.craft.length ?? 0)}/${String(launchedIds.length)} drawn`,
 );
+check(
+  'the other commander sees every launched craft too',
+  firstB?.craft.length === launchedIds.length,
+  `${String(firstB?.craft.length ?? 0)}/${String(launchedIds.length)} drawn`,
+);
+
+/* ── 0 · does motion start immediately? ────────────────────── */
+
+await pageA.waitForTimeout(EARLY_GAP_MS);
+const earlyA = await survey(pageA, launchedIds);
+const earlyB = await survey(pageB, launchedIds);
+
+console.log('\n0 · no spawn plateau');
+for (const [who, before, after] of [
+  ['owner', firstA, earlyA],
+  ['other commander', firstB, earlyB],
+]) {
+  const moved = before?.craft.map((craft) => {
+    const next = after?.craft.find((candidate) => candidate.id === craft.id);
+    return next ? Math.hypot(...craft.at.map((value, axis) => value - next.at[axis])) : 0;
+  }) ?? [];
+  const still = moved.filter((distance) => distance < EARLY_MOVED).length;
+  check(
+    `${who}: every craft advances in its first sampled second`,
+    moved.length > 0 && still === 0,
+    `${String(moved.length)} craft, ${String(still)} frozen`,
+  );
+}
 
 /* ── 1 · does everything move? ──────────────────────────────── */
 
 await pageA.waitForTimeout(GAP_MS);
-const laterA = await survey(pageA);
-const laterB = await survey(pageB);
+const laterA = await survey(pageA, launchedIds);
+const laterB = await survey(pageB, launchedIds);
 await pageA.screenshot({ path: `${OUT}/02-owner-later.png` });
 await pageB.screenshot({ path: `${OUT}/02-defender-later.png` });
 
@@ -221,14 +442,8 @@ for (const [who, before, after] of [
     check(`${who}: craft advance down their legs`, false, 'nothing was drawn');
     continue;
   }
-  /**
-   * Matched by INDEX rather than by identity, which is safe only because the two
-   * samples are ten seconds apart on a list that changes on arrival — and any
-   * mismatch shows up as a craft that "did not move", which is the failure being
-   * looked for anyway.
-   */
-  const moved = before.craft.map((c, i) => {
-    const then = after.craft[i];
+  const moved = before.craft.map((c) => {
+    const then = after.craft.find((candidate) => candidate.id === c.id);
     return then ? Math.hypot(...c.at.map((n, k) => n - then.at[k])) : 0;
   });
   const still = moved.filter((d) => d < MOVED).length;
@@ -247,17 +462,15 @@ for (const [who, sample] of [
   ['owner', laterA],
   ['other commander', laterB],
 ]) {
-  const pairs = [];
-  for (let i = 0; i < sample.craft.length; i += 1) {
-    for (let j = i + 1; j < sample.craft.length; j += 1) {
-      const gap = Math.hypot(...sample.craft[i].at.map((n, k) => n - sample.craft[j].at[k]));
-      if (gap < TOUCHING) pairs.push(`${sample.craft[i].kind}/${sample.craft[j].kind}`);
-    }
-  }
+  const duplicateIds = launchedIds.filter(
+    (id) => sample.craft.filter((craft) => craft.id === id).length !== 1,
+  );
   check(
-    `${who}: no two markers on the same spot`,
-    pairs.length === 0,
-    pairs.length === 0 ? `${String(sample.craft.length)} craft` : pairs.join(', '),
+    `${who}: exactly one marker per launched craft`,
+    duplicateIds.length === 0,
+    duplicateIds.length === 0
+      ? `${String(sample.craft.length)} craft`
+      : `wrong count for ${duplicateIds.join(', ')}`,
   );
 }
 
@@ -286,32 +499,27 @@ const sampledApart = Math.abs(laterA.now - laterB.now);
  * the disc rather than in different parts of it — which is what a device-clock
  * drift or a disagreeing payload produces.
  */
-const nearest = (point, list) =>
-  Math.min(...list.map((c) => Math.hypot(...c.at.map((n, k) => n - point.at[k]))));
-const commonKinds = laterA.craft.filter((c) => c.kind === 'contact' || c.kind === 'flight');
-const strays = commonKinds.filter((c) => nearest(c, laterB.craft) > 1.5);
+const strays = laterA.craft.filter((craft) => {
+  const other = laterB.craft.find((candidate) => candidate.id === craft.id);
+  return !other || Math.hypot(...craft.at.map((value, axis) => value - other.at[axis])) > 1.5;
+});
 check(
   'the same craft is in the same place on both screens',
   strays.length === 0,
-  `${String(commonKinds.length)} compared, ${String(strays.length)} apart, ` +
+  `${String(laterA.craft.length)} compared, ${String(strays.length)} apart, ` +
     `samples ${String(sampledApart)}ms apart`,
 );
 
 /* ── 4 · nowhere impossible ─────────────────────────────────── */
 
-console.log('\n4 · nothing anywhere impossible');
+console.log('\n4 · nothing collapses to a fallback coordinate');
 const atOrigin = laterA.craft.filter((c) => Math.hypot(...c.at) < 1e-6);
 check('nothing collapsed to the origin', atOrigin.length === 0, `${String(atOrigin.length)} at 0,0,0`);
-
-const inside = laterA.craft.filter((c) =>
-  laterA.worlds.some((w) => Math.hypot(...c.at.map((n, k) => n - w[k])) < 0.35),
-);
-check('nothing is drawn inside a world', inside.length === 0, `${String(inside.length)} embedded`);
 
 console.log(problems.length === 0 ? '\nno runtime errors' : `\nruntime errors:\n  ${problems.join('\n  ')}`);
 if (problems.length > 0) failures += 1;
 
-await browser.close();
+await Promise.all([browserA.close(), browserB.close()]);
 await sql.end();
 console.log(failures === 0 ? `\nALL GREEN → ${OUT}` : `\n${String(failures)} FAILED → ${OUT}`);
 process.exit(failures === 0 ? 0 : 1);

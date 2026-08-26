@@ -496,8 +496,10 @@ describe('whose craft is in flight', () => {
   it('draws nothing twice for a world that is not involved at all', async () => {
     const third = f.planetIds[2]!;
     await launchAttack(f.db, mine, theirs, { WASP: 20 }, f.clock);
-    await launchProbe(f.db, mine, theirs, f.clock);
-    f.clock.advance(0.5);
+    const probe = await launchProbe(f.db, mine, theirs, f.clock);
+    // A share of the SHORTEST leg in the air, not a fixed half-minute: the probe
+    // pays no launch overhead since D121 and is the craft that lands first.
+    f.clock.advance(probe.flightMinutes / 2);
 
     expect(await pendingThreads(f.db, third, f.clock.now())).toEqual([]);
     expect(await drawnTwice(third)).toEqual([]);

@@ -39,6 +39,13 @@ means every world controlled by your marked Rival, green means a neutral claim i
 red cracks/smoke mean a world is in Death Star recovery. Labels repeat the world kind and
 state, but they are confirmation rather than the only explanation.
 
+Ownership also reads as topology (D122). Thin, curved white filaments connect every pair of
+worlds controlled by the caller and remain visible without a selection. Focusing any foreign,
+player-controlled world temporarily draws the same topology for that commander; focusing a
+neutral world draws none. These filaments are the only white connectors on the disc. Telescope
+watches remain silent and spatially unmarked: their targets are listed in Intel, never tethered
+to the observing world on the map.
+
 A neutral focus always shows the complete three-beat route — win the raid, open the claim,
 send the Hauler — and shows the slot, ship, cargo and travel requirements before the raid as
 well as during the claim. Every foreign world exposes Death Star devastation. A foreign colony

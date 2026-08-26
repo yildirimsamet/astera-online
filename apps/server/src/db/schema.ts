@@ -816,6 +816,41 @@ export const battleReports = pgTable('battle_reports', {
   loot: jsonb('loot').$type<Resources>().notNull(),
   attackerLosses: jsonb('attacker_losses').$type<Fleet>().notNull(),
   defenderLosses: jsonb('defender_losses').$type<Fleet>().notNull(),
+  /**
+   * WHAT EACH SIDE HAD ON THE BOARD WHEN THE SHOOTING STARTED. D120.
+   *
+   * A report used to carry losses and nothing else, so "you lost 12 Wasp" had no
+   * denominator: twelve of fifteen is a disaster and twelve of eighty is the cost
+   * of doing business, and the report could not tell them apart. Both rosters are
+   * stored, and `readBattleReports` hands each side ONLY ITS OWN — the caller's
+   * roster minus the caller's losses is the caller's survivors, which they are
+   * entitled to, while the same subtraction on the opponent's roster is exactly
+   * the disclosure the fog forbids. The fog is enforced in the query.
+   *
+   * Defaults are empty so every report written before this existed still reads;
+   * the client omits the section rather than drawing an empty roster.
+   */
+  attackerFleet: jsonb('attacker_fleet').$type<Fleet>().notNull().default({}),
+  /** The defender's home fleet AND ground guns, as one board. Defender's eyes only. */
+  defenderFleet: jsonb('defender_fleet').$type<Fleet>().notNull().default({}),
+  /**
+   * Ground units rebuilt free from their own wreckage. Defender's eyes only.
+   *
+   * Without it a defender reads "you lost 7 Bastions" and concludes ground defence
+   * is consumable — which is the opposite of the rule it is priced on (60% salvage,
+   * and consumable defence made 95% of attacks DECISIVE). The number that makes
+   * the loss legible was computed, applied and thrown away.
+   */
+  defenceSalvage: jsonb('defence_salvage').$type<Fleet>().notNull().default({}),
+  /**
+   * Minutes the defender's works stand offline AFTER this battle, from its instant.
+   *
+   * Zero whenever the grade caused no disruption at all, which is what stops a
+   * REPELLED raid inheriting a deadline an earlier raid had already set.
+   */
+  disruptedMinutes: real('disrupted_minutes').notNull().default(0),
+  /** Value of the wreckage this fight left in orbit, before anyone harvested it. */
+  wreckValue: real('wreck_value').notNull().default(0),
   /** True only when surviving cargo, rather than exposed stock, capped the haul. D94. */
   cargoLimited: boolean('cargo_limited').notNull().default(false),
   /** Auditable combat telemetry; reserved for the Breacher decision, not an unlock yet. */

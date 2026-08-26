@@ -93,6 +93,9 @@ export const reports = {
   brokenByYou: '{{planet}} dayanamadı.',
   youHeld: 'Dayandın. Artık onlar da seni beklerken elinde ne olduğunu biliyor.',
   youFell: 'Dayanamadın.',
+  shipsLost: 'Kaybettiğin gemi',
+  haul: 'Eve dönen',
+  haulLost: 'Götürdükleri',
   roundsLabel: 'Raunt',
   taken: 'Alınan',
   lost: 'Kaybedilen',
@@ -101,8 +104,10 @@ export const reports = {
   yourClan: 'Senin tarafın',
   theirClan: 'Karşı taraf',
   noClan: 'Klan yok',
+  theirLosses: 'Yok ettiklerin',
   theirs: 'Karşıda ne varmış',
   theirsEmpty: 'Karşıdan hiçbir şey yok edilmedi.',
+  yourForce: 'Senin filon',
   yours: 'Sana neye mal oldu',
   yoursEmpty: 'Hiçbir şey kaybetmedin.',
   howItWent: 'Çatışma nasıl geçti',
@@ -112,6 +117,58 @@ export const reports = {
   gradeDecisive: 'KESİN',
   gradePartial: 'KISMİ',
   gradeRepelled: 'PÜSKÜRTÜLDÜ',
+
+  neutralHolder: 'sahipsiz bir dünya',
+
+  /**
+   * Raporun tepesindeki damganın ne anlama geldiğini oyun ilk kez söylüyor.
+   *
+   * JARGONSUZ VE OKUYANIN TARAFINDAN. İlk hâli "savunma değerinin %42 eşiği"
+   * diyordu: `defenceValue` oyunun iç hesabı, yüzde kimsenin bir şey yapamayacağı
+   * bir eşik, cümle de kimsenin gözünden yazılmamıştı — yani akına uğrayan
+   * komutan kendi kaybının tarafsız tarifini okuyordu. Oyuncu bu satırı bitirince
+   * KENDİSİNE ne olduğunu ve yağmanın neden o kadar olduğunu bilmeli.
+   */
+  why: {
+    attacking: {
+      DECISIVE: 'Savunan ne varsa yok ettin, kalkanı da düşürdün; yağmanın tamamı bu yüzden açıldı.',
+      PARTIAL: 'Savunmanın çoğunu kırdın ama hepsini değil; bu yüzden depolarından ancak bir kısmını alabildin.',
+      REPELLED: 'Savunmaları dayandı. Filon içeri giremedi, eli boş döndün.',
+    },
+    defending: {
+      DECISIVE: 'Savunmadaki her şeyin düştü, kalkanın da gitti; yağmanın tamamını aldılar.',
+      PARTIAL: 'Savunmanın çoğu düştü ama bir kısmı dayandı; depondan ancak bir parça götürebildiler.',
+      REPELLED: 'Savunman dayandı. İçeri giremediler, hiçbir şey götüremediler.',
+    },
+  },
+
+  /** Savaşın yağma satırının ötesinde yaptıkları; her biri yalnız doğruysa yazılır. */
+  effects: {
+    heading: 'Bu savaş ne yaptı',
+    shieldTheirs: 'Kalkanları, gövdelere ulaşan ilk atıştan önce {{amount}} hasar yuttu.',
+    shieldYours: 'Kalkanın, gövdelerine ulaşan ilk atıştan önce {{amount}} hasar yuttu.',
+    cargoLimited:
+      'Ambarların doldu. O gezegende taşıyabileceğinden fazlası vardı; yanına Yük Gemisi al.',
+    salvaged_one: '{{count}} yer topu kendi enkazından yeniden kuruldu; şimdi yine ayakta.',
+    salvaged_other: '{{count}} yer topu kendi enkazından yeniden kuruldu; şimdi yine ayakta.',
+    worksTheirs: 'Tesisleri {{duration}} boyunca kapalı. Orada hiçbir şey üretilmiyor.',
+    worksYours: 'Tesislerin {{duration}} boyunca devre dışı kaldı.',
+    wreck: '{{planet}} üzerinde {{amount}} değerinde enkaz sürükleniyor. İsteyen gidip alabilir.',
+    wreckYours: 'Kendi yörüngende {{amount}} değerinde enkaz sürükleniyor. İsteyen gidip alabilir; sen de.',
+  },
+
+  /** Okuyanın kendi tahtası: savaşa ne girdi, ne öldü, sonunda ne ayakta kaldı. */
+  force: {
+    hull: 'Gövde',
+    sent: 'Giden',
+    held: 'Duran',
+    lost: 'Ölen',
+    left: 'Kalan',
+    summary: 'Savaşa {{brought}} girdi · {{lost}} yok edildi · {{left}} ayakta kaldı',
+  },
+  roundTheirs: 'Onlar',
+  roundYours: 'Sen',
+  roundNoLosses: 'Bu rauntta tahtadan hiçbir şey kalkmadı.',
 } as const;
 
 export const clarity = {

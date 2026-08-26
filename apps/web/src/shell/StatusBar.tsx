@@ -11,7 +11,7 @@ import { Meter } from '../ui/kit/index.js';
 import { describe, useToast } from '../ui/Toast.js';
 import type { PlanetView } from '../api/schemas.js';
 import { Signals } from './Signals.js';
-import type { Panel } from '../screens/GalaxyView.jsx';
+import type { Panel, PanelStop } from '../screens/GalaxyView.jsx';
 import { useWorld } from '../api/world.js';
 
 /**
@@ -35,7 +35,7 @@ export function StatusBar({
 }: {
   /** Who is signed in. The header states it, because it is the way back out. */
   commander: string;
-  onOpen: (panel: Panel) => void;
+  onOpen: (panel: Panel, stop?: PanelStop) => void;
   onFocusPlanet: (planetId: string) => void;
 }) {
   const { t } = useTranslation();

@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { COMBAT, GALAXY, engagementEndsAt, isEngaging } from '@astera/rules';
+import {
+  COMBAT,
+  GALAXY,
+  engagementEndsAt,
+  isEngaging,
+  surfaceStandoff,
+} from '@astera/rules';
 import {
   BLAST_SECONDS,
   MISSILE_OF_SHIP,
@@ -13,7 +19,6 @@ import {
   volleyFor,
 } from '../src/galaxy/volley.js';
 import {
-  clearOfWorlds,
   engagementHold,
   legEnd,
   legStandoff,
@@ -454,9 +459,9 @@ describe('a leg that ends at a world', () => {
     expect(gap).toBeCloseTo(orbitStandoff(1.4), 6);
   });
 
-  /** A fleet coming home LANDS. Holding it in orbit would park it over its own world. */
-  it('does not stand off at the world it is landing on', () => {
-    expect(legStandoff(homeward(), nodes).end).toBe(0);
+  /** A fleet coming home lands at the tight surface, not the wider foreign orbit. */
+  it('uses surface clearance at the world it is landing on', () => {
+    expect(legStandoff(homeward(), nodes).end).toBeCloseTo(surfaceStandoff(0.44), 6);
   });
 
   /**
@@ -488,21 +493,24 @@ describe('a leg that ends at a world', () => {
     expect(gap).toBeCloseTo(orbitStandoff(1.4), 6);
   });
 
-  /** A leg pointed at nothing the disc is drawing must not invent a standoff. */
-  it('does not stand off from a world that is not on the map', () => {
+  /** A missing endpoint changes only that endpoint; the known home still clears. */
+  it('does not invent clearance for a world that is not on the map', () => {
     const stray = thread();
     stray.path!.to = { x: -999, y: 30, z: 12 };
-    expect(legStandoff(stray, nodes)).toEqual({ start: 0, end: 0 });
+    expect(legStandoff(stray, nodes)).toEqual({ start: surfaceStandoff(0.44), end: 0 });
 
     const strayHome = homeward();
     strayHome.path!.from = { x: -999, y: 30, z: 12 };
-    expect(legStandoff(strayHome, nodes)).toEqual({ start: 0, end: 0 });
+    expect(legStandoff(strayHome, nodes)).toEqual({ start: 0, end: surfaceStandoff(0.44) });
   });
 
-  it('leaves the craft at its own planet the moment it departs', () => {
+  it('leaves from its own surface rather than its centre', () => {
     const path = thread().path!;
     const standoff = legStandoff(thread(), nodes);
-    expect(threadPosition(path, path.departAt.getTime(), standoff)).toEqual(toWorld(path.from));
+    const centre = toWorld(path.from);
+    const left = threadPosition(path, path.departAt.getTime(), standoff);
+    expect(Math.hypot(left[0] - centre[0], left[1] - centre[1], left[2] - centre[2]))
+      .toBeCloseTo(surfaceStandoff(0.44), 6);
   });
 
   it('holds the craft at the standoff point once it has arrived', () => {
@@ -534,89 +542,6 @@ describe('a leg that ends at a world', () => {
     expect(threadPosition(path, half, NO_STANDOFF)).toEqual(threadPosition(path, half));
     expect(legEnd(path, 0)).toEqual(toWorld(path.to));
     expect(legStart(path, 0)).toEqual(toWorld(path.from));
-  });
-});
-
-/**
- * NOBODY'S CRAFT IS DRAWN INSIDE A WORLD — not just your own.
- *
- * D44 stopped YOUR squadron being drawn in the middle of the world it attacks, by
- * stopping its leg short. A contact has no leg to stop short of: the server sends a
- * bearing window and no destination, and the near end of that window is the craft's
- * true position — which on final approach is the target's centre. So the attacker
- * watched their raid hold in orbit while every other player in the galaxy watched
- * the same raid fly into the planet and vanish.
- *
- * The correction is geometric, needs no destination, and therefore discloses
- * nothing: a craft that would be drawn inside a world is put on its surface.
- */
-describe('craft and the worlds they pass', () => {
-  const planet = (over: Partial<GalaxyPlanet> = {}): GalaxyPlanet =>
-    ({
-      id: 'p1',
-      name: 'Tharsis',
-      owner: 'Vale',
-      position: FAR,
-      coreTier: 5,
-      satellites: [],
-      shielded: false,
-      isSelf: false,
-      fleet: null,
-      ...over,
-    }) as GalaxyPlanet;
-
-  const nodes = planetNodes([planet()]);
-  const centre = toWorld(FAR);
-  const radius = nodes[0]!.radius;
-  const from = (p: readonly [number, number, number]) =>
-    Math.hypot(p[0] - centre[0], p[1] - centre[1], p[2] - centre[2]);
-
-  it('leaves a craft in open space exactly where it is', () => {
-    const out: [number, number, number] = [0, 0, 0];
-    expect(clearOfWorlds(nodes, out)).toEqual(out);
-  });
-
-  it('puts a craft drawn inside a world back on its surface', () => {
-    const inside: [number, number, number] = [centre[0] + radius * 0.2, centre[1], centre[2]];
-    const fixed = clearOfWorlds(nodes, inside);
-    expect(from(fixed)).toBeGreaterThan(radius);
-    // On the surface, not held off it — a standoff is two radii and this is not one.
-    expect(from(fixed)).toBeLessThan(radius * 1.3);
-  });
-
-  it('pushes straight out, so the craft keeps its bearing', () => {
-    const inside: [number, number, number] = [centre[0], centre[1], centre[2] + radius * 0.1];
-    const fixed = clearOfWorlds(nodes, inside);
-    expect(fixed[0]).toBeCloseTo(centre[0], 6);
-    expect(fixed[1]).toBeCloseTo(centre[1], 6);
-    expect(fixed[2]).toBeGreaterThan(centre[2]);
-  });
-
-  /** A craft dead on the centre has no direction to be pushed along. */
-  it('never divides by a zero distance', () => {
-    const fixed = clearOfWorlds(nodes, [...centre] as [number, number, number]);
-    expect(Number.isFinite(fixed[0] + fixed[1] + fixed[2])).toBe(true);
-    expect(from(fixed)).toBeGreaterThan(radius);
-  });
-
-  /**
-   * The clearance is tight on purpose. At a raid's standoff — two radii — every
-   * craft passing an unrelated world would visibly swerve around it.
-   */
-  it('does not deflect a craft passing a world it is not going to', () => {
-    const by: [number, number, number] = [centre[0], centre[1], centre[2] + radius * 1.4];
-    expect(clearOfWorlds(nodes, by)).toEqual(by);
-  });
-
-  it('leaves a squadron at its own standoff alone', () => {
-    const thread = {
-      from: { x: 0, y: 0, z: 0 },
-      to: FAR,
-      departAt: new Date('2026-04-01T12:00:00.000Z'),
-      arriveAt: new Date('2026-04-01T12:40:00.000Z'),
-    };
-    const held = legEnd(thread, orbitStandoff(radius));
-    expect(clearOfWorlds(nodes, held)).toEqual(held);
   });
 });
 
@@ -692,7 +617,6 @@ describe('a raid landing, from both sides', () => {
     const gap = Math.hypot(at[0] - centre[0], at[1] - centre[1], at[2] - centre[2]);
     const radius = nodes.find((n) => n.id === 'p2')!.radius;
     expect(gap).toBeCloseTo(orbitStandoff(radius), 6);
-    expect(clearOfWorlds(nodes, at)).toEqual(at);
   });
 
   it('holds it on the side the fleet came in on', () => {

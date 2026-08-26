@@ -252,6 +252,39 @@ interface Stage {
 const SEAM = 0.10;
 
 /**
+ * A WORLD THAT HAS TAKEN A DEATH STAR WEARS A DEAD STRUCTURE. D121a, owner call.
+ *
+ * `recoveryUntil` is set in exactly one place — `applyDeathStarStrike` — so
+ * `state.kind === 'RECOVERY'` means a rocket landed here and nothing else. The
+ * strike lowers the Core (D113), so the ladder usually takes a ring or the whole
+ * structure away on its own; this is for the case where the Core is still above
+ * `FIRST_LEVEL` and the rings survive the thing that wrecked the world under them.
+ *
+ * TWO THINGS GO, AND THEY ARE THE TWO THINGS THAT SAY "POWERED".
+ *
+ *   · THE TUMBLE. A structure holding station is station-keeping; a structure that
+ *     has stopped is adrift. The per-world `tilt` is kept, so wrecks do not all
+ *     snap to the same attitude — each one is frozen where it happened to be, at
+ *     an angle nothing else on the disc shares.
+ *   · THE COLOUR. The stage hue reaches the eye through the seam emissive and the
+ *     silhouette rim, and both are switched to unpowered. `SEAM` is what makes the
+ *     panelling read as lit at all — the ring ships with no emissive map of its
+ *     own, so at zero the seams fall back to being the brightest patch of an
+ *     unlit sheet, which is exactly the "unpowered plastic" the seam docblock
+ *     describes as the failure case. Here it is the point.
+ *
+ * THE RIM STAYS, GREY AND DIMMER, and that is deliberate rather than an oversight.
+ * It is not decoration: it is the only thing separating a few thousand dark
+ * triangles from the nebula behind them, and deleting it would make a wrecked
+ * megastructure invisible rather than dead. Grey carries no stage information, so
+ * the ladder still cannot be read off a wreck — which is correct, because a world
+ * in recovery is not at the rung its ring count implies.
+ */
+const WRECK_RIM = '#8d949c';
+/** Dimmer than a live rim, because a wreck should recede rather than announce itself. */
+const WRECK_RIM_ALPHA = 0.14;
+
+/**
  * The scale sampled at `t` in [0, 1], walking the anchors evenly.
  *
  * The span is clamped one short of the end so `t === 1` resolves to the LAST
@@ -293,11 +326,48 @@ const SHELL_STAGE: readonly Stage[] = Array.from({ length: RUNGS + 1 }, (_, step
   colour: sample(step / RUNGS),
 }));
 
+/**
+ * Has a rocket landed on this world and not yet finished doing its damage?
+ *
+ * `state` is optional on the payload, so a server that predates it reads as a
+ * world in one piece — which is the safe way round: a live structure drawn on a
+ * wreck is a cosmetic miss, and a dead one drawn on a healthy world would say a
+ * commander had been hit when they had not.
+ */
+export const isWrecked = (node: PlanetNode): boolean => node.state?.kind === 'RECOVERY';
+
 /** The stage a world is at, or null while it has not built one. */
 const stageIndexFor = (coreLevel: number): number | null => {
   if (coreLevel < FIRST_LEVEL) return null;
   return Math.min(Math.trunc(coreLevel) - FIRST_LEVEL, SHELL_STAGE.length - 1);
 };
+
+/**
+ * WHAT A STAGE LOOKS LIKE, LIVE OR WRECKED — ONE DEFINITION, THREE USES.
+ *
+ * The body's emissive, the rim's shader and the frame loop's rotation all have to
+ * agree about whether a structure has power, and they are three different places
+ * in this file. Answering it once is what stops a future edit switching the colour
+ * off and leaving the ring turning, or the other way round — which would read as a
+ * bug rather than as a wreck.
+ *
+ * It is also the whole of what a test can meaningfully assert here: the rest of
+ * this component is instanced-mesh plumbing that only a GPU can confirm.
+ */
+export interface ShellLook {
+  /** Emissive multiplier on the seams. Zero is an unpowered structure. */
+  seam: number;
+  /** The silhouette rim's colour, and how strongly it traces the contour. */
+  rim: string;
+  rimAlpha: number;
+  /** Station-keeping, or adrift. A world in recovery does not turn. */
+  turning: boolean;
+}
+
+export const shellLook = (index: number, wrecked: boolean): ShellLook =>
+  wrecked
+    ? { seam: 0, rim: WRECK_RIM, rimAlpha: WRECK_RIM_ALPHA, turning: false }
+    : { seam: SEAM, rim: SHELL_STAGE[index]!.colour, rimAlpha: RIM_ALPHA, turning: true };
 
 /** The copies each stage draws, built once rather than per frame. */
 const STAGE_COPIES: readonly (readonly THREE.Euler[])[] = SHELL_STAGE.map((stage) =>
@@ -364,25 +434,55 @@ interface Wearer {
   phaseX: number;
 }
 
+export interface ShellGroup {
+  key: string;
+  index: number;
+  wrecked: boolean;
+  planets: PlanetNode[];
+}
+
+/**
+ * Bucketed by STAGE and not by model. Every stage is the same ring, so keying on
+ * the file would collapse the whole ladder into one bucket and one colour.
+ *
+ * AND BY WHETHER THE WORLD IS WRECKED, which is a draw-group question rather than
+ * a per-world one. A stage's colour reaches the eye through two MATERIAL uniforms
+ * — the body's emissive tint and the rim's colour — and a material is shared by
+ * every instance in its mesh. Per-instance colour cannot reach either
+ * (`instanceColor` multiplies the DIFFUSE, which is why the fog's dimming can use
+ * it and this cannot), so a wreck needs its own pair of materials or it would keep
+ * glowing in its neighbours' hue.
+ *
+ * It costs at most one extra pair of instanced meshes per stage, and only for
+ * stages that actually contain a struck world — which is rare by construction,
+ * since it takes a Death Star to put one there.
+ */
+export function shellGroups(nodes: readonly PlanetNode[]): ShellGroup[] {
+  const byStage = new Map<string, ShellGroup>();
+  for (const node of nodes) {
+    const index = stageIndexFor(node.coreLevel);
+    if (index === null) continue;
+    const wrecked = isWrecked(node);
+    const key = `${String(index)}:${wrecked ? 'wreck' : 'live'}`;
+    const bucket = byStage.get(key);
+    if (bucket) bucket.planets.push(node);
+    else byStage.set(key, { key, index, wrecked, planets: [node] });
+  }
+  return [...byStage.values()];
+}
+
 export function DysonShells({ nodes }: { nodes: readonly PlanetNode[] }) {
-  // Bucketed by STAGE and not by model. Every stage is the same ring, so keying on
-  // the file would collapse the whole ladder into one bucket and one colour.
-  const groups = useMemo(() => {
-    const byStage = new Map<number, PlanetNode[]>();
-    for (const node of nodes) {
-      const index = stageIndexFor(node.coreLevel);
-      if (index === null) continue;
-      const bucket = byStage.get(index);
-      if (bucket) bucket.push(node);
-      else byStage.set(index, [node]);
-    }
-    return [...byStage].map(([index, planets]) => ({ index, planets }));
-  }, [nodes]);
+  const groups = useMemo(() => shellGroups(nodes), [nodes]);
 
   return (
     <>
       {groups.map((group) => (
-        <Shell key={group.index} index={group.index} planets={group.planets} />
+        <Shell
+          key={group.key}
+          index={group.index}
+          wrecked={group.wrecked}
+          planets={group.planets}
+        />
       ))}
     </>
   );
@@ -395,8 +495,17 @@ function hash(text: string): number {
   return Math.abs(value);
 }
 
-function Shell({ index, planets }: { index: number; planets: readonly PlanetNode[] }) {
-  const stage = SHELL_STAGE[index]!;
+function Shell({
+  index,
+  wrecked,
+  planets,
+}: {
+  index: number;
+  /** Every world in this group has taken a Death Star and is still in recovery. */
+  wrecked: boolean;
+  planets: readonly PlanetNode[];
+}) {
+  const look = shellLook(index, wrecked);
   const copies = STAGE_COPIES[index]!;
   const body = useRef<THREE.InstancedMesh>(null);
   const rim = useRef<THREE.InstancedMesh>(null);
@@ -430,16 +539,23 @@ function Shell({ index, planets }: { index: number; planets: readonly PlanetNode
     // material has these.
     if (clone instanceof THREE.MeshStandardMaterial) {
       clone.emissiveMap = clone.map;
-      clone.emissive = new THREE.Color(stage.colour);
-      clone.emissiveIntensity = SEAM;
+      /*
+        A WRECK'S SEAMS ARE UNLIT — `shellLook` returns a seam of zero. That is the
+        appearance the SEAM docblock above describes as the failure it fixed, an
+        unpowered sheet of plastic, and it is exactly the picture a struck world
+        wants. The tint is still assigned and simply not multiplied by anything, so
+        the material has the same shape on both branches.
+      */
+      clone.emissive = new THREE.Color(look.rim);
+      clone.emissiveIntensity = look.seam;
     }
     return clone;
-  }, [source, stage]);
+  }, [source, look.rim, look.seam]);
 
   const rimMaterial = useMemo(
     () =>
       new THREE.ShaderMaterial({
-        uniforms: { uColour: { value: new THREE.Color(stage.colour) } },
+        uniforms: { uColour: { value: new THREE.Color(look.rim) } },
         transparent: true,
         depthWrite: false,
         // Tested, unlike the satellites' — see the RIM docblock for why.
@@ -457,11 +573,11 @@ function Shell({ index, planets }: { index: number; planets: readonly PlanetNode
         `,
         fragmentShader: `
           uniform vec3 uColour;
-          void main() { gl_FragColor = vec4(uColour, ${String(RIM_ALPHA)}); }
+          void main() { gl_FragColor = vec4(uColour, ${String(look.rimAlpha)}); }
         `,
         toneMapped: false,
       }),
-    [stage],
+    [look.rim, look.rimAlpha],
   );
 
   useEffect(
@@ -551,12 +667,25 @@ function Shell({ index, planets }: { index: number; planets: readonly PlanetNode
       );
       if (radius < distance * MIN_ANGULAR_RADIUS) return;
 
-      // Tilt first, then the world's own two spins, so the tumble happens about the
-      // MODEL's axes rather than about the disc's — turned the other way round the
-      // two rotations fight and the shell wobbles instead of turning.
-      SPIN_Y.setFromAxisAngle(AXIS_Y, spinY + wearer.phaseY);
-      SPIN_X.setFromAxisAngle(AXIS_X, spinX + wearer.phaseX);
-      ATTITUDE.copy(wearer.tilt).multiply(SPIN_Y).multiply(SPIN_X);
+      /**
+       * Tilt first, then the world's own two spins, so the tumble happens about the
+       * MODEL's axes rather than about the disc's — turned the other way round the
+       * two rotations fight and the shell wobbles instead of turning.
+       *
+       * A WRECK KEEPS THE TILT AND LOSES THE SPINS. The tilt is hashed from the
+       * world's id and never changes, so every struck structure is frozen at its
+       * own angle rather than all of them snapping to a shared one — which is what
+       * makes a stopped ring read as adrift instead of as a rendering fault. It
+       * starts turning again by itself when recovery ends, because `state` comes
+       * off the galaxy payload and nothing here caches it.
+       */
+      if (!look.turning) {
+        ATTITUDE.copy(wearer.tilt);
+      } else {
+        SPIN_Y.setFromAxisAngle(AXIS_Y, spinY + wearer.phaseY);
+        SPIN_X.setFromAxisAngle(AXIS_X, spinX + wearer.phaseX);
+        ATTITUDE.copy(wearer.tilt).multiply(SPIN_Y).multiply(SPIN_X);
+      }
 
       // The stage's fixed copies go INSIDE the tumble, so a set of crossed rings
       // turns as one rigid structure rather than as N rings drifting past each

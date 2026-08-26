@@ -1,6 +1,6 @@
 import { GameActions } from '../session/seasonLock.js';
 import { PROBE, radarDetectsFleets, radarRange, telescopeSlots } from '@astera/rules';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useGalaxy, useIntel, usePlanet } from '../api/queries.js';
 import { full, percent, range } from '../lib/format.js';
@@ -23,13 +23,33 @@ import type { IntelView } from '../api/schemas.js';
  * the first hour they are the entire screen. Each one names the instrument that
  * would fill it and what that instrument would tell them.
  */
-export function IntelScreen({ onOpenOrbit }: { onOpenOrbit?: () => void }) {
+export function IntelScreen({
+  onOpenOrbit,
+  open,
+}: {
+  onOpenOrbit?: () => void;
+  /**
+   * WHICH LIST TO LAND ON, WHEN SOMETHING ELSE ALREADY KNOWS. D121.
+   *
+   * A battle-report notification used to open this screen on the PROBE list and
+   * leave the reader to find the tab — the interface pointing at the right room
+   * and then at the wrong shelf in it. `request` is a counter rather than a
+   * boolean so a second notification still lands after the reader has moved off
+   * the tab the first one opened.
+   */
+  open?: { stop: 'probes' | 'battles'; request: number };
+}) {
   const { t } = useTranslation();
   const intel = useIntel();
   const planet = usePlanet();
   const galaxy = useGalaxy();
   const now = useNow(30_000);
-  const [reportTab, setReportTab] = useState<'probes' | 'battles'>('probes');
+  const [reportTab, setReportTab] = useState<'probes' | 'battles'>(open?.stop ?? 'probes');
+  const requestedStop = open?.stop;
+  const request = open?.request;
+  useEffect(() => {
+    if (requestedStop) setReportTab(requestedStop);
+  }, [requestedStop, request]);
 
 
   // Same distinction as the planet sheet: an error leaves `data` undefined but is

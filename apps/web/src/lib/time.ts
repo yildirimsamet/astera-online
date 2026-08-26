@@ -59,8 +59,25 @@ export function countdown(ms: number): string {
 export const minutesLeft = (arriveAt: Date, now: number): number =>
   Math.max(0, (arriveAt.getTime() - now) / MINUTE);
 
-/** How long a span lasts, when it is not counting down. "3h 06m" · "45m". */
+/**
+ * How long a span lasts, when it is not counting down. "3h 06m" · "45m" · "29s".
+ *
+ * IT LEARNED SECONDS AT D121, BECAUSE SOMETHING GOT SHORTER THAN A MINUTE.
+ *
+ * `Math.round` was the whole of it, and every span in the game was over a minute
+ * long, so nothing ever hit the case. A probe with no launch overhead crosses to
+ * a neighbour in 29 seconds — and the sentence a player reads at the moment they
+ * commit to it read "Probe away · reports back in 0m", which is the interface
+ * telling somebody their craft takes no time to fly. Under a minute it says the
+ * seconds; at a minute and over nothing changes, so no other surface moves.
+ *
+ * `countdown` above has always done this and its shapes are the ones borrowed
+ * here, so a probe's ETA and a probe's countdown speak the same language.
+ */
 export function duration(minutes: number): string {
+  if (minutes > 0 && minutes < 1) {
+    return i18n.t('units.seconds', { s: Math.max(1, Math.round(minutes * 60)) });
+  }
   const whole = Math.max(0, Math.round(minutes));
   const h = Math.floor(whole / 60);
   const m = whole % 60;

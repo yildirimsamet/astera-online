@@ -6,7 +6,7 @@ import { useLiveAlerts } from './session/useLiveAlerts.js';
 import { LandingScreen } from './screens/LandingScreen.jsx';
 import { Rehearsal } from './onboarding/Rehearsal.jsx';
 import { ServersScreen } from './screens/ServersScreen.jsx';
-import { GalaxyView, type Panel } from './screens/GalaxyView.jsx';
+import { GalaxyView, type Panel, type PanelStop } from './screens/GalaxyView.jsx';
 import { PendingStrip } from './shell/PendingStrip.js';
 import { LoadingScreen } from './shell/LoadingScreen.js';
 import { StatusBar } from './shell/StatusBar.js';
@@ -85,6 +85,19 @@ export function App() {
   useLiveAlerts(ready);
 
   const [panel, setPanel] = useState<Panel>(null);
+  /**
+   * WHICH SHELF THE PANEL OPENS ON, WHEN THE CALLER KNOWS. D121.
+   *
+   * Owned here rather than in `GalaxyView` because the request comes from the
+   * header — `Signals` sits in `StatusBar`, outside the canvas — and this is the
+   * lowest place both of them can see. The counter is what makes a second battle
+   * notification land after the reader has already moved off the battles tab.
+   */
+  const [panelStop, setPanelStop] = useState<{ stop: PanelStop; request: number } | null>(null);
+  const openPanel = (next: Panel, stop?: PanelStop): void => {
+    if (stop) setPanelStop((current) => ({ stop, request: (current?.request ?? 0) + 1 }));
+    setPanel(next);
+  };
   const [planetFocus, setPlanetFocus] = useState<{ planetId: string; request: number } | null>(null);
   const [craftFocus, setCraftFocus] = useState<{ focus: CraftFocus; request: number } | null>(null);
   const focusPlanet = (planetId: string): void => {
@@ -162,12 +175,17 @@ export function App() {
   return (
     <WorldProvider>
     <div className="relative z-10 flex h-dvh flex-col overflow-hidden">
-      <StatusBar commander={session.me.displayName} onOpen={setPanel} onFocusPlanet={focusPlanet} />
+      <StatusBar
+        commander={session.me.displayName}
+        onOpen={openPanel}
+        onFocusPlanet={focusPlanet}
+      />
 
       <main className="relative flex-1">
         <GalaxyView
           panel={panel}
           onPanel={setPanel}
+          panelStop={panelStop}
           focusRequest={planetFocus}
           craftFocusRequest={craftFocus}
           commander={session.me.displayName}

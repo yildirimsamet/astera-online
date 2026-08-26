@@ -4,6 +4,7 @@ import { Trans, useTranslation } from 'react-i18next';
 import { Unreachable, Waiting } from '../ui/kit/Surface.js';
 import {
   BUILD,
+  DEUTERIUM,
   HULLS,
   DEATH_STAR,
   MULTI_WORLD,
@@ -39,7 +40,7 @@ import {
 import type { BuildOrderView, PlanetView } from '../api/schemas.js';
 
 import { directives, primary, type PlanetGroup } from '../lib/directives.js';
-import { compact, full } from '../lib/format.js';
+import { compact, full, percent } from '../lib/format.js';
 import { serverNow } from '../lib/clock.js';
 import { countdown, duration, useNow } from '../lib/time.js';
 import { projectedQueueState } from '../lib/predict.js';
@@ -1710,6 +1711,7 @@ function Reach({
   const gravitic = planet.research.find((project) => project.id === 'GRAVITIC_CHARGES');
   const denseComplete = dense?.completed ?? false;
   const graviticComplete = gravitic?.completed ?? false;
+  const graviticDiscoveryShare = percent(DEUTERIUM.graviticDiscoveryShieldShare);
 
   const project = (id: ResearchProjectId) => {
     const state = planet.research.find((candidate) => candidate.id === id);
@@ -1728,7 +1730,7 @@ function Reach({
       GRAVITIC_CHARGES: {
         name: t('planet.reach.graviticName'),
         tag: t('planet.reach.graviticTag'),
-        role: t('planet.reach.graviticRole'),
+        role: t('planet.reach.graviticRole', { share: graviticDiscoveryShare }),
       },
       DEATH_STAR_PROTOCOL: {
         name: t('planet.reach.deathStarName'),
@@ -1740,7 +1742,7 @@ function Reach({
       ? t('planet.reach.researchCargoInsight')
       : id === 'DEATH_STAR_PROTOCOL'
         ? t('planet.reach.researchGraviticFirst')
-        : t('planet.reach.researchShieldInsight');
+        : t('planet.reach.researchShieldInsight', { share: graviticDiscoveryShare });
     const { name, tag, role } = copy[id];
     const completed = state.completed ? t('planet.reach.researchComplete') : undefined;
     const queued = constructionOrders.some(

@@ -134,6 +134,8 @@ export const errors = {
   PLAYER_NOT_FOUND: 'No such player',
   PLAYER_ALREADY_IN_CLAN: 'That commander already belongs to a clan',
   PROBE_ALREADY_OUT: 'You already have a probe working that planet',
+  /** One look per world per hour, per commander. D121. */
+  PROBE_COOLDOWN: 'You looked at that world too recently. Another probe in {{minutes}} min.',
   PROSPECTOR_CAP: 'You may hold {{max}} Prospectors, and you have {{have}}.',
   PROSPECTOR_CAP_atLimit: 'You already have {{max}} Prospectors. That is the limit.',
   QUEUE_FULL: 'The {{queue}} queue is full',

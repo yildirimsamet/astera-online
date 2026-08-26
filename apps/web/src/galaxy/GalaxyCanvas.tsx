@@ -16,13 +16,14 @@ import { BrightStars, Core, Disc, Dust, Meteors, Nebula, Starfield } from './Env
 import { useAmbientFrames, useCommittedDemandFrame } from './frames.jsx';
 import { Wrecks, type WreckView } from './Wrecks.js';
 import { Asteroids, InterceptMarks } from './Asteroids.jsx';
-import { OwnFleets, Traffic, WatchBeams } from './Fleets.jsx';
+import { OwnFleets, Traffic } from './Fleets.jsx';
 import { threadKey } from './threadKey.js';
 import { DeathStarImpacts } from './DeathStarImpact.jsx';
 import { PlanetField } from './PlanetField.jsx';
 import { DysonShells } from './DysonShells.jsx';
 import { Satellites, Shields } from './Satellites.jsx';
 import { MiningFlights } from './MiningFlights.jsx';
+import { OwnershipFilaments } from './OwnershipFilaments.jsx';
 import {
   DISC_RADIUS,
   activeWorldPosition,
@@ -33,7 +34,6 @@ import {
   planetNodes,
   runPosition,
   threadPosition,
-  toWorld,
   type PlanetNode,
 } from './scene.js';
 import { installTapGuard, wasMiss, wasTap } from './tap.js';
@@ -117,8 +117,6 @@ export interface GalaxyCanvasProps {
   pending: readonly PendingThread[];
   /** Everyone else's, already stripped of anything identifying by the server. */
   contacts: readonly Contact[];
-  /** Ids of the planets your telescopes are pointed at. Yours alone to know. */
-  watching: readonly string[];
   /** Rocks crossing the disc right now, and your craft working them. D19. */
   asteroids: readonly AsteroidView[];
   runs: readonly MiningRun[];
@@ -175,7 +173,6 @@ export function GalaxyCanvas({
   planets,
   pending,
   contacts,
-  watching,
   asteroids,
   runs,
   wrecks,
@@ -260,7 +257,7 @@ export function GalaxyCanvas({
        * engagement.
        */
       const standoff = legStandoff(thread, nodes);
-      return () => threadPosition(path, serverNow(), standoff, nodes);
+      return () => threadPosition(path, serverNow(), standoff);
     }
 
     if (focus.kind === 'run' && homePosition) {
@@ -278,8 +275,8 @@ export function GalaxyCanvas({
     if (focus.kind === 'contact') {
       const contact = contacts.find((c) => c.id === focus.id);
       if (!contact) return null;
-      // Corrected exactly as the renderer corrects it, or the rig would centre on
-      // a point inside a world while the craft is drawn on its surface.
+      // The window is already on the server's shared visual leg; nodes remain for
+      // the landed engagement hold, which still reads the target's drawn radius.
       return () => contactPosition(contact, serverNow(), nodes);
     }
 
@@ -320,11 +317,6 @@ export function GalaxyCanvas({
    * else. It moves when they act and at no other time.
    */
   const focusKey = useMemo(() => focusIdentity(focus), [focus]);
-
-  const watched = useMemo(() => {
-    const wanted = new Set(watching);
-    return planets.filter((p) => wanted.has(p.id)).map((p) => toWorld(p.position));
-  }, [planets, watching]);
 
   useEffect(() => installTapGuard(), []);
 
@@ -409,6 +401,7 @@ export function GalaxyCanvas({
           />
         )}
 
+        <OwnershipFilaments nodes={nodes} selectedId={selectedId} />
         <PlanetField
           nodes={nodes}
           selectedId={selectedId}
@@ -429,7 +422,6 @@ export function GalaxyCanvas({
         <DysonShells nodes={nodes} />
         <Satellites nodes={nodes} />
         <Shields nodes={nodes} ownLevel={aegisLevel} ownId={selfId} />
-        <WatchBeams from={home} targets={watched} />
         <OwnFleets
           pending={pending}
           nodes={nodes}

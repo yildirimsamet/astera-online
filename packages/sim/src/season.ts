@@ -55,7 +55,7 @@ import {
   prospectorHold,
   prospectorReturnSpeed,
   prospectorSpeed,
-  prospectorTravelExact,
+  travelExact,
   researchMinutes,
   resolveQueue,
   satelliteCost,
@@ -1534,7 +1534,7 @@ function tryMine(p: SimPlayer, t: number, world: World): void {
     const outboundYield = Math.min(remaining, holdEach * craft);
     // Priced at the return speed: the bot ranks rocks by yield per minute of the
     // whole round trip, so a leg it does not actually fly makes it choose wrong. D117.
-    const home = prospectorTravelExact(distance(intercept.at, p), prospectorReturnSpeed(p.orbit));
+    const home = travelExact(distance(intercept.at, p), prospectorReturnSpeed(p.orbit));
     const score = outboundYield / Math.max(0.01, intercept.flightMinutes + home);
     if (!best || score > best.score) {
       best = { rock, arriveAt: intercept.meetsAtMinutes, intercept: intercept.at, score };
@@ -1597,7 +1597,7 @@ function resolveMiningRun(run: MiningRun, t: number, world: World): void {
 
   // As on the server, a Derrick installed while the craft is away affects its return —
   // and, also as on the server, the trip home is flown at a third of the outbound speed. D117.
-  const home = prospectorTravelExact(distance(run.intercept, p), prospectorReturnSpeed(p.orbit));
+  const home = travelExact(distance(run.intercept, p), prospectorReturnSpeed(p.orbit));
   world.miningRuns.push({
     ...run,
     arriveAt: t + home,

@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { PER_MODEL, leadHull, markersFor, slotOffset } from '../src/galaxy/Squadrons.js';
+import {
+  PER_MODEL,
+  formationHitRadius,
+  leadHull,
+  markersFor,
+  slotOffset,
+} from '../src/galaxy/Squadrons.js';
 
 /**
  * The owner stated this rule precisely, so it is tested precisely.
@@ -146,6 +152,34 @@ describe('what a squadron reads as', () => {
     expect(leadHull({ WASP: 40, BULWARK: 1 })).toBe('BULWARK');
     expect(leadHull({ WASP: 3, HAULER: 1 })).toBe('HAULER');
     expect(leadHull({})).toBeNull();
+  });
+});
+
+describe('where a squadron can be tapped', () => {
+  const SCALE = 0.225 * 1.5;
+
+  it('keeps the existing target for a single drawn craft', () => {
+    expect(formationHitRadius(1, SCALE)).toBeCloseTo(Math.max(0.45, SCALE * 1.6));
+  });
+
+  it('grows monotonically as ships add drawn markers', () => {
+    const one = formationHitRadius(1, SCALE);
+    const ten = formationHitRadius(10, SCALE);
+    const fifty = formationHitRadius(50, SCALE);
+    expect(ten).toBeGreaterThan(one);
+    expect(fifty).toBeGreaterThan(ten);
+  });
+
+  it('makes a 500-ship fleet easier to hit without covering the whole formation', () => {
+    const markers = markersFor({ WASP: 500 });
+    const radius = formationHitRadius(markers.length, SCALE);
+    const spacing = SCALE * 1.5;
+    const furthest = Math.max(
+      ...markers.map((_, index) => Math.hypot(...slotOffset(index, spacing))),
+    );
+
+    expect(radius).toBeGreaterThan(formationHitRadius(1, SCALE));
+    expect(radius).toBeLessThan(furthest);
   });
 });
 

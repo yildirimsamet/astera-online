@@ -145,6 +145,7 @@ export const focus = {
     watching: '{{target}} izlemeye alındı',
     sendProbe: 'Sonda gönder · {{alloy}} alaşım · {{crystal}} kristal',
     probeAway: 'Sonda kalktı · {{duration}} sonra rapor verecek',
+    probeCooling: 'Buraya az önce baktın · yeni sonda {{duration}} sonra',
     markRival: 'Rakip olarak işaretle',
     rivalMarkedAction: 'Rakibin',
     rivalCommittedAction: 'Rakip sabitlendi',

@@ -67,18 +67,19 @@ const mine: PlanetView = planetView(
 const intel: IntelView = {
   watching: [],
   probeReports: [],
+  probeCooldowns: [],
   radarLog: [],
   probeCost: { alloy: 25, crystal: 25, deuterium: 0 },
 };
 
-const show = () => {
+const show = (over: Partial<IntelView> = {}) => {
   const Wrapper = harness();
   render(
     <Wrapper>
       <PlanetFocus
         target={target()}
         planet={mine}
-        intel={intel}
+        intel={{ ...intel, ...over }}
         reports={[]}
         now={NOW}
         onClose={vi.fn()}
@@ -594,5 +595,61 @@ describe('the focus rail’s two commitments', () => {
     settlementRig(neutralAt(GALAXY_SPAN, new Date(NOW + 10 * 60_000)));
     expect(reachChip()).toContain('alert');
     expect(screen.getByRole('button', { name: /settle.*arrives too late/i })).toBeDisabled();
+  });
+});
+
+/**
+ * ONE LOOK PER WORLD PER HOUR, SAID BEFORE THE TAP. D121.
+ *
+ * The rule is enforced in `launchProbe` under the planet lock, which is the only
+ * place it can be. What the control must not do is offer a launch the server has
+ * already decided to refuse — a spinner where a decision should be (principle 10),
+ * paid for with a round trip and a toast.
+ *
+ * It reads the SAME instant the guard reads, published by `/api/intel`, and it
+ * compares against `serverNow()` rather than the device clock so a phone that has
+ * drifted cannot open the control early (D52).
+ */
+describe('the probe control while a world is still cooling', () => {
+  const clock = () => Date.now();
+
+  it('offers the launch when nothing has looked here recently', () => {
+    show({ probeCooldowns: [] });
+    const probe = screen.getByRole('button', { name: /send a probe/i });
+    expect(probe).toBeEnabled();
+  });
+
+  it('closes the control and says when it reopens', () => {
+    show({
+      probeCooldowns: [{ targetPlanetId: 'p2', readyAt: new Date(clock() + 42 * 60_000) }],
+    });
+
+    const probe = screen.getByRole('button', { name: /another probe/i });
+    expect(probe).toBeDisabled();
+    expect(probe.textContent).toContain(duration(42));
+    // The cost line is gone with it: nothing is being sold that cannot be bought.
+    expect(screen.queryByRole('button', { name: /send a probe/i })).not.toBeInTheDocument();
+  });
+
+  /** A window that has already passed is not a window. */
+  it('reopens the moment the instant is behind us', () => {
+    show({
+      probeCooldowns: [{ targetPlanetId: 'p2', readyAt: new Date(clock() - 1000) }],
+    });
+    expect(screen.getByRole('button', { name: /send a probe/i })).toBeEnabled();
+  });
+
+  /** The hour belongs to one world. Another world's window must not close this one. */
+  it('ignores a window belonging to a different world', () => {
+    show({
+      probeCooldowns: [{ targetPlanetId: 'somewhere-else', readyAt: new Date(clock() + 42 * 60_000) }],
+    });
+    expect(screen.getByRole('button', { name: /send a probe/i })).toBeEnabled();
+  });
+
+  /** An older server sends no list at all, and the control must still work. */
+  it('offers the launch when the server has never heard of the rule', () => {
+    show({ probeCooldowns: [] });
+    expect(screen.getByRole('button', { name: /send a probe/i })).toBeEnabled();
   });
 });

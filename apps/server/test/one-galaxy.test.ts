@@ -102,7 +102,7 @@ describe('one galaxy, one clock', () => {
   /** Where the OWNER's client draws their own craft, at `now`. */
   const ownerAt = (thread: PendingThread, now: number): [number, number, number] => {
     if (!thread.path) throw new Error('the owner was given no path to draw');
-    return threadPosition(thread.path, now, legStandoff(thread, nodes), nodes);
+    return threadPosition(thread.path, now, legStandoff(thread, nodes));
   };
 
   /** Where EVERYBODY ELSE's client draws the same craft, at `now`. */

@@ -1,15 +1,17 @@
 import { and, eq } from 'drizzle-orm';
 import { pino } from 'pino';
 import { afterAll, beforeEach, describe, expect, it } from 'vitest';
-import { radarLead, radarRange } from '@astera/rules';
+import { MULTI_WORLD, SERVERS, radarLead, radarRange } from '@astera/rules';
 import {
   clanMemberships,
   clans,
   miningRuns,
   missions,
   notifications,
+  planets,
   players,
   scheduledEvents,
+  notificationKind,
 } from '../src/db/schema.js';
 import { EventWorker } from '../src/worker/loop.js';
 import { launchAttack } from '../src/services/mission.js';
@@ -21,13 +23,18 @@ import {
   giveSatellite,
   giveUnits,
   grant,
+  makeAccount,
   placeAt,
   seedWorld,
   setLevel,
   settledAt,
   testDb,
+  truncateAll,
   type Fixture,
 } from './helpers.js';
+import { FixedClock } from '../src/clock.js';
+import { createSeason } from '../src/services/season.js';
+import { joinSeason } from '../src/services/player.js';
 
 /**
  * WHAT THE GAME TELLS YOU IT DID. D45.
@@ -603,5 +610,97 @@ describe('the unlock cascade', () => {
 
     const rows = (await newsFor(f, f.playerIds[0]!)).filter((r) => r.kind === 'unlock');
     expect(rows.map((r) => r.payload.unlock)).toEqual(['EXPLORER']);
+  });
+});
+
+/**
+ * A RAID ON A CARETAKER WORLD TELLS THE RAIDER. D121a.
+ *
+ * `resolveNeutralBattle` wrote a battle report and notified nobody, so the closing
+ * link of the loop existed only for a commander who thought to go and look for it:
+ * no badge on the beacon, no row in Signals, and — since D121 gave every kind of
+ * news a door — no way in to the report either. Fifty-one of the worlds on the
+ * disc are caretaker worlds and the whole colonisation path runs through raiding
+ * them, so this was most of the early game happening in silence.
+ */
+describe('a raid on an unclaimed world', () => {
+  it('reaches the raider’s own notifications, like any other raid', async () => {
+    const { db } = await testDb();
+    await truncateAll(db);
+    const clock = new FixedClock(new Date('2026-08-01T00:00:00.000Z'));
+    const { season } = await createSeason(db, {
+      shardCode: 'EU-NEUTRAL-NEWS',
+      seed: 91273,
+      startsAt: clock.now(),
+      playerCap: SERVERS.capacity,
+      rulesetVersion: MULTI_WORLD.rulesetVersion,
+    });
+    const account = await makeAccount(db, 'Raider');
+    const joined = await joinSeason(db, account.id, season.id, clock);
+    const [caretaker] = await db
+      .select({ id: planets.id, name: planets.name })
+      .from(planets)
+      .where(and(eq(planets.seasonId, season.id), eq(planets.kind, 'NEUTRAL')))
+      .limit(1);
+    expect(caretaker).toBeDefined();
+    const caretakerName = caretaker;
+
+    await setLevel(db, joined.planetId, 'CORE', 8);
+    await giveUnits(db, joined.planetId, { WASP: 60 });
+    const launch = await launchAttack(db, joined.planetId, caretaker!.id, { WASP: 60 }, clock);
+    clock.set(settledAt(launch.arriveAt));
+    await new EventWorker(db, clock, { pollMs: 1000, batch: 100, staleMinutes: 5 }, silent).tick();
+
+    const news = await db.select().from(notifications)
+      .where(eq(notifications.playerId, joined.playerId));
+    const result = news.find((row) => row.kind === 'raid_result');
+    expect(result, 'a neutral raid told nobody').toBeDefined();
+    /*
+      THE SAME PAYLOAD SHAPE A PvP RAID SENDS, so one client parser reads both —
+      asserted field by field rather than with `expect.any`, which arrives as
+      `any` and would let a field change type without anybody noticing.
+    */
+    const payload = result!.payload;
+    expect(typeof payload.grade).toBe('string');
+    expect(payload.targetPlanetId).toBe(caretaker!.id);
+    expect(typeof payload.shipsHome).toBe('number');
+    expect(typeof payload.unitsLost).toBe('number');
+    expect(payload.targetPlanetName).toBe(caretakerName!.name);
+    // A caretaker world is outside the ladder: taking one moves nobody's score.
+    expect(payload.dominion).toBe(0);
+  });
+});
+
+/**
+ * EVERY KIND OF NEWS HAS SOMEWHERE TO GO. D121.
+ *
+ * `Signals` maps a notification kind to the surface that deals with it, and a
+ * missing entry is SILENT by construction: the row renders, it simply has no way
+ * in. Five kinds had drifted out of that map — a Death Star resolving, a colony
+ * taken, a colony lost, a settlement landing, a settlement lost — because the map
+ * was written before those kinds existed and nothing failed when they were added.
+ *
+ * This is the half of the guard that lives where a kind is actually ADDED. Its
+ * pair is `notification-routes.test.tsx` in the client, which asserts the same
+ * list has a destination each. Adding a kind fails here first, naming the file to
+ * go and edit.
+ */
+describe('the kinds of news the server can send', () => {
+  it('is the list the client routes, and nothing has been added quietly', () => {
+    expect([...notificationKind.enumValues].sort()).toEqual([
+      'colony_captured',
+      'colony_lost',
+      'death_star_result',
+      'fleet_returned',
+      'incoming_fleet',
+      'probe_report',
+      'raid_result',
+      'raided',
+      'scan_detected',
+      'settlement_lost',
+      'settlement_success',
+      'strategic_incoming',
+      'unlock',
+    ]);
   });
 });

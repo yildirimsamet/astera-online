@@ -4,6 +4,7 @@ import {
   coreTier,
   engagementEndsAt,
   orbitStandoff,
+  surfaceStandoff,
   visualLeg,
   worldRadius,
   type Fleet,
@@ -493,11 +494,10 @@ export function projectGalaxyTraffic(
    * still closing while the whole galaxy watched it sit on the target and wait.
    *
    * Both sides now derive the same two endpoints from the same public figures
-   * through the same function, so the pictures cannot drift apart. Which END is
-   * held off follows the same rule the client's `legStandoff` uses: an outbound leg
-   * stands off the world it is arriving at, and a leg coming HOME sets out from the
-   * point it was holding at — and a return mission is stored with its two ends
-   * swapped (D28), so the foreign world is its ORIGIN.
+   * through the same function, so the pictures cannot drift apart. An outbound leg
+   * starts at its home surface and stops in foreign orbit; a return starts at that
+   * orbit and ends at the home surface. Clearance is part of the leg once, never a
+   * per-frame projection that can flatten motion (D120).
    */
   const drawnLeg = (
     mission: typeof missions.$inferSelect,
@@ -505,13 +505,15 @@ export function projectGalaxyTraffic(
     target: Vec3,
   ): { from: Vec3; to: Vec3 } => {
     const returning = mission.kind === 'return' || mission.parentMissionId !== null;
+    const home = returning ? mission.targetPlanetId : mission.originPlanetId;
     const foreign = returning ? mission.originPlanetId : mission.targetPlanetId;
-    const tier = tiers.get(foreign);
-    if (tier === undefined) return { from: origin, to: target };
-    const gap = orbitStandoff(worldRadius(tier));
+    const homeTier = tiers.get(home);
+    const foreignTier = tiers.get(foreign);
+    const surface = homeTier === undefined ? 0 : surfaceStandoff(worldRadius(homeTier));
+    const orbit = foreignTier === undefined ? 0 : orbitStandoff(worldRadius(foreignTier));
     return returning
-      ? visualLeg(origin, target, gap, 0)
-      : visualLeg(origin, target, 0, gap);
+      ? visualLeg(origin, target, orbit, surface)
+      : visualLeg(origin, target, surface, orbit);
   };
 
   const out: Contact[] = [];
@@ -642,8 +644,13 @@ export function projectGalaxyTraffic(
     const meet = { x: run.interceptX, y: run.interceptY, z: run.interceptZ };
     const returning = run.status === 'returning';
 
-    const from = returning ? meet : home;
-    const to = returning ? home : meet;
+    const rawFrom = returning ? meet : home;
+    const rawTo = returning ? home : meet;
+    const homeTier = tiers.get(run.planetId);
+    const surface = homeTier === undefined ? 0 : surfaceStandoff(worldRadius(homeTier));
+    const { from, to } = returning
+      ? visualLeg(rawFrom, rawTo, 0, surface)
+      : visualLeg(rawFrom, rawTo, surface, 0);
     const departAt = returning ? run.arriveAt : run.departAt;
     const arriveAt = returning ? (run.homeAt ?? run.arriveAt) : run.arriveAt;
 

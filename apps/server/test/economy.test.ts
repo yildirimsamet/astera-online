@@ -6,6 +6,7 @@ import {
   INSTRUMENT_IDS,
   INSTRUMENT_MAX_LEVEL,
   INTEL,
+  PROBE,
   alloyRate,
   flightSlots,
   collectorCap,
@@ -417,6 +418,12 @@ describe('what may be in the air at once', () => {
    * The return leg counts. A probe on its way home is still a craft you have not
    * got back, and a cap that reset halfway would be a cap on distance rather than
    * on how much you may have in the air.
+   *
+   * THE TWO LIMITS COME BACK AT DIFFERENT TIMES SINCE D121, and that is the point
+   * of the last three assertions. The BAY is released the moment the craft docks,
+   * because a bay is about how much you have in the air. The TARGET is not: one
+   * look per world per hour, per commander, so the world stays shut long after the
+   * craft that looked at it is home.
    */
   it('counts a probe coming home against both limits', async () => {
     const launch = await launchProbe(f.db, mine, a, f.clock);
@@ -429,6 +436,14 @@ describe('what may be in the air at once', () => {
 
     f.clock.advance(launch.flightMinutes);
     await worker(f).tick();
+
+    // The bay is free: a different world can be looked at immediately.
+    await expect(launchProbe(f.db, mine, b, f.clock)).resolves.toBeTruthy();
+    // The world it looked at is not, and says so with the other sentence.
+    await expect(launchProbe(f.db, mine, a, f.clock)).rejects.toMatchObject({
+      code: 'PROBE_COOLDOWN',
+    });
+    f.clock.advance(PROBE.retargetCooldownMinutes);
     await expect(launchProbe(f.db, mine, a, f.clock)).resolves.toBeTruthy();
   });
 

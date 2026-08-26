@@ -5,10 +5,12 @@ import {
   generateGalaxy,
   interceptAsteroid,
   prospectorSpeed,
+  surfaceStandoff,
 } from '@astera/rules';
 import {
   asteroidWorldPosition,
   contactPosition,
+  legStandoff,
   runPosition,
   threadPosition,
   toWorld,
@@ -70,6 +72,138 @@ describe('a fleet in transit', () => {
     const early = threadPosition(path, DEPART.getTime() + 60_000)[0];
     const later = threadPosition(path, DEPART.getTime() + 600_000)[0];
     expect(later).toBeGreaterThan(early);
+  });
+});
+
+/**
+ * THE REGRESSION THAT LOOKED LIKE SERVER LAG. D120.
+ *
+ * The old renderer interpolated from a world's centre and then projected every
+ * frame inside its silhouette back to one surface coordinate. Different times
+ * therefore produced the same position for several seconds. These assertions
+ * sample the dangerous intervals themselves; a broad "early < later" assertion
+ * can skip the entire plateau and stay green while the visible bug returns.
+ */
+describe('continuous endpoint clearance', () => {
+  const node = (
+    id: string,
+    position: { x: number; y: number; z: number },
+    radius: number,
+  ): PlanetNode => ({
+    id,
+    name: id,
+    owner: 'commander',
+    position: toWorld(position),
+    radius,
+    weight: radius > 1 ? 3 : 1,
+    coreTier: radius > 1 ? 5 : 1,
+    coreLevel: radius > 1 ? 15 : 3,
+    satellites: [],
+    shielded: false,
+    stance: 'dark',
+    state: { kind: 'NORMAL' },
+    kind: 'CAPITAL',
+    isOwned: id === 'home',
+    isClanmate: false,
+    isCapital: id === 'home',
+  });
+
+  const nodes = [
+    node('home', path.from, 0.44),
+    node('crossed-but-unrelated', { x: 200, y: 0, z: 0 }, 1.4),
+    node('target', path.to, 0.82),
+  ];
+  const outbound: PendingThread = {
+    id: 'flight',
+    kind: 'fleet',
+    targetName: 'target',
+    minutesRemaining: 40,
+    arriveAt: ARRIVE,
+    leg: 'outbound',
+    fleet: { WASP: 1 },
+    path,
+  };
+
+  const assertStrictProgress = (
+    positionAt: (time: number) => readonly [number, number, number],
+    times: readonly number[],
+    axis: 0 | 1 | 2,
+    direction: 1 | -1,
+  ) => {
+    const values = times.map((time) => positionAt(time)[axis] * direction);
+    for (let index = 1; index < values.length; index += 1) {
+      expect(values[index], `position did not advance at sample ${String(index)}`)
+        .toBeGreaterThan(values[index - 1]!);
+    }
+  };
+
+  it('advances on every sampled second immediately after a fleet spawns', () => {
+    const standoff = legStandoff(outbound, nodes);
+    const times = Array.from({ length: 11 }, (_, second) => DEPART.getTime() + second * 1_000);
+    assertStrictProgress((time) => threadPosition(path, time, standoff), times, 0, 1);
+    expect(threadPosition(path, DEPART.getTime(), standoff)[0])
+      .toBeCloseTo(surfaceStandoff(0.44), 6);
+  });
+
+  it('does not pause or jump while crossing an unrelated world marker', () => {
+    const standoff = legStandoff(outbound, nodes);
+    const middle = (DEPART.getTime() + ARRIVE.getTime()) / 2;
+    const times = Array.from({ length: 21 }, (_, second) => middle - 10_000 + second * 1_000);
+    assertStrictProgress((time) => threadPosition(path, time, standoff), times, 0, 1);
+  });
+
+  it('advances immediately on both legs of a mining or salvage run', () => {
+    const home = path.from;
+    const mining: MiningRun = {
+      id: 'drill',
+      targetKind: 'debris',
+      asteroidIndex: null,
+      debrisFieldId: 'wreck',
+      craft: 1,
+      status: 'outbound',
+      departAt: DEPART,
+      arriveAt: ARRIVE,
+      homeAt: at('2026-04-01T13:20:00.000Z'),
+      intercept: { x: 0, y: 0, z: 600 },
+      minedAlloy: 0,
+      minedCrystal: 0,
+      minedDeuterium: 0,
+    };
+    const firstSeconds = Array.from(
+      { length: 11 },
+      (_, second) => DEPART.getTime() + second * 1_000,
+    );
+    assertStrictProgress(
+      (time) => runPosition(mining, home, time, nodes),
+      firstSeconds,
+      2,
+      1,
+    );
+
+    const returning = { ...mining, status: 'returning' as const };
+    const returnSeconds = Array.from(
+      { length: 11 },
+      (_, second) => ARRIVE.getTime() + second * 1_000,
+    );
+    assertStrictProgress(
+      (time) => runPosition(returning, home, time, nodes),
+      returnSeconds,
+      2,
+      -1,
+    );
+  });
+
+  it('keeps an adjusted public bearing moving through a marker too', () => {
+    const contact: Contact = {
+      id: 'bearing',
+      kind: 'fleet',
+      from: { x: 180, y: 0, z: 0 },
+      to: { x: 220, y: 0, z: 0 },
+      startAt: DEPART,
+      endAt: new Date(DEPART.getTime() + 20_000),
+    };
+    const times = Array.from({ length: 21 }, (_, second) => DEPART.getTime() + second * 1_000);
+    assertStrictProgress((time) => contactPosition(contact, time, nodes), times, 0, 1);
   });
 });
 

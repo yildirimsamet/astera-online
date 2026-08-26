@@ -2,12 +2,13 @@ import { and, eq, inArray } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/pg-core';
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
-import { prospectorHold, prospectorSpeed } from '@astera/rules';
 import { buildings, miningRuns, planetResearch, planets, players, satellites } from '../db/schema.js';
 import { GameError, orbitFromRows } from '../services/planet.js';
 import {
   launchHarvest,
   launchMining,
+  projectIsotopeKnowledge,
+  projectPrivateMiningView,
   projectVisibleAsteroids,
   projectVisibleDebris,
 } from '../services/mining.js';
@@ -117,28 +118,7 @@ export function registerMiningRoutes(app: FastifyInstance): void {
       revealIsotopes: rows.some(
         (row) => row.researchProjectId === 'ISOTOPE_SPECTROMETRY',
       ),
-      view: {
-        /** Whether the DERRICK is in orbit. D25 — hardware, never a level. */
-        derrick: orbit.includes('DERRICK'),
-        craftSpeed: prospectorSpeed(orbit),
-        craftHold: prospectorHold(orbit),
-        derrickHold: prospectorHold(['DERRICK']),
-        runs: runs.map((run) => ({
-          id: run.id,
-          targetKind: run.targetKind,
-          asteroidIndex: run.asteroidIndex,
-          debrisFieldId: run.debrisFieldId,
-          status: run.status,
-          craft: run.craft,
-          departAt: run.departAt,
-          arriveAt: run.arriveAt,
-          homeAt: run.homeAt,
-          intercept: { x: run.interceptX, y: run.interceptY, z: run.interceptZ },
-          minedAlloy: Math.round(run.minedAlloy),
-          minedCrystal: Math.round(run.minedCrystal),
-          minedDeuterium: Math.round(run.minedDeuterium),
-        })),
-      },
+      view: projectPrivateMiningView(orbit, runs),
     };
   };
 
@@ -201,10 +181,7 @@ export function registerMiningRoutes(app: FastifyInstance): void {
     const query = z.object({ planetId: z.string().uuid().optional() }).strict().parse(req.query);
     const own = await privateView(req.accountId!, query.planetId);
     const revealed = own.revealIsotopes
-      ? (await fieldView(own.seasonId, true)).asteroids.flatMap((asteroid) =>
-          asteroid.isotopeRich && asteroid.deuteriumShare !== null
-            ? [{ index: asteroid.index, deuteriumShare: asteroid.deuteriumShare }]
-            : [])
+      ? projectIsotopeKnowledge((await fieldView(own.seasonId, true)).asteroids)
       : [];
     return { ...own.view, isotopes: revealed };
   });

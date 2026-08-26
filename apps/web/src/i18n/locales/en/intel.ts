@@ -98,6 +98,10 @@ export const reports = {
   brokenByYou: '{{planet}} did not hold.',
   youHeld: 'You held. They now know how much you had waiting.',
   youFell: 'You did not hold.',
+  /** The price of the haul, beside it. `Rounds` is the model's number, not the player's. */
+  shipsLost: 'Ships lost',
+  haul: 'What came home',
+  haulLost: 'What they took',
   roundsLabel: 'Rounds',
   taken: 'Taken',
   lost: 'Lost',
@@ -106,8 +110,18 @@ export const reports = {
   yourClan: 'Your side',
   theirClan: 'Their side',
   noClan: 'No clan',
+  /*
+    WHAT IT SHOWS IS LOSSES, so that is what it says. The heading claimed 'what
+    they had' over a list of what was DESTROYED — and its own empty state said
+    'nothing of theirs was destroyed', so the two disagreed inside one block.
+    Losses are still the floor on what they fielded; the dossier is where that
+    inference is drawn, and it says 'at least' in as many words.
+  */
+  theirLosses: 'What you destroyed',
   theirs: 'What they had',
   theirsEmpty: 'Nothing of theirs was destroyed.',
+  /** The roster table. 'What it cost you' describes one of its three columns. */
+  yourForce: 'Your force',
   yours: 'What it cost you',
   yoursEmpty: 'You lost nothing.',
   howItWent: 'How it went',
@@ -118,6 +132,68 @@ export const reports = {
   gradeDecisive: 'DECISIVE',
   gradePartial: 'PARTIAL',
   gradeRepelled: 'REPELLED',
+
+  /** A world nobody holds. There is no commander to name. */
+  neutralHolder: 'an unclaimed world',
+
+  /**
+   * WHAT THE STAMP AT THE TOP OF THE REPORT ACTUALLY MEANS.
+   *
+   * The grade sets the loot share and how long the works stay down, so it is the
+   * most consequential word on the surface — and nothing in the game had ever said
+   * what separates the three.
+   *
+   * IT IS SAID WITHOUT JARGON AND FROM THE READER'S SIDE, and both halves of that
+   * were got wrong first. "More than 42% of the DEFENCE VALUE was destroyed" is a
+   * combat model talking to itself: `defenceValue` is an internal quantity, the
+   * percentage is a threshold nobody can act on, and the sentence is written from
+   * nobody's point of view — so the commander who had just been raided read a
+   * neutral description of their own losses. A player should finish this line
+   * knowing what happened to THEM and why the haul was the size it was.
+   */
+  why: {
+    attacking: {
+      DECISIVE: 'You destroyed everything defending it and broke the shield, which is what opens the full haul.',
+      PARTIAL: 'You broke most of the defence but not all of it, so only part of their stock came away.',
+      REPELLED: 'Their defence held. Your fleet could not get through, and nothing came away.',
+    },
+    defending: {
+      DECISIVE: 'Everything you had defending fell and the shield went with it, so they took the full haul.',
+      PARTIAL: 'Most of your defence fell but something held, so they only got part of your stock.',
+      REPELLED: 'Your defence held. They got through nothing, and took nothing.',
+    },
+  },
+
+  /** Everything a battle did beyond the loot line, each said only when true. */
+  effects: {
+    heading: 'What it did',
+    shieldTheirs: 'Their shield soaked {{amount}} damage before anything reached a hull.',
+    shieldYours: 'Your shield soaked {{amount}} damage before anything reached a hull.',
+    cargoLimited:
+      'Your holds were full. There was more on that world than you had the cargo to carry — bring Haulers.',
+    salvaged_one: '{{count}} ground gun was rebuilt from its own wreckage and is standing again.',
+    salvaged_other: '{{count}} ground guns were rebuilt from their own wreckage and are standing again.',
+    worksTheirs: 'Their works are offline for {{duration}}. Nothing is being produced there.',
+    worksYours: 'Your works were knocked offline for {{duration}}.',
+    wreck: '{{amount}} in wreckage is drifting over {{planet}}. Anyone can go and take it.',
+    /** The same field, read from the world it is drifting over. */
+    wreckYours: '{{amount}} in wreckage is drifting in your own orbit. Anyone can go and take it — including you.',
+  },
+
+  /** The caller's own board: what went in, what died, what was standing after. */
+  force: {
+    hull: 'Hull',
+    /** The attacker chose to send it; the defender simply had it there. */
+    sent: 'Sent',
+    held: 'Had',
+    lost: 'Lost',
+    left: 'Left',
+    summary: '{{brought}} into the fight · {{lost}} destroyed · {{left}} standing',
+  },
+  /** Whose casualties. Both sides fly Wasps, so colour alone cannot say it. */
+  roundTheirs: 'Them',
+  roundYours: 'You',
+  roundNoLosses: 'Nothing came off the board this round.',
 } as const;
 
 /** One telescope reading, rendered as certainty. */

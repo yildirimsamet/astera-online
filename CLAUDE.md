@@ -163,12 +163,16 @@ Each was paid for in iteration. `docs/decisions.md` holds the evidence.
 | **Everything is built in one of two queues, three orders deep** | CONSTRUCTION takes buildings, instruments, satellites and research; YARD takes hulls. Cost is committed at order, cancel returns half, a system fault returns all. Gates read the projected state of the SAME queue only — the two run in parallel, so neither is ahead of the other (D4) |
 | A ground gun finishes inside the narrowest radar warning it sells | That is the surviving half of the old instant-construction rule: 45 s against 2.0 min. Break it and the radar stops selling the window to arm |
 | A planet owns at most two Prospectors, counted wherever they are | Otherwise mining scales with wealth instead of with the which-rock-and-when decision |
+| **A flight is distance and speed, and nothing is added to it** | Three launch-overhead constants and three travel functions existed to charge a flat minute per leg. It read as 8% of a raid — invisible — and as 86% of a probe, where three speed increases in a row could not touch it because no speed divides a constant. The mining lead it was defending survived without it: the rock moves for the whole flight, which is what makes interception a solve. `travelExact` is the one model and `TRAVEL.distanceFactor` is the one dial (D121) |
 | Mined ore lands in the WORKS, never in storage | Risk-free banked income decoupled from war is what emptied OGame's PvP |
-| A Prospector outruns the rocks it hunts, and has its own launch overhead | It has to aim ahead of a moving target, so its speed is tied to the asteroid band and not to warship speed. The overhead is a RATIO of `TRAVEL.baseMinutes` (under a quarter) and moves with it |
+| A Prospector outruns the rocks it hunts | It has to aim ahead of a moving target, so its speed is tied to the asteroid band and not to warship speed. It no longer has a launch overhead of its own — nothing does (D121) — and the lead survived it, because the rock moves for the whole flight and not just the launch |
 | A flight bay is counted under the planet row lock | Check-then-act outside the lock lets two racing launches see the same free bay |
 | An outbound leg belongs to its origin; a return leg to its target | Return legs are stored with the two SWAPPED |
 | Every notification is idempotent by `(player_id, kind, ref_id)` | A worker killed between COMMIT and `complete()` has its event redelivered |
 | **A shard broadcast fires exactly when the public payload it points at has changed** | It carries a shard id and a kind and nothing else, so it can only ever say "go and read what you were already entitled to". Publish on anything else and it becomes a timing signal for a fact the fog hides — which is why a Core crossing a tier publishes and a Refinery does not, and why `raiseInstrument` never does (D53) |
+| **A caretaker world has nobody to tell, and that is not a reason to tell nobody** | `resolveNeutralBattle` wrote a battle report and sent no notification, so with 51 neutral worlds on the disc and the whole colonisation path running through raiding them, most of the early game resolved with no badge, no row in Signals and no way in to the report. It sends the raider the same `raid_result` a PvP raid does (D121a) |
+| **A battle report says WHICH of your worlds it was** | With one world per commander it was implicit; D97 gave them up to four and "Raided by Sable" stopped naming the world that was hit — the most actionable fact there is, missing from the record of it. The defender's is the target; the attacker's is the mission origin, which is why the launch rows are read (D121a) |
+| **A report names the world that was FOUGHT OVER, never the owner's capital** | The opponent lookup joins on `kind = 'CAPITAL'` because that is how a commander is identified — right for the defender's copy, wrong for the attacker's since D97: raid a colony and the report said their capital did not hold. `opponentPlanetId` is also what the dossier matches on, so a fleet killed at a colony was filed as a floor on the capital (D121a) |
 | A raid tells BOTH sides, even when nothing comes back | An annihilated fleet used to produce no notification at all |
 | **A clan is five seats, one galaxy, one season — and it cannot become a second game** | Friendly fire, a 24-hour ceasefire on separation, a receiver-bounded aid convoy, a tenth of docked raid loot as personal shares, and a score that is an audit of its members' PvP. No treasury, no buffs, no levels, no diplomacy (D114) |
 | **A record of what happened is written from an IMMUTABLE snapshot, never from a live quota** | `attack_commitments.quota_clan_id` is rebound for twelve hours after launch so pre-attacking and then joining cannot reset a clan's ceiling — that is the point of it. A battle report reading the same column grew a clan tag on a raid that had already resolved. `attacker_clan_id` and `defender_clan_id` are the two columns a report may read, and nothing writes them twice (D114) |
@@ -215,7 +219,7 @@ Each was paid for in iteration. `docs/decisions.md` holds the evidence.
 | **Everything that moves reads `serverNow()`, never `Date.now()`** | The disc is drawn by comparing server timestamps against "now". A drifted phone drew every fleet at the wrong point of its leg, silently, and differently from everyone else's (D52) |
 | `traffic`, `mining`, `pending` and `galaxy` need a timer as well as events | The stream fires only for what happens TO YOU — and a neighbour's world growing, re-arming or letting its fleet out is never about you (D51) |
 | **`season` is the one read where the TIMER IS THE MECHANISM** | Presence has no moment to broadcast: `lastActiveAt` is stamped at most once a minute and `online` is a five-minute trailing window, so the figure DRIFTS rather than changing. A `staleTime` with no `refetchInterval` is not a refetch — the population in the corner of the disc was read once on mount and frozen for the life of the tab (D104) |
-| **Nothing is ever drawn inside a world, whoever owns it** | A leg stands off at BOTH ends (D44/D51); a contact has no destination to stand off from, so `clearOfWorlds` puts it on the surface instead |
+| **A craft clears the worlds its leg actually owns without ever pausing** | Surface/orbit clearance is baked into BOTH endpoints before interpolation; no per-frame world clamp may flatten motion or bend a leg around an unrelated map marker (D120) |
 | **A world's atmosphere limb stays inside the selection ring** | Every world has a limb and exactly one has a ring. A limb that reached as far would make the marker read against a bright band instead of against space (D53a) |
 | **A failed read is never drawn as a slow one** | `isPending` goes false on error while `data` stays undefined, so `isPending \|\| !data` pulses forever at a request that gave up — and on the reports list it announced an empty season (D53a) |
 | The cover comes off when the disc is BUILT, not when the bytes land | Models still have to parse, compile and upload; `FirstFrame` reports the first real frame |
@@ -223,7 +227,8 @@ Each was paid for in iteration. `docs/decisions.md` holds the evidence.
 | Every card carries a two-or-three-word tag, separate from its role sentence | The role argues a decision; the tag answers "what IS this" for someone scanning fourteen cards |
 | **Background audio is a lifecycle problem, not a playback one** | Autoplay is refused on every cold tab; `pause()` rejects a pending `play()` with `AbortError`; and a teardown that only pauses leaves the media fetch and the decoder alive, which StrictMode's double mount turns into two tracks at once (D66) |
 | **A control names the surface it opens** | A permanent way in is not enough. The commander sheet — the account, the galaxy, sign-out — hung off a header button that said SEASON and drew a duration, so it read as a clock and produced "there is no logout button" (D54) |
-| **The galactic plane carries no lines** | The graph-paper quality came from strokes being strokes, not from their brightness — modulating them changed nothing and cost a pass to find out (D53b) |
+| **Galactic scenery carries no lines; ownership is the one semantic exception** | The graph-paper quality came from strokes being strokes, not from their brightness (D53b). D122 adds only faint curved white ownership filaments above that painted plane: always for your worlds, temporarily for the commander of a selected foreign world. Telescope watches draw no tether. |
+| **A squadron's tap target grows with its drawn formation, but never covers all of it** | A fixed sphere made a 500-ship fleet selectable only at its lead craft. The radius now grows sublinearly with marker count, preserving a forgiving centre without turning the whole formation into an invisible wall (D122). |
 | **No user-facing string is written in a component** | Every one lives in `apps/web/src/i18n/locales/`, one section per surface, and NOTHING is shared between surfaces — two controls that read the same today are two controls (D55) |
 | **The Turkish is written in Turkish, not converted from the English** | Finish the sentence, verb over nominalisation, semicolon instead of the English dash, and the phrase that does the same job rather than the dictionary equivalent. The rules are at the top of `locales/tr/entry.ts`; the first attempt ignored them and read like a book translation |
 | A refusal travels as a CODE plus its figures, never as a finished sentence | "All 4 flight bays are in use" cannot be translated after the fact. `GameError` carries `params`; named things travel as IDs and are resolved on the client (D55) |
@@ -395,21 +400,22 @@ end of waiting (D51–D53); the name, the identity and the way out (D54); Turkis
 on one origin, with the ceilings that a public door needs (D57); the reward panel and the one
 menu that holds it (D64–D67); the returning door, the camera that stops moving on its
 own, and seats that come back (D68–D71); one craft, one marker — the real-time
-movement pass (D72); and the interface system made real and mechanically enforced (D109) —
+movement pass (D72); the interface system made real and mechanically enforced (D109) —
 one type ladder, one card word, one control per idea, with `text-[`, `tracking-[` and
-`rounded-[` refused by the linter.
+`rounded-[` refused by the linter; and the pass that made a battle report explain itself, gave
+every notification a door, and deleted the launch overhead from every flight in the game (D121).
 
 ```
-0 type errors · 0 lint errors · 2,264 of 2,265 tests
-rules 332 · server 717 · web 1,149 · sim 66 of 67
+0 type errors · 0 lint errors · 2,382 tests
+rules 338 · server 748 · web 1,229 · sim 67
 ```
 
-**`pnpm verify` is RED on one simulator assertion, deliberately (D112).** `pnpm -r test`
-stops at the first failing package, so that one failure also stops the server and web
-suites from running under it — run `pnpm typecheck && pnpm lint` and then each package's
-own `test`. The assertion rides on a single coincidence: on unmodified master exactly one
-bot in 750 bot-seasons researches Gravitic Charges, and only on seed 99. D112 records the
-measurement and what leaving it red costs.
+**`pnpm verify` is GREEN again as of D121, and nobody edited the assertion to make it so.**
+D112 had left one simulator assertion deliberately red, riding on a coincidence: exactly one
+bot in 750 bot-seasons researched Gravitic Charges, and only on seed 99. D121 removed the
+launch overhead from every flight in the game, which moved that bot's season, and the
+assertion passes on its own terms. It was measured red before the change and green after —
+if it goes red again, that is the same coincidence and D112 still records what it costs.
 
 **The season gate is GREEN on all five seeds, with the bands unchanged.** `ARR` was the last
 metric to come in and no constant moved it — five were tried. What moved it was modelling the
@@ -474,8 +480,6 @@ has walked it who did not build it.
 ## Known issues
 
 - `request_log` exists but idempotency keys are not wired into the launch or order path.
-- Mining and salvage launches still cost two round trips. Every other mutation answers with the
-  planet view (D53); making these one means returning `mining` and `pending` as well.
 - `PROVISIONAL` constants: vault floor, disruption duration, shield curve, season length,
   asteroid parameters. Settled by playtest, not by argument. Marked in `constants.ts`.
 - `build_orders_slot_check` hard-codes `BETWEEN 0 AND 2` in SQL while `BUILD.queueDepth` lives

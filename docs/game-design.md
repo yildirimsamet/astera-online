@@ -43,6 +43,12 @@ economy. Ordinary raids are structurally non-destructive; only a Death Star can 
 specific permanent level loss in D97/D98. A capital may be devastated but never captured;
 colonies and neutral worlds may also transfer control on a qualifying second impact.
 
+Ownership is public spatial structure as well as a label (D122). The galaxy always joins the
+caller's capital and colonies with faint white filaments. Focusing another commander's
+non-neutral world temporarily joins every world that commander controls, so a scattered domain
+can be read without hunting through the disc. This reveals no fact beyond the public controller
+identity already carried by each world, and a neutral focus produces no topology.
+
 Raids take shields, satellites, units, stock and *production time*. They never touch
 buildings. This is the mechanical guarantee behind ownership: **you can be robbed and set
 back; you cannot be un-made.**
@@ -272,6 +278,20 @@ expensive one says 61,000. Those are genuinely different decisions. Floors and c
 guarantee that no investment buys perfect invisibility or perfect omniscience — **the fog
 never fully lifts.**
 
+**A probe is fast, and the rationing is a stated rule rather than a wait (D121).** The speed
+is ×18 what it was and it pays no launch overhead, so a look at the neighbourhood costs about
+twenty seconds and the widest crossing of the disc about eighty. What stops a commander reading one world over and over is
+the flight bay every craft competes for, and **one look per world per hour, per commander** —
+counted from the LAUNCH, so the hour is the same hour for a neighbour and for the far rim, and
+held across every world one commander controls rather than sold once per colony. A flight the
+server itself abandons never charges the hour.
+
+Distance still decides what a look costs — 22× between the closest legal pair and the widest
+crossing, which is a WIDER spread than the probe has ever had. The fixed launch charge was
+what had been flattening it: a term no speed can divide grows as a share of the flight every
+time the speed goes up. Removing it made the probe both faster and more distance-sensitive at
+once.
+
 ### Radar
 
 | Level | Detects | Message |
@@ -337,8 +357,16 @@ The season seed rotates and perturbs those patterns, but may never leave a broad
 tier into one visible clump.
 
 ```
-travelExact = 1 + (distance / slowestShipSpeed) × 1.2
+travelExact = (distance / slowestShipSpeed) × 1.2
 ```
+
+**Distance and speed, and nothing else (D121).** There used to be a flat launch overhead added
+to the front of every leg — a minute for warships, a smaller figure for drills, and a third one
+about to be added for probes, each with its own travel function. It read as 8% of a raid, which
+is to say it read as nothing, and as 86% of a probe, where three speed increases in a row could
+not touch it because no speed divides a constant. The mining lead it was defending survived
+without it: a rock moves for the whole flight, which is what makes interception a solve rather
+than a straight line. One model, one dial.
 
 The mission lands at that continuous instant. A whole-minute ETA is a display
 quote rounded at the edge, never the time stored on the mission (D83).
@@ -434,11 +462,21 @@ recorded Dominion; only battles resolved afterwards use the bounded transfer.
 
 ## What the game tells you
 
-**Seven notifications, and the list is closed:** `incoming fleet` · `raided` · `raid result` ·
-`fleet returned` · `scan detected` · `probe report` · `unlock`.
+**Thirteen notifications, and the list is closed.** Seven from the single-world game —
+`incoming fleet` · `raided` · `raid result` · `fleet returned` · `scan detected` ·
+`probe report` · `unlock` — and six D97 added with colonies and the Death Star:
+`strategic incoming` · `death star result` · `colony captured` · `colony lost` ·
+`settlement success` · `settlement lost`.
 
 The test for admitting one: **it reports something that happened TO YOU, that you could not
 have predicted, and that you can act on.** Nothing else passes it.
+
+**And every one of them is a door (D121).** A notification names the surface that deals with
+it, and where that surface holds more than one list it names the list too — "you were raided"
+opens the Intel centre ON the battle reports, not beside them. A kind with no destination is
+silent by construction: the row renders and the tap does nothing, which is how five of the six
+D97 kinds shipped. The list above is asserted against the server's own enum, and the client's
+routing table is asserted against the same list.
 
 Explicitly excluded, permanently: "your storage is full", "we miss you", daily login bonuses,
 streak warnings. Every one is a dark pattern. A full works is a STATUS — true until you act on

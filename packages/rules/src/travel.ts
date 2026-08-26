@@ -6,22 +6,26 @@ export const distance = (a: Vec3, b: Vec3): number =>
   Math.hypot(a.x - b.x, a.y - b.y, a.z - b.z);
 
 /**
- * One-way flight time, unrounded.
+ * One-way flight time, unrounded. Distance and speed, and nothing else.
  *
- * THE ONE MODEL OF HOW LONG A TRIP TAKES. Everything that flies reads it, and
- * anything that needs a whole number rounds it at the edge rather than keeping its
- * own copy of the arithmetic.
+ * THE ONE MODEL OF HOW LONG A TRIP TAKES, and since D121 that is literally true:
+ * a warship, a drill and a probe all read THIS. There used to be three functions
+ * and three launch-overhead constants, and the only rule holding them together was
+ * "do not let a craft read the wrong one" (D48) — a hazard that existed solely to
+ * serve a flat charge nobody could feel. `TRAVEL` explains what it was for and why
+ * neither reason survived.
  *
- * That split is not tidiness. An interception has to solve "when does a craft
- * leaving now reach a rock that is also moving", and the answer is a continuous
- * moment — it lands mid-minute far more often than not. A solver working in whole
- * minutes and a flight animated to the exact meeting are two different journeys,
- * and the gap between them showed up as a craft reaching the intercept point ahead
- * of the rock it was supposed to be meeting there.
+ * ANYTHING NEEDING A WHOLE NUMBER ROUNDS AT THE EDGE rather than keeping its own
+ * copy of the arithmetic. That split is not tidiness. An interception has to solve
+ * "when does a craft leaving now reach a rock that is also moving", and the answer
+ * is a continuous moment — it lands mid-minute far more often than not. A solver
+ * working in whole minutes and a flight animated to the exact meeting are two
+ * different journeys, and the gap showed up as a craft reaching the intercept
+ * point ahead of the rock it was supposed to be meeting there.
  */
 export function travelExact(dist: number, speed: number): number {
   if (speed <= 0) return Infinity;
-  return TRAVEL.baseMinutes + (dist / speed) * TRAVEL.distanceFactor;
+  return (dist / speed) * TRAVEL.distanceFactor;
 }
 
 /**
@@ -44,8 +48,9 @@ export function travelMinutes(dist: number, speed: number): number {
  *
  * `boost` is the BEACON's doing (D25) and defaults to 1, so every existing caller
  * reads the same number it always did. It multiplies SPEED rather than dividing
- * time, because that is what a navigation beacon does to a ship — and because
- * dividing the minutes would compound oddly against the launch overhead.
+ * time, because that is what a navigation beacon does to a ship. With D121's
+ * launch overhead gone the two are now arithmetically identical, and it stays this
+ * way round because it is the honest description of what a beacon does.
  */
 export const fleetTravelExact = (dist: number, fleet: Fleet, boost = 1): number =>
   travelExact(dist, fleetSpeed(fleet) * boost);

@@ -524,6 +524,7 @@ describe('every payload the client parses', () => {
    * field quietly come back as required.
    */
   it('POST /api/mining/launch parses', async () => {
+    const [mine] = f.planetIds as [string];
     const field = miningSchema.parse(await get('/api/mining'));
     // Not every rock in the disc can still be reached; take the first that can.
     let launched: unknown = null;
@@ -545,6 +546,15 @@ describe('every payload the client parses', () => {
     expect(parsed.asteroidIndex).toBeTypeOf('number');
     expect(parsed.capacity).toBeGreaterThan(0);
     expect(parsed.intercept).toBeDefined();
+    expect(parsed.planet.planet.id).toBe(mine);
+    expect(parsed.mining.runs.some((run) => run.id === parsed.runId)).toBe(true);
+    // These are not hand-built launch fragments: each equals the GET surface it
+    // replaces, while the transaction still guarantees the new run was included.
+    expect(parsed.mining).toEqual(miningStatusSchema.parse(await get('/api/mining/status')));
+    expect(parsed.planet).toEqual(planetSchema.parse(await get('/api/planet')));
+    expect(parsed.pending).toEqual(
+      pendingSchema.parse(await get('/api/session/pending')).pending,
+    );
   });
 
   it('POST /api/mining/harvest parses, and carries no asteroid index', async () => {
@@ -566,6 +576,12 @@ describe('every payload the client parses', () => {
     expect(parsed.asteroidIndex).toBeUndefined();
     expect(parsed.runId).toBeTruthy();
     expect(parsed.capacity).toBeGreaterThan(0);
+    expect(parsed.mining.runs.some((run) => run.id === parsed.runId)).toBe(true);
+    expect(parsed.mining).toEqual(miningStatusSchema.parse(await get('/api/mining/status')));
+    expect(parsed.planet).toEqual(planetSchema.parse(await get('/api/planet')));
+    expect(parsed.pending).toEqual(
+      pendingSchema.parse(await get('/api/session/pending')).pending,
+    );
   });
 
   /**

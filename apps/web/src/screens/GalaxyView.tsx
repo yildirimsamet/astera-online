@@ -92,9 +92,20 @@ const ClanScreen = lazy(async () => {
 
 export type Panel = 'planet' | 'intel' | 'leaderboard' | 'clan' | 'chat' | 'chronicle' | 'rewards' | 'recap' | 'menu' | null;
 
+/**
+ * WHICH SHELF INSIDE A PANEL, WHEN THE PANEL ALONE IS NOT AN ANSWER. D121.
+ *
+ * A panel is a place; the Intel centre holds two lists in it, and "a battle
+ * report arrived" pointed at the place and dropped the reader on the other one.
+ * Only `intel` has shelves today, so this is deliberately its two tabs and not a
+ * general routing scheme nobody has asked for.
+ */
+export type PanelStop = 'probes' | 'battles';
+
 export function GalaxyView({
   panel,
   onPanel,
+  panelStop,
   focusRequest,
   craftFocusRequest,
   commander,
@@ -112,6 +123,12 @@ export function GalaxyView({
   /** Opened from the header, which is the only chrome left outside the canvas. */
   panel: Panel;
   onPanel: (panel: Panel) => void;
+  /**
+   * Which shelf the panel should open on, with a counter so the same one twice
+   * still lands — a second battle notification must not be swallowed because the
+   * Intel centre is already showing battles and the reader has since moved off it.
+   */
+  panelStop?: { stop: PanelStop; request: number } | null;
   /** A route from an already-revealed identity back to its world. */
   focusRequest?: { planetId: string; request: number } | null;
   /** A route from the permanent in-flight sheet to a craft already on the disc. */
@@ -373,20 +390,11 @@ export function GalaxyView({
   }, [craftFocusRequest, runs, threads]);
 
   /**
-   * EVERY PROP THE DISC TAKES IS STABLE, AND TWO OF THEM WERE NOT. D53.
+   * EVERY PROP THE DISC TAKES IS STABLE. D53.
    *
    * This component holds a clock, so it re-renders on a timer whether or not
    * anything about the galaxy has changed. That is meant to be free — React
    * reconciles, nothing below it sees a changed prop, nothing is rebuilt.
-   *
-   * It was not free for these two. `watching` was built with `.map` in the JSX, so
-   * it was a NEW ARRAY on every render even when the same worlds were being
-   * watched — and it is a dependency of the memo that resolves those worlds to
-   * positions, which is in turn the dependency of the memo that builds the watch
-   * beams' `BufferGeometry`. A player with telescopes pointed was allocating and
-   * uploading a fresh line buffer to the GPU every time this clock ticked, for a
-   * set of beams that had not moved. The callbacks are the same story one level up:
-   * a new function identity re-runs anything below that depends on it.
    *
    * `contacts` is memoised for the same reason rather than because it churns —
    * React Query's structural sharing keeps it stable while the payload is
@@ -394,10 +402,6 @@ export function GalaxyView({
    * before the first fetch was a fresh array each time.
    */
   const contacts = useMemo(() => traffic.data?.contacts ?? [], [traffic.data]);
-  const watching = useMemo(
-    () => (intel.data?.watching ?? []).map((w) => w.targetPlanetId),
-    [intel.data],
-  );
   const onReady = useCallback(() => {
     setDrawn(true);
   }, []);
@@ -541,7 +545,6 @@ export function GalaxyView({
         planets={planets}
         pending={threads}
         contacts={contacts}
-        watching={watching}
         asteroids={asteroids}
         runs={runs}
 
@@ -1020,6 +1023,7 @@ export function GalaxyView({
           }}
         >
           <IntelScreen
+            {...(panelStop ? { open: panelStop } : {})}
             onOpenOrbit={() => {
               setRequestedPlanetGroup('orbit');
               onPanel('planet');

@@ -972,6 +972,16 @@ export const intelSchema = z.object({
       detected: z.boolean(),
     }),
   ),
+  /**
+   * Worlds this commander may not probe again yet, with the instant each reopens.
+   *
+   * Only worlds still inside the window are listed, so an absent entry means the
+   * control is free. `.default([])` keeps a client one deploy ahead of its server
+   * from failing the whole intel read over a field that is not there yet.
+   */
+  probeCooldowns: z
+    .array(z.object({ targetPlanetId: z.string(), readyAt: z.coerce.date() }))
+    .default([]),
   probeCost: resources,
 });
 
@@ -1113,9 +1123,13 @@ export const unlocksSchema = z.object({ unlocked: z.array(unlockable) });
 /**
  * A battle report: ground truth about what was BROUGHT, never about what remains.
  *
- * Both participants get the same facts because both were there. Survivors are not
- * in the payload at all — a report tells you what someone fielded, not what they
- * kept.
+ * Both participants get the same facts because both were there. The OPPONENT's
+ * survivors are not in the payload at all — a report tells you what someone
+ * fielded, not what they kept.
+ *
+ * `yourFleet` is the one roster in here and it is the CALLER's: their own board
+ * when the shooting started, which is what gives their own losses a denominator.
+ * The server decides which row that comes from; nothing on this side chooses.
  */
 export const reportsSchema = z.object({
   reports: z.array(
@@ -1138,13 +1152,29 @@ export const reportsSchema = z.object({
       opponentName: z.string(),
       opponentPlanet: z.string(),
       opponentPlanetId: z.string().nullable(),
+      /** The other side was an unclaimed world, so there is no commander to name. */
+      neutral: z.boolean().default(false),
+      /** The caller's own world in this battle: launched from, or hit. D121a. */
+      yourPlanet: z.string().default(''),
       yourLosses: fleet,
       theirLosses: fleet,
+      /** The caller's own board at contact. Empty on reports written before D121. */
+      yourFleet: fleet.default({}),
       lootAlloy: z.number(),
       lootCrystal: z.number(),
       lootDeuterium: z.number(),
       /** Null on reports written before the swing was recorded. */
       dominion: z.number().nullable(),
+      /** What the defender's Aegis soaked before anything reached a hull. */
+      shieldAbsorbed: z.number().default(0),
+      /** Attacker only: the holds were full, so stock was left on the ground. */
+      cargoLimited: z.boolean().default(false),
+      /** Defender only: ground guns that walked back out of their own wreckage. */
+      defenceSalvage: fleet.default({}),
+      /** Minutes the defender's works were knocked offline by this battle. */
+      disruptedMinutes: z.number().default(0),
+      /** What the fight left in orbit for whoever gets there first. */
+      wreckValue: z.number().default(0),
       /** Launch-time clan identities; they do not rewrite when somebody later leaves. */
       attackerClan: z.object({ id: z.string(), name: z.string(), tag: z.string() }).nullable().optional(),
       defenderClan: z.object({ id: z.string(), name: z.string(), tag: z.string() }).nullable().optional(),
@@ -1288,7 +1318,7 @@ export const miningStatusSchema = miningSchema
     isotopes: z.array(z.object({ index: z.number(), deuteriumShare: z.number() })),
   });
 
-export const miningLaunchSchema = z.object({
+const miningLaunchBaseSchema = z.object({
   runId: z.string(),
   /**
    * ABSENT ON A HARVEST. D32.
@@ -1303,6 +1333,20 @@ export const miningLaunchSchema = z.object({
   flightMinutes: z.number(),
   intercept: vec3,
   capacity: z.number(),
+});
+
+/**
+ * A MINING OR SALVAGE LAUNCH CLOSES EVERY READ IT MOVES. D120.
+ *
+ * The run used to appear only after `/api/mining/status` returned, while the
+ * departed craft and occupied bay needed `/api/planet` and older pending reads
+ * could still land afterwards. All three authoritative views now come from the
+ * launch transaction, so one POST response is enough to draw the craft.
+ */
+export const miningLaunchSchema = miningLaunchBaseSchema.extend({
+  mining: miningStatusSchema,
+  pending: z.array(pendingThread),
+  ...withPlanet,
 });
 
 const vec = z.object({ x: z.number(), y: z.number(), z: z.number() });
@@ -1551,6 +1595,7 @@ export type ReturnEntry = ReturnPayload['entries'][number];
 export type PendingThread = z.infer<typeof pendingThread>;
 export type Unlockable = z.infer<typeof unlockable>;
 export type LaunchResult = z.infer<typeof launchSchema>;
+export type MiningLaunchResult = z.infer<typeof miningLaunchSchema>;
 export type MiningView = z.infer<typeof miningSchema>;
 export type MiningFieldView = z.infer<typeof miningFieldSchema>;
 export type MiningStatusView = z.infer<typeof miningStatusSchema>;

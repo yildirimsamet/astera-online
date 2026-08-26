@@ -151,6 +151,11 @@ export const focus = {
     watching: 'Watching {{target}}',
     sendProbe: 'Send a probe · {{alloy}} alloy · {{crystal}} crystal',
     probeAway: 'Probe away · reports back in {{duration}}',
+    /*
+      ONE LOOK PER WORLD PER HOUR (D121). The control says which world is closed
+      and for how long, rather than letting the player spend the tap to find out.
+    */
+    probeCooling: 'You just looked here · another probe in {{duration}}',
     markRival: 'Mark rival',
     rivalMarkedAction: 'Rival',
     rivalCommittedAction: 'Rival fixed',
