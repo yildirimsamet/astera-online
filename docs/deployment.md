@@ -15,6 +15,10 @@ and the rollback boundary. It is deliberately not a release history.
 > forced it — the world is live and real people are in it. The rolling path still costs at most
 > one failed request per replica; step 7 says why, and why it is not retried away.
 
+> **AND A STOP IS NOT THE OPERATOR'S DECISION TO TAKE.** When step 6 finds a genuine stop
+> condition, the deploy pauses there and the owner is asked, with the count of commanders
+> mid-session in front of them, BEFORE anything is stopped or migrated. Rule 12.
+
 ## Current production contract
 
 ```
@@ -80,11 +84,14 @@ These are stop conditions, not suggestions.
    no DDL never rolls the database back — it rolls the IMAGE and the WEBROOT back, and both are
    retained by rule 10. Rehearse the restore anyway (step 5): it is what proves the dump is
    complete and the data shape is valid.
-5. **No process spans a migration.** Stop old APIs and especially the old worker before applying
-   DDL. An old worker can consume a newly backfilled event kind as unknown and complete it before
-   the new worker sees it. This is the rule that most often forces a stop — and it does not
-   apply at all to a release with no pending migration, which step 5 measures rather than
-   assumes.
+5. **No process spans a migration it cannot survive.** An old worker can consume a newly
+   backfilled event kind as unknown and complete it before the new worker sees it; an old
+   replica can query a column a contraction has removed. That is what forces a stop — **not the
+   mere existence of a migration.** Most DDL is EXPAND-ONLY (new tables, nullable columns,
+   added enum values, dropped constraints, new indexes) and old code runs against it untouched,
+   which is why `pendingMigrations` clamps at zero and an old image boots cleanly against a
+   database AHEAD of its journal. Which kind this release is, is measured in step 5b against a
+   restored copy — never assumed from the migration count in either direction.
 6. **Migrate with the image that will run.** Migrations are an explicit one-off command, never an
    application startup side effect and never N replicas racing the same DDL.
 7. **API before web, and never a mixed web artifact.** Validate the three APIs and singleton
@@ -103,6 +110,13 @@ These are stop conditions, not suggestions.
     bundle alive across a deploy. Do not remove or rename an API route that bundle calls in the
     same release unless the server keeps a compatibility alias or the client has a tested
     version-mismatch reload path. A successful cold-browser smoke does not cover this case.
+12. **Taking the world down requires the owner to say so, in advance.** If step 6 finds a real
+    stop condition, the deploy STOPS THERE. Report which condition it is, how it was measured,
+    and how many commanders are mid-session — that number is what the stop costs — and wait for
+    an explicit decision before stopping Nginx, stopping any application role, or applying DDL
+    to production. "The runbook said to" is not consent, and neither is an instruction to
+    deploy: an operator told to ship has been told the destination, not the price. The rolling
+    path needs no such approval, because it takes nothing away from anyone.
 
 ### Why `deploy/deploy.sh` is not the production path yet
 
@@ -294,12 +308,53 @@ POSTGRES_DB="$restore_db" "${compose[@]}" run --rm --no-deps api1 \
 
 docker exec astera-postgres-prod psql -v ON_ERROR_STOP=1 -U astera -d "$restore_db" -c \
   'select count(*) as applied_migrations from drizzle.__drizzle_migrations;'
-docker exec astera-postgres-prod dropdb -U astera --force "$restore_db"
 ```
 
 This proves three different things: the dump is complete enough to restore, the old data shape is
 valid, and the intended image can perform every pending migration. None can substitute for the
 others.
+
+#### 5b. Prove the OLD image survives the NEW schema — the measurement rule 5 needs
+
+Keep the restored, now-migrated database and point the RETAINED image at it. **The schema guard
+is one-way** — a new image refuses a database behind its journal, but nothing refuses an old image
+a database ahead of it, and `pendingMigrations` clamps at zero precisely so an old replica keeps
+booting. That clamp is what makes a rolling migration legal, and it is also what makes this test
+the only evidence that the release is expand-only.
+
+```bash
+probe='astera-oldimage-probe'
+net="$(docker inspect astera-api1-prod \
+  --format '{{range $k,$v := .NetworkSettings.Networks}}{{$k}}{{end}}')"
+pgpw="$(sed -n 's/^POSTGRES_PASSWORD=//p' .env | tail -n 1)"
+
+docker rm -f "$probe" 2>/dev/null || true
+docker run -d --rm --name "$probe" --network "$net" -p 127.0.0.1:3399:3399 \
+  -e "DATABASE_URL=postgres://astera:$pgpw@astera-postgres-prod:5432/$restore_db" \
+  -e "JWT_SECRET=$(sed -n 's/^JWT_SECRET=//p' .env | tail -n 1)" \
+  -e ROLE=api -e PORT=3399 \
+  "astera-server:rollback-$previous_commit"
+
+probe_health=''
+for attempt in $(seq 1 60); do
+  probe_health="$(curl -sS http://127.0.0.1:3399/health || true)"
+  jq -e '.ok == true' <<< "$probe_health" >/dev/null 2>&1 && break
+  sleep 1
+done
+jq -e '.ok == true' <<< "$probe_health" >/dev/null
+docker logs "$probe" 2>&1 | rg -i 'error|migration|behind' || true
+curl -sS -o /dev/null -w 'preview: %{http_code}\n' http://127.0.0.1:3399/api/preview
+docker stop "$probe"
+docker exec astera-postgres-prod dropdb -U astera --force "$restore_db"
+```
+
+Required: `.ok == true`, no migration complaint in the log, and `/api/preview` ANSWERS rather than
+5xx — a 409 `NO_FRONTIER` on a restored copy with no open galaxy is a valid answer. Read the log
+even when health is green: a boot that survived and a boot that was clean are different facts.
+
+**If this passes, the DDL is expand-only and step 6's first row is false.** If it fails, old and
+new code cannot both be live, the release forces a stop, and rule 12 applies before anything else
+happens.
 
 ### 6. Decide whether this release needs a stop
 
@@ -308,13 +363,24 @@ forced only if one of these is true:**
 
 | Forces a stop | How to check it, not guess it |
 | --- | --- |
-| The release applies DDL | Step 5 ran `migrate` against the restored production shape with the NEW image. If the applied-migration count did not move, there is no DDL |
-| Old and new server code cannot both be live | A removed or reshaped API route, a changed event `kind`, a payload an old replica would reject. `git diff --stat "$previous_commit..$release_sha" -- apps/server packages/rules` is empty on a client-only release |
-| The worker must not process events under old code | Follows from DDL or a new event kind; nothing else |
+| The release applies DDL **that old code cannot survive** | TWO measurements, not one. Step 5 ran `migrate` against the restored shape with the NEW image: if the applied count did not move there is no DDL at all. If it moved, step 5b booted the OLD image against that migrated database and required `.ok == true`. Expand-only DDL passes and **does not force a stop**; a contraction — a dropped or renamed column, a narrowed type, a `NOT NULL` on something old code still writes empty — fails it and does |
+| Old and new server code cannot both be live | A removed or reshaped API route, a changed event `kind`, a payload an old replica would reject. `git diff "$previous_commit..$release_sha" -- apps/server/src/routes \| rg '^-\s+app\.(get\|post\|put\|delete\|patch)'` finds a removed route; `git diff` on the `event_kind` enum finds a kind an old worker would meet as unknown. A NEW enum value that no live season can produce yet is not this |
+| The worker must not process events under old code | Follows from a failed 5b or a new event `kind`; nothing else. A new `mission_kind` an old worker can never encounter — because the feature that creates it is gated off in every live season — is not this either |
 | A data repair, backfill or season operation is part of the release | Rule 9 keeps season transitions out of a deploy; a repair is an owner operation with its own plan |
 
-If none is true, take **the rolling path (step 7)** and skip step 8. If any is true, take **the
-quiesced path (step 8)** and skip step 7. Both converge on step 9.
+Two failure modes, and they are not symmetric. Reading "there is a migration, therefore stop" costs
+real people their session for nothing. Reading "it will probably be fine" corrupts a live world.
+5b is what turns both guesses into a measurement, and it costs one container and about a minute.
+
+**If none is true, take the rolling path (step 7)** and skip step 8. It needs no approval: it takes
+nothing away from anyone.
+
+**If any is true, STOP AND ASK — RULE 12.** Do not continue into step 8 on an instruction to
+deploy. Report, in one message: which row is true, the measurement that made it true, the
+active-commander count from the snapshot below, and what the release actually delivers to those
+players today. A feature gated behind a season boundary they will not reach for days is a very
+different trade from a fix they are waiting on, and the person who owns the world is the one who
+weighs it. Both paths converge on step 9.
 
 Record what is live either way; the same snapshot is the after-comparison on both paths:
 
@@ -625,8 +691,16 @@ SELECT sh.ordinal,
  ORDER BY sh.ordinal;
 ```
 
-Required: exactly two rows, ordinals 1 and 2; `player_cap=300`; `ruleset_version=2`; and on each
-row `neutrals=51`, `tier1=30`, `tier2=15`, `tier3=6`. Capital count is the current real population,
+Required: exactly two rows, ordinals 1 and 2; `player_cap=300`; and on each row `neutrals=51`,
+`tier1=30`, `tier2=15`, `tier3=6`.
+
+`ruleset_version` is whatever `MULTI_WORLD.rulesetVersion` was in the code that CREATED the season,
+so it is a fact about the galaxy's birthday rather than an acceptance constant. Seasons opened
+before D114 are `2` and stay `2` for their whole life; every season opened by a rollover on D114 or
+later is `3`, and that is the boundary the clan feature begins at — `assertClanRuleset` answers
+`CLANS_NEXT_SEASON` below it. A deploy therefore does not switch clans on: the rollover that
+follows it does. Require the version to match the code that opened the row, and expect a mixed
+pair across a rollover. Capital count is the current real population,
 not a fixed acceptance value. `/api/servers` must show only the lowest non-full ordinal as `open`;
 the next remains `locked` until the frontier fills.
 
