@@ -75,7 +75,7 @@ export function readsForShardEvent(kind: string): readonly (readonly string[])[]
       return [keys.galaxy, keys.leaderboard];
     /** A battle changed at least one rounded-chip Dominion score. */
     case 'score':
-      return [keys.leaderboard];
+      return [keys.leaderboard, keys.galaxy];
     /** A season-scoped message changed both the open conversation and closed dot. */
     case 'chat':
       return [keys.chatMessages, keys.chatUnread];
@@ -85,8 +85,58 @@ export function readsForShardEvent(kind: string): readonly (readonly string[])[]
     /** The deadline landed: freeze controls, standings and the permanent recap. */
     case 'season':
       return [keys.season, keys.planet, keys.pending, keys.leaderboard];
+    /** Public clan identity or score moved; private state has its own player event. */
+    case 'clan':
+      return [keys.galaxy, keys.leaderboard, ['clan', 'directory'], keys.clanLeaderboard];
     default:
       return [];
+  }
+}
+
+/** The prefix the server namespaces player-private clan kinds with. Matches `bus.ts`. */
+export const PRIVATE_PREFIX = 'private:';
+
+export const isPrivateEvent = (kind: string): boolean => kind.startsWith(PRIVATE_PREFIX);
+
+/**
+ * A PRIVATE CLAN EVENT IS ABOUT YOU, AND STILL MUST NOT COST WHAT A RESYNC DOES. D114.
+ *
+ * `publishPrivate` namespaces five narrow kinds and its docblock calls each one "a
+ * narrow invalidation" — but nothing here read the prefix, so every one of them fell
+ * through to the blanket player-event resync. One clan chat message therefore sent
+ * each of five members to refetch the planet, the galaxy, intel, notifications,
+ * pending, reports, traffic, mining, rewards, both chats, the chronicle AND all seven
+ * clan reads, five times per ten seconds at the permitted burst. That is the exact
+ * fan-out `readsForShardEvent` exists to prevent, arriving through the other door.
+ *
+ * `null` means "this client does not know that kind" and the caller falls back to the
+ * full resync — the safe direction for a newer server, and the opposite of the shard
+ * table's inert `[]`, because a private event genuinely did happen to this commander.
+ */
+export function readsForPrivateEvent(kind: string): readonly (readonly string[])[] | null {
+  switch (kind.slice(PRIVATE_PREFIX.length)) {
+    /** Joined, left, kicked, promoted, disbanded, or the settings changed. */
+    case 'clan-membership':
+      return [keys.clanBadge, keys.clanHome, keys.clanStrength, keys.clanEvents];
+    /** An application or invitation was raised, withdrawn, rejected or expired. */
+    case 'clan-request':
+      return [keys.clanBadge, keys.clanHome];
+    /** Somebody spoke. The badge carries the unread count the beacon is drawn from. */
+    case 'clan-chat':
+      return [keys.clanBadge, keys.clanChat];
+    /** A share was credited or claimed; the outside view carries the depot too. */
+    case 'clan-depot':
+      return [keys.clanBadge, keys.clanDepot, keys.clanHome];
+    /**
+     * A convoy left, landed, turned round or came home. A DELIVERY moves real
+     * hardware and real resources on a world, so this one legitimately reaches
+     * past the clan surface — leaving it out would park the recipient's gifted
+     * ships on a stale planet payload until the sixty-second net came round.
+     */
+    case 'clan-aid':
+      return [keys.clanAid, keys.clanHome, keys.planet, keys.planets, keys.pending, keys.traffic];
+    default:
+      return null;
   }
 }
 

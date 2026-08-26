@@ -5,12 +5,38 @@ import type {
   HullId,
   InstrumentId,
   ResearchProjectId,
+  Resources,
   SatelliteId,
 } from '@astera/rules';
 import { noteServerTime } from '../lib/clock.js';
 import {
   claimSchema,
   type ClaimIntent,
+  clanAidLaunchSchema,
+  clanAidPolicySchema,
+  clanAidQuoteSchema,
+  clanAidSchema,
+  clanBadgeSchema,
+  clanChatPageSchema,
+  clanChatPostSchema,
+  clanChatReadSchema,
+  clanCreatedSchema,
+  clanDepotClaimSchema,
+  clanDepotSchema,
+  clanDirectorySchema,
+  clanDisbandSchema,
+  clanEventsPageSchema,
+  clanHomeSchema,
+  clanKickSchema,
+  clanLeadershipSchema,
+  clanLeaderboardSchema,
+  clanLeaveSchema,
+  clanRequestAcceptedSchema,
+  clanRequestClosedSchema,
+  clanRequestCreatedSchema,
+  clanSeenSchema,
+  clanSettingsSchema,
+  clanStrengthSchema,
   collectSchema,
   galaxySchema,
   intelSchema,
@@ -98,8 +124,35 @@ interface RequestOptions {
    * compile error rather than a runtime one a player finds.
    */
   body?: Record<string, unknown>;
+  /** One logical write keeps this key across an automatic token refresh retry. */
+  idempotencyKey?: string;
   /** Refresh tokens are only ever exchanged by `restore()`; never recurse into it. */
   retryOnExpiry?: boolean;
+}
+
+/**
+ * Browser-native when possible; the fallback is still unique enough for one tab.
+ *
+ * `randomUUID` EXISTS ONLY IN A SECURE CONTEXT, and the DOM types do not say so —
+ * they declare `crypto` and `randomUUID` as always present. A phone opening the dev
+ * server over plain http on the LAN has `crypto` without `randomUUID`, and some
+ * embedded webviews have neither. The widened type is what makes the guard honest
+ * rather than something the linter is entitled to delete.
+ */
+const newIdempotencyKey = (): string => {
+  // Read through the weaker shape rather than the ambient DOM declaration: this is
+  // not a cast to silence the compiler, it is the narrower truth about the runtime.
+  const { crypto } = globalThis as { crypto?: { randomUUID?: () => string } };
+  return crypto?.randomUUID?.()
+    ?? `web-${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`;
+};
+
+export interface ClanAidInput {
+  originPlanetId: string;
+  recipientPlayerId: string;
+  targetPlanetId: string;
+  fleet: Fleet;
+  cargo: Resources;
 }
 
 /**
@@ -145,6 +198,7 @@ export class Api {
       headers: {
         ...(opts.body === undefined ? {} : { 'content-type': 'application/json' }),
         ...(this.token ? { authorization: `Bearer ${this.token}` } : {}),
+        ...(opts.idempotencyKey ? { 'idempotency-key': opts.idempotencyKey } : {}),
       },
       ...(opts.body === undefined ? {} : { body: JSON.stringify(opts.body) }),
       // Sends the refresh cookie. Same-origin in dev via the Vite proxy.
@@ -310,6 +364,84 @@ export class Api {
   galaxy = () => this.send('/api/galaxy', galaxySchema);
   traffic = () => this.send('/api/galaxy/traffic', trafficSchema);
   leaderboard = () => this.send('/api/leaderboard', leaderboardSchema);
+
+  /* ── clans ───────────────────────────────────────────────── */
+
+  clanBadge = () => this.send('/api/clan/badge', clanBadgeSchema);
+  clanHome = () => this.send('/api/clan/me', clanHomeSchema);
+  clanStrength = () => this.send('/api/clan/strength', clanStrengthSchema);
+  clans = (search = '', offset = 0, limit = 30) => {
+    const query = new URLSearchParams({ offset: String(offset), limit: String(limit) });
+    if (search.trim()) query.set('search', search.trim());
+    return this.send(`/api/clans?${query.toString()}`, clanDirectorySchema);
+  };
+  clanLeaderboard = () => this.send('/api/clans/leaderboard', clanLeaderboardSchema);
+  clanEvents = (before?: string) => this.send(
+    `/api/clan/events?limit=30${before ? `&before=${encodeURIComponent(before)}` : ''}`,
+    clanEventsPageSchema,
+  );
+  clanDepot = () => this.send('/api/clan/depot', clanDepotSchema);
+  clanAid = () => this.send('/api/clan/aid', clanAidSchema);
+  clanChat = (before?: string) => this.send(
+    `/api/clan/chat?limit=50${before ? `&before=${encodeURIComponent(before)}` : ''}`,
+    clanChatPageSchema,
+  );
+
+  private clanMutation<T>(
+    path: string,
+    schema: z.ZodType<T>,
+    body: Record<string, unknown> = {},
+  ): Promise<T> {
+    return this.send(path, schema, {
+      method: 'POST',
+      body,
+      idempotencyKey: newIdempotencyKey(),
+    });
+  }
+
+  quoteClanAid = (input: ClanAidInput) =>
+    this.send('/api/clan/aid/quote', clanAidQuoteSchema, { method: 'POST', body: { ...input } });
+  createClan = (input: { name: string; tag: string; description: string; recruiting: boolean }) =>
+    this.clanMutation('/api/clan/create', clanCreatedSchema, input);
+  applyToClan = (clanId: string) =>
+    this.clanMutation(`/api/clans/${encodeURIComponent(clanId)}/apply`, clanRequestCreatedSchema);
+  inviteToClan = (playerId: string) =>
+    this.clanMutation('/api/clan/invite', clanRequestCreatedSchema, { playerId });
+  acceptClanRequest = (requestId: string, acknowledgeHostile = false) =>
+    this.clanMutation(
+      `/api/clan/requests/${encodeURIComponent(requestId)}/accept`,
+      clanRequestAcceptedSchema,
+      { acknowledgeHostile },
+    );
+  rejectClanRequest = (requestId: string) =>
+    this.clanMutation(
+      `/api/clan/requests/${encodeURIComponent(requestId)}/reject`,
+      clanRequestClosedSchema,
+    );
+  withdrawClanRequest = (requestId: string) =>
+    this.clanMutation(
+      `/api/clan/requests/${encodeURIComponent(requestId)}/withdraw`,
+      clanRequestClosedSchema,
+    );
+  leaveClan = () => this.clanMutation('/api/clan/leave', clanLeaveSchema);
+  kickClanMember = (playerId: string) =>
+    this.clanMutation('/api/clan/kick', clanKickSchema, { playerId });
+  transferClanLeadership = (playerId: string) =>
+    this.clanMutation('/api/clan/leadership', clanLeadershipSchema, { playerId });
+  updateClanSettings = (description: string, recruiting: boolean) =>
+    this.clanMutation('/api/clan/settings', clanSettingsSchema, { description, recruiting });
+  setClanAidPolicy = (enabled: boolean) =>
+    this.clanMutation('/api/clan/aid-policy', clanAidPolicySchema, { enabled });
+  disbandClan = () => this.clanMutation('/api/clan/disband', clanDisbandSchema);
+  claimClanDepot = () => this.clanMutation('/api/clan/depot/claim', clanDepotClaimSchema);
+  launchClanAid = (input: ClanAidInput) =>
+    this.clanMutation('/api/clan/aid/launch', clanAidLaunchSchema, { ...input });
+  postClanChat = (content: string) =>
+    this.clanMutation('/api/clan/chat/messages', clanChatPostSchema, { content });
+  markClanChatRead = (messageId: string) =>
+    this.clanMutation('/api/clan/chat/read', clanChatReadSchema, { messageId });
+  markClanSeen = () => this.clanMutation('/api/clan/read', clanSeenSchema);
+
   chatMessages = (before?: string) =>
     this.send(`/api/chat/messages?limit=50${before ? `&before=${encodeURIComponent(before)}` : ''}`, chatPageSchema);
   postChat = (content: string) =>

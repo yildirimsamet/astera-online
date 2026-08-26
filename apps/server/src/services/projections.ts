@@ -134,8 +134,9 @@ export class Projections {
     if (!('shard' in event)) return;
 
     // Invalidate only the shared payload the event can actually move. Chat and
-    // score traffic are deliberately absent: turning every public event into a
-    // full-galaxy rebuild would recreate the fan-out problem this cache removes.
+    // chat traffic is deliberately absent. Score is present because the public
+    // galaxy now carries the three podium badges; a rank-changing battle moves
+    // that projection even though it moves no planet hardware.
     const kind = event.kind;
     if (
       kind === 'shard:world'
@@ -153,6 +154,8 @@ export class Projections {
       || kind === 'shard:control'
       || kind === 'shard:recovery'
       || kind === 'shard:protection'
+      || kind === 'shard:clan'
+      || kind === 'shard:score'
       || kind === 'shard:season'
       || kind === 'shard:rollover'
     ) {

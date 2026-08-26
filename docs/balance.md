@@ -322,7 +322,25 @@ strategic     settlement 2 Haulers + 2,000/1,000 · Death Star 15,000/15,000/3,0
               both Death Star gates Core 12 · Shipyard 5 · recovery 2 h
 research      Isotope 900 C · Dense Fuel 1,400 C + 150 D · Gravitic 1,900 C + 350 D
               Death Star Protocol 11,000 A + 3,600 C + 900 D
+clan          5 seats · Core 7 · create 5,000 A + 3,000 C · adapt 12 h
+              aid ×1.10, +1 aid-only bay · receiver limit 4 h A/C + 20% D cap / 24 h
+              raid share 10% · purse 2 h A/C + 10% D cap · protected ceiling 49%
+              personal bash 3 + clan bash 5 per target commander / 12 h
 ```
+
+**The clan economy is bounded at both entry and receipt (D114).** Creation removes the
+equivalent of a meaningful Core-7 decision, with extra Crystal deliberately targeting the
+resource that accumulates late. Aid is valued per resource — cargo plus full hull build cost —
+so sending ships cannot tunnel around the receiver's limit. The four-hour receiver window is
+large enough to repair a mistake or seed a formation but too small to make five production
+accounts behave like one treasury.
+
+The loot share never creates resources. For five eligible members and 1,000 returned Alloy,
+the pool is 100 and each offer is 20; only the offers that fit a purse are removed from the
+attacker's landing. Rounding and blocked shares stay with the attacker. The purse's two-hour
+production ceiling and the stricter `vault protection + unclaimed ≤ 49% of storage` ceiling
+keep claimable safety below the design's half-store raidable invariant. Existing shares are
+never deleted if a later world loss lowers the ceiling; new credits simply stop.
 
 **The Death Star's figures moved at D113 by owner instruction, and its economic effect was
 explicitly NOT measured.** What was measured is reachability, which is a different question:

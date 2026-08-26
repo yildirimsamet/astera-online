@@ -26,6 +26,7 @@ describe('the fog, as rendered', () => {
           owner: 'Sable',
           position: { x: 0, y: 0, z: 0 },
           coreTier: 2,
+          coreLevel: 5,
           satellites: [],
           shielded: false,
           isSelf: false,

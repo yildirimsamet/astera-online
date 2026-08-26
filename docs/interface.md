@@ -26,8 +26,10 @@ code. Read with `visual-design.md`, which governs art rather than layout.
 
 Commander identity is always `accounts.displayName`. Galaxy labels and focus
 surfaces lead with the commander username; planet names are secondary location
-copy. Intel and reports follow the same order without widening their existing fog
-projection.
+copy. While that commander has an active clan, every public identity surface leads
+with the immutable clan tag in the same form: `[TAG] DisplayName`. This includes the
+label above a world, Signals notifications and the Dominion leaderboard. Intel and
+reports follow the same order without widening their existing fog projection.
 
 ### I0 · Strategic state is read from shape before copy
 
@@ -50,11 +52,17 @@ state or colour-coded chips. While a neutral claim is open, the panel also state
 ordinary raid is still possible but does not extend the claim, and that a Death Star impact
 clears the claim and starts recovery instead of settling the world immediately.
 
-Focus is a two-tap spatial interaction for every object the commander does not control. The
-first tap selects it, zooms/follows it and shows only the collapsed rail; a second tap on that
-same object expands its detail. Tapping a different object always starts again collapsed.
-The commander's capital and colonies are the deliberate exception: their first tap opens the
-planet management surface directly.
+Focus is a two-tap spatial interaction for every object, including the commander's capital and
+colonies. The first tap selects and zooms/follows it; a second tap on that same object expands its
+detail. On a controlled world that second tap instead opens planet management. Tapping a
+different object always starts again collapsed. Focusing a controlled destination makes it active
+but preserves the previously active world as the source of a dedicated one-way transfer route.
+That owned-world detail names origin and target and leads directly to craft/resource selection;
+it is not the hostile intelligence dossier. If the controlled world was already active, the first
+tap still focuses it but the bottom rail stays entirely hidden because source and destination
+would match. Choosing a world from the header's active-world dropdown is the same focus
+instruction: it activates and frames that world, clears the old camera subject and keeps the
+bottom rail hidden.
 
 Storage capacity is not a hostile state. A full Alloy or Crystal meter keeps its
 resource hue and closes with a hard end-cap; threat red remains reserved for an
@@ -185,8 +193,8 @@ battle reports or the radar log — the surface that holds "the information is t
 
 Every full surface now hangs off the header, which is the one piece of chrome that never
 leaves: the works and its collect control, the **commander** control, **Intel**, and Signals.
-Your own planet opens by tapping your own world, and every other surface opens by focusing the
-thing it is about.
+Your own planet opens on the second tap of your already-focused world, and every other surface
+opens by focusing the thing it is about.
 
 The permanent in-flight strip is also the way into the commander's airborne roster.
 It combines mission threads with mining and salvage runs, opens as a bottom sheet,
@@ -219,6 +227,36 @@ now, with the season figure under it. A player hunting for the way out hunts for
 
 **Before shipping a surface, name the control that opens it when nothing has happened — and check
 that the control names it back.**
+
+### I5b · Clan is one simple room with five visible seats (D114)
+
+The commander menu has a permanent **Clan / Klan** row and a small attention dot for an invite,
+application decision, depot claim or unread message. Cold start fetches only the caller's clan
+badge; opening the row lazy-loads the full projection without unmounting the Galaxy.
+
+A commander outside a clan sees invitations first, then search/directory, their applications
+and the Core-7 creation card. A member sees four ordinary words in one segmented control:
+Overview, Members, Aid and Chat. Overview leads with a static five-socket formation rack —
+filled seats name people, empty seats say they are open, and an adapting seat shows its exact
+unlock time — then the personal clan-loot depot and season standings. It is not a Tactical
+Network, skill tree or animated command table.
+
+The leader's accept/reject, invite, remove, settings, transfer-leadership and disband controls
+live beside the thing they act on. A hostile-flight acknowledgement states that existing craft
+will still arrive before Accept becomes commit. Irreversible controls use the established
+confirmation sheet and never hide behind swipe gestures.
+
+The Aid section names sender, recipient and destination; then separates resource cargo from
+gifted ships, shows that only Haulers carry resources, remaining 24-hour allowance, bay use,
+exact arrival and possible-return deadline. An opaque refusal says a payload cannot land
+without revealing another player's Shipyard or research. The Overview depot shows three
+personal balances and one Claim action; it never resembles a leader bank.
+
+Clan tag is a compact public identity in Galaxy focus, commander standings and battle reports.
+The clan room carries its own short seasonal standings instead of nesting another full ladder.
+All text lives independently in Turkish and English locale trees. Existing `plate`, `slab`,
+`socket`, type roles and spacing remain the visual language; targets are at least 44 px, sheets
+trap focus and close with Back/Escape, and reduced motion loses no state information.
 
 ### I6 · A readout measures what the player owns, never what exists
 

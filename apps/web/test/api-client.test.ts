@@ -141,6 +141,61 @@ describe('the API client', () => {
     await expect(api.planet()).rejects.toThrow();
   });
 
+  describe('clan write safety', () => {
+    it('sends an idempotency key and keeps the same key across an auth retry', async () => {
+      const clanKeys: string[] = [];
+      let attempts = 0;
+      const fetch = vi.fn((url: string | URL | Request, init?: RequestInit) => {
+        const path = pathOf(url);
+        if (path.endsWith('/api/auth/refresh')) return json(SESSION);
+        if (path.endsWith('/api/clan/create')) {
+          attempts += 1;
+          const headers = init?.headers as Record<string, string> | undefined;
+          clanKeys.push(headers?.['idempotency-key'] ?? '');
+          if (attempts === 1) {
+            return json({ error: 'UNAUTHENTICATED', message: 'Sign in first' }, 401);
+          }
+          return json({
+            clanId: 'clan-1',
+            name: 'Orbit Wardens',
+            tag: 'ORB',
+            capitalPlanetId: PLANET.planet.id,
+            planet: PLANET,
+          });
+        }
+        return json({ error: 'BAD_REQUEST', message: 'Unexpected request' }, 400);
+      });
+      const api = new Api({ fetch: fetch as unknown as typeof globalThis.fetch });
+
+      await api.createClan({
+        name: 'Orbit Wardens',
+        tag: 'ORB',
+        description: 'Watch the rim.',
+        recruiting: true,
+      });
+
+      expect(clanKeys).toHaveLength(2);
+      expect(clanKeys[0]).not.toBe('');
+      expect(clanKeys[1]).toBe(clanKeys[0]);
+    });
+
+    it('uses a fresh idempotency key for each deliberate action', async () => {
+      const seen: string[] = [];
+      const fetch = vi.fn((_url: string | URL | Request, init?: RequestInit) => {
+        const headers = init?.headers as Record<string, string> | undefined;
+        seen.push(headers?.['idempotency-key'] ?? '');
+        return json({ requestId: `request-${String(seen.length)}`, expiresAt: '2026-08-26T12:00:00.000Z' });
+      });
+      const api = new Api({ fetch: fetch as unknown as typeof globalThis.fetch });
+
+      await api.applyToClan('clan-1');
+      await api.applyToClan('clan-2');
+
+      expect(seen[0]).not.toBe('');
+      expect(seen[1]).not.toBe(seen[0]);
+    });
+  });
+
   /* ── identity, D21 ──────────────────────────────────────── */
 
   describe('signing in', () => {

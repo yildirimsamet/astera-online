@@ -2,6 +2,7 @@ import { useTranslation } from 'react-i18next';
 import { useLeaderboard } from '../api/queries.js';
 import { full, signed } from '../lib/format.js';
 import { haptic } from '../lib/haptics.js';
+import { commanderLabel } from '../lib/identity.js';
 import { PlanetSigil } from '../ui/PlanetSigil.js';
 import { EmptyState, Unreachable, Waiting } from '../ui/kit/index.js';
 
@@ -42,19 +43,33 @@ export function LeaderboardScreen({ onFocusPlanet }: { onFocusPlanet: (planetId:
             <span className="min-w-0">
               <span className="flex items-baseline gap-2">
                 {self ? (
-                  <strong className="name truncate text-bone">
-                    {row.username}
+                  <strong
+                    className="name flex min-w-0 items-baseline gap-2 text-bone"
+                    aria-label={commanderLabel(row.username, row.clan?.tag)}
+                  >
+                    {row.clan ? (
+                      <span className="legend shrink-0 text-crystal" title={row.clan.name}>
+                        [{row.clan.tag}]
+                      </span>
+                    ) : null}
+                    <span className="truncate">{row.username}</span>
                   </strong>
                 ) : (
                   <button
                     type="button"
+                    aria-label={commanderLabel(row.username, row.clan?.tag)}
                     onClick={() => {
                       haptic('tap');
                       onFocusPlanet(row.planetId);
                     }}
-                    className="name truncate text-bone underline decoration-bone/35 underline-offset-2"
+                    className="name flex min-w-0 items-baseline gap-2 text-bone underline decoration-bone/35 underline-offset-2"
                   >
-                    {row.username}
+                    {row.clan ? (
+                      <span className="legend shrink-0 text-crystal" title={row.clan.name}>
+                        [{row.clan.tag}]
+                      </span>
+                    ) : null}
+                    <span className="truncate">{row.username}</span>
                   </button>
                 )}
                 {self ? <span className="legend text-crystal">{t('leaderboard.you')}</span> : null}

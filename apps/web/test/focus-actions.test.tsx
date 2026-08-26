@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { describe, expect, it, vi } from 'vitest';
 import { DEATH_STAR, GALAXY_SPAN, MULTI_WORLD } from '@astera/rules';
@@ -46,6 +46,7 @@ const target = (over: Partial<GalaxyPlanet> = {}): GalaxyPlanet => ({
   owner: 'Sable',
   position: { x: 200, y: 0, z: 0 },
   coreTier: 2,
+  coreLevel: 6,
   satellites: [],
   shielded: false,
   isSelf: false,
@@ -115,6 +116,47 @@ describe('the focus rail’s two commitments', () => {
     expect(probe.querySelector('svg')).not.toBeNull();
     // Not the commit weight: a probe is a spend, not the irreversible bet.
     expect(probe.className).not.toContain('slab-commit');
+  });
+
+  it('gives a focused owned world its own transfer route instead of a hostile dossier', () => {
+    const Wrapper = harness();
+    const onTransfer = vi.fn();
+    const props = {
+      target: target({ isOwned: true, kind: 'COLONY' as const }),
+      planet: mine,
+      intel,
+      reports: [],
+      now: NOW,
+      onClose: vi.fn(),
+      onAttack: vi.fn(),
+      onInstallTelescope: vi.fn(),
+      onLaunched: vi.fn(),
+      open: true,
+      onToggle: vi.fn(),
+    };
+    const view = render(
+      <Wrapper>
+        <PlanetFocus {...props} onTransfer={onTransfer} />
+      </Wrapper>,
+    );
+    expect(screen.getByText(/your colony/i)).toBeInTheDocument();
+    expect(screen.getByText(/world transfer/i)).toBeInTheDocument();
+    expect(screen.getByText('Origin')).toBeInTheDocument();
+    expect(screen.getByText('Target')).toBeInTheDocument();
+    expect(screen.queryByText(/^Known$/i)).toBeNull();
+
+    const prepare = screen.getByRole('button', { name: /choose craft and resources/i });
+    expect(prepare).toBeEnabled();
+    fireEvent.click(prepare);
+    expect(onTransfer).toHaveBeenCalledOnce();
+
+    view.rerender(
+      <Wrapper>
+        <PlanetFocus {...props} />
+      </Wrapper>,
+    );
+    expect(screen.queryByRole('button', { name: /choose craft and resources/i })).toBeNull();
+    expect(screen.getByRole('region', { name: /focus/i })).toBeInTheDocument();
   });
 
   /**

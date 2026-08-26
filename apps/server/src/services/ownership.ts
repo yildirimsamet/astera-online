@@ -93,10 +93,15 @@ export async function lockWorlds(
     throw new GameError('CROSS_SEASON', 'Those worlds are in different galaxies', 403);
   }
   await lockSeason(tx, rows[0]!.seasonId);
+  const locked: (typeof planets.$inferSelect)[] = [];
   for (const id of unique) {
-    await tx.select({ id: planets.id }).from(planets).where(eq(planets.id, id)).for('update');
+    const [world] = await tx.select().from(planets).where(eq(planets.id, id)).for('update');
+    if (!world) throw new GameError('PLANET_NOT_FOUND', 'One of those worlds no longer exists', 404);
+    locked.push(world);
   }
-  return new Map(rows.map((world) => [world.id, world]));
+  // Return the rows read under the locks. Controller and resource state may have
+  // changed between the discovery query and our turn in the lock queue.
+  return new Map(locked.map((world) => [world.id, world]));
 }
 
 export const ownedPlanets = (db: Queryable, playerId: string) => db

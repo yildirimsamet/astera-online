@@ -3,6 +3,7 @@ import type { NotificationView } from '../api/schemas.js';
 import i18n from '../i18n/index.js';
 import { hullName, unlockCopy } from '../i18n/names.js';
 import { compact } from './format.js';
+import { commanderLabel } from './identity.js';
 import { duration } from './time.js';
 
 /**
@@ -39,6 +40,7 @@ const incoming = z.object({
   fleet: fleet.optional(),
   originPlanetId: z.string().optional(),
   originUsername: z.string().optional(),
+  originClanTag: z.string().optional(),
   originPlanetName: z.string().optional(),
   /** Historical payload fallback. */
   originName: z.string().optional(),
@@ -47,6 +49,7 @@ const incoming = z.object({
 const raided = z.object({
   originPlanetId: z.string().optional(),
   originUsername: z.string().optional(),
+  originClanTag: z.string().optional(),
   originPlanetName: z.string().optional(),
   grade: z.string(),
   lootAlloy: z.number(),
@@ -62,6 +65,7 @@ const raidResult = z.object({
   grade: z.string(),
   targetPlanetId: z.string().optional(),
   targetUsername: z.string().optional(),
+  targetClanTag: z.string().optional(),
   targetPlanetName: z.string().optional(),
   /** Historical payload fallback. */
   targetName: z.string().optional(),
@@ -86,6 +90,7 @@ const returned = z.discriminatedUnion('trip', [
     ships: z.number(),
     fromPlanetId: z.string().optional(),
     fromUsername: z.string().nullable().optional(),
+    fromClanTag: z.string().optional(),
     fromPlanetName: z.string().nullable().optional(),
     /** Historical payload fallback. */
     fromName: z.string().nullable().optional(),
@@ -128,6 +133,7 @@ const scanned = z.object({ bearing: z.string().optional() });
 const probeHome = z.object({
   targetPlanetId: z.string().optional(),
   targetUsername: z.string().optional(),
+  targetClanTag: z.string().optional(),
   targetPlanetName: z.string().optional(),
   /** Historical payload fallback. */
   targetName: z.string().optional(),
@@ -198,11 +204,18 @@ const identity = (
   username: string | null | undefined,
   planetName: string | null | undefined,
   legacy: string | null | undefined,
+  clanTag?: string | null,
 ): string => {
   if (username && planetName) {
-    return i18n.t('notifications.commanderAt', { username, planet: planetName });
+    return i18n.t('notifications.commanderAt', {
+      username: commanderLabel(username, clanTag),
+      planet: planetName,
+    });
   }
-  return username ?? planetName ?? legacy ?? i18n.t('notifications.unknownCommander');
+  return (username ? commanderLabel(username, clanTag) : undefined)
+    ?? planetName
+    ?? legacy
+    ?? i18n.t('notifications.unknownCommander');
 };
 
 export interface NotificationIdentity {
@@ -217,10 +230,10 @@ export function notificationIdentity(notification: NotificationView): Notificati
     case 'strategic_incoming': {
       const parsed = incoming.safeParse(notification.payload);
       if (!parsed.success) return null;
-      const { originPlanetId, originUsername, originPlanetName, originName } = parsed.data;
+      const { originPlanetId, originUsername, originClanTag, originPlanetName, originName } = parsed.data;
       if (!originUsername && !originPlanetName && !originName) return null;
       return {
-        label: identity(originUsername, originPlanetName, originName),
+        label: identity(originUsername, originPlanetName, originName, originClanTag),
         ...(originPlanetId ? { planetId: originPlanetId } : {}),
       };
     }
@@ -228,7 +241,12 @@ export function notificationIdentity(notification: NotificationView): Notificati
       const parsed = raided.safeParse(notification.payload);
       if (!parsed.success || !parsed.data.originUsername) return null;
       return {
-        label: identity(parsed.data.originUsername, parsed.data.originPlanetName, undefined),
+        label: identity(
+          parsed.data.originUsername,
+          parsed.data.originPlanetName,
+          undefined,
+          parsed.data.originClanTag,
+        ),
         ...(parsed.data.originPlanetId ? { planetId: parsed.data.originPlanetId } : {}),
       };
     }
@@ -236,7 +254,12 @@ export function notificationIdentity(notification: NotificationView): Notificati
       const parsed = raidResult.safeParse(notification.payload);
       if (!parsed.success) return null;
       return {
-        label: identity(parsed.data.targetUsername, parsed.data.targetPlanetName, parsed.data.targetName),
+        label: identity(
+          parsed.data.targetUsername,
+          parsed.data.targetPlanetName,
+          parsed.data.targetName,
+          parsed.data.targetClanTag,
+        ),
         ...(parsed.data.targetPlanetId ? { planetId: parsed.data.targetPlanetId } : {}),
       };
     }
@@ -245,7 +268,12 @@ export function notificationIdentity(notification: NotificationView): Notificati
       if (!parsed.success || parsed.data.trip !== 'raid') return null;
       if (!parsed.data.fromUsername && !parsed.data.fromPlanetName && !parsed.data.fromName) return null;
       return {
-        label: identity(parsed.data.fromUsername, parsed.data.fromPlanetName, parsed.data.fromName),
+        label: identity(
+          parsed.data.fromUsername,
+          parsed.data.fromPlanetName,
+          parsed.data.fromName,
+          parsed.data.fromClanTag,
+        ),
         ...(parsed.data.fromPlanetId ? { planetId: parsed.data.fromPlanetId } : {}),
       };
     }
@@ -253,7 +281,12 @@ export function notificationIdentity(notification: NotificationView): Notificati
       const parsed = probeHome.safeParse(notification.payload);
       if (!parsed.success) return null;
       return {
-        label: identity(parsed.data.targetUsername, parsed.data.targetPlanetName, parsed.data.targetName),
+        label: identity(
+          parsed.data.targetUsername,
+          parsed.data.targetPlanetName,
+          parsed.data.targetName,
+          parsed.data.targetClanTag,
+        ),
         ...(parsed.data.targetPlanetId ? { planetId: parsed.data.targetPlanetId } : {}),
       };
     }
@@ -275,7 +308,7 @@ export function describeNotification(notification: NotificationView, now: number
       if (!parsed.success) return i18n.t('notifications.incomingFallback');
       const {
         arriveAt, etaMinutes, estimatedShips, fleet: ships,
-        originUsername, originPlanetName, originName,
+        originUsername, originClanTag, originPlanetName, originName,
       } = parsed.data;
 
       /**
@@ -309,7 +342,7 @@ export function describeNotification(notification: NotificationView, now: number
       }
       if (originUsername !== undefined || originPlanetName !== undefined || originName !== undefined) {
         parts.push(i18n.t('notifications.incomingFrom', {
-          origin: identity(originUsername, originPlanetName, originName),
+          origin: identity(originUsername, originPlanetName, originName, originClanTag),
         }));
       }
       return parts.join(JOIN());
@@ -320,12 +353,12 @@ export function describeNotification(notification: NotificationView, now: number
       if (!parsed.success) return i18n.t('notifications.raidedFallback');
       const {
         grade, lootAlloy, lootCrystal, lootDeuterium, unitsLost, theirLosses, disruptedMinutes,
-        originUsername, originPlanetName,
+        originUsername, originClanTag, originPlanetName,
       } =
         parsed.data;
       const raider = originUsername
         ? i18n.t('notifications.raidedBy', {
-            origin: identity(originUsername, originPlanetName, undefined),
+            origin: identity(originUsername, originPlanetName, undefined, originClanTag),
           })
         : '';
       if (grade === 'REPELLED') {
@@ -376,10 +409,10 @@ export function describeNotification(notification: NotificationView, now: number
       const parsed = raidResult.safeParse(notification.payload);
       if (!parsed.success) return i18n.t('notifications.raidResultFallback');
       const {
-        grade, targetUsername, targetPlanetName, targetName,
+        grade, targetUsername, targetClanTag, targetPlanetName, targetName,
         lootAlloy, lootCrystal, lootDeuterium, unitsLost, shipsHome,
       } = parsed.data;
-      const target = identity(targetUsername, targetPlanetName, targetName);
+      const target = identity(targetUsername, targetPlanetName, targetName, targetClanTag);
       // The fleet is gone. This is the line the whole notification exists for —
       // before it, nothing in the game told a player their raid had been wiped out.
       if (shipsHome === 0) {
@@ -413,7 +446,12 @@ export function describeNotification(notification: NotificationView, now: number
         return i18n.t('notifications.recalled', { count: trip.craft });
       }
       if (trip.trip === 'raid') {
-        const origin = identity(trip.fromUsername, trip.fromPlanetName, trip.fromName);
+        const origin = identity(
+          trip.fromUsername,
+          trip.fromPlanetName,
+          trip.fromName,
+          trip.fromClanTag,
+        );
         const where = trip.fromUsername || trip.fromPlanetName || trip.fromName
           ? i18n.t('notifications.fleetFrom', { origin })
           : '';
@@ -463,6 +501,7 @@ export function describeNotification(notification: NotificationView, now: number
           parsed.data.targetUsername,
           parsed.data.targetPlanetName,
           parsed.data.targetName,
+          parsed.data.targetClanTag,
         ),
         caught,
       });

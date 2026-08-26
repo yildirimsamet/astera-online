@@ -4,6 +4,7 @@ import {
   MULTI_WORLD,
   distance,
   fleetCount,
+  fleetSpeedMult,
   fleetTravelExact,
   resourcesTotal,
   transferCargoCapacity,
@@ -30,6 +31,7 @@ import {
   assertSeasonOpenThrough,
   assertWorldOperational,
   loadLocked,
+  orbitOf,
   recomputePlayerWealth,
   saveResources,
   setUnits,
@@ -108,7 +110,7 @@ export async function launchTransfer(
     }
     await assertFreeBay(tx, originPlanetId, origin.buildings.CORE);
     const dist = distance(origin, target);
-    const oneWay = fleetTravelExact(dist, fleet);
+    const oneWay = fleetTravelExact(dist, fleet, fleetSpeedMult(origin.orbit));
     if (!Number.isFinite(oneWay)) throw new GameError('IMMOBILE_FLEET', 'That fleet cannot travel');
     const arriveAt = addMinutes(origin.now, oneWay);
     assertSeasonOpenThrough(origin, arriveAt);
@@ -252,7 +254,8 @@ async function rerouteToSafeHome(
   ]);
   if (!from || !home) throw new Error('reroute endpoint vanished');
   const dist = distance(from, home);
-  const oneWay = fleetTravelExact(dist, mission.fleet);
+  const homeOrbit = await orbitOf(tx, homeId);
+  const oneWay = fleetTravelExact(dist, mission.fleet, fleetSpeedMult(homeOrbit));
   if (!Number.isFinite(oneWay)) throw new Error('rerouted transfer has no mobile craft');
   const arriveAt = addMinutes(now, oneWay);
   const [returnMission] = await tx.insert(missions).values({

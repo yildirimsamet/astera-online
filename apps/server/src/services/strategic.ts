@@ -39,6 +39,7 @@ import {
 import { planetView } from './planetView.js';
 import { hasResearch } from './researchState.js';
 import { pendingThreads } from './session.js';
+import { assertClanHostilityAllowed, lockClanPlayers } from './clanCombat.js';
 
 /**
  * WHAT AN IMPACT COSTS THE WORLD IT LANDS ON. D113.
@@ -157,6 +158,15 @@ export async function launchDeathStar(
     }
     if (target.controllerPlayerId === origin.playerId) {
       throw new GameError('SELF_ATTACK', 'You cannot target your own world', 403);
+    }
+    if (target.controllerPlayerId) {
+      await lockClanPlayers(tx, [origin.playerId, target.controllerPlayerId]);
+      await assertClanHostilityAllowed(
+        tx,
+        origin.playerId,
+        target.controllerPlayerId,
+        origin.now,
+      );
     }
     if (target.protectedUntil !== null && target.protectedUntil > origin.now) {
       throw new GameError('OCCUPATION_PROTECTED', 'That world is protected', 409, {

@@ -1,6 +1,7 @@
 import { GALAXY } from '@astera/rules';
 import { describe, expect, it } from 'vitest';
 import {
+  CLANMATE_COLOUR,
   LIMB_SCALE,
   LIMB_TINT,
   MIN_MARKER_PX,
@@ -98,6 +99,7 @@ describe('the camera home world', () => {
       owner: 'Commander',
       position: { x: 100, y: 0, z: 200 },
       coreTier: 1,
+      coreLevel: 3,
       satellites: [],
       shielded: false,
       isSelf: true,
@@ -115,6 +117,7 @@ describe('the camera home world', () => {
       owner: 'Commander',
       position: { x: 100, y: 0, z: 200 },
       coreTier: 1,
+      coreLevel: 3,
       satellites: [],
       shielded: false,
       isSelf: true,
@@ -130,13 +133,14 @@ describe('the camera home world', () => {
       .toEqual(toWorld(colony.position));
   });
 
-  it('recognises an owned colony as manageable even though it is not isSelf', () => {
+  it('focuses every owned world before making it manageable', () => {
     const colony = {
       id: 'colony',
       name: 'Haven',
       owner: 'Commander',
       position: { x: -200, y: 0, z: 100 },
       coreTier: 1,
+      coreLevel: 3,
       satellites: [],
       shielded: false,
       isSelf: false,
@@ -145,6 +149,15 @@ describe('the camera home world', () => {
     const colonyId = controlledWorldId([colony], colony.id);
     expect(colonyId).toBe(colony.id);
     expect(focusTapDecision(null, { kind: 'planet', id: colony.id }, colonyId)).toEqual({
+      kind: 'focus',
+      focus: { kind: 'planet', id: colony.id },
+      detail: false,
+    });
+    expect(focusTapDecision(
+      { kind: 'planet', id: colony.id },
+      { kind: 'planet', id: colony.id },
+      colonyId,
+    )).toEqual({
       kind: 'manage',
       planetId: colony.id,
     });
@@ -154,6 +167,7 @@ describe('the camera home world', () => {
       owner: 'Commander',
       position: { x: 0, y: 0, z: 0 },
       coreTier: 1,
+      coreLevel: 3,
       satellites: [],
       shielded: false,
       isSelf: true,
@@ -161,6 +175,15 @@ describe('the camera home world', () => {
     const capitalId = controlledWorldId([capital], capital.id);
     expect(capitalId).toBe(capital.id);
     expect(focusTapDecision(null, { kind: 'planet', id: capital.id }, capitalId)).toEqual({
+      kind: 'focus',
+      focus: { kind: 'planet', id: capital.id },
+      detail: false,
+    });
+    expect(focusTapDecision(
+      { kind: 'planet', id: capital.id },
+      { kind: 'planet', id: capital.id },
+      capitalId,
+    )).toEqual({
       kind: 'manage',
       planetId: capital.id,
     });
@@ -175,6 +198,7 @@ describe('world identity on the disc', () => {
       owner: 'Commander',
       position: { x: 0, y: 0, z: 0 },
       coreTier: 4,
+      coreLevel: 12,
       satellites: [],
       shielded: false,
       isSelf: false,
@@ -199,18 +223,54 @@ describe('world identity on the disc', () => {
       {
         id: 'capital', name: 'Origin', owner: 'Commander', kind: 'CAPITAL',
         controller: { kind: 'PLAYER', playerId: 'p1', displayName: 'Commander' },
-        position: { x: 0, y: 0, z: 0 }, coreTier: 2, satellites: [], shielded: false,
+        clan: { id: 'clan-war', name: 'War Fleet', tag: 'WAR' },
+        dominionRank: 1,
+        position: { x: 0, y: 0, z: 0 }, coreTier: 2, coreLevel: 6, satellites: [], shielded: false,
         isSelf: true, isOwned: true, isCapital: true, state: { kind: 'NORMAL' },
       },
       {
         id: 'colony', name: 'Haven', owner: 'Commander', kind: 'COLONY',
         controller: { kind: 'PLAYER', playerId: 'p1', displayName: 'Commander' },
-        position: { x: 100, y: 0, z: 0 }, coreTier: 1, satellites: [], shielded: false,
+        position: { x: 100, y: 0, z: 0 }, coreTier: 1, coreLevel: 3, satellites: [], shielded: false,
         isSelf: false, isOwned: true, isCapital: false, state: { kind: 'NORMAL' },
       },
     ]);
-    expect(capital).toMatchObject({ stance: 'self', kind: 'CAPITAL', isCapital: true });
+    expect(capital).toMatchObject({
+      stance: 'self', kind: 'CAPITAL', isCapital: true,
+      clan: { id: 'clan-war', name: 'War Fleet', tag: 'WAR' },
+      dominionRank: 1,
+    });
     expect(colony).toMatchObject({ stance: 'self', kind: 'COLONY', isCapital: false });
+  });
+
+  it('marks clanmate worlds from the bulk galaxy payload and reserves a green identity ring', () => {
+    const [mine, ally, stranger] = planetNodes([
+      {
+        id: 'mine', name: 'Origin', owner: 'Commander', kind: 'CAPITAL',
+        controller: { kind: 'PLAYER', playerId: 'me', displayName: 'Commander' },
+        clan: { id: 'clan-war', name: 'War Fleet', tag: 'WAR' },
+        position: { x: 0, y: 0, z: 0 }, coreTier: 2, coreLevel: 6, satellites: [], shielded: false,
+        isSelf: true, isOwned: true, state: { kind: 'NORMAL' },
+      },
+      {
+        id: 'ally', name: 'Haven', owner: 'Ada', kind: 'CAPITAL',
+        controller: { kind: 'PLAYER', playerId: 'ally-player', displayName: 'Ada' },
+        clan: { id: 'clan-war', name: 'War Fleet', tag: 'WAR' },
+        position: { x: 100, y: 0, z: 0 }, coreTier: 1, coreLevel: 3, satellites: [], shielded: false,
+        isSelf: false, state: { kind: 'NORMAL' },
+      },
+      {
+        id: 'stranger', name: 'Far Reach', owner: 'Nova', kind: 'CAPITAL',
+        controller: { kind: 'PLAYER', playerId: 'other-player', displayName: 'Nova' },
+        clan: { id: 'clan-other', name: 'Other Fleet', tag: 'OTH' },
+        position: { x: 200, y: 0, z: 0 }, coreTier: 1, coreLevel: 3, satellites: [], shielded: false,
+        isSelf: false, state: { kind: 'NORMAL' },
+      },
+    ]);
+    expect(mine?.isClanmate).toBe(false);
+    expect(ally?.isClanmate).toBe(true);
+    expect(stranger?.isClanmate).toBe(false);
+    expect(CLANMATE_COLOUR).toBe('#5ad39b');
   });
 
   it('marks every world controlled by the rival commander, not only the chosen anchor', () => {
@@ -218,19 +278,19 @@ describe('world identity on the disc', () => {
       {
         id: 'rival-capital', name: 'Origin', owner: 'Sable', kind: 'CAPITAL',
         controller: { kind: 'PLAYER', playerId: 'rival-player', displayName: 'Sable' },
-        position: { x: 0, y: 0, z: 0 }, coreTier: 2, satellites: [], shielded: false,
+        position: { x: 0, y: 0, z: 0 }, coreTier: 2, coreLevel: 6, satellites: [], shielded: false,
         isSelf: false, state: { kind: 'NORMAL' },
       },
       {
         id: 'rival-colony', name: 'Reach', owner: 'Sable', kind: 'COLONY',
         controller: { kind: 'PLAYER', playerId: 'rival-player', displayName: 'Sable' },
-        position: { x: 100, y: 0, z: 0 }, coreTier: 1, satellites: [], shielded: false,
+        position: { x: 100, y: 0, z: 0 }, coreTier: 1, coreLevel: 3, satellites: [], shielded: false,
         isSelf: false, state: { kind: 'NORMAL' },
       },
       {
         id: 'other', name: 'Other', owner: 'Nova', kind: 'CAPITAL',
         controller: { kind: 'PLAYER', playerId: 'other-player', displayName: 'Nova' },
-        position: { x: 200, y: 0, z: 0 }, coreTier: 1, satellites: [], shielded: false,
+        position: { x: 200, y: 0, z: 0 }, coreTier: 1, coreLevel: 3, satellites: [], shielded: false,
         isSelf: false, state: { kind: 'NORMAL' },
       },
     ]);

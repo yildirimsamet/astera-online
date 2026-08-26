@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next';
 import type { SeasonInfo } from '../api/schemas.js';
 import { full, signed } from '../lib/format.js';
 import { haptic } from '../lib/haptics.js';
-import { AttackIcon, GalaxyIcon, LeaderboardIcon, ShieldedIcon } from '../ui/icons/index.js';
+import { AttackIcon, ClanIcon, GalaxyIcon, LeaderboardIcon, ShieldedIcon } from '../ui/icons/index.js';
 import { NextSeason } from '../ui/NextSeason.js';
 import { useOwnPress } from '../ui/kit/index.js';
 
@@ -173,6 +173,34 @@ export function SeasonRecap({
             value={full(result.damageTaken)}
           />
         </section>
+
+        {result.recap.clan ? (
+          <section className="plate plate-cut mt-3 px-4 py-4" aria-label={t('seasonRecap.clan.heading')}>
+            <div className="flex items-start gap-3">
+              <span className="socket grid size-10 shrink-0 place-items-center rounded-control text-crystal">
+                <ClanIcon className="size-5" />
+              </span>
+              <div className="min-w-0 flex-1">
+                <p className="legend text-crystal">{t('seasonRecap.clan.heading')}</p>
+                <p className="name mt-1 truncate text-bone">
+                  <span className="text-crystal">[{result.recap.clan.tag}]</span>{' '}
+                  {result.recap.clan.name}
+                </p>
+              </div>
+              {result.recap.clan.topThree ? (
+                <span className="chip chip-opportunity shrink-0">{t('seasonRecap.clan.seal')}</span>
+              ) : null}
+            </div>
+            <div className="mt-4 grid grid-cols-2 divide-x divide-line-soft">
+              <Figure label={t('seasonRecap.clan.rank')} value={`#${full(result.recap.clan.finalRank)}`} />
+              <Figure
+                label={t('seasonRecap.clan.dominion')}
+                value={result.recap.clan.dominion === 0 ? full(0) : signed(result.recap.clan.dominion)}
+              />
+            </div>
+            <p className="mt-4 text-label leading-relaxed text-faint">{t('seasonRecap.clan.recordOnly')}</p>
+          </section>
+        ) : null}
 
         {quiet ? (
           <Story

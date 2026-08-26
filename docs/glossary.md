@@ -12,7 +12,12 @@ the exact negative to the defender. Zero-sum across the galaxy; only combat gene
 battle moves at most 10,000. A player who never fights scores exactly 0.
 
 **Wealth** — Net worth: everything you own, valued at what it cost. **Displayed, never
-ranked.** It was the ladder for most of the design phase until the simulator killed it.
+ranked.** It includes unclaimed personal clan-loot shares. It was the ladder for most of the
+design phase until the simulator killed it.
+
+**Clan Dominion** — The sum of both attack and defence Dominion deltas attributed to a mature
+clan roster at battle launch. It never moves resources or player Dominion and grants only a
+seasonal visual seal to the top three.
 
 
 ## The information layer
@@ -165,6 +170,19 @@ because the client interpolates it.
 
 **Return leg** — The journey home. Its `origin` is the planet that was raided and its
 `target` is the attacker's home — it travels *backwards*, which has already caused one bug.
+
+**Clan** — A seasonal, same-galaxy team with five fixed seats. It is cooperation and a public
+identity, not alliance diplomacy: there are no treaties, wars, officers or shared radar.
+
+**Adaptation period** — The first 12 hours after joining. Tag, chat and friendly-fire protection
+start immediately; aid, loot sharing, clan score and detailed history begin when it ends.
+
+**Clan aid** — An irreversible one-way convoy of eligible ships and Hauler-borne resources to
+a mature clanmate. It receives ×1.10 travel speed and may use one aid-only flight bay, while a
+receiver-wide rolling allowance prevents account pooling.
+
+**Clan depot / loot share** — Personal claimable resources offered from 10% of ordinary PvP
+loot only after surviving attackers return. It is not a clan treasury and has no leader access.
 
 
 ## Design vocabulary

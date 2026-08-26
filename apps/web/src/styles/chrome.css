@@ -21,6 +21,76 @@
  */
 
 @layer components {
+  /**
+   * THE PODIUM IN ONE GLANCE.
+   *
+   * The wrapper owns the light and the clipped child owns the shield, so the
+   * glow remains visible without a per-label filter layer over the WebGL canvas.
+   */
+  .rank-badge {
+    --rank-metal: var(--color-rank-silver);
+    --rank-hi: var(--color-rank-silver-hi);
+    --rank-lo: var(--color-rank-silver-lo);
+    position: relative;
+    isolation: isolate;
+    display: inline-grid;
+    width: 1.35rem;
+    height: 1.55rem;
+    flex: 0 0 auto;
+    place-items: center;
+  }
+
+  .rank-badge::before {
+    position: absolute;
+    z-index: -1;
+    width: 1.95rem;
+    height: 1.95rem;
+    border-radius: 999px;
+    background: radial-gradient(circle, color-mix(in srgb, var(--rank-metal) 46%, transparent), transparent 68%);
+    content: '';
+  }
+
+  .rank-badge-face {
+    display: grid;
+    width: 100%;
+    height: 100%;
+    place-items: center;
+    clip-path: polygon(50% 0, 92% 17%, 84% 72%, 50% 100%, 16% 72%, 8% 17%);
+    border: 1px solid color-mix(in srgb, var(--rank-hi) 78%, transparent);
+    background:
+      linear-gradient(145deg, var(--rank-hi) 0 17%, transparent 18% 34%),
+      linear-gradient(160deg, var(--rank-metal), var(--rank-lo));
+    box-shadow:
+      inset 0 1px 0 color-mix(in srgb, white 72%, transparent),
+      inset 0 -3px 5px color-mix(in srgb, black 42%, transparent);
+    color: var(--color-void);
+    font-family: var(--font-display);
+    font-size: 0.72rem;
+    font-variation-settings: 'wdth' 82, 'wght' 780;
+    line-height: 1;
+    text-shadow: 0 1px 0 color-mix(in srgb, var(--rank-hi) 65%, transparent);
+  }
+
+  .rank-badge-gold {
+    --rank-metal: var(--color-rank-gold);
+    --rank-hi: var(--color-rank-gold-hi);
+    --rank-lo: var(--color-rank-gold-lo);
+  }
+
+  .rank-badge-gold::before { width: 2.15rem; height: 2.15rem; }
+
+  .rank-badge-silver {
+    --rank-metal: var(--color-rank-silver);
+    --rank-hi: var(--color-rank-silver-hi);
+    --rank-lo: var(--color-rank-silver-lo);
+  }
+
+  .rank-badge-copper {
+    --rank-metal: var(--color-rank-copper);
+    --rank-hi: var(--color-rank-copper-hi);
+    --rank-lo: var(--color-rank-copper-lo);
+  }
+
   /* ─────────────────────────────────────────────────────────────
      PLATE
      ───────────────────────────────────────────────────────────── */

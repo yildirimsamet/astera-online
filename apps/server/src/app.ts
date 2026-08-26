@@ -31,6 +31,7 @@ import { registerPreviewRoutes } from './routes/preview.js';
 import { registerOnboardingRoutes } from './routes/onboarding.js';
 import { registerChatRoutes } from './routes/chat.js';
 import { registerChronicleRoutes } from './routes/chronicle.js';
+import { registerClanRoutes } from './routes/clan.js';
 import { Presence } from './services/presence.js';
 import { Projections } from './services/projections.js';
 import { RateLimitBackend } from './services/rateLimitBackend.js';
@@ -380,6 +381,7 @@ export function buildApp(opts: BuildAppOptions): BuiltApp {
     registerSessionRoutes(app);
     registerChatRoutes(app);
     registerChronicleRoutes(app);
+    registerClanRoutes(app);
   });
 
   return {

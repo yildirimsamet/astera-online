@@ -61,7 +61,8 @@ export type ShardEventKind =
   | 'control'
   | 'transfer'
   | 'recovery'
-  | 'protection';
+  | 'protection'
+  | 'clan';
 
 /**
  * Shard kinds go out prefixed, and the prefix is not decoration.
@@ -73,6 +74,9 @@ export type ShardEventKind =
  * families impossible to confuse, in both directions.
  */
 export const SHARD_PREFIX = 'shard:';
+export const PRIVATE_PREFIX = 'private:';
+
+export type ClanPrivateEventKind = 'membership' | 'request' | 'chat' | 'depot' | 'aid';
 
 /** `JSON.parse` throws on malformed input; the schema handles everything else. */
 function safeJson(raw: string): unknown {
@@ -557,6 +561,15 @@ const topicOf = (event: StreamEvent): string =>
 export async function publish(tx: Queryable, playerId: string, kind: string): Promise<void> {
   const payload = JSON.stringify({ playerId, kind } satisfies StreamEvent);
   await tx.execute(sql`select pg_notify(${CHANNEL}, ${payload})`);
+}
+
+/** A narrow invalidation on the existing player-private topic. No private data rides SSE. */
+export async function publishPrivate(
+  tx: Queryable,
+  playerId: string,
+  kind: ClanPrivateEventKind,
+): Promise<void> {
+  await publish(tx, playerId, `${PRIVATE_PREFIX}clan-${kind}`);
 }
 
 /**

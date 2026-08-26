@@ -16,6 +16,13 @@ export const seasonRecap = {
   defences: 'Defences',
   damageDealt: 'Damage dealt',
   damageTaken: 'Damage taken',
+  clan: {
+    heading: 'Your clan record',
+    rank: 'Clan rank',
+    dominion: 'Clan Dominion',
+    seal: 'TOP 3 SEAL',
+    recordOnly: 'This is a season record and visual seal only. No clan power carries into the next galaxy.',
+  },
   rivalHeading: 'Your rival',
   rival: '{{name}} · {{count}} battles',
   biggestHeading: 'Biggest raid',

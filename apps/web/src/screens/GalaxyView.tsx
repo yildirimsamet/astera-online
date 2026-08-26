@@ -1,6 +1,6 @@
 import { SeasonLockProvider } from '../session/seasonLock.js';
 import { NextSeason } from '../ui/NextSeason.js';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   useGalaxy,
@@ -46,10 +46,10 @@ import { RewardsScreen } from './RewardsScreen.jsx';
 import { MenuPanel } from '../shell/MenuPanel.jsx';
 import { LeaderboardScreen } from './LeaderboardScreen.jsx';
 import { ChatScreen } from './ChatScreen.jsx';
-import { ChatLauncher } from './ChatLauncher.jsx';
+import { ChatLauncher, type ChatChannel } from './ChatLauncher.jsx';
 import { ChronicleLauncher } from './ChronicleLauncher.jsx';
 import { ChronicleScreen } from './ChronicleScreen.jsx';
-import { Sheet } from '../ui/kit/index.js';
+import { Sheet, Waiting } from '../ui/kit/index.js';
 import { describe, useToast } from '../ui/Toast.js';
 import { GALAXY_ASSETS, usePreload } from '../lib/preload.js';
 import { LoadingScreen } from '../shell/LoadingScreen.js';
@@ -59,8 +59,18 @@ import { SeasonRecap, useSeasonRecapOpening } from './SeasonRecap.jsx';
 import { ApiError } from '../api/client.js';
 import { useWorld } from '../api/world.js';
 import { controlledWorldId } from '../galaxy/scene.js';
-import { focusTapDecision } from '../galaxy/follow.js';
+import {
+  focusTapDecision,
+  planetFocusRailVisible,
+  transferOriginForFocus,
+} from '../galaxy/follow.js';
 import { reconcileOwnCraft, type CraftFocus } from '../galaxy/ownCraft.js';
+
+/** Clan command is a large, infrequent room; keep it out of the first galaxy bundle. */
+const ClanScreen = lazy(async () => {
+  const module = await import('./ClanScreen.jsx');
+  return { default: module.ClanScreen };
+});
 
 /**
  * THE GALAXY IS THE GAME. D20.
@@ -76,11 +86,11 @@ import { reconcileOwnCraft, type CraftFocus } from '../galaxy/ownCraft.js';
  * the 3D galaxy an interface rather than a target list".
  *
  * FOCUS IS THE PRIMITIVE. The first tap selects and frames an object — following,
- * if it moves — while the second tap on that same object opens its detail. A world
- * the commander controls is the exception: it opens management immediately.
+ * if it moves — while the second tap on that same object opens its detail. For a
+ * world the commander controls, that second tap opens management instead.
  */
 
-export type Panel = 'planet' | 'intel' | 'leaderboard' | 'chat' | 'chronicle' | 'rewards' | 'recap' | 'menu' | null;
+export type Panel = 'planet' | 'intel' | 'leaderboard' | 'clan' | 'chat' | 'chronicle' | 'rewards' | 'recap' | 'menu' | null;
 
 export function GalaxyView({
   panel,
@@ -156,7 +166,7 @@ export function GalaxyView({
   const harvest = useHarvest();
   const settlement = useSettlement();
   const deathStar = useLaunchDeathStar();
-  const { activePlanetId, selectPlanet } = useWorld();
+  const { activePlanetId, worlds, selectPlanet } = useWorld();
   const say = useToast();
   const now = useNow(5_000);
   const [requestedPlanetGroup, setRequestedPlanetGroup] = useState<PlanetGroup | null>(null);
@@ -188,6 +198,8 @@ export function GalaxyView({
 
   const [focus, setFocus] = useState<Focus | null>(null);
   const [transferTargetId, setTransferTargetId] = useState<string | null>(null);
+  /** The world that was active before focusing another controlled world. */
+  const [transferOriginId, setTransferOriginId] = useState<string | null>(null);
   /**
    * Whether the focus rail is expanded. Reset to closed on every new selection —
    * a panel that stayed open as the player swept from world to world would undo
@@ -196,6 +208,7 @@ export function GalaxyView({
   const [detail, setDetail] = useState(false);
   const [attacking, setAttacking] = useState(false);
   const [homeSignal, setHomeSignal] = useState(0);
+  const [chatChannel, setChatChannel] = useState<ChatChannel>('general');
   const reportedLostPlacement = useRef(false);
   useEffect(() => {
     if (
@@ -237,6 +250,7 @@ export function GalaxyView({
     if (goHome === undefined || goHome === askedHome.current) return;
     askedHome.current = goHome;
     setFocus(null);
+    setTransferOriginId(null);
     setHomeSignal((n) => n + 1);
   }, [goHome]);
 
@@ -335,6 +349,7 @@ export function GalaxyView({
     seenOwnCraft.current = result.seen;
     if (!result.focus) return;
     setFocus(result.focus);
+    setTransferOriginId(null);
     setDetail(false);
     setAttacking(false);
   }, [ownCraftReady, runs, threads]);
@@ -352,6 +367,7 @@ export function GalaxyView({
     if (!exists) return;
     handledCraftFocusRequest.current = craftFocusRequest.request;
     setFocus(requested);
+    setTransferOriginId(null);
     setDetail(false);
     setAttacking(false);
   }, [craftFocusRequest, runs, threads]);
@@ -391,23 +407,29 @@ export function GalaxyView({
       const ownedId = next?.kind === 'planet' ? controlledWorldId(planets, next.id) : null;
       const decision = focusTapDecision(focus, next, ownedId);
       if (decision.kind === 'manage') {
-        // A click on any controlled world means "manage this world". `isSelf`
-        // names the immutable capital identity and used to strand colonies in a
-        // focus state with no dossier and no planet sheet.
         selectPlanet(decision.planetId);
         setFocus(null);
+        setTransferOriginId(null);
         setDetail(false);
         setAttacking(false);
         onPanel('planet');
         onFocused?.(next);
         return;
       }
+      if (ownedId !== null) {
+        // Selecting the target as active is immediate, but "transfer here" still
+        // originates at the world that was active when this focus began.
+        setTransferOriginId(transferOriginForFocus(activePlanetId, ownedId));
+        selectPlanet(ownedId);
+      } else {
+        setTransferOriginId(null);
+      }
       setFocus(decision.focus);
       setDetail(decision.detail);
       setAttacking(false);
       onFocused?.(next);
     },
-    [focus, onFocused, onPanel, planets, selectPlanet],
+    [activePlanetId, focus, onFocused, onPanel, planets, selectPlanet],
   );
   const focusPlanet = useCallback(
     (planetId: string) => {
@@ -415,21 +437,18 @@ export function GalaxyView({
       if (!target) return;
       const next: Focus = { kind: 'planet', id: planetId };
       const ownedId = controlledWorldId(planets, planetId);
-      if (ownedId) {
+      if (ownedId !== null) {
+        setTransferOriginId(transferOriginForFocus(activePlanetId, ownedId));
         selectPlanet(ownedId);
-        setFocus(null);
-        setDetail(false);
-        setAttacking(false);
-        onPanel('planet');
-        onFocused?.(next);
-        return;
+      } else {
+        setTransferOriginId(null);
       }
       setFocus(next);
       setDetail(false);
       setAttacking(false);
       onFocused?.(next);
     },
-    [onFocused, onPanel, planets, selectPlanet],
+    [activePlanetId, onFocused, planets, selectPlanet],
   );
   const handledFocusRequest = useRef<number | null>(null);
   useEffect(() => {
@@ -496,9 +515,17 @@ export function GalaxyView({
   );
 
   const selected = focus?.kind === 'planet' ? planets.find((p) => p.id === focus.id) : undefined;
+  const transferOrigin = transferOriginId === null
+    ? undefined
+    : worlds.find((world) => world.planet.id === transferOriginId);
+  const focusedPlanet = selected?.isOwned && transferOrigin ? transferOrigin : planet.data;
+  const showPlanetFocus = selected
+    ? planetFocusRailVisible(selected.isOwned === true, transferOriginId)
+    : false;
 
   const close = (): void => {
     setFocus(null);
+    setTransferOriginId(null);
     setDetail(false);
     setAttacking(false);
   };
@@ -618,7 +645,8 @@ export function GalaxyView({
         <>
           <ChronicleLauncher onOpen={() => { onPanel('chronicle'); }} />
           <ChatLauncher
-            onOpen={() => {
+            onOpen={(channel) => {
+              setChatChannel(channel);
               onPanel('chat');
             }}
           />
@@ -634,10 +662,10 @@ export function GalaxyView({
 
       {/* ── focus ───────────────────────────────────────────── */}
 
-      {focus?.kind === 'planet' && selected && selected.id !== planet.data?.planet.id && planet.data && !attacking && (
+      {focus?.kind === 'planet' && selected && focusedPlanet && showPlanetFocus && !attacking && (
         <PlanetFocus
           target={selected}
-          planet={planet.data}
+          planet={focusedPlanet}
           intel={intel.data}
           reports={reports.data?.reports ?? []}
           rival={reports.data?.rivals.find((rival) =>
@@ -660,9 +688,11 @@ export function GalaxyView({
           onAttack={() => {
             setAttacking(true);
           }}
-          onTransfer={() => {
-            setTransferTargetId(selected.id);
-          }}
+          {...(transferOrigin ? {
+            onTransfer: () => {
+              setTransferTargetId(selected.id);
+            },
+          } : {})}
           onSettle={() => {
             settlement.mutate(selected.id, {
               onSuccess: () => {
@@ -924,6 +954,22 @@ export function GalaxyView({
         </Sheet>
       )}
 
+      {panel === 'clan' && (
+        <Sheet
+          contained
+          bleed
+          eyebrow={t('clan.outside.eyebrow')}
+          title={t('clan.tabs.label')}
+          onClose={() => { onPanel(null); }}
+        >
+          <div className="h-full overflow-y-auto overscroll-contain">
+            <Suspense fallback={<Waiting>{t('clan.waiting')}</Waiting>}>
+              <ClanScreen />
+            </Suspense>
+          </div>
+        </Sheet>
+      )}
+
       {showChat && panel === 'chat' && (
         <Sheet
           contained
@@ -935,6 +981,7 @@ export function GalaxyView({
           }}
         >
           <ChatScreen
+            initialChannel={chatChannel}
             onFocusPlanet={(planetId) => {
               onPanel(null);
               focusPlanet(planetId);
@@ -1014,12 +1061,12 @@ export function GalaxyView({
         </div>
       )}
 
-      {panel !== 'recap' && transferTargetId && planet.data && (() => {
+      {panel !== 'recap' && transferTargetId && transferOrigin && (() => {
         const target = galaxy.data?.planets.find((world) => world.id === transferTargetId);
         return target ? (
           <TransferSheet
             target={target}
-            planet={planet.data}
+            planet={transferOrigin}
             onClose={() => { setTransferTargetId(null); }}
             onLaunched={() => {
               setTransferTargetId(null);

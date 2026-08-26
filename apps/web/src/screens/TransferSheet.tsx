@@ -57,7 +57,9 @@ export function TransferSheet({
 }) {
   const { t } = useTranslation();
   const say = useToast();
-  const transfer = useTransfer();
+  // Focusing a controlled destination also makes it active. The source therefore
+  // travels explicitly instead of being re-read from the now-changed selector.
+  const transfer = useTransfer(planet.planet.id);
   const [fleet, setFleet] = useState<Fleet>({});
   const [cargo, setCargo] = useState({ alloy: 0, crystal: 0, deuterium: 0 });
   const capacity = transferCargoCapacity(fleet);

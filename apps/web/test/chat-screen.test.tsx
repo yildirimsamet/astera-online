@@ -21,7 +21,10 @@ const initial = {
   pageParams: [null],
 };
 
-function show(onFocusPlanet = vi.fn()) {
+function show(
+  onFocusPlanet = vi.fn(),
+  initialChannel: 'general' | 'clan' = 'general',
+) {
   const api = new Api({ fetch: vi.fn() as unknown as typeof globalThis.fetch });
   vi.spyOn(api, 'markChatRead').mockResolvedValue({ ok: true, readAt: at });
   const post = vi.spyOn(api, 'postChat').mockResolvedValue({
@@ -30,14 +33,41 @@ function show(onFocusPlanet = vi.fn()) {
       createdAt: new Date(at.getTime() + 2000), self: true,
     },
   });
+  vi.spyOn(api, 'markClanChatRead').mockResolvedValue({ readAt: at });
+  const postClan = vi.spyOn(api, 'postClanChat').mockResolvedValue({
+    message: {
+      id: 'clan-two', authorPlayerId: 'mine', planetId: 'my-planet', username: 'Vantage',
+      content: 'Klan hazır', createdAt: new Date(at.getTime() + 3000), self: true,
+    },
+  });
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   client.setQueryData(keys.chatMessages, initial);
   client.setQueryData(keys.chatUnread, { count: 1 });
+  client.setQueryData(keys.clanBadge, {
+    available: true,
+    membership: {
+      clanId: 'clan-war', name: 'War Fleet', tag: 'WAR', role: 'MEMBER',
+      matureAt: at, mature: true,
+    },
+    attention: true,
+    attentionCount: 1,
+    clanChatUnread: 1,
+  });
+  client.setQueryData(keys.clanChat, {
+    pages: [{
+      messages: [{
+        id: 'clan-one', authorPlayerId: 'other', planetId: 'other-planet', username: 'İzci',
+        content: 'Rim temiz', createdAt: at, self: false,
+      }],
+      nextBefore: null,
+    }],
+    pageParams: [null],
+  });
   const Wrapper = ({ children }: { children: ReactNode }) => (
     <QueryClientProvider client={client}><ApiProvider api={api}>{children}</ApiProvider></QueryClientProvider>
   );
-  render(<Wrapper><ChatScreen onFocusPlanet={onFocusPlanet} /></Wrapper>);
-  return { api, post, client, onFocusPlanet };
+  render(<Wrapper><ChatScreen initialChannel={initialChannel} onFocusPlanet={onFocusPlanet} /></Wrapper>);
+  return { api, post, postClan, client, onFocusPlanet };
 }
 
 beforeAll(() => {
@@ -56,6 +86,29 @@ describe('galaxy chat surface', () => {
     expect(history).toHaveClass('min-h-0', 'flex-1', 'overflow-y-auto');
     expect(composer.closest('form')).toHaveClass('shrink-0');
     expect(history.parentElement).toBe(composer.closest('form')?.parentElement);
+  });
+
+  it('switches between General and Clan without mixing their messages or read markers', async () => {
+    const { api } = show();
+    expect(screen.getByRole('tab', { name: 'General — 1 unread' })).toHaveAttribute('aria-selected', 'true');
+    expect(screen.getByText('Merhaba galaksi')).toBeInTheDocument();
+    expect(screen.queryByText('Rim temiz')).not.toBeInTheDocument();
+
+    await userEvent.setup().click(screen.getByRole('tab', { name: 'Clan — 1 unread' }));
+    expect(screen.queryByText('Merhaba galaksi')).not.toBeInTheDocument();
+    expect(screen.getByText('Rim temiz')).toBeInTheDocument();
+    expect(screen.getByRole('textbox', { name: 'Message your clan' })).toBeEnabled();
+    await waitFor(() => { expect(api.markClanChatRead).toHaveBeenCalledWith('clan-one'); });
+  });
+
+  it('posts from the selected clan channel', async () => {
+    const { postClan } = show(vi.fn(), 'clan');
+    const user = userEvent.setup();
+    const composer = screen.getByRole('textbox', { name: 'Message your clan' });
+    await user.type(composer, ' Klan hazır ');
+    await user.click(screen.getByRole('button', { name: 'Send' }));
+    await waitFor(() => { expect(postClan).toHaveBeenCalledWith('Klan hazır'); });
+    expect(await screen.findByText('Klan hazır')).toBeInTheDocument();
   });
 
   it('shows commander usernames and messages, never planet identity', async () => {

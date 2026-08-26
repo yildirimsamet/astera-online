@@ -30,6 +30,7 @@ const target = (over: Partial<GalaxyPlanet> = {}): GalaxyPlanet => ({
   owner: 'Sable',
   position: { x: 200, y: 0, z: 0 },
   coreTier: 2,
+  coreLevel: 6,
   satellites: [],
   shielded: false,
   isSelf: false,

@@ -25,7 +25,7 @@ import type {
 } from '@astera/rules';
 
 /**
- * Twenty-seven tables. Nothing here stores a value that can be derived from a formula
+ * Seasonal and permanent tables. Nothing here stores a value that can be derived from a formula
  * and a clock — no fleet positions, no asteroid coordinates, no resource ticks.
  *
  * TIME MODEL: everything is `timestamptz`. The rules package works in minutes
@@ -36,7 +36,7 @@ import type {
 export const seasonStatus = pgEnum('season_status', ['pending', 'live', 'frozen', 'wiped']);
 export const planetKind = pgEnum('planet_kind', ['CAPITAL', 'COLONY', 'NEUTRAL']);
 export const missionKind = pgEnum('mission_kind', [
-  'attack', 'probe', 'return', 'transfer', 'settlement', 'death_star',
+  'attack', 'probe', 'return', 'transfer', 'settlement', 'death_star', 'clan_transfer',
 ]);
 export const missionStatus = pgEnum('mission_status', ['in_flight', 'resolved', 'cancelled']);
 export const eventStatus = pgEnum('event_status', ['pending', 'processing', 'done', 'failed']);
@@ -156,7 +156,7 @@ export const seasons = pgTable('seasons', {
   status: seasonStatus('status').notNull().default('pending'),
   startsAt: timestamp('starts_at', { withTimezone: true }).notNull(),
   endsAt: timestamp('ends_at', { withTimezone: true }).notNull(),
-  /** Immutable at creation; v1 has capitals only, v2 adds D97. */
+  /** Immutable: v1 capitals, v2 multi-world, v3 seasonal clans. */
   rulesetVersion: integer('ruleset_version').notNull().default(1),
 }, (t) => [index('seasons_shard_status_idx').on(t.shardId, t.status)]);
 
@@ -168,6 +168,13 @@ export interface SeasonRecap {
   defences: number;
   rival: { commanderName: string; battles: number } | null;
   biggestRaid: { value: number; opponentName: string } | null;
+  clan?: {
+    name: string;
+    tag: string;
+    finalRank: number;
+    dominion: number;
+    topThree: boolean;
+  } | null;
 }
 
 /** Permanent identity and story, never permanent power. D85. */
@@ -215,6 +222,10 @@ export const players = pgTable('players', {
   lastActiveAt: timestamp('last_active_at', { withTimezone: true }).notNull().defaultNow(),
   /** Durable across devices, but not across a season: the newest chat instant read. D77. */
   lastChatReadAt: timestamp('last_chat_read_at', { withTimezone: true }),
+  /** Durable attention anchor for private clan requests, depot and chat. D114. */
+  lastClanSeenAt: timestamp('last_clan_seen_at', { withTimezone: true }),
+  /** Leave, kick and disband all close recruitment actions for one day. D114. */
+  clanLockedUntil: timestamp('clan_locked_until', { withTimezone: true }),
   /** One identity anchor for this season; no power, and no FK so reclaim stays possible. D91. */
   rivalPlanetId: uuid('rival_planet_id'),
   /** Commander identity survives a target colony changing hands. D97. */
@@ -249,6 +260,133 @@ export const players = pgTable('players', {
   index('players_ladder_idx').on(t.seasonId, t.dominionTaken, t.dominionLost),
   index('players_active_idx').on(t.seasonId, t.lastActiveAt),
 ]);
+
+export type ClanMembershipRole = 'LEADER' | 'MEMBER';
+export type ClanRequestKind = 'APPLICATION' | 'INVITATION';
+export type ClanRequestStatus = 'PENDING' | 'ACCEPTED' | 'REJECTED' | 'WITHDRAWN' | 'EXPIRED' | 'CLOSED';
+
+/** One public seasonal identity and its cached, fully audited clan Dominion. D114. */
+export const clans = pgTable('clans', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  seasonId: uuid('season_id').notNull().references(() => seasons.id),
+  name: text('name').notNull(),
+  nameKey: text('name_key').notNull(),
+  tag: text('tag').notNull(),
+  description: text('description').notNull().default(''),
+  recruiting: boolean('recruiting').notNull().default(true),
+  dominionTaken: real('dominion_taken').notNull().default(0),
+  dominionLost: real('dominion_lost').notNull().default(0),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull(),
+  disbandedAt: timestamp('disbanded_at', { withTimezone: true }),
+}, (t) => [
+  uniqueIndex('clans_season_name_idx').on(t.seasonId, t.nameKey),
+  uniqueIndex('clans_season_tag_idx').on(t.seasonId, t.tag),
+  index('clans_season_score_idx').on(t.seasonId, t.dominionTaken, t.dominionLost),
+  check('clans_name_length_check', sql`char_length(${t.name}) BETWEEN 3 AND 24`),
+  check('clans_tag_check', sql`${t.tag} ~ '^[A-Z0-9]{2,5}$'`),
+  check('clans_description_length_check', sql`char_length(${t.description}) <= 160`),
+]);
+
+/** Active membership is represented by `left_at IS NULL`; old rows remain an audit. */
+export const clanMemberships = pgTable('clan_memberships', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  seasonId: uuid('season_id').notNull().references(() => seasons.id),
+  clanId: uuid('clan_id').notNull().references(() => clans.id),
+  playerId: uuid('player_id').notNull().references(() => players.id),
+  role: text('role').$type<ClanMembershipRole>().notNull().default('MEMBER'),
+  slot: integer('slot').notNull(),
+  joinedAt: timestamp('joined_at', { withTimezone: true }).notNull(),
+  matureAt: timestamp('mature_at', { withTimezone: true }).notNull(),
+  leftAt: timestamp('left_at', { withTimezone: true }),
+  aidEnabled: boolean('aid_enabled').notNull().default(true),
+  aidPolicyChangedAt: timestamp('aid_policy_changed_at', { withTimezone: true }).notNull(),
+  lastChatReadAt: timestamp('last_chat_read_at', { withTimezone: true }),
+}, (t) => [
+  uniqueIndex('clan_memberships_active_player_idx')
+    .on(t.playerId)
+    .where(sql`${t.leftAt} IS NULL`),
+  uniqueIndex('clan_memberships_active_slot_idx')
+    .on(t.clanId, t.slot)
+    .where(sql`${t.leftAt} IS NULL`),
+  uniqueIndex('clan_memberships_active_leader_idx')
+    .on(t.clanId)
+    .where(sql`${t.leftAt} IS NULL AND ${t.role} = 'LEADER'`),
+  index('clan_memberships_clan_history_idx').on(t.clanId, t.joinedAt),
+  index('clan_memberships_player_history_idx').on(t.playerId, t.joinedAt),
+  check('clan_memberships_role_check', sql`${t.role} IN ('LEADER', 'MEMBER')`),
+  check('clan_memberships_slot_check', sql`${t.slot} BETWEEN 0 AND 4`),
+  check('clan_memberships_maturity_check', sql`${t.matureAt} >= ${t.joinedAt}`),
+  check('clan_memberships_left_check', sql`${t.leftAt} IS NULL OR ${t.leftAt} >= ${t.joinedAt}`),
+]);
+
+/** Applications and invitations share one bounded, expiring state machine. */
+export const clanRequests = pgTable('clan_requests', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  seasonId: uuid('season_id').notNull().references(() => seasons.id),
+  clanId: uuid('clan_id').notNull().references(() => clans.id),
+  playerId: uuid('player_id').notNull().references(() => players.id),
+  kind: text('kind').$type<ClanRequestKind>().notNull(),
+  status: text('status').$type<ClanRequestStatus>().notNull().default('PENDING'),
+  createdByPlayerId: uuid('created_by_player_id').notNull().references(() => players.id),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull(),
+  expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
+  resolvedAt: timestamp('resolved_at', { withTimezone: true }),
+}, (t) => [
+  uniqueIndex('clan_requests_pending_pair_idx')
+    .on(t.clanId, t.playerId)
+    .where(sql`${t.status} = 'PENDING'`),
+  index('clan_requests_clan_status_idx').on(t.clanId, t.status, t.createdAt),
+  index('clan_requests_player_status_idx').on(t.playerId, t.status, t.createdAt),
+  index('clan_requests_inviter_rate_idx').on(t.createdByPlayerId, t.kind, t.createdAt),
+  check('clan_requests_kind_check', sql`${t.kind} IN ('APPLICATION', 'INVITATION')`),
+  check(
+    'clan_requests_status_check',
+    sql`${t.status} IN ('PENDING', 'ACCEPTED', 'REJECTED', 'WITHDRAWN', 'EXPIRED', 'CLOSED')`,
+  ),
+  check('clan_requests_expiry_check', sql`${t.expiresAt} > ${t.createdAt}`),
+]);
+
+/** Canonical unordered player pair; a later separation extends this one row. */
+export const clanCeasefires = pgTable('clan_ceasefires', {
+  seasonId: uuid('season_id').notNull().references(() => seasons.id),
+  playerLowId: uuid('player_low_id').notNull().references(() => players.id),
+  playerHighId: uuid('player_high_id').notNull().references(() => players.id),
+  sourceClanId: uuid('source_clan_id').notNull().references(() => clans.id),
+  startsAt: timestamp('starts_at', { withTimezone: true }).notNull(),
+  endsAt: timestamp('ends_at', { withTimezone: true }).notNull(),
+}, (t) => [
+  primaryKey({ columns: [t.seasonId, t.playerLowId, t.playerHighId] }),
+  index('clan_ceasefires_expiry_idx').on(t.seasonId, t.endsAt),
+  check('clan_ceasefires_pair_check', sql`${t.playerLowId} < ${t.playerHighId}`),
+  check('clan_ceasefires_window_check', sql`${t.endsAt} > ${t.startsAt}`),
+]);
+
+export const clanMessages = pgTable('clan_messages', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  seasonId: uuid('season_id').notNull().references(() => seasons.id),
+  clanId: uuid('clan_id').notNull().references(() => clans.id),
+  authorPlayerId: uuid('author_player_id').notNull().references(() => players.id),
+  content: text('content').notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull(),
+}, (t) => [
+  index('clan_messages_cursor_idx').on(t.clanId, t.createdAt, t.id),
+  index('clan_messages_author_rate_idx').on(t.authorPlayerId, t.createdAt),
+  check('clan_messages_content_check', sql`char_length(btrim(${t.content})) BETWEEN 1 AND 280`),
+]);
+
+/** Private, immutable management history; player ids are snapshots, not foreign keys. */
+export const clanEvents = pgTable('clan_events', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  seasonId: uuid('season_id').notNull().references(() => seasons.id),
+  clanId: uuid('clan_id').notNull().references(() => clans.id),
+  kind: text('kind').notNull(),
+  actorPlayerId: uuid('actor_player_id'),
+  actorName: text('actor_name'),
+  subjectPlayerId: uuid('subject_player_id'),
+  subjectName: text('subject_name'),
+  payload: jsonb('payload').$type<Record<string, unknown>>().notNull().default({}),
+  occurredAt: timestamp('occurred_at', { withTimezone: true }).notNull(),
+}, (t) => [index('clan_events_cursor_idx').on(t.clanId, t.occurredAt, t.id)]);
 
 /**
  * THE GALAXY'S CONVERSATION. D77.
@@ -445,16 +583,134 @@ export const missions = pgTable('missions', {
   /**
    * The outbound leg this one is coming home from.
    *
-   * Set on a probe's return trip, so the arrival handler knows which report to
-   * deliver. An attack's return leg carries its survivors and its loot in its own
-   * columns and needs no link; a probe carries nothing but the answer, and the
-   * answer lives in `probe_reports`.
+   * Set on a probe's return trip so the handler knows which report to deliver,
+   * and on an attack return so safely docked loot can use the immutable D114
+   * roster snapshotted on its outbound mission.
    */
   parentMissionId: uuid('parent_mission_id'),
 }, (t) => [
   index('missions_status_arrive_idx').on(t.status, t.arriveAt),
   index('missions_origin_idx').on(t.originPlanetId),
   index('missions_target_idx').on(t.targetPlanetId),
+]);
+
+/** Counted at attack launch, never inferred from a later report. D114. */
+export const attackCommitments = pgTable('attack_commitments', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  seasonId: uuid('season_id').notNull().references(() => seasons.id),
+  missionId: uuid('mission_id').notNull().references(() => missions.id),
+  attackerPlayerId: uuid('attacker_player_id').notNull().references(() => players.id),
+  targetPlayerId: uuid('target_player_id').notNull().references(() => players.id),
+  /**
+   * Immediate membership snapshot used for the five-launch clan quota, and the ONE
+   * column here that is deliberately MUTABLE: `bindOpenAttacksToClan` adopts a
+   * still-live clanless launch when its attacker first joins, so pre-attacking and
+   * then joining cannot reset the aggregate ceiling. Nothing that describes what
+   * happened may read it — see `attackerClanId` below.
+   */
+  quotaClanId: uuid('quota_clan_id').references(() => clans.id),
+  /**
+   * Immediate identity snapshots used by battle-report tags, and immutable.
+   *
+   * The attacker's used to be read off `quotaClanId`, which the quota rebinds for
+   * twelve hours after launch — so a raid that had already resolved with no clan
+   * grew one the moment its attacker joined, and both sides' reports said the
+   * attacker had flown under a tag that did not exist when they left. D114 is
+   * explicit that leaving later must not rewrite a historical event; joining later
+   * must not either.
+   */
+  attackerClanId: uuid('attacker_clan_id').references(() => clans.id),
+  defenderClanId: uuid('defender_clan_id').references(() => clans.id),
+  /** Mature launch snapshots used only for clan Dominion attribution. */
+  attackerScoreClanId: uuid('attacker_score_clan_id').references(() => clans.id),
+  defenderScoreClanId: uuid('defender_score_clan_id').references(() => clans.id),
+  launchedAt: timestamp('launched_at', { withTimezone: true }).notNull(),
+  expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
+}, (t) => [
+  uniqueIndex('attack_commitments_mission_idx').on(t.missionId),
+  index('attack_commitments_personal_idx')
+    .on(t.attackerPlayerId, t.targetPlayerId, t.expiresAt),
+  index('attack_commitments_clan_idx').on(t.quotaClanId, t.targetPlayerId, t.expiresAt),
+  check('attack_commitments_window_check', sql`${t.expiresAt} > ${t.launchedAt}`),
+]);
+
+export type ClanAidStatus = 'OUTBOUND' | 'RETURNING' | 'DELIVERED' | 'RETURNED';
+
+/** One receiver-limit reservation and the metadata needed for a safe return. */
+export const clanAidCommitments = pgTable('clan_aid_commitments', {
+  missionId: uuid('mission_id').primaryKey().references(() => missions.id),
+  seasonId: uuid('season_id').notNull().references(() => seasons.id),
+  clanId: uuid('clan_id').notNull().references(() => clans.id),
+  senderPlayerId: uuid('sender_player_id').notNull().references(() => players.id),
+  recipientPlayerId: uuid('recipient_player_id').notNull().references(() => players.id),
+  senderHomePlanetId: uuid('sender_home_planet_id').notNull().references(() => planets.id),
+  value: jsonb('value').$type<Resources>().notNull(),
+  returnTravelSeconds: real('return_travel_seconds').notNull(),
+  status: text('status').$type<ClanAidStatus>().notNull().default('OUTBOUND'),
+  committedAt: timestamp('committed_at', { withTimezone: true }).notNull(),
+  expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
+  resolvedAt: timestamp('resolved_at', { withTimezone: true }),
+}, (t) => [
+  index('clan_aid_recipient_window_idx').on(t.recipientPlayerId, t.expiresAt),
+  index('clan_aid_sender_idx').on(t.senderPlayerId, t.committedAt),
+  check('clan_aid_status_check', sql`${t.status} IN ('OUTBOUND', 'RETURNING', 'DELIVERED', 'RETURNED')`),
+  check('clan_aid_window_check', sql`${t.expiresAt} > ${t.committedAt}`),
+  check('clan_aid_return_time_check', sql`${t.returnTravelSeconds} > 0`),
+]);
+
+/** Mature attacker roster frozen at launch. Player ids intentionally survive only as snapshots. */
+export const clanRaidRoster = pgTable('clan_raid_roster', {
+  missionId: uuid('mission_id').notNull().references(() => missions.id),
+  clanId: uuid('clan_id').notNull().references(() => clans.id),
+  playerId: uuid('player_id').notNull(),
+  slot: integer('slot').notNull(),
+}, (t) => [
+  primaryKey({ columns: [t.missionId, t.playerId] }),
+  uniqueIndex('clan_raid_roster_slot_idx').on(t.missionId, t.slot),
+  check('clan_raid_roster_slot_check', sql`${t.slot} BETWEEN 0 AND 4`),
+]);
+
+/** A personal share, claimable after leave/disband and never leader-owned. */
+export const clanLootShares = pgTable('clan_loot_shares', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  seasonId: uuid('season_id').notNull().references(() => seasons.id),
+  /** Immutable source snapshot. The share must outlive an idle target's reclaimed mission. */
+  sourceMissionId: uuid('source_mission_id').notNull(),
+  clanId: uuid('clan_id').notNull().references(() => clans.id),
+  playerId: uuid('player_id').notNull().references(() => players.id),
+  alloy: real('alloy').notNull().default(0),
+  crystal: real('crystal').notNull().default(0),
+  deuterium: real('deuterium').notNull().default(0),
+  remainingAlloy: real('remaining_alloy').notNull().default(0),
+  remainingCrystal: real('remaining_crystal').notNull().default(0),
+  remainingDeuterium: real('remaining_deuterium').notNull().default(0),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull(),
+  lastClaimedAt: timestamp('last_claimed_at', { withTimezone: true }),
+}, (t) => [
+  uniqueIndex('clan_loot_shares_source_player_idx').on(t.sourceMissionId, t.playerId),
+  index('clan_loot_shares_player_idx').on(t.playerId, t.createdAt),
+  check(
+    'clan_loot_shares_remaining_check',
+    sql`${t.remainingAlloy} BETWEEN 0 AND ${t.alloy}
+      AND ${t.remainingCrystal} BETWEEN 0 AND ${t.crystal}
+      AND ${t.remainingDeuterium} BETWEEN 0 AND ${t.deuterium}`,
+  ),
+]);
+
+/** Immutable audit behind the clan ladder cache. */
+export const clanScoreEvents = pgTable('clan_score_events', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  seasonId: uuid('season_id').notNull().references(() => seasons.id),
+  /** Immutable audit source. Clan score already earned never disappears on seat reclaim. */
+  missionId: uuid('mission_id').notNull(),
+  clanId: uuid('clan_id').notNull().references(() => clans.id),
+  side: text('side').$type<'ATTACK' | 'DEFENCE'>().notNull(),
+  dominionDelta: real('dominion_delta').notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull(),
+}, (t) => [
+  uniqueIndex('clan_score_events_source_idx').on(t.missionId, t.clanId, t.side),
+  index('clan_score_events_clan_idx').on(t.clanId, t.createdAt),
+  check('clan_score_events_side_check', sql`${t.side} IN ('ATTACK', 'DEFENCE')`),
 ]);
 
 /** A strategic asset belongs to its current planet and transfers with it. D97. */
@@ -824,11 +1080,17 @@ export const notifications = pgTable('notifications', {
 
 /** Dedupes retried actions — a flaky mobile connection must not double-launch. */
 export const requestLog = pgTable('request_log', {
-  idempotencyKey: text('idempotency_key').primaryKey(),
+  id: uuid('id').primaryKey().defaultRandom(),
+  idempotencyKey: text('idempotency_key').notNull(),
   playerId: uuid('player_id').notNull().references(() => players.id),
+  operation: text('operation').notNull(),
+  requestHash: text('request_hash').notNull(),
   response: jsonb('response').$type<unknown>().notNull(),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
-});
+}, (t) => [
+  uniqueIndex('request_log_scope_idx').on(t.playerId, t.operation, t.idempotencyKey),
+  index('request_log_created_idx').on(t.createdAt),
+]);
 
 /**
  * A REWARD THAT HAS BEEN UNLOCKED, AND WHETHER IT HAS BEEN TAKEN.

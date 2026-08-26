@@ -582,9 +582,21 @@ export function InterceptMarks({
   const ring = useRef<THREE.Group>(null);
 
   useFrame(({ clock }) => {
-    // A slow pulse, so it reads as a target being held rather than as a decal.
-    const s = 1 + Math.sin(clock.elapsedTime * 2) * 0.12;
-    ring.current?.scale.setScalar(s);
+    /**
+     * A slow pulse, so it reads as a target being held rather than as a decal.
+     *
+     * EACH RING, NEVER THE GROUP. Scaling the parent scaled its children's
+     * POSITIONS too, about the galaxy's origin — so a marker fifty units out swung
+     * six units back and forth every cycle and read as a target sliding around
+     * rather than breathing. Scaling each mesh applies about that mesh's own
+     * centre, which is what a pulse means.
+     *
+     * The amplitude came down with the fix (owner call): the old figure was doing
+     * two jobs at once, and once the swing is gone what is left only has to be
+     * enough to say the marker is live.
+     */
+    const s = 1 + Math.sin(clock.elapsedTime * 1.6) * 0.05;
+    for (const mark of ring.current?.children ?? []) mark.scale.setScalar(s);
   });
 
   if (points.length === 0) return null;

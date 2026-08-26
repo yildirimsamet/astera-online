@@ -141,6 +141,14 @@ export const seasonResultSchema = z.object({
     defences: z.number(),
     rival: z.object({ commanderName: z.string(), battles: z.number() }).nullable(),
     biggestRaid: z.object({ value: z.number(), opponentName: z.string() }).nullable(),
+    /** Final seasonal clan identity. Power is wiped; this story survives. D114. */
+    clan: z.object({
+      name: z.string(),
+      tag: z.string(),
+      finalRank: z.number().int().positive(),
+      dominion: z.number(),
+      topThree: z.boolean(),
+    }).nullable().optional(),
   }),
   createdAt: z.coerce.date(),
 });
@@ -479,8 +487,18 @@ export const galaxySchema = z.object({
         z.object({ kind: z.literal('PLAYER'), playerId: z.string(), displayName: z.string() }),
         z.object({ kind: z.literal('NEUTRAL'), tier: z.union([z.literal(1), z.literal(2), z.literal(3)]) }),
       ]).optional(),
+      /** Public seasonal identity, never membership-private state. D114. */
+      clan: z.object({ id: z.string(), name: z.string(), tag: z.string() }).nullable().optional(),
+      /** Exact public Dominion rank only for the three podium commanders. */
+      dominionRank: z.union([z.literal(1), z.literal(2), z.literal(3)]).optional(),
       position: vec3,
       coreTier: z.number(),
+      /**
+       * The exact Command Core level, public since the dyson rings — the ring
+       * count steps every three levels and the colour every one, and neither can
+       * be drawn from the tier. See `publicGalaxy` for what that trades away.
+       */
+      coreLevel: z.number(),
       /**
        * The instruments in orbit, types only and never levels (D15). Hardware is
        * public — it is a physical object anyone can see — while what it can DO
@@ -537,6 +555,7 @@ export const leaderboardSchema = z.object({
       planetName: z.string(),
       coreTier: z.number(),
       score: z.number(),
+      clan: z.object({ id: z.string(), name: z.string(), tag: z.string() }).nullable().optional(),
     }),
   ),
   you: z
@@ -548,9 +567,274 @@ export const leaderboardSchema = z.object({
       planetName: z.string(),
       coreTier: z.number(),
       score: z.number(),
+      clan: z.object({ id: z.string(), name: z.string(), tag: z.string() }).nullable().optional(),
     })
     .nullable(),
 });
+
+/* ── seasonal clans ─────────────────────────────────────────── */
+
+const clanRole = z.enum(['LEADER', 'MEMBER']);
+const clanRequestKind = z.enum(['APPLICATION', 'INVITATION']);
+const clanRequestStatus = z.enum([
+  'PENDING', 'ACCEPTED', 'REJECTED', 'WITHDRAWN', 'EXPIRED', 'CLOSED',
+]);
+
+export const publicClanSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  tag: z.string(),
+  description: z.string(),
+  recruiting: z.boolean(),
+  leaderName: z.string(),
+  memberCount: z.number().int().nonnegative(),
+  score: z.number(),
+});
+
+export const clanDirectorySchema = z.object({
+  clans: z.array(publicClanSchema),
+  total: z.number().int().nonnegative(),
+});
+
+export const clanLeaderboardSchema = z.object({
+  clans: z.array(publicClanSchema.extend({
+    rank: z.number().int().positive(),
+    self: z.boolean(),
+  })),
+});
+
+export const clanBadgeSchema = z.object({
+  available: z.boolean(),
+  membership: z.object({
+    clanId: z.string(),
+    name: z.string(),
+    tag: z.string(),
+    role: clanRole,
+    matureAt: z.coerce.date(),
+    mature: z.boolean(),
+  }).nullable(),
+  attention: z.boolean(),
+  attentionCount: z.number().int().nonnegative(),
+  /** Chat only; management and depot attention must never light the chat beacon. */
+  clanChatUnread: z.number().int().nonnegative(),
+});
+
+export const clanStrengthSchema = z.object({
+  clan: z.object({ id: z.string(), name: z.string(), tag: z.string() }),
+  totals: z.object({
+    clanDominion: z.number(),
+    memberDominion: z.number(),
+    ships: z.number().int().nonnegative(),
+    fleetValue: z.number().nonnegative(),
+    groundDefences: z.number().int().nonnegative(),
+    worlds: z.number().int().nonnegative(),
+    activeFlights: z.number().int().nonnegative(),
+  }),
+  composition: z.array(z.object({
+    hull: hullId,
+    count: z.number().int().positive(),
+  })),
+  members: z.array(z.object({
+    playerId: z.string(),
+    username: z.string(),
+    role: clanRole,
+    dominion: z.number(),
+    ships: z.number().int().nonnegative(),
+    worlds: z.number().int().nonnegative(),
+  })),
+});
+
+const outsideClanRequest = z.object({
+  id: z.string(),
+  clanId: z.string(),
+  clanName: z.string(),
+  clanTag: z.string(),
+  kind: clanRequestKind,
+  status: clanRequestStatus,
+  expiresAt: z.coerce.date(),
+  resolvedAt: z.coerce.date().nullable(),
+});
+
+const memberClanRequest = z.object({
+  id: z.string(),
+  playerId: z.string(),
+  username: z.string(),
+  kind: clanRequestKind,
+  status: clanRequestStatus,
+  expiresAt: z.coerce.date(),
+});
+
+export const clanHomeSchema = z.discriminatedUnion('state', [
+  z.object({
+    state: z.literal('OUTSIDE'),
+    requests: z.array(outsideClanRequest),
+    depot: resources,
+    creation: z.object({
+      capitalPlanetId: z.string(),
+      coreLevel: z.number().int().nonnegative(),
+      requiredCoreLevel: z.number().int().positive(),
+      cost: resources,
+      affordable: z.boolean(),
+      unlockedAt: z.coerce.date().nullable(),
+    }),
+  }),
+  z.object({
+    state: z.literal('MEMBER'),
+    clan: z.object({
+      id: z.string(),
+      name: z.string(),
+      tag: z.string(),
+      description: z.string(),
+      recruiting: z.boolean(),
+      score: z.number(),
+      role: clanRole,
+      matureAt: z.coerce.date(),
+      mature: z.boolean(),
+      aidEnabled: z.boolean(),
+    }),
+    members: z.array(z.object({
+      playerId: z.string(),
+      username: z.string(),
+      role: clanRole,
+      slot: z.number().int().min(0).max(4),
+      joinedAt: z.coerce.date(),
+      matureAt: z.coerce.date(),
+      mature: z.boolean(),
+      aidEnabled: z.boolean(),
+      lastActiveAt: z.coerce.date(),
+      activeRecently: z.boolean(),
+    })),
+    requests: z.array(memberClanRequest),
+  }),
+]);
+
+export const clanRequestCreatedSchema = z.object({
+  requestId: z.string(),
+  expiresAt: z.coerce.date(),
+});
+export const clanRequestAcceptedSchema = z.object({
+  clanId: z.string(),
+  playerId: z.string(),
+  slot: z.number().int().min(0).max(4),
+  matureAt: z.coerce.date(),
+  hostileFlightsContinue: z.boolean(),
+});
+export const clanRequestClosedSchema = z.object({
+  requestId: z.string(),
+  status: z.enum(['REJECTED', 'WITHDRAWN']),
+});
+
+export const clanCreatedSchema = z.object({
+  clanId: z.string(),
+  name: z.string(),
+  tag: z.string(),
+  capitalPlanetId: z.string(),
+  planet: planetSchema,
+});
+
+export const clanDepotSchema = z.object({
+  resources,
+  purseRemaining: resources,
+});
+
+export const clanDepotClaimSchema = z.object({
+  claimed: resources,
+  remaining: resources,
+  planet: planetSchema,
+});
+
+export const clanAidSchema = z.object({
+  transfers: z.array(z.object({
+    id: z.string(),
+    direction: z.enum(['OUTGOING', 'INCOMING']),
+    status: z.enum(['OUTBOUND', 'RETURNING', 'DELIVERED', 'RETURNED']),
+    counterpart: z.object({ playerId: z.string(), username: z.string() }),
+    origin: z.object({ planetId: z.string(), name: z.string() }),
+    target: z.object({ planetId: z.string(), name: z.string() }),
+    fleet,
+    cargo: resources,
+    value: resources,
+    departAt: z.coerce.date(),
+    arriveAt: z.coerce.date(),
+    committedAt: z.coerce.date(),
+    allowanceReleasesAt: z.coerce.date(),
+    resolvedAt: z.coerce.date().nullable(),
+  })),
+});
+
+export const clanAidQuoteSchema = z.object({
+  clanId: z.string(),
+  canLand: z.boolean(),
+  withinAllowance: z.boolean(),
+  bay: z.object({
+    used: z.number().int().nonnegative(),
+    total: z.number().int().positive(),
+    available: z.boolean(),
+  }),
+  cargoCapacity: z.number().nonnegative(),
+  value: resources,
+  /**
+   * What is LEFT of the receiver's window, and never the window itself: the
+   * allowance is four hours of their nominal production, so publishing it would
+   * hand a clanmate the economy a probe is sold for. D114.
+   */
+  remaining: resources,
+  nextReleaseAt: z.coerce.date().nullable(),
+  arriveAt: z.coerce.date(),
+  possibleReturnAt: z.coerce.date(),
+  canFinishBeforeSeasonEnd: z.boolean(),
+  travelMinutes: z.number().nonnegative(),
+});
+
+export const clanAidLaunchSchema = z.object({
+  missionId: z.string(),
+  arriveAt: z.coerce.date(),
+  value: resources,
+  remaining: resources,
+  nextReleaseAt: z.coerce.date(),
+  planet: planetSchema,
+});
+
+const clanMessageSchema = z.object({
+  id: z.string(),
+  authorPlayerId: z.string(),
+  planetId: z.string(),
+  username: z.string(),
+  content: z.string(),
+  createdAt: z.coerce.date(),
+  self: z.boolean(),
+});
+
+export const clanChatPageSchema = z.object({
+  messages: z.array(clanMessageSchema),
+  nextBefore: z.string().nullable(),
+});
+export const clanChatPostSchema = z.object({ message: clanMessageSchema });
+export const clanChatReadSchema = z.object({ readAt: z.coerce.date() });
+
+export const clanEventsPageSchema = z.object({
+  events: z.array(z.object({
+    id: z.string(),
+    seasonId: z.string(),
+    clanId: z.string(),
+    kind: z.string(),
+    actorPlayerId: z.string().nullable(),
+    actorName: z.string().nullable(),
+    subjectPlayerId: z.string().nullable(),
+    subjectName: z.string().nullable(),
+    payload: z.record(z.unknown()),
+    occurredAt: z.coerce.date(),
+  })),
+  nextBefore: z.string().nullable(),
+});
+
+export const clanSettingsSchema = z.object({ description: z.string(), recruiting: z.boolean() });
+export const clanAidPolicySchema = z.object({ enabled: z.boolean(), changedAt: z.coerce.date() });
+export const clanLeaveSchema = z.object({ left: z.literal(true), lockedUntil: z.coerce.date() });
+export const clanKickSchema = z.object({ kickedPlayerId: z.string(), lockedUntil: z.coerce.date() });
+export const clanLeadershipSchema = z.object({ leaderPlayerId: z.string() });
+export const clanDisbandSchema = z.object({ disbanded: z.literal(true), lockedUntil: z.coerce.date() });
+export const clanSeenSchema = z.object({ readAt: z.coerce.date() });
 
 const chatMessageSchema = z.object({
   id: z.string(),
@@ -861,6 +1145,9 @@ export const reportsSchema = z.object({
       lootDeuterium: z.number(),
       /** Null on reports written before the swing was recorded. */
       dominion: z.number().nullable(),
+      /** Launch-time clan identities; they do not rewrite when somebody later leaves. */
+      attackerClan: z.object({ id: z.string(), name: z.string(), tag: z.string() }).nullable().optional(),
+      defenderClan: z.object({ id: z.string(), name: z.string(), tag: z.string() }).nullable().optional(),
     }),
   ),
   rivals: z.array(z.object({
@@ -1237,6 +1524,20 @@ export type RewardTierView = z.infer<typeof rewardTier>;
 export type GalaxyView = z.infer<typeof galaxySchema>;
 export type GalaxyPlanet = GalaxyView['planets'][number];
 export type Leaderboard = z.infer<typeof leaderboardSchema>;
+export type PublicClan = z.infer<typeof publicClanSchema>;
+export type ClanDirectory = z.infer<typeof clanDirectorySchema>;
+export type ClanBadge = z.infer<typeof clanBadgeSchema>;
+export type ClanHome = z.infer<typeof clanHomeSchema>;
+export type ClanMemberHome = Extract<ClanHome, { state: 'MEMBER' }>;
+export type ClanOutsideHome = Extract<ClanHome, { state: 'OUTSIDE' }>;
+export type ClanDepot = z.infer<typeof clanDepotSchema>;
+export type ClanAid = z.infer<typeof clanAidSchema>;
+export type ClanAidQuote = z.infer<typeof clanAidQuoteSchema>;
+export type ClanChatPage = z.infer<typeof clanChatPageSchema>;
+export type ClanMessage = ClanChatPage['messages'][number];
+export type ClanStrength = z.infer<typeof clanStrengthSchema>;
+export type ClanEventsPage = z.infer<typeof clanEventsPageSchema>;
+export type ClanEvent = ClanEventsPage['events'][number];
 export type ChatPage = z.infer<typeof chatPageSchema>;
 export type ChatMessage = ChatPage['messages'][number];
 export type ChroniclePage = z.infer<typeof chroniclePageSchema>;

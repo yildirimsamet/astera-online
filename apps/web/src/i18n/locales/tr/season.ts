@@ -16,6 +16,13 @@ export const seasonRecap = {
   defences: 'Savunma',
   damageDealt: 'Verilen hasar',
   damageTaken: 'Alınan hasar',
+  clan: {
+    heading: 'Klan kaydın',
+    rank: 'Klan sırası',
+    dominion: 'Klan Hâkimiyeti',
+    seal: 'İLK 3 MÜHRÜ',
+    recordOnly: 'Bu yalnızca sezon kaydı ve görsel bir mühürdür. Klan gücü sonraki galaksiye taşınmaz.',
+  },
   rivalHeading: 'Ezeli rakibin',
   rival: '{{name}} · {{count}} savaş',
   biggestHeading: 'En büyük akın',

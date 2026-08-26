@@ -93,6 +93,33 @@ const POLICY = {
    * VRAM whatever they weigh on disk, which is what actually makes the file 3.4 MB.
    */
   debris: { texture: 256, simplify: true, ratio: 0.15, error: 0.015 },
+  /**
+   * The dyson shells a developed world wears — and the one kind in this pipeline
+   * where the usual "size it to its footprint" rule gives the wrong answer.
+   *
+   * THEIR TEXTURE IS TILED SIXTEEN TIMES. The material carries a
+   * `KHR_texture_transform` with a scale of 16, so the 2K plate is not an unwrap
+   * of the model — it is a repeating panel sheet, and the detail a viewer actually
+   * sees is a SIXTEENTH of whatever this number says. At the 384 the rest of the
+   * scenery uses that is twenty-four pixels per panel: the panel lines and the
+   * seams dissolve and a hard-surface megastructure reads as a smooth balloon,
+   * which is exactly what shipped on the first pass. 768 puts it at forty-eight.
+   * ANY kind whose material tiles its UVs has to be sized this way, and the tile
+   * factor — not the plate size — is what to read when judging it.
+   *
+   * AND 768 RATHER THAN 1024, WHICH THE DISK BUDGET WOULD HAVE ALLOWED. What
+   * decides this is VRAM, not the file: a texture decodes to raw RGBA whatever it
+   * weighs compressed, so 1024 is 5.59 MB per map — three maps across three shells
+   * is 50 MB of video memory on a phone that also has to hold sixteen world
+   * renders, eleven GLTFs and a nebula. 768 is 3.1 MB per map and 28 MB in total,
+   * which is the most this scenery is worth.
+   *
+   * AND THE GEOMETRY IS NOT SIMPLIFIED, for the same reason it is not on a ship:
+   * these are flat panels meeting at hard corners, and a simplifier rounds a
+   * corner before it removes a face. The openwork IS the silhouette — a ring, a
+   * woven cage and a geodesic sphere are told apart by their holes.
+   */
+  dyson: { texture: 768, simplify: false },
 };
 
 const DEFAULT_POLICY = { texture: 512, simplify: false };

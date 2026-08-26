@@ -1,7 +1,15 @@
 import { and, desc, eq, inArray, or } from 'drizzle-orm';
 import { deuteriumOf, type CombatRound, type Fleet, type Grade } from '@astera/rules';
 import type { Db, Tx } from '../db/client.js';
-import { accounts, battleReports, planets, players, strategicImpacts } from '../db/schema.js';
+import {
+  accounts,
+  attackCommitments,
+  battleReports,
+  clans,
+  planets,
+  players,
+  strategicImpacts,
+} from '../db/schema.js';
 
 /**
  * BATTLE REPORTS — the closing link of the loop.
@@ -46,6 +54,9 @@ export interface BattleReportView {
    * rather than showing a figure it would have had to guess.
    */
   dominion: number | null;
+  /** Public identities frozen when the attack left, not mutable current membership. */
+  attackerClan: { id: string; name: string; tag: string } | null;
+  defenderClan: { id: string; name: string; tag: string } | null;
 }
 
 export interface RivalSummaryView {
@@ -116,6 +127,30 @@ async function readBattleReportsIn(
 
   if (history.length === 0 && impacts.length === 0) return { reports: [], rivals: [] };
 
+  const commitments = rows.length === 0
+    ? []
+    : await tx
+        .select({
+          missionId: attackCommitments.missionId,
+          attackerClanId: attackCommitments.attackerClanId,
+          defenderClanId: attackCommitments.defenderClanId,
+        })
+        .from(attackCommitments)
+        .where(inArray(attackCommitments.missionId, rows.map((row) => row.missionId)));
+  const clanIds = [...new Set(commitments.flatMap((commitment) => [
+    commitment.attackerClanId,
+    commitment.defenderClanId,
+  ]).filter((id): id is string => id !== null))];
+  const clanRows = clanIds.length === 0
+    ? []
+    : await tx.select({ id: clans.id, name: clans.name, tag: clans.tag })
+        .from(clans).where(inArray(clans.id, clanIds));
+  const clanById = new Map(clanRows.map((clan) => [clan.id, clan]));
+  const commitmentByMission = new Map(commitments.map((commitment) => [
+    commitment.missionId,
+    commitment,
+  ]));
+
   // One query for every opponent rather than one per report.
   const opponentIds = history
     .map((r) => r.attackerPlayerId === playerId ? r.defenderPlayerId : r.attackerPlayerId)
@@ -151,6 +186,7 @@ async function readBattleReportsIn(
      */
     const dominion =
       row.dominionSwing === null ? null : attacking ? row.dominionSwing : -row.dominionSwing;
+    const commitment = commitmentByMission.get(row.missionId);
 
     return {
       id: row.id,
@@ -176,6 +212,12 @@ async function readBattleReportsIn(
       lootCrystal: attacking ? row.loot.crystal : -row.loot.crystal,
       lootDeuterium: attacking ? deuteriumOf(row.loot) : -deuteriumOf(row.loot),
       dominion,
+      attackerClan: commitment?.attackerClanId
+        ? clanById.get(commitment.attackerClanId) ?? null
+        : null,
+      defenderClan: commitment?.defenderClanId
+        ? clanById.get(commitment.defenderClanId) ?? null
+        : null,
     };
   };
 

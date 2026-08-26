@@ -68,8 +68,10 @@ export function BattleReports() {
         <EmptyState title={t('reports.empty')} />
       ) : (
         <div className="plate plate-inset">
-          {reports.map((report) => (
-            <button
+          {reports.map((report) => {
+            const opponentClan = report.attacking ? report.defenderClan : report.attackerClan;
+            return (
+              <button
               key={report.id}
               type="button"
               onClick={() => {
@@ -81,6 +83,9 @@ export function BattleReports() {
               <div className="min-w-0 flex-1">
                 <p className="truncate text-body text-bone">
                   {t(report.attacking ? 'reports.youRaided' : 'reports.raidedBy')}
+                  {opponentClan ? (
+                    <span className="mr-1 text-crystal" title={opponentClan.name}>[{opponentClan.tag}]</span>
+                  ) : null}
                   <span className="text-dim">{report.opponentName}</span>
                 </p>
                 <p className="num mt-1 text-label text-faint">
@@ -95,8 +100,9 @@ export function BattleReports() {
                   {signed(report.dominion)}
                 </span>
               )}
-            </button>
-          ))}
+              </button>
+            );
+          })}
         </div>
       )}
 
@@ -133,6 +139,8 @@ function GradeMark({ report }: { report: BattleReport }) {
 function ReportSheet({ report, onClose }: { report: BattleReport; onClose: () => void }) {
   const { t } = useTranslation();
   const looted = report.lootAlloy + report.lootCrystal + report.lootDeuterium;
+  const yourClan = report.attacking ? report.attackerClan : report.defenderClan;
+  const theirClan = report.attacking ? report.defenderClan : report.attackerClan;
 
   return (
     <Sheet
@@ -143,6 +151,16 @@ function ReportSheet({ report, onClose }: { report: BattleReport; onClose: () =>
       onClose={onClose}
     >
       <BattleVerdict report={report} />
+
+      {yourClan || theirClan ? (
+        <div className="plate plate-inset mb-4 px-3 py-3">
+          <p className="legend text-crystal">{t('reports.clansAtLaunch')}</p>
+          <div className="mt-2 grid grid-cols-2 gap-3">
+            <ClanAtLaunch label={t('reports.yourClan')} clan={yourClan} />
+            <ClanAtLaunch label={t('reports.theirClan')} clan={theirClan} />
+          </div>
+        </div>
+      ) : null}
 
       <p className="text-body leading-relaxed text-dim">
         {report.attacking
@@ -255,6 +273,28 @@ function ReportSheet({ report, onClose }: { report: BattleReport; onClose: () =>
         ))}
       </div>
     </Sheet>
+  );
+}
+
+function ClanAtLaunch({
+  label,
+  clan,
+}: {
+  label: string;
+  clan: BattleReport['attackerClan'];
+}) {
+  const { t } = useTranslation();
+  return (
+    <div className="min-w-0">
+      <p className="legend">{label}</p>
+      {clan ? (
+        <p className="mt-1 truncate text-caption text-bone" title={clan.name}>
+          <span className="text-crystal">[{clan.tag}]</span> {clan.name}
+        </p>
+      ) : (
+        <p className="mt-1 text-caption text-faint">{t('reports.noClan')}</p>
+      )}
+    </div>
   );
 }
 

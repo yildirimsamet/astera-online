@@ -22,6 +22,7 @@ export const statusBar = {
    */
   menuHint: 'Commander {{name}} — intel, leaderboard, rewards, account',
   menuWaiting: '{{count}} rewards waiting',
+  clanWaiting: '{{count}} clan updates waiting',
   bays: {
     hint: '{{used}} of {{total}} flight bays in use',
     label: 'Bays',
@@ -138,6 +139,11 @@ export const menu = {
   rewardsWaiting: '{{count}} ready',
   leaderboardLabel: 'Leaderboard',
   leaderboardHint: 'Every commander ranked by Dominion',
+  clanLabel: 'Clan',
+  clanHint: 'Find a five-seat crew or found your own',
+  clanMemberLabel: 'Clan · [{{tag}}]',
+  clanMemberHint: 'Crew, aid, shared loot and private chat',
+  clanWaiting: '{{count}} waiting',
   rivalLabel: 'Rival · {{commander}}',
   rivalHint: 'Focus {{planet}} and choose your next move',
   rivalLostLabel: 'Rival signal lost',
@@ -162,10 +168,18 @@ export const leaderboard = {
 } as const;
 
 export const chat = {
-  eyebrow: 'Live in this galaxy',
-  title: 'Galaxy Chat',
+  eyebrow: 'Live channels',
+  title: 'Chat',
   launcher: 'Open galaxy chat',
   launcherUnread: 'Open galaxy chat — {{count}} unread',
+  launcherClanUnread: 'Open chat — {{count}} unread in Clan',
+  launcherBothUnread: 'Open chat — {{general}} unread in General, {{clan}} in Clan',
+  channelsLabel: 'Chat channels',
+  general: 'General',
+  clan: 'Clan',
+  channelUnread: '{{channel}} — {{count}} unread',
+  clanLocked: 'Clan chat is private to a crew.',
+  clanLockedHint: 'Join or found a clan, then this channel opens immediately.',
   list: 'Galaxy messages',
   empty: 'No one has spoken yet. Be the first voice in the galaxy.',
   older: 'Load older messages',

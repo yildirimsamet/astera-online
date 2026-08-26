@@ -89,7 +89,7 @@ afterAll(async () => {
   await close();
 });
 
-describe('ruleset v2 worlds', () => {
+describe('ruleset v3 worlds', () => {
   beforeEach(async () => {
     const { db } = await testDb();
     await truncateAll(db);
@@ -97,7 +97,7 @@ describe('ruleset v2 worlds', () => {
 
   it('creates the deterministic fixed 30/15/6 pool outside all capital slots', async () => {
     const f = await setup();
-    expect(f.season.rulesetVersion).toBe(2);
+    expect(f.season.rulesetVersion).toBe(3);
     expect(f.neutrals).toHaveLength(51);
     expect(f.neutrals.filter((row) => row.state.tier === 1)).toHaveLength(30);
     expect(f.neutrals.filter((row) => row.state.tier === 2)).toHaveLength(15);

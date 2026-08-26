@@ -18,6 +18,7 @@ import type {
 } from '@astera/rules';
 import type { z } from 'zod';
 import type {
+  ClanChatPage,
   ChatPage,
   Contact,
   MiningFieldView,
@@ -30,6 +31,7 @@ import type {
   SeasonInfo,
   notificationsSchema,
 } from './schemas.js';
+import type { ClanAidInput } from './client.js';
 import { useApi } from './context.js';
 import { keys } from './keys.js';
 import { serverNow } from '../lib/clock.js';
@@ -388,6 +390,244 @@ export function useClaimReward() {
 export function useLeaderboard() {
   const api = useApi();
   return useQuery({ queryKey: keys.leaderboard, queryFn: api.leaderboard, staleTime: 60_000 });
+}
+
+/* ── clans ─────────────────────────────────────────────────── */
+
+export function useClanBadge(enabled = true) {
+  const api = useApi();
+  return useQuery({ queryKey: keys.clanBadge, queryFn: api.clanBadge, enabled, ...READ });
+}
+
+export function useClanHome(enabled = true) {
+  const api = useApi();
+  return useQuery({ queryKey: keys.clanHome, queryFn: api.clanHome, enabled, ...READ });
+}
+
+export function useClanStrength(enabled = true) {
+  const api = useApi();
+  return useQuery({
+    queryKey: keys.clanStrength,
+    queryFn: api.clanStrength,
+    enabled,
+    ...READ,
+    // Another member can build or lose ships without producing a private event
+    // for this commander. The query exists only while this tab is visible, so a
+    // one-minute safety refresh keeps the shared total honest at bounded cost.
+    refetchInterval: NET_MS,
+  });
+}
+
+export function useClanDirectory(search: string, enabled = true) {
+  const api = useApi();
+  const normalised = search.trim();
+  return useInfiniteQuery({
+    queryKey: keys.clanDirectory(normalised),
+    queryFn: ({ pageParam }) => api.clans(normalised, pageParam, 30),
+    initialPageParam: 0,
+    getNextPageParam: (last, pages) => {
+      const loaded = pages.reduce((total, page) => total + page.clans.length, 0);
+      return loaded < last.total ? loaded : undefined;
+    },
+    enabled,
+    staleTime: 30_000,
+  });
+}
+
+export function useClanLeaderboard(enabled = true) {
+  const api = useApi();
+  return useQuery({
+    queryKey: keys.clanLeaderboard,
+    queryFn: api.clanLeaderboard,
+    enabled,
+    staleTime: 30_000,
+  });
+}
+
+export function useClanDepot(enabled = true) {
+  const api = useApi();
+  return useQuery({ queryKey: keys.clanDepot, queryFn: api.clanDepot, enabled, ...READ });
+}
+
+export function useClanAid(enabled = true) {
+  const api = useApi();
+  return useQuery({ queryKey: keys.clanAid, queryFn: api.clanAid, enabled, ...READ });
+}
+
+export function useClanEvents(enabled = true) {
+  const api = useApi();
+  return useInfiniteQuery({
+    queryKey: keys.clanEvents,
+    queryFn: ({ pageParam }) => api.clanEvents(pageParam ?? undefined),
+    initialPageParam: null as string | null,
+    getNextPageParam: (page) => page.nextBefore,
+    enabled,
+    staleTime: 30_000,
+  });
+}
+
+export function useClanChat(enabled = true) {
+  const api = useApi();
+  return useInfiniteQuery({
+    queryKey: keys.clanChat,
+    queryFn: ({ pageParam }) => api.clanChat(pageParam ?? undefined),
+    initialPageParam: null as string | null,
+    getNextPageParam: (page) => page.nextBefore,
+    enabled,
+    staleTime: 15_000,
+  });
+}
+
+/**
+ * All clan writes share one invalidation grammar. They are infrequent, explicit
+ * decisions; prefix invalidation keeps the independently mounted tabs coherent.
+ */
+export function useClanActions() {
+  const api = useApi();
+  const client = useQueryClient();
+  const applyPlanet = useApplyPlanet();
+  const refreshClan = (): void => {
+    void client.invalidateQueries({ queryKey: ['clan'] });
+  };
+  const refreshPublicClan = (): void => {
+    refreshClan();
+    void client.invalidateQueries({ queryKey: keys.galaxy });
+    void client.invalidateQueries({ queryKey: keys.leaderboard });
+  };
+
+  const create = useMutation({
+    mutationFn: (input: Parameters<typeof api.createClan>[0]) => api.createClan(input),
+    onSuccess: async (result) => {
+      await applyPlanet(result.planet);
+      refreshPublicClan();
+    },
+  });
+  const apply = useMutation({
+    mutationFn: (clanId: string) => api.applyToClan(clanId),
+    onSuccess: refreshClan,
+  });
+  const invite = useMutation({
+    mutationFn: (playerId: string) => api.inviteToClan(playerId),
+    onSuccess: refreshClan,
+  });
+  const accept = useMutation({
+    mutationFn: ({ requestId, acknowledgeHostile }: { requestId: string; acknowledgeHostile: boolean }) =>
+      api.acceptClanRequest(requestId, acknowledgeHostile),
+    onSuccess: refreshPublicClan,
+  });
+  const reject = useMutation({
+    mutationFn: (requestId: string) => api.rejectClanRequest(requestId),
+    onSuccess: refreshClan,
+  });
+  const withdraw = useMutation({
+    mutationFn: (requestId: string) => api.withdrawClanRequest(requestId),
+    onSuccess: refreshClan,
+  });
+  const leave = useMutation({ mutationFn: () => api.leaveClan(), onSuccess: refreshPublicClan });
+  const kick = useMutation({
+    mutationFn: (memberId: string) => api.kickClanMember(memberId),
+    onSuccess: refreshPublicClan,
+  });
+  const leadership = useMutation({
+    mutationFn: (memberId: string) => api.transferClanLeadership(memberId),
+    onSuccess: refreshPublicClan,
+  });
+  const settings = useMutation({
+    mutationFn: ({ description, recruiting }: { description: string; recruiting: boolean }) =>
+      api.updateClanSettings(description, recruiting),
+    onSuccess: refreshPublicClan,
+  });
+  const aidPolicy = useMutation({
+    mutationFn: (enabled: boolean) => api.setClanAidPolicy(enabled),
+    onSuccess: refreshClan,
+  });
+  const disband = useMutation({ mutationFn: () => api.disbandClan(), onSuccess: refreshPublicClan });
+  const claimDepot = useMutation({
+    mutationFn: () => api.claimClanDepot(),
+    onSuccess: async (result) => {
+      await applyPlanet(result.planet);
+      refreshClan();
+      void client.invalidateQueries({ queryKey: keys.leaderboard });
+    },
+  });
+  const quoteAid = useMutation({ mutationFn: (input: ClanAidInput) => api.quoteClanAid(input) });
+  const launchAid = useMutation({
+    mutationFn: (input: ClanAidInput) => api.launchClanAid(input),
+    onSuccess: async (result) => {
+      await applyPlanet(result.planet);
+      refreshClan();
+      void client.invalidateQueries({ queryKey: keys.pending });
+      void client.invalidateQueries({ queryKey: keys.traffic });
+    },
+  });
+  const postChat = useMutation({
+    mutationFn: (body: string) => api.postClanChat(body),
+    onMutate: async () => {
+      await client.cancelQueries({ queryKey: keys.clanChat });
+    },
+    onSuccess: ({ message }) => {
+      client.setQueryData<InfiniteData<ClanChatPage, string | null>>(keys.clanChat, (current) => {
+        if (!current) {
+          return { pages: [{ messages: [message], nextBefore: null }], pageParams: [null] };
+        }
+        const first = current.pages[0];
+        if (!first || first.messages.some((row) => row.id === message.id)) return current;
+        return {
+          ...current,
+          pages: [{ ...first, messages: [...first.messages, message] }, ...current.pages.slice(1)],
+        };
+      });
+      void client.invalidateQueries({ queryKey: keys.clanBadge });
+    },
+  });
+  const readChat = useMutation({
+    mutationFn: (messageId: string) => api.markClanChatRead(messageId),
+    retry: 1,
+    onMutate: async () => {
+      await client.cancelQueries({ queryKey: keys.clanBadge });
+      const previous = client.getQueryData(keys.clanBadge);
+      client.setQueryData(keys.clanBadge, (current: unknown) => {
+        if (!current || typeof current !== 'object' || !('clanChatUnread' in current)) return current;
+        const badge = current as {
+          clanChatUnread: number;
+          attentionCount: number;
+          attention: boolean;
+        };
+        const attentionCount = Math.max(0, badge.attentionCount - badge.clanChatUnread);
+        return { ...badge, clanChatUnread: 0, attentionCount, attention: attentionCount > 0 };
+      });
+      return { previous };
+    },
+    onError: (_error, _messageId, context) => {
+      if (context?.previous !== undefined) client.setQueryData(keys.clanBadge, context.previous);
+    },
+    onSettled: () => { void client.invalidateQueries({ queryKey: keys.clanBadge }); },
+  });
+  const seen = useMutation({
+    mutationFn: () => api.markClanSeen(),
+    onSuccess: () => { void client.invalidateQueries({ queryKey: keys.clanBadge }); },
+  });
+
+  return {
+    create,
+    apply,
+    invite,
+    accept,
+    reject,
+    withdraw,
+    leave,
+    kick,
+    leadership,
+    settings,
+    aidPolicy,
+    disband,
+    claimDepot,
+    quoteAid,
+    launchAid,
+    postChat,
+    readChat,
+    seen,
+  };
 }
 
 export function useSetRival() {
@@ -1152,20 +1392,19 @@ export function useLaunch() {
   });
 }
 
-export function useTransfer() {
+export function useTransfer(originPlanetId: string) {
   const api = useApi();
-  const { activePlanetId } = useWorld();
   const client = useQueryClient();
   const apply = useApplyPlanet();
   const invalidate = useInvalidator();
-  const lane = usePlanetMutationLane(activePlanetId);
+  const lane = usePlanetMutationLane(originPlanetId);
   return useMutation({
     scope: lane.scope,
     mutationFn: ({ targetPlanetId, fleet, cargo }: {
       targetPlanetId: string;
       fleet: Fleet;
       cargo: { alloy: number; crystal: number; deuterium: number };
-    }) => api.transfer(activePlanetId!, targetPlanetId, fleet, cargo),
+    }) => api.transfer(originPlanetId, targetPlanetId, fleet, cargo),
     onMutate: lane.enter,
     onSuccess: async (result) => {
       await Promise.all([

@@ -1,5 +1,6 @@
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
+import { CHAT } from '@astera/rules';
 import { markChatRead, postChat, readChat, unreadChat } from '../services/chat.js';
 import { requireAuth } from './auth.js';
 
@@ -10,7 +11,10 @@ const listQuery = z.object({
 const messageBody = z.object({
   content: z.string()
     .transform((value) => value.trim())
-    .pipe(z.string().min(1).refine((value) => Array.from(value).length <= 280, 'Must contain at most 280 characters')),
+    .pipe(z.string().min(1).refine(
+      (value) => Array.from(value).length <= CHAT.maxChars,
+      `Must contain at most ${String(CHAT.maxChars)} characters`,
+    )),
 }).strict();
 const readBody = z.object({ messageId: z.string().uuid() }).strict();
 

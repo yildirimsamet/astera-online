@@ -17,12 +17,15 @@ interface PreviewWorld {
   owner: string;
   position: { x: number; y: number; z: number };
   coreTier: number;
+  coreLevel: number;
   satellites: string[];
   shielded: boolean;
   isSelf: boolean;
   kind: 'CAPITAL' | 'COLONY' | 'NEUTRAL';
   isOwned?: boolean;
   isCapital?: boolean;
+  clan?: { id: string; name: string; tag: string };
+  dominionRank?: 1 | 2 | 3;
 }
 
 interface Preview {
@@ -222,8 +225,20 @@ describe('preview', () => {
 
     for (const world of (await preview()).galaxy.planets) {
       expect(Object.keys(world).sort()).toEqual([
+        /**
+         * The optional keys are listed off the world's own content rather than
+         * asserted flat, and that is not a weakening. A shape test whose expected
+         * list is a constant fails on DATA — `clan` appears the moment anybody in
+         * the frontier galaxy founds one, and `dominionRank` the moment anybody
+         * reaches the podium — which is a test that goes red for the wrong reason
+         * and gets edited until it guards nothing. Each world is still held to an
+         * EXACT key set; what varies is which set it belongs to.
+         */
+        ...(world.clan ? ['clan'] : []),
         'controller',
+        'coreLevel',
         'coreTier',
+        ...(world.dominionRank ? ['dominionRank'] : []),
         'id',
         ...(world.isSelf ? ['isCapital', 'isOwned'] : []),
         'isSelf',

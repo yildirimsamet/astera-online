@@ -87,6 +87,7 @@ export type MissionKind =
   | 'probe'
   | 'return'
   | 'transfer'
+  | 'clan_transfer'
   | 'settlement'
   | 'death_star';
 

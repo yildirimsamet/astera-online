@@ -1,5 +1,5 @@
 import { and, eq, inArray, isNotNull, isNull, ne, or, sql } from 'drizzle-orm';
-import { flightSlots } from '@astera/rules';
+import { clanBayAvailable, flightSlots } from '@astera/rules';
 import type { Queryable } from '../db/client.js';
 import { miningRuns, missions } from '../db/schema.js';
 import { GameError } from './planet.js';
@@ -135,6 +135,23 @@ export async function assertFreeBay(
       `All ${String(total)} flight bays are in use. Something has to land first.`,
       409,
       { total },
+    );
+  }
+}
+
+/** D114's one extra seat, available only to a mission that remains clan aid. */
+export async function assertFreeClanAidBay(
+  tx: Queryable,
+  planetId: string,
+  coreLevel: number,
+): Promise<void> {
+  const { used, total } = await baysOf(tx, planetId, coreLevel);
+  if (!clanBayAvailable(total, used, true)) {
+    throw new GameError(
+      'NO_FREE_CLAN_AID_BAY',
+      'All ordinary and clan-aid flight bays are in use',
+      409,
+      { total: total + 1 },
     );
   }
 }

@@ -4,7 +4,7 @@ import { useGLTF } from '@react-three/drei';
 import * as THREE from 'three';
 import type { MiningRun } from '../api/schemas.js';
 import { MODEL } from '../ui/assets.js';
-import { Hull, ROUTE_OPACITY, ROUTE_OPACITY_FOCUSED, Wake, useLine } from './Fleets.jsx';
+import { Hull, Wake, useLine } from './Fleets.jsx';
 import { CRAFT_SCALE, runPosition, toWorld, type PlanetNode, type Vec3Tuple } from './scene.js';
 import { markersFor, slotOffset } from './Squadrons.js';
 import { markHit, wasTap } from './tap.js';
@@ -30,6 +30,23 @@ import { serverNow } from '../lib/clock.js';
  */
 
 const STYLE = { colour: '#d9a441', scale: 0.26 * CRAFT_SCALE, flame: '#ffc073' } as const;
+
+/**
+ * A MINING ROUTE IS FAINTER THAN A WAR ROUTE. Owner call.
+ *
+ * `ROUTE_OPACITY` is 0.16 and settled — 0.09 hid a raid's thread and 0.34 made the
+ * threads the brightest thing on the disc. A mining run is not a raid: several are
+ * in the air at once, they carry no threat, and at the shared figure a busy disc
+ * turned into a lattice of orange lines with the worlds behind it.
+ *
+ * OPACITY IS THE ONLY LEVER, and it does the job of both. WebGL ignores
+ * `linewidth` on `lineBasicMaterial` — every line is one pixel whatever it asks
+ * for — so an additive hairline is made "thinner" by being made dimmer, which is
+ * the same edit. Focused stays clearly legible: selecting a run is the moment its
+ * route is the thing you want to see.
+ */
+const MINING_ROUTE_OPACITY = 0.09;
+const MINING_ROUTE_OPACITY_FOCUSED = 0.3;
 
 useGLTF.preload(MODEL.drill, false);
 
@@ -127,7 +144,7 @@ function Run({
         <lineBasicMaterial
           color={STYLE.colour}
           transparent
-          opacity={focused ? ROUTE_OPACITY_FOCUSED : ROUTE_OPACITY}
+          opacity={focused ? MINING_ROUTE_OPACITY_FOCUSED : MINING_ROUTE_OPACITY}
           depthWrite={false}
           blending={THREE.AdditiveBlending}
         />

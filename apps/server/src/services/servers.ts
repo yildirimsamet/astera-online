@@ -6,10 +6,21 @@ import { addMinutes } from '../clock.js';
 import {
   accounts,
   asteroidClaims,
+  attackCommitments,
   battleReports,
   buildOrders,
   buildings,
   chatMessages,
+  clanAidCommitments,
+  clanCeasefires,
+  clanEvents,
+  clanLootShares,
+  clanMemberships,
+  clanMessages,
+  clanRaidRoster,
+  clanRequests,
+  clanScoreEvents,
+  clans,
   debrisFields,
   galaxyEvents,
   miningRuns,
@@ -505,6 +516,20 @@ export async function wipeAllServers(
     // clearing it would pay every follower again on the first day of every new
     // galaxy. Its only foreign key is to `accounts`, which this wipe keeps.
     await tx.delete(rewardGrants);
+    // Clan rows form their own child graph around missions, players and clans.
+    // Personal shares go first; immutable score/event history is kept only until
+    // this seasonal wipe, never into the next galaxy.
+    await tx.delete(clanLootShares);
+    await tx.delete(clanScoreEvents);
+    await tx.delete(clanRaidRoster);
+    await tx.delete(attackCommitments);
+    await tx.delete(clanAidCommitments);
+    await tx.delete(clanMessages);
+    await tx.delete(clanEvents);
+    await tx.delete(clanRequests);
+    await tx.delete(clanCeasefires);
+    await tx.delete(clanMemberships);
+    await tx.delete(clans);
     await tx.delete(chatMessages);
     await tx.delete(galaxyEvents);
     await tx.delete(requestLog);

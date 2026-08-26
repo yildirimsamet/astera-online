@@ -2208,6 +2208,182 @@ simulator has never once built a Death Star on any seed: its bots reach it throu
 `GRAVITIC_CHARGES`, which needs a GRINDER to raid a shielded defender, and that has
 happened once in 750 bot-seasons. The strategic layer's own tests cover the path instead.
 
+### D114 · Five commanders may become a clan, without becoming a second game — owner instruction
+
+**A clan is seasonal, local to one galaxy and capped at five people.** A commander with a
+Core-7 capital may burn 5,000 Alloy and 3,000 Crystal there to found one and becomes its
+leader. Names are 3–24 characters, tags are 2–5 ASCII letters or digits, and both are
+normalised, unique and immutable for the season. The description is at most 160 characters;
+the leader may change it and whether applications are open. Names that impersonate Astera,
+staff, administration, support or the system are reserved.
+
+**Joining is deliberate and finite.** A commander may have three live applications; a clan
+may hold five applications and five invitations. An invitation or application expires after
+24 hours and expiry is evaluated on access, so no timer row exists merely to close it. A
+leader may send ten new invitations in a rolling 24 hours. The applicant can withdraw; the
+leader can accept or reject. Filling the fifth seat closes every other pending request. A
+leader cannot leave until leadership is transferred or the clan is disbanded. Leaving,
+removal and disbanding start a 24-hour join/create/apply lock and a 24-hour ceasefire against
+every former clanmate. If the leader is reclaimed for three days of inactivity, the oldest
+member active in those three days is promoted; without one, the clan disbands.
+
+**The first 12 hours are an adaptation period, not a hidden punishment.** The new member gets
+the tag, private chat and friendly-fire protection immediately. Clan aid in either direction,
+the aid-only flight bay, clan loot shares, clan score contribution and detailed clan history
+begin at `joinedAt + 12h`. The founder is mature immediately. The interface names the exact
+unlock time wherever an unavailable action appears.
+
+**Friendly fire is a launch invariant.** Attack, Probe and Death Star cannot be newly launched
+against a current clanmate or a former clanmate under ceasefire. Already-airborne missions
+continue and resolve. Accepting an applicant who has an in-flight hostile mission with any
+member therefore requires the leader to acknowledge that fact; the server never silently
+deletes or turns a fleet around.
+
+**The personal bash rule remains three; a current clan also gets five.** At most five ordinary
+attacks may be launched by one clan against one target commander across all of that target's
+worlds in a rolling 12 hours. It is counted at launch from immutable commitments, not from
+battle reports, and leaving never erases a launch. Probe and Death Star use neither numeric
+quota but still obey friendly-fire and ceasefire. When a commander first joins a clan, their
+still-live clanless attack commitments bind to that clan so pre-attacking and then joining
+cannot bypass the ceiling.
+
+**Clan aid is a one-way physical convoy, never a teleport.** Wasp, Lance, Bulwark, Hauler,
+Runner and Breacher may be given; Prospector, ground guns and Death Star may not. Only Haulers
+provide resource capacity on this mission — a Runner may be gifted but does not carry clan
+resources. Ships fly themselves, cannot be recalled and become the recipient's at arrival.
+The target must be a world the recipient controls and must be able to build every gifted hull;
+the quote discloses only whether the exact payload can land, never the missing Shipyard or
+research level. The recipient must be mature and have aid enabled, which defaults on and has
+a 12-hour toggle cooldown.
+
+The arrival revalidates clan membership, policy, world control and hull prerequisites. If any
+has changed, the complete convoy returns to the sender's safe home (or capital); nothing lands
+partially. Resource cargo may overfill storage, as an opted-in gift. A clan convoy receives a
+fixed ×1.10 travel-speed multiplier in addition to ordinary world effects and snapshots what
+its possible return needs. It may use one bay beyond the planet's ordinary Core-derived bays,
+but only while its mission kind remains `clan_transfer`; an ordinary launch can never consume
+that seat. The possible outbound and return must both fit before season end.
+
+**Aid is bounded by the receiver, not by sender accounts.** Across every sender in the rolling
+24-hour window, one recipient may receive commitments worth four hours of nominal Alloy
+production across all controlled worlds, four hours of nominal Crystal production and 20% of
+their total Deuterium capacity. Gifted hulls consume the same per-resource allowance at full
+build cost. The allowance is reserved at launch and a failed/returned convoy does not release
+it early. The response exposes remaining allowance and the next expiring slice, not private
+production levels.
+
+**A tenth of safely returned PvP loot becomes personal, claimable clan shares.** At ordinary
+player-raid launch the server snapshots the attacker's mature clan roster, including the
+attacker, only when it contains at least two people. When surviving craft safely dock, for
+each resource it takes `floor(returned × 10%)`, then offers `floor(pool / rosterSize)` to each
+snapshotted commander. Only shares that fit a commander's purse are credited and deducted
+from the attacker's landed loot; rounding, a full purse or a reclaimed recipient leaves that
+amount with the attacker. Neutral battles, mining, debris, rewards, transfers and Death Stars
+never feed the depot. A member who later leaves keeps already-earned shares; a later joiner
+gets no old ones; disbanding does not erase them. Shares remain until the season wipe and are
+claimed manually into the current capital up to its free storage. They count toward Wealth.
+
+The purse is player-wide. Its Alloy and Crystal candidate ceilings are two hours of nominal
+production across all worlds and its Deuterium candidate is 10% of total Deuterium capacity.
+New credits are further stopped wherever aggregate Vault protection plus unclaimed shares
+would exceed 49% of aggregate storage. A later capacity loss never deletes an existing share;
+it merely prevents another credit until the player is below the ceiling. There is no leader
+withdrawal and no clan-owned treasury balance.
+
+**Clan score is an audit of its members' PvP, not a new economy.** Each ordinary player battle
+adds both the attacker's and defender's Dominion delta to whichever mature clan was snapshotted
+for that side at launch. The events are immutable and unique per mission, clan and side; cached
+taken/lost totals serve the leaderboard. Leaving cannot move history. The top three receive
+only a season seal and recap mention, while the Chronicle may record clan leadership. There
+are no resource rewards, combat buffs, levels, research, shared radar or cross-season power.
+
+**Private chat is intentionally small.** A message is 1–280 plain-text characters, with at
+most five sends per ten seconds per commander. There are no files, images, HTML, direct
+messages or clickable links. A member sees only messages created at or after their own
+`joinedAt`, gains access during adaptation and loses it on leaving. During the 15-minute
+season afterglow chat and reads remain available; rollover deletes the seasonal rows. It uses
+player-private SSE invalidations and does not create an eighth Signals notification kind.
+
+**Public and private projections are separate.** Clan name, tag, leader, member count and score
+are public. Resources, applications, invitations, chat, aid payloads, purse balances and clan
+history are not. An actively affiliated commander's public identity is written consistently as
+`[TAG] DisplayName` above their worlds, in Signals and on the Dominion ladder. Live Galaxy and
+ladder reads left-join active membership as part of their set query; they never issue one clan
+query per commander. A notification snapshots the public tag alongside the commander identity
+when the event resolves, so leaving later does not rewrite the historical event and reading a
+notification list needs no membership queries. The public Galaxy cannot infer any private clan
+state from the timing or shape of an event.
+
+**This is ruleset v3 and begins only with a fresh season.** Existing v2 seasons neither gain
+active clan state nor change combat behaviour. Freeze snapshots the final clan leaderboard for
+recap; all clan mutations except chat/read afterglow stop at freeze, and the ordinary atomic
+rollover deletes the complete seasonal clan graph. Explicitly out: Tactical Network, PvP stat
+buffs, officers, clan levels/research/tasks, leader bank, shared radar, ACS, diplomacy, wars,
+resource season rewards, direct messages and uploaded emblems.
+
+### D114a · What the clan pass got wrong, found by reading it back
+
+Five defects and a stale contract, all inside D114 and all fixed in one pass. None of them
+changes what D114 decided; each is the implementation disagreeing with it.
+
+**A battle report grew a clan tag for a raid flown before the attacker joined.** D114 has two
+separate uses for the attacker's membership at launch. One is the five-launch clan quota,
+which `bindOpenAttacksToClan` deliberately REBINDS for twelve hours after a launch so that
+attacking a target and then joining a clan cannot reset that clan's ceiling. The other is the
+public tag a battle report carries, which must never move. Both read
+`attack_commitments.quota_clan_id`, so a raid that had already resolved with no clan acquired
+one the moment its attacker was accepted anywhere — on the defender's report as well as the
+attacker's. The schema already had a dedicated immutable `defender_clan_id` described as
+"used by battle-report tags"; the attacker simply never got its pair. It has one now, and
+`bindOpenAttacksToClan` still touches only the quota column.
+
+**Clan aid could be sent to oneself.** `assertAidRelationship` proved both ends were mature
+members of the same clan, which is trivially true when both ends are the same commander — and
+the founder is mature the instant the clan exists. A solo founder could therefore aim a convoy
+at their own capital and have it deliver: a mission that flies nowhere, holds a bay for its
+whole leg and spends a day of their own receiver allowance, and with a colony an ordinary
+intra-empire transfer carrying the ×1.10 clan speed and the aid-only bay. `launchTransfer`
+refuses the same shape with `SELF_TRANSFER`; the clan route was a way past it.
+
+**The aid quote published the receiver's economy.** D114 says the response exposes "remaining
+allowance and the next expiring slice, not private production levels". It returned `allowance`
+and `used` beside `remaining`, and the allowance IS the production level: four hours of
+nominal Alloy and Crystal and a fifth of total Deuterium capacity, so dividing by four gives a
+clanmate the aggregate Refinery, Extractor and Vault standing a probe is sold for. Nothing on
+the client had ever read either field.
+
+**Every private clan event cost a full resync.** `publishPrivate` namespaces five narrow kinds
+and its docblock calls each one a narrow invalidation — but `useEventStream` only ever tested
+for the `shard:` prefix, so all of them fell through to the blanket player-event path and
+invalidated all twenty-two live reads. One chat message therefore sent each of five members to
+refetch the planet, the galaxy, intel, notifications, pending, reports, traffic, mining,
+rewards, both chats, the chronicle and all seven clan reads — at the permitted five sends per
+ten seconds. `readsForPrivateEvent` is the mirror of `readsForShardEvent`, with the opposite
+default: an unknown kind returns `null` and falls back to the resync, because unlike a shard
+event it genuinely did happen to this commander.
+
+**`/api/preview` grew two keys and its shape test did not.** `dominionRank` and `clan` are
+public facts and belong on the disc a visitor rehearses against — but `preview.test.ts` asserts
+an EXACT key set precisely because that route is unauthenticated and nothing downstream will
+refuse a request that reads it. The D119 pass edited that assertion to add `coreLevel` and
+missed the podium key beside it. The expected list now derives both optional keys from the
+world's own content: a constant list would have gone red on DATA — `clan` the moment anyone in
+the frontier galaxy founds one — which is a test that fails for the wrong reason and gets
+edited until it guards nothing.
+
+**Two constants were being read off each other.** The clan's five-launch ceiling counted its
+window with `ABUSE.bashWindowMinutes` while reporting and expiring on `CLAN.attackWindowMinutes`;
+both are twelve hours today and neither is the other's definition. And the client began driving
+the GENERAL galaxy chat's composer limit from `CLAN.chatMaxChars`, against a server route that
+still held a literal `280` — so raising the clan's limit would have let a player type a galaxy
+message the server then refused. `CHAT` now holds the galaxy conversation's own figures, both
+ends read it, and each chat channel passes its own ceiling into the shared composer.
+
+Four pre-existing type errors in `ClanScreen` went with them: `member` is annotated
+`ClanMemberHome | null` above the hooks because the query `enabled` flags need it there, and
+every surface below was handed it against a prop that takes `ClanMemberHome`. The discriminant
+is settled once, after the OUTSIDE branch returns, rather than asserted at four call sites.
+
 ### D115 · A squadron draws every ship it holds; the launch sheet says what is already away — owner instruction
 
 **The marker cap is gone.** `formationFor` truncated a formation at twelve markers and
@@ -2380,6 +2556,90 @@ trip is worth it. The structural argument above does not depend on that; the hum
 `notifications.test.ts` both reached the return by advancing `run.flightMinutes + 1` — the
 OUTBOUND time — so they stopped short of the landing and found no notification. Both read the
 stored `homeAt` now, which is what schedules the event and is immune to the next change.
+
+### D118 · A controlled world is focused before it is managed — owner instruction
+
+The capital and colonies no longer bypass the disc's two-tap grammar. The first tap selects and
+frames the controlled world; only a repeated tap on that same world selects it for management and
+opens the planet surface. Changing worlds always starts again at focus. An inactive controlled
+target gets a collapsed transfer rail. A world that was already active focuses silently with no
+bottom rail at all, because it cannot be a destination from itself.
+
+The selected controlled world still becomes active on the first tap. The transfer route therefore
+snapshots the previously active world as its explicit origin before selection changes; reading the
+origin back from the active-world context would otherwise turn the route into a self-transfer the
+server correctly refuses. The controlled-target detail is its own short route surface — origin,
+target, available craft, distance and reach — rather than the hostile intelligence dossier with a
+transfer button appended at the end. The irreversible send remains in the transfer picker itself.
+
+The active-world dropdown does not create a second camera grammar. Selecting a world there also
+focuses that world in the Galaxy. Updating only the active id left the previous semantic focus
+alive, so the camera could receive a new Home destination while still carrying an old subject;
+one selection now produces one active id and one matching focus in the same event.
+
+### D119 · A world wears its development, and the exact Core level becomes public — owner instruction
+
+Every world with a Command Core at level 3 or above is drawn inside a dyson structure. It is one
+asset — `dyson_1.glb`, a single ring — drawn one to four times at equal angles about a shared axis,
+so one ring becoming two becoming three reads as a project being EXTENDED rather than as the thing
+in a neighbour's orbit being replaced. Four separate megastructures were built first and rejected
+for exactly that reason. Nothing below Core 3 wears one: the bare world is what the rest are read
+against.
+
+The ladder starts at Core 9 — "this should be on the more solid players". Starting it at 3 put a
+ring on nearly every world in the disc within a day, which says nothing. The shape gains a ring at
+9, 12, 15 and 18, and the colour eases continuously along a six-anchor scale — blue, purple, green,
+yellow, orange, red — reaching the last anchor exactly at Core 21. The shape says roughly how far
+along a commander is; the colour says precisely. Four rings is the last shape; a fifth at equal
+angles would sit 36° from its neighbours, under the width of the ring band itself, and would read
+as a thicker shell rather than as another ring.
+
+No neutral world ever wears one, and that falls out rather than being special-cased: the three
+neutral tiers are seeded at Core 2, 5 and 8, all below the first rung. Scenery stays scenery and a
+ring always means a player.
+
+**THIS PUBLISHES THE EXACT CORE LEVEL, AND THAT IS THE PRICE.** `publicGalaxy` exposed a coarse
+`coreTier` and deliberately never the level, on the argument that knowing a world's precise
+development is what a probe is sold for. The ladder above cannot be drawn from a tier: a tier spans
+three levels, the ring count steps every three and the colour steps every one. The owner's decision
+is that the disc should show development at every level, so `coreLevel` is on `/api/galaxy` and
+`/api/preview` now. A probe's development reading is confirmation rather than news from here on.
+What a probe still sells alone — and what actually decides whether a raid pays — is the fleet, the
+ground defence, the shield strength and the stores, none of which are published.
+
+D49's ±2 attack band is unchanged and stays DEFINED on the tier. The three-level bucket is the rule
+rather than a limitation of what the client could see, so `tiersWithinBand` still takes tiers;
+re-deriving the band from levels would silently change who may attack whom.
+
+Two sizing facts were paid for in iteration and are stated at their site in `galaxy/DysonShells`.
+The shell is sized off the structure's inner SURFACE (the first percentile of vertex distance), not
+its nearest vertex: the ring's inward spar tips reach 0.36 of its radius while the structure sits at
+0.51, and sizing on the tips inflated the shell by 42% and pushed the visible band out to two world
+radii. A spar reaching inside the world's own radius is correct rather than a clipping bug — a world
+is a camera-facing billboard, not a sphere, so there is no volume to pierce and the half behind it
+is masked by the billboard's depth write. The clearance is 1.0; an earlier claim that the atmosphere
+limb at `LIMB_SCALE` 1.1 was a floor under it was wrong, because the limb draws at `renderOrder -1`
+with `depthWrite` off and the shell occludes it rather than mixing into it.
+
+THE LADDER IS SIZED TO THE REACHABLE RANGE. Nothing caps the Command Core in
+`build.ts` — only non-CORE buildings are held under it — but the economy does: the
+invariant `upgradeCost(L).alloy < storageCap(L, vault)` breaks between Core 21 and 22
+(591,044 against a full store of 590,789), so Core 21 is as far as anyone can get, and
+anchoring the last colour there makes the top of the ladder the top of the game. An
+earlier cut of the table ended one rung short and left the scale's final anchor
+unreachable — a declared colour nobody could ever see, which is a bug in the scale
+rather than a detail.
+
+WHAT IT COSTS IN PRACTICE, measured rather than assumed: the season simulator's peak
+Core over 140 players and fourteen days is L18. On those numbers the top of the colour
+ramp — roughly Core 19 through 21 — is reached by nobody, so red is an end-of-game mark
+rather than a rung anyone climbs through. That is the intent (a ring is meant to be
+rare), but the simulator still models bots on `loginsPerDay` and is an indicator rather
+than a result, so this is worth re-reading against real players.
+
+The structures tumble on two axes at 150 and 233 seconds, and are NOT gated on
+`prefers-reduced-motion` — a full turn is under a degree and a half per second, well below what that
+preference exists to protect against, and the first version was gated and simply stood still.
 
 ## Architecture
 

@@ -127,10 +127,11 @@ export const coreTier = (coreLevel: number): number => Math.max(1, Math.ceil(cor
 /**
  * Whether two development TIERS are close enough to fight. D49.
  *
- * Takes tiers rather than levels because that is all the client ever has: a
- * planet publishes `coreTier` and never its exact Core level (see `coreTier`),
- * so the surface that has to say "you may not attack this" cannot reach for
- * `withinTierBand` below.
+ * Takes TIERS rather than levels, and keeps doing so now that `/api/galaxy`
+ * publishes the exact Core level as well (the dyson rings need it — see
+ * `publicGalaxy`). The band is DEFINED on the tier: it is a three-level bucket, and
+ * that coarseness is the rule rather than a limitation of what the client could
+ * see. Re-deriving it from levels would silently change who may attack whom.
  */
 export const tiersWithinBand = (a: number, b: number): boolean =>
   Math.abs(a - b) <= ABUSE.tierBand;

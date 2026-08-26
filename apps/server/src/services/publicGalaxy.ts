@@ -1,4 +1,4 @@
-import { and, eq, inArray } from 'drizzle-orm';
+import { and, eq, inArray, isNull, sql } from 'drizzle-orm';
 import {
   SATELLITE_IDS,
   alloyRate,
@@ -16,6 +16,8 @@ import type { Db } from '../db/client.js';
 import {
   accounts,
   buildings,
+  clanMemberships,
+  clans,
   neutralPlanetState,
   planets,
   players,
@@ -32,11 +34,22 @@ import {
  * second place a private column can be added by accident, and the one that is
  * unauthenticated is the copy nobody would think to check.
  *
- * Core level is exposed as a coarse TIER, never the exact number. Development level
- * is public — you can see a planet is big — but knowing it precisely is what a probe
- * is for, and leaking the exact level for free would make the cheapest tier of intel
- * redundant. Since D49 the tier also decides who may fight whom, so it has to be
- * readable off the map before a fleet is packed.
+ * CORE LEVEL IS PUBLIC AS OF THE DYSON RINGS, and it did not used to be. This
+ * projection published only a coarse TIER, on the argument that knowing a world's
+ * exact development is what a probe is for and that giving it away undercuts the
+ * cheapest tier of intel. That argument still stands on its own terms — what
+ * changed is the owner's decision that the disc should SHOW development at every
+ * Core level rather than every third one: the ring count steps every three levels
+ * and the colour steps every one, and there is no way to draw that from a tier.
+ *
+ * WHAT IT COSTS, stated rather than glossed: a probe's development reading is now
+ * confirmation rather than news. What a probe still sells alone — and what decides
+ * whether a raid pays — is the fleet, the ground defence, the shield strength and
+ * the stores, none of which are here or anywhere near here.
+ *
+ * The tier stays, and is still what D49's ±2 attack band is defined on, so the
+ * combat rule is unchanged and remains readable off the map before a fleet is
+ * packed.
  *
  * TWO QUERIES FOR EVERY CORE LEVEL AND EVERY SATELLITE, never one per planet, and
  * both SCOPED TO THE SEASON. With multiple galaxies live in one database (D21/D100) an
@@ -53,6 +66,12 @@ export interface PublicWorld {
     | { kind: 'NEUTRAL'; tier: 1 | 2 | 3 };
   position: Vec3;
   coreTier: number;
+  /**
+   * The exact Command Core level. Public since the dyson rings — see the note
+   * above for what that trades away. `coreTier` is derived from this and kept
+   * because D49's attack band is defined on the tier, not on the level.
+   */
+  coreLevel: number;
   /** Types only. Never levels — see the note on `publicOrbit`. */
   satellites: SatelliteId[];
   /** Is there a dome. Never how strong it is. */
@@ -68,6 +87,9 @@ export interface PublicWorld {
     claimUntil: Date | null;
     nextReinforcementAt: Date | null;
   };
+  clan?: { id: string; name: string; tag: string };
+  /** Only the public podium; lower exact ranks stay on the leaderboard surface. */
+  dominionRank?: 1 | 2 | 3;
 }
 
 /**
@@ -112,10 +134,24 @@ export async function publicWorlds(db: Db, seasonId: string, now = new Date()): 
       planet: planets,
       ownerName: accounts.displayName,
       neutral: neutralPlanetState,
+      clanId: clans.id,
+      clanName: clans.name,
+      clanTag: clans.tag,
+      // Left-joined, so a neutral world genuinely answers NULL here.
+      playerScore: sql<number | null>`round(${players.dominionTaken} - ${players.dominionLost})`,
+      playerJoinedAt: players.joinedAt,
     })
     .from(planets)
     .leftJoin(players, eq(planets.controllerPlayerId, players.id))
     .leftJoin(accounts, eq(players.accountId, accounts.id))
+    .leftJoin(
+      clanMemberships,
+      and(eq(clanMemberships.playerId, players.id), isNull(clanMemberships.leftAt)),
+    )
+    .leftJoin(
+      clans,
+      and(eq(clans.id, clanMemberships.clanId), isNull(clans.disbandedAt)),
+    )
     .leftJoin(neutralPlanetState, eq(neutralPlanetState.planetId, planets.id))
     .where(eq(planets.seasonId, seasonId));
 
@@ -136,6 +172,21 @@ export async function publicWorlds(db: Db, seasonId: string, now = new Date()): 
   const levels = new Map(buildingRows.map((r) => [`${r.planetId}:${r.type}`, r.level]));
   const installed = publicOrbit(satelliteRows);
   const shielded = publicShields(satelliteRows);
+  const commanders = new Map<string, { score: number; joinedAt: Date }>();
+  for (const row of rows) {
+    const playerId = row.planet.controllerPlayerId;
+    if (!playerId || row.playerScore === null || !row.playerJoinedAt) continue;
+    commanders.set(playerId, { score: row.playerScore, joinedAt: row.playerJoinedAt });
+  }
+  const dominionRanks = new Map(
+    [...commanders]
+      .sort(([leftId, left], [rightId, right]) =>
+        right.score - left.score
+        || left.joinedAt.getTime() - right.joinedAt.getTime()
+        || leftId.localeCompare(rightId))
+      .slice(0, 3)
+      .map(([playerId], index) => [playerId, (index + 1) as 1 | 2 | 3] as const),
+  );
 
   return rows.map((r) => {
     const core = levels.get(`${r.planet.id}:CORE`) ?? 0;
@@ -163,9 +214,16 @@ export async function publicWorlds(db: Db, seasonId: string, now = new Date()): 
       controller,
       position: { x: r.planet.x, y: r.planet.y, z: r.planet.z },
       coreTier: coreTier(core),
+      coreLevel: core,
       satellites: installed.get(r.planet.id) ?? [],
       shielded: shielded.has(r.planet.id),
       state,
+      ...(r.clanId && r.clanName && r.clanTag
+        ? { clan: { id: r.clanId, name: r.clanName, tag: r.clanTag } }
+        : {}),
+      ...(r.planet.controllerPlayerId && dominionRanks.has(r.planet.controllerPlayerId)
+        ? { dominionRank: dominionRanks.get(r.planet.controllerPlayerId)! }
+        : {}),
       ...(r.planet.kind === 'NEUTRAL' && r.neutral
         ? {
             neutral: {

@@ -94,7 +94,7 @@ export interface CreateSeasonInput {
   startsAt: Date;
   days?: number;
   playerCap?: number;
-  /** Immutable activation boundary. New production seasons use v2. */
+  /** Immutable activation boundary. New production seasons use v3. */
   rulesetVersion?: number;
 }
 
@@ -149,7 +149,7 @@ export async function createSeasonIn(tx: Tx, input: CreateSeasonInput) {
       resolveAt: addMinutes(input.startsAt, days * 24 * 60 * act.share),
     });
   }
-  if (season!.rulesetVersion >= MULTI_WORLD.rulesetVersion) {
+  if (season!.rulesetVersion >= MULTI_WORLD.neutralWorldRulesetVersion) {
     await createNeutralWorlds(tx, season!.id, input.seed, input.startsAt);
   }
   return { shard: shard!, season: season! };

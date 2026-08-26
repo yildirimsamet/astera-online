@@ -27,6 +27,7 @@ import type {
 import { useProbe, useSetRival, useWatch } from '../api/queries.js';
 import { hullLabel, hullName, satelliteLabel } from '../i18n/names.js';
 import { compact } from '../lib/format.js';
+import { commanderLabel } from '../lib/identity.js';
 import {
   confidenceWord,
   dossier,
@@ -278,7 +279,7 @@ function GapRow({
   );
 }
 
-/* ── another player's world ──────────────────────────────────── */
+/* ── world focus ─────────────────────────────────────────────── */
 
 /**
  * ONE WORLD, ONE SURFACE. D22.
@@ -294,7 +295,8 @@ function GapRow({
  * know with its provenance, everything you do not with the control that would
  * close it, and one commitment at the bottom. The second surface is gone rather
  * than reconciled: two views of one object is a bug that no amount of styling
- * fixes.
+ * fixes. A controlled destination branches into the compact transfer route below;
+ * it has no intelligence gaps or hostile commitments to explain.
  */
 export function PlanetFocus({
   target,
@@ -338,6 +340,21 @@ export function PlanetFocus({
   const { t } = useTranslation();
   const setRival = useSetRival();
   const say = useToast();
+
+  if (target.isOwned) {
+    return (
+      <OwnedPlanetFocus
+        target={target}
+        origin={planet}
+        now={now}
+        onClose={onClose}
+        {...(onTransfer ? { onTransfer } : {})}
+        open={open}
+        onToggle={onToggle}
+      />
+    );
+  }
+
   const read = dossier({ target, planet, intel, reports, ...(rival ? { rival } : {}), now });
   const reach = reachMinutes(planet.planet.position, target.position, planet.fleet);
   const away = target.fleet?.status === 'AWAY';
@@ -407,7 +424,7 @@ export function PlanetFocus({
     <Shell
       art={<PlanetSigil seed={target.id} size={40} dark={known.kind === 'none'} />}
       eyebrow={t('focus.planet.location', { planet: target.name })}
-      title={target.owner}
+      title={commanderLabel(target.owner, target.clan?.tag)}
       open={open}
       onToggle={onToggle}
       onClose={onClose}
@@ -426,19 +443,8 @@ export function PlanetFocus({
        * irreversible button, to be told no — on the one surface in the game where
        * being sure is the whole product. The control states the rule instead, and
        * the reason is on the Development row above it.
-       */
-      actions={
-        <>
-          {target.isOwned ? (
-            <button
-              type="button"
-              className="slab slab-primary basis-full"
-              disabled={originRecovering}
-              onClick={onTransfer}
-            >
-              {t('focus.planet.transfer')}
-            </button>
-          ) : (
+      */
+      actions={(
           <>
           {target.kind !== 'NEUTRAL' && (
           <button
@@ -520,9 +526,7 @@ export function PlanetFocus({
           </span>
           )}
           </>
-          )}
-        </>
-      }
+        )}
     >
       <StrategicWorldGuide
         target={target}
@@ -591,6 +595,101 @@ export function PlanetFocus({
           />
         ))}
       </div>
+    </Shell>
+  );
+}
+
+/**
+ * A CONTROLLED DESTINATION IS A ROUTE, NOT AN INTELLIGENCE DOSSIER.
+ *
+ * Reusing the hostile-world detail here buried the only relevant action below
+ * public facts, telescope gaps and attack language. This surface names both ends
+ * of the one-way transfer, shows whether craft can make the trip, and leads into
+ * the actual picker. The irreversible Send remains inside that picker.
+ */
+function OwnedPlanetFocus({
+  target,
+  origin,
+  now,
+  onClose,
+  onTransfer,
+  open,
+  onToggle,
+}: {
+  target: GalaxyPlanet;
+  origin: PlanetView;
+  now: number;
+  onClose: () => void;
+  onTransfer?: () => void;
+  open: boolean;
+  onToggle: () => void;
+}) {
+  const { t } = useTranslation();
+  const routeDistance = distance(origin.planet.position, target.position);
+  const reach = reachMinutes(origin.planet.position, target.position, origin.fleet);
+  const originRecovering = Boolean(
+    origin.planet.recoveryUntil && origin.planet.recoveryUntil.getTime() > now,
+  );
+
+  return (
+    <Shell
+      art={<PlanetSigil seed={target.id} size={40} />}
+      eyebrow={t(target.kind === 'CAPITAL'
+        ? 'focus.planet.yourCapital'
+        : 'focus.planet.yourColony')}
+      title={target.name}
+      open={open}
+      onToggle={onToggle}
+      onClose={onClose}
+      summary={(
+        <span className="flex flex-col items-end gap-1">
+          <WorldKind target={target} rival={false} />
+          <span>{t('focus.planet.transferFrom', { origin: origin.planet.name })}</span>
+        </span>
+      )}
+    >
+      <div className="rounded-chip border border-crystal/35 bg-crystal/8 px-3 py-3">
+        <p className="legend text-crystal">{t('focus.planet.transferRoute')}</p>
+        <div className="mt-3 grid grid-cols-[1fr_auto_1fr] items-center gap-3">
+          <div className="min-w-0">
+            <p className="legend text-faint">{t('focus.planet.transferOrigin')}</p>
+            <p className="name mt-1 truncate text-bone">{origin.planet.name}</p>
+          </div>
+          <span aria-hidden className="text-title text-crystal">→</span>
+          <div className="min-w-0 text-right">
+            <p className="legend text-faint">{t('focus.planet.transferTarget')}</p>
+            <p className="name mt-1 truncate text-bone">{target.name}</p>
+          </div>
+        </div>
+        <p className="mt-3 text-label leading-snug text-dim">
+          {t('focus.planet.transferHint')}
+        </p>
+      </div>
+
+      <div className="my-3 grid grid-cols-3 gap-3">
+        <Figure
+          label={t('focus.planet.transferCraft')}
+          value={compact(fleetCount(origin.fleet))}
+        />
+        <Figure label={t('focus.planet.distance')} value={String(Math.round(routeDistance))} />
+        <Figure
+          label={t('focus.planet.reach')}
+          value={reach === null ? t('focus.planet.reachUnknown') : duration(reach)}
+        />
+      </div>
+
+      {onTransfer && (
+        <button
+          type="button"
+          className="slab slab-primary w-full whitespace-normal px-3 leading-tight"
+          disabled={originRecovering}
+          onClick={onTransfer}
+        >
+          {t(originRecovering
+            ? 'focus.planet.transferRecovering'
+            : 'focus.planet.transferPrepare')}
+        </button>
+      )}
     </Shell>
   );
 }

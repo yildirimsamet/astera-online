@@ -16,6 +16,7 @@ const target: GalaxyPlanet = {
   owner: 'Sable',
   position: { x: 120, y: 0, z: 80 },
   coreTier: 2,
+  coreLevel: 6,
   satellites: [],
   shielded: false,
   isSelf: false,

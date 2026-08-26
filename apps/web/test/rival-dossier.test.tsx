@@ -14,7 +14,7 @@ import { planetView } from './fixtures.js';
 const NOW = new Date('2026-08-23T12:00:00.000Z');
 const target: GalaxyPlanet = {
   id: 'rival-planet', name: 'Orrery-8', owner: 'Sable', position: { x: 100, y: 0, z: 0 },
-  coreTier: 2, satellites: [], shielded: false, isSelf: false,
+  coreTier: 2, coreLevel: 6, satellites: [], shielded: false, isSelf: false,
 };
 const mine: PlanetView = planetView({ buildings: { CORE: 4, REFINERY: 2, EXTRACTOR: 2, VAULT: 1, SHIPYARD: 1 } });
 const intel: IntelView = {

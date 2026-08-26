@@ -13,7 +13,7 @@ import { PER_MODEL, leadHull, markersFor, slotOffset } from '../src/galaxy/Squad
  */
 describe('how a fleet becomes models', () => {
   it('represents exactly five ships with each model', () => {
-    expect(PER_MODEL).toBe(5);
+    expect(PER_MODEL).toBe(10);
   });
 
   it('draws the owner’s worked example exactly', () => {
@@ -33,10 +33,15 @@ describe('how a fleet becomes models', () => {
     ]);
   });
 
-  it('draws six ships as one full group and one remainder', () => {
-    expect(markersFor({ WASP: 6 })).toEqual([
-      { hull: 'WASP', filled: 5, ordinal: 0 },
-      { hull: 'WASP', filled: 1, ordinal: 1 },
+  it('draws a group and a half as one full model and one remainder', () => {
+    // Written off `PER_MODEL` rather than the numbers it happened to be: raising
+    // the constant from 5 to 10 broke three of these while nothing they test had
+    // changed, which is the failure the invariants table calls "write the share,
+    // not the count".
+    const half = Math.floor(PER_MODEL / 2);
+    expect(markersFor({ WASP: PER_MODEL + half })).toEqual([
+      { hull: 'WASP', filled: PER_MODEL, ordinal: 0 },
+      { hull: 'WASP', filled: half, ordinal: 1 },
     ]);
   });
 
@@ -96,8 +101,12 @@ describe('how a fleet becomes models', () => {
   });
 
   it('accounts for every ship in a mixed fleet', () => {
-    const markers = markersFor({ WASP: 6, LANCE: 10, BULWARK: 3, HAULER: 1 });
-    expect(markers.reduce((sum, marker) => sum + marker.filled, 0)).toBe(20);
+    const lances = PER_MODEL + 1;
+    const fleet = { WASP: 6, LANCE: lances, BULWARK: 3, HAULER: 1 };
+    const total = 6 + lances + 3 + 1;
+    const markers = markersFor(fleet);
+    expect(markers.reduce((sum, marker) => sum + marker.filled, 0)).toBe(total);
+    // One over a full group is always exactly two models of that hull.
     expect(markers.filter((marker) => marker.hull === 'LANCE')).toHaveLength(2);
   });
 });
@@ -115,7 +124,7 @@ describe('very large fleets', () => {
   it('draws every ship in a fleet of two hundred', () => {
     const markers = markersFor({ WASP: 200 });
     expect(markers.reduce((sum, marker) => sum + marker.filled, 0)).toBe(200);
-    expect(markers).toHaveLength(40);
+    expect(markers).toHaveLength(Math.ceil(200 / PER_MODEL));
   });
 
   it('keeps every hull when one of them is crowded', () => {

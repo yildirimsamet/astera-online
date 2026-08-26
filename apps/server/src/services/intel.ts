@@ -58,6 +58,7 @@ import { schedule } from '../worker/queue.js';
 import { publishShard } from '../stream/bus.js';
 import { hasResearch } from './researchState.js';
 import { lockWorlds } from './ownership.js';
+import { assertClanHostilityAllowed, lockClanPlayers } from './clanCombat.js';
 
 /* ── satellite levels ───────────────────────────────────────── */
 
@@ -460,6 +461,15 @@ export async function launchProbe(
     if (!target) throw new GameError('PLANET_NOT_FOUND', 'No such planet', 404);
     if (target.seasonId !== origin.seasonId) {
       throw new GameError('CROSS_SEASON', 'That planet is in another galaxy');
+    }
+    if (target.controllerPlayerId) {
+      await lockClanPlayers(tx, [origin.playerId, target.controllerPlayerId]);
+      await assertClanHostilityAllowed(
+        tx,
+        origin.playerId,
+        target.controllerPlayerId,
+        origin.now,
+      );
     }
 
     /**

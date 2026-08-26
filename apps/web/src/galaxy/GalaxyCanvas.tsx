@@ -20,6 +20,7 @@ import { OwnFleets, Traffic, WatchBeams } from './Fleets.jsx';
 import { threadKey } from './threadKey.js';
 import { DeathStarImpacts } from './DeathStarImpact.jsx';
 import { PlanetField } from './PlanetField.jsx';
+import { DysonShells } from './DysonShells.jsx';
 import { Satellites, Shields } from './Satellites.jsx';
 import { MiningFlights } from './MiningFlights.jsx';
 import {
@@ -37,6 +38,8 @@ import {
 } from './scene.js';
 import { installTapGuard, wasMiss, wasTap } from './tap.js';
 import { serverNow } from '../lib/clock.js';
+import { commanderLabel } from '../lib/identity.js';
+import { RankBadge } from './RankBadge.jsx';
 import { useReducedMotionPreference } from './motion.js';
 import { useTranslation } from 'react-i18next';
 
@@ -418,6 +421,12 @@ export function GalaxyCanvas({
             onFocus({ kind: 'planet', id });
           }}
         />
+        {/*
+          After the worlds, because the structure has to interleave with the
+          billboard it wraps by depth rather than by draw order, and before the
+          orbiting hardware, which is drawn small and must not be buried under it.
+        */}
+        <DysonShells nodes={nodes} />
         <Satellites nodes={nodes} />
         <Shields nodes={nodes} ownLevel={aegisLevel} ownId={selfId} />
         <WatchBeams from={home} targets={watched} />
@@ -537,10 +546,12 @@ function labelRank(
 ): number {
   if (node.id === selectedId) return 0;
   if (node.isOwned) return 1;
-  if (isRivalNode(node, rivalPlanetId, rivalPlayerId)) return 2;
-  if (node.state?.kind === 'RECOVERY') return 3;
-  if (node.claimUntil && node.claimUntil.getTime() > serverNow()) return 3;
-  return 4;
+  if (node.isClanmate) return 2;
+  if (node.dominionRank) return 3;
+  if (isRivalNode(node, rivalPlanetId, rivalPlayerId)) return 4;
+  if (node.state?.kind === 'RECOVERY') return 5;
+  if (node.claimUntil && node.claimUntil.getTime() > serverNow()) return 5;
+  return 6;
 }
 
 function Labels({
@@ -558,6 +569,8 @@ function Labels({
   const marked = nodes.filter(
     (node) => node.id === selectedId
       || node.isOwned
+      || node.isClanmate
+      || Boolean(node.dominionRank)
       || node.stance === 'window'
       || isRivalNode(node, rivalPlanetId, rivalPlayerId)
       || node.state?.kind === 'RECOVERY'
@@ -671,6 +684,7 @@ function Labels({
                     : 'galaxy.kindNeutral', { tier: node.neutralTier ?? 1 })}
               </span>
               {node.isOwned && <span className="text-crystal">· {t('galaxy.owned')}</span>}
+              {node.isClanmate && <span className="text-opportunity">· {t('galaxy.clanmate')}</span>}
               {isRivalNode(node, rivalPlanetId, rivalPlayerId) && (
                 <span className="text-alloy-glow">· {t('galaxy.rival')}</span>
               )}
@@ -679,8 +693,9 @@ function Labels({
                 <span className="text-opportunity">· {t('galaxy.claimOpen')}</span>
               )}
             </span>
-            <span className={`name ${node.stance === 'window' ? 'text-opportunity' : 'text-bone'}`}>
-              {node.owner}
+            <span className={`name flex items-center gap-1.5 ${node.isClanmate || node.stance === 'window' ? 'text-opportunity' : 'text-bone'}`}>
+              {node.dominionRank ? <RankBadge rank={node.dominionRank} /> : null}
+              <span>{commanderLabel(node.owner, node.clan?.tag)}</span>
             </span>
             <span className="legend">{node.name}</span>
           </span>

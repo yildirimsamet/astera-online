@@ -17,6 +17,7 @@ const rows = Array.from({ length: 100 }, (_, index) => ({
   planetName: `World ${String(index)}`,
   coreTier: (index % 4) + 1,
   score: 50 - index,
+  clan: index === 0 ? { id: 'clan-war', name: 'War Fleet', tag: 'WAR' } : null,
 }));
 
 async function show(language = 'en') {
@@ -54,11 +55,18 @@ describe('the Dominion leaderboard', () => {
 
   it('routes another commander name to the existing Galaxy focus', async () => {
     const onFocusPlanet = await show();
-    const commander = screen.getByRole('button', { name: 'Commander 0' });
+    const commander = screen.getByRole('button', { name: '[WAR] Commander 0' });
     expect(commander).toHaveClass('name');
     await userEvent.setup().click(commander);
     expect(onFocusPlanet).toHaveBeenCalledWith('planet-0');
     expect(screen.queryByRole('button', { name: 'İzci' })).not.toBeInTheDocument();
+  });
+
+  it('leads a clan commander identity with its tag', async () => {
+    await show();
+    const identity = screen.getByRole('button', { name: '[WAR] Commander 0' });
+    expect(identity.textContent).toBe('[WAR]Commander 0');
+    expect(identity.firstElementChild).toHaveTextContent('[WAR]');
   });
 
   it('localises the panel in Turkish without folding dotted İ', async () => {

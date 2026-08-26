@@ -8,6 +8,8 @@ import { keys } from '../src/api/keys.js';
 import { useClaimReward } from '../src/api/queries.js';
 import { useWorld, WorldProvider } from '../src/api/world.js';
 import type { PlanetsView } from '../src/api/schemas.js';
+import { StatusBar } from '../src/shell/StatusBar.js';
+import { ToastProvider } from '../src/ui/Toast.js';
 import { planetView } from './fixtures.js';
 
 const capital = planetView({}, { id: 'capital', name: 'Origin' });
@@ -55,6 +57,39 @@ const show = (data = worlds()) => {
 };
 
 describe('commander world selection', () => {
+  it('focuses the world chosen from the active-world dropdown', async () => {
+    localStorage.clear();
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    client.setQueryData(keys.planets, worlds());
+    client.setQueryData(keys.planetById('capital'), capital);
+    client.setQueryData(keys.planetById('colony'), colony);
+    const api = new Api({ fetch: (() => Promise.reject(new Error('unexpected fetch'))) });
+    const onFocusPlanet = vi.fn();
+
+    render(
+      <QueryClientProvider client={client}>
+        <ApiProvider api={api}>
+          <WorldProvider>
+            <ToastProvider>
+              <StatusBar
+                commander="Vantage"
+                onOpen={vi.fn()}
+                onFocusPlanet={onFocusPlanet}
+              />
+            </ToastProvider>
+          </WorldProvider>
+        </ApiProvider>
+      </QueryClientProvider>,
+    );
+
+    const selector = await screen.findByRole('combobox', { name: /active world/i });
+    await userEvent.setup().selectOptions(selector, 'colony');
+
+    expect(selector).toHaveValue('colony');
+    expect(onFocusPlanet).toHaveBeenCalledOnce();
+    expect(onFocusPlanet).toHaveBeenCalledWith('colony');
+  });
+
   it('persists selection under the season and commander and primes isolated caches', async () => {
     localStorage.clear();
     const client = show();

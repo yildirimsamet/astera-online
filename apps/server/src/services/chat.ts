@@ -1,4 +1,5 @@
 import { and, count, desc, eq, gt, lt, ne, or, sql } from 'drizzle-orm';
+import { CHAT } from '@astera/rules';
 import type { Clock } from '../clock.js';
 import type { Db } from '../db/client.js';
 import { accounts, chatMessages, planets, players } from '../db/schema.js';
@@ -108,7 +109,7 @@ export async function postChat(
     const createdAt = latest && latest.createdAt >= requestedAt
       ? new Date(latest.createdAt.getTime() + 1)
       : requestedAt;
-    const cutoff = new Date(requestedAt.getTime() - 10_000);
+    const cutoff = new Date(requestedAt.getTime() - CHAT.windowSeconds * 1_000);
     const [rate] = await tx
       .select({ value: count() })
       .from(chatMessages)
@@ -116,9 +117,9 @@ export async function postChat(
         eq(chatMessages.authorPlayerId, me.player.id),
         gt(chatMessages.createdAt, cutoff),
       ));
-    if ((rate?.value ?? 0) >= 5) {
+    if ((rate?.value ?? 0) >= CHAT.burst) {
       throw new GameError('CHAT_RATE_LIMIT', 'Send at most five messages every ten seconds', 429, {
-        seconds: 10,
+        seconds: CHAT.windowSeconds,
       });
     }
 

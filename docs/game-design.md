@@ -371,6 +371,39 @@ tapped and its composition read, but the route belongs to the commander who sent
 runs are the stated exception, public in full, because D19 built that race for two people to
 know they were raced.
 
+## Clans — five seats, useful cooperation, no diplomacy game
+
+A clan is a five-commander seasonal team inside one galaxy. Founding one is a late-opening
+commitment rather than a free menu action: the capital must have Command Core 7 and burns
+5,000 Alloy plus 3,000 Crystal. A 12-hour adaptation period makes recruitment legible and
+closes join/leave exploits while still giving the new member their tag, friendly-fire safety
+and private chat at once.
+
+The cooperation has three concrete answers to “why join?” First, members can send physical,
+one-way ship and Hauler convoys with a 10% travel bonus and one aid-only flight bay. Second,
+10% of ordinary PvP loot that safely returns is split into claimable personal shares for the
+mature roster snapshotted at launch. Third, both sides' Dominion movement contributes to a
+seasonal clan ladder with cosmetic top-three recognition. None changes combat statistics:
+information and the counter cycle remain what wins a battle.
+
+Aid is a logistics decision, not a bank transfer. Only Haulers carry resources, every gifted
+hull spends the receiver's rolling per-resource allowance at full build cost, the receiver
+opts in, and a convoy whose permissions or destination cease to be valid returns intact.
+The depot is likewise not a leader-owned treasury: every share belongs to a named commander,
+is purse-capped against their economy and is manually claimed into their capital.
+
+Clanmates cannot launch Attack, Probe or Death Star missions against each other. Former
+clanmates receive a 24-hour ceasefire, while missions already in the air always finish. The
+normal personal three-attacks-per-target limit remains; a current clan also has a five-launch
+aggregate limit per target commander per 12 hours. Both are launch commitments, so changing
+worlds or membership cannot erase them.
+
+The social surface is deliberately bounded: applications and invitations expire in 24 hours,
+only the leader manages seats, and clan chat is seasonal plain text with no direct messages or
+attachments. There are no clan levels, officers, technology, shared radar, diplomacy, wars or
+resource prizes. The system creates five-person stories without creating a parallel strategy
+game a three-person studio would have to operate.
+
 ## Competition — Dominion
 
 ```

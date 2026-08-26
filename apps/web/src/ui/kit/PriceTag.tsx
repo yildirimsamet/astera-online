@@ -1,5 +1,5 @@
 import { AlloyIcon, CrystalIcon } from '../icons/index.js';
-import { compact } from '../../lib/format.js';
+import { compact, full } from '../../lib/format.js';
 
 /**
  * PRICE — what a decision costs, and whether you can pay for it.
@@ -21,6 +21,7 @@ export function PriceTag({
   alloy = 0,
   crystal = 0,
   have,
+  exact = false,
   size = 'md',
   className = '',
 }: {
@@ -28,6 +29,8 @@ export function PriceTag({
   crystal?: number;
   /** Omit when affordability is not the question — a report, a loss line. */
   have?: { alloy: number; crystal: number };
+  /** Founding and other irreversible payments expose the exact amount. */
+  exact?: boolean;
   size?: 'sm' | 'md';
   className?: string;
 }) {
@@ -42,13 +45,13 @@ export function PriceTag({
       {alloy > 0 && (
         <span className={`inline-flex items-center gap-1 ${shortAlloy ? 'text-threat' : 'text-alloy'}`}>
           <AlloyIcon className={glyph} />
-          <span className={`num ${text}`}>{compact(alloy)}</span>
+          <span className={`num ${text}`}>{exact ? full(alloy) : compact(alloy)}</span>
         </span>
       )}
       {crystal > 0 && (
         <span className={`inline-flex items-center gap-1 ${shortCrystal ? 'text-threat' : 'text-crystal'}`}>
           <CrystalIcon className={glyph} />
-          <span className={`num ${text}`}>{compact(crystal)}</span>
+          <span className={`num ${text}`}>{exact ? full(crystal) : compact(crystal)}</span>
         </span>
       )}
       {alloy <= 0 && crystal <= 0 && <span className={`num ${text} text-faint`}>free</span>}

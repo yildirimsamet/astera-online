@@ -71,6 +71,9 @@ export async function truncateAll(db: Db): Promise<void> {
   await db.execute(sql`
     TRUNCATE account_rewards, reward_grants, request_log, notifications, scan_events,
              probe_reports, watches,
+             clan_loot_shares, clan_score_events, clan_raid_roster, attack_commitments,
+             clan_aid_commitments, clan_messages, clan_events, clan_requests,
+             clan_ceasefires, clan_memberships, clans,
              strategic_impacts, battle_reports,
              scheduled_events, build_orders, strategic_assets, missions, mining_runs,
              asteroid_claims, units,

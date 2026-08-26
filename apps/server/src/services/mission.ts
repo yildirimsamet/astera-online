@@ -1,5 +1,7 @@
 import { and, eq, gt, sql } from 'drizzle-orm';
 import {
+  ABUSE,
+  MULTI_WORLD,
   canAttack,
   distance,
   engagementEndsAt,
@@ -13,7 +15,6 @@ import {
   type HullId,
   HULLS,
 } from '@astera/rules';
-import { ABUSE } from '@astera/rules';
 import { addMinutes, type Clock } from '../clock.js';
 import type { Db, Tx } from '../db/client.js';
 import {
@@ -22,6 +23,7 @@ import {
   missions,
   planets,
   players,
+  seasons,
   units,
 } from '../db/schema.js';
 import { assertFreeBay } from './flight.js';
@@ -37,6 +39,7 @@ import { publishShard } from '../stream/bus.js';
 import { pendingThreads, type PendingThread } from './session.js';
 import { planetView, type PlanetView } from './planetView.js';
 import { lockWorlds } from './ownership.js';
+import { prepareClanAttack, recordClanAttack } from './clanCombat.js';
 
 export interface LaunchResult {
   missionId: string;
@@ -202,16 +205,33 @@ export async function launchAttack(
      * introduce exactly the deadlock ordering the architecture rules forbid for
      * two-planet operations.
      */
+    let preparedClanAttack: Awaited<ReturnType<typeof prepareClanAttack>> | null = null;
     if (target.kind !== 'NEUTRAL' && them) {
-      const since = addMinutes(origin.now, -ABUSE.bashWindowMinutes);
-      const recent = await tx
-        .select({ n: sql<number>`count(*)::int` })
-        .from(battleReports)
-        .where(and(
-          eq(battleReports.attackerPlayerId, me.id),
-          eq(battleReports.defenderPlayerId, them.id),
-          gt(battleReports.createdAt, since),
-        ));
+      const [ruleset] = await tx.select({ version: seasons.rulesetVersion })
+        .from(seasons).where(eq(seasons.id, origin.seasonId));
+      let personalRecent: number;
+      if ((ruleset?.version ?? 0) >= MULTI_WORLD.clanRulesetVersion) {
+        preparedClanAttack = await prepareClanAttack(tx, {
+          seasonId: origin.seasonId,
+          attackerPlayerId: me.id,
+          targetPlayerId: them.id,
+          now: origin.now,
+        });
+        personalRecent = preparedClanAttack.personalRecent;
+      } else {
+        // Ruleset-v2 seasons retain their report-time bash semantics. D114 is a
+        // fresh-season boundary and must not alter fights already under way.
+        const since = addMinutes(origin.now, -ABUSE.bashWindowMinutes);
+        const [recent] = await tx
+          .select({ n: sql<number>`count(*)::int` })
+          .from(battleReports)
+          .where(and(
+            eq(battleReports.attackerPlayerId, me.id),
+            eq(battleReports.defenderPlayerId, them.id),
+            gt(battleReports.createdAt, since),
+          ));
+        personalRecent = recent?.n ?? 0;
+      }
       const [targetCore] = await tx
         .select({ level: buildings.level })
         .from(buildings)
@@ -220,7 +240,7 @@ export async function launchAttack(
       const gate = canAttack(
         { playerId: me.id, coreLevel: origin.buildings.CORE },
         { playerId: them.id, coreLevel: targetCore?.level ?? 1 },
-        recent[0]?.n ?? 0,
+        personalRecent,
       );
       if (!gate.ok) {
         throw new GameError(gate.reason ?? 'FORBIDDEN', describeRefusal(gate.reason), 403);
@@ -262,6 +282,17 @@ export async function launchAttack(
         arriveAt,
       })
       .returning();
+
+    if (them && preparedClanAttack) {
+      await recordClanAttack(tx, {
+        ...preparedClanAttack,
+        missionId: mission!.id,
+        seasonId: origin.seasonId,
+        attackerPlayerId: me.id,
+        targetPlayerId: them.id,
+        now: origin.now,
+      });
+    }
 
     // Move the ships off the home stack, in the same transaction.
     const remaining: Fleet = { ...origin.homeFleet };

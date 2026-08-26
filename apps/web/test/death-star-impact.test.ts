@@ -20,12 +20,15 @@ const nodes: PlanetNode[] = [{
   position: toWorld(TARGET),
   radius: 1.4,
   weight: 3,
+  coreTier: 4,
+  coreLevel: 12,
   satellites: [],
   shielded: false,
   stance: 'dark',
   state: { kind: 'NORMAL' },
   kind: 'COLONY',
   isOwned: false,
+  isClanmate: false,
   isCapital: false,
 }];
 

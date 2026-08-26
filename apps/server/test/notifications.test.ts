@@ -2,7 +2,15 @@ import { and, eq } from 'drizzle-orm';
 import { pino } from 'pino';
 import { afterAll, beforeEach, describe, expect, it } from 'vitest';
 import { radarLead, radarRange } from '@astera/rules';
-import { miningRuns, missions, notifications, players, scheduledEvents } from '../src/db/schema.js';
+import {
+  clanMemberships,
+  clans,
+  miningRuns,
+  missions,
+  notifications,
+  players,
+  scheduledEvents,
+} from '../src/db/schema.js';
 import { EventWorker } from '../src/worker/loop.js';
 import { launchAttack } from '../src/services/mission.js';
 import { assignWatch, launchProbe } from '../src/services/intel.js';
@@ -56,6 +64,28 @@ async function newsFor(f: Fixture, playerId: string) {
 const kindsFor = async (f: Fixture, playerId: string): Promise<string[]> =>
   (await newsFor(f, playerId)).map((n) => n.kind);
 
+/** Give one test commander an active public identity without exercising clan admission. */
+async function affiliate(f: Fixture, playerIndex: number, tag: string): Promise<void> {
+  const at = f.clock.now();
+  const [clan] = await f.db.insert(clans).values({
+    seasonId: f.seasonId,
+    name: `${tag} Fleet`,
+    nameKey: `${tag.toLowerCase()} fleet`,
+    tag,
+    createdAt: at,
+  }).returning({ id: clans.id });
+  await f.db.insert(clanMemberships).values({
+    seasonId: f.seasonId,
+    clanId: clan!.id,
+    playerId: f.playerIds[playerIndex]!,
+    role: 'LEADER',
+    slot: 0,
+    joinedAt: at,
+    matureAt: at,
+    aidPolicyChangedAt: at,
+  });
+}
+
 describe('a raid tells both sides', () => {
   let f: Fixture;
   let attacker: string;
@@ -71,11 +101,14 @@ describe('a raid tells both sides', () => {
   });
 
   it('tells the defender what was taken and the attacker what it cost', async () => {
+    await affiliate(f, 0, 'WAR');
+    await affiliate(f, 1, 'GRD');
     await giveUnits(f.db, attacker, { WASP: 40 });
     f.clock.advance(300);
     const launch = await launchAttack(f.db, attacker, defender, { WASP: 40 }, f.clock);
     f.clock.set(settledAt(launch.arriveAt));
-    await makeWorker(f).tick();
+    const worker = makeWorker(f);
+    await worker.tick();
 
     const [raided] = await newsFor(f, f.playerIds[1]!).then((rows) =>
       rows.filter((r) => r.kind === 'raided'),
@@ -85,6 +118,7 @@ describe('a raid tells both sides', () => {
       grade: expect.any(String) as string,
       originPlanetId: attacker,
       originUsername: expect.any(String) as string,
+      originClanTag: 'WAR',
       originPlanetName: expect.any(String) as string,
     });
 
@@ -95,8 +129,20 @@ describe('a raid tells both sides', () => {
     expect(result!.payload).toMatchObject({
       targetPlanetId: defender,
       targetUsername: expect.any(String) as string,
+      targetClanTag: 'GRD',
       targetPlanetName: expect.any(String) as string,
     });
+
+    const [returnMission] = await f.db
+      .select()
+      .from(missions)
+      .where(and(eq(missions.kind, 'return'), eq(missions.parentMissionId, launch.missionId)));
+    expect(returnMission, 'the surviving raid had no return leg').toBeDefined();
+    f.clock.set(settledAt(returnMission!.arriveAt));
+    await worker.tick();
+    const returned = (await newsFor(f, f.playerIds[0]!))
+      .find((row) => row.kind === 'fleet_returned');
+    expect(returned?.payload).toMatchObject({ fromClanTag: 'GRD' });
   });
 
   /**
@@ -282,6 +328,7 @@ describe('the radar warning', () => {
    * every lead the ladder sells, and the ones already past are past.
    */
   it('gives the richer payload to a level raised mid-flight', async () => {
+    await affiliate(f, 0, 'WAR');
     await giveInstrument(f.db, defender, 'RADAR', 3);
     const { arriveAt, missionId } = await launch();
 
@@ -297,6 +344,7 @@ describe('the radar warning', () => {
       fleet: { WASP: 40 },
       originPlanetId: attacker,
       originUsername: expect.any(String) as string,
+      originClanTag: 'WAR',
       originPlanetName: expect.any(String) as string,
     });
   });
@@ -379,6 +427,7 @@ describe('a probe coming home', () => {
    * silence.
    */
   it('says so, once, and names what is now readable', async () => {
+    await affiliate(f, 1, 'SCN');
     f.clock.advance(300);
     const probe = await launchProbe(f.db, f.planetIds[0]!, f.planetIds[1]!, f.clock);
     const worker = makeWorker(f);
@@ -394,6 +443,7 @@ describe('a probe coming home', () => {
     expect(rows[0]!.payload).toMatchObject({
       targetPlanetId: f.planetIds[1],
       targetUsername: expect.any(String) as string,
+      targetClanTag: 'SCN',
       targetPlanetName: expect.any(String) as string,
     });
   });

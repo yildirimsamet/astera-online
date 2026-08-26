@@ -7,9 +7,18 @@ import { TransferSheet } from '../src/screens/TransferSheet.js';
 import { ToastProvider } from '../src/ui/Toast.js';
 import { planetView } from './fixtures.js';
 
-const mutate = vi.fn();
+const { mutate, useTransfer } = vi.hoisted(() => {
+  const transferMutation = vi.fn();
+  return {
+    mutate: transferMutation,
+    useTransfer: vi.fn((_originPlanetId: string) => ({
+      mutate: transferMutation,
+      isPending: false,
+    })),
+  };
+});
 vi.mock('../src/api/queries.js', () => ({
-  useTransfer: () => ({ mutate, isPending: false }),
+  useTransfer,
 }));
 
 const target = {
@@ -20,6 +29,7 @@ const target = {
   controller: { kind: 'PLAYER' as const, playerId: 'player-1', displayName: 'Commander' },
   position: { x: 100, y: 0, z: 0 },
   coreTier: 2,
+  coreLevel: 6,
   satellites: [],
   shielded: false,
   isSelf: false,
@@ -29,7 +39,10 @@ const target = {
 };
 
 describe('world transfer sheet', () => {
-  beforeEach(() => mutate.mockReset());
+  beforeEach(() => {
+    mutate.mockReset();
+    useTransfer.mockClear();
+  });
 
   it('shows cargo capacity and updates the defence left at origin', async () => {
     const user = userEvent.setup();
@@ -53,6 +66,7 @@ describe('world transfer sheet', () => {
       </ToastProvider>,
     );
 
+    expect(useTransfer).toHaveBeenCalledWith('capital-1');
     expect(screen.getByText(/6 craft remain at origin/i)).toBeInTheDocument();
     expect(screen.queryAllByRole('spinbutton')).toHaveLength(0);
     await user.click(screen.getByRole('button', { name: 'More Wasp' }));

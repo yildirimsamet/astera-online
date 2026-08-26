@@ -2,7 +2,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { keys } from '../src/api/queries.js';
 import {
   COALESCE_MS,
+  isPrivateEvent,
   isShardEvent,
+  readsForPrivateEvent,
   readsForShardEvent,
   shardCoalescer,
 } from '../src/session/shardEvents.js';
@@ -55,7 +57,7 @@ describe('what a shard event asks the client to read', () => {
       expect(readsForShardEvent(kind), kind).not.toContainEqual(keys.galaxy);
     }
     expect(readsForShardEvent('shard:world')).toEqual([keys.galaxy, keys.leaderboard]);
-    expect(readsForShardEvent('shard:score')).toEqual([keys.leaderboard]);
+    expect(readsForShardEvent('shard:score')).toEqual([keys.leaderboard, keys.galaxy]);
     expect(readsForShardEvent('shard:chat')).toEqual([keys.chatMessages, keys.chatUnread]);
     expect(readsForShardEvent('shard:chronicle')).toEqual([keys.chronicle]);
   });
@@ -176,5 +178,52 @@ describe('the coalescer', () => {
     expect(flush).toHaveBeenCalledTimes(1);
     // The launch was cancelled with the timer; only the new event survives.
     expect(flush.mock.calls[0]?.[0]).toEqual([keys.galaxy, keys.leaderboard]);
+  });
+});
+
+/**
+ * WHAT A PRIVATE CLAN EVENT COSTS THIS CLIENT. D114.
+ *
+ * These are player events, so they legitimately reach past the clan surface — but
+ * they arrive at the chat's own ceiling of five per ten seconds per clanmate, and
+ * nothing routed them at all: every one fell through to the blanket resync of all
+ * twenty-two live reads, for five people at once.
+ */
+describe('what a private clan event asks the client to read', () => {
+  it('recognises its own namespace and never the shard one', () => {
+    expect(isPrivateEvent('private:clan-chat')).toBe(true);
+    expect(isPrivateEvent('shard:clan')).toBe(false);
+    expect(isShardEvent('private:clan-chat')).toBe(false);
+    // Notification kinds share this string space too.
+    expect(isPrivateEvent('raided')).toBe(false);
+  });
+
+  it('sends a message to the conversation and the beacon, and nowhere else', () => {
+    expect(readsForPrivateEvent('private:clan-chat')).toEqual([keys.clanBadge, keys.clanChat]);
+  });
+
+  it('sends a roster change to every surface that names the roster', () => {
+    expect(readsForPrivateEvent('private:clan-membership'))
+      .toEqual([keys.clanBadge, keys.clanHome, keys.clanStrength, keys.clanEvents]);
+  });
+
+  /**
+   * The one kind that legitimately leaves the clan surface: a convoy that lands
+   * puts real ships and real resources on a world, so the planet payload moved.
+   */
+  it('sends a convoy to the world it changes as well as to the clan surface', () => {
+    expect(readsForPrivateEvent('private:clan-aid')).toEqual([
+      keys.clanAid, keys.clanHome, keys.planet, keys.planets, keys.pending, keys.traffic,
+    ]);
+  });
+
+  /**
+   * The opposite default to the shard table's inert `[]`. A newer server naming a
+   * kind this build has never heard of still described something that happened to
+   * this commander, so `null` sends the caller to the full resync.
+   */
+  it('answers null for a kind it does not know, rather than nothing', () => {
+    expect(readsForPrivateEvent('private:clan-unheard-of')).toBeNull();
+    expect(readsForShardEvent('shard:unheard-of')).toEqual([]);
   });
 });

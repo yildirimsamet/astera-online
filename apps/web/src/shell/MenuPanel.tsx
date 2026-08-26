@@ -1,6 +1,6 @@
 import type { CSSProperties, ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useRewards } from '../api/queries.js';
+import { useClanBadge, useRewards } from '../api/queries.js';
 import {
   setMusicEnabled,
   setMusicVolume,
@@ -13,6 +13,7 @@ import { duration } from '../lib/time.js';
 import { Button, Note, Section } from '../ui/kit/index.js';
 import {
   ChevronIcon,
+  ClanIcon,
   GalaxyIcon,
   IntelIcon,
   LeaderboardIcon,
@@ -81,6 +82,7 @@ export function MenuPanel({
   const { t } = useTranslation();
   const hoursLeft = endsAt === null ? null : (endsAt.getTime() - serverNow()) / 3_600_000;
   const waiting = useRewards().data?.claimable ?? 0;
+  const clan = useClanBadge().data;
 
   return (
     <div className="flex flex-col gap-6">
@@ -140,6 +142,19 @@ export function MenuPanel({
             onOpen('leaderboard');
           }}
         />
+        {clan?.available ? (
+          <MenuRow
+            icon={<ClanIcon className="size-5" />}
+            label={clan.membership
+              ? t('menu.clanMemberLabel', { tag: clan.membership.tag })
+              : t('menu.clanLabel')}
+            hint={clan.membership ? t('menu.clanMemberHint') : t('menu.clanHint')}
+            {...(clan.attentionCount > 0
+              ? { badge: t('menu.clanWaiting', { count: clan.attentionCount }) }
+              : {})}
+            onClick={() => { onOpen('clan'); }}
+          />
+        ) : null}
         <MenuRow
           icon={<RewardIcon className="size-5" />}
           label={t('menu.rewardsLabel')}

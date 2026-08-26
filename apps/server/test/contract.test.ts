@@ -3,11 +3,12 @@ import { pino } from 'pino';
 import { afterAll, beforeEach, describe, expect, it } from 'vitest';
 import { and, eq } from 'drizzle-orm';
 import {
-  DEATH_STAR, DISRUPTION, REWARD_CHAINS, SHIELD, alloyRate, flightSlots, rewardId, shieldHp,
+  CLAN, DEATH_STAR, DISRUPTION, REWARD_CHAINS, SHIELD, alloyRate, flightSlots, rewardId, shieldHp,
   vaultProtects,
 } from '@astera/rules';
 import {
   buildings,
+  clanLootShares,
   debrisFields,
   galaxyEvents,
   miningRuns,
@@ -16,6 +17,7 @@ import {
   planetResearch,
   planets,
   shards,
+  seasons,
   strategicAssets,
   units,
 } from '../src/db/schema.js';
@@ -29,6 +31,31 @@ import { TokenService } from '../src/auth/tokens.js';
 import {
   buildSchema,
   buildCancelSchema,
+  clanAidLaunchSchema,
+  clanAidPolicySchema,
+  clanAidQuoteSchema,
+  clanAidSchema,
+  clanBadgeSchema,
+  clanChatPageSchema,
+  clanChatPostSchema,
+  clanChatReadSchema,
+  clanCreatedSchema,
+  clanDepotClaimSchema,
+  clanDepotSchema,
+  clanDirectorySchema,
+  clanDisbandSchema,
+  clanEventsPageSchema,
+  clanHomeSchema,
+  clanKickSchema,
+  clanLeadershipSchema,
+  clanLeaderboardSchema,
+  clanLeaveSchema,
+  clanRequestAcceptedSchema,
+  clanRequestClosedSchema,
+  clanRequestCreatedSchema,
+  clanSeenSchema,
+  clanSettingsSchema,
+  clanStrengthSchema,
   chatPageSchema,
   chatPostSchema,
   chatReadSchema,
@@ -55,6 +82,7 @@ import {
   planetSchema,
   planetsSchema,
   previewSchema,
+  publicClanSchema,
   probeSchema,
   reportsSchema,
   researchCompleteSchema,
@@ -173,6 +201,26 @@ describe('every payload the client parses', () => {
     return res.json();
   };
 
+  let clanWriteSequence = 0;
+  const clanPost = async (
+    url: string,
+    body: Record<string, unknown>,
+    headers: { authorization: string } = auth,
+  ): Promise<unknown> => {
+    clanWriteSequence += 1;
+    const res = await app.inject({
+      method: 'POST',
+      url,
+      headers: {
+        ...headers,
+        'idempotency-key': `contract-clan-${String(clanWriteSequence)}`,
+      },
+      payload: body,
+    });
+    expect(res.statusCode, `${url} answered ${String(res.statusCode)}: ${res.body.slice(0, 300)}`).toBe(200);
+    return res.json();
+  };
+
   it('GET /api/planet parses', async () => {
     const parsed = planetSchema.parse(await get('/api/planet'));
     // Spot-check the D25 split rather than only that it parsed: a schema can be
@@ -257,6 +305,122 @@ describe('every payload the client parses', () => {
     const parsed = galaxySchema.parse(await get('/api/galaxy'));
     expect(parsed.planets.length).toBeGreaterThan(0);
     expect(parsed.planets.some((p) => p.shielded)).toBe(true);
+  });
+
+  it('the clan journey parses with the client schemas, route by route', async () => {
+    await f.db.update(seasons).set({ rulesetVersion: 3 }).where(eq(seasons.id, f.seasonId));
+    const tokens = new TokenService('test-secret-that-is-long-enough', 15, 30);
+    const authFor = async (index: number): Promise<{ authorization: string }> => ({
+      authorization: `Bearer ${await tokens.issueAccess(f.accountIds[index]!)}`,
+    });
+    const second = await authFor(1);
+    const third = await authFor(2);
+
+    expect(clanBadgeSchema.parse(await get('/api/clan/badge')).membership).toBeNull();
+    expect(clanHomeSchema.parse(await get('/api/clan/me')).state).toBe('OUTSIDE');
+    clanDirectorySchema.parse(await get('/api/clans'));
+    clanLeaderboardSchema.parse(await get('/api/clans/leaderboard'));
+
+    const [mine, theirs] = f.planetIds as [string, string];
+    await setLevel(f.db, mine, 'CORE', CLAN.founderCoreLevel);
+    await setLevel(f.db, theirs, 'SHIPYARD', 4);
+    const founded = clanCreatedSchema.parse(await clanPost('/api/clan/create', {
+      name: 'Orbit Wardens',
+      tag: 'ORB',
+      description: 'Watch the rim. Bring everyone home.',
+      recruiting: true,
+    }));
+    expect(founded.planet.planet.id).toBe(mine);
+
+    expect(clanBadgeSchema.parse(await get('/api/clan/badge')).membership?.tag).toBe('ORB');
+    expect(clanHomeSchema.parse(await get('/api/clan/me')).state).toBe('MEMBER');
+    expect(publicClanSchema.parse(await get(`/api/clans/${founded.clanId}`)).tag).toBe('ORB');
+    expect(clanDirectorySchema.parse(await get('/api/clans')).clans[0]?.tag).toBe('ORB');
+    expect(clanLeaderboardSchema.parse(await get('/api/clans/leaderboard')).clans[0]?.self).toBe(true);
+    expect(galaxySchema.parse(await get('/api/galaxy')).planets.find((planet) => planet.id === mine)?.clan?.tag)
+      .toBe('ORB');
+    expect(leaderboardSchema.parse(await get('/api/leaderboard')).you?.clan?.tag).toBe('ORB');
+
+    const withdrawn = clanRequestCreatedSchema.parse(await clanPost(
+      `/api/clans/${founded.clanId}/apply`, {}, second,
+    ));
+    expect(clanRequestClosedSchema.parse(await clanPost(
+      `/api/clan/requests/${withdrawn.requestId}/withdraw`, {}, second,
+    )).status).toBe('WITHDRAWN');
+
+    const declined = clanRequestCreatedSchema.parse(await clanPost(
+      `/api/clans/${founded.clanId}/apply`, {}, second,
+    ));
+    expect(clanRequestClosedSchema.parse(await clanPost(
+      `/api/clan/requests/${declined.requestId}/reject`, {},
+    )).status).toBe('REJECTED');
+
+    const application = clanRequestCreatedSchema.parse(await clanPost(
+      `/api/clans/${founded.clanId}/apply`, {}, second,
+    ));
+    clanRequestAcceptedSchema.parse(await clanPost(
+      `/api/clan/requests/${application.requestId}/accept`, { acknowledgeHostile: false },
+    ));
+
+    const invitation = clanRequestCreatedSchema.parse(await clanPost(
+      '/api/clan/invite', { playerId: f.playerIds[2] },
+    ));
+    clanRequestAcceptedSchema.parse(await clanPost(
+      `/api/clan/requests/${invitation.requestId}/accept`, { acknowledgeHostile: false }, third,
+    ));
+
+    f.clock.advance(CLAN.adaptationMinutes);
+    clanEventsPageSchema.parse(await get('/api/clan/events'));
+    clanDepotSchema.parse(await get('/api/clan/depot'));
+    clanAidSchema.parse(await get('/api/clan/aid'));
+    clanChatPageSchema.parse(await get('/api/clan/chat'));
+    const strength = clanStrengthSchema.parse(await get('/api/clan/strength'));
+    expect(strength.members).toHaveLength(3);
+
+    clanSettingsSchema.parse(await clanPost('/api/clan/settings', {
+      description: 'Bring everyone home.',
+      recruiting: false,
+    }));
+    clanAidPolicySchema.parse(await clanPost('/api/clan/aid-policy', { enabled: true }));
+    const message = clanChatPostSchema.parse(await clanPost('/api/clan/chat/messages', {
+      content: 'Rim clear.',
+    }));
+    clanChatReadSchema.parse(await clanPost('/api/clan/chat/read', { messageId: message.message.id }));
+    clanSeenSchema.parse(await clanPost('/api/clan/read', {}));
+    await f.db.insert(clanLootShares).values({
+      seasonId: f.seasonId,
+      sourceMissionId: f.playerIds[0]!,
+      clanId: founded.clanId,
+      playerId: f.playerIds[0]!,
+      alloy: 10,
+      remainingAlloy: 10,
+      createdAt: f.clock.now(),
+    });
+    clanDepotClaimSchema.parse(await clanPost('/api/clan/depot/claim', {}));
+
+    const aidPayload = {
+      originPlanetId: mine,
+      recipientPlayerId: f.playerIds[1],
+      targetPlanetId: theirs,
+      fleet: { WASP: 1 },
+      cargo: { alloy: 0, crystal: 0, deuterium: 0 },
+    };
+    expect(clanAidQuoteSchema.parse(await post('/api/clan/aid/quote', aidPayload)).withinAllowance)
+      .toBe(true);
+    clanAidLaunchSchema.parse(await clanPost('/api/clan/aid/launch', aidPayload));
+    expect(clanAidSchema.parse(await get('/api/clan/aid')).transfers).toHaveLength(1);
+
+    clanLeadershipSchema.parse(await clanPost('/api/clan/leadership', {
+      playerId: f.playerIds[1],
+    }));
+    clanKickSchema.parse(await clanPost('/api/clan/kick', {
+      playerId: f.playerIds[2],
+    }, second));
+    clanLeadershipSchema.parse(await clanPost('/api/clan/leadership', {
+      playerId: f.playerIds[0],
+    }, second));
+    clanLeaveSchema.parse(await clanPost('/api/clan/leave', {}, second));
+    clanDisbandSchema.parse(await clanPost('/api/clan/disband', {}));
   });
 
   /**

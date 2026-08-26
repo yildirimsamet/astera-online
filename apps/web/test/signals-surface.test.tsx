@@ -108,13 +108,14 @@ describe('the signals beacon', () => {
         payload: {
           targetPlanetId: 'target-planet',
           targetUsername: 'İzci',
+          targetClanTag: 'WAR',
           targetPlanetName: 'Kestrel-12',
           detected: false,
         },
       }),
     ]);
     await userEvent.click(screen.getByRole('button', { name: 'Signals — 1 unread' }));
-    const identity = screen.getByRole('button', { name: /İzci/i });
+    const identity = screen.getByRole('button', { name: /\[WAR\] İzci/i });
     expect(identity).toHaveClass('font-bold');
     await userEvent.click(identity);
     expect(view.onFocusPlanet).toHaveBeenCalledWith('target-planet');

@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { collectorCap } from '@astera/rules';
-import { useCollect, usePlanet, useRewards } from '../api/queries.js';
+import { useClanBadge, useCollect, usePlanet, useRewards } from '../api/queries.js';
 import { compact, full } from '../lib/format.js';
 import { haptic } from '../lib/haptics.js';
 import { useProjected, type Projected } from '../lib/projection.js';
@@ -48,6 +48,8 @@ export function StatusBar({
    * invalidates.
    */
   const waiting = useRewards().data?.claimable ?? 0;
+  const clanAttention = useClanBadge().data?.attentionCount ?? 0;
+  const menuAttention = waiting + clanAttention;
 
   if (!data) return <div className="h-[70px]" />;
   return (
@@ -68,7 +70,14 @@ export function StatusBar({
           <select
             aria-label={t('statusBar.activeWorld')}
             value={activePlanetId ?? ''}
-            onChange={(event) => { selectPlanet(event.currentTarget.value); }}
+            onChange={(event) => {
+              const planetId = event.currentTarget.value;
+              selectPlanet(planetId);
+              // Active world and camera subject are one user decision. Leaving
+              // the previous focus alive gave the rig two different destinations:
+              // Home moved to this world while focus still named the old one.
+              onFocusPlanet(planetId);
+            }}
             className="field min-h-9 flex-1 py-1 text-caption"
           >
             {worlds.map((world) => (
@@ -153,15 +162,18 @@ export function StatusBar({
               present, coloured, and still. Two things competing for the same
               alarm is how a player learns to ignore both.
             */}
-            {waiting > 0 && (
+            {menuAttention > 0 && (
               <span
                 className="absolute -right-0.5 -top-0.5 size-2 rounded-full bg-opportunity shadow-[0_0_5px_var(--color-opportunity)]"
                 aria-hidden="true"
               />
             )}
-            {waiting > 0 && (
+            {waiting > 0 ? (
               <span className="sr-only">{t('statusBar.menuWaiting', { count: waiting })}</span>
-            )}
+            ) : null}
+            {clanAttention > 0 ? (
+              <span className="sr-only">{t('statusBar.clanWaiting', { count: clanAttention })}</span>
+            ) : null}
           </button>
         </div>
       </div>

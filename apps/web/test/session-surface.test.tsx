@@ -339,13 +339,14 @@ describe('notification copy', () => {
       const line = say('raid_result', {
         grade: 'DECISIVE',
         targetUsername: 'İzci',
+        targetClanTag: 'WAR',
         targetPlanetName: 'Grimhold',
         lootAlloy: 3200,
         lootCrystal: 0,
         unitsLost: 2,
         shipsHome: 38,
       });
-      expect(line).toContain('İzci at Grimhold');
+      expect(line).toContain('[WAR] İzci at Grimhold');
     });
 
     it('does not paint a win as a threat, and does paint a wipeout as one', () => {

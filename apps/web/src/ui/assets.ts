@@ -345,6 +345,35 @@ export const SATELLITE_NEON: Record<SatelliteId, string> = {
   UPLINK: '#a77bff',
 };
 
+/**
+ * THE DYSON RING A DEVELOPED WORLD WEARS — ONE FILE, AND THE WHOLE LADDER.
+ *
+ * Owner decision: every stage of the structure is this same ring, drawn one, two,
+ * three or four times at equal angles. One ring becoming two becoming three reads
+ * as a project being EXTENDED, which is what raising a Core actually is; four
+ * separate models read as the thing in a neighbour's orbit being replaced. It also
+ * costs one download and one decode for the entire ladder.
+ *
+ * The composition, the colours and the sizes are rendering decisions and they live
+ * with the renderer — see `galaxy/DysonShells`. Only the path belongs here.
+ *
+ * Three earlier exports — a woven cage, an open sphere and a spiked shell — were
+ * tried as separate stages before the ring ladder replaced them, and have been
+ * removed from the source tree so the pipeline no longer ships a megabyte of
+ * geometry nothing references.
+ */
+export const DYSON_MODEL = ['/assets/models/dyson/dyson_1.glb'] as const;
+
+export type DysonModel = (typeof DYSON_MODEL)[number];
+
+/**
+ * WHICH STAGE A WORLD IS AT — the ladder itself lives in `galaxy/DysonShells`.
+ *
+ * Only the file paths belong in this module. A stage is not a model: one of them
+ * is the same ring drawn twice at right angles, so the composition, the colours
+ * and the sizes are rendering decisions and they live with the renderer.
+ */
+
 /* ── satellites and buildings ───────────────────────────────── */
 
 /**

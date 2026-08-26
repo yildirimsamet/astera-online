@@ -9,6 +9,7 @@ import { onboarding } from './onboarding.js';
 import { rewards } from './rewards.js';
 import { seasonRecap } from './season.js';
 import { chronicle } from './chronicle.js';
+import { clan } from './clan.js';
 import type { Resources } from '../en/index.js';
 
 /**
@@ -58,4 +59,5 @@ export const tr: Resources = {
   rewards,
   seasonRecap,
   chronicle,
+  clan,
 };

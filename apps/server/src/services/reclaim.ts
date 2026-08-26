@@ -5,10 +5,18 @@ import type { Db, Tx } from '../db/client.js';
 import { publishShard } from '../stream/bus.js';
 import {
   accounts,
+  attackCommitments,
   battleReports,
   buildOrders,
   buildings,
   chatMessages,
+  clanAidCommitments,
+  clanCeasefires,
+  clanLootShares,
+  clanMemberships,
+  clanMessages,
+  clanRaidRoster,
+  clanRequests,
   debrisFields,
   miningRuns,
   missions,
@@ -29,6 +37,7 @@ import {
   units,
   watches,
 } from '../db/schema.js';
+import { reconcileClanPlayerReclaim } from './clan.js';
 
 /**
  * RECLAIMING THE SEAT OF A COMMANDER WHO STOPPED COMING BACK. Owner instruction.
@@ -240,6 +249,34 @@ async function demolish(
   await tx.delete(rewardGrants).where(eq(rewardGrants.playerId, playerId));
   await tx.delete(requestLog).where(eq(requestLog.playerId, playerId));
   await tx.delete(notifications).where(eq(notifications.playerId, playerId));
+
+  // Clan receipts and score audits deliberately survive their source mission,
+  // but personal rows cannot survive their player. Everything else below is a
+  // live reservation or a player-owned projection and is removed child-first.
+  await tx.delete(clanLootShares).where(eq(clanLootShares.playerId, playerId));
+  if (missionIds.length > 0) {
+    await tx.delete(clanRaidRoster).where(inArray(clanRaidRoster.missionId, missionIds));
+  }
+  await tx.delete(attackCommitments).where(or(
+    eq(attackCommitments.attackerPlayerId, playerId),
+    eq(attackCommitments.targetPlayerId, playerId),
+    ...(missionIds.length > 0 ? [inArray(attackCommitments.missionId, missionIds)] : []),
+  ));
+  await tx.delete(clanAidCommitments).where(or(
+    eq(clanAidCommitments.senderPlayerId, playerId),
+    eq(clanAidCommitments.recipientPlayerId, playerId),
+    ...(missionIds.length > 0 ? [inArray(clanAidCommitments.missionId, missionIds)] : []),
+  ));
+  await tx.delete(clanMessages).where(eq(clanMessages.authorPlayerId, playerId));
+  await tx.delete(clanCeasefires).where(or(
+    eq(clanCeasefires.playerLowId, playerId),
+    eq(clanCeasefires.playerHighId, playerId),
+  ));
+  await tx.delete(clanRequests).where(or(
+    eq(clanRequests.playerId, playerId),
+    eq(clanRequests.createdByPlayerId, playerId),
+  ));
+  await tx.delete(clanMemberships).where(eq(clanMemberships.playerId, playerId));
   /**
    * Somebody else's telescope may be pointed at this world. The row goes and their
    * slot comes free, which is the honest outcome — a watch on a world that no
@@ -344,6 +381,7 @@ export async function reclaimIdleSeats(
       playerId: players.id,
       accountId: players.accountId,
       seasonId: players.seasonId,
+      displayName: accounts.displayName,
       planetId: planets.id,
       planetName: planets.name,
       taken: players.dominionTaken,
@@ -351,6 +389,7 @@ export async function reclaimIdleSeats(
       wealth: players.wealth,
     })
     .from(players)
+    .innerJoin(accounts, eq(players.accountId, accounts.id))
     .innerJoin(planets, eq(planets.controllerPlayerId, players.id))
     .innerJoin(seasons, eq(seasons.id, players.seasonId))
     .where(
@@ -393,6 +432,13 @@ export async function reclaimIdleSeats(
         const rows = await commanderRows(tx, planetIds, row.playerId);
         if (await busy(tx, planetIds, row.playerId, rows)) return 'busy' as const;
 
+        await reconcileClanPlayerReclaim(tx, {
+          playerId: row.playerId,
+          seasonId: row.seasonId,
+          displayName: row.displayName,
+          now,
+          activeCutoff: cutoff,
+        });
         await foldRecord(tx, row.accountId, row);
         await demolish(tx, planetIds, row.playerId, rows);
         // Reclaim removes a public world, its ladder row, its authored chat and

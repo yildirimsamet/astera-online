@@ -1,7 +1,16 @@
-import { and, asc, desc, eq, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, isNull, sql } from 'drizzle-orm';
 import { coreTier } from '@astera/rules';
 import type { FastifyInstance } from 'fastify';
-import { accounts, buildings, planets, players, seasons, shards } from '../db/schema.js';
+import {
+  accounts,
+  buildings,
+  clanMemberships,
+  clans,
+  planets,
+  players,
+  seasons,
+  shards,
+} from '../db/schema.js';
 import { GameError } from '../services/planet.js';
 import { readTelescopes } from '../services/intel.js';
 import { projectGalaxyTraffic } from '../services/traffic.js';
@@ -117,6 +126,9 @@ export function registerGalaxyRoutes(app: FastifyInstance): void {
         planetName: planets.name,
         coreLevel: buildings.level,
         score,
+        clanId: clans.id,
+        clanName: clans.name,
+        clanTag: clans.tag,
       })
       .from(players)
       .innerJoin(accounts, eq(players.accountId, accounts.id))
@@ -125,6 +137,14 @@ export function registerGalaxyRoutes(app: FastifyInstance): void {
         and(eq(planets.controllerPlayerId, players.id), eq(planets.kind, 'CAPITAL')),
       )
       .innerJoin(buildings, and(eq(buildings.planetId, planets.id), eq(buildings.type, 'CORE')))
+      .leftJoin(
+        clanMemberships,
+        and(eq(clanMemberships.playerId, players.id), isNull(clanMemberships.leftAt)),
+      )
+      .leftJoin(
+        clans,
+        and(eq(clans.id, clanMemberships.clanId), isNull(clans.disbandedAt)),
+      )
       .where(eq(players.seasonId, self.seasonId))
       .orderBy(desc(score), asc(players.joinedAt), asc(players.id))
       .limit(galaxy.capacity);
@@ -138,6 +158,9 @@ export function registerGalaxyRoutes(app: FastifyInstance): void {
         planetName: entry.planetName,
         coreTier: coreTier(entry.coreLevel),
         score: entry.score,
+        clan: entry.clanId && entry.clanName && entry.clanTag
+          ? { id: entry.clanId, name: entry.clanName, tag: entry.clanTag }
+          : null,
       }));
 
     return {

@@ -155,7 +155,9 @@ Each was paid for in iteration. `docs/decisions.md` holds the evidence.
 
 | Rule | Why |
 |---|---|
-| You may attack within ±2 development tiers (D49) | `coreTier` is public on every world, so the rule is readable off the map before a fleet is packed |
+| You may attack within ±2 development tiers (D49) | `coreTier` is public on every world, so the rule is readable off the map before a fleet is packed. The band stays DEFINED on the tier even though the exact level is public now (D119) — the three-level bucket is the rule, not a limit on what the client could see |
+| **A world wears its Core: a dyson ring from level 9, one more every three levels, four at most, red at 21** | One asset drawn one to four times at equal angles, so development reads as a project EXTENDED rather than replaced, and the colour eases across the whole reachable range. It starts at 9 so a ring means a commander who has built something, and ends at 21 because that is where the economy ends — no neutral world wears one, since the three tiers seed at Core 2, 5 and 8. **It publishes the exact Core level** — the ladder cannot be drawn from a three-level tier — so a probe's development reading is confirmation rather than news; the fleet, the guns, the shield and the stores are still private and are what decide a raid (D119) |
+| **A shell is sized off the structure's inner SURFACE, never its nearest vertex** | The ring's inward spar tips reach 0.36 of its radius while the structure sits at 0.51; sizing on the tips inflated it 42% and pushed the visible band out to two world radii. A spar inside the world's radius is correct — a world is a billboard, not a sphere, so there is no volume to pierce and the far half is masked by its depth write (D119) |
 | One account, one commander, one galaxy; galaxies fill strictly in order | The commander is one `players` row; D97 permits one capital and up to three colonies under it. The account/galaxy constraint remains database-enforced. |
 | `/api/season` derives the galaxy from the caller, never from config | It carries the seed the client rebuilds the whole disc from |
 | **Everything is built in one of two queues, three orders deep** | CONSTRUCTION takes buildings, instruments, satellites and research; YARD takes hulls. Cost is committed at order, cancel returns half, a system fault returns all. Gates read the projected state of the SAME queue only — the two run in parallel, so neither is ahead of the other (D4) |
@@ -168,6 +170,11 @@ Each was paid for in iteration. `docs/decisions.md` holds the evidence.
 | Every notification is idempotent by `(player_id, kind, ref_id)` | A worker killed between COMMIT and `complete()` has its event redelivered |
 | **A shard broadcast fires exactly when the public payload it points at has changed** | It carries a shard id and a kind and nothing else, so it can only ever say "go and read what you were already entitled to". Publish on anything else and it becomes a timing signal for a fact the fog hides — which is why a Core crossing a tier publishes and a Refinery does not, and why `raiseInstrument` never does (D53) |
 | A raid tells BOTH sides, even when nothing comes back | An annihilated fleet used to produce no notification at all |
+| **A clan is five seats, one galaxy, one season — and it cannot become a second game** | Friendly fire, a 24-hour ceasefire on separation, a receiver-bounded aid convoy, a tenth of docked raid loot as personal shares, and a score that is an audit of its members' PvP. No treasury, no buffs, no levels, no diplomacy (D114) |
+| **A record of what happened is written from an IMMUTABLE snapshot, never from a live quota** | `attack_commitments.quota_clan_id` is rebound for twelve hours after launch so pre-attacking and then joining cannot reset a clan's ceiling — that is the point of it. A battle report reading the same column grew a clan tag on a raid that had already resolved. `attacker_clan_id` and `defender_clan_id` are the two columns a report may read, and nothing writes them twice (D114) |
+| **Clan aid goes to somebody ELSE** | `sender.clanId === recipient.clanId` is trivially true when the two are one commander, so a solo founder — mature the instant the clan exists — could aim a convoy at their own world, collect the ×1.10 speed and the aid-only bay, and walk past `launchTransfer`'s `SELF_TRANSFER`. The guard is in `assertAidRelationship`, which both the quote and the launch pass through |
+| **An aid quote publishes what is LEFT, never the ceiling it came from** | The allowance is four hours of the receiver's nominal Alloy and Crystal and a fifth of their Deuterium capacity — so `allowance / 4` is their aggregate Refinery, Extractor and Vault standing, which is what a probe is sold for. `remaining` is the only figure the interface ever wanted (D114) |
+| **A player-private event names its own reads, exactly as a shard event does** | `private:clan-*` is a narrow invalidation only if something reads the prefix. Nothing did, so every clan chat message sent five clients through the full twenty-two-read resync — the same fan-out `readsForShardEvent` exists to prevent, arriving through the other door. An unknown private kind still falls back to the resync, because it did happen to this commander (D114) |
 | `announceUnlocks` is the only writer of `unlocksSeen` | Two writers means whichever runs first eats the other's news |
 | Every safety net reads the EVENT, so a flight whose event row is gone is invisible to all of them | `abandon()` releases a failed event's hold; `sweepStranded` releases the ones with no event at all; `/health` reports both |
 | Housekeeping may never stop the event queue | One throw inside the stranded sweep took the whole queue down |
@@ -186,6 +193,7 @@ Each was paid for in iteration. `docs/decisions.md` holds the evidence.
 | **Red on TYPE is `--color-threat-ink`, and a GAP is amber** | `--color-threat` is made for a fill, an edge or a mark; as eleven-pixel type on a near-black plate it falls under 3.5:1, which is how five unofficial reds grew beside it. A system you have not built is not an attack — DEFENCE and SHIELD sat side by side both reading "None", one red and one bone |
 | **The page refuses the pinch GESTURE, never the CAPABILITY to magnify** | A pinch is a game control — the disc's canvas asks for `touch-action: none` and OrbitControls owns everything over it — while every surface around it is fixed chrome sized to the viewport, which browser zoom does not scale so much as break. Refused three ways because no one way holds everywhere: `touch-action: pan-x pan-y` on the root, Safari's `gesture*` events, and `wheel` with `ctrlKey`. Locking the scale in the viewport meta is NOT one of them: it removes magnification altogether, and `interface-accessibility.test.tsx` has forbidden those flags since before the pinch was a problem |
 | **A control that can MOUNT under a finger answers only a press that began on it** | A synthesised click goes to whatever occupies the point at DISPATCH time, not at press time — so tapping a world opened the planet sheet and the tap's own click, arriving after the sheet had mounted, landed on the scrim now under the finger and closed it. Opening the same sheet from a DOM control never failed, because there the click is consumed by the button that was pressed. It is a race, so a delay only moves it. `useOwnPress` is the answer and it covers the whole class, not the one instance: every dismiss control AND both focus-rail controls, because the rail mounts on the bottom edge where a world can be tapped and the stray click lands on CLEAR. `detail === 0` exempts keyboard activation, which carries no `pointerdown` at all (D109a) |
+| **Every world is focused before it is opened** | Capital and colonies use the same first-tap focus as the rest of the disc; only a repeated tap on that already-focused controlled world opens management. The first tap snapshots the previous active world as the source of any transfer to the newly active target. An already-active world focuses with no bottom rail; another controlled target gets a dedicated transfer route, never a hostile dossier with Send tacked onto its end. The active-world dropdown also focuses what it activates, so active Home and camera subject cannot disagree (D118). |
 | Every route the client parses is in `apps/server/test/contract.test.ts` | A route whose shape moves answers 200, typechecks, passes both suites and goes dark |
 | The client never pre-encodes a request body | `send()` serialises; a second `JSON.stringify` must be a compile error |
 | **A mutation answers with the whole planet view, and it must equal what `GET` would say** | Built in the same transaction under the same lock, so it is free and authoritative. A view assembled from the objects the mutation happens to hold drifts, and the interface corrects itself silently on the next refetch (D53) |
@@ -310,8 +318,10 @@ stale doc is worse than no doc, because the next reader trusts it.
 - **Simple implementation ≠ simplified gameplay.** Prefer the first.
 - Cut order if behind: asteroids → Radar L4–L5 → Aegis → cosmetics. **Never cut any part of
   telescope / explorer / radar / veil.** Those four are the game.
-- Post-MVP and staying there: alliances, chat, active deception, fleet interception, combat
-  replay, multiple planets, monetisation.
+- Post-MVP and staying there: alliance diplomacy, inter-clan war treaties, active deception,
+  fleet interception, combat replay and monetisation. D114's five-seat seasonal clan and its
+  private clan chat are the deliberately bounded exception; they add cooperation without adding
+  a second diplomacy game.
 
 ## Quality bar
 
@@ -390,8 +400,8 @@ one type ladder, one card word, one control per idea, with `text-[`, `tracking-[
 `rounded-[` refused by the linter.
 
 ```
-0 type errors · 0 lint errors · 2,173 of 2,174 tests
-rules 316 · server 695 · web 1,096 · sim 66 of 67
+0 type errors · 0 lint errors · 2,264 of 2,265 tests
+rules 332 · server 717 · web 1,149 · sim 66 of 67
 ```
 
 **`pnpm verify` is RED on one simulator assertion, deliberately (D112).** `pnpm -r test`

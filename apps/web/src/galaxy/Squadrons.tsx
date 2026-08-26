@@ -32,13 +32,21 @@ import { ALL_HULLS, HULLS, type Fleet, type HullId } from '@astera/rules';
  * that stays legible at any size, and it degrades gracefully: at a glance you read
  * "three Lance groups", up close you read "twelve Lances".
  *
- * The pip is the load-bearing half. Without it a 5-ship group and a 1-ship group
+ * The pip is the load-bearing half. Without it a 10-ship group and a 1-ship group
  * look identical, and the player is being told a rounded number while believing it
  * is exact — worse than not showing it.
  */
 
-/** Ships one model stands for. */
-export const PER_MODEL = 5;
+/**
+ * Ships one model stands for. Owner call: raised from 5 to 10.
+ *
+ * It is the trade between how many models a large fleet draws and how much
+ * counting a single marker asks for. At 5 a hundred-Wasp fleet was twenty models
+ * and a formation that filled the world it was leaving; at 10 it is ten, and the
+ * tally above each marker wraps to two rows of five — still countable at a glance,
+ * which is the property the pips exist to protect.
+ */
+export const PER_MODEL = 10;
 
 export interface Marker {
   hull: HullId;

@@ -9,6 +9,7 @@ import { onboarding } from './onboarding.js';
 import { rewards } from './rewards.js';
 import { seasonRecap } from './season.js';
 import { chronicle } from './chronicle.js';
+import { clan } from './clan.js';
 
 /**
  * ENGLISH, AND IT IS THE SHAPE EVERY OTHER LANGUAGE IS CHECKED AGAINST.
@@ -64,6 +65,7 @@ export const en = {
   rewards,
   seasonRecap,
   chronicle,
+  clan,
 } as const;
 
 /**

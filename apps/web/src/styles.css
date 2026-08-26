@@ -204,6 +204,17 @@
   --color-threat: #e2412c;
   --color-opportunity: #5ad39b;
 
+  /* ── PODIUM METALS · public achievement, never gameplay state ── */
+  --color-rank-gold: #f4c84a;
+  --color-rank-gold-hi: #fff3a6;
+  --color-rank-gold-lo: #7a4307;
+  --color-rank-silver: #c9d6e4;
+  --color-rank-silver-hi: #ffffff;
+  --color-rank-silver-lo: #536477;
+  --color-rank-copper: #d8894f;
+  --color-rank-copper-hi: #ffd0a4;
+  --color-rank-copper-lo: #6e2e13;
+
   /**
    * THREAT, AT TEXT SIZE. One token, and it replaces five hand-written hexes.
    *

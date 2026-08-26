@@ -151,6 +151,20 @@ export function ChatIcon(props: IconProps) {
   );
 }
 
+/** Five linked seats around an empty centre: a crew, not a crown or faction army. */
+export function ClanIcon(props: IconProps) {
+  return (
+    <Glyph {...props}>
+      <path d="M12 4.1 18.8 9l-2.6 8H7.8L5.2 9Z" strokeOpacity=".5" />
+      <circle cx="12" cy="4.1" r="1.45" fill="currentColor" stroke="none" />
+      <circle cx="18.8" cy="9" r="1.45" fill="currentColor" stroke="none" />
+      <circle cx="16.2" cy="17" r="1.45" fill="currentColor" stroke="none" />
+      <circle cx="7.8" cy="17" r="1.45" fill="currentColor" stroke="none" />
+      <circle cx="5.2" cy="9" r="1.45" fill="currentColor" stroke="none" />
+    </Glyph>
+  );
+}
+
 /* ── 3 · Buildings ──────────────────────────────────────────────
    Each shape encodes what the building DECIDES, not what it looks like. */
 

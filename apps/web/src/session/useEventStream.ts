@@ -2,7 +2,12 @@ import { useEffect } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useApi } from '../api/context.js';
 import { keys } from '../api/queries.js';
-import { isShardEvent, shardCoalescer } from './shardEvents.js';
+import {
+  isPrivateEvent,
+  isShardEvent,
+  readsForPrivateEvent,
+  shardCoalescer,
+} from './shardEvents.js';
 
 /** How long a connection must last before it counts as one that worked. */
 const HEALTHY_MS = 5000;
@@ -45,6 +50,13 @@ const LIVE_READS = [
   keys.chatMessages,
   keys.chatUnread,
   keys.chronicle,
+  keys.clanBadge,
+  keys.clanHome,
+  keys.clanStrength,
+  keys.clanEvents,
+  keys.clanDepot,
+  keys.clanAid,
+  keys.clanChat,
 ] as const;
 
 /** Full jitter, capped. A shard restarting must not be hit by 200 synchronised retries. */
@@ -175,6 +187,23 @@ export function useEventStream(enabled: boolean, onRollover?: () => void): void 
         shard.note(kind);
         if (kind === 'shard:world') scheduleWorldConsistencyRead();
         return;
+      }
+
+      /**
+       * A PLAYER-PRIVATE CLAN EVENT NAMES ITS OWN READS. D114.
+       *
+       * These are the only player events that arrive with a kind precise enough to
+       * route, and they arrive often — five sends per ten seconds per clanmate is
+       * the chat's own ceiling. An unknown kind falls through to the resync below,
+       * which is the safe direction: a newer server saying something this build has
+       * never heard of did still happen to this commander.
+       */
+      if (isPrivateEvent(kind)) {
+        const reads = readsForPrivateEvent(kind);
+        if (reads) {
+          for (const key of reads) void client.invalidateQueries({ queryKey: key });
+          return;
+        }
       }
 
       /**

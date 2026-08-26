@@ -62,20 +62,42 @@ export type FocusTapDecision =
 /**
  * ONE TAP STATE MACHINE FOR THE WHOLE DISC.
  *
- * Controlled worlds deliberately bypass the two-tap dossier because their first
- * tap means "manage". Every other subject follows look → inspect, and clearing or
- * changing the subject always collapses detail. Keeping this pure prevents one
- * canvas callback from quietly inventing a third interaction rule.
+ * Every subject starts with LOOK. A repeated tap on a controlled world means
+ * "manage"; a repeated tap anywhere else means "inspect". Clearing or changing
+ * the subject always collapses detail. Keeping this pure prevents one canvas
+ * callback from quietly inventing a third interaction rule.
  */
 export function focusTapDecision(
   current: Focus | null,
   next: Focus | null,
   controlledPlanetId: string | null,
 ): FocusTapDecision {
-  if (next?.kind === 'planet' && controlledPlanetId !== null) {
+  if (
+    next?.kind === 'planet'
+    && controlledPlanetId !== null
+    && repeatedFocusTap(current, next)
+  ) {
     return { kind: 'manage', planetId: controlledPlanetId };
   }
   return { kind: 'focus', focus: next, detail: repeatedFocusTap(current, next) };
+}
+
+/** The transfer source that survives making a focused controlled target active. */
+export function transferOriginForFocus(
+  activePlanetId: string | null,
+  controlledPlanetId: string | null,
+): string | null {
+  return controlledPlanetId !== null && activePlanetId !== controlledPlanetId
+    ? activePlanetId
+    : null;
+}
+
+/** An already-active controlled world focuses silently: there is nowhere to transfer to. */
+export function planetFocusRailVisible(
+  isOwned: boolean,
+  transferOriginId: string | null,
+): boolean {
+  return !isOwned || transferOriginId !== null;
 }
 
 export interface RigFrame {

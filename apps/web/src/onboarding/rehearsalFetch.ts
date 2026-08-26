@@ -126,15 +126,25 @@ function answer(
       /**
        * The disc, with the visitor's own world kept current.
        *
-       * `coreTier` is the one public fact about a planet that the rehearsal can
-       * actually move — raising the Core past 3 changes the silhouette the disc
-       * draws for everybody — so it is recomputed rather than frozen at 1.
+       * The Core is the one public fact about a planet that the rehearsal can
+       * actually move — raising it changes the silhouette the disc draws for
+       * everybody — so both readings of it are recomputed rather than frozen at
+       * the opening.
+       *
+       * The TIER is what the visitor actually sees change: it decides the drawn
+       * size, and Core 4 is reachable inside the ninety seconds. The LEVEL earns
+       * nothing here — dyson rings start at Core 9 and no rehearsal reaches it —
+       * and it is recomputed anyway because the two must not disagree. `coreTier`
+       * is `ceil(level / 3)`, and a payload where the pair contradicts itself is a
+       * projection the client is entitled to trust and cannot.
        */
       case '/api/galaxy':
         return {
           you: preview.galaxy.you,
           planets: preview.galaxy.planets.map((p) =>
-            p.isSelf ? { ...p, coreTier: coreTier(world.buildings.CORE) } : p,
+            p.isSelf
+              ? { ...p, coreTier: coreTier(world.buildings.CORE), coreLevel: world.buildings.CORE }
+              : p,
           ),
         };
 

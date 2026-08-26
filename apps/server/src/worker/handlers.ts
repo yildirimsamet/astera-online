@@ -1,4 +1,4 @@
-import { and, eq, inArray, ne, sql } from 'drizzle-orm';
+import { and, eq, inArray, isNull, ne, sql } from 'drizzle-orm';
 import {
   PROBE,
   applyDisruption,
@@ -32,6 +32,8 @@ import {
   accounts,
   battleReports,
   buildOrders,
+  clanMemberships,
+  clans,
   debrisFields,
   miningRuns,
   missions,
@@ -82,6 +84,8 @@ import {
   returnAttackUntouched,
 } from '../services/neutral.js';
 import { applyBuildCompletion } from '../services/buildQueue.js';
+import { allocateClanLoot, recordClanBattleScore } from '../services/clanLoot.js';
+import { resolveClanAid } from '../services/clanAid.js';
 
 export interface HandlerContext {
   db: Db;
@@ -276,6 +280,12 @@ export const onMissionArrival: Handler = async ({ db, clock }, event) => {
       return;
     }
 
+    if (mission.kind === 'clan_transfer') {
+      await resolveClanAid(tx, mission, clock.now());
+      await publishShard(tx, mission.seasonId, 'transfer');
+      return;
+    }
+
     if (mission.kind === 'settlement') {
       const outcome = await resolveSettlement(tx, mission, clock.now());
       await notify(tx, {
@@ -346,6 +356,7 @@ export const onMissionArrival: Handler = async ({ db, clock }, event) => {
             targetPlanetId: delivered.targetPlanetId,
             targetUsername: scouted?.username ?? 'someone',
             targetPlanetName: scouted?.planetName ?? 'an unknown world',
+            ...(scouted?.clanTag ? { targetClanTag: scouted.clanTag } : {}),
             // Their radar caught it. The intel screen says so too; this is the
             // first time the player finds out, and it decides whether they are
             // expected.
@@ -542,8 +553,16 @@ export const onMissionArrival: Handler = async ({ db, clock }, event) => {
     // Measured from the ledger itself rather than recomputed, so the report can
     // never disagree with the ladder about what a battle was worth.
     const dominionSwing = attackerLedger.taken - attackerLedger.lost - before;
+    const defenderDominionSwing = defenderLedger.taken - defenderLedger.lost - defenderBefore;
     await saveLedger(tx, attackerLedger);
     await saveLedger(tx, defenderLedger);
+    await recordClanBattleScore(tx, {
+      missionId: mission.id,
+      seasonId: mission.seasonId,
+      attackerDelta: dominionSwing,
+      defenderDelta: defenderDominionSwing,
+      at: defender.now,
+    });
     if (
       Math.round(before) !== Math.round(attackerLedger.taken - attackerLedger.lost)
       || Math.round(defenderBefore) !== Math.round(defenderLedger.taken - defenderLedger.lost)
@@ -655,6 +674,8 @@ export const onMissionArrival: Handler = async ({ db, clock }, event) => {
           distance: mission.distance,
           departAt: defender.now,
           arriveAt,
+          // Links safely docked loot back to the immutable D114 launch roster.
+          parentMissionId: mission.id,
         })
         .returning();
       await setUnits(
@@ -746,6 +767,9 @@ export const onMissionArrival: Handler = async ({ db, clock }, event) => {
               originPlanetId: attackerHomeId,
               originUsername: attackerIdentity.username,
               originPlanetName: attackerIdentity.planetName,
+              ...(attackerIdentity.clanTag
+                ? { originClanTag: attackerIdentity.clanTag }
+                : {}),
             }
           : {}),
         grade: result.grade,
@@ -787,6 +811,7 @@ export const onMissionArrival: Handler = async ({ db, clock }, event) => {
         targetPlanetId: defender.planetId,
         targetUsername: defenderIdentity?.username ?? 'someone',
         targetPlanetName: defender.name,
+        ...(defenderIdentity?.clanTag ? { targetClanTag: defenderIdentity.clanTag } : {}),
         lootAlloy: loot.alloy,
         lootCrystal: loot.crystal,
         lootDeuterium: loot.deuterium,
@@ -861,13 +886,14 @@ async function settleReturn(
   await clearMissionUnits(tx, storagePlanetId, mission.id);
   await setUnits(tx, destinationPlanetId, merged, 'home', mission.ownerPlayerId);
 
-  if (mission.loot) {
+  const landedLoot = mission.loot ? await allocateClanLoot(tx, mission, at) : null;
+  if (landedLoot) {
     await tx
       .update(planets)
       .set({
-        alloy: sql`${planets.alloy} + ${mission.loot.alloy}`,
-        crystal: sql`${planets.crystal} + ${mission.loot.crystal}`,
-        deuterium: sql`${planets.deuterium} + ${deuteriumOf(mission.loot)}`,
+        alloy: sql`${planets.alloy} + ${landedLoot.alloy}`,
+        crystal: sql`${planets.crystal} + ${landedLoot.crystal}`,
+        deuterium: sql`${planets.deuterium} + ${deuteriumOf(landedLoot)}`,
       })
       .where(eq(planets.id, destinationPlanetId));
   }
@@ -890,9 +916,10 @@ async function settleReturn(
         fromPlanetId: mission.originPlanetId,
         fromUsername: from?.username ?? null,
         fromPlanetName: from?.planetName ?? null,
-        lootAlloy: mission.loot?.alloy ?? 0,
-        lootCrystal: mission.loot?.crystal ?? 0,
-        lootDeuterium: mission.loot ? deuteriumOf(mission.loot) : 0,
+        ...(from?.clanTag ? { fromClanTag: from.clanTag } : {}),
+        lootAlloy: landedLoot?.alloy ?? 0,
+        lootCrystal: landedLoot?.crystal ?? 0,
+        lootDeuterium: landedLoot ? deuteriumOf(landedLoot) : 0,
       },
       at,
       refId: mission.id,
@@ -1027,6 +1054,7 @@ export const onRadarWarning: Handler = async ({ db, clock }, event) => {
                       originPlanetId: mission.originPlanetId,
                       originUsername: origin.username,
                       originPlanetName: origin.planetName,
+                      ...(origin.clanTag ? { originClanTag: origin.clanTag } : {}),
                     }
                   : {},
               )),
@@ -1062,12 +1090,24 @@ const LEAD_TOLERANCE = 0.05;
 async function identityOfPlanet(
   tx: Tx,
   planetId: string,
-): Promise<{ username: string; planetName: string } | undefined> {
+): Promise<{ username: string; planetName: string; clanTag: string | null } | undefined> {
   const [row] = await tx
-    .select({ username: accounts.displayName, planetName: planets.name })
+    .select({
+      username: accounts.displayName,
+      planetName: planets.name,
+      clanTag: clans.tag,
+    })
     .from(planets)
     .innerJoin(players, eq(planets.controllerPlayerId, players.id))
     .innerJoin(accounts, eq(players.accountId, accounts.id))
+    .leftJoin(
+      clanMemberships,
+      and(eq(clanMemberships.playerId, players.id), isNull(clanMemberships.leftAt)),
+    )
+    .leftJoin(
+      clans,
+      and(eq(clans.id, clanMemberships.clanId), isNull(clans.disbandedAt)),
+    )
     .where(eq(planets.id, planetId));
   return row;
 }
@@ -1236,15 +1276,41 @@ export const onSeasonEnd: Handler = async ({ db, clock }, event) => {
         and(eq(planets.controllerPlayerId, players.id), eq(planets.kind, 'CAPITAL')),
       )
       .where(eq(players.seasonId, seasonId));
-    const [reports, impacts] = await Promise.all([
+    const [reports, impacts, clanRows, membershipRows] = await Promise.all([
       tx.select().from(battleReports).where(eq(battleReports.seasonId, seasonId)),
       tx.select().from(strategicImpacts).where(eq(strategicImpacts.seasonId, seasonId)),
+      tx.select({
+        id: clans.id,
+        name: clans.name,
+        tag: clans.tag,
+        taken: clans.dominionTaken,
+        lost: clans.dominionLost,
+        createdAt: clans.createdAt,
+      }).from(clans).where(and(eq(clans.seasonId, seasonId), isNull(clans.disbandedAt))),
+      tx.select({ playerId: clanMemberships.playerId, clanId: clanMemberships.clanId })
+        .from(clanMemberships)
+        .where(and(eq(clanMemberships.seasonId, seasonId), isNull(clanMemberships.leftAt))),
     ]);
     const identity = new Map(roster.map((row) => [row.playerId, row]));
     const ranked = [...roster].sort((a, b) =>
       Math.round(b.taken - b.lost) - Math.round(a.taken - a.lost)
       || a.joinedAt.getTime() - b.joinedAt.getTime()
       || a.playerId.localeCompare(b.playerId));
+    const rankedClans = [...clanRows].sort((a, b) =>
+      Math.round(b.taken - b.lost) - Math.round(a.taken - a.lost)
+      || a.createdAt.getTime() - b.createdAt.getTime()
+      || a.id.localeCompare(b.id));
+    const clanRecapById = new Map(rankedClans.map((clan, index) => [clan.id, {
+      name: clan.name,
+      tag: clan.tag,
+      finalRank: index + 1,
+      dominion: Math.round(clan.taken - clan.lost),
+      topThree: index < 3,
+    }]));
+    const clanIdByPlayer = new Map(membershipRows.map((membership) => [
+      membership.playerId,
+      membership.clanId,
+    ]));
 
     const [shard] = await tx.select().from(shards).where(eq(shards.id, season.shardId));
     const shardLabel = shard?.name === ''
@@ -1292,6 +1358,8 @@ export const onSeasonEnd: Handler = async ({ db, clock }, event) => {
       const title = finalRank === 1
         ? `Sovereign of ${shardLabel}`
         : finalRank <= 3 ? 'Vanguard' : dominion > 0 ? 'Conqueror' : 'Commander';
+      const playerClanId = clanIdByPlayer.get(player.playerId);
+      const clan = playerClanId ? clanRecapById.get(playerClanId) ?? null : null;
       return {
         seasonId,
         accountId: player.accountId,
@@ -1310,6 +1378,7 @@ export const onSeasonEnd: Handler = async ({ db, clock }, event) => {
           defences,
           rival,
           biggestRaid: biggest,
+          clan,
         },
         createdAt: clock.now(),
       };

@@ -44,6 +44,7 @@ interface GalaxyPlanet {
   satellites: string[];
   shielded: boolean;
   isSelf: boolean;
+  dominionRank?: 1 | 2 | 3;
   fleet?: { status: string; staleMinutes: number; etaMinutes: number | null; clarity: string };
 }
 
@@ -115,6 +116,18 @@ describe('GET /api/galaxy — fog enforced in the response', () => {
       expect(p.position.x).toBeTypeOf('number');
       expect(p.coreTier).toBeGreaterThanOrEqual(1);
     }
+  });
+
+  it('publishes exact Dominion rank only for the three podium commanders', async () => {
+    for (const [index, score] of [900, 600, 300].entries()) {
+      await f.db.update(players).set({ dominionTaken: score, dominionLost: 0 })
+        .where(eq(players.id, f.playerIds[index]!));
+    }
+    const planets = await galaxy();
+    expect(f.playerIds.map((playerId) => {
+      const planetId = f.planetIds[f.playerIds.indexOf(playerId)];
+      return planets.find((planet) => planet.id === planetId)?.dominionRank;
+    })).toEqual([1, 2, 3]);
   });
 
   it('uses the account display name, including Turkish İ, never players.name', async () => {
@@ -336,8 +349,8 @@ describe('GET /api/galaxy — fog enforced in the response', () => {
      */
     expect(keys.sort()).toEqual(
       [
-        'controller', 'coreTier', 'fleet', 'id', 'isCapital', 'isOwned', 'isSelf',
-        'kind', 'name', 'owner', 'position', 'satellites', 'shielded', 'state',
+        'controller', 'coreLevel', 'coreTier', 'fleet', 'id', 'isCapital', 'isOwned', 'isSelf',
+        'kind', 'name', 'owner', 'position', 'satellites', 'shielded', 'state', 'dominionRank',
       ].sort(),
     );
   });

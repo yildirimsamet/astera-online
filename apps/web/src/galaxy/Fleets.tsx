@@ -1118,14 +1118,30 @@ function FormationPips({
     const empty = new THREE.Color('#33404f');
     const pipSize = scale * 0.085;
     const gap = pipSize * 1.6;
-    const width = gap * (Math.min(PER_MODEL, 5) - 1);
+    /**
+     * WRAPPED AT FIVE, exactly like the sprite tally in `Pips` below.
+     *
+     * This used to lay every pip in ONE row while capping `width` at five of them,
+     * which was invisible while `PER_MODEL` was 5 and became a row running off the
+     * side of the marker the moment it was raised to 10. The two tallies draw the
+     * same thing and have to agree on its shape.
+     */
+    const perRow = Math.min(PER_MODEL, 5);
+    const rows = Math.ceil(PER_MODEL / perRow);
+    const width = gap * (perRow - 1);
     let cursor = 0;
 
     markers.forEach((marker, markerIndex) => {
       const slot = slots[markerIndex] ?? [0, 0, 0];
       for (let i = 0; i < PER_MODEL; i += 1) {
         positions.set(
-          [slot[0] + i * gap - width / 2, slot[1] + scale * 0.6, slot[2]],
+          [
+            slot[0] + (i % perRow) * gap - width / 2,
+            // Top row first, so a partly-filled marker fills left-to-right and
+            // downward — the direction a tally is read.
+            slot[1] + scale * 0.6 + ((rows - 1) / 2 - Math.floor(i / perRow)) * gap,
+            slot[2],
+          ],
           cursor * 3,
         );
         const colour = i < marker.filled ? lit : empty;
@@ -1542,10 +1558,11 @@ function Pips({ filled, scale, lit }: { filled: number; scale: number; lit: bool
   const size = scale * 0.085;
   const gap = size * 1.6;
   /**
-   * UP TO FIVE PIPS IN ONE ROW.
+   * UP TO FIVE PIPS IN A ROW, AND AS MANY ROWS AS IT TAKES.
    *
-   * The pips follow `PER_MODEL` because they are the exact count. Keeping the row
-   * capped at five also preserves the layout if that constant is revisited.
+   * The pips follow `PER_MODEL` because they are the exact count. Capping the row
+   * at five is what keeps a ten-ship marker readable as two rows of five rather
+   * than one strip nobody can count at a glance.
    */
   const perRow = Math.min(PER_MODEL, 5);
   const rows = Math.ceil(PER_MODEL / perRow);

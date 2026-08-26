@@ -438,10 +438,9 @@ function PlanetInstances({ group, onSelect }: { group: Group; onSelect: (id: str
 /**
  * The few worlds that get more than a body.
  *
- * Rings and haloes are individual meshes on purpose: only your own planet, an open
- * window and the current selection ever wear one, so the count is three or four
- * rather than two hundred. Giving every planet a ring would put the mesh count
- * straight back where instancing just took it from.
+ * Rings and haloes are individual meshes on purpose: owned worlds, clanmates, an
+ * open window and the current selection wear one. A clan has only five seats, so
+ * this remains bounded without giving every planet in the galaxy its own meshes.
  */
 function Highlights({
   nodes,
@@ -459,6 +458,7 @@ function Highlights({
   const marked = nodes.filter(
     (node) => node.id === selectedId
       || node.isOwned
+      || node.isClanmate
       || node.stance === 'window'
       || isRivalNode(node, rivalPlanetId, rivalPlayerId)
       || node.state?.kind === 'RECOVERY'
@@ -469,7 +469,10 @@ function Highlights({
    * Everything that is not yours carries a pin: grey for neutral, orange for
    * another commander. `Ring` still owns the worlds it already marked.
    */
-  const pinned = useMemo(() => nodes.filter((node) => !node.isOwned), [nodes]);
+  const pinned = useMemo(
+    () => nodes.filter((node) => !node.isOwned && !node.isClanmate),
+    [nodes],
+  );
 
   return (
     <>
@@ -481,7 +484,8 @@ function Highlights({
           camera={camera}
           viewportHeight={viewportHeight}
           selected={node.id === selectedId}
-          rival={isRivalNode(node, rivalPlanetId, rivalPlayerId)}
+          rival={!node.isClanmate && isRivalNode(node, rivalPlanetId, rivalPlayerId)}
+          ally={node.isClanmate}
           claim={Boolean(node.claimUntil && node.claimUntil.getTime() > serverNow())}
           recovering={node.state?.kind === 'RECOVERY'}
         />
@@ -491,6 +495,7 @@ function Highlights({
 }
 
 const MARK_COLOUR = { self: '#8fd6ea', window: '#5ad39b', other: '#e8e3d6' } as const;
+export const CLANMATE_COLOUR = '#5ad39b';
 
 /**
  * Where the selection ring stands off, as a multiple of the world's radius.
@@ -619,6 +624,7 @@ function Ring({
   viewportHeight,
   selected,
   rival,
+  ally,
   claim,
   recovering,
 }: {
@@ -627,6 +633,7 @@ function Ring({
   viewportHeight: number;
   selected: boolean;
   rival: boolean;
+  ally: boolean;
   claim: boolean;
   recovering: boolean;
 }) {
@@ -646,7 +653,9 @@ function Ring({
   });
 
   const colour =
-    rival
+    ally
+      ? CLANMATE_COLOUR
+      : rival
       ? '#ff6b43'
       : recovering
         ? '#ff405b'
@@ -680,6 +689,32 @@ function Ring({
         <ringGeometry args={[edge, edge * 1.018, 64]} />
         <meshBasicMaterial color={colour} transparent opacity={0.9} depthWrite={false} />
       </mesh>
+
+      {ally && (
+        <group name={`clanmate-ring-${node.id}`}>
+          <mesh position={[0, 0, 0.012]}>
+            <ringGeometry args={[node.radius * 1.085, node.radius * 1.12, 96]} />
+            <meshBasicMaterial
+              color={CLANMATE_COLOUR}
+              transparent
+              opacity={0.98}
+              depthWrite={false}
+              blending={THREE.AdditiveBlending}
+            />
+          </mesh>
+          <mesh position={[0, 0, -0.015]}>
+            <planeGeometry args={[node.radius * 2.42, node.radius * 2.42]} />
+            <meshBasicMaterial
+              map={softGlow()}
+              color={CLANMATE_COLOUR}
+              transparent
+              opacity={0.2}
+              depthWrite={false}
+              blending={THREE.AdditiveBlending}
+            />
+          </mesh>
+        </group>
+      )}
 
       <group ref={markerRef}>
       {/* The chevron: a map pin, pointing at the thing it names. */}

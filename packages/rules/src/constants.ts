@@ -1303,6 +1303,21 @@ export const DEBRIS = {
   minimum: 250,
 } as const;
 
+/**
+ * THE GALAXY'S CONVERSATION, IN THE ONE PLACE BOTH ENDS READ. D77.
+ *
+ * The route and the composer have to agree about the ceiling or the composer lets a
+ * player type a message the server then refuses. It lived as a literal `280` in
+ * `routes/chat.ts` and a second literal in the client, and when the clan channel was
+ * added the client quietly started reading `CLAN.chatMaxChars` for BOTH channels —
+ * which coupled the galaxy's limit to a constant that has nothing to do with it.
+ */
+export const CHAT = {
+  maxChars: 280,
+  burst: 5,
+  windowSeconds: 10,
+} as const;
+
 export const SEASON = {
   days: 14,
   /** Frozen finale before the next world opens. D88. */
@@ -1371,9 +1386,13 @@ export const SERVERS = {
   idleDays: 3,
 } as const;
 
-/** Multi-world ruleset v2. PROVISIONAL until the D97 acceptance gate is measured. */
+/** Multi-world ruleset v3. D114 adds seasonal five-seat clans to fresh seasons only. */
 export const MULTI_WORLD = {
-  rulesetVersion: 2,
+  rulesetVersion: 3,
+  /** Neutral worlds and colonies remain the v2 boundary. */
+  neutralWorldRulesetVersion: 2,
+  /** D114 clan state exists only in a freshly created v3 season. */
+  clanRulesetVersion: 3,
   /** Coupled to admission: every seat needs one collision-free capital address. D99. */
   capitalSlots: SERVERS.capacity,
   /** Nine candidates per neutral preserves D97's placement-search density at the larger scale. */

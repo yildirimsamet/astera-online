@@ -1,4 +1,4 @@
-import { and, eq, inArray, isNull, ne, or } from 'drizzle-orm';
+import { and, eq, inArray, isNull, ne, or, sql } from 'drizzle-orm';
 import {
   BUILDING_IDS,
   INSTRUMENT_IDS,
@@ -23,6 +23,7 @@ import type { Db, Queryable, Tx } from '../db/client.js';
 import {
   buildings,
   buildOrders,
+  clanLootShares,
   missions,
   planets,
   players,
@@ -535,6 +536,7 @@ export async function recomputePlayerWealth(tx: Tx, playerId: string): Promise<n
     launchedAssets,
     cargoMissions,
     committedBuilds,
+    [unclaimedClanLoot],
   ] = await Promise.all([
     tx.select().from(buildings).where(inArray(buildings.planetId, worldIds)),
     tx.select().from(satellites).where(inArray(satellites.planetId, worldIds)),
@@ -565,6 +567,14 @@ export async function recomputePlayerWealth(tx: Tx, playerId: string): Promise<n
         inArray(buildOrders.planetId, worldIds),
         eq(buildOrders.status, 'BUILDING'),
       )),
+    tx
+      .select({
+        alloy: sql<number>`coalesce(sum(${clanLootShares.remainingAlloy}), 0)`,
+        crystal: sql<number>`coalesce(sum(${clanLootShares.remainingCrystal}), 0)`,
+        deuterium: sql<number>`coalesce(sum(${clanLootShares.remainingDeuterium}), 0)`,
+      })
+      .from(clanLootShares)
+      .where(eq(clanLootShares.playerId, playerId)),
   ]);
 
   let value = 0;
@@ -601,6 +611,9 @@ export async function recomputePlayerWealth(tx: Tx, playerId: string): Promise<n
   // Queueing changes where value sits, never whether the commander owns it. D4.
   for (const order of committedBuilds) {
     value += order.cost.alloy + order.cost.crystal + order.cost.deuterium;
+  }
+  if (unclaimedClanLoot) {
+    value += unclaimedClanLoot.alloy + unclaimedClanLoot.crystal + unclaimedClanLoot.deuterium;
   }
   value = Math.round(value);
   await tx.update(players).set({ wealth: value }).where(eq(players.id, playerId));

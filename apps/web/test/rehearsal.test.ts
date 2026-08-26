@@ -83,6 +83,7 @@ const previewOf = (planets: Preview['galaxy']['planets'] = []): Preview => ({
         owner: '',
         position: { x: 0, y: 0, z: 0 },
         coreTier: 1,
+        coreLevel: 1,
         satellites: [],
         shielded: false,
         isSelf: true,
@@ -105,6 +106,9 @@ const neighbour = (
   owner: `Commander ${id}`,
   position: { x, y: 0, z: 0 },
   coreTier,
+  // A level inside the tier it was given, so the pair stays self-consistent the
+  // way the server's projection makes them: `coreTier` is `ceil(level / 3)`.
+  coreLevel: coreTier * 3,
   satellites: [],
   shielded: false,
   isSelf: false,

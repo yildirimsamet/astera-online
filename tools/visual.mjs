@@ -45,7 +45,7 @@ const shot = async (name) => {
 };
 const settle = (ms) => page.waitForTimeout(ms);
 /**
- * Close anything modal. One of the focus taps may have opened your own world.
+ * Close anything modal. A repeated focus tap may have opened your own world.
  *
  * Matches BOTH handles a sheet can carry: the icon button with an aria-label, and
  * the worded CLOSE the planet surface uses. Only the first was checked, so a
@@ -315,7 +315,7 @@ const inFrame = ([x, y]) => x > 24 && x < PHONE.width - 24 && y > 320 && y < PHO
 
 let taps = 0;
 let opened = 0;
-let selfTaps = 0;
+let silentOwned = 0;
 let twoTapChecked = false;
 let twoTapOpened = false;
 const misses = [];
@@ -360,33 +360,66 @@ for (let round = 0; round < 6; round += 1) {
       if (same && inFrame(same.candidate.screen)) {
         await page.mouse.click(same.candidate.screen[0], same.candidate.screen[1]);
         await settle(700);
-        twoTapOpened = await rail.getByRole('button', { expanded: true }).count() > 0;
+        const detailOpen = await rail.getByRole('button', { expanded: true }).count() > 0;
+        const managementOpen = await page.getByRole('button', { name: /^close$/i })
+          .first().isVisible().catch(() => false);
+        twoTapOpened = detailOpen || managementOpen;
         twoTapChecked = true;
-        await page.getByRole('button', { name: /clear selection/i }).click();
+        if (managementOpen) {
+          await dismiss();
+        } else {
+          await page.getByRole('button', { name: /clear selection/i }).click();
+        }
         await settle(500);
       }
     }
-  } else if (await page.getByRole('button', { name: /^close$/i }).first().isVisible().catch(() => false)) {
-    // Tapping your own world deliberately opens the planet sheet, not a foreign
-    // focus rail. It shares an instanced batch with the other worlds, so the
-    // visual survey cannot identify it until after the tap.
-    selfTaps += 1;
+  } else if (target.kind === 'planet') {
+    const managementOnFirst = await page.getByRole('button', { name: /^close$/i })
+      .first().isVisible().catch(() => false);
+    const reframed = await survey();
+    const same = reframed.planets.reduce((nearest, candidate) => {
+      const distance = Math.hypot(...candidate.world.map(
+        (n, i) => n - target.subject.world[i],
+      ));
+      return !nearest || distance < nearest.distance ? { candidate, distance } : nearest;
+    }, null);
+    let managementOnSecond = false;
+    if (!managementOnFirst && same && inFrame(same.candidate.screen)) {
+      await page.mouse.click(same.candidate.screen[0], same.candidate.screen[1]);
+      await settle(700);
+      managementOnSecond = await page.getByRole('button', { name: /^close$/i })
+        .first().isVisible().catch(() => false);
+    }
+    taps += 1;
+    if (!managementOnFirst && managementOnSecond) {
+      // The already-active controlled world focuses without mounting a rail;
+      // management on the repeated tap proves the first press did land.
+      silentOwned += 1;
+      if (!twoTapChecked) {
+        twoTapChecked = true;
+        twoTapOpened = true;
+      }
+      await dismiss();
+    } else {
+      misses.push(target.subject.screen.map((n) => Math.round(n)).join(','));
+      if (managementOnFirst) await dismiss();
+    }
   } else {
     taps += 1;
     misses.push(target.subject.screen.map((n) => Math.round(n)).join(','));
   }
 }
 check(
-  'first tap creates a collapsed focus rail',
-  taps > 0 && opened === taps,
-  `${String(opened)}/${String(taps)}${selfTaps ? ` · ${String(selfTaps)} self-world sheet` : ''}${misses.length ? ` · missed at ${misses.join(' ')}` : ''}`,
+  'first tap creates a collapsed focus rail unless the controlled world is already active',
+  taps > 0 && opened + silentOwned === taps,
+  `${String(opened)} rail · ${String(silentOwned)} silent active / ${String(taps)}${misses.length ? ` · missed at ${misses.join(' ')}` : ''}`,
 );
-check('second tap on the same object opens detail', twoTapChecked && twoTapOpened);
+check('second tap on the same object opens detail or management', twoTapChecked && twoTapOpened);
 await shot('03-focus');
 
 /* ── 3 · home works while something is focused ───────────────── */
-// The last sampled instance may be the commander's own world, which opens the
-// management sheet by design. Close it before testing the map-level Home control.
+// The last sampled instance may have opened a detail or management surface.
+// Close it before testing the map-level Home control.
 await dismiss();
 const camBefore = await page.evaluate(() => window.__galaxy.camera.position.toArray());
 await page.getByRole('button', { name: /centre on (your planet|active world)/i }).click();
@@ -454,8 +487,10 @@ console.log('  camera target after home:', homeTarget?.map((n) => n.toFixed(1)).
 
 /* ── 4 · the planet screen and its new "affordable in" line ───
    There is no Planet tab — the galaxy IS the shell (D20), and your own world is
-   opened by tapping it. Home has just centred the camera on it, so the pivot is
-   the point to aim at. */
+   opened by tapping it twice. Home has just centred the camera on it, so the
+   pivot is the point to aim at. The first tap must leave management closed and
+   keep the bottom rail hidden because this world is already active; only the
+   second may open the sheet. */
 const homeScreen = await page.evaluate(() => {
   const g = window.__galaxy;
   const rect = g.gl.domElement.getBoundingClientRect();
@@ -463,7 +498,20 @@ const homeScreen = await page.evaluate(() => {
   return [rect.left + ((v.x + 1) / 2) * rect.width, rect.top + ((1 - v.y) / 2) * rect.height];
 });
 await page.mouse.click(homeScreen[0], homeScreen[1]);
+await settle(1200);
+const ownRail = page.locator('[data-focus-rail]');
+const ownRailVisible = await ownRail.isVisible().catch(() => false);
+const ownManagementOnFirst = await page.getByRole('button', { name: /^close$/i })
+  .first().isVisible().catch(() => false);
+check(
+  'already-active owned world first tap focuses with no bottom detail',
+  !ownRailVisible && !ownManagementOnFirst,
+);
+await page.mouse.click(homeScreen[0], homeScreen[1]);
 await settle(2500);
+const ownManagementOnSecond = await page.getByRole('button', { name: /^close$/i })
+  .first().isVisible().catch(() => false);
+check('owned world second tap opens management', ownManagementOnSecond);
 await shot('05-planet');
 
 const when = await page.getByText(/affordable in/i).count();

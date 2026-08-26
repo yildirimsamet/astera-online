@@ -3,9 +3,11 @@ import {
   easedCameraRange,
   focusIdentity,
   focusTapDecision,
+  planetFocusRailVisible,
   repeatedFocusTap,
   rigAction,
   rigGestureState,
+  transferOriginForFocus,
   type RigFrame,
 } from '../src/galaxy/follow.js';
 import type { Focus } from '../src/galaxy/FocusPanel.js';
@@ -147,9 +149,22 @@ describe('first tap focuses, second tap opens detail', () => {
     });
   });
 
-  it.each(['capital', 'colony'])('opens a controlled %s for management on its first tap', (kind) => {
+  it.each(['capital', 'colony'])('focuses a controlled %s on its first tap', (kind) => {
     const id = `${kind}-world`;
     expect(focusTapDecision(null, { kind: 'planet', id }, id)).toEqual({
+      kind: 'focus',
+      focus: { kind: 'planet', id },
+      detail: false,
+    });
+  });
+
+  it.each(['capital', 'colony'])('opens a focused controlled %s for management on its second tap', (kind) => {
+    const id = `${kind}-world`;
+    expect(focusTapDecision(
+      { kind: 'planet', id },
+      { kind: 'planet', id },
+      id,
+    )).toEqual({
       kind: 'manage',
       planetId: id,
     });
@@ -161,6 +176,25 @@ describe('first tap focuses, second tap opens detail', () => {
       focus: { kind: 'contact', id: 'mine' },
       detail: false,
     });
+  });
+
+  it('keeps the previous active world as a transfer source for another controlled target', () => {
+    expect(transferOriginForFocus('capital', 'colony')).toBe('capital');
+    expect(transferOriginForFocus('colony', 'capital')).toBe('colony');
+  });
+
+  it('offers no self-transfer when the focused world was already active', () => {
+    expect(transferOriginForFocus('capital', 'capital')).toBeNull();
+    expect(transferOriginForFocus('capital', null)).toBeNull();
+  });
+
+  it('hides the focus rail when the controlled world was already active', () => {
+    expect(planetFocusRailVisible(true, null)).toBe(false);
+  });
+
+  it('shows the focus rail for another controlled world and every foreign world', () => {
+    expect(planetFocusRailVisible(true, 'capital')).toBe(true);
+    expect(planetFocusRailVisible(false, null)).toBe(true);
   });
 });
 

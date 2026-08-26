@@ -67,6 +67,40 @@ const WITH_BODY: [name: string, call: (api: Api) => Promise<unknown>, expected: 
   ['probe', (a) => a.probe('p-1'), { targetPlanetId: 'p-1' }],
   ['postChat', (a) => a.postChat('hello'), { content: 'hello' }],
   ['markChatRead', (a) => a.markChatRead('00000000-0000-4000-8000-000000000001'), { messageId: '00000000-0000-4000-8000-000000000001' }],
+  ['quoteClanAid', (a) => a.quoteClanAid({
+    originPlanetId: 'origin-1', recipientPlayerId: 'player-2', targetPlanetId: 'target-2',
+    fleet: { HAULER: 2 }, cargo: { alloy: 400, crystal: 100, deuterium: 0 },
+  }), {
+    originPlanetId: 'origin-1', recipientPlayerId: 'player-2', targetPlanetId: 'target-2',
+    fleet: { HAULER: 2 }, cargo: { alloy: 400, crystal: 100, deuterium: 0 },
+  }],
+  ['createClan', (a) => a.createClan({ name: 'Orbit Wardens', tag: 'ORB', description: 'Watch the rim.', recruiting: true }), {
+    name: 'Orbit Wardens', tag: 'ORB', description: 'Watch the rim.', recruiting: true,
+  }],
+  ['applyToClan', (a) => a.applyToClan('clan-1'), {}],
+  ['inviteToClan', (a) => a.inviteToClan('player-2'), { playerId: 'player-2' }],
+  ['acceptClanRequest', (a) => a.acceptClanRequest('request-1', true), { acknowledgeHostile: true }],
+  ['rejectClanRequest', (a) => a.rejectClanRequest('request-1'), {}],
+  ['withdrawClanRequest', (a) => a.withdrawClanRequest('request-1'), {}],
+  ['leaveClan', (a) => a.leaveClan(), {}],
+  ['kickClanMember', (a) => a.kickClanMember('player-2'), { playerId: 'player-2' }],
+  ['transferClanLeadership', (a) => a.transferClanLeadership('player-2'), { playerId: 'player-2' }],
+  ['updateClanSettings', (a) => a.updateClanSettings('Bring everyone home.', false), {
+    description: 'Bring everyone home.', recruiting: false,
+  }],
+  ['setClanAidPolicy', (a) => a.setClanAidPolicy(false), { enabled: false }],
+  ['disbandClan', (a) => a.disbandClan(), {}],
+  ['claimClanDepot', (a) => a.claimClanDepot(), {}],
+  ['launchClanAid', (a) => a.launchClanAid({
+    originPlanetId: 'origin-1', recipientPlayerId: 'player-2', targetPlanetId: 'target-2',
+    fleet: { HAULER: 2 }, cargo: { alloy: 400, crystal: 100, deuterium: 0 },
+  }), {
+    originPlanetId: 'origin-1', recipientPlayerId: 'player-2', targetPlanetId: 'target-2',
+    fleet: { HAULER: 2 }, cargo: { alloy: 400, crystal: 100, deuterium: 0 },
+  }],
+  ['postClanChat', (a) => a.postClanChat('Rim clear.'), { content: 'Rim clear.' }],
+  ['markClanChatRead', (a) => a.markClanChatRead('message-1'), { messageId: 'message-1' }],
+  ['markClanSeen', (a) => a.markClanSeen(), {}],
   ['claimReward', (a) => a.claimReward('first-blood'), { id: 'first-blood' }],
   // The two that were broken.
   ['mine', (a) => a.mine(7, 3), { asteroidIndex: 7, craft: 3 }],

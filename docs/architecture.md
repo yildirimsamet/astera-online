@@ -105,13 +105,18 @@ motion and asteroid orbits are computed client-side from timestamps and never to
 
 | Topic | Carries | Example |
 |---|---|---|
-| `p:<playerId>` | What happened TO this commander | a battle resolving, a scan detected, a fleet inbound |
+| `p:<playerId>` | What happened TO this commander | a battle resolving, a fleet inbound, a private clan invalidation |
 | `s:<seasonId>` | What happened IN this galaxy | a fleet left a world, a raid resolved, a drill went out, a world grew |
 
 The shard topic is the half no event could ever announce, and it is what used to arrive on a poll.
 Its payload is **a shard id and a kind — nothing else**: no world, no owner, no heading. What it
 says is what the poll it replaced said, sooner. Every fog rule is still enforced in the query it
 points at.
+
+Clan events on the player topic are namespaced `private:clan-*` invalidations only. They name
+one bounded projection kind; message text, request identity, resources and payloads remain
+behind their authorised REST reads. Public clan tag/score changes use the shard topic because
+the corresponding public query already reveals them.
 
 **The publishing rule, and it is the whole safety argument:** a shard event fires exactly when the
 public payload it points at has changed, and at no other time. A Core crossing a tier publishes; a
@@ -277,6 +282,10 @@ affordability check.
 | **Deadlock on mutual raids** | **Locks always acquired in ascending planet id order** |
 | Event resolved twice | Conditional status update returning zero rows |
 | Two launches taking one flight bay | The count is read under the planet row lock (D28) |
+| Clan aid racing the receiver limit | Recipient advisory lock + immutable 24-hour commitments |
+| Recruitment racing the fifth seat | Season → clan → membership locks + partial unique slot index |
+| Leave/join bypassing bash limits | Immutable attack commitments bind at launch and on first join |
+| Loot return credited twice | Unique share source + mission settlement in the same transaction |
 | **One account taking two planets** | Unique index on `players.account_id` — the check and the insert cannot be made atomic in application code, so two tabs joining two galaxies both pass a prior existence check (D21) |
 | Two commanders on one world | Unique index on `(season_id, slot_index)`; the loser re-picks against the smaller free set |
 | Two registrations of one name | Unique index on `accounts.username` |
@@ -294,13 +303,15 @@ handling for no benefit.
 
 ## Data model
 
-Twenty-four tables, and **nothing stores a value derivable from a formula and a clock**:
+Seasonal and permanent tables, with **nothing storing a value derivable from a formula and a clock**:
 
 `accounts` · `shards` · `seasons` · `season_results` · `players` · `chat_messages` ·
 `galaxy_events` · `planets` · `neutral_planet_state` · `strategic_assets` · `buildings` · `satellites` · `units` · `missions` ·
 `build_orders` · `scheduled_events` · `battle_reports` · `scan_events` · `probe_reports` · `watches` ·
 `asteroid_claims` · `mining_runs` · `debris_fields` · `notifications` · `reward_grants` ·
-`request_log`
+`request_log` · `clans` · `clan_memberships` · `clan_requests` · `clan_ceasefires` ·
+`clan_messages` · `clan_events` · `attack_commitments` · `clan_aid_commitments` ·
+`clan_raid_roster` · `clan_loot_shares` · `clan_score_events`
 
 Schema: `apps/server/src/db/schema.ts`. Migrations: `apps/server/drizzle/`.
 
@@ -330,6 +341,22 @@ of the one-commander-per-galaxy rule (D21/D97). Planet ownership itself is expli
 then the commander's capital serialization anchor, then every touched planet id ascending.
 Away units and missions carry commander ownership separately from their station/home world,
 so a control transfer cannot steal craft already in flight.
+
+**Clan state is seasonal and audit-first (D114).** Active membership is a partial unique
+relationship, five stable slot indices make capacity a database fact, and one partial leader
+index makes two leaders impossible. Applications and invitations are one request table with
+direction and status. Ceasefires use a canonical pair. Attack and aid limits use immutable
+commitment rows rather than counting reports or successful arrivals. Raid rosters and score
+events snapshot membership at attack launch, so a later leave cannot rewrite a battle.
+Loot shares belong to players, not to a clan treasury, and survive clan disband until the
+season graph is wiped.
+
+Any transaction touching worlds locks the season, then all involved world ids ascending,
+before taking recipient/quota advisory locks; a pure clan mutation locks season, clan and
+membership/player rows in that order. Recruitment and hostile launches serialize on the
+same membership rows. Every mutating clan route writes an operation-scoped request hash to
+`request_log`, so retrying the same key returns the same response and reusing it for different
+input is rejected.
 
 ## Platform traps already paid for
 

@@ -127,11 +127,28 @@ export interface PlanetNode {
   id: string;
   name: string;
   owner: string;
+  /** Active public clan identity, if this commander currently has one. D114. */
+  clan?: NonNullable<GalaxyPlanet['clan']>;
+  /** A current clanmate, derived from the same bulk galaxy payload. */
+  isClanmate: boolean;
+  /** Only the public podium. Lower exact ranks belong on the leaderboard. */
+  dominionRank?: 1 | 2 | 3;
   position: Vec3Tuple;
   /** Bigger worlds for more developed players — the only free public signal. */
   radius: number;
   /** 1, 2 or 3. What the size means, for anything that needs to say it in words. */
   weight: 1 | 2 | 3;
+  /** The public core tier. Three drawn sizes and D49's ±2 attack band read this. */
+  coreTier: number;
+  /**
+   * The exact Command Core level, which the tier is a lossy read of.
+   *
+   * The dyson rings need it: the ring count steps every three levels and the
+   * colour every one, so a tier — which spans three levels — cannot express
+   * either. See `SHELL_STAGE` in `DysonShells`, and `publicGalaxy` on the server
+   * for why this is public at all.
+   */
+  coreLevel: number;
   /** The satellites in orbit. Public hardware, and a satellite has no level — D15/D25. */
   satellites: readonly SatelliteId[];
   /** Is there a dome. The one ground instrument anyone else can see, as a boolean. */
@@ -171,21 +188,33 @@ export interface PlanetNode {
 export const weightOf = worldWeight;
 
 export function planetNodes(planets: readonly GalaxyPlanet[]): PlanetNode[] {
+  const selfClanId = planets.find(
+    (planet) => (planet.isOwned ?? planet.isSelf) && planet.clan,
+  )?.clan?.id;
   return planets.map((planet) => ({
     id: planet.id,
     name: planet.name,
     owner: planet.owner,
+    ...(planet.clan ? { clan: planet.clan } : {}),
+    ...(!planet.dominionRank ? {} : { dominionRank: planet.dominionRank }),
     position: toWorld(planet.position),
     // Map markers, not scale models. A planet at true scale in a disc 2000 units
     // across would be invisible, so these are sized to be READ.
     radius: worldRadius(planet.coreTier),
     weight: weightOf(planet.coreTier),
+    coreTier: planet.coreTier,
+    coreLevel: planet.coreLevel,
     satellites: planet.satellites,
     shielded: planet.shielded,
     stance: stanceOf(planet),
     state: planet.state,
     kind: planet.kind ?? 'CAPITAL',
     isOwned: planet.isOwned ?? planet.isSelf,
+    isClanmate: Boolean(
+      !(planet.isOwned ?? planet.isSelf)
+      && selfClanId
+      && planet.clan?.id === selfClanId,
+    ),
     isCapital: planet.isCapital ?? planet.kind === 'CAPITAL',
     ...(planet.controller?.kind === 'PLAYER'
       ? { controllerPlayerId: planet.controller.playerId }
