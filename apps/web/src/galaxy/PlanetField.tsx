@@ -4,9 +4,8 @@ import * as THREE from 'three';
 import { planetArt } from '../ui/assets.js';
 import { limbTexture, softGlow } from './Environment.jsx';
 import { fireTexture, smokeTexture } from './vfx.js';
-import { STANCE_LIGHT, isRivalNode, type PlanetNode } from './scene.js';
+import { STANCE_LIGHT, isRivalNode, type PlanetNode, type Stance } from './scene.js';
 import { markHit, wasTap } from './tap.js';
-import { useReducedMotionPreference } from './motion.js';
 import { serverNow } from '../lib/clock.js';
 
 /**
@@ -78,7 +77,7 @@ export function PlanetField({
 
 /** Six hours of strategic damage must remain visible for the whole galaxy. */
 function RecoveryScars({ nodes }: { nodes: readonly PlanetNode[] }) {
-  const damaged = nodes.filter((node) => node.state?.kind === 'RECOVERY');
+  const damaged = nodes.filter((node) => node.state.kind === 'RECOVERY');
   return <>{damaged.map((node) => <RecoveryScar key={node.id} node={node} />)}</>;
 }
 
@@ -215,13 +214,21 @@ const LIMB_BREATH_DEPTH = 0.015;
 /** Scattered light, not white: an atmosphere lit by a warm key reads warm. */
 export const LIMB_TINT = { r: 1, g: 0.72, b: 0.42 };
 
+/** Requested contrast between worlds inside and outside live Telescope sight. */
+export const VISIBLE_PLANET_BRIGHTNESS = 1.25;
+export const HIDDEN_PLANET_BRIGHTNESS = 0.85;
+
+export function limbLight(stance: Stance, intel: PlanetNode['intel']): number {
+  return STANCE_LIGHT[stance]
+    * (intel === 'RESOLVED' ? VISIBLE_PLANET_BRIGHTNESS : HIDDEN_PLANET_BRIGHTNESS);
+}
+
 function Atmospheres({ nodes }: { nodes: readonly PlanetNode[] }) {
   const ref = useRef<THREE.InstancedMesh>(null);
   const camera = useThree((state) => state.camera);
   const texture = useMemo(() => limbTexture(), []);
   const tint = useMemo(() => new THREE.Color(), []);
   const count = nodes.length;
-  const reducedMotion = useReducedMotionPreference();
 
   /**
    * IGNORANCE IS DARK HERE TOO.
@@ -235,7 +242,7 @@ function Atmospheres({ nodes }: { nodes: readonly PlanetNode[] }) {
     const mesh = ref.current;
     if (!mesh) return;
     nodes.forEach((node, i) => {
-      const light = STANCE_LIGHT[node.stance];
+      const light = limbLight(node.stance, node.intel);
       mesh.setColorAt(i, tint.setRGB(LIMB_TINT.r * light, LIMB_TINT.g * light, LIMB_TINT.b * light));
     });
     if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
@@ -250,9 +257,7 @@ function Atmospheres({ nodes }: { nodes: readonly PlanetNode[] }) {
       UP.position.set(node.position[0], node.position[1], node.position[2]);
       UP.quaternion.copy(camera.quaternion);
       // Phase off the world's own x so the field never settles into one rhythm.
-      const breath = reducedMotion
-        ? 1
-        : 1 + Math.sin(t * LIMB_BREATH_RATE + node.position[0]) * LIMB_BREATH_DEPTH;
+      const breath = 1 + Math.sin(t * LIMB_BREATH_RATE + node.position[0]) * LIMB_BREATH_DEPTH;
       UP.scale.setScalar(node.radius * 2 * LIMB_SCALE * breath);
       UP.updateMatrix();
       mesh.setMatrixAt(i, UP.matrix);
@@ -302,6 +307,108 @@ function Atmospheres({ nodes }: { nodes: readonly PlanetNode[] }) {
 
 const UP = new THREE.Object3D();
 /** The axis a cone is spun about to point it down at the world it names. */
+/**
+ * What losing resolution costs a world. D126.
+ *
+ * `light` is deliberately well short of invisible: the map stays public (D49,
+ * D119) and only its MOVEMENT was ever hidden, so an unresolved world must remain
+ * findable and tappable — it simply stops being legible at a glance.
+ */
+const UNRESOLVED = {
+  /**
+   * DARKER SINCE THE HARDWARE CAME OFF. Owner's instruction.
+   *
+   * With the rings, satellites and dome now hidden on an unresolved world, its
+   * silhouette is all that is left — so the body itself has to carry the whole
+   * "you cannot read this" signal rather than sharing it with the absences around
+   * it. Still well short of invisible: the map is public (D49, D119) and the world
+   * must stay findable and tappable at its true public size.
+   */
+  light: 0.22,
+  warm: { r: 1, g: 1, b: 1 },
+  cool: { r: 0.72, g: 0.84, b: 1 },
+} as const;
+
+export function bodyLight(stance: Stance, intel: PlanetNode['intel']): number {
+  const visible = intel === 'RESOLVED';
+  return STANCE_LIGHT[stance]
+    * (visible ? VISIBLE_PLANET_BRIGHTNESS : UNRESOLVED.light * HIDDEN_PLANET_BRIGHTNESS);
+}
+
+
+/** How much of a pin's height the eye clears it by, and how big it is drawn. */
+const EYE_LIFT = 0.24;
+const EYE_SIZE = 0.44;
+/**
+ * ONE COLOUR FOR BOTH STATES, AND THE SHAPE CARRIES THE DIFFERENCE.
+ *
+ * An orange "seen" against a grey "unseen" made the mark look like it was about
+ * OWNERSHIP — orange is what this game reserves for the player's own intent, and
+ * it already means that on the pin directly below. An open lid against a closed
+ * one says the one thing this mark is for, in a language nobody has to be taught.
+ */
+const EYE_INK = '#e8eef8';
+
+function paintEye(open: boolean): THREE.Texture {
+  const size = 96;
+  const canvas = document.createElement('canvas');
+  canvas.width = size;
+  canvas.height = size;
+  const ctx = canvas.getContext('2d');
+  if (ctx) {
+    ctx.clearRect(0, 0, size, size);
+    const mid = size / 2;
+    ctx.strokeStyle = '#ffffff';
+    ctx.fillStyle = '#ffffff';
+    ctx.lineWidth = 7;
+    ctx.lineJoin = 'round';
+    ctx.lineCap = 'round';
+    const halfW = 34;
+
+    if (open) {
+      // An almond of two mirrored curves and a pupil. Symmetric by construction,
+      // so nothing about it reads as sketched — see D126 for the shapes before it.
+      ctx.beginPath();
+      ctx.moveTo(mid - halfW, mid);
+      ctx.quadraticCurveTo(mid, mid - 31, mid + halfW, mid);
+      ctx.quadraticCurveTo(mid, mid + 31, mid - halfW, mid);
+      ctx.closePath();
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.arc(mid, mid, 10, 0, Math.PI * 2);
+      ctx.fill();
+    } else {
+      /**
+       * The SAME almond, lower half only, with three short lashes. Keeping the
+       * bottom curve identical is what makes the pair read as one icon in two
+       * states rather than as two unrelated marks: the lid has closed onto the
+       * line it always sat on.
+       */
+      ctx.beginPath();
+      ctx.moveTo(mid - halfW, mid);
+      ctx.quadraticCurveTo(mid, mid + 31, mid + halfW, mid);
+      ctx.stroke();
+      for (const dx of [-20, 0, 20]) {
+        const dy = 22 - Math.abs(dx) * 0.35;
+        ctx.beginPath();
+        ctx.moveTo(mid + dx * 0.9, mid + dy * 0.62);
+        ctx.lineTo(mid + dx, mid + dy + 8);
+        ctx.stroke();
+      }
+    }
+  }
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.colorSpace = THREE.SRGBColorSpace;
+  texture.needsUpdate = true;
+  return texture;
+}
+
+let eyeCanvases: { open: THREE.Texture; shut: THREE.Texture } | null = null;
+function eyeTexture(open: boolean): THREE.Texture {
+  eyeCanvases ??= { open: paintEye(true), shut: paintEye(false) };
+  return open ? eyeCanvases.open : eyeCanvases.shut;
+}
+
 const FORWARD = new THREE.Vector3(0, 0, 1);
 
 function PlanetInstances({ group, onSelect }: { group: Group; onSelect: (id: string) => void }) {
@@ -327,8 +434,30 @@ function PlanetInstances({ group, onSelect }: { group: Group; onSelect: (id: str
     if (!mesh) return;
 
     group.nodes.forEach((node, i) => {
-      const light = STANCE_LIGHT[node.stance];
-      mesh.setColorAt(i, tint.setRGB(light, light, light));
+      /**
+       * OUT OF SENSOR REACH IS DIMMER AND COLDER. D126.
+       *
+       * The same mechanism the fog of war already uses, which is the whole reason
+       * this is the version that survived: the requested contrast is applied to
+       * the body itself, with a resolved world lifted by 25% and everything
+       * outside live sight lowered by 15%. Every earlier attempt — cloud, a glass
+       * shell, a screen-space pass — obscured the map instead of clarifying it.
+       *
+       * Cold rather than merely dark, because darkness alone reads as a small
+       * world and this has to read as an unresolved one.
+       */
+      /**
+       * ONLY A LIVE READING IS DRAWN BRIGHT. D127.
+       *
+       * A REMEMBERED world stays dark with an UNKNOWN one: a probe went there once
+       * and brought back what it saw, and none of that makes the world visible
+       * now. What the probe bought is the DETAIL — the name, the rings, the orbit —
+       * which is drawn on top of a body that is still in the dark.
+       */
+      const seen = node.intel === 'RESOLVED';
+      const light = bodyLight(node.stance, node.intel);
+      const chill = seen ? UNRESOLVED.warm : UNRESOLVED.cool;
+      mesh.setColorAt(i, tint.setRGB(light * chill.r, light * chill.g, light * chill.b));
 
       // Place them here as well as in the frame loop, because the bounding sphere
       // below is computed from these matrices.
@@ -461,7 +590,7 @@ function Highlights({
       || node.isClanmate
       || node.stance === 'window'
       || isRivalNode(node, rivalPlanetId, rivalPlayerId)
-      || node.state?.kind === 'RECOVERY'
+      || node.state.kind === 'RECOVERY'
       || Boolean(node.claimUntil && node.claimUntil.getTime() > serverNow()),
   );
 
@@ -469,14 +598,28 @@ function Highlights({
    * Everything that is not yours carries a pin: grey for neutral, orange for
    * another commander. `Ring` still owns the worlds it already marked.
    */
+  /**
+   * A PIN IS A READING ABOUT THE WORLD, SO AN UNRESOLVED ONE HAS NONE. D126.
+   *
+   * The pin's whole content is its colour: neutral or somebody's. That is exactly
+   * the fact you have not earned about a world outside your sensor reach — the
+   * owner's instruction is blunt about it, "marker gözükmeyecek çünkü user mı
+   * neutral mı bilmiyoruz." The EYE is the opposite kind of statement, about your
+   * own instruments rather than about the world, so it stays on every world.
+   */
   const pinned = useMemo(
-    () => nodes.filter((node) => !node.isOwned && !node.isClanmate),
+    () => nodes.filter(
+      (node) => !node.isOwned && !node.isClanmate && node.intel !== 'UNKNOWN',
+    ),
     [nodes],
   );
 
   return (
     <>
       <Pins nodes={pinned} />
+      {/* One step above the pin, at the pin's size and on the pin's scale law. */}
+      <EyeMarks nodes={nodes} open />
+      <EyeMarks nodes={nodes} open={false} />
       {marked.map((node) => (
         <Ring
           key={node.id}
@@ -487,7 +630,7 @@ function Highlights({
           rival={!node.isClanmate && isRivalNode(node, rivalPlanetId, rivalPlayerId)}
           ally={node.isClanmate}
           claim={Boolean(node.claimUntil && node.claimUntil.getTime() > serverNow())}
-          recovering={node.state?.kind === 'RECOVERY'}
+          recovering={node.state.kind === 'RECOVERY'}
         />
       ))}
     </>
@@ -521,6 +664,16 @@ export function markerScale(
   return Math.min(4, Math.max(1, wanted / (radius * SELECTION_RING * 2)));
 }
 
+/** Eyes retain 50% more size under zoom-out than the marker law they used before. */
+export function eyeMarkerScale(
+  distance: number,
+  radius: number,
+  viewportHeight: number,
+  verticalFov: number,
+): number {
+  return markerScale(distance, radius, viewportHeight, verticalFov) * 1.5;
+}
+
 /** Grey for a world nobody holds, orange for a world somebody else does. */
 export const PIN_COLOUR = { neutral: '#9aa6b2', rival: '#ff8a3d' } as const;
 
@@ -528,8 +681,16 @@ export const PIN_COLOUR = { neutral: '#9aa6b2', rival: '#ff8a3d' } as const;
  * Which pin a world wears. Public facts only: `kind` already decides the
  * silhouette the disc draws, so naming it in a colour leaks nothing.
  */
+/**
+ * Grey for a world nobody holds, orange for somebody's.
+ *
+ * NO KIND FALLS TO GREY, and the ordering matters. Since D127 an unsurveyed world
+ * carries no `kind` at all, and `Pins` already excludes those — the pin's whole
+ * content is the fact you have not earned. If one ever reaches here anyway the
+ * conservative answer is "no claim", never the orange that asserts one.
+ */
 export const pinColour = (kind: PlanetNode['kind']): string =>
-  kind === 'NEUTRAL' ? PIN_COLOUR.neutral : PIN_COLOUR.rival;
+  kind === 'CAPITAL' || kind === 'COLONY' ? PIN_COLOUR.rival : PIN_COLOUR.neutral;
 
 /**
  * A PIN ON EVERY WORLD THAT IS NOT YOURS.
@@ -602,6 +763,94 @@ function Pins({ nodes }: { nodes: readonly PlanetNode[] }) {
     >
       <coneGeometry args={[0.13, 0.2, 3]} />
       <meshBasicMaterial transparent opacity={0.85} depthWrite={false} />
+    </instancedMesh>
+  );
+}
+
+/**
+ * WHETHER YOUR INSTRUMENTS RESOLVE THIS WORLD. D126.
+ *
+ * A sibling of `Pins`, one step higher and built the same way, because the owner
+ * asked for exactly that: the pin's size, the pin's scale law, sitting on top of
+ * it. Sharing `markerScale` is what makes them behave as one stack — an eye that
+ * computed its own size drifted out of step with the pin under it at every zoom,
+ * which is the version that was rejected.
+ *
+ * IT IS ON EVERY WORLD EXCEPT YOUR OWN, WHICH THE PIN IS NOT. The pin says something about the
+ * WORLD — neutral, or somebody's — and that is a reading an unresolved world owes
+ * you nothing of. This says something about YOUR OWN INSTRUMENTS, and that is
+ * true and worth stating everywhere: open where they reach, shut where they do
+ * not, in the same place on every other world so the two can be compared at a
+ * glance. Your own worlds need no eye because their visibility is unconditional.
+ *
+ * ONE INK FOR BOTH, and the LID carries the difference — the owner's call. Colour
+ * was tried first and taught the wrong thing: orange is what this game reserves
+ * for the player's own intent, and it already means that on the pin directly
+ * below, so a coloured eye read as a claim about ownership.
+ *
+ * INSTANCED for the same reason the pins are: there are three hundred of them.
+ */
+export function eyeNodes(nodes: readonly PlanetNode[], open: boolean): PlanetNode[] {
+  return nodes.filter(
+    (node) => !node.isOwned && (node.intel === 'RESOLVED') === open,
+  );
+}
+
+function EyeMarks({ nodes: all, open }: { nodes: readonly PlanetNode[]; open: boolean }) {
+  const ref = useRef<THREE.InstancedMesh>(null);
+  const camera = useThree((state) => state.camera);
+  const viewportHeight = useThree((state) => state.size.height);
+  const texture = useMemo(() => eyeTexture(open), [open]);
+  const offset = useMemo(() => new THREE.Vector3(), []);
+  const centre = useMemo(() => new THREE.Vector3(), []);
+  // Two meshes rather than one, because the two states are two TEXTURES and an
+  // instanced draw has one material. Still two draw calls for the whole galaxy.
+  const nodes = useMemo(() => eyeNodes(all, open), [all, open]);
+
+  useFrame(() => {
+    const mesh = ref.current;
+    if (!mesh || !(camera instanceof THREE.PerspectiveCamera)) return;
+    nodes.forEach((node, i) => {
+      centre.set(node.position[0], node.position[1], node.position[2]);
+      const scale = eyeMarkerScale(
+        camera.position.distanceTo(centre),
+        node.radius,
+        viewportHeight,
+        camera.fov,
+      );
+      // The pin stands off at SELECTION_RING; this clears it by its own height.
+      offset
+        .set(0, node.radius * (SELECTION_RING + EYE_LIFT) * scale, 0)
+        .applyQuaternion(camera.quaternion);
+      UP.position.copy(centre).add(offset);
+      UP.quaternion.copy(camera.quaternion);
+      UP.scale.setScalar(node.radius * scale * EYE_SIZE);
+      UP.updateMatrix();
+      mesh.setMatrixAt(i, UP.matrix);
+    });
+    mesh.instanceMatrix.needsUpdate = true;
+  });
+
+  if (nodes.length === 0) return null;
+  return (
+    <instancedMesh
+      key={nodes.length}
+      ref={ref}
+      name={open ? 'eye-open' : 'eye-shut'}
+      args={[undefined, undefined, nodes.length]}
+      // Same reasoning as `Pins`: the instances move with the camera every frame,
+      // so a bounding sphere computed from them is stale the moment it is written.
+      frustumCulled={false}
+    >
+      <planeGeometry args={[1, 1]} />
+      <meshBasicMaterial
+        map={texture}
+        color={EYE_INK}
+        transparent
+        opacity={open ? 0.9 : 0.6}
+        depthWrite={false}
+        toneMapped={false}
+      />
     </instancedMesh>
   );
 }

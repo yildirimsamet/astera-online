@@ -35,6 +35,7 @@ import {
   clanMessages,
   clanRequests,
   clans,
+  planets,
   players,
   seasons,
 } from '../db/schema.js';
@@ -82,6 +83,68 @@ export async function clanActor(db: Queryable, accountId: string): Promise<ClanA
     .limit(1);
   if (!actor) throw new GameError('NO_PLANET', 'Join a galaxy first', 404);
   return actor;
+}
+
+/**
+ * Current clan identity is not sight. D114 keeps every instrument private, while
+ * membership immediately tells the crew who its commanders are and where their
+ * worlds are. Keep that deliberately small identity projection separate from the
+ * resolved galaxy rows so adding a clanmate can never reveal development,
+ * hardware, traffic or another commander's sensor spheres.
+ */
+export async function readClanPresence(db: Queryable, playerId: string) {
+  const membership = await activeClanMembership(db, playerId);
+  if (!membership) return null;
+
+  const [clan] = await db
+    .select({ id: clans.id, name: clans.name, tag: clans.tag })
+    .from(clans)
+    .where(and(eq(clans.id, membership.clanId), isNull(clans.disbandedAt)))
+    .limit(1);
+  if (!clan) return null;
+
+  const rows = await db
+    .select({
+      playerId: clanMemberships.playerId,
+      username: accounts.displayName,
+      slot: clanMemberships.slot,
+      planetId: planets.id,
+      planetName: planets.name,
+      x: planets.x,
+      y: planets.y,
+      z: planets.z,
+      planetSlot: planets.slotIndex,
+    })
+    .from(clanMemberships)
+    .innerJoin(players, eq(players.id, clanMemberships.playerId))
+    .innerJoin(accounts, eq(accounts.id, players.accountId))
+    .innerJoin(planets, eq(planets.controllerPlayerId, clanMemberships.playerId))
+    .where(and(
+      eq(clanMemberships.clanId, membership.clanId),
+      isNull(clanMemberships.leftAt),
+    ))
+    .orderBy(asc(clanMemberships.slot), asc(planets.slotIndex));
+
+  const members = new Map<string, {
+    playerId: string;
+    username: string;
+    worlds: { planetId: string; name: string; position: { x: number; y: number; z: number } }[];
+  }>();
+  for (const row of rows) {
+    const member = members.get(row.playerId) ?? {
+      playerId: row.playerId,
+      username: row.username,
+      worlds: [],
+    };
+    member.worlds.push({
+      planetId: row.planetId,
+      name: row.planetName,
+      position: { x: row.x, y: row.y, z: row.z },
+    });
+    members.set(row.playerId, member);
+  }
+
+  return { clan, members: [...members.values()] };
 }
 
 async function assertClanRuleset(

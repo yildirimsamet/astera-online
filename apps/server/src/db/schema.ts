@@ -61,6 +61,18 @@ export const eventKind = pgEnum('event_kind', [
   'occupation_end',
   /** One ordinary construction or yard order reaching its authoritative instant. D4. */
   'build_complete',
+  /**
+   * A strategic weapon crossing the defender's timed radar circle. T10.
+   *
+   * Its own kind rather than a branch inside `radar_warning`, because a
+   * NOTIFICATION path and a COMBAT RESOLUTION are two different jobs and one
+   * handler that did both would be one handler nobody could reason about. It also
+   * has to resolve FIRST: a defender told "incoming" beside the news that it is
+   * already wreckage is the interface contradicting itself.
+  */
+  'strategic_intercept',
+  /** The interceptor missile reaching the reserved collision point. */
+  'strategic_intercept_impact',
 ]);
 /**
  * WHAT THE GAME TELLS YOU, AND NOTHING ELSE. D45.
@@ -96,6 +108,8 @@ export const notificationKind = pgEnum('notification_kind', [
   'colony_lost',
   'settlement_success',
   'settlement_lost',
+  /** You stopped one, or you lost one on somebody's ring. T10. */
+  'strategic_intercepted',
 ]);
 export type NotificationKind = (typeof notificationKind.enumValues)[number];
 
@@ -126,6 +140,37 @@ export const accounts = pgTable('accounts', {
   uniqueIndex('accounts_username_idx').on(t.username),
 ]);
 
+export type FeedbackKind = 'BUG' | 'SUGGESTION' | 'PRAISE';
+
+/** Global, admin-authored news. The stored body has already crossed the server allow-list. */
+export const announcements = pgTable('announcements', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  authorAccountId: uuid('author_account_id').notNull().references(() => accounts.id),
+  title: text('title').notNull(),
+  bodyHtml: text('body_html').notNull(),
+  publishedAt: timestamp('published_at', { withTimezone: true }).notNull(),
+}, (t) => [index('announcements_published_idx').on(t.publishedAt)]);
+
+/** Per-account read state keeps a new announcement visible without making it an interruption. */
+export const announcementReads = pgTable('announcement_reads', {
+  accountId: uuid('account_id').notNull().references(() => accounts.id),
+  announcementId: uuid('announcement_id').notNull().references(() => announcements.id),
+  readAt: timestamp('read_at', { withTimezone: true }).notNull(),
+}, (t) => [primaryKey({ columns: [t.accountId, t.announcementId] })]);
+
+/** Player-to-operator messages. Content is always rendered as text, never as HTML. */
+export const feedbackEntries = pgTable('feedback_entries', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  accountId: uuid('account_id').notNull().references(() => accounts.id),
+  kind: text('kind').$type<FeedbackKind>().notNull(),
+  message: text('message').notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull(),
+}, (t) => [
+  index('feedback_entries_created_idx').on(t.createdAt),
+  index('feedback_entries_account_idx').on(t.accountId, t.createdAt),
+  check('feedback_entries_kind_check', sql`${t.kind} IN ('BUG', 'SUGGESTION', 'PRAISE')`),
+]);
+
 /**
  * A galaxy, as an address players can choose between. D21.
  *
@@ -153,6 +198,8 @@ export const seasons = pgTable('seasons', {
   shardId: uuid('shard_id').notNull().references(() => shards.id),
   /** The galaxy is regenerated from this — never stored slot by slot. */
   seed: integer('seed').notNull(),
+  /** Private keyed asteroid schedule and opaque identities. Never sent to clients. */
+  asteroidKey: uuid('asteroid_key').notNull().defaultRandom(),
   status: seasonStatus('status').notNull().default('pending'),
   startsAt: timestamp('starts_at', { withTimezone: true }).notNull(),
   endsAt: timestamp('ends_at', { withTimezone: true }).notNull(),
@@ -416,7 +463,7 @@ export type GalaxyEventPayload =
       /** Missing only on pre-D98 events, all of which were non-capital. */
       capturable?: boolean;
     }
-  | { asteroidIndex: number }
+  | Record<string, never>
   | { act: 'war' | 'consolidation' | 'sunset' };
 
 /** Public history, not intel. Its intentionally small contract is locked by D89. */
@@ -522,6 +569,30 @@ export const buildings = pgTable('buildings', {
  * never drift out of sync with what the player has actually done. The composite
  * key is also the concurrency guard: two taps cannot buy the same project twice.
  */
+/**
+ * RESEARCH BELONGS TO THE COMMANDER. T7.
+ *
+ * `planet_research` below is keyed on the world, which was tolerable while every
+ * project was a one-off PERMISSION — buying Dense Fuel Cells twice bought nothing,
+ * so the duplication cost nothing and showed nowhere. It stops being invisible the
+ * moment a project is a MULTIPLIER: a commander with three colonies would buy the
+ * same ladder four times, which is "micromanagement grows" stated outright.
+ *
+ * `level` is stored from the first day even though every project currently tops out
+ * at one, so that adding a ladder is a table entry rather than a second migration
+ * against live rows.
+ *
+ * THE OLD TABLE IS LEFT IN PLACE AND UNREAD for one release. The backfill is
+ * one-way and idempotent; keeping the source means a bad deploy can be rolled back
+ * without having destroyed what it was copying from.
+ */
+export const playerResearch = pgTable('player_research', {
+  playerId: uuid('player_id').notNull().references(() => players.id),
+  projectId: text('project_id').$type<ResearchProjectId>().notNull(),
+  level: integer('level').notNull().default(1),
+  completedAt: timestamp('completed_at', { withTimezone: true }).notNull(),
+}, (t) => [primaryKey({ columns: [t.playerId, t.projectId] })]);
+
 export const planetResearch = pgTable('planet_research', {
   planetId: uuid('planet_id').notNull().references(() => planets.id),
   projectId: text('project_id').$type<ResearchProjectId>().notNull(),
@@ -546,6 +617,26 @@ export const satellites = pgTable('satellites', {
   type: text('type').notNull(),
   level: integer('level').notNull().default(1),
 }, (t) => [primaryKey({ columns: [t.planetId, t.slot] })]);
+
+/** Immutable sensor-post history used to award asteroid discoveries exactly once. */
+export const sensorEpochs = pgTable('sensor_epochs', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  seasonId: uuid('season_id').notNull().references(() => seasons.id),
+  playerId: uuid('player_id').notNull().references(() => players.id),
+  planetId: uuid('planet_id').notNull().references(() => planets.id),
+  x: real('x').notNull(),
+  y: real('y').notNull(),
+  z: real('z').notNull(),
+  reach: real('reach').notNull(),
+  startsAt: timestamp('starts_at', { withTimezone: true }).notNull(),
+  endsAt: timestamp('ends_at', { withTimezone: true }),
+}, (t) => [
+  uniqueIndex('sensor_epochs_open_planet_idx').on(t.planetId).where(sql`${t.endsAt} is null`),
+  index('sensor_epochs_player_time_idx').on(t.playerId, t.startsAt, t.endsAt),
+  index('sensor_epochs_season_idx').on(t.seasonId),
+  check('sensor_epochs_reach_check', sql`${t.reach} > 0`),
+  check('sensor_epochs_window_check', sql`${t.endsAt} is null or ${t.endsAt} > ${t.startsAt}`),
+]);
 
 /** One table for ships and turrets. `location` is 'home' or a mission id. */
 export const units = pgTable('units', {
@@ -588,6 +679,19 @@ export const missions = pgTable('missions', {
    * roster snapshotted on its outbound mission.
    */
   parentMissionId: uuid('parent_mission_id'),
+  /**
+   * THE ATTACKER'S DOCTRINES, FROZEN AT LAUNCH. T9.
+   *
+   * A raid is decided by what its commander had researched when they COMMITTED it,
+   * never by what they finished while it was in the air. That is the mirror of the
+   * rule the radar already obeys from the other side — "read the defender's radar
+   * level when the warning fires" — and between them the two say the same thing:
+   * every figure is read at the moment the decision it belongs to was made.
+   *
+   * Null on every mission written before this existed, which resolves as no
+   * research at all — exactly what those commanders had.
+   */
+  tech: jsonb('tech').$type<Partial<Record<ResearchProjectId, number>>>(),
 }, (t) => [
   index('missions_status_arrive_idx').on(t.status, t.arriveAt),
   index('missions_origin_idx').on(t.originPlanetId),
@@ -717,6 +821,7 @@ export const clanScoreEvents = pgTable('clan_score_events', {
 export const strategicAssets = pgTable('strategic_assets', {
   id: uuid('id').primaryKey().defaultRandom(),
   planetId: uuid('planet_id').notNull().references(() => planets.id),
+  /** `DEATH_STAR` or `INTERCEPTOR`: one lifecycle, two kinds of strategic hardware. T10. */
   type: text('type').notNull().default('DEATH_STAR'),
   status: strategicAssetStatus('status').notNull(),
   startedAt: timestamp('started_at', { withTimezone: true }).notNull(),
@@ -724,11 +829,20 @@ export const strategicAssets = pgTable('strategic_assets', {
   remainingSeconds: integer('remaining_seconds'),
   missionId: uuid('mission_id').references(() => missions.id),
 }, (t) => [
-  uniqueIndex('strategic_assets_planet_active_idx')
-    .on(t.planetId)
-    .where(sql`${t.status} IN ('BUILDING', 'PAUSED', 'READY')`),
+  /**
+   * PLAIN, NOT UNIQUE, SINCE T11.
+   *
+   * This was a partial UNIQUE index enforcing one live asset per world — belt and
+   * braces beside the count check in `buildDeathStar`. A commander may now keep two
+   * weapons and, separately, an interception charge, and Postgres cannot express
+   * "at most two" as a unique index. The guard is the PLANET ROW LOCK, which every
+   * one of these paths already takes through `loadLocked` before it counts: the
+   * count-then-insert is serialised by it, and `concurrency.test.ts` proves the
+   * two-simultaneous-builds case still resolves to exactly one.
+   */
+  index('strategic_assets_planet_active_idx').on(t.planetId, t.status),
   index('strategic_assets_mission_idx').on(t.missionId),
-  check('strategic_assets_type_check', sql`${t.type} = 'DEATH_STAR'`),
+  check('strategic_assets_type_check', sql`${t.type} IN ('DEATH_STAR', 'INTERCEPTOR')`),
 ]);
 
 export type BuildOrderKind = 'BUILDING' | 'HULL' | 'INSTRUMENT' | 'SATELLITE' | 'RESEARCH';
@@ -873,6 +987,20 @@ export const battleReports = pgTable('battle_reports', {
   uniqueIndex('reports_mission_idx').on(t.missionId),
 ]);
 
+export interface StrategicLevelChange {
+  kind: 'BUILDING' | 'INSTRUMENT';
+  id: string;
+  before: number;
+  after: number;
+}
+
+export interface StrategicDestroyedOrder {
+  kind: BuildOrderKind;
+  subject: string;
+  count: number;
+  cost: Resources;
+}
+
 /** A Death Star's durable private history and season damage ledger. D103. */
 export const strategicImpacts = pgTable('strategic_impacts', {
   id: uuid('id').primaryKey().defaultRandom(),
@@ -881,14 +1009,59 @@ export const strategicImpacts = pgTable('strategic_impacts', {
   attackerPlayerId: uuid('attacker_player_id').notNull().references(() => players.id),
   defenderPlayerId: uuid('defender_player_id').references(() => players.id),
   targetPlanetId: uuid('target_planet_id').notNull().references(() => planets.id),
-  outcome: text('outcome').$type<'FIRST_STRIKE' | 'CAPTURED' | 'INEFFECTIVE'>().notNull(),
+  outcome: text('outcome')
+    .$type<'FIRST_STRIKE' | 'CAPTURED' | 'INEFFECTIVE' | 'INTERCEPTED'>()
+    .notNull(),
   damage: real('damage').notNull().default(0),
   destroyedFleet: jsonb('destroyed_fleet').$type<Fleet>().notNull().default({}),
+  /** Exact losses, stored at resolution because none can be reconstructed later. */
+  destroyedResources: jsonb('destroyed_resources').$type<Resources>().notNull().default({
+    alloy: 0,
+    crystal: 0,
+    deuterium: 0,
+  }),
+  levelChanges: jsonb('level_changes').$type<StrategicLevelChange[]>().notNull().default([]),
+  destroyedOrders: jsonb('destroyed_orders').$type<StrategicDestroyedOrder[]>().notNull().default([]),
+  shieldDestroyed: real('shield_destroyed').notNull().default(0),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 }, (t) => [
   uniqueIndex('strategic_impacts_mission_idx').on(t.missionId),
   index('strategic_impacts_attacker_idx').on(t.attackerPlayerId, t.createdAt),
   index('strategic_impacts_defender_idx').on(t.defenderPlayerId, t.createdAt),
+]);
+
+/**
+ * One anti-strategic launch, including the exact eight-second scene clients replay.
+ * The mission is already prevented from landing when this row is written; the
+ * scheduled impact closes the visual event and delivers its reports exactly once.
+ */
+export const strategicInterceptions = pgTable('strategic_interceptions', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  seasonId: uuid('season_id').notNull().references(() => seasons.id),
+  missionId: uuid('mission_id').notNull().references(() => missions.id),
+  attackerPlayerId: uuid('attacker_player_id').notNull().references(() => players.id),
+  defenderPlayerId: uuid('defender_player_id').notNull().references(() => players.id),
+  targetPlanetId: uuid('target_planet_id').notNull().references(() => planets.id),
+  chargeId: uuid('charge_id').notNull().references(() => strategicAssets.id),
+  trigger: text('trigger').$type<'RADAR' | 'TELESCOPE'>().notNull(),
+  launchAt: timestamp('launch_at', { withTimezone: true }).notNull(),
+  impactAt: timestamp('impact_at', { withTimezone: true }).notNull(),
+  launchX: real('launch_x').notNull(),
+  launchY: real('launch_y').notNull(),
+  launchZ: real('launch_z').notNull(),
+  deathStarFromX: real('death_star_from_x').notNull(),
+  deathStarFromY: real('death_star_from_y').notNull(),
+  deathStarFromZ: real('death_star_from_z').notNull(),
+  collisionX: real('collision_x').notNull(),
+  collisionY: real('collision_y').notNull(),
+  collisionZ: real('collision_z').notNull(),
+  resolvedAt: timestamp('resolved_at', { withTimezone: true }),
+}, (t) => [
+  uniqueIndex('strategic_interceptions_mission_idx').on(t.missionId),
+  index('strategic_interceptions_season_time_idx').on(t.seasonId, t.launchAt, t.impactAt),
+  index('strategic_interceptions_defender_idx').on(t.defenderPlayerId, t.launchAt),
+  check('strategic_interceptions_trigger_check', sql`${t.trigger} IN ('RADAR', 'TELESCOPE')`),
+  check('strategic_interceptions_window_check', sql`${t.impactAt} > ${t.launchAt}`),
 ]);
 
 /** `originPlanetId` is never exposed below Radar L5. Watching is silent; probing is loud. */
@@ -931,6 +1104,57 @@ export const probeReports = pgTable('probe_reports', {
   detected: boolean('detected').notNull(),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   /**
+   * WHAT THE WORLD LOOKED LIKE FROM OUTSIDE, AT THE MOMENT OF THE PROBE. D127.
+   *
+   * Everything above is a BAND — stock, defence, fleet size, fuzzed by accuracy.
+   * This is the other half, and it is exact rather than fuzzed because it is what
+   * a craft in orbit can simply SEE: whose flag is on the world, how developed it
+   * is, what is in orbit, whether a dome is up.
+   *
+   * It exists because D127 made all of that private. It used to be on
+   * `/api/galaxy` for every world in the disc, so there was nothing to record; now
+   * a world outside a commander's Telescope reach is an unmarked point until a
+   * probe has been there, and this is what the probe brings home.
+   *
+   * FROZEN, AND THAT IS THE FEATURE. The observer goes on seeing these values
+   * until they probe again, however much the target builds in the meantime — the
+   * city you visited once and never returned to. It needs no expiry for the same
+   * reason: an old record decays in value on its own as its subject grows past it,
+   * which punishes exactly the commander who stopped looking.
+   *
+   * Null on reports written before D127, which render as they always did.
+   */
+  silhouette: jsonb('silhouette').$type<{
+    owner: string;
+    controllerPlayerId: string | null;
+    clan: { id: string; name: string; tag: string } | null;
+    kind: 'CAPITAL' | 'COLONY' | 'NEUTRAL';
+    coreLevel: number;
+    satellites: string[];
+    shielded: boolean;
+    /**
+     * WHAT THIS COMMANDER HAS RESEARCHED INTO THEIR HULLS. T9 · D124.
+     *
+     * A 25% multiplier nobody can see would silently eat the value of every
+     * scouting flight, and D124 is blunt: a rule the player cannot SEE is not a
+     * rule. So the doctrines are a PROBE product — earned, never public — and
+     * they freeze at the look like everything else here. Absent on reports
+     * written before this existed, which read as no research at all.
+     */
+    doctrines?: Partial<Record<ResearchProjectId, number>>;
+    /**
+     * WHETHER THIS WORLD CAN SHOOT A DEATH STAR DOWN. T10.
+     *
+     * The single most valuable thing a probe can bring home once the war act
+     * opens, and it is what turns a strategic strike from a pure resource decision
+     * into an INTELLIGENCE one: 33,000 resources and an hour, spent on a world
+     * that may simply delete them. Never public — `/api/galaxy` says nothing about
+     * it — so the only way to know is to have looked, which is the whole argument
+     * for the feature.
+     */
+    interceptor?: boolean;
+  }>(),
+  /**
    * When the probe got home with it. NULL means still in the air.
    *
    * The snapshot is taken on arrival — that is the moment being measured, and it
@@ -941,7 +1165,40 @@ export const probeReports = pgTable('probe_reports', {
   deliveredAt: timestamp('delivered_at', { withTimezone: true }),
 }, (t) => [
   index('probe_reports_observer_idx').on(t.observerPlayerId, t.createdAt),
+  /**
+   * THE GALAXY READ'S OWN INDEX. D127.
+   *
+   * `rememberedWorlds` runs on every `/api/galaxy` and asks for one commander's
+   * reports newest-delivered first. The index above is on `createdAt`, so it
+   * cannot serve that ordering — a season's worth of probes would be sorted from
+   * scratch on the hottest read in the game.
+   */
+  index('probe_reports_memory_idx').on(t.observerPlayerId, t.deliveredAt),
   uniqueIndex('probe_reports_mission_idx').on(t.missionId),
+]);
+
+/**
+ * The one delivered probe report currently used to draw each remembered world.
+ *
+ * `probe_reports` remains the complete Intel-centre history. This bounded read
+ * model prevents `/api/galaxy` from walking that history on every request just to
+ * rediscover the newest report for each target. `seenAt` duplicates the report's
+ * observation instant deliberately: it is the age of the frozen facts, while
+ * `deliveredAt` remains only the gate that says when the observer may read them.
+ * It also lets concurrent returns replace this pointer atomically only when the
+ * candidate observation is newer.
+ *
+ * No foreign key cascades. Seasonal wipes and seat reclamation delete this child
+ * explicitly, like the rest of this schema's audit-facing graph.
+ */
+export const probeWorldMemories = pgTable('probe_world_memories', {
+  observerPlayerId: uuid('observer_player_id').notNull().references(() => players.id),
+  targetPlanetId: uuid('target_planet_id').notNull().references(() => planets.id),
+  reportId: uuid('report_id').notNull().references(() => probeReports.id),
+  seenAt: timestamp('seen_at', { withTimezone: true }).notNull(),
+}, (t) => [
+  primaryKey({ columns: [t.observerPlayerId, t.targetPlanetId] }),
+  uniqueIndex('probe_world_memories_report_idx').on(t.reportId),
 ]);
 
 /** Telescope assignments. The target is NEVER told this row exists. */

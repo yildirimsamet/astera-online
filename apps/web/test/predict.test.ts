@@ -3,8 +3,12 @@ import {
   BUILD,
   HULLS,
   PROSPECTOR,
+  RESEARCH_MAX_LEVEL,
   RESEARCH_PROJECTS,
   instrumentCost,
+  groundSlots,
+  hangarCapacity,
+  hullBulk,
   satelliteCost,
   upgradeCost,
 } from '@astera/rules';
@@ -264,6 +268,43 @@ describe('predicting a build', () => {
     expect(predictBuild(second, 'PROSPECTOR', 1)).toBeNull();
   });
 
+  it('counts owned and queued ships against Hangar room', () => {
+    const capacity = hangarCapacity(0);
+    const nearlyFull = planetView(
+      {
+        buildings: {
+          CORE: 6, REFINERY: 2, EXTRACTOR: 2, VAULT: 0, SHIPYARD: 4, HANGAR: 0,
+        },
+        fleet: { WASP: capacity - hullBulk('WASP') },
+        capacity: { hangar: capacity, hangarUsed: capacity - 1, ground: groundSlots(6), groundUsed: 0 },
+      },
+      { alloy: 500_000, crystal: 500_000 },
+    );
+
+    const lastPlace = predictBuild(nearlyFull, 'WASP', 1);
+    expect(lastPlace).not.toBeNull();
+    expect(predictBuild(lastPlace!, 'WASP', 1)).toBeNull();
+    expect(predictBuild(nearlyFull, 'WASP', 2)).toBeNull();
+  });
+
+  it('keeps ground emplacements in their own capacity pool', () => {
+    const capacity = groundSlots(6);
+    const fullGround = planetView(
+      {
+        buildings: {
+          CORE: 6, REFINERY: 2, EXTRACTOR: 2, VAULT: 0, SHIPYARD: 4, HANGAR: 0,
+        },
+        ground: { THORN: Math.floor(capacity / hullBulk('THORN')) },
+        capacity: { hangar: hangarCapacity(0), hangarUsed: 0, ground: capacity, groundUsed: capacity },
+      },
+      { alloy: 500_000, crystal: 500_000 },
+    );
+
+    expect(predictBuild(fullGround, 'THORN', 1)).toBeNull();
+    // A full emplacement field does not consume Hangar room.
+    expect(predictBuild(fullGround, 'WASP', 1)).not.toBeNull();
+  });
+
   it('does not let a construction order unlock the independent yard queue', () => {
     const locked = planetView(
       {
@@ -435,6 +476,138 @@ describe('predicting research', () => {
     });
   });
 
+  /**
+   * A LADDER IS PRICED AT THE RUNG BEING BOUGHT, NOT AT ITS FIRST. T7 · T12.
+   *
+   * This prediction was written when every project was a permission, so it quoted
+   * `costAt(1)` and wrote `count: 1` unconditionally. T7 gave the projects levels
+   * and neither line moved: buying rung 3 of Cargo Holds predicted a rung-1 spend,
+   * which is a wallet on screen showing more money than the commander has until
+   * the server's answer corrects it. `predict only certain outcomes` (D53) — and
+   * the price of a rung is certain, so getting it wrong is not caution, it is a
+   * wrong number.
+   */
+  it('spends the price of the rung being bought, not the first one', () => {
+    const third = RESEARCH_PROJECTS.CARGO_HOLDS.costAt(3);
+    expect(third.alloy).not.toBe(RESEARCH_PROJECTS.CARGO_HOLDS.costAt(1).alloy);
+    const view = planetView(
+      {
+        buildings: { CORE: 6, REFINERY: 2, EXTRACTOR: 2, VAULT: 0, SHIPYARD: 4 },
+        research: planetView().research.map((project) => project.id === 'CARGO_HOLDS'
+          ? {
+              ...project,
+              level: 2,
+              maxLevel: RESEARCH_MAX_LEVEL.CARGO_HOLDS,
+              cost: third,
+              discovered: true,
+              available: true,
+              queueDiscovered: true,
+              queueAvailable: true,
+            }
+          : project),
+      },
+      { alloy: 500_000, crystal: 500_000, deuterium: 500_000 },
+    );
+
+    const after = predictResearch(view, 'CARGO_HOLDS');
+    expect(lastOrder(after, 'CONSTRUCTION')).toMatchObject({
+      kind: 'RESEARCH',
+      subject: 'CARGO_HOLDS',
+      // The order's `count` IS the rung, which is how the server records it.
+      count: 3,
+      cost: third,
+    });
+    expect(after?.planet.alloy).toBe(view.planet.alloy - third.alloy);
+  });
+
+  /**
+   * AND A RUNG ALREADY QUEUED DOES NOT FINISH THE LADDER. The projection kept a
+   * SET of project ids, so one queued rung marked the whole project held — which
+   * refused the next rung on the same world and told the hull gates that a ladder
+   * queued at level 1 was complete.
+   */
+  it('lets a second rung queue behind the first on the same world', () => {
+    const view = planetView(
+      {
+        buildings: { CORE: 6, REFINERY: 2, EXTRACTOR: 2, VAULT: 0, SHIPYARD: 4 },
+        research: planetView().research.map((project) => project.id === 'CARGO_HOLDS'
+          ? {
+              ...project,
+              level: 0,
+              maxLevel: RESEARCH_MAX_LEVEL.CARGO_HOLDS,
+              discovered: true,
+              available: true,
+              queueDiscovered: true,
+              queueAvailable: true,
+            }
+          : project),
+        queues: {
+          CONSTRUCTION: [{
+            id: 'queued-cargo',
+            queue: 'CONSTRUCTION',
+            slot: 0,
+            kind: 'RESEARCH',
+            subject: 'CARGO_HOLDS',
+            count: 1,
+            startedAt: new Date('2026-08-24T10:00:00.000Z'),
+            finishesAt: new Date('2026-08-24T10:01:00.000Z'),
+            cost: RESEARCH_PROJECTS.CARGO_HOLDS.costAt(1),
+          }],
+          YARD: [],
+        },
+      },
+      { alloy: 500_000, crystal: 500_000, deuterium: 500_000 },
+    );
+
+    const after = predictResearch(view, 'CARGO_HOLDS');
+    expect(lastOrder(after, 'CONSTRUCTION')).toMatchObject({
+      count: 2,
+      cost: RESEARCH_PROJECTS.CARGO_HOLDS.costAt(2),
+    });
+  });
+
+  it('refuses a rung above the ladder ceiling', () => {
+    const top = RESEARCH_MAX_LEVEL.CARGO_HOLDS;
+    const view = planetView(
+      {
+        buildings: { CORE: 6, REFINERY: 2, EXTRACTOR: 2, VAULT: 0, SHIPYARD: 4 },
+        research: planetView().research.map((project) => project.id === 'CARGO_HOLDS'
+          ? {
+              ...project,
+              level: top,
+              maxLevel: top,
+              completed: true,
+              discovered: true,
+              available: false,
+              queueDiscovered: true,
+              queueAvailable: false,
+            }
+          : project),
+      },
+      { alloy: 500_000, crystal: 500_000, deuterium: 500_000 },
+    );
+
+    expect(predictResearch(view, 'CARGO_HOLDS')).toBeNull();
+  });
+
+  /** A permission still behaves exactly as it did: one rung, and never a second. */
+  it('refuses a second purchase of a permission already held', () => {
+    const view = planetView(
+      {
+        buildings: { CORE: 6, REFINERY: 2, EXTRACTOR: 2, VAULT: 0, SHIPYARD: 4 },
+        research: planetView().research.map((project) => project.id === 'ISOTOPE_SPECTROMETRY'
+          ? {
+              ...project, level: 1, completed: true,
+              discovered: true, available: false, queueAvailable: false,
+            }
+          : project),
+      },
+      { alloy: 500_000, crystal: 500_000, deuterium: 500_000 },
+    );
+
+    expect(predictResearch(view, 'ISOTOPE_SPECTROMETRY')).toBeNull();
+  });
+
   it('queues a project unlocked by an earlier research order', () => {
     const base = planetView(
       {
@@ -452,7 +625,7 @@ describe('predicting research', () => {
             count: 1,
             startedAt: new Date('2026-08-24T10:00:00.000Z'),
             finishesAt: new Date('2026-08-24T10:01:00.000Z'),
-            cost: RESEARCH_PROJECTS.ISOTOPE_SPECTROMETRY.cost,
+            cost: RESEARCH_PROJECTS.ISOTOPE_SPECTROMETRY.costAt(1),
           }],
           YARD: [],
         },

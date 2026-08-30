@@ -2,12 +2,13 @@ import { eq } from 'drizzle-orm';
 import { pino } from 'pino';
 import { afterAll, afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { activeAsteroids, generateGalaxy } from '@astera/rules';
-import { buildOrders, planets, scheduledEvents } from '../src/db/schema.js';
+import { buildOrders, planets, scheduledEvents, watches } from '../src/db/schema.js';
 import { EventBus } from '../src/stream/bus.js';
 import { launchAttack } from '../src/services/mission.js';
 import { launchProbe } from '../src/services/intel.js';
 import { launchMining } from '../src/services/mining.js';
 import { buildUnits, installSatellite, raiseInstrument, upgradeBuilding } from '../src/services/build.js';
+import { fleetChangesWatch } from '../src/services/watchEvents.js';
 import { joinSeason } from '../src/services/player.js';
 import { EventWorker } from '../src/worker/loop.js';
 import { sweepStranded } from '../src/worker/abandon.js';
@@ -24,6 +25,13 @@ import {
 } from './helpers.js';
 
 const silent = pino({ level: 'silent' });
+
+describe('Telescope truth invalidations', () => {
+  it('ignores mining craft but includes every combat movement', () => {
+    expect(fleetChangesWatch({ PROSPECTOR: 2 })).toBe(false);
+    expect(fleetChangesWatch({ PROSPECTOR: 2, WASP: 1 })).toBe(true);
+  });
+});
 
 afterAll(async () => {
   const { close } = await testDb();
@@ -91,6 +99,28 @@ describe('the shard broadcast', () => {
     expect(heard).toContain('shard:launch');
   });
 
+  it('refreshes Telescope truth only for commanders watching the world that launched', async () => {
+    const observerKinds: string[] = [];
+    const nonObserverKinds: string[] = [];
+    const stopObserver = bus.subscribe(f.playerIds[0]!, (event) => observerKinds.push(event.kind));
+    const stopOther = bus.subscribe(f.playerIds[1]!, (event) => nonObserverKinds.push(event.kind));
+    await f.db.insert(watches).values({
+      observerPlayerId: f.playerIds[0]!,
+      observerPlanetId: f.planetIds[0]!,
+      slot: 0,
+      targetPlanetId: f.planetIds[1]!,
+    });
+    await giveUnits(f.db, f.planetIds[1]!, { WASP: 6 });
+
+    await launchAttack(f.db, f.planetIds[1]!, f.planetIds[0]!, { WASP: 5 }, f.clock);
+    await settle();
+
+    expect(observerKinds).toContain('private:sight');
+    expect(nonObserverKinds).not.toContain('private:sight');
+    stopObserver();
+    stopOther();
+  });
+
   it('announces a probe leaving — it is a contact like any other', async () => {
     await grant(f.db, f.planetIds[0]!, 5_000);
     await setLevel(f.db, f.planetIds[0]!, 'CORE', 6);
@@ -144,6 +174,14 @@ describe('the shard broadcast', () => {
    * other forty-nine people in the galaxy.
    */
   it('announces a raid resolving, to everybody and not just its attacker', async () => {
+    const watcherKinds: string[] = [];
+    const stopWatcher = bus.subscribe(f.playerIds[1]!, (event) => watcherKinds.push(event.kind));
+    await f.db.insert(watches).values({
+      observerPlayerId: f.playerIds[1]!,
+      observerPlanetId: f.planetIds[1]!,
+      slot: 0,
+      targetPlanetId: f.planetIds[0]!,
+    });
     await giveUnits(f.db, f.planetIds[0]!, { WASP: 6 });
     const { arriveAt } = await launchAttack(
       f.db,
@@ -153,7 +191,9 @@ describe('the shard broadcast', () => {
       f.clock,
     );
 
+    await settle();
     heard = [];
+    watcherKinds.length = 0;
     f.clock.set(new Date(arriveAt.getTime() + 60_000));
     const worker = new EventWorker(f.db, f.clock, { pollMs: 1000, batch: 100, staleMinutes: 5 }, silent);
     await worker.tick();
@@ -161,6 +201,8 @@ describe('the shard broadcast', () => {
     expect(heard).toContain('shard:arrival');
     expect(heard).toContain('shard:score');
     expect(heard).toContain('shard:chronicle');
+    expect(watcherKinds).toContain('private:sight');
+    stopWatcher();
   });
 
   it('announces a satellite going up — hardware in orbit is public', async () => {

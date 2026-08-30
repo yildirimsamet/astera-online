@@ -1,9 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import {
+  ALL_HULLS,
   COMBAT,
   DOMINION_TRANSFER_SCALE,
   GROUND_HULLS,
   HULLS,
+  NON_COMBATANT_HULLS,
   computeLoot,
   counterMult,
   deuteriumOf,
@@ -15,6 +17,7 @@ import {
   fleetCargo,
   fleetPower,
   fleetValue,
+  garrisonOf,
   mulberry32,
   resolveCombat,
   type HullId,
@@ -22,6 +25,8 @@ import {
 } from '../src/index.js';
 
 const rng = () => mulberry32(12345);
+/** Neither side has researched anything: the hull table's own numbers. */
+const NO_TECH = { attacker: {}, defender: {} };
 const flat = () => () => 0.5;
 
 describe('counter cycle', () => {
@@ -36,10 +41,10 @@ describe('counter cycle', () => {
    * actually works — an exchange the attacker wins, not one they walk.
    */
   it('Wasps break Bastions at a favourable exchange — the anti-turtle tool', () => {
-    const parity = resolveCombat({ WASP: 53 }, { BASTION: 4 }, 0, flat());
+    const parity = resolveCombat({ WASP: 53 }, { BASTION: 4 }, 0, flat(), NO_TECH);
     expect(parity.grade).toBe('PARTIAL');
 
-    const r = resolveCombat({ WASP: 70 }, { BASTION: 4 }, 0, flat());
+    const r = resolveCombat({ WASP: 70 }, { BASTION: 4 }, 0, flat(), NO_TECH);
     expect(r.grade).toBe('DECISIVE');
     expect(fleetValue(r.attackerLosses)).toBeLessThan(fleetValue(r.defenderLosses) / 2);
   });
@@ -55,18 +60,63 @@ describe('counter cycle', () => {
    * And one gun is not a wall: the swarm still clears it outright.
    */
   it('is overwhelmed by a Wasp swarm, but never for free', () => {
-    const r = resolveCombat({ WASP: 26 }, { BASTION: 1 }, 0, flat());
+    const r = resolveCombat({ WASP: 26 }, { BASTION: 1 }, 0, flat(), NO_TECH);
     expect(r.grade).toBe('DECISIVE');
     expect(fleetCount(r.attackerLosses)).toBeGreaterThan(0);
     expect(fleetCount(r.attackerLosses)).toBeLessThan(10);
   });
 
   it('Lances lose badly into Bastions', () => {
-    const wasps = resolveCombat({ WASP: 60 }, { BASTION: 4 }, 0, flat());
-    const lances = resolveCombat({ LANCE: 17 }, { BASTION: 4 }, 0, flat());
+    const wasps = resolveCombat({ WASP: 60 }, { BASTION: 4 }, 0, flat(), NO_TECH);
+    const lances = resolveCombat({ LANCE: 17 }, { BASTION: 4 }, 0, flat(), NO_TECH);
     // Roughly equal alloy spent, wildly different outcome.
     expect(fleetValue(lances.attackerLosses)).toBeGreaterThan(
       fleetValue(wasps.attackerLosses),
+    );
+  });
+
+  /**
+   * PLAYER COMPLAINT: 150 Lances lost about 35; 250 Lances later lost about 30
+   * against nearly the same board.
+   *
+   * That shape is not an inverted scaling bug. Fire is simultaneous, so every
+   * Lance on the board receives the defender's complete first salvo before any
+   * destroyed gun is removed. The larger formation earns its advantage in round
+   * two by removing more of that board in round one. A few added Wasps also matter:
+   * Wasps counter Lances at 1.6x.
+   */
+  it('reproduces the reported Lance losses as simultaneous fire, not larger-fleet punishment', () => {
+    const defence = { WASP: 10, BASTION: 10, THORN: 30 };
+    const small = resolveCombat({ LANCE: 150 }, defence, 0, flat(), NO_TECH);
+    const large = resolveCombat({ LANCE: 250 }, defence, 0, flat(), NO_TECH);
+
+    expect(small.rounds[0]?.attackerLosses.LANCE).toBe(25);
+    expect(large.rounds[0]?.attackerLosses.LANCE).toBe(25);
+    expect(fleetCount(small.attackerLosses)).toBe(34);
+    expect(fleetCount(large.attackerLosses)).toBe(29);
+    expect(fleetCount(large.attackerLosses)).toBeLessThan(
+      fleetCount(small.attackerLosses),
+    );
+  });
+
+  it('makes even a few defending Wasps visible in Lance casualties', () => {
+    const before = resolveCombat(
+      { LANCE: 250 },
+      { WASP: 10, BASTION: 10, THORN: 30 },
+      0,
+      flat(),
+      NO_TECH,
+    );
+    const after = resolveCombat(
+      { LANCE: 250 },
+      { WASP: 14, BASTION: 10, THORN: 30 },
+      0,
+      flat(),
+      NO_TECH,
+    );
+
+    expect(fleetCount(after.attackerLosses)).toBeGreaterThanOrEqual(
+      fleetCount(before.attackerLosses),
     );
   });
 });
@@ -127,7 +177,7 @@ describe('ground defence is a choice, not a quantity', () => {
         (a) => counterMult(HULLS[a].cls, HULLS[g].cls) === COMBAT.weakMult,
       )!;
       const hit = (a: MobileHullId) => {
-        const r = resolveCombat({ [a]: spend(a) }, { [g]: spend(g) }, 0, flat());
+        const r = resolveCombat({ [a]: spend(a) }, { [g]: spend(g) }, 0, flat(), NO_TECH);
         return fleetValue(r.defenderLosses) / Math.max(1, fleetValue(r.attackerLosses));
       };
       expect(hit(right), `${right} should beat ${g}`).toBeGreaterThan(hit(wrong));
@@ -153,7 +203,7 @@ describe('grading uses value, not power', () => {
     // Equal by power; nowhere near equal by what they cost.
     expect(fleetValue({ WASP: wasps })).toBeGreaterThan(fleetValue({ BASTION: 1 }) * 10);
 
-    const r = resolveCombat({ WASP: wasps }, { BASTION: 1 }, 0, flat());
+    const r = resolveCombat({ WASP: wasps }, { BASTION: 1 }, 0, flat(), NO_TECH);
     expect(r.grade).toBe('DECISIVE');
   });
 });
@@ -164,23 +214,23 @@ describe('support hulls', () => {
    * so attackers arrived with no cargo and raiding could not pay for itself.
    */
   it('survive while escorted', () => {
-    const r = resolveCombat({ WASP: 80, HAULER: 10 }, { BASTION: 2 }, 0, flat());
+    const r = resolveCombat({ WASP: 80, HAULER: 10 }, { BASTION: 2 }, 0, flat(), NO_TECH);
     expect(r.attackerLosses.HAULER ?? 0).toBe(0);
   });
 
   it('are exposed once the escort is gone', () => {
-    const r = resolveCombat({ HAULER: 10 }, { BASTION: 6 }, 0, flat());
+    const r = resolveCombat({ HAULER: 10 }, { BASTION: 6 }, 0, flat(), NO_TECH);
     expect(r.attackerLosses.HAULER ?? 0).toBeGreaterThan(0);
   });
 
   it('contribute no damage', () => {
-    const escorted = resolveCombat({ WASP: 30, HAULER: 20 }, { BASTION: 3 }, 0, flat());
-    const alone = resolveCombat({ WASP: 30 }, { BASTION: 3 }, 0, flat());
+    const escorted = resolveCombat({ WASP: 30, HAULER: 20 }, { BASTION: 3 }, 0, flat(), NO_TECH);
+    const alone = resolveCombat({ WASP: 30 }, { BASTION: 3 }, 0, flat(), NO_TECH);
     expect(escorted.defenderLossValue).toBe(alone.defenderLossValue);
   });
 
   it('keeps Haulers untouched in an escorted round, then exposes them after the escort dies', () => {
-    const r = resolveCombat({ WASP: 1, HAULER: 10 }, { BASTION: 20 }, 0, flat());
+    const r = resolveCombat({ WASP: 1, HAULER: 10 }, { BASTION: 20 }, 0, flat(), NO_TECH);
     expect(r.rounds[0]?.attackerLosses.HAULER ?? 0).toBe(0);
     expect(r.rounds.slice(1).some((round) => (round.attackerLosses.HAULER ?? 0) > 0)).toBe(true);
   });
@@ -189,7 +239,7 @@ describe('support hulls', () => {
 describe('combat cargo', () => {
   it('adds mixed-fleet capacity from every surviving combat hull', () => {
     const fleet = { WASP: 2, LANCE: 3, BULWARK: 4, HAULER: 1 } as const;
-    expect(fleetCargo(fleet)).toBe(
+    expect(fleetCargo(fleet, {})).toBe(
       2 * HULLS.WASP.cargo
       + 3 * HULLS.LANCE.cargo
       + 4 * HULLS.BULWARK.cargo
@@ -199,8 +249,51 @@ describe('combat cargo', () => {
 });
 
 describe('shields', () => {
+  /**
+   * A REPORT MUST BE ABLE TO REPLAY THE CALCULATION, NOT JUST NAME ITS TOTAL.
+   *
+   * The resolver used to keep the roll and the shield's before/after values only
+   * in local variables. A player could see that Aegis absorbed 500, but not
+   * whether 500 remained, 500 broke it, or how much ordinary fire reached hulls.
+   * These are immutable facts of each round and belong in its telemetry.
+   */
+  it('records the roll and complete shield-to-hull path for every round', () => {
+    const r = resolveCombat({ WASP: 20 }, { BASTION: 2 }, 500, flat(), NO_TECH);
+
+    expect(r.rounds.length).toBeGreaterThan(0);
+    for (const [index, round] of r.rounds.entries()) {
+      expect(round.attackerRoll).toBe(1);
+      expect(round.defenderRoll).toBe(1);
+      expect(typeof round.shieldBefore).toBe('number');
+      expect(typeof round.shieldAfter).toBe('number');
+      expect(typeof round.attackerHullDamage).toBe('number');
+      if (index > 0) {
+        expect(round.shieldBefore).toBe(r.rounds[index - 1]!.shieldAfter);
+      }
+      expect(round.shieldBefore! - round.shieldAfter!).toBe(round.shieldAbsorbed);
+    }
+    expect(r.rounds.at(-1)!.shieldAfter).toBe(r.shieldLeft);
+  });
+
+  it('records that all ordinary fire reaches hulls when there is no active shield', () => {
+    const r = resolveCombat({ WASP: 20 }, { BASTION: 2 }, 0, flat(), NO_TECH);
+    const [round] = r.rounds;
+
+    expect(round).toMatchObject({ shieldBefore: 0, shieldAfter: 0 });
+    expect(round!.attackerHullDamage).toBe(round!.attackerDamage);
+  });
+
+  it('separates Breacher shield-only damage from ordinary fire that reaches hulls', () => {
+    const r = resolveCombat({ BREACHER: 4 }, { BASTION: 1 }, 100, flat(), NO_TECH);
+    const [round] = r.rounds;
+
+    expect(round!.breacherShieldDamage).toBeGreaterThan(0);
+    expect(round!.attackerHullDamage! + round!.shieldAbsorbed - round!.breacherShieldDamage)
+      .toBeCloseTo(round!.attackerDamage, 0);
+  });
+
   it('absorb the whole assault when large enough', () => {
-    const r = resolveCombat({ WASP: 20 }, { BASTION: 2 }, 100_000, flat());
+    const r = resolveCombat({ WASP: 20 }, { BASTION: 2 }, 100_000, flat(), NO_TECH);
     expect(r.grade).toBe('REPELLED');
     expect(fleetCount(r.defenderLosses)).toBe(0);
     expect(r.shieldLeft).toBeGreaterThan(0);
@@ -208,7 +301,7 @@ describe('shields', () => {
 
   describe('Breacher', () => {
     it('records shield-only bonus damage and can break a bare Aegis', () => {
-      const r = resolveCombat({ BREACHER: 1 }, {}, 100, flat());
+      const r = resolveCombat({ BREACHER: 1 }, {}, 100, flat(), NO_TECH);
       expect(r.grade).toBe('DECISIVE');
       expect(r.shieldLeft).toBe(0);
       expect(r.rounds.reduce((sum, round) => sum + round.shieldAbsorbed, 0)).toBe(100);
@@ -216,13 +309,13 @@ describe('shields', () => {
     });
 
     it('has no bonus at all when there is no shield', () => {
-      const r = resolveCombat({ BREACHER: 4 }, { BASTION: 1 }, 0, flat());
+      const r = resolveCombat({ BREACHER: 4 }, { BASTION: 1 }, 0, flat(), NO_TECH);
       expect(r.rounds.every((round) => round.breacherShieldDamage === 0)).toBe(true);
     });
 
     it('never spills bonus overkill into units', () => {
-      const withoutShield = resolveCombat({ BREACHER: 4 }, { BASTION: 1 }, 0, flat());
-      const almostEmptyShield = resolveCombat({ BREACHER: 4 }, { BASTION: 1 }, 1, flat());
+      const withoutShield = resolveCombat({ BREACHER: 4 }, { BASTION: 1 }, 0, flat(), NO_TECH);
+      const almostEmptyShield = resolveCombat({ BREACHER: 4 }, { BASTION: 1 }, 1, flat(), NO_TECH);
       expect(almostEmptyShield.defenderSurvivors).toEqual(withoutShield.defenderSurvivors);
       expect(almostEmptyShield.defenderLosses).toEqual(withoutShield.defenderLosses);
       expect(almostEmptyShield.rounds[0]?.breacherShieldDamage).toBe(1);
@@ -232,19 +325,19 @@ describe('shields', () => {
 
 describe('defence salvage', () => {
   it('rebuilds 60% of destroyed turrets', () => {
-    const r = resolveCombat({ WASP: 200 }, { BASTION: 10 }, 0, flat());
+    const r = resolveCombat({ WASP: 200 }, { BASTION: 10 }, 0, flat(), NO_TECH);
     expect(r.defenderLosses.BASTION).toBe(10);
     expect(r.defenceSalvage.BASTION).toBe(6);
   });
 
   it('excludes salvaged units from scored value', () => {
-    const r = resolveCombat({ WASP: 200 }, { BASTION: 10 }, 0, flat());
+    const r = resolveCombat({ WASP: 200 }, { BASTION: 10 }, 0, flat(), NO_TECH);
     expect(r.defenderLossValue).toBeLessThan(fleetValue(r.defenderLosses));
     expect(r.defenderLossValue).toBeGreaterThanOrEqual(0);
   });
 
   it('never salvages mobile hulls', () => {
-    const r = resolveCombat({ WASP: 200 }, { WASP: 10 }, 0, flat());
+    const r = resolveCombat({ WASP: 200 }, { WASP: 10 }, 0, flat(), NO_TECH);
     expect(r.defenceSalvage.WASP).toBeUndefined();
   });
 });
@@ -252,9 +345,9 @@ describe('defence salvage', () => {
 describe('outcome grades', () => {
   it('produces all three across a spread of matchups', () => {
     const grades = new Set([
-      resolveCombat({ WASP: 400 }, { BASTION: 2 }, 0, rng()).grade,
-      resolveCombat({ WASP: 46 }, { BASTION: 4 }, 0, rng()).grade,
-      resolveCombat({ WASP: 5 }, { BASTION: 10 }, 0, rng()).grade,
+      resolveCombat({ WASP: 400 }, { BASTION: 2 }, 0, rng(), NO_TECH).grade,
+      resolveCombat({ WASP: 46 }, { BASTION: 4 }, 0, rng(), NO_TECH).grade,
+      resolveCombat({ WASP: 5 }, { BASTION: 10 }, 0, rng(), NO_TECH).grade,
     ]);
     expect(grades.has('DECISIVE')).toBe(true);
     expect(grades.has('REPELLED')).toBe(true);
@@ -262,7 +355,7 @@ describe('outcome grades', () => {
 
   it('is low-variance — intel must beat luck', () => {
     const results = Array.from({ length: 200 }, (_, i) =>
-      resolveCombat({ WASP: 60 }, { BASTION: 3 }, 0, mulberry32(i)),
+      resolveCombat({ WASP: 60 }, { BASTION: 3 }, 0, mulberry32(i), NO_TECH),
     );
     const losses = results.map((r) => fleetCount(r.attackerLosses));
     const spread = Math.max(...losses) - Math.min(...losses);
@@ -448,7 +541,7 @@ describe('dominion', () => {
   it('sums to exactly zero across a battle', () => {
     const atk = emptyLedger();
     const def = emptyLedger();
-    const r = resolveCombat({ WASP: 90, HAULER: 6 }, { BASTION: 4, WASP: 20 }, 0, rng());
+    const r = resolveCombat({ WASP: 90, HAULER: 6 }, { BASTION: 4, WASP: 20 }, 0, rng(), NO_TECH);
     bookBattle(atk, def, 12_000, r);
     expect(dominion(atk) + dominion(def)).toBe(0);
   });
@@ -456,7 +549,7 @@ describe('dominion', () => {
   it('rewards a defender who repels an attack', () => {
     const atk = emptyLedger();
     const def = emptyLedger();
-    const r = resolveCombat({ WASP: 8 }, { BASTION: 12 }, 0, rng());
+    const r = resolveCombat({ WASP: 8 }, { BASTION: 12 }, 0, rng(), NO_TECH);
     bookBattle(atk, def, 0, r);
     expect(dominion(def)).toBeGreaterThan(0);
     expect(dominion(atk)).toBeLessThan(0);
@@ -474,7 +567,7 @@ describe('dominion', () => {
   it('books only the bounded transfer into the ledgers', () => {
     const atk = emptyLedger();
     const def = emptyLedger();
-    const result = resolveCombat({ WASP: 1 }, {}, 0, rng());
+    const result = resolveCombat({ WASP: 1 }, {}, 0, rng(), NO_TECH);
 
     const transfer = bookBattle(atk, def, 1_000_000, result);
 
@@ -486,7 +579,7 @@ describe('dominion', () => {
   it('keeps legacy ledger totals and applies the bound only to the new battle', () => {
     const challenger = emptyLedger();
     const incumbent = { taken: 100_000, lost: 0 };
-    const result = resolveCombat({ WASP: 1 }, {}, 0, rng());
+    const result = resolveCombat({ WASP: 1 }, {}, 0, rng(), NO_TECH);
 
     bookBattle(challenger, incumbent, 1_000_000, result);
 
@@ -496,5 +589,61 @@ describe('dominion', () => {
 
   it('is zero for a player who never fights', () => {
     expect(dominion(emptyLedger())).toBe(0);
+  });
+});
+
+/**
+ * WHAT A RAID ACTUALLY MEETS. T2.
+ *
+ * The defending line used to be "everything standing on the planet", which put
+ * the mining craft in it. Both surfaces that resolve a battle — the player raid
+ * and the neutral raid — build their defenders through this one function, so a
+ * craft can never be pulled into a fight on one path and spared on the other.
+ */
+describe('the garrison', () => {
+  it('leaves the mining craft out of the defending line', () => {
+    expect(garrisonOf({ WASP: 4, PROSPECTOR: 2 }, {})).toEqual({ WASP: 4 });
+  });
+
+  it('keeps every fighting hull that is standing at home', () => {
+    expect(garrisonOf({ WASP: 4, HAULER: 1, BREACHER: 2 }, {})).toEqual({
+      WASP: 4,
+      HAULER: 1,
+      BREACHER: 2,
+    });
+  });
+
+  it('puts the emplacements in the line beside them', () => {
+    expect(garrisonOf({ WASP: 4 }, { BASTION: 3, THORN: 5 })).toEqual({
+      WASP: 4,
+      BASTION: 3,
+      THORN: 5,
+    });
+  });
+
+  /** A world with only miners on it defends with nothing, and says so. */
+  it('leaves a world of miners with no defence at all', () => {
+    expect(garrisonOf({ PROSPECTOR: 2 }, {})).toEqual({});
+    expect(fleetCount(garrisonOf({ PROSPECTOR: 2 }, {}))).toBe(0);
+  });
+
+  it('defends an empty world with nothing', () => {
+    expect(garrisonOf({}, {})).toEqual({});
+  });
+
+  /**
+   * Derived from the list rather than from the word PROSPECTOR, so a second
+   * civilian craft is excluded the day it is added rather than the day somebody
+   * notices it is fighting.
+   */
+  it('excludes every hull the list names, and only those', () => {
+    expect(NON_COMBATANT_HULLS).toContain('PROSPECTOR');
+    const line = garrisonOf(
+      Object.fromEntries(ALL_HULLS.filter((id) => !HULLS[id].ground).map((id) => [id, 1])),
+      Object.fromEntries(GROUND_HULLS.map((id) => [id, 1])),
+    );
+    for (const id of ALL_HULLS) {
+      expect(Object.hasOwn(line, id)).toBe(!NON_COMBATANT_HULLS.includes(id));
+    }
   });
 });

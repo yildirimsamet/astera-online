@@ -24,16 +24,20 @@ import {
   neutralPlanetState,
   planets,
   planetResearch,
+  playerResearch,
   players,
   probeReports,
+  probeWorldMemories,
   requestLog,
   rewardGrants,
   satellites,
+  sensorEpochs,
   scanEvents,
   scheduledEvents,
   seasons,
   strategicAssets,
   strategicImpacts,
+  strategicInterceptions,
   units,
   watches,
 } from '../db/schema.js';
@@ -286,6 +290,12 @@ async function demolish(
     .delete(watches)
     .where(or(eq(watches.observerPlayerId, playerId), inArray(watches.targetPlanetId, planetIds)));
   await tx
+    .delete(probeWorldMemories)
+    .where(or(
+      eq(probeWorldMemories.observerPlayerId, playerId),
+      inArray(probeWorldMemories.targetPlanetId, planetIds),
+    ));
+  await tx
     .delete(probeReports)
     .where(
       or(eq(probeReports.observerPlayerId, playerId), inArray(probeReports.targetPlanetId, planetIds)),
@@ -293,6 +303,12 @@ async function demolish(
   await tx
     .delete(scanEvents)
     .where(or(inArray(scanEvents.targetPlanetId, planetIds), inArray(scanEvents.originPlanetId, planetIds)));
+  await tx
+    .delete(strategicInterceptions)
+    .where(or(
+      eq(strategicInterceptions.attackerPlayerId, playerId),
+      eq(strategicInterceptions.defenderPlayerId, playerId),
+    ));
   await tx
     .delete(strategicImpacts)
     .where(
@@ -346,10 +362,20 @@ async function demolish(
     eq(units.ownerPlayerId, playerId),
   ));
   await tx.delete(satellites).where(inArray(satellites.planetId, planetIds));
+  await tx.delete(sensorEpochs).where(inArray(sensorEpochs.planetId, planetIds));
   await tx.delete(buildings).where(inArray(buildings.planetId, planetIds));
   await tx.delete(planetResearch).where(inArray(planetResearch.planetId, planetIds));
   await tx.delete(neutralPlanetState).where(inArray(neutralPlanetState.planetId, planetIds));
   await tx.delete(planets).where(inArray(planets.id, planetIds));
+  /*
+    BEFORE THE PLAYER ROW, AND THAT ORDER IS THE WHOLE POINT. T7.
+
+    `player_research` references `players.id`, so deleting the commander first is a
+    foreign-key violation — and this function is what reclaims an idle seat, so the
+    failure mode is a galaxy that can never be reopened. The row above it is keyed
+    on the planet and the one below is the commander themself; this belongs between.
+  */
+  await tx.delete(playerResearch).where(eq(playerResearch.playerId, playerId));
   await tx.delete(players).where(eq(players.id, playerId));
 }
 

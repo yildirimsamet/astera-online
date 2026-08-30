@@ -27,6 +27,8 @@ const world = (over: Partial<GalaxyPlanet> = {}): GalaxyPlanet => ({
   position: { x: 0, y: 0, z: 0 },
   coreTier: 5,
   coreLevel: 12,
+  intel: 'RESOLVED' as const,
+  state: { kind: 'NORMAL' as const },
   satellites: [],
   shielded: false,
   isSelf: false,

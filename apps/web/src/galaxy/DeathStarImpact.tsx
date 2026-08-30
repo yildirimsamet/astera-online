@@ -5,7 +5,13 @@ import { DEATH_STAR } from '@astera/rules';
 import type { Contact, PendingThread } from '../api/schemas.js';
 import { serverNow } from '../lib/clock.js';
 import { FullRate } from './frames.jsx';
-import { ringTexture, fireTexture, smokeTexture, sparkTexture } from './vfx.js';
+import {
+  ringTexture,
+  fireTexture,
+  publicEffectIntensity,
+  smokeTexture,
+  sparkTexture,
+} from './vfx.js';
 import { toWorld, type PlanetNode, type Vec3Tuple } from './scene.js';
 
 /** Long enough to read as an event, short enough not to obscure the next decision. */
@@ -16,6 +22,7 @@ export interface DeathStarImpactEvent {
   at: number;
   position: Vec3Tuple;
   radius: number;
+  intensity: number;
 }
 
 /** The clock, rather than a timer callback, decides whether the event exists. */
@@ -27,8 +34,20 @@ export function mergeRetainedDeathStarImpacts(
   candidates: readonly DeathStarImpactEvent[],
   now: number,
 ): DeathStarImpactEvent[] {
-  const merged = new Map(current.map((event) => [event.id, event]));
-  for (const event of candidates) merged.set(event.id, event);
+  const merged = new Map(candidates.map((event) => [event.id, event]));
+  for (const event of current) {
+    /*
+      A future candidate disappearing is a cancellation, not an impact refetch.
+
+      The owner can schedule the target blast from their pending Death Star before
+      it arrives. If an interceptor destroys it, that pending row disappears while
+      the original arrival is still in the future. Retaining it here manufactured
+      a planet explosion at that old arrival time. A real strike disappears only
+      once its authoritative impact has begun, which is the one case retention is
+      for: keep those live frames through the resolving refetch.
+    */
+    if (event.at <= now && !merged.has(event.id)) merged.set(event.id, event);
+  }
   return [...merged.values()]
     .filter((event) => event.at + DEATH_STAR_IMPACT_MS > now)
     .sort((a, b) => a.at - b.at || a.id.localeCompare(b.id));
@@ -62,14 +81,19 @@ export function deathStarImpactCandidates(
   nodes: readonly PlanetNode[],
 ): DeathStarImpactEvent[] {
   const events = new Map<string, DeathStarImpactEvent>();
+  const add = (event: DeathStarImpactEvent): void => {
+    const current = events.get(event.id);
+    if (!current || event.intensity >= current.intensity) events.set(event.id, event);
+  };
   for (const thread of pending) {
     if (thread.kind !== 'death_star' || thread.leg === 'return' || !thread.id || !thread.path) continue;
     const position = toWorld(thread.path.to);
-    events.set(thread.id, {
+    add({
       id: thread.id,
       at: thread.path.arriveAt.getTime(),
       position,
       radius: radiusAt(position, nodes),
+      intensity: 1,
     });
   }
   /**
@@ -82,15 +106,16 @@ export function deathStarImpactCandidates(
    * this effect the attacker's private cinema: only a client that happened to hold
    * the final window could reconstruct it at all, and it drew the blast wherever
    * that window happened to stop.
-   */
+  */
   for (const contact of contacts) {
-    if (contact.kind !== 'death_star' || !contact.impact) continue;
+    if (!contact.impact) continue;
     const position = toWorld(contact.impact.target);
-    events.set(contact.id, {
+    add({
       id: contact.id,
       at: contact.impact.at.getTime(),
       position,
       radius: radiusAt(position, nodes),
+      intensity: publicEffectIntensity(contact.effectOnly === true),
     });
   }
   return [...events.values()].sort((a, b) => a.at - b.at || a.id.localeCompare(b.id));
@@ -143,7 +168,7 @@ export function DeathStarImpacts({
   );
 }
 
-function TimedImpact({ event }: { event: DeathStarImpactEvent }) {
+export function TimedImpact({ event }: { event: DeathStarImpactEvent }) {
   const [active, setActive] = useState(() => isDeathStarImpactVisible(event.at, serverNow()));
 
   useEffect(() => {
@@ -230,7 +255,7 @@ function Impact({ event }: { event: DeathStarImpactEvent }) {
     if (core.current) {
       const size = event.radius * (0.7 + pulse * 4.6);
       core.current.scale.set(size, size, 1);
-      core.current.material.opacity = Math.max(0, 1 - elapsed * 3.7);
+      core.current.material.opacity = Math.max(0, 1 - elapsed * 3.7) * event.intensity;
     }
     for (const [i, sprite] of rings.current.entries()) {
       if (!sprite) continue;
@@ -239,7 +264,9 @@ function Impact({ event }: { event: DeathStarImpactEvent }) {
       const size = event.radius * (0.9 + progress * (4.7 + i * 0.75));
       sprite.visible = elapsed >= offset && progress < 1;
       sprite.scale.set(size, size, 1);
-      sprite.material.opacity = Math.sin(progress * Math.PI) * (0.56 - i * 0.17);
+      sprite.material.opacity = Math.sin(progress * Math.PI)
+        * (0.56 - i * 0.17)
+        * event.intensity;
     }
     lobes.forEach((lobe, i) => {
       const sprite = fireballs.current[i];
@@ -257,7 +284,9 @@ function Impact({ event }: { event: DeathStarImpactEvent }) {
       );
       const size = event.radius * lobe.size * (0.26 + Math.sin(progress * Math.PI) * 0.92);
       sprite.scale.set(size, size, 1);
-      sprite.material.opacity = visible ? Math.sin(progress * Math.PI) * 0.88 : 0;
+      sprite.material.opacity = visible
+        ? Math.sin(progress * Math.PI) * 0.88 * event.intensity
+        : 0;
     });
     lobes.slice(0, 9).forEach((lobe, i) => {
       const sprite = smokeClouds.current[i];
@@ -274,15 +303,18 @@ function Impact({ event }: { event: DeathStarImpactEvent }) {
       const size = event.radius * lobe.size * (0.72 + progress * 2.4);
       sprite.scale.set(size, size, 1);
       sprite.material.rotation = i * 0.79 + progress * (i % 2 === 0 ? 0.35 : -0.35);
-      sprite.material.opacity = Math.sin(progress * Math.PI) * 0.54;
+      sprite.material.opacity = Math.sin(progress * Math.PI) * 0.54 * event.intensity;
     });
     if (shell.current) {
       const progress = Math.min(1, elapsed / 0.18);
       shell.current.scale.setScalar(event.radius * (1.01 + progress * 0.12));
       const material = shell.current.material as THREE.MeshBasicMaterial;
-      material.opacity = Math.max(0, (1 - progress) * 0.52);
+      material.opacity = Math.max(0, (1 - progress) * 0.52) * event.intensity;
     }
-    if (light.current) light.current.intensity = Math.max(0, 52 * (1 - elapsed * 2.4) ** 3);
+    if (light.current) {
+      light.current.intensity = Math.max(0, 52 * (1 - elapsed * 2.4) ** 3)
+        * event.intensity;
+    }
   });
 
   return (
@@ -379,7 +411,7 @@ function ImpactDebris({ event }: { event: DeathStarImpactEvent }) {
       );
     });
     position.needsUpdate = true;
-    material.opacity = Math.max(0, 1 - elapsed / 6.3);
+    material.opacity = Math.max(0, 1 - elapsed / 6.3) * event.intensity;
     if (points.current) points.current.visible = elapsed < DEATH_STAR_IMPACT_MS / 1_000;
   });
 

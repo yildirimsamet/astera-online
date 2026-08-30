@@ -1,8 +1,49 @@
 import { act, renderHook } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { engagementEndsAt } from '@astera/rules';
-import { useEngagement, useStrikeConsumed } from '../src/galaxy/Fleets.js';
+import type { Contact } from '../src/api/schemas.js';
+import {
+  concealedEngagementDirection,
+  contactPresentation,
+  useEngagement,
+  useStrikeConsumed,
+} from '../src/galaxy/Fleets.js';
+import { bombardmentIntensity } from '../src/galaxy/Bombardment.js';
 import { resetClock } from '../src/lib/clock.js';
+
+describe('the public battle without public craft intel', () => {
+  const contact = (effectOnly?: true): Contact => ({
+    id: 'raid-opaque-id',
+    kind: effectOnly ? 'unknown' : 'fleet',
+    from: { x: 600, y: 0, z: 0 },
+    to: { x: 600, y: 0, z: 0 },
+    startAt: new Date('2026-04-01T12:00:00.000Z'),
+    endAt: new Date('2026-04-01T12:00:10.000Z'),
+    ...(effectOnly ? { effectOnly } : {}),
+    engagement: {
+      arriveAt: new Date('2026-04-01T12:00:00.000Z'),
+      endsAt: new Date('2026-04-01T12:00:10.000Z'),
+      target: { x: 600, y: 0, z: 0 },
+    },
+  });
+
+  it('mounts only the effect branch when the server withheld the squadron', () => {
+    expect(contactPresentation(contact(true))).toBe('effect');
+    expect(contactPresentation(contact())).toBe('craft');
+  });
+
+  it('dims only a blind public bombardment, not one inside sensor reach', () => {
+    expect(bombardmentIntensity(true)).toBe(0.35);
+    expect(bombardmentIntensity(false)).toBe(1);
+  });
+
+  it('uses a stable unit firing direction derived only from the opaque event id', () => {
+    const first = concealedEngagementDirection('raid-opaque-id');
+    expect(concealedEngagementDirection('raid-opaque-id')).toEqual(first);
+    expect(concealedEngagementDirection('another-raid')).not.toEqual(first);
+    expect(Math.hypot(...first)).toBeCloseTo(1, 10);
+  });
+});
 
 /**
  * THE TEN SECONDS THAT DECIDE WHETHER A BOMBARDMENT EXISTS. D44, D72.

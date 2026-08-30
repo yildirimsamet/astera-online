@@ -1,5 +1,5 @@
 import { and, desc, eq, inArray, or } from 'drizzle-orm';
-import { deuteriumOf, type CombatRound, type Fleet, type Grade } from '@astera/rules';
+import { deuteriumOf, type CombatRound, type Fleet, type Grade, type Resources } from '@astera/rules';
 import type { Db, Tx } from '../db/client.js';
 import {
   accounts,
@@ -10,6 +10,9 @@ import {
   planets,
   players,
   strategicImpacts,
+  strategicInterceptions,
+  type StrategicDestroyedOrder,
+  type StrategicLevelChange,
 } from '../db/schema.js';
 
 /**
@@ -40,11 +43,14 @@ import {
  */
 
 export interface BattleReportView {
+  kind: 'BATTLE';
   id: string;
+  /** Mission identity links the notification that announced this fight to its report. */
+  missionId: string;
   at: Date;
   grade: Grade;
-  /** The blow-by-blow. Damage each way, shield absorbed, and who died when. */
-  rounds: CombatRound[];
+  /** The blow-by-blow. Null calculation fields identify a report from before D121a telemetry. */
+  rounds: BattleReportRoundView[];
   /** True when the caller was the one who launched. */
   attacking: boolean;
   opponentName: string;
@@ -93,6 +99,9 @@ export interface BattleReportView {
   dominion: number | null;
   /** Damage the defender's Aegis soaked before anything reached a hull. Both sides watched it. */
   shieldAbsorbed: number;
+  /** Immutable Aegis charge at contact and after the last round; null on legacy reports. */
+  shieldBefore: number | null;
+  shieldAfter: number | null;
   /**
    * The attacker's holds, not the defender's stock, capped the haul. D94.
    *
@@ -121,6 +130,41 @@ export interface BattleReportView {
   defenderClan: { id: string; name: string; tag: string } | null;
 }
 
+type BattleReportRoundView = Omit<
+  CombatRound,
+  'attackerRoll' | 'defenderRoll' | 'shieldBefore' | 'shieldAfter' | 'attackerHullDamage'
+> & {
+  attackerRoll: number | null;
+  defenderRoll: number | null;
+  shieldBefore: number | null;
+  shieldAfter: number | null;
+  attackerHullDamage: number | null;
+};
+
+export interface StrategicReportView {
+  kind: 'STRATEGIC';
+  id: string;
+  missionId: string;
+  at: Date;
+  attacking: boolean;
+  opponentName: string;
+  opponentPlanet: string;
+  opponentPlanetId: string | null;
+  yourPlanet: string;
+  outcome: 'FIRST_STRIKE' | 'CAPTURED' | 'INEFFECTIVE' | 'INTERCEPTED';
+  damage: number;
+  destroyedFleet: Fleet;
+  destroyedResources: Resources;
+  levelChanges: StrategicLevelChange[];
+  destroyedOrders: StrategicDestroyedOrder[];
+  shieldDestroyed: number;
+  trigger: 'RADAR' | 'TELESCOPE' | null;
+  attackerClan: null;
+  defenderClan: null;
+}
+
+export type ReportView = BattleReportView | StrategicReportView;
+
 export interface RivalSummaryView {
   planetId: string;
   playerId: string;
@@ -139,7 +183,7 @@ export async function readBattleReports(
   db: Db,
   playerId: string,
   limit = 20,
-): Promise<{ reports: BattleReportView[]; rivals: RivalSummaryView[] }> {
+): Promise<{ reports: ReportView[]; rivals: RivalSummaryView[] }> {
   return db.transaction(
     (tx) => readBattleReportsIn(tx, playerId, limit),
     { isolationLevel: 'repeatable read', accessMode: 'read only' },
@@ -150,7 +194,7 @@ async function readBattleReportsIn(
   tx: Tx,
   playerId: string,
   limit: number,
-): Promise<{ reports: BattleReportView[]; rivals: RivalSummaryView[] }> {
+): Promise<{ reports: ReportView[]; rivals: RivalSummaryView[] }> {
   const mine = or(
     eq(battleReports.attackerPlayerId, playerId),
     eq(battleReports.defenderPlayerId, playerId),
@@ -260,17 +304,22 @@ async function readBattleReportsIn(
    * the mission's origin, which is why the launch rows are read here.
    */
   const originByMission = rows.length === 0
-    ? new Map<string, string>()
-    : new Map(
+    && impacts.length === 0
+      ? new Map<string, string>()
+      : new Map(
         (await tx
           .select({ id: missions.id, originPlanetId: missions.originPlanetId })
           .from(missions)
-          .where(inArray(missions.id, rows.map((row) => row.missionId))))
+          .where(inArray(missions.id, [
+            ...rows.map((row) => row.missionId),
+            ...impacts.map((row) => row.missionId),
+          ])))
           .map((row) => [row.id, row.originPlanetId]),
       );
 
   const named = [...new Set([
     ...rows.map((row) => row.targetPlanetId),
+    ...impacts.map((row) => row.targetPlanetId),
     ...originByMission.values(),
   ])];
   const worldNames = named.length === 0
@@ -301,20 +350,32 @@ async function readBattleReportsIn(
     const dominion =
       row.dominionSwing === null ? null : attacking ? row.dominionSwing : -row.dominionSwing;
     const commitment = commitmentByMission.get(row.missionId);
+    const rounds: BattleReportRoundView[] = row.rounds.map((round) => ({
+      ...round,
+      // JSON reports are immutable. Missing means the battle predates detailed
+      // calculation telemetry; null is honest where reconstructing would guess.
+      attackerRoll: round.attackerRoll ?? null,
+      defenderRoll: round.defenderRoll ?? null,
+      shieldBefore: round.shieldBefore ?? null,
+      shieldAfter: round.shieldAfter ?? null,
+      attackerHullDamage: round.attackerHullDamage ?? null,
+      // JSON reports written before D95 have no specialist field.
+      breacherShieldDamage:
+        (
+          round as Omit<CombatRound, 'breacherShieldDamage'> &
+            Partial<Pick<CombatRound, 'breacherShieldDamage'>>
+        ).breacherShieldDamage ?? 0,
+    }));
+    const firstRound = rounds[0];
+    const lastRound = rounds.at(-1);
 
     return {
+      kind: 'BATTLE',
       id: row.id,
+      missionId: row.missionId,
       at: row.createdAt,
       grade: row.grade,
-      rounds: row.rounds.map((round) => ({
-        ...round,
-        // JSON reports written before D95 have no specialist field.
-        breacherShieldDamage:
-          (
-            round as Omit<CombatRound, 'breacherShieldDamage'> &
-              Partial<Pick<CombatRound, 'breacherShieldDamage'>>
-          ).breacherShieldDamage ?? 0,
-      })),
+      rounds,
       attacking,
       opponentName: opponent?.name ?? 'someone',
       /*
@@ -343,6 +404,8 @@ async function readBattleReportsIn(
       lootDeuterium: attacking ? deuteriumOf(row.loot) : -deuteriumOf(row.loot),
       dominion,
       shieldAbsorbed: row.shieldAbsorbed,
+      shieldBefore: firstRound?.shieldBefore ?? null,
+      shieldAfter: lastRound?.shieldAfter ?? null,
       // Two facts that belong to ONE side, so the other is told nothing rather
       // than handed a figure about somebody else's fleet or somebody else's guns.
       cargoLimited: attacking && row.cargoLimited,
@@ -360,6 +423,47 @@ async function readBattleReportsIn(
       defenderClan: commitment?.defenderClanId
         ? clanById.get(commitment.defenderClanId) ?? null
         : null,
+    };
+  };
+
+  const interceptionRows = impacts.length === 0
+    ? []
+    : await tx
+        .select({
+          missionId: strategicInterceptions.missionId,
+          trigger: strategicInterceptions.trigger,
+        })
+        .from(strategicInterceptions)
+        .where(inArray(strategicInterceptions.missionId, impacts.map((row) => row.missionId)));
+  const triggerByMission = new Map(interceptionRows.map((row) => [row.missionId, row.trigger]));
+  const strategicViewOf = (impact: (typeof impacts)[number]): StrategicReportView => {
+    const attacking = impact.attackerPlayerId === playerId;
+    const opponentId = attacking ? impact.defenderPlayerId : impact.attackerPlayerId;
+    const opponent = opponentId === null ? undefined : byId.get(opponentId);
+    return {
+      kind: 'STRATEGIC',
+      id: impact.id,
+      missionId: impact.missionId,
+      at: impact.createdAt,
+      attacking,
+      opponentName: opponent?.name ?? 'someone',
+      opponentPlanet: attacking
+        ? targetById.get(impact.targetPlanetId) ?? opponent?.planet ?? 'an unknown world'
+        : opponent?.planet ?? 'an unknown world',
+      opponentPlanetId: attacking ? impact.targetPlanetId : opponent?.planetId ?? null,
+      yourPlanet: attacking
+        ? targetById.get(originByMission.get(impact.missionId) ?? '') ?? ''
+        : targetById.get(impact.targetPlanetId) ?? '',
+      outcome: impact.outcome,
+      damage: impact.damage,
+      destroyedFleet: impact.destroyedFleet,
+      destroyedResources: impact.destroyedResources,
+      levelChanges: impact.levelChanges,
+      destroyedOrders: impact.destroyedOrders,
+      shieldDestroyed: impact.shieldDestroyed,
+      trigger: triggerByMission.get(impact.missionId) ?? null,
+      attackerClan: null,
+      defenderClan: null,
     };
   };
 
@@ -433,5 +537,11 @@ async function readBattleReportsIn(
     }
   }
 
-  return { reports: rows.map(viewOf), rivals: [...rivals.values()] };
+  const reports: ReportView[] = [
+    ...rows.map(viewOf),
+    ...impacts.map(strategicViewOf),
+  ]
+    .toSorted((a, b) => b.at.getTime() - a.at.getTime())
+    .slice(0, Math.min(limit, 50));
+  return { reports, rivals: [...rivals.values()] };
 }

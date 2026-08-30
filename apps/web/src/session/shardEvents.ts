@@ -23,8 +23,20 @@ import { keys } from '../api/keys.js';
 
 /** The prefix the server namespaces shard kinds with. Must match `bus.ts`. */
 export const SHARD_PREFIX = 'shard:';
+export const GLOBAL_PREFIX = 'global:';
 
 export const isShardEvent = (kind: string): boolean => kind.startsWith(SHARD_PREFIX);
+export const isGlobalEvent = (kind: string): boolean => kind.startsWith(GLOBAL_PREFIX);
+
+/** A global event is deliberately rarer and narrower than a game-state event. */
+export function readsForGlobalEvent(kind: string): readonly (readonly string[])[] {
+  switch (kind.slice(GLOBAL_PREFIX.length)) {
+    case 'announcement':
+      return [keys.announcements];
+    default:
+      return [];
+  }
+}
 
 /**
  * Which reads a galaxy-wide event moves.
@@ -56,15 +68,23 @@ export function readsForShardEvent(kind: string): readonly (readonly string[])[]
     case 'transfer':
       return [keys.traffic, keys.pending, keys.planet, keys.planets];
     case 'impact':
-      return [keys.traffic, keys.galaxy, keys.planet, keys.pending];
+      return [keys.traffic, keys.galaxy, keys.planet, keys.pending, keys.miningField];
     case 'control':
-      return [keys.traffic, keys.galaxy, keys.planet, keys.planets, keys.pending, keys.leaderboard];
+      return [
+        keys.traffic,
+        keys.galaxy,
+        keys.planet,
+        keys.planets,
+        keys.pending,
+        keys.leaderboard,
+        keys.miningField,
+      ];
     case 'recovery':
     case 'protection':
       return [keys.galaxy, keys.planet];
     /**
      * A mining or salvage run started, turned for home, or landed. The shard-wide
-     * half refreshes only the common rock/wreck field and public traffic. The one
+     * half refreshes only the caller-filtered rock/wreck field and public traffic. The one
      * owner receives a player event (or their launch response) for private runs,
      * research and orbit; making everybody query those rows was the D99 fan-out.
      */
@@ -99,7 +119,7 @@ export const PRIVATE_PREFIX = 'private:';
 export const isPrivateEvent = (kind: string): boolean => kind.startsWith(PRIVATE_PREFIX);
 
 /**
- * A PRIVATE CLAN EVENT IS ABOUT YOU, AND STILL MUST NOT COST WHAT A RESYNC DOES. D114.
+ * A NARROW PRIVATE EVENT IS ABOUT YOU, AND STILL MUST NOT COST WHAT A RESYNC DOES. D114.
  *
  * `publishPrivate` namespaces five narrow kinds and its docblock calls each one "a
  * narrow invalidation" — but nothing here read the prefix, so every one of them fell
@@ -115,9 +135,25 @@ export const isPrivateEvent = (kind: string): boolean => kind.startsWith(PRIVATE
  */
 export function readsForPrivateEvent(kind: string): readonly (readonly string[])[] | null {
   switch (kind.slice(PRIVATE_PREFIX.length)) {
+    /** A world this commander watches launched or recovered combat craft. */
+    case 'sight':
+      return [keys.galaxy, keys.intel];
+    /** An entitled commander can now render the eight-second interceptor scene. */
+    case 'strategic-sight':
+      return [keys.traffic];
+    /** A run launched on another tab/device moved this commander's own state. */
+    case 'mining':
+      return [keys.miningStatus, keys.pending, keys.planet];
     /** Joined, left, kicked, promoted, disbanded, or the settings changed. */
     case 'clan-membership':
-      return [keys.clanBadge, keys.clanHome, keys.clanStrength, keys.clanEvents];
+      return [
+        keys.clanBadge,
+        keys.clanHome,
+        keys.clanStrength,
+        keys.clanEvents,
+        keys.galaxy,
+        keys.leaderboard,
+      ];
     /** An application or invitation was raised, withdrawn, rejected or expired. */
     case 'clan-request':
       return [keys.clanBadge, keys.clanHome];

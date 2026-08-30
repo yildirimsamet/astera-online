@@ -17,7 +17,7 @@ const THERE = { x: 300, y: 0, z: 400 }; // 500 units away
 describe('the launch preview', () => {
   it('agrees with the rules the server will use', () => {
     const sending = { WASP: 10 };
-    const route = planRoute(HERE, THERE, sending, { WASP: 20 }, {});
+    const route = planRoute(HERE, THERE, sending, { WASP: 20 }, {}, {});
 
     expect(route.distance).toBe(distance(HERE, THERE));
     expect(route.oneWayMinutes).toBe(fleetTravelExact(route.distance, sending));
@@ -25,18 +25,18 @@ describe('the launch preview', () => {
   });
 
   it('counts what is left at home, including ground defence', () => {
-    const route = planRoute(HERE, THERE, { WASP: 12 }, { WASP: 20, HAULER: 2 }, { BASTION: 3 });
+    const route = planRoute(HERE, THERE, { WASP: 12 }, { WASP: 20, HAULER: 2 }, { BASTION: 3 }, {});
     // 20 + 2 at home, 12 leave, 3 Bastions never leave.
     expect(route.homeDefenceAfter).toBe(13);
   });
 
   it('reports an undefended planet when everything is sent', () => {
-    const route = planRoute(HERE, THERE, { WASP: 20 }, { WASP: 20 }, {});
+    const route = planRoute(HERE, THERE, { WASP: 20 }, { WASP: 20 }, {}, {});
     expect(route.homeDefenceAfter).toBe(0);
   });
 
   it('never reports negative defence if the fleet drifts under it', () => {
-    const route = planRoute(HERE, THERE, { WASP: 40 }, { WASP: 20 }, {});
+    const route = planRoute(HERE, THERE, { WASP: 40 }, { WASP: 20 }, {}, {});
     expect(route.homeDefenceAfter).toBe(0);
   });
 
@@ -45,23 +45,23 @@ describe('the launch preview', () => {
    * decision. The preview has to show that, or Bulwarks look free.
    */
   it('slows the whole fleet to its slowest hull', () => {
-    const fast = planRoute(HERE, THERE, { WASP: 10 }, { WASP: 10, BULWARK: 1 }, {});
-    const heavy = planRoute(HERE, THERE, { WASP: 10, BULWARK: 1 }, { WASP: 10, BULWARK: 1 }, {});
+    const fast = planRoute(HERE, THERE, { WASP: 10 }, { WASP: 10, BULWARK: 1 }, {}, {});
+    const heavy = planRoute(HERE, THERE, { WASP: 10, BULWARK: 1 }, { WASP: 10, BULWARK: 1 }, {}, {});
 
     expect(heavy.oneWayMinutes).toBeGreaterThan(fast.oneWayMinutes);
     expect(heavy.exposureMinutes).toBe(heavy.oneWayMinutes * 2);
   });
 
   it('adds combat-hull cargo and the larger dedicated Hauler capacity', () => {
-    const combat = planRoute(HERE, THERE, { WASP: 10 }, { WASP: 10, HAULER: 2 }, {});
-    const withCargo = planRoute(HERE, THERE, { WASP: 10, HAULER: 2 }, { WASP: 10, HAULER: 2 }, {});
+    const combat = planRoute(HERE, THERE, { WASP: 10 }, { WASP: 10, HAULER: 2 }, {}, {});
+    const withCargo = planRoute(HERE, THERE, { WASP: 10, HAULER: 2 }, { WASP: 10, HAULER: 2 }, {}, {});
 
     expect(withCargo.cargo - combat.cargo).toBe(2 * HULLS.HAULER.cargo);
     expect(combat.cargo).toBe(10 * HULLS.WASP.cargo);
   });
 
   it('reports no exposure at all when nothing has been chosen yet', () => {
-    const route = planRoute(HERE, THERE, {}, { WASP: 20 }, {});
+    const route = planRoute(HERE, THERE, {}, { WASP: 20 }, {}, {});
     expect(route.oneWayMinutes).toBe(0);
     expect(route.exposureMinutes).toBe(0);
     expect(route.homeDefenceAfter).toBe(20);

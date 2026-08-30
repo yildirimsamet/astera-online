@@ -4,19 +4,24 @@ import {
   RESEARCH_PROJECT_IDS,
   SHIELD,
   SATELLITE_IDS,
+  buildingCost,
   alloyRate,
   collectorCap,
   crystalRate,
   deuteriumCollectorCap,
+  deuteriumRate,
   deuteriumStorageCap,
   dominion,
+  groundLoad,
+  groundSlots,
+  hangarCapacity,
+  hangarLoad,
   instrumentCost,
   productionMult,
   satelliteCost,
   satelliteSlots,
   shieldHp,
   storageCap,
-  upgradeCost,
   vaultProtects,
   type BuildingId,
   type ResearchProjectId,
@@ -25,7 +30,7 @@ import type { Clock } from '../clock.js';
 import type { Tx } from '../db/client.js';
 import { buildOrders, players, strategicAssets } from '../db/schema.js';
 import { baysOf } from './flight.js';
-import { awayFleet, loadLocked } from './planet.js';
+import { awayFleet, loadLocked, totalUnitsOf } from './planet.js';
 import { researchView } from './researchState.js';
 import { colonyStanding } from './ownership.js';
 
@@ -59,17 +64,29 @@ import { colonyStanding } from './ownership.js';
  */
 export async function planetView(tx: Tx, planetId: string, clock: Clock) {
   const p = await loadLocked(tx, planetId, clock, { requireLive: false });
-  const [[player], [strategic], queued, colonies] = await Promise.all([
+  /**
+   * TWO KINDS OF ASSET, TWO KEYS. T12.
+   *
+   * This read was `limit 1` over the whole table, written when a world could only
+   * ever hold a Death Star. T10 put the interceptor charge in the same table, so
+   * from the moment a charge became buildable the newest row won — and a charge
+   * started after a weapon reported itself as the weapon, hiding a READY Death
+   * Star from its own owner and from the launch control that reads this field.
+   */
+  const strategicOfType = (type: 'DEATH_STAR' | 'INTERCEPTOR') => tx
+    .select()
+    .from(strategicAssets)
+    .where(and(
+      eq(strategicAssets.planetId, planetId),
+      eq(strategicAssets.type, type),
+      inArray(strategicAssets.status, ['BUILDING', 'PAUSED', 'READY']),
+    ))
+    .orderBy(desc(strategicAssets.startedAt), desc(strategicAssets.id))
+    .limit(1);
+  const [[player], [strategic], [interceptor], queued, colonies] = await Promise.all([
     tx.select().from(players).where(eq(players.id, p.playerId)),
-    tx
-      .select()
-      .from(strategicAssets)
-      .where(and(
-        eq(strategicAssets.planetId, planetId),
-        inArray(strategicAssets.status, ['BUILDING', 'PAUSED', 'READY']),
-      ))
-      .orderBy(desc(strategicAssets.startedAt), desc(strategicAssets.id))
-      .limit(1),
+    strategicOfType('DEATH_STAR'),
+    strategicOfType('INTERCEPTOR'),
     tx
       .select()
       .from(buildOrders)
@@ -104,10 +121,14 @@ export async function planetView(tx: Tx, planetId: string, clock: Clock) {
    * the Vault's. It reads the unboosted rate on purpose: a Foundry lifts the store
    * without lifting the floor, so a bigger planet is slightly more exposed.
    */
+  // What the plant makes, boosted like everything else the works produce. T5.
+  const perHourDeuterium = deuteriumRate(p.buildings.DEUTERIUM_PLANT) * boost;
+
   const vaultCapacity = vaultProtects(
     p.buildings.VAULT,
     p.buildings.REFINERY,
     p.buildings.EXTRACTOR,
+    p.buildings.DEUTERIUM_PLANT,
   );
   const vaultProtected = {
     alloy: Math.min(Math.floor(p.alloy), vaultCapacity.alloy),
@@ -115,13 +136,24 @@ export async function planetView(tx: Tx, planetId: string, clock: Clock) {
     deuterium: Math.min(Math.floor(p.deuterium), vaultCapacity.deuterium),
   };
   const shieldMax = shieldHp(p.effectiveInstruments.AEGIS ?? 0);
-  const queuedResearch = new Set(
-    queued.flatMap((order) => order.queue === 'CONSTRUCTION'
-      && order.kind === 'RESEARCH'
-      && RESEARCH_PROJECT_IDS.includes(order.subject as ResearchProjectId)
-      ? [order.subject as ResearchProjectId]
-      : []),
-  );
+  /**
+   * The levels the construction queue will have reached once it drains. T7.
+   *
+   * Levels rather than a set of ids, because a project can be a ladder: what the
+   * screen needs to know is not "will this be done" but "which rung will it be on",
+   * and the two questions only look alike while every ceiling is one. The order's
+   * `count` carries its target level.
+   */
+  const queuedResearch = new Map<ResearchProjectId, number>();
+  for (const order of queued) {
+    if (order.queue !== 'CONSTRUCTION' || order.kind !== 'RESEARCH') continue;
+    const id = order.subject as ResearchProjectId;
+    if (!RESEARCH_PROJECT_IDS.includes(id)) continue;
+    queuedResearch.set(id, Math.max(queuedResearch.get(id) ?? 0, order.count));
+  }
+
+  // Every craft this world owns, home or away — both ceilings are ownership rules.
+  const owned = await totalUnitsOf(tx, planetId);
 
   return {
     planet: {
@@ -134,8 +166,18 @@ export async function planetView(tx: Tx, planetId: string, clock: Clock) {
       deuterium: Math.floor(p.deuterium),
       alloyCap: storageCap(perHourAlloy, p.buildings.VAULT),
       crystalCap: storageCap(perHourCrystal, p.buildings.VAULT),
-      deuteriumCap: deuteriumStorageCap(perHourCrystal, p.buildings.VAULT),
+      deuteriumCap: deuteriumStorageCap(perHourDeuterium, perHourCrystal, p.buildings.VAULT),
       alloyPerHour: Math.round(perHourAlloy),
+      /*
+        THE RATE THE HUD WAS HARD-CODING TO ZERO. T5.
+
+        `StatusBar` printed `rate={0}` for deuterium because the resource had no
+        production — true then, false since the refinery. Left alone, a commander
+        with a plant watches the figure climb while the readout beside it says
+        nothing is being made, and the "full in ..." warning every other resource
+        gets can never fire.
+      */
+      deuteriumPerHour: Math.round(perHourDeuterium),
       crystalPerHour: Math.round(perHourCrystal),
       /**
        * The works: what is waiting to be collected, and the ceiling it stops at
@@ -148,7 +190,7 @@ export async function planetView(tx: Tx, planetId: string, clock: Clock) {
       bufferDeuterium: Math.floor(p.bufferDeuterium),
       bufferAlloyCap: collectorCap(perHourAlloy),
       bufferCrystalCap: collectorCap(perHourCrystal),
-      bufferDeuteriumCap: deuteriumCollectorCap(perHourCrystal),
+      bufferDeuteriumCap: deuteriumCollectorCap(perHourDeuterium, perHourCrystal),
       /**
        * WHAT IS ACTUALLY SAFE, AS ONE FIGURE. D61.
        *
@@ -176,7 +218,7 @@ export async function planetView(tx: Tx, planetId: string, clock: Clock) {
     },
     buildings: p.buildings,
     nextCosts: Object.fromEntries(
-      (Object.keys(p.buildings) as BuildingId[]).map((b) => [b, upgradeCost(p.buildings[b])]),
+      (Object.keys(p.buildings) as BuildingId[]).map((b) => [b, buildingCost(b, p.buildings[b])]),
     ),
     /** The four on the ground, with their levels. D25. */
     instruments: p.instruments,
@@ -214,6 +256,15 @@ export async function planetView(tx: Tx, planetId: string, clock: Clock) {
           remainingSeconds: strategic.remainingSeconds,
         }
       : null,
+    /** The anti-strategic charge, which is its own asset and its own answer. T10. */
+    interceptor: interceptor
+      ? {
+          id: interceptor.id,
+          status: interceptor.status,
+          readyAt: interceptor.readyAt,
+          remainingSeconds: interceptor.remainingSeconds,
+        }
+      : null,
     colonies,
     fleet: p.homeFleet,
     ground: p.ground,
@@ -238,6 +289,26 @@ export async function planetView(tx: Tx, planetId: string, clock: Clock) {
      * under.
      */
     flight: await baysOf(tx, planetId, p.buildings.CORE),
+    /**
+     * BOTH CEILINGS AND BOTH LOADS. T4 · T4b.
+     *
+     * Sent so the order screen can refuse a hull BEFORE it is pressed. A control
+     * that offers a ship the server will reject is a control that lies about what
+     * it does, and the Prospector cap already established the shape: the client
+     * greys the option and prints the figures rather than discovering the rule
+     * through a toast.
+     *
+     * The loads are counted over every unit row this world owns — `fleet` is only
+     * what is standing on the ground, and both ceilings are rules about ownership.
+     * Without that, a world whose fleet was out raiding would be offered room it
+     * does not have.
+     */
+    capacity: {
+      hangar: hangarCapacity(p.buildings.HANGAR),
+      hangarUsed: hangarLoad(owned),
+      ground: groundSlots(p.buildings.CORE),
+      groundUsed: groundLoad(owned),
+    },
     score: {
       wealth: player?.wealth ?? 0,
       dominion: dominion({

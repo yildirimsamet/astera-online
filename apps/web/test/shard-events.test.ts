@@ -2,8 +2,10 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { keys } from '../src/api/queries.js';
 import {
   COALESCE_MS,
+  isGlobalEvent,
   isPrivateEvent,
   isShardEvent,
+  readsForGlobalEvent,
   readsForPrivateEvent,
   readsForShardEvent,
   shardCoalescer,
@@ -44,6 +46,14 @@ describe('what a shard event asks the client to read', () => {
     expect(readsForShardEvent('shard:mining')).toEqual([keys.miningField, keys.traffic]);
   });
 
+  it('refreshes asteroid entitlement when damage can shrink a sensor post', () => {
+    expect(readsForShardEvent('shard:impact')).toContainEqual(keys.miningField);
+  });
+
+  it('refreshes asteroid entitlement when a controlled world changes hands', () => {
+    expect(readsForShardEvent('shard:control')).toContainEqual(keys.miningField);
+  });
+
   /**
    * THE EXPENSIVE ONE, AND THE REASON THE KINDS ARE THIS NARROW.
    *
@@ -70,6 +80,18 @@ describe('what a shard event asks the client to read', () => {
   it('does nothing at all with a kind it does not know', () => {
     expect(readsForShardEvent('shard:teleportation')).toEqual([]);
     expect(readsForShardEvent('shard:')).toEqual([]);
+  });
+});
+
+describe('what a global operator event asks the client to read', () => {
+  it('refreshes announcements and nothing from the live galaxy', () => {
+    expect(isGlobalEvent('global:announcement')).toBe(true);
+    expect(isGlobalEvent('shard:announcement')).toBe(false);
+    expect(readsForGlobalEvent('global:announcement')).toEqual([keys.announcements]);
+  });
+
+  it('keeps unknown global events inert', () => {
+    expect(readsForGlobalEvent('global:something-new')).toEqual([]);
   });
 });
 
@@ -204,7 +226,14 @@ describe('what a private clan event asks the client to read', () => {
 
   it('sends a roster change to every surface that names the roster', () => {
     expect(readsForPrivateEvent('private:clan-membership'))
-      .toEqual([keys.clanBadge, keys.clanHome, keys.clanStrength, keys.clanEvents]);
+      .toEqual([
+        keys.clanBadge,
+        keys.clanHome,
+        keys.clanStrength,
+        keys.clanEvents,
+        keys.galaxy,
+        keys.leaderboard,
+      ]);
   });
 
   /**
@@ -215,6 +244,22 @@ describe('what a private clan event asks the client to read', () => {
     expect(readsForPrivateEvent('private:clan-aid')).toEqual([
       keys.clanAid, keys.clanHome, keys.planet, keys.planets, keys.pending, keys.traffic,
     ]);
+  });
+
+  it('sends a mining launch to every private surface changed on another device', () => {
+    expect(readsForPrivateEvent('private:mining')).toEqual([
+      keys.miningStatus,
+      keys.pending,
+      keys.planet,
+    ]);
+  });
+
+  it('refreshes only the two Telescope surfaces when a watched fleet moves', () => {
+    expect(readsForPrivateEvent('private:sight')).toEqual([keys.galaxy, keys.intel]);
+  });
+
+  it('refreshes only traffic for an entitled strategic interception witness', () => {
+    expect(readsForPrivateEvent('private:strategic-sight')).toEqual([keys.traffic]);
   });
 
   /**

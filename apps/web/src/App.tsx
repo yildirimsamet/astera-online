@@ -14,6 +14,7 @@ import { useAmbientMusic } from './lib/music.js';
 import { WorldProvider } from './api/world.js';
 import { Button } from './ui/kit/index.js';
 import type { CraftFocus } from './galaxy/ownCraft.js';
+import { nextPanelStop, type PanelStopRequest } from './shell/panelRoute.js';
 
 /**
  * THREE SCREENS, ONE OF WHICH IS THE GAME.
@@ -93,9 +94,9 @@ export function App() {
    * lowest place both of them can see. The counter is what makes a second battle
    * notification land after the reader has already moved off the battles tab.
    */
-  const [panelStop, setPanelStop] = useState<{ stop: PanelStop; request: number } | null>(null);
-  const openPanel = (next: Panel, stop?: PanelStop): void => {
-    if (stop) setPanelStop((current) => ({ stop, request: (current?.request ?? 0) + 1 }));
+  const [panelStop, setPanelStop] = useState<PanelStopRequest | null>(null);
+  const openPanel = (next: Panel, stop?: PanelStop, reportMissionId?: string): void => {
+    setPanelStop((current) => nextPanelStop(current, stop, reportMissionId));
     setPanel(next);
   };
   const [planetFocus, setPlanetFocus] = useState<{ planetId: string; request: number } | null>(null);
@@ -184,11 +185,12 @@ export function App() {
       <main className="relative flex-1">
         <GalaxyView
           panel={panel}
-          onPanel={setPanel}
+          onPanel={openPanel}
           panelStop={panelStop}
           focusRequest={planetFocus}
           craftFocusRequest={craftFocus}
           commander={session.me.displayName}
+          isAdmin={session.me.isAdmin}
           pastResult={session.me.latestResult}
           onSignOut={() => {
             void signOut();

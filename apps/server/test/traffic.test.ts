@@ -3,27 +3,49 @@ import {
   COMBAT,
   DEATH_STAR,
   activeAsteroids,
+  prospectorSpeed,
+  interceptAsteroid,
+  asteroidPosition,
   coreTier,
   engagementEndsAt,
-  generateGalaxy,
   orbitStandoff,
   surfaceStandoff,
   visualLeg,
   worldRadius,
+  TRAFFIC,
 } from '@astera/rules';
 import type { FastifyInstance } from 'fastify';
 import { pino } from 'pino';
 import { afterAll, afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { buildApp } from '../src/app.js';
-import { buildings, debrisFields, missions, planets } from '../src/db/schema.js';
+import {
+  buildings,
+  debrisFields,
+  miningRuns,
+  missions,
+  planets,
+  strategicAssets,
+  strategicImpacts,
+  strategicInterceptions,
+} from '../src/db/schema.js';
 import { TokenService } from '../src/auth/tokens.js';
 import { launchAttack } from '../src/services/mission.js';
 import { launchProbe } from '../src/services/intel.js';
 import { pendingThreads } from '../src/services/session.js';
 import { EventWorker } from '../src/worker/loop.js';
 import { launchHarvest, launchMining } from '../src/services/mining.js';
-import { galaxyTraffic, loadTrafficSnapshot } from '../src/services/traffic.js';
 import {
+  galaxyTraffic,
+  loadTrafficSnapshot,
+  projectStrategicInterceptionImpacts,
+  projectStrategicInterceptions,
+  sensorPosts,
+} from '../src/services/traffic.js';
+import { refreshSensorEpoch } from '../src/services/sensorHistory.js';
+import {
+  fuelUp,
+  giveInstrument,
+  giveSatellite,
   grant,
   giveUnits,
   placeAt,
@@ -49,7 +71,9 @@ const silent = pino({ level: 'silent' });
 
 interface Contact {
   id: string;
-  kind: 'fleet' | 'probe' | 'death_star' | 'mining' | 'harvest';
+  kind: 'unknown' | 'fleet' | 'probe' | 'death_star' | 'mining' | 'harvest';
+  mass?: 'LIGHT' | 'MEDIUM' | 'HEAVY';
+  silhouette?: 'unknown' | 'fleet' | 'probe' | 'death_star' | 'mining' | 'harvest';
   fleet?: Record<string, number>;
   craft?: number;
   from: { x: number; y: number; z: number };
@@ -59,6 +83,7 @@ interface Contact {
   landing?: boolean;
   route?: { from: unknown; to: unknown; departAt: string; arriveAt: string };
   minutesRemaining?: number;
+  effectOnly?: true;
   engagement?: { arriveAt: string; endsAt: string; target: { x: number; y: number; z: number } };
 }
 
@@ -81,8 +106,9 @@ afterAll(async () => {
  * it is heading for. That is the line these tests hold, and they hold it against
  * the raw body rather than the rendering, because a modified client is the threat.
  *
- * Mining is the stated exception and gets its own section: a race for a rock
- * everybody can see is public in full, line and clock included.
+ * Mining has a narrow route exception once the observer has both identified the
+ * Prospector and discovered its rock: the line and clock are then readable. An
+ * unseen craft or undiscovered target stays behind the same fog.
  */
 describe('galaxy traffic — motion in public, intent in private', () => {
   let f: Fixture;
@@ -101,8 +127,26 @@ describe('galaxy traffic — motion in public, intent in private', () => {
     // window says anything, and a short hop is over before it means much.
     await placeAt(f.db, a, { x: -600 });
     await placeAt(f.db, b, { x: 600 });
+    /**
+     * AND THE OBSERVER SITS ON THE LEG, WITH EYES THAT COVER ALL OF IT.
+     *
+     * Every test in this file is about something else — what a window may say,
+     * what the payload may name, where a craft is drawn — so the caller is placed
+     * at the midpoint AND given the instruments to identify the whole 1,200-unit
+     * leg. It used to rely on the naked-eye 500 alone, which never actually
+     * reached the 600-unit rim; it only looked like it did because the old model
+     * published an anonymous return at any distance. The three zones have their
+     * own suite in `sensor-horizon.test.ts`.
+     */
+    await placeAt(f.db, mine, { x: 0 });
 
     for (const id of f.planetIds) await setLevel(f.db, id, 'CORE', 8);
+    await giveSatellite(f.db, mine, 'UPLINK');
+    await giveInstrument(f.db, mine, 'TELESCOPE', 5);
+    await giveInstrument(f.db, mine, 'RADAR', 5);
+    // Every case here launches something across 1,200 units; fuel is T6's subject,
+    // not this file's.
+    for (const id of f.planetIds) await fuelUp(f.db, id);
     f.clock.advance(SETTLED_MINUTES);
 
     const built = buildApp({ env: testEnv(), logger: silent, db: f.db, clock: f.clock });
@@ -181,15 +225,29 @@ describe('galaxy traffic — motion in public, intent in private', () => {
   });
 
   /**
-   * THE CHANGE D24 IS FOR. A craft used to be invisible for the first quarter and
-   * the last fifteen percent of every flight, so the disc was busiest exactly when
-   * nobody was looking. Departure and approach are both visible now.
+   * A CRAFT IS VISIBLE FROM THE INSTANT IT LEAVES, AND THE SHROUD IS GONE.
+   *
+   * D123 blacked out the first planet-spacing of every leg, from everybody, at
+   * every instrument level — the argument being that "is their fleet home" is the
+   * Telescope's product and watching a world tells you for free. The owner's model
+   * answers that differently: a telescope sees what happens inside its circle, and
+   * what it withholds is the ROUTE. The watch slot still sells the definitive,
+   * Veil-contested answer, for every world in the galaxy including the ones out of
+   * reach — which is more than eyeballing a departure ever gave.
+   *
+   * What the shroud actually cost is in `sensor-horizon.test.ts`: a fleet leaving
+   * a world 300 units from a maxed Telescope was invisible for a third of its
+   * flight, and a probe for most of its life.
    */
-  it('is visible from the moment it leaves', async () => {
-    await strangersFight();
-    // One minute in — deep inside the old blackout.
-    f.clock.advance(1);
-    expect(await fetchContacts()).toHaveLength(1);
+  it('shows a craft from the first instant of its leg', async () => {
+    const launch = await strangersFight();
+    const departAt = f.clock.now().getTime();
+    const span = launch.arriveAt.getTime() - departAt;
+
+    for (const share of [0.001, 0.1, 0.3]) {
+      f.clock.set(new Date(departAt + span * share));
+      expect(await fetchContacts(), `blind at ${String(share)}`).toHaveLength(1);
+    }
   });
 
   it('is still visible on final approach', async () => {
@@ -204,16 +262,23 @@ describe('galaxy traffic — motion in public, intent in private', () => {
     expect((await fetchContacts())[0]?.kind).toBe('fleet');
   });
 
-  /**
-   * COMPOSITION IS PUBLIC. Owner decision, on top of D24's first half.
-   *
-   * Focusing somebody else's squadron says how many craft and which hulls. It is
-   * a real concession by the Radar ladder — L4 sold a size estimate — and it is
-   * what makes a contact an object worth tapping rather than a light going past.
-   */
-  it('says what is in it, down to the hull', async () => {
+  /** Telescope sight means the formation itself is readable, not merely detected. */
+  it('says exactly what is in a fleet inside Telescope sight', async () => {
     midFlight((await strangersFight()).arriveAt);
-    expect((await fetchContacts())[0]?.fleet).toEqual({ WASP: 30 });
+    const [contact] = await fetchContacts();
+
+    expect(contact?.mass).toBe('LIGHT');
+    expect(contact?.fleet).toEqual({ WASP: 30 });
+    // Not reconstructed in the renderer — exact on the wire after sight earned it.
+    expect(await raw()).toContain('WASP');
+  });
+
+  /** Three steps, so the disc says "something big" without saying what. */
+  it('reads a serious fleet as a heavier silhouette', async () => {
+    await giveUnits(f.db, a, { BULWARK: 30 });
+    midFlight((await launchAttack(f.db, a, b, { BULWARK: 30 }, f.clock)).arriveAt);
+
+    expect((await fetchContacts())[0]?.mass).toBe('HEAVY');
   });
 
   /** And it is stable, or focus would drop the thing the player selected. */
@@ -252,6 +317,30 @@ describe('galaxy traffic — motion in public, intent in private', () => {
       departAt: new Date(arriveAt.getTime() - 240_000),
       arriveAt: new Date(arriveAt.getTime() - DEATH_STAR.impactSeconds * 1000 - 1),
     }).returning();
+    await f.db.insert(strategicImpacts).values([
+      {
+        seasonId: f.seasonId,
+        missionId: impact!.id,
+        attackerPlayerId: f.playerIds[1]!,
+        defenderPlayerId: f.playerIds[2]!,
+        targetPlanetId: b,
+        outcome: 'FIRST_STRIKE',
+        damage: 1,
+        destroyedFleet: {},
+        createdAt: arriveAt,
+      },
+      {
+        seasonId: f.seasonId,
+        missionId: staleImpact!.id,
+        attackerPlayerId: f.playerIds[1]!,
+        defenderPlayerId: f.playerIds[2]!,
+        targetPlanetId: b,
+        outcome: 'FIRST_STRIKE',
+        damage: 1,
+        destroyedFleet: {},
+        createdAt: staleImpact!.arriveAt,
+      },
+    ]);
 
     f.clock.set(new Date(arriveAt.getTime() + 1));
     const snapshot = await loadTrafficSnapshot(f.db, f.seasonId, f.clock.now());
@@ -283,6 +372,147 @@ describe('galaxy traffic — motion in public, intent in private', () => {
 
     f.clock.set(new Date(arriveAt.getTime() + DEATH_STAR.impactSeconds * 1000));
     expect(await galaxyTraffic(f.db, f.seasonId, mine, f.clock.now())).toEqual([]);
+  });
+
+  it('never draws a ghost weapon or later planet explosion for an intercepted Death Star', async () => {
+    const interceptedAt = f.clock.now();
+    const arriveAt = new Date(interceptedAt.getTime() + 60_000);
+    const [mission] = await f.db.insert(missions).values({
+      seasonId: f.seasonId,
+      kind: 'death_star',
+      status: 'resolved',
+      ownerPlayerId: f.playerIds[1]!,
+      originPlanetId: a,
+      targetPlanetId: b,
+      fleet: {},
+      distance: 1200,
+      departAt: new Date(interceptedAt.getTime() - 60_000),
+      arriveAt,
+    }).returning();
+    await f.db.insert(strategicImpacts).values({
+      seasonId: f.seasonId,
+      missionId: mission!.id,
+      attackerPlayerId: f.playerIds[1]!,
+      defenderPlayerId: f.playerIds[2]!,
+      targetPlanetId: b,
+      outcome: 'INTERCEPTED',
+      damage: 0,
+      destroyedFleet: {},
+      createdAt: interceptedAt,
+    });
+
+    // During the dedicated eight-second interception scene, the old contact path
+    // must already be gone.
+    f.clock.set(new Date(interceptedAt.getTime() + 1));
+    expect(await galaxyTraffic(f.db, f.seasonId, mine, f.clock.now())).toEqual([]);
+    // Its original arrival instant must not manufacture a planet detonation.
+    f.clock.set(new Date(arriveAt.getTime() + 1));
+    expect(await galaxyTraffic(f.db, f.seasonId, mine, f.clock.now())).toEqual([]);
+  });
+
+  it('shares an interception with participants and Telescope witnesses only', async () => {
+    const now = f.clock.now();
+    const [mission] = await f.db.insert(missions).values({
+      seasonId: f.seasonId,
+      kind: 'death_star',
+      status: 'resolved',
+      ownerPlayerId: f.playerIds[1]!,
+      originPlanetId: a,
+      targetPlanetId: b,
+      fleet: {},
+      distance: 1200,
+      departAt: new Date(now.getTime() - 60_000),
+      arriveAt: new Date(now.getTime() + 60_000),
+    }).returning();
+    const [charge] = await f.db.insert(strategicAssets).values({
+      planetId: b,
+      type: 'INTERCEPTOR',
+      status: 'CONSUMED',
+      missionId: mission!.id,
+      startedAt: new Date(now.getTime() - 120_000),
+      remainingSeconds: 0,
+    }).returning();
+    await f.db.insert(strategicInterceptions).values({
+      seasonId: f.seasonId,
+      missionId: mission!.id,
+      attackerPlayerId: f.playerIds[1]!,
+      defenderPlayerId: f.playerIds[2]!,
+      targetPlanetId: b,
+      chargeId: charge!.id,
+      trigger: 'TELESCOPE',
+      launchAt: now,
+      impactAt: new Date(now.getTime() + 8_000),
+      launchX: 600,
+      launchY: 0,
+      launchZ: 0,
+      deathStarFromX: -10,
+      deathStarFromY: 0,
+      deathStarFromZ: 0,
+      collisionX: 10,
+      collisionY: 0,
+      collisionZ: 0,
+    });
+
+    const snapshot = await loadTrafficSnapshot(f.db, f.seasonId, now);
+    const observerEyes = await sensorPosts(f.db, [mine]);
+    expect(projectStrategicInterceptions(snapshot, f.playerIds[0]!, observerEyes)).toHaveLength(1);
+    expect(projectStrategicInterceptions(snapshot, f.playerIds[0]!, [{
+      planetId: mine,
+      at: { x: 10, y: 0, z: 0 },
+      telescope: false,
+      identify: 500,
+      detect: 500,
+      warn: 500,
+      revealsSize: false,
+      revealsKind: false,
+    }])).toEqual([]);
+    expect(projectStrategicInterceptions(snapshot, f.playerIds[0]!, [{
+      planetId: mine,
+      at: { x: 10, y: 0, z: 0 },
+      telescope: true,
+      identify: 500,
+      detect: 500,
+      warn: 500,
+      revealsSize: false,
+      revealsKind: false,
+    }])).toHaveLength(1);
+    expect(projectStrategicInterceptions(snapshot, f.playerIds[3]!, [])).toEqual([]);
+    expect(projectStrategicInterceptions(snapshot, f.playerIds[1]!, [])).toHaveLength(1);
+    expect(projectStrategicInterceptions(snapshot, f.playerIds[2]!, [])).toHaveLength(1);
+
+    // The craft/route stays private, but the explosion becomes a public live
+    // effect at the collision instant. Out-of-sight viewers get only a dim event.
+    expect(projectStrategicInterceptionImpacts(
+      snapshot,
+      f.playerIds[3]!,
+      [],
+      new Date(now.getTime() + 7_999),
+    )).toEqual([]);
+    const publicImpacts = projectStrategicInterceptionImpacts(
+      snapshot,
+      f.playerIds[3]!,
+      [],
+      new Date(now.getTime() + 8_001),
+    );
+    expect(publicImpacts).toHaveLength(1);
+    expect(publicImpacts[0]).toMatchObject({
+      effectOnly: true,
+      focusEligible: false,
+      collision: { x: 10, y: 0, z: 0 },
+    });
+    expect(publicImpacts[0]?.id).toEqual(expect.any(String));
+    expect(projectStrategicInterceptionImpacts(
+      snapshot,
+      f.playerIds[2]!,
+      [],
+      new Date(now.getTime() + 8_001),
+    )).toEqual([expect.objectContaining({ effectOnly: false, focusEligible: true })]);
+    expect(projectStrategicInterceptionImpacts(
+      snapshot,
+      f.playerIds[1]!,
+      [],
+      new Date(now.getTime() + 8_001),
+    )).toEqual([expect.objectContaining({ effectOnly: false, focusEligible: false })]);
   });
 
   /**
@@ -351,9 +581,12 @@ describe('galaxy traffic — motion in public, intent in private', () => {
       'from',
       'id',
       'kind',
+      'mass',
       'startAt',
       'to',
     ]);
+    expect(contact?.fleet).toEqual({ WASP: 30 });
+    expect(contact?.mass).toBe('LIGHT');
     expect(contact?.route).toBeUndefined();
     expect(contact?.minutesRemaining).toBeUndefined();
   });
@@ -389,7 +622,9 @@ describe('galaxy traffic — motion in public, intent in private', () => {
      * already makes for a raid that has landed — the fog rule is about the flight,
      * not the last few seconds of it.
      */
-    for (const share of [0.1, 0.4, 0.7]) {
+    // Sampled past the departure shroud (D123), which is what decides whether a
+    // craft is published at all; this test is about what the window may SAY.
+    for (const share of [0.3, 0.4, 0.7]) {
       const start = f.clock.now().getTime();
       midFlight(launch.arriveAt, share);
       const [contact] = await fetchContacts();
@@ -445,8 +680,14 @@ describe('galaxy traffic — motion in public, intent in private', () => {
     await giveUnits(f.db, a, { WASP: 30 });
     const launch = await launchAttack(f.db, a, b, { WASP: 30 }, f.clock);
 
-    // Half a minute out: inside the coast floor, so the window runs to the landing.
-    f.clock.set(new Date(launch.arriveAt.getTime() - 30_000));
+    /*
+      INSIDE THE FINAL WINDOW, DERIVED RATHER THAN TYPED. It was "half a minute
+      out", against a floor that was a flat sixty seconds — and that floor was a
+      poll interval written on the wrong side of the wire. It is the refetch
+      cadence now, so the instant this test needs is read from the same constant
+      the server floors the window at.
+    */
+    f.clock.set(new Date(launch.arriveAt.getTime() - TRAFFIC.refreshMs / 2));
     const [contact] = await fetchContacts();
     expect(contact, 'the craft vanished on final approach').toBeDefined();
     expect(new Date(contact!.endAt).getTime()).toBe(launch.arriveAt.getTime());
@@ -524,7 +765,9 @@ describe('galaxy traffic — motion in public, intent in private', () => {
       orbitStandoff(worldRadius(coreTier(levelByPlanet.get(b) ?? 0))),
     );
 
-    for (const fraction of [0.1, 0.5, 0.9, 0.99]) {
+    // Past the departure shroud (D123): before it there is deliberately nothing
+    // to compare, and this test is about where a published craft is drawn.
+    for (const fraction of [0.3, 0.5, 0.9, 0.99]) {
       f.clock.set(new Date(departAt + span * fraction));
       const [contact] = await fetchContacts();
       expect(contact, `nothing in the air at ${String(fraction)}`).toBeDefined();
@@ -603,6 +846,10 @@ describe('galaxy traffic — motion in public, intent in private', () => {
    * payload, which stays radar-gated.
    */
   it('still tells a defender with no radar nothing about their own arrival', async () => {
+    // The shared fixture hands the caller a full instrument set so the rest of
+    // this file can see its own leg. This one case is about the ABSENCE of a
+    // radar, so it takes it back off.
+    await giveInstrument(f.db, mine, 'RADAR', 0);
     await giveUnits(f.db, b, { WASP: 30 });
     const raid = await launchAttack(f.db, b, mine, { WASP: 30 }, f.clock);
     f.clock.set(new Date(raid.arriveAt.getTime() - 60_000));
@@ -634,11 +881,10 @@ describe('galaxy traffic — motion in public, intent in private', () => {
    * the payload simply stopped at `arriveAt`. Every other player in the galaxy
    * watched a squadron reach a world and blink out.
    *
-   * The owner's decision reverses it: the fleet keeps being published for the whole
-   * engagement, with the world it is hitting named, so everybody sees the battle.
-   * What that discloses is a planet's coordinates — public on `/api/galaxy` for
-   * every world in the disc — for the ten seconds a fleet is standing on top of it.
-   * No owner, no origin, no name; and the wreckage it leaves is public anyway (D32).
+   * The owner's decision reverses it for the EFFECT: the world and clock remain
+   * published so everybody sees the bombardment. The fleet itself still answers
+   * to D123; this suite's observer has Telescope sight, so it also receives the
+   * anonymous silhouette and its final sensed bearing.
    */
   describe('a raid landing', () => {
     const landed = async (offsetSeconds: number): Promise<Contact[]> => {
@@ -652,6 +898,8 @@ describe('galaxy traffic — motion in public, intent in private', () => {
       const [contact] = await landed(3);
       expect(contact, 'the raid vanished the moment it landed').toBeDefined();
       expect(contact?.engagement).toBeDefined();
+      expect(contact?.effectOnly).toBeUndefined();
+      expect(contact?.kind).toBe('fleet');
     });
 
     it('names the world it is hitting, and only for those seconds', async () => {
@@ -718,11 +966,11 @@ describe('galaxy traffic — motion in public, intent in private', () => {
   /* ── the drill is the exception ────────────────────────────── */
 
   /**
-   * D24's one carve-out, and it is the owner's: a mining run is a public race for
-   * a rock everybody can already see, so its line and its clock belong to
-   * everybody. Hiding where a Prospector was going would hide the contest.
+   * D19's narrow carve-out: once this observer both sees the Prospector and has
+   * discovered its rock, the line and clock make the race readable. Neither fact
+   * is permission to see the craft outside the sensor horizon.
    */
-  describe('mining runs are public in full', () => {
+  describe('mining runs to a discovered rock are public in full', () => {
     /**
      * Returns the run so a test can move to a share of it rather than guess minutes.
      *
@@ -734,9 +982,53 @@ describe('galaxy traffic — motion in public, intent in private', () => {
      */
     const strangerMines = async () => {
       await giveUnits(f.db, a, { PROSPECTOR: 3 });
-      const [rock] = activeAsteroids(generateGalaxy(f.seed).asteroids, SETTLED_MINUTES);
-      if (!rock) throw new Error('no rock in the disc at SETTLED_MINUTES');
-      return launchMining(f.db, a, rock.index, 2, f.clock);
+      /**
+       * A ROCK THE CRAFT CAN ACTUALLY REACH, SOLVED RATHER THAN BRUTE-FORCED.
+       *
+       * "Active at `SETTLED_MINUTES`" is not the same question as "a Prospector
+       * launched now can intercept it before it leaves", and taking the first rock
+       * that satisfies only the first fails with CANNOT_INTERCEPT for a reason
+       * that has nothing to do with traffic. The file learned this once already,
+       * when index 0 stopped being reliable.
+       *
+       * IT IS `interceptAsteroid` AND NOT A RETRY LOOP, and the difference is
+       * three hundred seconds. Trying each candidate through `launchMining` makes
+       * the server regenerate a 3,478-rock schedule per attempt, and with forty
+       * live rocks across six call sites that turned a ninety-second suite into a
+       * five-minute one — slow enough that other files began timing out and the
+       * run stopped being reproducible. The reachability rule is pure; ask it
+       * directly and launch once.
+       */
+      const [from] = await f.db.select().from(planets).where(eq(planets.id, a));
+      const origin = { x: from!.x, y: from!.y, z: from!.z };
+      const speed = prospectorSpeed([]);
+      const rock = activeAsteroids(f.asteroids, SETTLED_MINUTES)
+        .find((candidate) =>
+          interceptAsteroid(origin, speed, candidate, SETTLED_MINUTES) !== null);
+      if (!rock) throw new Error('no reachable rock in the disc at SETTLED_MINUTES');
+
+      /**
+       * TWO GATES, AND THEY WANT THE OBSERVER IN TWO PLACES.
+       *
+       * Finding the rock needs a sensor sphere over the ROCK; seeing the craft
+       * needs one over the LEG, which runs to an intercept point the rock has
+       * since moved to. Discovery persists once earned, so the epoch recorded at
+       * the rock keeps paying after the post moves — and this exercises that.
+       */
+      await placeAt(f.db, mine, asteroidPosition(rock, SETTLED_MINUTES));
+      await refreshSensorEpoch(f.db, mine, f.clock.now());
+      const started = await launchMining(f.db, a, rock.index, 2, f.clock);
+
+      const [row] = await f.db
+        .select().from(miningRuns).where(eq(miningRuns.id, started.runId));
+      await placeAt(f.db, mine, {
+        x: (origin.x + row!.interceptX) / 2,
+        y: (origin.y + row!.interceptY) / 2,
+        z: (origin.z + row!.interceptZ) / 2,
+      });
+      f.clock.advance(1 / 60);
+      await refreshSensorEpoch(f.db, mine, f.clock.now());
+      return started;
     };
 
     /**
@@ -788,7 +1080,7 @@ describe('galaxy traffic — motion in public, intent in private', () => {
 
     it('still excludes your own, which are drawn at full fidelity elsewhere', async () => {
       await giveUnits(f.db, mine, { PROSPECTOR: 3 });
-      const [rock] = activeAsteroids(generateGalaxy(f.seed).asteroids, SETTLED_MINUTES);
+      const [rock] = activeAsteroids(f.asteroids, SETTLED_MINUTES);
       if (!rock) throw new Error('no rock in the disc at SETTLED_MINUTES');
       midFlight((await launchMining(f.db, mine, rock.index, 2, f.clock)).arriveAt);
 

@@ -11,14 +11,18 @@
  */
 
 export * from './types.js';
+export * from './tempo.js';
 export * from './constants.js';
 export * from './rng.js';
 export * from './hulls.js';
 export * from './economy.js';
+export * from './fuel.js';
+export * from './tech.js';
 export * from './travel.js';
 export * from './combat.js';
 export * from './loot.js';
 export * from './intel.js';
+export * from './sight.js';
 export * from './score.js';
 export * from './galaxy.js';
 export * from './rewards.js';

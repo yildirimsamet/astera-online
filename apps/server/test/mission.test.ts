@@ -139,32 +139,27 @@ describe('launching a fleet', () => {
     });
 
     /**
-     * THE BAND, FROM THE OUTSIDE. D49.
+     * THE BAND IS GONE, FROM THE OUTSIDE. D127.
      *
-     * It used to be a Wealth ratio, and the test set two `players.wealth` columns
-     * directly. It is now the public development tier, so the arrangement is a
-     * Core level — which is also the point of the change: the thing that decides
-     * whether a launch is legal is the thing the attacker could already see on the
-     * map before they packed a fleet.
+     * D49 limited a launch to ±2 development tiers and kept tier public so the
+     * rule could be read off the map before a fleet was packed. D127 made
+     * development private, and an invisible band is precisely the failure D49
+     * replaced a wealth ratio for — a refusal arriving after the work.
      */
-    it('refuses a target more than two development tiers away', async () => {
+    it('launches at a target far above it in development', async () => {
       // Attacker is Core 6 — tier 2 — from the fixture. Tier 5 is three above.
       await setLevel(f.db, defender, 'CORE', 15);
 
       await expect(
         launchAttack(f.db, attacker, defender, { WASP: 5 }, f.clock),
-      ).rejects.toMatchObject({ code: 'TIER_BAND' });
+      ).resolves.toBeTruthy();
     });
 
-    /** And the edge of the band is legal, in both directions. */
-    it('allows a target exactly two tiers away, above and below', async () => {
-      await setLevel(f.db, defender, 'CORE', 12); // tier 4, two above tier 2
-      await expect(
-        launchAttack(f.db, attacker, defender, { WASP: 5 }, f.clock),
-      ).resolves.toBeTruthy();
+    /** And far below, which is the direction the band was actually protecting. */
+    it('launches at a target far below it, with only the bash limit left', async () => {
+      await setLevel(f.db, attacker, 'CORE', 30);
+      await setLevel(f.db, other, 'CORE', 1);
 
-      await setLevel(f.db, attacker, 'CORE', 9); // tier 3
-      await setLevel(f.db, other, 'CORE', 1); // tier 1, two below
       await expect(
         launchAttack(f.db, attacker, other, { WASP: 5 }, f.clock),
       ).resolves.toBeTruthy();

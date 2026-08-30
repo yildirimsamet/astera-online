@@ -2,34 +2,36 @@ import { and, eq, inArray } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/pg-core';
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
-import { buildings, miningRuns, planetResearch, planets, players, satellites } from '../db/schema.js';
+import { buildings, miningRuns, planets, players, playerResearch, satellites, seasons } from '../db/schema.js';
 import { GameError, orbitFromRows } from '../services/planet.js';
+import { techOf } from '../services/researchState.js';
 import {
   launchHarvest,
   launchMining,
   projectIsotopeKnowledge,
   projectPrivateMiningView,
-  projectVisibleAsteroids,
   projectVisibleDebris,
 } from '../services/mining.js';
+import { projectPlayerAsteroidField } from '../services/asteroidField.js';
+import { sensorHistoryForPlayer } from '../services/sensorHistory.js';
 import { requireAuth } from './auth.js';
 import { ownedPlanet } from '../services/ownership.js';
 import type { Queryable } from '../db/client.js';
 
 const launchBody = z.object({
   originPlanetId: z.string().uuid().optional(),
-  asteroidIndex: z.number().int().min(0),
+  asteroidId: z.string().regex(/^[A-Za-z0-9_-]{22}$/),
   craft: z.number().int().min(1).max(500),
-});
+}).strict();
 
 /**
  * MINING — the Drill's reason to exist. D19.
  *
- * The asteroid field is deliberately PUBLIC: rocks are physical objects on open
- * trajectories, everyone sees the same ones, and the race for them is the whole
- * decision. Rock/wreck state is shared; isotope recognition, installed hardware
- * and the caller's own runs are private. They are separate endpoints so a public
- * shard event never makes every commander query everybody's private layer.
+ * Asteroid existence is earned through the commander's durable sensor history;
+ * only then does the rock become a public race for that commander. The underlying
+ * ore/wreck snapshot is shared, but `/field` applies caller fog and opaque ids on
+ * every read. Hardware, research and own runs stay on `/status` so shard events do
+ * not fan out those private rows.
  */
 export function registerMiningRoutes(app: FastifyInstance): void {
   const me = async (accountId: string, db: Queryable = app.db) => {
@@ -47,6 +49,7 @@ export function registerMiningRoutes(app: FastifyInstance): void {
   const privateView = async (accountId: string, planetId?: string) => {
     const capital = alias(planets, 'mining_capital');
     const selected = alias(planets, 'mining_selected');
+    const runOrigin = alias(planets, 'mining_run_origin');
     const selectedId = planetId === undefined
       ? eq(selected.id, capital.id)
       : eq(selected.id, planetId);
@@ -57,15 +60,17 @@ export function registerMiningRoutes(app: FastifyInstance): void {
       .select({
         playerId: players.id,
         seasonId: players.seasonId,
+        asteroidKey: seasons.asteroidKey,
         planetId: selected.id,
         kind: selected.kind,
         coreLevel: buildings.level,
         satelliteSlot: satellites.slot,
         satelliteType: satellites.type,
-        researchProjectId: planetResearch.projectId,
+        researchProjectId: playerResearch.projectId,
         run: miningRuns,
       })
       .from(players)
+      .innerJoin(seasons, eq(seasons.id, players.seasonId))
       .innerJoin(
         capital,
         and(eq(capital.controllerPlayerId, players.id), eq(capital.kind, 'CAPITAL')),
@@ -76,17 +81,30 @@ export function registerMiningRoutes(app: FastifyInstance): void {
         and(eq(buildings.planetId, selected.id), eq(buildings.type, 'CORE')),
       )
       .leftJoin(satellites, eq(satellites.planetId, selected.id))
+      /*
+        THE COMMANDER'S SPECTROMETRY, NOT THE WORLD'S. T7.
+
+        This joined `planet_research` on the selected world. After research moved
+        to the commander that join can only ever miss, and the failure is SILENT:
+        the route would simply report every isotope anomaly as unreadable to a
+        player who had paid for the project. Keyed on `players.id`, which is what
+        the gate always meant.
+      */
       .leftJoin(
-        planetResearch,
+        playerResearch,
         and(
-          eq(planetResearch.planetId, selected.id),
-          eq(planetResearch.projectId, 'ISOTOPE_SPECTROMETRY'),
+          eq(playerResearch.playerId, players.id),
+          eq(playerResearch.projectId, 'ISOTOPE_SPECTROMETRY'),
         ),
       )
+      // Hardware belongs to the selected world; airborne Prospectors belong to
+      // the commander. Joining every currently controlled origin keeps a run on
+      // the galaxy and in the pending strip when another colony is selected.
+      .leftJoin(runOrigin, eq(runOrigin.controllerPlayerId, players.id))
       .leftJoin(
         miningRuns,
         and(
-          eq(miningRuns.planetId, selected.id),
+          eq(miningRuns.planetId, runOrigin.id),
           inArray(miningRuns.status, ['outbound', 'returning']),
         ),
       )
@@ -118,17 +136,30 @@ export function registerMiningRoutes(app: FastifyInstance): void {
       revealIsotopes: rows.some(
         (row) => row.researchProjectId === 'ISOTOPE_SPECTROMETRY',
       ),
-      view: projectPrivateMiningView(orbit, runs),
+      playerId: first.playerId,
+      view: projectPrivateMiningView(
+        orbit,
+        runs,
+        await techOf(app.db, first.playerId),
+        first.asteroidKey,
+      ),
     };
   };
 
-  const fieldView = async (seasonId: string, revealIsotopes: boolean) => {
+  const fieldView = async (seasonId: string, playerId: string, revealIsotopes: boolean) => {
     const now = app.clock.now();
     const snapshot = await app.projections.miningSnapshot(seasonId, now);
-    const field = projectVisibleAsteroids(snapshot, now, revealIsotopes);
+    const epochs = await sensorHistoryForPlayer(app.db, playerId, snapshot.startsAt);
+    const field = projectPlayerAsteroidField(
+      snapshot,
+      snapshot.asteroidKey,
+      epochs,
+      now,
+      revealIsotopes,
+    );
     return {
-      asteroids: field.map((asteroid) => ({
-        index: asteroid.index,
+      asteroids: field.asteroids.map((asteroid) => ({
+        id: asteroid.id,
         level: asteroid.level,
         ore: asteroid.ore,
         oreRemaining: Math.round(asteroid.oreRemaining),
@@ -136,7 +167,8 @@ export function registerMiningRoutes(app: FastifyInstance): void {
         radius: asteroid.radius,
         period: asteroid.period,
         phase: asteroid.phase,
-        y: asteroid.y,
+        inclination: asteroid.inclination,
+        ascendingNode: asteroid.ascendingNode,
         speed: asteroid.speed,
         appearsAt: asteroid.appearsAt,
         expiresAt: asteroid.expiresAt,
@@ -154,6 +186,7 @@ export function registerMiningRoutes(app: FastifyInstance): void {
         deuterium: Math.round(field.deuterium),
         minutesLeft: Math.round(field.minutesLeft),
       })),
+      nextFieldChangeAt: field.nextFieldChangeAt,
     };
   };
 
@@ -167,13 +200,16 @@ export function registerMiningRoutes(app: FastifyInstance): void {
   app.get('/api/mining', { preHandler: requireAuth }, async (req) => {
     const query = z.object({ planetId: z.string().uuid().optional() }).strict().parse(req.query);
     const own = await privateView(req.accountId!, query.planetId);
-    return { ...own.view, ...await fieldView(own.seasonId, own.revealIsotopes) };
+    return {
+      ...own.view,
+      ...await fieldView(own.seasonId, own.playerId, own.revealIsotopes),
+    };
   });
 
-  /** Common field only: safe for a shard-wide invalidation fan-out. */
+  /** Caller-filtered field; shard invalidation is safe because the query reapplies fog. */
   app.get('/api/mining/field', { preHandler: requireAuth }, async (req) => {
     const commander = await app.projections.commander(req.accountId!);
-    return fieldView(commander.seasonId, false);
+    return fieldView(commander.seasonId, commander.playerId, false);
   });
 
   /** Caller-only hardware, isotope entitlement and active runs. */
@@ -181,7 +217,7 @@ export function registerMiningRoutes(app: FastifyInstance): void {
     const query = z.object({ planetId: z.string().uuid().optional() }).strict().parse(req.query);
     const own = await privateView(req.accountId!, query.planetId);
     const revealed = own.revealIsotopes
-      ? projectIsotopeKnowledge((await fieldView(own.seasonId, true)).asteroids)
+      ? projectIsotopeKnowledge((await fieldView(own.seasonId, own.playerId, true)).asteroids)
       : [];
     return { ...own.view, isotopes: revealed };
   });
@@ -207,6 +243,15 @@ export function registerMiningRoutes(app: FastifyInstance): void {
     const owner = body.originPlanetId
       ? await ownedPlanet(app.db, req.accountId!, body.originPlanetId)
       : legacy;
-    return launchMining(app.db, planetId, body.asteroidIndex, body.craft, app.clock, owner.playerId);
+    const result = await launchMining(
+      app.db,
+      planetId,
+      body.asteroidId,
+      body.craft,
+      app.clock,
+      owner.playerId,
+    );
+    const { asteroidIndex: _internalIndex, ...publicResult } = result;
+    return publicResult;
   });
 }

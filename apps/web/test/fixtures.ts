@@ -1,4 +1,9 @@
-import { RESEARCH_PROJECT_IDS, RESEARCH_PROJECTS } from '@astera/rules';
+import {
+  RESEARCH_PROJECT_IDS,
+  RESEARCH_PROJECTS,
+  groundSlots,
+  hangarCapacity,
+} from '@astera/rules';
 import type { PlanetView } from '../src/api/schemas.js';
 
 /**
@@ -51,7 +56,7 @@ export function planetView(
       disruptedUntil: null,
       ...stock,
     },
-    buildings: { CORE: 1, REFINERY: 1, EXTRACTOR: 1, VAULT: 0, SHIPYARD: 0 },
+    buildings: { CORE: 1, REFINERY: 1, EXTRACTOR: 1, VAULT: 0, SHIPYARD: 0, HANGAR: 0 },
     nextCosts: {},
     instruments: {},
     instrumentCosts: {},
@@ -60,7 +65,7 @@ export function planetView(
     satelliteCosts: {},
     research: RESEARCH_PROJECT_IDS.map((id) => ({
       id,
-      cost: RESEARCH_PROJECTS[id].cost,
+      cost: RESEARCH_PROJECTS[id].costAt(1),
       discovered: false,
       completed: false,
       completedAt: null,
@@ -73,6 +78,12 @@ export function planetView(
     /** Craft that are off the planet. Empty by default: nothing is in the air. */
     fleetAway: {},
     flight: { used: 0, total: 3 },
+    capacity: {
+      hangar: hangarCapacity(0),
+      hangarUsed: 12,
+      ground: groundSlots(1),
+      groundUsed: 0,
+    },
     score: { wealth: 0, dominion: 0 },
     ...over,
   };

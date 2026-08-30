@@ -5,7 +5,14 @@ import * as THREE from 'three';
 import type { MiningRun } from '../api/schemas.js';
 import { MODEL } from '../ui/assets.js';
 import { Hull, Wake, useLine } from './Fleets.jsx';
-import { CRAFT_SCALE, runPosition, toWorld, type PlanetNode, type Vec3Tuple } from './scene.js';
+import {
+  CRAFT_SCALE,
+  runHomePosition,
+  runPosition,
+  toWorld,
+  type PlanetNode,
+  type Vec3Tuple,
+} from './scene.js';
 import { markersFor, slotOffset } from './Squadrons.js';
 import { markHit, wasTap } from './tap.js';
 import { serverNow } from '../lib/clock.js';
@@ -73,7 +80,7 @@ export function MiningFlights({
         <Run
           key={run.id}
           run={run}
-          home={home}
+          home={runHomePosition(run, nodes, home)}
           nodes={nodes}
           focused={run.id === focusedId}
           onSelect={() => {

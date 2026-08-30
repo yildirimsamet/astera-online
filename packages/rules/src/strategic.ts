@@ -11,15 +11,13 @@ import type {
 } from './types.js';
 
 /**
- * The widest crossing the disc can contain, corner to corner.
+ * The widest crossing the playable sphere can contain: one diameter.
  *
- * A slot is placed at radius `≤ GALAXY.radius` and height `|y| ≤ GALAXY.thickness`,
- * so no two worlds are ever further apart than this. It is the bound, not a
- * measurement: real seeds land a little inside it — the widest capital-to-neutral
- * pair across seeds 1-3 is 4,963 against this 5,036 — and that difference is
- * slack rather than something to rely on.
+ * Every playable coordinate has Euclidean distance `≤ GALAXY.radius` from the
+ * origin, so antipodal boundary points are exactly `2 × radius` apart and no pair
+ * can be further apart. This is a contract, not a sampled measurement.
  */
-export const GALAXY_SPAN = Math.hypot(2 * GALAXY.radius, 2 * GALAXY.thickness);
+export const GALAXY_SPAN = 2 * GALAXY.radius;
 
 /**
  * HOW LONG A PUBLIC CLAIM STAYS OPEN. DERIVED, NEVER TYPED. D111.
@@ -79,9 +77,27 @@ export function neutralReserve(held: Resources, capacity: Resources): NeutralRes
 export const neutralThreat = (tier: NeutralTier): NeutralThreat =>
   tier === 1 ? 'UNGUARDED' : tier === 2 ? 'GUARDED' : 'FORTIFIED';
 
+/**
+ * THE ONLY HULLS THAT CARRY ORE BETWEEN OWNED WORLDS.
+ *
+ * Exported because the transfer screen has to NAME them. It used to list craft by
+ * "what this world has more than none of", so a commander with no Hauler was shown
+ * no Hauler row, a cargo readout of `0 / 0` and three sliders pinned at zero, with
+ * the reason written nowhere — the refusal existed on the server and the sentence
+ * existed on no surface at all. A screen that names the pair off its own literal
+ * would be a second copy of this rule, free to drift the first time a third
+ * transport is priced.
+ *
+ * NOT the same list as `CLAN_TRANSFERABLE_HULLS`, and not the same as clan aid's
+ * carrier (Haulers only, deliberately — see `clanTransferCargoCapacity`).
+ */
+export const TRANSFER_CARGO_HULLS = ['HAULER', 'RUNNER'] as const;
+
 /** Only dedicated transports count when moving resources between owned worlds. */
 export function transferCargoCapacity(fleet: Fleet): number {
-  return (fleet.HAULER ?? 0) * HULLS.HAULER.cargo + (fleet.RUNNER ?? 0) * HULLS.RUNNER.cargo;
+  let capacity = 0;
+  for (const id of TRANSFER_CARGO_HULLS) capacity += (fleet[id] ?? 0) * HULLS[id].cargo;
+  return capacity;
 }
 
 export const resourcesTotal = (cargo: Resources): number =>
@@ -127,19 +143,28 @@ function neutralTargets(
   count: number,
 ): { x: number; y: number; z: number }[] {
   const phase = layoutPhase(seed, tier);
-  if (tier === 1) {
-    // A sunflower is an equal-area disc: broad radial coverage without sectors or bands.
-    return Array.from({ length: count }, (_, index) => {
-      const radius = GALAXY.radius * Math.sqrt((index + 0.5) / count);
-      const angle = phase + index * GOLDEN_ANGLE;
-      return { x: radius * Math.cos(angle), y: 0, z: radius * Math.sin(angle) };
+  // T1 fills equal-volume radial strata. Shuffle those strata independently of
+  // the Fibonacci directions so radius cannot become a disguised north/south band.
+  const radialRanks = Array.from({ length: count }, (_, index) => index)
+    .toSorted((a, b) => {
+      const ah = profileSeed(seed ^ 0x6a09e667 ^ tier, a) >>> 0;
+      const bh = profileSeed(seed ^ 0x6a09e667 ^ tier, b) >>> 0;
+      return ah - bh || a - b;
     });
-  }
 
-  const radius = GALAXY.radius * (tier === 2 ? T2_RADIUS_SHARE : T3_RADIUS_SHARE);
   return Array.from({ length: count }, (_, index) => {
-    const angle = phase + (index * TAU) / count;
-    return { x: radius * Math.cos(angle), y: 0, z: radius * Math.sin(angle) };
+    // Fibonacci directions cover the full sphere without latitude rings or poles.
+    const vertical = 1 - (2 * (index + 0.5)) / count;
+    const planar = Math.sqrt(1 - vertical * vertical);
+    const angle = phase + index * GOLDEN_ANGLE;
+    const radius = tier === 1
+      ? GALAXY.radius * Math.cbrt(((radialRanks[index] ?? index) + 0.5) / count)
+      : GALAXY.radius * (tier === 2 ? T2_RADIUS_SHARE : T3_RADIUS_SHARE);
+    return {
+      x: radius * planar * Math.cos(angle),
+      y: radius * vertical,
+      z: radius * planar * Math.sin(angle),
+    };
   });
 }
 
@@ -148,7 +173,6 @@ function selectNearTargets(
   candidates: readonly PlanetSlot[],
   used: Set<number>,
   targets: readonly { x: number; y: number; z: number }[],
-  angularHalfWidth?: number,
 ): PlanetSlot[] {
   const selected: PlanetSlot[] = [];
   for (const target of targets) {
@@ -156,13 +180,6 @@ function selectNearTargets(
     let bestDistance = Infinity;
     for (const slot of candidates) {
       if (used.has(slot.index)) continue;
-      if (angularHalfWidth !== undefined) {
-        const delta = Math.atan2(
-          Math.sin(Math.atan2(slot.z, slot.x) - Math.atan2(target.z, target.x)),
-          Math.cos(Math.atan2(slot.z, slot.x) - Math.atan2(target.z, target.x)),
-        );
-        if (Math.abs(delta) > angularHalfWidth) continue;
-      }
       const dx = slot.x - target.x;
       const dy = slot.y - target.y;
       const dz = slot.z - target.z;
@@ -185,7 +202,7 @@ function selectNearTargets(
 /**
  * Pick the v2 neutral pool from slots after every reserved capital address.
  * T3 owns the central contested points, T2 the middle density ring, and T1 covers
- * the whole playable disc. Seeded ideal points are matched to generated addresses:
+ * the whole playable sphere. Seeded ideal points are matched to generated addresses:
  * the worlds stay random-looking without allowing a whole tier to collapse into
  * one lucky angular sample.
  */
@@ -208,12 +225,7 @@ export function selectNeutralSlots(
   const used = new Set<number>();
   const take = (tier: NeutralTier): PlanetSlot[] => {
     const count = layout.neutralCounts[tier];
-    return selectNearTargets(
-      candidates,
-      used,
-      neutralTargets(seed, tier, count),
-      tier === 1 ? undefined : Math.PI / count,
-    );
+    return selectNearTargets(candidates, used, neutralTargets(seed, tier, count));
   };
   // Strategic strata get first choice of their constrained bands; T1 can use the remainder.
   const t3 = take(3);

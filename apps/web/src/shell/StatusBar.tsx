@@ -8,6 +8,7 @@ import { useProjected, type Projected } from '../lib/projection.js';
 import { RESOURCE_ART } from '../ui/assets.js';
 import { ClaimIcon, MenuIcon } from '../ui/icons/index.js';
 import { Meter } from '../ui/kit/index.js';
+import { Tally } from '../ui/Tally.js';
 import { describe, useToast } from '../ui/Toast.js';
 import type { PlanetView } from '../api/schemas.js';
 import { Signals } from './Signals.js';
@@ -35,7 +36,7 @@ export function StatusBar({
 }: {
   /** Who is signed in. The header states it, because it is the way back out. */
   commander: string;
-  onOpen: (panel: Panel, stop?: PanelStop) => void;
+  onOpen: (panel: Panel, stop?: PanelStop, reportMissionId?: string) => void;
   onFocusPlanet: (planetId: string) => void;
 }) {
   const { t } = useTranslation();
@@ -78,7 +79,7 @@ export function StatusBar({
               // Home moved to this world while focus still named the old one.
               onFocusPlanet(planetId);
             }}
-            className="field min-h-9 flex-1 py-1 text-caption"
+            className="field min-h-9 flex-1 py-1"
           >
             {worlds.map((world) => (
               <option key={world.planet.id} value={world.planet.id}>
@@ -110,7 +111,7 @@ export function StatusBar({
             label={t('statusBar.deuteriumLabel')}
             value={held.deuterium}
             cap={data.planet.deuteriumCap}
-            rate={0}
+            rate={data.planet.deuteriumPerHour ?? 0}
             tone="deuterium"
           />
         </div>
@@ -211,24 +212,19 @@ export function Bays({ flight }: { flight: { used: number; total: number } }) {
   */
   const free = Math.max(0, flight.total - flight.used);
   return (
-    <div
-      className="flex shrink-0 flex-col justify-center gap-1 pl-1 pr-1 text-right"
-      role="img"
-      aria-label={t('statusBar.bays.hint', { used: flight.used, total: flight.total })}
-    >
+    <div className="flex shrink-0 flex-col items-end justify-center gap-1 px-1 text-right">
       <p className="legend">{t('statusBar.bays.label')}</p>
-      <div className="flex items-center justify-end gap-[3px]" aria-hidden>
-        {Array.from({ length: flight.total }, (_, i) => (
-          <span
-            key={i}
-            className={
-              i < flight.used
-                ? 'h-2.5 w-[5px] rounded-cell bg-crystal shadow-[0_0_5px_var(--color-crystal-glow)]'
-                : 'h-2.5 w-[5px] rounded-cell bg-line'
-            }
-          />
-        ))}
-      </div>
+      {/*
+        THE SAME RACK EVERY OTHER SURFACE DRAWS. This was the original of the
+        pattern and stayed a private copy of it while the worlds list, the orbit
+        sheet, the telescope and the clan quote each grew their own — five racks
+        that looked alike and could drift. `Tally` is that shape, once.
+      */}
+      <Tally
+        used={flight.used}
+        total={flight.total}
+        label={t('statusBar.bays.hint', { used: flight.used, total: flight.total })}
+      />
       <p className="sr-only">{t('statusBar.bays.free', { count: free })}</p>
     </div>
   );

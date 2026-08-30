@@ -5,6 +5,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { DESTINATION, Signals } from '../src/shell/Signals.js';
 import { describeNotification } from '../src/lib/notifications.js';
 import type { NotificationView } from '../src/api/schemas.js';
+import { nextPanelStop } from '../src/shell/panelRoute.js';
 
 /**
  * A NOTIFICATION IS A DOOR, AND EVERY ONE OF THEM HAS TO OPEN. D121.
@@ -44,6 +45,7 @@ const EVERY_KIND = [
   'settlement_lost',
   'settlement_success',
   'strategic_incoming',
+  'strategic_intercepted',
   'unlock',
 ] as const;
 
@@ -61,12 +63,14 @@ const PAYLOAD: Record<(typeof EVERY_KIND)[number], Record<string, unknown>> = {
   settlement_lost: { targetPlanetId: 'p9' },
   settlement_success: { targetPlanetId: 'p9' },
   strategic_incoming: { etaMinutes: 9 },
+  strategic_intercepted: { defended: true, range: 1300 },
   unlock: { unlock: 'RADAR', title: 'Radar unlocked', body: 'Catches anyone looking.' },
 };
 
 const notification = (kind: (typeof EVERY_KIND)[number]): NotificationView => ({
   id: `n-${kind}`,
   kind,
+  refId: `mission-${kind}`,
   payload: PAYLOAD[kind],
   seen: false,
   at: new Date('2026-08-26T12:00:00.000Z'),
@@ -101,6 +105,16 @@ const openSheet = async (): Promise<void> => {
 };
 
 describe('where a notification takes you', () => {
+  it('does not replay an old report when Intel is later opened normally', () => {
+    const deepLink = nextPanelStop(null, 'battles', 'mission-raided');
+    expect(deepLink).toMatchObject({
+      stop: 'battles',
+      request: 1,
+      reportMissionId: 'mission-raided',
+    });
+    expect(nextPanelStop(deepLink)).toBeNull();
+  });
+
   /**
    * The guard the five orphaned kinds needed and did not have. A kind this build
    * can put into words but cannot route is a row a player taps and nothing
@@ -128,6 +142,7 @@ describe('where a notification takes you', () => {
     ['raided', 'intel', 'battles'],
     ['raid_result', 'intel', 'battles'],
     ['death_star_result', 'intel', 'battles'],
+    ['strategic_intercepted', 'intel', 'battles'],
   ] as const)('takes %s to the %s centre, on the %s shelf', (kind, panel, stop) => {
     expect(DESTINATION[kind]).toEqual({ panel, stop });
   });
@@ -164,12 +179,12 @@ describe('where a notification takes you', () => {
 
   /* ── and the wiring that carries it ───────────────────────── */
 
-  it('hands the panel AND the shelf to whoever opens surfaces', async () => {
+  it('hands the panel, shelf and exact battle identity to whoever opens surfaces', async () => {
     const { onOpen } = mount([notification('raided')]);
     await openSheet();
     await userEvent.click(screen.getByRole('button', { name: 'Open related report' }));
 
-    expect(onOpen).toHaveBeenCalledWith('intel', 'battles');
+    expect(onOpen).toHaveBeenCalledWith('intel', 'battles', 'mission-raided');
   });
 
   it('passes no shelf where the panel is the whole answer', async () => {
@@ -177,7 +192,7 @@ describe('where a notification takes you', () => {
     await openSheet();
     await userEvent.click(screen.getByRole('button', { name: 'Open related report' }));
 
-    expect(onOpen).toHaveBeenCalledWith('planet', undefined);
+    expect(onOpen).toHaveBeenCalledWith('planet', undefined, undefined);
   });
 
   /**

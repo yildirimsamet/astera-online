@@ -6,6 +6,7 @@ import type { Api } from '../src/api/client.js';
 import { ApiProvider } from '../src/api/context.js';
 import {
   RECONNECT_RESYNC_MAX_MS,
+  STRATEGIC_SIGHT_CONSISTENCY_MS,
   useEventStream,
 } from '../src/session/useEventStream.js';
 import { COALESCE_MS } from '../src/session/shardEvents.js';
@@ -80,6 +81,13 @@ describe('the event stream', () => {
     useEventStream(true, onRollover);
   }, { wrapper: wrapper(client) });
 
+  /** Start an assertion after the mandatory first-open catch-up has completed. */
+  const mountCaughtUp = (onRollover?: () => void) => {
+    const view = mount(onRollover);
+    asked = [];
+    return view;
+  };
+
   const fire = (kind: string): void => {
     act(() => {
       onEvent?.(kind);
@@ -87,7 +95,7 @@ describe('the event stream', () => {
   };
 
   it('refreshes everything when something happens to you', () => {
-    mount();
+    mountCaughtUp();
     fire('raided');
     // Every read a resolved event can change, immediately and with no window.
     expect(asked).toContain('planet');
@@ -95,6 +103,31 @@ describe('the event stream', () => {
     expect(asked).toContain('notifications');
     expect(asked).toContain('traffic');
     expect(asked.length).toBeGreaterThan(6);
+  });
+
+  it('puts a returned probe onto both the Intel screen and the galaxy immediately', () => {
+    mountCaughtUp();
+    fire('probe_report');
+    expect(asked).toContain('intel');
+    expect(asked).toContain('galaxy');
+    expect(asked).toContain('notifications');
+  });
+
+  it('refreshes only announcements immediately when an operator publishes', () => {
+    mountCaughtUp();
+    fire('global:announcement');
+    expect(asked).toEqual(['announcements']);
+  });
+
+  it('rechecks strategic sight after replica caches have observed the interception', () => {
+    mountCaughtUp();
+    fire('private:strategic-sight');
+    expect(asked).toEqual(['traffic']);
+
+    act(() => {
+      vi.advanceTimersByTime(STRATEGIC_SIGHT_CONSISTENCY_MS);
+    });
+    expect(asked).toEqual(['traffic', 'traffic']);
   });
 
   /**
@@ -106,7 +139,7 @@ describe('the event stream', () => {
    * time anybody in the galaxy pressed launch.
    */
   it('reads one list for a neighbour launching, not eight', () => {
-    mount();
+    mountCaughtUp();
     fire('shard:launch');
     // Nothing yet: shard events are gathered before they are acted on.
     expect(asked).toEqual([]);
@@ -118,7 +151,7 @@ describe('the event stream', () => {
   });
 
   it('collapses a burst from a busy galaxy into one pass', () => {
-    mount();
+    mountCaughtUp();
     for (let i = 0; i < 6; i += 1) fire('shard:launch');
     fire('shard:arrival');
 
@@ -135,7 +168,7 @@ describe('the event stream', () => {
    * second is a quarter of a second too many when the answer already exists.
    */
   it('never puts a player event behind the shard window', () => {
-    mount();
+    mountCaughtUp();
     fire('shard:launch');
     fire('raided');
     // The raid is already through; only the launch is still waiting.
@@ -145,14 +178,14 @@ describe('the event stream', () => {
 
   it('moves the session at rollover instead of refetching a vanished world', () => {
     const onRollover = vi.fn();
-    mount(onRollover);
+    mountCaughtUp(onRollover);
     fire('shard:rollover');
     expect(onRollover).toHaveBeenCalledOnce();
     expect(asked).toEqual([]);
   });
 
   it('resyncs immediately when a suspended page is shown again', () => {
-    mount();
+    mountCaughtUp();
     act(() => {
       window.dispatchEvent(new Event('pageshow'));
       vi.advanceTimersByTime(0);
@@ -163,7 +196,7 @@ describe('the event stream', () => {
   });
 
   it('coalesces visible lifecycle edges and ignores them while hidden', () => {
-    mount();
+    mountCaughtUp();
     Object.defineProperty(document, 'visibilityState', { configurable: true, value: 'hidden' });
     act(() => {
       window.dispatchEvent(new Event('focus'));
@@ -187,7 +220,7 @@ describe('the event stream', () => {
   });
 
   it('removes lifecycle listeners when the galaxy view unmounts', () => {
-    const view = mount();
+    const view = mountCaughtUp();
     view.unmount();
     act(() => {
       window.dispatchEvent(new Event('focus'));
@@ -199,7 +232,7 @@ describe('the event stream', () => {
   });
 
   it('rechecks a new world after cross-replica caches have observed the commit', () => {
-    mount();
+    mountCaughtUp();
     fire('shard:world');
     act(() => { vi.advanceTimersByTime(COALESCE_MS); });
     expect(asked.filter((key) => key === 'galaxy')).toHaveLength(1);
@@ -224,9 +257,13 @@ describe('the event stream', () => {
    * the disc showing a world up to a minute out of date, with craft parked on their
    * destinations, and nothing on screen admitting it.
    */
-  it('does not refetch on the first connection, which has nothing to catch up on', () => {
+  it('closes the initial query/subscription race with a first-open catch-up', () => {
     mount();
-    expect(asked, 'a cold start paid for its own reads twice').toEqual([]);
+    expect(asked, 'the first socket open did not reconcile its query snapshots').toContain('planet');
+    expect(asked).toContain('traffic');
+    expect(asked).toContain('pending');
+    expect(asked).toContain('galaxy');
+    expect(asked.length).toBeGreaterThan(6);
   });
 
   /** Drop the socket and let the reconnect loop's backoff run out. */
@@ -239,7 +276,7 @@ describe('the event stream', () => {
   };
 
   it('re-reads the whole world when the socket comes back', async () => {
-    mount();
+    mountCaughtUp();
     expect(asked).toEqual([]);
 
     await reconnect();
@@ -258,7 +295,7 @@ describe('the event stream', () => {
    * that actually loses events: the socket going down and coming back.
    */
   it('resyncs again on a second reconnection', async () => {
-    mount();
+    mountCaughtUp();
     await reconnect();
     const first = asked.length;
     expect(first).toBeGreaterThan(6);
@@ -276,7 +313,7 @@ describe('the event stream', () => {
       .mockReturnValueOnce(0.99)
       // A second short close also reopens immediately.
       .mockReturnValue(0);
-    mount();
+    mountCaughtUp();
 
     await act(async () => {
       closeSocket?.();
@@ -300,7 +337,7 @@ describe('the event stream', () => {
 
   /** An unmounted tab must not flush a window it armed on the way out. */
   it('drops a pending shard flush on unmount', () => {
-    const view = mount();
+    const view = mountCaughtUp();
     fire('shard:launch');
     view.unmount();
 

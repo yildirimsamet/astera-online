@@ -88,8 +88,18 @@ const commander = async (name, existing = false) => {
     const open = servers.servers.find((s) => s.status === 'open');
     await call(`/api/servers/${open.code}/join`, { method: 'POST', token: session.accessToken });
   }
-  const galaxy = await call('/api/galaxy', { token: session.accessToken });
-  return { name, token: session.accessToken, planet: galaxy.planets.find((p) => p.isSelf) };
+  // Do not prime the caller-specific projection caches before the SQL fixture
+  // below installs its sensors. The browser's first read must see that fixture.
+  const [planet] = await sql`
+    SELECT p.id, p.name
+    FROM planets p
+    JOIN players pl ON pl.id = p.player_id
+    JOIN accounts ac ON ac.id = pl.account_id
+    WHERE ac.username = ${name} AND p.kind = 'CAPITAL'
+    LIMIT 1
+  `;
+  if (!planet) throw new Error(`joined commander ${name} has no capital`);
+  return { name, token: session.accessToken, planet };
 };
 
 /* ── put something in the air ───────────────────────────────── */
@@ -104,6 +114,28 @@ const a = await commander(ownerName ?? `mova${stamp}`, ownerName !== undefined);
 const b = await commander(observerName ?? `movb${stamp}`, observerName !== undefined);
 console.log(`A = ${a.planet.name}   B = ${b.planet.name}\n`);
 
+/** Give both real eyes and a deterministic shared patch of sky. D123/D126. */
+const installEyes = async (planetId, x) => {
+  await sql`UPDATE planets SET x = ${x}, y = 0, z = 0 WHERE id = ${planetId}`;
+  for (const [slot, type, level] of [[0, 'TELESCOPE', 5], [1, 'RADAR', 5], [5, 'UPLINK', 1]]) {
+    await sql`
+      INSERT INTO satellites (planet_id, slot, type, level)
+      VALUES (${planetId}, ${slot}, ${type}, ${level})
+      ON CONFLICT (planet_id, slot) DO UPDATE SET type = ${type}, level = ${level}
+    `;
+  }
+  // The movement harness needs a rock on every wall-clock minute. A wide epoch is
+  // a test fixture only; it discovers whichever live rock the deterministic season
+  // schedule currently contains without changing production discovery rules.
+  await sql`
+    UPDATE sensor_epochs
+    SET x = ${x}, y = 0, z = 0, reach = 10000
+    WHERE planet_id = ${planetId} AND ends_at IS NULL
+  `;
+};
+
+await installEyes(a.planet.id, 0);
+await installEyes(b.planet.id, 900);
 await sql`UPDATE buildings SET level = 9 WHERE planet_id = ${a.planet.id} AND type = 'CORE'`;
 await sql`
   INSERT INTO units (planet_id, hull, location, count) VALUES (${a.planet.id}, 'WASP', 'home', 40)

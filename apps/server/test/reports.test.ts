@@ -30,6 +30,7 @@ import { EventWorker } from '../src/worker/loop.js';
 import {
   giveUnits,
   grant,
+  giveInstrument,
   seedWorld,
   setLevel,
   settledAt,
@@ -52,11 +53,19 @@ const SETTLED_MINUTES = 250;
 const silent = pino({ level: 'silent' });
 
 interface ReportView {
+  missionId: string;
   grade: string;
   rounds: {
     round: number;
     attackerDamage: number;
     defenderDamage: number;
+    /** Present on new reports; null on reports written before calculation telemetry. */
+    attackerRoll: number | null;
+    defenderRoll: number | null;
+    shieldBefore: number | null;
+    shieldAfter: number | null;
+    attackerHullDamage: number | null;
+    shieldAbsorbed: number;
     attackerLosses: Record<string, number>;
     defenderLosses: Record<string, number>;
   }[];
@@ -76,6 +85,9 @@ interface ReportView {
   /** Null on reports written before the swing was recorded. */
   dominion: number | null;
   shieldAbsorbed: number;
+  /** Derived from immutable round telemetry; null for a legacy report. */
+  shieldBefore: number | null;
+  shieldAfter: number | null;
   cargoLimited: boolean;
   defenceSalvage: Record<string, number>;
   disruptedMinutes: number;
@@ -133,20 +145,22 @@ describe('battle reports', () => {
   };
 
   /** A raid that actually resolves, with something worth taking. */
-  const raid = async (wasps = 40): Promise<void> => {
+  const raid = async (wasps = 40): Promise<string> => {
     await grant(f.db, theirs, 40_000, 4_000);
     await giveUnits(f.db, theirs, { BASTION: 6 });
     await giveUnits(f.db, mine, { WASP: wasps, HAULER: 3 });
     const launch = await launchAttack(f.db, mine, theirs, { WASP: wasps, HAULER: 3 }, f.clock);
     f.clock.set(settledAt(launch.arriveAt));
     await worker().tick();
+    return launch.missionId;
   };
 
   it('tells the attacker what they destroyed and what it cost', async () => {
-    await raid();
+    const missionId = await raid();
     const [report] = await reportsFor(0);
 
     expect(report).toBeDefined();
+    expect(report!.missionId).toBe(missionId);
     expect(report!.attacking).toBe(true);
     expect(['DECISIVE', 'PARTIAL', 'REPELLED']).toContain(report!.grade);
     expect(report!.rounds.length).toBeGreaterThan(0);
@@ -266,6 +280,15 @@ describe('battle reports', () => {
       outcome: 'FIRST_STRIKE',
       damage: 12_000,
       destroyedFleet: { BASTION: 2 },
+      destroyedResources: { alloy: 4_000, crystal: 2_000, deuterium: 500 },
+      levelChanges: [{ kind: 'BUILDING', id: 'CORE', before: 6, after: 5 }],
+      destroyedOrders: [{
+        kind: 'BUILDING',
+        subject: 'REFINERY',
+        count: 1,
+        cost: { alloy: 900, crystal: 400, deuterium: 0 },
+      }],
+      shieldDestroyed: 800,
       createdAt: f.clock.now(),
     });
     const auth = { authorization: `Bearer ${await tokens.issueAccess(f.accountIds[0]!)}` };
@@ -282,6 +305,15 @@ describe('battle reports', () => {
       }[];
     }>();
     expect(body.reports).toHaveLength(1);
+    expect(body.reports[0]).toMatchObject({
+      kind: 'STRATEGIC',
+      outcome: 'FIRST_STRIKE',
+      destroyedFleet: { BASTION: 2 },
+      destroyedResources: { alloy: 4_000, crystal: 2_000, deuterium: 500 },
+      levelChanges: [{ kind: 'BUILDING', id: 'CORE', before: 6, after: 5 }],
+      destroyedOrders: [{ subject: 'REFINERY', count: 1 }],
+      shieldDestroyed: 800,
+    });
     expect(body.rivals).toEqual([
       expect.objectContaining({
         planetId: theirs,
@@ -472,6 +504,8 @@ describe('battle reports', () => {
 
     /** Shield telemetry was stored and never surfaced; both sides watched it happen. */
     it('sums the shield the same way both sides saw it', async () => {
+      await giveInstrument(f.db, theirs, 'AEGIS', 1);
+      f.clock.advance(60);
       await raid();
       const [attacker] = await reportsFor(0);
       const [defender] = await reportsFor(1);
@@ -482,6 +516,51 @@ describe('battle reports', () => {
       );
       expect(attacker!.shieldAbsorbed).toBeCloseTo(fromRounds, 3);
       expect(defender!.shieldAbsorbed).toBe(attacker!.shieldAbsorbed);
+      expect(attacker!.shieldBefore).toBeGreaterThan(0);
+      expect(attacker!.shieldAfter).toBeGreaterThanOrEqual(0);
+      expect(attacker!.shieldBefore! - attacker!.shieldAfter!).toBe(attacker!.shieldAbsorbed);
+      expect(defender!.shieldBefore).toBe(attacker!.shieldBefore);
+      expect(defender!.shieldAfter).toBe(attacker!.shieldAfter);
+
+      for (const round of attacker!.rounds) {
+        expect(round.attackerRoll).toBeGreaterThanOrEqual(COMBAT.varianceMin);
+        expect(round.attackerRoll).toBeLessThanOrEqual(COMBAT.varianceMax);
+        expect(round.defenderRoll).toBeGreaterThanOrEqual(COMBAT.varianceMin);
+        expect(round.defenderRoll).toBeLessThanOrEqual(COMBAT.varianceMax);
+        expect(round.attackerHullDamage).toBeGreaterThanOrEqual(0);
+      }
+
+      // Later recharge must never rewrite history.
+      f.clock.advance(180);
+      const [later] = await reportsFor(0);
+      expect(later!.shieldBefore).toBe(attacker!.shieldBefore);
+      expect(later!.shieldAfter).toBe(attacker!.shieldAfter);
+    });
+
+    it('marks calculation fields unknown on a report written before telemetry existed', async () => {
+      const missionId = await raid();
+      await f.db.update(battleReports).set({
+        rounds: [{
+          round: 1,
+          attackerDamage: 40,
+          defenderDamage: 10,
+          shieldAbsorbed: 0,
+          breacherShieldDamage: 0,
+          attackerLosses: {},
+          defenderLosses: {},
+        }],
+      }).where(eq(battleReports.missionId, missionId));
+
+      const [legacy] = await reportsFor(0);
+      expect(legacy!.shieldBefore).toBeNull();
+      expect(legacy!.shieldAfter).toBeNull();
+      expect(legacy!.rounds[0]).toMatchObject({
+        attackerRoll: null,
+        defenderRoll: null,
+        shieldBefore: null,
+        shieldAfter: null,
+        attackerHullDamage: null,
+      });
     });
 
     /** Per-round casualties were always in the payload; nothing may drop them. */

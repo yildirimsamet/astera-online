@@ -259,6 +259,12 @@ describe('notification copy', () => {
       );
     });
 
+    it('renders the current Radar 4 coarse mass without exposing an exact count', () => {
+      const line = say('incoming_fleet', { etaMinutes: 9, mass: 'HEAVY' });
+      expect(line).toContain('Heavy force inbound');
+      expect(line).not.toContain('ships');
+    });
+
     /**
      * WHAT RADAR 5 IS ACTUALLY SOLD FOR. D45.
      *
@@ -511,12 +517,18 @@ describe('notification copy', () => {
  * number is still there.
  */
 describe('flight bays', () => {
+  /*
+    THE RACK IS THE SHARED ONE NOW. D142: flight bays, orbit sockets, telescope
+    slots, clan seats and a receiver's bays were five hand-rolled rows of pips
+    that looked alike and could drift, so they are one `Tally` — and the assertion
+    moves onto its contract, `[data-cell]`, which every rack in the game keeps.
+  */
   it('lights one pip per craft in the air and leaves the rest dark', () => {
     const { container } = render(<Bays flight={{ used: 2, total: 5 }} />);
-    const pips = container.querySelectorAll('[aria-hidden] > span');
+    const pips = container.querySelectorAll('[data-tally] [data-cell]');
     expect(pips).toHaveLength(5);
-    const lit = [...pips].filter((el) => el.className.includes('bg-crystal'));
-    expect(lit).toHaveLength(2);
+    expect(container.querySelectorAll('[data-cell="used"]')).toHaveLength(2);
+    expect(container.querySelectorAll('[data-cell="free"]')).toHaveLength(3);
   });
 
   it('says the count out loud for anyone who cannot see the pips', () => {

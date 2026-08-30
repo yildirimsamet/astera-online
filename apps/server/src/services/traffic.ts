@@ -1,18 +1,41 @@
 import { and, eq, gte, inArray, ne, or } from 'drizzle-orm';
 import {
   DEATH_STAR,
+  TRAFFIC,
   coreTier,
+  distance,
+  radarRange,
+  radarRevealsComposition,
+  radarRevealsSize,
+  radarSensesIntent,
   engagementEndsAt,
+  massClass,
   orbitStandoff,
+  sensorSphere,
+  sensorZone,
   surfaceStandoff,
   visualLeg,
   worldRadius,
+  type MassClass,
   type Fleet,
+  type SensorSphere,
+  type SensorZone,
   type Vec3,
 } from '@astera/rules';
 import type { Db } from '../db/client.js';
-import { buildings, miningRuns, missions, planets } from '../db/schema.js';
+import {
+  buildings,
+  miningRuns,
+  missions,
+  planets,
+  strategicImpacts,
+  strategicInterceptions,
+} from '../db/schema.js';
 import { legBelongsTo } from './flight.js';
+import { instrumentLevels, levelOf } from './intel.js';
+import { loadMiningSnapshot } from './mining.js';
+import { discoveredAsteroidIndexes } from './asteroidField.js';
+import { sensorHistoryForPlayer } from './sensorHistory.js';
 
 /**
  * TRAFFIC — the galaxy is busy, and now you can see it.
@@ -23,14 +46,11 @@ import { legBelongsTo } from './flight.js';
  * protected the fog completely and it made the disc feel empty — the one thing a
  * galaxy of two hundred real people should never feel.
  *
- * The owner's instruction is exact: everything moving out there is visible to
- * everybody, in real time, with its neon, going and coming back — and the only
- * thing that stays private is the ROUTE LINE, the thread that says where a craft
- * came from and where it is going. Drills are the stated exception: a mining run
- * is public in full, line and clock included, because it is a race for a rock
- * everyone can already see.
- *
- * SO THE RULE IS NOW: POSITION IS PUBLIC, INTENT IS NOT.
+ * The current owner instruction is the three-zone model in `@astera/rules/sight`:
+ * outside every owned sphere the craft is absent, Radar makes it an anonymous
+ * moving contact, and Telescope sight resolves the craft itself — including an
+ * exact fleet manifest — without exposing its route. A discovered mining target
+ * is the narrow route exception.
  *
  * What that means in the payload, and every line of it is deliberate:
  *
@@ -40,19 +60,9 @@ import { legBelongsTo } from './flight.js';
  *     server, so there is no field a modified client could read to find out which
  *     world a fleet left or which one it is about to land on. The window is also
  *     clamped short of arrival, so watching one to the end never marks the target.
- *   · KIND AND CONTENT, BOTH — INCLUDING TO THE WORLD IT IS AIMED AT. Whether it is
- *     a warship, a scout or a mining craft is public — that is what the neon colours
- *     say — and so is what is in it: eight Wasps and a Hauler reads as eight Wasps
- *     and a Hauler to anybody who focuses it, the defender included. That is a
- *     second owner decision on top of the first, and it is a real concession by the
- *     Radar ladder, whose L4 sold a size estimate.
- *     RE-CONFIRMED ON REVIEW, because it looks like a leak and is not one. What the
- *     Radar sells is ATTRIBUTION: a contact is a craft moving out there, and knowing
- *     that it is coming for YOU, and how long you have, is the thing being bought. A
- *     defender may piece it together from a short hop and cannot from a long one,
- *     and that asymmetry is the game. `pendingThreads` is the ATTRIBUTED payload and
- *     still carries no composition — see the note on its `fleet` field for why the
- *     two rules are consistent rather than contradictory.
+ *   · THREE ZONES. Outside reach there is no payload row. Radar publishes a moving
+ *     question mark and earns size/kind on its upper rungs. Telescope identifies
+ *     the craft and, for a fleet, its exact hulls and counts.
  *   · CARGO IS NEVER PUBLIC. What a Prospector is bringing home, and what a raider
  *     took, belong to the owner alone. A contact carries no ore, no loot and no
  *     resource figure of any kind — those live on `/api/mining` and the battle
@@ -62,8 +72,8 @@ import { legBelongsTo } from './flight.js';
  *
  * WHAT IT COSTS, STATED RATHER THAN DISCOVERED LATER.
  *
- * A departure is visible now and was not before, and a composition is readable
- * where it used to cost Radar L4. Both are real concessions by the intel ladder.
+ * A departure covered by a sensor is visible now and was not before. This is a real
+ * concession by the intel ladder, while origin and destination remain withheld.
  * The Telescope still sells something the disc does not — it answers "is their
  * COMBAT FLEET home", where a craft leaving a world could be a probe, a
  * Prospector, or three Wasps out of forty — but the gap is narrower than it was.
@@ -75,53 +85,28 @@ import { legBelongsTo } from './flight.js';
  */
 
 /**
- * How far ahead a contact's motion is published, in minutes.
+ * THE THREE FIGURES THAT SHAPE A PUBLISHED WINDOW LIVE IN `@astera/rules`.
  *
- * Long enough that a missed read does not freeze a craft mid-flight — the client
- * wakes on `endAt` to ask for the next window, with a sixty-second net under it —
- * and short enough that the window is a heading rather than a route. The value is
- * not sensitive: extending it reveals nothing an observer could not get by
- * watching the same craft for the same length of time.
+ * They were private to this file, and the floor among them referred to a number
+ * that lives on the CLIENT — how often the contact list is asked for. When that
+ * interval moved, the floor did not, and every probe in the game began publishing
+ * the world it was flying to. See `TRAFFIC` for the whole account.
+ *
+ * `MIN_COAST_MS` IS THE REFETCH CADENCE, not a constant of its own. A window
+ * shorter than the gap between reads is a craft that stops dead and waits; a
+ * window exactly that long is the shortest one that cannot. Reading the cadence
+ * itself means the two can never disagree again.
  */
-const BEARING_MINUTES = 4;
-
-/**
- * AND NEVER MORE THAN THIS SHARE OF WHAT IS LEFT TO FLY. D63.
- *
- * The ceiling above is an absolute duration, and an absolute duration stops being
- * a heading the moment flights get shorter than it. At D63's hull speeds a mean
- * leg is four minutes — exactly `BEARING_MINUTES` — so the published window
- * covered the whole remaining flight and its end point WAS the destination. That
- * is a route, and "a contact carries a bearing window, never a route" is the fog
- * rule this file exists to enforce.
- *
- * Expressed as a share so it holds at any speed: whatever the tempo, an observer
- * is shown where a craft will be part of the way from here, never where it stops.
- */
-const BEARING_SHARE = 0.5;
-
-/**
- * AND NEVER SHORTER THAN ONE REFETCH, WHATEVER THE SHARE WORKS OUT TO.
- *
- * The client draws a craft by interpolating inside the published window and CLAMPS
- * at its end, so a window shorter than the gap between reads is a craft that stops
- * dead and waits — the exact failure D52 was written to delete, arriving at the
- * most dramatic moment there is, the seconds before a raid lands.
- *
- * `useTraffic` refetches on a sixty-second net, so that is the floor. Its effect is
- * that a craft inside its last minute has its window clamped to the arrival — the
- * final approach IS given away, and that is the same concession D52 already makes
- * by publishing a raid that has landed. A craft a minute out is visibly landing
- * somewhere; the fog rule is about the flight, not the last few seconds of it.
- */
-const MIN_COAST_MS = 60_000;
+const BEARING_MINUTES = TRAFFIC.bearingMinutes;
+const BEARING_SHARE = TRAFFIC.bearingShare;
+const MIN_COAST_MS = TRAFFIC.refreshMs;
 
 /**
  * How much of the final approach an engaging contact publishes.
  *
- * Only so the client has a DIRECTION: the squadron is held off the world along the
- * line it came in on, and two points are the cheapest way to say which line that
- * is. A minute of a flight everyone could already watch.
+ * Only after Radar/Telescope has actually seen the craft: the squadron is held off
+ * the world along the line it came in on, and two points are the cheapest way to
+ * say which line that is. An `effectOnly` observer never receives either point.
  */
 const APPROACH_MS = 60_000;
 
@@ -140,21 +125,49 @@ const APPROACH_MS = 60_000;
  * already watch, and charged a dead stop for it.
  *
  * What replaced it is the opposite decision, and the owner's: a raid landing is
- * the most watchable thing in the galaxy, so it is PUBLIC. The window runs to the
- * instant of arrival, and then the contact keeps being published through the
- * engagement with the world it is hitting named, so everybody sees the battle. A
- * margin protecting the destination for the last forty-five seconds of a flight
- * that ends in a public bombardment protects nothing at all.
+ * the most watchable thing in the galaxy, so its BOMBARDMENT is public. The craft
+ * window still answers to D123; outside every circle the event carries only its
+ * public target and clock and never this final approach.
  */
 
 /**
  * `harvest` is a craft flying to a wreck field. D32.
  *
- * Public in full, exactly like a mining run: both are unarmed craft going to a
- * place everybody can already see, so hiding the route would conceal nothing and
- * cost the disc a visible race.
+ * The craft still obeys D123. Once Telescope identifies it, its route/clock may be
+ * shown because the wreck field is already public; Radar sees only its own rung and
+ * a commander outside every circle sees no Prospector at all.
  */
-export type ContactKind = 'fleet' | 'probe' | 'death_star' | 'mining' | 'harvest';
+/**
+ * `unknown` IS A CRAFT YOU CAN SEE AND CANNOT IDENTIFY. D125.
+ *
+ * D123 dropped out-of-reach craft from the payload entirely, and the owner found
+ * the hole in it within the hour: a player cannot tell the difference between "the
+ * galaxy is quiet" and "the galaxy is busy and my instruments are too weak", so
+ * the Telescope ladder was invisible in a second, quieter way. Nothing on the disc
+ * ever said there was something to buy.
+ *
+ * So the far contact comes back, stripped of everything the instrument sells. It
+ * carries a bearing window and nothing else — no kind, so the neon cannot say
+ * whether it is a warship, a scout or a drill; no mass, so its weight is unknown;
+ * no origin and no destination. What it says, and all it says, is THERE IS
+ * SOMETHING OUT THERE AND YOU CANNOT SEE WHAT IT IS. That is an advertisement for
+ * the Telescope written in the only language this game trusts, the picture (D124).
+ *
+ * WHAT IT DOES GIVE AWAY, STATED RATHER THAN GLOSSED: its SPEED. A window is two
+ * points and two instants, so `|to − from| / (endAt − startAt)` is exact, and a
+ * probe flies thirty-six times faster than a fleet (D121). A patient observer can
+ * therefore separate a scout from a raid out there without owning a Telescope.
+ *
+ * IT IS NOT FIXABLE AND IT IS NOT A DEFECT. Speed is what MOVEMENT IS: anything
+ * drawn crossing the disc is drawn at the rate it crosses, and the only ways to
+ * hide that are to publish a false position — which the fog may never do, it hides
+ * and never lies — or to stop drawing the craft at all, which is the D123 version
+ * the owner rejected for making the galaxy look dead. The disclosure is a rate,
+ * never a roster: it cannot separate a Wasp swarm from a Bulwark wall, cannot say
+ * how many, and cannot say where from or where to. Those are what the ladder
+ * sells and none of them are here.
+ */
+export type ContactKind = 'unknown' | 'fleet' | 'probe' | 'death_star' | 'mining' | 'harvest';
 
 export interface Contact {
   /**
@@ -174,6 +187,8 @@ export interface Contact {
   to: Vec3;
   startAt: Date;
   endAt: Date;
+  /** Exact hull composition, present only for a fleet inside Telescope sight. */
+  fleet?: Fleet;
   /**
    * THIS WINDOW ENDS WHERE THE CRAFT DOES, RATHER THAN PART OF THE WAY ALONG.
    *
@@ -198,14 +213,27 @@ export interface Contact {
   /**
    * The whole leg, and the clock on it. MINING ONLY.
    *
-   * A Prospector's run is a public race for a rock everybody can see, so hiding
-   * where it is going would withhold half of a contest the design wants people to
-   * feel. Present for no other kind — this is the field that would give away a
-   * raid, and `kind === 'mining'` is the only branch that ever sets it.
+   * A Prospector's run becomes a public race after this caller discovers the rock,
+   * so hiding where it is going would withhold half of a contest the design wants
+   * people to feel. Present for no other kind — this is the field that would give
+   * away a raid, and only an authorised mining branch ever sets it.
    */
   route?: { from: Vec3; to: Vec3; departAt: Date; arriveAt: Date };
   /** Minutes until it gets there. Mining only, for the same reason. */
   minutesRemaining?: number;
+  /**
+   * THE BATTLE IS PUBLIC; THE CRAFT IS NOT. D52/D123.
+   *
+   * Present only when an engagement is outside every sensor sphere. The contact
+   * then exists solely to carry the public moment below: `from` and `to` are both
+   * the public target centre, and no mass, silhouette, bearing or craft geometry
+   * may be inferred from it. The client draws the bombardment and nothing else.
+   *
+   * Inside Radar/Telescope reach this flag is absent and the ordinary disclosure
+   * ladder applies to the squadron itself. The attacker never receives this
+   * projection; their own pending thread already draws the exact fleet.
+   */
+  effectOnly?: true;
   /**
    * THIS RAID IS LANDING RIGHT NOW, AND EVERYBODY WATCHES IT. D52.
    *
@@ -216,12 +244,12 @@ export interface Contact {
    * living galaxy — so the target is published, but ONLY for the seconds the fleet
    * is actually over it.
    *
-   * WHAT IT DISCLOSES, AND WHY THAT IS NOTHING NEW. `target` is a planet's
-   * coordinates, which are public on `/api/galaxy` for every world in the disc.
-   * The craft is standing on top of it, so its position already said so. The
-   * bearing it came in on was visible for the whole flight. There is still no
-   * owner, no origin and no name in this payload, and the raid is ten seconds from
-   * resolving into a battle report and a debris field that are public anyway (D32).
+   * WHAT IT DISCLOSES. `target` is a planet's coordinates, which are public on
+   * `/api/galaxy` for every world in the disc. The moment says that world is under
+   * fire and when the ten-second window ends. It does NOT itself disclose the
+   * squadron: outside every sensor sphere `effectOnly` strips its position,
+   * bearing and mass; Radar/Telescope earn those through the normal zone ladder.
+   * There is still no owner, origin, name or outcome in this payload.
    *
    * It appears only on an attack, only between `arriveAt` and `endsAt`, and the
    * mission is genuinely `in_flight` throughout — this names a state of the world,
@@ -251,14 +279,56 @@ export interface Contact {
    */
   impact?: { at: Date; target: Vec3 };
   /**
-   * What is in it. Public since D24.
+   * HOW BIG IT LOOKS BEFORE SIGHT RESOLVES IT. D123.
    *
-   * Hulls and counts, and nothing else — never the cargo. A fleet coming home from
-   * a raid looks exactly like one going out, because what it is carrying is the
-   * owner's business.
+   * This field used to be the whole fleet, hulls and counts, and that was the
+   * single largest hole in the intel layer. `docs/game-design.md` sells a size
+   * estimate at Radar L4 and an exact composition at Radar L5; both were on every
+   * contact, for everybody, at every radar level including none — so the top two
+   * rungs of that ladder bought nothing, and the first real play session found
+   * exactly that. Scouting cannot matter while the disc answers the question for
+   * free.
+   *
+   * Three steps, off `fleetValue`, for the same reason `worldWeight` has three: a
+   * continuous size is a number no eye can separate. A stranger learns that
+   * something big is crossing the disc, which is what makes the galaxy feel
+   * inhabited, and learns nothing they could pack a counter-fleet against.
+   *
+   * Telescope sight separately adds `fleet`, while an attributed inbound warning
+   * may also earn it through the private Radar ladder. `mass` itself never implies
+   * an exact roster.
    */
-  fleet?: Fleet;
-  /** How many craft are on a mining run. The public half of `fleet`. */
+  mass?: MassClass;
+  /**
+   * WHAT KIND OF CRAFT A QUESTION MARK IS, WHEN RADAR L5 HAS EARNED IT.
+   *
+   * Present ONLY on an `unknown` contact — inside telescope reach `kind` already
+   * says it and this would be a second, redundant answer. It is the top of the
+   * radar ladder made visible on ordinary traffic rather than only on a raid aimed
+   * at you: a maxed Radar tells a fleet from a scout from a drill out at the edge
+   * of its circle, hours before the eye could.
+   *
+   * It is a KIND and never a roster. Composition stays behind the Telescope for a
+   * craft crossing the disc, and behind the timed warning for one coming at you.
+   */
+  silhouette?: ContactKind;
+  /**
+   * THIS ONE IS COMING FOR YOU, AND THAT IS ALL IT SAYS. D126.
+   *
+   * Present only on a hostile leg aimed at a world the caller controls, and only
+   * once it is inside `radarContactRange` of that world. Detection and timed
+   * warning are provisionally the same radius under D126.
+   *
+   * IT CARRIES NO CLOCK ON PURPOSE. This is the public moving-contact payload;
+   * the clock, bearing and earned roster belong to the addressed defender's
+   * private pending/notification surfaces. Sharing a radius does not merge those
+   * disclosure channels.
+   *
+   * It may sit on an `unknown` contact, which is the intended picture: something
+   * you cannot identify, bearing down on a world you own.
+   */
+  inbound?: true;
+  /** How many craft are on a mining run. Public in full, like the rest of the run. */
   craft?: number;
 }
 
@@ -379,6 +449,8 @@ function windowOf(
 export interface TrafficSnapshot {
   missionRows: { mission: typeof missions.$inferSelect }[];
   miningRows: { run: typeof miningRuns.$inferSelect }[];
+  interceptionRows: { interception: typeof strategicInterceptions.$inferSelect }[];
+  landedDeathStarMissionIds: ReadonlySet<string>;
   positions: ReadonlyMap<string, Vec3>;
   /**
    * THE PUBLIC CORE TIER OF EVERY WORLD A LEG TOUCHES. D106.
@@ -408,7 +480,7 @@ export async function loadTrafficSnapshot(
   now: Date = new Date(),
 ): Promise<TrafficSnapshot> {
   const impactCutoff = new Date(now.getTime() - DEATH_STAR.impactSeconds * 1000);
-  const [missionRows, miningRows] = await Promise.all([
+  const [missionRows, miningRows, interceptionRows, impactRows] = await Promise.all([
     db
       .select({ mission: missions })
       .from(missions)
@@ -427,6 +499,21 @@ export async function loadTrafficSnapshot(
       .select({ run: miningRuns })
       .from(miningRuns)
       .where(and(eq(miningRuns.seasonId, seasonId), ne(miningRuns.status, 'done'))),
+    db
+      .select({ interception: strategicInterceptions })
+      .from(strategicInterceptions)
+      .where(and(
+        eq(strategicInterceptions.seasonId, seasonId),
+        gte(strategicInterceptions.impactAt, impactCutoff),
+      )),
+    db
+      .select({ missionId: strategicImpacts.missionId })
+      .from(strategicImpacts)
+      .where(and(
+        eq(strategicImpacts.seasonId, seasonId),
+        ne(strategicImpacts.outcome, 'INTERCEPTED'),
+        gte(strategicImpacts.createdAt, impactCutoff),
+      )),
   ]);
 
   const ids = new Set<string>();
@@ -435,7 +522,17 @@ export async function loadTrafficSnapshot(
     ids.add(mission.targetPlanetId);
   }
   for (const { run } of miningRows) ids.add(run.planetId);
-  if (ids.size === 0) return { missionRows, miningRows, positions: new Map(), tiers: new Map() };
+  const landedDeathStarMissionIds = new Set(impactRows.map((row) => row.missionId));
+  if (ids.size === 0) {
+    return {
+      missionRows,
+      miningRows,
+      interceptionRows,
+      landedDeathStarMissionIds,
+      positions: new Map(),
+      tiers: new Map(),
+    };
+  }
 
   const [planetRows, coreRows] = await Promise.all([
     db
@@ -457,7 +554,178 @@ export async function loadTrafficSnapshot(
   const tiers = new Map<string, number>(
     coreRows.map((row) => [row.planetId, coreTier(row.level)]),
   );
-  return { missionRows, miningRows, positions, tiers };
+  return { missionRows, miningRows, interceptionRows, landedDeathStarMissionIds, positions, tiers };
+}
+
+export interface StrategicInterceptionView {
+  id: string;
+  targetPlanetId: string;
+  trigger: 'RADAR' | 'TELESCOPE';
+  launchAt: Date;
+  impactAt: Date;
+  launch: Vec3;
+  deathStarFrom: Vec3;
+  collision: Vec3;
+}
+
+export interface StrategicInterceptionImpactView {
+  id: string;
+  at: Date;
+  collision: Vec3;
+  /** True means the viewer earned the public blast but not either craft. */
+  effectOnly: boolean;
+  /** Only the defending commander may have their camera pulled to this blast. */
+  focusEligible: boolean;
+}
+
+const identifiesStrategicCollision = (
+  sensors: readonly SensorPost[],
+  collision: Vec3,
+): boolean => sensors.some(
+  (post) => post.telescope && distance(post.at, collision) <= post.identify,
+);
+
+/** The collision is private transit until the caller actually identifies its point. */
+export function projectStrategicInterceptions(
+  snapshot: TrafficSnapshot,
+  ownPlayerId: string | null,
+  sensors: readonly SensorPost[],
+): StrategicInterceptionView[] {
+  return snapshot.interceptionRows.flatMap(({ interception }) => {
+    const collision = {
+      x: interception.collisionX,
+      y: interception.collisionY,
+      z: interception.collisionZ,
+    };
+    const participant = ownPlayerId === interception.attackerPlayerId
+      || ownPlayerId === interception.defenderPlayerId;
+    // D139 grants third-party access through an effective Telescope, not through
+    // the naked-eye floor shared by the general traffic model. `sensorZone`
+    // deliberately calls that floor IDENTIFIED for nearby ordinary craft, so it
+    // is too broad for this one strategic event.
+    const telescopeWitness = identifiesStrategicCollision(sensors, collision);
+    if (!participant && !telescopeWitness) return [];
+    return [{
+      id: interception.id,
+      targetPlanetId: interception.targetPlanetId,
+      trigger: interception.trigger,
+      launchAt: interception.launchAt,
+      impactAt: interception.impactAt,
+      launch: {
+        x: interception.launchX,
+        y: interception.launchY,
+        z: interception.launchZ,
+      },
+      deathStarFrom: {
+        x: interception.deathStarFromX,
+        y: interception.deathStarFromY,
+        z: interception.deathStarFromZ,
+      },
+      collision,
+    }];
+  });
+}
+
+/**
+ * Public collision fire without public strategic craft.
+ *
+ * Before `impactAt` the launch remains private to participants and Telescope
+ * witnesses. At impact the explosion is a public live moment, just like ordinary
+ * bombardment: viewers outside sight receive only this position/time and render it
+ * dimly; no launch point, Death Star point, route or asset identity is disclosed.
+ */
+export function projectStrategicInterceptionImpacts(
+  snapshot: TrafficSnapshot,
+  ownPlayerId: string | null,
+  sensors: readonly SensorPost[],
+  now: Date,
+): StrategicInterceptionImpactView[] {
+  return snapshot.interceptionRows.flatMap(({ interception }) => {
+    const age = now.getTime() - interception.impactAt.getTime();
+    if (age < 0 || age >= DEATH_STAR.impactSeconds * 1000) return [];
+    const collision = {
+      x: interception.collisionX,
+      y: interception.collisionY,
+      z: interception.collisionZ,
+    };
+    const participant = ownPlayerId === interception.attackerPlayerId
+      || ownPlayerId === interception.defenderPlayerId;
+    return [{
+      id: interception.id,
+      at: interception.impactAt,
+      collision,
+      effectOnly: !participant && !identifiesStrategicCollision(sensors, collision),
+      focusEligible: ownPlayerId === interception.defenderPlayerId,
+    }];
+  });
+}
+
+/**
+ * ONE WORLD'S EYES: WHERE THEY ARE, AND HOW FAR THEY REACH. D123.
+ *
+ * Caller-specific by construction, which is why it is a parameter rather than part
+ * of `TrafficSnapshot`. The snapshot is shared across every commander in the shard
+ * and cached; a reach baked into it would be one player's fog served to another.
+ */
+export interface SensorPost extends SensorSphere {
+  /** Which world's instruments these are — the intent test is per target world. */
+  planetId: string;
+  /** A working, Uplink-gated Telescope is present; false means naked-eye reach. */
+  telescope: boolean;
+  /**
+   * How far it gets a real warning, with a clock on it.
+   *
+   * Equal to `detect` while the two radar circles are merged — see
+   * `INTEL.radarContactRange`. Kept as its own field because the timed warning and
+   * the detection ring are two different products that are temporarily one number,
+   * and every caller that means "the clock" already says `warn`.
+   */
+  warn: number;
+  /** Radar L4: a contact's rough size, even while it is only a question mark. */
+  revealsSize: boolean;
+  /** Radar L5: what KIND of craft it is, without ordinary visual identification. */
+  revealsKind: boolean;
+}
+
+/**
+ * The sensor posts a commander is currently running.
+ *
+ * `instrumentLevels` already applies the Uplink gate, so a Telescope in orbit with
+ * no active Uplink reports level 0 and contributes only the naked-eye floor —
+ * which is correct and is the rule D25 already states: the Uplink is the one gate
+ * on the two instruments that SEE.
+ */
+export async function sensorPosts(
+  db: Db,
+  planetIds: readonly string[],
+): Promise<SensorPost[]> {
+  if (planetIds.length === 0) return [];
+  const [rows, levels] = await Promise.all([
+    db
+      .select({ id: planets.id, x: planets.x, y: planets.y, z: planets.z })
+      .from(planets)
+      .where(inArray(planets.id, [...planetIds])),
+    instrumentLevels(db, planetIds),
+  ]);
+  return rows.map((world) => {
+    const telescope = levelOf(levels, world.id, 'TELESCOPE');
+    const radar = levelOf(levels, world.id, 'RADAR');
+    return {
+      // `sensorSphere` is the ONE place a level becomes a radius. Everything below
+      // is a disclosure flag, which is a different kind of fact and stays here.
+      ...sensorSphere(
+        { x: world.x, y: world.y, z: world.z },
+        telescope,
+        radar,
+        world.id,
+      ),
+      planetId: world.id,
+      telescope: telescope > 0,
+      warn: radarRange(radar),
+      revealsSize: radarRevealsSize(radar),
+      revealsKind: radarRevealsComposition(radar),
+    };
+  });
 }
 
 export async function galaxyTraffic(
@@ -468,20 +736,113 @@ export async function galaxyTraffic(
   ownPlayerId: string | null = null,
   ownPlanetIds: string[] = ownPlanetId === null ? [] : [ownPlanetId],
 ): Promise<Contact[]> {
-  const snapshot = await loadTrafficSnapshot(db, seasonId, now);
-  return projectGalaxyTraffic(snapshot, ownPlanetId, now, ownPlayerId, ownPlanetIds);
+  const [snapshot, sensors, mining, epochs] = await Promise.all([
+    loadTrafficSnapshot(db, seasonId, now),
+    sensorPosts(db, ownPlanetIds),
+    ownPlayerId === null ? Promise.resolve(null) : loadMiningSnapshot(db, seasonId, now),
+    ownPlayerId === null ? Promise.resolve([]) : sensorHistoryForPlayer(db, ownPlayerId),
+  ]);
+  const discovered = mining === null
+    ? new Set<number>()
+    : discoveredAsteroidIndexes(mining, epochs, now);
+  return projectGalaxyTraffic(
+    snapshot,
+    ownPlanetId,
+    now,
+    ownPlayerId,
+    ownPlanetIds,
+    sensors,
+    discovered,
+  );
 }
 
-/** Apply the authoritative caller filter and current clock to one shared snapshot. */
+/**
+ * Apply the authoritative caller filter and current clock to one shared snapshot.
+ *
+ * `sensors` IS REQUIRED, AND DELIBERATELY HAS NO DEFAULT. D123. An empty array is
+ * a commander who can see nothing beyond a public moment, and that is a real state
+ * — a visitor before they have a world. A default would make the horizon something
+ * a call site could forget, and a fog rule that is off by omission is not a fog
+ * rule. Every caller states what the caller can see.
+ */
 export function projectGalaxyTraffic(
   snapshot: TrafficSnapshot,
   ownPlanetId: string | null,
   now: Date,
-  ownPlayerId: string | null = null,
-  ownPlanetIds: string[] = ownPlanetId === null ? [] : [ownPlanetId],
+  ownPlayerId: string | null,
+  ownPlanetIds: string[],
+  sensors: readonly SensorPost[],
+  discoveredAsteroids: ReadonlySet<number>,
 ): Contact[] {
-  const { missionRows, miningRows, positions, tiers } = snapshot;
+  const { missionRows, miningRows, positions, tiers, landedDeathStarMissionIds } = snapshot;
   const ownedPlanets = new Set(ownPlanetIds);
+
+  /**
+   * WHAT DOES THIS COMMANDER SEE OF THIS POINT? The whole rule, in one call.
+   *
+   * Applied to the craft's CURRENT position rather than to its leg, so a fleet
+   * crossing into a commander's circles appears when it arrives there and drops
+   * out again when it leaves. That is what a sensor horizon is; a per-leg test
+   * would publish the whole flight of anything that ever came close.
+   *
+   * The three-zone model lives in `@astera/rules/sight`, not here — the client
+   * draws the same boundaries and solves for the same crossings, and the moment
+   * this file held its own opinion the two pictures drifted.
+   */
+  const zoneAt = (point: Vec3): SensorZone => sensorZone(sensors, point);
+
+  /**
+   * WHAT THE RADAR ADDS TO A CONTACT IT CANNOT IDENTIFY.
+   *
+   * The ladder used to pay out only on a leg aimed AT the caller, so a maxed Radar
+   * bought nothing at all about the traffic crossing its own circle. It now reads
+   * the best disclosure among the posts that actually DETECT this craft: L4 gives
+   * a size class, L5 gives the kind. Both stop where identification begins —
+   * inside telescope reach the eye has already answered.
+   *
+   * Scoped to the posts whose circle the craft is really inside, because a second
+   * world's Radar 5 across the disc has not detected anything and may not speak.
+   */
+  const radarReveal = (point: Vec3): { size: boolean; kind: boolean } => {
+    let size = false;
+    let kind = false;
+    for (const post of sensors) {
+      if (distance(post.at, point) > post.detect) continue;
+      if (post.revealsSize) size = true;
+      if (post.revealsKind) kind = true;
+    }
+    return { size, kind };
+  };
+
+  /**
+   * IS THIS LEG AIMED AT ONE OF MINE, AND CLOSE ENOUGH TO KNOW IT? D126.
+   *
+   * Measured from the TARGET world's own radar, not from wherever the craft
+   * happens to be relative to the rest of the caller's holdings — the instrument
+   * that senses the intent is the one being flown at. Read at request time, so a
+   * defender who raises a radar while a fleet is in the air has bought exactly
+   * this, which is the same rule the timed warning already follows.
+   *
+   * AND IT IS A RADIUS, WHICH IS THE WHOLE POINT AND WAS THE BUG. This tested
+   * `mission.distance` — the LENGTH OF THE LEG — so the two errors were opposite
+   * and both wrong. A neighbour's raid was flagged from the instant it launched,
+   * which hands a defender more than the timed ladder does and is exactly what
+   * D9 forbids ("a forty-minute flight must not give forty minutes of warning").
+   * A raid from beyond the sense radius was never flagged at all, not even in its
+   * last minute, so the tier bought nothing against a distant attacker. A radius
+   * is answered by where the craft IS.
+   */
+  const aimedAtMe = (
+    mission: typeof missions.$inferSelect,
+    /** Where the craft is RIGHT NOW, which is the only distance a radius means. */
+    craft: Vec3,
+  ): SensorPost | null => {
+    if (mission.kind !== 'attack' && mission.kind !== 'death_star') return null;
+    if (mission.parentMissionId !== null) return null;
+    const post = sensors.find((sensor) => sensor.planetId === mission.targetPlanetId);
+    if (!post) return null;
+    return radarSensesIntent(post.detect, distance(post.at, craft)) ? post : null;
+  };
 
   /**
    * THE LEG AS IT IS DRAWN, WHICH IS THE ONLY LEG ANYBODY EVER SEES. D106.
@@ -539,26 +900,41 @@ export function projectGalaxyTraffic(
     const arrive = mission.arriveAt.getTime();
     const recentDeathStarImpact = mission.kind === 'death_star'
       && mission.status === 'resolved'
+      && landedDeathStarMissionIds.has(mission.id)
       && now.getTime() >= arrive
       && now.getTime() < arrive + DEATH_STAR.impactSeconds * 1000;
     if (recentDeathStarImpact) {
+      const impactZone = zoneAt(centres.target);
+      const effectOnly = impactZone === 'NONE';
+      const reveal = impactZone === 'CONTACT' ? radarReveal(centres.target) : null;
       out.push({
         id: mission.id,
-        kind: 'death_star',
-        from: lerp(
-          origin,
-          target,
-          progress(mission.departAt.getTime(), arrive, arrive - APPROACH_MS),
-        ),
-        to: target,
+        kind: impactZone === 'IDENTIFIED' ? 'death_star' : 'unknown',
+        from: effectOnly
+          ? centres.target
+          : lerp(
+              origin,
+              target,
+              progress(mission.departAt.getTime(), arrive, arrive - APPROACH_MS),
+            ),
+        to: effectOnly ? centres.target : target,
         startAt: new Date(arrive - APPROACH_MS),
         endAt: mission.arriveAt,
         landing: true,
+        ...(effectOnly ? { effectOnly: true as const } : {}),
         impact: { at: mission.arriveAt, target: centres.target },
-        fleet: mission.fleet,
+        ...(reveal?.size ? { mass: massClass(mission.fleet) } : {}),
+        ...(reveal?.kind ? { silhouette: 'death_star' as const } : {}),
       });
       continue;
     }
+
+    // The snapshot also carries recently resolved Death Stars so a real impact
+    // can be replayed. An intercepted mission is resolved BEFORE its original
+    // arrival and has no landed-impact ledger; it must not fall through into the
+    // ordinary in-flight window or the client draws a second, ghost weapon beside
+    // the dedicated interceptor scene.
+    if (mission.status !== 'in_flight') continue;
 
     if (
       (ownPlayerId !== null && mission.ownerPlayerId === ownPlayerId)
@@ -577,21 +953,77 @@ export function projectGalaxyTraffic(
       mission.kind === 'attack' && now.getTime() >= arrive && now.getTime() < engagementEndsAt(arrive);
 
     if (engaging) {
-      // The final approach, so the client has the bearing the fleet came in on and
-      // can hold it off the world exactly as the attacker's own client does.
-      const approach = lerp(origin, target, progress(mission.departAt.getTime(), arrive, arrive - APPROACH_MS));
-      out.push({
-        id: mission.id,
-        kind: 'fleet',
+      const endsAt = new Date(engagementEndsAt(arrive));
+      const engagement = {
+        arriveAt: mission.arriveAt,
+        endsAt,
+        target: centres.target,
+      };
+
+      /**
+       * THE MOMENT BYPASSES THE HORIZON; THE SQUADRON DOES NOT. D52/D123.
+       *
+       * `target` is the craft's real held position in foreign orbit. Testing that
+       * point — rather than the planet centre or the final minute of its leg — is
+       * the same current-position rule every other contact answers to.
+       */
+      const zone = zoneAt(target);
+      if (zone === 'NONE') {
+        out.push({
+          id: mission.id,
+          kind: 'unknown',
+          // A public point, deliberately not the orbit point: the latter would
+          // reveal the incoming bearing even if the renderer drew no hull.
+          from: centres.target,
+          to: centres.target,
+          startAt: mission.arriveAt,
+          endAt: endsAt,
+          landing: true,
+          effectOnly: true,
+          engagement,
+        });
+        continue;
+      }
+
+      // Once a sensor really sees the squadron, its final approach is legitimate
+      // position/bearing data and lets the client hold the contact in the same
+      // orbit as the attacker's own full-fidelity formation.
+      const approach = lerp(
+        origin,
+        target,
+        progress(mission.departAt.getTime(), arrive, arrive - APPROACH_MS),
+      );
+      const sight = {
         from: approach,
         to: target,
         startAt: new Date(arrive - APPROACH_MS),
         endAt: mission.arriveAt,
-        engagement: {
-          arriveAt: mission.arriveAt,
-          endsAt: new Date(engagementEndsAt(arrive)),
-          target: centres.target,
-        },
+        landing: true as const,
+      };
+      const threatPost = aimedAtMe(mission, target);
+      const inbound = threatPost ? ({ inbound: true } as const) : {};
+
+      if (zone === 'CONTACT') {
+        const reveal = radarReveal(target);
+        out.push({
+          id: mission.id,
+          kind: 'unknown',
+          ...sight,
+          ...inbound,
+          engagement,
+          ...(reveal.size ? { mass: massClass(mission.fleet) } : {}),
+          ...(reveal.kind ? { silhouette: 'fleet' as const } : {}),
+        });
+        continue;
+      }
+
+      out.push({
+        id: mission.id,
+        kind: 'fleet',
+        ...sight,
+        ...inbound,
+        engagement,
+        mass: massClass(mission.fleet),
         fleet: mission.fleet,
       });
       continue;
@@ -600,16 +1032,72 @@ export function projectGalaxyTraffic(
     const slice = windowOf(origin, target, mission.departAt, mission.arriveAt, now);
     if (!slice) continue;
 
+    // A return leg is still a fleet: the hull is what the neon names, and a
+    // squadron flying home is exactly as much of a fact as one flying out.
+    const kind: ContactKind = mission.kind === 'probe'
+      ? 'probe'
+      : mission.kind === 'death_star'
+        ? 'death_star'
+        : 'fleet';
+
+    /**
+     * THE FOG COVERS TRANSIT. IT DOES NOT COVER A PUBLIC MOMENT. D52.
+     *
+     * Every moving craft answers to the zones below. Engagement is handled above
+     * only because its public EFFECT must survive `NONE`; that branch performs its
+     * own zone check before disclosing any squadron. Impacts and wreck fields are
+     * effects/state rather than living craft. D52 keeps the disc alive without
+     * turning the public moment into a bypass around D123.
+     */
+    /**
+     * THE THREE ZONES, AND EVERY CRAFT IN THE GALAXY GOES THROUGH THEM.
+     *
+     * `NONE` is a real answer and it is a DROP: outside every circle a craft does
+     * not exist for this commander. That is the owner's model — not a question
+     * mark, not a mote, nothing — and it is the half D125 got backwards by
+     * publishing every craft in the galaxy to everybody as an anonymous return.
+     *
+     * There is no departure shroud any more. See `sensorZone` for why a rule that
+     * deleted a craft for the first 225 units of its leg, from everybody, at every
+     * instrument level, contradicted both this model and D125's own reasoning.
+     */
+    const zone = zoneAt(slice.from);
+    if (zone === 'NONE') continue;
+
+    const threatPost = aimedAtMe(mission, slice.from);
+    const inbound = threatPost ? ({ inbound: true } as const) : {};
+
+    if (zone === 'CONTACT') {
+      /**
+       * A QUESTION MARK THAT MOVES EXACTLY AS THE CRAFT MOVES.
+       *
+       * It carries a bearing window and whatever the Radar ladder has earned, and
+       * nothing else: no kind unless L5 bought one, no origin, no destination. The
+       * window is what makes it move; the absence of everything else is what makes
+       * the Telescope worth buying.
+       */
+      const reveal = radarReveal(slice.from);
+      out.push({
+        id: mission.id,
+        kind: 'unknown',
+        ...slice,
+        ...inbound,
+        // L4 buys the size while the contact is still a question mark; L5 buys
+        // what kind of craft it is. Both stop where the eye takes over.
+        ...(reveal.size ? { mass: massClass(mission.fleet) } : {}),
+        ...(reveal.kind ? { silhouette: kind } : {}),
+        ...(mission.kind === 'death_star' && slice.landing === true
+          ? { impact: { at: mission.arriveAt, target: centres.target } }
+          : {}),
+      });
+      continue;
+    }
+
     out.push({
       id: mission.id,
-      // A return leg is still a fleet: the hull is what the neon names, and a
-      // squadron flying home is exactly as much of a fact as one flying out.
-      kind: mission.kind === 'probe'
-        ? 'probe'
-        : mission.kind === 'death_star'
-          ? 'death_star'
-          : 'fleet',
+      kind,
       ...slice,
+      ...inbound,
       /**
        * THE DETONATION IS ANNOUNCED BEFORE IT HAPPENS, AND ONLY ONCE THE
        * DESTINATION IS ALREADY CONCEDED. D106.
@@ -625,17 +1113,31 @@ export function projectGalaxyTraffic(
       ...(mission.kind === 'death_star' && slice.landing === true
         ? { impact: { at: mission.arriveAt, target: centres.target } }
         : {}),
-      // Composition, and never the loot it may be carrying home.
-      fleet: mission.fleet,
+      // A silhouette, and never the loot it may be carrying home.
+      mass: massClass(mission.fleet),
+      // Sight resolves the actual hulls and their counts. Radar never reaches
+      // this branch, so an exact manifest cannot leak into a CONTACT payload.
+      ...(kind === 'fleet' ? { fleet: mission.fleet } : {}),
     });
   }
 
   /**
-   * MINING RUNS, IN FULL. The owner's stated exception.
+   * A DRILL IS A CRAFT, AND IT ANSWERS TO THE SAME THREE ZONES AS EVERY OTHER ONE.
    *
-   * The rock is public, the ore left in it is public, and the whole point of D19
-   * is that two players race for it and both know they were raced. Hiding where a
-   * Prospector is heading would hide the race itself.
+   * TWO GATES, AND THEY ANSWER TWO DIFFERENT QUESTIONS. This used to be one gate
+   * doing both jobs badly: an undiscovered rock dropped the whole run, so a
+   * Prospector flying past a commander's own capital was invisible to them because
+   * of a fact about a rock somewhere else.
+   *
+   *   · THE ZONE decides whether you can see the CRAFT. Same rule as a fleet or a
+   *     probe: nothing outside your circles, a question mark inside the radar, the
+   *     drill itself inside the telescope.
+   *   · ROCK DISCOVERY decides whether you get the ROUTE. The mining race is meant
+   *     to be public (D19) — but only once you have found the rock being raced
+   *     for, or the line would hand over a schedule the sensor history gates.
+   *
+   * So a drill you can see but whose rock you have not found is exactly what it
+   * looks like from a window: a craft going somewhere, and you do not know where.
    */
   for (const { run } of miningRows) {
     if (ownedPlanets.has(run.planetId)) continue;
@@ -657,26 +1159,53 @@ export function projectGalaxyTraffic(
     const slice = windowOf(from, to, departAt, arriveAt, now);
     if (!slice) continue;
 
+    const zone = zoneAt(slice.from);
+    if (zone === 'NONE') continue;
+
+    /**
+     * A SALVAGE RUN IS NOT A MINING RUN, AND THIS SAID IT WAS. D32.
+     *
+     * `harvest` has been in `ContactKind` since D32 and nothing ever produced one:
+     * every row in this table went out as `mining`, so a craft flying to a wreck
+     * field was drawn in the miner's amber and its panel said "Somebody is mining"
+     * over the line "the rock, the route and the clock" — pointing at a rock that
+     * was not its target.
+     *
+     * Read off the COLUMN rather than off `targetKind`, for the same reason
+     * `resolveRun` does: the column is what the CHECK constraint guarantees, and
+     * the text field beside it is a denormalisation.
+     */
+    const kind: ContactKind = run.debrisFieldId === null ? 'mining' : 'harvest';
+
+    if (zone === 'CONTACT') {
+      const reveal = radarReveal(slice.from);
+      out.push({
+        id: run.id,
+        kind: 'unknown',
+        ...slice,
+        // Mining and salvage craft obey the same Radar ladder as every other
+        // contact: L4 reveals rough mass, while L5 identifies the hull family.
+        ...(reveal.size ? { mass: massClass({ PROSPECTOR: run.craft }) } : {}),
+        ...(reveal.kind ? { silhouette: kind } : {}),
+        // No `craft`, no `route`, no clock. A radar return is a position.
+      });
+      continue;
+    }
+
+    const discovered = run.asteroidIndex === null
+      || discoveredAsteroids.has(run.asteroidIndex);
+
     out.push({
       id: run.id,
-      /**
-       * A SALVAGE RUN IS NOT A MINING RUN, AND THIS SAID IT WAS. D32.
-       *
-       * `harvest` has been in `ContactKind` since D32 and nothing ever produced
-       * one: every row in this table went out as `mining`, so a craft flying to a
-       * wreck field was drawn in the miner's amber and its panel said "Somebody is
-       * mining" over the line "the rock, the route and the clock" — pointing at a
-       * rock that was not its target. The client has carried the paler amber, the
-       * `Salvage run` title and the schema branch for it the whole time.
-       *
-       * Read off the COLUMN rather than off `targetKind`, for the same reason
-       * `resolveRun` does: the column is what the CHECK constraint guarantees, and
-       * the text field beside it is a denormalisation.
-       */
-      kind: run.debrisFieldId === null ? 'mining' : 'harvest',
+      kind,
       ...slice,
-      route: { from, to, departAt, arriveAt },
-      minutesRemaining: Math.max(0, (arriveAt.getTime() - now.getTime()) / 60_000),
+      // The line and the clock are the RACE, and the race needs the rock found.
+      ...(discovered
+        ? {
+            route: { from, to, departAt, arriveAt },
+            minutesRemaining: Math.max(0, (arriveAt.getTime() - now.getTime()) / 60_000),
+          }
+        : {}),
       craft: run.craft,
       // `minedAlloy` and `minedCrystal` are deliberately absent. What a run is
       // bringing back is the owner's, and it is on `/api/mining` for them alone.

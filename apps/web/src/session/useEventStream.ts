@@ -3,8 +3,10 @@ import { useQueryClient } from '@tanstack/react-query';
 import { useApi } from '../api/context.js';
 import { keys } from '../api/queries.js';
 import {
+  isGlobalEvent,
   isPrivateEvent,
   isShardEvent,
+  readsForGlobalEvent,
   readsForPrivateEvent,
   shardCoalescer,
 } from './shardEvents.js';
@@ -19,6 +21,14 @@ const HEALTHY_MS = 5000;
  * Spread only that catch-up pass; ordinary player and shard events stay immediate.
  */
 export const RECONNECT_RESYNC_MAX_MS = 5000;
+
+/**
+ * A strategic interception exists for eight seconds, so a stale first read cannot
+ * wait for the ordinary traffic poll. This short second pass closes the race where
+ * the SSE-serving replica has observed the commit but a load-balanced read replica
+ * has not invalidated its projection cache yet.
+ */
+export const STRATEGIC_SIGHT_CONSISTENCY_MS = 500;
 
 /**
  * Every read a player event can move — and the same set a RECONNECTION moves.
@@ -50,6 +60,7 @@ const LIVE_READS = [
   keys.chatMessages,
   keys.chatUnread,
   keys.chronicle,
+  keys.announcements,
   keys.clanBadge,
   keys.clanHome,
   keys.clanStrength,
@@ -89,8 +100,10 @@ const backoffMs = (attempt: number): number =>
  * Nothing on this channel is replayable: no cursor, no backlog, no ids. Whatever
  * was published while the socket was down is gone, and no payload says so — so a
  * dropped socket left the disc reading a world up to a minute old, with craft
- * parked on their destinations, until the safety net came round. Every open after
- * the first re-reads `LIVE_READS`; see the loop below for why the first is exempt.
+ * parked on their destinations, until the safety net came round. Every successful
+ * open re-reads `LIVE_READS`, including the first: mounting the queries and opening
+ * the stream are concurrent, so the first connection has a snapshot/subscription
+ * race of its own.
  */
 export function useEventStream(enabled: boolean, onRollover?: () => void): void {
   const api = useApi();
@@ -154,6 +167,17 @@ export function useEventStream(enabled: boolean, onRollover?: () => void): void 
       }, 1500);
     };
 
+    let strategicSightConsistencyTimer: ReturnType<typeof setTimeout> | null = null;
+    const scheduleStrategicSightConsistencyRead = (): void => {
+      if (strategicSightConsistencyTimer !== null) return;
+      strategicSightConsistencyTimer = setTimeout(() => {
+        strategicSightConsistencyTimer = null;
+        if (!controller.signal.aborted) {
+          void client.invalidateQueries({ queryKey: keys.traffic });
+        }
+      }, STRATEGIC_SIGHT_CONSISTENCY_MS);
+    };
+
     let reconnectResyncTimer: ReturnType<typeof setTimeout> | null = null;
     const scheduleReconnectResync = (): void => {
       // Several short-lived reconnects before the timer fires still describe one
@@ -168,6 +192,12 @@ export function useEventStream(enabled: boolean, onRollover?: () => void): void 
     const refresh = (kind: string): void => {
       if (kind === 'shard:rollover') {
         onRollover?.();
+        return;
+      }
+      if (isGlobalEvent(kind)) {
+        for (const key of readsForGlobalEvent(kind)) {
+          void client.invalidateQueries({ queryKey: key });
+        }
         return;
       }
       /**
@@ -202,6 +232,9 @@ export function useEventStream(enabled: boolean, onRollover?: () => void): void 
         const reads = readsForPrivateEvent(kind);
         if (reads) {
           for (const key of reads) void client.invalidateQueries({ queryKey: key });
+          if (kind === 'private:strategic-sight') {
+            scheduleStrategicSightConsistencyRead();
+          }
           return;
         }
       }
@@ -238,28 +271,21 @@ export function useEventStream(enabled: boolean, onRollover?: () => void): void 
 
     void (async () => {
       let attempt = 0;
-      /**
-       * HOW MANY TIMES THIS SOCKET HAS COME UP — and why the first one is different.
-       *
-       * On the first open the queries have only just mounted and fetched; there is
-       * nothing to catch up on and re-reading everything would double the cost of
-       * a cold start. Every open AFTER that means the channel was DOWN for a while,
-       * and this client heard nothing during it: the stream carries no cursor and
-       * no backlog, so a raid that resolved, a neighbour that launched and a world
-       * that grew while the socket was dead are all simply missing.
-       *
-       * Before this, the only thing that closed that gap was the sixty-second
-       * safety-net poll — so a proxy dropping the socket, a deploy, or a phone
-       * waking from sleep left the disc showing a world up to a minute out of date,
-       * with fleets parked on their destinations, and nothing on screen said so.
-       */
-      let opens = 0;
+      let hasOpened = false;
       while (!controller.signal.aborted) {
         const openedAt = Date.now();
         try {
           await api.stream(refresh, controller.signal, () => {
-            opens += 1;
-            if (opens > 1) scheduleReconnectResync();
+            // Cold-start queries and this subscription mount concurrently. An
+            // event can commit after a query's snapshot but before the stream is
+            // attached, so the first open needs a catch-up pass just as surely as
+            // a reconnect. Do it immediately; later opens retain jitter so a
+            // deployment does not make every client refetch in the same instant.
+            if (hasOpened) scheduleReconnectResync();
+            else {
+              hasOpened = true;
+              resync();
+            }
           });
         } catch {
           // Fall through: a connection that threw and one that closed instantly
@@ -284,6 +310,7 @@ export function useEventStream(enabled: boolean, onRollover?: () => void): void 
       if (reconnectResyncTimer !== null) clearTimeout(reconnectResyncTimer);
       if (lifecycleResyncTimer !== null) clearTimeout(lifecycleResyncTimer);
       if (worldConsistencyTimer !== null) clearTimeout(worldConsistencyTimer);
+      if (strategicSightConsistencyTimer !== null) clearTimeout(strategicSightConsistencyTimer);
       document.removeEventListener('visibilitychange', onVisibility);
       window.removeEventListener('focus', scheduleLifecycleResync);
       window.removeEventListener('pageshow', scheduleLifecycleResync);

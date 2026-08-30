@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 import type { BattleReport } from '../src/api/schemas.js';
@@ -43,7 +43,7 @@ const report: BattleReport = {
 };
 
 describe('the battle payoff', () => {
-  it('opens on an outcome mark, loss silhouettes and round balance before prose detail', async () => {
+  it('opens on a labelled force equation and labelled round balance before prose detail', async () => {
     const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
     client.setQueryData(['reports'], { reports: [report] });
     const api = { reports: () => Promise.resolve({ reports: [report] }) } as unknown as Api;
@@ -56,10 +56,15 @@ describe('the battle payoff', () => {
     );
 
     await userEvent.click(screen.getByRole('button', { name: /you raided sable/i }));
-    const verdict = view.container.querySelector('[data-battle-verdict="PARTIAL"]');
+    const verdict = view.container.querySelector<HTMLElement>('[data-battle-verdict="PARTIAL"]');
     expect(verdict).not.toBeNull();
-    expect(verdict?.querySelectorAll('img')).toHaveLength(5);
-    expect(screen.getByRole('img', { name: 'PARTIAL' })).toBeVisible();
+    const opening = within(verdict!);
+    expect(opening.getByText('Sent')).toBeVisible();
+    expect(opening.getByText('Lost')).toBeVisible();
+    expect(opening.getByText('Returned')).toBeVisible();
+    expect(opening.getByText('You destroyed')).toBeVisible();
+    expect(screen.getByText('You dealt')).toBeVisible();
+    expect(screen.getByText('You took')).toBeVisible();
     expect(screen.getAllByText('800').length).toBeGreaterThanOrEqual(1);
     expect(screen.getAllByText('300').length).toBeGreaterThanOrEqual(1);
   });

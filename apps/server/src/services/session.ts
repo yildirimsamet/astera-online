@@ -5,10 +5,14 @@ import {
   crystalRate,
   deuteriumOf,
   fleetCount,
+  massClass,
   radarDetectsFleets,
-  radarLead,
   radarRange,
+  radarRevealsComposition,
+  radarRevealsOrigin,
+  radarRevealsSize,
   type Fleet,
+  type MassClass,
 } from '@astera/rules';
 import type { Clock } from '../clock.js';
 import type { Db, Queryable } from '../db/client.js';
@@ -26,6 +30,7 @@ import {
 import { announceUnlocks } from './notifications.js';
 import { GameError } from './planet.js';
 import { instrumentLevels, levelOf } from './intel.js';
+import { inboundRadarLead, LEAD_TOLERANCE } from './radar.js';
 
 /* ── the unlock cascade ─────────────────────────────────────── */
 
@@ -133,6 +138,16 @@ export interface PendingThread {
   id?: string;
   kind: 'fleet' | 'probe' | 'incoming' | 'transfer' | 'settlement' | 'death_star';
   targetName: string;
+  /**
+   * WHICH OF YOUR OWN WORLDS IS UNDER THE CROSSHAIR. `incoming` only.
+   *
+   * Not a radar product: it is the defender's own world, and the radar ladder
+   * sells the ATTACKER's side — that something is coming (L3), how big (L4), from
+   * where and with what (L5). This was simply absent, so a commander with four
+   * worlds read "incoming, six minutes" and had no way to know where to move the
+   * fleet. Absent on your own craft, where `targetName` is already the far end.
+   */
+  targetPlanetId?: string;
   minutesRemaining: number;
   /**
    * WHEN IT LANDS, EXACTLY — and it is on every thread, including an inbound one.
@@ -153,27 +168,43 @@ export interface PendingThread {
   /** Which way a fleet of yours is flying. Absent for `incoming`. */
   leg?: 'outbound' | 'return';
   /**
-   * What is in it. PRESENT ONLY FOR YOUR OWN MISSIONS.
+   * What is in it. YOUR OWN MISSIONS, OR AN INBOUND ATTACK AT RADAR L5. D123.
    *
-   * THIS IS NOT THE FOG RULE IT USED TO BE, and the comment said otherwise for two
-   * phases. It read "composition is what Radar L5 sells, and an inbound attack must
-   * never carry it" — which stopped being true at D24, when the owner made every
-   * craft in the galaxy readable down to the hull. A defender can already count the
-   * ships in a contact on `/api/galaxy/traffic`, exactly as any stranger can.
+   * THE COMMENT THAT USED TO BE HERE WAS RIGHT AND THEN WAS OVERTAKEN TWICE.
+   * It began as "composition is what Radar L5 sells, and an inbound attack must
+   * never carry it", which stopped being true at D24 when every craft in the
+   * galaxy became readable down to the hull — a defender could count the ships in
+   * a contact on `/api/galaxy/traffic` exactly as any stranger could, so withholding
+   * them here protected nothing. D123 removed that: a public contact now carries a
+   * `mass` silhouette and no roster at all.
    *
-   * WHAT THE RADAR STILL SELLS IS ATTRIBUTION, and that is the whole ladder: a
-   * contact is a craft moving out there, and knowing that it is coming for YOU, and
-   * how long you have, is what you pay for. A defender watching traffic may work it
-   * out from a short hop and cannot from a long one — that asymmetry is the game,
-   * not a leak. Owner's call, on review.
-   *
-   * So this stays absent from an inbound thread for a narrower and still real
-   * reason: this payload is the ATTRIBUTED one. Everything on it is already known to
-   * be aimed at you, so a composition here would be the radar's answer given away
-   * with the radar's question. Omitted rather than nulled — there is no field for a
-   * modified client to read.
+   * So the roster comes back HERE, where the ladder always said it lived. Radar L4
+   * estimates the size and Radar L5 names the hulls and the world they left, and
+   * this is the one payload on which either is worth anything — a composition is a
+   * decision when you know it is coming for you and a curiosity when it is one
+   * more mote crossing the disc. Below L4 an inbound thread carries neither, and
+   * it is omitted rather than nulled: there is no field for a modified client to
+   * read.
    */
   fleet?: Fleet;
+  /**
+   * How big the inbound force looks. RADAR L4. D123.
+   *
+   * The rung between "something is coming" and "seventy-four Wasps and twenty
+   * Lances": enough to decide whether to spend the stock, fly the fleet out or
+   * stand, which are the three real options D9 exists to create. Absent on your
+   * own craft, which carry the exact `fleet` instead.
+   */
+  mass?: MassClass;
+  /**
+   * Which world it left. RADAR L5, and the top of the ladder.
+   *
+   * `radarRevealsOrigin` has gated this figure since D45; until D123 there was no
+   * field on this payload to put it in, so the top rung of the radar sold the same
+   * thing the rung below it did. Naming the world is what turns a warning into a
+   * grudge, and a grudge is what brings somebody back tomorrow.
+   */
+  originName?: string;
   /**
    * Where it is flying, so the client can draw it moving.
    *
@@ -366,10 +397,9 @@ export async function buildReturnPayload(
  * minutes of notice. It shipped that way in Phase 3 and was found by building the
  * strip that displays it.
  *
- * THE GATE AND THE WARNING MUST AGREE, and since D49 that means both read a
- * DISTANCE. This surface is a live query and the warning is a scheduled event, so
- * they can never share a computation — only a rule. `radarLead` is that rule, and
- * both sides call it with the same three figures off the same mission row.
+ * THE GATE AND THE WARNING MUST AGREE. Both use the shortened visual leg: surface
+ * at departure, orbit at arrival, and the current public Core silhouettes. The
+ * live strip and the scheduled warning call the same `inboundRadarLead` helper.
  */
 export async function pendingThreads(
   /**
@@ -386,6 +416,8 @@ export async function pendingThreads(
   // yours, and which end that is flips between the outbound and return legs.
   const originPlanet = alias(planets, 'pending_origin');
   const targetPlanet = alias(planets, 'pending_target');
+  const originCore = alias(buildings, 'pending_origin_core');
+  const targetCore = alias(buildings, 'pending_target_core');
 
   const [observer] = await db
     .select({ playerId: planets.controllerPlayerId })
@@ -409,10 +441,20 @@ export async function pendingThreads(
         targetX: targetPlanet.x,
         targetY: targetPlanet.y,
         targetZ: targetPlanet.z,
+        originCoreLevel: originCore.level,
+        targetCoreLevel: targetCore.level,
       })
       .from(missions)
       .innerJoin(originPlanet, eq(missions.originPlanetId, originPlanet.id))
       .innerJoin(targetPlanet, eq(missions.targetPlanetId, targetPlanet.id))
+      .leftJoin(
+        originCore,
+        and(eq(originCore.planetId, originPlanet.id), eq(originCore.type, 'CORE')),
+      )
+      .leftJoin(
+        targetCore,
+        and(eq(targetCore.planetId, targetPlanet.id), eq(targetCore.type, 'CORE')),
+      )
       .where(
         and(
           eq(missions.status, 'in_flight'),
@@ -469,17 +511,52 @@ export async function pendingThreads(
       const radar = radarByPlanet.get(m.targetPlanetId) ?? 0;
       const reach = radarRange(radar);
       const oneWay = (m.arriveAt.getTime() - m.departAt.getTime()) / 60_000;
-      const lead = radarLead(reach, m.distance, oneWay);
+      const lead = inboundRadarLead(reach, {
+        from: { x: row.originX, y: row.originY, z: row.originZ },
+        to: { x: row.targetX, y: row.targetY, z: row.targetZ },
+        originCoreLevel: row.originCoreLevel ?? 1,
+        targetCoreLevel: row.targetCoreLevel ?? 1,
+        oneWayMinutes: oneWay,
+      });
       // Measured unrounded: `minutes` is rounded for display and comparing a
       // rounded figure against an exact one puts the strip and the warning up to
       // thirty seconds out of step with each other.
       const remaining = (m.arriveAt.getTime() - now.getTime()) / 60_000;
-      if (!radarDetectsFleets(radar) || remaining > lead) continue;
+      if (!radarDetectsFleets(radar) || remaining > lead + LEAD_TOLERANCE) continue;
+      /**
+       * THE LADDER, SOLD WHERE IT MEANS SOMETHING. D123.
+       *
+       * Every purchased rung warns inside its own circle. L4 adds the size, L5 the
+       * roster and the world it came from. All
+       * three are derived from the DEFENDER'S CURRENT RADAR, read here at request
+       * time — never from a level snapshotted when the fleet launched, because a
+       * defender who buys a radar while a fleet is in the air has bought exactly
+       * this.
+       */
+      /**
+       * AND IT SAYS WHICH OF YOUR WORLDS IT IS COMING FOR.
+       *
+       * `targetName` was the literal string `'inbound fleet'` — a user-facing
+       * sentence written on the server, which the client had to work around by
+       * ignoring the field and printing its own. What a defender actually needs is
+       * the one thing that was missing: with four worlds, "incoming, six minutes"
+       * does not tell you where to move the fleet, and it is not a fact the fog
+       * has any reason to hide. It is the defender's OWN world.
+       *
+       * The radar ladder is untouched by this. What it sells is the ATTACKER's
+       * side — that something is coming at all, how big (L4), from where and
+       * with what (L5). Which of your own worlds is under the crosshair was never
+       * part of that, and withholding it only made the warning unusable.
+       */
       pending.push({
         kind: 'incoming',
-        targetName: 'inbound fleet',
+        targetName: row.targetName,
+        targetPlanetId: m.targetPlanetId,
         minutesRemaining: minutes,
         arriveAt: m.arriveAt,
+        ...(radarRevealsSize(radar) ? { mass: massClass(m.fleet) } : {}),
+        ...(radarRevealsComposition(radar) ? { fleet: m.fleet } : {}),
+        ...(radarRevealsOrigin(radar) ? { originName: row.originName } : {}),
       });
       continue;
     }

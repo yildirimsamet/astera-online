@@ -34,11 +34,9 @@
     height: 0.45rem;
     border: 1px solid color-mix(in srgb, var(--color-line) 80%, transparent);
     border-radius: var(--radius-pill);
-    background: linear-gradient(
-      90deg,
-      var(--slider-tone) 0 var(--slider-fill),
-      var(--color-deep) var(--slider-fill) 100%
-    );
+    background: linear-gradient(90deg,
+        var(--slider-tone) 0 var(--slider-fill),
+        var(--color-deep) var(--slider-fill) 100%);
   }
 
   .slider::-webkit-slider-thumb {
@@ -73,9 +71,21 @@
     background: var(--slider-tone);
   }
 
-  .slider-alloy { --slider-tone: var(--color-alloy); }
-  .slider-crystal { --slider-tone: var(--color-crystal); }
-  .slider-deuterium { --slider-tone: var(--color-deuterium); }
+  .slider-alloy {
+    --slider-tone: var(--color-alloy);
+  }
+
+  .slider-crystal {
+    --slider-tone: var(--color-crystal);
+  }
+
+  .slider-deuterium {
+    --slider-tone: var(--color-deuterium);
+  }
+
+  .slider-threat {
+    --slider-tone: var(--color-threat);
+  }
 
   .death-star-forge {
     position: relative;
@@ -107,12 +117,10 @@
     inset: 0;
     content: '';
     pointer-events: none;
-    background: repeating-radial-gradient(
-      circle at 46px 46px,
-      transparent 0 29px,
-      rgb(217 164 65 / 4%) 30px,
-      transparent 31px 43px
-    );
+    background: repeating-radial-gradient(circle at 46px 46px,
+        transparent 0 29px,
+        rgb(217 164 65 / 4%) 30px,
+        transparent 31px 43px);
     mask-image: linear-gradient(90deg, black, transparent 62%);
   }
 
@@ -151,6 +159,136 @@
     border-color: color-mix(in srgb, var(--color-deuterium) 22%, var(--color-line));
     color: color-mix(in srgb, var(--color-deuterium) 62%, var(--color-bone));
   }
+}
+
+@layer components {
+  /** One renderer for the admin preview and the player-facing announcement. */
+  .announcement-content {
+    overflow-wrap: anywhere;
+    color: var(--color-dim);
+    font-size: 0.94rem;
+    line-height: 1.7;
+  }
+
+  .announcement-content > :first-child,
+  .tiptap-editor > :first-child {
+    margin-top: 0;
+  }
+
+  .announcement-content > :last-child,
+  .tiptap-editor > :last-child {
+    margin-bottom: 0;
+  }
+
+  .announcement-content p,
+  .announcement-content ul,
+  .announcement-content ol,
+  .announcement-content blockquote,
+  .announcement-content pre,
+  .announcement-content [data-youtube-video],
+  .tiptap-editor p,
+  .tiptap-editor ul,
+  .tiptap-editor ol,
+  .tiptap-editor blockquote,
+  .tiptap-editor pre,
+  .tiptap-editor [data-youtube-video] {
+    margin-block: 0.8rem;
+  }
+
+  .announcement-content h2,
+  .announcement-content h3,
+  .tiptap-editor h2,
+  .tiptap-editor h3 {
+    margin-block: 1.1rem 0.45rem;
+    color: var(--color-bone);
+    font-family: 'Saira Variable', sans-serif;
+    font-weight: 650;
+    letter-spacing: 0.025em;
+    line-height: 1.25;
+  }
+
+  .announcement-content h2,
+  .tiptap-editor h2 {
+    font-size: 1.25rem;
+  }
+
+  .announcement-content h3,
+  .tiptap-editor h3 {
+    font-size: 1.05rem;
+  }
+
+  .announcement-content ul,
+  .announcement-content ol,
+  .tiptap-editor ul,
+  .tiptap-editor ol {
+    padding-inline-start: 1.35rem;
+  }
+
+  .announcement-content ul,
+  .tiptap-editor ul {
+    list-style: disc;
+  }
+
+  .announcement-content ol,
+  .tiptap-editor ol {
+    list-style: decimal;
+  }
+
+  .announcement-content blockquote,
+  .tiptap-editor blockquote {
+    border-inline-start: 2px solid color-mix(in srgb, var(--color-crystal) 58%, transparent);
+    padding-inline-start: 0.9rem;
+    color: var(--color-bone);
+  }
+
+  .announcement-content a,
+  .tiptap-editor a {
+    color: var(--color-crystal);
+    text-decoration: underline;
+    text-underline-offset: 0.2em;
+  }
+
+  .announcement-content img,
+  .tiptap-editor img {
+    display: block;
+    width: auto;
+    max-width: 100%;
+    max-height: 34rem;
+    margin-block: 1rem;
+    border: 1px solid var(--color-line);
+    border-radius: var(--radius-plate);
+    object-fit: contain;
+  }
+
+  .announcement-content iframe,
+  .tiptap-editor iframe {
+    display: block;
+    width: 100%;
+    max-width: 52rem;
+    aspect-ratio: 16 / 9;
+    margin-block: 1rem;
+    border: 1px solid var(--color-line);
+    border-radius: var(--radius-plate);
+    background: var(--color-void);
+  }
+
+  .announcement-content pre,
+  .tiptap-editor pre {
+    overflow-x: auto;
+    border: 1px solid var(--color-line-soft);
+    border-radius: var(--radius-chip);
+    background: var(--color-void);
+    padding: 0.8rem;
+    color: var(--color-bone);
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.82rem;
+  }
+
+  .tiptap-editor {
+    color: var(--color-dim);
+    line-height: 1.65;
+  }
+
 }
 
 /**
@@ -354,9 +492,17 @@
  * shake, because a shake reads as an error and the player has not made one.
  */
 @keyframes nudge {
-  0% { transform: translateY(0); }
-  35% { transform: translateY(-6px); }
-  100% { transform: translateY(0); }
+  0% {
+    transform: translateY(0);
+  }
+
+  35% {
+    transform: translateY(-6px);
+  }
+
+  100% {
+    transform: translateY(0);
+  }
 }
 
 @keyframes fade-in {
@@ -398,6 +544,7 @@
   from {
     transform: translateX(-100%);
   }
+
   to {
     transform: translateX(100%);
   }
@@ -412,10 +559,12 @@
 
 /** An emissive edge breathing. Reserved for a state that wants attention. */
 @keyframes ember {
+
   0%,
   100% {
     opacity: 0.55;
   }
+
   50% {
     opacity: 1;
   }
@@ -426,6 +575,7 @@
   from {
     transform: translateX(-60%);
   }
+
   to {
     transform: translateX(160%);
   }
@@ -512,15 +662,6 @@
     -webkit-tap-highlight-color: transparent;
   }
 
-  @media (prefers-reduced-motion: reduce) {
-    *,
-    *::before,
-    *::after {
-      animation-duration: 0.01ms !important;
-      animation-iteration-count: 1 !important;
-      transition-duration: 0.01ms !important;
-    }
-  }
 }
 
 @layer components {
@@ -645,12 +786,10 @@
     position: absolute;
     inset: 0;
     pointer-events: none;
-    background: linear-gradient(
-      100deg,
-      transparent 20%,
-      rgb(89 200 255 / 26%) 50%,
-      transparent 80%
-    );
+    background: linear-gradient(100deg,
+        transparent 20%,
+        rgb(89 200 255 / 26%) 50%,
+        transparent 80%);
     animation: sweep 700ms ease-out;
   }
 }

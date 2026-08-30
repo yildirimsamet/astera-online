@@ -1,6 +1,15 @@
-import { INTEL } from './constants.js';
+import { ANTI_STRATEGIC, INTEL, SENSOR } from './constants.js';
+import { fleetValue } from './hulls.js';
 import { clamp, seededFrom } from './rng.js';
-import type { ClarityState, FleetStatus, InstrumentId, Rng, Vec3 } from './types.js';
+import type {
+  ClarityState,
+  Fleet,
+  FleetStatus,
+  InstrumentId,
+  MassClass,
+  Rng,
+  Vec3,
+} from './types.js';
 
 /** Table lookup by level, clamped at both ends. Levels can exceed a table's length. */
 const atLevel = (table: readonly number[], level: number): number =>
@@ -66,12 +75,40 @@ export const telescopeSlots = (level: number): number => {
   return capped <= 0 ? 0 : 1 + Math.floor((capped - 1) / 2);
 };
 
-/** How far it reaches, in game units. Infinite at the top of the table. D18. */
+/** How far the raw ladder reaches, in game units. D18. */
 export const telescopeRange = (level: number): number =>
   atLevel(INTEL.telescopeRange, level);
 
+/**
+ * How far a telescope may actually be pointed.
+ *
+ * Identical to the raw ladder now that the table states its own ceiling, and kept
+ * as a separate name because a WATCH and a LIVE DISC are two different products
+ * that happened to share a number. A watch outside the horizon could never produce
+ * a live world, so the assignment gate and every read-time revalidation use this.
+ */
+export const telescopeWatchRange = (level: number): number =>
+  Math.min(SENSOR.maxRadius, telescopeRange(level));
+
+/**
+ * ONE INSTRUMENT, ONE REACH. D127.
+ *
+ * This used to read the raw `telescopeRange` while that table's top rung was
+ * `Infinity`, so at L5 a commander could spend a watch slot on a world five
+ * thousand units away and the galaxy payload would then correctly refuse to say
+ * anything about it. A slot paid for and a reading that never arrives is the worst
+ * kind of bug in an information game — the interface selling something the rules
+ * do not deliver.
+ *
+ * IT IS THE CEILING ONLY, NOT `sensorReach`. The first fix reached for that and
+ * raised the FLOOR as well: `sensorReach` is floored at the naked-eye radius so a
+ * commander with no Telescope still has a live neighbourhood, and binding the
+ * watch to it handed every low Telescope several hundred units of free range.
+ * The ladder's own steps are the design (D18); what needed capping was the top
+ * rung, and only the top rung.
+ */
 export const withinTelescopeRange = (level: number, dist: number): boolean =>
-  dist <= telescopeRange(level);
+  dist <= telescopeWatchRange(level);
 
 /**
  * Hours a slot is locked after being pointed somewhere new. D18.
@@ -202,12 +239,53 @@ export const radarRange = (radarLevel: number): number => atLevel(INTEL.radarRan
 export const radarDetectsFleets = (radarLevel: number): boolean => radarRange(radarLevel) > 0;
 
 /**
+ * HOW FAR AN INTERCEPTION GRID REACHES. T10.
+ *
+ * The timed-warning circle, deliberately. D126 currently merges it with contact
+ * reach, but the products remain separate functions so a future split keeps the
+ * interceptor on the clock-bearing boundary rather than on a public rumour.
+ *
+ * Zero below `ANTI_STRATEGIC.requiredRadar`, which is exactly why that rung is the
+ * build requirement: there is nothing to fire along until the circle exists.
+ */
+export const interceptionRange = (radarLevel: number): number =>
+  radarLevel >= ANTI_STRATEGIC.requiredRadar ? radarRange(radarLevel) : 0;
+
+/**
+ * How far a radar knows a fleet is aimed at you, without knowing when. D126.
+ *
+ * Provisionally equal to `radarRange` under D126 and deliberately carrying no
+ * clock in the public traffic payload. See the constant for the cost accepted by
+ * that temporary merge and the earlier split it may return to.
+ */
+export const radarContactRange = (radarLevel: number): number =>
+  atLevel(INTEL.radarContactRange, radarLevel);
+
+/**
+ * Is this craft close enough for the radar to know it is coming at all? D126.
+ *
+ * TAKES THE REACH, NOT THE LEVEL, so the one caller that has a precomputed reach
+ * does not have to restate the rule inline — which it did, and got wrong: it
+ * measured the LENGTH OF THE LEG instead of how far away the craft actually is,
+ * flagging a neighbour's raid from the instant it launched and never flagging a
+ * distant one at all. A radius is answered by a distance, and there is now exactly
+ * one place that says so.
+ *
+ * `reach` is zero only at Radar L0; every purchased rung has a circle. The zero
+ * test is here rather than at the call site because a radius of zero and a craft
+ * standing on the world would otherwise both be "distance ≤ reach".
+ */
+export const radarSensesIntent = (reach: number, dist: number): boolean =>
+  reach > 0 && dist <= reach;
+
+/**
  * Minutes of notice a radar of this reach gives against one particular leg.
  *
- * A fleet is drawn — and therefore, for this purpose, IS — at a point interpolated
- * linearly along its leg between departure and arrival. So the fraction of the leg
- * still to fly when it crosses inside `range` is exactly `range / distance`, and
- * the notice is that fraction of the whole flight.
+ * This centre-to-centre form is the conservative scheduling primitive for callers
+ * that do not hold rendering endpoints. A rendered fleet starts at a world surface
+ * and stops in orbit, so user-visible warnings must use `sensorLeadOnVisualLeg`
+ * instead. Keeping the simple form is useful for rules-only comparisons and old
+ * data, but it is not the 3D boundary contract.
  *
  * D9 IS PRESERVED BY THIS ARITHMETIC RATHER THAN BY A CLAMP. A long flight cannot
  * hand over its whole duration, because `range` is a fraction of its length. The
@@ -254,9 +332,63 @@ export const nextRadarCheck = (
 ): number | null =>
   RADAR_RANGES.find((range) => radarLead(range, dist, oneWayMinutes) < minutesRemaining) ?? null;
 
-/** Radar L2 reveals a direction; L5 reveals who. Nothing in between. */
+/**
+ * Radar L2 reveals a direction; L4 estimates the size; L5 reveals who and what.
+ *
+ * THESE THREE ARE THE RADAR'S WHOLE PRODUCT AGAIN. D123. The size estimate and the
+ * composition are what the ladder in `docs/game-design.md` has always advertised,
+ * and both were being handed to every player at every level by the public contact
+ * list — so a maxed Radar bought a bearing nobody needed and two facts everybody
+ * already had. They are sold here, on the ATTRIBUTED payload, which is the only
+ * place either one means anything: a roster is worth paying for when you know it
+ * is coming for you, and worth nothing as one more mote on the disc.
+ */
 export const radarRevealsBearing = (radarLevel: number): boolean => radarLevel >= 2;
+export const radarRevealsSize = (radarLevel: number): boolean => radarLevel >= 4;
 export const radarRevealsOrigin = (radarLevel: number): boolean => radarLevel >= 5;
+export const radarRevealsComposition = (radarLevel: number): boolean => radarLevel >= 5;
+
+/* ── what the disc itself discloses ─────────────────────── */
+
+/**
+ * The silhouette a craft presents to anybody who is not its owner. D123.
+ *
+ * Priced off `fleetValue` rather than off a hull count, because value is what the
+ * whole table is balanced on and a count would read six Bulwarks as lighter than
+ * six Wasps. A probe and an empty return leg both come out LIGHT, which is right:
+ * a stranger cannot tell them apart and is not supposed to.
+ */
+export function massClass(fleet: Fleet): MassClass {
+  const value = fleetValue(fleet);
+  if (value >= SENSOR.massHeavy) return 'HEAVY';
+  return value >= SENSOR.massMedium ? 'MEDIUM' : 'LIGHT';
+}
+
+/**
+ * How far one world sees craft moving, in game units. D123.
+ *
+ * The Telescope's own reach, floored at the naked-eye neighbourhood. A commander
+ * with no Telescope still has a live disc around them; every level of Telescope
+ * lights up more of the galaxy, which is the first time that instrument has sold
+ * something a player can watch happen.
+ *
+ * Deliberately the Telescope's identifying radius, not Radar's wider contact
+ * radius. Radar supplies the anonymous outer zone (and marks inbound intent);
+ * Telescope is what turns a moving question mark into a craft silhouette.
+ *
+ * THE CAP AND THE TABLE NOW AGREE. `telescopeRange` used to end at `Infinity`
+ * and `SENSOR.maxRadius` existed to cut it back; the table states its own ceiling
+ * since the owner's ladder, so this `min` is a guard rather than the rule. The
+ * naked-eye floor below is the part that still does real work.
+ *
+ * THIS IS THE `identify` RADIUS OF A SENSOR SPHERE. See `sight.ts` for the model
+ * it belongs to; nothing outside `sensorSphere` should turn a level into a radius.
+ */
+export const sensorReach = (telescopeLevel: number): number =>
+  Math.min(
+    SENSOR.maxRadius,
+    Math.max(SENSOR.baseRadius, telescopeRange(telescopeLevel)),
+  );
 
 const COMPASS = [
   'east', 'south-east', 'south', 'south-west',

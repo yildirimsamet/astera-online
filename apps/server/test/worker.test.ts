@@ -536,7 +536,7 @@ describe('event worker', () => {
         .where(eq(missions.kind, 'return'));
       expect(ret).toBeDefined();
       expect(report!.loot.alloy + report!.loot.crystal).toBeLessThanOrEqual(
-        fleetCargo(ret!.fleet),
+        fleetCargo(ret!.fleet, {}),
       );
 
       f.clock.set(ret!.arriveAt);

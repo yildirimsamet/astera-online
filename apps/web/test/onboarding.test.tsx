@@ -552,7 +552,7 @@ describe('reaching the way out', () => {
    * they are LABELLED — a menu is read rather than recognised, so a row with only
    * a glyph on it would have moved the D54 problem one level down.
    */
-  it('carries intel, leaderboard and rewards as named rows, not as glyphs', async () => {
+  it('keeps leaderboard and rewards as named menu rows after Intel moves to the disc', async () => {
     const { MenuPanel } = await import('../src/shell/MenuPanel.js');
     const onOpen = vi.fn();
     const { wrapper: Wrapper } = harness();
@@ -573,10 +573,17 @@ describe('reaching the way out', () => {
     expect(screen.queryByRole('button', { name: /galaxy chat/i })).not.toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: /rewards/i }));
     expect(onOpen).toHaveBeenCalledWith('rewards');
-    await user.click(screen.getByRole('button', { name: /intel/i }));
-    expect(onOpen).toHaveBeenCalledWith('intel');
     await user.click(screen.getByRole('button', { name: /leaderboard/i }));
     expect(onOpen).toHaveBeenCalledWith('leaderboard');
+    /*
+      RESEARCH AND THE CLAN ARE NOT HERE, and that is the owner's instruction rather
+      than an omission. They are marks on the disc now (`DiscControls`), because
+      they are things a commander DOES; a menu is where you look things UP. Two
+      doors onto one surface is how a player learns that neither is the real one.
+    */
+    expect(screen.queryByRole('button', { name: /research/i })).toBeNull();
+    expect(screen.queryByRole('button', { name: /clan/i })).toBeNull();
+    expect(screen.queryByRole('button', { name: /intel/i })).toBeNull();
   });
 
   it('offers an accessible sound level beside the mute switch', async () => {
@@ -616,7 +623,7 @@ describe('reaching the way out', () => {
    * it a route that exists with nothing in the mailbox: the notifications list is
    * deliberately empty here, which is the whole point of the bug it came from.
    */
-  it('offers a way into the intel centre with an empty mailbox', async () => {
+  it('does not duplicate the disc Intel control in the menu when the mailbox is empty', async () => {
     const onOpen = vi.fn();
     const { MenuPanel } = await import('../src/shell/MenuPanel.js');
     const { wrapper: Wrapper, queries } = harness();
@@ -636,8 +643,38 @@ describe('reaching the way out', () => {
       </Wrapper>,
     );
 
-    await userEvent.setup().click(screen.getByRole('button', { name: /intel/i }));
-    expect(onOpen).toHaveBeenCalledWith('intel');
+    expect(screen.queryByRole('button', { name: /intel/i })).toBeNull();
+    expect(onOpen).not.toHaveBeenCalled();
+  });
+
+  it('lights the announcement bell and shows a count while a post is unread', async () => {
+    const { MenuPanel } = await import('../src/shell/MenuPanel.js');
+    const { wrapper: Wrapper, queries } = harness();
+    queries.setQueryData(['announcements'], {
+      announcements: [{
+        id: crypto.randomUUID(),
+        title: 'Update',
+        bodyHtml: '<p>New</p>',
+        publishedAt: new Date(),
+        seen: false,
+      }],
+    });
+
+    render(
+      <Wrapper>
+        <MenuPanel
+          galaxy="Vantage"
+          shard="EU-1"
+          endsAt={null}
+          onOpen={vi.fn()}
+          onSignOut={vi.fn()}
+        />
+      </Wrapper>,
+    );
+
+    const announcements = screen.getByRole('button', { name: /announcement/i });
+    expect(announcements.querySelector('[data-attention="true"]')).toHaveClass('text-opportunity');
+    expect(announcements).toHaveTextContent('1');
   });
 
   it('offers one-tap focus for a live Rival and a clear action for a reclaimed one', async () => {

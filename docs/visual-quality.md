@@ -70,8 +70,8 @@ signature battle. Browser emulation is not evidence for this table.
 
 No capture may show a long task over 100 ms during an already-loaded battle. Display
 DPR stays fixed during camera interaction: thin trails, hull silhouettes and stars
-must never blur under the player's finger. `prefers-reduced-motion` removes meteors,
-violent camera response and non-essential particle drift without hiding game state.
+must never blur under the player's finger. Scene motion is rendered consistently on
+every client so timing-dependent tactical effects cannot silently disappear.
 
 ## Required acceptance frames
 
@@ -213,10 +213,9 @@ lint, production build, full web typecheck and diff checks passed.
 
 ## D90 adaptive quality and motion result · 2026-08-23
 
-Reduced-motion is a live preference, not a page-load snapshot. Its media-query
-listener stops meteors, atmosphere breathing, dust rotation, engine flicker and
-trail flutter while preserving positions, combat state and readable propulsion.
-Camera focus changes become effectively immediate for players who request it.
+Scene motion is intentionally unconditional: meteors, atmosphere breathing, dust
+rotation, engine flicker, trail flutter and camera transitions run consistently on
+every client. Tactical timing and visibility therefore cannot diverge by OS setting.
 
 An interaction-time DPR experiment failed visual CR: dropping a DPR-2 phone to
 1.2 visibly blurred the ship silhouette and its thin wake until the quality
@@ -225,7 +224,7 @@ live canvas, captures the interaction frame and asserts that DPR is unchanged
 before, during and after the gesture.
 
 Final production captures held DPR 2 → 2 → 2 on the 390 × 844 phone and DPR 1 →
-1 → 1 on desktop. The normal phone scene measured 29 calls, 8,272 triangles and
-40 textures; reduced motion removed one draw and all three ambient meteor lines.
+1 → 1 on desktop. The phone scene measured 29 calls, 8,272 triangles and
+40 textures.
 Desktop measured 32 calls and 8,408 triangles. All three runs had zero page errors
 and zero unexpected API writes; visual inspection found no interaction blur.

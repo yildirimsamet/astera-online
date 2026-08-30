@@ -8,20 +8,22 @@ import {
   PROBE,
   distance,
   fleetCount,
+  fleetEntries,
   fleetTravelExact,
+  missionFuel,
   telescopeSlots,
   travelExact,
   type HullId,
 } from '@astera/rules';
 import type {
   AsteroidView,
-  BattleReport,
   Contact,
   GalaxyPlanet,
   IntelView,
   MiningRun,
   PendingThread,
   PlanetView,
+  Report,
   RivalSummary,
 } from '../api/schemas.js';
 import { useProbe, useSetRival, useWatch } from '../api/queries.js';
@@ -68,9 +70,13 @@ import { useOwnPress } from '../ui/kit/index.js';
 
 export type Focus =
   | { kind: 'planet'; id: string }
-  | { kind: 'asteroid'; index: number }
+  | { kind: 'asteroid'; id: string }
   | { kind: 'run'; id: string }
   | { kind: 'thread'; key: string }
+  /** An eight-second anti-strategic launch; camera-only, with no information rail. */
+  | { kind: 'interception'; id: string }
+  /** The collision phase is distinct so it can reframe even after a missed launch follow. */
+  | { kind: 'interceptionImpact'; id: string }
   /** Somebody else's craft. Selectable since D24, like everything else out there. */
   | { kind: 'contact'; id: string }
   /** Wreckage from a battle. Public to the whole galaxy, and on a clock. D32. */
@@ -321,7 +327,7 @@ export function PlanetFocus({
   target: GalaxyPlanet;
   planet: PlanetView;
   intel: IntelView | undefined;
-  reports: readonly BattleReport[];
+  reports: readonly Report[];
   rival?: RivalSummary;
   isRival?: boolean;
   rivalCommitted?: boolean;
@@ -363,7 +369,22 @@ export function PlanetFocus({
   const originRecovering = Boolean(
     planet.planet.recoveryUntil && planet.planet.recoveryUntil.getTime() > now,
   );
-  const claimUntil = target.kind === 'NEUTRAL' ? target.neutral?.claimUntil : null;
+  /**
+   * A CLAIM WINDOW SURVIVES THE FOG, SO THE CONTROL HAS TO AS WELL. D112/D127.
+   *
+   * This tested `kind === 'NEUTRAL'`, which is a field D127 REMOVED from an
+   * unsurveyed world — so the disc drew the claim ring and the label said "Claim
+   * open" on a world whose panel then offered no way to settle it. The one race
+   * the design deliberately keeps public was visible to everybody and enterable
+   * only by the people who had already probed the rock, which is the exact
+   * sentence D127 uses to explain why the window is published at all.
+   *
+   * The window is the gate. The server publishes it only while it is genuinely
+   * open, and the settlement guards below are what actually refuse a bad launch.
+   */
+  const claimUntil = target.kind === 'CAPITAL' || target.kind === 'COLONY'
+    ? null
+    : target.neutral?.claimUntil ?? null;
   const claimActive = Boolean(claimUntil && claimUntil.getTime() > now);
   const settlementEta = fleetTravelExact(
     distance(planet.planet.position, target.position),
@@ -372,6 +393,29 @@ export function PlanetFocus({
   const settlementCanArrive = Boolean(
     claimUntil && now + settlementEta * 60_000 < claimUntil.getTime(),
   );
+  /**
+   * WHAT THE SETTLERS BURN GETTING THERE. T6 — and this panel is the fourth door
+   * into a launch, so it quotes the charge like the other three.
+   *
+   * One leg: they land and become the colony, and nothing comes home. Off
+   * `missionFuel`, the same function `launchSettlement` charges with, because a
+   * requirement list computing its own arithmetic is a requirement list that
+   * eventually disagrees with the server it is predicting.
+   */
+  const settlementFuel = missionFuel(
+    { HAULER: MULTI_WORLD.settlement.haulers },
+    distance(planet.planet.position, target.position),
+    1,
+  );
+  /*
+    THE FOUNDING STOCK COMES OFF THE TOP, exactly as the server's guard counts it:
+    `settlement.cost` is cargo the settlers carry, not a fee, so its deuterium has
+    already left this world before the engines ask for any. Zero today, and written
+    as the sum so the panel cannot start disagreeing with the launch the day it
+    is not.
+  */
+  const settlementFuelled =
+    planet.planet.deuterium - MULTI_WORLD.settlement.cost.deuterium >= settlementFuel;
   const colonyStanding = planet.colonies ?? {
     colonies: 0,
     reservations: 0,
@@ -393,22 +437,26 @@ export function PlanetFocus({
             ? t('focus.planet.settleNeedAlloy')
             : planet.planet.crystal < MULTI_WORLD.settlement.cost.crystal
               ? t('focus.planet.settleNeedCrystal')
-              : !settlementCanArrive
-                ? t('focus.planet.settleTooLate')
-                : null;
+              // Beside the other two stores, because it is one: the founding stock
+              // is carried and the flight is burned, and both come off this world.
+              : !settlementFuelled
+                ? t('focus.planet.settleNeedFuel')
+                : !settlementCanArrive
+                  ? t('focus.planet.settleTooLate')
+                  : null;
   const settlementReady = claimActive && settlementBlock === null;
-  const captureAttempt = target.kind !== 'CAPITAL' && target.state?.kind === 'RECOVERY';
+  const captureAttempt = target.kind !== 'CAPITAL' && target.state.kind === 'RECOVERY';
   const deathStarEta = travelExact(
     distance(planet.planet.position, target.position),
     DEATH_STAR.speed,
   );
   const recoveryCanArrive = !captureAttempt
-    || (target.state?.kind === 'RECOVERY'
+    || (target.state.kind === 'RECOVERY'
       && now + deathStarEta * 60_000 < target.state.until.getTime());
   const deathStarReady = planet.strategic?.status === 'READY';
   const deathStarBlock = !deathStarReady
     ? t('focus.planet.deathStarUnavailable')
-    : target.state?.kind === 'PROTECTED'
+    : target.state.kind === 'PROTECTED'
       ? t('focus.planet.deathStarProtected')
       : originRecovering
         ? t('focus.planet.deathStarOriginRecovering')
@@ -421,33 +469,64 @@ export function PlanetFocus({
               : null;
   const deathStarEnabled = deathStarBlock === null;
 
+  /**
+   * THE HEADER OF A WORLD NOBODY HAS SURVEYED. D127.
+   *
+   * Every line above was reading a field the server DELIBERATELY OMITS, and the
+   * schema's defaults made each of them look like an answer: the eyebrow printed
+   * "Location: " with an empty name, the title printed an empty commander, and
+   * `WorldKind` fell through both of its branches to announce NEUTRAL. A player
+   * who had just been told they cannot see this world was shown three confident
+   * claims about it, one of which was wrong.
+   *
+   * The panel still opens — the tap asked for it, and a control that does nothing
+   * reads as broken — and it says the one true thing instead. Everything below,
+   * the range and the flight time and the commitment, is computed from the
+   * POSITION, which is public in every state and is exactly why an attack on an
+   * unsurveyed world is still offered.
+   */
+  const unsurveyed = target.intel === 'UNKNOWN';
+  const anonymous = unsurveyed && !target.clanmate;
+
   return (
     <Shell
       art={<PlanetSigil seed={target.id} size={40} dark={known.kind === 'none'} />}
-      eyebrow={t('focus.planet.location', { planet: target.name })}
-      title={commanderLabel(target.owner, target.clan?.tag)}
+      eyebrow={anonymous
+        ? t('focus.planet.unsurveyedEyebrow')
+        : t('focus.planet.location', { planet: target.name })}
+      title={anonymous
+        ? t('focus.planet.unsurveyedTitle')
+        : commanderLabel(target.owner, target.clan?.tag)}
       open={open}
       onToggle={onToggle}
       onClose={onClose}
       summary={(
         <span className="flex flex-col items-end gap-1">
-          <WorldKind target={target} rival={isRival} />
+          {!unsurveyed && <WorldKind target={target} rival={isRival} />}
           <Headline of={known} />
         </span>
       )}
       /**
-       * THE COMMITMENT, AND WHEN IT IS NOT ON OFFER. D49.
+       * THE COMMITMENT, AND IT IS ALWAYS ON OFFER NOW. D127.
        *
-       * A world more than two development tiers away cannot be attacked, and the
-       * server refuses the launch. Offering "Plan an attack" anyway would walk the
-       * player through picking a fleet, reading the exposure line and pressing the
-       * irreversible button, to be told no — on the one surface in the game where
-       * being sure is the whole product. The control states the rule instead, and
-       * the reason is on the Development row above it.
+       * This used to hide behind D49's ±2 development band: a world too far up or
+       * down the ladder could not be attacked, so offering "Plan an attack" would
+       * have walked the player through picking a fleet and pressing the
+       * irreversible button to be told no — on the one surface where being sure is
+       * the whole product. D127 retired the band, because with development private
+       * the rule could only ever have BECOME that refusal. The control is simply
+       * here; the fleet is yours to lose.
       */
       actions={(
           <>
-          {target.kind !== 'NEUTRAL' && (
+          {/*
+            AND YOU CANNOT MARK WHAT YOU CANNOT SEE. Owner's instruction. This
+            tested `kind !== 'NEUTRAL'`, a field an unsurveyed world does not
+            carry — so the Rival control appeared on exactly the worlds where
+            `isRivalNode` then refuses to draw the reticle. A button whose effect
+            is invisible is worse than an absent one.
+          */}
+          {!target.clanmate && !unsurveyed && target.kind !== 'NEUTRAL' && (
           <button
             type="button"
             className={`slab slab-ghost min-w-[8rem] flex-1 whitespace-normal px-3 leading-tight ${isRival ? 'text-alloy' : ''}`}
@@ -468,7 +547,7 @@ export function PlanetFocus({
               : isRival ? 'focus.planet.rivalMarkedAction' : 'focus.planet.markRival')}
           </button>
           )}
-          {onSettle && target.kind === 'NEUTRAL' && claimActive && (
+          {onSettle && claimActive && (
             <button
               type="button"
               className="slab slab-primary min-w-[8rem] flex-1 whitespace-normal px-3 leading-tight"
@@ -478,7 +557,7 @@ export function PlanetFocus({
               {settlementBlock ?? t('focus.planet.settle')}
             </button>
           )}
-          {onDeathStar && (
+          {onDeathStar && !target.clanmate && (
             <button
               type="button"
               className="slab slab-commit basis-full whitespace-normal px-3 leading-tight"
@@ -490,7 +569,15 @@ export function PlanetFocus({
                 : 'focus.planet.deathStarStrike')}
             </button>
           )}
-          {target.kind === 'NEUTRAL' || read.inBand ? <button
+          {/*
+            NO DEVELOPMENT GATE ON THE LAUNCH ANY MORE. D127.
+            The button used to appear only for a target inside the ±2 tier band,
+            which was honest while tier was public: the player could see why. With
+            development private the gate would be invisible, and an invisible gate
+            is the failure D49 replaced a wealth ratio for. The band is retired,
+            so the control is simply here — and the fleet is yours to lose.
+          */}
+          {!target.clanmate && <button
             type="button"
             // Marked so a surface outside this panel can point at the commitment.
             // The onboarding opens exactly this path and refuses the rest of the
@@ -517,18 +604,21 @@ export function PlanetFocus({
               : target.kind === 'NEUTRAL' && claimActive
                 ? 'focus.planet.attackNeutralAgain'
                 : 'focus.planet.attack')}
-          </button> : (
-          <span className="slab slab-ghost basis-full cursor-default whitespace-normal px-3 text-center leading-tight opacity-60">
-            {t('focus.planet.outOfBand', {
-              tier: target.coreTier,
-              low: read.band.low,
-              high: read.band.high,
-            })}
-          </span>
-          )}
+          </button>}
           </>
         )}
     >
+      {/*
+        NO STRATEGY GUIDE FOR A WORLD YOU CANNOT SEE. D127.
+
+        Every branch of this guide is keyed on `target.kind`, and an unsurveyed
+        world has none — so it fell through to the Death Star route, which ends
+        with "the second impact captures it". That is a promise the panel cannot
+        keep: the world may be a CAPITAL, which is uncapturable and returns from
+        the guide long before that line, and the guide's own comment says as much.
+        A commitment surface may state a rule or say nothing; it may not guess.
+      */}
+      {!target.clanmate && !unsurveyed && (
       <StrategicWorldGuide
         target={target}
         planet={planet}
@@ -537,10 +627,13 @@ export function PlanetFocus({
         flightBayOpen={flightBayOpen}
         settlementEta={settlementEta}
         settlementCanArrive={settlementCanArrive}
+        settlementFuel={settlementFuel}
+        settlementFuelled={settlementFuelled}
         claimActive={claimActive}
         deathStarEta={deathStarEta}
         isRival={isRival}
       />
+      )}
       {away && (
         <p className="mb-3 rounded-chip border border-opportunity/40 bg-opportunity/10 px-3 py-2 text-body text-opportunity">
           {t('focus.planet.windowOpen')}
@@ -767,6 +860,8 @@ function StrategicWorldGuide({
   flightBayOpen,
   settlementEta,
   settlementCanArrive,
+  settlementFuel,
+  settlementFuelled,
   claimActive,
   deathStarEta,
   isRival,
@@ -778,6 +873,9 @@ function StrategicWorldGuide({
   flightBayOpen: boolean;
   settlementEta: number;
   settlementCanArrive: boolean;
+  /** Deuterium the two Haulers burn on the one leg they fly. T6. */
+  settlementFuel: number;
+  settlementFuelled: boolean;
   claimActive: boolean;
   deathStarEta: number;
   isRival: boolean;
@@ -807,7 +905,7 @@ function StrategicWorldGuide({
   }
 
   if (target.kind === 'CAPITAL') {
-    const recovery = target.state?.kind === 'RECOVERY' ? target.state : null;
+    const recovery = target.state.kind === 'RECOVERY' ? target.state : null;
     return (
       <div className={`mb-3 rounded-chip border px-3 py-3 ${ recovery ? 'border-alert/55 bg-alert/12' : 'border-crystal/30 bg-crystal/8' }`}>
         <div className="flex items-center gap-3">
@@ -877,6 +975,17 @@ function StrategicWorldGuide({
             <img src={RESOURCE_ART.crystal} alt="" aria-hidden className="size-3.5 object-contain" />
             {compact(MULTI_WORLD.settlement.cost.crystal)}
           </Requirement>
+          {/*
+            THE THIRD STORE, AND THE ONLY ONE THAT DEPENDS ON WHERE THIS WORLD IS.
+            Alloy and Crystal are a fixed founding price; the deuterium is the
+            flight, so the chip changes as the commander looks at rocks further
+            out — which is the axis D125/D126 made an information cost and T6 made
+            an economic one, stated in the one place a colony is chosen.
+          */}
+          <Requirement ok={settlementFuelled}>
+            <img src={RESOURCE_ART.deuterium} alt="" aria-hidden className="size-3.5 object-contain" />
+            {compact(settlementFuel)}
+          </Requirement>
           <Requirement ok={claimActive ? settlementCanArrive : settlementEta < SETTLEMENT_CLAIM_MINUTES}>
             {t('focus.planet.arrivesIn', { duration: duration(settlementEta) })}
           </Requirement>
@@ -899,8 +1008,8 @@ function StrategicWorldGuide({
     );
   }
 
-  const recovery = target.state?.kind === 'RECOVERY' ? target.state : null;
-  const protectedState = target.state?.kind === 'PROTECTED' ? target.state : null;
+  const recovery = target.state.kind === 'RECOVERY' ? target.state : null;
+  const protectedState = target.state.kind === 'PROTECTED' ? target.state : null;
   return (
     <div className={`mb-3 rounded-chip border px-3 py-3 ${
       recovery
@@ -1278,7 +1387,7 @@ export function AsteroidFocus({
   return (
     <Shell
       eyebrow={t('focus.asteroid.eyebrow', { level: rock.level })}
-      title={t('focus.asteroid.title', { index: rock.index })}
+      title={t('focus.asteroid.title')}
       open={open}
       onToggle={onToggle}
       onClose={onClose}
@@ -1463,7 +1572,7 @@ export function RunFocus({
    * The two share the table, the launch path, the traffic contact and the flight
    * rendering, which is the whole point of D32 — but they do not share their
    * TARGET, and every word here was written about a rock. A harvest carries no
-   * `asteroidIndex`, so the rock lookup could only ever come back empty, and the
+   * `asteroidId`, so the rock lookup could only ever come back empty, and the
    * panel then stated the one thing that lookup means on a mining run: "Rock has
    * passed". A player who had just sent four Prospectors at a wreck field was told
    * their target was gone, in the very panel that exists to tell them where their
@@ -1636,7 +1745,8 @@ const describeThreadFleet = (fleet: Record<string, number>): string =>
  * This panel used to say "unattributable" and explain that you were not entitled
  * to resolve it. The owner changed what the galaxy publishes: other people's craft
  * are real objects with real positions, they carry their neon, and focusing one
- * tells you WHAT IT IS and WHAT IS IN IT.
+ * tells you its approximate SIZE when Radar earns it, or its TYPE and exact fleet
+ * manifest once Telescope sight reaches the craft.
  *
  * So the panel's job flipped. It no longer explains an absence; it states the
  * three facts that are public and then names the two that are not, because in an
@@ -1644,8 +1754,8 @@ const describeThreadFleet = (fleet: Record<string, number>): string =>
  * is WHOSE it is and WHERE it is going — and that is what still makes a Telescope
  * and a probe worth paying for.
  *
- * The one exception is a mining run, which is public in full: the rock, the clock
- * and the line. What it is bringing home is not, and never was.
+ * The one exception is a mining run whose target you already discovered: the rock,
+ * clock and line are then visible. What it is bringing home is not, and never was.
  */
 export function ContactFocus({
   contact,
@@ -1659,10 +1769,39 @@ export function ContactFocus({
   onToggle: () => void;
 }) {
   const { t } = useTranslation();
-  const hulls = (Object.entries(contact.fleet ?? {}) as [HullId, number][]).filter(
-    ([, n]) => n > 0,
-  );
-  const total = hulls.reduce((sum, [, n]) => sum + n, 0);
+  /** Radar estimates size; Telescope sight resolves the exact hull tally. */
+  /**
+   * BEYOND THE TELESCOPE'S REACH. D125.
+   *
+   * The one case where the panel's job is not to describe a contact but to explain
+   * why it cannot. Naming the instrument is the whole point: the player learns
+   * there is a thing to buy by meeting the limit, not by being told about it.
+   */
+  const unidentified = contact.kind === 'unknown';
+  /**
+   * WHAT THE RADAR SAYS ABOUT SOMETHING THE EYE CANNOT REACH. Radar L5.
+   *
+   * The top of the radar ladder, and the first time it pays out on ordinary
+   * traffic rather than only on a raid aimed at you. It names the KIND and never
+   * the craft, so the panel keeps its "Unidentified" heading and adds one line
+   * saying where the reading came from — a radar return is not sight, and a panel
+   * that presented it as sight would be the interface claiming an instrument it
+   * does not have.
+   */
+  const radarKind = unidentified ? contact.silhouette : undefined;
+  const exactFleet = contact.kind === 'fleet' ? contact.fleet : undefined;
+  const exactEntries = exactFleet ? fleetEntries(exactFleet) : [];
+  const exactCount = exactFleet ? fleetCount(exactFleet) : null;
+  const mass = contact.mass;
+  const massLabel = mass
+    ? t(
+      mass === 'HEAVY'
+        ? 'focus.contact.massHeavy'
+        : mass === 'MEDIUM'
+          ? 'focus.contact.massMedium'
+          : 'focus.contact.massLight',
+    )
+    : null;
   /**
    * BOTH ERRANDS THAT ARE PUBLIC IN FULL. D19 and D32.
    *
@@ -1689,13 +1828,17 @@ export function ContactFocus({
       eyebrow={t(
         battle
           ? 'focus.contact.eyebrowBattle'
+          : contact.inbound === true
+            ? 'focus.contact.eyebrowInbound'
           : salvage
             ? 'focus.contact.eyebrowSalvage'
             : mining
               ? 'focus.contact.eyebrowMining'
-              : contact.kind === 'probe'
-                ? 'focus.contact.eyebrowProbe'
-                : 'focus.contact.eyebrowMoving',
+              : contact.kind === 'unknown'
+                ? 'focus.contact.eyebrowUnknown'
+                : contact.kind === 'probe'
+                  ? 'focus.contact.eyebrowProbe'
+                  : 'focus.contact.eyebrowMoving',
       )}
       title={t(battle ? 'focus.contact.titleBattle' : CONTACT_TITLE[contact.kind])}
       open={open}
@@ -1718,9 +1861,9 @@ export function ContactFocus({
           */
           <>
             <span className="text-threat-ink">
-              {total > 0
-                ? t('focus.contact.craftCount', { count: total })
-                : t('focus.contact.bombarding')}
+              {exactCount === null
+                ? massLabel ?? t('focus.contact.bombarding')
+                : t('focus.contact.craftCount', { count: exactCount })}
             </span>
             <span className="block text-label text-faint">{t('focus.contact.settling')}</span>
           </>
@@ -1738,13 +1881,15 @@ export function ContactFocus({
             player holds, and the panel says so rather than leaving a gap.
           */
           <>
-            <span className={total > 0 ? '' : 'text-faint'}>
-              {total > 0
-                ? t('focus.contact.craftCount', { count: total })
-                : t('focus.contact.unattributed')}
+            <span className={massLabel || exactCount !== null ? '' : 'text-faint'}>
+              {exactCount === null
+                ? massLabel ?? t('focus.contact.unattributed')
+                : t('focus.contact.craftCount', { count: exactCount })}
             </span>
             <span className="block text-label text-faint">
-              {t('focus.contact.arrivalUnknown')}
+              {t(contact.inbound === true
+                ? 'focus.contact.inboundNoClock'
+                : 'focus.contact.arrivalUnknown')}
             </span>
           </>
         )
@@ -1753,12 +1898,17 @@ export function ContactFocus({
       <div className="grid grid-cols-2 gap-3">
         <Figure
           label={t('focus.contact.craftLabel')}
+          /*
+            THE COUNT IS GENUINELY UNKNOWN NOW, so the figure says so. D123. The
+            summary above already carries the size estimate; repeating it here
+            under a label reading "Craft" would dress an estimate up as a tally.
+          */
           value={
             mining
               ? String(contact.craft ?? 0)
-              : total > 0
-                ? String(total)
-                : t('focus.contact.craftUnknown')
+              : exactCount === null
+                ? t('focus.contact.craftUnknown')
+                : String(exactCount)
           }
         />
         <Figure
@@ -1780,20 +1930,41 @@ export function ContactFocus({
         />
       </div>
 
-      {hulls.length > 0 && (
+      {exactEntries.length > 0 && (
         <div className="mt-3 flex flex-wrap gap-2">
-          {hulls.map(([hull, n]) => (
+          {exactEntries.map(([hull, count]) => (
             <span
               key={hull}
               className="flex items-center gap-2 rounded-chip border border-line-soft px-2 py-1"
             >
               <HullMark hull={hull} className="size-4 text-dim" />
               <span className="num text-caption text-bone">
-                {n} {hullLabel(hull)}
+                {count} {hullLabel(hull)}
               </span>
             </span>
           ))}
         </div>
+      )}
+
+      {/*
+        WHERE THE HULL CHIPS USED TO BE. D123.
+        Naming the limit in the place that used to hold the answer, because in an
+        information game the boundary is itself information — and because a blank
+        reads as a bug while a stated absence reads as a price.
+      */}
+      {unidentified && (
+        <p className="mt-3 text-caption text-faint">{t('focus.contact.unknownHint')}</p>
+      )}
+      {radarKind !== undefined && (
+        <p className="mt-3 text-caption text-crystal/80">
+          {t('focus.contact.radarKind', { kind: t(CONTACT_TITLE[radarKind]).toLowerCase() })}
+        </p>
+      )}
+      {massLabel !== null && exactFleet === undefined && !mining && (
+        <p className="mt-3 text-caption text-faint">{t('focus.contact.massHint')}</p>
+      )}
+      {contact.inbound === true && !battle && (
+        <p className="mt-3 text-caption text-threat-ink">{t('focus.contact.inboundHint')}</p>
       )}
 
       {/*
@@ -1809,7 +1980,9 @@ export function ContactFocus({
               ? 'focus.contact.boundarySalvage'
               : mining
                 ? 'focus.contact.boundaryMining'
-                : 'focus.contact.boundaryFleet',
+                : unidentified
+                  ? 'focus.contact.boundaryUnknown'
+                  : 'focus.contact.boundaryFleet',
         )}
       </p>
       {!mining && !battle && (
@@ -2029,6 +2202,7 @@ export function DebrisFocus({
 
 /** What each kind of foreign craft is called. Keys, so it follows the language. */
 const CONTACT_TITLE = {
+  unknown: 'focus.contact.titleUnknown',
   fleet: 'focus.contact.titleFleet',
   probe: 'focus.contact.titleProbe',
   mining: 'focus.contact.titleMining',

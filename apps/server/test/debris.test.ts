@@ -43,6 +43,26 @@ const publicPlanetName = (payload: GalaxyEventPayload): string => {
   return payload.planetName;
 };
 
+const constraintNameOf = (error: unknown): string | undefined => {
+  let current = error;
+  while (typeof current === 'object' && current !== null && 'cause' in current) {
+    current = current.cause;
+  }
+  if (typeof current !== 'object' || current === null || !('constraint_name' in current)) {
+    return undefined;
+  }
+  return typeof current.constraint_name === 'string' ? current.constraint_name : undefined;
+};
+
+const expectConstraint = async (operation: Promise<unknown>, name: string): Promise<void> => {
+  try {
+    await operation;
+    throw new Error(`expected constraint ${name} to reject the write`);
+  } catch (error) {
+    expect(constraintNameOf(error)).toBe(name);
+  }
+};
+
 const silent = pino({ level: 'silent' });
 
 afterAll(async () => {
@@ -130,8 +150,23 @@ describe('wreck fields', () => {
     const run = await launchHarvest(f.db, mine, field.id, 3, f.clock);
     expect(await baysInUse(f.db, mine)).toBeGreaterThan(0);
 
-    // Sit still until the field is provably gone, THEN land.
-    f.clock.set(new Date(field.createdAt.getTime() + (DEBRIS.decayMinutes + 5) * 60_000));
+    /*
+      Make the AUTHORITATIVE arrival late, not merely the worker wake-up.
+
+      Mining handlers replay `event.resolveAt` so server downtime never charges a
+      player extra decay. The old test advanced only the worker clock, while the
+      run's promised arrival was still inside the field lifetime, and therefore
+      correctly harvested 900. Both the run and its event are one clock contract.
+    */
+    const lateArrival = new Date(
+      field.createdAt.getTime() + (DEBRIS.decayMinutes + 5) * 60_000,
+    );
+    await f.db.update(miningRuns).set({ arriveAt: lateArrival }).where(eq(miningRuns.id, run.runId));
+    await f.db.update(scheduledEvents).set({ resolveAt: lateArrival }).where(and(
+      eq(scheduledEvents.kind, 'mining_arrival'),
+      eq(scheduledEvents.refId, run.runId),
+    ));
+    f.clock.set(lateArrival);
     await worker().tick();
     const [mid] = await f.db.select().from(miningRuns).where(eq(miningRuns.id, run.runId));
     f.clock.set(mid!.homeAt!);
@@ -352,12 +387,14 @@ describe('wreck fields', () => {
       departAt: f.clock.now(),
       arriveAt: f.clock.now(),
     };
-    await expect(
+    await expectConstraint(
       f.db.insert(miningRuns).values({ ...base, asteroidIndex: 3, debrisFieldId: field.id }),
-    ).rejects.toThrow(/mining_one_target/);
-    await expect(
+      'mining_one_target',
+    );
+    await expectConstraint(
       f.db.insert(miningRuns).values({ ...base, asteroidIndex: null, debrisFieldId: null }),
-    ).rejects.toThrow(/mining_one_target/);
+      'mining_one_target',
+    );
   });
 
   /**

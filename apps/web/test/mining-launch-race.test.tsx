@@ -35,8 +35,9 @@ type Departure = 'mining' | 'salvage';
 
 const run = (kind: Departure): MiningRun => ({
   id: kind === 'mining' ? 'mine-run' : 'salvage-run',
+  planetId: '00000000-0000-4000-8000-000000000001',
   targetKind: kind === 'mining' ? 'asteroid' : 'debris',
-  asteroidIndex: kind === 'mining' ? 7 : null,
+  asteroidId: kind === 'mining' ? 'mJt7YvxMZEC5S7yYQ32SYw' : null,
   debrisFieldId: kind === 'salvage' ? 'field-1' : null,
   status: 'outbound',
   craft: 1,
@@ -77,7 +78,7 @@ describe.each<Departure>(['mining', 'salvage'])('%s launch cache hand-off', (kin
     const launched = run(kind);
     const response = miningLaunchSchema.parse({
       runId: launched.id,
-      ...(kind === 'mining' ? { asteroidIndex: 7 } : {}),
+      ...(kind === 'mining' ? { asteroidId: 'mJt7YvxMZEC5S7yYQ32SYw' } : {}),
       craft: 1,
       arriveAt: launched.arriveAt,
       flightMinutes: 5,
@@ -95,7 +96,9 @@ describe.each<Departure>(['mining', 'salvage'])('%s launch cache hand-off', (kin
 
   const wrapper = ({ children }: { children: ReactNode }) => {
     const api = {
-      miningField: vi.fn().mockResolvedValue({ asteroids: [], debris: [] }),
+      miningField: vi.fn().mockResolvedValue({
+        asteroids: [], debris: [], nextFieldChangeAt: null,
+      }),
       miningStatus,
       mine,
       harvest,
@@ -108,6 +111,8 @@ describe.each<Departure>(['mining', 'salvage'])('%s launch cache hand-off', (kin
   };
 
   it('writes the POST views directly and ignores a pre-tap status response', async () => {
+    const otherWorldKey = keys.miningStatusById('00000000-0000-4000-8000-000000000002');
+    client.setQueryData(otherWorldKey, status());
     const view = renderHook(() => ({
       mining: useMining(),
       mine: useMine(),
@@ -119,7 +124,9 @@ describe.each<Departure>(['mining', 'salvage'])('%s launch cache hand-off', (kin
     });
 
     act(() => {
-      if (kind === 'mining') view.result.current.mine.mutate({ asteroidIndex: 7, craft: 1 });
+      if (kind === 'mining') {
+        view.result.current.mine.mutate({ asteroidId: 'mJt7YvxMZEC5S7yYQ32SYw', craft: 1 });
+      }
       else view.result.current.harvest.mutate({ fieldId: 'field-1', craft: 1 });
     });
 
@@ -127,6 +134,8 @@ describe.each<Departure>(['mining', 'salvage'])('%s launch cache hand-off', (kin
       expect(client.getQueryData<MiningStatusView>(keys.miningStatus)?.runs[0]?.id)
         .toBe(run(kind).id);
     });
+    expect(client.getQueryData<MiningStatusView>(otherWorldKey)?.runs[0]?.id)
+      .toBe(run(kind).id);
 
     // This GET began before the launch and says there were no runs. Cancellation
     // means its later completion cannot overwrite the transaction's POST answer.

@@ -4,11 +4,10 @@ import { useGLTF } from '@react-three/drei';
 import * as THREE from 'three';
 import type { AsteroidView } from '../api/schemas.js';
 import { ASTEROID_MODELS } from '../ui/assets.js';
-import { asteroidRadius, asteroidWorldPosition, toWorld } from './scene.js';
+import { asteroidRadius, asteroidVisualSeed, asteroidWorldPosition, toWorld } from './scene.js';
 import { unitModel } from './model.js';
 import { markHit, wasTap } from './tap.js';
 import { serverNow } from '../lib/clock.js';
-import { useReducedMotionPreference } from './motion.js';
 import { asteroidBodyColour, asteroidTrailColour } from './asteroidSignal.js';
 
 /** No hit target smaller than this, whatever the rock. A fingertip is ~44 CSS px. */
@@ -60,19 +59,19 @@ interface Bucket {
 export function Asteroids({
   asteroids,
   seasonStart,
-  focusedIndex,
+  focusedId,
   onSelect,
 }: {
   asteroids: readonly AsteroidView[];
   seasonStart: Date;
-  focusedIndex: number | null;
-  onSelect: (index: number) => void;
+  focusedId: string | null;
+  onSelect: (id: string) => void;
 }) {
   const buckets = useMemo<Bucket[]>(() => {
     const out: Bucket[] = MODELS.map((url) => ({ url, rocks: [] }));
     for (const rock of asteroids) {
       // Deterministic per rock, so the same rock keeps the same body all season.
-      out[rock.index % MODELS.length]!.rocks.push(rock);
+      out[asteroidVisualSeed(rock.id) % MODELS.length]!.rocks.push(rock);
     }
     return out.filter((b) => b.rocks.length > 0);
   }, [asteroids]);
@@ -86,7 +85,7 @@ export function Asteroids({
           key={bucket.url}
           bucket={bucket}
           seasonStart={seasonStart}
-          focusedIndex={focusedIndex}
+          focusedId={focusedId}
           onSelect={onSelect}
         />
       ))}
@@ -100,13 +99,13 @@ const dummy = new THREE.Object3D();
 function RockBucket({
   bucket,
   seasonStart,
-  focusedIndex,
+  focusedId,
   onSelect,
 }: {
   bucket: Bucket;
   seasonStart: Date;
-  focusedIndex: number | null;
-  onSelect: (index: number) => void;
+  focusedId: string | null;
+  onSelect: (id: string) => void;
 }) {
   const { scene } = useGLTF(bucket.url, false);
   const mesh = useRef<THREE.InstancedMesh>(null);
@@ -133,12 +132,12 @@ function RockBucket({
     bucket.rocks.forEach((rock, i) => {
       // Focus is a brightening rather than an outline: an outline on a tumbling
       // lump reads as a rendering fault, and these are already small.
-      const lit = rock.index === focusedIndex ? 1.9 : 1;
+      const lit = rock.id === focusedId ? 1.9 : 1;
       node.setColorAt(i, tint.setRGB(...asteroidBodyColour(rock.isotopeRich, lit)));
     });
     if (node.instanceColor) node.instanceColor.needsUpdate = true;
     if (!Array.isArray(node.material)) node.material.needsUpdate = true;
-  }, [bucket.rocks, focusedIndex, tint]);
+  }, [bucket.rocks, focusedId, tint]);
 
   useFrame(({ clock }) => {
     const node = mesh.current;
@@ -149,6 +148,7 @@ function RockBucket({
     const hit = hits.current;
 
     bucket.rocks.forEach((rock, i) => {
+      const seed = asteroidVisualSeed(rock.id);
       const at = asteroidWorldPosition(rock, seasonStart, now);
       const r = asteroidRadius(rock.level);
 
@@ -166,11 +166,11 @@ function RockBucket({
        * readable axis. Smaller rocks turn faster: less mass, and it keeps the
        * cheap ones from looking like debris that has stopped.
        */
-      const rate = 0.34 + ((rock.index * 7) % 11) * 0.052 + (5 - rock.level) * 0.03;
+      const rate = 0.34 + ((seed * 7) % 11) * 0.052 + (5 - rock.level) * 0.03;
       dummy.rotation.set(
-        t * rate + rock.index,
-        t * rate * 0.63 + rock.index * 2.1,
-        t * rate * 0.41 + rock.index * 0.4,
+        t * rate + seed,
+        t * rate * 0.63 + seed * 2.1,
+        t * rate * 0.41 + seed * 0.4,
       );
       dummy.scale.setScalar(r);
       dummy.updateMatrix();
@@ -211,7 +211,7 @@ function RockBucket({
     const i = event.instanceId;
     if (i === undefined) return;
     const rock = bucket.rocks[i];
-    if (rock) onSelect(rock.index);
+    if (rock) onSelect(rock.id);
   };
 
   return (
@@ -311,7 +311,6 @@ function Tails({
 }) {
   const mesh = useRef<THREE.Mesh>(null);
   const grains = useRef<THREE.Points>(null);
-  const reducedMotion = useReducedMotionPreference();
 
   /**
    * One strip per rock, all in one buffer.
@@ -516,7 +515,7 @@ function Tails({
         for (let p = 0; p < DUST_PER_ROCK; p += 1) {
           const back = 0.04 + ((p + 0.6) / DUST_PER_ROCK) * 0.72;
           const at = asteroidWorldPosition(rock, seasonStart, now - span * back);
-          const phase = rock.index * 12.9898 + p * 2.331;
+          const phase = asteroidVisualSeed(rock.id) * 12.9898 + p * 2.331;
           const spread = radius * (0.06 + back * 0.28);
           grainPosition.setXYZ(
             i * DUST_PER_ROCK + p,
@@ -536,7 +535,7 @@ function Tails({
     position.needsUpdate = true;
     if (grainPosition) grainPosition.needsUpdate = true;
     tailMaterial.uniforms.uTime!.value = clock.elapsedTime;
-    tailMaterial.uniforms.uMotion!.value = reducedMotion ? 0 : 1;
+    tailMaterial.uniforms.uMotion!.value = 1;
     const perspective = camera as THREE.PerspectiveCamera;
     const fov = THREE.MathUtils.degToRad(perspective.fov || 45);
     grainMaterial.uniforms.uScale!.value =

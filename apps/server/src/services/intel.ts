@@ -1,5 +1,7 @@
 import { and, desc, eq, gt, inArray, isNotNull, ne } from 'drizzle-orm';
+import { alias } from 'drizzle-orm/pg-core';
 import {
+  WEAPON_PROJECTS,
   PROBE,
   DEATH_STAR,
   bearingBetween,
@@ -12,10 +14,10 @@ import {
   radarRevealsBearing,
   radarRevealsOrigin,
   telescopeCooldownHours,
-  telescopeRange,
   telescopeReading,
   telescopeSeed,
   telescopeSlots,
+  telescopeWatchRange,
   satelliteSlots,
   travelExact,
   withinTelescopeRange,
@@ -37,6 +39,7 @@ import {
   planets,
   players,
   probeReports,
+  probeWorldMemories,
   satellites,
   scanEvents,
   seasons,
@@ -56,7 +59,8 @@ import {
 } from './planet.js';
 import { schedule } from '../worker/queue.js';
 import { publishShard } from '../stream/bus.js';
-import { hasResearch } from './researchState.js';
+import { hasResearch, researchLevels } from './researchState.js';
+import { publicWorlds, silhouetteOf } from './publicGalaxy.js';
 import { lockWorlds } from './ownership.js';
 import { assertClanHostilityAllowed, lockClanPlayers } from './clanCombat.js';
 
@@ -246,11 +250,12 @@ export async function assignWatch(
 
     const reach = distance(observer, target);
     if (!withinTelescopeRange(level, reach)) {
+      const effectiveReach = telescopeWatchRange(level);
       throw new GameError(
         'OUT_OF_RANGE',
-        `Telescope L${level} reaches ${Math.round(telescopeRange(level))} units; that world is ${Math.round(reach)} away`,
+        `Telescope L${level} reaches ${Math.round(effectiveReach)} units; that world is ${Math.round(reach)} away`,
         400,
-        { level, reach: Math.round(telescopeRange(level)), distance: Math.round(reach) },
+        { level, reach: Math.round(effectiveReach), distance: Math.round(reach) },
       );
     }
 
@@ -263,6 +268,36 @@ export async function assignWatch(
     // Charging a day's cooldown for a double-tap would be indefensible.
     if (existing?.targetPlanetId === targetPlanetId) {
       return { slot, targetPlanetId, cooldownUntil: existing.cooldownUntil };
+    }
+
+    /**
+     * One target, one answer per commander.
+     *
+     * INTERMITTENT is a deterministic uncertainty roll per assignment window. A
+     * second slot aimed at the same target created a second independent roll, so
+     * three slots turned a 75% confirmation chance into 98% without improving an
+     * instrument. The target world is already row-locked above; assignments from
+     * two controlled worlds therefore serialize on the same lock and cannot race
+     * this check.
+     */
+    const [duplicate] = await tx
+      .select({ observerPlanetId: watches.observerPlanetId, slot: watches.slot })
+      .from(watches)
+      .innerJoin(planets, and(
+        eq(planets.id, watches.observerPlanetId),
+        eq(planets.controllerPlayerId, observer.playerId),
+      ))
+      .where(and(
+        eq(watches.observerPlayerId, observer.playerId),
+        eq(watches.targetPlanetId, targetPlanetId),
+      ))
+      .limit(1);
+    if (duplicate) {
+      throw new GameError(
+        'TARGET_ALREADY_WATCHED',
+        'Another Telescope slot is already watching that world',
+        409,
+      );
     }
 
     const now = observer.now;
@@ -323,17 +358,25 @@ export async function readTelescopes(
   playerId: string,
   clock: Clock,
 ): Promise<WatchView[]> {
+  const observerPlanet = alias(planets, 'watch_observer');
   const rows = await db
     .select({
       watch: watches,
+      observer: observerPlanet,
       planet: planets,
       owner: accounts.displayName,
     })
     .from(watches)
+    .innerJoin(observerPlanet, eq(watches.observerPlanetId, observerPlanet.id))
     .innerJoin(planets, eq(watches.targetPlanetId, planets.id))
     .leftJoin(players, eq(planets.controllerPlayerId, players.id))
     .leftJoin(accounts, eq(players.accountId, accounts.id))
-    .where(eq(watches.observerPlayerId, playerId));
+    .where(and(
+      eq(watches.observerPlayerId, playerId),
+      // A watch belongs to the commander, not to a world forever. If that world
+      // changes hands, its former controller must stop receiving live readings.
+      eq(observerPlanet.controllerPlayerId, playerId),
+    ));
 
   if (rows.length === 0) return [];
 
@@ -344,15 +387,54 @@ export async function readTelescopes(
 
   const now = clock.now();
   const nowMinutes = minutesSince(season.startsAt, now);
-  const targetIds = rows.map((r) => r.planet.id);
   const observerIds = [...new Set(rows.map((r) => r.watch.observerPlanetId))];
+  const targetIds = rows.map((r) => r.planet.id);
+  const levels = await instrumentLevels(db, [...observerIds, ...targetIds]);
 
-  const [levels, truth] = await Promise.all([
-    instrumentLevels(db, [...observerIds, ...targetIds]),
-    fleetTruthFor(db, targetIds, now),
-  ]);
+  /**
+   * STORED AIM IS NOT CURRENT AUTHORISATION.
+   *
+   * Watches deliberately survive temporary hardware loss so restoring an Uplink
+   * restores the commander's chosen targets. The stored rows therefore cannot be
+   * returned blindly: current effective level, current slot count, current season
+   * and current distance are all rechecked on every read. Otherwise lowering a
+   * Core, losing an Uplink, shrinking a Telescope or losing the observer world
+   * would leave an old row leaking live fleet truth indefinitely.
+   */
+  const eligibleRows = rows.filter((row) => {
+    const level = levelOf(levels, row.watch.observerPlanetId, 'TELESCOPE');
+    return row.observer.seasonId === me.seasonId
+      && row.planet.seasonId === me.seasonId
+      && level >= 1
+      && row.watch.slot >= 0
+      && row.watch.slot < telescopeSlots(level)
+      && withinTelescopeRange(level, distance(row.observer, row.planet));
+  });
+  if (eligibleRows.length === 0) return [];
+
+  /**
+   * Repair the read boundary for rows created before target uniqueness existed.
+   * Keep the strongest eligible instrument; stable world/slot tiebreakers make
+   * repeated reads choose the same assignment. The hidden legacy slot can then be
+   * re-pointed normally, while it can never buy a second uncertainty roll.
+   */
+  eligibleRows.sort((a, b) => {
+    const byLevel = levelOf(levels, b.watch.observerPlanetId, 'TELESCOPE')
+      - levelOf(levels, a.watch.observerPlanetId, 'TELESCOPE');
+    if (byLevel !== 0) return byLevel;
+    const byWorld = a.watch.observerPlanetId.localeCompare(b.watch.observerPlanetId);
+    return byWorld !== 0 ? byWorld : a.watch.slot - b.watch.slot;
+  });
+  const seenTargets = new Set<string>();
+  const eligible = eligibleRows.filter((row) => {
+    if (seenTargets.has(row.planet.id)) return false;
+    seenTargets.add(row.planet.id);
+    return true;
+  });
+
+  const truth = await fleetTruthFor(db, eligible.map((r) => r.planet.id), now);
   const views: WatchView[] = [];
-  for (const row of rows) {
+  for (const row of eligible) {
     const myTelescope = levelOf(levels, row.watch.observerPlanetId, 'TELESCOPE');
     const target = row.planet;
     const veil = levelOf(levels, target.id, 'VEIL');
@@ -372,7 +454,10 @@ export async function readTelescopes(
       sinceConfirmed,
       eta,
       // Stable within its window: refreshing cannot improve the answer.
-      telescopeSeed(`${row.watch.observerPlayerId}:${String(row.watch.slot)}`, nowMinutes),
+      // Slots are world-local. Two colonies can both own slot zero, so the world
+      // id is part of the watch identity; seeding from player+slot correlated
+      // otherwise independent watches and made their fog change in lockstep.
+      telescopeSeed(`${row.watch.observerPlanetId}:${String(row.watch.slot)}`, nowMinutes),
     );
 
     if (reading.status !== 'UNKNOWN') {
@@ -623,6 +708,41 @@ export async function launchProbe(
   });
 }
 
+/**
+ * THE NEWEST DELIVERED PROBE PER TARGET, FOR ONE COMMANDER. D127.
+ *
+ * The complete Intel-centre history stays in `probe_reports`; this query follows
+ * one materialized pointer per target, so its work is bounded by remembered worlds
+ * instead of by every probe the commander has ever sent.
+ */
+export interface WorldMemory {
+  silhouette: NonNullable<typeof probeReports.$inferSelect['silhouette']>;
+  seenAt: Date;
+}
+export type RememberedWorlds = ReadonlyMap<string, WorldMemory>;
+
+export async function rememberedWorlds(
+  db: Queryable,
+  observerPlayerId: string,
+): Promise<RememberedWorlds> {
+  const rows = await db
+    .select({
+      targetPlanetId: probeWorldMemories.targetPlanetId,
+      silhouette: probeReports.silhouette,
+      seenAt: probeWorldMemories.seenAt,
+    })
+    .from(probeWorldMemories)
+    .innerJoin(probeReports, eq(probeReports.id, probeWorldMemories.reportId))
+    .where(eq(probeWorldMemories.observerPlayerId, observerPlayerId));
+
+  const out = new Map<string, WorldMemory>();
+  for (const row of rows) {
+    if (!row.silhouette) continue;
+    out.set(row.targetPlanetId, { silhouette: row.silhouette, seenAt: row.seenAt });
+  }
+  return out;
+}
+
 /** Snapshot the target and write both sides of the event. Called by the worker. */
 export async function resolveProbe(
   tx: Tx,
@@ -654,7 +774,10 @@ export async function resolveProbe(
 
   const accuracy = probeAccuracy(shipyard, veil);
   const stock = fuzzBand(target.alloy + target.crystal, accuracy, rng);
-  const readsIsotopes = await hasResearch(tx, origin.id, 'ISOTOPE_SPECTROMETRY');
+  // The COMMANDER'S research, not the launching world's. T7: a probe reads the
+  // band because the person who sent it knows how, and that is not a property of
+  // the pad it left from.
+  const readsIsotopes = await hasResearch(tx, mission.ownerPlayerId, 'ISOTOPE_SPECTROMETRY');
   // A separate deterministic roll keeps unlocking this field from changing the
   // existing report bands or whether the target detects the probe.
   const deuteriumStock = readsIsotopes
@@ -662,11 +785,21 @@ export async function resolveProbe(
     : null;
   const defence = fuzzBand(fleetValue(homeFleet), accuracy, rng);
   const size = fuzzBand(fleetCount(homeFleet), accuracy, rng);
+  /*
+    THE WEAPON, AND ONLY THE WEAPON. T12.
+
+    This read predates the interception charge sharing the table, and untyped it
+    reported the exact opposite of the truth: a defender loading the charge that
+    would shoot a Death Star down came home on the report as BUILDING one. The
+    interceptor flag a few queries below has always been typed; this one had no
+    reason to be until D139 put a second kind of asset in the table.
+  */
   const [strategic] = await tx
     .select({ status: strategicAssets.status })
     .from(strategicAssets)
     .where(and(
       eq(strategicAssets.planetId, target.id),
+      eq(strategicAssets.type, 'DEATH_STAR'),
       inArray(strategicAssets.status, ['BUILDING', 'PAUSED', 'READY']),
     ))
     .limit(1);
@@ -681,6 +814,51 @@ export async function resolveProbe(
   const detected = rng() < detectChance(radar, shipyard);
   const bearing = bearingBetween(target, origin);
 
+  const [outside] = await publicWorlds(tx, target.seasonId, now, [target.id]);
+  /*
+    THE DOCTRINES RIDE HOME WITH THE SILHOUETTE. T9 · D124.
+
+    They are not part of `silhouetteOf`, which derives from what is PUBLIC about a
+    world — nothing about a commander's research is. This is the probe's own
+    product: earned by flying there, frozen at the look, and stale from then on
+    exactly like the rest of the record. Without it a 25% multiplier would sit
+    invisibly on every battle and quietly devalue the scouting flight that the
+    whole information layer is built to sell.
+  */
+  const owner = target.controllerPlayerId;
+  const held = owner === null ? new Map<string, number>() : await researchLevels(tx, owner);
+  const doctrines = owner === null
+    ? undefined
+    : Object.fromEntries(
+      WEAPON_PROJECTS
+        .map((id) => [id, held.get(id) ?? 0] as const)
+        .filter(([, level]) => level > 0),
+    );
+  /*
+    AND WHETHER IT CAN SHOOT ONE DOWN. T10.
+
+    Read at the look and frozen with the rest of the record, like everything else
+    D127 put here. It is the reading that turns a strategic strike into an
+    intelligence decision rather than a purchase — and it is never public, so the
+    only way to hold it is to have flown there.
+  */
+  const [charge] = owner === null ? [] : await tx
+    .select({ id: strategicAssets.id })
+    .from(strategicAssets)
+    .where(and(
+      eq(strategicAssets.planetId, target.id),
+      eq(strategicAssets.type, 'INTERCEPTOR'),
+      eq(strategicAssets.status, 'READY'),
+    ))
+    .limit(1);
+  const silhouette = outside
+    ? {
+      ...silhouetteOf(outside),
+      ...(doctrines === undefined ? {} : { doctrines }),
+      ...(owner === null ? {} : { interceptor: charge !== undefined }),
+    }
+    : null;
+
   await tx.insert(probeReports).values({
     observerPlayerId: mission.ownerPlayerId,
     targetPlanetId: target.id,
@@ -694,6 +872,20 @@ export async function resolveProbe(
     fleetSize: { low: size.low, high: size.high },
     fleetHome: !anyAway,
     strategicStatus,
+    /**
+     * WHAT THE CRAFT COULD SIMPLY SEE. D127.
+     *
+     * Everything above is a fuzzed band. This is exact, because it is the outside
+     * of the world rather than its contents — whose flag is on it, how developed
+     * it is, what is in orbit, whether a dome is up. All of it used to be on
+     * `/api/galaxy` for the whole disc; D127 made it private, so this is now the
+     * only way a commander learns it about a world their Telescope cannot reach.
+     *
+     * Built from the SAME projection the galaxy is, narrowed to one world, so a
+     * probe's record and a live reading can never disagree about what a world
+     * looks like.
+     */
+    silhouette,
     detected,
     createdAt: now,
     // Written, but not readable until the craft is home. The snapshot is of this
@@ -719,62 +911,124 @@ export async function resolveProbe(
 
 export interface ScanView {
   at: Date;
-  /** Only from Radar L2. */
+  /** Which of the caller's worlds was scanned. Multi-world needs to know. */
+  planetId: string;
+  planetName: string;
+  /** Only from Radar L2, and from THAT world's radar. */
   bearing: Bearing | null;
   /** Only from Radar L5. */
   originPlanetName: string | null;
 }
 
 /**
- * What a defender may read from their own radar log.
+ * What a defender may read from their own radar logs.
  *
  * The filtering happens in this function, not in the client. Below L5 the origin
  * is never placed in the response at all — there is nothing for a modified client
  * to reveal.
+ *
+ * IT TAKES EVERY WORLD THE COMMANDER HOLDS, AND IT USED TO TAKE ONE.
+ *
+ * `/api/intel` passed the CAPITAL and nothing else, so a probe against a colony
+ * wrote its `scan_events` row and no surface in the game ever read it: a commander
+ * could be scouted on three of their four worlds and be told nothing at all. The
+ * screen made it worse by labelling the capital's log with the ACTIVE world's
+ * radar level, so a Radar 5 capital's history could sit behind a "you have no
+ * Radar" card belonging to a different world.
+ *
+ * EACH ROW IS GATED BY THE RADAR OF THE WORLD IT HAPPENED TO. That is the honest
+ * reading — the instrument that caught the probe is the one on the world it flew
+ * at — which is why the level is looked up per row rather than once for the call.
  */
 export async function readRadarLog(
   db: Db,
-  planetId: string,
+  planetIds: readonly string[],
   limit = 20,
 ): Promise<ScanView[]> {
-  const levels = await instrumentLevels(db, [planetId]);
-  const radar = levelOf(levels, planetId, 'RADAR');
+  if (planetIds.length === 0) return [];
+  const originPlanet = alias(planets, 'scan_origin');
+  const [levels, rows] = await Promise.all([
+    instrumentLevels(db, planetIds),
+    db
+      .select({
+        scan: scanEvents,
+        originName: originPlanet.name,
+        targetName: planets.name,
+      })
+      .from(scanEvents)
+      .innerJoin(originPlanet, eq(scanEvents.originPlanetId, originPlanet.id))
+      .innerJoin(planets, eq(scanEvents.targetPlanetId, planets.id))
+      .where(and(
+        inArray(scanEvents.targetPlanetId, [...planetIds]),
+        eq(scanEvents.detected, true),
+      ))
+      .orderBy(desc(scanEvents.createdAt))
+      .limit(limit),
+  ]);
 
-  const rows = await db
-    .select({ scan: scanEvents, originName: planets.name })
-    .from(scanEvents)
-    .innerJoin(planets, eq(scanEvents.originPlanetId, planets.id))
-    .where(and(eq(scanEvents.targetPlanetId, planetId), eq(scanEvents.detected, true)))
-    .orderBy(desc(scanEvents.createdAt))
-    .limit(limit);
-
-  return rows.map((r) => ({
-    at: r.scan.createdAt,
-    bearing: radarRevealsBearing(radar) ? (r.scan.bearing as Bearing | null) : null,
-    originPlanetName: radarRevealsOrigin(radar) ? r.originName : null,
-  }));
+  return rows.map((r) => {
+    const radar = levelOf(levels, r.scan.targetPlanetId, 'RADAR');
+    return {
+      at: r.scan.createdAt,
+      planetId: r.scan.targetPlanetId,
+      planetName: r.targetName,
+      bearing: radarRevealsBearing(radar) ? (r.scan.bearing as Bearing | null) : null,
+      originPlanetName: radarRevealsOrigin(radar) ? r.originName : null,
+    };
+  });
 }
 
-/** Only what has actually come home. A probe in flight tells you nothing yet. */
-export async function readProbeReports(db: Db, playerId: string, limit = 10) {
-  const rows = await db
+/**
+ * Only what has actually come home. A probe in flight tells you nothing yet.
+ *
+ * THE LIMIT HAS TO COVER WHAT THE MAP REMEMBERS. It was ten, while
+ * `probe_world_memories` is unbounded — one row per world ever probed — so from
+ * the eleventh world onward the galaxy drew a REMEMBERED silhouette with a
+ * "seen 3h ago" stamp while the dossier beside it offered the "nobody has ever
+ * looked here" gap. One surface saying two things about one world.
+ *
+ * Keep the recent history AND the newest delivered report for every remembered
+ * target. A fixed history cap alone cannot cover a season: the one-hour per-target
+ * cooldown still allows more than forty distinct reports, leaving a REMEMBERED
+ * world on the map whose dossier had fallen out of the only readable endpoint.
+ */
+export async function readProbeReports(db: Db, playerId: string, limit = 40) {
+  const delivered = and(
+    eq(probeReports.observerPlayerId, playerId),
+    isNotNull(probeReports.deliveredAt),
+  );
+  const recent = await db
     .select({
       report: probeReports,
       targetName: planets.name,
-      targetUsername: accounts.displayName,
     })
     .from(probeReports)
     .innerJoin(planets, eq(probeReports.targetPlanetId, planets.id))
-    .leftJoin(players, eq(planets.controllerPlayerId, players.id))
-    .leftJoin(accounts, eq(players.accountId, accounts.id))
-    .where(
-      and(eq(probeReports.observerPlayerId, playerId), isNotNull(probeReports.deliveredAt)),
-    )
+    .where(delivered)
     .orderBy(desc(probeReports.createdAt))
     .limit(limit);
+
+  const latestByTarget = await db
+    .selectDistinctOn([probeReports.targetPlanetId], {
+      report: probeReports,
+      targetName: planets.name,
+    })
+    .from(probeReports)
+    .innerJoin(planets, eq(probeReports.targetPlanetId, planets.id))
+    .where(delivered)
+    .orderBy(probeReports.targetPlanetId, desc(probeReports.createdAt));
+
+  const rows = [...new Map(
+    [...recent, ...latestByTarget].map((row) => [row.report.id, row]),
+  ).values()].toSorted(
+    (a, b) => b.report.createdAt.getTime() - a.report.createdAt.getTime(),
+  );
   return rows.map((row) => ({
     ...row,
-    targetUsername: row.targetUsername ?? 'Neutral',
+    // Identity is part of the arrival snapshot. Joining the target's current
+    // controller rewrote old intelligence after a capture and leaked ownership
+    // the observer had not seen.
+    targetUsername: row.report.silhouette?.owner ?? 'Neutral',
   }));
 }
 

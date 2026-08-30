@@ -6,6 +6,7 @@ import {
   GROUND_HULLS,
   INSTRUMENT_IDS,
   ALL_HULLS,
+  RESEARCH_PROJECT_IDS,
   type BuildingId,
   type InstrumentId,
 } from '@astera/rules';
@@ -13,6 +14,7 @@ import {
   BUILDING_ART,
   HULL_ART,
   LOGO,
+  RESEARCH_ART,
   buildingArt,
   groundArt,
   instrumentArt,
@@ -216,6 +218,54 @@ describe('the hull renders', () => {
     for (const id of GROUND_HULLS) {
       expect(HULL_ART[id]).toBe(groundArt(id, 1));
     }
+  });
+});
+
+/**
+ * THE RESEARCH RENDERS, WHICH THIS FILE DID NOT COVER AT ALL.
+ *
+ * Every other art table here is resolved against `public/` — buildings,
+ * instruments, ground guns, hulls, the wordmark — and `RESEARCH_ART` was the one
+ * that was not. It went unnoticed while nine of its fifteen rows BORROWED a
+ * picture from a table that was covered, so a broken path was impossible by
+ * construction. The moment the owner's lab renders landed, fifteen fresh
+ * filenames arrived with nothing checking them, and three of them carry spellings
+ * that are easy to "fix" into a 404: `bullwark`, `syntesis`, `grind`.
+ *
+ * A missing research render is not a crash. It is a blank frame beside a price on
+ * the one screen where a player is choosing between fifteen things — which is why
+ * it needs a test rather than a glance.
+ */
+describe('the research renders', () => {
+  it('give every project a picture that exists', () => {
+    for (const id of RESEARCH_PROJECT_IDS) {
+      const url = RESEARCH_ART[id];
+      expect(url, `${id} has no render`).toBeTruthy();
+      expect(existsSync(served(url)), `RESEARCH_ART.${id} → ${url}`).toBe(true);
+    }
+  });
+
+  /**
+   * TWO ROWS WITH ONE PICTURE ARE TWO ROWS THE EYE CANNOT TELL APART.
+   *
+   * Three projects used to share the Death Star render and five more wore hull or
+   * building art belonging to another screen. Only the protocol may wear the
+   * weapon now, because the weapon IS what it authorises.
+   */
+  it('give each project its own render, bar the one that wears its subject', () => {
+    const shared = new Map<string, string[]>();
+    for (const id of RESEARCH_PROJECT_IDS) {
+      shared.set(RESEARCH_ART[id], [...(shared.get(RESEARCH_ART[id]) ?? []), id]);
+    }
+    const collisions = [...shared.values()].filter((ids) => ids.length > 1);
+    expect(collisions, `projects sharing one picture: ${JSON.stringify(collisions)}`)
+      .toEqual([]);
+  });
+
+  /** And the lab renders come from the lab, not from a hull or a resource table. */
+  it('draws the twelve lab projects from the lab folder', () => {
+    const borrowed = RESEARCH_PROJECT_IDS.filter((id) => !RESEARCH_ART[id].includes('/lab/'));
+    expect(borrowed).toEqual(['DEATH_STAR_PROTOCOL']);
   });
 });
 

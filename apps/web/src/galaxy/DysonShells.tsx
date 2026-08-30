@@ -5,6 +5,7 @@ import * as THREE from 'three';
 import { DYSON_MODEL } from '../ui/assets.js';
 import { unitModel } from './model.js';
 import { STANCE_LIGHT, type PlanetNode } from './scene.js';
+import { resolvedOnly } from './Satellites.jsx';
 
 /**
  * WHAT A SEASON OF DEVELOPMENT LOOKS LIKE FROM ORBIT.
@@ -119,14 +120,9 @@ const shellRadius = (planetRadius: number): number =>
  * visibly and no further. It rotates about the world's own centre, so the planet
  * stays inside it at every attitude by construction.
  *
- * IT IS NOT GATED ON `prefers-reduced-motion`, and that is deliberate rather than
- * an oversight — the first version was gated and the owner, whose machine has the
- * preference set, reported the shells standing still. Everything else in the disc
- * that reads the preference is gated because it is FAST: a limb breathing, a rock
- * tumbling, a plume flickering. A full turn here takes two and a half minutes,
- * which is under a degree and a half per second and below the threshold the
- * preference exists to protect against. A structure that never moves is the thing
- * the north star calls a modelling artefact rather than an object.
+ * This movement is unconditional. A full turn takes two and a half minutes,
+ * which is under a degree and a half per second. A structure that never moves is
+ * the thing the north star calls a modelling artefact rather than an object.
  */
 const PERIOD_Y = 150;
 const PERIOD_X = 233;
@@ -334,7 +330,7 @@ const SHELL_STAGE: readonly Stage[] = Array.from({ length: RUNGS + 1 }, (_, step
  * wreck is a cosmetic miss, and a dead one drawn on a healthy world would say a
  * commander had been hit when they had not.
  */
-export const isWrecked = (node: PlanetNode): boolean => node.state?.kind === 'RECOVERY';
+export const isWrecked = (node: PlanetNode): boolean => node.state.kind === 'RECOVERY';
 
 /** The stage a world is at, or null while it has not built one. */
 const stageIndexFor = (coreLevel: number): number | null => {
@@ -364,8 +360,21 @@ export interface ShellLook {
   turning: boolean;
 }
 
-export const shellLook = (index: number, wrecked: boolean): ShellLook =>
-  wrecked
+/**
+ * TWO REASONS A STRUCTURE HAS NO POWER, AND THEY LOOK THE SAME. D121a and D127.
+ *
+ * A WRECK is a world that has been struck: its rings survive, stop and go cold.
+ * A RECORD is a world you probed once and cannot currently see: the rings you are
+ * looking at are the ones the probe found, and they may have been added to,
+ * struck, or turned off since. Neither is a live reading, and the honest picture
+ * for both is the same — still and colourless — because a moving, lit structure is
+ * an assertion about RIGHT NOW that neither state can make.
+ *
+ * They are one parameter rather than two because nothing downstream distinguishes
+ * them, and a second boolean nobody reads is a branch waiting to be got wrong.
+ */
+export const shellLook = (index: number, unpowered: boolean): ShellLook =>
+  unpowered
     ? { seam: 0, rim: WRECK_RIM, rimAlpha: WRECK_RIM_ALPHA, turning: false }
     : { seam: SEAM, rim: SHELL_STAGE[index]!.colour, rimAlpha: RIM_ALPHA, turning: true };
 
@@ -462,7 +471,12 @@ export function shellGroups(nodes: readonly PlanetNode[]): ShellGroup[] {
   for (const node of nodes) {
     const index = stageIndexFor(node.coreLevel);
     if (index === null) continue;
-    const wrecked = isWrecked(node);
+    /**
+     * A REMEMBERED WORLD'S RINGS ARE DRAWN LIKE A WRECK'S. D127. They are what a
+     * probe found, not what is there — still and colourless, because the alternative
+     * is the map animating a structure it cannot currently see.
+     */
+    const wrecked = isWrecked(node) || node.intel === 'REMEMBERED';
     const key = `${String(index)}:${wrecked ? 'wreck' : 'live'}`;
     const bucket = byStage.get(key);
     if (bucket) bucket.planets.push(node);
@@ -472,7 +486,15 @@ export function shellGroups(nodes: readonly PlanetNode[]): ShellGroup[] {
 }
 
 export function DysonShells({ nodes }: { nodes: readonly PlanetNode[] }) {
-  const groups = useMemo(() => shellGroups(nodes), [nodes]);
+  /**
+   * ONLY ON WORLDS YOU CAN RESOLVE. D126.
+   *
+   * The rings are the most legible reading in the game — count and colour give the
+   * exact Command Core level (D119). Handing that out for a world outside your
+   * sensor reach, while its body is faded for being unreadable, would be the
+   * interface contradicting itself in one frame.
+   */
+  const groups = useMemo(() => shellGroups(resolvedOnly(nodes)), [nodes]);
 
   return (
     <>

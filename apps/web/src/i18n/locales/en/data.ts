@@ -9,31 +9,45 @@
 
 export const vocabulary = {
   building: {
-    CORE: { name: 'Command Core', tag: 'Unlocks higher levels', role: 'Level ceiling for everything else' },
-    REFINERY: { name: 'Alloy Refinery', tag: 'Makes alloy', role: 'Alloy per hour, and alloy storage' },
-    EXTRACTOR: { name: 'Crystal Extractor', tag: 'Makes crystal', role: 'Crystal per hour, and crystal storage' },
-    VAULT: { name: 'Vault', tag: 'Keeps ore safe from raids', role: 'Stock a raid can never reach' },
-    SHIPYARD: { name: 'Shipyard', tag: 'Unlocks better ships', role: 'Unlocks hulls · sets probe accuracy and stealth' },
+    CORE: { name: 'Command Core', tag: 'Unlocks higher levels', role: 'Sets building ceilings, construction speed and the world\'s orbit, flight and ground-defence capacity', detail: 'No other building can rise above the Command Core. Raising it shortens building and research time, opens more orbit and flight slots at set levels, and expands ground-defence capacity. It produces no ore or combat power by itself.' },
+    REFINERY: { name: 'Alloy Refinery', tag: 'Makes alloy', role: 'Alloy per hour, and alloy storage', detail: 'Each level increases passive alloy income and the amount that can be stored. Alloy pays for most construction and hulls, so this shortens many future waits.' },
+    EXTRACTOR: { name: 'Crystal Extractor', tag: 'Makes crystal', role: 'Crystal per hour, and crystal storage', detail: 'Each level increases passive crystal income and storage. Crystal is the rarer half of advanced hardware, instruments and research costs.' },
+    VAULT: { name: 'Vault', tag: 'Keeps ore safe from raids', role: 'Stock a raid can never reach', detail: 'It raises the protected floor and the storage ceiling. Raiders can take only what remains above that floor; the Vault does not fight them.' },
+    SHIPYARD: { name: 'Shipyard', tag: 'Unlocks better ships', role: 'Unlocks hulls · speeds ship and ground-defence construction · sets probe accuracy and stealth', detail: 'Higher levels open new hull classes and finish ships and ground defences faster. They also sharpen your probe readings and make your own probes harder to catch. Shipyard levels add neither hangar room nor queue slots.' },
+    DEUTERIUM_PLANT: { name: 'Deuterium Refinery', tag: 'Makes deuterium', role: 'The only steady source of fuel · its ceiling is your Deuterium Synthesis rung', detail: 'It turns the planet into a reliable fuel source for fleet launches. Research Deuterium Synthesis when the next Refinery level is capped.' },
+    HANGAR: { name: 'Hangar', tag: 'Sets how big a fleet fits', role: 'Room for craft · a fleet is bounded by this, not by your purse', detail: 'Every mobile hull consumes hangar space according to its bulk, including craft away from home. Raise this before ordering a fleet the planet cannot hold.' },
   },
 
   instrument: {
     TELESCOPE: {
       name: 'Telescope',
-      tag: 'Watch other planets',
-      role: 'Watch one more planet per level. Silent — nobody is told.',
+      tag: 'Resolve distant movement',
+      role:
+        'Identifies movement inside its reach; watch slots become 1, 2 and 3 at L1, L3 and L5. Silent.',
       roleNone:
-        'SEE OUT. Watch one world and know when its fleet leaves — the single most valuable fact in the game. Needs an Uplink overhead.',
+        'SEE OUT. Identify distant movement; watch a chosen world to learn whether its fleet is home. Needs an Uplink overhead.',
       roleOwned:
-        'SEE OUT. Watches a world silently; they are never told. Knowledge, and no protection whatsoever.',
+        'SEE OUT. Extends moving-contact sight and watches chosen worlds silently. Knowledge, and no protection whatsoever.',
+      detail: 'More levels extend moving-contact sight and reveal passing asteroids when they enter that area; a revealed rock stays known until it is gone. L1, L3 and L5 provide one, two and three silent watch slots. A Telescope never warns that a fleet is aimed at you.',
     },
     RADAR: {
       name: 'Radar',
-      tag: 'See who is coming',
-      role: 'Catches probes. From L3, warns of an inbound fleet in time to arm for it.',
+      tag: 'Distinguish threats to you',
+      role:
+        'Catches probes. From L3, marks a threat aimed at you and gives its arrival time inside the Radar circle.',
       roleNone:
-        'BE WARNED. Right now a fleet can land here with no notice and probes come and go unseen. Needs an Uplink overhead.',
+        /*
+          IT SAYS "MOST", BECAUSE A BARE WORLD IS NOT BLIND TO SCOUTS.
+          `detectChance` has a floor: a world with no Radar still catches about one
+          probe in seven and is told. That is deliberate — the scan notification is
+          what teaches a new commander the Radar exists at all. The copy said
+          "unseen", which was simply false, and a sentence that oversells a purchase
+          is the one thing a decision surface may not do.
+        */
+        'BE WARNED. Right now a fleet can land here with no notice at all, and most scouts come and go unseen. Needs an Uplink overhead.',
       roleOwned:
-        'BE WARNED. Catches probes, and names an inbound fleet while there is still time to put a gun on the ground. Wins nothing on offence.',
+        'BE WARNED. Marks threats aimed at you with a clock. L4 adds rough size; L5 adds origin and the full force.',
+      detail: 'Early levels catch probes and their bearing. From L3 the Radar circle marks fleets aimed at this world and gives their arrival time.',
     },
     AEGIS: {
       name: 'Aegis',
@@ -43,6 +57,7 @@ export const vocabulary = {
         'ABSORB. Sits at the planet, not in orbit. Soaks the opening damage of a raid and regrows on its own, free. Safe, and completely blind.',
       roleOwned:
         'ABSORB. Sits at the planet, not in orbit. Soaks the opening damage of a raid and regrows on its own, free. Safe, and completely blind.',
+      detail: 'Each level adds shield capacity. The shield absorbs damage before ships and ground guns do, then regenerates at no resource cost; it provides no information or interception.',
     },
     VEIL: {
       name: 'Veil',
@@ -52,6 +67,7 @@ export const vocabulary = {
         'BE UNREADABLE. Their telescope reads UNKNOWN instead of your fleet. It hides; it never lies — and it does not stop a probe.',
       roleOwned:
         'BE UNREADABLE. Their telescope reads UNKNOWN instead of your fleet. It hides; it never lies — and it does not stop a probe.',
+      detail: 'A stronger Veil defeats stronger Telescope readings and reduces equal-Shipyard probe accuracy. It hides your state; it does not invent false data or block an incoming probe.',
     },
   },
 
@@ -60,9 +76,10 @@ export const vocabulary = {
       name: 'Uplink',
       tag: 'Unlocks Telescope and Radar',
       role:
-        'SEE AT ALL. The only way to reach the Telescope and the Radar. It produces nothing, defends nothing, and without it you are guessing about everyone around you.',
+        'SEE FARTHER. The only way to reach the Telescope and Radar. It produces nothing and defends nothing; your free naked-eye neighbourhood remains without it.',
       blurb:
-        'A comms relay. It produces nothing and defends nothing — it is the only way to reach the Telescope and the Radar, and so the only way to stop guessing about the people around you.',
+        'A comms relay. It produces nothing and defends nothing — it opens the Telescope and Radar that extend your free naked-eye neighbourhood.',
+      detail: 'Install it once to make Telescope and Radar construction available on this world. It uses one orbit slot and never needs levels of its own.',
     },
     FOUNDRY: {
       name: 'Foundry',
@@ -71,6 +88,7 @@ export const vocabulary = {
         'EARN. Both metals, faster, for the rest of the season. The slowest reward here and the only one still paying on the last day.',
       blurb:
         'Refits the works. Alloy and crystal both come out faster, for as long as it is up there. The slowest reward on this list and the one that is still paying on the last day of the season.',
+      detail: 'Its permanent multiplier applies to both passive ore streams on this world. It pays back gradually, so it is strongest when installed early.',
     },
     DERRICK: {
       name: 'Derrick',
@@ -79,6 +97,7 @@ export const vocabulary = {
         'MINE. Your Prospectors carry far more and get there much sooner — which on a contested rock is the whole difference between first and second. Worth nothing if you never send one.',
       blurb:
         'A tender for mining craft. Every Prospector you own carries far more ore and reaches its rock much sooner — which on a contested asteroid is the whole difference between arriving first and arriving second.',
+      detail: 'It multiplies both Prospector speed and carrying capacity from this world. It changes asteroid mining only; ordinary raid cargo is unaffected.',
     },
     BEACON: {
       name: 'Beacon',
@@ -87,6 +106,7 @@ export const vocabulary = {
         'STRIKE. Every fleet you send is away for less time, out and back. It wins no fight; it shortens the window where your planet is the undefended one.',
       blurb:
         'A navigation mark. Every fleet that leaves this planet flies faster, out and back. Shorter flights mean a shorter window with your defence away from home.',
+      detail: 'The speed multiplier applies to every outbound and return fleet launched here. Travel shortens, but attack, armour and cargo stay exactly the same.',
     },
   },
 
@@ -96,54 +116,63 @@ export const vocabulary = {
       tag: 'Cheap, fast attacker',
       role: 'Cheapest attack, fastest out and back',
       pitch: 'Cheapest damage, fastest home. The shortest time spent undefended.',
+      detail: 'Use Wasps for inexpensive, quick pressure or to punish heavy Bulwarks. They lose badly to Lances and do not carry loot by themselves.',
     },
     LANCE: {
       name: 'Lance',
       tag: 'Hits the hardest',
       role: 'Highest attack · strong into Wasps, weak into Bulwarks',
       pitch: 'Hits hardest. Shreds Wasps, bounces off Bulwarks.',
+      detail: 'Lances convert fleet space into high attack and counter Wasp swarms. Bulwark armour is their bad matchup, so a one-hull Lance fleet is easy to answer.',
     },
     BULWARK: {
       name: 'Bulwark',
       tag: 'Slow and tough',
       role: 'The durability anchor · slow enough to double your exposure',
       pitch: 'Survives what kills everything else. Nearly doubles your time away.',
+      detail: 'Bulwarks keep a force alive against Lance-heavy opposition and counter it efficiently. Their low speed makes every mission and the time your home is exposed much longer.',
     },
     HAULER: {
       name: 'Hauler',
       tag: 'Carries the loot home',
       role: 'Carries the loot home · contributes nothing to the fight',
       pitch: 'Carries the loot home. Useless in the fight — escort it or lose it.',
+      detail: 'Add Haulers when exposed stock is worth taking. Their cargo is cheap, but support hulls cannot deal damage and remain protected only while combat hulls survive.',
     },
     RUNNER: {
       name: 'Runner',
       tag: 'Fast strike cargo',
       role: 'Fast support hold · expensive capacity for short exposure windows',
       pitch: 'Carries less than a Hauler, but moves with a strike fleet. Speed is what you buy.',
+      detail: 'Runners keep cargo from slowing a fast raid. They cost more per unit carried than Haulers, so buy them when a shorter exposure window matters more than efficiency.',
     },
     BREACHER: {
       name: 'Breacher',
       tag: 'Breaks active shields',
       role: 'Lance specialist. Five times its normal effect against an active shield.',
       pitch: 'Crushes an Aegis without turning bonus damage into unit kills. Weak when no shield is standing.',
+      detail: 'Its specialist charge deals five times normal effect to an active Aegis. Once the shield falls, that bonus does not spill into ships or guns, so unshielded targets waste its premium.',
     },
     BASTION: {
       name: 'Bastion',
       tag: 'Heavy ground guns',
       role: 'Ground defence · cannot ever leave the planet',
       pitch: 'Heavy ground guns. Break Lances; swarms overwhelm them.',
+      detail: 'Bastions never leave the planet and are built to stop Lance-heavy attacks. Wasps overwhelm their slow heavy fire; destroyed ground guns partly rebuild from salvage.',
     },
     THORN: {
       name: 'Thorn',
       tag: 'Light ground guns',
       role: 'Ground defence · light, cheap, and never leaves',
       pitch: 'Light ground guns, cheap and many. Tear into heavies; Lances pick them off.',
+      detail: 'Thorns are the cheap permanent answer to Bulwark-heavy raids. Lances pick them apart, and like every ground gun they occupy ground capacity rather than Hangar space.',
     },
     PROSPECTOR: {
       name: 'Prospector',
       tag: 'Mines asteroids',
       role: 'Mines passing asteroids · never joins a fight',
       pitch: 'Flies to a passing rock and brings the ore back. Never fights.',
+      detail: 'Send it to a visible asteroid before another commander reaches it. It returns ore to the Works, counts against the planet-wide Prospector limit and contributes nothing in combat.',
     },
   },
 
@@ -157,11 +186,11 @@ export const vocabulary = {
   unlock: {
     TELESCOPE: {
       title: 'Telescope unlocked',
-      body: 'Put an Uplink in orbit and you can watch one planet.',
+      body: 'An Uplink and Telescope identify movement farther out and let you watch one planet.',
     },
     RADAR: {
       title: 'Radar unlocked',
-      body: 'Put an Uplink in orbit and you will catch anyone looking at you.',
+      body: 'An Uplink and Radar catch probes; at L3 the Radar circle also marks threats aimed at you with their arrival time.',
     },
     EXPLORER: {
       title: 'Explorer unlocked',
@@ -174,7 +203,6 @@ export const vocabulary = {
 /** WHAT YOU GET IF YOU PRESS IT. */
 export const gains = {
   rangeUnits: '{{count}} units',
-  rangeWhole: 'the whole disc',
 
   core: {
     label: 'Build ceiling',
@@ -210,7 +238,7 @@ export const gains = {
   telescope: {
     slotsLabel: 'Planets you can watch',
     rangeLabel: 'How far you can see',
-    maxed: 'At its highest level — it already reaches the whole disc',
+    maxed: 'Top level: {{slots}} watch slots and {{range}} units of moving-contact sight; the outer rim stays fogged',
     reachAndCooldown: 'Reaches {{range}} · a slot realigns in {{hours}}h',
     nextSlot: 'Next level adds a {{ordinal}} slot',
     ordinalSecond: '2nd',
@@ -222,12 +250,13 @@ export const gains = {
     scansNo: 'no',
     scansYes: 'yes',
     scansBearing: 'yes, with bearing',
-    sweepLabel: 'How far it sweeps',
+    sweepLabel: 'Threat sense · timed warning',
     sweepNone: 'none',
-    maxed: 'At its highest level — it already names where a scan came from',
+    reaches: '{{sense}} no ETA · {{warn}} timed',
+    maxed: 'Top level; the close warning also gives the origin and exact force',
     l2l3: 'L2 adds the bearing · L3 warns about inbound fleets',
-    estimate: 'Adds an estimate of how many ships are coming',
-    origin: 'Names the planet it came from',
+    estimate: 'Shows the approaching force’s rough size early',
+    origin: 'The close warning names its origin and exact force',
   },
   aegis: {
     label: 'Max shield',
@@ -264,6 +293,49 @@ export const gains = {
     next: '{{factor}}× faster',
     unlocks: 'Out and back — a shorter window with your defence away from home',
   },
+  hangar: {
+    label: 'Fleet room',
+    value: '{{room}}',
+  },
+  /**
+   * RESEARCH, WHICH WAS SOLD ON PROSE ALONE UNTIL NOW.
+   *
+   * Every label is the quantity the player FEELS, not the mechanism: a doctrine
+   * is "Wasp attack and hull", not "combat multiplier". The scope lines matter
+   * more than usual on this ladder, because the choice between a class doctrine
+   * and the general project is a choice between the same percentage applied to
+   * one hull family and to all of them.
+   */
+  research: {
+    doctrineLabel: '{{hull}} attack and hull',
+    doctrineScope: 'Every {{hull}} you own, everywhere. Support hulls are unaffected.',
+    lanceScope: 'Every {{lance}} and {{breacher}} you own. Support hulls are unaffected.',
+    groundLabel: 'Ground defence strength',
+    groundScope: '{{bastion}} and {{thorn}} on every world you hold.',
+    generalLabel: 'Every hull, attack and armour',
+    generalScope:
+      'Applies to every craft you own, including support hulls no doctrine covers. Stacks with class doctrine; the two together are capped at 25% combat power.',
+    yardLabel: 'Ship build time',
+    holdsLabel: 'Prospector hold',
+    holdsScope: 'Multiplies with a Derrick in orbit.',
+    cargoLabel: 'Raid cargo',
+    cargoScope: 'Loot only — world transfers and mining are unchanged.',
+    refineryLabel: 'Refinery ceiling',
+    stockpileLabel: 'Ready weapons',
+    /* A permission opens a door; drawing it as a ladder would invent a quantity. */
+    opensLabel: 'Unlocks',
+    open: 'Open',
+    shut: 'Locked',
+    isotopeOpens: 'Isotope asteroids become selectable mining targets.',
+    denseOpens: 'The Runner hull becomes buildable.',
+    graviticOpens: 'The Breacher hull becomes buildable.',
+    protocolOpens: 'The Death Star becomes buildable.',
+    gridOpens: 'The interceptor charge becomes buildable.',
+  },
+  plant: {
+    label: 'Deuterium',
+    value: '{{rate}}/h',
+  },
 } as const;
 
 /** The situation engine: what a competent player would be thinking about now. */
@@ -298,13 +370,13 @@ export const directives = {
     'Your store is full, so the works have nowhere to empty into. Spend something and claim it.',
   storageFullAction: 'Spend it',
 
-  noTelescopeTitle: 'You cannot see anyone',
+  noTelescopeTitle: 'You only have naked-eye sight',
   noTelescopeDetail:
-    'A Telescope watches one planet and tells you when its fleet leaves. Nobody is told you are watching.',
+    'Your free sight can already reveal a passing asteroid nearby. A Telescope extends that discovery area, identifies moving craft farther out and can silently watch a planet to tell you when its fleet leaves.',
   noTelescopeAction: 'Install a Telescope',
 
   noRadarTitle: 'A fleet could land here without warning',
-  noRadarDetail: 'Radar L3 names an inbound fleet while there is still time to put a gun on the ground.',
+  noRadarDetail: 'Radar L3 marks a threat aimed at you with its arrival time inside the Radar circle.',
   noRadarAction: 'Look at Radar',
 
   coreCeilingTitle: 'Command Core is blocking {{count}} upgrades',
@@ -338,6 +410,8 @@ export const notifications = {
   strategicIncomingHead: 'Strategic weapon incoming · {{clock}}',
   incomingEstimate: 'est. {{count}} ships',
   incomingFrom: 'from {{origin}}',
+  /** Which of the reader's own worlds is under the crosshair. Never a radar product. */
+  incomingAt: 'aimed at {{world}}',
   commanderAt: '{{username}} at {{planet}}',
   unknownCommander: 'someone',
   raidedBy: 'Raider: {{origin}} · ',
@@ -393,6 +467,9 @@ export const notifications = {
   colonyCaptured: 'Colony secured · occupation protection is active',
   colonyLost: 'Colony lost to a strategic strike',
   settlementLost: 'Settlement race lost · the Hauler and cargo are returning',
+  interceptedDefended: 'Your grid destroyed a Death Star {{range}} units out.',
+  interceptedLost: 'Your Death Star was destroyed {{range}} units short of its target.',
+  interceptedFallback: 'A Death Star was destroyed in flight.',
 } as const;
 
 /**

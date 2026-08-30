@@ -20,6 +20,7 @@ import {
   ShipyardIcon,
   type IconProps,
 } from '../ui/icons/index.js';
+import { Rungs } from '../ui/Rungs.js';
 import { describe, useToast } from '../ui/Toast.js';
 
 /**
@@ -242,6 +243,8 @@ function GoalCard({
   const Icon = CHAIN_ICON[chain.id] ?? RewardIcon;
   const waiting = chain.tiers.some((x) => x.state === 'claimable');
   const done = chain.tiers.every((x) => x.state === 'claimed');
+  /** Rungs already bought. The ladder's length is the tier count, never a goal. */
+  const taken = chain.tiers.filter((x) => x.state === 'claimed').length;
 
   /**
    * THE STANDING, IN THE UNITS THE CHAIN IS ACTUALLY MEASURED IN.
@@ -276,14 +279,33 @@ function GoalCard({
             <p className="name min-w-0 flex-1 truncate text-bone">
               {t(`rewards.chains.${chain.id}.name` as 'rewards.chains.PROBE.name')}
             </p>
-            <span
-              className={`num shrink-0 text-micro ${waiting ? 'text-opportunity' : 'text-faint'}`}
-            >
-              {standing}
+            {/*
+              A CHAIN IS A LADDER, SO IT GETS RUNGS. D142.
+
+              "3 of 10 probes sent" is a sentence a player converts into the only
+              thing they wanted, which is how many payouts are left in this card.
+              One mark per TIER, lit as it is taken, is that fact arriving without
+              being read — and it is the same shape research uses, because a
+              reward chain and a research ladder are the same object: a small,
+              fixed number of discrete steps, each bought once.
+
+              The sentence survives as the rungs' accessible name, where it is
+              also the only place the metric can be stated.
+            */}
+            <span className={waiting ? 'text-opportunity' : ''}>
+              <Rungs level={taken} max={chain.tiers.length} next={!done} />
             </span>
           </div>
           <p className="mt-1 text-label leading-snug text-faint">
             {t(`rewards.chains.${chain.id}.tag` as 'rewards.chains.PROBE.tag')}
+          </p>
+          {/*
+            THE COUNT STAYS, UNDER THE TAG AND AT LABEL SIZE. The rungs say how
+            many payouts are left; this says what is being counted, which is the
+            one thing a shape cannot carry.
+          */}
+          <p className={`num mt-1 text-label ${waiting ? 'text-opportunity' : 'text-dim'}`}>
+            {standing}
           </p>
         </div>
       </div>
@@ -493,10 +515,32 @@ function TierRow({
       ? t('rewards.goalLevel', { n: tier.goal })
       : t('rewards.goalCount', { n: tier.goal });
 
+  /*
+    HOW CLOSE, NOT HOW FAR OFF. "4 to go" is the gap and hides the thing a player
+    is actually weighing: nine of ten and one of ten are both "to go" figures and
+    only one of them is worth staying for. The rail under the row fills toward the
+    goal, so a nearly-earned tier LOOKS nearly earned.
+  */
+  const reach = tier.goal > 0 ? Math.max(0, Math.min(1, progress / tier.goal)) : 1;
+  const locked = tier.state !== 'claimed' && tier.state !== 'claimable';
+
   return (
-    <li className="plate-sunk flex items-center gap-2 rounded-chip px-2 py-2">
+    <li className="plate-sunk relative flex items-center gap-2 overflow-hidden rounded-chip px-2 py-2">
+      {/*
+        THE FILL IS BEHIND THE ROW, not a separate bar beside it. A locked tier is
+        a thing being approached, and the row itself filling up is that sentence
+        with no extra element and no extra line of height.
+      */}
+      {locked && metric !== 'grant' && (
+        <span
+          aria-hidden
+          data-tier-reach
+          className="absolute inset-y-0 left-0 bg-crystal/10"
+          style={{ width: `${String(reach * 100)}%` }}
+        />
+      )}
       <span
-        className={`num w-8 shrink-0 text-label ${
+        className={`num relative w-8 shrink-0 text-label ${
           tier.state === 'claimed' ? 'text-faint line-through' : 'text-dim'
         }`}
       >
@@ -508,7 +552,7 @@ function TierRow({
         rather than `compact()`: these are figures a player checks against a price,
         and "1.2k" cannot be compared to 950.
       */}
-      <span className="min-w-0 flex-1 truncate text-label">
+      <span className="relative min-w-0 flex-1 truncate text-label">
         <span className="num text-alloy">{full(tier.alloy)}</span>
         <span className="px-1 text-faint">·</span>
         <span className="num text-crystal">{full(tier.crystal)}</span>
@@ -516,6 +560,7 @@ function TierRow({
 
       {tier.state === 'claimable' ? (
         <Button
+          className="relative"
           size="sm"
           variant="primary"
           disabled={busy}
@@ -526,9 +571,9 @@ function TierRow({
           {t('rewards.claim')}
         </Button>
       ) : tier.state === 'claimed' ? (
-        <span className="num shrink-0 text-micro text-faint">{t('rewards.claimed')}</span>
+        <span className="num relative shrink-0 text-micro text-faint">{t('rewards.claimed')}</span>
       ) : (
-        <span className="num shrink-0 text-micro text-faint">
+        <span className="num relative shrink-0 text-micro text-faint">
           {metric === 'grant'
             ? t('rewards.social.pending')
             : t('rewards.toGo', { count: Math.max(0, tier.goal - progress) })}

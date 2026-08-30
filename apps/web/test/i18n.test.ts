@@ -1,4 +1,12 @@
 import { describe, expect, it } from 'vitest';
+import {
+  ALL_HULLS,
+  BUILDING_IDS,
+  INSTRUMENT_IDS,
+  RESEARCH_PROJECT_IDS,
+  SATELLITE_IDS,
+  type ResearchProjectId,
+} from '@astera/rules';
 import i18n from '../src/i18n/index.js';
 import { en } from '../src/i18n/locales/en/index.js';
 import { tr } from '../src/i18n/locales/tr/index.js';
@@ -58,6 +66,24 @@ const tags = (text: string): Set<string> =>
 const ENGLISH = flatten(en);
 const TURKISH = flatten(tr);
 
+const RESEARCH_DETAIL_KEYS = {
+  ISOTOPE_SPECTROMETRY: 'isotopeDetail',
+  DENSE_FUEL_CELLS: 'denseDetail',
+  GRAVITIC_CHARGES: 'graviticDetail',
+  DEATH_STAR_PROTOCOL: 'deathStarDetail',
+  DEUTERIUM_SYNTHESIS: 'synthesisDetail',
+  YARD_AUTOMATION: 'yardDetail',
+  PROSPECTOR_HOLDS: 'holdsDetail',
+  CARGO_HOLDS: 'cargoDetail',
+  WASP_DOCTRINE: 'waspDoctrineDetail',
+  LANCE_DOCTRINE: 'lanceDoctrineDetail',
+  BULWARK_DOCTRINE: 'bulwarkDoctrineDetail',
+  EMPLACEMENT_DOCTRINE: 'groundDoctrineDetail',
+  WEAPONS_GENERAL: 'generalDetail',
+  INTERCEPTION_GRID: 'gridDetail',
+  STRATEGIC_STOCKPILE: 'stockpileDetail',
+} as const satisfies Record<ResearchProjectId, keyof typeof en.research>;
+
 /**
  * Leaves that are SUPPOSED to read the same in both languages, and why.
  *
@@ -66,6 +92,19 @@ const TURKISH = flatten(tr);
  * that matches its English counterpart is an untranslated string.
  */
 const IDENTICAL_ON_PURPOSE = new Set([
+  // "Hangar" is the established Turkish aviation term as well as the English
+  // one; replacing it only to make the strings differ would make the translation
+  // less natural.
+  'vocabulary.building.HANGAR.name',
+  // Same word, same reason, on the launch sheet's room bar.
+  'launch.hangarLabel',
+  // A bare numeric placeholder has no language to translate. The label beside it
+  // carries the Turkish wording.
+  'gains.hangar.value',
+  // A rung against its ceiling: "L2 / 5" is a level and a limit with a separator
+  // between them, and the L is the same abbreviation every level badge in both
+  // languages already uses. There is no word in it to put into Turkish.
+  'upgradeRow.ladder',
   // Punctuation and stand-ins for a missing figure. Not words.
   'statusBar.works.idle',
   'galaxy.commander.galaxyUnknown',
@@ -75,13 +114,17 @@ const IDENTICAL_ON_PURPOSE = new Set([
   'focus.contact.craftUnknown',
   'launch.oneWayUnknown',
   'action.statCargoNone',
+  'action.statFuelNone',
   'planetHero.shieldValue',
   'servers.joining',
   'units.rangeJoin',
+  // The dash between the two ends of a probe's range. Punctuation.
+  'rangeBand.join',
   'units.plus',
   'units.minus',
   'units.millions',
   // Nothing but placeholders and separators — no words of their own.
+  'planet.queue.segment',
   'notifications.composition',
   'notifications.join',
   // The away-fleet note's list: "83 Wasp · 2 Hauler". The sentence around it is
@@ -92,6 +135,8 @@ const IDENTICAL_ON_PURPOSE = new Set([
   'launch.awaySeparator',
   // " · {{planet}}" — a separator and a name the server supplies.
   'intel.radar.origin',
+  // The same shape, naming which of the caller's own worlds was scanned.
+  'intel.radar.onWorld',
   'notifications.unlock',
   'signals.repeat',
   'pendingStrip.more',
@@ -110,6 +155,11 @@ const IDENTICAL_ON_PURPOSE = new Set([
   'vocabulary.instrument.RADAR.name',
   'vocabulary.instrument.AEGIS.name',
   'intel.radar.level',
+  // The instrument's kept name plus the level badge both languages already share
+  // — "Radar L3" is the same sentence in Turkish. Its three siblings on the same
+  // card (`needResearch`, `needUplink`, `needOperational`) are all translated,
+  // which is what tells this one apart from a missed pass.
+  'planet.interceptor.needRadar',
   // The reward panel. A multiplier and a fraction are notation, not language —
   // "×3" and "3 / 5" are read the same in both. The LEVEL forms beside them are
   // not on this list, because `L5` is `S5` in Turkish (seviye) and a translated
@@ -123,6 +173,8 @@ const IDENTICAL_ON_PURPOSE = new Set([
   // player somewhere that does not exist.
   'rewards.social.handle',
   'rewards.social.url',
+  // YouTube is the embedded-video provider's proper name in both languages.
+  'community.admin.tools.video',
 ]);
 
 describe('the two languages hold the same keys', () => {
@@ -168,6 +220,65 @@ describe('the two languages hold the same keys', () => {
       (key) => !ENGLISH.has(key) || ENGLISH.get(key) !== TURKISH.get(key),
     );
     expect(stale).toEqual([]);
+  });
+});
+
+describe('decision sheets explain every item', () => {
+  it('has a substantial, item-specific explanation for every buildable in both languages', () => {
+    const expected = {
+      building: BUILDING_IDS,
+      instrument: INSTRUMENT_IDS,
+      satellite: SATELLITE_IDS,
+      hull: ALL_HULLS,
+    } as const;
+
+    for (const locale of [en, tr]) {
+      for (const [group, ids] of Object.entries(expected)) {
+        const entries = locale.vocabulary[group as keyof typeof expected] as Record<
+          string,
+          { detail: string; role: string }
+        >;
+        expect(Object.keys(entries).sort(), group).toEqual([...ids].sort());
+        for (const id of ids) {
+          expect(entries[id]?.detail.trim().length, `${group}.${id}.detail`).toBeGreaterThan(60);
+          expect(entries[id]?.detail, `${group}.${id} repeats its summary`)
+            .not.toBe(entries[id]?.role);
+        }
+      }
+    }
+  });
+
+  it('has a substantial, unique explanation for all fifteen research projects', () => {
+    expect(Object.keys(RESEARCH_DETAIL_KEYS).sort()).toEqual([...RESEARCH_PROJECT_IDS].sort());
+    for (const locale of [en, tr]) {
+      const seen = new Set<string>();
+      for (const id of RESEARCH_PROJECT_IDS) {
+        const detail = locale.research[RESEARCH_DETAIL_KEYS[id]];
+        expect(detail.trim().length, id).toBeGreaterThan(60);
+        seen.add(detail);
+      }
+      expect(seen.size).toBe(RESEARCH_PROJECT_IDS.length);
+    }
+  });
+
+  it('keeps the rule-sensitive explanations aligned with the mechanics', () => {
+    // Lance Doctrine owns Breachers as well as Lances.
+    expect(en.research.lanceDoctrineDetail).toContain('Breacher');
+    expect(tr.research.lanceDoctrineDetail).toContain('Delici');
+
+    // Automation applies to mobile craft, not the separate ground-defence curve.
+    expect(en.research.yardDetail).toContain('does not speed up ground defences');
+    expect(tr.research.yardDetail).toContain('Yer savunmalarını hızlandırmaz');
+
+    // Strategic stock is capped independently on every world.
+    expect(en.research.stockpileDetail).toContain('on each world');
+    expect(tr.research.stockpileDetail).toContain('her dünya için');
+
+    // The weapon itself is consumed; there is no separately built charge.
+    expect(en.research.deathStarDetail).not.toContain('separate charge');
+    expect(tr.research.deathStarDetail).not.toContain('ayrı hazırlanan');
+    expect(en.research.deathStarDetail).toContain('two hours');
+    expect(tr.research.deathStarDetail).toContain('iki saat');
   });
 });
 
@@ -265,6 +376,15 @@ describe('an unlock never promises what a gate refuses', () => {
   });
 });
 
+describe('Telescope copy explains the asteroid discovery rule', () => {
+  it('names asteroid discovery on both the upgrade card and the missing-instrument hint', () => {
+    expect(en.vocabulary.instrument.TELESCOPE.detail).toMatch(/asteroid/i);
+    expect(en.directives.noTelescopeDetail).toMatch(/asteroid/i);
+    expect(tr.vocabulary.instrument.TELESCOPE.detail).toMatch(/asteroi[td]/i);
+    expect(tr.directives.noTelescopeDetail).toMatch(/asteroi[td]/i);
+  });
+});
+
 describe('which language a device lands in', () => {
   const nav = (...tags: string[]) => ({ language: tags[0] ?? '', languages: tags });
 
@@ -318,6 +438,17 @@ describe('a refusal arrives in the language that is up', () => {
     const line = describeError(bay());
     expect(line).toContain('4');
     expect(line).toContain('rampa');
+    await i18n.changeLanguage('en');
+  });
+
+  it('localises the fog-safe asteroid refusal instead of leaking the server fallback', async () => {
+    const err = new ApiError(
+      'ASTEROID_UNAVAILABLE',
+      'That asteroid is not available to your sensors',
+      404,
+    );
+    await i18n.changeLanguage('tr');
+    expect(describeError(err)).toBe('Bu asteroit sensörlerinin erişiminde değil');
     await i18n.changeLanguage('en');
   });
 

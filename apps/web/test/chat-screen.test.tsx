@@ -10,6 +10,7 @@ import i18n from '../src/i18n/index.js';
 import { ChatScreen } from '../src/screens/ChatScreen.js';
 
 const at = new Date('2026-08-22T08:00:00.000Z');
+const scrollIntoView = vi.fn();
 const initial = {
   pages: [{
     messages: [
@@ -71,7 +72,7 @@ function show(
 }
 
 beforeAll(() => {
-  Element.prototype.scrollIntoView = vi.fn();
+  Element.prototype.scrollIntoView = scrollIntoView;
 });
 
 afterEach(async () => {
@@ -139,6 +140,23 @@ describe('galaxy chat surface', () => {
     expect(cancel).toHaveBeenCalledWith({ queryKey: keys.chatMessages });
     expect(await screen.findByText('Yeni mesaj')).toBeInTheDocument();
     expect(composer).toHaveValue('');
+  });
+
+  it('scrolls only the message history after posting, never the page viewport', async () => {
+    const { post } = show();
+    const history = screen.getByRole('log', { name: 'Galaxy messages' });
+    Object.defineProperty(history, 'scrollHeight', { configurable: true, value: 900 });
+    history.scrollTop = 0;
+    scrollIntoView.mockClear();
+
+    const user = userEvent.setup();
+    const composer = screen.getByRole('textbox', { name: 'Message the galaxy' });
+    await user.type(composer, 'Yeni mesaj');
+    await user.click(screen.getByRole('button', { name: 'Send' }));
+
+    await waitFor(() => { expect(post).toHaveBeenCalledWith('Yeni mesaj'); });
+    await waitFor(() => { expect(history.scrollTop).toBe(900); });
+    expect(scrollIntoView).not.toHaveBeenCalled();
   });
 
   it('keeps a Unicode draft to 280 visible characters', () => {

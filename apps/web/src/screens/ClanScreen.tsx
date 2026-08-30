@@ -4,7 +4,9 @@ import {
   clanNameIsValid,
   clanTagIsValid,
   clanTransferCargoCapacity,
+  distance,
   fleetCount,
+  missionFuel,
   type Fleet,
   type HullId,
   type Resources,
@@ -29,6 +31,7 @@ import {
   useClanLeaderboard,
   useClanStrength,
   useGalaxy,
+  useLeaderboard,
 } from '../api/queries.js';
 import type {
   ClanAid,
@@ -37,7 +40,8 @@ import type {
   ClanMemberHome,
   ClanOutsideHome,
   ClanStrength,
-  GalaxyPlanet,
+  GalaxyView,
+  Leaderboard,
 } from '../api/schemas.js';
 import type { ClanAidInput } from '../api/client.js';
 import { describeError } from '../i18n/errors.js';
@@ -48,12 +52,14 @@ import { full, signed } from '../lib/format.js';
 import { duration, minutesUntil, useNow } from '../lib/time.js';
 import { useWorld } from '../api/world.js';
 import { QuantityStepper } from '../ui/QuantityStepper.js';
+import { CapacityBar } from '../ui/CapacityBar.js';
+import { SpendBar } from '../ui/SpendBar.js';
+import { Tally } from '../ui/Tally.js';
+import { RESOURCE_ART } from '../ui/assets.js';
 import {
-  AlloyIcon,
   ClanIcon,
   ClockIcon,
   CoreIcon,
-  CrystalIcon,
   GalaxyIcon,
   LeaderboardIcon,
 } from '../ui/icons/index.js';
@@ -125,6 +131,7 @@ export function ClanScreen() {
   const standings = useClanLeaderboard(member !== null && tab === 'overview');
   const aid = useClanAid(member !== null && tab === 'aid');
   const strength = useClanStrength(member !== null && tab === 'strength');
+  const commanders = useLeaderboard(member !== null && tab === 'members');
 
   useEffect(() => {
     if (!home.data || marked.current) return;
@@ -198,11 +205,17 @@ export function ClanScreen() {
         ) : tab === 'strength' ? (
           <ClanStrengthPanel strength={strength} />
         ) : tab === 'members' ? (
-          <ClanMembers home={inside} galaxy={galaxy.data?.planets ?? []} actions={actions} />
+          <ClanMembers
+            home={inside}
+            commanders={commanders.data?.ladder ?? []}
+            selfPlayerId={commanders.data?.you?.playerId ?? galaxy.data?.you.playerId}
+            actions={actions}
+          />
         ) : (
           <ClanAidPanel
             home={inside}
-            galaxy={galaxy.data?.planets ?? []}
+            presence={galaxy.data?.clanPresence}
+            selfPlayerId={galaxy.data?.you.playerId}
             transfers={aid.data?.transfers ?? []}
             loading={aid.isPending}
             actions={actions}
@@ -227,7 +240,7 @@ function ClanHeader({ home }: { home: ClanMemberHome }) {
             <Chip tone="crystal">[{home.clan.tag}]</Chip>
             {home.clan.role === 'LEADER' ? <Chip tone="opportunity">{t('clan.leader')}</Chip> : null}
           </div>
-          <h3 className="headline mt-2 truncate text-readout text-bone">{home.clan.name}</h3>
+          <h3 className="headline mt-2 break-words text-pretty text-readout text-bone">{home.clan.name}</h3>
           <p className="mt-1 text-caption leading-relaxed text-dim">
             {home.clan.description || t('clan.noDescription')}
           </p>
@@ -753,6 +766,14 @@ function ClanStrengthPanel({
 function ClanStrengthView({ strength }: { strength: ClanStrength }) {
   const { t } = useTranslation();
   const largest = Math.max(1, ...strength.composition.map((entry) => entry.count));
+  /**
+   * The clan's strongest member, so every bar in the roster shares one scale.
+   *
+   * Floored at one: a brand-new clan has nobody with any Dominion at all, and
+   * dividing by that would put `NaN%` into a style attribute on the first screen
+   * a founder ever sees.
+   */
+  const strongest = Math.max(1, ...strength.members.map((member) => member.dominion));
 
   return (
     <div className="flex flex-col gap-7">
@@ -848,6 +869,20 @@ function ClanStrengthView({ strength }: { strength: ClanStrength }) {
         )}
       </Section>
 
+      {/*
+        WHO IS PULLING THEIR WEIGHT, ANSWERED BY EYE. Owner instruction.
+
+        This roster printed three figures per member — dominion, ships, worlds —
+        so a full clan was fifteen numbers a reader had to compare across five
+        rows to answer the one question anybody opens this list holding. Each
+        member's Dominion is now a bar against the clan's strongest, so the
+        pecking order is the shape of the column and the figures beside it are
+        there to be checked rather than scanned.
+
+        DOMINION IS THE BAR because Dominion is the score (invariants: score is
+        Dominion, not net worth). Ships and worlds stay as figures: they are the
+        working, not the standing.
+      */}
       <Section label={t('clan.strength.membersHeading')} aside={t('clan.strength.membersCount', { count: strength.members.length })}>
         <ol className="divide-y divide-line-soft overflow-hidden rounded-plate border border-line-soft bg-deep/60">
           {strength.members.map((member) => (
@@ -856,7 +891,24 @@ function ClanStrengthView({ strength }: { strength: ClanStrength }) {
                 <span className="name min-w-0 truncate text-bone">{member.username}</span>
                 {member.role === 'LEADER' ? <Chip tone="opportunity">{t('clan.leader')}</Chip> : null}
               </div>
-              <p className="mt-1 text-caption text-dim">
+              <div
+                className="socket mt-2 h-2 w-full overflow-hidden rounded-full"
+                role="img"
+                aria-label={t('clan.strength.memberLine', {
+                  dominion: full(member.dominion),
+                  ships: full(member.ships),
+                  worlds: full(member.worlds),
+                })}
+              >
+                <span
+                  data-member-share
+                  className="block h-full rounded-full bg-opportunity/70"
+                  style={{
+                    width: `${String(Math.max(0, Math.min(100, (member.dominion / strongest) * 100)))}%`,
+                  }}
+                />
+              </div>
+              <p className="mt-1.5 text-caption text-dim">
                 {t('clan.strength.memberLine', {
                   dominion: full(member.dominion),
                   ships: full(member.ships),
@@ -933,6 +985,15 @@ function ClanStandings({
   const leaders = standings.data?.clans.slice(0, 5) ?? [];
   const mine = standings.data?.clans.find((clan) => clan.id === home.clan.id);
   const rows = mine && !leaders.some((clan) => clan.id === mine.id) ? [...leaders, mine] : leaders;
+  /**
+   * The widest score on the board, so every bar shares one scale.
+   *
+   * ABSOLUTE, because a clan's score can be negative — Dominion is zero-sum and a
+   * clan that has been raided harder than it has raided sits below the line. The
+   * bar for one of those grows LEFT from the centre, so "behind" is a direction
+   * rather than a minus sign to notice.
+   */
+  const widest = Math.max(1, ...rows.map((clan) => Math.abs(clan.score)));
 
   return (
     <Section label={t('clan.standings.heading')} aside={t('clan.standings.aside')}>
@@ -966,8 +1027,40 @@ function ClanStandings({
                     {clan.self ? ` · ${t('clan.you')}` : ''}
                   </span>
                 </span>
-                <span className={`num text-body ${clan.score > 0 ? 'text-opportunity' : clan.score < 0 ? 'text-threat' : 'text-dim'}`}>
-                  {clan.score === 0 ? full(0) : signed(clan.score)}
+                {/*
+                  A LADDER IS A COMPARISON, SO IT IS DRAWN AS ONE. Owner
+                  instruction.
+
+                  Six signed figures in a column is a table a reader sorts in
+                  their head to answer "how far behind are we". A bar off a centre
+                  line answers it without being read: length is the gap, and the
+                  SIDE is whether the clan is up or down on the season. The figure
+                  keeps its place beside the bar, because a standing is eventually
+                  something you quote.
+                */}
+                <span className="flex shrink-0 items-center gap-2">
+                  <span
+                    aria-hidden
+                    /*
+                      ALWAYS DRAWN, and narrow enough to survive a 390px row
+                      beside a rank, a name and a signed figure. Tailwind v4 has
+                      no `xs` breakpoint, so hiding it below one would have hidden
+                      it on every phone the game is played on.
+                    */
+                    className="relative block h-2 w-12 shrink-0 overflow-hidden rounded-full bg-line/50"
+                  >
+                    <span
+                      data-clan-score
+                      className={`absolute inset-y-0 ${
+                        clan.score < 0 ? 'right-1/2 bg-threat/70' : 'left-1/2 bg-opportunity/70'
+                      }`}
+                      style={{ width: `${String((Math.abs(clan.score) / widest) * 50)}%` }}
+                    />
+                    <span className="absolute inset-y-0 left-1/2 w-px bg-bone/40" />
+                  </span>
+                  <span className={`num text-body ${clan.score > 0 ? 'text-opportunity' : clan.score < 0 ? 'text-threat' : 'text-dim'}`}>
+                    {clan.score === 0 ? full(0) : signed(clan.score)}
+                  </span>
                 </span>
               </li>
             );
@@ -989,11 +1082,13 @@ function SmallRule({ title, body }: { title: string; body: string }) {
 
 function ClanMembers({
   home,
-  galaxy,
+  commanders,
+  selfPlayerId,
   actions,
 }: {
   home: ClanMemberHome;
-  galaxy: readonly GalaxyPlanet[];
+  commanders: readonly Leaderboard['ladder'][number][];
+  selfPlayerId: string | undefined;
   actions: Actions;
 }) {
   const { t } = useTranslation();
@@ -1004,10 +1099,8 @@ function ClanMembers({
   const [recruiting, setRecruiting] = useState(home.clan.recruiting);
   const [saved, setSaved] = useState(false);
   const now = useNow(30_000);
-  const selfController = galaxy.find((world) => world.isSelf)?.controller;
-  const selfId = selfController?.kind === 'PLAYER' ? selfController.playerId : undefined;
-  const candidates = uniqueCommanders(galaxy).filter((candidate) =>
-    candidate.playerId !== selfId && candidate.clan == null);
+  const candidates = commanders.filter((candidate) =>
+    candidate.playerId !== selfPlayerId && candidate.clan == null);
 
   const accept = (requestId: string, acknowledgeHostile: boolean): void => {
     actions.accept.mutate({ requestId, acknowledgeHostile }, {
@@ -1036,7 +1129,7 @@ function ClanMembers({
       <Section label={t('clan.members.heading')} aside={`${String(home.members.length)} / ${String(CLAN.maxMembers)}`}>
         <ol className="flex flex-col gap-3">
           {home.members.map((member) => {
-            const self = member.playerId === selfId;
+            const self = member.playerId === selfPlayerId;
             return (
               <li key={member.playerId}>
                 <Plate className="px-4 py-4">
@@ -1233,13 +1326,15 @@ function ClanMembers({
 
 function ClanAidPanel({
   home,
-  galaxy,
+  presence,
+  selfPlayerId,
   transfers,
   loading,
   actions,
 }: {
   home: ClanMemberHome;
-  galaxy: readonly GalaxyPlanet[];
+  presence: GalaxyView['clanPresence'];
+  selfPlayerId: string | undefined;
   transfers: ClanAid['transfers'];
   loading: boolean;
   actions: Actions;
@@ -1247,10 +1342,8 @@ function ClanAidPanel({
   const { t } = useTranslation();
   const now = useNow(30_000);
   const { worlds } = useWorld();
-  const selfController = galaxy.find((world) => world.isSelf)?.controller;
-  const selfId = selfController?.kind === 'PLAYER' ? selfController.playerId : undefined;
   const recipients = home.members.filter((member) =>
-    member.playerId !== selfId && member.mature && member.aidEnabled);
+    member.playerId !== selfPlayerId && member.mature && member.aidEnabled);
   const [originId, setOriginId] = useState('');
   const [recipientId, setRecipientId] = useState('');
   const [targetId, setTargetId] = useState('');
@@ -1261,14 +1354,14 @@ function ClanAidPanel({
   const origin = worlds.find((world) => world.planet.id === originId) ?? worlds[0];
   const recipient = recipients.find((member) => member.playerId === recipientId) ?? recipients[0];
   const targets = recipient
-    ? galaxy.filter((world) => world.controller?.kind === 'PLAYER' && world.controller.playerId === recipient.playerId)
+    ? presence?.members.find((member) => member.playerId === recipient.playerId)?.worlds ?? []
     : [];
-  const target = targets.find((world) => world.id === targetId) ?? targets[0];
+  const target = targets.find((world) => world.planetId === targetId) ?? targets[0];
   const payload: ClanAidInput | null = origin && recipient && target
     ? {
         originPlanetId: origin.planet.id,
         recipientPlayerId: recipient.playerId,
-        targetPlanetId: target.id,
+        targetPlanetId: target.planetId,
         fleet,
         cargo,
       }
@@ -1281,6 +1374,32 @@ function ClanAidPanel({
     && cargo.alloy <= origin.planet.alloy
     && cargo.crystal <= origin.planet.crystal
     && cargo.deuterium <= origin.planet.deuterium;
+  /**
+   * WHAT THE SENDER BURNS PUTTING THIS IN THE AIR. T6.
+   *
+   * An empty hold is a one-leg ship gift. Loading any resource turns the same
+   * fleet into a two-leg delivery whose ships come home. The sender prepays the
+   * actual plan through `missionFuel`, the same function `launchClanAid` charges.
+   *
+   * DRAWN LIVE RATHER THAN READ OFF THE QUOTE. `quoteClanAid` publishes `fuel` and
+   * `hasFuel`, and both were ignored here — so this form's only account of the
+   * flight's cost was a refusal after two taps. A figure that moves while the
+   * convoy is packed is the one that can change the decision, and it is the same
+   * shape the transfer sheet draws for the same act.
+   *
+   * THE HOLD COMES OFF THE TOP, exactly as the server's guard counts it: deuterium
+   * loaded as cargo has already left this world as far as the flight is concerned.
+   */
+  const resourceDelivery = cargoUsed > 0;
+  const fuel = origin && target && fleetCount(fleet) > 0
+    ? missionFuel(
+        fleet,
+        distance(origin.planet.position, target.position),
+        resourceDelivery ? 2 : 1,
+      )
+    : 0;
+  const spendableDeuterium = (origin?.planet.deuterium ?? 0) - cargo.deuterium;
+  const fuelled = spendableDeuterium >= fuel;
   const validPayload = payload !== null
     && fleetCount(fleet) > 0
     && cargoUsed <= cargoCapacity
@@ -1339,7 +1458,7 @@ function ClanAidPanel({
           <div className="mt-3 flex flex-wrap gap-2">
             <Chip tone="crystal">{t('clan.aid.speed')}</Chip>
             <Chip tone="opportunity">{t('clan.aid.extraBay')}</Chip>
-            <Chip>{t('clan.aid.noRecall')}</Chip>
+            <Chip>{t(resourceDelivery ? 'clan.aid.returns' : 'clan.aid.noRecall')}</Chip>
           </div>
         </Plate>
 
@@ -1366,14 +1485,14 @@ function ClanAidPanel({
               />
               <SelectField
                 label={t('clan.aid.target')}
-                value={target?.id ?? ''}
+                value={target?.planetId ?? ''}
                 onChange={(value) => { setTargetId(value); setQuotedKey(null); setLaunched(false); }}
-                options={targets.map((world) => ({ value: world.id, label: world.name }))}
+                options={targets.map((world) => ({ value: world.planetId, label: world.name }))}
               />
             </div>
 
             <div className="mt-5 border-t border-line-soft pt-4">
-              <p className="legend">{t('clan.aid.ships')}</p>
+              <p className="legend">{t(resourceDelivery ? 'clan.aid.transportShips' : 'clan.aid.ships')}</p>
               <div className="mt-3 flex flex-col gap-3">
                 {CLAN_TRANSFERABLE_HULLS.map((hull) => {
                   const available = origin?.fleet[hull] ?? 0;
@@ -1401,11 +1520,22 @@ function ClanAidPanel({
             </div>
 
             <div className="mt-5 border-t border-line-soft pt-4">
-              <div className="flex items-center justify-between gap-3">
-                <p className="legend">{t('clan.aid.cargo')}</p>
-                <span className={`num text-label ${cargoUsed > cargoCapacity ? 'text-threat' : 'text-faint'}`}>
-                  {t('clan.aid.cargoUse', { used: full(cargoUsed), capacity: full(cargoCapacity) })}
-                </span>
+              <p className="legend">{t('clan.aid.cargo')}</p>
+              {/*
+                THE HOLD, IN THE BAR THE BUILD SHEET AND THE TRANSFER SHEET BOTH
+                DRAW. "1,200 / 4,000" is a fraction the player converts into the
+                thing they wanted, which is whether the next thousand fits — and
+                the segment for THIS load grows as the numbers are typed, so
+                overfilling is visible while it happens rather than at the moment
+                the button refuses.
+              */}
+              <div className="mt-2">
+                <CapacityBar
+                  total={cargoCapacity}
+                  used={0}
+                  incoming={cargoUsed}
+                  label={t('clan.aid.cargo')}
+                />
               </div>
               <p className="mt-1 text-label text-faint">{t('clan.aid.haulerOnly')}</p>
               <div className="mt-3 grid grid-cols-3 gap-2">
@@ -1426,6 +1556,23 @@ function ClanAidPanel({
               </div>
             </div>
 
+            {fuel > 0 && (
+              <div data-aid-fuel className="mt-5 rounded-control border border-line-soft px-3 py-3">
+                {/*
+                  THE TANK, MINUS WHAT THE FLIGHT BURNS — measured against what is
+                  left AFTER the hold takes its deuterium, which is the exact sum
+                  `assertFuel` uses on the server. Loading the last of the tank as
+                  a delivery now visibly eats the fuel bar instead of producing a
+                  refusal on commit with nothing on screen to explain it.
+                */}
+                <SpendBar
+                  stock={Math.max(0, spendableDeuterium)}
+                  spend={fuel}
+                  tone="deuterium"
+                  label={t('clan.aid.fuel')}
+                />
+              </div>
+            )}
             <Button
               full
               className="mt-5"
@@ -1446,10 +1593,19 @@ function ClanAidPanel({
                   <Stat label={t('clan.aid.arrival')} value={duration(quote.travelMinutes)} size="sm" tone="crystal" />
                   <Stat label={t('clan.aid.receiverRoom')} value={quote.withinAllowance ? t('clan.aid.fits') : t('clan.aid.overLimit')} size="sm" tone={quote.withinAllowance ? 'opportunity' : 'threat'} />
                 </div>
+                {/*
+                  THE RECEIVER'S BAYS, AS THE SAME RACK THE HEADER AND THE WORLDS
+                  LIST DRAW. A shipment needs a free bay at the far end, and "1 / 3"
+                  is the one figure in this quote a sender reads to find out
+                  whether it can land at all.
+                */}
                 <div className="mt-3 flex items-center justify-between gap-3 rounded-control border border-line-soft px-3 py-2">
-                  <span className="text-caption text-dim">
-                    {t('clan.aid.bayUse', { used: quote.bay.used, total: quote.bay.total })}
-                  </span>
+                  <Tally
+                    used={quote.bay.used}
+                    total={quote.bay.total}
+                    tone={quote.bay.available ? 'crystal' : 'threat'}
+                    label={t('clan.aid.bayUse', { used: quote.bay.used, total: quote.bay.total })}
+                  />
                   <Chip tone={quote.bay.available ? 'opportunity' : 'threat'}>
                     {quote.bay.available ? t('clan.aid.bayReady') : t('clan.aid.bayFull')}
                   </Chip>
@@ -1457,7 +1613,7 @@ function ClanAidPanel({
                 {!quote.canLand ? <p className="mt-3 text-caption text-threat">{t('clan.aid.cannotLand')}</p> : null}
                 {!quote.canFinishBeforeSeasonEnd ? <p className="mt-3 text-caption text-threat">{t('clan.aid.tooLate')}</p> : null}
                 <p className="mt-3 text-label text-faint">
-                  {t('clan.aid.possibleReturn', {
+                  {t(resourceDelivery ? 'clan.aid.plannedReturn' : 'clan.aid.possibleReturn', {
                     duration: duration(minutesUntil(quote.possibleReturnAt, now)),
                   })}
                 </p>
@@ -1474,13 +1630,16 @@ function ClanAidPanel({
                   full
                   className="mt-4"
                   variant="commit"
-                  disabled={!quote.canLand || !quote.withinAllowance || !quote.bay.available || !quote.canFinishBeforeSeasonEnd || actions.launchAid.isPending}
+                  // `fuelled` is the live read of the sender's own store; the
+                  // quote's `hasFuel` is a snapshot of the same sum taken one
+                  // round trip ago, and the launch refuses on the live one.
+                  disabled={!quote.canLand || !quote.withinAllowance || !quote.bay.available || !quote.canFinishBeforeSeasonEnd || !fuelled || actions.launchAid.isPending}
                   onClick={() => {
                     if (!payload) return;
                     actions.launchAid.mutate(payload, { onSuccess: () => { setLaunched(true); setFleet({}); setCargo({ ...ZERO }); setQuotedKey(null); } });
                   }}
                 >
-                  {t('clan.aid.launch')}
+                  {t(resourceDelivery ? 'clan.aid.launchDelivery' : 'clan.aid.launch')}
                 </Button>
               </Plate>
             ) : null}
@@ -1604,6 +1763,16 @@ function SelectField({
   );
 }
 
+/**
+ * THE THREE SUBSTANCES, WEARING THE FACES THE HEADER TAUGHT. Owner instruction.
+ *
+ * Alloy and Crystal had line glyphs here and deuterium had the LETTER D in a
+ * green that belongs to opportunity, on the one screen where a commander is
+ * deciding how much of each to hand to somebody else. Every other surface in the
+ * game — the header, a price, a cargo slider, a build sheet — identifies these by
+ * their render, so this was the only place a player had to read a label to know
+ * which pile they were looking at.
+ */
 function ResourceFigures({
   resources,
   className = '',
@@ -1618,19 +1787,38 @@ function ResourceFigures({
     <div className={className}>
       {label ? <p className="legend mb-2">{label}</p> : null}
       <div className="grid grid-cols-3 gap-2">
-        <ResourceFigure icon={<AlloyIcon className="size-4" />} label={t('clan.resources.alloy')} value={resources.alloy} tone="text-alloy" />
-        <ResourceFigure icon={<CrystalIcon className="size-4" />} label={t('clan.resources.crystal')} value={resources.crystal} tone="text-crystal" />
-        <ResourceFigure icon={<span className="num text-label">D</span>} label={t('clan.resources.deuterium')} value={resources.deuterium} tone="text-opportunity" />
+        <ResourceFigure of="alloy" label={t('clan.resources.alloy')} value={resources.alloy} />
+        <ResourceFigure of="crystal" label={t('clan.resources.crystal')} value={resources.crystal} />
+        <ResourceFigure of="deuterium" label={t('clan.resources.deuterium')} value={resources.deuterium} />
       </div>
     </div>
   );
 }
 
-function ResourceFigure({ icon, label, value, tone }: { icon: ReactNode; label: string; value: number; tone: string }) {
+const RESOURCE_INK = {
+  alloy: 'text-alloy',
+  crystal: 'text-crystal',
+  deuterium: 'text-deuterium',
+} as const;
+
+function ResourceFigure({
+  of,
+  label,
+  value,
+}: {
+  of: 'alloy' | 'crystal' | 'deuterium';
+  label: string;
+  value: number;
+}) {
   return (
     <div className="plate plate-sunk min-w-0 px-2 py-3 text-center">
-      <span className={`mx-auto flex items-center justify-center ${tone}`}>{icon}</span>
-      <p className={`readout mt-1 truncate text-body ${tone}`}>{full(value)}</p>
+      <img
+        src={RESOURCE_ART[of]}
+        alt=""
+        aria-hidden
+        className="mx-auto size-5 object-contain"
+      />
+      <p className={`readout mt-1 truncate text-body ${RESOURCE_INK[of]}`}>{full(value)}</p>
       <p className="legend mt-1 truncate text-micro">{label}</p>
     </div>
   );
@@ -1651,21 +1839,4 @@ function isHostileAck(error: unknown): boolean {
     && error !== null
     && 'code' in error
     && error.code === 'CLAN_HOSTILE_FLIGHT_ACK_REQUIRED';
-}
-
-function uniqueCommanders(planets: readonly GalaxyPlanet[]): {
-  playerId: string;
-  username: string;
-  clan: GalaxyPlanet['clan'];
-}[] {
-  const commanders = new Map<string, { playerId: string; username: string; clan: GalaxyPlanet['clan'] }>();
-  for (const planet of planets) {
-    if (planet.controller?.kind !== 'PLAYER' || commanders.has(planet.controller.playerId)) continue;
-    commanders.set(planet.controller.playerId, {
-      playerId: planet.controller.playerId,
-      username: planet.controller.displayName,
-      clan: planet.clan,
-    });
-  }
-  return [...commanders.values()].sort((a, b) => a.username.localeCompare(b.username));
 }

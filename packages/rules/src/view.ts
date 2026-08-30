@@ -41,10 +41,11 @@ import type { Vec3 } from './types.js';
 /**
  * Game units per world unit, and the height exaggeration applied on the way in.
  *
- * The design's coordinates run to a radius of 2,500 with a thin disc; three.js
- * wants a camera in the single digits, so everything is divided on the way in and
- * nothing downstream thinks about game units again. The vertical exaggeration is
- * what stops a deliberately flat galaxy reading as one horizontal line of planets.
+ * The design's coordinates fill a radius-2,000 sphere; three.js wants a camera in
+ * the single digits, so everything is divided on the way in and nothing downstream
+ * thinks about game units again. Vertical exaggeration is one today, but the
+ * conversion remains shared because server-published and client-drawn paths must
+ * still use exactly the same transform.
  *
  * They are here rather than in the client because the conversion is not a scale
  * factor — the height axis is stretched and the other two are not, so a distance
@@ -54,7 +55,7 @@ import type { Vec3 } from './types.js';
  */
 export const VIEW = {
   scale: 50,
-  verticalExaggeration: 3.5,
+  verticalExaggeration: 1,
 } as const;
 
 export type Vec3Tuple = [number, number, number];
@@ -157,4 +158,44 @@ export function visualLeg(
     from: push > 0 ? toGame([a[0] + dx * push, a[1] + dy * push, a[2] + dz * push]) : from,
     to: pull > 0 ? toGame([b[0] - dx * pull, b[1] - dy * pull, b[2] - dz * pull]) : to,
   };
+}
+
+/**
+ * Minutes remaining when a craft drawn on `visualLeg` crosses a sensor volume
+ * centred on the destination.
+ *
+ * The stored mission distance reaches from world centre to world centre, while a
+ * craft is drawn from the departure surface to the destination's orbit. Treating
+ * those as the same leg makes a warning fire before the marker reaches the shell.
+ * This function measures the exact shortened leg and its orbital endpoint, so
+ * server warnings and the 3D boundary share one definition.
+ */
+export function sensorLeadOnVisualLeg(
+  range: number,
+  from: Vec3,
+  to: Vec3,
+  startStandoff: number,
+  endStandoff: number,
+  oneWayMinutes: number,
+): number {
+  if (range <= 0 || oneWayMinutes <= 0) return 0;
+
+  const leg = visualLeg(from, to, startStandoff, endStandoff);
+  const legLength = Math.hypot(
+    leg.to.x - leg.from.x,
+    leg.to.y - leg.from.y,
+    leg.to.z - leg.from.z,
+  );
+  const destinationClearance = Math.hypot(
+    to.x - leg.to.x,
+    to.y - leg.to.y,
+    to.z - leg.to.z,
+  );
+
+  // The craft holds outside a smaller shell for the whole leg.
+  if (range < destinationClearance) return 0;
+  // Extremely close worlds may collapse both adjusted endpoints to one point.
+  if (legLength <= 0) return oneWayMinutes;
+
+  return Math.min(1, (range - destinationClearance) / legLength) * oneWayMinutes;
 }

@@ -8,6 +8,7 @@ import { ApiProvider } from '../src/api/context.js';
 import { keys } from '../src/api/keys.js';
 import i18n from '../src/i18n/index.js';
 import { ClanScreen } from '../src/screens/ClanScreen.js';
+import type { ClanHome } from '../src/api/schemas.js';
 
 const now = new Date(Date.now() - 1_000);
 const later = new Date(now.getTime() + 6 * 60 * 60 * 1_000);
@@ -28,6 +29,7 @@ const outside = {
   creation: {
     capitalPlanetId: 'planet-me',
     coreLevel: 6,
+    intel: 'RESOLVED' as const,
     requiredCoreLevel: 7,
     cost: { alloy: 5_000, crystal: 3_000, deuterium: 0 },
     affordable: false,
@@ -80,7 +82,7 @@ const directory = {
   total: 2,
 };
 
-function show(home: typeof outside | typeof member) {
+function show(home: ClanHome) {
   const api = new Api({ fetch: vi.fn() as unknown as typeof globalThis.fetch });
   vi.spyOn(api, 'clanHome').mockResolvedValue(home);
   vi.spyOn(api, 'clans').mockResolvedValue(directory);
@@ -146,6 +148,14 @@ function show(home: typeof outside | typeof member) {
       { playerId: 'player-me', username: 'Vantage', role: 'LEADER', dominion: 800, ships: 50, worlds: 2 },
       { playerId: 'player-ada', username: 'Ada', role: 'MEMBER', dominion: 440, ships: 23, worlds: 1 },
     ],
+  });
+  client.setQueryData(keys.leaderboard, {
+    ladder: [
+      { rank: 1, playerId: 'player-me', username: 'Vantage', score: 800, clan: { id: 'clan-orbit', name: 'Orbit Wardens', tag: 'ORB' } },
+      { rank: 2, playerId: 'player-ada', username: 'Ada', score: 440, clan: { id: 'clan-orbit', name: 'Orbit Wardens', tag: 'ORB' } },
+      { rank: 3, playerId: 'player-nova', username: 'Nova', score: 300, clan: null },
+    ],
+    you: { rank: 1, playerId: 'player-me', username: 'Vantage', score: 800, clan: { id: 'clan-orbit', name: 'Orbit Wardens', tag: 'ORB' } },
   });
   client.setQueryData(keys.clanEvents, { pages: [{ events: [], nextBefore: null }], pageParams: [null] });
   client.setQueryData(keys.clanAid, { transfers: [] });
@@ -255,6 +265,89 @@ describe('clan command surface', () => {
     expect(screen.getByText('Remove Ada from the clan?')).toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: 'Yes, remove Ada' }));
     await waitFor(() => { expect(kick).toHaveBeenCalledWith('player-ada'); });
+  });
+
+  it('offers clanless commanders from the public ladder even when sight has not resolved them', async () => {
+    show({ ...member, clan: { ...member.clan, mature: true, matureAt: now } });
+
+    await userEvent.setup().click(screen.getByRole('tab', { name: 'Members' }));
+
+    expect(screen.getByRole('option', { name: 'Nova' })).toBeInTheDocument();
+  });
+
+  it('gives only the leader applications, invitations, settings and disband controls', async () => {
+    show({ ...member, clan: { ...member.clan, mature: true, matureAt: now } });
+
+    await userEvent.setup().click(screen.getByRole('tab', { name: 'Members' }));
+
+    expect(screen.getByText('Applications')).toBeInTheDocument();
+    expect(screen.getByText('Invite a commander')).toBeInTheDocument();
+    expect(screen.getByText('Clan settings')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Disband clan' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Leave clan' })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Remove Ada' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Transfer leadership to Ada' })).toBeInTheDocument();
+  });
+
+  it('keeps a maximum-length clan identity readable on a phone-sized header', () => {
+    const name = 'ABCDEFGHIJKLMNOPQRSTUVWX';
+    show({ ...member, clan: { ...member.clan, name } });
+
+    const heading = screen.getByRole('heading', { name });
+    expect(heading).toHaveClass('break-words');
+    expect(heading).not.toHaveClass('truncate');
+  });
+
+  it('keeps a regular member out of leader controls and gives them a leave route', async () => {
+    show({
+      ...member,
+      clan: { ...member.clan, role: 'MEMBER', mature: true, matureAt: now },
+      members: member.members.map((entry) => entry.playerId === 'player-me'
+        ? { ...entry, role: 'MEMBER' as const }
+        : { ...entry, role: 'LEADER' as const }),
+    });
+
+    await userEvent.setup().click(screen.getByRole('tab', { name: 'Members' }));
+
+    expect(screen.queryByText('Applications')).not.toBeInTheDocument();
+    expect(screen.queryByText('Invite a commander')).not.toBeInTheDocument();
+    expect(screen.queryByText('Clan settings')).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Remove Ada/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Transfer leadership/ })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Leave clan' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Disband clan' })).not.toBeInTheDocument();
+  });
+
+  it('enables founding only for an eligible clanless commander with a valid identity', async () => {
+    const { api } = show({
+      ...outside,
+      requests: [],
+      creation: {
+        ...outside.creation,
+        coreLevel: 7,
+        affordable: true,
+      },
+    });
+    const create = vi.spyOn(api, 'createClan').mockImplementation(
+      () => new Promise<never>(() => undefined),
+    );
+    const user = userEvent.setup();
+
+    const submit = screen.getByRole('button', { name: 'Found a clan' });
+    expect(submit).toBeDisabled();
+    await user.type(screen.getByLabelText('Clan name'), 'Nova Guard');
+    await user.type(screen.getByLabelText('Short tag'), 'nvg');
+    expect(submit).toBeEnabled();
+    await user.click(submit);
+
+    await waitFor(() => {
+      expect(create).toHaveBeenCalledWith({
+        name: 'Nova Guard',
+        tag: 'NVG',
+        description: '',
+        recruiting: true,
+      });
+    });
   });
 
   it('localises the simple entry points in Turkish', async () => {

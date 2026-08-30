@@ -12,6 +12,7 @@ import {
   distance,
   fleetSpeedMult,
   fleetTravelExact,
+  missionFuel,
   resourcesFit,
   resourcesTotal,
   type Fleet,
@@ -25,7 +26,7 @@ import {
   buildings,
   clanAidCommitments,
   missions,
-  planetResearch,
+  playerResearch,
   planets,
   players,
   seasons,
@@ -35,7 +36,9 @@ import { publishPrivate, publishShard } from '../stream/bus.js';
 import { schedule } from '../worker/queue.js';
 import { clanEconomyEnvelope } from './clanLoot.js';
 import { activeClanMembership, lockClanPlayers, membershipIsMature } from './clanCombat.js';
+import { assertFuel, fuelAvailable } from './fuel.js';
 import { assertFreeClanAidBay, baysOf } from './flight.js';
+import { landingBlock } from './movement.js';
 import { capitalPlanet, lockWorlds } from './ownership.js';
 import {
   GameError,
@@ -49,8 +52,15 @@ import {
   setUnits,
 } from './planet.js';
 import { planetView } from './planetView.js';
+import { fleetChangesWatch, publishWatchChanges } from './watchEvents.js';
 
 const ZERO: Resources = { alloy: 0, crystal: 0, deuterium: 0 };
+
+/** Cargo makes this a round-trip delivery; an empty hold keeps the ship-gift path. */
+const isResourceDelivery = (cargo: Resources): boolean => resourcesTotal(cargo) > 0;
+
+const aidCommitmentValue = (fleet: Fleet, cargo: Resources): Resources =>
+  isResourceDelivery(cargo) ? { ...cargo } : clanAidValue(fleet, cargo);
 
 /** Private participant projection for incoming, outgoing and returning aid. */
 export async function readClanAid(db: Db, accountId: string) {
@@ -160,8 +170,15 @@ async function payloadCanLand(
       eq(buildings.planetId, targetPlanetId),
       eq(buildings.type, 'SHIPYARD'),
     )).then((rows) => rows[0]?.level ?? 0),
-    db.select({ projectId: planetResearch.projectId }).from(planetResearch)
-      .where(eq(planetResearch.planetId, targetPlanetId)),
+    /*
+      THE RECIPIENT COMMANDER'S RESEARCH, reached through the world being sent to.
+      T7 moved research off the planet, and a hull gate asks whether the person
+      receiving it can fly the thing — which was never a property of the pad.
+    */
+    db.select({ projectId: playerResearch.projectId })
+      .from(playerResearch)
+      .innerJoin(planets, eq(planets.controllerPlayerId, playerResearch.playerId))
+      .where(and(eq(planets.id, targetPlanetId), gt(playerResearch.level, 0))),
   ]);
   const completed = new Set(research.map((row) => row.projectId));
   for (const [hull, quantity] of Object.entries(fleet) as [HullId, number][]) {
@@ -170,6 +187,15 @@ async function payloadCanLand(
     if (hull === 'RUNNER' && !completed.has('DENSE_FUEL_CELLS')) return false;
     if (hull === 'BREACHER' && !completed.has('GRAVITIC_CHARGES')) return false;
   }
+  /*
+    THE SAME LANDING RULE A TRANSFER READS. T4.
+
+    A gift is a craft arriving at a world, and the Hangar does not care which door
+    it came through. Asking `movement.ts` rather than repeating the arithmetic is
+    the point: two copies would answer differently the first time either moved, and
+    the failure would be a quote that promises a landing the arrival then refuses.
+  */
+  if (await landingBlock(db, targetPlanetId, fleet)) return false;
   return true;
 }
 
@@ -290,24 +316,32 @@ export async function quoteClanAid(
   const ordinaryBays = await baysOf(db, origin.id, coreLevel);
   const ordinary = fleetTravelExact(distance(origin, target), input.fleet, fleetSpeedMult(orbit));
   const travelMinutes = clanAidTravelMinutes(ordinary);
-  const [senderCapital, season] = await Promise.all([
-    capitalPlanet(db, input.senderPlayerId),
-    db.select({ endsAt: seasons.endsAt }).from(seasons)
-      .where(eq(seasons.id, origin.seasonId)).then((rows) => rows[0]),
-  ]);
+  const season = await db.select({ endsAt: seasons.endsAt }).from(seasons)
+    .where(eq(seasons.id, origin.seasonId)).then((rows) => rows[0]);
   if (!season) throw new GameError('SEASON_NOT_FOUND', 'No such season', 404);
   const returnMinutes = clanAidTravelMinutes(fleetTravelExact(
-    distance(target, senderCapital),
+    distance(target, origin),
     input.fleet,
     fleetSpeedMult(orbit),
   ));
   const arriveAt = addMinutes(input.now, travelMinutes);
   const returnAt = addMinutes(arriveAt, returnMinutes);
-  const value = clanAidValue(input.fleet, input.cargo);
+  const delivery = isResourceDelivery(input.cargo);
+  const value = aidCommitmentValue(input.fleet, input.cargo);
   const limits = await recipientAllowance(db, input.recipientPlayerId, input.now);
+  /*
+    THE QUOTE HAS TO KNOW ABOUT FUEL, or it says "send this" and the launch then
+    refuses it. T6 added the charge and left this screen answering the question it
+    was answering before — which is the one failure mode a quote has.
+  */
+  const fuel = missionFuel(input.fleet, distance(origin, target), delivery ? 2 : 1);
+  const tank = fuelAvailable(origin.deuterium, input.cargo.deuterium);
   return {
     clanId: relationship.sender.clanId,
-    canLand: await payloadCanLand(db, target.id, input.fleet),
+    canLand: delivery || await payloadCanLand(db, target.id, input.fleet),
+    /** Deuterium the sender burns putting this in the air, and whether they have it. */
+    fuel,
+    hasFuel: Math.floor(tank) >= fuel,
     withinAllowance: resourcesFit(value, limits.remaining),
     bay: {
       used: ordinaryBays.used,
@@ -384,7 +418,8 @@ export async function launchClanAid(
     input.recipientPlayerId,
     origin.now,
   );
-  if (!(await payloadCanLand(tx, target.id, input.fleet))) {
+  const delivery = isResourceDelivery(input.cargo);
+  if (!delivery && !(await payloadCanLand(tx, target.id, input.fleet))) {
     throw new GameError('CLAN_AID_CANNOT_LAND', 'That exact aid payload cannot land there', 409);
   }
   if (origin.alloy < input.cargo.alloy
@@ -394,7 +429,7 @@ export async function launchClanAid(
   }
   await assertFreeClanAidBay(tx, origin.planetId, origin.buildings.CORE);
   await tx.execute(sql`select pg_advisory_xact_lock(hashtext(${`clan-aid:${input.recipientPlayerId}`}))`);
-  const value = clanAidValue(input.fleet, input.cargo);
+  const value = aidCommitmentValue(input.fleet, input.cargo);
   const limits = await recipientAllowance(tx, input.recipientPlayerId, origin.now);
   if (!resourcesFit(value, limits.remaining)) {
     throw new GameError('CLAN_AID_LIMIT', 'That payload exceeds the receiver allowance', 409, {
@@ -403,11 +438,14 @@ export async function launchClanAid(
   }
   const boost = fleetSpeedMult(origin.orbit);
   const dist = distance(origin, target);
+  // A resource delivery always comes home; a ship gift has only its outbound leg.
+  const fuel = missionFuel(input.fleet, dist, delivery ? 2 : 1);
+  assertFuel(fuel, origin.deuterium, input.cargo.deuterium);
   const oneWay = clanAidTravelMinutes(fleetTravelExact(dist, input.fleet, boost));
   if (!Number.isFinite(oneWay)) throw new GameError('IMMOBILE_FLEET', 'That fleet cannot travel', 400);
   const capitalWorld = lockedWorlds.get(capital.id);
   if (!capitalWorld) throw new Error('sender capital lock vanished');
-  const returnDistance = distance(target, capitalWorld);
+  const returnDistance = distance(target, origin);
   const returnMinutes = clanAidTravelMinutes(fleetTravelExact(returnDistance, input.fleet, boost));
   const arriveAt = addMinutes(origin.now, oneWay);
   assertSeasonOpenThrough(origin, addMinutes(arriveAt, returnMinutes));
@@ -434,7 +472,7 @@ export async function launchClanAid(
   await saveResources(tx, origin.planetId, {
     alloy: origin.alloy - input.cargo.alloy,
     crystal: origin.crystal - input.cargo.crystal,
-    deuterium: origin.deuterium - input.cargo.deuterium,
+    deuterium: origin.deuterium - input.cargo.deuterium - fuel,
   });
   await tx.insert(clanAidCommitments).values({
     missionId: mission.id,
@@ -458,6 +496,7 @@ export async function launchClanAid(
   await publishPrivate(tx, input.senderPlayerId, 'aid');
   await publishPrivate(tx, input.recipientPlayerId, 'aid');
   await publishShard(tx, origin.seasonId, 'launch');
+  if (fleetChangesWatch(input.fleet)) await publishWatchChanges(tx, [origin.planetId]);
   return {
     missionId: mission.id,
     arriveAt: arriveAt.toISOString(),
@@ -475,6 +514,53 @@ async function clearAidUnits(tx: Tx, ownerPlayerId: string, missionId: string): 
   ));
 }
 
+async function startAidReturn(
+  tx: Tx,
+  mission: typeof missions.$inferSelect,
+  commitment: typeof clanAidCommitments.$inferSelect,
+  now: Date,
+  cargo: Resources,
+  delivered: boolean,
+): Promise<typeof missions.$inferSelect> {
+  const [home] = await tx.select().from(planets).where(and(
+    eq(planets.id, commitment.senderHomePlanetId),
+    eq(planets.controllerPlayerId, commitment.senderPlayerId),
+  ));
+  const destination = home ?? await capitalPlanet(tx, commitment.senderPlayerId);
+  const [from] = await tx.select().from(planets).where(eq(planets.id, mission.targetPlanetId));
+  if (!from) throw new Error('clan aid target vanished before reroute');
+  const arriveAt = new Date(now.getTime() + commitment.returnTravelSeconds * 1_000);
+  const [returnMission] = await tx.insert(missions).values({
+    seasonId: mission.seasonId,
+    kind: 'clan_transfer',
+    ownerPlayerId: commitment.senderPlayerId,
+    originPlanetId: mission.targetPlanetId,
+    targetPlanetId: destination.id,
+    fleet: mission.fleet,
+    cargo,
+    distance: distance(from, destination),
+    departAt: now,
+    arriveAt,
+    parentMissionId: mission.id,
+  }).returning();
+  if (!returnMission) throw new Error('clan aid return insert returned no row');
+  await tx.update(units).set({ location: returnMission.id }).where(and(
+    eq(units.ownerPlayerId, commitment.senderPlayerId),
+    eq(units.location, mission.id),
+  ));
+  await tx.update(clanAidCommitments).set(delivered
+    ? { status: 'RETURNING', resolvedAt: now }
+    : { status: 'RETURNING' })
+    .where(eq(clanAidCommitments.missionId, commitment.missionId));
+  await schedule(tx, {
+    seasonId: mission.seasonId,
+    kind: 'mission_arrival',
+    refId: returnMission.id,
+    resolveAt: arriveAt,
+  });
+  return returnMission;
+}
+
 export async function resolveClanAid(
   tx: Tx,
   mission: typeof missions.$inferSelect,
@@ -486,11 +572,14 @@ export async function resolveClanAid(
   if (!commitment) throw new Error(`clan aid ${rootMissionId} has no commitment`);
 
   if (mission.parentMissionId) {
-    const [target] = await tx.select().from(planets).where(and(
+    const [plannedTarget] = await tx.select().from(planets).where(and(
       eq(planets.id, mission.targetPlanetId),
       eq(planets.controllerPlayerId, commitment.senderPlayerId),
     ));
-    if (target?.kind !== 'CAPITAL') throw new Error('clan aid return capital vanished');
+    // A colony may be captured while its transport is on the return leg. Never
+    // strand the sender's ships on an event that can no longer resolve; the
+    // protected current capital is the safe ownership fallback.
+    const target = plannedTarget ?? await capitalPlanet(tx, commitment.senderPlayerId);
     await clearAidUnits(tx, commitment.senderPlayerId, mission.id);
     await addUnits(tx, target.id, mission.fleet);
     const cargo = mission.cargo ?? ZERO;
@@ -499,12 +588,15 @@ export async function resolveClanAid(
       crystal: sql`${planets.crystal} + ${cargo.crystal}`,
       deuterium: sql`${planets.deuterium} + ${cargo.deuterium}`,
     }).where(eq(planets.id, target.id));
-    await tx.update(clanAidCommitments).set({ status: 'RETURNED', resolvedAt: now })
+    const delivered = commitment.resolvedAt !== null;
+    await tx.update(clanAidCommitments).set(delivered
+      ? { status: 'DELIVERED' }
+      : { status: 'RETURNED', resolvedAt: now })
       .where(eq(clanAidCommitments.missionId, rootMissionId));
     await recomputePlayerWealth(tx, commitment.senderPlayerId);
     await publishPrivate(tx, commitment.senderPlayerId, 'aid');
     await publishPrivate(tx, commitment.recipientPlayerId, 'aid');
-    return 'RETURNED';
+    return delivered ? 'DELIVERED' : 'RETURNED';
   }
 
   await lockClanPlayers(tx, [commitment.senderPlayerId, commitment.recipientPlayerId]);
@@ -513,6 +605,8 @@ export async function resolveClanAid(
     activeClanMembership(tx, commitment.recipientPlayerId),
     tx.select().from(planets).where(eq(planets.id, mission.targetPlanetId)).then((rows) => rows[0]),
   ]);
+  const cargo = mission.cargo ?? ZERO;
+  const delivery = isResourceDelivery(cargo);
   const valid = sender !== null
     && recipient !== null
     && sender.clanId === commitment.clanId
@@ -521,16 +615,22 @@ export async function resolveClanAid(
     && membershipIsMature(recipient, now)
     && recipient.aidEnabled
     && target?.controllerPlayerId === commitment.recipientPlayerId
-    && await payloadCanLand(tx, mission.targetPlanetId, mission.fleet);
+    && (delivery || await payloadCanLand(tx, mission.targetPlanetId, mission.fleet));
   if (valid) {
-    await clearAidUnits(tx, commitment.senderPlayerId, mission.id);
-    await addUnits(tx, target.id, mission.fleet);
-    const cargo = mission.cargo ?? ZERO;
     await tx.update(planets).set({
       alloy: sql`${planets.alloy} + ${cargo.alloy}`,
       crystal: sql`${planets.crystal} + ${cargo.crystal}`,
       deuterium: sql`${planets.deuterium} + ${cargo.deuterium}`,
     }).where(eq(planets.id, target.id));
+    if (delivery) {
+      await startAidReturn(tx, mission, commitment, now, ZERO, true);
+      await recomputePlayerWealth(tx, commitment.recipientPlayerId);
+      await publishPrivate(tx, commitment.senderPlayerId, 'aid');
+      await publishPrivate(tx, commitment.recipientPlayerId, 'aid');
+      return 'RETURNING';
+    }
+    await clearAidUnits(tx, commitment.senderPlayerId, mission.id);
+    await addUnits(tx, target.id, mission.fleet);
     await tx.update(clanAidCommitments).set({ status: 'DELIVERED', resolvedAt: now })
       .where(eq(clanAidCommitments.missionId, rootMissionId));
     await recomputePlayerWealth(tx, commitment.senderPlayerId);
@@ -540,36 +640,7 @@ export async function resolveClanAid(
     return 'DELIVERED';
   }
 
-  const capital = await capitalPlanet(tx, commitment.senderPlayerId);
-  const [from] = await tx.select().from(planets).where(eq(planets.id, mission.targetPlanetId));
-  if (!from) throw new Error('clan aid target vanished before reroute');
-  const arriveAt = new Date(now.getTime() + commitment.returnTravelSeconds * 1_000);
-  const [returnMission] = await tx.insert(missions).values({
-    seasonId: mission.seasonId,
-    kind: 'clan_transfer',
-    ownerPlayerId: commitment.senderPlayerId,
-    originPlanetId: mission.targetPlanetId,
-    targetPlanetId: capital.id,
-    fleet: mission.fleet,
-    cargo: mission.cargo ?? ZERO,
-    distance: distance(from, capital),
-    departAt: now,
-    arriveAt,
-    parentMissionId: mission.id,
-  }).returning();
-  if (!returnMission) throw new Error('clan aid return insert returned no row');
-  await tx.update(units).set({ location: returnMission.id }).where(and(
-    eq(units.ownerPlayerId, commitment.senderPlayerId),
-    eq(units.location, mission.id),
-  ));
-  await tx.update(clanAidCommitments).set({ status: 'RETURNING' })
-    .where(eq(clanAidCommitments.missionId, rootMissionId));
-  await schedule(tx, {
-    seasonId: mission.seasonId,
-    kind: 'mission_arrival',
-    refId: returnMission.id,
-    resolveAt: arriveAt,
-  });
+  await startAidReturn(tx, mission, commitment, now, cargo, false);
   await publishPrivate(tx, commitment.senderPlayerId, 'aid');
   await publishPrivate(tx, commitment.recipientPlayerId, 'aid');
   return 'RETURNING';

@@ -5,20 +5,27 @@ import {
   INSTRUMENT_IDS,
   RESEARCH_PROJECTS,
   SATELLITE_IDS,
+  OPENING_BONUS,
   START,
   START_BUILDINGS,
+  buildingCost,
   alloyRate,
   collectorCap,
   crystalRate,
   deuteriumCollectorCap,
+  deuteriumRate,
   deuteriumStorageCap,
   flightSlots,
+  groundLoad,
+  groundSlots,
+  hangarCapacity,
+  hangarLoad,
+  hullBulk,
   instrumentCost,
   productionMult,
   satelliteCost,
   satelliteSlots,
   storageCap,
-  upgradeCost,
   vaultProtects,
   wealth,
   type BuildingId,
@@ -59,6 +66,17 @@ export interface RehearsalWorld {
   buildings: Record<BuildingId, number>;
   alloy: number;
   crystal: number;
+  /**
+   * THE TANK, AND IT IS THE ONE PART OF THE CUSHION THE REHEARSAL GETS. T6.
+   *
+   * `START` holds no deuterium because none of the four things the opening teaches
+   * costs any — and that is exactly why withholding it teaches nothing. Since T6
+   * every launch burns fuel, so a rehearsal opening on zero would find the guided
+   * launch beat's own control greyed out, with no way forward and no explanation.
+   * The scarcity the rehearsal is built to teach is in alloy and crystal, where the
+   * four purchases actually compete.
+   */
+  deuterium: number;
   /** Paid decisions staged locally; claim gives them their server-authored clocks. */
   queues: NonNullable<PlanetView['queues']>;
   /** What was pressed, in the order it was pressed. This is what travels. */
@@ -87,6 +105,7 @@ export function openWorld(preview: Preview): RehearsalWorld {
      */
     alloy: START.alloy,
     crystal: START.crystal,
+    deuterium: OPENING_BONUS.deuterium,
     queues: { CONSTRUCTION: [], YARD: [] },
     intents: [],
   };
@@ -97,6 +116,8 @@ export function openWorld(preview: Preview): RehearsalWorld {
 /** Why an opening step is refused, in the server's own vocabulary. */
 export type Refusal =
   | 'CORE_CEILING'
+  | 'GROUND_SLOTS_FULL'
+  | 'HANGAR_FULL'
   | 'INSUFFICIENT_RESOURCES'
   | 'QUEUE_FULL'
   | 'SHIPYARD_TOO_LOW';
@@ -133,7 +154,7 @@ export function refusesUpgrade(w: RehearsalWorld, type: BuildingId): Refusal | n
   const projected = projectedBuildings(w);
   const level = projected[type];
   if (type !== 'CORE' && level >= projected.CORE) return 'CORE_CEILING';
-  const cost = upgradeCost(level);
+  const cost = buildingCost(type, level);
   if (w.alloy < cost.alloy || w.crystal < cost.crystal) return 'INSUFFICIENT_RESOURCES';
   return null;
 }
@@ -145,6 +166,18 @@ export function refusesBuild(w: RehearsalWorld, hull: HullId, count: number): Re
   if (w.alloy < spec.alloy * count || w.crystal < spec.crystal * count) {
     return 'INSUFFICIENT_RESOURCES';
   }
+  const queued = Object.fromEntries(
+    w.queues.YARD
+      .filter((order) => order.kind === 'HULL')
+      .map((order) => [order.subject, queuedCount(w, 'YARD', 'HULL', order.subject)]),
+  );
+  const capacity = spec.ground
+    ? groundSlots(w.buildings.CORE)
+    : hangarCapacity(w.buildings.HANGAR);
+  const used = spec.ground ? groundLoad(queued) : hangarLoad(queued);
+  if (used + hullBulk(hull) * count > capacity) {
+    return spec.ground ? 'GROUND_SLOTS_FULL' : 'HANGAR_FULL';
+  }
   return null;
 }
 
@@ -153,7 +186,7 @@ export function refusesBuild(w: RehearsalWorld, hull: HullId, count: number): Re
 export function upgrade(w: RehearsalWorld, type: BuildingId): RehearsalWorld {
   if (refusesUpgrade(w, type)) return w;
   const projected = projectedBuildings(w);
-  const cost = upgradeCost(projected[type]);
+  const cost = buildingCost(type, projected[type]);
   const order = {
     id: `rehearsal-construction-${String(w.queues.CONSTRUCTION.length)}`,
     queue: 'CONSTRUCTION' as const,
@@ -222,8 +255,9 @@ export function planetOf(w: RehearsalWorld): PlanetView {
   const perHourAlloy = alloyRate(w.buildings.REFINERY) * boost;
   // The floor is hours of each resource's OWN production, so it needs the
   // producing levels as well as the Vault's. One call, three readings.
-  const floor = vaultProtects(w.buildings.VAULT, w.buildings.REFINERY, w.buildings.EXTRACTOR);
+  const floor = vaultProtects(w.buildings.VAULT, w.buildings.REFINERY, w.buildings.EXTRACTOR, w.buildings.DEUTERIUM_PLANT);
   const perHourCrystal = crystalRate(w.buildings.EXTRACTOR) * boost;
+  const perHourDeuterium = deuteriumRate(w.buildings.DEUTERIUM_PLANT) * boost;
   const committed = [...w.queues.CONSTRUCTION, ...w.queues.YARD]
     .reduce((sum, order) => ({
       alloy: sum.alloy + order.cost.alloy,
@@ -238,11 +272,21 @@ export function planetOf(w: RehearsalWorld): PlanetView {
       position: w.reserved.position,
       alloy: Math.floor(w.alloy),
       crystal: Math.floor(w.crystal),
-      deuterium: 0,
+      /*
+        THE STARTING TANK, AND WITHOUT IT THE REHEARSAL DEAD-ENDS. T6.
+
+        This read a hard zero, which was true while nothing burned deuterium. Since
+        every launch does, `LaunchSheet` disables its commit when the fuel exceeds
+        the tank — so a visitor reaching the guided launch beat would have found the
+        one control the beat requires greyed out, with no way forward and no
+        explanation. The rehearsal has to open with what a real world opens with.
+      */
+          deuterium: Math.floor(w.deuterium),
       alloyCap: storageCap(perHourAlloy, w.buildings.VAULT),
       crystalCap: storageCap(perHourCrystal, w.buildings.VAULT),
-      deuteriumCap: deuteriumStorageCap(perHourCrystal, w.buildings.VAULT),
+      deuteriumCap: deuteriumStorageCap(perHourDeuterium, perHourCrystal, w.buildings.VAULT),
       alloyPerHour: Math.round(perHourAlloy),
+      deuteriumPerHour: Math.round(perHourDeuterium),
       crystalPerHour: Math.round(perHourCrystal),
       /**
        * THE WORKS ARE EMPTY AND STAY EMPTY.
@@ -258,7 +302,7 @@ export function planetOf(w: RehearsalWorld): PlanetView {
       bufferDeuterium: 0,
       bufferAlloyCap: collectorCap(perHourAlloy),
       bufferCrystalCap: collectorCap(perHourCrystal),
-      bufferDeuteriumCap: deuteriumCollectorCap(perHourCrystal),
+      bufferDeuteriumCap: deuteriumCollectorCap(perHourDeuterium, perHourCrystal),
       // The same figure the server sends: what is actually safe, not the floor.
       vaultFloor:
         Math.min(w.alloy, floor.alloy) + Math.min(w.crystal, floor.crystal),
@@ -275,7 +319,7 @@ export function planetOf(w: RehearsalWorld): PlanetView {
     },
     buildings: { ...w.buildings },
     nextCosts: Object.fromEntries(
-      BUILDING_IDS.map((b) => [b, upgradeCost(w.buildings[b])]),
+      BUILDING_IDS.map((b) => [b, buildingCost(b, w.buildings[b])]),
     ),
     instruments: Object.fromEntries(INSTRUMENT_IDS.map((i) => [i, 0])),
     instrumentCosts: Object.fromEntries(
@@ -287,7 +331,7 @@ export function planetOf(w: RehearsalWorld): PlanetView {
     research: [
       {
         id: 'ISOTOPE_SPECTROMETRY',
-        cost: RESEARCH_PROJECTS.ISOTOPE_SPECTROMETRY.cost,
+        cost: RESEARCH_PROJECTS.ISOTOPE_SPECTROMETRY.costAt(1),
         discovered: false,
         completed: false,
         completedAt: null,
@@ -297,7 +341,7 @@ export function planetOf(w: RehearsalWorld): PlanetView {
       },
       {
         id: 'DENSE_FUEL_CELLS',
-        cost: RESEARCH_PROJECTS.DENSE_FUEL_CELLS.cost,
+        cost: RESEARCH_PROJECTS.DENSE_FUEL_CELLS.costAt(1),
         discovered: false,
         completed: false,
         completedAt: null,
@@ -311,6 +355,12 @@ export function planetOf(w: RehearsalWorld): PlanetView {
     ground: {},
     fleetAway: {},
     flight: { used: 0, total: flightSlots(w.buildings.CORE) },
+    capacity: {
+      hangar: hangarCapacity(w.buildings.HANGAR),
+      hangarUsed: 0,
+      ground: groundSlots(w.buildings.CORE),
+      groundUsed: 0,
+    },
     score: {
       wealth: wealth({
         buildings: w.buildings,

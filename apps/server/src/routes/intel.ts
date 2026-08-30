@@ -44,12 +44,21 @@ export function registerIntelRoutes(app: FastifyInstance): void {
    * could ask for instead.
    */
   app.get('/api/intel', { preHandler: requireAuth }, async (req) => {
-    const { playerId, planetId } = await me(req.accountId!);
+    /**
+     * THE WHOLE COMMANDER, NOT THE CAPITAL. D97/D134.
+     *
+     * `me()` resolves the capital, which is right for the two POST routes below —
+     * they need a default origin. It was wrong here: the radar log was read for
+     * the capital alone, so every probe against a colony wrote its row and no
+     * surface in the game ever read it. The telescope watches were already
+     * commander-wide, so one payload was answering at two different scopes.
+     */
+    const self = await app.projections.commander(req.accountId!);
     const [watching, radarLog, reports, cooldowns] = await Promise.all([
-      readTelescopes(app.db, playerId, app.clock),
-      readRadarLog(app.db, planetId),
-      readProbeReports(app.db, playerId),
-      readProbeCooldowns(app.db, playerId, app.clock.now()),
+      readTelescopes(app.db, self.playerId, app.clock),
+      readRadarLog(app.db, self.planetIds),
+      readProbeReports(app.db, self.playerId),
+      readProbeCooldowns(app.db, self.playerId, app.clock.now()),
     ]);
 
     return {
@@ -70,6 +79,36 @@ export function registerIntelRoutes(app: FastifyInstance): void {
         fleetSize: r.report.fleetSize,
         fleetHome: r.report.fleetHome,
         deathStar: r.report.strategicStatus ?? 'UNKNOWN',
+        /**
+         * THE TWO READINGS THE PROBE HAS ALWAYS TAKEN AND NEVER DELIVERED. T9 · T10.
+         *
+         * `resolveProbe` has written both into the report's silhouette since they
+         * shipped, and no route ever put them on the wire — so a commander paid
+         * alloy, a flight bay, a round trip and the risk of being caught, and
+         * could not read either one anywhere in the game.
+         *
+         *   · `doctrines` is what the target has researched into their hulls. It is
+         *     worth up to a 25% combat multiplier, and `CLAUDE.md` requires in as
+         *     many words that combat-relevant doctrine be PROBE-VISIBLE (D137). It
+         *     was probe-collected and invisible, which is the opposite.
+         *   · `interceptor` is whether that world can shoot a strategic weapon down
+         *     (T10). Without it a Death Star is 33,000 resources and an hour spent
+         *     blind — the feature's whole argument is that scouting turns the strike
+         *     into an intelligence decision, and there was nothing to scout WITH.
+         *
+         * Both are frozen at the look, like everything else in the silhouette, and
+         * the client prints their age beside them for exactly that reason.
+         *
+         * ABSENT rather than defaulted when the report predates them or the target
+         * is a caretaker world: an empty object would read as "they have researched
+         * nothing", which is a claim this reading cannot make.
+         */
+        ...(r.report.silhouette?.doctrines
+          ? { doctrines: r.report.silhouette.doctrines }
+          : {}),
+        ...(r.report.silhouette?.interceptor === undefined
+          ? {}
+          : { interceptor: r.report.silhouette.interceptor }),
         detected: r.report.detected,
       })),
       probeCost: { alloy: PROBE.alloy, crystal: PROBE.crystal, deuterium: 0 },

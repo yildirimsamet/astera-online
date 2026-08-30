@@ -1,0 +1,1 @@
+CREATE INDEX "probe_reports_memory_idx" ON "probe_reports" USING btree ("observer_player_id","delivered_at");

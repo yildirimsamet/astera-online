@@ -3,11 +3,14 @@ import { pino } from 'pino';
 import { afterAll, beforeEach, describe, expect, it } from 'vitest';
 import {
   GALAXY,
+  HULLS,
   PROSPECTOR,
   activeAsteroids,
+  alloyRate,
   asteroidPosition,
+  collectorCap,
+  crystalRate,
   distance,
-  generateGalaxy,
   prospectorHold,
   prospectorReturnSpeed,
   prospectorSpeed,
@@ -19,7 +22,6 @@ import {
   debrisFields,
   galaxyEvents,
   miningRuns,
-  planetResearch,
   planets,
   units,
 } from '../src/db/schema.js';
@@ -27,6 +29,7 @@ import { launchHarvest, launchMining, visibleAsteroids } from '../src/services/m
 import { buildUnits } from '../src/services/build.js';
 import { EventWorker } from '../src/worker/loop.js';
 import {
+  giveResearch,
   giveUnits,
   grant,
   placeAt,
@@ -63,9 +66,8 @@ describe('mining', () => {
 
   /** A rock that is in the disc at the fixture's clock, with its whole spec. */
   const rockNow = (): AsteroidSpec => {
-    const spec = generateGalaxy(4242, 60);
     const minutes = (f.clock.now().getTime() - new Date('2026-01-01T00:00:00.000Z').getTime()) / 60_000;
-    const live = activeAsteroids(spec.asteroids, minutes);
+    const live = activeAsteroids(f.asteroids, minutes);
     const rock = live[0];
     if (!rock) throw new Error('no asteroid in the disc at this instant — fixture assumption broke');
     return rock;
@@ -73,11 +75,10 @@ describe('mining', () => {
 
   /** Advance until at least one rock is crossing, so tests never race the schedule. */
   const waitForRock = (): AsteroidSpec => {
-    const spec = generateGalaxy(4242, 60);
     for (let i = 0; i < 400; i++) {
       const minutes =
         (f.clock.now().getTime() - new Date('2026-01-01T00:00:00.000Z').getTime()) / 60_000;
-      const live = activeAsteroids(spec.asteroids, minutes);
+      const live = activeAsteroids(f.asteroids, minutes);
       /**
        * Enough life left for a test's own round trip, and no more.
        *
@@ -120,6 +121,7 @@ describe('mining', () => {
       });
 
       await setLevel(f.db, mine, 'SHIPYARD', 1);
+      await grant(f.db, mine, HULLS.PROSPECTOR.alloy, HULLS.PROSPECTOR.crystal);
       await expect(buildUnits(f.db, mine, 'PROSPECTOR', 1, f.clock)).resolves.toMatchObject({
         hull: 'PROSPECTOR',
       });
@@ -381,7 +383,7 @@ describe('mining', () => {
       await worker(f).tick();
 
       const [claim] = await f.db.select().from(asteroidClaims);
-      expect(claim!.oreTaken).toBeLessThanOrEqual(prospectorHold([]));
+      expect(claim!.oreTaken).toBeLessThanOrEqual(prospectorHold([], {}));
     });
 
     /**
@@ -409,6 +411,13 @@ describe('mining', () => {
 
       const [mid] = await f.db.select().from(miningRuns).where(eq(miningRuns.id, run.runId));
       const { resolveMiningReturn } = await import('../src/services/mining.js');
+      // Fill both Works piles to their current, rules-derived ceilings. The old
+      // fixture relied on three holds being larger than L1 capacity; economy v2
+      // legitimately made that assumption false and stopped testing overflow.
+      await f.db.update(planets).set({
+        bufferAlloy: collectorCap(alloyRate(1)),
+        bufferCrystal: collectorCap(crystalRate(1)),
+      }).where(eq(planets.id, mine));
       f.clock.set(mid!.homeAt!);
       const delivery = await f.db.transaction((tx) => resolveMiningReturn(tx, run.runId, f.clock));
 
@@ -441,17 +450,13 @@ describe('mining', () => {
 
   describe('the race for a rock', () => {
     it('chronicles an exhausted isotope without naming who took its Deuterium', async () => {
-      const rich = generateGalaxy(4242, 60).asteroids.find((rock) => rock.isotopeRich);
+      const rich = f.asteroids.find((rock) => rock.isotopeRich);
       expect(rich).toBeDefined();
       const minute = rich!.appearsAt + 1;
       f.clock.set(new Date(new Date('2026-01-01T00:00:00.000Z').getTime() + minute * 60_000));
       await placeAt(f.db, mine, asteroidPosition(rich!, minute));
       await giveUnits(f.db, mine, { PROSPECTOR: 1 });
-      await f.db.insert(planetResearch).values({
-        planetId: mine,
-        projectId: 'ISOTOPE_SPECTROMETRY',
-        completedAt: f.clock.now(),
-      });
+      await giveResearch(f.db, mine, 'ISOTOPE_SPECTROMETRY');
       await f.db.insert(asteroidClaims).values({
         seasonId: f.seasonId,
         index: rich!.index,
@@ -470,9 +475,9 @@ describe('mining', () => {
       expect(events).toHaveLength(1);
       expect(events[0]).toMatchObject({
         subjectPlanetId: null,
-        payload: { asteroidIndex: rich!.index },
+        payload: {},
       });
-      expect(Object.keys(events[0]!.payload)).toEqual(['asteroidIndex']);
+      expect(Object.keys(events[0]!.payload)).toEqual([]);
     });
 
     /**
@@ -484,7 +489,7 @@ describe('mining', () => {
       const rock = waitForRock();
 
       // Enough craft between them to strip it several times over.
-      const each = Math.ceil(rock.ore / prospectorHold([]));
+      const each = Math.ceil(rock.ore / prospectorHold([], {}));
       await giveUnits(f.db, mine, { PROSPECTOR: each });
       await giveUnits(f.db, other, { PROSPECTOR: each });
 
@@ -601,6 +606,31 @@ describe('mining', () => {
    * against the helper rather than against a bare multiple of the outbound leg.
    */
   describe('the trip home', () => {
+    it('starts from the promised meeting instant after a delayed worker restart', async () => {
+      await giveUnits(f.db, mine, { PROSPECTOR: 1 });
+      const rock = waitForRock();
+      const run = await launchMining(f.db, mine, rock.index, 1, f.clock);
+
+      // Simulate a process that was unavailable when the craft met the rock. The
+      // queue still carries that authoritative meeting instant and must replay
+      // history from it; downtime is not extra flight time for the player.
+      f.clock.set(new Date(run.arriveAt.getTime() + 10 * 60_000));
+      await worker(f).tick();
+
+      const [turned] = await f.db.select().from(miningRuns).where(eq(miningRuns.id, run.runId));
+      const [home] = await f.db.select().from(planets).where(eq(planets.id, mine));
+      const back = Math.hypot(
+        turned!.interceptX - home!.x,
+        turned!.interceptY - home!.y,
+        turned!.interceptZ - home!.z,
+      );
+      const expectedHomeAt = run.arriveAt.getTime()
+        + travelExact(back, prospectorReturnSpeed([])) * 60_000;
+
+      expect(turned!.status).toBe('returning');
+      expect(Math.abs(turned!.homeAt!.getTime() - expectedHomeAt)).toBeLessThanOrEqual(1);
+    });
+
     it('is flown at a third of the outbound speed', async () => {
       await giveUnits(f.db, mine, { PROSPECTOR: 2 });
       const rock = waitForRock();

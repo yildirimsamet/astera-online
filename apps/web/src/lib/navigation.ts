@@ -7,9 +7,12 @@ import {
   fleetCount,
   fleetSpeed,
   fleetTravelExact,
+  missionFuel,
   travelMinutes,
   type Fleet,
   type MobileHullId,
+  type ResearchProjectId,
+  type TechLevels,
   type Vec3,
 } from '@astera/rules';
 
@@ -26,6 +29,15 @@ export interface Route {
   oneWayMinutes: number;
   exposureMinutes: number;
   cargo: number;
+  /**
+   * Deuterium this launch burns, both legs, charged before it leaves. T6.
+   *
+   * Off `missionFuel`, the same function the server charges with — the whole point
+   * of a pure rule is that the quote and the charge cannot disagree. A screen that
+   * offered a launch the server then refused for fuel would be the exact failure
+   * D53 forbids: predicting an outcome that is not certain.
+   */
+  fuel: number;
   /** Units still standing at home the moment this fleet leaves. */
   homeDefenceAfter: number;
 }
@@ -36,6 +48,8 @@ export function planRoute(
   sending: Fleet,
   homeFleet: Fleet,
   ground: Fleet,
+  /** The commander's own ladders, so the preview quotes what the server will do. T8. */
+  tech: TechLevels,
 ): Route {
   const dist = distance(origin, target);
   const oneWay = fleetSpeed(sending) > 0 ? fleetTravelExact(dist, sending) : 0;
@@ -45,7 +59,8 @@ export function planRoute(
     distance: dist,
     oneWayMinutes: oneWay,
     exposureMinutes: exposureMinutes(oneWay),
-    cargo: fleetCargo(sending),
+    cargo: fleetCargo(sending, tech),
+    fuel: missionFuel(sending, dist, 2),
     homeDefenceAfter: Math.max(0, remaining) + fleetCount(ground),
   };
 }
@@ -73,3 +88,32 @@ export const waspMinutes = (origin: Vec3, target: Vec3): number =>
  * the sheet. D27 added one ground hull and proved how easy that is to miss.
  */
 export const MOBILE: readonly MobileHullId[] = MOBILE_HULLS;
+
+/**
+ * The commander's research levels, read off a planet payload. T8.
+ *
+ * `PlanetView.research` is the one place the client learns them, and every effect
+ * function takes this shape — so a screen that wants to quote a rule reads it here
+ * rather than reaching into the array itself and getting the question subtly wrong.
+ */
+export function techOf(
+  view: {
+    research: readonly { id: ResearchProjectId; level?: number; completed?: boolean }[];
+  },
+): TechLevels {
+  const tech: TechLevels = {};
+  for (const project of view.research) {
+    /*
+      A MISSING `level` MEANS "HELD" WHEN THE PROJECT IS COMPLETE, not "zero".
+
+      The field is optional for a rolling deploy against a server that predates
+      levelled research (T7), and `predict.ts` already reads a missing one that way.
+      Read as zero here, the launch preview quoted a cargo figure with no Cargo
+      Holds in it for the length of the deploy — the two readers of one optional
+      field disagreeing about what its absence means.
+    */
+    const level = project.level ?? (project.completed ? 1 : 0);
+    if (level > 0) tech[project.id] = level;
+  }
+  return tech;
+}

@@ -15,6 +15,7 @@ import {
   giveSatellite,
   giveUnits,
   makeAccount,
+  placeAt,
   seedWorld,
   setLevel,
   testDb,
@@ -44,6 +45,8 @@ interface GalaxyPlanet {
   satellites: string[];
   shielded: boolean;
   isSelf: boolean;
+  /** How much of this world the caller has earned. D127. */
+  intel?: 'RESOLVED' | 'REMEMBERED' | 'UNKNOWN';
   dominionRank?: 1 | 2 | 3;
   fleet?: { status: string; staleMinutes: number; etaMinutes: number | null; clarity: string };
 }
@@ -343,16 +346,22 @@ describe('GET /api/galaxy — fog enforced in the response', () => {
      * `satellites` is D15 and carries types only. `shielded` is D25 and is a
      * BOOLEAN — the Aegis moved to the ground and out of the orbit list, and a
      * dome is a physical object anyone can see, so its presence stayed public
-     * while its LEVEL never was. The argument for it is that a raider who cannot
-     * tell an armoured world from a bare one is not making a decision; the reason
-     * it is a boolean and not a number is that the level is what decides the raid.
+     * while its LEVEL never was.
+     *
+     * NONE OF IT IS PUBLIC ANY MORE — this world is RESOLVED. D127. Every field
+     * below is now something the caller EARNED, either live through a Telescope in
+     * reach or frozen through a probe; the fixture puts a telescope on this target,
+     * so the full shape is the right expectation. What an unearned world carries is
+     * asserted in `intel-states.test.ts`, and it is two fields.
      */
     expect(keys.sort()).toEqual(
       [
-        'controller', 'coreLevel', 'coreTier', 'fleet', 'id', 'isCapital', 'isOwned', 'isSelf',
-        'kind', 'name', 'owner', 'position', 'satellites', 'shielded', 'state', 'dominionRank',
+        'controller', 'coreLevel', 'coreTier', 'fleet', 'id', 'intel', 'isCapital', 'isOwned',
+        'isSelf', 'kind', 'name', 'owner', 'position', 'satellites', 'shielded', 'state',
+        'dominionRank',
       ].sort(),
     );
+    expect(target.intel).toBe('RESOLVED');
   });
 
   /**
@@ -423,19 +432,26 @@ describe('GET /api/leaderboard', () => {
       .update(players)
       .set({ dominionTaken: 200, dominionLost: 900 })
       .where(eq(players.id, f.playerIds[0]!));
+    // Keep both rival capitals outside the caller's free 500-unit sight. The
+    // fixture's ordinary 150-unit spacing intentionally makes nearby traffic busy.
+    await placeAt(f.db, f.planetIds[1]!, { x: 3_000 });
+    await placeAt(f.db, f.planetIds[2]!, { x: -3_000 });
 
     const res = await app.inject({ method: 'GET', url: '/api/leaderboard', headers: auth });
     const body = res.json<{
-      ladder: { rank: number; playerId: string; score: number; planetId: string; coreTier: number }[];
-      you: { rank: number; score: number } | null;
+      ladder: { rank: number; playerId: string; score: number; planetId?: string; coreTier?: number }[];
+      you: { rank: number; score: number; planetId?: string; coreTier?: number } | null;
     }>();
 
     expect(body.ladder[0]!.playerId).toBe(f.playerIds[1]!);
     expect(body.ladder[0]!.score).toBe(4000);
-    expect(body.ladder[0]!.planetId).toBe(f.planetIds[1]!);
-    expect(body.ladder[0]!.coreTier).toBeGreaterThan(0);
+    // Rank and identity are public; an unseen rival's capital and development are not.
+    expect(body.ladder[0]).not.toHaveProperty('planetId');
+    expect(body.ladder[0]).not.toHaveProperty('coreTier');
     expect(body.ladder.map((e) => e.rank)).toEqual([1, 2, 3]);
     expect(body.you!.score).toBe(-700);
+    expect(body.you!.planetId).toBe(f.planetIds[0]!);
+    expect(body.you!.coreTier).toBeGreaterThan(0);
   });
 
   it('a player who has never fought sits at exactly zero', async () => {

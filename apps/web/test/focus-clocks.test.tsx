@@ -54,7 +54,7 @@ describe('a flight in the interface', () => {
  * A SALVAGE RUN IS NOT A MINING RUN. D32.
  *
  * The two share the table, the launch path and the flight rendering; they do not
- * share a target. A harvest carries no `asteroidIndex`, so the rock lookup that
+ * share a target. A harvest carries no `asteroidId`, so the rock lookup that
  * feeds this panel could only ever miss — and the panel renders a miss as "Rock
  * has passed". A player who had just sent Prospectors at a wreck field was told
  * their target was gone.
@@ -63,7 +63,7 @@ describe('a run of your own', () => {
   const run = (over: Partial<MiningRun> = {}): MiningRun => ({
     id: 'r1',
     targetKind: 'asteroid',
-    asteroidIndex: 4,
+    asteroidId: 'mJt7YvxMZEC5S7yYQ32SYw',
     debrisFieldId: null,
     status: 'outbound',
     craft: 3,
@@ -77,13 +77,18 @@ describe('a run of your own', () => {
     ...over,
   });
 
-  const rock = { index: 4, level: 3 } as AsteroidView;
+  const rock: AsteroidView = {
+    id: 'mJt7YvxMZEC5S7yYQ32SYw', level: 3, ore: 1_000, oreRemaining: 900,
+    crystalShare: 0.3, radius: 1_000, period: 10, phase: 0, inclination: 0,
+    ascendingNode: 0, speed: 500, appearsAt: 0, expiresAt: 100, active: true,
+    isotopeRich: false, deuteriumShare: null,
+  };
 
   const show = (r: MiningRun, wreck?: { planetName: string | undefined; minutesLeft: number }) =>
     render(
       <RunFocus
         run={r}
-        rock={r.asteroidIndex === null ? undefined : rock}
+        rock={r.asteroidId === null ? undefined : rock}
         wreck={wreck}
         minutesRemaining={9}
         open
@@ -99,7 +104,7 @@ describe('a run of your own', () => {
   });
 
   it('never tells a salvage run that its rock has passed', () => {
-    show(run({ targetKind: 'debris', asteroidIndex: null, debrisFieldId: 'd1' }), {
+    show(run({ targetKind: 'debris', asteroidId: null, debrisFieldId: 'd1' }), {
       planetName: 'Grimhold',
       minutesLeft: 96,
     });
@@ -108,7 +113,7 @@ describe('a run of your own', () => {
   });
 
   it('says a field has decayed rather than that a rock has passed', () => {
-    show(run({ targetKind: 'debris', asteroidIndex: null, debrisFieldId: 'd1' }), undefined);
+    show(run({ targetKind: 'debris', asteroidId: null, debrisFieldId: 'd1' }), undefined);
     expect(screen.getByText(/field has decayed/i)).toBeInTheDocument();
     expect(screen.queryByText(/rock has passed/i)).not.toBeInTheDocument();
   });
@@ -117,7 +122,7 @@ describe('a run of your own', () => {
     show(
       run({
         targetKind: 'debris',
-        asteroidIndex: null,
+        asteroidId: null,
         debrisFieldId: 'd1',
         status: 'returning',
         homeAt: new Date(Date.now() + 5 * 60_000),

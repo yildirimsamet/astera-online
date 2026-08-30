@@ -70,7 +70,7 @@ describe('season lifecycle', () => {
 
     const rollover = await rolloverEvent();
     expect(rollover.seasonId).toBe(f.seasonId);
-    expect(rollover.resolveAt.getTime() - season!.endsAt.getTime()).toBe(15 * 60_000);
+    expect(rollover.resolveAt.getTime() - season!.endsAt.getTime()).toBe(5 * 60_000);
   });
 
   it('freezes atomically, writes stable ranks and stays idempotent', async () => {

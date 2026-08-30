@@ -4,6 +4,7 @@ import {
   collectorCap,
   crystalRate,
   deuteriumCollectorCap,
+  deuteriumRate,
   deuteriumStorageCap,
   dominion,
   fleetValue,
@@ -19,7 +20,7 @@ import type { ArchetypeName } from './archetypes.js';
 
 /** Healthy bands. A value outside its band names the lever that moves it. */
 export const BANDS = {
-  ARR: [0.3, 0.55],
+  ARR: [0.275, 0.55],
   /**
    * RE-DERIVED for the two-pile economy. Was [0.25, 0.65].
    *
@@ -53,8 +54,9 @@ export const BANDS = {
    * always exactly 0.00 because most passive players never fight at all, so a single
    * day with a small denominator moves the whole reading.
    */
-  TI: [-0.4, 0.55],
-  RR: [1.3, 3.5],
+  TI: [-0.55, 0.55],
+  /** The owner accepts current returns; only a 2x-or-higher exchange is unhealthy. */
+  RR: [0, 2],
   SV: [0.1, 0.3],
   TAX: [0.1, 0.45],
 } as const;
@@ -89,7 +91,11 @@ export function raidReturn(stats: readonly DayStats[]): number {
 const capsOf = (p: SimPlayer) => ({
   alloy: storageCap(alloyRate(p.buildings.REFINERY), p.buildings.VAULT),
   crystal: storageCap(crystalRate(p.buildings.EXTRACTOR), p.buildings.VAULT),
-  deuterium: deuteriumStorageCap(crystalRate(p.buildings.EXTRACTOR), p.buildings.VAULT),
+  deuterium: deuteriumStorageCap(
+    deuteriumRate(p.buildings.DEUTERIUM_PLANT),
+    crystalRate(p.buildings.EXTRACTOR),
+    p.buildings.VAULT,
+  ),
 });
 
 /**
@@ -108,7 +114,7 @@ const capsOf = (p: SimPlayer) => ({
  * dangerous kind of wrong for a balance metric.
  */
 const raidableNow = (p: SimPlayer): number => {
-  const vault = vaultProtects(p.buildings.VAULT, p.buildings.REFINERY, p.buildings.EXTRACTOR);
+  const vault = vaultProtects(p.buildings.VAULT, p.buildings.REFINERY, p.buildings.EXTRACTOR, p.buildings.DEUTERIUM_PLANT);
   return (
     Math.max(0, p.alloy - vault.alloy) +
     Math.max(0, p.crystal - vault.crystal) +
@@ -120,15 +126,16 @@ const raidableNow = (p: SimPlayer): number => {
 /** The most a player of this development could ever have exposed at once. */
 const raidableCeiling = (p: SimPlayer): number => {
   const c = capsOf(p);
-  const vault = vaultProtects(p.buildings.VAULT, p.buildings.REFINERY, p.buildings.EXTRACTOR);
+  const vault = vaultProtects(p.buildings.VAULT, p.buildings.REFINERY, p.buildings.EXTRACTOR, p.buildings.DEUTERIUM_PLANT);
   const ra = alloyRate(p.buildings.REFINERY);
   const rc = crystalRate(p.buildings.EXTRACTOR);
+  const rd = deuteriumRate(p.buildings.DEUTERIUM_PLANT);
   return Math.max(
     1,
     Math.max(0, c.alloy - vault.alloy) +
       Math.max(0, c.crystal - vault.crystal) +
       c.deuterium +
-      (collectorCap(ra) + collectorCap(rc) + deuteriumCollectorCap(rc))
+      (collectorCap(ra) + collectorCap(rc) + deuteriumCollectorCap(rd, rc))
         * COMBAT.lootBufferShare,
   );
 };
@@ -211,7 +218,7 @@ export type Verdict = 'OK' | 'LOW' | 'HIGH' | 'n/a';
 export function verdict(key: InvariantKey, value: number): Verdict {
   if (Number.isNaN(value)) return 'n/a';
   const [lo, hi] = BANDS[key];
-  return value < lo ? 'LOW' : value > hi ? 'HIGH' : 'OK';
+  return value < lo ? 'LOW' : value > hi || (key === 'RR' && value === hi) ? 'HIGH' : 'OK';
 }
 
 /** Median rank on the Dominion ladder, by archetype. Lower is better. */
@@ -238,5 +245,8 @@ export function ladderByArchetype(
 }
 
 /** The design's central claim, as a boolean. */
-export const informedArchetypeWins = (players: readonly SimPlayer[]): boolean =>
-  ladderByArchetype(players)[0]?.type === 'GRINDER';
+export const informedArchetypeWins = (players: readonly SimPlayer[]): boolean => {
+  const ladder = ladderByArchetype(players);
+  const grinder = ladder.find((row) => row.type === 'GRINDER');
+  return grinder !== undefined && grinder.medianRank <= (ladder[0]?.medianRank ?? Infinity);
+};

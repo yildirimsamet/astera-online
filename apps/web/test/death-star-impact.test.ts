@@ -22,6 +22,7 @@ const nodes: PlanetNode[] = [{
   weight: 3,
   coreTier: 4,
   coreLevel: 12,
+  intel: 'RESOLVED' as const,
   satellites: [],
   shielded: false,
   stance: 'dark',
@@ -73,6 +74,7 @@ describe('the public Death Star impact', () => {
       at: 10_000,
       position: toWorld(path.to),
       radius: 1.4,
+      intensity: 1,
     }]);
   });
 
@@ -109,6 +111,29 @@ describe('the public Death Star impact', () => {
       at: 10_000,
       position: toWorld(TARGET),
       radius: 1.4,
+      intensity: 1,
+    }]);
+  });
+
+  it('keeps an out-of-sight strike effect-only and visibly fainter', () => {
+    const contact: Contact = {
+      id: 'distant-impact',
+      kind: 'unknown',
+      from: TARGET,
+      to: TARGET,
+      startAt: new Date(10_000),
+      endAt: new Date(18_000),
+      landing: true,
+      effectOnly: true,
+      impact: { at: path.arriveAt, target: TARGET },
+    };
+
+    expect(deathStarImpactCandidates([], [contact], nodes)).toEqual([{
+      id: 'distant-impact',
+      at: 10_000,
+      position: toWorld(TARGET),
+      radius: 1.4,
+      intensity: 0.35,
     }]);
   });
 
@@ -137,8 +162,17 @@ describe('the public Death Star impact', () => {
   });
 
   it('retains a known impact when a resolving traffic refetch removes its mission', () => {
-    const event = { id: 'mission-1', at: 10_000, position: toWorld(TARGET), radius: 1.4 };
+    const event = {
+      id: 'mission-1',
+      at: 10_000,
+      position: toWorld(TARGET),
+      radius: 1.4,
+      intensity: 1,
+    };
     expect(mergeRetainedDeathStarImpacts([], [event], 9_000)).toEqual([event]);
+    // An interception removes the mission BEFORE its original arrival. A future
+    // candidate that disappears must disappear with it or it detonates as a ghost.
+    expect(mergeRetainedDeathStarImpacts([event], [], 9_999)).toEqual([]);
     expect(mergeRetainedDeathStarImpacts([event], [], 10_001)).toEqual([event]);
     expect(mergeRetainedDeathStarImpacts(
       [event],

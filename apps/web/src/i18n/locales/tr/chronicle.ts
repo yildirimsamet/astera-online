@@ -22,7 +22,7 @@ export const chronicle = {
   bombardmentDetail: '{{commander}} komutasındaki dünya ateş altında kaldı.',
   coreTier: '{{planet}}, Merkez {{tier}}. kademeye ulaştı',
   coreTierDetail: '{{commander}} dünyasının galaksideki siluetini değiştirdi.',
-  isotopeExhausted: '{{number}} numaralı izotop anomalisi tükendi',
+  isotopeExhausted: 'Bir izotop anomalisi tükendi',
   isotopeExhaustedDetail: 'Bu kayadaki herkese açık Döteryum yarışı bitti. Yakıtı kimin aldığı bilinmiyor.',
   wreckFormed: '{{planet}} üzerinde enkaz oluştu',
   wreckFormedDetail: 'Dünyanın üzerinde herkese açık bir kurtarma yarışı başladı.',

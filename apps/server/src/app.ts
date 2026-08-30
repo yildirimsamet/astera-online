@@ -32,6 +32,7 @@ import { registerOnboardingRoutes } from './routes/onboarding.js';
 import { registerChatRoutes } from './routes/chat.js';
 import { registerChronicleRoutes } from './routes/chronicle.js';
 import { registerClanRoutes } from './routes/clan.js';
+import { registerCommunityRoutes } from './routes/community.js';
 import { Presence } from './services/presence.js';
 import { Projections } from './services/projections.js';
 import { RateLimitBackend } from './services/rateLimitBackend.js';
@@ -78,6 +79,8 @@ declare module 'fastify' {
     sseMaxBufferBytes: number;
     dbPoolMax: number;
     limits: RouteLimits;
+    /** Canonical usernames configured out of band; never writable through the API. */
+    adminUsernames: ReadonlySet<string>;
   }
   interface FastifyRequest {
     /** Set by `requireAuth`. Absent on public routes. */
@@ -193,6 +196,7 @@ export function buildApp(opts: BuildAppOptions): BuiltApp {
       keyGenerator: ipLimitKey,
     },
   });
+  app.decorate('adminUsernames', new Set(opts.env.ADMIN_USERNAMES));
 
   void app.register(cookie);
 
@@ -382,6 +386,7 @@ export function buildApp(opts: BuildAppOptions): BuiltApp {
     registerChatRoutes(app);
     registerChronicleRoutes(app);
     registerClanRoutes(app);
+    registerCommunityRoutes(app);
   });
 
   return {

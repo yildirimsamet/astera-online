@@ -1,11 +1,16 @@
 import { ALL_HULLS, HULLS, MOBILE_HULLS, fleetEntries } from './hulls.js';
+import { ECONOMY_TEMPO, scalePrice } from './tempo.js';
 import type { Fleet, Resources } from './types.js';
 
 /** The complete, deliberately bounded clan ruleset. D114. */
 export const CLAN = {
   maxMembers: 5,
   founderCoreLevel: 7,
-  creationCost: { alloy: 5_000, crystal: 3_000, deuterium: 0 },
+  creationCost: {
+    alloy: scalePrice(5_000, ECONOMY_TEMPO.fixedPrice),
+    crystal: scalePrice(3_000, ECONOMY_TEMPO.fixedPrice),
+    deuterium: 0,
+  },
   nameMinChars: 3,
   nameMaxChars: 24,
   tagMinChars: 2,
@@ -106,7 +111,7 @@ export function clanTagIsValid(value: string): boolean {
     && /^[A-Z0-9]+$/u.test(tag);
 }
 
-/** Only the six ordinary mobile hulls may change owner through clan aid. */
+/** Only the six ordinary mobile hulls may fly as clan aid or change owner as a gift. */
 export function clanTransferFleetIsValid(fleet: Fleet): boolean {
   let count = 0;
   for (const id of ALL_HULLS) {
@@ -124,7 +129,7 @@ export function clanTransferCargoCapacity(fleet: Fleet): number {
   return finiteFloor(fleet.HAULER ?? 0) * HULLS.HAULER.cargo;
 }
 
-/** Full per-resource commitment: cargo plus the construction cost of every gifted hull. */
+/** Full value of a ship gift; resource-delivery commitments use cargo alone. */
 export function clanAidValue(fleet: Fleet, cargo: Resources): Resources {
   const value: Resources = resourceMap((key) => cargo[key]);
   for (const [id, quantity] of fleetEntries(fleet)) {

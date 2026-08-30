@@ -25,13 +25,18 @@ import type { Clock } from '../clock.js';
 import type { Db, Tx } from '../db/client.js';
 import {
   buildOrders,
-  planetResearch,
+  playerResearch,
   planets,
   satellites,
   scheduledEvents,
   type BuildOrderKind,
 } from '../db/schema.js';
 import { publishShard } from '../stream/bus.js';
+import {
+  recheckRadarLegsForWorld,
+  wakeInboundRadarWarnings,
+  wakeStrategicInterceptions,
+} from './radar.js';
 import { schedule } from '../worker/queue.js';
 import { publicPlanetIdentity, recordGalaxyEvent } from './chronicle.js';
 import {
@@ -47,7 +52,8 @@ import {
   type LockedPlanet,
 } from './planet.js';
 import { planetView, type PlanetView } from './planetView.js';
-import { completedResearch } from './researchState.js';
+import { researchLevels } from './researchState.js';
+import { refreshSensorEpoch } from './sensorHistory.js';
 
 type BuildOrder = typeof buildOrders.$inferSelect;
 
@@ -69,7 +75,11 @@ export interface ProjectedBuildState {
   orbit: SatelliteId[];
   /** Only the prefix whose slots the projected Core has opened. */
   effectiveOrbit: SatelliteId[];
-  research: Set<ResearchProjectId>;
+  /**
+   * Levels, not a set. T7: a project can now be a ladder, and "have I got it" is
+   * the wrong question to ask about one. A missing entry is level 0.
+   */
+  research: Map<ResearchProjectId, number>;
   units: Fleet;
 }
 
@@ -116,7 +126,7 @@ export async function buildQueueContext(
   }
 
   const [research, units] = await Promise.all([
-    completedResearch(tx, planet.planetId),
+    researchLevels(tx, planet.playerId),
     totalUnitsOf(tx, planet.planetId),
   ]);
   const projected: ProjectedBuildState = {
@@ -157,7 +167,21 @@ function projectOrder(state: ProjectedBuildState, order: BuildOrder): void {
       }
       return;
     case 'RESEARCH':
-      if (isResearch(order.subject)) state.research.add(order.subject);
+      /*
+        THE ORDER'S `count` IS ITS TARGET LEVEL. T7.
+
+        Chosen over encoding the level into `subject` so that `isResearch` and the
+        prerequisite walk below keep reading a plain project id, and so the
+        `count > 0` constraint the table already carries is satisfied by
+        construction — a target level is never zero. Every project is maxLevel 1
+        today, so every research order carries a 1.
+      */
+      if (isResearch(order.subject)) {
+        state.research.set(
+          order.subject,
+          Math.max(state.research.get(order.subject) ?? 0, order.count),
+        );
+      }
   }
 }
 
@@ -196,6 +220,16 @@ function dependsOnEarlier(later: BuildOrder, earlier: BuildOrder): boolean {
       && (later.subject === 'TELESCOPE' || later.subject === 'RADAR');
   }
   if (earlier.kind === 'RESEARCH' && later.kind === 'RESEARCH' && isResearch(later.subject)) {
+    /*
+      A HIGHER RUNG OF THE SAME LADDER DEPENDS ON THE ONE BELOW IT.
+
+      Not through `prerequisite` — a ladder rung has none, it depends on itself one
+      step down — so this walk could not see it. That was harmless only while both
+      orders were stamped with rung one; now that each carries the rung it buys, a
+      surviving upper order would write `GREATEST(level, 2)` for a commander who had
+      just been refunded rung one. A free rung, produced by a cancellation.
+    */
+    if (later.subject === earlier.subject && later.count > earlier.count) return true;
     let prerequisite = RESEARCH_PROJECTS[later.subject].prerequisite;
     while (prerequisite !== null) {
       if (prerequisite === earlier.subject) return true;
@@ -388,7 +422,13 @@ export async function destroyBuildingOrders(
   tx: Tx,
   planetId: string,
   now: Date,
-): Promise<{ id: string; subject: string; cost: Resources }[]> {
+): Promise<{
+  id: string;
+  kind: BuildOrderKind;
+  subject: string;
+  count: number;
+  cost: Resources;
+}[]> {
   const doomed = (await activeQueue(tx, planetId))
     .filter((order) => order.queue === 'CONSTRUCTION' && order.kind === 'BUILDING');
   if (doomed.length === 0) return [];
@@ -408,7 +448,13 @@ export async function destroyBuildingOrders(
   // The tail closes up behind them. `preserveFirst` is false because the head of
   // this queue may itself be one of the orders that just went.
   await reflowQueue(tx, planetId, 'CONSTRUCTION', now, false);
-  return doomed.map((order) => ({ id: order.id, subject: order.subject, cost: order.cost }));
+  return doomed.map((order) => ({
+    id: order.id,
+    kind: order.kind,
+    subject: order.subject,
+    count: order.count,
+    cost: order.cost,
+  }));
 }
 
 /** The event handler's idempotent state transition. */
@@ -439,6 +485,16 @@ export async function applyBuildCompletion(
   if (claimed.length === 0) return false;
 
   await applyOrderEffect(tx, planet, order);
+  if (
+    (order.kind === 'BUILDING' && order.subject === 'CORE')
+    || (order.kind === 'INSTRUMENT' && order.subject === 'TELESCOPE')
+    || (order.kind === 'SATELLITE' && order.subject === 'UPLINK')
+  ) {
+    // The order became effective at its promised readyAt, even if a restart made
+    // the worker apply it later. Starting history at worker time would lose every
+    // analytically recoverable contact between those two instants.
+    await refreshSensorEpoch(tx, planet.planetId, order.readyAt);
+  }
   await reflowQueue(tx, order.planetId, order.queue, planet.now, true);
   await refreshWealth(tx, planet);
   return true;
@@ -546,7 +602,11 @@ async function applyOrderEffect(tx: Tx, planet: LockedPlanet, order: BuildOrder)
       const after = before + 1;
       await setBuildingLevel(tx, planet.planetId, order.subject, after);
       planet.buildings[order.subject] = after;
+      if (order.subject === 'CORE') {
+        await wakeStrategicInterceptions(tx, planet.planetId, planet.now);
+      }
       if (order.subject === 'CORE' && coreTier(after) !== coreTier(before)) {
+        await recheckRadarLegsForWorld(tx, planet.planetId, planet.now);
         await publishShard(tx, planet.seasonId, 'world');
         const identity = await publicPlanetIdentity(tx, planet.planetId);
         if (identity) {
@@ -583,22 +643,44 @@ async function applyOrderEffect(tx: Tx, planet: LockedPlanet, order: BuildOrder)
         order.subject,
         (planet.instruments[order.subject] ?? 0) + 1,
       );
+      if (order.subject === 'RADAR') {
+        await wakeInboundRadarWarnings(tx, planet.planetId, planet.now);
+      }
+      if (order.subject === 'RADAR' || order.subject === 'TELESCOPE') {
+        await wakeStrategicInterceptions(tx, planet.planetId, planet.now);
+      }
       return;
     case 'SATELLITE':
       if (!isSatellite(order.subject)) throw new Error(`unknown satellite ${order.subject}`);
       await writeInstalled(tx, planet.planetId, order.subject, 1);
+      if (order.subject === 'UPLINK') {
+        await wakeInboundRadarWarnings(tx, planet.planetId, planet.now);
+        await wakeStrategicInterceptions(tx, planet.planetId, planet.now);
+      }
       await publishShard(tx, planet.seasonId, 'world');
       return;
     case 'RESEARCH':
       if (!isResearch(order.subject)) throw new Error(`unknown research ${order.subject}`);
+      /*
+        WRITTEN TO THE COMMANDER, AND NEVER DOWNWARD. T7.
+
+        `count` is the target level. `GREATEST` rather than a plain overwrite
+        because a redelivered completion event must not be able to lower a ladder
+        the player has since climbed — the same idempotency every scheduled handler
+        in this file is built for.
+      */
       await tx
-        .insert(planetResearch)
+        .insert(playerResearch)
         .values({
-          planetId: planet.planetId,
+          playerId: planet.playerId,
           projectId: order.subject,
+          level: order.count,
           completedAt: order.readyAt,
         })
-        .onConflictDoNothing();
+        .onConflictDoUpdate({
+          target: [playerResearch.playerId, playerResearch.projectId],
+          set: { level: sql`GREATEST(${playerResearch.level}, ${order.count})` },
+        });
   }
 }
 

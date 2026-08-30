@@ -4,6 +4,7 @@ import {
   interpolatePosition,
   orbitStandoff,
   surfaceStandoff,
+  toGame,
   toWorld,
   visualLeg,
   worldRadius,
@@ -16,15 +17,15 @@ import type { Contact, GalaxyPlanet, MiningRun, PendingThread } from '../api/sch
 /**
  * The galaxy, as the 3D surface needs it.
  *
- * WORLD UNITS. The design's coordinates run to radius 1000 with a ±120 disc
- * thickness. Three.js is happiest with a camera near the single-digit range, so
+ * WORLD UNITS. The design's coordinates fill a radius-2,000 sphere. Three.js is
+ * happiest with a camera near the single-digit range, so
  * everything is divided by `SCALE` on the way in and nothing downstream ever
  * thinks about game units again.
  *
- * Nothing here fetches. `generateGalaxy` and `asteroidPosition` are pure functions
- * in the rules package, so the client rebuilds the static layout and every
- * asteroid orbit from the season seed rather than downloading them — which is
- * exactly what A5 meant and why the seed is now on `/api/season`.
+ * Nothing here fetches. Authoritative world coordinates and caller-earned
+ * asteroid trajectories arrive through the API; this module only converts and
+ * animates those facts. The private asteroid schedule is never reconstructed from
+ * the public season seed.
  */
 
 /**
@@ -34,9 +35,9 @@ import type { Contact, GalaxyPlanet, MiningRun, PendingThread } from '../api/sch
  * times, ranges and the tier band all read the game's own coordinates and are
  * unaffected by it.
  *
- * KEEP THIS AT 50 WHEN THE GAMEPLAY RADIUS CHANGES. Economy v2 widened the disc
- * from 1000 to 2500 precisely so 300 commanders plus neutral worlds have readable
- * space. Raising this divisor to 125 cancelled that expansion in the picture and
+ * KEEP THIS AT 50 WHEN THE GAMEPLAY RADIUS CHANGES. The galaxy was widened from
+ * radius 1,000 to 2,000 so 200 commanders plus neutral worlds have readable space.
+ * Raising this divisor with the radius would cancel that expansion in the picture and
  * piled 351 full-size map markers into the old 50-player footprint. The widest
  * camera view derives from `DISC_RADIUS`, so the larger scene still has a complete
  * overview; ordinary play sees a neighbourhood instead of a wall of worlds.
@@ -44,7 +45,6 @@ import type { Contact, GalaxyPlanet, MiningRun, PendingThread } from '../api/sch
 export const SCALE = VIEW.scale;
 
 export const DISC_RADIUS = GALAXY.radius / SCALE;
-export const DISC_THICKNESS = GALAXY.thickness / SCALE;
 
 /**
  * HOW BIG A CRAFT IS DRAWN, AS ONE MULTIPLIER. Owner decision: half again.
@@ -125,6 +125,20 @@ export function stanceOf(planet: GalaxyPlanet): Stance {
   return 'watched';
 }
 
+/**
+ * One world's eyes: where they are, and how far they reach. D125/D126.
+ *
+ * Used to DRAW the boundary and to solve for the instant a contact crosses it.
+ * It is deliberately NOT used to decide what a world shows — the server settles
+ * that and publishes it as `intel`, and a client that recomputed the same rule
+ * would be a second answer waiting to disagree with the first.
+ */
+export interface SensorReach {
+  at: { x: number; y: number; z: number };
+  /** Always finite since D126: the fog never fully lifts. */
+  reach: number;
+}
+
 export interface PlanetNode {
   id: string;
   name: string;
@@ -133,6 +147,17 @@ export interface PlanetNode {
   clan?: NonNullable<GalaxyPlanet['clan']>;
   /** A current clanmate, derived from the same bulk galaxy payload. */
   isClanmate: boolean;
+  /**
+   * HOW MUCH OF THIS WORLD THE CALLER HAS EARNED. D127.
+   *
+   * `RESOLVED` is a live reading, `REMEMBERED` is a frozen probe record and
+   * `UNKNOWN` is a point with nothing behind it. Renderers that draw a READING —
+   * a name, rings, orbit, a dome — check this; the ones that draw the world's
+   * body and position do not, because those two facts are true in every state.
+   */
+  intel: 'RESOLVED' | 'REMEMBERED' | 'UNKNOWN';
+  /** When the probe observed it. `REMEMBERED` only. */
+  seenAt?: Date;
   /** Only the public podium. Lower exact ranks belong on the leaderboard. */
   dominionRank?: 1 | 2 | 3;
   position: Vec3Tuple;
@@ -158,7 +183,19 @@ export interface PlanetNode {
   stance: Stance;
   /** Public strategic condition; recovery is visible damage, not private intel. */
   state: GalaxyPlanet['state'];
-  kind: NonNullable<GalaxyPlanet['kind']>;
+  /**
+   * CAPITAL, COLONY, NEUTRAL — OR NOT KNOWN. D127.
+   *
+   * It used to default to `'CAPITAL'` when the payload omitted it, which was
+   * harmless while the only worlds missing a kind were legacy ones and became a
+   * live falsehood the moment D127 stopped publishing it: nine tenths of the disc
+   * claimed to be a capital, and the galaxy label printed it in capital blue.
+   *
+   * Optional now so the compiler asks every reader the question rather than
+   * answering it for them. Whether a world is a capital is exactly the kind of
+   * fact D127 made you go and find.
+   */
+  kind?: GalaxyPlanet['kind'];
   isOwned: boolean;
   isCapital: boolean;
   /** Public controller identity; used only for owned/rival visual grouping. */
@@ -195,6 +232,22 @@ export function planetNodes(planets: readonly GalaxyPlanet[]): PlanetNode[] {
   )?.clan?.id;
   return planets.map((planet) => ({
     id: planet.id,
+    /**
+     * THE ONE PLACE THE PAYLOAD'S GAPS ARE FILLED IN. D127.
+     *
+     * `/api/galaxy` omits everything about an UNKNOWN world — by omission, so a
+     * modified client has no field to read. Every renderer downstream would then
+     * need its own opinion about a missing name, a missing tier, a missing orbit,
+     * and the first one to forget draws a hole in the galaxy.
+     *
+     * So the gaps are filled at the SCHEMA — an unknown world parses to the
+     * smallest silhouette, no hardware and no name — and `intel` carries the
+     * reason so the few renderers that must care can ask. Everything below keeps
+     * the types it always had, and nothing downstream has an opinion about a
+     * missing field because none ever reaches it.
+     */
+    intel: planet.intel,
+    ...(planet.seenAt ? { seenAt: planet.seenAt } : {}),
     name: planet.name,
     owner: planet.owner,
     ...(planet.clan ? { clan: planet.clan } : {}),
@@ -210,10 +263,14 @@ export function planetNodes(planets: readonly GalaxyPlanet[]): PlanetNode[] {
     shielded: planet.shielded,
     stance: stanceOf(planet),
     state: planet.state,
-    kind: planet.kind ?? 'CAPITAL',
+    ...(planet.kind ? { kind: planet.kind } : {}),
     isOwned: planet.isOwned ?? planet.isSelf,
-    isClanmate: Boolean(
-      !(planet.isOwned ?? planet.isSelf)
+    // `clanmate` comes only from the current private clan-presence projection.
+    // A remembered tag stays historical; UNKNOWN stays fogged even while this
+    // separate identity bit earns the live friendly ring.
+    isClanmate: planet.clanmate ?? Boolean(
+      planet.intel === 'RESOLVED'
+      && !(planet.isOwned ?? planet.isSelf)
       && selfClanId
       && planet.clan?.id === selfClanId,
     ),
@@ -221,7 +278,9 @@ export function planetNodes(planets: readonly GalaxyPlanet[]): PlanetNode[] {
     ...(planet.controller?.kind === 'PLAYER'
       ? { controllerPlayerId: planet.controller.playerId }
       : {}),
-    ...(planet.neutral ? { neutralTier: planet.neutral.tier } : {}),
+    // The tier is a READING and D127 keeps it behind the fog, so a `neutral` block
+    // that arrived carrying only its claim clock has no tier to copy.
+    ...(planet.neutral?.tier ? { neutralTier: planet.neutral.tier } : {}),
     ...(planet.neutral ? { claimUntil: planet.neutral.claimUntil } : {}),
   }));
 }
@@ -232,6 +291,16 @@ export function isRivalNode(
   rivalPlanetId: string | null,
   rivalPlayerId: string | null,
 ): boolean {
+  /**
+   * A WORLD YOU CANNOT SEE NEVER WEARS THE RETICLE. D127, owner's instruction.
+   *
+   * The player branch is safe on its own — an unresolved world carries no
+   * `controllerPlayerId`, so it cannot match. The PLANET branch is not: it matches
+   * on id, which is published in every state, so a Rival pinned by world would
+   * have been marked across the fog. That is a live answer to "where do they
+   * live", which is exactly what D127 made something you have to go and find.
+   */
+  if (node.intel === 'UNKNOWN') return false;
   return rivalPlayerId !== null
     ? node.controllerPlayerId === rivalPlayerId
     : node.id === rivalPlanetId;
@@ -442,6 +511,35 @@ export function runPosition(
   );
 }
 
+/** Resolve a run against its own colony, never whichever world is active now. */
+export function runHomePosition(
+  run: MiningRun,
+  nodes: readonly PlanetNode[],
+  fallback: { x: number; y: number; z: number },
+): { x: number; y: number; z: number } {
+  const origin = run.planetId
+    ? nodes.find((node) => node.id === run.planetId)
+    : undefined;
+  return origin ? toGame(origin.position) : fallback;
+}
+
+/** The active world's own commitment to one target, if it has one. */
+export function runForPlanetTarget(
+  runs: readonly MiningRun[],
+  planetId: string | undefined,
+  target: { kind: 'asteroid' | 'debris'; id: string },
+): MiningRun | undefined {
+  return runs.find((run) => {
+    if (run.status === 'done') return false;
+    // Missing only while rolling from an older server whose status contained one
+    // selected world's runs, so it is necessarily the active world's run.
+    if (run.planetId !== undefined && run.planetId !== planetId) return false;
+    return target.kind === 'asteroid'
+      ? run.asteroidId === target.id
+      : run.debrisFieldId === target.id;
+  });
+}
+
 /**
  * How long past its window a contact may be carried before it stops.
  *
@@ -484,13 +582,13 @@ export function contactPosition(
   nodes: readonly PlanetNode[] = [],
 ): Vec3Tuple {
   /**
-   * A RAID THAT HAS LANDED HOLDS IN ORBIT, FOR EVERYONE. D52.
+   * A SENSED RAID THAT HAS LANDED HOLDS IN ORBIT. D52/D123.
    *
    * The attacker's own client works this out from its `path` and the target's drawn
-   * radius (D44); a bystander has no path, so the payload names the target for the
-   * ten seconds the fleet is over it and the standoff is solved here from exactly
-   * the same figures. Both clients therefore put the same squadron in the same
-   * place — which is the whole point of publishing the engagement at all.
+   * radius (D44); a bystander who can see the craft has no path, so its contact
+   * carries only the final sensed bearing and the target. An out-of-range
+   * `effectOnly` engagement never reaches this helper: it has no authoritative
+   * squadron point to solve and draws only the public volley.
    */
   const fight = contact.engagement;
   if (fight && now >= fight.arriveAt.getTime()) {
@@ -575,18 +673,28 @@ export function engagementHold(
  * can produce — how much ore somebody else has already taken out of it — and the
  * server is the only place that knows. `/api/mining` therefore sends the field.
  *
- * What it sends is still a TRAJECTORY, not a position: entry point, exit point,
- * speed and lifetime. So the client animates fifty moving rocks from its own clock
- * exactly as it animates fleets, and one small request every thirty seconds
- * replaces a stream. A5's principle survives intact; only the source of the ore
- * count moved.
+ * What it sends is still a TRAJECTORY, not a position: orbital plane, phase,
+ * speed and lifetime. So the client animates the caller's discovered rocks from
+ * the shared server clock exactly as it animates fleets. The server names the next
+ * discovery/expiry wake-up; no orbit tick or rapid poll is needed.
  */
 
 export interface OrbitLike {
   radius: number;
   period: number;
   phase: number;
-  y: number;
+  inclination: number;
+  ascendingNode: number;
+}
+
+/** Stable unsigned seed for model/tumble variety from a server-opaque identity. */
+export function asteroidVisualSeed(id: string): number {
+  let hash = 2166136261;
+  for (let i = 0; i < id.length; i += 1) {
+    hash ^= id.charCodeAt(i);
+    hash = Math.imul(hash, 16777619);
+  }
+  return hash >>> 0;
 }
 
 /** How far through its life a rock is, 0 to 1. */
@@ -615,10 +723,16 @@ export function asteroidWorldPosition(
 ): Vec3Tuple {
   const minutes = (now - seasonStart.getTime()) / 60_000;
   const theta = rock.phase + (2 * Math.PI * minutes) / rock.period;
+  const cosTheta = Math.cos(theta);
+  const sinTheta = Math.sin(theta);
+  const cosNode = Math.cos(rock.ascendingNode);
+  const sinNode = Math.sin(rock.ascendingNode);
+  const cosInclination = Math.cos(rock.inclination);
+  const sinInclination = Math.sin(rock.inclination);
   return toWorld({
-    x: rock.radius * Math.cos(theta),
-    y: rock.y,
-    z: rock.radius * Math.sin(theta),
+    x: rock.radius * (cosNode * cosTheta - sinNode * sinTheta * cosInclination),
+    y: rock.radius * sinTheta * sinInclination,
+    z: rock.radius * (sinNode * cosTheta + cosNode * sinTheta * cosInclination),
   });
 }
 

@@ -25,9 +25,6 @@ import { Wordmark } from '../ui/Wordmark.jsx';
  *
  *   THE MEASURE. A rail that fills with a real fraction where one is known, and
  *   travels as an indeterminate sweep where it is not. It never fakes a number.
- *
- * `prefers-reduced-motion` is handled globally in `styles.css`, which flattens
- * every animation here to a still frame that still reads correctly.
  */
 export function LoadingScreen({
   caption,

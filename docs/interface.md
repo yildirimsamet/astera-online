@@ -121,10 +121,20 @@ choosing is the player's, rather than a second opinion sitting beside whatever e
 screen. What survives of the ranking is which tab the screen OPENS on — a default, not a
 recommendation.
 
-**Where a tab holds more than one kind of thing, a BAND separates them** (D26). Reach carries
-research, hulls that fight, craft that carry and one that mines. Those distinctions used to be
-prose between the cards, which is prose nobody reads while scrolling. A band is a short label
+**Where a tab holds more than one kind of thing, a BAND separates them** (D26). Reach carries the
+Shipyard, the Hangar, hulls that fight, craft that carry and one that mines. Those distinctions used
+to be prose between the cards, which is prose nobody reads while scrolling. A band is a short label
 and one clause of rule, and it is the only sub-heading level these surfaces have.
+
+**Research is not on this sheet** (D140). It was, while a project was a per-planet permission and
+there were four of them. D134 made the levels the COMMANDER's — held once, applying to every world at
+the same time — and there are fifteen, so it became the one thing on a per-world screen that was not
+about that world. It has its own surface, reached from the menu beside the account, the intel and the
+clan. Two rules there are worth restating because they are what the move was for: the row list is
+DERIVED from the rules package rather than hand-written, because five separate tasks had shipped
+ladders the server priced and no control could buy; and a shut card states its reason, because with
+one research slot shared across a commander's worlds most cards are shut most of the time, and only
+that screen can see the other world's queue to name what is holding it.
 
 ### I2b · Every card answers "what is this" before "what does it cost"
 
@@ -156,6 +166,9 @@ role sentence, stat block, future ladder and commit control live in the sheet. R
 under every row is text doing the art's job and makes comparison slower. Strategic hardware
 follows the same hierarchy: an unbuilt Death Star lives in Reach with the other projects, while
 a building, paused or ready one rises above the tabs because it has become live planetary state.
+Its counter lives on DEFEND and not beside it (D140): a weapon you build to send is a fleet
+project, and a charge that fires along your own radar circle is defence, next to the shield and the
+guns where a player looks for "what stops one of those".
 Its plate is premium through mass, material and silhouette; strategic red remains a small danger
 signal rather than filling the whole card.
 
@@ -235,6 +248,33 @@ now, with the season figure under it. A player hunting for the way out hunts for
 **Before shipping a surface, name the control that opens it when nothing has happened — and check
 that the control names it back.**
 
+The commander menu also carries two global, non-seasonal communication surfaces. **Announcements**
+shows operator-authored release notes and short messages in newest-first order; opening it clears
+the per-account unread state. Its rich content uses one renderer in the admin preview and the
+player sheet, so responsive images, links and YouTube embeds cannot disagree between composition
+and delivery. **Feedback** is a direct, private form with exactly three kinds — bug, suggestion and
+praise — and always renders the player's message as plain text.
+
+The admin row exists only when `/api/auth/me` confirms a username from the server's out-of-band
+allow-list. Its panel has only two rooms: a Tiptap composer with simultaneous 360px and 720px
+previews, and the bounded newest-first feedback inbox. The preview is guidance, never the security
+boundary: the API parses and allow-list sanitizes every submitted HTML document again, rejects
+active content, and stores only the cleaned result.
+
+The planet glyph in the corner of the disc opens **Worlds** — the commander's own holdings as a
+list. It used to recentre the camera and nothing else, which was a control that named a surface
+it did not open; the recentre is now the first thing inside it, so nothing was taken away and the
+label is honest. The list carries what a commander chooses between — stock, craft standing,
+flight bays, and which world is active — because a menu of names still makes them visit each
+world to decide.
+
+**Two affordances per row, and they are different verbs.** Pressing the row goes there: camera
+and active world move together, or the player manages one world while looking at another.
+Pressing "send here" opens a transfer to that row FROM a source chosen at the top of the panel,
+and moves neither the camera nor the active world. `POST /api/fleet/transfer` has taken an
+explicit origin since D118; until this panel, nothing on screen ever used it. The old route —
+focus a world, focus it again, transfer from the focus rail — is untouched.
+
 ### I5b · Clan is one simple room with five visible seats (D114)
 
 The commander menu has a permanent **Clan / Klan** row and a small attention dot for an invite,
@@ -253,17 +293,18 @@ live beside the thing they act on. A hostile-flight acknowledgement states that 
 will still arrive before Accept becomes commit. Irreversible controls use the established
 confirmation sheet and never hide behind swipe gestures.
 
-The Aid section names sender, recipient and destination; then separates resource cargo from
-gifted ships, shows that only Haulers carry resources, remaining 24-hour allowance, bay use,
-exact arrival and possible-return deadline. An opaque refusal says a payload cannot land
-without revealing another player's Shipyard or research. The Overview depot shows three
+The Aid section names sender, recipient and destination; then makes the payload mode explicit:
+loaded transports deliver resources and return, while empty convoys gift their ships. It shows
+that only Haulers carry resources, remaining 24-hour allowance, bay use, exact arrival and return
+deadline. An opaque refusal applies to a ship gift that cannot land without revealing another
+player's Shipyard or research. The Overview depot shows three
 personal balances and one Claim action; it never resembles a leader bank.
 
 Clan tag is a compact public identity in Galaxy focus, commander standings and battle reports.
 The clan room carries its own short seasonal standings instead of nesting another full ladder.
 All text lives independently in Turkish and English locale trees. Existing `plate`, `slab`,
-`socket`, type roles and spacing remain the visual language; targets are at least 44 px, sheets
-trap focus and close with Back/Escape, and reduced motion loses no state information.
+`socket`, type roles and spacing remain the visual language; targets are at least 44 px and sheets
+trap focus and close with Back/Escape.
 
 ### I6 · A readout measures what the player owns, never what exists
 
@@ -286,13 +327,18 @@ a contact. Their renders are the subject of the plate, and the plate routes dire
 to Orbit when installation is the next action. Reports lead with a visual verdict:
 combat outcome, surviving/lost formations and round balance precede prose.
 
+The galaxy draws the free 750-unit neighbourhood even without a Telescope and the larger
+effective Telescope sphere when one is online. Asteroids appear on the shared server-clock instant
+their orbit first enters any owned sphere and remain until gone; a field refresh must not reframe
+the camera or erase a selected object before the authoritative expiry/depletion response does.
+
 ### I6a · Feedback stays where the state changed
 
 A mutation's authoritative planet view remains the outcome, and the changed meter,
 render, count or world state acknowledges it in place. A toast is supporting speech,
 not the only evidence. Informational speech remains long enough to perceive; a refusal
-remains longer and can be dismissed. Reduced-motion users receive the same state change
-without depending on a sweep, pulse or morph.
+remains longer and can be dismissed. State changes never depend solely on a sweep,
+pulse or morph.
 
 ### I6b · Capacity, condition and protection are shapes before they are prose
 

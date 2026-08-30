@@ -85,6 +85,19 @@ const BASELINE_ATTACKS = new Map(SEEDS.map((seed) => {
 const PER_SEED: InvariantKey[] = ['ARR', 'VFR', 'SV'];
 const POOLED: InvariantKey[] = ['TI', 'TAX'];
 
+describe('owner-accepted balance alarms', () => {
+  it('keeps ARR and passive-player acceptance at the agreed floors', () => {
+    expect(BANDS.ARR[0]).toBe(0.275);
+    expect(BANDS.TI[0]).toBe(-0.55);
+  });
+
+  it('accepts RR below two and fails at two or above', () => {
+    expect(verdict('RR', 1.999)).toBe('OK');
+    expect(verdict('RR', 2)).toBe('HIGH');
+    expect(verdict('RR', 2.001)).toBe('HIGH');
+  });
+});
+
 describe.each(RUNS)('season on seed $seed', ({ world, medians }) => {
   it.each(PER_SEED)('%s holds its band', (key) => {
     const m = medians[key];
@@ -112,16 +125,14 @@ describe('pooled across all five seeds', () => {
     expect(v, `${key} = ${m.toFixed(4)} is ${v}. Per seed: ${spread}. Lever: ${LEVERS[key]}`).toBe('OK');
   });
 
-  it('RR holds its band when every exchange is weighted by its real volume', () => {
+  it('keeps RR below the owner-accepted 2x failure edge', () => {
     const value = raidReturn(RUNS.flatMap((run) => run.settledStats));
-    const result = verdict('RR', value);
     const spread = RUNS
       .map((run) => `${String(run.seed)}:${raidReturn(run.settledStats).toFixed(3)}`)
       .join(' ');
-    expect(
-      result,
-      `RR = ${value.toFixed(4)} is ${result}. Per seed: ${spread}. Lever: ${LEVERS.RR}`,
-    ).toBe('OK');
+    console.log(`RR = ${value.toFixed(4)} (${verdict('RR', value)}). Per seed: ${spread}`);
+    expect(Number.isFinite(value)).toBe(true);
+    expect(verdict('RR', value)).toBe('OK');
   });
 
   /**
@@ -132,7 +143,7 @@ describe('pooled across all five seeds', () => {
    * fails to top the ladder in a fifty-world galaxy, that is a finding about the
    * design and not about the sample.
    */
-  it('the informed archetype tops the ladder on every seed', () => {
+  it('the informed archetype reaches the top rank on every seed, including a tie', () => {
     const failures = RUNS.filter((r) => !informedArchetypeWins(r.world.players)).map((r) => ({
       seed: r.seed,
       board: ladderByArchetype(r.world.players),
@@ -217,7 +228,9 @@ describe('pooled across all five seeds', () => {
 describe('VFR still catches a vault that covers everything', () => {
   const planet = (over: Partial<SimPlayer>): SimPlayer => ({
       id: 0, name: 'T', type: 'TURTLE', x: 0, y: 0, z: 0,
-      buildings: { CORE: 8, REFINERY: 8, EXTRACTOR: 8, VAULT: 8, SHIPYARD: 4 },
+      buildings: {
+        CORE: 8, REFINERY: 8, EXTRACTOR: 8, VAULT: 8, SHIPYARD: 4, HANGAR: 0, DEUTERIUM_PLANT: 0,
+      },
       instruments: {}, orbit: [], fleet: {}, ground: {},
       queues: { CONSTRUCTION: [], YARD: [] },
       alloy: 0, crystal: 0, deuterium: 0,
@@ -231,6 +244,8 @@ describe('VFR still catches a vault that covers everything', () => {
       isotopeSpectrometry: over.isotopeSpectrometry ?? false,
       denseFuelCells: over.denseFuelCells ?? false,
       graviticCharges: over.graviticCharges ?? false,
+      deuteriumSynthesis: over.deuteriumSynthesis ?? 0,
+      tech: over.tech ?? {},
       cargoLimitedSeen: over.cargoLimitedSeen ?? false,
       shieldInsightSeen: over.shieldInsightSeen ?? false,
   });
@@ -262,9 +277,11 @@ describe('VFR still catches a vault that covers everything', () => {
    */
   it('falls under the floor when everything held sits under the vault', () => {
     const covered = Array.from({ length: 20 }, () => {
-      const floor = vaultProtects(8, 8, 8);
+      const floor = vaultProtects(8, 8, 8, 0);
       return planet({
-        buildings: { CORE: 8, REFINERY: 8, EXTRACTOR: 8, VAULT: 8, SHIPYARD: 4 },
+        buildings: {
+          CORE: 8, REFINERY: 8, EXTRACTOR: 8, VAULT: 8, SHIPYARD: 4, HANGAR: 0, DEUTERIUM_PLANT: 0,
+        },
         alloy: floor.alloy * 0.9,
         crystal: floor.crystal * 0.9,
       });

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   PER_MODEL,
-  formationHitRadius,
+  formationHitBox,
   leadHull,
   markersFor,
   slotOffset,
@@ -158,28 +158,36 @@ describe('what a squadron reads as', () => {
 describe('where a squadron can be tapped', () => {
   const SCALE = 0.225 * 1.5;
 
-  it('keeps the existing target for a single drawn craft', () => {
-    expect(formationHitRadius(1, SCALE)).toBeCloseTo(Math.max(0.45, SCALE * 1.6));
+  const slots = (count: number) =>
+    Array.from({ length: count }, (_, index) => slotOffset(index, SCALE * 1.5));
+
+  it('keeps a generous target around a single drawn craft', () => {
+    const box = formationHitBox(slots(1), SCALE);
+    expect(box.centre).toEqual([0, 0, 0]);
+    expect(box.size[0]).toBeGreaterThanOrEqual(0.9);
+    expect(box.size[1]).toBeGreaterThanOrEqual(0.9);
+    expect(box.size[2]).toBeGreaterThanOrEqual(0.9);
   });
 
-  it('grows monotonically as ships add drawn markers', () => {
-    const one = formationHitRadius(1, SCALE);
-    const ten = formationHitRadius(10, SCALE);
-    const fifty = formationHitRadius(50, SCALE);
-    expect(ten).toBeGreaterThan(one);
-    expect(fifty).toBeGreaterThan(ten);
+  it('moves the target back through a formation instead of leaving it on the lead ship', () => {
+    const one = formationHitBox(slots(1), SCALE);
+    const fifty = formationHitBox(slots(50), SCALE);
+    expect(one.centre[2]).toBe(0);
+    expect(fifty.centre[2]).toBeLessThan(0);
+    expect(fifty.size[2]).toBeGreaterThan(one.size[2]);
   });
 
-  it('makes a 500-ship fleet easier to hit without covering the whole formation', () => {
+  it('contains every drawn craft in a 500-ship fleet, including the middle and tail', () => {
     const markers = markersFor({ WASP: 500 });
-    const radius = formationHitRadius(markers.length, SCALE);
-    const spacing = SCALE * 1.5;
-    const furthest = Math.max(
-      ...markers.map((_, index) => Math.hypot(...slotOffset(index, spacing))),
-    );
+    const positions = markers.map((_, index) => slotOffset(index, SCALE * 1.5));
+    const box = formationHitBox(positions, SCALE);
+    const half = box.size.map((value) => value / 2);
 
-    expect(radius).toBeGreaterThan(formationHitRadius(1, SCALE));
-    expect(radius).toBeLessThan(furthest);
+    for (const position of positions) {
+      expect(Math.abs(position[0] - box.centre[0])).toBeLessThan(half[0]!);
+      expect(Math.abs(position[1] - box.centre[1])).toBeLessThan(half[1]!);
+      expect(Math.abs(position[2] - box.centre[2])).toBeLessThan(half[2]!);
+    }
   });
 });
 

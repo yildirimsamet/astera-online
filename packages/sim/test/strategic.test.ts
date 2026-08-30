@@ -34,7 +34,7 @@ describe('multi-world strategic simulation', () => {
     for (const n of first.neutrals) {
       expect(n.id).toBeGreaterThanOrEqual(MULTI_WORLD.capitalSlots);
       expect(n.deuterium).toBe(
-        deuteriumStorageCap(crystalRate(n.buildings.EXTRACTOR), n.buildings.VAULT),
+        deuteriumStorageCap(0, crystalRate(n.buildings.EXTRACTOR), n.buildings.VAULT),
       );
     }
   });
@@ -50,18 +50,18 @@ describe('multi-world strategic simulation', () => {
 
   it('makes an unguarded T1 lossless and net-positive for a low fleet with cargo', () => {
     const fleet = { WASP: 1, HAULER: 1 } as const;
-    const battle = resolveCombat(fleet, {}, 0, mulberry32(1));
+    const battle = resolveCombat(fleet, {}, 0, mulberry32(1), { attacker: {}, defender: {} });
     const template = MULTI_WORLD.neutral[1];
     const loot = computeLoot(
       {
         alloy: storageCap(alloyRate(template.buildings.REFINERY), template.buildings.VAULT),
         crystal: storageCap(crystalRate(template.buildings.EXTRACTOR), template.buildings.VAULT),
-        deuterium: deuteriumStorageCap(crystalRate(template.buildings.EXTRACTOR), template.buildings.VAULT),
+        deuterium: deuteriumStorageCap(0, crystalRate(template.buildings.EXTRACTOR), template.buildings.VAULT),
       },
       { alloy: 0, crystal: 0, deuterium: 0 },
       { alloy: 0, crystal: 0, deuterium: 0 },
       battle.grade,
-      fleetCargo(battle.attackerSurvivors),
+      fleetCargo(battle.attackerSurvivors, {}),
     );
 
     expect(battle.grade).toBe('DECISIVE');

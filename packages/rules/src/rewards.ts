@@ -37,16 +37,16 @@ import type { Resources } from './types.js';
  * The brief was *"orta iyi arası"* — the player should not be disappointed and
  * should not be overjoyed. Two anchors fix the scale:
  *
- *   · A fresh planet's alloy store holds 1,392 and a Wasp costs 260. So a first
- *     tier at 200 alloy is "most of a warship, right now" — felt immediately, and
- *     gone by the second upgrade.
+ *   · A fresh Vault-0 planet's alloy store holds 5,611 and a Wasp costs 300. So
+ *     a first tier at 200 alloy is two-thirds of a warship — felt immediately,
+ *     and still too small to replace production.
  *   · The whole table pays 13,600 alloy and 4,740 crystal if every tier is taken,
- *     against a fourteen-day season that produces well over 100,000. Roughly a
- *     tenth, front-loaded — enough to change the first day and nothing like enough
- *     to replace the economy.
+ *     and stays deliberately UNSCALED by the slower tempo. Rewards pay actions,
+ *     not waiting; keeping them fixed makes play slightly more valuable while the
+ *     fixed-goal simulation proves they still do not replace the economy.
  *
  * CRYSTAL IS HELD AT ~35% OF ALLOY THROUGHOUT, which is the income share
- * (`crystalBase / alloyBase` = 28/80) and not a taste. Paying crystal faster than
+ * (`crystalBase / alloyBase` = 33.6/92.4) and not a taste. Paying crystal faster than
  * it is earned would quietly undo the scarcity `ECON.crystalCostBase` exists to
  * create — the constant that took a whole pass to derive, because a resource that
  * arrives faster than it can be spent is decoration rather than a constraint.
@@ -154,7 +154,7 @@ const CHAINS: Record<RewardChainId, RewardChain> = {
    * THE BIGGEST PURSE IN THE TABLE, WITH `RAID`, AND ON PURPOSE.
    *
    * "The information is the game" is the product's own sentence, and the recorded
-   * risk against it is that nobody scouts. A probe costs 25 alloy and 25 crystal
+   * risk against it is that nobody scouts. A probe costs 50 alloy and 30 crystal
    * and takes minutes; paying 200 for the first one is the cheapest lesson the
    * game can buy, and it is a lesson rather than a bribe because the reward is
    * for the ACT and the act is what teaches the fog.
@@ -189,7 +189,7 @@ const CHAINS: Record<RewardChainId, RewardChain> = {
   /**
    * The Core is the ceiling every other structure obeys and the thing that opens
    * orbit slots at 1, 3, 5 and 9 — so its tiers sit ON those slots wherever they
-   * can. L9 pays 1,600 because L8→L9 costs 13,960 alloy on its own.
+   * can. L9 pays 1,600 alloy against an L8→L9 step costing 3,000 alloy.
    */
   CORE: {
     id: 'CORE',
@@ -245,8 +245,8 @@ const CHAINS: Record<RewardChainId, RewardChain> = {
    * genuinely unrecoverable from the world, so `planets.builtEver` records it,
    * and it is the only counter this feature adds.
    *
-   * IT COUNTS THE WASP ALONE, not hulls in general. 50 Bulwarks is 125,000 alloy
-   * and 50 Wasps is 13,000; one number cannot mean both. The Wasp is also the
+   * IT COUNTS THE WASP ALONE, not hulls in general. Fifty Bulwarks cost more than
+   * ten times fifty Wasps; one number cannot mean both. The Wasp is also the
    * hull the opening hands you two of, so the chain starts where the player
    * already is.
    */
@@ -308,7 +308,7 @@ const CHAINS: Record<RewardChainId, RewardChain> = {
    * balance that changed overnight.
    *
    * 1,000 / 500 is the owner's figure, raised from 500 / 250. It is by some way
-   * the largest single grant in the table — the same size as `OPENING_BONUS`, the
+   * the largest single grant in the table — larger than `OPENING_BONUS`, the
    * cushion a brand-new commander is handed — and that is the point: it is paid
    * once, to a few dozen people, and it is marketing rather than economy.
    *

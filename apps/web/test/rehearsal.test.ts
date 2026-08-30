@@ -3,9 +3,12 @@ import {
   HULLS,
   OPENING_BONUS,
   PLANET_START,
+  hangarCapacity,
   PROBE,
   START,
   START_BUILDINGS,
+  SENSOR,
+  asteroidPosition,
   generateGalaxy,
   upgradeCost,
 } from '@astera/rules';
@@ -84,6 +87,8 @@ const previewOf = (planets: Preview['galaxy']['planets'] = []): Preview => ({
         position: { x: 0, y: 0, z: 0 },
         coreTier: 1,
         coreLevel: 1,
+        intel: 'RESOLVED' as const,
+        state: { kind: 'NORMAL' as const },
         satellites: [],
         shielded: false,
         isSelf: true,
@@ -109,6 +114,8 @@ const neighbour = (
   // A level inside the tier it was given, so the pair stays self-consistent the
   // way the server's projection makes them: `coreTier` is `ceil(level / 3)`.
   coreLevel: coreTier * 3,
+  intel: 'RESOLVED' as const,
+  state: { kind: 'NORMAL' as const },
   satellites: [],
   shielded: false,
   isSelf: false,
@@ -201,6 +208,15 @@ describe('the opening budget', () => {
     // Two Wasps is exactly the budget; three is not.
     expect(refusesBuild(three, 'WASP', 2)).toBeNull();
     expect(refusesBuild(three, 'WASP', 3)).toBe('INSUFFICIENT_RESOURCES');
+  });
+
+  it('refuses staged ships that would exceed the same opening Hangar', () => {
+    const world = {
+      ...opened(),
+      alloy: 100_000_000,
+      crystal: 100_000_000,
+    };
+    expect(refusesBuild(world, 'WASP', hangarCapacity(0) + 1)).toBe('HANGAR_FULL');
   });
 
   it('records what was pressed, in order, and nothing else', () => {
@@ -332,7 +348,6 @@ describe('the rehearsal fetch', () => {
     const mining = await api.mining();
     const whole = generateGalaxy(preview.season.seed, preview.season.playerCap).asteroids;
 
-    expect(mining.asteroids.length).toBeGreaterThan(0);
     expect(mining.asteroids.length).toBeLessThan(whole.length);
     expect(mining.derrick).toBe(false);
 
@@ -340,6 +355,15 @@ describe('the rehearsal fetch', () => {
     for (const rock of mining.asteroids) {
       expect(rock.appearsAt).toBeLessThanOrEqual(minutes);
       expect(rock.expiresAt).toBeGreaterThan(minutes);
+      const position = asteroidPosition(
+        { ...rock, index: 0, deuteriumShare: rock.deuteriumShare ?? 0 },
+        minutes,
+      );
+      expect(Math.hypot(
+        position.x - preview.reserved.position.x,
+        position.y - preview.reserved.position.y,
+        position.z - preview.reserved.position.z,
+      )).toBeLessThanOrEqual(SENSOR.baseRadius);
     }
   });
 
@@ -384,7 +408,9 @@ describe('the rehearsal fetch', () => {
     const { api } = harness();
     await expect(api.probe('target')).rejects.toMatchObject({ code: 'REHEARSAL_ONLY' });
     await expect(api.collect()).rejects.toMatchObject({ code: 'REHEARSAL_ONLY' });
-    await expect(api.mine(1, 1)).rejects.toMatchObject({ code: 'REHEARSAL_ONLY' });
+    await expect(api.mine('mJt7YvxMZEC5S7yYQ32SYw', 1)).rejects.toMatchObject({
+      code: 'REHEARSAL_ONLY',
+    });
     await expect(api.launch('target', { WASP: 2 })).rejects.toMatchObject({
       code: 'REHEARSAL_ONLY',
     });

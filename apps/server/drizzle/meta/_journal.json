@@ -246,6 +246,90 @@
       "when": 1787730514827,
       "tag": "0034_open_hydra",
       "breakpoints": true
+    },
+    {
+      "idx": 35,
+      "version": "7",
+      "when": 1787787478935,
+      "tag": "0035_rare_madripoor",
+      "breakpoints": true
+    },
+    {
+      "idx": 36,
+      "version": "7",
+      "when": 1787816914051,
+      "tag": "0036_moaning_master_chief",
+      "breakpoints": true
+    },
+    {
+      "idx": 37,
+      "version": "7",
+      "when": 1787849555606,
+      "tag": "0037_slim_the_order",
+      "breakpoints": true
+    },
+    {
+      "idx": 38,
+      "version": "7",
+      "when": 1787893855872,
+      "tag": "0038_familiar_the_hand",
+      "breakpoints": true
+    },
+    {
+      "idx": 39,
+      "version": "7",
+      "when": 1787913559076,
+      "tag": "0039_tired_king_cobra",
+      "breakpoints": true
+    },
+    {
+      "idx": 40,
+      "version": "7",
+      "when": 1787919765154,
+      "tag": "0040_thick_catseye",
+      "breakpoints": true
+    },
+    {
+      "idx": 41,
+      "version": "7",
+      "when": 1787919766154,
+      "tag": "0041_open_the_tube",
+      "breakpoints": true
+    },
+    {
+      "idx": 42,
+      "version": "7",
+      "when": 1787944102726,
+      "tag": "0042_bright_lockjaw",
+      "breakpoints": true
+    },
+    {
+      "idx": 43,
+      "version": "7",
+      "when": 1787946375094,
+      "tag": "0043_backfill_sensor_epochs",
+      "breakpoints": true
+    },
+    {
+      "idx": 44,
+      "version": "7",
+      "when": 1788005505539,
+      "tag": "0044_dry_legion",
+      "breakpoints": true
+    },
+    {
+      "idx": 45,
+      "version": "7",
+      "when": 1788037200000,
+      "tag": "0045_refresh_sensor_radius_epochs",
+      "breakpoints": true
+    },
+    {
+      "idx": 46,
+      "version": "7",
+      "when": 1788040322743,
+      "tag": "0046_majestic_boomerang",
+      "breakpoints": true
     }
   ]
 }

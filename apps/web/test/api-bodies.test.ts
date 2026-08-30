@@ -103,7 +103,9 @@ const WITH_BODY: [name: string, call: (api: Api) => Promise<unknown>, expected: 
   ['markClanSeen', (a) => a.markClanSeen(), {}],
   ['claimReward', (a) => a.claimReward('first-blood'), { id: 'first-blood' }],
   // The two that were broken.
-  ['mine', (a) => a.mine(7, 3), { asteroidIndex: 7, craft: 3 }],
+  ['mine', (a) => a.mine('mJt7YvxMZEC5S7yYQ32SYw', 3), {
+    asteroidId: 'mJt7YvxMZEC5S7yYQ32SYw', craft: 3,
+  }],
   ['harvest', (a) => a.harvest('field-1', 3), { fieldId: 'field-1', craft: 3 }],
 ];
 

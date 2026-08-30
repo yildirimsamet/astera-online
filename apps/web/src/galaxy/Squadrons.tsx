@@ -48,18 +48,52 @@ import { ALL_HULLS, HULLS, type Fleet, type HullId } from '@astera/rules';
  */
 export const PER_MODEL = 10;
 
+export interface FormationHitBox {
+  centre: [number, number, number];
+  size: [number, number, number];
+}
+
 /**
- * One forgiving target for the squadron rather than one target per drawn hull.
+ * One forgiving target that follows the WHOLE squadron.
  *
- * The visible formation spreads with sqrt(markerCount), so the old fixed sphere
- * covered progressively less of it until a 500-ship force was practically
- * selectable only at its lead craft. The smaller coefficient is deliberate: the
- * centre gets easier to tap as the force grows, but the invisible target never
- * expands across the entire formation and steals neighbouring selections. D122.
+ * The old target only grew around the lead craft. A formation grows backwards as
+ * `sqrt(markerCount)`, so its middle and tail eventually sat outside the sphere
+ * even though the player was pressing directly on a visible ship. This box is the
+ * local-space bounds of the exact slots we draw, padded by the original one-craft
+ * tap radius. It therefore moves backwards with the fleet and covers every model
+ * without growing into unrelated space ahead of it.
  */
-export function formationHitRadius(markerCount: number, scale: number): number {
-  const base = Math.max(0.45, scale * 1.6);
-  return base + scale * 0.2 * Math.sqrt(Math.max(0, markerCount - 1));
+export function formationHitBox(
+  slots: readonly [number, number, number][],
+  scale: number,
+): FormationHitBox {
+  const padding = Math.max(0.45, scale * 1.6);
+  if (slots.length === 0) {
+    const diameter = padding * 2;
+    return { centre: [0, 0, 0], size: [diameter, diameter, diameter] };
+  }
+
+  const min: [number, number, number] = [...slots[0]!] as [number, number, number];
+  const max: [number, number, number] = [...slots[0]!] as [number, number, number];
+  for (const slot of slots.slice(1)) {
+    for (let axis = 0; axis < 3; axis += 1) {
+      min[axis] = Math.min(min[axis]!, slot[axis]!);
+      max[axis] = Math.max(max[axis]!, slot[axis]!);
+    }
+  }
+
+  return {
+    centre: [
+      (min[0] + max[0]) / 2,
+      (min[1] + max[1]) / 2,
+      (min[2] + max[2]) / 2,
+    ],
+    size: [
+      max[0] - min[0] + padding * 2,
+      max[1] - min[1] + padding * 2,
+      max[2] - min[2] + padding * 2,
+    ],
+  };
 }
 
 export interface Marker {

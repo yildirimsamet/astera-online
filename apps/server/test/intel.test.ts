@@ -1,7 +1,7 @@
 import { and, eq } from 'drizzle-orm';
 import { pino } from 'pino';
 import { afterAll, beforeEach, describe, expect, it } from 'vitest';
-import { INTEL, PROBE } from '@astera/rules';
+import { INTEL, PROBE, SENSOR, detectChance } from '@astera/rules';
 import {
   accounts,
   missions,
@@ -26,6 +26,7 @@ import {
   giveUnits,
   grant,
   makeAccount,
+  placeAt,
   seedWorld,
   setLevel,
   testDb,
@@ -121,8 +122,34 @@ describe('the information layer', () => {
         code: 'BAD_SLOT',
       });
 
+      // This case proves the slot curve, not duplicate-target policy. Vacate slot
+      // zero so slot one can be checked against the same two-world fixture.
+      await f.db.delete(watches).where(eq(watches.observerPlanetId, mine));
       await giveInstrument(f, mine, 'TELESCOPE', 3);
       await expect(assignWatch(f.db, mine, theirs, 1, f.clock)).resolves.toBeTruthy();
+    });
+
+    it('does not turn several slots into several uncertainty rolls on one target', async () => {
+      await giveInstrument(f, mine, 'TELESCOPE', 3);
+      await assignWatch(f.db, mine, theirs, 0, f.clock);
+
+      await expect(assignWatch(f.db, mine, theirs, 1, f.clock)).rejects.toMatchObject({
+        code: 'TARGET_ALREADY_WATCHED',
+        status: 409,
+      });
+      expect(await readTelescopes(f.db, myPlayer, f.clock)).toHaveLength(1);
+    });
+
+    it('collapses duplicate rows left by an older build to one reading', async () => {
+      await giveInstrument(f, mine, 'TELESCOPE', 3);
+      await f.db.insert(watches).values([
+        { observerPlayerId: myPlayer, observerPlanetId: mine, slot: 0, targetPlanetId: theirs },
+        { observerPlayerId: myPlayer, observerPlanetId: mine, slot: 1, targetPlanetId: theirs },
+      ]);
+
+      const readings = await readTelescopes(f.db, myPlayer, f.clock);
+      expect(readings).toHaveLength(1);
+      expect(readings[0]).toMatchObject({ observerPlanetId: mine, slot: 0, targetPlanetId: theirs });
     });
 
     it('refuses negative and fractional slots', async () => {
@@ -146,6 +173,17 @@ describe('the information layer', () => {
       await expect(
         assignWatch(f.db, mine, '00000000-0000-0000-0000-000000000000', 0, f.clock),
       ).rejects.toMatchObject({ status: 404 });
+    });
+
+    it('reports the finite effective reach when an L5 target is outside the horizon', async () => {
+      await placeAt(f.db, mine, { x: 0, y: 0, z: 0 });
+      await placeAt(f.db, theirs, { x: SENSOR.maxRadius + 100, y: 0, z: 0 });
+      await giveInstrument(f, mine, 'TELESCOPE', 5);
+
+      await expect(assignWatch(f.db, mine, theirs, 0, f.clock)).rejects.toMatchObject({
+        code: 'OUT_OF_RANGE',
+        params: { level: 5, reach: SENSOR.maxRadius, distance: SENSOR.maxRadius + 100 },
+      });
     });
 
     it('re-pointing a slot discards its confirmation history', async () => {
@@ -186,6 +224,58 @@ describe('the information layer', () => {
       expect(view!.ownerName).toBe('İzci');
       expect(view!.reading.status).toBe('HOME');
       expect(view!.reading.state).toBe('FULL');
+    });
+
+    it('keeps the chosen target dormant while its Uplink is unavailable', async () => {
+      await giveInstrument(f, mine, 'TELESCOPE', 2);
+      await assignWatch(f.db, mine, theirs, 0, f.clock);
+      expect(await readTelescopes(f.db, myPlayer, f.clock)).toHaveLength(1);
+
+      await f.db.delete(satellites).where(and(
+        eq(satellites.planetId, mine),
+        eq(satellites.type, 'UPLINK'),
+      ));
+      expect(await readTelescopes(f.db, myPlayer, f.clock)).toEqual([]);
+
+      await f.db.insert(satellites).values({ planetId: mine, slot: 15, type: 'UPLINK', level: 1 });
+      expect(await readTelescopes(f.db, myPlayer, f.clock)).toHaveLength(1);
+    });
+
+    it('does not serve a stored slot above the current Telescope allowance', async () => {
+      await giveInstrument(f, mine, 'TELESCOPE', 3);
+      await assignWatch(f.db, mine, theirs, 1, f.clock);
+      expect(await readTelescopes(f.db, myPlayer, f.clock)).toHaveLength(1);
+
+      await giveInstrument(f, mine, 'TELESCOPE', 2);
+      expect(await readTelescopes(f.db, myPlayer, f.clock)).toEqual([]);
+    });
+
+    it('stops serving a watch when the observer world changes hands', async () => {
+      await giveInstrument(f, mine, 'TELESCOPE', 2);
+      await assignWatch(f.db, mine, theirs, 0, f.clock);
+      expect(await readTelescopes(f.db, myPlayer, f.clock)).toHaveLength(1);
+
+      await f.db.update(planets)
+        .set({ controllerPlayerId: f.playerIds[1]!, kind: 'COLONY' })
+        .where(eq(planets.id, mine));
+
+      expect(await readTelescopes(f.db, myPlayer, f.clock)).toEqual([]);
+      expect(await f.db.select().from(watches)).toHaveLength(1);
+    });
+
+    it('does not serve a stored target after it moves outside current reach', async () => {
+      await placeAt(f.db, mine, { x: 0, y: 0, z: 0 });
+      await placeAt(f.db, theirs, { x: 200, y: 0, z: 0 });
+      await giveInstrument(f, mine, 'TELESCOPE', 1);
+      await assignWatch(f.db, mine, theirs, 0, f.clock);
+      expect(await readTelescopes(f.db, myPlayer, f.clock)).toHaveLength(1);
+
+      await placeAt(f.db, theirs, {
+        x: INTEL.telescopeRange[1]! + 1,
+        y: 0,
+        z: 0,
+      });
+      expect(await readTelescopes(f.db, myPlayer, f.clock)).toEqual([]);
     });
 
     it('reports AWAY the moment a fleet leaves orbit', async () => {
@@ -615,7 +705,7 @@ describe('the information layer', () => {
       }
 
       expect(await f.db.select().from(scanEvents)).toHaveLength(0);
-      expect(await readRadarLog(f.db, theirs)).toHaveLength(0);
+      expect(await readRadarLog(f.db, [theirs])).toHaveLength(0);
     });
 
     it('every probe writes exactly one scan row, detected or not', async () => {
@@ -627,13 +717,35 @@ describe('the information layer', () => {
       expect(scans).toHaveLength(1);
       // And the log shows it if and only if it was caught — whichever way the
       // seeded roll went.
-      const visible = await readRadarLog(f.db, theirs);
+      const visible = await readRadarLog(f.db, [theirs]);
       expect(visible.length).toBe(scans[0]!.detected ? 1 : 0);
     });
 
-    it('high radar catches almost everything — measured over many probes', async () => {
-      await giveInstrument(f, theirs, 'RADAR', 5); // detect chance clamps to 0.95
+    /**
+     * A MAXED RADAR CATCHES SCOUTS, AND THE BOUND IS DERIVED FROM THE CEILING.
+     *
+     * THREE VERSIONS OF THIS TEST, AND THE MIDDLE ONE IS THE LESSON. It began as
+     * `>= 5 of 8` beside a comment reading "clamps to 0.95"; both went stale when
+     * the ceiling moved to 0.80, and the assertion then failed on samples that
+     * were merely unlucky — a mission id is a random UUID, so the seeded roll is
+     * genuinely non-deterministic across runs. The fix for that flake replaced the
+     * assertion with `typeof scan.detected === 'boolean'`, which the column's own
+     * NOT NULL constraint already guarantees: eight probe round trips, the most
+     * expensive setup in this file, asserting nothing at all. A test that cannot
+     * fail is worse than a deleted one, because it still reads as coverage.
+     *
+     * The bound below is the strongest claim eight samples can carry HONESTLY. At
+     * the configured ceiling, every one of them missing has probability
+     * `(1 - detectMax)^8` — about one run in four hundred thousand at 0.80 — so
+     * this fails when the ladder is broken and effectively never otherwise. It is
+     * computed from `INTEL.detectMax`, so it follows the constant rather than
+     * going stale beside it, and it degrades gracefully: lower the ceiling and the
+     * bound simply becomes weaker rather than wrong.
+     */
+    it('catches at least one scout in eight at the configured ceiling', async () => {
+      await giveInstrument(f, theirs, 'RADAR', 5);
       await setLevel(f.db, mine, 'SHIPYARD', 0);
+      expect(detectChance(5, 0)).toBe(INTEL.detectMax);
 
       const PROBES = 8;
       for (let i = 0; i < PROBES; i++) {
@@ -652,14 +764,24 @@ describe('the information layer', () => {
 
       const scans = await f.db.select().from(scanEvents);
       expect(scans).toHaveLength(PROBES);
-      const caught = scans.filter((s) => s.detected).length;
-      // At p=0.95, seeing fewer than 5 of 8 has probability ~1e-6.
-      expect(caught).toBeGreaterThanOrEqual(5);
+
+      /*
+        The odds of this assertion failing on a working ladder, stated so the next
+        reader does not have to re-derive them before trusting it.
+      */
+      const allMiss = (1 - INTEL.detectMax) ** PROBES;
+      expect(allMiss, 'the sample is too small to assert anything').toBeLessThan(1e-4);
+
+      const caught = scans.filter((scan) => scan.detected).length;
+      expect(
+        caught,
+        `a maxed Radar caught none of ${String(PROBES)} unskilled scouts`,
+      ).toBeGreaterThan(0);
     });
 
     it('an undetected probe never appears in the radar log', async () => {
       // No radar at all: detection clamps to the 5% floor.
-      const log = await readRadarLog(f.db, theirs);
+      const log = await readRadarLog(f.db, [theirs]);
       expect(log).toHaveLength(0);
 
       await setLevel(f.db, mine, 'SHIPYARD', 8);
@@ -673,7 +795,7 @@ describe('the information layer', () => {
         .where(eq(scanEvents.detected, false));
       // Whether this particular roll was caught is seeded, but an undetected row
       // must never surface in the log.
-      const visible = await readRadarLog(f.db, theirs);
+      const visible = await readRadarLog(f.db, [theirs]);
       expect(visible.length + scans.length).toBe(1);
     });
   });
@@ -696,7 +818,7 @@ describe('the information layer', () => {
 
     it('L1 gives the fact only — no bearing, no origin', async () => {
       await giveInstrument(f, theirs, 'RADAR', 1);
-      const [entry] = await readRadarLog(f.db, theirs);
+      const [entry] = await readRadarLog(f.db, [theirs]);
       expect(entry).toBeDefined();
       expect(entry!.bearing).toBeNull();
       expect(entry!.originPlanetName).toBeNull();
@@ -704,21 +826,75 @@ describe('the information layer', () => {
 
     it('L2 adds a direction but still never names anyone', async () => {
       await giveInstrument(f, theirs, 'RADAR', 2);
-      const [entry] = await readRadarLog(f.db, theirs);
+      const [entry] = await readRadarLog(f.db, [theirs]);
       expect(entry!.bearing).toBeTruthy();
       expect(entry!.originPlanetName).toBeNull();
     });
 
     it.each([3, 4])('L%i still withholds the origin', async (level) => {
       await giveInstrument(f, theirs, 'RADAR', level);
-      const [entry] = await readRadarLog(f.db, theirs);
+      const [entry] = await readRadarLog(f.db, [theirs]);
       expect(entry!.originPlanetName).toBeNull();
     });
 
     it('only L5 names the scanner', async () => {
       await giveInstrument(f, theirs, 'RADAR', 5);
-      const [entry] = await readRadarLog(f.db, theirs);
+      const [entry] = await readRadarLog(f.db, [theirs]);
       expect(entry!.originPlanetName).toBeTruthy();
+    });
+
+    /**
+     * A COLONY'S RADAR IS READ, AND IT USED NOT TO BE. D97/D134.
+     *
+     * `/api/intel` asked for the CAPITAL and nothing else, so a probe against a
+     * colony wrote its `scan_events` row and no surface in the game ever read it:
+     * a commander could be scouted on three of their four worlds and be told
+     * nothing at all. The log is commander-wide now, and each row is gated by the
+     * radar of the world it actually happened to — the instrument that caught the
+     * probe is the one on the world it flew at.
+     */
+    it('covers every world the commander holds, gated one world at a time', async () => {
+      // `seedWorld` truncates, so the third world has to exist from the start and
+      // the scan this suite's own `beforeEach` wrote has to be re-made here.
+      const w = await seedWorld(3);
+      const [defender, scout, colony] = w.planetIds as [string, string, string];
+      const [capital] = await w.db.select().from(planets).where(eq(planets.id, defender));
+      await w.db
+        .update(planets)
+        .set({ controllerPlayerId: capital!.controllerPlayerId, kind: 'COLONY' })
+        .where(eq(planets.id, colony));
+      for (const id of [defender, colony]) await setLevel(w.db, id, 'CORE', 8);
+      // The Uplink is the gate on both instruments that see (D25); without it
+      // every radar below reports level 0 and this would test nothing.
+      await w.db.insert(satellites).values([
+        { planetId: defender, slot: 15, type: 'UPLINK', level: 1 },
+        { planetId: colony, slot: 15, type: 'UPLINK', level: 1 },
+      ]);
+      await w.db.insert(scanEvents).values([
+        { targetPlanetId: defender, originPlanetId: scout, detected: true, bearing: 'north-west' },
+        { targetPlanetId: colony, originPlanetId: scout, detected: true, bearing: 'south' },
+      ]);
+
+      // The capital reads a bearing; the colony has no radar and reads none.
+      await giveInstrument(w, defender, 'RADAR', 2);
+      const log = await readRadarLog(w.db, [defender, colony]);
+      expect(log, 'the colony scan was unreachable').toHaveLength(2);
+
+      const onCapital = log.find((row) => row.planetId === defender);
+      const onColony = log.find((row) => row.planetId === colony);
+      expect(onCapital?.bearing).toBeTruthy();
+      expect(onColony, 'the colony row never surfaced').toBeDefined();
+      expect(onColony!.bearing, 'a radar-less colony sold a bearing').toBeNull();
+
+      // And each row says WHICH world it happened to, or the list is unusable.
+      expect(onCapital?.planetName).toBeTruthy();
+      expect(onColony?.planetName).toBeTruthy();
+      expect(onCapital?.planetName).not.toBe(onColony?.planetName);
+
+      // Raising the colony's own radar is what opens its own row.
+      await giveInstrument(w, colony, 'RADAR', 2);
+      const after = await readRadarLog(w.db, [defender, colony]);
+      expect(after.find((row) => row.planetId === colony)?.bearing).toBeTruthy();
     });
   });
 
@@ -864,11 +1040,17 @@ describe('a probe flies out and comes back', () => {
     // And only when it gets back does the answer appear.
     f.clock.set(home!.arriveAt);
     await worker().tick();
+    // Historical intel must not follow a later account/controller identity change.
+    await f.db.update(accounts).set({ displayName: 'Yeni Sahip' })
+      .where(eq(accounts.id, f.accountIds[1]!));
     const reports = await readProbeReports(f.db, myPlayer);
     expect(reports).toHaveLength(1);
     expect(reports[0]!.report.deliveredAt).not.toBeNull();
     expect(reports[0]!.targetUsername).toBe('İzci');
     expect(reports[0]!.targetName).not.toBe('STALE-SEASON-NAME');
+    // Even when the recent-history window is exhausted, the newest dossier for
+    // every remembered target remains readable.
+    expect(await readProbeReports(f.db, myPlayer, 0)).toHaveLength(1);
   });
 
   /** The scan is written when the probe arrives, not when it gets home. */

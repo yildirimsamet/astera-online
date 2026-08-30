@@ -2,10 +2,15 @@ import { and, eq, sql } from 'drizzle-orm';
 import {
   HULLS,
   MULTI_WORLD,
+  PROSPECTOR,
   distance,
   fleetCount,
   fleetSpeedMult,
   fleetTravelExact,
+  hangarCapacity,
+  hangarLoad,
+  missionFuel,
+  prospectorRoom,
   resourcesTotal,
   transferCargoCapacity,
   type Fleet,
@@ -13,11 +18,12 @@ import {
   type Resources,
 } from '@astera/rules';
 import { addMinutes, type Clock } from '../clock.js';
-import type { Db, Tx } from '../db/client.js';
-import { missions, neutralPlanetState, planets, units } from '../db/schema.js';
+import type { Db, Queryable, Tx } from '../db/client.js';
+import { buildings, missions, neutralPlanetState, planets, units } from '../db/schema.js';
 import { publishShard } from '../stream/bus.js';
 import { schedule } from '../worker/queue.js';
 import { assertFreeBay } from './flight.js';
+import { assertFuel } from './fuel.js';
 import {
   assertColonyCapacity,
   capitalPlanet,
@@ -35,9 +41,11 @@ import {
   recomputePlayerWealth,
   saveResources,
   setUnits,
+  totalUnitsOf,
 } from './planet.js';
 import { planetView } from './planetView.js';
 import { pendingThreads } from './session.js';
+import { fleetChangesWatch, publishWatchChanges } from './watchEvents.js';
 
 const EMPTY: Resources = { alloy: 0, crystal: 0, deuterium: 0 };
 
@@ -76,6 +84,72 @@ async function reserveFleet(
   await setUnits(tx, originPlanetId, fleet, missionId, ownerPlayerId);
 }
 
+export interface LandingBlock {
+  code: 'TARGET_PROSPECTOR_CAP' | 'TARGET_HANGAR_FULL';
+  message: string;
+  params: Record<string, number>;
+}
+
+/**
+ * WHY THIS PAYLOAD CANNOT LAND HERE, OR NULL. T1 · T4.
+ *
+ * ONE RULE, READ BY BOTH DOORS. A transfer is judged at launch — so a player is
+ * never charged a flight for craft that could not have landed — and again on
+ * arrival, because the far world goes on living for the whole trip and can build
+ * its own pair, or its own fleet, while this one is in the air. Two copies of the
+ * question would answer it differently the first time either moved.
+ *
+ * COUNTED OVER EVERY UNIT ROW FOR THE WORLD, never over its home stack: a craft
+ * away mining is still a craft that world owns, and a ceiling a launch could empty
+ * is not a ceiling.
+ *
+ * The arriving squadron is never in the figure. `reserveFleet` leaves a stack
+ * booked to the world it LEFT for the whole trip, so a flight to another world
+ * cannot see itself here — which is also exactly why the origin's own quota stays
+ * spent while its craft are away.
+ *
+ * The OWNED figures rather than the remaining room, because a world can legally be
+ * over a line and a refusal has to be able to say by how much. `prospectorRoom`
+ * floors at zero, so deriving a count back out of it would report a fortress of
+ * three as a fortress of two.
+ */
+export async function landingBlock(
+  tx: Queryable,
+  targetPlanetId: string,
+  fleet: Fleet,
+): Promise<LandingBlock | null> {
+  const owned = await totalUnitsOf(tx, targetPlanetId);
+
+  const prospectors = fleet.PROSPECTOR ?? 0;
+  const held = owned.PROSPECTOR ?? 0;
+  if (prospectors > 0 && prospectors > prospectorRoom(held)) {
+    return {
+      code: 'TARGET_PROSPECTOR_CAP',
+      message:
+        `That world may hold ${String(PROSPECTOR.max)} Prospectors, and it has ${String(held)}.`,
+      params: { max: PROSPECTOR.max, have: held },
+    };
+  }
+
+  const incoming = hangarLoad(fleet);
+  if (incoming > 0) {
+    const [row] = await tx
+      .select({ level: buildings.level })
+      .from(buildings)
+      .where(and(eq(buildings.planetId, targetPlanetId), eq(buildings.type, 'HANGAR')));
+    const capacity = hangarCapacity(row?.level ?? 0);
+    const used = hangarLoad(owned);
+    if (used + incoming > capacity) {
+      return {
+        code: 'TARGET_HANGAR_FULL',
+        message: `That world's Hangar holds ${String(capacity)} and is carrying ${String(used)}.`,
+        params: { capacity, used, needed: incoming },
+      };
+    }
+  }
+  return null;
+}
+
 export async function launchTransfer(
   db: Db,
   ownerPlayerId: string,
@@ -109,7 +183,27 @@ export async function launchTransfer(
       throw new GameError('INSUFFICIENT_RESOURCES', 'Not enough resources');
     }
     await assertFreeBay(tx, originPlanetId, origin.buildings.CORE);
+    // Refused at LAUNCH as well as on arrival, so a player is never charged a
+    // flight for craft that could not have landed. Both worlds are already held
+    // by `lockWorlds`, so the counts cannot move under the check. A conflict
+    // rather than a bad request: the fleet is legal, the world at the far end is
+    // the thing that cannot take it.
+    const blocked = await landingBlock(tx, targetPlanetId, fleet);
+    if (blocked) throw new GameError(blocked.code, blocked.message, 409, blocked.params);
     const dist = distance(origin, target);
+    // One leg: a transfer arrives and stays. The craft become the destination's. T6.
+    const fuel = missionFuel(fleet, dist, 1);
+    /*
+      THE CARGO IS ALREADY SPOKEN FOR. T6.
+
+      This read `origin.deuterium < fuel`, and the cargo check above it read
+      `origin.deuterium < cargo.deuterium` — neither looked at the SUM. A commander
+      shipping their whole tank as cargo passed both and the store was written as
+      `held - cargo - fuel`, which is NEGATIVE. Nothing downstream defends against
+      that: the lazy tick, the loot maths and the readout all take it at face value.
+      `assertFuel` is that sum, and it is now the only place any launch states it.
+    */
+    assertFuel(fuel, origin.deuterium, cargo.deuterium);
     const oneWay = fleetTravelExact(dist, fleet, fleetSpeedMult(origin.orbit));
     if (!Number.isFinite(oneWay)) throw new GameError('IMMOBILE_FLEET', 'That fleet cannot travel');
     const arriveAt = addMinutes(origin.now, oneWay);
@@ -131,7 +225,7 @@ export async function launchTransfer(
     await saveResources(tx, originPlanetId, {
       alloy: origin.alloy - cargo.alloy,
       crystal: origin.crystal - cargo.crystal,
-      deuterium: origin.deuterium - cargo.deuterium,
+      deuterium: origin.deuterium - cargo.deuterium - fuel,
     });
     await schedule(tx, {
       seasonId: origin.seasonId,
@@ -140,6 +234,7 @@ export async function launchTransfer(
       resolveAt: arriveAt,
     });
     await publishShard(tx, origin.seasonId, 'launch');
+    if (fleetChangesWatch(fleet)) await publishWatchChanges(tx, [originPlanetId]);
     await recomputePlayerWealth(tx, ownerPlayerId);
     return {
       missionId: mission.id,
@@ -187,6 +282,19 @@ export async function launchSettlement(
     }
     const fleet: Fleet = { HAULER: haulers };
     const dist = distance(origin, neutral.world);
+    // One leg: the settlers land and become the colony. T6.
+    const fuel = missionFuel(fleet, dist, 1);
+    /*
+      THE FOUNDING STOCK TRAVELS WITH THEM, SO IT IS SPENT BEFORE THE FLIGHT IS. T6.
+
+      `MULTI_WORLD.settlement.cost` is the cargo of this mission, not a fee: it is
+      handed to the colony on landing. Its deuterium is zero today and this guard
+      read the bare store, which is the same shape `launchTransfer` shipped as a
+      bug — the day the founding stock carries any fuel, a settlement would fly on
+      deuterium it had already given away and write a negative tank. Stated through
+      the one guard so it cannot be true on one path and false on another.
+    */
+    assertFuel(fuel, origin.deuterium, cost.deuterium);
     const oneWay = fleetTravelExact(dist, fleet);
     const arriveAt = addMinutes(origin.now, oneWay);
     if (arriveAt >= neutral.state.claimUntil) {
@@ -212,7 +320,9 @@ export async function launchSettlement(
     await saveResources(tx, originPlanetId, {
       alloy: origin.alloy - cost.alloy,
       crystal: origin.crystal - cost.crystal,
-      deuterium: origin.deuterium,
+      // The stock the settlers carry, and then the flight. Both, for the same
+      // reason the guard above counts both.
+      deuterium: origin.deuterium - cost.deuterium - fuel,
     });
     await schedule(tx, {
       seasonId: origin.seasonId,
@@ -221,6 +331,7 @@ export async function launchSettlement(
       resolveAt: arriveAt,
     });
     await publishShard(tx, origin.seasonId, 'launch');
+    if (fleetChangesWatch(fleet)) await publishWatchChanges(tx, [originPlanetId]);
     await recomputePlayerWealth(tx, ownerPlayerId);
     return {
       missionId: mission.id,
@@ -292,8 +403,27 @@ export async function resolveTransfer(
   mission: typeof missions.$inferSelect,
   now: Date,
 ): Promise<'DELIVERED' | 'REROUTED'> {
-  const [target] = await tx.select().from(planets).where(eq(planets.id, mission.targetPlanetId));
+  const [target] = await tx
+    .select()
+    .from(planets)
+    .where(eq(planets.id, mission.targetPlanetId))
+    .for('update');
   if (target?.controllerPlayerId !== mission.ownerPlayerId) {
+    await rerouteToSafeHome(tx, mission, now);
+    return 'REROUTED';
+  }
+  /**
+   * THE DESTINATION IS CHECKED AGAIN, because it went on living while this flew.
+   * A transfer takes minutes and the world at the far end can build in that time;
+   * a launch-time check alone lands craft on a world that filled up behind them.
+   *
+   * ONLY A FLIGHT THE PLAYER CHOSE. A rerouted leg carries a parent, which marks
+   * it as a system path — the destination vanished, or the far world could not
+   * take the payload — and those may always land. Overflow is legal and nothing
+   * is ever deleted to enforce a limit, so refusing a rerouted leg would only
+   * bounce it between worlds forever.
+   */
+  if (mission.parentMissionId === null && await landingBlock(tx, target.id, mission.fleet)) {
     await rerouteToSafeHome(tx, mission, now);
     return 'REROUTED';
   }

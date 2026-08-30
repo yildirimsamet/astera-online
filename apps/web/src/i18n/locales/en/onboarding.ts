@@ -57,7 +57,7 @@ export const onboarding = {
     },
   },
 
-  /** Always reachable, at every beat. A tutorial nobody can leave is a trap. */
+  /** Always reachable: skip to claim, or leave for an existing account. */
   skip: 'Skip',
   haveAccount: 'I already have a commander',
 

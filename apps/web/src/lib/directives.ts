@@ -108,6 +108,7 @@ export function directives(s: Situation): Directive[] {
       (planet.buildings.VAULT ?? 0) + 1,
       planet.buildings.REFINERY ?? 0,
       planet.buildings.EXTRACTOR ?? 0,
+      planet.buildings.DEUTERIUM_PLANT ?? 0,
     );
     const next = nextFloor.alloy + nextFloor.crystal;
     out.push({

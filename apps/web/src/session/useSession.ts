@@ -245,6 +245,7 @@ export function useSession() {
           accountId: result.accountId,
           username: result.username,
           displayName: result.displayName,
+          isAdmin: false,
           placement: {
             shard: result.placement.shard,
             shardName: result.placement.shardName,

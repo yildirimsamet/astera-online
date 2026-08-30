@@ -34,8 +34,10 @@ const incoming = z.object({
   /** ISO instant. Absent on rows written before D45; `etaMinutes` covers those. */
   arriveAt: z.coerce.date().optional(),
   etaMinutes: z.number(),
-  /** Radar L4. */
+  /** Historical Radar L4 payload; retained only so old notification rows render. */
   estimatedShips: z.number().optional(),
+  /** Radar L4. */
+  mass: z.enum(['LIGHT', 'MEDIUM', 'HEAVY']).optional(),
   /** Radar L5, both of them. */
   fleet: fleet.optional(),
   originPlanetId: z.string().optional(),
@@ -44,6 +46,20 @@ const incoming = z.object({
   originPlanetName: z.string().optional(),
   /** Historical payload fallback. */
   originName: z.string().optional(),
+  /**
+   * WHICH OF YOUR OWN WORLDS IT IS AIMED AT.
+   *
+   * Never a radar product: the ladder sells the attacker's side. Optional because
+   * rows written before this existed do not carry it.
+   */
+  targetPlanetName: z.string().optional(),
+});
+
+/** Both halves of one interception: who is reading it, and how far out it died. */
+const intercepted = z.object({
+  planetId: z.string().optional(),
+  defended: z.boolean(),
+  range: z.number(),
 });
 
 const raided = z.object({
@@ -307,8 +323,9 @@ export function describeNotification(notification: NotificationView, now: number
       const parsed = incoming.safeParse(notification.payload);
       if (!parsed.success) return i18n.t('notifications.incomingFallback');
       const {
-        arriveAt, etaMinutes, estimatedShips, fleet: ships,
+        arriveAt, etaMinutes, estimatedShips, mass, fleet: ships,
         originUsername, originClanTag, originPlanetName, originName,
+        targetPlanetName,
       } = parsed.data;
 
       /**
@@ -337,6 +354,15 @@ export function describeNotification(notification: NotificationView, now: number
       // Composition is the better line when radar has bought it — it says what
       // to build against, which a count cannot.
       if (ships && Object.keys(ships).length > 0) parts.push(composition(ships));
+      else if (mass !== undefined) {
+        parts.push(i18n.t(
+          mass === 'HEAVY'
+            ? 'pendingStrip.massHeavy'
+            : mass === 'MEDIUM'
+              ? 'pendingStrip.massMedium'
+              : 'pendingStrip.massLight',
+        ));
+      }
       else if (estimatedShips !== undefined) {
         parts.push(i18n.t('notifications.incomingEstimate', { count: estimatedShips }));
       }
@@ -345,9 +371,34 @@ export function describeNotification(notification: NotificationView, now: number
           origin: identity(originUsername, originPlanetName, originName, originClanTag),
         }));
       }
+      /**
+       * AND WHICH OF YOUR WORLDS IT IS FOR, LAST.
+       *
+       * After the clock and the force, because those decide WHETHER to act and
+       * this decides WHERE — and with four worlds a warning that does not say
+       * where is a warning nobody can act on. It is the recipient's own world, so
+       * it costs the fog nothing.
+       */
+      if (targetPlanetName !== undefined) {
+        parts.push(i18n.t('notifications.incomingAt', { world: targetPlanetName }));
+      }
       return parts.join(JOIN());
     }
 
+    /**
+     * A strategic weapon destroyed on a ring. T10.
+     *
+     * Two readings of one event, and the payload says which: the defender stopped
+     * it, the attacker lost it. One kind rather than two, because it IS one event
+     * — and a pair of kinds would let the two halves drift apart in wording.
+     */
+    case 'strategic_intercepted': {
+      const parsed = intercepted.safeParse(notification.payload);
+      if (!parsed.success) return i18n.t('notifications.interceptedFallback');
+      return parsed.data.defended
+        ? i18n.t('notifications.interceptedDefended', { range: Math.round(parsed.data.range) })
+        : i18n.t('notifications.interceptedLost', { range: Math.round(parsed.data.range) });
+    }
     case 'raided': {
       const parsed = raided.safeParse(notification.payload);
       if (!parsed.success) return i18n.t('notifications.raidedFallback');

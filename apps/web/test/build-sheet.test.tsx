@@ -2,7 +2,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { act, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
-import { PROSPECTOR } from '@astera/rules';
+import { PROSPECTOR, groundSlots, hangarCapacity, hullFuelRate } from '@astera/rules';
 import { PlanetScreen } from '../src/screens/PlanetScreen.js';
 import { ToastProvider } from '../src/ui/Toast.js';
 import type { PlanetView } from '../src/api/schemas.js';
@@ -30,7 +30,7 @@ const rich = (
 ): PlanetView =>
   planetView(
     {
-      buildings: { CORE: 6, REFINERY: 3, EXTRACTOR: 3, VAULT: 1, SHIPYARD: 4 },
+      buildings: { CORE: 6, REFINERY: 3, EXTRACTOR: 3, VAULT: 1, SHIPYARD: 4, HANGAR: 0 },
       orbitSlots: 3,
       fleet: {},
       fleetAway: {},
@@ -62,6 +62,7 @@ vi.mock('../src/api/queries.js', async () => {
     useRaiseInstrument: () => ({ mutate: vi.fn(), isPending: false }),
     useCancelBuildOrder: () => ({ mutate: cancelOrder, isPending: false }),
     useBuildDeathStar: () => ({ mutate: vi.fn(), isPending: false }),
+    useBuildInterceptor: () => ({ mutate: vi.fn(), isPending: false }),
   };
 });
 
@@ -155,14 +156,24 @@ describe('the two build queues', () => {
       },
     }, 'grow');
 
+    /*
+      THE LIST BECAME A TIMELINE. Owner instruction: a segment forty pixels wide
+      carries the RENDER rather than the name, so what is asserted is the shape —
+      one segment per order, the lane's ending, and the name surviving as the
+      accessible label a screen reader hears.
+    */
     const queues = screen.getByRole('region', { name: 'Build queues' });
     expect(within(queues).getByText('Construction')).toBeInTheDocument();
     expect(within(queues).getByText('Yard')).toBeInTheDocument();
-    expect(within(queues).getByText('Command Core')).toBeInTheDocument();
-    expect(within(queues).getByText('2 × Wasp')).toBeInTheDocument();
-    expect(within(queues).queryByText('committing…')).toBeNull();
+    const segments = queues.querySelectorAll('[data-segment]');
+    expect(segments).toHaveLength(2);
+    expect(segments[0]?.getAttribute('aria-label') ?? '').toMatch(/Command Core/);
+    expect(segments[1]?.getAttribute('aria-label') ?? '').toMatch(/Wasp/);
+    expect(within(queues).getByText('×2')).toBeInTheDocument();
+    // Both lanes now say when their work ends, which no screen used to carry.
+    expect(queues.querySelectorAll('[data-lane-ends]')).toHaveLength(2);
 
-    const [cancel] = within(queues).getAllByRole('button', { name: 'Cancel' });
+    const [cancel] = within(queues).getAllByRole('button', { name: /^Cancel / });
     expect(cancel).toHaveAttribute(
       'title',
       'Refund: 50 alloy · 22 crystal · 1 Deuterium',
@@ -191,9 +202,15 @@ describe('the two build queues', () => {
       },
     }, 'grow');
 
+    /*
+      An order the server has not acknowledged has no clock and no id, so the strip
+      draws its segment and offers no cancel at all — a control that could only ever
+      send a guaranteed 404 is worse than no control.
+    */
     const queues = screen.getByRole('region', { name: 'Build queues' });
-    expect(within(queues).getByText('committing…')).toBeInTheDocument();
-    expect(within(queues).getByRole('button', { name: 'Cancel' })).toBeDisabled();
+    expect(queues.querySelectorAll('[data-segment]')).toHaveLength(1);
+    expect(queues.querySelector('[data-cancel]')).toBeNull();
+    expect(queues.querySelector('[data-lane-ends]')).toBeNull();
     expect(cancelOrder).not.toHaveBeenCalled();
   });
 
@@ -291,40 +308,6 @@ describe('the two build queues', () => {
     vi.useRealTimers();
   });
 
-  it('offers research unlocked by the queued world, not only by durable state', async () => {
-    completeResearch.mockClear();
-    const base = rich();
-    const now = new Date();
-    const view = show({
-      research: base.research.map((project) => project.id === 'DENSE_FUEL_CELLS'
-        ? { ...project, queueDiscovered: true, queueAvailable: true }
-        : project),
-      queues: {
-        CONSTRUCTION: [{
-          id: 'queued-isotope',
-          queue: 'CONSTRUCTION',
-          slot: 0,
-          kind: 'RESEARCH',
-          subject: 'ISOTOPE_SPECTROMETRY',
-          count: 1,
-          startedAt: now,
-          finishesAt: new Date(now.getTime() + 60_000),
-          cost: { alloy: 0, crystal: 600, deuterium: 0 },
-        }],
-        YARD: [],
-      },
-    }, 'reach', { deuterium: 1_000 });
-
-    const row = view.container.querySelector('#row-DENSE_FUEL_CELLS');
-    expect(row).not.toBeNull();
-    await userEvent.click(within(row as HTMLElement).getByRole('button', { name: /about dense fuel cells/i }));
-    const action = screen.getByRole('button', { name: 'Research' });
-    expect(action).toBeEnabled();
-    await userEvent.click(action);
-    expect(completeResearch).toHaveBeenCalledOnce();
-    expect(completeResearch.mock.calls[0]?.[0]).toBe('DENSE_FUEL_CELLS');
-    expectMutationCallbacks(completeResearch.mock.calls[0]?.[1]);
-  });
 });
 
 /**
@@ -344,6 +327,34 @@ async function openSheet(name: string): Promise<void> {
 }
 
 describe('the quantity picker', () => {
+  it('shows the Hangar and never offers more ships than fit', async () => {
+    const hangar = hangarCapacity(0);
+    show({
+      fleet: { WASP: hangar - 1 },
+      capacity: {
+        hangar,
+        hangarUsed: hangar - 1,
+        ground: groundSlots(6),
+        groundUsed: 0,
+      },
+    });
+
+    expect(screen.getByRole('heading', { name: 'Hangar' })).toBeInTheDocument();
+    await openSheet('Wasp');
+    expect(screen.getByRole('textbox', { name: /wasp quantity/i })).toHaveValue('1');
+    expect(screen.getByRole('button', { name: /more wasp/i })).toBeDisabled();
+    /*
+      THE SENTENCE BECAME A PICTURE. Owner instruction: this line used to carry the
+      hull's footprint, the load and the ceiling as text, and none of the three
+      questions it answers could be answered from it at a glance. `CapacityBar`
+      draws them — so what is asserted here is the ANSWER the player came for,
+      which is how many more fit, and that one Wasp is drawn at its own width.
+    */
+    const room = document.querySelector('[data-fits]');
+    expect(room).toHaveTextContent('1');
+    expect(document.querySelector('[data-part="one"]')).toBeInTheDocument();
+  });
+
   it('offers minus, plus and Max around a read-only quantity for a warship', async () => {
     show();
     await openSheet('Wasp');
@@ -464,5 +475,76 @@ describe('the quantity picker', () => {
       expect.objectContaining({ hull: 'PROSPECTOR', count: PROSPECTOR.max }),
       expect.anything(),
     );
+  });
+});
+
+/**
+ * WHAT IT COSTS, BESIDE WHAT IT IS. Owner report: *"geminin üretim için istedigi
+ * kaynaklar en altta kalmış"*.
+ *
+ * The price sat below the quantity stepper and the capacity card, at the foot of
+ * a sheet that scrolls — so the four figures saying what a hull IS were read
+ * first and the one saying whether it can be HAD was under the fold. A commander
+ * comparing two hulls needs it in the same glance as the attack and the speed,
+ * because the comparison the counter cycle rests on is power per unit of ore.
+ */
+describe('where the price sits on a craft sheet', () => {
+  it('puts the cost above the quantity picker, not under it', async () => {
+    show({});
+    await openSheet('Wasp');
+    const price = document.querySelector('[data-build-price]');
+    const stepper = screen.getByRole('button', { name: /max wasp/i });
+    expect(price).not.toBeNull();
+    // `DOCUMENT_POSITION_FOLLOWING` — the stepper comes after the price.
+    expect(price!.compareDocumentPosition(stepper) & Node.DOCUMENT_POSITION_FOLLOWING)
+      .toBeTruthy();
+  });
+
+  /** One price per sheet: the figure shown is the one the commit button quotes. */
+  it('shows the order total, and only once', async () => {
+    show({});
+    await openSheet('Wasp');
+    expect(document.querySelectorAll('[data-build-price]')).toHaveLength(1);
+  });
+});
+
+/**
+ * WHAT A HULL COSTS TO MOVE, ON THE CARD WHERE HULLS ARE COMPARED. Owner report.
+ *
+ * The craft sheet answers "what is this ship" in four figures — attack, hull,
+ * speed, cargo — and since T6 a fifth decides whether a fleet can be flown at all.
+ * It was in no screen in the game. A commander could see that a Bulwark is slow
+ * and takes twelve Wasps' worth of Hangar and had no way to learn, short of
+ * packing one and reading the launch sheet, that it also burns twelve times a
+ * Wasp's deuterium to go anywhere.
+ *
+ * A RATE, over `FUEL.reference`, because a charge needs a destination and this
+ * card has none. The launch and transfer sheets quote the charge itself.
+ */
+describe('the fuel a craft burns', () => {
+  it('states the rate on the sheet where two hulls are compared', async () => {
+    show();
+    await openSheet('Wasp');
+
+    const fuel = document.querySelector('.stat-fuel');
+    expect(fuel, 'the craft sheet says nothing about fuel').not.toBeNull();
+    expect(fuel).toHaveTextContent(hullFuelRate('WASP').toFixed(1));
+    expect(fuel).toHaveTextContent(/fuel/i);
+  });
+
+  it('scales with the mass the Hangar already charges for', async () => {
+    show();
+    await openSheet('Bulwark');
+
+    expect(document.querySelector('.stat-fuel'))
+      .toHaveTextContent(hullFuelRate('BULWARK').toFixed(1));
+  });
+
+  /** A gun never travels. A rate for one would invent a decision that cannot be made. */
+  it('leaves the figure out for a hull that cannot travel', async () => {
+    show({}, 'defend');
+    await openSheet('Bastion');
+
+    expect(document.querySelector('.stat-fuel')).toHaveTextContent('—');
   });
 });

@@ -7,6 +7,7 @@ import type {
   Grade,
   HullId,
   InstrumentId,
+  MassClass,
   ResearchProjectId,
   Resources,
   SatelliteId,
@@ -27,7 +28,9 @@ export const hullId = z.enum([
   'WASP', 'LANCE', 'BULWARK', 'HAULER', 'RUNNER', 'BREACHER',
   'BASTION', 'THORN', 'PROSPECTOR',
 ]);
-export const buildingId = z.enum(['CORE', 'REFINERY', 'EXTRACTOR', 'VAULT', 'SHIPYARD']);
+export const buildingId = z.enum([
+  'CORE', 'REFINERY', 'EXTRACTOR', 'VAULT', 'SHIPYARD', 'HANGAR', 'DEUTERIUM_PLANT',
+]);
 /**
  * TWO ID SPACES, BECAUSE THEY ARE TWO KINDS OF THING. D25.
  *
@@ -38,10 +41,15 @@ export const buildingId = z.enum(['CORE', 'REFINERY', 'EXTRACTOR', 'VAULT', 'SHI
 export const instrumentId = z.enum(['TELESCOPE', 'RADAR', 'AEGIS', 'VEIL']);
 export const satelliteId = z.enum(['FOUNDRY', 'UPLINK', 'DERRICK', 'BEACON']);
 export const fleetStatus = z.enum(['HOME', 'AWAY', 'UNKNOWN']);
+/** All a stranger is entitled to know about a craft in transit. D123. */
+export const massClass = z.enum(['LIGHT', 'MEDIUM', 'HEAVY']);
 export const clarityState = z.enum(['FULL', 'CLEAR', 'INTERMITTENT', 'DEGRADED', 'BLIND']);
 export const grade = z.enum(['DECISIVE', 'PARTIAL', 'REPELLED']);
 export const researchProjectId = z.enum([
   'ISOTOPE_SPECTROMETRY', 'DENSE_FUEL_CELLS', 'GRAVITIC_CHARGES', 'DEATH_STAR_PROTOCOL',
+  'DEUTERIUM_SYNTHESIS', 'YARD_AUTOMATION', 'PROSPECTOR_HOLDS', 'CARGO_HOLDS',
+  'WASP_DOCTRINE', 'LANCE_DOCTRINE', 'BULWARK_DOCTRINE', 'EMPLACEMENT_DOCTRINE',
+  'WEAPONS_GENERAL', 'INTERCEPTION_GRID', 'STRATEGIC_STOCKPILE',
 ]);
 
 // If any of these stop compiling, the rules changed and this file has not.
@@ -50,10 +58,14 @@ const _building: Exact<z.infer<typeof buildingId>, BuildingId> = true;
 const _instrument: Exact<z.infer<typeof instrumentId>, InstrumentId> = true;
 const _satellite: Exact<z.infer<typeof satelliteId>, SatelliteId> = true;
 const _status: Exact<z.infer<typeof fleetStatus>, FleetStatus> = true;
+const _mass: Exact<z.infer<typeof massClass>, MassClass> = true;
 const _clarity: Exact<z.infer<typeof clarityState>, ClarityState> = true;
 const _grade: Exact<z.infer<typeof grade>, Grade> = true;
 const _research: Exact<z.infer<typeof researchProjectId>, ResearchProjectId> = true;
-void [_hull, _building, _instrument, _satellite, _status, _clarity, _grade, _research];
+void [
+  _hull, _building, _instrument, _satellite,
+  _status, _mass, _clarity, _grade, _research,
+];
 
 const fleet = z.record(hullId, z.number());
 const vec3 = z.object({ x: z.number(), y: z.number(), z: z.number() });
@@ -162,6 +174,8 @@ export const meSchema = z.object({
   accountId: z.string(),
   username: z.string(),
   displayName: z.string(),
+  /** Older servers do not know the operations panel and safely default to no access. */
+  isAdmin: z.boolean().default(false),
   placement: z
     .object({ shard: z.string(), shardName: z.string(), planetName: z.string() })
     .nullable(),
@@ -207,7 +221,7 @@ export const seasonSchema = z.object({
   shard: z.string(),
   /** Added after the first season payload; old servers remain readable. */
   shardName: z.string().optional(),
-  /** The galaxy layout and every asteroid orbit are rebuilt from this locally. */
+  /** Public galaxy generation identity. Private asteroid schedules use a server-only key. */
   seed: z.number(),
   status: z.string(),
   startsAt: z.coerce.date(),
@@ -251,6 +265,8 @@ export const planetSchema = z.object({
     crystalCap: z.number(),
     deuteriumCap: z.number(),
     alloyPerHour: z.number(),
+  /** Zero on a world with no refinery, and absent on a server that predates one. */
+  deuteriumPerHour: z.number().optional(),
     crystalPerHour: z.number(),
     /**
      * The works: uncollected production, and the ceiling it stops at. D16.
@@ -302,6 +318,15 @@ export const planetSchema = z.object({
   satelliteCosts: z.record(satelliteId, resources),
   research: z.array(z.object({
     id: researchProjectId,
+    /**
+     * The rung held and the top of the ladder. T7: research belongs to the
+     * commander now and can carry a level, so `completed` alone stopped being the
+     * whole story. Optional for a rolling deploy against an older server; every
+     * current project tops out at one, where `level > 0` and `completed` agree.
+     */
+    level: z.number().optional(),
+    maxLevel: z.number().optional(),
+    /** The price of the NEXT rung, or of the top one when there is no next. */
     cost: resources,
     discovered: z.boolean(),
     completed: z.boolean(),
@@ -331,6 +356,21 @@ export const planetSchema = z.object({
     readyAt: z.coerce.date().nullable(),
     remainingSeconds: z.number().nullable(),
   }).nullable().optional(),
+  /**
+   * THE ANTI-STRATEGIC CHARGE, ON ITS OWN KEY. T10 · T12.
+   *
+   * `strategic` used to be the only strategic thing a world could hold, and the
+   * server read it back untyped — so a charge started after a weapon reported
+   * itself AS the weapon. Two kinds of asset, two keys; nothing infers one from
+   * the other. Optional for a rolling deploy against an older server, where a
+   * missing key simply means no charge is known.
+   */
+  interceptor: z.object({
+    id: z.string(),
+    status: z.enum(['BUILDING', 'PAUSED', 'READY']),
+    readyAt: z.coerce.date().nullable(),
+    remainingSeconds: z.number().nullable(),
+  }).nullable().optional(),
   colonies: z.object({
     highestCore: z.number(),
     colonies: z.number(),
@@ -343,6 +383,16 @@ export const planetSchema = z.object({
   fleetAway: fleet,
   /** Craft in the air, and how many bays the Command Core has opened. D28. */
   flight: z.object({ used: z.number(), total: z.number() }),
+  /**
+   * Ownership ceilings, including craft away from the world. T4/T4b.
+   * Optional only for a rolling deploy against an older server.
+   */
+  capacity: z.object({
+    hangar: z.number(),
+    hangarUsed: z.number(),
+    ground: z.number(),
+    groundUsed: z.number(),
+  }).optional(),
   score: z.object({ wealth: z.number(), dominion: z.number() }),
 });
 
@@ -477,11 +527,82 @@ export const galaxySchema = z.object({
     capitalPlanetId: z.string().optional(),
     planetIds: z.array(z.string()).optional(),
   }),
+  /**
+   * WHERE YOUR OWN EYES ARE. D125.
+   *
+   * One post per world you control: its position, and how far its Telescope
+   * reaches. Always finite: D126 capped it, because an unbounded top rung meant
+   * one maxed Telescope deleted the horizon for a whole season.
+   *
+   * The disc draws the boundary from this, and the traffic layer solves against it
+   * for the instant a contact will cross — which is what turns a crossing into
+   * something you watch rather than something that pops between two reads.
+   *
+   * Optional so a client ahead of its server still parses.
+   */
+  sensors: z
+    .array(z.object({
+      /** Which of your own worlds these eyes are. Optional for an older server. */
+      planetId: z.string().optional(),
+      at: vec3,
+      /** False is the free naked-eye neighbourhood, true is a working Telescope. */
+      telescope: z.boolean().default(false),
+      /**
+       * THE TWO CIRCLES, UNDER THE NAMES THE MODEL USES. `@astera/rules/sight`.
+       *
+       * `identify` is the Telescope: inside it you see the craft itself. `detect`
+       * is the Radar: inside it you get a question mark that moves, and nothing
+       * more. Outside both a craft does not exist for you.
+       *
+       * They were `reach` / `sense` / `warn`, three wire names for two facts, and
+       * `warn` was published for releases without a single reader — nothing on the
+       * client knew what it was for. One name per fact, shared with the server.
+       */
+      identify: z.number(),
+      detect: z.number().default(0),
+    }))
+    .optional(),
+  /**
+   * Live clan identity is deliberately separate from sight. It names only the
+   * current crew and their fixed world locations; it carries no development,
+   * hardware, traffic or sensor fields. Missing keeps an older server usable.
+   */
+  clanPresence: z.object({
+    clan: z.object({ id: z.string(), name: z.string(), tag: z.string() }),
+    members: z.array(z.object({
+      playerId: z.string(),
+      username: z.string(),
+      worlds: z.array(z.object({
+        planetId: z.string(),
+        name: z.string(),
+        position: vec3,
+      })),
+    })),
+  }).nullable().optional(),
   planets: z.array(
     z.object({
       id: z.string(),
-      name: z.string(),
-      owner: z.string(),
+      /**
+       * HOW MUCH OF THIS WORLD YOU HAVE EARNED. D127.
+       *
+       *   · `RESOLVED`   — inside a Telescope's reach. Live, complete, exactly the
+       *                    galaxy that existed before any of this.
+       *   · `REMEMBERED` — a probe has been there. The world stays DARK; what it
+       *                    gains are the facts that probe saw, frozen at `seenAt`.
+       *                    The target may have built since; you see what you went
+       *                    and looked at.
+       *   · `UNKNOWN`    — a point. Every other field is ABSENT, not null: the fog
+       *                    here is enforced by omission, because a nulled field is
+       *                    one a modified client can look for.
+       *
+       * Optional, and absent means `RESOLVED`, so a client ahead of its server
+       * renders the galaxy it always did rather than blanking all of it.
+       */
+      intel: z.enum(['RESOLVED', 'REMEMBERED', 'UNKNOWN']).default('RESOLVED'),
+      /** When the probe observed this world. `REMEMBERED` only. */
+      seenAt: z.coerce.date().optional(),
+      name: z.string().default(''),
+      owner: z.string().default(''),
       kind: z.enum(['CAPITAL', 'COLONY', 'NEUTRAL']).optional(),
       controller: z.discriminatedUnion('kind', [
         z.object({ kind: z.literal('PLAYER'), playerId: z.string(), displayName: z.string() }),
@@ -492,19 +613,19 @@ export const galaxySchema = z.object({
       /** Exact public Dominion rank only for the three podium commanders. */
       dominionRank: z.union([z.literal(1), z.literal(2), z.literal(3)]).optional(),
       position: vec3,
-      coreTier: z.number(),
+      coreTier: z.number().default(1),
       /**
        * The exact Command Core level, public since the dyson rings — the ring
        * count steps every three levels and the colour every one, and neither can
        * be drawn from the tier. See `publicGalaxy` for what that trades away.
        */
-      coreLevel: z.number(),
+      coreLevel: z.number().default(0),
       /**
        * The instruments in orbit, types only and never levels (D15). Hardware is
        * public — it is a physical object anyone can see — while what it can DO
        * stays behind a probe.
        */
-      satellites: z.array(satelliteId),
+      satellites: z.array(satelliteId).default([]),
       /**
        * Is there a dome around this world. D25.
        *
@@ -513,21 +634,37 @@ export const galaxySchema = z.object({
        * if it is legible. A boolean, never a level: how strong the dome is stays
        * behind a probe, and that is the number that decides the raid.
        */
-      shielded: z.boolean(),
+      shielded: z.boolean().default(false),
       isSelf: z.boolean(),
       isOwned: z.boolean().optional(),
       isCapital: z.boolean().optional(),
+      /** Client-derived from current `clanPresence`; never inferred from stale intel. */
+      clanmate: z.boolean().optional(),
       state: z.discriminatedUnion('kind', [
         z.object({ kind: z.literal('NORMAL') }),
         z.object({ kind: z.literal('RECOVERY'), until: z.coerce.date() }),
         z.object({ kind: z.literal('PROTECTED'), until: z.coerce.date() }),
-      ]).optional(),
+      ]).default({ kind: 'NORMAL' }),
+      /**
+       * EVERY FIELD BUT THE CLAIM CLOCK IS EARNED. D127.
+       *
+       * Tier is development, and threat and reserve are readings of how defended
+       * and how full the world is — none of them survive the fog. What does is a
+       * LIVE claim window, because D112 makes the race public and a race only the
+       * people who already probed the rock can see is not a race.
+       *
+       * They are optional rather than a second shape because one object with
+       * absent fields is what the wire actually carries; a discriminated union
+       * would be a second contract to keep in step for no gain. The last version
+       * had them REQUIRED and the server sent two of five — `z.coerce.date` turned
+       * the missing one into an Invalid Date and the whole galaxy failed to parse.
+       */
       neutral: z.object({
-        tier: z.union([z.literal(1), z.literal(2), z.literal(3)]),
-        threat: z.enum(['UNGUARDED', 'GUARDED', 'FORTIFIED']),
-        reserve: z.enum(['EMPTY', 'LOW', 'RICH']),
+        tier: z.union([z.literal(1), z.literal(2), z.literal(3)]).optional(),
+        threat: z.enum(['UNGUARDED', 'GUARDED', 'FORTIFIED']).optional(),
+        reserve: z.enum(['EMPTY', 'LOW', 'RICH']).optional(),
         claimUntil: z.coerce.date().nullable(),
-        nextReinforcementAt: z.coerce.date().nullable(),
+        nextReinforcementAt: z.coerce.date().nullable().optional(),
       }).optional(),
       /**
        * ABSENT means "you are not watching this planet" — it does not mean
@@ -551,9 +688,9 @@ export const leaderboardSchema = z.object({
       rank: z.number(),
       playerId: z.string(),
       username: z.string(),
-      planetId: z.string(),
-      planetName: z.string(),
-      coreTier: z.number(),
+      planetId: z.string().optional(),
+      planetName: z.string().optional(),
+      coreTier: z.number().optional(),
       score: z.number(),
       clan: z.object({ id: z.string(), name: z.string(), tag: z.string() }).nullable().optional(),
     }),
@@ -563,9 +700,9 @@ export const leaderboardSchema = z.object({
       rank: z.number(),
       playerId: z.string(),
       username: z.string(),
-      planetId: z.string(),
-      planetName: z.string(),
-      coreTier: z.number(),
+      planetId: z.string().optional(),
+      planetName: z.string().optional(),
+      coreTier: z.number().optional(),
       score: z.number(),
       clan: z.object({ id: z.string(), name: z.string(), tag: z.string() }).nullable().optional(),
     })
@@ -765,6 +902,12 @@ export const clanAidSchema = z.object({
 export const clanAidQuoteSchema = z.object({
   clanId: z.string(),
   canLand: z.boolean(),
+  /**
+   * What the flight burns, and whether the sender has it. T6.
+   * Optional only for a rolling deploy against a server that predates the charge.
+   */
+  fuel: z.number().optional(),
+  hasFuel: z.boolean().optional(),
   withinAllowance: z.boolean(),
   bay: z.object({
     used: z.number().int().nonnegative(),
@@ -873,7 +1016,7 @@ const galaxyEventSchema = z.discriminatedUnion('kind', [
     id: z.string(),
     kind: z.literal('isotope_exhausted'),
     subjectPlanetId: z.null(),
-    payload: z.object({ asteroidIndex: z.number().int().nonnegative() }),
+    payload: z.object({}).strict(),
     occurredAt: z.coerce.date(),
   }),
   ...(['wreck_formed', 'wreck_exhausted', 'dominion_leader'] as const).map((kind) =>
@@ -952,6 +1095,17 @@ export const intelSchema = z.object({
   radarLog: z.array(
     z.object({
       at: z.coerce.date(),
+      /**
+       * WHICH OF YOUR WORLDS WAS SCANNED.
+       *
+       * The log used to be the capital's alone, so there was nothing to name. It
+       * covers every world a commander holds now, and a list of scans that does
+       * not say WHERE is unusable the moment there is more than one world.
+       *
+       * Optional so a client one deploy ahead of its server still parses.
+       */
+      planetId: z.string().optional(),
+      planetName: z.string().optional(),
       bearing: z.string().nullable(),
       originPlanetName: z.string().nullable(),
     }),
@@ -969,6 +1123,23 @@ export const intelSchema = z.object({
       fleetSize: band,
       fleetHome: z.boolean(),
       deathStar: z.enum(['READY', 'BUILDING', 'NONE', 'UNKNOWN']).optional(),
+      /**
+       * WHAT THIS COMMANDER HAS RESEARCHED INTO THEIR HULLS. T9 · D137.
+       *
+       * Up to a 25% combat multiplier, and the invariant is explicit: doctrine
+       * that decides a battle must be probe-visible. Absent on a caretaker world
+       * and on reports written before it existed — absent means "this reading was
+       * never taken", never "they have researched nothing".
+       */
+      doctrines: z.record(z.string(), z.number()).optional(),
+      /**
+       * WHETHER THAT WORLD CAN SHOOT A STRATEGIC WEAPON DOWN. T10.
+       *
+       * The single most valuable thing a probe brings home once the war act opens:
+       * it is what turns a Death Star from a purchase into an intelligence
+       * decision. Never public — the only way to hold it is to have flown there.
+       */
+      interceptor: z.boolean().optional(),
       detected: z.boolean(),
     }),
   ),
@@ -1032,18 +1203,29 @@ const pendingThread = z.object({
   arriveAt: z.coerce.date(),
   leg: z.enum(['outbound', 'return']).optional(),
   /**
-   * What is in it — YOUR OWN CRAFT ONLY.
+   * What is in it — your own craft, or an inbound attack at RADAR L5. D123.
    *
-   * NOT BECAUSE COMPOSITION IS SECRET. It is not, and has not been since D24: every
-   * craft in the galaxy is readable down to the hull on `/api/galaxy/traffic`, and a
-   * defender reads a fleet coming at them exactly as any stranger does. What the
-   * Radar sells is ATTRIBUTION — that it is coming for YOU, and how long you have.
-   *
-   * It is absent here because THIS payload is the attributed one: everything on it
-   * is already known to be aimed at you, so a composition here would hand over the
-   * radar's answer along with its question. See `services/session.ts`.
+   * COMPOSITION USED TO BE FREE AND IS NOT ANY MORE. Since D24 every craft in the
+   * galaxy was readable down to the hull on `/api/galaxy/traffic`, so the top two
+   * rungs of the Radar ladder sold facts a logged-in player already had. A public
+   * Radar contact now carries a `mass` silhouette and no roster. Telescope sight
+   * can resolve a transit manifest separately; this field is also the attributed
+   * inbound-warning channel that Radar L5 earns when a fleet is coming for you.
    */
   fleet: fleet.optional(),
+  /** How big the inbound force looks. RADAR L4. D123. */
+  mass: massClass.optional(),
+  /** Which world it left. RADAR L5, the top of the ladder. D123. */
+  originName: z.string().optional(),
+  /**
+   * WHICH OF YOUR OWN WORLDS IS UNDER THE CROSSHAIR. Inbound only.
+   *
+   * Not a radar product and never was: it is the defender's own world. It was
+   * simply missing, so a commander with four worlds was told "incoming, six
+   * minutes" and could not work out where to move the fleet. Optional so a client
+   * one deploy ahead of its server still parses.
+   */
+  targetPlanetId: z.string().optional(),
   /**
    * ABSENT on an inbound attack, always. Its origin is what Radar L5 sells and its
    * heading is most of what L2's bearing costs, so the server never sends one —
@@ -1097,6 +1279,12 @@ export const deathStarBuildSchema = z.object({
   ...withPlanet,
 });
 
+/**
+ * The charge answers with exactly the weapon's shape, because it IS the same asset
+ * lifecycle — one row, one completion event, one planet view back (D53).
+ */
+export const interceptorBuildSchema = deathStarBuildSchema;
+
 export const deathStarLaunchSchema = z.object({
   missionId: z.string(),
   arriveAt: z.coerce.date(),
@@ -1131,19 +1319,27 @@ export const unlocksSchema = z.object({ unlocked: z.array(unlockable) });
  * when the shooting started, which is what gives their own losses a denominator.
  * The server decides which row that comes from; nothing on this side chooses.
  */
-export const reportsSchema = z.object({
-  reports: z.array(
-    z.object({
+const ordinaryBattleReport = z.object({
+      /** Absent only on battle reports cached before strategic reports existed. */
+      kind: z.literal('BATTLE').optional(),
       id: z.string(),
+      /** Present on current servers; optional so an old cached report still opens normally. */
+      missionId: z.string().optional(),
       at: z.coerce.date(),
       grade,
       rounds: z.array(
         z.object({
           round: z.number(),
+          /** Null means the immutable report predates detailed calculation telemetry. */
+          attackerRoll: z.number().nullable().optional(),
+          defenderRoll: z.number().nullable().optional(),
           attackerDamage: z.number(),
           defenderDamage: z.number(),
+          shieldBefore: z.number().nullable().optional(),
+          shieldAfter: z.number().nullable().optional(),
           shieldAbsorbed: z.number(),
           breacherShieldDamage: z.number(),
+          attackerHullDamage: z.number().nullable().optional(),
           attackerLosses: fleet,
           defenderLosses: fleet,
         }),
@@ -1167,6 +1363,9 @@ export const reportsSchema = z.object({
       dominion: z.number().nullable(),
       /** What the defender's Aegis soaked before anything reached a hull. */
       shieldAbsorbed: z.number().default(0),
+      /** Immutable battle-time Aegis state; null on reports that predate telemetry. */
+      shieldBefore: z.number().nullable().optional(),
+      shieldAfter: z.number().nullable().optional(),
       /** Attacker only: the holds were full, so stock was left on the ground. */
       cargoLimited: z.boolean().default(false),
       /** Defender only: ground guns that walked back out of their own wreckage. */
@@ -1178,8 +1377,42 @@ export const reportsSchema = z.object({
       /** Launch-time clan identities; they do not rewrite when somebody later leaves. */
       attackerClan: z.object({ id: z.string(), name: z.string(), tag: z.string() }).nullable().optional(),
       defenderClan: z.object({ id: z.string(), name: z.string(), tag: z.string() }).nullable().optional(),
-    }),
-  ),
+    });
+
+const strategicBattleReport = z.object({
+  kind: z.literal('STRATEGIC'),
+  id: z.string(),
+  missionId: z.string(),
+  at: z.coerce.date(),
+  attacking: z.boolean(),
+  opponentName: z.string(),
+  opponentPlanet: z.string(),
+  opponentPlanetId: z.string().nullable(),
+  yourPlanet: z.string(),
+  outcome: z.enum(['FIRST_STRIKE', 'CAPTURED', 'INEFFECTIVE', 'INTERCEPTED']),
+  damage: z.number(),
+  destroyedFleet: fleet,
+  destroyedResources: resources,
+  levelChanges: z.array(z.object({
+    kind: z.enum(['BUILDING', 'INSTRUMENT']),
+    id: z.string(),
+    before: z.number().int().nonnegative(),
+    after: z.number().int().nonnegative(),
+  })),
+  destroyedOrders: z.array(z.object({
+    kind: z.enum(['BUILDING', 'HULL', 'INSTRUMENT', 'SATELLITE']),
+    subject: z.string(),
+    count: z.number().int().positive(),
+    cost: resources,
+  })),
+  shieldDestroyed: z.number().nonnegative(),
+  trigger: z.enum(['RADAR', 'TELESCOPE']).nullable(),
+  attackerClan: z.null().optional(),
+  defenderClan: z.null().optional(),
+});
+
+export const reportsSchema = z.object({
+  reports: z.array(z.union([ordinaryBattleReport, strategicBattleReport])),
   rivals: z.array(z.object({
     planetId: z.string(),
     playerId: z.string(),
@@ -1193,7 +1426,10 @@ export const reportsSchema = z.object({
     lastKnownAt: z.coerce.date().nullable(),
   })),
 });
-export type BattleReport = z.infer<typeof reportsSchema>['reports'][number];
+/** Kept as the ordinary report type for existing callers and cached fixtures. */
+export type BattleReport = z.infer<typeof ordinaryBattleReport>;
+export type StrategicBattleReport = z.infer<typeof strategicBattleReport>;
+export type Report = z.infer<typeof reportsSchema>['reports'][number];
 export type RivalSummary = z.infer<typeof reportsSchema>['rivals'][number];
 
 /**
@@ -1216,6 +1452,8 @@ export const notificationsSchema = z.object({
     z.object({
       id: z.string(),
       kind: z.string(),
+      /** The mission/run that produced this news; null for player-level unlocks. */
+      refId: z.string().nullable().optional(),
       payload: z.unknown(),
       seen: z.boolean(),
       at: z.coerce.date(),
@@ -1232,11 +1470,12 @@ export const markedSchema = z.object({ marked: z.number() });
  *
  * The whole trajectory arrives, not a position: the client animates it from its
  * own clock exactly as it does fleets, so a field of forty moving rocks costs one
- * request rather than a stream (A4, A5). Public by design — everyone races for the
- * same prize, and none of this reveals anything about a player.
+ * request rather than a stream (A4, A5). The endpoint projects this shape only for
+ * rocks already earned by the caller's sensor history; the opaque id and private
+ * schedule prevent clients from enumerating unseen targets.
  */
 export const asteroidSchema = z.object({
-  index: z.number(),
+  id: z.string().regex(/^[A-Za-z0-9_-]{22}$/),
   level: z.number(),
   ore: z.number(),
   oreRemaining: z.number(),
@@ -1245,14 +1484,15 @@ export const asteroidSchema = z.object({
   radius: z.number(),
   period: z.number(),
   phase: z.number(),
-  y: z.number(),
+  inclination: z.number(),
+  ascendingNode: z.number(),
   speed: z.number(),
   appearsAt: z.number(),
   expiresAt: z.number(),
   active: z.boolean(),
   isotopeRich: z.boolean(),
   deuteriumShare: z.number().nullable(),
-});
+}).strict();
 
 export const miningSchema = z.object({
   /**
@@ -1270,6 +1510,7 @@ export const miningSchema = z.object({
   /** What a Derrick would make of the hold, so the interface can sell one. */
   derrickHold: z.number(),
   asteroids: z.array(asteroidSchema),
+  nextFieldChangeAt: z.coerce.date().nullable(),
   /** Wreck fields left by battles. Public in full — size, place and clock. D32. */
   debris: z.array(
     z.object({
@@ -1284,8 +1525,10 @@ export const miningSchema = z.object({
   runs: z.array(
     z.object({
       id: z.string(),
+      /** Origin world. Optional only for rolling compatibility with older servers. */
+      planetId: z.string().uuid().optional(),
       targetKind: z.enum(['asteroid', 'debris']),
-      asteroidIndex: z.number().nullable(),
+      asteroidId: z.string().regex(/^[A-Za-z0-9_-]{22}$/).nullable(),
       debrisFieldId: z.string().nullable(),
       status: z.enum(['outbound', 'returning', 'done']),
       craft: z.number(),
@@ -1301,8 +1544,9 @@ export const miningSchema = z.object({
   ),
 });
 
-/** Public half fetched by every commander after a shard-wide mining event. */
-export const miningFieldSchema = miningSchema.pick({ asteroids: true, debris: true });
+/** Caller-filtered field plus public debris, invalidated by shard-wide mining events. */
+export const miningFieldSchema = miningSchema
+  .pick({ asteroids: true, debris: true, nextFieldChangeAt: true });
 
 /** Private half fetched only for this commander's selected world. */
 export const miningStatusSchema = miningSchema
@@ -1315,7 +1559,10 @@ export const miningStatusSchema = miningSchema
   })
   .extend({
     /** Active isotope rocks this world has earned the right to recognise. */
-    isotopes: z.array(z.object({ index: z.number(), deuteriumShare: z.number() })),
+    isotopes: z.array(z.object({
+      id: z.string().regex(/^[A-Za-z0-9_-]{22}$/),
+      deuteriumShare: z.number(),
+    })),
   });
 
 const miningLaunchBaseSchema = z.object({
@@ -1327,7 +1574,7 @@ const miningLaunchBaseSchema = z.object({
    * field is not in the generated asteroid field and has no index. Required, this
    * rejected every successful harvest the server ever answered.
    */
-  asteroidIndex: z.number().optional(),
+  asteroidId: z.string().regex(/^[A-Za-z0-9_-]{22}$/).optional(),
   craft: z.number(),
   arriveAt: z.coerce.date(),
   flightMinutes: z.number(),
@@ -1368,19 +1615,40 @@ const vec = z.object({ x: z.number(), y: z.number(), z: z.number() });
  * route.
  *
  * `route` and `minutesRemaining` are the single exception, and they are only ever
- * populated for `mining`: a Prospector's run is a public race for a rock everybody
- * can already see, so its line and its clock belong to everybody.
+ * populated for an authorised `mining` contact: once this commander has discovered
+ * the rock, its line and clock make the contested race visible.
  *
- * COMPOSITION IS PUBLIC AND CARGO IS NOT. `fleet` says which hulls are in a
- * squadron and how many; there is no field for ore or loot, because what a craft
- * is carrying belongs to the commander who sent it.
+ * Radar is a silhouette, Telescope is sight, and cargo is never public. `mass`
+ * says roughly how much is crossing in the Radar band. `fleet` is present only
+ * once an actual fleet is inside Telescope sight and carries the exact hull tally.
+ * There is no field for ore or loot: cargo belongs to the commander who sent it.
  */
 export const trafficSchema = z.object({
   contacts: z.array(
     z.object({
       /** Stable for the flight, so focus survives a refetch. Maps to nothing else. */
       id: z.string(),
-      kind: z.enum(['fleet', 'probe', 'death_star', 'mining', 'harvest']),
+      /**
+       * `unknown` IS A CRAFT YOU CAN SEE AND CANNOT IDENTIFY. D125.
+       *
+       * Outside your Telescope's reach a contact keeps its position and loses
+       * everything the instrument sells: no kind, so the neon cannot say whether
+       * it is a warship, a scout or a drill, and no mass. It exists so the disc can
+       * say THERE IS SOMETHING OUT THERE AND YOU CANNOT SEE WHAT IT IS — which is
+       * an advertisement for the Telescope written in the picture rather than in a
+       * tooltip (D124).
+       */
+      kind: z.enum(['unknown', 'fleet', 'probe', 'death_star', 'mining', 'harvest']),
+      /**
+       * WHAT KIND OF CRAFT A QUESTION MARK IS, WHEN RADAR L5 HAS EARNED IT.
+       *
+       * Only ever present on an `unknown` contact — inside telescope reach `kind`
+       * already says it. The top of the radar ladder, paying out on ordinary
+       * traffic rather than only on a raid aimed at you. A kind, never a roster.
+       */
+      silhouette: z
+        .enum(['unknown', 'fleet', 'probe', 'death_star', 'mining', 'harvest'])
+        .optional(),
       from: vec,
       to: vec,
       startAt: z.coerce.date(),
@@ -1398,7 +1666,26 @@ export const trafficSchema = z.object({
        * would turn it into a disc that does not render at all.
        */
       landing: z.boolean().optional(),
+      /**
+       * How big it looks. Three steps, off the whole fleet's value. D123.
+       *
+       * Optional because an identified `mining` or `harvest` contact carries exact
+       * `craft` instead, and because an older payload has none.
+       */
+      mass: massClass.optional(),
+      /** Exact hull tally, only for an identified fleet inside Telescope sight. */
       fleet: fleet.optional(),
+      /**
+       * THIS ONE IS COMING FOR YOU, AND THAT IS ALL IT SAYS. D126.
+       *
+       * The radar's long tier, which reaches two to four times further than the
+       * timed ladder and deliberately carries no clock — raising the timed ladder
+       * that far was measured and refused, because notice saturates inside a
+       * neighbourhood and every raid would hand over its whole flight (D9, D13).
+       * It can sit on an `unknown` contact, which is the intended picture:
+       * something you cannot identify, bearing down on a world you own.
+       */
+      inbound: z.literal(true).optional(),
       craft: z.number().optional(),
       route: z
         .object({
@@ -1410,12 +1697,22 @@ export const trafficSchema = z.object({
         .optional(),
       minutesRemaining: z.number().optional(),
       /**
+       * A PUBLIC BOMBARDMENT WITH NO SENSOR CONTACT. D52/D123.
+       *
+       * The event remains visible galaxy-wide, but this payload carries no real
+       * craft position, bearing, silhouette or mass. The renderer must draw only
+       * the volley/effects. Radar or Telescope sight removes this flag and earns
+       * the ordinary contact representation instead.
+       */
+      effectOnly: z.literal(true).optional(),
+      /**
        * THE RAID IS LANDING, AND EVERYBODY WATCHES IT. D52.
        *
        * Present only on an attack, only between `arriveAt` and `endsAt`, and only
        * ever carrying the TARGET's coordinates — which are public on every world in
-       * the disc. It is what lets a bystander's client hold the squadron off the
-       * world and fire the same volley the attacker sees, from the same mission id.
+       * the disc. It lets every client fire the same deterministic volley. The
+       * squadron itself is a separate disclosure: `effectOnly` means no sensor saw
+       * it; otherwise the contact's ordinary Radar/Telescope fields describe it.
        */
       engagement: z
         .object({ arriveAt: z.coerce.date(), endsAt: z.coerce.date(), target: vec })
@@ -1437,8 +1734,31 @@ export const trafficSchema = z.object({
         .optional(),
     }),
   ),
+  /** An eight-second anti-strategic collision, visible only to participants or Telescope sight. */
+  interceptions: z.array(z.object({
+    id: z.string(),
+    targetPlanetId: z.string(),
+    trigger: z.enum(['RADAR', 'TELESCOPE']),
+    launchAt: z.coerce.date(),
+    impactAt: z.coerce.date(),
+    launch: vec3,
+    deathStarFrom: vec3,
+    collision: vec3,
+  })).optional(),
+  /** Public effect-only aftermath of an anti-strategic collision. */
+  interceptionImpacts: z.array(z.object({
+    id: z.string(),
+    at: z.coerce.date(),
+    collision: vec3,
+    effectOnly: z.boolean(),
+    focusEligible: z.boolean(),
+  })).optional(),
 });
 export type Contact = z.infer<typeof trafficSchema>['contacts'][number];
+export type StrategicInterception = NonNullable<z.infer<typeof trafficSchema>['interceptions']>[number];
+export type StrategicInterceptionImpact = NonNullable<
+  z.infer<typeof trafficSchema>['interceptionImpacts']
+>[number];
 
 /* ── the rehearsal, and claiming what it built ──────────────── */
 
@@ -1527,6 +1847,35 @@ export const claimSchema = sessionSchema.extend({
   planet: planetSchema,
 });
 
+/* ── operator announcements and player feedback ───────────── */
+
+export const announcementSchema = z.object({
+  id: z.string().uuid(),
+  title: z.string(),
+  bodyHtml: z.string(),
+  publishedAt: z.coerce.date(),
+  seen: z.boolean(),
+});
+export const announcementsPageSchema = z.object({
+  announcements: z.array(announcementSchema),
+});
+export const announcementPublishedSchema = z.object({ announcement: announcementSchema });
+export const feedbackKindSchema = z.enum(['BUG', 'SUGGESTION', 'PRAISE']);
+export const feedbackSubmittedSchema = z.object({
+  feedback: z.object({ id: z.string().uuid(), createdAt: z.coerce.date() }),
+});
+export const adminFeedbackPageSchema = z.object({
+  feedback: z.array(z.object({
+    id: z.string().uuid(),
+    kind: feedbackKindSchema,
+    message: z.string(),
+    createdAt: z.coerce.date(),
+    accountId: z.string().uuid(),
+    username: z.string(),
+    displayName: z.string(),
+  })),
+});
+
 export type Session = z.infer<typeof sessionSchema>;
 export type Me = z.infer<typeof meSchema>;
 export type ServerRow = z.infer<typeof serverSchema>;
@@ -1607,3 +1956,7 @@ export type Preview = z.infer<typeof previewSchema>;
 export type Applied = z.infer<typeof appliedSchema>;
 export type ClaimResult = z.infer<typeof claimSchema>;
 export type ClaimIntent = z.infer<typeof claimIntent>;
+export type Announcement = z.infer<typeof announcementSchema>;
+export type AnnouncementsPage = z.infer<typeof announcementsPageSchema>;
+export type FeedbackKind = z.infer<typeof feedbackKindSchema>;
+export type AdminFeedbackPage = z.infer<typeof adminFeedbackPageSchema>;

@@ -422,7 +422,9 @@ await shot('03-focus');
 // Close it before testing the map-level Home control.
 await dismiss();
 const camBefore = await page.evaluate(() => window.__galaxy.camera.position.toArray());
-await page.getByRole('button', { name: /centre on (your planet|active world)/i }).click();
+await page.getByRole('button', {
+  name: /centre on (your planet|active world)|zoom in on active planet/i,
+}).click();
 await settle(3000);
 const camAfter = await page.evaluate(() => window.__galaxy.camera.position.toArray());
 const homeTarget = await page.evaluate(() => window.__galaxy.controls?.target?.toArray() ?? null);

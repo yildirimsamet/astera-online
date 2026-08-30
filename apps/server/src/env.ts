@@ -19,6 +19,19 @@ const schema = z.object({
   JWT_SECRET: z.string().min(16).default('dev-only-secret-do-not-ship-me'),
   ACCESS_TOKEN_MINUTES: z.coerce.number().default(15),
   REFRESH_TOKEN_DAYS: z.coerce.number().default(30),
+  /**
+   * Permanent account usernames allowed onto the operations panel.
+   *
+   * Kept outside the database deliberately: a compromised admin route must not
+   * be able to promote another account and turn one stolen session into a durable
+   * privilege escalation. Usernames are canonical lower-case account keys.
+   */
+  ADMIN_USERNAMES: z.string().default('').transform((value) =>
+    value
+      .split(',')
+      .map((username) => username.trim().toLocaleLowerCase('en-US'))
+      .filter((username) => username.length > 0),
+  ),
   /** How rarely one account's "in game" stamp is rewritten. See services/presence.ts. */
   PRESENCE_THROTTLE_MS: z.coerce.number().default(60_000),
   /**

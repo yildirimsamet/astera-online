@@ -23,6 +23,23 @@ export const TRACKING_MARK = {
   fleetTickLength: 0.42,
 } as const;
 
+/**
+ * Radar's unresolved return is gameplay, not tracking furniture.
+ *
+ * It stays hue-neutral until an inbound leg earns the threat red, but its larger,
+ * thicker additive mark must survive a star field on a portrait phone. Keeping
+ * these values separate preserves the deliberately restrained probe/fleet rings.
+ */
+export const UNKNOWN_CONTACT_MARK = {
+  radius: 1.65,
+  ringOuter: 1.14,
+  opacity: 0.88,
+  focusedOpacity: 1,
+  glyphScale: 2.5,
+  glyphOpacity: 0.92,
+  focusedGlyphOpacity: 1,
+} as const;
+
 type Vec3Tuple = [number, number, number];
 
 /** Unit direction from one formation slot to the parent-local common target. */

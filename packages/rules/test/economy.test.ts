@@ -8,6 +8,7 @@ import {
   collect,
   collectorCap,
   crystalRate,
+  deuteriumRate,
   deuteriumStorageCap,
   minutesUntilCollectorFull,
   paybackHours,
@@ -109,7 +110,7 @@ describe('the vault invariant', () => {
   it('never protects more than storage can hold', () => {
     for (let vault = 0; vault <= 16; vault++) {
       for (const producing of [1, 5, 10, 15, 20]) {
-        const floor = vaultProtects(vault, producing, producing);
+        const floor = vaultProtects(vault, producing, producing, 0);
         expect(floor.alloy).toBeLessThan(storageCap(alloyRate(producing), vault));
         expect(floor.crystal).toBeLessThan(storageCap(crystalRate(producing), vault));
       }
@@ -133,7 +134,7 @@ describe('the vault invariant', () => {
    * `vaultMult < alloyMult` rule guarded against.
    */
   it('lets the Vault buy protection, but never more than the ceiling allows', () => {
-    const floor = (v: number) => vaultProtects(v, 12, 12).alloy;
+    const floor = (v: number) => vaultProtects(v, 12, 12, 0).alloy;
     const share = (v: number) => floor(v) / storageCap(alloyRate(12), v);
 
     // The building is worth levelling: the amount kept safe rises with it.
@@ -153,19 +154,19 @@ describe('the vault invariant', () => {
    * nothing at all.
    */
   it('scales each resource against its own income', () => {
-    const floor = vaultProtects(8, 12, 12);
+    const floor = vaultProtects(8, 12, 12, 0);
     expect(floor.crystal / floor.alloy).toBeCloseTo(crystalRate(12) / alloyRate(12), 2);
     expect(floor.deuterium).toBe(0);
   });
 
   it('protects something even with no Vault built', () => {
-    expect(vaultProtects(0, 1, 1).alloy).toBeGreaterThan(0);
-    expect(vaultProtects(0, 1, 1).crystal).toBeGreaterThan(0);
+    expect(vaultProtects(0, 1, 1, 0).alloy).toBeGreaterThan(0);
+    expect(vaultProtects(0, 1, 1, 0).crystal).toBeGreaterThan(0);
   });
 });
 
 describe('lazy economy', () => {
-  const input = { refineryLevel: 5, extractorLevel: 4, aegisLevel: 0, vaultLevel: 0 };
+  const input = { refineryLevel: 5, extractorLevel: 4, plantLevel: 0, aegisLevel: 0, vaultLevel: 0 };
   const fresh = () => ({
     alloy: 0,
     crystal: 0,
@@ -243,7 +244,7 @@ describe('lazy economy', () => {
  * why, will stop tapping.
  */
 describe('collecting the works', () => {
-  const input = { refineryLevel: 5, extractorLevel: 4, aegisLevel: 0, vaultLevel: 0 };
+  const input = { refineryLevel: 5, extractorLevel: 4, plantLevel: 0, aegisLevel: 0, vaultLevel: 0 };
   const fresh = () => ({
     alloy: 0,
     crystal: 0,
@@ -310,17 +311,40 @@ describe('collecting the works', () => {
     expect(result.state.bufferAlloy).toBe(800);
   });
 
-  it('collects Deuterium into the Extractor-derived containment cap', () => {
-    const cap = deuteriumStorageCap(crystalRate(input.extractorLevel), input.vaultLevel);
+  /**
+   * THE CEILING CAME OFF THE EXTRACTOR UNTIL DEUTERIUM HAD A RATE OF ITS OWN.
+   * T5/D135, and this test is why the mistake survived as long as it did: it
+   * asserted the old rule against the same wrong argument the production code was
+   * passing, so the two agreed with each other and disagreed with `advanceEconomy`.
+   */
+  it('collects Deuterium into the ceiling its own refinery sets', () => {
+    const withPlant = { ...input, plantLevel: 6 };
+    const cap = deuteriumStorageCap(
+      deuteriumRate(withPlant.plantLevel),
+      crystalRate(input.extractorLevel),
+      input.vaultLevel,
+    );
+    expect(cap).toBeGreaterThan(25);
     const result = collect(
       { ...fresh(), deuterium: cap - 25, bufferDeuterium: 100 },
-      input,
+      withPlant,
     );
 
     expect(result.moved.deuterium).toBe(25);
     expect(result.blocked.deuterium).toBe(75);
     expect(result.state.deuterium).toBe(cap);
     expect(result.state.bufferDeuterium).toBe(75);
+  });
+
+  /**
+   * A world with no refinery still has room for what it MINES, and that half of
+   * the ceiling is exactly the figure it always had. Sizing it off the plant alone
+   * would have made isotope deuterium uncollectable on nearly every world.
+   */
+  it('still banks mined Deuterium on a world with no refinery', () => {
+    const result = collect({ ...fresh(), deuterium: 0, bufferDeuterium: 100 }, input);
+    expect(result.moved.deuterium).toBe(100);
+    expect(result.state.bufferDeuterium).toBe(0);
   });
 
   // Within a minute, not exact: the cap is rounded to a whole resource so the
@@ -358,7 +382,7 @@ describe('disruption', () => {
   });
 
   it('resumes production on the exact minute the disruption ends', () => {
-    const input = { refineryLevel: 5, extractorLevel: 4, aegisLevel: 0, vaultLevel: 0 };
+    const input = { refineryLevel: 5, extractorLevel: 4, plantLevel: 0, aegisLevel: 0, vaultLevel: 0 };
     const state = {
       alloy: 0,
       crystal: 0,

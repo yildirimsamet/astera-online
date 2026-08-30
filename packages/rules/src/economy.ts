@@ -1,8 +1,12 @@
+import { yardSpeedMult } from './tech.js';
+import type { TechLevels } from './tech.js';
 import {
   BUILD,
   DISRUPTION,
   DEUTERIUM,
   ECON,
+  EMPLACEMENT,
+  HANGAR,
   INSTRUMENT_COST_MULT,
   INSTRUMENT_LEVEL_WORTH,
   SATELLITES,
@@ -11,6 +15,7 @@ import {
 } from './constants.js';
 import {
   INSTRUMENT_IDS,
+  type BuildingId,
   type InstrumentId,
   type InstrumentLevels,
   type Resources,
@@ -77,6 +82,29 @@ export const satelliteSlots = (coreLevel: number): number =>
  * scarcity is not felt in the first hour, which is the cost; what it buys is that
  * the mechanic can never read as a wall to somebody who has just arrived.
  */
+/**
+ * HOW MUCH FLEET A HANGAR HOLDS. T4. See the `HANGAR` block for the fitting.
+ *
+ * Linear, because the thing it bounds is linear: a fleet is a sum of hulls and a
+ * ceiling on it should read as a number of ships, not as a curve nobody can hold in
+ * their head. The Core gate on every building is what makes this bite — a Hangar
+ * may never reach its Core's level, so the ceiling is a property of how developed a
+ * world is rather than of how much ore went into one row.
+ */
+export const hangarCapacity = (hangarLevel: number): number =>
+  HANGAR.base + Math.max(0, hangarLevel) * HANGAR.perLevel;
+
+/**
+ * HOW MANY EMPLACEMENTS A COMMAND CORE STANDS. T4b. See the `EMPLACEMENT` block.
+ *
+ * Read off the CORE and not off a building of its own: a seventh building for this
+ * would be a second thing to raise for one number, and the Core already answers
+ * "how big is this world" for flight bays, orbit slots and colony capacity. One
+ * more derived capacity is consistent; one more row on the planet screen is not.
+ */
+export const groundSlots = (coreLevel: number): number =>
+  EMPLACEMENT.base + Math.max(0, coreLevel) * EMPLACEMENT.perLevel;
+
 export const flightSlots = (coreLevel: number): number =>
   3 + Math.floor(Math.max(0, coreLevel) / 3);
 
@@ -133,6 +161,17 @@ export function upgradeCost(level: number): Resources {
   };
 }
 
+/** Cost to raise one building, including the Hangar's strategic-room premium. */
+export function buildingCost(type: BuildingId, level: number): Resources {
+  const base = upgradeCost(level);
+  const multiplier = type === 'HANGAR' ? HANGAR.costMultiplier : 1;
+  return {
+    alloy: base.alloy * multiplier,
+    crystal: base.crystal * multiplier,
+    deuterium: base.deuterium * multiplier,
+  };
+}
+
 /**
  * Cost to take an instrument from `level` to `level + 1`. D22.
  *
@@ -160,10 +199,10 @@ export const satelliteCost = (id: SatelliteId): Resources => ({
 });
 
 /** Everything sunk into a building to reach `level`. Feeds the Wealth display. */
-export function investedInBuilding(level: number): number {
+export function investedInBuilding(level: number, type?: BuildingId): number {
   let total = 0;
   for (let l = 0; l < level; l++) {
-    const c = upgradeCost(l);
+    const c = type === undefined ? upgradeCost(l) : buildingCost(type, l);
     total += c.alloy + c.crystal + c.deuterium;
   }
   return total;
@@ -227,15 +266,54 @@ export const storageCap = (ratePerHour: number, vaultLevel: number): number =>
 export const collectorCap = (ratePerHour: number): number =>
   Math.round(ECON.collectorHours * ratePerHour);
 
-/** Capacity only: Deuterium is never produced by this rate. D92. */
-export const deuteriumStorageCap = (
-  extractorRatePerHour: number,
-  vaultLevel: number,
-): number => Math.round(storageCap(extractorRatePerHour, vaultLevel) * DEUTERIUM.containmentRatio);
+/**
+ * THE THIRD PRODUCER. T5.
+ *
+ * Same shape as alloy and crystal — `base × level × mult^level` — because it is
+ * the same kind of thing and a player who has read one ladder has read this one.
+ * The multiplier is flatter on purpose; see the `deuteriumBase` block for the
+ * measurement it is held against.
+ */
+export const deuteriumRate = (level: number): number =>
+  level <= 0 ? 0 : ECON.deuteriumBase * level * Math.pow(ECON.deuteriumMult, level);
 
-/** Capacity only: mined Deuterium lands here before collection. D92. */
-export const deuteriumCollectorCap = (extractorRatePerHour: number): number =>
-  Math.round(collectorCap(extractorRatePerHour) * DEUTERIUM.containmentRatio);
+/**
+ * DEUTERIUM ARRIVES TWO WAYS, SO THE CEILING IS SIZED FROM BOTH. T5, corrected.
+ *
+ * The containment figure was originally derived from the EXTRACTOR — not because
+ * deuterium had anything to do with crystal, but because it was the honest way to
+ * say "a world of this size can contain about this much" while the resource had no
+ * production of its own. It has one now, and sizing the ceiling from the plant
+ * ALONE looked like the tidy answer and was wrong in a way no test caught: a world
+ * with no refinery got a ceiling of zero, and MINED isotope deuterium — the whole
+ * of D93's second act — became impossible to collect on the worlds that had not
+ * built one. Which is nearly all of them.
+ *
+ * So both terms are here, and each answers its own question:
+ *
+ *   · the industrial base a world has, which is what lets it hold what it MINES
+ *     and is exactly the figure it always had;
+ *   · plus hours of its own refinery, which is what lets a producer's store grow
+ *     past what an unrelated mine would have allowed.
+ *
+ * At plant zero this is precisely the old number, so nothing about mining moved.
+ */
+export const deuteriumStorageCap = (
+  deuteriumRatePerHour: number,
+  crystalRatePerHour: number,
+  vaultLevel: number,
+): number => storageCap(
+  crystalRatePerHour * DEUTERIUM.containmentRatio + deuteriumRatePerHour,
+  vaultLevel,
+);
+
+/** The same two sources, in front of the store. Mined or made, it lands here first. */
+export const deuteriumCollectorCap = (
+  deuteriumRatePerHour: number,
+  crystalRatePerHour: number,
+): number => collectorCap(
+  crystalRatePerHour * DEUTERIUM.containmentRatio + deuteriumRatePerHour,
+);
 
 /** Level 0 still protects the base amount — nobody is ever lootable to zero. */
 /**
@@ -274,15 +352,28 @@ export const vaultProtects = (
   vaultLevel: number,
   refineryLevel: number,
   extractorLevel: number,
+  plantLevel: number,
 ): Resources => {
   const hours = protectedHours(vaultLevel);
   const openingCrystal = ECON.openingFloorAlloy * (ECON.crystalBase / ECON.alloyBase);
   return {
     alloy: Math.round(Math.max(ECON.openingFloorAlloy, hours * alloyRate(refineryLevel))),
     crystal: Math.round(Math.max(openingCrystal, hours * crystalRate(extractorLevel))),
-    // Deuterium has no passive rate, so its floor is zero. That falls out of the
-    // rule rather than being a special case. D92.
-    deuterium: 0,
+    /*
+      HOURS OF ITS OWN PRODUCTION, exactly like the other two. T5.
+
+      This read zero with a note that deuterium had no passive rate, "so its floor
+      is zero — that falls out of the rule rather than being a special case". It
+      now has a rate, and the floor appears on its own: nothing was added here and
+      nothing removed. A world with no plant still protects none, which is the same
+      answer as before.
+
+      NO OPENING FLOOR. Alloy and crystal carry one because a young world would
+      otherwise be unraidable in the resource it is made of; deuterium is never
+      what a new commander is farmed for, and a floor on a resource they cannot
+      produce would protect a store that does not exist.
+    */
+    deuterium: Math.round(hours * deuteriumRate(plantLevel)),
   };
 };
 
@@ -345,8 +436,19 @@ export const defenceThroughput = (shipyardLevel: number): number =>
 export const buildMinutes = (cost: Resources, coreLevel: number): number =>
   Math.min(BUILD.capMinutes, totalOf(cost) / constructionThroughput(coreLevel));
 
-export const shipMinutes = (cost: Resources, shipyardLevel: number): number =>
-  Math.min(BUILD.capMinutes, totalOf(cost) / yardThroughput(shipyardLevel));
+/**
+ * Yard time, after whatever the commander has automated. T8.
+ *
+ * `tech` is REQUIRED rather than defaulted, so the compiler names every caller
+ * that has to decide. A silently-neutral default is how a multiplier ends up
+ * honoured on the server and forgotten in the preview.
+ */
+export const shipMinutes = (
+  cost: Resources,
+  shipyardLevel: number,
+  tech: TechLevels,
+): number =>
+  Math.min(BUILD.capMinutes, (totalOf(cost) / yardThroughput(shipyardLevel)) * yardSpeedMult(tech));
 
 export const defenceMinutes = (cost: Resources, shipyardLevel: number): number =>
   Math.min(BUILD.capMinutes, totalOf(cost) / defenceThroughput(shipyardLevel));
@@ -456,6 +558,8 @@ export interface PlanetEconomyState {
 export interface PlanetEconomyInput {
   refineryLevel: number;
   extractorLevel: number;
+  /** The Deuterium Refinery. Zero on a world that has not researched one. T5. */
+  plantLevel: number;
   aegisLevel: number;
   /**
    * The Vault level, because the STORE's ceiling depends on it. Economy v2.
@@ -514,6 +618,7 @@ export function advanceEconomy(
   const boost = input.production ?? 1;
   const ra = alloyRate(input.refineryLevel) * boost;
   const rc = crystalRate(input.extractorLevel) * boost;
+  const rd = deuteriumRate(input.plantLevel) * boost;
   const maxShield = shieldHp(input.aegisLevel);
 
   return {
@@ -522,7 +627,19 @@ export function advanceEconomy(
     deuterium: state.deuterium,
     bufferAlloy: Math.min(collectorCap(ra), state.bufferAlloy + ra * producing),
     bufferCrystal: Math.min(collectorCap(rc), state.bufferCrystal + rc * producing),
-    bufferDeuterium: state.bufferDeuterium,
+    /*
+      THE LINE THAT WAS A CONSTANT. T5.
+
+      This read `state.bufferDeuterium` — carried across untouched, because the
+      resource had no production and the works could only ever receive what a
+      mining craft brought home. It grows now, under the same collector ceiling the
+      other two obey, and a world with no plant is left exactly where it was
+      because its rate is zero. The Foundry's boost applies here as well: it
+      multiplies everything the works make, and this is now something they make.
+    */
+    bufferDeuterium: rd <= 0
+      ? state.bufferDeuterium
+      : Math.min(deuteriumCollectorCap(rd, rc), state.bufferDeuterium + rd * producing),
     shield:
       maxShield > 0
         ? Math.min(maxShield, state.shield + maxShield * SHIELD.regenPerHour * wall)
@@ -561,11 +678,22 @@ export function collect(
   const boost = input.production ?? 1;
   const ra = alloyRate(input.refineryLevel) * boost;
   const rc = crystalRate(input.extractorLevel) * boost;
+  /*
+    DEUTERIUM'S OWN RATE, and this line is why the parameter was renamed. T5.
+
+    It read `deuteriumStorageCap(rc, vault)` — the CRYSTAL rate — which was the only
+    honest figure available while deuterium had no production of its own. After T5
+    that argument means something else entirely, and both are `number`: the
+    compiler could not see the difference and this clamp went on sizing a
+    deuterium store off a mine that makes something else. Measured, the gap was
+    twenty-four fold.
+  */
+  const rd = deuteriumRate(input.plantLevel) * boost;
 
   const vault = input.vaultLevel;
   const roomA = Math.max(0, storageCap(ra, vault) - state.alloy);
   const roomC = Math.max(0, storageCap(rc, vault) - state.crystal);
-  const roomD = Math.max(0, deuteriumStorageCap(rc, vault) - state.deuterium);
+  const roomD = Math.max(0, deuteriumStorageCap(rd, rc, vault) - state.deuterium);
   const takeA = Math.min(state.bufferAlloy, roomA);
   const takeC = Math.min(state.bufferCrystal, roomC);
   const takeD = Math.min(state.bufferDeuterium, roomD);

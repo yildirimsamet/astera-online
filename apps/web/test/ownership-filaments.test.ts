@@ -27,6 +27,7 @@ const node = ({
   weight: 1,
   coreTier: 1,
   coreLevel: 1,
+  intel: 'RESOLVED' as const,
   satellites: [],
   shielded: false,
   stance: owned ? 'self' : 'dark',
@@ -111,6 +112,16 @@ describe('ownership topology', () => {
   /** A commander holding one world has nothing to join it to. */
   it('draws nothing for a commander with no colonies', () => {
     expect(ownershipPairs(WORLDS, 'other-capital')).toEqual([]);
+  });
+
+  it('never joins a frozen probe record into live ownership topology', () => {
+    const remembered = WORLDS.map((world) => world.id === 'their-one'
+      ? { ...world, intel: 'REMEMBERED' as const }
+      : world);
+
+    expect(ownershipPairs(remembered, 'their-one')).toEqual([]);
+    expect(ownershipPairs(remembered, 'their-two').map((pair) => pair.to.id))
+      .toEqual(['their-two']);
   });
 
   /**

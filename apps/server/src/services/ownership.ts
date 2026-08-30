@@ -2,8 +2,11 @@ import { and, count, eq, inArray, isNull, max, or } from 'drizzle-orm';
 import { colonyCapacity } from '@astera/rules';
 import type { Clock } from '../clock.js';
 import type { Db, Queryable, Tx } from '../db/client.js';
-import { buildings, missions, neutralPlanetState, planets, players, units } from '../db/schema.js';
+import {
+  buildOrders, buildings, missions, neutralPlanetState, planets, players, units,
+} from '../db/schema.js';
 import { GameError, lockSeason } from './planet.js';
+import { refreshSensorEpoch } from './sensorHistory.js';
 
 export interface CommanderWorld {
   playerId: string;
@@ -204,11 +207,44 @@ export interface TransferControlInput {
   protectedUntil: Date;
 }
 
-/** Shared atomic ownership primitive for settlement and the second strategic hit. */
+/**
+ * Shared atomic ownership primitive for settlement and the second strategic hit.
+ *
+ * ONE COMMANDER, ONE GALAXY — ENFORCED HERE, WHERE THE WRITE HAPPENS.
+ *
+ * The invariant has been stated as "DB-enforced" since D97, and at this seam it
+ * was not enforced anywhere. `planets` has a unique index for one capital per
+ * player and a check tying `kind` to the controller, and nothing at all saying a
+ * colony must be in the same season as its owner — so this primitive would
+ * cheerfully hand a commander in one galaxy a world in another.
+ *
+ * WHAT THAT PRODUCES IS A WORLD THAT EXISTS AND CANNOT BE SEEN. `commanderTopology`
+ * joins on `controllerPlayerId` alone, so the cross-season world lands in
+ * `planetIds` and appears in `/api/planets` — the worlds list shows it, the world
+ * selector offers it. `publicWorlds` filters by the caller's season, so the disc
+ * never draws it and every surface built on the galaxy payload behaves as though
+ * it does not exist. Found by a dev tool that picked "the nearest unclaimed world"
+ * without a season filter; the tool was wrong, and so was the absence of anything
+ * here to stop it.
+ *
+ * Both real callers derive their target from a mission and are almost certainly
+ * safe today. That is an argument for the guard being cheap, not for leaving the
+ * primitive able to write a state no reader can cope with.
+ */
 export async function transferPlanetControl(
   tx: Tx,
   input: TransferControlInput,
 ): Promise<{ previousPlayerId: string | null; planetId: string }> {
+  const [pair] = await tx
+    .select({ planetSeason: planets.seasonId, playerSeason: players.seasonId })
+    .from(planets)
+    .innerJoin(players, eq(players.id, input.newPlayerId))
+    .where(eq(planets.id, input.targetPlanetId));
+  if (!pair) throw new GameError('TARGET_CHANGED', 'That world changed first', 409);
+  if (pair.planetSeason !== pair.playerSeason) {
+    throw new GameError('WRONG_GALAXY', 'That world is in another galaxy', 409);
+  }
+
   const expected = input.expectedControllerPlayerId === null
     ? isNull(planets.controllerPlayerId)
     : eq(planets.controllerPlayerId, input.expectedControllerPlayerId);
@@ -227,6 +263,28 @@ export async function transferPlanetControl(
   if (rows.length === 0) throw new GameError('TARGET_CHANGED', 'That world changed first', 409);
 
   await tx.delete(neutralPlanetState).where(eq(neutralPlanetState.planetId, input.targetPlanetId));
+  /**
+   * A CAPTURED WORLD'S RESEARCH DIES WITH THE OWNERSHIP. T7 made this necessary.
+   *
+   * Build orders survive a capture — a known, accepted consequence: a half-built
+   * Refinery is a world's own scaffolding and it comes with the world. A RESEARCH
+   * order is not. Since T7 it completes into `player_research` keyed on whoever
+   * controls the world AT THAT MOMENT, so a captured colony would hand the captor
+   * a permanent, commander-wide ladder rung the loser paid for — on every one of
+   * their worlds, for the rest of the season.
+   *
+   * Cancelled without refund, which is the rule D113 already set for the same
+   * situation: a player who cancels gets half back, and an enemy who destroys the
+   * work gives nothing.
+   */
+  await tx
+    .update(buildOrders)
+    .set({ status: 'CANCELLED' })
+    .where(and(
+      eq(buildOrders.planetId, input.targetPlanetId),
+      eq(buildOrders.kind, 'RESEARCH'),
+      eq(buildOrders.status, 'BUILDING'),
+    ));
   await tx
     .update(units)
     .set({ ownerPlayerId: input.newPlayerId })
@@ -234,6 +292,7 @@ export async function transferPlanetControl(
       eq(units.planetId, input.targetPlanetId),
       or(eq(units.location, 'home'), eq(units.hull, 'PROSPECTOR')),
     ));
+  await refreshSensorEpoch(tx, input.targetPlanetId, input.now);
   return { previousPlayerId: input.expectedControllerPlayerId, planetId: input.targetPlanetId };
 }
 

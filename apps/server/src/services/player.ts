@@ -6,6 +6,7 @@ import { accounts, buildings, planets, players, seasons, shards } from '../db/sc
 import { galaxyOf, occupiedSlots } from './season.js';
 import { GameError, recomputeWealth } from './planet.js';
 import { publishShard } from '../stream/bus.js';
+import { refreshSensorEpoch } from './sensorHistory.js';
 
 /**
  * The rows a fresh planet is written with, from the one table that decides it.
@@ -193,6 +194,9 @@ export async function joinSeason(
              */
             alloy: PLANET_START.alloy,
             crystal: PLANET_START.crystal,
+            // The starting tank. T6: a world opens able to fly and unable to make
+            // more fuel, which is the chain the opening has to teach.
+            deuterium: PLANET_START.deuterium,
             lastTickAt: now,
           })
           .onConflictDoNothing({ target: [planets.seasonId, planets.slotIndex] })
@@ -220,6 +224,7 @@ export async function joinSeason(
         // Without this a fresh commander's Wealth stays at the column default of
         // zero, and the rank floor then protects them from every attacker forever.
         await recomputeWealth(tx, planet.id);
+        await refreshSensorEpoch(tx, planet.id, clock.now());
 
         // A capital has appeared in the public galaxy and leaderboard. Publish
         // inside the transaction so every API replica invalidates only on commit.

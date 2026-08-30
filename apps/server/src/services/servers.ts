@@ -29,11 +29,14 @@ import {
   notifications,
   planets,
   planetResearch,
+  playerResearch,
   players,
   probeReports,
+  probeWorldMemories,
   requestLog,
   rewardGrants,
   satellites,
+  sensorEpochs,
   scanEvents,
   scheduledEvents,
   seasons,
@@ -41,6 +44,7 @@ import {
   units,
   strategicAssets,
   strategicImpacts,
+  strategicInterceptions,
   watches,
 } from '../db/schema.js';
 import { createSeasonIn } from './season.js';
@@ -535,8 +539,10 @@ export async function wipeAllServers(
     await tx.delete(requestLog);
     await tx.delete(notifications);
     await tx.delete(scanEvents);
+    await tx.delete(probeWorldMemories);
     await tx.delete(probeReports);
     await tx.delete(watches);
+    await tx.delete(strategicInterceptions);
     await tx.delete(strategicImpacts);
     await tx.delete(battleReports);
     await tx.delete(scheduledEvents);
@@ -548,10 +554,13 @@ export async function wipeAllServers(
     await tx.delete(asteroidClaims);
     await tx.delete(units);
     await tx.delete(satellites);
+    await tx.delete(sensorEpochs);
     await tx.delete(buildings);
     await tx.delete(planetResearch);
     await tx.delete(neutralPlanetState);
     await tx.delete(planets);
+    // Before the commanders it points at, or the wipe fails on the foreign key. T7.
+    await tx.delete(playerResearch);
     await tx.delete(players);
 
     const opened = await bootstrapServersIn(tx, clock, opts);

@@ -10,6 +10,9 @@ import type {
 } from '@astera/rules';
 import { noteServerTime } from '../lib/clock.js';
 import {
+  adminFeedbackPageSchema,
+  announcementPublishedSchema,
+  announcementsPageSchema,
   claimSchema,
   type ClaimIntent,
   clanAidLaunchSchema,
@@ -60,6 +63,7 @@ import {
   planetsSchema,
   movementLaunchSchema,
   deathStarBuildSchema,
+  interceptorBuildSchema,
   deathStarLaunchSchema,
   previewSchema,
   probeSchema,
@@ -81,7 +85,9 @@ import {
   unlocksSchema,
   upgradeSchema,
   watchSchema,
+  feedbackSubmittedSchema,
 } from './schemas.js';
+import type { FeedbackKind } from './schemas.js';
 
 /** The figures a refusal was built from, as the server sent them. */
 export type ErrorParams = Record<string, string | number>;
@@ -319,6 +325,20 @@ export class Api {
 
   me = () => this.send('/api/auth/me', meSchema);
 
+  /* ── announcements and feedback ─────────────────────────── */
+
+  announcements = () => this.send('/api/announcements', announcementsPageSchema);
+  markAnnouncementsRead = (ids: string[]) =>
+    this.send('/api/announcements/read', markedSchema, { method: 'POST', body: { ids } });
+  sendFeedback = (kind: FeedbackKind, message: string) =>
+    this.send('/api/feedback', feedbackSubmittedSchema, { method: 'POST', body: { kind, message } });
+  adminFeedback = () => this.send('/api/admin/feedback', adminFeedbackPageSchema);
+  publishAnnouncement = (title: string, bodyHtml: string) =>
+    this.send('/api/admin/announcements', announcementPublishedSchema, {
+      method: 'POST',
+      body: { title, bodyHtml },
+    });
+
   /* ── the rehearsal, and claiming it ───────────────────────── */
 
   /**
@@ -467,7 +487,7 @@ export class Api {
     this.send(`/api/chronicle?limit=30${before ? `&before=${encodeURIComponent(before)}` : ''}`, chroniclePageSchema);
   intel = () => this.send('/api/intel', intelSchema);
   /** The closing link of the loop: what a fight actually taught you. */
-  reports = () => this.send('/api/reports?limit=20', reportsSchema);
+  reports = () => this.send('/api/reports?limit=50', reportsSchema);
 
   upgrade = (planetIdOrType: string, explicitType?: BuildingId) => {
     const type = explicitType ?? planetIdOrType as BuildingId;
@@ -555,6 +575,11 @@ export class Api {
       method: 'POST', body: {},
     });
 
+  buildInterceptor = (planetId: string) =>
+    this.send(`/api/planets/${encodeURIComponent(planetId)}/interceptor/build`, interceptorBuildSchema, {
+      method: 'POST', body: {},
+    });
+
   launchDeathStar = (originPlanetId: string, targetPlanetId: string) =>
     this.send('/api/death-star/launch', deathStarLaunchSchema, {
       method: 'POST', body: { originPlanetId, targetPlanetId },
@@ -581,10 +606,10 @@ export class Api {
     miningStatusSchema,
   );
 
-  mine = (asteroidIndex: number, craft: number, originPlanetId?: string) =>
+  mine = (asteroidId: string, craft: number, originPlanetId?: string) =>
     this.send('/api/mining/launch', miningLaunchSchema, {
       method: 'POST',
-      body: { asteroidIndex, craft, ...(originPlanetId ? { originPlanetId } : {}) },
+      body: { asteroidId, craft, ...(originPlanetId ? { originPlanetId } : {}) },
     });
 
   /** Send craft to a wreck field. D32 — the same craft, a different errand. */

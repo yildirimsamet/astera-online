@@ -1,13 +1,22 @@
 import {
+  yardSpeedMult,
+  strategicStockpile,
+  prospectorHoldMult,
+  plantCeiling,
+  hullTech,
+  cargoMult,
+  RESEARCH_MAX_LEVEL,
   HULLS,
   SATELLITES,
   alloyRate,
   crystalRate,
+  deuteriumRate,
+  hangarCapacity,
   instrumentMaxed,
   probeAccuracy,
   radarRange,
+  sensorSphere,
   telescopeCooldownHours,
-  telescopeRange,
   telescopeSlots,
   shieldHp,
   storageCap,
@@ -18,6 +27,8 @@ import {
   type InstrumentId,
   type SatelliteId,
   storageHours,
+  type HullId,
+  type ResearchProjectId,
 } from '@astera/rules';
 import type { PlanetView } from '../api/schemas.js';
 import i18n from '../i18n/index.js';
@@ -50,6 +61,8 @@ export const levelsOf = (planet: PlanetView): BuildingLevels => ({
   EXTRACTOR: planet.buildings.EXTRACTOR ?? 0,
   VAULT: planet.buildings.VAULT ?? 0,
   SHIPYARD: planet.buildings.SHIPYARD ?? 0,
+  HANGAR: planet.buildings.HANGAR ?? 0,
+  DEUTERIUM_PLANT: planet.buildings.DEUTERIUM_PLANT ?? 0,
 });
 
 export function powerOf(planet: PlanetView): number {
@@ -59,6 +72,8 @@ export function powerOf(planet: PlanetView): number {
     EXTRACTOR: planet.buildings.EXTRACTOR ?? 0,
     VAULT: planet.buildings.VAULT ?? 0,
     SHIPYARD: planet.buildings.SHIPYARD ?? 0,
+    HANGAR: planet.buildings.HANGAR ?? 0,
+    DEUTERIUM_PLANT: planet.buildings.DEUTERIUM_PLANT ?? 0,
   };
   return wealth({
     buildings,
@@ -72,11 +87,23 @@ export function powerOf(planet: PlanetView): number {
   });
 }
 
-/** Range in words. "Infinite" is not a distance a player can picture. */
+/** Every player-facing sensor reach is the finite, server-enforced value. */
 const rangeWord = (units: number): string =>
-  Number.isFinite(units)
-    ? i18n.t('gains.rangeUnits', { count: Math.round(units) })
-    : i18n.t('gains.rangeWhole');
+  i18n.t('gains.rangeUnits', { count: Math.round(units) });
+
+const sensorReachAt = (telescope: number, radar: number) =>
+  sensorSphere({ x: 0, y: 0, z: 0 }, telescope, radar);
+
+/** Radar contact/warning exists from L1; anti-strategic engagement begins at L3. */
+const radarReachWord = (level: number): string => {
+  const sense = sensorReachAt(0, level).detect;
+  const warn = radarRange(level);
+  if (sense <= 0 || warn <= 0) return i18n.t('gains.radar.sweepNone');
+  return i18n.t('gains.radar.reaches', {
+    sense: Math.round(sense),
+    warn: Math.round(warn),
+  });
+};
 
 export interface Gain {
   /** The quantity being bought, named as the player feels it. */
@@ -150,8 +177,8 @@ export function buildingGain(
         }),
       };
     case 'VAULT': {
-      const current = vaultProtects(level, levels.REFINERY, levels.EXTRACTOR);
-      const raised = vaultProtects(next, levels.REFINERY, levels.EXTRACTOR);
+      const current = vaultProtects(level, levels.REFINERY, levels.EXTRACTOR, levels.DEUTERIUM_PLANT);
+      const raised = vaultProtects(next, levels.REFINERY, levels.EXTRACTOR, levels.DEUTERIUM_PLANT);
 
       /**
        * TWO METRICS, AND THE SECOND ONE IS WHAT KEEPS THE ROW HONEST.
@@ -170,8 +197,8 @@ export function buildingGain(
       if (current.alloy === raised.alloy && current.crystal === raised.crystal) {
         return {
           label: i18n.t('gains.vault.storeLabel'),
-          now: i18n.t('gains.vault.storeValue', { hours: storageHours(level) }),
-          next: i18n.t('gains.vault.storeValue', { hours: storageHours(next) }),
+          now: i18n.t('gains.vault.storeValue', { hours: storageHours(level).toFixed(1) }),
+          next: i18n.t('gains.vault.storeValue', { hours: storageHours(next).toFixed(1) }),
         };
       }
 
@@ -232,6 +259,27 @@ export function buildingGain(
           : {}),
       };
     }
+    /**
+     * ROOM, IN THE UNIT THE PLAYER READS EVERYWHERE ELSE. T4.
+     *
+     * The figure is deliberately the same one the ship rows and the order refusal
+     * use, so "84 / 200" on the fleet readout and "200 → 360" here are visibly the
+     * same quantity. A capacity sold in a different unit from the one it is spent
+     * in is a capacity nobody can plan against.
+     */
+    case 'HANGAR':
+      return {
+        label: i18n.t('gains.hangar.label'),
+        now: i18n.t('gains.hangar.value', { room: hangarCapacity(level) }),
+        next: i18n.t('gains.hangar.value', { room: hangarCapacity(next) }),
+      };
+    /** An hourly rate, in the same shape the other two producers are sold in. T5. */
+    case 'DEUTERIUM_PLANT':
+      return {
+        label: i18n.t('gains.plant.label'),
+        now: i18n.t('gains.plant.value', { rate: full(Math.round(deuteriumRate(level))) }),
+        next: i18n.t('gains.plant.value', { rate: full(Math.round(deuteriumRate(next))) }),
+      };
   }
 }
 
@@ -251,13 +299,16 @@ export function instrumentGain(id: InstrumentId, level: number): Gain {
           label: i18n.t('gains.telescope.slotsLabel'),
           now: String(telescopeSlots(level)),
           next: String(telescopeSlots(level)),
-          unlocks: i18n.t('gains.telescope.maxed'),
+          unlocks: i18n.t('gains.telescope.maxed', {
+            slots: telescopeSlots(level),
+            range: Math.round(sensorReachAt(level, 0).identify),
+          }),
           maxed: true,
         };
       }
       const slots = telescopeSlots(level);
       const nextSlots = telescopeSlots(next);
-      const reach = telescopeRange(next);
+      const reach = sensorReachAt(next, 0).identify;
       const cooldown = telescopeCooldownHours(next);
 
       if (nextSlots > slots) {
@@ -273,7 +324,7 @@ export function instrumentGain(id: InstrumentId, level: number): Gain {
       }
       return {
         label: i18n.t('gains.telescope.rangeLabel'),
-        now: rangeWord(telescopeRange(level)),
+        now: rangeWord(sensorReachAt(level, 0).identify),
         next: rangeWord(reach),
         unlocks:
           telescopeSlots(next + 1) > nextSlots
@@ -302,8 +353,8 @@ export function instrumentGain(id: InstrumentId, level: number): Gain {
       if (instrumentMaxed('RADAR', level)) {
         return {
           label: i18n.t('gains.radar.sweepLabel'),
-          now: rangeWord(radarRange(level)),
-          next: rangeWord(radarRange(level)),
+          now: radarReachWord(level),
+          next: radarReachWord(level),
           unlocks: i18n.t('gains.radar.maxed'),
           maxed: true,
         };
@@ -326,11 +377,10 @@ export function instrumentGain(id: InstrumentId, level: number): Gain {
        * to the Telescope's own range row two branches above — which is the point
        * of the two instruments finally being measured in the same unit.
        */
-      const nowReach = radarRange(level);
       return {
         label: i18n.t('gains.radar.sweepLabel'),
-        now: nowReach > 0 ? rangeWord(nowReach) : i18n.t('gains.radar.sweepNone'),
-        next: rangeWord(radarRange(next)),
+        now: radarReachWord(level),
+        next: radarReachWord(next),
         ...(next === 4
           ? { unlocks: i18n.t('gains.radar.estimate') }
           : next === 5
@@ -415,5 +465,163 @@ export function satelliteGain(id: SatelliteId): Gain {
         next: i18n.t('gains.beacon.next', { factor: SATELLITES.BEACON.speed }),
         unlocks: i18n.t('gains.beacon.unlocks'),
       };
+  }
+}
+
+/**
+ * WHAT ONE MORE RUNG OF RESEARCH ACTUALLY BUYS. T9 · T8 · D124.
+ *
+ * RESEARCH WAS THE ONLY LADDER IN THE GAME WITH NO FIGURE ON IT. Every other
+ * buyable — a building, an instrument, a satellite — reaches `UpgradeRow` with a
+ * `gain`, the "now → next" pair that says what the price is for. The research
+ * panel built the same row and passed no gain at all, so fifteen projects were
+ * sold on prose alone: "Builds ships faster", "Better attack and armour", "Mining
+ * craft carry more". How much faster, how much better, how much more — nowhere,
+ * on any surface, at any rung.
+ *
+ * That is D124's rule broken on the screen where it costs most. A player choosing
+ * between Wasp Doctrine and Weapons and Armour is choosing between two numbers
+ * they were never shown, and the answer is not intuitive: the doctrine is worth
+ * MORE to one hull family and NOTHING to the rest, the general project is worth
+ * LESS per hull and applies to every one of them, and their combined ceiling is
+ * fixed. None of that is guessable from "Better attack and armour".
+ *
+ * EVERY FIGURE HERE IS COMPUTED FROM THE RULES, never restated. The percentages
+ * come out of `hullTech`, `yardSpeedMult`, `prospectorHoldMult` and `cargoMult`,
+ * so a change to `RESEARCH_TECH` moves this display with it and cannot leave a
+ * stale number on a decision surface.
+ */
+export function researchGain(id: ResearchProjectId, level: number): Gain {
+  const max = RESEARCH_MAX_LEVEL[id];
+  const next = level + 1;
+  const maxed = level >= max;
+  /** The rung whose value is worth showing: the one on offer, or the last held. */
+  const show = maxed ? level : next;
+
+  /**
+   * A PERMISSION IS NOT A LADDER, and it must not be drawn as one. D36's rule in
+   * its second form: five of these projects have exactly one rung and buy a door
+   * rather than a quantity. "0 → 1" on a door is a number nobody can use.
+   */
+  const permission = (unlocks: string): Gain => ({
+    label: i18n.t('gains.research.opensLabel'),
+    now: i18n.t(maxed ? 'gains.research.open' : 'gains.research.shut'),
+    next: i18n.t('gains.research.open'),
+    unlocks,
+    ...(maxed ? { maxed: true as const } : {}),
+  });
+
+  /** A rung on a real ladder, as the percentage the player will feel. */
+  const step = (label: string, at: (rung: number) => number, unlocks?: string): Gain => ({
+    label,
+    now: percent(at(level)),
+    next: percent(at(show)),
+    ...(unlocks === undefined ? {} : { unlocks }),
+    ...(maxed ? { maxed: true as const } : {}),
+  });
+
+  /** A doctrine and the general project are one arithmetic, read two ways. */
+  const combat = (hull: HullId, project: ResearchProjectId) =>
+    (rung: number) => hullTech({ [project]: rung }, hull).atk - 1;
+
+  switch (id) {
+    /* ── the four class doctrines ───────────────────────────── */
+    case 'WASP_DOCTRINE':
+      return step(
+        i18n.t('gains.research.doctrineLabel', { hull: hullLabel('WASP') }),
+        combat('WASP', 'WASP_DOCTRINE'),
+        i18n.t('gains.research.doctrineScope', { hull: hullLabel('WASP') }),
+      );
+    case 'LANCE_DOCTRINE':
+      return step(
+        i18n.t('gains.research.doctrineLabel', { hull: hullLabel('LANCE') }),
+        combat('LANCE', 'LANCE_DOCTRINE'),
+        i18n.t('gains.research.lanceScope', {
+          lance: hullLabel('LANCE'),
+          breacher: hullLabel('BREACHER'),
+        }),
+      );
+    case 'BULWARK_DOCTRINE':
+      return step(
+        i18n.t('gains.research.doctrineLabel', { hull: hullLabel('BULWARK') }),
+        combat('BULWARK', 'BULWARK_DOCTRINE'),
+        i18n.t('gains.research.doctrineScope', { hull: hullLabel('BULWARK') }),
+      );
+    case 'EMPLACEMENT_DOCTRINE':
+      return step(
+        i18n.t('gains.research.groundLabel'),
+        combat('BASTION', 'EMPLACEMENT_DOCTRINE'),
+        i18n.t('gains.research.groundScope', {
+          bastion: hullLabel('BASTION'),
+          thorn: hullLabel('THORN'),
+        }),
+      );
+
+    /**
+     * AND THE ONE THAT COVERS EVERYTHING. The figure is deliberately the SAME
+     * arithmetic as a doctrine's — they split the ceiling evenly — so the honest
+     * distinction is not the size of the step but its REACH, which is what the
+     * unlock line carries. A player comparing the two rows sees equal percentages
+     * and two different scopes, which is exactly the choice in front of them.
+     */
+    case 'WEAPONS_GENERAL':
+      return step(
+        i18n.t('gains.research.generalLabel'),
+        (rung) => hullTech({ WEAPONS_GENERAL: rung }, 'WASP').atk - 1,
+        i18n.t('gains.research.generalScope'),
+      );
+
+    /* ── the three economy ladders ──────────────────────────── */
+    case 'YARD_AUTOMATION':
+      return step(
+        i18n.t('gains.research.yardLabel'),
+        // A shorter build is a NEGATIVE multiplier; the player feels a saving.
+        (rung) => 1 - yardSpeedMult({ YARD_AUTOMATION: rung }),
+      );
+    case 'PROSPECTOR_HOLDS':
+      return step(
+        i18n.t('gains.research.holdsLabel'),
+        (rung) => prospectorHoldMult({ PROSPECTOR_HOLDS: rung }) - 1,
+        i18n.t('gains.research.holdsScope'),
+      );
+    case 'CARGO_HOLDS':
+      return step(
+        i18n.t('gains.research.cargoLabel'),
+        (rung) => cargoMult({ CARGO_HOLDS: rung }) - 1,
+        i18n.t('gains.research.cargoScope'),
+      );
+
+    /**
+     * A LADDER THAT RAISES A CEILING ELSEWHERE, so the figure is that ceiling in
+     * the unit the player builds in — levels of Refinery — rather than a percentage.
+     */
+    case 'DEUTERIUM_SYNTHESIS':
+      return {
+        label: i18n.t('gains.research.refineryLabel'),
+        now: String(plantCeiling(level)),
+        next: String(plantCeiling(show)),
+        ...(maxed ? { maxed: true as const } : {}),
+      };
+
+    /** How many strategic weapons may stand ready at once. T11. */
+    case 'STRATEGIC_STOCKPILE':
+      return {
+        label: i18n.t('gains.research.stockpileLabel'),
+        now: String(strategicStockpile(level)),
+        next: String(strategicStockpile(show)),
+        ...(maxed ? { maxed: true as const } : {}),
+      };
+
+    /* ── the five permissions ───────────────────────────────── */
+    case 'ISOTOPE_SPECTROMETRY':
+      return permission(i18n.t('gains.research.isotopeOpens'));
+    case 'DENSE_FUEL_CELLS':
+      return permission(i18n.t('gains.research.denseOpens'));
+    case 'GRAVITIC_CHARGES':
+      return permission(i18n.t('gains.research.graviticOpens'));
+    case 'DEATH_STAR_PROTOCOL':
+      return permission(i18n.t('gains.research.protocolOpens'));
+    case 'INTERCEPTION_GRID':
+      return permission(i18n.t('gains.research.gridOpens'));
   }
 }

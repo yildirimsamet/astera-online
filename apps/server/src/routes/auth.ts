@@ -4,6 +4,7 @@ import { authenticate, findAccount, registerAccount } from '../services/account.
 import { currentPlacement } from '../services/servers.js';
 import { latestSeasonResult } from '../services/season.js';
 import { GameError } from '../services/planet.js';
+import { isAdminAccount } from '../services/admin.js';
 
 const REFRESH_COOKIE = 'bs_refresh';
 
@@ -150,14 +151,16 @@ export function registerAuthRoutes(app: FastifyInstance): void {
     const account = await findAccount(app.db, req.accountId!);
     if (!account) throw new GameError('BAD_SESSION', 'Session is invalid', 401);
 
-    const [placement, latestResult] = await Promise.all([
+    const [placement, latestResult, isAdmin] = await Promise.all([
       currentPlacement(app.db, account.id),
       latestSeasonResult(app.db, account.id),
+      isAdminAccount(app.db, account.id, app.adminUsernames),
     ]);
     return {
       accountId: account.id,
       username: account.username,
       displayName: account.displayName,
+      isAdmin,
       placement: placement
         ? {
             shard: placement.shardCode,

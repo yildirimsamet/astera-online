@@ -4,6 +4,7 @@ import userEvent from '@testing-library/user-event';
 import i18n from '../src/i18n/index.js';
 import {
   SeasonRecap,
+  seasonRecapShowsPrimaryAction,
   seasonRecapKey,
   seasonRecapSeen,
   useSeasonRecapOpening,
@@ -40,6 +41,11 @@ afterEach(async () => {
 });
 
 describe('the personal season ending', () => {
+  it('keeps Explore only during the frozen season afterglow, not over a live successor', () => {
+    expect(seasonRecapShowsPrimaryAction({ status: 'live', result: null })).toBe(false);
+    expect(seasonRecapShowsPrimaryAction({ status: 'frozen', result: result() })).toBe(true);
+  });
+
   it('turns the final score into a record of real conflict', () => {
     render(<SeasonRecap result={result()} galaxy="Vantage" players={50} onClose={vi.fn()} />);
 
@@ -92,6 +98,28 @@ describe('the personal season ending', () => {
     expect(window.localStorage.getItem(seasonRecapKey(value))).toBe('seen');
     expect(seasonRecapSeen(value)).toBe(true);
     expect(onClose).toHaveBeenCalledOnce();
+  });
+
+  it('hides the galaxy action when this is a past record over an already-live new season', () => {
+    render(
+      <SeasonRecap
+        result={result()}
+        galaxy="Vantage"
+        players={50}
+        showPrimaryAction={false}
+        onClose={vi.fn()}
+      />,
+    );
+
+    expect(screen.queryByRole('button', { name: 'Explore the final galaxy' })).not.toBeInTheDocument();
+    expect(screen.getAllByRole('button', { name: 'Close' })).toHaveLength(1);
+  });
+
+  it('gives the always-available close control a visible surface and keyboard focus state', () => {
+    render(<SeasonRecap result={result()} galaxy="Vantage" players={50} onClose={vi.fn()} />);
+
+    const close = screen.getByRole('button', { name: 'Close' });
+    expect(close).toHaveClass('border-line', 'bg-raised', 'text-bone', 'focus-visible:ring-2');
   });
 
   it('opens once when the live season freezes and stays quiet after acknowledgement', async () => {

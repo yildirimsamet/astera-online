@@ -3,7 +3,7 @@ import { pino } from 'pino';
 import { afterAll, afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { radarLead, radarRange } from '@astera/rules';
 import { missions, notifications, planets, players, satellites, scanEvents, watches } from '../src/db/schema.js';
-import { CHANNEL, EventBus, publish, publishShard } from '../src/stream/bus.js';
+import { CHANNEL, EventBus, publish, publishGlobal, publishShard } from '../src/stream/bus.js';
 import {
   buildReturnPayload,
   currentUnlocks,
@@ -348,7 +348,7 @@ describe('the return payload', () => {
        * launches — correctly, and uselessly for this assertion. Moving the
        * attacker out is what makes the fleet actually far away.
        */
-      await placeAt(f.db, theirs, { x: 1500 });
+      await placeAt(f.db, theirs, { x: radarRange(3) + 100 });
       await sendAtThem();
 
       const payload = await buildReturnPayload(f.db, myPlayer, f.clock);
@@ -669,6 +669,19 @@ describe('the shard channel', () => {
         resolve(event);
       });
     });
+
+  it('delivers a global operator event independently of galaxy topics', async () => {
+    const arrived = new Promise<{ kind: string }>((resolve) => {
+      const off = bus.subscribeGlobal((event) => {
+        off();
+        resolve(event);
+      });
+    });
+    expect(bus.globalSubscriberCount()).toBe(1);
+    await publishGlobal(f.db, 'announcement');
+    await expect(arrived).resolves.toMatchObject({ kind: 'global:announcement' });
+    expect(bus.globalSubscriberCount()).toBe(0);
+  });
 
   it('delivers a shard event to everybody subscribed to that galaxy', async () => {
     const arrived = waitForShard(f.seasonId);

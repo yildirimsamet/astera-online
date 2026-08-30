@@ -12,6 +12,8 @@ import {
   contactPosition,
   legStandoff,
   runPosition,
+  runHomePosition,
+  runForPlanetTarget,
   threadPosition,
   toWorld,
   type PlanetNode,
@@ -98,6 +100,7 @@ describe('continuous endpoint clearance', () => {
     weight: radius > 1 ? 3 : 1,
     coreTier: radius > 1 ? 5 : 1,
     coreLevel: radius > 1 ? 15 : 3,
+    intel: 'RESOLVED' as const,
     satellites: [],
     shielded: false,
     stance: 'dark',
@@ -157,7 +160,7 @@ describe('continuous endpoint clearance', () => {
     const mining: MiningRun = {
       id: 'drill',
       targetKind: 'debris',
-      asteroidIndex: null,
+      asteroidId: null,
       debrisFieldId: 'wreck',
       craft: 1,
       status: 'outbound',
@@ -211,8 +214,9 @@ describe('a mining run', () => {
   const home = { x: 0, y: 0, z: 0 };
   const run = (over: Partial<MiningRun> = {}): MiningRun => ({
     id: 'r1',
+    planetId: 'colony-b',
     targetKind: 'asteroid',
-    asteroidIndex: 3,
+    asteroidId: 'mJt7YvxMZEC5S7yYQ32SYw',
     debrisFieldId: null,
     craft: 2,
     status: 'outbound',
@@ -224,6 +228,44 @@ describe('a mining run', () => {
     minedCrystal: 0,
     minedDeuterium: 0,
     ...over,
+  });
+
+  it('uses the run’s real origin world instead of whichever world is active now', () => {
+    const colony = {
+      id: 'colony-b',
+      position: toWorld({ x: 900, y: -300, z: 450 }),
+    } as PlanetNode;
+    expect(runHomePosition(run(), [colony], home)).toEqual({ x: 900, y: -300, z: 450 });
+  });
+
+  it('does not let another colony’s run block the active colony from the same target', () => {
+    const fromA = run({ planetId: 'colony-a' });
+    expect(runForPlanetTarget([fromA], 'colony-b', { kind: 'asteroid', id: fromA.asteroidId! }))
+      .toBeUndefined();
+    expect(runForPlanetTarget([fromA], 'colony-a', { kind: 'asteroid', id: fromA.asteroidId! }))
+      .toBe(fromA);
+  });
+
+  it('applies the same per-colony rule to a shared wreck field', () => {
+    const fromA = run({
+      planetId: 'colony-a',
+      targetKind: 'debris',
+      asteroidId: null,
+      debrisFieldId: 'wreck-7',
+    });
+    expect(runForPlanetTarget([fromA], 'colony-b', { kind: 'debris', id: 'wreck-7' }))
+      .toBeUndefined();
+    expect(runForPlanetTarget([fromA], 'colony-a', { kind: 'debris', id: 'wreck-7' }))
+      .toBe(fromA);
+  });
+
+  it('treats an older server’s origin-less run as belonging to the selected world', () => {
+    const legacy = run({ planetId: undefined });
+    expect(runForPlanetTarget(
+      [legacy],
+      'colony-b',
+      { kind: 'asteroid', id: legacy.asteroidId! },
+    )).toBe(legacy);
   });
 
   it('flies the planet to the interception point on the way out', () => {
@@ -284,7 +326,7 @@ describe('a drill and its rock, at the instant they meet', () => {
           run: {
             id: `r${String(rock.index)}`,
             targetKind: 'asteroid',
-            asteroidIndex: rock.index,
+            asteroidId: 'mJt7YvxMZEC5S7yYQ32SYw',
             debrisFieldId: null,
             craft: 1,
             status: 'outbound',
@@ -352,7 +394,10 @@ describe('a drill and its rock, at the instant they meet', () => {
       const flight = (run.arriveAt.getTime() - run.departAt.getTime()) / 60_000;
       laps.push(flight / rock.period);
       // And the aim point is genuinely on the rock's own orbit, never off it.
-      expect(Math.hypot(run.intercept.x, run.intercept.z)).toBeCloseTo(rock.radius, 3);
+      expect(Math.hypot(run.intercept.x, run.intercept.y, run.intercept.z)).toBeCloseTo(
+        rock.radius,
+        3,
+      );
       expect(distance(run.intercept, { x: 0, y: 0, z: 0 })).toBeGreaterThan(0);
     }
     const worst = Math.max(...laps);
@@ -443,6 +488,7 @@ describe('a contact in the galaxy', () => {
       weight: 2,
       coreTier: 2,
       coreLevel: 6,
+      intel: 'RESOLVED' as const,
       satellites: [],
       shielded: false,
       stance: 'dark',

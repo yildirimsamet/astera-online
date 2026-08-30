@@ -16,7 +16,6 @@ import {
   SHIELD,
   canAttack,
   coreTier,
-  reachableTiers,
   countOf,
   debrisAlive,
   disruptionMinutes,
@@ -85,22 +84,19 @@ describe('canAttack', () => {
     });
   });
 
-  it('allows exactly the band, and refuses the step past it', () => {
-    // Tier 1 is Core 1-3, tier 2 is 4-6, tier 3 is 7-9, tier 4 is 10-12.
-    const me = party('a', 2); // tier 1
-
-    expect(canAttack(me, party('b', 9), 0).ok).toBe(true); // tier 3 — the edge
-    expect(canAttack(me, party('b', 10), 0).ok).toBe(false); // tier 4 — one past
-    expect(canAttack(me, party('b', 10), 0)).toMatchObject({ reason: 'TIER_BAND' });
+  /** D127 retired the band; development is private, so it may not gate a launch. */
+  it('allows a fight at any development distance', () => {
+    const me = party('a', 2);
+    expect(canAttack(me, party('b', 9), 0).ok).toBe(true);
+    expect(canAttack(me, party('b', 10), 0).ok).toBe(true);
+    expect(canAttack(me, party('b', 45), 0).ok).toBe(true);
   });
 
   /**
-   * THE BAND IS SYMMETRIC, and that is the half a Wealth ratio never had.
-   *
-   * `rankFloor` protected the small from the large and let anyone punch up
-   * without limit, so a fresh commander could throw two Wasps at the biggest
-   * world in the galaxy and lose them for nothing. A band cuts both ways: if they
-   * cannot reach down to you, you cannot reach up to them.
+   * PERMISSION IS STILL SYMMETRIC, and D127 kept that by removing the band rather
+   * than narrowing it. `rankFloor` protected the small from the large and let
+   * anyone punch up without limit — an asymmetry the band fixed and its absence
+   * preserves: nobody's development decides whether anybody may fight them.
    */
   it('is symmetric — if they cannot hit you, you cannot hit them', () => {
     fc.assert(
@@ -117,11 +113,18 @@ describe('canAttack', () => {
     );
   });
 
-  it('never blocks two worlds inside the band, however far apart their levels', () => {
+  /**
+   * DEVELOPMENT NO LONGER GATES A FIGHT AT ALL. D127.
+   *
+   * The ±2 tier band went with the public tier it was defined on: with development
+   * private it could only have become a refusal at the gate, after a fleet was
+   * packed — the exact failure D49 replaced a wealth ratio for. What protects a
+   * small commander now is that nobody can SEE they are small, plus the bash limit.
+   */
+  it('lets any two worlds fight, however far apart their development', () => {
     fc.assert(
       fc.property(fc.integer({ min: 1, max: 60 }), fc.integer({ min: 1, max: 60 }), (a, b) => {
-        const apart = Math.abs(coreTier(a) - coreTier(b));
-        expect(canAttack(party('a', a), party('b', b), 0).ok).toBe(apart <= ABUSE.tierBand);
+        expect(canAttack(party('a', a), party('b', b), 0).ok).toBe(true);
       }),
       { numRuns: 400 },
     );
@@ -136,37 +139,35 @@ describe('canAttack', () => {
   });
 
   /**
-   * ORDER OF REFUSAL MATTERS, because the reason is shown to the player. Being
-   * told "they are out of your band" when you are in fact bash-limited sends you
-   * to find a different target and get refused again.
+   * TWO REASONS REMAIN, AND SELF COMES FIRST. Order matters because the reason is
+   * shown to the player: being told the wrong one sends them to find a different
+   * target and get refused again.
    */
-  it('reports the tier band before the bash limit when both apply', () => {
-    expect(canAttack(party('a', 30), party('b', 1), ABUSE.bashLimit)).toMatchObject({
-      reason: 'TIER_BAND',
+  it('reports self before the bash limit when both apply', () => {
+    expect(canAttack(party('a', 30), party('a', 30), ABUSE.bashLimit)).toMatchObject({
+      reason: 'SELF',
     });
   });
 
   /**
-   * A BRAND-NEW PLANET IS IN BAND WITH ITS OWN NEIGHBOURHOOD AND NOWHERE ELSE.
+   * WHAT IS LEFT PROTECTING A NEW COMMANDER, STATED AS A TEST. D127.
    *
-   * Every planet starts at Core 1, so tier 1 reaches tier 3 — Core 9. That is
-   * roughly a week of development in a 336-hour season, which is the whole point:
-   * a beginner can be raided by somebody meaningfully ahead of them, and cannot be
-   * farmed by somebody who has finished the game.
+   * Not the band any more — the bash limit, and the fact that a raider cannot see
+   * who is small. This holds the first half; the second is enforced by the galaxy
+   * payload and tested there.
    */
-  it('places a fresh commander in band with the first three tiers and no further', () => {
-    const fresh = party('a', 1);
-    expect(canAttack(fresh, party('b', 9), 0).ok).toBe(true);
-    expect(canAttack(fresh, party('b', 12), 0).ok).toBe(false);
-    expect(canAttack(fresh, party('b', 30), 0).ok).toBe(false);
+  it('still lets a finished commander reach a fresh one, and still caps the farming', () => {
+    const fresh = party('b', 1);
+    const finished = party('a', 30);
+    expect(canAttack(finished, fresh, 0).ok).toBe(true);
+    expect(canAttack(finished, fresh, ABUSE.bashLimit).ok).toBe(false);
+    expect(canAttack(finished, fresh, ABUSE.bashLimit).reason).toBe('BASH_LIMIT');
   });
 
   /** Core level is never zero in play, but the tier floor must not be either. */
   it('floors the tier at 1, so a level of zero is still a real tier', () => {
     expect(coreTier(0)).toBe(1);
     expect(coreTier(1)).toBe(1);
-    expect(reachableTiers(1)).toEqual({ low: 1, high: 3 });
-    expect(reachableTiers(13)).toEqual({ low: 3, high: 7 });
   });
 });
 

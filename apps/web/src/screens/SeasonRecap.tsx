@@ -9,6 +9,13 @@ import { useOwnPress } from '../ui/kit/index.js';
 
 export type SeasonResult = Exclude<SeasonInfo['result'], null | undefined>;
 
+/** The final disc exists only while this result belongs to the frozen season. */
+export function seasonRecapShowsPrimaryAction(
+  season: Pick<SeasonInfo, 'status' | 'result'> | undefined,
+): boolean {
+  return season?.status === 'frozen' && season.result != null;
+}
+
 /** One acknowledgement per person and world, never one global "seen" bit. */
 export const seasonRecapKey = (result: SeasonResult): string =>
   `astera:season-recap:${result.accountId}:${result.seasonId}`;
@@ -51,6 +58,7 @@ export function SeasonRecap({
   players,
   endsAt,
   canExplore = true,
+  showPrimaryAction = true,
   onClose,
 }: {
   result: SeasonResult;
@@ -67,6 +75,12 @@ export function SeasonRecap({
    * not exist, and the screen would read as having no way out at all.
    */
   canExplore?: boolean;
+  /**
+   * Past records may open over a new live galaxy. There is nothing final behind
+   * them to explore, so the permanent close control is the only exit in that
+   * context. The frozen season's five-minute afterglow keeps this action.
+   */
+  showPrimaryAction?: boolean;
   onClose: () => void;
 }) {
   const { t } = useTranslation();
@@ -113,7 +127,7 @@ export function SeasonRecap({
           type="button"
           aria-label={t('seasonRecap.close')}
           {...dismiss}
-          className="absolute right-3 top-[calc(20px+env(safe-area-inset-top))] flex size-11 items-center justify-center rounded-chip text-figure leading-none text-faint hover:bg-raised hover:text-bone"
+          className="absolute right-3 top-[calc(20px+env(safe-area-inset-top))] flex size-11 items-center justify-center rounded-chip border border-line bg-raised text-figure leading-none text-bone transition-colors hover:border-crystal/60 hover:text-crystal focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-crystal/70"
         >
           &times;
         </button>
@@ -232,9 +246,11 @@ export function SeasonRecap({
 
         <NextSeason endsAt={endsAt} className="mt-6" />
 
-        <button type="button" className="slab slab-primary mt-auto w-full pt-4" onClick={close}>
-          {t(canExplore ? 'seasonRecap.explore' : 'seasonRecap.close')}
-        </button>
+        {showPrimaryAction ? (
+          <button type="button" className="slab slab-primary mt-auto w-full pt-4" onClick={close}>
+            {t(canExplore ? 'seasonRecap.explore' : 'seasonRecap.close')}
+          </button>
+        ) : null}
       </main>
     </div>
   );

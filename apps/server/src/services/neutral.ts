@@ -11,6 +11,7 @@ import {
   fleetEntries,
   fleetSpeedMult,
   fleetTravelExact,
+  garrisonOf,
   instrumentCost,
   productionMult,
   resolveCombat,
@@ -49,7 +50,9 @@ const EMPTY_VAULT = { alloy: 0, crystal: 0, deuterium: 0 };
 
 async function neutralLevels(tx: Tx, planetId: string) {
   const rows = await tx.select().from(buildings).where(eq(buildings.planetId, planetId));
-  const levels = { CORE: 0, REFINERY: 0, EXTRACTOR: 0, VAULT: 0, SHIPYARD: 0 };
+  const levels = {
+    CORE: 0, REFINERY: 0, EXTRACTOR: 0, VAULT: 0, SHIPYARD: 0, HANGAR: 0, DEUTERIUM_PLANT: 0,
+  };
   for (const row of rows) if (row.type in levels) levels[row.type as BuildingId] = row.level;
   return levels;
 }
@@ -164,15 +167,31 @@ export async function resolveNeutralBattle(
   const attackerOrbit = await orbitOf(tx, attackerHomeId);
   const attackingFleet = await fleetOfMission(tx, mission.originPlanetId, mission.id);
   if (fleetCount(attackingFleet) === 0) return;
-  const defenders = await neutralFleet(tx, mission.targetPlanetId);
-  const result = resolveCombat(attackingFleet, defenders, neutral.shield, seededFrom(mission.id));
+  // Through the same definition the player battle uses, so a craft can never be
+  // spared on one path and pulled into the line on the other. A neutral world has
+  // no mining craft today; the shared call is what keeps that true if it ever does.
+  const defenders = garrisonOf(await neutralFleet(tx, mission.targetPlanetId), {});
+  const result = resolveCombat(
+    attackingFleet, defenders, neutral.shield, seededFrom(mission.id),
+    // A caretaker world researches nothing; the raider's doctrines still count. T9.
+    { attacker: mission.tech ?? {}, defender: {} },
+  );
   await setNeutralFleet(tx, mission.targetPlanetId, result.defenderSurvivors);
   const loot = computeLoot(
     { alloy: neutral.alloy, crystal: neutral.crystal, deuterium: neutral.deuterium },
     { alloy: 0, crystal: 0, deuterium: 0 },
     EMPTY_VAULT,
     result.grade,
-    fleetCargo(result.attackerSurvivors),
+    /*
+      THE FROZEN LADDERS, LIKE THE COMBAT THREE LINES ABOVE. D137.
+
+      This re-read them live, so a commander who finished Cargo Holds mid-flight
+      carried more home from a caretaker world than from a player — and more than
+      the launch preview had quoted them, which computes off launch-time tech. The
+      player path has always used the snapshot; this one disagreed with the rule,
+      with the other path, and with its own combat call.
+    */
+    fleetCargo(result.attackerSurvivors, mission.tech ?? {}),
   );
   const uncappedLoot = computeLoot(
     { alloy: neutral.alloy, crystal: neutral.crystal, deuterium: neutral.deuterium },

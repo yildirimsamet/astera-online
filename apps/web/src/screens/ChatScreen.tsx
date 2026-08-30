@@ -227,7 +227,7 @@ function ChannelPanel({
 }) {
   const { t } = useTranslation();
   const now = useNow(30_000);
-  const bottom = useRef<HTMLDivElement>(null);
+  const history = useRef<HTMLDivElement>(null);
   const marked = useRef<string | null>(null);
   const latestId = messages.at(-1)?.id;
 
@@ -238,9 +238,13 @@ function ChannelPanel({
   }, [latestId, onMarkRead]);
 
   useEffect(() => {
-    if (typeof bottom.current?.scrollIntoView === 'function') {
-      bottom.current.scrollIntoView({ block: 'end' });
-    }
+    /**
+     * Scroll the ONE box that owns the messages. `scrollIntoView()` also walks
+     * outward toward the page viewport; on iOS that can preserve the visual
+     * viewport pan Safari applied while the keyboard and composer were focused.
+     */
+    const log = history.current;
+    if (log) log.scrollTop = log.scrollHeight;
   }, [latestId]);
 
   const submit = (event: SyntheticEvent<HTMLFormElement>): void => {
@@ -257,7 +261,7 @@ function ChannelPanel({
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
-      <div className="min-h-0 flex-1 overflow-y-auto px-4 pb-3" role="log" aria-label={listLabel} aria-live="polite">
+      <div ref={history} className="min-h-0 flex-1 overflow-y-auto px-4 pb-3" role="log" aria-label={listLabel} aria-live="polite">
         {hasNextPage ? (
           <div className="py-3 text-center">
             <Button size="sm" variant="ghost" disabled={fetchingOlder} onClick={onOlder}>
@@ -302,7 +306,6 @@ function ChannelPanel({
             ))}
           </ol>
         )}
-        <div ref={bottom} />
       </div>
 
       <form onSubmit={submit} className="shrink-0 border-t border-line-soft bg-void/80 px-4 pb-3 pt-3">
@@ -316,7 +319,7 @@ function ChannelPanel({
               onChange={(event) => {
                 onDraft(Array.from(event.currentTarget.value).slice(0, maxChars).join(''));
               }}
-              className="field block min-h-11 resize-none py-3 text-body"
+              className="field block min-h-11 resize-none py-3"
             />
           </label>
           <Button

@@ -1,13 +1,22 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { HULLS, fleetCount, type Fleet, type MobileHullId } from '@astera/rules';
+import {
+  HULLS,
+  fleetCount,
+  fleetPower,
+  hullFuelRate,
+  type Fleet,
+  type MobileHullId,
+} from '@astera/rules';
 import { useLaunch } from '../api/queries.js';
 import type { GalaxyPlanet, PlanetView } from '../api/schemas.js';
 import { hullLabel } from '../i18n/names.js';
 import { compact } from '../lib/format.js';
 import { duration } from '../lib/time.js';
-import { MOBILE, planRoute } from '../lib/navigation.js';
+import { MOBILE, planRoute, techOf } from '../lib/navigation.js';
 import { StatStrip } from '../ui/Action.js';
+import { CapacityBar } from '../ui/CapacityBar.js';
+import { SpendBar } from '../ui/SpendBar.js';
 import { HULL_ART } from '../ui/assets.js';
 import { HullMark } from '../ui/icons/hulls.js';
 import { QuantityStepper } from '../ui/QuantityStepper.js';
@@ -41,9 +50,18 @@ export function LaunchSheet({
   const [sending, setSending] = useState<Fleet>({});
   const [confirming, setConfirming] = useState(false);
 
-  const route = planRoute(planet.planet.position, target.position, sending, planet.fleet, planet.ground);
+  // The commander's own ladders, off the payload, so the preview quotes exactly
+  // what the server will charge and carry. T8.
+  const tech = techOf(planet);
+  const route = planRoute(
+    planet.planet.position, target.position, sending, planet.fleet, planet.ground, tech,
+  );
   const total = fleetCount(sending);
-  const canSend = total > 0 && route.oneWayMinutes > 0;
+  const canSend = total > 0
+    && route.oneWayMinutes > 0
+    // The server refuses this too; offering a control that cannot work is worse
+    // than refusing early, because it teaches a rule that is not true.
+    && route.fuel <= planet.planet.deuterium;
 
   /**
    * WHERE THE REST OF THE FLEET IS. Owner report.
@@ -73,6 +91,24 @@ export function LaunchSheet({
    */
   const atHome = MOBILE.reduce((sum, hull) => sum + (planet.fleet[hull] ?? 0), 0);
 
+  /**
+   * THE BET, AS A QUANTITY THAT CAN BE DRAWN. Owner instruction.
+   *
+   * The headline of this sheet has always been a COUNT of units left holding, and
+   * a count is the wrong measure of a garrison: twelve Wasps and three Bulwarks
+   * are the same number and not remotely the same defence. Power is what decides
+   * the fight, so power is what the bar is made of — and the split between what
+   * stays and what leaves is the whole decision, drawn as the thing being taken
+   * away from the thing that remains.
+   *
+   * The unit count stays underneath as the caption, because it is the figure the
+   * launch toast and the confirmation sentence both quote and the two must agree.
+   */
+  const standing = { ...planet.fleet, ...planet.ground };
+  const powerNow = fleetPower(standing);
+  const powerLeaving = fleetPower(sending);
+  const powerHolding = Math.max(0, powerNow - powerLeaving);
+
   const set = (hull: MobileHullId, value: number): void => {
     const available = planet.fleet[hull] ?? 0;
     setSending((current) => ({ ...current, [hull]: Math.max(0, Math.min(available, value)) }));
@@ -81,7 +117,16 @@ export function LaunchSheet({
   return (
     <Sheet
       eyebrow={t('launch.eyebrow')}
-      title={target.name}
+      /**
+       * A WORLD YOU CANNOT SEE HAS NO NAME TO PUT HERE. D127.
+       *
+       * `name` is omitted for an unsurveyed world and the schema fills it with an
+       * empty string, so the single most important commitment surface in the game
+       * — the one where a fleet becomes irreversible — opened with a BLANK TITLE.
+       * The launch itself is legitimate and stays: diving blind is the choice D127
+       * exists to create. What it may not do is look broken while you make it.
+       */
+      title={target.intel === 'UNKNOWN' ? t('focus.planet.unsurveyedTitle') : target.name}
       onClose={onClose}
       footer={
         confirming ? (
@@ -138,19 +183,70 @@ export function LaunchSheet({
         )
       }
     >
-      {/* THE LINE. Everything else on this sheet is supporting detail. */}
+      {/*
+        THE LINE. Everything else on this sheet is supporting detail — and it is
+        now a SHAPE, because the one thing a commander is deciding here is how much
+        of their own defence to take away from themselves.
+
+        THE BAR IS THE GARRISON. What holds is solid bone; what leaves is carved
+        off the right-hand end in threat red and hatched, so a fleet being packed
+        looks like the wall coming down. Nothing about that needs reading, and
+        pressing "+" on a Bulwark takes a visibly bigger bite than pressing it on a
+        Wasp — which is the counter cycle teaching itself at the moment it matters.
+
+        THE TWO FIGURES ARE THE SAME TWO THE SHEET HAS ALWAYS SHOWN: how many units
+        hold, and for how long they are alone. They are captions now.
+      */}
       <div className="plate plate-threat mt-1 px-3 py-3">
         <p className="legend text-threat-ink">{t('launch.whileAway')}</p>
-        <p className="num mt-2 text-figure leading-tight text-bone">
-          {t('launch.defending', { count: route.homeDefenceAfter })}
-        </p>
-        <p className="num mt-1 text-body text-threat-ink">
-          {total === 0
-            ? t('launch.nothingSent')
-            : t('launch.exposedFor', { duration: duration(route.exposureMinutes) })}
-        </p>
+
+        <div
+          data-defence-bar
+          className="socket mt-3 flex h-3.5 w-full overflow-hidden rounded-full"
+          role="img"
+          aria-label={t('launch.defenceReading', {
+            holds: compact(powerHolding),
+            leaves: compact(powerLeaving),
+          })}
+        >
+          <span
+            data-part="holds"
+            className="h-full bg-bone/60 transition-[width] duration-200"
+            style={{ width: `${String(barShare(powerHolding, powerNow))}%` }}
+          />
+          <span
+            data-part="leaves"
+            className="h-full bg-threat/70 transition-[width] duration-200"
+            style={{
+              width: `${String(barShare(powerLeaving, powerNow))}%`,
+              backgroundImage:
+                'repeating-linear-gradient(45deg, rgb(0 0 0 / 28%) 0 3px, transparent 3px 6px)',
+            }}
+          />
+        </div>
+
+        <div className="mt-2 flex items-baseline justify-between gap-3">
+          <p className="num text-title leading-tight text-bone">
+            {t('launch.defending', { count: route.homeDefenceAfter })}
+          </p>
+          <p className="num text-body text-threat-ink">
+            {total === 0
+              ? t('launch.nothingSent')
+              : t('launch.exposedFor', { duration: duration(route.exposureMinutes) })}
+          </p>
+        </div>
       </div>
 
+      {/*
+        THE FLIGHT, IN THREE FIGURES AND ONE PICTURE.
+
+        Time, cargo and distance stay as numerals — a duration is one of the few
+        quantities that reads faster written than drawn, and the other two have no
+        ceiling to draw them against. FUEL has one, and it is the tank: a spend
+        against a store is exactly the shape `SpendBar` exists for, and it replaces
+        a figure that went red with no way of telling whether the player was ten
+        deuterium short or a thousand.
+      */}
       <div className="mt-6 grid grid-cols-3 gap-3">
         <Figure
           label={t('launch.oneWay')}
@@ -161,19 +257,84 @@ export function LaunchSheet({
         <Figure label={t('launch.cargo')} value={compact(route.cargo)} />
         <Figure label={t('launch.distance')} value={route.distance.toFixed(0)} />
       </div>
+      {route.fuel > 0 && (
+        <div className="plate mt-3 px-3 py-3">
+          <SpendBar
+            stock={planet.planet.deuterium}
+            spend={route.fuel}
+            tone="deuterium"
+            label={t('launch.fuel')}
+          />
+        </div>
+      )}
+      {planet.capacity && (
+        <div className="mt-3">
+          <CapacityBar
+            total={planet.capacity.hangar}
+            used={planet.capacity.hangarUsed}
+            incoming={0}
+            label={t('launch.hangarLabel')}
+          />
+          {/*
+            THE BAR CARRIES THE FIGURES; THE SENTENCE CARRIES THE RULE that no
+            picture can — that a fleet in the air still occupies this world's
+            hangar, so launching frees nothing.
+          */}
+          <p className="mt-2 text-caption leading-snug text-faint">{t('launch.hangarNote')}</p>
+        </div>
+      )}
 
       <div className="mt-6">
         <p className="legend mb-2">{t('launch.fleetHeading')}</p>
+        {/*
+          WHAT IS ALREADY IN THE AIR, DRAWN AS THE SHIPS THEMSELVES. Owner report.
+
+          This was a joined sentence — "2 Wasp · 1 Hauler away on a flight" — sitting
+          above a list of art wells, so the one question it answers ("where did my
+          Haulers go") was the only thing on the sheet a player had to READ rather
+          than recognise. The same hulls now appear as their own renders, greyed and
+          at half size, in a row that is visibly OUTSIDE the picker below it. Absent
+          and accounted for, which is a different thing from gone.
+        */}
         {away.length > 0 && (
-          <p className="mb-3 text-caption leading-snug text-dim">
-            {t('launch.away', {
-              fleet: away
-                .map((entry) =>
-                  t('launch.awayHull', { count: entry.count, name: hullLabel(entry.hull) }),
-                )
-                .join(t('launch.awaySeparator')),
+          <div data-away className="mb-3 flex flex-wrap items-center gap-2">
+            {away.map((entry) => {
+              // Bound to a local: TS narrows an element access by a `const` key,
+              // never by a property, so `HULL_ART[entry.hull]` stays `string | null`.
+              const art = HULL_ART[entry.hull];
+              return (
+              <span
+                key={entry.hull}
+                className="flex items-center gap-1.5 rounded-chip border border-dashed border-line px-2 py-1"
+                title={hullLabel(entry.hull)}
+              >
+                {art ? (
+                  <img
+                    src={art}
+                    alt=""
+                    aria-hidden
+                    className="size-6 object-contain opacity-40 grayscale"
+                    loading="lazy"
+                  />
+                ) : (
+                  <HullMark hull={entry.hull} className="size-5 text-faint" />
+                )}
+                <span className="num text-label text-faint">
+                  {t('launch.awayHull', { count: entry.count, name: hullLabel(entry.hull) })}
+                </span>
+              </span>
+              );
             })}
-          </p>
+            <span className="sr-only">
+              {t('launch.away', {
+                fleet: away
+                  .map((entry) =>
+                    t('launch.awayHull', { count: entry.count, name: hullLabel(entry.hull) }),
+                  )
+                  .join(t('launch.awaySeparator')),
+              })}
+            </span>
+          </div>
         )}
         {MOBILE.map((hull) => {
           const available = planet.fleet[hull] ?? 0;
@@ -221,6 +382,7 @@ export function LaunchSheet({
                       hp={HULLS[hull].hp}
                       speed={HULLS[hull].speed}
                       cargo={HULLS[hull].cargo}
+                      fuel={hullFuelRate(hull)}
                     />
                   </div>
                 </div>
@@ -271,11 +433,31 @@ export function LaunchSheet({
   );
 }
 
-function Figure({ label, value }: { label: string; value: string }) {
+/**
+ * A part's share of a whole, clamped, with an empty garrison drawing nothing.
+ *
+ * `powerNow` is zero on a world with no craft standing at all — every hull away,
+ * no ground guns — and dividing by it would put `NaN%` into a style attribute.
+ */
+const barShare = (part: number, whole: number): number =>
+  whole <= 0 ? 0 : Math.max(0, Math.min(100, (part / whole) * 100));
+
+function Figure({
+  label,
+  value,
+  tone,
+}: {
+  label: string;
+  value: string;
+  /** Red for a figure that is the reason the commit will refuse. */
+  tone?: 'threat';
+}) {
   return (
     <div>
       <p className="legend">{label}</p>
-      <p className="num mt-1 text-title text-bone">{value}</p>
+      <p className={`num mt-1 text-title ${tone === 'threat' ? 'text-threat-ink' : 'text-bone'}`}>
+        {value}
+      </p>
     </div>
   );
 }

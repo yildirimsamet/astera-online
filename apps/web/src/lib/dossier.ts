@@ -1,23 +1,21 @@
 import {
   ALL_HULLS,
-  coreTier,
   distance,
-  reachableTiers,
-  telescopeRange,
   telescopeSlots,
-  tiersWithinBand,
+  telescopeWatchRange,
   withinTelescopeRange,
   type Fleet,
+  type ResearchProjectId,
 } from '@astera/rules';
 import type {
-  BattleReport,
   GalaxyPlanet,
   IntelView,
   PlanetView,
+  Report,
   RivalSummary,
 } from '../api/schemas.js';
 import i18n from '../i18n/index.js';
-import { hullLabel, satelliteLabel } from '../i18n/names.js';
+import { hullLabel, researchName, satelliteLabel } from '../i18n/names.js';
 
 /**
  * WHAT YOU KNOW, AND HOW YOU KNOW IT.
@@ -31,8 +29,10 @@ import { hullLabel, satelliteLabel } from '../i18n/names.js';
  * Four sources, in ascending order of trustworthiness, which is also the order
  * they cost:
  *
- *   · PUBLIC — free, live, and true forever. Name, owner, development tier, and
- *     which instruments are in orbit (D15).
+ *   · PUBLIC — free, live, and true for as long as you can SEE the world. Since
+ *     D127 that means inside a Telescope's reach and nowhere else: owner,
+ *     development and orbital hardware are readings like any other, and outside
+ *     the reach they arrive through a probe with an age on them, or not at all.
  *   · TELESCOPE — a slot and a cooldown. One fact only, and the most valuable one:
  *     is their combat fleet home. May be stale, and says so.
  *   · PROBE — resources and a round trip, and it may be caught. Bands, never
@@ -80,16 +80,14 @@ export interface Dossier {
   /** Distance in game units. */
   range: number;
   /**
-   * Whether this world is inside your development-tier band. D49.
+   * `inBand` AND `band` ARE GONE. D127.
    *
-   * Computed here rather than in the panel because it is a READING of the target
-   * like every other line in this file, and because the server will refuse the
-   * launch on exactly this rule — a control that offers what the server refuses is
-   * the one thing a commitment surface must never do.
+   * They carried D49's development band — the one rule a commitment surface could
+   * check before the server did, because tier was public and the player could see
+   * the reason. D127 made development private and retired the band with it: there
+   * is no longer a development answer to "may I fight them", so there is nothing
+   * for this surface to pre-check and nothing to explain when it says no.
    */
-  inBand: boolean;
-  /** The tiers you may fight, inclusive. For saying WHY, when you may not. */
-  band: { low: number; high: number };
 }
 
 /**
@@ -129,13 +127,14 @@ export function describeFleet(fleet: Fleet): string {
  * there and never a ceiling. Phrased that way in the UI too: "at least", because
  * quietly presenting a floor as a total is how a player loses a fleet.
  */
-function fieldedAtLeast(reports: readonly BattleReport[], planetId: string): {
+function fieldedAtLeast(reports: readonly Report[], planetId: string): {
   fleet: Fleet;
   atMinutes: number;
 } | null {
   let best: { fleet: Fleet; at: number } | null = null;
 
   for (const report of reports) {
+    if (report.kind === 'STRATEGIC') continue;
     if (report.opponentPlanetId !== planetId) continue;
     const theirs = report.theirLosses;
     const total = ALL_HULLS.reduce((s, id) => s + (theirs[id] ?? 0), 0);
@@ -152,7 +151,7 @@ export interface DossierInput {
   target: GalaxyPlanet;
   planet: PlanetView;
   intel: IntelView | undefined;
-  reports: readonly BattleReport[];
+  reports: readonly Report[];
   rival?: RivalSummary;
   /** Epoch millis. Passed in so this stays pure. */
   now: number;
@@ -170,54 +169,87 @@ export function dossier({ target, planet, intel, reports, rival, now }: DossierI
   const gaps: Gap[] = [];
   const range = distance(planet.planet.position, target.position);
 
-  /* ── public ─────────────────────────────────────────────── */
-
-  facts.push({
-    key: 'owner',
-    label: i18n.t('dossier.ownerLabel'),
-    value: target.owner,
-    source: 'public',
-    ageMinutes: null,
-    note: i18n.t('dossier.ownerNote'),
-  });
+  /* ── the surface ────────────────────────────────────────── */
 
   /**
-   * DEVELOPMENT, AND SINCE D49 ALSO WHETHER YOU MAY FIGHT THEM.
+   * "PUBLIC" IS A STATE NOW, NOT A GUARANTEE. D127.
    *
-   * The tier band replaced a Wealth ratio precisely so that this line could carry
-   * it: the figure that decides whether a launch is legal is now the one free,
-   * public, always-live fact on every world in the galaxy. A player can read the
-   * whole question off the map before they pack a fleet, which a private ratio and
-   * a 403 could never let them do.
+   * Owner, development and orbital hardware used to be free, live and true for
+   * every world in the galaxy, which is why they were pushed unconditionally with
+   * `source: 'public'` and no age. D127 took all three behind the fog, and leaving
+   * this block alone made the dossier LIE in both of the new states — the one
+   * thing an intel surface may never do.
+   *
+   *   · UNKNOWN. The payload omits every one of these fields and the schema fills
+   *     the hole with a default, so the panel was printing `Tier 1` and an empty
+   *     owner and stamping them PUBLIC. A Core 18 fortress read as a Tier 1 rock
+   *     with a free, live, trustworthy label on it. Nothing is pushed now; the
+   *     absence becomes a gap a probe closes, which is what it actually is.
+   *   · REMEMBERED. These are real facts, but they are a RECORD — what a probe saw
+   *     at `seenAt`, possibly hours ago. Same provenance machinery every other
+   *     probe line already uses, so the age is printed and the reader can price it.
+   *
+   * `accuracy` is deliberately absent even on the remembered rows: a probe fuzzes
+   * stock and defence into bands, but the outside of a world is simply seen and
+   * recorded exactly. Attaching a confidence to it would invent a doubt.
    */
-  const myTier = coreTier(planet.buildings.CORE ?? 1);
-  const myBand = reachableTiers(planet.buildings.CORE ?? 1);
-  const inBand = tiersWithinBand(myTier, target.coreTier);
+  const surface: Source = target.intel === 'REMEMBERED' ? 'probe' : 'public';
+  const surfaceAge = target.intel === 'REMEMBERED' && target.seenAt
+    ? Math.max(0, (now - target.seenAt.getTime()) / 60_000)
+    : null;
 
-  facts.push({
-    key: 'development',
-    label: i18n.t('dossier.developmentLabel'),
-    value: i18n.t('dossier.developmentValue', { tier: target.coreTier }),
-    source: 'public',
-    ageMinutes: null,
-    note: inBand
-      ? i18n.t('dossier.developmentInBand', { tier: myTier })
-      : i18n.t('dossier.developmentOutOfBand', {
-          tier: myTier,
-          low: myBand.low,
-          high: myBand.high,
-        }),
-  });
+  if (target.intel === 'UNKNOWN') {
+    gaps.push({
+      key: 'surface',
+      label: i18n.t('dossier.surfaceGapLabel'),
+      missing: i18n.t('dossier.surfaceGapMissing'),
+      why: i18n.t('dossier.surfaceGapWhy'),
+      closes: 'probe',
+    });
+  } else {
+    facts.push({
+      key: 'owner',
+      label: i18n.t('dossier.ownerLabel'),
+      value: target.owner,
+      source: surface,
+      ageMinutes: surfaceAge,
+      note: i18n.t(surface === 'probe' ? 'dossier.ownerRecordNote' : 'dossier.ownerNote'),
+    });
+  }
 
-  if (target.satellites.length > 0) {
+  /**
+   * DEVELOPMENT — AND IT IS NO LONGER FREE, NOR A PERMISSION. D127.
+   *
+   * D49 made this line carry the attack band: tier was the one public, always-live
+   * fact on every world, so a player could read "may I fight them" off the map
+   * before packing a fleet. D127 made development private and retired the band
+   * with it — permission no longer depends on it, and the figure itself is now
+   * something the reader has EARNED, either live through a Telescope or frozen
+   * through a probe.
+   *
+   * So the note goes. There is no band to be in or out of, and a dossier that
+   * still explained one would be describing a rule the server stopped enforcing.
+   */
+  if (target.intel !== 'UNKNOWN') {
+    facts.push({
+      key: 'development',
+      label: i18n.t('dossier.developmentLabel'),
+      value: i18n.t('dossier.developmentValue', { tier: target.coreTier }),
+      source: surface,
+      ageMinutes: surfaceAge,
+    });
+  }
+
+  if (target.intel !== 'UNKNOWN' && target.satellites.length > 0) {
     facts.push({
       key: 'hardware',
       label: i18n.t('dossier.hardwareLabel'),
       value: target.satellites.map((id) => satelliteLabel(id)).join(' · '),
-      source: 'public',
-      ageMinutes: null,
-      // D15 in one sentence, in the player's terms.
-      note: i18n.t('dossier.hardwareNote'),
+      source: surface,
+      ageMinutes: surfaceAge,
+      // D15 in one sentence, in the player's terms — and D127's correction to it
+      // when the hardware is something you went and looked at rather than see.
+      note: i18n.t(surface === 'probe' ? 'dossier.hardwareRecordNote' : 'dossier.hardwareNote'),
     });
   }
 
@@ -251,7 +283,18 @@ export function dossier({ target, planet, intel, reports, rival, now }: DossierI
   } else {
     const outOfRange = telescope > 0 && !withinTelescopeRange(telescope, range);
     const slots = telescopeSlots(telescope);
-    const used = intel?.watching.length ?? 0;
+    /**
+     * THE SOCKETS ON *THIS* WORLD, AND IT USED TO COUNT EVERY WORLD'S.
+     *
+     * A slot belongs to the world whose Telescope it is, so the denominator here
+     * is one world's ladder. The numerator counted the commander's whole watch
+     * list, so a capital with a free socket was told "all slots are in use"
+     * because a colony had spent one of its own.
+     */
+    const used = (intel?.watching ?? []).filter(
+      (watch) => watch.observerPlanetId === undefined
+        || watch.observerPlanetId === planet.planet.id,
+    ).length;
 
     gaps.push({
       key: 'fleet',
@@ -267,7 +310,7 @@ export function dossier({ target, planet, intel, reports, rival, now }: DossierI
       ...(outOfRange
         ? {
             blocked: i18n.t('dossier.fleetGapRange', {
-              reach: Math.round(telescopeRange(telescope)),
+              reach: Math.round(telescopeWatchRange(telescope)),
               distance: Math.round(range),
             }),
           }
@@ -312,11 +355,109 @@ export function dossier({ target, planet, intel, reports, rival, now }: DossierI
       accuracy: report.accuracy,
       note: report.fleetHome ? i18n.t('dossier.shipsAllHome') : i18n.t('dossier.shipsSomeOut'),
     });
+
+    /**
+     * THE FOUR READINGS THE PROBE TOOK AND NOTHING EVER PRINTED.
+     *
+     * Every one of them was collected on arrival, stored on the report and then
+     * dropped: two never left the server at all, and two reached the client and
+     * were parsed by a schema no surface read. A commander paid alloy, a flight
+     * bay, a round trip and the risk of being caught for readings the game then
+     * refused to show them.
+     *
+     * They are pushed with `source: 'probe'` and the report's age, like every
+     * other line here, because all four are frozen at the look — the target may
+     * have finished a doctrine or loaded a charge since.
+     *
+     * ABSENT IS NOT ZERO, and each branch is written to say so. A missing
+     * `doctrines` means the reading was never taken (a caretaker world, or a
+     * report older than the field); an EMPTY one means the probe looked and found
+     * none. Printing "no doctrines" for the first would be the dossier inventing
+     * a fact, which is the one thing this file may not do.
+     */
+    if (report.deuteriumStock) {
+      facts.push({
+        key: 'deuterium',
+        label: i18n.t('dossier.deuteriumLabel'),
+        value: band(report.deuteriumStock.low, report.deuteriumStock.high),
+        source: 'probe',
+        ageMinutes: age,
+        accuracy: report.accuracy,
+        note: i18n.t('dossier.deuteriumNote'),
+      });
+    }
+
+    if (report.deathStar !== undefined && report.deathStar !== 'NONE') {
+      facts.push({
+        key: 'strategic',
+        label: i18n.t('dossier.strategicLabel'),
+        value: i18n.t(
+          report.deathStar === 'READY'
+            ? 'dossier.strategicReady'
+            : report.deathStar === 'BUILDING'
+              ? 'dossier.strategicBuilding'
+              : 'dossier.strategicUnknown',
+        ),
+        source: 'probe',
+        ageMinutes: age,
+        note: i18n.t(
+          report.deathStar === 'UNKNOWN'
+            ? 'dossier.strategicUnknownNote'
+            : 'dossier.strategicNote',
+        ),
+        // A finished strategic weapon pointed at the galaxy is the loudest thing
+        // a probe can come home with.
+        opportunity: report.deathStar === 'READY',
+      });
+    }
+
+    if (report.interceptor !== undefined) {
+      facts.push({
+        key: 'interceptor',
+        label: i18n.t('dossier.interceptorLabel'),
+        value: i18n.t(report.interceptor
+          ? 'dossier.interceptorLoaded'
+          : 'dossier.interceptorEmpty'),
+        source: 'probe',
+        ageMinutes: age,
+        note: i18n.t(report.interceptor
+          ? 'dossier.interceptorLoadedNote'
+          : 'dossier.interceptorEmptyNote'),
+      });
+    }
+
+    if (report.doctrines !== undefined) {
+      const held = Object.entries(report.doctrines)
+        .filter(([, level]) => level > 0)
+        .map(([id, level]) => `${researchName(id as ResearchProjectId)} ${String(level)}`);
+      facts.push({
+        key: 'doctrines',
+        label: i18n.t('dossier.doctrinesLabel'),
+        value: held.length > 0 ? held.join(' · ') : i18n.t('dossier.doctrinesNone'),
+        source: 'probe',
+        ageMinutes: age,
+        note: i18n.t(held.length > 0
+          ? 'dossier.doctrinesNote'
+          : 'dossier.doctrinesNoneNote'),
+      });
+    }
   } else {
+    /**
+     * AND IT MUST NOT CLAIM AN IGNORANCE THE PLAYER DOES NOT HAVE.
+     *
+     * A REMEMBERED world is one this commander HAS probed — that is what put the
+     * silhouette on the map and the age under it. If the detailed report is not in
+     * hand, the reading has aged out of the history, which is a different fact
+     * from never having looked. Saying the wrong one is the worst class of bug an
+     * information surface can have: asserting an ignorance the player does not
+     * have, on the exact screen they use to decide where to send a fleet.
+     */
     gaps.push({
       key: 'stock',
       label: i18n.t('dossier.probeGapLabel'),
-      missing: i18n.t('dossier.probeGapMissing'),
+      missing: i18n.t(target.intel === 'REMEMBERED'
+        ? 'dossier.probeGapAged'
+        : 'dossier.probeGapMissing'),
       why: i18n.t('dossier.probeGapWhy'),
       closes: 'probe',
     });
@@ -346,7 +487,7 @@ export function dossier({ target, planet, intel, reports, rival, now }: DossierI
     });
   }
 
-  return { facts, gaps, range, inBand, band: myBand };
+  return { facts, gaps, range };
 }
 
 /**

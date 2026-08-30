@@ -19,7 +19,7 @@ import { AsteroidFocus, DebrisFocus } from '../src/galaxy/FocusPanel.js';
  */
 
 const ROCK = {
-  index: 7,
+  id: 'mJtQH0vR5cP8sN2xK7dL4A',
   level: 3,
   ore: 40_000,
   oreRemaining: 40_000,
@@ -27,7 +27,8 @@ const ROCK = {
   radius: 400,
   period: 30,
   phase: 0.2,
-  y: 0,
+  inclination: Math.PI / 3,
+  ascendingNode: Math.PI / 4,
   speed: 9.2,
   appearsAt: 0,
   expiresAt: 999,
@@ -185,7 +186,7 @@ describe('a target already being worked', () => {
   const run = {
     id: 'r1',
     targetKind: 'asteroid' as const,
-    asteroidIndex: 7,
+    asteroidId: ROCK.id,
     debrisFieldId: null,
     status: 'outbound' as const,
     craft: 2,

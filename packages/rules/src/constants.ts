@@ -1,4 +1,5 @@
 import type { BuildingId, InstrumentId, Resources, SatelliteId } from './types.js';
+import { ECONOMY_TEMPO, scalePrice } from './tempo.js';
 
 /**
  * Every number the design can be wrong about, in one place.
@@ -26,21 +27,38 @@ export const ECON = {
    * 145/h to about 13,000/h — a 91× span over seventeen levels — and
    * `18 · g^17 = 91` gives `g = 1.100`.
    *
-   * THE BASES CARRY THE ×1.20 SPEED FACTOR, and that choice is the whole safety
-   * of it. INCOME was raised and prices were left alone, exactly as D17 did:
-   * every relationship this balance rests on is a RATIO. `payback = cost / gain`,
-   * the crystal cost share against the crystal income share, the vault's
-   * protected fraction and `cost < storage` all scale by the same factor and stay
-   * exactly where they were. Cutting prices instead would have moved every one of
-   * them.
+   * THE BASES CARRY THE CURRENT TEMPO PROFILE. Scale passive production here,
+   * never in the growth terms: changing a growth term changes the economy's
+   * shape, not merely its pace. Prices and storage have their own explicit tempo
+   * levers so every ratio is measured rather than accidentally coupled.
    */
-  alloyBase: 132,
+  alloyBase: 132 * ECONOMY_TEMPO.passiveIncome,
   alloyMult: 1.10,
-  crystalBase: 48,
+  crystalBase: 48 * ECONOMY_TEMPO.passiveIncome,
   crystalMult: 1.09,
+  /**
+   * THE THIRD PRODUCER, AND IT IS DELIBERATELY A TRICKLE. T5.
+   *
+   * Scaled by `passiveIncome` like the other two, so a tempo change moves all
+   * three together rather than leaving deuterium behind.
+   *
+   * A FLATTER CURVE THAN ALLOY OR CRYSTAL (1.04 against 1.10 and 1.09), because
+   * this ladder must not be able to catch the rocks. Measured: two craft on an
+   * isotope rock carry home about 105, and a dedicated miner turns that round
+   * roughly once an hour once the frontier opens. The plant reads
+   *
+   *   L1  3/h     L3  10/h     L6  22/h     L9  37/h     L15  78/h
+   *
+   * so even at the top of both its ladders — research 5 and Core 16 — it is
+   * visibly short of a miner who is actually flying, and it is guaranteed instead.
+   * The floor, never the ceiling: if the two ever meet, the whole Frontier act
+   * becomes dead content.
+   */
+  deuteriumBase: 4.15 * ECONOMY_TEMPO.passiveIncome,
+  deuteriumMult: 1.04,
 
-  costBase: 52,
-  costMult: 1.56,
+  costBase: 52 * ECONOMY_TEMPO.upgradePrice,
+  costMult: ECONOMY_TEMPO.upgradeGrowth,
   /**
    * INVARIANT: the crystal share of an upgrade must track the crystal share of
    * INCOME, or the scarce resource is not scarce.
@@ -63,15 +81,15 @@ export const ECON = {
    * cost that begins one rung late leaves a fresh commander watching a resource
    * accumulate that buys nothing, which is decoration rather than scarcity.
    */
-  crystalCostBase: 52 * 0.2895,
-  crystalCostMult: 1.56 * (1.09 / 1.10),
+  crystalCostBase: 52 * ECONOMY_TEMPO.upgradePrice * 0.2895,
+  crystalCostMult: ECONOMY_TEMPO.upgradeGrowth * (1.09 / 1.10),
   crystalCostFromLevel: 0,
 
   /**
    * STORAGE IS `capHours + capHoursPerVault × vaultLevel` HOURS OF PRODUCTION,
    * AND THE VAULT IS THE BANK. Economy v2, and this change was FORCED.
    *
-   * `upgradeCost` grows at 1.56 while a flat-hours store grows at `L · 1.10^L`.
+   * `upgradeCost` grows at 1.54 while a flat-hours store grows at `L · 1.10^L`.
    * THEY CROSS. Above the crossing point one upgrade costs more alloy than a full
    * store can hold, the player simply cannot buy it, and progression stops for a
    * reason nothing in the interface explains.
@@ -83,24 +101,18 @@ export const ECON = {
    *
    * Letting the store grow with the Vault fixes it with no new building and no
    * new system, and it hands the Vault a reason to exist a player can feel: how
-   * big a purchase can I hold for? Measured, `costAlloy / storageCap` now peaks at
-   * 0.86 at L20 and the ceiling never binds.
-   *
-   * 1.5 → 0.8, AND THE SIMULATOR IS WHY. At 1.5 the five-seed gate read `VFR` LOW
-   * on every seed — *nothing is worth raiding* — because `VFR` measures held stock
-   * against raidable CAPACITY, and a store nobody can fill is capacity that only
-   * ever enlarges the denominator. The crossover this constant exists to clear
-   * needs far less than 1.5: at 0.8 the worst case is 0.86 of a full store at L20.
-   * **A store has to be big enough to hold the next decision, not big enough to
-   * hoard in.**
+   * big a purchase can I hold for? The active tempo curve requires 13.2 base
+   * hours plus 0.88 per Vault; measured, `costAlloy / storageCap` peaks at
+   * 0.906 at L20, so every legal upgrade remains reachable without suppressing
+   * raidable stock behind unused headroom.
    *
    * THE PRODUCTION CAP IS STILL THE WORKS, so a bigger store is not a bigger
    * cushion for an absent commander: nothing accrues past `worksHours` while
    * nobody is collecting. A tall store is only reachable by somebody who keeps
    * emptying the works into it — which is one more thing active play buys.
    */
-  capHours: 12,
-  capHoursPerVault: 0.8,
+  capHours: 12 * ECONOMY_TEMPO.storageHours,
+  capHoursPerVault: 0.8 * ECONOMY_TEMPO.storageHours,
 
   /**
    * Hours the works hold before they STOP. D16.
@@ -156,12 +168,12 @@ export const ECON = {
    * `alloyMult` of 1.45 and killed the entire PvP economy for a whole season
    * before the simulator caught it.
    */
-  protectedHoursBase: 2,
-  protectedHoursPerVault: 0.3,
+  protectedHoursBase: 2 * ECONOMY_TEMPO.storageHours,
+  protectedHoursPerVault: 0.3 * ECONOMY_TEMPO.storageHours,
   /**
    * The floor a brand-new planet gets, in alloy, before the hours rule outgrows it
-   * — about six hours of a Refinery-1 world's output, and it carries the ×1.20
-   * speed factor because it is denominated in production.
+   * — about nine hours of a Refinery-1 world's output. It follows the current
+   * price profile so the protected opening moves with the purchases it protects.
    *
    * It binds only below about Refinery 3. While it binds the Vault buys no extra
    * PROTECTION, so `buildingGain` switches that row to what the Vault does move —
@@ -171,7 +183,7 @@ export const ECON = {
    *
    * The crystal figure is derived from the income ratio, never picked.
    */
-  openingFloorAlloy: 840,
+  openingFloorAlloy: scalePrice(840, ECONOMY_TEMPO.upgradePrice),
 } as const;
 
 /**
@@ -183,6 +195,15 @@ export const ECON = {
  */
 export const DEUTERIUM = {
   containmentRatio: 0.5,
+  /**
+   * HOW MANY PLANT LEVELS ONE RESEARCH RUNG OPENS. T5 — owner's shape.
+   *
+   * This is the Command Core's rule said a second time, and that is the whole
+   * point of choosing it: no building may pass its Core, and no plant may pass its
+   * research. A player who has already met one ceiling has nothing new to learn
+   * about the other, so the mechanic costs zero teaching.
+   */
+  plantLevelsPerResearch: 3,
   /**
    * The Frontier act begins simultaneously for the whole galaxy. D93.
    *
@@ -219,7 +240,7 @@ export const BREACHER = {
  * than a choice: the one thing the game asks — what do you spend on — had already
  * been answered for them, in favour of the least interesting option. A planet that
  * starts undefended is also honest about what this game is. Everyone starts that
- * way, and the tier band (`ABUSE.tierBand`) already stops a developed player
+ * way, and the bash limit already stops a developed player
  * farming a fresh one.
  *
  * THE FIGURE IS DERIVED, NOT PICKED. It is exactly the cost of the opening the
@@ -267,18 +288,20 @@ export const START = {
   /**
    * RE-DERIVED, AND THE ARITHMETIC IS UNCHANGED. Economy v2.
    *
-   *   Command Core 1 → 2       81 alloy · 23 crystal
-   *   Alloy Refinery 1 → 2     81 alloy · 23 crystal
-   *   Crystal Extractor 1 → 2  81 alloy · 23 crystal
-   *   two Wasps               480 alloy ·  0 crystal
+   *   Command Core 1 → 2       90 alloy · 26 crystal
+   *   Alloy Refinery 1 → 2     90 alloy · 26 crystal
+   *   Crystal Extractor 1 → 2  90 alloy · 26 crystal
+   *   two Wasps               600 alloy ·  0 crystal
    *   ─────────────────────────────────────────────
-   *                           723 alloy · 69 crystal
+   *                           870 alloy · 78 crystal
    *
    * The figure moved because `costBase` and `costMult` did. The DERIVATION did
    * not, and `test/invariants.test.ts` still holds this to it exactly.
    */
-  alloy: 723,
-  crystal: 69,
+  alloy:
+    3 * Math.round(ECON.costBase * ECON.costMult)
+    + 2 * scalePrice(240, ECONOMY_TEMPO.hullPrice),
+  crystal: 3 * Math.round(ECON.crystalCostBase * ECON.crystalCostMult),
   deuterium: 0,
 } as const satisfies Resources;
 
@@ -304,23 +327,33 @@ export const START = {
  * single larger number. And a cushion that is its own constant can be tuned, or
  * withdrawn, without re-deriving anything.
  *
- * ABOVE THE STORAGE CAP ON PURPOSE, and so is `START` already: a fresh planet's
- * alloy ceiling is 1,392 and the grant has always been 2,060. Nothing clamps
- * stored resources downward — the cap gates what may be COLLECTED out of the works
- * — so the grant is not silently lost. It does mean the works cannot be emptied
- * into storage until some of it is spent, which is the intended pressure: this is
- * money to use, not money to sit on.
+ * The current 1,277-alloy planet grant is below the 5,611-alloy Vault-0 store, so
+ * the works can be collected immediately. Nothing clamps stored resources
+ * downward; the cap only gates what may be collected out of the works.
  */
 export const OPENING_BONUS = {
   /**
    * SIZED AS FOUR HOURS OF A FRESH WORLD'S PRODUCTION, rather than picked. That
-   * ties the cushion to the economy: it moves with the ×1.20 speed factor and with
+   * ties the cushion to the economy: it moves with passive production and with
    * any future rate change, and it stays the same thing — an evening's output the
    * commander did not have to wait for.
    */
-  alloy: 580,
-  crystal: 210,
-  deuterium: 0,
+  alloy: Math.round(4 * ECON.alloyBase * ECON.alloyMult),
+  crystal: Math.round(4 * ECON.crystalBase * ECON.crystalMult),
+  /**
+   * THE STARTING TANK. T6.
+   *
+   * Zero until fuel existed, because there was nothing to put in it. A world now
+   * opens with enough for a real run of early launches and no way to make more
+   * until it researches one — which is the chain the opening has to teach, in the
+   * order it has to teach it: I have fuel · it is running out · I need a refinery ·
+   * the refinery needs research.
+   *
+   * NOT SIZED IN LAUNCHES, sized in fuel, and `test/fuel.test.ts` holds the ratio.
+   * A figure written as "ten launches" stops meaning ten launches the first time
+   * `FUEL.scale` moves.
+   */
+  deuterium: 40,
 } as const satisfies Resources;
 
 /**
@@ -360,6 +393,15 @@ export const START_BUILDINGS = {
   EXTRACTOR: 1,
   VAULT: 0,
   SHIPYARD: 0,
+  /** No plant, and no research to allow one. Deuterium is earned before it flows. */
+  DEUTERIUM_PLANT: 0,
+  /**
+   * ZERO, AND `HANGAR.base` IS WHY THAT IS SAFE. A world opens with no Hangar and
+   * still has to keep a fleet, so the ladder starts at a real figure rather than
+   * at nothing — see the block. A base of zero would lock the game shut on the
+   * first Wasp anybody bought.
+   */
+  HANGAR: 0,
 } as const satisfies Record<BuildingId, number>;
 
 /**
@@ -502,7 +544,11 @@ export const SATELLITES = {
    * written about, arriving through a satellite instead of through a score. Raise
    * this and re-run the season gate, or do not raise it.
    */
-  FOUNDRY: { alloy: 2000, crystal: 700, production: 1.06 },
+  FOUNDRY: {
+    alloy: scalePrice(2000, ECONOMY_TEMPO.fixedPrice),
+    crystal: scalePrice(700, ECONOMY_TEMPO.fixedPrice),
+    production: 1.06,
+  },
   /**
    * The comms relay the two seeing instruments hang off.
    *
@@ -510,11 +556,23 @@ export const SATELLITES = {
    * allowed to gate anything: it is what makes the FIRST slot a real decision — do
    * you open your eyes, or do you take production, or speed for your drills.
    */
-  UPLINK: { alloy: 900, crystal: 300 },
+  UPLINK: {
+    alloy: scalePrice(900, ECONOMY_TEMPO.gatewayPrice),
+    crystal: scalePrice(300, ECONOMY_TEMPO.gatewayPrice),
+  },
   /** Services every mining craft the planet owns: bigger hold, faster crossing. */
-  DERRICK: { alloy: 2200, crystal: 800, hold: 2.6, speed: 1.5 },
+  DERRICK: {
+    alloy: scalePrice(2200, ECONOMY_TEMPO.fixedPrice),
+    crystal: scalePrice(800, ECONOMY_TEMPO.fixedPrice),
+    hold: 2.6,
+    speed: 1.5,
+  },
   /** A navigation beacon. Every fleet that leaves here flies faster. */
-  BEACON: { alloy: 3000, crystal: 1000, speed: 1.3 },
+  BEACON: {
+    alloy: scalePrice(3000, ECONOMY_TEMPO.fixedPrice),
+    crystal: scalePrice(1000, ECONOMY_TEMPO.fixedPrice),
+    speed: 1.3,
+  },
 } as const;
 
 /** Every satellite has a price, and the map is total. Checked, not assumed. */
@@ -545,24 +603,26 @@ void _priced;
  * build time behind, and one formula covers buildings, instruments, satellites,
  * hulls, ground defence and research.
  *
- * THE THROUGHPUTS CARRY THE ×1.20 SPEED FACTOR, like every other rate.
+ * THROUGHPUTS ARE CALIBRATED SEPARATELY. Construction, research, the shipyard and
+ * emergency defence each make a different gameplay promise; one global speed
+ * factor cannot preserve all four.
  */
 export const BUILD = {
   /** Resource units per minute. `min(capMinutes, costTotal / throughput)`. */
-  conBase: 240,
-  conPerCore: 0.22,
-  yardBase: 312,
+  conBase: ECONOMY_TEMPO.constructionBase,
+  conPerCore: ECONOMY_TEMPO.constructionPerCore,
+  yardBase: ECONOMY_TEMPO.yardBase,
   yardPerYard: 0.35,
-  defBase: 1200,
+  defBase: ECONOMY_TEMPO.defenceBase,
   defPerYard: 0.35,
   /** Research is deliberate work, not assembly. */
-  researchTimeMult: 4,
+  researchTimeMult: ECONOMY_TEMPO.researchWork,
   /**
-   * Nothing may ever take longer than this. Six hours, against a brief that says
+   * Nothing may ever take longer than this. Eight hours, against a brief that says
    * the top of the tree must not reach one to two days. It only binds at Core 20,
    * which no fourteen-day season reaches.
    */
-  capMinutes: 360,
+  capMinutes: ECONOMY_TEMPO.buildCapMinutes,
   /**
    * How many orders may be pending in ONE queue. There are two — construction and
    * the yard — and they run independently.
@@ -735,11 +795,97 @@ export const TRAVEL = {
   distanceFactor: 1.2,
 } as const;
 
+/**
+ * HOW MUCH OF A CRAFT'S MOTION THE GALAXY IS TOLD, AND HOW OFTEN IT IS ASKED.
+ *
+ * These three used to be private constants inside the server's traffic
+ * projection, and one of them silently referred to a number that lives on the
+ * CLIENT — the poll interval. When that interval moved, nothing here moved with
+ * it, and the result was the largest fog leak in the intel layer.
+ *
+ * WHAT WENT WRONG, because it is the reason this block exists. A published window
+ * is floored at "one refetch" so a craft never freezes between reads. The floor
+ * was written as a flat sixty seconds, which was the poll interval at the time. A
+ * probe's whole flight is between three and sixty-two seconds (D121 made it
+ * thirty-six times a fleet's speed), so the floor covered ALL of it — and a window
+ * clamped to the arrival has the DESTINATION as its far end. Every probe in the
+ * game therefore published the world it was flying to, to everyone who could see
+ * it, for its entire life. Its return leg published the scout's home the same way,
+ * which is precisely what Radar L5 is sold for.
+ *
+ * The floor is the refetch cadence, so it is written down once and both sides read
+ * it. D63's lesson, applied to the third constant it had not reached yet: a rule
+ * measured in absolute time breaks when speeds change; a rule measured against the
+ * thing it is actually about does not.
+ */
+export const TRAFFIC = {
+  /**
+   * How often a client asks for the contact list, in milliseconds.
+   *
+   * NOT A SAFETY NET, unlike every other read's interval. Under the three-zone
+   * model a craft outside the caller's circles is not in the payload at all, so
+   * when it crosses in the client holds no record to solve a crossing instant
+   * from. Nothing can announce that without telling the caller something is coming
+   * before it arrives, so this asks often enough that the entry is not felt.
+   */
+  refreshMs: 5_000,
+
+  /**
+   * How far ahead a contact's motion is published, in minutes.
+   *
+   * Long enough that a missed read does not freeze a craft mid-flight, and short
+   * enough that the window is a heading rather than a route.
+   */
+  bearingMinutes: 4,
+
+  /**
+   * AND NEVER MORE THAN THIS SHARE OF WHAT IS LEFT TO FLY. D63.
+   *
+   * The ceiling above is an absolute duration, and an absolute duration stops
+   * being a heading the moment flights get shorter than it. Expressed as a share
+   * so it holds at any speed: whatever the tempo, an observer is shown where a
+   * craft will be part of the way from here, never where it stops.
+   */
+  bearingShare: 0.5,
+} as const;
+
 export const INTEL = {
-  detectBase: 0.25,
-  detectSlope: 0.18,
+  /**
+   * WHAT A WORLD CATCHES WHEN ITS RADAR MATCHES THE SCOUT'S SHIPYARD. Owner's figure.
+   *
+   * Detection is a RACE, not a threshold: `base + slope * (radar - shipyard)`. The
+   * base is therefore what a defender catches against an equally developed scout,
+   * and — because a missing radar reads as level 0 — it is also what a world with
+   * NO radar at all catches from a beginner. It was 0.25, which made the first two
+   * rungs of the ladder feel like they unlocked nothing: a quarter of every probe
+   * was already being caught by hardware nobody had bought.
+   *
+   * At 0.15 the bare world still notices SOMETHING, which is deliberate — the
+   * `scan_detected` notification is what teaches a new commander that the Radar
+   * exists at all (Design Law #2) — but noticing is now the exception rather than
+   * the rule, and the instrument is what turns it into a habit.
+   */
+  detectBase: 0.15,
+  /**
+   * AND THE STEP PER LEVEL, CHOSEN SO THE LAST RUNG STILL SELLS SOMETHING. D36.
+   *
+   * `detectMax` is 0.80 and the ladder is five rungs, so a slope of 0.13 puts a
+   * maxed Radar against an unequipped scout at exactly `0.15 + 5 * 0.13 = 0.80`.
+   * The old 0.18 saturated at L4 — `0.15 + 4 * 0.18 = 0.87`, clamped — which meant
+   * Radar 5 bought nothing over Radar 4 against half the galaxy. That is the exact
+   * failure `INSTRUMENT_MAX_LEVEL` exists to prevent, arriving through the clamp
+   * instead of through the table length.
+   */
+  detectSlope: 0.13,
   detectMin: 0.05,
-  detectMax: 0.95,
+  /**
+   * AND NOBODY EVER CATCHES EVERYTHING. Owner's figure, lowered from 0.95.
+   *
+   * A one-in-five chance of getting away is what keeps scouting a decision against
+   * a fortified world rather than an arithmetic refusal. It also leaves the Veil
+   * and the Shipyard something to buy at the top of the ladder.
+   */
+  detectMax: 0.80,
 
   accuracyBase: 0.55,
   accuracySlope: 0.12,
@@ -754,47 +900,73 @@ export const INTEL = {
   degradedUnknownRate: 0.7,
 
   /**
-   * HOW FAR A RADAR REACHES, in game units, by level. D49.
+   * HOW FAR A RADAR REACHES, in game units, by level. D49, owner's ladder.
    *
    * THIS REPLACES A COUNTDOWN, and the replacement is the whole point. The radar
    * used to fire at `arriveAt − lead` off a table of minutes, which made its
    * effective REACH depend on the attacker's hull rather than on the defender's
    * instrument: at the old top rung of twelve minutes it caught a Wasp fleet 460
    * units out and a Bulwark fleet 210, so the heaviest, most dangerous thing in
-   * the game was also the thing a radar saw latest. That is backwards, and it is
-   * why a maxed Radar read as worthless — twelve minutes is twelve minutes
-   * whatever is flying at you.
+   * the game was also the thing a radar saw latest. That is backwards.
    *
    * A RADIUS FIXES BOTH HALVES AT ONCE. The warning fires when the fleet crosses
    * inside the circle, so how much NOTICE it buys falls out of how fast the fleet
-   * is moving. Measured against a typical 800-unit leg at L5:
+   * is moving: a Bulwark siege crossing the same shell as a Wasp swarm hands over
+   * twice the minutes, because it takes twice as long to cover the distance. So
+   * surprise is something an attacker BUYS WITH SPEED.
    *
-   *     Wasp fleet     (46)  ->  15 min
-   *     Lance fleet    (34)  ->  20 min
-   *     Hauler in tow  (30)  ->  22 min
-   *     Bulwark siege  (21)  ->  30 min
+   * EVERY RUNG NOW REACHES, AND THAT IS THE CHANGE. Indices 0–2 used to be zero,
+   * inherited verbatim from the pre-D49 ladder where fleet warning began at L3.
+   * The consequence was two rungs that sold almost nothing — a slightly better
+   * probe-catch roll and a compass bearing in a log — for 1,100 alloy, while the
+   * disc stayed empty for every commander below Radar 3. Under the three-zone
+   * model (see `sensorZone`) the radar circle is what makes the galaxy VISIBLE at
+   * all, so a rung with no radius is a rung with no product.
    *
-   * So surprise is something an attacker BUYS WITH SPEED, and a slow fleet is
-   * telegraphed. Two systems that already existed now interact, which is the
-   * design north star's own test for whether depth was added or complexity was.
+   * AND IT OUT-REACHES THE TELESCOPE AT EVERY LEVEL, which is the owner's rule and
+   * was not true before: Radar 4 reached 1,500 against a Telescope 4 that saw
+   * 1,525, so the instrument that trades detail for range was the narrower of the
+   * two. An instrument that detects must reach further than one that identifies,
+   * or the ring it draws is inside out.
    *
-   * D9 SURVIVES INTACT, and by arithmetic rather than by a clamp: notice is
-   * `oneWay × range / distance`, so a long flight can never hand over its whole
-   * duration — only a raid launched from INSIDE the circle does that, and such a
-   * raid is short anyway. The ceiling is a Bulwark fleet from exactly `range`
-   * away, which is half an hour.
-   *
-   * Index 0-2 reach nothing: L1 still catches probes and L2 still adds the
-   * bearing. Fleet detection starts at L3, exactly as it always did.
+   *     level   telescope   radar   margin
+   *       1         950     1,200     +250
+   *       2       1,150     1,450     +300
+   *       3       1,250     1,700     +450
+   *       4       1,450     1,900     +450
+   *       5       1,600     2,200     +600
    */
-  radarRange: [0, 0, 0, 190, 360, 570] as readonly number[],
+  radarRange: [0, 1200, 1450, 1700, 1900, 2200] as readonly number[],
+
+  /**
+   * HOW FAR A RADAR KNOWS SOMETHING IS COMING FOR YOU. D126, MERGED FOR NOW.
+   *
+   * These were two circles with two different jobs, and the split is a real design
+   * decision that is being TEMPORARILY collapsed on the owner's instruction while
+   * the visibility engine is rebuilt — one circle is one thing to draw, one thing
+   * to explain and one thing to test.
+   *
+   * WHAT THE SPLIT WAS FOR, so it can be put back deliberately rather than
+   * rediscovered. The wide circle said "something is coming" and carried NO CLOCK;
+   * the tight one said "and it lands in fourteen minutes". Notice is
+   * `oneWay × min(1, range / distance)`, so a circle wider than a typical leg
+   * hands over the ENTIRE flight — and `docs/balance.md` puts the 10th nearest
+   * world at 707 units and the 25th at 994. At 2,200 that minimum saturates for
+   * the whole neighbourhood, so every local raid is now fully telegraphed and the
+   * raidable store the PvP economy stands on (D9, D13) is exposed.
+   *
+   * THAT COST IS ACCEPTED FOR NOW AND IS NOT A BUG. Splitting the two again is
+   * editing this one table back to a tighter ladder — nothing else in the codebase
+   * assumes they are equal, because both functions are still separate.
+   */
+  radarContactRange: [0, 1200, 1450, 1700, 1900, 2200] as readonly number[],
 
   /**
    * PROVISIONAL. How far a telescope can see, in game units, by level. D18.
    *
-   * The disc has radius 1000, so the furthest two planets can be is a little over
-   * 2000 apart. L1 reaches about a fifth of that — your own neighbourhood and
-   * nothing else — and L5 reaches everywhere.
+   * The galaxy has radius 2,000, so the furthest two worlds can be 4,000 apart.
+   * The raw table remains the watch-slot ladder; moving-contact sight is separately
+   * floored and capped by `sensorReach` below.
    *
    * This is the constraint the shipped version was missing entirely. Distance
    * decided how long a fleet took to arrive but never decided what you were
@@ -803,7 +975,23 @@ export const INTEL = {
    * a real question, and what makes the far half of the disc something you have to
    * earn your way into rather than something you already have.
    */
-  telescopeRange: [0, 500, 725, 1025, 1525, Infinity] as readonly number[],
+  /**
+   * IT ENDS AT A NUMBER NOW, AND IT USED TO END AT `Infinity`.
+   *
+   * The top rung was unbounded because this table originally only decided WATCH
+   * RANGE — how far a slot may be pointed — and slots are rationed by count and
+   * cooldown rather than by distance (D18). Reading the same table for traffic
+   * sight quietly turned it into "one maxed Telescope identifies every craft in
+   * the galaxy for the rest of the season", which is why `SENSOR.maxRadius` was
+   * bolted on top as a cap.
+   *
+   * A cap over an infinity is two statements of one limit, and they drifted: the
+   * L4 rung sat at 1,525 while the cap was 1,800, so the last rung of a five-rung
+   * ladder bought 275 units. The ceiling is the owner's figure and the ladder is
+   * spread to reach it, so every rung buys a real step and the table says its own
+   * ceiling out loud.
+   */
+  telescopeRange: [0, 950, 1150, 1250, 1450, 1600] as readonly number[],
 
   /**
    * PROVISIONAL. Hours a telescope slot is locked after being RE-POINTED. D18.
@@ -840,6 +1028,85 @@ export const INTEL = {
    * five distinct rungs and takes the decimal out of the problem entirely.
    */
   telescopeCooldownHours: [0, 5, 4, 3, 2, 1] as readonly number[],
+} as const;
+
+/**
+ * WHAT A COMMANDER CAN SEE MOVING, AND WHAT A SILHOUETTE SAYS. D123.
+ *
+ * THE GALAXY WAS PAYING FOR THE INTEL LADDER AND KEEPING THE CHANGE. `traffic.ts`
+ * wrote the failure down before it happened — "a departure is visible now and was
+ * not before, and a composition is readable where it used to cost Radar L4… this
+ * is the first thing to re-read if a playtest says scouting stopped mattering" —
+ * and the first real play session said exactly that. Telescope and Radar were
+ * selling what a logged-in player already had, so there was no asymmetry left for
+ * a tactic to live in, and the only strategy the numbers rewarded was mass.
+ *
+ * TELESCOPE IDENTIFIES; RADAR DETECTS. The Telescope says what a craft is inside
+ * its finite reach. The wider Radar makes it a moving question mark and adds a
+ * size/kind disclosure on its upper rungs; its warning ladder separately attributes
+ * an inbound threat. `sensorZone` is the only place those radii become an answer.
+ *
+ * `baseRadius` IS THE FLOOR, AND IT IS LOAD-BEARING. `INTEL.telescopeRange` starts
+ * at zero, so a ladder with no floor would open on a dead galaxy for every new
+ * commander. This is the naked-eye neighbourhood: generous enough that the galaxy
+ * is busy where you live, small enough against a 2,000 radius that the far side is
+ * something you buy your way into.
+ */
+export const SENSOR = {
+  /**
+   * PROVISIONAL. The neighbourhood every commander sees for free, in game units.
+   *
+   * Settled by playtest, not by argument: the one thing that can go wrong here is
+   * a disc that reads as empty, and no test can see that. `node tools/visual.mjs`
+   * and a phone are the instruments.
+   */
+  baseRadius: 750,
+
+  /**
+   * AND A CEILING, BECAUSE THE FOG MAY NEVER FULLY LIFT. D126.
+   *
+   * `INTEL.telescopeRange` once ended at `Infinity`, written when the top of that
+   * ladder only bought WATCH RANGE — how far you may point a slot. It is finite
+   * now; this ceiling remains the invariant that guards the identifying horizon.
+   *
+   * Reading the same table for TRAFFIC reach quietly turned it into something
+   * else: one maxed Telescope on one world, and every craft in the galaxy is
+   * identified for that commander for the rest of the season. Found on the owner's
+   * own account — a Telescope 5 capital beside three Telescope 0 colonies,
+   * resolving all 104 worlds while the colonies drew their local sensor
+   * bubbles. The system was a no-op for the player who had paid most for it.
+   *
+   * `docs/game-design.md` already forbids this in as many words: "Floors and
+   * ceilings guarantee that no investment buys perfect invisibility or perfect
+   * omniscience — the fog never fully lifts." Being below only the maximum
+   * crossing was insufficient: a sensor at the centre can see the whole galaxy as
+   * soon as its reach equals the radius. The ceiling is 80% of the radius-2,000
+   * sphere, so even the best possible origin leaves a real outer shell.
+   *
+   * IT IS THE TELESCOPE'S CEILING, NOT THE GALAXY'S. The Radar reaches further by
+   * design and is capped by its own table — a mote you cannot identify is not
+   * omniscience, and letting the detecting instrument out-reach the identifying
+   * one is the whole shape of the three-zone model. See `INTEL.radarRange`.
+   *
+   * It now AGREES with `INTEL.telescopeRange`'s own top rung rather than capping an
+   * infinity, so the two can no longer drift apart.
+   */
+  maxRadius: 1600,
+
+
+  /**
+   * WHERE A SILHOUETTE CHANGES SIZE, in total hull value.
+   *
+   * Three steps rather than a ramp, for the same reason `worldWeight` has three:
+   * a continuous size no eye can separate communicates nothing. LIGHT is a scout
+   * party or a probe screen, MEDIUM is a working raid, HEAVY is somebody
+   * committing. That is the whole of what a stranger is entitled to.
+   *
+   * Read against `fleetValue`, which is the quantity the hull table is priced on,
+   * so the buckets move with prices instead of drifting away from them.
+   */
+  massMedium: scalePrice(8_000, ECONOMY_TEMPO.hullPrice),
+  massHeavy: scalePrice(40_000, ECONOMY_TEMPO.hullPrice),
 } as const;
 
 /**
@@ -988,6 +1255,199 @@ export const PROBE = {
  * hour. The base is the old first rung and the Derrick lands it near the old top,
  * so the ceiling a developed miner reaches is where it always was.
  */
+/**
+ * HOW MUCH FLEET A WORLD MAY KEEP. T4.
+ *
+ * Nothing bounded a fleet but a purse, so the only question a rich commander ever
+ * faced was "how many more can I afford" — the wealth ladder D2 exists to refuse,
+ * arriving through the shipyard instead of the score. The owner's brief was exact:
+ * unlimited or far too many should not be buildable, and enough or a little more
+ * should be.
+ *
+ * MEASURED, NOT GUESSED. Across the five gate seasons a commander ends with a
+ * median 470 units of room in ships, 2,150 at the ninetieth percentile and 3,370 at
+ * the very top, against a median Command Core of 14. The ladder below is fitted to
+ * that shape:
+ *
+ *   Hangar 0    100    the opening fleet still fits, but expansion presses early
+ *   Hangar 2    260    the median commander must invest deliberately
+ *   Hangar 12  1060    the top tenth no longer gets a mostly unused warehouse
+ *   Hangar 14  1220    the ceiling at Core 15 remains finite and meaningful
+ *
+ * So a casual player never meets it, a fleet player spends real levels on it, and
+ * unbounded accumulation stops. THE BINDING CONSTRAINT IS THE CORE, not the price:
+ * no building may reach its Core's level, so the ceiling is set by how developed
+ * a world is rather than by how much ore was poured into one building.
+ *
+ * `base` IS NOT OPTIONAL AND MAY NOT BE ZERO. `START_BUILDINGS.HANGAR` is 0 and a
+ * fresh world must be able to keep the ships its opening grant buys; the neutral
+ * templates are seeded at Hangar 0 too and the tier-3 garrison alone is 70 units.
+ */
+export const HANGAR = {
+  base: 100,
+  perLevel: 80,
+  /** Hangar room is a strategic ceiling, so each rung costs twice an ordinary building. */
+  costMultiplier: 2,
+} as const;
+
+/**
+ * HOW MANY EMPLACEMENTS A WORLD MAY STAND. T4b.
+ *
+ * This ships with the Hangar and cannot be deferred, because the Hangar is what
+ * creates the need for it: before T4 a commander's surplus could go into ships OR
+ * turrets, and after it ships are capped and turrets are not — so the only place
+ * left for a surplus is the ground, and the turtle becomes the dominant strategy
+ * through a slope the fleet cap itself cut.
+ *
+ * D27 is the second reason and the better one. Two opposing ground classes exist to
+ * turn "how much defence" into "what KIND", which is the question only the
+ * information layer can answer — and an uncapped "how much" refuses it: buy enough
+ * and you own both classes and never choose. Bounding the total is what makes the
+ * choice real.
+ *
+ * A SEPARATE POOL FROM A SEPARATE SOURCE, deliberately. Sharing one pool with the
+ * Hangar would bind attack and defence to a single slider and collapse two
+ * decisions into one. The Command Core is the right source because it already means
+ * "how big is this world" — it opens flight bays, orbit slots and colony capacity —
+ * and it needs no seventh building.
+ *
+ * CALIBRATED AGAINST THE GAME'S OWN FORTRESS, because the simulator cannot see this
+ * one: its bots build almost no ground defence at all (median zero, ninety-ninth
+ * percentile twelve units), so there is no distribution to fit. `MULTI_WORLD.neutral[3]`
+ * is the design's own statement of a FORTIFIED world — 50 units of guns at Core 8 —
+ * and the ceiling there is 100. The hardest thing the game builds for itself sits at
+ * half of what a player may stand, which leaves room to out-fortify it without
+ * leaving room to become unraidable.
+ */
+/**
+ * THE ONE DIAL ON FUEL. T6.
+ *
+ * `missionFuel` is mass × distance ÷ this, rounded up, once per leg. The figure is
+ * fitted to the two ends of the game rather than picked:
+ *
+ *   · A fresh commander's raid — ten Wasps at a neighbour 600 units away — costs
+ *     two, so the opening is not taxed and `PLANET_START.deuterium` covers a real
+ *     run of them. The chain the opening teaches is "I have fuel, it is running
+ *     out, I need a refinery"; a tank that emptied on the second launch would
+ *     teach panic instead.
+ *   · A committed fleet at the far rim costs real money, so distance is a decision
+ *     rather than a formality.
+ *
+ * IT IS THE LEVER THAT MOVES IF THE BANDS BREAK. Loot and `COMBAT.defenceSalvage`
+ * are inert on attack effectiveness, and the health bands are never widened to
+ * admit a feature — so if fuel pushes ARR under its floor, this number comes down
+ * and nothing else does.
+ */
+/**
+ * WHAT RESEARCH IS ALLOWED TO BE WORTH. T8 · T9.
+ *
+ * THE ONE HARD RULE IS THE POWER CEILING, and it is the claim the whole game rests
+ * on stated as a number:
+ *
+ *   information (the counter cycle)  1.6 / 0.625 = 2.56x   =  156% advantage
+ *   technology  (every project)                    1.25x   =   25% advantage
+ *
+ * `hulls.ts` says it outright — "information beats tech by construction, and that
+ * is the claim the whole game rests on". Give attack and hit points 25% EACH and
+ * the product is 1.5625x, which is not 25%: it is 56%, and it lands close enough
+ * to the counter cycle that knowing what your opponent flies stops being the
+ * decisive thing. So the ceiling is on the PRODUCT, every weapon project's
+ * contribution is derived from it, and `test/tech.test.ts` holds the arithmetic
+ * rather than a comment promising it.
+ *
+ * The economy figures are separate and small on purpose. `cargoPerLevel` is the
+ * one that moves ARR — `fleetCargo` caps what a raid carries home — so it is the
+ * smallest of the three and the band is measured, never assumed.
+ */
+export const RESEARCH_TECH = {
+  /** Equal-budget power a fully-teched hull may reach. Never above the counter cycle. */
+  powerCeiling: 1.25,
+  /** Rungs on a weapon doctrine, and on each economy project. */
+  weaponMaxLevel: 5,
+  economyMaxLevel: 5,
+  /**
+   * How the ceiling is split between a hull's own doctrine and the general
+   * attack/armour project. Half each, so neither alone is the whole answer and
+   * both are worth the levels.
+   */
+  doctrineShare: 0.5,
+  /** Build time shaved per rung. Small: the Shipyard still owns the curve. */
+  yardSpeedPerLevel: 0.04,
+  holdPerLevel: 0.08,
+  cargoPerLevel: 0.04,
+} as const;
+
+/**
+ * THE WEAPON THAT ANSWERS THE WEAPON. T10.
+ *
+ * A Death Star is 33,000 resources, an hour of build, a Command Core of twelve, a
+ * Shipyard of five and the whole Frontier chain. An interceptor that stopped it
+ * cheaply would throw every bit of D113's work away, so the two are priced against
+ * each other rather than separately.
+ *
+ * IT FIRES ON THE RADAR CIRCLE, AND THAT IS THE DESIGN. A check at arrival would be
+ * an INVISIBLE rule — you would only ever meet its result, which D124 forbids in as
+ * many words. The timed radar ring is already drawn on the disc (D126), so a weapon
+ * dying on it is a rule with a picture: the explosion happens in space, over the
+ * ring, beside the world; the Radar rung suddenly buys something enormous; and an
+ * attacker who scouts can read the reach and price the risk before spending 33,000.
+ *
+ * ONE CHARGE, AND THE NUMBER IS THE WHOLE INTERLOCK. At two, a loaded defender is
+ * immune to a commander who may only stockpile two weapons, and the Death Star
+ * stops existing. At one, the answer is on the board: send the first as bait, land
+ * the second. T11 is that answer, which is why the two ship together.
+ */
+export const ANTI_STRATEGIC = {
+  /**
+   * THE FIRST RADAR RUNG THAT CAN ENGAGE A STRATEGIC WEAPON.
+   *
+   * General Radar contact and warning circles already exist at L1/L2. Only
+   * `interceptionRange` is zero below this rung; a grid installed there could
+   * never fire and its owner would have no way of knowing why — the "I built the
+   * expensive thing and it never went off" trap, stated as a build refusal.
+   */
+  requiredRadar: 3,
+  requiredResearch: 'INTERCEPTION_GRID',
+  maxCharges: 1,
+  /** Immediate launch, with enough screen time for every entitled client to join the scene. */
+  flightSeconds: 8,
+  /**
+   * About a third of what it destroys. Dear enough that a defence is a real
+   * decision, cheap enough to be worth making — and it reloads in half the time
+   * the thing it shoots down takes to build, because a defender who spent their
+   * shot should not be defenceless for the rest of the hour.
+   */
+  cost: {
+    alloy: scalePrice(8000, ECONOMY_TEMPO.fixedPrice),
+    crystal: scalePrice(8000, ECONOMY_TEMPO.fixedPrice),
+    deuterium: scalePrice(1200, ECONOMY_TEMPO.deuteriumPrice),
+  },
+  buildMinutes: 30,
+} as const;
+
+export const FUEL = {
+  scale: 10_000,
+  /**
+   * THE SPAN A PER-CRAFT FUEL FIGURE IS QUOTED OVER. Owner report — a ship card
+   * has to say what one of these costs to fly.
+   *
+   * A READING UNIT, NOT A DIAL, and the difference is load-bearing: `scale` is the
+   * price of every launch in the game, this is the width of the yardstick a card
+   * holds up against a hull. Moving it changes no charge anywhere.
+   *
+   * A THOUSAND, because that is a distance the disc actually has — the map is four
+   * thousand across and a neighbour is six hundred away — and because it puts the
+   * whole hull table on one readable scale: a Wasp at a tenth, a Bulwark at more
+   * than one. A hundred would print `0.01` for the most common ship in the game.
+   */
+  reference: 1_000,
+} as const;
+
+export const EMPLACEMENT = {
+  base: 20,
+  perLevel: 10,
+} as const;
+
 export const PROSPECTOR = {
   /**
    * Game units per minute, before a Derrick.
@@ -1129,34 +1589,11 @@ export const DISRUPTION = {
 export const ABUSE = {
   bashLimit: 3,
   bashWindowMinutes: 720,
-  /**
-   * HOW MANY DEVELOPMENT TIERS APART TWO WORLDS MAY FIGHT. D49, owner's figure.
-   *
-   * Tier 5 may hit anything from Tier 3 to Tier 7; Tier 1 may hit Tier 1 to 3.
-   *
-   * THIS REPLACED A WEALTH RATIO (`rankFloor`, 0.4), and the reason is that the
-   * ratio was invisible. Development tier is already public on every planet in
-   * the galaxy — it is what decides the silhouette the disc draws (D34) and the
-   * one free line on every dossier — so a band measured in tiers is a rule the
-   * player can READ OFF THE MAP before committing a fleet, rather than one they
-   * discover when a launch is refused.
-   *
-   * It is also a wider band than the ratio was. A building step costs 1.70× the
-   * one below it, so 40% of a player's Wealth is roughly a tier and a half: the
-   * old floor closed the door on neighbours who were visibly the same size. Two
-   * tiers is six Core levels, which is most of a season's development gap.
-   *
-   * WHAT IT GIVES UP is protection against a hoarder — somebody who banks
-   * everything and builds nothing is now in band with the players they out-hold.
-   * That is the trade, and the bash limit is what keeps it from being a farm.
-   */
-  tierBand: 2,
 } as const;
 
 export const GALAXY = {
-  radius: 2500,
-  /** Vertical half-thickness of the disc. */
-  thickness: 300,
+  /** The playable volume is one sphere centred on the origin. */
+  radius: 2000,
   minSeparation: 225,
   defaultSlots: 200,
 
@@ -1219,9 +1656,9 @@ export const GALAXY = {
   asteroidSpeedMin: 350,
   asteroidSpeedMax: 750,
 
-  /** How far out they run. Inside the disc, clear of the crowded centre. */
-  asteroidOrbitMin: 500,
-  asteroidOrbitMax: 2375,
+  /** How far out they run. The whole tilted orbit stays inside the playable sphere. */
+  asteroidOrbitMin: 400,
+  asteroidOrbitMax: 2000,
 
   /**
    * Hours a rock stays in the disc before it is gone for good. PROVISIONAL.
@@ -1346,7 +1783,7 @@ export const CHAT = {
 export const SEASON = {
   days: 14,
   /** Frozen finale before the next world opens. D88. */
-  afterglowMinutes: 15,
+  afterglowMinutes: 5,
   /** Above this, an upgrade no longer repays before the wipe — the sunset phase. */
   investmentHorizonShare: 0.7,
   /** The three public transitions after the opening act. D96. */
@@ -1446,26 +1883,30 @@ export const MULTI_WORLD = {
    */
   recoveryMinutes: 2 * 60,
   settlement: {
-    cost: { alloy: 2000, crystal: 1000, deuterium: 0 },
+    cost: {
+      alloy: scalePrice(2000, ECONOMY_TEMPO.fixedPrice),
+      crystal: scalePrice(1000, ECONOMY_TEMPO.fixedPrice),
+      deuterium: 0,
+    },
     haulers: 2,
   },
   neutral: {
     1: {
-      buildings: { CORE: 2, REFINERY: 2, EXTRACTOR: 2, VAULT: 0, SHIPYARD: 0 },
+      buildings: { CORE: 2, REFINERY: 2, EXTRACTOR: 2, VAULT: 0, SHIPYARD: 0, HANGAR: 0, DEUTERIUM_PLANT: 0 },
       instruments: {},
       fleet: {},
       ground: {},
       reinforcementMinutes: null,
     },
     2: {
-      buildings: { CORE: 5, REFINERY: 5, EXTRACTOR: 5, VAULT: 0, SHIPYARD: 2 },
+      buildings: { CORE: 5, REFINERY: 5, EXTRACTOR: 5, VAULT: 0, SHIPYARD: 2, HANGAR: 0, DEUTERIUM_PLANT: 0 },
       instruments: {},
       fleet: { WASP: 8, LANCE: 2 },
       ground: {},
       reinforcementMinutes: 6 * 60,
     },
     3: {
-      buildings: { CORE: 8, REFINERY: 8, EXTRACTOR: 8, VAULT: 0, SHIPYARD: 4 },
+      buildings: { CORE: 8, REFINERY: 8, EXTRACTOR: 8, VAULT: 0, SHIPYARD: 4, HANGAR: 0, DEUTERIUM_PLANT: 0 },
       instruments: { AEGIS: 3 },
       fleet: { WASP: 16, LANCE: 6, BULWARK: 2 },
       ground: { THORN: 6, BASTION: 2 },
@@ -1501,9 +1942,14 @@ export const DEATH_STAR = {
   requiredCore: 12,
   requiredShipyard: 5,
   requiredResearch: 'DEATH_STAR_PROTOCOL',
-  cost: { alloy: 15_000, crystal: 15_000, deuterium: 3000 },
+  cost: {
+    alloy: scalePrice(15_000, ECONOMY_TEMPO.fixedPrice),
+    crystal: scalePrice(15_000, ECONOMY_TEMPO.fixedPrice),
+    deuterium: scalePrice(3000, ECONOMY_TEMPO.deuteriumPrice),
+  },
   buildMinutes: 60,
-  speed: 500,
+  /** Owner-approved strategic travel speed after local interception playtesting. */
+  speed: 1_250,
   /**
    * Share of the target's stores an impact destroys, stock and works alike.
    *

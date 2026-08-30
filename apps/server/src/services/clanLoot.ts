@@ -4,6 +4,7 @@ import {
   alloyRate,
   clanPurseRemaining,
   crystalRate,
+  deuteriumRate,
   deuteriumStorageCap,
   productionMult,
   splitClanRaidLoot,
@@ -108,6 +109,7 @@ async function clanEconomyEnvelopes(
     const refinery = level('REFINERY');
     const extractor = level('EXTRACTOR');
     const vault = level('VAULT');
+    const plant = level('DEUTERIUM_PLANT');
     const orbit = orbitFromRows(
       satellitesByWorld.get(world.id) ?? [],
       core,
@@ -115,13 +117,15 @@ async function clanEconomyEnvelopes(
     const boost = productionMult(orbit);
     const alloy = alloyRate(refinery) * boost;
     const crystal = crystalRate(extractor) * boost;
-    const protectedByVault = vaultProtects(vault, refinery, extractor);
+    const deuterium = deuteriumRate(plant) * boost;
+    const protectedByVault = vaultProtects(vault, refinery, extractor, plant);
     economy.alloyPerHour += alloy;
     economy.crystalPerHour += crystal;
     economy.storageCapacity.alloy += storageCap(alloy, vault);
     economy.storageCapacity.crystal += storageCap(crystal, vault);
-    economy.storageCapacity.deuterium += deuteriumStorageCap(crystal, vault);
-    economy.deuteriumCapacity += deuteriumStorageCap(crystal, vault);
+    // Off deuterium's own production now that it has some. T5.
+    economy.storageCapacity.deuterium += deuteriumStorageCap(deuterium, crystal, vault);
+    economy.deuteriumCapacity += deuteriumStorageCap(deuterium, crystal, vault);
     economy.vaultProtection.alloy += protectedByVault.alloy;
     economy.vaultProtection.crystal += protectedByVault.crystal;
     economy.vaultProtection.deuterium += protectedByVault.deuterium;
@@ -257,7 +261,11 @@ export async function claimClanLoot(
   const alloyCap = storageCap(alloyRate(world.buildings.REFINERY) * boost, world.buildings.VAULT);
   const crystalPerHour = crystalRate(world.buildings.EXTRACTOR) * boost;
   const crystalCap = storageCap(crystalPerHour, world.buildings.VAULT);
-  const deuteriumCap = deuteriumStorageCap(crystalPerHour, world.buildings.VAULT);
+  const deuteriumCap = deuteriumStorageCap(
+    deuteriumRate(world.buildings.DEUTERIUM_PLANT),
+    crystalPerHour,
+    world.buildings.VAULT,
+  );
   const room: Resources = {
     alloy: Math.max(0, Math.floor(alloyCap - world.alloy)),
     crystal: Math.max(0, Math.floor(crystalCap - world.crystal)),

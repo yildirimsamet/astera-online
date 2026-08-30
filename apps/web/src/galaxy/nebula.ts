@@ -120,10 +120,10 @@ function palette(density: number, out: [number, number, number]): void {
 }
 
 export function paintNebulaCanvas(): HTMLCanvasElement {
-  const canvas = document.createElement('canvas');
+  const canvas = document.createElement("canvas");
   canvas.width = WIDTH;
   canvas.height = HEIGHT;
-  const ctx = canvas.getContext('2d');
+  const ctx = canvas.getContext("2d");
   if (!ctx) return canvas;
 
   const image = ctx.createImageData(WIDTH, HEIGHT);
@@ -165,8 +165,16 @@ export function paintNebulaCanvas(): HTMLCanvasElement {
       // A narrow isodensity ridge over the broad body. Real emission fronts form
       // lit fibres and torn rims; another blanket of low-frequency noise would
       // only make thicker fog.
-      const ridgeField = fbm(cx * 1.55 + wx + 7.4, cy * 1.55 + wy - 2.8, cz * 1.35, 4);
-      const ridge = Math.pow(Math.max(0, 1 - Math.abs(ridgeField - 0.53) * 7.2), 3.4);
+      const ridgeField = fbm(
+        cx * 1.55 + wx + 7.4,
+        cy * 1.55 + wy - 2.8,
+        cz * 1.35,
+        4,
+      );
+      const ridge = Math.pow(
+        Math.max(0, 1 - Math.abs(ridgeField - 0.53) * 7.2),
+        3.4,
+      );
       // Steep gamma, modest gain. Contrast is what makes gas look like gas; a high
       // gain just makes the whole sphere glow.
       let density = (Math.pow(body, 3.35) * 1.38 + ridge * 0.13) * band;
@@ -256,13 +264,15 @@ export function discProfile(r: number): number {
 }
 
 /** Logarithmic, like a real spiral. Higher is more tightly wound. */
-const ARM_TIGHTNESS = 2.6;
-const ARMS = 2;
+const ARM_TIGHTNESS = 3;
+const ARMS = 3;
+/** Keep the S-shaped arms present, but half as prominent as the surrounding gas. */
+const ARM_VISIBILITY = 0.1;
 
 export function paintDiscCanvas(): HTMLCanvasElement {
-  const canvas = document.createElement('canvas');
+  const canvas = document.createElement("canvas");
   canvas.width = canvas.height = PLATE;
-  const ctx = canvas.getContext('2d');
+  const ctx = canvas.getContext("2d");
   if (!ctx) return canvas;
 
   const image = ctx.createImageData(PLATE, PLATE);
@@ -319,11 +329,16 @@ export function paintDiscCanvas(): HTMLCanvasElement {
       // Dust. An independent field that SUBTRACTS, which is what gives a flat glow
       // depth — the dark lanes are half of why a real disc reads as three-dimensional.
       const dust = fbm(nx * 2.1 - 5.5, ny * 2.1 + 7.7, 3.9, 4);
-      const absorbed = 1 - Math.min(1, Math.pow(Math.max(0, dust - 0.4) / 0.6, 1) * 1.15);
+      const absorbed =
+        1 - Math.min(1, Math.pow(Math.max(0, dust - 0.4) / 0.6, 1) * 1.15);
 
       // A floor of diffuse haze under the arms, so the disc is a body rather than
       // two ribbons on nothing.
-      const density = profile * (0.16 + arm * 0.84) * (0.2 + grain * 2.2) * absorbed;
+      const density =
+        profile *
+        (0.16 + arm * 0.84 * ARM_VISIBILITY) *
+        (0.2 + grain * 2.2) *
+        absorbed;
 
       /**
        * Cool through the body, a little warmer toward the middle. The same narrow

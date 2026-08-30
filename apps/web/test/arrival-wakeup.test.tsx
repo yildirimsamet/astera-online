@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { COMBAT, engagementEndsAt } from '@astera/rules';
 import { useContactWindows, useFleetArrivals, useMiningArrivals } from '../src/api/queries.js';
 import type { Contact, MiningRun, PendingThread } from '../src/api/schemas.js';
+import type { SensorSphere } from '@astera/rules';
 
 /**
  * WAKE UP WHEN SOMETHING LANDS. D48.
@@ -29,14 +30,16 @@ function Harness({
   runs,
   pending,
   contacts,
+  sensors,
 }: {
   runs?: MiningRun[];
   pending?: PendingThread[];
   contacts?: Contact[];
+  sensors?: SensorSphere[];
 }) {
   useMiningArrivals(runs);
   useFleetArrivals(pending);
-  useContactWindows(contacts);
+  useContactWindows(contacts, sensors);
   return null;
 }
 
@@ -61,7 +64,12 @@ describe('a client waiting for an arrival', () => {
     vi.restoreAllMocks();
   });
 
-  const mount = (props: { runs?: MiningRun[]; pending?: PendingThread[]; contacts?: Contact[] }) =>
+  const mount = (props: {
+    runs?: MiningRun[];
+    pending?: PendingThread[];
+    contacts?: Contact[];
+    sensors?: SensorSphere[];
+  }) =>
     render(
       <QueryClientProvider client={client}>
         <Harness {...props} />
@@ -71,7 +79,7 @@ describe('a client waiting for an arrival', () => {
   const run = (over: Partial<MiningRun> = {}): MiningRun => ({
     id: 'r1',
     targetKind: 'asteroid',
-    asteroidIndex: 3,
+    asteroidId: 'mJt7YvxMZEC5S7yYQ32SYw',
     debrisFieldId: null,
     craft: 2,
     status: 'outbound',
@@ -268,6 +276,38 @@ describe('a client waiting for an arrival', () => {
 
     expect(invalidated.length).toBeGreaterThan(0);
     expect([...new Set(invalidated.map((k) => k[0]))]).toEqual(['traffic']);
+  });
+
+  it('refetches at the Telescope boundary instead of waiting for the bearing window to end', () => {
+    mount({
+      contacts: [{
+        ...contact(at(Date.now() + 100_000)),
+        kind: 'unknown',
+        from: { x: 100, y: 0, z: 0 },
+        to: { x: 0, y: 0, z: 0 },
+      }],
+      sensors: [{ at: { x: 0, y: 0, z: 0 }, identify: 10, detect: 0 }],
+    });
+    vi.advanceTimersByTime(89_999);
+    expect(invalidated).toHaveLength(0);
+    vi.advanceTimersByTime(52);
+    expect(invalidated.map((key) => key[0])).toEqual(['traffic']);
+  });
+
+  it('wakes at the wider Radar edge before ordinary sight', () => {
+    mount({
+      contacts: [{
+        ...contact(at(Date.now() + 100_000)),
+        kind: 'unknown',
+        from: { x: 100, y: 0, z: 0 },
+        to: { x: 0, y: 0, z: 0 },
+      }],
+      sensors: [{ at: { x: 0, y: 0, z: 0 }, identify: 10, detect: 80 }],
+    });
+    vi.advanceTimersByTime(19_999);
+    expect(invalidated).toHaveLength(0);
+    vi.advanceTimersByTime(52);
+    expect(invalidated.map((key) => key[0])).toEqual(['traffic']);
   });
 
   /**

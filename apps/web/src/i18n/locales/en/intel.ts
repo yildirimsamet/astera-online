@@ -22,7 +22,7 @@ export const intel = {
     scarcity_other:
       '{{neighbours}} worlds out there and {{count}} eyes to spend. Moving one costs a cooldown, so choose who.',
     oneMore: 'Telescope L{{level}} would watch one more.',
-    noRadar: 'And with no Radar, you cannot tell when someone is doing the same to you.',
+    noRadar: 'And with no Radar, you cannot distinguish a threat aimed at you from other movement.',
   },
 
   watching: {
@@ -62,7 +62,10 @@ export const intel = {
     ships: 'Ships',
     accuracyHome: '{{percent}} accuracy · fleet was home',
     accuracyOut: '{{percent}} accuracy · fleet was out',
-    caught: ' · they caught it',
+    caught: 'they caught it',
+    /* Two words beside the signal bars, which carry the accuracy themselves. */
+    homeTag: 'fleet was home',
+    outTag: 'fleet was out',
   },
 
   radar: {
@@ -70,15 +73,36 @@ export const intel = {
     level: 'Radar L{{level}}',
     missing: 'You have no Radar',
     gives:
-      'Catches probes aimed at you. From L3, it sweeps a circle around your world and warns you the moment a fleet crosses into it.',
+      'Draws the circle you see moving craft in at all, catches probes aimed at you, and marks a threat aimed at your world with the time it has left to fly.',
     cost: 'Someone can build a complete picture of this planet and you will never know.',
     quiet: 'Nothing has scanned you. Radar L{{level}} is listening.',
     scan: 'Scan detected',
     bearing: ' from the galactic {{bearing}}',
     origin: ' · {{planet}}',
+    /** Which of the caller's own worlds the scan landed on. */
+    onWorld: ' · {{planet}}',
+    /* Captions beside the two drawn rings; the picture carries the rest. */
+    ringSense: 'Something is out there',
+    ringWarn: 'Timed warning',
+    /** While the two circles are one, one caption states what the circle does. */
+    ringOne: 'Detection and timed warning',
+    /**
+     * THE READING FOR SOMEBODY WHO CANNOT SEE THE RINGS. The two circles carry
+     * both figures and the difference between them; this is the same fact in the
+     * one form a screen reader can take.
+     */
     noteFleets:
-      'Radar L{{level}} catches a fleet {{range}} units out. A slow, heavy fleet is inside that circle for far longer than a fast one — so you get more warning about the raids that can actually hurt you.',
-    noteProbes: 'Radar L{{level}} catches probes. From L3 it also warns of inbound fleets.',
+      'Radar L{{level}} distinguishes a threat aimed at you at {{sense}} units, without a clock. At {{warn}} units it adds arrival time.',
+    /** The merged form. One circle, both products, one sentence. */
+    noteFleetsOne:
+      'Radar L{{level}} shows moving craft out to {{sense}} units, and marks a threat aimed at your world with its arrival time.',
+    /**
+     * THE HALF NO PICTURE CAN DRAW. D49: a reach is what the defender owns and
+     * the warning it buys is what the ATTACKER decides, by choosing what to fly.
+     * The rings are fixed; how long something sits inside them is not.
+     */
+    noteSlow: 'A slow, heavy fleet remains inside Radar reach longer.',
+    noteProbesLegacy: 'Radar L{{level}} catches probes. From L3 it also warns of inbound fleets.',
     noteBearing: ' L2 adds the direction they came from.',
     noteOrigin: ' L5 names the planet.',
   },
@@ -110,6 +134,18 @@ export const reports = {
   yourClan: 'Your side',
   theirClan: 'Their side',
   noClan: 'No clan',
+  verdict: {
+    label: 'Battle result',
+    yourForce: 'Your force',
+    yourLosses: 'Your losses',
+    sent: 'Sent',
+    held: 'Had',
+    total: 'Total',
+    lost: 'Lost',
+    returned: 'Returned',
+    standing: 'Standing',
+    destroyed: 'You destroyed',
+  },
   /*
     WHAT IT SHOWS IS LOSSES, so that is what it says. The heading claimed 'what
     they had' over a list of what was DESTROYED — and its own empty state said
@@ -125,13 +161,80 @@ export const reports = {
   yours: 'What it cost you',
   yoursEmpty: 'You lost nothing.',
   howItWent: 'How it went',
+  roundDealt: 'You dealt',
+  roundTook: 'You took',
   roundLine: 'you dealt <0>{{dealt}}</0>, took <1>{{took}}</1>',
   shield: 'shield {{amount}}',
   breacherShield: 'Breacher +{{amount}}',
+  aegis: {
+    aria: 'Aegis shield',
+    label: 'AEGIS',
+    broken: 'BROKEN',
+    damaged: 'DAMAGED',
+    held: 'HELD',
+    before: 'Before battle',
+    after: 'After battle',
+    note: 'The planet shield takes damage before any defending unit does.',
+    absorbed: '{{amount}} shield damage absorbed',
+  },
+  calculation: {
+    intro:
+      'The fixed recipe above produces the numbers below. Every round then follows the same three steps.',
+    formulaHeading: 'How attack power is built',
+    formulaBase: '1 · Base: unit count × attack × research.',
+    formulaCounter: '2 · Counter: strong match ×{{strong}}; weak match ×{{weak}}.',
+    formulaRoll: '3 · Shot change: −{{min}}% to +{{max}}%.',
+    formulaHp: 'Damage is split by the targets’ share of total HP.',
+    formulaCarry: 'A unit needs all its HP to fall; unfinished damage carries into the next round.',
+    formulaSupport: 'Support ships stay protected while at least one combat unit on their side remains.',
+    resultHeading: 'How the result is decided',
+    resultDecisive:
+      'DECISIVE · every defending unit is gone and the shield is at zero · {{decisiveLoot}}% of exposed stock can be taken before cargo limits.',
+    resultPartial:
+      'PARTIAL · at least {{threshold}}% of defending unit value is destroyed · {{partialLoot}}% of exposed stock can be taken before cargo limits.',
+    resultRepelled:
+      'REPELLED · less than {{threshold}}% of defending unit value is destroyed · nothing can be taken.',
+    round: 'Round {{round}}',
+    fire: '1 · Simultaneous fire',
+    fireNote: 'Both sides fire before losses are removed. A unit destroyed in this round still fires.',
+    yourShot: 'Your shot',
+    theirShot: 'Their shot',
+    shotChange: 'Shot change',
+    positivePercent: '+{{amount}}%',
+    negativePercent: '−{{amount}}%',
+    neutralPercent: '0%',
+    aegis: '2 · Aegis takes the hit',
+    noAegis: '2 · No active Aegis',
+    shieldCharge: 'Shield charge',
+    absorbed: '{{amount}} absorbed',
+    reachedHulls: 'Reached hulls',
+    breacher: '{{amount}} was Breacher-only shield damage',
+    noAegisNote: 'Nothing caught the hit; all {{amount}} attack power reached the defending hulls.',
+    losses: '3 · Losses leave the battle',
+  },
   /** The three outcomes the whole combat model produces. */
   gradeDecisive: 'DECISIVE',
   gradePartial: 'PARTIAL',
   gradeRepelled: 'REPELLED',
+  strategicFirstStrike: 'IMPACT',
+  strategicCaptured: 'CAPTURED',
+  strategicIneffective: 'INEFFECTIVE',
+  strategicIntercepted: 'INTERCEPTED',
+  strategicYouAttacked: 'Your Death Star targeted ',
+  strategicAttackedBy: 'Death Star sent by ',
+  strategicDestroyedInFlight: 'Death Star destroyed in flight',
+  strategicRadarTrigger: 'The target world engaged it after it crossed the Radar L3+ interception ring.',
+  strategicTelescopeTrigger: 'The defender engaged it after one of their worlds identified it through Telescope sight.',
+  strategicTotalDamage: 'Total destroyed value',
+  strategicShieldLost: 'Shield destroyed',
+  strategicResourcesLost: 'Resources destroyed',
+  strategicOrdersLost: 'Queued work destroyed',
+  strategicResourceBreakdown: 'Destroyed resources',
+  strategicNoFleetLost: 'No stationed fleet or ground defence was destroyed.',
+  strategicLevelLosses: 'Levels lost',
+  strategicNoLevelLoss: 'No building or instrument level was lost.',
+  strategicDestroyedOrders: 'Construction destroyed',
+  strategicNoOrdersLost: 'No active construction order was destroyed.',
 
   /** A world nobody holds. There is no commander to name. */
   neutralHolder: 'an unclaimed world',
@@ -154,11 +257,13 @@ export const reports = {
   why: {
     attacking: {
       DECISIVE: 'You destroyed everything defending it and broke the shield, which is what opens the full haul.',
+      DECISIVE_WITHOUT_SHIELD: 'You destroyed everything defending it, which is what opens the full haul.',
       PARTIAL: 'You broke most of the defence but not all of it, so only part of their stock came away.',
       REPELLED: 'Their defence held. Your fleet could not get through, and nothing came away.',
     },
     defending: {
       DECISIVE: 'Everything you had defending fell and the shield went with it, so they took the full haul.',
+      DECISIVE_WITHOUT_SHIELD: 'Everything you had defending fell, so they took the full haul.',
       PARTIAL: 'Most of your defence fell but something held, so they only got part of your stock.',
       REPELLED: 'Your defence held. They got through nothing, and took nothing.',
     },
@@ -182,6 +287,8 @@ export const reports = {
 
   /** The caller's own board: what went in, what died, what was standing after. */
   force: {
+    /** Screen-reader only: the bar is the picture, this is what it says. */
+    reading: '{{sent}} in, {{lost}} lost, {{left}} left',
     hull: 'Hull',
     /** The attacker chose to send it; the defender simply had it there. */
     sent: 'Sent',
@@ -225,15 +332,14 @@ export const dossier = {
 
   ownerLabel: 'Held by',
   ownerNote: 'Free to everyone, all season.',
+  ownerRecordNote: 'Whose flag your probe found. It may have changed hands since.',
 
   developmentLabel: 'Development',
   developmentValue: 'Tier {{tier}}',
-  developmentInBand: 'How big the world is. You are Tier {{tier}}, so this one is inside your reach.',
-  developmentOutOfBand:
-    'Out of reach. You are Tier {{tier}} and may fight Tier {{low}} to {{high}}.',
 
   hardwareLabel: 'Satellites in orbit',
   hardwareNote: 'You can see the hardware. What it can do costs a probe.',
+  hardwareRecordNote: 'What was in orbit when your probe passed. They may have built more.',
 
   fleetLabel: 'Their fleet',
   fleetUnreadable: 'Unreadable',
@@ -261,8 +367,39 @@ export const dossier = {
   shipsAllHome: 'Everything they own was home.',
   shipsSomeOut: 'Some of their ships were out.',
 
+  /**
+   * THE FOUR READINGS THE PROBE ALWAYS TOOK AND NOTHING EVER PRINTED.
+   *
+   * Each one names WHEN it was true rather than asserting it now, because all
+   * four are frozen at the look. The dossier prints the age beside them.
+   */
+  deuteriumLabel: 'Deuterium held',
+  deuteriumNote: 'Fuel. What they can still launch with.',
+  strategicLabel: 'Strategic weapon',
+  strategicReady: 'Armed and ready',
+  strategicBuilding: 'Under construction',
+  strategicUnknown: 'Something on the pad',
+  strategicNote: 'Seen on the pad when the probe passed. It may have flown since.',
+  strategicUnknownNote: 'The probe was too coarse to tell how far along it is.',
+  interceptorLabel: 'Strategic defence',
+  interceptorLoaded: 'Charge loaded',
+  interceptorEmpty: 'No charge',
+  interceptorLoadedNote:
+    'A strategic weapon sent at this world would be destroyed on its radar circle. One charge stops one strike.',
+  interceptorEmptyNote: 'Nothing here stops a strategic weapon. They may have loaded one since.',
+  doctrinesLabel: 'Combat doctrine',
+  doctrinesNone: 'None researched',
+  doctrinesNote: 'Their hulls fight better than the table says. This is the multiplier you would meet.',
+  doctrinesNoneNote: 'They had researched nothing into their hulls when the probe looked.',
+
+  surfaceGapLabel: 'Everything about this world',
+  surfaceGapMissing: 'Nobody has ever looked here',
+  surfaceGapWhy:
+    'You cannot see who holds it, how far along they are or what is in orbit. A probe brings all of it back at once.',
+
   probeGapLabel: 'Resources and defence',
   probeGapMissing: 'Nothing has ever looked closely',
+  probeGapAged: 'Your reading of this world has aged out',
   probeGapWhy:
     'You are about to bet a fleet on what is down there. A probe turns that guess into a range.',
 

@@ -8,6 +8,7 @@ import { clearMissionUnits, fleetOfMission } from '../services/mission.js';
 import { notify } from '../services/notifications.js';
 import { setUnits } from '../services/planet.js';
 import { publishShard } from '../stream/bus.js';
+import { fleetChangesWatch, publishWatchChanges } from '../services/watchEvents.js';
 import { abandonBuildOrder } from '../services/buildQueue.js';
 import { abandonDeathStarBuild } from '../services/strategic.js';
 
@@ -124,6 +125,9 @@ async function abandonMission(db: Db, missionId: string, at: Date): Promise<bool
      * landed are the same event — a contact that is no longer there.
      */
     await publishShard(tx, mission.seasonId, 'arrival');
+    if (fleetChangesWatch(mission.fleet)) {
+      await publishWatchChanges(tx, [mission.originPlanetId, mission.targetPlanetId]);
+    }
     return true;
   });
 }

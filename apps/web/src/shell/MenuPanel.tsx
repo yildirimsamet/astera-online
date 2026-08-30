@@ -1,6 +1,6 @@
 import type { CSSProperties, ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useClanBadge, useRewards } from '../api/queries.js';
+import { useAnnouncements, useRewards } from '../api/queries.js';
 import {
   setMusicEnabled,
   setMusicVolume,
@@ -13,11 +13,12 @@ import { duration } from '../lib/time.js';
 import { Button, Note, Section } from '../ui/kit/index.js';
 import {
   ChevronIcon,
-  ClanIcon,
+  BellIcon,
   GalaxyIcon,
-  IntelIcon,
   LeaderboardIcon,
   RewardIcon,
+  SendIcon,
+  LockIcon,
   SpeakerOffIcon,
   SpeakerOnIcon,
 } from '../ui/icons/index.js';
@@ -66,6 +67,7 @@ export function MenuPanel({
   onClearRival,
   onOpen,
   onSignOut,
+  isAdmin = false,
 }: {
   galaxy: string | null;
   shard: string | null;
@@ -78,16 +80,26 @@ export function MenuPanel({
   onClearRival?: () => void;
   onOpen: (panel: Panel) => void;
   onSignOut: () => void;
+  isAdmin?: boolean;
 }) {
   const { t } = useTranslation();
   const hoursLeft = endsAt === null ? null : (endsAt.getTime() - serverNow()) / 3_600_000;
   const waiting = useRewards().data?.claimable ?? 0;
-  const clan = useClanBadge().data;
+  const announcementData = useAnnouncements().data;
+  const announcementWaiting = announcementData?.announcements.filter((row) => !row.seen).length ?? 0;
 
   return (
     <div className="flex flex-col gap-6">
       {/**
-       * THE TWO WAYS IN THAT USED TO BE HEADER BUTTONS.
+       * WHAT IS LEFT AFTER THE DISC TOOK THE TWO VERBS. Owner instruction.
+       *
+       * Research and the clan are marks on the canvas now (`DiscControls`), because
+       * they are things a commander DOES and a menu is where you look things UP. A
+       * second door onto either would be one door too many: two ways in to one
+       * surface is how a player learns that neither is the real one.
+       *
+       * The leaderboard and rewards stay here. Intel moved onto the disc beside
+       * the three commander actions, forming the requested four-mark grid.
        *
        * They are rows rather than icons because a menu is read rather than
        * recognised: the header had room for a glyph and a tooltip nobody sees on a
@@ -127,11 +139,23 @@ export function MenuPanel({
           />
         )}
         <MenuRow
-          icon={<IntelIcon className="size-5" />}
-          label={t('menu.intelLabel')}
-          hint={t('menu.intelHint')}
+          icon={<BellIcon className="size-5" />}
+          label={t('menu.announcementsLabel')}
+          hint={t('menu.announcementsHint')}
+          attention={announcementWaiting > 0}
+          {...(announcementWaiting > 0
+            ? { badge: t('menu.announcementsWaiting', { count: announcementWaiting }) }
+            : {})}
           onClick={() => {
-            onOpen('intel');
+            onOpen('announcements');
+          }}
+        />
+        <MenuRow
+          icon={<SendIcon className="size-5" />}
+          label={t('menu.feedbackLabel')}
+          hint={t('menu.feedbackHint')}
+          onClick={() => {
+            onOpen('feedback');
           }}
         />
         <MenuRow
@@ -142,19 +166,6 @@ export function MenuPanel({
             onOpen('leaderboard');
           }}
         />
-        {clan?.available ? (
-          <MenuRow
-            icon={<ClanIcon className="size-5" />}
-            label={clan.membership
-              ? t('menu.clanMemberLabel', { tag: clan.membership.tag })
-              : t('menu.clanLabel')}
-            hint={clan.membership ? t('menu.clanMemberHint') : t('menu.clanHint')}
-            {...(clan.attentionCount > 0
-              ? { badge: t('menu.clanWaiting', { count: clan.attentionCount }) }
-              : {})}
-            onClick={() => { onOpen('clan'); }}
-          />
-        ) : null}
         <MenuRow
           icon={<RewardIcon className="size-5" />}
           label={t('menu.rewardsLabel')}
@@ -164,6 +175,16 @@ export function MenuPanel({
             onOpen('rewards');
           }}
         />
+        {isAdmin && (
+          <MenuRow
+            icon={<LockIcon className="size-5" />}
+            label={t('community.admin.menuLabel')}
+            hint={t('community.admin.menuHint')}
+            onClick={() => {
+              onOpen('admin');
+            }}
+          />
+        )}
       </div>
 
       {/*
@@ -252,12 +273,14 @@ function MenuRow({
   label,
   hint,
   badge,
+  attention = false,
   onClick,
 }: {
   icon: ReactNode;
   label: string;
   hint: string;
   badge?: string;
+  attention?: boolean;
   onClick: () => void;
 }) {
   return (
@@ -269,7 +292,14 @@ function MenuRow({
       }}
       className="plate flex w-full items-center gap-3 px-3 py-3 text-left transition-colors hover:bg-bone/[0.03] active:bg-raised/60"
     >
-      <span className="socket grid size-9 shrink-0 place-items-center rounded-control text-dim">
+      <span
+        data-attention={attention || undefined}
+        className={`socket grid size-9 shrink-0 place-items-center rounded-control transition-colors ${
+          attention
+            ? 'border-opportunity/45 bg-opportunity/10 text-opportunity'
+            : 'text-dim'
+        }`}
+      >
         {icon}
       </span>
       <span className="min-w-0 flex-1">

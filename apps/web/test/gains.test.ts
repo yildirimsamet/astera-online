@@ -5,6 +5,9 @@ import {
   INSTRUMENT_MAX_LEVEL,
   SATELLITE_IDS,
   instrumentMaxed,
+  radarContactRange,
+  radarRange,
+  sensorReach,
   telescopeSlots,
   type BuildingLevels,
   START_BUILDINGS,
@@ -57,9 +60,20 @@ const at = (level: number): BuildingLevels => ({
   EXTRACTOR: Math.max(START_BUILDINGS.EXTRACTOR, level),
   VAULT: Math.max(START_BUILDINGS.VAULT, level),
   SHIPYARD: Math.max(START_BUILDINGS.SHIPYARD, level),
+  HANGAR: Math.max(START_BUILDINGS.HANGAR, level),
+  DEUTERIUM_PLANT: Math.max(START_BUILDINGS.DEUTERIUM_PLANT, level),
 });
 
 describe('every upgrade row states something that actually changes', () => {
+  it('formats fractional storage hours to one decimal place', () => {
+    const gain = buildingGain('VAULT', 0, 0, at(0));
+
+    expect(gain.now).toContain('13.2h');
+    expect(gain.next).toContain('14.1h');
+    expect(gain.now).not.toContain('000000000');
+    expect(gain.next).not.toContain('000000000');
+  });
+
   it.each(BUILDING_IDS)('%s, at every level', (id) => {
     for (const level of LEVELS) {
       const gain = buildingGain(id, level, 0, at(level));
@@ -158,6 +172,25 @@ describe('the instrument ceiling', () => {
     expect(telescopeSlots(1)).toBe(1);
     expect(telescopeSlots(3)).toBe(2);
     expect(telescopeSlots(5)).toBe(3);
+  });
+
+  it('shows the capped moving-contact reach instead of promising the whole galaxy', () => {
+    const top = instrumentGain('TELESCOPE', 5);
+    expect(top.unlocks).toContain(String(sensorReach(5)));
+    expect(top.unlocks?.toLowerCase()).not.toContain('whole disc');
+
+    const lastStep = instrumentGain('TELESCOPE', 4);
+    expect(lastStep.unlocks).toContain(String(sensorReach(5)));
+    expect(lastStep.unlocks).not.toContain('Infinity');
+  });
+
+  it('shows both Radar areas and keeps the wide one explicitly clockless', () => {
+    for (const level of [3, 4, 5]) {
+      const gain = instrumentGain('RADAR', level);
+      expect(gain.now).toContain(String(radarContactRange(level)));
+      expect(gain.now).toContain(String(radarRange(level)));
+      expect(gain.now.toLowerCase()).toContain('no eta');
+    }
   });
 });
 

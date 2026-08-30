@@ -738,7 +738,7 @@ afterglow. Do not reuse the one-off legacy ten-galaxy insert from the capacity c
 seasons already have one `season_end` and one `season_rollover` event each, so shorten those rows
 in place.
 
-Take a fresh backup first. Confirm the current code still uses a 15-minute afterglow, then run the
+Take a fresh backup first. Confirm the current code still uses a 5-minute afterglow, then run the
 following interactively. It fails unless exactly two live seasons and exactly one pending end and
 rollover event per season exist:
 
@@ -752,7 +752,7 @@ DECLARE
   rollover_at timestamptz;
   affected integer;
 BEGIN
-  rollover_at := cutoff_at + interval '15 minutes';
+  rollover_at := cutoff_at + interval '5 minutes';
 
   SELECT array_agg(id ORDER BY id)
     INTO live_ids

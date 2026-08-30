@@ -3,7 +3,7 @@ import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it } from 'vitest';
 import type { Api } from '../src/api/client.js';
-import type { BattleReport } from '../src/api/schemas.js';
+import type { BattleReport, StrategicBattleReport } from '../src/api/schemas.js';
 import { ApiProvider } from '../src/api/context.js';
 import { BattleReports } from '../src/screens/BattleReports.js';
 
@@ -23,6 +23,7 @@ import { BattleReports } from '../src/screens/BattleReports.js';
 
 const base: BattleReport = {
   id: 'b1',
+  missionId: 'mission-b1',
   at: new Date('2026-08-26T12:00:00.000Z'),
   grade: 'PARTIAL',
   attacking: true,
@@ -67,6 +68,19 @@ const base: BattleReport = {
 
 const report = (over: Partial<BattleReport> = {}): BattleReport => ({ ...base, ...over });
 
+const detailedRound = (
+  over: Record<string, unknown> = {},
+): BattleReport['rounds'][number] => ({
+  ...base.rounds[0],
+  attackerRoll: 1.04,
+  defenderRoll: 0.97,
+  shieldBefore: 500,
+  shieldAfter: 140,
+  attackerHullDamage: 540,
+  shieldAbsorbed: 360,
+  ...over,
+}) as unknown as BattleReport['rounds'][number];
+
 async function openSheet(one: BattleReport) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   client.setQueryData(['reports'], { reports: [one] });
@@ -89,6 +103,104 @@ beforeEach(async () => {
 });
 
 describe('what a battle report explains', () => {
+  it('shows every durable Death Star consequence to both report sides', async () => {
+    const strategic: StrategicBattleReport = {
+      kind: 'STRATEGIC',
+      id: 's1',
+      missionId: 'death-star-1',
+      at: new Date('2026-08-26T12:00:00.000Z'),
+      attacking: false,
+      opponentName: 'Sable',
+      opponentPlanet: 'Grimhold',
+      opponentPlanetId: 'p2',
+      yourPlanet: 'Vantage-3',
+      outcome: 'FIRST_STRIKE',
+      damage: 12_000,
+      destroyedFleet: { WASP: 5, BASTION: 2 },
+      destroyedResources: { alloy: 4_000, crystal: 2_000, deuterium: 500 },
+      levelChanges: [
+        { kind: 'BUILDING', id: 'CORE', before: 6, after: 5 },
+        { kind: 'INSTRUMENT', id: 'AEGIS', before: 3, after: 1 },
+      ],
+      destroyedOrders: [{
+        kind: 'BUILDING',
+        subject: 'REFINERY',
+        count: 1,
+        cost: { alloy: 900, crystal: 400, deuterium: 0 },
+      }],
+      shieldDestroyed: 800,
+      trigger: null,
+    };
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    client.setQueryData(['reports'], { reports: [strategic] });
+    const api = { reports: () => Promise.resolve({ reports: [strategic] }) } as unknown as Api;
+    render(
+      <QueryClientProvider client={client}>
+        <ApiProvider api={api}>
+          <BattleReports />
+        </ApiProvider>
+      </QueryClientProvider>,
+    );
+
+    await userEvent.click(screen.getByRole('button', { name: /Sable/ }));
+    expect(screen.getByText('Destroyed resources')).toBeVisible();
+    expect(screen.getByText('CORE')).toBeVisible();
+    expect(screen.getByText('L6 → L5')).toBeVisible();
+    expect(screen.getByText('REFINERY ×1')).toBeVisible();
+    expect(screen.getByText('Shield destroyed')).toBeVisible();
+    expect(screen.getByText('Bastion')).toBeVisible();
+  });
+
+  it('explains whether Radar or Telescope triggered an in-flight kill', async () => {
+    const intercepted: StrategicBattleReport = {
+      kind: 'STRATEGIC',
+      id: 's2',
+      missionId: 'death-star-2',
+      at: new Date('2026-08-26T12:00:00.000Z'),
+      attacking: true,
+      opponentName: 'Sable',
+      opponentPlanet: 'Grimhold',
+      opponentPlanetId: 'p2',
+      yourPlanet: 'Vantage-3',
+      outcome: 'INTERCEPTED',
+      damage: 0,
+      destroyedFleet: {},
+      destroyedResources: { alloy: 0, crystal: 0, deuterium: 0 },
+      levelChanges: [],
+      destroyedOrders: [],
+      shieldDestroyed: 0,
+      trigger: 'TELESCOPE',
+    };
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    client.setQueryData(['reports'], { reports: [intercepted] });
+    const api = { reports: () => Promise.resolve({ reports: [intercepted] }) } as unknown as Api;
+    render(
+      <QueryClientProvider client={client}>
+        <ApiProvider api={api}>
+          <BattleReports />
+        </ApiProvider>
+      </QueryClientProvider>,
+    );
+
+    await userEvent.click(screen.getByRole('button', { name: /Sable/ }));
+    expect(screen.getByText('Death Star destroyed in flight')).toBeVisible();
+    expect(screen.getByText(/identified it through Telescope sight/)).toBeVisible();
+  });
+
+  it('opens the exact report requested by a battle notification', async () => {
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    client.setQueryData(['reports'], { reports: [base] });
+    const api = { reports: () => Promise.resolve({ reports: [base] }) } as unknown as Api;
+    render(
+      <QueryClientProvider client={client}>
+        <ApiProvider api={api}>
+          <BattleReports open={{ missionId: 'mission-b1', request: 1 }} />
+        </ApiProvider>
+      </QueryClientProvider>,
+    );
+
+    expect(await screen.findByText(/You broke most of the defence but not all of it/)).toBeVisible();
+  });
   /**
    * THE DENOMINATOR. Twelve of fifteen is a disaster and twelve of eighty is the
    * cost of doing business; without the roster the report could not tell them
@@ -97,12 +209,20 @@ describe('what a battle report explains', () => {
   it('gives your own losses a force to be measured against', async () => {
     await openSheet(report());
 
-    expect(screen.getByText('Sent')).toBeVisible();
-    expect(screen.getByText('Lost')).toBeVisible();
-    expect(screen.getByText('Left')).toBeVisible();
-    // Fifteen craft went — twelve Wasps AND the three Haulers that never fired,
-    // because a raid that brings its cargo home is a raid that paid for itself.
-    expect(screen.getByText('15 into the fight · 2 destroyed · 13 standing')).toBeVisible();
+    /*
+      THE TABLE BECAME A BAR. Owner instruction: sent / lost / left were three
+      columns a player had to assemble into the question they were holding. The
+      denominator is still the point — twelve of fifteen is a disaster and twelve
+      of eighty is the cost of doing business — but it is now the WIDTH of the
+      thing that died rather than a figure to divide.
+
+      Fifteen craft went: twelve Wasps AND the three Haulers that never fired,
+      because a raid that brings its cargo home is a raid that paid for itself.
+    */
+    const bars = document.querySelectorAll('[role="img"][aria-label*="in,"]');
+    expect(bars.length).toBeGreaterThan(0);
+    const summary = [...bars].map((bar) => bar.getAttribute('aria-label') ?? '');
+    expect(summary).toContain('15 in, 2 lost, 13 left');
   });
 
   /** A defender's board is theirs, and the word for it is not "sent". */
@@ -133,9 +253,15 @@ describe('what a battle report explains', () => {
     }));
 
     expect(screen.getByText(/2 ground guns were rebuilt/)).toBeVisible();
-    // And the roster's "Left" column counts them, or the two halves of one sheet
-    // disagree about how many guns are standing.
-    expect(screen.getByText('6 into the fight · 4 destroyed · 4 standing')).toBeVisible();
+    /*
+      And the bar counts them among what is standing, or the two halves of one
+      sheet disagree about how many guns are there. Salvage is its OWN segment on
+      the bar — "these came back" is a different fact from "these never died".
+    */
+    const summary = [...document.querySelectorAll('[role="img"][aria-label*="in,"]')]
+      .map((bar) => bar.getAttribute('aria-label') ?? '');
+    expect(summary).toContain('6 in, 4 lost, 4 left');
+    expect(document.querySelector('[data-part="rebuilt"]')).toBeInTheDocument();
   });
 
   /**
@@ -172,6 +298,64 @@ describe('what a battle report explains', () => {
     expect(screen.getByText('Taken')).toBeVisible();
     expect(screen.getByText('Dominion')).toBeVisible();
     expect(screen.queryByText('Rounds')).not.toBeInTheDocument();
+  });
+
+  /**
+   * THE FORCE EQUATION, WITHOUT MENTAL SUBTRACTION.
+   *
+   * This is the exact player complaint: 150 Lances went in and 35 died, but the
+   * report made the commander compare separated figures and work out that 115
+   * returned. The payoff must answer the question before any combat jargon.
+   */
+  it('shows sent, lost and returned together in the opening verdict', async () => {
+    await openSheet(report({
+      yourFleet: { LANCE: 150 },
+      yourLosses: { LANCE: 35 },
+      theirLosses: { WASP: 14, BASTION: 10, THORN: 30 },
+    }));
+
+    const verdict = document.querySelector<HTMLElement>('[data-battle-verdict="PARTIAL"]');
+    expect(verdict).not.toBeNull();
+    const opening = within(verdict!);
+    expect(opening.getByText('Sent')).toBeVisible();
+    expect(opening.getByText('150')).toBeVisible();
+    expect(opening.getByText('Lost')).toBeVisible();
+    expect(opening.getByText('35')).toBeVisible();
+    expect(opening.getByText('Returned')).toBeVisible();
+    expect(opening.getByText('115')).toBeVisible();
+    expect(opening.getByText('You destroyed')).toBeVisible();
+    expect(opening.getByText('54')).toBeVisible();
+  });
+
+  /** A defender did not send anything, and rebuilt guns are standing again. */
+  it('uses defender words and counts rebuilt guns among what is standing', async () => {
+    await openSheet(report({
+      attacking: false,
+      yourFleet: { BASTION: 10 },
+      yourLosses: { BASTION: 7 },
+      defenceSalvage: { BASTION: 4 },
+    }));
+
+    const verdict = document.querySelector<HTMLElement>('[data-battle-verdict="PARTIAL"]');
+    const opening = within(verdict!);
+    expect(opening.getByText('Had')).toBeVisible();
+    expect(opening.queryByText('Sent')).not.toBeInTheDocument();
+    const lost = opening.getByText('Lost').parentElement;
+    const standing = opening.getByText('Standing').parentElement;
+    expect(within(lost!).getByText('7')).toBeVisible();
+    expect(within(standing!).getByText('7')).toBeVisible();
+  });
+
+  /** Old reports know the loss but not the denominator; the UI must not invent one. */
+  it('does not invent sent or returned totals for a legacy report', async () => {
+    await openSheet(report({ yourFleet: {}, yourLosses: { WASP: 2 } }));
+
+    const verdict = document.querySelector<HTMLElement>('[data-battle-verdict="PARTIAL"]');
+    const opening = within(verdict!);
+    expect(opening.queryByText('Sent')).not.toBeInTheDocument();
+    expect(opening.queryByText('Returned')).not.toBeInTheDocument();
+    expect(opening.getByText('Lost')).toBeVisible();
+    expect(opening.getByText('2')).toBeVisible();
   });
 
   /** The lesson a raider could not learn: bring Haulers. */
@@ -262,6 +446,112 @@ describe('what a battle report explains', () => {
     // Round 2 is where the Bastion went.
     expect(screen.getByText('−1 Bastion')).toBeVisible();
     expect(screen.getByText('−6 Wasp')).toBeVisible();
+  });
+
+  it('labels both damage bars with words instead of relying on colour', async () => {
+    await openSheet(report());
+    expect(screen.getAllByText('You dealt')).toHaveLength(base.rounds.length);
+    expect(screen.getAllByText('You took')).toHaveLength(base.rounds.length);
+  });
+
+  it('shows the Aegis before and after as a drawn battle metric', async () => {
+    await openSheet(report({
+      shieldAbsorbed: 360,
+      rounds: [detailedRound()],
+    }));
+
+    const aegis = screen.getByRole('img', { name: 'Aegis shield' }).closest('section');
+    expect(aegis).not.toBeNull();
+    const card = within(aegis!);
+    expect(card.getByText('AEGIS')).toBeVisible();
+    expect(card.getByText('DAMAGED')).toBeVisible();
+    expect(card.getByText('Before battle')).toBeVisible();
+    expect(card.getByText('After battle')).toBeVisible();
+    expect(card.getByText('500')).toBeVisible();
+    expect(card.getByText('140')).toBeVisible();
+    expect(card.getByText(/360 shield damage absorbed/)).toBeVisible();
+    expect(aegis!.querySelector('[data-shield-remaining="28"]')).not.toBeNull();
+  });
+
+  it('calls a shield broken only when it actually reached zero', async () => {
+    await openSheet(report({
+      grade: 'DECISIVE',
+      shieldAbsorbed: 500,
+      rounds: [detailedRound({ shieldAfter: 0, shieldAbsorbed: 500, attackerHullDamage: 300 })],
+    }));
+
+    expect(screen.getByText('BROKEN')).toBeVisible();
+    expect(screen.getByText(/broke the shield/)).toBeVisible();
+  });
+
+  it('does not claim a shield broke when the world had no active Aegis', async () => {
+    await openSheet(report({
+      grade: 'DECISIVE',
+      shieldAbsorbed: 0,
+      rounds: [detailedRound({
+        shieldBefore: 0,
+        shieldAfter: 0,
+        shieldAbsorbed: 0,
+        attackerHullDamage: 800,
+      })],
+    }));
+
+    expect(screen.queryByRole('img', { name: 'Aegis shield' })).not.toBeInTheDocument();
+    expect(screen.queryByText(/broke the shield/)).not.toBeInTheDocument();
+  });
+
+  it('explains every combat round in the same order the resolver uses', async () => {
+    await openSheet(report({ rounds: [detailedRound()] }));
+
+    const round = document.querySelector<HTMLElement>('[data-combat-round="1"]');
+    expect(round).not.toBeNull();
+    const step = within(round!);
+    expect(step.getByText('1 · Simultaneous fire')).toBeVisible();
+    expect(step.getByText(/A unit destroyed in this round still fires/)).toBeVisible();
+    expect(step.getByText('Your shot')).toBeVisible();
+    expect(step.getByText('+4%')).toBeVisible();
+    expect(step.getByText('Their shot')).toBeVisible();
+    expect(step.getByText('−3%')).toBeVisible();
+    expect(step.getByText('2 · Aegis takes the hit')).toBeVisible();
+    expect(step.getByText('Reached hulls')).toBeVisible();
+    expect(step.getByText('540')).toBeVisible();
+    expect(step.getByText('3 · Losses leave the battle')).toBeVisible();
+  });
+
+  it('explains how the attack power itself is calculated', async () => {
+    await openSheet(report({ rounds: [detailedRound()] }));
+
+    const formula = document.querySelector<HTMLElement>('[data-combat-formula]');
+    expect(formula).not.toBeNull();
+    const key = within(formula!);
+    expect(key.getByText('How attack power is built')).toBeVisible();
+    expect(key.getByText(/unit count × attack × research/)).toBeVisible();
+    expect(key.getByText(/strong match ×1.6/)).toBeVisible();
+    expect(key.getByText(/weak match ×0.625/)).toBeVisible();
+    expect(key.getByText(/−8% to \+8%/)).toBeVisible();
+    expect(key.getByText(/split by the targets’ share of total HP/)).toBeVisible();
+    expect(key.getByText(/unfinished damage carries into the next round/)).toBeVisible();
+    expect(key.getByText(/Support ships stay protected/)).toBeVisible();
+  });
+
+  it('shows the exact result and loot rules without revealing hidden survivors', async () => {
+    await openSheet(report({ grade: 'PARTIAL', rounds: [detailedRound()] }));
+
+    const formula = within(document.querySelector<HTMLElement>('[data-combat-formula]')!);
+    expect(formula.getByText('How the result is decided')).toBeVisible();
+    expect(formula.getByText(/DECISIVE.*every defending unit.*shield.*70%/)).toBeVisible();
+    expect(formula.getByText(/PARTIAL.*42%.*35%/)).toBeVisible();
+    expect(formula.getByText(/REPELLED.*less than 42%.*nothing/)).toBeVisible();
+    expect(formula.queryByText(/survivors/i)).not.toBeInTheDocument();
+  });
+
+  it('keeps old reports readable without inventing a roll or shield state', async () => {
+    await openSheet(report());
+
+    expect(screen.queryByText('Shot change')).not.toBeInTheDocument();
+    expect(screen.queryByText('Before battle')).not.toBeInTheDocument();
+    expect(screen.getAllByText('You dealt')).toHaveLength(base.rounds.length);
+    expect(screen.getAllByText('You took')).toHaveLength(base.rounds.length);
   });
 
   /**
@@ -382,7 +672,8 @@ describe('what a battle report explains', () => {
     expect(screen.getByText('Bu savaş ne yaptı')).toBeVisible();
     expect(screen.getByText(/Ambarların doldu/)).toBeVisible();
     expect(screen.getByText('Giden')).toBeVisible();
-    expect(screen.getByText(/Savaşa 15 girdi/)).toBeVisible();
+    // The roster is a bar now; its sentence lives where a screen reader hears it.
+    expect(document.querySelector('[role="img"][aria-label*="gitti"]')).toBeInTheDocument();
     await i18n.changeLanguage('en');
   });
 });

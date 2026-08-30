@@ -8,7 +8,7 @@ import { GameError } from './planet.js';
 export interface GalaxyEventPayloadByKind {
   bombardment: { planetName: string; commanderName: string };
   core_tier: { planetName: string; commanderName: string; tier: number };
-  isotope_exhausted: { asteroidIndex: number };
+  isotope_exhausted: Record<string, never>;
   wreck_formed: { planetName: string; commanderName: string };
   wreck_exhausted: { planetName: string; commanderName: string };
   dominion_leader: { planetName: string; commanderName: string };
@@ -19,6 +19,20 @@ export interface GalaxyEventPayloadByKind {
     outcome: 'FIRST_STRIKE' | 'CAPTURED' | 'INEFFECTIVE';
     /** Capitals are destructible but never offer a control-transfer follow-up. D98. */
     capturable: boolean;
+  };
+  /**
+   * A strategic weapon destroyed on a defender's ring. T10.
+   *
+   * The chronicle is the galaxy's memory of public transitions (D96), and there is
+   * no larger one: 33,000 resources and an hour of build ending in a flash over
+   * somebody's radar circle. Leaving it out would make the record silent about the
+   * single most expensive thing that can happen in a season.
+   */
+  strategic_intercept: {
+    planetName: string;
+    commanderName: string;
+    range: number;
+    trigger?: 'RADAR' | 'TELESCOPE';
   };
   control_transfer: { planetName: string; commanderName: string };
 }

@@ -313,6 +313,7 @@ export async function loadLocked(
     {
       refineryLevel: levels.REFINERY,
       extractorLevel: levels.EXTRACTOR,
+      plantLevel: levels.DEUTERIUM_PLANT,
       // The store's ceiling scales with the Vault now, so `collect()` needs it.
       vaultLevel: levels.VAULT,
       aegisLevel: effectiveInstruments.AEGIS ?? 0,
@@ -625,7 +626,7 @@ export const refreshWealth = (tx: Tx, planet: LockedPlanet): Promise<number> =>
   recomputeWealth(tx, planet.planetId);
 
 /** Everything a player currently owns, including fleets that are away. */
-export async function totalUnitsOf(tx: Tx, planetId: string): Promise<Fleet> {
+export async function totalUnitsOf(tx: Queryable, planetId: string): Promise<Fleet> {
   const rows = await tx.select().from(units).where(eq(units.planetId, planetId));
   const out: Fleet = {};
   for (const r of rows) out[r.hull] = (out[r.hull] ?? 0) + r.count;

@@ -1,9 +1,18 @@
 import { pino } from 'pino';
 import { afterAll, beforeEach, describe, expect, it } from 'vitest';
 import { eq } from 'drizzle-orm';
-import { radarLead, radarRange } from '@astera/rules';
+import {
+  coreTier,
+  orbitStandoff,
+  radarLead,
+  radarRange,
+  surfaceStandoff,
+  visualLeg,
+  worldRadius,
+} from '@astera/rules';
 import { missions } from '../src/db/schema.js';
 import { pendingThreads } from '../src/services/session.js';
+import { inboundRadarLead, LEAD_TOLERANCE } from '../src/services/radar.js';
 import { launchAttack } from '../src/services/mission.js';
 import { launchProbe } from '../src/services/intel.js';
 import { galaxyTraffic } from '../src/services/traffic.js';
@@ -66,13 +75,17 @@ describe('what is in flight', () => {
    * off the same row, which is what keeps it a test of the gate rather than a
    * second copy of the arithmetic.
    */
-  const raid = async (radar = 5): Promise<{ arriveAt: Date; lead: number }> => {
+  const raid = async (radar = 5): Promise<{ arriveAt: Date; lead: number; missionId: string }> => {
     if (radar > 0) await giveSatellite(f.db, theirs, 'UPLINK');
     await giveInstrument(f.db, theirs, 'RADAR', radar);
     const launch = await launchAttack(f.db, mine, theirs, { WASP: 20 }, f.clock);
     const [row] = await f.db.select().from(missions).where(eq(missions.id, launch.missionId));
     const oneWay = (row!.arriveAt.getTime() - row!.departAt.getTime()) / 60_000;
-    return { arriveAt: launch.arriveAt, lead: radarLead(radarRange(radar), row!.distance, oneWay) };
+    return {
+      arriveAt: launch.arriveAt,
+      lead: radarLead(radarRange(radar), row!.distance, oneWay),
+      missionId: launch.missionId,
+    };
   };
 
   /**
@@ -161,13 +174,42 @@ describe('what is in flight', () => {
     expect(inside[0]!.kind).toBe('incoming');
   });
 
+  it('uses the same crossing tolerance as the scheduled warning', async () => {
+    const span = radarRange(5) * 2;
+    await placeAt(f.db, mine, { x: 0, y: 0, z: 0 });
+    await placeAt(f.db, theirs, { x: span, y: 0, z: 0 });
+    // `grant` may raise the Core to hold its large setup purse. Pin the geometry
+    // this test passes to `inboundRadarLead` before the mission is created.
+    await setLevel(f.db, mine, 'CORE', 8);
+    await setLevel(f.db, theirs, 'CORE', 8);
+    const { arriveAt, missionId } = await raid(5);
+    const [row] = await f.db.select().from(missions).where(eq(missions.id, missionId));
+    const oneWay = (row!.arriveAt.getTime() - row!.departAt.getTime()) / 60_000;
+    const lead = inboundRadarLead(radarRange(5), {
+      from: { x: 0, y: 0, z: 0 },
+      to: { x: span, y: 0, z: 0 },
+      originCoreLevel: 8,
+      targetCoreLevel: 8,
+      oneWayMinutes: oneWay,
+    });
+
+    // A worker delayed inside the shared slack has already fired the warning.
+    f.clock.set(new Date(arriveAt.getTime() - (lead + LEAD_TOLERANCE / 2) * 60_000));
+    const seen = await pendingThreads(f.db, theirs, f.clock.now());
+    expect(seen).toHaveLength(1);
+    expect(seen[0]!.kind).toBe('incoming');
+  });
+
   /**
-   * A radar that detects scans but not fleets (L1 and L2) must not list an
-   * inbound raid. The reach table is zero there, and `radarDetectsFleets` reads
-   * exactly that — so a level that was never sold a fleet warning cannot leak one.
+   * NO RADAR, NO WARNING — AND THAT IS THE ONLY LEVEL THAT GETS NONE.
+   *
+   * L1 and L2 used to be listed here beside L0, because the reach table was zero
+   * for all three. The zeroes at L1 and L2 were inherited from the pre-D49 minutes
+   * ladder and sold nothing at all; every rung that draws a circle now warns
+   * inside it. What cannot leak a warning is the instrument nobody bought.
    */
-  it.each([1, 2])('gives a level-%i radar no fleet warning at any range', async (radar) => {
-    const { arriveAt } = await raid(radar);
+  it('gives a radar-less world no fleet warning at any range', async () => {
+    const { arriveAt } = await raid(0);
     for (const minutesOut of [30, 5, 1, 0]) {
       f.clock.set(new Date(arriveAt.getTime() - minutesOut * 60_000));
       expect(
@@ -175,6 +217,15 @@ describe('what is in flight', () => {
         `leaked at ${String(minutesOut)} minutes out`,
       ).toEqual([]);
     }
+  });
+
+  /** And the first rung that has a circle warns inside it, at its own size. */
+  it.each([1, 2])('gives a level-%i radar a warning inside its own circle', async (radar) => {
+    const { arriveAt } = await raid(radar);
+    f.clock.set(new Date(arriveAt.getTime() - 1 * 60_000));
+    const seen = await pendingThreads(f.db, theirs, f.clock.now());
+    expect(seen).toHaveLength(1);
+    expect(seen[0]!.kind).toBe('incoming');
   });
 
   /**
@@ -199,11 +250,17 @@ describe('what is in flight', () => {
       await setLevel(w.db, id, 'CORE', 8);
       await setLevel(w.db, id, 'SHIPYARD', 4);
     }
-    // Two pairs, 700 units apart each, far enough from one another to be separate.
-    await placeAt(w.db, fastFrom, { x: -700, z: 0 });
+    /*
+      THE LEG HAS TO OUTRUN THE CIRCLE. It was 700 units against a Radar 5 that
+      reached 570; the ladder reaches 2,200 now, so a 700-unit leg is caught at
+      launch and there is no crossing left to measure. Derived from the radius, so
+      the next table change cannot turn this into a test of nothing.
+    */
+    const span = Math.round(radarRange(5) * 1.6);
+    await placeAt(w.db, fastFrom, { x: -span, z: 0 });
     await placeAt(w.db, fastAt, { x: 0, z: 0 });
-    await placeAt(w.db, slowFrom, { x: -700, z: 900 });
-    await placeAt(w.db, slowAt, { x: 0, z: 900 });
+    await placeAt(w.db, slowFrom, { x: -span, z: span + 900 });
+    await placeAt(w.db, slowAt, { x: 0, z: span + 900 });
     await giveInstrument(w.db, fastAt, 'RADAR', 5);
     await giveInstrument(w.db, slowAt, 'RADAR', 5);
     await giveSatellite(w.db, fastAt, 'UPLINK');
@@ -234,11 +291,24 @@ describe('what is in flight', () => {
        */
       const perMinute = row!.distance / span;
       const step = 5 / perMinute;
+      const start = surfaceStandoff(worldRadius(coreTier(8)));
+      const end = orbitStandoff(worldRadius(coreTier(8)));
+      const drawn = visualLeg(
+        { x: 0, y: 0, z: 0 },
+        { x: row!.distance, y: 0, z: 0 },
+        start,
+        end,
+      );
+      const drawnLength = Math.abs(drawn.to.x - drawn.from.x);
+      const destinationClearance = Math.abs(row!.distance - drawn.to.x);
       for (let out = span; out >= 0; out -= step) {
         w.clock.set(new Date(row!.arriveAt.getTime() - out * 60_000));
         const seen = await pendingThreads(w.db, defender, w.clock.now());
         if (seen.some((t) => t.kind === 'incoming')) {
-          return { distance: (row!.distance * out) / span, lead: out };
+          return {
+            distance: destinationClearance + drawnLength * (out / span),
+            lead: out,
+          };
         }
       }
       throw new Error('never warned');
@@ -259,17 +329,62 @@ describe('what is in flight', () => {
   /**
    * THE FOG IS ENFORCED BY OMISSION, and that is what makes it safe against a
    * modified client: there is no field carrying the answer, not a nulled one.
+   *
+   * WHAT IS WITHHELD IS NOW LEVELLED RATHER THAN ABSOLUTE. D123. A heading and a
+   * route are never published to a defender at any radar level — those would give
+   * away what L2's bearing costs — but the size and the roster are exactly what
+   * `docs/game-design.md` has always advertised at L4 and L5, and until D123 there
+   * was no field on this payload to sell them through. They were being handed out
+   * for free on the public contact list instead, which is why the ladder read as
+   * worthless.
    */
-  it('never tells the defender what is in it or where it came from', async () => {
-    const { arriveAt, lead } = await raid();
+  it('tells a low radar that something is coming, and nothing else', async () => {
+    const { arriveAt, lead } = await raid(3);
     f.clock.set(new Date(arriveAt.getTime() - (lead / 2) * 60_000));
     const [inbound] = await pendingThreads(f.db, theirs, f.clock.now());
 
+    expect(inbound!.kind).toBe('incoming');
+    expect(inbound!.mass).toBeUndefined();
     expect(inbound!.fleet).toBeUndefined();
+    expect(inbound!.originName).toBeUndefined();
     expect(inbound!.path).toBeUndefined();
-    expect(inbound!.targetName).toBe('inbound fleet');
+    /**
+     * AND IT NAMES THE DEFENDER'S OWN WORLD, WHICH IS NOT A RADAR PRODUCT.
+     *
+     * `targetName` used to be the literal sentence `'inbound fleet'` — user-facing
+     * copy written on the server — and the world under the crosshair was nowhere
+     * on the payload. A commander with four worlds could not tell which one to
+     * defend. The radar ladder sells the ATTACKER's side: that something is coming
+     * (L3), how big (L4), from where and with what (L5). None of that is this.
+     */
+    expect(inbound!.targetPlanetId).toBe(theirs);
+    expect(inbound!.targetName).not.toBe('inbound fleet');
     // Not the attacker's world, under any key.
     expect(JSON.stringify(inbound)).not.toContain(mine);
+  });
+
+  /** L4 buys the size band: enough to choose between spending, flying out and standing. */
+  it('estimates the size at radar 4, without naming a hull', async () => {
+    const { arriveAt, lead } = await raid(4);
+    f.clock.set(new Date(arriveAt.getTime() - (lead / 2) * 60_000));
+    const [inbound] = await pendingThreads(f.db, theirs, f.clock.now());
+
+    expect(inbound!.mass).toBe('LIGHT');
+    expect(inbound!.fleet).toBeUndefined();
+    expect(inbound!.originName).toBeUndefined();
+  });
+
+  /** And L5, the top of the ladder, names the hulls and the world they left. */
+  it('names the roster and the origin at radar 5', async () => {
+    const { arriveAt, lead } = await raid(5);
+    f.clock.set(new Date(arriveAt.getTime() - (lead / 2) * 60_000));
+    const [inbound] = await pendingThreads(f.db, theirs, f.clock.now());
+
+    expect(inbound!.fleet).toEqual({ WASP: 20 });
+    expect(inbound!.mass).toBe('LIGHT');
+    expect(inbound!.originName).toBeDefined();
+    // A name, which is what turns a warning into a grudge — never a route.
+    expect(inbound!.path).toBeUndefined();
   });
 
   it('tells you everything about your own craft, because you packed it', async () => {
@@ -485,8 +600,8 @@ describe('whose craft is in flight', () => {
     const warned = await pendingThreads(f.db, theirs, f.clock.now());
     expect(warned).toHaveLength(1);
     expect(warned[0]!.kind).toBe('incoming');
+    // A heading is never sold, at any level: it would give away what L2 costs.
     expect(warned[0]!.path).toBeUndefined();
-    expect(warned[0]!.fleet).toBeUndefined();
     expect(warned[0]!.id).toBeUndefined();
     // An inbound thread carries no id, so it cannot collide with a contact either.
     expect(await drawnTwice(theirs)).toEqual([]);

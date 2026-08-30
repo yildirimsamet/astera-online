@@ -1,17 +1,24 @@
 import {
   HULLS,
   PROSPECTOR,
+  buildingCost,
   buildMinutes,
   collect,
   defenceMinutes,
   instrumentCost,
   instrumentMaxed,
+  groundLoad,
+  groundSlots,
+  hangarCapacity,
+  hangarLoad,
+  hullBulk,
+  plantCeiling,
   productionMult,
+  prospectorRoom,
   satelliteCost,
   satelliteSlots,
   seeingUnlocked,
   shipMinutes,
-  upgradeCost,
   type BuildingId,
   type HullId,
   type InstrumentId,
@@ -20,6 +27,7 @@ import {
 import type { Clock } from '../clock.js';
 import type { Db, Tx } from '../db/client.js';
 import { buildQueueContext, placeBuildOrder } from './buildQueue.js';
+import { asTech } from './researchState.js';
 import { planetView, type PlanetView } from './planetView.js';
 import {
   GameError,
@@ -101,6 +109,7 @@ export async function collectWorks(
       {
         refineryLevel: planet.buildings.REFINERY,
         extractorLevel: planet.buildings.EXTRACTOR,
+        plantLevel: planet.buildings.DEUTERIUM_PLANT,
         vaultLevel: planet.buildings.VAULT,
         aegisLevel: planet.effectiveInstruments.AEGIS ?? 0,
         production: productionMult(planet.orbit),
@@ -154,8 +163,31 @@ export async function placeBuildingUpgrade(
   if (type !== 'CORE' && level >= context.projected.buildings.CORE) {
     throw new GameError('CORE_CEILING', 'Command Core must be raised first');
   }
+  /**
+   * A SECOND CEILING, AND IT IS THE FIRST ONE SAID AGAIN. T5.
+   *
+   * No building may pass its Command Core; no Deuterium Refinery may pass its
+   * research rung. Choosing the shape a player already knows is the whole point —
+   * the mechanic teaches nothing new and reads the moment it refuses.
+   *
+   * Off the PROJECTED rung, so a research order already ahead in this same queue
+   * counts. The two other producers have no such gate and take this branch for
+   * free; only the plant has a rung to be measured against.
+   */
+  if (type === 'DEUTERIUM_PLANT') {
+    const rung = context.projected.research.get('DEUTERIUM_SYNTHESIS') ?? 0;
+    const ceiling = plantCeiling(rung);
+    if (level >= ceiling) {
+      throw new GameError(
+        'RESEARCH_CEILING',
+        `Deuterium Synthesis ${String(rung)} allows a Refinery of ${String(ceiling)}.`,
+        409,
+        { rung, ceiling },
+      );
+    }
+  }
 
-  const cost = upgradeCost(level);
+  const cost = buildingCost(type, level);
   await placeBuildOrder(tx, planet, context, {
     kind: 'BUILDING',
     subject: type,
@@ -233,7 +265,9 @@ export async function placeUnitBuild(
      */
   if (hull === 'PROSPECTOR') {
     const have = context.projected.units.PROSPECTOR ?? 0;
-    if (have + count > PROSPECTOR.max) {
+    // `prospectorRoom` is the one place the cap arithmetic lives, so this door and
+    // the transfer doors in `movement.ts` cannot answer the question differently.
+    if (count > prospectorRoom(have)) {
       throw new GameError(
         'PROSPECTOR_CAP',
         have >= PROSPECTOR.max
@@ -245,6 +279,41 @@ export async function placeUnitBuild(
         { max: PROSPECTOR.max, have, ...(have >= PROSPECTOR.max ? { context: 'atLimit' } : {}) },
       );
     }
+  }
+
+  /**
+   * TWO CEILINGS, TWO POOLS, AND THE ORDER IS CHARGED TO EXACTLY ONE OF THEM. T4.
+   *
+   * Ships answer to the Hangar and emplacements to the Command Core, deliberately:
+   * one shared pool would bind attack and defence to a single slider and collapse
+   * two decisions into one. The split is read off `spec.ground`, the same field
+   * that already decides how long the order takes to build.
+   *
+   * Counted over `projected.units`, so what is already in this queue counts. Two
+   * orders that each fit and together do not must be refused on the second, or the
+   * ceiling is a suggestion anybody walks past by tapping twice. Only THIS queue is
+   * projected — a Hangar rising in CONSTRUCTION cannot honestly hand room to a hull
+   * that may finish first in YARD.
+   *
+   * Inside the planet row lock, the same check-then-act shape `assertFreeBay` and
+   * the Prospector cap already take.
+   */
+  const needed = hullBulk(hull) * count;
+  const capacity = spec.ground
+    ? groundSlots(context.projected.buildings.CORE)
+    : hangarCapacity(context.projected.buildings.HANGAR);
+  const used = spec.ground
+    ? groundLoad(context.projected.units)
+    : hangarLoad(context.projected.units);
+  if (used + needed > capacity) {
+    throw new GameError(
+      spec.ground ? 'GROUND_SLOTS_FULL' : 'HANGAR_FULL',
+      spec.ground
+        ? `This world stands ${String(capacity)} of ground defence and holds ${String(used)}.`
+        : `Your Hangar holds ${String(capacity)} and is carrying ${String(used)}.`,
+      409,
+      { capacity, used, needed },
+    );
   }
 
   const cost = {
@@ -259,7 +328,7 @@ export async function placeUnitBuild(
     cost,
     minutes: spec.ground
       ? defenceMinutes(cost, context.projected.buildings.SHIPYARD)
-      : shipMinutes(cost, context.projected.buildings.SHIPYARD),
+      : shipMinutes(cost, context.projected.buildings.SHIPYARD, asTech(context.projected.research)),
   });
 }
 

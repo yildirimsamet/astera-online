@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 import i18n from '../i18n/index.js';
-import { compact } from '../lib/format.js';
+import { compact, decimal } from '../lib/format.js';
 import { haptic } from '../lib/haptics.js';
 import {
   AttackIcon,
@@ -26,13 +26,20 @@ import { RESOURCE_ART } from './assets.js';
  * direction is that the art should be in front. A price is exactly where a player
  * wants to recognise a substance at a glance rather than parse a symbol.
  */
-function Mark({ of }: { of: 'alloy' | 'crystal' | 'deuterium' }) {
+function Mark({
+  of,
+  className = 'size-4',
+}: {
+  of: 'alloy' | 'crystal' | 'deuterium';
+  /** Sized by the caller where it stands beside icons that grow, as in `StatStrip`. */
+  className?: string;
+}) {
   return (
     <img
       src={RESOURCE_ART[of]}
       alt=""
       aria-hidden
-      className="size-4 shrink-0 object-contain"
+      className={`${className} shrink-0 object-contain`}
     />
   );
 }
@@ -279,12 +286,22 @@ export function StatStrip({
   hp,
   speed,
   cargo,
+  fuel,
   size = 'row',
 }: {
   atk: number;
   hp: number;
   speed: number;
   cargo: number;
+  /**
+   * Deuterium this hull burns over `FUEL.reference`, off `hullFuelRate`. T6.
+   *
+   * A RATE, and the value carries its own span because the row form of this strip
+   * renders no labels: `0.1 /1k` says what a bare `0.1` beside a deuterium mark
+   * cannot. The launch and transfer sheets quote the CHARGE — this card has no
+   * destination to charge against, which is exactly why it quotes a rate instead.
+   */
+  fuel: number;
   size?: 'row' | 'card';
 }) {
   const big = size === 'card';
@@ -323,6 +340,20 @@ export function StatStrip({
         text={cargo === 0 ? i18n.t('action.statCargoNone') : undefined}
         big={big}
       />
+      <Stat
+        icon={<Mark of="deuterium" className={big ? 'size-5' : 'size-4'} />}
+        tone="fuel"
+        label={i18n.t('action.statFuel')}
+        value={fuel}
+        // A gun never leaves the ground, so it has no rate — the same reason the
+        // speed beside it says "fixed" rather than nought.
+        text={
+          fuel <= 0
+            ? i18n.t('action.statFuelNone')
+            : i18n.t('action.statFuelRate', { value: decimal(fuel) })
+        }
+        big={big}
+      />
     </div>
   );
 }
@@ -336,7 +367,7 @@ function Stat({
   big,
 }: {
   icon: ReactNode;
-  tone: 'attack' | 'hull' | 'speed' | 'cargo';
+  tone: 'attack' | 'hull' | 'speed' | 'cargo' | 'fuel';
   label: string;
   value: number;
   text?: string;

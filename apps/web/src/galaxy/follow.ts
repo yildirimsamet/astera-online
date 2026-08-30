@@ -38,7 +38,7 @@ import type { Focus } from './FocusPanel.js';
  */
 export function focusIdentity(focus: Focus | null): string | null {
   if (!focus) return null;
-  if (focus.kind === 'asteroid') return `asteroid:${String(focus.index)}`;
+  if (focus.kind === 'asteroid') return `asteroid:${focus.id}`;
   if (focus.kind === 'thread') return `thread:${focus.key}`;
   return `${focus.kind}:${focus.id}`;
 }

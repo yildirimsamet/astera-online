@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { render, screen } from '@testing-library/react';
+import { cleanup, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { describe, expect, it, vi } from 'vitest';
@@ -17,6 +17,8 @@ const target: GalaxyPlanet = {
   position: { x: 120, y: 0, z: 80 },
   coreTier: 2,
   coreLevel: 6,
+  intel: 'RESOLVED' as const,
+  state: { kind: 'NORMAL' as const },
   satellites: [],
   shielded: false,
   isSelf: false,
@@ -129,5 +131,112 @@ describe('the fleet that is already away', () => {
 
     expect(screen.getByText(/no ships at home/i)).toBeInTheDocument();
     expect(screen.getByText(/away on a flight/i)).toHaveTextContent('12 Wasp');
+  });
+});
+
+/**
+ * THE BET, AS A SHAPE. Owner instruction, D142.
+ *
+ * This sheet's headline has always been a COUNT of units left holding, and a
+ * count is the wrong measure of a garrison: twelve Wasps and three Bulwarks are
+ * the same number and not remotely the same defence. The bar is made of POWER,
+ * and the split between what stays and what leaves is the decision being made —
+ * drawn as the thing being taken away from the thing that remains.
+ */
+describe('what the launch costs the world it leaves', () => {
+  const show = (fleet: Record<string, number>, ground: Record<string, number> = {}) => {
+    render(
+      <LaunchSheet
+        target={target}
+        planet={planetView({ fleet, ground })}
+        onClose={vi.fn()}
+        onLaunched={vi.fn()}
+      />,
+      { wrapper },
+    );
+    return {
+      holds: () => Number.parseFloat(
+        document.querySelector<HTMLElement>('[data-part="holds"]')!.style.width,
+      ),
+      leaves: () => Number.parseFloat(
+        document.querySelector<HTMLElement>('[data-part="leaves"]')!.style.width,
+      ),
+    };
+  };
+
+  it('draws the whole garrison as holding before anything is packed', () => {
+    const bar = show({ WASP: 6 });
+    expect(bar.holds()).toBeCloseTo(100, 1);
+    expect(bar.leaves()).toBeCloseTo(0, 1);
+  });
+
+  it('carves the departing fleet out of the garrison as it is packed', async () => {
+    const bar = show({ WASP: 4 });
+    const user = userEvent.setup();
+    await user.click(screen.getByRole('button', { name: /more wasp/i }));
+    expect(bar.leaves()).toBeCloseTo(25, 1);
+    expect(bar.holds()).toBeCloseTo(75, 1);
+  });
+
+  /**
+   * THE REASON THE BAR IS POWER AND NOT A HULL COUNT. Sending one of two Bulwarks
+   * must not look like sending one of two Wasps when the ground battery behind
+   * them is unchanged; the fraction of the DEFENCE that leaves is the fact.
+   */
+  it('measures what leaves by what it was worth, not by how many hulls it was', async () => {
+    const user = userEvent.setup();
+    const light = show({ WASP: 1, BULWARK: 1 });
+    await user.click(screen.getByRole('button', { name: /more wasp/i }));
+    const waspShare = light.leaves();
+    cleanup();
+
+    const heavy = show({ WASP: 1, BULWARK: 1 });
+    await user.click(screen.getByRole('button', { name: /more bulwark/i }));
+    expect(heavy.leaves()).toBeGreaterThan(waspShare);
+  });
+
+  it('says the split out loud for anyone who cannot see the bar', () => {
+    show({ WASP: 3 });
+    expect(screen.getByRole('img', { name: /defence power holds/i })).toBeInTheDocument();
+  });
+
+  /** A world with nothing standing must not divide by zero. */
+  it('survives a world whose every craft is already away', () => {
+    expect(() => show({})).not.toThrow();
+  });
+});
+
+/**
+ * THE FUEL IS A SPEND AGAINST A TANK, so it is drawn as one. T6 put the figure on
+ * this sheet and turned it red when the tank could not cover it — which says
+ * "refused" and not how far off, so a commander ten deuterium short and one a
+ * thousand short read the same screen.
+ */
+describe('the fuel this launch burns', () => {
+  const packOne = async (deuterium: number) => {
+    render(
+      <LaunchSheet
+        target={target}
+        planet={planetView({ fleet: { WASP: 2 } }, { deuterium })}
+        onClose={vi.fn()}
+        onLaunched={vi.fn()}
+      />,
+      { wrapper },
+    );
+    await userEvent.setup().click(screen.getByRole('button', { name: /more wasp/i }));
+  };
+
+  it('draws what is left of the tank when the flight is covered', async () => {
+    await packOne(10_000);
+    const bar = document.querySelector('[data-spend-bar]');
+    expect(bar).toHaveAttribute('data-short', 'false');
+    expect(document.querySelector('[data-spend-left]')).toBeInTheDocument();
+  });
+
+  it('runs past the end of the tank when it is not, and names the gap', async () => {
+    await packOne(0);
+    expect(document.querySelector('[data-spend-bar]')).toHaveAttribute('data-short', 'true');
+    expect(document.querySelector('[data-spend-short]')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /send \d+ ships/i })).toBeDisabled();
   });
 });

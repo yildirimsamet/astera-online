@@ -1,15 +1,18 @@
 import { app, document, landing, loading, servers, settings } from './entry.js';
 import { chat, leaderboard, menu, pendingStrip, sheet, signals, statusBar, surface, toast } from './shell.js';
-import { focus, galaxy } from './world.js';
-import { action, itemSheet, launch, planet, planetHero, transfer, upgradeRow } from './planet.js';
+import { focus, galaxy, worlds } from './world.js';
+import { action, capacity, itemSheet, launch, planet, planetHero, transfer, upgradeRow } from './planet.js';
 import { clarity, dossier, intel, reports } from './intel.js';
 import { directives, gains, notifications, units, vocabulary } from './data.js';
 import { errors } from './errors.js';
+import { flightBar, rangeBand, spend } from './shapes.js';
 import { onboarding } from './onboarding.js';
+import { research } from './research.js';
 import { rewards } from './rewards.js';
 import { seasonRecap } from './season.js';
 import { chronicle } from './chronicle.js';
 import { clan } from './clan.js';
+import { community } from './community.js';
 
 /**
  * ENGLISH, AND IT IS THE SHAPE EVERY OTHER LANGUAGE IS CHECKED AGAINST.
@@ -44,7 +47,12 @@ export const en = {
   surface,
   galaxy,
   focus,
+  worlds,
   planet,
+  capacity,
+  spend,
+  rangeBand,
+  flightBar,
   itemSheet,
   upgradeRow,
   action,
@@ -62,10 +70,12 @@ export const en = {
   units,
   errors,
   onboarding,
+  research,
   rewards,
   seasonRecap,
   chronicle,
   clan,
+  community,
 } as const;
 
 /**

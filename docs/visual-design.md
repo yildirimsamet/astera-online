@@ -1,5 +1,42 @@
 # Visual Design & Asset Direction
 
+## The standard every system has to meet (D124)
+
+**A rule the player cannot see is not a rule.** The information layer must be visible IN THE
+3D GALAXY, not merely true in the payload. Telling somebody "raise your Telescope and you will
+see more" is not the same thing as putting weather on the disc and letting them discover it by
+looking. If a rule only works on paper, the galaxy is decoration wrapped around a spreadsheet —
+and this game could have been built on paper.
+
+This came from the owner playing their own account an hour after the sensor horizon shipped:
+*"I have no telescope. How would I know a distant fleet is invisible?"* They could not, and no
+amount of correct server behaviour was going to tell them. So the answer is never a tooltip. It
+is a thing in the world: cloud fills what you cannot reach, clear space surrounds the worlds
+you hold, and the clearing widens when you buy a Telescope. Nobody is told.
+
+**The first attempt at this was a fog of war and it was rejected for looking bad** (D124):
+grey cloud over most of the frame bought legibility by making the galaxy smaller and duller,
+and the feel north star — *fun, utopian, epic; a live NASA photograph you can fly through* —
+does not accept that trade. **Beautiful is a requirement, not a tiebreaker.** A correct
+mechanic rendered badly does not ship, and the horizon is still waiting for an answer that
+clears both bars.
+
+Three failure modes from that build are named because each cost a draft, and any future
+attempt will meet them again:
+
+- **A surface is not a volume.** Fog drawn as horizontal sheets in the galactic plane reads as
+  a FLOOR — a sea with a pit dug in it — and the camera flies in and out of it while orbiting.
+  Space you cannot see into is a volume and has to be computed as one, per pixel, from depth.
+- **Nothing may be anchored to the lens.** Every figure is a world coordinate, or the effect
+  reads as a dirty screen rather than as a place.
+- **Dark on dark is invisible.** Cloud is lit: a bank of dust in front of a star field
+  scatters the light inside it and comes out grey. A near-black veil over a near-black sky
+  registers as "nothing changed" at any opacity.
+
+And the line any such effect must not cross: **a veil, not a wall.** Worlds stay public (D49,
+D119), so a far world has to remain findable through whatever is drawn. What the horizon
+actually hides is the MOVEMENT, never the map.
+
 Capital, colony and neutral silhouettes must remain distinct at mobile map scale. Capitals
 carry a permanent command mark; owned colonies share the commander accent without borrowing
 that mark; neutral T1/T2/T3 worlds communicate increasing threat through scale, orbital
@@ -47,8 +84,9 @@ and `CLAUDE.md` carries the short form; what it means for this document:
   its destination, no squadron holding over a world with nothing left to do. When a payload is
   late the world keeps running off the clock it already has and corrects itself when the truth
   lands — it never freezes and waits to be told (D52).
-- **A moment worth animating is worth everybody seeing.** The fog governs what you KNOW before a
-  decision; it is not a reason to hide the world from the people living in it.
+- **A moment worth animating is worth everybody seeing.** The effect is public; its source is not.
+  A blind engagement draws rockets and impacts from a deterministic visual source, never a hull,
+  reticle, mass cue or real approach bearing. Radar/Telescope separately earn those craft layers.
 
 ## Art direction — Command Deck
 

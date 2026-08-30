@@ -31,6 +31,8 @@ export const keys = {
   chatMessages: ['chat', 'messages'],
   chatUnread: ['chat', 'unread'],
   chronicle: ['chronicle'],
+  announcements: ['announcements'],
+  adminFeedback: ['admin', 'feedback'],
   notifications: ['notifications'],
   unlocks: ['unlocks'],
   pending: ['pending'],

@@ -2,7 +2,7 @@ import type { ReactNode } from 'react';
 import { fireEvent, render, screen } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { describe, expect, it, vi } from 'vitest';
-import { DEATH_STAR, GALAXY_SPAN, MULTI_WORLD } from '@astera/rules';
+import { DEATH_STAR, GALAXY_SPAN, MULTI_WORLD, distance, missionFuel } from '@astera/rules';
 import { duration } from '../src/lib/time.js';
 import { compact } from '../src/lib/format.js';
 import { Api } from '../src/api/client.js';
@@ -47,6 +47,8 @@ const target = (over: Partial<GalaxyPlanet> = {}): GalaxyPlanet => ({
   position: { x: 200, y: 0, z: 0 },
   coreTier: 2,
   coreLevel: 6,
+  intel: 'RESOLVED' as const,
+  state: { kind: 'NORMAL' as const },
   satellites: [],
   shielded: false,
   isSelf: false,
@@ -117,6 +119,44 @@ describe('the focus rail’s two commitments', () => {
     expect(probe.querySelector('svg')).not.toBeNull();
     // Not the commit weight: a probe is a spend, not the irreversible bet.
     expect(probe.className).not.toContain('slab-commit');
+  });
+
+  it('shows a current clanmate identity without offering hostile controls', () => {
+    const Wrapper = harness();
+    render(
+      <Wrapper>
+        <PlanetFocus
+          target={target({
+            clanmate: true,
+            clan: { id: 'clan-1', name: 'Nova', tag: 'NVA' },
+          })}
+          planet={{
+            ...mine,
+            strategic: {
+              id: 'asset-1',
+              status: 'READY',
+              readyAt: null,
+              remainingSeconds: 0,
+            },
+          }}
+          intel={intel}
+          reports={[]}
+          now={NOW}
+          onClose={vi.fn()}
+          onAttack={vi.fn()}
+          onDeathStar={vi.fn()}
+          onInstallTelescope={vi.fn()}
+          onLaunched={vi.fn()}
+          open
+          onToggle={vi.fn()}
+        />
+      </Wrapper>,
+    );
+
+    expect(screen.getByRole('region', { name: '[NVA] Sable — focus' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /attack/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /death star/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /rival/i })).not.toBeInTheDocument();
   });
 
   it('gives a focused owned world its own transfer route instead of a hostile dossier', () => {
@@ -547,7 +587,12 @@ describe('the focus rail’s two commitments', () => {
     },
   });
 
-  const settlementRig = (world: GalaxyPlanet) => {
+  /**
+   * A world that can found a colony — and, since T6, a tank that can fly the
+   * settlers there. `deuterium` is a parameter because it is the one requirement
+   * on this panel that a test can be about rather than merely satisfy.
+   */
+  const settlementRig = (world: GalaxyPlanet, deuterium = 5_000) => {
     const Wrapper = harness();
     return render(
       <Wrapper>
@@ -556,7 +601,7 @@ describe('the focus rail’s two commitments', () => {
           planet={{
             ...mine,
             fleet: { ...mine.fleet, HAULER: MULTI_WORLD.settlement.haulers },
-            planet: { ...mine.planet, alloy: 20_000, crystal: 10_000 },
+            planet: { ...mine.planet, alloy: 20_000, crystal: 10_000, deuterium },
             colonies: { highestCore: 4, colonies: 0, reservations: 0, capacity: 1 },
           }}
           intel={intel}
@@ -595,6 +640,47 @@ describe('the focus rail’s two commitments', () => {
     settlementRig(neutralAt(GALAXY_SPAN, new Date(NOW + 10 * 60_000)));
     expect(reachChip()).toContain('alert');
     expect(screen.getByRole('button', { name: /settle.*arrives too late/i })).toBeDisabled();
+  });
+
+  /**
+   * THE FOUNDING BURNS DEUTERIUM, AND THIS PANEL WAS THE ONE LAUNCH SURFACE THAT
+   * NEVER SAID SO. T6 — owner instruction, and the plan's own acceptance line:
+   * *the launch screen shows the cost before the commitment*.
+   *
+   * Every other price of a settlement is on this panel — the colony slot, the
+   * flight bay, the two Haulers, the Alloy, the Crystal, the reach — and the
+   * server has refused `INSUFFICIENT_FUEL` since fuel landed. So the one control
+   * in the game that founds a world offered itself to a commander with an empty
+   * tank, took the tap, and answered with a refusal nothing on screen predicted.
+   *
+   * The raid sheet and the transfer sheet have both drawn this figure for a
+   * release. This is the same launch through a third door.
+   */
+  const CLAIM_OPEN = new Date(NOW + 40 * 60_000);
+
+  it('names the deuterium the settlers burn, beside the ore they carry', () => {
+    settlementRig(neutralAt(1_200, CLAIM_OPEN));
+    const fuel = missionFuel(
+      { HAULER: MULTI_WORLD.settlement.haulers },
+      distance({ x: 0, y: 0, z: 0 }, { x: 1_200, y: 0, z: 0 }),
+      1,
+    );
+    expect(fuel).toBeGreaterThan(0);
+
+    const chip = [...document.querySelectorAll('span.rounded-chip')]
+      .find((el) => el.querySelector('img[src*="deuterium"]'));
+    expect(chip, 'the founding never says what it burns').toBeDefined();
+    expect(chip).toHaveTextContent(compact(fuel));
+  });
+
+  it('refuses the founding a dry tank cannot fly, before the tap', () => {
+    settlementRig(neutralAt(1_200, CLAIM_OPEN), 0);
+    expect(screen.getByRole('button', { name: /settle.*deuterium/i })).toBeDisabled();
+  });
+
+  it('offers it the moment the tank covers the leg', () => {
+    settlementRig(neutralAt(1_200, CLAIM_OPEN), 5_000);
+    expect(screen.getByRole('button', { name: /^settle$/i })).toBeEnabled();
   });
 });
 
@@ -651,5 +737,127 @@ describe('the probe control while a world is still cooling', () => {
   it('offers the launch when the server has never heard of the rule', () => {
     show({ probeCooldowns: [] });
     expect(screen.getByRole('button', { name: /send a probe/i })).toBeEnabled();
+  });
+});
+
+/**
+ * THE PANEL FOR A WORLD NOBODY HAS SURVEYED. D127.
+ *
+ * Tapping an unsurveyed world opens this panel — the tap asked for it, and a
+ * control that does nothing reads as broken — and every header line in it was
+ * reading a field the server deliberately OMITS. The schema's defaults dressed
+ * each absence as an answer:
+ *
+ *   · the eyebrow printed "World · " with an empty name,
+ *   · the title printed an empty commander,
+ *   · `WorldKind` fell through both of its branches and announced NEUTRAL,
+ *   · and the Rival control appeared, on exactly the worlds where `isRivalNode`
+ *     then refuses to draw the reticle — a button whose effect is invisible.
+ *
+ * What must SURVIVE is everything computed from the POSITION, which is public in
+ * every state: the range, the flight time, and the attack itself. Diving blind is
+ * the choice D127 exists to create, and the panel has to let a player make it.
+ */
+describe('the focus rail on an unsurveyed world', () => {
+  const unsurveyed = () =>
+    target({
+      // Exactly the payload: no name, no owner, no kind, no hardware.
+      intel: 'UNKNOWN',
+      name: '',
+      owner: '',
+      coreTier: 1,
+      coreLevel: 0,
+      kind: undefined,
+    });
+
+  const openOn = (over: Partial<GalaxyPlanet>, extra: Record<string, unknown> = {}) => {
+    const Wrapper = harness();
+    render(
+      <Wrapper>
+        <PlanetFocus
+          target={{ ...unsurveyed(), ...over }}
+          planet={mine}
+          intel={intel}
+          reports={[]}
+          now={NOW}
+          onClose={vi.fn()}
+          onAttack={vi.fn()}
+          onInstallTelescope={vi.fn()}
+          onLaunched={vi.fn()}
+          open
+          onToggle={vi.fn()}
+          {...extra}
+        />
+      </Wrapper>,
+    );
+  };
+
+  it('never calls it neutral, which is a claim it cannot make', () => {
+    openOn({});
+    expect(screen.queryByText(/^Neutral$/i)).not.toBeInTheDocument();
+  });
+
+  it('says nobody has looked here instead of showing an empty commander', () => {
+    openOn({});
+    expect(screen.getByText(/nobody has looked here/i)).toBeInTheDocument();
+    expect(screen.getByText(/unsurveyed/i)).toBeInTheDocument();
+  });
+
+  /** Marking a rival you cannot see would put a reticle nowhere. */
+  it('offers no rival control', () => {
+    openOn({});
+    expect(screen.queryByRole('button', { name: /rival/i })).not.toBeInTheDocument();
+  });
+
+  /**
+   * AND THE COMMITMENT IS STILL THERE. D127 retired the development band exactly
+   * so that this control would never become a refusal arriving after the work.
+   */
+  it('still offers the attack, because diving blind is the whole point', () => {
+    openOn({});
+    expect(screen.getByRole('button', { name: /attack/i })).toBeInTheDocument();
+  });
+
+  /**
+   * A LIVE CLAIM WINDOW SURVIVES THE FOG, SO THE CONTROL HAS TO AS WELL. D112.
+   *
+   * The server publishes the window on an unsurveyed world on purpose — "a race
+   * only the people who already probed the rock can see is not a race" — and the
+   * panel then gated the settle control on `kind === 'NEUTRAL'`, a field the same
+   * payload omits. The disc drew the claim ring and said "Claim open", and the
+   * panel offered no way in.
+   */
+  it('offers the settlement while the claim window it was sent is open', () => {
+    openOn(
+      { neutral: { claimUntil: new Date(NOW + 6 * 3_600_000) } },
+      { onSettle: vi.fn() },
+    );
+    /**
+     * Every state of this control begins with the word, blocked or ready — see
+     * `settleNeed*` — so the assertion is that it is ON SCREEN, not that this
+     * particular fixture can afford it.
+     */
+    expect(screen.getByRole('button', { name: /^Settle\b/ })).toBeInTheDocument();
+  });
+
+  /** And nothing to enter when there is no race on. */
+  it('offers no settlement when no window was sent', () => {
+    openOn({}, { onSettle: vi.fn() });
+    expect(screen.queryByRole('button', { name: /^Settle\b/ })).not.toBeInTheDocument();
+  });
+
+  /**
+   * AND NO STRATEGY GUIDE, which is the same rule one level down.
+   *
+   * Every branch of `StrategicWorldGuide` is keyed on `target.kind`, so an
+   * unsurveyed world fell through to the Death Star route — ending in "the second
+   * impact captures it". The world may be a CAPITAL, which is uncapturable and
+   * returns from that guide long before the line is reached. A commitment surface
+   * may state a rule or say nothing; it may not guess.
+   */
+  it('promises nothing about what a strike would do to it', () => {
+    openOn({});
+    expect(screen.queryByText(/second impact/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/colony route/i)).not.toBeInTheDocument();
   });
 });

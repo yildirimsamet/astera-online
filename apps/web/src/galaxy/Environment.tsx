@@ -3,7 +3,6 @@ import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import { paintDiscCanvas, paintNebulaCanvas } from './nebula.js';
 import { DISC_RADIUS } from './scene.js';
-import { useReducedMotionPreference } from './motion.js';
 
 /**
  * The space the game happens in.
@@ -29,7 +28,6 @@ import { useReducedMotionPreference } from './motion.js';
 export function Nebula() {
   const [texture, setTexture] = useState<THREE.Texture | null>(null);
   const material = useRef<THREE.MeshBasicMaterial>(null);
-  const reducedMotion = useReducedMotionPreference();
 
   useEffect(() => {
     let cancelled = false;
@@ -61,8 +59,7 @@ export function Nebula() {
   useFrame((_, delta) => {
     const m = material.current;
     if (!m || !texture) return;
-    if (reducedMotion) m.opacity = 1;
-    else if (m.opacity < 1) m.opacity = Math.min(1, m.opacity + delta * 0.9);
+    if (m.opacity < 1) m.opacity = Math.min(1, m.opacity + delta * 0.9);
   });
 
   if (!texture) return null;
@@ -559,8 +556,7 @@ const spawn = (): Meteor => {
  * meteor and no per-object overhead.
  */
 export function Meteors() {
-  const reduced = useReducedMotionPreference();
-  return reduced ? null : <MeteorField />;
+  return <MeteorField />;
 }
 
 function MeteorField() {
@@ -644,13 +640,15 @@ function MeteorField() {
  * The thing that makes a camera move feel like it is moving *through* somewhere
  * rather than orbiting a diagram. Additive, close to the plane, and drifting.
  */
+/** Three shared geometries render this many cloud-bound stars each (1,101 total). */
+export const CLOUD_STAR_COUNT = 367;
+
 export function Dust() {
-  const ref = useRef<THREE.Points>(null);
-  const reduced = useReducedMotionPreference();
+  const ref = useRef<THREE.Group>(null);
 
   const { geometry, material } = useMemo(() => {
     const random = randomStream(0xd057b47a);
-    const count = 1100;
+    const count = CLOUD_STAR_COUNT;
     const positions = new Float32Array(count * 3);
     const colours = new Float32Array(count * 3);
     const sizes = new Float32Array(count);
@@ -661,10 +659,16 @@ export function Dust() {
       const r = Math.sqrt(random()) * DISC_RADIUS * 1.15;
       const theta = random() * Math.PI * 2;
       const layer = random();
-      const height = layer < 0.62 ? 0.34 : layer < 0.9 ? 0.9 : 1.8;
+      const halfDepth = DISC_RADIUS * (layer < 0.62 ? 0.1 : layer < 0.9 ? 0.24 : 0.48);
+      // A bell-shaped offset rather than a uniform slab: most stars remain close
+      // to the cloud's middle, while a sparse tail gives it a readable volume.
+      const depth = ((random() + random() + random()) / 3 - 0.5) * halfDepth * 2;
+      // Built in the same native XY plane as the painted cloud. The shared
+      // orientation table then places one copy in each cloud plane without a
+      // second, subtly different coordinate conversion.
       positions[i * 3] = Math.cos(theta) * r;
-      positions[i * 3 + 1] = (random() - 0.5) * height;
-      positions[i * 3 + 2] = Math.sin(theta) * r;
+      positions[i * 3 + 1] = Math.sin(theta) * r;
+      positions[i * 3 + 2] = depth;
       const tint = blue.clone().lerp(warm, random() * 0.22);
       colours.set([tint.r, tint.g, tint.b], i * 3);
       sizes[i] = 0.018 + random() ** 3 * 0.05;
@@ -708,10 +712,13 @@ export function Dust() {
     return { geometry: g, material: m };
   }, []);
 
-  // One slow rotation of the whole field. Cheaper than moving 900 points, and at
-  // this speed indistinguishable from it.
-  useFrame(({ camera, size, gl }, delta) => {
-    if (ref.current && !reduced) ref.current.rotation.y += delta * 0.006;
+  // The exact same clock, axis and speed as the cloud group. Accumulating delta
+  // independently would eventually let two visually coupled groups drift apart.
+  useFrame(({ camera, size, gl, clock }) => {
+    ref.current?.quaternion.setFromAxisAngle(
+      CLOUD_GROUP_ROTATION_AXIS,
+      clock.elapsedTime * CLOUD_GROUP_ROTATION_RADIANS_PER_SECOND,
+    );
     const perspective = camera as THREE.PerspectiveCamera;
     const fov = THREE.MathUtils.degToRad(perspective.fov || 45);
     material.uniforms.uScale!.value =
@@ -726,7 +733,19 @@ export function Dust() {
     [geometry, material],
   );
 
-  return <points ref={ref} geometry={geometry} material={material} />;
+  return (
+    <group ref={ref} name="galactic-cloud-stars">
+      {CLOUD_LAYER_ROTATIONS.map((rotation, index) => (
+        <points
+          key={index}
+          geometry={geometry}
+          material={material}
+          rotation={rotation}
+          renderOrder={-70 + index}
+        />
+      ))}
+    </group>
+  );
 }
 
 /* ── the disc ───────────────────────────────────────────────── */
@@ -744,27 +763,24 @@ export function Dust() {
  * targeting reticle — thin hard strokes at constant width are vector graphics, and
  * there are none of those in a telescope image.
  *
- * So it is a painted plate now, from `paintDiscCanvas`: spiral arms of gas and
- * dust lying flat, fading to nothing at the rim. It orients BETTER than the rings
- * did, because arms carry rotation as well as extent and concentric circles cannot.
- *
- * PAINTED AFTER FIRST PAINT, like the backdrop. It is CPU work measured in
- * hundreds of milliseconds and the galaxy has to open on something; the plane
- * arrives a moment later and fades in.
+ * TEMPORARY SHALLOW-DEPTH EXPERIMENT. The painted spiral stays untouched as the
+ * dominant surface. Two very faint copies sit immediately behind and ahead of it,
+ * so an oblique camera sees a soft edge without paying for a ray-marched volume or
+ * smearing the source painting into particles.
  */
 export function Disc() {
   const [texture, setTexture] = useState<THREE.Texture | null>(null);
-  const material = useRef<THREE.MeshBasicMaterial>(null);
+  const group = useRef<THREE.Group>(null);
+  const materials = useRef<(THREE.MeshBasicMaterial | null)[]>([]);
 
   useEffect(() => {
     let cancelled = false;
+    let map: THREE.CanvasTexture | null = null;
     const build = (): void => {
       if (cancelled) return;
-      const map = new THREE.CanvasTexture(paintDiscCanvas());
+      map = new THREE.CanvasTexture(paintDiscCanvas());
       map.colorSpace = THREE.SRGBColorSpace;
       map.anisotropy = 4;
-      // Rotate the painted spiral itself around its centre. Moving UVs rather than
-      // the already-tilted mesh makes the visible dust arms the source of truth.
       map.center.set(0.5, 0.5);
       setTexture(map);
     };
@@ -776,50 +792,98 @@ export function Disc() {
       cancelled = true;
       if (supportsIdle) window.cancelIdleCallback(handle);
       else window.clearTimeout(handle);
+      map?.dispose();
     };
   }, []);
 
-  useFrame((_, delta) => {
-    const m = material.current;
-    if (!m || !texture) return;
-    if (m.opacity < DISC_OPACITY) m.opacity = Math.min(DISC_OPACITY, m.opacity + delta * 0.5);
-    texture.rotation = advanceDiscRotation(texture.rotation, delta);
+  useFrame(({ clock }, delta) => {
+    if (!texture) return;
+    materials.current.forEach((material, index) => {
+      if (!material) return;
+      const layer = CLOUD_DEPTH_LAYERS[index % CLOUD_DEPTH_LAYERS.length];
+      if (!layer) return;
+      material.opacity = Math.min(layer.opacity, material.opacity + delta * 0.5);
+    });
+    group.current?.quaternion.setFromAxisAngle(
+      CLOUD_GROUP_ROTATION_AXIS,
+      clock.elapsedTime * CLOUD_GROUP_ROTATION_RADIANS_PER_SECOND,
+    );
   });
 
   if (!texture) return null;
 
   return (
-    /**
-     * Lying in the plane, and readable from underneath — you may fly below the
-     * galaxy and look up at it, so a single-sided plate would leave the underside
-     * of the disc missing.
-     */
-    <mesh
-      name="galactic-dust-disc"
-      rotation={[-Math.PI / 2, 0, 0]}
-      renderOrder={-80}
-    >
-      <planeGeometry args={[DISC_RADIUS * 2.1, DISC_RADIUS * 2.1]} />
-      <meshBasicMaterial
-        ref={material}
-        map={texture}
-        side={THREE.DoubleSide}
-        transparent
-        opacity={0}
-        depthWrite={false}
-        blending={THREE.AdditiveBlending}
-        /**
-         * Not fogged. The plate spans the whole playfield, so atmospheric
-         * perspective would darken its far half and leave a gradient across the
-         * galaxy that turns with the camera — which reads as a lighting bug rather
-         * than as distance.
-         */
-        fog={false}
-        toneMapped={false}
-      />
-    </mesh>
+    <group ref={group} name="galactic-cloud-group">
+      {CLOUD_LAYER_ROTATIONS.map((rotation, index) => (
+        <group
+          key={index}
+          rotation={rotation}
+          scale={CLOUD_SPREAD_SCALE}
+          name={`galactic-dust-cloud-${String(index + 1)}`}
+        >
+          {CLOUD_DEPTH_LAYERS.map((layer, layerIndex) => {
+            const materialIndex = index * CLOUD_DEPTH_LAYERS.length + layerIndex;
+            return (
+              <mesh
+                key={layer.offset}
+                position={[0, 0, layer.offset]}
+                scale={layer.scale}
+                renderOrder={-86 + materialIndex}
+              >
+                <planeGeometry args={[DISC_RADIUS * 2.1, DISC_RADIUS * 2.1]} />
+                <meshBasicMaterial
+                  ref={(node) => { materials.current[materialIndex] = node; }}
+                  map={texture}
+                  side={THREE.DoubleSide}
+                  transparent
+                  opacity={0}
+                  depthWrite={false}
+                  blending={THREE.AdditiveBlending}
+                  fog={false}
+                  toneMapped={false}
+                />
+              </mesh>
+            );
+          })}
+        </group>
+      ))}
+    </group>
   );
 }
+
+/**
+ * Three genuinely different volumes through one sun.
+ *
+ * Rotating three already-horizontal planes around their own Z axis only turns the
+ * painting inside the SAME plane, which made all copies stack into one cloud.
+ * These are the XY, XZ and YZ orientations, so all three silhouettes remain
+ * distinct as their parent group turns. A plane starts in XY; these rotations
+ * deliberately move its normal onto each of the three axes.
+ */
+const CLOUD_LAYER_ROTATIONS: readonly [number, number, number][] = [
+  [0, 0, 0],
+  [-Math.PI / 2, 0, 0],
+  [0, Math.PI / 2, 0],
+];
+
+/** Shared verbatim by the cloud painting and its embedded star fields. */
+const CLOUD_GROUP_ROTATION_AXIS = new THREE.Vector3(0.38, 1, 0.24).normalize();
+
+/**
+ * The centre keeps the exact painted cloud. The two skins only reveal depth at
+ * an angle; together they restore the same 0.18 brightness as the original plate.
+ */
+const CLOUD_DEPTH_LAYERS = [
+  { offset: -DISC_RADIUS * 0.012, opacity: 0.0125, scale: 0.995 },
+  { offset: 0, opacity: 0.065, scale: 1 },
+  { offset: DISC_RADIUS * 0.012, opacity: 0.0125, scale: 1.005 },
+] as const;
+
+/** Slightly broader than the original painted plate, without changing its shape. */
+export const CLOUD_SPREAD_SCALE = 1.12;
+
+/** Back at the original pace: one quiet 3D revolution every two minutes. */
+export const CLOUD_GROUP_ROTATION_RADIANS_PER_SECOND = (Math.PI * 2) / (2 * 60);
 
 /**
  * How bright the plane is allowed to get. Owner decision.

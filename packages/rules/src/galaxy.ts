@@ -1,4 +1,5 @@
 import { DEBRIS, GALAXY, PROSPECTOR, SEASON } from './constants.js';
+import { prospectorHoldMult, type TechLevels } from './tech.js';
 import { mulberry32 } from './rng.js';
 import { drillHoldMult, drillSpeedMult } from './economy.js';
 import { isotopeProfile } from './research.js';
@@ -10,12 +11,12 @@ export interface PlanetSlot extends Vec3 {
 }
 
 /**
- * A rock going round the disc. D19.
+ * A rock orbiting inside the galaxy sphere. D19.
  *
  * Circular orbit, constant speed, finite life. Everything about it is a pure
- * function of the season seed and its index, so the client rebuilds the entire
- * field locally and the server stores nothing about a rock except how much ore has
- * been taken out of it — the only fact a formula and a clock cannot derive.
+ * function of a server-held season key and its internal index. The server stores
+ * only non-derivable ore claims and durable sensor epochs; clients receive only
+ * trajectories they have earned, under opaque ids.
  *
  * WHY AN ORBIT AND NOT A STRAIGHT PASS. A one-way path can only ever be met by a
  * craft that is FASTER than the rock, which forced the speed band down until the
@@ -41,14 +42,26 @@ export interface AsteroidSpec {
   period: number;
   /** Angle at time zero, in radians. */
   phase: number;
-  /** Height above the disc plane. Constant for the orbit. */
-  y: number;
+  /** Tilt from the horizontal plane, in radians. */
+  inclination: number;
+  /** Rotation of the tilted plane around the vertical axis, in radians. */
+  ascendingNode: number;
   /** Game units per minute along the orbit. Independent of level, by design. */
   speed: number;
   /** Minutes since season start. */
   appearsAt: number;
   /** Minutes since season start. It is gone after this. */
   expiresAt: number;
+}
+
+/** One uninterrupted version of a commander's spherical sensor post. */
+export interface SensorEpoch {
+  at: Vec3;
+  reach: number;
+  /** Minutes since season start, inclusive. */
+  startsAt: number;
+  /** Minutes since season start, exclusive. Null while this post is current. */
+  endsAt: number | null;
 }
 
 export interface GalaxySpec {
@@ -58,11 +71,13 @@ export interface GalaxySpec {
 }
 
 /**
- * Deterministic galaxy generation. The same seed produces the same galaxy on the
- * server, in the simulator and on the client — so the client regenerates the
- * static layout locally instead of downloading it.
+ * Deterministic galaxy generation. The same seed produces the same galaxy in the
+ * server, simulator and deterministic tooling. Player APIs still send the
+ * authoritative, fog-projected world coordinates rather than asking a client to
+ * reconstruct private state.
  *
- * Designed skeleton (thin disc), randomised placement (Poisson-disc rejection).
+ * Slots fill a radius-bounded sphere with uniform-volume candidates. Randomised
+ * placement still uses Poisson-style rejection to preserve readable separation.
  */
 export function generateGalaxy(
   seed: number,
@@ -72,34 +87,41 @@ export function generateGalaxy(
   const slots: PlanetSlot[] = [];
 
   for (let i = 0; i < slotCount; i++) {
-    let best: Vec3 | null = null;
-    let bestNearest = -1;
+    let accepted: Vec3 | null = null;
 
-    // Try a few candidates and keep the one furthest from everything placed so
-    // far. Cheaper and more even than strict rejection sampling, and it never
-    // fails to place a slot as the disc fills up.
-    for (let attempt = 0; attempt < 12; attempt++) {
-      const r = Math.sqrt(rng()) * GALAXY.radius;
+    // A minimum separation is a contract, not a preference. The old best-of-12
+    // fallback silently accepted overlaps once the 750-slot neutral search pool
+    // became dense enough. Rejection remains cheap at the shipped density; an
+    // impossible future layout fails loudly instead of creating a corrupt map.
+    for (let attempt = 0; attempt < 96; attempt++) {
+      // Cube-root radius gives equal density throughout the sphere's volume;
+      // choosing radius linearly would crowd points around the centre.
+      const r = Math.cbrt(rng()) * GALAXY.radius;
       const th = rng() * Math.PI * 2;
+      const vertical = rng() * 2 - 1;
+      const planar = Math.sqrt(1 - vertical * vertical);
       const candidate: Vec3 = {
-        x: r * Math.cos(th),
-        y: (rng() * 2 - 1) * GALAXY.thickness,
-        z: r * Math.sin(th),
+        x: r * planar * Math.cos(th),
+        y: r * vertical,
+        z: r * planar * Math.sin(th),
       };
 
       let nearest = Infinity;
       for (const s of slots) nearest = Math.min(nearest, distance(candidate, s));
       if (slots.length === 0) nearest = Infinity;
 
-      if (nearest > bestNearest) {
-        bestNearest = nearest;
-        best = candidate;
+      if (nearest >= GALAXY.minSeparation) {
+        accepted = candidate;
+        break;
       }
-      if (nearest >= GALAXY.minSeparation) break;
     }
 
-    const p = best ?? { x: 0, y: 0, z: 0 };
-    slots.push({ index: i, x: p.x, y: p.y, z: p.z });
+    if (!accepted) {
+      throw new RangeError(
+        `Unable to place galaxy slot ${String(i)} with separation ${String(GALAXY.minSeparation)}`,
+      );
+    }
+    slots.push({ index: i, x: accepted.x, y: accepted.y, z: accepted.z });
   }
 
   /**
@@ -107,14 +129,13 @@ export function generateGalaxy(
    *
    * Slot placement consumes a variable number of draws — the Poisson-disc loop
    * breaks early whenever a candidate is far enough from its neighbours — so
-   * continuing that stream made the entire field depend on `slotCount`. A shard
-   * with a cap of 150 and a client regenerating at the default 200 would then
-   * produce different rocks from the same seed, and mining would resolve against
-   * an asteroid the player could not see. Seeding separately makes the field a
-   * function of the season seed alone, which is what A5 needs it to be.
+   * continuing that stream made the entire field depend on `slotCount`. Shards
+   * with different capacities would then produce different rocks from the same
+   * field input. Seeding separately keeps the deterministic schedule independent
+   * from world-placement rejection draws, which is what A5 needs.
    */
   const field = mulberry32((seed ^ 0x9e3779b9) >>> 0);
-  return { seed, slots, asteroids: generateAsteroids(field, seasonMinutes, seed) };
+  return { seed, slots, asteroids: generateAsteroidSchedule(field, seasonMinutes, seed) };
 }
 
 /** Minutes in a whole season. The asteroid schedule is laid out across it. */
@@ -142,9 +163,9 @@ function rollLevel(roll: number): number {
  * field holds a roughly steady population instead of arriving in clumps — the
  * player should never open the game to an empty sky or to forty rocks at once.
  *
- * Each rock is a CIRCLE: pick a radius inside the disc, pick a speed, and the
- * revolution time falls out of the two. The phase and the height are rolled; the
- * period is never chosen. (This paragraph described chords through the disc long
+ * Each rock is a CIRCLE: pick a radius inside the sphere, pick a speed, and the
+ * revolution time falls out of the two. The phase and an isotropic orbital plane
+ * are rolled; the period is never chosen. (This paragraph described chords long
  * after the straight-pass model was retired — see the note on `GALAXY` for why it
  * went, and `interceptAsteroid` for what a closed orbit buys the solver.)
  */
@@ -152,6 +173,25 @@ function rollLevel(roll: number): number {
 const ASTEROID_BASE_SPAWN_PER_HOUR = 9;
 /** Independent from both planet placement and the established asteroid lane. */
 const ASTEROID_EXTRA_LANE_SEED = 0x243f6a88;
+
+/**
+ * Map one uniform draw onto the measured orbit distribution.
+ *
+ * Measured against 4,000 generated player positions, sampling uniformly over
+ * radius made the p90:p10 naked-eye opportunity ratio roughly 7.6x: it crowded
+ * rocks near the centre while player worlds fill the sphere's volume. Sampling
+ * uniformly over the fourth power of radius keeps that ratio near 2.1x while
+ * retaining the full 400–2,000 span. `tools/asteroid-visibility-study.ts` owns
+ * the reproducible comparison.
+ */
+export function asteroidOrbitRadius(roll: number): number {
+  if (!Number.isFinite(roll) || roll < 0 || roll > 1) {
+    throw new RangeError('asteroid orbit roll must be between 0 and 1');
+  }
+  const inner = GALAXY.asteroidOrbitMin;
+  const outer = GALAXY.asteroidOrbitMax;
+  return Math.pow(inner ** 4 + roll * (outer ** 4 - inner ** 4), 1 / 4);
+}
 
 function appendAsteroidLane(
   asteroids: AsteroidSpec[],
@@ -166,8 +206,7 @@ function appendAsteroidLane(
 
   for (let laneIndex = 0; laneIndex < count; laneIndex++) {
     const index = indexOffset + laneIndex;
-    const radius =
-      GALAXY.asteroidOrbitMin + rng() * (GALAXY.asteroidOrbitMax - GALAXY.asteroidOrbitMin);
+    const radius = asteroidOrbitRadius(rng());
     const speed =
       GALAXY.asteroidSpeedMin + rng() * (GALAXY.asteroidSpeedMax - GALAXY.asteroidSpeedMin);
     const level = rollLevel(rng());
@@ -192,7 +231,10 @@ function appendAsteroidLane(
       // where in the disc it runs, and the revolution time is whatever that implies.
       period: (2 * Math.PI * radius) / speed,
       phase: rng() * Math.PI * 2,
-      y: (rng() * 2 - 1) * GALAXY.thickness * 0.6,
+      // Uniform cos(inclination) makes the orbit normals isotropic. Choosing the
+      // angle itself uniformly would crowd orbital planes around the poles.
+      inclination: Math.acos(rng() * 2 - 1),
+      ascendingNode: rng() * Math.PI * 2,
       speed,
       appearsAt,
       expiresAt: appearsAt + life,
@@ -200,7 +242,11 @@ function appendAsteroidLane(
   }
 }
 
-function generateAsteroids(rng: () => number, span: number, seed: number): AsteroidSpec[] {
+export function generateAsteroidSchedule(
+  rng: () => number,
+  span = seasonMinutes,
+  seed = 0,
+): AsteroidSpec[] {
   const totalCount = Math.round((GALAXY.asteroidSpawnPerHour * span) / 60);
   const baseCount = Math.min(
     totalCount,
@@ -241,11 +287,151 @@ export const asteroidActive = (a: AsteroidSpec, minutes: number): boolean =>
  */
 export function asteroidPosition(a: AsteroidSpec, minutes: number): Vec3 {
   const theta = a.phase + (2 * Math.PI * minutes) / a.period;
+  const cosTheta = Math.cos(theta);
+  const sinTheta = Math.sin(theta);
+  const cosNode = Math.cos(a.ascendingNode);
+  const sinNode = Math.sin(a.ascendingNode);
+  const cosInclination = Math.cos(a.inclination);
+  const sinInclination = Math.sin(a.inclination);
   return {
-    x: a.radius * Math.cos(theta),
-    y: a.y,
-    z: a.radius * Math.sin(theta),
+    x: a.radius * (cosNode * cosTheta - sinNode * sinTheta * cosInclination),
+    y: a.radius * sinTheta * sinInclination,
+    z: a.radius * (sinNode * cosTheta + cosNode * sinTheta * cosInclination),
   };
+}
+
+const TAU = Math.PI * 2;
+const CONTACT_EPSILON = 1e-10;
+
+/** Squared distance without allocating the asteroid's current point twice. */
+function asteroidDistanceSquared(a: AsteroidSpec, at: Vec3, minutes: number): number {
+  const point = asteroidPosition(a, minutes);
+  const dx = point.x - at.x;
+  const dy = point.y - at.y;
+  const dz = point.z - at.z;
+  return dx * dx + dy * dy + dz * dz;
+}
+
+/**
+ * First exact instant a circular 3B orbit enters one spherical sensor epoch.
+ *
+ * The orbit is resolved analytically, not sampled. Sampling can miss a tangent or
+ * a short pass and makes discovery depend on a server tick; the dot product below
+ * reduces sphere contact to one cosine interval per revolution.
+ */
+export function firstAsteroidSensorContact(
+  asteroid: AsteroidSpec,
+  epoch: SensorEpoch,
+  fromMinutes: number,
+  toMinutes: number,
+): number | null {
+  if (
+    !Number.isFinite(fromMinutes)
+    || !Number.isFinite(toMinutes)
+    || !Number.isFinite(epoch.startsAt)
+    || !Number.isFinite(epoch.reach)
+    || epoch.reach <= 0
+    || !Number.isFinite(asteroid.period)
+    || asteroid.period <= 0
+    || !Number.isFinite(asteroid.radius)
+    || asteroid.radius <= 0
+    || toMinutes <= fromMinutes
+  ) return null;
+
+  const start = Math.max(fromMinutes, epoch.startsAt, asteroid.appearsAt);
+  const epochEnd = epoch.endsAt ?? Infinity;
+  const end = Math.min(toMinutes, epochEnd, asteroid.expiresAt);
+  if (!Number.isFinite(start) || end < start) return null;
+  if (start >= epochEnd || start >= asteroid.expiresAt) return null;
+
+  const reachSquared = epoch.reach * epoch.reach;
+  if (asteroidDistanceSquared(asteroid, epoch.at, start) <= reachSquared + CONTACT_EPSILON) {
+    return start;
+  }
+
+  const cosNode = Math.cos(asteroid.ascendingNode);
+  const sinNode = Math.sin(asteroid.ascendingNode);
+  const cosInclination = Math.cos(asteroid.inclination);
+  const sinInclination = Math.sin(asteroid.inclination);
+  // Unit basis of the orbit plane: p(theta) = radius * (u cos + v sin).
+  const dotU = epoch.at.x * cosNode + epoch.at.z * sinNode;
+  const dotV = epoch.at.x * (-sinNode * cosInclination)
+    + epoch.at.y * sinInclination
+    + epoch.at.z * (cosNode * cosInclination);
+  const amplitude = Math.hypot(dotU, dotV);
+  const centreSquared = epoch.at.x ** 2 + epoch.at.y ** 2 + epoch.at.z ** 2;
+  const threshold = (
+    asteroid.radius ** 2 + centreSquared - reachSquared
+  ) / (2 * asteroid.radius);
+
+  if (amplitude <= CONTACT_EPSILON || threshold > amplitude + CONTACT_EPSILON) return null;
+  // The entire orbit is enclosed. The start check above would normally catch it;
+  // retaining this branch makes the floating-point boundary explicit.
+  if (threshold <= -amplitude + CONTACT_EPSILON) return start;
+
+  const halfWidth = Math.acos(Math.max(-1, Math.min(1, threshold / amplitude)));
+  const centreAngle = Math.atan2(dotV, dotU);
+  const entryAngle = centreAngle - halfWidth;
+  const angularSpeed = TAU / asteroid.period;
+  const startAngle = asteroid.phase + angularSpeed * start;
+  const revolutions = Math.ceil((startAngle - entryAngle) / TAU - CONTACT_EPSILON);
+  const candidateAngle = entryAngle + Math.max(0, revolutions) * TAU;
+  const candidate = (candidateAngle - asteroid.phase) / angularSpeed;
+
+  if (candidate < start - CONTACT_EPSILON || candidate > end + CONTACT_EPSILON) return null;
+  if (candidate >= epochEnd - CONTACT_EPSILON || candidate >= asteroid.expiresAt - CONTACT_EPSILON) {
+    return null;
+  }
+  return Math.max(start, candidate);
+}
+
+/** First contact already earned by this commander while the rock still exists. */
+export function asteroidDiscoveredAt(
+  asteroid: AsteroidSpec,
+  epochs: readonly SensorEpoch[],
+  nowMinutes: number,
+): number | null {
+  if (!Number.isFinite(nowMinutes) || nowMinutes < asteroid.appearsAt || nowMinutes >= asteroid.expiresAt) {
+    return null;
+  }
+  let first: number | null = null;
+  for (const epoch of epochs) {
+    const found = firstAsteroidSensorContact(
+      asteroid,
+      epoch,
+      Math.max(asteroid.appearsAt, epoch.startsAt),
+      Math.min(nowMinutes, epoch.endsAt ?? nowMinutes) + CONTACT_EPSILON,
+    );
+    if (found !== null && found <= nowMinutes + CONTACT_EPSILON && (first === null || found < first)) {
+      first = found;
+    }
+  }
+  return first;
+}
+
+/** Next contact the current/future sensor epochs will earn, excluding known rocks. */
+export function nextAsteroidDiscoveryAt(
+  asteroids: readonly AsteroidSpec[],
+  epochs: readonly SensorEpoch[],
+  nowMinutes: number,
+): number | null {
+  if (!Number.isFinite(nowMinutes) || epochs.length === 0) return null;
+  let next: number | null = null;
+  for (const asteroid of asteroids) {
+    if (asteroid.expiresAt <= nowMinutes || asteroidDiscoveredAt(asteroid, epochs, nowMinutes) !== null) {
+      continue;
+    }
+    for (const epoch of epochs) {
+      const found = firstAsteroidSensorContact(
+        asteroid,
+        epoch,
+        Math.max(nowMinutes, epoch.startsAt, asteroid.appearsAt),
+        Math.min(epoch.endsAt ?? asteroid.expiresAt, asteroid.expiresAt),
+      );
+      if (found !== null && found >= nowMinutes && (next === null || found < next)) next = found;
+    }
+  }
+  return next;
 }
 
 /** Every rock in the disc right now, in stable index order. */
@@ -454,8 +640,15 @@ export const prospectorSpeed = (orbit: SatelliteSet): number =>
 export const prospectorReturnSpeed = (orbit: SatelliteSet): number =>
   prospectorSpeed(orbit) * PROSPECTOR.returnSpeedFactor;
 
-export const prospectorHold = (orbit: SatelliteSet): number =>
-  PROSPECTOR.hold * drillHoldMult(orbit);
+/**
+ * What one mining craft carries home. T8.
+ *
+ * Hardware and technique, multiplied: a Derrick lifts every craft the player owns
+ * and the research lifts every craft they will ever own. See `prospectorHoldMult`
+ * for why the two compound rather than share.
+ */
+export const prospectorHold = (orbit: SatelliteSet, tech: TechLevels): number =>
+  PROSPECTOR.hold * drillHoldMult(orbit) * prospectorHoldMult(tech);
 
 /**
  * A joining player takes the free slot furthest from everyone already placed, so

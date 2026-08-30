@@ -12,7 +12,10 @@ import {
   crystalRate,
   upgradeCost,
   DEATH_STAR,
+  fleetCargo,
   fleetValue,
+  sensorSphere,
+  type Fleet,
 } from '@astera/rules';
 import {
   battleReports,
@@ -23,11 +26,12 @@ import {
   missions,
   neutralPlanetState,
   notifications,
-  planetResearch,
+  playerResearch,
   planets,
   players,
   satellites,
   seasons,
+  sensorEpochs,
   strategicAssets,
   strategicImpacts,
   units,
@@ -44,13 +48,15 @@ import {
 import { launchSettlement, launchTransfer } from '../src/services/movement.js';
 import { upgradeBuilding } from '../src/services/build.js';
 import { reinforceNeutral } from '../src/services/neutral.js';
-import { colonyStanding } from '../src/services/ownership.js';
+import { colonyStanding, transferPlanetControl } from '../src/services/ownership.js';
+import { refreshSensorEpoch } from '../src/services/sensorHistory.js';
 import { listServers } from '../src/services/servers.js';
 import { EventWorker } from '../src/worker/loop.js';
 import {
   FixedClock,
 } from '../src/clock.js';
 import {
+  giveResearch,
   giveUnits,
   giveInstrument,
   giveSatellite,
@@ -113,10 +119,7 @@ describe('ruleset v3 worlds', () => {
     }));
     for (const row of f.neutrals) {
       const template = MULTI_WORLD.neutral[row.state.tier as 1 | 2 | 3];
-      const expected = deuteriumStorageCap(
-        crystalRate(template.buildings.EXTRACTOR),
-        template.buildings.VAULT,
-      );
+      const expected = deuteriumStorageCap(0, crystalRate(template.buildings.EXTRACTOR), template.buildings.VAULT);
       expect(row.world.deuterium).toBe(expected);
     }
   });
@@ -353,19 +356,19 @@ describe('ruleset v3 worlds', () => {
 
   /**
    * D111. Every other settlement test above puts its two worlds 20 to 150 units
-   * apart, which is why a window that could not cross the disc passed all of them
-   * for a release. This one is the OPPOSITE CORNERS of the disc — the longest
+   * apart, which is why a window that could not cross the galaxy passed all of them
+   * for a release. This one uses ANTIPODES of the sphere — the longest
    * settlement flight the map can produce — and it is the case the shipped
    * thirty-minute window refused.
    */
-  it('lets a settlement cross the whole disc inside one claim window', async () => {
+  it('lets a settlement cross the whole sphere inside one claim window', async () => {
     const f = await setup();
     const target = f.neutrals.find((row) => row.state.tier === 1)!;
     await f.db.update(planets)
-      .set({ x: -GALAXY.radius, y: -GALAXY.thickness, z: 0 })
+      .set({ x: -GALAXY.radius, y: 0, z: 0 })
       .where(eq(planets.id, f.joined.planetId));
     await f.db.update(planets)
-      .set({ x: GALAXY.radius, y: GALAXY.thickness, z: 0 })
+      .set({ x: GALAXY.radius, y: 0, z: 0 })
       .where(eq(planets.id, target.world.id));
     await setLevel(f.db, f.joined.planetId, 'CORE', 3);
     await giveUnits(f.db, f.joined.planetId, { HAULER: MULTI_WORLD.settlement.haulers });
@@ -598,11 +601,6 @@ describe('ruleset v3 worlds', () => {
       PROSPECTOR: 1,
     });
     await giveUnits(f.db, target.world.id, { WASP: 1, PROSPECTOR: 1 }, 'mining-away');
-    await f.db.insert(planetResearch).values({
-      planetId: target.world.id,
-      projectId: 'ISOTOPE_SPECTROMETRY',
-      completedAt: f.clock.now(),
-    });
     const targetReadyAt = new Date(f.clock.now().getTime() + 30 * 60_000);
     await f.db.insert(strategicAssets).values({
       planetId: target.world.id,
@@ -661,8 +659,6 @@ describe('ruleset v3 worlds', () => {
       ['PROSPECTOR', 'mining-away', 1],
       ['WASP', 'mining-away', 1],
     ]);
-    expect(await f.db.select().from(planetResearch)
-      .where(eq(planetResearch.planetId, target.world.id))).toHaveLength(1);
     expect(await f.db.select().from(battleReports)
       .where(eq(battleReports.targetPlanetId, target.world.id))).toEqual([]);
     expect(await f.db.select().from(debrisFields)
@@ -691,15 +687,20 @@ describe('ruleset v3 worlds', () => {
     const f = await setup();
     const capital = f.joined.planetId;
     const target = f.neutrals.find((row) => row.state.tier === 1)!;
-    await f.db.update(planets).set({ x: 0, y: 0, z: 0, alloy: 100_000, crystal: 50_000, deuterium: 10_000 })
+    await f.db.update(planets).set({
+      x: 0,
+      y: 0,
+      z: 0,
+      alloy: DEATH_STAR.cost.alloy * 2,
+      crystal: DEATH_STAR.cost.crystal * 2,
+      deuterium: DEATH_STAR.cost.deuterium * 2,
+    })
       .where(eq(planets.id, capital));
     await f.db.update(planets).set({ x: 20, y: 0, z: 0 }).where(eq(planets.id, target.world.id));
     await setLevel(f.db, capital, 'CORE', DEATH_STAR.requiredCore);
     await setLevel(f.db, capital, 'SHIPYARD', DEATH_STAR.requiredShipyard);
-    await f.db.insert(planetResearch).values([
-      { planetId: capital, projectId: 'GRAVITIC_CHARGES', completedAt: f.clock.now() },
-      { planetId: capital, projectId: 'DEATH_STAR_PROTOCOL', completedAt: f.clock.now() },
-    ]);
+    await giveResearch(f.db, capital, 'GRAVITIC_CHARGES');
+    await giveResearch(f.db, capital, 'DEATH_STAR_PROTOCOL');
     const worker = workerFor(f.db, f.clock);
 
     const firstBuild = await buildDeathStar(f.db, capital, f.clock);
@@ -763,11 +764,7 @@ describe('ruleset v3 worlds', () => {
     await f.db.update(planets).set(purse).where(eq(planets.id, capital));
     await setLevel(f.db, capital, 'CORE', DEATH_STAR.requiredCore);
     await setLevel(f.db, capital, 'SHIPYARD', DEATH_STAR.requiredShipyard);
-    await f.db.insert(planetResearch).values({
-      planetId: capital,
-      projectId: 'DEATH_STAR_PROTOCOL',
-      completedAt: f.clock.now(),
-    });
+    await giveResearch(f.db, capital, 'DEATH_STAR_PROTOCOL');
 
     const results = await Promise.allSettled([
       buildDeathStar(f.db, capital, f.clock),
@@ -793,11 +790,7 @@ describe('ruleset v3 worlds', () => {
     await f.db.update(planets).set(purse).where(eq(planets.id, capital));
     await setLevel(f.db, capital, 'CORE', DEATH_STAR.requiredCore);
     await setLevel(f.db, capital, 'SHIPYARD', DEATH_STAR.requiredShipyard);
-    await f.db.insert(planetResearch).values({
-      planetId: capital,
-      projectId: 'DEATH_STAR_PROTOCOL',
-      completedAt: f.clock.now(),
-    });
+    await giveResearch(f.db, capital, 'DEATH_STAR_PROTOCOL');
     await f.db
       .update(seasons)
       .set({ endsAt: new Date(f.clock.now().getTime() + DEATH_STAR.buildMinutes * 60_000) })
@@ -887,6 +880,14 @@ describe('ruleset v3 worlds', () => {
       targetPlanetId: defender.planetId,
       outcome: 'FIRST_STRIKE',
       destroyedFleet: { WASP: 5, HAULER: 1 },
+      destroyedResources: {
+        alloy: struck!.alloy + struck!.bufferAlloy,
+        crystal: struck!.crystal + struck!.bufferCrystal,
+        deuterium: struck!.deuterium + struck!.bufferDeuterium,
+      },
+      levelChanges: [{ kind: 'BUILDING', id: 'CORE', before: 5, after: 4 }],
+      destroyedOrders: [],
+      shieldDestroyed: 0,
     });
     /**
      * THE FIGURE, ITEM BY ITEM, RATHER THAN A THRESHOLD. D113.
@@ -921,6 +922,52 @@ describe('ruleset v3 worlds', () => {
     expect(asset?.status).toBe('CONSUMED');
   });
 
+  it('records a delayed strike sensor loss at the promised arrival instant', async () => {
+    const f = await setup();
+    const defenderAccount = await makeAccount(f.db, 'Delayed Sensor Defender');
+    const defender = await joinSeason(f.db, defenderAccount.id, f.season.id, f.clock);
+    await f.db.update(planets).set({ x: 0, y: 0, z: 0 })
+      .where(eq(planets.id, f.joined.planetId));
+    await f.db.update(planets).set({ x: 200, y: 0, z: 0 })
+      .where(eq(planets.id, defender.planetId));
+    await setLevel(f.db, f.joined.planetId, 'CORE', 2);
+    await setLevel(f.db, defender.planetId, 'CORE', 3);
+    await giveSatellite(f.db, defender.planetId, 'UPLINK');
+    await giveInstrument(f.db, defender.planetId, 'TELESCOPE', 3);
+    await refreshSensorEpoch(f.db, defender.planetId, f.clock.now());
+    await f.db.insert(strategicAssets).values({
+      planetId: f.joined.planetId,
+      status: 'READY',
+      startedAt: f.clock.now(),
+      remainingSeconds: 0,
+    });
+
+    const launched = await launchDeathStar(
+      f.db,
+      f.joined.planetId,
+      defender.planetId,
+      f.clock,
+    );
+    f.clock.set(new Date(launched.arriveAt.getTime() + 6 * 60_000));
+    await workerFor(f.db, f.clock).tick();
+
+    const epochs = await f.db
+      .select()
+      .from(sensorEpochs)
+      .where(eq(sensorEpochs.planetId, defender.planetId))
+      .orderBy(sensorEpochs.startsAt);
+    expect(epochs).toHaveLength(2);
+    expect(epochs[0]).toMatchObject({
+      reach: sensorSphere({ x: 0, y: 0, z: 0 }, 3, 0).identify,
+      endsAt: launched.arriveAt,
+    });
+    expect(epochs[1]).toMatchObject({
+      reach: sensorSphere({ x: 0, y: 0, z: 0 }, 2, 0).identify,
+      startsAt: launched.arriveAt,
+      endsAt: null,
+    });
+  });
+
   /**
    * D113, owner instruction. A bombardment destroys the work in progress and
    * refunds nothing — `cancelBuildOrder` gives half back because that is the
@@ -947,11 +994,7 @@ describe('ruleset v3 worlds', () => {
     // Two orders in one queue: a Refinery that would land ON the old ceiling, and
     // a research order that has no Core level and must survive.
     await upgradeBuilding(f.db, defender.planetId, 'REFINERY', f.clock);
-    await f.db.insert(planetResearch).values({
-      planetId: defender.planetId,
-      projectId: 'ISOTOPE_SPECTROMETRY',
-      completedAt: f.clock.now(),
-    });
+    await giveResearch(f.db, defender.planetId, 'ISOTOPE_SPECTROMETRY');
     const queuedBefore = await f.db.select().from(buildOrders)
       .where(and(eq(buildOrders.planetId, defender.planetId), eq(buildOrders.status, 'BUILDING')));
     expect(queuedBefore).toHaveLength(1);
@@ -979,7 +1022,27 @@ describe('ruleset v3 worlds', () => {
     const levels = Object.fromEntries((await f.db.select().from(buildings)
       .where(eq(buildings.planetId, defender.planetId))).map((row) => [row.type, row.level]));
     expect(levels).toMatchObject({ CORE: 7, REFINERY: 7 });
+    /*
+      EVERY CORE-BOUND BUILDING, not just the ones that were on the list when it
+      was written. The Deuterium Refinery was added in T5 and left off it — the
+      strike dropped the Core and the plant stayed standing above a level that
+      could not have built it, which is the illegal post-strike state the clamp
+      exists to prevent. Read off the rule rather than named here, so the next
+      building added is covered the day it exists.
+    */
+    for (const [type, level] of Object.entries(levels)) {
+      if (type === 'CORE') continue;
+      expect(level, `${type} above its Core`).toBeLessThanOrEqual(levels.CORE!);
+    }
     await workerFor(f.db, f.clock).tick();
+    /*
+      RESEARCH SURVIVES A STRIKE, and after T7 that is a statement about the
+      COMMANDER rather than the world. It used to be asserted on a neutral target,
+      where it no longer has any content — a caretaker world has no commander and
+      so holds no research at all.
+    */
+    expect(await f.db.select().from(playerResearch)
+      .where(eq(playerResearch.playerId, defender.playerId))).toHaveLength(1);
     const [stillSeven] = await f.db.select().from(buildings).where(and(
       eq(buildings.planetId, defender.planetId),
       eq(buildings.type, 'REFINERY'),
@@ -1229,5 +1292,145 @@ describe('ruleset v3 worlds', () => {
       .toMatchObject({ outcome: 'INEFFECTIVE' });
     expect(await f.db.select().from(strategicAssets)
       .where(eq(strategicAssets.status, 'CONSUMED'))).toHaveLength(3);
+  });
+});
+
+/**
+ * THE ATTACKER'S LADDERS ARE FROZEN ON BOTH BATTLE PATHS. D137.
+ *
+ * `resolveNeutralBattle` used the mission's snapshot for the combat and re-read the
+ * commander's ladders LIVE three lines later for the cargo cap. So the same raid,
+ * with Cargo Holds finishing while it was in the air, carried more home from a
+ * caretaker world than the identical raid on a player would have — and more than
+ * the launch preview quoted, which computes off launch-time tech.
+ */
+describe('a raid on a caretaker world and the ladders it flew with', () => {
+  it('caps the haul with the tech the mission left holding', async () => {
+    const f = await setup();
+    const capital = f.joined.planetId;
+    const target = f.neutrals.find((row) => row.state.tier === 1)!;
+    await f.db.update(planets).set({ x: 0, y: 0, z: 0 }).where(eq(planets.id, capital));
+    await f.db.update(planets)
+      .set({ x: 12, y: 0, z: 0 })
+      .where(eq(planets.id, target.world.id));
+    await setLevel(f.db, capital, 'SHIPYARD', 6);
+    await giveUnits(f.db, capital, { WASP: 80, HAULER: 6 });
+    await f.db.update(planets)
+      .set({ alloy: 400_000, crystal: 200_000, deuterium: 200_000 })
+      .where(eq(planets.id, capital));
+
+    const launched = await launchAttack(
+      f.db, capital, target.world.id, { WASP: 80, HAULER: 6 }, f.clock,
+    );
+    const [mission] = await f.db.select().from(missions)
+      .where(eq(missions.id, launched.missionId));
+    expect(mission?.tech).toEqual({});
+
+    // The ladder completes mid-flight. It belongs to the next launch, not this one.
+    await giveResearch(f.db, capital, 'CARGO_HOLDS', 5);
+    // Arrival, then the ten-second engagement window before it settles.
+    f.clock.set(launched.arriveAt);
+    const w = workerFor(f.db, f.clock);
+    await w.tick();
+    f.clock.advance(1);
+    await w.tick();
+
+    const [report] = await f.db.select().from(battleReports)
+      .where(eq(battleReports.targetPlanetId, target.world.id));
+    expect(report).toBeTruthy();
+    const loot = report!.loot;
+    // The report stores losses; what came home is what was sent minus those.
+    const sent: Fleet = { WASP: 80, HAULER: 6 };
+    const lost = report!.attackerLosses;
+    const survivors: Fleet = Object.fromEntries(
+      (Object.entries(sent) as [keyof Fleet, number][])
+        .map(([hull, count]) => [hull, count - (lost[hull] ?? 0)]),
+    );
+    const flownWith = fleetCargo(survivors, {});
+    const finishedLater = fleetCargo(survivors, { CARGO_HOLDS: 5 });
+    expect(finishedLater).toBeGreaterThan(flownWith);
+    expect(loot.alloy + loot.crystal + loot.deuterium).toBeLessThanOrEqual(flownWith);
+  });
+});
+
+/**
+ * ONE COMMANDER, ONE GALAXY — AND THE SEAM THAT WROTE THE WRITE DID NOT CHECK IT.
+ *
+ * The invariant has read "DB-enforced" since D97. `planets` has a unique index for
+ * one capital per player and a check tying `kind` to the controller; it has
+ * nothing saying a colony must sit in the same season as its owner, and
+ * `transferPlanetControl` — the primitive shared by settlement and the second
+ * strategic hit — never asked.
+ *
+ * WHAT THAT PRODUCES IS A WORLD THAT EXISTS AND CANNOT BE SEEN. `commanderTopology`
+ * joins on `controllerPlayerId` alone, so a cross-season world lands in
+ * `planetIds` and rides out on `/api/planets`: the worlds list offers it and the
+ * selector switches to it. `publicWorlds` filters by the caller's season, so the
+ * disc never draws it and every surface built on the galaxy payload behaves as
+ * though it is not there.
+ *
+ * Found when a dev tool picked "the nearest unclaimed world" without a season
+ * filter — and every season names its neutrals by tier and index, so `Neutral
+ * T1-07` exists once per galaxy and the nearest one was in the other shard. The
+ * tool was wrong. So was there being nothing here to stop it.
+ */
+describe('a world in another galaxy', () => {
+  it('cannot be handed to a commander who does not play there', async () => {
+    const f = await setup();
+
+    // A second galaxy, with its own caretaker worlds and its own commander.
+    const { season: elsewhere } = await createSeason(f.db, {
+      shardCode: 'EU-OTHER',
+      seed: 5150,
+      startsAt: f.clock.now(),
+      playerCap: SERVERS.capacity,
+      rulesetVersion: MULTI_WORLD.rulesetVersion,
+    });
+    const [foreign] = await f.db
+      .select({ id: planets.id })
+      .from(planets)
+      .where(and(eq(planets.seasonId, elsewhere.id), eq(planets.kind, 'NEUTRAL')))
+      .limit(1);
+    expect(foreign, 'the second galaxy has caretaker worlds').toBeDefined();
+
+    // The CODE is the contract the client localises against; the message is prose.
+    await expect(
+      f.db.transaction((tx) => transferPlanetControl(tx, {
+        targetPlanetId: foreign!.id,
+        newPlayerId: f.joined.playerId,
+        expectedControllerPlayerId: null,
+        now: f.clock.now(),
+        protectedUntil: new Date(f.clock.now().getTime() + 60_000),
+      })),
+    ).rejects.toMatchObject({ code: 'WRONG_GALAXY' });
+
+    // And it is still a caretaker world, not a half-transferred one.
+    const [after] = await f.db
+      .select({ kind: planets.kind, owner: planets.controllerPlayerId })
+      .from(planets)
+      .where(eq(planets.id, foreign!.id));
+    expect(after?.kind).toBe('NEUTRAL');
+    expect(after?.owner).toBeNull();
+  });
+
+  /** The ordinary case still works, or the guard is just breaking settlement. */
+  it('still hands over a world in the commander\'s own galaxy', async () => {
+    const f = await setup();
+    const target = f.neutrals[0]!;
+
+    await f.db.transaction((tx) => transferPlanetControl(tx, {
+      targetPlanetId: target.world.id,
+      newPlayerId: f.joined.playerId,
+      expectedControllerPlayerId: null,
+      now: f.clock.now(),
+      protectedUntil: new Date(f.clock.now().getTime() + 60_000),
+    }));
+
+    const [after] = await f.db
+      .select({ kind: planets.kind, owner: planets.controllerPlayerId })
+      .from(planets)
+      .where(eq(planets.id, target.world.id));
+    expect(after?.kind).toBe('COLONY');
+    expect(after?.owner).toBe(f.joined.playerId);
   });
 });

@@ -48,8 +48,22 @@ const commander = async (name) => {
   const servers = await call('/api/servers');
   const open = servers.servers.find((s) => s.status === 'open');
   await call(`/api/servers/${open.code}/join`, { method: 'POST', token });
-  const galaxy = await call('/api/galaxy', { token });
-  return { token, planet: galaxy.planets.find((p) => p.isSelf) };
+  /**
+   * Read the fixture identity directly before the first projected galaxy request.
+   * The harness installs hardware through SQL below; asking the API first would
+   * correctly cache the fresh commander's empty sensor state and make those
+   * out-of-band fixture writes invisible until the production TTL expired.
+   */
+  const [planet] = await sql`
+    SELECT p.id, p.name
+    FROM planets p
+    JOIN players pl ON pl.id = p.player_id
+    JOIN accounts a ON a.id = pl.account_id
+    WHERE a.username = ${name} AND p.kind = 'CAPITAL'
+    LIMIT 1
+  `;
+  if (!planet) throw new Error(`joined commander ${name} has no capital`);
+  return { token, planet };
 };
 
 const stamp = String(Date.now()).slice(-7);
@@ -57,6 +71,27 @@ const a = await commander(`loopa${stamp}`);
 const b = await commander(`loopb${stamp}`);
 console.log(`A = ${a.planet.name}   B = ${b.planet.name}\n`);
 
+/**
+ * THE HARNESS MUST BUY THE VISIBILITY IT ASSERTS. D123/D126.
+ *
+ * A fresh commander has no working eyes, so expecting it to identify every craft
+ * in the galaxy silently tests the pre-sensor-horizon rules. Keep the two viewers
+ * close and give each a real Uplink-gated Telescope/Radar. This leaves production
+ * visibility untouched while making the real-HTTP fixture deterministic.
+ */
+const installEyes = async (planetId, x) => {
+  await sql`UPDATE planets SET x = ${x}, y = 0, z = 0 WHERE id = ${planetId}`;
+  for (const [slot, type, level] of [[0, 'TELESCOPE', 5], [1, 'RADAR', 5], [5, 'UPLINK', 1]]) {
+    await sql`
+      INSERT INTO satellites (planet_id, slot, type, level)
+      VALUES (${planetId}, ${slot}, ${type}, ${level})
+      ON CONFLICT (planet_id, slot) DO UPDATE SET type = ${type}, level = ${level}
+    `;
+  }
+};
+
+await installEyes(a.planet.id, 0);
+await installEyes(b.planet.id, 900);
 await sql`UPDATE buildings SET level = 9 WHERE planet_id = ${a.planet.id} AND type = 'CORE'`;
 for (const [hull, n] of [['WASP', 40], ['PROSPECTOR', 2]]) {
   await sql`
@@ -284,7 +319,10 @@ check(
  * worst possible outcome for a check: green, and measuring nothing.
  */
 const c = await commander(`loopc${stamp}`);
-await sql`UPDATE planets SET alloy = 50000, crystal = 20000 WHERE id = ${c.planet.id}`;
+await sql`
+  UPDATE planets SET alloy = 50000, crystal = 20000, x = 450, y = 0, z = 0
+  WHERE id = ${c.planet.id}
+`;
 const cTarget = (await call('/api/galaxy', { token: c.token })).planets.find(
   (p) => !p.isSelf && p.id !== a.planet.id && p.id !== b.planet.id,
 );

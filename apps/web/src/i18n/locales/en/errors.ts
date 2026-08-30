@@ -14,6 +14,7 @@
  */
 
 export const errors = {
+  ADMIN_FORBIDDEN: 'Admin access is required',
   PLANET_NOT_OWNED: 'You do not control that world',
   WORLD_RECOVERING: 'That world is recovering',
   OCCUPATION_PROTECTED: 'That world is under occupation protection',
@@ -38,6 +39,7 @@ export const errors = {
   ALREADY_PLACED: 'You already command a planet in another galaxy',
   ASTEROID_EMPTY: 'That rock has already been stripped',
   ASTEROID_GONE: 'That rock is not in the disc',
+  ASTEROID_UNAVAILABLE: 'That asteroid is not available to your sensors',
   AT_MAX_LEVEL: 'Your {{instrument}} is at its highest level. There is nothing further to gain.',
   BAD_COUNT: 'Count must be a positive integer',
   BAD_COUNT_craft: 'Send at least one craft',
@@ -55,6 +57,7 @@ export const errors = {
   BAD_REQUEST: 'That request could not be read',
   BAD_SESSION: 'Session is invalid or expired',
   BAD_SLOT: 'Telescope L{{level}} can watch {{slots}} planet(s)',
+  TARGET_ALREADY_WATCHED: 'Another Telescope slot is already watching that world',
   BUILD_ORDER_FINISHED: 'That order has already finished',
   BUILD_ORDER_HAS_DEPENDENTS: 'Cancel the dependent orders behind this one first',
   BUILD_ORDER_NOT_FOUND: 'No active build order by that id',
@@ -102,6 +105,7 @@ export const errors = {
   CORE_CEILING: 'Command Core must be raised first',
   CROSS_SEASON: 'That planet is in another galaxy',
   EMPTY_FLEET: 'Send at least one ship',
+  EMPTY_ANNOUNCEMENT: 'Add some content before publishing the announcement',
   FIELD_GONE: 'There is nothing left of it',
   FLEET_ALREADY_COMMITTED: 'You already have a fleet committed to that planet',
   FORBIDDEN: 'You cannot attack that planet',
@@ -138,6 +142,9 @@ export const errors = {
   PROBE_COOLDOWN: 'You looked at that world too recently. Another probe in {{minutes}} min.',
   PROSPECTOR_CAP: 'You may hold {{max}} Prospectors, and you have {{have}}.',
   PROSPECTOR_CAP_atLimit: 'You already have {{max}} Prospectors. That is the limit.',
+  HANGAR_FULL: 'Hangar full: {{used}} / {{capacity}} space used; this order needs {{needed}}.',
+  GROUND_SLOTS_FULL: 'Ground emplacements full: {{used}} / {{capacity}} space used; this order needs {{needed}}.',
+  INSUFFICIENT_FUEL: 'Not enough deuterium: that launch needs {{needed}} and you have {{have}}.',
   QUEUE_FULL: 'The {{queue}} queue is full',
   QUEUE_SETTLING: 'The completed order is settling now',
   /**
@@ -147,6 +154,7 @@ export const errors = {
    * reaching this means one slipped through. Better a sentence than the code.
    */
   RATE_LIMITED: 'Too many requests. Try again in {{seconds}} seconds.',
+  RESEARCH_CEILING: 'Deuterium Synthesis {{rung}} allows a Refinery of {{ceiling}}. Research further first.',
   RESEARCH_ALREADY_COMPLETE: 'That research is already complete',
   RESEARCH_NOT_DISCOVERED: 'That research has not been discovered',
   RESEARCH_UNAVAILABLE: 'That research is not available yet',
@@ -157,6 +165,7 @@ export const errors = {
   SEASON_ENDS_BEFORE_RETURN: 'That squadron cannot return before the season ends',
   SEASON_ENDS_BEFORE_BUILD: 'That order cannot finish before the season ends',
   SEASON_FROZEN: 'That season is over',
+  UNSAFE_HTML: 'That announcement contains unsafe or unsupported active content',
   SEASON_NOT_FOUND: 'No such season',
   SELF_ATTACK: 'You cannot attack your own planet',
   SELF_PROBE: 'You already know what is on your own planet',
@@ -166,7 +175,8 @@ export const errors = {
   SHARD_FULL: '{{shard}} is full',
   SHIPYARD_TOO_LOW: 'Needs Shipyard L{{level}}',
   SLOT_COOLING: 'That slot is still realigning — {{minutes}} minutes left',
-  TIER_BAND: 'That world is more than two development tiers from yours',
+  TARGET_PROSPECTOR_CAP: 'That world may hold {{max}} Prospectors, and it has {{have}}.',
+  TARGET_HANGAR_FULL: 'That world’s Hangar is full: {{used}} / {{capacity}} space used; this fleet needs {{needed}}.',
   UNAUTHENTICATED: 'Sign in first',
   UNKNOWN: 'Something went wrong',
   USERNAME_TAKEN: 'That name is already flying',

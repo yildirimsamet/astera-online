@@ -104,6 +104,17 @@ export function Rehearsal({
   /** Bumped once, by the opening beat's control, to fly in from the wide view. */
   const [goHome, setGoHome] = useState(0);
 
+  /**
+   * Skip the guided play, not the account claim it was leading toward.
+   *
+   * Marking the playable beats complete keeps this on the same derived state
+   * machine as an ordinary finish. Any intents already staged remain intact, and
+   * the final credentials dialog becomes the next (and only) unfinished beat.
+   */
+  const skipToClaim = useCallback((): void => {
+    setDone(new Set(BEATS.filter(({ id }) => id !== 'claim').map(({ id }) => id)));
+  }, []);
+
   const api = useMemo(
     () =>
       new Api({
@@ -384,7 +395,7 @@ export function Rehearsal({
               : {})}
             place={place}
             skipLabel={t('onboarding.skip')}
-            onSkip={onLeave}
+            onSkip={skipToClaim}
             secondary={t('onboarding.haveAccount')}
             onSecondary={onSignIn}
           />

@@ -291,7 +291,7 @@ describe('ordinary build queues', () => {
   });
 
   it('reserves the exact season deadline for freeze instead of racing it', async () => {
-    const durationSeconds = Math.max(1, Math.ceil(shipMinutes(HULLS.WASP, 0) * 60));
+    const durationSeconds = Math.max(1, Math.ceil(shipMinutes(HULLS.WASP, 0, {}) * 60));
     await f.db
       .update(seasons)
       .set({ endsAt: new Date(f.clock.now().getTime() + durationSeconds * 1_000) })

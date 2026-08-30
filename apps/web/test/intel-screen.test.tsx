@@ -1,9 +1,9 @@
 import type { ReactNode } from 'react';
-import { render, screen } from '@testing-library/react';
+import { cleanup, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { describe, expect, it, vi } from 'vitest';
-import { radarRange, telescopeSlots } from '@astera/rules';
+import { radarContactRange, radarRange, telescopeSlots } from '@astera/rules';
 import { Api } from '../src/api/client.js';
 import { ApiProvider } from '../src/api/context.js';
 import { IntelScreen } from '../src/screens/IntelScreen.js';
@@ -52,16 +52,38 @@ const galaxy = (n: number) => ({
   ],
 });
 
-const intel = (watching: number) => ({
-  watching: Array.from({ length: watching }, (_, slot) => ({
+/** One probe report, with the fuzz band the test is actually about. */
+const report = (low: number, high: number, over: Record<string, unknown> = {}) => ({
+  targetPlanetId: 'q0',
+  targetName: 'World 0',
+  targetUsername: 'Someone',
+  at: new Date(),
+  stock: { low, high },
+  defence: { low, high },
+  fleetSize: { low, high },
+  accuracy: 0.8,
+  fleetHome: true,
+  detected: false,
+  ...over,
+});
+
+const intel = (
+  watching: number,
+  probeReports: unknown[] = [],
+  /** Which world's sockets these are. A slot number belongs to a world, not a commander. */
+  observerPlanetId = 'p1',
+  extra: unknown[] = [],
+) => ({
+  watching: [...Array.from({ length: watching }, (_, slot) => ({
+    observerPlanetId,
     slot,
     targetPlanetId: `q${String(slot)}`,
     targetName: `World ${String(slot)}`,
     ownerName: 'Someone',
     assignedAt: new Date().toISOString(),
     reading: { status: 'HOME', staleMinutes: 0, etaMinutes: null, state: 'CLEAR', clarity: 1 },
-  })),
-  probeReports: [],
+  })), ...extra],
+  probeReports,
   probeCooldowns: [],
   radarLog: [],
   probeCost: { alloy: 50, crystal: 50 },
@@ -92,12 +114,18 @@ const show = (opts: {
   radar?: number;
   watching: number;
   worlds: number;
+  probes?: unknown[];
   onOpenOrbit?: () => void;
   open?: { stop: 'probes' | 'battles'; request: number };
+  /** Watches belonging to ANOTHER of the commander's worlds. */
+  elsewhere?: unknown[];
 }) => {
   const { wrapper: Wrapper, queries } = harness();
   queries.setQueryData(['galaxy'], galaxy(opts.worlds));
-  queries.setQueryData(['intel'], intel(opts.watching));
+  queries.setQueryData(
+    ['intel'],
+    intel(opts.watching, opts.probes ?? [], 'p1', opts.elsewhere ?? []),
+  );
   queries.setQueryData(['planet'], planet(opts.telescope, opts.radar ?? 0));
   queries.setQueryData(['reports'], { reports: [] });
   render(
@@ -189,24 +217,129 @@ describe('the coverage panel', () => {
  * the thing the defender owns; the warning it buys is what the ATTACKER decides,
  * by choosing what to fly.
  */
+/**
+ * TWO SCOPES ON ONE SCREEN. D97/D134.
+ *
+ * A telescope SLOT belongs to a world — the numbering restarts on each one — while
+ * the watch list is the commander's. This screen read one for the denominator and
+ * the other for the numerator, and the results were all wrong in different ways: a
+ * colony's slot 0 collided with the capital's and hid one of the two watches, the
+ * tally printed "3 of 1", and coverage then called that full.
+ */
+describe('slots belong to a world, watches to a commander', () => {
+  const colonyWatch = {
+    observerPlanetId: 'colony',
+    slot: 0,
+    targetPlanetId: 'far',
+    targetName: 'Elsewhere',
+    ownerName: 'Somebody',
+    reading: { status: 'HOME', staleMinutes: 0, etaMinutes: null, state: 'CLEAR', clarity: 1 },
+  };
+
+  it('does not let another world’s slot 0 hide this world’s', () => {
+    show({ telescope: 1, watching: 1, worlds: 20, elsewhere: [colonyWatch] });
+    // The active world's own watch is the one on the rack.
+    expect(screen.getByText('World 0')).toBeInTheDocument();
+    expect(screen.queryByText('Elsewhere')).not.toBeInTheDocument();
+  });
+
+  /**
+   * The tally used to read "2 of 2" here — one watch from this world plus one from
+   * a colony, against this world's two sockets — and coverage then called it full.
+   */
+  it('counts only this world’s watches against this world’s sockets', () => {
+    show({ telescope: 3, watching: 1, worlds: 20, elsewhere: [colonyWatch] });
+    expect(telescopeSlots(3)).toBe(2);
+    expect(screen.getByText(/watching 1 of your 2 slots/i)).toBeInTheDocument();
+    expect(screen.queryByText(/every slot you have is watching/i)).not.toBeInTheDocument();
+  });
+
+  it('still shows an idle socket here when another world has spent its own', () => {
+    show({ telescope: 3, watching: 0, worlds: 20, elsewhere: [colonyWatch] });
+    expect(telescopeSlots(3)).toBe(2);
+    expect(screen.getAllByText('Idle')).toHaveLength(2);
+  });
+});
+
 describe('what the radar promises', () => {
-  it('states a reach and never a countdown', () => {
+  /**
+   * THE REACH IS DRAWN, AND THE FIGURE CAME WITH IT. D142.
+   *
+   * The sentence that carried the raw units is a circle at its true fraction of
+   * the disc, which is the only form in which those numbers say anything about a
+   * commander's own neighbourhood. The reading survives in full as the diagram's
+   * accessible name — the assertion moved from the prose to the picture.
+   *
+   * IT READS THE TABLES RATHER THAN NAMING FIGURES, so the day the two circles are
+   * split again this keeps testing the same thing.
+   */
+  it('states the radar reach and never invents a countdown', () => {
     show({ telescope: 1, watching: 0, worlds: 20, radar: 5 });
-    expect(screen.getByText(new RegExp(`${String(radarRange(5))} units out`, 'i'))).toBeInTheDocument();
+    const reach = screen.getByRole('img', {
+      name: new RegExp(String(radarContactRange(5)), 'i'),
+    });
+    expect(reach).toBeInTheDocument();
     expect(screen.queryByText(/minutes before a fleet lands/i)).not.toBeInTheDocument();
   });
 
-  it('says that a slow fleet is seen for longer, because that is the decision', () => {
+  /**
+   * ONE CIRCLE WHILE THE TWO ARE MERGED, TWO WHEN THEY ARE NOT.
+   *
+   * Drawing two identical rings with two captions describing different things
+   * would be the interface inventing a distinction the rules no longer make. The
+   * surface reads the figures, so it is already correct on the day they split.
+   */
+  it('draws one ring while the two radar circles are one number', () => {
     show({ telescope: 1, watching: 0, worlds: 20, radar: 5 });
-    expect(screen.getByText(/slow, heavy fleet is inside that circle for far longer/i)).toBeInTheDocument();
+    const sense = document.querySelector<HTMLElement>('[data-ring="sense"]');
+    const warn = document.querySelector<HTMLElement>('[data-ring="warn"]');
+    expect(warn, 'the radar circle is never undrawn').not.toBeNull();
+
+    if (radarContactRange(5) === radarRange(5)) {
+      expect(sense, 'a second identical ring was drawn').toBeNull();
+    } else {
+      expect(sense).not.toBeNull();
+      expect(Number.parseFloat(sense!.style.width))
+        .toBeGreaterThan(Number.parseFloat(warn!.style.width));
+    }
   });
 
-  /** Below L3 a radar catches probes and nothing else, and must not claim more. */
-  it('promises no fleet warning at a level that has none', () => {
-    show({ telescope: 1, watching: 0, worlds: 20, radar: 2 });
-    expect(screen.getByText(/catches probes\. from l3/i)).toBeInTheDocument();
-    expect(screen.queryByText(/units out/i)).not.toBeInTheDocument();
+  /**
+   * EVERY RUNG THAT DRAWS A CIRCLE SHOWS ITS CIRCLE.
+   *
+   * L1 and L2 used to reach nothing and the screen said so in a sentence. They
+   * reach now — the zeroes were inherited from the pre-D49 minutes ladder — so
+   * what the screen owes them is the same picture, at their own smaller radius.
+   */
+  it('draws the reach at the first rung too, at its own size', () => {
+    show({ telescope: 1, watching: 0, worlds: 20, radar: 1 });
+    const small = document.querySelector<HTMLElement>('[data-ring="warn"]');
+    expect(small).not.toBeNull();
+    const atOne = Number.parseFloat(small!.style.width);
+
+    cleanup();
+    show({ telescope: 1, watching: 0, worlds: 20, radar: 5 });
+    const large = document.querySelector<HTMLElement>('[data-ring="warn"]');
+    expect(Number.parseFloat(large!.style.width))
+      .toBeGreaterThan(atOne);
   });
+
+  /** With no radar at all there is no circle to draw and nothing to promise. */
+  it('draws nothing at all with no radar', () => {
+    show({ telescope: 1, watching: 0, worlds: 20, radar: 0 });
+    expect(document.querySelector('[data-radar-reach]')).toBeNull();
+  });
+
+  /**
+   * THE HALF THE PICTURE CANNOT CARRY STAYS AS A SENTENCE. The rings are fixed;
+   * how long a fleet sits inside them is the attacker's choice, and no circle
+   * can draw that.
+   */
+  it('says that a slow fleet is seen for longer, because that is the decision', () => {
+    show({ telescope: 1, watching: 0, worlds: 20, radar: 5 });
+    expect(screen.getByText(/slow, heavy fleet remains inside Radar reach longer/i)).toBeInTheDocument();
+  });
+
 });
 
 describe('report tabs', () => {
@@ -329,5 +462,65 @@ describe('landing on the shelf that was asked for', () => {
       </Wrapper>,
     );
     expect(screen.getByRole('tabpanel', { name: 'Probe reports' })).toBeVisible();
+  });
+});
+
+/**
+ * THE DOUBT IS THE PRODUCT, SO THE DOUBT IS THE PICTURE. D127, D142.
+ *
+ * A probe report is the one number in the game that is deliberately NOT a number:
+ * it is a silhouette, fuzzed at the look and stale from the moment it lands. The
+ * screen printed it as `1.2k–3.4k` under a grey label — six figures a reader has
+ * to pair up, subtract and then weigh, for the fact the entire information layer
+ * is sold on.
+ *
+ * Each reading is now the span it actually is, so a clean probe of a world with
+ * its fleet at home is three narrow blocks and a poor one smears across the card.
+ * That comparison is the whole product of raising a Telescope, and it was nowhere
+ * on screen.
+ */
+describe('what a probe brought back', () => {
+  const bandWidth = (index: number): number => Number.parseFloat(
+    document.querySelectorAll<HTMLElement>('[data-part="band"]')[index]!.style.width,
+  );
+
+  it('draws a vague reading wider than a sharp one', () => {
+    show({ telescope: 1, watching: 0, worlds: 20, probes: [report(200, 2000)] });
+    const vague = bandWidth(0);
+    cleanup();
+
+    show({ telescope: 1, watching: 0, worlds: 20, probes: [report(1800, 2000)] });
+    expect(bandWidth(0)).toBeLessThan(vague);
+  });
+
+  it('draws one band per thing the probe read', () => {
+    show({ telescope: 1, watching: 0, worlds: 20, probes: [report(100, 400)] });
+    expect(document.querySelectorAll('[data-range-band]')).toHaveLength(3);
+  });
+
+  it('still carries both ends as digits, under the shape', () => {
+    show({ telescope: 1, watching: 0, worlds: 20, probes: [report(1200, 3400)] });
+    expect(screen.getAllByText(/1\.2k/).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/3\.4k/).length).toBeGreaterThan(0);
+  });
+
+  /**
+   * HOW GOOD THE READ WAS, IN THE SAME BARS THE TELESCOPE USES. A percentage is a
+   * figure about a figure; signal bars are already this game's word for "what is
+   * this reading worth". The percentage stays as the accessible name, which is
+   * the only form a screen reader can take.
+   */
+  it('shows the accuracy as signal strength and says the figure out loud', () => {
+    show({ telescope: 1, watching: 0, worlds: 20, probes: [report(100, 400)] });
+    expect(screen.getByRole('img', { name: /80%.*accuracy/i })).toBeInTheDocument();
+  });
+
+  /** Being caught is the cost of looking, and it stays in threat red. */
+  it('says when the target caught the probe', () => {
+    show({
+      telescope: 1, watching: 0, worlds: 20,
+      probes: [report(100, 400, { detected: true })],
+    });
+    expect(screen.getByText(/they caught it/i)).toBeInTheDocument();
   });
 });

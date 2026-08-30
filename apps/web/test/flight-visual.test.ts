@@ -4,6 +4,7 @@ import {
   DEATH_STAR_LIGHT,
   HULL_LIGHT,
   TRACKING_MARK,
+  UNKNOWN_CONTACT_MARK,
   formationAimDirection,
 } from '../src/galaxy/flightVisual.js';
 
@@ -34,6 +35,15 @@ describe('tracking mark restraint', () => {
     expect(TRACKING_MARK.ringOuter).toBeLessThan(1.05);
     expect(TRACKING_MARK.fleetTickWidth).toBeLessThan(0.06);
     expect(TRACKING_MARK.fleetTickLength).toBeLessThan(0.5);
+  });
+
+  it('makes an unidentified Radar return louder than ordinary tracking furniture', () => {
+    expect(UNKNOWN_CONTACT_MARK.radius).toBeGreaterThan(TRACKING_MARK.standardRadius);
+    expect(UNKNOWN_CONTACT_MARK.ringOuter - 1).toBeGreaterThan(
+      (TRACKING_MARK.ringOuter - 1) * 3,
+    );
+    expect(UNKNOWN_CONTACT_MARK.opacity).toBeGreaterThanOrEqual(0.8);
+    expect(UNKNOWN_CONTACT_MARK.glyphScale).toBeGreaterThanOrEqual(2.2);
   });
 
   it('defines Death Star light identity clearly', () => {

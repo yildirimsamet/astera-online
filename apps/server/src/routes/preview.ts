@@ -1,12 +1,13 @@
 import { eq } from 'drizzle-orm';
 import type { FastifyInstance } from 'fastify';
-import { pickSpawnSlot } from '@astera/rules';
+import { distance, pickSpawnSlot, sensorSphere } from '@astera/rules';
 import { seasons } from '../db/schema.js';
 import { GameError } from '../services/planet.js';
 import { planetNameFor } from '../services/player.js';
 import { galaxyOf, occupiedSlots } from '../services/season.js';
 import { listServers, resolveJoinTarget } from '../services/servers.js';
 import { projectGalaxyTraffic } from '../services/traffic.js';
+import { adminPlayerIdsInSeason } from '../services/admin.js';
 
 /**
  * THE GALAXY, BEFORE YOU HAVE AN ACCOUNT. D56.
@@ -68,13 +69,72 @@ export function registerPreviewRoutes(app: FastifyInstance): void {
     const slot = pickSpawnSlot(spec.slots, taken);
     if (!slot) throw new GameError('SHARD_FULL', 'This galaxy is full', 409);
 
-    const [worlds, traffic] = await Promise.all([
+    const [allWorlds, traffic, adminPlayerIds] = await Promise.all([
       app.projections.worlds(target.seasonId, app.clock.now()),
       app.projections.trafficSnapshot(target.seasonId, app.clock.now()),
+      adminPlayerIdsInSeason(app.db, target.seasonId, app.adminUsernames),
     ]);
-    // Nothing is excluded: the exclusion in `/api/galaxy/traffic` is "what you
-    // OWN", and a visitor owns nothing.
-    const contacts = projectGalaxyTraffic(traffic, null, app.clock.now());
+    const worlds = allWorlds.filter((world) =>
+      world.controller.kind !== 'PLAYER'
+      || !adminPlayerIds.has(world.controller.playerId));
+    /**
+     * Nothing is excluded: the exclusion in `/api/galaxy/traffic` is "what you
+     * OWN", and a visitor owns nothing.
+     *
+     * THE HORIZON STILL APPLIES, FROM THE SEAT THEY ARE BEING OFFERED. D123. A
+     * visitor is shown the neighbourhood of the world they would wake up on, at
+     * the naked-eye reach every commander starts with — which is both the honest
+     * preview of what the game looks like and the same rule everyone else plays
+     * under. Handing a visitor the whole disc's traffic would advertise a fog the
+     * product does not have.
+     */
+    const eyes = {
+      // The naked eye, and no radar: a visitor owns no hardware.
+      ...sensorSphere({ x: slot.x, y: slot.y, z: slot.z }, 0, 0, RESERVED_ID),
+      planetId: RESERVED_ID,
+      telescope: false,
+      // A visitor owns nothing, so nothing can be aimed at them.
+      warn: 0,
+      revealsSize: false,
+      revealsKind: false,
+    };
+    const contacts = projectGalaxyTraffic(
+      traffic,
+      null,
+      app.clock.now(),
+      null,
+      [],
+      [eyes],
+      new Set(),
+    );
+
+    /**
+     * THE WORLD FOG APPLIES HERE TOO, AND LEAVING IT OUT WAS A HOLE IN D127.
+     *
+     * This route is UNAUTHENTICATED and was returning `publicWorlds` whole: every
+     * owner, every Core level, every satellite and every dome in a live season, to
+     * anybody who asked. A commander who wanted the map D127 had just hidden
+     * needed a second browser tab. A fog rule with a public bypass is not a fog
+     * rule, which is the same standard `projectGalaxyTraffic` states about its own
+     * `sensors` argument two lines above.
+     *
+     * So a visitor sees exactly what the seat they are being offered would see:
+     * the naked-eye neighbourhood resolved, everything beyond it a point. That is
+     * also the honest preview — the disc they are shown is the disc they get.
+     * There is no REMEMBERED state here because a visitor has never probed
+     * anything.
+     */
+    const visible = worlds.map((world) =>
+      distance(eyes.at, world.position) <= eyes.identify
+        ? { ...world, intel: 'RESOLVED' as const, isSelf: false }
+        : {
+            id: world.id,
+            position: world.position,
+            intel: 'UNKNOWN' as const,
+            isSelf: false,
+            isOwned: false,
+            state: world.state,
+          });
 
     const reserved = {
       id: RESERVED_ID,
@@ -107,13 +167,21 @@ export function registerPreviewRoutes(app: FastifyInstance): void {
           capitalPlanetId: RESERVED_ID,
           planetIds: [RESERVED_ID],
         },
+        /**
+         * The rehearsal is the same first view the visitor receives after joining.
+         * Publishing the eyes as well as applying them keeps the drawn boundary in
+         * step with the server-side fog: without this, worlds and traffic were
+         * filtered at 500 units while the starting sensor sphere was absent.
+         */
+        sensors: [eyes],
         planets: [
-          ...worlds.map((world) => ({ ...world, isSelf: false })),
+          ...visible,
           /**
-           * The visitor's world, drawn among the real ones. It has a Command Core
-           * at level 1 like every fresh planet, so the tier band it can reach is
-           * the real one and the targets the rehearsal lights up are the targets
-           * the claim will actually accept.
+           * The visitor's world, drawn among the real ones, at Command Core 1 like
+           * every fresh planet. It used to say "so the tier band it can reach is
+           * the real one"; D127 retired the band, and what the level still has to
+           * be right for is the silhouette — a preview that draws the starting
+           * world at the wrong size is showing the wrong game.
            */
           {
             id: reserved.id,

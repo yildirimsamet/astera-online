@@ -1,8 +1,9 @@
-import { and, eq } from 'drizzle-orm';
+import { and, eq, inArray } from 'drizzle-orm';
 import { pino } from 'pino';
 import { afterAll, beforeEach, describe, expect, it } from 'vitest';
 import { MULTI_WORLD, SERVERS, radarLead, radarRange } from '@astera/rules';
 import {
+  buildings,
   clanMemberships,
   clans,
   miningRuns,
@@ -15,6 +16,7 @@ import {
 } from '../src/db/schema.js';
 import { EventWorker } from '../src/worker/loop.js';
 import { launchAttack } from '../src/services/mission.js';
+import { inboundRadarLead, wakeInboundRadarWarnings } from '../src/services/radar.js';
 import { assignWatch, launchProbe } from '../src/services/intel.js';
 import { launchMining } from '../src/services/mining.js';
 import { activeAsteroids, generateGalaxy } from '@astera/rules';
@@ -121,6 +123,7 @@ describe('a raid tells both sides', () => {
       rows.filter((r) => r.kind === 'raided'),
     );
     expect(raided).toBeDefined();
+    expect(raided!.refId).toBe(launch.missionId);
     expect(raided!.payload).toMatchObject({
       grade: expect.any(String) as string,
       originPlanetId: attacker,
@@ -133,6 +136,7 @@ describe('a raid tells both sides', () => {
       rows.filter((r) => r.kind === 'raid_result'),
     );
     expect(result, 'the attacker was told nothing at all').toBeDefined();
+    expect(result!.refId).toBe(launch.missionId);
     expect(result!.payload).toMatchObject({
       targetPlanetId: defender,
       targetUsername: expect.any(String) as string,
@@ -237,13 +241,33 @@ describe('the radar warning', () => {
    * radar had changed.
    *
    * The lead is what the ladder sells (D49: a RADIUS, not a countdown), so it is
-   * what the markers are expressed in. `radarLead` is the same function the server
-   * schedules against, so this cannot drift from the rule it is checking.
+   * what the markers are expressed in. The helper below reads the same endpoint
+   * clearances as the server, so the test cannot drift back to centre distance.
    */
   const leadFor = async (missionId: string, level: number): Promise<number> => {
     const [row] = await f.db.select().from(missions).where(eq(missions.id, missionId));
+    const [worldRows, coreRows] = await Promise.all([
+      f.db.select().from(planets)
+        .where(inArray(planets.id, [row!.originPlanetId, row!.targetPlanetId])),
+      f.db.select({ planetId: buildings.planetId, level: buildings.level })
+        .from(buildings)
+        .where(and(
+          inArray(buildings.planetId, [row!.originPlanetId, row!.targetPlanetId]),
+          eq(buildings.type, 'CORE'),
+        )),
+    ]);
+    const worldById = new Map(worldRows.map((world) => [world.id, world]));
+    const coreById = new Map(coreRows.map((building) => [building.planetId, building.level]));
+    const origin = worldById.get(row!.originPlanetId)!;
+    const target = worldById.get(row!.targetPlanetId)!;
     const oneWay = (row!.arriveAt.getTime() - row!.departAt.getTime()) / 60_000;
-    return radarLead(radarRange(level), row!.distance, oneWay);
+    return inboundRadarLead(radarRange(level), {
+      from: origin,
+      to: target,
+      originCoreLevel: coreById.get(origin.id) ?? 1,
+      targetCoreLevel: coreById.get(target.id) ?? 1,
+      oneWayMinutes: oneWay,
+    });
   };
 
   it('warns at the lead the level buys, and not before', async () => {
@@ -266,6 +290,37 @@ describe('the radar warning', () => {
     // Inside it.
     f.clock.set(minutesBefore(arriveAt, lead * 0.5));
     await worker.tick();
+    expect(await kindsFor(f, f.playerIds[1]!)).toEqual(['incoming_fleet']);
+  });
+
+  it('waits for the drawn fleet to enter the shell instead of using centre-to-centre distance', async () => {
+    /*
+      THE LEG HAS TO OUTRUN THE CIRCLE, or there is no crossing to measure. It was
+      800 units against a Radar 3 that reached 190; the ladder reaches 1,300 now,
+      so a leg shorter than that saturates and both leads become the whole flight.
+      Stated as a multiple of the radius rather than as a literal, so the next
+      table change cannot quietly turn this into a test of nothing.
+    */
+    const leg = radarRange(3) * 2;
+    await placeAt(f.db, attacker, { x: 0, y: 0, z: 0 });
+    await placeAt(f.db, defender, { x: leg, y: 0, z: 0 });
+    await setLevel(f.db, attacker, 'CORE', 12);
+    await setLevel(f.db, defender, 'CORE', 12);
+    await giveInstrument(f.db, defender, 'RADAR', 3);
+    const { arriveAt, missionId } = await launch();
+    const visualLead = await leadFor(missionId, 3);
+    const [row] = await f.db.select().from(missions).where(eq(missions.id, missionId));
+    const oneWay = (row!.arriveAt.getTime() - row!.departAt.getTime()) / 60_000;
+    const centreLead = radarLead(radarRange(3), row!.distance, oneWay);
+    expect(centreLead).toBeGreaterThan(visualLead);
+
+    // At the old calculation's crossing the marker is still outside the shell.
+    f.clock.set(minutesBefore(arriveAt, (centreLead + visualLead) / 2));
+    await makeWorker(f).tick();
+    expect(await kindsFor(f, f.playerIds[1]!)).toEqual([]);
+
+    f.clock.set(minutesBefore(arriveAt, visualLead * 0.5));
+    await makeWorker(f).tick();
     expect(await kindsFor(f, f.playerIds[1]!)).toEqual(['incoming_fleet']);
   });
 
@@ -345,15 +400,16 @@ describe('the radar warning', () => {
 
     const [warning] = await newsFor(f, f.playerIds[1]!);
     expect(warning).toBeDefined();
-    // L4 buys the count, L5 the composition and the world it left.
+    // L4 buys a coarse mass band, L5 the composition and the world it left.
     expect(warning!.payload).toMatchObject({
-      estimatedShips: 40,
+      mass: 'MEDIUM',
       fleet: { WASP: 40 },
       originPlanetId: attacker,
       originUsername: expect.any(String) as string,
       originClanTag: 'WAR',
       originPlanetName: expect.any(String) as string,
     });
+    expect(warning!.payload).not.toHaveProperty('estimatedShips');
   });
 
   it('never warns a planet with no radar, and stops asking', async () => {
@@ -363,10 +419,13 @@ describe('the radar warning', () => {
     // Right through the widest reach the ladder sells and out the other side, so
     // "never warns" means never — not merely "not yet".
     const widest = await leadFor(missionId, 5);
-    for (const share of [3, 1.5, 0.75, 0.25]) {
+    for (const share of [3, 1.5, 0.75]) {
       f.clock.set(minutesBefore(arriveAt, widest * share));
       await worker.tick();
     }
+    const narrowest = await leadFor(missionId, 3);
+    f.clock.set(minutesBefore(arriveAt, narrowest * 0.5));
+    await worker.tick();
     expect(await kindsFor(f, f.playerIds[1]!)).toEqual([]);
 
     // The chain terminated rather than rescheduling itself for ever.
@@ -377,6 +436,19 @@ describe('the radar warning', () => {
         and(eq(scheduledEvents.kind, 'radar_warning'), eq(scheduledEvents.status, 'pending')),
       );
     expect(pending).toHaveLength(0);
+  });
+
+  it('wakes a warning when Radar is installed after the ordinary checks have ended', async () => {
+    const { arriveAt, missionId } = await launch();
+    const narrowest = await leadFor(missionId, 3);
+    f.clock.set(minutesBefore(arriveAt, narrowest * 0.5));
+    await makeWorker(f).tick();
+    expect(await kindsFor(f, f.playerIds[1]!)).toEqual([]);
+
+    await giveInstrument(f.db, defender, 'RADAR', 5);
+    await wakeInboundRadarWarnings(f.db, defender, f.clock.now());
+    await makeWorker(f).tick();
+    expect(await kindsFor(f, f.playerIds[1]!)).toEqual(['incoming_fleet']);
   });
 
   /**
@@ -700,6 +772,7 @@ describe('the kinds of news the server can send', () => {
       'settlement_lost',
       'settlement_success',
       'strategic_incoming',
+      'strategic_intercepted',
       'unlock',
     ]);
   });

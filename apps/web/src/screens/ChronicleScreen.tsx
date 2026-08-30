@@ -85,7 +85,7 @@ export function ChronicleScreen({
                 icon = <CoreIcon className="size-4" />;
                 break;
               case 'isotope_exhausted':
-                title = t('chronicle.isotopeExhausted', { number: event.payload.asteroidIndex });
+                title = t('chronicle.isotopeExhausted');
                 detail = t('chronicle.isotopeExhaustedDetail');
                 icon = <DrillIcon className="size-4" />;
                 break;

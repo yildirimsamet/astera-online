@@ -2,17 +2,20 @@ import { eq } from 'drizzle-orm';
 import type { FastifyInstance } from 'fastify';
 import { pino } from 'pino';
 import { afterAll, afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { SENSOR } from '@astera/rules';
 import { buildApp } from '../src/app.js';
 import { accounts, planets, players, satellites } from '../src/db/schema.js';
 import { FixedClock } from '../src/clock.js';
 import { bootstrapServers } from '../src/services/servers.js';
-import { testDb, testEnv, truncateAll, type Fixture } from './helpers.js';
+import { placeAt, testDb, testEnv, truncateAll, type Fixture } from './helpers.js';
 
 const silent = pino({ level: 'silent' });
 const START = new Date('2026-03-01T00:00:00.000Z');
 
 interface PreviewWorld {
   id: string;
+  /** D127's three states. A visitor has never probed, so never `REMEMBERED`. */
+  intel?: 'RESOLVED' | 'REMEMBERED' | 'UNKNOWN';
   name: string;
   owner: string;
   position: { x: number; y: number; z: number };
@@ -40,7 +43,18 @@ interface Preview {
     playerCap: number;
     players: number;
   };
-  galaxy: { you: { planetId: string; playerId: string }; planets: PreviewWorld[] };
+  galaxy: {
+    you: { planetId: string; playerId: string };
+    sensors: {
+      planetId: string;
+      at: { x: number; y: number; z: number };
+      telescope: boolean;
+      reach: number;
+      sense: number;
+      warn: number;
+    }[];
+    planets: PreviewWorld[];
+  };
   traffic: { contacts: unknown[] };
   reserved: {
     id: string;
@@ -114,6 +128,19 @@ describe('preview', () => {
     const res = await app.inject({ method: 'GET', url: '/api/preview' });
     expect(res.statusCode).toBe(200);
     return res.json<Preview>();
+  };
+
+  /**
+   * PUT A WORLD WHERE THE VISITOR CAN SEE IT. D127.
+   *
+   * The preview resolves only what is inside the naked-eye reach of the seat it
+   * is offering, so every test that reads a real commander's NAME has to place
+   * one there rather than trust the generator. Moving a planet does not move the
+   * reserved slot: `pickSpawnSlot` works off slot INDEXES, not coordinates.
+   */
+  const putBesideTheSeat = async (planetId: string): Promise<void> => {
+    const seat = (await preview()).reserved.position;
+    await placeAt(db, planetId, { x: seat.x + 50, y: seat.y, z: seat.z });
   };
 
   /* ── it costs nothing ─────────────────────────────────────── */
@@ -191,6 +218,16 @@ describe('preview', () => {
     // rehearsal lights up is the band the claim will actually accept.
     expect(self[0]?.coreTier).toBe(1);
     expect(body.galaxy.you.planetId).toBe(body.reserved.id);
+    expect(body.galaxy.sensors).toEqual([
+      expect.objectContaining({
+        planetId: body.reserved.id,
+        at: body.reserved.position,
+        telescope: false,
+        // The naked eye, and no radar: a visitor owns no hardware.
+        identify: SENSOR.baseRadius,
+        detect: 0,
+      }),
+    ]);
     // One real commander plus the fixed 51-world neutral pool.
     expect(body.galaxy.planets.filter((p) => !p.isSelf)).toHaveLength(52);
   });
@@ -198,6 +235,7 @@ describe('preview', () => {
   it('carries the real commanders, by name and position', async () => {
     await openWorld(1, 4);
     const first = await join('EU-1');
+    await putBesideTheSeat(first.planetId);
 
     const [row] = await db.select().from(planets).where(eq(planets.id, first.planetId));
     const world = (await preview()).galaxy.planets.find((p) => p.id === first.planetId);
@@ -224,6 +262,20 @@ describe('preview', () => {
     await join('EU-1');
 
     for (const world of (await preview()).galaxy.planets) {
+      /**
+       * AN UNSURVEYED WORLD IS A POINT HERE TOO, and that is the half of this
+       * test D127 needed. The endpoint is UNAUTHENTICATED and was answering with
+       * `publicWorlds` whole: every owner, Core level, satellite and dome in a
+       * live season, to anybody who asked. A commander who wanted the map the fog
+       * had just taken away needed a second browser tab. A fog rule with a public
+       * bypass is not a fog rule.
+       */
+      if (world.intel === 'UNKNOWN') {
+        expect(Object.keys(world).sort()).toEqual(
+          ['id', 'intel', 'isOwned', 'isSelf', 'position', 'state'].sort(),
+        );
+        continue;
+      }
       expect(Object.keys(world).sort()).toEqual([
         /**
          * The optional keys are listed off the world's own content rather than
@@ -240,7 +292,7 @@ describe('preview', () => {
         'coreTier',
         ...(world.dominionRank ? ['dominionRank'] : []),
         'id',
-        ...(world.isSelf ? ['isCapital', 'isOwned'] : []),
+        ...(world.isSelf ? ['isCapital', 'isOwned'] : ['intel']),
         'isSelf',
         'kind',
         'name',
@@ -252,6 +304,42 @@ describe('preview', () => {
         'state',
       ].sort());
     }
+  });
+
+  /**
+   * THE VISITOR PLAYS UNDER THE SAME FOG EVERYBODY ELSE DOES. D127.
+   *
+   * Not a cosmetic detail about onboarding. This route is the only public read of
+   * a live season, so if it answered in full it would be the whole of D127 undone
+   * by a logged-out tab — and the preview would also be advertising a game the
+   * product does not ship. The seat they are offered is the eye they see with.
+   */
+  it('resolves only the neighbourhood of the seat it is offering', async () => {
+    await openWorld(1, 6);
+    const near = await join('EU-1');
+    const far = await join('EU-1');
+
+    const seat = (await preview()).reserved.position;
+    await placeAt(db, near.planetId, { x: seat.x + 50, y: seat.y, z: seat.z });
+    // Beyond `SENSOR.baseRadius` by a wide margin, so no range table can move
+    // this test onto the wrong side of a boundary.
+    await placeAt(db, far.planetId, { x: seat.x + 4000, y: seat.y, z: seat.z });
+
+    const worlds = (await preview()).galaxy.planets;
+    const close = worlds.find((w) => w.id === near.planetId);
+    const distant = worlds.find((w) => w.id === far.planetId);
+
+    expect(close?.intel).toBe('RESOLVED');
+    expect(close?.owner).not.toBe('');
+    expect(distant?.intel).toBe('UNKNOWN');
+    expect(distant).not.toHaveProperty('owner');
+    expect(distant).not.toHaveProperty('name');
+    expect(distant).not.toHaveProperty('coreLevel');
+    expect(distant).not.toHaveProperty('satellites');
+    expect(distant).not.toHaveProperty('shielded');
+    // And the name is not hiding anywhere else in the payload either.
+    const [row] = await db.select().from(planets).where(eq(planets.id, far.planetId));
+    expect(JSON.stringify(distant)).not.toContain(row?.name ?? 'no-such-name');
   });
 
   /**
@@ -274,6 +362,7 @@ describe('preview', () => {
   it('publishes satellite types and a shield boolean, never a level', async () => {
     await openWorld(1, 4);
     const first = await join('EU-1');
+    await putBesideTheSeat(first.planetId);
     await db
       .insert(satellites)
       .values([

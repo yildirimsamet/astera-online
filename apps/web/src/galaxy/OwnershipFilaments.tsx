@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
-import { useReducedMotionPreference } from './motion.js';
 import type { PlanetNode, Vec3Tuple } from './scene.js';
 
 /**
@@ -75,10 +74,20 @@ export function ownershipPairs(
 ): OwnershipPair[] {
   if (selectedId === null) return [];
   const selected = nodes.find((node) => node.id === selectedId);
-  if (!selected || selected.kind === 'NEUTRAL' || !selected.controllerPlayerId) return [];
+  /**
+   * Ownership topology is a present-tense claim. A remembered probe record is
+   * deliberately frozen; joining its old controller to a live colony would turn
+   * two individually honest readings into one false statement about today.
+   */
+  if (
+    selected?.intel !== 'RESOLVED'
+    || selected.kind === 'NEUTRAL'
+    || !selected.controllerPlayerId
+  ) return [];
 
   const theirs = nodes.filter(
-    (node) => node.controllerPlayerId === selected.controllerPlayerId,
+    (node) => node.intel === 'RESOLVED'
+      && node.controllerPlayerId === selected.controllerPlayerId,
   );
   return starFromCapital(theirs, selected.isOwned ? 'own' : 'selected');
 }
@@ -263,7 +272,6 @@ export function OwnershipFilaments({
   nodes: readonly PlanetNode[];
   selectedId: string | null;
 }) {
-  const reducedMotion = useReducedMotionPreference();
   const pairs = useMemo(() => ownershipPairs(nodes, selectedId), [nodes, selectedId]);
   const geometry = useMemo(() => filamentGeometry(pairs), [pairs]);
   const material = useMemo(
@@ -294,9 +302,7 @@ export function OwnershipFilaments({
   const line = useRef<THREE.LineSegments>(null);
 
   useFrame(({ clock }) => {
-    material.uniforms.uBreath!.value = reducedMotion
-      ? 0.92
-      : 0.88 + Math.sin(clock.elapsedTime * 0.72) * 0.12;
+    material.uniforms.uBreath!.value = 0.88 + Math.sin(clock.elapsedTime * 0.72) * 0.12;
   });
 
   useEffect(

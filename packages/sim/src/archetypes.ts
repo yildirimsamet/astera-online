@@ -21,6 +21,21 @@ export type GroundMix = Partial<Record<GroundHullId, number>>;
 export interface Archetype {
   readonly share: number;
   readonly loginsPerDay: number;
+  /**
+   * THE HANGAR IS LAST ON EVERY LIST, AND IT IS DEMAND-DRIVEN. T4.
+   *
+   * The loop skips a Hangar whose ceiling the fleet is nowhere near, so position
+   * decides only what it CROWDS OUT once the construction queue is full — and a
+   * ceiling-lifter should never crowd out the economy that fills it. A commander
+   * raises a Hangar when they hit one, and grows the rest of the time.
+   *
+   * POSITION WAS MEASURED AND MAKES NO DIFFERENCE — the demand gate already stops
+   * an early buy, so second and last produce an identical ladder across all five
+   * gate seeds. It is last because that is the honest model, not because it moved a
+   * number: a commander raises a Hangar when they hit one and grows the rest of the
+   * time, and a bot that bought capacity ahead of production would be a model of a
+   * worse player than the one being measured.
+   */
   readonly buildOrder: readonly BuildingId[];
   /**
    * ONE WISHLIST, SPANNING BOTH KINDS OF HARDWARE. D25.
@@ -105,7 +120,7 @@ export type ArchetypeName = 'TURTLE' | 'RAIDER' | 'FARMER' | 'CASUAL' | 'GRINDER
 export const ARCHETYPES: Record<ArchetypeName, Archetype> = {
   TURTLE: {
     share: 0.18, loginsPerDay: 4, defenceRatio: 2.2,
-    buildOrder: ['REFINERY', 'EXTRACTOR', 'VAULT', 'CORE'],
+    buildOrder: ['REFINERY', 'EXTRACTOR', 'VAULT', 'CORE', 'HANGAR', 'DEUTERIUM_PLANT'],
     wants: ['AEGIS', 'UPLINK', 'RADAR', 'FOUNDRY'],
     // Never attacks, so this is a home garrison: the cheapest hit points it can
     // put on the pad beside the Bastions it actually relies on.
@@ -117,7 +132,7 @@ export const ARCHETYPES: Record<ArchetypeName, Archetype> = {
   },
   RAIDER: {
     share: 0.22, loginsPerDay: 6, defenceRatio: 0.35,
-    buildOrder: ['SHIPYARD', 'REFINERY', 'CORE', 'EXTRACTOR'],
+    buildOrder: ['SHIPYARD', 'REFINERY', 'CORE', 'EXTRACTOR', 'HANGAR', 'DEUTERIUM_PLANT'],
     wants: ['UPLINK', 'RADAR', 'TELESCOPE', 'VEIL', 'BEACON'],
     // Attacks constantly and scouts never, so it cannot learn what it is flying
     // into. A generalist mix is what that player ends up with: enough Lances to
@@ -130,7 +145,7 @@ export const ARCHETYPES: Record<ArchetypeName, Archetype> = {
   },
   FARMER: {
     share: 0.24, loginsPerDay: 4, defenceRatio: 1.3,
-    buildOrder: ['REFINERY', 'EXTRACTOR', 'VAULT', 'CORE', 'SHIPYARD'],
+    buildOrder: ['REFINERY', 'EXTRACTOR', 'VAULT', 'CORE', 'SHIPYARD', 'HANGAR', 'DEUTERIUM_PLANT'],
     wants: ['FOUNDRY', 'AEGIS', 'UPLINK', 'RADAR'],
     // Raids occasionally and cheaply; the fleet is a sideline to the economy.
     composition: { WASP: 0.7, LANCE: 0.3 }, adaptsComposition: false,
@@ -141,7 +156,7 @@ export const ARCHETYPES: Record<ArchetypeName, Archetype> = {
   },
   CASUAL: {
     share: 0.24, loginsPerDay: 2, defenceRatio: 0.9,
-    buildOrder: ['REFINERY', 'CORE', 'EXTRACTOR', 'SHIPYARD', 'VAULT'],
+    buildOrder: ['REFINERY', 'CORE', 'EXTRACTOR', 'SHIPYARD', 'VAULT', 'HANGAR', 'DEUTERIUM_PLANT'],
     wants: ['UPLINK', 'RADAR', 'AEGIS', 'FOUNDRY'],
     // Two logins a day buys the cheap thing and moves on.
     composition: { WASP: 0.8, LANCE: 0.2 }, adaptsComposition: false,
@@ -152,7 +167,7 @@ export const ARCHETYPES: Record<ArchetypeName, Archetype> = {
   },
   GRINDER: {
     share: 0.12, loginsPerDay: 10, defenceRatio: 0.45,
-    buildOrder: ['SHIPYARD', 'REFINERY', 'CORE', 'EXTRACTOR'],
+    buildOrder: ['SHIPYARD', 'REFINERY', 'CORE', 'EXTRACTOR', 'HANGAR', 'DEUTERIUM_PLANT'],
     wants: ['UPLINK', 'TELESCOPE', 'RADAR', 'VEIL', 'BEACON'],
     // The only archetype that reasons about its fleet. `composition` here is the
     // fallback for a Shipyard too low to offer a choice.

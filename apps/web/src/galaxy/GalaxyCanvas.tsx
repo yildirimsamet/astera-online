@@ -9,21 +9,36 @@ import type {
   GalaxyPlanet,
   MiningRun,
   PendingThread,
+  StrategicInterception,
+  StrategicInterceptionImpact,
 } from '../api/schemas.js';
 import type { Focus } from './FocusPanel.js';
 import { easedCameraRange, focusIdentity, rigAction, rigGestureState } from './follow.js';
-import { BrightStars, Core, Disc, Dust, Meteors, Nebula, Starfield } from './Environment.jsx';
+import {
+  BrightStars,
+  Core,
+  Disc,
+  Dust,
+  Meteors,
+  Nebula,
+  Starfield,
+} from './Environment.jsx';
 import { useAmbientFrames, useCommittedDemandFrame } from './frames.jsx';
 import { Wrecks, type WreckView } from './Wrecks.js';
 import { Asteroids, InterceptMarks } from './Asteroids.jsx';
 import { OwnFleets, Traffic } from './Fleets.jsx';
 import { threadKey } from './threadKey.js';
 import { DeathStarImpacts } from './DeathStarImpact.jsx';
+import {
+  StrategicInterceptions,
+  strategicInterceptionMissilePosition,
+} from './StrategicInterception.jsx';
 import { PlanetField } from './PlanetField.jsx';
 import { DysonShells } from './DysonShells.jsx';
 import { Satellites, Shields } from './Satellites.jsx';
 import { MiningFlights } from './MiningFlights.jsx';
 import { OwnershipFilaments } from './OwnershipFilaments.jsx';
+import { SensorRings, type ReachRing } from './SensorRings.jsx';
 import {
   DISC_RADIUS,
   activeWorldPosition,
@@ -32,15 +47,17 @@ import {
   isRivalNode,
   legStandoff,
   planetNodes,
+  runHomePosition,
   runPosition,
   threadPosition,
+  toWorld,
   type PlanetNode,
 } from './scene.js';
 import { installTapGuard, wasMiss, wasTap } from './tap.js';
 import { serverNow } from '../lib/clock.js';
+import { staleness } from '../lib/time.js';
 import { commanderLabel } from '../lib/identity.js';
 import { RankBadge } from './RankBadge.jsx';
-import { useReducedMotionPreference } from './motion.js';
 import { useTranslation } from 'react-i18next';
 
 /**
@@ -115,13 +132,33 @@ export interface GalaxyCanvasProps {
   planets: readonly GalaxyPlanet[];
   /** Your own missions. Inbound attacks carry no path and are not drawn as one. */
   pending: readonly PendingThread[];
-  /** Everyone else's, already stripped of anything identifying by the server. */
+  /** Everyone else's sensed craft plus effect-only public engagements. */
   contacts: readonly Contact[];
+  /** Anti-strategic launches the caller participates in or identifies by Telescope. */
+  interceptions?: readonly StrategicInterception[];
+  /** Public collision fire; carries no craft or route. */
+  interceptionImpacts?: readonly StrategicInterceptionImpact[];
   /** Rocks crossing the disc right now, and your craft working them. D19. */
   asteroids: readonly AsteroidView[];
   runs: readonly MiningRun[];
   /** Wreck fields left by battles, visible to the whole galaxy. D32. */
   wrecks: readonly WreckView[];
+  /**
+   * The caller's own sensor boundaries, one per controlled world. D125/D126.
+   *
+   * Drawn so the ladder is a thing in the galaxy rather than a fact in a payload
+   * (D124). Absent draws nothing, which is right for a client ahead of its server.
+   */
+  sensors?: readonly ReachRing[];
+  /**
+   * Whether each instrument's boundaries are drawn AT ALL. Owner instruction.
+   *
+   * One flag each, covering every controlled world — see `GalaxyView` for why the
+   * per-world set that preceded them was wrong. Both default to off: the galaxy is
+   * the subject and the instruments are something the player asks for.
+   */
+  showTelescopeReach?: boolean;
+  showRadarReach?: boolean;
   /** Where your own craft launch from, for drawing mining legs. */
   homePosition: { x: number; y: number; z: number } | undefined;
   /** The controlled world Camera Home resolves inside the rendered galaxy list. */
@@ -173,9 +210,14 @@ export function GalaxyCanvas({
   planets,
   pending,
   contacts,
+  interceptions,
+  interceptionImpacts,
   asteroids,
   runs,
   wrecks,
+  sensors,
+  showTelescopeReach = false,
+  showRadarReach = false,
   homePosition,
   activePlanetId = null,
   aegisLevel,
@@ -227,7 +269,7 @@ export function GalaxyCanvas({
     }
 
     if (focus.kind === 'asteroid' && seasonStart) {
-      const rock = asteroids.find((a) => a.index === focus.index);
+      const rock = asteroids.find((a) => a.id === focus.id);
       if (!rock) return null;
       return () => asteroidWorldPosition(rock, seasonStart, serverNow());
     }
@@ -263,7 +305,25 @@ export function GalaxyCanvas({
     if (focus.kind === 'run' && homePosition) {
       const run = runs.find((r) => r.id === focus.id);
       if (!run) return null;
-      return () => runPosition(run, homePosition, serverNow(), nodes);
+      const origin = runHomePosition(run, nodes, homePosition);
+      return () => runPosition(run, origin, serverNow(), nodes);
+    }
+
+    if (focus.kind === 'interception') {
+      const event = interceptions?.find((candidate) => candidate.id === focus.id);
+      if (!event) return null;
+      return () => strategicInterceptionMissilePosition(
+        event,
+        nodes,
+        serverNow(),
+      );
+    }
+
+    if (focus.kind === 'interceptionImpact') {
+      const impact = interceptionImpacts?.find((candidate) => candidate.id === focus.id);
+      if (!impact) return null;
+      const collision = toWorld(impact.collision);
+      return () => collision;
     }
 
     /**
@@ -274,14 +334,27 @@ export function GalaxyCanvas({
      */
     if (focus.kind === 'contact') {
       const contact = contacts.find((c) => c.id === focus.id);
-      if (!contact) return null;
+      // An effect-only engagement is deliberately not a craft: it has no hit box,
+      // no focus target and no authoritative orbit point for the camera to follow.
+      if (!contact || contact.effectOnly === true) return null;
       // The window is already on the server's shared visual leg; nodes remain for
       // the landed engagement hold, which still reads the target's drawn radius.
       return () => contactPosition(contact, serverNow(), nodes);
     }
 
     return null;
-  }, [focus, nodes, asteroids, seasonStart, pending, runs, homePosition, contacts]);
+  }, [
+    focus,
+    nodes,
+    asteroids,
+    seasonStart,
+    pending,
+    runs,
+    homePosition,
+    contacts,
+    interceptions,
+    interceptionImpacts,
+  ]);
 
   /**
    * How close the camera is pulled in when it takes a new subject.
@@ -394,13 +467,24 @@ export function GalaxyCanvas({
           <Asteroids
             asteroids={asteroids}
             seasonStart={seasonStart}
-            focusedIndex={focus?.kind === 'asteroid' ? focus.index : null}
-            onSelect={(index) => {
-              onFocus({ kind: 'asteroid', index });
+            focusedId={focus?.kind === 'asteroid' ? focus.id : null}
+            onSelect={(id) => {
+              onFocus({ kind: 'asteroid', id });
             }}
           />
         )}
 
+        {/*
+          THE BOUNDARIES, DRAWN. D125/D126. Before the worlds, so the rings sit
+          behind the things they are about rather than over them.
+        */}
+        {sensors && sensors.length > 0 && (
+          <SensorRings
+            posts={sensors}
+            showTelescope={showTelescopeReach}
+            showRadar={showRadarReach}
+          />
+        )}
         <OwnershipFilaments nodes={nodes} selectedId={selectedId} />
         <PlanetField
           nodes={nodes}
@@ -451,6 +535,11 @@ export function GalaxyCanvas({
           }}
         />
         <DeathStarImpacts pending={pending} contacts={contacts} nodes={nodes} />
+        <StrategicInterceptions
+          events={interceptions ?? []}
+          impacts={interceptionImpacts ?? []}
+          nodes={nodes}
+        />
         <Labels
           nodes={nodes}
           selectedId={selectedId}
@@ -541,7 +630,7 @@ function labelRank(
   if (node.isClanmate) return 2;
   if (node.dominionRank) return 3;
   if (isRivalNode(node, rivalPlanetId, rivalPlayerId)) return 4;
-  if (node.state?.kind === 'RECOVERY') return 5;
+  if (node.state.kind === 'RECOVERY') return 5;
   if (node.claimUntil && node.claimUntil.getTime() > serverNow()) return 5;
   return 6;
 }
@@ -558,19 +647,39 @@ function Labels({
   rivalPlayerId: string | null;
 }) {
   const { t } = useTranslation();
+  /**
+   * AN UNKNOWN WORLD CARRIES NOTHING AT ALL. D127, owner's instruction.
+   *
+   * Not a name, not a rank, not even the eye. Everything in this container is a
+   * READING, and the whole claim about a world nobody has looked at is that you
+   * have not read it — a mark saying "unread" is still a mark, and a hundred of
+   * them is a wall of marks over a galaxy whose faded bodies already say it.
+   *
+   * A REMEMBERED world DOES get one: a probe went and looked, and the name it
+   * brought back is exactly what it paid for. What that label must also carry is
+   * its AGE, because a record shown as a reading is the map asserting something it
+   * cannot know — see `seenAt`.
+   *
+   * THE EYE STAYS, ON THE WORLDS THAT HAVE ONE. It is in the label's own element
+   * rather than a mesh beside it, which is what fixed its scaling: a 3D quad had
+   * to reproduce drei's `distanceFactor` by hand and got it inverted — smaller on
+   * zoom in, larger on zoom out, drifting sideways the whole time. In the container
+   * it simply IS the label's scale, for free and for ever.
+   */
   const marked = nodes.filter(
     (node) => node.id === selectedId
-      || node.isOwned
+      || ((node.intel !== 'UNKNOWN') && (
+      node.isOwned
       || node.isClanmate
       || Boolean(node.dominionRank)
       || node.stance === 'window'
       || isRivalNode(node, rivalPlanetId, rivalPlayerId)
-      || node.state?.kind === 'RECOVERY'
-      || Boolean(node.claimUntil && node.claimUntil.getTime() > serverNow()),
+      || node.state.kind === 'RECOVERY'
+      || Boolean(node.claimUntil && node.claimUntil.getTime() > serverNow()))),
   );
 
   const labelIdentity = marked
-    .map((node) => `${node.id}:${node.state?.kind ?? 'NONE'}`)
+    .map((node) => `${node.id}:${node.state.kind}`)
     .join('|');
 
   // Recovery labels can join this list after the camera has rendered its last
@@ -667,6 +776,30 @@ function Labels({
             className="flex -translate-y-1/2 flex-col items-center whitespace-nowrap"
             style={{ textShadow: '0 0 10px rgba(0,0,0,0.95)' }}
           >
+            {/*
+              THE EYE IS NOT HERE. D126. It sits in the marker stack instead, one
+              step above the pin and on the pin's own scale law — the owner's
+              instruction, and the only arrangement in which the two stay in step
+              at every zoom. See `EyeMarks` in `PlanetField`.
+            */}
+            {/*
+              A SELECTED UNKNOWN WORLD SAYS ONE TRUE THING. D127.
+
+              Tapping a world selects it, and selection is the one route into this
+              container that does not test `intel` — so an unsurveyed world came
+              through here and was printed from the schema's DEFAULTS: an empty
+              name, an empty commander, and the kind row falling through its two
+              branches to read NEUTRAL. The map was answering a question the player
+              had just been told it could not answer, and answering it wrong.
+
+              The fog hides and never lies, so the label states the state. It stays
+              rather than disappearing because the player asked for it by tapping,
+              and a tap that produces nothing reads as a broken control.
+            */}
+            {node.intel === 'UNKNOWN' ? (
+              <span className="legend text-faint">{t('galaxy.unsurveyed')}</span>
+            ) : (
+            <>
             <span className="legend flex items-center gap-2">
               <span className={node.kind === 'CAPITAL' ? 'text-crystal' : node.kind === 'COLONY' ? 'text-opportunity' : 'text-dim'}>
                 {t(node.kind === 'CAPITAL'
@@ -680,7 +813,7 @@ function Labels({
               {isRivalNode(node, rivalPlanetId, rivalPlayerId) && (
                 <span className="text-alloy-glow">· {t('galaxy.rival')}</span>
               )}
-              {node.state?.kind === 'RECOVERY' && <span className="text-threat-ink">· {t('galaxy.recovery')}</span>}
+              {node.state.kind === 'RECOVERY' && <span className="text-threat-ink">· {t('galaxy.recovery')}</span>}
               {node.claimUntil && node.claimUntil.getTime() > serverNow() && (
                 <span className="text-opportunity">· {t('galaxy.claimOpen')}</span>
               )}
@@ -690,6 +823,21 @@ function Labels({
               <span>{commanderLabel(node.owner, node.clan?.tag)}</span>
             </span>
             <span className="legend">{node.name}</span>
+            {/*
+              A RECORD SAYS WHEN IT WAS TAKEN. D127.
+              Everything above this line on a remembered world is what a probe saw,
+              and it may have been wrong for hours. Printing it without its age
+              would be the map asserting something it cannot know — the fog hides,
+              it never lies. Same string the Telescope already uses for a stale
+              reading, so the two ages read as one idea.
+            */}
+            {node.intel === 'REMEMBERED' && node.seenAt && (
+              <span className="legend text-faint">
+                {staleness(Math.max(0, (serverNow() - node.seenAt.getTime()) / 60_000))}
+              </span>
+            )}
+            </>
+            )}
           </span>
         </Html>
       ))}
@@ -762,7 +910,6 @@ function Rig({
 }) {
   const ref = useRef<ComponentRef<typeof OrbitControls>>(null);
   const invalidate = useThree((state) => state.invalidate);
-  const reducedMotion = useReducedMotionPreference();
   /** Where the pivot is heading, how much ease is left, and how to frame it. */
   const ease = useRef<{
     to: THREE.Vector3;
@@ -815,7 +962,7 @@ function Rig({
   ): void => {
     ease.current = {
       to: new THREE.Vector3(x, y, z),
-      left: reducedMotion ? 0.001 : EASE,
+      left: EASE,
       rangeTo,
       exactRange,
     };

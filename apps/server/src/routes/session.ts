@@ -127,6 +127,7 @@ export function registerSessionRoutes(app: FastifyInstance): void {
       notifications: rows.map((n) => ({
         id: n.id,
         kind: n.kind,
+        refId: n.refId,
         payload: n.payload,
         seen: n.seen,
         at: n.createdAt,
@@ -188,13 +189,16 @@ export function registerSessionRoutes(app: FastifyInstance): void {
       }
       return true;
     };
-    write(`: connected\n\n`);
-
     const send = (event: { kind: string }): void => {
       write(`event: ${event.kind}\ndata: ${JSON.stringify(event)}\n\n`);
     };
+    // Subscribe before the first byte makes the response visible to the client.
+    // Once fetch resolves its headers the client considers the channel live; a
+    // publish between that instant and these subscriptions would otherwise be an
+    // unreplayable lost event.
     const unsubscribe = app.bus.subscribe(playerId, send);
     const unsubscribeShard = app.bus.subscribeShard(seasonId, send);
+    const unsubscribeGlobal = app.bus.subscribeGlobal(send);
 
     const heartbeat = setInterval(() => {
       write(`: ping\n\n`);
@@ -211,6 +215,7 @@ export function registerSessionRoutes(app: FastifyInstance): void {
       clearInterval(heartbeat);
       unsubscribe();
       unsubscribeShard();
+      unsubscribeGlobal();
       lease.release(reason);
     };
     // Both events matter: 'close' for a client that goes away, 'error' for a
@@ -221,5 +226,9 @@ export function registerSessionRoutes(app: FastifyInstance): void {
     req.raw.on('error', () => {
       cleanup('error');
     });
+
+    // This first write flushes the response headers only after both topics are
+    // attached, making the client's `onOpen` boundary truthful.
+    write(`: connected\n\n`);
   });
 }

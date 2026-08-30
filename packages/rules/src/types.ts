@@ -44,8 +44,19 @@ export type HullClass = 'SKIRMISHER' | 'LANCE' | 'BULWARK' | 'SUPPORT';
  * the API for. Legacy `RING` rows may still exist in the database and are ignored
  * on read; nothing writes one.
  */
-export type BuildingId = 'CORE' | 'REFINERY' | 'EXTRACTOR' | 'VAULT' | 'SHIPYARD';
-export const BUILDING_IDS = ['CORE', 'REFINERY', 'EXTRACTOR', 'VAULT', 'SHIPYARD'] as const;
+/**
+ * THE HANGAR IS THE SIXTH, AND IT IS APPENDED. T4.
+ *
+ * `buildings.type` is plain text with no constraint and `buildingLevelsFrom` reads
+ * a missing row as level 0, so a sixth building needs no migration and no backfill:
+ * every existing world reads Hangar 0 on its next load. Appending rather than
+ * inserting keeps that true for anything that has ever persisted an index.
+ */
+export type BuildingId =
+  | 'CORE' | 'REFINERY' | 'EXTRACTOR' | 'VAULT' | 'SHIPYARD' | 'HANGAR' | 'DEUTERIUM_PLANT';
+export const BUILDING_IDS = [
+  'CORE', 'REFINERY', 'EXTRACTOR', 'VAULT', 'SHIPYARD', 'HANGAR', 'DEUTERIUM_PLANT',
+] as const;
 /**
  * TWO KINDS OF HARDWARE, AND THEY ARE NOT ALIKE. D25.
  *
@@ -79,6 +90,17 @@ export function isSatellite(id: InstrumentId | SatelliteId): id is SatelliteId {
   return (SATELLITE_IDS as readonly string[]).includes(id);
 }
 
+/**
+ * ALL A STRANGER IS ENTITLED TO KNOW ABOUT A CRAFT IN TRANSIT. D123.
+ *
+ * A silhouette, not a roster. The public payload used to carry the whole fleet,
+ * which is precisely what Radar L4 and L5 are sold for — so the ladder was being
+ * given away by the disc and the two instruments that SEE had nothing left to
+ * sell. Three steps for the same reason `worldWeight` has three: a continuous
+ * size is a number no eye can separate.
+ */
+export type MassClass = 'LIGHT' | 'MEDIUM' | 'HEAVY';
+
 export type Grade = 'DECISIVE' | 'PARTIAL' | 'REPELLED';
 export type ClarityState = 'FULL' | 'CLEAR' | 'INTERMITTENT' | 'DEGRADED' | 'BLIND';
 export type FleetStatus = 'HOME' | 'AWAY' | 'UNKNOWN';
@@ -111,12 +133,42 @@ export type ResearchProjectId =
   | 'ISOTOPE_SPECTROMETRY'
   | 'DENSE_FUEL_CELLS'
   | 'GRAVITIC_CHARGES'
-  | 'DEATH_STAR_PROTOCOL';
+  | 'DEATH_STAR_PROTOCOL'
+  | 'DEUTERIUM_SYNTHESIS'
+  | 'YARD_AUTOMATION'
+  | 'PROSPECTOR_HOLDS'
+  | 'CARGO_HOLDS'
+  | 'WASP_DOCTRINE'
+  | 'LANCE_DOCTRINE'
+  | 'BULWARK_DOCTRINE'
+  | 'EMPLACEMENT_DOCTRINE'
+  | 'WEAPONS_GENERAL'
+  | 'INTERCEPTION_GRID'
+  | 'STRATEGIC_STOCKPILE';
 export const RESEARCH_PROJECT_IDS = [
   'ISOTOPE_SPECTROMETRY',
   'DENSE_FUEL_CELLS',
   'GRAVITIC_CHARGES',
   'DEATH_STAR_PROTOCOL',
+  /**
+   * THE FIRST LEVELLED PROJECT, and the reason T7 built a ladder into the model.
+   * Appended, never inserted: a stored `project_id` is a string, but an id list
+   * that reorders is one more thing that can silently disagree with a snapshot.
+   */
+  'DEUTERIUM_SYNTHESIS',
+  /** The economy and logistics ladders. T8. */
+  'YARD_AUTOMATION',
+  'PROSPECTOR_HOLDS',
+  'CARGO_HOLDS',
+  /** Four doctrines and one general armour project. T9. */
+  'WASP_DOCTRINE',
+  'LANCE_DOCTRINE',
+  'BULWARK_DOCTRINE',
+  'EMPLACEMENT_DOCTRINE',
+  'WEAPONS_GENERAL',
+  /** The two strategic projects: one stops a weapon, one keeps a second on the pad. T10/T11. */
+  'INTERCEPTION_GRID',
+  'STRATEGIC_STOCKPILE',
 ] as const;
 
 export interface Hull {

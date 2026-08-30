@@ -1,10 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
 
-const reduced = (): boolean =>
-  typeof window !== 'undefined' &&
-  typeof window.matchMedia === 'function' &&
-  window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-
 /**
  * A number that rolls to its new value instead of snapping to it.
  *
@@ -29,7 +24,7 @@ export function useCountUp(value: number, { duration = 650 }: { duration?: numbe
     const delta = Math.abs(value - start);
     const material = delta > Math.max(50, Math.abs(start) * 0.04);
 
-    if (!material || reduced()) {
+    if (!material) {
       from.current = value;
       setShown(value);
       return;

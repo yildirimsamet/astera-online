@@ -2,9 +2,11 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
-import { HULLS, INSTRUMENT_MAX_LEVEL, SATELLITES, satelliteSlots } from '@astera/rules';
+import {
+  BUILDING_IDS, HULLS, INSTRUMENT_IDS, INSTRUMENT_MAX_LEVEL, RESEARCH_PROJECT_IDS,
+  SATELLITES, SATELLITE_IDS, satelliteSlots,
+} from '@astera/rules';
 import { PlanetScreen } from '../src/screens/PlanetScreen.js';
-import i18n from '../src/i18n/index.js';
 import { ToastProvider } from '../src/ui/Toast.js';
 import type { PlanetView } from '../src/api/schemas.js';
 import { planetView } from './fixtures.js';
@@ -67,6 +69,7 @@ vi.mock('../src/api/queries.js', async () => {
     useRaiseInstrument: () => ({ mutate: vi.fn(), isPending: false }),
     useCancelBuildOrder: () => ({ mutate: vi.fn(), isPending: false }),
     useBuildDeathStar: () => ({ mutate: vi.fn(), isPending: false }),
+    useBuildInterceptor: () => ({ mutate: vi.fn(), isPending: false }),
   };
 });
 
@@ -201,8 +204,8 @@ describe('the orbit surface', () => {
     show();
     for (const tag of [
       'Unlocks Telescope and Radar',
-      'Watch other planets',
-      'See who is coming',
+      'Resolve distant movement',
+      'Distinguish threats to you',
       'Hide from telescopes',
     ]) {
       expect(screen.getByText(tag), `${tag} is missing`).toBeInTheDocument();
@@ -316,82 +319,27 @@ describe('the reach surface', () => {
     expect(wasp.compareDocumentPosition(prospector) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 
-  it('shows the short Frontier before the hulls and names its shared queue', () => {
-    show({}, 'reach');
-    const [frontier = -1, warships = -1] = bodyOrder(['Frontier research', 'Warships']);
-    expect(frontier).toBeGreaterThan(-1);
-    expect(warships).toBeGreaterThan(frontier);
-    expect(screen.getByText('Isotope Spectrometry')).toBeInTheDocument();
-    expect(screen.getByText('Dense Fuel Cells')).toBeInTheDocument();
-    expect(screen.getByText('Gravitic Charges')).toBeInTheDocument();
-    expect(screen.getByText(/researched once and uses Construction/i)).toBeInTheDocument();
-  });
-
-  it('states the exact Turkish raid conditions without calling a shield merely strong', async () => {
-    await i18n.changeLanguage('tr');
-    const research = planet().research.map((project) => project.id === 'ISOTOPE_SPECTROMETRY'
-      ? {
-          ...project,
-          discovered: true,
-          available: false,
-          completed: true,
-          completedAt: new Date('2026-08-23T00:00:00.000Z'),
-        }
-      : project);
-    const view = show({ research }, 'reach');
-
-    expect(view.container.querySelector('#row-DENSE_FUEL_CELLS'))
-      .toHaveTextContent('Bir akında ambarını doldur; hedefte ganimet kalsın');
-    const gravitic = view.container.querySelector('#row-GRAVITIC_CHARGES');
-    expect(gravitic)
-      .toHaveTextContent('Aegis akın hasarının en az %25’ini emsin');
-
-    const open = gravitic?.querySelector<HTMLElement>('[data-open-item]');
-    expect(open).not.toBeNull();
-    await userEvent.click(open!);
-    expect(screen.getByText(/Bir Atmaca bile yeter; kazanman gerekmez/)).toBeInTheDocument();
-  });
-
-  it('shows completed Frontier projects as complete rather than locked', () => {
-    const research = planet().research.map((project) => ({
-      ...project,
-      discovered: true,
-      available: true,
-      completed: true,
-      completedAt: new Date('2026-08-23T00:00:00.000Z'),
-    }));
-    const view = show({ research }, 'reach');
-
-    for (const id of ['ISOTOPE_SPECTROMETRY', 'DENSE_FUEL_CELLS', 'GRAVITIC_CHARGES']) {
-      expect(view.container.querySelector(`#row-${id} [data-progression-state]`))
-        .toHaveAttribute('data-progression-state', 'complete');
-      expect(view.container.querySelector(`#row-${id} [data-open-item]`)).toBeInTheDocument();
+  /**
+   * RESEARCH IS NOT HERE ANY MORE, AND NOT PARTLY HERE. T12.
+   *
+   * This tab used to carry a "Frontier research" band with four project cards on
+   * it, and the assertions for those moved to `research-panel.test.tsx` with the
+   * cards. What has to stay behind is proof that nothing was left: a half-moved
+   * feature is two doors onto one thing, and the one on this screen would be the
+   * one missing eleven of the fifteen projects.
+   *
+   * Walked across all four tabs, not just this one, because the row ids are global
+   * and a stray card would be as wrong under `grow` as under `reach`.
+   */
+  it('carries no research row on any tab', () => {
+    for (const tab of ['grow', 'orbit', 'defend', 'reach'] as const) {
+      const view = show({}, tab);
+      for (const id of RESEARCH_PROJECT_IDS) {
+        expect(view.container.querySelector(`#row-${id}`), `${tab}/${id}`).toBeNull();
+      }
+      expect(view.container.textContent).not.toContain('Frontier research');
+      view.unmount();
     }
-  });
-
-  it('names the War act clock after Gravitic Charges instead of claiming Gravitic is missing', () => {
-    const research = planet().research.map((project) => project.id === 'GRAVITIC_CHARGES'
-      ? {
-          ...project,
-          discovered: true,
-          completed: true,
-          completedAt: new Date('2026-08-23T00:00:00.000Z'),
-        }
-      : project);
-    research.push({
-      id: 'DEATH_STAR_PROTOCOL',
-      cost: { alloy: 7200, crystal: 2400, deuterium: 600 },
-      discovered: false,
-      completed: false,
-      completedAt: null,
-      available: false,
-      availableAt: new Date('2999-01-01T00:00:00.000Z'),
-      prerequisite: 'GRAVITIC_CHARGES',
-    });
-    const view = show({ research }, 'reach');
-    const protocol = view.container.querySelector('#row-DEATH_STAR_PROTOCOL');
-    expect(protocol).toHaveTextContent(/War act opens in/i);
-    expect(protocol).not.toHaveTextContent(/Gravitic Charges first/i);
   });
 
   it('keeps the Runner behind Dense Fuel Cells and shows its Deuterium price when unlocked', () => {
@@ -497,7 +445,6 @@ describe('the compact row and sheet grammar', () => {
       ['orbit', 'Telescope'],
       ['defend', 'Aegis'],
       ['defend', 'Thorn'],
-      ['reach', 'Isotope Spectrometry'],
       ['reach', 'Wasp'],
     ] as const;
 
@@ -511,5 +458,131 @@ describe('the compact row and sheet grammar', () => {
       expect(screen.getByRole('dialog', { name })).toBeInTheDocument();
       view.unmount();
     }
+  });
+});
+
+/**
+ * THE BUILDING THE WHOLE FUEL ECONOMY RUNS ON, AND THE ROW IT NEVER HAD.
+ *
+ * T5 added the Deuterium Refinery: a building id, art, English and Turkish name,
+ * tag and role, a server upgrade path with its own research ceiling, and an economy
+ * that produces from it. What it never got was a card. Four buildings render under
+ * Production and it is not one of them, so nothing on any screen could raise it.
+ *
+ * That is not a cosmetic gap. T6 makes every launch burn deuterium and D135 states
+ * that "the Refinery is deuterium's floor" — the only steady source. Without a way
+ * to build one, a commander has the opening grant and whatever they can mine off
+ * isotope rocks behind a Frontier project, and then the fleet stops flying.
+ *
+ * The Core gate and the research ceiling are BOTH stated, because the server checks
+ * both: `RESEARCH_CEILING` was a refusal the interface had no sentence for.
+ */
+describe('the Deuterium Refinery', () => {
+  const rung = (level: number) => planet().research.map((project) =>
+    project.id === 'DEUTERIUM_SYNTHESIS'
+      ? { ...project, level, completed: level >= (project.maxLevel ?? 5), discovered: true }
+      : project);
+
+  it('has a row, under Production with the other producers', () => {
+    const view = show({ research: rung(1) }, 'grow');
+    expect(view.container.querySelector('#row-DEUTERIUM_PLANT')).toBeInTheDocument();
+  });
+
+  it('is buyable once a rung of Deuterium Synthesis is held', () => {
+    const view = show({ research: rung(1) }, 'grow');
+    expect(view.container.querySelector('#row-DEUTERIUM_PLANT [data-progression-state]'))
+      .not.toHaveAttribute('data-progression-state', 'locked');
+  });
+
+  /**
+   * `plantCeiling(0)` is zero, so a commander who has not started the ladder cannot
+   * have a Refinery at all — and the card has to say which ladder, not just "no".
+   */
+  it('names the research when no rung is held', () => {
+    const view = show({ research: rung(0) }, 'grow');
+    const row = view.container.querySelector('#row-DEUTERIUM_PLANT');
+    expect(row).toHaveTextContent(/Deuterium Synthesis/i);
+    expect(row?.querySelector('[data-progression-state]'))
+      .toHaveAttribute('data-progression-state', 'locked');
+  });
+
+  it('names it again at the ceiling of the rung actually held', () => {
+    const view = show({
+      research: rung(1),
+      buildings: { CORE: 9, REFINERY: 3, EXTRACTOR: 3, VAULT: 1, SHIPYARD: 1, DEUTERIUM_PLANT: 3 },
+    }, 'grow');
+    expect(view.container.querySelector('#row-DEUTERIUM_PLANT'))
+      .toHaveTextContent(/Deuterium Synthesis/i);
+  });
+
+  it('takes the Core gate like every other building', () => {
+    const view = show({
+      research: rung(5),
+      buildings: { CORE: 2, REFINERY: 1, EXTRACTOR: 1, VAULT: 0, SHIPYARD: 0, DEUTERIUM_PLANT: 2 },
+    }, 'grow');
+    expect(view.container.querySelector('#row-DEUTERIUM_PLANT')).toHaveTextContent(/Core/i);
+  });
+
+  it('can be pointed at from another tab', async () => {
+    const { TAB_OF } = await import('../src/screens/PlanetScreen.js');
+    expect(TAB_OF.DEUTERIUM_PLANT).toBe('grow');
+  });
+});
+
+/**
+ * EVERYTHING THE SERVER SELLS HAS A CONTROL THAT SELLS IT.
+ *
+ * Written after finding the Deuterium Refinery — a building with an id, art, two
+ * languages, a server upgrade path and an economy, and no card anywhere — and after
+ * eleven research ladders had shipped the same way. The pattern is always the same:
+ * a new id goes into the enum, every table that is keyed by the enum is filled in
+ * because TypeScript demands it, and the one place that is a hand-written LIST of
+ * rows is not, because nothing demands it.
+ *
+ * So this walks the enums. A twelfth thing added without a row fails here rather
+ * than in a player's session.
+ */
+describe('nothing is sold without a control', () => {
+  const rowsAcrossEveryTab = (): Set<string> => {
+    const found = new Set<string>();
+    for (const tab of ['grow', 'orbit', 'defend', 'reach'] as const) {
+      const view = show({
+        buildings: { CORE: 14, REFINERY: 6, EXTRACTOR: 6, VAULT: 3, SHIPYARD: 8 },
+        orbit: ['UPLINK'],
+        orbitSlots: 4,
+      }, tab);
+      for (const element of view.container.querySelectorAll('[id^="row-"]')) {
+        found.add(element.id.slice('row-'.length));
+      }
+      view.unmount();
+    }
+    return found;
+  };
+
+  it('gives every building a row', () => {
+    const rendered = rowsAcrossEveryTab();
+    const missing = BUILDING_IDS.filter((id) => !rendered.has(id));
+    expect(missing).toEqual([]);
+  });
+
+  it('gives every hull a row', () => {
+    const rendered = rowsAcrossEveryTab();
+    const missing = Object.keys(HULLS).filter((id) => !rendered.has(id));
+    expect(missing).toEqual([]);
+  });
+
+  it('gives every instrument and satellite a row', () => {
+    const rendered = rowsAcrossEveryTab();
+    const missing = [...INSTRUMENT_IDS, ...SATELLITE_IDS].filter((id) => !rendered.has(id));
+    expect(missing).toEqual([]);
+  });
+
+  /** And every row it draws is a thing that exists, not a leftover id. */
+  it('draws no row for something the rules do not have', () => {
+    const known = new Set<string>([
+      ...BUILDING_IDS, ...Object.keys(HULLS), ...INSTRUMENT_IDS, ...SATELLITE_IDS,
+      ...RESEARCH_PROJECT_IDS,
+    ]);
+    expect([...rowsAcrossEveryTab()].filter((id) => !known.has(id))).toEqual([]);
   });
 });

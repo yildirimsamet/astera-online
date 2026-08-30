@@ -42,6 +42,16 @@ export function compact(value: number): string {
   return n.toLocaleString(locale());
 }
 
+/**
+ * A FIGURE TOO SMALL TO ROUND. Owner report — the per-craft fuel rate.
+ *
+ * `compact` rounds, which is right for everything a player spends and wrong for a
+ * RATE: a Wasp burns a tenth of a deuterium per thousand units and `compact` prints
+ * that as zero — a ship card stating that the most common hull in the game is free
+ * to fly. Same locale notation as every other figure, so Turkish reads `0,1`.
+ */
+export const decimal = (value: number, digits = 1): string => decimals(value, digits);
+
 const decimals = (value: number, digits: number): string =>
   value.toLocaleString(locale(), {
     minimumFractionDigits: digits,

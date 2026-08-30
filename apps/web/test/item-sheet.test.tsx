@@ -70,6 +70,13 @@ const rungs = (): HTMLElement[] =>
   });
 
 describe('the level ladder', () => {
+  it('explains the item beyond the short role shown on its row', () => {
+    show();
+    const detail = document.querySelector<HTMLElement>('[data-item-detail]');
+    expect(detail?.textContent.trim().length).toBeGreaterThan(60);
+    expect(detail).toHaveTextContent(/range|slot|watch/i);
+  });
+
   /** The fault, stated directly: every rung shows what you are buying. */
   it('shows a picture on every level, not only where the tier changes', () => {
     show();
@@ -194,6 +201,12 @@ describe('a satellite, which has no levels at all', () => {
       expect(screen.queryByText(`L${String(level)}`)).toBeNull();
     }
     expect(screen.queryByText(/what each level buys/i)).toBeNull();
+  });
+
+  it('states its lasting effect once, without repeating the same paragraph', () => {
+    showSat();
+    expect(document.querySelectorAll('[data-item-detail]')).toHaveLength(1);
+    expect(document.querySelector('[data-item-detail]')).toHaveTextContent(/passive|ore|early/i);
   });
 
   it('says it is not in orbit rather than "not installed at level 0"', () => {

@@ -31,6 +31,8 @@ const target = (over: Partial<GalaxyPlanet> = {}): GalaxyPlanet => ({
   position: { x: 200, y: 0, z: 0 },
   coreTier: 2,
   coreLevel: 6,
+  intel: 'RESOLVED' as const,
+  state: { kind: 'NORMAL' as const },
   satellites: [],
   shielded: false,
   isSelf: false,
@@ -110,16 +112,17 @@ const read = (over: {
   });
 
 /**
- * THE ONE RULE A PLAYER CAN READ OFF THE MAP. D49.
+ * WHETHER YOU ARE ALLOWED TO FIGHT THEM — AND SINCE D127, DEVELOPMENT DOES NOT
+ * DECIDE.
  *
- * Whether a launch will be accepted is decided by development tier, and tier is
- * public on every world for free. That is the whole reason the band replaced a
- * Wealth ratio, and it is only worth anything if the dossier actually says so —
- * otherwise it is the same invisible rule with a different formula behind it.
+ * These used to hold D49's ±2 tier band: the dossier pre-checked it because tier
+ * was public and the panel could say WHY a launch was unavailable. D127 made
+ * development private and retired the band with it, so there is nothing here to
+ * pre-check and no reason to explain. What is left is that the figure still
+ * appears as a fact when it has been earned, with no permission attached.
  */
-describe('whether you are allowed to fight them', () => {
-  // The fixture's own Core is 4, which is tier 2. Reach is tier 1 to 4.
-  it('says a world inside the band is inside it, and names your own tier', () => {
+describe('what development still says, now that it decides nothing', () => {
+  it('reports the tier as a plain fact, with no band note attached', () => {
     const read = dossier({
       target: target({ coreTier: 4 }),
       planet: mine,
@@ -127,54 +130,23 @@ describe('whether you are allowed to fight them', () => {
       reports: [],
       now: NOW,
     });
-    expect(read.inBand).toBe(true);
-    expect(read.band).toEqual({ low: 1, high: 4 });
-    expect(read.facts.find((f) => f.key === 'development')?.note).toContain('Tier 2');
+    const development = read.facts.find((f) => f.key === 'development');
+    expect(development).toBeDefined();
+    expect(development?.note).toBeUndefined();
   });
 
-  it('refuses the step past the band and says which tiers are reachable', () => {
-    const read = dossier({
-      target: target({ coreTier: 5 }),
-      planet: mine,
-      intel: intelWith(),
-      reports: [],
-      now: NOW,
-    });
-    expect(read.inBand).toBe(false);
-    expect(read.facts.find((f) => f.key === 'development')?.note).toContain('Tier 1 to 4');
-  });
-
-  /** Symmetric: a world far below is as unreachable as one far above. */
-  it('is out of band downward as well as upward', () => {
-    const big = planetView(
-      { buildings: { CORE: 16, REFINERY: 2, EXTRACTOR: 2, VAULT: 1, SHIPYARD: 1 } },
-      { alloy: 1000, crystal: 200, alloyCap: 5000, crystalCap: 1000, alloyPerHour: 200, crystalPerHour: 60 },
-    );
-    const read = dossier({
-      target: target({ coreTier: 1 }),
-      planet: big,
-      intel: intelWith(),
-      reports: [],
-      now: NOW,
-    });
-    expect(read.inBand).toBe(false);
-    expect(read.band).toEqual({ low: 4, high: 8 });
-  });
-
-  /**
-   * The band is stated even when everything else about the world is unknown.
-   * It is public, and it is the first thing that decides whether the rest matters.
-   */
-  it('states it on a world nothing has ever looked at', () => {
-    const read = dossier({
-      target: target({ coreTier: 9 }),
-      planet: mine,
-      intel: intelWith(),
-      reports: [],
-      now: NOW,
-    });
-    expect(headline(read, target({ coreTier: 9 }))).toEqual({ kind: 'none' });
-    expect(read.facts.find((f) => f.key === 'development')?.note).toContain('Out of reach');
+  /** However far apart, the dossier no longer has an opinion about permission. */
+  it('says the same thing about a world far above and far below', () => {
+    for (const tier of [1, 5, 9]) {
+      const read = dossier({
+        target: target({ coreTier: tier }),
+        planet: mine,
+        intel: intelWith(),
+        reports: [],
+        now: NOW,
+      });
+      expect(read.facts.find((f) => f.key === 'development')?.note).toBeUndefined();
+    }
   });
 });
 
@@ -297,5 +269,110 @@ describe('the action button when you cannot afford it', () => {
     );
     expect(screen.getByRole('button', { name: /raise/i })).toBeEnabled();
     expect(screen.queryByText(/short/i)).not.toBeInTheDocument();
+  });
+});
+
+/**
+ * WHAT THE DOSSIER MAY CLAIM ABOUT A WORLD YOU CANNOT SEE. D127.
+ *
+ * The provenance machinery — `source` and `ageMinutes` on every line — is the
+ * whole reason this file exists: "defence 1,400" invites a player to bet a fleet
+ * without asking when it was measured or by what. D127 moved owner, development
+ * and orbital hardware behind the fog and this block was left alone, so all three
+ * went on being pushed as `public` with a null age in both of the new states.
+ *
+ *   · UNKNOWN. The payload OMITS these fields and the schema fills the hole with
+ *     defaults, so the panel printed `Tier 1` and an empty commander and stamped
+ *     them free, live and trustworthy. A Core 18 fortress read as a Tier 1 rock.
+ *     That is not a fog leak — it is the opposite, and worse: the map asserting
+ *     something false on the surface a player uses to pick a target.
+ *   · REMEMBERED. Real facts, but a RECORD. Printing a probe's hours-old reading
+ *     with no age is the same lie in a quieter register.
+ */
+describe('what the dossier claims about a world outside your reach', () => {
+  const unknown = () =>
+    dossier({
+      // Exactly what `planetNodes` sees for an unknown world: the schema's
+      // defaults, because the server sends none of these fields at all.
+      target: target({ intel: 'UNKNOWN', name: '', owner: '', coreTier: 1, coreLevel: 0 }),
+      planet: mine,
+      intel: intelWith(),
+      reports: [],
+      now: NOW,
+    });
+
+  it('states nothing at all about an unsurveyed world', () => {
+    const read = unknown();
+    for (const key of ['owner', 'development', 'hardware']) {
+      expect(read.facts.find((f) => f.key === key), key).toBeUndefined();
+    }
+  });
+
+  /** Never `Tier 1`, which is the schema's default and not a reading. */
+  it('never prints a development figure it was not sent', () => {
+    expect(JSON.stringify(unknown().facts)).not.toContain('Tier 1');
+  });
+
+  /** The absence is a purchase, so it is offered as one. */
+  it('turns the absence into a gap a probe closes', () => {
+    const gap = unknown().gaps.find((g) => g.key === 'surface');
+    expect(gap).toBeDefined();
+    expect(gap?.closes).toBe('probe');
+  });
+
+  /**
+   * A REMEMBERED WORLD'S SURFACE IS A PROBE READING WITH AN AGE ON IT, and the age
+   * is the load-bearing half: the target may have built two Core levels and three
+   * satellites since, and the record goes on saying what it said.
+   */
+  it('dates the facts a probe brought back rather than calling them live', () => {
+    const seenAt = new Date(NOW - 180 * 60_000);
+    const read = dossier({
+      target: target({ intel: 'REMEMBERED', seenAt, satellites: ['FOUNDRY'] }),
+      planet: mine,
+      intel: intelWith(),
+      reports: [],
+      now: NOW,
+    });
+
+    for (const key of ['owner', 'development', 'hardware']) {
+      const fact = read.facts.find((f) => f.key === key);
+      expect(fact, key).toBeDefined();
+      expect(fact?.source, key).toBe('probe');
+      expect(fact?.ageMinutes, key).toBeCloseTo(180, 5);
+    }
+  });
+
+  /**
+   * NO CONFIDENCE FIGURE ON A SILHOUETTE. A probe fuzzes stock and defence into
+   * bands; the outside of a world is simply seen. Attaching an accuracy would
+   * invent a doubt the payload does not have.
+   */
+  it('claims no accuracy for what the probe simply saw', () => {
+    const read = dossier({
+      target: target({ intel: 'REMEMBERED', seenAt: new Date(NOW - 60_000) }),
+      planet: mine,
+      intel: intelWith(),
+      reports: [],
+      now: NOW,
+    });
+    expect(read.facts.find((f) => f.key === 'development')?.accuracy).toBeUndefined();
+  });
+
+  /** A world you can actually see is untouched: free, live, and no age. */
+  it('leaves a resolved world exactly as it was', () => {
+    const read = dossier({
+      target: target({ satellites: ['FOUNDRY'] }),
+      planet: mine,
+      intel: intelWith(),
+      reports: [],
+      now: NOW,
+    });
+    for (const key of ['owner', 'development', 'hardware']) {
+      const fact = read.facts.find((f) => f.key === key);
+      expect(fact?.source, key).toBe('public');
+      expect(fact?.ageMinutes, key).toBeNull();
+    }
+    expect(read.gaps.find((g) => g.key === 'surface')).toBeUndefined();
   });
 });

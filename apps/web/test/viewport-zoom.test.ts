@@ -1,4 +1,4 @@
-import { readFileSync } from 'node:fs';
+import { globSync, readFileSync } from 'node:fs';
 import { afterEach, describe, expect, it } from 'vitest';
 import { lockViewportZoom } from '../src/lib/viewport.js';
 
@@ -86,6 +86,50 @@ describe('page zoom is refused and the disc keeps its gestures', () => {
     const html = /\bhtml\s*\{([^}]*)\}/s.exec(css)?.[1] ?? '';
     // `pan-x pan-y` and not `none`: the page must still scroll.
     expect(html).toMatch(/touch-action:\s*pan-x pan-y/);
+  });
+
+  /**
+   * THE CASCADE, NOT THE INTENTION, DECIDES WHETHER SAFARI ZOOMS.
+   *
+   * `.field` owns a 16px floor for iOS, but Tailwind's utilities are emitted
+   * after the components layer. Putting `text-body` beside `field` therefore
+   * turns the control into 14px in production even though the field rule still
+   * says 16px. The same mistake at `text-caption` makes a select 12px.
+   *
+   * Scan every TSX class literal rather than naming the two controls that first
+   * exposed this. A future composer or search box must not reopen the same route.
+   */
+  it('never lets an undersized typography utility override the 16px field floor', () => {
+    const chrome = readFileSync('src/styles/chrome.css', 'utf8');
+    const field = /\.field\s*\{([^}]*)\}/s.exec(chrome)?.[1] ?? '';
+    const conflicts: string[] = [];
+    const undersizedNames = new Set([
+      'text-sm',
+      'text-xs',
+      'text-body',
+      'text-caption',
+      'text-label',
+      'text-micro',
+    ]);
+
+    for (const file of globSync('src/**/*.tsx')) {
+      const source = readFileSync(file, 'utf8');
+      const classLiterals = source.matchAll(/className=(?:"([^"]*)"|'([^']*)'|\{`([^`]*)`\})/g);
+      for (const match of classLiterals) {
+        const literal = match[1] ?? match[2] ?? match[3] ?? '';
+        const classes = literal.split(/\s+/);
+        if (!classes.includes('field')) continue;
+        const undersized = classes.filter((name) => {
+          if (undersizedNames.has(name)) return true;
+          const pixels = /^text-\[(\d+(?:\.\d+)?)px\]$/.exec(name)?.[1];
+          return pixels !== undefined && Number(pixels) < 16;
+        });
+        if (undersized.length > 0) conflicts.push(`${file}: ${undersized.join(', ')}`);
+      }
+    }
+
+    expect(field).toMatch(/font-size:\s*16px/);
+    expect(conflicts).toEqual([]);
   });
 
   /**

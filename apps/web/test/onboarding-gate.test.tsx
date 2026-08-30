@@ -153,7 +153,7 @@ describe('the beat script', () => {
   });
 
   it('is not finished by focusing something that is not a world at all', () => {
-    const rock = stateOf({ focus: { kind: 'asteroid', index: 3 } });
+    const rock = stateOf({ focus: { kind: 'asteroid', id: 'mJt7YvxMZEC5S7yYQ32SYw' } });
     expect(beatAchieved(beatNamed('yours'), rock)).toBe(false);
     expect(beatAchieved(beatNamed('fog'), rock)).toBe(false);
   });

@@ -13,9 +13,9 @@ const rows = Array.from({ length: 100 }, (_, index) => ({
   rank: index + 1,
   playerId: `player-${String(index)}`,
   username: index === 42 ? 'İzci' : `Commander ${String(index)}`,
-  planetId: `planet-${String(index)}`,
-  planetName: `World ${String(index)}`,
-  coreTier: (index % 4) + 1,
+  planetId: index === 1 ? undefined : `planet-${String(index)}`,
+  planetName: index === 1 ? undefined : `World ${String(index)}`,
+  coreTier: index === 1 ? undefined : (index % 4) + 1,
   score: 50 - index,
   clan: index === 0 ? { id: 'clan-war', name: 'War Fleet', tag: 'WAR' } : null,
 }));
@@ -62,6 +62,14 @@ describe('the Dominion leaderboard', () => {
     expect(screen.queryByRole('button', { name: 'İzci' })).not.toBeInTheDocument();
   });
 
+  it('does not expose or link an UNKNOWN commander capital', async () => {
+    const onFocusPlanet = await show();
+    expect(screen.getByText('Commander 1')).toBeVisible();
+    expect(screen.queryByText('World 1')).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Commander 1' })).not.toBeInTheDocument();
+    expect(onFocusPlanet).not.toHaveBeenCalled();
+  });
+
   it('leads a clan commander identity with its tag', async () => {
     await show();
     const identity = screen.getByRole('button', { name: '[WAR] Commander 0' });
@@ -74,5 +82,32 @@ describe('the Dominion leaderboard', () => {
     expect(screen.getByRole('list', { name: 'Liderlik tablosu' })).toBeInTheDocument();
     expect(screen.getByText('İzci')).toBeInTheDocument();
     expect(screen.getByText(/World 42 · 3\. kademe/)).toBeInTheDocument();
+
+    await userEvent.setup().type(screen.getByRole('searchbox'), 'izci');
+    expect(screen.getAllByRole('listitem')).toHaveLength(1);
+    expect(screen.getByText('İzci')).toBeVisible();
+  });
+
+  it('searches commander, planet and clan identity without changing authoritative ranks', async () => {
+    await show();
+    const search = screen.getByRole('searchbox', { name: /search commanders/i });
+    const user = userEvent.setup();
+
+    await user.type(search, 'World 12');
+    expect(screen.getAllByRole('listitem')).toHaveLength(1);
+    expect(screen.getByText('Commander 12')).toBeVisible();
+    expect(screen.getByText('13')).toBeVisible();
+
+    await user.clear(search);
+    await user.type(search, 'war fleet');
+    expect(screen.getAllByRole('listitem')).toHaveLength(1);
+    expect(screen.getByRole('button', { name: '[WAR] Commander 0' })).toBeVisible();
+  });
+
+  it('states when a leaderboard search has no result', async () => {
+    await show();
+    await userEvent.setup().type(screen.getByRole('searchbox'), 'nobody-here');
+    expect(screen.queryByRole('list')).toBeNull();
+    expect(screen.getByText(/no commander, planet or clan matches/i)).toBeVisible();
   });
 });

@@ -22,7 +22,7 @@ export const chronicle = {
   bombardmentDetail: '{{commander}}’s world came under fire.',
   coreTier: '{{planet}} reached Core tier {{tier}}',
   coreTierDetail: '{{commander}} changed the silhouette of their world.',
-  isotopeExhausted: 'Isotope anomaly #{{number}} was exhausted',
+  isotopeExhausted: 'An isotope anomaly was exhausted',
   isotopeExhaustedDetail: 'The public Deuterium race at this rock is over. Who took it remains unknown.',
   wreckFormed: 'Wreckage formed at {{planet}}',
   wreckFormedDetail: 'A public salvage race has begun above the world.',

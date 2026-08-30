@@ -41,7 +41,7 @@ const thread = (over: Partial<PendingThread> = {}): PendingThread => ({
 const run = (over: Partial<MiningRun> = {}): MiningRun => ({
   id: 'run-1',
   targetKind: 'asteroid',
-  asteroidIndex: 7,
+  asteroidId: 'mJt7YvxMZEC5S7yYQ32SYw',
   debrisFieldId: null,
   status: 'outbound',
   craft: 2,
@@ -91,6 +91,37 @@ describe('the pending strip', () => {
     expect(screen.queryByText(/^your /i)).not.toBeInTheDocument();
   });
 
+  /**
+   * AND IT NAMES THE WORLD IT IS COMING FOR. D97/D134.
+   *
+   * A commander holds up to four worlds. "Inbound fleet · 6 min" does not say
+   * where to move the garrison, and the target is the defender's OWN world — the
+   * radar ladder sells the attacker's side, never this. It was simply absent.
+   */
+  it('names which of your worlds an inbound fleet is aimed at', () => {
+    show([thread({ kind: 'incoming', targetPlanetId: 'w2', targetName: 'Kestrel-3' })]);
+    expect(screen.getByText(/kestrel-3/i)).toBeInTheDocument();
+  });
+
+  /** And Radar L5's origin sits beside it rather than replacing it. */
+  it('keeps the origin beside the world when the radar has earned one', () => {
+    show([thread({
+      kind: 'incoming', targetPlanetId: 'w2', targetName: 'Kestrel-3', originName: 'Vesper-1',
+    })]);
+    const row = screen.getByText(/kestrel-3/i);
+    expect(row.textContent).toMatch(/vesper-1/i);
+  });
+
+  /**
+   * A CLIENT AHEAD OF ITS SERVER STILL READS. The old build put the literal
+   * sentence "inbound fleet" in `targetName`, so the world is printed only when
+   * the id that proves it is a real world arrives with it.
+   */
+  it('falls back to the anonymous warning without a target id', () => {
+    show([thread({ kind: 'incoming', targetName: 'inbound fleet' })]);
+    expect(screen.queryByText(/→/)).not.toBeInTheDocument();
+  });
+
   it('says so plainly when there is nothing in flight', () => {
     show([]);
     expect(screen.getByText(/nothing in flight/i)).toBeInTheDocument();
@@ -100,7 +131,7 @@ describe('the pending strip', () => {
   it('counts a drill as in flight when the mission list is empty', () => {
     show([], [run()]);
     expect(screen.queryByText(/nothing in flight/i)).not.toBeInTheDocument();
-    expect(screen.getByText(/your drills.*asteroid 7/i)).toBeInTheDocument();
+    expect(screen.getByText(/your drills.*asteroid/i)).toBeInTheDocument();
   });
 
   it('opens every airborne craft in a bottom sheet and focuses the chosen drill', async () => {
@@ -120,7 +151,7 @@ describe('the pending strip', () => {
     expect(screen.getByRole('dialog', { name: /in flight/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /your fleet.*tharsis/i })).toBeInTheDocument();
 
-    await user.click(screen.getByRole('button', { name: /your drills.*asteroid 7/i }));
+    await user.click(screen.getByRole('button', { name: /your drills.*asteroid/i }));
     expect(onFocus).toHaveBeenCalledWith({ kind: 'run', id: 'run-1' });
     expect(screen.queryByRole('dialog', { name: /in flight/i })).not.toBeInTheDocument();
   });
@@ -128,5 +159,74 @@ describe('the pending strip', () => {
   it('does not count completed mining rows as airborne', () => {
     show([], [run({ status: 'done' })]);
     expect(screen.getByText(/nothing in flight/i)).toBeInTheDocument();
+  });
+});
+
+/**
+ * WHICH WAY IT IS POINTING, AND HOW FAR IT HAS GOT. D142, owner instruction.
+ *
+ * "12m" is the same string for a fleet two minutes from a target and a fleet two
+ * minutes from home carrying the loot, and those are opposite situations. The leg
+ * says which — and the KIND of flight leads the row as a glyph, because a raid, a
+ * probe, a transfer and a mining run were four sentences that differed only in
+ * their wording.
+ */
+describe('the leg a craft is on', () => {
+  const path = (from: number, to: number) => ({
+    from: { x: 0, y: 0, z: 0 },
+    to: { x: 10, y: 0, z: 10 },
+    departAt: new Date(Date.now() - from * 60_000),
+    arriveAt: new Date(Date.now() + to * 60_000),
+  });
+
+  const markLeft = (): number => Number.parseFloat(
+    document.querySelector<HTMLElement>('[data-flight-mark]')!.style.left,
+  );
+
+  it('puts an almost-arrived craft near the far end', () => {
+    show([thread({ path: path(9, 1) })]);
+    expect(markLeft()).toBeGreaterThan(80);
+  });
+
+  it('puts a just-launched craft near home', () => {
+    show([thread({ path: path(1, 9) })]);
+    expect(markLeft()).toBeLessThan(20);
+  });
+
+  /**
+   * A RETURNING CRAFT RUNS BACK TOWARD HOME. Drawing it left to right would put a
+   * fleet carrying loot further from home the closer it got.
+   */
+  it('brings a returning craft back toward the solid end', () => {
+    show([thread({ leg: 'return', path: path(9, 1) })]);
+    expect(markLeft()).toBeLessThan(20);
+  });
+
+  /**
+   * THE FOG, DRAWN AS FOG (D123). The server sends no `path` for an inbound
+   * attack — its origin is what Radar L5 sells — so there is no honest position,
+   * and the bar says it does not know rather than inventing one.
+   */
+  it('refuses to place an inbound fleet it cannot see', () => {
+    show([thread({ kind: 'incoming', targetName: 'inbound fleet' })]);
+    expect(document.querySelector('[data-flight-bar]')).toHaveAttribute('data-known', 'false');
+  });
+
+  it('knows where a mining run is on the leg it is actually flying', () => {
+    show([], [run({
+      status: 'returning',
+      arriveAt: new Date(Date.now() - 9 * 60_000),
+      homeAt: new Date(Date.now() + 1 * 60_000),
+    })]);
+    expect(document.querySelector('[data-flight-bar]')).toHaveAttribute('data-known', 'true');
+    // Nearly home on the RETURN span, not nine minutes past an outbound arrival.
+    expect(markLeft()).toBeLessThan(20);
+  });
+
+  it('leads each row with the glyph for what kind of flight it is', async () => {
+    show([thread(), thread({ kind: 'probe' })]);
+    await userEvent.setup().click(screen.getByRole('button', { name: /flights/i }));
+    expect(document.querySelector('[data-flight-mark-kind="fleet"]')).toBeInTheDocument();
+    expect(document.querySelector('[data-flight-mark-kind="probe"]')).toBeInTheDocument();
   });
 });

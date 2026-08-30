@@ -176,14 +176,17 @@ refresh and 2 under the routed one.
 
 Three API replicas must not independently rebuild the same 351-world answer for every listener.
 Each replica therefore keeps bounded, single-flight projections for public galaxy shape, public
-traffic and the public mining field. They are keyed by season/version, invalidated only after the
-payload they represent commits, and guarded by short TTLs. Cache eviction or disabling the cache
-changes cost, never meaning.
+traffic and the caller-independent mining snapshot. They are keyed by season/version, invalidated
+only after the payload they represent commits, and guarded by short TTLs. Cache eviction or
+disabling the cache changes cost, never meaning.
 
 The private half never enters those shared values. Telescope/fog fields are layered onto the
 public galaxy per caller; ownership filtering is layered onto traffic. Mining is explicitly split:
-`/api/mining/field` carries the shared asteroid/debris surface, while `/api/mining/status` carries
-only the caller's orbit, runs, research effects and isotope knowledge. A small bounded
+`/api/mining/field` layers the caller's durable sensor history and opaque asteroid ids over the
+shared raw asteroid/debris snapshot, while `/api/mining/status` carries only the caller's orbit,
+runs, research effects and isotope knowledge. `sensor_epochs` records only meaningful changes to
+owner/position/effective Telescope reach; analytic orbit/sphere intersection recovers crossings
+without a global tick. A small bounded
 account-topology cache stores only that account's own world ids and active world; committed control,
 season and reclaim changes invalidate it. When the transactional bus is unhealthy, private
 topology caching is bypassed rather than trusted past an invalidation it may have missed.
@@ -310,13 +313,17 @@ Seasonal and permanent tables, with **nothing storing a value derivable from a f
 
 `accounts` · `shards` · `seasons` · `season_results` · `players` · `chat_messages` ·
 `galaxy_events` · `planets` · `neutral_planet_state` · `strategic_assets` · `buildings` · `satellites` · `units` · `missions` ·
-`build_orders` · `scheduled_events` · `battle_reports` · `scan_events` · `probe_reports` · `watches` ·
-`asteroid_claims` · `mining_runs` · `debris_fields` · `notifications` · `reward_grants` ·
+`build_orders` · `scheduled_events` · `battle_reports` · `scan_events` · `probe_reports` · `probe_world_memories` · `watches` ·
+`sensor_epochs` · `asteroid_claims` · `mining_runs` · `debris_fields` · `notifications` · `reward_grants` ·
 `request_log` · `clans` · `clan_memberships` · `clan_requests` · `clan_ceasefires` ·
 `clan_messages` · `clan_events` · `attack_commitments` · `clan_aid_commitments` ·
 `clan_raid_roster` · `clan_loot_shares` · `clan_score_events`
 
 Schema: `apps/server/src/db/schema.ts`. Migrations: `apps/server/drizzle/`.
+
+`probe_reports` is the complete Intel-centre history. `probe_world_memories` is its bounded
+read model: one atomically replaced pointer per observer and target world, used by the galaxy
+projection so repeated scouting cannot make its hottest query grow with report history.
 
 **Time model.** Everything in the database is `timestamptz`; the rules work in minutes since
 season start. `apps/server/src/clock.ts` is the **only** place those two meet.

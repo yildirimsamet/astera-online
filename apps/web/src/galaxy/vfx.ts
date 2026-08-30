@@ -1,5 +1,12 @@
 import * as THREE from 'three';
 
+/** Public combat VFX outside every sensor circle: readable spectacle, not local glare. */
+export const DISTANT_EFFECT_INTENSITY = 0.35;
+
+/** The one brightness rule shared by bombardments and strategic impacts. */
+export const publicEffectIntensity = (effectOnly: boolean): number =>
+  effectOnly ? DISTANT_EFFECT_INTENSITY : 1;
+
 /**
  * THE TEXTURES THE FIRE IS MADE OF. D44.
  *

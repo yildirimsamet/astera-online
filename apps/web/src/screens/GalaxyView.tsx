@@ -3,6 +3,7 @@ import { NextSeason } from '../ui/NextSeason.js';
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
+  miningSceneData,
   useGalaxy,
   useIntel,
   useHarvest,
@@ -12,6 +13,7 @@ import {
   useMiningArrivals,
   usePending,
   usePlanet,
+  useClanBadge,
   useReports,
   useSeason,
   useSetRival,
@@ -34,15 +36,20 @@ import {
 } from '../galaxy/FocusPanel.jsx';
 import { threadKey } from '../galaxy/threadKey.js';
 import type { PlanetGroup } from '../lib/directives.js';
-import { HomeworldIcon } from '../ui/icons/index.js';
 import { haptic } from '../lib/haptics.js';
+import { serverNow } from '../lib/clock.js';
 import { minutesLeft, useNow } from '../lib/time.js';
 import { distance, engagementEndsAt, interceptAsteroid, travelMinutes } from '@astera/rules';
 import { LaunchSheet } from './LaunchSheet.jsx';
 import { TransferSheet } from './TransferSheet.js';
-import { PlanetScreen } from './PlanetScreen.jsx';
+import { WorldsPanel } from './WorldsPanel.js';
+import { DiscControls } from '../galaxy/DiscControls.js';
+import { PlanetScreen, TAB_OF } from './PlanetScreen.jsx';
+import { ResearchPanel } from './ResearchPanel.js';
 import { IntelScreen } from './IntelScreen.jsx';
 import { RewardsScreen } from './RewardsScreen.jsx';
+import { AnnouncementsScreen } from './AnnouncementsScreen.js';
+import { FeedbackScreen } from './FeedbackScreen.js';
 import { MenuPanel } from '../shell/MenuPanel.jsx';
 import { LeaderboardScreen } from './LeaderboardScreen.jsx';
 import { ChatScreen } from './ChatScreen.jsx';
@@ -55,22 +62,47 @@ import { GALAXY_ASSETS, usePreload } from '../lib/preload.js';
 import { LoadingScreen } from '../shell/LoadingScreen.js';
 import { useArrivals } from '../session/useArrivals.js';
 import { DiscReadout } from './DiscReadout.jsx';
-import { SeasonRecap, useSeasonRecapOpening } from './SeasonRecap.jsx';
+import { SensorToggles } from '../galaxy/SensorToggles.jsx';
+import {
+  SeasonRecap,
+  seasonRecapShowsPrimaryAction,
+  useSeasonRecapOpening,
+} from './SeasonRecap.jsx';
 import { ApiError } from '../api/client.js';
 import { useWorld } from '../api/world.js';
-import { controlledWorldId } from '../galaxy/scene.js';
+import {
+  asteroidVisualSeed,
+  controlledWorldId,
+  runForPlanetTarget,
+} from '../galaxy/scene.js';
 import {
   focusTapDecision,
   planetFocusRailVisible,
   transferOriginForFocus,
 } from '../galaxy/follow.js';
-import { reconcileOwnCraft, type CraftFocus } from '../galaxy/ownCraft.js';
+import {
+  reconcileOwnCraft,
+  reconcileOwnInterceptionImpacts,
+  reconcileOwnInterceptions,
+  type CraftFocus,
+} from '../galaxy/ownCraft.js';
+import type { ReachRing } from '../galaxy/SensorRings.jsx';
+import { planetsWithClanPresence } from '../galaxy/clanPresence.js';
 
 /** Clan command is a large, infrequent room; keep it out of the first galaxy bundle. */
+/**
+ * The empty sensor list, once. See the note at its use: this screen rerenders on a
+ * clock, so a literal `[]` in the render body is a new prop every second.
+ */
+const NO_SENSORS: readonly ReachRing[] = [];
+
 const ClanScreen = lazy(async () => {
   const module = await import('./ClanScreen.jsx');
   return { default: module.ClanScreen };
 });
+
+/** Tiptap is admin-only and must not enter every commander's first galaxy bundle. */
+const AdminPanel = lazy(async () => import('./AdminPanel.js'));
 
 /**
  * THE GALAXY IS THE GAME. D20.
@@ -90,7 +122,7 @@ const ClanScreen = lazy(async () => {
  * world the commander controls, that second tap opens management instead.
  */
 
-export type Panel = 'planet' | 'intel' | 'leaderboard' | 'clan' | 'chat' | 'chronicle' | 'rewards' | 'recap' | 'menu' | null;
+export type Panel = 'planet' | 'research' | 'intel' | 'leaderboard' | 'clan' | 'chat' | 'chronicle' | 'rewards' | 'announcements' | 'feedback' | 'admin' | 'recap' | 'menu' | null;
 
 /**
  * WHICH SHELF INSIDE A PANEL, WHEN THE PANEL ALONE IS NOT AN ANSWER. D121.
@@ -109,6 +141,7 @@ export function GalaxyView({
   focusRequest,
   craftFocusRequest,
   commander,
+  isAdmin = false,
   pastResult,
   onSignOut,
   onPlacementLost,
@@ -128,13 +161,15 @@ export function GalaxyView({
    * still lands — a second battle notification must not be swallowed because the
    * Intel centre is already showing battles and the reader has since moved off it.
    */
-  panelStop?: { stop: PanelStop; request: number } | null;
+  panelStop?: { stop: PanelStop; request: number; reportMissionId?: string } | null;
   /** A route from an already-revealed identity back to its world. */
   focusRequest?: { planetId: string; request: number } | null;
   /** A route from the permanent in-flight sheet to a craft already on the disc. */
   craftFocusRequest?: { focus: CraftFocus; request: number } | null;
   /** Who is signed in. Shown on the one surface that is about you rather than the world. */
   commander: string;
+  /** Operations access comes from the server's out-of-band username allow-list. */
+  isAdmin?: boolean;
   /** The newest permanent record, still readable after its world was wiped. D87. */
   pastResult?: HistoricalSeasonResult | null;
   onSignOut: () => void;
@@ -183,7 +218,10 @@ export function GalaxyView({
   const harvest = useHarvest();
   const settlement = useSettlement();
   const deathStar = useLaunchDeathStar();
-  const { activePlanetId, worlds, selectPlanet } = useWorld();
+  const { activePlanetId, capitalPlanetId, worlds, selectPlanet } = useWorld();
+  // The clan mark on the disc needs to know whether there is a clan layer at all,
+  // and whether anything is waiting inside it. Same read the menu row used.
+  const clanBadge = useClanBadge();
   const say = useToast();
   const now = useNow(5_000);
   const [requestedPlanetGroup, setRequestedPlanetGroup] = useState<PlanetGroup | null>(null);
@@ -201,7 +239,7 @@ export function GalaxyView({
    * parked on its destination: a squadron hanging over a world it has already
    * finished fighting, a drill sitting at a point its rock left half a minute ago.
    */
-  useMiningArrivals(mining.data?.runs);
+  useMiningArrivals(mining.statusData?.runs);
   useFleetArrivals(pending.data?.pending);
   /**
    * AND ASK FOR THE NEXT BEARING WINDOW WHEN THE CURRENT ONE RUNS OUT.
@@ -211,12 +249,61 @@ export function GalaxyView({
    * one, and — unlike a real arrival — it refetches `traffic` and nothing else,
    * because nothing else can have changed. See `useContactWindows`.
    */
-  useContactWindows(traffic.data?.contacts);
+  /**
+   * ONE ARRAY IDENTITY, BECAUSE THIS SCREEN RERENDERS ON A CLOCK. D53.
+   *
+   * `?? []` here minted a fresh empty array every render whenever the server had
+   * not sent any — which re-ran the crossing solve and handed `GalaxyCanvas` a new
+   * prop each tick, the exact rebuild the stable-prop rule exists to stop. A
+   * module-level empty is the same array for ever.
+   */
+  const sensors = galaxy.data?.sensors ?? NO_SENSORS;
+  useContactWindows(traffic.data?.contacts, sensors);
 
   const [focus, setFocus] = useState<Focus | null>(null);
   const [transferTargetId, setTransferTargetId] = useState<string | null>(null);
   /** The world that was active before focusing another controlled world. */
   const [transferOriginId, setTransferOriginId] = useState<string | null>(null);
+  const [worldsOpen, setWorldsOpen] = useState(false);
+  /**
+   * WHETHER THE BOUNDARIES ARE DRAWN AT ALL. Owner instruction, third version.
+   *
+   * IT WAS A SET OF WORLDS AND IT IS NOW ONE FLAG EACH, and the history is worth
+   * the paragraph because both earlier versions were reported as bugs.
+   *
+   *   1. ONE FLAG FOR THE WHOLE GALAXY, when only the ACTIVE world's radar was
+   *      ever drawn. Pressing the telescope hid four shells and pressing the radar
+   *      hid one — two adjacent switches with two different reaches.
+   *   2. A SET KEYED BY WORLD, which fixed that by making each switch act on the
+   *      active world alone. It was consistent and it was not what anybody wanted:
+   *      a player who takes the glass off does not mean "off here", they mean off.
+   *
+   * So the switch is global again, and the thing that made version 1 wrong is
+   * fixed at the other end instead — the radar now draws for EVERY world that has
+   * one, so both switches cover the same ground. One press, every world.
+   *
+   * BOTH START OFF. They used to start drawn, on the reasoning that nobody should
+   * have to discover the boundaries by finding a switch. The owner's call is the
+   * other way: the galaxy is the subject, and the instruments are something you
+   * ask for. `SensorToggles` keeps its struck-through glyph precisely so an unlit
+   * switch reads as "off", not as "missing".
+   *
+   * SESSION STATE, NOT STORAGE. Reloading starts clean, which is the same answer
+   * as "both start off" — there is no remembered preference to be surprised by.
+   */
+  const [showTelescopeReach, setShowTelescopeReach] = useState(false);
+  const [showRadarReach, setShowRadarReach] = useState(false);
+  /**
+   * THE RADAR SWITCH ONLY EXISTS IF THERE IS A RADAR. Owner instruction.
+   *
+   * A telescope switch is always meaningful — the naked-eye neighbourhood is free
+   * and every commander has one — but a radar circle is hardware, and a control
+   * that draws nothing when pressed teaches that the pair is decorative. `detect`
+   * is above zero exactly when a world is running a working, Uplink-gated Radar,
+   * so this asks the same question the drawing does.
+   */
+  const hasRadar = sensors.some((post) => post.detect > 0);
+
   /**
    * Whether the focus rail is expanded. Reset to closed on every new selection —
    * a panel that stayed open as the player swept from world to world would undo
@@ -331,7 +418,7 @@ export function GalaxyView({
     };
   }, [drawn, armed]);
 
-  const planets = useMemo(() => galaxy.data?.planets ?? [], [galaxy.data]);
+  const planets = useMemo(() => planetsWithClanPresence(galaxy.data), [galaxy.data]);
   /**
    * CAMERA HOME COMES FROM THE DISC IT MOVES OVER.
    *
@@ -345,10 +432,24 @@ export function GalaxyView({
       ?? planet.data?.planet.position,
     [activePlanetId, planet.data, planets],
   );
-  const asteroids = useMemo(() => mining.data?.asteroids ?? [], [mining.data]);
-  const runs = useMemo(() => mining.data?.runs ?? [], [mining.data]);
-  const wrecks = useMemo(() => mining.data?.debris ?? [], [mining.data]);
+  const miningScene = useMemo(
+    () => miningSceneData(mining.fieldData, mining.statusData),
+    [mining.fieldData, mining.statusData],
+  );
+  const asteroids = miningScene.asteroids;
+  const runs = miningScene.runs;
+  const wrecks = miningScene.debris;
   const threads = useMemo(() => pending.data?.pending ?? [], [pending.data]);
+  const contacts = useMemo(() => traffic.data?.contacts ?? [], [traffic.data]);
+  const interceptions = useMemo(() => traffic.data?.interceptions ?? [], [traffic.data]);
+  const interceptionImpacts = useMemo(
+    () => traffic.data?.interceptionImpacts ?? [],
+    [traffic.data],
+  );
+  const controlledPlanetIds = useMemo(
+    () => new Set(planets.filter((world) => world.isOwned).map((world) => world.id)),
+    [planets],
+  );
 
   /**
    * FOLLOW EVERY NEW OWNED CRAFT, not a list of launch buttons.
@@ -359,7 +460,7 @@ export function GalaxyView({
    * the game must never snap the camera onto something launched yesterday.
    */
   const seenOwnCraft = useRef<ReadonlySet<string> | null>(null);
-  const ownCraftReady = pending.data !== undefined && mining.data !== undefined;
+  const ownCraftReady = pending.data !== undefined && mining.statusData !== undefined;
   useEffect(() => {
     if (!ownCraftReady) return;
     const result = reconcileOwnCraft(seenOwnCraft.current, threads, runs);
@@ -370,6 +471,51 @@ export function GalaxyView({
     setDetail(false);
     setAttacking(false);
   }, [ownCraftReady, runs, threads]);
+
+  /**
+   * An interceptor is not a pending mission: it lives for eight seconds in the
+   * participant/Telescope traffic projection. Focus a newly appearing one only
+   * when its defended target is one of this commander's worlds. That includes a
+   * colony without changing the active management world, and excludes the enemy
+   * battery that happens to destroy this commander's outgoing Death Star.
+   */
+  const seenOwnInterceptions = useRef<ReadonlySet<string> | null>(null);
+  useEffect(() => {
+    if (traffic.data === undefined || galaxy.data === undefined) return;
+    const result = reconcileOwnInterceptions(
+      seenOwnInterceptions.current,
+      interceptions,
+      controlledPlanetIds,
+      serverNow(),
+    );
+    seenOwnInterceptions.current = result.seen;
+    if (!result.focus) return;
+    setFocus(result.focus);
+    setTransferOriginId(null);
+    setDetail(false);
+    setAttacking(false);
+  }, [controlledPlanetIds, galaxy.data, interceptions, traffic.data]);
+
+  /**
+   * If the short launch scene was missed, centre the defending commander on the
+   * collision when its public effect arrives. Attackers and witnesses retain
+   * their camera. The distinct collision focus also closes the race where launch
+   * focus was recorded but its short traffic row vanished before the rig read it.
+   */
+  const seenOwnInterceptionImpacts = useRef<ReadonlySet<string> | null>(null);
+  useEffect(() => {
+    if (traffic.data === undefined) return;
+    const result = reconcileOwnInterceptionImpacts(
+      seenOwnInterceptionImpacts.current,
+      interceptionImpacts,
+    );
+    seenOwnInterceptionImpacts.current = result.seen;
+    if (!result.focus) return;
+    setFocus(result.focus);
+    setTransferOriginId(null);
+    setDetail(false);
+    setAttacking(false);
+  }, [interceptionImpacts, traffic.data]);
 
   const handledCraftFocusRequest = useRef<number | null>(null);
   useEffect(() => {
@@ -401,7 +547,6 @@ export function GalaxyView({
    * unchanged, but only while `traffic.data` is DEFINED; the `?? []` fallback
    * before the first fetch was a fresh array each time.
    */
-  const contacts = useMemo(() => traffic.data?.contacts ?? [], [traffic.data]);
   const onReady = useCallback(() => {
     setDrawn(true);
   }, []);
@@ -545,10 +690,15 @@ export function GalaxyView({
         planets={planets}
         pending={threads}
         contacts={contacts}
+        interceptions={interceptions}
+        interceptionImpacts={interceptionImpacts}
         asteroids={asteroids}
         runs={runs}
 
         wrecks={wrecks}
+        sensors={sensors}
+        showTelescopeReach={showTelescopeReach}
+        showRadarReach={showRadarReach}
         {...(activeWorldPosition ? { homePosition: activeWorldPosition } : { homePosition: undefined })}
         activePlanetId={activePlanetId}
         aegisLevel={planet.data?.instruments.AEGIS ?? 0}
@@ -576,6 +726,7 @@ export function GalaxyView({
           game has, on the device the game is aimed at. Smaller box, smaller type,
           and the tracking on the label eased off so it still reads at 9px.
         */}
+        <div className="pointer-events-none flex min-w-0 flex-col items-start">
         <DiscReadout
           shardName={season.data?.shardName}
           shard={season.data?.shard ?? ''}
@@ -621,27 +772,47 @@ export function GalaxyView({
         </DiscReadout>
 
         {/*
-          HOME, as a mark rather than a word.
-          A labelled button in the corner of a map reads as browser chrome — the
-          owner's note was that it "looks like a home page". A glyph at low opacity
-          is furniture the eye skips until it is wanted, which is exactly the right
-          weight for a control that only recovers the camera.
+          THE TWO INSTRUMENTS' OWN SWITCHES, UNDER THE CAPTION THAT NAMES THE DISC.
+          Owner instruction. They are wrapped with the readout rather than dropped
+          into the `DiscControls` grid opposite, because that grid is four ways OFF
+          the disc and these two go nowhere — see `SensorToggles`.
         */}
-        <button
-          type="button"
-          aria-label={t('galaxy.home')}
-          onClick={() => {
-            haptic('tap');
-            // Going home means letting go of what you were looking at. Leaving the
-            // selection in place made the camera ease home and then snap straight
-            // back, because a focused subject is followed every frame.
-            close();
-            setHomeSignal((n) => n + 1);
-          }}
-          className="pointer-events-auto flex size-10 items-center justify-center rounded-chip border border-line-soft/60 bg-void/35 text-dim transition-colors hover:border-line hover:text-bone active:scale-95"
-        >
-          <HomeworldIcon className="size-5" />
-        </button>
+        {/*
+          NO ACTIVE WORLD, NO SWITCHES. Both act on the active world alone, so
+          without one they would be two controls that do nothing when pressed —
+          which teaches that the pair is decorative.
+        */}
+        <SensorToggles
+          telescope={showTelescopeReach}
+          onToggleTelescope={() => { setShowTelescopeReach((on) => !on); }}
+          {...(hasRadar
+            ? {
+                radar: showRadarReach,
+                onToggleRadar: () => { setShowRadarReach((on) => !on); },
+              }
+            : {})}
+        />
+        </div>
+
+        {/*
+          THREE MARKS RATHER THAN A WORD, and two of them came out of the menu.
+
+          A labelled button in the corner of a map reads as browser chrome — the
+          owner's note was that it "looks like a home page" — so the worlds glyph
+          has been a mark at low opacity since D132. Research and the clan are two
+          more things a commander DOES rather than looks up, and behind a hamburger
+          a player who never opened that sheet never learned the game had them.
+
+          See `DiscControls` for why the order is fixed and why nothing is painted.
+        */}
+        <DiscControls
+          onOpenResearch={() => { onPanel('research'); }}
+          onOpenClan={() => { onPanel('clan'); }}
+          onOpenIntel={() => { onPanel('intel'); }}
+          onOpenWorlds={() => { setWorldsOpen(true); }}
+          clanAvailable={clanBadge.data?.available ?? false}
+          clanWaiting={clanBadge.data?.attentionCount ?? 0}
+        />
       </div>
 
       {showChat && (
@@ -696,10 +867,22 @@ export function GalaxyView({
               setTransferTargetId(selected.id);
             },
           } : {})}
+          /*
+            A DISPATCH TOAST NAMES ITS DESTINATION, AND AN UNSURVEYED WORLD HAS NO
+            NAME TO GIVE IT. D127. Both of these controls can now be reached on a
+            world the caller cannot see — the settlement because a live claim
+            window survives the fog (D112), the strike because there is no
+            development gate left to stop it — so both had to stop assuming the
+            payload carried a name.
+          */
           onSettle={() => {
             settlement.mutate(selected.id, {
               onSuccess: () => {
-                say(t('galaxy.settlementAway', { world: selected.name }));
+                say(t('galaxy.settlementAway', {
+                  world: selected.intel === 'UNKNOWN'
+                    ? t('focus.planet.unsurveyedTitle')
+                    : selected.name,
+                }));
                 close();
               },
               onError: (error) => { say(describe(error), 'error'); },
@@ -708,7 +891,11 @@ export function GalaxyView({
           onDeathStar={() => {
             deathStar.mutate(selected.id, {
               onSuccess: () => {
-                say(t('galaxy.deathStarAway', { world: selected.name }));
+                say(t('galaxy.deathStarAway', {
+                  world: selected.intel === 'UNKNOWN'
+                    ? t('focus.planet.unsurveyedTitle')
+                    : selected.name,
+                }));
                 close();
               },
               onError: (error) => { say(describe(error), 'error'); },
@@ -724,10 +911,10 @@ export function GalaxyView({
 
       {focus?.kind === 'debris' && (
         <DebrisFocusHost
-          field={(mining.data?.debris ?? []).find((d) => d.id === focus.id)}
-          planets={galaxy.data?.planets ?? []}
+          field={wrecks.find((d) => d.id === focus.id)}
+          planets={planets}
           runs={runs}
-          mining={mining.data}
+          mining={miningScene.mining}
           homePosition={activeWorldPosition}
           busy={harvest.isPending}
           open={detail}
@@ -757,9 +944,9 @@ export function GalaxyView({
 
       {focus?.kind === 'asteroid' && season.data && (
         <AsteroidFocusHost
-          rock={asteroids.find((a) => a.index === focus.index)}
+          rock={asteroids.find((a) => a.id === focus.id)}
           runs={runs}
-          mining={mining.data}
+          mining={miningScene.mining}
           seasonStart={season.data.startsAt}
           homePosition={activeWorldPosition}
           now={now}
@@ -767,9 +954,9 @@ export function GalaxyView({
           open={detail}
           onToggle={toggle}
           onClose={close}
-          onSend={(index, craft) => {
+          onSend={(id, craft) => {
             mine.mutate(
-              { asteroidIndex: index, craft },
+              { asteroidId: id, craft },
               {
                 onSuccess: (r) => {
                   say(
@@ -797,18 +984,18 @@ export function GalaxyView({
           /**
            * A HARVEST HAS NO ROCK. D32.
            *
-           * `asteroidIndex` is null on a salvage run, so the rock lookup below can
+           * `asteroidId` is null on a salvage run, so the rock lookup below can
            * only ever miss — and a miss is what `RunFocus` renders as "Rock has
            * passed". The field is the target, and it is in the same payload.
            */
           const field =
             run.debrisFieldId === null
               ? undefined
-              : (mining.data?.debris ?? []).find((d) => d.id === run.debrisFieldId);
+              : wrecks.find((d) => d.id === run.debrisFieldId);
           return (
             <RunFocus
               run={run}
-              rock={asteroids.find((a) => a.index === run.asteroidIndex)}
+              rock={asteroids.find((a) => a.id === run.asteroidId)}
               wreck={
                 run.targetKind === 'debris'
                   ? field && {
@@ -861,7 +1048,9 @@ export function GalaxyView({
       {focus?.kind === 'contact' &&
         (() => {
           const contact = (traffic.data?.contacts ?? []).find((c) => c.id === focus.id);
-          if (!contact) return null;
+          // A public effect outside sensor reach is not a contact the commander
+          // can inspect; a stale focus may survive the boundary-crossing refetch.
+          if (!contact || contact.effectOnly === true) return null;
           return (
             <ContactFocus contact={contact} onClose={close} open={detail} onToggle={toggle} />
           );
@@ -886,9 +1075,35 @@ export function GalaxyView({
         >
           <PlanetScreen
             embedded
+            onOpenResearch={() => {
+              onPanel('research');
+            }}
             {...(requestedPlanetGroup ?? planetGroup
               ? { focusGroup: requestedPlanetGroup ?? planetGroup }
               : {})}
+          />
+        </Sheet>
+      )}
+
+      {/*
+        RESEARCH. Its own panel because the levels are the COMMANDER's since T7, and
+        `PlanetScreen` is about one world. `onNeed` is what carries a refusal back
+        to the surface that can answer it: the only build gate research has is the
+        Command Core, and the Core is on the planet sheet.
+      */}
+      {panel === 'research' && (
+        <Sheet
+          eyebrow={t('research.eyebrow')}
+          title={t('research.title')}
+          onClose={() => {
+            onPanel(null);
+          }}
+        >
+          <ResearchPanel
+            onNeed={(id) => {
+              onPanel('planet');
+              setRequestedPlanetGroup(TAB_OF[id] ?? 'grow');
+            }}
           />
         </Sheet>
       )}
@@ -923,6 +1138,7 @@ export function GalaxyView({
             }}
             onOpen={onPanel}
             onSignOut={onSignOut}
+            isAdmin={isAdmin}
           />
         </Sheet>
       )}
@@ -954,6 +1170,40 @@ export function GalaxyView({
               focusPlanet(planetId);
             }}
           />
+        </Sheet>
+      )}
+
+      {panel === 'announcements' && (
+        <Sheet
+          eyebrow={t('community.announcements.eyebrow')}
+          title={t('community.announcements.title')}
+          onClose={() => { onPanel(null); }}
+        >
+          <AnnouncementsScreen />
+        </Sheet>
+      )}
+
+      {panel === 'feedback' && (
+        <Sheet
+          eyebrow={t('community.feedback.eyebrow')}
+          title={t('community.feedback.title')}
+          onClose={() => { onPanel(null); }}
+        >
+          <FeedbackScreen />
+        </Sheet>
+      )}
+
+      {isAdmin && panel === 'admin' && (
+        <Sheet
+          contained
+          bleed
+          eyebrow={t('community.admin.eyebrow')}
+          title={t('community.admin.title')}
+          onClose={() => { onPanel(null); }}
+        >
+          <Suspense fallback={<Waiting>{t('community.admin.title')}</Waiting>}>
+            <AdminPanel />
+          </Suspense>
         </Sheet>
       )}
 
@@ -1040,6 +1290,7 @@ export function GalaxyView({
             : (pastResult?.shardName ?? '')}
           {...(season.data?.result ? { players: season.data.players } : {})}
           {...(season.data?.endsAt ? { endsAt: season.data.endsAt } : {})}
+          showPrimaryAction={seasonRecapShowsPrimaryAction(season.data)}
           onClose={() => {
             onPanel(null);
           }}
@@ -1065,11 +1316,68 @@ export function GalaxyView({
         </div>
       )}
 
+      {panel !== 'recap' && worldsOpen && (
+        <WorldsPanel
+          worlds={worlds}
+          activePlanetId={activePlanetId}
+          capitalPlanetId={capitalPlanetId}
+          onSelect={focusPlanet}
+          onTransfer={(originPlanetId, targetPlanetId) => {
+            /*
+              THE ACTIVE WORLD DOES NOT MOVE, and neither does the camera subject
+              acquire a new one. `close()` first because a focus rail left standing
+              would keep reading its own origin out of the state this is about to
+              overwrite; the later setters win in the same batch.
+            */
+            close();
+            setTransferOriginId(originPlanetId);
+            setTransferTargetId(targetPlanetId);
+            setWorldsOpen(false);
+          }}
+          onCentre={() => {
+            // Exactly what this button used to do on its own. Going home means
+            // letting go of what you were looking at: leaving the selection in
+            // place made the camera ease home and then snap straight back,
+            // because a focused subject is followed every frame.
+            close();
+            setHomeSignal((n) => n + 1);
+            setWorldsOpen(false);
+          }}
+          onClose={() => { setWorldsOpen(false); }}
+        />
+      )}
+
       {panel !== 'recap' && transferTargetId && transferOrigin && (() => {
-        const target = galaxy.data?.planets.find((world) => world.id === transferTargetId);
+        /**
+         * YOUR OWN WORLD ANSWERS FOR ITSELF. Owner report: pressing "send here" on
+         * a freshly settled colony closed the worlds sheet and opened nothing.
+         *
+         * The destination used to be looked up in `galaxy.data` — the PUBLIC disc
+         * projection, which is fogged, shared across every commander on the shard,
+         * and served from a replica-local cache invalidated by bus events. A world
+         * that cache has not heard about yet is simply missing from it, and this
+         * gate then rendered `null`: a button that does nothing, with nothing on
+         * screen to say why, which is the failure D141 exists to stop.
+         *
+         * `worlds` comes from `/api/planets`, which takes an UPDATE lock and reads
+         * the database inside the request. For a world the commander controls it
+         * cannot be stale, and it already carries the id, the name and the position
+         * this sheet needs. The disc payload stays as the fallback for a
+         * destination that is not yours.
+         */
+        const owned = worlds.find((world) => world.planet.id === transferTargetId);
+        const contact = planets.find((world) => world.id === transferTargetId);
+        const target = owned
+          ? {
+              id: owned.planet.id,
+              name: owned.planet.name,
+              position: owned.planet.position,
+            }
+          : contact;
         return target ? (
           <TransferSheet
             target={target}
+            targetPlanet={owned}
             planet={transferOrigin}
             onClose={() => { setTransferTargetId(null); }}
             onLaunched={() => {
@@ -1128,7 +1436,7 @@ function AsteroidFocusHost({
   open: boolean;
   onToggle: () => void;
   onClose: () => void;
-  onSend: (index: number, craft: number) => void;
+  onSend: (id: string, craft: number) => void;
 }) {
   const planet = usePlanet();
   if (!rock) return null;
@@ -1162,7 +1470,11 @@ function AsteroidFocusHost({
       ? interceptAsteroid(
           homePosition,
           speed,
-          { ...rock, deuteriumShare: rock.deuteriumShare ?? 0 },
+          {
+            ...rock,
+            index: asteroidVisualSeed(rock.id),
+            deuteriumShare: rock.deuteriumShare ?? 0,
+          },
           minutesNow,
         )
       : null;
@@ -1178,13 +1490,13 @@ function AsteroidFocusHost({
       minutesLeft={minutesLeft}
       reachMinutes={reach}
       worksRoom={worksRoom}
-      run={runs.find((r) => r.asteroidIndex === rock.index && r.status !== 'done')}
+      run={runForPlanetTarget(runs, p?.id, { kind: 'asteroid', id: rock.id })}
       onClose={onClose}
       busy={busy}
       open={open}
       onToggle={onToggle}
       onSend={(craft) => {
-        onSend(rock.index, craft);
+        onSend(rock.id, craft);
       }}
     />
   );
@@ -1252,7 +1564,7 @@ function DebrisFocusHost({
       craftHold={mining?.craftHold ?? 0}
       reachMinutes={reach}
       worksRoom={worksRoom}
-      run={runs.find((r) => r.debrisFieldId === field.id && r.status !== 'done')}
+      run={runForPlanetTarget(runs, p?.id, { kind: 'debris', id: field.id })}
       busy={busy}
       open={open}
       onToggle={onToggle}

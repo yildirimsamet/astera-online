@@ -7,8 +7,10 @@ import { FixedClock } from '../src/clock.js';
 import { createSeason } from '../src/services/season.js';
 import { joinSeason } from '../src/services/player.js';
 import { accounts, buildOrders, scheduledEvents } from '../src/db/schema.js';
-import { engagementEndsAt } from '@astera/rules';
+import { engagementEndsAt, type AsteroidSpec } from '@astera/rules';
 import { applyBuildCompletion } from '../src/services/buildQueue.js';
+import { privateAsteroidField } from '../src/services/asteroidField.js';
+import { refreshSensorEpoch } from '../src/services/sensorHistory.js';
 
 export const TEST_DATABASE_URL =
   process.env.DATABASE_URL ?? 'postgres://astera:astera@localhost:5433/astera_test';
@@ -69,15 +71,17 @@ export async function testDb(): Promise<{ db: Db; close: () => Promise<void> }> 
 /** Wipe everything between tests. CASCADE handles the foreign-key order. */
 export async function truncateAll(db: Db): Promise<void> {
   await db.execute(sql`
-    TRUNCATE account_rewards, reward_grants, request_log, notifications, scan_events,
-             probe_reports, watches,
+    TRUNCATE announcement_reads, announcements, feedback_entries,
+             account_rewards, reward_grants, request_log, notifications, scan_events,
+             probe_world_memories, probe_reports, watches,
              clan_loot_shares, clan_score_events, clan_raid_roster, attack_commitments,
              clan_aid_commitments, clan_messages, clan_events, clan_requests,
              clan_ceasefires, clan_memberships, clans,
-             strategic_impacts, battle_reports,
+             strategic_interceptions, strategic_impacts, battle_reports,
              scheduled_events, build_orders, strategic_assets, missions, mining_runs,
              asteroid_claims, units,
-             satellites, buildings, planet_research, neutral_planet_state, planets, players,
+             sensor_epochs, satellites, buildings, planet_research, player_research,
+             neutral_planet_state, planets, players,
              seasons, shards, accounts
     RESTART IDENTITY CASCADE
   `);
@@ -89,6 +93,8 @@ export interface Fixture {
   seasonId: string;
   /** The season seed, so a test can ask the field which rocks are actually up. */
   seed: number;
+  /** The server-private schedule; tests must not mistake the decorative public seed for authority. */
+  asteroids: AsteroidSpec[];
   planetIds: string[];
   playerIds: string[];
   accountIds: string[];
@@ -192,7 +198,21 @@ export async function seedWorld(count = 2, seed = 4242): Promise<Fixture> {
    */
   await placeInCluster(db, planetIds);
 
-  return { db, clock, seasonId: season.id, seed, planetIds, playerIds, accountIds };
+  // Joining opens the initial sensor epoch before this fixture moves its worlds.
+  // Refresh at the same instant so asteroid discovery tests record the arranged
+  // coordinates, not the spawn coordinates that only existed during setup.
+  for (const planetId of planetIds) await refreshSensorEpoch(db, planetId, clock.now());
+
+  return {
+    db,
+    clock,
+    seasonId: season.id,
+    seed,
+    asteroids: privateAsteroidField(season.asteroidKey),
+    planetIds,
+    playerIds,
+    accountIds,
+  };
 }
 
 /** Spacing between test planets. Inside Telescope L1's reach, outside minSeparation. */
@@ -241,7 +261,7 @@ export async function grant(
 ): Promise<void> {
   const { planets } = await import('../src/db/schema.js');
   const { eq } = await import('drizzle-orm');
-  const { alloyRate, crystalRate, storageCap } = await import('@astera/rules');
+  const { PLANET_START, alloyRate, crystalRate, storageCap } = await import('@astera/rules');
 
   /**
    * Sized against the VAULT-0 ceiling, deliberately.
@@ -265,7 +285,30 @@ export async function grant(
   await raiseTo(db, planetId, 'REFINERY', refinery);
   await raiseTo(db, planetId, 'EXTRACTOR', extractor);
   await raiseTo(db, planetId, 'CORE', core);
-  await db.update(planets).set({ alloy, crystal }).where(eq(planets.id, planetId));
+  /*
+    FUEL AS WELL, SINCE T6. `grant` exists so a test can arrange wealth and get on
+    with what it is actually about, and after fuel a rich world that cannot launch
+    is not a rich world. Sized off the grant rather than fixed, so a test that asks
+    for a big purse gets a fleet it can actually fly.
+  */
+  await db
+    .update(planets)
+    .set({ alloy, crystal, deuterium: Math.max(PLANET_START.deuterium, alloy / 10) })
+    .where(eq(planets.id, planetId));
+}
+
+/**
+ * Fill a world's tank, for a test that is about something other than fuel.
+ *
+ * Since T6 every launch burns deuterium, so a suite about silhouettes, windows or
+ * arrivals still has to be able to get a fleet off the ground. Deliberately
+ * generous and deliberately separate from `grant`: a test that IS about fuel wants
+ * to set the figure itself.
+ */
+export async function fuelUp(db: Db, planetId: string, deuterium = 100_000): Promise<void> {
+  const { planets } = await import('../src/db/schema.js');
+  const { eq } = await import('drizzle-orm');
+  await db.update(planets).set({ deuterium }).where(eq(planets.id, planetId));
 }
 
 /**
@@ -404,4 +447,41 @@ export async function giveUnits(
         set: { ownerPlayerId: world.ownerPlayerId, count },
       });
   }
+}
+
+/**
+ * Hand a commander a completed project, for a test that is about something else.
+ *
+ * T7 moved research off the planet, so a fixture that reaches into storage has to
+ * reach into the COMMANDER's. Takes a planet id because that is what every caller
+ * already has, and resolves the owner itself — a test that had to look up a player
+ * id first would be a test about plumbing.
+ */
+export async function giveResearch(
+  db: Db,
+  planetId: string,
+  projectId: string,
+  level = 1,
+): Promise<void> {
+  const { planets, playerResearch } = await import('../src/db/schema.js');
+  const { eq } = await import('drizzle-orm');
+  const [world] = await db
+    .select({ playerId: planets.controllerPlayerId })
+    .from(planets)
+    .where(eq(planets.id, planetId));
+  if (!world?.playerId) throw new Error('giveResearch needs a controlled planet');
+  await db
+    .insert(playerResearch)
+    .values({
+      playerId: world.playerId,
+      projectId: projectId as never,
+      level,
+      completedAt: new Date(),
+    })
+    // Upsert the LEVEL: a fixture that hands out rung two after rung one is
+    // arranging a ladder, and `do nothing` would silently leave it on rung one.
+    .onConflictDoUpdate({
+      target: [playerResearch.playerId, playerResearch.projectId],
+      set: { level },
+    });
 }

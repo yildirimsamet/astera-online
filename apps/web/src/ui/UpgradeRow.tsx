@@ -3,6 +3,7 @@ import { Trans, useTranslation } from 'react-i18next';
 import type { Gain } from '../lib/gains.js';
 
 import { haptic } from '../lib/haptics.js';
+import { Rungs } from './Rungs.js';
 import { duration } from '../lib/time.js';
 import { ActionButton, Price, ResourceAmounts, type Verb } from './Action.js';
 import { LockMark } from './marks.js';
@@ -48,6 +49,7 @@ export function UpgradeRow({
   mark,
   name,
   level,
+  maxLevel,
   tag,
   role,
   gain,
@@ -74,6 +76,15 @@ export function UpgradeRow({
   mark?: ReactNode;
   name: string;
   level?: number;
+  /**
+   * The top of a ladder that HAS one, so the row can read "L2 / 5". T12.
+   *
+   * Buildings have no ceiling and pass nothing; a research permission has a
+   * ceiling of one and also passes nothing, because "L1 / 1" is a number on a card
+   * that has nothing to count. Only a real ladder — two rungs or more — earns the
+   * second figure.
+   */
+  maxLevel?: number;
   /**
    * TWO OR THREE WORDS SAYING WHAT THIS IS. Owner request.
    *
@@ -259,11 +270,23 @@ export function UpgradeRow({
         <div className="flex min-w-0 flex-1 flex-col gap-1 self-stretch py-1">
           <div className="flex min-w-0 items-baseline gap-2">
             <h3 className="name min-w-0 flex-1 truncate">{name}</h3>
-            {level !== undefined && level > 0 && (
+            {/*
+              A LADDER IS DRAWN; A LEVEL IS WRITTEN.
+
+              `L2 / 5` is a fraction the player has to read and then convert into
+              the thing they wanted, which is how much is left. Five marks with two
+              lit is that fact arriving without being read. A building has no
+              ceiling and so has no ladder to draw — it keeps its numeral.
+            */}
+            {maxLevel !== undefined && maxLevel > 1 ? (
+              <span className={flash ? 'pop inline-block' : ''}>
+                <Rungs level={level ?? 0} max={maxLevel} next={!completed} />
+              </span>
+            ) : level !== undefined && level > 0 ? (
               <span className={`num shrink-0 text-label text-faint ${flash ? 'pop inline-block' : ''}`}>
                 L{level}
               </span>
-            )}
+            ) : null}
           </div>
           {tag && <p className="truncate text-caption leading-snug text-dim">{tag}</p>}
 
@@ -273,8 +296,41 @@ export function UpgradeRow({
               <p className="truncate text-caption text-alloy">{inactive}</p>
             ) : blocked && !acknowledging ? (
               /* A REQUIREMENT IS A DOOR, NOT AN ALARM (I1). Amber is the game's
-                 word for a gap you can close; red is something happening to you. */
-              <p className="truncate text-caption text-alloy">{blocked.reason}</p>
+                 word for a gap you can close; red is something happening to you.
+
+                 AND A DOOR YOU CAN WALK THROUGH. Owner instruction: a locked row
+                 must say why AND take you to the thing that would open it. The
+                 `onFix` has existed since I1, but on a row that opens a detail
+                 sheet — which is nearly all of them — `UpgradeRow` draws a chevron
+                 where the inline action would be, so the only way to reach the fix
+                 was to open the sheet and find the lock inside it. Two taps and a
+                 discovery, for the one thing a stuck player needs most.
+
+                 So the SENTENCE is the button. It sits above the row's own press
+                 (`z-[1]`, `pointer-events-auto`) and stops the event, because the
+                 row underneath opens the sheet and this is the one place on it that
+                 means something else. The arrow is what makes it read as pressable
+                 without a word being spent on saying so. */
+              blocked.onFix ? (
+                <button
+                  type="button"
+                  data-blocked-reason
+                  data-has-fix
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    haptic('tap');
+                    blocked.onFix?.();
+                  }}
+                  className="pointer-events-auto relative z-[1] -mx-1 flex max-w-full items-center gap-1 rounded-chip px-1 text-caption text-alloy transition-colors hover:bg-alloy/10 active:scale-[0.98]"
+                >
+                  <span className="truncate">{blocked.reason}</span>
+                  <span aria-hidden className="shrink-0">→</span>
+                </button>
+              ) : (
+                <p data-blocked-reason className="truncate text-caption text-alloy">
+                  {blocked.reason}
+                </p>
+              )
             ) : queued ? (
               <p role="status" className="truncate text-caption text-crystal">{queued}</p>
             ) : completed ? (

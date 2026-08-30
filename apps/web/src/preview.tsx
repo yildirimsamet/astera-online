@@ -269,8 +269,8 @@ function Preview() {
             title="You have no Telescope"
             action={<Button variant="primary" size="sm">Install one</Button>}
           >
-            Tells you the moment a planet&apos;s fleet leaves — the one fact that decides
-            every raid.
+            Extends the area where moving craft can be identified, and lets you watch
+            a planet&apos;s fleet status silently.
           </EmptyState>
           <Plate className="flex gap-3 p-3">
             <Skeleton className="size-[74px]" />

@@ -18,16 +18,18 @@
     "@astera/rules": "workspace:*",
     "@fastify/cookie": "^11.0.2",
     "@fastify/rate-limit": "^11.2.0",
-    "drizzle-orm": "^0.38.3",
+    "drizzle-orm": "^0.45.2",
     "fastify": "^5.2.0",
     "ioredis": "^6.0.0",
     "jose": "^5.9.6",
     "pino": "^9.5.0",
     "postgres": "^3.4.5",
+    "sanitize-html": "^2.17.7",
     "tsx": "^4.23.12",
     "zod": "^3.24.1"
   },
   "devDependencies": {
+    "@types/sanitize-html": "^2.16.1",
     "drizzle-kit": "^0.30.1"
   }
 }

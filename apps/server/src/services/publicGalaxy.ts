@@ -12,7 +12,7 @@ import {
   type SatelliteId,
   type Vec3,
 } from '@astera/rules';
-import type { Db } from '../db/client.js';
+import type { Queryable } from '../db/client.js';
 import {
   accounts,
   buildings,
@@ -128,7 +128,44 @@ const publicOrbit = (rows: readonly { planetId: string; type: string }[]) => {
 const publicShields = (rows: readonly { planetId: string; type: string }[]) =>
   new Set(rows.filter((r) => r.type === 'AEGIS').map((r) => r.planetId));
 
-export async function publicWorlds(db: Db, seasonId: string, now = new Date()): Promise<PublicWorld[]> {
+/**
+ * ONE WORLD'S OUTSIDE, AS A PROBE RECORDS IT. D127.
+ *
+ * Derived from the SAME `PublicWorld` the galaxy is built from rather than from a
+ * second query of its own, because the two would drift the first time one of them
+ * was edited — the failure `packages/rules/src/view.ts` exists to prevent, in a
+ * different place. What a probe brings home and what a Telescope shows live have
+ * to be the same shape or the interface tells two stories about one world.
+ */
+export const silhouetteOf = (world: PublicWorld): {
+  owner: string;
+  controllerPlayerId: string | null;
+  clan: { id: string; name: string; tag: string } | null;
+  kind: 'CAPITAL' | 'COLONY' | 'NEUTRAL';
+  coreLevel: number;
+  satellites: string[];
+  shielded: boolean;
+} => ({
+  owner: world.owner,
+  controllerPlayerId:
+    world.controller.kind === 'PLAYER' ? world.controller.playerId : null,
+  clan: world.clan ?? null,
+  kind: world.kind,
+  coreLevel: world.coreLevel,
+  satellites: [...world.satellites],
+  shielded: world.shielded,
+});
+
+export async function publicWorlds(
+  db: Queryable,
+  seasonId: string,
+  now = new Date(),
+  /**
+   * Narrow to specific worlds. Used by the probe, which needs exactly one and must
+   * not pay for the whole disc — and must not compute it a second way either.
+   */
+  planetIds?: readonly string[],
+): Promise<PublicWorld[]> {
   const rows = await db
     .select({
       planet: planets,
@@ -153,7 +190,9 @@ export async function publicWorlds(db: Db, seasonId: string, now = new Date()): 
       and(eq(clans.id, clanMemberships.clanId), isNull(clans.disbandedAt)),
     )
     .leftJoin(neutralPlanetState, eq(neutralPlanetState.planetId, planets.id))
-    .where(eq(planets.seasonId, seasonId));
+    .where(planetIds === undefined
+      ? eq(planets.seasonId, seasonId)
+      : and(eq(planets.seasonId, seasonId), inArray(planets.id, [...planetIds])));
 
   const ids = rows.map((r) => r.planet.id);
   if (ids.length === 0) return [];

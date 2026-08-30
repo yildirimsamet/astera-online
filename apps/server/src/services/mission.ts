@@ -10,7 +10,7 @@ import {
   fleetSpeedMult,
   fleetTravelExact,
   maxRadarRange,
-  radarLead,
+  missionFuel,
   type Fleet,
   type HullId,
   HULLS,
@@ -27,19 +27,24 @@ import {
   units,
 } from '../db/schema.js';
 import { assertFreeBay } from './flight.js';
+import { assertFuel } from './fuel.js';
 import {
   assertSeasonOpenThrough,
   assertWorldOperational,
   GameError,
   loadLocked,
+  saveResources,
   setUnits,
 } from './planet.js';
+import { techOf } from './researchState.js';
 import { schedule } from '../worker/queue.js';
 import { publishShard } from '../stream/bus.js';
 import { pendingThreads, type PendingThread } from './session.js';
+import { inboundRadarLead } from './radar.js';
 import { planetView, type PlanetView } from './planetView.js';
 import { lockWorlds } from './ownership.js';
 import { prepareClanAttack, recordClanAttack } from './clanCombat.js';
+import { fleetChangesWatch, publishWatchChanges } from './watchEvents.js';
 
 export interface LaunchResult {
   missionId: string;
@@ -248,6 +253,23 @@ export async function launchAttack(
     }
 
     const dist = distance(origin, target);
+    /**
+     * THE ROUND TRIP, PAID BEFORE IT LEAVES. T6 — owner instruction.
+     *
+     * Both legs, at launch, because a fleet in the air has no access to a store.
+     * A one-way budget is not a cheaper raid, it is a stranded fleet — and P3 says
+     * a launched fleet cannot be recalled, so there is no way back out of that.
+     *
+     * NO SYSTEM PATH EVER ASKS FOR MORE AND NO CANCELLATION EVER GIVES ANY BACK.
+     * A rerouted leg may fly further than the one that was paid for, and
+     * `abandon()` hands back units without a refund; both are system faults rather
+     * than player decisions, and charging or refunding for them would make the
+     * quote on this screen a lie. Written here because it is the kind of asymmetry
+     * somebody tidies up later without knowing why it was chosen.
+     */
+    const fuel = missionFuel(requested, dist, 2);
+    // A raid carries no hold on the way out, so the whole store is the tank.
+    assertFuel(fuel, origin.deuterium);
     // The Beacon in orbit, if there is one. D25.
     const oneWay = fleetTravelExact(dist, requested, fleetSpeedMult(origin.orbit));
     const arriveAt = addMinutes(origin.now, oneWay);
@@ -273,6 +295,16 @@ export async function launchAttack(
       .values({
         seasonId: origin.seasonId,
         kind: 'attack',
+        /*
+          FROZEN HERE, READ AT THE BATTLE. T9.
+
+          What this commander had researched when they committed, never what they
+          finished while the fleet was in the air. The defender's doctrines are
+          read at the moment of the fight instead — the same asymmetry the radar
+          already has, and the same reason: every figure belongs to the moment its
+          own decision was made.
+        */
+        tech: await techOf(tx, origin.playerId),
         ownerPlayerId: origin.playerId,
         originPlanetId,
         targetPlanetId,
@@ -301,6 +333,14 @@ export async function launchAttack(
     }
     await setUnits(tx, originPlanetId, remaining, 'home');
     await setUnits(tx, originPlanetId, requested, mission!.id);
+    // Burned in the same transaction the ships leave in. T6.
+    if (fuel > 0) {
+      await saveResources(tx, originPlanetId, {
+        alloy: origin.alloy,
+        crystal: origin.crystal,
+        deuterium: origin.deuterium - fuel,
+      });
+    }
 
     await schedule(tx, {
       seasonId: origin.seasonId,
@@ -325,7 +365,7 @@ export async function launchAttack(
      * already paid for.
      *
      * So the event is now scheduled at the earliest instant ANY radar could fire —
-     * the moment this fleet crosses inside the WIDEST reach the ladder sells — and
+     * the moment the drawn fleet crosses inside the WIDEST reach the ladder sells — and
      * `onRadarWarning` reads the level at the moment it runs, hopping down
      * `RADAR_RANGES` if the defender has not earned the reach it is holding. One
      * event per raid instead of one per radar-equipped target; at 351 worlds that
@@ -336,7 +376,18 @@ export async function launchAttack(
      * chose — which is the entire point, and why the widest crossing is computed
      * here rather than being one constant subtracted from every arrival.
      */
-    const warnAt = addMinutes(arriveAt, -radarLead(maxRadarRange(), dist, oneWay));
+    const [radarTargetCore] = await tx
+      .select({ level: buildings.level })
+      .from(buildings)
+      .where(and(eq(buildings.planetId, targetPlanetId), eq(buildings.type, 'CORE')))
+      .limit(1);
+    const warnAt = addMinutes(arriveAt, -inboundRadarLead(maxRadarRange(), {
+      from: origin,
+      to: target,
+      originCoreLevel: origin.buildings.CORE,
+      targetCoreLevel: radarTargetCore?.level ?? 1,
+      oneWayMinutes: oneWay,
+    }));
     await schedule(tx, {
       seasonId: origin.seasonId,
       kind: 'radar_warning',
@@ -357,6 +408,7 @@ export async function launchAttack(
      * fog-enforced query the poll was going to read anyway, sooner.
      */
     await publishShard(tx, origin.seasonId, 'launch');
+    if (fleetChangesWatch(requested)) await publishWatchChanges(tx, [originPlanetId]);
 
     const homeDefenceAfter =
       fleetCount(remaining) + fleetCount(origin.ground);
@@ -380,8 +432,6 @@ export async function launchAttack(
 
 function describeRefusal(reason?: string): string {
   switch (reason) {
-    case 'TIER_BAND':
-      return 'That world is more than two development tiers from yours';
     case 'BASH_LIMIT':
       return 'You have hit this planet too many times recently';
     case 'SELF':

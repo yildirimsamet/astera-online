@@ -59,13 +59,13 @@ describe('a frozen season stops taking input', () => {
 });
 
 /**
- * The fifteen minutes between two seasons used to be silent: the game stopped
+ * The five minutes between two seasons used to be silent: the game stopped
  * answering and nothing said whether that was deliberate.
  */
 describe('the wait before the next galaxy', () => {
   beforeEach(() => {
     vi.useFakeTimers({ shouldAdvanceTime: true });
-    vi.setSystemTime(new Date('2026-03-15T00:05:00.000Z'));
+    vi.setSystemTime(new Date('2026-03-15T00:02:00.000Z'));
   });
   afterEach(() => {
     vi.useRealTimers();
@@ -75,8 +75,8 @@ describe('the wait before the next galaxy', () => {
 
   it('counts down to the rollover and says what the wait is for', () => {
     render(<NextSeason endsAt={froze} />);
-    // Ten of the fifteen minutes are left.
-    expect(screen.getByRole('status')).toHaveTextContent(/10m/);
+    // Three of the five minutes are left.
+    expect(screen.getByRole('status')).toHaveTextContent(/\b3m\b/);
     expect(screen.getByRole('status')).toHaveTextContent(/frozen/i);
   });
 

@@ -4,7 +4,14 @@ import { useGLTF } from '@react-three/drei';
 import * as THREE from 'three';
 import { MODEL, MODEL_FACING } from '../ui/assets.js';
 import { orientedCraft } from './model.js';
-import { fireTexture, plumeTexture, ringTexture, smokeTexture, sparkTexture } from './vfx.js';
+import {
+  fireTexture,
+  plumeTexture,
+  publicEffectIntensity,
+  ringTexture,
+  smokeTexture,
+  sparkTexture,
+} from './vfx.js';
 import {
   MISSILE_OF_SHIP,
   blastProgress,
@@ -31,20 +38,17 @@ import { FullRate } from './frames.jsx';
  * cinematic and a re-enactment, and it is why the ten seconds live in
  * `packages/rules` rather than in a constant in this file.
  *
- * AND EVERYBODY SEES IT. This used to say the opposite — only your own outbound
- * raid, never one landing anywhere else, because a contact carried a bearing and
- * no destination and there was nothing for a bystander's client to fire at. D52
- * reversed it on the owner's decision: a battle only its attacker can watch is a
- * database transaction with sound effects. `galaxyTraffic` now publishes an
- * `engagement` — the target's coordinates and the two instants — for exactly the
- * seconds the fleet is standing on the world, so this component is mounted twice
- * over from two different payloads and draws the same volley off the same mission
- * id on every screen in the galaxy. See `Fleets`, which mounts both.
+ * AND EVERYBODY SEES THE EFFECT. D52 publishes the target and authoritative window
+ * so a battle is not a database transaction with sound effects for its attacker
+ * alone. D123 still governs the source craft. A sensed squadron mounts this under
+ * its real formation; a blind observer mounts it under a deterministic synthetic
+ * source with no hull, reticle, mass cue or real approach bearing. The mission id
+ * keeps the volley itself stable on every screen. See `Fleets`, which owns that
+ * disclosure split.
  *
- * WHAT THAT DISCLOSES IS NOTHING NEW: a planet's coordinates are public on
- * `/api/galaxy`, the craft is standing on top of it, and the bearing it came in on
- * was visible for the whole flight. There is still no owner, no origin and no name
- * anywhere in a contact.
+ * WHAT THAT DISCLOSES is the already-public planet, the live attack and its clock.
+ * Craft position/bearing is present only when the observer's sensors earned it;
+ * owner, origin and exact foreign roster remain absent.
  *
  * EVERYTHING IS IN THE SQUADRON'S OWN FRAME. The parent group is already placed at
  * the fleet and turned to face the world (`lookAt`, in `Fleets`), so the world's
@@ -115,6 +119,10 @@ const SHOCK_PLANE = new THREE.PlaneGeometry(1, 1);
 
 useGLTF.preload(MODEL.missile, false);
 
+/** Exported for the disclosure test: blindness dims the effect, never the craft rules. */
+export const bombardmentIntensity = (effectOnly: boolean): number =>
+  publicEffectIntensity(effectOnly);
+
 export function Bombardment({
   /** Stable per raid, so the volley is the same one from frame to frame. */
   volleyKey,
@@ -128,6 +136,8 @@ export function Bombardment({
   shipScale,
   /** Epoch milliseconds at which the fleet reaches the world. */
   arriveAt,
+  /** One in sensor reach; reduced only for the synthetic, effect-only public view. */
+  intensity = 1,
 }: {
   volleyKey: string;
   slots: readonly (readonly [number, number, number])[];
@@ -135,6 +145,7 @@ export function Bombardment({
   radius: number;
   shipScale: number;
   arriveAt: number;
+  intensity?: number;
 }) {
   const shots = useMemo(
     () => volleyFor(volleyKey, slots.length, radius),
@@ -168,6 +179,7 @@ export function Bombardment({
           radius={radius}
           size={shipScale * MISSILE_OF_SHIP}
           arriveAt={arriveAt}
+          intensity={intensity}
         />
       ))}
     </Suspense>
@@ -188,6 +200,7 @@ function Round({
   radius,
   size,
   arriveAt,
+  intensity,
 }: {
   shot: Shot;
   from: readonly [number, number, number];
@@ -196,6 +209,7 @@ function Round({
   /** The round's own length in world units. Everything about it is scaled off this. */
   size: number;
   arriveAt: number;
+  intensity: number;
 }) {
   const body = useRef<THREE.Group>(null);
   const strip = useRef<THREE.Mesh>(null);
@@ -348,7 +362,7 @@ function Round({
         const t = sinceLaunch / MUZZLE_SECONDS;
         const s = size * (1.9 + Math.sin(Math.PI * t) * 1.4);
         muzzle.current.scale.set(s, s, 1);
-        muzzle.current.material.opacity = (1 - t) ** 1.7;
+        muzzle.current.material.opacity = (1 - t) ** 1.7 * intensity;
       }
     }
 
@@ -364,7 +378,7 @@ function Round({
       if (trailMaterial.current) {
         const ignite = Math.min(1, flying / 0.11);
         const contact = 1 - Math.max(0, (flying - 0.88) / 0.12);
-        trailMaterial.current.opacity = 0.92 * ignite * contact;
+        trailMaterial.current.opacity = 0.92 * ignite * contact * intensity;
       }
 
       // The engine flickers. Two rates that do not divide into each other, so it
@@ -431,14 +445,14 @@ function Round({
         const punch = Math.max(0, 1 - t / 0.16);
         const s = wide * (0.5 + t * 2.2);
         flash.current.scale.set(s, s, 1);
-        flash.current.material.opacity = punch ** 1.4;
+        flash.current.material.opacity = punch ** 1.4 * intensity;
       }
 
       if (fireball.current) {
         // Eased outward, so it bursts and then swells rather than growing evenly.
         const s = wide * (0.45 + 1.15 * Math.sqrt(t));
         fireball.current.scale.set(s, s, 1);
-        fireball.current.material.opacity = (1 - t) ** 1.6;
+        fireball.current.material.opacity = (1 - t) ** 1.6 * intensity;
         // A slow turn, so two impacts in the same second are not one picture twice.
         fireball.current.material.rotation = shot.launchAt * 3.1 + t * 0.6;
       }
@@ -447,7 +461,7 @@ function Round({
         const shockTime = Math.min(1, t / 0.42);
         const s = wide * (0.35 + 2.1 * shockTime ** 0.55);
         shock.current.scale.set(s, s, 1);
-        shock.current.material.opacity = 0.48 * (1 - shockTime) ** 2.7;
+        shock.current.material.opacity = 0.48 * (1 - shockTime) ** 2.7 * intensity;
       }
 
       if (smoke.current) {
@@ -460,7 +474,7 @@ function Round({
           surfaceNormal[1] * wide * 0.42 * t,
           surfaceNormal[2] * wide * 0.42 * t,
         );
-        smoke.current.material.opacity = appear * fade * 0.42;
+        smoke.current.material.opacity = appear * fade * 0.42 * intensity;
         smoke.current.material.rotation = shot.flight * 4.7 - t * 0.34;
       }
 
@@ -477,7 +491,7 @@ function Round({
           );
         }
         position.needsUpdate = true;
-        embers.current.material.opacity = (1 - t) ** 2;
+        embers.current.material.opacity = (1 - t) ** 2 * intensity;
         embers.current.material.size = size * 0.5 * (1 - t * 0.6);
       }
     }
@@ -498,7 +512,7 @@ function Round({
           {...(plumeMap ? { map: plumeMap } : {})}
           vertexColors
           transparent
-          opacity={0.95}
+          opacity={0.95 * intensity}
           depthWrite={false}
           side={THREE.DoubleSide}
           forceSinglePass
@@ -517,7 +531,7 @@ function Round({
           <spriteMaterial
             {...(fire ? { map: fire } : {})}
             transparent
-            opacity={0.95}
+            opacity={0.95 * intensity}
             depthWrite={false}
             depthTest={false}
             blending={THREE.AdditiveBlending}

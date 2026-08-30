@@ -95,7 +95,7 @@ export function computeLoot(
   };
 }
 
-export type AttackRefusal = 'TIER_BAND' | 'BASH_LIMIT' | 'SELF';
+export type AttackRefusal = 'BASH_LIMIT' | 'SELF';
 
 export interface AttackCheck {
   ok: boolean;
@@ -125,26 +125,23 @@ export interface AttackParty {
 export const coreTier = (coreLevel: number): number => Math.max(1, Math.ceil(coreLevel / 3));
 
 /**
- * Whether two development TIERS are close enough to fight. D49.
+ * THE DEVELOPMENT BAND IS GONE. D127.
  *
- * Takes TIERS rather than levels, and keeps doing so now that `/api/galaxy`
- * publishes the exact Core level as well (the dyson rings need it — see
- * `publicGalaxy`). The band is DEFINED on the tier: it is a three-level bucket, and
- * that coarseness is the rule rather than a limitation of what the client could
- * see. Re-deriving it from levels would silently change who may attack whom.
+ * D49 limited attacks to ±2 development tiers and kept tier public so the question
+ * "may I fight them" was answerable off the map — it explicitly replaced a wealth
+ * ratio for being invisible, "a rule the player discovers when a launch is
+ * refused". D127 makes development private, so the band could only ever have
+ * become that refusal again: a fleet packed, a target chosen, and a no at the gate.
+ *
+ * IT IS NOT REPLACED, BECAUSE THE FOG DOES ITS JOB. Loot is a share of raidable
+ * stock and Dominion is a compression of exchanged value, so a large commander
+ * raiding a tiny world gains approximately nothing — and can no longer FIND a tiny
+ * world, because the fact that would let them pick one is exactly what is now
+ * hidden. `ABUSE.bashLimit` remains and is the whole of the anti-farming machinery.
+ *
+ * WHAT IT COSTS, STATED: a deliberate griefer can now cross the whole development
+ * range unopposed. The band used to stop that; only the bash limit does now.
  */
-export const tiersWithinBand = (a: number, b: number): boolean =>
-  Math.abs(a - b) <= ABUSE.tierBand;
-
-/** The same rule, from two Core levels. What the server has, and uses. */
-export const withinTierBand = (attackerCore: number, defenderCore: number): boolean =>
-  tiersWithinBand(coreTier(attackerCore), coreTier(defenderCore));
-
-/** The tiers a planet at this Core level may attack, inclusive. For the interface. */
-export const reachableTiers = (coreLevel: number): { low: number; high: number } => {
-  const tier = coreTier(coreLevel);
-  return { low: Math.max(1, tier - ABUSE.tierBand), high: tier + ABUSE.tierBand };
-};
 
 /**
  * Three rules, no anti-cheat system. Core gameplay outranks abuse-hardening in
@@ -175,10 +172,6 @@ export function canAttack(
   recentHits: number,
 ): AttackCheck {
   if (attacker.playerId === defender.playerId) return { ok: false, reason: 'SELF' };
-
-  if (!withinTierBand(attacker.coreLevel, defender.coreLevel)) {
-    return { ok: false, reason: 'TIER_BAND' };
-  }
 
   if (recentHits >= ABUSE.bashLimit) return { ok: false, reason: 'BASH_LIMIT' };
 

@@ -1,8 +1,11 @@
 import { and, eq } from 'drizzle-orm';
 import { pino } from 'pino';
 import { afterAll, beforeEach, describe, expect, it } from 'vitest';
-import { missions, planets, strategicAssets } from '../src/db/schema.js';
-import { DEATH_STAR, activeAsteroids, engagementEndsAt, generateGalaxy } from '@astera/rules';
+import { missions, planets, strategicAssets, strategicImpacts } from '../src/db/schema.js';
+import {
+  TRAFFIC, DEATH_STAR, activeAsteroids, engagementEndsAt,
+  interceptAsteroid, prospectorSpeed,
+} from '@astera/rules';
 import { launchAttack } from '../src/services/mission.js';
 import { launchMining } from '../src/services/mining.js';
 import { EventWorker } from '../src/worker/loop.js';
@@ -36,6 +39,29 @@ import {
   testDb,
   type Fixture,
 } from './helpers.js';
+
+/**
+ * A STRANGER WHO CAN SEE THE WHOLE FLIGHT. D123.
+ *
+ * These tests are about two renderers agreeing on one leg (D106) and about a leg
+ * staying continuous (D120) — not about the sensor horizon, which has its own
+ * suite. An unbounded post keeps them measuring geometry rather than accidentally
+ * turning into a fog test that passes by finding nothing to compare.
+ */
+/** A harness observer that identifies the whole disc, so only motion is measured. */
+const SEES_EVERYTHING = [
+  {
+    planetId: 'harness',
+    at: { x: 0, y: 0, z: 0 },
+    telescope: true,
+    identify: Number.POSITIVE_INFINITY,
+    detect: Number.POSITIVE_INFINITY,
+    warn: 0,
+    revealsSize: false,
+    revealsKind: false,
+  },
+];
+
 
 afterAll(async () => {
   const { close } = await testDb();
@@ -94,9 +120,17 @@ describe('one galaxy, one clock', () => {
    */
   const discNodes = async (): Promise<PlanetNode[]> => {
     const worlds = await publicWorlds(f.db, f.seasonId, f.clock.now());
-    // `isSelf` is added by the route for the caller; the disc's geometry does not
-    // read it, and neither does anything below.
-    return planetNodes(worlds.map((world) => ({ ...world, isSelf: false })));
+    /**
+     * `isSelf` and `intel` are added by the route for the caller; the disc's
+     * geometry reads neither, and neither does anything below. `RESOLVED` is the
+     * state this test is about — two renderers agreeing on one leg (D106) — and a
+     * fogged world would simply have no geometry to compare.
+     */
+    return planetNodes(worlds.map((world) => ({
+      ...world,
+      isSelf: false,
+      intel: 'RESOLVED' as const,
+    })));
   };
 
   /** Where the OWNER's client draws their own craft, at `now`. */
@@ -201,6 +235,8 @@ describe('one galaxy, one clock', () => {
           new Date(now),
           strangerPlayerId,
           [strangerPlanetId],
+          SEES_EVERYTHING,
+          new Set(),
         ).find((c) => c.id === mission.id);
       }
       if (!held) continue;
@@ -272,7 +308,8 @@ describe('one galaxy, one clock', () => {
       f.db,
       f.seasonId,
       f.planetIds[2]!,
-      new Date(arrive - 30_000),
+      // Inside the final window, which is the refetch cadence — see `TRAFFIC`.
+      new Date(arrive - TRAFFIC.refreshMs / 2),
       f.playerIds[2],
       [f.planetIds[2]!],
     );
@@ -287,6 +324,17 @@ describe('one galaxy, one clock', () => {
      * what makes the moment survive a reload.
      */
     await f.db.update(missions).set({ status: 'resolved' }).where(eq(missions.id, launch.missionId));
+    await f.db.insert(strategicImpacts).values({
+      seasonId: f.seasonId,
+      missionId: launch.missionId,
+      attackerPlayerId: f.playerIds[0]!,
+      defenderPlayerId: f.playerIds[1]!,
+      targetPlanetId: theirs,
+      outcome: 'FIRST_STRIKE',
+      damage: 0,
+      destroyedFleet: {},
+      createdAt: launch.arriveAt,
+    });
     const after = await galaxyTraffic(
       f.db,
       f.seasonId,
@@ -383,8 +431,22 @@ describe('one galaxy, one clock', () => {
     // The field turns over, so ask it which rocks are actually up rather than
     // naming an index that stops existing the next time lifetimes are re-cut.
     f.clock.advance(250);
-    const [rock] = activeAsteroids(generateGalaxy(f.seed).asteroids, 250);
-    if (!rock) throw new Error('no rock in the disc');
+    /*
+      A ROCK THE CRAFT CAN ACTUALLY REACH, not merely one that is in the disc.
+      "Active now" and "a Prospector launched now can intercept it before it
+      leaves" are different questions, and taking the first of the first list
+      fails with CANNOT_INTERCEPT for a reason this test is not about. Asking the
+      launch itself is the version that cannot go stale.
+    */
+    const [origin] = await f.db.select().from(planets).where(eq(planets.id, mine));
+    const rock = activeAsteroids(f.asteroids, 250).find((candidate) =>
+      interceptAsteroid(
+        { x: origin!.x, y: origin!.y, z: origin!.z },
+        prospectorSpeed([]),
+        candidate,
+        250,
+      ) !== null);
+    if (!rock) throw new Error('no reachable rock in the disc');
     const run = await launchMining(f.db, mine, rock.index, 2, f.clock);
     nodes = await discNodes();
 
@@ -412,8 +474,10 @@ describe('one galaxy, one clock', () => {
           snapshot,
           f.planetIds[2]!,
           new Date(now),
-          f.playerIds[2],
+          f.playerIds[2] ?? null,
           [f.planetIds[2]!],
+          SEES_EVERYTHING,
+          new Set([rock.index]),
         ).find((c) => c.id === run.runId);
       }
       if (!held) continue;
@@ -475,8 +539,10 @@ describe('one galaxy, one clock', () => {
         snapshot,
         f.planetIds[2]!,
         new Date(fetchedAt),
-        f.playerIds[2],
+        f.playerIds[2] ?? null,
         [f.planetIds[2]!],
+        SEES_EVERYTHING,
+        new Set(),
       ).find((c) => c.id === mission.id);
       if (!stale) continue;
 

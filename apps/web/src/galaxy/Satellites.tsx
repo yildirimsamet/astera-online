@@ -50,6 +50,16 @@ const VISIBLE_WITHIN = 34;
  */
 const NEON = SATELLITE_NEON;
 
+/** A probe record has shape, but no powered colour or live glow. */
+export const REMEMBERED_HARDWARE = {
+  colour: '#34383d',
+  rimOpacity: 0.3,
+} as const;
+
+export const satelliteLook = (type: SatelliteId, remembered: boolean) => remembered
+  ? { colour: REMEMBERED_HARDWARE.colour, rimOpacity: REMEMBERED_HARDWARE.rimOpacity, turning: false }
+  : { colour: NEON[type], rimOpacity: 0.82, turning: true };
+
 /** How big a satellite is drawn, as a share of the planet it orbits. */
 export const BODY_SCALE = 0.3;
 
@@ -80,14 +90,28 @@ interface Body {
   of: number;
 }
 
-export function Satellites({ nodes }: { nodes: readonly PlanetNode[] }) {
+/**
+ * ORBITAL HARDWARE BELONGS TO WORLDS YOU CAN RESOLVE. D126.
+ *
+ * Satellites, the dome and the dyson rings are all READINGS — "this world runs a
+ * Foundry", "this one has a shield up". A world outside your sensor reach is
+ * precisely the one you cannot read, so drawing its hardware in full while fading
+ * its body would be the interface contradicting itself in the same frame. What is
+ * left is the world at its true public size, and nothing else.
+ */
+export const resolvedOnly = (nodes: readonly PlanetNode[]): readonly PlanetNode[] =>
+  nodes.filter((node) => node.intel !== 'UNKNOWN');
+
+export function Satellites({ nodes: all }: { nodes: readonly PlanetNode[] }) {
+  const nodes = useMemo(() => resolvedOnly(all), [all]);
   const byType = useMemo(() => {
-    const map = new Map<SatelliteId, Body[]>();
+    const map = new Map<string, Body[]>();
     for (const planet of nodes) {
       planet.satellites.forEach((type, index) => {
-        const list = map.get(type) ?? [];
+        const key = `${type}:${planet.intel === 'REMEMBERED' ? 'memory' : 'live'}`;
+        const list = map.get(key) ?? [];
         list.push({ planet, index, of: planet.satellites.length });
-        map.set(type, list);
+        map.set(key, list);
       });
     }
     return map;
@@ -96,9 +120,16 @@ export function Satellites({ nodes }: { nodes: readonly PlanetNode[] }) {
   return (
     <>
       {IN_ORBIT.map((type) => {
-        const bodies = byType.get(type);
-        if (!bodies || bodies.length === 0) return null;
-        return <Ring key={type} type={type} bodies={bodies} />;
+        const live = byType.get(`${type}:live`);
+        const remembered = byType.get(`${type}:memory`);
+        return (
+          <group key={type}>
+            {live && live.length > 0 ? <Ring type={type} bodies={live} remembered={false} /> : null}
+            {remembered && remembered.length > 0
+              ? <Ring type={type} bodies={remembered} remembered />
+              : null}
+          </group>
+        );
       })}
     </>
   );
@@ -113,11 +144,21 @@ function hash(id: string): number {
   return Math.abs(h);
 }
 
-function Ring({ type, bodies }: { type: SatelliteId; bodies: Body[] }) {
+function Ring({
+  type,
+  bodies,
+  remembered,
+}: {
+  type: SatelliteId;
+  bodies: Body[];
+  remembered: boolean;
+}) {
   const mesh = useRef<THREE.InstancedMesh>(null);
   const rimMesh = useRef<THREE.InstancedMesh>(null);
+  const lastStaticCamera = useRef(new THREE.Vector3(Number.POSITIVE_INFINITY, 0, 0));
   const camera = useThree((state) => state.camera);
   const { scene } = useGLTF(SATELLITE_MODEL[type], false);
+  const look = satelliteLook(type, remembered);
 
   // Normalised to unit radius. These models are quantised like the asteroids, so
   // instancing the raw geometry would size them by an arbitrary integer range
@@ -131,10 +172,24 @@ function Ring({ type, bodies }: { type: SatelliteId; bodies: Body[] }) {
     // the true outside contour.
     material.transparent = true;
     material.depthWrite = true;
+    if (remembered && material instanceof THREE.MeshStandardMaterial) {
+      // Texture colour and emissive maps would keep advertising the live hardware
+      // kind. A memory is a dark physical silhouette, not a powered satellite.
+      material.map = null;
+      material.emissiveMap = null;
+      material.color.set(REMEMBERED_HARDWARE.colour);
+      material.emissive.set('#050607');
+      material.emissiveIntensity = 0;
+      material.metalness = 0.15;
+      material.roughness = 1;
+    }
     return material;
-  }, [source]);
+  }, [remembered, source]);
   const rimMaterial = useMemo(() => new THREE.ShaderMaterial({
-    uniforms: { uColour: { value: new THREE.Color(NEON[type]) } },
+    uniforms: {
+      uColour: { value: new THREE.Color(look.colour) },
+      uOpacity: { value: look.rimOpacity },
+    },
     transparent: true,
     depthWrite: false,
     depthTest: false,
@@ -151,10 +206,11 @@ function Ring({ type, bodies }: { type: SatelliteId; bodies: Body[] }) {
     `,
     fragmentShader: `
       uniform vec3 uColour;
-      void main() { gl_FragColor = vec4(uColour, 0.82); }
+      uniform float uOpacity;
+      void main() { gl_FragColor = vec4(uColour, uOpacity); }
     `,
     toneMapped: false,
-  }), [type]);
+  }), [look.colour, look.rimOpacity]);
 
   useEffect(
     () => () => {
@@ -185,10 +241,22 @@ function Ring({ type, bodies }: { type: SatelliteId; bodies: Body[] }) {
     [bodies],
   );
 
+  useEffect(() => {
+    // A changed memory/live group must rewrite its fixed matrices on the next
+    // frame even if the camera itself has not moved.
+    lastStaticCamera.current.set(Number.POSITIVE_INFINITY, 0, 0);
+  }, [bodies, orbits]);
+
   useFrame(({ clock }) => {
     const node = mesh.current;
     const rim = rimMesh.current;
     if (!node || !rim) return;
+    if (remembered) {
+      // Remembered hardware never animates. Rebuild only when the camera moves
+      // enough for the distance cull to change, not on every idle frame.
+      if (lastStaticCamera.current.distanceToSquared(camera.position) < 0.25) return;
+      lastStaticCamera.current.copy(camera.position);
+    }
     const t = (clock.elapsedTime / PERIOD) * Math.PI * 2;
     let drawn = 0;
 
@@ -204,7 +272,16 @@ function Ring({ type, bodies }: { type: SatelliteId; bodies: Body[] }) {
       if (far) return;
 
       const orbit = orbits[i]!;
-      const angle = t + orbit.phase;
+      /**
+       * A REMEMBERED WORLD'S ORBIT IS STOPPED. D127.
+       *
+       * These are the satellites a probe found, not the ones up there now — the
+       * owner may have added a Foundry or lost the lot to a strike since. A moving
+       * satellite is an assertion about this instant that a record cannot make, so
+       * it holds at its own phase: still, and visibly a snapshot rather than a
+       * feed. Same reasoning as a struck world's rings (D121a).
+       */
+      const angle = remembered ? orbit.phase : t + orbit.phase;
       const r = body.planet.radius * orbit.radius;
 
       dummy.position.set(
@@ -298,6 +375,19 @@ export const SHIELD_TIER = [
   { colour: '#5b8fff', opacity: 0.25, scale: 1.24 },
   { colour: '#8fb4ff', opacity: 0.32, scale: 1.3 },
 ] as const;
+
+/** A frozen probe record: charcoal, faint, fixed-size and never breathing. */
+export const REMEMBERED_SHIELD = {
+  colour: '#34373b',
+  opacity: 0.13,
+  scale: 1.18,
+} as const;
+
+export const shieldLook = (tier: 0 | 1 | 2, own: boolean, remembered: boolean) => {
+  if (remembered) return { ...REMEMBERED_SHIELD, animated: false };
+  const style = SHIELD_TIER[tier];
+  return { ...style, opacity: style.opacity * (own ? 1 : 0.7), animated: true };
+};
 
 export const shieldTierOf = (level: number): 0 | 1 | 2 => (level >= 5 ? 2 : level >= 3 ? 1 : 0);
 
@@ -418,47 +508,69 @@ export function Shields({
 }) {
   // D25: the Aegis is on the ground, so it is no longer in the orbit list. The dome
   // is still public — `shielded` is the boolean the server publishes for it.
-  const shielded = useMemo(() => nodes.filter((n) => n.shielded), [nodes]);
+  const shielded = useMemo(
+    () => nodes.filter((n) => n.shielded && n.intel !== 'UNKNOWN'),
+    [nodes],
+  );
 
   return (
     <>
       {shielded.map((node) => (
-        <Shell
-          key={node.id}
-          node={node}
-          // Graded only where the level is legitimately known.
-          tier={node.id === ownId ? shieldTierOf(ownLevel) : 0}
-          own={node.id === ownId}
-        />
+        node.intel === 'REMEMBERED' ? (
+          <RememberedShell key={node.id} node={node} />
+        ) : (
+          <LiveShell
+            key={node.id}
+            node={node}
+            // Graded only where the level is legitimately known.
+            tier={node.id === ownId ? shieldTierOf(ownLevel) : 0}
+            own={node.id === ownId}
+          />
+        )
       ))}
     </>
   );
 }
 
-function Shell({ node, tier, own }: { node: PlanetNode; tier: 0 | 1 | 2; own: boolean }) {
-  const group = useRef<THREE.Group>(null);
-  const style = SHIELD_TIER[tier];
+function ShieldMesh({
+  node,
+  style,
+}: {
+  node: PlanetNode;
+  style: { colour: string; opacity: number; scale: number };
+}) {
   const radius = node.radius * style.scale;
-
   const material = useMemo(
-    () =>
-      new THREE.ShaderMaterial({
-        vertexShader: SHIELD_VERT,
-        fragmentShader: SHIELD_FRAG,
-        uniforms: {
-          uColour: { value: new THREE.Color(style.colour) },
-          uOpacity: { value: style.opacity * (own ? 1 : 0.7) },
-          // Whole cells around the equator, so the longitude seam closes.
-          uDensity: { value: PANELS_AROUND / (2 * Math.PI) },
-        },
-        transparent: true,
-        depthWrite: false,
-        blending: THREE.AdditiveBlending,
-        // Both faces: the far wall is what gives the limb its brightness.
-        side: THREE.DoubleSide,
-      }),
-    [style.colour, style.opacity, own],
+    () => new THREE.ShaderMaterial({
+      vertexShader: SHIELD_VERT,
+      fragmentShader: SHIELD_FRAG,
+      uniforms: {
+        uColour: { value: new THREE.Color(style.colour) },
+        uOpacity: { value: style.opacity },
+        // Whole cells around the equator, so the longitude seam closes.
+        uDensity: { value: PANELS_AROUND / (2 * Math.PI) },
+      },
+      transparent: true,
+      depthWrite: false,
+      blending: THREE.AdditiveBlending,
+      // Both faces: the far wall is what gives the limb its brightness.
+      side: THREE.DoubleSide,
+    }),
+    [style.colour, style.opacity],
   );
+
+  useEffect(() => () => { material.dispose(); }, [material]);
+
+  return (
+    <mesh renderOrder={3} material={material}>
+      <sphereGeometry args={[radius, 48, 32]} />
+    </mesh>
+  );
+}
+
+function LiveShell({ node, tier, own }: { node: PlanetNode; tier: 0 | 1 | 2; own: boolean }) {
+  const group = useRef<THREE.Group>(null);
+  const style = shieldLook(tier, own, false);
 
   useFrame(({ clock }) => {
     // A slow breath. Armour that is perfectly still reads as a modelling artefact.
@@ -468,9 +580,16 @@ function Shell({ node, tier, own }: { node: PlanetNode; tier: 0 | 1 | 2; own: bo
 
   return (
     <group ref={group} position={node.position}>
-      <mesh renderOrder={3} material={material}>
-        <sphereGeometry args={[radius, 48, 32]} />
-      </mesh>
+      <ShieldMesh node={node} style={style} />
+    </group>
+  );
+}
+
+function RememberedShell({ node }: { node: PlanetNode }) {
+  const style = shieldLook(0, false, true);
+  return (
+    <group position={node.position}>
+      <ShieldMesh node={node} style={style} />
     </group>
   );
 }

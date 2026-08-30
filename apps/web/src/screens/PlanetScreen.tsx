@@ -3,25 +3,31 @@ import { useEffect, useState, type ReactNode } from 'react';
 import { Trans, useTranslation } from 'react-i18next';
 import { Unreachable, Waiting } from '../ui/kit/Surface.js';
 import {
+  ANTI_STRATEGIC,
   BUILD,
-  DEUTERIUM,
   HULLS,
+  RESEARCH_PROJECTS,
   DEATH_STAR,
   MULTI_WORLD,
   PROSPECTOR,
-  RESEARCH_PROJECTS,
-  cancelRefund,
+  buildingCost,
   fleetCount,
+  groundLoad,
+  groundSlots,
+  hangarCapacity,
+  hangarLoad,
+  hullBulk,
+  hullFuelRate,
   instrumentCost,
   instrumentMaxed,
+  interceptionRange,
+  plantCeiling,
   satelliteSlots,
   satelliteCost,
-  upgradeCost,
   type BuildingId,
   type BuildingLevels,
   type HullId,
   type InstrumentId,
-  type ResearchProjectId,
   type SatelliteId,
 } from '@astera/rules';
 import {
@@ -30,19 +36,19 @@ import {
   usePending,
   usePlanet,
   useBuild,
+  useBuildInterceptor,
   useCancelBuildOrder,
-  useCompleteResearch,
   useInstallSatellite,
   useRaiseInstrument,
   useUpgrade,
   useBuildDeathStar,
 } from '../api/queries.js';
-import type { BuildOrderView, PlanetView } from '../api/schemas.js';
+import type { PlanetView } from '../api/schemas.js';
 
 import { directives, primary, type PlanetGroup } from '../lib/directives.js';
-import { compact, full, percent } from '../lib/format.js';
+import { compact, full } from '../lib/format.js';
 import { serverNow } from '../lib/clock.js';
-import { countdown, duration, useNow } from '../lib/time.js';
+import { duration, useNow } from '../lib/time.js';
 import { projectedQueueState } from '../lib/predict.js';
 import { buildingGain, instrumentGain, satelliteGain } from '../lib/gains.js';
 import { useProjected, type Projected } from '../lib/projection.js';
@@ -51,6 +57,7 @@ import {
   RESEARCH_ART,
   RESOURCE_ART,
   SATELLITE_ART,
+  STRATEGIC_ART,
   buildingArt,
   groundArt,
   instrumentArt,
@@ -64,9 +71,11 @@ import {
 import i18n from '../i18n/index.js';
 import {
   buildingName,
+  buildingRole,
   buildingTag,
   hullLabel,
   hullPitch,
+  hullDetail,
   hullTag,
   instrumentLabel,
   instrumentPitch,
@@ -78,6 +87,8 @@ import {
 import { ActionButton, Price, StatStrip } from '../ui/Action.js';
 import { ItemSheet, type ItemRef } from '../ui/ItemSheet.js';
 import { PlanetHero } from '../ui/PlanetHero.js';
+import { CapacityBar } from '../ui/CapacityBar.js';
+import { QueueStrip } from '../ui/QueueStrip.js';
 import { Band, DecisionGroup, UpgradeRow, type Blocked } from '../ui/UpgradeRow.js';
 import { describe, useToast } from '../ui/Toast.js';
 import { Sheet } from '../ui/kit/index.js';
@@ -139,26 +150,23 @@ export interface SheetSpec {
   act: () => void;
 }
 
-interface ProjectSheetSpec {
-  name: string;
-  tag: string;
-  role: string;
-  art: string;
-  cost: { alloy: number; crystal: number; deuterium?: number };
-  blocked?: Blocked;
-  completed?: string;
-  queued?: string;
-  pending: boolean;
-  act: () => void;
-}
-
 export function PlanetScreen({
   focusGroup,
   embedded = false,
+  onOpenResearch,
 }: {
   focusGroup?: GroupId;
   /** Rendered inside a panel over the live galaxy rather than as a full screen. */
   embedded?: boolean;
+  /**
+   * Take the player to the research surface. T12.
+   *
+   * The Runner and the Breacher are gated on research, and the refusal offers to
+   * go and open it — which `TAB_OF` used to do, because the cards were on this
+   * sheet. They are not any more, and a jump that fell through to `'grow'` left
+   * the player standing on the Command Core with no idea why.
+   */
+  onOpenResearch?: () => void;
 }) {
   const { t } = useTranslation();
   const { data, dataUpdatedAt, isError, refetch } = usePlanet();
@@ -166,7 +174,6 @@ export function PlanetScreen({
   const advice = useAdvice(data, held);
   const [building, setBuilding] = useState<HullId | null>(null);
   const [sheet, setSheet] = useState<SheetSpec | null>(null);
-  const [projectSheet, setProjectSheet] = useState<ProjectSheetSpec | null>(null);
   const [tab, setTab] = useState<GroupId | null>(null);
   const [focused, setFocused] = useState<string | null>(null);
   // Set for a moment after a purchase lands, so the row can acknowledge it.
@@ -279,6 +286,12 @@ export function PlanetScreen({
     && data.planet.recoveryUntil.getTime() > serverNow();
 
   const goToNeed = (id: string): void => {
+    // A research project is not on this screen at all. Hand it to the host, which
+    // is the only thing that can open the surface it IS on.
+    if (Object.hasOwn(RESEARCH_PROJECTS, id)) {
+      onOpenResearch?.();
+      return;
+    }
     const home = TAB_OF[id];
     if (home) setTab(home);
     setFocused(id);
@@ -300,7 +313,6 @@ export function PlanetScreen({
     onNeed: goToNeed,
     onFlash: setFlashed,
     onOpen: setSheet,
-    onOpenProject: setProjectSheet,
   };
 
   return (
@@ -380,14 +392,6 @@ export function PlanetScreen({
         />
       )}
 
-      {projectSheet && (
-        <ProjectSheet
-          spec={projectSheet}
-          held={held}
-          onClose={() => { setProjectSheet(null); }}
-        />
-      )}
-
       {building && (
         // `data-build-sheet` is how the onboarding gate (D56) keeps this surface
         // live: it is opened BY a gated control, so sealing it would trap.
@@ -451,13 +455,11 @@ export const TAB_OF: Record<string, GroupId | undefined> = {
   AEGIS: 'defend',
   UPLINK: 'orbit',
   FOUNDRY: 'grow',
+  DEUTERIUM_PLANT: 'grow',
   DERRICK: 'reach',
   BEACON: 'reach',
   SHIPYARD: 'reach',
-  ISOTOPE_SPECTROMETRY: 'reach',
-  DENSE_FUEL_CELLS: 'reach',
-  GRAVITIC_CHARGES: 'reach',
-  DEATH_STAR_PROTOCOL: 'reach',
+  HANGAR: 'reach',
 };
 
 /**
@@ -546,7 +548,7 @@ function BuildQueues({ planet }: { planet: PlanetView }) {
           {t('planet.queue.capacity', { count: BUILD.queueDepth })}
         </span>
       </header>
-      <BuildQueueLane
+      <QueueStrip
         label={t('planet.queue.construction')}
         orders={queues.CONSTRUCTION}
         now={now}
@@ -564,7 +566,7 @@ function BuildQueues({ planet }: { planet: PlanetView }) {
           });
         }}
       />
-      <BuildQueueLane
+      <QueueStrip
         label={t('planet.queue.yard')}
         orders={queues.YARD}
         now={now}
@@ -584,159 +586,6 @@ function BuildQueues({ planet }: { planet: PlanetView }) {
       />
     </section>
   );
-}
-
-function BuildQueueLane({
-  label,
-  orders,
-  now,
-  cancelling,
-  onCancel,
-}: {
-  label: string;
-  orders: readonly BuildOrderView[];
-  now: number;
-  cancelling?: string;
-  onCancel: (order: BuildOrderView) => void;
-}) {
-  const { t } = useTranslation();
-
-  /**
-   * A LANE WITH NOTHING IN IT IS ONE LINE, NOT THREE.
-   *
-   * I6b still holds — every slot is visible and visibly empty — but a rack shown
-   * at the density of its contents is the point of a rack. Two idle lanes drawn
-   * as six stacked rows put two hundred pixels of dashes between a commander and
-   * the first thing they can press, on the screen where pressing something is the
-   * entire job. Empty collapses to a row of cells beside the label; the moment an
-   * order lands, the lane opens into rows that can carry a name and a clock.
-   */
-  if (orders.length === 0) {
-    return (
-      <div className="flex items-center gap-3 border-b border-line-soft px-3 py-3 last:border-b-0">
-        <h3 className="legend text-crystal/80">{label}</h3>
-        <span className="flex flex-1 gap-1" aria-label={t('planet.queue.slotFree')}>
-          {Array.from({ length: BUILD.queueDepth }, (_, slot) => (
-            <span
-              key={slot}
-              aria-hidden
-              className="h-4 flex-1 rounded-cell border border-dashed border-line-soft"
-            />
-          ))}
-        </span>
-        <span className="num shrink-0 text-micro text-faint">
-          0/{BUILD.queueDepth}
-        </span>
-      </div>
-    );
-  }
-
-  return (
-    <div className="border-b border-line-soft px-3 py-3 last:border-b-0">
-      <div className="mb-2 flex items-baseline justify-between gap-2">
-        <h3 className="legend text-crystal/80">
-          {label}
-        </h3>
-        <span className="num text-micro text-faint">
-          {orders.length}/{BUILD.queueDepth}
-        </span>
-      </div>
-      {/*
-        EVERY SLOT IS DRAWN, INCLUDING THE EMPTY ONES. `interface.md` I6b:
-        anything rationed into slots is a RACK, every owned slot holds a stable
-        position, and an empty slot stays visible and visibly empty. This lane
-        rendered a fraction and, when nothing was queued, the sentence "No work
-        committed" — an apology in the one place on the main screen where a player
-        needs to see how much room they have left. The kit's own `EmptyState`
-        docblock had already settled the principle: an empty state is an
-        instruction, never an apology. A rack does not need either.
-      */}
-      <ol className="flex flex-col gap-2">
-          {Array.from({ length: BUILD.queueDepth }, (_, slot) => {
-            const order = orders[slot];
-            if (!order) {
-              return (
-                <li
-                  key={`empty-${String(slot)}`}
-                  aria-label={t('planet.queue.slotFree')}
-                  className="flex h-7 items-center gap-2 rounded-chip border border-dashed border-line-soft px-3"
-                >
-                  <span aria-hidden className="num text-micro text-faint">{slot + 1}</span>
-                </li>
-              );
-            }
-            const index = slot;
-            return ((order) => {
-            const startedAt = order.startedAt;
-            const finishesAt = order.finishesAt;
-            const timed = startedAt instanceof Date && finishesAt instanceof Date;
-            const staged = 'staged' in order && order.staged;
-            const total = timed ? finishesAt.getTime() - startedAt.getTime() : 0;
-            const elapsed = timed ? now - startedAt.getTime() : 0;
-            const progress = index === 0 && total > 0
-              ? Math.max(0, Math.min(1, elapsed / total))
-              : 0;
-            const refund = cancelRefund(order.cost);
-            return (
-              <li key={order.id} className="rounded-chip border border-line-soft bg-void/25 px-3 py-2">
-                <div className="flex items-center gap-2">
-                  <span className="num text-micro text-faint">{index + 1}</span>
-                  <span className="min-w-0 flex-1 truncate text-caption text-bone">
-                    {order.count > 1 ? `${String(order.count)} × ` : ''}{buildOrderName(order)}
-                  </span>
-                  <span className="num shrink-0 text-label text-crystal">
-                    {timed
-                      ? countdown(finishesAt.getTime() - now)
-                      : staged
-                        ? t('planet.queue.staged')
-                        : t('planet.queue.committing')}
-                  </span>
-                  <button
-                    type="button"
-                    disabled={!timed || cancelling !== undefined}
-                    title={t('planet.queue.refund', {
-                      alloy: full(refund.alloy),
-                      crystal: full(refund.crystal),
-                      deuterium: full(refund.deuterium),
-                    })}
-                    className="legend min-h-9 shrink-0 rounded-chip px-2 text-faint transition-colors hover:bg-threat/15 hover:text-threat-ink disabled:opacity-40"
-                    onClick={() => {
-                      // An optimistic marker has no server id yet. Let the
-                      // placement response replace it before cancellation is
-                      // offered, or this button can only send a guaranteed 404.
-                      if (timed) onCancel(order);
-                    }}
-                  >
-                    {cancelling === order.id ? t('planet.queue.cancelling') : t('planet.queue.cancel')}
-                  </button>
-                </div>
-                {index === 0 && (
-                  <div className="mt-2 h-1 overflow-hidden rounded-full bg-black/45">
-                    <span
-                      className="block h-full bg-gradient-to-r from-crystal/45 to-crystal transition-[width] duration-1000"
-                      style={{ width: `${String(Math.max(timed ? 2 : 8, progress * 100))}%` }}
-                    />
-                  </div>
-                )}
-              </li>
-            );
-            })(order);
-          })}
-        </ol>
-    </div>
-  );
-}
-
-function buildOrderName(order: BuildOrderView): string {
-  if (order.kind === 'BUILDING') return buildingName(order.subject as BuildingId);
-  if (order.kind === 'HULL') return hullLabel(order.subject as HullId);
-  if (order.kind === 'INSTRUMENT') return instrumentLabel(order.subject as InstrumentId);
-  if (order.kind === 'SATELLITE') return satelliteLabel(order.subject as SatelliteId);
-  if (order.subject === 'ISOTOPE_SPECTROMETRY') return i18n.t('planet.reach.isotopeName');
-  if (order.subject === 'DENSE_FUEL_CELLS') return i18n.t('planet.reach.denseName');
-  if (order.subject === 'GRAVITIC_CHARGES') return i18n.t('planet.reach.graviticName');
-  if (order.subject === 'DEATH_STAR_PROTOCOL') return i18n.t('planet.reach.deathStarName');
-  return order.subject;
 }
 
 function DeathStarForge({
@@ -1004,7 +853,6 @@ interface GroupProps {
   onNeed: (id: string) => void;
   onFlash: (id: string) => void;
   onOpen: (spec: SheetSpec) => void;
-  onOpenProject: (spec: ProjectSheetSpec) => void;
 }
 
 /** Gathers a row's own knowledge into the shape the detail sheet reads. */
@@ -1031,7 +879,7 @@ const spec = (
 });
 
 const cappedCountOf = (levels: BuildingLevels): number =>
-  (['REFINERY', 'EXTRACTOR', 'VAULT', 'SHIPYARD'] as const).filter(
+  (['REFINERY', 'EXTRACTOR', 'VAULT', 'SHIPYARD', 'HANGAR'] as const).filter(
     (id) => levels[id] >= levels.CORE,
   ).length;
 
@@ -1045,13 +893,28 @@ function useBuildingAction(planet: PlanetView, onFlash: (id: string) => void) {
   return (id: BuildingId, name: string, onNeed: (row: string) => void) => {
     const level = planet.buildings[id] ?? 0;
     const nextLevel = projected.buildings[id];
-    const cost = upgradeCost(nextLevel);
+    const cost = buildingCost(id, nextLevel);
     const queuedCount = orders.filter(
       (order) => order.kind === 'BUILDING' && order.subject === id,
     ).length;
     const queued = queuedCount > 0
       ? i18n.t('planet.queue.queued', { count: queuedCount })
       : undefined;
+    /*
+      THE SECOND CEILING, AND ONLY ONE BUILDING HAS ONE. T5.
+
+      A Deuterium Refinery may not pass its research rung — three levels per rung of
+      Deuterium Synthesis — and `build.ts` refuses with `RESEARCH_CEILING`. The row
+      had no sentence for it, which at rung zero means the card offered the building
+      that the entire fuel economy runs on and the server refused every press.
+
+      Read off the PROJECTED rung, like the server: a research order already ahead in
+      this same queue counts.
+    */
+    // `nextLevel` is the PROJECTED CURRENT level, which is exactly what `build.ts`
+    // compares — `level >= ceiling` there and here, so the two cannot drift.
+    const plantCapped = id === 'DEUTERIUM_PLANT'
+      && nextLevel >= plantCeiling(projected.research.get('DEUTERIUM_SYNTHESIS') ?? 0);
     const blocked: Blocked | undefined =
       id !== 'CORE' && nextLevel >= core
         ? {
@@ -1060,6 +923,11 @@ function useBuildingAction(planet: PlanetView, onFlash: (id: string) => void) {
           }
         : orders.length >= BUILD.queueDepth
           ? { reason: i18n.t('planet.blocked.queueFull') }
+        : plantCapped
+          ? {
+              reason: i18n.t('planet.blocked.plantRung'),
+              onFix: () => { onNeed('DEUTERIUM_SYNTHESIS'); },
+            }
         : undefined;
 
     return {
@@ -1368,6 +1236,7 @@ function Defend({
   const bastion = HULLS.BASTION;
   const thorn = HULLS.THORN;
   const yardOrders = planet.queues?.YARD ?? [];
+  const yardProjection = projectedQueueState(planet, 'YARD');
   const queuedThorns = yardOrders
     .filter((order) => order.kind === 'HULL' && order.subject === 'THORN')
     .reduce((sum, order) => sum + order.count, 0);
@@ -1375,6 +1244,8 @@ function Defend({
     .filter((order) => order.kind === 'HULL' && order.subject === 'BASTION')
     .reduce((sum, order) => sum + order.count, 0);
   const ground = fleetCount(planet.ground);
+  const groundCapacity = planet.capacity?.ground ?? groundSlots(planet.buildings.CORE ?? 0);
+  const groundUsed = groundLoad(yardProjection.units);
   /**
    * How many guns of each kind are on the plate.
    *
@@ -1442,6 +1313,21 @@ function Defend({
         has to scout to discover.
       */}
       <Band label={t('planet.defend.groundBand')} note={t('planet.defend.groundNote')} />
+      {/*
+        THE GROUND IS A ROOM HERE, NOT A PURCHASE. Owner instruction: the "one
+        takes" block belongs on the craft sheet, where a hull is actually being
+        chosen. On a band nobody is shopping — the question is how big this
+        world's battery may be and how much of it is spoken for — so the card
+        drops the block and the per-hull count and states its space as space.
+      */}
+      <div className="px-3 py-2">
+        <CapacityBar
+          total={groundCapacity}
+          used={groundUsed}
+          incoming={0}
+          label={t('planet.defend.groundBand')}
+        />
+      </div>
 
       <div id="row-THORN">
       <UpgradeRow
@@ -1520,7 +1406,148 @@ function Defend({
       />
       </div>
 
+      <Band
+        label={t('planet.defend.strategicBand')}
+        note={t('planet.defend.strategicNote')}
+      />
+      <InterceptorBattery planet={planet} held={held} onNeed={onNeed} />
     </>
+  );
+}
+
+/**
+ * ONE CHARGE, AND THE ONLY THING IN THE GAME THAT STOPS A DEATH STAR. T10 · T12.
+ *
+ * ON DEFEND, NOT ON REACH. The forge is on the fleet tab because building a
+ * strategic weapon is an offensive project; this is hardware that stands on your
+ * own world and fires along your own radar circle, so it belongs where the Aegis
+ * and the ground guns are. A player looking for "what stops one of those" looks
+ * here.
+ *
+ * IT READS `interceptor` AND NOT `strategic`. Those were one field until T12 —
+ * both kinds of asset came back under one key, newest first — so a charge started
+ * after a Death Star reported itself as the weapon. Two keys, and neither is
+ * inferred from the other.
+ *
+ * THE RADAR RUNG IS THE EFFECTIVE ONE. An Uplink gates the Radar, so a Radar 5
+ * with none has a reach of zero and draws no circle at all — the handler that
+ * fires reads exactly that effective figure, and `buildInterceptor` refuses on it.
+ * Checking the installed level here would sell a charge that could never go off,
+ * which is the one failure its owner could never diagnose.
+ */
+function InterceptorBattery({
+  planet,
+  held,
+  onNeed,
+}: {
+  planet: PlanetView;
+  held: { alloy: number; crystal: number; deuterium: number };
+  onNeed: (id: string) => void;
+}) {
+  const { t } = useTranslation();
+  const load = useBuildInterceptor();
+  const say = useToast();
+  const projected = projectedQueueState(planet, 'CONSTRUCTION');
+  const charge = planet.interceptor ?? null;
+  const grid = planet.research.some(
+    (project) => project.id === ANTI_STRATEGIC.requiredResearch && project.completed,
+  );
+  const uplink = projected.effectiveOrbit.includes('UPLINK');
+  const radar = uplink
+    ? Math.min(projected.instruments.RADAR ?? 0, projected.buildings.CORE)
+    : 0;
+  const radarReady = interceptionRange(radar) > 0;
+  const recovering = planet.planet.recoveryUntil !== null
+    && planet.planet.recoveryUntil !== undefined
+    && planet.planet.recoveryUntil.getTime() > serverNow();
+  const affordable = held.alloy >= ANTI_STRATEGIC.cost.alloy
+    && held.crystal >= ANTI_STRATEGIC.cost.crystal
+    && held.deuterium >= ANTI_STRATEGIC.cost.deuterium;
+  const state = charge
+    ? charge.status
+    : grid && radarReady
+      ? 'AVAILABLE'
+      : 'LOCKED';
+
+  return (
+    <div
+      data-interceptor-state={state}
+      className="plate flex flex-col gap-2 border-b border-line-soft p-3 last:border-b-0"
+    >
+      <div className="flex items-center gap-3">
+        <img
+          data-interceptor-art
+          src={STRATEGIC_ART.interceptor}
+          alt=""
+          aria-hidden
+          className="size-16 shrink-0 object-contain"
+        />
+        <div className="min-w-0">
+          <p className="legend text-crystal/85">{t('planet.interceptor.eyebrow')}</p>
+          <p className="headline text-bone">
+            {charge?.status === 'READY'
+              ? t('planet.interceptor.ready')
+              : charge?.status === 'PAUSED'
+                ? t('planet.interceptor.paused')
+                : charge?.status === 'BUILDING'
+                  ? t('planet.interceptor.building', {
+                      duration: charge.readyAt
+                        ? duration(Math.max(0, charge.readyAt.getTime() - serverNow()) / 60_000)
+                        : duration((charge.remainingSeconds ?? 0) / 60),
+                    })
+                  : t('planet.interceptor.none')}
+          </p>
+          <p className="text-caption leading-snug text-dim">
+            {t(charge?.status === 'READY'
+              ? 'planet.interceptor.readyHint'
+              : 'planet.interceptor.hint')}
+          </p>
+        </div>
+      </div>
+
+      {/*
+        THE REQUIREMENTS STAY ON SCREEN UNTIL A CHARGE EXISTS, and each is a door
+        rather than an alarm: the research and the Radar both point at the surface
+        that would close them.
+      */}
+      {charge === null && (
+        <>
+          <div className="grid grid-cols-2 gap-2" role="list">
+            <DeathStarNeed ok={grid}>{t('planet.interceptor.needResearch')}</DeathStarNeed>
+            <DeathStarNeed ok={uplink}>{t('planet.interceptor.needUplink')}</DeathStarNeed>
+            <DeathStarNeed ok={radarReady}>
+              {t('planet.interceptor.needRadar', { level: ANTI_STRATEGIC.requiredRadar })}
+            </DeathStarNeed>
+            <DeathStarNeed ok={!recovering}>
+              {t('planet.interceptor.needOperational')}
+            </DeathStarNeed>
+          </div>
+          <div className="mt-1 flex items-center justify-between gap-3">
+            <div>
+              <Price cost={ANTI_STRATEGIC.cost} held={held} />
+              <p className="legend mt-1">
+                {t('planet.interceptor.buildTime', {
+                  duration: duration(ANTI_STRATEGIC.buildMinutes),
+                })}
+              </p>
+            </div>
+            <Button
+              variant="commit"
+              disabled={recovering || load.isPending || !grid || !radarReady || !affordable}
+              onClick={() => {
+                if (!grid) { onNeed('RADAR'); return; }
+                load.mutate(undefined, {
+                  onSuccess: () => { say(t('planet.interceptor.started')); },
+                  onError: (error) => { say(describe(error), 'error'); },
+                });
+              }}
+            >
+              {t('planet.interceptor.build')}
+            </Button>
+          </div>
+        </>
+      )}
+    </div>
   );
 }
 
@@ -1585,12 +1612,19 @@ function Orbit({ planet, held, income, focused, flashed, onNeed, onFlash, onOpen
 }
 
 /**
- * How much room is left overhead, as a thing rather than a sentence.
+ * WHAT THE RACK BELOW CANNOT SAY, AND NOTHING IT ALREADY SAYS. D142.
  *
- * The slot count is the only rationing left in the whole hardware system, so it
- * gets a picture: filled pips for what is up, empty ones for what is open, and the
- * Core level that opens the next one. A player who reads this before shopping never
- * meets the refusal.
+ * This docblock used to promise "filled pips for what is up, empty ones for what
+ * is open" and the code printed `2 / 4 slots used` — a description of a picture
+ * that had been replaced by its own caption. It was also the THIRD statement of
+ * the same fact on one header: `OrbitRack` sits directly underneath and draws
+ * every socket at full size, with its art in the taken ones and a dashed outline
+ * on the free ones.
+ *
+ * So the fraction is gone and what is left is the half no rack can draw: that
+ * there are no sockets left, or which Core level opens the next one. A player who
+ * reads this before shopping never meets the refusal — which was always the point
+ * of the line, and never the point of the numbers in it.
  */
 function OrbitSlotCount({ slots, used, core }: { slots: number; used: number; core: number }) {
   const { t } = useTranslation();
@@ -1598,12 +1632,18 @@ function OrbitSlotCount({ slots, used, core }: { slots: number; used: number; co
 
   return (
     <span className="num text-label text-dim">
-      {t('planet.orbit.slotsUsed', { used, total: slots })}
       {used >= slots ? (
-        <span className="ml-1 text-threat-ink">· {t('planet.orbit.slotsNone')}</span>
-      ) : next !== undefined && (
+        /*
+          AMBER, NOT RED (interface.md I0/I1). A full rack is a ceiling the
+          commander can raise by building a Core level; it is not something being
+          done to them, and threat red spent here is threat red a player learns to
+          ignore where it means an attack.
+        */
+        <span className="text-alloy">{t('planet.orbit.slotsNone')}</span>
+      ) : next !== undefined ? (
         <span className="text-faint">{t('planet.orbit.slotsNext', { level: next })}</span>
-      )}
+      ) : null}
+      <span className="sr-only">{t('planet.orbit.slotsUsed', { used, total: slots })}</span>
     </span>
   );
 }
@@ -1693,175 +1733,24 @@ function Reach({
   onNeed,
   onFlash,
   onOpen,
-  onOpenProject,
   onBuild,
 }: GroupProps & { onBuild: (hull: HullId) => void }) {
   const { t } = useTranslation();
   const building = useBuildingAction(planet, onFlash);
   const orbit = useOrbitAction(planet, onFlash);
-  const completeResearch = useCompleteResearch();
-  const say = useToast();
   const shipyard = building('SHIPYARD', buildingName('SHIPYARD'), onNeed);
+  const hangar = building('HANGAR', buildingName('HANGAR'), onNeed);
   const level = planet.buildings.SHIPYARD ?? 0;
-  const constructionOrders = planet.queues?.CONSTRUCTION ?? [];
   const yardOrders = planet.queues?.YARD ?? [];
   const yardProjection = projectedQueueState(planet, 'YARD');
-  const isotope = planet.research.find((project) => project.id === 'ISOTOPE_SPECTROMETRY');
+  const hangarTotal = planet.capacity?.hangar ?? hangarCapacity(planet.buildings.HANGAR ?? 0);
+  const hangarUsed = hangarLoad(yardProjection.units);
+  const groundTotal = planet.capacity?.ground ?? groundSlots(planet.buildings.CORE ?? 0);
+  const groundUsed = groundLoad(yardProjection.units);
   const dense = planet.research.find((project) => project.id === 'DENSE_FUEL_CELLS');
   const gravitic = planet.research.find((project) => project.id === 'GRAVITIC_CHARGES');
   const denseComplete = dense?.completed ?? false;
   const graviticComplete = gravitic?.completed ?? false;
-  const graviticDiscoveryShare = percent(DEUTERIUM.graviticDiscoveryShieldShare);
-
-  const project = (id: ResearchProjectId) => {
-    const state = planet.research.find((candidate) => candidate.id === id);
-    if (!state) return null;
-    const copy = {
-      ISOTOPE_SPECTROMETRY: {
-        name: t('planet.reach.isotopeName'),
-        tag: t('planet.reach.isotopeTag'),
-        role: t('planet.reach.isotopeRole'),
-      },
-      DENSE_FUEL_CELLS: {
-        name: t('planet.reach.denseName'),
-        tag: t('planet.reach.denseTag'),
-        role: t('planet.reach.denseRole'),
-      },
-      GRAVITIC_CHARGES: {
-        name: t('planet.reach.graviticName'),
-        tag: t('planet.reach.graviticTag'),
-        role: t('planet.reach.graviticRole', { share: graviticDiscoveryShare }),
-      },
-      DEATH_STAR_PROTOCOL: {
-        name: t('planet.reach.deathStarName'),
-        tag: t('planet.reach.deathStarTag'),
-        role: t('planet.reach.deathStarRole'),
-      },
-    } satisfies Record<ResearchProjectId, { name: string; tag: string; role: string }>;
-    const discoveryReason = id === 'DENSE_FUEL_CELLS'
-      ? t('planet.reach.researchCargoInsight')
-      : id === 'DEATH_STAR_PROTOCOL'
-        ? t('planet.reach.researchGraviticFirst')
-        : t('planet.reach.researchShieldInsight', { share: graviticDiscoveryShare });
-    const { name, tag, role } = copy[id];
-    const completed = state.completed ? t('planet.reach.researchComplete') : undefined;
-    const queued = constructionOrders.some(
-      (order) => order.kind === 'RESEARCH' && order.subject === id,
-    )
-      ? t('planet.queue.queued', { count: 1 })
-      : undefined;
-    const queueAvailable = state.queueAvailable ?? state.available;
-    const warGate = id === 'DEATH_STAR_PROTOCOL' && (gravitic?.completed ?? false);
-    /**
-     * THE ONE RESEARCH GATE THE SERVER CHECKS AND THE ROW NEVER SHOWED. D113.
-     *
-     * `researchState` computes `available` from discovery, prerequisite and the
-     * act clock — not from `requiredCore` — so a project whose Core gate is unmet
-     * rendered as buyable and the tap came back `RESEARCH_UNAVAILABLE`. That was
-     * survivable while the gate was Core 6; at Core 12 the War act opens long
-     * before most commanders get there, so it would be the ordinary case.
-     */
-    const needCore = RESEARCH_PROJECTS[id].requiredCore ?? 0;
-    const coreTooLow = !completed && (planet.buildings.CORE ?? 0) < needCore;
-    const gated: Blocked | undefined = completed
-      ? undefined
-      : constructionOrders.length >= BUILD.queueDepth
-        ? { reason: t('planet.blocked.queueFull') }
-      : queueAvailable
-        ? undefined
-        : !state.discovered
-        ? {
-            reason: warGate
-              ? t('planet.reach.researchWarAt', {
-                  duration: duration(
-                    Math.max(0, (state.availableAt.getTime() - serverNow()) / 60_000),
-                  ),
-                })
-              : id === 'ISOTOPE_SPECTROMETRY'
-              ? t('planet.reach.researchAt', {
-                  duration: duration(
-                    Math.max(0, (state.availableAt.getTime() - serverNow()) / 60_000),
-                  ),
-                })
-              : isotope?.completed
-                ? discoveryReason
-                : t('planet.reach.researchIsotopeFirst'),
-            ...(id !== 'ISOTOPE_SPECTROMETRY' && !isotope?.completed
-              ? { onFix: () => { onNeed('ISOTOPE_SPECTROMETRY'); } }
-              : id === 'DEATH_STAR_PROTOCOL' && !gravitic?.completed
-                ? { onFix: () => { onNeed('GRAVITIC_CHARGES'); } }
-              : {}),
-          }
-        : !state.available
-          ? { reason: discoveryReason }
-          : undefined;
-    /**
-     * LAST, DELIBERATELY. A project the War act has not opened yet is not one you
-     * can fix by raising anything, so its own clock has to be the sentence the
-     * row shows. The Core gate is what remains once everything else is satisfied.
-     */
-    const blocked: Blocked | undefined = gated
-      ?? (coreTooLow
-        ? {
-            reason: t('planet.reach.researchNeedCore', { level: needCore }),
-            onFix: () => { onNeed('CORE'); },
-          }
-        : undefined);
-
-    return (
-      <div key={id} id={`row-${id}`}>
-        <UpgradeRow
-          art={RESEARCH_ART[id]}
-          name={name}
-          tag={tag}
-        role={role}
-        onOpen={() => {
-          onOpenProject({
-            name,
-            tag,
-            role,
-            art: RESEARCH_ART[id],
-            cost: state.cost,
-            ...(blocked ? { blocked } : {}),
-            ...(completed ? { completed } : {}),
-            ...(queued ? { queued } : {}),
-            pending: completeResearch.isPending,
-            act: () => {
-              completeResearch.mutate(id, {
-                onSuccess: () => {
-                  onFlash(id);
-                  say(t('planet.done.queuedSimple', { name }));
-                },
-                onError: (error) => { say(describe(error), 'error'); },
-              });
-            },
-          });
-        }}
-        cost={state.cost}
-          held={held}
-          income={income}
-          unowned={!state.completed}
-          {...(blocked ? { blocked } : {})}
-          {...(completed ? { completed } : {})}
-          {...(queued ? { queued } : {})}
-          verb="install"
-          actionLabel={t('planet.reach.researchAct')}
-          onAct={() => {
-            completeResearch.mutate(id, {
-              onSuccess: () => {
-                onFlash(id);
-                say(t('planet.done.queuedSimple', { name }));
-              },
-              onError: (error) => { say(describe(error), 'error'); },
-            });
-          }}
-          pending={completeResearch.isPending}
-          highlighted={focused === id}
-          flash={flashed === id}
-        />
-      </div>
-    );
-  };
 
   const hull = (id: HullId) => {
     const hullSpec = HULLS[id];
@@ -1872,6 +1761,9 @@ function Reach({
       + (planet.fleetAway[id] ?? 0);
     const committed = yardProjection.units[id] ?? owned;
     const prospectorCapped = id === 'PROSPECTOR' && committed >= PROSPECTOR.max;
+    const poolTotal = hullSpec.ground ? groundTotal : hangarTotal;
+    const poolUsed = hullSpec.ground ? groundUsed : hangarUsed;
+    const capacityCapped = poolUsed + hullBulk(id) > poolTotal;
     const queuedCount = yardOrders
       .filter((order) => order.kind === 'HULL' && order.subject === id)
       .reduce((sum, order) => sum + order.count, 0);
@@ -1908,8 +1800,12 @@ function Reach({
           now: String(queued ? committed : owned),
           next: String(committed + 1),
         }}
-        {...(prospectorCapped
-          ? { completed: t('planet.reach.prospectorLimit', { owned: committed, max: PROSPECTOR.max }) }
+        {...(prospectorCapped || capacityCapped
+          ? {
+              completed: prospectorCapped
+                ? t('planet.reach.prospectorLimit', { owned: committed, max: PROSPECTOR.max })
+                : t('planet.capacity.full', { used: poolUsed, total: poolTotal }),
+            }
           : {})}
         cost={{
           alloy: hullSpec.alloy,
@@ -2005,6 +1901,69 @@ function Reach({
         />
       </div>
 
+      <div id="row-HANGAR">
+        <UpgradeRow
+          art={buildingArt('HANGAR', Math.max(1, hangar.level))}
+          nextArt={nextBuildingArt('HANGAR', hangar.actionLevel)}
+          name={buildingName('HANGAR')}
+          tag={buildingTag('HANGAR')}
+          level={hangar.level}
+          role={buildingRole('HANGAR')}
+          onOpen={() => {
+            onOpen(
+              spec(
+                { kind: 'building', id: 'HANGAR' },
+                buildingName('HANGAR'),
+                buildingRole('HANGAR'),
+                hangar,
+              ),
+            );
+          }}
+          gain={buildingGain(
+            'HANGAR',
+            hangar.actionLevel,
+            cappedCountOf(hangar.projectedLevels),
+            hangar.projectedLevels,
+          )}
+          cost={hangar.cost}
+          held={held}
+          income={income}
+          unowned={hangar.level === 0}
+          {...(hangar.blocked ? { blocked: hangar.blocked } : {})}
+          {...(hangar.queued ? { queued: hangar.queued } : {})}
+          queuedActionable
+          verb="raise"
+          onAct={hangar.act}
+          pending={hangar.pending}
+          highlighted={focused === 'HANGAR'}
+          flash={flashed === 'HANGAR'}
+        />
+      </div>
+
+      {/*
+        THE HANGAR, AND THE FIGURE ON IT USED TO BE IN THE WRONG UNIT. Owner report.
+
+        This passed `hangarTotal - hangarUsed` — a quantity of SPACE — into `fits`,
+        which the card renders at readout size under the words "more fit". So a
+        commander with 185 units of deck free read "185 more fit" and reasonably
+        concluded they could build a hundred and eighty-five ships. The ground band
+        beside it passed a real Thorn count into the same slot: one label, two
+        units, on two cards a thumb-scroll apart.
+
+        Nothing is being chosen on this tab, so it is a ROOM card: the bar, and
+        space used against space free. A count of ships belongs where a ship has
+        been named, which is the craft sheet.
+      */}
+      <Band label={t('planet.capacity.hangarBand')} />
+      <div className="px-3 py-2">
+        <CapacityBar
+          total={hangarTotal}
+          used={hangarUsed}
+          incoming={0}
+          label={t('planet.capacity.hangarBand')}
+        />
+      </div>
+
       <Band label={t('planet.reach.orbitBand')} note={t('planet.reach.orbitNote')} />
       {(['DERRICK', 'BEACON'] as const).map((id) => (
         <SatelliteItemRow
@@ -2019,12 +1978,6 @@ function Reach({
           onOpen={onOpen}
         />
       ))}
-
-      <Band label={t('planet.reach.frontierBand')} note={t('planet.reach.frontierNote')} />
-      {project('ISOTOPE_SPECTROMETRY')}
-      {project('DENSE_FUEL_CELLS')}
-      {project('GRAVITIC_CHARGES')}
-      {project('DEATH_STAR_PROTOCOL')}
 
       <Band label={t('planet.reach.warshipsBand')} note={t('planet.reach.warshipsNote')} />
       {(['WASP', 'LANCE', 'BULWARK', 'BREACHER'] as const).map(hull)}
@@ -2057,14 +2010,16 @@ function Reach({
 
 function Grow({ planet, held, income, focused, flashed, onNeed, onFlash, onOpen }: GroupProps) {
   const { t } = useTranslation();
-  // Nothing under Grow can be blocked by something on another tab: the Core is the
-  // ceiling and the other two sit under it. There is no requirement to jump to.
+  // The Core is the ceiling and the two ore streams sit under it, so neither has a
+  // requirement to jump to. The Refinery does: its ladder is on the research
+  // surface, which `onNeed` is the only way to reach from here.
   const noop = () => undefined;
   const building = useBuildingAction(planet, onFlash);
   const orbit = useOrbitAction(planet, onFlash);
   const core = building('CORE', buildingName('CORE'), noop);
   const refinery = building('REFINERY', buildingName('REFINERY'), noop);
   const extractor = building('EXTRACTOR', buildingName('EXTRACTOR'), noop);
+  const plant = building('DEUTERIUM_PLANT', buildingName('DEUTERIUM_PLANT'), onNeed);
   const capped = cappedCountOf(core.projectedLevels);
 
   return (
@@ -2179,6 +2134,52 @@ function Grow({ planet, held, income, focused, flashed, onNeed, onFlash, onOpen 
       />
       </div>
 
+      {/*
+        THE THIRD PRODUCER, and it was simply not here. T5 gave it an id, art, both
+        languages, a server path and an economy; four rows rendered and it was not
+        one of them, so the only steady source of fuel could not be built at all.
+        It sits after the two ore streams because it is the one with a research
+        ladder in front of it — the last thing a commander reaches for, not the
+        first.
+      */}
+      <div id="row-DEUTERIUM_PLANT">
+      <UpgradeRow
+        art={buildingArt('DEUTERIUM_PLANT', plant.level)}
+        name={buildingName('DEUTERIUM_PLANT')}
+        tag={buildingTag('DEUTERIUM_PLANT')}
+        level={plant.level}
+        role={buildingRole('DEUTERIUM_PLANT')}
+        onOpen={() => {
+          onOpen(
+            spec(
+              { kind: 'building', id: 'DEUTERIUM_PLANT' },
+              buildingName('DEUTERIUM_PLANT'),
+              buildingRole('DEUTERIUM_PLANT'),
+              plant,
+            ),
+          );
+        }}
+        gain={buildingGain(
+          'DEUTERIUM_PLANT',
+          plant.actionLevel,
+          cappedCountOf(plant.projectedLevels),
+          plant.projectedLevels,
+        )}
+        cost={plant.cost}
+        held={held}
+        income={income}
+        unowned={plant.level === 0}
+        {...(plant.blocked ? { blocked: plant.blocked } : {})}
+        {...(plant.queued ? { queued: plant.queued } : {})}
+        queuedActionable
+        verb="raise"
+        onAct={plant.act}
+        pending={plant.pending}
+        highlighted={focused === 'DEUTERIUM_PLANT'}
+        flash={flashed === 'DEUTERIUM_PLANT'}
+      />
+      </div>
+
       <Band label={t('planet.grow.multiplierBand')} note={t('planet.grow.multiplierNote')} />
       <SatelliteItemRow
         id="FOUNDRY"
@@ -2195,85 +2196,6 @@ function Grow({ planet, held, income, focused, flashed, onNeed, onFlash, onOpen 
 }
 
 /* ── building units ─────────────────────────────────────────── */
-
-function ProjectSheet({
-  spec,
-  held,
-  onClose,
-}: {
-  spec: ProjectSheetSpec;
-  held: GroupProps['held'];
-  onClose: () => void;
-}) {
-  const { t } = useTranslation();
-  return (
-    <div data-item-sheet>
-      <Sheet
-        eyebrow={spec.completed ? t('planet.projectSheet.complete') : t('planet.projectSheet.frontier')}
-        title={spec.name}
-        onClose={onClose}
-        footer={(
-          <span data-act className="block">
-            <ActionButton
-              verb="install"
-              cost={spec.cost}
-              held={held}
-              full
-              label={t('planet.reach.researchAct')}
-              pending={spec.pending}
-              {...(spec.completed ? { completed: spec.completed } : {})}
-              {...(spec.queued ? { completed: spec.queued } : {})}
-              {...(spec.blocked
-                ? {
-                    blocked: {
-                      reason: spec.blocked.reason,
-                      ...(spec.blocked.onFix
-                        ? {
-                            onFix: () => {
-                              spec.blocked?.onFix?.();
-                              onClose();
-                            },
-                          }
-                        : {}),
-                    },
-                  }
-                : {})}
-              onAct={() => {
-                spec.act();
-                onClose();
-              }}
-            />
-          </span>
-        )}
-      >
-        <div className="item-portrait flex h-48 items-center justify-center overflow-hidden">
-          <span aria-hidden className="item-portrait-orbit" />
-          <img
-            src={spec.art}
-            alt={spec.name}
-            className={`relative z-[1] h-36 object-contain ${spec.completed ? '' : 'opacity-60 grayscale'}`}
-          />
-        </div>
-        <p className="legend mt-4 text-crystal/85">{spec.tag}</p>
-        <p className="mt-2 text-body leading-relaxed text-dim">{spec.role}</p>
-        <div className="mt-6 grid grid-cols-[1fr_auto] items-center gap-4 border-y border-line-soft py-3">
-          <div>
-            <p className="legend">{t('planet.projectSheet.cost')}</p>
-            <p className="mt-1 text-label text-faint">{t('planet.projectSheet.once')}</p>
-          </div>
-          <Price cost={spec.cost} held={held} />
-        </div>
-        {(spec.blocked ?? spec.queued) && (
-          <p className={`mt-4 border px-3 py-2 text-caption leading-snug ${spec.blocked ? 'border-threat/30 bg-threat/10 text-threat' : 'border-crystal/30 bg-crystal/10 text-crystal'}`}>
-            {spec.blocked
-              ? t('itemSheet.lockedNote', { reason: spec.blocked.reason })
-              : spec.queued}
-          </p>
-        )}
-      </Sheet>
-    </div>
-  );
-}
 
 function BuildSheet({
   hull,
@@ -2310,10 +2232,20 @@ function BuildSheet({
     + (planet.ground[hull] ?? 0)
     + (planet.fleetAway[hull] ?? 0);
   const committed = yardProjection.units[hull] ?? owned;
-  const cap = hull === 'PROSPECTOR'
+  const countCap = hull === 'PROSPECTOR'
     ? Math.max(0, PROSPECTOR.max - committed)
     : Number.MAX_SAFE_INTEGER;
-  const prospectorCapped = hull === 'PROSPECTOR' && cap === 0;
+  const poolTotal = spec.ground
+    ? planet.capacity?.ground ?? groundSlots(planet.buildings.CORE ?? 0)
+    : planet.capacity?.hangar ?? hangarCapacity(planet.buildings.HANGAR ?? 0);
+  const poolUsed = spec.ground
+    ? groundLoad(yardProjection.units)
+    : hangarLoad(yardProjection.units);
+  const bulk = hullBulk(hull);
+  const spaceCap = Math.max(0, Math.floor((poolTotal - poolUsed) / bulk));
+  const cap = Math.min(countCap, spaceCap);
+  const prospectorCapped = hull === 'PROSPECTOR' && countCap === 0;
+  const capacityCapped = spaceCap === 0;
   const denseComplete = planet.research.some(
     (project) => project.id === 'DENSE_FUEL_CELLS' && project.completed,
   );
@@ -2374,7 +2306,7 @@ function BuildSheet({
       }
       title={hullLabel(hull)}
       onClose={onClose}
-      footer={prospectorCapped ? undefined : (
+      footer={prospectorCapped || capacityCapped ? undefined : (
         /*
           `data-commit` is this sheet's own commitment, and `data-ready` appears
           only once the count is at the ceiling. The onboarding lights the ceiling
@@ -2428,23 +2360,68 @@ function BuildSheet({
         </div>
       )}
 
-      <p className="text-body leading-relaxed text-dim">{hullPitch(hull)}</p>
+      <p className="legend text-crystal/85">{hullTag(hull)}</p>
+      <p className="mt-2 text-body leading-relaxed text-dim">{hullPitch(hull)}</p>
+      <p data-item-detail className="mt-2 text-caption leading-relaxed text-faint">
+        {hullDetail(hull)}
+      </p>
 
+      {/*
+        A REQUIREMENT IS A DOOR, NOT AN ALARM (interface.md I1), and this was the
+        build sheet's copy of the same red the item sheet had. Amber is the game's
+        word for a gap the commander can close; red is reserved for something that
+        can harm them.
+      */}
       {blocked && (
-        <p className="mt-4 border border-threat/30 bg-threat/10 px-3 py-2 text-caption leading-snug text-threat">
+        <p className="mt-4 border border-alloy/30 bg-alloy/10 px-3 py-2 text-caption leading-snug text-alloy">
           {t('itemSheet.lockedNote', { reason: blocked.reason })}
         </p>
       )}
 
       <div className="mt-4">
-        <StatStrip atk={spec.atk} hp={spec.hp} speed={spec.speed} cargo={spec.cargo} size="card" />
+        <StatStrip
+          atk={spec.atk}
+          hp={spec.hp}
+          speed={spec.speed}
+          cargo={spec.cargo}
+          fuel={hullFuelRate(hull)}
+          size="card"
+        />
       </div>
+
+      {/*
+        WHAT IT COSTS, BESIDE WHAT IT IS. Owner report: *"geminin üretim için
+        istedigi kaynaklar en altta kalmış"*.
+
+        The price sat below the quantity stepper and the capacity card, at the
+        very foot of a sheet that scrolls — so the four figures that say what this
+        hull IS were read first and the one figure that says whether it can be
+        HAD was somewhere under the fold. A commander comparing two hulls needs
+        the price in the same glance as the attack and the speed, because the
+        comparison the whole counter cycle rests on is power per unit of ore.
+
+        IT IS THE TOTAL, NOT A UNIT PRICE, and it stays live under the stepper
+        below it. Two prices on one sheet — one per ship, one for the order —
+        would be the sheet disagreeing with its own commit button, which quotes
+        exactly this figure.
+      */}
+      {!prospectorCapped && !capacityCapped && (
+        <div data-build-price className="mt-3 flex items-baseline gap-2">
+          <span className="legend shrink-0">{t('planet.buildSheet.priceLabel')}</span>
+          <Price
+            cost={{ alloy: totalAlloy, crystal: totalCrystal, deuterium: totalDeuterium }}
+            held={held}
+          />
+        </div>
+      )}
 
       <div className="mt-6">
         <p className="legend mb-2">{t('planet.buildSheet.howMany')}</p>
-        {prospectorCapped ? (
+        {prospectorCapped || capacityCapped ? (
           <p className="text-body leading-relaxed text-amber">
-            {t('planet.buildSheet.capped', { count: committed })}
+            {prospectorCapped
+              ? t('planet.buildSheet.capped', { count: committed })
+              : t('planet.capacity.full', { used: poolUsed, total: poolTotal })}
           </p>
         ) : (
           <div className="mb-1">
@@ -2458,6 +2435,8 @@ function BuildSheet({
               valueLabel={t('planet.buildSheet.quantity', { name: hullLabel(hull) })}
               maxLabel={t('planet.buildSheet.max', { name: hullLabel(hull) })}
               maxText={t('planet.buildSheet.maxShort')}
+              resetLabel={t('planet.buildSheet.reset', { name: hullLabel(hull) })}
+              resetText={t('planet.buildSheet.resetShort')}
             />
           </div>
         )}
@@ -2466,17 +2445,35 @@ function BuildSheet({
             {t('planet.buildSheet.heldOfMax', { owned: committed, max: PROSPECTOR.max })}
           </p>
         )}
+        {/*
+          THE ROOM, AS A PICTURE. Owner instruction.
+
+          This was one line of small grey text carrying three numbers — what one of
+          these takes, what is used, and the ceiling — and the report was that none
+          of the three questions it answers could be answered from it at a glance.
+          `CapacityBar` draws them instead, and the segment for THIS order moves
+          under the stepper directly above it, so pressing "+" and watching the room
+          go is the rule teaching itself.
+        */}
+        <div className="mt-3">
+          <CapacityBar
+            total={poolTotal}
+            used={poolUsed}
+            incoming={prospectorCapped || capacityCapped ? 0 : bulk * clamped}
+            bulk={bulk}
+            fits={spaceCap}
+            {...(art ? { icon: (
+              <img src={art} alt="" aria-hidden className="size-8 shrink-0 object-contain" />
+            ) } : {})}
+          />
+        </div>
       </div>
 
-      {!prospectorCapped && <div className="mt-6 flex items-baseline justify-between gap-3">
-        <Price
-          cost={{ alloy: totalAlloy, crystal: totalCrystal, deuterium: totalDeuterium }}
-          held={held}
-        />
-        <p className="num text-caption text-faint">
+      {!prospectorCapped && !capacityCapped && (
+        <p className="num mt-6 text-caption text-faint">
           {t('planet.buildSheet.defenceAfter', { count: defenceAfterQueue + clamped })}
         </p>
-      </div>}
+      )}
     </Sheet>
   );
 }

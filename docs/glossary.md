@@ -41,9 +41,30 @@ scout gives you a wide band; an expensive one gives you near-truth.
 a reading is identical however many times it is requested inside its window. Without it, a
 player defeats the fog by pulling to refresh.
 
-**Radar reach** — How far from your world a radar catches an inbound fleet. L3: 200 units,
-L4: 340, L5: 500. It is a CIRCLE, not a countdown, so how much warning it buys depends on how
-fast the attacker chose to fly — a slow fleet is telegraphed and a fast one is not. D49.
+**Radar reach** — How far from your world Radar detects movement: L1 1200, L2 1450, L3 1700,
+L4 1900, L5 2200. From L3 the same radius attributes an inbound threat and produces its timed
+warning; the contact and warning ladders are provisionally merged. It is a CIRCLE, not a
+countdown, so how much warning it buys depends on how fast the attacker chose to fly. D49/D126.
+
+**Sensor horizon** — The union of every controlled world's two sensor spheres. Telescope
+identifies (with a naked-eye floor); Radar detects farther out. A craft is `NONE`, `CONTACT`
+or `IDENTIFIED` from its current position. D123/D125.
+
+**Departure shroud** — Retired. Craft visibility no longer depends on where a leg began; a
+craft inside a caller's sensor sphere is visible from the first instant. D123.
+
+**Intel state** — How much of a world you have earned. `UNKNOWN` is a point and nothing else;
+`REMEMBERED` is what a probe saw, frozen at the look and drawn dark, still and colourless;
+`RESOLVED` is a live reading inside a Telescope's reach. D127.
+
+**Silhouette (probe)** — The outside of a world as a probe records it: owner, Core level,
+satellites, dome. Exact rather than banded, because it is what a craft in orbit can simply see —
+and frozen, so it goes wrong on its own as the target builds. D127.
+
+**Mass class** — What Radar may learn about a craft in transit: `LIGHT`, `MEDIUM` or `HEAVY`,
+bucketed from total hull value. It is a silhouette, not a roster. Telescope sight resolves an
+identified fleet's exact hulls/counts; an attributed L5 inbound warning may do the same through
+the defender's private warning channel. D123.
 
 **The panic session** — The player receives *"Incoming fleet · ETA 9 min"* and has three
 real options: spend the stock, launch their own fleet out, or stand and fight. They cannot
@@ -177,8 +198,9 @@ identity, not alliance diplomacy: there are no treaties, wars, officers or share
 **Adaptation period** — The first 12 hours after joining. Tag, chat and friendly-fire protection
 start immediately; aid, loot sharing, clan score and detailed history begin when it ends.
 
-**Clan aid** — An irreversible one-way convoy of eligible ships and Hauler-borne resources to
-a mature clanmate. It receives ×1.10 travel speed and may use one aid-only flight bay, while a
+**Clan aid** — A physical convoy to a mature clanmate. With cargo it deposits Hauler-borne
+resources and returns every ship to the launch world; with an empty hold it is an irreversible
+ship gift. It receives ×1.10 travel speed and may use one aid-only flight bay, while a
 receiver-wide rolling allowance prevents account pooling.
 
 **Clan depot / loot share** — Personal claimable resources offered from 10% of ordinary PvP

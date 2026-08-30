@@ -6,8 +6,16 @@ import { serverNow } from './clock.js';
  * Time is the game's other currency, so it gets its own vocabulary.
  *
  * Everything here reads in the tense the player is in: what is coming reads as a
- * countdown, what has passed reads as an age. Absolute timestamps appear nowhere
- * — "14:32" answers a question nobody in this game is asking.
+ * countdown, what has passed reads as an age.
+ *
+ * ONE EXCEPTION, ADDED WITH THE RESEARCH SCREEN. T12. This file used to say that
+ * absolute timestamps appear nowhere, because "14:32" answers a question nobody in
+ * this game is asking — and for a fleet in the air that is still exactly right: an
+ * arrival is watched, and what you need is how long you have. A research project
+ * is the opposite kind of wait. It runs for hours, nobody sits with it, and the
+ * question it is actually answering is "will it be done before I next open this".
+ * A countdown makes the player do that arithmetic against their own day; a clock
+ * time hands them the answer. See `clockTime`, and nothing else here has changed.
  */
 
 const MINUTE = 60_000;
@@ -99,3 +107,21 @@ export function staleness(minutes: number): string {
 }
 
 export const minutesUntil = (at: Date, now: number): number => (at.getTime() - now) / MINUTE;
+
+/**
+ * A WALL CLOCK, IN THE PLAYER'S OWN LOCALE AND THEIR OWN TIME ZONE. T12.
+ *
+ * The only absolute time in the game — see the note at the top of this file for
+ * why research earns one and a fleet does not.
+ *
+ * `units.numberLocale` rather than `i18n.language`, for the same reason `format.ts`
+ * uses it: the locale is a translated string, so a language can choose a
+ * convention that is not its default. It also decides the 12/24-hour clock, which
+ * is the difference between "9:40 PM" and "21:40" and is not something to hard-code
+ * for a game played in two languages.
+ */
+export const clockTime = (at: Date): string =>
+  at.toLocaleTimeString(i18n.t('units.numberLocale'), {
+    hour: '2-digit',
+    minute: '2-digit',
+  });

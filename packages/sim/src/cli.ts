@@ -38,7 +38,7 @@ const cfg = {
   ...(hullCrystalShare === undefined ? {} : { hullCrystalShare }),
   spectrometryCrystalCost: arg(
     'spectrometry-cost',
-    RESEARCH_PROJECTS.ISOTOPE_SPECTROMETRY.cost.crystal,
+    RESEARCH_PROJECTS.ISOTOPE_SPECTROMETRY.costAt(1).crystal,
   ),
 };
 const { world, days, diagnostics } = runSeason(cfg);

@@ -39,7 +39,9 @@ in order:
   reconcile — the server stays the only authority on the OUTCOME, never on the frame rate.
 - **A moment nobody can watch.** If it is worth animating it is worth everybody seeing;
   see D52, which made the combat cinematic public because a battle only its attacker can
-  see is a database transaction with sound effects.
+  see is a database transaction with sound effects. The cinematic being public never makes
+  its hidden source craft public; D123 still decides whether that is absent, Radar contact or
+  Telescope silhouette.
 - **Dead air inside a state.** Arrive, fight, leave. Nothing in this game stands still
   waiting for a timer that has already expired.
 - **A rule that is enforced by the interface refusing to move.** If a payload is late, the

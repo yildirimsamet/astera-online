@@ -1,13 +1,13 @@
 import { eq } from 'drizzle-orm';
 import { pino } from 'pino';
 import { afterAll, beforeEach, describe, expect, it } from 'vitest';
-import { distance } from '@astera/rules';
+import { TRAFFIC, distance } from '@astera/rules';
 import { missions, planets } from '../src/db/schema.js';
 import { launchProbe } from '../src/services/intel.js';
 import { pendingThreads } from '../src/services/session.js';
 import { galaxyTraffic } from '../src/services/traffic.js';
 import { EventWorker } from '../src/worker/loop.js';
-import { grant, seedWorld, setLevel, testDb, type Fixture } from './helpers.js';
+import { grant, placeAt, seedWorld, setLevel, testDb, type Fixture } from './helpers.js';
 
 /**
  * A PROBE IS NOW SHORTER THAN THE MACHINERY THAT DRAWS IT. D121.
@@ -100,31 +100,94 @@ describe('a probe on the disc', () => {
    * THE FLIGHT IS SECONDS LONG, SO EVERY WINDOW AROUND IT HAS TO FIT INSIDE IT.
    *
    * `windowOf` floors a published window at one refetch so a craft never freezes
-   * between reads. That floor is now longer than the entire probe flight, and the
+   * between reads. That floor is longer than the entire probe flight, and the
    * arithmetic has to survive it: a window may not begin before the read that
    * asked for it, end after the craft lands, or run backwards.
+   *
+   * IT IS PUBLISHED FROM THE FIRST INSTANT NOW. The departure shroud used to black
+   * out the opening of every leg, which on a nine-second probe was most of it —
+   * see `sensor-horizon.test.ts` for what that cost. There is no concealed stretch
+   * left to allow for.
    */
-  it('publishes a window that fits inside the flight it describes', async () => {
+  it('publishes every window inside the flight it describes', async () => {
     const launch = await launchProbe(f.db, mine, theirs, f.clock);
     expect(launch.flightMinutes).toBeLessThan(1);
 
+    let published = false;
     for (let step = 1; step < 20; step += 1) {
       const at = new Date(f.clock.now().getTime() + (launch.flightMinutes * 60_000 * step) / 20);
       const contacts = await galaxyTraffic(f.db, f.seasonId, third, at);
       const probe = contacts.find((c) => c.kind === 'probe');
-      expect(probe, `no contact at step ${String(step)}`).toBeDefined();
-      expect(probe!.endAt.getTime()).toBeGreaterThan(probe!.startAt.getTime());
-      expect(probe!.startAt.getTime()).toBeGreaterThanOrEqual(f.clock.now().getTime());
-      expect(probe!.endAt.getTime()).toBeLessThanOrEqual(launch.arriveAt.getTime());
+      expect(probe, `the probe was invisible at step ${String(step)}`).toBeDefined();
+      if (!probe) continue;
+      published = true;
+      expect(probe.endAt.getTime()).toBeGreaterThan(probe.startAt.getTime());
+      expect(probe.startAt.getTime()).toBeGreaterThanOrEqual(f.clock.now().getTime());
+      expect(probe.endAt.getTime()).toBeLessThanOrEqual(launch.arriveAt.getTime());
       // A window this short is the craft's final approach by definition, and the
       // client must be told so or its coast flies the probe through the world.
-      expect(probe!.landing).toBe(true);
+      expect(probe.landing).toBe(true);
+    }
+    expect(published, 'the probe was never published at all').toBe(true);
+  });
+
+  /**
+   * A PROBE DOES NOT ANNOUNCE THE WORLD IT IS FLYING TO. The leak, as a test.
+   *
+   * A published window is floored at "one refetch" so a craft never freezes
+   * between reads, and a window clamped to the arrival has the DESTINATION as its
+   * far end — which is the concession D52 makes for the final approach of a raid
+   * everybody is about to watch land anyway.
+   *
+   * The floor was a flat sixty seconds, written on the server, describing a poll
+   * interval that lives on the client. D121 made a probe thirty-six times a
+   * fleet's speed, so the WHOLE of every probe flight fell inside that floor: each
+   * one published the world it was scouting, to everyone who could see it, from
+   * its first visible instant. The return leg published the scout's own home the
+   * same way — which is exactly what Radar L5 is sold for.
+   *
+   * The floor is the refetch cadence now (`TRAFFIC.refreshMs`), so the disclosure
+   * is bounded by the one thing it was ever meant to be about. This walks the leg
+   * and requires the arrival to stay unpublished until the craft is genuinely
+   * inside that final window.
+   */
+  it('does not publish its destination until the final approach', async () => {
+    // A long hop, so a five-second final window is a small share of the leg. The
+    // seeded neighbours are a couple of seconds apart, which is shorter than the
+    // window itself and would make this a test of nothing.
+    await placeAt(f.db, mine, { x: 0 });
+    await placeAt(f.db, theirs, { x: 3000 });
+    await placeAt(f.db, third, { x: 1500 });
+    const launch = await launchProbe(f.db, mine, theirs, f.clock);
+    const departAt = f.clock.now().getTime();
+    const span = launch.arriveAt.getTime() - departAt;
+    // Long enough that a five-second final window is a small share of it.
+    expect(span).toBeGreaterThan(TRAFFIC.refreshMs * 2);
+
+    for (let at = departAt; at < launch.arriveAt.getTime(); at += 250) {
+      const remaining = launch.arriveAt.getTime() - at;
+      const contacts = await galaxyTraffic(f.db, f.seasonId, third, new Date(at));
+      const probe = contacts.find((c) => c.kind === 'probe');
+      if (!probe) continue;
+
+      if (remaining > TRAFFIC.refreshMs) {
+        expect(
+          probe.landing,
+          `announced its arrival with ${String(remaining / 1000)}s still to fly`,
+        ).toBeUndefined();
+        expect(
+          probe.endAt.getTime(),
+          'the window reached the landing early',
+        ).toBeLessThan(launch.arriveAt.getTime());
+      }
     }
   });
 
   /**
    * THE SYMPTOM, AS AN ASSERTION. Sample both payloads every second of the leg and
-   * require the distance from the world it left never to decrease.
+   * require the distance from the world it left never to decrease. The owner sees
+   * its own craft immediately; the public contact begins only after D123's
+   * departure shroud and must never disappear or jump backwards after that.
    */
   it('never moves backwards along its leg, in either payload', async () => {
     const home = await worldAt(mine);
@@ -133,22 +196,29 @@ describe('a probe on the disc', () => {
 
     let ownerLast = -1;
     let strangerLast = -1;
+    let strangerVisible = false;
     for (let ms = 0; ms < launch.flightMinutes * 60_000; ms += 1000) {
       const at = new Date(departedAt.getTime() + ms);
       const owner = await ownerAt(at);
       const stranger = await strangerAt(at);
       expect(owner, `the owner lost the probe ${String(ms)}ms in`).not.toBeNull();
-      expect(stranger, `the galaxy lost the probe ${String(ms)}ms in`).not.toBeNull();
 
       const ownerOut = distance(home, owner!);
-      const strangerOut = distance(home, stranger!);
       expect(ownerOut, `the owner went backwards at ${String(ms)}ms`)
         .toBeGreaterThanOrEqual(ownerLast);
+      ownerLast = ownerOut;
+
+      if (!stranger) {
+        expect(strangerVisible, `the public probe disappeared ${String(ms)}ms in`).toBe(false);
+        continue;
+      }
+      strangerVisible = true;
+      const strangerOut = distance(home, stranger);
       expect(strangerOut, `a stranger went backwards at ${String(ms)}ms`)
         .toBeGreaterThanOrEqual(strangerLast);
-      ownerLast = ownerOut;
       strangerLast = strangerOut;
     }
+    expect(strangerVisible, 'the probe never cleared its departure shroud').toBe(true);
   });
 
   /**

@@ -36,7 +36,8 @@ export const CHANNEL = 'astera_events';
  */
 const playerEvent = z.object({ playerId: z.string().min(1), kind: z.string().min(1) });
 const shardEvent = z.object({ shard: z.string().min(1), kind: z.string().min(1) });
-const eventPayload = z.union([playerEvent, shardEvent]);
+const globalEvent = z.object({ global: z.literal(true), kind: z.string().min(1) });
+const eventPayload = z.union([playerEvent, shardEvent, globalEvent]);
 const heartbeatPayload = z.object({ heartbeat: z.string().uuid() });
 
 export type StreamEvent = z.infer<typeof eventPayload>;
@@ -64,6 +65,9 @@ export type ShardEventKind =
   | 'protection'
   | 'clan';
 
+/** Events that affect every signed-in commander, regardless of their season. */
+export type GlobalEventKind = 'announcement';
+
 /**
  * Shard kinds go out prefixed, and the prefix is not decoration.
  *
@@ -75,6 +79,7 @@ export type ShardEventKind =
  */
 export const SHARD_PREFIX = 'shard:';
 export const PRIVATE_PREFIX = 'private:';
+export const GLOBAL_PREFIX = 'global:';
 
 export type ClanPrivateEventKind = 'membership' | 'request' | 'chat' | 'depot' | 'aid';
 
@@ -297,6 +302,11 @@ export class EventBus {
     return this.listen(shardTopic(shard), listener);
   }
 
+  /** Global operator-authored changes, shared by every connected account. */
+  subscribeGlobal(listener: Listener): () => void {
+    return this.listen(globalTopic, listener);
+  }
+
   /** Observe every parsed event locally; used for replica-local cache invalidation. */
   observe(listener: Listener): () => void {
     this.observers.add(listener);
@@ -325,6 +335,10 @@ export class EventBus {
 
   shardSubscriberCount(shard: string): number {
     return this.listeners.get(shardTopic(shard))?.size ?? 0;
+  }
+
+  globalSubscriberCount(): number {
+    return this.listeners.get(globalTopic)?.size ?? 0;
   }
 
   /**
@@ -549,8 +563,12 @@ export class EventBus {
  */
 const playerTopic = (playerId: string): string => `p:${playerId}`;
 const shardTopic = (shard: string): string => `s:${shard}`;
-const topicOf = (event: StreamEvent): string =>
-  'playerId' in event ? playerTopic(event.playerId) : shardTopic(event.shard);
+const globalTopic = 'g:all';
+const topicOf = (event: StreamEvent): string => {
+  if ('playerId' in event) return playerTopic(event.playerId);
+  if ('shard' in event) return shardTopic(event.shard);
+  return globalTopic;
+};
 
 /**
  * Announce an event to whoever is watching this player's stream.
@@ -572,6 +590,16 @@ export async function publishPrivate(
   await publish(tx, playerId, `${PRIVATE_PREFIX}clan-${kind}`);
 }
 
+/** A watched world's fleet truth moved; only its observers need to read again. */
+export async function publishSight(tx: Queryable, playerId: string): Promise<void> {
+  await publish(tx, playerId, `${PRIVATE_PREFIX}sight`);
+}
+
+/** A Death Star interception entered this commander's earned field of view. */
+export async function publishStrategicSight(tx: Queryable, playerId: string): Promise<void> {
+  await publish(tx, playerId, `${PRIVATE_PREFIX}strategic-sight`);
+}
+
 /**
  * Announce that something happened in a galaxy, to everybody living in it. D53.
  *
@@ -590,6 +618,18 @@ export async function publishShard(
   const payload = JSON.stringify({
     shard,
     kind: `${SHARD_PREFIX}${kind}`,
+  } satisfies StreamEvent);
+  await tx.execute(sql`select pg_notify(${CHANNEL}, ${payload})`);
+}
+
+/** Publish one tiny invalidation to every connected account. */
+export async function publishGlobal(
+  tx: Queryable,
+  kind: GlobalEventKind,
+): Promise<void> {
+  const payload = JSON.stringify({
+    global: true,
+    kind: `${GLOBAL_PREFIX}${kind}`,
   } satisfies StreamEvent);
   await tx.execute(sql`select pg_notify(${CHANNEL}, ${payload})`);
 }

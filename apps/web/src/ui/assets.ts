@@ -34,6 +34,11 @@ export const RESOURCE_ART = {
   deuterium: `${BASE}/resources/deuterium.png`,
 } as const;
 
+/** Owner-supplied renders for the two strategic decisions. */
+export const STRATEGIC_ART = {
+  interceptor: `${BASE}/general/anti-strategic-battery.png`,
+} as const;
+
 /**
  * The identity, in the two forms it is ever used in.
  *
@@ -123,10 +128,49 @@ export const HULL_ART: Record<HullId, string | null> = {
 };
 
 /** Owner-supplied Frontier menu art. The source filename keeps its original spelling. */
+/**
+ * ONE COMMISSIONED RENDER PER PROJECT. Owner's art drop.
+ *
+ * EVERY ROW USED TO BORROW. Nine of the fifteen wore something else's picture —
+ * a doctrine wore the hull it teaches, the economy ladders wore the building or
+ * resource they lift, and three separate rows all wore the Death Star. That was
+ * the honest answer while no lab render existed, and it made the screen read as a
+ * list of other screens: two rows with the same picture are two rows the eye has
+ * to disambiguate by reading, which is the opposite of what art on a decision
+ * surface is for.
+ *
+ * The filenames are the owner's and are used verbatim, spelling and all —
+ * `bullwark`, `syntesis`, `grind` and the older `iotope` are how the files are
+ * actually named on disk, and a map that quietly "corrects" them resolves to
+ * nothing. `art.test.ts` resolves every path below against `public/`, so a
+ * mistyped entry is a failing test rather than a missing picture in the game.
+ */
 export const RESEARCH_ART: Record<ResearchProjectId, string> = {
   ISOTOPE_SPECTROMETRY: `${BASE}/lab/iotope_spectrometry.png`,
   DENSE_FUEL_CELLS: `${BASE}/lab/dense_fuel_cells.png`,
   GRAVITIC_CHARGES: `${BASE}/lab/gravitational_charges.png`,
+  DEUTERIUM_SYNTHESIS: `${BASE}/lab/deuterium_syntesis.png`,
+  /* The three economy ladders. */
+  YARD_AUTOMATION: `${BASE}/lab/yard_automation.png`,
+  PROSPECTOR_HOLDS: `${BASE}/lab/prospector_holds.png`,
+  CARGO_HOLDS: `${BASE}/lab/cargo_holds.png`,
+  /* The four class doctrines and the project that covers every hull. T9. */
+  WASP_DOCTRINE: `${BASE}/lab/wasp_doctrine.png`,
+  LANCE_DOCTRINE: `${BASE}/lab/lance_doctrine.png`,
+  BULWARK_DOCTRINE: `${BASE}/lab/bullwark_doctrine.png`,
+  EMPLACEMENT_DOCTRINE: `${BASE}/lab/emplacement_doctrine.png`,
+  WEAPONS_GENERAL: `${BASE}/lab/weapons_and_armor.png`,
+  /* The strategic act. */
+  INTERCEPTION_GRID: `${BASE}/lab/interception_grind.png`,
+  STRATEGIC_STOCKPILE: `${BASE}/lab/strategic_stockpile.png`,
+  /**
+   * THE ONE ROW STILL WEARING SOMETHING ELSE, and it is the right one to leave.
+   *
+   * No lab render was commissioned for the protocol, and what it authorises IS the
+   * Death Star — the picture is the subject rather than a stand-in. It is also the
+   * only Death Star on the screen now that the grid and the stockpile have their
+   * own, so it no longer collides with anything.
+   */
   DEATH_STAR_PROTOCOL: `${BASE}/ships/death_star.png`,
 };
 
@@ -454,6 +498,11 @@ export function buildingArt(id: BuildingId, level: number): string | null {
       return RESOURCE_ART.crystal;
     case 'SHIPYARD':
       return `${BASE}/general/shipyard_${String(tier)}.png`;
+    case 'HANGAR':
+      return `${BASE}/general/hangar_${String(tier)}.png`;
+    /** It makes deuterium, so it wears deuterium — the Refinery and Extractor idiom. */
+    case 'DEUTERIUM_PLANT':
+      return RESOURCE_ART.deuterium;
   }
 }
 
@@ -478,4 +527,6 @@ export const BUILDING_ART: Record<BuildingId, string | null> = {
   EXTRACTOR: RESOURCE_ART.crystal,
   VAULT: `${BASE}/general/vault_1.png`,
   SHIPYARD: `${BASE}/general/shipyard_1.png`,
+  HANGAR: `${BASE}/general/hangar_1.png`,
+  DEUTERIUM_PLANT: RESOURCE_ART.deuterium,
 };

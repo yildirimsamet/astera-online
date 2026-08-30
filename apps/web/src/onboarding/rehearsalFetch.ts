@@ -1,10 +1,13 @@
 import {
   PROSPECTOR,
   activeAsteroids,
+  asteroidDiscoveredAt,
   coreTier,
   drillHoldMult,
   drillSpeedMult,
   generateGalaxy,
+  nextAsteroidDiscoveryAt,
+  sensorSphere,
   type BuildingId,
   type HullId,
 } from '@astera/rules';
@@ -19,6 +22,26 @@ import {
   upgrade,
   type RehearsalWorld,
 } from './world.js';
+
+const OPAQUE_ID_ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_';
+
+/** Preview-only stable handle with the same public shape as a server asteroid id. */
+function rehearsalAsteroidId(seed: number, index: number): string {
+  let state = (seed ^ Math.imul(index + 1, 0x9e3779b1)) >>> 0;
+  let id = '';
+  for (let i = 0; i < 22; i += 1) {
+    state ^= state << 13;
+    state ^= state >>> 17;
+    state ^= state << 5;
+    /*
+      The alphabet is 64 characters and `>>> 26` is 0–63, so this never misses —
+      but `noUncheckedIndexedAccess` cannot know that, and concatenating a
+      possibly-undefined string is the one thing it is there to stop.
+    */
+    id += OPAQUE_ID_ALPHABET[state >>> 26] ?? '';
+  }
+  return id;
+}
 
 /**
  * THE REHEARSAL'S SEAM: A `fetch` THAT NEVER LEAVES THE DEVICE. D56.
@@ -164,17 +187,13 @@ function answer(
         return { pending: [] };
 
       /**
-       * ROCKS FROM THE SEED, WHICH IS WHERE THE REAL ONES COME FROM TOO.
+       * DECORATIVE ROCKS FROM THE PUBLIC PREVIEW SEED.
        *
-       * `generateGalaxy` is deterministic and takes no clock, so these are the
-       * actual asteroids of the actual galaxy rather than decoration.
-       *
-       * FILTERED TO THE ONES THAT EXIST RIGHT NOW, which the first draft was not —
-       * a rock has an `appearsAt` and an `expiresAt` and the generated field spans
-       * the WHOLE season, so handing the disc all of them drew nine hundred rocks
-       * over a galaxy that has a few dozen. It buried the worlds the beats were
-       * asking the player to find. `activeAsteroids` is the same filter
-       * `visibleAsteroids` runs on the server.
+       * Production uses a private season key, so these cannot be real targets and
+       * must never pretend to reveal that schedule. They do obey the real sight
+       * contract: the offered world's naked-eye post starts when the preview does,
+       * and only a rock physically inside it is shown. Claiming therefore narrows
+       * neither the player's eyes nor the rule the rehearsal taught.
        *
        * `oreRemaining` is the untouched figure. How much a stranger has already
        * taken out of a rock is not on any public payload, and inventing a smaller
@@ -185,18 +204,43 @@ function answer(
       case '/api/mining': {
         const field = generateGalaxy(preview.season.seed, preview.season.playerCap).asteroids;
         const minutes = (serverNow() - preview.season.startsAt.getTime()) / 60_000;
+        const active = activeAsteroids(field, minutes);
+        const eye = {
+          at: preview.reserved.position,
+          reach: sensorSphere(preview.reserved.position, 0, 0).identify,
+          startsAt: minutes,
+          endsAt: null,
+        };
+        const visible = active.filter(
+          (rock) => asteroidDiscoveredAt(rock, [eye], minutes) !== null,
+        );
+        const nextDiscovery = nextAsteroidDiscoveryAt(field, [eye], minutes);
+        const nextMinute = [
+          ...visible.map((rock) => rock.expiresAt),
+          ...(nextDiscovery === null ? [] : [nextDiscovery]),
+        ].reduce<number | null>(
+          (earliest, candidate) => earliest === null || candidate < earliest ? candidate : earliest,
+          null,
+        );
         return {
           derrick: false,
           craftSpeed: PROSPECTOR.speed * drillSpeedMult([]),
           craftHold: PROSPECTOR.hold * drillHoldMult([]),
           derrickHold: PROSPECTOR.hold * drillHoldMult(['DERRICK']),
-          asteroids: activeAsteroids(field, minutes).map((a) => ({
-            ...a,
-            oreRemaining: a.ore,
-            active: true,
-            isotopeRich: false,
-            deuteriumShare: null,
-          })),
+          asteroids: visible.map((asteroid) => {
+            const { index, ...visible } = asteroid;
+            return {
+              ...visible,
+              id: rehearsalAsteroidId(preview.season.seed, index),
+              oreRemaining: asteroid.ore,
+              active: true,
+              isotopeRich: false,
+              deuteriumShare: null,
+            };
+          }),
+          nextFieldChangeAt: nextMinute === null
+            ? null
+            : new Date(preview.season.startsAt.getTime() + nextMinute * 60_000),
           debris: [],
           runs: [],
         };

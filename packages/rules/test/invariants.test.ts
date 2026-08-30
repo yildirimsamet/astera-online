@@ -1,6 +1,8 @@
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
 import {
+  SENSOR,
+  sensorReach,
   ALL_HULLS,
   DOMINION_TRANSFER_SCALE,
   MOBILE_HULLS,
@@ -85,7 +87,7 @@ describe('combat invariants — must hold for ALL inputs', () => {
   it('never produces a negative unit count', () => {
     fc.assert(
       fc.property(arbFleet, arbDefence, fc.integer({ min: 0, max: 40_000 }), fc.nat(), (a, d, shield, seed) => {
-        const r = resolveCombat(a, d, shield, mulberry32(seed));
+        const r = resolveCombat(a, d, shield, mulberry32(seed), { attacker: {}, defender: {} });
         for (const id of ALL_HULLS) {
           expect(r.attackerSurvivors[id] ?? 0).toBeGreaterThanOrEqual(0);
           expect(r.defenderSurvivors[id] ?? 0).toBeGreaterThanOrEqual(0);
@@ -98,7 +100,7 @@ describe('combat invariants — must hold for ALL inputs', () => {
   it('never creates units out of nothing', () => {
     fc.assert(
       fc.property(arbFleet, arbDefence, fc.nat(), (a, d, seed) => {
-        const r = resolveCombat(a, d, 0, mulberry32(seed));
+        const r = resolveCombat(a, d, 0, mulberry32(seed), { attacker: {}, defender: {} });
         for (const id of ALL_HULLS) {
           expect(r.attackerSurvivors[id] ?? 0).toBeLessThanOrEqual((a as Fleet)[id] ?? 0);
           expect(r.defenderSurvivors[id] ?? 0).toBeLessThanOrEqual((d as Fleet)[id] ?? 0);
@@ -111,7 +113,7 @@ describe('combat invariants — must hold for ALL inputs', () => {
   it('never reports negative destroyed value, even with salvage', () => {
     fc.assert(
       fc.property(arbFleet, arbDefence, fc.nat(), (a, d, seed) => {
-        const r = resolveCombat(a, d, 0, mulberry32(seed));
+        const r = resolveCombat(a, d, 0, mulberry32(seed), { attacker: {}, defender: {} });
         expect(r.defenderLossValue).toBeGreaterThanOrEqual(0);
         expect(r.attackerLossValue).toBeGreaterThanOrEqual(0);
       }),
@@ -122,7 +124,7 @@ describe('combat invariants — must hold for ALL inputs', () => {
   it('DECISIVE implies the defence is actually gone', () => {
     fc.assert(
       fc.property(arbFleet, arbDefence, fc.nat(), (a, d, seed) => {
-        const r = resolveCombat(a, d, 0, mulberry32(seed));
+        const r = resolveCombat(a, d, 0, mulberry32(seed), { attacker: {}, defender: {} });
         if (r.grade === 'DECISIVE') expect(fleetCount(r.defenderSurvivors)).toBe(0);
       }),
       { numRuns: 300 },
@@ -132,7 +134,7 @@ describe('combat invariants — must hold for ALL inputs', () => {
   it('resolves in at most three rounds', () => {
     fc.assert(
       fc.property(arbFleet, arbDefence, fc.nat(), (a, d, seed) => {
-        const r = resolveCombat(a, d, 0, mulberry32(seed));
+        const r = resolveCombat(a, d, 0, mulberry32(seed), { attacker: {}, defender: {} });
         expect(r.rounds.length).toBeLessThanOrEqual(3);
       }),
       { numRuns: 200 },
@@ -142,8 +144,8 @@ describe('combat invariants — must hold for ALL inputs', () => {
   it('is deterministic for a given seed', () => {
     fc.assert(
       fc.property(arbFleet, arbDefence, fc.nat(), (a, d, seed) => {
-        const one = resolveCombat(a, d, 0, mulberry32(seed));
-        const two = resolveCombat(a, d, 0, mulberry32(seed));
+        const one = resolveCombat(a, d, 0, mulberry32(seed), { attacker: {}, defender: {} });
+        const two = resolveCombat(a, d, 0, mulberry32(seed), { attacker: {}, defender: {} });
         expect(two).toEqual(one);
       }),
       { numRuns: 200 },
@@ -162,7 +164,7 @@ describe('dominion is zero-sum for ALL battles', () => {
         (a, d, loot, seed) => {
           const atk = emptyLedger();
           const def = emptyLedger();
-          bookBattle(atk, def, loot, resolveCombat(a, d, 0, mulberry32(seed)));
+          bookBattle(atk, def, loot, resolveCombat(a, d, 0, mulberry32(seed), { attacker: {}, defender: {} }));
           expect(dominion(atk) + dominion(def)).toBe(0);
         },
       ),
@@ -234,9 +236,9 @@ describe('loot invariants', () => {
           big,
           { alloy: 0, crystal: 0, deuterium: 0 },
           'DECISIVE',
-          fleetCargo(f),
+          fleetCargo(f, {}),
         );
-        expect(loot.alloy + loot.crystal).toBeLessThanOrEqual(fleetCargo(f));
+        expect(loot.alloy + loot.crystal).toBeLessThanOrEqual(fleetCargo(f, {}));
       }),
       { numRuns: 200 },
     );
@@ -277,11 +279,23 @@ describe('galaxy generation', () => {
     );
   });
 
-  it('keeps every planet inside the disc', () => {
+  it('keeps every planet inside the playable sphere', () => {
     const g = generateGalaxy(99, 200);
     for (const s of g.slots) {
-      expect(Math.hypot(s.x, s.z)).toBeLessThanOrEqual(GALAXY.radius + 1);
-      expect(Math.abs(s.y)).toBeLessThanOrEqual(GALAXY.thickness + 1);
+      expect(Math.hypot(s.x, s.y, s.z)).toBeLessThanOrEqual(GALAXY.radius + 1e-9);
+    }
+  });
+
+  it('preserves the minimum world separation across the shipped neutral search pool', () => {
+    for (const seed of [1, 6, 18, 30, 4242, 8331]) {
+      const slots = generateGalaxy(seed, MULTI_WORLD.neutralSlotPool).slots;
+      let nearest = Infinity;
+      for (let i = 0; i < slots.length; i++) {
+        for (let j = 0; j < i; j++) {
+          nearest = Math.min(nearest, distance(slots[i]!, slots[j]!));
+        }
+      }
+      expect(nearest, `seed ${String(seed)}`).toBeGreaterThanOrEqual(GALAXY.minSeparation);
     }
   });
 
@@ -392,7 +406,7 @@ describe('the asteroid field', () => {
     expect(sum).toBeCloseTo(1, 6);
   });
 
-  it('gives every rock ore, a finite life and an orbit inside the disc', () => {
+  it('gives every rock ore, a finite life and an orbit inside the sphere', () => {
     for (const a of rocks.slice(0, 200)) {
       expect(a.ore).toBeGreaterThan(0);
       expect(a.expiresAt).toBeGreaterThan(a.appearsAt);
@@ -419,12 +433,26 @@ describe('the asteroid field', () => {
     }
   });
 
-  it('stays on its orbit, at the radius it was given', () => {
+  it('stays on its tilted orbit, at the radius it was given', () => {
     const a = rocks[3]!;
     for (const t of [a.appearsAt, a.appearsAt + 7, a.expiresAt - 1]) {
       const at = asteroidPosition(a, t);
-      expect(Math.hypot(at.x, at.z)).toBeCloseTo(a.radius, 6);
-      expect(at.y).toBe(a.y);
+      expect(Math.hypot(at.x, at.y, at.z)).toBeCloseTo(a.radius, 6);
+      expect(Math.hypot(at.x, at.y, at.z)).toBeLessThanOrEqual(GALAXY.radius);
+    }
+  });
+
+  it('uses genuinely three-dimensional orbital planes', () => {
+    const sampled = rocks.slice(0, 200);
+    expect(sampled.some((a) => Math.abs(Math.sin(a.inclination)) > 0.75)).toBe(true);
+    expect(sampled.some((a) => Math.abs(Math.cos(a.inclination)) > 0.75)).toBe(true);
+
+    // A quarter-turn on a tilted orbit must change height; the old horizontal
+    // circles fail this even though their static y coordinate was non-zero.
+    for (const a of sampled.slice(0, 30)) {
+      const start = asteroidPosition(a, 0);
+      const quarter = asteroidPosition(a, a.period / 4);
+      expect(Math.abs(start.y - quarter.y)).toBeGreaterThan(1e-6);
     }
   });
 
@@ -537,7 +565,7 @@ describe('the asteroid field', () => {
     expect(median(leads)).toBeLessThan(0.5);
   });
 
-  it('keeps the live reference field below one revolution of lead', () => {
+  it('keeps the live reference field below a quarter revolution at the median', () => {
     const laps: number[] = [];
     for (const planet of spec.slots.slice(0, 8)) {
       for (const rock of rocks.slice(0, 120)) {
@@ -548,16 +576,18 @@ describe('the asteroid field', () => {
     }
     expect(laps.length).toBeGreaterThan(200);
     /**
-     * A FIFTH OF A LAP AT THE MEDIAN after D74 halved the craft speed.
+     * UNDER A QUARTER LAP AT THE MEDIAN after the field became fully 3D.
      *
      * Half a revolution was the band the speed change alone could reach; it still
      * put the aim point most of a planet-width from the rock a player had just
      * tapped, and the owner reported it as the craft going somewhere unrelated.
      * Cutting the launch overhead is what brought it to a lead the eye reads as
-     * aiming ahead of a moving target: measured over 3,756 launches on the live
-     * seed, the current median is 0.186 revolutions — about 67 degrees.
+     * aiming ahead of a moving target. Tilting the orbits through all three axes
+     * changes the reference field's interception geometry; the measured median is
+     * 0.232 revolutions — about 83 degrees — and remains a lead, not a wait for
+     * another lap.
      */
-    expect(median(laps)).toBeLessThan(0.2);
+    expect(median(laps)).toBeLessThan(0.25);
 
     /**
      * AND THE WORST CASE IS STILL UNDER ONE LAP.
@@ -784,10 +814,26 @@ describe('telescope gates', () => {
     expect(telescopeRange(0)).toBe(0);
   });
 
-  it('reaches the whole disc at the top of the table', () => {
+  /**
+   * REACHES FAR, AND NEVER EVERYWHERE. D126.
+   *
+   * This used to assert the opposite — that the top of the table crossed the whole
+   * disc — because `telescopeRange` ended at `Infinity` and, while the table only
+   * bought WATCH range, an unbounded top rung was fine: slots and the re-point
+   * cooldown are what ration watching (D18).
+   *
+   * Reading the same table for what a commander can RESOLVE turned that into
+   * omniscience: one maxed Telescope on one world and every craft in the galaxy was
+   * identified for the rest of the season, found on a real account. So the reach is
+   * capped, and `docs/game-design.md`'s promise holds — "no investment buys perfect
+   * omniscience; the fog never fully lifts."
+   */
+  it('reaches most of the disc at the top of the table, and never all of it', () => {
     const acrossTheGalaxy = GALAXY.radius * 2;
-    expect(withinTelescopeRange(5, acrossTheGalaxy)).toBe(true);
-    expect(withinTelescopeRange(1, acrossTheGalaxy)).toBe(false);
+    expect(withinTelescopeRange(5, acrossTheGalaxy)).toBe(false);
+    expect(withinTelescopeRange(5, SENSOR.maxRadius)).toBe(true);
+    // Still a real ladder: the top rung sees a great deal more than the first.
+    expect(sensorReach(5)).toBeGreaterThan(sensorReach(1));
   });
 });
 

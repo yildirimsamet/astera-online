@@ -56,7 +56,7 @@ export function Signals({
   onOpen,
   onFocusPlanet,
 }: {
-  onOpen: (panel: Panel, stop?: PanelStop) => void;
+  onOpen: (panel: Panel, stop?: PanelStop, reportMissionId?: string) => void;
   onFocusPlanet: (planetId: string) => void;
 }) {
   const { t } = useTranslation();
@@ -212,8 +212,8 @@ export function Signals({
                   repeats={entry.repeats}
                   unread={!entry.event.seen || justRead.has(entry.event.id)}
                   now={now}
-                  onGo={(panel, stop) => {
-                    onOpen(panel, stop);
+                  onGo={(panel, stop, reportMissionId) => {
+                    onOpen(panel, stop, reportMissionId);
                     setOpen(false);
                   }}
                   onFocusPlanet={(planetId) => {
@@ -255,6 +255,7 @@ export const DESTINATION: Record<string, { panel: Panel; stop?: PanelStop }> = {
   raided: { panel: 'intel', stop: 'battles' },
   raid_result: { panel: 'intel', stop: 'battles' },
   death_star_result: { panel: 'intel', stop: 'battles' },
+  strategic_intercepted: { panel: 'intel', stop: 'battles' },
   // The radar log is its own section further down the same screen, and the probe
   // list is the shelf it sits under.
   scan_detected: { panel: 'intel', stop: 'probes' },
@@ -319,7 +320,7 @@ function Event({
   /** New in THIS reading — see `justRead`. Not simply `!event.seen`. */
   unread: boolean;
   now: number;
-  onGo: (panel: Panel, stop?: PanelStop) => void;
+  onGo: (panel: Panel, stop?: PanelStop, reportMissionId?: string) => void;
   onFocusPlanet: (planetId: string) => void;
 }) {
   const line = describeNotification(event, now);
@@ -340,7 +341,12 @@ function Event({
         <button
           type="button"
           aria-label={i18n.t('signals.openEvent')}
-          onClick={() => { onGo(destination.panel, destination.stop); }}
+          onClick={() => {
+            const reportMissionId = event.kind === 'raided' || event.kind === 'raid_result'
+              ? event.refId ?? undefined
+              : undefined;
+            onGo(destination.panel, destination.stop, reportMissionId);
+          }}
           className="absolute inset-0"
         />
       )}

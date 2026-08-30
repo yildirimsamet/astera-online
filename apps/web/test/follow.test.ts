@@ -67,7 +67,7 @@ describe('naming what the player picked', () => {
       focusIdentity({ kind: 'debris', id: 'x' }),
       focusIdentity({ kind: 'run', id: 'x' }),
       focusIdentity({ kind: 'contact', id: 'x' }),
-      focusIdentity({ kind: 'asteroid', index: 3 }),
+      focusIdentity({ kind: 'asteroid', id: 'mJt7YvxMZEC5S7yYQ32SYw' }),
       focusIdentity({ kind: 'thread', key: 'x' }),
     ];
     expect(new Set(keys).size).toBe(keys.length);
@@ -77,8 +77,8 @@ describe('naming what the player picked', () => {
     expect(focusIdentity({ kind: 'planet', id: 'a' })).not.toBe(
       focusIdentity({ kind: 'planet', id: 'b' }),
     );
-    expect(focusIdentity({ kind: 'asteroid', index: 0 })).not.toBe(
-      focusIdentity({ kind: 'asteroid', index: 1 }),
+    expect(focusIdentity({ kind: 'asteroid', id: 'AAAAAAAAAAAAAAAAAAAAAA' })).not.toBe(
+      focusIdentity({ kind: 'asteroid', id: 'BBBBBBBBBBBBBBBBBBBBBB' }),
     );
   });
 
@@ -106,7 +106,7 @@ describe('first tap focuses, second tap opens detail', () => {
   it('works for every selectable moving and static object kind', () => {
     const subjects: Focus[] = [
       { kind: 'planet', id: 'p' },
-      { kind: 'asteroid', index: 4 },
+      { kind: 'asteroid', id: 'AAAAAAAAAAAAAAAAAAAAAA' },
       { kind: 'run', id: 'r' },
       { kind: 'thread', key: 't' },
       { kind: 'contact', id: 'c' },
@@ -124,8 +124,8 @@ describe('first tap focuses, second tap opens detail', () => {
 
   it('distinguishes neighbouring asteroid indices', () => {
     expect(repeatedFocusTap(
-      { kind: 'asteroid', index: 4 },
-      { kind: 'asteroid', index: 5 },
+      { kind: 'asteroid', id: 'AAAAAAAAAAAAAAAAAAAAAA' },
+      { kind: 'asteroid', id: 'BBBBBBBBBBBBBBBBBBBBBB' },
     )).toBe(false);
   });
 

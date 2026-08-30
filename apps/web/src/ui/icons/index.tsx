@@ -657,6 +657,65 @@ export function RewardIcon(props: IconProps) {
   );
 }
 
+/**
+ * RESEARCH — a microscope, at owner request. T12.
+ *
+ * The eyepiece and barrel on a diagonal over a stage and a base. It reads at 20px
+ * as "look closely at something", which is the one gesture every player already
+ * associates with a laboratory — and it is the shape a twelve-year-old names
+ * without being told.
+ */
+export function MicroscopeIcon(props: IconProps) {
+  return (
+    <Glyph {...props}>
+      {/* The barrel, on the diagonal that makes it a microscope and not a lamp. */}
+      <path d="M13.4 3.4 9.9 6.9l3.4 3.4 3.5-3.5Z" />
+      <path d="M11.6 8.6 8.4 11.8" />
+      {/* The stage it looks at, and the arm that holds the barrel over it. */}
+      <path d="M8.9 12.3a4.4 4.4 0 0 0 6.2 6.2" />
+      <path d="M5.5 20.6h13" />
+      <path d="M9.5 20.6a4.6 4.6 0 0 1 4.6-4.6" />
+    </Glyph>
+  );
+}
+
+/**
+ * CLAN — a shield with a sword down it, at owner request.
+ *
+ * `ClanIcon` above is a five-point constellation: it says "five seats" and it says
+ * nothing about what a clan is FOR. This says fight together, which is the whole of
+ * D114, and it says it to somebody who has never read D114.
+ */
+export function WarBannerIcon(props: IconProps) {
+  return (
+    <Glyph {...props}>
+      <path d="M12 3.2 5.4 5.6v6.1c0 4.2 2.8 7.4 6.6 9.1 3.8-1.7 6.6-4.9 6.6-9.1V5.6Z" />
+      {/* The blade down the face, with a crossguard wide enough to read small. */}
+      <path d="M12 7.4v9.4" />
+      <path d="M9.4 10.2h5.2" />
+    </Glyph>
+  );
+}
+
+/**
+ * RESEARCH — a flask, and the level in it is the point. T12.
+ *
+ * Not a lightbulb and not an atom. A lightbulb says "idea", which is the one thing
+ * research in this game is NOT: every project is a ladder you climb by paying for
+ * a rung, and the flask is the only common lab shape with a fill line in it. The
+ * line sits low on purpose — a full flask would read as a finished thing.
+ */
+export function ResearchIcon(props: IconProps) {
+  return (
+    <Glyph {...props}>
+      <path d="M9.5 3v6.2L4.8 17.6A2 2 0 0 0 6.5 20.6h11a2 2 0 0 0 1.7-3L14.5 9.2V3" />
+      <path d="M8.6 3h6.8" />
+      {/* The level. */}
+      <path d="M7.4 14.6h9.2" />
+    </Glyph>
+  );
+}
+
 /** The Dominion ladder: a podium, not a generic analytics chart. */
 export function LeaderboardIcon(props: IconProps) {
   return (

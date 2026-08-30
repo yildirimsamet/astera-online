@@ -6,6 +6,12 @@ import {
   LIMB_TINT,
   MIN_MARKER_PX,
   SELECTION_RING,
+  HIDDEN_PLANET_BRIGHTNESS,
+  VISIBLE_PLANET_BRIGHTNESS,
+  bodyLight,
+  eyeMarkerScale,
+  eyeNodes,
+  limbLight,
   markerScale,
 } from '../src/galaxy/PlanetField.js';
 import {
@@ -18,6 +24,8 @@ import {
   toWorld,
 } from '../src/galaxy/scene.js';
 import { focusTapDecision } from '../src/galaxy/follow.js';
+import { planetsWithClanPresence } from '../src/galaxy/clanPresence.js';
+import { galaxySchema } from '../src/api/schemas.js';
 
 /**
  * THE AIR AROUND A WORLD, AND WHAT IT IS NOT ALLOWED TO BECOME. D53a.
@@ -100,6 +108,8 @@ describe('the camera home world', () => {
       position: { x: 100, y: 0, z: 200 },
       coreTier: 1,
       coreLevel: 3,
+      intel: 'RESOLVED' as const,
+      state: { kind: 'NORMAL' as const },
       satellites: [],
       shielded: false,
       isSelf: true,
@@ -118,6 +128,8 @@ describe('the camera home world', () => {
       position: { x: 100, y: 0, z: 200 },
       coreTier: 1,
       coreLevel: 3,
+      intel: 'RESOLVED' as const,
+      state: { kind: 'NORMAL' as const },
       satellites: [],
       shielded: false,
       isSelf: true,
@@ -141,6 +153,8 @@ describe('the camera home world', () => {
       position: { x: -200, y: 0, z: 100 },
       coreTier: 1,
       coreLevel: 3,
+      intel: 'RESOLVED' as const,
+      state: { kind: 'NORMAL' as const },
       satellites: [],
       shielded: false,
       isSelf: false,
@@ -168,6 +182,8 @@ describe('the camera home world', () => {
       position: { x: 0, y: 0, z: 0 },
       coreTier: 1,
       coreLevel: 3,
+      intel: 'RESOLVED' as const,
+      state: { kind: 'NORMAL' as const },
       satellites: [],
       shielded: false,
       isSelf: true,
@@ -191,6 +207,46 @@ describe('the camera home world', () => {
 });
 
 describe('world identity on the disc', () => {
+  it('adds live clan identity to an unknown world without resolving its intel', () => {
+    const galaxy = galaxySchema.parse({
+      you: { planetId: 'mine', playerId: 'me', planetIds: ['mine'] },
+      clanPresence: {
+        clan: { id: 'crew', name: 'Far Watch', tag: 'FAR' },
+        members: [
+          {
+            playerId: 'me', username: 'Vantage',
+            worlds: [{ planetId: 'mine', name: 'Origin', position: { x: 0, y: 0, z: 0 } }],
+          },
+          {
+            playerId: 'ally', username: 'Ada',
+            worlds: [{ planetId: 'hidden', name: 'Lantern', position: { x: 1800, y: 0, z: 0 } }],
+          },
+        ],
+      },
+      planets: [
+        {
+          id: 'mine', name: 'Origin', owner: 'Vantage', position: { x: 0, y: 0, z: 0 },
+          intel: 'RESOLVED', isSelf: true, isOwned: true,
+        },
+        {
+          id: 'hidden', position: { x: 1800, y: 0, z: 0 },
+          intel: 'UNKNOWN', isSelf: false, isOwned: false,
+        },
+      ],
+    });
+
+    const hidden = planetsWithClanPresence(galaxy).find((planet) => planet.id === 'hidden');
+    expect(hidden).toMatchObject({
+      intel: 'UNKNOWN',
+      name: 'Lantern',
+      owner: 'Ada',
+      clanmate: true,
+      controller: { kind: 'PLAYER', playerId: 'ally' },
+      coreLevel: 0,
+      satellites: [],
+    });
+  });
+
   it('renders the expanded 300-player galaxy as expanded space', () => {
     const [largest] = planetNodes([{
       id: 'heavy-world',
@@ -199,13 +255,15 @@ describe('world identity on the disc', () => {
       position: { x: 0, y: 0, z: 0 },
       coreTier: 4,
       coreLevel: 12,
+      intel: 'RESOLVED' as const,
+      state: { kind: 'NORMAL' as const },
       satellites: [],
       shielded: false,
       isSelf: false,
     }]);
 
     // The placement floor must leave daylight between even the largest public
-    // silhouettes. Scaling the 2500-unit radius back into the old 20-unit picture
+    // silhouettes. Scaling the 2000-unit radius back into the old 20-unit picture
     // made this ratio fail and piled 351 readable markers over one another.
     expect(GALAXY.minSeparation / SCALE)
       .toBeGreaterThan(largest!.radius * 2 * LIMB_SCALE);
@@ -218,6 +276,46 @@ describe('world identity on the disc', () => {
     expect(markerScale(100_000, 0.01, 844, 50)).toBeLessThanOrEqual(4);
   });
 
+  it('keeps eye marks fifty percent larger than the existing zoom scale', () => {
+    const current = markerScale(1200, 0.5, 844, 50);
+    expect(eyeMarkerScale(1200, 0.5, 844, 50)).toBeCloseTo(current * 1.5);
+  });
+
+  it('never puts an open or closed eye over a world the commander owns', () => {
+    const nodes = planetNodes([
+      {
+        id: 'mine', name: 'Origin', owner: 'Commander', kind: 'CAPITAL',
+        position: { x: 0, y: 0, z: 0 }, coreTier: 2, coreLevel: 6,
+        satellites: [], shielded: false, isSelf: true, isOwned: true,
+        state: { kind: 'NORMAL' }, intel: 'RESOLVED',
+      },
+      {
+        id: 'seen', name: 'Seen', owner: 'Rival', kind: 'COLONY',
+        position: { x: 100, y: 0, z: 0 }, coreTier: 1, coreLevel: 3,
+        satellites: [], shielded: false, isSelf: false, intel: 'RESOLVED',
+        state: { kind: 'NORMAL' },
+      },
+      {
+        id: 'hidden', name: '', owner: '',
+        position: { x: 200, y: 0, z: 0 }, coreTier: 1, coreLevel: 0,
+        satellites: [], shielded: false, isSelf: false, intel: 'UNKNOWN',
+        state: { kind: 'NORMAL' },
+      },
+    ]);
+
+    expect(eyeNodes(nodes, true).map((node) => node.id)).toEqual(['seen']);
+    expect(eyeNodes(nodes, false).map((node) => node.id)).toEqual(['hidden']);
+  });
+
+  it('raises visible worlds by 25% and lowers hidden worlds by 15%', () => {
+    expect(VISIBLE_PLANET_BRIGHTNESS).toBe(1.25);
+    expect(HIDDEN_PLANET_BRIGHTNESS).toBe(0.85);
+    expect(bodyLight('watched', 'RESOLVED')).toBeCloseTo(STANCE_LIGHT.watched * 1.25);
+    expect(bodyLight('dark', 'UNKNOWN')).toBeCloseTo(STANCE_LIGHT.dark * 0.22 * 0.85);
+    expect(limbLight('watched', 'RESOLVED')).toBeCloseTo(STANCE_LIGHT.watched * 1.25);
+    expect(limbLight('dark', 'UNKNOWN')).toBeCloseTo(STANCE_LIGHT.dark * 0.85);
+  });
+
   it('marks every owned colony as self and preserves capital/colony identity', () => {
     const [capital, colony] = planetNodes([
       {
@@ -226,13 +324,13 @@ describe('world identity on the disc', () => {
         clan: { id: 'clan-war', name: 'War Fleet', tag: 'WAR' },
         dominionRank: 1,
         position: { x: 0, y: 0, z: 0 }, coreTier: 2, coreLevel: 6, satellites: [], shielded: false,
-        isSelf: true, isOwned: true, isCapital: true, state: { kind: 'NORMAL' },
+        isSelf: true, isOwned: true, isCapital: true, state: { kind: 'NORMAL' }, intel: 'RESOLVED',
       },
       {
         id: 'colony', name: 'Haven', owner: 'Commander', kind: 'COLONY',
         controller: { kind: 'PLAYER', playerId: 'p1', displayName: 'Commander' },
         position: { x: 100, y: 0, z: 0 }, coreTier: 1, coreLevel: 3, satellites: [], shielded: false,
-        isSelf: false, isOwned: true, isCapital: false, state: { kind: 'NORMAL' },
+        isSelf: false, isOwned: true, isCapital: false, state: { kind: 'NORMAL' }, intel: 'RESOLVED',
       },
     ]);
     expect(capital).toMatchObject({
@@ -244,31 +342,53 @@ describe('world identity on the disc', () => {
   });
 
   it('marks clanmate worlds from the bulk galaxy payload and reserves a green identity ring', () => {
-    const [mine, ally, stranger] = planetNodes([
+    const [mine, ally, hiddenAlly, rememberedAlly, stranger] = planetNodes([
       {
         id: 'mine', name: 'Origin', owner: 'Commander', kind: 'CAPITAL',
         controller: { kind: 'PLAYER', playerId: 'me', displayName: 'Commander' },
         clan: { id: 'clan-war', name: 'War Fleet', tag: 'WAR' },
         position: { x: 0, y: 0, z: 0 }, coreTier: 2, coreLevel: 6, satellites: [], shielded: false,
-        isSelf: true, isOwned: true, state: { kind: 'NORMAL' },
+        isSelf: true, isOwned: true, state: { kind: 'NORMAL' }, intel: 'RESOLVED',
       },
       {
         id: 'ally', name: 'Haven', owner: 'Ada', kind: 'CAPITAL',
         controller: { kind: 'PLAYER', playerId: 'ally-player', displayName: 'Ada' },
         clan: { id: 'clan-war', name: 'War Fleet', tag: 'WAR' },
         position: { x: 100, y: 0, z: 0 }, coreTier: 1, coreLevel: 3, satellites: [], shielded: false,
-        isSelf: false, state: { kind: 'NORMAL' },
+        isSelf: false, state: { kind: 'NORMAL' }, intel: 'RESOLVED',
+      },
+      {
+        id: 'hidden-ally', name: 'Far Haven', owner: 'Iris',
+        controller: { kind: 'PLAYER', playerId: 'hidden-ally-player', displayName: 'Iris' },
+        clan: { id: 'clan-war', name: 'War Fleet', tag: 'WAR' },
+        position: { x: 125, y: 0, z: 0 }, coreTier: 1, coreLevel: 0, satellites: [], shielded: false,
+        isSelf: false, state: { kind: 'NORMAL' }, intel: 'UNKNOWN', clanmate: true,
+      },
+      {
+        id: 'remembered-ally', name: 'Old Haven', owner: 'Mira', kind: 'CAPITAL',
+        controller: { kind: 'PLAYER', playerId: 'former-ally', displayName: 'Mira' },
+        clan: { id: 'clan-war', name: 'War Fleet', tag: 'WAR' },
+        position: { x: 150, y: 0, z: 0 }, coreTier: 1, coreLevel: 3, satellites: [], shielded: false,
+        isSelf: false, state: { kind: 'NORMAL' }, intel: 'REMEMBERED', seenAt: new Date(0),
       },
       {
         id: 'stranger', name: 'Far Reach', owner: 'Nova', kind: 'CAPITAL',
         controller: { kind: 'PLAYER', playerId: 'other-player', displayName: 'Nova' },
         clan: { id: 'clan-other', name: 'Other Fleet', tag: 'OTH' },
         position: { x: 200, y: 0, z: 0 }, coreTier: 1, coreLevel: 3, satellites: [], shielded: false,
-        isSelf: false, state: { kind: 'NORMAL' },
+        isSelf: false, state: { kind: 'NORMAL' }, intel: 'RESOLVED',
       },
     ]);
     expect(mine?.isClanmate).toBe(false);
     expect(ally?.isClanmate).toBe(true);
+    expect(hiddenAlly).toMatchObject({
+      intel: 'UNKNOWN',
+      name: 'Far Haven',
+      owner: 'Iris',
+      isClanmate: true,
+    });
+    // A remembered clan tag is historical intel, never a live friendly-fire cue.
+    expect(rememberedAlly?.isClanmate).toBe(false);
     expect(stranger?.isClanmate).toBe(false);
     expect(CLANMATE_COLOUR).toBe('#5ad39b');
   });
@@ -279,19 +399,19 @@ describe('world identity on the disc', () => {
         id: 'rival-capital', name: 'Origin', owner: 'Sable', kind: 'CAPITAL',
         controller: { kind: 'PLAYER', playerId: 'rival-player', displayName: 'Sable' },
         position: { x: 0, y: 0, z: 0 }, coreTier: 2, coreLevel: 6, satellites: [], shielded: false,
-        isSelf: false, state: { kind: 'NORMAL' },
+        isSelf: false, state: { kind: 'NORMAL' }, intel: 'RESOLVED',
       },
       {
         id: 'rival-colony', name: 'Reach', owner: 'Sable', kind: 'COLONY',
         controller: { kind: 'PLAYER', playerId: 'rival-player', displayName: 'Sable' },
         position: { x: 100, y: 0, z: 0 }, coreTier: 1, coreLevel: 3, satellites: [], shielded: false,
-        isSelf: false, state: { kind: 'NORMAL' },
+        isSelf: false, state: { kind: 'NORMAL' }, intel: 'RESOLVED',
       },
       {
         id: 'other', name: 'Other', owner: 'Nova', kind: 'CAPITAL',
         controller: { kind: 'PLAYER', playerId: 'other-player', displayName: 'Nova' },
         position: { x: 200, y: 0, z: 0 }, coreTier: 1, coreLevel: 3, satellites: [], shielded: false,
-        isSelf: false, state: { kind: 'NORMAL' },
+        isSelf: false, state: { kind: 'NORMAL' }, intel: 'RESOLVED',
       },
     ]);
     expect(isRivalNode(capital!, 'rival-capital', 'rival-player')).toBe(true);

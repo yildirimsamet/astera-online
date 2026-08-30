@@ -18,6 +18,9 @@ import {
   normaliseClanName,
   normaliseClanTag,
   MULTI_WORLD,
+  ECONOMY_TEMPO,
+  HULLS,
+  scaleResources,
   resourcesFit,
   splitClanRaidLoot,
   type Resources,
@@ -33,7 +36,9 @@ describe('D114 clan identity and fixed rules', () => {
   it('locks the approved membership and economy figures', () => {
     expect(CLAN.maxMembers).toBe(5);
     expect(CLAN.founderCoreLevel).toBe(7);
-    expect(CLAN.creationCost).toEqual(resources(5_000, 3_000, 0));
+    expect(CLAN.creationCost).toEqual(
+      scaleResources(resources(5_000, 3_000, 0), ECONOMY_TEMPO.fixedPrice),
+    );
     expect(CLAN.adaptationMinutes).toBe(720);
     expect(CLAN.attackLimit).toBe(5);
     expect(CLAN.raidLootShare).toBe(0.10);
@@ -72,10 +77,14 @@ describe('D114 clan aid', () => {
   });
 
   it('charges gifted hulls at full per-resource build cost', () => {
-    expect(clanAidValue(
-      { WASP: 2, RUNNER: 1, BREACHER: 1 },
-      resources(100, 200, 30),
-    )).toEqual(resources(2_390, 1_000, 320));
+    const fleet = { WASP: 2, RUNNER: 1, BREACHER: 1 } as const;
+    const cargo = resources(100, 200, 30);
+    expect(clanAidValue(fleet, cargo)).toEqual(resources(
+      cargo.alloy + 2 * HULLS.WASP.alloy + HULLS.RUNNER.alloy + HULLS.BREACHER.alloy,
+      cargo.crystal + 2 * HULLS.WASP.crystal + HULLS.RUNNER.crystal + HULLS.BREACHER.crystal,
+      cargo.deuterium
+        + 2 * HULLS.WASP.deuterium + HULLS.RUNNER.deuterium + HULLS.BREACHER.deuterium,
+    ));
   });
 
   it('derives receiver-wide allowances and never carries debt between resources', () => {

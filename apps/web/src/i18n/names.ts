@@ -3,6 +3,7 @@ import {
   type BuildingId,
   type HullId,
   type InstrumentId,
+  type ResearchProjectId,
   type SatelliteId,
 } from '@astera/rules';
 import i18n from './index.js';
@@ -25,6 +26,7 @@ import i18n from './index.js';
 export const buildingName = (id: BuildingId): string => i18n.t(`vocabulary.building.${id}.name`);
 export const buildingTag = (id: BuildingId): string => i18n.t(`vocabulary.building.${id}.tag`);
 export const buildingRole = (id: BuildingId): string => i18n.t(`vocabulary.building.${id}.role`);
+export const buildingDetail = (id: BuildingId): string => i18n.t(`vocabulary.building.${id}.detail`);
 
 export const instrumentLabel = (id: InstrumentId): string =>
   i18n.t(`vocabulary.instrument.${id}.name`);
@@ -32,6 +34,8 @@ export const instrumentTag = (id: InstrumentId): string =>
   i18n.t(`vocabulary.instrument.${id}.tag`);
 export const instrumentRole = (id: InstrumentId): string =>
   i18n.t(`vocabulary.instrument.${id}.role`);
+export const instrumentDetail = (id: InstrumentId): string =>
+  i18n.t(`vocabulary.instrument.${id}.detail`);
 
 /**
  * The longer line on the planet screen, which differs by whether you own one.
@@ -46,6 +50,7 @@ export const instrumentPitch = (id: InstrumentId, level: number): string =>
 export const satelliteLabel = (id: SatelliteId): string => i18n.t(`vocabulary.satellite.${id}.name`);
 export const satelliteTag = (id: SatelliteId): string => i18n.t(`vocabulary.satellite.${id}.tag`);
 export const satelliteRole = (id: SatelliteId): string => i18n.t(`vocabulary.satellite.${id}.role`);
+export const satelliteDetail = (id: SatelliteId): string => i18n.t(`vocabulary.satellite.${id}.detail`);
 export const satelliteBlurb = (id: SatelliteId): string =>
   i18n.t(`vocabulary.satellite.${id}.blurb`);
 
@@ -53,6 +58,7 @@ export const hullLabel = (id: HullId): string => i18n.t(`vocabulary.hull.${id}.n
 export const hullTag = (id: HullId): string => i18n.t(`vocabulary.hull.${id}.tag`);
 export const hullRole = (id: HullId): string => i18n.t(`vocabulary.hull.${id}.role`);
 export const hullPitch = (id: HullId): string => i18n.t(`vocabulary.hull.${id}.pitch`);
+export const hullDetail = (id: HullId): string => i18n.t(`vocabulary.hull.${id}.detail`);
 
 const HULL_IDS = new Set<string>(ALL_HULLS);
 const INSTRUMENT_IDS = new Set<string>(['TELESCOPE', 'RADAR', 'AEGIS', 'VEIL']);
@@ -93,3 +99,36 @@ export function unlockCopy(
     body: i18n.t(`vocabulary.unlock.${id}.body`),
   };
 }
+
+/**
+ * WHAT A RESEARCH PROJECT IS CALLED, IN ONE PLACE. T12 · D141.
+ *
+ * `buildOrderName` had its own list of four, written when four was all there was,
+ * so a queued Cargo Holds order printed the raw id `CARGO_HOLDS` on the build
+ * queue. The research panel had a fifteen-entry copy table of its own. Two lists
+ * for one question is how the first one falls behind.
+ *
+ * The key is derived from the id, so a sixteenth project is a locale entry and
+ * nothing else — and a missing one is a COMPILE error, because `t()` is bound to
+ * the English tree.
+ */
+const RESEARCH_NAME_KEY = {
+  ISOTOPE_SPECTROMETRY: 'research.isotopeName',
+  DENSE_FUEL_CELLS: 'research.denseName',
+  GRAVITIC_CHARGES: 'research.graviticName',
+  DEATH_STAR_PROTOCOL: 'research.deathStarName',
+  DEUTERIUM_SYNTHESIS: 'research.synthesisName',
+  YARD_AUTOMATION: 'research.yardName',
+  PROSPECTOR_HOLDS: 'research.holdsName',
+  CARGO_HOLDS: 'research.cargoName',
+  WASP_DOCTRINE: 'research.waspDoctrineName',
+  LANCE_DOCTRINE: 'research.lanceDoctrineName',
+  BULWARK_DOCTRINE: 'research.bulwarkDoctrineName',
+  EMPLACEMENT_DOCTRINE: 'research.groundDoctrineName',
+  WEAPONS_GENERAL: 'research.generalName',
+  INTERCEPTION_GRID: 'research.gridName',
+  STRATEGIC_STOCKPILE: 'research.stockpileName',
+} as const satisfies Record<ResearchProjectId, string>;
+
+export const researchName = (id: ResearchProjectId): string =>
+  i18n.t(RESEARCH_NAME_KEY[id]);

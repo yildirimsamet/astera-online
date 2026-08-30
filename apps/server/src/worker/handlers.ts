@@ -1,5 +1,6 @@
-import { and, eq, inArray, isNull, ne, sql } from 'drizzle-orm';
+import { and, eq, inArray, isNotNull, isNull, ne, sql } from 'drizzle-orm';
 import {
+  ANTI_STRATEGIC,
   PROBE,
   applyDisruption,
   disruptionMinutes,
@@ -12,13 +13,24 @@ import {
   fleetSpeedMult,
   fleetValue,
   fleetTravelExact,
-  nextRadarCheck,
-  radarLead,
+  garrisonOf,
+  coreTier,
+  distance,
+  massClass,
+  interceptionRange,
+  orbitStandoff,
+  pointAlong,
   radarRange,
   radarRevealsOrigin,
+  sensorSphere,
   seededFrom,
+  sphereEntryFraction,
+  surfaceStandoff,
+  visualLeg,
+  worldRadius,
   DEBRIS,
   HULLS,
+  NON_COMBATANT_HULLS,
   SEASON,
   SERVERS,
   resolveCombat,
@@ -32,6 +44,7 @@ import type { Db, Tx } from '../db/client.js';
 import {
   accounts,
   battleReports,
+  buildings,
   buildOrders,
   clanMemberships,
   clans,
@@ -42,12 +55,14 @@ import {
   planets,
   players,
   probeReports,
+  probeWorldMemories,
   scheduledEvents,
   seasonResults,
   seasons,
   shards,
   strategicAssets,
   strategicImpacts,
+  strategicInterceptions,
   units,
 } from '../db/schema.js';
 import {
@@ -60,7 +75,16 @@ import {
   setUnits,
 } from '../services/planet.js';
 import { clearMissionUnits, fleetOfMission } from '../services/mission.js';
+import { techOf } from '../services/researchState.js';
 import { instrumentLevels, levelOf, resolveProbe } from '../services/intel.js';
+import {
+  LEAD_TOLERANCE,
+  inboundRadarLead,
+  interceptBefore,
+  nextInboundRadarCheck,
+  recheckRadarLegsForWorld,
+  wakeStrategicInterceptions,
+} from '../services/radar.js';
 import { resolveMiningArrival, resolveMiningReturn } from '../services/mining.js';
 import { announceUnlocks, notify } from '../services/notifications.js';
 import {
@@ -68,7 +92,8 @@ import {
   publicPlanetIdentity,
   recordGalaxyEvent,
 } from '../services/chronicle.js';
-import { publish, publishShard } from '../stream/bus.js';
+import { publish, publishShard, publishStrategicSight } from '../stream/bus.js';
+import { fleetChangesWatch, publishWatchChanges } from '../services/watchEvents.js';
 import { wipeAllServers } from '../services/servers.js';
 import { schedule, type EventRow } from './queue.js';
 import {
@@ -158,6 +183,9 @@ export const onMissionArrival: Handler = async ({ db, clock }, event) => {
      * rolls back is never announced.
      */
     await publishShard(tx, mission.seasonId, 'arrival');
+    if (fleetChangesWatch(mission.fleet)) {
+      await publishWatchChanges(tx, [mission.originPlanetId, mission.targetPlanetId]);
+    }
 
     // Every arrival may touch both endpoints; an acquisition also serializes on
     // its commander's immutable capital. Take all of them in one stable order.
@@ -196,6 +224,10 @@ export const onMissionArrival: Handler = async ({ db, clock }, event) => {
 
     if (mission.kind === 'death_star') {
       const result = await applyDeathStarStrike(tx, mission, clock.now());
+      // Core loss changes the drawn endpoint and may cap Radar/Telescope. Wake
+      // every other inbound leg now so none keeps an obsolete crossing time.
+      await recheckRadarLegsForWorld(tx, mission.targetPlanetId, clock.now());
+      await wakeStrategicInterceptions(tx, mission.targetPlanetId, clock.now());
       const outcome = result.outcome;
       await tx.insert(strategicImpacts).values({
         seasonId: mission.seasonId,
@@ -206,6 +238,10 @@ export const onMissionArrival: Handler = async ({ db, clock }, event) => {
         outcome,
         damage: result.damage,
         destroyedFleet: result.destroyedFleet,
+        destroyedResources: result.destroyedResources,
+        levelChanges: result.levelChanges,
+        destroyedOrders: result.destroyedOrders,
+        shieldDestroyed: result.shieldDestroyed,
         createdAt: clock.now(),
       }).onConflictDoNothing({ target: strategicImpacts.missionId });
       await tx
@@ -330,14 +366,45 @@ export const onMissionArrival: Handler = async ({ db, clock }, event) => {
        * is a commitment rather than a purchase.
        */
       if (mission.parentMissionId) {
+        const deliveredAt = clock.now();
         const [delivered] = await tx
           .update(probeReports)
-          .set({ deliveredAt: clock.now() })
-          .where(eq(probeReports.missionId, mission.parentMissionId))
+          .set({ deliveredAt })
+          .where(and(
+            eq(probeReports.missionId, mission.parentMissionId),
+            isNull(probeReports.deliveredAt),
+          ))
           .returning();
         // Nothing came back means a redelivery of an event already handled; the
         // report was marked delivered the first time and its owner already told.
         if (!delivered) return;
+
+        if (delivered.silhouette) {
+          await tx
+            .insert(probeWorldMemories)
+            .values({
+              observerPlayerId: delivered.observerPlayerId,
+              targetPlanetId: delivered.targetPlanetId,
+              reportId: delivered.id,
+              // The record is what the probe SAW at the far world, not when the
+              // return craft finally reached home. `createdAt` is that observation
+              // instant; `deliveredAt` only gates when the player may read it.
+              seenAt: delivered.createdAt,
+            })
+            .onConflictDoUpdate({
+              target: [
+                probeWorldMemories.observerPlayerId,
+                probeWorldMemories.targetPlanetId,
+              ],
+              set: {
+                reportId: sql`excluded.report_id`,
+                seenAt: sql`excluded.seen_at`,
+              },
+              // Two workers may deliver different probes at the same instant.
+              // The tuple makes the winner newest-first and deterministic on ties.
+              setWhere: sql`(excluded.seen_at, excluded.report_id) > (${probeWorldMemories.seenAt}, ${probeWorldMemories.reportId})`,
+            });
+        }
 
         /**
          * THE INTEL HAS LANDED, AND SAYING SO IS THE POINT. D45.
@@ -363,15 +430,22 @@ export const onMissionArrival: Handler = async ({ db, clock }, event) => {
             // expected.
             detected: delivered.detected,
           },
-          at: clock.now(),
+          at: deliveredAt,
           refId: mission.parentMissionId,
         });
         return;
       }
 
-      // Seeded from the mission id like combat, so a report — and whether it was
-      // detected — can be re-derived from its inputs.
-      const { detected, bearing } = await resolveProbe(
+      /*
+        Seeded from the mission id like combat, so a report — and whether it was
+        detected — can be re-derived from its inputs.
+
+        The BEARING is not read here any more. `resolveProbe` writes it to
+        `scan_events`, which is the row `readRadarLog` gates from Radar L2; it used
+        to be copied into the notification payload as well, where nothing gated it
+        at all. One fact, one surface, one gate.
+      */
+      const { detected } = await resolveProbe(
         tx,
         mission,
         clock.now(),
@@ -383,12 +457,25 @@ export const onMissionArrival: Handler = async ({ db, clock }, event) => {
           .from(planets)
           .where(eq(planets.id, mission.targetPlanetId));
         if (target?.controllerPlayerId) {
-          // Bearing is in the payload, but what the player is shown is decided at
-          // read time by their radar level — never here.
+          /**
+           * THE BEARING IS NOT IN THIS PAYLOAD, AND IT USED TO BE.
+           *
+           * The comment here said the bearing was carried and "what the player is
+           * shown is decided at read time by their radar level". The read-time
+           * gate was never written: `/api/notifications` returns `payload` raw, so
+           * a Radar 1 defender could read the compass direction straight off the
+           * API while `readRadarLog` — the surface that SELLS it from L2 — was
+           * carefully returning null. Fog enforced in the UI is not enforced.
+           *
+           * It is not redacted here either, because there is nothing to redact:
+           * the bearing belongs to the radar log, which is gated correctly and is
+           * where the notification already sends the reader. One fact, one surface,
+           * one gate. `scan_events` still records it for that log.
+           */
           await notify(tx, {
             playerId: target.controllerPlayerId,
             kind: 'scan_detected',
-            payload: { bearing },
+            payload: {},
             at: clock.now(),
             refId: missionId,
           });
@@ -455,15 +542,42 @@ export const onMissionArrival: Handler = async ({ db, clock }, event) => {
     const attackingFleet = await fleetOfMission(tx, mission.originPlanetId, missionId);
     if (fleetCount(attackingFleet) === 0) return;
 
-    const defenders: Fleet = { ...defender.homeFleet, ...defender.ground };
+    // Fighting hulls at home plus the emplacements, and the mining craft in
+    // neither. `garrisonOf` is the single definition every battle surface reads.
+    /*
+      TWO SIDES, TWO MOMENTS. T8 · T9.
+
+      The attacker's ladders were snapshotted onto the mission when they committed
+      it; the defender's are read now, at the fight. An attacker who finished a
+      doctrine mid-flight does not get it, and a defender who did does — which is
+      the only reading under which each figure belongs to a decision somebody
+      actually made.
+    */
+    const attackerTech = mission.tech ?? {};
+    const defenderTech = await techOf(tx, defender.playerId);
+    const defenders = garrisonOf(defender.homeFleet, defender.ground);
     // Seeded from the mission id: any report can be re-derived from its inputs,
     // which makes battles auditable and bug reports reproducible.
-    const result = resolveCombat(attackingFleet, defenders, defender.shield, seededFrom(missionId));
+    const result = resolveCombat(
+      attackingFleet, defenders, defender.shield, seededFrom(missionId),
+      { attacker: attackerTech, defender: defenderTech },
+    );
 
     // Defender: survivors, plus whatever salvages out of the wreckage.
     const defenderHome: Fleet = {};
-    for (const [hull] of fleetEntries(defender.homeFleet)) {
-      defenderHome[hull] = result.defenderSurvivors[hull] ?? 0;
+    for (const [hull, standing] of fleetEntries(defender.homeFleet)) {
+      /**
+       * A CRAFT THAT NEVER ENTERED THE BATTLE IS CARRIED ACROSS BY HAND.
+       *
+       * It is absent from `defenderSurvivors` because it was absent from the
+       * defending line, and `?? 0` reads that absence as annihilation — so the
+       * change that stops a raid killing miners would, without this branch,
+       * delete every one of them on every raid instead. The rule and its
+       * bookkeeping have to move together.
+       */
+      defenderHome[hull] = NON_COMBATANT_HULLS.includes(hull)
+        ? standing
+        : result.defenderSurvivors[hull] ?? 0;
     }
     for (const [hull] of fleetEntries(defender.ground)) {
       defenderHome[hull] =
@@ -494,13 +608,15 @@ export const onMissionArrival: Handler = async ({ db, clock }, event) => {
       defender.buildings.VAULT,
       defender.buildings.REFINERY,
       defender.buildings.EXTRACTOR,
+      defender.buildings.DEUTERIUM_PLANT,
     );
     const loot = computeLoot(
       exposedStock,
       exposedBuffer,
       vaultFloor,
       result.grade,
-      fleetCargo(result.attackerSurvivors),
+      // The ATTACKER's holds: it is their fleet carrying it home. T8.
+      fleetCargo(result.attackerSurvivors, attackerTech),
     );
     /**
      * Dense Fuel Cells is discovered by a real PvP lesson, not a counter. D94.
@@ -633,10 +749,11 @@ export const onMissionArrival: Handler = async ({ db, clock }, event) => {
      * about 85% of a defender's losses and make a fortress profit from being
      * attacked.
      *
-     * `!HULLS[id].ground` rather than `MOBILE_HULLS` membership: a Prospector
-     * sitting at home is part of the defence and really does die, and it is
-     * wreckage like anything else. `MOBILE_HULLS` excludes it and would silently
-     * drop it.
+     * `!HULLS[id].ground` rather than `MOBILE_HULLS` membership, and the filter
+     * stays that way even though a Prospector no longer defends: it is the LOSSES
+     * that are priced here, and a craft that was never in the line never appears
+     * in them. Narrowing this to `MOBILE_HULLS` would drop a hull the day one is
+     * added that is neither ground nor attack-legal.
      *
      * WEALTH, NEVER DOMINION. Nothing here touches a ledger — wreckage was not
      * taken FROM anybody, so crediting it to the ladder would create score from
@@ -998,10 +1115,9 @@ async function loadLockedHome(tx: Tx, planetId: string): Promise<{ fleet: Fleet 
  * and a wider reach can never be bought retroactively — a radar installed with the
  * fleet already four minutes out warns at four minutes.
  *
- * D49 TURNED THE RUNGS FROM MINUTES INTO DISTANCES, and the shape did not change
- * with them. Both are converted back to minutes-before-arrival by `radarLead`,
- * because that is the axis this event is scheduled on and the axis the mission row
- * can be read against.
+ * D49 TURNED THE RUNGS FROM MINUTES INTO DISTANCES. The conversion back to a
+ * warning instant uses the exact visual leg, including surface departure and
+ * orbital arrival, because that is the only way the drawn shell and alert agree.
  */
 export const onRadarWarning: Handler = async ({ db, clock }, event) => {
   const missionId = event.refId;
@@ -1021,17 +1137,34 @@ export const onRadarWarning: Handler = async ({ db, clock }, event) => {
     const [target] = await tx.select().from(planets).where(eq(planets.id, mission.targetPlanetId));
     if (!target) return;
 
-    const levels = await instrumentLevels(tx, [target.id]);
+    const [[origin], coreRows, levels] = await Promise.all([
+      tx.select().from(planets).where(eq(planets.id, mission.originPlanetId)),
+      tx.select({ planetId: buildings.planetId, level: buildings.level })
+        .from(buildings)
+        .where(and(
+          inArray(buildings.planetId, [mission.originPlanetId, mission.targetPlanetId]),
+          eq(buildings.type, 'CORE'),
+        )),
+      instrumentLevels(tx, [target.id]),
+    ]);
+    if (!origin) return;
     const radarLevel = levelOf(levels, target.id, 'RADAR');
+    const coreByPlanet = new Map(coreRows.map((row) => [row.planetId, row.level]));
     /**
      * The whole leg, so a reach in units can be turned into minutes of notice.
      *
-     * `mission.distance` is stored at launch and `departAt`/`arriveAt` bound the
-     * flight, so this is the same arithmetic the client draws the craft with — the
-     * warning fires when the fleet the player can SEE crosses the circle.
+     * The endpoints and current public Core tiers define the same shortened leg
+     * the client draws. The warning fires when the visible fleet crosses the shell.
      */
     const oneWay = (mission.arriveAt.getTime() - mission.departAt.getTime()) / 60_000;
-    const lead = radarLead(radarRange(radarLevel), mission.distance, oneWay);
+    const leg = {
+      from: { x: origin.x, y: origin.y, z: origin.z },
+      to: { x: target.x, y: target.y, z: target.z },
+      originCoreLevel: coreByPlanet.get(origin.id) ?? 1,
+      targetCoreLevel: coreByPlanet.get(target.id) ?? 1,
+      oneWayMinutes: oneWay,
+    };
+    const lead = inboundRadarLead(radarRange(radarLevel), leg);
 
     /**
      * Not yet — or never.
@@ -1043,19 +1176,33 @@ export const onRadarWarning: Handler = async ({ db, clock }, event) => {
      * and silently demotes a Radar 5 warning to the 8-minute rung.
      */
     if (lead <= 0 || remaining > lead + LEAD_TOLERANCE) {
-      const next = nextRadarCheck(remaining, mission.distance, oneWay);
+      const next = nextInboundRadarCheck(remaining, leg);
       if (next !== null) {
         await schedule(tx, {
           seasonId: mission.seasonId,
           kind: 'radar_warning',
           refId: missionId,
-          resolveAt: addMinutes(mission.arriveAt, -radarLead(next, mission.distance, oneWay)),
+          resolveAt: addMinutes(mission.arriveAt, -inboundRadarLead(next, leg)),
         });
       }
       return;
     }
 
     if (!target.controllerPlayerId) return;
+    /*
+      AND NEVER BOTH THINGS AT ONCE. T10.
+
+      The interception resolves first and closes the mission, so by the time this
+      runs a destroyed weapon is no longer `in_flight` — but redelivery can bring
+      this handler back with a stale row in hand. Telling a defender that something
+      is coming, beside the news that it is already wreckage, is the interface
+      contradicting itself at the one moment it matters most.
+    */
+    const [live] = await tx
+      .select({ status: missions.status })
+      .from(missions)
+      .where(eq(missions.id, missionId));
+    if (live?.status !== 'in_flight') return;
     await notify(tx, {
       playerId: target.controllerPlayerId,
       kind: mission.kind === 'death_star' ? 'strategic_incoming' : 'incoming_fleet',
@@ -1073,8 +1220,18 @@ export const onRadarWarning: Handler = async ({ db, clock }, event) => {
          */
         arriveAt: mission.arriveAt.toISOString(),
         etaMinutes: Math.max(0, Math.round(remaining)),
-        // Size is revealed only from Radar L4, exact composition only from L5.
-        ...(radarLevel >= 4 ? { estimatedShips: fleetCount(mission.fleet) } : {}),
+        /**
+         * WHICH OF THE DEFENDER'S WORLDS IT IS AIMED AT.
+         *
+         * Not a radar product — the radar ladder sells the ATTACKER's side, and
+         * this is the recipient's own world. It was missing, so a commander with
+         * four worlds got "incoming, twelve minutes" and no way to know where to
+         * move the garrison. The pending strip carries the same fact.
+         */
+        targetPlanetName: target.name,
+        // L4 buys a coarse mass band. Exact composition (and therefore any exact
+        // count derivable from it) begins at L5.
+        ...(radarLevel >= 4 ? { mass: massClass(mission.fleet) } : {}),
         // A NAME, never the id. Every other L5 reveal in the game sends the
         // planet's name (`readRadarLog`); this one sent a raw uuid, which is why
         // nothing ever displayed it and L5 read exactly like L4.
@@ -1100,25 +1257,6 @@ export const onRadarWarning: Handler = async ({ db, clock }, event) => {
   });
 };
 
-/**
- * Three seconds. Scheduling is exact; claiming a due event is not.
- *
- * IT WAS HALF A MINUTE, AND THAT STOPPED BEING A ROUNDING ERROR AT D63. The figure
- * exists to absorb the gap between the instant an event is scheduled for and the
- * instant a worker claims it — bounded by `WORKER_POLL_MS`, which is one second.
- * Half a minute was thirty times that even before hull speeds went up.
- *
- * Afterwards it was worse than generous, it was WRONG: Radar L3 buys 0.65 minutes
- * of warning on a long leg, so a tolerance of 0.5 was 77% of the entire lead and
- * every rung of the ladder fired at a visibly wider circle than it sold. An L3
- * defender was getting most of L4's warning, which is the ladder — the thing the
- * radar is actually sold on — quietly collapsing.
- *
- * Three seconds is three poll intervals. It still absorbs every claim delay the
- * queue can produce and is no longer a meaningful share of any lead the ladder
- * sells.
- */
-const LEAD_TOLERANCE = 0.05;
 
 async function identityOfPlanet(
   tx: Tx,
@@ -1152,12 +1290,16 @@ async function identityOfPlanet(
  * which is what makes the race honest: two squadrons landing in the same second
  * are serialised, and the second reads a total that already includes the first.
  */
-export const onMiningArrival: Handler = async ({ db, clock }, event) => {
+export const onMiningArrival: Handler = async ({ db }, event) => {
   const runId = event.refId;
   if (!runId) throw new Error('mining_arrival without refId');
   await db.transaction(async (tx) => {
     await lockSeason(tx, event.seasonId);
-    await resolveMiningArrival(tx, runId, clock.now());
+    // Replay the meeting at the instant the queue promised, not when a delayed
+    // worker happened to wake up. `resolveMiningArrival` derives ore decay,
+    // claim timestamps and the whole return leg from this value; using wall time
+    // here charged every minute of server downtime to the player's flight.
+    await resolveMiningArrival(tx, runId, event.resolveAt);
   });
 };
 
@@ -1470,6 +1612,9 @@ export const onDeathStarReady: Handler = async ({ db }, event) => {
     const ready = await finishDeathStarBuild(tx, event.refId!, event.payload!.expectedReadyAt as string);
     const planetId = ready[0]?.planetId;
     if (!planetId) return;
+    if (ready[0]?.type === 'INTERCEPTOR') {
+      await wakeStrategicInterceptions(tx, planetId, new Date(event.payload!.expectedReadyAt as string));
+    }
     const [world] = await tx
       .select({ playerId: planets.controllerPlayerId })
       .from(planets)
@@ -1545,9 +1690,332 @@ export const onNeutralReinforce: Handler = async ({ db, clock }, event) => {
   });
 };
 
+/**
+ * A strategic weapon may be engaged in exactly two ways:
+ *
+ *   1. the TARGET world's effective Radar is L3+ and the weapon has crossed that
+ *      Radar rung; L1/L2 deliberately have no interception circle;
+ *   2. the weapon is IDENTIFIED by the Telescope sight of ANY world controlled by
+ *      the defender.
+ *
+ * A ready charge still belongs to the target world. Seeing a weapon from a colony
+ * does not teleport that colony's ammunition to the capital.
+ */
+export const onStrategicIntercept: Handler = async ({ db, clock }, event) => {
+  const missionId = event.refId;
+  if (!missionId) throw new Error('strategic_intercept without refId');
+
+  await db.transaction(async (tx) => {
+    const [mission] = await tx
+      .select()
+      .from(missions)
+      .where(eq(missions.id, missionId))
+      .for('update');
+    if (mission?.status !== 'in_flight' || mission.kind !== 'death_star') return;
+
+    const now = clock.now();
+    const remaining = (mission.arriveAt.getTime() - now.getTime()) / 60_000;
+    // Already over the target: the strike is resolving and there is nothing to stop.
+    if (remaining <= 0) return;
+
+    const [target] = await tx.select().from(planets).where(eq(planets.id, mission.targetPlanetId));
+    // A caretaker world has no commander, no research and nothing to fire.
+    if (!target?.controllerPlayerId) return;
+
+    const [ownedWorlds, [origin]] = await Promise.all([
+      tx.select({
+        id: planets.id,
+        x: planets.x,
+        y: planets.y,
+        z: planets.z,
+      }).from(planets).where(eq(planets.controllerPlayerId, target.controllerPlayerId)),
+      tx.select().from(planets).where(eq(planets.id, mission.originPlanetId)),
+    ]);
+    if (!origin) return;
+
+    const worldIds = [...new Set([
+      mission.originPlanetId,
+      mission.targetPlanetId,
+      ...ownedWorlds.map((world) => world.id),
+    ])];
+    const [coreRows, levels] = await Promise.all([
+      tx.select({ planetId: buildings.planetId, level: buildings.level })
+        .from(buildings)
+        .where(and(inArray(buildings.planetId, worldIds), eq(buildings.type, 'CORE'))),
+      instrumentLevels(tx, worldIds),
+    ]);
+
+    const coreByPlanet = new Map(coreRows.map((row) => [row.planetId, row.level]));
+    const originPoint = { x: origin.x, y: origin.y, z: origin.z };
+    const targetPoint = { x: target.x, y: target.y, z: target.z };
+    const timedLeg = {
+      from: originPoint,
+      to: targetPoint,
+      originCoreLevel: coreByPlanet.get(origin.id) ?? 1,
+      targetCoreLevel: coreByPlanet.get(target.id) ?? 1,
+      oneWayMinutes: (mission.arriveAt.getTime() - mission.departAt.getTime()) / 60_000,
+    };
+    const drawnLeg = visualLeg(
+      originPoint,
+      targetPoint,
+      surfaceStandoff(worldRadius(coreTier(timedLeg.originCoreLevel))),
+      orbitStandoff(worldRadius(coreTier(timedLeg.targetCoreLevel))),
+    );
+    const totalMs = Math.max(1, mission.arriveAt.getTime() - mission.departAt.getTime());
+    const progress = (now.getTime() - mission.departAt.getTime()) / totalMs;
+    const currentPoint = pointAlong(drawnLeg.from, drawnLeg.to, progress);
+
+    // `interceptionRange` is zero at L1/L2. Do not replace this with the wider
+    // contact radius: detection and anti-strategic engagement are separate rules.
+    const reach = interceptionRange(levelOf(levels, target.id, 'RADAR'));
+    const radarLead = reach > 0 ? inboundRadarLead(reach, timedLeg) : 0;
+    const radarEligible = radarLead > 0 && remaining <= radarLead + LEAD_TOLERANCE;
+    const telescopeSpheres = ownedWorlds.flatMap((world) => {
+      const telescope = levelOf(levels, world.id, 'TELESCOPE');
+      // The general sight model has a naked-eye floor for drawing nearby craft.
+      // This rule explicitly requires Telescope sight, so no installed/effective
+      // Telescope means no optical interception sphere.
+      return telescope <= 0 ? [] : [sensorSphere(
+        { x: world.x, y: world.y, z: world.z },
+        telescope,
+        0,
+        world.id,
+      )];
+    });
+    // The crossing solver resolves to milliseconds while positions are continuous.
+    // One game unit is less than a second on this leg and prevents an exact edge
+    // from being rounded a fraction outside and then losing its only event.
+    const telescopeEligible = telescopeSpheres.some(
+      (sphere) => distance(sphere.at, currentPoint) <= sphere.identify + 1,
+    );
+
+    if (!radarEligible && !telescopeEligible) {
+      const candidates: { at: Date; radar: boolean }[] = [];
+      if (radarLead > 0) {
+        const crossing = addMinutes(mission.arriveAt, -radarLead);
+        if (crossing.getTime() > now.getTime()) candidates.push({ at: crossing, radar: true });
+      }
+      const remainingFraction = Math.max(0, 1 - Math.max(0, Math.min(1, progress)));
+      for (const sphere of telescopeSpheres) {
+        const fraction = sphereEntryFraction(currentPoint, drawnLeg.to, sphere.at, sphere.identify);
+        if (fraction === null || fraction <= 0) continue;
+        const at = new Date(now.getTime() + totalMs * remainingFraction * fraction);
+        if (at.getTime() > now.getTime() && at.getTime() < mission.arriveAt.getTime()) {
+          candidates.push({ at, radar: false });
+        }
+      }
+      const next = candidates.toSorted((a, b) => a.at.getTime() - b.at.getTime())[0];
+      if (next) {
+        await schedule(tx, {
+          seasonId: mission.seasonId,
+          kind: 'strategic_intercept',
+          refId: missionId,
+          // Radar shares a boundary with its warning and must win that ordering.
+          // Telescope has no competing siren and fires on the exact sight edge.
+          resolveAt: next.radar ? interceptBefore(next.at) : next.at,
+        });
+      }
+      return;
+    }
+
+    /*
+      ONE CHARGE, AND EXACTLY ONE WEAPON MAY HAVE IT.
+
+      Held FOR UPDATE and spent with a status guard, because two strikes crossing
+      one defender's ring in the same moment are a designed play — the stockpile
+      research exists to send two — and the queue is drained with `SKIP LOCKED` by a
+      worker that production runs as its own service. Read without the lock, both
+      handlers selected the same READY row and both wrote CONSUMED over it, and one
+      charge killed two Death Stars. D139's whole balance is that a loaded defender
+      stops the FIRST and the stockpile is the reply.
+
+      The guarded update is what makes it safe even if the lock is ever lost: the
+      second writer updates nothing, `returning()` comes back empty, and its own
+      strike goes on to land.
+    */
+    const [charge] = await tx
+      .select({ id: strategicAssets.id })
+      .from(strategicAssets)
+      .where(and(
+        eq(strategicAssets.planetId, target.id),
+        eq(strategicAssets.type, 'INTERCEPTOR'),
+        eq(strategicAssets.status, 'READY'),
+      ))
+      .limit(1)
+      .for('update');
+    if (!charge) return;
+
+    const spent = await tx
+      .update(strategicAssets)
+      .set({ status: 'CONSUMED', missionId })
+      .where(and(
+        eq(strategicAssets.id, charge.id),
+        eq(strategicAssets.status, 'READY'),
+      ))
+      .returning({ id: strategicAssets.id });
+    if (!spent[0]) return;
+    const claimed = await tx
+      .update(missions)
+      .set({ status: 'resolved' })
+      .where(and(eq(missions.id, missionId), eq(missions.status, 'in_flight')))
+      .returning({ id: missions.id });
+    if (!claimed[0]) return;
+    await tx
+      .update(strategicAssets)
+      .set({ status: 'CONSUMED' })
+      .where(and(eq(strategicAssets.missionId, missionId), eq(strategicAssets.type, 'DEATH_STAR')));
+
+    /*
+      FIRE IMMEDIATELY; LET THE FLIGHT PROVIDE THE REACTION WINDOW.
+
+      Delaying launch would make a ready defence look inert and could let the
+      Death Star arrive while its counter was deliberately waiting. The missile
+      instead takes eight seconds to meet it. If a charge becomes ready inside
+      those final eight seconds, clamp the cinematic to the remaining journey so
+      the interception can never explode after the strike's original arrival.
+    */
+    const flightMs = Math.min(
+      ANTI_STRATEGIC.flightSeconds * 1_000,
+      mission.arriveAt.getTime() - now.getTime(),
+    );
+    const impactAt = new Date(now.getTime() + flightMs);
+    const impactProgress = (impactAt.getTime() - mission.departAt.getTime()) / totalMs;
+    const collision = pointAlong(drawnLeg.from, drawnLeg.to, impactProgress);
+    await tx.insert(strategicInterceptions).values({
+      seasonId: mission.seasonId,
+      missionId,
+      attackerPlayerId: mission.ownerPlayerId,
+      defenderPlayerId: target.controllerPlayerId,
+      targetPlanetId: target.id,
+      chargeId: charge.id,
+      trigger: radarEligible ? 'RADAR' : 'TELESCOPE',
+      launchAt: now,
+      impactAt,
+      launchX: target.x,
+      launchY: target.y,
+      launchZ: target.z,
+      deathStarFromX: currentPoint.x,
+      deathStarFromY: currentPoint.y,
+      deathStarFromZ: currentPoint.z,
+      collisionX: collision.x,
+      collisionY: collision.y,
+      collisionZ: collision.z,
+    });
+    await schedule(tx, {
+      seasonId: mission.seasonId,
+      kind: 'strategic_intercept_impact',
+      refId: missionId,
+      resolveAt: impactAt,
+    });
+
+    /*
+      THE LAUNCH INSTANT IS NOT A GALAXY-WIDE FACT. D139.
+
+      A shard `impact` here told every connected commander that a hidden weapon
+      had just been intercepted, eight seconds before the public Chronicle moment.
+      Address the two participants and only effective-Telescope witnesses instead;
+      each recipient still refetches in time to see the rocket leave the planet.
+    */
+    const witnessWorlds = await tx
+      .select({
+        id: planets.id,
+        controllerPlayerId: planets.controllerPlayerId,
+        x: planets.x,
+        y: planets.y,
+        z: planets.z,
+      })
+      .from(planets)
+      .where(and(
+        eq(planets.seasonId, mission.seasonId),
+        isNotNull(planets.controllerPlayerId),
+      ));
+    const witnessLevels = await instrumentLevels(tx, witnessWorlds.map((world) => world.id));
+    const audience = new Set([mission.ownerPlayerId, target.controllerPlayerId]);
+    for (const world of witnessWorlds) {
+      const telescope = levelOf(witnessLevels, world.id, 'TELESCOPE');
+      if (telescope <= 0 || !world.controllerPlayerId) continue;
+      const sight = sensorSphere({ x: world.x, y: world.y, z: world.z }, telescope, 0, world.id);
+      if (distance(sight.at, collision) <= sight.identify) audience.add(world.controllerPlayerId);
+    }
+    for (const playerId of audience) await publishStrategicSight(tx, playerId);
+  });
+};
+
+/** Finish the reserved interception collision and publish its durable history. */
+export const onStrategicInterceptImpact: Handler = async ({ db, clock }, event) => {
+  const missionId = event.refId;
+  if (!missionId) throw new Error('strategic_intercept_impact without refId');
+
+  await db.transaction(async (tx) => {
+    const [interception] = await tx
+      .update(strategicInterceptions)
+      .set({ resolvedAt: clock.now() })
+      .where(and(
+        eq(strategicInterceptions.missionId, missionId),
+        isNull(strategicInterceptions.resolvedAt),
+      ))
+      .returning();
+    if (!interception) return;
+
+    await tx.insert(strategicImpacts).values({
+      seasonId: interception.seasonId,
+      missionId,
+      attackerPlayerId: interception.attackerPlayerId,
+      defenderPlayerId: interception.defenderPlayerId,
+      targetPlanetId: interception.targetPlanetId,
+      outcome: 'INTERCEPTED',
+      damage: 0,
+      destroyedFleet: {},
+    });
+
+    const identity = await publicPlanetIdentity(tx, interception.targetPlanetId);
+    const collision = {
+      x: interception.collisionX,
+      y: interception.collisionY,
+      z: interception.collisionZ,
+    };
+    const targetPoint = {
+      x: interception.launchX,
+      y: interception.launchY,
+      z: interception.launchZ,
+    };
+    const interceptionRangeAtImpact = distance(targetPoint, collision);
+    await recordGalaxyEvent(tx, {
+      seasonId: interception.seasonId,
+      kind: 'strategic_intercept',
+      refId: missionId,
+      subjectPlanetId: interception.targetPlanetId,
+      payload: {
+        planetName: identity?.planetName ?? 'Unknown world',
+        commanderName: identity?.commanderName ?? 'Unknown commander',
+        range: interceptionRangeAtImpact,
+        trigger: interception.trigger,
+      },
+      occurredAt: interception.impactAt,
+    });
+    for (const playerId of [interception.defenderPlayerId, interception.attackerPlayerId]) {
+      await notify(tx, {
+        playerId,
+        kind: 'strategic_intercepted',
+        refId: missionId,
+        payload: {
+          planetId: interception.targetPlanetId,
+          defended: playerId === interception.defenderPlayerId,
+          trigger: interception.trigger,
+          range: interceptionRangeAtImpact,
+        },
+        at: interception.impactAt,
+      });
+    }
+    await publishShard(tx, interception.seasonId, 'impact');
+  });
+};
+
 export const HANDLERS: Partial<Record<EventRow['kind'], Handler>> = {
   mission_arrival: onMissionArrival,
   radar_warning: onRadarWarning,
+  strategic_intercept: onStrategicIntercept,
+  strategic_intercept_impact: onStrategicInterceptImpact,
   mining_arrival: onMiningArrival,
   mining_return: onMiningReturn,
   season_end: onSeasonEnd,

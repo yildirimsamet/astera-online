@@ -10,8 +10,6 @@ import {
   alloyRate,
   flightSlots,
   collectorCap,
-  crystalRate,
-  deuteriumStorageCap,
   instrumentCost,
   prospectorHold,
   prospectorSpeed,
@@ -21,6 +19,7 @@ import {
   upgradeCost,
 } from '@astera/rules';
 import { battleReports, planets } from '../src/db/schema.js';
+import { planetView } from '../src/services/planetView.js';
 import { collectWorks, installSatellite, raiseInstrument } from '../src/services/build.js';
 import { assignWatch, launchProbe } from '../src/services/intel.js';
 import { launchAttack } from '../src/services/mission.js';
@@ -123,8 +122,23 @@ describe('collecting the works', () => {
     expect(result.bufferAlloy).toBe(result.blocked.alloy);
   });
 
-  it('collects Deuterium only up to the Extractor containment cap', async () => {
-    const cap = deuteriumStorageCap(crystalRate(4), 0);
+  /**
+   * THE CAP CAME OFF THE EXTRACTOR UNTIL DEUTERIUM HAD A RATE OF ITS OWN. T5/D135.
+   *
+   * This asserted the containment ceiling against `crystalRate`, which was the only
+   * honest figure available while nothing produced deuterium — and it is what let
+   * eleven call sites go on passing a crystal rate into a parameter that had come
+   * to mean something else. Both are `number`; the compiler saw nothing. The rule
+   * now is the one the vault floors already obeyed: hours of a resource's OWN
+   * production.
+   */
+  it('collects Deuterium only up to what its own refinery can contain', async () => {
+    await setLevel(f.db, mine, 'DEUTERIUM_PLANT', 6);
+    // Off the payload the server itself publishes, so the clamp and the readout
+    // are asserted to be the same number rather than two hand-derived ones.
+    const view = await f.db.transaction((tx) => planetView(tx, mine, f.clock));
+    const cap = view.planet.deuteriumCap;
+    expect(cap).toBeGreaterThan(25);
     await f.db
       .update(planets)
       .set({ deuterium: cap - 25, bufferDeuterium: 100 })
@@ -135,6 +149,25 @@ describe('collecting the works', () => {
     expect(result.blocked.deuterium).toBe(75);
     expect(result.deuterium).toBe(cap);
     expect(result.bufferDeuterium).toBe(75);
+  });
+
+  /**
+   * AND A WORLD WITH NO REFINERY STILL BANKS WHAT IT MINED.
+   *
+   * Sizing the ceiling off the plant alone looked correct and made isotope
+   * deuterium — the whole of the Frontier act — impossible to collect on every
+   * world that had not built one. The industrial half of the ceiling is what a
+   * miner keeps, and it is exactly the figure the game always gave them.
+   */
+  it('still banks mined Deuterium on a world with no refinery', async () => {
+    await f.db
+      .update(planets)
+      .set({ deuterium: 0, bufferDeuterium: 100 })
+      .where(eq(planets.id, mine));
+
+    const result = await collectWorks(f.db, mine, f.clock);
+    expect(result.moved.deuterium).toBe(100);
+    expect(result.bufferDeuterium).toBe(0);
   });
 });
 
@@ -209,8 +242,8 @@ describe('telescope range and cooldown', () => {
     await giveSatellite(f.db, mine, 'UPLINK');
     await placeAt(f.db, mine, { x: 0 });
     await placeAt(f.db, near, { x: 200 });
-    // Beyond L1's reach of 420, inside L3's 950.
-    await placeAt(f.db, far, { x: 700 });
+    // Beyond L1's reach of 950, inside L3's 1,250.
+    await placeAt(f.db, far, { x: 1_000 });
   });
 
   it('refuses a world beyond the telescope reach', async () => {
@@ -223,7 +256,7 @@ describe('telescope range and cooldown', () => {
   it('a bigger telescope reaches further', async () => {
     await giveInstrument(f.db, mine, 'TELESCOPE', 3);
     await expect(assignWatch(f.db, mine, far, 0, f.clock)).resolves.toBeTruthy();
-    expect(INTEL.telescopeRange[3]!).toBeGreaterThan(700);
+    expect(INTEL.telescopeRange[3]!).toBeGreaterThan(1_000);
   });
 
   /** Filling an empty slot is free. The price is changing your mind. */
@@ -774,7 +807,7 @@ describe('what a satellite does', () => {
 
   /** The Derrick lifts every craft the planet owns, at once. */
   it('the Derrick makes a mining craft carry more and fly faster', () => {
-    expect(prospectorHold(['DERRICK'])).toBeGreaterThan(prospectorHold([]));
+    expect(prospectorHold(['DERRICK'], {})).toBeGreaterThan(prospectorHold([], {}));
     expect(prospectorSpeed(['DERRICK'])).toBeGreaterThan(prospectorSpeed([]));
   });
 

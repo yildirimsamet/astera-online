@@ -2,10 +2,10 @@ import { Suspense, useEffect, useMemo, useRef, useState, type RefObject } from '
 import { useFrame } from '@react-three/fiber';
 import { Billboard, useGLTF } from '@react-three/drei';
 import * as THREE from 'three';
-import { engagementEndsAt, isEngaging } from '@astera/rules';
+import { engagementEndsAt, isEngaging, seededFrom } from '@astera/rules';
 import type { Contact, PendingThread } from '../api/schemas.js';
 import { HULL_MODEL, MODEL, MODEL_FACING } from '../ui/assets.js';
-import { Bombardment } from './Bombardment.jsx';
+import { Bombardment, bombardmentIntensity } from './Bombardment.jsx';
 import { softGlow } from './Environment.jsx';
 import { orientedCraft } from './model.js';
 import {
@@ -14,6 +14,7 @@ import {
   engagementHold,
   legEnd,
   legStandoff,
+  orbitStandoff,
   targetNodeOf,
   threadPosition,
   toWorld,
@@ -22,18 +23,18 @@ import {
 } from './scene.js';
 import {
   PER_MODEL,
-  formationHitRadius,
+  formationHitBox,
   markersFor,
   slotOffset,
   type Marker,
 } from './Squadrons.js';
 import { markHit, wasTap } from './tap.js';
 import { serverNow } from '../lib/clock.js';
-import { useReducedMotionPreference } from './motion.js';
 import {
   DEATH_STAR_LIGHT,
   HULL_LIGHT,
   TRACKING_MARK,
+  UNKNOWN_CONTACT_MARK,
   formationAimDirection,
 } from './flightVisual.js';
 import { fireTexture } from './vfx.js';
@@ -346,7 +347,6 @@ const plumeShape = (i: number) => {
 function Exhaust({ colour, length, width }: { colour: string; length: number; width: number }) {
   const group = useRef<THREE.Group>(null);
   const glow = useMemo(() => softGlow(), []);
-  const reducedMotion = useReducedMotionPreference();
 
   const puffs = useMemo(
     () =>
@@ -366,7 +366,7 @@ function Exhaust({ colour, length, width }: { colour: string; length: number; wi
     const node = group.current;
     if (!node) return;
     const t = clock.elapsedTime;
-    const pulse = reducedMotion ? 1 : 1 + Math.sin(t * 17) * 0.09 + Math.sin(t * 6.3) * 0.06;
+    const pulse = 1 + Math.sin(t * 17) * 0.09 + Math.sin(t * 6.3) * 0.06;
     node.scale.set(1, 1, pulse);
   });
 
@@ -668,6 +668,7 @@ function Flight({
         : [[0, 0, 0]],
     [markers, style.scale],
   );
+  const hitBox = useMemo(() => formationHitBox(slots, style.scale), [slots, style.scale]);
 
   const engaging = useEngagement(path ? path.arriveAt.getTime() : null);
   /**
@@ -761,6 +762,7 @@ function Flight({
           separately meaningful, which they are not — the squadron is the object.
         */}
         <mesh
+          position={hitBox.centre}
           onPointerUp={(event) => {
             if (!wasTap()) return;
             markHit();
@@ -768,7 +770,7 @@ function Flight({
             onSelect();
           }}
         >
-          <sphereGeometry args={[formationHitRadius(markers?.length ?? 1, style.scale), 8, 6]} />
+          <boxGeometry args={hitBox.size} />
           <meshBasicMaterial transparent opacity={0} depthWrite={false} />
         </mesh>
 
@@ -946,7 +948,6 @@ function FormationLightField({
   focused: boolean;
   showPips: boolean;
 }) {
-  const reducedMotion = useReducedMotionPreference();
   const aimed = useMemo<Vec3Tuple>(() => [0, 0, 1], []);
   const lights = useMemo(() => {
     const count = markers.length * PLUME_STEPS;
@@ -1068,7 +1069,7 @@ function FormationLightField({
     });
     positions.needsUpdate = true;
     glowMaterial.uniforms.uTime!.value = clock.elapsedTime;
-    glowMaterial.uniforms.uMotion!.value = reducedMotion ? 0 : 1;
+    glowMaterial.uniforms.uMotion!.value = 1;
     const perspective = camera as THREE.PerspectiveCamera;
     const fov = THREE.MathUtils.degToRad(perspective.fov || 45);
     glowMaterial.uniforms.uProjectionScale!.value =
@@ -1324,7 +1325,6 @@ export function Wake({
 }) {
   const mesh = useRef<THREE.Mesh>(null);
   const material = useMemo(() => makeWakeMaterial(), []);
-  const reducedMotion = useReducedMotionPreference();
 
   /** Colours and indices never change; only the vertices move. Built once. */
   const geometry = useMemo(() => {
@@ -1392,9 +1392,7 @@ export function Wake({
       // shed from the craft rather than bolted to it.
       const envelope = (0.42 + Math.sin(Math.PI * back) * 0.72) * (1 - back);
       const w = scale * WAKE_WIDTH * envelope;
-      const flutter = reducedMotion
-        ? 0
-        : Math.sin(clock.elapsedTime * 2.7 + back * 14) * w * back * 0.22;
+      const flutter = Math.sin(clock.elapsedTime * 2.7 + back * 14) * w * back * 0.22;
       const z = -scale * WAKE_LENGTH * lengthScale * back;
       const v = k * 2;
       position.setXYZ(v, side.x * (w + flutter), side.y * (w + flutter), z + side.z * w);
@@ -1402,7 +1400,7 @@ export function Wake({
     }
     position.needsUpdate = true;
     material.uniforms.uTime!.value = clock.elapsedTime;
-    material.uniforms.uMotion!.value = reducedMotion ? 0 : 1;
+    material.uniforms.uMotion!.value = 1;
   });
 
   return (
@@ -1430,7 +1428,6 @@ function FormationWakes({
 }) {
   const mesh = useRef<THREE.Mesh>(null);
   const material = useMemo(() => makeWakeMaterial(), []);
-  const reducedMotion = useReducedMotionPreference();
   const geometry = useMemo(() => {
     const verticesPerWake = WAKE_SEGMENTS * 2;
     const positions = new Float32Array(markers.length * verticesPerWake * 3);
@@ -1489,12 +1486,10 @@ function FormationWakes({
         const back = k / (WAKE_SEGMENTS - 1);
         const envelope = (0.42 + Math.sin(Math.PI * back) * 0.72) * (1 - back);
         const width = scale * WAKE_WIDTH * envelope;
-        const flutter = reducedMotion
-          ? 0
-          : Math.sin(clock.elapsedTime * 2.7 + back * 14 + markerIndex * 1.7) *
-            width *
-            back *
-            0.22;
+        const flutter = Math.sin(clock.elapsedTime * 2.7 + back * 14 + markerIndex * 1.7) *
+          width *
+          back *
+          0.22;
         const distance = scale * WAKE_LENGTH * back;
         const centreX = slot[0] - direction.x * distance;
         const centreY = slot[1] - direction.y * distance;
@@ -1516,7 +1511,7 @@ function FormationWakes({
     });
     positions.needsUpdate = true;
     material.uniforms.uTime!.value = clock.elapsedTime;
-    material.uniforms.uMotion!.value = reducedMotion ? 0 : 1;
+    material.uniforms.uMotion!.value = 1;
   });
 
   useEffect(
@@ -1609,14 +1604,30 @@ function Pips({ filled, scale, lit }: { filled: number; scale: number; lit: bool
  * amber for a Prospector — and trailing the same streak. What they do NOT wear is
  * a route: the server sends a bearing window rather than endpoints, so there is
  * nothing here to draw a line from even if this file wanted to. The one exception
- * is a mining run, whose leg and clock are public because the race for a rock is.
+ * is a mining run to a rock this commander has discovered; its leg and clock make
+ * that earned race readable.
  *
- * THEY CARRY THEIR PIPS TOO. Composition is public (D24), so a foreign squadron is
- * drawn exactly the way your own is: one model per `PER_MODEL` ships, pips above each for
- * what it really holds. Showing a single anonymous hull while the focus panel spelt
- * out "8 Wasps" was the interface disagreeing with itself about the same fact.
+ * Radar contacts are silhouettes, not rosters. Once Telescope sight identifies a
+ * fleet, it uses the real hull assets and the same exact-count pips as an owned
+ * squadron.
+ * A public engagement outside every sensor circle is not a contact at all:
+ * `Traffic` routes it to `ConcealedEngagement`, which mounts only the volley.
  */
+/** What a hostile leg aimed at one of your worlds is painted in. D126. */
+const THREAT_NEON = '#ff5b6e';
+const THREAT_FLAME = '#ffb0ba';
+
 const CONTACT_STYLE: Record<Contact['kind'], { neon: string; scale: number; flame: string }> = {
+  /**
+   * A CONTACT YOU CANNOT IDENTIFY. D125.
+   *
+   * Deliberately colourless. Every other neon on this list is an ANSWER — blue is
+   * a warship, green a scout, amber a drill — so an unidentified contact may not
+   * borrow any of them, or the disc would be naming the thing it is meant to be
+   * withholding. Cold steel says "a return, and nothing more", which is exactly
+   * what a sensor at the edge of its range gives you.
+   */
+  unknown: { neon: '#c7ecff', scale: 0.19 * CRAFT_SCALE, flame: '#c7ecff' },
   fleet: { neon: '#3fa9ff', scale: 0.195 * CRAFT_SCALE, flame: '#8fd8ff' },
   probe: { neon: '#3ff08a', scale: 0.15 * CRAFT_SCALE, flame: '#9dffc4' },
   mining: { neon: '#ffb057', scale: 0.18 * CRAFT_SCALE, flame: '#ffd9a8' },
@@ -1627,16 +1638,142 @@ const CONTACT_STYLE: Record<Contact['kind'], { neon: string; scale: number; flam
   death_star: { neon: '#ff4d67', scale: 0.34 * CRAFT_SCALE, flame: '#ff9cac' },
 };
 
-/** A probe is one craft; anything else is drawn from what the payload says is in it. */
+/**
+ * HOW MANY UNMARKED HULLS A RADAR SILHOUETTE IS DRAWN WITH. D123.
+ *
+ * A Radar contact has no actual roster, so its mass bucket must not be rendered as
+ * if it did. Telescope contacts bypass this table and draw their actual manifest.
+ *
+ * So the formation now says SIZE and nothing else. Three counts rather than a
+ * continuous ramp, matching the three the server buckets into — the eye separates
+ * "a few", "a lot" and "an awful lot", and nothing finer than that would survive
+ * being looked at on a phone anyway.
+ *
+ * PIPS ARE OFF FOR RADAR SILHOUETTES, which matters more than it looks: a pip is a count of
+ * real ships, and printing one over a marker that stands for an estimate would be
+ * the interface inventing a precision the payload does not have. The panel names
+ * the reading as an estimate for the same reason. The fog HIDES; it never lies.
+ *
+ * It is also the answer to the performance case D115 left open — twenty
+ * simultaneous hundred-ship raids were roughly four hundred markers, and are now
+ * at most three hundred and twenty in the worst case and typically far fewer.
+ */
+const SILHOUETTE: Record<'LIGHT' | 'MEDIUM' | 'HEAVY', number> = {
+  LIGHT: 3,
+  MEDIUM: 8,
+  HEAVY: 16,
+};
+
+/** A probe is one craft; a run draws its public count; sight draws an exact fleet. */
 const contactMarkers = (contact: Contact): Marker[] | null => {
+  // An unidentified contact has no hull to draw, which is the whole point of it.
+  if (contact.kind === 'unknown') return null;
   if (contact.kind === 'probe' || contact.kind === 'death_star') return null;
   // A harvest is Prospectors too, and its count is in `craft` like a mining run's.
-  // Falling through to `fleet` — which a run never carries — drew NOTHING at all.
+  // Telescope has identified these Prospectors, so these are real counts rather
+  // than the mass estimate a Radar contact may carry.
   if (contact.kind === 'mining' || contact.kind === 'harvest') {
     return markersFor({ PROSPECTOR: contact.craft ?? 1 });
   }
-  return markersFor(contact.fleet ?? {});
+  // Telescope sight carries the real manifest, so use the same hull assets and
+  // marker arithmetic as the owner's own squadron. The fallback is only for a
+  // client briefly talking to an older server during a rolling deploy.
+  if (contact.fleet) return markersFor(contact.fleet);
+  return markersFor({ WASP: SILHOUETTE[contact.mass ?? 'LIGHT'] * PER_MODEL });
 };
+
+/**
+ * A BLIND PUBLIC VOLLEY HAS A DRAWN SOURCE, NOT AN INTEL SOURCE. D52/D123.
+ *
+ * Rockets need somewhere to come from, but using the real orbit hold would hand
+ * an out-of-range observer the squadron's final approach direction. This stable
+ * unit vector is derived only from the opaque mission id. It is intentionally
+ * unrelated to the real leg and therefore cannot be reverse-engineered into one.
+ */
+export function concealedEngagementDirection(id: string): Vec3Tuple {
+  const random = seededFrom('concealed-engagement', id);
+  const y = random() * 1.2 - 0.6;
+  const angle = random() * Math.PI * 2;
+  const horizontal = Math.sqrt(Math.max(0, 1 - y * y));
+  return [Math.cos(angle) * horizontal, y, Math.sin(angle) * horizontal];
+}
+
+/** Fixed visual battery: it never scales with the hidden fleet's real mass. */
+const CONCEALED_VOLLEY_SLOTS: Vec3Tuple[] = [
+  [0, 0, 0],
+  [-0.13, 0.035, -0.08],
+  [0.13, -0.035, -0.08],
+];
+
+/**
+ * The public half of a raid when no sensor can see the craft itself.
+ *
+ * No tracking mark, hull, wake, hit box or selectable contact is mounted here.
+ * Only the deterministic rounds and their surface impacts exist. The synthetic
+ * source keeps the cinematic readable without laundering a hidden bearing through
+ * the renderer.
+ */
+function ConcealedEngagement({
+  contact,
+  nodes,
+}: {
+  contact: Contact;
+  nodes: readonly PlanetNode[];
+}) {
+  const fight = contact.engagement;
+  const engaging = useEngagement(fight ? fight.arriveAt.getTime() : null);
+  const world = useMemo(
+    () => (fight ? targetNodeOf(nodes, fight.target) : undefined),
+    [fight, nodes],
+  );
+  const centre = useMemo(() => (fight ? toWorld(fight.target) : null), [fight]);
+  const direction = useMemo(() => concealedEngagementDirection(contact.id), [contact.id]);
+  const source = useMemo<Vec3Tuple | null>(() => {
+    if (!world || !centre) return null;
+    const distance = orbitStandoff(world.radius);
+    return [
+      centre[0] + direction[0] * distance,
+      centre[1] + direction[1] * distance,
+      centre[2] + direction[2] * distance,
+    ];
+  }, [centre, direction, world]);
+  const orientation = useMemo(() => {
+    if (!source || !centre) return null;
+    const frame = new THREE.Object3D();
+    frame.position.set(source[0], source[1], source[2]);
+    frame.lookAt(centre[0], centre[1], centre[2]);
+    return frame.quaternion.clone();
+  }, [centre, source]);
+
+  if (!fight || !world || !centre || !source || !orientation || !engaging) return null;
+
+  return (
+    <group
+      name="concealed-engagement"
+      position={source}
+      quaternion={orientation}
+      userData={{ engagementId: contact.id }}
+    >
+      <Bombardment
+        volleyKey={contact.id}
+        slots={CONCEALED_VOLLEY_SLOTS}
+        distance={Math.hypot(
+          centre[0] - source[0],
+          centre[1] - source[1],
+          centre[2] - source[2],
+        )}
+        radius={world.radius}
+        shipScale={CONTACT_STYLE.fleet.scale}
+        arriveAt={fight.arriveAt.getTime()}
+        intensity={bombardmentIntensity(true)}
+      />
+    </group>
+  );
+}
+
+/** The renderer's hard boundary between a sensed craft and a public effect. */
+export const contactPresentation = (contact: Contact): 'effect' | 'craft' =>
+  contact.effectOnly === true ? 'effect' : 'craft';
 
 export function Traffic({
   contacts,
@@ -1655,17 +1792,102 @@ export function Traffic({
   return (
     <>
       {contacts.map((contact) => (
-        <Foreign
-          key={contact.id}
-          contact={contact}
-          nodes={nodes}
-          focused={contact.id === focusedId}
-          onSelect={() => {
-            onSelect(contact.id);
-          }}
-        />
+        contactPresentation(contact) === 'effect' ? (
+          <ConcealedEngagement key={contact.id} contact={contact} nodes={nodes} />
+        ) : (
+          <Foreign
+            key={contact.id}
+            contact={contact}
+            nodes={nodes}
+            focused={contact.id === focusedId}
+            onSelect={() => {
+              onSelect(contact.id);
+            }}
+          />
+        )
       ))}
     </>
+  );
+}
+
+/**
+ * The question mark every unidentified contact wears. D125.
+ *
+ * ONE TEXTURE FOR THE WHOLE GALAXY, built once and shared by every sprite. A DOM
+ * overlay per contact would have been fewer lines and would put a hundred elements
+ * on the page in a busy season; a canvas glyph is the same picture for the cost of
+ * one upload.
+ */
+let questionTexture: THREE.Texture | null = null;
+function questionMark(): THREE.Texture {
+  if (questionTexture) return questionTexture;
+  const size = 256;
+  const canvas = document.createElement('canvas');
+  canvas.width = size;
+  canvas.height = size;
+  const ctx = canvas.getContext('2d');
+  if (ctx) {
+    ctx.clearRect(0, 0, size, size);
+    ctx.fillStyle = '#ffffff';
+    ctx.strokeStyle = '#ffffff';
+    ctx.lineWidth = size * 0.025;
+    ctx.shadowColor = '#ffffff';
+    ctx.shadowBlur = size * 0.09;
+    ctx.font = `800 ${String(size * 0.7)}px system-ui, sans-serif`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.strokeText('?', size / 2, size * 0.54);
+    ctx.fillText('?', size / 2, size * 0.54);
+  }
+  questionTexture = new THREE.CanvasTexture(canvas);
+  questionTexture.colorSpace = THREE.SRGBColorSpace;
+  questionTexture.needsUpdate = true;
+  return questionTexture;
+}
+
+/**
+ * The question mark every unidentified contact wears. D125.
+ *
+ * ONE TEXTURE FOR THE WHOLE GALAXY, built once and shared. A DOM overlay per
+ * contact would have been fewer lines and would put a hundred elements on the page
+ * in a busy season; a canvas glyph is the same picture for one upload.
+ *
+ * A BILLBOARDED PLANE, NOT A SPRITE, AND THE FIRST DRAFT LEARNED WHY. `<sprite>`
+ * was the obvious primitive and it rendered as large black screen-aligned
+ * rectangles that flickered in and out — which is also why `docs/visual-design.md`
+ * says camera-facing markers are not used here and why `TrackingMark`, the one
+ * component doing exactly this job, is built from `Billboard` and meshes. Using
+ * the primitive the scene already trusts is both the fix and the house style.
+ */
+function UnknownMark({
+  scale,
+  colour,
+  focused,
+}: {
+  scale: number;
+  colour: string;
+  focused: boolean;
+}) {
+  const texture = useMemo(() => questionMark(), []);
+  const size = scale * UNKNOWN_CONTACT_MARK.glyphScale;
+
+  return (
+    <Billboard follow lockX={false} lockY={false} lockZ={false}>
+      <mesh renderOrder={SHIP_ORDER + 4}>
+        <planeGeometry args={[size, size]} />
+        <meshBasicMaterial
+          map={texture}
+          color={colour}
+          transparent
+          opacity={focused
+            ? UNKNOWN_CONTACT_MARK.focusedGlyphOpacity
+            : UNKNOWN_CONTACT_MARK.glyphOpacity}
+          depthWrite={false}
+          toneMapped={false}
+          blending={THREE.AdditiveBlending}
+        />
+      </mesh>
+    </Billboard>
   );
 }
 
@@ -1682,8 +1904,23 @@ function Foreign({
 }) {
   const group = useRef<THREE.Group>(null);
   const formationAim = useRef(100);
-  const style = CONTACT_STYLE[contact.kind];
+  /**
+   * A CONTACT AIMED AT YOU WEARS THE THREAT COLOUR. D126.
+   *
+   * The radar's long tier has no text and needs none: a mote you cannot identify,
+   * turning hostile red as it crosses into the reach of a world you own, says
+   * "that one is for you" in the only language this game trusts (D124). What it
+   * still does not say is WHEN — that costs the tight ladder, and the picture is
+   * careful not to imply otherwise by adding a clock anywhere near it.
+   */
+  const style = useMemo(() => {
+    const base = CONTACT_STYLE[contact.kind];
+    return contact.inbound === true
+      ? { ...base, neon: THREAT_NEON, flame: THREAT_FLAME }
+      : base;
+  }, [contact.kind, contact.inbound]);
   const markers = useMemo(() => contactMarkers(contact), [contact]);
+  const exactFleet = contact.kind === 'fleet' && contact.fleet !== undefined;
 
   const from = useMemo(() => toWorld(contact.from), [contact.from]);
   const to = useMemo(() => toWorld(contact.to), [contact.to]);
@@ -1723,6 +1960,7 @@ function Foreign({
         : [[0, 0, 0]],
     [markers, style.scale],
   );
+  const hitBox = useMemo(() => formationHitBox(slots, style.scale), [slots, style.scale]);
 
   /**
    * A MINING RUN'S LINE IS PUBLIC; NOTHING ELSE'S IS.
@@ -1798,6 +2036,7 @@ function Foreign({
           this is for.
         */}
         <mesh
+          position={hitBox.centre}
           onPointerUp={(event) => {
             if (!wasTap()) return;
             markHit();
@@ -1805,16 +2044,7 @@ function Foreign({
             onSelect();
           }}
         >
-          <sphereGeometry
-            args={[
-              formationHitRadius(
-                contact.kind === 'fleet' ? (markers?.length ?? 1) : 1,
-                style.scale,
-              ),
-              8,
-              6,
-            ]}
-          />
+          <boxGeometry args={hitBox.size} />
           <meshBasicMaterial transparent opacity={0} depthWrite={false} />
         </mesh>
 
@@ -1843,7 +2073,9 @@ function Foreign({
                 scale={style.scale}
                 aimDistance={formationAim}
                 focused={focused}
-                showPips={contact.kind === 'fleet'}
+                // Telescope sight is exact, so its tally uses the same pips as an
+                // owned squadron. Radar silhouettes and mining craft do not.
+                showPips={exactFleet}
               />
               <FormationWakes
                 markers={markers}
@@ -1859,11 +2091,22 @@ function Foreign({
                   scale={style.scale}
                   aimDistance={formationAim}
                   focused={focused}
-                  pips={contact.kind === 'fleet'}
+                  pips={exactFleet}
                   batched
                 />
               ))}
             </>
+          ) : contact.kind === 'unknown' ? (
+            /**
+             * NO HULL, BECAUSE THERE IS NO HULL TO SHOW. D125.
+             *
+             * Every other contact draws a model, and a model is an ANSWER — draw
+             * a probe here and the disc has just told the player it is a probe.
+             * What is left is a mark and a question, which is the honest content
+             * of a sensor return at the edge of its range: something is there, and
+             * your instrument cannot say what.
+             */
+            <UnknownMark scale={style.scale} colour={style.neon} focused={focused} />
           ) : (
             <>
               <Wake
@@ -1926,13 +2169,50 @@ function TrackingMark({
   colour: string;
   focused: boolean;
 }) {
-  const radius = scale * (kind === 'death_star' ? 0.225 : TRACKING_MARK.standardRadius);
-  const opacity = focused ? 0.92 : 0.46;
+  const unknown = kind === 'unknown';
+  const radius = scale * (
+    kind === 'death_star'
+      ? 0.225
+      : unknown
+        ? UNKNOWN_CONTACT_MARK.radius
+        : TRACKING_MARK.standardRadius
+  );
+  const opacity = unknown
+    ? focused
+      ? UNKNOWN_CONTACT_MARK.focusedOpacity
+      : UNKNOWN_CONTACT_MARK.opacity
+    : focused
+      ? 0.92
+      : 0.46;
   const segments = kind === 'probe' ? 4 : kind === 'mining' || kind === 'harvest' ? 6 : 32;
-  const ringOuter = kind === 'death_star' ? 1.0175 : TRACKING_MARK.ringOuter;
+  const ringOuter = kind === 'death_star'
+    ? 1.0175
+    : unknown
+      ? UNKNOWN_CONTACT_MARK.ringOuter
+      : TRACKING_MARK.ringOuter;
   return (
     <Billboard follow lockX={false} lockY={false} lockZ={false}>
       <group name={`tracking-mark-${kind}`} rotation={[0, 0, kind === 'probe' ? Math.PI / 4 : 0]}>
+        {/*
+          AN UNIDENTIFIED RETURN GETS A BROKEN RETICLE. D125.
+          Three segments rather than a closed circle: the reticle itself says the
+          lock did not complete, which is the same fact the question mark inside it
+          states in words. Nothing here names a kind, because naming it is exactly
+          what the Telescope is sold for.
+        */}
+        {kind === 'unknown' && (
+          <mesh renderOrder={SHIP_ORDER + 3}>
+            <ringGeometry args={[radius, radius * ringOuter, 3]} />
+            <meshBasicMaterial
+              color={colour}
+              transparent
+              opacity={opacity}
+              depthWrite={false}
+              toneMapped={false}
+              blending={THREE.AdditiveBlending}
+            />
+          </mesh>
+        )}
         {(kind === 'probe' || kind === 'mining' || kind === 'harvest' || kind === 'death_star') && (
           <mesh renderOrder={SHIP_ORDER + 3}>
             <ringGeometry args={[radius, radius * ringOuter, segments]} />

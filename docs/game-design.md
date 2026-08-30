@@ -7,7 +7,7 @@ Formulas and constants: `balance.md`. Why each choice was made: `decisions.md`. 
 terms: `glossary.md`.
 
 > Everything below is built and playable except **asteroid impacts**. Season freeze, personal
-> records, the fifteen-minute afterglow and atomic successor rollover are live. The first
+> records, the five-minute afterglow and atomic successor rollover are live. The first
 > Frontier slice is also live: research access, isotope asteroids, contested Deuterium and
 > the Deuterium-priced Runner and shield-specialist Breacher all use the same
 > ruleset as the rest of the galaxy.
@@ -78,7 +78,16 @@ Five numbers, one portrait screen, no scrolling. **A hard cap.**
 Buildings, instruments, satellites and research share CONSTRUCTION; mobile hulls and ground
 defence share YARD. Each queue is three orders deep and processes one order at a time. Cancelling
 is a decision, not an undo: it refunds half the committed resources. A system-abandoned order
-refunds everything. The Death Star keeps its separate sixty-minute strategic build (D97).
+refunds everything. The Death Star keeps its separate sixty-minute strategic build (D97), and so
+does the interception charge that answers it (D139) — both are strategic assets on the world rather
+than queue orders, and both are stopped by a bombardment and resumed by the recovery that follows.
+
+**Research is bought on a surface of its own** (D140). It occupies the CONSTRUCTION queue of the
+world you start it from, and only one project runs across the whole commander at a time — so the
+screen that sells it is the one that can see every world's queue, and it names which project is
+running, where, and the clock time it finishes at. Fifteen projects in four groups: the four
+Frontier permissions that are found rather than bought, four economy ladders, five weapon
+doctrines, and the two strategic permissions.
 
 Queue gates read the world projected through every earlier order. A commander may therefore queue
 Core 1→2 and then Refinery 1→2; they may not use a later order to justify an earlier one. Core and
@@ -100,11 +109,51 @@ interface can read, and a dark bay is an honest fact about the commander's curre
 satellites and high building levels) are the two resources a planet produces. Their different
 curves create composition pressure rather than one linear pile.
 
-**Deuterium is never produced passively.** A planet begins with none. The Crystal Extractor
-sets the containment ceiling for its storage and works without adding a sixth building. It is
-fully raidable — the Vault protects zero — and it occupies the same fleet cargo as any other
-material. Isotope Spectrometry reveals its contested asteroid source; the Runner consumes it
-in a repeatable, losable hull rather than turning it into permanent background power.
+**Deuterium is produced, but only by a building you have to earn (T5).** A planet begins with
+none and with no way to make any. The Deuterium Refinery is the only steady source, and its
+ceiling is a research rung — three plant levels per rung of Deuterium Synthesis, which is the
+Command Core's rule said a second time so there is nothing new to learn. Both its storage and
+its works are sized from its own production now, and the Vault protects hours of that
+production exactly as it does for alloy and crystal: a world with no plant still protects none,
+because the floor was always hours of a resource's own rate.
+
+**The Refinery is the floor and the rocks are the ceiling, and that ordering is the whole
+design.** Measured on the gate seasons, the median commander used to end a fourteen-day season
+holding TEN deuterium — it existed only on isotope asteroids, only after the season's
+thirty-fifth hour, and only for whoever got there first. That was survivable while nothing
+needed it. The refinery is a guaranteed trickle a player can plan around; Isotope Spectrometry
+still reveals the fast, contested source that actually pays for Runners, Breachers, the last
+research rungs and a Death Star. If the two ever met, the whole Frontier act would become dead
+content — so the plant's curve is deliberately flatter than alloy's or crystal's, and a test
+holds it below what a miner pulls off the rocks.
+
+Deuterium is otherwise unchanged: fully raidable above the vault floor, the same fleet cargo as
+any other material, and consumed by repeatable losable hulls rather than turned into permanent
+background power.
+
+**And every launch burns it (T6).** The charge is `mass x distance`, rounded up once per leg —
+mass being the same `bulk` the Hangar rations, so one quantity says how big a fleet is in both
+places. It is not priced on speed: a Bulwark already pays for being slow by being slow, and the
+hull table is held at equal-budget power precisely so no second axis can quietly re-rate it.
+D125 and D126 made distance an *information* cost; this makes the same axis an *economic* one,
+which is the consistent version of one idea rather than a new tax.
+
+**Full fuel or no launch, and it is paid before the ships leave.** A one-way budget is not a
+cheaper raid, it is a stranded fleet, and a launched fleet cannot be recalled. A raid pays both
+legs at launch; a transfer, a settlement and an empty-hold clan ship gift pay one leg, while a
+resource-carrying clan transport pays its planned outbound and return legs. Deuterium loaded
+as cargo is already spent as far as the flight is concerned — the guard reads the sum. No system
+path ever asks for more (a rerouted leg flies on what was paid) and no cancellation gives any
+back. **Probes and mining runs pay nothing**, and both exemptions are load-bearing: the probe is
+what the measured intel gate counts, and deuterium comes off rocks, so charging a miner
+deuterium is a deadlock with extra steps. A Death Star pays at construction and not again.
+
+**Every surface that commits a flight quotes it first, and the ship card states the rate.** The
+raid sheet, the transfer sheet, the founding panel and the clan-aid form each draw the charge
+against the tank it comes out of before anything is committed; the craft sheet carries a fifth
+statistic beside attack, hull, speed and cargo — what one of that hull burns per thousand units
+— because choosing between two hulls is where that comparison is actually made. A cost the
+player meets only as a refusal is a rule they cannot see.
 
 **Production fills the works and stops there (D16).** One tap moves it into storage. Storage
 caps at 12 hours of production, the works at 10, so a normal night wastes nothing and a long
@@ -178,7 +227,7 @@ shield. The bonus is capped at the shield left in that round and never overkills
 into ships or ground guns. Scouting an Aegis creates the choice; sending Breachers
 blind is intentionally expensive and weak.
 
-**A raid takes ten seconds to land (D44), and the whole galaxy watches it (D52).** The fleet is
+**A raid takes ten seconds to land (D44), and the whole galaxy watches the bombardment (D52).** The fleet is
 over the target at `arriveAt` and the battle is settled ten seconds later; in between the
 squadron holds in orbit and fires on the world. It is a real server window, not an animation —
 nothing is decided until it closes.
@@ -187,13 +236,13 @@ nothing is decided until it closes.
 ten seconds are the payoff of a decision made minutes ago (D63 — it was forty before), and there is no state in which a
 squadron arrives and vanishes without a shot.
 
-**And it is public.** Everyone in the season sees the same squadron holding over the same world
-firing the same rounds — the volley is seeded from the mission id, which both sides carry. For
-those ten seconds the traffic payload names the WORLD being hit, and nothing else: no owner, no
-origin, no name, and no clue who is going to win. A battle only its attacker can see is not a
-living galaxy, and the fog was never about hiding the world from the people living in it — it is
-about what you know BEFORE a decision. Knowing a raid is coming, and how long you have, is still
-exactly what the Radar sells.
+**And the bombardment is public.** Everyone in the season sees the same world under fire at the
+same server-authored instant. That does not make the squadron public. Outside every sensor circle
+only rockets/surface impacts are drawn from a deterministic, non-authoritative visual source; the
+payload carries no real orbit point, approach bearing or mass. Radar adds an anonymous contact,
+Telescope adds the fleet silhouette, and the attacker alone sees the exact formation. A battle
+only its attacker can watch is not a living galaxy, but a public cinematic must not become a back
+door around the information game.
 
 ### The defence chain
 
@@ -234,13 +283,40 @@ Everything above exists so that this has stakes.
 
 | Tier | Costs | Detectable | Tells you | Latency |
 |---|---|---|---|---|
-| **Public** | Nothing | No | Planet, owner, coordinates, development tier, satellites in orbit, whether a dome is up | Live |
-| **Telescope** | An instrument and a watch slot | **No** — you are never told who is watching | Fleet `HOME` / `AWAY` / `UNKNOWN`; return ETA at clarity ≥ +2 | Live to 20 min stale |
+| **Public** | Nothing | No | That a world is there, and where. Recovery and open claim windows, which are public moments (D127) | Live |
+| **Remembered** | A probe, once | Yes, at the time | Owner, development, satellites, dome — **frozen** at the look, and going stale as its subject grows | One shot, for ever |
+| **Telescope** | An instrument and a watch slot | **No** — you are never told who is watching | Fleet `HOME` / `AWAY` / `UNKNOWN`; return ETA at clarity ≥ +2; **and how much of the galaxy you see moving at all** | Live to 20 min stale |
 | **Explorer** | Ships, a bay, and flight time | **Yes** — radar can catch the probe | Stock, defence, fleet size, at an accuracy tier | One shot |
 | **Combat** | Ships, permanently | Obviously | Ground truth | Perfect |
 
 The Telescope is cheap, silent, and tells you **when**. The Explorer is costly, loud, and
 tells you **what**. Neither substitutes for the other, so both stay live all season.
+
+### The sensor horizon — how much galaxy is alive to you (D123)
+
+**A craft in transit is published only to commanders whose current sensor spheres cover it.**
+`sensorSphere` turns each controlled world's instrument levels into two finite radii. The
+Telescope identifies a craft (with a 750-unit naked-eye floor); the wider Radar detects an
+anonymous moving contact and progressively adds size/kind at its top rungs. The best answer
+across all controlled worlds wins: `NONE → CONTACT → IDENTIFIED`.
+
+**The fog covers craft; public moments cover effects.** Fleet, probe, mining and salvage craft —
+including a fleet already engaging — all obey the same three zones. Bombardment and Death Star
+impact effects, wreck fields and the Chronicle remain galaxy-wide. A discovered asteroid stays
+known until it is gone, but another commander's Prospector is not thereby visible outside sensor
+reach. D52's pillar is untouched: the galaxy still lights up with live battles everywhere, while
+D123 remains the only authority on whether their source craft can be seen.
+
+**There is no departure shroud.** A craft is visible from the first instant of a leg whenever
+its current position is inside one of the caller's spheres. The contact still publishes only a
+short bearing window, never its origin, destination or complete route.
+
+Strategic interception is narrower than ordinary contact detection. Radar L1/L2 never create an
+interception circle; the target world's effective Radar must be L3+ to fire by Radar. If that
+Radar cannot acquire the Death Star, effective Telescope sight from any world the defender
+controls may acquire it instead, while the ready charge must still be installed on the target.
+The eight-second missile flight and collision are shown to both participants and to every other
+commander whose Telescope identifies the collision point.
 
 > **The most valuable fact in the game is "is their fleet home?"** Opportunity and fear are
 > the same mechanic seen from two ends. Every other piece of intel is context for that bit.
@@ -269,7 +345,7 @@ what you may know and *who you watch* is a commitment rather than a browse.
 ### Explorer
 
 ```
-detectChance = clamp(0.25 + 0.18 × (radarL − probeStealthL), 0.05, 0.95)
+detectChance = clamp(0.15 + 0.13 × (radarL − probeStealthL), 0.05, 0.80)
 accuracy     = clamp(0.55 + 0.12 × (probeL − veilL),         0.30, 1.00)
 ```
 
@@ -296,18 +372,29 @@ once.
 
 | Level | Detects | Message |
 |---|---|---|
-| L1 | Probes | "Scan detected." |
-| L2 | + bearing | "Scan detected from the galactic north-west." |
-| **L3** | **Fleets crossing 200 units** | "Incoming fleet. ETA 9 min." |
-| L4 | 340 units, + size estimate | "…est. 60–90 ships." |
-| L5 | 500 units, + exact origin and composition | "GRIMHOLD · 74 Wasp, 20 Lance, 12 Hauler." |
+| L1 | 1,200-unit contact/warning; scan fact | "Incoming fleet." |
+| L2 | 1,450 units; + scan bearing | "Scan detected from the galactic north-west." |
+| L3 | 1,700 units | "Incoming fleet · ETA 9 min." |
+| L4 | 1,900 units; + rough size | "Sizeable force inbound." |
+| L5 | 2,200 units; + exact origin and composition | "Inbound from GRIMHOLD · 74 Wasp, 20 Lance, 12 Hauler." |
+
+**The top two rungs were not sold at all until D123.** Every contact on the disc carried its
+full roster, so a maxed Radar bought a bearing and two facts every player already had. A
+ordinary Radar contact is only a silhouette — `LIGHT`, `MEDIUM` or `HEAVY`, bucketed from fleet
+value. Telescope sight resolves the exact hulls and counts; an L5 attributed inbound warning
+can also expose that roster through the defender's private warning channel.
+
+Radar's clockless contact perimeter and timed-warning perimeter are provisionally merged at the
+ranges above. L4 adds rough size; L5 adds craft kind on ordinary contacts and exact origin and
+composition on an attributed inbound warning. Splitting the two tables later restores D9's
+narrower warning window without changing the contact model.
 
 **A radar is a circle, not a countdown (D49).** The warning fires when a hostile fleet crosses
 inside its reach, so how much notice it buys depends on how fast that fleet chose to travel: a
 Bulwark siege fleet is telegraphed and a Wasp strike is not. A long flight can never give away
 its whole duration, because notice is `oneWay × range / distance`.
 
-**Radar L3 is the highest-value ten lines of code in the project.** "Incoming fleet · ETA 9
+**The Radar warning is the highest-value ten lines of code in the project.** "Incoming fleet · ETA 9
 minutes" converts a passive loss into an active decision, because the player still has three
 real options: **spend the stock** so there is nothing to take, **launch their own fleet out**
 so it survives, or **stand and fight**. They cannot recall. Every choice costs something. This
@@ -335,26 +422,26 @@ because deterrence only works if it is legible. How strong it is still costs a p
 
 ## Galaxy, travel and mining
 
-**A thin disc**, radius 2500, ±300 thickness — legible on a portrait phone at any zoom, and it
-looks like a galaxy. Designed skeleton, randomised placement, **deterministic from the season
-seed**, so the client regenerates the static layout instead of downloading it.
+**One true sphere**, radius 2000 and therefore a maximum point-to-point crossing of 4000. Every
+gameplay coordinate — not merely its horizontal projection — lies inside that sphere. The three
+painted galactic clouds are presentation planes, not collision or placement boundaries. The layout
+is **deterministic from the season seed**, so the client regenerates it instead of downloading it.
 
 The larger radius is also a larger navigable scene. The client keeps the established conversion of
 50 game units per rendered world unit; it must not raise that divisor with the gameplay radius and
 compress 351 worlds back into the old 50-player picture. At the widest camera distance the whole
-disc remains available as an overview, while ordinary play opens on a readable neighbourhood.
+sphere remains available as an overview, while ordinary play opens on a readable neighbourhood.
 
 At most two galaxies of 300 commander seats, filled strictly in order (D99/D100). A v2 season also contains
-51 neutral worlds: thirty T1, fifteen T2 and six T3. The disc radius and travel rules do not scale with
+51 neutral worlds: thirty T1, fifteen T2 and six T3. The sphere radius and travel rules do not scale with
 population; the denser neighbourhood is an explicit consequence of the 300-player world, not a
 hidden balance adjustment.
 
-The population is spread across the whole disc, not filled from one neighbourhood outwards. Capital
+The population is spread through the whole sphere, not filled from one neighbourhood outwards. Capital
 addresses use the seeded Poisson layout and each arriving commander takes the address furthest from
 the commanders already present. Neutral placement is stratified as well: T1 worlds cover the playable
-disc, T2 worlds form an evenly spaced middle ring, and the six T3 worlds share the contested centre.
-The season seed rotates and perturbs those patterns, but may never leave a broad empty wedge or put a
-tier into one visible clump.
+sphere by equal-volume radial strata, T2 worlds occupy an evenly distributed middle shell, and the six
+T3 worlds share the contested central shell. Every tier spans all three axes; a flat ring is invalid.
 
 ```
 travelExact = (distance / slowestShipSpeed) × 1.2
@@ -374,13 +461,24 @@ quote rounded at the edge, never the time stored on the mission (D83).
 Distance is the real map boundary — no artificial range cap is needed, because a cross-galaxy
 round trip in Bulwarks already costs two hours of being undefended.
 
-**You may attack within ±2 development tiers (D49).** Tier is public on every world, so the
-question "may I fight them" is answerable off the map before a fleet is packed.
+**There is no development band any more (D127).** D49 limited attacks to ±2 tiers and kept tier
+public so the rule could be read off the map before a fleet was packed; with development private
+the band could only become a refusal at the gate, which is the failure D49 replaced a wealth
+ratio for. What protects a small commander now is that nobody can SEE they are small — and
+`ABUSE.bashLimit`, which is the whole of the anti-farming machinery.
 
 **Asteroids orbit analytically** — position is a pure function of the clock, never stored,
 never simulated. A rock carries a level that sets its ore, and interception is solved in
 continuous time so a craft and its rock arrive together. **First to arrive takes what it can
 carry**, which is the whole decision: which rock, and when.
+
+**The field is local opportunity, not a downloadable target list (D143).** A rock becomes known
+when its real 3D orbit first passes through the 750-unit neighbourhood of any controlled world;
+an effective Telescope enlarges that sphere. The sighting stays on the commander's map until the
+rock is gone, but a later Telescope upgrade cannot claim crossings that happened earlier. The
+schedule and raw indexes never reach the browser, so direct API automation has no unseen target
+list to enumerate. Once two commanders have independently found the same rock, the ordinary public
+race and visible mining route begin for both of them.
 
 **A laden craft flies home at a third of the speed it went out (D117).** The trip out is a
 race and stays one; the trip back is the price of having won it. What it costs is a flight
@@ -394,10 +492,12 @@ everyone else, their haul is raidable at half rate with no vault cover, and what
 absorb is set by the size of their planet rather than by how many craft they own. Mining is a
 supplement and a race; it was briefly a risk-free living.
 
-**Everything moving on the disc is public; where it is going is not (D24).** Any craft can be
-tapped and its composition read, but the route belongs to the commander who sent it. Mining
-runs are the stated exception, public in full, because D19 built that race for two people to
-know they were raced.
+**What moves on the disc is public to those whose sensors cover it; where it is going is not
+(D24, D123).** Radar detects a moving question mark and may add rough size/kind on its upper
+rungs. Telescope is actual sight: an identified fleet can be tapped to read its exact hulls
+and counts, and the formation shows the same information through real hull assets and count
+pips. Owner, origin and destination remain hidden. Mining runs expose their route only after
+their target has been discovered, so a route cannot reveal a hidden rock.
 
 ## Clans — five seats, useful cooperation, no diplomacy game
 
@@ -407,16 +507,21 @@ commitment rather than a free menu action: the capital must have Command Core 7 
 closes join/leave exploits while still giving the new member their tag, friendly-fire safety
 and private chat at once.
 
-The cooperation has three concrete answers to “why join?” First, members can send physical,
-one-way ship and Hauler convoys with a 10% travel bonus and one aid-only flight bay. Second,
+The cooperation has three concrete answers to “why join?” First, members can send physical
+ship gifts or Hauler resource deliveries with a 10% travel bonus and one aid-only flight bay.
+Loaded transports return to their launch world after delivery; empty convoys transfer ownership.
+Second,
 10% of ordinary PvP loot that safely returns is split into claimable personal shares for the
 mature roster snapshotted at launch. Third, both sides' Dominion movement contributes to a
 seasonal clan ladder with cosmetic top-three recognition. None changes combat statistics:
 information and the counter cycle remain what wins a battle.
 
-Aid is a logistics decision, not a bank transfer. Only Haulers carry resources, every gifted
-hull spends the receiver's rolling per-resource allowance at full build cost, the receiver
-opts in, and a convoy whose permissions or destination cease to be valid returns intact.
+Aid is a logistics decision, not a bank transfer. Only Haulers carry resources. A loaded
+convoy spends only its delivered cargo against the receiver's rolling per-resource allowance
+and returns every hull; an empty convoy gifts its hulls and spends their full build cost. The
+receiver opts in, and a convoy whose permissions or destination cease to be valid returns intact.
+Membership reveals current clanmate names and world locations, never their Telescope/Radar
+spheres, contacts or any development/hardware readings those instruments earned.
 The depot is likewise not a leader-owned treasury: every share belongs to a named commander,
 is purse-capped against their economy and is manually claimed into their capital.
 

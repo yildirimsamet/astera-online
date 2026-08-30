@@ -3,8 +3,12 @@ import { SATELLITE_IDS } from '@astera/rules';
 import { SATELLITE_NEON } from '../src/ui/assets.js';
 import {
   SATELLITE_RIM_EXPANSION,
+  REMEMBERED_HARDWARE,
+  REMEMBERED_SHIELD,
   SHIELD_TIER,
   bodySizeFor,
+  satelliteLook,
+  shieldLook,
   shieldTierOf,
 } from '../src/galaxy/Satellites.js';
 import { STANCE_COLOUR } from '../src/galaxy/scene.js';
@@ -97,6 +101,26 @@ describe('the satellite silhouette rim', () => {
   it('still draws a unit-radius world’s body at diameter 0.6', () => {
     expect(bodySizeFor(1)).toBeCloseTo(0.6, 6);
   });
+
+  it('turns every remembered satellite into the same dim, motionless record', () => {
+    const looks = SATELLITE_IDS.map((id) => satelliteLook(id, true));
+    expect(new Set(looks.map((look) => look.colour))).toEqual(
+      new Set([REMEMBERED_HARDWARE.colour]),
+    );
+    for (const look of looks) {
+      expect(look.turning).toBe(false);
+      expect(look.rimOpacity).toBeLessThan(satelliteLook('UPLINK', false).rimOpacity);
+    }
+  });
+
+  it('keeps live satellite colours and motion unchanged', () => {
+    for (const id of SATELLITE_IDS) {
+      expect(satelliteLook(id, false)).toMatchObject({
+        colour: SATELLITE_NEON[id],
+        turning: true,
+      });
+    }
+  });
 });
 
 /**
@@ -187,5 +211,21 @@ describe('the shield', () => {
     for (let i = 1; i < SHIELD_TIER.length; i++) {
       expect(luma(SHIELD_TIER[i]!.colour)).toBeGreaterThan(luma(SHIELD_TIER[i - 1]!.colour));
     }
+  });
+
+  it('renders a remembered dome as dim charcoal with no breathing animation', () => {
+    const memory = shieldLook(2, true, true);
+    const [r, g, b] = rgb(memory.colour);
+
+    expect(memory).toMatchObject({ ...REMEMBERED_SHIELD, animated: false });
+    expect(Math.max(r, g, b) - Math.min(r, g, b)).toBeLessThan(12);
+    expect(memory.opacity).toBeLessThan(shieldLook(0, false, false).opacity);
+  });
+
+  it('keeps live domes animated and graded', () => {
+    expect(shieldLook(0, false, false).animated).toBe(true);
+    expect(shieldLook(2, true, false).opacity).toBeGreaterThan(
+      shieldLook(0, false, false).opacity,
+    );
   });
 });

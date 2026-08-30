@@ -14,7 +14,6 @@ import { chromium } from 'playwright';
 
 const WEB = process.env.WEB ?? 'http://localhost:5199';
 const OUT = process.argv.slice(2).find((argument) => argument !== '--') ?? 'out/visual-baseline';
-const REDUCED_MOTION = process.env.REDUCED_MOTION === '1';
 const ALL_SCENARIOS = [
   { name: 'phone', viewport: { width: 390, height: 844 }, deviceScaleFactor: 2, mobile: true },
   { name: 'desktop', viewport: { width: 1440, height: 900 }, deviceScaleFactor: 1, mobile: false },
@@ -45,7 +44,6 @@ for (const scenario of SCENARIOS) {
     hasTouch: scenario.mobile,
     locale: 'en-US',
     colorScheme: 'dark',
-    reducedMotion: REDUCED_MOTION ? 'reduce' : 'no-preference',
   });
   const page = await context.newPage();
   const errors = [];
@@ -181,7 +179,6 @@ for (const scenario of SCENARIOS) {
   if (errors.length > 0 || unexpectedCalls.length > 0) failed = true;
   results.push({
     scenario: scenario.name,
-    reducedMotion: REDUCED_MOTION,
     viewport: scenario.viewport,
     readyMs: Date.now() - startedAt,
     metrics,

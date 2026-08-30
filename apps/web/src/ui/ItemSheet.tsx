@@ -1,6 +1,6 @@
 import {
+  buildingCost,
   instrumentCost,
-  upgradeCost,
   type BuildingId,
   type InstrumentId,
   type SatelliteId,
@@ -9,7 +9,14 @@ import {
 import { useTranslation } from 'react-i18next';
 import type { PlanetView } from '../api/schemas.js';
 import i18n from '../i18n/index.js';
-import { satelliteBlurb } from '../i18n/names.js';
+import {
+  buildingDetail,
+  buildingTag,
+  instrumentDetail,
+  instrumentTag,
+  satelliteDetail,
+  satelliteTag,
+} from '../i18n/names.js';
 import { compact } from '../lib/format.js';
 import { projectedQueueState } from '../lib/predict.js';
 import { ActionButton, ResourceAmounts } from './Action.js';
@@ -18,6 +25,8 @@ import {
 } from '../lib/gains.js';
 import { RESOURCE_ART, SATELLITE_ART, buildingArt, instrumentArt, tierOf } from './assets.js';
 import { CoreMark, VaultMark } from './marks.js';
+import { SpendBar } from './SpendBar.js';
+import { Tally } from './Tally.js';
 import { Sheet } from './kit/index.js';
 import type { Blocked } from './UpgradeRow.js';
 
@@ -96,6 +105,16 @@ export function ItemSheet({
     crystal: Math.max(0, cost.crystal - held.crystal),
   };
   const affordable = short.alloy === 0 && short.crystal === 0;
+  const tag = item.kind === 'building'
+    ? buildingTag(item.id)
+    : item.kind === 'instrument'
+      ? instrumentTag(item.id)
+      : satelliteTag(item.id);
+  const detail = item.kind === 'building'
+    ? buildingDetail(item.id)
+    : item.kind === 'instrument'
+      ? instrumentDetail(item.id)
+      : satelliteDetail(item.id);
 
   const rungs = Array.from({ length: HORIZON }, (_, i) => level + 1 + i);
 
@@ -156,7 +175,11 @@ export function ItemSheet({
     >
       <Portrait item={item} level={durableLevel} name={name} />
 
-      <p className="mt-4 text-body leading-relaxed text-dim">{role}</p>
+      <div className="mt-4">
+        <p className="legend text-crystal/85">{tag}</p>
+        <p className="mt-2 text-body leading-relaxed text-dim">{role}</p>
+        <p data-item-detail className="mt-2 text-caption leading-relaxed text-faint">{detail}</p>
+      </div>
 
       {queued && (
         <p className="mt-3 border border-crystal/30 bg-crystal/10 px-3 py-2 text-caption text-crystal">
@@ -164,30 +187,50 @@ export function ItemSheet({
         </p>
       )}
 
+      {/*
+        A REQUIREMENT IS A DOOR, NOT AN ALARM (interface.md I1). This was the one
+        locked state in the game still painted in threat red, while the row that
+        opened this sheet drew the same fact in amber — one screen giving two
+        answers to "is a prerequisite an attack". Red is reserved for something
+        that can harm the commander; a Shipyard they have not built cannot.
+      */}
       {blocked && !terminal && (
-        <p className="mt-3 border border-threat/30 bg-threat/10 px-3 py-2 text-caption text-threat">
+        <p className="mt-3 border border-alloy/30 bg-alloy/10 px-3 py-2 text-caption text-alloy">
           {t('itemSheet.lockedNote', { reason: blocked.reason })}
         </p>
       )}
 
+      {/*
+        HOW FAR OFF, AS A DISTANCE RATHER THAN AS A DEFICIT. Owner instruction.
+
+        "Short 1.2k alloy and 300 crystal" states the gap and hides the thing a
+        player actually wants, which is how CLOSE they are: eight hundred of a
+        thousand and forty of a thousand are the same sentence and completely
+        different situations — one is worth waiting for and the other is not.
+
+        Two spend bars answer that by drawing the price against the store it has
+        to come out of, so a nearly-full bar with a short red tail reads as "come
+        back after dinner" and a mostly-red one reads as "not this session". The
+        row that opened this sheet already says WHEN in words; this says how far,
+        and the two agree because they are the same two numbers.
+      */}
       {!blocked && !terminal && !affordable && (
-        /*
-          ONE SENTENCE, ASSEMBLED IN THE RESOURCE — not three JSX fragments.
-          The old form hard-coded where "Short" sits and where "and" goes, which
-          is a decision about English word order. Turkish puts the verb last
-          ("... eksik"), so the sentence has to be built from its parts by the
-          translation rather than by the layout.
-        */
-        <p className="mt-3 text-caption text-alloy">
-          {t('itemSheet.shortNote', {
-            parts: [
-              ...(short.alloy > 0 ? [t('itemSheet.shortAlloy', { amount: compact(short.alloy) })] : []),
-              ...(short.crystal > 0
-                ? [t('itemSheet.shortCrystal', { amount: compact(short.crystal) })]
-                : []),
-            ].join(t('itemSheet.shortJoin')),
-          })}
-        </p>
+        <div className="mt-3 flex flex-col gap-3">
+          <SpendBar
+            stock={held.alloy}
+            spend={cost.alloy}
+            tone="alloy"
+            label={t('vocabulary.resource.alloy')}
+          />
+          {cost.crystal > 0 && (
+            <SpendBar
+              stock={held.crystal}
+              spend={cost.crystal}
+              tone="crystal"
+              label={t('vocabulary.resource.crystal')}
+            />
+          )}
+        </div>
       )}
 
       {item.kind === 'satellite' ? (
@@ -395,7 +438,6 @@ function Orbital({
         {gain.unlocks && (
           <p className="mt-1 text-label leading-snug text-crystal/80">{gain.unlocks}</p>
         )}
-        <p className="mt-3 text-caption leading-relaxed text-dim">{satelliteBlurb(id)}</p>
       </div>
 
       <p className="legend mb-2 mt-6">{t('itemSheet.orbitalCostHeading')}</p>
@@ -428,20 +470,22 @@ function Orbital({
           <span className="text-caption text-faint">{t('itemSheet.orbitalOnce')}</span>
         </div>
 
-        <div className="flex items-center justify-between pt-3">
-        <div className="flex gap-2">
-          {Array.from({ length: Math.max(slots, 1) }, (_, i) => (
-            <span
-              key={i}
-              className={`h-1.5 w-6 rounded-full ${i < used ? 'bg-crystal/70' : 'bg-line-soft'}`}
-            />
-          ))}
-        </div>
-        <span className="num text-caption text-dim">
-          {free > 0
-            ? t('itemSheet.orbitalFree', { free, total: slots })
-            : t('itemSheet.orbitalNoSlot')}
-        </span>
+        {/*
+          THE SLOTS ARE A RACK, and the same rack the flight bays and the
+          telescope draw. This was a fourth hand-rolled row of pips that happened
+          to look like the others and could drift from them.
+        */}
+        <div className="flex items-center justify-between gap-3 pt-3">
+          <Tally
+            used={used}
+            total={Math.max(slots, 1)}
+            label={t('itemSheet.orbitalFree', { free, total: slots })}
+          />
+          <span className={`num text-caption ${free > 0 ? 'text-dim' : 'text-alloy'}`}>
+            {free > 0
+              ? t('itemSheet.orbitalFree', { free, total: slots })
+              : t('itemSheet.orbitalNoSlot')}
+          </span>
         </div>
       </div>
     </div>
@@ -481,7 +525,7 @@ function costFor(
   }
   // Beyond the next level the server has no opinion, so the ladder prices itself
   // from the rules — with the instrument multiplier where it applies (D25).
-  return item.kind === 'instrument' ? instrumentCost(item.id, from) : upgradeCost(from);
+  return item.kind === 'instrument' ? instrumentCost(item.id, from) : buildingCost(item.id, from);
 }
 
 const gainFor = (item: ItemRef, level: number, levels: BuildingLevels): Gain =>

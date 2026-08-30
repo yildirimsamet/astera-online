@@ -7,7 +7,7 @@ import {
   type InfiniteData,
   type QueryClient,
 } from '@tanstack/react-query';
-import { engagementEndsAt } from '@astera/rules';
+import { TRAFFIC, engagementEndsAt } from '@astera/rules';
 import type {
   Fleet,
   BuildingId,
@@ -15,11 +15,13 @@ import type {
   InstrumentId,
   ResearchProjectId,
   SatelliteId,
+  SensorSphere,
 } from '@astera/rules';
 import type { z } from 'zod';
 import type {
   ClanChatPage,
   ChatPage,
+  AnnouncementsPage,
   Contact,
   MiningFieldView,
   MiningLaunchResult,
@@ -31,6 +33,7 @@ import type {
   PlanetsView,
   SeasonInfo,
   notificationsSchema,
+  FeedbackKind,
 } from './schemas.js';
 import type { ClanAidInput } from './client.js';
 import { useApi } from './context.js';
@@ -46,6 +49,7 @@ import {
   predictUpgrade,
 } from '../lib/predict.js';
 import { useWorld } from './world.js';
+import { nextCrossing } from '../galaxy/crossing.js';
 
 /**
  * Re-exported so the fifteen call sites that read `keys` from here keep working.
@@ -99,6 +103,8 @@ type NotificationList = z.infer<typeof notificationsSchema>;
  * that reason is the same for all of them.
  */
 const NET_MS = 60_000;
+/** SSE is primary; this only heals a missed global event after a broken connection. */
+const ANNOUNCEMENT_FALLBACK_MS = 5 * 60_000;
 const READ = { staleTime: 15_000, refetchOnWindowFocus: true } as const;
 
 /**
@@ -215,7 +221,13 @@ export function useGalaxy() {
 
 export function useIntel() {
   const api = useApi();
-  return useQuery({ queryKey: keys.intel, queryFn: api.intel, ...READ });
+  return useQuery({
+    queryKey: keys.intel,
+    queryFn: api.intel,
+    ...READ,
+    // Telescope uncertainty and ages move with time even in a quiet galaxy.
+    refetchInterval: NET_MS,
+  });
 }
 
 /**
@@ -259,46 +271,118 @@ export function usePending() {
  * commit, and this refetches within a quarter of a second of either. The interval
  * left behind is the net under a dead channel, not the mechanism.
  */
+/**
+ * AND IT IS THE ONE READ WHOSE INTERVAL IS NOT A SAFETY NET.
+ *
+ * Every other payload here polls at `NET_MS` because the live channel might be
+ * down. Traffic has a second job that no event can do for it.
+ *
+ * Under the three-zone model a craft OUTSIDE the caller's circles is not in this
+ * payload at all — that is the point of `NONE`. So when it crosses in, the client
+ * holds no record to solve a crossing instant from: `useContactWindows` can only
+ * arm boundaries for craft it already has. A launch inside the circles is covered
+ * (`shard:launch` fires and the craft is visible from its first instant, now that
+ * the departure shroud is gone); a craft arriving from outside is not.
+ *
+ * The server cannot announce it either, and deliberately: "something will enter
+ * your radar in twelve seconds" is advance warning no radar operator has, and
+ * publishing it would be a new leak in place of a fixed one.
+ *
+ * IT IS THE SAME FIGURE THE SERVER FLOORS A PUBLISHED WINDOW AT, and that is why
+ * it is imported rather than typed here. The server's floor exists so a craft
+ * never freezes between reads — "one refetch" — and it used to be a flat sixty
+ * seconds written on the other side of the wire from the interval it described.
+ * They drifted, and every probe in the game published its destination. One number.
+ *
+ * It is CHEAPER than it looks: the payload shrank when the zones landed — it used
+ * to carry every craft in the galaxy as an anonymous return and now carries only
+ * what the caller can actually see — and the snapshot behind it is built once per
+ * shard and shared across every commander on the replica.
+ */
+const TRAFFIC_MS = TRAFFIC.refreshMs;
+
 export function useTraffic() {
   const api = useApi();
   return useQuery({
     queryKey: keys.traffic,
     queryFn: api.traffic,
-    staleTime: 10_000,
-    refetchInterval: NET_MS,
+    staleTime: TRAFFIC_MS,
+    refetchInterval: TRAFFIC_MS,
     refetchOnWindowFocus: true,
   });
 }
 
 /**
- * The asteroid field, the wreckage, and everyone's craft working both. D19, D32.
+ * The caller's discovered asteroid field, public wreckage, and mining state. D19, D32.
  *
  * A run starting, turning for home or landing is broadcast to the shard, and so is
  * a battle — which is what puts a debris field on this payload. So the two
  * contested things here, the rock and the wreck, are both live now.
  *
- * The interval remains for the one thing nothing broadcasts and nothing can: rocks
- * APPEAR AND EXPIRE on the season's own schedule, and a wreck field decays on a
- * three-hour clock. Nobody acts, so there is nothing to publish — a player who left
- * the tab open should simply not be looking at a sky that emptied an hour ago.
+ * Asteroid discovery/expiry has no actor to broadcast. The server therefore names
+ * the exact next field change, and `useAsteroidFieldWake` refreshes at that instant;
+ * ordinary events and reconnect/focus resync cover all state-changing paths.
  */
 export function mergeMiningViews(
   field: MiningFieldView | undefined,
   status: MiningStatusView | undefined,
 ): MiningView | undefined {
   if (!field || !status) return undefined;
-  const isotopeByIndex = new Map(
-    status.isotopes.map((rock) => [rock.index, rock.deuteriumShare]),
+  const isotopeById = new Map(
+    status.isotopes.map((rock) => [rock.id, rock.deuteriumShare]),
   );
   return {
     ...status,
     asteroids: field.asteroids.map((asteroid) => ({
       ...asteroid,
-      isotopeRich: isotopeByIndex.has(asteroid.index),
-      deuteriumShare: isotopeByIndex.get(asteroid.index) ?? null,
+      // The anomaly signature is visible once the rock itself is discovered; the
+      // research-gated response only adds its composition. OR also tolerates the two split requests landing from
+      // adjacent snapshots without ever downgrading information already shown.
+      isotopeRich: asteroid.isotopeRich || isotopeById.has(asteroid.id),
+      deuteriumShare: isotopeById.get(asteroid.id) ?? null,
     })),
     debris: field.debris,
+    nextFieldChangeAt: field.nextFieldChangeAt,
   };
+}
+
+/**
+ * Preserve either independently fetched half on the canvas when the other read
+ * fails. Launch calculations still require the complete merged view; no missing
+ * private values are replaced with invented zeroes.
+ */
+export function miningSceneData(
+  field: MiningFieldView | undefined,
+  status: MiningStatusView | undefined,
+): {
+  asteroids: MiningFieldView['asteroids'];
+  debris: MiningFieldView['debris'];
+  runs: MiningStatusView['runs'];
+  mining: MiningView | undefined;
+} {
+  return {
+    asteroids: field?.asteroids ?? [],
+    debris: field?.debris ?? [],
+    runs: status?.runs ?? [],
+    mining: mergeMiningViews(field, status),
+  };
+}
+
+export const FIELD_WAKE_GRACE_MS = 250;
+
+/** Wake once at the exact discovery/expiry instant named by the server. */
+export function useAsteroidFieldWake(at: Date | null | undefined): void {
+  const client = useQueryClient();
+  const firedAt = useRef<number | null>(null);
+  const instant = at?.getTime();
+  useEffect(() => {
+    if (instant === undefined || firedAt.current === instant) return;
+    const timer = window.setTimeout(() => {
+      firedAt.current = instant;
+      void client.invalidateQueries({ queryKey: keys.miningField });
+    }, Math.max(0, instant - serverNow()) + FIELD_WAKE_GRACE_MS);
+    return () => { window.clearTimeout(timer); };
+  }, [client, instant]);
 }
 
 export function useMining() {
@@ -318,6 +402,7 @@ export function useMining() {
     refetchInterval: NET_MS,
     refetchOnWindowFocus: true,
   });
+  useAsteroidFieldWake(field.data?.nextFieldChangeAt);
   const data = useMemo(
     () => mergeMiningViews(field.data, status.data),
     [field.data, status.data],
@@ -325,9 +410,12 @@ export function useMining() {
   return {
     ...status,
     data,
+    fieldData: field.data,
+    statusData: status.data,
     isPending: field.isPending || status.isPending,
     isError: field.isError || status.isError,
     error: status.error ?? field.error,
+    refetch: async () => Promise.all([field.refetch(), status.refetch()]),
   };
 }
 
@@ -388,9 +476,14 @@ export function useClaimReward() {
   });
 }
 
-export function useLeaderboard() {
+export function useLeaderboard(enabled = true) {
   const api = useApi();
-  return useQuery({ queryKey: keys.leaderboard, queryFn: api.leaderboard, staleTime: 60_000 });
+  return useQuery({
+    queryKey: keys.leaderboard,
+    queryFn: api.leaderboard,
+    staleTime: 60_000,
+    enabled,
+  });
 }
 
 /* ── clans ─────────────────────────────────────────────────── */
@@ -679,6 +772,63 @@ export function useChronicle() {
   });
 }
 
+export function useAnnouncements(enabled = true) {
+  const api = useApi();
+  return useQuery({
+    queryKey: keys.announcements,
+    queryFn: api.announcements,
+    enabled,
+    staleTime: 30_000,
+    refetchInterval: ANNOUNCEMENT_FALLBACK_MS,
+    refetchOnWindowFocus: true,
+  });
+}
+
+export function useMarkAnnouncementsRead() {
+  const api = useApi();
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (ids: string[]) => api.markAnnouncementsRead(ids),
+    retry: 1,
+    onMutate: async (ids) => {
+      await client.cancelQueries({ queryKey: keys.announcements });
+      const read = new Set(ids);
+      client.setQueryData<AnnouncementsPage>(keys.announcements, (current) => current
+        ? {
+            announcements: current.announcements.map((announcement) =>
+              read.has(announcement.id) ? { ...announcement, seen: true } : announcement),
+          }
+        : current);
+    },
+    onSettled: () => { void client.invalidateQueries({ queryKey: keys.announcements }); },
+  });
+}
+
+export function useSendFeedback() {
+  const api = useApi();
+  return useMutation({
+    mutationFn: ({ kind, message }: { kind: FeedbackKind; message: string }) =>
+      api.sendFeedback(kind, message),
+  });
+}
+
+export function useAdminFeedback(enabled = true) {
+  const api = useApi();
+  return useQuery({ queryKey: keys.adminFeedback, queryFn: api.adminFeedback, enabled, ...READ });
+}
+
+export function usePublishAnnouncement() {
+  const api = useApi();
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: ({ title, bodyHtml }: { title: string; bodyHtml: string }) =>
+      api.publishAnnouncement(title, bodyHtml),
+    onSuccess: async () => {
+      await client.invalidateQueries({ queryKey: keys.announcements });
+    },
+  });
+}
+
 export function usePostChat() {
   const api = useApi();
   const client = useQueryClient();
@@ -876,11 +1026,47 @@ export function useMiningArrivals(runs: readonly MiningRun[] | undefined): void 
  * One key, and the same timer mechanism. What the window says is public and the
  * refetch is the same fog-enforced query it always was.
  */
-export function useContactWindows(contacts: readonly Contact[] | undefined): void {
-  const moments = useMemo(
-    () => (contacts ?? []).map((c) => c.endAt.getTime()).sort((a, b) => a - b),
-    [contacts],
-  );
+export function useContactWindows(
+  contacts: readonly Contact[] | undefined,
+  /**
+   * The caller's own sensor posts, so a boundary crossing can be woken for. D125.
+   *
+   * The zone a contact is in is decided by the server per request, so a craft that
+   * crosses one of these circles mid-window would otherwise keep its old
+   * appearance until the next scheduled read and then pop — and the crossing is
+   * the one moment the ladder exists to sell. Solving for the instant and asking
+   * again exactly then puts the transition on the right second without the server
+   * sending anything early.
+   */
+  sensors: readonly SensorSphere[] = [],
+): void {
+  const moments = useMemo(() => {
+    const out: number[] = [];
+    for (const contact of contacts ?? []) {
+      out.push(contact.endAt.getTime());
+      // This is a public event anchored to the target centre, not a published
+      // craft window. Its synthetic point must never participate in a sensor
+      // crossing solve; the engagement end above is the only wake it needs.
+      if (contact.effectOnly === true) continue;
+      /**
+       * ONE SOLVE, BOTH CIRCLES, EVERY KIND OF CRAFT.
+       *
+       * This used to run two solves against two hand-built arrays and skip
+       * everything that was not a fleet, a probe or an unknown — on the reasoning
+       * that mining and strategic contacts were published galaxy-wide and so could
+       * not change at a boundary. Under the three-zone model EVERY craft changes
+       * at a boundary, including a drill: outside the circles it is not published
+       * at all. `nextCrossing` reads the same `sensorZone` the server does.
+       */
+      const crossing = nextCrossing(contact, sensors);
+      if (crossing) out.push(crossing.getTime());
+    }
+    // One timer chain only. Its refetch replaces all bearing windows and this
+    // effect then arms the next boundary, avoiding contacts × sensors × retries
+    // timers on a busy full galaxy.
+    const next = out.sort((a, b) => a - b).find((at) => at > serverNow());
+    return next === undefined ? [] : [next];
+  }, [contacts, sensors]);
   // The first read is immediate because traffic is projected, not worker-owned.
   // The bounded follow-ups cover a stale replica/cache without parking the craft.
   useRefetchOnArrival(moments, [keys.traffic], CONTACT_WINDOW_SETTLE_OFFSETS);
@@ -1331,12 +1517,17 @@ function useApplyMiningLaunch(activePlanetId: string | null) {
     const statusKey = keys.miningStatusById(planetId);
     await Promise.all([
       applyPlanet(result.planet),
-      client.cancelQueries({ queryKey: statusKey, exact: true }),
+      // Every per-world status carries the commander's complete run roster. An
+      // older read for any selected colony must not erase this launch later.
+      client.cancelQueries({ queryKey: keys.miningStatus }),
       client.cancelQueries({ queryKey: keys.pending }),
-      ...(activePlanetId === null
-        ? [client.cancelQueries({ queryKey: keys.miningStatus, exact: true })]
-        : []),
     ]);
+    client.setQueriesData<MiningStatusView>(
+      { queryKey: keys.miningStatus },
+      (current) => current
+        ? { ...current, runs: result.mining.runs, isotopes: result.mining.isotopes }
+        : current,
+    );
     client.setQueryData(statusKey, result.mining);
     if (activePlanetId === null) client.setQueryData(keys.miningStatus, result.mining);
     client.setQueryData(keys.pending, { pending: result.pending });
@@ -1350,8 +1541,8 @@ export function useMine() {
   const lane = usePlanetMutationLane(activePlanetId);
   return useMutation({
     scope: lane.scope,
-    mutationFn: ({ asteroidIndex, craft }: { asteroidIndex: number; craft: number }) =>
-      api.mine(asteroidIndex, craft, activePlanetId ?? undefined),
+    mutationFn: ({ asteroidId, craft }: { asteroidId: string; craft: number }) =>
+      api.mine(asteroidId, craft, activePlanetId ?? undefined),
     onMutate: lane.enter,
     onSuccess: apply,
     onSettled: (_data, _error, _vars, turn) => { lane.leave(turn); },
@@ -1480,6 +1671,28 @@ export function useBuildDeathStar() {
       await apply(result.planet);
       invalidate(keys.leaderboard);
     },
+    onSettled: (_data, _error, _vars, turn) => { lane.leave(turn); },
+  });
+}
+
+/**
+ * LOAD ONE INTERCEPTION CHARGE. T10, wired in T12.
+ *
+ * The weapon's own shape, because it is the same asset lifecycle — and it answers
+ * with the full planet view (D53), so nothing is refetched to learn the charge is
+ * building. No prediction: the server checks an EFFECTIVE Radar rung and a live
+ * research row, and D53's rule is that only certain outcomes may be predicted.
+ */
+export function useBuildInterceptor() {
+  const api = useApi();
+  const { activePlanetId } = useWorld();
+  const apply = useApplyPlanet();
+  const lane = usePlanetMutationLane(activePlanetId);
+  return useMutation({
+    scope: lane.scope,
+    mutationFn: () => api.buildInterceptor(activePlanetId!),
+    onMutate: lane.enter,
+    onSuccess: async (result) => { await apply(result.planet); },
     onSettled: (_data, _error, _vars, turn) => { lane.leave(turn); },
   });
 }

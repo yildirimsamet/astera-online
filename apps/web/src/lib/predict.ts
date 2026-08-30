@@ -4,14 +4,20 @@ import {
   HULLS,
   INSTRUMENT_IDS,
   PROSPECTOR,
+  RESEARCH_MAX_LEVEL,
   RESEARCH_PROJECTS,
   SATELLITE_IDS,
+  buildingCost,
+  groundLoad,
+  groundSlots,
+  hangarCapacity,
+  hangarLoad,
+  hullBulk,
   instrumentCost,
   instrumentMaxed,
   satelliteSlots,
   satelliteCost,
   seeingUnlocked,
-  upgradeCost,
   type BuildQueueId,
   type BuildingId,
   type BuildingLevels,
@@ -93,9 +99,27 @@ export interface ProjectedQueueState {
   orbit: SatelliteId[];
   /** The prefix enabled by the projected Core level. */
   effectiveOrbit: SatelliteId[];
-  research: Set<ResearchProjectId>;
+  /**
+   * THE RUNG EACH PROJECT WILL STAND AT, not the set of ones held. T12.
+   *
+   * This was a `Set` of completed project ids, written when every project was a
+   * permission. T7 gave them levels and the set could no longer say which rung —
+   * so one queued rung of a five-rung ladder marked the whole thing held, which
+   * refused the next rung on the same world and told the hull gates a ladder
+   * queued at level one was finished.
+   *
+   * Missing is level zero. `researchHeld` is the permission question written on
+   * top of it, so no caller has to remember which of the two it is asking.
+   */
+  research: Map<ResearchProjectId, number>;
   units: Partial<Record<HullId, number>>;
 }
+
+/** Whether a project is held AT ALL — the question every permission gate asks. */
+export const researchHeld = (
+  state: ProjectedQueueState,
+  id: ResearchProjectId,
+): boolean => (state.research.get(id) ?? 0) > 0;
 
 const queueOrders = (view: PlanetView, queue: BuildQueueId): BuildOrderView[] =>
   view.queues?.[queue] ?? [];
@@ -112,12 +136,20 @@ export function projectedQueueState(
       EXTRACTOR: view.buildings.EXTRACTOR ?? 0,
       VAULT: view.buildings.VAULT ?? 0,
       SHIPYARD: view.buildings.SHIPYARD ?? 0,
+      HANGAR: view.buildings.HANGAR ?? 0,
+      DEUTERIUM_PLANT: view.buildings.DEUTERIUM_PLANT ?? 0,
     },
     instruments: { ...view.instruments },
     orbit: [...view.orbit],
     effectiveOrbit: [...(view.effectiveOrbit ?? view.orbit)],
-    research: new Set(
-      view.research.filter((project) => project.completed).map((project) => project.id),
+    research: new Map(
+      view.research
+        .map((project) => [
+          project.id,
+          // An older server sends no `level`, where `completed` still means held.
+          project.level ?? (project.completed ? 1 : 0),
+        ] as const)
+        .filter(([, level]) => level > 0),
     ),
     units: Object.fromEntries(
       Object.keys(HULLS).map((id) => {
@@ -148,7 +180,13 @@ export function projectedQueueState(
         projectEffectiveOrbit(state);
       }
     } else if (order.kind === 'RESEARCH' && Object.hasOwn(RESEARCH_PROJECTS, order.subject)) {
-      state.research.add(order.subject as ResearchProjectId);
+      /*
+        THE ORDER'S `count` IS THE RUNG IT BUYS — that is how the server records
+        it (`placeBuildOrder` in `services/research.ts`), and taking the larger of
+        the two is the same `Math.max` `researchView` uses to project its own.
+      */
+      const id = order.subject as ResearchProjectId;
+      state.research.set(id, Math.max(state.research.get(id) ?? 0, Math.max(1, order.count)));
     }
   }
   return state;
@@ -206,7 +244,7 @@ export function predictUpgrade(view: PlanetView, type: BuildingId): Prediction {
   // spend the first Core's cheaper price before the response corrected it.
   const cost = level === view.buildings[type]
     ? view.nextCosts[type]
-    : upgradeCost(level);
+    : buildingCost(type, level);
   if (!cost) return null;
   if (!affordable(view, cost)) return null;
   /**
@@ -229,7 +267,7 @@ export function predictBuild(view: PlanetView, hull: HullId, count: number): Pre
   // The Shipyard gate, for the same reason the Core ceiling is checked above.
   if (projected.buildings.SHIPYARD < spec.minShipyard) return null;
   const completed = (project: 'DENSE_FUEL_CELLS' | 'GRAVITIC_CHARGES') =>
-    projected.research.has(project);
+    researchHeld(projected, project);
   if (hull === 'RUNNER' && !completed('DENSE_FUEL_CELLS')) return null;
   if (hull === 'BREACHER' && !completed('GRAVITIC_CHARGES')) return null;
 
@@ -249,6 +287,15 @@ export function predictBuild(view: PlanetView, hull: HullId, count: number): Pre
    */
   const owned = projected.units[hull] ?? 0;
   if (hull === 'PROSPECTOR' && owned + count > PROSPECTOR.max) return null;
+
+  // The order must fit the same ownership pool the server checks. Projected
+  // units include every earlier Yard order, so two individually legal taps cannot
+  // optimistically walk through the ceiling together.
+  const capacity = spec.ground
+    ? view.capacity?.ground ?? groundSlots(view.buildings.CORE ?? 0)
+    : view.capacity?.hangar ?? hangarCapacity(view.buildings.HANGAR ?? 0);
+  const used = spec.ground ? groundLoad(projected.units) : hangarLoad(projected.units);
+  if (used + hullBulk(hull) * count > capacity) return null;
 
   const next = spend(view, cost);
   return appendOrder(next, 'YARD', 'HULL', hull, count, cost);
@@ -297,14 +344,23 @@ export function predictSatellite(view: PlanetView, type: SatelliteId): Predictio
 export function predictResearch(view: PlanetView, projectId: ResearchProjectId): Prediction {
   if (!queueHasRoom(view, 'CONSTRUCTION')) return null;
   const projected = projectedQueueState(view, 'CONSTRUCTION');
-  if (projected.research.has(projectId)) return null;
+  /*
+    THE RUNG BEING BOUGHT IS ONE ABOVE WHATEVER THE QUEUE WILL LEAVE STANDING, and
+    the ladder's own ceiling is what stops it. Both were `costAt(1)` and a bare
+    "is it held" check until T12: a commander buying rung three of Cargo Holds saw
+    the rung-one price come off their wallet, and a rung already queued refused the
+    next one on the same world.
+  */
+  const held = projected.research.get(projectId) ?? 0;
+  const level = held + 1;
+  if (level > RESEARCH_MAX_LEVEL[projectId]) return null;
   const state = view.research.find((project) => project.id === projectId);
   if (!(state?.queueAvailable ?? state?.available)) return null;
   const requiredCore = RESEARCH_PROJECTS[projectId].requiredCore ?? 0;
   if (projected.buildings.CORE < requiredCore) return null;
-  const cost = RESEARCH_PROJECTS[projectId].cost;
+  const cost = RESEARCH_PROJECTS[projectId].costAt(level);
   if (!affordable(view, cost)) return null;
-  return appendOrder(spend(view, cost), 'CONSTRUCTION', 'RESEARCH', projectId, 1, cost);
+  return appendOrder(spend(view, cost), 'CONSTRUCTION', 'RESEARCH', projectId, level, cost);
 }
 
 /**

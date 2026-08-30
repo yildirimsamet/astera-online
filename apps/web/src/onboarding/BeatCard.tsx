@@ -16,10 +16,10 @@ import { Button } from '../ui/kit/index.js';
  * being a slideshow somebody clicks through without reading. The two beats that
  * are genuinely just a sentence carry one, and say so by having one.
  *
- * THE WAY OUT IS PERMANENT. `Skip` and "I already have a commander" are on every
- * beat, because a returning player who lands on the front door and presses the
- * wrong button must never be held inside a tutorial (I5 — every surface has a
- * permanent way in; the same applies to out).
+ * THE WAY FORWARD AND THE WAY OUT ARE PERMANENT. `Skip` jumps to the final
+ * commander-name/password claim, while "I already have a commander" leaves for
+ * sign-in. A returning player who presses the wrong door must never be held inside
+ * a tutorial (I5 — every surface has a permanent way in; the same applies to out).
  */
 export function BeatCard({
   title,
@@ -125,8 +125,8 @@ export function BeatCard({
        * The gate lets this through by name. D56.
        *
        * Whatever else a beat has locked, the card that is doing the instructing
-       * stays live — its skip and its way to sign in are the difference between a
-       * guided opening and a locked door.
+       * stays live — its jump to claim and its way to sign in are the difference
+       * between a guided opening and a locked door.
        */
       data-beat-card
     >

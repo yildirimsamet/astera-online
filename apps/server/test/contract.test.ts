@@ -3,8 +3,19 @@ import { pino } from 'pino';
 import { afterAll, beforeEach, describe, expect, it } from 'vitest';
 import { and, eq } from 'drizzle-orm';
 import {
-  CLAN, DEATH_STAR, DISRUPTION, REWARD_CHAINS, SHIELD, alloyRate, flightSlots, rewardId, shieldHp,
+  ANTI_STRATEGIC,
+  BUILDING_IDS,
+  HULLS,
+  INSTRUMENT_IDS,
+  RESEARCH_PROJECT_IDS,
+  SATELLITE_IDS,
+  SENSOR,
+  CLAN, DEATH_STAR, DISRUPTION, REWARD_CHAINS, SHIELD, alloyRate, flightSlots,
+  groundLoad,
+  groundSlots, hangarCapacity, hangarLoad, rewardId, shieldHp,
+  asteroidPosition,
   vaultProtects,
+  TRAFFIC,
 } from '@astera/rules';
 import {
   buildings,
@@ -14,7 +25,6 @@ import {
   miningRuns,
   neutralPlanetState,
   notifications,
-  planetResearch,
   planets,
   shards,
   seasons,
@@ -25,11 +35,13 @@ import { EventWorker } from '../src/worker/loop.js';
 import { launchAttack } from '../src/services/mission.js';
 import { launchProbe } from '../src/services/intel.js';
 import { launchMining } from '../src/services/mining.js';
+import { refreshSensorEpoch } from '../src/services/sensorHistory.js';
 import { buildApp } from '../src/app.js';
 import { SHARD_PREFIX } from '../src/stream/bus.js';
 import { TokenService } from '../src/auth/tokens.js';
 import {
   buildSchema,
+  announcementsPageSchema,
   buildCancelSchema,
   clanAidLaunchSchema,
   clanAidPolicySchema,
@@ -100,13 +112,14 @@ import {
   watchSchema,
   deathStarBuildSchema,
   deathStarLaunchSchema,
+  interceptorBuildSchema,
 } from '../../web/src/api/schemas.js';
 import { describeNotification } from '../../web/src/lib/notifications.js';
 import {
   SHARD_PREFIX as CLIENT_SHARD_PREFIX,
   isShardEvent,
 } from '../../web/src/session/shardEvents.js';
-import { giveInstrument, giveSatellite, giveUnits, grant, levelWorld, seedWorld, setLevel, settledAt, testDb, testEnv, type Fixture } from './helpers.js';
+import { giveInstrument, giveResearch, giveSatellite, giveUnits, grant, levelWorld, placeAt, seedWorld, setLevel, settledAt, testDb, testEnv, type Fixture } from './helpers.js';
 
 /**
  * THE CLIENT'S PARSER, RUN AGAINST THE SERVER'S REAL ANSWER.
@@ -187,6 +200,26 @@ describe('every payload the client parses', () => {
     return res.json();
   };
 
+  /** Arrange one real, non-isotope target inside this commander's current eyes. */
+  const exposeMineableAsteroid = async (): Promise<void> => {
+    const seasonStart = new Date('2026-01-01T00:00:00.000Z');
+    let minute = (f.clock.now().getTime() - seasonStart.getTime()) / 60_000;
+    let rock = f.asteroids.find((candidate) =>
+      !candidate.isotopeRich
+      && candidate.appearsAt <= minute
+      && candidate.expiresAt - minute > 20);
+    if (!rock) {
+      rock = f.asteroids.find((candidate) =>
+        !candidate.isotopeRich && candidate.appearsAt > minute);
+      if (!rock) throw new Error('private asteroid field has no mineable target');
+      minute = rock.appearsAt + 0.01;
+      f.clock.set(new Date(seasonStart.getTime() + minute * 60_000));
+    }
+    const mine = f.planetIds[0]!;
+    await placeAt(f.db, mine, asteroidPosition(rock, minute));
+    await refreshSensorEpoch(f.db, mine, f.clock.now());
+  };
+
   /**
    * A MUTATION'S ANSWER IS A PARSED PAYLOAD TOO.
    *
@@ -233,10 +266,14 @@ describe('every payload the client parses', () => {
         parsed.buildings.VAULT ?? 0,
         parsed.buildings.REFINERY ?? 0,
         parsed.buildings.EXTRACTOR ?? 0,
+        parsed.buildings.DEUTERIUM_PLANT ?? 0,
       ),
     );
     expect(parsed.planet.vaultProtected.alloy).toBeLessThanOrEqual(parsed.planet.alloy);
     expect(parsed.planet.vaultProtected.crystal).toBeLessThanOrEqual(parsed.planet.crystal);
+    // Zero on THIS world because it has no plant, and the floor is hours of a
+    // resource's own production — not because deuterium is a special case. T5.
+    expect(parsed.buildings.DEUTERIUM_PLANT ?? 0).toBe(0);
     expect(parsed.planet.vaultProtected.deuterium).toBe(0);
     expect(parsed.planet.shieldMax).toBe(shieldHp(3));
     expect(parsed.planet.shieldPerHour).toBe(Math.round(shieldHp(3) * SHIELD.regenPerHour));
@@ -252,6 +289,22 @@ describe('every payload the client parses', () => {
     expect(parsed.flight.total).toBe(flightSlots(core ?? 0));
     expect(parsed.flight.used).toBe(0);
     expect(parsed.ground.THORN).toBe(5);
+    /*
+      BOTH CEILINGS AND BOTH LOADS, ON THE PAYLOAD. T4/T4b.
+
+      The order screen greys a hull the server would refuse, which it can only do
+      from figures it is sent. Read off the same rules the server enforces with —
+      a hardcoded number here would test the fixture rather than the route — and
+      the loads are asserted against the two POOLS separately, because the whole
+      design is that they do not share.
+    */
+    expect(parsed.capacity).toEqual({
+      hangar: hangarCapacity(parsed.buildings.HANGAR ?? 0),
+      hangarUsed: hangarLoad(parsed.fleet),
+      ground: groundSlots(core ?? 0),
+      groundUsed: groundLoad(parsed.ground),
+    });
+    expect(parsed.capacity!.groundUsed).toBeGreaterThan(0);
   });
 
   it('never accepts another commander planet id on explicit reads or mutations', async () => {
@@ -305,6 +358,55 @@ describe('every payload the client parses', () => {
     const parsed = galaxySchema.parse(await get('/api/galaxy'));
     expect(parsed.planets.length).toBeGreaterThan(0);
     expect(parsed.planets.some((p) => p.shielded)).toBe(true);
+  });
+
+  /**
+   * ALL THREE INTEL SHAPES, IN ONE PAYLOAD, THROUGH THE CLIENT'S OWN SCHEMA. D127.
+   *
+   * THIS TEST EXISTS BECAUSE ITS ABSENCE SHIPPED A BLANK GALAXY. D127 gave a world
+   * three payload shapes and the contract suite only ever saw the fully resolved
+   * one, so nothing noticed when the unknown shape started carrying a PARTIAL
+   * `neutral` object: `z.coerce.date()` turned its missing `nextReinforcementAt`
+   * into an Invalid Date, Zod rejected the whole response, and every world in the
+   * galaxy disappeared — the caller's own capital included. A shape that only one
+   * of three branches produces is a shape no unit test reaches.
+   *
+   * `parse` rather than `safeParse` on purpose: the failure this guards is the
+   * whole payload being thrown away, so the assertion has to be that it survives.
+   */
+  it('GET /api/galaxy parses every intel state the route can produce', async () => {
+    const [mine, theirs] = f.planetIds as [string, string];
+    // Far enough that the naked-eye reach cannot cover it, so the disc has to
+    // produce an unknown world alongside the caller's own resolved one.
+    await placeAt(f.db, mine, { x: 0 });
+    await placeAt(f.db, theirs, { x: SENSOR.maxRadius * 2 });
+    // A live claim window is the one public moment an unknown world still carries.
+    await f.db
+      .insert(neutralPlanetState)
+      .values({
+        planetId: theirs,
+        tier: 2,
+        profileSeed: 1,
+        economyAnchorAt: f.clock.now(),
+        claimUntil: new Date(f.clock.now().getTime() + 3_600_000),
+      })
+      .onConflictDoUpdate({
+        target: neutralPlanetState.planetId,
+        set: { claimUntil: new Date(f.clock.now().getTime() + 3_600_000) },
+      });
+
+    const parsed = galaxySchema.parse(await get('/api/galaxy'));
+    const states = new Set(parsed.planets.map((planet) => planet.intel));
+
+    expect(parsed.planets.length).toBeGreaterThan(1);
+    expect(states.has('RESOLVED'), 'the caller always resolves their own world').toBe(true);
+    expect(states.has('UNKNOWN'), 'nothing produced an unknown world to parse').toBe(true);
+
+    const unknown = parsed.planets.find((planet) => planet.intel === 'UNKNOWN')!;
+    // The gaps are filled by the schema, so downstream never sees a missing field.
+    expect(unknown.name).toBe('');
+    expect(unknown.coreTier).toBe(1);
+    expect(unknown.satellites).toEqual([]);
   });
 
   it('the clan journey parses with the client schemas, route by route', async () => {
@@ -368,6 +470,10 @@ describe('every payload the client parses', () => {
     clanRequestAcceptedSchema.parse(await clanPost(
       `/api/clan/requests/${invitation.requestId}/accept`, { acknowledgeHostile: false }, third,
     ));
+
+    const clanGalaxy = galaxySchema.parse(await get('/api/galaxy'));
+    expect(clanGalaxy.clanPresence?.members.map((member) => member.playerId))
+      .toEqual(expect.arrayContaining([f.playerIds[0], f.playerIds[1], f.playerIds[2]]));
 
     f.clock.advance(CLAN.adaptationMinutes);
     clanEventsPageSchema.parse(await get('/api/clan/events'));
@@ -494,6 +600,7 @@ describe('every payload the client parses', () => {
   });
 
   it('GET /api/mining parses, and carries rocks', async () => {
+    await exposeMineableAsteroid();
     const parsed = miningSchema.parse(await get('/api/mining'));
     expect(parsed.derrick).toBe(true);
     expect(parsed.craftHold).toBeGreaterThan(0);
@@ -503,10 +610,42 @@ describe('every payload the client parses', () => {
     ).toBeGreaterThan(0);
   });
 
+  /**
+   * THE SILENT FAILURE T7 NEARLY SHIPPED.
+   *
+   * `GET /api/mining` gated its isotope reading on a join against the world's own
+   * research row. After research moved to the commander that join can only ever
+   * miss — and it misses QUIETLY, reporting every anomaly as unreadable to a player
+   * who had paid for the project. Nothing else in the suite covered the route with
+   * research held, so nothing went red. This asserts the gate reads the commander.
+   */
+  it('GET /api/mining/status reads the isotope gate off the commander, not the world', async () => {
+    // Put a real active anomaly through this commander's live sensor sphere. The
+    // old test only advanced the clock and accidentally assumed every anomaly was
+    // globally known — precisely the information leak this feature removes.
+    const anomaly = f.asteroids.find((rock) => rock.isotopeRich);
+    if (!anomaly) throw new Error('private asteroid field has no isotope anomaly');
+    const seenAt = anomaly.appearsAt + 0.01;
+    f.clock.set(new Date(new Date('2026-01-01T00:00:00.000Z').getTime() + seenAt * 60_000));
+    await placeAt(f.db, f.planetIds[0]!, asteroidPosition(anomaly, seenAt));
+    await refreshSensorEpoch(f.db, f.planetIds[0]!, f.clock.now());
+    expect(miningStatusSchema.parse(await get('/api/mining/status')).isotopes).toEqual([]);
+
+    await giveResearch(f.db, f.planetIds[0]!, 'ISOTOPE_SPECTROMETRY');
+
+    const parsed = miningStatusSchema.parse(await get('/api/mining/status'));
+    expect(parsed.isotopes, 'spectrometry is held, so the anomalies must be readable')
+      .not.toEqual([]);
+  });
+
   it('GET /api/mining/field and /status preserve the public/private split', async () => {
+    await exposeMineableAsteroid();
     const field = miningFieldSchema.parse(await get('/api/mining/field'));
     const status = miningStatusSchema.parse(await get('/api/mining/status'));
     expect(field.asteroids.length).toBeGreaterThan(0);
+    expect(field.nextFieldChangeAt === null || field.nextFieldChangeAt instanceof Date).toBe(true);
+    expect(field.asteroids.every((asteroid) => typeof asteroid.id === 'string')).toBe(true);
+    expect(field.asteroids.every((asteroid) => !('index' in asteroid))).toBe(true);
     expect(field.asteroids.every((asteroid) => !asteroid.isotopeRich)).toBe(true);
     expect(status.derrick).toBe(true);
     expect(status.isotopes).toEqual([]);
@@ -525,6 +664,7 @@ describe('every payload the client parses', () => {
    */
   it('POST /api/mining/launch parses', async () => {
     const [mine] = f.planetIds as [string];
+    await exposeMineableAsteroid();
     const field = miningSchema.parse(await get('/api/mining'));
     // Not every rock in the disc can still be reached; take the first that can.
     let launched: unknown = null;
@@ -533,7 +673,7 @@ describe('every payload the client parses', () => {
         method: 'POST',
         url: '/api/mining/launch',
         headers: auth,
-        payload: { asteroidIndex: rock.index, craft: 1 },
+        payload: { asteroidId: rock.id, craft: 1 },
       });
       if (res.statusCode === 200) {
         launched = res.json();
@@ -543,7 +683,7 @@ describe('every payload the client parses', () => {
     expect(launched, 'no rock in the field could be intercepted at all').not.toBeNull();
 
     const parsed = miningLaunchSchema.parse(launched);
-    expect(parsed.asteroidIndex).toBeTypeOf('number');
+    expect(parsed.asteroidId).toMatch(/^[A-Za-z0-9_-]{22}$/);
     expect(parsed.capacity).toBeGreaterThan(0);
     expect(parsed.intercept).toBeDefined();
     expect(parsed.planet.planet.id).toBe(mine);
@@ -557,7 +697,7 @@ describe('every payload the client parses', () => {
     );
   });
 
-  it('POST /api/mining/harvest parses, and carries no asteroid index', async () => {
+  it('POST /api/mining/harvest parses, and carries no asteroid id', async () => {
     const [mine] = f.planetIds as [string];
     const [wreck] = await f.db
       .insert(debrisFields)
@@ -573,7 +713,7 @@ describe('every payload the client parses', () => {
     const parsed = miningLaunchSchema.parse(
       await post('/api/mining/harvest', { fieldId: wreck!.id, craft: 1 }),
     );
-    expect(parsed.asteroidIndex).toBeUndefined();
+    expect(parsed.asteroidId).toBeUndefined();
     expect(parsed.runId).toBeTruthy();
     expect(parsed.capacity).toBeGreaterThan(0);
     expect(parsed.mining.runs.some((run) => run.id === parsed.runId)).toBe(true);
@@ -651,8 +791,14 @@ describe('every payload the client parses', () => {
     const [, theirs, third] = f.planetIds as [string, string, string];
     await giveUnits(f.db, theirs, { WASP: 20 });
     const launch = await launchAttack(f.db, theirs, third, { WASP: 20 }, f.clock);
-    // Half a minute out: inside the coast floor, so the window runs to the landing.
-    f.clock.set(new Date(launch.arriveAt.getTime() - 30_000));
+    /*
+      INSIDE THE FINAL WINDOW, DERIVED RATHER THAN TYPED. It was "half a minute
+      out", against a floor that was a flat sixty seconds — and that floor was a
+      poll interval written on the wrong side of the wire. It is the refetch
+      cadence now, so the instant this test needs is read from the same constant
+      the server floors the window at.
+    */
+    f.clock.set(new Date(launch.arriveAt.getTime() - TRAFFIC.refreshMs / 2));
 
     const parsed = trafficSchema.parse(await get('/api/galaxy/traffic'));
     const approaching = parsed.contacts.find((c) => c.id === launch.missionId);
@@ -724,6 +870,7 @@ describe('every payload the client parses', () => {
     ['/api/chat/messages', chatPageSchema],
     ['/api/chat/unread', chatUnreadSchema],
     ['/api/chronicle', chroniclePageSchema],
+    ['/api/announcements', announcementsPageSchema],
     ['/api/intel', intelSchema],
     ['/api/notifications', notificationsSchema],
     ['/api/session/return', returnSchema],
@@ -733,11 +880,55 @@ describe('every payload the client parses', () => {
     schema.parse(await get(url));
   });
 
+  /**
+   * THE PROBE'S FULL PRODUCT REACHES THE CLIENT. T9 · T10 · D137.
+   *
+   * `resolveProbe` has written the target's combat doctrine and whether they can
+   * shoot a strategic weapon down into every report's silhouette since those
+   * features shipped, and the route dropped both on the way out — so the two most
+   * expensive readings in the game were collected and never delivered. Parsing the
+   * schema is not enough here; the MEANING has to arrive, so this asserts the
+   * values rather than the shape.
+   */
+  it('GET /api/intel delivers the doctrine and interceptor a probe recorded', async () => {
+    const [mine, theirs] = f.planetIds as [string, string];
+
+    // What the probe is meant to come home with, put on the target world.
+    await giveResearch(f.db, theirs, 'WASP_DOCTRINE', 2);
+    await f.db.insert(strategicAssets).values({
+      planetId: theirs,
+      type: 'INTERCEPTOR',
+      status: 'READY',
+      startedAt: f.clock.now(),
+      readyAt: f.clock.now(),
+    });
+    await grant(f.db, mine, 20_000, 5_000);
+    await setLevel(f.db, mine, 'SHIPYARD', 3);
+
+    // Fly it there and back, because delivery is what gates the reading.
+    const launch = await launchProbe(f.db, mine, theirs, f.clock);
+    const worker = new EventWorker(
+      f.db, f.clock, { pollMs: 1000, batch: 100, staleMinutes: 5 }, silent,
+    );
+    f.clock.advance(launch.flightMinutes * 3);
+    await worker.tick();
+    f.clock.advance(launch.flightMinutes * 3);
+    await worker.tick();
+
+    const parsed = intelSchema.parse(await get('/api/intel'));
+    const report = parsed.probeReports.find((r) => r.targetPlanetId === theirs);
+    expect(report, 'the delivered report never reached the payload').toBeDefined();
+    expect(report?.doctrines, 'the doctrine reading was dropped on the way out')
+      .toEqual({ WASP_DOCTRINE: 2 });
+    expect(report?.interceptor, 'the interceptor reading was dropped on the way out')
+      .toBe(true);
+  });
+
   it('GET /api/chronicle parses every public event variant', async () => {
     const [planetId] = f.planetIds as [string];
     const identity = { planetName: 'Kestrel', commanderName: 'Tester0' };
     await f.db.insert(galaxyEvents).values([
-      { seasonId: f.seasonId, kind: 'isotope_exhausted', refId: 'iso', subjectPlanetId: null, payload: { asteroidIndex: 7 }, occurredAt: f.clock.now() },
+      { seasonId: f.seasonId, kind: 'isotope_exhausted', refId: 'iso', subjectPlanetId: null, payload: {}, occurredAt: f.clock.now() },
       { seasonId: f.seasonId, kind: 'wreck_formed', refId: 'wreck-new', subjectPlanetId: planetId, payload: identity, occurredAt: f.clock.now() },
       { seasonId: f.seasonId, kind: 'wreck_exhausted', refId: 'wreck-gone', subjectPlanetId: planetId, payload: identity, occurredAt: f.clock.now() },
       { seasonId: f.seasonId, kind: 'dominion_leader', refId: 'leader', subjectPlanetId: planetId, payload: identity, occurredAt: f.clock.now() },
@@ -758,6 +949,8 @@ describe('every payload the client parses', () => {
       'death_star_impact',
       'control_transfer',
     ]));
+    expect(JSON.stringify(page.events.find((event) => event.kind === 'isotope_exhausted')))
+      .not.toContain('asteroidIndex');
   });
 
   it('POST /api/chat/messages and /api/chat/read parse', async () => {
@@ -897,11 +1090,9 @@ describe('every payload the client parses', () => {
     await f.db.update(planets)
       .set({ alloy: 100_000, crystal: 50_000, deuterium: 10_000 })
       .where(eq(planets.id, origin));
-    await f.db.insert(planetResearch).values([
-      { planetId: origin, projectId: 'ISOTOPE_SPECTROMETRY', completedAt: f.clock.now() },
-      { planetId: origin, projectId: 'GRAVITIC_CHARGES', completedAt: f.clock.now() },
-      { planetId: origin, projectId: 'DEATH_STAR_PROTOCOL', completedAt: f.clock.now() },
-    ]);
+    await giveResearch(f.db, origin, 'ISOTOPE_SPECTROMETRY');
+    await giveResearch(f.db, origin, 'GRAVITIC_CHARGES');
+    await giveResearch(f.db, origin, 'DEATH_STAR_PROTOCOL');
     const built = deathStarBuildSchema.parse(
       await post(`/api/planets/${origin}/death-star/build`, {}),
     );
@@ -916,6 +1107,122 @@ describe('every payload the client parses', () => {
       targetPlanetId: target,
     }));
     expect(launched.pending.some((thread) => thread.id === launched.missionId)).toBe(true);
+  });
+
+  /**
+   * THE ROUTE T10 NEVER WIRED. T12.
+   *
+   * `buildInterceptor` shipped complete, tested and unreachable: no route, no
+   * client method, no control. The research that authorises it is buyable from the
+   * research menu now, so a commander could pay 33,000 for a permission to build a
+   * thing with no door — which is worse than not having the defence at all.
+   */
+  it('POST interceptor build parses its exact contract', async () => {
+    const [origin] = f.planetIds as [string];
+    await f.db.update(planets)
+      .set({ alloy: 100_000, crystal: 50_000, deuterium: 10_000 })
+      .where(eq(planets.id, origin));
+    await giveSatellite(f.db, origin, 'UPLINK');
+    await giveInstrument(f.db, origin, 'RADAR', ANTI_STRATEGIC.requiredRadar);
+    await giveResearch(f.db, origin, ANTI_STRATEGIC.requiredResearch);
+
+    const built = interceptorBuildSchema.parse(
+      await post(`/api/planets/${origin}/interceptor/build`, {}),
+    );
+    expect(built.planet.interceptor?.status).toBe('BUILDING');
+    // And the weapon slot stays empty: two assets, two keys, never one.
+    expect(built.planet.strategic ?? null).toBeNull();
+  });
+
+  it('refuses an interceptor the commander has not researched', async () => {
+    const [origin] = f.planetIds as [string];
+    await f.db.update(planets)
+      .set({ alloy: 100_000, crystal: 50_000, deuterium: 10_000 })
+      .where(eq(planets.id, origin));
+    await giveSatellite(f.db, origin, 'UPLINK');
+    await giveInstrument(f.db, origin, 'RADAR', ANTI_STRATEGIC.requiredRadar);
+
+    const res = await app.inject({
+      method: 'POST',
+      url: `/api/planets/${origin}/interceptor/build`,
+      headers: auth,
+      payload: {},
+    });
+    expect(res.statusCode).toBe(403);
+    expect(res.json<{ error?: string }>().error).toBe('INTERCEPTOR_LOCKED');
+  });
+
+  /**
+   * THE ROUTE ACCEPTS EXACTLY WHAT THE GAME HAS, AND NOTHING WAS TYPED TWICE.
+   *
+   * Every id list on `routes/planet.ts` was hand-written beside a generated enum in
+   * `packages/rules`, and three of them had fallen behind — so the server answered
+   * 400 to things it fully implements:
+   *
+   *   · the HANGAR, which is the fleet ceiling the whole of T4 is built on
+   *   · the DEUTERIUM_PLANT, the only steady source of fuel
+   *   · eleven of the fifteen research projects
+   *
+   * Zod threw at the boundary, which is a 400 and looks like a malformed request
+   * rather than a missing case. Nothing typechecked it: a `z.enum` of string literals
+   * is valid TypeScript whatever it omits.
+   */
+  describe('the route boundary knows every id the rules have', () => {
+    it('accepts every building', async () => {
+      const [planetId] = f.planetIds as [string];
+      for (const type of BUILDING_IDS) {
+        const res = await app.inject({
+          method: 'POST',
+          url: `/api/planets/${planetId}/upgrade`,
+          headers: auth,
+          payload: { type },
+        });
+        // Any game refusal is fine — a 400 from the parser is not.
+        expect(res.json<{ error?: string }>().error, type).not.toBe('BAD_REQUEST');
+      }
+    });
+
+    it('accepts every research project', async () => {
+      const [planetId] = f.planetIds as [string];
+      for (const projectId of RESEARCH_PROJECT_IDS) {
+        const res = await app.inject({
+          method: 'POST',
+          url: `/api/planets/${planetId}/research`,
+          headers: auth,
+          payload: { projectId },
+        });
+        expect(res.json<{ error?: string }>().error, projectId).not.toBe('BAD_REQUEST');
+      }
+    });
+
+    it('accepts every hull the yard builds', async () => {
+      const [planetId] = f.planetIds as [string];
+      for (const hull of Object.keys(HULLS)) {
+        const res = await app.inject({
+          method: 'POST',
+          url: `/api/planets/${planetId}/build`,
+          headers: auth,
+          payload: { hull, count: 1 },
+        });
+        expect(res.json<{ error?: string }>().error, hull).not.toBe('BAD_REQUEST');
+      }
+    });
+
+    it('accepts every instrument and satellite', async () => {
+      const [planetId] = f.planetIds as [string];
+      for (const type of INSTRUMENT_IDS) {
+        const res = await app.inject({
+          method: 'POST', url: `/api/planets/${planetId}/instrument`, headers: auth, payload: { type },
+        });
+        expect(res.json<{ error?: string }>().error, type).not.toBe('BAD_REQUEST');
+      }
+      for (const type of SATELLITE_IDS) {
+        const res = await app.inject({
+          method: 'POST', url: `/api/planets/${planetId}/satellite`, headers: auth, payload: { type },
+        });
+        expect(res.json<{ error?: string }>().error, type).not.toBe('BAD_REQUEST');
+      }
+    });
   });
 
   /**
@@ -1354,11 +1661,12 @@ describe('every payload the client parses', () => {
       silent,
     );
 
+    await exposeMineableAsteroid();
     const field = miningSchema.parse(await get('/api/mining'));
     const rock = field.asteroids.find((a) => a.oreRemaining > 0);
     expect(rock, 'no rock to mine in the contract fixture').toBeDefined();
 
-    const run = await launchMining(f.db, mine, rock!.index, 2, f.clock);
+    const run = await launchMining(f.db, mine, rock!.id, 2, f.clock);
     f.clock.set(run.arriveAt);
     await worker.tick();
     /**

@@ -2,6 +2,7 @@ import {
   ABUSE,
   ALL_HULLS,
   BUILD,
+  BUILDING_IDS,
   COMBAT,
   DEATH_STAR,
   DEUTERIUM,
@@ -15,16 +16,19 @@ import {
   colonyCapacity,
   collectorCap,
   deuteriumCollectorCap,
+  deuteriumRate,
   deuteriumStorageCap,
   defenceMinutes,
   GROUND_HULLS,
   HULLS,
   MOBILE_HULLS,
+  NON_COMBATANT_HULLS,
   counterMult,
   advanceEconomy,
   alloyRate,
   applyDisruption,
   bookBattle,
+  buildingCost,
   buildMinutes,
   canAttack,
   collect,
@@ -40,9 +44,19 @@ import {
   fleetSpeedMult,
   fleetTravelExact,
   fleetValue,
+  garrisonOf,
+  plantCeiling,
   generateGalaxy,
+  groundLoad,
+  groundSlots,
+  hangarCapacity,
+  hangarLoad,
+  hullBulk,
+  missionFuel,
+  type TechLevels,
   selectNeutralSlots,
   PLANET_START,
+  START_BUILDINGS,
   investedInBuilding,
   investedInInstrument,
   instrumentMaxed,
@@ -65,7 +79,6 @@ import {
   shipMinutes,
   storageCap,
   travelMinutes,
-  upgradeCost,
   worthInvesting,
   vaultProtects,
   wealth,
@@ -130,6 +143,19 @@ export interface SimPlayer {
   isotopeSpectrometry: boolean;
   denseFuelCells: boolean;
   graviticCharges: boolean;
+  /** Rung held on the one levelled project. T5. Zero means no refinery is legal. */
+  deuteriumSynthesis: number;
+  /**
+   * Every levelled project, in the shape the rules package reads. T8.
+   *
+   * The bots do not BUY the three economy ladders — nothing in the model gives a
+   * bot a reason to prefer a cargo rung to another Wasp, and inventing one would
+   * be modelling a player rather than measuring the game. The field is threaded
+   * through so the effects are wired and empty rather than absent and forgotten,
+   * which is the difference between a band that reads a game without the ladders
+   * and a band that silently reads the wrong game.
+   */
+  tech: TechLevels;
   cargoLimitedSeen: boolean;
   shieldInsightSeen: boolean;
 }
@@ -376,7 +402,7 @@ export function buildWorld(cfg: SimConfig): World {
     name: `P${String(i).padStart(3, '0')}`,
     type: names[i] ?? 'CASUAL',
     x: slot.x, y: slot.y, z: slot.z,
-    buildings: { CORE: 1, REFINERY: 1, EXTRACTOR: 1, VAULT: 0, SHIPYARD: 0 },
+    buildings: { ...START_BUILDINGS },
     instruments: {},
     orbit: [],
     // D22: no starting fleet, and the grant is what the opening costs. Mirrors
@@ -398,6 +424,8 @@ export function buildWorld(cfg: SimConfig): World {
     isotopeSpectrometry: false,
     denseFuelCells: false,
     graviticCharges: false,
+    deuteriumSynthesis: 0,
+    tech: {},
     cargoLimitedSeen: false,
     shieldInsightSeen: false,
   }));
@@ -427,7 +455,7 @@ export function buildWorld(cfg: SimConfig): World {
         fleet: { ...template.fleet, ...template.ground },
         alloy: storageCap(alloyPerHour, template.buildings.VAULT),
         crystal: storageCap(crystalPerHour, template.buildings.VAULT),
-        deuterium: deuteriumStorageCap(crystalPerHour, template.buildings.VAULT),
+        deuterium: deuteriumStorageCap(0, crystalPerHour, template.buildings.VAULT),
         lastTick: 0,
         claimUntil: null,
         nextReinforcement: template.reinforcementMinutes,
@@ -463,7 +491,7 @@ export function buildWorld(cfg: SimConfig): World {
     totalMinutes: cfg.days * 1440,
     ...(cfg.hullCrystalShare === undefined ? {} : { hullCrystalShare: cfg.hullCrystalShare }),
     spectrometryCrystalCost:
-      cfg.spectrometryCrystalCost ?? RESEARCH_PROJECTS.ISOTOPE_SPECTROMETRY.cost.crystal,
+      cfg.spectrometryCrystalCost ?? RESEARCH_PROJECTS.ISOTOPE_SPECTROMETRY.costAt(1).crystal,
     isotopes: cfg.isotopes ?? true,
     crystalCapPlayerMinutes: 0,
     crystalSpent: {
@@ -558,10 +586,21 @@ export function projectedBuildState(
   return projected;
 }
 
+/** How full a Hangar has to be before a bot spends a level on the next one. */
+const HANGAR_PRESSURE = 0.8;
+
 const queuedHullCount = (p: SimPlayer, hull: HullId): number =>
   p.queues.YARD
     .filter((order) => order.kind === 'HULL' && order.subject === hull)
     .reduce((sum, order) => sum + order.count, 0);
+
+/** Room already committed in the yard queue, on one side of the two pools. */
+const queuedYardBulk = (p: SimPlayer, ground: boolean): number =>
+  p.queues.YARD.reduce((sum, order) => {
+    if (order.kind !== 'HULL') return sum;
+    const hull = order.subject as HullId;
+    return HULLS[hull].ground === ground ? sum + hullBulk(hull) * order.count : sum;
+  }, 0);
 
 /**
  * Pay and append one order, using the same depth, second rounding and season-end
@@ -641,7 +680,70 @@ function applySimBuild(p: SimPlayer, order: SimBuildOrder, world: World): void {
   if (id === 'ISOTOPE_SPECTROMETRY') p.isotopeSpectrometry = true;
   else if (id === 'DENSE_FUEL_CELLS') p.denseFuelCells = true;
   else if (id === 'GRAVITIC_CHARGES') p.graviticCharges = true;
-  else world.deathStarProtocol.add(p.id);
+  // The order's `count` is its target rung, exactly as the server reads it.
+  else if (id === 'DEUTERIUM_SYNTHESIS') {
+    p.deuteriumSynthesis = Math.max(p.deuteriumSynthesis, order.count);
+  } else if (id === 'DEATH_STAR_PROTOCOL') world.deathStarProtocol.add(p.id);
+  p.tech[id] = Math.max(p.tech[id] ?? 0, order.count);
+}
+
+/**
+ * DOES THIS COMMANDER ACTUALLY WANT DEUTERIUM? T5.
+ *
+ * A plant is a resource sink until something spends what it makes, and today that
+ * is a Runner, a Breacher or a Death Star. A bot that bought one anyway would be a
+ * model of a worse player than the one being measured, and every band would read
+ * the cost of a mistake nobody makes.
+ *
+ * T6 IS WHAT CHANGES THIS. Once every launch burns fuel, every archetype wants a
+ * plant and this predicate becomes true for all of them — which is exactly why the
+ * mechanism is here now and the demand is narrow.
+ */
+const wantsDeuterium = (p: SimPlayer): boolean => {
+  /*
+    T6 MADE THIS TRUE FOR EVERYBODY, which is what the narrow version was waiting
+    for. Every launch burns deuterium now, so a commander who ever intends to fly
+    wants a refinery — and one who never attacks still transfers, settles and
+    sends aid. The predicate stays as a function because the answer is a design
+    statement rather than a constant: if some archetype ever genuinely does not
+    need fuel, this is where that is said.
+  */
+  void p;
+  return true;
+};
+
+/** The rung already held or on its way, so two orders cannot buy the same one. */
+const synthesisRung = (p: SimPlayer): number =>
+  p.queues.CONSTRUCTION.reduce(
+    (rung, order) => order.kind === 'RESEARCH' && order.subject === 'DEUTERIUM_SYNTHESIS'
+      ? Math.max(rung, order.count)
+      : rung,
+    p.deuteriumSynthesis,
+  );
+
+/**
+ * Buy the next synthesis rung, but only once the plant is standing at the ceiling
+ * the current one opened. A rung bought ahead of the building it unlocks is
+ * capacity paid for and not used — the same demand test the Hangar takes.
+ */
+function trySynthesis(p: SimPlayer, t: number, world: World): void {
+  if (!wantsDeuterium(p)) return;
+  const rung = synthesisRung(p);
+  const project = RESEARCH_PROJECTS.DEUTERIUM_SYNTHESIS;
+  if (rung >= project.maxLevel) return;
+  if (rung > 0 && p.buildings.DEUTERIUM_PLANT < plantCeiling(rung)) return;
+  const cost = project.costAt(rung + 1);
+  if (p.alloy < cost.alloy || p.crystal < cost.crystal || p.deuterium < cost.deuterium) return;
+  const projected = projectedBuildState(p, world, 'CONSTRUCTION');
+  const placed = enqueueSimBuild(p, t, world, {
+    queue: 'CONSTRUCTION',
+    kind: 'RESEARCH',
+    subject: 'DEUTERIUM_SYNTHESIS',
+    count: rung + 1,
+    cost,
+    minutes: researchMinutes(cost, projected.buildings.CORE),
+  });
+  if (placed) spendCrystal(world, 'research', cost.crystal);
 }
 
 /** Complete due work at each order's exact instant; disruption never pauses it. */
@@ -675,6 +777,22 @@ function enqueueHullOrder(
   category: CrystalSpendCategory,
 ): boolean {
   if (count < 1 || p.buildings.SHIPYARD < HULLS[hull].minShipyard) return false;
+  /*
+    THE SAME TWO CEILINGS THE SERVER ENFORCES. T4/T4b.
+
+    Ships answer to the Hangar and emplacements to the Core, and what is already in
+    the yard queue counts — a bot that could place two orders that each fit and
+    together do not would end the season with a fleet the live game refuses, and
+    every band measured off it would be measuring a different game.
+  */
+  const needed = hullBulk(hull) * count;
+  if (HULLS[hull].ground) {
+    const load = groundLoad(p.fleet) + queuedYardBulk(p, true);
+    if (load + needed > groundSlots(p.buildings.CORE)) return false;
+  } else {
+    const load = ownedHangarLoad(p, world) + queuedYardBulk(p, false);
+    if (load + needed > hangarCapacity(p.buildings.HANGAR)) return false;
+  }
   const unit = hullPrice(world, hull);
   const cost = {
     alloy: unit.alloy * count,
@@ -683,7 +801,7 @@ function enqueueHullOrder(
   };
   const minutes = HULLS[hull].ground
     ? defenceMinutes(cost, p.buildings.SHIPYARD)
-    : shipMinutes(cost, p.buildings.SHIPYARD);
+    : shipMinutes(cost, p.buildings.SHIPYARD, p.tech);
   const placed = enqueueSimBuild(p, t, world, {
     queue: 'YARD',
     kind: 'HULL',
@@ -701,7 +819,11 @@ function enqueueHullOrder(
 const capsOf = (p: SimPlayer) => ({
   alloy: storageCap(alloyRate(p.buildings.REFINERY), p.buildings.VAULT),
   crystal: storageCap(crystalRate(p.buildings.EXTRACTOR), p.buildings.VAULT),
-  deuterium: deuteriumStorageCap(crystalRate(p.buildings.EXTRACTOR), p.buildings.VAULT),
+  deuterium: deuteriumStorageCap(
+    deuteriumRate(p.buildings.DEUTERIUM_PLANT),
+    crystalRate(p.buildings.EXTRACTOR),
+    p.buildings.VAULT,
+  ),
 });
 
 /**
@@ -715,13 +837,16 @@ const worksCapsOf = (p: SimPlayer) => {
   return {
     alloy: collectorCap(alloyRate(p.buildings.REFINERY) * boost),
     crystal: collectorCap(crystalRate(p.buildings.EXTRACTOR) * boost),
-    deuterium: deuteriumCollectorCap(crystalRate(p.buildings.EXTRACTOR) * boost),
+    deuterium: deuteriumCollectorCap(
+      deuteriumRate(p.buildings.DEUTERIUM_PLANT) * boost,
+      crystalRate(p.buildings.EXTRACTOR) * boost,
+    ),
   };
 };
 
 const worksOf = (p: SimPlayer) => ({
   refineryLevel: p.buildings.REFINERY,
-  extractorLevel: p.buildings.EXTRACTOR,
+  extractorLevel: p.buildings.EXTRACTOR, plantLevel: p.buildings.DEUTERIUM_PLANT,
   aegisLevel: p.instruments.AEGIS ?? 0,
   vaultLevel: p.buildings.VAULT,
   production: productionMult(p.orbit),
@@ -755,7 +880,7 @@ function reinforceNeutralSim(n: SimNeutralWorld, t: number, world: World): void 
   let blocked = false;
   for (const type of ['CORE', 'REFINERY', 'EXTRACTOR', 'SHIPYARD'] as const) {
     while (n.buildings[type] < template.buildings[type]) {
-      const cost = upgradeCost(n.buildings[type]);
+      const cost = buildingCost(type, n.buildings[type]);
       if (n.alloy < cost.alloy || n.crystal < cost.crystal || n.deuterium < cost.deuterium) {
         blocked = true;
         break;
@@ -963,7 +1088,7 @@ export function tryDeathStar(p: SimPlayer, t: number, world: World): void {
       !projected.research.has('GRAVITIC_CHARGES')
       || projected.buildings.CORE < (RESEARCH_PROJECTS.DEATH_STAR_PROTOCOL.requiredCore ?? 0)
     ) return;
-    const research = RESEARCH_PROJECTS.DEATH_STAR_PROTOCOL.cost;
+    const research = RESEARCH_PROJECTS.DEATH_STAR_PROTOCOL.costAt(1);
     if (p.alloy < research.alloy || p.crystal < research.crystal || p.deuterium < research.deuterium) return;
     const placed = enqueueSimBuild(p, t, world, {
       queue: 'CONSTRUCTION',
@@ -1045,6 +1170,8 @@ function resolveStrategicMission(mission: StrategicMission, t: number, world: Wo
       target.fleet,
       shieldHp(target.aegis),
       mulberry32((mission.id * 104729 + t) >>> 0),
+      // A caretaker world researches nothing; the raider's doctrines still count.
+      { attacker: p.tech, defender: {} },
     );
     target.fleet = { ...result.defenderSurvivors, ...result.defenceSalvage };
     const loot = computeLoot(
@@ -1052,7 +1179,7 @@ function resolveStrategicMission(mission: StrategicMission, t: number, world: Wo
       EMPTY_RESOURCES,
       EMPTY_RESOURCES,
       result.grade,
-      fleetCargo(result.attackerSurvivors),
+      fleetCargo(result.attackerSurvivors, p.tech),
     );
     target.alloy -= loot.fromStock.alloy;
     target.crystal -= loot.fromStock.crystal;
@@ -1162,8 +1289,9 @@ export function advanceStrategicLayer(world: World, t: number): void {
 function strategicWealth(p: SimPlayer, world: World): number {
   let total = 0;
   for (const n of coloniesOf(world, p.id)) {
-    total += Object.values(n.buildings)
-      .reduce((sum, level) => sum + investedInBuilding(level), 0);
+    for (const type of BUILDING_IDS) {
+      total += investedInBuilding(n.buildings[type], type);
+    }
     total += investedInInstrument('AEGIS', n.aegis);
     total += fleetValue(n.fleet) + n.alloy + n.crystal + n.deuterium;
   }
@@ -1410,6 +1538,31 @@ const ownedMissionHull = (p: SimPlayer, world: World, hull: CombatHullId | 'RUNN
     .filter((mission) => mission.from === p.id)
     .reduce((sum, mission) => sum + (mission.fleet[hull] ?? 0), 0);
 
+/**
+ * ROOM THIS COMMANDER'S CRAFT TAKE UP, wherever they are. T4.
+ *
+ * The server counts every unit row a world owns, home or away, because a ceiling a
+ * launch could empty is not a ceiling. A bot that could dodge the Hangar by having
+ * its fleet in the air would model a game nobody is playing, and the gate would be
+ * measured against fleets the live rules refuse to build.
+ */
+function ownedHangarLoad(p: SimPlayer, world: World): number {
+  let load = hangarLoad(p.fleet);
+  for (const mission of world.missions) {
+    if (mission.from === p.id) load += hangarLoad(mission.fleet);
+  }
+  for (const mission of world.strategicMissions) {
+    // Only the neutral raid carries craft; a settlement and a transfer carry ore.
+    if (mission.ownerId === p.id && mission.kind === 'neutral_attack') {
+      load += hangarLoad(mission.fleet);
+    }
+  }
+  for (const run of world.miningRuns) {
+    if (run.playerId === p.id) load += run.craft * hullBulk('PROSPECTOR');
+  }
+  return load;
+}
+
 /** Buy at most one per login, preserving the rules-level two-craft ownership cap. */
 function tryBuyProspector(p: SimPlayer, t: number, world: World): void {
   const a = ARCHETYPES[p.type];
@@ -1429,6 +1582,7 @@ function tryBuyProspector(p: SimPlayer, t: number, world: World): void {
  * would burn Crystal on a permission they cannot use. D93.
  */
 function tryResearch(p: SimPlayer, t: number, world: World): void {
+  trySynthesis(p, t, world);
   if (!world.isotopes) return;
   if (!ARCHETYPES[p.type].researchesIsotopes) return;
   let projected = projectedBuildState(p, world, 'CONSTRUCTION');
@@ -1436,7 +1590,7 @@ function tryResearch(p: SimPlayer, t: number, world: World): void {
     if (t < RESEARCH_PROJECTS.ISOTOPE_SPECTROMETRY.availableAtMinutes) return;
     if (ownedProspectors(p, world) + queuedHullCount(p, 'PROSPECTOR') < 1) return;
     const cost = {
-      ...RESEARCH_PROJECTS.ISOTOPE_SPECTROMETRY.cost,
+      ...RESEARCH_PROJECTS.ISOTOPE_SPECTROMETRY.costAt(1),
       crystal: world.spectrometryCrystalCost,
     };
     if (
@@ -1461,7 +1615,7 @@ function tryResearch(p: SimPlayer, t: number, world: World): void {
     && ARCHETYPES[p.type].researchesRunner
     && p.cargoLimitedSeen
   ) {
-    const cost = RESEARCH_PROJECTS.DENSE_FUEL_CELLS.cost;
+    const cost = RESEARCH_PROJECTS.DENSE_FUEL_CELLS.costAt(1);
     const affordable =
       p.alloy >= cost.alloy
       && p.crystal >= cost.crystal
@@ -1485,7 +1639,7 @@ function tryResearch(p: SimPlayer, t: number, world: World): void {
     && ARCHETYPES[p.type].researchesBreacher
     && p.shieldInsightSeen
   ) {
-    const cost = RESEARCH_PROJECTS.GRAVITIC_CHARGES.cost;
+    const cost = RESEARCH_PROJECTS.GRAVITIC_CHARGES.costAt(1);
     const affordable =
       p.alloy >= cost.alloy
       && p.crystal >= cost.crystal
@@ -1510,7 +1664,7 @@ function tryMine(p: SimPlayer, t: number, world: World): void {
   if (craft <= 0 || world.miningRng() >= ARCHETYPES[p.type].miningChance) return;
 
   const speed = prospectorSpeed(p.orbit);
-  const holdEach = prospectorHold(p.orbit);
+  const holdEach = prospectorHold(p.orbit, p.tech);
   const shortlist = activeAsteroids(world.asteroids, t)
     // `isotopes: false` is the experiment baseline: it must reproduce the old
     // asteroid field exactly, not silently hide the rocks whose independent hash
@@ -1640,7 +1794,7 @@ function runSession(p: SimPlayer, t: number, world: World, rng: Rng): void {
    * choice an attacker has to scout to discover.
    */
   {
-    const raidable = Math.max(0, p.alloy - vaultProtects(p.buildings.VAULT, p.buildings.REFINERY, p.buildings.EXTRACTOR).alloy);
+    const raidable = Math.max(0, p.alloy - vaultProtects(p.buildings.VAULT, p.buildings.REFINERY, p.buildings.EXTRACTOR, p.buildings.DEUTERIUM_PLANT).alloy);
     const target = raidable * a.defenceRatio;
     const committedGround = { ...p.ground };
     for (const order of p.queues.YARD) {
@@ -1685,7 +1839,21 @@ function runSession(p: SimPlayer, t: number, world: World, rng: Rng): void {
       const projected = projectedBuildState(p, world, 'CONSTRUCTION');
       const lvl = projected.buildings[key];
       if (key !== 'CORE' && lvl >= projected.buildings.CORE) continue;
-      const cost = upgradeCost(lvl);
+      /*
+        ROOM IS BOUGHT WHEN IT IS NEEDED, not because it is next on a list. T4.
+
+        A Hangar earns nothing on its own — it lifts a ceiling — so `worthInvesting`
+        below, which prices an upgrade against the hours of PRODUCTION left to repay
+        it, cannot judge one. The demand test is the honest substitute: raise it once
+        the fleet is actually pressing against what the world can hold. Without this a
+        bot buys capacity for ships it never builds and the gate measures the cost of
+        a mistake no real commander makes.
+      */
+      if (key === 'HANGAR'
+        && ownedHangarLoad(p, world) < hangarCapacity(lvl) * HANGAR_PRESSURE) continue;
+      // The plant answers to its research rung as well as to the Core. T5.
+      if (key === 'DEUTERIUM_PLANT' && lvl >= plantCeiling(synthesisRung(p))) continue;
+      const cost = buildingCost(key, lvl);
       const minutes = buildMinutes(cost, projected.buildings.CORE);
       const readyAt = nextSimBuildReadyAt(p, 'CONSTRUCTION', t, minutes);
 
@@ -1703,7 +1871,7 @@ function runSession(p: SimPlayer, t: number, world: World, rng: Rng): void {
           projected.buildings.EXTRACTOR,
         );
         if (producerAt < lvl) continue;
-        const producerMinutes = buildMinutes(upgradeCost(producerAt), lvl + 1);
+        const producerMinutes = buildMinutes(buildingCost('REFINERY', producerAt), lvl + 1);
         const producerReadyAt = readyAt
           + Math.max(1, Math.ceil(producerMinutes * 60)) / 60;
         productiveHours = Math.max(0, (world.totalMinutes - producerReadyAt) / 60);
@@ -1927,7 +2095,6 @@ function tryAttack(p: SimPlayer, t: number, world: World, rng: Rng): void {
 
     const hits = (p.recentHits.get(q.id) ?? []).filter((x) => t - x < ABUSE.bashWindowMinutes).length;
     const gate = canAttack(
-      // D49: the band is measured in development tiers, not in Wealth.
       { playerId: String(p.id), coreLevel: p.buildings.CORE },
       { playerId: String(q.id), coreLevel: q.buildings.CORE },
       hits,
@@ -1939,41 +2106,52 @@ function tryAttack(p: SimPlayer, t: number, world: World, rng: Rng): void {
     const defence = scouted && known ? known.defence : null;
 
     /**
-     * A scout learns what a planet is holding; a blind attacker guesses from how
-     * developed it looks.
+     * A BLIND ATTACKER KNOWS NOTHING ABOUT THE TARGET. D127.
      *
-     * Both figures count the works as well as the store (D16) — a target's storage
-     * is now a transient that empties minutes after its owner logs in, so a guess
-     * or a measurement that looked only at storage would describe every planet in
-     * the galaxy as empty.
-     */
-    /**
-     * AND THE BLIND GUESS COUNTS THE WORKS TOO, which is what the note above always
-     * claimed and the expression never did. D52a.
+     * This is the change that made the simulator able to evaluate D127 at all.
+     * The blind branch used to estimate a target's stock from `capsOf(q)` — the
+     * target's own building levels — so the "blind" attacker could in fact read
+     * exactly how developed every world in the galaxy was and pick the richest.
+     * That was true while development was public. It is not any more: an unscouted
+     * world is a point, and nothing about it is legible.
      *
-     * `capsOf` is storage alone. The scouted branch was updated for D16 — it reads
-     * `bufferAlloy + bufferCrystal` off the real planet — and this one was not, so a
-     * blind attacker under-valued every target by roughly the collector ceiling and
-     * the model preferred scouted targets for a reason that was an omission rather
-     * than an effect. That is the kind of silent skew that makes a `TAX` reading
-     * uninterpretable, which matters because `TAX` is one of the two gate
-     * assertions currently red.
+     * So the prior is the attacker's own economy — "I assume they are about like
+     * me" — which is the only honest thing a commander with no intel has to go on.
+     * It depends on nothing about `q`, which is the property that matters: without
+     * it the model measures a game where the fog does not exist, and the tier
+     * band's removal reads as far more damaging than it is (`TI` fell out of band
+     * on exactly this).
      */
-    const blindCaps = capsOf(q);
-    const blindWorks = worksCapsOf(q);
-    const stock =
-      scouted && known
-        ? known.stock
-        : (
-            blindCaps.alloy + blindCaps.crystal + blindCaps.deuterium
-            + blindWorks.alloy + blindWorks.crystal + blindWorks.deuterium
-          ) * 0.35;
-    const vault = vaultProtects(q.buildings.VAULT, q.buildings.REFINERY, q.buildings.EXTRACTOR);
+    const blindCaps = capsOf(scouted ? q : p);
+    const blindWorks = worksCapsOf(scouted ? q : p);
     /**
-     * `stock` above is alloy and crystal added together, so the floor deducted
-     * from it has to be both floors added together too — which is what `vault * 2`
-     * meant while the two were the same number. They are not any more (D61).
+     * AND THE BLIND PRIOR IS NOISY, WHICH THE FIRST VERSION FORGOT.
+     *
+     * Estimating every unscouted target from the attacker's own economy makes
+     * every unscouted target score IDENTICALLY, so the tie-break falls to distance
+     * and the whole galaxy raids its nearest neighbour for ever. That is not
+     * blindness, it is a different kind of perfect information — and it collapsed
+     * the spread of who gets hit, which took shield encounters (and therefore
+     * Gravitic Charges discovery) with it.
+     *
+     * A commander with no intel still picks somewhere, for reasons they could not
+     * defend. The jitter is that: it varies the estimate without depending on
+     * anything about the target, so the model keeps its variety and keeps its fog.
      */
+    const blindPrior = (
+      blindCaps.alloy + blindCaps.crystal + blindCaps.deuterium
+      + blindWorks.alloy + blindWorks.crystal + blindWorks.deuterium
+    ) * 0.35;
+    const stock = scouted && known ? known.stock : blindPrior * (0.45 + rng() * 1.5);
+    // The vault floor is read off the same side as the estimate above it: a blind
+    // attacker cannot know the target's Vault any more than their store.
+    const vaultOf = scouted ? q : p;
+    const vault = vaultProtects(
+      vaultOf.buildings.VAULT,
+      vaultOf.buildings.REFINERY,
+      vaultOf.buildings.EXTRACTOR,
+      vaultOf.buildings.DEUTERIUM_PLANT,
+    );
     const expectedLoot = Math.max(0, stock - (vault.alloy + vault.crystal)) * 0.5;
     const flight = travelMinutes(nb.d, speed);
     // A blind attacker cannot make this risk discount. That is the whole point.
@@ -1984,7 +2162,23 @@ function tryAttack(p: SimPlayer, t: number, world: World, rng: Rng): void {
   }
   if (!best || best.score <= 0) return;
 
-  if (a.scouts && !best.scouted && rng() < 0.7) {
+  /**
+   * A SCOUT SCOUTS ALMOST ALWAYS NOW. D127.
+   *
+   * This was 0.7 while a commander could read a target's development straight off
+   * the map: a probe bought precision on a choice you had already narrowed for
+   * free, so skipping it three times in ten was a plausible shortcut. Under D127
+   * there is no free narrowing — an unprobed world is a point — so a commander who
+   * has decided to scout and then launches blind anyway is not taking a shortcut,
+   * they are throwing a fleet at a coordinate.
+   *
+   * IT IS NOT 1.0, because a bay held by a probe is a bay a raid cannot use and
+   * there is a real impatience in the decision. The other archetypes still never
+   * scout, and that is deliberate: the spread between someone who looks and
+   * someone who does not is exactly what D127 is supposed to make expensive, and
+   * flattening it would delete the comparison.
+   */
+  if (a.scouts && !best.scouted && rng() < 0.9) {
     p.scoutsSent++;
     sync(best.q, t);
     p.intel.set(best.q.id, {
@@ -2019,6 +2213,21 @@ function tryAttack(p: SimPlayer, t: number, world: World, rng: Rng): void {
   }
   if (fleetCount(send) === 0) return;
 
+  /*
+    FULL FUEL OR NO LAUNCH. T6.
+
+    Both legs, before the ships leave, exactly as the server charges it — and the
+    craft go back on the pad if the tank cannot cover it, because a bot that flew
+    on credit would model a game the live rules refuse and every band measured off
+    it would be measuring that other game.
+  */
+  const fuel = missionFuel(send, best.d, 2);
+  if (p.deuterium < fuel) {
+    for (const [hull, n] of fleetEntries(send)) p.fleet[hull] = (p.fleet[hull] ?? 0) + n;
+    return;
+  }
+  p.deuterium -= fuel;
+
   world.missions.push({
     from: p.id, to: best.q.id, fleet: send,
     arriveAt: t + best.flight, distance: best.d,
@@ -2047,12 +2256,21 @@ function resolveMission(m: Mission, t: number, world: World, stats: DayStats): v
   }
 
   sync(def, t);
-  const defenders: Fleet = { ...def.fleet, ...def.ground };
+  // The server's definition, not a second copy of it: a bot whose miners fight
+  // would price defence against a line the live game never puts on the board.
+  const defenders = garrisonOf(def.fleet, def.ground);
   // Seeded from the mission, so any battle can be re-derived from its inputs.
   const rng = mulberry32((m.from * 7919 + m.to * 104729 + m.arriveAt) >>> 0);
-  const r = resolveCombat(m.fleet, defenders, def.shield, rng);
+  const r = resolveCombat(m.fleet, defenders, def.shield, rng, {
+    attacker: atk.tech,
+    defender: def.tech,
+  });
 
   for (const k of Object.keys(def.fleet) as (keyof Fleet)[]) {
+    // Carried across by hand for the same reason the server does it: a craft that
+    // was never in the line is absent from the survivors, and `?? 0` would read
+    // that absence as annihilation.
+    if (NON_COMBATANT_HULLS.includes(k)) continue;
     def.fleet[k] = r.defenderSurvivors[k] ?? 0;
   }
   for (const k of Object.keys(def.ground) as (keyof Fleet)[]) {
@@ -2067,9 +2285,9 @@ function resolveMission(m: Mission, t: number, world: World, stats: DayStats): v
       crystal: def.bufferCrystal,
       deuterium: def.bufferDeuterium,
     },
-    vaultProtects(def.buildings.VAULT, def.buildings.REFINERY, def.buildings.EXTRACTOR),
+    vaultProtects(def.buildings.VAULT, def.buildings.REFINERY, def.buildings.EXTRACTOR, def.buildings.DEUTERIUM_PLANT),
     r.grade,
-    fleetCargo(r.attackerSurvivors),
+    fleetCargo(r.attackerSurvivors, atk.tech),
   );
   // Two columns, debited separately — the works are not the store, and the vault
   // covers only one of them. D16.
@@ -2081,10 +2299,10 @@ function resolveMission(m: Mission, t: number, world: World, stats: DayStats): v
   def.bufferDeuterium -= loot.fromBuffer.deuterium;
 
   /** History-derived Dense Fuel discovery: the hold filled and value remained. */
-  const survivingCargo = fleetCargo(r.attackerSurvivors);
+  const survivingCargo = fleetCargo(r.attackerSurvivors, atk.tech);
   const remainingRaidable =
-    Math.max(0, def.alloy - vaultProtects(def.buildings.VAULT, def.buildings.REFINERY, def.buildings.EXTRACTOR).alloy)
-    + Math.max(0, def.crystal - vaultProtects(def.buildings.VAULT, def.buildings.REFINERY, def.buildings.EXTRACTOR).crystal)
+    Math.max(0, def.alloy - vaultProtects(def.buildings.VAULT, def.buildings.REFINERY, def.buildings.EXTRACTOR, def.buildings.DEUTERIUM_PLANT).alloy)
+    + Math.max(0, def.crystal - vaultProtects(def.buildings.VAULT, def.buildings.REFINERY, def.buildings.EXTRACTOR, def.buildings.DEUTERIUM_PLANT).crystal)
     + def.deuterium
     + (def.bufferAlloy + def.bufferCrystal + def.bufferDeuterium) * COMBAT.lootBufferShare;
   if (survivingCargo > 0 && loot.alloy + loot.crystal + loot.deuterium >= survivingCargo - 1) {

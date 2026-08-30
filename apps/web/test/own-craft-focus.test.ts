@@ -1,6 +1,15 @@
 import { describe, expect, it } from 'vitest';
-import type { MiningRun, PendingThread } from '../src/api/schemas.js';
-import { reconcileOwnCraft } from '../src/galaxy/ownCraft.js';
+import type {
+  MiningRun,
+  PendingThread,
+  StrategicInterception,
+  StrategicInterceptionImpact,
+} from '../src/api/schemas.js';
+import {
+  reconcileOwnCraft,
+  reconcileOwnInterceptionImpacts,
+  reconcileOwnInterceptions,
+} from '../src/galaxy/ownCraft.js';
 
 const thread = (over: Partial<PendingThread> = {}): PendingThread => ({
   id: 'mission-1',
@@ -21,7 +30,7 @@ const thread = (over: Partial<PendingThread> = {}): PendingThread => ({
 const run = (over: Partial<MiningRun> = {}): MiningRun => ({
   id: 'run-1',
   targetKind: 'asteroid',
-  asteroidIndex: 4,
+  asteroidId: 'mJt7YvxMZEC5S7yYQ32SYw',
   debrisFieldId: null,
   status: 'outbound',
   craft: 1,
@@ -32,6 +41,31 @@ const run = (over: Partial<MiningRun> = {}): MiningRun => ({
   minedAlloy: 0,
   minedCrystal: 0,
   minedDeuterium: 0,
+  ...over,
+});
+
+const interception = (
+  over: Partial<StrategicInterception> = {},
+): StrategicInterception => ({
+  id: 'interception-1',
+  targetPlanetId: 'colony-2',
+  trigger: 'RADAR',
+  launchAt: new Date('2026-08-25T12:02:00.000Z'),
+  impactAt: new Date('2026-08-25T12:02:04.000Z'),
+  launch: { x: 0, y: 0, z: 0 },
+  deathStarFrom: { x: -4, y: 0, z: 0 },
+  collision: { x: 4, y: 0, z: 0 },
+  ...over,
+});
+
+const interceptionImpact = (
+  over: Partial<StrategicInterceptionImpact> = {},
+): StrategicInterceptionImpact => ({
+  id: 'interception-1',
+  at: new Date('2026-08-25T12:02:04.000Z'),
+  collision: { x: 4, y: 0, z: 0 },
+  effectOnly: false,
+  focusEligible: true,
   ...over,
 });
 
@@ -74,5 +108,82 @@ describe('automatic focus for newly launched craft', () => {
   it('chooses the most recently dispatched craft when several arrive together', () => {
     const result = reconcileOwnCraft(new Set(), [thread()], [run()]);
     expect(result.focus).toEqual({ kind: 'run', id: 'run-1' });
+  });
+
+  it('focuses a newly launched interceptor from any controlled world', () => {
+    const result = reconcileOwnInterceptions(
+      new Set(),
+      [interception()],
+      new Set(['capital-1', 'colony-2']),
+      new Date('2026-08-25T12:02:01.000Z').getTime(),
+    );
+
+    expect(result.focus).toEqual({ kind: 'interception', id: 'interception-1' });
+  });
+
+  it('does not focus another commander’s interceptor that destroys my Death Star', () => {
+    const result = reconcileOwnInterceptions(
+      new Set(),
+      [interception({ targetPlanetId: 'enemy-world' })],
+      new Set(['capital-1', 'colony-2']),
+      new Date('2026-08-25T12:02:01.000Z').getTime(),
+    );
+
+    expect(result.focus).toBeNull();
+  });
+
+  it('does not hijack the camera for an interception learned after its flight ended', () => {
+    const result = reconcileOwnInterceptions(
+      new Set(),
+      [interception()],
+      new Set(['capital-1', 'colony-2']),
+      new Date('2026-08-25T12:02:05.000Z').getTime(),
+    );
+
+    expect(result.focus).toBeNull();
+  });
+
+  it('baselines an already-running interception and never refocuses it', () => {
+    const initial = reconcileOwnInterceptions(
+      null,
+      [interception()],
+      new Set(['capital-1', 'colony-2']),
+      new Date('2026-08-25T12:02:01.000Z').getTime(),
+    );
+    const repeated = reconcileOwnInterceptions(
+      initial.seen,
+      [interception()],
+      new Set(['capital-1', 'colony-2']),
+      new Date('2026-08-25T12:02:02.000Z').getTime(),
+    );
+
+    expect(initial.focus).toBeNull();
+    expect(repeated.focus).toBeNull();
+  });
+
+  it('focuses the defender on the collision if the eight-second launch was missed', () => {
+    const result = reconcileOwnInterceptionImpacts(
+      new Set(),
+      [interceptionImpact()],
+    );
+
+    expect(result.focus).toEqual({ kind: 'interceptionImpact', id: 'interception-1' });
+  });
+
+  it('uses a distinct collision focus even after launch follow, without moving attackers or witnesses', () => {
+    const alreadyFollowed = reconcileOwnInterceptionImpacts(
+      new Set(),
+      [interceptionImpact()],
+    );
+    const attacker = reconcileOwnInterceptionImpacts(
+      new Set(),
+      [interceptionImpact({ focusEligible: false })],
+    );
+
+    expect(alreadyFollowed.focus).toEqual({
+      kind: 'interceptionImpact',
+      id: 'interception-1',
+    });
+    expect(attacker.focus).toBeNull();
   });
 });

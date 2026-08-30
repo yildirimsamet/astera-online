@@ -236,9 +236,6 @@
    *     wide and low-contrast: a highlight travelling over metal, not a shine
    *     effect.
    *   · A BREATHING GLOW outside the edge, on the element itself.
-   *
-   * `prefers-reduced-motion` stops all three and leaves the plate lit, because the
-   * control has to be legible as the loud one whether or not it is allowed to move.
    */
   .enter {
     --cut: var(--cut-md);
@@ -329,18 +326,6 @@
     /* The wide transparent stops feather the source without a blur pass, keeping
        the plate and every neighbouring edge optically sharp. */
     animation: enter-orbit 12s linear infinite;
-  }
-
-  @media (prefers-reduced-motion: reduce) {
-    .enter,
-    .enter::after,
-    .enter-orbit {
-      animation: none;
-    }
-    .enter::after {
-      transform: none;
-      opacity: 0.25;
-    }
   }
 
   .plate-cut {
@@ -952,11 +937,6 @@
   50% { box-shadow: 0 0 0 4px color-mix(in srgb, var(--color-alloy) 0%, transparent); }
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .works-drip { display: none; }
-  .works-full { animation: none; }
-}
-
 /* ── actions · four states, and the state is visible ──────────
    interface.md I1: "the standard failure is rendering the last two identically".
    See ui/Action.tsx.                                                        */
@@ -1106,6 +1086,8 @@
 .stat-hull   .stat-icon { color: var(--color-bone); }
 .stat-speed  .stat-icon { color: var(--color-crystal); }
 .stat-cargo  .stat-icon { color: var(--color-alloy); }
+/* The fuel mark is the painted deuterium render, so it carries its own colour. */
+.stat-fuel   .stat-icon { color: var(--color-deuterium); }
 
 /* ── price ───────────────────────────────────────────────────── */
 

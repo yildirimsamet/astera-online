@@ -92,7 +92,7 @@ describe('Galaxy Chronicle surface', () => {
     const events: GalaxyEvent[] = [
       {
         id: 'isotope', kind: 'isotope_exhausted', subjectPlanetId: null, occurredAt: at,
-        payload: { asteroidIndex: 6 },
+        payload: {},
       },
       {
         id: 'wreck', kind: 'wreck_formed', subjectPlanetId: 'target', occurredAt: at,
@@ -109,7 +109,7 @@ describe('Galaxy Chronicle surface', () => {
     ];
     show(vi.fn(), events);
 
-    expect(screen.getByText('Isotope anomaly #6 was exhausted')).toBeInTheDocument();
+    expect(screen.getByText('An isotope anomaly was exhausted')).toBeInTheDocument();
     expect(screen.getByText('Wreckage formed at Kestrel-4')).toBeInTheDocument();
     expect(screen.getByText('Mimar took the Dominion lead')).toBeInTheDocument();
     expect(screen.getByText('The Sunset has begun')).toBeInTheDocument();

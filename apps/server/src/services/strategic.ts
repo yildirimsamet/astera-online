@@ -1,15 +1,20 @@
 import { and, eq, inArray, sql } from 'drizzle-orm';
 import {
+  ANTI_STRATEGIC,
+  BUILDING_IDS,
   DEATH_STAR,
+  interceptionRange,
+  strategicStockpile,
   MULTI_WORLD,
+  buildingCost,
   distance,
   fleetValue,
   instrumentCost,
   maxRadarRange,
-  radarLead,
   travelExact,
-  upgradeCost,
+  type BuildingId,
   type Fleet,
+  type Resources,
 } from '@astera/rules';
 import { addMinutes, type Clock } from '../clock.js';
 import type { Db, Tx } from '../db/client.js';
@@ -21,6 +26,8 @@ import {
   satellites,
   strategicAssets,
   units,
+  type StrategicDestroyedOrder,
+  type StrategicLevelChange,
 } from '../db/schema.js';
 import { publishShard } from '../stream/bus.js';
 import { schedule } from '../worker/queue.js';
@@ -37,9 +44,11 @@ import {
   saveResources,
 } from './planet.js';
 import { planetView } from './planetView.js';
-import { hasResearch } from './researchState.js';
+import { hasResearch, researchLevels } from './researchState.js';
 import { pendingThreads } from './session.js';
+import { inboundRadarLead } from './radar.js';
 import { assertClanHostilityAllowed, lockClanPlayers } from './clanCombat.js';
+import { refreshSensorEpoch } from './sensorHistory.js';
 
 /**
  * WHAT AN IMPACT COSTS THE WORLD IT LANDS ON. D113.
@@ -52,10 +61,23 @@ import { assertClanHostilityAllowed, lockClanPlayers } from './clanCombat.js';
  * drops with the Core and sometimes does not: it drops exactly when the Core
  * required it to.
  */
-const CORE_BOUND_BUILDINGS = ['REFINERY', 'EXTRACTOR', 'VAULT', 'SHIPYARD'] as const;
+/*
+  THE HANGAR IS CLAMPED WITH THE REST, AND IT DESTROYS NOTHING. T4.
+
+  A strike drops the Core, and no building may stand above it — so a Hangar does
+  fall, and the world can land under its own fleet. That overflow is legal by
+  design: the rule is that nothing NEW comes in, never that something already
+  there goes. A strike that also deleted the ships it left no room for would be
+  doing the one thing the whole capacity design refuses.
+*/
+const CORE_BOUND_BUILDINGS = [
+  'REFINERY', 'EXTRACTOR', 'VAULT', 'SHIPYARD', 'HANGAR', 'DEUTERIUM_PLANT',
+] as const;
 const DESTROYED_HOME = [
   'WASP', 'LANCE', 'BULWARK', 'HAULER', 'RUNNER', 'BREACHER', 'PROSPECTOR', 'THORN', 'BASTION',
 ] as const;
+const BUILDING_TYPES = new Set<string>(BUILDING_IDS);
+const isBuildingId = (value: string): value is BuildingId => BUILDING_TYPES.has(value);
 
 /** Half of a stale figure is not half of what is there — see `stockShareDestroyed`. */
 const survives = (amount: number): number =>
@@ -65,7 +87,7 @@ export async function buildDeathStar(db: Db, planetId: string, clock: Clock, exp
   return db.transaction(async (tx) => {
     const planet = await loadLocked(tx, planetId, clock, { expectedPlayerId });
     assertWorldOperational(planet);
-    if (!(await hasResearch(tx, planetId, DEATH_STAR.requiredResearch))) {
+    if (!(await hasResearch(tx, planet.playerId, DEATH_STAR.requiredResearch))) {
       throw new GameError('DEATH_STAR_LOCKED', 'Research Death Star Protocol first', 403);
     }
     if (
@@ -74,14 +96,31 @@ export async function buildDeathStar(db: Db, planetId: string, clock: Clock, exp
     ) {
       throw new GameError('DEATH_STAR_LOCKED', 'Raise Core and Shipyard first', 403);
     }
-    const [existing] = await tx
-      .select({ id: strategicAssets.id })
+    /**
+     * HOW MANY MAY BE ON THE PAD AT ONCE. T11.
+     *
+     * Counted rather than existence-checked, because the stockpile research raises
+     * the ceiling from one to two. Under the planet row lock `loadLocked` already
+     * holds, so the count-then-insert cannot race — which is now the only guard,
+     * the partial unique index having been relaxed to admit the second weapon.
+     */
+    const live = await tx
+      .select({ id: strategicAssets.id, readyAt: strategicAssets.readyAt })
       .from(strategicAssets)
       .where(and(
         eq(strategicAssets.planetId, planetId),
+        eq(strategicAssets.type, 'DEATH_STAR'),
         inArray(strategicAssets.status, ['BUILDING', 'PAUSED', 'READY']),
       ));
-    if (existing) throw new GameError('DEATH_STAR_EXISTS', 'This world already has one', 409);
+    const allowed = strategicStockpile(
+      (await researchLevels(tx, planet.playerId)).get('STRATEGIC_STOCKPILE') ?? 0,
+    );
+    if (live.length >= allowed) {
+      throw new GameError('DEATH_STAR_EXISTS', 'This world already has one', 409, {
+        held: live.length,
+        allowed,
+      });
+    }
     if (
       planet.alloy < DEATH_STAR.cost.alloy
       || planet.crystal < DEATH_STAR.cost.crystal
@@ -90,7 +129,20 @@ export async function buildDeathStar(db: Db, planetId: string, clock: Clock, exp
       throw new GameError('INSUFFICIENT_RESOURCES', 'Not enough resources');
     }
 
-    const readyAt = addMinutes(planet.now, DEATH_STAR.buildMinutes);
+    /**
+     * SERIAL, AND THAT IS THE WHOLE BALANCE OF THE STOCKPILE. T11.
+     *
+     * The second weapon starts when the first is finished, never beside it — so two
+     * weapons still cost two hours and what the research removes is the CHORE of
+     * being at the keyboard at the exact minute. Built in parallel it would be a
+     * same-hour double strike, and D113 already turns two hits inside a recovery
+     * window into a colony changing hands.
+     */
+    const queueHead = live.reduce<Date>(
+      (latest, row) => (row.readyAt && row.readyAt > latest ? row.readyAt : latest),
+      planet.now,
+    );
+    const readyAt = addMinutes(queueHead, DEATH_STAR.buildMinutes);
     if (readyAt >= planet.seasonEndsAt) {
       throw new GameError(
         'SEASON_ENDS_BEFORE_BUILD',
@@ -110,12 +162,116 @@ export async function buildDeathStar(db: Db, planetId: string, clock: Clock, exp
       .values({
         planetId,
         status: 'BUILDING',
-        startedAt: planet.now,
+        startedAt: queueHead,
         readyAt,
         remainingSeconds: DEATH_STAR.buildMinutes * 60,
       })
       .returning();
     if (!asset) throw new Error('strategic asset insert returned no row');
+    await schedule(tx, {
+      seasonId: planet.seasonId,
+      kind: 'death_star_ready',
+      refId: asset.id,
+      payload: { expectedReadyAt: readyAt.toISOString() },
+      resolveAt: readyAt,
+    });
+    return { assetId: asset.id, readyAt, planet: await planetView(tx, planetId, clock) };
+  });
+}
+
+/**
+ * INSTALL, OR RELOAD, ONE INTERCEPTION CHARGE. T10.
+ *
+ * The same shape as the weapon it answers — a strategic asset on the planet, built
+ * through a scheduled completion — because it IS the same kind of thing: installed
+ * hardware that comes with the world, survives an ordinary raid, and is spent in
+ * one moment. A charge is one row; firing consumes it and reloading is another
+ * build, so "how many shots do I have" is a question with a row-shaped answer.
+ */
+export async function buildInterceptor(
+  db: Db,
+  planetId: string,
+  clock: Clock,
+  expectedPlayerId?: string,
+) {
+  return db.transaction(async (tx) => {
+    const planet = await loadLocked(tx, planetId, clock, { expectedPlayerId });
+    assertWorldOperational(planet);
+    if (!(await hasResearch(tx, planet.playerId, ANTI_STRATEGIC.requiredResearch))) {
+      throw new GameError('INTERCEPTOR_LOCKED', 'Research the Interception Grid first', 403, {
+        requiredRadar: ANTI_STRATEGIC.requiredRadar,
+      });
+    }
+    /*
+      THE RADAR RUNG IS A BUILD REQUIREMENT, NOT A RUNTIME SURPRISE.
+
+      Below it `interceptionRange` is zero — there is no circle to fire along — so a
+      grid installed there could never go off and its owner would have no way of
+      learning why. Refusing at the counter is the honest version of that.
+    */
+    /*
+      THE EFFECTIVE RUNG, NOT THE INSTALLED ONE.
+
+      An Uplink gates the Telescope and the Radar, so a Radar 5 with no Uplink
+      draws no circle at all — and the handler that fires reads exactly this
+      effective figure. Checking the raw level here would sell a grid to a world
+      whose ring does not exist, which is the trap this requirement is for.
+    */
+    const radar = planet.effectiveInstruments.RADAR ?? 0;
+    if (interceptionRange(radar) <= 0) {
+      throw new GameError('INTERCEPTOR_LOCKED', 'Raise the Radar first', 403, {
+        requiredRadar: ANTI_STRATEGIC.requiredRadar,
+        radar,
+      });
+    }
+    const live = await tx
+      .select({ id: strategicAssets.id })
+      .from(strategicAssets)
+      .where(and(
+        eq(strategicAssets.planetId, planetId),
+        eq(strategicAssets.type, 'INTERCEPTOR'),
+        inArray(strategicAssets.status, ['BUILDING', 'PAUSED', 'READY']),
+      ));
+    if (live.length >= ANTI_STRATEGIC.maxCharges) {
+      throw new GameError('INTERCEPTOR_LOADED', 'That world is already loaded', 409, {
+        max: ANTI_STRATEGIC.maxCharges,
+      });
+    }
+    if (
+      planet.alloy < ANTI_STRATEGIC.cost.alloy
+      || planet.crystal < ANTI_STRATEGIC.cost.crystal
+      || planet.deuterium < ANTI_STRATEGIC.cost.deuterium
+    ) {
+      throw new GameError('INSUFFICIENT_RESOURCES', 'Not enough resources');
+    }
+
+    const readyAt = addMinutes(planet.now, ANTI_STRATEGIC.buildMinutes);
+    if (readyAt >= planet.seasonEndsAt) {
+      throw new GameError(
+        'SEASON_ENDS_BEFORE_BUILD',
+        'That order cannot finish before the season ends',
+        409,
+        { endsAt: planet.seasonEndsAt.toISOString() },
+      );
+    }
+    await saveResources(tx, planetId, {
+      alloy: planet.alloy - ANTI_STRATEGIC.cost.alloy,
+      crystal: planet.crystal - ANTI_STRATEGIC.cost.crystal,
+      deuterium: planet.deuterium - ANTI_STRATEGIC.cost.deuterium,
+    });
+    const [asset] = await tx
+      .insert(strategicAssets)
+      .values({
+        planetId,
+        type: 'INTERCEPTOR',
+        status: 'BUILDING',
+        startedAt: planet.now,
+        readyAt,
+        remainingSeconds: ANTI_STRATEGIC.buildMinutes * 60,
+      })
+      .returning();
+    if (!asset) throw new Error('interceptor insert returned no row');
+    // The same completion event the weapon uses: one asset lifecycle, not two.
     await schedule(tx, {
       seasonId: planet.seasonId,
       kind: 'death_star_ready',
@@ -180,10 +336,22 @@ export async function launchDeathStar(
       && target.recoveryUntil !== null
       && target.recoveryUntil > origin.now;
     if (captureIntent) await assertColonyCapacity(tx, origin.playerId, origin.seasonId);
+    /*
+      THE WEAPON, AND ONLY THE WEAPON. T12.
+
+      Untyped, this read fired whatever was READY on the pad — and since T10 that
+      can be an interception charge. A defender who had spent 33,000 on a grid
+      could have it launched at somebody as a Death Star, and the world it left
+      would be undefended against the strike it was bought to stop.
+    */
     const [asset] = await tx
       .select()
       .from(strategicAssets)
-      .where(and(eq(strategicAssets.planetId, originPlanetId), eq(strategicAssets.status, 'READY')))
+      .where(and(
+        eq(strategicAssets.planetId, originPlanetId),
+        eq(strategicAssets.type, 'DEATH_STAR'),
+        eq(strategicAssets.status, 'READY'),
+      ))
       .for('update');
     if (!asset) throw new GameError('DEATH_STAR_NOT_READY', 'No Death Star is ready', 409);
 
@@ -207,6 +375,14 @@ export async function launchDeathStar(
         ownerPlayerId: origin.playerId,
         originPlanetId,
         targetPlanetId,
+        /*
+          NO FLEET, AND SO NO FUEL. T6.
+
+          `missionFuel` charges mass, and a strike carries none — the weapon IS the
+          mission. Its deuterium was paid at construction, three thousand of it, and
+          charging again for the flight would be billing the same decision twice.
+          This is deliberate rather than an oversight in the fuel pass.
+        */
         fleet: {},
         cargo: { alloy: 0, crystal: 0, deuterium: 0 },
         distance: dist,
@@ -228,7 +404,33 @@ export async function launchDeathStar(
       refId: mission.id,
       resolveAt: arriveAt,
     });
-    const warnAt = addMinutes(arriveAt, -radarLead(maxRadarRange(), dist, oneWay));
+    const [radarTargetCore] = await tx
+      .select({ level: buildings.level })
+      .from(buildings)
+      .where(and(eq(buildings.planetId, targetPlanetId), eq(buildings.type, 'CORE')))
+      .limit(1);
+    const warnAt = addMinutes(arriveAt, -inboundRadarLead(maxRadarRange(), {
+      from: origin,
+      to: target,
+      originCoreLevel: origin.buildings.CORE,
+      targetCoreLevel: radarTargetCore?.level ?? 1,
+      oneWayMinutes: oneWay,
+    }));
+    /**
+     * ARM AT LAUNCH, THEN LET THE HANDLER PICK THE FIRST REAL CROSSING.
+     *
+     * A Telescope on another controlled world can cover an early part of this leg
+     * before the weapon reaches the target's widest possible Radar circle. Arming
+     * only at that Radar boundary would miss the earlier optical acquisition. The
+     * immediate event reads the defender's whole sensor network and sleeps until
+     * whichever eligible Radar/Telescope crossing comes first.
+     */
+    await schedule(tx, {
+      seasonId: origin.seasonId,
+      kind: 'strategic_intercept',
+      refId: mission.id,
+      resolveAt: origin.now,
+    });
     await schedule(tx, {
       seasonId: origin.seasonId,
       kind: 'radar_warning',
@@ -245,21 +447,32 @@ export async function launchDeathStar(
   });
 }
 
+/**
+ * EVERY strategic build on the world, not the first row that came back. T12.
+ *
+ * A bombardment stops strategic construction (D113), and a world may now have two
+ * things under construction — the weapon and the charge that shoots one down. The
+ * singular read left one of them building straight through the strike, which is
+ * both the wrong outcome and an invisible one: nothing on screen distinguishes a
+ * build that survived a bombardment from a build that was never hit.
+ */
 async function pauseBuildingAsset(tx: Tx, planetId: string, now: Date): Promise<void> {
-  const [asset] = await tx
+  const assets = await tx
     .select()
     .from(strategicAssets)
     .where(and(eq(strategicAssets.planetId, planetId), eq(strategicAssets.status, 'BUILDING')))
     .for('update');
-  if (!asset?.readyAt) return;
-  await tx
-    .update(strategicAssets)
-    .set({
-      status: 'PAUSED',
-      remainingSeconds: Math.max(0, Math.ceil((asset.readyAt.getTime() - now.getTime()) / 1000)),
-      readyAt: null,
-    })
-    .where(and(eq(strategicAssets.id, asset.id), eq(strategicAssets.status, 'BUILDING')));
+  for (const asset of assets) {
+    if (!asset.readyAt) continue;
+    await tx
+      .update(strategicAssets)
+      .set({
+        status: 'PAUSED',
+        remainingSeconds: Math.max(0, Math.ceil((asset.readyAt.getTime() - now.getTime()) / 1000)),
+        readyAt: null,
+      })
+      .where(and(eq(strategicAssets.id, asset.id), eq(strategicAssets.status, 'BUILDING')));
+  }
 }
 
 export async function applyDeathStarStrike(
@@ -271,30 +484,34 @@ export async function applyDeathStarStrike(
   previousPlayerId: string | null;
   damage: number;
   destroyedFleet: Fleet;
+  destroyedResources: Resources;
+  levelChanges: StrategicLevelChange[];
+  destroyedOrders: StrategicDestroyedOrder[];
+  shieldDestroyed: number;
 }> {
+  const noDamage = (previousPlayerId: string | null) => ({
+    outcome: 'INEFFECTIVE' as const,
+    previousPlayerId,
+    damage: 0,
+    destroyedFleet: {},
+    destroyedResources: { alloy: 0, crystal: 0, deuterium: 0 },
+    levelChanges: [],
+    destroyedOrders: [],
+    shieldDestroyed: 0,
+  });
   const [target] = await tx
     .select()
     .from(planets)
     .where(eq(planets.id, mission.targetPlanetId))
     .for('update');
   if (!target) {
-    return { outcome: 'INEFFECTIVE', previousPlayerId: null, damage: 0, destroyedFleet: {} };
+    return noDamage(null);
   }
   if (target.controllerPlayerId === mission.ownerPlayerId) {
-    return {
-      outcome: 'INEFFECTIVE',
-      previousPlayerId: target.controllerPlayerId,
-      damage: 0,
-      destroyedFleet: {},
-    };
+    return noDamage(target.controllerPlayerId);
   }
   if (target.protectedUntil !== null && target.protectedUntil > now) {
-    return {
-      outcome: 'INEFFECTIVE',
-      previousPlayerId: target.controllerPlayerId,
-      damage: 0,
-      destroyedFleet: {},
-    };
+    return noDamage(target.controllerPlayerId);
   }
 
   /**
@@ -348,22 +565,30 @@ export async function applyDeathStarStrike(
 
   const coreBefore = buildingRows.find((row) => row.type === 'CORE')?.level ?? 0;
   const coreAfter = Math.max(0, coreBefore - 1);
+  const levelChanges: StrategicLevelChange[] = [];
   /**
    * The Core, plus whatever the Core's fall pulled down with it. Reported rather
    * than assumed: a Refinery two levels under the ceiling loses nothing, and the
    * `damage` figure has to say so or the impact record overstates what happened.
    */
   const buildingDamage = buildingRows.reduce((sum, row) => {
+    if (!isBuildingId(row.type)) return sum;
     const after = row.type === 'CORE' ? coreAfter : Math.min(row.level, coreAfter);
+    if (after < row.level) {
+      levelChanges.push({ kind: 'BUILDING', id: row.type, before: row.level, after });
+    }
     let lost = 0;
     for (let level = after; level < row.level; level++) {
-      const cost = upgradeCost(level);
+      const cost = buildingCost(row.type, level);
       lost += cost.alloy + cost.crystal + cost.deuterium;
     }
     return sum + lost;
   }, 0);
   const aegisDamage = aegisRows.reduce((sum, row) => {
     const after = Math.max(0, row.level - DEATH_STAR.aegisLevelsLost);
+    if (after < row.level) {
+      levelChanges.push({ kind: 'INSTRUMENT', id: 'AEGIS', before: row.level, after });
+    }
     let lost = 0;
     for (let level = after; level < row.level; level++) {
       const cost = instrumentCost('AEGIS', level);
@@ -378,6 +603,15 @@ export async function applyDeathStarStrike(
     + (held.bufferAlloy - survives(held.bufferAlloy))
     + (held.bufferCrystal - survives(held.bufferCrystal))
     + (held.bufferDeuterium - survives(held.bufferDeuterium));
+  const destroyedResources: Resources = {
+    alloy: (held.alloy - survives(held.alloy))
+      + (held.bufferAlloy - survives(held.bufferAlloy)),
+    crystal: (held.crystal - survives(held.crystal))
+      + (held.bufferCrystal - survives(held.bufferCrystal)),
+    deuterium: (held.deuterium - survives(held.deuterium))
+      + (held.bufferDeuterium - survives(held.bufferDeuterium)),
+  };
+  const shieldDestroyed = advancedTarget?.shield ?? target.shield;
   const strippedValue = resourcesDestroyed + buildingDamage + aegisDamage + fleetValue(destroyedFleet);
 
   const secondStrike = target.kind !== 'CAPITAL'
@@ -439,6 +673,9 @@ export async function applyDeathStarStrike(
   // it is as gone as the fleet standing beside it.
   const damage = strippedValue + burnedValue;
   await pauseBuildingAsset(tx, target.id, now);
+  // This post changed when the mission arrived. A delayed worker must not grant
+  // minutes of Telescope discoveries that the struck world never had.
+  await refreshSensorEpoch(tx, target.id, mission.arriveAt);
 
   if (secondStrike) {
     const protectedUntil = addMinutes(now, MULTI_WORLD.occupationMinutes);
@@ -464,6 +701,10 @@ export async function applyDeathStarStrike(
       previousPlayerId: target.controllerPlayerId,
       damage,
       destroyedFleet,
+      destroyedResources,
+      levelChanges,
+      destroyedOrders: burned,
+      shieldDestroyed,
     };
   }
 
@@ -485,6 +726,10 @@ export async function applyDeathStarStrike(
     previousPlayerId: target.controllerPlayerId,
     damage,
     destroyedFleet,
+    destroyedResources,
+    levelChanges,
+    destroyedOrders: burned,
+    shieldDestroyed,
   };
 }
 
@@ -494,26 +739,30 @@ async function resumePausedAsset(
   seasonId: string,
   now: Date,
 ): Promise<void> {
-  const [paused] = await tx
+  // Both halves of `pauseBuildingAsset`'s pair come back, each with its own clock
+  // and its own completion event. One event between two assets would finish one of
+  // them and strand the other in BUILDING for the rest of the season.
+  const pausedAssets = await tx
     .select()
     .from(strategicAssets)
     .where(and(eq(strategicAssets.planetId, planetId), eq(strategicAssets.status, 'PAUSED')))
     .for('update');
-  if (!paused) return;
-  const readyAt = new Date(now.getTime() + Math.max(0, paused.remainingSeconds ?? 0) * 1000);
-  const resumed = await tx
-    .update(strategicAssets)
-    .set({ status: 'BUILDING', readyAt })
-    .where(and(eq(strategicAssets.id, paused.id), eq(strategicAssets.status, 'PAUSED')))
-    .returning({ id: strategicAssets.id });
-  if (!resumed[0]) return;
-  await schedule(tx, {
-    seasonId,
-    kind: 'death_star_ready',
-    refId: paused.id,
-    payload: { expectedReadyAt: readyAt.toISOString() },
-    resolveAt: readyAt,
-  });
+  for (const paused of pausedAssets) {
+    const readyAt = new Date(now.getTime() + Math.max(0, paused.remainingSeconds ?? 0) * 1000);
+    const resumed = await tx
+      .update(strategicAssets)
+      .set({ status: 'BUILDING', readyAt })
+      .where(and(eq(strategicAssets.id, paused.id), eq(strategicAssets.status, 'PAUSED')))
+      .returning({ id: strategicAssets.id });
+    if (!resumed[0]) continue;
+    await schedule(tx, {
+      seasonId,
+      kind: 'death_star_ready',
+      refId: paused.id,
+      payload: { expectedReadyAt: readyAt.toISOString() },
+      resolveAt: readyAt,
+    });
+  }
 }
 
 export async function finishDeathStarBuild(tx: Tx, assetId: string, expectedReadyAt: string) {
@@ -525,7 +774,7 @@ export async function finishDeathStarBuild(tx: Tx, assetId: string, expectedRead
       eq(strategicAssets.status, 'BUILDING'),
       eq(strategicAssets.readyAt, new Date(expectedReadyAt)),
     ))
-    .returning({ planetId: strategicAssets.planetId });
+    .returning({ planetId: strategicAssets.planetId, type: strategicAssets.type });
 }
 
 /** A permanently failed strategic build is a system fault, so it costs nothing. */

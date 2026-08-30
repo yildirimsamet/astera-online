@@ -279,9 +279,10 @@ export const BEATS: readonly Beat[] = [
 /**
  * Which beat is running.
  *
- * The first one that is not finished. Order is the script and there is no
- * branching in it: a beat that could be skipped would leave the next one talking
- * about something that never happened.
+ * The first one that is not finished. Order is the script and no individual beat
+ * branches: the global skip marks every guided beat complete and lands directly
+ * on `claim`, rather than leaving a later instruction talking about something
+ * that never happened.
  */
 export function currentBeat(s: BeatState): Beat {
   return BEATS.find((b) => !s.done.has(b.id)) ?? BEATS[BEATS.length - 1]!;

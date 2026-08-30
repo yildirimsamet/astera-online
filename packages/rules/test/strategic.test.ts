@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import { generateGalaxy, pickSpawnSlot, type PlanetSlot } from '../src/galaxy.js';
 import { GALAXY, MULTI_WORLD, SERVERS } from '../src/constants.js';
+import { ECONOMY_TEMPO, scaleResources } from '../src/tempo.js';
 import { distance, fleetTravelExact } from '../src/travel.js';
+import { MOBILE_HULLS } from '../src/hulls.js';
 import {
   GALAXY_SPAN,
   SETTLEMENT_CLAIM_MINUTES,
@@ -10,43 +12,48 @@ import {
   neutralReserve,
   neutralThreat,
   selectNeutralSlots,
+  TRANSFER_CARGO_HULLS,
   transferCargoCapacity,
 } from '../src/strategic.js';
 
 const settlementFleet = { HAULER: MULTI_WORLD.settlement.haulers };
 
-/** The widest empty angular wedge, in degrees. A whole tier can look clustered while averages pass. */
-function largestAngularGap(slots: readonly PlanetSlot[]): number {
-  const angles = slots
-    .map((slot) => {
-      const angle = Math.atan2(slot.z, slot.x);
-      return angle < 0 ? angle + Math.PI * 2 : angle;
-    })
-    .toSorted((a, b) => a - b);
-  return Math.max(...angles.map((angle, index) => {
-    const next = index === angles.length - 1
-      ? (angles[0] ?? 0) + Math.PI * 2
-      : angles[index + 1] ?? angle;
-    return next - angle;
-  })) * 180 / Math.PI;
+function octantCounts(slots: readonly PlanetSlot[]): number[] {
+  const octants = Array.from({ length: 8 }, () => 0);
+  for (const slot of slots) {
+    const octant = (slot.x >= 0 ? 1 : 0) | (slot.y >= 0 ? 2 : 0) | (slot.z >= 0 ? 4 : 0);
+    octants[octant] = (octants[octant] ?? 0) + 1;
+  }
+  return octants;
+}
+
+function centroidDistance(slots: readonly PlanetSlot[]): number {
+  const sum = slots.reduce(
+    (at, slot) => ({ x: at.x + slot.x, y: at.y + slot.y, z: at.z + slot.z }),
+    { x: 0, y: 0, z: 0 },
+  );
+  return Math.hypot(sum.x, sum.y, sum.z) / slots.length;
 }
 
 describe('multi-world strategic rules', () => {
   it('prices a settlement as the Economy v2 two-Hauler commitment', () => {
     expect(MULTI_WORLD.settlement).toEqual({
-      cost: { alloy: 2000, crystal: 1000, deuterium: 0 },
+      cost: scaleResources(
+        { alloy: 2000, crystal: 1000, deuterium: 0 },
+        ECONOMY_TEMPO.fixedPrice,
+      ),
       haulers: 2,
     });
   });
 
   /**
    * D111. Stated as a RELATION rather than as a figure, because the figure is the
-   * thing that went stale: any of `GALAXY.radius`, `GALAXY.thickness`,
+   * thing that went stale: any of `GALAXY.radius`,
    * `TRAVEL.*`, `HULLS.HAULER.speed` or the Hauler count moves this window, and
    * a test asserting "73" would have to be edited by whoever broke it.
    */
-  it('holds the claim window open for the widest settlement flight the disc can produce', () => {
-    expect(GALAXY_SPAN).toBeGreaterThanOrEqual(2 * GALAXY.radius);
+  it('defines the widest settlement flight as exactly one spherical diameter', () => {
+    expect(GALAXY_SPAN).toBe(2 * GALAXY.radius);
     expect(fleetTravelExact(GALAXY_SPAN, settlementFleet))
       .toBeLessThanOrEqual(SETTLEMENT_CLAIM_MINUTES);
     // And no wider than it has to be: one whole minute of rounding, never two.
@@ -125,17 +132,29 @@ describe('multi-world strategic rules', () => {
   });
 
   it.each([1, 6, 18, 30, 4242, 8331])(
-    'spreads capital addresses and the first commanders around the disc for seed %i',
+    'spreads capital addresses and the first commanders through the sphere for seed %i',
     (seed) => {
       const slots = generateGalaxy(seed, MULTI_WORLD.capitalSlots).slots;
-      const equalAreaQuarters = [0, 0, 0, 0];
+      const equalVolumeShells = [0, 0, 0, 0];
       for (const slot of slots) {
-        const radiusShareSquared = (slot.x ** 2 + slot.z ** 2) / GALAXY.radius ** 2;
-        const quarter = Math.min(3, Math.floor(radiusShareSquared * 4));
-        equalAreaQuarters[quarter] = (equalAreaQuarters[quarter] ?? 0) + 1;
+        const radiusShareCubed = (Math.hypot(slot.x, slot.y, slot.z) / GALAXY.radius) ** 3;
+        const shell = Math.min(3, Math.floor(radiusShareCubed * 4));
+        equalVolumeShells[shell] = (equalVolumeShells[shell] ?? 0) + 1;
       }
-      expect(Math.min(...equalAreaQuarters)).toBeGreaterThanOrEqual(55);
-      expect(Math.max(...equalAreaQuarters)).toBeLessThanOrEqual(95);
+      expect(Math.min(...equalVolumeShells)).toBeGreaterThanOrEqual(60);
+      expect(Math.max(...equalVolumeShells)).toBeLessThanOrEqual(90);
+
+      // Every octant receives a real population, and no axis is secretly flatter
+      // than the others. A disc passes the old radial test but fails both checks.
+      const octants = octantCounts(slots);
+      expect(Math.min(...octants)).toBeGreaterThanOrEqual(25);
+      expect(Math.max(...octants)).toBeLessThanOrEqual(55);
+      const moments = [
+        slots.reduce((sum, slot) => sum + slot.x ** 2, 0),
+        slots.reduce((sum, slot) => sum + slot.y ** 2, 0),
+        slots.reduce((sum, slot) => sum + slot.z ** 2, 0),
+      ];
+      expect(Math.max(...moments) / Math.min(...moments)).toBeLessThan(1.25);
 
       const occupied = new Set<number>();
       const firstFifty: PlanetSlot[] = [];
@@ -145,12 +164,15 @@ describe('multi-world strategic rules', () => {
         occupied.add(next!.index);
         firstFifty.push(next!);
       }
-      expect(largestAngularGap(firstFifty)).toBeLessThan(45);
+      const firstOctants = octantCounts(firstFifty);
+      expect(Math.min(...firstOctants)).toBeGreaterThanOrEqual(4);
+      expect(Math.max(...firstOctants)).toBeLessThanOrEqual(11);
+      expect(centroidDistance(firstFifty)).toBeLessThan(GALAXY.radius * 0.075);
     },
   );
 
   it.each([1, 6, 18, 30, 4242, 8331])(
-    'leaves no broad empty wedge in any neutral tier for seed %i',
+    'spreads every neutral tier across all three axes for seed %i',
     (seed) => {
       const selected = selectNeutralSlots(
         seed,
@@ -160,9 +182,38 @@ describe('multi-world strategic rules', () => {
         .filter((entry) => entry.tier === value)
         .map((entry) => entry.slot);
 
-      expect(largestAngularGap(tier(1))).toBeLessThan(45);
-      expect(largestAngularGap(tier(2))).toBeLessThan(48);
-      expect(largestAngularGap(tier(3))).toBeLessThan(120);
+      for (const [value, maxDirectionalBias] of [[1, 0.1], [2, 0.12], [3, 0.35]] as const) {
+        const worlds = tier(value);
+        for (const axis of ['x', 'y', 'z'] as const) {
+          expect(worlds.some((slot) => slot[axis] < 0)).toBe(true);
+          expect(worlds.some((slot) => slot[axis] > 0)).toBe(true);
+        }
+        const directionSum = worlds.reduce((sum, slot) => {
+          const radius = Math.hypot(slot.x, slot.y, slot.z);
+          return {
+            x: sum.x + slot.x / radius,
+            y: sum.y + slot.y / radius,
+            z: sum.z + slot.z / radius,
+          };
+        }, { x: 0, y: 0, z: 0 });
+        expect(
+          Math.hypot(directionSum.x, directionSum.y, directionSum.z) / worlds.length,
+        ).toBeLessThan(maxDirectionalBias);
+      }
     },
   );
+});
+
+/**
+ * The transfer screen lists these hulls by name and prints a sentence about them.
+ * If the list and the capacity function ever disagree, the screen offers a craft
+ * that adds no hold — or hides the one that does — and the player reads a lie.
+ */
+describe('the ore carriers a transfer may use', () => {
+  it('names exactly the hulls that add cargo capacity, and no others', () => {
+    for (const id of MOBILE_HULLS) {
+      const carries = transferCargoCapacity({ [id]: 1 }) > 0;
+      expect(carries).toBe((TRANSFER_CARGO_HULLS as readonly string[]).includes(id));
+    }
+  });
 });
