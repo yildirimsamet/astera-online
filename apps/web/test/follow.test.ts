@@ -3,10 +3,12 @@ import {
   easedCameraRange,
   focusIdentity,
   focusTapDecision,
+  initialHomeCameraPosition,
   planetFocusRailVisible,
   repeatedFocusTap,
   rigAction,
   rigGestureState,
+  sphericalLeashCorrection,
   transferOriginForFocus,
   type RigFrame,
 } from '../src/galaxy/follow.js';
@@ -40,6 +42,43 @@ describe('camera range intent', () => {
 
   it('still pulls a distant camera inward for a small focused subject', () => {
     expect(easedCameraRange(30, 7, 0.5, false)).toBe(18.5);
+  });
+
+  it('starts at the same offset from a high world as from every other world', () => {
+    const home: [number, number, number] = [-3.05, 33.95, -20.11];
+    const camera = initialHomeCameraPosition(...home);
+
+    expect(camera.map((value, index) => value - home[index]!)).toEqual([12, 16, 20]);
+  });
+});
+
+describe('spherical camera leash', () => {
+  const leashRadius = 46;
+
+  it('does not drag the valid EU-1 johnnylesh world away after Home lands', () => {
+    const target: [number, number, number] = [
+      -152.71 / 50,
+      1697.44 / 50,
+      -1005.63 / 50,
+    ];
+
+    // The world is near the top of the galaxy, but still inside its radius-40 sphere.
+    expect(Math.hypot(...target)).toBeLessThan(40);
+    expect(sphericalLeashCorrection(...target, leashRadius)).toBeNull();
+  });
+
+  it('keeps every valid high or diagonal point inside the spherical boundary', () => {
+    expect(sphericalLeashCorrection(0, 40, 0, leashRadius)).toBeNull();
+    expect(sphericalLeashCorrection(24, 32, 0, leashRadius)).toBeNull();
+  });
+
+  it('pulls a genuinely lost camera back along the same 3D direction', () => {
+    const corrected = sphericalLeashCorrection(46, 46, 0, leashRadius);
+
+    expect(corrected).not.toBeNull();
+    expect(Math.hypot(...corrected!)).toBeCloseTo(leashRadius, 10);
+    expect(corrected![0]).toBeCloseTo(corrected![1], 10);
+    expect(corrected![2]).toBe(0);
   });
 });
 

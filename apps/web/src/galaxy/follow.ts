@@ -169,6 +169,47 @@ export function easedCameraRange(
 }
 
 /**
+ * The first camera pose is relative to Home on every axis.
+ *
+ * A fixed world-space Y made sense only while the galaxy pretended to have a
+ * floor. In the real sphere it put the camera below high worlds and far above low
+ * ones, so two commanders opened on different angles and ranges despite asking
+ * for the same framing.
+ */
+export function initialHomeCameraPosition(
+  homeX: number,
+  homeY: number,
+  homeZ: number,
+): [number, number, number] {
+  return [homeX + 12, homeY + 16, homeZ + 20];
+}
+
+/**
+ * WHERE A FREE CAMERA PIVOT MAY REST IN A SPHERICAL GALAXY. D129.
+ *
+ * The original leash was a cylinder inherited from the old flat disc: X/Z were
+ * limited to the visual radius while Y was independently clamped to half of it.
+ * Once the playable galaxy became a real sphere, a valid high world could lie
+ * outside that artificial Y slab. Home would first land on the world and then,
+ * on the very next frame, the leash would drag the pivot vertically away from it.
+ *
+ * One Euclidean distance is the boundary now. A point already inside it returns
+ * null so the frame loop allocates and moves nothing. A genuinely lost pivot is
+ * projected back along its existing 3D direction, preserving the player's view.
+ */
+export function sphericalLeashCorrection(
+  x: number,
+  y: number,
+  z: number,
+  radius: number,
+): [number, number, number] | null {
+  const distance = Math.hypot(x, y, z);
+  if (!(distance > radius)) return null;
+  const scale = radius / distance;
+  return [x * scale, y * scale, z * scale];
+}
+
+/**
  * WHAT THE RIG DOES THIS FRAME. The whole of the camera's autonomy, in one place.
  *
  * THE RULE THAT MATTERS IS THE THIRD ONE. A subject that HAD a position and no
@@ -194,7 +235,8 @@ export function rigAction(frame: RigFrame): RigAction {
       !frame.easing,
     /**
      * The leash runs for a genuinely free camera only — never for one that has
-     * just lost what it was watching, and never once released.
+     * just lost what it was watching, and never once released. Its spherical
+     * geometry is resolved separately by `sphericalLeashCorrection`.
      */
     leash: frame.mode === 'manual' && !frame.easing,
     release: ended,

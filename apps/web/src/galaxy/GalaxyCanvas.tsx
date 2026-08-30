@@ -13,7 +13,14 @@ import type {
   StrategicInterceptionImpact,
 } from '../api/schemas.js';
 import type { Focus } from './FocusPanel.js';
-import { easedCameraRange, focusIdentity, rigAction, rigGestureState } from './follow.js';
+import {
+  easedCameraRange,
+  focusIdentity,
+  initialHomeCameraPosition,
+  rigAction,
+  rigGestureState,
+  sphericalLeashCorrection,
+} from './follow.js';
 import {
   BrightStars,
   Core,
@@ -396,7 +403,7 @@ export function GalaxyCanvas({
   return (
     <Canvas
       frameloop="demand"
-      camera={{ position: [home[0] + 12, 16, home[2] + 20], fov: 45, near: 0.1, far: 600 }}
+      camera={{ position: initialHomeCameraPosition(...home), fov: 45, near: 0.1, far: 600 }}
       dpr={[1, 2]}
       gl={{ antialias: true, powerPreference: 'high-performance' }}
       onCreated={({ gl }) => {
@@ -848,7 +855,7 @@ function Labels({
 /**
  * Camera behaviour.
  *
- * Free to roam the whole disc — an earlier version tethered the camera near the
+ * Free to roam the whole galaxy — an earlier version tethered the camera near the
  * player's own planet, which left half the galaxy unreachable and unclickable.
  * Three things make free roaming comfortable rather than merely possible:
  *
@@ -862,8 +869,9 @@ function Labels({
  * instead of zoom-then-pan-then-zoom.
  *
  * A LEASH RATHER THAN A WALL. Panning is unrestricted in the moment; drift far
- * enough past the rim and the pivot is eased back over the next second. You cannot
- * get lost in empty space, and you are never stopped dead mid-gesture.
+ * enough outside the playable sphere and the pivot is eased back over the next
+ * second. You cannot get lost in empty space, and you are never stopped dead
+ * mid-gesture.
  */
 function Rig({
   home,
@@ -1037,7 +1045,7 @@ function Rig({
     }
     if (homeSignal === 0) {
       controls.target.set(homeX, homeY, homeZ);
-      controls.object.position.set(homeX + 12, 16, homeZ + 20);
+      controls.object.position.set(...initialHomeCameraPosition(homeX, homeY, homeZ));
       controls.update();
       invalidate();
       return;
@@ -1104,11 +1112,8 @@ function Rig({
      */
     if (act.leash) {
       const t = controls.target;
-      const flat = Math.hypot(t.x, t.z);
-      if (flat > LEASH || Math.abs(t.y) > LEASH * 0.5) {
-        const k = flat > LEASH ? LEASH / flat : 1;
-        goTo(t.x * k, THREE.MathUtils.clamp(t.y, -LEASH * 0.5, LEASH * 0.5), t.z * k);
-      }
+      const correction = sphericalLeashCorrection(t.x, t.y, t.z, LEASH);
+      if (correction) goTo(correction[0], correction[1], correction[2]);
     }
 
     const move = ease.current;
