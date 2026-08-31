@@ -342,8 +342,8 @@ export function predictSatellite(view: PlanetView, type: SatelliteId): Predictio
 }
 
 export function predictResearch(view: PlanetView, projectId: ResearchProjectId): Prediction {
-  if (!queueHasRoom(view, 'CONSTRUCTION')) return null;
-  const projected = projectedQueueState(view, 'CONSTRUCTION');
+  const queue = view.researchQueue ?? [];
+  if (queue.length >= BUILD.queueDepth) return null;
   /*
     THE RUNG BEING BOUGHT IS ONE ABOVE WHATEVER THE QUEUE WILL LEAVE STANDING, and
     the ladder's own ceiling is what stops it. Both were `costAt(1)` and a bare
@@ -351,16 +351,33 @@ export function predictResearch(view: PlanetView, projectId: ResearchProjectId):
     the rung-one price come off their wallet, and a rung already queued refused the
     next one on the same world.
   */
-  const held = projected.research.get(projectId) ?? 0;
+  const durable = view.research.find((project) => project.id === projectId)?.level ?? 0;
+  const held = queue
+    .filter((order) => order.projectId === projectId)
+    .reduce((level, order) => Math.max(level, order.level), durable);
   const level = held + 1;
   if (level > RESEARCH_MAX_LEVEL[projectId]) return null;
   const state = view.research.find((project) => project.id === projectId);
   if (!(state?.queueAvailable ?? state?.available)) return null;
   const requiredCore = RESEARCH_PROJECTS[projectId].requiredCore ?? 0;
-  if (projected.buildings.CORE < requiredCore) return null;
+  if ((view.buildings.CORE ?? 0) < requiredCore) return null;
   const cost = RESEARCH_PROJECTS[projectId].costAt(level);
   if (!affordable(view, cost)) return null;
-  return appendOrder(spend(view, cost), 'CONSTRUCTION', 'RESEARCH', projectId, level, cost);
+  const next = spend(view, cost);
+  return {
+    ...next,
+    researchQueue: [
+      ...(next.researchQueue ?? []),
+      {
+        id: `optimistic-research-${String(++optimisticOrder)}`,
+        slot: queue.length,
+        projectId,
+        level,
+        cost,
+        optimistic: true as const,
+      },
+    ],
+  };
 }
 
 /**

@@ -122,14 +122,16 @@ await call('/api/intel/probe', {
 });
 
 const field = await call('/api/mining', { token: a.token });
+let launchedRock = null;
 if (field.asteroids.length > 0) {
   const rock = [...field.asteroids].sort((x, y) => y.level - x.level)[0];
   const run = await call('/api/mining/launch', {
     method: 'POST',
     token: a.token,
-    body: { asteroidIndex: rock.index, craft: 2 },
+    body: { asteroidId: rock.id, craft: 2 },
   });
-  console.log(`  (A mines rock ${String(rock.index)}, flight ${run.flightMinutes.toFixed(2)} min)`);
+  launchedRock = rock;
+  console.log(`  (A mines rock ${rock.id}, flight ${run.flightMinutes.toFixed(2)} min)`);
 }
 
 const seen = (await call('/api/galaxy/traffic', { token: b.token })).contacts;
@@ -179,11 +181,11 @@ check(
 console.log('\n2 · where a drill aims');
 
 const [run] = await sql`
-  SELECT asteroid_index, depart_at, arrive_at, intercept_x, intercept_z
+  SELECT depart_at, arrive_at, intercept_x, intercept_y, intercept_z
   FROM mining_runs WHERE planet_id = ${a.planet.id} ORDER BY depart_at DESC LIMIT 1`;
 
-if (run) {
-  const rock = field.asteroids.find((r) => r.index === run.asteroid_index);
+if (run && launchedRock) {
+  const rock = launchedRock;
   const flightMin = (run.arrive_at.getTime() - run.depart_at.getTime()) / 60_000;
   const lead = flightMin / rock.period;
   /**
@@ -201,12 +203,24 @@ if (run) {
   );
 
   // The rock really is at the aim point when the craft gets there.
-  const [season] = await sql`SELECT starts_at FROM seasons WHERE status = 'live' LIMIT 1`;
+  const [season] = await sql`
+    SELECT s.starts_at
+    FROM seasons s
+    JOIN planets p ON p.season_id = s.id
+    WHERE p.id = ${a.planet.id}
+    LIMIT 1`;
   const meetMin = (run.arrive_at.getTime() - season.starts_at.getTime()) / 60_000;
   const theta = rock.phase + (2 * Math.PI * meetMin) / rock.period;
+  const cosTheta = Math.cos(theta);
+  const sinTheta = Math.sin(theta);
+  const cosNode = Math.cos(rock.ascendingNode);
+  const sinNode = Math.sin(rock.ascendingNode);
+  const cosInclination = Math.cos(rock.inclination);
+  const sinInclination = Math.sin(rock.inclination);
   const gap = Math.hypot(
-    rock.radius * Math.cos(theta) - run.intercept_x,
-    rock.radius * Math.sin(theta) - run.intercept_z,
+    rock.radius * (cosNode * cosTheta - sinNode * sinTheta * cosInclination) - run.intercept_x,
+    rock.radius * sinTheta * sinInclination - run.intercept_y,
+    rock.radius * (sinNode * cosTheta + cosNode * sinTheta * cosInclination) - run.intercept_z,
   );
   check('the rock is exactly there when the craft arrives', gap < 0.5, `${gap.toFixed(4)} game units`);
 } else {
@@ -326,7 +340,7 @@ await sql`
 const cTarget = (await call('/api/galaxy', { token: c.token })).planets.find(
   (p) => !p.isSelf && p.id !== a.planet.id && p.id !== b.planet.id,
 );
-await call('/api/intel/probe', {
+const sharedProbe = await call('/api/intel/probe', {
   method: 'POST',
   token: c.token,
   body: { targetPlanetId: cTarget.id },
@@ -334,7 +348,9 @@ await call('/api/intel/probe', {
 
 const asA = (await call('/api/galaxy/traffic', { token: a.token })).contacts;
 const asB = (await call('/api/galaxy/traffic', { token: b.token })).contacts;
-const shared = asA.filter((x) => asB.some((o) => o.id === x.id));
+const shared = asA.filter(
+  (x) => x.id === sharedProbe.missionId && asB.some((o) => o.id === x.id),
+);
 const disagreed = shared.filter((x) => {
   const other = asB.find((o) => o.id === x.id);
   return (

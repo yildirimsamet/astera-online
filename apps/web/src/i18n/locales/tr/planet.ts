@@ -20,10 +20,10 @@ export const planet = {
     ready: "Bir mühimmat yüklü",
     build: "Mühimmat yükle",
     started: "Mühimmat yükleniyor",
-    hint: "Zamanlı Radar çemberinde gelen bir Ölüm Yıldızı’nı imha eder. Ateşlendiğinde tükenir.",
-    readyHint: "Hazır. Radar çemberini geçen ilk Ölüm Yıldızı orada ölür.",
+    hint: "Zamanlı Radar çemberine giren veya dünyalarından birinin Teleskop görüşünde tanımladığı ilk Ölüm Yıldızı’nı imha eder. Ateşlendiğinde tükenir.",
+    readyHint: "Hazır. Radar önleme çemberine giren veya Teleskop görüşünde tanımlanan ilk Ölüm Yıldızı’nı imha eder.",
     needResearch: "Önleme Ağı",
-    needRadar: "Radar L{{level}}",
+    needRadar: "Radar {{level}}. seviye",
     needUplink: "Yörüngede Anten",
     needOperational: "Dünya çalışır durumda",
     buildTime: "{{duration}} · tek mühimmat · ateşlenince biter",
@@ -42,22 +42,22 @@ export const planet = {
     readyHint:
       "Silahlı. Herhangi bir düşman dünyasını seç; ana gezegenler harap edilir ama ele geçirilemez.",
     needProtocol: "Protokol",
-    needCore: "Çekirdek L{{level}}",
-    needShipyard: "Tersane L{{level}}",
+    needCore: "Çekirdek {{level}}. seviye",
+    needShipyard: "Tersane {{level}}. seviye",
     needOperational: "Dünya çalışır durumda",
     buildTime: "60 dk · tek silah · geri çağrılamaz",
 
     /** Tek darbenin ne yaptığı, para harcanmadan önce, açık açık. D113. */
     effectsTitle: "Tek darbe ne yapar",
     effectFleet: "Dünyada duran bütün gemileri ve topları yok eder",
-    effectStock: "Depodaki ve işlikteki her şeyin yarısını yok eder",
+    effectStock: "Depo ve üretim havuzundaki kaynakların yarısını yok eder",
     effectCore:
-      "Komuta Çekirdeği’ni bir seviye indirir; Çekirdek neyi taşıyorsa o da iner",
+      "Komuta Çekirdeği’ni bir seviye indirir; yeni Çekirdek sınırını aşan binalar da bu seviyeye düşer",
     effectAegis: "Aegis’i {{levels}} seviye indirir ve kalkanı sıfırlar",
     effectDark:
-      "{{duration}} boyunca üretimi, toplamayı, inşayı ve fırlatmayı durdurur",
+      "{{duration}} boyunca üretimi, toplamayı, inşayı, yeni siparişleri ve fırlatmayı durdurur",
     effectSurvives:
-      "Diğer bütün binalar, bütün araştırmalar ve yörüngenin gerisi ayakta kalır",
+      "Yeni Çekirdek sınırını aşmayan binalar, araştırmalar ve diğer yörünge donanımları korunur",
   },
   tabs: {
     label: "Gezegen bölümleri",
@@ -112,37 +112,37 @@ export const planet = {
   },
 
   roles: {
-    vault: "Akının dokunamadığı tek stok. Üstünde kalan her şey alınabilir.",
+    vault: "Her kaynak için korumalı bir miktar belirler. Bu sınırın üstünde kalan stok akınlarda yağmalanabilir.",
     shipyard:
-      "Daha ağır gövdeleri açar, onları daha hızlı üretir ve her sondayı keskinleştirir.",
-    refinery: "İnşa ettiğin her şey bu sayıyı bekliyor.",
+      "Yeni gemi sınıflarını açar; gemi ve yer savunması üretimini hızlandırır, sondalarının başarı ihtimalini artırır.",
+    refinery: "Saatlik alaşım üretimini ve alaşım depo kapasitesini artırır. Binaların ve gemilerin çoğu bu kaynağı kullanır.",
     extractor:
-      "Kıt kaynak. Ağır gövdeler ve yüksek bina seviyeleri buna bakıyor.",
-    coreCapped_one: "{{count}} şey tavana dayandı; bu yükselmeden açılmıyor.",
+      "Saatlik kristal üretimini ve kristal depo kapasitesini artırır. Gelişmiş gemiler, cihazlar ve araştırmalar kristal kullanır.",
+    coreCapped_one: "{{count}} bina mevcut Çekirdek sınırına ulaştı; Çekirdeği yükseltmeden ilerleyemez.",
     coreCapped_other:
-      "{{count}} şey tavana dayandı; bu yükselmeden açılmıyorlar.",
+      "{{count}} bina mevcut Çekirdek sınırına ulaştı; Çekirdeği yükseltmeden ilerleyemez.",
     coreClear:
-      "Hiçbir bina Çekirdeği geçemez. Hem tavanı hem inşaat hızını o belirler.",
+      "Hiçbir bina Çekirdek seviyesini geçemez. Bina sınırlarını ve inşaat hızını Çekirdek belirler.",
   },
 
   defend: {
     strategicBand: "Stratejik savunma",
     strategicNote:
-      "Zamanlı Radar çemberinde ateşlenen tek mühimmat. Ölüm Yıldızı’nın tek karşılığı.",
+      "Yüklü mühimmat, 3. seviye Radarın algıladığı veya Teleskop görüşünde tanımlanan ilk Ölüm Yıldızı’nı imha eder; ateşlenince tükenir.",
     shieldBand: "Kalkan",
     shieldNote:
-      "Aegis hasarı birliklerine ulaşmadan emer; her seviye kapasiteyi ve yenilenmeyi artırır.",
+      "Aegis hasarı birliklerine ulaşmadan önce karşılar. Seviyeler azami kalkanı artırır; yenilenme hızı azami değerin saatte %35’idir.",
     groundBand: "Yerdekiler",
-    groundNote: "Buradan hiç ayrılmazlar. Biri neye zayıfsa öteki ona güçlü.",
+    groundNote: "Gezegenden ayrılmazlar. Kirpi Siperlere, Tabya ise Mızrak ve Delicilere karşı sınıf üstünlüğü kazanır.",
     thornNone:
-      "Hafif toplar. Ağır gövdeleri biçerler, Mızraklar onları teker teker toplar.",
+      "Hafif yer savunmasıdır. Siper sınıfına karşı güçlü, Mızrak sınıfına karşı zayıftır.",
     thornStanding:
-      "Yerde {{count}} tane var. Ağırlara güçlü, Mızraklara zayıf.",
+      "Yerde {{count}} tane var. Sipere güçlü; Mızrak ve Deliciye zayıf.",
     thornGain: "Kirpi",
     bastionNone:
-      "Ağır toplar. Mızrakları kırarlar, Atmaca sürüsünün altında ezilirler.",
+      "Ağır yer savunmasıdır. Mızrak sınıfına karşı güçlü, Atmaca sınıfına karşı zayıftır.",
     bastionStanding:
-      "Yerde {{count}} tane var. Mızraklara güçlü, sürülere zayıf. Kaybettiklerinin %60’ı bedavaya geri gelir.",
+      "Yerde {{count}} tane var. Mızrak ve Deliciye güçlü; Atmacaya zayıf. Yok edilen yer toplarının %60’ı aşağı yuvarlanarak enkazdan yeniden kurulur.",
     groundGain: "Yerdeki birlik",
     aegisPointer: "Kalkan bir donanım; <0>{{name}}</0> Yörünge sekmesinde.",
   },
@@ -162,28 +162,28 @@ export const planet = {
     slotsFree_other: "Yukarıda {{count}} yuva daha boş",
     slotsNone: "yörünge dolu",
     slotsUsed: "{{used}}/{{total}}",
-    slotsNext: " · Çekirdek L{{level}}’de +1",
+    slotsNext: " · Çekirdek {{level}}. seviyede +1",
     rackLabel: "Yörünge yuvaları",
     slotEmpty: "Boş",
     inactiveSatellite:
       "Sahipsin; Komuta Çekirdeği bu yörünge yuvasını yeniden açana kadar pasif.",
-    inactiveUplink: "L{{owned}} sende; Uplink yeniden etkinleşene kadar pasif.",
+    inactiveUplink: "{{owned}}. seviye sende; Anten yeniden etkinleşene kadar pasif.",
     inactiveCore:
-      "L{{owned}} sende · Komuta Çekirdeği onarılana kadar L{{active}} etkin.",
+      "{{owned}}. seviye sende · Komuta Çekirdeği onarılana kadar {{active}}. seviye etkin.",
     alreadyInOrbit: "zaten yörüngede",
   },
 
   reach: {
     orbitBand: "Operasyon uyduları",
     orbitNote:
-      "Kazıcıyı ya da bütün filoyu hızlandırır; her biri ortak yörünge ağında bir yuva kaplar.",
+      "Matkap bu dünyanın Kazıcılarını hızlandırıp ambarlarını büyütür; Kılavuz akın ve transfer filolarını hızlandırır. Her biri bir yörünge yuvası kullanır.",
     frontierBand: "Ufuk araştırmaları",
     frontierNote:
       "Her araştırma bir kez yapılır ve İnşaat sırasını kullanır. Kilitliyse açma koşulu kartta yazar.",
     isotopeName: "İzotop Spektrometrisi",
     isotopeTag: "Döteryum madenciliğini açar",
     isotopeRole:
-      "İzotop kayalarındaki Döteryumu gösterir ve onlara Kazıcı göndermeni sağlar. Dönen yük Havuz’a gelir.",
+      "İzotop kayalarındaki Döteryumu gösterir ve onlara Kazıcı göndermeni sağlar. Dönen yük üretim havuzuna gelir.",
     denseName: "Yoğun Yakıt Hücreleri",
     denseTag: "Koşucuyu açar",
     denseRole:
@@ -195,56 +195,57 @@ export const planet = {
     gridName: "Önleme Ağı",
     gridTag: "Ölüm Yıldızı’nı düşürür",
     gridRole:
-      "Radar çemberinde bir stratejik silahı imha eder. Radar 3 ve Anten ister.",
+      "Yüklü mühimmat; stratejik silahı 3. seviye Radar önleme çemberinde veya Teleskop görüşünde imha eder. Kurulum için Anten ve Radar 3 gerekir.",
     stockpileName: "Stratejik Stok",
     stockpileTag: "Rampada ikinci silah",
     stockpileRole:
-      "İkinci Ölüm Yıldızı, birincinin ardından kurulur. Bekleme süresi aynı.",
+      "Her dünyada iki Ölüm Yıldızı hazır tutabilirsin. İkincisi, birincinin üretimi bittikten sonra aynı bedel ve süreyle kurulur.",
     waspDoctrineName: "Atmaca Doktrini",
     lanceDoctrineName: "Mızrak/Delici Doktrini",
     bulwarkDoctrineName: "Siper Doktrini",
     groundDoctrineName: "Tabya/Kirpi Doktrini",
     generalName: "Silah ve Zırh",
-    generalTag: "Uçurduğun her gövdeyi geliştirir",
+    generalTag: "Sahip olduğun her gövdeyi geliştirir",
     doctrineTag: "Daha iyi saldırı ve zırh",
     doctrineRole:
-      "Saldırı ve zırh birlikte. Tüm araştırma toplamda dörtte bir eder; düşmanını tanımak %156 kazandırır.",
+      "İlgili sınıfın saldırı gücünü ve gövde dayanımını birlikte artırır. Araştırmalar doğal sınıf üstünlüklerini değiştirmez.",
     yardName: "Tersane Otomasyonu",
     yardTag: "Gemileri daha hızlı kurar",
     yardRole:
-      "Her gövdenin yapım süresini kısaltır. Eğriyi hâlâ Tersane belirler.",
+      "Hareketli gemilerin üretim süresini kısaltır; yer savunmalarını ve üretim sırası kapasitesini etkilemez.",
     holdsName: "Kazıcı Ambarları",
     holdsTag: "Kazıcılar daha çok taşır",
-    holdsRole: "Vinç ile çarpışır; donanım ve teknik birbirini büyütür.",
+    holdsRole:
+      "Her Kazıcının tek seferde taşıdığı cevheri artırır; Matkabın sağladığı ambar artışı bunun üzerine uygulanır.",
     cargoName: "Gemi Ambarları",
     cargoTag: "Akınlar daha çok getirir",
     cargoRole:
-      "Bir filonun yağmalayabileceğini artırır. Dünya transferlerini değiştirmez.",
+      "Akın filosunun taşıyabileceği ganimeti artırır; dünyalar arası transferi ve asteroit madenciliğini etkilemez.",
     synthesisName: "Döteryum Sentezi",
-    synthesisTag: "Rafineri tavanını yükseltir",
+    synthesisTag: "Rafineri seviye sınırını yükseltir",
     synthesisRole:
-      "Her kademe üç Döteryum Rafinerisi seviyesi açar. Yakıt buradan başlar.",
+      "Her kademe, sahip olduğun bütün dünyalarda üç yeni Döteryum Rafinerisi seviyesi açar.",
     deathStarName: "Ölüm Yıldızı Protokolü",
     deathStarTag: "Ölüm Yıldızı’nı açar",
     deathStarRole:
-      "Bu gezegende bir Ölüm Yıldızı inşa etmeni sağlar. İlk darbe hedefi yıkar; ikinci darbe yalnız koloni veya tarafsız dünyayı ele geçirir. Capital ele geçirilemez.",
-    researchNeedCore: "Komuta Çekirdeğini L{{level}} yap",
+      "Bu dünyada bir Ölüm Yıldızı üretmeni sağlar. Darbe evdeki birlikleri ve bina siparişlerini yok eder, depoyla üretim havuzunu yarıya indirir ve dünyayı iki saat devre dışı bırakır. Bu sürede ele geçirme emriyle verilen ikinci darbe yalnız koloni veya tarafsız dünyayı ele geçirir; ana gezegen ele geçirilemez.",
+    researchNeedCore: "Komuta Çekirdeğini {{level}}. seviyeye yükselt",
     researchAct: "Araştır",
     researchComplete: "araştırıldı",
     researchAt: "{{duration}} sonra araştırılabilir",
     researchIsotopeFirst: "Önce İzotop Spektrometrisi’ni araştır",
     researchDenseFirst: "Önce Yoğun Yakıt Hücreleri’ni araştır",
     researchGraviticFirst: "Önce Gravitik Yükler’i araştır",
-    researchWarAt: "Savaş perdesi {{duration}} sonra açılır",
+    researchWarAt: "Savaş dönemi {{duration}} sonra başlar",
     researchCargoInsight: "Bir akında ambarını doldur; hedefte ganimet kalsın",
     researchShieldInsight: "Aegis akın hasarının en az {{share}}’ini emsin",
     warshipsBand: "Savaş gemileri",
-    warshipsNote: "Bunlar dövüşür. Başka bir gezegene gönderilir.",
+    warshipsNote: "Akın filosunun savaş gücünü oluştururlar. Görevdeyken kendi dünyalarını savunamazlar.",
     supportBand: "Destek",
     supportNote:
       "Dövüşmezler. Ucuz kapasite ile daha kısa açıkta kalma süresi arasında seçim yap.",
     miningBand: "Madenci",
-    miningNote: "Gezegene değil asteroide gider. Cevheri eve getirir.",
+    miningNote: "Asteroit ve enkaz sahalarına gider; taşıyabildiği kaynağı üretim havuzuna getirir.",
     ownedGain: "Elinde",
     prospectorLimit: "{{owned}} / {{max}} · sınır",
   },
@@ -252,7 +253,7 @@ export const planet = {
   grow: {
     multiplierBand: "Üretim uydusu",
     multiplierNote:
-      "Dökümhane iki cevher akışını birlikte hızlandırır ve ortak yörünge ağında bir yuva kaplar.",
+      "Körük, bu dünyanın alaşım, kristal ve Döteryum üretimini %6 artırır ve ortak yörünge ağında bir yuva kaplar.",
   },
 
   projectSheet: {
@@ -263,22 +264,22 @@ export const planet = {
   },
 
   blocked: {
-    core: "Çekirdek L{{level}}",
+    core: "Çekirdek {{level}}. seviye",
     uplink: "yörüngede Anten",
     orbitSlot: "boş yörünge yuvası",
-    shipyard: "Tersane L{{level}}",
+    shipyard: "Tersane {{level}}. seviye",
     plantRung: "Bir kademe daha Döteryum Sentezi araştır",
     maxed: "en üst seviyede",
-    queueFull: "o üretim sırası dolu",
+    queueFull: "Sırada zaten 3 sipariş var. Bunu eklemek için biri bitsin veya birini iptal et.",
   },
 
   done: {
-    raised: "{{name}} artık L{{level}}",
-    instrument: "{{name}} L{{level}} olarak devrede",
+    raised: "{{name}} artık {{level}}. seviyede",
+    instrument: "{{name}} {{level}}. seviyede devrede",
     satellite: "{{name}} yörüngeye yerleşti",
     built: "{{count}} {{name}} yapıldı",
     researched: "{{name}} tamamlandı",
-    queued: "{{name}} L{{level}} sıraya alındı",
+    queued: "{{name}} {{level}}. seviye için sıraya alındı",
     queuedSimple: "{{name}} sıraya alındı",
     unitsQueued: "{{count}} {{name}} sıraya alındı",
   },
@@ -313,11 +314,11 @@ export const itemSheet = {
   actPutInOrbit: "Yörüngeye çıkar",
   actAlreadyInOrbit: "Zaten yörüngede",
   actInstall: "Kur",
-  actRaise: "L{{level}} seviyesine çıkar",
+  actRaise: "{{level}}. seviyeye çıkar",
   lockedNote: "Kilitli. Gereken: {{reason}}.",
   ladderHeading: "Hangi seviye ne getiriyor",
-  rungLevel: "L{{level}}",
-  rungNewHardware: "L{{level}}’de yeni donanım",
+  rungLevel: "{{level}}. seviye",
+  rungNewHardware: "{{level}}. seviyede yeni donanım",
   orbitalDoesHeading: "Ne işe yarar",
   orbitalCostHeading: "Neye mal olur",
   orbitalOnce: "bir kere; asla yükseltilmez",
@@ -330,7 +331,7 @@ export const upgradeRow = {
   nextTierAlt: "{{name}} bir üst kademede",
   becomes: "olur",
   affordableIn: "Bu hızla <0>{{duration}}</0> sonra alabilirsin",
-  ladder: "L{{level}} / {{max}}",
+  ladder: "Seviye {{level}} / {{max}}",
 } as const;
 
 export const action = {
@@ -431,7 +432,7 @@ export const transfer = {
   eta: "Varış",
   capacity: "Yük",
   fleet: "Gemiler",
-  homeDefence: "Origin’de {{ships}} gemi kalır · {{power}} savunma gücü",
+  homeDefence: "Çıkış dünyasında {{ships}} gemi kalır · {{power}} savunma gücü",
   cargo: "Kaynaklar",
   alloy: "Alaşım",
   crystal: "Kristal",
@@ -440,12 +441,12 @@ export const transfer = {
   sending: "Yola çıkıyor",
   launched: "Transfer yola çıktı · {{duration}}",
   irreversible:
-    "Tek yönlüdür. Yer savunması taşınamaz; yük kapasitesini yalnız Nakliyeci ve Koşucu sağlar.",
+    "Tek yönlüdür. Yer savunması taşınamaz; yük kapasitesini yalnız Şilep ve Koşucu sağlar.",
   hullNone: "Bu dünyada yok",
   holdReady: "Madeni Şilep ve Koşucu taşır. Ambar: {{capacity}}.",
   holdNeedsLoad: "Maden taşımak için yukarıdan bir Şilep ya da Koşucu ekle.",
   holdNoCarrier:
-    "Bu dünyada Şilep de Koşucu da yok; madeni taşıyacak bir şey bulunmuyor.",
+    "Bu dünyada kaynak taşıyabilecek Şilep veya Koşucu yok.",
   /** Hedefin yer çubuğunun altyazısı; sayıları çubuğun kendisi çiziyor. */
   destinationLabel: "Hedef hangarı",
   /** Gemi sayısını gösteren işaretlerin ekran okuyucu karşılığı. */

@@ -257,7 +257,7 @@ export function TelescopeIcon(props: IconProps) {
   );
 }
 
-/** A dish and the arcs it throws. Catches probes; at L3 it warns of fleets. */
+/** A dish and the arcs it throws. Catches probes and warns of inbound fleets. */
 export function RadarIcon(props: IconProps) {
   return (
     <Glyph {...props}>

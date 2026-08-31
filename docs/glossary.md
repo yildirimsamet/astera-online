@@ -42,8 +42,8 @@ a reading is identical however many times it is requested inside its window. Wit
 player defeats the fog by pulling to refresh.
 
 **Radar reach** — How far from your world Radar detects movement: L1 1200, L2 1450, L3 1700,
-L4 1900, L5 2200. From L3 the same radius attributes an inbound threat and produces its timed
-warning; the contact and warning ladders are provisionally merged. It is a CIRCLE, not a
+L4 1900, L5 2200. From L1 the same radius attributes an inbound threat and produces its timed
+warning; L3 enables strategic interception after its research is complete. The contact and warning ladders are provisionally merged. It is a CIRCLE, not a
 countdown, so how much warning it buys depends on how fast the attacker chose to fly. D49/D126.
 
 **Sensor horizon** — The union of every controlled world's two sensor spheres. Telescope
@@ -76,7 +76,7 @@ recall.
 **Wasp / Lance / Bulwark** — The three combat hulls, forming the counter cycle
 `WASP ▸ BULWARK ▸ LANCE ▸ WASP` at 1.6× / 0.625×.
 
-**Hauler** — The dedicated cargo hull. 1,800 cargo, zero attack. Combat hulls carry a small
+**Hauler** — The dedicated cargo hull. 2,200 cargo, zero attack. Combat hulls carry a small
 amount themselves; Haulers make a serious haul possible. Shielded from fire while any combat
 hull on your side survives.
 
@@ -92,9 +92,9 @@ blind raiding can actually fail.
 **Exposure window** — `oneWayTravel × 2`. How long your planet is weakened after a launch.
 The UI leads with this number.
 
-**Development tier** — `ceil(coreLevel / 3)`, public on every world in the galaxy. It decides
-the silhouette the disc draws and, since D49, **who you may attack**: a world may fight
-anything within ±2 tiers of itself.
+**Development tier** — `ceil(coreLevel / 3)`. It is visible only under current sight or frozen
+probe memory. The former development-tier attack band is retired; repeat farming is bounded by
+`ABUSE.bashLimit`.
 
 
 **Ground defence** — the two guns that never leave a planet: the **Bastion** (heavy,
@@ -241,8 +241,9 @@ against; Turkish is the **fallback**, which is what a device that asked for neit
 
 **Turkish ship names** — Class names, not proper nouns, so they are translated:
 Wasp → **Atmaca**, Lance → **Mızrak**, Bulwark → **Siper**, Hauler → **Şilep**,
-Bastion → **Tabya**, Thorn → **Diken**, Prospector → **Kazıcı**. Satellites likewise:
-Uplink → **Röle**, Foundry → **Dökümhane**, Derrick → **Vinç**, Beacon → **Fener**.
+Runner → **Koşucu**, Breacher → **Delici**, Bastion → **Tabya**, Thorn → **Kirpi**,
+Prospector → **Kazıcı**. Satellites likewise: Uplink → **Anten**, Foundry → **Körük**,
+Derrick → **Matkap**, Beacon → **Kılavuz**.
 `packages/rules` keeps the IDs and holds no language at all.
 
 **Havuz** — Turkish for the *works* (D16): where production collects, stops when full, and is

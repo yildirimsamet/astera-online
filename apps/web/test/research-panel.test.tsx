@@ -12,7 +12,7 @@ import {
 import { ResearchPanel } from '../src/screens/ResearchPanel.js';
 import i18n from '../src/i18n/index.js';
 import { ToastProvider } from '../src/ui/Toast.js';
-import type { BuildOrderView, PlanetView } from '../src/api/schemas.js';
+import type { PlanetView, ResearchQueueOrderView } from '../src/api/schemas.js';
 import { compact } from '../src/lib/format.js';
 import { planetView } from './fixtures.js';
 
@@ -32,9 +32,8 @@ import { planetView } from './fixtures.js';
  *    `RESEARCH_PROJECT_IDS` rather than a hand-written list is the only thing that
  *    catches the sixteenth.
  *  · A CLOSED DOOR SAYS WHY (interface I1: a requirement is a door, not an alarm).
- *    With one research slot shared across a commander's worlds, most rows on this
- *    screen are shut most of the time, and a row that is merely un-pressable
- *    teaches nothing.
+ *    With one research queue shared across a commander's worlds, a row that is
+ *    merely un-pressable teaches nothing.
  */
 
 const ALL = RESEARCH_PROJECT_IDS;
@@ -62,30 +61,19 @@ const state = (id: ResearchProjectId, over: Partial<ResearchState> = {}): Resear
 const allOpen = (over: Partial<Record<ResearchProjectId, Partial<ResearchState>>> = {}) =>
   ALL.map((id) => state(id, over[id] ?? {}));
 
-/** One Construction order, so a test can fill a queue or start a project. */
-const order = (
-  slot: number,
-  over: Partial<BuildOrderView> = {},
-): BuildOrderView => ({
-  id: `order-${String(slot)}`,
-  queue: 'CONSTRUCTION',
+const researchOrder = (
+  projectId: ResearchProjectId,
+  finishesAt: Date,
+  slot = 0,
+): ResearchQueueOrderView => ({
+  id: `research-${String(slot)}-${projectId}`,
   slot,
-  kind: 'BUILDING',
-  subject: 'REFINERY',
-  count: 1,
+  projectId,
+  level: 1,
   startedAt: new Date('2026-08-28T09:00:00.000Z'),
-  finishesAt: new Date('2026-08-28T10:00:00.000Z'),
-  cost: { alloy: 100, crystal: 100, deuterium: 0 },
-  ...over,
-} as BuildOrderView);
-
-const researchOrder = (projectId: ResearchProjectId, finishesAt: Date): BuildOrderView =>
-  order(0, {
-    kind: 'RESEARCH',
-    subject: projectId,
-    finishesAt,
-    cost: RESEARCH_PROJECTS[projectId].costAt(1),
-  });
+  finishesAt,
+  cost: RESEARCH_PROJECTS[projectId].costAt(1),
+});
 
 /** A developed commander: Core past every gate, stock past every price. */
 const world = (
@@ -110,8 +98,8 @@ const world = (
   );
 
 const mutate = vi.fn();
+const cancel = vi.fn();
 let current: PlanetView = world();
-let others: PlanetView[] = [];
 
 vi.mock('../src/api/queries.js', async () => {
   const actual = await vi.importActual<Record<string, unknown>>('../src/api/queries.js');
@@ -119,19 +107,7 @@ vi.mock('../src/api/queries.js', async () => {
     ...actual,
     usePlanet: () => ({ data: current, dataUpdatedAt: Date.now(), isPending: false }),
     useCompleteResearch: () => ({ mutate, isPending: false }),
-  };
-});
-
-vi.mock('../src/api/world.js', async () => {
-  const actual = await vi.importActual<Record<string, unknown>>('../src/api/world.js');
-  return {
-    ...actual,
-    useWorld: () => ({
-      activePlanetId: current.planet.id,
-      capitalPlanetId: current.planet.id,
-      worlds: [current, ...others],
-      selectPlanet: () => undefined,
-    }),
+    useCancelResearchOrder: () => ({ mutate: cancel, isPending: false }),
   };
 });
 
@@ -189,7 +165,7 @@ const act = (sheet: HTMLElement): HTMLElement | null =>
 
 beforeEach(async () => {
   mutate.mockClear();
-  others = [];
+  cancel.mockClear();
   // jsdom has no layout, so it has no `scrollIntoView`. `chat-screen.test.tsx`
   // stubs it the same way; the component calls it unguarded, as `PlanetScreen`
   // has since it gained the same "go to the thing blocking you" behaviour.
@@ -377,9 +353,12 @@ describe('a closed door states its reason', () => {
     expect(silent(view)).toEqual([]);
   });
 
-  it('leaves no row shut and silent while another world holds the slot', () => {
-    others = [elsewhere('YARD_AUTOMATION', 'Vantage-4')];
-    expect(silent(show())).toEqual([]);
+  it('leaves no row shut and silent while the shared queue has room', () => {
+    expect(silent(show({
+      researchQueue: [
+        researchOrder('YARD_AUTOMATION', new Date('2026-08-28T11:30:00.000Z')),
+      ],
+    }))).toEqual([]);
   });
 
   it('names the act clock on a Frontier project the season has not opened', () => {
@@ -534,44 +513,39 @@ describe('a closed door states its reason', () => {
     expect(row(view, 'GRAVITIC_CHARGES')).toHaveAttribute('data-focused', 'true');
   });
 
-  it('names a full Construction queue', () => {
+  it('names a full Research queue', () => {
     const view = show({
-      queues: { CONSTRUCTION: [order(0), order(1), order(2)], YARD: [] },
+      researchQueue: [
+        researchOrder('YARD_AUTOMATION', new Date('2026-08-28T10:00:00.000Z'), 0),
+        researchOrder('CARGO_HOLDS', new Date('2026-08-28T11:00:00.000Z'), 1),
+        researchOrder('WASP_DOCTRINE', new Date('2026-08-28T12:00:00.000Z'), 2),
+      ],
     });
     expect(reason(view, 'CARGO_HOLDS')).toMatch(/queue is full/i);
   });
 });
 
-/** A second world of this commander, with a research order under way on it. */
-const elsewhere = (projectId: ResearchProjectId, name: string): PlanetView =>
-  planetView(
-    {
-      queues: {
-        CONSTRUCTION: [researchOrder(projectId, new Date('2026-08-28T11:30:00.000Z'))],
-        YARD: [],
-      },
-    },
-    { id: 'p2', name },
-  );
-
 /**
- * ONE SLOT, ACROSS EVERY WORLD. T7 made research a commander's property and left
- * the server refusing a second world with `RESEARCH_SLOT_BUSY` — a refusal nothing
- * on the planet sheet could anticipate, because it cannot see another world's
- * queue. This screen can: `useWorld()` already holds a full view of every world.
+ * ONE QUEUE, ACROSS EVERY WORLD. The selected world funds a project; the lane
+ * itself belongs to the commander and never occupies Construction or Yard.
  */
-describe('the one research slot', () => {
-  it('names the project, the world and when it finishes', () => {
-    others = [elsewhere('YARD_AUTOMATION', 'Vantage-4')];
-    const view = show();
+describe('the commander research queue', () => {
+  it('names the running project and when it finishes', () => {
+    const view = show({
+      researchQueue: [
+        researchOrder('YARD_AUTOMATION', new Date('2026-08-28T11:30:00.000Z')),
+      ],
+    });
     const running = view.container.querySelector('[data-research-running]');
     expect(running).toHaveTextContent(/Yard Automation/);
-    expect(running).toHaveTextContent(/Vantage-4/);
   });
 
   it('gives the finish as a clock time rather than a bare countdown', () => {
-    others = [elsewhere('YARD_AUTOMATION', 'Vantage-4')];
-    const view = show();
+    const view = show({
+      researchQueue: [
+        researchOrder('YARD_AUTOMATION', new Date('2026-08-28T11:30:00.000Z')),
+      ],
+    });
     expect(view.container.querySelector('[data-research-finishes]')?.textContent ?? '')
       .toMatch(/\d/);
   });
@@ -582,20 +556,25 @@ describe('the one research slot', () => {
     expect(view.container.querySelector('[data-research-idle]')).toBeInTheDocument();
   });
 
-  it('shuts every other project while one runs on another world', () => {
-    others = [elsewhere('YARD_AUTOMATION', 'Vantage-4')];
-    const view = show();
+  it('keeps projects available while the shared queue has room', () => {
+    const view = show({
+      researchQueue: [
+        researchOrder('YARD_AUTOMATION', new Date('2026-08-28T11:30:00.000Z')),
+      ],
+    });
     for (const id of ALL) {
-      expect(reason(view, id), id).toMatch(/Vantage-4/);
+      expect(reason(view, id), id).not.toMatch(/queue is full/i);
     }
   });
 
-  it('buys nothing while another world holds the slot', async () => {
-    others = [elsewhere('YARD_AUTOMATION', 'Vantage-4')];
-    const view = show();
-    const control = act(await open(view, 'CARGO_HOLDS'));
-    if (control) await userEvent.click(control);
-    expect(mutate).not.toHaveBeenCalled();
+  it('states that planet queues keep running separately', () => {
+    const view = show({
+      researchQueue: [
+        researchOrder('YARD_AUTOMATION', new Date('2026-08-28T11:30:00.000Z')),
+      ],
+    });
+    expect(view.getByText(/Construction and Yard.*keep running separately/i))
+      .toBeInTheDocument();
   });
 
   /**
@@ -605,10 +584,9 @@ describe('the one research slot', () => {
    */
   it('still allows a second project behind the first on this world', () => {
     const view = show({
-      queues: {
-        CONSTRUCTION: [researchOrder('ISOTOPE_SPECTROMETRY', new Date('2026-08-28T10:00:00.000Z'))],
-        YARD: [],
-      },
+      researchQueue: [
+        researchOrder('ISOTOPE_SPECTROMETRY', new Date('2026-08-28T10:00:00.000Z')),
+      ],
     });
     expect(reason(view, 'DENSE_FUEL_CELLS')).not.toMatch(/is running/i);
   });
@@ -632,12 +610,9 @@ describe('the one research slot', () => {
           queueAvailable: true,
         },
       }),
-      queues: {
-        CONSTRUCTION: [
-          researchOrder('ISOTOPE_SPECTROMETRY', new Date('2026-08-28T10:00:00.000Z')),
-        ],
-        YARD: [],
-      },
+      researchQueue: [
+        researchOrder('ISOTOPE_SPECTROMETRY', new Date('2026-08-28T10:00:00.000Z')),
+      ],
     });
 
     expect(reason(view, 'DENSE_FUEL_CELLS')).toBe('');
@@ -649,20 +624,18 @@ describe('the one research slot', () => {
 
   it('marks a project queued on this world rather than calling it blocked', () => {
     const view = show({
-      queues: {
-        CONSTRUCTION: [researchOrder('CARGO_HOLDS', new Date('2026-08-28T10:00:00.000Z'))],
-        YARD: [],
-      },
+      researchQueue: [
+        researchOrder('CARGO_HOLDS', new Date('2026-08-28T10:00:00.000Z')),
+      ],
     });
     expect(progression(view, 'CARGO_HOLDS')).toBe('queued');
   });
 
   it('reads the running project off this world too', () => {
     const view = show({
-      queues: {
-        CONSTRUCTION: [researchOrder('CARGO_HOLDS', new Date('2026-08-28T10:00:00.000Z'))],
-        YARD: [],
-      },
+      researchQueue: [
+        researchOrder('CARGO_HOLDS', new Date('2026-08-28T10:00:00.000Z')),
+      ],
     });
     expect(view.container.querySelector('[data-research-running]'))
       .toHaveTextContent(/Cargo Holds/);

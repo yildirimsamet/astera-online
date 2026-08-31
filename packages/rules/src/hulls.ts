@@ -18,7 +18,7 @@ import type { Fleet, GroundHullId, Hull, HullClass, HullId, MobileHullId } from 
  */
 export const HULLS: Record<HullId, Hull> = {
   WASP: { id: 'WASP', name: 'Wasp', cls: 'SKIRMISHER', atk: 15, hp: 25, speed: 130, cargo: 45, alloy: scalePrice(240, ECONOMY_TEMPO.hullPrice), crystal: 0, deuterium: 0, minShipyard: 0, ground: false },
-  LANCE: { id: 'LANCE', name: 'Lance', cls: 'LANCE', atk: 78, hp: 112, speed: 100, cargo: 60, alloy: scalePrice(820, ECONOMY_TEMPO.hullPrice), crystal: scalePrice(260, ECONOMY_TEMPO.hullPrice), deuterium: 0, minShipyard: 2, ground: false },
+  LANCE: { id: 'LANCE', name: 'Lance', cls: 'LANCE', atk: 78, hp: 112, speed: 100, cargo: 60, alloy: scalePrice(820, ECONOMY_TEMPO.hullPrice), crystal: scalePrice(260, ECONOMY_TEMPO.hullCrystalPrice), deuterium: 0, minShipyard: 2, ground: false },
   /**
    * THE BULWARK IS NOW COMPETITIVE AT EQUAL BUDGET, AND THAT IS THE CHANGE.
    *
@@ -40,18 +40,18 @@ export const HULLS: Record<HullId, Hull> = {
    * 156% (1.6 against 0.625), which is the point: information beats tech by
    * construction, and that is the claim the whole game rests on.
    */
-  BULWARK: { id: 'BULWARK', name: 'Bulwark', cls: 'BULWARK', atk: 106, hp: 662, speed: 65, cargo: 90, alloy: scalePrice(2150, ECONOMY_TEMPO.hullPrice), crystal: scalePrice(730, ECONOMY_TEMPO.hullPrice), deuterium: 0, minShipyard: 4, ground: false },
-  HAULER: { id: 'HAULER', name: 'Hauler', cls: 'SUPPORT', atk: 0, hp: 210, speed: 85, cargo: 2200, alloy: scalePrice(1100, ECONOMY_TEMPO.hullPrice), crystal: scalePrice(200, ECONOMY_TEMPO.hullPrice), deuterium: 0, minShipyard: 1, ground: false },
+  BULWARK: { id: 'BULWARK', name: 'Bulwark', cls: 'BULWARK', atk: 106, hp: 662, speed: 65, cargo: 90, alloy: scalePrice(2150, ECONOMY_TEMPO.hullPrice), crystal: scalePrice(730, ECONOMY_TEMPO.hullCrystalPrice), deuterium: 0, minShipyard: 4, ground: false },
+  HAULER: { id: 'HAULER', name: 'Hauler', cls: 'SUPPORT', atk: 0, hp: 210, speed: 85, cargo: 2200, alloy: scalePrice(1100, ECONOMY_TEMPO.hullPrice), crystal: scalePrice(200, ECONOMY_TEMPO.hullCrystalPrice), deuterium: 0, minShipyard: 1, ground: false },
   /** Fast, expensive capacity. It shortens exposure; it never replaces a Hauler. D94. */
-  RUNNER: { id: 'RUNNER', name: 'Runner', cls: 'SUPPORT', atk: 0, hp: 120, speed: 125, cargo: 380, alloy: scalePrice(560, ECONOMY_TEMPO.hullPrice), crystal: scalePrice(250, ECONOMY_TEMPO.hullPrice), deuterium: scalePrice(90, ECONOMY_TEMPO.hullPrice), minShipyard: 2, ground: false },
+  RUNNER: { id: 'RUNNER', name: 'Runner', cls: 'SUPPORT', atk: 0, hp: 120, speed: 125, cargo: 380, alloy: scalePrice(560, ECONOMY_TEMPO.hullPrice), crystal: scalePrice(250, ECONOMY_TEMPO.hullCrystalPrice), deuterium: scalePrice(90, ECONOMY_TEMPO.hullPrice), minShipyard: 2, ground: false },
   /** Shield specialist. Its extra damage is resolved only against a live shield. D95. */
-  BREACHER: { id: 'BREACHER', name: 'Breacher', cls: 'LANCE', atk: 55, hp: 300, speed: 78, cargo: 0, alloy: scalePrice(1250, ECONOMY_TEMPO.hullPrice), crystal: scalePrice(550, ECONOMY_TEMPO.hullPrice), deuterium: scalePrice(200, ECONOMY_TEMPO.hullPrice), minShipyard: 3, ground: false },
+  BREACHER: { id: 'BREACHER', name: 'Breacher', cls: 'LANCE', atk: 55, hp: 300, speed: 78, cargo: 0, alloy: scalePrice(1250, ECONOMY_TEMPO.hullPrice), crystal: scalePrice(550, ECONOMY_TEMPO.hullCrystalPrice), deuterium: scalePrice(200, ECONOMY_TEMPO.hullPrice), minShipyard: 3, ground: false },
   /**
    * THE HEAVY GUN. Bulwark-class, so a swarm of Wasps overwhelms it and a Lance
    * breaks against it. Expensive, slow to accumulate, and what a planet buys when
    * it expects to be hit by something serious.
    */
-  BASTION: { id: 'BASTION', name: 'Bastion', cls: 'BULWARK', atk: 118, hp: 906, speed: 0, cargo: 0, alloy: scalePrice(2400, ECONOMY_TEMPO.hullPrice), crystal: scalePrice(800, ECONOMY_TEMPO.hullPrice), deuterium: 0, minShipyard: 1, ground: true },
+  BASTION: { id: 'BASTION', name: 'Bastion', cls: 'BULWARK', atk: 118, hp: 906, speed: 0, cargo: 0, alloy: scalePrice(2400, ECONOMY_TEMPO.hullPrice), crystal: scalePrice(800, ECONOMY_TEMPO.hullCrystalPrice), deuterium: 0, minShipyard: 1, ground: true },
   /**
    * THE LIGHT GUN. D27. Skirmisher-class, so it tears into heavy hulls and is
    * picked apart by Lances — the exact inverse of the Bastion, which is its whole
@@ -67,7 +67,7 @@ export const HULLS: Record<HullId, Hull> = {
    * OPPOSITE CLASSES so that "how much defence" becomes "what KIND" — a question
    * only the information layer can answer.
    */
-  THORN: { id: 'THORN', name: 'Thorn', cls: 'SKIRMISHER', atk: 49, hp: 174, speed: 0, cargo: 0, alloy: scalePrice(700, ECONOMY_TEMPO.hullPrice), crystal: scalePrice(200, ECONOMY_TEMPO.hullPrice), deuterium: 0, minShipyard: 0, ground: true },
+  THORN: { id: 'THORN', name: 'Thorn', cls: 'SKIRMISHER', atk: 49, hp: 174, speed: 0, cargo: 0, alloy: scalePrice(700, ECONOMY_TEMPO.hullPrice), crystal: scalePrice(200, ECONOMY_TEMPO.hullCrystalPrice), deuterium: 0, minShipyard: 0, ground: true },
   /**
    * The mining craft. D19.
    *
@@ -82,7 +82,7 @@ export const HULLS: Record<HullId, Hull> = {
    * Star does not. The class still decides what happens to a craft caught out on a
    * run, which is where mining's real exposure lives.
    */
-  PROSPECTOR: { id: 'PROSPECTOR', name: 'Prospector', cls: 'SUPPORT', atk: 0, hp: 150, speed: 825, cargo: 1800, alloy: scalePrice(650, ECONOMY_TEMPO.hullPrice), crystal: scalePrice(200, ECONOMY_TEMPO.hullPrice), deuterium: 0, minShipyard: 1, ground: false },
+  PROSPECTOR: { id: 'PROSPECTOR', name: 'Prospector', cls: 'SUPPORT', atk: 0, hp: 150, speed: 825, cargo: PROSPECTOR.hold, alloy: scalePrice(650, ECONOMY_TEMPO.hullPrice), crystal: scalePrice(200, ECONOMY_TEMPO.hullCrystalPrice), deuterium: 0, minShipyard: 1, ground: false },
 };
 
 /** What may be put in an attack fleet. A Prospector is deliberately not here. */

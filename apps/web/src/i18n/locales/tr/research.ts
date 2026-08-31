@@ -8,34 +8,40 @@
 export const research = {
   eyebrow: "Komutan",
   title: "Araştırma",
-  premise: "Bir kez alınır, sende kalır; tuttuğun her dünyada geçerlidir.",
+  premise: "Bir kez tamamlanır, kalıcı olur ve sahip olduğun bütün dünyalarda geçerlidir.",
 
+  queueTitle: "Araştırma sırası",
+  queueCapacity: "{{count}} yuva",
+  queueLane: "Komutan araştırması",
+  queueGlobalHint:
+    "Bu sıra komutanına aittir. Her gezegendeki İnşaat ve Tersane sıraları ayrı çalışmaya devam eder.",
+  cancelled: "{{alloy}} Alaşım · {{crystal}} Kristal · {{deuterium}} Döteryum iade edildi",
   runningLabel: "Sürüyor",
   runningOn: "{{planet}} üzerinde",
   runningFinishes: "{{time}}’de biter",
   idleLabel: "Sürmekte olan araştırma yok",
-  idleHint: "Tuttuğun dünyaların hepsinde toplam tek proje çalışır.",
+  idleHint: "Aşağıdan bir proje başlat. Burada üç proje sıraya girebilir; gezegen sıraların çalışmayı sürdürür.",
   slotBusy: "{{name}}, {{planet}} üzerinde sürüyor",
 
   frontierBand: "Ufuk",
   frontierNote:
-    "Satın alınmaz, oynayarak bulunur. Her kart neyin açtığını yazar.",
+    "Galaksideki belirli olaylarla keşfedilir. Keşfettikten sonra kaynak ve araştırma süresi harcayarak tamamlarsın.",
   industryBand: "Endüstri",
   industryNote:
-    "Beşer kademe, ilk dakikadan açık. Ne ürettiğin ve ne taşıdığın.",
+    "İlk dakikadan açıktır ve beşer kademeden oluşur. Üretim, yapım süresi ve taşıma kapasitesini geliştirir.",
   doctrineBand: "Doktrin",
   doctrineNote:
-    "Saldırı ve zırh birlikte. Bir sonda bunları gövdelerinden okur.",
+    "Belirli gemi sınıflarının saldırı gücünü ve gövde dayanımını birlikte artırır. Rakipler bu seviyeleri sonda raporlarından öğrenebilir.",
   strategicBand: "Stratejik",
-  strategicNote: "Oyundaki en ağır silah ve onu durduran tek şey.",
+  strategicNote: "Ölüm Yıldızı’nı, onu durduran Önleme Ağını ve ikinci silah kapasitesini açar.",
 
   act: "Araştır",
   complete: "araştırıldı",
 
-  needCore: "Komuta Çekirdeğini L{{level}} yap",
-  queueFull: "İnşaat sırası dolu",
+  needCore: "Komuta Çekirdeğini {{level}}. seviyeye yükselt",
+  queueFull: "Araştırma sırası dolu",
   at: "{{duration}} sonra araştırılabilir",
-  warAt: "Savaş perdesi {{duration}} sonra açılır",
+  warAt: "Savaş dönemi {{duration}} sonra başlar",
   isotopeFirst: "Önce İzotop Spektrometrisi’ni araştır",
   graviticFirst: "Önce Gravitik Yükler’i araştır",
   cargoInsight: "Bir akında ambarını doldur; hedefte ganimet kalsın",
@@ -44,13 +50,13 @@ export const research = {
   sheetEyebrow: "Araştırma projesi",
   sheetComplete: "Araştırma tamam",
   sheetCost: "Araştırma bedeli",
-  sheetOnce: "Üzerinde bulunduğun dünyanın İnşaat sırasına girer.",
+  sheetOnce: "Komutanına ait Araştırma sırasına girer. İnşaat veya Tersane yuvası kullanmaz.",
   sheetRung: "{{max}} kademenin {{level}}. kademesi. Her kademe ayrı alınır.",
 
   isotopeName: "İzotop Spektrometrisi",
   isotopeTag: "Döteryum madenciliğini açar",
   isotopeRole:
-    "İzotop kayalarındaki Döteryumu gösterir ve onlara Kazıcı göndermeni sağlar. Dönen yük Havuz’a gelir.",
+    "İzotop kayalarındaki Döteryumu gösterir ve onlara Kazıcı göndermeni sağlar. Dönen yük üretim havuzuna gelir.",
   isotopeDetail:
     "Bir kez tamamlandığında izotop asteroitlerini seçilebilir maden hedeflerine çevirir. Kapışılan Döteryuma erişim açar; gezegende kendiliğinden yakıt üretmez.",
   denseName: "Yoğun Yakıt Hücreleri",
@@ -58,7 +64,7 @@ export const research = {
   denseRole:
     "Keşfetmek için bir akında ambarını doldur; hedefte ganimet kalsın. Koşucu, Şilep’ten hızlıdır ama daha az taşır.",
   denseDetail:
-    "Tamamlandığında tuttuğun bütün dünyalarda Koşucu yapımını kalıcı olarak açar. Hızlı vurucu filon, yavaş Şilebi beklemeden ganimet taşıyabilir.",
+    "Tamamlandığında sahip olduğun bütün dünyalarda Koşucu yapımını kalıcı olarak açar. Hızlı akın filon, yavaş Şilebi beklemeden ganimet taşıyabilir.",
   graviticName: "Gravitik Yükler",
   graviticTag: "Delici’yi açar",
   graviticRole:
@@ -70,30 +76,30 @@ export const research = {
   deathStarRole:
     "Komuta Çekirdeği 12 ve Tersane 5 olan bir dünyada, tek kullanımlık Ölüm Yıldızı inşa etmeni sağlar. Ana gezegen ele geçirilemez.",
   deathStarDetail:
-    "Her atış bir Ölüm Yıldızı tüketir. İlk darbe yerdeki tüm filoyu ve devam eden bina siparişlerini yok eder; stokların yarısını siler, Komuta Çekirdeğini bir, Aegis’i iki seviye düşürür ve diğer binaları yeni Çekirdek tavanına indirir. Dünya iki saat üretim yapamaz veya emir veremez. Bu toparlanma süresi içinde yapılan ve ele geçirme emri verilen ikinci darbe, yalnız koloni veya tarafsız dünyayı ele geçirir.",
+    "Her atış bir Ölüm Yıldızı tüketir. İlk darbe yerdeki tüm filoyu ve devam eden bina siparişlerini yok eder; depo ile üretim havuzundaki kaynakların yarısını siler, Komuta Çekirdeğini bir, Aegis’i iki seviye düşürür ve sınırı aşan binaları yeni Çekirdek seviyesine indirir. Dünya iki saat üretim yapamaz, kaynak toplayamaz, sipariş veremez veya araç fırlatamaz. Bu toparlanma süresi içinde ele geçirme emriyle yapılan ikinci darbe, yalnız koloni veya tarafsız dünyayı ele geçirir.",
 
   synthesisName: "Döteryum Sentezi",
-  synthesisTag: "Rafineri tavanını yükseltir",
+  synthesisTag: "Rafineri seviye sınırını yükseltir",
   synthesisRole:
-    "Her kademe üç Döteryum Rafinerisi seviyesi açar. Yakıt buradan başlar.",
+    "Her kademe, bütün dünyalarında üç yeni Döteryum Rafinerisi seviyesi açar.",
   synthesisDetail:
-    "Her araştırma kademesi bütün dünyalarında Döteryum Rafinerisi tavanını üç seviye yükseltir. Yakıt istediğin dünyada bu Rafineri seviyelerini ayrıca kurarsın.",
+    "Her araştırma kademesi bütün dünyalarında Döteryum Rafinerisinin seviye sınırını üç artırır. Yakıt üretmek istediğin dünyada bu Rafineri seviyelerini ayrıca kurarsın.",
   yardName: "Tersane Otomasyonu",
   yardTag: "Gemileri daha hızlı kurar",
   yardRole:
-    "Her gövdenin yapım süresini kısaltır. Eğriyi hâlâ Tersane belirler.",
+    "Hareketli gemilerin üretim süresini kısaltır; yer savunmalarını ve üretim sırası kapasitesini etkilemez.",
   yardDetail:
     "Her kademe bundan sonra vereceğin bütün hareketli gemi siparişlerini, Kazıcı dâhil, tüm dünyalarında daha çabuk bitirir. Yer savunmalarını hızlandırmaz; kaynak bedelini düşürmez ve Tersane sırasına yeni yuva eklemez.",
   holdsName: "Kazıcı Ambarları",
   holdsTag: "Kazıcılar daha çok taşır",
   holdsRole:
-    "Matkap ile çarpan olarak birleşir; donanım ve teknik birbirini büyütür.",
+    "Her Kazıcının tek seferde taşıdığı cevheri artırır; Matkabın sağladığı ambar artışı bunun üzerine uygulanır.",
   holdsDetail:
-    "Her kademe bütün Kazıcıların tek seferde getirdiği cevheri artırır. Matkap uydusuyla çarpıldığı için araştırma ve yörünge donanımı aynı madencilik planını birlikte büyütür.",
+    "Her kademe bütün Kazıcıların tek seferde getirdiği cevheri artırır. Matkabın 2,6 katlık ambar artışı da araştırmayla büyüyen kapasitenin üzerine uygulanır.",
   cargoName: "Gemi Ambarları",
   cargoTag: "Akınlar daha çok getirir",
   cargoRole:
-    "Bir filonun yağmalayabileceğini artırır. Dünya transferlerini değiştirmez.",
+    "Akın filosunun taşıyabileceği ganimeti artırır; dünyalar arası transferi ve asteroit madenciliğini etkilemez.",
   cargoDetail:
     "Her kademe hareketli filonun akında taşıyabileceği ganimeti artırır. Savaş sonunda açık stok kaldığında işe yarar; barışçıl transferleri ve asteroit madenciliğini etkilemez.",
 
@@ -102,10 +108,10 @@ export const research = {
   bulwarkDoctrineName: "Siper Doktrini",
   groundDoctrineName: "Tabya/Kirpi Doktrini",
   generalName: "Silah ve Zırh",
-  generalTag: "Uçurduğun her gövdeyi geliştirir",
+  generalTag: "Sahip olduğun her gövdeyi geliştirir",
   doctrineTag: "Daha iyi saldırı ve zırh",
   doctrineRole:
-    "Saldırı gücü ve gövde dayanımı birlikte artar. Sınıf doktriniyle genel araştırmanın eşit maliyetli savaş gücüne toplam katkısı en fazla %25’tir; doğru karşı gövdeyi seçmek çok daha büyük üstünlük sağlar.",
+    "Her kademe ilgili sınıfın saldırı gücünü ve gövde dayanımını birlikte artırır. Sınıf doktrini ile Silah ve Zırh araştırmasının toplam savaş gücü katkısı en fazla %25’tir; doğal sınıf üstünlükleri değişmez.",
   waspDoctrineDetail:
     "Elindeki gemiler dâhil bütün Atmacaların saldırı gücünü ve gövde dayanımını artırır. Saldıran filo kalkış anındaki, savunan taraf ise çatışma anındaki araştırma kademesini kullanır.",
   lanceDoctrineDetail:
@@ -115,18 +121,18 @@ export const research = {
   groundDoctrineDetail:
     "Bütün dünyalarındaki Tabya ve Kirpileri güçlendirir. Yer kapasitesi ve enkazdan geri kurulum kuralı değişmez; savunmada çatışma anındaki kademe kullanılır.",
   generalDetail:
-    "Bütün hareketli gemilerin gövde dayanımını, saldırısı olan gemilerin de saldırı gücünü artırır. Sınıf doktriniyle birleşir; ikisinin eşit maliyetli savaş gücüne toplam katkısı %25’i aşmaz. Saldıran filo kalkış, savunan taraf çatışma anındaki kademeyi kullanır.",
+    "Bütün gemi ve yer savunmalarının gövde dayanımını, saldırı değeri olanların da saldırı gücünü artırır; destek gemilerinin yalnız dayanımı yükselir. Sınıf doktriniyle birleşir ve ikisinin eşit maliyetli savaş gücüne toplam katkısı %25’i aşmaz. Saldıran filo kalkış, savunan taraf çatışma anındaki kademeyi kullanır.",
 
   gridName: "Önleme Ağı",
   gridTag: "Ölüm Yıldızı’nı düşürür",
   gridRole:
-    "Radar çemberinde bir stratejik silahı imha eder. Radar 3 ve Anten ister.",
+    "Yüklü bir önleyici, stratejik silahı 3. seviye Radar önleme çemberinde veya dünyalarından birinin Teleskop görüşünde otomatik olarak imha eder.",
   gridDetail:
-    "Önleyici mühimmatına erişim verir. Anten ve Radar 3 varken yüklü mühimmat, zamanlı Radar çemberine giren bir stratejik silahı otomatik imha eder ve sonra tükenir.",
+    "Önleyici mühimmatına erişim verir. Mühimmatı kurmak için hedef dünyada Anten ve en az 3. seviye Radar gerekir. Yüklü mühimmat, zamanlı Radar önleme çemberine giren veya dünyalarından birinin Teleskop görüşünde tanımlanan ilk stratejik silahı otomatik imha eder ve sonra tükenir.",
   stockpileName: "Stratejik Stok",
   stockpileTag: "Rampada ikinci silah",
   stockpileRole:
-    "Her dünya en fazla iki Ölüm Yıldızı tutabilir; ikincisi, birincinin yapımı bittikten sonra başlar.",
+    "Her dünyanın hazır tutabileceği Ölüm Yıldızı sayısını birden ikiye çıkarır; ikinci silah, birincinin üretimi bittikten sonra başlar.",
   stockpileDetail:
     "Ölüm Yıldızı stok sınırını komutan genelinde değil, sahip olduğun her dünya için birden ikiye çıkarır. İkinci silah da tam bedelini ve tam yapım süresini ister; sıraya alınabilir ama birinciyle aynı anda üretilmez. Atış yine silahı tüketir.",
 } as const;

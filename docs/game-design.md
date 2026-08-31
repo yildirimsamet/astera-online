@@ -74,18 +74,19 @@ fight.
 
 Five numbers, one portrait screen, no scrolling. **A hard cap.**
 
-**Construction is committed on payment and completes through two independent queues** (D4).
-Buildings, instruments, satellites and research share CONSTRUCTION; mobile hulls and ground
-defence share YARD. Each queue is three orders deep and processes one order at a time. Cancelling
-is a decision, not an undo: it refunds half the committed resources. A system-abandoned order
-refunds everything. The Death Star keeps its separate sixty-minute strategic build (D97), and so
-does the interception charge that answers it (D139) — both are strategic assets on the world rather
-than queue orders, and both are stopped by a bombardment and resumed by the recovery that follows.
+**Work commits on payment and completes through three independent queues** (D4).
+Buildings, instruments and satellites use each world's CONSTRUCTION lane; mobile hulls and ground
+defence use that world's YARD lane; research uses one commander-wide RESEARCH lane. Each queue is
+three orders deep and processes one order at a time. Cancelling is a decision, not an undo: it
+refunds half the committed resources. A system-abandoned order refunds everything. The Death Star
+keeps its separate sixty-minute strategic build (D97), and so does the interception charge that
+answers it (D139) — both are strategic assets on the world rather than queue orders, and both are
+stopped by a bombardment and resumed by the recovery that follows.
 
-**Research is bought on a surface of its own** (D140). It occupies the CONSTRUCTION queue of the
-world you start it from, and only one project runs across the whole commander at a time — so the
-screen that sells it is the one that can see every world's queue, and it names which project is
-running, where, and the clock time it finishes at. Fifteen projects in four groups: the four
+**Research is bought on a surface of its own** (D140). The selected world pays, but the order enters
+the commander's three-deep RESEARCH lane; no planet gains an extra lane and no Construction or Yard
+slot is consumed. The screen draws that lane, its running project and the clock time it finishes.
+Fifteen projects in four groups: the four
 Frontier permissions that are found rather than bought, four economy ladders, five weapon
 doctrines, and the two strategic permissions.
 
@@ -174,15 +175,15 @@ and bounded build throughput are hard requirements, not tuning preferences.**
 
 | Hull | Class | Mathematical job | Cost of using it |
 |---|---|---|---|
-| **Wasp** | Skirmisher | Cheapest attack per alloy, fastest → shortest exposure. 1.6× into Bulwark-class, so it is the anti-turtle tool. 40 cargo | 24 HP evaporates against Lances |
-| **Lance** | Lance | Highest raw attack. 1.6× into Wasps — the answer to a swarm. 50 cargo | 0.625× into Bulwark-class; useless against a fortified planet |
-| **Bulwark** | Bulwark | The durability anchor. 1.6× into Lances. 70 cargo | Speed 199 gives the longest exposure on any route |
-| **Hauler** | Support | 1,800 cargo. **The dedicated cargo hull; it contributes nothing to the fight** | Every Hauler slot is a combat slot you did not bring |
-| **Runner** | Support | 300 cargo at speed 420. Lets light strike fleets trade capacity for a shorter exposure window | Dense Fuel Cells and contested Deuterium; poor cargo-per-cost means it cannot replace the Hauler |
-| **Breacher** | Lance | Five times its normal effect against an active shield; the extra damage cannot spill into units | Gravitic Charges, contested Deuterium and no cargo; without a shield its 12 attack is deliberately inefficient |
-| **Bastion** | Bulwark, ground | 1.35× more HP per resource than any ship, because it can never leave. Breaks Lances | Cannot attack. Swarms overwhelm it |
-| **Thorn** | Skirmisher, ground | Light, cheap, buildable at Shipyard 0. Tears into heavy hulls | Lances pick it apart |
-| **Prospector** | Support, mining | Mines rocks and harvests wreckage. Two per planet, ever | Dies with the garrison; competes for the same bays |
+| **Wasp** | Skirmisher | Cheapest and fastest combat hull. 1.6× into Bulwark-class; 45 cargo | 25 HP and 0.625× into Lance-class |
+| **Lance** | Lance | 1.6× into Wasps and Thorns; 60 cargo | 0.625× into Bulwarks and Bastions |
+| **Bulwark** | Bulwark | 662 HP and 1.6× into Lance-class | Speed 65 makes it the slowest mobile hull and lengthens every fleet it joins |
+| **Hauler** | Support | 2,200 cargo. **The dedicated cargo hull; it contributes nothing to the fight** | Speed 85 and every Hauler slot is a combat slot you did not bring |
+| **Runner** | Support | 380 cargo at speed 125. Lets light strike fleets trade capacity for a shorter exposure window | Dense Fuel Cells and contested Deuterium; poor cargo-per-cost means it cannot replace the Hauler |
+| **Breacher** | Lance | Five times its normal effect against an active shield; the extra damage cannot spill into units | Gravitic Charges, contested Deuterium and no cargo; without a shield its 55 attack receives no specialist bonus |
+| **Bastion** | Bulwark, ground | Permanent heavy defence with 1.6× into Lances and Breachers | Cannot travel; Wasps receive the class advantage against it |
+| **Thorn** | Skirmisher, ground | Low-cost permanent defence, buildable at Shipyard 0, with 1.6× into Bulwarks | Cannot travel; Lances and Breachers receive the class advantage against it |
+| **Prospector** | Support, mining | Speed 825 and a base hold of 300; mines rocks and harvests wreckage; two per planet | Cannot raid, transfer or defend against an ordinary raid; still uses Hangar and flight-bay capacity |
 
 Counter cycle: **`WASP ▸ BULWARK ▸ LANCE ▸ WASP`** at 1.6× / 0.625×. Support hulls are prey
 to everything and deal nothing.
@@ -213,15 +214,15 @@ matrix, so 26 Wasps and 1 Bastion read as equal "power" while one annihilates th
 
 | Grade | Condition | Loot |
 |---|---|---|
-| `DECISIVE` | No defending units survive | 50% of raidable stock |
-| `PARTIAL` | ≥45% of defender value destroyed | 25% |
+| `DECISIVE` | No defending units survive and the shield is depleted | 70% of raidable stock |
+| `PARTIAL` | ≥42% of defender value destroyed | 35% |
 | `REPELLED` | Below that | Nothing |
 
 Three grades rather than win/lose: binary outcomes make marginal attacks worthless and punish
 good-but-imperfect reads.
 
 **Breacher does not change the counter cycle.** It is Lance-class and its ordinary
-12 attack resolves through the same damage map as every other ship. While an Aegis
+55 attack resolves through the same damage map as every other ship. While an Aegis
 shield remains, four additional copies of that class-adjusted damage hit only the
 shield. The bonus is capped at the shield left in that round and never overkills
 into ships or ground guns. Scouting an Aegis creates the choice; sending Breachers
@@ -372,9 +373,9 @@ once.
 
 | Level | Detects | Message |
 |---|---|---|
-| L1 | 1,200-unit contact/warning; scan fact | "Incoming fleet." |
+| L1 | 1,200-unit contact/warning; scan fact | "Incoming fleet · ETA 9 min." |
 | L2 | 1,450 units; + scan bearing | "Scan detected from the galactic north-west." |
-| L3 | 1,700 units | "Incoming fleet · ETA 9 min." |
+| L3 | 1,700 units; enables strategic interception after research | "Incoming fleet · ETA 9 min." |
 | L4 | 1,900 units; + rough size | "Sizeable force inbound." |
 | L5 | 2,200 units; + exact origin and composition | "Inbound from GRIMHOLD · 74 Wasp, 20 Lance, 12 Hauler." |
 
@@ -471,6 +472,11 @@ ratio for. What protects a small commander now is that nobody can SEE they are s
 never simulated. A rock carries a level that sets its ore, and interception is solved in
 continuous time so a craft and its rock arrive together. **First to arrive takes what it can
 carry**, which is the whole decision: which rock, and when.
+
+Asteroid ore currently rolls a 17.5–45.5% Crystal share, 30% below the former band; the remainder
+stays Alloy, so the change alters the resource mix without deleting ore. Separately, every hull
+whose recipe contains Crystal pays 15% more Crystal than its ordinary tempo-scaled recipe. Hulls
+with no Crystal requirement remain unchanged.
 
 **The field is local opportunity, not a downloadable target list (D143).** A rock becomes known
 when its real 3D orbit first passes through the 750-unit neighbourhood of any controlled world;

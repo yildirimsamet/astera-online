@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   easedCameraRange,
+  finishedCameraRange,
   focusIdentity,
   focusTapDecision,
   initialHomeCameraPosition,
@@ -42,6 +43,11 @@ describe('camera range intent', () => {
 
   it('still pulls a distant camera inward for a small focused subject', () => {
     expect(easedCameraRange(30, 7, 0.5, false)).toBe(18.5);
+  });
+
+  it('finishes an inward Home flight at its promised range even when the pivot lands first', () => {
+    expect(finishedCameraRange(7.45, 7, false)).toBe(7);
+    expect(finishedCameraRange(6, 7, false)).toBe(6);
   });
 
   it('starts at the same offset from a high world as from every other world', () => {

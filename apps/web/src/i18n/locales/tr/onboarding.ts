@@ -21,8 +21,8 @@ export const onboarding = {
       line: '{{name}} güvenli ana gezegenin. Burada kaynak üretir, rakipleri inceler, savunma kurar ve gemi yaparsın. Gezegenine dokun.',
     },
     briefing: {
-      title: 'Oyunun dört adımı var',
-      line: 'Önce kaynak üret. Sonra rakipleri incele. Gezegenini koru. Hazır olunca gemilerini gönder. Yükselttiğin her şey bu dört işi güçlendirir.',
+      title: 'Galakside dört temel adım var',
+      line: 'Önce kaynak üret. Sonra rakipleri incele. Gezegenini koru. Hazır olunca gemilerini gönder. Binaların, cihazların ve araştırmaların bu dört alanı geliştirir.',
       action: 'İlk adımı yap',
       mapGrow: 'Üret',
       mapIntel: 'Gör',
@@ -49,11 +49,11 @@ export const onboarding = {
     },
     extractor: {
       title: 'Şimdi kristal üret',
-      line: 'Ekstraktör her saat kristal üretir. Güçlü gemiler ve istihbarat araçları için kristal gerekir. Satıra dokun ve 2. seviyeyi sıraya koy.',
+      line: 'Kristal Ocağı her saat kristal üretir. Güçlü gemiler ve istihbarat araçları için kristal gerekir. Satıra dokun ve 2. seviyeyi sıraya koy.',
     },
     fleet: {
       title: 'Şimdi iki gemi yap',
-      line: 'Filo sekmesinde {{ship}} satırına dokun. En Fazla seçeneğini seç ve iki gemiyi sıraya koy. Bu hızlı gemileri rakipleri yoklamak veya saldırmak için kullanacaksın.',
+      line: 'Filo sekmesinde {{ship}} satırına dokun. “En fazla” seçeneğini seç ve iki gemiyi sıraya koy. Bu hızlı gemileri rakipleri yoklamak veya saldırmak için kullanacaksın.',
     },
   },
 

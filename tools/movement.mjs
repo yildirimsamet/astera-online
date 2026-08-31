@@ -211,7 +211,7 @@ const waitForScene = async (page) => {
       return n > 0;
     },
     undefined,
-    { timeout: 45_000 },
+    { timeout: 90_000 },
   );
   await page.waitForTimeout(3500);
 };
@@ -326,7 +326,7 @@ for (const rock of field.asteroids) {
     mining = await call('/api/mining/launch', {
       method: 'POST',
       token: a.token,
-      body: { asteroidIndex: rock.index, craft: 1 },
+      body: { asteroidId: rock.id, craft: 1 },
     });
     break;
   } catch (error) {
@@ -349,19 +349,31 @@ const launchedIn = Date.now() - launchStarted;
  * that Node received.
  */
 const appearanceStarted = Date.now();
-await pageB.waitForFunction(
-  (ids) => {
-    const g = window.__galaxy;
-    if (!g) return false;
-    const seen = new Set();
-    g.scene.traverse((o) => {
-      if (typeof o.userData.craftId === 'string') seen.add(o.userData.craftId);
-    });
-    return ids.every((id) => seen.has(id));
-  },
-  launchedIds,
-  { timeout: 10_000 },
-);
+try {
+  await pageB.waitForFunction(
+    (ids) => {
+      const g = window.__galaxy;
+      if (!g) return false;
+      const seen = new Set();
+      g.scene.traverse((o) => {
+        if (typeof o.userData.craftId === 'string') seen.add(o.userData.craftId);
+      });
+      return ids.every((id) => seen.has(id));
+    },
+    launchedIds,
+    { timeout: 10_000 },
+  );
+} catch (error) {
+  const drawn = await survey(pageB, launchedIds);
+  const visible = (await call('/api/galaxy/traffic', { token: b.token })).contacts
+    .filter((contact) => launchedIds.includes(contact.id))
+    .map((contact) => contact.id);
+  console.error(
+    `observer timeout: drawn=${drawn?.craft.map((craft) => craft.id).join(',') ?? 'none'} ` +
+    `visible=${visible.join(',') || 'none'} expected=${launchedIds.join(',')}`,
+  );
+  throw error;
+}
 const appearedIn = Date.now() - appearanceStarted;
 const observerTraffic = networkTrace.filter(
   (entry) => entry.who === b.name

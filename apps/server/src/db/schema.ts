@@ -73,6 +73,8 @@ export const eventKind = pgEnum('event_kind', [
   'strategic_intercept',
   /** The interceptor missile reaching the reserved collision point. */
   'strategic_intercept_impact',
+  /** One commander-wide research order reaching its authoritative instant. */
+  'research_complete',
 ]);
 /**
  * WHAT THE GAME TELLS YOU, AND NOTHING ELSE. D45.
@@ -889,6 +891,42 @@ export const buildOrders = pgTable('build_orders', {
   check('build_orders_slot_check', sql`${t.slot} BETWEEN 0 AND 2`),
   check('build_orders_count_check', sql`${t.count} > 0`),
   check('build_orders_remaining_check', sql`${t.remainingSeconds} >= 0`),
+]);
+
+/**
+ * Commander-wide research work.
+ *
+ * A planet only funds the order; it does not own the lane or the result. Keeping
+ * this separate from `build_orders` prevents a colony from granting extra
+ * research throughput and prevents construction from blocking research (or the
+ * reverse). The player row is the queue's serialisation lock.
+ */
+export const researchOrders = pgTable('research_orders', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  playerId: uuid('player_id').notNull().references(() => players.id),
+  fundingPlanetId: uuid('funding_planet_id').notNull().references(() => planets.id),
+  slot: integer('slot').notNull(),
+  projectId: text('project_id').$type<ResearchProjectId>().notNull(),
+  /** Target ladder level, mirroring `player_research.level`. */
+  level: integer('level').notNull(),
+  status: text('status').$type<BuildOrderStatus>().notNull().default('BUILDING'),
+  startedAt: timestamp('started_at', { withTimezone: true }).notNull(),
+  readyAt: timestamp('ready_at', { withTimezone: true }).notNull(),
+  remainingSeconds: integer('remaining_seconds').notNull(),
+  cost: jsonb('cost').$type<Resources>().notNull(),
+}, (t) => [
+  uniqueIndex('research_orders_player_slot_active_idx')
+    .on(t.playerId, t.slot)
+    .where(sql`${t.status} = 'BUILDING'`),
+  index('research_orders_player_status_idx').on(t.playerId, t.status),
+  index('research_orders_funding_planet_idx').on(t.fundingPlanetId),
+  check(
+    'research_orders_status_check',
+    sql`${t.status} IN ('BUILDING', 'COMPLETED', 'CANCELLED', 'FAILED')`,
+  ),
+  check('research_orders_slot_check', sql`${t.slot} BETWEEN 0 AND 2`),
+  check('research_orders_level_check', sql`${t.level} > 0`),
+  check('research_orders_remaining_check', sql`${t.remainingSeconds} >= 0`),
 ]);
 
 /**

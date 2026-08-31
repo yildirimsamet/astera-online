@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { HULLS, MOBILE_HULLS, GROUND_HULLS } from '../src/hulls.js';
+import { ECONOMY_TEMPO, scalePrice } from '../src/tempo.js';
 import type { HullId } from '../src/types.js';
 
 /**
@@ -25,6 +26,31 @@ const value = (id: HullId): number =>
  */
 const power = (id: HullId): number =>
   (HULLS[id].atk * HULLS[id].hp * 1e6) / (value(id) * value(id));
+
+describe('Crystal-bearing hull prices', () => {
+  const baselineCrystal = {
+    LANCE: 260,
+    BULWARK: 730,
+    HAULER: 200,
+    RUNNER: 250,
+    BREACHER: 550,
+    BASTION: 800,
+    THORN: 200,
+    PROSPECTOR: 200,
+  } as const;
+
+  it('raises the Crystal build cost of every hull that uses Crystal by 15%', () => {
+    for (const [id, baseline] of Object.entries(baselineCrystal) as [keyof typeof baselineCrystal, number][]) {
+      expect(HULLS[id].crystal, id).toBe(
+        scalePrice(baseline, ECONOMY_TEMPO.hullCrystalPrice),
+      );
+    }
+  });
+
+  it('does not add Crystal to a hull that did not use it', () => {
+    expect(HULLS.WASP.crystal).toBe(0);
+  });
+});
 
 describe('the hull table is priced on equal-budget power', () => {
   /**

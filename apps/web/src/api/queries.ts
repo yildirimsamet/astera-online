@@ -1368,6 +1368,27 @@ export function useCancelBuildOrder() {
   });
 }
 
+/** Research has one commander-wide lane; the active world only receives a refund. */
+export function useCancelResearchOrder() {
+  const api = useApi();
+  const { activePlanetId } = useWorld();
+  const invalidate = useInvalidator();
+  const apply = useApplyPlanet();
+  const lane = usePlanetMutationLane(activePlanetId);
+  return useMutation({
+    scope: lane.scope,
+    mutationFn: (orderId: string) => activePlanetId
+      ? api.cancelResearchOrder(activePlanetId, orderId)
+      : api.cancelResearchOrder(orderId),
+    onMutate: lane.enter,
+    onSuccess: async (result) => {
+      await apply(result.planet);
+      invalidate(keys.leaderboard);
+    },
+    onSettled: (_data, _error, _orderId, turn) => { lane.leave(turn); },
+  });
+}
+
 /** Discovery is history-derived, so only placement of an already-visible project is predicted. */
 export function useCompleteResearch() {
   const api = useApi();

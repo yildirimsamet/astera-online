@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { fireEvent, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen, within } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { describe, expect, it, vi } from 'vitest';
 import { DEATH_STAR, GALAXY_SPAN, MULTI_WORLD, distance, missionFuel } from '@astera/rules';
@@ -299,14 +299,14 @@ describe('the focus rail’s two commitments', () => {
     );
     expect(screen.getByText(/what this impact does/i)).toBeInTheDocument();
     expect(screen.getByText(/every ship and gun on the ground is destroyed/i)).toBeInTheDocument();
-    expect(screen.getByText(/half of everything stored is destroyed/i)).toBeInTheDocument();
+    expect(screen.getByText(/half the resources in storage and the Works are destroyed/i)).toBeInTheDocument();
     expect(screen.getByText(/command core loses a level/i)).toBeInTheDocument();
     expect(screen.getByText(
       new RegExp(`aegis loses ${String(DEATH_STAR.aegisLevelsLost)} levels`, 'i'),
     )).toBeInTheDocument();
     // The window is the recovery, and it is read from the constant.
     expect(screen.getByText(
-      new RegExp(`nothing is produced or launched there for ${duration(MULTI_WORLD.recoveryMinutes)}`, 'i'),
+      new RegExp(`production, collection, construction, new orders and launches stop for ${duration(MULTI_WORLD.recoveryMinutes)}`, 'i'),
     )).toBeInTheDocument();
     expect(screen.getByText(/second impact inside that window takes control/i)).toBeInTheDocument();
 
@@ -316,7 +316,7 @@ describe('the focus rail’s two commitments', () => {
       </Wrapper>,
     );
     expect(screen.getByText(/what this impact does/i)).toBeInTheDocument();
-    expect(screen.getByText(/half of everything stored is destroyed/i)).toBeInTheDocument();
+    expect(screen.getByText(/half the resources in storage and the Works are destroyed/i)).toBeInTheDocument();
     // A capital gets the opposite closing line, because it can never be taken.
     expect(screen.getByText(/never captured/i)).toBeInTheDocument();
     expect(screen.queryByText(/takes control/i)).toBeNull();
@@ -464,11 +464,12 @@ describe('the focus rail’s two commitments', () => {
         />
       </Wrapper>,
     );
-    expect(screen.getByText(/claim window open/i)).toBeInTheDocument();
-    expect(screen.getByText(/win raid/i)).toBeInTheDocument();
-    expect(screen.getByText(/hauler founds/i)).toBeInTheDocument();
+    expect(screen.getByText(/^colony race open$/i)).toBeInTheDocument();
+    expect(screen.getByText(/win a decisive raid/i)).toBeInTheDocument();
+    expect(screen.getByText(/dispatch the colony fleet/i)).toBeInTheDocument();
     expect(screen.getByText('2 Haulers')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /settle.*hauler needed/i })).toBeDisabled();
+    expect(document.querySelector('[data-colony-step="3"]')).toHaveAttribute('aria-current', 'step');
+    expect(screen.getByRole('button', { name: /found colony.*2 haulers needed/i })).toBeDisabled();
     expect(screen.getByText(/another raid is possible.*does not extend/i)).toBeInTheDocument();
   });
 
@@ -511,7 +512,7 @@ describe('the focus rail’s two commitments', () => {
         />
       </Wrapper>,
     );
-    expect(screen.getByRole('button', { name: /settle.*colony slot full/i })).toBeDisabled();
+    expect(screen.getByRole('button', { name: /found colony.*colony slot full/i })).toBeDisabled();
 
     view.rerender(
       <Wrapper>
@@ -526,7 +527,7 @@ describe('the focus rail’s two commitments', () => {
         />
       </Wrapper>,
     );
-    expect(screen.getByRole('button', { name: /settle.*flight bays full/i })).toBeDisabled();
+    expect(screen.getByRole('button', { name: /found colony.*flight bays full/i })).toBeDisabled();
   });
 
   it('shows founding requirements before the raid, so the claim cannot reveal a surprise cost', () => {
@@ -561,9 +562,72 @@ describe('the focus rail’s two commitments', () => {
       </Wrapper>,
     );
     expect(screen.getByText(/route to a colony/i)).toBeInTheDocument();
-    expect(screen.getByText('2 Haulers')).toBeInTheDocument();
-    expect(document.querySelectorAll('img[src*="/resources/"]').length).toBeGreaterThanOrEqual(2);
-    expect(screen.getByText(compact(MULTI_WORLD.settlement.cost.crystal))).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /^plan an attack$/i })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /colony raid/i })).not.toBeInTheDocument();
+    const raidStep = document.querySelector('[data-colony-step="1"]');
+    const colonyStep = document.querySelector('[data-colony-step="3"]');
+    expect(raidStep).not.toBeNull();
+    expect(colonyStep).not.toBeNull();
+    expect(raidStep).toHaveAttribute('aria-current', 'step');
+    expect(within(raidStep as HTMLElement).getByText('Raid fleet')).toBeInTheDocument();
+    expect(raidStep).not.toHaveTextContent('2 Haulers');
+    expect(raidStep).not.toHaveTextContent(compact(MULTI_WORLD.settlement.cost.crystal));
+    expect(raidStep).not.toHaveTextContent('Flight bay');
+    expect(within(colonyStep as HTMLElement).getByRole('button', { name: '2 Haulers' }))
+      .toBeInTheDocument();
+    expect(within(colonyStep as HTMLElement).getByText(compact(MULTI_WORLD.settlement.cost.crystal)))
+      .toBeInTheDocument();
+  });
+
+  it('explains a step badge on press and closes the explanation after two seconds', () => {
+    vi.useFakeTimers();
+    try {
+      const Wrapper = harness();
+      render(
+        <Wrapper>
+          <PlanetFocus
+            target={target({
+              kind: 'NEUTRAL',
+              controller: { kind: 'NEUTRAL', tier: 1 },
+              state: { kind: 'NORMAL' },
+              neutral: {
+                tier: 1,
+                threat: 'UNGUARDED',
+                reserve: 'RICH',
+                claimUntil: null,
+                nextReinforcementAt: null,
+              },
+            })}
+            planet={{ ...mine, colonies: { highestCore: 4, colonies: 0, reservations: 0, capacity: 1 } }}
+            intel={intel}
+            reports={[]}
+            now={NOW}
+            onClose={vi.fn()}
+            onAttack={vi.fn()}
+            onSettle={vi.fn()}
+            onInstallTelescope={vi.fn()}
+            onLaunched={vi.fn()}
+            open
+            onToggle={vi.fn()}
+          />
+        </Wrapper>,
+      );
+
+      fireEvent.click(screen.getByRole('button', { name: '2 Haulers' }));
+      const tooltip = screen.getByRole('tooltip');
+      expect(tooltip).toHaveTextContent(
+        /only for step 3.*separate from the raid/i,
+      );
+      expect(tooltip.parentElement).toBe(document.body);
+      expect(tooltip).toHaveClass('fixed');
+
+      act(() => { vi.advanceTimersByTime(1_999); });
+      expect(screen.getByRole('tooltip')).toBeInTheDocument();
+      act(() => { vi.advanceTimersByTime(1); });
+      expect(screen.queryByRole('tooltip')).not.toBeInTheDocument();
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   /**
@@ -621,7 +685,7 @@ describe('the focus rail’s two commitments', () => {
 
   /** The reach chip specifically — several other rows on this panel say "arrives". */
   const reachChip = () => {
-    const chip = [...document.querySelectorAll('span.rounded-chip')]
+    const chip = [...document.querySelectorAll('button.rounded-chip')]
       .find((el) => /arrives/i.test(el.textContent));
     expect(chip, 'the settlement reach requirement is not rendered at all').toBeDefined();
     return chip!.className;
@@ -639,7 +703,7 @@ describe('the focus rail’s two commitments', () => {
     // Same distance, but only ten minutes of the window are left.
     settlementRig(neutralAt(GALAXY_SPAN, new Date(NOW + 10 * 60_000)));
     expect(reachChip()).toContain('alert');
-    expect(screen.getByRole('button', { name: /settle.*arrives too late/i })).toBeDisabled();
+    expect(screen.getByRole('button', { name: /found colony.*arrives too late/i })).toBeDisabled();
   });
 
   /**
@@ -667,7 +731,7 @@ describe('the focus rail’s two commitments', () => {
     );
     expect(fuel).toBeGreaterThan(0);
 
-    const chip = [...document.querySelectorAll('span.rounded-chip')]
+    const chip = [...document.querySelectorAll('button.rounded-chip')]
       .find((el) => el.querySelector('img[src*="deuterium"]'));
     expect(chip, 'the founding never says what it burns').toBeDefined();
     expect(chip).toHaveTextContent(compact(fuel));
@@ -675,12 +739,12 @@ describe('the focus rail’s two commitments', () => {
 
   it('refuses the founding a dry tank cannot fly, before the tap', () => {
     settlementRig(neutralAt(1_200, CLAIM_OPEN), 0);
-    expect(screen.getByRole('button', { name: /settle.*deuterium/i })).toBeDisabled();
+    expect(screen.getByRole('button', { name: /found colony.*deuterium/i })).toBeDisabled();
   });
 
   it('offers it the moment the tank covers the leg', () => {
     settlementRig(neutralAt(1_200, CLAIM_OPEN), 5_000);
-    expect(screen.getByRole('button', { name: /^settle$/i })).toBeEnabled();
+    expect(screen.getByRole('button', { name: /^found colony$/i })).toBeEnabled();
   });
 });
 
@@ -837,13 +901,14 @@ describe('the focus rail on an unsurveyed world', () => {
      * `settleNeed*` — so the assertion is that it is ON SCREEN, not that this
      * particular fixture can afford it.
      */
-    expect(screen.getByRole('button', { name: /^Settle\b/ })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /^Found colony\b/ })).toBeInTheDocument();
+    expect(screen.getByText(/first valid 2 Haulers to arrive take it/i)).toBeInTheDocument();
   });
 
   /** And nothing to enter when there is no race on. */
   it('offers no settlement when no window was sent', () => {
     openOn({}, { onSettle: vi.fn() });
-    expect(screen.queryByRole('button', { name: /^Settle\b/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /^Found colony\b/ })).not.toBeInTheDocument();
   });
 
   /**
@@ -859,5 +924,14 @@ describe('the focus rail on an unsurveyed world', () => {
     openOn({});
     expect(screen.queryByText(/second impact/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/colony route/i)).not.toBeInTheDocument();
+  });
+
+  it('replaces the duplicate launch with an on-the-way state', () => {
+    openOn(
+      { neutral: { claimUntil: new Date(NOW + 6 * 3_600_000) } },
+      { onSettle: vi.fn(), settlementInFlight: true },
+    );
+    expect(screen.getByText(/your colony ships are on the way/i)).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /^Found colony\b/ })).not.toBeInTheDocument();
   });
 });

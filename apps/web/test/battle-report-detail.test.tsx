@@ -586,7 +586,7 @@ describe('what a battle report explains', () => {
     expect(screen.queryByText('Dominion')).not.toBeInTheDocument();
   });
 
-  it('says so plainly in a round where nothing came off the board', async () => {
+  it('says so plainly in a round where neither side lost a unit', async () => {
     await openSheet(report({
       rounds: [{
         round: 1,
@@ -598,7 +598,7 @@ describe('what a battle report explains', () => {
         defenderLosses: {},
       }],
     }));
-    expect(screen.getByText('Nothing came off the board this round.')).toBeVisible();
+    expect(screen.getByText('Neither side lost a unit this round.')).toBeVisible();
   });
 
   /**

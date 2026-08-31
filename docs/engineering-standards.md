@@ -37,6 +37,11 @@ ESLint 9 flat config, `typescript-eslint` **strictTypeChecked + stylisticTypeChe
 type-aware — which catches unsafe `any` flow, floating promises, misused promises and
 unnecessary conditions that reveal a wrong mental model.
 
+Always run lint through `pnpm lint`. The root script starts ESLint with
+`--max-old-space-size=4096`; type-aware analysis of the complete workspace repeatedly exceeds
+Node's 2 GB default heap. `pnpm verify` and `pnpm build` inherit the same safe limit because both
+call that script.
+
 **The architectural boundary is a lint rule.** `packages/rules` may not import a Node builtin,
 another workspace package, `Math.random`, `Date.now` or `new Date`. **If the rules ever acquire
 a clock, CI fails.** This is the invariant the whole design rests on, enforced mechanically

@@ -23,7 +23,7 @@ export const errors = {
   CLAIM_EXPIRED: 'The settlement claim has expired',
   TARGET_CHANGED: 'That world changed controller first',
   SETTLEMENT_REQUIREMENTS: 'A settlement needs two Haulers and its founding cargo',
-  DEATH_STAR_EXISTS: 'This world already has a Death Star',
+  DEATH_STAR_EXISTS: 'This world has reached its Death Star capacity',
   DEATH_STAR_NOT_READY: 'No Death Star is ready on this world',
   DEATH_STAR_LOCKED: 'Death Star prerequisites are not met',
   RECOVERY_WINDOW_TOO_SHORT: 'The recovery or claim window closes before arrival',

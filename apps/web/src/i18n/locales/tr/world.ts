@@ -30,7 +30,7 @@ export const galaxy = {
   openClan: "Klan",
   kindCapital: "Ana gezegen",
   kindColony: "Koloni",
-  kindNeutral: "Tarafsız T{{tier}}",
+  kindNeutral: "Tarafsız · {{tier}}. kademe",
   /** A world nobody has surveyed. The only honest thing to print about it. D127. */
   unsurveyed: "Keşfedilmemiş",
   owned: "Senin",
@@ -72,7 +72,7 @@ export const worlds = {
   list: "Dünyaların",
   centre: "Aktif Gezegenine Yakınlaş 🪐",
   active: "Etkin",
-  kindCapital: "Başkent",
+  kindCapital: "Ana gezegen",
   kindColony: "Koloni",
   craft_one: "{{count}} araç",
   craft_other: "{{count}} araç",
@@ -98,15 +98,31 @@ export const focus = {
 
   planet: {
     transfer: "Aktar",
-    settle: "Yerleş",
-    settleNeedSlot: "Yerleş · koloni yuvası dolu",
-    settleNeedBay: "Yerleş · rampalar dolu",
-    settleNeedHauler: "Yerleş · Nakliyeci gerekli",
-    settleNeedAlloy: "Yerleş · Alaşım eksik",
-    settleNeedCrystal: "Yerleş · Kristal eksik",
-    settleNeedFuel: "Yerleş · Döteryum eksik",
-    settleTooLate: "Yerleş · yetişemez",
-    settleRecovering: "Yerleş · ana dünya toparlanıyor",
+    settle: "Koloni kur",
+    settleNeedSlot: "Koloni kur · koloni yuvası dolu",
+    settleNeedBay: "Koloni kur · uçuş rampaları dolu",
+    settleNeedHauler: "Koloni kur · 2 Şilep gerekli",
+    settleNeedAlloy: "Koloni kur · Alaşım eksik",
+    settleNeedCrystal: "Koloni kur · Kristal eksik",
+    settleNeedFuel: "Koloni kur · Döteryum eksik",
+    settleTooLate: "Koloni kur · zamanında varamaz",
+    settleRecovering: "Koloni kur · ana dünya toparlanıyor",
+    settlementConfirm: {
+      eyebrow: "Koloni yarışı",
+      title: "{{world}} üzerinde koloni kur",
+      unsurveyedTitle: "Bu dünyada koloni kur",
+      race: "Geçerli 2 Şilebi ilk ulaştıran oyuncu gezegeni alır.",
+      noRecall:
+        "Koloni gemileri geri çağrılamaz. Başkası önce kazanırsa Şileplerin ve kuruluş yükün geri döner; harcanan yakıt dönmez.",
+      haulers: "Koloni gemileri",
+      foundingCargo: "Kuruluş yükü",
+      cargoValue: "{{alloy}} Alaşım · {{crystal}} Kristal",
+      fuel: "Uçuş yakıtı",
+      arrives: "Varış süresi",
+      closes: "Yarışın bitmesine",
+      confirm: "Koloni gemilerini gönder",
+      confirming: "Gönderiliyor…",
+    },
     deathStar: "Ölüm Yıldızı",
     deathStarStrike: "Ölüm Yıldızı · harap et",
     deathStarCapture: "Ölüm Yıldızı · ele geçir",
@@ -121,7 +137,7 @@ export const focus = {
     kindNeutral: "Tarafsız",
     capitalProtected: "Ele geçirilemez ana gezegen",
     capitalProtectedHint:
-      "Ölüm Yıldızı stoklarını yarıya indirir, evdeki bütün araçları yok eder ve Çekirdeği bir seviye düşürür; kontrolü asla el değiştirmez.",
+      "Ölüm Yıldızı evdeki gemileri, topları ve bina siparişlerini yok eder; depodaki ve üretim havuzundaki kaynakları yarıya indirir, Çekirdeği bir ve Aegis’i iki seviye düşürür. Ana gezegenin kontrolü asla el değiştirmez.",
     capitalRecovering: "Ana gezegen harap · ele geçirilemez",
     capitalRecoveringHint:
       "Tekrar vurabilirsin: kalanın yarısı da gider ve toparlanma baştan başlar; kontrol yine el değiştirmez.",
@@ -135,19 +151,53 @@ export const focus = {
     transferCraft: "Hazır gemi",
     transferPrepare: "Gemi ve kaynak seç",
     transferRecovering: "Çıkış dünyası toparlanıyor",
-    colonyRoute: "Koloniye giden yol",
-    claimOpen: "Hak penceresi açık",
+    colonyRoute: "Koloni kurmanın yolu",
+    claimOpen: "Koloni yarışı açık",
+    settlementInFlight: "Koloni gemilerin yolda",
+    claimRaceExplain: "Gezegen henüz kimsenin değil. Geçerli 2 Şilebi ilk ulaştıran oyuncu gezegeni alır.",
     colonySlots: "{{used}} / {{total}} koloni yuvası",
-    routeRaid: "Akını kazan",
-    routeClaim: "Hak açılır",
-    routeSettle: "Nakliyeci kurar",
+    routeRaid: "Kesin zafer kazan",
+    routeRaidDetail: "Savaş gemileriyle akın yap. Bütün savunma gemilerini ve kalkanı yok et.",
+    routeClaim: "Yarış otomatik açılır",
+    routeClaimDetail: "Bir şey göndermezsin. Kesin zafer gelince sistem yarışı kendisi açar.",
+    routeSettle: "Koloni filosunu gönder",
+    routeSettleDetail: "Kuruluş gemileri ve kaynakları yalnızca şimdi gönderilir. İlk geçerli varış kazanır.",
+    routeSettleInFlightDetail: "Kuruluş filon yolda. İlk geçerli varış gezegeni alır.",
+    raidFleetBadge: "Akın filosu",
+    raidFleetExplain:
+      "Akın ekranında savaş gemilerini seç; tüm savunmayı ve kalkanı yok et. 1. adımda Şilep, kuruluş kaynağı veya koloni yuvası gerekmez.",
+    automaticBadge: "Otomatik",
+    automaticExplain:
+      "Kesin zafer yarışı otomatik açar. 2. adım için başka gemi veya kaynak göndermezsin.",
+    settlementAwayBadge: "Yolda",
+    settlementAwayExplain:
+      "2 Şilebin ve kuruluş kaynakların yola çıktı. Geri çağrılamazlar; ilk geçerli varış gezegeni alır.",
     claimCloses: "{{duration}} sonra kapanır",
     claimRaidStillOpen: "Tekrar akın yapılabilir; açık hakkın süresi uzamaz.",
     claimDeathStarConsequence:
       "Ölüm Yıldızı bu hakkı siler ve {{duration}} toparlanma başlatır. Ele geçirme yolu ikinci darbedir.",
     openColonySlot: "Koloni yuvası",
-    openFlightBay: "Uçuş rampası",
-    haulerCount: "2 Nakliyeci",
+    colonySlotExplain:
+      "Yalnızca 3. adımda gerekir. Kuruluş filosu kalkarken en güçlü Komuta Çekirdeğinde kullanılabilir bir koloni yuvası olmalı.",
+    captureColonySlotExplain:
+      "İkinci Ölüm Yıldızı darbesinin bu koloniyi alabilmesi için boş bir koloni yuvan olmalı.",
+    openFlightBay: "1 boş uçuş rampası",
+    flightBayExplain:
+      "Yalnızca 3. adımda gerekir. 2 Şilebin tek yönlü kuruluş uçuşu, gezegene varana kadar 1 rampayı kullanır.",
+    haulerCount: "2 Şilep",
+    haulerExplain:
+      "Yalnızca 3. adımda gerekir: kuruluş filosudur ve yarış açıldıktan sonra akından ayrı gönderilir. Akın için Şilep gerekmez.",
+    foundingAlloy: "{{amount}} Alaşım",
+    foundingAlloyExplain:
+      "{{amount}} Alaşım, 3. adımda yeni koloninin başlangıç stoğu olarak taşınır. Akının maliyeti değildir.",
+    foundingCrystal: "{{amount}} Kristal",
+    foundingCrystalExplain:
+      "{{amount}} Kristal, 3. adımda yeni koloninin başlangıç stoğu olarak taşınır. Akının maliyeti değildir.",
+    settlementFuel: "{{amount}} Döteryum",
+    settlementFuelExplain:
+      "2 Şilep, 3. adımdaki tek yön uçuşunda {{amount}} Döteryum yakar. Bu miktar mesafeye göre değişir.",
+    settlementArrivalExplain:
+      "Kuruluş uçuşu {{duration}} sürer. Yarış kapanmadan varmalı; ilk geçerli varış kazanır.",
     arrivesIn: "{{duration}} içinde varır",
     deathStarRoute: "Stratejik ele geçirme yolu",
     recoveryBreach: "Toparlanma açığı · ele geçirme penceresi",
@@ -156,15 +206,19 @@ export const focus = {
     firstImpact: "Hasar + {{duration}} toparlanma",
     secondImpact: "Kontrol el değiştirir",
     deathStarReadyRequirement: "Ölüm Yıldızı hazır",
+    deathStarReadyExplain:
+      "İkinci darbe için çıkış gezegeninde tamamlanmış bir Ölüm Yıldızı bekliyor olmalı.",
+    deathStarArrivalExplain:
+      "Kontrolün el değiştirebilmesi için Ölüm Yıldızı bu toparlanma süresi bitmeden varmalı.",
 
     /** Üretim kartıyla aynı gerçekler, tetiği çeken kişinin diliyle. D113/D55. */
     strikeTitle: "Bu darbe ne yapar",
     strikeFleet: "Yerdeki bütün gemiler ve toplar yok olur",
-    strikeStock: "Depodaki her şeyin yarısı yok olur",
-    strikeCore: "Komuta Çekirdeği bir seviye iner",
+    strikeStock: "Depo ve üretim havuzundaki kaynakların yarısı yok olur",
+    strikeCore: "Komuta Çekirdeği bir seviye iner; yeni sınırı aşan binalar da düşer",
     strikeAegis: "Aegis {{levels}} seviye iner ve kalkan sıfırlanır",
     strikeDark:
-      "{{duration}} boyunca orada hiçbir şey üretilmez, hiçbir şey fırlatılmaz",
+      "{{duration}} boyunca üretim, toplama, inşa, sipariş verme ve fırlatma durur",
     strikeCapture: "Bu pencere içinde inen ikinci darbe kontrolü alır",
     strikeNoCapture:
       "Ana gezegen tekrar harap edilebilir ama asla ele geçirilemez",
@@ -176,7 +230,7 @@ export const focus = {
     attack: "Saldırı planla",
     attackNeutralAgain: "Tekrar akın · hak değişmez",
     attackOriginRecovering: "Saldırı · ana dünya toparlanıyor",
-    windowOpen: "Filoları evde değil. Bütün oyunun beklediği an tam olarak bu.",
+    windowOpen: "Filoları evde değil. Bu dünya şu anda normalden daha az savunuluyor.",
     distance: "Mesafe",
     reach: "Varış süren",
     reachUnknown: "—",
@@ -244,11 +298,11 @@ export const focus = {
     compositionUnknown: "İzotop bileşimi bilinmiyor",
     compositionIsotope: "%{{crystal}} kristal · %{{deuterium}} Döteryum",
     deuteriumRoute:
-      "Döteryum kazanmak için Kazıcı gönder. Dönüş yükü Havuz’a iner; depoya geçirmek için Topla.",
+      "Döteryum kazanmak için Kazıcı gönder. Dönüş yükü üretim havuzuna iner; depoya geçirmek için Topla düğmesine bas.",
     speed: "Hız",
     speedValue: "dakikada {{rate}}",
     spill:
-      "Havuzun ancak {{room}} daha alabilir. Bu yükün {{lost}} kadarı varışta çöpe gider; önce havuzu boşalt.",
+      "Havuzun ancak {{room}} daha alabilir. Bu yükün {{lost}} kadarı varışta kaybedilir; önce havuzu boşalt.",
     taken: "İçinden {{amount}} kadarını birileri çoktan almış.",
     untouched: "Hiç dokunulmamış. İlk varan, taşıyabildiği kadarını alır.",
     fleetLine_one: "Evde {{count}} Kazıcı var; {{hold}} taşıyor.",
@@ -273,7 +327,7 @@ export const focus = {
     working_other: "{{count}} aracın orada · {{state}}",
     stateReturning: "dönüyor",
     stateInbound: "gidiyor",
-    noCraft: "Evde araç yok",
+    noCraft: "Evde Kazıcı yok",
     tooLate: "Sen varmadan dağılır",
     send: "{{count}} gönder · {{duration}}",
     alloyLeft: "Kalan alaşım",
@@ -282,8 +336,8 @@ export const focus = {
     goneIn: "Dağılmasına",
     yourHold: "Taşıma kapasiten",
     spill:
-      "Havuzun ancak {{room}} daha alabilir. Bunun {{lost}} kadarı varışta çöpe gider; önce havuzu boşalt.",
-    body: "Burada biri filosunu kaybetmiş. Enkaz sönüyor ve herkes görüyor; ilk varan kalanı alır.",
+      "Havuzun ancak {{room}} daha alabilir. Bunun {{lost}} kadarı varışta kaybedilir; önce havuzu boşalt.",
+    body: "Bir çatışmadan kalan bu enkaz sahası zamanla dağılıyor ve galaksideki herkese açık. İlk varan taşıyabildiği kaynağı alır.",
   },
 
   run: {
@@ -307,7 +361,7 @@ export const focus = {
     emptySalvage: "Vardığında saha çoktan yağmalanmıştı; eli boş dönüyor.",
     emptyRock: "Vardığında kaya çoktan boşaltılmıştı; eli boş dönüyor.",
     salvageNote:
-      "Enkaz sahası yerinden kımıldamaz ve herkes onu görür. {{clock}} İlk varan taşıyabildiğini alır.",
+      "Enkaz sahası sabit kalır ve herkes tarafından görülür. {{clock}} İlk varan taşıyabildiğini alır.",
     salvageClock: "{{duration}} sonra dağılıyor.",
     miningNote:
       "Kayanın şu anki yerine değil, varacağı yere uçuyor. İlk varan taşıyabildiğini alır.",
@@ -321,7 +375,7 @@ export const focus = {
     arrivesIn: "Varışına",
     craft: "Gemi",
     craftUnknown: "—",
-    returning: "Yolda, geri geliyor. Verecek karar kalmadı.",
+    returning: "Dönüş yolundaki araçlara yeni emir verilemez.",
     outbound: "Kalkan filo geri çağrılamaz.",
   },
 
@@ -333,11 +387,11 @@ export const focus = {
     eyebrowProbe: "Biri keşif yapıyor",
     eyebrowMoving: "Biri hareket hâlinde",
     titleUnknown: "Tanımsız",
-    eyebrowUnknown: "Dışarıda bir şey var",
+    eyebrowUnknown: "Tanımlanamayan hareket",
     unknownHint:
       "Teleskop görüş alanının dışında. Bu temas görüş alanına girdiğinde araç türü; bir filoysa içerdiği gemiler ve kesin adetleri okunabilir.",
     /** Radar 5 türü söyler ama aracı göstermez; okumanın kaynağı yazılmalı. */
-    radarKind: "Radar bunu {{kind}} olarak okuyor. Bu mesafeden başka bir şey yok.",
+    radarKind: "Radar bunu {{kind}} olarak tanımlıyor. Bu mesafede araç görüntüsü ve filo dökümü okunamıyor.",
     titleBattle: "Ateş altında",
     titleFleet: "Filo",
     titleProbe: "Sonda",
@@ -366,9 +420,9 @@ export const focus = {
     boundaryBattle:
       "O gezegenin üzerinde bir filo var ve ateş ediyor. Teleskop görüşündeyse tam formasyonu görünür; sahibi, geldiği yer ve kimin kazanacağı bilinmez.",
     boundarySalvage:
-      "Hurda seferi herkese açıktır: saha, rota ve saat. Eve ne götürdüğü değil.",
+      "Enkaz sahası, rota ve varış süresi herkese açıktır; aracın eve götürdüğü kaynak gizli kalır.",
     boundaryMining:
-      "Bu kayayı keşfettiğin için maden yarışı görünür: hedef, rota ve saat. Eve ne götürdüğü gizli kalır.",
+      "Bu kayayı keşfettiğin için hedefi, rotayı ve varış süresini görürsün; aracın eve götürdüğü kaynak gizli kalır.",
     boundaryFleet:
       "Teleskop görüşünde aracın kendisini; bir filoysa gemi türlerini ve kesin adetlerini görüyorsun. Sahibi, çıkış ve varış yeri bilinmez.",
     boundaryUnknown:

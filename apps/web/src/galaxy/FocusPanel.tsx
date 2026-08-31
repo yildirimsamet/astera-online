@@ -1,5 +1,6 @@
 import { GameActions } from '../session/seasonLock.js';
-import { useEffect, useState, type ReactNode } from 'react';
+import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
+import { createPortal } from 'react-dom';
 import { useTranslation, Trans } from 'react-i18next';
 import {
   DEATH_STAR,
@@ -29,6 +30,7 @@ import type {
 import { useProbe, useSetRival, useWatch } from '../api/queries.js';
 import { hullLabel, hullName, satelliteLabel } from '../i18n/names.js';
 import { compact } from '../lib/format.js';
+import { colonizationPhase, type ColonizationPhase } from '../lib/colonization.js';
 import { commanderLabel } from '../lib/identity.js';
 import {
   confidenceWord,
@@ -321,6 +323,7 @@ export function PlanetFocus({
   onTransfer,
   onInstallTelescope,
   onLaunched,
+  settlementInFlight = false,
   open,
   onToggle,
 }: {
@@ -341,6 +344,8 @@ export function PlanetFocus({
   onInstallTelescope: () => void;
   /** Called with the target's name once a probe is away, so the disc can follow it. */
   onLaunched: (targetName: string) => void;
+  /** An outbound colony mission already targets this world. */
+  settlementInFlight?: boolean;
   open: boolean;
   onToggle: () => void;
 }) {
@@ -369,6 +374,7 @@ export function PlanetFocus({
   const originRecovering = Boolean(
     planet.planet.recoveryUntil && planet.planet.recoveryUntil.getTime() > now,
   );
+  const colonyPhase = colonizationPhase(target, now, settlementInFlight);
   /**
    * A CLAIM WINDOW SURVIVES THE FOG, SO THE CONTROL HAS TO AS WELL. D112/D127.
    *
@@ -547,7 +553,7 @@ export function PlanetFocus({
               : isRival ? 'focus.planet.rivalMarkedAction' : 'focus.planet.markRival')}
           </button>
           )}
-          {onSettle && claimActive && (
+          {onSettle && claimActive && colonyPhase !== 'SETTLEMENT_IN_FLIGHT' && (
             <button
               type="button"
               className="slab slab-primary min-w-[8rem] flex-1 whitespace-normal px-3 leading-tight"
@@ -601,7 +607,7 @@ export function PlanetFocus({
             <AttackIcon className="size-[18px] shrink-0" />
             {t(originRecovering
               ? 'focus.planet.attackOriginRecovering'
-              : target.kind === 'NEUTRAL' && claimActive
+              : colonyPhase === 'NEUTRAL_RACE' || colonyPhase === 'SETTLEMENT_IN_FLIGHT'
                 ? 'focus.planet.attackNeutralAgain'
                 : 'focus.planet.attack')}
           </button>}
@@ -618,7 +624,9 @@ export function PlanetFocus({
         the guide long before that line, and the guide's own comment says as much.
         A commitment surface may state a rule or say nothing; it may not guess.
       */}
-      {!target.clanmate && !unsurveyed && (
+      {!target.clanmate && (!unsurveyed
+        || colonyPhase === 'NEUTRAL_RACE'
+        || colonyPhase === 'SETTLEMENT_IN_FLIGHT') && (
       <StrategicWorldGuide
         target={target}
         planet={planet}
@@ -632,6 +640,7 @@ export function PlanetFocus({
         claimActive={claimActive}
         deathStarEta={deathStarEta}
         isRival={isRival}
+        phase={colonyPhase}
       />
       )}
       {away && (
@@ -806,11 +815,78 @@ function WorldKind({ target, rival }: { target: GalaxyPlanet; rival: boolean }) 
   );
 }
 
-function Requirement({ ok, children }: { ok: boolean; children: ReactNode }) {
+function Requirement({
+  ok,
+  label,
+  explanation,
+  children,
+}: {
+  /** Null is an explanatory badge rather than a pass/fail requirement. */
+  ok: boolean | null;
+  label: string;
+  explanation: string;
+  children: ReactNode;
+}) {
+  const tooltipId = useId();
+  const [explaining, setExplaining] = useState(false);
+  const [tooltipPosition, setTooltipPosition] = useState({ bottom: 0, left: 16, width: 256 });
+  const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => () => {
+    if (closeTimer.current !== null) clearTimeout(closeTimer.current);
+  }, []);
+
+  const explain = (): void => {
+    if (closeTimer.current !== null) clearTimeout(closeTimer.current);
+    const button = document.getElementById(`${tooltipId}-button`);
+    if (button) {
+      const rect = button.getBoundingClientRect();
+      const width = Math.min(256, Math.max(0, window.innerWidth - 32));
+      setTooltipPosition({
+        bottom: window.innerHeight - rect.top + 8,
+        left: Math.min(Math.max(16, rect.left), Math.max(16, window.innerWidth - width - 16)),
+        width,
+      });
+    }
+    setExplaining(true);
+    closeTimer.current = setTimeout(() => {
+      setExplaining(false);
+      closeTimer.current = null;
+    }, 2_000);
+  };
+
+  const tone = ok === null
+    ? 'border-crystal/35 bg-crystal/10 text-crystal'
+    : ok
+      ? 'border-opportunity/35 bg-opportunity/10 text-opportunity'
+      : 'border-alert/35 bg-alert/10 text-threat-ink';
+
   return (
-    <span className={`flex min-h-7 items-center gap-2 rounded-chip border px-2 text-micro ${ ok ? 'border-opportunity/35 bg-opportunity/10 text-opportunity' : 'border-alert/35 bg-alert/10 text-threat-ink' }`}>
-      <span aria-hidden className="text-micro">{ok ? '●' : '○'}</span>
-      {children}
+    <span className="relative inline-flex">
+      <button
+        id={`${tooltipId}-button`}
+        type="button"
+        aria-label={label}
+        aria-describedby={explaining ? tooltipId : undefined}
+        aria-expanded={explaining}
+        className={`flex min-h-8 touch-manipulation items-center gap-2 rounded-chip border px-2 text-micro hover:brightness-125 focus-visible:ring-2 focus-visible:ring-crystal/70 ${tone}`}
+        onClick={explain}
+      >
+        <span aria-hidden className="text-micro">{ok === null ? '?' : ok ? '●' : '○'}</span>
+        {children}
+      </button>
+      {explaining && createPortal(
+        <span
+          id={tooltipId}
+          role="tooltip"
+          aria-live="polite"
+          className="fixed z-[100] rounded-chip border border-crystal/45 bg-void px-3 py-2 text-left text-label leading-snug text-bone shadow-[0_0_20px_rgba(98,215,232,0.18)]"
+          style={tooltipPosition}
+        >
+          {explanation}
+        </span>,
+        document.body,
+      )}
     </span>
   );
 }
@@ -865,6 +941,7 @@ function StrategicWorldGuide({
   claimActive,
   deathStarEta,
   isRival,
+  phase,
 }: {
   target: GalaxyPlanet;
   planet: PlanetView;
@@ -879,6 +956,7 @@ function StrategicWorldGuide({
   claimActive: boolean;
   deathStarEta: number;
   isRival: boolean;
+  phase: ColonizationPhase;
 }) {
   const { t } = useTranslation();
   const standing = planet.colonies;
@@ -929,7 +1007,11 @@ function StrategicWorldGuide({
     );
   }
 
-  if (target.kind === 'NEUTRAL') {
+  if (
+    phase === 'NEUTRAL_PREP'
+    || phase === 'NEUTRAL_RACE'
+    || phase === 'SETTLEMENT_IN_FLIGHT'
+  ) {
     const until = target.neutral?.claimUntil;
     const hauler = (planet.fleet.HAULER ?? 0) >= MULTI_WORLD.settlement.haulers;
     const alloy = planet.planet.alloy >= MULTI_WORLD.settlement.cost.alloy;
@@ -938,58 +1020,141 @@ function StrategicWorldGuide({
       <div className={`mb-3 rounded-chip border px-3 py-3 ${
         claimActive ? 'border-opportunity/50 bg-opportunity/10' : 'border-line-soft bg-deep/65'
       }`}>
-        <div className="flex items-center justify-between gap-2">
+        <div className="flex items-center gap-2">
           <p className={`legend ${ claimActive ? 'text-opportunity' : 'text-bone' }`}>
-            {t(claimActive ? 'focus.planet.claimOpen' : 'focus.planet.colonyRoute')}
+            {t(phase === 'SETTLEMENT_IN_FLIGHT'
+              ? 'focus.planet.settlementInFlight'
+              : claimActive ? 'focus.planet.claimOpen' : 'focus.planet.colonyRoute')}
           </p>
-          {standing && (
-            <span className={`num text-micro ${colonySlotOpen ? 'text-opportunity' : 'text-threat-ink'}`}>
-              {t('focus.planet.colonySlots', {
-                used: standing.colonies + standing.reservations,
-                total: standing.capacity,
-              })}
-            </span>
-          )}
         </div>
-        <div className="mt-2 grid grid-cols-[1fr_auto_1fr_auto_1fr] items-center gap-1 text-center">
-          <RouteStep active={!claimActive} number="1" label={t('focus.planet.routeRaid')} />
-          <span className="text-faint">→</span>
-          <RouteStep active={claimActive} number="2" label={t('focus.planet.routeClaim')} />
-          <span className="text-faint">→</span>
-          <RouteStep active={claimActive} number="3" label={t('focus.planet.routeSettle')} />
-        </div>
+        <ol className="mt-2 grid grid-cols-1 items-stretch gap-2 md:grid-cols-3">
+          <RouteStep
+            status={phase === 'NEUTRAL_PREP' ? 'current' : 'complete'}
+            number="1"
+            label={t('focus.planet.routeRaid')}
+            description={t('focus.planet.routeRaidDetail')}
+            dataStep="1"
+          >
+            <Requirement
+              ok={null}
+              label={t('focus.planet.raidFleetBadge')}
+              explanation={t('focus.planet.raidFleetExplain')}
+            >
+              {t('focus.planet.raidFleetBadge')}
+            </Requirement>
+          </RouteStep>
+          <RouteStep
+            status={phase === 'NEUTRAL_PREP' ? 'upcoming' : 'complete'}
+            number="2"
+            label={t('focus.planet.routeClaim')}
+            description={t('focus.planet.routeClaimDetail')}
+            dataStep="2"
+          >
+            <Requirement
+              ok={null}
+              label={t('focus.planet.automaticBadge')}
+              explanation={t('focus.planet.automaticExplain')}
+            >
+              {t('focus.planet.automaticBadge')}
+            </Requirement>
+          </RouteStep>
+          <RouteStep
+            status={phase === 'NEUTRAL_PREP' ? 'upcoming' : 'current'}
+            number="3"
+            label={t('focus.planet.routeSettle')}
+            description={t(phase === 'SETTLEMENT_IN_FLIGHT'
+              ? 'focus.planet.routeSettleInFlightDetail'
+              : 'focus.planet.routeSettleDetail')}
+            dataStep="3"
+          >
+            {phase === 'SETTLEMENT_IN_FLIGHT' ? (
+              <Requirement
+                ok={null}
+                label={t('focus.planet.settlementAwayBadge')}
+                explanation={t('focus.planet.settlementAwayExplain')}
+              >
+                {t('focus.planet.settlementAwayBadge')}
+              </Requirement>
+            ) : (
+              <>
+                <Requirement
+                  ok={colonySlotOpen}
+                  label={t('focus.planet.openColonySlot')}
+                  explanation={t('focus.planet.colonySlotExplain')}
+                >
+                  {t('focus.planet.openColonySlot')}
+                </Requirement>
+                <Requirement
+                  ok={flightBayOpen}
+                  label={t('focus.planet.openFlightBay')}
+                  explanation={t('focus.planet.flightBayExplain')}
+                >
+                  {t('focus.planet.openFlightBay')}
+                </Requirement>
+                <Requirement
+                  ok={hauler}
+                  label={t('focus.planet.haulerCount')}
+                  explanation={t('focus.planet.haulerExplain')}
+                >
+                  {t('focus.planet.haulerCount')}
+                </Requirement>
+                <Requirement
+                  ok={alloy}
+                  label={t('focus.planet.foundingAlloy', {
+                    amount: compact(MULTI_WORLD.settlement.cost.alloy),
+                  })}
+                  explanation={t('focus.planet.foundingAlloyExplain', {
+                    amount: compact(MULTI_WORLD.settlement.cost.alloy),
+                  })}
+                >
+                  <img src={RESOURCE_ART.alloy} alt="" aria-hidden className="size-3.5 object-contain" />
+                  {compact(MULTI_WORLD.settlement.cost.alloy)}
+                </Requirement>
+                <Requirement
+                  ok={crystal}
+                  label={t('focus.planet.foundingCrystal', {
+                    amount: compact(MULTI_WORLD.settlement.cost.crystal),
+                  })}
+                  explanation={t('focus.planet.foundingCrystalExplain', {
+                    amount: compact(MULTI_WORLD.settlement.cost.crystal),
+                  })}
+                >
+                  <img src={RESOURCE_ART.crystal} alt="" aria-hidden className="size-3.5 object-contain" />
+                  {compact(MULTI_WORLD.settlement.cost.crystal)}
+                </Requirement>
+                <Requirement
+                  ok={settlementFuelled}
+                  label={t('focus.planet.settlementFuel', { amount: compact(settlementFuel) })}
+                  explanation={t('focus.planet.settlementFuelExplain', {
+                    amount: compact(settlementFuel),
+                  })}
+                >
+                  <img src={RESOURCE_ART.deuterium} alt="" aria-hidden className="size-3.5 object-contain" />
+                  {compact(settlementFuel)}
+                </Requirement>
+                <Requirement
+                  ok={claimActive ? settlementCanArrive : settlementEta < SETTLEMENT_CLAIM_MINUTES}
+                  label={t('focus.planet.arrivesIn', { duration: duration(settlementEta) })}
+                  explanation={t('focus.planet.settlementArrivalExplain', {
+                    duration: duration(settlementEta),
+                  })}
+                >
+                  {t('focus.planet.arrivesIn', { duration: duration(settlementEta) })}
+                </Requirement>
+              </>
+            )}
+          </RouteStep>
+        </ol>
+        {claimActive && (
+          <p className="mt-2 text-center text-body text-bone">
+            {t('focus.planet.claimRaceExplain')}
+          </p>
+        )}
         {claimActive && until && (
           <p className="num mt-2 text-center text-body text-opportunity">
             {t('focus.planet.claimCloses', { duration: duration((until.getTime() - now) / 60_000) })}
           </p>
         )}
-        <div className="mt-2 flex flex-wrap gap-2">
-          <Requirement ok={colonySlotOpen}>{t('focus.planet.openColonySlot')}</Requirement>
-          <Requirement ok={flightBayOpen}>{t('focus.planet.openFlightBay')}</Requirement>
-          <Requirement ok={hauler}>{t('focus.planet.haulerCount')}</Requirement>
-          <Requirement ok={alloy}>
-            <img src={RESOURCE_ART.alloy} alt="" aria-hidden className="size-3.5 object-contain" />
-            {compact(MULTI_WORLD.settlement.cost.alloy)}
-          </Requirement>
-          <Requirement ok={crystal}>
-            <img src={RESOURCE_ART.crystal} alt="" aria-hidden className="size-3.5 object-contain" />
-            {compact(MULTI_WORLD.settlement.cost.crystal)}
-          </Requirement>
-          {/*
-            THE THIRD STORE, AND THE ONLY ONE THAT DEPENDS ON WHERE THIS WORLD IS.
-            Alloy and Crystal are a fixed founding price; the deuterium is the
-            flight, so the chip changes as the commander looks at rocks further
-            out — which is the axis D125/D126 made an information cost and T6 made
-            an economic one, stated in the one place a colony is chosen.
-          */}
-          <Requirement ok={settlementFuelled}>
-            <img src={RESOURCE_ART.deuterium} alt="" aria-hidden className="size-3.5 object-contain" />
-            {compact(settlementFuel)}
-          </Requirement>
-          <Requirement ok={claimActive ? settlementCanArrive : settlementEta < SETTLEMENT_CLAIM_MINUTES}>
-            {t('focus.planet.arrivesIn', { duration: duration(settlementEta) })}
-          </Requirement>
-        </div>
         {claimActive && (
           <div className="mt-2 grid gap-1 border-t border-opportunity/20 pt-2 text-label leading-snug text-dim">
             <p className="flex items-start gap-2">
@@ -1031,27 +1196,47 @@ function StrategicWorldGuide({
           {t('focus.planet.protectedFor', { duration: duration((protectedState.until.getTime() - now) / 60_000) })}
         </p>
       ) : (
-        <div className="mt-2 grid grid-cols-[1fr_auto_1fr] items-center gap-2 text-center">
+        <ol className="mt-2 grid grid-cols-2 items-start gap-2 text-center">
           <RouteStep
-            active={!recovery}
+            status={recovery ? 'complete' : 'current'}
             number="1"
             label={t('focus.planet.firstImpact', {
               duration: duration(MULTI_WORLD.recoveryMinutes),
             })}
             danger
           />
-          <span className="text-threat-ink">→</span>
-          <RouteStep active={Boolean(recovery)} number="2" label={t('focus.planet.secondImpact')} danger />
-        </div>
+          <RouteStep
+            status={recovery ? 'current' : 'upcoming'}
+            number="2"
+            label={t('focus.planet.secondImpact')}
+            danger
+          />
+        </ol>
       )}
       {/* A capital never reaches this guide — it returns above — so the second
           impact here is always the capture route. */}
       {!protectedState && <StrikeEffects capturable />}
       {recovery && (
         <div className="mt-2 flex flex-wrap gap-2">
-          <Requirement ok={colonySlotOpen}>{t('focus.planet.openColonySlot')}</Requirement>
-          <Requirement ok={planet.strategic?.status === 'READY'}>{t('focus.planet.deathStarReadyRequirement')}</Requirement>
-          <Requirement ok={now + deathStarEta * 60_000 < recovery.until.getTime()}>
+          <Requirement
+            ok={colonySlotOpen}
+            label={t('focus.planet.openColonySlot')}
+            explanation={t('focus.planet.captureColonySlotExplain')}
+          >
+            {t('focus.planet.openColonySlot')}
+          </Requirement>
+          <Requirement
+            ok={planet.strategic?.status === 'READY'}
+            label={t('focus.planet.deathStarReadyRequirement')}
+            explanation={t('focus.planet.deathStarReadyExplain')}
+          >
+            {t('focus.planet.deathStarReadyRequirement')}
+          </Requirement>
+          <Requirement
+            ok={now + deathStarEta * 60_000 < recovery.until.getTime()}
+            label={t('focus.planet.arrivesIn', { duration: duration(deathStarEta) })}
+            explanation={t('focus.planet.deathStarArrivalExplain')}
+          >
             {t('focus.planet.arrivesIn', { duration: duration(deathStarEta) })}
           </Requirement>
         </div>
@@ -1061,22 +1246,42 @@ function StrategicWorldGuide({
 }
 
 function RouteStep({
-  active,
+  status,
   number,
   label,
+  description,
+  dataStep,
   danger = false,
+  children,
 }: {
-  active: boolean;
+  status: 'complete' | 'current' | 'upcoming';
   number: string;
   label: string;
+  description?: string;
+  dataStep?: string;
   danger?: boolean;
+  children?: ReactNode;
 }) {
-  const tone = active ? (danger ? 'text-threat-ink' : 'text-opportunity') : 'text-faint';
+  const tone = status === 'current'
+    ? danger ? 'border-alert/45 bg-alert/10 text-threat-ink' : 'border-opportunity/45 bg-opportunity/10 text-opportunity'
+    : status === 'complete'
+      ? 'border-crystal/30 bg-crystal/5 text-crystal'
+      : 'border-line-soft bg-void/25 text-faint';
   return (
-    <span className={tone}>
-      <span className="mx-auto grid size-7 place-items-center rounded-full border border-current text-micro">{number}</span>
-      <span className="legend mt-1 block">{label}</span>
-    </span>
+    <li
+      className={`relative rounded-chip border px-2 py-2 text-left ${tone}`}
+      aria-current={status === 'current' ? 'step' : undefined}
+      data-colony-step={dataStep}
+    >
+      <span className="flex items-center gap-2">
+        <span className="grid size-7 shrink-0 place-items-center rounded-full border border-current text-micro">
+          {status === 'complete' ? '✓' : number}
+        </span>
+        <span className="legend block leading-tight">{label}</span>
+      </span>
+      {description && <span className="mt-2 block text-label leading-snug text-dim">{description}</span>}
+      {children && <span className="mt-2 flex flex-wrap gap-1.5">{children}</span>}
+    </li>
   );
 }
 

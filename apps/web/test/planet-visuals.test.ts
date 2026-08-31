@@ -11,6 +11,7 @@ import {
   bodyLight,
   eyeMarkerScale,
   eyeNodes,
+  hasVisibleClaim,
   limbLight,
   markerScale,
 } from '../src/galaxy/PlanetField.js';
@@ -305,6 +306,35 @@ describe('world identity on the disc', () => {
 
     expect(eyeNodes(nodes, true).map((node) => node.id)).toEqual(['seen']);
     expect(eyeNodes(nodes, false).map((node) => node.id)).toEqual(['hidden']);
+  });
+
+  it('draws a claim highlight only while the world is inside current sight', () => {
+    const now = 1_000;
+    const claimUntil = new Date(now + 60_000);
+    const [seen, remembered, hidden] = planetNodes([
+      {
+        id: 'seen-claim', name: 'Seen', owner: 'Caretaker', kind: 'NEUTRAL',
+        position: { x: 100, y: 0, z: 0 }, coreTier: 1, coreLevel: 0,
+        satellites: [], shielded: false, isSelf: false, intel: 'RESOLVED',
+        state: { kind: 'NORMAL' }, neutral: { claimUntil },
+      },
+      {
+        id: 'remembered-claim', name: 'Remembered', owner: 'Caretaker', kind: 'NEUTRAL',
+        position: { x: 150, y: 0, z: 0 }, coreTier: 1, coreLevel: 0,
+        satellites: [], shielded: false, isSelf: false, intel: 'REMEMBERED',
+        seenAt: new Date(0), state: { kind: 'NORMAL' }, neutral: { claimUntil },
+      },
+      {
+        id: 'hidden-claim', name: '', owner: '',
+        position: { x: 200, y: 0, z: 0 }, coreTier: 1, coreLevel: 0,
+        satellites: [], shielded: false, isSelf: false, intel: 'UNKNOWN',
+        state: { kind: 'NORMAL' }, neutral: { claimUntil },
+      },
+    ]);
+
+    expect(hasVisibleClaim(seen!, now)).toBe(true);
+    expect(hasVisibleClaim(remembered!, now)).toBe(false);
+    expect(hasVisibleClaim(hidden!, now)).toBe(false);
   });
 
   it('raises visible worlds by 25% and lowers hidden worlds by 15%', () => {

@@ -10,6 +10,7 @@ import { setUnits } from '../services/planet.js';
 import { publishShard } from '../stream/bus.js';
 import { fleetChangesWatch, publishWatchChanges } from '../services/watchEvents.js';
 import { abandonBuildOrder } from '../services/buildQueue.js';
+import { abandonResearchOrder } from '../services/research.js';
 import { abandonDeathStarBuild } from '../services/strategic.js';
 
 /**
@@ -174,7 +175,12 @@ export async function abandon(db: Db, event: EventRow, clock: Clock): Promise<bo
     case 'mining_return':
       return abandonMiningRun(db, event.refId, clock.now());
     case 'build_complete':
-      return abandonBuildOrder(db, event.refId, clock);
+      // Migrated legacy research rows keep their old event kind because PostgreSQL
+      // cannot use a newly-added enum value in the same migration transaction.
+      return (await abandonBuildOrder(db, event.refId, clock))
+        || abandonResearchOrder(db, event.refId, clock);
+    case 'research_complete':
+      return abandonResearchOrder(db, event.refId, clock);
     case 'death_star_ready':
       return abandonDeathStarBuild(db, event.refId, clock);
     default:
@@ -232,6 +238,7 @@ export async function sweepStranded(db: Db, clock: Clock): Promise<number> {
     missions: strandedMissions,
     runs: strandedRuns,
     builds: strandedBuilds,
+    research: strandedResearch,
     deathStars: strandedDeathStars,
   } = await strandedState(db, now);
 
@@ -239,6 +246,9 @@ export async function sweepStranded(db: Db, clock: Clock): Promise<number> {
   for (const id of strandedMissions) if (await abandonMission(db, id, now)) released += 1;
   for (const id of strandedRuns) if (await abandonMiningRun(db, id, now)) released += 1;
   for (const id of strandedBuilds) if (await abandonBuildOrder(db, id, clock)) released += 1;
+  for (const id of strandedResearch) {
+    if (await abandonResearchOrder(db, id, clock)) released += 1;
+  }
   for (const id of strandedDeathStars) {
     if (await abandonDeathStarBuild(db, id, clock)) released += 1;
   }
@@ -263,7 +273,13 @@ export async function sweepStranded(db: Db, clock: Clock): Promise<number> {
 async function strandedState(
   db: Db,
   now: Date,
-): Promise<{ missions: string[]; runs: string[]; builds: string[]; deathStars: string[] }> {
+): Promise<{
+  missions: string[];
+  runs: string[];
+  builds: string[];
+  research: string[];
+  deathStars: string[];
+}> {
   const cutoff = new Date(now.getTime() - STRANDED_GRACE_MINUTES * 60_000).toISOString();
 
   const missionRows = await db.execute<{ id: string }>(sql`
@@ -302,6 +318,16 @@ async function strandedState(
           and e.status in ('pending', 'processing'))
   `);
 
+  const researchRows = await db.execute<{ id: string }>(sql`
+    select r.id from research_orders r
+    where r.status = 'BUILDING'
+      and r.ready_at < ${cutoff}::timestamptz
+      and not exists (
+        select 1 from scheduled_events e
+        where e.ref_id = r.id and e.kind in ('research_complete', 'build_complete')
+          and e.status in ('pending', 'processing'))
+  `);
+
   const deathStarRows = await db.execute<{ id: string }>(sql`
     select a.id from strategic_assets a
     where a.status = 'BUILDING'
@@ -316,6 +342,7 @@ async function strandedState(
     missions: missionRows.map((row) => row.id),
     runs: runRows.map((row) => row.id),
     builds: buildRows.map((row) => row.id),
+    research: researchRows.map((row) => row.id),
     deathStars: deathStarRows.map((row) => row.id),
   };
 }
@@ -333,6 +360,6 @@ export async function strandedFlightCount(db: Db, now: Date): Promise<number> {
 
 /** Ordinary and strategic builds whose completion event has disappeared. */
 export async function strandedBuildCount(db: Db, now: Date): Promise<number> {
-  const { builds, deathStars } = await strandedState(db, now);
-  return builds.length + deathStars.length;
+  const { builds, research, deathStars } = await strandedState(db, now);
+  return builds.length + research.length + deathStars.length;
 }

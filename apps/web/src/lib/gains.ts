@@ -6,11 +6,13 @@ import {
   hullTech,
   cargoMult,
   RESEARCH_MAX_LEVEL,
+  SHIELD,
   HULLS,
   SATELLITES,
   alloyRate,
   crystalRate,
   deuteriumRate,
+  deuteriumStorageCap,
   hangarCapacity,
   instrumentMaxed,
   probeAccuracy,
@@ -112,8 +114,8 @@ export interface Gain {
   next: string;
   /** Resource-shaped values use the game's learnt resource art, never initials. */
   resourcePair?: {
-    now: { alloy: number; crystal: number };
-    next: { alloy: number; crystal: number };
+    now: { alloy: number; crystal: number; deuterium?: number };
+    next: { alloy: number; crystal: number; deuterium?: number };
   };
   /** Something new becomes possible — stated as a capability, not a rule. */
   unlocks?: string;
@@ -143,6 +145,7 @@ export function buildingGain(
   level: number,
   cappedCount: number,
   levels: BuildingLevels,
+  production = 1,
 ): Gain {
   const next = level + 1;
   switch (id) {
@@ -159,21 +162,21 @@ export function buildingGain(
     case 'REFINERY':
       return {
         label: i18n.t('gains.refinery.label'),
-        now: i18n.t('gains.refinery.rate', { amount: compact(alloyRate(level)) }),
-        next: i18n.t('gains.refinery.rate', { amount: compact(alloyRate(next)) }),
+        now: i18n.t('gains.refinery.rate', { amount: compact(alloyRate(level) * production) }),
+        next: i18n.t('gains.refinery.rate', { amount: compact(alloyRate(next) * production) }),
         unlocks: i18n.t('gains.refinery.storage', {
-          now: compact(storageCap(alloyRate(level), levels.VAULT)),
-          next: compact(storageCap(alloyRate(next), levels.VAULT)),
+          now: compact(storageCap(alloyRate(level) * production, levels.VAULT)),
+          next: compact(storageCap(alloyRate(next) * production, levels.VAULT)),
         }),
       };
     case 'EXTRACTOR':
       return {
         label: i18n.t('gains.extractor.label'),
-        now: i18n.t('gains.extractor.rate', { amount: compact(crystalRate(level)) }),
-        next: i18n.t('gains.extractor.rate', { amount: compact(crystalRate(next)) }),
+        now: i18n.t('gains.extractor.rate', { amount: compact(crystalRate(level) * production) }),
+        next: i18n.t('gains.extractor.rate', { amount: compact(crystalRate(next) * production) }),
         unlocks: i18n.t('gains.extractor.storage', {
-          now: compact(storageCap(crystalRate(level), levels.VAULT)),
-          next: compact(storageCap(crystalRate(next), levels.VAULT)),
+          now: compact(storageCap(crystalRate(level) * production, levels.VAULT)),
+          next: compact(storageCap(crystalRate(next) * production, levels.VAULT)),
         }),
       };
     case 'VAULT': {
@@ -194,7 +197,11 @@ export function buildingGain(
        * moved, the row states the ceiling instead, exactly as the Shipyard row
        * switches to Veils once its accuracy figure flattens.
        */
-      if (current.alloy === raised.alloy && current.crystal === raised.crystal) {
+      if (
+        current.alloy === raised.alloy
+        && current.crystal === raised.crystal
+        && current.deuterium === raised.deuterium
+      ) {
         return {
           label: i18n.t('gains.vault.storeLabel'),
           now: i18n.t('gains.vault.storeValue', { hours: storageHours(level).toFixed(1) }),
@@ -204,19 +211,21 @@ export function buildingGain(
 
       return {
         label: i18n.t('gains.vault.label'),
-        // The pair must stay visible. Adding it into one number erases the rule
-        // the player is deciding against: crystal has a deliberately lower floor.
+        // The resources stay separate. Adding them into one number erases the
+        // rule the player is deciding against: each has its own protected floor.
         now: i18n.t('gains.vault.value', {
           alloy: full(current.alloy),
           crystal: full(current.crystal),
+          deuterium: full(current.deuterium),
         }),
         next: i18n.t('gains.vault.value', {
           alloy: full(raised.alloy),
           crystal: full(raised.crystal),
+          deuterium: full(raised.deuterium),
         }),
         resourcePair: {
-          now: { alloy: current.alloy, crystal: current.crystal },
-          next: { alloy: raised.alloy, crystal: raised.crystal },
+          now: current,
+          next: raised,
         },
       };
     }
@@ -277,8 +286,24 @@ export function buildingGain(
     case 'DEUTERIUM_PLANT':
       return {
         label: i18n.t('gains.plant.label'),
-        now: i18n.t('gains.plant.value', { rate: full(Math.round(deuteriumRate(level))) }),
-        next: i18n.t('gains.plant.value', { rate: full(Math.round(deuteriumRate(next))) }),
+        now: i18n.t('gains.plant.value', {
+          rate: full(Math.round(deuteriumRate(level) * production)),
+        }),
+        next: i18n.t('gains.plant.value', {
+          rate: full(Math.round(deuteriumRate(next) * production)),
+        }),
+        unlocks: i18n.t('gains.plant.storage', {
+          now: compact(deuteriumStorageCap(
+            deuteriumRate(level) * production,
+            crystalRate(levels.EXTRACTOR) * production,
+            levels.VAULT,
+          )),
+          next: compact(deuteriumStorageCap(
+            deuteriumRate(next) * production,
+            crystalRate(levels.EXTRACTOR) * production,
+            levels.VAULT,
+          )),
+        }),
       };
   }
 }
@@ -359,13 +384,12 @@ export function instrumentGain(id: InstrumentId, level: number): Gain {
           maxed: true,
         };
       }
-      if (next < 3) {
+      if (next <= 2) {
         return {
-          label: i18n.t('gains.radar.scansLabel'),
-          now: level === 0 ? i18n.t('gains.radar.scansNo') : i18n.t('gains.radar.scansYes'),
-          next:
-            next === 1 ? i18n.t('gains.radar.scansYes') : i18n.t('gains.radar.scansBearing'),
-          ...(next === 1 ? { unlocks: i18n.t('gains.radar.l2l3') } : {}),
+          label: i18n.t('gains.radar.sweepLabel'),
+          now: radarReachWord(level),
+          next: radarReachWord(next),
+          unlocks: i18n.t(next === 1 ? 'gains.radar.l1' : 'gains.radar.bearing'),
         };
       }
       /**
@@ -381,7 +405,9 @@ export function instrumentGain(id: InstrumentId, level: number): Gain {
         label: i18n.t('gains.radar.sweepLabel'),
         now: radarReachWord(level),
         next: radarReachWord(next),
-        ...(next === 4
+        ...(next === 3
+          ? { unlocks: i18n.t('gains.radar.interception') }
+          : next === 4
           ? { unlocks: i18n.t('gains.radar.estimate') }
           : next === 5
             ? { unlocks: i18n.t('gains.radar.origin') }
@@ -393,7 +419,9 @@ export function instrumentGain(id: InstrumentId, level: number): Gain {
         label: i18n.t('gains.aegis.label'),
         now: full(shieldHp(level)),
         next: full(shieldHp(next)),
-        unlocks: i18n.t('gains.aegis.unlocks'),
+        unlocks: i18n.t('gains.aegis.unlocks', {
+          percent: Math.round(SHIELD.regenPerHour * 100),
+        }),
       };
     /**
      * A VEIL IS MEASURED AGAINST THE INSTRUMENTS POINTED AT IT.

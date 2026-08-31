@@ -314,7 +314,7 @@ function Mark({ of, incoming }: { of: FlightMark; incoming: boolean }) {
  *
  * Three rungs, in the order the ladder sells them, and each one replaces the line
  * below it rather than adding to it: the roster at L5, the size band at L4, and
- * the bare warning at L3. Returns null for anything that is not an inbound thread,
+ * the bare warning available from L1. Returns null for anything that is not an inbound thread,
  * so an owned craft falls through to its own manifest — which is free, because you
  * packed it.
  */

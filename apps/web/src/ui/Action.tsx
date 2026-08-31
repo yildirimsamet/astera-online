@@ -423,7 +423,7 @@ export function ResourceAmounts({
   resources,
   label,
 }: {
-  resources: { alloy: number; crystal: number };
+  resources: { alloy: number; crystal: number; deuterium?: number };
   label: string;
 }) {
   return (
@@ -437,6 +437,12 @@ export function ResourceAmounts({
           <Mark of="crystal" />
           {compact(resources.crystal)}
         </span>
+        {resources.deuterium !== undefined && (
+          <span className="price-part">
+            <Mark of="deuterium" />
+            {compact(resources.deuterium)}
+          </span>
+        )}
       </span>
     </span>
   );

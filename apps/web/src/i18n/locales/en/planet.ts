@@ -20,9 +20,9 @@ export const planet = {
     ready: "One charge loaded",
     build: "Load charge",
     started: "Charge loading",
-    hint: "Destroys one incoming Death Star on your timed Radar circle. Spent when it fires.",
+    hint: "Destroys the first Death Star that enters the timed Radar ring or is identified in Telescope sight. Spent when it fires.",
     readyHint:
-      "Armed. The next Death Star that crosses your Radar circle dies on it.",
+      "Armed. It destroys the next Death Star that enters the Radar interception ring or is identified in Telescope sight.",
     needResearch: "Interception Grid",
     needRadar: "Radar L{{level}}",
     needUplink: "Uplink in orbit",
@@ -60,13 +60,13 @@ export const planet = {
     effectFleet: "Destroys every ship and gun standing on the world",
     effectStock: "Destroys half of everything stored and in the works",
     effectCore:
-      "Takes one level off the Command Core, and anything the Core was holding up falls with it",
+      "Takes one level off the Command Core and lowers buildings above the new Core ceiling",
     effectAegis:
       "Takes {{levels}} levels off the Aegis, and drops the shield to nothing",
     effectDark:
-      "Stops production, collection, building and launching for {{duration}}",
+      "Stops production, collection, construction, new orders and launching for {{duration}}",
     effectSurvives:
-      "Every other building, all research and the rest of the orbit survive",
+      "Buildings within the new Core ceiling, all research and other orbital hardware survive",
   },
   tabs: {
     label: "Planet categories",
@@ -125,36 +125,36 @@ export const planet = {
       "The only stock a raid cannot touch. Everything above it is takeable.",
     shipyard:
       "Unlocks heavier hulls, builds them faster, and sharpens every probe you send.",
-    refinery: "Everything you build waits on this number.",
-    extractor: "Scarce. Gates the heavy hulls and every high building level.",
+    refinery: "Raises passive alloy production and alloy storage on this world.",
+    extractor: "Raises passive crystal production and crystal storage on this world.",
     coreCapped_one:
-      "{{count}} thing is stuck at the ceiling until this goes up.",
+      "{{count}} building upgrade is blocked until the Command Core is raised.",
     coreCapped_other:
-      "{{count}} things are stuck at the ceiling until this goes up.",
+      "{{count}} building upgrades are blocked until the Command Core is raised.",
     coreClear:
-      "Nothing may exceed the Core. It is the ceiling and construction throughput.",
+      "The Command Core sets building level ceilings and shortens construction and research time.",
   },
 
   defend: {
     strategicBand: "Strategic defence",
     strategicNote:
-      "One charge, fired along your timed Radar circle. It is the only counter to a Death Star.",
+      "One charge destroys the next Death Star detected by Radar 3 or identified in Telescope sight. The charge is spent when it fires.",
     shieldBand: "Shield",
     shieldNote:
-      "Aegis absorbs damage before it reaches your units; each level raises charge and recovery.",
+      "Aegis absorbs damage before it reaches your units and regenerates 35% of its maximum each hour.",
     groundBand: "On the ground",
     /* The figures moved into `CapacityBar`; the band keeps the RULE. */
     groundNote:
-      "They never leave. Each is strong against what the other is weak to.",
+      "Ground guns never leave the world. Thorns counter Bulwarks; Bastions counter Lances and Breachers.",
     thornNone:
-      "Light guns. They tear into heavy hulls, and Lances pick them off.",
+      "Light guns with an advantage against Bulwarks; vulnerable to Lances and Breachers.",
     thornStanding:
-      "{{count}} standing. Strong against heavies, weak to Lances.",
+      "{{count}} standing. Strong against Bulwarks; weak against Lances and Breachers.",
     thornGain: "Thorns",
     bastionNone:
-      "Heavy guns. They break Lances, and a swarm of Wasps overwhelms them.",
+      "Heavy guns with an advantage against Lances and Breachers; vulnerable to Wasps.",
     bastionStanding:
-      "{{count}} standing. Strong against Lances, weak to swarms. 60% of losses rebuild free.",
+      "{{count}} standing. Strong against Lances and Breachers; weak against Wasps. After combat, 60% of destroyed ground guns are restored, rounded down.",
     groundGain: "Ground units",
     aegisPointer: "A shield is hardware — the <0>{{name}}</0> is under Orbit.",
   },
@@ -190,7 +190,7 @@ export const planet = {
   reach: {
     orbitBand: "Operations satellites",
     orbitNote:
-      "Lift your Prospector or every fleet; each consumes one socket in the shared orbit network.",
+      "A Derrick improves this world’s Prospectors; a Beacon speeds its raid and transfer fleets. Each satellite uses one orbit slot.",
     frontierBand: "Frontier research",
     frontierNote:
       "Each project is researched once and uses Construction. A locked card states its unlock condition.",
@@ -209,7 +209,7 @@ export const planet = {
     gridName: "Interception Grid",
     gridTag: "Shoots down a Death Star",
     gridRole:
-      "Destroys one strategic weapon on your Radar circle · needs Radar 3 and an Uplink",
+      "A loaded charge destroys the next Death Star detected by Radar 3 or identified in Telescope sight · requires an Uplink",
     stockpileName: "Strategic Stockpile",
     stockpileTag: "Keep a second weapon on the pad",
     stockpileRole:
@@ -219,24 +219,24 @@ export const planet = {
     bulwarkDoctrineName: "Bulwark Doctrine",
     groundDoctrineName: "Emplacement Doctrine",
     generalName: "Weapons and Armour",
-    generalTag: "Improves every hull you fly",
+    generalTag: "Improves every hull you own",
     doctrineTag: "Better attack and armour",
     doctrineRole:
-      "Attack and armour together · all research combined is worth a quarter, against the 156% that knowing your enemy buys",
+      "Class and general bonuses stack, but their combined combat multiplier is capped at 25%. Class counters remain the larger advantage.",
     yardName: "Yard Automation",
     yardTag: "Builds ships faster",
     yardRole:
       "Shaves build time off every hull · the Shipyard still sets the curve",
     holdsName: "Prospector Holds",
     holdsTag: "Mining craft carry more",
-    holdsRole: "Multiplies with a Derrick · hardware and technique compound",
+    holdsRole: "Raises every Prospector hold and multiplies with the Derrick’s 2.6× capacity bonus",
     cargoName: "Cargo Holds",
     cargoTag: "Raids carry more home",
     cargoRole: "Raises what a fleet can loot · does not change world transfers",
     synthesisName: "Deuterium Synthesis",
     synthesisTag: "Raises the Refinery ceiling",
     synthesisRole:
-      "Each rung opens three more Deuterium Refinery levels · fuel starts here",
+      "Each rung opens three more Deuterium Refinery levels on every world you hold",
     deathStarName: "Death Star Protocol",
     deathStarTag: "Unlocks the Death Star",
     deathStarRole:
@@ -253,12 +253,12 @@ export const planet = {
     researchShieldInsight:
       "Have an Aegis absorb at least {{share}} of your raid damage",
     warshipsBand: "Warships",
-    warshipsNote: "These fight. Send them at another planet.",
+    warshipsNote: "These hulls attack and defend. Class matchups determine which targets they counter.",
     supportBand: "Support",
     supportNote:
-      "They never fight. Choose cheap capacity or a faster exposure window.",
+      "Haulers and Runners carry raid or transfer cargo but cannot attack. They remain protected only while combat hulls survive.",
     miningBand: "Mining",
-    miningNote: "Sent at an asteroid, not at a planet. Brings the ore home.",
+    miningNote: "Prospectors travel only to revealed asteroids or debris fields and return their haul to the Works.",
     ownedGain: "You have",
     prospectorLimit: "{{owned}} / {{max}} · limit",
   },
@@ -266,7 +266,7 @@ export const planet = {
   grow: {
     multiplierBand: "Production satellite",
     multiplierNote:
-      "The Foundry accelerates both ore streams and consumes one socket in the shared orbit network.",
+      "The Foundry raises this world’s alloy, crystal and Deuterium production by 6% and consumes one socket in the shared orbit network.",
   },
 
   projectSheet: {
@@ -285,7 +285,7 @@ export const planet = {
     maxed: "at its highest level",
     /** The one building with a second ceiling: its research rung. T5. */
     plantRung: "Research another rung of Deuterium Synthesis",
-    queueFull: "that build queue is full",
+    queueFull: "3 orders are already waiting. Finish or cancel one to add this.",
   },
 
   /** What a purchase says once it has landed. */

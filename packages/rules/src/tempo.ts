@@ -28,6 +28,8 @@ export const ECONOMY_TEMPO = {
   upgradePrice: 1.05,
   upgradeGrowth: 1.54,
   hullPrice: 1.25,
+  /** Crystal-bearing hulls pay an additional 15%; zero-Crystal hulls stay zero. */
+  hullCrystalPrice: 1.25 * 1.15,
   fixedPrice: 1.70,
   /** The Uplink is the information layer's entry door, not a passive multiplier. */
   gatewayPrice: 1.25,

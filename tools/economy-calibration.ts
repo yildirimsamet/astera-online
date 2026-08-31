@@ -60,6 +60,7 @@ interface EconomyProfile {
   readonly researchTimeMult: number;
   readonly buildCapMinutes: number;
   readonly hullPriceScale: number;
+  readonly hullCrystalPriceScale: number;
   readonly flatPriceScale: number;
   readonly gatewayPriceScale: number;
   readonly deuteriumPriceScale: number;
@@ -87,6 +88,7 @@ const BASELINE: EconomyProfile = {
   researchTimeMult: 4,
   buildCapMinutes: 360,
   hullPriceScale: 1,
+  hullCrystalPriceScale: 1,
   flatPriceScale: 1,
   gatewayPriceScale: 1,
   deuteriumPriceScale: 1,
@@ -153,6 +155,8 @@ const CANDIDATE: EconomyProfile = {
   researchTimeMult: 0.62,
   buildCapMinutes: 8 * 60,
   hullPriceScale: 1.25,
+  // Crystal-bearing hulls carry an additional contested-resource premium.
+  hullCrystalPriceScale: 1.15,
   flatPriceScale: 1.7,
   // The seeing layer's door remains affordable inside the opening grant.
   gatewayPriceScale: 1.25,
@@ -229,7 +233,12 @@ function buildMinutes(profile: EconomyProfile, cost: Resources, core: number): n
 }
 
 function hullCost(profile: EconomyProfile, id: HullId): Resources {
-  return scaledCost(BASE_HULL_COSTS[id], profile.hullPriceScale);
+  const base = BASE_HULL_COSTS[id];
+  return {
+    alloy: round(base.alloy * profile.hullPriceScale),
+    crystal: round(base.crystal * profile.hullPriceScale * profile.hullCrystalPriceScale),
+    deuterium: round(base.deuterium * profile.hullPriceScale),
+  };
 }
 
 function scaledCost(cost: Resources, scale: number): Resources {
@@ -817,6 +826,10 @@ function assertShippedCandidate(): void {
   if (BUILD.defBase !== CANDIDATE.defenceBase) mismatches.push('defenceBase');
   if (BUILD.researchTimeMult !== CANDIDATE.researchTimeMult) mismatches.push('researchTimeMult');
   if (BUILD.capMinutes !== CANDIDATE.buildCapMinutes) mismatches.push('buildCapMinutes');
+  if (ECONOMY_TEMPO.hullCrystalPrice
+    !== CANDIDATE.hullPriceScale * CANDIDATE.hullCrystalPriceScale) {
+    mismatches.push('hullCrystalPrice');
+  }
   if (!sameResources(PLANET_START, opening(CANDIDATE))) mismatches.push('openingGrant');
   for (const id of Object.keys(BASE_HULL_COSTS) as HullId[]) {
     if (!sameResources(HULLS[id], hullCost(CANDIDATE, id))) mismatches.push(`hull:${id}`);
@@ -859,7 +872,8 @@ console.log(
   `candidate: income ${ratio(CANDIDATE.alloyBase, BASELINE.alloyBase)}`
   + ` · upgrade base ${ratio(CANDIDATE.costBase, BASELINE.costBase)}`
   + ` · growth ${CANDIDATE.costMult.toFixed(2)}`
-  + ` · hull price ${CANDIDATE.hullPriceScale.toFixed(2)}x`,
+  + ` · hull price ${CANDIDATE.hullPriceScale.toFixed(2)}x`
+  + ` · hull Crystal ${CANDIDATE.hullCrystalPriceScale.toFixed(2)}x extra`,
 );
 console.log(
   `opening grant: ${format(BASE_PLANET_START.alloy)}/${format(BASE_PLANET_START.crystal)}`

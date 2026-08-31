@@ -468,12 +468,13 @@ describe('predicting research', () => {
     const after = predictResearch(view, 'ISOTOPE_SPECTROMETRY');
     expect(after?.research.find((project) => project.id === 'ISOTOPE_SPECTROMETRY')?.completed)
       .toBe(false);
-    expect(lastOrder(after, 'CONSTRUCTION')).toMatchObject({
-      kind: 'RESEARCH',
-      subject: 'ISOTOPE_SPECTROMETRY',
-      count: 1,
+    expect(after?.researchQueue?.at(-1)).toMatchObject({
+      projectId: 'ISOTOPE_SPECTROMETRY',
+      level: 1,
       cost: view.research[0]?.cost,
     });
+    expect(after?.queues?.CONSTRUCTION ?? []).toEqual(view.queues?.CONSTRUCTION ?? []);
+    expect(after?.queues?.YARD ?? []).toEqual(view.queues?.YARD ?? []);
   });
 
   /**
@@ -510,11 +511,9 @@ describe('predicting research', () => {
     );
 
     const after = predictResearch(view, 'CARGO_HOLDS');
-    expect(lastOrder(after, 'CONSTRUCTION')).toMatchObject({
-      kind: 'RESEARCH',
-      subject: 'CARGO_HOLDS',
-      // The order's `count` IS the rung, which is how the server records it.
-      count: 3,
+    expect(after?.researchQueue?.at(-1)).toMatchObject({
+      projectId: 'CARGO_HOLDS',
+      level: 3,
       cost: third,
     });
     expect(after?.planet.alloy).toBe(view.planet.alloy - third.alloy);
@@ -541,27 +540,22 @@ describe('predicting research', () => {
               queueAvailable: true,
             }
           : project),
-        queues: {
-          CONSTRUCTION: [{
+        researchQueue: [{
             id: 'queued-cargo',
-            queue: 'CONSTRUCTION',
             slot: 0,
-            kind: 'RESEARCH',
-            subject: 'CARGO_HOLDS',
-            count: 1,
+            projectId: 'CARGO_HOLDS',
+            level: 1,
             startedAt: new Date('2026-08-24T10:00:00.000Z'),
             finishesAt: new Date('2026-08-24T10:01:00.000Z'),
             cost: RESEARCH_PROJECTS.CARGO_HOLDS.costAt(1),
-          }],
-          YARD: [],
-        },
+        }],
       },
       { alloy: 500_000, crystal: 500_000, deuterium: 500_000 },
     );
 
     const after = predictResearch(view, 'CARGO_HOLDS');
-    expect(lastOrder(after, 'CONSTRUCTION')).toMatchObject({
-      count: 2,
+    expect(after?.researchQueue?.at(-1)).toMatchObject({
+      level: 2,
       cost: RESEARCH_PROJECTS.CARGO_HOLDS.costAt(2),
     });
   });
@@ -615,26 +609,21 @@ describe('predicting research', () => {
         research: planetView().research.map((project) => project.id === 'DENSE_FUEL_CELLS'
           ? { ...project, queueDiscovered: true, queueAvailable: true }
           : project),
-        queues: {
-          CONSTRUCTION: [{
+        researchQueue: [{
             id: 'queued-isotope',
-            queue: 'CONSTRUCTION',
             slot: 0,
-            kind: 'RESEARCH',
-            subject: 'ISOTOPE_SPECTROMETRY',
-            count: 1,
+            projectId: 'ISOTOPE_SPECTROMETRY',
+            level: 1,
             startedAt: new Date('2026-08-24T10:00:00.000Z'),
             finishesAt: new Date('2026-08-24T10:01:00.000Z'),
             cost: RESEARCH_PROJECTS.ISOTOPE_SPECTROMETRY.costAt(1),
-          }],
-          YARD: [],
-        },
+        }],
       },
       { alloy: 500_000, crystal: 500_000, deuterium: 500_000 },
     );
 
     const after = predictResearch(base, 'DENSE_FUEL_CELLS');
-    expect(after?.queues?.CONSTRUCTION.map((order) => order.subject)).toEqual([
+    expect(after?.researchQueue?.map((order) => order.projectId)).toEqual([
       'ISOTOPE_SPECTROMETRY',
       'DENSE_FUEL_CELLS',
     ]);

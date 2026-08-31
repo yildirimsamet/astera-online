@@ -163,12 +163,17 @@ defenceSalvage 0.60 · lootBufferShare 0.50 · engagementSeconds 10
 | Breacher | Lance | 55 | 300 | 78 | 0 | 1,250 | 550 | 200 | 3 | 4,125 |
 | Bastion | Bulwark · ground | 118 | 906 | — | — | 2,400 | 800 | 0 | 1 | 10,440 |
 | Thorn | Skirmisher · ground | 49 | 174 | — | — | 700 | 200 | 0 | 0 | 10,526 |
-| Prospector | Support · mining | 0 | 150 | 825 | 1,800 | 650 | 200 | 0 | 1 | — |
+| Prospector | Support · mining | 0 | 150 | 825 | 300 | 650 | 200 | 0 | 1 | — |
 
 **The table is priced on `atk · hp / value²`** — equal-budget power when damage is spread across a
 force. Not attack-per-resource, which is the quantity that made the old Bulwark lose every
 equal-budget matchup including against the Lance it counters. **A tech tier buys about 15%; the
 counter cycle buys 156%.** Information beats tech, by construction.
+
+These are the design-baseline prices used for the equal-budget derivation. The active tempo applies
+`1.25×` to ordinary hull resources and, by owner instruction, an additional `1.15×` to the Crystal
+component of every Crystal-bearing hull. A zero-Crystal hull such as the Wasp remains at zero; this
+is a resource-mix adjustment, not permission to silently change combat stats.
 
 Ground hulls are paid 1.6× for never leaving: they cannot loot and cannot take Dominion. The two sit
 in **opposite counter classes** so that "how much defence" becomes "what *kind*" — a question only the
@@ -400,10 +405,13 @@ spawn         0.030 per player per hour — 9/h and ~34 rocks visible at 300 pla
 orbit         radius 400–1900, closed 3D orbit, constant speed 350–750 units/min
 life          2.5–5 hours, then gone for good
 ore by level  [—, 800, 1600, 3200, 6000, 11000]   weights [—, .40, .27, .18, .10, .05]
-crystal share 0.25–0.65, rolled per rock
+crystal share 0.175–0.455, rolled per rock (30% below the former 0.25–0.65 band)
 isotope       one seeded rock per 9 after hour 35, plus a bonus seam every 10 lanes
               10–25% Deuterium concentration, replacing Alloy; Crystal share remains intact
 ```
+
+The Crystal reduction does not reduce total ore. The removed share becomes Alloy; isotope
+concentration still replaces Alloy independently after the Alloy/Crystal split.
 
 **Spawn is per-capita or mining dies at scale.** A flat rate tuned at 50 players is six times thinner
 at 300 and the field becomes irrelevant. At 0.030 a contesting commander draws about a quarter of a

@@ -22,6 +22,7 @@ import {
   instrumentMaxed,
   interceptionRange,
   plantCeiling,
+  productionMult,
   satelliteSlots,
   satelliteCost,
   type BuildingId,
@@ -2021,6 +2022,9 @@ function Grow({ planet, held, income, focused, flashed, onNeed, onFlash, onOpen 
   const extractor = building('EXTRACTOR', buildingName('EXTRACTOR'), noop);
   const plant = building('DEUTERIUM_PLANT', buildingName('DEUTERIUM_PLANT'), onNeed);
   const capped = cappedCountOf(core.projectedLevels);
+  const production = productionMult(
+    projectedQueueState(planet, 'CONSTRUCTION').effectiveOrbit,
+  );
 
   return (
     <>
@@ -2080,6 +2084,7 @@ function Grow({ planet, held, income, focused, flashed, onNeed, onFlash, onOpen 
           refinery.actionLevel,
           capped,
           refinery.projectedLevels,
+          production,
         )}
         cost={refinery.cost}
         held={held}
@@ -2118,6 +2123,7 @@ function Grow({ planet, held, income, focused, flashed, onNeed, onFlash, onOpen 
           extractor.actionLevel,
           capped,
           extractor.projectedLevels,
+          production,
         )}
         cost={extractor.cost}
         held={held}
@@ -2164,6 +2170,7 @@ function Grow({ planet, held, income, focused, flashed, onNeed, onFlash, onOpen 
           plant.actionLevel,
           cappedCountOf(plant.projectedLevels),
           plant.projectedLevels,
+          production,
         )}
         cost={plant.cost}
         held={held}

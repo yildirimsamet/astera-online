@@ -386,12 +386,12 @@ describe('the reach surface', () => {
 
   it('says a Prospector is aimed at a rock rather than at a person', () => {
     show({ buildings: { CORE: 9, REFINERY: 3, EXTRACTOR: 3, VAULT: 1, SHIPYARD: 6 } }, 'reach');
-    expect(screen.getByText(/sent at an asteroid, not at a planet/i)).toBeInTheDocument();
+    expect(screen.getByText(/only to revealed asteroids or debris fields/i)).toBeInTheDocument();
   });
 
   it('tags every hull with what it is', () => {
     show({ buildings: { CORE: 9, REFINERY: 3, EXTRACTOR: 3, VAULT: 1, SHIPYARD: 6 } }, 'reach');
-    for (const tag of ['Cheap, fast attacker', 'Hits the hardest', 'Slow and tough', 'Breaks active shields', 'Carries the loot home', 'Fast strike cargo', 'Mines asteroids']) {
+    for (const tag of ['Cheap, fast attacker', 'Counters light craft', 'Slow and tough', 'Breaks active shields', 'Carries the loot home', 'Fast strike cargo', 'Mines asteroids']) {
       expect(screen.getByText(tag), `${tag} is missing`).toBeInTheDocument();
     }
   });
@@ -404,7 +404,7 @@ describe('the reach surface', () => {
     show({ buildings: { CORE: 9, REFINERY: 3, EXTRACTOR: 3, VAULT: 1, SHIPYARD: 6 }, orbit: [] }, 'reach');
     expect(screen.queryByText(/needs a drill/i)).toBeNull();
     expect(screen.getByRole('heading', { name: 'Derrick' })).toBeInTheDocument();
-    expect(screen.getByText(/sent at an asteroid, not at a planet/i)).toBeInTheDocument();
+    expect(screen.getByText(/only to revealed asteroids or debris fields/i)).toBeInTheDocument();
   });
 });
 

@@ -98,7 +98,7 @@ const P = {
     asteroidLifeHoursMin: 2.5, asteroidLifeHoursMax: 5,
     asteroidOreByLevel: [0, 800, 1600, 3200, 6000, 11000],
     asteroidLevelWeights: [0, 0.40, 0.27, 0.18, 0.10, 0.05],
-    asteroidCrystalShareMin: 0.25, asteroidCrystalShareMax: 0.65,
+    asteroidCrystalShareMin: 0.175, asteroidCrystalShareMax: 0.455,
     neutralPerPlayer: { 1: 0.10, 2: 0.05, 3: 0.02 },
   },
 
@@ -190,7 +190,7 @@ const HULLS = {
   BREACHER:   { cls:'LANCE',      atk:  55, hp: 300, speed: 78, cargo:   0, alloy:1250, crystal: 550, deuterium:200, minShipyard:3, ground:false, research:'GRAVITIC_CHARGES' },
   BASTION:    { cls:'BULWARK',    atk: 118, hp: 906, speed:  0, cargo:   0, alloy:2400, crystal: 800, deuterium:  0, minShipyard:1, ground:true,  research:null },
   THORN:      { cls:'SKIRMISHER', atk:  49, hp: 174, speed:  0, cargo:   0, alloy: 700, crystal: 200, deuterium:  0, minShipyard:0, ground:true,  research:null },
-  PROSPECTOR: { cls:'SUPPORT',    atk:   0, hp: 150, speed:825, cargo:1800, alloy: 650, crystal: 200, deuterium:  0, minShipyard:1, ground:false, research:null },
+  PROSPECTOR: { cls:'SUPPORT',    atk:   0, hp: 150, speed:825, cargo: 300, alloy: 650, crystal: 200, deuterium:  0, minShipyard:1, ground:false, research:null },
 };
 
 const RESEARCH = {

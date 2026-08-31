@@ -1,5 +1,9 @@
 export type SignalRgb = readonly [red: number, green: number, blue: number];
 
+/** The contour stays in the resource palette; green remains reserved for isotope ore. */
+export const asteroidRimColour = (isotopeRich: boolean): string =>
+  isotopeRich ? '#8eea36' : '#d9a441';
+
 /**
  * Public isotope anomalies use Deuterium's neon-green signature on body and trail.
  * Exact composition remains hidden by the API until Spectrometry; colour only

@@ -50,6 +50,9 @@ pnpm sim -- --players=200 --seed=7
 pnpm --filter @astera/server db:generate   # after a schema change
 ```
 
+The root `pnpm lint` script runs type-aware ESLint with a 4 GB Node heap. Use that command instead
+of invoking `eslint .` directly; the full workspace can exhaust Node's 2 GB default heap.
+
 ### Playing it
 
 A galaxy has to exist before anyone can join one.

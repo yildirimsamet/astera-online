@@ -8,6 +8,7 @@ import { ApiProvider } from '../src/api/context.js';
 import i18n from '../src/i18n/index.js';
 import { LeaderboardScreen } from '../src/screens/LeaderboardScreen.js';
 import { planetArt } from '../src/ui/assets.js';
+import { ToastProvider } from '../src/ui/Toast.js';
 
 const rows = Array.from({ length: 100 }, (_, index) => ({
   rank: index + 1,
@@ -26,7 +27,9 @@ async function show(language = 'en') {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   client.setQueryData(['leaderboard'], { ladder: rows, you: rows[42] });
   const Wrapper = ({ children }: { children: ReactNode }) => (
-    <QueryClientProvider client={client}><ApiProvider api={api}>{children}</ApiProvider></QueryClientProvider>
+    <QueryClientProvider client={client}>
+      <ApiProvider api={api}><ToastProvider>{children}</ToastProvider></ApiProvider>
+    </QueryClientProvider>
   );
   const onFocusPlanet = vi.fn();
   render(<Wrapper><LeaderboardScreen onFocusPlanet={onFocusPlanet} /></Wrapper>);
@@ -62,11 +65,14 @@ describe('the Dominion leaderboard', () => {
     expect(screen.queryByRole('button', { name: 'İzci' })).not.toBeInTheDocument();
   });
 
-  it('does not expose or link an UNKNOWN commander capital', async () => {
+  it('warns instead of focusing when an UNKNOWN commander location has not been discovered', async () => {
     const onFocusPlanet = await show();
     expect(screen.getByText('Commander 1')).toBeVisible();
     expect(screen.queryByText('World 1')).not.toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: 'Commander 1' })).not.toBeInTheDocument();
+    await userEvent.setup().click(screen.getByRole('button', { name: 'Commander 1' }));
+    expect(screen.getByRole('alert')).toHaveTextContent(
+      "You haven't discovered this commander's location yet.",
+    );
     expect(onFocusPlanet).not.toHaveBeenCalled();
   });
 
@@ -83,7 +89,13 @@ describe('the Dominion leaderboard', () => {
     expect(screen.getByText('İzci')).toBeInTheDocument();
     expect(screen.getByText(/World 42 · 3\. kademe/)).toBeInTheDocument();
 
-    await userEvent.setup().type(screen.getByRole('searchbox'), 'izci');
+    const user = userEvent.setup();
+    await user.click(screen.getByRole('button', { name: 'Commander 1' }));
+    expect(screen.getByRole('alert')).toHaveTextContent(
+      'Bu kişinin konumunu henüz keşfetmediniz.',
+    );
+
+    await user.type(screen.getByRole('searchbox'), 'izci');
     expect(screen.getAllByRole('listitem')).toHaveLength(1);
     expect(screen.getByText('İzci')).toBeVisible();
   });

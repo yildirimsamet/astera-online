@@ -82,8 +82,8 @@ export function WorldsPanel({
   onSelect: (planetId: string) => void;
   /** Open a transfer without disturbing the active world. */
   onTransfer: (originPlanetId: string, targetPlanetId: string) => void;
-  /** What the disc icon used to do on its own. Nothing was taken away. */
-  onCentre: () => void;
+  /** Centre and semantically focus the active world, ready for its management tap. */
+  onCentre: (planetId: string) => void;
   onClose: () => void;
 }) {
   const { t } = useTranslation();
@@ -107,7 +107,13 @@ export function WorldsPanel({
   return (
     <Sheet eyebrow={t('worlds.eyebrow')} title={t('worlds.title')} onClose={onClose}>
       <div className="pt-0 mb-2">
-        <Button variant="ghost" size="sm" onClick={onCentre}>
+        <Button
+          variant="ghost"
+          size="sm"
+          disabled={activePlanetId === null}
+          onClick={() => { if (activePlanetId !== null) onCentre(activePlanetId); }}
+          className="ml-auto block"
+        >
           {t('worlds.centre')}
         </Button>
       </div>

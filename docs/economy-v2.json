@@ -1,6 +1,6 @@
 {
   "$schema": "astera-economy/v2",
-  "generatedAt": "2026-08-25",
+  "generatedAt": "2026-08-31",
   "note": "From-scratch 14-day seasonal PvP economy. Replaces packages/rules/src/constants.ts. Every number here is derived; see docs/balance.md for the formula behind each one.",
   "formulas": {
     "production": "rate(L) = base * L * growth^L   per hour",
@@ -188,8 +188,8 @@
         0.1,
         0.05
       ],
-      "asteroidCrystalShareMin": 0.25,
-      "asteroidCrystalShareMax": 0.65,
+      "asteroidCrystalShareMin": 0.175,
+      "asteroidCrystalShareMax": 0.455,
       "neutralPerPlayer": {
         "1": 0.1,
         "2": 0.05,
@@ -1940,7 +1940,7 @@
       "atk": 0,
       "hp": 150,
       "speed": 825,
-      "cargo": 1800,
+      "cargo": 300,
       "alloy": 650,
       "crystal": 200,
       "deuterium": 0,

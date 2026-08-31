@@ -6,7 +6,7 @@ import { loadEnv, type Env } from '../src/env.js';
 import { FixedClock } from '../src/clock.js';
 import { createSeason } from '../src/services/season.js';
 import { joinSeason } from '../src/services/player.js';
-import { accounts, buildOrders, scheduledEvents } from '../src/db/schema.js';
+import { accounts, buildOrders, researchOrders, scheduledEvents } from '../src/db/schema.js';
 import { engagementEndsAt, type AsteroidSpec } from '@astera/rules';
 import { applyBuildCompletion } from '../src/services/buildQueue.js';
 import { privateAsteroidField } from '../src/services/asteroidField.js';
@@ -78,7 +78,7 @@ export async function truncateAll(db: Db): Promise<void> {
              clan_aid_commitments, clan_messages, clan_events, clan_requests,
              clan_ceasefires, clan_memberships, clans,
              strategic_interceptions, strategic_impacts, battle_reports,
-             scheduled_events, build_orders, strategic_assets, missions, mining_runs,
+             scheduled_events, research_orders, build_orders, strategic_assets, missions, mining_runs,
              asteroid_claims, units,
              sensor_epochs, satellites, buildings, planet_research, player_research,
              neutral_planet_state, planets, players,
@@ -119,7 +119,36 @@ export async function settleBuilds(fixture: Fixture, planetId?: string): Promise
       ))
       .orderBy(asc(buildOrders.readyAt))
       .limit(1);
-    if (!order) return;
+    if (!order) {
+      const [research] = await fixture.db
+        .select()
+        .from(researchOrders)
+        .where(and(
+          eq(researchOrders.status, 'BUILDING'),
+          ...(planetId ? [eq(researchOrders.fundingPlanetId, planetId)] : []),
+        ))
+        .orderBy(asc(researchOrders.readyAt))
+        .limit(1);
+      if (!research) return;
+      if (research.readyAt > fixture.clock.now()) fixture.clock.set(research.readyAt);
+      const { applyResearchCompletion } = await import('../src/services/research.js');
+      await fixture.db.transaction(async (tx) => {
+        await applyResearchCompletion(
+          tx,
+          research.id,
+          research.readyAt.toISOString(),
+          fixture.clock,
+        );
+        await tx
+          .update(scheduledEvents)
+          .set({ status: 'done', claimedAt: null })
+          .where(and(
+            eq(scheduledEvents.kind, 'research_complete'),
+            eq(scheduledEvents.refId, research.id),
+          ));
+      });
+      continue;
+    }
     if (order.readyAt > fixture.clock.now()) fixture.clock.set(order.readyAt);
     await fixture.db.transaction(async (tx) => {
       await applyBuildCompletion(tx, order.id, order.readyAt.toISOString(), fixture.clock);

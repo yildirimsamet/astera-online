@@ -1699,13 +1699,12 @@ export const GALAXY = {
   /**
    * Share of a rock's ore that comes back as crystal, rolled per asteroid.
    *
-   * Deliberately wide. Crystal is the scarce resource that gates every heavy hull
-   * and every high building level, so a crystal-rich rock is worth flying past two
-   * closer ones for — and that is a decision the player can only make if the rocks
-   * differ from each other.
+   * Deliberately wide. The original 25–65% band is reduced by 30% while preserving
+   * its shape: rocks still differ enough to create a route choice, but contested
+   * mining supplies less of the scarce resource than passive Extractors do.
    */
-  asteroidCrystalShareMin: 0.25,
-  asteroidCrystalShareMax: 0.65,
+  asteroidCrystalShareMin: 0.175,
+  asteroidCrystalShareMax: 0.455,
 } as const;
 
 /**

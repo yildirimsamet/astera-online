@@ -5,13 +5,14 @@ import { DEUTERIUM, HULLS, RESEARCH_PROJECTS } from '@astera/rules';
 import { atMinute } from '../src/clock.js';
 import {
   battleReports,
-  buildOrders,
   miningRuns,
   missions,
   planetResearch,
   playerResearch,
   planets,
   probeReports,
+  researchOrders,
+  scheduledEvents,
 } from '../src/db/schema.js';
 import { buildUnits, upgradeBuilding } from '../src/services/build.js';
 import { launchAttack } from '../src/services/mission.js';
@@ -19,10 +20,12 @@ import { launchProbe } from '../src/services/intel.js';
 import { launchMining, visibleAsteroids } from '../src/services/mining.js';
 import { transferPlanetControl } from '../src/services/ownership.js';
 import { planetView } from '../src/services/planetView.js';
-import { completeResearch } from '../src/services/research.js';
+import { cancelResearchOrder, completeResearch } from '../src/services/research.js';
+import { projectedResearchLevels } from '../src/services/researchQueue.js';
 import { researchView } from '../src/services/researchState.js';
 import { loadLocked } from '../src/services/planet.js';
 import { EventWorker } from '../src/worker/loop.js';
+import { strandedBuildCount, sweepStranded } from '../src/worker/abandon.js';
 import {
   giveResearch,
   giveUnits,
@@ -97,8 +100,9 @@ describe('the seasonal frontier', () => {
       completed: false,
       available: true,
     });
-    expect(result.planet.queues.CONSTRUCTION).toEqual([
-      expect.objectContaining({ kind: 'RESEARCH', subject: 'ISOTOPE_SPECTROMETRY' }),
+    expect(result.planet.queues.CONSTRUCTION).toEqual([]);
+    expect(result.planet.researchQueue).toEqual([
+      expect.objectContaining({ projectId: 'ISOTOPE_SPECTROMETRY' }),
     ]);
     await settleBuilds(f, mine);
     const completed = await f.db.transaction((tx) => planetView(tx, mine, f.clock));
@@ -178,7 +182,7 @@ describe('the seasonal frontier', () => {
       });
 
     const dense = await completeResearch(f.db, mine, 'DENSE_FUEL_CELLS', f.clock);
-    expect(dense.planet.queues.CONSTRUCTION.map((order) => order.subject)).toEqual([
+    expect(dense.planet.researchQueue.map((order) => order.projectId)).toEqual([
       'ISOTOPE_SPECTROMETRY',
       'DENSE_FUEL_CELLS',
     ]);
@@ -406,17 +410,18 @@ describe('research is held by the commander', () => {
     ).rejects.toMatchObject({ code: 'RESEARCH_ALREADY_COMPLETE' });
   });
 
-  /**
-   * ONE PROJECT AT A TIME, ACROSS THE WHOLE COMMANDER. Otherwise a third colony is
-   * a third research slot, and the ladder is bought three times as fast by whoever
-   * settled most — wealth buying progress, which is the thing D2 refuses.
-   */
-  it('refuses a second project while one is already running elsewhere', async () => {
+  it('uses one shared commander queue when another world funds the next project', async () => {
     await completeResearch(f.db, capital, 'ISOTOPE_SPECTROMETRY', f.clock);
+    const result = await completeResearch(f.db, colony, 'DEUTERIUM_SYNTHESIS', f.clock);
 
-    await expect(
-      completeResearch(f.db, colony, 'ISOTOPE_SPECTROMETRY', f.clock),
-    ).rejects.toMatchObject({ code: 'RESEARCH_SLOT_BUSY' });
+    expect(result.planet.researchQueue.map((order) => order.projectId)).toEqual([
+      'ISOTOPE_SPECTROMETRY',
+      'DEUTERIUM_SYNTHESIS',
+    ]);
+    const capitalView = await f.db.transaction((tx) => planetView(tx, capital, f.clock));
+    expect(capitalView.researchQueue).toEqual(result.planet.researchQueue);
+    expect(result.planet.queues.CONSTRUCTION).toEqual([]);
+    expect(result.planet.queues.YARD).toEqual([]);
   });
 
   it('lets exactly one of two worlds win a simultaneous start', async () => {
@@ -427,13 +432,11 @@ describe('research is held by the commander', () => {
 
     expect(results.filter((r) => r.status === 'fulfilled')).toHaveLength(1);
     const lost = results.find((r) => r.status === 'rejected');
-    // The loser is refused for the SLOT or for the project already being paid for;
-    // which of the two depends on how far the winner got, and either is correct.
     const reason: unknown = lost?.status === 'rejected' ? lost.reason : undefined;
     const code = typeof reason === 'object' && reason !== null && 'code' in reason
       ? reason.code
       : undefined;
-    expect(['RESEARCH_SLOT_BUSY', 'RESEARCH_ALREADY_COMPLETE']).toContain(code);
+    expect(code).toBe('RESEARCH_ALREADY_COMPLETE');
   });
 
   it('opens the slot again once the project lands', async () => {
@@ -762,12 +765,9 @@ describe('weapon doctrines', () => {
 /**
  * A CAPTURED WORLD DOES NOT HAND OVER ITS OWNER'S RESEARCH. T7.
  *
- * Build orders survive a capture, which is accepted: a half-built Refinery is the
- * world's own scaffolding and it comes with the world. A RESEARCH order is not.
- * Since T7 it completes into `player_research` keyed on whoever controls the world
- * at that moment — so a captured colony would have handed the captor a permanent,
- * commander-wide ladder rung the loser paid for, on every one of their worlds, for
- * the rest of the season.
+ * A research order belongs to its commander; the selected world only funded it.
+ * Capturing that world must therefore neither cancel the project nor hand it to
+ * the captor.
  */
 describe('capturing a world that was researching', () => {
   let f: Fixture;
@@ -784,12 +784,15 @@ describe('capturing a world that was researching', () => {
     await grant(f.db, colony, 400_000, 150_000);
   });
 
-  it('cancels the project rather than delivering it to the captor', async () => {
+  it('keeps the project with its commander after the funding world is captured', async () => {
     await completeResearch(f.db, colony, 'DEUTERIUM_SYNTHESIS', f.clock);
     const queued = await f.db
       .select()
-      .from(buildOrders)
-      .where(and(eq(buildOrders.planetId, colony), eq(buildOrders.status, 'BUILDING')));
+      .from(researchOrders)
+      .where(and(
+        eq(researchOrders.fundingPlanetId, colony),
+        eq(researchOrders.status, 'BUILDING'),
+      ));
     expect(queued).toHaveLength(1);
 
     await f.db.transaction((tx) =>
@@ -802,12 +805,19 @@ describe('capturing a world that was researching', () => {
       }),
     );
 
-    const after = await f.db.select().from(buildOrders).where(eq(buildOrders.planetId, colony));
-    expect(after.map((row) => row.status)).toEqual(['CANCELLED']);
+    const after = await f.db
+      .select()
+      .from(researchOrders)
+      .where(eq(researchOrders.fundingPlanetId, colony));
+    expect(after.map((row) => row.status)).toEqual(['BUILDING']);
 
-    // And neither commander walks away holding the rung.
     await settleBuilds(f, colony);
-    expect(await f.db.select().from(playerResearch)).toHaveLength(0);
+    const [held] = await f.db.select().from(playerResearch);
+    expect(held).toMatchObject({
+      playerId: f.playerIds[0],
+      projectId: 'DEUTERIUM_SYNTHESIS',
+      level: 1,
+    });
   });
 });
 
@@ -926,15 +936,17 @@ describe('queueing two rungs of one ladder', () => {
   });
 
   // Live orders only: a cancelled one keeps its row, marked CANCELLED.
-  const orders = async () => (await f.db.select().from(buildOrders)
-    .where(and(eq(buildOrders.planetId, mine), eq(buildOrders.status, 'BUILDING'))))
-    .filter((row) => row.kind === 'RESEARCH');
+  const orders = async () => f.db.select().from(researchOrders)
+    .where(and(
+      eq(researchOrders.fundingPlanetId, mine),
+      eq(researchOrders.status, 'BUILDING'),
+    ));
 
   it('stamps the second order with the second rung', async () => {
     await completeResearch(f.db, mine, 'DEUTERIUM_SYNTHESIS', f.clock);
     await completeResearch(f.db, mine, 'DEUTERIUM_SYNTHESIS', f.clock);
 
-    expect((await orders()).map((row) => row.count).sort()).toEqual([1, 2]);
+    expect((await orders()).map((row) => row.level).sort()).toEqual([1, 2]);
   });
 
   it('charges the second rung its own price', async () => {
@@ -967,9 +979,8 @@ describe('queueing two rungs of one ladder', () => {
     await completeResearch(f.db, mine, 'DEUTERIUM_SYNTHESIS', f.clock);
     const state = await f.db.transaction(async (tx) => {
       const planet = await loadLocked(tx, mine, f.clock);
-      const { buildQueueContext } = await import('../src/services/buildQueue.js');
-      const context = await buildQueueContext(tx, planet, 'CONSTRUCTION');
-      return (await researchView(tx, planet, context.projected.research))
+      const projected = await projectedResearchLevels(tx, planet.playerId);
+      return (await researchView(tx, planet, projected))
         .find((row) => row.id === 'DEUTERIUM_SYNTHESIS')!;
     });
 
@@ -989,7 +1000,7 @@ describe('queueing two rungs of one ladder', () => {
     await completeResearch(f.db, mine, 'DEUTERIUM_SYNTHESIS', f.clock);
 
     await expect(completeResearch(f.db, mine, 'DEUTERIUM_SYNTHESIS', f.clock))
-      .rejects.toMatchObject({ code: 'RESEARCH_UNAVAILABLE' });
+      .rejects.toMatchObject({ code: 'RESEARCH_ALREADY_COMPLETE' });
   });
 
   /**
@@ -1004,10 +1015,9 @@ describe('queueing two rungs of one ladder', () => {
   it('refuses to cancel the rung below while the rung above is queued', async () => {
     await completeResearch(f.db, mine, 'DEUTERIUM_SYNTHESIS', f.clock);
     await completeResearch(f.db, mine, 'DEUTERIUM_SYNTHESIS', f.clock);
-    const first = (await orders()).find((row) => row.count === 1)!;
+    const first = (await orders()).find((row) => row.level === 1)!;
 
-    const { cancelBuildOrder } = await import('../src/services/buildQueue.js');
-    await expect(cancelBuildOrder(f.db, mine, first.id, f.clock))
+    await expect(cancelResearchOrder(f.db, mine, first.id, f.clock))
       .rejects.toMatchObject({ code: 'BUILD_ORDER_HAS_DEPENDENTS' });
   });
 
@@ -1015,13 +1025,57 @@ describe('queueing two rungs of one ladder', () => {
   it('lets the rungs be cancelled from the top down', async () => {
     await completeResearch(f.db, mine, 'DEUTERIUM_SYNTHESIS', f.clock);
     await completeResearch(f.db, mine, 'DEUTERIUM_SYNTHESIS', f.clock);
-    const { cancelBuildOrder } = await import('../src/services/buildQueue.js');
-
-    const second = (await orders()).find((row) => row.count === 2)!;
-    await cancelBuildOrder(f.db, mine, second.id, f.clock);
-    const first = (await orders()).find((row) => row.count === 1)!;
-    await cancelBuildOrder(f.db, mine, first.id, f.clock);
+    const second = (await orders()).find((row) => row.level === 2)!;
+    await cancelResearchOrder(f.db, mine, second.id, f.clock);
+    const first = (await orders()).find((row) => row.level === 1)!;
+    await cancelResearchOrder(f.db, mine, first.id, f.clock);
 
     expect(await orders()).toHaveLength(0);
+  });
+});
+
+describe('research queue recovery', () => {
+  let f: Fixture;
+  let mine: string;
+
+  beforeEach(async () => {
+    f = await seedWorld();
+    [mine] = f.planetIds as [string];
+    await setLevel(f.db, mine, 'CORE', 12);
+    await grant(f.db, mine, 5_000_000, 5_000_000);
+    await f.db.update(planets).set({ deuterium: 500_000 }).where(eq(planets.id, mine));
+  });
+
+  it('moves the next project to now when the running project is cancelled', async () => {
+    await completeResearch(f.db, mine, 'DEUTERIUM_SYNTHESIS', f.clock);
+    await completeResearch(f.db, mine, 'CARGO_HOLDS', f.clock);
+    const before = await f.db.select().from(researchOrders)
+      .where(eq(researchOrders.status, 'BUILDING'))
+      .orderBy(researchOrders.slot);
+    const half = Math.floor(before[0]!.remainingSeconds / 2);
+    f.clock.advance(half / 60);
+
+    await cancelResearchOrder(f.db, mine, before[0]!.id, f.clock);
+
+    const [next] = await f.db.select().from(researchOrders)
+      .where(eq(researchOrders.status, 'BUILDING'));
+    expect(next).toMatchObject({ slot: 0, startedAt: f.clock.now() });
+    expect(next!.readyAt.getTime()).toBe(
+      f.clock.now().getTime() + next!.remainingSeconds * 1_000,
+    );
+  });
+
+  it('detects and fully refunds overdue research whose event disappeared', async () => {
+    const [before] = await f.db.select().from(planets).where(eq(planets.id, mine));
+    await completeResearch(f.db, mine, 'DEUTERIUM_SYNTHESIS', f.clock);
+    const [order] = await f.db.select().from(researchOrders);
+    await f.db.delete(scheduledEvents).where(eq(scheduledEvents.refId, order!.id));
+    f.clock.set(new Date(order!.readyAt.getTime() + 6 * 60_000));
+
+    expect(await strandedBuildCount(f.db, f.clock.now())).toBe(1);
+    expect(await sweepStranded(f.db, f.clock)).toBe(1);
+    const [after] = await f.db.select().from(planets).where(eq(planets.id, mine));
+    expect(after).toMatchObject({ alloy: before!.alloy, crystal: before!.crystal });
+    expect((await f.db.select().from(researchOrders))[0]?.status).toBe('FAILED');
   });
 });

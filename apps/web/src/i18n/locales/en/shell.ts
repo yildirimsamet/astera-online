@@ -101,7 +101,7 @@ export const signals = {
     disruptedLine: 'Your works are offline',
     disruptedDetail: 'Raided. Production resumes in {{duration}}.',
     worksStoppedLine: 'The works have stopped',
-    worksStoppedDetail: 'Full and idle. {{amount}} an hour is being thrown away — collect it.',
+    worksStoppedDetail: 'The Works are full. Production is paused at {{amount}} per hour until you collect.',
     alloyStoreLine: 'Alloy store is full',
     crystalStoreLine: 'Crystal store is full',
     storeDetail: '{{amount}} is waiting in the works with nowhere to go. Spend something.',
@@ -194,6 +194,7 @@ export const leaderboard = {
   searchLabel: 'Search commanders, planets or clans',
   searchPlaceholder: 'Commander, planet or clan',
   noMatch: 'No commander, planet or clan matches that search.',
+  locationUnknown: "You haven't discovered this commander's location yet.",
 } as const;
 
 export const chat = {

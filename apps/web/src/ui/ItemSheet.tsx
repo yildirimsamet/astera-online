@@ -1,6 +1,7 @@
 import {
   buildingCost,
   instrumentCost,
+  productionMult,
   type BuildingId,
   type InstrumentId,
   type SatelliteId,
@@ -96,6 +97,7 @@ export function ItemSheet({
       ? projected.instruments[item.id] ?? 0
       : projected.orbit.includes(item.id) ? 1 : 0;
   const levels = projected.buildings;
+  const production = productionMult(projected.effectiveOrbit);
   // A satellite is a one-time purchase. Buildings and instruments keep their
   // action live while earlier levels wait in the same queue.
   const terminal = completed ?? (item.kind === 'satellite' ? queued : undefined);
@@ -254,9 +256,10 @@ export function ItemSheet({
                 // Several levels of the same instrument sell the same capability,
                 // and printing that sentence three times turns the ladder into
                 // wallpaper. A rung states its unlock only when it is a new one.
-                repeats={rung > level + 1 && gainFor(item, rung - 1, levels).unlocks
-                  === gainFor(item, rung - 2, levels).unlocks}
+                repeats={rung > level + 1 && gainFor(item, rung - 1, levels, production).unlocks
+                  === gainFor(item, rung - 2, levels, production).unlocks}
                 levels={levels}
+                production={production}
               />
             ))}
           </div>
@@ -304,6 +307,7 @@ function Rung({
   next,
   repeats,
   levels,
+  production,
 }: {
   item: ItemRef;
   level: number;
@@ -317,9 +321,10 @@ function Rung({
    * hours of the Refinery's and Extractor's production.
    */
   levels: BuildingLevels;
+  production: number;
 }) {
   const { t } = useTranslation();
-  const gain = gainFor(item, level - 1, levels);
+  const gain = gainFor(item, level - 1, levels, production);
   /**
    * EVERY RUNG WEARS ITS OWN PICTURE.
    *
@@ -528,9 +533,14 @@ function costFor(
   return item.kind === 'instrument' ? instrumentCost(item.id, from) : buildingCost(item.id, from);
 }
 
-const gainFor = (item: ItemRef, level: number, levels: BuildingLevels): Gain =>
+const gainFor = (
+  item: ItemRef,
+  level: number,
+  levels: BuildingLevels,
+  production = 1,
+): Gain =>
   item.kind === 'building'
-    ? buildingGain(item.id, level, 0, levels)
+    ? buildingGain(item.id, level, 0, levels, production)
     : item.kind === 'instrument'
       ? instrumentGain(item.id, level)
       : satelliteGain(item.id);

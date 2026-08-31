@@ -20,7 +20,7 @@ import {
 } from '../services/build.js';
 import { launchAttack } from '../services/mission.js';
 import { requireAuth } from './auth.js';
-import { completeResearch } from '../services/research.js';
+import { cancelResearchOrder, completeResearch } from '../services/research.js';
 import { capitalPlanet, commanderForAccount, ownedPlanet } from '../services/ownership.js';
 import { GameError } from '../services/planet.js';
 import { buildDeathStar, buildInterceptor, launchDeathStar } from '../services/strategic.js';
@@ -218,6 +218,25 @@ export function registerPlanetRoutes(app: FastifyInstance): void {
     const owner = await explicitPlanet(req.accountId!, req.params);
     return completeResearch(app.db, owner.planetId, projectId, app.clock, owner.playerId);
   });
+  app.post('/api/planet/research-orders/:orderId/cancel', { preHandler: requireAuth }, async (req) => {
+    const { orderId } = z.object({ orderId: z.string().uuid() }).strict().parse(req.params);
+    z.object({}).strict().parse(req.body ?? {});
+    const planetId = await myPlanet(req.accountId!);
+    return cancelResearchOrder(app.db, planetId, orderId, app.clock);
+  });
+  app.post(
+    '/api/planets/:planetId/research-orders/:orderId/cancel',
+    { preHandler: requireAuth },
+    async (req) => {
+      const { planetId, orderId } = z.object({
+        planetId: z.string().uuid(),
+        orderId: z.string().uuid(),
+      }).strict().parse(req.params);
+      z.object({}).strict().parse(req.body ?? {});
+      const owner = await ownedPlanet(app.db, req.accountId!, planetId);
+      return cancelResearchOrder(app.db, owner.planetId, orderId, app.clock, owner.playerId);
+    },
+  );
 
   /** Raise one of the four ground instruments. D25. */
   app.post('/api/planet/instrument', { preHandler: requireAuth }, async (req) => {

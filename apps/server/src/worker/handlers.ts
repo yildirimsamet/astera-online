@@ -76,6 +76,7 @@ import {
 } from '../services/planet.js';
 import { clearMissionUnits, fleetOfMission } from '../services/mission.js';
 import { techOf } from '../services/researchState.js';
+import { applyResearchCompletion } from '../services/research.js';
 import { instrumentLevels, levelOf, resolveProbe } from '../services/intel.js';
 import {
   LEAD_TOLERANCE,
@@ -1633,7 +1634,20 @@ export const onBuildComplete: Handler = async ({ db, clock }, event) => {
       event.payload!.expectedReadyAt as string,
       clock,
     );
-    if (!applied) return;
+    if (!applied) {
+      // Migration 0047 keeps legacy completion events on their old enum value:
+      // PostgreSQL cannot use a newly-added enum value until the migration
+      // transaction commits. The migrated research row retains the same id and
+      // expected instant, so this one-release bridge completes it safely.
+      const research = await applyResearchCompletion(
+        tx,
+        event.refId!,
+        event.payload!.expectedReadyAt as string,
+        clock,
+      );
+      if (research) await publish(tx, research.playerId, 'research_complete');
+      return;
+    }
     const [owner] = await tx
       .select({ playerId: planets.controllerPlayerId })
       .from(buildOrders)
@@ -1642,6 +1656,20 @@ export const onBuildComplete: Handler = async ({ db, clock }, event) => {
     // The absolute timer wakes an open planet screen. This event reconciles the
     // worker race and also reaches an owner who was looking elsewhere at the time.
     if (owner?.playerId) await publish(tx, owner.playerId, 'build_complete');
+  });
+};
+
+export const onResearchComplete: Handler = async ({ db, clock }, event) => {
+  if (!event.refId || typeof event.payload?.expectedReadyAt !== 'string') return;
+  await db.transaction(async (tx) => {
+    await lockSeason(tx, event.seasonId);
+    const applied = await applyResearchCompletion(
+      tx,
+      event.refId!,
+      event.payload!.expectedReadyAt as string,
+      clock,
+    );
+    if (applied) await publish(tx, applied.playerId, 'research_complete');
   });
 };
 
@@ -2023,6 +2051,7 @@ export const HANDLERS: Partial<Record<EventRow['kind'], Handler>> = {
   season_act: onSeasonAct,
   death_star_ready: onDeathStarReady,
   build_complete: onBuildComplete,
+  research_complete: onResearchComplete,
   recovery_end: onRecoveryEnd,
   occupation_end: onOccupationEnd,
   neutral_reinforce: onNeutralReinforce,

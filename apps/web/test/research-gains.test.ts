@@ -112,7 +112,7 @@ describe('what a rung of research buys', () => {
       const general = researchGain('WEAPONS_GENERAL', 2);
       expect(general.next).toBe(doctrine.next);
       expect(general.unlocks).not.toBe(doctrine.unlocks);
-      expect(general.unlocks).toMatch(/every craft/i);
+      expect(general.unlocks).toMatch(/every ship and ground gun/i);
       expect(doctrine.unlocks).toMatch(/wasp/i);
     });
 

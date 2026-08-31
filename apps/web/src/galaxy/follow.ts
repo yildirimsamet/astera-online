@@ -169,6 +169,21 @@ export function easedCameraRange(
 }
 
 /**
+ * THE LAST RANGE FRAME.
+ *
+ * Pivot distance and camera distance converge on the same ease, but the pivot can
+ * cross its tiny completion tolerance first. Finish the requested inward move at
+ * that point; a one-way focus still never pushes a deliberately closer view out.
+ */
+export function finishedCameraRange(
+  current: number,
+  target: number,
+  exact: boolean,
+): number {
+  return exact || current > target ? target : current;
+}
+
+/**
  * The first camera pose is relative to Home on every axis.
  *
  * A fixed world-space Y made sense only while the galaxy pretended to have a

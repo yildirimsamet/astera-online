@@ -16,8 +16,8 @@
  */
 
 export const landing = {
-  populationHeld: '<0>{{amount}}</0> komutan capital’ını tutuyor',
-  populationOnline: '<0>{{amount}}</0> şu an oyunda',
+  populationHeld: '<0>{{amount}}</0> komutan ana gezegenini yönetiyor',
+  populationOnline: '<0>{{amount}}</0> şu an galakside',
   register: 'Gezegenini İncele',
   signIn: 'Zaten bir komutanım var',
   reassurance: 'Hesap gerekmiyor. Önce oyna, sonra sahiplen.',
@@ -26,7 +26,7 @@ export const landing = {
    * Dönen komutanın kapısı. Bu cihazda daha önce komutan olmuş biri için iki
    * düğmenin ağırlığı yer değiştirir; giriş öne geçer.
    */
-  welcomeBack: 'Capital’ın bıraktığın yerde duruyor',
+  welcomeBack: 'Ana gezegenin bıraktığın yerde duruyor',
   signInPrimary: 'Giriş yap',
   returningHint: 'Aynı komutan, aynı galaksi; hangi tarayıcıdan girersen gir.',
   newCommander: 'Bunun yerine yeni bir komutan başlat',
@@ -70,7 +70,7 @@ export const servers = {
   listLabel: 'Galaksiler',
   noneOpen: 'Şu an açık galaksi yok. Sezonlar arasındayız; birazdan tekrar bak.',
   allFull: 'Bütün galaksiler dolu. Bir sonraki, sıfırlamada herkesle birlikte açılıyor.',
-  online: '<0>{{amount}}</0> şu an oyunda',
+  online: '<0>{{amount}}</0> şu an galakside',
   yours: 'Senin galaksin',
   status: {
     open: 'Komutan alıyor',
@@ -97,13 +97,13 @@ export const loading = {
 } as const;
 
 export const document = {
-  description: 'Korunan capital’ını yönet, koloniler kazan ve rakiplerinin elindekini keşfet.',
+  description: 'Korunan ana gezegenini yönet, koloniler kazan ve rakiplerinin gücünü keşfet.',
   manifest: '/manifest.tr.webmanifest',
 } as const;
 
 export const settings = {
   sectionLabel: 'Dil',
-  hint: 'Bütün oyun anında değişir, başka hiçbir şeye dokunulmaz.',
+  hint: 'Galaksideki bütün metinler anında değişir; ilerlemen ve ayarların aynı kalır.',
   choose: 'Dil seç',
   current: 'Kullanımda',
 } as const;

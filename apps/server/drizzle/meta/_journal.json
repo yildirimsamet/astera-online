@@ -330,6 +330,13 @@
       "when": 1788040322743,
       "tag": "0046_majestic_boomerang",
       "breakpoints": true
+    },
+    {
+      "idx": 47,
+      "version": "7",
+      "when": 1788183259643,
+      "tag": "0047_complete_prowler",
+      "breakpoints": true
     }
   ]
 }

@@ -115,6 +115,7 @@ describe('the calibrated economy tempo', () => {
     expect(ECONOMY_TEMPO.upgradeGrowth).toBe(1.54);
     expect(ECONOMY_TEMPO.storageHours).toBe(1.10);
     expect(ECONOMY_TEMPO.hullPrice).toBe(1.25);
+    expect(ECONOMY_TEMPO.hullCrystalPrice).toBe(1.25 * 1.15);
     expect(ECONOMY_TEMPO.fixedPrice).toBe(1.70);
     expect(ECONOMY_TEMPO.gatewayPrice).toBe(1.25);
     expect(ECONOMY_TEMPO.deuteriumPrice).toBe(1.30);

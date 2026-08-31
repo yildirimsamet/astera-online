@@ -11,13 +11,13 @@
  * parçalarını göstermek: sonda, akın, madencilik ve enkaz toplama.
  */
 export const rewards = {
-  eyebrow: 'Duran teklifler',
+  eyebrow: 'Kalıcı hedefler',
   title: 'Ödüller',
   intro:
-    'Galaksi, kendisini oynadığın için ödüyor. Hiçbiri zaman aşımına uğramaz, hiçbiri seri tutmanı istemez; hepsi deponda birikir, yani biri gelip alabilir.',
+    'Bu hedeflerin süresi dolmaz ve hiçbiri kesintisiz seri gerektirmez. Aldığın kaynaklar doğrudan depoya eklenir; depo sınırını aşabilir ve akınlarda kaybedilebilir.',
 
   waiting: '{{count}} ödül seni bekliyor',
-  allTaken: 'Masadaki her şeyi aldın. Galaksi büyüdükçe yenileri gelecek.',
+  allTaken: 'Bütün hedeflerin ödüllerini aldın.',
 
   claim: 'Al',
   claimed: 'Alındı',
@@ -33,23 +33,23 @@ export const rewards = {
 
   granted: '+{{alloy}} alaşım · +{{crystal}} kristal',
   overCap:
-    'Bu, depo tavanını aşıracak. Hiçbir şey kaybolmuyor; ama bir kısmını harcamadan işlikleri boşaltamazsın.',
+    'Bu ödül depo sınırını aşacak. Kaynak kaybolmaz; ancak depoda yer açmadan üretim havuzundan kaynak toplayamazsın.',
 
   /**
    * Her zincir için ad ve etiket. Ad hedefin NE olduğunu, etiket birinin bunu
    * neden isteyeceğini söyler; on bir kartı tarayan biri ikisine de ihtiyaç duyar.
    */
   chains: {
-    PROBE: { name: 'Yollanan sondalar', tag: 'Atlamadan önce bak' },
-    RAID: { name: 'Akın yapılan dünyalar', tag: 'Farklı dünyalar; aynısı iki kez sayılmaz' },
-    CORE: { name: 'Komuta Çekirdeği', tag: 'Her yapının uyduğu tavan' },
-    SHIPYARD: { name: 'Tersane', tag: 'Ağır gövdeleri açar' },
+    PROBE: { name: 'Yollanan sondalar', tag: 'Hedefe gitmeden önce bilgi topla' },
+    RAID: { name: 'Akın yapılan dünyalar', tag: 'Her farklı dünya bir kez sayılır' },
+    CORE: { name: 'Komuta Çekirdeği', tag: 'Bina seviyelerinin üst sınırı' },
+    SHIPYARD: { name: 'Tersane', tag: 'Yeni gemi sınıfları ve daha hızlı üretim' },
     REFINERY: { name: 'Alaşım Rafinerisi', tag: 'Saat başı alaşım' },
-    EXTRACTOR: { name: 'Kristal Çıkarıcı', tag: 'Saat başı kristal' },
-    SHIPS: { name: 'Basılan Atmacalar', tag: 'Sezon boyunca sayılır' },
+    EXTRACTOR: { name: 'Kristal Ocağı', tag: 'Saat başı kristal' },
+    SHIPS: { name: 'Üretilen Atmacalar', tag: 'Sezon boyunca sayılır' },
     AEGIS: { name: 'Aegis', tag: 'Dünyanın üstünde bir kalkan' },
-    MINE: { name: 'Delinen asteroit', tag: 'Geçen bir kayaya yetiş' },
-    SALVAGE: { name: 'Toplanan enkaz', tag: 'Savaştan kalanı al' },
+    MINE: { name: 'Kazılan asteroitler', tag: 'Hareketli kayaya Kazıcı gönder' },
+    SALVAGE: { name: 'Toplanan enkaz', tag: 'Enkaz sahasından kaynak getir' },
     SOCIAL: { name: '@JoinAstera hesabını takip et', tag: 'Hesap başına, bir kez' },
   },
 

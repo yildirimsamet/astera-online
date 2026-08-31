@@ -469,6 +469,7 @@ describe('what is in flight', () => {
     const [out] = await pendingThreads(f.db, mine, f.clock.now());
     expect(out!.kind).toBe('probe');
     expect(out!.leg).toBe('outbound');
+    expect(out!.targetPlanetId).toBe(theirs);
     expect(out!.arriveAt.getTime()).toBe(launch.arriveAt.getTime());
   });
 

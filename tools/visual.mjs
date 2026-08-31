@@ -419,11 +419,12 @@ await shot('03-focus');
 
 /* ── 3 · home works while something is focused ───────────────── */
 // The last sampled instance may have opened a detail or management surface.
-// Close it before testing the map-level Home control.
+// Close it before opening the Worlds surface that now owns the Home control.
 await dismiss();
 const camBefore = await page.evaluate(() => window.__galaxy.camera.position.toArray());
+await page.locator('[data-disc-control="worlds"]').click();
 await page.getByRole('button', {
-  name: /centre on (your planet|active world)|zoom in on active planet/i,
+  name: /zoom in on active planet|aktif gezegenine yakınlaş/i,
 }).click();
 await settle(3000);
 const camAfter = await page.evaluate(() => window.__galaxy.camera.position.toArray());
@@ -470,7 +471,7 @@ const activeWorld = galaxyView.planets?.find((planet) => planet.id === activeWor
 const expectedHome = activeWorld
   ? [
       activeWorld.position.x / 50,
-      (activeWorld.position.y * 3.5) / 50,
+      activeWorld.position.y / 50,
       activeWorld.position.z / 50,
     ]
   : null;
@@ -489,10 +490,8 @@ console.log('  camera target after home:', homeTarget?.map((n) => n.toFixed(1)).
 
 /* ── 4 · the planet screen and its new "affordable in" line ───
    There is no Planet tab — the galaxy IS the shell (D20), and your own world is
-   opened by tapping it twice. Home has just centred the camera on it, so the
-   pivot is the point to aim at. The first tap must leave management closed and
-   keep the bottom rail hidden because this world is already active; only the
-   second may open the sheet. */
+   normally opened by tapping it twice. Home now performs the focus half while it
+   centres the camera, so the next direct tap must open management immediately. */
 const homeScreen = await page.evaluate(() => {
   const g = window.__galaxy;
   const rect = g.gl.domElement.getBoundingClientRect();
@@ -500,20 +499,13 @@ const homeScreen = await page.evaluate(() => {
   return [rect.left + ((v.x + 1) / 2) * rect.width, rect.top + ((1 - v.y) / 2) * rect.height];
 });
 await page.mouse.click(homeScreen[0], homeScreen[1]);
-await settle(1200);
-const ownRail = page.locator('[data-focus-rail]');
-const ownRailVisible = await ownRail.isVisible().catch(() => false);
+await settle(2500);
 const ownManagementOnFirst = await page.getByRole('button', { name: /^close$/i })
   .first().isVisible().catch(() => false);
 check(
-  'already-active owned world first tap focuses with no bottom detail',
-  !ownRailVisible && !ownManagementOnFirst,
+  'home-focused owned world first tap opens management',
+  ownManagementOnFirst,
 );
-await page.mouse.click(homeScreen[0], homeScreen[1]);
-await settle(2500);
-const ownManagementOnSecond = await page.getByRole('button', { name: /^close$/i })
-  .first().isVisible().catch(() => false);
-check('owned world second tap opens management', ownManagementOnSecond);
 await shot('05-planet');
 
 const when = await page.getByText(/affordable in/i).count();

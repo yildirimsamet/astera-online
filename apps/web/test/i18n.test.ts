@@ -101,10 +101,6 @@ const IDENTICAL_ON_PURPOSE = new Set([
   // A bare numeric placeholder has no language to translate. The label beside it
   // carries the Turkish wording.
   'gains.hangar.value',
-  // A rung against its ceiling: "L2 / 5" is a level and a limit with a separator
-  // between them, and the L is the same abbreviation every level badge in both
-  // languages already uses. There is no word in it to put into Turkish.
-  'upgradeRow.ladder',
   // Punctuation and stand-ins for a missing figure. Not words.
   'statusBar.works.idle',
   'galaxy.commander.galaxyUnknown',
@@ -141,10 +137,6 @@ const IDENTICAL_ON_PURPOSE = new Set([
   'signals.repeat',
   'pendingStrip.more',
   'planet.orbit.slotsUsed',
-  'itemSheet.rungLevel',
-  'gains.core.level',
-  'gains.shipyard.seesValue',
-  'gains.veil.level',
   'gains.derrick.now',
   'gains.derrick.next',
   // Proper nouns and marks the Turkish glossary keeps.
@@ -154,12 +146,6 @@ const IDENTICAL_ON_PURPOSE = new Set([
   'landing.form.namePlaceholder',
   'vocabulary.instrument.RADAR.name',
   'vocabulary.instrument.AEGIS.name',
-  'intel.radar.level',
-  // The instrument's kept name plus the level badge both languages already share
-  // — "Radar L3" is the same sentence in Turkish. Its three siblings on the same
-  // card (`needResearch`, `needUplink`, `needOperational`) are all translated,
-  // which is what tells this one apart from a missed pass.
-  'planet.interceptor.needRadar',
   // The reward panel. A multiplier and a fraction are notation, not language —
   // "×3" and "3 / 5" are read the same in both. The LEVEL forms beside them are
   // not on this list, because `L5` is `S5` in Turkish (seviye) and a translated
@@ -220,6 +206,14 @@ describe('the two languages hold the same keys', () => {
       (key) => !ENGLISH.has(key) || ENGLISH.get(key) !== TURKISH.get(key),
     );
     expect(stale).toEqual([]);
+  });
+});
+
+describe('queue refusals name the player’s next move', () => {
+  it('explains that the 3 waiting orders must finish or be cancelled', () => {
+    expect(en.planet.blocked.queueFull).toMatch(/3 orders.*finish or cancel/i);
+    expect(tr.planet.blocked.queueFull).toMatch(/3 sipariş.*bitsin veya.*iptal/i);
+    expect(tr.planet.blocked.queueFull).not.toMatch(/^o üretim sırası dolu$/i);
   });
 });
 

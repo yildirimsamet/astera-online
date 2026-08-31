@@ -6,12 +6,15 @@ import {
   RESEARCH_PROJECTS,
   type ResearchProjectId,
 } from '@astera/rules';
-import { usePlanet, useCompleteResearch } from '../api/queries.js';
-import { useWorld } from '../api/world.js';
+import {
+  useCancelResearchOrder,
+  useCompleteResearch,
+  usePlanet,
+} from '../api/queries.js';
 import type { BuildOrderView, PlanetView } from '../api/schemas.js';
-import { percent } from '../lib/format.js';
+import { full, percent } from '../lib/format.js';
 import { serverNow } from '../lib/clock.js';
-import { clockTime, duration } from '../lib/time.js';
+import { clockTime, duration, useNow } from '../lib/time.js';
 import { useProjected } from '../lib/projection.js';
 import { RESEARCH_ART } from '../ui/assets.js';
 import { researchGain, type Gain } from '../lib/gains.js';
@@ -19,6 +22,7 @@ import { ActionButton, Price } from '../ui/Action.js';
 import { Band, UpgradeRow, type Blocked } from '../ui/UpgradeRow.js';
 import { describe, useToast } from '../ui/Toast.js';
 import { Note, Sheet, Unreachable, Waiting } from '../ui/kit/index.js';
+import { QueueStrip } from '../ui/QueueStrip.js';
 
 /**
  * EVERY RESEARCH PROJECT, ON ONE SURFACE THAT IS NOT A WORLD. T12.
@@ -29,7 +33,7 @@ import { Note, Sheet, Unreachable, Waiting } from '../ui/kit/index.js';
  * world at the same time. A screen that lists one world's buildings, instruments
  * and hulls is then the wrong place for the only thing on it that is not about
  * that world — and it showed, because the slot is commander-wide too and nothing
- * on the planet sheet can see another world's Construction queue.
+ * on the planet sheet should own it.
  *
  * WHAT WENT WRONG BEFORE THIS EXISTED. Fifteen projects were priced, queued and
  * applied by the server; four of them rendered. T5, T8, T9, T10 and T11 all
@@ -37,9 +41,9 @@ import { Note, Sheet, Unreachable, Waiting } from '../ui/kit/index.js';
  * from `GROUPED` and `test/research-panel` checks it against
  * `RESEARCH_PROJECT_IDS`, so a sixteenth project cannot be added without a home.
  *
- * WHERE THE ORDER ACTUALLY GOES. Onto the CONSTRUCTION queue of the world you are
- * standing on — that has not changed and is not hidden. The slot readout at the
- * top names the world for exactly that reason.
+ * WHERE THE ORDER ACTUALLY GOES. Onto the commander's RESEARCH queue. The world
+ * in view only pays the cost and supplies its Core level; its Construction and
+ * Yard queues remain independent.
  */
 
 /**
@@ -106,34 +110,14 @@ interface SheetSpec {
   queued?: string;
 }
 
-/** The project already under way anywhere this commander holds, and where. */
-function slotHolder(
-  worlds: readonly PlanetView[],
-): { projectId: ResearchProjectId; planetId: string; planetName: string; finishesAt: Date } | null {
-  for (const world of worlds) {
-    const running = world.queues?.CONSTRUCTION.find(
-      (queued): queued is BuildOrderView & { finishesAt: Date } =>
-        queued.kind === 'RESEARCH' && 'finishesAt' in queued,
-    );
-    if (running) {
-      return {
-        projectId: running.subject as ResearchProjectId,
-        planetId: world.planet.id,
-        planetName: world.planet.name,
-        finishesAt: running.finishesAt,
-      };
-    }
-  }
-  return null;
-}
-
 export function ResearchPanel({ onNeed }: { onNeed?: (id: string) => void }) {
   const { t } = useTranslation();
   const { data, dataUpdatedAt, isError, refetch } = usePlanet();
-  const { worlds } = useWorld();
   const held = useProjected(data?.planet, dataUpdatedAt, 5000);
   const research = useCompleteResearch();
+  const cancelResearch = useCancelResearchOrder();
   const say = useToast();
+  const now = useNow(1000);
   const [sheet, setSheet] = useState<SheetSpec | null>(null);
   /**
    * A PREREQUISITE IS THREE ROWS UP, NOT ON ANOTHER SCREEN.
@@ -163,9 +147,8 @@ export function ResearchPanel({ onNeed }: { onNeed?: (id: string) => void }) {
    *     season fixes, and `availableAt` is on the row. `PlanetScreen` has carried
    *     this wake since the cards lived there; the cards left, so the wake left
    *     with them.
-   *   · THE SLOT. While a project runs, every other card on the screen is shut
-   *     with its reason — so the moment the order finishes is the moment fifteen
-   *     cards change state at once.
+   *   · THE QUEUE. When a rung lands, prerequisites and the next rung change at
+   *     once, so the authoritative view is fetched at that named instant.
    *
    * `refetch` and not a poll: "the world is live; the interface never waits for
    * it" means waking at the named moment, not asking every thirty seconds whether
@@ -176,9 +159,10 @@ export function ResearchPanel({ onNeed }: { onNeed?: (id: string) => void }) {
       ...(data?.research ?? [])
         .filter((project) => !project.discovered && !project.completed)
         .map((project) => project.availableAt.getTime()),
-      ...worlds.flatMap((world) => (world.queues?.CONSTRUCTION ?? [])
-        .filter((queued) => queued.kind === 'RESEARCH' && 'finishesAt' in queued)
-        .map((queued) => (queued as { finishesAt: Date }).finishesAt.getTime())),
+      ...(data?.researchQueue ?? [])
+        .filter((queued): queued is typeof queued & { finishesAt: Date } =>
+          queued.finishesAt instanceof Date)
+        .map((queued) => queued.finishesAt.getTime()),
     ].filter((instant) => instant > serverNow());
     return instants.length === 0 ? null : Math.min(...instants);
   })();
@@ -204,23 +188,21 @@ export function ResearchPanel({ onNeed }: { onNeed?: (id: string) => void }) {
   if (!data) return <Waiting>{t('surface.waitingPlanet')}</Waiting>;
 
   const planet = data;
-  const constructionOrders = planet.queues?.CONSTRUCTION ?? [];
+  const researchQueue = planet.researchQueue ?? [];
   const graviticShare = percent(DEUTERIUM.graviticDiscoveryShieldShare);
-  /*
-    THE ACTIVE WORLD IS READ FROM THE LIST, NOT ASSUMED TO BE FIRST.
-
-    `usePlanet()` answers for the active world and `useWorld().worlds` holds every
-    one — but a running project on THIS world would otherwise be reported twice, so
-    the search below runs over the list with this world's own queue substituted in.
-    Its payload is the fresher of the two: it is what a mutation just wrote back.
-  */
-  const across = worlds.length === 0
-    ? [planet]
-    : worlds.map((world) => (world.planet.id === planet.planet.id ? planet : world));
-  const running = slotHolder(across);
-  const busyElsewhere = running !== null && running.planetId !== planet.planet.id
-    ? running
-    : null;
+  const running = researchQueue.find((order) => order.slot === 0 && order.finishesAt instanceof Date);
+  const queueOrders: BuildOrderView[] = researchQueue.map((order) => ({
+    id: order.id,
+    queue: 'CONSTRUCTION',
+    slot: order.slot,
+    kind: 'RESEARCH',
+    subject: order.projectId,
+    count: order.level,
+    cost: order.cost,
+    ...('optimistic' in order
+      ? { optimistic: true as const }
+      : { startedAt: order.startedAt, finishesAt: order.finishesAt }),
+  }));
 
   const copy = (id: ResearchProjectId): { name: string; tag: string; role: string; detail: string } => {
     switch (id) {
@@ -346,15 +328,10 @@ export function ResearchPanel({ onNeed }: { onNeed?: (id: string) => void }) {
    * Ordered from the widest refusal to the narrowest, because a card should say the
    * thing that would still be true after everything else was solved.
    *
-   *   1. the queue is full — nothing on this world can be started at all
-   *   2. another world holds the commander's one research slot
-   *   3. the season has not opened this act yet — no amount of building fixes it
-   *   4. the discovery has not happened — a condition to play out, not to buy
-   *   5. the Core is too low — the only one that is a build, so it goes last
-   *
-   * THE SLOT COMES SECOND AND NOT FIRST because a full queue is refused by the
-   * queue itself and is about the world in front of you, while the slot is about
-   * somewhere else. Both are stated; the nearer one wins.
+   *   1. the commander Research queue is full
+   *   2. the season has not opened this act yet — no amount of building fixes it
+   *   3. the discovery has not happened — a condition to play out, not to buy
+   *   4. the Core is too low — the only one that is a build, so it goes last
    */
   const doorOf = (
     id: ResearchProjectId,
@@ -362,16 +339,8 @@ export function ResearchPanel({ onNeed }: { onNeed?: (id: string) => void }) {
     completed: boolean,
   ): Blocked | undefined => {
     if (completed) return undefined;
-    if (constructionOrders.length >= BUILD.queueDepth) {
+    if (researchQueue.length >= BUILD.queueDepth) {
       return { reason: t('research.queueFull') };
-    }
-    if (busyElsewhere) {
-      return {
-        reason: t('research.slotBusy', {
-          name: copy(busyElsewhere.projectId).name,
-          planet: busyElsewhere.planetName,
-        }),
-      };
     }
     const queueAvailable = state.queueAvailable ?? state.available;
     if (!queueAvailable) {
@@ -435,9 +404,7 @@ export function ResearchPanel({ onNeed }: { onNeed?: (id: string) => void }) {
     const level = state.level ?? (state.completed ? 1 : 0);
     const maxLevel = state.maxLevel ?? 1;
     const completed = state.completed;
-    const queued = constructionOrders.some(
-      (queuedOrder) => queuedOrder.kind === 'RESEARCH' && queuedOrder.subject === id,
-    );
+    const queued = researchQueue.some((queuedOrder) => queuedOrder.projectId === id);
     const blocked = doorOf(id, state, completed);
     /**
      * THE FIGURE, WHICH THIS ROW WAS THE ONLY LADDER IN THE GAME WITHOUT.
@@ -497,13 +464,42 @@ export function ResearchPanel({ onNeed }: { onNeed?: (id: string) => void }) {
     <div className="flex flex-col gap-4">
       <p className="text-caption leading-snug text-faint">{t('research.premise')}</p>
 
+      <section className="plate plate-inset overflow-hidden" aria-label={t('research.queueTitle')}>
+        <header className="flex items-baseline gap-2 border-b border-line-soft px-3 py-2">
+          <h2 className="legend text-bone">{t('research.queueTitle')}</h2>
+          <span className="h-px flex-1 bg-gradient-to-r from-line-soft to-transparent" />
+          <span className="num text-micro text-faint">
+            {t('research.queueCapacity', { count: BUILD.queueDepth })}
+          </span>
+        </header>
+        <QueueStrip
+          label={t('research.queueLane')}
+          orders={queueOrders}
+          now={now}
+          cancelling={cancelResearch.isPending ? cancelResearch.variables : undefined}
+          onCancel={(order) => {
+            cancelResearch.mutate(order.id, {
+              onSuccess: (result) => {
+                say(t('research.cancelled', {
+                  alloy: full(result.refund.alloy),
+                  crystal: full(result.refund.crystal),
+                  deuterium: full(result.refund.deuterium),
+                }));
+              },
+              onError: (error) => { say(describe(error), 'error'); },
+            });
+          }}
+        />
+        <p className="px-3 pb-3 text-label leading-snug text-faint">
+          {t('research.queueGlobalHint')}
+        </p>
+      </section>
+
       {running ? (
         <div data-research-running className="plate flex flex-col gap-1 p-3">
           <p className="legend text-crystal/85">{t('research.runningLabel')}</p>
           <p className="name text-bone">{copy(running.projectId).name}</p>
           <p className="text-label text-faint">
-            {t('research.runningOn', { planet: running.planetName })}
-            {' · '}
             <span data-research-finishes className="num">
               {t('research.runningFinishes', { time: clockTime(running.finishesAt) })}
             </span>

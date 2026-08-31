@@ -584,6 +584,7 @@ function Highlights({
 }) {
   const camera = useThree((state) => state.camera);
   const viewportHeight = useThree((state) => state.size.height);
+  const now = serverNow();
   const marked = nodes.filter(
     (node) => node.id === selectedId
       || node.isOwned
@@ -591,7 +592,7 @@ function Highlights({
       || node.stance === 'window'
       || isRivalNode(node, rivalPlanetId, rivalPlayerId)
       || node.state.kind === 'RECOVERY'
-      || Boolean(node.claimUntil && node.claimUntil.getTime() > serverNow()),
+      || hasVisibleClaim(node, now),
   );
 
   /**
@@ -629,12 +630,18 @@ function Highlights({
           selected={node.id === selectedId}
           rival={!node.isClanmate && isRivalNode(node, rivalPlanetId, rivalPlayerId)}
           ally={node.isClanmate}
-          claim={Boolean(node.claimUntil && node.claimUntil.getTime() > serverNow())}
+          claim={hasVisibleClaim(node, now)}
           recovering={node.state.kind === 'RECOVERY'}
         />
       ))}
     </>
   );
+}
+
+/** A public claim clock becomes a green map reading only inside current sight. */
+export function hasVisibleClaim(node: PlanetNode, now: number): boolean {
+  return node.intel === 'RESOLVED'
+    && Boolean(node.claimUntil && node.claimUntil.getTime() > now);
 }
 
 const MARK_COLOUR = { self: '#8fd6ea', window: '#5ad39b', other: '#e8e3d6' } as const;

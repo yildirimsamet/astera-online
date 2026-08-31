@@ -65,15 +65,14 @@ describe('what the game volunteers', () => {
 
   /**
    * THE RETENTION HOOK, and the only one the design permits. The works stop when
-   * they are full, so every hour after that is production thrown away — stated as
-   * a loss rather than as "storage full", because a percentage is a fact and a
-   * loss is a reason to act.
+   * they are full, so the status states exactly which production rate is paused
+   * until collection makes room again.
    */
-  it('reports the works stopping as production being thrown away', () => {
+  it('reports the works stopping as paused production', () => {
     const status = statusOf(view(), holding({ bufferAlloy: 4800 }));
     expect(status).toHaveLength(1);
     expect(status[0]?.line).toBe('The works have stopped');
-    expect(status[0]?.detail).toContain('thrown away');
+    expect(status[0]?.detail).toContain('Production is paused at 800 per hour');
     expect(status[0]?.go).toBe('planet');
   });
 

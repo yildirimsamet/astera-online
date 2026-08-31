@@ -101,15 +101,31 @@ export const focus = {
 
   planet: {
     transfer: "Transfer",
-    settle: "Settle",
-    settleNeedSlot: "Settle · colony slot full",
-    settleNeedBay: "Settle · flight bays full",
-    settleNeedHauler: "Settle · Hauler needed",
-    settleNeedAlloy: "Settle · Alloy missing",
-    settleNeedCrystal: "Settle · Crystal missing",
-    settleNeedFuel: "Settle · Deuterium missing",
-    settleTooLate: "Settle · arrives too late",
-    settleRecovering: "Settle · origin recovering",
+    settle: "Found colony",
+    settleNeedSlot: "Found colony · colony slot full",
+    settleNeedBay: "Found colony · flight bays full",
+    settleNeedHauler: "Found colony · 2 Haulers needed",
+    settleNeedAlloy: "Found colony · Alloy missing",
+    settleNeedCrystal: "Found colony · Crystal missing",
+    settleNeedFuel: "Found colony · Deuterium missing",
+    settleTooLate: "Found colony · arrives too late",
+    settleRecovering: "Found colony · origin recovering",
+    settlementConfirm: {
+      eyebrow: "Colony race",
+      title: "Found {{world}}",
+      unsurveyedTitle: "Found this world",
+      race: "The first valid Haulers to arrive take the world.",
+      noRecall:
+        "Colony ships cannot be recalled. If another commander wins first, your Haulers and founding cargo return; spent fuel does not.",
+      haulers: "Colony ships",
+      foundingCargo: "Founding cargo",
+      cargoValue: "{{alloy}} Alloy · {{crystal}} Crystal",
+      fuel: "Flight fuel",
+      arrives: "Arrives in",
+      closes: "Race closes in",
+      confirm: "Dispatch colony ships",
+      confirming: "Dispatching…",
+    },
     deathStar: "Death Star",
     deathStarStrike: "Death Star · devastate",
     deathStarCapture: "Death Star · capture",
@@ -139,19 +155,53 @@ export const focus = {
     transferPrepare: "Choose craft and resources",
     transferRecovering: "Origin world is recovering",
     colonyRoute: "Route to a colony",
-    claimOpen: "Claim window open",
+    claimOpen: "Colony race open",
+    settlementInFlight: "Your colony ships are on the way",
+    claimRaceExplain: "Nobody owns it yet. The first valid 2 Haulers to arrive take it.",
     colonySlots: "{{used}} / {{total}} colony slots",
-    routeRaid: "Win raid",
-    routeClaim: "Claim opens",
-    routeSettle: "Hauler founds",
+    routeRaid: "Win a decisive raid",
+    routeRaidDetail: "Attack with combat ships. Destroy every defender and the shield.",
+    routeClaim: "Race opens automatically",
+    routeClaimDetail: "Nothing to send. A decisive raid opens the public race by itself.",
+    routeSettle: "Dispatch the colony fleet",
+    routeSettleDetail: "Only now send the founding ships and cargo. First valid arrival wins.",
+    routeSettleInFlightDetail: "Your founding fleet is flying. The first valid arrival wins.",
+    raidFleetBadge: "Raid fleet",
+    raidFleetExplain:
+      "Choose combat ships in the Raid screen and destroy every defender and the shield. No Haulers, founding cargo or colony slot are needed for step 1.",
+    automaticBadge: "Automatic",
+    automaticExplain:
+      "A decisive raid opens the race automatically. You do not send another ship or pay another resource for step 2.",
+    settlementAwayBadge: "In flight",
+    settlementAwayExplain:
+      "Your 2 Haulers and founding cargo have departed. They cannot be recalled; the first valid arrival takes the world.",
     claimCloses: "Closes in {{duration}}",
     claimRaidStillOpen:
       "Another raid is possible; it does not extend this claim.",
     claimDeathStarConsequence:
       "A Death Star clears this claim and starts {{duration}} of recovery. A second impact is the capture route.",
     openColonySlot: "Colony slot",
-    openFlightBay: "Flight bay",
+    colonySlotExplain:
+      "Needed only for step 3. Your strongest Command Core must provide an unused colony slot when the founding fleet leaves.",
+    captureColonySlotExplain:
+      "A second Death Star can transfer this colony only while you have an unused colony slot.",
+    openFlightBay: "1 free flight bay",
+    flightBayExplain:
+      "Needed only for step 3. The one-way flight of the 2 Haulers occupies 1 bay until they reach the neutral world.",
     haulerCount: "2 Haulers",
+    haulerExplain:
+      "Only for step 3: these are the founding fleet, sent separate from the raid after it opens the race. They are not needed for the raid.",
+    foundingAlloy: "{{amount}} Alloy",
+    foundingAlloyExplain:
+      "{{amount}} Alloy travels as the new colony’s starting stock in step 3. It is not a cost of the raid.",
+    foundingCrystal: "{{amount}} Crystal",
+    foundingCrystalExplain:
+      "{{amount}} Crystal travels as the new colony’s starting stock in step 3. It is not a cost of the raid.",
+    settlementFuel: "{{amount}} Deuterium",
+    settlementFuelExplain:
+      "The 2 Haulers burn {{amount}} Deuterium on their one-way flight in step 3. Distance changes this amount.",
+    settlementArrivalExplain:
+      "The founding flight lasts {{duration}}. It must arrive before the public race closes; first valid arrival wins.",
     arrivesIn: "Arrives {{duration}}",
     deathStarRoute: "Strategic capture route",
     recoveryBreach: "Recovery breach · capture window",
@@ -160,6 +210,10 @@ export const focus = {
     firstImpact: "Damage + {{duration}} recovery",
     secondImpact: "Control transfers",
     deathStarReadyRequirement: "Death Star ready",
+    deathStarReadyExplain:
+      "The second impact needs a completed Death Star waiting at the launch world.",
+    deathStarArrivalExplain:
+      "The Death Star must arrive before this recovery window closes or control cannot transfer.",
 
     /**
      * THE SAME FACTS AS THE FORGE CARD, WRITTEN FOR THE PERSON PULLING THE
@@ -167,11 +221,12 @@ export const focus = {
      */
     strikeTitle: "What this impact does",
     strikeFleet: "Every ship and gun on the ground is destroyed",
-    strikeStock: "Half of everything stored is destroyed",
+    strikeStock: "Half the resources in storage and the Works are destroyed",
     strikeCore: "The Command Core loses a level",
     strikeAegis:
       "The Aegis loses {{levels}} levels and the shield drops to nothing",
-    strikeDark: "Nothing is produced or launched there for {{duration}}",
+    strikeDark:
+      "Production, collection, construction, new orders and launches stop for {{duration}}",
     strikeCapture: "A second impact inside that window takes control",
     strikeNoCapture: "A capital can be devastated again, but never captured",
     eyebrow: "Held by {{owner}}",

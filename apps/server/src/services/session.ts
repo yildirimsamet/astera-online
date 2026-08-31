@@ -139,13 +139,14 @@ export interface PendingThread {
   kind: 'fleet' | 'probe' | 'incoming' | 'transfer' | 'settlement' | 'death_star';
   targetName: string;
   /**
-   * WHICH OF YOUR OWN WORLDS IS UNDER THE CROSSHAIR. `incoming` only.
+   * THE WORLD THIS THREAD IS HEADING TOWARD.
    *
    * Not a radar product: it is the defender's own world, and the radar ladder
    * sells the ATTACKER's side — that something is coming (L3), how big (L4), from
    * where and with what (L5). This was simply absent, so a commander with four
    * worlds read "incoming, six minutes" and had no way to know where to move the
-   * fleet. Absent on your own craft, where `targetName` is already the far end.
+   * fleet. On your own craft it lets action surfaces match an in-flight mission
+   * to a selected world without comparing a translated or hidden name.
    */
   targetPlanetId?: string;
   minutesRemaining: number;
@@ -587,6 +588,7 @@ export async function pendingThreads(
           ? m.kind
           : 'fleet',
       targetName: returning ? row.originName : row.targetName,
+      targetPlanetId: returning ? m.originPlanetId : m.targetPlanetId,
       minutesRemaining: minutes,
       arriveAt: m.arriveAt,
       // Probes have legs too now that they fly home — "returning from" and

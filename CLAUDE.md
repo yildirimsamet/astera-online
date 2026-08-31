@@ -95,7 +95,8 @@ Rationale/evidence: `docs/decisions.md`. Numbers/simulator history: `docs/balanc
 - **A probe delivers everything it took.** Stock, deuterium, defence, fleet size, the weapon on the pad, the interceptor charge and the target's combat doctrine all reach the dossier with their age. A reading collected and not shown is the most expensive bug this project can have — the player paid for it.
 - **A published window never names the destination except inside one refetch** (`TRAFFIC.refreshMs`). That floor is the client's poll interval and is shared, not restated: when the two drifted, every probe in the game published the world it was flying to.
 - **The radar log is commander-wide**, each row gated by the radar of the world it happened to and naming that world. An `incoming` warning names the defended world too — that is the reader's own world, never a radar product.
-- Public recovery/claim windows remain visible through fog.
+- Public recovery/claim clocks remain available through fog, but the green claim
+  ring is a current-sight reading and renders only on a `RESOLVED` world.
 - No invisible attack development band; only `bashLimit` remains (D127).
 - **THREE ZONES, AND `packages/rules/src/sight.ts` IS THE ONLY STATEMENT OF THEM.** A craft is `NONE` outside every circle (it does not exist for that commander), `CONTACT` inside a Radar circle (a moving question mark), `IDENTIFIED` inside a Telescope circle (the craft itself, never its route). Server filter, client crossing solver and every test read `sensorZone`; nothing else may hold an opinion.
 - **Radar detects, Telescope identifies.** Radar out-reaches Telescope at every level and is what makes the galaxy visible at all; Telescope is what names what is in it. Radar 0 detects nothing — the free floor belongs to the eye (`SENSOR.baseRadius`), not to hardware nobody bought.
@@ -118,8 +119,8 @@ Rationale/evidence: `docs/decisions.md`. Numbers/simulator history: `docs/balanc
 ### World / queues / research / clans
 
 - One account → one commander → one galaxy; galaxies fill in order; one capital + max three colonies, DB-enforced.
-- Two queues, depth 3: `CONSTRUCTION` and `YARD`. Cost commits on order; cancel refunds half; system fault refunds all; gates use projected same-queue state (D4).
-- Research belongs to commander, not planet; one active project across commander (D134).
+- Three independent queues, depth 3: world-local `CONSTRUCTION`, world-local `YARD`, and commander-wide `RESEARCH`. Cost commits on order; cancel refunds half; system fault refunds all; gates use projected same-queue state (D4).
+- Research belongs to the commander, not the funding planet; capture neither cancels nor transfers it (D134).
 - Instruments/research stop where effect tables stop; derive max levels from effects, never duplicate ladders manually (D140/D141).
 - Refinery is deuterium floor; rocks are contested ceiling. Plant level is capped by research rung (D135).
 - Mined ore lands in `WORKS`, not storage.
@@ -220,6 +221,9 @@ pnpm verify
 
 Required: zero type errors, zero lint errors, expected tests green.
 
+`pnpm lint` gives type-aware ESLint a 4 GB Node heap through the root script. The full workspace
+regularly exceeds Node's 2 GB default; do not bypass the script with a bare `eslint .` invocation.
+
 - Ban `any`/compiler-silencing casts; parse untrusted boundaries with Zod.
 - Diagnose root cause before changing code/tests.
 - Test adversarial input, concurrency, failure, and time.
@@ -263,7 +267,7 @@ Baseline near D140: **0 type errors · 0 lint errors · ~2,900 tests**.
 - `request_log` exists; launch/order idempotency is unwired.
 - `PROVISIONAL`: vault floor, disruption duration, shield curve, season length, asteroid parameters → resolve by playtest.
 - SQL hard-codes queue slots `BETWEEN 0 AND 2`; `BUILD.queueDepth` change requires migration.
-- Captured colonies keep prior owner’s in-flight build orders; untested/undocumented.
+- Captured colonies keep world-local build orders; commander research stays with its buyer (D134).
 - Simulator bots lack skill variance; do not tune ladder spread against them.
 - `season_end` exists; handler does not.
 - After `packages/rules` changes, restart **both** dev servers.

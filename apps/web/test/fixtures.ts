@@ -73,6 +73,7 @@ export function planetView(
       availableAt: new Date('2999-01-01T00:00:00.000Z'),
       prerequisite: RESEARCH_PROJECTS[id].prerequisite,
     })),
+    researchQueue: [],
     fleet: { WASP: 12 },
     ground: {},
     /** Craft that are off the planet. Empty by default: nothing is in the air. */

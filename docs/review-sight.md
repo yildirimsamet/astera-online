@@ -482,8 +482,8 @@ arayüzün onu çizmemesi mi?** ④ tam olarak ikincisiydi.
 - `/api/notifications` payload'ı **ham** geçiyor. Oraya yazılan her alan, kapısız
   yayınlanmış demektir.
 - `/api/leaderboard`: skor/komutan kimliği kamusal; başkent kimliği ve tier yalnız
-  mevcut görüşte veya donmuş probe hafızasında. UNKNOWN satır bunları ve focus
-  eylemini payload'dan tamamen düşürür.
+  mevcut görüşte veya donmuş probe hafızasında. UNKNOWN satır bunları payload'dan
+  tamamen düşürür; isim tıklaması kamera focus'u yerine keşfedilmemiş konum uyarısı verir.
 
 ### 7.5 Zamanlama / eşzamanlılık
 
@@ -569,7 +569,7 @@ yok, madencilik tarafının kararı.
 |---|---|---|
 | ⑳ | Stratejik interception satırı, `sensorZone`'un 500 birimlik çıplak-göz tabanını Telescope sanıp üçüncü kişiye animasyon veriyordu | Üçüncü kişi artık yalnız `post.telescope === true` ve çarpışma Telescope identify alanındaysa görür; taraflar her zaman görür |
 | ㉑ | Füze fırladığı anda `shard:impact` bütün galaksiye gidiyor, gizli interception zamanını dört saniye erken açıklıyordu | Fırlatma yalnız saldıran, savunan ve efektif Telescope tanıklarına `private:strategic-sight` yollar; kamusal `shard:impact` çarpışma anında kalır |
-| ㉒ | Leaderboard UNKNOWN bir komutanı güncel `planetId`, başkent adı ve Core tier ile eşliyordu | UNKNOWN bu üç alanı ve focus düğmesini hiç almaz; RESOLVED güncel, REMEMBERED donmuş probe tier'ını alır |
+| ㉒ | Leaderboard UNKNOWN bir komutanı güncel `planetId`, başkent adı ve Core tier ile eşliyordu | UNKNOWN bu üç alanı almaz; isim butonu focus yerine keşfedilmemiş konum uyarısı verir. RESOLVED güncel, REMEMBERED donmuş probe tier'ını alır |
 | ㉓ | Radar L4 bildirimi kaba `mass` yerine kesin gemi sayısı veriyordu | L4 yalnız LIGHT/MEDIUM/HEAVY; L5 tam kompozisyon. Eski notification satırları geriye dönük render edilmeye devam eder |
 | ㉔ | Teslim edilmiş probe raporunun hedef komutan adı güncel ownership/account join'inden okunuyordu | Kimlik raporun donmuş `silhouette.owner` snapshot'ından okunur; sonradan sahip/ad değişimi tarihi yeniden yazmaz |
 | ㉕ | “40 rapor yeter” gerekçesi matematiksel olarak yanlıştı; hafızadaki dünyanın dossier'ı endpoint'ten düşebiliyordu | Son 40 geçmişe ek olarak her hedefin en yeni teslim edilmiş raporu döner; tekrarlar rapor id'siyle birleşir |

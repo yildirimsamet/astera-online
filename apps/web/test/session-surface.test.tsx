@@ -479,7 +479,7 @@ describe('notification copy', () => {
 
     it('stays vague about a scan — the bearing is the radar log\'s to sell', () => {
       expect(say('scan_detected', { bearing: 'north-west' })).toBe(
-        'Scan detected. Someone is building a picture of you.',
+        'Scan detected. Someone is gathering intelligence about your world.',
       );
     });
 

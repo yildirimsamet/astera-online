@@ -1,7 +1,6 @@
 import { and, asc, desc, eq, inArray } from 'drizzle-orm';
 import {
   INSTRUMENT_IDS,
-  RESEARCH_PROJECT_IDS,
   SHIELD,
   SATELLITE_IDS,
   buildingCost,
@@ -24,7 +23,6 @@ import {
   storageCap,
   vaultProtects,
   type BuildingId,
-  type ResearchProjectId,
 } from '@astera/rules';
 import type { Clock } from '../clock.js';
 import type { Tx } from '../db/client.js';
@@ -33,6 +31,11 @@ import { baysOf } from './flight.js';
 import { awayFleet, loadLocked, totalUnitsOf } from './planet.js';
 import { researchView } from './researchState.js';
 import { colonyStanding } from './ownership.js';
+import {
+  activeResearchOrders,
+  projectedResearchLevels,
+  researchOrderView,
+} from './researchQueue.js';
 
 /**
  * EVERYTHING A COMMANDER KNOWS ABOUT THEIR OWN WORLD, IN ONE PLACE. D53.
@@ -83,7 +86,7 @@ export async function planetView(tx: Tx, planetId: string, clock: Clock) {
     ))
     .orderBy(desc(strategicAssets.startedAt), desc(strategicAssets.id))
     .limit(1);
-  const [[player], [strategic], [interceptor], queued, colonies] = await Promise.all([
+  const [[player], [strategic], [interceptor], queued, researchQueue, colonies] = await Promise.all([
     tx.select().from(players).where(eq(players.id, p.playerId)),
     strategicOfType('DEATH_STAR'),
     strategicOfType('INTERCEPTOR'),
@@ -92,6 +95,7 @@ export async function planetView(tx: Tx, planetId: string, clock: Clock) {
       .from(buildOrders)
       .where(and(eq(buildOrders.planetId, planetId), eq(buildOrders.status, 'BUILDING')))
       .orderBy(asc(buildOrders.queue), asc(buildOrders.slot)),
+    activeResearchOrders(tx, p.playerId),
     colonyStanding(tx, p.playerId),
   ]);
 
@@ -144,13 +148,7 @@ export async function planetView(tx: Tx, planetId: string, clock: Clock) {
    * and the two questions only look alike while every ceiling is one. The order's
    * `count` carries its target level.
    */
-  const queuedResearch = new Map<ResearchProjectId, number>();
-  for (const order of queued) {
-    if (order.queue !== 'CONSTRUCTION' || order.kind !== 'RESEARCH') continue;
-    const id = order.subject as ResearchProjectId;
-    if (!RESEARCH_PROJECT_IDS.includes(id)) continue;
-    queuedResearch.set(id, Math.max(queuedResearch.get(id) ?? 0, order.count));
-  }
+  const queuedResearch = await projectedResearchLevels(tx, p.playerId, researchQueue);
 
   // Every craft this world owns, home or away — both ceilings are ownership rules.
   const owned = await totalUnitsOf(tx, planetId);
@@ -241,10 +239,12 @@ export async function planetView(tx: Tx, planetId: string, clock: Clock) {
     satelliteCosts: Object.fromEntries(SATELLITE_IDS.map((sat) => [sat, satelliteCost(sat)])),
     /** Two immediate seasonal projects; discovery is derived, never stored. D93/D94. */
     research: await researchView(tx, p, queuedResearch),
+    /** One commander lane, identical whichever controlled world funded the view. */
+    researchQueue: researchQueue.map(researchOrderView),
     /** Absolute instants keep every client on the same queue clock. D4. */
     queues: {
       CONSTRUCTION: queued
-        .filter((order) => order.queue === 'CONSTRUCTION')
+        .filter((order) => order.queue === 'CONSTRUCTION' && order.kind !== 'RESEARCH')
         .map(buildOrderView),
       YARD: queued.filter((order) => order.queue === 'YARD').map(buildOrderView),
     },

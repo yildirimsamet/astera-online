@@ -54,7 +54,7 @@ Binds: `docs/interface.md`, capacity/research/queue/report presentation, interac
 
 Rule: D142's principle now binds every bottom sheet, the header, the menu and the screens behind them. Four shapes complete the vocabulary and every surface holding that kind of quantity uses the shared component rather than a private copy: `SpendBar` for a price taken out of a store (the deficit is drawn PAST the store's end, because clamping at full width draws a one-unit shortfall and a ten-thousand shortfall identically), `RangeBand` for an uncertain reading (band WIDTH is what the reading is worth), `FlightBar` for a craft's position on its leg, and `Tally` for a small count against a small ceiling. A garrison is measured in POWER, never in hull count: a launch's bet is what leaves carved out of what holds. A ladder of scores is drawn as a comparison off a centre line, never as a column of signed figures. Where a picture already states a fact, the text beside it may only say what the picture cannot.
 Evidence: The launch and transfer sheets, the intel screen, the flight roster, the worlds list, the item and build sheets, the rewards chains, the clan roster and standings, the Dominion ladder, and the header's flight bays. Five hand-rolled pip racks and one bare fraction became one `Tally`; three unmet prerequisites painted in threat red became amber under `interface.md` I1; `OrbitSlotCount` printed `2 / 4` above a rack that already drew every socket and now prints only what the rack cannot say.
-Fog: `FlightBar` draws an inbound attack as a dashed track with no position, because D123 sends no departure time for another commander's fleet — the shape states the absence rather than inventing a marker. A leaderboard row draws capital identity/tier and permits a focus jump only under current sight or frozen probe memory; UNKNOWN rows remain commander identity and score only.
+Fog: `FlightBar` draws an inbound attack as a dashed track with no position, because D123 sends no departure time for another commander's fleet — the shape states the absence rather than inventing a marker. A leaderboard row draws capital identity/tier and permits a focus jump only under current sight or frozen probe memory; tapping an UNKNOWN commander refuses with an undiscovered-location warning instead of moving the camera. An active public claim clock remains available to the settlement flow, but its green map ring is a live reading and appears only while that world is in current sight (`RESOLVED`), never from stale probe memory or UNKNOWN state.
 Binds: `docs/interface.md`, `apps/web/src/ui` shape components, every sheet and screen listed above, the i18n `shapes` namespace.
 
 ### D145 · One radar shell, one sweep that turns, and a switch for both instruments — OWNER INSTRUCTION
@@ -73,9 +73,9 @@ Binds: `transferPlanetControl`, settlement, the second strategic hit, `grant-col
 
 ## Economy & progression
 
-### D4 · Two build queues — OWNER DECISION
+### D4 · Three independent work queues — OWNER DECISION
 
-Rule: Buildings, instruments, satellites and research use CONSTRUCTION; mobile and ground hulls use the independent YARD lane, and each lane is exactly three orders deep. Cost commits when queued; user cancellation refunds 50%, system failure refunds 100%, queued prerequisites count as projected state, and `builtEver` increases only on completion. Panic defence is an invariant: the opening Shipyard-tier Thorn must be able to complete inside the tightest Radar L3 reaction window.
+Rule: Buildings, instruments and satellites use each world's CONSTRUCTION lane; mobile and ground hulls use that world's YARD lane; research uses one commander-wide RESEARCH lane. Every lane is exactly three orders deep. Cost commits when queued; user cancellation refunds 50%, system failure refunds 100%, queued prerequisites count as projected state, and `builtEver` increases only on completion. Panic defence is an invariant: the opening Shipyard-tier Thorn must be able to complete inside the tightest Radar L3 reaction window.
 Binds: Build services, queue projection, cancellation/refund rules, client prediction, Radar/build-time balance, simulator.
 
 ### D13 · Vault floor is bounded — LOCKED INVARIANT
@@ -93,6 +93,14 @@ Binds: Production accrual, Works, collection API, raid loot, storage UI.
 
 Rule: When the whole economy must accelerate, prefer scaling income over uniformly cutting prices so payback, resource shares and Vault ratios remain stable. Any exception must be justified as a product-specific commitment rather than an invisible global retune.
 Binds: Economy tuning, `docs/balance.md`, production/cost constants.
+
+### D147 · Asteroid Crystal falls while Crystal-bearing hull demand rises — OWNER INSTRUCTION
+
+Rule: The asteroid Crystal-share band is reduced by 30% without reducing total ore, so the removed
+share becomes Alloy. Every hull recipe that already consumes Crystal consumes 15% more Crystal
+after its ordinary hull-price scaling; a zero-Crystal recipe remains zero. Isotope concentration
+continues to replace Alloy independently and does not restore the removed Crystal share.
+Binds: Asteroid generation/simulation, hull prices, economy calibration, balance documentation.
 
 ### D25 · Four instruments and four satellites — OWNER DECISION
 
@@ -154,8 +162,8 @@ Binds: `pnpm balance:goal`, `pnpm balance:economy`, economy/build constants, sea
 
 ### D134 · Research belongs to the commander — OWNER DECISION
 
-Rule: Research is stored once per seasonal commander as `(project, level)` and one commander-wide research slot prevents extra colonies from multiplying progression speed; same-world queue chaining may still stage a later rung behind its prerequisite. Research completion/queue paths lock player before planet, and research is excluded from Wealth because it is not planet-held value.
-Binds: `player_research`, research queue/completion, lock ordering, colonies, Wealth, D140 research surface.
+Rule: Research is stored once per seasonal commander as `(project, level)` and queued in one three-deep commander lane, so extra colonies never multiply throughput. A selected world funds an order and supplies its Core speed; losing that world neither cancels the order nor transfers it to the captor. Research completion/queue paths lock player before planet. Completed research is excluded from Wealth because it is not planet-held value; resources committed to a live order retain their value until completion, cancellation or system failure.
+Binds: `player_research`, `research_orders`, research queue/completion, lock ordering, colonies, Wealth, D140 research surface.
 
 ### D135 · Deuterium Refinery is the floor; asteroids are the ceiling — OWNER INSTRUCTION
 
@@ -391,7 +399,7 @@ Binds: Galaxy labels, reports, notifications, leaderboard, intel projections.
 
 ### D76 · Dominion ladder ranks the local galaxy — OWNER INSTRUCTION
 
-Rule: The leaderboard contains the caller's whole galaxy, orders by rounded Dominion descending with deterministic join/id tiebreakers, and is about competitive score rather than development. D127 governs world/development fields: current sight publishes current capital identity/tier, REMEMBERED publishes the frozen probe tier, and UNKNOWN omits capital identity/tier and the focus action.
+Rule: The leaderboard contains the caller's whole galaxy, orders by rounded Dominion descending with deterministic join/id tiebreakers, and is about competitive score rather than development. D127 governs world/development fields: current sight publishes current capital identity/tier, REMEMBERED publishes the frozen probe tier, and UNKNOWN omits capital identity/tier. Commander names remain interactive, but an UNKNOWN row produces an undiscovered-location warning and never requests camera focus.
 Binds: `/api/leaderboard`, Dominion, SSE score invalidation, D127.
 
 ### D77 · Galaxy chat is seasonal and server-authored — OWNER INSTRUCTION
@@ -472,7 +480,7 @@ Binds: Neutral combat, claim state, settlement validation, simulator.
 
 ### D113 · Death Star is the authoritative strategic strike — OWNER INSTRUCTION
 
-Rule: Death Star Protocol and craft require Core 12; the craft also requires Shipyard 5 and builds for 60 minutes. Impact destroys all home ships/ground guns, halves stored and in-process resources, reduces Core by one and Aegis by two, clears shield, cancels queued BUILDING orders without refund and imposes two-hour recovery; away craft/research/orbit hardware survive, and Core loss clamps any building above `CORE_CEILING`, including the Deuterium Refinery. Control may transfer only for a Death Star stamped at launch as a capture attempt against a neutral/player colony already in recovery (with capacity reserved); capitals never transfer, and a successful control change cancels queued RESEARCH on that world without refund so it cannot complete into the captor's commander-wide research.
+Rule: Death Star Protocol and craft require Core 12; the craft also requires Shipyard 5 and builds for 60 minutes. Impact destroys all home ships/ground guns, halves stored and in-process resources, reduces Core by one and Aegis by two, clears shield, cancels queued BUILDING orders without refund and imposes two-hour recovery; away craft, commander research and orbit hardware survive, and Core loss clamps any building above `CORE_CEILING`, including the Deuterium Refinery. Control may transfer only for a Death Star stamped at launch as a capture attempt against a neutral/player colony already in recovery (with capacity reserved); capitals never transfer. A research order funded there remains with the commander who bought it and never completes into the captor's account.
 Binds: Strategic research/assets, combat/economy settlement, building/research queues, Core ceilings, recovery/capture, colony capacity, UI explanation.
 
 ### D114 · Clans stay a thin seasonal coordination layer — OWNER INSTRUCTION

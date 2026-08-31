@@ -15,6 +15,7 @@ import type {
 import type { Focus } from './FocusPanel.js';
 import {
   easedCameraRange,
+  finishedCameraRange,
   focusIdentity,
   initialHomeCameraPosition,
   rigAction,
@@ -1158,8 +1159,13 @@ function Rig({
     if (move.left <= 0 || controls.target.distanceToSquared(move.to) < 0.0004) {
       const out = controls.object.position.clone().sub(controls.target);
       controls.target.copy(move.to);
-      if (move.exactRange && move.rangeTo !== null && out.lengthSq() > 1e-10) {
-        controls.object.position.copy(controls.target.clone().add(out.setLength(move.rangeTo)));
+      if (move.rangeTo !== null && out.lengthSq() > 1e-10) {
+        const finishedRange = finishedCameraRange(
+          out.length(),
+          move.rangeTo,
+          move.exactRange,
+        );
+        controls.object.position.copy(controls.target.clone().add(out.setLength(finishedRange)));
       }
       controls.update();
       ease.current = null;

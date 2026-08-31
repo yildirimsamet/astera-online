@@ -136,14 +136,14 @@ describe('the worlds panel', () => {
     expect(onClose).toHaveBeenCalled();
   });
 
-  it('keeps the camera control the icon used to be', async () => {
+  it('hands the active world to Home so the next world tap can open management', async () => {
     const user = userEvent.setup();
     const onCentre = vi.fn();
     render(panel({ onCentre }));
 
     await user.click(screen.getByRole('button', { name: /active planet/i }));
 
-    expect(onCentre).toHaveBeenCalled();
+    expect(onCentre).toHaveBeenCalledWith('capital-1');
   });
 
   describe('starting a transfer', () => {

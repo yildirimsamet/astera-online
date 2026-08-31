@@ -8,10 +8,20 @@ import { asteroidRadius, asteroidVisualSeed, asteroidWorldPosition, toWorld } fr
 import { unitModel } from './model.js';
 import { markHit, wasTap } from './tap.js';
 import { serverNow } from '../lib/clock.js';
-import { asteroidBodyColour, asteroidTrailColour } from './asteroidSignal.js';
+import {
+  asteroidBodyColour,
+  asteroidRimColour,
+  asteroidTrailColour,
+} from './asteroidSignal.js';
 
 /** No hit target smaller than this, whatever the rock. A fingertip is ~44 CSS px. */
 const MIN_TOUCH = 0.42;
+
+/** A narrow expansion of the real rock silhouette, matching the craft rim language. */
+export const ASTEROID_RIM_EXPANSION = 0.045;
+
+/** Bright enough to find at a glance without turning the silhouette into a solid halo. */
+export const ASTEROID_RIM_OPACITY = 0.72;
 
 /**
  * THE FIELD — rocks crossing the disc. D19.
@@ -109,6 +119,7 @@ function RockBucket({
 }) {
   const { scene } = useGLTF(bucket.url, false);
   const mesh = useRef<THREE.InstancedMesh>(null);
+  const rim = useRef<THREE.InstancedMesh>(null);
 
   /**
    * The first mesh in the file, reused as instanced geometry.
@@ -124,20 +135,76 @@ function RockBucket({
   const source = useMemo(() => unitModel(scene), [scene]);
   const hits = useRef<THREE.InstancedMesh>(null);
 
+  const bodyMaterial = useMemo(() => {
+    if (!source) return null;
+    const material = source.material.clone();
+    // The opaque-looking body draws after the transparent rim and masks its
+    // expanded back faces, leaving neon only around the true silhouette.
+    material.transparent = true;
+    material.depthWrite = true;
+    return material;
+  }, [source]);
+  const rimMaterial = useMemo(() => new THREE.ShaderMaterial({
+    uniforms: {
+      uColour: { value: new THREE.Color(asteroidRimColour(false)) },
+      uOpacity: { value: ASTEROID_RIM_OPACITY },
+    },
+    transparent: true,
+    depthWrite: false,
+    depthTest: false,
+    side: THREE.BackSide,
+    blending: THREE.AdditiveBlending,
+    vertexShader: `
+      uniform vec3 uColour;
+      varying vec3 vColour;
+      void main() {
+        vColour = uColour;
+        #ifdef USE_INSTANCING_COLOR
+          vColour = instanceColor;
+        #endif
+        vec4 expanded = vec4(position + normal * ${String(ASTEROID_RIM_EXPANSION)}, 1.0);
+        #ifdef USE_INSTANCING
+          expanded = instanceMatrix * expanded;
+        #endif
+        gl_Position = projectionMatrix * modelViewMatrix * expanded;
+      }
+    `,
+    fragmentShader: `
+      uniform float uOpacity;
+      varying vec3 vColour;
+      void main() { gl_FragColor = vec4(vColour, uOpacity); }
+    `,
+    toneMapped: false,
+  }), []);
+
+  useEffect(
+    () => () => {
+      bodyMaterial?.dispose();
+      rimMaterial.dispose();
+    },
+    [bodyMaterial, rimMaterial],
+  );
+
   const tint = useMemo(() => new THREE.Color(), []);
 
   useLayoutEffect(() => {
     const node = mesh.current;
     if (!node) return;
+    const edge = rim.current;
     bucket.rocks.forEach((rock, i) => {
-      // Focus is a brightening rather than an outline: an outline on a tumbling
-      // lump reads as a rendering fault, and these are already small.
       const lit = rock.id === focusedId ? 1.9 : 1;
       node.setColorAt(i, tint.setRGB(...asteroidBodyColour(rock.isotopeRich, lit)));
+      edge?.setColorAt(i, tint.set(asteroidRimColour(rock.isotopeRich))
+        .multiplyScalar(rock.id === focusedId ? 1.45 : 1));
     });
     if (node.instanceColor) node.instanceColor.needsUpdate = true;
     if (!Array.isArray(node.material)) node.material.needsUpdate = true;
-  }, [bucket.rocks, focusedId, tint]);
+    if (edge?.instanceColor) edge.instanceColor.needsUpdate = true;
+    rimMaterial.uniforms.uOpacity!.value = focusedId === null
+      ? ASTEROID_RIM_OPACITY
+      : 0.82;
+    rimMaterial.needsUpdate = true;
+  }, [bucket.rocks, focusedId, rimMaterial, tint]);
 
   useFrame(({ clock }) => {
     const node = mesh.current;
@@ -146,6 +213,7 @@ function RockBucket({
     const t = clock.elapsedTime;
 
     const hit = hits.current;
+    const edge = rim.current;
 
     bucket.rocks.forEach((rock, i) => {
       const seed = asteroidVisualSeed(rock.id);
@@ -175,6 +243,7 @@ function RockBucket({
       dummy.scale.setScalar(r);
       dummy.updateMatrix();
       node.setMatrixAt(i, dummy.matrix);
+      edge?.setMatrixAt(i, dummy.matrix);
 
       if (hit) {
         // The hit target does not tumble — a rotating sphere is the same sphere,
@@ -187,6 +256,7 @@ function RockBucket({
     });
 
     node.instanceMatrix.needsUpdate = true;
+    if (edge) edge.instanceMatrix.needsUpdate = true;
     if (hit) {
       hit.instanceMatrix.needsUpdate = true;
       /**
@@ -217,16 +287,27 @@ function RockBucket({
   return (
     <>
       <instancedMesh
+        ref={rim}
+        name="asteroid-rims"
+        args={[source.geometry, rimMaterial, bucket.rocks.length]}
+        frustumCulled={false}
+        renderOrder={1}
+        // Purely visual: the larger invisible hit sphere below owns interaction.
+        raycast={() => null}
+      />
+
+      <instancedMesh
         ref={mesh}
         // Named so the scene can be inspected — tools/visual.mjs measures rock
         // drift straight off these matrices, because a screenshot cannot tell a
         // slow orbit from a stopped one.
         name="asteroid-rocks"
-        args={[source.geometry, source.material, bucket.rocks.length]}
+        args={[source.geometry, bodyMaterial ?? source.material, bucket.rocks.length]}
         // Every bucket spans the whole disc, so a bounding sphere is either fully
         // in or fully out and a grazing frustum can drop the lot — the same trap
         // the planet field had to be rescued from.
         frustumCulled={false}
+        renderOrder={2}
       />
 
       {/*

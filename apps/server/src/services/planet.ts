@@ -27,6 +27,7 @@ import {
   missions,
   planets,
   players,
+  researchOrders,
   satellites,
   seasons,
   strategicAssets,
@@ -537,6 +538,7 @@ export async function recomputePlayerWealth(tx: Tx, playerId: string): Promise<n
     launchedAssets,
     cargoMissions,
     committedBuilds,
+    committedResearch,
     [unclaimedClanLoot],
   ] = await Promise.all([
     tx.select().from(buildings).where(inArray(buildings.planetId, worldIds)),
@@ -567,6 +569,13 @@ export async function recomputePlayerWealth(tx: Tx, playerId: string): Promise<n
       .where(and(
         inArray(buildOrders.planetId, worldIds),
         eq(buildOrders.status, 'BUILDING'),
+      )),
+    tx
+      .select({ cost: researchOrders.cost })
+      .from(researchOrders)
+      .where(and(
+        eq(researchOrders.playerId, playerId),
+        eq(researchOrders.status, 'BUILDING'),
       )),
     tx
       .select({
@@ -611,6 +620,9 @@ export async function recomputePlayerWealth(tx: Tx, playerId: string): Promise<n
   }
   // Queueing changes where value sits, never whether the commander owns it. D4.
   for (const order of committedBuilds) {
+    value += order.cost.alloy + order.cost.crystal + order.cost.deuterium;
+  }
+  for (const order of committedResearch) {
     value += order.cost.alloy + order.cost.crystal + order.cost.deuterium;
   }
   if (unclaimedClanLoot) {

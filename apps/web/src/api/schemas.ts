@@ -96,6 +96,16 @@ const timedYardOrder = z.object({
   cost: resources,
 });
 
+const timedResearchOrder = z.object({
+  id: z.string(),
+  slot: z.number().int().min(0),
+  projectId: researchProjectId,
+  level: z.number().int().min(1),
+  startedAt: z.coerce.date(),
+  finishesAt: z.coerce.date(),
+  cost: resources,
+});
+
 /**
  * A pre-account rehearsal can stage a commitment but cannot name its server time.
  * The explicit discriminator keeps ordinary API payloads on the timed branch.
@@ -338,6 +348,8 @@ export const planetSchema = z.object({
     availableAt: z.coerce.date(),
     prerequisite: researchProjectId.nullable(),
   })),
+  /** One commander-wide queue, repeated in planet responses for atomic mutation updates. */
+  researchQueue: z.array(timedResearchOrder).optional(),
   /**
    * Work already paid for, in the order the server will finish it.
    *
@@ -1218,12 +1230,13 @@ const pendingThread = z.object({
   /** Which world it left. RADAR L5, the top of the ladder. D123. */
   originName: z.string().optional(),
   /**
-   * WHICH OF YOUR OWN WORLDS IS UNDER THE CROSSHAIR. Inbound only.
+   * THE WORLD THIS THREAD IS HEADING TOWARD.
    *
    * Not a radar product and never was: it is the defender's own world. It was
    * simply missing, so a commander with four worlds was told "incoming, six
-   * minutes" and could not work out where to move the fleet. Optional so a client
-   * one deploy ahead of its server still parses.
+   * minutes" and could not work out where to move the fleet. On your own craft it
+   * is the mission destination, so an action can recognise an irreversible launch
+   * even when the world has no visible name. Optional for rolling deploys.
    */
   targetPlanetId: z.string().optional(),
   /**
@@ -1887,6 +1900,20 @@ export type HistoricalSeasonResult = z.infer<typeof historicalSeasonResultSchema
 type ParsedPlanetView = z.infer<typeof planetSchema>;
 type ParsedQueues = NonNullable<ParsedPlanetView['queues']>;
 export type ServerBuildOrderView = ParsedQueues[keyof ParsedQueues][number];
+export type ResearchOrderView = NonNullable<ParsedPlanetView['researchQueue']>[number];
+
+export interface OptimisticResearchOrderView {
+  id: string;
+  slot: number;
+  projectId: ResearchProjectId;
+  level: number;
+  cost: Resources;
+  optimistic: true;
+  startedAt?: undefined;
+  finishesAt?: undefined;
+}
+
+export type ResearchQueueOrderView = ResearchOrderView | OptimisticResearchOrderView;
 
 /** A tap acknowledged locally while the authoritative mutation is in flight. */
 export interface OptimisticBuildOrderView {
@@ -1903,11 +1930,12 @@ export interface OptimisticBuildOrderView {
 }
 
 export type BuildOrderView = ServerBuildOrderView | OptimisticBuildOrderView;
-export type PlanetView = Omit<ParsedPlanetView, 'queues'> & {
+export type PlanetView = Omit<ParsedPlanetView, 'queues' | 'researchQueue'> & {
   queues?: {
     CONSTRUCTION: BuildOrderView[];
     YARD: BuildOrderView[];
   };
+  researchQueue?: ResearchQueueOrderView[];
 };
 type ParsedPlanetsView = z.infer<typeof planetsSchema>;
 export type PlanetsView = Omit<ParsedPlanetsView, 'planets'> & { planets: PlanetView[] };

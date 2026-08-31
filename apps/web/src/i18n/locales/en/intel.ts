@@ -102,7 +102,7 @@ export const intel = {
      * The rings are fixed; how long something sits inside them is not.
      */
     noteSlow: 'A slow, heavy fleet remains inside Radar reach longer.',
-    noteProbesLegacy: 'Radar L{{level}} catches probes. From L3 it also warns of inbound fleets.',
+    noteProbesLegacy: 'Radar L{{level}} catches probes and warns about inbound fleets inside its circle.',
     noteBearing: ' L2 adds the direction they came from.',
     noteOrigin: ' L5 names the planet.',
   },
@@ -300,7 +300,7 @@ export const reports = {
   /** Whose casualties. Both sides fly Wasps, so colour alone cannot say it. */
   roundTheirs: 'Them',
   roundYours: 'You',
-  roundNoLosses: 'Nothing came off the board this round.',
+  roundNoLosses: 'Neither side lost a unit this round.',
 } as const;
 
 /** One telescope reading, rendered as certainty. */

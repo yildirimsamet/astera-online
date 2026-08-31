@@ -25,7 +25,7 @@ export const intel = {
       'Dışarıda {{neighbours}} gezegen var, elinde {{count}} göz. Bir yuvayı kaydırmak bekleme süresine mal oluyor; kimi izleyeceğine iyi karar ver.',
     scarcity_other:
       'Dışarıda {{neighbours}} gezegen var, elinde {{count}} göz. Bir yuvayı kaydırmak bekleme süresine mal oluyor; kimi izleyeceğine iyi karar ver.',
-    oneMore: 'Teleskop L{{level}} bir gezegen daha izlerdi.',
+    oneMore: '{{level}}. seviye Teleskop bir gezegen daha izleyebilir.',
     noRadar: 'Radarın da yok; sana yönelen tehdidi diğer hareketlerden ayıramazsın.',
   },
 
@@ -36,12 +36,12 @@ export const intel = {
     slotEmpty: 'Boşta',
     missingNoSlot: 'Hiçbir yuva bir yere bakmıyor',
     missingNoTelescope: 'Teleskopun yok',
-    gives: 'Bir gezegenin filosu havalandığı an sana söyler. Her akını belirleyen bilgi bu.',
+    gives: 'Bir gezegenin filosu havalandığında haber verir. Böylece akın öncesinde savunmanın evde olup olmadığını bilirsin.',
     costPoint: 'Galaksiden bir gezegen seç, bir yuvayı ona çevir.',
     costInstall: 'Gezegen ekranından bir tane kur.',
-    away: 'Gezegeni şu an geride bıraktıklarına emanet.',
+    away: 'Filo dönene kadar gezegeni yalnız evde kalan birlikler savunuyor.',
     intermittent:
-      'Kesikli okuma en iyi ihtimalle yirmi dakikada bir yenilenir. Tekrar bakmanın faydası yok; pencere dönene kadar cevap değişmez.',
+      'Kesikli okuma en iyi ihtimalle yirmi dakikada bir yenilenir. Yeni okuma dönemi başlayana kadar tekrar bakmak sonucu değiştirmez.',
   },
 
   probes: {
@@ -54,7 +54,7 @@ export const intel = {
     stock: 'Stok',
     defence: 'Savunma',
     ships: 'Gemi',
-    /** `{{percent}}` buraya zaten `%40` biçiminde geliyor; işaret `format.percent`'te. */
+    /** `{{percent}}` buraya yerel yüzde biçiminde geliyor; işaret `format.percent`'te. */
     accuracyHome: '{{percent}} isabet · filo evdeydi',
     accuracyOut: '{{percent}} isabet · filo dışarıdaydı',
     caught: 'sondayı yakaladılar',
@@ -65,33 +65,33 @@ export const intel = {
 
   radar: {
     heading: 'Sana kim bakıyor',
-    level: 'Radar L{{level}}',
+    level: 'Radar · {{level}}. seviye',
     missing: 'Radarın yok',
     gives:
       'Hareket eden araçları görebildiğin çemberi çizer, sana gelen sondaları yakalar ve dünyana yönelen tehdidi varış süresiyle birlikte işaretler.',
-    cost: 'Biri bu gezegenin tam resmini çıkarabilir, senin haberin bile olmaz.',
-    quiet: 'Seni kimse taramadı. Radar L{{level}} dinlemede.',
+    cost: 'Radar olmadan bu dünyaya gönderilen sondaların çoğu fark edilmeden geçer.',
+    quiet: 'Seni kimse taramadı. {{level}}. seviye Radar dinlemede.',
     scan: 'Tarama yakalandı',
     bearing: ' · galaktik {{bearing}} yönünden',
     origin: ' · {{planet}}',
     /** Taramanın hangi dünyaya geldiği. */
     onWorld: ' · {{planet}}',
     /* Captions beside the two drawn rings; the picture carries the rest. */
-    ringSense: 'Bir şey geliyor',
+    ringSense: 'Hareket algılandı',
     ringWarn: 'Zamanlı uyarı',
     /** İki çember tek olduğu sürece tek başlık, çemberin ne yaptığını söyler. */
     ringOne: 'Tespit ve zamanlı uyarı',
     /** Halkaları göremeyen için aynı okuma; iki çember bu bilgiyi zaten taşıyor. */
     noteFleets:
-      'Radar L{{level}}, {{sense}} birimde sana yönelen tehdidi ayırt eder ama saat vermez. {{warn}} birime girdiğinde varış süresi açılır.',
+      '{{level}}. seviye Radar, {{sense}} birimde sana yönelen tehdidi ayırt eder ancak varış süresini {{warn}} birime girdiğinde gösterir.',
     /** Birleşik hâli: tek çember, iki ürün, tek cümle. */
     noteFleetsOne:
-      'Radar L{{level}}, {{sense}} birime kadar hareket eden araçları gösterir ve dünyana yönelen tehdidi varış süresiyle işaretler.',
+      '{{level}}. seviye Radar, {{sense}} birime kadar hareket eden araçları gösterir ve dünyana yönelen tehdidi varış süresiyle işaretler.',
     /** Hiçbir resmin çizemediği yarısı: çemberler sabit, içinde kalma süresi değil. */
     noteSlow: 'Ağır ve yavaş bir filo Radar menzilinde daha uzun kalır.',
-    noteProbesLegacy: 'Radar L{{level}} sondaları yakalıyor. L3’ten sonra gelen filoları da haber verir.',
-    noteBearing: ' L2 geldikleri yönü de söyler.',
-    noteOrigin: ' L5 gezegenin adını verir.',
+    noteProbesLegacy: '{{level}}. seviye Radar sondaları yakalar ve çemberine giren filoları haber verir.',
+    noteBearing: ' 2. seviyeden itibaren geliş yönünü de söyler.',
+    noteOrigin: ' 5. seviye çıkış dünyasının adını verir.',
   },
 } as const;
 
@@ -99,7 +99,7 @@ export const reports = {
   heading: 'Savaş raporları',
   newest: 'en yeni önce',
   empty:
-    'Henüz kimse kimseyle çatışmadı. Savaş, bu oyunda tahmine dayanmayan tek bilgi kaynağı.',
+    'Galakside henüz çatışma kaydı yok. Savaş raporu, karşı tarafın gerçek kuvvetini ve çatışma sonucunu doğrudan gösterir.',
   youRaided: 'Akın ettiğin: ',
   raidedBy: 'Sana akın eden: ',
   rounds: '{{count}} raunt',
@@ -134,10 +134,10 @@ export const reports = {
   },
   theirLosses: 'Yok ettiklerin',
   theirs: 'Karşıda ne varmış',
-  theirsEmpty: 'Karşıdan hiçbir şey yok edilmedi.',
+  theirsEmpty: 'Karşı taraf birlik kaybetmedi.',
   yourForce: 'Senin filon',
   yours: 'Sana neye mal oldu',
-  yoursEmpty: 'Hiçbir şey kaybetmedin.',
+  yoursEmpty: 'Birlik kaybetmedin.',
   howItWent: 'Çatışma nasıl geçti',
   roundDealt: 'Sen vurdun',
   roundTook: 'Sana vurdular',
@@ -171,7 +171,7 @@ export const reports = {
     resultPartial:
       'KISMİ · savunma birliklerinin değer olarak en az %{{threshold}} kadarı yok edilmiştir · ambar sınırından önce açık stokun %{{partialLoot}} kadarı alınabilir.',
     resultRepelled:
-      'PÜSKÜRTÜLDÜ · savunma birliklerinin değer olarak %{{threshold}} kadarından azı yok edilmiştir · hiçbir şey alınamaz.',
+      'PÜSKÜRTÜLDÜ · savunma birliklerinin değer olarak %{{threshold}} kadarından azı yok edilmiştir · kaynak alınamaz.',
     round: '{{round}}. raunt',
     fire: '1 · Aynı anda ateş',
     fireNote: 'Kayıplar kaldırılmadan önce iki taraf da ateş eder. Bu rauntta yok edilen birlik yine de ateşini yapar.',
@@ -200,8 +200,8 @@ export const reports = {
   strategicYouAttacked: 'Ölüm Yıldızı hedefin: ',
   strategicAttackedBy: 'Ölüm Yıldızı gönderen: ',
   strategicDestroyedInFlight: 'Ölüm Yıldızı havada yok edildi',
-  strategicRadarTrigger: 'Hedef dünya, araç Radar L3+ önleme çemberini geçince ateş açtı.',
-  strategicTelescopeTrigger: 'Savunmacının dünyalarından biri aracı Telescope görüşünde tanımlayınca ateş açtı.',
+  strategicRadarTrigger: 'Hedef dünya, araç 3. seviye veya üstü Radar önleme çemberine girince ateş açtı.',
+  strategicTelescopeTrigger: 'Savunmacının dünyalarından biri aracı Teleskop görüşünde tanımlayınca ateş açtı.',
   strategicTotalDamage: 'Yok edilen toplam değer',
   strategicShieldLost: 'Yok edilen kalkan',
   strategicResourcesLost: 'Yok edilen maden',
@@ -232,23 +232,23 @@ export const reports = {
       REPELLED: 'Savunmaları dayandı. Filon içeri giremedi, eli boş döndün.',
     },
     defending: {
-      DECISIVE: 'Savunmadaki her şeyin düştü, kalkanın da gitti; yağmanın tamamını aldılar.',
-      DECISIVE_WITHOUT_SHIELD: 'Savunmadaki her şeyin düştü; yağmanın tamamını aldılar.',
+      DECISIVE: 'Savunmadaki bütün birliklerin düştü, kalkanın da gitti; yağmanın tamamını aldılar.',
+      DECISIVE_WITHOUT_SHIELD: 'Savunmadaki bütün birliklerin düştü; yağmanın tamamını aldılar.',
       PARTIAL: 'Savunmanın çoğu düştü ama bir kısmı dayandı; depondan ancak bir parça götürebildiler.',
-      REPELLED: 'Savunman dayandı. İçeri giremediler, hiçbir şey götüremediler.',
+      REPELLED: 'Savunman dayandı. İçeri giremediler ve kaynak götüremediler.',
     },
   },
 
   /** Savaşın yağma satırının ötesinde yaptıkları; her biri yalnız doğruysa yazılır. */
   effects: {
     heading: 'Bu savaş ne yaptı',
-    shieldTheirs: 'Kalkanları, gövdelere ulaşan ilk atıştan önce {{amount}} hasar yuttu.',
-    shieldYours: 'Kalkanın, gövdelerine ulaşan ilk atıştan önce {{amount}} hasar yuttu.',
+    shieldTheirs: 'Kalkanları, gövdelere ulaşmadan önce {{amount}} hasarı karşıladı.',
+    shieldYours: 'Kalkanın, gövdelerine ulaşmadan önce {{amount}} hasarı karşıladı.',
     cargoLimited:
-      'Ambarların doldu. O gezegende taşıyabileceğinden fazlası vardı; yanına Yük Gemisi al.',
+      'Ambarların doldu. O gezegende taşıyabileceğinden fazla kaynak vardı; filona Şilep veya Koşucu ekleyebilirsin.',
     salvaged_one: '{{count}} yer topu kendi enkazından yeniden kuruldu; şimdi yine ayakta.',
     salvaged_other: '{{count}} yer topu kendi enkazından yeniden kuruldu; şimdi yine ayakta.',
-    worksTheirs: 'Tesisleri {{duration}} boyunca kapalı. Orada hiçbir şey üretilmiyor.',
+    worksTheirs: 'Tesisleri {{duration}} boyunca kapalı. Bu sürede kaynak üretilmiyor.',
     worksYours: 'Tesislerin {{duration}} boyunca devre dışı kaldı.',
     wreck: '{{planet}} üzerinde {{amount}} değerinde enkaz sürükleniyor. İsteyen gidip alabilir.',
     wreckYours: 'Kendi yörüngende {{amount}} değerinde enkaz sürükleniyor. İsteyen gidip alabilir; sen de.',
@@ -266,7 +266,7 @@ export const reports = {
   },
   roundTheirs: 'Onlar',
   roundYours: 'Sen',
-  roundNoLosses: 'Bu rauntta tahtadan hiçbir şey kalkmadı.',
+  roundNoLosses: 'Bu rauntta iki taraf da birlik kaybetmedi.',
 } as const;
 
 export const clarity = {
@@ -309,16 +309,16 @@ export const dossier = {
   fleetUnreadable: 'Okunamıyor',
   fleetAway: 'Evde değil',
   fleetHome: 'Evde',
-  fleetVeiledNote: 'Perdeleri Teleskopunu yeniyor. Ya teleskobu yükselt ya da sonda gönder.',
+  fleetVeiledNote: 'Teleskopun Perde nedeniyle filo durumunu okuyamıyor. Teleskopu yükselt veya sonda gönder.',
   fleetAwayUnknownNote: 'Ne zaman döneceğini bilmiyorsun. Aldığın risk tam olarak bu.',
-  fleetAwayNote: 'Gezegeni şu an geride bıraktıklarına emanet.',
+  fleetAwayNote: 'Filo dönene kadar gezegeni yalnız evde kalan birlikler savunuyor.',
   fleetHomeNote: 'İzlemek sessizdir; baktığını asla öğrenemezler.',
 
   fleetGapNoTelescope: 'Teleskopun yok',
   fleetGapOutOfRange: 'Teleskopunun menzili buraya yetmiyor',
   fleetGapNoSlot: 'Buraya bakan bir yuva yok',
   fleetGapWhy:
-    'Oyundaki en değerli bilgi: dışarıda olan bir filo kendi gezegenini savunamaz.',
+    'Galaksideki en değerli fırsatlardan biri: uçuşta olan filo, dönene kadar kendi dünyasını savunamaz.',
   fleetGapRange: '{{reach}} birim görüyor, o gezegen {{distance}} birim uzakta',
   fleetGapSlots: '{{count}} yuvanın hepsi dolu; birini kaydırman gerek',
 
@@ -328,30 +328,30 @@ export const dossier = {
   defenceLabel: 'Savunma değeri',
   defenceNote: 'Sonda geçerken gezegende ne duruyorsa o.',
   shipsLabel: 'Sayılan gemi',
-  shipsAllHome: 'Ellerindeki her şey evdeydi.',
+  shipsAllHome: 'Sayılan gemilerin tamamı evdeydi.',
   shipsSomeOut: 'Gemilerinin bir kısmı dışarıdaydı.',
 
   /** Sondanın hep aldığı ama hiç gösterilmeyen dört okuma. Hepsi bakış anında donar. */
   deuteriumLabel: 'Ellerindeki döteryum',
-  deuteriumNote: 'Yakıt. Hâlâ neyi kaldırabilecekleri.',
+  deuteriumNote: 'Filo uçuşlarında kullanabilecekleri yakıt miktarı.',
   strategicLabel: 'Stratejik silah',
   strategicReady: 'Hazır ve kurulu',
   strategicBuilding: 'Yapım aşamasında',
-  strategicUnknown: 'Rampada bir şey var',
+  strategicUnknown: 'Rampada stratejik bir araç var',
   strategicNote: 'Sonda geçerken rampada duruyordu. O zamandan beri kalkmış olabilir.',
   strategicUnknownNote: 'Sonda ne kadar ilerlediğini ayırt edecek kadar keskin değildi.',
   interceptorLabel: 'Stratejik savunma',
   interceptorLoaded: 'Şarj dolu',
   interceptorEmpty: 'Şarj yok',
   interceptorLoadedNote:
-    'Bu dünyaya gönderilen stratejik silah radar çemberinde imha edilir. Bir şarj bir vuruşu durdurur.',
-  interceptorEmptyNote: 'Burada stratejik silahı durduracak bir şey yok. O zamandan beri yüklemiş olabilirler.',
+    'Yüklü mühimmat, 3. seviye Radar çemberinde algılanan veya dünyalarından birinin Teleskop görüşünde tanımlanan ilk stratejik silahı imha eder.',
+  interceptorEmptyNote: 'Sonda anında yüklü önleyici yoktu. O zamandan beri mühimmat yüklemiş olabilirler.',
   doctrinesLabel: 'Muharebe doktrini',
   doctrinesNone: 'Hiçbiri araştırılmamış',
-  doctrinesNote: 'Gemileri tablodan daha iyi dövüşüyor. Karşılaşacağın çarpan bu.',
-  doctrinesNoneNote: 'Sonda baktığında gemilerine hiçbir şey araştırmamışlardı.',
+  doctrinesNote: 'Bu araştırmalar gemilerin saldırı gücünü ve gövde dayanımını artırır. Rapordaki değerler sonda anına aittir.',
+  doctrinesNoneNote: 'Sonda anında tamamlanmış muharebe araştırmaları yoktu.',
 
-  surfaceGapLabel: 'Bu gezegen hakkında her şey',
+  surfaceGapLabel: 'Gezegen kimliği ve gelişimi',
   surfaceGapMissing: 'Buraya bugüne kadar kimse bakmadı',
   surfaceGapWhy:
     'Kimin elinde, ne kadar gelişmiş, yörüngesinde ne var; hiçbirini göremiyorsun. Bir sonda hepsini tek seferde getirir.',

@@ -24,8 +24,8 @@
     "visual:baseline": "node tools/visual-baseline.mjs",
     "phone": "node tools/phone.mjs",
     "models": "node tools/models.mjs",
-    "lint": "eslint .",
-    "lint:fix": "eslint . --fix",
+    "lint": "node --max-old-space-size=4096 node_modules/eslint/bin/eslint.js .",
+    "lint:fix": "node --max-old-space-size=4096 node_modules/eslint/bin/eslint.js . --fix",
     "verify": "pnpm typecheck && pnpm lint && pnpm test"
   },
   "devDependencies": {

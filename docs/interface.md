@@ -46,9 +46,14 @@ neutral world draws none. These filaments are the only white connectors on the d
 watches remain silent and spatially unmarked: their targets are listed in Intel, never tethered
 to the observing world on the map.
 
-A neutral focus always shows the complete three-beat route — win the raid, open the claim,
-send the Hauler — and shows the slot, ship, cargo and travel requirements before the raid as
-well as during the claim. Every foreign world exposes Death Star devastation. A foreign colony
+A neutral focus always shows the complete three-beat route — win one decisive ordinary raid,
+let the claim open automatically, then dispatch the colony fleet. The first step asks only for a
+raid fleet: Haulers, founding cargo, a colony slot and a flight bay are not raid requirements.
+Those settlement-only requirements are grouped inside the third step even before the raid, so the
+route can be planned without implying they must be carried into combat. Tapping any requirement
+badge opens a short explanation immediately above that badge for two seconds; the badge remains a
+real keyboard-focusable button and the explanation is announced to assistive technology.
+Every foreign world exposes Death Star devastation. A foreign colony
 shows the two-impact capture route; a recovery colony adds the live capture deadline and whether
 the ready Death Star can arrive inside it. A capital explicitly says that impact destroys stock,
 fleet and levels but can never transfer control.
@@ -58,6 +63,8 @@ Hauler, founding cargo, arrival window or origin recovery — rather than relyin
 state or colour-coded chips. While a neutral claim is open, the panel also states that another
 ordinary raid is still possible but does not extend the claim, and that a Death Star impact
 clears the claim and starts recovery instead of settling the world immediately.
+The final launch opens a confirmation sheet naming the target, two Haulers, founding cargo,
+fuel, arrival time, claim deadline and the fact that the flight cannot be recalled.
 
 Focus is a two-tap spatial interaction for every object, including the commander's capital and
 colonies. The first tap selects and zooms/follows it; a second tap on that same object expands its
@@ -132,9 +139,9 @@ the same time — and there are fifteen, so it became the one thing on a per-wor
 about that world. It has its own surface, reached from the menu beside the account, the intel and the
 clan. Two rules there are worth restating because they are what the move was for: the row list is
 DERIVED from the rules package rather than hand-written, because five separate tasks had shipped
-ladders the server priced and no control could buy; and a shut card states its reason, because with
-one research slot shared across a commander's worlds most cards are shut most of the time, and only
-that screen can see the other world's queue to name what is holding it.
+ladders the server priced and no control could buy; and a shut card states its reason. The screen
+draws the commander's own three-slot Research lane and explicitly says that every world's
+Construction and Yard lanes keep running separately.
 
 ### I2b · Every card answers "what is this" before "what does it cost"
 

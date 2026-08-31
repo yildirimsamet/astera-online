@@ -41,6 +41,7 @@ import { serverNow } from '../lib/clock.js';
 import { minutesLeft, useNow } from '../lib/time.js';
 import { distance, engagementEndsAt, interceptAsteroid, travelMinutes } from '@astera/rules';
 import { LaunchSheet } from './LaunchSheet.jsx';
+import { SettlementSheet } from './SettlementSheet.js';
 import { TransferSheet } from './TransferSheet.js';
 import { WorldsPanel } from './WorldsPanel.js';
 import { DiscControls } from '../galaxy/DiscControls.js';
@@ -311,6 +312,7 @@ export function GalaxyView({
    */
   const [detail, setDetail] = useState(false);
   const [attacking, setAttacking] = useState(false);
+  const [settlingTargetId, setSettlingTargetId] = useState<string | null>(null);
   const [homeSignal, setHomeSignal] = useState(0);
   const [chatChannel, setChatChannel] = useState<ChatChannel>('general');
   const reportedLostPlacement = useRef(false);
@@ -671,12 +673,17 @@ export function GalaxyView({
   const showPlanetFocus = selected
     ? planetFocusRailVisible(selected.isOwned === true, transferOriginId)
     : false;
+  const settlementInFlight = selected !== undefined && threads.some((thread) =>
+    thread.kind === 'settlement'
+    && thread.leg === 'outbound'
+    && thread.targetPlanetId === selected.id);
 
   const close = (): void => {
     setFocus(null);
     setTransferOriginId(null);
     setDetail(false);
     setAttacking(false);
+    setSettlingTargetId(null);
   };
 
   const toggle = (): void => {
@@ -855,6 +862,7 @@ export function GalaxyView({
           }
           rivalCommitted={season.data?.rivalCommitted ?? false}
           now={now}
+          settlementInFlight={settlementInFlight}
           onClose={close}
           onLaunched={() => {
             close();
@@ -876,17 +884,7 @@ export function GalaxyView({
             payload carried a name.
           */
           onSettle={() => {
-            settlement.mutate(selected.id, {
-              onSuccess: () => {
-                say(t('galaxy.settlementAway', {
-                  world: selected.intel === 'UNKNOWN'
-                    ? t('focus.planet.unsurveyedTitle')
-                    : selected.name,
-                }));
-                close();
-              },
-              onError: (error) => { say(describe(error), 'error'); },
-            });
+            setSettlingTargetId(selected.id);
           }}
           onDeathStar={() => {
             deathStar.mutate(selected.id, {
@@ -1316,6 +1314,32 @@ export function GalaxyView({
         </div>
       )}
 
+      {panel !== 'recap'
+        && settlingTargetId !== null
+        && selected?.id === settlingTargetId
+        && focusedPlanet && (
+        <SettlementSheet
+          target={selected}
+          planet={focusedPlanet}
+          now={now}
+          pending={settlement.isPending}
+          onClose={() => { setSettlingTargetId(null); }}
+          onConfirm={() => {
+            settlement.mutate(selected.id, {
+              onSuccess: () => {
+                say(t('galaxy.settlementAway', {
+                  world: selected.intel === 'UNKNOWN'
+                    ? t('focus.planet.unsurveyedTitle')
+                    : selected.name,
+                }));
+                close();
+              },
+              onError: (error) => { say(describe(error), 'error'); },
+            });
+          }}
+        />
+      )}
+
       {panel !== 'recap' && worldsOpen && (
         <WorldsPanel
           worlds={worlds}
@@ -1334,12 +1358,13 @@ export function GalaxyView({
             setTransferTargetId(targetPlanetId);
             setWorldsOpen(false);
           }}
-          onCentre={() => {
-            // Exactly what this button used to do on its own. Going home means
-            // letting go of what you were looking at: leaving the selection in
-            // place made the camera ease home and then snap straight back,
-            // because a focused subject is followed every frame.
+          onCentre={(planetId) => {
+            // Home is also the first semantic tap on the active world. The camera
+            // instruction still wins this render, while keeping this focus means
+            // the next direct world tap opens management instead of focusing it
+            // for a second time.
             close();
+            focusPlanet(planetId);
             setHomeSignal((n) => n + 1);
             setWorldsOpen(false);
           }}

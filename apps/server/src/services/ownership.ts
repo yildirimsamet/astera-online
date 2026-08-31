@@ -2,9 +2,7 @@ import { and, count, eq, inArray, isNull, max, or } from 'drizzle-orm';
 import { colonyCapacity } from '@astera/rules';
 import type { Clock } from '../clock.js';
 import type { Db, Queryable, Tx } from '../db/client.js';
-import {
-  buildOrders, buildings, missions, neutralPlanetState, planets, players, units,
-} from '../db/schema.js';
+import { buildings, missions, neutralPlanetState, planets, players, units } from '../db/schema.js';
 import { GameError, lockSeason } from './planet.js';
 import { refreshSensorEpoch } from './sensorHistory.js';
 
@@ -263,28 +261,6 @@ export async function transferPlanetControl(
   if (rows.length === 0) throw new GameError('TARGET_CHANGED', 'That world changed first', 409);
 
   await tx.delete(neutralPlanetState).where(eq(neutralPlanetState.planetId, input.targetPlanetId));
-  /**
-   * A CAPTURED WORLD'S RESEARCH DIES WITH THE OWNERSHIP. T7 made this necessary.
-   *
-   * Build orders survive a capture — a known, accepted consequence: a half-built
-   * Refinery is a world's own scaffolding and it comes with the world. A RESEARCH
-   * order is not. Since T7 it completes into `player_research` keyed on whoever
-   * controls the world AT THAT MOMENT, so a captured colony would hand the captor
-   * a permanent, commander-wide ladder rung the loser paid for — on every one of
-   * their worlds, for the rest of the season.
-   *
-   * Cancelled without refund, which is the rule D113 already set for the same
-   * situation: a player who cancels gets half back, and an enemy who destroys the
-   * work gives nothing.
-   */
-  await tx
-    .update(buildOrders)
-    .set({ status: 'CANCELLED' })
-    .where(and(
-      eq(buildOrders.planetId, input.targetPlanetId),
-      eq(buildOrders.kind, 'RESEARCH'),
-      eq(buildOrders.status, 'BUILDING'),
-    ));
   await tx
     .update(units)
     .set({ ownerPlayerId: input.newPlayerId })
