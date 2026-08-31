@@ -232,7 +232,7 @@ describe('VFR still catches a vault that covers everything', () => {
         CORE: 8, REFINERY: 8, EXTRACTOR: 8, VAULT: 8, SHIPYARD: 4, HANGAR: 0, DEUTERIUM_PLANT: 0,
       },
       instruments: {}, orbit: [], fleet: {}, ground: {},
-      queues: { CONSTRUCTION: [], YARD: [] },
+      queues: { CONSTRUCTION: [], YARD: [], RESEARCH: [] },
       alloy: 0, crystal: 0, deuterium: 0,
       bufferAlloy: 0, bufferCrystal: 0, bufferDeuterium: 0,
       shield: 0, lastTick: 0, joinedAt: 0, disruptedUntil: 0, nextLogin: 0,

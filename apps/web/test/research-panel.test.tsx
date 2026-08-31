@@ -98,7 +98,6 @@ const world = (
   );
 
 const mutate = vi.fn();
-const cancel = vi.fn();
 let current: PlanetView = world();
 
 vi.mock('../src/api/queries.js', async () => {
@@ -107,7 +106,6 @@ vi.mock('../src/api/queries.js', async () => {
     ...actual,
     usePlanet: () => ({ data: current, dataUpdatedAt: Date.now(), isPending: false }),
     useCompleteResearch: () => ({ mutate, isPending: false }),
-    useCancelResearchOrder: () => ({ mutate: cancel, isPending: false }),
   };
 });
 
@@ -165,7 +163,6 @@ const act = (sheet: HTMLElement): HTMLElement | null =>
 
 beforeEach(async () => {
   mutate.mockClear();
-  cancel.mockClear();
   // jsdom has no layout, so it has no `scrollIntoView`. `chat-screen.test.tsx`
   // stubs it the same way; the component calls it unguarded, as `PlanetScreen`
   // has since it gained the same "go to the thing blocking you" behaviour.
@@ -521,7 +518,10 @@ describe('a closed door states its reason', () => {
         researchOrder('WASP_DOCTRINE', new Date('2026-08-28T12:00:00.000Z'), 2),
       ],
     });
-    expect(reason(view, 'CARGO_HOLDS')).toMatch(/queue is full/i);
+    const fullQueueReason = reason(view, 'CARGO_HOLDS');
+    expect(fullQueueReason).toMatch(/3 research projects are already queued/i);
+    expect(fullQueueReason).toMatch(/wait for one to finish/i);
+    expect(fullQueueReason).not.toMatch(/cancel/i);
   });
 });
 
@@ -530,6 +530,15 @@ describe('a closed door states its reason', () => {
  * itself belongs to the commander and never occupies Construction or Yard.
  */
 describe('the commander research queue', () => {
+  it('does not offer cancellation for a commander commitment', () => {
+    const view = show({
+      researchQueue: [
+        researchOrder('YARD_AUTOMATION', new Date('2026-08-28T11:30:00.000Z')),
+      ],
+    });
+    expect(view.container.querySelector('[data-cancel]')).toBeNull();
+  });
+
   it('names the running project and when it finishes', () => {
     const view = show({
       researchQueue: [

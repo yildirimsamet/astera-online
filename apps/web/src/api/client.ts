@@ -514,14 +514,6 @@ export class Api {
     return this.send(path, buildCancelSchema, { method: 'POST' });
   };
 
-  cancelResearchOrder = (planetIdOrOrderId: string, explicitOrderId?: string) => {
-    const orderId = explicitOrderId ?? planetIdOrOrderId;
-    const path = explicitOrderId
-      ? `/api/planets/${encodeURIComponent(planetIdOrOrderId)}/research-orders/${encodeURIComponent(orderId)}/cancel`
-      : `/api/planet/research-orders/${encodeURIComponent(orderId)}/cancel`;
-    return this.send(path, buildCancelSchema, { method: 'POST' });
-  };
-
   completeResearch = (planetIdOrProject: string, explicitProject?: ResearchProjectId) =>
     this.send(explicitProject
       ? `/api/planets/${encodeURIComponent(planetIdOrProject)}/research`

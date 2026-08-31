@@ -60,6 +60,8 @@ export const errors = {
   TARGET_ALREADY_WATCHED: 'Another Telescope slot is already watching that world',
   BUILD_ORDER_FINISHED: 'That order has already finished',
   BUILD_ORDER_HAS_DEPENDENTS: 'Cancel the dependent orders behind this one first',
+  RESEARCH_CANNOT_BE_CANCELLED: 'Started research cannot be cancelled',
+  RESEARCH_QUEUE_FULL: '3 research projects are already queued. Wait for one to finish before adding another.',
   BUILD_ORDER_NOT_FOUND: 'No active build order by that id',
   BASH_LIMIT: 'You have hit this planet too many times recently',
   CANNOT_INTERCEPT: 'It will leave the disc before your craft could reach it',

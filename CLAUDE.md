@@ -71,7 +71,7 @@ Rationale/evidence: `docs/decisions.md`. Numbers/simulator history: `docs/balanc
 - `DEBRIS.share < 1`; ground defence salvage = 60%; ground hulls leave no wreckage.
 - Vault protection is < half capacity and uses each resource’s own production floor.
 - Deuterium capacity uses both industrial/mining base and refinery contribution (D138).
-- Capture cancels research; commander-wide research never transfers (D138).
+- Capture never cancels or transfers commander-wide research (D134).
 
 ### Combat / fleets
 
@@ -119,7 +119,7 @@ Rationale/evidence: `docs/decisions.md`. Numbers/simulator history: `docs/balanc
 ### World / queues / research / clans
 
 - One account → one commander → one galaxy; galaxies fill in order; one capital + max three colonies, DB-enforced.
-- Three independent queues, depth 3: world-local `CONSTRUCTION`, world-local `YARD`, and commander-wide `RESEARCH`. Cost commits on order; cancel refunds half; system fault refunds all; gates use projected same-queue state (D4).
+- Three independent queues, depth 3: world-local `CONSTRUCTION`, world-local `YARD`, and commander-wide `RESEARCH`. Cost commits on order; Construction/Yard cancellation refunds half, Research cannot be cancelled, system fault refunds all; gates use projected same-queue state (D4).
 - Research belongs to the commander, not the funding planet; capture neither cancels nor transfers it (D134).
 - Instruments/research stop where effect tables stop; derive max levels from effects, never duplicate ladders manually (D140/D141).
 - Refinery is deuterium floor; rocks are contested ceiling. Plant level is capped by research rung (D135).
@@ -242,7 +242,7 @@ Baseline near D140: **0 type errors · 0 lint errors · ~2,900 tests**.
 
 ### Current blocker
 
-`pnpm verify` is green except the **pre-existing five-seed season gate**: seven baseline failures (VFR all five seeds, ARR seed 4242, pooled TI -0.50).
+`pnpm verify` is green except the **D134 separate-Research-queue balance regression**: VFR is LOW on all five fixed seeds. A direct A/B run proves `17c515b` was 69/69 green; applying only the accurate third-lane simulator produces seven failures, while the requested asteroid/hull Crystal changes reduce that set to the five VFR failures. This is not a slow-machine or flaky-test issue.
 
 - Do **not** widen bands.
 - Read **D133 before touching Hangar constants**; height was already swept and is not the mechanism.

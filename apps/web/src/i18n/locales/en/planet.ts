@@ -193,7 +193,7 @@ export const planet = {
       "A Derrick improves this world’s Prospectors; a Beacon speeds its raid and transfer fleets. Each satellite uses one orbit slot.",
     frontierBand: "Frontier research",
     frontierNote:
-      "Each project is researched once and uses Construction. A locked card states its unlock condition.",
+      "Research uses your commander-wide queue. Construction and Yard keep running separately.",
     isotopeName: "Isotope Spectrometry",
     isotopeTag: "Unlocks Deuterium mining",
     isotopeRole:
@@ -273,7 +273,7 @@ export const planet = {
     frontier: "Frontier research",
     complete: "Research complete",
     cost: "Research cost",
-    once: "Researched once and placed in the Construction queue.",
+    once: "Placed once in your commander-wide Research queue.",
   },
 
   /** Why a row cannot be pressed yet. Each is a door, so each names its fix. */

@@ -179,7 +179,7 @@ export const planet = {
       "Matkap bu dünyanın Kazıcılarını hızlandırıp ambarlarını büyütür; Kılavuz akın ve transfer filolarını hızlandırır. Her biri bir yörünge yuvası kullanır.",
     frontierBand: "Ufuk araştırmaları",
     frontierNote:
-      "Her araştırma bir kez yapılır ve İnşaat sırasını kullanır. Kilitliyse açma koşulu kartta yazar.",
+      "Araştırmalar komutanın ortak sırasını kullanır. İnşaat ve Tersane ayrı çalışmaya devam eder.",
     isotopeName: "İzotop Spektrometrisi",
     isotopeTag: "Döteryum madenciliğini açar",
     isotopeRole:
@@ -260,7 +260,7 @@ export const planet = {
     frontier: "Ufuk araştırması",
     complete: "Araştırma tamamlandı",
     cost: "Araştırma maliyeti",
-    once: "Bir kez araştırılır ve İnşaat sırasına girer.",
+    once: "Komutanın ortak Araştırma sırasına bir kez girer.",
   },
 
   blocked: {

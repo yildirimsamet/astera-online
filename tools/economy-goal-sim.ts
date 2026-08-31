@@ -7,9 +7,9 @@
  * the owner's mid-game target if every spend serves that target?
  *
  * It is not a season/battle simulator. It does account for the real construction
- * and yard queues, projected queue gates, manual collection, storage and works
- * caps, level-dependent production, Foundry production, building rewards,
- * research clocks, research costs and the otherwise easy-to-miss Deuterium
+ * Construction, Yard and commander Research queues, projected queue gates,
+ * manual collection, storage and works caps, level-dependent production,
+ * Foundry production, building rewards, research clocks, research costs and the otherwise easy-to-miss Deuterium
  * requirement. Combat losses and ordinary fleet spending are excluded on
  * purpose, so the result is a progression baseline rather than a prediction of
  * what every human will do.
@@ -111,9 +111,10 @@ const ACTIVITY: readonly ActivityProfile[] = [
 ];
 
 type OrderKind = 'BUILDING' | 'INSTRUMENT' | 'SATELLITE' | 'RESEARCH' | 'HULL';
+type SimQueueId = 'CONSTRUCTION' | 'YARD' | 'RESEARCH';
 
 interface SimOrder {
-  readonly queue: 'CONSTRUCTION' | 'YARD';
+  readonly queue: SimQueueId;
   readonly kind: OrderKind;
   readonly subject: BuildingId | InstrumentId | SatelliteId | ResearchProjectId | 'PROSPECTOR';
   readonly cost: Resources;
@@ -143,7 +144,7 @@ interface SimState {
   research: Set<ResearchProjectId>;
   prospectors: number;
   economy: PlanetEconomyState;
-  queues: { CONSTRUCTION: SimOrder[]; YARD: SimOrder[] };
+  queues: Record<SimQueueId, SimOrder[]>;
   claimedRewards: Set<string>;
   milestones: Map<string, number>;
   spent: SpendLedger;
@@ -206,7 +207,7 @@ function freshState(): SimState {
       lastTickMinutes: 0,
       disruptedUntilMinutes: 0,
     },
-    queues: { CONSTRUCTION: [], YARD: [] },
+    queues: { CONSTRUCTION: [], YARD: [], RESEARCH: [] },
     claimedRewards: new Set(),
     milestones: new Map(),
     spent: { buildings: 0, instruments: 0, satellites: 0, research: 0, prospectors: 0 },
@@ -219,14 +220,14 @@ function freshState(): SimState {
   };
 }
 
-function projectConstruction(state: SimState): Projection {
+function projectQueue(state: SimState, queue: SimQueueId): Projection {
   const projected: Projection = {
     buildings: { ...state.buildings },
     instruments: { ...state.instruments },
     orbit: [...state.orbit],
     research: new Set(state.research),
   };
-  for (const order of state.queues.CONSTRUCTION) applyProjection(projected, order);
+  for (const order of state.queues[queue]) applyProjection(projected, order);
   return projected;
 }
 
@@ -252,18 +253,34 @@ function constructionOrder(
   now: number,
   state: SimState,
   projected: Projection,
-  kind: Exclude<OrderKind, 'HULL'>,
-  subject: BuildingId | InstrumentId | SatelliteId | ResearchProjectId,
+  kind: Exclude<OrderKind, 'HULL' | 'RESEARCH'>,
+  subject: BuildingId | InstrumentId | SatelliteId,
   cost: Resources,
-  research = false,
 ): SimOrder {
-  const minutes = research
-    ? researchMinutes(cost, projected.buildings.CORE)
-    : buildMinutes(cost, projected.buildings.CORE);
+  const minutes = buildMinutes(cost, projected.buildings.CORE);
   const startsAt = state.queues.CONSTRUCTION.at(-1)?.readyAt ?? now;
   return {
     queue: 'CONSTRUCTION',
     kind,
+    subject,
+    cost,
+    minutes,
+    readyAt: startsAt + Math.max(1, Math.ceil(minutes * 60)) / 60,
+  };
+}
+
+function researchOrder(
+  now: number,
+  state: SimState,
+  projected: Projection,
+  subject: ResearchProjectId,
+  cost: Resources,
+): SimOrder {
+  const minutes = researchMinutes(cost, projected.buildings.CORE);
+  const startsAt = state.queues.RESEARCH.at(-1)?.readyAt ?? now;
+  return {
+    queue: 'RESEARCH',
+    kind: 'RESEARCH',
     subject,
     cost,
     minutes,
@@ -314,7 +331,7 @@ function researchCandidate(
     // Dense Fuel and Gravitic Charges are normally discovered through combat.
     // This focused economy run assumes those insights have been earned at the
     // earliest legal opportunity; the output calls that assumption out.
-    return constructionOrder(now, state, projected, 'RESEARCH', id, project.costAt(1), true);
+    return researchOrder(now, state, projected, id, project.costAt(1));
   }
   return null;
 }
@@ -370,17 +387,12 @@ function constructionCandidates(
   state: SimState,
   options: SimOptions,
 ): SimOrder[] {
-  const projected = projectConstruction(state);
+  const projected = projectQueue(state, 'CONSTRUCTION');
   const candidates: (SimOrder | null)[] = [];
   const minimumProducer = Math.min(
     projected.buildings.REFINERY,
     projected.buildings.EXTRACTOR,
   );
-
-  // Time-gated research gets first refusal. If its special material has not yet
-  // arrived, an affordable production action may still use the otherwise idle
-  // queue instead of pretending the player stops developing.
-  candidates.push(researchCandidate(now, state, projected));
 
   if (minimumProducer >= 3 && projected.buildings.SHIPYARD < TARGET_BUILDINGS.SHIPYARD) {
     candidates.push(buildingCandidate(now, state, projected, 'SHIPYARD'));
@@ -405,6 +417,17 @@ function constructionCandidates(
   }
 
   return candidates.filter((candidate): candidate is SimOrder => candidate !== null);
+}
+
+function fillResearch(now: number, state: SimState): void {
+  let guard = 0;
+  while (state.queues.RESEARCH.length < BUILD.queueDepth && guard < 12) {
+    guard += 1;
+    const projected = projectQueue(state, 'RESEARCH');
+    const candidate = researchCandidate(now, state, projected);
+    if (!candidate || !canAfford(state.economy, candidate.cost)) break;
+    enqueue(state, candidate);
+  }
 }
 
 function enqueue(state: SimState, order: SimOrder): void {
@@ -457,7 +480,7 @@ function fillYard(now: number, state: SimState): void {
 }
 
 function completeOrders(now: number, state: SimState): void {
-  for (const queueId of ['CONSTRUCTION', 'YARD'] as const) {
+  for (const queueId of ['CONSTRUCTION', 'YARD', 'RESEARCH'] as const) {
     const queue = state.queues[queueId];
     while (queue[0]?.readyAt !== undefined && queue[0].readyAt <= now + 1e-9) {
       const order = queue.shift()!;
@@ -534,6 +557,7 @@ function advanceProduction(
       * fullFleetShare
       * ((to - from) / 1440);
     const cap = deuteriumCollectorCap(
+      0,
       crystalRate(state.buildings.EXTRACTOR) * productionMult(state.orbit),
     );
     const accepted = Math.min(expectedDeuterium, Math.max(0, cap - state.economy.bufferDeuterium));
@@ -580,6 +604,7 @@ function simulate(options: SimOptions): SimResult {
   const state = freshState();
   if (options.rewards) claimBuildingRewards(state);
   fillYard(0, state);
+  fillResearch(0, state);
   fillConstruction(0, state, options);
 
   const limit = MAX_DAYS * 1440;
@@ -608,7 +633,27 @@ function simulate(options: SimOptions): SimResult {
       // The utility craft is a prerequisite for the special material and has its
       // own queue, so it gets first use of an active player's newly collected ore.
       fillYard(now, state);
+      // Research owns a commander lane and therefore cannot consume or wait on
+      // this world's Construction capacity.
+      fillResearch(now, state);
       fillConstruction(now, state, options);
+    }
+    const numericState = [
+      state.economy.alloy,
+      state.economy.crystal,
+      state.economy.deuterium,
+      state.economy.bufferAlloy,
+      state.economy.bufferCrystal,
+      state.economy.bufferDeuterium,
+      state.produced.alloy,
+      state.produced.crystal,
+      state.produced.deuterium,
+      state.wasted.alloy,
+      state.wasted.crystal,
+      state.wasted.deuterium,
+    ];
+    if (numericState.some((value) => !Number.isFinite(value))) {
+      throw new Error(`non-finite economy state at minute ${String(now)}: ${JSON.stringify(state.economy)}`);
     }
     if (targetReached(state)) return { options, reachedAt: now, state };
   }

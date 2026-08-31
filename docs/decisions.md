@@ -75,7 +75,7 @@ Binds: `transferPlanetControl`, settlement, the second strategic hit, `grant-col
 
 ### D4 · Three independent work queues — OWNER DECISION
 
-Rule: Buildings, instruments and satellites use each world's CONSTRUCTION lane; mobile and ground hulls use that world's YARD lane; research uses one commander-wide RESEARCH lane. Every lane is exactly three orders deep. Cost commits when queued; user cancellation refunds 50%, system failure refunds 100%, queued prerequisites count as projected state, and `builtEver` increases only on completion. Panic defence is an invariant: the opening Shipyard-tier Thorn must be able to complete inside the tightest Radar L3 reaction window.
+Rule: Buildings, instruments and satellites use each world's CONSTRUCTION lane; mobile and ground hulls use that world's YARD lane; research uses one commander-wide RESEARCH lane. Every lane is exactly three orders deep. Cost commits when queued. Construction and Yard orders may be cancelled for a 50% refund; Research is an irreversible commander commitment and cannot be cancelled. System failure refunds 100%, queued prerequisites count as projected state, and `builtEver` increases only on completion. Panic defence is an invariant: the opening Shipyard-tier Thorn must be able to complete inside the tightest Radar L3 reaction window.
 Binds: Build services, queue projection, cancellation/refund rules, client prediction, Radar/build-time balance, simulator.
 
 ### D13 · Vault floor is bounded — LOCKED INVARIANT
@@ -162,7 +162,7 @@ Binds: `pnpm balance:goal`, `pnpm balance:economy`, economy/build constants, sea
 
 ### D134 · Research belongs to the commander — OWNER DECISION
 
-Rule: Research is stored once per seasonal commander as `(project, level)` and queued in one three-deep commander lane, so extra colonies never multiply throughput. A selected world funds an order and supplies its Core speed; losing that world neither cancels the order nor transfers it to the captor. Research completion/queue paths lock player before planet. Completed research is excluded from Wealth because it is not planet-held value; resources committed to a live order retain their value until completion, cancellation or system failure.
+Rule: Research is stored once per seasonal commander as `(project, level)` and queued in one three-deep commander lane, so extra colonies never multiply throughput. A selected world funds an order and supplies its Core speed; losing that world neither cancels the order nor transfers it to the captor. A started project cannot be cancelled by the player. Research completion/queue paths lock player before planet. Completed research is excluded from Wealth because it is not planet-held value; resources committed to a live order retain their value until completion or system failure.
 Binds: `player_research`, `research_orders`, research queue/completion, lock ordering, colonies, Wealth, D140 research surface.
 
 ### D135 · Deuterium Refinery is the floor; asteroids are the ceiling — OWNER INSTRUCTION

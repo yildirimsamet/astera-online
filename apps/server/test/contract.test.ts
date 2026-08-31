@@ -999,6 +999,30 @@ describe('every payload the client parses', () => {
     expect(parsed.projectId).toBe('ISOTOPE_SPECTROMETRY');
   });
 
+  it('refuses to cancel a commander research commitment', async () => {
+    const placed = researchCompleteSchema.parse(
+      await post('/api/planet/research', { projectId: 'DEUTERIUM_SYNTHESIS' }),
+    );
+    const order = placed.planet.researchQueue?.[0];
+    if (!order) throw new Error('research contract setup created no order');
+
+    const planetId = f.planetIds[0]!;
+    for (const url of [
+      `/api/planet/research-orders/${order.id}/cancel`,
+      `/api/planets/${planetId}/research-orders/${order.id}/cancel`,
+    ]) {
+      const response = await app.inject({
+        method: 'POST',
+        url,
+        headers: auth,
+        payload: {},
+      });
+      expect(response.statusCode, url).toBe(409);
+      expect(response.json<{ error?: string }>().error, url)
+        .toBe('RESEARCH_CANNOT_BE_CANCELLED');
+    }
+  });
+
   it('POST /api/planet/collect parses', async () => {
     f.clock.advance(120);
     const parsed = collectSchema.parse(await post('/api/planet/collect', {}));

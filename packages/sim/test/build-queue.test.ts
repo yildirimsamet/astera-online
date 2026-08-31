@@ -10,6 +10,33 @@ import {
 const cost = (alloy = 10, crystal = 0, deuterium = 0) => ({ alloy, crystal, deuterium });
 
 describe('the simulator build queue mirror', () => {
+  it('runs commander Research independently from Construction and Yard', () => {
+    const world = buildWorld({ players: 1, days: 1, seed: 40 });
+    const player = world.players[0]!;
+    player.alloy = 10_000;
+    player.crystal = 10_000;
+
+    expect(enqueueSimBuild(player, 0, world, {
+      queue: 'CONSTRUCTION', kind: 'BUILDING', subject: 'CORE', count: 1,
+      cost: cost(), minutes: 10,
+    })).toBe(true);
+    expect(enqueueSimBuild(player, 0, world, {
+      queue: 'RESEARCH', kind: 'RESEARCH', subject: 'ISOTOPE_SPECTROMETRY', count: 1,
+      cost: cost(), minutes: 4,
+    })).toBe(true);
+
+    expect(player.queues.CONSTRUCTION[0]?.readyAt).toBe(10);
+    expect(player.queues.RESEARCH[0]?.readyAt).toBe(4);
+    expect(projectedBuildState(player, world, 'CONSTRUCTION').research)
+      .not.toContain('ISOTOPE_SPECTROMETRY');
+    expect(projectedBuildState(player, world, 'RESEARCH').research)
+      .toContain('ISOTOPE_SPECTROMETRY');
+
+    advanceBuildQueues(world, 4);
+    expect(player.isotopeSpectrometry).toBe(true);
+    expect(player.buildings.CORE).toBe(1);
+  });
+
   it('runs Construction and Yard independently while preserving same-queue projection', () => {
     const world = buildWorld({ players: 1, days: 1, seed: 41 });
     const player = world.players[0]!;
@@ -118,16 +145,21 @@ describe('the simulator build queue mirror', () => {
       cost: cost(), minutes: 1,
     })).toBe(true);
     expect(enqueueSimBuild(player, 0, world, {
-      queue: 'CONSTRUCTION', kind: 'RESEARCH', subject: 'ISOTOPE_SPECTROMETRY', count: 1,
+      queue: 'RESEARCH', kind: 'RESEARCH', subject: 'ISOTOPE_SPECTROMETRY', count: 1,
       cost: cost(), minutes: 1,
     })).toBe(true);
 
-    advanceBuildQueues(world, 2.99);
-    expect(player.orbit).toContain('FOUNDRY');
-    expect(player.instruments.AEGIS).toBe(1);
+    advanceBuildQueues(world, 0.99);
+    expect(player.orbit).not.toContain('FOUNDRY');
+    expect(player.instruments.AEGIS).toBeUndefined();
     expect(player.isotopeSpectrometry).toBe(false);
 
-    advanceBuildQueues(world, 3);
+    advanceBuildQueues(world, 1);
+    expect(player.orbit).toContain('FOUNDRY');
     expect(player.isotopeSpectrometry).toBe(true);
+    expect(player.instruments.AEGIS).toBeUndefined();
+
+    advanceBuildQueues(world, 2);
+    expect(player.instruments.AEGIS).toBe(1);
   });
 });

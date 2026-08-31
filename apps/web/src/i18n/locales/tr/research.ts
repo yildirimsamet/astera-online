@@ -14,14 +14,11 @@ export const research = {
   queueCapacity: "{{count}} yuva",
   queueLane: "Komutan araştırması",
   queueGlobalHint:
-    "Bu sıra komutanına aittir. Her gezegendeki İnşaat ve Tersane sıraları ayrı çalışmaya devam eder.",
-  cancelled: "{{alloy}} Alaşım · {{crystal}} Kristal · {{deuterium}} Döteryum iade edildi",
+    "Bu sıra komutanına aittir ve başlayan araştırma iptal edilemez. Her gezegendeki İnşaat ve Tersane sıraları ayrı çalışır.",
   runningLabel: "Sürüyor",
-  runningOn: "{{planet}} üzerinde",
   runningFinishes: "{{time}}’de biter",
   idleLabel: "Sürmekte olan araştırma yok",
-  idleHint: "Aşağıdan bir proje başlat. Burada üç proje sıraya girebilir; gezegen sıraların çalışmayı sürdürür.",
-  slotBusy: "{{name}}, {{planet}} üzerinde sürüyor",
+  idleHint: "Aşağıdan bir proje başlat. Burada üç proje sıraya girebilir; başladığında iptal edilemez.",
 
   frontierBand: "Ufuk",
   frontierNote:
@@ -39,7 +36,7 @@ export const research = {
   complete: "araştırıldı",
 
   needCore: "Komuta Çekirdeğini {{level}}. seviyeye yükselt",
-  queueFull: "Araştırma sırası dolu",
+  queueFull: "Sırada zaten 3 araştırma var. Yenisini eklemek için birinin bitmesini bekle.",
   at: "{{duration}} sonra araştırılabilir",
   warAt: "Savaş dönemi {{duration}} sonra başlar",
   isotopeFirst: "Önce İzotop Spektrometrisi’ni araştır",

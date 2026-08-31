@@ -56,6 +56,8 @@ export const errors = {
   TARGET_ALREADY_WATCHED: 'Başka bir Teleskop yuvası o dünyayı zaten izliyor',
   BUILD_ORDER_FINISHED: 'O sipariş zaten tamamlandı',
   BUILD_ORDER_HAS_DEPENDENTS: 'Önce bunun arkasındaki bağımlı siparişleri iptal et',
+  RESEARCH_CANNOT_BE_CANCELLED: 'Başlayan araştırma iptal edilemez',
+  RESEARCH_QUEUE_FULL: 'Sırada zaten 3 araştırma var. Yenisini eklemek için birinin bitmesini bekle.',
   BUILD_ORDER_NOT_FOUND: 'Bu kimlikte etkin bir üretim siparişi yok',
   BASH_LIMIT: 'Bu gezegene son zamanlarda fazla yüklendin',
   CANNOT_INTERCEPT: 'Araçların yetişemeden diskten çıkacak',

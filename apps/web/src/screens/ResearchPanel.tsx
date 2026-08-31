@@ -6,13 +6,9 @@ import {
   RESEARCH_PROJECTS,
   type ResearchProjectId,
 } from '@astera/rules';
-import {
-  useCancelResearchOrder,
-  useCompleteResearch,
-  usePlanet,
-} from '../api/queries.js';
+import { useCompleteResearch, usePlanet } from '../api/queries.js';
 import type { BuildOrderView, PlanetView } from '../api/schemas.js';
-import { full, percent } from '../lib/format.js';
+import { percent } from '../lib/format.js';
 import { serverNow } from '../lib/clock.js';
 import { clockTime, duration, useNow } from '../lib/time.js';
 import { useProjected } from '../lib/projection.js';
@@ -115,7 +111,6 @@ export function ResearchPanel({ onNeed }: { onNeed?: (id: string) => void }) {
   const { data, dataUpdatedAt, isError, refetch } = usePlanet();
   const held = useProjected(data?.planet, dataUpdatedAt, 5000);
   const research = useCompleteResearch();
-  const cancelResearch = useCancelResearchOrder();
   const say = useToast();
   const now = useNow(1000);
   const [sheet, setSheet] = useState<SheetSpec | null>(null);
@@ -476,19 +471,6 @@ export function ResearchPanel({ onNeed }: { onNeed?: (id: string) => void }) {
           label={t('research.queueLane')}
           orders={queueOrders}
           now={now}
-          cancelling={cancelResearch.isPending ? cancelResearch.variables : undefined}
-          onCancel={(order) => {
-            cancelResearch.mutate(order.id, {
-              onSuccess: (result) => {
-                say(t('research.cancelled', {
-                  alloy: full(result.refund.alloy),
-                  crystal: full(result.refund.crystal),
-                  deuterium: full(result.refund.deuterium),
-                }));
-              },
-              onError: (error) => { say(describe(error), 'error'); },
-            });
-          }}
         />
         <p className="px-3 pb-3 text-label leading-snug text-faint">
           {t('research.queueGlobalHint')}

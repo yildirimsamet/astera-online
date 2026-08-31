@@ -2,7 +2,6 @@ import { and, eq, inArray, sql } from 'drizzle-orm';
 import {
   BUILD,
   RESEARCH_PROJECTS,
-  cancelRefund,
   researchMinutes,
   type ResearchProjectId,
 } from '@astera/rules';
@@ -70,10 +69,15 @@ export async function completeResearch(
     assertWorldOperational(planet);
     const queue = await activeResearchOrders(tx, planet.playerId);
     if (queue.length >= BUILD.queueDepth) {
-      throw new GameError('QUEUE_FULL', 'The research queue is full', 409, {
-        queue: 'RESEARCH',
-        max: BUILD.queueDepth,
-      });
+      throw new GameError(
+        'RESEARCH_QUEUE_FULL',
+        'Three research projects are already queued. Wait for one to finish.',
+        409,
+        {
+          queue: 'RESEARCH',
+          max: BUILD.queueDepth,
+        },
+      );
     }
     if (queue.some((order, index) => order.slot !== index)) {
       throw new Error(`research queue ${planet.playerId} is not compact`);
@@ -213,65 +217,6 @@ async function reflowResearchQueue(
   }
 }
 
-export async function cancelResearchOrder(
-  db: Db,
-  planetId: string,
-  orderId: string,
-  clock: Clock,
-  expectedPlayerId?: string,
-) {
-  return db.transaction(async (tx) => {
-    const [world] = await tx
-      .select({ playerId: planets.controllerPlayerId })
-      .from(planets)
-      .where(eq(planets.id, planetId));
-    if (!world?.playerId || (expectedPlayerId !== undefined && world.playerId !== expectedPlayerId)) {
-      throw new GameError('PLANET_NOT_OWNED', 'You do not control that world', 403);
-    }
-    await tx.select({ id: players.id }).from(players).where(eq(players.id, world.playerId)).for('update');
-    const planet = await loadLocked(tx, planetId, clock, {
-      expectedPlayerId: expectedPlayerId ?? world.playerId,
-    });
-    assertWorldOperational(planet);
-    const queue = await activeResearchOrders(tx, planet.playerId);
-    const order = queue.find((candidate) => candidate.id === orderId);
-    if (!order) throw new GameError('RESEARCH_ORDER_NOT_FOUND', 'No active research order by that id', 404);
-    if (order.readyAt <= planet.now) {
-      throw new GameError('BUILD_ORDER_FINISHED', 'That research has already finished', 409);
-    }
-    if (queue.some((candidate) => researchDependsOn(candidate, order))) {
-      throw new GameError(
-        'BUILD_ORDER_HAS_DEPENDENTS',
-        'Cancel the dependent research behind this one first',
-        409,
-      );
-    }
-
-    const refund = cancelRefund(order.cost);
-    await tx.update(researchOrders).set({ status: 'CANCELLED' }).where(and(
-      eq(researchOrders.id, order.id),
-      eq(researchOrders.status, 'BUILDING'),
-    ));
-    await tx.update(scheduledEvents).set({ status: 'done', claimedAt: null }).where(and(
-      inArray(scheduledEvents.kind, ['research_complete', 'build_complete']),
-      eq(scheduledEvents.refId, order.id),
-      inArray(scheduledEvents.status, ['pending', 'processing']),
-    ));
-
-    planet.alloy += refund.alloy;
-    planet.crystal += refund.crystal;
-    planet.deuterium += refund.deuterium;
-    await saveResources(tx, planet.planetId, {
-      alloy: planet.alloy,
-      crystal: planet.crystal,
-      deuterium: planet.deuterium,
-    });
-    await reflowResearchQueue(tx, planet.playerId, planet.now, order.slot !== 0);
-    await recomputePlayerWealth(tx, planet.playerId);
-    return { orderId, refund, planet: await planetView(tx, planetId, clock) };
-  });
-}
-
 /** Apply one due rung and compact the remaining commander queue. Idempotent. */
 export async function applyResearchCompletion(
   tx: Tx,
@@ -347,12 +292,29 @@ export async function abandonResearchOrder(
     const abandoned = queue.filter((candidate) =>
       candidate.id === order.id || researchDependsOn(candidate, order));
     const ids = abandoned.map((candidate) => candidate.id);
-    const refundPlanetId = await safeHomePlanet(
-      tx,
-      order.playerId,
-      order.fundingPlanetId,
-    );
-    const planet = await loadLocked(tx, refundPlanetId, clock, { requireLive: false });
+    const refunds = new Map<string, { alloy: number; crystal: number; deuterium: number }>();
+    for (const candidate of abandoned) {
+      const refundPlanetId = await safeHomePlanet(
+        tx,
+        order.playerId,
+        candidate.fundingPlanetId,
+      );
+      const refund = refunds.get(refundPlanetId) ?? { alloy: 0, crystal: 0, deuterium: 0 };
+      refund.alloy += candidate.cost.alloy;
+      refund.crystal += candidate.cost.crystal;
+      refund.deuterium += candidate.cost.deuterium;
+      refunds.set(refundPlanetId, refund);
+    }
+    // Player is already locked. Multiple refund worlds follow the global
+    // ascending-id planet lock order, so recovery cannot deadlock another
+    // multi-world mutation.
+    const refundWorlds = new Map<string, Awaited<ReturnType<typeof loadLocked>>>();
+    for (const planetId of [...refunds.keys()].sort()) {
+      refundWorlds.set(
+        planetId,
+        await loadLocked(tx, planetId, clock, { requireLive: false }),
+      );
+    }
     const affected = await tx
       .update(researchOrders)
       .set({ status: 'FAILED' })
@@ -364,20 +326,22 @@ export async function abandonResearchOrder(
       inArray(scheduledEvents.refId, ids),
       inArray(scheduledEvents.status, ['pending', 'processing']),
     ));
-    for (const candidate of abandoned) {
-      planet.alloy += candidate.cost.alloy;
-      planet.crystal += candidate.cost.crystal;
-      planet.deuterium += candidate.cost.deuterium;
+    for (const [planetId, refund] of refunds) {
+      const planet = refundWorlds.get(planetId);
+      if (!planet) throw new Error(`research refund world ${planetId} was not locked`);
+      planet.alloy += refund.alloy;
+      planet.crystal += refund.crystal;
+      planet.deuterium += refund.deuterium;
+      await saveResources(tx, planet.planetId, {
+        alloy: planet.alloy,
+        crystal: planet.crystal,
+        deuterium: planet.deuterium,
+      });
     }
-    await saveResources(tx, planet.planetId, {
-      alloy: planet.alloy,
-      crystal: planet.crystal,
-      deuterium: planet.deuterium,
-    });
     await reflowResearchQueue(
       tx,
       order.playerId,
-      planet.now,
+      clock.now(),
       queue[0]?.id !== order.id,
     );
     await recomputePlayerWealth(tx, order.playerId);

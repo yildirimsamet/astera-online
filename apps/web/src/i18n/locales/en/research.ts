@@ -24,15 +24,11 @@ export const research = {
   queueCapacity: "{{count}} slots",
   queueLane: "Commander research",
   queueGlobalHint:
-    "This queue belongs to your commander. Construction and Yard on every world keep running separately.",
-  cancelled: "{{alloy}} Alloy · {{crystal}} Crystal · {{deuterium}} Deuterium refunded",
+    "This queue belongs to your commander, and started research cannot be cancelled. Construction and Yard on every world keep running separately.",
   runningLabel: "Under way",
-  runningOn: "on {{planet}}",
   runningFinishes: "finishes {{time}}",
   idleLabel: "Nothing under way",
-  idleHint: "Start a project below. Up to three can wait here while every world's own queues keep running.",
-  /** Why a card is shut while another world holds the slot. */
-  slotBusy: "{{name}} is running on {{planet}}",
+  idleHint: "Start a project below. Up to three can wait here; once started, they cannot be cancelled.",
 
   frontierBand: "Frontier",
   frontierNote:
@@ -51,7 +47,7 @@ export const research = {
   complete: "researched",
 
   needCore: "Raise Command Core to L{{level}}",
-  queueFull: "The Research queue is full",
+  queueFull: "3 research projects are already queued. Wait for one to finish before adding another.",
   at: "Researchable in {{duration}}",
   warAt: "War act opens in {{duration}}",
   isotopeFirst: "Research Isotope Spectrometry first",

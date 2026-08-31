@@ -108,7 +108,7 @@ raid. Crystal must be spendable **and** worth stealing.
 
 ---
 
-## Build time — two queues
+## Build time — three independent lanes
 
 ```
 buildMinutes(item) = min(480, costTotal / throughput)      480 min = 8 h hard ceiling
@@ -118,7 +118,7 @@ buildMinutes(item) = min(480, costTotal / throughput)      480 min = 8 h hard ce
   ground        1320 × (1 + 0.35 × shipyard)  Thorn, Bastion
   research       ×0.62 on the construction workload
 
-queueDepth 3 per queue · cancelRefund 0.5 · system abandonment refunds in full
+queueDepth 3 per queue · Construction/Yard cancelRefund 0.5 · Research cannot be cancelled · system abandonment refunds in full
 ```
 
 | Reaching level | 2 | 8 | 12 | 13 | 15 | 18 | 20 |
@@ -130,11 +130,12 @@ Wasp at Shipyard 0: 1.2 m. Thorn at Shipyard 0: 51 s.
 **Time is priced in resources**, so no price change can leave a build time behind, and one formula
 covers everything. `defBase` is derived from the radar promise, not chosen — see the invariants above.
 
-**Rules that are not obvious.** Gates read the projected state of *the same queue*, so Core 1→2 may be
+**Rules that are not obvious.** Gates read the projected state of *the same lane*, so Core 1→2 may be
 followed immediately by Refinery 1→2 — but a Shipyard in CONSTRUCTION cannot unlock a hull in YARD,
-because the two queues run in parallel and neither is ahead of the other. Disruption stops the works,
-never construction. Committed resources stay in Wealth. `builtEver` rises only on completion.
-Cancelling an order whose removal would change the meaning of a later one is refused.
+because the lanes run in parallel and neither is ahead of the other. RESEARCH is commander-wide and
+never occupies either world lane. Disruption stops the works, never queued work. Committed resources
+stay in Wealth. `builtEver` rises only on completion. Construction/Yard cancellation is refused when
+removing an order would change the meaning of a later one; Research cannot be cancelled at all.
 
 ---
 
@@ -473,23 +474,25 @@ pnpm balance:goal      # one attentive commander's exact target route
 
 The fixed goal is Core/Refinery/Extractor L12, Vault L10, Telescope/Radar L5, all four satellites
 and all four research projects. The route also buys the hidden prerequisites the checklist needs:
-Shipyard L1 and two Prospectors. It runs the real two queues, projected gates, manual collection,
+Shipyard L1 and two Prospectors. It runs the real three lanes, projected gates, manual collection,
 level-dependent production, storage/works caps, Foundry output, building rewards and research clocks.
 Dense Fuel and Gravitic discovery events are assumed to have been earned at their earliest legal
 opportunity; inventing fake battles would make this economy diagnostic less honest, not more.
 
 On the current working tempo, an eight-hour player reserving every collected unit for the checklist
-finishes the non-research development package at **3d 03h**. The complete checklist reads **8d 04h**
+finishes the non-research development package at **2d 02h 45m**. The complete checklist reads **8d 01h 44m**
 only under the explicit assumption that two Derrick Prospectors deliver a net 300 Deuterium/day.
 That final figure is therefore a Deuterium result, not proof that passive economy pacing is eight
 days. Reserving 75%, 50%, 35% and 25% of collected Alloy/Crystal for the checklist moves the
-development package to about **4d 02h, 6d 02h, 8d 10h and 12d 00h** respectively. The 50% route is
-the calibration gate: it must remain between six and seven days.
+development package to about **2d 06h 43m, 4d 00h 50m, 5d 10h and 7d 01h 22m** respectively.
+The accepted D128 gate remains six to seven days at 50%, so `pnpm balance:goal` now fails by measured
+design consequence after D134 moved Research out of Construction. Do not hide that conflict by
+widening the gate or guessing at economy constants; it needs an explicit pacing decision.
 
 The special-material assumption is plausible for one highly active miner but impossible as a
-population average. Across five deterministic fields, only 75,398–90,044 Deuterium exists by day 8;
-even with perfect collection this funds all four projects for only **41–49 commanders**. A single
-finisher needs roughly seven full rich-rock returns from two Derrick Prospectors and 2.2% of the
+population average. Across five deterministic fields, the average supply is about 89,182 Deuterium
+by day 8; even with perfect collection this funds all four projects for only **42–57 commanders**.
+A single finisher needs roughly seven full rich-rock returns from two Derrick Prospectors and 2.0% of the
 whole field supply. Do not tune Alloy/Crystal against the eight-day aggregate until the intended
 split between development completion and the research tail is stated separately.
 

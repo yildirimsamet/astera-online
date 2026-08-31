@@ -40,7 +40,8 @@ export function QueueStrip({
   /** Server time, ticking, so the head fills without the row re-fetching. */
   now: number;
   cancelling?: string;
-  onCancel: (order: BuildOrderView) => void;
+  /** Omit for irreversible lanes such as commander research. */
+  onCancel?: (order: BuildOrderView) => void;
 }) {
   const { t } = useTranslation();
 
@@ -138,7 +139,7 @@ export function QueueStrip({
                   {countdown(finishesAt.getTime() - now)}
                 </span>
               )}
-              {finishesAt && (
+              {finishesAt && onCancel && (
                 <button
                   type="button"
                   data-cancel

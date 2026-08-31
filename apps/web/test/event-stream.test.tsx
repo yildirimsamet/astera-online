@@ -150,6 +150,21 @@ describe('the event stream', () => {
     expect(asked).toEqual(['traffic']);
   });
 
+  it('rechecks traffic after replica caches observe a shard launch', () => {
+    mountCaughtUp();
+    fire('shard:launch');
+
+    act(() => {
+      vi.advanceTimersByTime(COALESCE_MS);
+    });
+    expect(asked).toEqual(['traffic']);
+
+    act(() => {
+      vi.advanceTimersByTime(STRATEGIC_SIGHT_CONSISTENCY_MS - COALESCE_MS);
+    });
+    expect(asked).toEqual(['traffic', 'traffic']);
+  });
+
   it('collapses a burst from a busy galaxy into one pass', () => {
     mountCaughtUp();
     for (let i = 0; i < 6; i += 1) fire('shard:launch');

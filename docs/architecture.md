@@ -328,14 +328,14 @@ projection so repeated scouting cannot make its hottest query grow with report h
 **Time model.** Everything in the database is `timestamptz`; the rules work in minutes since
 season start. `apps/server/src/clock.ts` is the **only** place those two meet.
 
-**Build queues.** `build_orders` holds what a world is making: two queues (`CONSTRUCTION`,
-`YARD`), three orders deep, kept compact by `slot` under a partial unique index on the active
-rows. Cost is committed at order time and lives on the row, so Wealth can count it and a refund
-knows what to return. Each order schedules one `build_complete` event at its `readyAt`; the
-handler matches that instant before applying, exactly as `death_star_ready` does, so a
-redelivery is inert. Cancelling or abandoning re-flows the tail and rewrites both the rows and
-their events together — an event whose `expectedReadyAt` no longer matches is a no-op by
-construction.
+**Work queues.** `build_orders` holds what a world is making in two three-deep lanes:
+`CONSTRUCTION` and `YARD`. `research_orders` holds the separate three-deep commander-wide
+`RESEARCH` lane; its funding world supplies the committed resources and Core speed but never owns
+the order. Partial unique indexes keep every active lane compact by `slot`. Each order schedules
+one completion event at its `readyAt`, and handlers match that instant before applying so a
+redelivery is inert. Players may cancel Construction/Yard orders for their defined refund;
+Research is irreversible. System abandonment refunds any lane in full, re-flows its tail and
+rewrites rows and events together.
 
 **Unit ownership.** `units` rows are authoritative, with `location` = `'home'` or a mission
 id. A fleet in flight is still owned by its planet (so it still counts toward Wealth) but is

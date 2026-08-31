@@ -135,15 +135,6 @@ function RockBucket({
   const source = useMemo(() => unitModel(scene), [scene]);
   const hits = useRef<THREE.InstancedMesh>(null);
 
-  const bodyMaterial = useMemo(() => {
-    if (!source) return null;
-    const material = source.material.clone();
-    // The opaque-looking body draws after the transparent rim and masks its
-    // expanded back faces, leaving neon only around the true silhouette.
-    material.transparent = true;
-    material.depthWrite = true;
-    return material;
-  }, [source]);
   const rimMaterial = useMemo(() => new THREE.ShaderMaterial({
     uniforms: {
       uColour: { value: new THREE.Color(asteroidRimColour(false)) },
@@ -151,7 +142,9 @@ function RockBucket({
     },
     transparent: true,
     depthWrite: false,
-    depthTest: false,
+    // The expanded back faces remain behind the opaque rock and any nearer world.
+    // Disabling this makes a hidden asteroid glow through planets.
+    depthTest: true,
     side: THREE.BackSide,
     blending: THREE.AdditiveBlending,
     vertexShader: `
@@ -179,10 +172,9 @@ function RockBucket({
 
   useEffect(
     () => () => {
-      bodyMaterial?.dispose();
       rimMaterial.dispose();
     },
-    [bodyMaterial, rimMaterial],
+    [rimMaterial],
   );
 
   const tint = useMemo(() => new THREE.Color(), []);
@@ -302,12 +294,11 @@ function RockBucket({
         // drift straight off these matrices, because a screenshot cannot tell a
         // slow orbit from a stopped one.
         name="asteroid-rocks"
-        args={[source.geometry, bodyMaterial ?? source.material, bucket.rocks.length]}
+        args={[source.geometry, source.material, bucket.rocks.length]}
         // Every bucket spans the whole disc, so a bounding sphere is either fully
         // in or fully out and a grazing frustum can drop the lot — the same trap
         // the planet field had to be rescued from.
         frustumCulled={false}
-        renderOrder={2}
       />
 
       {/*

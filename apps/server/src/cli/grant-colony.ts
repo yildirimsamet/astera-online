@@ -3,8 +3,8 @@
  *
  * It goes through `transferPlanetControl`, the same primitive settlement and the
  * second strategic hit use, rather than a hand-written UPDATE. A colony is not one
- * row: the neutral state has to go, live research orders are cancelled, units are
- * reassigned and the sensor epoch is refreshed. A raw UPDATE produces a world the
+ * row: the neutral state has to go, units are reassigned and the sensor epoch is
+ * refreshed. Commander research remains with its commander. A raw UPDATE produces a world the
  * planet view cannot render and a fog window that never re-opens.
  *
  *   pnpm --filter @astera/server tsx src/cli/grant-colony.ts <commander> [--near <planetId>]

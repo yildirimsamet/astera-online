@@ -138,6 +138,10 @@ the script's final line as proof of deployment.
 
 ## Production deploy, in order
 
+The root `pnpm verify` and `pnpm lint` commands run type-aware ESLint with a 4 GB Node heap.
+Use those root scripts during qualification; a bare `eslint .` falls back to Node's smaller
+default heap and can fail for memory reasons without identifying an application regression.
+
 ### 1. Qualify the commit locally
 
 ```bash

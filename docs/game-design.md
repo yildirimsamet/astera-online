@@ -77,15 +77,17 @@ Five numbers, one portrait screen, no scrolling. **A hard cap.**
 **Work commits on payment and completes through three independent queues** (D4).
 Buildings, instruments and satellites use each world's CONSTRUCTION lane; mobile hulls and ground
 defence use that world's YARD lane; research uses one commander-wide RESEARCH lane. Each queue is
-three orders deep and processes one order at a time. Cancelling is a decision, not an undo: it
-refunds half the committed resources. A system-abandoned order refunds everything. The Death Star
+three orders deep and processes one order at a time. Construction and Yard cancellation refunds
+half the committed resources; commander research cannot be cancelled once started. A
+system-abandoned order refunds everything. The Death Star
 keeps its separate sixty-minute strategic build (D97), and so does the interception charge that
 answers it (D139) — both are strategic assets on the world rather than queue orders, and both are
 stopped by a bombardment and resumed by the recovery that follows.
 
 **Research is bought on a surface of its own** (D140). The selected world pays, but the order enters
 the commander's three-deep RESEARCH lane; no planet gains an extra lane and no Construction or Yard
-slot is consumed. The screen draws that lane, its running project and the clock time it finishes.
+slot is consumed. Starting it is an irreversible commander commitment. The screen draws that lane,
+its running project and the clock time it finishes.
 Fifteen projects in four groups: the four
 Frontier permissions that are found rather than bought, four economy ladders, five weapon
 doctrines, and the two strategic permissions.

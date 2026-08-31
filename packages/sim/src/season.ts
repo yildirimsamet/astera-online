@@ -71,7 +71,6 @@ import {
   prospectorSpeed,
   travelExact,
   researchMinutes,
-  resolveQueue,
   satelliteCost,
   satelliteSlots,
   seeingUnlocked,
@@ -84,7 +83,6 @@ import {
   wealth,
   type BuildingId,
   type BuildingLevels,
-  type BuildQueueId,
   type Fleet,
   type Ledger,
   type Rng,
@@ -113,8 +111,8 @@ export interface SimPlayer {
   orbit: SatelliteId[];
   fleet: Fleet;
   ground: Fleet;
-  /** Paid work in the two independent Economy v2 queues. */
-  queues: Record<BuildQueueId, SimBuildOrder[]>;
+  /** Paid work in the three independent production lanes. */
+  queues: Record<SimQueueId, SimBuildOrder[]>;
   alloy: number;
   crystal: number;
   deuterium: number;
@@ -161,17 +159,18 @@ export interface SimPlayer {
 }
 
 export type SimBuildKind = 'BUILDING' | 'HULL' | 'INSTRUMENT' | 'SATELLITE' | 'RESEARCH';
+export type SimQueueId = 'CONSTRUCTION' | 'YARD' | 'RESEARCH';
 
 /** The simulator's in-memory mirror of one active server build order. */
 export interface SimBuildOrder {
-  queue: BuildQueueId;
+  queue: SimQueueId;
   kind: SimBuildKind;
   subject: string;
   count: number;
   cost: Resources;
   /** Full work duration, retained like `remainingSeconds` on the server row. */
   minutes: number;
-  /** Absolute season minute; the two queues may finish independently. */
+  /** Absolute season minute; all three lanes may finish independently. */
   readyAt: number;
 }
 
@@ -410,7 +409,7 @@ export function buildWorld(cfg: SimConfig): World {
     // measuring a different game.
     fleet: {},
     ground: {},
-    queues: { CONSTRUCTION: [], YARD: [] },
+    queues: { CONSTRUCTION: [], YARD: [], RESEARCH: [] },
     alloy: PLANET_START.alloy, crystal: PLANET_START.crystal, deuterium: PLANET_START.deuterium,
     bufferAlloy: 0, bufferCrystal: 0, bufferDeuterium: 0,
     shield: 0, lastTick: 0, joinedAt: 0, disruptedUntil: 0,
@@ -557,11 +556,11 @@ const completedResearchOf = (p: SimPlayer, world: World): Set<ResearchProjectId>
   return completed;
 };
 
-/** Current state plus every order already ahead in one independent queue. */
+/** Current state plus every order already ahead in one independent lane. */
 export function projectedBuildState(
   p: SimPlayer,
   world: World,
-  queue: BuildQueueId,
+  queue: SimQueueId,
 ): SimBuildProjection {
   const projected: SimBuildProjection = {
     buildings: { ...p.buildings },
@@ -613,7 +612,12 @@ export function enqueueSimBuild(
   input: Omit<SimBuildOrder, 'readyAt'>,
 ): boolean {
   const queue = p.queues[input.queue];
-  if ((input.kind === 'HULL') !== (input.queue === 'YARD')) return false;
+  const validLane = input.kind === 'HULL'
+    ? input.queue === 'YARD'
+    : input.kind === 'RESEARCH'
+      ? input.queue === 'RESEARCH'
+      : input.queue === 'CONSTRUCTION';
+  if (!validLane) return false;
   if (queue.length >= BUILD.queueDepth) return false;
   if (!Number.isInteger(input.count) || input.count < 1) return false;
   if (!Number.isFinite(input.minutes) || input.minutes <= 0) return false;
@@ -627,8 +631,8 @@ export function enqueueSimBuild(
   // earlier and compound that drift over a fourteen-day season.
   const minutes = Math.max(1, Math.ceil(input.minutes * 60)) / 60;
   const startsAt = queue.at(-1)?.readyAt ?? t;
-  const readyAt = resolveQueue([{ queue: input.queue, minutes }], startsAt)[0];
-  if (readyAt === undefined || readyAt > world.totalMinutes) return false;
+  const readyAt = startsAt + minutes;
+  if (readyAt > world.totalMinutes) return false;
 
   p.alloy -= input.cost.alloy;
   p.crystal -= input.cost.crystal;
@@ -645,7 +649,7 @@ export function enqueueSimBuild(
 /** Absolute completion minute for one more order, with server-style second rounding. */
 function nextSimBuildReadyAt(
   p: SimPlayer,
-  queue: BuildQueueId,
+  queue: SimQueueId,
   t: number,
   minutes: number,
 ): number {
@@ -714,7 +718,7 @@ const wantsDeuterium = (p: SimPlayer): boolean => {
 
 /** The rung already held or on its way, so two orders cannot buy the same one. */
 const synthesisRung = (p: SimPlayer): number =>
-  p.queues.CONSTRUCTION.reduce(
+  p.queues.RESEARCH.reduce(
     (rung, order) => order.kind === 'RESEARCH' && order.subject === 'DEUTERIUM_SYNTHESIS'
       ? Math.max(rung, order.count)
       : rung,
@@ -734,9 +738,9 @@ function trySynthesis(p: SimPlayer, t: number, world: World): void {
   if (rung > 0 && p.buildings.DEUTERIUM_PLANT < plantCeiling(rung)) return;
   const cost = project.costAt(rung + 1);
   if (p.alloy < cost.alloy || p.crystal < cost.crystal || p.deuterium < cost.deuterium) return;
-  const projected = projectedBuildState(p, world, 'CONSTRUCTION');
+  const projected = projectedBuildState(p, world, 'RESEARCH');
   const placed = enqueueSimBuild(p, t, world, {
-    queue: 'CONSTRUCTION',
+    queue: 'RESEARCH',
     kind: 'RESEARCH',
     subject: 'DEUTERIUM_SYNTHESIS',
     count: rung + 1,
@@ -749,7 +753,7 @@ function trySynthesis(p: SimPlayer, t: number, world: World): void {
 /** Complete due work at each order's exact instant; disruption never pauses it. */
 export function advanceBuildQueues(world: World, t: number): void {
   for (const p of world.players) {
-    const due = [...p.queues.CONSTRUCTION, ...p.queues.YARD]
+    const due = [...p.queues.CONSTRUCTION, ...p.queues.YARD, ...p.queues.RESEARCH]
       .filter((order) => order.readyAt <= t)
       .sort((a, b) => a.readyAt - b.readyAt || a.queue.localeCompare(b.queue));
     if (due.length === 0) continue;
@@ -761,11 +765,12 @@ export function advanceBuildQueues(world: World, t: number): void {
     }
     p.queues.CONSTRUCTION = p.queues.CONSTRUCTION.filter((order) => !completed.has(order));
     p.queues.YARD = p.queues.YARD.filter((order) => !completed.has(order));
+    p.queues.RESEARCH = p.queues.RESEARCH.filter((order) => !completed.has(order));
   }
 }
 
 const queuedWealth = (p: SimPlayer): number =>
-  [...p.queues.CONSTRUCTION, ...p.queues.YARD]
+  [...p.queues.CONSTRUCTION, ...p.queues.YARD, ...p.queues.RESEARCH]
     .reduce((sum, order) => sum + resourcesTotal(order.cost), 0);
 
 function enqueueHullOrder(
@@ -1080,7 +1085,7 @@ export function tryDeathStar(p: SimPlayer, t: number, world: World): void {
   }
   if (existing || t < RESEARCH_PROJECTS.DEATH_STAR_PROTOCOL.availableAtMinutes) return;
   if (!world.deathStarProtocol.has(p.id)) {
-    const projected = projectedBuildState(p, world, 'CONSTRUCTION');
+    const projected = projectedBuildState(p, world, 'RESEARCH');
     // Already paid and waiting: the strategic asset cannot start until the
     // research completion has made the permission durable.
     if (projected.research.has('DEATH_STAR_PROTOCOL')) return;
@@ -1091,7 +1096,7 @@ export function tryDeathStar(p: SimPlayer, t: number, world: World): void {
     const research = RESEARCH_PROJECTS.DEATH_STAR_PROTOCOL.costAt(1);
     if (p.alloy < research.alloy || p.crystal < research.crystal || p.deuterium < research.deuterium) return;
     const placed = enqueueSimBuild(p, t, world, {
-      queue: 'CONSTRUCTION',
+      queue: 'RESEARCH',
       kind: 'RESEARCH',
       subject: 'DEATH_STAR_PROTOCOL',
       count: 1,
@@ -1585,7 +1590,7 @@ function tryResearch(p: SimPlayer, t: number, world: World): void {
   trySynthesis(p, t, world);
   if (!world.isotopes) return;
   if (!ARCHETYPES[p.type].researchesIsotopes) return;
-  let projected = projectedBuildState(p, world, 'CONSTRUCTION');
+  let projected = projectedBuildState(p, world, 'RESEARCH');
   if (!projected.research.has('ISOTOPE_SPECTROMETRY')) {
     if (t < RESEARCH_PROJECTS.ISOTOPE_SPECTROMETRY.availableAtMinutes) return;
     if (ownedProspectors(p, world) + queuedHullCount(p, 'PROSPECTOR') < 1) return;
@@ -1599,7 +1604,7 @@ function tryResearch(p: SimPlayer, t: number, world: World): void {
       || p.deuterium < cost.deuterium
     ) return;
     const placed = enqueueSimBuild(p, t, world, {
-      queue: 'CONSTRUCTION',
+      queue: 'RESEARCH',
       kind: 'RESEARCH',
       subject: 'ISOTOPE_SPECTROMETRY',
       count: 1,
@@ -1622,7 +1627,7 @@ function tryResearch(p: SimPlayer, t: number, world: World): void {
       && p.deuterium >= cost.deuterium;
     if (affordable) {
       const placed = enqueueSimBuild(p, t, world, {
-        queue: 'CONSTRUCTION',
+        queue: 'RESEARCH',
         kind: 'RESEARCH',
         subject: 'DENSE_FUEL_CELLS',
         count: 1,
@@ -1633,7 +1638,7 @@ function tryResearch(p: SimPlayer, t: number, world: World): void {
     }
   }
 
-  projected = projectedBuildState(p, world, 'CONSTRUCTION');
+  projected = projectedBuildState(p, world, 'RESEARCH');
   if (
     !projected.research.has('GRAVITIC_CHARGES')
     && ARCHETYPES[p.type].researchesBreacher
@@ -1646,7 +1651,7 @@ function tryResearch(p: SimPlayer, t: number, world: World): void {
       && p.deuterium >= cost.deuterium;
     if (affordable) {
       const placed = enqueueSimBuild(p, t, world, {
-        queue: 'CONSTRUCTION',
+        queue: 'RESEARCH',
         kind: 'RESEARCH',
         subject: 'GRAVITIC_CHARGES',
         count: 1,

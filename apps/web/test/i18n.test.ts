@@ -215,6 +215,12 @@ describe('queue refusals name the player’s next move', () => {
     expect(tr.planet.blocked.queueFull).toMatch(/3 sipariş.*bitsin veya.*iptal/i);
     expect(tr.planet.blocked.queueFull).not.toMatch(/^o üretim sırası dolu$/i);
   });
+
+  it('tells a full irreversible Research queue to wait, never to cancel', () => {
+    expect(en.research.queueFull).toMatch(/3 research.*wait.*finish/i);
+    expect(tr.research.queueFull).toMatch(/3 araştırma.*bitmesini bekle/i);
+    expect(`${en.research.queueFull} ${tr.research.queueFull}`).not.toMatch(/cancel|iptal/i);
+  });
 });
 
 describe('decision sheets explain every item', () => {
