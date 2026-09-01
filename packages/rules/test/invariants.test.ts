@@ -1509,6 +1509,6 @@ describe('the tempo — every ratio a hull speed is measured against', () => {
    * of neighbours must still be able to work through them inside a session.
    */
   it('leaves scouting a rhythm rather than a queue', () => {
-    expect(PROBE.retargetCooldownMinutes).toBeLessThanOrEqual(120);
+    expect(PROBE.retargetCooldownMinutes).toBe(60);
   });
 });

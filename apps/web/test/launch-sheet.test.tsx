@@ -37,6 +37,32 @@ const wrapper = ({ children }: { children: ReactNode }) => {
 };
 
 describe('choosing a fleet to attack with', () => {
+  it('accepts an empty numeric count and clamps direct entry to the ships at home', async () => {
+    render(
+      <LaunchSheet
+        target={target}
+        planet={planetView({ fleet: { WASP: 200 } })}
+        onClose={vi.fn()}
+        onLaunched={vi.fn()}
+      />,
+      { wrapper },
+    );
+    const user = userEvent.setup();
+    const quantity = screen.getByRole('textbox', { name: /wasp quantity/i });
+
+    expect(quantity).toHaveValue('0');
+    expect(quantity).not.toHaveAttribute('readonly');
+
+    await user.clear(quantity);
+    expect(quantity).toHaveValue('');
+
+    await user.type(quantity, 'fleet');
+    expect(quantity).toHaveValue('');
+
+    await user.type(quantity, '250');
+    expect(quantity).toHaveValue('200');
+  });
+
   it('uses exact one-ship steps even for a large hangar and exposes Max', async () => {
     render(
       <LaunchSheet
@@ -51,7 +77,6 @@ describe('choosing a fleet to attack with', () => {
     const quantity = screen.getByRole('textbox', { name: /wasp quantity/i });
 
     expect(quantity).toHaveValue('0');
-    expect(quantity).toHaveAttribute('readonly');
     await user.click(screen.getByRole('button', { name: /more wasp/i }));
     expect(quantity).toHaveValue('1');
     await user.click(screen.getByRole('button', { name: /max wasp/i }));

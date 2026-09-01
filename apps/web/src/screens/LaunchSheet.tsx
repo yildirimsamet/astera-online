@@ -397,6 +397,7 @@ export function LaunchSheet({
                   decreaseLabel={t('launch.fewer', { name: hullLabel(hull) })}
                   increaseLabel={t('launch.more', { name: hullLabel(hull) })}
                   valueLabel={t('launch.quantity', { name: hullLabel(hull) })}
+                  editable
                   maxLabel={t('launch.max', { name: hullLabel(hull) })}
                   maxText={t('launch.maxShort')}
                 />
