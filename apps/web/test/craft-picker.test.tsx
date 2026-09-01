@@ -50,6 +50,7 @@ const rockPanel = (craftAvailable: number, onSend: (n: number) => void) =>
   render(
     <AsteroidFocus
       rock={ROCK}
+      isotopeAccess={false}
       craftAvailable={craftAvailable}
       craftHold={300}
       derrick={false}
@@ -157,6 +158,7 @@ describe('a public isotope anomaly without Spectrometry', () => {
     render(
       <AsteroidFocus
         rock={{ ...ROCK, isotopeRich: true, deuteriumShare: null }}
+        isotopeAccess={false}
         craftAvailable={2}
         craftHold={300}
         derrick={false}
@@ -174,6 +176,30 @@ describe('a public isotope anomaly without Spectrometry', () => {
     expect(screen.getByText('Isotope composition unknown')).toBeInTheDocument();
     expect(screen.getByText(/The return haul lands in the Works; Collect it into storage/i)).toBeInTheDocument();
     expect(options()).toHaveLength(0);
+  });
+
+  it('allows a commander who holds Spectrometry to launch even when composition detail is absent', async () => {
+    const onSend = vi.fn();
+    render(
+      <AsteroidFocus
+        rock={{ ...ROCK, isotopeRich: true, deuteriumShare: null }}
+        isotopeAccess
+        craftAvailable={2}
+        craftHold={300}
+        derrick={false}
+        derrickHold={780}
+        minutesLeft={400}
+        reachMinutes={12}
+        worksRoom={100_000}
+        run={undefined}
+        onSend={onSend}
+        {...shell}
+      />,
+    );
+
+    const user = userEvent.setup();
+    await user.click(screen.getByRole('button', { name: /^Send 2/i }));
+    expect(onSend).toHaveBeenCalledWith(2);
   });
 });
 
@@ -203,6 +229,7 @@ describe('a target already being worked', () => {
     render(
       <AsteroidFocus
         rock={ROCK}
+        isotopeAccess={false}
         craftAvailable={3}
         craftHold={300}
         derrick={false}

@@ -1466,6 +1466,16 @@ function AsteroidFocusHost({
   const planet = usePlanet();
   if (!rock) return null;
 
+  const isotopeProject = planet.data?.research.find(
+    (project) => project.id === 'ISOTOPE_SPECTROMETRY',
+  );
+  // Research is commander-wide. Prefer its explicit project state, while a
+  // research-gated composition reading is also positive proof during a rolling
+  // deploy or split-query refresh. Either proof is monotonic; absence of target
+  // detail must not revoke a project the commander already completed.
+  const isotopeAccess = (isotopeProject?.level ?? (isotopeProject?.completed ? 1 : 0)) > 0
+    || rock.deuteriumShare !== null;
+
   const minutesLeft = minutesLeftFor(rock, seasonStart, now);
   const speed = mining?.craftSpeed ?? 0;
 
@@ -1508,6 +1518,7 @@ function AsteroidFocusHost({
   return (
     <AsteroidFocus
       rock={rock}
+      isotopeAccess={isotopeAccess}
       craftAvailable={planet.data?.fleet.PROSPECTOR ?? 0}
       craftHold={mining?.craftHold ?? 0}
       derrick={mining?.derrick ?? false}

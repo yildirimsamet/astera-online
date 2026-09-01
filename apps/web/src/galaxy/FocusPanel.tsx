@@ -1526,6 +1526,7 @@ function CloseGap({
  */
 export function AsteroidFocus({
   rock,
+  isotopeAccess,
   craftAvailable,
   craftHold,
   derrick,
@@ -1541,6 +1542,8 @@ export function AsteroidFocus({
   onToggle,
 }: {
   rock: AsteroidView;
+  /** Commander-wide Spectrometry permission; target composition is not an access flag. */
+  isotopeAccess: boolean;
   craftAvailable: number;
   craftHold: number;
   /** Is a Derrick in orbit. D25 — it makes mining better, it never gates it. */
@@ -1570,7 +1573,7 @@ export function AsteroidFocus({
   const { t } = useTranslation();
   const crystal = Math.round(rock.crystalShare * 100);
   const deuterium = Math.round((rock.deuteriumShare ?? 0) * 100);
-  const needsSpectrometry = rock.isotopeRich && rock.deuteriumShare === null;
+  const needsSpectrometry = rock.isotopeRich && !isotopeAccess;
   // What a full squadron could actually take, which is the number that decides
   // how many to send — not the rock's total.
   const canCarry = craftHold * craftAvailable;
