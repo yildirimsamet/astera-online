@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Trans, useTranslation } from 'react-i18next';
-import { COMBAT, fleetEntries, type Grade } from '@astera/rules';
+import { COMBAT, fleetEntries, type Grade, type HullId } from '@astera/rules';
 import { useReports } from '../api/queries.js';
 import type { BattleReport, Report, StrategicBattleReport } from '../api/schemas.js';
 import i18n from '../i18n/index.js';
@@ -8,6 +8,7 @@ import { hullLabel } from '../i18n/names.js';
 import { compact, decimal, full, signed } from '../lib/format.js';
 import { duration, staleness, useNow } from '../lib/time.js';
 import { HULL_ART, RESOURCE_ART, instrumentArt } from '../ui/assets.js';
+import { HullMark } from '../ui/icons/hulls.js';
 import { SurvivorBar } from '../ui/SurvivorBar.js';
 import { EmptyState, Section, Unreachable } from '../ui/kit/index.js';
 import { Sheet } from '../ui/kit/index.js';
@@ -156,8 +157,16 @@ export function BattleReports({
                   ) : null}
                   <span className="text-dim">{opponentOf(report)}</span>
                 </p>
+                {/*
+                  THE SAME EMPTY WORLD, IN THE ROW. A pirate battle has no world on
+                  the far side, so this opened with a blank and a dangling
+                  separator. The world it launched FROM is the one fact of the three
+                  that a pirate row can still offer, so it stands in.
+                */}
                 <p className="num mt-1 text-label text-faint">
-                  {report.opponentPlanet} · {staleness((now - report.at.getTime()) / 60_000)} ·{' '}
+                  {report.pirate ? report.yourPlanet : report.opponentPlanet}
+                  {(report.pirate ? report.yourPlanet : report.opponentPlanet) !== '' && ' · '}
+                  {staleness((now - report.at.getTime()) / 60_000)} ·{' '}
                   {t('reports.rounds', { count: report.rounds.length })}
                 </p>
               </div>
@@ -393,22 +402,66 @@ function ReportSheet({ report, onClose }: { report: OrdinaryReport; onClose: () 
         saying WHICH of theirs was hit — the most actionable fact there is, absent
         from the record of it. Said as a route rather than as two facts, because a
         battle has two ends and the reader is always at one of them.
+
+        A ROUTE NEEDS TWO ENDS. A pirate battle has one: the far end is a
+        rendezvous in open space, so the server sends an empty `opponentPlanet` and
+        this drew an arrow pointing at nothing. The launching world alone is still
+        the actionable half and is still named.
       */}
       {report.yourPlanet && (
         <p className="num mb-3 flex items-center gap-2 text-label text-faint">
           <span className="text-bone">{report.yourPlanet}</span>
-          <span aria-hidden>{report.attacking ? '→' : '←'}</span>
-          <span>{report.opponentPlanet}</span>
+          {report.opponentPlanet !== '' && (
+            <>
+              <span aria-hidden>{report.attacking ? '→' : '←'}</span>
+              <span>{report.opponentPlanet}</span>
+            </>
+          )}
         </p>
       )}
 
+      {/*
+        THE VERDICT, AND A PIRATE GETS ITS OWN. Both world sentences are built
+        around `{{planet}}`, which is the empty string out here — so the single
+        most-read line of the report opened with "did not hold." and no subject.
+      */}
       <p className="text-body leading-relaxed text-dim">
-        {report.attacking
-          ? t(report.grade === 'REPELLED' ? 'reports.heldAgainstYou' : 'reports.brokenByYou', {
-              planet: report.opponentPlanet,
-            })
-          : t(report.grade === 'REPELLED' ? 'reports.youHeld' : 'reports.youFell')}
+        {report.pirate
+          ? t(report.grade === 'REPELLED' ? 'reports.pirateHeld' : 'reports.pirateBroken')
+          : report.attacking
+            ? t(report.grade === 'REPELLED' ? 'reports.heldAgainstYou' : 'reports.brokenByYou', {
+                planet: report.opponentPlanet,
+              })
+            : t(report.grade === 'REPELLED' ? 'reports.youHeld' : 'reports.youFell')}
       </p>
+
+      {/*
+        THE HANDICAP THAT PRODUCED EVERY DAMAGE FIGURE BELOW. D124 · D150.
+
+        A pirate's entire difference from a player fleet of the same roster is a
+        per-level cut to its ATTACK, and nothing on this surface said so — the
+        reader was being asked to check the arithmetic against a rule the interface
+        never states. The same sentence the launch rail shows before committing, so
+        what a commander priced the fight with is what the report explains it with.
+      */}
+      {report.pirate && (
+        <p className="mt-2 border-l border-crystal/60 pl-3 text-caption leading-snug text-crystal">
+          {t('pirate.damagePenalty', {
+            percent: Math.round((1 - report.pirate.damageMult) * 100),
+          })}
+        </p>
+      )}
+
+      {/*
+        AND THE PRIZE, WHICH IS WHY ANYONE FLIES AT ONE OF THESE AT ALL.
+
+        A DECISIVE win may hand over one of the pirate's own hulls — the only door
+        in the game into a ship you did not build. It reached the player as a toast
+        and as a line in a return notification, both long gone by the time they open
+        the report. Drawn as the ship rather than written as a name, for the reason
+        the launch sheet draws its pickers: this is a hull, and a hull is a picture.
+      */}
+      {report.pirate?.capturedHull && <CapturedHull hull={report.pirate.capturedHull} />}
 
       {/*
         WHY THIS WORD, AND NOT THE OTHER TWO.
@@ -529,7 +582,7 @@ function ReportSheet({ report, onClose }: { report: OrdinaryReport; onClose: () 
       <h3 className="legend mt-8">{t('reports.howItWent')}</h3>
       {report.rounds.some(hasCalculationTelemetry) ? (
         <>
-          <CombatFormula grade={report.grade} />
+          <CombatFormula grade={report.grade} pirate={report.pirate != null} />
           <p className="mt-3 text-caption leading-relaxed text-dim">
             {t('reports.calculation.intro')}
           </p>
@@ -654,15 +707,23 @@ function Consequences({ report }: { report: OrdinaryReport }) {
       were drifting over the raider's homeworld — and sent to the wrong end of the
       disc to collect them.
     */
+    /*
+      AND A PIRATE FIGHT HAS NO WORLD TO NAME. The field is real, harvestable and
+      public — `Wrecks` draws it as an amber ring in open space and anyone may race
+      for it — but it orbits nothing, so this line was sending the player to collect
+      their salvage "over ." with the empty `opponentPlanet` interpolated into it.
+    */
     lines.push({
       key: 'wreck',
       tone: 'text-alloy',
-      text: report.attacking
-        ? t('reports.effects.wreck', {
-            amount: compact(report.wreckValue),
-            planet: report.opponentPlanet,
-          })
-        : t('reports.effects.wreckYours', { amount: compact(report.wreckValue) }),
+      text: report.pirate
+        ? t('reports.effects.wreckVoid', { amount: compact(report.wreckValue) })
+        : report.attacking
+          ? t('reports.effects.wreck', {
+              amount: compact(report.wreckValue),
+              planet: report.opponentPlanet,
+            })
+          : t('reports.effects.wreckYours', { amount: compact(report.wreckValue) }),
     });
   }
 
@@ -710,8 +771,16 @@ const shieldWasBroken = (report: OrdinaryReport): boolean => {
   return shield.before !== null && shield.before > 0 && shield.after === 0;
 };
 
-/** The resolver's fixed recipe, beside the battle's actual numbers. */
-function CombatFormula({ grade }: { grade: Grade }) {
+/**
+ * The resolver's fixed recipe, beside the battle's actual numbers.
+ *
+ * `pirate` swaps ONE line: the DECISIVE rule names a shield at zero, and a shield
+ * is a structure on a world. Out at a rendezvous that clause describes a condition
+ * the reader could never have met or failed, which is a legend teaching a rule that
+ * does not exist here. Everything else — the counter cycle, the roll band, how
+ * damage is split — is the model and applies to every fight there is.
+ */
+function CombatFormula({ grade, pirate = false }: { grade: Grade; pirate?: boolean }) {
   const { t } = useTranslation();
   return (
     <section data-combat-formula className="plate plate-inset mt-2 px-3 py-3">
@@ -744,14 +813,61 @@ function CombatFormula({ grade }: { grade: Grade }) {
               key={result}
               className={result === grade ? 'text-bone' : undefined}
             >
-              {t(RESULT_EXPLANATION[result], {
-                threshold: full(COMBAT.partialThreshold * 100),
-                decisiveLoot: full(COMBAT.lootDecisive * 100),
-                partialLoot: full(COMBAT.lootPartial * 100),
-              })}
+              {t(
+                pirate && result === 'DECISIVE'
+                  ? 'reports.calculation.resultDecisivePirate'
+                  : RESULT_EXPLANATION[result],
+                {
+                  threshold: full(COMBAT.partialThreshold * 100),
+                  decisiveLoot: full(COMBAT.lootDecisive * 100),
+                  partialLoot: full(COMBAT.lootPartial * 100),
+                },
+              )}
             </li>
           ))}
         </ul>
+      </div>
+    </section>
+  );
+}
+
+/**
+ * THE HULL A RAID TOWED HOME. D133 · D150.
+ *
+ * Given a combatant's portrait for the same reason the Aegis gets one: it is the
+ * consequence the reader opened the report for. Everything else in a pirate report
+ * is an accounting of what a fight cost; this is the one line that is a gain, and
+ * it is a gain the shipyard could not have sold them.
+ */
+function CapturedHull({ hull }: { hull: HullId }) {
+  const { t } = useTranslation();
+  const art = HULL_ART[hull];
+
+  return (
+    <section
+      data-captured-hull={hull}
+      className="plate plate-inset relative mt-4 overflow-hidden p-3"
+    >
+      <span
+        aria-hidden
+        className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-opportunity/80 to-transparent"
+      />
+      <div className="flex items-center gap-3">
+        <span className="relative grid size-20 shrink-0 place-items-center overflow-hidden rounded-cell border border-opportunity/25 bg-opportunity/5">
+          <span aria-hidden className="absolute inset-2 rounded-full bg-opportunity/10 blur-lg" />
+          {art ? (
+            <img src={art} alt="" aria-hidden className="relative size-16 object-contain" />
+          ) : (
+            <HullMark hull={hull} className="relative size-10 text-opportunity" />
+          )}
+        </span>
+        <div className="min-w-0 flex-1">
+          <p className="legend text-opportunity">{t('reports.pirateCaptured')}</p>
+          <p className="name mt-1 text-title text-bone">{hullLabel(hull)}</p>
+          <p className="mt-2 text-caption leading-relaxed text-dim">
+            {t('reports.pirateCapturedNote')}
+          </p>
+        </div>
       </div>
     </section>
   );
@@ -857,11 +973,30 @@ function CombatRoundDetail({ report, round }: { report: OrdinaryReport; round: R
         <ShotCard label={t('reports.calculation.theirShot')} power={theirPower} roll={theirRoll} />
       </div>
 
+      {/*
+        STEP 2 IS ABOUT A BUILDING, AND OUT HERE THERE IS NO BUILDING.
+
+        An Aegis is a structure on a world; `settleArrival` passes `shield: 0` for
+        exactly that reason. So a pirate report printed "No active Aegis" on every
+        round — a verdict about the absence of a system that could not have been
+        present, which tells the reader a shield was a thing that might have
+        happened here. The step is real and stays; what it reports on is different.
+      */}
       <div className="mt-4 border-t border-line-soft pt-3">
         <p className="legend text-crystal">
-          {t(before > 0 ? 'reports.calculation.aegis' : 'reports.calculation.noAegis')}
+          {t(
+            report.pirate
+              ? 'reports.calculation.openSpace'
+              : before > 0
+                ? 'reports.calculation.aegis'
+                : 'reports.calculation.noAegis',
+          )}
         </p>
-        {before > 0 ? (
+        {report.pirate ? (
+          <p className="mt-2 text-caption leading-relaxed text-dim">
+            {t('reports.calculation.openSpaceNote', { amount: full(round.attackerHullDamage!) })}
+          </p>
+        ) : before > 0 ? (
           <div className="mt-2 grid grid-cols-2 gap-2">
             <div className="plate px-3 py-2">
               <p className="legend text-faint">{t('reports.calculation.shieldCharge')}</p>

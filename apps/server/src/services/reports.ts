@@ -1,9 +1,11 @@
 import { and, desc, eq, inArray, or } from 'drizzle-orm';
 import {
+  PIRATE,
   deuteriumOf,
   type CombatRound,
   type Fleet,
   type Grade,
+  type HullId,
   type PirateLevel,
   type Resources,
 } from '@astera/rules';
@@ -71,7 +73,32 @@ export interface BattleReportView {
    * locale files. `opponentName` still carries a plain fallback for the same reason
    * "someone" does, but a client that knows about pirates renders this instead.
    */
-  pirate: { level: PirateLevel; callsign: string } | null;
+  pirate: {
+    level: PirateLevel;
+    callsign: string;
+    /**
+     * THE ONE COMBAT MODIFIER IN THE FIGHT, so the damage above can be read.
+     *
+     * A pirate's whole difference from a player fleet of the same roster is a
+     * per-level cut to its ATTACK (D150) — it is why a level 1 crew hits for half
+     * and a level 4 crew almost does not flinch. Reporting the damage without it
+     * asks the reader to check the arithmetic against a rule the interface never
+     * states, which is exactly what D124 refuses.
+     *
+     * Derived from the level, which is already here, so it discloses nothing new.
+     */
+    damageMult: number;
+    /**
+     * THE SHIP THAT CAME HOME WITH THEM, on a DECISIVE win. NULL otherwise.
+     *
+     * The only door in this game into a hull you did not build, and it reached the
+     * player as a toast and a `fleet_returned` line — both gone by the time anyone
+     * opens the report, which is where a commander goes to find out what a fight
+     * was worth. Read off `pirate_raids.captured_hull`, which was already stored
+     * and already joined: nothing but the reading was missing.
+     */
+    capturedHull: HullId | null;
+  } | null;
   at: Date;
   grade: Grade;
   /** The blow-by-blow. Null calculation fields identify a report from before D121a telemetry. */
@@ -366,6 +393,7 @@ async function readBattleReportsIn(
           id: pirateRaids.id,
           planetId: pirateRaids.planetId,
           pirateIndex: pirateRaids.pirateIndex,
+          capturedHull: pirateRaids.capturedHull,
           asteroidKey: seasons.asteroidKey,
         })
         .from(pirateRaids)
@@ -377,6 +405,7 @@ async function readBattleReportsIn(
       planetId: raid.planetId,
       level: spec?.level ?? null,
       callsign: pirateCallsign(raid.asteroidKey, raid.pirateIndex),
+      capturedHull: raid.capturedHull,
     }];
   }));
 
@@ -449,8 +478,21 @@ async function readBattleReportsIn(
       id: row.id,
       missionId: row.missionId,
       pirateRaidId: row.pirateRaidId,
+      /*
+        THE CAPTURE IS WRITTEN AFTER THE REPORT AND READ WITH IT.
+
+        `settleArrival` files this report and only then hands the towed hull to
+        `turnForHome`, so the column is still null at the instant the row is
+        created. It is joined at READ time, which is the only time anybody looks —
+        so the report states the prize without the report needing to store it.
+      */
       pirate: raid && raid.level !== null
-        ? { level: raid.level, callsign: raid.callsign }
+        ? {
+            level: raid.level,
+            callsign: raid.callsign,
+            damageMult: PIRATE.damageMult[raid.level],
+            capturedHull: raid.capturedHull,
+          }
         : null,
       at: row.createdAt,
       grade: row.grade,

@@ -120,6 +120,16 @@ export const reports = {
   sheetTheyRaided: '{{opponent}} raided you',
   heldAgainstYou: '{{planet}} held. You now know what it takes to break it.',
   brokenByYou: '{{planet}} did not hold.',
+  /**
+   * A PIRATE VERDICT NAMES NO WORLD, because there is not one. Both sentences
+   * above are built around `{{planet}}`, which is the empty string out here.
+   */
+  pirateBroken: 'The crew broke. What was left of them is yours.',
+  pirateHeld: 'They held, and flew on. Your squadron came back with nothing.',
+  /** The prize, and the only door in the game into a hull you did not build. */
+  pirateCaptured: 'Towed home',
+  pirateCapturedNote:
+    'Taken intact from the wreck of a crew you destroyed. It joins the garrison at the world your fleet returns to — even over Hangar capacity — and it does not count as one you built.',
   youHeld: 'You held. They now know how much you had waiting.',
   youFell: 'You did not hold.',
   /** The price of the haul, beside it. `Rounds` is the model's number, not the player's. */
@@ -190,6 +200,13 @@ export const reports = {
     resultHeading: 'How the result is decided',
     resultDecisive:
       'DECISIVE · every defending unit is gone and the shield is at zero · {{decisiveLoot}}% of exposed stock can be taken before cargo limits.',
+    /**
+     * THE SAME RULE WITHOUT THE HALF THAT CANNOT APPLY. A shield is a structure on
+     * a world; a legend that names one out at a rendezvous is describing a
+     * condition the reader could never have met or failed.
+     */
+    resultDecisivePirate:
+      'DECISIVE · every ship in the crew is gone · {{decisiveLoot}}% of the hoard can be taken before cargo limits, and only here can a hull be towed home.',
     resultPartial:
       'PARTIAL · at least {{threshold}}% of defending unit value is destroyed · {{partialLoot}}% of exposed stock can be taken before cargo limits.',
     resultRepelled:
@@ -210,6 +227,10 @@ export const reports = {
     reachedHulls: 'Reached hulls',
     shieldBreaker: '{{amount}} was Nullifier-only shield damage',
     noAegisNote: 'Nothing caught the hit; all {{amount}} attack power reached the defending hulls.',
+    /** The same step, in open space: there is no world here and so no structure. */
+    openSpace: '2 · Nothing between the guns and the hulls',
+    openSpaceNote:
+      'A rendezvous has no world and no structure to catch a hit; all {{amount}} attack power reached the crew.',
     losses: '3 · Losses leave the battle',
   },
   /** The three outcomes the whole combat model produces. */
@@ -283,6 +304,9 @@ export const reports = {
     wreck: '{{amount}} in wreckage is drifting over {{planet}}. Anyone can go and take it.',
     /** The same field, read from the world it is drifting over. */
     wreckYours: '{{amount}} in wreckage is drifting in your own orbit. Anyone can go and take it — including you.',
+    /** No orbit to name: the field sits at the rendezvous, in open space. */
+    wreckVoid:
+      '{{amount}} in wreckage is drifting at the rendezvous, in open space. Send a Prospector — and so can anyone else who saw it happen.',
   },
 
   /** The caller's own board: what went in, what died, what was standing after. */

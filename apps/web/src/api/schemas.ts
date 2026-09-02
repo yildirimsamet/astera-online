@@ -1416,9 +1416,21 @@ const ordinaryBattleReport = z.object({
        * is what makes a pirate notification open its own report.
        */
       pirateRaidId: z.string().nullish(),
-      /** What was on the other side, when it was not a commander. IDENTIFIED sight. */
+      /**
+       * What was on the other side, when it was not a commander. IDENTIFIED sight.
+       *
+       * `damageMult` is the fight's only combat modifier and `capturedHull` is its
+       * only prize — both were decided by the server and thrown away on the way to
+       * the screen, which is the most expensive kind of bug this project ships.
+       * Optional so a cached report from before them still opens.
+       */
       pirate: z
-        .object({ level: z.number().int().min(1).max(4), callsign: z.string() })
+        .object({
+          level: z.number().int().min(1).max(4),
+          callsign: z.string(),
+          damageMult: z.number().default(1),
+          capturedHull: hullId.nullish(),
+        })
         .nullish(),
       at: z.coerce.date(),
       grade,

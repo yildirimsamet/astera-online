@@ -81,6 +81,19 @@ const detailedRound = (
   ...over,
 }) as unknown as BattleReport['rounds'][number];
 
+/**
+ * A PIRATE ROW IS NAMED FROM THE LOCALE FILES, not from `opponentName`.
+ *
+ * The server's plain fallback exists so a payload always says something; the
+ * sentence a player reads is `pirate.name`. `opponentOf` prefers the structured
+ * field whenever it is there, so the row this helper has to click is the
+ * translated one.
+ */
+const rowName = (one: BattleReport): RegExp =>
+  one.pirate
+    ? new RegExp(`L${String(one.pirate.level)}-${one.pirate.callsign}`)
+    : new RegExp(one.opponentName);
+
 async function openSheet(one: BattleReport) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   client.setQueryData(['reports'], { reports: [one] });
@@ -94,7 +107,7 @@ async function openSheet(one: BattleReport) {
   );
   // By the opponent's name rather than by the verb: the same helper opens the
   // sheet in both languages, and the Turkish case below depends on that.
-  await userEvent.click(screen.getByRole('button', { name: new RegExp(one.opponentName) }));
+  await userEvent.click(screen.getByRole('button', { name: rowName(one) }));
 }
 
 beforeEach(async () => {
@@ -675,5 +688,111 @@ describe('what a battle report explains', () => {
     // The roster is a bar now; its sentence lives where a screen reader hears it.
     expect(document.querySelector('[role="img"][aria-label*="gitti"]')).toBeInTheDocument();
     await i18n.changeLanguage('en');
+  });
+});
+
+/**
+ * A REPORT ABOUT A PIRATE IS NOT A REPORT ABOUT A WORLD. D150.
+ *
+ * It was rendered by the world template, and the template dereferenced facts that
+ * do not exist out there. `opponentPlanet` is an empty string for a pirate — there
+ * is no world on the other side — so the header drew an arrow to nothing, the
+ * verdict sentence read "did not hold." with a blank subject, and the wreckage
+ * line sent the player to collect their salvage "over ." Meanwhile every round
+ * printed an Aegis verdict about a shield that cannot exist in open space, and the
+ * two facts that DID decide the fight — the level's damage handicap, and whether a
+ * hull came home — were nowhere on the surface at all.
+ *
+ * The three information layers do not come into this: a pirate report has no
+ * `defenderPlayerId` and is shown to exactly one commander, who bought every fact
+ * in it by fighting. This is the "I can see it" layer at its purest, and the
+ * complaint is that it was showing less than had been earned.
+ */
+describe('what a report about a pirate explains', () => {
+  const pirate = (over: Partial<BattleReport> = {}): BattleReport => report({
+    id: 'pirate-report-1',
+    missionId: null,
+    pirateRaidId: 'raid-1',
+    pirate: { level: 2, callsign: 'VEX7', damageMult: 0.65, capturedHull: null },
+    opponentName: 'Pirate L2-VEX7',
+    // There is no world on the other side, and the server says so with an empty
+    // string. Every assertion here is about the client not printing it anyway.
+    opponentPlanet: '',
+    opponentPlanetId: null,
+    neutral: false,
+    dominion: 0,
+    shieldAbsorbed: 0,
+    defenceSalvage: {},
+    disruptedMinutes: 0,
+    rounds: [detailedRound({ shieldBefore: 0, shieldAfter: 0, shieldAbsorbed: 0 })],
+    ...over,
+  });
+
+  it('never prints a world that is not there', async () => {
+    await openSheet(pirate());
+    const sheet = screen.getByRole('dialog');
+    // The verdict sentence took `{{planet}}` and got nothing.
+    expect(within(sheet).queryByText(/did not hold\./)).toBeNull();
+    // And the route line has one end, so it is not drawn as a route.
+    expect(within(sheet).queryByText('→')).toBeNull();
+    // The launching world is still named: that is the actionable half.
+    expect(within(sheet).getByText('Vantage-3')).toBeInTheDocument();
+  });
+
+  /**
+   * AN AEGIS IS A BUILDING ON A WORLD, AND THERE IS NO WORLD HERE.
+   *
+   * `resolvePirateArrival` passes `shield: 0` for exactly that reason, so every
+   * round printed the "no active Aegis" verdict — a report about the absence of a
+   * system that could not have been present. Reporting on it at all told the
+   * reader that a shield was a thing that might have happened.
+   */
+  it('says nothing about a shield that cannot exist out there', async () => {
+    await openSheet(pirate());
+    const sheet = screen.getByRole('dialog');
+    expect(within(sheet).queryByText(/Aegis/i)).toBeNull();
+    expect(within(sheet).queryByText(/shield/i)).toBeNull();
+  });
+
+  /**
+   * AND IT STATES THE ONE MODIFIER THAT DECIDED THE DAMAGE ABOVE IT.
+   * A rule the player cannot see is not a usable rule (D124).
+   */
+  it('states the level handicap that produced those numbers', async () => {
+    await openSheet(pirate());
+    const sheet = screen.getByRole('dialog');
+    expect(within(sheet).getByText(/deals 35% less damage/)).toBeInTheDocument();
+  });
+
+  /**
+   * THE PRIZE. The only door in the game into a hull you did not build, and the
+   * report is where a commander goes to find out what a fight was worth.
+   */
+  it('names the ship that came home, when one did', async () => {
+    await openSheet(pirate({
+      grade: 'DECISIVE',
+      pirate: { level: 2, callsign: 'VEX7', damageMult: 0.65, capturedHull: 'VIPER' },
+    }));
+    const sheet = screen.getByRole('dialog');
+    expect(within(sheet).getByText(/Viper/)).toBeInTheDocument();
+  });
+
+  it('claims no prize from a fight that did not take one', async () => {
+    await openSheet(pirate());
+    const sheet = screen.getByRole('dialog');
+    expect(within(sheet).queryByText(/Viper/)).toBeNull();
+  });
+
+  /**
+   * AND IT SAYS WHERE THE SALVAGE IS. A world battle leaves its wreckage in a
+   * named orbit; this one leaves it at a rendezvous in open space, and the line
+   * that used to name the world was interpolating the same empty string.
+   */
+  it('sends the player to the rendezvous for the wreckage, not to a world', async () => {
+    await openSheet(pirate({ wreckValue: 900 }));
+    const sheet = screen.getByRole('dialog');
+    expect(within(sheet).getByText(/wreckage is drifting at the rendezvous/i))
+      .toBeInTheDocument();
+    expect(within(sheet).queryByText(/drifting over \./)).toBeNull();
   });
 });

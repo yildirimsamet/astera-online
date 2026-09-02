@@ -107,6 +107,16 @@ export const reports = {
   sheetTheyRaided: '{{opponent}} sana akın etti',
   heldAgainstYou: '{{planet}} dayandı. Artık onu kırmanın neye mal olduğunu biliyorsun.',
   brokenByYou: '{{planet}} dayanamadı.',
+  /**
+   * KORSAN HÜKMÜ BİR GEZEGEN ADI ANMAZ, çünkü orada gezegen yok. Yukarıdaki iki
+   * cümle de `{{planet}}` üzerine kurulu ve o alan burada boş string.
+   */
+  pirateBroken: 'Mürettebat dağıldı. Geriye kalan artık senin.',
+  pirateHeld: 'Dayandılar ve yollarına devam ettiler. Filon eli boş döndü.',
+  /** Ödül: oyunda inşa etmediğin bir gövdeye açılan tek kapı. */
+  pirateCaptured: 'Çekilerek getirildi',
+  pirateCapturedNote:
+    'Yok ettiğin mürettebatın enkazından sağlam çıkarıldı. Filonun döndüğü dünyanın garnizonuna katılır — Hangar kapasitesi dolu olsa bile — ve inşa ettiğin gemilerden sayılmaz.',
   youHeld: 'Dayandın. Artık onlar da seni beklerken elinde ne olduğunu biliyor.',
   youFell: 'Dayanamadın.',
   shipsLost: 'Kaybettiğin gemi',
@@ -168,6 +178,13 @@ export const reports = {
     resultHeading: 'Sonuç nasıl belirlenir',
     resultDecisive:
       'KESİN · savunmadaki tüm birlikler yok olmuş ve kalkan sıfıra inmiştir · ambar sınırından önce açık stokun %{{decisiveLoot}} kadarı alınabilir.',
+    /**
+     * AYNI KURAL, UYGULANAMAYACAK YARISI OLMADAN. Kalkan bir dünya üzerindeki
+     * yapıdır; randevu noktasında kalkandan söz eden bir açıklama, okuyucunun asla
+     * karşılaşmadığı bir koşulu anlatır.
+     */
+    resultDecisivePirate:
+      'KESİN · mürettebattaki her gemi yok edildi · kargo sınırlarından önce ganimetin %{{decisiveLoot}} kadarı alınabilir; bir gövdeyi çekerek getirmek yalnızca burada mümkündür.',
     resultPartial:
       'KISMİ · savunma birliklerinin değer olarak en az %{{threshold}} kadarı yok edilmiştir · ambar sınırından önce açık stokun %{{partialLoot}} kadarı alınabilir.',
     resultRepelled:
@@ -188,6 +205,10 @@ export const reports = {
     reachedHulls: 'Gövdelere ulaşan',
     shieldBreaker: '{{amount}}, Söndürücünün yalnız kalkana vuran hasarıydı',
     noAegisNote: 'Darbeyi tutan bir kalkan yoktu; {{amount}} atış gücünün tamamı savunma gövdelerine ulaştı.',
+    /** Aynı adım, boşlukta: burada dünya yok, dolayısıyla yapı da yok. */
+    openSpace: '2 · Toplarla gövdeler arasında hiçbir şey yok',
+    openSpaceNote:
+      'Bir randevu noktasında ne dünya ne de darbeyi tutacak bir yapı vardır; {{amount}} atış gücünün tamamı mürettebata ulaştı.',
     losses: '3 · Kayıplar savaştan çıkar',
   },
   gradeDecisive: 'KESİN',
@@ -252,6 +273,9 @@ export const reports = {
     worksYours: 'Tesislerin {{duration}} boyunca devre dışı kaldı.',
     wreck: '{{planet}} üzerinde {{amount}} değerinde enkaz sürükleniyor. İsteyen gidip alabilir.',
     wreckYours: 'Kendi yörüngende {{amount}} değerinde enkaz sürükleniyor. İsteyen gidip alabilir; sen de.',
+    /** Anılacak bir yörünge yok: alan, boşlukta, randevu noktasında duruyor. */
+    wreckVoid:
+      'Randevu noktasında, boşlukta {{amount}} değerinde enkaz sürükleniyor. Bir Prospector yolla — olup biteni gören herkes de yollayabilir.',
   },
 
   /** Okuyanın kendi tahtası: savaşa ne girdi, ne öldü, sonunda ne ayakta kaldı. */

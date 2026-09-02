@@ -921,6 +921,86 @@ describe('a report about a pirate', () => {
     expect(rivals).toHaveLength(0);
   });
 
+  /**
+   * THE PRIZE IS THE POINT OF THE FEATURE, AND IT WAS NOT IN THE RECORD OF IT.
+   *
+   * A DECISIVE win may hand over one of the pirate's own hulls — the only door in
+   * the game into a ship you did not build. It reached the player as a toast and
+   * as a line in a `fleet_returned` notification, both of which are gone by the
+   * time they open the report, and the report is where a commander goes to find
+   * out what a fight was worth. `pirate_raids.captured_hull` was already stored
+   * and already joined here; nothing but the reading was missing.
+   */
+  it('names the hull the raid towed home', async () => {
+    const raid = await raidRow();
+    const { pirateRaids: raids } = await import('../src/db/schema.js');
+    await f.db.update(raids).set({ capturedHull: 'VIPER' }).where(eq(raids.id, raid.raidId));
+    await f.db.insert(battleReports).values({
+      seasonId: f.seasonId,
+      missionId: null,
+      targetPlanetId: null,
+      pirateRaidId: raid.raidId,
+      targetKind: 'PIRATE',
+      attackerPlayerId: f.playerIds[0]!,
+      defenderPlayerId: null,
+      grade: 'DECISIVE',
+      rounds: [],
+      loot: { alloy: 0, crystal: 0, deuterium: 0 },
+      attackerLosses: {},
+      defenderLosses: { PIKE: 2 },
+      attackerFleet: { DART: 20 },
+      dominionSwing: 0,
+      createdAt: f.clock.now(),
+    });
+
+    const { readBattleReports } = await import('../src/services/reports.js');
+    const { reports } = await readBattleReports(f.db, f.playerIds[0]!);
+    const view = reports.find((r) => r.kind === 'BATTLE');
+    if (view?.kind !== 'BATTLE') throw new Error('expected a battle report');
+    expect(view.pirate?.capturedHull).toBe('VIPER');
+  });
+
+  /**
+   * AND THE ONE MODIFIER THAT DECIDED THE NUMBERS ABOVE IT.
+   *
+   * `damageMult` is the entire difference between a pirate and a player fleet of
+   * the same roster (D150) — it is why a level 1 crew hits for half. A report that
+   * prints the damage without it is asking the reader to check arithmetic against
+   * a rule the interface never states, which is D124's whole complaint. It is a
+   * pure function of the level the report already carries, so it discloses nothing
+   * the reader has not already been told.
+   */
+  it('states the handicap that produced the damage it is reporting', async () => {
+    const raid = await raidRow();
+    await f.db.insert(battleReports).values({
+      seasonId: f.seasonId,
+      missionId: null,
+      targetPlanetId: null,
+      pirateRaidId: raid.raidId,
+      targetKind: 'PIRATE',
+      attackerPlayerId: f.playerIds[0]!,
+      defenderPlayerId: null,
+      grade: 'PARTIAL',
+      rounds: [],
+      loot: { alloy: 0, crystal: 0, deuterium: 0 },
+      attackerLosses: { DART: 1 },
+      defenderLosses: {},
+      attackerFleet: { DART: 20 },
+      dominionSwing: 0,
+      createdAt: f.clock.now(),
+    });
+
+    const { readBattleReports } = await import('../src/services/reports.js');
+    const { PIRATE } = await import('@astera/rules');
+    const { reports } = await readBattleReports(f.db, f.playerIds[0]!);
+    const view = reports.find((r) => r.kind === 'BATTLE');
+    if (view?.kind !== 'BATTLE') throw new Error('expected a battle report');
+    expect(view.pirate?.damageMult)
+      .toBe(PIRATE.damageMult[raid.level as 1 | 2 | 3 | 4]);
+    // Nothing was towed home from a fight that was not decisive.
+    expect(view.pirate?.capturedHull).toBeNull();
+  });
+
   it('refuses a row that names two kinds of target at once', async () => {
     /*
       "Exactly one binder" is a CONSTRAINT and not a convention, because a
