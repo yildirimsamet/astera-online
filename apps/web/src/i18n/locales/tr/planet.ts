@@ -195,6 +195,73 @@ export const planet = {
         note: "Görünür bir soruna dar cevap verir; yanlış hedefte uzmanlık bedeli boşa gider.",
       },
     },
+    frontierBand: "Ufuk araştırmaları",
+    frontierNote:
+      "Araştırmalar komutanın ortak sırasını kullanır. İnşaat ve Tersane ayrı çalışmaya devam eder.",
+    isotopeName: "İzotop Spektrometrisi",
+    isotopeTag: "Döteryum madenciliğini açar",
+    isotopeRole:
+      "İzotop kayalarındaki Döteryumu gösterir ve onlara Kazıcı göndermeni sağlar. Dönen yük üretim havuzuna gelir.",
+    denseName: "Yoğun Yakıt Hücreleri",
+    denseTag: "Koşucuyu açar",
+    denseRole:
+      "Keşfetmek için bir akında ambarını doldur; hedefte ganimet kalsın. Koşucu, Şilep’ten hızlıdır ama daha az taşır.",
+    graviticName: "Gravitik Yükler",
+    graviticTag: "Delici’yi açar",
+    graviticRole:
+      "Açmak için savunması ve aktif Aegis’i olan bir dünyaya saldır; kalkan hasarın en az {{share}}’ini emsin. Bir Atmaca bile yeter; kazanman gerekmez. Delici kalkana beş kat vurur.",
+    gridName: "Önleme Ağı",
+    gridTag: "Ölüm Yıldızı’nı düşürür",
+    gridRole:
+      "Yüklü mühimmat; stratejik silahı 3. seviye Radar önleme çemberinde veya Teleskop görüşünde imha eder. Kurulum için Anten ve Radar 3 gerekir.",
+    stockpileName: "Stratejik Stok",
+    stockpileTag: "Rampada ikinci silah",
+    stockpileRole:
+      "Her dünyada iki Ölüm Yıldızı hazır tutabilirsin. İkincisi, birincinin üretimi bittikten sonra aynı bedel ve süreyle kurulur.",
+    waspDoctrineName: "Atmaca Doktrini",
+    lanceDoctrineName: "Mızrak/Delici Doktrini",
+    bulwarkDoctrineName: "Siper Doktrini",
+    groundDoctrineName: "Tabya/Kirpi Doktrini",
+    generalName: "Silah ve Zırh",
+    generalTag: "Sahip olduğun her gövdeyi geliştirir",
+    doctrineTag: "Daha iyi saldırı ve zırh",
+    doctrineRole:
+      "İlgili sınıfın saldırı gücünü ve gövde dayanımını birlikte artırır. Araştırmalar doğal sınıf üstünlüklerini değiştirmez.",
+    yardName: "Tersane Otomasyonu",
+    yardTag: "Gemileri daha hızlı kurar",
+    yardRole:
+      "Hareketli gemilerin üretim süresini kısaltır; yer savunmalarını ve üretim sırası kapasitesini etkilemez.",
+    holdsName: "Kazıcı Ambarları",
+    holdsTag: "Kazıcılar daha çok taşır",
+    holdsRole:
+      "Her Kazıcının tek seferde taşıdığı cevheri artırır; Matkabın sağladığı ambar artışı bunun üzerine uygulanır.",
+    cargoName: "Gemi Ambarları",
+    cargoTag: "Akınlar daha çok getirir",
+    cargoRole:
+      "Akın filosunun taşıyabileceği ganimeti artırır; dünyalar arası transferi ve asteroit madenciliğini etkilemez.",
+    synthesisName: "Döteryum Sentezi",
+    synthesisTag: "Rafineri seviye sınırını yükseltir",
+    synthesisRole:
+      "Her kademe, sahip olduğun bütün dünyalarda üç yeni Döteryum Rafinerisi seviyesi açar.",
+    deathStarName: "Ölüm Yıldızı Protokolü",
+    deathStarTag: "Ölüm Yıldızı’nı açar",
+    deathStarRole:
+      "Bu dünyada bir Ölüm Yıldızı üretmeni sağlar. Darbe evdeki birlikleri ve bina siparişlerini yok eder, depoyla üretim havuzunu yarıya indirir ve dünyayı iki saat devre dışı bırakır. Bu sürede ele geçirme emriyle verilen ikinci darbe yalnız koloni veya tarafsız dünyayı ele geçirir; ana gezegen ele geçirilemez.",
+    researchNeedCore: "Komuta Çekirdeğini {{level}}. seviyeye yükselt",
+    researchAct: "Araştır",
+    researchComplete: "araştırıldı",
+    researchAt: "{{duration}} sonra araştırılabilir",
+    researchIsotopeFirst: "Önce İzotop Spektrometrisi’ni araştır",
+    researchDenseFirst: "Önce Yoğun Yakıt Hücreleri’ni araştır",
+    researchGraviticFirst: "Önce Gravitik Yükler’i araştır",
+    researchWarAt: "Savaş dönemi {{duration}} sonra başlar",
+    researchCargoInsight: "Bir akında ambarını doldur; hedefte ganimet kalsın",
+    researchShieldInsight: "Aegis akın hasarının en az {{share}}’ini emsin",
+    warshipsBand: "Savaş gemileri",
+    warshipsNote: "Akın filosunun savaş gücünü oluştururlar. Görevdeyken kendi dünyalarını savunamazlar.",
+    supportBand: "Destek",
+    supportNote:
+      "Dövüşmezler. Ucuz kapasite ile daha kısa açıkta kalma süresi arasında seçim yap.",
     miningBand: "Madenci",
     miningNote: "Asteroit ve enkaz sahalarına gider; taşıyabildiği kaynağı üretim havuzuna getirir.",
     ownedGain: "Elinde",
