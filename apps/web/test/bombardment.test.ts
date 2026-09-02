@@ -2,11 +2,14 @@ import { describe, expect, it } from 'vitest';
 import {
   COMBAT,
   CORE_TOP_LEVEL,
+  ENGAGEMENT_STANDOFF,
   GALAXY,
   coreTier,
   engagementEndsAt,
   isEngaging,
   surfaceStandoff,
+  toGame,
+  visualLeg,
 } from '@astera/rules';
 import {
   BLAST_SECONDS,
@@ -22,13 +25,15 @@ import {
 } from '../src/galaxy/volley.js';
 import {
   bombardmentTarget,
+  contactPosition,
   engagementHold,
+  HEADING_EPSILON,
+  isHeading,
   legEnd,
   legStandoff,
   legStart,
   NO_STANDOFF,
   orbitStandoff,
-  PIRATE_STANDOFF,
   planetNodes,
   targetNodeOf,
   threadPosition,
@@ -466,22 +471,23 @@ describe('a leg that ends at a world', () => {
    * attacker's own ten seconds drew nothing at all — the one moment in the whole
    * trip the player waited for.
    *
-   * A pirate has no published size, so it takes a stated one. `PIRATE_STANDOFF`
-   * already had to be a constant for the same reason and for the same lack.
+   * A pirate has no published size at all, so it states NONE — `null` rather than
+   * a number — and the caller, which is the only code that knows how big the
+   * squadron is drawn, supplies its own formation footprint. See the pirate-fight
+   * block below for why a stated constant was the wrong answer twice over.
    */
   it('gives a raid the world it is aimed at, sized by that world', () => {
     const at = bombardmentTarget(thread(), nodes);
     expect(at?.radius).toBeCloseTo(targetNodeOf(nodes, FAR)!.radius, 6);
   });
 
-  it('gives a pirate raid a target that can actually be fired at', () => {
+  it('gives a pirate raid a target, and leaves its size to the caller', () => {
     const at = bombardmentTarget(thread({ kind: 'pirate' }), nodes);
     expect(at).not.toBeUndefined();
-    expect(at!.radius).toBeGreaterThan(0);
-    // The gap the rounds cross must survive being fired across.
-    expect(at!.radius).toBeLessThan(PIRATE_STANDOFF);
-    // And the volley it produces is a real one, not the empty list radius 0 gives.
-    const shots = volleyFor('pirate-raid-1', 5, at!.radius);
+    expect(at!.radius).toBeNull();
+    // Whatever the caller substitutes, the volley it produces is a real one and
+    // never the empty list a radius of zero gives.
+    const shots = volleyFor('pirate-raid-1', 5, 0.3);
     expect(shots.length).toBeGreaterThan(0);
     expect(shots.some((shot) => shot.aim[0] !== 0 || shot.aim[1] !== 0)).toBe(true);
   });
@@ -727,5 +733,249 @@ describe('the engagement window', () => {
       const toCentre = Math.hypot(from[0], from[1], from[2] - distance);
       expect(toCentre).toBeGreaterThan(RADIUS);
     }
+  });
+});
+
+/**
+ * A PIRATE FIGHT, DRAWN FROM BOTH ENDS. D106 · D150.
+ *
+ * Two clients draw this battle and they are not the same code: the attacker
+ * interpolates its own leg out of `pending`, and everybody else — the attacker
+ * included, for the PIRATE — interpolates a published window out of
+ * `/api/galaxy/traffic`. D106 exists because those two are allowed exactly one
+ * definition of where a craft stops, and this lane had two.
+ *
+ * WHAT IT LOOKED LIKE. The owner's client held its squadron `PIRATE_STANDOFF`
+ * short of the rendezvous and the server published the same hold at
+ * `ENGAGEMENT_STANDOFF` — 6 world units against 1.6, a 3.75x disagreement about
+ * one battle. Worse, `contactPosition` sent every engaged contact through
+ * `engagementHold`, which falls back to the target itself when no world is drawn
+ * there — and a rendezvous never has one. So the pirate was drawn ON its
+ * attacker's hold point and the attacker ON the rendezvous: the two swapped
+ * places, each ended up aiming at the exact spot it was standing on, and a
+ * zero-length `lookAt` is resolved by three.js as world +Z. Both formations
+ * turned to face the same arbitrary direction and fired their volleys into empty
+ * space, several ship-lengths away from anything.
+ *
+ * Every assertion below is one half of that: where each side stands, that they
+ * stand apart, and that neither is ever asked to look at itself.
+ */
+describe('a pirate fight, drawn from both ends', () => {
+  const home = { x: 0, y: 0, z: 0 };
+  /** The rendezvous. Deliberately NOT a world: that is what makes it a pirate. */
+  const meet = FAR;
+  const arriveAt = new Date('2026-04-01T12:40:00.000Z');
+  const endsAt = new Date(engagementEndsAt(arriveAt.getTime()));
+  const duringFight = arriveAt.getTime() + 4_000;
+
+  /** Only the world the raid left. Nothing is drawn at the meeting point. */
+  const nodes = planetNodes([
+    {
+      id: 'p1',
+      name: 'Home',
+      owner: 'me',
+      position: home,
+      coreTier: 1,
+      coreLevel: 1,
+      satellites: [],
+      shielded: false,
+      isSelf: true,
+      fleet: null,
+    } as unknown as GalaxyPlanet,
+  ]);
+
+  const raid: PendingThread = {
+    id: 'raid-1',
+    kind: 'pirate',
+    targetName: 'VEX-7',
+    pirate: { level: 2, callsign: 'VEX-7' },
+    minutesRemaining: 0,
+    arriveAt,
+    leg: 'outbound',
+    fleet: { DART: 12 },
+    path: {
+      from: home,
+      to: meet,
+      departAt: new Date('2026-04-01T12:00:00.000Z'),
+      arriveAt,
+    },
+  };
+
+  /** Where the attacker's OWN client stops it. */
+  const attackerHold = legEnd(raid.path!, legStandoff(raid, nodes).end);
+
+  /**
+   * Where the server publishes that same hold, for the pirate to aim at and for
+   * every other commander to draw. `traffic.ts` computes exactly this line.
+   */
+  const publishedHold = toWorld(visualLeg(home, meet, 0, ENGAGEMENT_STANDOFF).to);
+
+  /**
+   * The pirate, as the payload states it: a window with no length, because it is
+   * holding, plus the point it is shooting at.
+   */
+  const pirate = {
+    id: 'pirate-1',
+    kind: 'pirate' as const,
+    from: meet,
+    to: meet,
+    startAt: arriveAt,
+    endAt: endsAt,
+    mass: 'HEAVY' as const,
+    fleet: { VIPER: 3 },
+    level: 2,
+    engagement: { arriveAt, endsAt, target: toGame(publishedHold) },
+  };
+
+  it('holds the attacker exactly where the server publishes it', () => {
+    expect(attackerHold[0]).toBeCloseTo(publishedHold[0], 6);
+    expect(attackerHold[1]).toBeCloseTo(publishedHold[1], 6);
+    expect(attackerHold[2]).toBeCloseTo(publishedHold[2], 6);
+  });
+
+  /**
+   * THE PIRATE IS AT THE RENDEZVOUS. It is the thing being flown at; it does not
+   * move to meet anybody, and it certainly does not stand on its attacker.
+   */
+  it('leaves the pirate on the rendezvous rather than on its attacker', () => {
+    const at = contactPosition(pirate, duringFight, nodes);
+    expect(at[0]).toBeCloseTo(toWorld(meet)[0], 6);
+    expect(at[1]).toBeCloseTo(toWorld(meet)[1], 6);
+    expect(at[2]).toBeCloseTo(toWorld(meet)[2], 6);
+  });
+
+  /**
+   * AND THEY FACE EACH OTHER DOWN THE LINE THE ATTACKER FLEW IN ON, one standoff
+   * apart — which is the gap the rounds have to cross. The attacker is the one
+   * that is short: it stopped, the pirate did not move.
+   */
+  it('puts the two formations one standoff apart, on the approach line', () => {
+    const pirateAt = contactPosition(pirate, duringFight, nodes);
+    const gap = Math.hypot(
+      pirateAt[0] - attackerHold[0],
+      pirateAt[1] - attackerHold[1],
+      pirateAt[2] - attackerHold[2],
+    );
+    expect(gap).toBeCloseTo(ENGAGEMENT_STANDOFF, 6);
+    // The attacker is nearer its own world than the pirate is: it stopped short.
+    const homeAt = toWorld(home);
+    expect(Math.hypot(attackerHold[0] - homeAt[0], attackerHold[2] - homeAt[2]))
+      .toBeLessThan(Math.hypot(pirateAt[0] - homeAt[0], pirateAt[2] - homeAt[2]));
+  });
+
+  /**
+   * NEITHER SIDE IS EVER ASKED TO LOOK AT ITSELF.
+   *
+   * This is the assertion the whole bug turned on. A craft aims at its engagement
+   * target; when that target resolved to the craft's own drawn position the
+   * direction was zero-length, and `Matrix4.lookAt` answers a zero direction with
+   * world +Z rather than with a refusal. The picture was a formation snapping to
+   * a compass bearing mid-battle and shooting off the side of the fight.
+   */
+  it('never asks either side to look at the point it is standing on', () => {
+    const pirateAt = contactPosition(pirate, duringFight, nodes);
+    // The pirate aims at the attacker's hold.
+    expect(isHeading(pirateAt, publishedHold)).toBe(true);
+    // The attacker aims at the rendezvous.
+    expect(isHeading(attackerHold, toWorld(meet))).toBe(true);
+  });
+
+  /**
+   * AND A RAID ON A WORLD IS UNTOUCHED, which is what makes the rule above safe.
+   *
+   * The two payloads are told apart by the WINDOW, not by the contact's kind, so
+   * this is the other half of that test rather than a courtesy: a sensed raid over
+   * a world publishes a real approach window — a minute of the final leg — and its
+   * hold still has to be SOLVED out to orbit off the world's drawn radius, because
+   * that window's far end is the planet's centre and nothing may be drawn inside a
+   * planet (D44).
+   *
+   * The one degenerate window a world battle does publish is the out-of-range
+   * `effectOnly` contact, which never reaches this helper at all: `contactPresentation`
+   * routes it to `ConcealedEngagement`, which draws the volley and no craft.
+   */
+  it('still pushes a sensed world raid out to orbit', () => {
+    const world = { x: GALAXY.radius * 0.3, y: 0, z: 0 };
+    const onAWorld = planetNodes([
+      {
+        id: 'p9', name: 'Tharsis', owner: 'someone', position: world,
+        coreTier: 3, coreLevel: CORE_TOP_LEVEL, satellites: [],
+        shielded: false, isSelf: false, fleet: null,
+      } as unknown as GalaxyPlanet,
+    ]);
+    const node = targetNodeOf(onAWorld, world)!;
+    const landed = {
+      id: 'raid-9',
+      kind: 'fleet' as const,
+      // A real approach window: a minute of the final leg, then the world itself.
+      from: { x: world.x - 300, y: 0, z: 0 },
+      to: world,
+      startAt: new Date(arriveAt.getTime() - 60_000),
+      endAt: arriveAt,
+      landing: true,
+      mass: 'HEAVY' as const,
+      fleet: { DART: 8 },
+      engagement: { arriveAt, endsAt, target: world },
+    };
+    const at = contactPosition(landed, duringFight, onAWorld);
+    const centre = toWorld(world);
+    const gap = Math.hypot(at[0] - centre[0], at[1] - centre[1], at[2] - centre[2]);
+    expect(gap).toBeCloseTo(orbitStandoff(node.radius), 6);
+    // On the side it flew in from, not on the far face or inside the world.
+    expect(at[0]).toBeLessThan(centre[0]);
+  });
+
+  /**
+   * A PIRATE STATES NO SIZE, SO THE VOLLEY TAKES THE SHOOTER'S OWN FOOTPRINT.
+   *
+   * `bombardmentTarget` used to hand the owner's client a stated `PIRATE_STANDOFF
+   * / 2` — three world units, which is more than twice the largest world in the
+   * game and five times the formation actually being shot at — while the public
+   * path sized the identical volley against the formation. One battle, two
+   * pictures, and the larger of them scattered its rounds over a disc nothing was
+   * standing in. `null` is the answer "there is no world here"; the caller, which
+   * is the only code that knows how big the squadron is drawn, supplies the size.
+   */
+  it('gives a pirate volley no stated size of its own', () => {
+    const at = bombardmentTarget(raid, nodes);
+    expect(at).not.toBeUndefined();
+    expect(at!.radius).toBeNull();
+  });
+
+  /** A world battle is unchanged: the world it is hitting states its own size. */
+  it('still sizes a world volley against that world', () => {
+    const onAWorld = planetNodes([
+      {
+        id: 'p2', name: 'Tharsis', owner: 'someone', position: meet,
+        coreTier: 3, coreLevel: CORE_TOP_LEVEL, satellites: [],
+        shielded: false, isSelf: false, fleet: null,
+      } as unknown as GalaxyPlanet,
+    ]);
+    const at = bombardmentTarget({ ...raid, kind: 'fleet' }, onAWorld);
+    expect(at?.radius).toBeCloseTo(targetNodeOf(onAWorld, meet)!.radius, 6);
+  });
+});
+
+/**
+ * A HEADING NEEDS A DIRECTION, and two points on top of each other are not one.
+ *
+ * Stated as its own predicate because three.js does not refuse: `Matrix4.lookAt`
+ * answers a zero-length direction by substituting world +Z, so a craft asked to
+ * look at itself does not keep its heading — it snaps to a compass bearing. That
+ * is a silent, plausible-looking picture, which is the worst kind of wrong.
+ */
+describe('whether two points make a heading', () => {
+  it('accepts a real separation', () => {
+    expect(isHeading([0, 0, 0], [0, 0, 1])).toBe(true);
+    expect(isHeading([3, -2, 9], [3, -2, 9.5])).toBe(true);
+  });
+
+  it('refuses a point standing on top of the craft', () => {
+    expect(isHeading([0, 0, 0], [0, 0, 0])).toBe(false);
+    expect(isHeading([7, 7, 7], [7, 7, 7])).toBe(false);
+  });
+
+  it('refuses a separation too small to be a direction', () => {
+    expect(isHeading([0, 0, 0], [0, 0, HEADING_EPSILON / 2])).toBe(false);
   });
 });

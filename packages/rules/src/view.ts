@@ -223,8 +223,24 @@ export const surfaceStandoff = (radius: number): number => radius * 1.15;
  * two formations at knife range, not a siege. The attacker holds short of the
  * meeting point along its own approach and the pirate holds ON it, so the two face
  * each other down the line the attacker actually flew in on.
+ *
+ * AND IT IS THE ONLY STATEMENT OF THAT GAP. The attacker's own client used to
+ * carry a second one — `PIRATE_STANDOFF`, six world units against this one's 1.6 —
+ * so the owner watched their squadron hold nearly four times further out than
+ * every other commander in the galaxy saw it hold. That is the exact fault D106
+ * was written about, on the one lane D106 had not been applied to. There is now
+ * one constant and both sides read it; a second copy of this number is a bug by
+ * construction, not a tuning choice.
+ *
+ * WHY 2.2. The owner reported the fight reading as two fleets shouting across a
+ * canyon, and asked for half the gap they were seeing. What they were seeing was
+ * the disagreement above — their own hold at 6 against a pirate drawn at 1.6, so
+ * 4.4 world units — and half of that is this. It also lands inside the band a
+ * siege already occupies (`orbitStandoff` spans 0.88 to 2.8 across the world-size
+ * ramp), which is what keeps a pirate engagement reading as the same KIND of
+ * event as a raid on a world rather than as a different one.
  */
-export const ENGAGEMENT_STANDOFF = 1.6;
+export const ENGAGEMENT_STANDOFF = 2.2;
 
 /**
  * The visual leg: where a craft is actually drawn setting off from, and where it

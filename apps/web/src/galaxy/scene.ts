@@ -1,4 +1,5 @@
 import {
+  ENGAGEMENT_STANDOFF,
   GALAXY,
   VIEW,
   interpolatePosition,
@@ -430,38 +431,6 @@ export interface LegStandoff {
 export const NO_STANDOFF: LegStandoff = { start: 0, end: 0 };
 
 /**
- * HOW FAR SHORT OF A PIRATE A RAID HOLDS. D150.
- *
- * There is no world at a rendezvous, so `orbitStandoff` has no radius to work
- * from and both formations would be drawn occupying the same point — two fleets
- * inside each other, with nothing for a volley to cross. A fixed clearance gives
- * the ten seconds a shape: two groups facing each other with a gap between them,
- * which is what the engagement IS.
- *
- * A CONSTANT, BECAUSE THERE IS NOTHING TO DERIVE IT FROM. Every other standoff in
- * this file is a function of how big the thing being approached is drawn; a pirate
- * fleet is drawn from its own manifest and has no published size at all.
- */
-export const PIRATE_STANDOFF = 6;
-
-/**
- * HOW BIG THE THING A PIRATE RAID IS SHOOTING AT IS DRAWN.
- *
- * The radius is not decoration: `volleyFor` scatters every round's aim across a
- * disc of exactly this size, and `Bombardment` refuses a volley without one. Zero
- * therefore does not mean "a point target", it means NO BOMBARDMENT AT ALL — the
- * attacker's own ten seconds over the rendezvous drew nothing, which is the one
- * moment of the whole forty-minute trip the player was waiting for.
- *
- * A CONSTANT FOR THE REASON `PIRATE_STANDOFF` IS ONE: a pirate is drawn from its
- * own manifest and publishes no size, and the raid thread carries only its level
- * and callsign. Held below the standoff so the gap the rounds cross stays visible
- * — the volley has to read as crossing to the other formation, not as going off
- * inside its own.
- */
-export const PIRATE_TARGET_RADIUS = PIRATE_STANDOFF / 2;
-
-/**
  * WHAT THIS LEG BOMBARDS, AND HOW BIG IT IS — OR NOTHING.
  *
  * The one statement of it, because there are two answers and three refusals and
@@ -469,13 +438,28 @@ export const PIRATE_TARGET_RADIUS = PIRATE_STANDOFF / 2;
  * assert them. A probe takes a photograph, a Death Star IS the explosion, and a
  * leg coming home is landing rather than arriving; only an outbound fleet or an
  * outbound pirate raid fires.
+ *
+ * `radius: null` MEANS "THERE IS NO WORLD HERE", NOT "NO SIZE". The radius is not
+ * decoration: `volleyFor` scatters every round's aim across a disc of exactly that
+ * size, and both it and `Bombardment` refuse a zero — so a missing size is not a
+ * point target, it is NO BOMBARDMENT AT ALL, which is how the attacker's own ten
+ * seconds over a rendezvous once drew nothing.
+ *
+ * This used to answer a pirate with a stated constant instead, and it was wrong
+ * twice. It was wrong in SCALE — three world units, more than twice the largest
+ * world in the game and several times the formation actually being shot at, so
+ * the rounds scattered over a disc nothing was standing in. And it was wrong in
+ * KIND: the public path in `Fleets.tsx` had always sized the identical volley
+ * against the formation's own footprint, so one battle was drawn two ways
+ * depending on who was watching. The caller is the only code that knows how big
+ * the squadron is drawn, so the caller supplies it — and now both callers do.
  */
 export function bombardmentTarget(
   thread: PendingThread,
   nodes: readonly PlanetNode[],
-): { radius: number } | undefined {
+): { radius: number | null } | undefined {
   if (!thread.path || thread.leg === 'return') return undefined;
-  if (thread.kind === 'pirate') return { radius: PIRATE_TARGET_RADIUS };
+  if (thread.kind === 'pirate') return { radius: null };
   if (thread.kind !== 'fleet') return undefined;
   return targetNodeOf(nodes, thread.path.to);
 }
@@ -487,12 +471,19 @@ export function legStandoff(
   if (!thread.path) return NO_STANDOFF;
   const returning = thread.leg === 'return';
   if (thread.kind === 'pirate') {
-    // Home takes the ordinary surface clearance; the far end is empty space.
+    /*
+      Home takes the ordinary surface clearance; the far end is empty space, and
+      the clearance there is `ENGAGEMENT_STANDOFF` — the SHARED one, out of the
+      rules package, which is the same figure `traffic.ts` publishes this hold at.
+      This file used to keep its own `PIRATE_STANDOFF` of six world units against
+      the server's 1.6, so the owner watched their own squadron hold nearly four
+      times further out than everyone else saw it hold. See D106 and the constant.
+    */
     const homeNode = targetNodeOf(nodes, returning ? thread.path.to : thread.path.from);
     const home = homeNode ? surfaceStandoff(homeNode.radius) : 0;
     return returning
-      ? { start: PIRATE_STANDOFF, end: home }
-      : { start: home, end: PIRATE_STANDOFF };
+      ? { start: ENGAGEMENT_STANDOFF, end: home }
+      : { start: home, end: ENGAGEMENT_STANDOFF };
   }
   // A return mission row is stored with the two worlds swapped (D28), so the
   // foreign orbit is the start on the way home and the end on the way out. Home
@@ -623,6 +614,38 @@ export function runForPlanetTarget(
 const COAST_MS = 3_000;
 
 /**
+ * THE SMALLEST SEPARATION THAT IS STILL A DIRECTION, in world units.
+ *
+ * Comfortably below anything the disc draws — the tightest formation slots are
+ * about 0.59 apart and the closest standoff in the game is 0.5 — and comfortably
+ * above the float noise two interpolated positions differ by. It is the line
+ * between "these are two places" and "these are one place twice".
+ */
+export const HEADING_EPSILON = 1e-4;
+
+/**
+ * IS THERE A DIRECTION HERE AT ALL?
+ *
+ * Asked before pointing anything at anything, because three.js DOES NOT REFUSE.
+ * `Matrix4.lookAt` answers a zero-length direction by substituting world +Z, so a
+ * craft told to look at the coordinate it is standing on does not keep its
+ * heading — it silently snaps to a compass bearing, and every effect mounted
+ * inside it (the wake, the exhaust, the whole bombardment, which fires straight
+ * down local +Z) goes with it. That is how a pirate formation ended up turning
+ * away mid-fight and putting its volley into empty space.
+ *
+ * A PREDICATE RATHER THAN A CLAMP. There is no sensible heading to invent for two
+ * identical points, and inventing one is the bug. The caller keeps whatever
+ * heading it already had, which for a craft that has just stopped is exactly the
+ * direction it was travelling in.
+ *
+ * It lives here, beside the code that decides where craft ARE, so the one rule is
+ * available to every renderer and can be asserted without mounting a scene.
+ */
+export const isHeading = (from: Vec3Tuple, to: Vec3Tuple): boolean =>
+  Math.hypot(to[0] - from[0], to[1] - from[1], to[2] - from[2]) > HEADING_EPSILON;
+
+/**
  * Where somebody else's craft is, this instant. D24.
  *
  * A contact carries a BEARING WINDOW — where it is and where it will be shortly —
@@ -646,7 +669,7 @@ export function contactPosition(
    */
   const fight = contact.engagement;
   if (fight && now >= fight.arriveAt.getTime()) {
-    return engagementHold(fight.target, contact.from, nodes);
+    return engagementPosition(contact, fight.target, nodes);
   }
 
 
@@ -689,11 +712,54 @@ export function contactPosition(
 }
 
 /**
+ * WHERE A CRAFT IN A LIVE ENGAGEMENT IS DRAWN — the one answer, for every caller.
+ *
+ * THERE ARE TWO KINDS OF ENGAGEMENT PAYLOAD AND THEY ARE NOT INTERCHANGEABLE.
+ *
+ *   · A raid on a WORLD publishes a real bearing window plus the world it is
+ *     firing on. The craft's hold has to be SOLVED — pushed back out to orbit off
+ *     the target's drawn radius — because the window's endpoint is the world's
+ *     centre and nothing may be drawn inside a planet (D44).
+ *
+ *   · A PIRATE FIGHT publishes a window with NO LENGTH. Both holds were already
+ *     computed by the server, on the shared visual leg, and a degenerate window is
+ *     the payload saying "I am standing exactly here". There is nothing to solve
+ *     and nothing that may be recomputed.
+ *
+ * TELLING THEM APART IS THE WHOLE BUG. Sent through the solve unconditionally, a
+ * pirate fight resolved `engagementHold(target)` against a target with no world
+ * under it — open space always — which falls through to the target ITSELF. So the
+ * pirate was drawn standing on its attacker's hold point and the attacker on the
+ * rendezvous: the two swapped places, each was then asked to look at the exact
+ * coordinate it was standing on, and three.js answers a zero-length `lookAt` with
+ * world +Z. Both formations snapped to a compass bearing mid-fight and fired their
+ * volleys off the side of the battle.
+ *
+ * `Fleets.tsx` already carried this distinction, correctly, in a memo that fed the
+ * volley's LENGTH — while the helper that placed the craft did not. Two answers to
+ * one question, which is the fault this whole module exists to prevent, so the
+ * answer lives here now and both of them read it.
+ */
+export function engagementPosition(
+  contact: Contact,
+  target: { x: number; y: number; z: number },
+  nodes: readonly PlanetNode[],
+): Vec3Tuple {
+  const held = contact.from.x === contact.to.x
+    && contact.from.y === contact.to.y
+    && contact.from.z === contact.to.z;
+  return held ? toWorld(contact.from) : engagementHold(target, contact.from, nodes);
+}
+
+/**
  * Where a squadron sits while it bombards a world it does not own.
  *
  * `approach` is a point on the line it came in on, a minute back — the payload
  * carries it for no other purpose. The hold is the same `orbitStandoff` the
  * attacker's own leg stops at, so the two views agree to the metre.
+ *
+ * FOR A TARGET WITH A WORLD UNDER IT. A rendezvous has none and must never reach
+ * here — see `engagementPosition`, which is what every caller should be using.
  */
 export function engagementHold(
   target: { x: number; y: number; z: number },

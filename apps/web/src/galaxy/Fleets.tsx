@@ -11,7 +11,8 @@ import { posedCraft } from './model.js';
 import {
   contactPosition,
   CRAFT_SCALE,
-  engagementHold,
+  engagementPosition,
+  isHeading,
   legEnd,
   legStandoff,
   orbitStandoff,
@@ -843,13 +844,21 @@ function Flight({
           squadron's own group so a missile's line is simply "from this craft,
           straight ahead, to that world". Mounted only while the window is open, so
           nothing is allocated for the forty minutes of flight that precede it.
+
+          A WORLD STATES ITS OWN SIZE; A PIRATE HAS NONE, so the volley scatters
+          across this squadron's own footprint instead — which is the identical
+          rule the public path a few hundred lines down already used. It did not
+          used to be: this side took a stated three world units, more than twice the
+          largest planet in the game, so the owner's rounds sprayed over a disc
+          nothing was standing in while every bystander watched a tight volley on
+          the same battle. `bombardmentTarget` answers `null` for "no world here".
         */}
         {target && engaging && (
           <Bombardment
             volleyKey={id}
             slots={slots}
             distance={Math.hypot(to[0] - stop[0], to[1] - stop[1], to[2] - stop[2])}
-            radius={target.radius}
+            radius={target.radius ?? formationScale}
             shipScale={style.scale}
             arriveAt={path.arriveAt.getTime()}
           />
@@ -1862,6 +1871,14 @@ const AIM_SCRATCH = new THREE.Object3D();
  * elapsed time rather than on how many frames happened to be drawn. `settled`
  * carries the one-frame exception — a craft that has just appeared points the
  * right way immediately instead of swinging round from wherever it was created.
+ *
+ * AND IT REFUSES AN AIM POINT IT IS ALREADY STANDING ON. `isHeading` states why:
+ * three.js resolves a zero-length `lookAt` as world +Z rather than as an error, so
+ * this used to answer "look at yourself" by turning the craft — and everything
+ * mounted inside it, the bombardment included — to a compass bearing. The refusal
+ * lives HERE, in the one function that turns anything, rather than in each caller's
+ * own guard: a caller that forgets is a formation silently facing the wrong way,
+ * and that is precisely the bug this is written for.
  */
 function easeHeading(
   node: THREE.Object3D,
@@ -1869,6 +1886,9 @@ function easeHeading(
   delta: number,
   settled: { current: boolean },
 ): void {
+  const at: Vec3Tuple = [node.position.x, node.position.y, node.position.z];
+  // Keep the heading it has. A craft that has stopped was going somewhere.
+  if (!isHeading(at, aim)) return;
   AIM_SCRATCH.position.copy(node.position);
   AIM_SCRATCH.up.copy(node.up);
   AIM_SCRATCH.lookAt(aim[0], aim[1], aim[2]);
@@ -2131,7 +2151,6 @@ function Foreign({
   const exactFleet =
     (contact.kind === 'fleet' || contact.kind === 'pirate') && contact.fleet !== undefined;
 
-  const from = useMemo(() => toWorld(contact.from), [contact.from]);
   const to = useMemo(() => toWorld(contact.to), [contact.to]);
 
   /**
@@ -2169,14 +2188,17 @@ function Foreign({
    * as a window with no length. A degenerate window is the payload saying "I am
    * holding here", so recomputing anything from it would move the craft off the
    * spot both clients agreed on.
+   *
+   * THIS RULE USED TO LIVE HERE AND NOWHERE ELSE, which is why it did not work:
+   * this memo only sets how far the volley flies, while `contactPosition` — the
+   * helper that actually places the craft, and the one the camera reads — went
+   * straight through the world-solve and put the pirate on top of its attacker.
+   * `engagementPosition` is now the single answer and both of them call it.
    */
-  const hold = useMemo(() => {
-    if (!fight) return null;
-    const held = contact.from.x === contact.to.x
-      && contact.from.y === contact.to.y
-      && contact.from.z === contact.to.z;
-    return held ? toWorld(contact.from) : engagementHold(fight.target, contact.from, nodes);
-  }, [fight, contact.from, contact.to, nodes]);
+  const hold = useMemo(
+    () => (fight ? engagementPosition(contact, fight.target, nodes) : null),
+    [fight, contact, nodes],
+  );
   const centre = useMemo(() => (fight ? toWorld(fight.target) : null), [fight]);
   const formation = useMemo(() => formationLayout(markers, style.scale), [markers, style.scale]);
   const slots = formation.slots;
@@ -2253,9 +2275,16 @@ function Foreign({
       Math.hypot(aim[0] - at[0], aim[1] - at[1], aim[2] - at[2]),
       formationScale,
     );
-    if (Math.hypot(aim[0] - from[0], aim[1] - from[1], aim[2] - from[2]) > 1e-4) {
-      easeHeading(node, aim, delta, headingSettled);
-    }
+    /*
+      NO GUARD HERE ANY MORE, AND THAT IS THE FIX RATHER THAN A TIDY-UP.
+
+      This measured the aim against the window's START, which is not where the
+      craft is — so it happily authorised a `lookAt` on a craft standing exactly on
+      its own aim point, which is what an engaged pirate was. `easeHeading` asks the
+      only question that matters, against the only position that matters, and it
+      asks it for every caller.
+    */
+    easeHeading(node, aim, delta, headingSettled);
 
     // The near end of a mining run's line follows the craft, so only what is left
     // to fly is ever drawn. Three floats and a flag, once a frame.
