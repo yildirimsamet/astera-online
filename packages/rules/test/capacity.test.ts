@@ -37,8 +37,8 @@ describe('what a craft takes up', () => {
     for (const id of ALL_HULLS) expect(hullBulk(id)).toBeGreaterThanOrEqual(1);
   });
 
-  it('makes the Wasp the unit', () => {
-    expect(hullBulk('WASP')).toBe(1);
+  it('makes the Dart the unit', () => {
+    expect(hullBulk('DART')).toBe(1);
   });
 
   /**
@@ -47,7 +47,7 @@ describe('what a craft takes up', () => {
    * buys, so no hull can be made better or worse by the room it takes.
    */
   it('stays proportional to what the hull costs, within the rounding', () => {
-    const perUnit = value('WASP');
+    const perUnit = value('DART');
     for (const id of ALL_HULLS) {
       const exact = value(id) / perUnit;
       expect(Math.abs(hullBulk(id) - exact) / exact).toBeLessThan(0.15);
@@ -93,13 +93,13 @@ describe('the two capacities', () => {
   });
 
   it('counts only flying craft against the Hangar', () => {
-    const fleet: Fleet = { WASP: 3, BASTION: 2, THORN: 5 };
-    expect(hangarLoad(fleet)).toBe(3 * hullBulk('WASP'));
+    const fleet: Fleet = { DART: 3, BASTION: 2, THORN: 5 };
+    expect(hangarLoad(fleet)).toBe(3 * hullBulk('DART'));
     for (const id of GROUND_HULLS) expect(hangarLoad({ [id]: 10 })).toBe(0);
   });
 
   it('counts only emplacements against the ground slots', () => {
-    const fleet: Fleet = { WASP: 3, BASTION: 2, THORN: 5 };
+    const fleet: Fleet = { DART: 3, BASTION: 2, THORN: 5 };
     expect(groundLoad(fleet)).toBe(2 * hullBulk('BASTION') + 5 * hullBulk('THORN'));
     for (const id of MOBILE_HULLS) expect(groundLoad({ [id]: 10 })).toBe(0);
   });
@@ -131,7 +131,7 @@ describe('the two capacities', () => {
    */
   it('lets a world with no Hangar at all keep a real fleet', () => {
     expect(START_BUILDINGS.HANGAR).toBe(0);
-    expect(hangarCapacity(START_BUILDINGS.HANGAR)).toBeGreaterThan(hangarLoad({ WASP: 50 }));
+    expect(hangarCapacity(START_BUILDINGS.HANGAR)).toBeGreaterThan(hangarLoad({ DART: 50 }));
   });
 
   it('is a building like any other', () => {

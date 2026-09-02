@@ -1,6 +1,6 @@
 import { app, document, landing, loading, servers, settings } from './entry.js';
 import { chat, leaderboard, menu, pendingStrip, sheet, signals, statusBar, surface, toast } from './shell.js';
-import { focus, galaxy, worlds } from './world.js';
+import { focus, galaxy, pirate, worlds } from './world.js';
 import { action, capacity, itemSheet, launch, planet, planetHero, transfer, upgradeRow } from './planet.js';
 import { clarity, dossier, intel, reports } from './intel.js';
 import { directives, gains, notifications, units, vocabulary } from './data.js';
@@ -41,6 +41,7 @@ export const tr: Resources = {
   surface,
   galaxy,
   focus,
+  pirate,
   worlds,
   planet,
   capacity,

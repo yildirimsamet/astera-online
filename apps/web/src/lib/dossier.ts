@@ -105,6 +105,33 @@ const SOURCE_LABEL = {
 
 export const sourceLabel = (source: Source): string => i18n.t(SOURCE_LABEL[source]);
 
+/**
+ * HOW OLD THE RECORD ON A WORLD IS — NULL WHEN THERE IS NO RECORD. D151.
+ *
+ * The dossier has always stamped this on its fact rows. Two surfaces never did,
+ * and between them they are where targets are actually chosen: the label on the
+ * disc, and the launch sheet where the fleet stops being recallable. Both printed
+ * a `REMEMBERED` world exactly as they print a `RESOLVED` one — same name, same
+ * commander, same kind row — so the only thing separating a three-day-old snapshot
+ * from a live reading was that the sphere behind it was unlit, which a player
+ * reads as art rather than as provenance.
+ *
+ * `RESOLVED` HAS NO AGE, and that is not the same as zero: it is a live reading,
+ * and the honest thing to print beside it is nothing. `UNKNOWN` has no record to
+ * be old — its surfaces already say "nobody has looked here".
+ *
+ * FLOORED AT ZERO. The disc draws on `serverNow()`, and a record written in the
+ * same second can reach a render a few milliseconds ahead of it. A negative age
+ * would print as a time in the future on the one screen that must not lie.
+ */
+export const recordAgeMinutes = (
+  world: { intel: GalaxyPlanet['intel']; seenAt?: Date },
+  now: number,
+): number | null =>
+  world.intel === 'REMEMBERED' && world.seenAt
+    ? Math.max(0, (now - world.seenAt.getTime()) / 60_000)
+    : null;
+
 const band = (low: number, high: number): string =>
   low === high
     ? String(Math.round(low))
@@ -194,9 +221,7 @@ export function dossier({ target, planet, intel, reports, rival, now }: DossierI
    * recorded exactly. Attaching a confidence to it would invent a doubt.
    */
   const surface: Source = target.intel === 'REMEMBERED' ? 'probe' : 'public';
-  const surfaceAge = target.intel === 'REMEMBERED' && target.seenAt
-    ? Math.max(0, (now - target.seenAt.getTime()) / 60_000)
-    : null;
+  const surfaceAge = recordAgeMinutes(target, now);
 
   if (target.intel === 'UNKNOWN') {
     gaps.push({

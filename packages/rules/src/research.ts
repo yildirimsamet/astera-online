@@ -78,9 +78,9 @@ export const plantCeiling = (researchLevel: number): number =>
  * a permission fall out of the same walk as a five-rung ladder instead of needing
  * a flag that says which kind it is.
  *
- * The doctrines each report through the hull they teach; the general project
- * reports through any hull, because it lifts all of them. Only the FACTOR matters,
- * not which hull is asked.
+ * Fleet-system projects report through one representative Fleet V2 hull. The
+ * Engineering permission reports its useful rung directly because it changes a
+ * build gate rather than a combat statistic.
  */
 export function researchEffectAt(id: ResearchProjectId, level: number): number {
   const rung = Math.max(0, Math.floor(level));
@@ -93,16 +93,16 @@ export function researchEffectAt(id: ResearchProjectId, level: number): number {
       return prospectorHoldMult({ PROSPECTOR_HOLDS: rung });
     case 'CARGO_HOLDS':
       return cargoMult({ CARGO_HOLDS: rung });
-    case 'WASP_DOCTRINE':
-      return hullTech({ WASP_DOCTRINE: rung }, 'WASP').atk;
-    case 'LANCE_DOCTRINE':
-      return hullTech({ LANCE_DOCTRINE: rung }, 'LANCE').atk;
-    case 'BULWARK_DOCTRINE':
-      return hullTech({ BULWARK_DOCTRINE: rung }, 'BULWARK').atk;
+    case 'STARSHIP_ENGINEERING':
+      return Math.min(RESEARCH_TECH.engineeringMaxLevel, rung);
+    case 'SHIP_POWER':
+      return hullTech({ SHIP_POWER: rung }, 'DART').atk;
+    case 'SHIP_ARMOR':
+      return hullTech({ SHIP_ARMOR: rung }, 'DART').hp;
+    case 'SHIP_PROPULSION':
+      return hullTech({ SHIP_PROPULSION: rung }, 'DART').speed;
     case 'EMPLACEMENT_DOCTRINE':
       return hullTech({ EMPLACEMENT_DOCTRINE: rung }, 'BASTION').atk;
-    case 'WEAPONS_GENERAL':
-      return hullTech({ WEAPONS_GENERAL: rung }, 'WASP').atk;
     case 'STRATEGIC_STOCKPILE':
       return strategicStockpile(rung);
     /*
@@ -185,7 +185,7 @@ const weaponLadder = (id: ResearchProjectId, weight = 1): ResearchProject => ({
   id,
   maxLevel: RESEARCH_MAX_LEVEL[id],
   costAt: (level: number) => {
-    const rung = Math.max(1, Math.min(RESEARCH_TECH.weaponMaxLevel, level));
+    const rung = Math.max(1, Math.min(RESEARCH_MAX_LEVEL[id], Math.floor(level)));
     const step = Math.pow(2, rung - 1) * weight;
     return {
       alloy: scalePrice(2200 * step, ECONOMY_TEMPO.fixedPrice),
@@ -368,25 +368,21 @@ export const RESEARCH_PROJECTS: Record<ResearchProjectId, ResearchProject> = wit
    */
   CARGO_HOLDS: economyLadder('CARGO_HOLDS', 1400, 1100),
 
-  /**
-   * THE FIVE WEAPON LADDERS. T9.
-   *
-   * Dearer than the economy ones and dearest at the top, because what they buy is
-   * bounded by design: 25% of equal-budget power against the counter cycle's 156%.
-   * A commander who pours a season into these is buying a quarter of what one
-   * good scouting report buys, and that ordering is the game's central claim
-   * rather than a tuning accident.
-   */
-  WASP_DOCTRINE: weaponLadder('WASP_DOCTRINE'),
-  LANCE_DOCTRINE: weaponLadder('LANCE_DOCTRINE'),
-  BULWARK_DOCTRINE: weaponLadder('BULWARK_DOCTRINE'),
+  /** Fleet V2 permissions and bounded stat ladders. D148. */
+  STARSHIP_ENGINEERING: weaponLadder('STARSHIP_ENGINEERING', 0.9),
+  SHIP_POWER: {
+    ...weaponLadder('SHIP_POWER'),
+    prerequisite: 'STARSHIP_ENGINEERING',
+  },
+  SHIP_ARMOR: {
+    ...weaponLadder('SHIP_ARMOR'),
+    prerequisite: 'STARSHIP_ENGINEERING',
+  },
+  SHIP_PROPULSION: {
+    ...weaponLadder('SHIP_PROPULSION'),
+    prerequisite: 'DENSE_FUEL_CELLS',
+  },
   EMPLACEMENT_DOCTRINE: weaponLadder('EMPLACEMENT_DOCTRINE'),
-  /**
-   * Touches every hull, so it is priced above a single doctrine — but only by
-   * 1.25x, because above that its top rung ran into the build-time clamp and stopped
-   * being felt as time at all.
-   */
-  WEAPONS_GENERAL: weaponLadder('WEAPONS_GENERAL', 1.25),
 
   /**
    * THE TWO STRATEGIC PROJECTS, AND THEY ARE EACH OTHER'S ANSWER. T10 · T11.

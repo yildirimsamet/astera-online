@@ -6,10 +6,19 @@ import { loadEnv, type Env } from '../src/env.js';
 import { FixedClock } from '../src/clock.js';
 import { createSeason } from '../src/services/season.js';
 import { joinSeason } from '../src/services/player.js';
-import { accounts, buildOrders, researchOrders, scheduledEvents } from '../src/db/schema.js';
+import {
+  accounts,
+  buildOrders,
+  debrisFields,
+  planets,
+  researchOrders,
+  scheduledEvents,
+  seasons,
+} from '../src/db/schema.js';
 import { engagementEndsAt, type AsteroidSpec } from '@astera/rules';
 import { applyBuildCompletion } from '../src/services/buildQueue.js';
 import { privateAsteroidField } from '../src/services/asteroidField.js';
+import { privatePirateField } from '../src/services/pirateField.js';
 import { refreshSensorEpoch } from '../src/services/sensorHistory.js';
 
 export const TEST_DATABASE_URL =
@@ -79,7 +88,8 @@ export async function truncateAll(db: Db): Promise<void> {
              clan_ceasefires, clan_memberships, clans,
              strategic_interceptions, strategic_impacts, battle_reports,
              scheduled_events, research_orders, build_orders, strategic_assets, missions, mining_runs,
-             asteroid_claims, units,
+             asteroid_claims, pirate_raids, pirate_state, units,
+             galaxy_event_occurrences, galaxy_events,
              sensor_epochs, satellites, buildings, planet_research, player_research,
              neutral_planet_state, planets, players,
              seasons, shards, accounts
@@ -185,7 +195,42 @@ export async function makeAccount(
 }
 
 /** A live season with `count` commanders already placed on it. */
-export async function seedWorld(count = 2, seed = 4242): Promise<Fixture> {
+export interface SeedOptions {
+  /**
+   * LET THIS SEASON'S PIRATE LANE RIDE. Off by default, and that default is the point.
+   *
+   * A pirate has no discovery gate — D150's deliberate fog choice — so unlike a
+   * rock it is on screen the instant it enters a circle. Paired with a random
+   * `seasons.asteroidKey` that made every seeded season grow a DIFFERENT lane, and
+   * any test asserting on a whole contact list was quietly rolling dice against
+   * it: `sensor-horizon.test.ts` failed two runs in eight on a pirate that was
+   * legitimately inside the naked eye and had nothing to do with the craft under
+   * test.
+   *
+   * Content a test did not ask for may not appear in its assertions. The rocks
+   * already work this way (they stay dark until a test grants discovery); this is
+   * the same rule with the switch made explicit.
+   */
+  pirates?: boolean;
+}
+
+/**
+ * THE SEASON KEY IS PINNED, NOT ROLLED.
+ *
+ * `seasons.asteroidKey` is `defaultRandom()` in production, which is right there
+ * and wrong in a fixture: it makes the derived asteroid and pirate lanes differ on
+ * every run, so a failure cannot be reproduced from the seed that produced it.
+ * Derived from `seed` so two fixtures asking for different seeds still get
+ * different worlds.
+ */
+const pinnedKey = (seed: number): string =>
+  `00000000-0000-4000-8000-${String(seed).padStart(12, '0').slice(-12)}`;
+
+export async function seedWorld(
+  count = 2,
+  seed = 4242,
+  options: SeedOptions = {},
+): Promise<Fixture> {
   const { db } = await testDb();
   await truncateAll(db);
 
@@ -198,6 +243,9 @@ export async function seedWorld(count = 2, seed = 4242): Promise<Fixture> {
     playerCap: 60,
     rulesetVersion: 1,
   });
+  await db.update(seasons).set({ asteroidKey: pinnedKey(seed) }).where(eq(seasons.id, season.id));
+  season.asteroidKey = pinnedKey(seed);
+  if (options.pirates !== true) await silencePirates(db, season.id);
 
   const accountIds: string[] = [];
   const playerIds: string[] = [];
@@ -242,6 +290,69 @@ export async function seedWorld(count = 2, seed = 4242): Promise<Fixture> {
     playerIds,
     accountIds,
   };
+}
+
+/**
+ * Take every pirate in this season's lane off the board before a test starts.
+ *
+ * THROUGH THE REAL DOOR, NOT A MOCK. `standing()` filters on `pirate_state`'s
+ * `destroyed_at`, so a season whose whole lane is already destroyed is an ordinary
+ * world state the production path produces on its own — not a special case the
+ * fixture taught the projection about.
+ *
+ * ONE SERVER-SIDE STATEMENT. The lane is ~2,000 rows and `seedWorld` runs on the
+ * order of hundreds of times a suite; sending that many tuples from Node would put
+ * seconds on the wall clock for something `generate_series` does in one pass.
+ */
+async function silencePirates(db: Db, seasonId: string): Promise<void> {
+  const [season] = await db.select().from(seasons).where(eq(seasons.id, seasonId));
+  if (!season) return;
+  const lane = privatePirateField(season.asteroidKey).length;
+  if (lane === 0) return;
+  // ISO text with an explicit cast: Drizzle's `sql` cannot bind a JS Date through
+  // postgres.js, and the failure is a runtime type error rather than a type error.
+  const at = season.startsAt.toISOString();
+  await db.execute(sql`
+    insert into pirate_state (season_id, index, losses, destroyed_at, updated_at)
+    select ${seasonId}::uuid, g, '{}'::jsonb, ${at}::timestamptz, ${at}::timestamptz
+      from generate_series(0, ${lane - 1}) as g
+    on conflict (season_id, index) do nothing
+  `);
+}
+
+/**
+ * Put a wreck field over a world, at that world's actual coordinates.
+ *
+ * A debris row carries its own position since D150 — a pirate battle happens where
+ * no planet is — so a fixture can no longer name a world and leave the location
+ * implied. Reading it here rather than at ten call sites keeps a harvest's flight
+ * time honest: with zeroes the field would sit at the galactic centre and every
+ * distance assertion would be measuring the wrong trip.
+ */
+export async function giveDebris(
+  db: Db,
+  seasonId: string,
+  planetId: string,
+  values: { alloy: number; crystal: number; deuterium?: number; missionId?: string; createdAt: Date },
+): Promise<typeof debrisFields.$inferSelect> {
+  const [world] = await db
+    .select({ x: planets.x, y: planets.y, z: planets.z })
+    .from(planets)
+    .where(eq(planets.id, planetId));
+  if (!world) throw new Error(`giveDebris: no planet ${planetId}`);
+  const [field] = await db
+    .insert(debrisFields)
+    .values({
+      seasonId,
+      planetId,
+      x: world.x,
+      y: world.y,
+      z: world.z,
+      deuterium: 0,
+      ...values,
+    })
+    .returning();
+  return field!;
 }
 
 /** Spacing between test planets. Inside Telescope L1's reach, outside minSeparation. */
@@ -470,7 +581,7 @@ export async function giveUnits(
   for (const [hull, count] of Object.entries(fleet)) {
     await db
       .insert(units)
-      .values({ planetId, ownerPlayerId: world.ownerPlayerId, hull: hull as 'WASP', location, count })
+      .values({ planetId, ownerPlayerId: world.ownerPlayerId, hull: hull as 'DART', location, count })
       .onConflictDoUpdate({
         target: [units.planetId, units.hull, units.location],
         set: { ownerPlayerId: world.ownerPlayerId, count },

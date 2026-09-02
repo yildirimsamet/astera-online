@@ -8,7 +8,7 @@
  * surface of their own.
  *
  * `planet.reach` KEPT ITS OWN COPIES of the two sentences that gate a hull
- * ("Research Dense Fuel Cells first" on the Runner, the same for the Breacher).
+ * ("Research Dense Fuel Cells first" on the Wayfarer, the same for the Nullifier).
  * They read the same in English today and they are still two different strings on
  * two different screens — one is a door on a research card, one is a requirement
  * on a ship. The day either is reworded the other must not move with it.
@@ -24,15 +24,11 @@ export const research = {
   queueCapacity: "{{count}} slots",
   queueLane: "Commander research",
   queueGlobalHint:
-    "This queue belongs to your commander. Construction and Yard on every world keep running separately.",
-  cancelled: "{{alloy}} Alloy · {{crystal}} Crystal · {{deuterium}} Deuterium refunded",
+    "This queue belongs to your commander, and started research cannot be cancelled. Construction and Yard on every world keep running separately.",
   runningLabel: "Under way",
-  runningOn: "on {{planet}}",
   runningFinishes: "finishes {{time}}",
   idleLabel: "Nothing under way",
-  idleHint: "Start a project below. Up to three can wait here while every world's own queues keep running.",
-  /** Why a card is shut while another world holds the slot. */
-  slotBusy: "{{name}} is running on {{planet}}",
+  idleHint: "Start a project below. Up to three can wait here; once started, they cannot be cancelled.",
 
   frontierBand: "Frontier",
   frontierNote:
@@ -42,7 +38,7 @@ export const research = {
     "Open from the first minute with five rungs each. Improves production, build time and carrying capacity.",
   doctrineBand: "Doctrine",
   doctrineNote:
-    "Raises attack and hull strength together for specific craft classes. Rivals can learn these levels from probe reports.",
+    "Opens advanced hull tiers and improves Fleet V2 attack, armour or propulsion on separate bounded ladders. Combat levels are probe-visible.",
   strategicBand: "Strategic",
   strategicNote:
     "Unlocks the galaxy’s most destructive weapon, its defensive answer and additional stock capacity.",
@@ -51,7 +47,7 @@ export const research = {
   complete: "researched",
 
   needCore: "Raise Command Core to L{{level}}",
-  queueFull: "The Research queue is full",
+  queueFull: "3 research projects are already queued. Wait for one to finish before adding another.",
   at: "Researchable in {{duration}}",
   warAt: "War act opens in {{duration}}",
   isotopeFirst: "Research Isotope Spectrometry first",
@@ -72,17 +68,17 @@ export const research = {
   isotopeDetail:
     "Research it once to turn isotope asteroids into selectable mining targets. It unlocks access to contested Deuterium; it does not create passive fuel on a planet.",
   denseName: "Dense Fuel Cells",
-  denseTag: "Unlocks the Runner",
+  denseTag: "Unlocks Ship Propulsion",
   denseRole:
-    "To reveal it, fill your cargo in one raid while loot remains on the target. The Runner is faster than a Hauler but carries less.",
+    "To reveal it, fill your cargo in one raid while loot remains on the target. Completion opens the Ship Propulsion research ladder.",
   denseDetail:
-    "Completing it permanently unlocks Runner construction on every world you hold. The Runner lets a fast strike carry loot without waiting for a slow Hauler.",
+    "Completing it permanently opens Ship Propulsion research for your commander. Propulsion improves all eighteen Fleet V2 hulls and is also part of the Atlas build gate; it does not change Prospectors, probes or the Death Star.",
   graviticName: "Gravitic Charges",
-  graviticTag: "Unlocks the Breacher",
+  graviticTag: "Unlocks the Nullifier",
   graviticRole:
-    "To unlock it, attack a defended world with an active Aegis; the shield must absorb at least {{share}} of your damage. A single Wasp can qualify; you do not need to win. The Breacher hits shields five times harder.",
+    "To unlock it, attack a defended world with an active Aegis; the shield must absorb at least {{share}} of your damage. A single Dart can qualify; you do not need to win. The Nullifier hits active shields five times harder.",
   graviticDetail:
-    "Completing it permanently unlocks the Breacher everywhere. That hull is a specialist answer to active Aegis shields, not a general damage upgrade.",
+    "Completing it permanently satisfies the specialist-research part of the Nullifier gate. The Nullifier is an answer to an active Aegis, not a general damage upgrade; its bonus shield damage never spills into ships or ground guns.",
   deathStarName: "Death Star Protocol",
   deathStarTag: "Unlocks the Death Star",
   deathStarRole:
@@ -113,25 +109,36 @@ export const research = {
   cargoDetail:
     "Each rung increases raid cargo across your mobile fleet. It helps when exposed stock remains after a battle; peaceful transfers and asteroid mining are unchanged.",
 
-  waspDoctrineName: "Wasp Doctrine",
-  lanceDoctrineName: "Lance/Breacher Doctrine",
-  bulwarkDoctrineName: "Bulwark Doctrine",
+  engineeringName: "Starship Engineering",
+  engineeringTag: "Opens advanced hull tiers",
+  engineeringRole:
+    "Engineering I opens Tier 3 hull permissions; Engineering II opens Tier 4. Individual hulls retain their system-research and Shipyard requirements.",
+  engineeringDetail:
+    "Engineering grants build permission rather than a combat multiplier. Its first rung opens Tier 3 hull gates and its second opens Tier 4; a specific hull may still require Power, Armor, Propulsion or Gravitic Charges and the stated Shipyard level.",
+  powerName: "Ship Power",
+  powerTag: "Raises Fleet V2 attack",
+  powerRole:
+    "Increases the attack of all Fleet V2 combat hulls and satisfies advanced offensive build gates. Cargo hulls and preserved units are unaffected.",
+  powerDetail:
+    "Each rung increases ordinary attack on Fleet V2 combat hulls, including the Nullifier, and applies to ships you already own. It does not add attack to transports or affect Bastion, Thorn, Prospector, probes or the Death Star. An attacker carries its launch-time level; a defender reads the battle-time level.",
+  armorName: "Ship Armor",
+  armorTag: "Raises Fleet V2 hull strength",
+  armorRole:
+    "Increases hull strength for all eighteen Fleet V2 ships, including transports, and satisfies advanced defensive build gates.",
+  armorDetail:
+    "Each rung increases hull strength for all eighteen Fleet V2 ships, including Courier, Wayfarer and Atlas. It does not affect Bastion, Thorn, Prospector, probes or the Death Star. An attacker carries its launch-time level; a defender reads the battle-time level.",
+  propulsionName: "Ship Propulsion",
+  propulsionTag: "Raises Fleet V2 speed",
+  propulsionRole:
+    "Increases the speed of all eighteen Fleet V2 ships and contributes to the Atlas gate. It opens after Dense Fuel Cells.",
+  propulsionDetail:
+    "Each of the four rungs adds a quarter to the nominal speed of all eighteen Fleet V2 ships, so the last one doubles it and halves every flight. A mixed fleet still travels at the speed of its slowest member, so propulsion improves a chosen composition without erasing its profile. It does not affect Prospectors, probes or the Death Star, and only missions quoted after completion receive the gain.",
   groundDoctrineName: "Emplacement Doctrine",
-  generalName: "Weapons and Armour",
-  generalTag: "Improves every hull you own",
-  doctrineTag: "Better attack and armour",
+  doctrineTag: "Improves ground defence",
   doctrineRole:
-    "Attack and hull rise together. A class doctrine plus general research can add at most 25% equal-budget combat power; choosing the right counter hull buys far more.",
-  waspDoctrineDetail:
-    "Improves the attack and hull of every Wasp you field, including existing ships. An attacking fleet carries the rung held at launch; a defender uses the rung held when battle begins.",
-  lanceDoctrineDetail:
-    "Improves the attack and hull of every Lance and Breacher you own, including existing ships, without changing their natural matchups. Attackers carry the launch-time rung; defenders use the battle-time rung.",
-  bulwarkDoctrineDetail:
-    "Improves every Bulwark you field without fixing its slow travel speed. Attackers carry the launch-time rung; defenders use the rung held when battle begins.",
+    "Raises Bastion and Thorn attack and hull strength together without changing their capacity, salvage or class matchups.",
   groundDoctrineDetail:
     "Improves the attack and hull of Bastions and Thorns on every world. It changes combat strength, not ground capacity or salvage; defenders use the rung held when battle begins.",
-  generalDetail:
-    "Raises the durability of every ship and ground gun, and the attack of each hull that has an attack value; support craft gain durability only. It stacks with class doctrine without taking their combined equal-budget combat-power gain beyond 25%. Attackers carry the launch-time rung; defenders use the battle-time rung.",
 
   gridName: "Interception Grid",
   gridTag: "Shoots down a Death Star",

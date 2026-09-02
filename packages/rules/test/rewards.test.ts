@@ -21,7 +21,7 @@ import {
  *   · IT CANNOT BE ADDRESSED BY A STRING NOBODY AUTHORED. `findRewardTier` is the
  *     boundary between the wire and a payment.
  *   · IT CANNOT UNLOCK BACKWARDS. Tiers ascend, so "passed" is monotonic.
- *   · IT CANNOT QUIETLY REBALANCE THE ECONOMY. The purse is bounded and the
+ *   · IT CANNOT QUIETLY REBAPIKE THE ECONOMY. The purse is bounded and the
  *     crystal share tracks income.
  */
 describe('the reward table', () => {
@@ -89,7 +89,7 @@ describe('the reward table', () => {
   });
 
   /**
-   * THE ONE THAT MATTERS TO THE BALANCE.
+   * THE ONE THAT MATTERS TO THE BAPIKE.
    *
    * The whole table is worth about a tenth of what a fourteen-day season
    * produces, and the ceiling here is what stops a future tier being added at a

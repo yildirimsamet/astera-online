@@ -48,16 +48,16 @@ describe('ordinary build queues', () => {
       .select({ builtEver: planets.builtEver })
       .from(planets)
       .where(eq(planets.id, planetId));
-    const placed = await buildUnits(f.db, planetId, 'WASP', 2, f.clock);
+    const placed = await buildUnits(f.db, planetId, 'DART', 2, f.clock);
     const [order] = await f.db
       .select()
       .from(buildOrders)
       .where(eq(buildOrders.planetId, planetId));
-    expect(order).toMatchObject({ queue: 'YARD', kind: 'HULL', subject: 'WASP', count: 2 });
-    expect(placed.planet.fleet.WASP ?? 0).toBe(0);
+    expect(order).toMatchObject({ queue: 'YARD', kind: 'HULL', subject: 'DART', count: 2 });
+    expect(placed.planet.fleet.DART ?? 0).toBe(0);
     expect(placed.planet.queues.YARD[0]?.finishesAt).toEqual(order!.readyAt);
     expect((await f.db.select().from(units).where(eq(units.planetId, planetId)))).toHaveLength(0);
-    expect(before[0]?.builtEver.WASP ?? 0).toBe(0);
+    expect(before[0]?.builtEver.DART ?? 0).toBe(0);
 
     f.clock.set(order!.readyAt);
     await worker(f).tick();
@@ -67,8 +67,8 @@ describe('ordinary build queues', () => {
       .select({ builtEver: planets.builtEver })
       .from(planets)
       .where(eq(planets.id, planetId));
-    expect(completed.homeFleet.WASP).toBe(2);
-    expect(world?.builtEver.WASP).toBe(2);
+    expect(completed.homeFleet.DART).toBe(2);
+    expect(world?.builtEver.DART).toBe(2);
     expect((await f.db.select().from(buildOrders))[0]?.status).toBe('COMPLETED');
   });
 
@@ -134,13 +134,13 @@ describe('ordinary build queues', () => {
       code: 'QUEUE_FULL',
       params: { queue: 'CONSTRUCTION', max: 3 },
     });
-    await expect(buildUnits(f.db, planetId, 'WASP', 1, f.clock)).resolves.toBeTruthy();
+    await expect(buildUnits(f.db, planetId, 'DART', 1, f.clock)).resolves.toBeTruthy();
   });
 
   it('refunds half on cancel and pulls the tail forward', async () => {
     await grant(f.db, planetId, 100_000, 30_000);
-    await buildUnits(f.db, planetId, 'WASP', 20, f.clock);
-    await buildUnits(f.db, planetId, 'WASP', 1, f.clock);
+    await buildUnits(f.db, planetId, 'DART', 20, f.clock);
+    await buildUnits(f.db, planetId, 'DART', 1, f.clock);
     const before = await f.db
       .select()
       .from(buildOrders)
@@ -162,9 +162,9 @@ describe('ordinary build queues', () => {
 
   it('keeps the running head fixed when a middle order is cancelled', async () => {
     await grant(f.db, planetId, 100_000, 30_000);
-    await buildUnits(f.db, planetId, 'WASP', 20, f.clock);
-    await buildUnits(f.db, planetId, 'WASP', 10, f.clock);
-    await buildUnits(f.db, planetId, 'WASP', 1, f.clock);
+    await buildUnits(f.db, planetId, 'DART', 20, f.clock);
+    await buildUnits(f.db, planetId, 'DART', 10, f.clock);
+    await buildUnits(f.db, planetId, 'DART', 1, f.clock);
     const before = await f.db
       .select()
       .from(buildOrders)
@@ -280,7 +280,7 @@ describe('ordinary build queues', () => {
     f.clock.set(new Date(locked.seasonEndsAt.getTime() - 1_000));
     const [before] = await f.db.select().from(planets).where(eq(planets.id, planetId));
 
-    await expect(buildUnits(f.db, planetId, 'WASP', 1, f.clock)).rejects.toMatchObject({
+    await expect(buildUnits(f.db, planetId, 'DART', 1, f.clock)).rejects.toMatchObject({
       code: 'SEASON_ENDS_BEFORE_BUILD',
     });
 
@@ -291,14 +291,14 @@ describe('ordinary build queues', () => {
   });
 
   it('reserves the exact season deadline for freeze instead of racing it', async () => {
-    const durationSeconds = Math.max(1, Math.ceil(shipMinutes(HULLS.WASP, 0, {}) * 60));
+    const durationSeconds = Math.max(1, Math.ceil(shipMinutes(HULLS.DART, 0, {}) * 60));
     await f.db
       .update(seasons)
       .set({ endsAt: new Date(f.clock.now().getTime() + durationSeconds * 1_000) })
       .where(eq(seasons.id, f.seasonId));
     const [before] = await f.db.select().from(planets).where(eq(planets.id, planetId));
 
-    await expect(buildUnits(f.db, planetId, 'WASP', 1, f.clock)).rejects.toMatchObject({
+    await expect(buildUnits(f.db, planetId, 'DART', 1, f.clock)).rejects.toMatchObject({
       code: 'SEASON_ENDS_BEFORE_BUILD',
     });
 
@@ -310,7 +310,7 @@ describe('ordinary build queues', () => {
 
   it('never lets a build id cancel an order belonging to another planet', async () => {
     const other = await seedWorld(2);
-    await buildUnits(other.db, other.planetIds[0]!, 'WASP', 1, other.clock);
+    await buildUnits(other.db, other.planetIds[0]!, 'DART', 1, other.clock);
     const [order] = await other.db
       .select()
       .from(buildOrders)
@@ -325,7 +325,7 @@ describe('ordinary build queues', () => {
 
   it('returns everything and records failure when the system abandons an order', async () => {
     const [before] = await f.db.select().from(planets).where(eq(planets.id, planetId));
-    await buildUnits(f.db, planetId, 'WASP', 1, f.clock);
+    await buildUnits(f.db, planetId, 'DART', 1, f.clock);
     const [order] = await f.db.select().from(buildOrders);
     expect(await abandonBuildOrder(f.db, order!.id, f.clock)).toBe(true);
 
@@ -339,7 +339,7 @@ describe('ordinary build queues', () => {
 
   it('repairs an overdue order whose event row disappeared', async () => {
     const [before] = await f.db.select().from(planets).where(eq(planets.id, planetId));
-    await buildUnits(f.db, planetId, 'WASP', 1, f.clock);
+    await buildUnits(f.db, planetId, 'DART', 1, f.clock);
     const [order] = await f.db.select().from(buildOrders);
     await f.db
       .delete(scheduledEvents)
@@ -360,7 +360,7 @@ describe('ordinary build queues', () => {
       .select({ wealth: players.wealth })
       .from(players)
       .where(eq(players.id, f.playerIds[0]!));
-    await buildUnits(f.db, planetId, 'WASP', 1, f.clock);
+    await buildUnits(f.db, planetId, 'DART', 1, f.clock);
     const [order] = await f.db.select().from(buildOrders);
     const [committed] = await f.db
       .select({ wealth: players.wealth })
@@ -373,14 +373,14 @@ describe('ordinary build queues', () => {
       .select({ wealth: players.wealth })
       .from(players)
       .where(eq(players.id, f.playerIds[0]!));
-    const refund = cancelRefund(HULLS.WASP);
-    const fee = HULLS.WASP.alloy + HULLS.WASP.crystal + HULLS.WASP.deuterium
+    const refund = cancelRefund(HULLS.DART);
+    const fee = HULLS.DART.alloy + HULLS.DART.crystal + HULLS.DART.deuterium
       - refund.alloy - refund.crystal - refund.deuterium;
     expect(cancelled!.wealth).toBe(committed!.wealth - fee);
   });
 
   it('applies a delivered completion event only once', async () => {
-    await buildUnits(f.db, planetId, 'WASP', 1, f.clock);
+    await buildUnits(f.db, planetId, 'DART', 1, f.clock);
     const [order] = await f.db.select().from(buildOrders);
     f.clock.set(order!.readyAt);
     const w = worker(f);

@@ -1537,7 +1537,7 @@ function ClanAidPanel({
                   label={t('clan.aid.cargo')}
                 />
               </div>
-              <p className="mt-1 text-label text-faint">{t('clan.aid.haulerOnly')}</p>
+              <p className="mt-1 text-label text-faint">{t('clan.aid.transportOnly')}</p>
               <div className="mt-3 grid grid-cols-3 gap-2">
                 {(['alloy', 'crystal', 'deuterium'] as const).map((kind) => (
                   <label key={kind}>

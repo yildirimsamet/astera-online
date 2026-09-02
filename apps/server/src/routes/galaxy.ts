@@ -22,6 +22,7 @@ import { discoveredAsteroidIndexes } from '../services/asteroidField.js';
 import { sensorHistoryForPlayer } from '../services/sensorHistory.js';
 import { readClanPresence } from '../services/clan.js';
 import { adminPlayerIdsInSeason } from '../services/admin.js';
+import { locationIsKnown } from '../services/locationSight.js';
 import { requireAuth } from './auth.js';
 
 /**
@@ -301,11 +302,12 @@ export function registerGalaxyRoutes(app: FastifyInstance): void {
     const now = app.clock.now();
     // Both from the same generation of the caller's world list: the horizon and
     // the ownership filter must never disagree about which worlds are theirs.
-    const [snapshot, sensors, mining, epochs] = await Promise.all([
+    const [snapshot, sensors, mining, epochs, pirates] = await Promise.all([
       app.projections.trafficSnapshot(self.seasonId, now),
       app.projections.sensorsFor(self.playerId, self.planetIds),
       app.projections.miningSnapshot(self.seasonId, now),
       sensorHistoryForPlayer(app.db, self.playerId),
+      app.projections.pirateSnapshot(self.seasonId, now),
     ]);
 
     return {
@@ -317,6 +319,7 @@ export function registerGalaxyRoutes(app: FastifyInstance): void {
         self.planetIds,
         sensors,
         discoveredAsteroidIndexes(mining, epochs, now),
+        pirates,
       ),
       interceptions: projectStrategicInterceptions(snapshot, self.playerId, sensors),
       interceptionImpacts: projectStrategicInterceptionImpacts(
@@ -388,13 +391,19 @@ export function registerGalaxyRoutes(app: FastifyInstance): void {
         { x: entry.x, y: entry.y, z: entry.z },
       ) <= post.identify);
       const memory = remembered.get(entry.planetId);
+      const located = locationIsKnown(
+        entry.planetId,
+        { x: entry.x, y: entry.y, z: entry.z },
+        isSelf,
+        { sensors, remembered },
+      );
       const visibleWorld = resolved
         ? {
             planetId: entry.planetId,
             planetName: entry.planetName,
             coreTier: coreTier(entry.coreLevel),
           }
-        : memory
+        : located && memory
           ? {
               planetId: entry.planetId,
               planetName: entry.planetName,

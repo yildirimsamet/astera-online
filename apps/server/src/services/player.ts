@@ -7,6 +7,10 @@ import { galaxyOf, occupiedSlots } from './season.js';
 import { GameError, recomputeWealth } from './planet.js';
 import { publishShard } from '../stream/bus.js';
 import { refreshSensorEpoch } from './sensorHistory.js';
+import {
+  lockGalaxyEventAudience,
+  notifyActiveGalaxyEventsForPlayer,
+} from './galaxyEvents.js';
 
 /**
  * The rows a fresh planet is written with, from the one table that decides it.
@@ -144,8 +148,6 @@ export async function joinSeason(
 
   const spec = galaxyOf(seasonId, season.seed, shard.playerCap);
   const [account] = await db.select().from(accounts).where(eq(accounts.id, accountId));
-  const now = clock.now();
-
   for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
     const taken = await occupiedSlots(db, seasonId);
     if (taken.size >= shard.playerCap) {
@@ -157,6 +159,10 @@ export async function joinSeason(
 
     try {
       return await db.transaction(async (tx) => {
+        await lockGalaxyEventAudience(tx, seasonId, 'membership');
+        // Read after the audience lock. If a lifecycle transition won the race,
+        // backfill is evaluated on its side of the exact boundary, never before it.
+        const now = clock.now();
         const [player] = await tx
           .insert(players)
           .values({
@@ -224,7 +230,12 @@ export async function joinSeason(
         // Without this a fresh commander's Wealth stays at the column default of
         // zero, and the rank floor then protects them from every attacker forever.
         await recomputeWealth(tx, planet.id);
-        await refreshSensorEpoch(tx, planet.id, clock.now());
+        await refreshSensorEpoch(tx, planet.id, now);
+        await notifyActiveGalaxyEventsForPlayer(tx, {
+          playerId: player.id,
+          seasonId,
+          at: now,
+        });
 
         // A capital has appeared in the public galaxy and leaderboard. Publish
         // inside the transaction so every API replica invalidates only on commit.

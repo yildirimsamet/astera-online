@@ -34,7 +34,7 @@ describe('settlement confirmation', () => {
     render(
       <SettlementSheet
         target={target}
-        planet={planetView({ fleet: { HAULER: 2 } }, {
+        planet={planetView({ fleet: { COURIER: 2 } }, {
           alloy: 10_000,
           crystal: 10_000,
           deuterium: 10_000,
@@ -46,8 +46,9 @@ describe('settlement confirmation', () => {
       />,
     );
 
-    expect(screen.getByText(/first valid haulers to arrive take the world/i)).toBeInTheDocument();
-    expect(screen.getByText(new RegExp(String(MULTI_WORLD.settlement.haulers)))).toBeInTheDocument();
+    expect(screen.getByText(/first valid two-Courier fleet to arrive takes the world/i)).toBeInTheDocument();
+    expect(screen.getByText('Colony ships').closest('div'))
+      .toHaveTextContent(String(MULTI_WORLD.settlement.transports));
     expect(screen.getByText(new RegExp(MULTI_WORLD.settlement.cost.alloy.toLocaleString('en-US'))))
       .toBeInTheDocument();
     expect(screen.getByText(/cannot be recalled/i)).toBeInTheDocument();

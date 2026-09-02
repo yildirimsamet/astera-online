@@ -180,7 +180,10 @@ export function registerMiningRoutes(app: FastifyInstance): void {
       })),
       debris: projectVisibleDebris(snapshot, now).map((field) => ({
         id: field.id,
+        /** NULL when the battle happened in open space — a pirate fight. D150. */
         planetId: field.planetId,
+        /** Where the wreckage is. Always present; the client never resolves a world. */
+        at: { x: field.x, y: field.y, z: field.z },
         alloy: Math.round(field.alloy),
         crystal: Math.round(field.crystal),
         deuterium: Math.round(field.deuterium),

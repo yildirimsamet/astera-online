@@ -20,7 +20,7 @@ import { launchProbe } from '../src/services/intel.js';
 import { launchMining, visibleAsteroids } from '../src/services/mining.js';
 import { transferPlanetControl } from '../src/services/ownership.js';
 import { planetView } from '../src/services/planetView.js';
-import { cancelResearchOrder, completeResearch } from '../src/services/research.js';
+import { abandonResearchOrder, completeResearch } from '../src/services/research.js';
 import { projectedResearchLevels } from '../src/services/researchQueue.js';
 import { researchView } from '../src/services/researchState.js';
 import { loadLocked } from '../src/services/planet.js';
@@ -138,11 +138,11 @@ describe('the seasonal frontier', () => {
     await grant(f.db, mine, 30_000, 5_000);
     await grant(f.db, target, 100_000, 20_000);
     await levelWorld(f.db, f.planetIds);
-    await giveUnits(f.db, mine, { WASP: 30, HAULER: 1 });
+    await giveUnits(f.db, mine, { DART: 30, COURIER: 1 });
     await completeResearch(f.db, mine, 'ISOTOPE_SPECTROMETRY', f.clock);
     await settleBuilds(f, mine);
 
-    const launch = await launchAttack(f.db, mine, target, { WASP: 30, HAULER: 1 }, f.clock);
+    const launch = await launchAttack(f.db, mine, target, { DART: 30, COURIER: 1 }, f.clock);
     f.clock.set(settledAt(launch.arriveAt));
     await worker(f).tick();
 
@@ -166,8 +166,8 @@ describe('the seasonal frontier', () => {
     await grant(f.db, target, 100_000, 20_000);
     await f.db.update(planets).set({ deuterium: 1_000 }).where(eq(planets.id, mine));
     await levelWorld(f.db, f.planetIds);
-    await giveUnits(f.db, mine, { WASP: 30, HAULER: 1 });
-    const launch = await launchAttack(f.db, mine, target, { WASP: 30, HAULER: 1 }, f.clock);
+    await giveUnits(f.db, mine, { DART: 30, COURIER: 1 });
+    const launch = await launchAttack(f.db, mine, target, { DART: 30, COURIER: 1 }, f.clock);
     f.clock.set(settledAt(launch.arriveAt));
     await worker(f).tick();
     expect((await f.db.select().from(battleReports))[0]).toMatchObject({ cargoLimited: true });
@@ -188,18 +188,18 @@ describe('the seasonal frontier', () => {
     ]);
   });
 
-  it('refuses Runner until Dense Fuel Cells is complete', async () => {
+  it('refuses a tier-three transport until its engineering and propulsion rungs are complete', async () => {
     await grant(f.db, mine, 30_000, 5_000);
-    await setLevel(f.db, mine, 'SHIPYARD', 2);
-    await expect(buildUnits(f.db, mine, 'RUNNER', 1, f.clock)).rejects.toMatchObject({
-      code: 'NEEDS_DENSE_FUEL_CELLS',
+    await setLevel(f.db, mine, 'SHIPYARD', 4);
+    await expect(buildUnits(f.db, mine, 'ATLAS', 1, f.clock)).rejects.toMatchObject({
+      code: 'NEEDS_HULL_RESEARCH',
     });
 
-    await giveResearch(f.db, mine, 'ISOTOPE_SPECTROMETRY');
-    await giveResearch(f.db, mine, 'DENSE_FUEL_CELLS');
-    await f.db.update(planets).set({ deuterium: HULLS.RUNNER.deuterium }).where(eq(planets.id, mine));
-    await expect(buildUnits(f.db, mine, 'RUNNER', 1, f.clock)).resolves.toMatchObject({
-      hull: 'RUNNER',
+    await giveResearch(f.db, mine, 'STARSHIP_ENGINEERING');
+    await giveResearch(f.db, mine, 'SHIP_PROPULSION', 2);
+    await f.db.update(planets).set({ deuterium: HULLS.ATLAS.deuterium }).where(eq(planets.id, mine));
+    await expect(buildUnits(f.db, mine, 'ATLAS', 1, f.clock)).resolves.toMatchObject({
+      hull: 'ATLAS',
       built: 1,
     });
   });
@@ -211,7 +211,7 @@ describe('the seasonal frontier', () => {
       + RESEARCH_PROJECTS.GRAVITIC_CHARGES.costAt(1).crystal;
     await grant(f.db, mine, 30_000, crystalBudget);
     await levelWorld(f.db, f.planetIds);
-    await giveUnits(f.db, mine, { WASP: 30 });
+    await giveUnits(f.db, mine, { DART: 30 });
     await giveUnits(f.db, target, { BASTION: 3 });
     await giveInstrument(f.db, target, 'AEGIS', 10);
     await f.db.update(planets).set({ shield: 1_000 }).where(eq(planets.id, target));
@@ -227,7 +227,7 @@ describe('the seasonal frontier', () => {
       available: false,
     });
 
-    const launch = await launchAttack(f.db, mine, target, { WASP: 30 }, f.clock);
+    const launch = await launchAttack(f.db, mine, target, { DART: 30 }, f.clock);
     f.clock.set(settledAt(launch.arriveAt));
     await worker(f).tick();
 
@@ -262,31 +262,31 @@ describe('the seasonal frontier', () => {
     );
   });
 
-  it('refuses Breacher until Gravitic Charges is complete', async () => {
+  it('refuses the Nullifier until engineering and Gravitic Charges are complete', async () => {
     await grant(f.db, mine, 30_000, 5_000);
-    await setLevel(f.db, mine, 'SHIPYARD', 3);
+    await setLevel(f.db, mine, 'SHIPYARD', 4);
     await f.db.update(planets).set({ deuterium: 500 }).where(eq(planets.id, mine));
-    await expect(buildUnits(f.db, mine, 'BREACHER', 1, f.clock)).rejects.toMatchObject({
-      code: 'NEEDS_GRAVITIC_CHARGES',
+    await expect(buildUnits(f.db, mine, 'NULLIFIER', 1, f.clock)).rejects.toMatchObject({
+      code: 'NEEDS_HULL_RESEARCH',
     });
 
-    await giveResearch(f.db, mine, 'ISOTOPE_SPECTROMETRY');
+    await giveResearch(f.db, mine, 'STARSHIP_ENGINEERING');
     await giveResearch(f.db, mine, 'GRAVITIC_CHARGES');
     const [before] = await f.db
       .select({ alloy: planets.alloy, crystal: planets.crystal, deuterium: planets.deuterium })
       .from(planets)
       .where(eq(planets.id, mine));
-    await expect(buildUnits(f.db, mine, 'BREACHER', 1, f.clock)).resolves.toMatchObject({
-      hull: 'BREACHER',
+    await expect(buildUnits(f.db, mine, 'NULLIFIER', 1, f.clock)).resolves.toMatchObject({
+      hull: 'NULLIFIER',
       built: 1,
     });
     const [after] = await f.db
       .select({ alloy: planets.alloy, crystal: planets.crystal, deuterium: planets.deuterium })
       .from(planets)
       .where(eq(planets.id, mine));
-    expect(before!.alloy - after!.alloy).toBe(HULLS.BREACHER.alloy);
-    expect(before!.crystal - after!.crystal).toBe(HULLS.BREACHER.crystal);
-    expect(before!.deuterium - after!.deuterium).toBe(HULLS.BREACHER.deuterium);
+    expect(before!.alloy - after!.alloy).toBe(HULLS.NULLIFIER.alloy);
+    expect(before!.crystal - after!.crystal).toBe(HULLS.NULLIFIER.crystal);
+    expect(before!.deuterium - after!.deuterium).toBe(HULLS.NULLIFIER.deuterium);
   });
 
   it('shows an isotope anomaly when active and gates its fuel', async () => {
@@ -424,6 +424,40 @@ describe('research is held by the commander', () => {
     expect(result.planet.queues.YARD).toEqual([]);
   });
 
+  it('names the only next move when the irreversible queue is full', async () => {
+    await completeResearch(f.db, capital, 'DEUTERIUM_SYNTHESIS', f.clock);
+    await completeResearch(f.db, colony, 'YARD_AUTOMATION', f.clock);
+    await completeResearch(f.db, capital, 'CARGO_HOLDS', f.clock);
+
+    await expect(completeResearch(f.db, colony, 'SHIP_POWER', f.clock))
+      .rejects.toMatchObject({ code: 'RESEARCH_QUEUE_FULL' });
+  });
+
+  it('returns each system-abandoned order to the world that funded it', async () => {
+    const [capitalBefore] = await f.db.select().from(planets).where(eq(planets.id, capital));
+    const [colonyBefore] = await f.db.select().from(planets).where(eq(planets.id, colony));
+    await completeResearch(f.db, capital, 'DEUTERIUM_SYNTHESIS', f.clock);
+    await completeResearch(f.db, colony, 'DEUTERIUM_SYNTHESIS', f.clock);
+    const queue = await f.db.select().from(researchOrders)
+      .where(eq(researchOrders.status, 'BUILDING'))
+      .orderBy(researchOrders.slot);
+
+    await abandonResearchOrder(f.db, queue[0]!.id, f.clock);
+
+    const [capitalAfter] = await f.db.select().from(planets).where(eq(planets.id, capital));
+    const [colonyAfter] = await f.db.select().from(planets).where(eq(planets.id, colony));
+    expect(capitalAfter).toMatchObject({
+      alloy: capitalBefore!.alloy,
+      crystal: capitalBefore!.crystal,
+      deuterium: capitalBefore!.deuterium,
+    });
+    expect(colonyAfter).toMatchObject({
+      alloy: colonyBefore!.alloy,
+      crystal: colonyBefore!.crystal,
+      deuterium: colonyBefore!.deuterium,
+    });
+  });
+
   it('lets exactly one of two worlds win a simultaneous start', async () => {
     const results = await Promise.allSettled([
       completeResearch(f.db, capital, 'ISOTOPE_SPECTROMETRY', f.clock),
@@ -458,12 +492,12 @@ describe('research is held by the commander', () => {
     const enemy = f.planetIds[2]!;
     await grant(f.db, enemy, 100_000, 20_000);
     await levelWorld(f.db, f.planetIds);
-    await giveUnits(f.db, capital, { WASP: 30, HAULER: 1 });
+    await giveUnits(f.db, capital, { DART: 30, COURIER: 1 });
     await isotopeOn(capital);
 
     // A real cargo-limited raid, flown from the CAPITAL. Nothing about it touches
     // the colony, and the rung has to be open there all the same.
-    const launch = await launchAttack(f.db, capital, enemy, { WASP: 30, HAULER: 1 }, f.clock);
+    const launch = await launchAttack(f.db, capital, enemy, { DART: 30, COURIER: 1 }, f.clock);
     f.clock.set(settledAt(launch.arriveAt));
     await worker(f).tick();
     expect((await f.db.select().from(battleReports))[0]).toMatchObject({ cargoLimited: true });
@@ -724,28 +758,28 @@ describe('weapon doctrines', () => {
   });
 
   it('freezes the attacker’s ladders onto the mission at launch', async () => {
-    await giveResearch(f.db, mine, 'WASP_DOCTRINE', 3);
-    await giveUnits(f.db, mine, { WASP: 20 });
+    await giveResearch(f.db, mine, 'SHIP_POWER', 3);
+    await giveUnits(f.db, mine, { DART: 20 });
 
-    const launched = await launchAttack(f.db, mine, enemy, { WASP: 20 }, f.clock);
+    const launched = await launchAttack(f.db, mine, enemy, { DART: 20 }, f.clock);
     const [mission] = await f.db.select().from(missions).where(eq(missions.id, launched.missionId));
-    expect(mission?.tech).toMatchObject({ WASP_DOCTRINE: 3 });
+    expect(mission?.tech).toMatchObject({ SHIP_POWER: 3 });
 
     // Finishing a rung mid-flight must not change a battle already committed to.
-    await giveResearch(f.db, mine, 'WASP_DOCTRINE', 5);
+    await giveResearch(f.db, mine, 'SHIP_POWER', 5);
     const [again] = await f.db.select().from(missions).where(eq(missions.id, launched.missionId));
-    expect(again?.tech).toMatchObject({ WASP_DOCTRINE: 3 });
+    expect(again?.tech).toMatchObject({ SHIP_POWER: 3 });
   });
 
   it('carries no ladders at all for a commander who has researched none', async () => {
-    await giveUnits(f.db, mine, { WASP: 20 });
-    const launched = await launchAttack(f.db, mine, enemy, { WASP: 20 }, f.clock);
+    await giveUnits(f.db, mine, { DART: 20 });
+    const launched = await launchAttack(f.db, mine, enemy, { DART: 20 }, f.clock);
     const [mission] = await f.db.select().from(missions).where(eq(missions.id, launched.missionId));
     expect(mission?.tech).toEqual({});
   });
 
   it('brings the target’s doctrines home on a probe, and only a probe', async () => {
-    await giveResearch(f.db, enemy, 'BULWARK_DOCTRINE', 2);
+    await giveResearch(f.db, enemy, 'SHIP_ARMOR', 2);
     await giveResearch(f.db, enemy, 'CARGO_HOLDS', 4);
     await giveInstrument(f.db, mine, 'TELESCOPE', 1);
 
@@ -756,7 +790,7 @@ describe('weapon doctrines', () => {
     await worker(f).tick();
 
     const [report] = await f.db.select().from(probeReports);
-    expect(report?.silhouette?.doctrines).toMatchObject({ BULWARK_DOCTRINE: 2 });
+    expect(report?.silhouette?.doctrines).toMatchObject({ SHIP_ARMOR: 2 });
     // Only what changes a battle is published; the economy ladders stay private.
     expect(report?.silhouette?.doctrines).not.toHaveProperty('CARGO_HOLDS');
   });
@@ -869,12 +903,19 @@ describe('what is open from the first minute', () => {
     }
   });
 
-  it('opens every weapon doctrine to a brand new commander', async () => {
-    for (const id of ['WASP_DOCTRINE', 'LANCE_DOCTRINE', 'BULWARK_DOCTRINE',
-      'EMPLACEMENT_DOCTRINE', 'WEAPONS_GENERAL'] as const) {
+  it('opens engineering and emplacement research from the first minute', async () => {
+    for (const id of ['STARSHIP_ENGINEERING', 'EMPLACEMENT_DOCTRINE'] as const) {
       const state = await stateOf(id);
       expect(state.discovered, id).toBe(true);
       expect(state.available, id).toBe(true);
+    }
+  });
+
+  it('shows stat ladders immediately but keeps them behind their prerequisites', async () => {
+    for (const id of ['SHIP_POWER', 'SHIP_ARMOR', 'SHIP_PROPULSION'] as const) {
+      const state = await stateOf(id);
+      expect(state.discovered, id).toBe(true);
+      expect(state.available, id).toBe(false);
     }
   });
 
@@ -1003,35 +1044,6 @@ describe('queueing two rungs of one ladder', () => {
       .rejects.toMatchObject({ code: 'RESEARCH_ALREADY_COMPLETE' });
   });
 
-  /**
-   * CANCELLING THE FIRST RUNG TAKES THE SECOND WITH IT.
-   *
-   * Once an order is stamped with the rung it buys, a surviving second order would
-   * write `GREATEST(level, 2)` on a commander who never paid for rung one — a free
-   * rung produced by a refund. The dependency walk has to see a later rung of the
-   * SAME project as dependent, which it did not: it only followed `prerequisite`,
-   * and a ladder rung has none.
-   */
-  it('refuses to cancel the rung below while the rung above is queued', async () => {
-    await completeResearch(f.db, mine, 'DEUTERIUM_SYNTHESIS', f.clock);
-    await completeResearch(f.db, mine, 'DEUTERIUM_SYNTHESIS', f.clock);
-    const first = (await orders()).find((row) => row.level === 1)!;
-
-    await expect(cancelResearchOrder(f.db, mine, first.id, f.clock))
-      .rejects.toMatchObject({ code: 'BUILD_ORDER_HAS_DEPENDENTS' });
-  });
-
-  /** Top rung first, then the one under it — the order every dependent pair takes. */
-  it('lets the rungs be cancelled from the top down', async () => {
-    await completeResearch(f.db, mine, 'DEUTERIUM_SYNTHESIS', f.clock);
-    await completeResearch(f.db, mine, 'DEUTERIUM_SYNTHESIS', f.clock);
-    const second = (await orders()).find((row) => row.level === 2)!;
-    await cancelResearchOrder(f.db, mine, second.id, f.clock);
-    const first = (await orders()).find((row) => row.level === 1)!;
-    await cancelResearchOrder(f.db, mine, first.id, f.clock);
-
-    expect(await orders()).toHaveLength(0);
-  });
 });
 
 describe('research queue recovery', () => {
@@ -1044,25 +1056,6 @@ describe('research queue recovery', () => {
     await setLevel(f.db, mine, 'CORE', 12);
     await grant(f.db, mine, 5_000_000, 5_000_000);
     await f.db.update(planets).set({ deuterium: 500_000 }).where(eq(planets.id, mine));
-  });
-
-  it('moves the next project to now when the running project is cancelled', async () => {
-    await completeResearch(f.db, mine, 'DEUTERIUM_SYNTHESIS', f.clock);
-    await completeResearch(f.db, mine, 'CARGO_HOLDS', f.clock);
-    const before = await f.db.select().from(researchOrders)
-      .where(eq(researchOrders.status, 'BUILDING'))
-      .orderBy(researchOrders.slot);
-    const half = Math.floor(before[0]!.remainingSeconds / 2);
-    f.clock.advance(half / 60);
-
-    await cancelResearchOrder(f.db, mine, before[0]!.id, f.clock);
-
-    const [next] = await f.db.select().from(researchOrders)
-      .where(eq(researchOrders.status, 'BUILDING'));
-    expect(next).toMatchObject({ slot: 0, startedAt: f.clock.now() });
-    expect(next!.readyAt.getTime()).toBe(
-      f.clock.now().getTime() + next!.remainingSeconds * 1_000,
-    );
   });
 
   it('detects and fully refunds overdue research whose event disappeared', async () => {

@@ -1,5 +1,5 @@
 import { GameActions } from '../session/seasonLock.js';
-import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useId, useMemo, useRef, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { useTranslation, Trans } from 'react-i18next';
 import {
@@ -10,15 +10,20 @@ import {
   distance,
   fleetCount,
   fleetEntries,
+  fleetPower,
   fleetTravelExact,
   missionFuel,
   telescopeSlots,
   travelExact,
+  HULLS,
+  MOBILE_HULLS,
+  type Fleet,
   type HullId,
 } from '@astera/rules';
 import type {
   AsteroidView,
   Contact,
+  PirateContact,
   GalaxyPlanet,
   IntelView,
   MiningRun,
@@ -46,6 +51,7 @@ import { duration, staleness } from '../lib/time.js';
 import { serverNow } from '../lib/clock.js';
 import { reachMinutes } from '../lib/navigation.js';
 import { HullMark } from '../ui/icons/hulls.js';
+import { QuantityStepper } from '../ui/QuantityStepper.js';
 import { AttackIcon, EyeIcon } from '../ui/icons/index.js';
 import { PlanetSigil } from '../ui/PlanetSigil.js';
 import { RESOURCE_ART } from '../ui/assets.js';
@@ -79,7 +85,14 @@ export type Focus =
   | { kind: 'interception'; id: string }
   /** The collision phase is distinct so it can reframe even after a missed launch follow. */
   | { kind: 'interceptionImpact'; id: string }
-  /** Somebody else's craft. Selectable since D24, like everything else out there. */
+  /**
+   * Somebody else's craft. Selectable since D24, like everything else out there.
+   *
+   * A PIRATE ARRIVES THROUGH HERE TOO, and deliberately has no variant of its own:
+   * it is a contact on the disc like any other, and the rail that opens for it is
+   * chosen from the payload's `kind` rather than from a second focus state that
+   * the camera and the renderer would both have to learn. D150.
+   */
   | { kind: 'contact'; id: string }
   /** Wreckage from a battle. Public to the whole galaxy, and on a clock. D32. */
   | { kind: 'debris'; id: string };
@@ -394,7 +407,7 @@ export function PlanetFocus({
   const claimActive = Boolean(claimUntil && claimUntil.getTime() > now);
   const settlementEta = fleetTravelExact(
     distance(planet.planet.position, target.position),
-    { HAULER: MULTI_WORLD.settlement.haulers },
+    { COURIER: MULTI_WORLD.settlement.transports },
   );
   const settlementCanArrive = Boolean(
     claimUntil && now + settlementEta * 60_000 < claimUntil.getTime(),
@@ -409,7 +422,7 @@ export function PlanetFocus({
    * eventually disagrees with the server it is predicting.
    */
   const settlementFuel = missionFuel(
-    { HAULER: MULTI_WORLD.settlement.haulers },
+    { COURIER: MULTI_WORLD.settlement.transports },
     distance(planet.planet.position, target.position),
     1,
   );
@@ -437,8 +450,8 @@ export function PlanetFocus({
       ? t('focus.planet.settleNeedSlot')
       : !flightBayOpen
         ? t('focus.planet.settleNeedBay')
-        : (planet.fleet.HAULER ?? 0) < MULTI_WORLD.settlement.haulers
-          ? t('focus.planet.settleNeedHauler')
+        : (planet.fleet.COURIER ?? 0) < MULTI_WORLD.settlement.transports
+          ? t('focus.planet.settleNeedCourier')
           : planet.planet.alloy < MULTI_WORLD.settlement.cost.alloy
             ? t('focus.planet.settleNeedAlloy')
             : planet.planet.crystal < MULTI_WORLD.settlement.cost.crystal
@@ -684,19 +697,34 @@ export function PlanetFocus({
             missing={gap.missing}
             why={gap.why}
             {...(gap.blocked === undefined ? {} : { blocked: gap.blocked })}
-            action={
-              <CloseGap
-                gap={gap}
-                target={target}
-                telescope={planet.instruments.TELESCOPE ?? 0}
-                observerPlanetId={planet.planet.id}
-                intel={intel}
-                onInstallTelescope={onInstallTelescope}
-                onLaunched={onLaunched}
-              />
-            }
+            {...(gap.closes === 'telescope'
+              /*
+                THE PROP, NOT THE RENDER, IS WHAT RESERVES THE ROOM. `GapRow`
+                gates its action slot on `action &&`, and a React element is
+                truthy even when the component returns null — so passing one for
+                a gap `CloseGap` has no control for left an empty 8px box under
+                every probe gap on the rail.
+              */
+              ? {
+                  action: (
+                    <CloseGap
+                      gap={gap}
+                      target={target}
+                      telescope={planet.instruments.TELESCOPE ?? 0}
+                      observerPlanetId={planet.planet.id}
+                      intel={intel}
+                      onInstallTelescope={onInstallTelescope}
+                    />
+                  ),
+                }
+              : {})}
           />
         ))}
+        {/* A probe at a clanmate is `CLAN_FRIENDLY_FIRE` before it is anything
+            else, so the launch is hidden beside the attack and the Death Star
+            rather than offered and refused. */}
+        {!target.clanmate
+          && <ProbeControl target={target} intel={intel} onLaunched={onLaunched} />}
       </div>
     </Shell>
   );
@@ -1013,7 +1041,7 @@ function StrategicWorldGuide({
     || phase === 'SETTLEMENT_IN_FLIGHT'
   ) {
     const until = target.neutral?.claimUntil;
-    const hauler = (planet.fleet.HAULER ?? 0) >= MULTI_WORLD.settlement.haulers;
+    const hauler = (planet.fleet.COURIER ?? 0) >= MULTI_WORLD.settlement.transports;
     const alloy = planet.planet.alloy >= MULTI_WORLD.settlement.cost.alloy;
     const crystal = planet.planet.crystal >= MULTI_WORLD.settlement.cost.crystal;
     return (
@@ -1093,10 +1121,10 @@ function StrategicWorldGuide({
                 </Requirement>
                 <Requirement
                   ok={hauler}
-                  label={t('focus.planet.haulerCount')}
+                  label={t('focus.planet.courierCount')}
                   explanation={t('focus.planet.haulerExplain')}
                 >
-                  {t('focus.planet.haulerCount')}
+                  {t('focus.planet.courierCount')}
                 </Requirement>
                 <Requirement
                   ok={alloy}
@@ -1393,7 +1421,6 @@ function CloseGap({
   observerPlanetId,
   intel,
   onInstallTelescope,
-  onLaunched,
 }: {
   gap: Gap;
   target: GalaxyPlanet;
@@ -1401,12 +1428,9 @@ function CloseGap({
   observerPlanetId: string;
   intel: IntelView | undefined;
   onInstallTelescope: () => void;
-  /** Called with the target's name once a probe is away, so the disc can follow it. */
-  onLaunched: (targetName: string) => void;
 }) {
   const { t } = useTranslation();
   const watch = useWatch();
-  const probe = useProbe();
   const say = useToast();
 
   if (gap.closes === 'telescope') {
@@ -1452,66 +1476,92 @@ function CloseGap({
     );
   }
 
-  if (gap.closes === 'probe') {
-    /**
-     * ONE LOOK PER WORLD PER HOUR, SAID BEFORE THE TAP RATHER THAN AFTER IT. D121.
-     *
-     * The rule is enforced in `launchProbe` under the planet lock and that is the
-     * only place it can be enforced. What this does is stop the interface offering
-     * a launch it already knows will be refused — and it reads the SAME instant
-     * the guard reads, published by `/api/intel`, so the button and the server can
-     * never disagree by a rounding. `serverNow()` because a drifted phone must not
-     * open the control early (D52).
-     */
-    const readyAt = intel?.probeCooldowns.find(
-      (row) => row.targetPlanetId === target.id,
-    )?.readyAt;
-    const waiting = readyAt !== undefined && readyAt.getTime() > serverNow();
-    if (waiting) {
-      return (
-        <button type="button" className="slab w-full whitespace-normal px-3 leading-tight" disabled>
-          <EyeIcon className="size-[18px] shrink-0" />
-          {t('focus.planet.probeCooling', {
-            duration: duration((readyAt.getTime() - serverNow()) / 60_000),
-          })}
-        </button>
-      );
-    }
+  // `probe` has its own control, below the list — see `ProbeControl`, which is
+  // where the reason it cannot live in a gap row is written.
+  // `battle` closes itself, by fighting. There is no button for that here — the
+  // one at the bottom of the panel is it.
+  return null;
+}
+
+/**
+ * SEND A PROBE — AND IT IS NOT A GAP, IT IS A STANDING OFFER. Owner report.
+ *
+ * This button used to be rendered by `CloseGap` off the "nobody has looked here"
+ * gap, and that made the most-used control in the game a ONE-SHOT: the newest
+ * report per target is kept for the whole season (`readProbeReports`), so the
+ * moment the first probe came home the gap closed and the launch vanished with
+ * it. A world probed six hours ago — with a dossier going stale on the screen
+ * beside it, which is exactly when a commander wants another look — offered no
+ * way to look again. Reading intelligence is not something you finish.
+ *
+ * Being one control rather than a per-gap one also fixes the twin: an unsurveyed
+ * world is missing its surface AND its stock, two gaps closed by the same launch,
+ * so the rail grew two identical buttons.
+ *
+ * THE COOLDOWN IS THE ONLY THING THAT CLOSES IT. D121 — one look per world per
+ * hour, enforced in `launchProbe` under the planet lock, which is the only place
+ * it can be enforced. What this does is stop the interface offering a launch it
+ * already knows will be refused (principle 10), reading the SAME instant the
+ * guard reads, published by `/api/intel`, so the two can never disagree by a
+ * rounding. `serverNow()` because a drifted phone must not open it early (D52).
+ */
+function ProbeControl({
+  target,
+  intel,
+  onLaunched,
+}: {
+  target: GalaxyPlanet;
+  intel: IntelView | undefined;
+  /** Called with the target's name once a probe is away, so the disc can follow it. */
+  onLaunched: (targetName: string) => void;
+}) {
+  const { t } = useTranslation();
+  const probe = useProbe();
+  const say = useToast();
+
+  const readyAt = intel?.probeCooldowns.find(
+    (row) => row.targetPlanetId === target.id,
+  )?.readyAt;
+  if (readyAt !== undefined && readyAt.getTime() > serverNow()) {
     return (
-      <button
-        type="button"
-        className="slab slab-primary w-full whitespace-normal px-3 leading-tight"
-        disabled={probe.isPending}
-        onClick={() => {
-          probe.mutate(target.id, {
-            onSuccess: (r) => {
-              say(t('focus.planet.probeAway', { duration: duration(r.flightMinutes) }));
-              // Close the dossier and go with it. Owner decision — a launch you
-              // cannot recall should feel like something left, not like a form
-              // being submitted.
-              onLaunched(target.name);
-            },
-            onError: (err) => {
-              say(describe(err), 'error');
-            },
-          });
-        }}
-      >
-        {/* An eye, deliberately — see `EyeIcon`. A probe looks at somebody else's
-            world and that world is told, which is the opposite of the aperture the
-            Intel centre wears. */}
+      <button type="button" className="slab w-full whitespace-normal px-3 leading-tight" disabled>
         <EyeIcon className="size-[18px] shrink-0" />
-        {t('focus.planet.sendProbe', {
-          alloy: compact(PROBE.alloy),
-          crystal: compact(PROBE.crystal),
+        {t('focus.planet.probeCooling', {
+          duration: duration((readyAt.getTime() - serverNow()) / 60_000),
         })}
       </button>
     );
   }
-
-  // `battle` closes itself, by fighting. There is no button for that here — the
-  // one at the bottom of the panel is it.
-  return null;
+  return (
+    <button
+      type="button"
+      className="slab slab-primary w-full whitespace-normal px-3 leading-tight"
+      disabled={probe.isPending}
+      onClick={() => {
+        probe.mutate(target.id, {
+          onSuccess: (r) => {
+            say(t('focus.planet.probeAway', { duration: duration(r.flightMinutes) }));
+            // Close the dossier and go with it. Owner decision — a launch you
+            // cannot recall should feel like something left, not like a form
+            // being submitted.
+            onLaunched(target.name);
+          },
+          onError: (err) => {
+            say(describe(err), 'error');
+          },
+        });
+      }}
+    >
+      {/* An eye, deliberately — see `EyeIcon`. A probe looks at somebody else's
+          world and that world is told, which is the opposite of the aperture the
+          Intel centre wears. */}
+      <EyeIcon className="size-[18px] shrink-0" />
+      {t('focus.planet.sendProbe', {
+        alloy: compact(PROBE.alloy),
+        crystal: compact(PROBE.crystal),
+      })}
+    </button>
+  );
 }
 
 /* ── a rock crossing the disc ────────────────────────────────── */
@@ -1526,6 +1576,7 @@ function CloseGap({
  */
 export function AsteroidFocus({
   rock,
+  isotopeAccess,
   craftAvailable,
   craftHold,
   derrick,
@@ -1541,6 +1592,8 @@ export function AsteroidFocus({
   onToggle,
 }: {
   rock: AsteroidView;
+  /** Commander-wide Spectrometry permission; target composition is not an access flag. */
+  isotopeAccess: boolean;
   craftAvailable: number;
   craftHold: number;
   /** Is a Derrick in orbit. D25 — it makes mining better, it never gates it. */
@@ -1570,7 +1623,7 @@ export function AsteroidFocus({
   const { t } = useTranslation();
   const crystal = Math.round(rock.crystalShare * 100);
   const deuterium = Math.round((rock.deuteriumShare ?? 0) * 100);
-  const needsSpectrometry = rock.isotopeRich && rock.deuteriumShare === null;
+  const needsSpectrometry = rock.isotopeRich && !isotopeAccess;
   // What a full squadron could actually take, which is the number that decides
   // how many to send — not the rock's total.
   const canCarry = craftHold * craftAvailable;
@@ -1745,6 +1798,340 @@ export function AsteroidFocus({
           })}
         </p>
       )}
+    </Shell>
+  );
+}
+
+/** Every hull that may fly an attack, in catalogue order. */
+const MOBILE_HULL_IDS = MOBILE_HULLS;
+
+/* ── a pirate fleet crossing the disc ────────────────────────── */
+
+/**
+ * PIRATE FOCUS — D150.
+ *
+ * SHAPED LIKE `AsteroidFocus`, deliberately: to a player these are the same
+ * decision wearing two costumes — something is passing through, it is worth
+ * something, it will not be there later, and the only question is whether what you
+ * can send arrives in time. Reusing the shape means the second one is already
+ * learned the first time it is seen.
+ *
+ * WHAT IS DIFFERENT IS THAT IT SHOOTS BACK, and that is why the level and its
+ * damage handicap lead. A rule the player cannot see is not a usable rule (D124):
+ * the level sets what the crew flies, how hard it hits and how likely a ship is to
+ * come home with you, and none of those exist anywhere else in the interface.
+ *
+ * THE READING IS LIVE, NEVER REMEMBERED. Unlike a rock, a pirate outside your
+ * sensors does not exist for you — so this rail can only ever describe something
+ * that is on the disc at this moment, and the boundary line says so.
+ */
+export function PirateFocus({
+  pirate,
+  fleetAtHome,
+  deuteriumAtHome,
+  baysFree,
+  onClose,
+  onSend,
+  busy,
+  raiding,
+  open,
+  onToggle,
+}: {
+  pirate: PirateContact;
+  /** What is STANDING at the selected world. Nothing in the air can be sent again. */
+  fleetAtHome: Fleet;
+  /** The tank the round trip is paid out of, before the launch charges it. D136. */
+  deuteriumAtHome: number;
+  /** Bays the Command Core has left open. A launch takes one. D28. */
+  baysFree: number;
+  onClose: () => void;
+  onSend: (fleet: Fleet) => void;
+  busy: boolean;
+  /** This world already has a raid out at this pirate — one per world. */
+  raiding: boolean;
+  open: boolean;
+  onToggle: () => void;
+}) {
+  const { t } = useTranslation();
+  const identified = pirate.zone === 'IDENTIFIED';
+  const crew = pirate.fleet;
+  const crewEntries = crew ? fleetEntries(crew) : [];
+
+  /**
+   * THE DEFAULT IS EVERYTHING AT HOME, and it is a defensible one: a pirate hits
+   * back, so under-committing is how a fleet gets destroyed for nothing. The
+   * player takes ships OUT of it, which makes the decision "how much do I dare
+   * leave behind" rather than "how much do I bother to send".
+   */
+  const available = MOBILE_HULL_IDS.filter((hull) => (fleetAtHome[hull] ?? 0) > 0);
+  const [sending, setSending] = useState<Fleet>({});
+  /** Set the moment the player moves any stepper, and never unset. */
+  const touched = useRef(false);
+  useEffect(() => {
+    setSending((current) => {
+      const next: Fleet = {};
+      for (const hull of MOBILE_HULL_IDS) {
+        const atHome = fleetAtHome[hull] ?? 0;
+        if (atHome <= 0) continue;
+        /*
+          A CHOICE THE PLAYER MADE IS CLAMPED, NEVER REPLACED.
+
+          This re-defaulted to the whole garrison on every change to the home
+          fleet — and the planet view refetches on a timer, on every SSE wake and
+          after any mutation. A commander who had carefully cut forty Darts down to
+          six watched it silently jump back to forty, and the next tap launched
+          the lot. Only an untouched panel takes the default.
+        */
+        next[hull] = touched.current
+          ? Math.min(current[hull] ?? 0, atHome)
+          : atHome;
+      }
+      return next;
+    });
+  }, [fleetAtHome]);
+
+  const total = fleetCount(sending);
+  /** What the world keeps. Drawn as power, because that is what a garrison is. */
+  const remaining = useMemo(() => {
+    const left: Fleet = {};
+    for (const hull of MOBILE_HULL_IDS) {
+      const keep = (fleetAtHome[hull] ?? 0) - (sending[hull] ?? 0);
+      if (keep > 0) left[hull] = keep;
+    }
+    return left;
+  }, [fleetAtHome, sending]);
+  /**
+   * A FLEET FLIES AT ITS SLOWEST SHIP, so the rendezvous is the one the server
+   * solved for exactly that speed. The table is the complete set of answers for
+   * this world rather than samples of a curve — see `reach` on the payload.
+   */
+  const slowestHull = fleetEntries(sending).reduce<HullId | null>(
+    (worst, [hull]) =>
+      worst === null || HULLS[hull].speed < HULLS[worst].speed ? hull : worst,
+    null,
+  );
+  /*
+    LOOKED UP BY HULL, BECAUSE THE SPEEDS ARE NOT ON THE SAME SCALE.
+
+    `reach` carries the world's Beacon and the commander's Propulsion; this panel
+    only knows the catalogue. Matching a catalogue speed against an effective one
+    by nearest absolute difference picked the wrong ship's flight time as soon as
+    any Propulsion was researched — and because an unreachable speed is left OUT of
+    the table, the match slid onto a FASTER hull's row, so the panel quoted an ETA
+    and enabled Send for a launch `launchPirateRaid` then refused outright.
+
+    A hull with no entry cannot get there, which is exactly what the launch will
+    say, so an absent row is a refusal here rather than a wrong number.
+  */
+  const quoted = slowestHull === null
+    ? null
+    : pirate.reach.find((entry) => entry.hull === slowestHull) ?? null;
+  const reach = quoted?.minutes ?? null;
+  const tooLate = reach === null || reach >= pirate.expiresInMinutes;
+  /**
+   * WHAT THE ROUND TRIP COSTS, PRICED HERE RATHER THAN DISCOVERED AT THE GATE.
+   *
+   * Fuel is mass × distance × legs and is paid in full at launch or the launch is
+   * refused (D136). The distance is the one the server solved for this exact hull,
+   * so this is the figure `launchPirateRaid` will charge — not an estimate.
+   */
+  const fuel = quoted === null ? 0 : missionFuel(sending, quoted.distance, 2);
+  const shortOfFuel = fuel > deuteriumAtHome;
+  const noBay = baysFree <= 0;
+  const canSend = total > 0 && !tooLate && !raiding && !shortOfFuel && !noBay;
+
+  return (
+    <Shell
+      /*
+        A RADAR RETURN HAS NO LEVEL, AND MAY NOT BE GIVEN ONE. D123.
+
+        This read `level ?? 0` and printed "Level 0 pirates" over a title that said
+        "Unidentified contact" in the same breath — a number the schema does not
+        even allow (levels are 1-4) sitting where the fog has nothing to say.
+      */
+      eyebrow={pirate.level === undefined
+        ? t('pirate.eyebrowUnknown')
+        : t('pirate.eyebrow', { level: pirate.level })}
+      title={
+        identified && pirate.level !== undefined
+          ? t('pirate.name', { level: pirate.level, callsign: pirate.callsign })
+          : t('pirate.unknownContact')
+      }
+      open={open}
+      onToggle={onToggle}
+      onClose={onClose}
+      summary={
+        <span>
+          <span className={pirate.expiresInMinutes < 30 ? 'text-threat' : ''}>
+            {duration(pirate.expiresInMinutes)}
+          </span>
+          {reach !== null && ` · ${t('pirate.reach', { duration: duration(reach) })}`}
+        </span>
+      }
+      actions={
+        raiding ? (
+          <p className="num text-caption text-crystal">{t('pirate.alreadyRaiding')}</p>
+        ) : (
+          <button
+            type="button"
+            className="slab slab-primary basis-full whitespace-normal px-3 leading-tight"
+            disabled={busy || !canSend}
+            onClick={() => {
+              onSend(sending);
+            }}
+          >
+            {total === 0
+              ? (available.length === 0 ? t('pirate.noShips') : t('pirate.pickShips'))
+              : noBay
+                ? t('pirate.noBay')
+                : reach === null
+                  /*
+                    TWO DIFFERENT REFUSALS, AND THEY USED TO SHARE ONE SENTENCE.
+
+                    An empty table means nothing standing here can catch it. A
+                    non-empty table with no row for the slowest ship SELECTED means
+                    this fleet cannot — a Dart could. Saying "nothing could" in the
+                    second case tells the player their world is helpless when what
+                    they actually need to do is leave the slow hull behind.
+                  */
+                  ? (pirate.reach.length === 0
+                      ? t('pirate.unreachable')
+                      : t('pirate.tooSlow'))
+                  : tooLate
+                    ? t('pirate.tooLate')
+                    : shortOfFuel
+                      ? t('pirate.noFuel')
+                      : t('pirate.send', { count: total, duration: duration(reach) })}
+          </button>
+        )
+      }
+    >
+      <div className="grid grid-cols-2 gap-3">
+        <Figure
+          label={t('pirate.leavesIn')}
+          value={duration(pirate.expiresInMinutes)}
+          tone={pirate.expiresInMinutes < 30 ? 'threat' : undefined}
+        />
+        <Figure
+          label={t('pirate.reachLabel')}
+          value={reach === null ? '—' : duration(reach)}
+          tone={tooLate ? 'threat' : undefined}
+        />
+      </div>
+
+      {/*
+        THE HANDICAP, IN WORDS AND AS A NUMBER. It is the only combat modifier in
+        the feature and the entire reason a PvE prize can be affordable — so a
+        player who cannot read it is being asked to price a fight blind.
+      */}
+      {identified && pirate.damageMult !== undefined && (
+        <p className="mt-3 border-l border-crystal/60 pl-3 text-caption leading-snug text-crystal">
+          {t('pirate.damagePenalty', { percent: Math.round((1 - pirate.damageMult) * 100) })}
+        </p>
+      )}
+
+      {/*
+        WHICH SHIPS GO, AND IT HAS TO BE A CHOICE. D150.
+
+        The default is still everything at home — a pirate hits back, and
+        under-committing is how a fleet dies for nothing — but a default is not a
+        decision, and this panel used to offer no way past it: the button sent the
+        whole garrison whether or not the player meant to. Planning a raid on a
+        WORLD has always been a per-hull choice (`LaunchSheet`), and flying at a
+        pirate is the same commitment against a target that shoots first.
+
+        The same `QuantityStepper` that sheet uses, so the two surfaces cannot
+        drift into two different ways of saying "how many".
+      */}
+      {/*
+        AND NOT WHILE A RAID IS ALREADY OUT. One per world per pirate — the server
+        refuses a second, and a picker that cannot be committed teaches a rule that
+        is not true. Same reasoning as the button it sits above.
+      */}
+      {!raiding && <>
+      <p className="legend mt-4 mb-2">{t('pirate.yourFleet')}</p>
+      {available.length > 0 ? (
+        <div className="flex flex-col gap-2">
+          {available.map((hull) => {
+            const atHome = fleetAtHome[hull] ?? 0;
+            const chosen = sending[hull] ?? 0;
+            return (
+              <div key={hull} className="rounded-chip border border-line px-2 py-1.5">
+                <div className="flex items-baseline gap-2">
+                  <HullMark hull={hull} className="size-4 shrink-0 text-dim" />
+                  <p className="name min-w-0 flex-1 truncate text-bone">{hullLabel(hull)}</p>
+                  <span className="num text-label text-faint">
+                    {t('pirate.atHome', { count: atHome })}
+                  </span>
+                </div>
+                <div className="mt-1.5">
+                  <QuantityStepper
+                    value={chosen}
+                    min={0}
+                    max={atHome}
+                    onChange={(value) => {
+                      touched.current = true;
+                      setSending((current) => ({
+                        ...current,
+                        [hull]: Math.max(0, Math.min(atHome, value)),
+                      }));
+                    }}
+                    decreaseLabel={t('pirate.fewer', { name: hullLabel(hull) })}
+                    increaseLabel={t('pirate.more', { name: hullLabel(hull) })}
+                    valueLabel={t('pirate.quantity', { name: hullLabel(hull) })}
+                    editable
+                    maxLabel={t('pirate.max', { name: hullLabel(hull) })}
+                    maxText={t('pirate.maxShort')}
+                  />
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      ) : (
+        <p className="text-caption text-faint">{t('pirate.noShipsAtHome')}</p>
+      )}
+
+      {/*
+        WHAT STAYS BEHIND, WHICH IS THE OTHER HALF OF THE BET. D144.
+
+        A garrison is measured in POWER, never in hull count: the launch decision
+        is what leaves carved out of what holds, and a count cannot say that a
+        world kept its Bulwarks and sent its Darts.
+      */}
+      <p className="mt-2 text-caption leading-snug text-dim">
+        {t('pirate.leftAtHome', { power: Math.round(fleetPower(remaining)) })}
+      </p>
+      {fuel > 0 && (
+        <p className={`mt-1 text-caption leading-snug ${shortOfFuel ? 'text-threat' : 'text-dim'}`}>
+          {t('pirate.fuelCost', { amount: compact(fuel) })}
+        </p>
+      )}
+      </>}
+
+      {/* Actual sight carries the actual crew; a radar return carries a size. */}
+      <p className="legend mt-4 mb-2">{t('pirate.roster')}</p>
+      {crewEntries.length > 0 ? (
+        <div className="flex flex-wrap gap-2">
+          {crewEntries.map(([hull, count]) => (
+            <span
+              key={hull}
+              className="flex items-center gap-1.5 rounded-chip border border-line px-2 py-1"
+              title={hullLabel(hull)}
+            >
+              <HullMark hull={hull} className="size-4 text-dim" />
+              <span className="num text-caption text-bone">{count}</span>
+            </span>
+          ))}
+        </div>
+      ) : (
+        <p className="text-caption text-faint">{t('pirate.rosterUnknown')}</p>
+      )}
+
+      <p className="mt-3 text-caption leading-snug text-faint">{t('pirate.captureHint')}</p>
+      <p className="mt-1 text-caption leading-snug text-faint">{t('pirate.hoardHint')}</p>
+      <p className="mt-3 text-caption leading-snug text-dim">{t('pirate.boundary')}</p>
+      <p className="mt-2 text-caption leading-snug text-threat-ink">{t('pirate.outbound')}</p>
     </Shell>
   );
 }
@@ -2041,6 +2428,8 @@ export function ContactFocus({
               ? 'focus.contact.eyebrowMining'
               : contact.kind === 'unknown'
                 ? 'focus.contact.eyebrowUnknown'
+                : contact.kind === 'pirate'
+                  ? 'focus.contact.eyebrowPirate'
                 : contact.kind === 'probe'
                   ? 'focus.contact.eyebrowProbe'
                   : 'focus.contact.eyebrowMoving',
@@ -2413,6 +2802,7 @@ const CONTACT_TITLE = {
   mining: 'focus.contact.titleMining',
   harvest: 'focus.contact.titleHarvest',
   death_star: 'focus.contact.titleDeathStar',
+  pirate: 'focus.contact.titlePirate',
 } as const satisfies Record<Contact['kind'], string>;
 
 /* ── shared ──────────────────────────────────────────────────── */

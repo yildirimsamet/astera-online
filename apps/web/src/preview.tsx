@@ -161,7 +161,7 @@ function Preview() {
       <section>
         <SectionHead label="Hulls · silhouettes" aside="wasp ▸ bulwark ▸ lance" />
         <Plate className="flex items-end justify-around p-3">
-          {(['WASP', 'LANCE', 'BULWARK', 'HAULER', 'BASTION'] as const).map((h) => (
+          {(['DART', 'PIKE', 'RAMPART', 'COURIER', 'BASTION'] as const).map((h) => (
             <div key={h} className="flex flex-col items-center gap-2">
               <span className="text-bone">
                 <HullMark hull={h} className="size-11" />
@@ -233,8 +233,8 @@ function Preview() {
         <SectionHead label="Art wells" aside="I1 · art dims, copy never" />
         <Plate className="flex items-end gap-3 p-3">
           <ArtWell src={instrumentArt('TELESCOPE', 3)} size="lg" />
-          <ArtWell src={HULL_ART.BULWARK} size="md" />
-          <ArtWell src={HULL_ART.LANCE} size="md" locked />
+          <ArtWell src={HULL_ART.RAMPART} size="md" />
+          <ArtWell src={HULL_ART.PIKE} size="md" locked />
           <ArtWell src={null} size="md" fallback={<HullMark hull="BASTION" className="size-9" />} />
         </Plate>
       </section>

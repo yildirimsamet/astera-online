@@ -12,6 +12,7 @@ import {
   MOBILE_HULLS,
   NO_LOOT,
   SATELLITES,
+  TRAVEL,
   SATELLITE_IDS,
   SHIELD,
   canAttack,
@@ -314,8 +315,8 @@ describe('shieldHp', () => {
    * that satellites are unrationed, so a wall at level one ends raiding outright.
    */
   it('a first-level shield is worth well under a small raiding fleet', () => {
-    const tenWasps = 10 * HULLS.WASP.hp;
-    expect(shieldHp(1)).toBeLessThan(tenWasps);
+    const tenDarts = 10 * HULLS.DART.hp;
+    expect(shieldHp(1)).toBeLessThan(tenDarts);
   });
 });
 
@@ -323,27 +324,27 @@ describe('shieldHp', () => {
 
 describe('fleet arithmetic', () => {
   it('counts a hull that is absent as zero rather than undefined', () => {
-    expect(countOf({}, 'WASP')).toBe(0);
-    expect(countOf({ WASP: 3 }, 'LANCE')).toBe(0);
-    expect(countOf({ WASP: 3 }, 'WASP')).toBe(3);
+    expect(countOf({}, 'DART')).toBe(0);
+    expect(countOf({ DART: 3 }, 'PIKE')).toBe(0);
+    expect(countOf({ DART: 3 }, 'DART')).toBe(3);
   });
 
   it('adds hit points across every hull, ground included', () => {
     expect(fleetHp({})).toBe(0);
-    expect(fleetHp({ WASP: 2 })).toBe(2 * HULLS.WASP.hp);
-    expect(fleetHp({ WASP: 2, BASTION: 1 })).toBe(2 * HULLS.WASP.hp + HULLS.BASTION.hp);
+    expect(fleetHp({ DART: 2 })).toBe(2 * HULLS.DART.hp);
+    expect(fleetHp({ DART: 2, BASTION: 1 })).toBe(2 * HULLS.DART.hp + HULLS.BASTION.hp);
   });
 
   /**
    * A FLEET TRAVELS AT ITS SLOWEST SHIP. If this ever returned an average, every
-   * raid with a Hauler in it would arrive before its cargo and the exposure figure
+   * raid with a Wayfarer in it would arrive before its cargo and the exposure figure
    * the launch sheet promises would be a lie.
    */
   it('travels at the speed of its slowest mobile hull', () => {
-    expect(fleetSpeed({ WASP: 1 })).toBe(HULLS.WASP.speed);
-    const mixed = fleetSpeed({ WASP: 1, HAULER: 1 });
-    expect(mixed).toBe(Math.min(HULLS.WASP.speed, HULLS.HAULER.speed));
-    expect(mixed).toBeLessThanOrEqual(HULLS.WASP.speed);
+    expect(fleetSpeed({ DART: 1 })).toBe(HULLS.DART.speed);
+    const mixed = fleetSpeed({ DART: 1, WAYFARER: 1 });
+    expect(mixed).toBe(Math.min(HULLS.DART.speed, HULLS.WAYFARER.speed));
+    expect(mixed).toBeLessThanOrEqual(HULLS.DART.speed);
   });
 
   it('cannot travel at all with nothing in it, or with only ground units', () => {
@@ -353,34 +354,44 @@ describe('fleet arithmetic', () => {
 
   /**
    * A hull present at zero must not pin the speed. `fleetEntries` skips zeroes and
-   * so must this — otherwise cancelling a Hauler out of a launch would leave the
-   * fleet crawling at Hauler speed.
+   * so must this — otherwise cancelling a Wayfarer out of a launch would leave the
+   * fleet crawling at Wayfarer speed.
    */
   it('ignores a hull listed at zero', () => {
-    expect(fleetSpeed({ WASP: 2, HAULER: 0 })).toBe(HULLS.WASP.speed);
+    expect(fleetSpeed({ DART: 2, WAYFARER: 0 })).toBe(HULLS.DART.speed);
   });
 
+  /**
+   * THE DISTANCE IS DERIVED FROM THE HULL, and it has to be. This was written as a
+   * flat 500, which was a half-minute flight until D152 lifted the Dart to 200 and
+   * 500 became exactly three minutes — at which point the test asserting "exact is
+   * not the rounded quote" was failing on arithmetic rather than on the split it
+   * exists to protect. A fixture that goes stale when a constant moves is the same
+   * class of bug as a typed ceiling.
+   */
   it('keeps the exact fleet instant separate from the rounded display quote', () => {
-    const exact = fleetTravelExact(500, { WASP: 2 });
+    const halfway = (HULLS.DART.speed * 2.5) / TRAVEL.distanceFactor;
+    const exact = fleetTravelExact(halfway, { DART: 2 });
+    expect(exact).toBeCloseTo(2.5, 12);
     expect(exact).not.toBe(Math.ceil(exact));
-    expect(fleetTravelMinutes(500, { WASP: 2 })).toBe(Math.ceil(exact));
+    expect(fleetTravelMinutes(halfway, { DART: 2 })).toBe(Math.ceil(exact));
   });
 
   it('reports losses as before minus after, never a negative', () => {
-    expect(fleetDiff({ WASP: 10 }, { WASP: 4 })).toEqual({ WASP: 6 });
-    expect(fleetDiff({ WASP: 10 }, {})).toEqual({ WASP: 10 });
+    expect(fleetDiff({ DART: 10 }, { DART: 4 })).toEqual({ DART: 6 });
+    expect(fleetDiff({ DART: 10 }, {})).toEqual({ DART: 10 });
     // Survivors cannot exceed the starting fleet, but if they somehow did, a
     // negative loss would credit the attacker with ships that never existed.
-    expect(fleetDiff({ WASP: 4 }, { WASP: 10 })).toEqual({});
+    expect(fleetDiff({ DART: 4 }, { DART: 10 })).toEqual({});
     expect(fleetDiff({}, {})).toEqual({});
   });
 
   it('never reports a loss for a hull that was not there', () => {
     fc.assert(
       fc.property(fc.nat({ max: 50 }), fc.nat({ max: 50 }), (before, after) => {
-        const d = fleetDiff({ WASP: before }, { WASP: after });
-        expect(d.LANCE).toBeUndefined();
-        expect(d.WASP ?? 0).toBeLessThanOrEqual(before);
+        const d = fleetDiff({ DART: before }, { DART: after });
+        expect(d.PIKE).toBeUndefined();
+        expect(d.DART ?? 0).toBeLessThanOrEqual(before);
       }),
       { numRuns: 200 },
     );
@@ -639,9 +650,9 @@ describe('what a battle leaves behind', () => {
 
   /** A field still has to be worth flying at, or the mechanic is decoration. */
   it('leaves something worth a trip out of a real battle', () => {
-    // Twenty Wasps and six Bastions is an ordinary raid; the Bastions are ground
+    // Twenty Darts and six Bastions is an ordinary raid; the Bastions are ground
     // and contribute nothing, which is exactly why the minimum matters.
-    const destroyed = 20 * (HULLS.WASP.alloy + HULLS.WASP.crystal);
+    const destroyed = 20 * (HULLS.DART.alloy + HULLS.DART.crystal);
     expect(destroyed * DEBRIS.share).toBeGreaterThan(DEBRIS.minimum);
   });
 });

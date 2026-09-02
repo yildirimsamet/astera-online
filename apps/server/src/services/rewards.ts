@@ -69,7 +69,7 @@ interface Standing {
   accountId: string;
   levels: Record<string, number>;
   aegis: number;
-  builtWasps: number;
+  builtDarts: number;
 }
 
 /**
@@ -229,7 +229,7 @@ async function assemble(tx: Tx, standing: Standing): Promise<RewardsView> {
       case 'SALVAGE':
         return mining.wrecks;
       case 'SHIPS':
-        return standing.builtWasps;
+        return standing.builtDarts;
       case 'AEGIS':
         return standing.aegis;
       /**
@@ -310,7 +310,7 @@ async function standingOf(tx: Tx, planet: LockedPlanet): Promise<Standing> {
     accountId,
     levels: planet.buildings,
     aegis: planet.instruments.AEGIS ?? 0,
-    builtWasps: builtEver.WASP ?? 0,
+    builtDarts: builtEver.DART ?? 0,
   };
 }
 

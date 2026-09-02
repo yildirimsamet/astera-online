@@ -11,17 +11,17 @@ describe('the shared quantity stepper', () => {
         min={0}
         max={12}
         onChange={vi.fn()}
-        decreaseLabel="Fewer Wasps"
-        increaseLabel="More Wasps"
-        valueLabel="Wasp quantity"
+        decreaseLabel="Fewer Darts"
+        increaseLabel="More Darts"
+        valueLabel="Dart quantity"
         maxLabel="Max"
       />,
     );
 
-    expect(screen.getByRole('textbox', { name: /wasp quantity/i })).toHaveValue('3');
-    expect(screen.getByRole('textbox', { name: /wasp quantity/i })).toHaveAttribute('readonly');
-    expect(screen.getByRole('button', { name: /fewer wasps/i })).toHaveTextContent('−');
-    expect(screen.getByRole('button', { name: /more wasps/i })).toHaveTextContent('+');
+    expect(screen.getByRole('textbox', { name: /dart quantity/i })).toHaveValue('3');
+    expect(screen.getByRole('textbox', { name: /dart quantity/i })).toHaveAttribute('readonly');
+    expect(screen.getByRole('button', { name: /fewer darts/i })).toHaveTextContent('−');
+    expect(screen.getByRole('button', { name: /more darts/i })).toHaveTextContent('+');
     expect(screen.getByRole('button', { name: 'Max' })).toBeInTheDocument();
   });
 

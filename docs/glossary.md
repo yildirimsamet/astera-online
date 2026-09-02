@@ -112,6 +112,26 @@ resource value of every non-ground hull destroyed on both sides, public to the w
 gone in three hours. Anyone can fly craft out and take what is left, and it is Wealth only — the
 Dominion ladder never sees it. D32.
 
+**Pirate fleet** — an NPC squadron riding a closed orbit inside the disc, and the galaxy's
+third target class beside a commander and a neutral world. Derived from the season key and
+never stored: only what has been shot off it is. It attacks nothing, moves no Dominion, and
+carries a hoard worth more than its own hulls. Raided like a world — one raid per origin
+world, a flight bay, prepaid fuel — and gone for good after two to four hours. D150.
+
+**Pirate level** — 1 to 4. The one number that prices the fight: it caps the tier of hull
+the crew flies, sets the attack handicap it fights under (×0.50 at L1 up to ×0.85 at L4) and
+sets the odds of towing one of its ships home (0.50 down to 0.15). Readable only under
+Telescope sight; a Radar contact gets a question mark and, at its top rungs, a mass and a
+silhouette. D150.
+
+**Capture** — a hull from a beaten pirate's original roster joining your garrison, on a
+DECISIVE win and a level-weighted roll. The only place in the game where a risk pays in
+FLEET rather than in ore. It lands even over Hangar capacity and never counts as built. D150.
+
+**Callsign** — the four-character tag that names a pirate (`L3-mJtQ`). Taken from its opaque
+handle rather than from its position in the season's lane, so a name discloses nothing about
+how many pirates the season has produced. D150.
+
 ## Economy
 
 **Alloy / Crystal** — The two resources. Alloy builds everything; crystal is scarce and

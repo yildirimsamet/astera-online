@@ -20,11 +20,11 @@ import {
 import {
   buildings,
   clanLootShares,
-  debrisFields,
   galaxyEvents,
   miningRuns,
   neutralPlanetState,
   notifications,
+  pirateRaids,
   planets,
   shards,
   seasons,
@@ -35,12 +35,14 @@ import { EventWorker } from '../src/worker/loop.js';
 import { launchAttack } from '../src/services/mission.js';
 import { launchProbe } from '../src/services/intel.js';
 import { launchMining } from '../src/services/mining.js';
+import { privatePirateField, pirateId } from '../src/services/pirateField.js';
 import { refreshSensorEpoch } from '../src/services/sensorHistory.js';
 import { buildApp } from '../src/app.js';
 import { SHARD_PREFIX } from '../src/stream/bus.js';
 import { TokenService } from '../src/auth/tokens.js';
 import {
   buildSchema,
+  activeGalaxyEventsSchema,
   announcementsPageSchema,
   buildCancelSchema,
   clanAidLaunchSchema,
@@ -84,6 +86,8 @@ import {
   meSchema,
   miningLaunchSchema,
   miningFieldSchema,
+  piratesSchema,
+  pirateRaidSchema,
   miningSchema,
   miningStatusSchema,
   movementLaunchSchema,
@@ -119,7 +123,7 @@ import {
   SHARD_PREFIX as CLIENT_SHARD_PREFIX,
   isShardEvent,
 } from '../../web/src/session/shardEvents.js';
-import { giveInstrument, giveResearch, giveSatellite, giveUnits, grant, levelWorld, placeAt, seedWorld, setLevel, settledAt, testDb, testEnv, type Fixture } from './helpers.js';
+import { giveInstrument, giveResearch, giveSatellite, giveUnits, grant, levelWorld, placeAt, seedWorld, setLevel, settledAt, testDb, testEnv, type Fixture, giveDebris } from './helpers.js';
 
 /**
  * THE CLIENT'S PARSER, RUN AGAINST THE SERVER'S REAL ANSWER.
@@ -170,7 +174,7 @@ describe('every payload the client parses', () => {
   let auth: { authorization: string };
 
   beforeEach(async () => {
-    f = await seedWorld(3);
+    f = await seedWorld(3, 4242, { pirates: true });
     const built = buildApp({ env: testEnv(), logger: silent, db: f.db, clock: f.clock });
     app = built.app;
     await app.ready();
@@ -184,7 +188,7 @@ describe('every payload the client parses', () => {
     await setLevel(f.db, mine, 'CORE', 6);
     await setLevel(f.db, mine, 'SHIPYARD', 4);
     await grant(f.db, mine, 400_000, 200_000);
-    await giveUnits(f.db, mine, { WASP: 12, HAULER: 2, BASTION: 3, THORN: 5, PROSPECTOR: 3 });
+    await giveUnits(f.db, mine, { DART: 12, COURIER: 2, BASTION: 3, THORN: 5, PROSPECTOR: 3 });
     await giveSatellite(f.db, mine, 'UPLINK');
     await giveSatellite(f.db, mine, 'DERRICK');
     await giveInstrument(f.db, mine, 'TELESCOPE', 2);
@@ -360,6 +364,11 @@ describe('every payload the client parses', () => {
     expect(parsed.planets.some((p) => p.shielded)).toBe(true);
   });
 
+  it('GET /api/galaxy/events parses without exposing future occurrences', async () => {
+    const parsed = activeGalaxyEventsSchema.parse(await get('/api/galaxy/events'));
+    expect(parsed.events).toEqual([]);
+  });
+
   /**
    * ALL THREE INTEL SHAPES, IN ONE PAYLOAD, THROUGH THE CLIENT'S OWN SCHEMA. D127.
    *
@@ -508,7 +517,7 @@ describe('every payload the client parses', () => {
       originPlanetId: mine,
       recipientPlayerId: f.playerIds[1],
       targetPlanetId: theirs,
-      fleet: { WASP: 1 },
+      fleet: { DART: 1 },
       cargo: { alloy: 0, crystal: 0, deuterium: 0 },
     };
     expect(clanAidQuoteSchema.parse(await post('/api/clan/aid/quote', aidPayload)).withinAllowance)
@@ -699,19 +708,14 @@ describe('every payload the client parses', () => {
 
   it('POST /api/mining/harvest parses, and carries no asteroid id', async () => {
     const [mine] = f.planetIds as [string];
-    const [wreck] = await f.db
-      .insert(debrisFields)
-      .values({
-        seasonId: f.seasonId,
-        planetId: mine,
+    const wreck = await giveDebris(f.db, f.seasonId, mine, {
         alloy: 9_000,
         crystal: 3_000,
         createdAt: f.clock.now(),
-      })
-      .returning();
+      });
 
     const parsed = miningLaunchSchema.parse(
-      await post('/api/mining/harvest', { fieldId: wreck!.id, craft: 1 }),
+      await post('/api/mining/harvest', { fieldId: wreck.id, craft: 1 }),
     );
     expect(parsed.asteroidId).toBeUndefined();
     expect(parsed.runId).toBeTruthy();
@@ -752,6 +756,91 @@ describe('every payload the client parses', () => {
     expect(p.alloyPerHour).toBeGreaterThan(Math.round(alloyRate(parsed.buildings.REFINERY!)));
   });
 
+  /**
+   * THE THIRD TARGET CLASS, END TO END. D150.
+   *
+   * A plain parse can only ever reach the fields a quiet payload carries, and the
+   * whole ladder here lives in the OPTIONAL ones — the level and the crew arrive
+   * with Telescope sight and with nothing less. So the parse is followed by a case
+   * that actually stands a commander next to a pirate.
+   */
+  it('GET /api/pirates parses', async () => {
+    piratesSchema.parse(await get('/api/pirates'));
+  });
+
+  it('GET /api/pirates identifies a pirate standing inside the Telescope circle', async () => {
+    const { PIRATE, piratePosition, pirateActive, sensorSphere, sensorZone } =
+      await import('@astera/rules');
+    const [season] = await f.db.select().from(seasons).where(eq(seasons.id, f.seasonId));
+    const field = privatePirateField(season!.asteroidKey);
+    const [world] = await f.db.select().from(planets).where(eq(planets.id, f.planetIds[0]!));
+    const eye = sensorSphere({ x: world!.x, y: world!.y, z: world!.z }, 0, 0, f.planetIds[0]);
+
+    let found: { index: number; minute: number } | null = null;
+    outer: for (const spec of field) {
+      for (let minute = Math.ceil(spec.appearsAt) + 1; minute < spec.expiresAt; minute += 1) {
+        if (!pirateActive(spec, minute)) continue;
+        if (sensorZone([eye], piratePosition(spec, minute)) !== 'IDENTIFIED') continue;
+        found = { index: spec.index, minute };
+        break outer;
+      }
+    }
+    expect(found, 'no pirate ever comes inside the naked eye this season').not.toBeNull();
+    f.clock.set(new Date(season!.startsAt.getTime() + found!.minute * 60_000));
+
+    const parsed = piratesSchema.parse(await get('/api/pirates'));
+    const seen = parsed.pirates.find((p) => p.id === pirateId(season!.asteroidKey, found!.index));
+    expect(seen, 'the pirate was not on the payload at all').toBeDefined();
+    expect(seen!.zone).toBe('IDENTIFIED');
+    expect(seen!.level).toBe(field[found!.index]!.level);
+    expect(seen!.damageMult).toBe(PIRATE.damageMult[field[found!.index]!.level]);
+    expect(Object.keys(seen!.fleet ?? {}).length).toBeGreaterThan(0);
+    expect(seen!.expiresInMinutes).toBeGreaterThan(0);
+    // No orbit, under any name: those five numbers ARE the route.
+    const wire = JSON.stringify(seen);
+    for (const forbidden of ['radius', 'period', 'phase', 'inclination', 'ascendingNode']) {
+      expect(wire).not.toContain(forbidden);
+    }
+  });
+
+  it('POST /api/pirates/raid parses, and answers with the strip and the world', async () => {
+    const { piratePosition, pirateActive, sensorSphere, sensorZone } = await import('@astera/rules');
+    const [season] = await f.db.select().from(seasons).where(eq(seasons.id, f.seasonId));
+    const field = privatePirateField(season!.asteroidKey);
+    const [world] = await f.db.select().from(planets).where(eq(planets.id, f.planetIds[0]!));
+    const eye = sensorSphere({ x: world!.x, y: world!.y, z: world!.z }, 0, 0, f.planetIds[0]);
+
+    let found: { index: number; minute: number } | null = null;
+    outer: for (const spec of field) {
+      for (let minute = Math.ceil(spec.appearsAt) + 1; minute < spec.expiresAt; minute += 1) {
+        if (!pirateActive(spec, minute)) continue;
+        if (sensorZone([eye], piratePosition(spec, minute)) === 'NONE') continue;
+        found = { index: spec.index, minute };
+        break outer;
+      }
+    }
+    expect(found).not.toBeNull();
+    f.clock.set(new Date(season!.startsAt.getTime() + found!.minute * 60_000));
+    await giveUnits(f.db, f.planetIds[0]!, { DART: 20 });
+
+    const parsed = pirateRaidSchema.parse(await post('/api/pirates/raid', {
+      pirateId: pirateId(season!.asteroidKey, found!.index),
+      fleet: { DART: 20 },
+    }));
+    expect(parsed.fleet).toEqual({ DART: 20 });
+    expect(parsed.fuel).toBeGreaterThan(0);
+    expect(parsed.arriveAt.getTime()).toBeGreaterThan(f.clock.now().getTime());
+    // The strip already has it, so the craft is drawn on this very frame. D53.
+    const thread = parsed.pending.find((p) => p.id === parsed.raidId);
+    expect(thread, 'the launch answered without its own craft on the strip').toBeDefined();
+    expect(thread!.kind).toBe('pirate');
+    expect(thread!.pirate?.level).toBe(parsed.level);
+    // And the raw lane index never reaches the wire.
+    expect(JSON.stringify(parsed)).not.toContain('pirateIndex');
+    const [row] = await f.db.select().from(pirateRaids).where(eq(pirateRaids.id, parsed.raidId));
+    expect(row!.pirateIndex).toBe(found!.index);
+  });
+
   it('GET /api/galaxy/traffic parses', async () => {
     trafficSchema.parse(await get('/api/galaxy/traffic'));
   });
@@ -766,8 +855,8 @@ describe('every payload the client parses', () => {
    */
   it('GET /api/galaxy/traffic parses a raid that is landing right now', async () => {
     const [, theirs, third] = f.planetIds as [string, string, string];
-    await giveUnits(f.db, theirs, { WASP: 20 });
-    const launch = await launchAttack(f.db, theirs, third, { WASP: 20 }, f.clock);
+    await giveUnits(f.db, theirs, { DART: 20 });
+    const launch = await launchAttack(f.db, theirs, third, { DART: 20 }, f.clock);
     f.clock.set(new Date(launch.arriveAt.getTime() + 2_000));
 
     const parsed = trafficSchema.parse(await get('/api/galaxy/traffic'));
@@ -789,8 +878,8 @@ describe('every payload the client parses', () => {
    */
   it('GET /api/galaxy/traffic marks a contact on final approach as landing', async () => {
     const [, theirs, third] = f.planetIds as [string, string, string];
-    await giveUnits(f.db, theirs, { WASP: 20 });
-    const launch = await launchAttack(f.db, theirs, third, { WASP: 20 }, f.clock);
+    await giveUnits(f.db, theirs, { DART: 20 });
+    const launch = await launchAttack(f.db, theirs, third, { DART: 20 }, f.clock);
     /*
       INSIDE THE FINAL WINDOW, DERIVED RATHER THAN TYPED. It was "half a minute
       out", against a floor that was a flat sixty seconds — and that floor was a
@@ -823,7 +912,7 @@ describe('every payload the client parses', () => {
       .from(buildings)
       .where(and(eq(buildings.planetId, mine), eq(buildings.type, 'CORE')));
     await setLevel(f.db, theirs, 'CORE', ownCore!.level);
-    const launch = await launchAttack(f.db, mine, theirs, { WASP: 6 }, f.clock);
+    const launch = await launchAttack(f.db, mine, theirs, { DART: 6 }, f.clock);
     const parsed = pendingSchema.parse(await get('/api/session/pending'));
     const thread = parsed.pending.find((t) => t.kind === 'fleet');
     expect(thread?.id).toBe(launch.missionId);
@@ -894,7 +983,7 @@ describe('every payload the client parses', () => {
     const [mine, theirs] = f.planetIds as [string, string];
 
     // What the probe is meant to come home with, put on the target world.
-    await giveResearch(f.db, theirs, 'WASP_DOCTRINE', 2);
+    await giveResearch(f.db, theirs, 'SHIP_POWER', 2);
     await f.db.insert(strategicAssets).values({
       planetId: theirs,
       type: 'INTERCEPTOR',
@@ -919,7 +1008,7 @@ describe('every payload the client parses', () => {
     const report = parsed.probeReports.find((r) => r.targetPlanetId === theirs);
     expect(report, 'the delivered report never reached the payload').toBeDefined();
     expect(report?.doctrines, 'the doctrine reading was dropped on the way out')
-      .toEqual({ WASP_DOCTRINE: 2 });
+      .toEqual({ SHIP_POWER: 2 });
     expect(report?.interceptor, 'the interceptor reading was dropped on the way out')
       .toBe(true);
   });
@@ -987,7 +1076,7 @@ describe('every payload the client parses', () => {
   });
 
   it('POST /api/planet/build parses', async () => {
-    const parsed = buildSchema.parse(await post('/api/planet/build', { hull: 'WASP', count: 2 }));
+    const parsed = buildSchema.parse(await post('/api/planet/build', { hull: 'DART', count: 2 }));
     expect(parsed.built).toBe(2);
   });
 
@@ -997,6 +1086,30 @@ describe('every payload the client parses', () => {
       await post('/api/planet/research', { projectId: 'ISOTOPE_SPECTROMETRY' }),
     );
     expect(parsed.projectId).toBe('ISOTOPE_SPECTROMETRY');
+  });
+
+  it('refuses to cancel a commander research commitment', async () => {
+    const placed = researchCompleteSchema.parse(
+      await post('/api/planet/research', { projectId: 'DEUTERIUM_SYNTHESIS' }),
+    );
+    const order = placed.planet.researchQueue?.[0];
+    if (!order) throw new Error('research contract setup created no order');
+
+    const planetId = f.planetIds[0]!;
+    for (const url of [
+      `/api/planet/research-orders/${order.id}/cancel`,
+      `/api/planets/${planetId}/research-orders/${order.id}/cancel`,
+    ]) {
+      const response = await app.inject({
+        method: 'POST',
+        url,
+        headers: auth,
+        payload: {},
+      });
+      expect(response.statusCode, url).toBe(409);
+      expect(response.json<{ error?: string }>().error, url)
+        .toBe('RESEARCH_CANNOT_BE_CANCELLED');
+    }
   });
 
   it('POST /api/planet/collect parses', async () => {
@@ -1027,7 +1140,7 @@ describe('every payload the client parses', () => {
     const [mine, theirs] = f.planetIds as [string, string];
     await levelWorld(f.db, f.planetIds);
     const parsed = launchSchema.parse(
-      await post('/api/fleet/launch', { targetPlanetId: theirs, fleet: { WASP: 4 } }),
+      await post('/api/fleet/launch', { targetPlanetId: theirs, fleet: { DART: 4 } }),
     );
     expect(parsed.missionId).toBeTruthy();
     expect(parsed.arriveAt.getTime()).toBeGreaterThan(f.clock.now().getTime());
@@ -1054,7 +1167,7 @@ describe('every payload the client parses', () => {
     const parsed = movementLaunchSchema.parse(await post('/api/fleet/transfer', {
       originPlanetId: origin,
       targetPlanetId: colony,
-      fleet: { WASP: 1 },
+      fleet: { DART: 1 },
       cargo: { alloy: 0, crystal: 0, deuterium: 0 },
     }));
     expect(parsed.pending.some((thread) => thread.id === parsed.missionId)).toBe(true);
@@ -1241,7 +1354,7 @@ describe('every payload the client parses', () => {
     f.clock.advance(42 * 60);
     const cases: { url: string; body: Record<string, unknown> }[] = [
       { url: '/api/planet/upgrade', body: { type: 'VAULT' } },
-      { url: '/api/planet/build', body: { hull: 'WASP', count: 1 } },
+      { url: '/api/planet/build', body: { hull: 'DART', count: 1 } },
       { url: '/api/planet/research', body: { projectId: 'ISOTOPE_SPECTROMETRY' } },
       { url: '/api/planet/collect', body: {} },
       { url: '/api/planet/instrument', body: { type: 'RADAR' } },
@@ -1520,7 +1633,7 @@ describe('every payload the client parses', () => {
     );
 
     await levelWorld(f.db, f.planetIds);
-    const launch = await launchAttack(f.db, mine, theirs, { WASP: 6 }, f.clock);
+    const launch = await launchAttack(f.db, mine, theirs, { DART: 6 }, f.clock);
 
     /**
      * Empty, undefended, and ALREADY DOWN — which is the reported case rather than
@@ -1605,7 +1718,7 @@ describe('every payload the client parses', () => {
     // Rich means tall, and tall means out of the tier band (D49). This test is
     // about what a notification SAYS, so put the world back in one band.
     await levelWorld(f.db, f.planetIds);
-    const launch = await launchAttack(f.db, mine, theirs, { WASP: 12, HAULER: 2 }, f.clock);
+    const launch = await launchAttack(f.db, mine, theirs, { DART: 12, COURIER: 2 }, f.clock);
     f.clock.set(new Date(launch.arriveAt.getTime() - 60_000));
     await worker.tick();
     f.clock.set(settledAt(launch.arriveAt));

@@ -281,18 +281,18 @@ describe('the information layer', () => {
     it('reports AWAY the moment a fleet leaves orbit', async () => {
       await giveInstrument(f, mine, 'TELESCOPE', 2);
       await assignWatch(f.db, mine, theirs, 0, f.clock);
-      await giveUnits(f.db, theirs, { WASP: 30 });
+      await giveUnits(f.db, theirs, { DART: 30 });
       f.clock.advance(SETTLED_MINUTES);
-      await launchAttack(f.db, theirs, mine, { WASP: 30 }, f.clock);
+      await launchAttack(f.db, theirs, mine, { DART: 30 }, f.clock);
 
       const [view] = await readTelescopes(f.db, myPlayer, f.clock);
       expect(view!.reading.status).toBe('AWAY');
     });
 
     it('gives a return ETA only at FULL clarity', async () => {
-      await giveUnits(f.db, theirs, { WASP: 30 });
+      await giveUnits(f.db, theirs, { DART: 30 });
       f.clock.advance(SETTLED_MINUTES);
-      await launchAttack(f.db, theirs, mine, { WASP: 30 }, f.clock);
+      await launchAttack(f.db, theirs, mine, { DART: 30 }, f.clock);
 
       await giveInstrument(f, mine, 'TELESCOPE', 2); // clarity +2 → FULL
       await assignWatch(f.db, mine, theirs, 0, f.clock);
@@ -310,9 +310,9 @@ describe('the information layer', () => {
       await giveInstrument(f, mine, 'TELESCOPE', 1);
       await giveInstrument(f, theirs, 'VEIL', 3); // clarity −2 → BLIND
       await assignWatch(f.db, mine, theirs, 0, f.clock);
-      await giveUnits(f.db, theirs, { WASP: 30 });
+      await giveUnits(f.db, theirs, { DART: 30 });
       f.clock.advance(SETTLED_MINUTES);
-      await launchAttack(f.db, theirs, mine, { WASP: 30 }, f.clock);
+      await launchAttack(f.db, theirs, mine, { DART: 30 }, f.clock);
 
       // The true status is AWAY. It must never appear.
       for (let i = 0; i < 12; i++) {
@@ -413,7 +413,7 @@ describe('the information layer', () => {
 
     it('files a banded report on arrival — never an exact number', async () => {
       await grant(f.db, theirs, 60_000, 6_000);
-      await giveUnits(f.db, theirs, { WASP: 40, BASTION: 3 });
+      await giveUnits(f.db, theirs, { DART: 40, BASTION: 3 });
       await giveInstrument(f, theirs, 'VEIL', 2); // force accuracy below 1.0
 
       const launch = await launchProbe(f.db, mine, theirs, f.clock);
@@ -459,9 +459,9 @@ describe('the information layer', () => {
     });
 
     it('reports the target as AWAY when their ships are out', async () => {
-      await giveUnits(f.db, theirs, { WASP: 30 });
+      await giveUnits(f.db, theirs, { DART: 30 });
       f.clock.advance(SETTLED_MINUTES);
-      await launchAttack(f.db, theirs, mine, { WASP: 30 }, f.clock);
+      await launchAttack(f.db, theirs, mine, { DART: 30 }, f.clock);
 
       const launch = await launchProbe(f.db, mine, theirs, f.clock);
       f.clock.set(launch.arriveAt);

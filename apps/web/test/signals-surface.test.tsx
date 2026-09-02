@@ -4,6 +4,7 @@ import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import { Signals } from '../src/shell/Signals.js';
 import type { NotificationView } from '../src/api/schemas.js';
+import i18n from '../src/i18n/index.js';
 
 /**
  * THE BEACON — the one control whose entire job is to go back to zero.
@@ -99,6 +100,27 @@ describe('the signals beacon', () => {
     const row = screen.getByTestId('signal-event');
     expect(row.querySelector('svg')).not.toBeNull();
     expect(row.querySelector('.size-9')).not.toBeNull();
+  });
+
+  it('announces both Asteroid Shower lifecycle moments in Turkish', async () => {
+    await i18n.changeLanguage('tr');
+    const lifecycle = {
+      eventKind: 'ASTEROID_SHOWER',
+      startsAt: '2026-09-02T09:00:00.000Z',
+      endsAt: '2026-09-02T10:00:00.000Z',
+      asteroidSpawnMultiplier: 5,
+    };
+    mount([
+      notification({ id: 'start', kind: 'galaxy_event_started', payload: lifecycle }),
+      notification({ id: 'end', kind: 'galaxy_event_ended', payload: lifecycle }),
+    ]);
+    await userEvent.click(screen.getByRole('button', { name: 'Sinyaller — 2 okunmamış' }));
+
+    expect(screen.getByText('Galakside asteroid yağmuru başladı.')).toBeInTheDocument();
+    expect(screen.getByText(
+      'Asteroid yağmuru bitti. Yeni asteroid oluşma hızı normale döndü.',
+    )).toBeInTheDocument();
+    await i18n.changeLanguage('en');
   });
 
   it('bolds a revealed identity and closes Signals through its planet focus route', async () => {

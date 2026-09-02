@@ -218,9 +218,9 @@ describe('GET /api/galaxy — fog enforced in the response', () => {
 
   it('a planet you are not watching has NO fleet key at all', async () => {
     // Their fleet is genuinely away — the truth exists, it is just not yours.
-    await giveUnits(f.db, theirs, { WASP: 30 });
+    await giveUnits(f.db, theirs, { DART: 30 });
     f.clock.advance(SETTLED_MINUTES);
-    await launchAttack(f.db, theirs, mine, { WASP: 30 }, f.clock);
+    await launchAttack(f.db, theirs, mine, { DART: 30 }, f.clock);
 
     const target = (await galaxy()).find((p) => p.id === theirs)!;
     // Not "UNKNOWN" — absent. There is nothing in the payload to unhide.
@@ -250,9 +250,9 @@ describe('GET /api/galaxy — fog enforced in the response', () => {
       });
     await assignWatch(f.db, mine, theirs, 0, f.clock);
 
-    await giveUnits(f.db, theirs, { WASP: 30 });
+    await giveUnits(f.db, theirs, { DART: 30 });
     f.clock.advance(SETTLED_MINUTES);
-    await launchAttack(f.db, theirs, mine, { WASP: 30 }, f.clock);
+    await launchAttack(f.db, theirs, mine, { DART: 30 }, f.clock);
 
     const target = (await galaxy()).find((p) => p.id === theirs)!;
     expect(target.fleet!.status).toBe('UNKNOWN');

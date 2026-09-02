@@ -128,7 +128,7 @@ describe('the API client', () => {
     );
 
     const api = new Api({ fetch: fetch as unknown as typeof globalThis.fetch });
-    await expect(api.launch('p2', { WASP: 1 })).rejects.toMatchObject({
+    await expect(api.launch('p2', { DART: 1 })).rejects.toMatchObject({
       code: 'BASH_LIMIT',
       status: 403,
       message: 'You have hit this planet too many times recently',

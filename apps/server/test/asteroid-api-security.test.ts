@@ -5,7 +5,7 @@ import { eq } from 'drizzle-orm';
 import { asteroidPosition, type AsteroidSpec } from '@astera/rules';
 import { buildApp } from '../src/app.js';
 import { TokenService } from '../src/auth/tokens.js';
-import { debrisFields, miningRuns, planets, seasons, sensorEpochs } from '../src/db/schema.js';
+import { miningRuns, planets, seasons, sensorEpochs } from '../src/db/schema.js';
 import { asteroidId, privateAsteroidField } from '../src/services/asteroidField.js';
 import { refreshSensorEpoch } from '../src/services/sensorHistory.js';
 import type { EventBus } from '../src/stream/bus.js';
@@ -19,6 +19,7 @@ import {
   testDb,
   testEnv,
   type Fixture,
+  giveDebris
 } from './helpers.js';
 
 const silent = pino({ level: 'silent' });
@@ -128,13 +129,11 @@ describe('asteroid API fog and launch authority', () => {
   });
 
   it('wakes the commander’s other live clients when a salvage run launches', async () => {
-    const [wreck] = await f.db.insert(debrisFields).values({
-      seasonId: f.seasonId,
-      planetId: f.planetIds[1]!,
+    const wreck = await giveDebris(f.db, f.seasonId, f.planetIds[1]!, {
       alloy: 2_000,
       crystal: 800,
       createdAt: f.clock.now(),
-    }).returning();
+    });
     await bus.start();
     const received: string[] = [];
     const unsubscribe = bus.subscribe(f.playerIds[0]!, (event) => {
@@ -145,7 +144,7 @@ describe('asteroid API fog and launch authority', () => {
       method: 'POST',
       url: '/api/mining/harvest',
       headers: authA,
-      payload: { fieldId: wreck!.id, craft: 1 },
+      payload: { fieldId: wreck.id, craft: 1 },
     });
     expect(response.statusCode, response.body).toBe(200);
     const deadline = Date.now() + 2_000;

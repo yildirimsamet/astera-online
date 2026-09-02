@@ -50,7 +50,7 @@ export const rewards = {
     SHIPYARD: { name: 'Shipyard', tag: 'Opens heavier hulls' },
     REFINERY: { name: 'Alloy Refinery', tag: 'Alloy every hour' },
     EXTRACTOR: { name: 'Crystal Extractor', tag: 'Crystal every hour' },
-    SHIPS: { name: 'Wasps built', tag: 'Counted for the whole season' },
+    SHIPS: { name: 'Darts built', tag: 'Counted for the whole season' },
     AEGIS: { name: 'Aegis', tag: 'A shield over your world' },
     MINE: { name: 'Asteroid drilled', tag: 'Reach a passing rock' },
     SALVAGE: { name: 'Wreck salvaged', tag: 'Take what a battle left behind' },

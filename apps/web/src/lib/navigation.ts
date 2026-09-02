@@ -78,7 +78,7 @@ export function reachMinutes(origin: Vec3, target: Vec3, homeFleet: Fleet): numb
 
 /** Reference time for a player with no ships: what a Wasp would take. */
 export const waspMinutes = (origin: Vec3, target: Vec3): number =>
-  travelMinutes(distance(origin, target), HULLS.WASP.speed);
+  travelMinutes(distance(origin, target), HULLS.DART.speed);
 
 /**
  * What the launch sheet offers.

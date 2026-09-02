@@ -50,16 +50,16 @@ describe('the calibrated economy tempo', () => {
   });
 
   it('makes ordinary hull crafting about 50% slower while keeping it usable', () => {
-    expect(HULLS.WASP.alloy).toBe(300);
-    expect(shipMinutes(HULLS.WASP, 0, {})).toBeGreaterThan(1);
-    expect(shipMinutes(HULLS.WASP, 0, {})).toBeLessThan(2);
-    expect(shipMinutes(HULLS.BULWARK, 4, {})).toBeGreaterThan(5);
-    expect(shipMinutes(HULLS.BULWARK, 4, {})).toBeLessThan(10);
+    expect(HULLS.DART.alloy).toBe(300);
+    expect(shipMinutes(HULLS.DART, 0, {})).toBeGreaterThan(1);
+    expect(shipMinutes(HULLS.DART, 0, {})).toBeLessThan(2);
+    expect(shipMinutes(HULLS.CITADEL, HULLS.CITADEL.minShipyard, {})).toBeGreaterThan(10);
+    expect(shipMinutes(HULLS.CITADEL, HULLS.CITADEL.minShipyard, {})).toBeLessThan(15);
   });
 
   it('applies each price class deliberately instead of one accidental global multiplier', () => {
-    expect(HULLS.WASP.alloy).toBe(300);
-    expect(HULLS.RUNNER.deuterium).toBe(113);
+    expect(HULLS.DART.alloy).toBe(300);
+    expect(HULLS.COURIER.deuterium).toBe(63);
     expect(satelliteCost('UPLINK')).toEqual({ alloy: 1125, crystal: 375, deuterium: 0 });
     expect(satelliteCost('FOUNDRY')).toEqual({ alloy: 3400, crystal: 1190, deuterium: 0 });
     expect(MULTI_WORLD.settlement.cost).toEqual({ alloy: 3400, crystal: 1700, deuterium: 0 });

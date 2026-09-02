@@ -3,9 +3,16 @@ import { Canvas, useFrame, useLoader, useThree } from '@react-three/fiber';
 import { AdaptiveDpr, Preload, useGLTF } from '@react-three/drei';
 import { Bloom, EffectComposer, Vignette } from '@react-three/postprocessing';
 import * as THREE from 'three';
-import { ASTEROID_MODELS, MODEL, MODEL_FACING, SATELLITE_MODEL } from '../ui/assets.js';
+import {
+  ASTEROID_MODELS,
+  FLEET_V2_LANDING_MODELS,
+  MODEL,
+  MODEL_FACING,
+  MODEL_POSE,
+  SATELLITE_MODEL,
+} from '../ui/assets.js';
 import { BrightStars, Nebula, Starfield, softGlow } from '../galaxy/Environment.jsx';
-import { orientedCraft, unitModel } from '../galaxy/model.js';
+import { posedCraft, unitModel } from '../galaxy/model.js';
 import { place, placeVector, sizeOf, type Framing } from './layout.js';
 
 /**
@@ -387,12 +394,12 @@ interface Lane {
  * leaves the frame rather than appearing and vanishing in open space.
  */
 const LANES: Lane[] = [
-  { model: MODEL.wasp, from: [-1.4, -0.5, 12], to: [1.4, 0.1, 20], duration: 17, offset: 0, fraction: 0.05 },
-  { model: MODEL.wasp, from: [-1.4, -0.62, 12], to: [1.4, -0.02, 20], duration: 17, offset: 0.04, fraction: 0.045 },
-  { model: MODEL.lance, from: [1.4, 0.62, 15], to: [-1.4, -0.3, 11], duration: 24, offset: 0.35, fraction: 0.07 },
-  { model: MODEL.hauler, from: [-1.4, 0.5, 26], to: [1.4, -0.4, 14], duration: 33, offset: 0.62, fraction: 0.085 },
+  { model: FLEET_V2_LANDING_MODELS.dart, from: [-1.4, -0.5, 12], to: [1.4, 0.1, 20], duration: 17, offset: 0, fraction: 0.05 },
+  { model: FLEET_V2_LANDING_MODELS.dart, from: [-1.4, -0.62, 12], to: [1.4, -0.02, 20], duration: 17, offset: 0.04, fraction: 0.045 },
+  { model: FLEET_V2_LANDING_MODELS.pike, from: [1.4, 0.62, 15], to: [-1.4, -0.3, 11], duration: 24, offset: 0.35, fraction: 0.07 },
+  { model: FLEET_V2_LANDING_MODELS.courier, from: [-1.4, 0.5, 26], to: [1.4, -0.4, 14], duration: 33, offset: 0.62, fraction: 0.085 },
   { model: MODEL.probe, from: [0.4, -1.3, 10], to: [-0.7, 1.3, 24], duration: 21, offset: 0.2, fraction: 0.03 },
-  { model: MODEL.bulwark, from: [1.4, -0.72, 21], to: [-1.4, 0.24, 17], duration: 38, offset: 0.5, fraction: 0.1 },
+  { model: FLEET_V2_LANDING_MODELS.rampart, from: [1.4, -0.72, 21], to: [-1.4, 0.24, 17], duration: 38, offset: 0.5, fraction: 0.1 },
 ];
 
 for (const lane of LANES) useGLTF.preload(lane.model, false);
@@ -418,7 +425,7 @@ function Craft({ lane, framing }: { lane: Lane; framing: Framing }) {
    * nobody notices in review and everybody notices on a landing page.
    */
   const craft = useMemo(
-    () => orientedCraft(scene, MODEL_FACING[lane.model] ?? '+z'),
+    () => posedCraft(scene, MODEL_FACING[lane.model] ?? '+z', MODEL_POSE[lane.model]),
     [scene, lane.model],
   );
 

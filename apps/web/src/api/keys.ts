@@ -17,6 +17,7 @@ export const keys = {
   planet: ['planet'],
   planetById: (planetId: string) => ['planet', planetId] as const,
   galaxy: ['galaxy'],
+  galaxyEvents: ['galaxy', 'events'],
   intel: ['intel'],
   leaderboard: ['leaderboard'],
   clanBadge: ['clan', 'badge'],
@@ -40,6 +41,9 @@ export const keys = {
   reports: ['reports'],
   rewards: ['rewards'],
   mining: ['mining'],
+  /** The pirates this commander can see, from one of their worlds. D150. */
+  pirates: ['pirates'],
+  piratesFrom: (planetId: string) => ['pirates', planetId] as const,
   miningField: ['mining', 'field'],
   miningStatus: ['mining', 'status'],
   miningStatusById: (planetId: string) => ['mining', 'status', planetId] as const,

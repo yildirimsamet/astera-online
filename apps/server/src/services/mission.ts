@@ -14,6 +14,7 @@ import {
   type Fleet,
   type HullId,
   HULLS,
+  COMBAT_HULLS,
 } from '@astera/rules';
 import { addMinutes, type Clock } from '../clock.js';
 import type { Db, Tx } from '../db/client.js';
@@ -99,23 +100,28 @@ export async function launchAttack(
     throw new GameError('EMPTY_FLEET', 'Send at least one ship');
   }
 
+  // Reject role violations before opening a transaction. Besides preserving the
+  // specific client-facing error, this makes malformed service calls as cheap as
+  // route-level schema failures and keeps support-only checks away from storage.
+  for (const [hull, n] of Object.entries(requested) as [HullId, number][]) {
+    if (n === 0) continue;
+    if (HULLS[hull].ground) {
+      throw new GameError('GROUND_UNIT', `${HULLS[hull].name}s cannot travel`, 400, { hull });
+    }
+    if (hull === 'PROSPECTOR') {
+      throw new GameError('NOT_A_WARSHIP', 'Prospectors mine; they do not raid');
+    }
+  }
+  if (!COMBAT_HULLS.some((hull) => (requested[hull] ?? 0) > 0)) {
+    throw new GameError('NOT_A_WARSHIP', 'An attack needs at least one combat hull', 400);
+  }
+
   return db.transaction(async (tx) => {
     await lockWorlds(tx, [originPlanetId, targetPlanetId]);
     const origin = await loadLocked(tx, originPlanetId, clock, { expectedPlayerId });
     assertWorldOperational(origin);
 
     for (const [hull, n] of Object.entries(requested) as [HullId, number][]) {
-      if (HULLS[hull].ground) {
-        // The ID, not the English name: the client holds its own name for every
-        // hull and would otherwise print "Bastion" on a Turkish screen.
-        throw new GameError('GROUND_UNIT', `${HULLS[hull].name}s cannot travel`, 400, { hull });
-      }
-      // Belt and braces: the route schema cannot name a Prospector either. D19
-      // keeps mining craft out of the fog layer, and the cheapest way to be sure is
-      // for every path into an attack fleet to refuse them independently.
-      if (hull === 'PROSPECTOR') {
-        throw new GameError('NOT_A_WARSHIP', 'Prospectors mine; they do not raid');
-      }
       if ((origin.homeFleet[hull] ?? 0) < n) {
         throw new GameError('NOT_ENOUGH_SHIPS', `Not enough ${hull} at home`, 400, { hull });
       }
@@ -271,7 +277,8 @@ export async function launchAttack(
     // A raid carries no hold on the way out, so the whole store is the tank.
     assertFuel(fuel, origin.deuterium);
     // The Beacon in orbit, if there is one. D25.
-    const oneWay = fleetTravelExact(dist, requested, fleetSpeedMult(origin.orbit));
+    const tech = await techOf(tx, origin.playerId);
+    const oneWay = fleetTravelExact(dist, requested, fleetSpeedMult(origin.orbit), tech);
     const arriveAt = addMinutes(origin.now, oneWay);
     /**
      * THE ENGAGEMENT. D44.
@@ -304,7 +311,7 @@ export async function launchAttack(
           already has, and the same reason: every figure belongs to the moment its
           own decision was made.
         */
-        tech: await techOf(tx, origin.playerId),
+        tech,
         ownerPlayerId: origin.playerId,
         originPlanetId,
         targetPlanetId,

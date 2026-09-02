@@ -16,7 +16,9 @@ import {
   transferCargoCapacity,
 } from '../src/strategic.js';
 
-const settlementFleet = { HAULER: MULTI_WORLD.settlement.haulers };
+const settlementFleet = {
+  [MULTI_WORLD.settlement.transportHull]: MULTI_WORLD.settlement.transports,
+};
 
 function octantCounts(slots: readonly PlanetSlot[]): number[] {
   const octants = Array.from({ length: 8 }, () => 0);
@@ -36,20 +38,21 @@ function centroidDistance(slots: readonly PlanetSlot[]): number {
 }
 
 describe('multi-world strategic rules', () => {
-  it('prices a settlement as the Economy v2 two-Hauler commitment', () => {
+  it('prices a settlement as the Economy v2 two-Courier commitment', () => {
     expect(MULTI_WORLD.settlement).toEqual({
       cost: scaleResources(
         { alloy: 2000, crystal: 1000, deuterium: 0 },
         ECONOMY_TEMPO.fixedPrice,
       ),
-      haulers: 2,
+      transportHull: 'COURIER',
+      transports: 2,
     });
   });
 
   /**
    * D111. Stated as a RELATION rather than as a figure, because the figure is the
    * thing that went stale: any of `GALAXY.radius`,
-   * `TRAVEL.*`, `HULLS.HAULER.speed` or the Hauler count moves this window, and
+   * `TRAVEL.*`, `HULLS.COURIER.speed` or the Courier count moves this window, and
    * a test asserting "73" would have to be edited by whoever broke it.
    */
   it('defines the widest settlement flight as exactly one spherical diameter', () => {
@@ -102,10 +105,11 @@ describe('multi-world strategic rules', () => {
       .toEqual(['UNGUARDED', 'GUARDED', 'FORTIFIED']);
   });
 
-  it('counts cargo space from Haulers and Runners only', () => {
-    expect(transferCargoCapacity({ WASP: 99, HAULER: 1, RUNNER: 2 }))
-      .toBe(transferCargoCapacity({ HAULER: 1, RUNNER: 2 }));
-    expect(transferCargoCapacity({ WASP: 99 })).toBe(0);
+  it('counts cargo space from Courier, Wayfarer and Atlas only', () => {
+    expect(TRANSFER_CARGO_HULLS).toEqual(['COURIER', 'WAYFARER', 'ATLAS']);
+    expect(transferCargoCapacity({ DART: 99, WAYFARER: 1, COURIER: 2, ATLAS: 1 }))
+      .toBe(transferCargoCapacity({ WAYFARER: 1, COURIER: 2, ATLAS: 1 }));
+    expect(transferCargoCapacity({ DART: 99 })).toBe(0);
   });
 
   it('selects exactly 30/15/6 stable unique neutral slots after all 300 capitals', () => {

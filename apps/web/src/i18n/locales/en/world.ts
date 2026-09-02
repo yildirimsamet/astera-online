@@ -17,8 +17,12 @@ export const galaxy = {
   worlds: "{{count}} worlds",
   fleetAway: " · {{count}} fleet away",
   rocks: " · {{count}} rocks",
+  pirates_one: " · {{count}} pirate",
+  pirates_other: " · {{count}} pirates",
   wrecks_one: " · {{count}} wreck",
   wrecks_other: " · {{count}} wrecks",
+  asteroidShower: 'Asteroid shower',
+  asteroidShowerStatus: 'Spawn ×{{multiplier}} · {{remaining}} left',
   openWorlds: "Your worlds",
   openIntel: "Intel",
   /* The two sensor switches under the disc readout. `aria-label` only. */
@@ -33,6 +37,8 @@ export const galaxy = {
   kindColony: "Colony",
   kindNeutral: "Neutral T{{tier}}",
   /** A world nobody has surveyed. The only honest thing to print about it. D127. */
+  /** What a remembered world's bottom line says: the record, and how old it is. D151. */
+  recordAge: "Record · {{age}}",
   unsurveyed: "Unsurveyed",
   owned: "Yours",
   clanmate: "Clanmate",
@@ -104,7 +110,7 @@ export const focus = {
     settle: "Found colony",
     settleNeedSlot: "Found colony · colony slot full",
     settleNeedBay: "Found colony · flight bays full",
-    settleNeedHauler: "Found colony · 2 Haulers needed",
+    settleNeedCourier: "Found colony · 2 Couriers needed",
     settleNeedAlloy: "Found colony · Alloy missing",
     settleNeedCrystal: "Found colony · Crystal missing",
     settleNeedFuel: "Found colony · Deuterium missing",
@@ -114,10 +120,10 @@ export const focus = {
       eyebrow: "Colony race",
       title: "Found {{world}}",
       unsurveyedTitle: "Found this world",
-      race: "The first valid Haulers to arrive take the world.",
+      race: "The first valid two-Courier fleet to arrive takes the world.",
       noRecall:
-        "Colony ships cannot be recalled. If another commander wins first, your Haulers and founding cargo return; spent fuel does not.",
-      haulers: "Colony ships",
+        "Colony ships cannot be recalled. If another commander wins first, your Couriers and founding cargo return; spent fuel does not.",
+      transports: "Colony ships",
       foundingCargo: "Founding cargo",
       cargoValue: "{{alloy}} Alloy · {{crystal}} Crystal",
       fuel: "Flight fuel",
@@ -157,7 +163,7 @@ export const focus = {
     colonyRoute: "Route to a colony",
     claimOpen: "Colony race open",
     settlementInFlight: "Your colony ships are on the way",
-    claimRaceExplain: "Nobody owns it yet. The first valid 2 Haulers to arrive take it.",
+    claimRaceExplain: "Nobody owns it yet. The first valid 2 Couriers to arrive take it.",
     colonySlots: "{{used}} / {{total}} colony slots",
     routeRaid: "Win a decisive raid",
     routeRaidDetail: "Attack with combat ships. Destroy every defender and the shield.",
@@ -168,13 +174,13 @@ export const focus = {
     routeSettleInFlightDetail: "Your founding fleet is flying. The first valid arrival wins.",
     raidFleetBadge: "Raid fleet",
     raidFleetExplain:
-      "Choose combat ships in the Raid screen and destroy every defender and the shield. No Haulers, founding cargo or colony slot are needed for step 1.",
+      "Choose combat ships in the Raid screen and destroy every defender and the shield. No Couriers, founding cargo or colony slot are needed for step 1.",
     automaticBadge: "Automatic",
     automaticExplain:
       "A decisive raid opens the race automatically. You do not send another ship or pay another resource for step 2.",
     settlementAwayBadge: "In flight",
     settlementAwayExplain:
-      "Your 2 Haulers and founding cargo have departed. They cannot be recalled; the first valid arrival takes the world.",
+      "Your 2 Couriers and founding cargo have departed. They cannot be recalled; the first valid arrival takes the world.",
     claimCloses: "Closes in {{duration}}",
     claimRaidStillOpen:
       "Another raid is possible; it does not extend this claim.",
@@ -187,8 +193,8 @@ export const focus = {
       "A second Death Star can transfer this colony only while you have an unused colony slot.",
     openFlightBay: "1 free flight bay",
     flightBayExplain:
-      "Needed only for step 3. The one-way flight of the 2 Haulers occupies 1 bay until they reach the neutral world.",
-    haulerCount: "2 Haulers",
+      "Needed only for step 3. The one-way flight of the 2 Couriers occupies 1 bay until they reach the neutral world.",
+    courierCount: "2 Couriers",
     haulerExplain:
       "Only for step 3: these are the founding fleet, sent separate from the raid after it opens the race. They are not needed for the raid.",
     foundingAlloy: "{{amount}} Alloy",
@@ -199,7 +205,7 @@ export const focus = {
       "{{amount}} Crystal travels as the new colony’s starting stock in step 3. It is not a cost of the raid.",
     settlementFuel: "{{amount}} Deuterium",
     settlementFuelExplain:
-      "The 2 Haulers burn {{amount}} Deuterium on their one-way flight in step 3. Distance changes this amount.",
+      "The 2 Couriers burn {{amount}} Deuterium on their one-way flight in step 3. Distance changes this amount.",
     settlementArrivalExplain:
       "The founding flight lasts {{duration}}. It must arrive before the public race closes; first valid arrival wins.",
     arrivesIn: "Arrives {{duration}}",
@@ -418,6 +424,10 @@ export const focus = {
     titleMining: "Mining run",
     titleHarvest: "Salvage run",
     titleDeathStar: "Death Star",
+    titlePirate: "Pirate fleet",
+    eyebrowPirate: "Pirates are out there",
+    boundaryPirate:
+      "You can see the pirates themselves and what they fly. Nothing about where they came from, and nothing about their orbit — a pirate is a position, not a route.",
     working: "Working",
     craftCount: "{{count}} craft",
     /**
@@ -460,4 +470,57 @@ export const focus = {
     wreckHint:
       "Wreckage is public. Whatever is left of both fleets will be in orbit there shortly, and anyone may go and get it.",
   },
+} as const;
+
+/**
+ * KORSAN FİLOLARI — the third thing in the galaxy worth flying at. D150.
+ *
+ * Every line here has to make the RULE visible: the level, the handicap it buys,
+ * the deadline and the odds of towing a ship home. A rule the player cannot see is
+ * not a usable rule (D124), and this is the only surface any of them appear on.
+ */
+export const pirate = {
+  title: "Pirate fleet",
+  /** Level and callsign together. The callsign is season-unique and leaks no index. */
+  name: "Pirate fleet L{{level}}-{{callsign}}",
+  level: "Level {{level}}",
+  eyebrow: "Level {{level}} pirates",
+  /** The one combat modifier in the feature, stated as a number the player can price. */
+  damagePenalty: "This fleet deals {{percent}}% less damage",
+  yourFleet: "Your fleet",
+  atHome: "{{count}} at home",
+  fewer: "Fewer {{name}}",
+  more: "More {{name}}",
+  quantity: "How many {{name}}",
+  max: "Send every {{name}}",
+  maxShort: "Max",
+  noShipsAtHome: "No ships at this world to send.",
+  leftAtHome: "Defence left at home: {{power}} power",
+  eyebrowUnknown: "Unidentified contact",
+  pickShips: "Pick at least one ship",
+  fuelCost: "Fuel {{amount}} deuterium",
+  noFuel: "Not enough deuterium for the round trip",
+  noBay: "No free flight bay",
+  tooSlow: "Your slowest ship cannot catch it",
+  roster: "Crew",
+  rosterUnknown: "Crew unknown at this range",
+  unknownContact: "Unidentified contact",
+  mass: "Mass",
+  leavesIn: "Leaves in",
+  reach: "Reaches it in {{duration}}",
+  reachLabel: "You arrive in",
+  tooLate: "It leaves the area before you could reach it",
+  unreachable: "Nothing at this world could catch it",
+  alreadyRaiding: "This world already has a raid out there",
+  outOfSight: "Not on your sensors",
+  noShips: "No ships at home",
+  captureHint: "A decisive win may hand you one ship from its crew",
+  captured: "{{hull}} captured",
+  captureMissed: "Nothing left worth towing home",
+  send: "Send {{count}} · {{duration}}",
+  outbound: "A launched fleet cannot be recalled.",
+  /** The boundary, stated — the same job the contact panel's last line does. */
+  boundary:
+    "A pirate is where it is, right now. It is not remembered: leave your sensors and it is gone from this list until it comes back.",
+  hoardHint: "What you carry home is capped by the holds you brought.",
 } as const;

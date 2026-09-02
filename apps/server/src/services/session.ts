@@ -13,6 +13,7 @@ import {
   radarRevealsSize,
   type Fleet,
   type MassClass,
+  type PirateLevel,
 } from '@astera/rules';
 import type { Clock } from '../clock.js';
 import type { Db, Queryable } from '../db/client.js';
@@ -21,12 +22,15 @@ import {
   buildings,
   missions,
   notifications,
+  pirateRaids,
   planets,
   players,
   scanEvents,
   seasons,
+  units,
   watches,
 } from '../db/schema.js';
+import { pirateCallsign, privatePirateField } from './pirateField.js';
 import { announceUnlocks } from './notifications.js';
 import { GameError } from './planet.js';
 import { instrumentLevels, levelOf } from './intel.js';
@@ -136,7 +140,7 @@ export interface ReturnEntry {
 export interface PendingThread {
   /** The mission's own id — YOUR OWN CRAFT ONLY. Absent on `incoming`. See below. */
   id?: string;
-  kind: 'fleet' | 'probe' | 'incoming' | 'transfer' | 'settlement' | 'death_star';
+  kind: 'fleet' | 'probe' | 'incoming' | 'transfer' | 'settlement' | 'death_star' | 'pirate';
   targetName: string;
   /**
    * THE WORLD THIS THREAD IS HEADING TOWARD.
@@ -149,6 +153,16 @@ export interface PendingThread {
    * to a selected world without comparing a translated or hidden name.
    */
   targetPlanetId?: string;
+  /**
+   * WHICH PIRATE THIS RAID IS AT. `pirate` THREADS ONLY. D150.
+   *
+   * There is no world on the other end, so `targetPlanetId` is absent and
+   * `targetName` carries the callsign. The level and callsign are handed over
+   * structured rather than as a sentence, because the sentence belongs in the
+   * client's locale files — the server has never written user-facing copy and this
+   * is not the place to start.
+   */
+  pirate?: { level: PirateLevel; callsign: string };
   minutesRemaining: number;
   /**
    * WHEN IT LANDS, EXACTLY — and it is on every thread, including an inbound one.
@@ -616,6 +630,92 @@ export async function pendingThreads(
         arriveAt: m.arriveAt,
       },
     });
+  }
+
+  /**
+   * AND THE RAIDS THIS COMMANDER HAS OUT AT PIRATES. D150 — gap G1.
+   *
+   * A SECOND QUERY RATHER THAN A JOIN, because a pirate raid is not a `missions`
+   * row and never will be: `missions.{originPlanetId, targetPlanetId}` are both
+   * NOT NULL foreign keys to `planets`, and a pirate has no address. The mining
+   * table hit the same wall and made the same choice, for the reason written over
+   * `pirate_raids`.
+   *
+   * WITHOUT THIS THE FEATURE IS INVISIBLE TO ITS OWN OWNER. `traffic.ts` removes
+   * the caller's own craft from the public contact list — deliberately, so a
+   * commander never sees a decorated copy of their own fleet beside the real one —
+   * which means this list is the ONLY place a launched raid is drawn. A player
+   * would have watched their fleet leave and then vanish.
+   */
+  const raids = ownedIds.length === 0
+    ? []
+    : await db
+        .select({
+          raid: pirateRaids,
+          asteroidKey: seasons.asteroidKey,
+          originName: planets.name,
+          originX: planets.x,
+          originY: planets.y,
+          originZ: planets.z,
+        })
+        .from(pirateRaids)
+        .innerJoin(planets, eq(pirateRaids.planetId, planets.id))
+        .innerJoin(seasons, eq(pirateRaids.seasonId, seasons.id))
+        .where(and(
+          inArray(pirateRaids.planetId, ownedIds),
+          inArray(pirateRaids.status, ['outbound', 'returning']),
+        ));
+
+  if (raids.length > 0) {
+    /*
+      THE FLEET AS IT IS NOW, not as it launched. A returning raid has already
+      taken its casualties, and `pirate_raids.fleet` is the immutable launch
+      roster — drawing that on the way home would show ships the player watched
+      die. The parked `units` rows are the live answer, exactly as they are for a
+      mission.
+    */
+    const parked = await db
+      .select({ planetId: units.planetId, location: units.location, hull: units.hull, count: units.count })
+      .from(units)
+      .where(inArray(units.location, raids.map((row) => `pirate:${row.raid.id}`)));
+    const aboard = new Map<string, Fleet>();
+    for (const row of parked) {
+      if (row.count <= 0) continue;
+      const fleet = aboard.get(row.location) ?? {};
+      fleet[row.hull] = (fleet[row.hull] ?? 0) + row.count;
+      aboard.set(row.location, fleet);
+    }
+
+    for (const { raid, asteroidKey, originName, originX, originY, originZ } of raids) {
+      const returning = raid.status === 'returning';
+      const arriveAt = returning ? raid.homeAt : raid.arriveAt;
+      // A raid with no survivors has no return leg and no `homeAt`; it is closed
+      // out by the arrival itself and must not be drawn as a flight.
+      if (!arriveAt) continue;
+      const spec = privatePirateField(asteroidKey)[raid.pirateIndex];
+      if (!spec) continue;
+      const home = { x: originX, y: originY, z: originZ };
+      const meet = { x: raid.interceptX, y: raid.interceptY, z: raid.interceptZ };
+      pending.push({
+        id: raid.id,
+        kind: 'pirate',
+        // The callsign, never a sentence. `originName` is deliberately unused:
+        // the world at this end is the caller's own and is named by the strip.
+        targetName: pirateCallsign(asteroidKey, raid.pirateIndex),
+        pirate: { level: spec.level, callsign: pirateCallsign(asteroidKey, raid.pirateIndex) },
+        minutesRemaining: Math.max(0, Math.round((arriveAt.getTime() - now.getTime()) / 60_000)),
+        arriveAt,
+        leg: returning ? 'return' : 'outbound',
+        fleet: aboard.get(`pirate:${raid.id}`) ?? raid.fleet,
+        path: {
+          from: returning ? meet : home,
+          to: returning ? home : meet,
+          departAt: returning ? raid.arriveAt : raid.departAt,
+          arriveAt,
+        },
+      });
+      void originName;
+    }
   }
 
   return pending;

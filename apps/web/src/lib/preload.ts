@@ -1,5 +1,12 @@
 import { useEffect, useRef, useState } from 'react';
-import { ASTEROID_MODELS, MODEL, PLANET_ART, SATELLITE_MODEL } from '../ui/assets.js';
+import {
+  ASTEROID_MODELS,
+  FLEET_V2_ASSET_MANIFEST,
+  FLEET_V2_LANDING_MODELS,
+  MODEL,
+  PLANET_ART,
+  SATELLITE_MODEL,
+} from '../ui/assets.js';
 import { SATELLITE_IDS } from '@astera/rules';
 
 /**
@@ -42,10 +49,7 @@ export const LANDING_ASSETS: readonly string[] = [
   '/assets/images/planets/planet_4.png',
   '/assets/images/planets/planet_12.png',
   '/assets/images/planets/planet_9.png',
-  MODEL.wasp,
-  MODEL.lance,
-  MODEL.bulwark,
-  MODEL.hauler,
+  ...Object.values(FLEET_V2_LANDING_MODELS),
   MODEL.probe,
   ...ASTEROID_MODELS,
   ...SATELLITE_IDS.map((id) => SATELLITE_MODEL[id]),
@@ -73,21 +77,29 @@ export const LANDING_ASSETS: readonly string[] = [
  * and the Drill satellite's own body, so it appears twice in the sources above and
  * would otherwise be fetched twice and counted twice — a progress bar that reaches
  * 100% having done 92% of a list is exactly the lie this module refuses.
+ * A new commander owns Dart and no other Fleet V2 hull. Warming all eighteen
+ * models would turn a catalog into a startup tax, so heavier silhouettes remain
+ * lazy and arrive only when an identified formation needs them. Card/icon bytes
+ * are included because the opening Shipyard names the craft immediately.
+ *
+ * Measured pre-V2 GALAXY_ASSETS transfer: 1,786,315 bytes. The filesystem test
+ * keeps this active list at or below that fixed baseline.
  */
-export const GALAXY_ASSETS: readonly string[] = [
+export const FLEET_V2_OPENING_ASSETS: readonly string[] = [
   ...new Set([
-    MODEL.wasp,
-    MODEL.lance,
-    MODEL.bulwark,
-    MODEL.hauler,
+    FLEET_V2_ASSET_MANIFEST.DART.model,
+    FLEET_V2_ASSET_MANIFEST.DART.card,
+    FLEET_V2_ASSET_MANIFEST.DART.icon,
     MODEL.probe,
     MODEL.drill,
     ...ASTEROID_MODELS,
-    // All four satellites orbit. The Drill is a craft and is listed above.
     ...SATELLITE_IDS.map((id) => SATELLITE_MODEL[id]),
     ...PLANET_ART,
   ]),
 ];
+
+/** The live galaxy now uses the bounded next-season preload above. */
+export const GALAXY_ASSETS: readonly string[] = FLEET_V2_OPENING_ASSETS;
 
 /** Fetches one asset and resolves either way. Injected, so the counting is testable. */
 export type Loader = (url: string) => Promise<void>;

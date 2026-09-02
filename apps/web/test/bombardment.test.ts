@@ -417,7 +417,7 @@ describe('a leg that ends at a world', () => {
     minutesRemaining: 4,
     arriveAt: new Date('2026-04-01T12:40:00.000Z'),
     leg: 'outbound',
-    fleet: { WASP: 20 },
+    fleet: { DART: 20 },
     path: {
       from: { x: 0, y: 0, z: 0 },
       to: FAR,
@@ -586,7 +586,7 @@ describe('a raid landing, from both sides', () => {
       minutesRemaining: 0,
       arriveAt: new Date('2026-04-01T12:40:00.000Z'),
       leg: 'outbound',
-      fleet: { WASP: 12 },
+      fleet: { DART: 12 },
       path: {
         from: home,
         to: target,

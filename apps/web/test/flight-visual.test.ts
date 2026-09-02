@@ -3,9 +3,13 @@ import { describe, expect, it } from 'vitest';
 import {
   DEATH_STAR_LIGHT,
   HULL_LIGHT,
+  HULL_VISUAL_SCALE,
+  FORMATION_SPACING,
   TRACKING_MARK,
   UNKNOWN_CONTACT_MARK,
   formationAimDirection,
+  formationLayout,
+  hullVisualScale,
 } from '../src/galaxy/flightVisual.js';
 
 describe('flight identity colours', () => {
@@ -17,15 +21,73 @@ describe('flight identity colours', () => {
     }
   });
 
-  it('keeps Runner amber and Breacher and Death Star red', () => {
-    expect(HULL_LIGHT.RUNNER.glow).toBe('#ffc247');
-    expect(HULL_LIGHT.BREACHER.glow).toBe('#ff4059');
+  it('keeps cargo amber, the Nullifier magenta and the Death Star red', () => {
+    expect(HULL_LIGHT.WAYFARER.glow).toBe('#ffb43b');
+    expect(HULL_LIGHT.NULLIFIER.glow).toBe('#d946ef');
     expect(DEATH_STAR_LIGHT.glow).toBe('#ff274d');
     expect(new Set([
-      HULL_LIGHT.WASP.glow,
-      HULL_LIGHT.RUNNER.glow,
-      HULL_LIGHT.BREACHER.glow,
+      HULL_LIGHT.DART.glow,
+      HULL_LIGHT.WAYFARER.glow,
+      HULL_LIGHT.NULLIFIER.glow,
     ]).size).toBe(3);
+  });
+});
+
+describe('authored hull presence', () => {
+  it('covers every hull and applies each Fleet V2 model scale to flight geometry', () => {
+    expect(Object.keys(HULL_VISUAL_SCALE).sort()).toEqual([...ALL_HULLS].sort());
+    expect(hullVisualScale('DART', 10)).toBeCloseTo(8.4, 8);
+    expect(hullVisualScale('TALON', 10)).toBeCloseTo(10, 8);
+    expect(hullVisualScale('CITADEL', 10)).toBeCloseTo(13.8, 8);
+    expect(hullVisualScale('PROSPECTOR', 10)).toBe(10);
+  });
+
+  it('keeps every authored multiplier finite and within the formation spacing budget', () => {
+    for (const hull of ALL_HULLS) {
+      expect(Number.isFinite(HULL_VISUAL_SCALE[hull]), hull).toBe(true);
+      expect(HULL_VISUAL_SCALE[hull], hull).toBeGreaterThanOrEqual(0.8);
+      expect(HULL_VISUAL_SCALE[hull], hull).toBeLessThanOrEqual(1.4);
+    }
+  });
+
+  it('gives a formation enough room for its largest authored hull', () => {
+    const base = 10;
+    const darts = formationLayout([
+      { hull: 'DART', filled: 10, ordinal: 0 },
+      { hull: 'DART', filled: 10, ordinal: 1 },
+    ], base);
+    const capitals = formationLayout([
+      { hull: 'CITADEL', filled: 10, ordinal: 0 },
+      { hull: 'CITADEL', filled: 10, ordinal: 1 },
+    ], base);
+    const separation = (layout: typeof darts): number => Math.hypot(
+      layout.slots[1]![0] - layout.slots[0]![0],
+      layout.slots[1]![1] - layout.slots[0]![1],
+      layout.slots[1]![2] - layout.slots[0]![2],
+    );
+
+    expect(FORMATION_SPACING).toBeGreaterThan(1.5);
+    expect(capitals.scale).toBe(hullVisualScale('CITADEL', base));
+    expect(separation(capitals)).toBeGreaterThan(capitals.scale);
+    expect(separation(capitals)).toBeGreaterThan(separation(darts));
+  });
+
+  it('keeps every pair of large craft outside each other in a crowded formation', () => {
+    const markers = Array.from({ length: 50 }, (_, ordinal) => ({
+      hull: 'CITADEL' as const,
+      filled: 10,
+      ordinal,
+    }));
+    const layout = formationLayout(markers, 10);
+
+    for (let i = 0; i < layout.slots.length; i += 1) {
+      for (let j = i + 1; j < layout.slots.length; j += 1) {
+        const a = layout.slots[i]!;
+        const b = layout.slots[j]!;
+        expect(Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2]))
+          .toBeGreaterThan(layout.scale);
+      }
+    }
   });
 });
 

@@ -46,7 +46,7 @@ export const rewards = {
     SHIPYARD: { name: 'Tersane', tag: 'Yeni gemi sınıfları ve daha hızlı üretim' },
     REFINERY: { name: 'Alaşım Rafinerisi', tag: 'Saat başı alaşım' },
     EXTRACTOR: { name: 'Kristal Ocağı', tag: 'Saat başı kristal' },
-    SHIPS: { name: 'Üretilen Atmacalar', tag: 'Sezon boyunca sayılır' },
+    SHIPS: { name: 'Üretilen Oklar', tag: 'Sezon boyunca sayılır' },
     AEGIS: { name: 'Aegis', tag: 'Dünyanın üstünde bir kalkan' },
     MINE: { name: 'Kazılan asteroitler', tag: 'Hareketli kayaya Kazıcı gönder' },
     SALVAGE: { name: 'Toplanan enkaz', tag: 'Enkaz sahasından kaynak getir' },

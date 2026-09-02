@@ -1,9 +1,11 @@
 import type {
-  BuildingId, GroundHullId, InstrumentId, MobileHullId, SatelliteId,
+  BuildingId, GroundHullId, InstrumentId, MobileHullId, SatelliteId, TechLevels,
 } from '@astera/rules';
 
-/** A hull that fights. Haulers are cargo and are bought on their own terms. */
-export type CombatHullId = Exclude<MobileHullId, 'HAULER' | 'RUNNER'>;
+export type CargoHullId = Extract<MobileHullId, 'COURIER' | 'WAYFARER' | 'ATLAS'>;
+
+/** A hull that fights. Transports are bought on their own terms. */
+export type CombatHullId = Exclude<MobileHullId, CargoHullId>;
 
 /** Target shares of the military budget, by hull. Need not sum to exactly 1. */
 export type Composition = Partial<Record<CombatHullId, number>>;
@@ -69,7 +71,7 @@ export interface Archetype {
   /**
    * WHAT THIS ARCHETYPE HABITUALLY BUILDS.
    *
-   * Before this existed the buy loop walked `['BULWARK','LANCE','WASP']` and took
+   * Before this existed the buy loop walked a dearest-first fixed list and took
    * the first hull it could afford, spending the entire military budget on it. That
    * is the most expensive affordable hull, every session, for every bot — the exact
    * inverse of the dominant composition. Every raid-return reading the project has
@@ -109,9 +111,10 @@ export interface Archetype {
   readonly prospectorTarget: 1 | 2;
   /** Whether this habit values isotope access enough to buy the seasonal project. */
   readonly researchesIsotopes: boolean;
-  readonly researchesRunner: boolean;
-  /** Whether this habit turns a shield-heavy battle report into Breacher access. */
-  readonly researchesBreacher: boolean;
+  /** Ordered cargo choices; the first unlocked hull expresses this habit. */
+  readonly cargoPreference: readonly CargoHullId[];
+  /** Highest research rung this habit will pursue during the season. */
+  readonly researchTargets: TechLevels;
   readonly scouts: boolean;
 }
 
@@ -119,16 +122,19 @@ export type ArchetypeName = 'TURTLE' | 'RAIDER' | 'FARMER' | 'CASUAL' | 'GRINDER
 
 export const ARCHETYPES: Record<ArchetypeName, Archetype> = {
   TURTLE: {
-    share: 0.18, loginsPerDay: 4, defenceRatio: 2.2,
+    share: 0.18, loginsPerDay: 4, defenceRatio: 1.5,
     buildOrder: ['REFINERY', 'EXTRACTOR', 'VAULT', 'CORE', 'HANGAR', 'DEUTERIUM_PLANT'],
     wants: ['AEGIS', 'UPLINK', 'RADAR', 'FOUNDRY'],
     // Never attacks, so this is a home garrison: the cheapest hit points it can
     // put on the pad beside the Bastions it actually relies on.
-    composition: { WASP: 1 }, adaptsComposition: false,
+    composition: { RAMPART: 0.65, WARDEN: 0.35 }, adaptsComposition: false,
     // Heavy first, and enough light guns that a swarm cannot simply walk in.
     groundMix: { BASTION: 0.65, THORN: 0.35 },
-    militaryShare: 0.35, attackChance: 0, miningChance: 0.2, prospectorTarget: 1,
-    researchesIsotopes: false, researchesRunner: false, researchesBreacher: false, scouts: false,
+    militaryShare: 0.15, attackChance: 0, miningChance: 0.2, prospectorTarget: 1,
+    researchesIsotopes: false,
+    cargoPreference: ['ATLAS', 'WAYFARER', 'COURIER'],
+    researchTargets: { STARSHIP_ENGINEERING: 2, SHIP_ARMOR: 4, SHIP_POWER: 2 },
+    scouts: false,
   },
   RAIDER: {
     share: 0.22, loginsPerDay: 6, defenceRatio: 0.35,
@@ -137,33 +143,48 @@ export const ARCHETYPES: Record<ArchetypeName, Archetype> = {
     // Attacks constantly and scouts never, so it cannot learn what it is flying
     // into. A generalist mix is what that player ends up with: enough Lances to
     // hurt a fleet, enough Wasps to be cheap about it, and no idea which it needs.
-    composition: { WASP: 0.55, LANCE: 0.45 }, adaptsComposition: false,
+    composition: { DART: 0.7, PIKE: 0.1, WARDEN: 0.2 }, adaptsComposition: false,
     // Barely defends at all, so it buys the cheap gun it can afford between raids.
     groundMix: { THORN: 0.8, BASTION: 0.2 },
-    militaryShare: 0.65, attackChance: 0.55, miningChance: 0.25, prospectorTarget: 1,
-    researchesIsotopes: false, researchesRunner: false, researchesBreacher: false, scouts: false,
+    militaryShare: 0.65, attackChance: 0.7, miningChance: 0.25, prospectorTarget: 1,
+    researchesIsotopes: true,
+    cargoPreference: ['COURIER'],
+    researchTargets: {
+      ISOTOPE_SPECTROMETRY: 1, DENSE_FUEL_CELLS: 1,
+      STARSHIP_ENGINEERING: 2, SHIP_POWER: 4, SHIP_ARMOR: 2, SHIP_PROPULSION: 5,
+    },
+    scouts: false,
   },
   FARMER: {
     share: 0.24, loginsPerDay: 4, defenceRatio: 1.3,
     buildOrder: ['REFINERY', 'EXTRACTOR', 'VAULT', 'CORE', 'SHIPYARD', 'HANGAR', 'DEUTERIUM_PLANT'],
     wants: ['FOUNDRY', 'AEGIS', 'UPLINK', 'RADAR'],
     // Raids occasionally and cheaply; the fleet is a sideline to the economy.
-    composition: { WASP: 0.7, LANCE: 0.3 }, adaptsComposition: false,
+    composition: { WARDEN: 0.7, DART: 0.3 }, adaptsComposition: false,
     // Hedged. It does not know who is coming and does not intend to find out.
     groundMix: { BASTION: 0.5, THORN: 0.5 },
-    militaryShare: 0.3, attackChance: 0.12, miningChance: 0.7, prospectorTarget: 2,
-    researchesIsotopes: true, researchesRunner: false, researchesBreacher: false, scouts: false,
+    militaryShare: 0.3, attackChance: 0.2, miningChance: 0.7, prospectorTarget: 2,
+    researchesIsotopes: true,
+    cargoPreference: ['ATLAS', 'WAYFARER', 'COURIER'],
+    researchTargets: {
+      ISOTOPE_SPECTROMETRY: 1, DENSE_FUEL_CELLS: 1,
+      STARSHIP_ENGINEERING: 1, SHIP_ARMOR: 2, SHIP_PROPULSION: 2,
+    },
+    scouts: false,
   },
   CASUAL: {
     share: 0.24, loginsPerDay: 2, defenceRatio: 0.9,
     buildOrder: ['REFINERY', 'CORE', 'EXTRACTOR', 'SHIPYARD', 'VAULT', 'HANGAR', 'DEUTERIUM_PLANT'],
     wants: ['UPLINK', 'RADAR', 'AEGIS', 'FOUNDRY'],
     // Two logins a day buys the cheap thing and moves on.
-    composition: { WASP: 0.8, LANCE: 0.2 }, adaptsComposition: false,
+    composition: { DART: 0.7, RAMPART: 0.3 }, adaptsComposition: false,
     // Two logins a day buys what is cheap and available from the first minute.
     groundMix: { THORN: 0.7, BASTION: 0.3 },
-    militaryShare: 0.4, attackChance: 0.2, miningChance: 0.35, prospectorTarget: 1,
-    researchesIsotopes: false, researchesRunner: false, researchesBreacher: false, scouts: false,
+    militaryShare: 0.4, attackChance: 0.3, miningChance: 0.35, prospectorTarget: 1,
+    researchesIsotopes: false,
+    cargoPreference: ['WAYFARER', 'COURIER'],
+    researchTargets: { STARSHIP_ENGINEERING: 1, SHIP_POWER: 2 },
+    scouts: false,
   },
   GRINDER: {
     share: 0.12, loginsPerDay: 10, defenceRatio: 0.45,
@@ -171,11 +192,17 @@ export const ARCHETYPES: Record<ArchetypeName, Archetype> = {
     wants: ['UPLINK', 'TELESCOPE', 'RADAR', 'VEIL', 'BEACON'],
     // The only archetype that reasons about its fleet. `composition` here is the
     // fallback for a Shipyard too low to offer a choice.
-    composition: { WASP: 0.6, LANCE: 0.4 }, adaptsComposition: true,
+    composition: { DART: 0.55, PIKE: 0.45 }, adaptsComposition: true,
     // Light-heavy: it expects to be hit by the same heavies it flies itself.
     groundMix: { BASTION: 0.4, THORN: 0.6 },
-    militaryShare: 0.6, attackChance: 0.7, miningChance: 0.85, prospectorTarget: 2,
-    researchesIsotopes: true, researchesRunner: true, researchesBreacher: true, scouts: true,
+    militaryShare: 0.7, attackChance: 0.7, miningChance: 0.85, prospectorTarget: 2,
+    researchesIsotopes: true,
+    cargoPreference: ['ATLAS', 'WAYFARER', 'COURIER'],
+    researchTargets: {
+      ISOTOPE_SPECTROMETRY: 1, DENSE_FUEL_CELLS: 1, GRAVITIC_CHARGES: 1,
+      STARSHIP_ENGINEERING: 2, SHIP_POWER: 4, SHIP_ARMOR: 4, SHIP_PROPULSION: 2,
+    },
+    scouts: true,
   },
 };
 

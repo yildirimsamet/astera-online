@@ -25,7 +25,10 @@ import type {
 type Exact<A, B> = [A] extends [B] ? ([B] extends [A] ? true : never) : never;
 
 export const hullId = z.enum([
-  'WASP', 'LANCE', 'BULWARK', 'HAULER', 'RUNNER', 'BREACHER',
+  'DART', 'PIKE', 'RAMPART', 'WARDEN', 'COURIER',
+  'VIPER', 'TALON', 'STRONGHOLD', 'SENTINEL', 'WAYFARER',
+  'TEMPEST', 'BALLISTA', 'LEVIATHAN', 'PRAETORIAN', 'ATLAS', 'NULLIFIER',
+  'CATACLYSM', 'CITADEL',
   'BASTION', 'THORN', 'PROSPECTOR',
 ]);
 export const buildingId = z.enum([
@@ -48,8 +51,8 @@ export const grade = z.enum(['DECISIVE', 'PARTIAL', 'REPELLED']);
 export const researchProjectId = z.enum([
   'ISOTOPE_SPECTROMETRY', 'DENSE_FUEL_CELLS', 'GRAVITIC_CHARGES', 'DEATH_STAR_PROTOCOL',
   'DEUTERIUM_SYNTHESIS', 'YARD_AUTOMATION', 'PROSPECTOR_HOLDS', 'CARGO_HOLDS',
-  'WASP_DOCTRINE', 'LANCE_DOCTRINE', 'BULWARK_DOCTRINE', 'EMPLACEMENT_DOCTRINE',
-  'WEAPONS_GENERAL', 'INTERCEPTION_GRID', 'STRATEGIC_STOCKPILE',
+  'STARSHIP_ENGINEERING', 'SHIP_POWER', 'SHIP_ARMOR', 'SHIP_PROPULSION',
+  'EMPLACEMENT_DOCTRINE', 'INTERCEPTION_GRID', 'STRATEGIC_STOCKPILE',
 ]);
 
 // If any of these stop compiling, the rules changed and this file has not.
@@ -252,6 +255,27 @@ export const seasonSchema = z.object({
   rivalPlayerId: z.string().nullable().optional(),
   /** Once the first shared move exists, the seasonal choice cannot be replaced. D103. */
   rivalCommitted: z.boolean().optional(),
+});
+
+const activeGalaxyEventSchema = z.object({
+  id: z.string().uuid(),
+  kind: z.literal('ASTEROID_SHOWER'),
+  startsAt: z.coerce.date(),
+  endsAt: z.coerce.date(),
+  asteroidSpawnMultiplier: z.number().gt(1),
+});
+
+export const activeGalaxyEventsSchema = z.object({
+  events: z.array(z.unknown()).transform((rows, context) => rows.flatMap((row, index) => {
+    const identity = z.object({ kind: z.string() }).passthrough().safeParse(row);
+    if (!identity.success || identity.data.kind !== 'ASTEROID_SHOWER') return [];
+    const parsed = activeGalaxyEventSchema.safeParse(row);
+    if (parsed.success) return [parsed.data];
+    for (const issue of parsed.error.issues) {
+      context.addIssue({ ...issue, path: [index, ...issue.path] });
+    }
+    return [];
+  })),
 });
 
 export const rivalSetSchema = z.object({
@@ -994,7 +1018,7 @@ export const clanSeenSchema = z.object({ readAt: z.coerce.date() });
 const chatMessageSchema = z.object({
   id: z.string(),
   authorPlayerId: z.string(),
-  planetId: z.string(),
+  planetId: z.string().optional(),
   username: z.string(),
   content: z.string(),
   createdAt: z.coerce.date(),
@@ -1077,10 +1101,42 @@ const galaxyEventSchema = z.discriminatedUnion('kind', [
     payload: z.object({ planetName: z.string(), commanderName: z.string() }),
     occurredAt: z.coerce.date(),
   }),
+  ...(['galaxy_event_started', 'galaxy_event_ended'] as const).map((kind) =>
+    z.object({
+      id: z.string(),
+      kind: z.literal(kind),
+      subjectPlanetId: z.null(),
+      payload: z.object({
+        eventKind: z.literal('ASTEROID_SHOWER'),
+        startsAt: z.string(),
+        endsAt: z.string(),
+        asteroidSpawnMultiplier: z.number().gt(1),
+      }),
+      occurredAt: z.coerce.date(),
+    })),
 ]);
 
+const knownChronicleKinds: ReadonlySet<string> = new Set(
+  galaxyEventSchema.options.map((option) => option.shape.kind.value),
+);
+
 export const chroniclePageSchema = z.object({
-  events: z.array(galaxyEventSchema),
+  events: z.array(z.unknown()).transform((rows, context) => rows.flatMap((row, index) => {
+    const identity = z.object({ kind: z.string() }).passthrough().safeParse(row);
+    if (!identity.success || !knownChronicleKinds.has(identity.data.kind)) return [];
+    if (identity.data.kind === 'galaxy_event_started' || identity.data.kind === 'galaxy_event_ended') {
+      const lifecycle = z.object({
+        payload: z.object({ eventKind: z.string() }).passthrough(),
+      }).passthrough().safeParse(row);
+      if (!lifecycle.success || lifecycle.data.payload.eventKind !== 'ASTEROID_SHOWER') return [];
+    }
+    const parsed = galaxyEventSchema.safeParse(row);
+    if (parsed.success) return [parsed.data];
+    for (const issue of parsed.error.issues) {
+      context.addIssue({ ...issue, path: [index, ...issue.path] });
+    }
+    return [];
+  })),
   nextBefore: z.string().nullable(),
 });
 
@@ -1208,8 +1264,19 @@ const pendingThread = z.object({
    * own (D52).
    */
   id: z.string().optional(),
-  kind: z.enum(['fleet', 'probe', 'incoming', 'transfer', 'settlement', 'death_star']),
+  kind: z.enum(['fleet', 'probe', 'incoming', 'transfer', 'settlement', 'death_star', 'pirate']),
   targetName: z.string(),
+  /**
+   * WHICH PIRATE A `pirate` THREAD IS AT. D150.
+   *
+   * There is no world on the far end, so `targetPlanetId` is absent and
+   * `targetName` carries the callsign. The level and callsign arrive structured
+   * because the sentence that names a pirate belongs in the locale files, not in
+   * a server response.
+   */
+  pirate: z
+    .object({ level: z.number().int().min(1).max(4), callsign: z.string() })
+    .optional(),
   minutesRemaining: z.number(),
   /** The exact landing instant, on your own craft and on an inbound one alike. */
   arriveAt: z.coerce.date(),
@@ -1336,8 +1403,23 @@ const ordinaryBattleReport = z.object({
       /** Absent only on battle reports cached before strategic reports existed. */
       kind: z.literal('BATTLE').optional(),
       id: z.string(),
-      /** Present on current servers; optional so an old cached report still opens normally. */
-      missionId: z.string().optional(),
+      /**
+       * Present on current servers; optional so an old cached report still opens
+       * normally — and NULLABLE since D150, because a pirate battle has no mission.
+       */
+      missionId: z.string().nullish(),
+      /**
+       * THE OTHER BINDER. D150.
+       *
+       * A pirate raid is not a `missions` row, so its report is addressed by the
+       * raid instead. Signals matches a notification's `refId` against BOTH, which
+       * is what makes a pirate notification open its own report.
+       */
+      pirateRaidId: z.string().nullish(),
+      /** What was on the other side, when it was not a commander. IDENTIFIED sight. */
+      pirate: z
+        .object({ level: z.number().int().min(1).max(4), callsign: z.string() })
+        .nullish(),
       at: z.coerce.date(),
       grade,
       rounds: z.array(
@@ -1351,7 +1433,7 @@ const ordinaryBattleReport = z.object({
           shieldBefore: z.number().nullable().optional(),
           shieldAfter: z.number().nullable().optional(),
           shieldAbsorbed: z.number(),
-          breacherShieldDamage: z.number(),
+          shieldBreakerDamage: z.number(),
           attackerHullDamage: z.number().nullable().optional(),
           attackerLosses: fleet,
           defenderLosses: fleet,
@@ -1528,7 +1610,15 @@ export const miningSchema = z.object({
   debris: z.array(
     z.object({
       id: z.string(),
-      planetId: z.string(),
+      /**
+       * The world this wreckage orbits, or NULL when there is none. D150.
+       *
+       * A pirate battle happens at a rendezvous in open space, so the position
+       * moved onto `at` and this became the answer to a narrower question: which
+       * world's ring is this drawn against.
+       */
+      planetId: z.string().nullable(),
+      at: vec3,
       alloy: z.number(),
       crystal: z.number(),
       deuterium: z.number(),
@@ -1612,6 +1702,87 @@ export const miningLaunchSchema = miningLaunchBaseSchema.extend({
 const vec = z.object({ x: z.number(), y: z.number(), z: z.number() });
 
 /**
+ * THE PIRATES THIS COMMANDER CAN SEE RIGHT NOW. D150.
+ *
+ * A live sight reading, never a remembered one: unlike an asteroid (D143), a
+ * pirate that leaves your circles stops existing for you, so this list shrinks as
+ * well as grows and the client must not cache it as an address book.
+ *
+ * THE LADDER IS IN THE OPTIONALITY. `zone` says which of the three states this
+ * reading is; `level`, `fleet` and `damageMult` arrive only with IDENTIFIED,
+ * `mass` at Radar L4 and `silhouette` at L5. Nothing here carries an orbit —
+ * radius, period and phase ARE the route, and a route is what the fog refuses.
+ */
+export const piratesSchema = z.object({
+  originPlanetId: z.string(),
+  pirates: z.array(z.object({
+    id: z.string(),
+    /** Four characters off the opaque handle. Season-unique, and leaks no index. */
+    callsign: z.string(),
+    zone: z.enum(['CONTACT', 'IDENTIFIED']),
+    at: vec,
+    /** Minutes until it leaves the disc for good. A deadline, so it is public. */
+    expiresInMinutes: z.number(),
+    /**
+     * The soonest rendezvous this world's FASTEST hull could keep, or null.
+     *
+     * A best case, and labelled as one: a fleet flies at its slowest ship, so the
+     * launch itself is the authority on the actual squadron. Solved on the server
+     * because a second implementation of a numerical intercept would put a
+     * different minute on the screen than the one the launch used.
+     */
+    reachMinutes: z.number().nullable(),
+    /**
+     * THE EXACT FLIGHT TIME FOR EVERY SPEED THIS WORLD CAN FIELD.
+     *
+     * A fleet flies at its slowest hull, so these are not samples of a curve —
+     * they are the complete set of answers. The launch sheet reads the entry for
+     * the slowest ship the player has picked and quotes the minute the server will
+     * actually use, without a second request and without a client-side solver.
+     */
+    /**
+     * One entry per hull standing at the caller's world, with the rendezvous the
+     * launch will actually use. Keyed by HULL, never by speed: the published
+     * figures carry the world's Beacon and the commander's Propulsion, and the
+     * client only knows the catalogue — matching those two scales quoted the wrong
+     * ship's flight time and offered launches the server then refused. A hull that
+     * is absent cannot reach this pirate.
+     */
+    reach: z.array(z.object({ hull: hullId, minutes: z.number(), distance: z.number() })),
+    /** IDENTIFIED only: what it is, what it flies, and how hard it hits. */
+    level: z.number().int().min(1).max(4).optional(),
+    fleet: fleet.optional(),
+    damageMult: z.number().optional(),
+    mass: massClass.optional(),
+    silhouette: z.literal('pirate').optional(),
+  })),
+});
+
+/**
+ * A LAUNCHED RAID, with the strip and the world it left. D53 · D150.
+ *
+ * The same three-view answer a mining launch gives, and for the same reason: the
+ * craft is drawn on the frame the response lands, and an older read already in
+ * flight cannot land afterwards and erase it.
+ */
+export const pirateRaidSchema = z.object({
+  raidId: z.string(),
+  pirateId: z.string(),
+  level: z.number().int().min(1).max(4),
+  callsign: z.string(),
+  fleet,
+  departAt: z.coerce.date(),
+  arriveAt: z.coerce.date(),
+  flightMinutes: z.number(),
+  intercept: vec,
+  /** Deuterium taken for BOTH legs at launch, and never refunded. D136. */
+  fuel: z.number(),
+  pending: z.array(pendingThread),
+  ...withPlanet,
+});
+
+
+/**
  * Other players' fleets, deliberately unattributable.
  *
  * No id, owner, kind or destination — and `from`/`to` are points on the middle of
@@ -1651,7 +1822,7 @@ export const trafficSchema = z.object({
        * an advertisement for the Telescope written in the picture rather than in a
        * tooltip (D124).
        */
-      kind: z.enum(['unknown', 'fleet', 'probe', 'death_star', 'mining', 'harvest']),
+      kind: z.enum(['unknown', 'fleet', 'probe', 'death_star', 'mining', 'harvest', 'pirate']),
       /**
        * WHAT KIND OF CRAFT A QUESTION MARK IS, WHEN RADAR L5 HAS EARNED IT.
        *
@@ -1660,7 +1831,7 @@ export const trafficSchema = z.object({
        * traffic rather than only on a raid aimed at you. A kind, never a roster.
        */
       silhouette: z
-        .enum(['unknown', 'fleet', 'probe', 'death_star', 'mining', 'harvest'])
+        .enum(['unknown', 'fleet', 'probe', 'death_star', 'mining', 'harvest', 'pirate'])
         .optional(),
       from: vec,
       to: vec,
@@ -1688,6 +1859,15 @@ export const trafficSchema = z.object({
       mass: massClass.optional(),
       /** Exact hull tally, only for an identified fleet inside Telescope sight. */
       fleet: fleet.optional(),
+      /**
+       * HOW HARD A PIRATE HITS. IDENTIFIED PIRATES ONLY. D150.
+       *
+       * The level is the price tag — it sets the damage handicap, the roster's
+       * tier ceiling and the odds of towing a hull home — so it is the Telescope's
+       * product, exactly like a fleet's manifest. A Radar contact gets a question
+       * mark, a mass and a silhouette, and never this.
+       */
+      level: z.number().int().min(1).max(4).optional(),
       /**
        * THIS ONE IS COMING FOR YOU, AND THAT IS ALL IT SAYS. D126.
        *
@@ -1896,6 +2076,7 @@ export type ServerStatus = z.infer<typeof serverStatus>;
 export type ServerList = z.infer<typeof serverListSchema>;
 export type Placement = z.infer<typeof placementSchema>;
 export type SeasonInfo = z.infer<typeof seasonSchema>;
+export type ActiveGalaxyEvent = z.infer<typeof activeGalaxyEventsSchema>['events'][number];
 export type HistoricalSeasonResult = z.infer<typeof historicalSeasonResultSchema>;
 type ParsedPlanetView = z.infer<typeof planetSchema>;
 type ParsedQueues = NonNullable<ParsedPlanetView['queues']>;
@@ -1970,6 +2151,9 @@ export type ScanRow = IntelView['radarLog'][number];
 export type ReturnPayload = z.infer<typeof returnSchema>;
 export type ReturnEntry = ReturnPayload['entries'][number];
 export type PendingThread = z.infer<typeof pendingThread>;
+export type PiratesView = z.infer<typeof piratesSchema>;
+export type PirateContact = PiratesView['pirates'][number];
+export type PirateRaidResult = z.infer<typeof pirateRaidSchema>;
 export type Unlockable = z.infer<typeof unlockable>;
 export type LaunchResult = z.infer<typeof launchSchema>;
 export type MiningLaunchResult = z.infer<typeof miningLaunchSchema>;

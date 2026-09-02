@@ -36,7 +36,7 @@ const planet = (over: PlanetOver = {}): PlanetView =>
     {
       buildings: over.buildings ?? { CORE: 3, REFINERY: 1, EXTRACTOR: 1, VAULT: 0, SHIPYARD: 0 },
       instruments: over.instruments ?? { TELESCOPE: 1, RADAR: 3 },
-      fleet: over.fleet ?? { WASP: 6 },
+      fleet: over.fleet ?? { DART: 6 },
       ground: over.ground ?? {},
       score: { wealth: 4_000, dominion: 0 },
     },

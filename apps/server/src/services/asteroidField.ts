@@ -4,7 +4,9 @@ import {
   asteroidDiscoveredAt,
   generateAsteroidSchedule,
   nextAsteroidDiscoveryAt,
+  withAsteroidShowerLanes,
   type AsteroidSpec,
+  type PlannedGalaxyEvent,
   type SensorEpoch,
 } from '@astera/rules';
 import { atMinute, minutesSince } from '../clock.js';
@@ -26,6 +28,7 @@ function keyedRng(key: string): { rng: () => number; isotopeSeed: number } {
 }
 
 const fieldCache = new Map<string, AsteroidSpec[]>();
+const composedFieldCache = new Map<string, AsteroidSpec[]>();
 const idCache = new Map<string, Map<string, number>>();
 const CACHE_MAX = 32;
 
@@ -52,6 +55,52 @@ export function privateAsteroidField(key: string): AsteroidSpec[] {
   return field;
 }
 
+function showerRng(key: string, sequence: number): () => number {
+  let counter = 0;
+  return () => {
+    const value = createHmac('sha256', key)
+      .update(`asteroid:shower:v1:${String(sequence)}:${String(counter)}`)
+      .digest()
+      .readUInt32BE(0);
+    counter += 1;
+    return value / 0x1_0000_0000;
+  };
+}
+
+/** Baseline plus immutable event lanes, cached by the complete occurrence snapshot. */
+export function privateAsteroidFieldWithEvents(
+  key: string,
+  occurrences: readonly PlannedGalaxyEvent[],
+): AsteroidSpec[] {
+  if (occurrences.length === 0) return privateAsteroidField(key);
+  const signature = occurrences.map((occurrence) => [
+    occurrence.sequence,
+    occurrence.kind,
+    occurrence.startsAtMinute,
+    occurrence.endsAtMinute,
+    occurrence.definitionVersion,
+    occurrence.effect.asteroidSpawnMultiplier,
+  ].join(':')).join('|');
+  const cacheKey = `${key}:${signature}`;
+  const cached = composedFieldCache.get(cacheKey);
+  if (cached) {
+    composedFieldCache.delete(cacheKey);
+    composedFieldCache.set(cacheKey, cached);
+    return cached;
+  }
+
+  const isotopeSeed = keyedRng(key).isotopeSeed;
+  const field = withAsteroidShowerLanes(
+    privateAsteroidField(key),
+    occurrences,
+    isotopeSeed,
+    (occurrence) => showerRng(key, occurrence.sequence),
+  );
+  composedFieldCache.set(cacheKey, field);
+  trim(composedFieldCache);
+  return field;
+}
+
 /** Stable 128-bit public handle; the raw schedule index is never serialised. */
 export function asteroidId(key: string, index: number): string {
   return createHmac('sha256', key)
@@ -62,10 +111,14 @@ export function asteroidId(key: string, index: number): string {
 }
 
 function idsFor(key: string, field: readonly AsteroidSpec[]): Map<string, number> {
-  const cached = idCache.get(key);
+  // A base field and its event-composed field share the secret key but not their
+  // number of indices. Keying only by the secret would make bonus ids unresolvable
+  // if the base map happened to be cached first.
+  const cacheKey = `${key}:${String(field.length)}`;
+  const cached = idCache.get(cacheKey);
   if (cached) return cached;
   const ids = new Map(field.map((rock) => [asteroidId(key, rock.index), rock.index]));
-  idCache.set(key, ids);
+  idCache.set(cacheKey, ids);
   trim(idCache);
   return ids;
 }

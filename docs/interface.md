@@ -191,9 +191,9 @@ quantity unreachable.
 
 ### I4 · One notification centre, holding status as well as events
 
-The seven server notification kinds, plus client-derived status the player would otherwise have
-to notice for themselves — principally a full works. Nothing here is ever pushed out of the
-app.
+The personal server notification kinds, the two public galaxy-event lifecycle kinds, plus
+client-derived status the player would otherwise have to notice for themselves — principally a
+full works. Nothing here is ever pushed out of the app.
 
 Unseen state clears when the centre is **opened**, not when the app loads. Status never enters
 the count, because a badge that cannot be cleared teaches people to ignore badges. A run of
@@ -338,6 +338,11 @@ The galaxy draws the free 750-unit neighbourhood even without a Telescope and th
 effective Telescope sphere when one is online. Asteroids appear on the shared server-clock instant
 their orbit first enters any owned sphere and remain until gone; a field refresh must not reframe
 the camera or erase a selected object before the authoritative expiry/depletion response does.
+
+An active galaxy event is read directly below the disc readout as a compact live chip. Asteroid
+Shower states its ×5 arrival effect and server-clock countdown; it disappears at the half-open end
+instant. Start/end also enter Signals and the public Chronicle. The end message says arrival is
+normal again without implying that existing rocks vanished.
 
 ### I6a · Feedback stays where the state changed
 

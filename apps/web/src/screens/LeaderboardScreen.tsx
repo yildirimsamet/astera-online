@@ -7,13 +7,11 @@ import { haptic } from '../lib/haptics.js';
 import { commanderLabel } from '../lib/identity.js';
 import { PlanetSigil } from '../ui/PlanetSigil.js';
 import { EmptyState, Unreachable, Waiting } from '../ui/kit/index.js';
-import { useToast } from '../ui/Toast.js';
 
 /** The whole local galaxy, ordered by the server's authoritative Dominion score. */
 export function LeaderboardScreen({ onFocusPlanet }: { onFocusPlanet: (planetId: string) => void }) {
   const { t } = useTranslation();
   const board = useLeaderboard();
-  const say = useToast();
   const [query, setQuery] = useState('');
 
   if (board.isError) {
@@ -98,17 +96,15 @@ export function LeaderboardScreen({ onFocusPlanet }: { onFocusPlanet: (planetId:
                     ) : null}
                     <span className="truncate">{row.username}</span>
                   </strong>
-                ) : (
+                ) : row.planetId !== undefined ? (
                   <button
                     type="button"
                     aria-label={commanderLabel(row.username, row.clan?.tag)}
                     onClick={() => {
+                      const planetId = row.planetId;
+                      if (planetId === undefined) return;
                       haptic('tap');
-                      if (row.planetId === undefined) {
-                        say(t('leaderboard.locationUnknown'), 'error');
-                        return;
-                      }
-                      onFocusPlanet(row.planetId);
+                      onFocusPlanet(planetId);
                     }}
                     className="name flex min-w-0 items-baseline gap-2 text-bone underline decoration-bone/35 underline-offset-2"
                   >
@@ -119,6 +115,18 @@ export function LeaderboardScreen({ onFocusPlanet }: { onFocusPlanet: (planetId:
                     ) : null}
                     <span className="truncate">{row.username}</span>
                   </button>
+                ) : (
+                  <span
+                    className="name flex min-w-0 items-baseline gap-2 text-bone"
+                    aria-label={commanderLabel(row.username, row.clan?.tag)}
+                  >
+                    {row.clan ? (
+                      <span className="legend shrink-0 text-crystal" title={row.clan.name}>
+                        [{row.clan.tag}]
+                      </span>
+                    ) : null}
+                    <span className="truncate">{row.username}</span>
+                  </span>
                 )}
                 {self ? <span className="legend text-crystal">{t('leaderboard.you')}</span> : null}
               </span>

@@ -2,14 +2,14 @@
  * ADI OLAN ŞEYLER VE OYUNUN ONLAR HAKKINDA KURDUĞU CÜMLELER.
  *
  * GEMİ ADLARI ÇEVRİLMEDİ, TÜRKÇE KARŞILIĞI KONULDU. Bunlar özel isim gibi durur
- * ama aslında sınıf adıdır: "Wasp" bir oyuncuya ucuz, hızlı ve sürü hâlinde
- * demektir. Türkçe okuyan biri bunu "Wasp"tan çıkaramaz, "Atmaca"dan çıkarır.
+ * ama aslında sınıf adıdır: "Dart" bir oyuncuya ucuz, hızlı ve sürü hâlinde
+ * demektir. Türkçe okuyan biri bunu "Dart"tan çıkaramaz, "Ok"dan çıkarır.
  * Seçimler sözlük karşılığı değil, Türkçede aynı askerî tınıyı veren adlar:
  *
- *   Wasp → Atmaca · Lance → Mızrak · Bulwark → Siper · Hauler → Şilep
+ *   Dart → Ok · Lance → Mızrak · Bulwark → Siper · Courier → Kurye
  *   Bastion → Tabya · Thorn → Kirpi · Prospector → Kazıcı
  *
- * "Tabya" ve "Şilep" gerçek Türkçe askerî ve denizcilik terimleri; oyuncunun
+ * "Tabya" ve "Kurye" gerçek Türkçe askerî ve denizcilik terimleri; oyuncunun
  * kulağına yabancı gelmezler.
  *
  * UYDULARIN ADI, YAPTIKLARI İŞTEN GELİR — SÖZLÜKTEN DEĞİL. İlk turda hepsi
@@ -161,61 +161,145 @@ export const vocabulary = {
   },
 
   hull: {
-    WASP: {
-      name: 'Atmaca',
-      tag: 'Ucuz ve hızlı',
-      role: 'En ucuz ve en hızlı savaş gemisi; ağır Siper sınıfına karşı etkilidir.',
-      pitch: 'Kısa süreli akınlar ve Siper ağırlıklı savunmalar için hızlı, düşük maliyetli saldırı gücü sağlar.',
-      detail: 'Atmaca, Siper ve Tabya gibi ağır Siper sınıfı hedeflere karşı güçlü; Mızrak ve Delici sınıfına karşı zayıftır. 130 hızla en kısa görev süresini sunar. Geminin 45 birim ambarı vardır ancak asıl görevi savaşmaktır; büyük ganimet için Şilep veya Koşucu gerekir.',
+    DART: {
+      name: 'Ok',
+      tag: 'Kırılgan hızlı akıncı',
+      role: 'Giriş seviyesindeki en hızlı savaş gövdesidir; dayanım yerine kısa görev süresi sunar.',
+      pitch: 'Hızla vurup döner, fakat yoğun ateş altında çabuk dağılır.',
+      detail: 'Ok, kısa akınlar ve ağır gövdelere karşı hızlı karşılık vermek için tasarlanmış ucuz bir Çevik sınıf gemidir. Hızı ev savunmasının dışarıda kaldığı süreyi azaltır; ince gövdesi ise yanlış istihbaratı pahalıya çevirir.',
     },
-    LANCE: {
-      name: 'Mızrak',
-      tag: 'Hafif gemilere karşı',
-      role: 'Atmaca ve Kirpi sınıfına karşı güçlü; Siper ve Tabya sınıfına karşı zayıftır.',
-      pitch: 'Hafif ve kalabalık kuvvetlere karşı etkilidir; ağır Siper sınıfıyla karşılaştığında verimi düşer.',
-      detail: 'Mızrak, Atmaca ve Kirpi gibi hafif hedeflere karşı 1,6 kat sınıf üstünlüğü kazanır. Siper ve Tabya ona karşı aynı üstünlüğe sahiptir. Yüksek saldırı değeri filo alanını iyi değerlendirir; ancak tek tip Mızrak filosu ağır savunmaya karşı kolayca etkisiz kalır.',
+    PIKE: {
+      name: 'Kargı',
+      tag: 'Giriş seviye taarruz gemisi',
+      role: 'Bedeline göre yüksek saldırı üretir; dayanıklı Siper sınıfı hedeflere karşı verimsizdir.',
+      pitch: 'Kaynağının büyük bölümünü hayatta kalmaya değil hasara ayırır.',
+      detail: 'Kargı, Çevik gemileri ve Kirpileri avlayan Mızrak sınıfı bir saldırı gövdesidir. Sur ve Tabya doğal karşılığıdır; bu yüzden yalnız Kargıdan oluşan bir filonun rakip tarafından okunabilir ve etkili bir cevabı vardır.',
     },
-    BULWARK: {
-      name: 'Siper',
-      tag: 'Ağır ve dayanıklı',
-      role: 'En dayanıklı savaş gemisidir; Mızrak sınıfına güçlü, Atmaca sınıfına zayıftır.',
-      pitch: 'Mızrak ve Delici ağırlıklı kuvvetlere dayanır; düşük hızı bütün filonun görev süresini uzatır.',
-      detail: 'Siper, Mızrak ve Delici sınıfına karşı güçlü; Atmaca ve Kirpi sınıfına karşı zayıftır. 662 gövde dayanımı uzun çatışmalarda filoyu ayakta tutar. Filo en yavaş gemisinin hızında ilerlediği için 65 hızındaki tek bir Siper bile hızlı bir filonun gidiş ve dönüş süresini belirgin biçimde artırabilir.',
+    RAMPART: {
+      name: 'Sur',
+      tag: 'Giriş seviye kale gemisi',
+      role: 'Ucuz dayanıklılık sağlar, fakat bulunduğu bütün filonun uçuşunu yavaşlatır.',
+      pitch: 'Mızrak ateşini iyi karşılar; Çevik sürülere karşı açık verir.',
+      detail: 'Sur, saldırı yerine gövde dayanımına yatırım yapan yavaş bir Siper sınıfı hat gemisidir. Yolculuk süresinin önemsiz, filonun ayakta kalmasının önemli olduğu kuşatma ve savunma görevlerinde değer kazanır.',
     },
-    HAULER: {
-      name: 'Şilep',
-      tag: 'Ganimeti taşır',
-      role: '2.200 birim akın ve transfer kapasitesi sağlar; saldırı gücü yoktur.',
-      pitch: 'Büyük miktarda ganimet veya kaynak taşır. Çatışmada hasar veremediği için savaş gemileriyle korunmalıdır.',
-      detail: 'Şilep, 2.200 birimle en büyük gemi ambarına sahiptir ve dünyalar arası kaynak transferinde kullanılabilir. Saldırı değeri sıfırdır; destek sınıfı olduğu için düşmana hasar vermez ve filodaki savaş gemileri yok olduğunda kolay hedef olur. 85 hızı hızlı akın filolarını yavaşlatabilir.',
+    WARDEN: {
+      name: 'Muhafız',
+      tag: 'Hareketli refakatçi',
+      role: 'Sur kadar yavaşlamadan karma filolara dengeli koruma sağlar.',
+      pitch: 'Kale gövdesinden daha az dayanır; karşılığında hız ve saldırı kazanır.',
+      detail: 'Muhafız, en yavaş uçuş profilini kabul etmeden koruma isteyen filolar için giriş seviyesinde bir Siper refakatçisidir. Sur daha sağlam ve ucuz bir duvar olarak kalırken Muhafız tempo isteyen karma filolarda yer bulur.',
     },
-    RUNNER: {
-      name: 'Koşucu',
-      tag: 'Hızlı akın ambarı',
-      role: '380 birim taşıyan hızlı destek gemisidir; akın ve transferlerde kullanılabilir.',
-      pitch: 'Şilepten daha az taşır ancak hızlı filolara ayak uydurur; kısa görev süresi için daha pahalı ambar sunar.',
-      detail: 'Koşucu 125 hızla Atmaca filosuna yakın hareket eder ve 380 birim kaynak taşır. Hem akın ganimetinde hem dünyalar arası transferde kullanılabilir. Taşıdığı birim başına Şilepten daha pahalıdır ve saldırı gücü yoktur; tercih nedeni kapasite değil hızdır.',
+    COURIER: {
+      name: 'Kurye',
+      tag: 'Hızlı hafif nakliye',
+      role: 'Giriş seviyesi yük gemisidir; hızlı, hafif korumalı ve silahsızdır.',
+      pitch: 'Hızlı akınları yavaşlatmaz, ancak daha az taşır ve refakat ister.',
+      detail: 'Kurye; ganimet, barışçıl transfer ve yerleşim görevlerinde kullanılan bir destek gövdesidir. Hasar vermez ve yalnız savaş gemileri hayattayken korunur. Düşük hacimli hızlı rotalarda üst seviye nakliye gemilerinden daha çevik ve ucuzdur.',
     },
-    BREACHER: {
-      name: 'Delici',
+    VIPER: {
+      name: 'Engerek',
+      tag: 'Verimli akıncı',
+      role: 'Okun hız planını korurken ikinci seviyede daha iyi dayanım sunar.',
+      pitch: 'Hızlı filo fikrini sürdürür ve kırılganlık bedelini biraz azaltır.',
+      detail: 'Engerek araştırma istemeyen ikinci seviye bir Çevik gemidir. Ok daha ucuz ve daha hızlı kalır; Engerek ise daha büyük bir yatırımı eşit maliyette daha iyi savaş verimine ve hata payına dönüştürür.',
+    },
+    TALON: {
+      name: 'Pençe',
+      tag: 'Ağır taarruz gemisi',
+      role: 'Orta hızda, ikinci seviyeye ait saldırı odaklı bir Mızrak gövdesidir.',
+      pitch: 'Kargının ucuz rolünü silmeden daha verimli yoğun hasar üretir.',
+      detail: 'Pençe, gelişmiş tersanelerin saldırı gemisidir. Daha yüksek verimi yanlış hedef seçimini telafi etmez; Siper sınıfı doğal karşılar seviye üstünlüğünden daha belirleyici olmaya devam eder.',
+    },
+    STRONGHOLD: {
+      name: 'Hisar',
+      tag: 'Ağır hat gemisi',
+      role: 'İkinci seviyenin en yüksek dayanımını sunar; ağır, yavaş ve pahalıdır.',
+      pitch: 'Varış süresinden çok hayatta kalmak önemliyse sağlam bir duvar kurar.',
+      detail: 'Hisar, kale profiline sahip bir Siper gövdesidir. Yüksek dayanımı filonun hattını sabitler; buna karşılık uzun uçuş süresi ve Çevik sınıf karşıları rakibe açık ve kullanılabilir cevaplar bırakır.',
+    },
+    SENTINEL: {
+      name: 'Nöbetçi',
+      tag: 'İkinci seviye refakatçi',
+      role: 'Karma filolar için daha hızlı ve saldırgan bir savunma refakatçisidir.',
+      pitch: 'Kale dayanımının bir bölümünü filo temposu ve saldırıyla değiştirir.',
+      detail: 'Nöbetçi, nakliye gemilerini Hisarın ağır uçuş profiline mahkûm etmeden koruyan hareketli bir Siper gövdesidir. Saf kuşatmada Hisar, hızlı karma görevlerde Nöbetçi daha anlamlıdır.',
+    },
+    WAYFARER: {
+      name: 'Seyyah',
+      tag: 'Dengeli nakliye',
+      role: 'Kuryeden daha çok taşır; biraz yavaşlasa da farklı görevlere uyum sağlar.',
+      pitch: 'Hızlı Kurye ile yüksek kapasiteli Atlas arasındaki orta seçenektir.',
+      detail: 'Seyyah, daha büyük akınlar ve dünyalar arası transferler için ikinci seviye bir destek gemisidir. Silahsız kalır ve savaş refakatine bağımlıdır; Kurye ise küçük ve hızlı görevlerde değerini korur.',
+    },
+    TEMPEST: {
+      name: 'Kasırga',
+      tag: 'İleri seviye hızlı akıncı',
+      role: 'Araştırmayla açılan ve savaş gemileri içinde hız tavanını belirleyen Çevik gövdedir.',
+      pitch: 'Geç oyunda yüksek hız ve verim sunar, fakat hâlâ bir hat gemisi değildir.',
+      detail: 'Kasırga, Yıldız Gemisi Mühendisliği ve Gemi Gücü gerektiren ileri seviye bir akıncıdır. Kırılgan profilini koruduğu için alt seviye duvarlar ve doğru sınıf karşıları anlamını yitirmez.',
+    },
+    BALLISTA: {
+      name: 'Balista',
+      tag: 'İleri seviye taarruz',
+      role: 'Araştırmayla açılan Mızrak sınıfında yoğun ve ağır saldırı sağlar.',
+      pitch: 'Doğru duvarla karşılaştığında hâlâ kırılan yüksek hasarlı bir seçimdir.',
+      detail: 'Balista, Yıldız Gemisi Mühendisliği ve Gemi Gücü isteyen üçüncü seviye bir saldırı gövdesidir. Kör tek tip üretimi değil, hedef hakkında doğru bilgi edinip uygun filoyu kurmayı ödüllendirir.',
+    },
+    LEVIATHAN: {
+      name: 'Leviathan',
+      tag: 'İleri seviye kale',
+      role: 'Çok yüksek hat dayanımını düşük hız ve uzun görev süresi karşılığında verir.',
+      pitch: 'Her uçuşu uzun bir taahhüde dönüştüren geç oyun duvarıdır.',
+      detail: 'Leviathan, Yıldız Gemisi Mühendisliği ve Gemi Zırhı ile açılan üçüncü seviye bir kaledir. Çok güçlü gövdesine rağmen Çevik sınıf gemiler hâlâ ona karşı en verimli cevaptır.',
+    },
+    PRAETORIAN: {
+      name: 'Praetoryen',
+      tag: 'İleri seviye refakatçi',
+      role: 'Değerli karma filolar için dayanıklı ve hareketli koruma sağlar.',
+      pitch: 'Leviathandan az dayanır, karşılığında karma filo temposunu korur.',
+      detail: 'Praetoryen, Yıldız Gemisi Mühendisliği ve Gemi Zırhı isteyen üçüncü seviye Siper refakatçisidir. Yük gemilerini korurken filoyu mümkün olan en yavaş tercihe dönüştürmez.',
+    },
+    ATLAS: {
+      name: 'Atlas',
+      tag: 'Azami yük kapasitesi',
+      role: 'En büyük ambara sahip, yavaş, hacimli ve araştırmaya bağlı nakliye gemisidir.',
+      pitch: 'Rota yeterince güvenliyse en iyi kapasite verimini sağlar.',
+      detail: 'Atlas, Yıldız Gemisi Mühendisliği ve Gemi İtkisi ile açılan üçüncü seviye destek gemisidir. Hasar vermez ve düşük hızı nedeniyle değerli yükü için refakat ile rota güvenliği planını zorunlu kılar.',
+    },
+    NULLIFIER: {
+      name: 'Söndürücü',
       tag: 'Aktif kalkanları kırar',
-      role: 'Aktif Aegis kalkanına beş kat etki uygular; ek kalkan hasarı birliklere geçmez.',
-      pitch: 'Kalkanlı dünyalara karşı uzmanlaşmıştır. Aegis yoksa yüksek maliyetinin karşılığını vermez.',
-      detail: 'Delici, aktif Aegis’e normal kalkan etkisinin toplam beş katını uygular. Uzmanlık hasarı yalnız kalan kalkan kadar kullanılır; kalkan bittiğinde artan bölüm gemilere veya yer savunmasına aktarılmaz. Mızrak sınıfındadır: hafif hedeflere güçlü, Siper sınıfına zayıftır.',
+      role: 'Aktif kalkan üzerinde normal etkisinin beş katını üreten Mızrak uzmanıdır.',
+      pitch: 'Aegis’i ezer; uzmanlık hasarı gemi veya yer savunmasına taşmaz.',
+      detail: 'Söndürücünün uzmanlık yükü aktif Aegis’e normal etkinin beş katını uygular. Kalkan düştüğünde artan özel hasar gemilere veya toplara geçmez; bu yüzden kalkansız hedefler pahalı uzmanlığını boşa çıkarır.',
+    },
+    CATACLYSM: {
+      name: 'Kıyamet',
+      tag: 'Başkent taarruz gemisi',
+      role: 'Dördüncü seviyenin saldırı zirvesidir; güçlü, pahalı ve bilinçli olarak yavaştır.',
+      pitch: 'Sınıf karşılarına bağışıklık kazanmadan olağanüstü yoğun hasar üretir.',
+      detail: 'Kıyamet; Mühendislik, Güç ve Zırh araştırmalarının arkasındaki başkent tipi Mızrak gövdesidir. Verimi yüksektir, ancak doğru Siper savunması onu kopyalamaktan hâlâ daha iyi bir cevaptır.',
+    },
+    CITADEL: {
+      name: 'Kale',
+      tag: 'Başkent kale gemisi',
+      role: 'Dördüncü seviyenin dayanım zirvesi ve en yavaş hareketli taahhüdüdür.',
+      pitch: 'Oyundaki en güçlü duvarı maliyet ve uzun açıkta kalma süresiyle satın alır.',
+      detail: 'Kale; Mühendislik, Zırh ve Güç araştırmalarının arkasındaki başkent tipi Siper gövdesidir. Savunmayı sabitler, fakat Çevik sınıf karşılarına ve uzun görev süresinin yarattığı fırsat penceresine açıktır.',
     },
     BASTION: {
       name: 'Tabya',
       tag: 'Ağır yer topu',
       role: 'Yer savunması. Gezegenden asla ayrılmaz.',
-      pitch: 'Mızrak ve Delici ağırlıklı saldırılara karşı dayanıklı yer savunmasıdır; Atmaca sınıfına karşı zayıftır.',
-      detail: 'Tabya gezegenden ayrılamaz ve yer savunması kapasitesini kullanır. Siper sınıfında olduğu için Mızrak ve Deliciye karşı güçlü, Atmacaya karşı zayıftır. Çatışmada yok edilen yer savunmalarının %60’ı aşağı yuvarlanarak enkazdan yeniden kurulur.',
+      pitch: 'Kargı, Pençe ve Söndürücü ağırlıklı saldırılara dayanır; Çevik sınıf filolara karşı zayıftır.',
+      detail: 'Tabya gezegenden ayrılamaz ve yer savunması kapasitesini kullanır. Siper sınıfında olduğu için Mızrak sınıfına karşı güçlü, Çevik sınıfa karşı zayıftır. Yok edilen yer savunmalarının %60’ı aşağı yuvarlanarak enkazdan yeniden kurulur.',
     },
     THORN: {
       name: 'Kirpi',
       tag: 'Hafif yer topu',
       role: 'Yer savunması. Ucuz, hafif ve hiç kalkmaz.',
-      pitch: 'Siperlere karşı etkili, düşük maliyetli yer savunmasıdır; Mızrak sınıfına karşı zayıftır.',
-      detail: 'Kirpi gezegenden ayrılamaz ve Hangar yerine yer savunması kapasitesini kullanır. Atmaca sınıfında olduğu için Sipere karşı güçlü, Mızrak ve Deliciye karşı zayıftır. Çatışmada yok edilen yer savunmalarının %60’ı aşağı yuvarlanarak enkazdan yeniden kurulur.',
+      pitch: 'Siper sınıfı gemilere karşı etkili, düşük maliyetli savunmadır; Mızrak sınıfına karşı zayıftır.',
+      detail: 'Kirpi gezegenden ayrılamaz ve Hangar yerine yer savunması kapasitesini kullanır. Çevik sınıfta olduğu için Siperlere karşı güçlü, Mızraklara karşı zayıftır. Yok edilen yer savunmalarının %60’ı aşağı yuvarlanarak enkazdan yeniden kurulur.',
     },
     PROSPECTOR: {
       name: 'Kazıcı',
@@ -351,14 +435,21 @@ export const gains = {
     value: '{{room}}',
   },
   research: {
-    doctrineLabel: '{{hull}} saldırı ve gövde',
-    doctrineScope: 'Sahip olduğun bütün {{hull}} birliklerine uygulanır. Destek gemilerini etkilemez.',
-    lanceScope: 'Sahip olduğun bütün {{lance}} ve {{breacher}} birliklerine uygulanır. Destek gemilerini etkilemez.',
+    powerLabel: 'Fleet V2 savaş gemisi saldırısı',
+    powerScope:
+      'Bütün Fleet V2 savaş gemileri. Güç × Zırh, eşit maliyetli savaş gücünü en fazla %25 artırır; nakliye ve korunan birimler etkilenmez.',
+    armorLabel: 'Fleet V2 gövde dayanımı',
+    armorScope:
+      'Nakliye gemileri dâhil 18 Fleet V2 gövdesi. Güç × Zırh, eşit maliyetli savaş gücünü en fazla %25 artırır; korunan birimler etkilenmez.',
+    speedLabel: 'Fleet V2 hızı',
+    speedScope:
+      'Bütün 18 Fleet V2 gövdesi. Karma filo yine en yavaş üyesinin geliştirilmiş hızında uçar; Kazıcı, sonda ve Ölüm Yıldızı etkilenmez.',
+    engineeringLabel: 'Gövde seviyesi erişimi',
+    engineeringTier: '{{tier}}. seviye',
+    engineeringScope:
+      'Mühendislik I üçüncü, Mühendislik II dördüncü seviyeyi açar. Gemiler ayrıca Güç, Zırh, İtki veya Gravitik Yükler isteyebilir.',
     groundLabel: 'Yer savunması gücü',
     groundScope: 'Elindeki her dünyadaki {{bastion}} ve {{thorn}}.',
-    generalLabel: 'Tüm gövdelerde saldırı ve dayanım',
-    generalScope:
-      'Destek gemileri ve yer savunmaları dâhil, sahip olduğun bütün gövdelere uygulanır. Saldırısı olmayan destek gemilerinde yalnız dayanım artar. Sınıf doktriniyle birleştiğinde toplam savaş gücü artışı %25’i aşmaz.',
     yardLabel: 'Gemi yapım süresi',
     holdsLabel: 'Kazıcı ambarı',
     holdsScope: 'Yörüngedeki Matkap ile çarpılarak birlikte uygulanır.',
@@ -371,8 +462,8 @@ export const gains = {
     open: 'Açık',
     shut: 'Kilitli',
     isotopeOpens: 'İzotop asteroitleri seçilebilir madencilik hedefi olur.',
-    denseOpens: 'Koşucu üretilebilir hâle gelir.',
-    graviticOpens: 'Delici üretilebilir hâle gelir.',
+    denseOpens: 'Gemi İtkisi araştırması açılır.',
+    graviticOpens: 'Söndürücünün uzman araştırma koşulu karşılanır.',
     protocolOpens: 'Ölüm Yıldızı inşa edilebilir olur.',
     gridOpens: 'Stratejik önleyici mühimmatı üretilebilir hâle gelir.',
   },
@@ -487,6 +578,8 @@ export const notifications = {
   fleetFrom: ' ({{origin}} dönüşü)',
   probeLost: 'Sondan kayboldu. O uçuş tamamlanamadı',
   recalled: '{{count}} araç geri döndü. O uçuş tamamlanamadı',
+  transferReturningCapacity: '{{target}} transferi geri dönüyor · hedef kapasitesi yoldayken doldu',
+  transferReturningOwnership: '{{target}} transferi geri dönüyor · gezegen yoldayken el değiştirdi',
 
   salvageWord: 'Hurda',
   oreWord: 'Cevher',
@@ -510,10 +603,12 @@ export const notifications = {
   },
   colonyCaptured: 'Koloni kuruldu · işgal koruması aktif',
   colonyLost: 'Koloni stratejik darbeyle kaybedildi',
-  settlementLost: 'Yerleşim yarışı kaybedildi · Şilepler ve yükleri geri dönüyor',
+  settlementLost: 'Yerleşim yarışı kaybedildi · Kuryeler ve kuruluş yükü geri dönüyor',
   interceptedDefended: 'Savunma ağın bir Ölüm Yıldızı’nı {{range}} birim uzakta imha etti.',
   interceptedLost: 'Ölüm Yıldızı’n hedefine {{range}} birim kala imha edildi.',
   interceptedFallback: 'Bir Ölüm Yıldızı uçuş hâlinde imha edildi.',
+  asteroidShowerStarted: 'Galakside asteroid yağmuru başladı.',
+  asteroidShowerEnded: 'Asteroid yağmuru bitti. Yeni asteroid oluşma hızı normale döndü.',
 } as const;
 
 /**

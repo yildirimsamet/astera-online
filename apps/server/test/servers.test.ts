@@ -23,7 +23,7 @@ import {
 } from '../src/services/servers.js';
 import { joinSeason } from '../src/services/player.js';
 import { grantReward } from '../src/services/rewards.js';
-import { testDb, testEnv, truncateAll, type Fixture } from './helpers.js';
+import { testDb, testEnv, truncateAll, type Fixture, giveDebris } from './helpers.js';
 
 const silent = pino({ level: 'silent' });
 const START = new Date('2026-03-01T00:00:00.000Z');
@@ -513,7 +513,7 @@ describe('servers', () => {
        * this asserts the absence as firmly as the presence. A fleet quietly
        * reappearing here would delete that decision without failing anything else.
        */
-      expect(body.fleet.WASP).toBeUndefined();
+      expect(body.fleet.DART).toBeUndefined();
       expect(body.planet.alloy).toBe(GRANT.alloy);
       expect(body.planet.crystal).toBe(GRANT.crystal);
     });
@@ -677,16 +677,14 @@ describe('servers', () => {
           ownerPlayerId: placement.playerId,
           originPlanetId: placement.planetId,
           targetPlanetId: theirs.planetId,
-          fleet: { WASP: 4 },
+          fleet: { DART: 4 },
           distance: 200,
           departAt: clock.now(),
           arriveAt: clock.now(),
           status: 'resolved',
         })
         .returning();
-      await db.insert(debrisFields).values({
-        seasonId: placement.seasonId,
-        planetId: theirs.planetId,
+      await giveDebris(db, placement.seasonId, theirs.planetId, {
         missionId: mission!.id,
         alloy: 5_000,
         crystal: 1_200,

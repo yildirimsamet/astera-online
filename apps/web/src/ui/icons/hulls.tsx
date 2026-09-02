@@ -1,26 +1,17 @@
 import type { ReactNode } from 'react';
 import type { HullId } from '@astera/rules';
 import type { IconProps } from './index.js';
+import { FLEET_V2_ASSET_MANIFEST } from '../fleet-v2-assets.js';
 
 /**
- * HULL SILHOUETTES — 48 × 48, filled rather than stroked.
+ * PRESERVED HULL SILHOUETTES — 48 × 48, filled rather than stroked.
  *
  * These are the one place the icon set uses fills, and `docs/visual-design.md` says
  * why: they need to read as *things* rather than as symbols. One viewing angle for all
- * eight — top-down, nose up — chosen once and never mixed, because they have to be
- * separable **as shapes alone**:
+ * one — top-down, nose up — chosen once and never mixed. Fleet V2 mobile craft use
+ * their canonical supplied icon renders below; these hand-authored marks remain only
+ * for the three preserved craft whose assets were explicitly left unchanged:
  *
- *     WASP ▸ BULWARK ▸ LANCE ▸ WASP
- *
- * That counter cycle is the only combat skill in the game. If a player cannot tell a
- * Lance from a Wasp at a glance, the one decision combat offers stops being a decision.
- * So the five silhouettes are pushed apart deliberately:
- *
- *   WASP     small, sharp, mostly negative space — a thrown blade
- *   LANCE    extremely long and thin with a spinal gun projecting past the nose
- *   BULWARK  wide, blunt, slab-sided, not a single point on it
- *   HAULER   fat, lumpy, symmetrical, visibly unarmed — it must look defenceless
- *   RUNNER   narrow courier body with two exposed fuel-cell pods
  *   BASTION  a turret on a heavy base plate, no engines and no wings. The plate is
  *            the whole point: it is what says this thing can never leave the planet.
  *   THORN    the same base plate — because it also never leaves — carrying three
@@ -44,79 +35,6 @@ function Silhouette({
       {title === undefined ? null : <title>{title}</title>}
       {children}
     </svg>
-  );
-}
-
-/** Cheapest damage, fastest home. The shortest time spent undefended. */
-export function WaspHull(props: IconProps) {
-  return (
-    <Silhouette {...props}>
-      {/* Wide swept wings and a lot of empty space around them. It has to be the
-          thing on the row you could cut yourself on. */}
-      <path d="M24 3.2 26.9 19 44.5 33.4 43.4 38.4 28.3 31.4 27.5 40.2 29.8 44.8 24 46.4 18.2 44.8 20.5 40.2 19.7 31.4 4.6 38.4 3.5 33.4 21.1 19Z" />
-    </Silhouette>
-  );
-}
-
-/** Hits hardest. Shreds Wasps, bounces off Bulwarks. All weapon, no armour. */
-export function LanceHull(props: IconProps) {
-  return (
-    <Silhouette {...props}>
-      {/* The spinal gun projects past the nose and is the whole silhouette: a long
-          thin spine with a barrel on the front. All weapon, no armour. */}
-      <path d="M22.7 1.4h2.6v10.2l2.5 3.2.5 15.4 5.4 3.2.4 5.4-5.7-2.2-.4 6.6L24 46.6l-4-3.4-.4-6.6-5.7 2.2.4-5.4 5.4-3.2.5-15.4 2.5-3.2Z" />
-    </Silhouette>
-  );
-}
-
-/** Survives what kills everything else. Nearly doubles your time away. */
-export function BulwarkHull(props: IconProps) {
-  return (
-    <Silhouette {...props}>
-      {/* Wider than it is long, flat-nosed, and stepped down the sides like bolted
-          armour. Not one point on it. */}
-      <path d="M13.5 9h21l5 5.2h5.5v6.6l-3.6 1.8 1 8.4-4 1.6-2.4 6.4h-24l-2.4-6.4-4-1.6 1-8.4L2.5 20.8v-6.6H8Z" />
-    </Silhouette>
-  );
-}
-
-/** Carries the loot home. Useless in the fight — escort it or lose it. */
-export function HaulerHull(props: IconProps) {
-  return (
-    <Silhouette {...props}>
-      {/* Four container blocks bolted to a fat body. Lumpy, symmetrical, and with
-          nothing anywhere on it that could be a weapon. */}
-      <path d="M19 5.5h10l3 4.5v3h6v8h-6v6h6v8h-6v4l-3 4H19l-3-4v-4h-6v-8h6v-6h-6v-8h6v-3Z" />
-      {/* Two token engines, and deliberately token. A Hauler contributes nothing to
-          the fight and the silhouette must not imply otherwise. */}
-      <rect x="19.2" y="41.4" width="3.8" height="3.6" rx="1.2" />
-      <rect x="25" y="41.4" width="3.8" height="3.6" rx="1.2" />
-    </Silhouette>
-  );
-}
-
-/** Fast strike cargo. Twin fuel cells and a narrow body distinguish it from a Hauler. */
-export function RunnerHull(props: IconProps) {
-  return (
-    <Silhouette {...props}>
-      {/* A pointed courier body with two exposed cell pods: visibly quick, still
-          unarmed, and much less hold volume than the blocky Hauler. */}
-      <path d="M24 3.2 29.2 12v21.2L24 45l-5.2-11.8V12Z" />
-      <path d="M9.2 16.2h7.2v19.6H9.2l-3.4-4.6V20.8Z" />
-      <path d="M31.6 16.2h7.2l3.4 4.6v10.4l-3.4 4.6h-7.2Z" />
-      <path d="m16.4 28.2-6.8 8.6h6.8ZM31.6 28.2l6.8 8.6h-6.8Z" />
-    </Silhouette>
-  );
-}
-
-/** Shield breaker: a compact body built around one oversized forward emitter. */
-export function BreacherHull(props: IconProps) {
-  return (
-    <Silhouette {...props}>
-      <path d="M20.5 4h7l2.2 13.2 8.8 7.8-4.2 4.8-5.2-3.2V42l-5.1 4-5.1-4V26.6l-5.2 3.2-4.2-4.8 8.8-7.8Z" />
-      <path d="M15 8.5h18l-3.5 6.2h-11Z" />
-      <circle cx="24" cy="18" r="4.2" fill="var(--icon-cutout, #05070a)" />
-    </Silhouette>
   );
 }
 
@@ -173,17 +91,12 @@ function ProspectorHull(props: IconProps) {
   );
 }
 
-const HULL_ICON: Record<HullId, (props: IconProps) => ReactNode> = {
-  WASP: WaspHull,
-  LANCE: LanceHull,
-  BULWARK: BulwarkHull,
-  HAULER: HaulerHull,
-  RUNNER: RunnerHull,
-  BREACHER: BreacherHull,
+const PRESERVED_HULL_ICON = {
   BASTION: BastionHull,
   THORN: ThornHull,
   PROSPECTOR: ProspectorHull,
-};
+} as const;
+const FLEET_V2_ICON_IDS = new Set<string>(Object.keys(FLEET_V2_ASSET_MANIFEST));
 
 /**
  * The silhouette for a hull id.
@@ -191,7 +104,19 @@ const HULL_ICON: Record<HullId, (props: IconProps) => ReactNode> = {
  * Used where a hull is chosen at runtime — the launch composer, loss lines in a battle
  * report — so those surfaces cannot drift out of sync with the silhouettes above.
  */
-export function HullMark({ hull, ...props }: IconProps & { hull: HullId }) {
-  const Mark = HULL_ICON[hull];
-  return <Mark {...props} />;
+export function HullMark({ hull, className = 'size-8', title }: IconProps & { hull: HullId }) {
+  if (FLEET_V2_ICON_IDS.has(hull)) {
+    const asset = FLEET_V2_ASSET_MANIFEST[hull as keyof typeof FLEET_V2_ASSET_MANIFEST];
+    return (
+      <img
+        src={asset.icon}
+        className={className}
+        alt={title ?? ''}
+        draggable={false}
+        {...(title === undefined ? { 'aria-hidden': true } : {})}
+      />
+    );
+  }
+  const Mark = PRESERVED_HULL_ICON[hull as keyof typeof PRESERVED_HULL_ICON];
+  return <Mark className={className} {...(title === undefined ? {} : { title })} />;
 }

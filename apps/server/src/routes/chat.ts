@@ -21,7 +21,12 @@ const readBody = z.object({ messageId: z.string().uuid() }).strict();
 export function registerChatRoutes(app: FastifyInstance): void {
   app.get('/api/chat/messages', { preHandler: requireAuth }, async (req) => {
     const query = listQuery.parse(req.query);
-    return readChat(app.db, req.accountId!, query.limit, query.before);
+    const self = await app.projections.commander(req.accountId!);
+    const [sensors, remembered] = await Promise.all([
+      app.projections.sensorsFor(self.playerId, self.planetIds),
+      app.projections.rememberedFor(self.playerId),
+    ]);
+    return readChat(app.db, req.accountId!, query.limit, { sensors, remembered }, query.before);
   });
 
   app.post('/api/chat/messages', { preHandler: requireAuth }, async (req) => {

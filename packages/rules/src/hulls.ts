@@ -1,57 +1,61 @@
 import { COMBAT, PROSPECTOR } from './constants.js';
-import { cargoMult } from './tech.js';
+import { cargoMult, hullTech } from './tech.js';
 import type { TechLevels } from './tech.js';
 import { ECONOMY_TEMPO, scalePrice } from './tempo.js';
 import type { Fleet, GroundHullId, Hull, HullClass, HullId, MobileHullId } from './types.js';
 
 /**
- * Four combat hulls, two turrets and a mining craft, priced on equal-budget power
- * rather than chosen for flavour. Three fill the counter cycle; the Hauler exists
- * to make looting expensive, and the two ground guns exist because they can never
- * leave — and because a defender with only one of them has no decision to make
- * (D27).
+ * Fleet Catalog V2. D148.
  *
- * THE WHOLE TABLE IS DERIVED FROM `atk × hp / value²` — see the Bulwark below for
- * why that quantity and not attack-per-resource. Speeds are set from one figure:
- * a raid on a neighbouring world is an 11-16 minute round trip in the R=2000 sphere,
- * which is the tempo the owner chose with the numbers in front of them.
+ * Every mobile entry is an authored decision rather than a configurable module:
+ * Raiders buy speed with durability, Strikers buy attack with durability,
+ * Fortresses buy durability with speed and Escorts sit between those extremes.
+ * Tier efficiency is deliberately shallow — roughly 1.00 / 1.06 / 1.12 / 1.18
+ * in `atk × hp / value²` — so the 1.6/0.625 counter still matters more than tech.
+ * Phase 3 owns final numeric calibration; this is the executable starting table.
+ *
+ * EVERY `speed` HERE IS D148'S AUTHORED FIGURE x1.25, ROUNDED TO A WHOLE UNIT.
+ * D152, owner instruction. The lift is uniform, so every profile relation the
+ * table was authored around — Raider over Striker over Fortress, Courier faster
+ * and Wayfarer fatter, Tempest the combat ceiling — survives it untouched; what
+ * moves is the tempo of the whole galaxy, not the shape of a choice inside it.
+ * `atk x hp / value^2` does not read speed, so no price moved with it.
+ *
+ * THE PROBE AND THE PROSPECTOR ARE NOT IN THIS TABLE'S UNITS and did not take the
+ * factor. `PROBE.speed` is calibrated against `GALAXY_SPAN` so the gradient of
+ * looking stays what D121 measured, and `PROSPECTOR.speed` is calibrated against
+ * ROCK speed so a drill keeps D74's interception lead. Raising either with the
+ * warships would have moved a number that answers a different question.
  */
 export const HULLS: Record<HullId, Hull> = {
-  WASP: { id: 'WASP', name: 'Wasp', cls: 'SKIRMISHER', atk: 15, hp: 25, speed: 130, cargo: 45, alloy: scalePrice(240, ECONOMY_TEMPO.hullPrice), crystal: 0, deuterium: 0, minShipyard: 0, ground: false },
-  LANCE: { id: 'LANCE', name: 'Lance', cls: 'LANCE', atk: 78, hp: 112, speed: 100, cargo: 60, alloy: scalePrice(820, ECONOMY_TEMPO.hullPrice), crystal: scalePrice(260, ECONOMY_TEMPO.hullCrystalPrice), deuterium: 0, minShipyard: 2, ground: false },
+  DART: { id: 'DART', name: 'Dart', tier: 1, family: 'OFFENSIVE', profile: 'RAIDER', cls: 'SKIRMISHER', atk: 18, hp: 19, speed: 200, cargo: 35, alloy: scalePrice(240, ECONOMY_TEMPO.hullPrice), crystal: 0, deuterium: 0, minShipyard: 0, requiredResearch: [], ground: false },
+  PIKE: { id: 'PIKE', name: 'Pike', tier: 1, family: 'OFFENSIVE', profile: 'STRIKER', cls: 'LANCE', atk: 58, hp: 21, speed: 144, cargo: 25, alloy: scalePrice(320, ECONOMY_TEMPO.hullPrice), crystal: scalePrice(90, ECONOMY_TEMPO.hullCrystalPrice), deuterium: 0, minShipyard: 0, requiredResearch: [], ground: false },
+  RAMPART: { id: 'RAMPART', name: 'Rampart', tier: 1, family: 'DEFENSIVE', profile: 'FORTRESS', cls: 'BULWARK', atk: 14, hp: 148, speed: 75, cargo: 20, alloy: scalePrice(400, ECONOMY_TEMPO.hullPrice), crystal: scalePrice(140, ECONOMY_TEMPO.hullCrystalPrice), deuterium: 0, minShipyard: 0, requiredResearch: [], ground: false },
+  WARDEN: { id: 'WARDEN', name: 'Warden', tier: 1, family: 'DEFENSIVE', profile: 'ESCORT', cls: 'BULWARK', atk: 31, hp: 70, speed: 131, cargo: 35, alloy: scalePrice(412, ECONOMY_TEMPO.hullPrice), crystal: scalePrice(110, ECONOMY_TEMPO.hullCrystalPrice), deuterium: scalePrice(25, ECONOMY_TEMPO.hullPrice), minShipyard: 0, requiredResearch: [], ground: false },
+  COURIER: { id: 'COURIER', name: 'Courier', tier: 1, family: 'CARGO', profile: 'TRANSPORT', cls: 'SUPPORT', atk: 0, hp: 90, speed: 181, cargo: 700, alloy: scalePrice(500, ECONOMY_TEMPO.hullPrice), crystal: scalePrice(150, ECONOMY_TEMPO.hullCrystalPrice), deuterium: scalePrice(50, ECONOMY_TEMPO.hullPrice), minShipyard: 1, requiredResearch: [], ground: false },
+
+  VIPER: { id: 'VIPER', name: 'Viper', tier: 2, family: 'OFFENSIVE', profile: 'RAIDER', cls: 'SKIRMISHER', atk: 50, hp: 89, speed: 213, cargo: 55, alloy: scalePrice(600, ECONOMY_TEMPO.hullPrice), crystal: scalePrice(130, ECONOMY_TEMPO.hullCrystalPrice), deuterium: scalePrice(50, ECONOMY_TEMPO.hullPrice), minShipyard: 2, requiredResearch: [], ground: false },
+  TALON: { id: 'TALON', name: 'Talon', tier: 2, family: 'OFFENSIVE', profile: 'STRIKER', cls: 'LANCE', atk: 125, hp: 79, speed: 150, cargo: 45, alloy: scalePrice(850, ECONOMY_TEMPO.hullPrice), crystal: scalePrice(230, ECONOMY_TEMPO.hullCrystalPrice), deuterium: scalePrice(80, ECONOMY_TEMPO.hullPrice), minShipyard: 2, requiredResearch: [], ground: false },
+  STRONGHOLD: { id: 'STRONGHOLD', name: 'Stronghold', tier: 2, family: 'DEFENSIVE', profile: 'FORTRESS', cls: 'BULWARK', atk: 45, hp: 617, speed: 81, cargo: 50, alloy: scalePrice(1400, ECONOMY_TEMPO.hullPrice), crystal: scalePrice(450, ECONOMY_TEMPO.hullCrystalPrice), deuterium: scalePrice(80, ECONOMY_TEMPO.hullPrice), minShipyard: 2, requiredResearch: [], ground: false },
+  SENTINEL: { id: 'SENTINEL', name: 'Sentinel', tier: 2, family: 'DEFENSIVE', profile: 'ESCORT', cls: 'BULWARK', atk: 118, hp: 198, speed: 138, cargo: 65, alloy: scalePrice(1200, ECONOMY_TEMPO.hullPrice), crystal: scalePrice(420, ECONOMY_TEMPO.hullCrystalPrice), deuterium: scalePrice(150, ECONOMY_TEMPO.hullPrice), minShipyard: 2, requiredResearch: [], ground: false },
+  WAYFARER: { id: 'WAYFARER', name: 'Wayfarer', tier: 2, family: 'CARGO', profile: 'TRANSPORT', cls: 'SUPPORT', atk: 0, hp: 260, speed: 138, cargo: 2200, alloy: scalePrice(900, ECONOMY_TEMPO.hullPrice), crystal: scalePrice(300, ECONOMY_TEMPO.hullCrystalPrice), deuterium: scalePrice(200, ECONOMY_TEMPO.hullPrice), minShipyard: 2, requiredResearch: [], ground: false },
+
+  TEMPEST: { id: 'TEMPEST', name: 'Tempest', tier: 3, family: 'OFFENSIVE', profile: 'RAIDER', cls: 'SKIRMISHER', atk: 155, hp: 204, speed: 231, cargo: 80, alloy: scalePrice(1400, ECONOMY_TEMPO.hullPrice), crystal: scalePrice(450, ECONOMY_TEMPO.hullCrystalPrice), deuterium: scalePrice(160, ECONOMY_TEMPO.hullPrice), minShipyard: 4, requiredResearch: [{ project: 'STARSHIP_ENGINEERING', level: 1 }, { project: 'SHIP_POWER', level: 2 }], ground: false },
+  BALLISTA: { id: 'BALLISTA', name: 'Ballista', tier: 3, family: 'OFFENSIVE', profile: 'STRIKER', cls: 'LANCE', atk: 290, hp: 212, speed: 156, cargo: 70, alloy: scalePrice(1800, ECONOMY_TEMPO.hullPrice), crystal: scalePrice(700, ECONOMY_TEMPO.hullCrystalPrice), deuterium: scalePrice(280, ECONOMY_TEMPO.hullPrice), minShipyard: 4, requiredResearch: [{ project: 'STARSHIP_ENGINEERING', level: 1 }, { project: 'SHIP_POWER', level: 2 }], ground: false },
+  LEVIATHAN: { id: 'LEVIATHAN', name: 'Leviathan', tier: 3, family: 'DEFENSIVE', profile: 'FORTRESS', cls: 'BULWARK', atk: 180, hp: 941, speed: 88, cargo: 100, alloy: scalePrice(3200, ECONOMY_TEMPO.hullPrice), crystal: scalePrice(1150, ECONOMY_TEMPO.hullCrystalPrice), deuterium: scalePrice(280, ECONOMY_TEMPO.hullPrice), minShipyard: 4, requiredResearch: [{ project: 'STARSHIP_ENGINEERING', level: 1 }, { project: 'SHIP_ARMOR', level: 2 }], ground: false },
+  PRAETORIAN: { id: 'PRAETORIAN', name: 'Praetorian', tier: 3, family: 'DEFENSIVE', profile: 'ESCORT', cls: 'BULWARK', atk: 240, hp: 451, speed: 144, cargo: 110, alloy: scalePrice(2500, ECONOMY_TEMPO.hullPrice), crystal: scalePrice(900, ECONOMY_TEMPO.hullCrystalPrice), deuterium: scalePrice(300, ECONOMY_TEMPO.hullPrice), minShipyard: 4, requiredResearch: [{ project: 'STARSHIP_ENGINEERING', level: 1 }, { project: 'SHIP_ARMOR', level: 2 }], ground: false },
+  ATLAS: { id: 'ATLAS', name: 'Atlas', tier: 3, family: 'CARGO', profile: 'TRANSPORT', cls: 'SUPPORT', atk: 0, hp: 800, speed: 94, cargo: 6000, alloy: scalePrice(2100, ECONOMY_TEMPO.hullPrice), crystal: scalePrice(950, ECONOMY_TEMPO.hullCrystalPrice), deuterium: scalePrice(400, ECONOMY_TEMPO.hullPrice), minShipyard: 4, requiredResearch: [{ project: 'STARSHIP_ENGINEERING', level: 1 }, { project: 'SHIP_PROPULSION', level: 2 }], ground: false },
+  NULLIFIER: { id: 'NULLIFIER', name: 'Nullifier', tier: 3, family: 'SPECIALIST', profile: 'SHIELD_BREAKER', cls: 'LANCE', atk: 140, hp: 308, speed: 119, cargo: 20, alloy: scalePrice(1600, ECONOMY_TEMPO.hullPrice), crystal: scalePrice(800, ECONOMY_TEMPO.hullCrystalPrice), deuterium: scalePrice(280, ECONOMY_TEMPO.hullPrice), minShipyard: 4, requiredResearch: [{ project: 'STARSHIP_ENGINEERING', level: 1 }, { project: 'GRAVITIC_CHARGES', level: 1 }], ground: false },
+
+  CATACLYSM: { id: 'CATACLYSM', name: 'Cataclysm', tier: 4, family: 'OFFENSIVE', profile: 'STRIKER', cls: 'LANCE', atk: 800, hp: 448, speed: 106, cargo: 160, alloy: scalePrice(4200, ECONOMY_TEMPO.hullPrice), crystal: scalePrice(1700, ECONOMY_TEMPO.hullCrystalPrice), deuterium: scalePrice(650, ECONOMY_TEMPO.hullPrice), minShipyard: 6, requiredResearch: [{ project: 'STARSHIP_ENGINEERING', level: 2 }, { project: 'SHIP_POWER', level: 4 }, { project: 'SHIP_ARMOR', level: 2 }], ground: false },
+  CITADEL: { id: 'CITADEL', name: 'Citadel', tier: 4, family: 'DEFENSIVE', profile: 'FORTRESS', cls: 'BULWARK', atk: 300, hp: 1656, speed: 56, cargo: 180, alloy: scalePrice(5000, ECONOMY_TEMPO.hullPrice), crystal: scalePrice(2100, ECONOMY_TEMPO.hullCrystalPrice), deuterium: scalePrice(600, ECONOMY_TEMPO.hullPrice), minShipyard: 6, requiredResearch: [{ project: 'STARSHIP_ENGINEERING', level: 2 }, { project: 'SHIP_ARMOR', level: 4 }, { project: 'SHIP_POWER', level: 2 }], ground: false },
+
   /**
-   * THE BULWARK IS NOW COMPETITIVE AT EQUAL BUDGET, AND THAT IS THE CHANGE.
-   *
-   * `docs/balance.md` recorded a known problem it declined to fix: the Bulwark had
-   * 4.2 attack per 1,000 resources against a Wasp's 26.9, so at equal budget it
-   * lost every matchup in the game INCLUDING against the Lance it counters. Raising
-   * its attack alone was measured across the whole range and handed the season to
-   * whoever accumulated most — a subsidy to the largest stockpile, which is the
-   * wealth-ladder failure arriving through a hull stat.
-   *
-   * THE FIX IS TO PRICE THE WHOLE TABLE ON THE RIGHT QUANTITY. With damage spread
-   * across a force, equal-budget power goes as `atk × hp / value²`, not as attack
-   * per resource. Holding that near-constant makes an expensive hull worth building
-   * without subsidising anybody:
-   *
-   *   Wasp 6,510   ·   Lance 7,490   ·   Bulwark 8,460      (×10⁶)
-   *
-   * so each tech tier buys about 15% equal-budget power. THE COUNTER CYCLE BUYS
-   * 156% (1.6 against 0.625), which is the point: information beats tech by
-   * construction, and that is the claim the whole game rests on.
-   */
-  BULWARK: { id: 'BULWARK', name: 'Bulwark', cls: 'BULWARK', atk: 106, hp: 662, speed: 65, cargo: 90, alloy: scalePrice(2150, ECONOMY_TEMPO.hullPrice), crystal: scalePrice(730, ECONOMY_TEMPO.hullCrystalPrice), deuterium: 0, minShipyard: 4, ground: false },
-  HAULER: { id: 'HAULER', name: 'Hauler', cls: 'SUPPORT', atk: 0, hp: 210, speed: 85, cargo: 2200, alloy: scalePrice(1100, ECONOMY_TEMPO.hullPrice), crystal: scalePrice(200, ECONOMY_TEMPO.hullCrystalPrice), deuterium: 0, minShipyard: 1, ground: false },
-  /** Fast, expensive capacity. It shortens exposure; it never replaces a Hauler. D94. */
-  RUNNER: { id: 'RUNNER', name: 'Runner', cls: 'SUPPORT', atk: 0, hp: 120, speed: 125, cargo: 380, alloy: scalePrice(560, ECONOMY_TEMPO.hullPrice), crystal: scalePrice(250, ECONOMY_TEMPO.hullCrystalPrice), deuterium: scalePrice(90, ECONOMY_TEMPO.hullPrice), minShipyard: 2, ground: false },
-  /** Shield specialist. Its extra damage is resolved only against a live shield. D95. */
-  BREACHER: { id: 'BREACHER', name: 'Breacher', cls: 'LANCE', atk: 55, hp: 300, speed: 78, cargo: 0, alloy: scalePrice(1250, ECONOMY_TEMPO.hullPrice), crystal: scalePrice(550, ECONOMY_TEMPO.hullCrystalPrice), deuterium: scalePrice(200, ECONOMY_TEMPO.hullPrice), minShipyard: 3, ground: false },
-  /**
-   * THE HEAVY GUN. Bulwark-class, so a swarm of Wasps overwhelms it and a Lance
+   * THE HEAVY GUN. Bulwark-class, so a Skirmisher swarm overwhelms it and a Lance
    * breaks against it. Expensive, slow to accumulate, and what a planet buys when
    * it expects to be hit by something serious.
    */
-  BASTION: { id: 'BASTION', name: 'Bastion', cls: 'BULWARK', atk: 118, hp: 906, speed: 0, cargo: 0, alloy: scalePrice(2400, ECONOMY_TEMPO.hullPrice), crystal: scalePrice(800, ECONOMY_TEMPO.hullCrystalPrice), deuterium: 0, minShipyard: 1, ground: true },
+  BASTION: { id: 'BASTION', name: 'Bastion', tier: null, family: 'PRESERVED', profile: 'EMPLACEMENT', cls: 'BULWARK', atk: 118, hp: 906, speed: 0, cargo: 0, alloy: scalePrice(2400, ECONOMY_TEMPO.hullPrice), crystal: scalePrice(800, ECONOMY_TEMPO.hullCrystalPrice), deuterium: 0, minShipyard: 1, requiredResearch: [], ground: true },
   /**
    * THE LIGHT GUN. D27. Skirmisher-class, so it tears into heavy hulls and is
    * picked apart by Lances — the exact inverse of the Bastion, which is its whole
@@ -67,7 +71,7 @@ export const HULLS: Record<HullId, Hull> = {
    * OPPOSITE CLASSES so that "how much defence" becomes "what KIND" — a question
    * only the information layer can answer.
    */
-  THORN: { id: 'THORN', name: 'Thorn', cls: 'SKIRMISHER', atk: 49, hp: 174, speed: 0, cargo: 0, alloy: scalePrice(700, ECONOMY_TEMPO.hullPrice), crystal: scalePrice(200, ECONOMY_TEMPO.hullCrystalPrice), deuterium: 0, minShipyard: 0, ground: true },
+  THORN: { id: 'THORN', name: 'Thorn', tier: null, family: 'PRESERVED', profile: 'EMPLACEMENT', cls: 'SKIRMISHER', atk: 49, hp: 174, speed: 0, cargo: 0, alloy: scalePrice(700, ECONOMY_TEMPO.hullPrice), crystal: scalePrice(200, ECONOMY_TEMPO.hullCrystalPrice), deuterium: 0, minShipyard: 0, requiredResearch: [], ground: true },
   /**
    * The mining craft. D19.
    *
@@ -82,17 +86,37 @@ export const HULLS: Record<HullId, Hull> = {
    * Star does not. The class still decides what happens to a craft caught out on a
    * run, which is where mining's real exposure lives.
    */
-  PROSPECTOR: { id: 'PROSPECTOR', name: 'Prospector', cls: 'SUPPORT', atk: 0, hp: 150, speed: 825, cargo: PROSPECTOR.hold, alloy: scalePrice(650, ECONOMY_TEMPO.hullPrice), crystal: scalePrice(200, ECONOMY_TEMPO.hullCrystalPrice), deuterium: 0, minShipyard: 1, ground: false },
+  PROSPECTOR: { id: 'PROSPECTOR', name: 'Prospector', tier: null, family: 'PRESERVED', profile: 'MINER', cls: 'SUPPORT', atk: 0, hp: 150, speed: 825, cargo: PROSPECTOR.hold, alloy: scalePrice(650, ECONOMY_TEMPO.hullPrice), crystal: scalePrice(200, ECONOMY_TEMPO.hullCrystalPrice), deuterium: 0, minShipyard: 1, requiredResearch: [], ground: false },
 };
 
 /** What may be put in an attack fleet. A Prospector is deliberately not here. */
-export const MOBILE_HULLS: readonly MobileHullId[] = [
-  'WASP', 'LANCE', 'BULWARK', 'HAULER', 'RUNNER', 'BREACHER',
-];
-export const ALL_HULLS: readonly HullId[] = [
-  'WASP', 'LANCE', 'BULWARK', 'HAULER', 'RUNNER', 'BREACHER',
-  'BASTION', 'THORN', 'PROSPECTOR',
-];
+export const ALL_HULLS: readonly HullId[] = Object.keys(HULLS) as HullId[];
+export const MOBILE_HULLS: readonly MobileHullId[] = ALL_HULLS.filter(
+  (id): id is MobileHullId => !HULLS[id].ground && id !== 'PROSPECTOR',
+);
+export const FLEET_V2_HULLS: readonly MobileHullId[] = MOBILE_HULLS;
+export const COMBAT_HULLS: readonly MobileHullId[] = MOBILE_HULLS.filter(
+  (id) => HULLS[id].cls !== 'SUPPORT',
+);
+export const SUPPORT_HULLS: readonly MobileHullId[] = MOBILE_HULLS.filter(
+  (id) => HULLS[id].cls === 'SUPPORT',
+);
+
+/** Whether the commander holds every authored research rung for this hull. */
+export function hullRequirementsMet(id: HullId, tech: TechLevels): boolean {
+  return HULLS[id].requiredResearch.every(
+    ({ project, level }) => Math.floor(tech[project] ?? 0) >= level,
+  );
+}
+
+/**
+ * The complete production gate shared by server, simulator and presentation.
+ * Keeping Shipyard and research checks together prevents a card from advertising
+ * a hull that the build endpoint (or balance bot) interprets differently.
+ */
+export function hullBuildable(id: HullId, shipyard: number, tech: TechLevels): boolean {
+  return shipyard >= HULLS[id].minShipyard && hullRequirementsMet(id, tech);
+}
 
 /** Every gun that never leaves the ground. Derived, so a third would be picked up. */
 export const GROUND_HULLS: readonly GroundHullId[] = ALL_HULLS.filter(
@@ -175,11 +199,11 @@ export const prospectorRoom = (owned: number): number =>
  * would be a second pricing axis, silently re-rating every hull against the claim
  * the whole game rests on, and nothing in the hull table would show it.
  *
- * THE WASP IS THE UNIT, so a player reads whole small numbers on a card and a
+ * THE DART IS THE UNIT, so a player reads whole small numbers on a card and a
  * hangar figure they can hold in their head. Rounding is the only licence taken and
  * `test/capacity.test.ts` holds it inside 15%.
  */
-const BULK_UNIT = HULLS.WASP.alloy + HULLS.WASP.crystal + HULLS.WASP.deuterium;
+const BULK_UNIT = HULLS.DART.alloy + HULLS.DART.crystal + HULLS.DART.deuterium;
 const BULK: Record<HullId, number> = Object.fromEntries(
   ALL_HULLS.map((id) => [
     id,
@@ -216,7 +240,7 @@ export function groundLoad(fleet: Fleet): number {
   return load;
 }
 
-/** WASP ▸ BULWARK ▸ LANCE ▸ WASP. Support is prey to everything and deals nothing. */
+/** SKIRMISHER ▸ BULWARK ▸ LANCE ▸ SKIRMISHER. Support is prey and deals nothing. */
 const BEATS: Record<Exclude<HullClass, 'SUPPORT'>, HullClass> = {
   SKIRMISHER: 'BULWARK',
   BULWARK: 'LANCE',
@@ -259,7 +283,7 @@ export function fleetValue(fleet: Fleet): number {
 }
 
 /**
- * Rough combat heft. ADVISORY ONLY — it ignores the counter matrix, so 26 Wasps
+ * Rough combat heft. ADVISORY ONLY — it ignores the counter matrix, so a Dart swarm
  * and 1 Bastion read as near-equal while one annihilates the other. Never grade
  * an outcome with this; grading uses fleetValue.
  */
@@ -279,10 +303,12 @@ export function fleetHp(fleet: Fleet): number {
 }
 
 /** A fleet travels at the speed of its slowest ship. Zero if it cannot travel. */
-export function fleetSpeed(fleet: Fleet): number {
+export function fleetSpeed(fleet: Fleet, tech: TechLevels = {}): number {
   let s = Infinity;
   for (const id of MOBILE_HULLS) {
-    if ((fleet[id] ?? 0) > 0) s = Math.min(s, HULLS[id].speed);
+    if ((fleet[id] ?? 0) > 0) {
+      s = Math.min(s, HULLS[id].speed * hullTech(tech, id).speed);
+    }
   }
   return Number.isFinite(s) ? s : 0;
 }
@@ -294,7 +320,7 @@ export function fleetSpeed(fleet: Fleet): number {
  * smallest and dearest of the three economy ladders — it is the only one that
  * moves raid returns directly.
  *
- * Not `transferCargoCapacity`, which counts only Haulers and Runners moving ore
+ * Not `transferCargoCapacity`, which counts only dedicated Fleet V2 transports moving ore
  * between a commander's own worlds. Two different questions, deliberately kept
  * apart: what a raid carries away, and what a logistics run can move.
  */

@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { HULLS, counterMult, fleetValue, type Fleet, type HullId } from '@astera/rules';
+import {
+  HULLS, counterMult, fleetValue, hullBuildable, type Fleet, type HullId,
+} from '@astera/rules';
 import {
   ARCHETYPES, COMBAT_HULLS, GROUND_DEFENCE, adaptiveMix, runSeason, tradeScore,
   type ArchetypeName, type CombatHullId,
@@ -8,7 +10,7 @@ import {
 /**
  * THE BUG THIS FILE EXISTS FOR.
  *
- * The hull buy loop walked `['BULWARK','LANCE','WASP']`, bought the first one it
+ * The hull buy loop walked `['RAMPART','PIKE','DART']`, bought the first one it
  * could afford and stopped — so every bot in the galaxy spent its whole military
  * budget on the most expensive hull available to it, which is the inverse of the
  * dominant composition. It survived the entire project undetected because nothing
@@ -41,15 +43,15 @@ describe('tradeScore ranks hulls by what they trade, not by what they cost', () 
   });
 
   it('is zero for a hull with nothing to shoot at', () => {
-    expect(tradeScore('WASP', {})).toBe(0);
+    expect(tradeScore('DART', {})).toBe(0);
   });
 });
 
 describe('adaptiveMix', () => {
   it('names the top-scoring hull the Shipyard can actually build', () => {
     for (const yard of [0, 1, 2, 3, 4, 5]) {
-      const mix = adaptiveMix(yard, { WASP: 1 });
-      const buildable = COMBAT_HULLS.filter((h) => yard >= HULLS[h].minShipyard);
+      const mix = adaptiveMix(yard, { DART: 1 });
+      const buildable = COMBAT_HULLS.filter((h) => hullBuildable(h, yard, {}));
       const top = [...buildable].sort(
         (x, y) => tradeScore(y, GROUND_DEFENCE) - tradeScore(x, GROUND_DEFENCE),
       )[0];
@@ -61,14 +63,14 @@ describe('adaptiveMix', () => {
 
   it('never names a hull the Shipyard cannot build', () => {
     for (const yard of [0, 1, 2, 3, 4, 5]) {
-      for (const h of Object.keys(adaptiveMix(yard, { WASP: 1 })) as CombatHullId[]) {
+      for (const h of Object.keys(adaptiveMix(yard, { DART: 1 })) as CombatHullId[]) {
         expect(HULLS[h].minShipyard, `yard ${String(yard)} named ${h}`).toBeLessThanOrEqual(yard);
       }
     }
   });
 
   it('hedges rather than solving — the second hull keeps a real share', () => {
-    const mix = adaptiveMix(5, { WASP: 1 });
+    const mix = adaptiveMix(5, { DART: 1 });
     const named = Object.keys(mix) as CombatHullId[];
     expect(named.length).toBe(2);
     expect(Math.min(...named.map((h) => mix[h]!))).toBeGreaterThanOrEqual(0.25);
@@ -107,12 +109,17 @@ describe('every archetype declares a composition it can reach', () => {
 describe('a bot holds the fleet its archetype asked for', () => {
   const { world } = runSeason({ players: 50, days: 14, seed: 42 });
 
-  it('TURTLE names one hull and holds only that one', () => {
+  it('TURTLE holds only the two defensive profiles it names', () => {
     const turtles = world.players.filter((p) => p.type === 'TURTLE' && fleetValue(p.fleet) > 0);
     expect(turtles.length).toBeGreaterThan(3);
     for (const p of turtles) {
-      expect(shares(p.fleet).WASP, `${p.name} bought hulls its archetype never names`)
+      const requested = Object.keys(ARCHETYPES.TURTLE.composition) as CombatHullId[];
+      const requestedShare = requested.reduce((sum, id) => sum + shares(p.fleet)[id], 0);
+      expect(requestedShare, `${p.name} bought hulls its archetype never names`)
         .toBeGreaterThan(0.95);
+      for (const id of requested) {
+        expect(shares(p.fleet)[id], `${p.name} holds no ${id}`).toBeGreaterThan(0.05);
+      }
     }
   });
 

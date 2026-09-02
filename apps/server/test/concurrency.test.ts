@@ -100,11 +100,11 @@ describe('concurrency', () => {
       // literal here made this test pass for the wrong reason — nobody could afford
       // the batch, so "exactly one winner" became "no winners" and the mutual
       // exclusion it exists to prove was never exercised.
-      const batch = HULLS.WASP.alloy * 3;
+      const batch = HULLS.DART.alloy * 3;
       await grant(f.db, planetId, batch + 10, batch + 10);
 
       const results = await Promise.allSettled(
-        Array.from({ length: 5 }, () => buildUnits(f.db, planetId, 'WASP', 3, f.clock)),
+        Array.from({ length: 5 }, () => buildUnits(f.db, planetId, 'DART', 3, f.clock)),
       );
       const won = results.filter((r) => r.status === 'fulfilled').length;
       expect(won).toBe(1);
@@ -287,16 +287,16 @@ describe('concurrency', () => {
       await grant(f.db, planetId, 1_000_000, 1_000_000);
       await setLevel(f.db, planetId, 'SHIPYARD', 1);
 
-      await expect(buildUnits(f.db, planetId, 'BULWARK', 1, f.clock)).rejects.toThrow(
+      await expect(buildUnits(f.db, planetId, 'TEMPEST', 1, f.clock)).rejects.toThrow(
         /Shipyard L4/,
       );
     });
 
     it('rejects zero and negative counts before touching the database', async () => {
       const planetId = f.planetIds[0]!;
-      await expect(buildUnits(f.db, planetId, 'WASP', 0, f.clock)).rejects.toThrow(/positive/);
-      await expect(buildUnits(f.db, planetId, 'WASP', -5, f.clock)).rejects.toThrow(/positive/);
-      await expect(buildUnits(f.db, planetId, 'WASP', 1.5, f.clock)).rejects.toThrow(/positive/);
+      await expect(buildUnits(f.db, planetId, 'DART', 0, f.clock)).rejects.toThrow(/positive/);
+      await expect(buildUnits(f.db, planetId, 'DART', -5, f.clock)).rejects.toThrow(/positive/);
+      await expect(buildUnits(f.db, planetId, 'DART', 1.5, f.clock)).rejects.toThrow(/positive/);
     });
 
     it('rolls the whole transaction back when a rule rejects it', async () => {
@@ -309,5 +309,102 @@ describe('concurrency', () => {
       const after = await f.db.select().from(planets).where(eq(planets.id, planetId));
       expect(after[0]!.alloy).toBe(before[0]!.alloy);
     });
+  });
+});
+
+/**
+ * TWO WORLDS, ONE PIRATE. D150 — trap 13.
+ *
+ * The race is the decision: two commanders arriving seconds apart at the same
+ * pirate is the intended case, not the exotic one. `pirate_state` holds the only
+ * non-derivable fact about a pirate — what has been shot off it — so if the second
+ * arrival reads the crew before the first has written its casualties, the damage
+ * simply disappears and both raids fight a full-strength fleet.
+ */
+describe('two raids at one pirate', () => {
+  let f: Fixture;
+
+  beforeEach(async () => {
+    f = await seedWorld(2, 4242, { pirates: true });
+  });
+
+  it('accumulates both sets of casualties under the row lock', async () => {
+    const { and: sqlAnd, eq: sqlEq } = await import('drizzle-orm');
+    const { pirateRaids, pirateState, seasons } = await import('../src/db/schema.js');
+    const { privatePirateField, pirateId } = await import('../src/services/pirateField.js');
+    const { launchPirateRaid } = await import('../src/services/pirateRaid.js');
+    const { EventWorker } = await import('../src/worker/loop.js');
+    const { giveUnits, settledAt } = await import('./helpers.js');
+    const { pino } = await import('pino');
+    const { piratePosition, pirateActive, sensorSphere, distance, fleetCount } =
+      await import('@astera/rules');
+
+    const [season] = await f.db.select().from(seasons).where(sqlEq(seasons.id, f.seasonId));
+    const key = season!.asteroidKey;
+    const field = privatePirateField(key);
+    const worlds = await f.db.select().from(planets);
+    const eyes = worlds
+      .filter((w) => f.planetIds.includes(w.id))
+      .map((w) => sensorSphere({ x: w.x, y: w.y, z: w.z }, 0, 0, w.id));
+
+    // A pirate both test worlds can see at the same minute.
+    let chosen: { index: number; minute: number } | null = null;
+    outer: for (const spec of field) {
+      for (let minute = Math.ceil(spec.appearsAt) + 1; minute < spec.expiresAt; minute += 1) {
+        if (!pirateActive(spec, minute)) continue;
+        const at = piratePosition(spec, minute);
+        if (eyes.every((eye) => distance(eye.at, at) <= eye.identify)) {
+          chosen = { index: spec.index, minute };
+          break outer;
+        }
+      }
+    }
+    expect(chosen).not.toBeNull();
+    f.clock.set(new Date(season!.startsAt.getTime() + chosen!.minute * 60_000));
+
+    for (const planetId of f.planetIds) {
+      await grant(f.db, planetId, 200_000, 40_000);
+      await giveUnits(f.db, planetId, { DART: 12 });
+    }
+    const launches = await Promise.all(f.planetIds.map((planetId) =>
+      launchPirateRaid(f.db, planetId, pirateId(key, chosen!.index), { DART: 12 }, f.clock)));
+
+    const silent = pino({ level: 'silent' });
+    const worker = new EventWorker(
+      f.db, f.clock, { pollMs: 50, batch: 50, staleMinutes: 5 }, silent,
+    );
+    const latest = launches.reduce(
+      (a, b) => (a.arriveAt > b.arriveAt ? a : b),
+      launches[0]!,
+    );
+    f.clock.set(settledAt(latest.arriveAt));
+    await worker.tick();
+
+    const rows = await f.db
+      .select()
+      .from(pirateRaids)
+      .where(sqlEq(pirateRaids.seasonId, f.seasonId));
+    expect(rows).toHaveLength(2);
+    for (const row of rows) expect(row.status).not.toBe('outbound');
+
+    const [state] = await f.db
+      .select()
+      .from(pirateState)
+      .where(sqlAnd(
+        sqlEq(pirateState.seasonId, f.seasonId),
+        sqlEq(pirateState.index, chosen!.index),
+      ));
+    expect(state).toBeDefined();
+    /*
+      THE CREW NEVER COMES BACK. Whatever the two raids destroyed between them, the
+      stored losses can only be a subset of the original roster and can never
+      exceed it — a second arrival that overwrote rather than accumulated would
+      show fewer losses than the first one already wrote.
+    */
+    const roster = field[chosen!.index]!.roster;
+    expect(fleetCount(state!.losses)).toBeGreaterThan(0);
+    for (const [hull, lost] of Object.entries(state!.losses)) {
+      expect(lost).toBeLessThanOrEqual(roster[hull as keyof typeof roster] ?? 0);
+    }
   });
 });

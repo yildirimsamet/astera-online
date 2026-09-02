@@ -1,10 +1,11 @@
 import type { Db, Queryable } from '../db/client.js';
-import type { EventBus, StreamEvent } from '../stream/bus.js';
+import { PRIVATE_PREFIX, type EventBus, type StreamEvent } from '../stream/bus.js';
 import { AsyncCache, type AsyncCacheStats } from './asyncCache.js';
 import { publicWorlds, type PublicWorld } from './publicGalaxy.js';
 import { loadTrafficSnapshot, sensorPosts, type SensorPost, type TrafficSnapshot } from './traffic.js';
 import { rememberedWorlds, type RememberedWorlds } from './intel.js';
 import { loadMiningSnapshot, type MiningSnapshot } from './mining.js';
+import { loadPirateSnapshot, type PirateSnapshot } from './pirateField.js';
 import {
   commanderTopology,
   type CommanderTopology,
@@ -28,6 +29,7 @@ export interface ProjectionStatus {
   publicGalaxy: AsyncCacheStats;
   traffic: AsyncCacheStats;
   mining: AsyncCacheStats;
+  pirates: AsyncCacheStats;
 }
 
 /**
@@ -43,6 +45,19 @@ export class Projections {
   private readonly publicGalaxy: AsyncCache<PublicWorld[]>;
   private readonly traffic: AsyncCache<TrafficSnapshot>;
   private readonly mining: AsyncCache<MiningSnapshot>;
+  /**
+   * THE SEASON'S PIRATE LANE AND ITS STORED DAMAGE. D150.
+   *
+   * Season-keyed and caller-free, exactly like `mining`: the snapshot holds raw
+   * lane facts and every commander's fog is applied afterwards, per request. A
+   * shared entry that had already been filtered for somebody would be a cache
+   * that leaks one commander's sight to the next caller.
+   *
+   * It shares `miningTtlMs` because it is the same kind of thing — a derived
+   * field plus a small mutation table — and a second knob for the same decision
+   * is one more number that can be set wrong.
+   */
+  private readonly pirates: AsyncCache<PirateSnapshot>;
   private readonly commanders: AsyncCache<CommanderTopology>;
   /**
    * WHAT EACH COMMANDER CAN SEE MOVING. D123.
@@ -111,6 +126,11 @@ export class Projections {
       config.miningTtlMs,
       usable,
     );
+    this.pirates = new AsyncCache<PirateSnapshot>(
+      config.maxSeasons,
+      config.miningTtlMs,
+      usable,
+    );
     this.stopObserving = bus.observe((event) => {
       this.onEvent(event);
     });
@@ -152,10 +172,22 @@ export class Projections {
     return this.mining.get(seasonId, () => loadMiningSnapshot(source, seasonId, now));
   }
 
+  pirateSnapshot(
+    seasonId: string,
+    now: Date,
+    source: Queryable = this.db,
+  ): Promise<PirateSnapshot> {
+    // A transactional caller may supply its already-acquired connection, for the
+    // same reason `miningSnapshot` does: a cold fan-out must not hold every pool
+    // slot while its shared fill waits for another one.
+    return this.pirates.get(seasonId, () => loadPirateSnapshot(source, seasonId, now));
+  }
+
   invalidate(seasonId: string): void {
     this.publicGalaxy.invalidate(seasonId);
     this.traffic.invalidate(seasonId);
     this.mining.invalidate(seasonId);
+    this.pirates.invalidate(seasonId);
   }
 
   status(): ProjectionStatus {
@@ -167,6 +199,7 @@ export class Projections {
       publicGalaxy: this.publicGalaxy.status(),
       traffic: this.traffic.status(),
       mining: this.mining.status(),
+      pirates: this.pirates.status(),
     };
   }
 
@@ -193,6 +226,7 @@ export class Projections {
     this.publicGalaxy.clear();
     this.traffic.clear();
     this.mining.clear();
+    this.pirates.clear();
   }
 
   private onEvent(event: StreamEvent): void {
@@ -214,6 +248,16 @@ export class Projections {
        * that was not already addressed to that one commander.
        */
       if (event.kind === 'probe_report') this.remembered.invalidate(event.playerId);
+      /**
+       * AND A FLEET IS EYES TOO. D151.
+       *
+       * The same invalidation for the same reason, through the other door: an
+       * arrival writes the record inside its own transaction and publishes this on
+       * commit, so the raid's own `raid_result` wake finds a map that has already
+       * caught up. `rememberWorld` is the only writer and the only publisher, so
+       * a craft added later cannot forget to say so.
+       */
+      if (event.kind === `${PRIVATE_PREFIX}memory`) this.remembered.invalidate(event.playerId);
       // Ground instruments are private hardware, so their completion deliberately
       // has no shard event. The addressed event is enough to refresh this owner's
       // reach without advertising to the rest of the galaxy what they just built.
@@ -268,6 +312,7 @@ export class Projections {
       kind === 'shard:launch'
       || kind === 'shard:arrival'
       || kind === 'shard:mining'
+      || kind === 'shard:pirate'
       || kind === 'shard:impact'
       || kind === 'shard:control'
       || kind === 'shard:transfer'
@@ -285,6 +330,18 @@ export class Projections {
       || kind === 'shard:rollover'
     ) {
       this.mining.invalidate(event.shard);
+    }
+    /*
+      A raid is what changes `pirate_state`, and a season boundary is what replaces
+      the lane. Nothing else moves this projection: the orbit, the roster and the
+      hoard are all derived, so a build, a capture or a score change cannot touch it.
+    */
+    if (
+      kind === 'shard:pirate'
+      || kind === 'shard:season'
+      || kind === 'shard:rollover'
+    ) {
+      this.pirates.invalidate(event.shard);
     }
   }
 }

@@ -751,7 +751,7 @@ function planetPayload() {
     flight: { used: 0, total: 3 },
     satelliteCosts: {},
     research: [],
-    fleet: { WASP: 12 },
+    fleet: { DART: 12 },
     ground: {},
     fleetAway: {},
     score: { wealth: 1200, dominion: 0 },

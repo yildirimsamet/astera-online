@@ -10,6 +10,7 @@ import { createSeason } from '../src/services/season.js';
 import { joinSeason } from '../src/services/player.js';
 import {
   makeAccount,
+  placeAt,
   seedWorld,
   TEST_DATABASE_URL,
   testDb,
@@ -86,6 +87,16 @@ describe('galaxy chat', () => {
       username: 'İzci',
       planetId: f.planetIds[0],
     });
+  });
+
+  it('never publishes an undiscovered author location through chat', async () => {
+    await placeAt(f.db, f.planetIds[0]!, { x: 3_000 });
+    expect((await post(0, 'Beni bul')).statusCode).toBe(200);
+
+    const read = await app.inject({ method: 'GET', url: '/api/chat/messages', headers: auth[1] });
+    const [message] = read.json<{ messages: Record<string, unknown>[] }>().messages;
+    expect(message).toMatchObject({ authorPlayerId: f.playerIds[0], content: 'Beni bul' });
+    expect(message).not.toHaveProperty('planetId');
   });
 
   it('limits one player to five committed messages in a rolling ten seconds', async () => {

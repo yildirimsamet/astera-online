@@ -99,7 +99,7 @@ describe('a client waiting for an arrival', () => {
     minutesRemaining: 2,
     arriveAt: at(Date.now() + 120_000),
     leg: 'outbound',
-    fleet: { WASP: 10 },
+    fleet: { DART: 10 },
     path: {
       from: { x: 0, y: 0, z: 0 },
       to: { x: 600, y: 0, z: 0 },

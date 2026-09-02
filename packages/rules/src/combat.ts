@@ -1,4 +1,4 @@
-import { BREACHER, COMBAT } from './constants.js';
+import { COMBAT, SHIELD_BREAKER } from './constants.js';
 import { hullTech, type TechLevels } from './tech.js';
 import {
   ALL_HULLS,
@@ -23,7 +23,7 @@ export interface CombatRound {
   shieldAfter?: number;
   shieldAbsorbed: number;
   /** Bonus shield-only damage actually absorbed; never spills into unit HP. D95. */
-  breacherShieldDamage: number;
+  shieldBreakerDamage: number;
   /** Ordinary attacker fire left after Aegis, before defender HP removes units. */
   attackerHullDamage?: number;
   attackerLosses: Fleet;
@@ -52,10 +52,9 @@ export interface CombatResult {
  * the targetable HP pool.
  *
  * Support hulls fly behind the line: they take nothing while any combat hull on
- * their side survives. Without this a Hauler (80 HP, taking 1.6x from everything)
- * dies in round one, the attacker arrives with no cargo, and raiding cannot pay
- * for itself. It is also what creates the escort decision — bring enough combat
- * hulls to cover the cargo you brought.
+ * their side survives. Without this a transport dies in round one, the attacker
+ * arrives with no cargo, and raiding cannot pay for itself. It is also what
+ * creates the escort decision — bring enough combat hulls to cover the cargo.
  */
 /**
  * ONE SIDE'S EFFECTIVE STATS. T9.
@@ -70,10 +69,13 @@ export interface SideStats {
   hp: (id: HullId) => number;
 }
 
-const statsFor = (tech: TechLevels): SideStats => ({
-  atk: (id) => HULLS[id].atk * hullTech(tech, id).atk,
-  hp: (id) => HULLS[id].hp * hullTech(tech, id).hp,
-});
+const statsFor = (side: CombatSide): SideStats => {
+  const damageMult = side.damageMult ?? 1;
+  return {
+    atk: (id) => HULLS[id].atk * hullTech(side.tech, id).atk * damageMult,
+    hp: (id) => HULLS[id].hp * hullTech(side.tech, id).hp,
+  };
+};
 
 function damageMap(
   attackers: Fleet,
@@ -135,8 +137,8 @@ const sum = (m: Map<HullId, number>): number => {
   return t;
 };
 
-/** Breacher damage, including the shield-only case where no unit is targetable. */
-function breacherDamage(
+/** Specialist damage, including the shield-only case where no unit is targetable. */
+function specialistDamage(
   attackers: Fleet,
   defenders: Fleet,
   roll: number,
@@ -173,9 +175,30 @@ function breacherDamage(
  * the compiler would say nothing. The empty pair is spelled out at the call sites
  * that genuinely have no research to offer.
  */
+export interface CombatSide {
+  tech: TechLevels;
+  /**
+   * A FLAT MULTIPLIER ON EVERY SHOT THIS SIDE FIRES. Optional; 1 when absent.
+   *
+   * The pirate handicap (D150) and NOTHING ELSE. It is deliberately not research:
+   * D137 caps the combined research product at 25% and this sits far outside
+   * that, so routing it through the tech tables would silently break the ceiling
+   * the whole ladder is priced against.
+   *
+   * IT LIVES ON `atk` AND NEVER ON `hp`. "Deals less damage" is the rule; "is
+   * easier to kill" is a different rule nobody asked for, and an L4 pirate has to
+   * stay dangerous to shoot at or its ship is not a prize. Applied inside
+   * `statsFor`, so `damageMap`, `applyCasualties` and `specialistDamage` all read
+   * it through the one `SideStats` they already share — a modifier honoured in the
+   * damage pool and forgotten in the casualty maths is the bug this file hides
+   * best, and there is now no seam for it to hide in.
+   */
+  damageMult?: number;
+}
+
 export interface CombatTech {
-  attacker: TechLevels;
-  defender: TechLevels;
+  attacker: CombatSide;
+  defender: CombatSide;
 }
 
 export function resolveCombat(
@@ -207,20 +230,20 @@ export function resolveCombat(
     const defenderRoll = COMBAT.varianceMin + rng() * span;
     const toD = damageMap(A, D, attackerRoll, a, d);
     // Reuse the same class-adjusted map and roll. Four extra copies make the
-    // Breacher's total shield effect 5x without adding a fourth counter class.
-    const breacherNormal = shieldLeft > 0
-      ? breacherDamage({ BREACHER: A.BREACHER ?? 0 }, D, attackerRoll, a, d)
+    // Nullifier's total shield effect 5x without adding a fourth counter class.
+    const specialistNormal = shieldLeft > 0
+      ? specialistDamage({ NULLIFIER: A.NULLIFIER ?? 0 }, D, attackerRoll, a, d)
       : 0;
     const toA = damageMap(D, A, defenderRoll, d, a);
 
-    // With no units to target, only a Breacher has a planet-facing shield hit.
+    // With no units to target, only a Nullifier has a planet-facing shield hit.
     // This preserves the established ordinary-combat model while ensuring its
     // advertised fivefold shield effect still exists against a bare Aegis.
-    const incoming = sum(toD) + (fleetCount(D) === 0 ? breacherNormal : 0);
+    const incoming = sum(toD) + (fleetCount(D) === 0 ? specialistNormal : 0);
     const shieldBefore = Math.max(0, Math.round(shieldLeft));
-    const breacherBonus = breacherNormal * BREACHER.bonusShieldDamageMult;
-    const breacherAbsorbed = Math.min(shieldLeft, breacherBonus);
-    shieldLeft -= breacherAbsorbed;
+    const specialistBonus = specialistNormal * SHIELD_BREAKER.bonusShieldDamageMult;
+    const specialistAbsorbed = Math.min(shieldLeft, specialistBonus);
+    shieldLeft -= specialistAbsorbed;
     const absorbed = Math.min(shieldLeft, incoming);
     shieldLeft -= absorbed;
     const shieldAfter = Math.max(0, Math.round(shieldLeft));
@@ -240,7 +263,7 @@ export function resolveCombat(
       // Stored as the visible before→after movement so the report's arithmetic
       // is exact even when the resolver carried fractional damage internally.
       shieldAbsorbed: shieldBefore - shieldAfter,
-      breacherShieldDamage: Math.round(breacherAbsorbed),
+      shieldBreakerDamage: Math.round(specialistAbsorbed),
       attackerHullDamage: Math.round(incoming - absorbed),
       attackerLosses,
       defenderLosses,

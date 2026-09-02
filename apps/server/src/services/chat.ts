@@ -4,12 +4,13 @@ import type { Clock } from '../clock.js';
 import type { Db } from '../db/client.js';
 import { accounts, chatMessages, planets, players } from '../db/schema.js';
 import { GameError } from './planet.js';
+import { locationIsKnown, type LocationSight } from './locationSight.js';
 import { publishShard } from '../stream/bus.js';
 
 export interface ChatMessageView {
   id: string;
   authorPlayerId: string;
-  planetId: string;
+  planetId?: string;
   username: string;
   content: string;
   createdAt: Date;
@@ -33,6 +34,7 @@ export async function readChat(
   db: Db,
   accountId: string,
   limit: number,
+  sight: LocationSight,
   before?: string,
 ): Promise<{ messages: ChatMessageView[]; nextBefore: string | null }> {
   const me = await chatPlayer(db, accountId);
@@ -52,6 +54,9 @@ export async function readChat(
       id: chatMessages.id,
       authorPlayerId: chatMessages.authorPlayerId,
       planetId: planets.id,
+      x: planets.x,
+      y: planets.y,
+      z: planets.z,
       username: accounts.displayName,
       content: chatMessages.content,
       createdAt: chatMessages.createdAt,
@@ -75,10 +80,16 @@ export async function readChat(
   const page = rows.slice(0, limit);
   const nextBefore = rows.length > limit ? (page.at(-1)?.id ?? null) : null;
   return {
-    messages: page.reverse().map((row) => ({
-      ...row,
-      self: row.authorPlayerId === me.player.id,
-    })),
+    messages: page.reverse().map((row) => {
+      const self = row.authorPlayerId === me.player.id;
+      const { x, y, z, planetId, ...message } = row;
+      const canLocate = locationIsKnown(planetId, { x, y, z }, self, sight);
+      return {
+        ...message,
+        ...(canLocate ? { planetId } : {}),
+        self,
+      };
+    }),
     nextBefore,
   };
 }

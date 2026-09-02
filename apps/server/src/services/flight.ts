@@ -1,7 +1,7 @@
 import { and, eq, inArray, isNotNull, isNull, ne, or, sql } from 'drizzle-orm';
 import { clanBayAvailable, flightSlots } from '@astera/rules';
 import type { Queryable } from '../db/client.js';
-import { miningRuns, missions } from '../db/schema.js';
+import { miningRuns, missions, pirateRaids } from '../db/schema.js';
 import { GameError } from './planet.js';
 
 /**
@@ -103,7 +103,25 @@ export async function baysInUse(tx: Queryable, planetId: string): Promise<number
       and(eq(miningRuns.planetId, planetId), inArray(miningRuns.status, ['outbound', 'returning'])),
     );
 
-  return (flights?.n ?? 0) + (mining?.n ?? 0);
+  /**
+   * A PIRATE RAID IS A BAY, LIKE EVERY OTHER FLIGHT. D28 · D150.
+   *
+   * Bays are the ONE scarcity governing how much a world can have committed at
+   * once, and a target class that did not consume one would let a commander keep
+   * their raid budget while farming pirates on the side — which is exactly the
+   * "resources replace players as the fun" regression the design watches for.
+   */
+  const [pirate] = await tx
+    .select({ n: sql<number>`count(*)::int` })
+    .from(pirateRaids)
+    .where(
+      and(
+        eq(pirateRaids.planetId, planetId),
+        inArray(pirateRaids.status, ['outbound', 'returning']),
+      ),
+    );
+
+  return (flights?.n ?? 0) + (mining?.n ?? 0) + (pirate?.n ?? 0);
 }
 
 export interface BayCount {

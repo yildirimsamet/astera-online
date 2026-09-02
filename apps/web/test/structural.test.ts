@@ -94,7 +94,7 @@ describe('structural sharing', () => {
         to: { x: 10, y: 0, z: 0 },
         startAt: '2026-04-01T12:00:00.000Z',
         endAt: '2026-04-01T12:04:00.000Z',
-        fleet: { WASP: 8 },
+        fleet: { DART: 8 },
       },
     ],
   };
@@ -117,7 +117,7 @@ describe('structural sharing', () => {
           minutesRemaining: 4,
           arriveAt: '2026-04-01T12:04:00.000Z',
           leg: 'outbound',
-          fleet: { WASP: 8 },
+          fleet: { DART: 8 },
           path: {
             from: { x: 0, y: 0, z: 0 },
             to: { x: 40, y: 0, z: 0 },

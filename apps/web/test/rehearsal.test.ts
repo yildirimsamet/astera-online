@@ -139,7 +139,7 @@ describe('the opening budget', () => {
    * Deliberately different, and this is the assertion that keeps the difference
    * exactly one thing: the cushion. `START` is the arithmetic the beats teach —
    * three mandatory upgrades that spend the crystal to the last unit and exactly
-   * two Wasps with the rest — and a rehearsal handed the cushion as well would
+   * two Darts with the rest — and a rehearsal handed the cushion as well would
    * make a beat's sentence false and turn a lesson in scarcity into a shopping
    * trip. What the commander finds after claiming is `OPENING_BONUS`, untouched.
    */
@@ -171,16 +171,16 @@ describe('the opening budget', () => {
     expect(refusesUpgrade(raised, 'REFINERY')).toBeNull();
   });
 
-  it('spends every last unit of the grant on three upgrades and two Wasps', () => {
+  it('spends every last unit of the grant on three upgrades and two Darts', () => {
     const three = opened();
     expect(three.crystal).toBe(0);
-    expect(three.alloy).toBe(HULLS.WASP.alloy * 2);
+    expect(three.alloy).toBe(HULLS.DART.alloy * 2);
 
-    const armed = build(three, 'WASP', 2);
+    const armed = build(three, 'DART', 2);
     expect(armed.alloy).toBe(0);
     expect(armed.crystal).toBe(0);
     expect(armed.queues.YARD).toMatchObject([
-      { kind: 'HULL', subject: 'WASP', count: 2, staged: true },
+      { kind: 'HULL', subject: 'DART', count: 2, staged: true },
     ]);
   });
 
@@ -203,11 +203,11 @@ describe('the opening budget', () => {
 
   it('refuses a hull the Shipyard cannot build, and one that is not affordable', () => {
     const three = opened();
-    // A Lance needs Shipyard 2; a fresh planet has none at all.
-    expect(refusesBuild(three, 'LANCE', 1)).toBe('SHIPYARD_TOO_LOW');
-    // Two Wasps is exactly the budget; three is not.
-    expect(refusesBuild(three, 'WASP', 2)).toBeNull();
-    expect(refusesBuild(three, 'WASP', 3)).toBe('INSUFFICIENT_RESOURCES');
+    // A Viper needs Shipyard 2; a fresh planet has none at all.
+    expect(refusesBuild(three, 'VIPER', 1)).toBe('SHIPYARD_TOO_LOW');
+    // Two Darts is exactly the budget; three is not.
+    expect(refusesBuild(three, 'DART', 2)).toBeNull();
+    expect(refusesBuild(three, 'DART', 3)).toBe('INSUFFICIENT_RESOURCES');
   });
 
   it('refuses staged ships that would exceed the same opening Hangar', () => {
@@ -216,23 +216,23 @@ describe('the opening budget', () => {
       alloy: 100_000_000,
       crystal: 100_000_000,
     };
-    expect(refusesBuild(world, 'WASP', hangarCapacity(0) + 1)).toBe('HANGAR_FULL');
+    expect(refusesBuild(world, 'DART', hangarCapacity(0) + 1)).toBe('HANGAR_FULL');
   });
 
   it('records what was pressed, in order, and nothing else', () => {
-    const armed = build(opened(), 'WASP', 2);
+    const armed = build(opened(), 'DART', 2);
     expect(armed.intents).toEqual([
       { kind: 'upgrade', building: 'CORE' },
       { kind: 'upgrade', building: 'REFINERY' },
       { kind: 'upgrade', building: 'EXTRACTOR' },
-      { kind: 'build', hull: 'WASP', count: 2 },
+      { kind: 'build', hull: 'DART', count: 2 },
     ]);
   });
 
   it('changes nothing at all when a press is refused', () => {
     const w = openWorld(previewOf());
     expect(upgrade(w, 'REFINERY')).toBe(w);
-    expect(build(w, 'LANCE', 1)).toBe(w);
+    expect(build(w, 'PIKE', 1)).toBe(w);
     expect(w.intents).toEqual([]);
   });
 });
@@ -251,12 +251,12 @@ describe('the staged queues', () => {
     });
   });
 
-  it('stages exactly three Construction orders and one two-Wasp Yard order', () => {
-    const staged = build(opened(), 'WASP', 2);
+  it('stages exactly three Construction orders and one two-Dart Yard order', () => {
+    const staged = build(opened(), 'DART', 2);
     expect(staged.queues.CONSTRUCTION.map((order) => order.subject))
       .toEqual(['CORE', 'REFINERY', 'EXTRACTOR']);
     expect(staged.queues.YARD).toMatchObject([
-      { kind: 'HULL', subject: 'WASP', count: 2, slot: 0, staged: true },
+      { kind: 'HULL', subject: 'DART', count: 2, slot: 0, staged: true },
     ]);
     expect(staged.queues.CONSTRUCTION.every((order) => order.finishesAt === undefined)).toBe(true);
     expect(staged.queues.YARD.every((order) => order.finishesAt === undefined)).toBe(true);
@@ -274,7 +274,7 @@ describe('the planet it renders', () => {
    */
   it('parses as a real planet payload', () => {
     expect(() => planetSchema.parse(planetOf(openWorld(previewOf())))).not.toThrow();
-    expect(() => planetSchema.parse(planetOf(build(opened(), 'WASP', 2)))).not.toThrow();
+    expect(() => planetSchema.parse(planetOf(build(opened(), 'DART', 2)))).not.toThrow();
   });
 
   it('prices the next upgrade the way the server does', () => {
@@ -292,10 +292,10 @@ describe('the planet it renders', () => {
 
   it('shows staged work without granting a level, a hull or a fake flight', () => {
     const before = planetOf(openWorld(previewOf()));
-    const view = planetOf(build(opened(), 'WASP', 2));
+    const view = planetOf(build(opened(), 'DART', 2));
     expect(view.buildings).toEqual(START_BUILDINGS);
-    expect(view.fleet.WASP ?? 0).toBe(0);
-    expect(view.fleetAway.WASP ?? 0).toBe(0);
+    expect(view.fleet.DART ?? 0).toBe(0);
+    expect(view.fleetAway.DART ?? 0).toBe(0);
     expect(view.flight.used).toBe(0);
     expect(view.flight.total).toBeGreaterThan(0);
     expect(view.queues?.CONSTRUCTION).toHaveLength(3);
@@ -391,13 +391,13 @@ describe('the rehearsal fetch', () => {
     await api.upgrade('CORE');
     await api.upgrade('REFINERY');
     await api.upgrade('EXTRACTOR');
-    const built = buildSchema.parse(await api.build('WASP', 2));
+    const built = buildSchema.parse(await api.build('DART', 2));
 
     expect(built.planet.queues?.CONSTRUCTION).toHaveLength(3);
     expect(built.planet.queues?.YARD).toHaveLength(1);
     expect(now().intents).toHaveLength(4);
     expect((await api.pending()).pending).toEqual([]);
-    expect(built.planet.fleet.WASP ?? 0).toBe(0);
+    expect(built.planet.fleet.DART ?? 0).toBe(0);
   });
 
   /**
@@ -411,7 +411,7 @@ describe('the rehearsal fetch', () => {
     await expect(api.mine('mJt7YvxMZEC5S7yYQ32SYw', 1)).rejects.toMatchObject({
       code: 'REHEARSAL_ONLY',
     });
-    await expect(api.launch('target', { WASP: 2 })).rejects.toMatchObject({
+    await expect(api.launch('target', { DART: 2 })).rejects.toMatchObject({
       code: 'REHEARSAL_ONLY',
     });
     await expect(api.installSatellite('FOUNDRY')).rejects.toMatchObject({

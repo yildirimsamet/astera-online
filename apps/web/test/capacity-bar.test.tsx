@@ -20,7 +20,7 @@ import i18n from '../src/i18n/index.js';
  *     stepper as the player presses it — cause and effect in the same eyeful
  *   · the DARK part is what would still be free
  *   · one SHIP BLOCK sits under it at the exact width one of this hull takes, so
- *     "a Bulwark eats twelve Wasps of room" is read off the picture, not counted
+ *     "a Bulwark eats twelve Darts of room" is read off the picture, not counted
  *
  * The only figure with any size to it is HOW MANY MORE FIT, because that is the
  * number the player came to the sheet holding.
@@ -31,7 +31,7 @@ beforeEach(async () => {
 });
 
 const bar = (over: Partial<Parameters<typeof CapacityBar>[0]> = {}) => render(
-  <CapacityBar total={200} used={40} incoming={0} bulk={hullBulk('WASP')} fits={160} {...over} />,
+  <CapacityBar total={200} used={40} incoming={0} bulk={hullBulk('DART')} fits={160} {...over} />,
 );
 
 const widthOf = (view: ReturnType<typeof render>, part: string): number => {
@@ -53,8 +53,8 @@ describe('the capacity bar', () => {
   });
 
   it('grows the order as the count grows', () => {
-    const one = widthOf(bar({ incoming: hullBulk('LANCE') }), 'incoming');
-    const three = widthOf(bar({ incoming: hullBulk('LANCE') * 3 }), 'incoming');
+    const one = widthOf(bar({ incoming: hullBulk('PIKE') }), 'incoming');
+    const three = widthOf(bar({ incoming: hullBulk('PIKE') * 3 }), 'incoming');
     expect(three).toBeCloseTo(one * 3, 1);
   });
 
@@ -74,7 +74,7 @@ describe('the capacity bar', () => {
   });
 
   /**
-   * ONE SHIP, AT THE WIDTH IT ACTUALLY TAKES. A Bulwark is twelve Wasps of room,
+   * ONE SHIP, AT THE WIDTH IT ACTUALLY TAKES. A Bulwark is twelve Darts of room,
    * and the block under the bar is twelve times as wide — which is the whole
    * mechanism explained without a word or a number.
    */
@@ -82,13 +82,13 @@ describe('the capacity bar', () => {
     // A hangar small enough that both hulls are comfortably above the floor below,
     // which is where the ratio is the thing being drawn rather than the floor.
     const small = { total: 60 };
-    const wasp = widthOf(bar({ ...small, bulk: hullBulk('WASP') }), 'one');
-    const bulwark = widthOf(bar({ ...small, bulk: hullBulk('BULWARK') }), 'one');
-    expect(bulwark / wasp).toBeCloseTo(hullBulk('BULWARK') / hullBulk('WASP'), 1);
+    const wasp = widthOf(bar({ ...small, bulk: hullBulk('DART') }), 'one');
+    const bulwark = widthOf(bar({ ...small, bulk: hullBulk('RAMPART') }), 'one');
+    expect(bulwark / wasp).toBeCloseTo(hullBulk('RAMPART') / hullBulk('DART'), 1);
   });
 
   it('keeps a single ship visible even when it is a sliver of the bar', () => {
-    // One Wasp in a 1,800-capacity hangar is 0.06% — a segment nobody can see.
+    // One Dart in a 1,800-capacity hangar is 0.06% — a segment nobody can see.
     expect(widthOf(bar({ total: 1800, bulk: 1 }), 'one')).toBeGreaterThan(0.5);
   });
 

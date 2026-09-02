@@ -133,6 +133,18 @@ export function ChronicleScreen({
                 });
                 icon = <CoreIcon className="size-4" />;
                 break;
+              case 'galaxy_event_started':
+                title = t('chronicle.asteroidShowerStarted');
+                detail = t('chronicle.asteroidShowerStartedDetail', {
+                  multiplier: event.payload.asteroidSpawnMultiplier,
+                });
+                icon = <GalaxyIcon className="size-4" />;
+                break;
+              case 'galaxy_event_ended':
+                title = t('chronicle.asteroidShowerEnded');
+                detail = t('chronicle.asteroidShowerEndedDetail');
+                icon = <GalaxyIcon className="size-4" />;
+                break;
             }
             const focus = event.subjectPlanetId
                 && (!focusablePlanetIds || focusablePlanetIds.includes(event.subjectPlanetId))

@@ -39,7 +39,7 @@ const isKnown = (code: string): code is keyof typeof CATALOGUE =>
 /**
  * NAMED THINGS ARRIVE AS IDS AND ARE RESOLVED HERE.
  *
- * `hull` and `instrument` are `WASP` and `TELESCOPE` on the wire, because the
+ * `hull` and `instrument` are `DART` and `TELESCOPE` on the wire, because the
  * server has no business holding a Turkish name for a Wasp — `packages/rules` is
  * the shared source of truth and it is deliberately language-free. Resolving them
  * at the last moment is what lets one refusal read "Evde yeterli Atmaca yok" and

@@ -28,6 +28,7 @@ import type { Clock } from '../clock.js';
 import type { Db, Tx } from '../db/client.js';
 import { buildQueueContext, placeBuildOrder } from './buildQueue.js';
 import { asTech } from './researchState.js';
+import { assertHullProductionAccess } from './hullAccess.js';
 import { planetView, type PlanetView } from './planetView.js';
 import {
   GameError,
@@ -231,17 +232,8 @@ export async function placeUnitBuild(
   assertWorldOperational(planet);
   const context = await buildQueueContext(tx, planet, 'YARD');
   const spec = HULLS[hull];
-  if (hull === 'RUNNER' && !context.projected.research.has('DENSE_FUEL_CELLS')) {
-    throw new GameError('NEEDS_DENSE_FUEL_CELLS', 'Research Dense Fuel Cells first', 403);
-  }
-  if (hull === 'BREACHER' && !context.projected.research.has('GRAVITIC_CHARGES')) {
-    throw new GameError('NEEDS_GRAVITIC_CHARGES', 'Research Gravitic Charges first', 403);
-  }
-  if (context.projected.buildings.SHIPYARD < spec.minShipyard) {
-    throw new GameError('SHIPYARD_TOO_LOW', `Needs Shipyard L${spec.minShipyard}`, 400, {
-      level: spec.minShipyard,
-    });
-  }
+  const tech = asTech(context.projected.research);
+  assertHullProductionAccess(hull, context.projected.buildings.SHIPYARD, tech);
     /**
      * A DRILL IS A CRAFT, AND THE SHIPYARD BUILDS CRAFT. D25.
      *
@@ -328,7 +320,7 @@ export async function placeUnitBuild(
     cost,
     minutes: spec.ground
       ? defenceMinutes(cost, context.projected.buildings.SHIPYARD)
-      : shipMinutes(cost, context.projected.buildings.SHIPYARD, asTech(context.projected.research)),
+      : shipMinutes(cost, context.projected.buildings.SHIPYARD, tech),
   });
 }
 

@@ -11,6 +11,7 @@ import type {
 import { noteServerTime } from '../lib/clock.js';
 import {
   adminFeedbackPageSchema,
+  activeGalaxyEventsSchema,
   announcementPublishedSchema,
   announcementsPageSchema,
   claimSchema,
@@ -45,6 +46,8 @@ import {
   intelSchema,
   miningLaunchSchema,
   miningFieldSchema,
+  piratesSchema,
+  pirateRaidSchema,
   miningSchema,
   miningStatusSchema,
   launchSchema,
@@ -388,6 +391,7 @@ export class Api {
   /* ── world ────────────────────────────────────────────────── */
 
   season = () => this.send('/api/season', seasonSchema);
+  galaxyEvents = () => this.send('/api/galaxy/events', activeGalaxyEventsSchema);
   setRival = (planetId: string | null) =>
     this.send('/api/rival', rivalSetSchema, { method: 'POST', body: { planetId } });
   planets = () => this.send('/api/planets', planetsSchema);
@@ -514,14 +518,6 @@ export class Api {
     return this.send(path, buildCancelSchema, { method: 'POST' });
   };
 
-  cancelResearchOrder = (planetIdOrOrderId: string, explicitOrderId?: string) => {
-    const orderId = explicitOrderId ?? planetIdOrOrderId;
-    const path = explicitOrderId
-      ? `/api/planets/${encodeURIComponent(planetIdOrOrderId)}/research-orders/${encodeURIComponent(orderId)}/cancel`
-      : `/api/planet/research-orders/${encodeURIComponent(orderId)}/cancel`;
-    return this.send(path, buildCancelSchema, { method: 'POST' });
-  };
-
   completeResearch = (planetIdOrProject: string, explicitProject?: ResearchProjectId) =>
     this.send(explicitProject
       ? `/api/planets/${encodeURIComponent(planetIdOrProject)}/research`
@@ -618,6 +614,25 @@ export class Api {
     this.send('/api/mining/launch', miningLaunchSchema, {
       method: 'POST',
       body: { asteroidId, craft, ...(originPlanetId ? { originPlanetId } : {}) },
+    });
+
+  /**
+   * The pirates on this commander's sensors, and what it would take to reach one.
+   *
+   * `originPlanetId` is what `reachMinutes` is measured FROM, so it travels with
+   * the request rather than being applied afterwards: a rendezvous solved from the
+   * wrong world is a number that does not describe any launch the player can make.
+   */
+  pirates = (originPlanetId?: string) => this.send(
+    `/api/pirates${originPlanetId ? `?originPlanetId=${encodeURIComponent(originPlanetId)}` : ''}`,
+    piratesSchema,
+  );
+
+  /** IRREVERSIBLE, like every launch. The server has no recall. P3. */
+  raidPirate = (pirateId: string, fleet: Fleet, originPlanetId?: string) =>
+    this.send('/api/pirates/raid', pirateRaidSchema, {
+      method: 'POST',
+      body: { pirateId, fleet, ...(originPlanetId ? { originPlanetId } : {}) },
     });
 
   /** Send craft to a wreck field. D32 — the same craft, a different errand. */

@@ -24,6 +24,7 @@ import { compact } from '../lib/format.js';
 import { duration } from '../lib/time.js';
 import { HULL_ART, RESOURCE_ART } from '../ui/assets.js';
 import { CapacityBar } from '../ui/CapacityBar.js';
+import { QuantityStepper } from '../ui/QuantityStepper.js';
 import { SpendBar } from '../ui/SpendBar.js';
 import { Tally } from '../ui/Tally.js';
 import { HullMark } from '../ui/icons/hulls.js';
@@ -329,9 +330,10 @@ export function TransferSheet({
               key={id}
               data-hull-row={id}
               data-owned={held > 0 ? 'true' : 'false'}
-              className={`flex min-h-14 items-center gap-3 rounded-chip border border-line-soft px-3 py-2 ${(fleet[id] ?? 0) > 0 ? 'bg-crystal/[0.05]' : ''
+              className={`min-h-14 rounded-chip border border-line-soft px-3 py-2 ${(fleet[id] ?? 0) > 0 ? 'bg-crystal/[0.05]' : ''
                 }`}
             >
+              <div className="flex items-center gap-3">
               {/*
               THE SHIP, NOT ITS NAME. The raid sheet next door has shown the render
               since it was written; this one — the other half of the same verb —
@@ -389,25 +391,20 @@ export function TransferSheet({
                   <span className="mt-1 block text-label text-alloy">{t('transfer.hullNone')}</span>
                 )}
               </span>
-              <div className="flex items-center overflow-hidden rounded-chip border border-line bg-deep">
-                <button
-                  type="button"
-                  aria-label={t('launch.fewer', { name: hullName(id) ?? id })}
-                  disabled={(fleet[id] ?? 0) <= 0}
-                  onClick={() => { setShip(id, (fleet[id] ?? 0) - 1); }}
-                  className="grid size-10 place-items-center text-title text-dim enabled:hover:bg-white/5 enabled:hover:text-bone disabled:opacity-25"
-                >−</button>
-                <output
-                  aria-live="polite"
-                  className="num min-w-10 border-x border-line px-2 text-center text-body text-bone"
-                >{fleet[id] ?? 0}</output>
-                <button
-                  type="button"
-                  aria-label={t('launch.more', { name: hullName(id) ?? id })}
-                  disabled={(fleet[id] ?? 0) >= (planet.fleet[id] ?? 0)}
-                  onClick={() => { setShip(id, (fleet[id] ?? 0) + 1); }}
-                  className="grid size-10 place-items-center text-title text-dim enabled:hover:bg-white/5 enabled:hover:text-bone disabled:opacity-25"
-                >+</button>
+              </div>
+              <div className="mt-2">
+                <QuantityStepper
+                  value={fleet[id] ?? 0}
+                  min={0}
+                  max={held}
+                  onChange={(value) => { setShip(id, value); }}
+                  decreaseLabel={t('launch.fewer', { name: hullName(id) ?? id })}
+                  increaseLabel={t('launch.more', { name: hullName(id) ?? id })}
+                  valueLabel={t('launch.quantity', { name: hullName(id) ?? id })}
+                  editable
+                  maxLabel={t('launch.max', { name: hullName(id) ?? id })}
+                  maxText={t('launch.maxShort')}
+                />
               </div>
             </div>
           );
@@ -464,7 +461,8 @@ export function TransferSheet({
                   stock={stock}
                   spend={cargo[resource]}
                   tone={resource}
-                  label={t('transfer.remaining')}
+                  label={t('transfer.cargoSending')}
+                  readout="spend"
                   compactSize
                 />
               </span>

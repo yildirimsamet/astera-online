@@ -29,7 +29,7 @@ const silent = pino({ level: 'silent' });
 describe('Telescope truth invalidations', () => {
   it('ignores mining craft but includes every combat movement', () => {
     expect(fleetChangesWatch({ PROSPECTOR: 2 })).toBe(false);
-    expect(fleetChangesWatch({ PROSPECTOR: 2, WASP: 1 })).toBe(true);
+    expect(fleetChangesWatch({ PROSPECTOR: 2, DART: 1 })).toBe(true);
   });
 });
 
@@ -93,8 +93,8 @@ describe('the shard broadcast', () => {
   });
 
   it('announces a raid leaving, so the disc shows it at once', async () => {
-    await giveUnits(f.db, f.planetIds[0]!, { WASP: 6 });
-    await launchAttack(f.db, f.planetIds[0]!, f.planetIds[1]!, { WASP: 5 }, f.clock);
+    await giveUnits(f.db, f.planetIds[0]!, { DART: 6 });
+    await launchAttack(f.db, f.planetIds[0]!, f.planetIds[1]!, { DART: 5 }, f.clock);
     await settle();
     expect(heard).toContain('shard:launch');
   });
@@ -110,9 +110,9 @@ describe('the shard broadcast', () => {
       slot: 0,
       targetPlanetId: f.planetIds[1]!,
     });
-    await giveUnits(f.db, f.planetIds[1]!, { WASP: 6 });
+    await giveUnits(f.db, f.planetIds[1]!, { DART: 6 });
 
-    await launchAttack(f.db, f.planetIds[1]!, f.planetIds[0]!, { WASP: 5 }, f.clock);
+    await launchAttack(f.db, f.planetIds[1]!, f.planetIds[0]!, { DART: 5 }, f.clock);
     await settle();
 
     expect(observerKinds).toContain('private:sight');
@@ -182,12 +182,12 @@ describe('the shard broadcast', () => {
       slot: 0,
       targetPlanetId: f.planetIds[0]!,
     });
-    await giveUnits(f.db, f.planetIds[0]!, { WASP: 6 });
+    await giveUnits(f.db, f.planetIds[0]!, { DART: 6 });
     const { arriveAt } = await launchAttack(
       f.db,
       f.planetIds[0]!,
       f.planetIds[1]!,
-      { WASP: 5 },
+      { DART: 5 },
       f.clock,
     );
 
@@ -298,7 +298,7 @@ describe('the shard broadcast', () => {
     });
 
     heard = [];
-    await buildUnits(f.db, f.planetIds[0]!, 'WASP', 10, f.clock);
+    await buildUnits(f.db, f.planetIds[0]!, 'DART', 10, f.clock);
     const [order] = await f.db
       .select({ readyAt: buildOrders.readyAt })
       .from(buildOrders)
@@ -328,11 +328,11 @@ describe('the shard broadcast', () => {
    * wrong, since the refusal happens after some of the work.
    */
   it('does not announce a launch the server refused', async () => {
-    await giveUnits(f.db, f.planetIds[0]!, { WASP: 2 });
+    await giveUnits(f.db, f.planetIds[0]!, { DART: 2 });
     heard = [];
     await expect(
       // More ships than the planet holds: refused inside the transaction.
-      launchAttack(f.db, f.planetIds[0]!, f.planetIds[1]!, { WASP: 99 }, f.clock),
+      launchAttack(f.db, f.planetIds[0]!, f.planetIds[1]!, { DART: 99 }, f.clock),
     ).rejects.toThrow();
     await settle();
     expect(heard).toEqual([]);
@@ -349,12 +349,12 @@ describe('the shard broadcast', () => {
    * than it was before the phase that was meant to fix exactly that.
    */
   it('announces a stranded flight being swept out of the sky', async () => {
-    await giveUnits(f.db, f.planetIds[0]!, { WASP: 6 });
+    await giveUnits(f.db, f.planetIds[0]!, { DART: 6 });
     const { missionId } = await launchAttack(
       f.db,
       f.planetIds[0]!,
       f.planetIds[1]!,
-      { WASP: 5 },
+      { DART: 5 },
       f.clock,
     );
     // Its event row is gone, which is the definition of stranded: nothing will
@@ -375,9 +375,9 @@ describe('the shard broadcast', () => {
     expect(other).toBeDefined();
     off?.();
     off = null;
-    await giveUnits(f.db, f.planetIds[0]!, { WASP: 6 });
+    await giveUnits(f.db, f.planetIds[0]!, { DART: 6 });
     await expect(
-      launchAttack(f.db, f.planetIds[0]!, f.planetIds[1]!, { WASP: 5 }, f.clock),
+      launchAttack(f.db, f.planetIds[0]!, f.planetIds[1]!, { DART: 5 }, f.clock),
     ).resolves.toBeDefined();
   });
 });

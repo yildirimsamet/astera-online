@@ -15,6 +15,7 @@ const initial = {
   pages: [{
     messages: [
       { id: 'one', authorPlayerId: 'other', planetId: 'other-planet', username: 'İzci', content: 'Merhaba galaksi', createdAt: at, self: false },
+      { id: 'hidden', authorPlayerId: 'hidden', username: 'Gizli', content: 'Beni bulamazsın', createdAt: new Date(at.getTime() + 500), self: false },
       { id: 'two', authorPlayerId: 'mine', planetId: 'my-planet', username: 'Vantage', content: 'Buradayım', createdAt: new Date(at.getTime() + 1000), self: true },
     ],
     nextBefore: null,
@@ -120,10 +121,12 @@ describe('galaxy chat surface', () => {
     await waitFor(() => { expect(api.markChatRead).toHaveBeenCalledWith('two'); });
   });
 
-  it('routes another commander name back to their planet', async () => {
+  it('underlines and routes only commanders whose location is known', async () => {
     const { onFocusPlanet } = show();
     const username = screen.getByRole('button', { name: 'İzci' });
-    expect(username).toHaveClass('name');
+    expect(username).toHaveClass('name', 'underline');
+    expect(screen.getByText('Gizli')).not.toHaveClass('underline');
+    expect(screen.queryByRole('button', { name: 'Gizli' })).not.toBeInTheDocument();
     await userEvent.setup().click(username);
     expect(onFocusPlanet).toHaveBeenCalledWith('other-planet');
     expect(screen.queryByRole('button', { name: 'Vantage' })).not.toBeInTheDocument();

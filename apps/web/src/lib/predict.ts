@@ -13,6 +13,7 @@ import {
   hangarCapacity,
   hangarLoad,
   hullBulk,
+  hullBuildable,
   instrumentCost,
   instrumentMaxed,
   satelliteSlots,
@@ -27,6 +28,7 @@ import {
   type ResearchProjectId,
   type Resources,
   type SatelliteId,
+  type TechLevels,
 } from '@astera/rules';
 import type { BuildOrderView, PlanetView } from '../api/schemas.js';
 
@@ -264,12 +266,13 @@ export function predictBuild(view: PlanetView, hull: HullId, count: number): Pre
   const projected = projectedQueueState(view, 'YARD');
   const spec = HULLS[hull];
   if (!Number.isInteger(count) || count < 1) return null;
-  // The Shipyard gate, for the same reason the Core ceiling is checked above.
-  if (projected.buildings.SHIPYARD < spec.minShipyard) return null;
-  const completed = (project: 'DENSE_FUEL_CELLS' | 'GRAVITIC_CHARGES') =>
-    researchHeld(projected, project);
-  if (hull === 'RUNNER' && !completed('DENSE_FUEL_CELLS')) return null;
-  if (hull === 'BREACHER' && !completed('GRAVITIC_CHARGES')) return null;
+  /*
+    ONE CATALOG GATE. Fleet V2 has multi-rung requirements, so per-hull branches
+    would make the optimistic frame disagree with the server as soon as a new
+    advanced hull is added. The rules metadata is the same authority both read.
+  */
+  const tech = Object.fromEntries(projected.research) as TechLevels;
+  if (!hullBuildable(hull, projected.buildings.SHIPYARD, tech)) return null;
 
   const cost = {
     alloy: spec.alloy * count,

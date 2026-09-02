@@ -130,6 +130,7 @@ async function main(): Promise<void> {
         neutral_planet_state,
         planets,
         galaxy_events,
+        galaxy_event_occurrences,
         chat_messages,
         players,
         season_results,
@@ -196,10 +197,10 @@ async function main(): Promise<void> {
     await db.update(players).set({ wealth: 1_000_000 });
 
     const fleet = [
-      ['WASP', 800],
-      ['LANCE', 120],
-      ['HAULER', 120],
-      ['RUNNER', 80],
+      ['DART', 800],
+      ['PIKE', 120],
+      ['COURIER', 120],
+      ['VIPER', 80],
       ['PROSPECTOR', 2],
     ] as const;
     await db.insert(units).values(placements.flatMap((placement) =>
@@ -213,12 +214,21 @@ async function main(): Promise<void> {
 
     // Public wrecks make the contested mining surface non-empty without inventing
     // a battle result or report. missionId is intentionally nullable for fixtures.
+    // A field carries its own position since D150, so the fixture has to know where
+    // these worlds actually are rather than pointing at them by id alone.
+    const fixtureAt = new Map(
+      (await db.select({ id: planets.id, x: planets.x, y: planets.y, z: planets.z }).from(planets))
+        .map((world) => [world.id, world]),
+    );
     const fixtureFields = await db
       .insert(debrisFields)
       .values(live.flatMap(({ season }) =>
         (placementsBySeason.get(season.id) ?? []).slice(0, 30).map((placement, index) => ({
           seasonId: season.id,
           planetId: placement.planetId,
+          x: fixtureAt.get(placement.planetId)?.x ?? 0,
+          y: fixtureAt.get(placement.planetId)?.y ?? 0,
+          z: fixtureAt.get(placement.planetId)?.z ?? 0,
           alloy: 20_000 + index * 100,
           crystal: 8_000 + index * 50,
           deuterium: 1_000,
@@ -240,7 +250,7 @@ async function main(): Promise<void> {
         db,
         origin.planetId,
         target.planetId,
-        { WASP: 3, HAULER: 1 },
+        { DART: 3, COURIER: 1 },
         systemClock,
         origin.playerId,
       );

@@ -49,8 +49,8 @@ describe('multi-world strategic simulation', () => {
   });
 
   it('makes an unguarded T1 lossless and net-positive for a low fleet with cargo', () => {
-    const fleet = { WASP: 1, HAULER: 1 } as const;
-    const battle = resolveCombat(fleet, {}, 0, mulberry32(1), { attacker: {}, defender: {} });
+    const fleet = { DART: 1, WAYFARER: 1 } as const;
+    const battle = resolveCombat(fleet, {}, 0, mulberry32(1), { attacker: { tech: {} }, defender: { tech: {} } });
     const template = MULTI_WORLD.neutral[1];
     const loot = computeLoot(
       {
@@ -75,7 +75,7 @@ describe('multi-world strategic simulation', () => {
     const target = world.neutrals.find((neutral) => neutral.tier === 1)!;
     world.neutrals = [target];
     world.strategicRng = () => 0;
-    attacker.fleet = { WASP: 1, HAULER: 1 };
+    attacker.fleet = { DART: 1, WAYFARER: 1 };
     attacker.alloy = 0;
     attacker.crystal = 0;
     attacker.deuterium = 0;
@@ -87,7 +87,7 @@ describe('multi-world strategic simulation', () => {
     );
     expect(outbound).toBeDefined();
     expect(outbound!.arriveAt).toBeGreaterThan(0);
-    expect(attacker.fleet).toMatchObject({ WASP: 0, HAULER: 0 });
+    expect(attacker.fleet).toMatchObject({ DART: 0, WAYFARER: 0 });
     expect(target.alloy + target.crystal + target.deuterium).toBe(stockBefore);
 
     advanceStrategicLayer(world, outbound!.arriveAt - 1);
@@ -101,7 +101,7 @@ describe('multi-world strategic simulation', () => {
     );
     expect(returning).toBeDefined();
     advanceStrategicLayer(world, returning!.arriveAt);
-    expect(attacker.fleet).toMatchObject({ WASP: 1, HAULER: 1 });
+    expect(attacker.fleet).toMatchObject({ DART: 1, WAYFARER: 1 });
     expect(attacker.alloy + attacker.crystal + attacker.deuterium).toBeGreaterThan(0);
   });
 

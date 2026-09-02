@@ -105,19 +105,19 @@ describe('rewards', () => {
     // puts this planet several development tiers above its neighbours and gets
     // every launch refused for a reason this test is not about. See the helper.
     await levelWorld(f.db, f.planetIds);
-    await giveUnits(f.db, mine, { WASP: 20 });
+    await giveUnits(f.db, mine, { DART: 20 });
 
-    await launchAttack(f.db, mine, other, { WASP: 2 }, f.clock);
+    await launchAttack(f.db, mine, other, { DART: 2 }, f.clock);
     expect((await chainOf('RAID')).progress).toBe(1);
 
     // Land the first one before sending the second: a planet may only have one
     // fleet committed to a given target at a time, which is a launch rule and not
     // the counting rule under test here.
     await f.db.update(missions).set({ status: 'resolved' }).where(eq(missions.originPlanetId, mine));
-    await launchAttack(f.db, mine, other, { WASP: 2 }, f.clock);
+    await launchAttack(f.db, mine, other, { DART: 2 }, f.clock);
     expect((await chainOf('RAID')).progress).toBe(1);
 
-    await launchAttack(f.db, mine, f.planetIds[2]!, { WASP: 2 }, f.clock);
+    await launchAttack(f.db, mine, f.planetIds[2]!, { DART: 2 }, f.clock);
     expect((await chainOf('RAID')).progress).toBe(2);
   });
 
@@ -162,8 +162,8 @@ describe('rewards', () => {
   it('does not count a flight the server had to abandon', async () => {
     await grant(f.db, mine, 20_000, 8_000);
     await levelWorld(f.db, f.planetIds);
-    await giveUnits(f.db, mine, { WASP: 20 });
-    await launchAttack(f.db, mine, other, { WASP: 2 }, f.clock);
+    await giveUnits(f.db, mine, { DART: 20 });
+    await launchAttack(f.db, mine, other, { DART: 2 }, f.clock);
     expect((await chainOf('RAID')).progress).toBe(1);
 
     await f.db
@@ -200,26 +200,26 @@ describe('rewards', () => {
   it('remembers ships that were built and then destroyed', async () => {
     await grant(f.db, mine, 20_000, 8_000);
     await setLevel(f.db, mine, 'SHIPYARD', 1);
-    await buildUnits(f.db, mine, 'WASP', 6, f.clock);
+    await buildUnits(f.db, mine, 'DART', 6, f.clock);
     await settleBuilds(f, mine);
 
     expect((await chainOf('SHIPS')).progress).toBe(6);
     expect(await stateOf('SHIPS', 5)).toBe('claimable');
 
     // Every Wasp dies.
-    await giveUnits(f.db, mine, { WASP: 0 });
+    await giveUnits(f.db, mine, { DART: 0 });
     expect((await chainOf('SHIPS')).progress).toBe(6);
   });
 
   it('counts hulls separately, so a Prospector is not a Wasp', async () => {
     await grant(f.db, mine, 20_000, 8_000);
     await setLevel(f.db, mine, 'SHIPYARD', 2);
-    await buildUnits(f.db, mine, 'WASP', 2, f.clock);
+    await buildUnits(f.db, mine, 'DART', 2, f.clock);
     await buildUnits(f.db, mine, 'PROSPECTOR', 1, f.clock);
     await settleBuilds(f, mine);
 
     const [row] = await f.db.select().from(planets).where(eq(planets.id, mine));
-    expect(row?.builtEver).toEqual({ WASP: 2, PROSPECTOR: 1 });
+    expect(row?.builtEver).toEqual({ DART: 2, PROSPECTOR: 1 });
     expect((await chainOf('SHIPS')).progress).toBe(2);
   });
 
@@ -605,7 +605,7 @@ describe('rewards', () => {
   it('does not count a neighbour’s work as yours', async () => {
     await grant(f.db, other, 20_000, 8_000);
     await setLevel(f.db, other, 'SHIPYARD', 1);
-    await buildUnits(f.db, other, 'WASP', 9, f.clock);
+    await buildUnits(f.db, other, 'DART', 9, f.clock);
     await settleBuilds(f, other);
 
     expect((await chainOf('SHIPS')).progress).toBe(0);

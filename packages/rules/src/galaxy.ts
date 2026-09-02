@@ -1,10 +1,11 @@
 import { DEBRIS, GALAXY, PROSPECTOR, SEASON } from './constants.js';
 import { prospectorHoldMult, type TechLevels } from './tech.js';
-import { mulberry32 } from './rng.js';
+import { mulberry32, seededFrom } from './rng.js';
 import { drillHoldMult, drillSpeedMult } from './economy.js';
 import { isotopeProfile } from './research.js';
 import { distance, travelExact } from './travel.js';
 import type { SatelliteSet, Vec3 } from './types.js';
+import type { PlannedGalaxyEvent } from './galaxyEvents.js';
 
 export interface PlanetSlot extends Vec3 {
   index: number;
@@ -24,7 +25,35 @@ export interface PlanetSlot extends Vec3 {
  * a slower craft simply aims at a point on a later revolution. That frees the
  * speed to be whatever reads as movement, which is the whole point of drawing them.
  */
-export interface AsteroidSpec {
+/**
+ * ONE CLOSED CIRCLE INSIDE THE DISC, and the reason two unrelated lanes share it.
+ *
+ * A rock rides one of these (D19) and so does a pirate (D150), and the two must
+ * describe the SAME shape — not two hand-copied blocks of trigonometry that
+ * agree today. The whole reason either of them orbits rather than passing
+ * through is written above `AsteroidSpec`: a straight pass can only be met by a
+ * craft faster than the target, and a circle returns.
+ *
+ * NOTHING HERE IS EVER PUBLISHED. These five numbers ARE the route, and both the
+ * asteroid fog (D143) and the pirate fog (D150) forbid a route. What reaches a
+ * client is a point and a short bearing, never the elements that generate them.
+ */
+export interface OrbitElements {
+  /** Orbital radius in game units. */
+  radius: number;
+  /** Minutes for one revolution. Derived from radius and speed. */
+  period: number;
+  /** Angle at time zero, in radians. */
+  phase: number;
+  /** Tilt from the horizontal plane, in radians. */
+  inclination: number;
+  /** Rotation of the tilted plane around the vertical axis, in radians. */
+  ascendingNode: number;
+  /** Game units per minute along the orbit. */
+  speed: number;
+}
+
+export interface AsteroidSpec extends OrbitElements {
   index: number;
   /** 1-5. Sets how much ore it carries and nothing else. */
   level: number;
@@ -36,18 +65,6 @@ export interface AsteroidSpec {
   deuteriumShare: number;
   /** Public anomaly classification; exact composition remains research-gated. */
   isotopeRich: boolean;
-  /** Orbital radius in game units. */
-  radius: number;
-  /** Minutes for one revolution. Derived from radius and speed. */
-  period: number;
-  /** Angle at time zero, in radians. */
-  phase: number;
-  /** Tilt from the horizontal plane, in radians. */
-  inclination: number;
-  /** Rotation of the tilted plane around the vertical axis, in radians. */
-  ascendingNode: number;
-  /** Game units per minute along the orbit. Independent of level, by design. */
-  speed: number;
   /** Minutes since season start. */
   appearsAt: number;
   /** Minutes since season start. It is gone after this. */
@@ -184,14 +201,16 @@ const ASTEROID_EXTRA_LANE_SEED = 0x243f6a88;
  * retaining the full 400–2,000 span. `tools/asteroid-visibility-study.ts` owns
  * the reproducible comparison.
  */
-export function asteroidOrbitRadius(roll: number): number {
+export function orbitRadius(roll: number, inner: number, outer: number): number {
   if (!Number.isFinite(roll) || roll < 0 || roll > 1) {
-    throw new RangeError('asteroid orbit roll must be between 0 and 1');
+    throw new RangeError('orbit roll must be between 0 and 1');
   }
-  const inner = GALAXY.asteroidOrbitMin;
-  const outer = GALAXY.asteroidOrbitMax;
   return Math.pow(inner ** 4 + roll * (outer ** 4 - inner ** 4), 1 / 4);
 }
+
+/** The rocks' band, through the shared draw. Byte-identical to what it replaced. */
+export const asteroidOrbitRadius = (roll: number): number =>
+  orbitRadius(roll, GALAXY.asteroidOrbitMin, GALAXY.asteroidOrbitMax);
 
 function appendAsteroidLane(
   asteroids: AsteroidSpec[],
@@ -200,6 +219,7 @@ function appendAsteroidLane(
   seed: number,
   count: number,
   indexOffset: number,
+  appearsAtOffset = 0,
 ): void {
   if (count <= 0) return;
   const interval = span / Math.max(1, count);
@@ -210,7 +230,7 @@ function appendAsteroidLane(
     const speed =
       GALAXY.asteroidSpeedMin + rng() * (GALAXY.asteroidSpeedMax - GALAXY.asteroidSpeedMin);
     const level = rollLevel(rng());
-    const appearsAt = laneIndex * interval + rng() * interval;
+    const appearsAt = appearsAtOffset + laneIndex * interval + rng() * interval;
     const life =
       (GALAXY.asteroidLifeHoursMin +
         rng() * (GALAXY.asteroidLifeHoursMax - GALAXY.asteroidLifeHoursMin)) *
@@ -272,6 +292,47 @@ export function generateAsteroidSchedule(
   return asteroids;
 }
 
+/**
+ * Append one isolated bonus lane per persisted Asteroid Shower occurrence.
+ *
+ * The input field is never mutated. Existing indices, random draws and opaque ids
+ * remain stable; only fresh indices after the baseline are allocated. A shower's
+ * lane contains no spawn at or after `endsAtMinute`, while each generated rock's
+ * ordinary lifetime may extend well beyond that boundary.
+ */
+export function withAsteroidShowerLanes(
+  base: readonly AsteroidSpec[],
+  occurrences: readonly PlannedGalaxyEvent[],
+  isotopeSeed: number,
+  rngForOccurrence: (occurrence: PlannedGalaxyEvent) => () => number =
+    (occurrence) => seededFrom('asteroid:shower:v1', isotopeSeed, occurrence.sequence),
+): AsteroidSpec[] {
+  const asteroids = [...base];
+  const showers = [...occurrences].sort((left, right) => left.sequence - right.sequence);
+
+  for (const occurrence of showers) {
+    const duration = occurrence.endsAtMinute - occurrence.startsAtMinute;
+    const multiplier = occurrence.effect.asteroidSpawnMultiplier;
+    if (!Number.isFinite(duration) || duration <= 0) {
+      throw new RangeError('Asteroid Shower duration must be positive');
+    }
+    if (!Number.isFinite(multiplier) || multiplier <= 1) {
+      throw new RangeError('Asteroid Shower multiplier must be greater than one');
+    }
+    const count = Math.round(GALAXY.asteroidSpawnPerHour * (multiplier - 1) * duration / 60);
+    appendAsteroidLane(
+      asteroids,
+      rngForOccurrence(occurrence),
+      duration,
+      isotopeSeed,
+      count,
+      asteroids.length,
+      occurrence.startsAtMinute,
+    );
+  }
+  return asteroids;
+}
+
 /** Is this rock in the disc at this instant? */
 export const asteroidActive = (a: AsteroidSpec, minutes: number): boolean =>
   minutes >= a.appearsAt && minutes < a.expiresAt;
@@ -285,20 +346,24 @@ export const asteroidActive = (a: AsteroidSpec, minutes: number): boolean =>
  * candidate times and then checks the answer lands inside the rock's life.
  * Callers that need "is it there" ask `asteroidActive`.
  */
-export function asteroidPosition(a: AsteroidSpec, minutes: number): Vec3 {
-  const theta = a.phase + (2 * Math.PI * minutes) / a.period;
+export function orbitPosition(o: OrbitElements, minutes: number): Vec3 {
+  const theta = o.phase + (2 * Math.PI * minutes) / o.period;
   const cosTheta = Math.cos(theta);
   const sinTheta = Math.sin(theta);
-  const cosNode = Math.cos(a.ascendingNode);
-  const sinNode = Math.sin(a.ascendingNode);
-  const cosInclination = Math.cos(a.inclination);
-  const sinInclination = Math.sin(a.inclination);
+  const cosNode = Math.cos(o.ascendingNode);
+  const sinNode = Math.sin(o.ascendingNode);
+  const cosInclination = Math.cos(o.inclination);
+  const sinInclination = Math.sin(o.inclination);
   return {
-    x: a.radius * (cosNode * cosTheta - sinNode * sinTheta * cosInclination),
-    y: a.radius * sinTheta * sinInclination,
-    z: a.radius * (sinNode * cosTheta + cosNode * sinTheta * cosInclination),
+    x: o.radius * (cosNode * cosTheta - sinNode * sinTheta * cosInclination),
+    y: o.radius * sinTheta * sinInclination,
+    z: o.radius * (sinNode * cosTheta + cosNode * sinTheta * cosInclination),
   };
 }
+
+/** One rock's point on its own circle. The shared trig, nothing added. */
+export const asteroidPosition = (a: AsteroidSpec, minutes: number): Vec3 =>
+  orbitPosition(a, minutes);
 
 const TAU = Math.PI * 2;
 const CONTACT_EPSILON = 1e-10;
@@ -498,10 +563,11 @@ const REFINE = 40;
  * `invariants.test.ts`; the solver has always supported slower craft because the
  * orbit comes back around.
  */
-export function interceptAsteroid(
+export function interceptOrbit(
   from: Vec3,
   hullSpeed: number,
-  asteroid: AsteroidSpec,
+  positionAt: (minutes: number) => Vec3,
+  expiresAt: number,
   nowMinutes: number,
 ): Interception | null {
   if (hullSpeed <= 0) return null;
@@ -523,13 +589,10 @@ export function interceptAsteroid(
    * the generated field to prove every rock stays reachable.
    */
   const f = (delta: number): number =>
-    travelExact(
-      distance(from, asteroidPosition(asteroid, nowMinutes + delta)),
-      hullSpeed,
-    ) - delta;
+    travelExact(distance(from, positionAt(nowMinutes + delta)), hullSpeed) - delta;
 
-  // Never search past the rock's own life: a meeting after it has gone is not one.
-  const horizon = asteroid.expiresAt - nowMinutes;
+  // Never search past the target's own life: a meeting after it has gone is not one.
+  const horizon = expiresAt - nowMinutes;
   if (horizon <= 0) return null;
 
   /**
@@ -559,12 +622,8 @@ export function interceptAsteroid(
         else hi = mid;
       }
       const meets = nowMinutes + hi;
-      if (hi <= 0 || meets >= asteroid.expiresAt) return null;
-      return {
-        flightMinutes: hi,
-        meetsAtMinutes: meets,
-        at: asteroidPosition(asteroid, meets),
-      };
+      if (hi <= 0 || meets >= expiresAt) return null;
+      return { flightMinutes: hi, meetsAtMinutes: meets, at: positionAt(meets) };
     }
     previous = current;
     last = delta;
@@ -572,6 +631,30 @@ export function interceptAsteroid(
 
   return null;
 }
+
+/**
+ * WHERE TO AIM AT ONE ROCK. The shared solver, handed this rock's own orbit.
+ *
+ * This used to BE the solver. D150 needed the identical answer for a moving
+ * pirate, and a second copy of a scan-and-bisect is precisely the failure this
+ * project has already shipped and named — a rule honoured in one place and
+ * forgotten in the other. `interception.test.ts` and the generated-field sweep in
+ * `invariants.test.ts` were run unchanged either side of the extraction, which is
+ * the only proof that mattered.
+ */
+export const interceptAsteroid = (
+  from: Vec3,
+  hullSpeed: number,
+  asteroid: AsteroidSpec,
+  nowMinutes: number,
+): Interception | null =>
+  interceptOrbit(
+    from,
+    hullSpeed,
+    (minutes) => asteroidPosition(asteroid, minutes),
+    asteroid.expiresAt,
+    nowMinutes,
+  );
 
 export interface OreClaim {
   /** Ore units taken out of the rock. */

@@ -36,6 +36,7 @@ import {
   settledAt,
   testDb,
   type Fixture,
+  giveDebris
 } from './helpers.js';
 
 const publicPlanetName = (payload: GalaxyEventPayload): string => {
@@ -104,17 +105,16 @@ describe('wreck fields', () => {
    * everything in this file is downstream of a fight that actually happened.
    *
    * Sixty Wasps was enough against the old hull table and is REPELLED against the
-   * current one — ground defence is now priced at 1.6x equal-budget power, so six
-   * Bastions are worth 19,200 rather than 13,050. Measured against the real
-   * resolver: 60 is repelled, 90 is partial, 120 is decisive and leaves a field of
-   * about 5,600.
+   * current one — ground defence is now priced at 1.6x equal-budget power. The V2
+   * Dart wins at 120 hulls but can still lose more value than it destroys; 200 is
+   * decisive and Dominion-positive across the resolver's full variance band.
    */
   const fight = async (): Promise<typeof debrisFields.$inferSelect> => {
     await grant(f.db, theirs, 60_000, 6_000);
-    await giveUnits(f.db, theirs, { BASTION: 6, WASP: 20 });
-    await giveUnits(f.db, mine, { WASP: 120, HAULER: 3 });
+    await giveUnits(f.db, theirs, { BASTION: 6, DART: 20 });
+    await giveUnits(f.db, mine, { DART: 200, COURIER: 3 });
     await levelWorld(f.db, f.planetIds);
-    const launch = await launchAttack(f.db, mine, theirs, { WASP: 120, HAULER: 3 }, f.clock);
+    const launch = await launchAttack(f.db, mine, theirs, { DART: 200, COURIER: 3 }, f.clock);
     f.clock.set(settledAt(launch.arriveAt));
     await worker().tick();
     const [field] = await f.db.select().from(debrisFields);
@@ -352,17 +352,12 @@ describe('wreck fields', () => {
 
     const harvest = await launchHarvest(f.db, mine, field.id, 2, f.clock);
     // A second harvest at a DIFFERENT field, and a rock run, all from one planet.
-    const [second] = await f.db
-      .insert(debrisFields)
-      .values({
-        seasonId: f.seasonId,
-        planetId: third,
+    const second = await giveDebris(f.db, f.seasonId, third, {
         alloy: 8_000,
         crystal: 2_000,
         createdAt: f.clock.now(),
-      })
-      .returning();
-    const other = await launchHarvest(f.db, mine, second!.id, 1, f.clock);
+      });
+    const other = await launchHarvest(f.db, mine, second.id, 1, f.clock);
 
     expect(harvest.runId).not.toBe(other.runId);
     expect(await baysInUse(f.db, mine)).toBe(before + 2);

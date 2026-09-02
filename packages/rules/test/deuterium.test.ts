@@ -38,8 +38,8 @@ const input = (plantLevel: number) => ({
  * game most players cannot play.
  *
  * THE REFINERY IS THE FLOOR, NEVER THE CEILING. A guaranteed trickle you can plan
- * around; the rocks stay the fast, contested money that pays for Runners,
- * Breachers, the last two research rungs and a Death Star. If the two ever meet,
+ * around; the rocks stay the fast, contested money that pays for Couriers,
+ * Nullifiers, the last two research rungs and a Death Star. If the two ever meet,
  * the whole second act of the season becomes dead content — that is the acceptance
  * criterion, and it is asserted below rather than left as a hope.
  */

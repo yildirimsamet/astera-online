@@ -12,7 +12,7 @@ import type { BuildOrderView } from '../src/api/schemas.js';
  * The queue was three stacked rows — a number, a name, a clock and the word
  * "Cancel" — and only the first row had any indication of time at all. Two things
  * a player wants were nowhere on it: how the orders compare in LENGTH (a Bulwark
- * is not a Wasp, and nothing said so), and when the whole lane finishes, which is
+ * is not a Dart, and nothing said so), and when the whole lane finishes, which is
  * the one figure that decides whether to queue a fourth thing.
  *
  * The strip is a timeline. Each order is a segment as wide as it is long, the head

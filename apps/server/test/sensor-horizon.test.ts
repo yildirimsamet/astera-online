@@ -16,6 +16,7 @@ import { miningRuns, missions, planets, strategicImpacts } from '../src/db/schem
 import { launchAttack } from '../src/services/mission.js';
 import { launchProbe } from '../src/services/intel.js';
 import { galaxyTraffic } from '../src/services/traffic.js';
+import type { Db } from '../src/db/client.js';
 import { refreshSensorEpoch } from '../src/services/sensorHistory.js';
 import {
   giveInstrument,
@@ -87,6 +88,27 @@ describe('the durable sensor-history backfill', () => {
  * break D52's pillar and leave a dead galaxy; a fog that covered nothing is what
  * we had.
  */
+
+/**
+ * EVERY CONTACT THE PIRATE LANE PRODUCED, so a test about MISSION traffic can be
+ * about mission traffic. D150.
+ *
+ * The lane is derived from the season key, so the disc is never quiet any more —
+ * which is the feature, and it is also why these assertions could no longer count
+ * rows. Filtering by opaque id rather than by `kind` is deliberate: inside a Radar
+ * circle a pirate is an `unknown` question mark exactly like anything else, so a
+ * kind filter would drop the very craft some of these tests are about.
+ */
+const pirateContactIds = async (db: Db, seasonId: string): Promise<Set<string>> => {
+  const { seasons } = await import('../src/db/schema.js');
+  const { eq: whereEq } = await import('drizzle-orm');
+  const { privatePirateField, pirateId } = await import('../src/services/pirateField.js');
+  const [season] = await db.select().from(seasons).where(whereEq(seasons.id, seasonId));
+  if (!season) return new Set();
+  return new Set(privatePirateField(season.asteroidKey).map((spec) =>
+    pirateId(season.asteroidKey, spec.index)));
+};
+
 describe('the sensor horizon', () => {
   let f: Fixture;
   /** The caller. */
@@ -123,11 +145,16 @@ describe('the sensor horizon', () => {
   });
 
   /** Where the caller's own eyes are, as the route would compute them. */
-  const contacts = async () =>
-    galaxyTraffic(f.db, f.seasonId, mine, f.clock.now(), f.playerIds[0] ?? null, [mine]);
+  const contacts = async () => {
+    const [all, pirates] = await Promise.all([
+      galaxyTraffic(f.db, f.seasonId, mine, f.clock.now(), f.playerIds[0] ?? null, [mine]),
+      pirateContactIds(f.db, f.seasonId),
+    ]);
+    return all.filter((contact) => !pirates.has(contact.id));
+  };
 
   /** A raid between the two distant worlds, moved to the middle of its leg. */
-  const distantRaid = async (fleet: Record<string, number> = { WASP: 30 }) => {
+  const distantRaid = async (fleet: Record<string, number> = { DART: 30 }) => {
     await giveUnits(f.db, a, fleet);
     const launch = await launchAttack(f.db, a, b, fleet, f.clock);
     const now = f.clock.now().getTime();
@@ -223,7 +250,7 @@ describe('the sensor horizon', () => {
     expect(seen).toHaveLength(1);
     expect(seen[0]?.kind).toBe('fleet');
     expect(seen[0]?.mass).toBe('LIGHT');
-    expect(seen[0]?.fleet).toEqual({ WASP: 30 });
+    expect(seen[0]?.fleet).toEqual({ DART: 30 });
     expect(seen[0]).not.toHaveProperty('route');
   });
 
@@ -253,14 +280,15 @@ describe('the sensor horizon', () => {
     await raidBetween(1000, 1300);
 
     const bare = await contacts();
-    const instrumented = await galaxyTraffic(
+    const pirates = await pirateContactIds(f.db, f.seasonId);
+    const instrumented = (await galaxyTraffic(
       f.db,
       f.seasonId,
       observer,
       f.clock.now(),
       f.playerIds[3] ?? null,
       [observer],
-    );
+    )).filter((contact) => !pirates.has(contact.id));
 
     expect(bare).toHaveLength(1);
     expect(instrumented).toHaveLength(1);
@@ -272,7 +300,7 @@ describe('the sensor horizon', () => {
     // Payload disclosure, not CSS, enforces the difference: Radar has no manifest,
     // while the observer whose Telescope reaches the craft gets the exact tally.
     expect(bare[0]).not.toHaveProperty('fleet');
-    expect(instrumented[0]?.fleet).toEqual({ WASP: 30 });
+    expect(instrumented[0]?.fleet).toEqual({ DART: 30 });
   });
 
   it('combines Telescope sight from every controlled planet and colony', async () => {
@@ -305,7 +333,7 @@ describe('the sensor horizon', () => {
     );
     expect(allControlledWorlds).toHaveLength(1);
     expect(allControlledWorlds[0]?.kind).toBe('fleet');
-    expect(allControlledWorlds[0]?.fleet).toEqual({ WASP: 30 });
+    expect(allControlledWorlds[0]?.fleet).toEqual({ DART: 30 });
   });
 
   /**
@@ -443,7 +471,7 @@ describe('the sensor horizon', () => {
     expect(seen[0]?.effectOnly).toBeUndefined();
     expect(seen[0]?.kind).toBe('fleet');
     expect(seen[0]?.mass).toBe('LIGHT');
-    expect(seen[0]?.fleet).toEqual({ WASP: 30 });
+    expect(seen[0]?.fleet).toEqual({ DART: 30 });
     expect(seen[0]?.from).not.toEqual(seen[0]?.to);
     expect(seen[0]?.engagement).toBeDefined();
   });
@@ -581,9 +609,9 @@ describe('the sensor horizon', () => {
     await placeAt(f.db, mine, { x: 0 });
     await placeAt(f.db, a, { x: 300 });
     await placeAt(f.db, b, { x: 900 });
-    await giveUnits(f.db, a, { WASP: 30 });
+    await giveUnits(f.db, a, { DART: 30 });
 
-    const launch = await launchAttack(f.db, a, b, { WASP: 30 }, f.clock);
+    const launch = await launchAttack(f.db, a, b, { DART: 30 }, f.clock);
     const departAt = f.clock.now().getTime();
     const span = launch.arriveAt.getTime() - departAt;
 
@@ -625,18 +653,18 @@ describe('the sensor horizon', () => {
     await eyes(5, 5);
     await placeAt(f.db, a, { x: 1000 });
     await placeAt(f.db, b, { x: 1300 });
-    await distantRaid({ WASP: 2 });
+    await distantRaid({ DART: 2 });
 
     const [contact] = await contacts();
     expect(contact?.mass).toBe('LIGHT');
-    expect(contact?.fleet).toEqual({ WASP: 2 });
+    expect(contact?.fleet).toEqual({ DART: 2 });
   });
 
   it('reads a committed fleet as HEAVY', async () => {
     await eyes(5, 5);
     await placeAt(f.db, a, { x: 1000 });
     await placeAt(f.db, b, { x: 1300 });
-    await distantRaid({ BULWARK: 30 });
+    await distantRaid({ RAMPART: 80 });
 
     expect((await contacts())[0]?.mass).toBe('HEAVY');
   });
@@ -650,10 +678,10 @@ describe('the sensor horizon', () => {
 
   /** Own craft are drawn from the owner's own payload; the horizon is irrelevant. */
   it('never applies the horizon to the caller’s own craft', async () => {
-    await giveUnits(f.db, mine, { WASP: 30 });
+    await giveUnits(f.db, mine, { DART: 30 });
     const [target] = await f.db.select().from(planets).where(eq(planets.id, b));
     expect(target).toBeDefined();
-    const launch = await launchAttack(f.db, mine, b, { WASP: 30 }, f.clock);
+    const launch = await launchAttack(f.db, mine, b, { DART: 30 }, f.clock);
     const now = f.clock.now().getTime();
     f.clock.set(new Date(now + (launch.arriveAt.getTime() - now) * 0.5));
 
@@ -725,8 +753,8 @@ describe('the radar’s long circle', () => {
 
   /** Fly a raid from `origin` to `target` and stop it at `share` of the way. */
   const raidTo = async (origin: string, target: string, share: number) => {
-    await giveUnits(f.db, origin, { WASP: 30 });
-    const launch = await launchAttack(f.db, origin, target, { WASP: 30 }, f.clock);
+    await giveUnits(f.db, origin, { DART: 30 });
+    const launch = await launchAttack(f.db, origin, target, { DART: 30 }, f.clock);
     const now = f.clock.now().getTime();
     f.clock.set(new Date(now + (launch.arriveAt.getTime() - now) * share));
     return launch;
@@ -764,8 +792,8 @@ describe('the radar’s long circle', () => {
    * makes it a radius rather than a flag decided at launch.
    */
   it('turns on exactly once, on the way in', async () => {
-    await giveUnits(f.db, far, { WASP: 30 });
-    const launch = await launchAttack(f.db, far, home, { WASP: 30 }, f.clock);
+    await giveUnits(f.db, far, { DART: 30 });
+    const launch = await launchAttack(f.db, far, home, { DART: 30 }, f.clock);
     const depart = f.clock.now().getTime();
     const span = launch.arriveAt.getTime() - depart;
 
@@ -808,8 +836,8 @@ describe('the radar’s long circle', () => {
 
   /** A fleet going home has stopped being a threat, and D126 excludes returns. */
   it('never marks a return leg', async () => {
-    await giveUnits(f.db, far, { WASP: 30 });
-    const launch = await launchAttack(f.db, far, home, { WASP: 30 }, f.clock);
+    await giveUnits(f.db, far, { DART: 30 });
+    const launch = await launchAttack(f.db, far, home, { DART: 30 }, f.clock);
     await f.db
       .update(missions)
       .set({ parentMissionId: launch.missionId })

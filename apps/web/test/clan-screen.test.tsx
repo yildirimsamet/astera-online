@@ -74,7 +74,7 @@ const directory = {
       leaderName: 'Vantage', memberCount: 2, score: 840,
     },
     {
-      id: 'clan-night', name: 'Night Haulers', tag: 'N7',
+      id: 'clan-night', name: 'Night Couriers', tag: 'N7',
       description: 'Cargo before glory.', recruiting: false,
       leaderName: 'Ada', memberCount: 5, score: 120,
     },
@@ -108,7 +108,7 @@ function show(home: ClanHome) {
       worlds: 3,
       activeFlights: 2,
     },
-    composition: [{ hull: 'WASP', count: 50 }, { hull: 'LANCE', count: 23 }],
+    composition: [{ hull: 'DART', count: 50 }, { hull: 'PIKE', count: 23 }],
     members: [
       { playerId: 'player-me', username: 'Vantage', role: 'LEADER', dominion: 800, ships: 50, worlds: 2 },
       { playerId: 'player-ada', username: 'Ada', role: 'MEMBER', dominion: 440, ships: 23, worlds: 1 },
@@ -143,7 +143,7 @@ function show(home: ClanHome) {
       clanDominion: 840, memberDominion: 1_240, ships: 73, fleetValue: 98_400,
       groundDefences: 12, worlds: 3, activeFlights: 2,
     },
-    composition: [{ hull: 'WASP', count: 50 }, { hull: 'LANCE', count: 23 }],
+    composition: [{ hull: 'DART', count: 50 }, { hull: 'PIKE', count: 23 }],
     members: [
       { playerId: 'player-me', username: 'Vantage', role: 'LEADER', dominion: 800, ships: 50, worlds: 2 },
       { playerId: 'player-ada', username: 'Ada', role: 'MEMBER', dominion: 440, ships: 23, worlds: 1 },

@@ -102,6 +102,9 @@ export function readsForShardEvent(kind: string): readonly (readonly string[])[]
     /** A public moment was committed to the galaxy's 24-hour memory. */
     case 'chronicle':
       return [keys.chronicle];
+    /** A public event started or ended: refresh its chip, Signals and Chronicle. */
+    case 'galaxy-event':
+      return [keys.galaxyEvents, keys.notifications, keys.chronicle, keys.miningField];
     /** The deadline landed: freeze controls, standings and the permanent recap. */
     case 'season':
       return [keys.season, keys.planet, keys.pending, keys.leaderboard];
@@ -141,6 +144,17 @@ export function readsForPrivateEvent(kind: string): readonly (readonly string[])
     /** An entitled commander can now render the eight-second interceptor scene. */
     case 'strategic-sight':
       return [keys.traffic];
+    /**
+     * A CRAFT OF THIS COMMANDER'S REACHED A WORLD AND WROTE DOWN WHAT IT FOUND. D151.
+     *
+     * One read, and it is the expensive one — which is the whole reason this row
+     * exists rather than falling through to the resync below. A raid already wakes
+     * its owner with `raid_result`, and that wake is unrouted and therefore refetches
+     * everything; this arrives on the same commit and is precise about the one
+     * payload the record actually moves.
+     */
+    case 'memory':
+      return [keys.galaxy];
     /** A run launched on another tab/device moved this commander's own state. */
     case 'mining':
       return [keys.miningStatus, keys.pending, keys.planet];

@@ -183,12 +183,12 @@ describe('radar', () => {
    *
    * This is the whole reason the countdown was replaced. One radar, one origin,
    * one distance — and the minutes of warning fall out of how fast the fleet
-   * chose to travel. A Bulwark siege fleet is telegraphed; a Wasp strike is not.
+   * chose to travel. A Rampart siege fleet is telegraphed; a Dart strike is not.
    */
   it('gives a slow fleet more notice than a fast one over the same leg', () => {
     const dist = 800;
-    const wasp = travelMinutes(dist, HULLS.WASP.speed);
-    const bulwark = travelMinutes(dist, HULLS.BULWARK.speed);
+    const wasp = travelMinutes(dist, HULLS.DART.speed);
+    const bulwark = travelMinutes(dist, HULLS.RAMPART.speed);
     const reach = radarRange(5);
 
     expect(radarLead(reach, dist, bulwark)).toBeGreaterThan(radarLead(reach, dist, wasp));
@@ -230,7 +230,7 @@ describe('radar', () => {
     ).toBe(radarRange(5));
 
     const dist = 1800;
-    const oneWay = travelMinutes(dist, HULLS.WASP.speed);
+    const oneWay = travelMinutes(dist, HULLS.DART.speed);
     // What D9 asks for, and what the merge currently gives instead.
     expect(radarLead(radarRange(5), dist, oneWay)).toBe(oneWay);
   });
@@ -238,7 +238,7 @@ describe('radar', () => {
   /** A raid launched from inside the circle is seen from the moment it leaves. */
   it('sees a neighbour inside the circle for its whole flight', () => {
     const dist = 100;
-    const oneWay = travelMinutes(dist, HULLS.WASP.speed);
+    const oneWay = travelMinutes(dist, HULLS.DART.speed);
     expect(radarLead(radarRange(5), dist, oneWay)).toBe(oneWay);
   });
 
@@ -426,22 +426,22 @@ describe('radar disclosure tiers', () => {
 describe('what the disc itself discloses — D123', () => {
   describe('the silhouette', () => {
     it('reads a scout party as light and a committed fleet as heavy', () => {
-      expect(massClass({ WASP: 1 })).toBe('LIGHT');
-      expect(massClass({ BULWARK: 40 })).toBe('HEAVY');
+      expect(massClass({ DART: 1 })).toBe('LIGHT');
+      expect(massClass({ STRONGHOLD: 40 })).toBe('HEAVY');
     });
 
     it('steps exactly where the constants say, and nowhere else', () => {
-      const perWasp = HULLS.WASP.alloy + HULLS.WASP.crystal + HULLS.WASP.deuterium;
-      const justUnder = Math.floor((SENSOR.massMedium - 1) / perWasp);
-      const justOver = Math.ceil(SENSOR.massMedium / perWasp);
+      const perDart = HULLS.DART.alloy + HULLS.DART.crystal + HULLS.DART.deuterium;
+      const justUnder = Math.floor((SENSOR.massMedium - 1) / perDart);
+      const justOver = Math.ceil(SENSOR.massMedium / perDart);
 
-      expect(massClass({ WASP: justUnder })).toBe('LIGHT');
-      expect(massClass({ WASP: justOver })).toBe('MEDIUM');
+      expect(massClass({ DART: justUnder })).toBe('LIGHT');
+      expect(massClass({ DART: justOver })).toBe('MEDIUM');
     });
 
-    it('measures value, not hull count — six Bulwarks are not six Wasps', () => {
-      expect(massClass({ WASP: 6 })).toBe('LIGHT');
-      expect(massClass({ BULWARK: 6 })).toBe('MEDIUM');
+    it('measures value, not hull count — six Strongholds are not six Darts', () => {
+      expect(massClass({ DART: 6 })).toBe('LIGHT');
+      expect(massClass({ STRONGHOLD: 6 })).toBe('MEDIUM');
     });
 
     /**

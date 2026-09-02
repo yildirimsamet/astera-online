@@ -19,7 +19,6 @@ import {
 } from '@astera/rules';
 import {
   asteroidClaims,
-  debrisFields,
   galaxyEvents,
   miningRuns,
   planets,
@@ -38,6 +37,7 @@ import {
   setLevel,
   testDb,
   type Fixture,
+  giveDebris
 } from './helpers.js';
 
 const silent = pino({ level: 'silent' });
@@ -218,10 +218,10 @@ describe('mining', () => {
       /** The cap is on Prospectors alone; nothing else in the yard is rationed. */
       it('does not ration any other hull', async () => {
         await grant(f.db, mine, 900_000, 400_000);
-        await expect(buildUnits(f.db, mine, 'WASP', 40, f.clock)).resolves.toMatchObject({
+        await expect(buildUnits(f.db, mine, 'DART', 40, f.clock)).resolves.toMatchObject({
           built: 40,
         });
-        await expect(buildUnits(f.db, mine, 'HAULER', 10, f.clock)).resolves.toMatchObject({
+        await expect(buildUnits(f.db, mine, 'COURIER', 10, f.clock)).resolves.toMatchObject({
           built: 10,
         });
       });
@@ -234,7 +234,7 @@ describe('mining', () => {
     it('never makes a planet read AWAY when it leaves', async () => {
       const { fleetTruthFor } = await import('../src/services/intel.js');
 
-      await giveUnits(f.db, mine, { PROSPECTOR: 3, WASP: 10 });
+      await giveUnits(f.db, mine, { PROSPECTOR: 3, DART: 10 });
       const rock = waitForRock();
 
       await launchMining(f.db, mine, rock.index, 3, f.clock);
@@ -678,17 +678,12 @@ describe('mining', () => {
      */
     it('is just as slow coming back from a wreck field', async () => {
       await giveUnits(f.db, mine, { PROSPECTOR: 2 });
-      const [field] = await f.db
-        .insert(debrisFields)
-        .values({
-          seasonId: f.seasonId,
-          planetId: other,
+      const field = await giveDebris(f.db, f.seasonId, other, {
           alloy: 5_000,
           crystal: 1_200,
           createdAt: f.clock.now(),
-        })
-        .returning();
-      const run = await launchHarvest(f.db, mine, field!.id, 2, f.clock);
+        });
+      const run = await launchHarvest(f.db, mine, field.id, 2, f.clock);
 
       f.clock.set(run.arriveAt);
       await worker(f).tick();

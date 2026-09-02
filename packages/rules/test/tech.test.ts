@@ -5,7 +5,7 @@ import {
   RESEARCH_PROJECTS,
   RESEARCH_PROJECT_IDS,
   RESEARCH_TECH,
-  WEAPON_PROJECTS,
+  COMBAT_RESEARCH_PROJECTS,
   hullTech,
   cargoMult,
   fleetCargo,
@@ -85,7 +85,7 @@ describe('the economy ladders', () => {
 
   describe('cargo holds', () => {
     it('raises what a raid can carry home', () => {
-      const fleet = { WASP: 40, HAULER: 4 };
+      const fleet = { DART: 40, WAYFARER: 4 };
       expect(fleetCargo(fleet, { CARGO_HOLDS: max }))
         .toBeGreaterThan(fleetCargo(fleet, {}));
     });
@@ -96,7 +96,7 @@ describe('the economy ladders', () => {
      * and the two were separated long before this ladder existed.
      */
     it('does not touch a transfer between your own worlds', () => {
-      const fleet = { HAULER: 4, RUNNER: 2 };
+      const fleet = { WAYFARER: 4, COURIER: 2 };
       expect(transferCargoCapacity(fleet)).toBe(transferCargoCapacity(fleet));
       const before = transferCargoCapacity(fleet);
       expect(before).toBeGreaterThan(0);
@@ -131,10 +131,13 @@ describe('the economy ladders', () => {
  * cycle that knowing what your opponent flies stops being decisive. Every one of
  * these walks the real functions rather than trusting the paragraph.
  */
-describe('the weapon ceiling', () => {
-  const maxed: TechLevels = Object.fromEntries(
-    WEAPON_PROJECTS.map((id) => [id, RESEARCH_TECH.weaponMaxLevel]),
-  );
+describe('the Fleet V2 military ceiling', () => {
+  const maxed: TechLevels = {
+    SHIP_POWER: RESEARCH_TECH.weaponMaxLevel,
+    SHIP_ARMOR: RESEARCH_TECH.weaponMaxLevel,
+    SHIP_PROPULSION: RESEARCH_TECH.weaponMaxLevel,
+    EMPLACEMENT_DOCTRINE: RESEARCH_TECH.weaponMaxLevel,
+  };
 
   it('never lets any hull past the ceiling, however much is researched', () => {
     for (const id of ALL_HULLS) {
@@ -146,7 +149,7 @@ describe('the weapon ceiling', () => {
 
   /** And the ceiling is worth reaching: a fully-teched hull is meaningfully better. */
   it('is worth researching at all', () => {
-    const { atk, hp } = hullTech(maxed, 'WASP');
+    const { atk, hp } = hullTech(maxed, 'DART');
     expect(atk * hp).toBeGreaterThan(RESEARCH_TECH.powerCeiling * 0.99);
   });
 
@@ -162,46 +165,34 @@ describe('the weapon ceiling', () => {
 
   it('does nothing at all before anything is researched', () => {
     for (const id of ALL_HULLS) {
-      expect(hullTech({}, id)).toEqual({ atk: 1, hp: 1 });
+      expect(hullTech({}, id)).toEqual({ atk: 1, hp: 1, speed: 1 });
     }
   });
 
-  /** Attack and armour move together, so no half of a hull can be bought cheap. */
-  it('lifts attack and armour by the same factor', () => {
-    for (const id of ALL_HULLS) {
-      const { atk, hp } = hullTech(maxed, id);
-      expect(atk).toBeCloseTo(hp, 12);
-    }
-  });
-
-  it('gives a support hull the general armour and no doctrine', () => {
-    const doctrineOnly: TechLevels = { WASP_DOCTRINE: RESEARCH_TECH.weaponMaxLevel };
-    expect(hullTech(doctrineOnly, 'HAULER')).toEqual({ atk: 1, hp: 1 });
-    expect(hullTech({ WEAPONS_GENERAL: RESEARCH_TECH.weaponMaxLevel }, 'HAULER').hp)
-      .toBeGreaterThan(1);
+  it('gives transports Armor and Propulsion, but never Power', () => {
+    const support = hullTech(maxed, 'WAYFARER');
+    expect(support.atk).toBe(1);
+    expect(support.hp).toBeGreaterThan(1);
+    expect(support.speed).toBeGreaterThan(1);
   });
 
   it('covers both emplacements with the one ground doctrine', () => {
     const ground: TechLevels = { EMPLACEMENT_DOCTRINE: RESEARCH_TECH.weaponMaxLevel };
     expect(hullTech(ground, 'BASTION').atk).toBeGreaterThan(1);
     expect(hullTech(ground, 'THORN').atk).toBe(hullTech(ground, 'BASTION').atk);
-    expect(hullTech(ground, 'WASP')).toEqual({ atk: 1, hp: 1 });
+    expect(hullTech(ground, 'DART')).toEqual({ atk: 1, hp: 1, speed: 1 });
   });
 
-  /**
-   * A doctrine alone cannot reach the ceiling and neither can the general project:
-   * both are worth the levels, and neither is the whole answer.
-   */
-  it('splits the ceiling so both projects are worth buying', () => {
-    const doctrine = hullTech({ WASP_DOCTRINE: RESEARCH_TECH.weaponMaxLevel }, 'WASP');
-    const general = hullTech({ WEAPONS_GENERAL: RESEARCH_TECH.weaponMaxLevel }, 'WASP');
-    for (const half of [doctrine, general]) {
-      expect(half.atk * half.hp).toBeGreaterThan(1);
-      expect(half.atk * half.hp).toBeLessThan(RESEARCH_TECH.powerCeiling);
-    }
-    const both = hullTech(maxed, 'WASP');
+  it('splits the product ceiling between the Power and Armor decisions', () => {
+    const power = hullTech({ SHIP_POWER: RESEARCH_TECH.weaponMaxLevel }, 'DART');
+    const armor = hullTech({ SHIP_ARMOR: RESEARCH_TECH.weaponMaxLevel }, 'DART');
+    expect(power.atk).toBeGreaterThan(1);
+    expect(power.hp).toBe(1);
+    expect(armor.atk).toBe(1);
+    expect(armor.hp).toBeGreaterThan(1);
+    const both = hullTech(maxed, 'DART');
     expect(both.atk * both.hp)
-      .toBeCloseTo(doctrine.atk * doctrine.hp * general.atk * general.hp, 9);
+      .toBeCloseTo(power.atk * armor.hp, 9);
   });
 
   /**
@@ -210,7 +201,7 @@ describe('the weapon ceiling', () => {
    * brings home, and it has to be the same list the effects read.
    */
   it('publishes exactly the projects that change a battle', () => {
-    const covered = new Set(WEAPON_PROJECTS);
+    const covered = new Set(COMBAT_RESEARCH_PROJECTS);
     for (const id of RESEARCH_PROJECT_IDS) {
       const changes = ALL_HULLS.some((hull) => {
         const solo: TechLevels = { [id]: RESEARCH_TECH.weaponMaxLevel };

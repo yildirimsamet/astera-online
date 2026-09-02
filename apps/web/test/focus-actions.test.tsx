@@ -4,6 +4,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { describe, expect, it, vi } from 'vitest';
 import { DEATH_STAR, GALAXY_SPAN, MULTI_WORLD, distance, missionFuel } from '@astera/rules';
 import { duration } from '../src/lib/time.js';
+import { resetClock } from '../src/lib/clock.js';
 import { compact } from '../src/lib/format.js';
 import { Api } from '../src/api/client.js';
 import { ApiProvider } from '../src/api/context.js';
@@ -61,7 +62,7 @@ const mine: PlanetView = planetView(
     buildings: { CORE: 4, REFINERY: 2, EXTRACTOR: 2, VAULT: 1, SHIPYARD: 1 },
     instruments: { TELESCOPE: 1, RADAR: 0, AEGIS: 0, VEIL: 0 },
     orbit: ['UPLINK'],
-    fleet: { WASP: 6 },
+    fleet: { DART: 6 },
   },
   { alloy: 4000, crystal: 2000, alloyCap: 9000, crystalCap: 4000 },
 );
@@ -467,9 +468,9 @@ describe('the focus rail’s two commitments', () => {
     expect(screen.getByText(/^colony race open$/i)).toBeInTheDocument();
     expect(screen.getByText(/win a decisive raid/i)).toBeInTheDocument();
     expect(screen.getByText(/dispatch the colony fleet/i)).toBeInTheDocument();
-    expect(screen.getByText('2 Haulers')).toBeInTheDocument();
+    expect(screen.getByText('2 Couriers')).toBeInTheDocument();
     expect(document.querySelector('[data-colony-step="3"]')).toHaveAttribute('aria-current', 'step');
-    expect(screen.getByRole('button', { name: /found colony.*2 haulers needed/i })).toBeDisabled();
+    expect(screen.getByRole('button', { name: /found colony.*2 Couriers needed/i })).toBeDisabled();
     expect(screen.getByText(/another raid is possible.*does not extend/i)).toBeInTheDocument();
   });
 
@@ -506,7 +507,7 @@ describe('the focus rail’s two commitments', () => {
           {...props}
           planet={{
             ...mine,
-            fleet: { ...mine.fleet, HAULER: 1 },
+            fleet: { ...mine.fleet, COURIER: 1 },
             colonies: { highestCore: 4, colonies: 1, reservations: 0, capacity: 1 },
           }}
         />
@@ -520,7 +521,7 @@ describe('the focus rail’s two commitments', () => {
           {...props}
           planet={{
             ...mine,
-            fleet: { ...mine.fleet, HAULER: 1 },
+            fleet: { ...mine.fleet, COURIER: 1 },
             colonies: { highestCore: 4, colonies: 0, reservations: 0, capacity: 1 },
             flight: { used: 1, total: 1 },
           }}
@@ -570,10 +571,10 @@ describe('the focus rail’s two commitments', () => {
     expect(colonyStep).not.toBeNull();
     expect(raidStep).toHaveAttribute('aria-current', 'step');
     expect(within(raidStep as HTMLElement).getByText('Raid fleet')).toBeInTheDocument();
-    expect(raidStep).not.toHaveTextContent('2 Haulers');
+    expect(raidStep).not.toHaveTextContent('2 Couriers');
     expect(raidStep).not.toHaveTextContent(compact(MULTI_WORLD.settlement.cost.crystal));
     expect(raidStep).not.toHaveTextContent('Flight bay');
-    expect(within(colonyStep as HTMLElement).getByRole('button', { name: '2 Haulers' }))
+    expect(within(colonyStep as HTMLElement).getByRole('button', { name: '2 Couriers' }))
       .toBeInTheDocument();
     expect(within(colonyStep as HTMLElement).getByText(compact(MULTI_WORLD.settlement.cost.crystal)))
       .toBeInTheDocument();
@@ -613,7 +614,7 @@ describe('the focus rail’s two commitments', () => {
         </Wrapper>,
       );
 
-      fireEvent.click(screen.getByRole('button', { name: '2 Haulers' }));
+      fireEvent.click(screen.getByRole('button', { name: '2 Couriers' }));
       const tooltip = screen.getByRole('tooltip');
       expect(tooltip).toHaveTextContent(
         /only for step 3.*separate from the raid/i,
@@ -664,7 +665,7 @@ describe('the focus rail’s two commitments', () => {
           target={world}
           planet={{
             ...mine,
-            fleet: { ...mine.fleet, HAULER: MULTI_WORLD.settlement.haulers },
+            fleet: { ...mine.fleet, COURIER: MULTI_WORLD.settlement.transports },
             planet: { ...mine.planet, alloy: 20_000, crystal: 10_000, deuterium },
             colonies: { highestCore: 4, colonies: 0, reservations: 0, capacity: 1 },
           }}
@@ -712,7 +713,7 @@ describe('the focus rail’s two commitments', () => {
    * *the launch screen shows the cost before the commitment*.
    *
    * Every other price of a settlement is on this panel — the colony slot, the
-   * flight bay, the two Haulers, the Alloy, the Crystal, the reach — and the
+   * flight bay, the two Couriers, the Alloy, the Crystal, the reach — and the
    * server has refused `INSUFFICIENT_FUEL` since fuel landed. So the one control
    * in the game that founds a world offered itself to a commander with an empty
    * tank, took the tap, and answered with a refusal nothing on screen predicted.
@@ -725,7 +726,7 @@ describe('the focus rail’s two commitments', () => {
   it('names the deuterium the settlers burn, beside the ore they carry', () => {
     settlementRig(neutralAt(1_200, CLAIM_OPEN));
     const fuel = missionFuel(
-      { HAULER: MULTI_WORLD.settlement.haulers },
+      { COURIER: MULTI_WORLD.settlement.transports },
       distance({ x: 0, y: 0, z: 0 }, { x: 1_200, y: 0, z: 0 }),
       1,
     );
@@ -902,7 +903,7 @@ describe('the focus rail on an unsurveyed world', () => {
      * particular fixture can afford it.
      */
     expect(screen.getByRole('button', { name: /^Found colony\b/ })).toBeInTheDocument();
-    expect(screen.getByText(/first valid 2 Haulers to arrive take it/i)).toBeInTheDocument();
+    expect(screen.getByText(/first valid 2 Couriers to arrive take it/i)).toBeInTheDocument();
   });
 
   /** And nothing to enter when there is no race on. */
@@ -933,5 +934,165 @@ describe('the focus rail on an unsurveyed world', () => {
     );
     expect(screen.getByText(/your colony ships are on the way/i)).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /^Found colony\b/ })).not.toBeInTheDocument();
+  });
+});
+
+/**
+ * A WORLD YOU HAVE ALREADY READ IS STILL A WORLD YOU MAY READ AGAIN. Owner report.
+ *
+ * The launch control used to live inside the "you have never looked here" gap, so
+ * it existed exactly until the first report came home and then never again: the
+ * newest report per target is kept for the whole season (`readProbeReports`), the
+ * gap disappeared with it, and a world probed six hours ago offered no button at
+ * all. The cooldown is the ONLY thing that closes this control — an hour, then it
+ * is open again, for a world with a dossier exactly as for one without.
+ */
+describe('re-probing a world already in the dossier', () => {
+  const reported = (over: Partial<IntelView> = {}) => { show({
+    probeReports: [{
+      targetPlanetId: 'p2',
+      targetName: 'Grimhold',
+      targetUsername: 'Sable',
+      at: new Date(NOW - 6 * 60 * 60_000),
+      accuracy: 0.8,
+      detected: false,
+      stock: { low: 100, high: 200 },
+      deuteriumStock: null,
+      defence: { low: 20, high: 50 },
+      fleetSize: { low: 2, high: 5 },
+      fleetHome: true,
+    }],
+    ...over,
+  }); };
+
+  it('still offers the launch six hours after the last look', () => {
+    reported();
+    expect(screen.getByRole('button', { name: /send a probe/i })).toBeEnabled();
+  });
+
+  it('closes it only for the hour the server is actually holding', () => {
+    reported({
+      probeCooldowns: [{ targetPlanetId: 'p2', readyAt: new Date(Date.now() + 42 * 60_000) }],
+    });
+    expect(screen.getByRole('button', { name: /another probe/i })).toBeDisabled();
+    expect(screen.queryByRole('button', { name: /send a probe/i })).not.toBeInTheDocument();
+  });
+
+  /**
+   * ONE CONTROL, ONCE. An unsurveyed world is missing its surface AND its stock,
+   * which is two gaps closed by the same launch — and two identical buttons on a
+   * phone rail read as two different launches.
+   */
+  it('offers exactly one launch on a world with nothing known about it at all', () => {
+    const Wrapper = harness();
+    render(
+      <Wrapper>
+        <PlanetFocus
+          target={target({ intel: 'UNKNOWN' as const })}
+          planet={mine}
+          intel={intel}
+          reports={[]}
+          now={NOW}
+          onClose={vi.fn()}
+          onAttack={vi.fn()}
+          onInstallTelescope={vi.fn()}
+          onLaunched={vi.fn()}
+          open
+          onToggle={vi.fn()}
+        />
+      </Wrapper>,
+    );
+    expect(screen.getAllByRole('button', { name: /send a probe/i })).toHaveLength(1);
+  });
+});
+
+/**
+ * THE THREE THINGS MOVING THE LAUNCH OUT OF THE GAP ROW HAD TO KEEP. Code review.
+ *
+ * A control that renders unconditionally answers for itself every question the
+ * gap used to answer for it by disappearing.
+ */
+describe('the standing probe control keeps the rail’s own rules', () => {
+  const clanmate = (over: Partial<IntelView> = {}) => {
+    const Wrapper = harness();
+    render(
+      <Wrapper>
+        <PlanetFocus
+          target={target({ clanmate: true, clan: { id: 'c1', name: 'Nova', tag: 'NVA' } })}
+          planet={mine}
+          intel={{ ...intel, ...over }}
+          reports={[]}
+          now={NOW}
+          onClose={vi.fn()}
+          onAttack={vi.fn()}
+          onInstallTelescope={vi.fn()}
+          onLaunched={vi.fn()}
+          open
+          onToggle={vi.fn()}
+        />
+      </Wrapper>,
+    );
+  };
+
+  /**
+   * `launchProbe` runs `assertClanHostilityAllowed` like every other hostile
+   * flight, so a probe at a clanmate is a 403 the rail can see coming — and this
+   * rail already hides the attack, the Death Star and the rival mark for exactly
+   * that reason. The gap row used to hide the launch by accident, once a report
+   * came home; a control that always renders has to mean it.
+   */
+  it('never offers a launch a clanmate’s world would refuse', () => {
+    clanmate();
+    expect(screen.queryByRole('button', { name: /send a probe/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /another probe/i })).not.toBeInTheDocument();
+  });
+
+  /** And it stays hidden once there is a dossier, which is the other half. */
+  it('keeps it hidden on a clanmate this commander probed before they joined', () => {
+    clanmate({
+      probeReports: [{
+        targetPlanetId: 'p2', targetName: 'Grimhold', targetUsername: 'Sable',
+        at: new Date(NOW - 6 * 60 * 60_000), accuracy: 0.8, detected: false,
+        stock: { low: 100, high: 200 }, deuteriumStock: null,
+        defence: { low: 20, high: 50 }, fleetSize: { low: 2, high: 5 }, fleetHome: true,
+      }],
+    });
+    expect(screen.queryByRole('button', { name: /send a probe/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /another probe/i })).not.toBeInTheDocument();
+  });
+
+  /**
+   * A GAP WITHOUT A CONTROL MUST NOT RESERVE ROOM FOR ONE. `GapRow` gates its
+   * action slot on the PROP, and a React element is truthy even when the
+   * component returns null — so every probe gap kept an empty 8px box under it.
+   */
+  it('leaves no empty control slot under a gap it no longer answers', () => {
+    show();
+    for (const row of document.querySelectorAll('.border-dashed')) {
+      for (const child of row.children) {
+        expect(child.textContent, 'an empty control slot under a gap row').not.toBe('');
+      }
+    }
+  });
+
+  /**
+   * D52. The window is a SERVER instant, and a phone whose clock runs fast must
+   * not open the control early. Offset far enough that the two clocks disagree
+   * about which side of the window we are on: device time says the hour is over,
+   * the server says twenty minutes are left.
+   */
+  it('reads the window on the server’s clock, not the phone’s', () => {
+    resetClock(-30 * 60_000);
+    try {
+      show({
+        probeCooldowns: [{ targetPlanetId: 'p2', readyAt: new Date(Date.now() - 10 * 60_000) }],
+      });
+      const cooling = screen.getByRole('button', { name: /another probe/i });
+      expect(cooling).toBeDisabled();
+      expect(cooling.textContent).toContain(duration(20));
+      expect(screen.queryByRole('button', { name: /send a probe/i })).not.toBeInTheDocument();
+    } finally {
+      resetClock();
+    }
   });
 });

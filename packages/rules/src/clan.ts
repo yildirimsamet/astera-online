@@ -111,7 +111,7 @@ export function clanTagIsValid(value: string): boolean {
     && /^[A-Z0-9]+$/u.test(tag);
 }
 
-/** Only the six ordinary mobile hulls may fly as clan aid or change owner as a gift. */
+/** Every Fleet V2 mobile hull may fly as clan aid or change owner as a gift. */
 export function clanTransferFleetIsValid(fleet: Fleet): boolean {
   let count = 0;
   for (const id of ALL_HULLS) {
@@ -124,9 +124,11 @@ export function clanTransferFleetIsValid(fleet: Fleet): boolean {
   return count > 0;
 }
 
-/** Runner cargo is deliberately excluded; only Haulers carry resources on clan aid. */
+/** Only dedicated transports carry resources on clan aid. */
 export function clanTransferCargoCapacity(fleet: Fleet): number {
-  return finiteFloor(fleet.HAULER ?? 0) * HULLS.HAULER.cargo;
+  return finiteFloor(fleet.COURIER ?? 0) * HULLS.COURIER.cargo
+    + finiteFloor(fleet.WAYFARER ?? 0) * HULLS.WAYFARER.cargo
+    + finiteFloor(fleet.ATLAS ?? 0) * HULLS.ATLAS.cargo;
 }
 
 /** Full value of a ship gift; resource-delivery commitments use cargo alone. */

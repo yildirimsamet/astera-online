@@ -109,11 +109,11 @@ const world = await page.evaluate(async () => {
 console.log('raiding', world.targetName);
 
 // A fleet worth watching, and the bays to fly it. Straight into the database:
-// this is a camera rig, not a playthrough, and building forty Wasps through the
+// this is a camera rig, not a playthrough, and building forty-five Darts through the
 // interface would take longer than the flight it is setting up.
 await sql`UPDATE buildings SET level = 9 WHERE planet_id = ${world.mine} AND type = 'CORE'`;
 await sql`
-  INSERT INTO units (planet_id, hull, location, count) VALUES (${world.mine}, 'WASP', 'home', 45)
+  INSERT INTO units (planet_id, hull, location, count) VALUES (${world.mine}, 'DART', 'home', 45)
   ON CONFLICT (planet_id, hull, location) DO UPDATE SET count = 45
 `;
 // A big world to hit, so the bombardment has a real face to land on.
@@ -122,7 +122,7 @@ await sql`UPDATE players SET wealth = 90000 WHERE id = (SELECT player_id FROM pl
 await sql`UPDATE players SET wealth = 90000 WHERE id = (SELECT player_id FROM planets WHERE id = ${world.mine})`;
 
 const launched = await page.evaluate(
-  async ([target]) => window.__api.launch(target, { WASP: 45 }),
+  async ([target]) => window.__api.launch(target, { DART: 45 }),
   [world.target],
 );
 console.log('launched, eta', launched.arriveAt);

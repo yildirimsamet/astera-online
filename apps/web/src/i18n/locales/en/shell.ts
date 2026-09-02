@@ -58,6 +58,8 @@ export const pendingStrip = {
   deathStar: 'Your Death Star → {{target}}',
   settlement: 'Settlement → {{target}}',
   transfer: 'Transfer → {{target}}',
+  pirateOut: 'Raid → {{target}}',
+  pirateHome: 'Raid returning · {{target}}',
   fleetHome: 'Your fleet home from {{target}}',
   fleetOut: 'Your fleet → {{target}}',
   engaging: 'Engaging',

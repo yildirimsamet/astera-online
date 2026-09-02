@@ -5,11 +5,11 @@ import { WorldsPanel } from '../src/screens/WorldsPanel.js';
 import { planetView } from './fixtures.js';
 
 const capital = planetView(
-  { fleet: { WASP: 4, HAULER: 1 }, ground: { THORN: 2 }, flight: { used: 1, total: 3 } },
+  { fleet: { DART: 4, COURIER: 1 }, ground: { THORN: 2 }, flight: { used: 1, total: 3 } },
   { id: 'capital-1', name: 'Kestrel-12', alloy: 9_400, crystal: 2_100, deuterium: 60 },
 );
 const haven = planetView(
-  { fleet: { WASP: 2 }, ground: {}, flight: { used: 0, total: 3 } },
+  { fleet: { DART: 2 }, ground: {}, flight: { used: 0, total: 3 } },
   { id: 'colony-1', name: 'Haven', alloy: 300, crystal: 80, deuterium: 0 },
 );
 const orlo = planetView(

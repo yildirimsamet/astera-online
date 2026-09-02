@@ -56,8 +56,23 @@ type StrategicReport = StrategicBattleReport;
  * name is printed on the disc. The world itself is named in the line below this
  * one; what belongs here is WHAT it was.
  */
-const opponentOf = (report: OrdinaryReport): string =>
-  report.neutral ? i18n.t('reports.neutralHolder') : report.opponentName;
+const opponentOf = (report: OrdinaryReport): string => {
+  /*
+    A PIRATE IS NAMED FROM THE LOCALE FILES. D150.
+
+    The server carries a plain fallback in `opponentName` for the same reason it
+    carries "someone" — a payload has to say something — but the sentence a player
+    reads belongs in the translations, so the structured field wins whenever it is
+    there.
+  */
+  if (report.pirate) {
+    return i18n.t('pirate.name', {
+      level: report.pirate.level,
+      callsign: report.pirate.callsign,
+    });
+  }
+  return report.neutral ? i18n.t('reports.neutralHolder') : report.opponentName;
+};
 
 export function BattleReports({
   open: requested,
@@ -74,7 +89,17 @@ export function BattleReports({
 
   useEffect(() => {
     if (!requestedMissionId) return;
-    const report = reports.find((candidate) => candidate.missionId === requestedMissionId);
+    /*
+      THE NOTIFICATION'S `refId` NAMES A FIGHT, NOT NECESSARILY A MISSION. D150.
+
+      A raid at a pirate has no mission row, so its notification carries the RAID
+      id — and matching only on `missionId` sent every pirate notification to a
+      report list that then opened nothing. Matching both binders is the whole fix,
+      and it is safe because the ids are uuids from disjoint tables.
+    */
+    const report = reports.find((candidate) =>
+      candidate.missionId === requestedMissionId
+      || (candidate.kind !== 'STRATEGIC' && candidate.pirateRaidId === requestedMissionId));
     if (report) setOpen(report);
   }, [reports, requestedMissionId, requestedSequence]);
 
@@ -543,10 +568,10 @@ function ReportSheet({ report, onClose }: { report: OrdinaryReport; onClose: () 
                   <span className="num text-label text-crystal">
                     {t('reports.shield', { amount: compact(round.shieldAbsorbed) })}
                   </span>
-                  {round.breacherShieldDamage > 0 && (
+                  {round.shieldBreakerDamage > 0 && (
                     <span className="num text-micro text-deuterium">
-                      {t('reports.breacherShield', {
-                        amount: compact(round.breacherShieldDamage),
+                      {t('reports.shieldBreaker', {
+                        amount: compact(round.shieldBreakerDamage),
                       })}
                     </span>
                   )}
@@ -850,9 +875,9 @@ function CombatRoundDetail({ report, round }: { report: OrdinaryReport; round: R
             <div className="plate px-3 py-2">
               <p className="legend text-faint">{t('reports.calculation.reachedHulls')}</p>
               <p className="num mt-1 text-title text-bone">{full(round.attackerHullDamage!)}</p>
-              {round.breacherShieldDamage > 0 ? (
+              {round.shieldBreakerDamage > 0 ? (
                 <p className="mt-1 text-label text-deuterium">
-                  {t('reports.calculation.breacher', { amount: full(round.breacherShieldDamage) })}
+                  {t('reports.calculation.shieldBreaker', { amount: full(round.shieldBreakerDamage) })}
                 </p>
               ) : null}
             </div>

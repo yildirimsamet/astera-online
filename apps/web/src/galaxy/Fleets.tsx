@@ -4,10 +4,10 @@ import { Billboard, useGLTF } from '@react-three/drei';
 import * as THREE from 'three';
 import { engagementEndsAt, isEngaging, seededFrom } from '@astera/rules';
 import type { Contact, PendingThread } from '../api/schemas.js';
-import { HULL_MODEL, MODEL, MODEL_FACING } from '../ui/assets.js';
+import { HULL_MODEL, MODEL, MODEL_FACING, MODEL_POSE } from '../ui/assets.js';
 import { Bombardment, bombardmentIntensity } from './Bombardment.jsx';
 import { softGlow } from './Environment.jsx';
-import { orientedCraft } from './model.js';
+import { posedCraft } from './model.js';
 import {
   contactPosition,
   CRAFT_SCALE,
@@ -25,7 +25,6 @@ import {
   PER_MODEL,
   formationHitBox,
   markersFor,
-  slotOffset,
   type Marker,
 } from './Squadrons.js';
 import { markHit, wasTap } from './tap.js';
@@ -36,6 +35,9 @@ import {
   TRACKING_MARK,
   UNKNOWN_CONTACT_MARK,
   formationAimDirection,
+  formationAimDistance,
+  formationLayout,
+  hullVisualScale,
 } from './flightVisual.js';
 import { fireTexture } from './vfx.js';
 import { threadKey } from './threadKey.js';
@@ -143,7 +145,7 @@ export const ROUTE_OPACITY_FOCUSED = 0.42;
 
 const ROUTE = {
   fleet: {
-    url: MODEL.wasp,
+    url: HULL_MODEL.DART,
     scale: 0.225 * CRAFT_SCALE,
     flame: '#8fd8ff',
     /** Blue: this is a warship. */
@@ -172,7 +174,7 @@ const ROUTE = {
  * bundled, so the whole thing works offline and behind a strict content policy.
  */
 useGLTF.preload(MODEL.probe, false);
-useGLTF.preload(MODEL.wasp, false);
+useGLTF.preload(HULL_MODEL.DART, false);
 useGLTF.preload(MODEL.deathStar, false);
 
 /**
@@ -200,7 +202,7 @@ export function Hull({
     // Centred, turned so the NOSE runs down +Z, and normalised into a unit box —
     // so `lookAt` points the nose and `scale` is a real world size. The facing is
     // declared per model; a bounding box cannot tell a fuselage from a wingspan.
-    const clone = orientedCraft(scene, MODEL_FACING[url] ?? '+z');
+    const clone = posedCraft(scene, MODEL_FACING[url] ?? '+z', MODEL_POSE[url]);
     clone.traverse((node) => {
       if (!isMesh(node)) return;
       node.renderOrder = SHIP_ORDER;
@@ -640,11 +642,21 @@ function Flight({
    * Only an outbound FLEET bombards: a probe takes a photograph, and a leg coming
    * home is landing rather than arriving.
    */
+  /**
+   * A PIRATE IS A TARGET WITH NO WORLD BEHIND IT. D150.
+   *
+   * The volley needs somewhere to land and a size to land against. A raid at a
+   * pirate has the first — the rendezvous point the leg ends at — and genuinely
+   * has no second: the thing being shot at is a fleet, which is drawn from its own
+   * manifest and has no published radius. Radius zero says exactly that, and the
+   * gap the rockets cross is `PIRATE_STANDOFF` rather than an orbit.
+   */
   const target = useMemo(
-    () =>
-      path && !isProbe && !isDeathStar && thread.kind === 'fleet' && thread.leg !== 'return'
-        ? targetNodeOf(nodes, path.to)
-        : undefined,
+    () => {
+      if (!path || isProbe || isDeathStar || thread.leg === 'return') return undefined;
+      if (thread.kind === 'pirate') return { radius: 0 };
+      return thread.kind === 'fleet' ? targetNodeOf(nodes, path.to) : undefined;
+    },
     [path, isProbe, isDeathStar, thread.kind, thread.leg, nodes],
   );
 
@@ -660,15 +672,11 @@ function Flight({
     [isProbe, isDeathStar, thread.fleet],
   );
 
-  /** Where each drawn model sits. Needed twice now: to place it, and to fire from it. */
-  const slots = useMemo<Vec3Tuple[]>(
-    () =>
-      markers
-        ? markers.map((_, i) => slotOffset(i, style.scale * 1.5))
-        : [[0, 0, 0]],
-    [markers, style.scale],
-  );
-  const hitBox = useMemo(() => formationHitBox(slots, style.scale), [slots, style.scale]);
+  /** Sized by the largest drawn hull, so capital craft cannot overlap a Dart grid. */
+  const formation = useMemo(() => formationLayout(markers, style.scale), [markers, style.scale]);
+  const slots = formation.slots;
+  const formationScale = formation.scale;
+  const hitBox = useMemo(() => formationHitBox(slots, formationScale), [slots, formationScale]);
 
   const engaging = useEngagement(path ? path.arriveAt.getTime() : null);
   /**
@@ -694,9 +702,12 @@ function Flight({
     // The same helper the camera reads, so a focused squadron stays centred.
     const at = threadPosition(path, serverNow(), standoff);
     group.current.position.set(at[0], at[1], at[2]);
-    formationAim.current = Math.max(
-      0.01,
+    // Floored against the squadron's own size for the reason written over
+    // `formationAimDistance`: on the last seconds of an approach the destination
+    // comes inside the formation, and aiming each slot at it splays the wing.
+    formationAim.current = formationAimDistance(
       Math.hypot(to[0] - at[0], to[1] - at[1], to[2] - at[2]),
+      formationScale,
     );
     /**
      * Nose on the destination.
@@ -894,6 +905,7 @@ function Craft({
   batched?: boolean;
 }) {
   const light = HULL_LIGHT[marker.hull];
+  const authoredScale = hullVisualScale(marker.hull, scale);
   const craft = useRef<THREE.Group>(null);
   const direction = useMemo(() => new THREE.Vector3(), []);
   const forward = useMemo(() => new THREE.Vector3(0, 0, 1), []);
@@ -906,19 +918,23 @@ function Craft({
   });
   return (
     <group ref={craft} position={offset}>
-      {!batched && <Wake scale={scale} colour={light.glow} />}
+      {!batched && <Wake scale={authoredScale} colour={light.glow} />}
       <Hull
         url={HULL_MODEL[marker.hull]}
-        scale={scale}
+        scale={authoredScale}
         glow={light.glow}
         focused={focused}
       />
       {!batched && (
-        <group position={[0, 0, -scale * 0.42]}>
-          <Exhaust colour={light.flame} length={scale * 0.8} width={scale * 0.46} />
+        <group position={[0, 0, -authoredScale * 0.42]}>
+          <Exhaust
+            colour={light.flame}
+            length={authoredScale * 0.8}
+            width={authoredScale * 0.46}
+          />
         </group>
       )}
-      {pips && !batched && <Pips filled={marker.filled} scale={scale} lit={focused} />}
+      {pips && !batched && <Pips filled={marker.filled} scale={authoredScale} lit={focused} />}
     </group>
   );
 }
@@ -979,14 +995,15 @@ function FormationLightField({
 
     markers.forEach((marker, markerIndex) => {
       const slot = slots[markerIndex] ?? [0, 0, 0];
+      const authoredScale = hullVisualScale(marker.hull, scale);
       const flameColour = new THREE.Color(HULL_LIGHT[marker.hull].flame);
       for (let i = 0; i < PLUME_STEPS; i += 1) {
         const puff = plumeShape(i);
         const tint = flameColour.clone().lerp(white, puff.white);
         put(
-          [slot[0], slot[1], slot[2] - scale * (0.42 + 0.8 * puff.at)],
+          [slot[0], slot[1], slot[2] - authoredScale * (0.42 + 0.8 * puff.at)],
           tint,
-          scale * 0.46 * puff.size,
+          authoredScale * 0.46 * puff.size,
           puff.alpha,
           0.12,
           0.65 + puff.white * 1.15,
@@ -1052,12 +1069,13 @@ function FormationLightField({
   useFrame(({ clock, camera, size: viewport, gl }) => {
     const positions = lights.getAttribute('position') as THREE.BufferAttribute;
     let cursor = 0;
-    markers.forEach((_, markerIndex) => {
+    markers.forEach((marker, markerIndex) => {
       const slot = slots[markerIndex] ?? [0, 0, 0];
+      const authoredScale = hullVisualScale(marker.hull, scale);
       formationAimDirection(slot, aimDistance.current, aimed);
       for (let i = 0; i < PLUME_STEPS; i += 1) {
         const puff = plumeShape(i);
-        const behind = scale * (0.42 + 0.8 * puff.at);
+        const behind = authoredScale * (0.42 + 0.8 * puff.at);
         positions.setXYZ(
           cursor,
           slot[0] - aimed[0] * behind,
@@ -1118,8 +1136,6 @@ function FormationPips({
     const sizes = new Float32Array(count);
     const lit = new THREE.Color(focused ? '#7fd4ff' : '#4aa8e8');
     const empty = new THREE.Color('#33404f');
-    const pipSize = scale * 0.085;
-    const gap = pipSize * 1.6;
     /**
      * WRAPPED AT FIVE, exactly like the sprite tally in `Pips` below.
      *
@@ -1130,18 +1146,22 @@ function FormationPips({
      */
     const perRow = Math.min(PER_MODEL, 5);
     const rows = Math.ceil(PER_MODEL / perRow);
-    const width = gap * (perRow - 1);
     let cursor = 0;
 
     markers.forEach((marker, markerIndex) => {
       const slot = slots[markerIndex] ?? [0, 0, 0];
+      const authoredScale = hullVisualScale(marker.hull, scale);
+      const pipSize = authoredScale * 0.085;
+      const gap = pipSize * 1.6;
+      const width = gap * (perRow - 1);
       for (let i = 0; i < PER_MODEL; i += 1) {
         positions.set(
           [
             slot[0] + (i % perRow) * gap - width / 2,
             // Top row first, so a partly-filled marker fills left-to-right and
             // downward — the direction a tally is read.
-            slot[1] + scale * 0.6 + ((rows - 1) / 2 - Math.floor(i / perRow)) * gap,
+            slot[1] + authoredScale * 0.6 +
+              ((rows - 1) / 2 - Math.floor(i / perRow)) * gap,
             slot[2],
           ],
           cursor * 3,
@@ -1473,8 +1493,9 @@ function FormationWakes({
     else side.normalize();
 
     const positions = node.geometry.getAttribute('position') as THREE.BufferAttribute;
-    markers.forEach((_, markerIndex) => {
+    markers.forEach((marker, markerIndex) => {
       const slot = slots[markerIndex] ?? [0, 0, 0];
+      const authoredScale = hullVisualScale(marker.hull, scale);
       formationAimDirection(slot, aimDistance.current, aimed);
       direction.set(...aimed);
       eyeFromCraft.set(eye.x - slot[0], eye.y - slot[1], eye.z - slot[2]);
@@ -1485,12 +1506,12 @@ function FormationWakes({
       for (let k = 0; k < WAKE_SEGMENTS; k += 1) {
         const back = k / (WAKE_SEGMENTS - 1);
         const envelope = (0.42 + Math.sin(Math.PI * back) * 0.72) * (1 - back);
-        const width = scale * WAKE_WIDTH * envelope;
+        const width = authoredScale * WAKE_WIDTH * envelope;
         const flutter = Math.sin(clock.elapsedTime * 2.7 + back * 14 + markerIndex * 1.7) *
           width *
           back *
           0.22;
-        const distance = scale * WAKE_LENGTH * back;
+        const distance = authoredScale * WAKE_LENGTH * back;
         const centreX = slot[0] - direction.x * distance;
         const centreY = slot[1] - direction.y * distance;
         const centreZ = slot[2] - direction.z * distance;
@@ -1636,6 +1657,17 @@ const CONTACT_STYLE: Record<Contact['kind'], { neon: string; scale: number; flam
   // not headed for a rock. D32.
   harvest: { neon: '#ffcf8f', scale: 0.18 * CRAFT_SCALE, flame: '#ffe9cc' },
   death_star: { neon: '#ff4d67', scale: 0.34 * CRAFT_SCALE, flame: '#ff9cac' },
+  /**
+   * A PIRATE. D150.
+   *
+   * Violet, and it had to be a hue nothing else on this list owns: `visual-design`
+   * says the hue carries the CATEGORY, and a pirate is a category — not a player's
+   * warship (blue), not a scout (green), not a drill (amber), and emphatically not
+   * the strategic weapon (red). Somebody looking at the disc has to be able to tell
+   * "a target I can take" from "a commander who can take me" without reading a
+   * word, because that difference is the whole reason this class exists.
+   */
+  pirate: { neon: '#c46bff', scale: 0.205 * CRAFT_SCALE, flame: '#e7c2ff' },
 };
 
 /**
@@ -1676,10 +1708,12 @@ const contactMarkers = (contact: Contact): Marker[] | null => {
     return markersFor({ PROSPECTOR: contact.craft ?? 1 });
   }
   // Telescope sight carries the real manifest, so use the same hull assets and
-  // marker arithmetic as the owner's own squadron. The fallback is only for a
+  // marker arithmetic as the owner's own squadron — a pirate included, because an
+  // identified pirate IS its hulls and drawing it as an anonymous blob would throw
+  // away the one reading the Telescope was bought for. The fallback is only for a
   // client briefly talking to an older server during a rolling deploy.
   if (contact.fleet) return markersFor(contact.fleet);
-  return markersFor({ WASP: SILHOUETTE[contact.mass ?? 'LIGHT'] * PER_MODEL });
+  return markersFor({ DART: SILHOUETTE[contact.mass ?? 'LIGHT'] * PER_MODEL });
 };
 
 /**
@@ -1811,6 +1845,55 @@ export function Traffic({
 }
 
 /**
+ * HOW FAST A CRAFT SETTLES ONTO A NEW HEADING, as a time constant in seconds.
+ *
+ * A published bearing window is a straight chord, and a craft on a curve gets a
+ * NEW chord every refetch — so its exact heading steps a few degrees each time one
+ * lands. Aimed straight at it the ship snapped between headings five seconds
+ * apart, which reads as a stutter rather than as a turn.
+ *
+ * Eased, the same steps become the continuous arc the craft is actually flying.
+ * This is presentation only: it turns the ship, never moves it. Position stays
+ * exactly where the authoritative clock puts it (D51), so nothing about arrival,
+ * interception or the fog is touched by how quickly a nose comes round.
+ *
+ * Short enough that a genuine course change is followed within a frame or two of
+ * being visible, long enough that one window boundary is not a snap.
+ */
+const HEADING_EASE_SECONDS = 0.35;
+
+/** How long a craft takes to slide back onto its orbit after a fight. D150. */
+const RELEASE_EASE_MS = 900;
+
+/** Scratch used to derive a target orientation without allocating each frame. */
+const AIM_SCRATCH = new THREE.Object3D();
+
+/**
+ * Turn `node` toward `aim`, easing rather than snapping.
+ *
+ * Frame-rate independent: the exponential makes the fraction covered depend on
+ * elapsed time rather than on how many frames happened to be drawn. `settled`
+ * carries the one-frame exception — a craft that has just appeared points the
+ * right way immediately instead of swinging round from wherever it was created.
+ */
+function easeHeading(
+  node: THREE.Object3D,
+  aim: Vec3Tuple,
+  delta: number,
+  settled: { current: boolean },
+): void {
+  AIM_SCRATCH.position.copy(node.position);
+  AIM_SCRATCH.up.copy(node.up);
+  AIM_SCRATCH.lookAt(aim[0], aim[1], aim[2]);
+  if (!settled.current) {
+    node.quaternion.copy(AIM_SCRATCH.quaternion);
+    settled.current = true;
+    return;
+  }
+  node.quaternion.slerp(AIM_SCRATCH.quaternion, 1 - Math.exp(-delta / HEADING_EASE_SECONDS));
+}
+
+/**
  * The question mark every unidentified contact wears. D125.
  *
  * ONE TEXTURE FOR THE WHOLE GALAXY, built once and shared by every sprite. A DOM
@@ -1891,6 +1974,121 @@ function UnknownMark({
   );
 }
 
+/**
+ * THE SKULL A PIRATE WEARS. D150.
+ *
+ * A pirate flies the same Fleet V2 hulls a commander does — that is the whole
+ * reason capturing one is worth anything — so the silhouette alone cannot say
+ * what it is. Drive colour carries hull identity (`visual-design.md`), and the
+ * neon already separates the contact kinds, but neither answers the question a
+ * player actually has at a glance: is that somebody, or is that a target.
+ *
+ * IT IS DRAWN, NOT WRITTEN. D142/D124 — the thing a player must judge is a
+ * picture, and a mark above the formation is legible at mobile map scale where a
+ * label is not. Same construction as the unidentified contact's question mark:
+ * one canvas texture for the whole galaxy, on a billboarded plane rather than a
+ * `<sprite>`, because that is the primitive this scene trusts.
+ *
+ * ONLY ON AN IDENTIFIED PIRATE. A Radar return keeps its question mark: the skull
+ * is an answer, and the radar has not bought one.
+ */
+let skullTexture: THREE.Texture | null = null;
+function skullMark(): THREE.Texture {
+  if (skullTexture) return skullTexture;
+  const size = 256;
+  const canvas = document.createElement('canvas');
+  canvas.width = size;
+  canvas.height = size;
+  const ctx = canvas.getContext('2d');
+  if (ctx) {
+    const u = size / 100;
+    ctx.clearRect(0, 0, size, size);
+    ctx.fillStyle = '#ffffff';
+    ctx.strokeStyle = '#ffffff';
+    ctx.shadowColor = '#ffffff';
+    ctx.shadowBlur = size * 0.06;
+
+    // Cranium and jaw, drawn as solids so the glyph survives being scaled down.
+    ctx.beginPath();
+    ctx.ellipse(50 * u, 42 * u, 27 * u, 25 * u, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.moveTo(34 * u, 60 * u);
+    ctx.lineTo(66 * u, 60 * u);
+    ctx.lineTo(60 * u, 76 * u);
+    ctx.quadraticCurveTo(50 * u, 82 * u, 40 * u, 76 * u);
+    ctx.closePath();
+    ctx.fill();
+
+    // Eyes and nose are punched out, so the skull reads at any size.
+    ctx.globalCompositeOperation = 'destination-out';
+    ctx.shadowBlur = 0;
+    ctx.beginPath();
+    ctx.ellipse(40 * u, 40 * u, 8.5 * u, 10 * u, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.ellipse(60 * u, 40 * u, 8.5 * u, 10 * u, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.moveTo(50 * u, 48 * u);
+    ctx.lineTo(55 * u, 58 * u);
+    ctx.lineTo(45 * u, 58 * u);
+    ctx.closePath();
+    ctx.fill();
+    // Teeth.
+    for (const x of [42, 50, 58]) ctx.fillRect((x - 2.4) * u, 62 * u, 4.8 * u, 9 * u);
+    ctx.globalCompositeOperation = 'source-over';
+  }
+  skullTexture = new THREE.CanvasTexture(canvas);
+  skullTexture.colorSpace = THREE.SRGBColorSpace;
+  skullTexture.needsUpdate = true;
+  return skullTexture;
+}
+
+/**
+ * Sits above the formation so it never covers the hulls it is labelling.
+ *
+ * RED, AND NOT THE CONTACT'S OWN NEON. Hue carries category
+ * (`docs/visual-design.md`), and the one thing this mark exists to say is "that is
+ * a target, not a commander". Taking the kind's neon would have made the skull
+ * change colour with the contact and say nothing the outline did not already.
+ *
+ * SMALL. It is a label on a formation, not a second object in the scene: at full
+ * size it competed with the hulls underneath it, which is the opposite of the job.
+ */
+const PIRATE_MARK = {
+  glyphScale: 0.75,
+  lift: 1.5,
+  opacity: 0.9,
+  focusedOpacity: 1,
+  colour: THREAT_NEON,
+} as const;
+
+function PirateMark({ scale, focused }: {
+  scale: number;
+  focused: boolean;
+}) {
+  const texture = useMemo(() => skullMark(), []);
+  const size = scale * PIRATE_MARK.glyphScale;
+
+  return (
+    <Billboard follow lockX={false} lockY={false} lockZ={false} position={[0, scale * PIRATE_MARK.lift, 0]}>
+      <mesh renderOrder={SHIP_ORDER + 4}>
+        <planeGeometry args={[size, size]} />
+        <meshBasicMaterial
+          map={texture}
+          color={PIRATE_MARK.colour}
+          transparent
+          opacity={focused ? PIRATE_MARK.focusedOpacity : PIRATE_MARK.opacity}
+          depthWrite={false}
+          toneMapped={false}
+          blending={THREE.AdditiveBlending}
+        />
+      </mesh>
+    </Billboard>
+  );
+}
+
 function Foreign({
   contact,
   nodes,
@@ -1904,6 +2102,23 @@ function Foreign({
 }) {
   const group = useRef<THREE.Group>(null);
   const formationAim = useRef(100);
+  /** False until the craft has been pointed once, so it never eases in from identity. */
+  const headingSettled = useRef(false);
+  /**
+   * WHERE THE FIGHT LEFT IT, SO IT SLIDES BACK ONTO ITS ORBIT RATHER THAN SNAPPING.
+   *
+   * A pirate holds at the rendezvous for the ten seconds of a battle while its
+   * orbit does not stop — the fight costs it no time, which is what keeps every
+   * OTHER raid's rendezvous exactly valid and needs no stored delay and no
+   * re-solving. The price is that the moment the fight ends the craft is about a
+   * ship-length behind where it belongs, and it used to cover that in one frame.
+   *
+   * Eased, the same correction reads as the pirate accelerating back onto its
+   * track. It is presentation only and it is brief: the authoritative position is
+   * unchanged, nothing about arrival, interception or the fog reads this.
+   */
+  const releasedFrom = useRef<Vec3Tuple | null>(null);
+  const releasedAt = useRef(0);
   /**
    * A CONTACT AIMED AT YOU WEARS THE THREAT COLOUR. D126.
    *
@@ -1920,7 +2135,14 @@ function Foreign({
       : base;
   }, [contact.kind, contact.inbound]);
   const markers = useMemo(() => contactMarkers(contact), [contact]);
-  const exactFleet = contact.kind === 'fleet' && contact.fleet !== undefined;
+  /*
+    EXACT-COUNT PIPS BELONG TO ACTUAL SIGHT. D123.
+    A pirate inside Telescope reach carries a real manifest exactly as a player's
+    fleet does, so it earns the same pips; a Radar silhouette earns none, because a
+    pip over an estimate is a count that was never taken.
+  */
+  const exactFleet =
+    (contact.kind === 'fleet' || contact.kind === 'pirate') && contact.fleet !== undefined;
 
   const from = useMemo(() => toWorld(contact.from), [contact.from]);
   const to = useMemo(() => toWorld(contact.to), [contact.to]);
@@ -1948,19 +2170,31 @@ function Foreign({
     () => (fight ? targetNodeOf(nodes, fight.target) : undefined),
     [fight, nodes],
   );
-  const hold = useMemo(
-    () => (fight ? engagementHold(fight.target, contact.from, nodes) : null),
-    [fight, contact.from, nodes],
-  );
+  /**
+   * WHERE THIS CRAFT IS STANDING WHILE IT FIRES.
+   *
+   * A raid on a world derives it: the leg ends at the planet's centre, so the
+   * squadron has to be pushed back out to orbit before it can be drawn shooting.
+   *
+   * A PIRATE FIGHT IS ALREADY PLACED. Both sides hold at points the server
+   * computed — the attacker one `ENGAGEMENT_STANDOFF` short of the rendezvous on
+   * its own approach, the pirate on the rendezvous itself — and it publishes them
+   * as a window with no length. A degenerate window is the payload saying "I am
+   * holding here", so recomputing anything from it would move the craft off the
+   * spot both clients agreed on.
+   */
+  const hold = useMemo(() => {
+    if (!fight) return null;
+    const held = contact.from.x === contact.to.x
+      && contact.from.y === contact.to.y
+      && contact.from.z === contact.to.z;
+    return held ? toWorld(contact.from) : engagementHold(fight.target, contact.from, nodes);
+  }, [fight, contact.from, contact.to, nodes]);
   const centre = useMemo(() => (fight ? toWorld(fight.target) : null), [fight]);
-  const slots = useMemo<Vec3Tuple[]>(
-    () =>
-      markers && markers.length > 0
-        ? markers.map((_, i) => slotOffset(i, style.scale * 1.5))
-        : [[0, 0, 0]],
-    [markers, style.scale],
-  );
-  const hitBox = useMemo(() => formationHitBox(slots, style.scale), [slots, style.scale]);
+  const formation = useMemo(() => formationLayout(markers, style.scale), [markers, style.scale]);
+  const slots = formation.slots;
+  const formationScale = formation.scale;
+  const hitBox = useMemo(() => formationHitBox(slots, formationScale), [slots, formationScale]);
 
   /**
    * A MINING RUN'S LINE IS PUBLIC; NOTHING ELSE'S IS.
@@ -1981,7 +2215,7 @@ function Foreign({
     [contact.route],
   );
 
-  useFrame(() => {
+  useFrame((_, delta) => {
     const node = group.current;
     if (!node) return;
     /**
@@ -1990,16 +2224,50 @@ function Foreign({
      * adjustment left is the explicit hold during a landed engagement.
      */
     const at = contactPosition(contact, serverNow(), nodes);
+    /*
+      COMING OUT OF A FIGHT, SLIDE BACK ONTO THE ORBIT. See `releasedFrom`.
+
+      While the engagement is live the held point IS the position, so this only
+      records it. On the first frame after it ends the craft is a ship-length off
+      its track, and this covers that gap over `RELEASE_EASE_MS` instead of in one
+      frame. Any craft that never held simply never enters the branch.
+    */
+    const wall = performance.now();
+    if (centre) {
+      releasedFrom.current = [at[0], at[1], at[2]];
+      releasedAt.current = wall;
+    } else if (releasedFrom.current !== null) {
+      const t = (wall - releasedAt.current) / RELEASE_EASE_MS;
+      if (t >= 1) {
+        releasedFrom.current = null;
+      } else {
+        const held = releasedFrom.current;
+        const k = t * t * (3 - 2 * t);
+        at[0] = held[0] + (at[0] - held[0]) * k;
+        at[1] = held[1] + (at[1] - held[1]) * k;
+        at[2] = held[2] + (at[2] - held[2]) * k;
+      }
+    }
     node.position.set(at[0], at[1], at[2]);
     // Aimed down its own window, which is its heading and nothing further — or, once
     // it is over a world, at the world it is putting rounds into.
     const aim = centre ?? to;
-    formationAim.current = Math.max(
-      0.01,
+    /*
+      THE SLOTS AIM AT A DIRECTION, NOT AT THE SAMPLE THAT EXPRESSED IT.
+
+      A bearing window ends wherever the craft will be a few seconds later, and a
+      pirate's is ten seconds long — closer to the formation than the formation is
+      wide. Aimed literally at it, each slot turned inward and the outer ships
+      splayed further the more of the chord they ate, then snapped straight when
+      the next window landed. `formationAimDistance` floors it against the
+      squadron's own size; an engagement's target is a real place well outside it.
+    */
+    formationAim.current = formationAimDistance(
       Math.hypot(aim[0] - at[0], aim[1] - at[1], aim[2] - at[2]),
+      formationScale,
     );
     if (Math.hypot(aim[0] - from[0], aim[1] - from[1], aim[2] - from[2]) > 1e-4) {
-      node.lookAt(aim[0], aim[1], aim[2]);
+      easeHeading(node, aim, delta, headingSettled);
     }
 
     // The near end of a mining run's line follows the craft, so only what is left
@@ -2095,6 +2363,9 @@ function Foreign({
                   batched
                 />
               ))}
+              {contact.kind === 'pirate' && (
+                <PirateMark scale={style.scale} focused={focused} />
+              )}
             </>
           ) : contact.kind === 'unknown' ? (
             /**
@@ -2139,7 +2410,7 @@ function Foreign({
           The volley, seeded from the mission id — the same key the attacker's own
           client uses, so the two of them watch the identical bombardment.
         */}
-        {fight && world && hold && centre && engaging && (
+        {fight && hold && centre && engaging && (
           <Bombardment
             volleyKey={contact.id}
             slots={slots}
@@ -2148,7 +2419,16 @@ function Foreign({
               centre[1] - hold[1],
               centre[2] - hold[2],
             )}
-            radius={world.radius}
+            /*
+              THE SIZE OF WHAT IS BEING SHOT AT. D150.
+
+              A world gives its drawn radius. A pirate fight has no world — the
+              target is the other formation — so it gives the formation's own
+              footprint instead. This guard used to require a planet node, which is
+              why a pirate battle drew no rounds at all: both sides were firing and
+              nothing was rendered.
+            */
+            radius={world ? world.radius : formationScale}
             shipScale={style.scale}
             arriveAt={fight.arriveAt.getTime()}
           />

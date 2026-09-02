@@ -91,23 +91,23 @@ describe('fuel', () => {
   });
 
   it('charges an attack for both legs, at launch', async () => {
-    await giveUnits(f.db, mine, { WASP: 60, HAULER: 4 });
+    await giveUnits(f.db, mine, { DART: 60, COURIER: 4 });
     await fuelUp(f.db, mine, 5_000);
     const dist = await distanceBetween(f, mine, target);
-    const expected = missionFuel({ WASP: 60, HAULER: 4 }, dist, 2);
+    const expected = missionFuel({ DART: 60, COURIER: 4 }, dist, 2);
     expect(expected).toBeGreaterThan(0);
 
-    await launchAttack(f.db, mine, target, { WASP: 60, HAULER: 4 }, f.clock);
+    await launchAttack(f.db, mine, target, { DART: 60, COURIER: 4 }, f.clock);
 
     expect(await deuteriumAt(f, mine)).toBe(5_000 - expected);
   });
 
   it('refuses a launch the tank cannot cover, and says by how much', async () => {
-    await giveUnits(f.db, mine, { WASP: 400 });
+    await giveUnits(f.db, mine, { DART: 400 });
     await fuelUp(f.db, mine, 3);
 
     await expect(
-      launchAttack(f.db, mine, target, { WASP: 400 }, f.clock),
+      launchAttack(f.db, mine, target, { DART: 400 }, f.clock),
     ).rejects.toMatchObject({ code: 'INSUFFICIENT_FUEL', params: { have: 3 } });
     // Nothing left, and nothing was taken for the attempt.
     expect(await f.db.select().from(missions)).toHaveLength(0);
@@ -119,16 +119,16 @@ describe('fuel', () => {
       .update(planets)
       .set({ controllerPlayerId: f.playerIds[0]!, kind: 'COLONY' })
       .where(eq(planets.id, target));
-    await giveUnits(f.db, mine, { WASP: 40 });
+    await giveUnits(f.db, mine, { DART: 40 });
     await fuelUp(f.db, mine, 5_000);
     const dist = await distanceBetween(f, mine, target);
 
     await launchTransfer(
-      f.db, f.playerIds[0]!, mine, target, { WASP: 40 },
+      f.db, f.playerIds[0]!, mine, target, { DART: 40 },
       { alloy: 0, crystal: 0, deuterium: 0 }, f.clock,
     );
 
-    expect(await deuteriumAt(f, mine)).toBe(5_000 - missionFuel({ WASP: 40 }, dist, 1));
+    expect(await deuteriumAt(f, mine)).toBe(5_000 - missionFuel({ DART: 40 }, dist, 1));
   });
 
   describe('what never pays', () => {
@@ -186,10 +186,10 @@ describe('fuel', () => {
       .update(planets)
       .set({ controllerPlayerId: f.playerIds[0]!, kind: 'COLONY' })
       .where(eq(planets.id, target));
-    await giveUnits(f.db, mine, { WASP: 20 });
+    await giveUnits(f.db, mine, { DART: 20 });
     await fuelUp(f.db, mine, 5_000);
     const launched = await launchTransfer(
-      f.db, f.playerIds[0]!, mine, target, { WASP: 20 },
+      f.db, f.playerIds[0]!, mine, target, { DART: 20 },
       { alloy: 0, crystal: 0, deuterium: 0 }, f.clock,
     );
     const afterLaunch = await deuteriumAt(f, mine);
@@ -235,18 +235,18 @@ describe('a transfer cannot spend the same deuterium twice', () => {
       .set({ controllerPlayerId: f.playerIds[0]!, kind: 'COLONY' })
       .where(eq(planets.id, colony));
     await setLevel(f.db, mine, 'CORE', 8);
-    await giveUnits(f.db, mine, { HAULER: 6 });
+    await giveUnits(f.db, mine, { COURIER: 6 });
   });
 
   const send = (cargoDeuterium: number) => launchTransfer(
-    f.db, f.playerIds[0]!, mine, colony, { HAULER: 6 },
+    f.db, f.playerIds[0]!, mine, colony, { COURIER: 6 },
     { alloy: 0, crystal: 0, deuterium: cargoDeuterium }, f.clock,
   );
 
   it('refuses to ship the whole tank and fly on it as well', async () => {
     await fuelUp(f.db, mine, 100);
     const dist = await distanceBetween(f, mine, colony);
-    const fuel = missionFuel({ HAULER: 6 }, dist, 1);
+    const fuel = missionFuel({ COURIER: 6 }, dist, 1);
     expect(fuel).toBeGreaterThan(0);
 
     await expect(send(100)).rejects.toMatchObject({ code: 'INSUFFICIENT_FUEL' });
@@ -257,7 +257,7 @@ describe('a transfer cannot spend the same deuterium twice', () => {
   it('never writes a negative store, whatever the split', async () => {
     await fuelUp(f.db, mine, 100);
     const dist = await distanceBetween(f, mine, colony);
-    const fuel = missionFuel({ HAULER: 6 }, dist, 1);
+    const fuel = missionFuel({ COURIER: 6 }, dist, 1);
 
     // The largest cargo that still leaves the fuel behind.
     await expect(send(100 - fuel)).resolves.toBeTruthy();
@@ -331,7 +331,7 @@ describe('the fuel guard', () => {
 describe('the settlement pays for the leg its settlers fly', () => {
   const HOME = 0;
   const CLAIM = 1_200;
-  const FLEET = { HAULER: MULTI_WORLD.settlement.haulers };
+  const FLEET = { COURIER: MULTI_WORLD.settlement.transports };
 
   async function claimOpen() {
     const { db } = await testDb();
@@ -420,7 +420,7 @@ describe('the settlement pays for the leg its settlers fly', () => {
  */
 describe('clan aid burns the sender fuel, and the quote says so first', () => {
   const AWAY = 2_000;
-  const FLEET = { HAULER: 3 };
+  const FLEET = { COURIER: 3 };
 
   async function clanOfTwo() {
     const f = await seedWorld(3, 114114);

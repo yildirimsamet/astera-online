@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import type { GalaxyPlanet } from '../src/api/schemas.js';
 import { galaxySchema } from '../src/api/schemas.js';
 import { isRivalNode, planetNodes, stanceOf } from '../src/galaxy/scene.js';
+import { recordAgeMinutes } from '../src/lib/dossier.js';
 import { resolvedOnly } from '../src/galaxy/Satellites.js';
 import { shellLook } from '../src/galaxy/DysonShells.js';
 
@@ -219,5 +220,70 @@ describe('the label on a world nobody has surveyed', () => {
     for (const row of ['galaxy.kindNeutral', 'commanderLabel(node.owner', '{node.name}']) {
       expect(source.indexOf(row), row).toBeGreaterThan(guard);
     }
+  });
+});
+
+/**
+ * ONE DEFINITION OF HOW OLD A RECORD IS, FOR EVERY SURFACE THAT PRINTS ONE. D151.
+ *
+ * Three surfaces show a world's age and they had two and a half answers between
+ * them. The dossier stamped it on each fact row it drew from a record. The disc
+ * label printed a BARE duration under the world's name, from its own copy of the
+ * subtraction — "3h 10m ago", with nothing saying what was three hours old, under
+ * a confident kind row and a commander's name. And the launch sheet, the last
+ * screen before a fleet stops being recallable, said nothing at all.
+ *
+ * Two copies of one arithmetic is a map and a panel that can disagree about the
+ * same world, so the subtraction lives in one place and each surface asks for it.
+ */
+describe('the age of a record, wherever it is printed', () => {
+  it('is null on a live reading, because a reading has no age', () => {
+    const now = Date.UTC(2026, 0, 2);
+    expect(recordAgeMinutes({ intel: 'RESOLVED' }, now)).toBeNull();
+  });
+
+  /** An unsurveyed world has no record at all — its label says so instead. */
+  it('is null on a world nobody has looked at', () => {
+    const now = Date.UTC(2026, 0, 2);
+    expect(recordAgeMinutes({ intel: 'UNKNOWN' }, now)).toBeNull();
+  });
+
+  it('is the minutes since the look on a remembered world', () => {
+    const seenAt = new Date(Date.UTC(2026, 0, 2, 9, 0));
+    const now = Date.UTC(2026, 0, 2, 12, 30);
+    expect(recordAgeMinutes({ intel: 'REMEMBERED', seenAt }, now)).toBe(210);
+  });
+
+  /**
+   * A CLOCK THAT DISAGREES WITH THE SERVER MAY NOT PRODUCE A NEGATIVE AGE. The
+   * map draws on `serverNow()`, but a record written in the same second still
+   * reaches this a few milliseconds early on a slow render.
+   */
+  it('never reads as the future', () => {
+    const seenAt = new Date(Date.UTC(2026, 0, 2, 12, 0));
+    expect(recordAgeMinutes({ intel: 'REMEMBERED', seenAt }, Date.UTC(2026, 0, 2, 11, 0))).toBe(0);
+  });
+
+  /** A remembered world with no `seenAt` states nothing rather than "live". */
+  it('is null when the payload carried no instant', () => {
+    expect(recordAgeMinutes({ intel: 'REMEMBERED' }, Date.now())).toBeNull();
+  });
+
+  /**
+   * AND THE MAP LABEL PRINTS IT.
+   *
+   * A source assertion for the reason this file already gives above: the label
+   * lives inside an R3F/drei subtree that cannot be mounted without a WebGL
+   * context, and the alternative to checking it here is not checking it. Narrow
+   * on purpose — that the age is computed and reaches the label — so it survives
+   * any rewording of the label itself.
+   */
+  it('reaches the world label on the disc', () => {
+    const source = readFileSync('src/galaxy/GalaxyCanvas.tsx', 'utf8');
+
+    expect(source).toContain('recordAgeMinutes');
+    const computed = source.indexOf('recordAgeMinutes(node');
+    expect(computed, 'the label computes the age of its own node').toBeGreaterThan(-1);
+    expect(source).toContain('galaxy.recordAge');
   });
 });

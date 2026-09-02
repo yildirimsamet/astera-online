@@ -48,6 +48,7 @@ export function UpgradeRow({
   art,
   mark,
   name,
+  nameAside,
   level,
   maxLevel,
   tag,
@@ -75,6 +76,8 @@ export function UpgradeRow({
   nextArt?: string | null;
   mark?: ReactNode;
   name: string;
+  /** Compact state that belongs beside the name, such as home/away hull counts. */
+  nameAside?: string;
   level?: number;
   /**
    * The top of a ladder that HAS one, so the row can read "L2 / 5". T12.
@@ -269,7 +272,14 @@ export function UpgradeRow({
         */}
         <div className="flex min-w-0 flex-1 flex-col gap-1 self-stretch py-1">
           <div className="flex min-w-0 items-baseline gap-2">
-            <h3 className="name min-w-0 flex-1 truncate">{name}</h3>
+            <div className="flex min-w-0 flex-1 items-baseline gap-1">
+              <h3 className="name min-w-0 truncate">{name}</h3>
+              {nameAside ? (
+                <span className="num shrink-0 whitespace-nowrap text-micro text-faint">
+                  {nameAside}
+                </span>
+              ) : null}
+            </div>
             {/*
               A LADDER IS DRAWN; A LEVEL IS WRITTEN.
 

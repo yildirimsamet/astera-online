@@ -1,5 +1,6 @@
 import { TRAVEL } from './constants.js';
 import { fleetSpeed } from './hulls.js';
+import type { TechLevels } from './tech.js';
 import type { Fleet, Vec3 } from './types.js';
 
 export const distance = (a: Vec3, b: Vec3): number =>
@@ -52,12 +53,20 @@ export function travelMinutes(dist: number, speed: number): number {
  * launch overhead gone the two are now arithmetically identical, and it stays this
  * way round because it is the honest description of what a beacon does.
  */
-export const fleetTravelExact = (dist: number, fleet: Fleet, boost = 1): number =>
-  travelExact(dist, fleetSpeed(fleet) * boost);
+export const fleetTravelExact = (
+  dist: number,
+  fleet: Fleet,
+  boost = 1,
+  tech: TechLevels = {},
+): number => travelExact(dist, fleetSpeed(fleet, tech) * boost);
 
 /** The same fleet trip rounded up for a human-facing whole-minute quote. */
-export const fleetTravelMinutes = (dist: number, fleet: Fleet, boost = 1): number =>
-  Math.ceil(fleetTravelExact(dist, fleet, boost));
+export const fleetTravelMinutes = (
+  dist: number,
+  fleet: Fleet,
+  boost = 1,
+  tech: TechLevels = {},
+): number => Math.ceil(fleetTravelExact(dist, fleet, boost, tech));
 
 /** Minutes the origin planet is left weakened: out, plus back. */
 export const exposureMinutes = (oneWay: number): number => oneWay * 2;

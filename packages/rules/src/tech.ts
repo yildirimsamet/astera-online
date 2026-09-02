@@ -1,4 +1,5 @@
 import { RESEARCH_TECH } from './constants.js';
+import { HULLS } from './hulls.js';
 import type { HullId, ResearchProjectId } from './types.js';
 
 /**
@@ -53,31 +54,14 @@ export const prospectorHoldMult = (tech: TechLevels): number =>
  * loot: this is the only economy project that moves ARR directly. It is the
  * smallest for that reason, and the band is measured rather than assumed.
  *
- * It does NOT touch `transferCargoCapacity`, which counts only Haulers and Runners
- * moving ore between a commander's own worlds. Those are two different questions —
+ * It does NOT touch `transferCargoCapacity`, which counts only Courier, Wayfarer
+ * and Atlas moving ore between a commander's own worlds. Those are two different questions —
  * what a raid can carry away, and what a logistics run can move — and they were
  * deliberately separated long before this existed.
  */
 export const cargoMult = (tech: TechLevels): number =>
   1 + RESEARCH_TECH.cargoPerLevel
     * rung(tech, 'CARGO_HOLDS', RESEARCH_TECH.economyMaxLevel);
-
-/**
- * WHICH DOCTRINE COVERS WHICH HULL. T9 — the owner's grouping.
- *
- * Four doctrines and one general project, which is the "two offensive, two
- * defensive, plus one" shape the brief asked for. The Breacher sits with the Lance
- * because it IS Lance-class; the three support hulls have no attack to raise and
- * take only the general armour.
- */
-const DOCTRINE: Partial<Record<HullId, ResearchProjectId>> = {
-  WASP: 'WASP_DOCTRINE',
-  LANCE: 'LANCE_DOCTRINE',
-  BREACHER: 'LANCE_DOCTRINE',
-  BULWARK: 'BULWARK_DOCTRINE',
-  BASTION: 'EMPLACEMENT_DOCTRINE',
-  THORN: 'EMPLACEMENT_DOCTRINE',
-};
 
 /**
  * One side's contribution, as a factor on ONE stat.
@@ -95,6 +79,21 @@ const side = (level: number, share: number): number =>
       / RESEARCH_TECH.weaponMaxLevel),
   );
 
+/** A full half of the product ceiling: Power owns attack and Armor owns HP. */
+const fleetStatSide = (level: number): number =>
+  side(level, 1);
+
+/**
+ * Propulsion is linear and visibly capped at DOUBLE across four rungs. D152.
+ *
+ * It reads `propulsionMaxLevel` rather than `weaponMaxLevel` because speed is not
+ * a combat statistic: it takes no share of `powerCeiling` and therefore has no
+ * business inheriting the ladder length that ceiling is split across.
+ */
+const propulsionSide = (level: number): number =>
+  1 + RESEARCH_TECH.propulsionPerLevel
+    * Math.max(0, Math.min(RESEARCH_TECH.propulsionMaxLevel, Math.floor(level)));
+
 /**
  * WHAT THIS COMMANDER'S RESEARCH DOES TO ONE HULL. T9.
  *
@@ -111,19 +110,29 @@ const side = (level: number, share: number): number =>
  * between them, and `test/tech.test.ts` walks every hull at every rung rather than
  * trusting this paragraph.
  */
-export function hullTech(tech: TechLevels, id: HullId): { atk: number; hp: number } {
-  const doctrine = DOCTRINE[id];
-  const own = doctrine === undefined
-    ? 1
-    : side(tech[doctrine] ?? 0, RESEARCH_TECH.doctrineShare);
-  const general = side(
-    tech.WEAPONS_GENERAL ?? 0,
-    1 - RESEARCH_TECH.doctrineShare,
-  );
-  const factor = own * general;
-  // Attack and armour move together: one number for "this hull is better", so a
-  // player cannot buy the half that happens to be underpriced.
-  return { atk: factor, hp: factor };
+export function hullTech(
+  tech: TechLevels,
+  id: HullId,
+): { atk: number; hp: number; speed: number } {
+  const hull = HULLS[id];
+  const fleetV2 = hull.tier !== null;
+  const emplacement = hull.profile === 'EMPLACEMENT';
+
+  if (emplacement) {
+    const factor = side(
+      tech.EMPLACEMENT_DOCTRINE ?? 0,
+      RESEARCH_TECH.doctrineShare,
+    );
+    return { atk: factor, hp: factor, speed: 1 };
+  }
+
+  if (!fleetV2) return { atk: 1, hp: 1, speed: 1 };
+
+  return {
+    atk: hull.cls === 'SUPPORT' ? 1 : fleetStatSide(tech.SHIP_POWER ?? 0),
+    hp: fleetStatSide(tech.SHIP_ARMOR ?? 0),
+    speed: propulsionSide(tech.SHIP_PROPULSION ?? 0),
+  };
 }
 
 /**
@@ -134,7 +143,6 @@ export function hullTech(tech: TechLevels, id: HullId): { atk: number; hp: numbe
  * This is the list that goes into the silhouette — frozen at the look and stale
  * from then on, exactly like everything else D127 put there.
  */
-export const WEAPON_PROJECTS: readonly ResearchProjectId[] = [
-  'WASP_DOCTRINE', 'LANCE_DOCTRINE', 'BULWARK_DOCTRINE',
-  'EMPLACEMENT_DOCTRINE', 'WEAPONS_GENERAL',
+export const COMBAT_RESEARCH_PROJECTS: readonly ResearchProjectId[] = [
+  'SHIP_POWER', 'SHIP_ARMOR', 'EMPLACEMENT_DOCTRINE',
 ];

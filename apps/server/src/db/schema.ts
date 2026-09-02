@@ -13,6 +13,7 @@ import {
   timestamp,
   uniqueIndex,
   uuid,
+  type AnyPgColumn,
 } from 'drizzle-orm/pg-core';
 import type {
   CombatRound,
@@ -20,8 +21,11 @@ import type {
   Fleet,
   Grade,
   HullId,
+  GalaxyEventKind as ScheduledGalaxyEventKind,
+  AsteroidShowerEffect,
   ResearchProjectId,
   Resources,
+  TechLevels,
 } from '@astera/rules';
 
 /**
@@ -75,15 +79,25 @@ export const eventKind = pgEnum('event_kind', [
   'strategic_intercept_impact',
   /** One commander-wide research order reaching its authoritative instant. */
   'research_complete',
+  /** Public galaxy-event lifecycle moments; values remain append-only. */
+  'galaxy_event_start',
+  'galaxy_event_end',
+  /** A raid reaching its pirate, and its survivors reaching home again. D150. */
+  'pirate_arrival',
+  'pirate_return',
+]);
+export const galaxyEventOccurrenceKind = pgEnum('galaxy_event_occurrence_kind', [
+  'ASTEROID_SHOWER',
 ]);
 /**
  * WHAT THE GAME TELLS YOU, AND NOTHING ELSE. D45.
  *
- * Seven kinds, and the list is closed: each one is a moment the player could not
+ * Personal kinds remain a closed product list: each one is a moment the player could not
  * have predicted and can act on. `game-design.md` said four, and it said so while
  * the "while you were gone" overlay carried the other three — deleting that
  * overlay (D23) orphaned them rather than moving them, which is how a player came
- * to be told when they were raided and never told what their own raid did.
+ * to be told when they were raided and never told what their own raid did. Public,
+ * actionable galaxy-event lifecycle messages are the deliberate D149 exception.
  *
  * Still excluded, permanently: "your storage is full", "we miss you", streaks and
  * login bonuses. Every one of those exists to manufacture a reason to open the
@@ -112,6 +126,9 @@ export const notificationKind = pgEnum('notification_kind', [
   'settlement_lost',
   /** You stopped one, or you lost one on somebody's ring. T10. */
   'strategic_intercepted',
+  /** Public galaxy-event lifecycle messages. */
+  'galaxy_event_started',
+  'galaxy_event_ended',
 ]);
 export type NotificationKind = (typeof notificationKind.enumValues)[number];
 
@@ -466,7 +483,13 @@ export type GalaxyEventPayload =
       capturable?: boolean;
     }
   | Record<string, never>
-  | { act: 'war' | 'consolidation' | 'sunset' };
+  | { act: 'war' | 'consolidation' | 'sunset' }
+  | {
+      eventKind: 'ASTEROID_SHOWER';
+      startsAt: string;
+      endsAt: string;
+      asteroidSpawnMultiplier: number;
+    };
 
 /** Public history, not intel. Its intentionally small contract is locked by D89. */
 export const galaxyEvents = pgTable('galaxy_events', {
@@ -481,6 +504,32 @@ export const galaxyEvents = pgTable('galaxy_events', {
 }, (t) => [
   uniqueIndex('galaxy_events_source_idx').on(t.seasonId, t.kind, t.refId),
   index('galaxy_events_season_cursor_idx').on(t.seasonId, t.occurredAt, t.id),
+]);
+
+/**
+ * Immutable season calendar for public galaxy events.
+ *
+ * This stores moments and effect snapshots, never asteroid coordinates or active
+ * state. Active state remains the half-open clock relation `[startsAt, endsAt)`.
+ */
+export const galaxyEventOccurrences = pgTable('galaxy_event_occurrences', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  seasonId: uuid('season_id').notNull().references(() => seasons.id),
+  sequence: integer('sequence').notNull(),
+  kind: galaxyEventOccurrenceKind('kind').$type<ScheduledGalaxyEventKind>().notNull(),
+  definitionVersion: integer('definition_version').notNull(),
+  startsAt: timestamp('starts_at', { withTimezone: true }).notNull(),
+  endsAt: timestamp('ends_at', { withTimezone: true }).notNull(),
+  effect: jsonb('effect').$type<AsteroidShowerEffect>().notNull(),
+  startProcessedAt: timestamp('start_processed_at', { withTimezone: true }),
+  endProcessedAt: timestamp('end_processed_at', { withTimezone: true }),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [
+  uniqueIndex('galaxy_event_occurrences_season_sequence_idx').on(t.seasonId, t.sequence),
+  index('galaxy_event_occurrences_active_idx').on(t.seasonId, t.startsAt, t.endsAt),
+  check('galaxy_event_occurrences_sequence_check', sql`${t.sequence} >= 0`),
+  check('galaxy_event_occurrences_window_check', sql`${t.endsAt} > ${t.startsAt}`),
+  check('galaxy_event_occurrences_definition_version_check', sql`${t.definitionVersion} > 0`),
 ]);
 
 export const planets = pgTable('planets', {
@@ -940,6 +989,8 @@ export const scheduledEvents = pgTable('scheduled_events', {
   kind: eventKind('kind').notNull(),
   refId: uuid('ref_id'),
   payload: jsonb('payload').$type<Record<string, unknown>>(),
+  /** Optional producer-owned idempotency key; NULL leaves legacy queue semantics unchanged. */
+  dedupeKey: text('dedupe_key'),
   resolveAt: timestamp('resolve_at', { withTimezone: true }).notNull(),
   status: eventStatus('status').notNull().default('pending'),
   attempts: integer('attempts').notNull().default(0),
@@ -951,6 +1002,7 @@ export const scheduledEvents = pgTable('scheduled_events', {
   uniqueIndex('events_one_season_end_idx')
     .on(t.seasonId, t.kind)
     .where(sql`${t.kind} = 'season_end'`),
+  uniqueIndex('events_dedupe_key_idx').on(t.dedupeKey),
 ]);
 
 /* ── outcomes and intel ─────────────────────────────────────── */
@@ -958,11 +1010,26 @@ export const scheduledEvents = pgTable('scheduled_events', {
 export const battleReports = pgTable('battle_reports', {
   id: uuid('id').primaryKey().defaultRandom(),
   seasonId: uuid('season_id').notNull().references(() => seasons.id),
-  missionId: uuid('mission_id').notNull().references(() => missions.id),
+  /**
+   * WHICH FIGHT THIS REPORT IS ABOUT — and there are now three shapes of answer.
+   *
+   * A report used to be a mission against a world, so both binders were NOT NULL
+   * and every reader could dereference them. A pirate battle happens in empty
+   * space against something that is not a `missions` row and not a planet, so
+   * both had to become nullable and `pirateRaidId` had to be added beside them.
+   *
+   * NULLABLE IS NOT THE SAME AS OPTIONAL. The CHECK below insists that exactly
+   * one binder is filled, matching `targetKind` — a constraint rather than a
+   * convention, because "everybody remembers to set one" is how a table ends up
+   * with rows nothing can resolve. `reports.ts` reads all three (G3).
+   */
+  missionId: uuid('mission_id').references(() => missions.id),
   attackerPlayerId: uuid('attacker_player_id').notNull().references(() => players.id),
   defenderPlayerId: uuid('defender_player_id').references(() => players.id),
-  targetPlanetId: uuid('target_planet_id').notNull().references(() => planets.id),
-  targetKind: text('target_kind').$type<'PLAYER' | 'NEUTRAL'>().notNull().default('PLAYER'),
+  targetPlanetId: uuid('target_planet_id').references(() => planets.id),
+  /** The pirate raid this report settles. NULL for every world battle. D150. */
+  pirateRaidId: uuid('pirate_raid_id').references(() => pirateRaids.id),
+  targetKind: text('target_kind').$type<'PLAYER' | 'NEUTRAL' | 'PIRATE'>().notNull().default('PLAYER'),
   grade: text('grade').$type<Grade>().notNull(),
   rounds: jsonb('rounds').$type<CombatRound[]>().notNull(),
   loot: jsonb('loot').$type<Resources>().notNull(),
@@ -1023,6 +1090,19 @@ export const battleReports = pgTable('battle_reports', {
   index('reports_defender_idx').on(t.defenderPlayerId, t.createdAt),
   index('reports_attacker_idx').on(t.attackerPlayerId, t.createdAt),
   uniqueIndex('reports_mission_idx').on(t.missionId),
+  uniqueIndex('reports_pirate_raid_idx').on(t.pirateRaidId),
+  /** Exactly one target binder, matching the kind. A constraint, not a convention. */
+  check(
+    'battle_reports_one_target',
+    sql`(${t.targetKind} IN ('PLAYER', 'NEUTRAL')
+          AND ${t.missionId} IS NOT NULL
+          AND ${t.targetPlanetId} IS NOT NULL
+          AND ${t.pirateRaidId} IS NULL)
+        OR (${t.targetKind} = 'PIRATE'
+          AND ${t.pirateRaidId} IS NOT NULL
+          AND ${t.missionId} IS NULL
+          AND ${t.targetPlanetId} IS NULL)`,
+  ),
 ]);
 
 export interface StrategicLevelChange {
@@ -1216,15 +1296,26 @@ export const probeReports = pgTable('probe_reports', {
 ]);
 
 /**
- * The one delivered probe report currently used to draw each remembered world.
+ * WHAT ONE COMMANDER LAST HAD EYES ON, PER WORLD. D127 · D151.
  *
- * `probe_reports` remains the complete Intel-centre history. This bounded read
- * model prevents `/api/galaxy` from walking that history on every request just to
- * rediscover the newest report for each target. `seenAt` duplicates the report's
- * observation instant deliberately: it is the age of the frozen facts, while
- * `deliveredAt` remains only the gate that says when the observer may read them.
- * It also lets concurrent returns replace this pointer atomically only when the
- * candidate observation is newer.
+ * The table name predates D151 and is now narrower than the thing it holds: this
+ * is no longer "the newest probe report per target" but the newest LOOK, whatever
+ * craft took it. A raiding fleet crosses the same distance a probe does, arrives
+ * at the same coordinates and fights in that world's orbit — and until D151 it
+ * brought back nothing the map would draw, so the disc went on showing a probe
+ * record from three owners ago while its owner had literally just been there.
+ * Renaming the table would cost a migration on a live season for a word; the
+ * column below states the source instead.
+ *
+ * `probe_reports` remains the complete Intel-centre history, and a probe row still
+ * points at the report it came from. A battle row points at none: there is no
+ * report behind it, only the fact that a fleet was there.
+ *
+ * THE SILHOUETTE IS HELD HERE RATHER THAN JOINED. It used to be read through
+ * `reportId`, which made the record structurally unable to come from anything but
+ * a probe. `seenAt` duplicates the observation instant deliberately: it is the age
+ * of the frozen facts, and it lets concurrent arrivals replace this pointer
+ * atomically only when the candidate observation is newer.
  *
  * No foreign key cascades. Seasonal wipes and seat reclamation delete this child
  * explicitly, like the rest of this schema's audit-facing graph.
@@ -1232,7 +1323,26 @@ export const probeReports = pgTable('probe_reports', {
 export const probeWorldMemories = pgTable('probe_world_memories', {
   observerPlayerId: uuid('observer_player_id').notNull().references(() => players.id),
   targetPlanetId: uuid('target_planet_id').notNull().references(() => planets.id),
-  reportId: uuid('report_id').notNull().references(() => probeReports.id),
+  /** The probe report this came from. NULL when a fleet took the look. */
+  reportId: uuid('report_id').references(() => probeReports.id),
+  /** Which craft's eyes these were. Never shown; it is here to be debuggable. */
+  source: text('source').$type<'PROBE' | 'BATTLE'>().notNull().default('PROBE'),
+  /**
+   * The outside of the world as it was at `seenAt`. Same shape a probe report
+   * carries, minus the two readings only a probe takes — a battle learns what a
+   * world LOOKS like, never its research or what is on its interceptor pad.
+   */
+  silhouette: jsonb('silhouette').$type<{
+    owner: string;
+    controllerPlayerId: string | null;
+    clan: { id: string; name: string; tag: string } | null;
+    kind: 'CAPITAL' | 'COLONY' | 'NEUTRAL';
+    coreLevel: number;
+    satellites: string[];
+    shielded: boolean;
+    doctrines?: Partial<Record<ResearchProjectId, number>>;
+    interceptor?: boolean;
+  }>().notNull(),
   seenAt: timestamp('seen_at', { withTimezone: true }).notNull(),
 }, (t) => [
   primaryKey({ columns: [t.observerPlayerId, t.targetPlanetId] }),
@@ -1283,6 +1393,36 @@ export const asteroidClaims = pgTable('asteroid_claims', {
 }, (t) => [primaryKey({ columns: [t.seasonId, t.index] })]);
 
 /**
+ * WHAT HAS BEEN SHOT OFF A PIRATE, AND WHETHER IT IS GONE. D150.
+ *
+ * The rest of a pirate — its orbit, its roster, its hoard, its life — is a pure
+ * function of the season key and is never stored (A5), exactly as `asteroid_claims`
+ * stores only the ore somebody already took. What cannot be derived is what other
+ * commanders have done to it, so that is the whole of this table.
+ *
+ * NO ROW MEANS UNTOUCHED. The living crew is always `roster(spec) − losses`, which
+ * is why `losses` defaults to an empty fleet rather than being nullable: a caller
+ * that forgets the row is missing gets an empty subtraction, not a crash.
+ *
+ * THERE IS DELIBERATELY NO DISCOVERY MEMORY HERE, and that absence is the feature.
+ * A rock is remembered once seen (`sensor_epochs`, D143); a pirate is a CRAFT, and
+ * a craft outside your circles does not exist for you (D123). Adding a discovered-at
+ * column here — the reflex when copying the asteroid file — would quietly convert a
+ * live sighting into permanent knowledge and punch a hole through the fog.
+ */
+export const pirateState = pgTable('pirate_state', {
+  seasonId: uuid('season_id').notNull().references(() => seasons.id),
+  /** Index into the generated pirate lane for this season's key. Server-only. */
+  index: integer('index').notNull(),
+  /** Cumulative hulls destroyed across every commander who has hit it. */
+  losses: jsonb('losses').$type<Fleet>().notNull().default({}),
+  /** Set once, by the raid that wiped it out. */
+  destroyedAt: timestamp('destroyed_at', { withTimezone: true }),
+  destroyedByPlayerId: uuid('destroyed_by_player_id').references(() => players.id),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull(),
+}, (t) => [primaryKey({ columns: [t.seasonId, t.index] })]);
+
+/**
  * WRECKAGE LEFT BY A BATTLE. D32.
  *
  * Sits at the DEFENDER's planet — that is what makes it a landmark at a known
@@ -1300,10 +1440,34 @@ export const asteroidClaims = pgTable('asteroid_claims', {
 export const debrisFields = pgTable('debris_fields', {
   id: uuid('id').primaryKey().defaultRandom(),
   seasonId: uuid('season_id').notNull().references(() => seasons.id),
-  /** Where it is. The battle happened here, so the coordinates are this planet's. */
-  planetId: uuid('planet_id').notNull().references(() => planets.id),
+  /**
+   * THE WORLD THIS WRECKAGE IS IN ORBIT AROUND — and since D150 there may be none.
+   *
+   * Every battle used to happen at an address, so this was NOT NULL and both the
+   * harvest launch and the renderer read the coordinates off the planet row. A
+   * pirate battle happens at a rendezvous in open space, which has no address, so
+   * the column is nullable and the position moved into this table (see `x/y/z`).
+   *
+   * It is kept rather than replaced: a wreck over a world still orbits that world,
+   * and the ring is drawn against its radius.
+   */
+  planetId: uuid('planet_id').references(() => planets.id),
+  /**
+   * WHERE THE WRECKAGE ACTUALLY IS. Always set, including over a world.
+   *
+   * Populated for every field rather than only for the void ones, so no reader has
+   * to branch on which kind it is holding — one position, one code path. A planet
+   * never moves, so copying its coordinates at creation cannot go stale, and the
+   * alternative (resolve through `planetId` when present, else these) is exactly
+   * the sort of two-answer question this codebase keeps paying for.
+   */
+  x: real('x').notNull(),
+  y: real('y').notNull(),
+  z: real('z').notNull(),
   /** The battle that made it, so a report can point at its own wreckage. */
   missionId: uuid('mission_id').references(() => missions.id),
+  /** The pirate raid that made it. NULL on every world battle. D150. */
+  pirateRaidId: uuid('pirate_raid_id').references((): AnyPgColumn => pirateRaids.id),
   alloy: real('alloy').notNull(),
   crystal: real('crystal').notNull(),
   deuterium: real('deuterium').notNull().default(0),
@@ -1314,6 +1478,79 @@ export const debrisFields = pgTable('debris_fields', {
 }, (t) => [
   index('debris_season_idx').on(t.seasonId, t.createdAt),
   index('debris_planet_idx').on(t.planetId),
+  index('debris_pirate_raid_idx').on(t.pirateRaidId),
+  /**
+   * Exactly one anchor, and it is a constraint rather than a convention.
+   *
+   * A field with neither is unreachable by `reclaim`, and a field with both would
+   * let two cleanup paths disagree about who owns it. `reports.ts` and
+   * `reclaim.ts` both key off this being true.
+   */
+  check(
+    'debris_fields_one_anchor',
+    sql`(${t.planetId} is not null and ${t.pirateRaidId} is null)
+        or (${t.planetId} is null and ${t.pirateRaidId} is not null)`,
+  ),
+]);
+
+export const pirateRaidStatus = pgEnum('pirate_raid_status', ['outbound', 'returning', 'done']);
+
+/**
+ * ONE WORLD'S RAID AT ONE PIRATE. D150.
+ *
+ * Deliberately NOT a `missions` row, and for the reason written over `mining_runs`
+ * one screen down: `missions.{originPlanetId, targetPlanetId}` are both NOT NULL
+ * foreign keys to `planets`, and every query over that table assumes a fight
+ * between two addresses. A pirate has no address. Bolting a nullable target planet
+ * onto `missions` would put that assumption one forgotten `WHERE` clause away from
+ * being wrong inside the fog layer, which is the most expensive place in this
+ * codebase to be wrong.
+ *
+ * IT IS STILL A RAID, NOT A MINING RUN. The origin world reads `AWAY` for the
+ * whole flight, the home-defence bar drops, and the fleet is a combat fleet under
+ * `units.location = pirate:<id>` — the same namespaced parking `mining` uses, so a
+ * raid fleet can never be double-counted as garrison or mistaken for a mission.
+ *
+ * `interceptX/Y/Z` is the point the fleet was aimed at, STORED rather than
+ * re-derived. The rendezvous depends on the fleet's speed at launch and on where
+ * the pirate was at that instant; re-solving it later would silently teleport a
+ * flight onto a new course every time the pirate moved.
+ */
+export const pirateRaids = pgTable('pirate_raids', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  seasonId: uuid('season_id').notNull().references(() => seasons.id),
+  /** Where it left from, and where it comes back to. */
+  planetId: uuid('planet_id').notNull().references(() => planets.id),
+  /** Index into this season's private pirate lane. Never serialised. */
+  pirateIndex: integer('pirate_index').notNull(),
+  status: pirateRaidStatus('status').notNull().default('outbound'),
+  fleet: jsonb('fleet').$type<Fleet>().notNull(),
+  /** Attacker doctrine, frozen at launch. D137. */
+  tech: jsonb('tech').$type<TechLevels>(),
+  interceptX: real('intercept_x').notNull(),
+  interceptY: real('intercept_y').notNull(),
+  interceptZ: real('intercept_z').notNull(),
+  departAt: timestamp('depart_at', { withTimezone: true }).notNull(),
+  arriveAt: timestamp('arrive_at', { withTimezone: true }).notNull(),
+  /** NULL until it turns for home; NULL for ever if nothing survived. */
+  homeAt: timestamp('home_at', { withTimezone: true }),
+  loot: jsonb('loot').$type<Resources>(),
+  /** One hull towed home from a DECISIVE win, or NULL. */
+  capturedHull: text('captured_hull').$type<HullId>(),
+}, (t) => [
+  index('pirate_raids_planet_idx').on(t.planetId, t.status),
+  index('pirate_raids_season_idx').on(t.seasonId, t.status),
+  /**
+   * ONE RAID PER WORLD PER PIRATE, and the database is what guarantees it.
+   *
+   * A check inside the launch transaction would still lose a race between two
+   * requests from the same world arriving in the same millisecond on two replicas.
+   * The partial unique index refuses the second insert outright, so the rule holds
+   * without the service having to be clever about it.
+   */
+  uniqueIndex('pirate_raids_planet_target_idx')
+    .on(t.planetId, t.pirateIndex)
+    .where(sql`status <> 'done'`),
 ]);
 
 export const miningStatus = pgEnum('mining_status', ['outbound', 'returning', 'done']);

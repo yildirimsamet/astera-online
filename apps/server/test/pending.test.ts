@@ -2,13 +2,8 @@ import { pino } from 'pino';
 import { afterAll, beforeEach, describe, expect, it } from 'vitest';
 import { eq } from 'drizzle-orm';
 import {
-  coreTier,
-  orbitStandoff,
   radarLead,
   radarRange,
-  surfaceStandoff,
-  visualLeg,
-  worldRadius,
 } from '@astera/rules';
 import { missions } from '../src/db/schema.js';
 import { pendingThreads } from '../src/services/session.js';
@@ -63,7 +58,7 @@ describe('what is in flight', () => {
       await grant(f.db, id, 300_000, 60_000);
     }
     f.clock.advance(200);
-    await giveUnits(f.db, mine, { WASP: 20 });
+    await giveUnits(f.db, mine, { DART: 20 });
   });
 
   /**
@@ -78,7 +73,7 @@ describe('what is in flight', () => {
   const raid = async (radar = 5): Promise<{ arriveAt: Date; lead: number; missionId: string }> => {
     if (radar > 0) await giveSatellite(f.db, theirs, 'UPLINK');
     await giveInstrument(f.db, theirs, 'RADAR', radar);
-    const launch = await launchAttack(f.db, mine, theirs, { WASP: 20 }, f.clock);
+    const launch = await launchAttack(f.db, mine, theirs, { DART: 20 }, f.clock);
     const [row] = await f.db.select().from(missions).where(eq(missions.id, launch.missionId));
     const oneWay = (row!.arriveAt.getTime() - row!.departAt.getTime()) / 60_000;
     return {
@@ -153,7 +148,7 @@ describe('what is in flight', () => {
 
   it('keeps a stored radar silent while its Uplink is absent', async () => {
     await giveInstrument(f.db, theirs, 'RADAR', 5);
-    const launch = await launchAttack(f.db, mine, theirs, { WASP: 20 }, f.clock);
+    const launch = await launchAttack(f.db, mine, theirs, { DART: 20 }, f.clock);
     f.clock.set(new Date(launch.arriveAt.getTime() - 1000));
 
     expect(await pendingThreads(f.db, theirs, f.clock.now())).toEqual([]);
@@ -265,12 +260,12 @@ describe('what is in flight', () => {
     await giveInstrument(w.db, slowAt, 'RADAR', 5);
     await giveSatellite(w.db, fastAt, 'UPLINK');
     await giveSatellite(w.db, slowAt, 'UPLINK');
-    await giveUnits(w.db, fastFrom, { WASP: 20 });
-    await giveUnits(w.db, slowFrom, { BULWARK: 4 });
+    await giveUnits(w.db, fastFrom, { DART: 20 });
+    await giveUnits(w.db, slowFrom, { RAMPART: 4 });
     w.clock.advance(200);
 
-    const fast = await launchAttack(w.db, fastFrom, fastAt, { WASP: 20 }, w.clock);
-    const slow = await launchAttack(w.db, slowFrom, slowAt, { BULWARK: 4 }, w.clock);
+    const fast = await launchAttack(w.db, fastFrom, fastAt, { DART: 20 }, w.clock);
+    const slow = await launchAttack(w.db, slowFrom, slowAt, { RAMPART: 4 }, w.clock);
 
     /** How far out the strip first admits this mission exists, and how long that left. */
     const caughtAt = async (
@@ -291,22 +286,15 @@ describe('what is in flight', () => {
        */
       const perMinute = row!.distance / span;
       const step = 5 / perMinute;
-      const start = surfaceStandoff(worldRadius(coreTier(8)));
-      const end = orbitStandoff(worldRadius(coreTier(8)));
-      const drawn = visualLeg(
-        { x: 0, y: 0, z: 0 },
-        { x: row!.distance, y: 0, z: 0 },
-        start,
-        end,
-      );
-      const drawnLength = Math.abs(drawn.to.x - drawn.from.x);
-      const destinationClearance = Math.abs(row!.distance - drawn.to.x);
       for (let out = span; out >= 0; out -= step) {
         w.clock.set(new Date(row!.arriveAt.getTime() - out * 60_000));
         const seen = await pendingThreads(w.db, defender, w.clock.now());
         if (seen.some((t) => t.kind === 'incoming')) {
           return {
-            distance: destinationClearance + drawnLength * (out / span),
+            // Radar tests centre-to-centre world coordinates. The visual thread
+            // trims both endpoints around the planet meshes, so its displayed
+            // length is deliberately not the sensor radius.
+            distance: row!.distance * (out / span),
             lead: out,
           };
         }
@@ -380,7 +368,7 @@ describe('what is in flight', () => {
     f.clock.set(new Date(arriveAt.getTime() - (lead / 2) * 60_000));
     const [inbound] = await pendingThreads(f.db, theirs, f.clock.now());
 
-    expect(inbound!.fleet).toEqual({ WASP: 20 });
+    expect(inbound!.fleet).toEqual({ DART: 20 });
     expect(inbound!.mass).toBe('LIGHT');
     expect(inbound!.originName).toBeDefined();
     // A name, which is what turns a warning into a grudge — never a route.
@@ -394,7 +382,7 @@ describe('what is in flight', () => {
 
     expect(own!.kind).toBe('fleet');
     expect(own!.leg).toBe('outbound');
-    expect(own!.fleet).toEqual({ WASP: 20 });
+    expect(own!.fleet).toEqual({ DART: 20 });
     expect(own!.path).toBeDefined();
     expect(own!.path!.arriveAt.getTime()).toBe(own!.arriveAt.getTime());
   });
@@ -429,7 +417,7 @@ describe('what is in flight', () => {
     await giveUnits(f.db, theirs, { BASTION: 8, THORN: 20 });
     await giveSatellite(f.db, theirs, 'UPLINK');
     await giveInstrument(f.db, theirs, 'RADAR', 5);
-    const launch = await launchAttack(f.db, mine, theirs, { WASP: 20 }, f.clock);
+    const launch = await launchAttack(f.db, mine, theirs, { DART: 20 }, f.clock);
 
     f.clock.set(settledAt(launch.arriveAt));
     await worker().tick();
@@ -440,7 +428,7 @@ describe('what is in flight', () => {
       return;
     }
     expect(home.leg).toBe('return');
-    const survivors = home.fleet?.WASP ?? 0;
+    const survivors = home.fleet?.DART ?? 0;
     expect(survivors, 'a fleet came home with more ships than it left with').toBeLessThan(20);
     expect(survivors).toBeGreaterThan(0);
   });
@@ -455,7 +443,7 @@ describe('what is in flight', () => {
     await giveUnits(f.db, theirs, { BASTION: 40, THORN: 60 });
     await giveSatellite(f.db, theirs, 'UPLINK');
     await giveInstrument(f.db, theirs, 'RADAR', 5);
-    const launch = await launchAttack(f.db, mine, theirs, { WASP: 3 }, f.clock);
+    const launch = await launchAttack(f.db, mine, theirs, { DART: 3 }, f.clock);
 
     f.clock.set(settledAt(launch.arriveAt));
     await worker().tick();
@@ -526,7 +514,7 @@ describe('whose craft is in flight', () => {
       await grant(f.db, id, 300_000, 60_000);
     }
     f.clock.advance(200);
-    await giveUnits(f.db, mine, { WASP: 20 });
+    await giveUnits(f.db, mine, { DART: 20 });
   });
 
   /**
@@ -573,7 +561,7 @@ describe('whose craft is in flight', () => {
    * the old code read as "an outbound leg of yours".
    */
   it('never gives a raided world the attacker’s departing fleet as its own', async () => {
-    const launch = await launchAttack(f.db, mine, theirs, { WASP: 20 }, f.clock);
+    const launch = await launchAttack(f.db, mine, theirs, { DART: 20 }, f.clock);
     f.clock.set(settledAt(launch.arriveAt));
     await worker().tick();
 
@@ -595,7 +583,7 @@ describe('whose craft is in flight', () => {
   it('still warns a defender about an inbound raid, and only about that', async () => {
     await giveSatellite(f.db, theirs, 'UPLINK');
     await giveInstrument(f.db, theirs, 'RADAR', 5);
-    const launch = await launchAttack(f.db, mine, theirs, { WASP: 20 }, f.clock);
+    const launch = await launchAttack(f.db, mine, theirs, { DART: 20 }, f.clock);
     f.clock.set(new Date(launch.arriveAt.getTime() - 1000));
 
     const warned = await pendingThreads(f.db, theirs, f.clock.now());
@@ -611,7 +599,7 @@ describe('whose craft is in flight', () => {
   /** And a bystander's disc is unaffected: everything is somebody else's. */
   it('draws nothing twice for a world that is not involved at all', async () => {
     const third = f.planetIds[2]!;
-    await launchAttack(f.db, mine, theirs, { WASP: 20 }, f.clock);
+    await launchAttack(f.db, mine, theirs, { DART: 20 }, f.clock);
     const probe = await launchProbe(f.db, mine, theirs, f.clock);
     // A share of the SHORTEST leg in the air, not a fixed half-minute: the probe
     // pays no launch overhead since D121 and is the craft that lands first.
@@ -619,7 +607,17 @@ describe('whose craft is in flight', () => {
 
     expect(await pendingThreads(f.db, third, f.clock.now())).toEqual([]);
     expect(await drawnTwice(third)).toEqual([]);
-    // But it does see them, anonymously.
-    expect(await galaxyTraffic(f.db, f.seasonId, third, f.clock.now())).toHaveLength(2);
+    /*
+      But it does see them, anonymously — and only them. The derived pirate lane is
+      filtered out because this test is about MISSION traffic; a pirate crossing the
+      bystander's circles is the feature working, not a duplicate. D150.
+    */
+    const { seasons } = await import('../src/db/schema.js');
+    const { privatePirateField, pirateId } = await import('../src/services/pirateField.js');
+    const [season] = await f.db.select().from(seasons).where(eq(seasons.id, f.seasonId));
+    const pirates = new Set(privatePirateField(season!.asteroidKey).map((spec) =>
+      pirateId(season!.asteroidKey, spec.index)));
+    const seen = await galaxyTraffic(f.db, f.seasonId, third, f.clock.now());
+    expect(seen.filter((contact) => !pirates.has(contact.id))).toHaveLength(2);
   });
 });

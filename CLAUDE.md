@@ -67,15 +67,16 @@ Rationale/evidence: `docs/decisions.md`. Numbers/simulator history: `docs/balanc
 - Research military effect has a **25% combined product ceiling**; counter cycle remains 156% (D137).
 - Combat-relevant doctrine must be probe-visible. Attacker tech freezes at launch; defender tech reads at fight time (D137).
 - Price hulls by `atk * hp / value²`; preserve equal-budget power.
-- `START` = Core/Refinery/Extractor L2 + two Wasps. `PLANET_START = START + OPENING_BONUS`; `untouched()` uses `PLANET_START` (D58).
+- `START` = Core/Refinery/Extractor L2 + the active ruleset's two guided-opening Skirmishers (Wasps before Fleet V2; Darts after D148). `PLANET_START = START + OPENING_BONUS`; `untouched()` uses `PLANET_START` (D58/D148).
 - `DEBRIS.share < 1`; ground defence salvage = 60%; ground hulls leave no wreckage.
 - Vault protection is < half capacity and uses each resource’s own production floor.
 - Deuterium capacity uses both industrial/mining base and refinery contribution (D138).
-- Capture cancels research; commander-wide research never transfers (D138).
+- Capture never cancels or transfers commander-wide research (D134).
 
 ### Combat / fleets
 
 - Support hulls are shielded while combat hulls live.
+- Fleet V2 base speed is D148's table ×1.25; `SHIP_PROPULSION` is four rungs of +25% to a ×2 ceiling and reads its own `propulsionMaxLevel`, never the weapon ladder's. Speed takes no share of the 25% combat product ceiling and is not probe-visible. The probe and the Prospector took neither the lift nor the research (D152).
 - Two opposing ground-gun classes; cheapest available at Shipyard 0.
 - Raid arrives at authoritative `arriveAt`; engagement lasts 10s as real `in_flight` state.
 - A fleet reaching target always fires.
@@ -86,13 +87,18 @@ Rationale/evidence: `docs/decisions.md`. Numbers/simulator history: `docs/balanc
 - Flight time = distance / speed; `travelExact` is canonical, no fixed overhead (D121).
 - A planet owns at most two Prospectors wherever located; `prospectorRoom` is the single capacity arithmetic and legal overflow is never retroactively deleted (D131).
 - Count flight bays under the planet row lock.
+- Pirates are the third target class and cost exactly what a raid costs: a bay, both legs of prepaid fuel, doctrine frozen at launch, origin `AWAY` for the trip. One raid per origin world per pirate, DB-enforced (D150).
+- A pirate moves **zero Dominion** — `bookBattle` is never called. Its only modifier is a per-level attack `damageMult` on `CombatSide`; never HP, never research (D150).
+- Capture pays only on DECISIVE, from the pirate's ORIGINAL roster, and lands even over Hangar capacity; `builtEver` never moves (D133/D150).
+- Mutual annihilation pays nothing and flies no return leg.
 
 ### Intel / fog
 
 - Public world data is **position only** unless earned (D127).
 - Telescope reads are deterministic per `(watchId, timeWindow)`; refresh cannot reroll fog.
-- Probe silhouette freezes at the look; later staleness is intentional (D127).
+- A world's record is **what you last had eyes on**, and a fleet is eyes: every arrival that puts your craft at a world rewrites it (D151). It freezes again the moment the craft leaves, never resolves the world, always carries `seenAt`, and belongs to the visitor alone — the defender learns nothing about the attacker's world. A battle records `silhouetteOf` only; doctrine and the interceptor pad stay probe-only (D127/D151).
 - **A probe delivers everything it took.** Stock, deuterium, defence, fleet size, the weapon on the pad, the interceptor charge and the target's combat doctrine all reach the dossier with their age. A reading collected and not shown is the most expensive bug this project can have — the player paid for it.
+- `rememberWorld` is the only writer of a world record and the only publisher of `private:memory`; a new craft that reaches worlds goes through it or the map serves a stale record from a warm cache (D151).
 - **A published window never names the destination except inside one refetch** (`TRAFFIC.refreshMs`). That floor is the client's poll interval and is shared, not restated: when the two drifted, every probe in the game published the world it was flying to.
 - **The radar log is commander-wide**, each row gated by the radar of the world it happened to and naming that world. An `incoming` warning names the defended world too — that is the reader's own world, never a radar product.
 - Public recovery/claim clocks remain available through fog, but the green claim
@@ -101,6 +107,7 @@ Rationale/evidence: `docs/decisions.md`. Numbers/simulator history: `docs/balanc
 - **THREE ZONES, AND `packages/rules/src/sight.ts` IS THE ONLY STATEMENT OF THEM.** A craft is `NONE` outside every circle (it does not exist for that commander), `CONTACT` inside a Radar circle (a moving question mark), `IDENTIFIED` inside a Telescope circle (the craft itself, never its route). Server filter, client crossing solver and every test read `sensorZone`; nothing else may hold an opinion.
 - **Radar detects, Telescope identifies.** Radar out-reaches Telescope at every level and is what makes the galaxy visible at all; Telescope is what names what is in it. Radar 0 detects nothing — the free floor belongs to the eye (`SENSOR.baseRadius`), not to hardware nobody bought.
 - `sensorSphere` is the only place an instrument level becomes a radius.
+- **A pirate is a craft, not a rock: it is never remembered.** Nothing on that lane reads or writes `sensor_epochs`; leaving a commander's circles ends its existence for them, and launching requires live sight. Its orbital elements are the route and are never published; a pirate's window is `PIRATE.bearingMs`, derived from `TRAFFIC.refreshMs` and never typed (D150).
 - **There is no departure shroud.** A craft is visible from the first instant of its leg to anyone whose circle covers it. Nothing about where a craft STARTED may enter the answer.
 - Telescope reach stays below the galaxy radius; the identifying fog never fully disappears (D126). The Radar's wider ceiling is deliberate — a mote you cannot name is not omniscience.
 - Radar `CONTACT` exposes no roster: L4 adds `mass`, L5 names its `silhouette` kind, and its generic formation has no count pips. Telescope `IDENTIFIED` is actual sight: a fleet carries its exact manifest and renders the real hull assets with exact-count pips (D123).
@@ -119,7 +126,7 @@ Rationale/evidence: `docs/decisions.md`. Numbers/simulator history: `docs/balanc
 ### World / queues / research / clans
 
 - One account → one commander → one galaxy; galaxies fill in order; one capital + max three colonies, DB-enforced.
-- Three independent queues, depth 3: world-local `CONSTRUCTION`, world-local `YARD`, and commander-wide `RESEARCH`. Cost commits on order; cancel refunds half; system fault refunds all; gates use projected same-queue state (D4).
+- Three independent queues, depth 3: world-local `CONSTRUCTION`, world-local `YARD`, and commander-wide `RESEARCH`. Cost commits on order; Construction/Yard cancellation refunds half, Research cannot be cancelled, system fault refunds all; gates use projected same-queue state (D4).
 - Research belongs to the commander, not the funding planet; capture neither cancels nor transfers it (D134).
 - Instruments/research stop where effect tables stop; derive max levels from effects, never duplicate ladders manually (D140/D141).
 - Refinery is deuterium floor; rocks are contested ceiling. Plant level is capped by research rung (D135).
@@ -150,6 +157,7 @@ Detailed UI rules: `docs/interface.md`, `docs/visual-design.md`, i18n files, loc
 - Public effects publish moment + place (`engagement`, `impact`).
 - Loading/error/empty are distinct; loading never blocks an already-playable scene.
 - Quantities players must judge are **drawn**, not only written (D142).
+- A record's age has one definition — `recordAgeMinutes` — and every surface that prints one reads it. The disc label and the launch sheet both state it; neither may show a frozen record as though it were a live reading (D151).
 - Research is a commander menu, derived from rules IDs; disabled rows explain the reason and route to the fix (D134/D140/D141).
 - User-facing strings live in `apps/web/src/i18n/locales/`; format numbers/dates/clocks through shared formatters. Write Turkish naturally and never naïvely case-fold `İ`.
 - Returning players skip onboarding; `/api/preview` is seat-free and writes nothing (D56/D68).
@@ -236,13 +244,15 @@ Regression signals: loop becomes `BUILD → WAIT → COLLECT → UPGRADE`; resou
 
 ## Current state
 
-Core game is implemented through D140: shared rules/sim, backend, persistent galaxy, accounts, economy/queues, fleets/combat/loot, intel/Telescope/Radar/Veil, probes, mining/wreckage, engagement, notifications/SSE, 3D galaxy, TR/EN, preview/onboarding, deployment, rewards, realtime/camera fixes, clans, deuterium/fuel/hangar, commander-wide research, strategic weapons.
+Core game is implemented through D152: shared rules/sim, backend, persistent galaxy, accounts, economy/queues, fleets/combat/loot, intel/Telescope/Radar/Veil, probes, mining/wreckage, public galaxy events/Asteroid Shower, pirate fleets, engagement, notifications/SSE, 3D galaxy, TR/EN, preview/onboarding, deployment, rewards, realtime/camera fixes, clans, deuterium/fuel/hangar, commander-wide research, strategic weapons, fleet-written world records, D152 fleet speed.
+
+D150 shipped without void wreckage: a pirate battle books its wreck value on the report but leaves no harvestable field, because `debris_fields` still requires a planet. That migration is the deliberate second commit.
 
 Baseline near D140: **0 type errors · 0 lint errors · ~2,900 tests**.
 
 ### Current blocker
 
-`pnpm verify` is green except the **pre-existing five-seed season gate**: seven baseline failures (VFR all five seeds, ARR seed 4242, pooled TI -0.50).
+`pnpm verify` is green except the **D134 separate-Research-queue balance regression**: VFR is LOW on all five fixed seeds. A direct A/B run proves `17c515b` was 69/69 green; applying only the accurate third-lane simulator produces seven failures, while the requested asteroid/hull Crystal changes reduce that set to the five VFR failures. This is not a slow-machine or flaky-test issue.
 
 - Do **not** widen bands.
 - Read **D133 before touching Hangar constants**; height was already swept and is not the mechanism.

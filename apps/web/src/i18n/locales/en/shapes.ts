@@ -15,6 +15,7 @@
 /** A price taken out of a store: `SpendBar`. */
 export const spend = {
   reading: '{{label}}: {{spend}} spent, {{left}} left',
+  readingSpend: '{{label}}: {{spend}}',
   readingShort: '{{label}}: {{short}} short',
 } as const;
 

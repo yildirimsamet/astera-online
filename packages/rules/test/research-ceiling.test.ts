@@ -114,11 +114,20 @@ describe('what each kind of project turns out to be', () => {
     }
   });
 
-  it('finds the weapon ceiling under every doctrine', () => {
-    for (const id of ['WASP_DOCTRINE', 'LANCE_DOCTRINE', 'BULWARK_DOCTRINE',
-      'EMPLACEMENT_DOCTRINE', 'WEAPONS_GENERAL'] as const) {
+  /**
+   * PROPULSION COUNTS ITS OWN RUNGS SINCE D152. The other three split
+   * `powerCeiling` between them and share the ladder length that ceiling is
+   * divided across; speed takes no share of a combat product, so it carries
+   * `propulsionMaxLevel` instead — and the walk has to find that, not the
+   * weapon figure, or the cost ladder and the effect part company again.
+   */
+  it('finds two useful Engineering permissions and the stated rungs under each stat ladder', () => {
+    expect(RESEARCH_MAX_LEVEL.STARSHIP_ENGINEERING)
+      .toBe(RESEARCH_TECH.engineeringMaxLevel);
+    for (const id of ['SHIP_POWER', 'SHIP_ARMOR', 'EMPLACEMENT_DOCTRINE'] as const) {
       expect(RESEARCH_MAX_LEVEL[id], id).toBe(RESEARCH_TECH.weaponMaxLevel);
     }
+    expect(RESEARCH_MAX_LEVEL.SHIP_PROPULSION).toBe(RESEARCH_TECH.propulsionMaxLevel);
   });
 
   /**

@@ -38,7 +38,7 @@ const rival: RivalSummary = {
   dominionGained: 820,
   dominionLost: 240,
   lastInteractionAt: new Date(NOW.getTime() - 90 * 60_000),
-  lastKnownFleet: { WASP: 5 },
+  lastKnownFleet: { DART: 5 },
   lastKnownAt: new Date(NOW.getTime() - 90 * 60_000),
 };
 

@@ -503,10 +503,10 @@ describe('the interception grid', () => {
   it('survives an ordinary raid', async () => {
     await armDefender();
     await setLevel(f.db, attacker, 'CORE', 8);
-    await giveUnits(f.db, attacker, { WASP: 40 });
+    await giveUnits(f.db, attacker, { DART: 40 });
     await placeAt(f.db, defender, { x: 200 });
 
-    const launch = await launchAttack(f.db, attacker, defender, { WASP: 40 }, f.clock);
+    const launch = await launchAttack(f.db, attacker, defender, { DART: 40 }, f.clock);
     f.clock.set(settledAt(launch.arriveAt));
     await workerFor(f).tick();
 

@@ -190,8 +190,8 @@ describe('reclaiming idle seats', () => {
     await lastSeen(f.playerIds[0]!, SERVERS.idleDays + 1);
     await grant(f.db, active, 20_000, 8_000);
     await levelWorld(f.db, f.planetIds);
-    await giveUnits(f.db, active, { WASP: 10 });
-    await launchAttack(f.db, active, idle, { WASP: 4 }, f.clock);
+    await giveUnits(f.db, active, { DART: 10 });
+    await launchAttack(f.db, active, idle, { DART: 4 }, f.clock);
 
     const result = await reclaimIdleSeats(f.db, f.clock);
     expect(result.reclaimed).toHaveLength(0);
@@ -202,7 +202,7 @@ describe('reclaiming idle seats', () => {
     const away = await f.db
       .select()
       .from(units)
-      .where(and(eq(units.planetId, active), eq(units.hull, 'WASP')));
+      .where(and(eq(units.planetId, active), eq(units.hull, 'DART')));
     expect(away.reduce((n, r) => n + r.count, 0)).toBe(10);
   });
 
@@ -210,8 +210,8 @@ describe('reclaiming idle seats', () => {
     await lastSeen(f.playerIds[0]!, SERVERS.idleDays + 1);
     await grant(f.db, active, 20_000, 8_000);
     await levelWorld(f.db, f.planetIds);
-    await giveUnits(f.db, active, { WASP: 10 });
-    const { arriveAt } = await launchAttack(f.db, active, idle, { WASP: 4 }, f.clock);
+    await giveUnits(f.db, active, { DART: 10 });
+    const { arriveAt } = await launchAttack(f.db, active, idle, { DART: 4 }, f.clock);
 
     expect((await reclaimIdleSeats(f.db, f.clock)).deferred).toBe(1);
 
@@ -242,12 +242,12 @@ describe('reclaiming idle seats', () => {
   it('defers when a third party is harvesting wreckage this world’s raid created', async () => {
     await grant(f.db, idle, 40_000, 16_000);
     await levelWorld(f.db, f.planetIds);
-    await giveUnits(f.db, idle, { WASP: 12 });
+    await giveUnits(f.db, idle, { DART: 12 });
     // Real HULLS on the defending side, not only ground guns: ground units leave
     // no wreckage by design, so a raid that only kills Thorns produces no field.
-    await giveUnits(f.db, active, { WASP: 10, THORN: 2 });
+    await giveUnits(f.db, active, { DART: 10, THORN: 2 });
     // The idle commander raids a NEIGHBOUR, leaving wreckage over the neighbour.
-    await launchAttack(f.db, idle, active, { WASP: 8 }, f.clock);
+    await launchAttack(f.db, idle, active, { DART: 8 }, f.clock);
     await drain();
 
     const [field] = await f.db.select().from(debrisFields);
@@ -341,7 +341,7 @@ describe('reclaiming idle seats', () => {
     await grant(f.db, idle, 20_000, 8_000);
     await levelWorld(f.db, f.planetIds);
     await setLevel(f.db, idle, 'CORE', 4);
-    await giveUnits(f.db, idle, { WASP: 3 });
+    await giveUnits(f.db, idle, { DART: 3 });
     await claimReward(f.db, idle, 'CORE:3', f.clock);
     await f.db.insert(notifications).values({
       playerId: f.playerIds[0]!,
@@ -402,9 +402,9 @@ describe('reclaiming idle seats', () => {
   it('takes apart a world that has fought, wreckage and reports and all', async () => {
     await grant(f.db, active, 40_000, 16_000);
     await levelWorld(f.db, f.planetIds);
-    await giveUnits(f.db, active, { WASP: 12 });
+    await giveUnits(f.db, active, { DART: 12 });
     await giveUnits(f.db, idle, { THORN: 2 });
-    await launchAttack(f.db, active, idle, { WASP: 8 }, f.clock);
+    await launchAttack(f.db, active, idle, { DART: 8 }, f.clock);
     await drain();
 
     // There is genuinely something to trip over.

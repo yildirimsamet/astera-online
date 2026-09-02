@@ -55,7 +55,6 @@ import {
   planets,
   players,
   probeReports,
-  probeWorldMemories,
   scheduledEvents,
   seasonResults,
   seasons,
@@ -75,9 +74,16 @@ import {
   setUnits,
 } from '../services/planet.js';
 import { clearMissionUnits, fleetOfMission } from '../services/mission.js';
+import { resolvePirateArrival, resolvePirateReturn } from '../services/pirateRaid.js';
 import { techOf } from '../services/researchState.js';
 import { applyResearchCompletion } from '../services/research.js';
-import { instrumentLevels, levelOf, resolveProbe } from '../services/intel.js';
+import {
+  instrumentLevels,
+  levelOf,
+  rememberVisitedWorld,
+  rememberWorld,
+  resolveProbe,
+} from '../services/intel.js';
 import {
   LEAD_TOLERANCE,
   inboundRadarLead,
@@ -113,6 +119,7 @@ import {
 import { applyBuildCompletion } from '../services/buildQueue.js';
 import { allocateClanLoot, recordClanBattleScore } from '../services/clanLoot.js';
 import { resolveClanAid } from '../services/clanAid.js';
+import { processGalaxyEventLifecycle } from '../services/galaxyEvents.js';
 
 export interface HandlerContext {
   db: Db;
@@ -308,12 +315,48 @@ export const onMissionArrival: Handler = async ({ db, clock }, event) => {
           });
         }
       }
+
+      /**
+       * AND THE CRAFT SAW THE WORLD IT REACHED. D151.
+       *
+       * Written AFTER the strike rather than before it, so the record is the world
+       * the weapon LEFT: two Core levels down, the dome gone, and — on a capture —
+       * flying the striker's own flag. On a capture it is immediately redundant,
+       * because a world you hold resolves; on every other outcome it is the only
+       * place the crater's owner learns what their own weapon did.
+       */
+      await rememberVisitedWorld(tx, {
+        observerPlayerId: mission.ownerPlayerId,
+        targetPlanetId: mission.targetPlanetId,
+        seasonId: mission.seasonId,
+        seenAt: clock.now(),
+      });
+
       await publishShard(tx, mission.seasonId, outcome === 'CAPTURED' ? 'control' : 'impact');
       return;
     }
 
     if (mission.kind === 'transfer') {
-      await resolveTransfer(tx, mission, clock.now());
+      const outcome = await resolveTransfer(tx, mission, clock.now());
+      if (outcome !== 'DELIVERED') {
+        const [target] = await tx
+          .select({ name: planets.name })
+          .from(planets)
+          .where(eq(planets.id, mission.targetPlanetId));
+        await notify(tx, {
+          playerId: mission.ownerPlayerId,
+          kind: 'fleet_returned',
+          payload: {
+            trip: 'transfer_rerouted',
+            reason: outcome === 'REROUTED_CAPACITY' ? 'CAPACITY' : 'OWNERSHIP',
+            craft: fleetCount(mission.fleet),
+            targetPlanetId: mission.targetPlanetId,
+            targetPlanetName: target?.name ?? 'an unknown world',
+          },
+          at: clock.now(),
+          refId: mission.id,
+        });
+      }
       await publishShard(tx, mission.seasonId, 'transfer');
       return;
     }
@@ -346,6 +389,27 @@ export const onMissionArrival: Handler = async ({ db, clock }, event) => {
           });
         }
       }
+      /**
+       * AND THE SETTLERS SAW THE ROCK THEY REACHED. D151.
+       *
+       * The interesting outcome here is the one that FAILED. A settlement whose
+       * claim window closed under it is rerouted home having flown all the way to
+       * a world somebody else now holds — and "who beat me to it" is precisely the
+       * question the commander is left with. On a capture this is inert, because a
+       * world you hold resolves without any record at all.
+       *
+       * A `transfer` and a `clan_transfer` are deliberately NOT here: one lands on
+       * your own world and the other on a teammate's, whose identity and worlds
+       * D114 already publishes live to the whole clan. Neither is a look at
+       * anything the fog was hiding.
+       */
+      await rememberVisitedWorld(tx, {
+        observerPlayerId: mission.ownerPlayerId,
+        targetPlanetId: mission.targetPlanetId,
+        seasonId: mission.seasonId,
+        seenAt: clock.now(),
+      });
+
       await publishShard(tx, mission.seasonId, outcome === 'CAPTURED' ? 'control' : 'transfer');
       return;
     }
@@ -381,30 +445,18 @@ export const onMissionArrival: Handler = async ({ db, clock }, event) => {
         if (!delivered) return;
 
         if (delivered.silhouette) {
-          await tx
-            .insert(probeWorldMemories)
-            .values({
-              observerPlayerId: delivered.observerPlayerId,
-              targetPlanetId: delivered.targetPlanetId,
-              reportId: delivered.id,
-              // The record is what the probe SAW at the far world, not when the
-              // return craft finally reached home. `createdAt` is that observation
-              // instant; `deliveredAt` only gates when the player may read it.
-              seenAt: delivered.createdAt,
-            })
-            .onConflictDoUpdate({
-              target: [
-                probeWorldMemories.observerPlayerId,
-                probeWorldMemories.targetPlanetId,
-              ],
-              set: {
-                reportId: sql`excluded.report_id`,
-                seenAt: sql`excluded.seen_at`,
-              },
-              // Two workers may deliver different probes at the same instant.
-              // The tuple makes the winner newest-first and deterministic on ties.
-              setWhere: sql`(excluded.seen_at, excluded.report_id) > (${probeWorldMemories.seenAt}, ${probeWorldMemories.reportId})`,
-            });
+          await rememberWorld(tx, {
+            observerPlayerId: delivered.observerPlayerId,
+            targetPlanetId: delivered.targetPlanetId,
+            seasonId: mission.seasonId,
+            source: 'PROBE',
+            reportId: delivered.id,
+            silhouette: delivered.silhouette,
+            // The record is what the probe SAW at the far world, not when the
+            // return craft finally reached home. `createdAt` is that observation
+            // instant; `deliveredAt` only gates when the player may read it.
+            seenAt: delivered.createdAt,
+          });
         }
 
         /**
@@ -529,10 +581,38 @@ export const onMissionArrival: Handler = async ({ db, clock }, event) => {
       || (targetWorld.protectedUntil !== null && targetWorld.protectedUntil > clock.now())
     ) {
       await returnAttackUntouched(tx, mission, clock);
+      /**
+       * AND THE CRAFT SAW THE WORLD IT REACHED. D151.
+       *
+       * A squadron that finds a shield standing and turns round still CROSSED the
+       * distance and still sat in that orbit. It is also the arrival where the
+       * record matters most: "it was protected" is the answer to "why did nothing
+       * happen", and a map that went on showing a pre-flight snapshot would leave
+       * the commander with no way to reach it.
+       */
+      await rememberVisitedWorld(tx, {
+        observerPlayerId: mission.ownerPlayerId,
+        targetPlanetId: mission.targetPlanetId,
+        seasonId: mission.seasonId,
+        seenAt: clock.now(),
+      });
       return;
     }
     if (targetWorld.kind === 'NEUTRAL') {
       await resolveNeutralBattle(tx, mission, clock);
+      /**
+       * AND THE CRAFT SAW THE WORLD IT REACHED. D151.
+       *
+       * A rock is a world like any other here: the fleet was there, and what it
+       * found — the tier's development, the claim window it may just have opened —
+       * is what the disc has to draw until somebody looks again.
+       */
+      await rememberVisitedWorld(tx, {
+        observerPlayerId: mission.ownerPlayerId,
+        targetPlanetId: mission.targetPlanetId,
+        seasonId: mission.seasonId,
+        seenAt: clock.now(),
+      });
       return;
     }
 
@@ -561,7 +641,7 @@ export const onMissionArrival: Handler = async ({ db, clock }, event) => {
     // which makes battles auditable and bug reports reproducible.
     const result = resolveCombat(
       attackingFleet, defenders, defender.shield, seededFrom(missionId),
-      { attacker: attackerTech, defender: defenderTech },
+      { attacker: { tech: attackerTech }, defender: { tech: defenderTech } },
     );
 
     // Defender: survivors, plus whatever salvages out of the wreckage.
@@ -777,6 +857,11 @@ export const onMissionArrival: Handler = async ({ db, clock }, event) => {
         .values({
           seasonId: mission.seasonId,
           planetId: defender.planetId,
+          // Stored beside the anchor, so a void field and a world field are read
+          // through the same three columns. D150.
+          x: defender.x,
+          y: defender.y,
+          z: defender.z,
           missionId,
           alloy: totalRaw > 0 ? wreckValue * (alloyRaw / totalRaw) : 0,
           crystal: totalRaw > 0 ? wreckValue * (crystalRaw / totalRaw) : 0,
@@ -810,6 +895,7 @@ export const onMissionArrival: Handler = async ({ db, clock }, event) => {
         mission.distance,
         result.attackerSurvivors,
         fleetSpeedMult(attackerOrbit),
+        attackerTech,
       );
       const arriveAt = addMinutes(defender.now, home);
       const [ret] = await tx
@@ -822,6 +908,7 @@ export const onMissionArrival: Handler = async ({ db, clock }, event) => {
           targetPlanetId: mission.originPlanetId,
           fleet: result.attackerSurvivors,
           loot: { alloy: loot.alloy, crystal: loot.crystal, deuterium: loot.deuterium },
+          tech: mission.tech,
           distance: mission.distance,
           departAt: defender.now,
           arriveAt,
@@ -977,6 +1064,23 @@ export const onMissionArrival: Handler = async ({ db, clock }, event) => {
     // "Where did his fleet go?" — the first battle, won or lost, is what opens the
     // Telescope; being on the receiving end is what opens the Radar. Design Law #2,
     // which until now was computed and never announced to anyone.
+    /**
+     * AND THE CRAFT SAW THE WORLD IT REACHED. D151.
+     *
+     * THE CASE THE WHOLE DECISION WAS ABOUT. A commander who has just fought over
+     * a world knows whose flag is on it, how developed it is and what is in its
+     * orbit — and until D151 the map refused to keep any of it, so the disc went
+     * on drawing a probe record from three owners ago. The defender gets nothing
+     * from this: sight is bought by GOING somewhere, and being attacked tells you
+     * who came, never what their home looks like.
+     */
+    await rememberVisitedWorld(tx, {
+      observerPlayerId: mission.ownerPlayerId,
+      targetPlanetId: mission.targetPlanetId,
+      seasonId: mission.seasonId,
+      seenAt: defender.now,
+    });
+
     await announceUnlocks(tx, mission.ownerPlayerId, defender.now);
     await announceUnlocks(tx, defender.playerId, defender.now);
   });
@@ -2039,6 +2143,50 @@ export const onStrategicInterceptImpact: Handler = async ({ db, clock }, event) 
   });
 };
 
+export const onGalaxyEventStart: Handler = async ({ db, clock }, event) => {
+  if (!event.refId) throw new Error('galaxy_event_start without refId');
+  await processGalaxyEventLifecycle(db, {
+    occurrenceId: event.refId,
+    seasonId: event.seasonId,
+    lifecycle: 'start',
+    processedAt: clock.now(),
+  });
+};
+
+export const onGalaxyEventEnd: Handler = async ({ db, clock }, event) => {
+  if (!event.refId) throw new Error('galaxy_event_end without refId');
+  await processGalaxyEventLifecycle(db, {
+    occurrenceId: event.refId,
+    seasonId: event.seasonId,
+    lifecycle: 'end',
+    processedAt: clock.now(),
+  });
+};
+
+/**
+ * A RAID REACHES ITS PIRATE. D150.
+ *
+ * A thin wrapper on purpose: everything about the fight — the lock order, the
+ * damage row, the payout and the mutual-annihilation branch — lives in
+ * `pirateRaid.ts` beside the launch that created the row, so the two halves of one
+ * feature cannot drift apart in two files.
+ */
+export const onPirateArrival: Handler = async ({ db, clock }, event) => {
+  if (!event.refId) throw new Error('pirate_arrival without refId');
+  const raidId = event.refId;
+  await db.transaction(async (tx) => {
+    await resolvePirateArrival(tx, raidId, clock);
+  });
+};
+
+export const onPirateReturn: Handler = async ({ db, clock }, event) => {
+  if (!event.refId) throw new Error('pirate_return without refId');
+  const raidId = event.refId;
+  await db.transaction(async (tx) => {
+    await resolvePirateReturn(tx, raidId, clock);
+  });
+};
+
 export const HANDLERS: Partial<Record<EventRow['kind'], Handler>> = {
   mission_arrival: onMissionArrival,
   radar_warning: onRadarWarning,
@@ -2046,6 +2194,8 @@ export const HANDLERS: Partial<Record<EventRow['kind'], Handler>> = {
   strategic_intercept_impact: onStrategicInterceptImpact,
   mining_arrival: onMiningArrival,
   mining_return: onMiningReturn,
+  pirate_arrival: onPirateArrival,
+  pirate_return: onPirateReturn,
   season_end: onSeasonEnd,
   season_rollover: onSeasonRollover,
   season_act: onSeasonAct,
@@ -2055,4 +2205,6 @@ export const HANDLERS: Partial<Record<EventRow['kind'], Handler>> = {
   recovery_end: onRecoveryEnd,
   occupation_end: onOccupationEnd,
   neutral_reinforce: onNeutralReinforce,
+  galaxy_event_start: onGalaxyEventStart,
+  galaxy_event_end: onGalaxyEventEnd,
 };

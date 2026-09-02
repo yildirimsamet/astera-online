@@ -93,7 +93,7 @@ const installEyes = async (planetId, x) => {
 await installEyes(a.planet.id, 0);
 await installEyes(b.planet.id, 900);
 await sql`UPDATE buildings SET level = 9 WHERE planet_id = ${a.planet.id} AND type = 'CORE'`;
-for (const [hull, n] of [['WASP', 40], ['PROSPECTOR', 2]]) {
+for (const [hull, n] of [['DART', 40], ['PROSPECTOR', 2]]) {
   await sql`
     INSERT INTO units (planet_id, hull, location, count) VALUES (${a.planet.id}, ${hull}, 'home', ${n})
     ON CONFLICT (planet_id, hull, location) DO UPDATE SET count = ${n}
@@ -110,7 +110,7 @@ console.log('1 · what another commander can see');
 const raid = await call('/api/fleet/launch', {
   method: 'POST',
   token: a.token,
-  body: { targetPlanetId: b.planet.id, fleet: { WASP: 40 } },
+  body: { targetPlanetId: b.planet.id, fleet: { DART: 40 } },
 });
 const probeTarget = (await call('/api/galaxy', { token: a.token })).planets.find(
   (p) => !p.isSelf && p.id !== b.planet.id,

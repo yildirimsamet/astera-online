@@ -184,7 +184,7 @@ describe('a raid against the works', () => {
     for (const id of f.planetIds) await setLevel(f.db, id, 'CORE', 10);
     await setLevel(f.db, defender, 'REFINERY', 6);
     await setLevel(f.db, defender, 'EXTRACTOR', 6);
-    await giveUnits(f.db, attacker, { WASP: 60, HAULER: 8 });
+    await giveUnits(f.db, attacker, { DART: 60, COURIER: 8 });
     f.clock.advance(600);
   });
 
@@ -198,7 +198,7 @@ describe('a raid against the works', () => {
     const before = await f.db.transaction((tx) => loadLocked(tx, defender, f.clock));
     expect(before.bufferAlloy).toBeGreaterThan(0);
 
-    const launch = await launchAttack(f.db, attacker, defender, { WASP: 60, HAULER: 8 }, f.clock);
+    const launch = await launchAttack(f.db, attacker, defender, { DART: 60, COURIER: 8 }, f.clock);
     f.clock.set(settledAt(launch.arriveAt));
     await worker(f).tick();
 
@@ -216,7 +216,7 @@ describe('a raid against the works', () => {
     await setLevel(f.db, defender, 'VAULT', 10);
     await f.db.update(planets).set({ deuterium: 1_000 }).where(eq(planets.id, defender));
 
-    const launch = await launchAttack(f.db, attacker, defender, { WASP: 60, HAULER: 8 }, f.clock);
+    const launch = await launchAttack(f.db, attacker, defender, { DART: 60, COURIER: 8 }, f.clock);
     f.clock.set(settledAt(launch.arriveAt));
     await worker(f).tick();
 
@@ -375,12 +375,12 @@ describe('what may be in the air at once', () => {
     // Every planet, not only the attacker: a Core 1 world among Core 18 ones is
     // outside the tier band and every raid here would be refused (D49).
     for (const id of f.planetIds) await setLevel(f.db, id, 'CORE', 1);
-    await giveUnits(f.db, mine, { WASP: 60 });
+    await giveUnits(f.db, mine, { DART: 60 });
     await expect(launchProbe(f.db, mine, a, f.clock)).resolves.toBeTruthy();
-    await expect(launchAttack(f.db, mine, b, { WASP: 20 }, f.clock)).resolves.toBeTruthy();
-    await expect(launchAttack(f.db, mine, c, { WASP: 20 }, f.clock)).resolves.toBeTruthy();
+    await expect(launchAttack(f.db, mine, b, { DART: 20 }, f.clock)).resolves.toBeTruthy();
+    await expect(launchAttack(f.db, mine, c, { DART: 20 }, f.clock)).resolves.toBeTruthy();
     // Three bays, three craft out.
-    await expect(launchAttack(f.db, mine, d, { WASP: 20 }, f.clock)).rejects.toMatchObject({
+    await expect(launchAttack(f.db, mine, d, { DART: 20 }, f.clock)).rejects.toMatchObject({
       code: 'NO_FREE_BAY',
     });
   });
@@ -431,9 +431,9 @@ describe('what may be in the air at once', () => {
   it('an enemy fleet inbound at me does not occupy my bays', async () => {
     await setLevel(f.db, mine, 'CORE', 1);
     await setLevel(f.db, a, 'CORE', 1);
-    await giveUnits(f.db, a, { WASP: 60 });
+    await giveUnits(f.db, a, { DART: 60 });
     // Their raid, aimed at me.
-    await expect(launchAttack(f.db, a, mine, { WASP: 20 }, f.clock)).resolves.toBeTruthy();
+    await expect(launchAttack(f.db, a, mine, { DART: 20 }, f.clock)).resolves.toBeTruthy();
     // My own three bays are untouched by it.
     for (const target of [b, c, d]) {
       await expect(launchProbe(f.db, mine, target, f.clock)).resolves.toBeTruthy();
@@ -481,28 +481,28 @@ describe('what may be in the air at once', () => {
   });
 
   it('allows only one fleet committed to a planet at a time', async () => {
-    await giveUnits(f.db, mine, { WASP: 60 });
-    await expect(launchAttack(f.db, mine, a, { WASP: 20 }, f.clock)).resolves.toBeTruthy();
-    await expect(launchAttack(f.db, mine, a, { WASP: 20 }, f.clock)).rejects.toMatchObject({
+    await giveUnits(f.db, mine, { DART: 60 });
+    await expect(launchAttack(f.db, mine, a, { DART: 20 }, f.clock)).resolves.toBeTruthy();
+    await expect(launchAttack(f.db, mine, a, { DART: 20 }, f.clock)).rejects.toMatchObject({
       code: 'FLEET_ALREADY_COMMITTED',
     });
     // A different target is still fair game — the limit is per planet, not global.
-    await expect(launchAttack(f.db, mine, b, { WASP: 20 }, f.clock)).resolves.toBeTruthy();
+    await expect(launchAttack(f.db, mine, b, { DART: 20 }, f.clock)).resolves.toBeTruthy();
   });
 
   it('stays committed while the survivors are flying home', async () => {
-    await giveUnits(f.db, mine, { WASP: 60 });
-    const launch = await launchAttack(f.db, mine, a, { WASP: 30 }, f.clock);
+    await giveUnits(f.db, mine, { DART: 60 });
+    const launch = await launchAttack(f.db, mine, a, { DART: 30 }, f.clock);
     f.clock.set(settledAt(launch.arriveAt));
     await worker(f).tick();
 
-    await expect(launchAttack(f.db, mine, a, { WASP: 20 }, f.clock)).rejects.toMatchObject({
+    await expect(launchAttack(f.db, mine, a, { DART: 20 }, f.clock)).rejects.toMatchObject({
       code: 'FLEET_ALREADY_COMMITTED',
     });
 
     f.clock.advance(launch.exposureMinutes);
     await worker(f).tick();
-    await expect(launchAttack(f.db, mine, a, { WASP: 20 }, f.clock)).resolves.toBeTruthy();
+    await expect(launchAttack(f.db, mine, a, { DART: 20 }, f.clock)).resolves.toBeTruthy();
   });
 });
 
@@ -821,21 +821,21 @@ describe('what a satellite does', () => {
     const [, target] = f.planetIds as [string, string];
     await placeAt(f.db, mine, { x: -700 });
     await placeAt(f.db, target, { x: 700 });
-    await giveUnits(f.db, mine, { WASP: 40 });
+    await giveUnits(f.db, mine, { DART: 40 });
     await setLevel(f.db, mine, 'SHIPYARD', 1);
     // The grant in `beforeEach` made this planet rich and therefore tall; the
     // targets are still Core 1 and out of band. D49 — see `levelWorld`.
     await levelWorld(f.db, f.planetIds);
     f.clock.advance(SETTLED_MINUTES);
 
-    const plain = await launchAttack(f.db, mine, target, { WASP: 10 }, f.clock);
+    const plain = await launchAttack(f.db, mine, target, { DART: 10 }, f.clock);
     const plainMinutes = (plain.arriveAt.getTime() - f.clock.now().getTime()) / 60_000;
 
     // Same two planets, same distance — only the orbit differs.
     await giveSatellite(f.db, mine, 'BEACON');
     const other = f.planetIds[2] ?? target;
     await placeAt(f.db, other, { x: 700, z: 1 });
-    const boosted = await launchAttack(f.db, mine, other, { WASP: 10 }, f.clock);
+    const boosted = await launchAttack(f.db, mine, other, { DART: 10 }, f.clock);
     const boostedMinutes = (boosted.arriveAt.getTime() - f.clock.now().getTime()) / 60_000;
 
     expect(boostedMinutes).toBeLessThan(plainMinutes);

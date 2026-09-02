@@ -59,7 +59,7 @@ describe('what a probe brings home', () => {
   /** T9 · D137. A 25% multiplier nobody can see is a rule that does not exist. */
   describe('combat doctrine', () => {
     it('names every doctrine the probe found, with its level', () => {
-      const found = fact(report({ doctrines: { WASP_DOCTRINE: 2, WEAPONS_GENERAL: 1 } }), 'doctrines');
+      const found = fact(report({ doctrines: { SHIP_POWER: 2, STARSHIP_ENGINEERING: 1 } }), 'doctrines');
       expect(found).toBeDefined();
       expect(found!.value).toMatch(/2/);
       expect(found!.value).toMatch(/1/);
@@ -144,7 +144,7 @@ describe('what a probe brings home', () => {
    */
   it('dates every reading it prints', () => {
     const full = read(report({
-      doctrines: { WASP_DOCTRINE: 1 },
+      doctrines: { SHIP_POWER: 1 },
       interceptor: true,
       deathStar: 'READY',
       deuteriumStock: { low: 1, high: 2 },

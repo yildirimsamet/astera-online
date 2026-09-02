@@ -26,7 +26,7 @@ export function SettlementSheet({
   onConfirm: () => void;
 }) {
   const { t } = useTranslation();
-  const fleet = { HAULER: MULTI_WORLD.settlement.haulers } as const;
+  const fleet = { COURIER: MULTI_WORLD.settlement.transports } as const;
   const span = distance(planet.planet.position, target.position);
   const travelMinutes = fleetTravelExact(span, fleet);
   const fuel = missionFuel(fleet, span, 1);
@@ -64,8 +64,8 @@ export function SettlementSheet({
 
       <dl className="mt-4 grid grid-cols-2 gap-px overflow-hidden rounded-panel bg-line/50">
         <SettlementFact
-          label={t('focus.planet.settlementConfirm.haulers')}
-          value={String(MULTI_WORLD.settlement.haulers)}
+          label={t('focus.planet.settlementConfirm.transports')}
+          value={String(MULTI_WORLD.settlement.transports)}
         />
         <SettlementFact
           label={t('focus.planet.settlementConfirm.foundingCargo')}

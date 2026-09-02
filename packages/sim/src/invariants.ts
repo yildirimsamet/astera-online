@@ -33,16 +33,18 @@ export const BANDS = {
    * reach it — so the ratio is honest, its practical maximum is simply lower than
    * it was.
    *
-   * Measured across the three gate seeds after the D16/D17 rebalance: 0.204-0.223.
-   * The floor is set below that with margin rather than at it, because this is a
-   * regression gate and not a snapshot.
+   * Fleet V2 adds recurring research purchases and durable hull profiles, so the
+   * old pre-research 0.16 floor no longer described the same economy. D148's five
+   * fixed seeds measure 0.111-0.128 after settlement; 0.09 keeps roughly twenty
+   * percent margin while the direct all-protected regression below still proves
+   * the alarm can fire.
    *
    * THE FLOOR STILL HAS TO CATCH THE BUG IT EXISTS FOR. `vaultMult > alloyMult`
    * makes the vault cover 100% of storage and drives this ratio toward zero;
    * `test/season.test.ts` asserts that directly, so the number below cannot be
    * loosened into meaninglessness without that test failing.
    */
-  VFR: [0.16, 0.65],
+  VFR: [0.09, 0.65],
   /**
    * Passive share of an active player's LADDER position — not their wealth.
    *
@@ -58,7 +60,8 @@ export const BANDS = {
   /** The owner accepts current returns; only a 2x-or-higher exchange is unhealthy. */
   RR: [0, 2],
   SV: [0.1, 0.3],
-  TAX: [0.1, 0.45],
+  /** Fleet V2 five-seed pooled baseline is 0.060; 0.04 retains one-third margin. */
+  TAX: [0.04, 0.45],
 } as const;
 
 export type InvariantKey = keyof typeof BANDS;

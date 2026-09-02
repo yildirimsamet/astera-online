@@ -8,6 +8,7 @@ import {
   isShardEvent,
   readsForGlobalEvent,
   readsForPrivateEvent,
+  readsForShardEvent,
   shardCoalescer,
 } from './shardEvents.js';
 
@@ -167,11 +168,11 @@ export function useEventStream(enabled: boolean, onRollover?: () => void): void 
       }, 1500);
     };
 
-    let strategicSightConsistencyTimer: ReturnType<typeof setTimeout> | null = null;
-    const scheduleStrategicSightConsistencyRead = (): void => {
-      if (strategicSightConsistencyTimer !== null) return;
-      strategicSightConsistencyTimer = setTimeout(() => {
-        strategicSightConsistencyTimer = null;
+    let trafficConsistencyTimer: ReturnType<typeof setTimeout> | null = null;
+    const scheduleTrafficConsistencyRead = (): void => {
+      if (trafficConsistencyTimer !== null) return;
+      trafficConsistencyTimer = setTimeout(() => {
+        trafficConsistencyTimer = null;
         if (!controller.signal.aborted) {
           void client.invalidateQueries({ queryKey: keys.traffic });
         }
@@ -215,6 +216,14 @@ export function useEventStream(enabled: boolean, onRollover?: () => void): void 
        */
       if (isShardEvent(kind)) {
         shard.note(kind);
+        // PostgreSQL delivers the shard wake and each replica's projection-cache
+        // invalidation independently. The first coalesced read can therefore reach
+        // a replica while its old traffic snapshot is still warm. Re-read only for
+        // shard kinds that actually move traffic, after the same short consistency
+        // window used by strategic sight.
+        if (readsForShardEvent(kind).some((key) => key[0] === keys.traffic[0])) {
+          scheduleTrafficConsistencyRead();
+        }
         if (kind === 'shard:world') scheduleWorldConsistencyRead();
         return;
       }
@@ -233,7 +242,7 @@ export function useEventStream(enabled: boolean, onRollover?: () => void): void 
         if (reads) {
           for (const key of reads) void client.invalidateQueries({ queryKey: key });
           if (kind === 'private:strategic-sight') {
-            scheduleStrategicSightConsistencyRead();
+            scheduleTrafficConsistencyRead();
           }
           return;
         }
@@ -310,7 +319,7 @@ export function useEventStream(enabled: boolean, onRollover?: () => void): void 
       if (reconnectResyncTimer !== null) clearTimeout(reconnectResyncTimer);
       if (lifecycleResyncTimer !== null) clearTimeout(lifecycleResyncTimer);
       if (worldConsistencyTimer !== null) clearTimeout(worldConsistencyTimer);
-      if (strategicSightConsistencyTimer !== null) clearTimeout(strategicSightConsistencyTimer);
+      if (trafficConsistencyTimer !== null) clearTimeout(trafficConsistencyTimer);
       document.removeEventListener('visibilitychange', onVisibility);
       window.removeEventListener('focus', scheduleLifecycleResync);
       window.removeEventListener('pageshow', scheduleLifecycleResync);

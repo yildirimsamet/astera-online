@@ -123,7 +123,7 @@ describe('continuous endpoint clearance', () => {
     minutesRemaining: 40,
     arriveAt: ARRIVE,
     leg: 'outbound',
-    fleet: { WASP: 1 },
+    fleet: { DART: 1 },
     path,
   };
 

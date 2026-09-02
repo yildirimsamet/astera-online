@@ -133,4 +133,21 @@ describe('Galaxy Chronicle surface', () => {
     expect(screen.getByText(/capital was devastated/i)).toBeInTheDocument();
     expect(document.body.textContent).not.toMatch(/may transfer control/i);
   });
+
+  it('explains that shower rocks survive the lifecycle end', () => {
+    show(vi.fn(), [{
+      id: 'shower-end',
+      kind: 'galaxy_event_ended',
+      subjectPlanetId: null,
+      occurredAt: at,
+      payload: {
+        eventKind: 'ASTEROID_SHOWER',
+        startsAt: '2026-08-22T07:00:00.000Z',
+        endsAt: '2026-08-22T08:00:00.000Z',
+        asteroidSpawnMultiplier: 5,
+      },
+    }]);
+    expect(screen.getByText('The asteroid shower ended')).toBeInTheDocument();
+    expect(screen.getByText(/Existing asteroids remain until their natural expiry/)).toBeInTheDocument();
+  });
 });

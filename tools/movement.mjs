@@ -36,7 +36,10 @@ const API = process.env.API ?? 'http://localhost:3100';
 const WEB = process.env.WEB ?? 'http://localhost:5173';
 const OUT = process.argv[2] ?? 'out/movement';
 const PASSWORD = 'correct-horse-battery';
-const PHONE = { width: 390, height: 844 };
+// This harness inspects the scene graph rather than layout pixels. Keeping the
+// phone aspect ratio at a smaller raster prevents two software-rendered canvases
+// from monopolising the local CPU; visual/layout coverage lives in visual.mjs.
+const PHONE = { width: 260, height: 560 };
 
 /** How long between the two samples. Long enough that a real leg has visibly moved. */
 const GAP_MS = 10_000;
@@ -135,10 +138,20 @@ const installEyes = async (planetId, x) => {
 };
 
 await installEyes(a.planet.id, 0);
-await installEyes(b.planet.id, 900);
-await sql`UPDATE buildings SET level = 9 WHERE planet_id = ${a.planet.id} AND type = 'CORE'`;
+await installEyes(b.planet.id, 0);
+const [fixtureSeason] = await sql`
+  SELECT s.id AS "seasonId", s.starts_at AS "startsAt"
+  FROM seasons s
+  JOIN planets p ON p.season_id = s.id
+  WHERE p.id = ${a.planet.id}
+  LIMIT 1`;
+if (!fixtureSeason) throw new Error('movement harness owner has no season');
 await sql`
-  INSERT INTO units (planet_id, hull, location, count) VALUES (${a.planet.id}, 'WASP', 'home', 40)
+  UPDATE buildings
+  SET level = 9
+  WHERE planet_id IN (${a.planet.id}, ${b.planet.id}) AND type = 'CORE'`;
+await sql`
+  INSERT INTO units (planet_id, hull, location, count) VALUES (${a.planet.id}, 'DART', 'home', 40)
   ON CONFLICT (planet_id, hull, location) DO UPDATE SET count = 40`;
 await sql`
   INSERT INTO units (planet_id, hull, location, count) VALUES (${a.planet.id}, 'PROSPECTOR', 'home', 2)
@@ -219,7 +232,10 @@ const waitForScene = async (page) => {
 const open = async (browser, who) => {
   const page = await browser.newPage({
     viewport: PHONE,
-    deviceScaleFactor: 2,
+    // Motion correctness needs a phone-shaped viewport, not four times the
+    // software-rasterised pixels. DPR 2 made two SwiftShader scenes saturate all
+    // local cores and delayed JavaScript/network work by more than ten seconds.
+    deviceScaleFactor: 1,
     isMobile: true,
     hasTouch: true,
     locale: 'en-GB',
@@ -270,6 +286,100 @@ const pageA = await open(browserA, a);
 const pageB = await open(browserB, b);
 
 /**
+ * Place the observer only after both expensive software-rendered scenes are ready.
+ * Asteroids can turn through a meaningful arc while those scenes load, so using
+ * their earlier direction made the supposedly deterministic mining contact leave
+ * Radar before the launch. This is fixture setup, before the measured event path.
+ */
+const fixtureField = await call('/api/mining', { token: a.token });
+const fixtureRock = fixtureField.asteroids[0];
+if (!fixtureRock) throw new Error('movement harness found no live asteroid');
+const rockMinutes = (Date.now() - fixtureSeason.startsAt.getTime()) / 60_000;
+const rockTheta = fixtureRock.phase + (2 * Math.PI * rockMinutes) / fixtureRock.period;
+const cosTheta = Math.cos(rockTheta);
+const sinTheta = Math.sin(rockTheta);
+const cosNode = Math.cos(fixtureRock.ascendingNode);
+const sinNode = Math.sin(fixtureRock.ascendingNode);
+const cosInclination = Math.cos(fixtureRock.inclination);
+const sinInclination = Math.sin(fixtureRock.inclination);
+const rockAt = {
+  x: fixtureRock.radius * (cosNode * cosTheta - sinNode * sinTheta * cosInclination),
+  y: fixtureRock.radius * sinTheta * sinInclination,
+  z: fixtureRock.radius * (sinNode * cosTheta + cosNode * sinTheta * cosInclination),
+};
+const rockDistance = Math.hypot(rockAt.x, rockAt.y, rockAt.z);
+const observerDistance = 2_100;
+const observerAt = {
+  x: observerDistance * rockAt.x / rockDistance,
+  y: observerDistance * rockAt.y / rockDistance,
+  z: observerDistance * rockAt.z / rockDistance,
+};
+await sql.begin(async (tx) => {
+  await tx`
+    UPDATE planets
+    SET x = ${observerAt.x}, y = ${observerAt.y}, z = ${observerAt.z}
+    WHERE id = ${b.planet.id}`;
+  await tx`
+    UPDATE sensor_epochs
+    SET x = ${observerAt.x}, y = ${observerAt.y}, z = ${observerAt.z}
+    WHERE planet_id = ${b.planet.id} AND ends_at IS NULL`;
+  // Direct fixture writes bypass the ordinary world mutation. Publish its normal
+  // cache boundary before asking either browser to read the moved sensor post.
+  await tx`SELECT pg_notify(
+    'astera_events',
+    ${JSON.stringify({ shard: fixtureSeason.seasonId, kind: 'shard:world' })}
+  )`;
+});
+
+let projectedObserver = null;
+for (let attempt = 0; attempt < 30; attempt += 1) {
+  const view = await call('/api/galaxy', { token: b.token });
+  projectedObserver = view.planets.find((planet) => planet.id === b.planet.id) ?? null;
+  if (
+    projectedObserver
+    && Math.hypot(
+      projectedObserver.position.x - observerAt.x,
+      projectedObserver.position.y - observerAt.y,
+      projectedObserver.position.z - observerAt.z,
+    ) < 0.01
+  ) break;
+  await new Promise((resolve) => setTimeout(resolve, 100));
+}
+if (!projectedObserver) throw new Error('observer world vanished during fixture setup');
+const projectedGap = Math.hypot(
+  projectedObserver.position.x - observerAt.x,
+  projectedObserver.position.y - observerAt.y,
+  projectedObserver.position.z - observerAt.z,
+);
+if (projectedGap >= 0.01) {
+  throw new Error(`observer fixture projection stayed ${projectedGap.toFixed(3)} units stale`);
+}
+for (const page of [pageA, pageB]) {
+  await page.evaluate(async () => {
+    const client = window.__queryClient;
+    if (!client) throw new Error('development query client bridge is missing');
+    await Promise.all([
+      client.invalidateQueries({ queryKey: ['galaxy'] }),
+      client.invalidateQueries({ queryKey: ['traffic'] }),
+    ]);
+  });
+  await page.waitForFunction(
+    ({ planetId, at }) => {
+      const planet = window.__queryClient
+        ?.getQueryData(['galaxy'])?.planets
+        ?.find((candidate) => candidate.id === planetId);
+      return planet !== undefined && Math.hypot(
+        planet.position.x - at.x,
+        planet.position.y - at.y,
+        planet.position.z - at.z,
+      ) < 0.01;
+    },
+    { planetId: b.planet.id, at: observerAt },
+    { timeout: 20_000 },
+  );
+}
+
+/**
  * Launch AFTER both canvases are ready. The old harness launched before two full
  * sign-ins, model decode and a 3.5-second settle, so it began measuring only after
  * the exact spawn plateau it was meant to catch had ended.
@@ -286,7 +396,7 @@ for (const target of attackTargets) {
     raid = await call('/api/fleet/launch', {
       method: 'POST',
       token: a.token,
-      body: { targetPlanetId: target.id, fleet: { WASP: 40 } },
+      body: { targetPlanetId: target.id, fleet: { DART: 40 } },
     });
     break;
   } catch (error) {
@@ -299,9 +409,10 @@ for (const target of attackTargets) {
   }
 }
 if (!raid) throw new Error('movement harness found no legal raid target');
-const probeTargets = launchGalaxy.planets.filter(
-  (planet) => !planet.isSelf && planet.id !== b.planet.id,
-);
+const probeTargets = [
+  ...launchGalaxy.planets.filter((planet) => planet.id === b.planet.id),
+  ...launchGalaxy.planets.filter((planet) => !planet.isSelf && planet.id !== b.planet.id),
+];
 let probe = null;
 for (const target of probeTargets) {
   try {
@@ -319,9 +430,13 @@ for (const target of probeTargets) {
 }
 if (!probe) throw new Error('movement harness found no probe target outside cooldown');
 
-const field = await call('/api/mining', { token: a.token });
+const field = fixtureField;
 let mining = null;
-for (const rock of field.asteroids) {
+const miningTargets = [
+  fixtureRock,
+  ...field.asteroids.filter((rock) => rock.id !== fixtureRock.id),
+];
+for (const rock of miningTargets) {
   try {
     mining = await call('/api/mining/launch', {
       method: 'POST',
@@ -361,17 +476,56 @@ try {
       return ids.every((id) => seen.has(id));
     },
     launchedIds,
-    { timeout: 10_000 },
+    // Wait long enough to report a slow software renderer instead of aborting at
+    // the pass boundary. `appearedIn < LIVE_PATH_MS` below remains the criterion.
+    { timeout: 60_000 },
   );
 } catch (error) {
   const drawn = await survey(pageB, launchedIds);
   const visible = (await call('/api/galaxy/traffic', { token: b.token })).contacts
     .filter((contact) => launchedIds.includes(contact.id))
     .map((contact) => contact.id);
+  const cached = await pageB.evaluate(() => window.__queryClient
+    ?.getQueryData(['traffic'])?.contacts
+    ?.map((contact) => contact.id) ?? []);
+  const renderedProps = await pageB.evaluate((ids) => {
+    const root = document.querySelector('#root');
+    const containerKey = root
+      ? Object.keys(root).find((key) => key.startsWith('__reactContainer$'))
+      : undefined;
+    if (!root || !containerKey) return [];
+    const stack = [root[containerKey]];
+    const matches = [];
+    while (stack.length > 0) {
+      const fiber = stack.pop();
+      if (!fiber) continue;
+      const contacts = fiber.memoizedProps?.contacts;
+      if (Array.isArray(contacts)) {
+        const present = contacts
+          .filter((contact) => ids.includes(contact?.id))
+          .map((contact) => contact.id);
+        if (present.length > 0) {
+          matches.push({ component: fiber.type?.name ?? fiber.elementType?.name ?? '?', present });
+        }
+      }
+      if (fiber.child) stack.push(fiber.child);
+      if (fiber.sibling) stack.push(fiber.sibling);
+    }
+    return matches;
+  }, launchedIds);
+  const trace = networkTrace
+    .filter((entry) => entry.who === b.name && entry.at >= appearanceStarted - 1_000)
+    .map((entry) =>
+      `${entry.phase}:${entry.path}:${String(entry.status ?? '')}:${String(entry.at - appearanceStarted)}ms`)
+    .join(',');
+  const metrics = await pageB.evaluate(() => window.__galaxyMetrics?.snapshot() ?? null);
   console.error(
     `observer timeout: drawn=${drawn?.craft.map((craft) => craft.id).join(',') ?? 'none'} ` +
-    `visible=${visible.join(',') || 'none'} expected=${launchedIds.join(',')}`,
+    `cached=${cached.filter((id) => launchedIds.includes(id)).join(',') || 'none'} ` +
+    `props=${JSON.stringify(renderedProps)} visible=${visible.join(',') || 'none'} ` +
+    `expected=${launchedIds.join(',')} trace=${trace || 'none'} metrics=${JSON.stringify(metrics)}`,
   );
+  await pageB.screenshot({ path: `${OUT}/failure-observer.png` });
   throw error;
 }
 const appearedIn = Date.now() - appearanceStarted;

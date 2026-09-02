@@ -82,6 +82,32 @@ for (const scenario of SCENARIOS) {
   );
   await page.waitForTimeout(3000);
 
+  /**
+   * Five seconds of deliberately continuous rendering. The production scene is
+   * demand-driven, so an idle tab's frame intervals describe the ambient ticker
+   * rather than rendering capacity. This drives the existing development bridge
+   * at requestAnimationFrame cadence and records both its p95 and peak JS heap.
+   */
+  const performanceSample = await page.evaluate(async () => {
+    const bridge = window.__galaxyMetrics;
+    const galaxy = window.__galaxy;
+    if (!bridge || !galaxy) return null;
+    bridge.reset();
+    let peakHeapUsedBytes = 0;
+    const started = performance.now();
+    await new Promise((resolve) => {
+      const tick = () => {
+        const memory = performance.memory;
+        if (memory) peakHeapUsedBytes = Math.max(peakHeapUsedBytes, memory.usedJSHeapSize);
+        galaxy.invalidate();
+        if (performance.now() - started >= 5_000) resolve();
+        else requestAnimationFrame(tick);
+      };
+      tick();
+    });
+    return { ...bridge.snapshot(), peakHeapUsedBytes };
+  });
+
   const widePath = `${OUT}/${scenario.name}-galaxy-wide.png`;
   await page.screenshot({ path: widePath });
 
@@ -181,7 +207,8 @@ for (const scenario of SCENARIOS) {
     scenario: scenario.name,
     viewport: scenario.viewport,
     readyMs: Date.now() - startedAt,
-    metrics,
+      metrics,
+      performanceSample,
     interactionDpr,
     errors,
     unexpectedCalls,

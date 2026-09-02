@@ -74,7 +74,7 @@ export function planetView(
       prerequisite: RESEARCH_PROJECTS[id].prerequisite,
     })),
     researchQueue: [],
-    fleet: { WASP: 12 },
+    fleet: { DART: 12 },
     ground: {},
     /** Craft that are off the planet. Empty by default: nothing is in the air. */
     fleetAway: {},

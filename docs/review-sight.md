@@ -445,6 +445,13 @@ bir oyun durumu.
 | İki dünyamın çemberleri **çakışır**, araç aradan geçer | Kimlik kaybolmaz                                    | Birleşim tek hacim gibi davranmalı                             |
 | Uplink söker/takar                                     | Etki durur/başlar, **donanım silinmez**             | `instrumentLevels` kapısı                                      |
 | Core düşer (Ölüm Yıldızı)                              | Teleskop/Radar kırpılır, `sensors` cache temizlenir | `projections.ts` `shard:impact`                                |
+| **Korsan** çemberimden çıkar (D150)                    | **Tamamen kaybolur — hatırlanmaz**                  | Kaya `sensor_epochs` ile kalıcı keşif alır; korsan bir CRAFT'tır ve almaz |
+| Korsan radar çemberimde                                | ❓ + (L4) kütle + (L5) `silhouette: 'pirate'`        | Kadro ve **seviye** yalnız teleskopta; seviye fiyat etiketidir  |
+| Korsan teleskop çemberimde                             | Gerçek kadro + seviye + hasar cezası                | Kadro `roster − losses`; ölmüş gemi yeniden doğmaz              |
+| Korsan **yörüngesi**                                   | **Hiçbir zaman yayınlanmaz**                        | radius/period/phase/inclination/ascendingNode = rota            |
+| Korsan pencere süresi                                  | `TRAFFIC.refreshMs × 2` (10 sn), asla altı değil    | 4 dk pencere en kısa turda ~180° yay; kiriş yörüngeyi keser     |
+| Korsan **çarpışma** anında                             | Randevu noktasında **durur**, `engagement` fog-kapılı | Yörüngeye devam ederse gemiler uzaklaşırken dövüşür           |
+| **Kendi** korsan akınım                                | `traffic`'ten çıkarılır, `pendingThreads`'te görünür | İkisi birden unutulursa filo kalkar ve kaybolur (G1/G2)        |
 
 ### 7.2 Sonda yaşam döngüsü
 

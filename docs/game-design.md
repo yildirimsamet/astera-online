@@ -6,11 +6,12 @@ creates** — a system that creates no decision does not belong here.
 Formulas and constants: `balance.md`. Why each choice was made: `decisions.md`. Unfamiliar
 terms: `glossary.md`.
 
-> Everything below is built and playable except **asteroid impacts**. Season freeze, personal
-> records, the five-minute afterglow and atomic successor rollover are live. The first
-> Frontier slice is also live: research access, isotope asteroids, contested Deuterium and
-> the Deuterium-priced Runner and shield-specialist Breacher all use the same
-> ruleset as the rest of the galaxy.
+> Everything below is built and playable except **asteroid impacts** and the D148 Fleet V2 catalog,
+> which is owner-approved implementation work for the next season boundary. Season freeze,
+> personal records, the five-minute afterglow and atomic successor rollover are live. Research
+> access, isotope asteroids and contested Deuterium already use the same ruleset as the rest of the
+> galaxy; Fleet V2 preserves those systems while replacing the ordinary space hulls. Public galaxy
+> events and the first Asteroid Shower are implemented for newly created ruleset-v4 seasons.
 
 ## The loop
 
@@ -77,18 +78,24 @@ Five numbers, one portrait screen, no scrolling. **A hard cap.**
 **Work commits on payment and completes through three independent queues** (D4).
 Buildings, instruments and satellites use each world's CONSTRUCTION lane; mobile hulls and ground
 defence use that world's YARD lane; research uses one commander-wide RESEARCH lane. Each queue is
-three orders deep and processes one order at a time. Cancelling is a decision, not an undo: it
-refunds half the committed resources. A system-abandoned order refunds everything. The Death Star
+three orders deep and processes one order at a time. Construction and Yard cancellation refunds
+half the committed resources; commander research cannot be cancelled once started. A
+system-abandoned order refunds everything. The Death Star
 keeps its separate sixty-minute strategic build (D97), and so does the interception charge that
 answers it (D139) — both are strategic assets on the world rather than queue orders, and both are
 stopped by a bombardment and resumed by the recovery that follows.
 
 **Research is bought on a surface of its own** (D140). The selected world pays, but the order enters
 the commander's three-deep RESEARCH lane; no planet gains an extra lane and no Construction or Yard
-slot is consumed. The screen draws that lane, its running project and the clock time it finishes.
-Fifteen projects in four groups: the four
-Frontier permissions that are found rather than bought, four economy ladders, five weapon
-doctrines, and the two strategic permissions.
+slot is consumed. Starting it is an irreversible commander commitment. The screen draws that lane,
+its running project and the clock time it finishes.
+Fleet V2 keeps fifteen projects in four groups: four Frontier permissions that are found rather
+than bought, four economy ladders, four fleet-system ladders (Engineering, Power, Armor and
+Propulsion), the existing Emplacement Doctrine, and two strategic permissions. Dense Fuel Cells
+opens Propulsion; Gravitic Charges opens the Nullifier path, so the discovered projects retain a
+concrete effect after the old Runner/Breacher catalog retires. Emplacement Doctrine remains the
+ground progression for the unchanged Bastion and Thorn; the new fleet projects do not affect them,
+Prospectors, probes or Death Stars.
 
 Queue gates read the world projected through every earlier order. A commander may therefore queue
 Core 1→2 and then Refinery 1→2; they may not use a later order to justify an earlier one. Core and
@@ -123,7 +130,7 @@ design.** Measured on the gate seasons, the median commander used to end a fourt
 holding TEN deuterium — it existed only on isotope asteroids, only after the season's
 thirty-fifth hour, and only for whoever got there first. That was survivable while nothing
 needed it. The refinery is a guaranteed trickle a player can plan around; Isotope Spectrometry
-still reveals the fast, contested source that actually pays for Runners, Breachers, the last
+still reveals the fast, contested source that actually pays for advanced Fleet V2 hulls, the last
 research rungs and a Death Star. If the two ever met, the whole Frontier act would become dead
 content — so the plant's curve is deliberately flatter than alloy's or crystal's, and a test
 holds it below what a miner pulls off the rocks.
@@ -171,34 +178,40 @@ store fills, an order commits part of it, and production continues while that or
 involuntary sawtooth, not any score incentive, is what makes raiding worth doing. **Cost lumpiness
 and bounded build throughput are hard requirements, not tuning preferences.**
 
-## Fleet — seven spacefaring hulls and two ground guns
+## Fleet — eighteen Fleet V2 hulls, one mining craft and two ground guns
 
-| Hull | Class | Mathematical job | Cost of using it |
-|---|---|---|---|
-| **Wasp** | Skirmisher | Cheapest and fastest combat hull. 1.6× into Bulwark-class; 45 cargo | 25 HP and 0.625× into Lance-class |
-| **Lance** | Lance | 1.6× into Wasps and Thorns; 60 cargo | 0.625× into Bulwarks and Bastions |
-| **Bulwark** | Bulwark | 662 HP and 1.6× into Lance-class | Speed 65 makes it the slowest mobile hull and lengthens every fleet it joins |
-| **Hauler** | Support | 2,200 cargo. **The dedicated cargo hull; it contributes nothing to the fight** | Speed 85 and every Hauler slot is a combat slot you did not bring |
-| **Runner** | Support | 380 cargo at speed 125. Lets light strike fleets trade capacity for a shorter exposure window | Dense Fuel Cells and contested Deuterium; poor cargo-per-cost means it cannot replace the Hauler |
-| **Breacher** | Lance | Five times its normal effect against an active shield; the extra damage cannot spill into units | Gravitic Charges, contested Deuterium and no cargo; without a shield its 55 attack receives no specialist bonus |
-| **Bastion** | Bulwark, ground | Permanent heavy defence with 1.6× into Lances and Breachers | Cannot travel; Wasps receive the class advantage against it |
-| **Thorn** | Skirmisher, ground | Low-cost permanent defence, buildable at Shipyard 0, with 1.6× into Bulwarks | Cannot travel; Lances and Breachers receive the class advantage against it |
-| **Prospector** | Support, mining | Speed 825 and a base hold of 300; mines rocks and harvests wreckage; two per planet | Cannot raid, transfer or defend against an ordinary raid; still uses Hangar and flight-bay capacity |
+Every Fleet V2 hull is a fixed authored profile. The player does not allocate stat points or fit
+modules; the decision is which hulls to build and combine. A higher tier converts cost into stats
+more efficiently and pays a smaller specialization penalty, but never replaces every lower-tier
+role.
 
-Counter cycle: **`WASP ▸ BULWARK ▸ LANCE ▸ WASP`** at 1.6× / 0.625×. Support hulls are prey
-to everything and deal nothing.
+| Hulls | Tier | Class | Mathematical job | Cost of using them |
+|---|---:|---|---|---|
+| **Dart / Viper / Tempest** | 1 / 2 / 3 | Skirmisher | The fast raider line; 1.6× into Bulwark | Low hull efficiency; no tier-4 successor |
+| **Pike / Talon / Ballista / Cataclysm** | 1 / 2 / 3 / 4 | Lance | Attack-specialist line; 1.6× into Skirmisher | Loses to Bulwark; increasing cost, build time and bulk |
+| **Rampart / Stronghold / Leviathan / Citadel** | 1 / 2 / 3 / 4 | Bulwark | Maximum hull-per-role defensive line; 1.6× into Lance | Slowest profile at each tier |
+| **Warden / Sentinel / Praetorian** | 1 / 2 / 3 | Bulwark | Mobile escort alternative | Trades part of the fortress hull for speed; no tier-4 successor |
+| **Courier / Wayfarer / Atlas** | 1 / 2 / 3 | Support | Fast/light, balanced and heavy cargo choices | Deal no damage; capacity, speed and bulk prevent a universal choice |
+| **Nullifier** | 3 | Lance specialist | Additional class-adjusted damage only into a live Aegis | Poor generic combat efficiency; Gravitic Charges gate |
+| **Bastion** | — | Bulwark, ground | Durable heavy defence against Lance | Cannot travel; Skirmisher counters it |
+| **Thorn** | — | Skirmisher, ground | Opening-tier durable defence against Bulwark | Cannot travel; Lance counters it |
+| **Prospector** | — | Support, mining | Mines rocks and harvests wreckage; two per planet | Cannot raid, transfer or defend an ordinary raid |
+
+Counter cycle: **`SKIRMISHER ▸ BULWARK ▸ LANCE ▸ SKIRMISHER`** at 1.6× / 0.625×. Support
+hulls are prey to everything and deal nothing.
 
 **A fleet travels at the speed of its slowest ship**, so composition is a *time* decision as
 well as a combat one. Heavy fleets win fights and lose windows — and since D49 they are also
 seen coming from further away, because a radar catches a fleet at a distance.
 
-### The Hauler is the most important ship in the design
+### Cargo is the composition tax that turns intel into value
 
 It is what stops "send everything" from being universally correct. A pure combat fleet wins
-the battle and carries almost nothing home; a hauler-heavy fleet carries everything and loses.
+the battle and carries almost nothing home; a cargo-heavy fleet carries everything and loses.
 The optimal ratio depends on what you believe is in the target's vault — **exactly the thing
 you had to scout to find out.** Loot capacity is where the information layer cashes out into a
-number.
+number. Courier, Wayfarer and Atlas add a second cargo decision: exposure window versus capacity
+and bulk. Atlas does not replace Courier because the slowest included hull owns the fleet clock.
 
 Support hulls are **shielded from fire while any combat hull on their side survives**, which
 creates the escort decision: bring enough combat hulls to cover the cargo you brought.
@@ -210,7 +223,8 @@ small: the whole game is built on information reducing uncertainty. **If randomn
 outcomes, intel would be worthless.**
 
 Graded on **resource value destroyed**, not `ATK × HP` — that metric ignores the counter
-matrix, so 26 Wasps and 1 Bastion read as equal "power" while one annihilates the other.
+matrix, so two equal-looking numeric totals can resolve in opposite directions after class and
+composition are applied.
 
 | Grade | Condition | Loot |
 |---|---|---|
@@ -221,11 +235,11 @@ matrix, so 26 Wasps and 1 Bastion read as equal "power" while one annihilates th
 Three grades rather than win/lose: binary outcomes make marginal attacks worthless and punish
 good-but-imperfect reads.
 
-**Breacher does not change the counter cycle.** It is Lance-class and its ordinary
-55 attack resolves through the same damage map as every other ship. While an Aegis
-shield remains, four additional copies of that class-adjusted damage hit only the
+**Nullifier does not change the counter cycle.** It is Lance-class and its ordinary attack
+resolves through the same damage map as every other ship. While an Aegis shield remains, its
+additional copies of that class-adjusted damage hit only the
 shield. The bonus is capped at the shield left in that round and never overkills
-into ships or ground guns. Scouting an Aegis creates the choice; sending Breachers
+into ships or ground guns. Scouting an Aegis creates the choice; sending Nullifiers
 blind is intentionally expensive and weak.
 
 **A raid takes ten seconds to land (D44), and the whole galaxy watches the bombardment (D52).** The fleet is
@@ -252,9 +266,9 @@ Aegis shield → ground defence → home fleet → loot phase → disruption
 ```
 
 **Ground defence is two guns in opposite classes (D27), and choosing between them is the
-defender's only composition decision.** A Bastion is Bulwark-class: it breaks Lances and is
+defender's only composition decision.** A Bastion is Bulwark-class: it breaks Lance-class hulls and is
 overwhelmed by swarms. A Thorn is Skirmisher-class: it tears into heavy hulls and is picked
-apart by Lances. Build one kind and a raider who scouts you brings its counter; build both and
+apart by Lance-class hulls. Build one kind and a raider who scouts you brings its counter; build both and
 you are strong against nothing in particular. **"How much defence do they have" becomes "what
 KIND", which is a question only the information layer can answer.**
 
@@ -377,7 +391,7 @@ once.
 | L2 | 1,450 units; + scan bearing | "Scan detected from the galactic north-west." |
 | L3 | 1,700 units; enables strategic interception after research | "Incoming fleet · ETA 9 min." |
 | L4 | 1,900 units; + rough size | "Sizeable force inbound." |
-| L5 | 2,200 units; + exact origin and composition | "Inbound from GRIMHOLD · 74 Wasp, 20 Lance, 12 Hauler." |
+| L5 | 2,200 units; + exact origin and composition | "Inbound from GRIMHOLD · 74 Dart, 20 Pike, 12 Courier." |
 
 **The top two rungs were not sold at all until D123.** Every contact on the disc carried its
 full roster, so a maxed Radar bought a bearing and two facts every player already had. A
@@ -392,7 +406,7 @@ narrower warning window without changing the contact model.
 
 **A radar is a circle, not a countdown (D49).** The warning fires when a hostile fleet crosses
 inside its reach, so how much notice it buys depends on how fast that fleet chose to travel: a
-Bulwark siege fleet is telegraphed and a Wasp strike is not. A long flight can never give away
+Citadel siege fleet is telegraphed and a Tempest strike is not. A long flight can never give away
 its whole duration, because notice is `oneWay × range / distance`.
 
 **The Radar warning is the highest-value ten lines of code in the project.** "Incoming fleet · ETA 9
@@ -486,6 +500,14 @@ schedule and raw indexes never reach the browser, so direct API automation has n
 list to enumerate. Once two commanders have independently found the same rock, the ordinary public
 race and visible mining route begin for both of them.
 
+**Asteroid Shower is a public opportunity window (D149).** It begins five times per full Türkiye
+calendar day, lasts one hour and multiplies new arrivals by five. Midnight–08:00 Türkiye time remains
+eligible but low priority: a five-event day targets one start there and never exceeds two. Starts are
+at least three hours apart: one hour active plus two hours cooldown. The end stops only bonus arrivals;
+rocks already in the galaxy retain their ordinary 2.5–5 hour life and mining flights continue. Signals,
+the Chronicle and the galaxy status chip announce the public lifecycle, while D143 still hides every
+undiscovered coordinate and the API never publishes the future calendar.
+
 **A laden craft flies home at a third of the speed it went out (D117).** The trip out is a
 race and stays one; the trip back is the price of having won it. What it costs is a flight
 bay held three times as long and a craft on the disc, in the open, for the whole of it — so
@@ -504,6 +526,43 @@ rungs. Telescope is actual sight: an identified fleet can be tapped to read its 
 and counts, and the formation shows the same information through real hull assets and count
 pips. Owner, origin and destination remain hidden. Mining runs expose their route only after
 their target has been discovered, so a route cannot reveal a hidden rock.
+
+### Pirate fleets — the third target class (D150)
+
+A pirate fleet is an NPC squadron riding a closed orbit inside the disc. Everything about it —
+its route, its crew, its hoard and its life — is derived from the season key; the only thing
+stored is what has been shot off it and whether it is gone. It attacks nothing. It just goes
+round, for two to four hours, and then it is not there any more.
+
+**The decision it creates.** Every other target in the game has an address: a commander's world
+or a neutral one, and both will still be there tomorrow. A pirate is the first target whose whole
+value is that *it will not be*. So the question stops being "is this worth attacking" and becomes
+**"is this worth attacking NOW, with what I have standing, at the cost of standing undefended for
+the round trip"** — asked against a deadline the player can read off the panel. That is the raid
+decision with the deliberation taken out of it, which is exactly what a galaxy of async commanders
+is short of.
+
+**Two facts price it, and both are earned.** The level (1–4) sets what the crew flies, how hard it
+hits — an L1 pirate fights at half damage, an L4 at 85% — and how likely one of its ships is to be
+towed home. Those are the Telescope's product: a Radar contact is a moving question mark that, on
+its top rungs, adds a mass and a silhouette. **A commander who can see more raids better**, which
+is the first time the sensor ladder pays out in TARGETS rather than in warnings.
+
+**Winning can grow the fleet itself.** On a decisive win there is a level-weighted chance that one
+hull from the pirate's own roster comes home with you. Today a fleet has exactly one way to grow —
+wait for the economy, buy hulls — and this is the second door. It is also the only place in the
+game where a risk pays in ships.
+
+**What stops it becoming a farm.** The prize is capped by `fleetCargo(survivors)`, so carrying it
+home costs combat power on the way out — the cargo decision, moved onto a target that cannot shoot
+first. One raid per origin world per pirate. A flight bay for the whole round trip, out of the same
+three-plus the raid budget comes from. Fuel for both legs, prepaid, refunded never. And **no
+Dominion at all**: the ladder is a zero-sum transfer between commanders, so beating a pirate makes
+you richer and moves you nowhere. Standing is still bought from people.
+
+**What it deliberately is not.** Pirates never attack. There is no escalating threat, no defence
+minigame and no pirate faction with a memory. The system adds one target class and one new reason
+to launch tonight; it does not add a second game beside the game.
 
 ## Clans — five seats, useful cooperation, no diplomacy game
 
@@ -573,11 +632,16 @@ recorded Dominion; only battles resolved afterwards use the bounded transfer.
 
 ## What the game tells you
 
-**Thirteen notifications, and the list is closed.** Seven from the single-world game —
+**Personal notifications remain a closed list; public galaxy lifecycle has two explicit kinds.**
+Seven from the single-world game —
 `incoming fleet` · `raided` · `raid result` · `fleet returned` · `scan detected` ·
 `probe report` · `unlock` — and six D97 added with colonies and the Death Star:
 `strategic incoming` · `death star result` · `colony captured` · `colony lost` ·
 `settlement success` · `settlement lost`.
+
+Asteroid Shower adds `galaxy event started` and `galaxy event ended`. They are deliberately public,
+actionable opportunity messages rather than personal surprises, and future event types reuse these
+same two kinds instead of growing the enum per event.
 
 The test for admitting one: **it reports something that happened TO YOU, that you could not
 have predicted, and that you can act on.** Nothing else passes it.
@@ -599,8 +663,8 @@ chooses; what is still in flight is on the strip, permanently.
 
 The **Galaxy Chronicle** is separate from private notifications. It remembers only public
 state transitions from the last 24 hours: bombardments, Core tier crossings, isotope races
-ending, wreckage appearing or being fully claimed, Dominion leadership changes and the War,
-Consolidation and Sunset act boundaries. It never names who mined or salvaged, and never
+ending, wreckage appearing or being fully claimed, galaxy-event starts/ends, Dominion leadership
+changes and the War, Consolidation and Sunset act boundaries. It never names who mined or salvaged, and never
 records probes, research, cargo, composition, loot or launch intent. An entry may lead back
 to a world only while that world still exists; an exhausted asteroid is history, not a dead
 action button.

@@ -125,10 +125,10 @@ describe('the beat script', () => {
     world = upgrade(world, 'REFINERY');
     world = upgrade(world, 'EXTRACTOR');
 
-    world = build(world, 'WASP', 1);
+    world = build(world, 'DART', 1);
     expect(beatAchieved(beatNamed('fleet'), stateOf({ world }))).toBe(false);
 
-    world = build(world, 'WASP', 1);
+    world = build(world, 'DART', 1);
     expect(beatAchieved(beatNamed('fleet'), stateOf({ world }))).toBe(true);
   });
 

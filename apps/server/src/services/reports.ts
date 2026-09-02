@@ -1,5 +1,12 @@
 import { and, desc, eq, inArray, or } from 'drizzle-orm';
-import { deuteriumOf, type CombatRound, type Fleet, type Grade, type Resources } from '@astera/rules';
+import {
+  deuteriumOf,
+  type CombatRound,
+  type Fleet,
+  type Grade,
+  type PirateLevel,
+  type Resources,
+} from '@astera/rules';
 import type { Db, Tx } from '../db/client.js';
 import {
   accounts,
@@ -7,13 +14,16 @@ import {
   battleReports,
   clans,
   missions,
+  pirateRaids,
   planets,
   players,
+  seasons,
   strategicImpacts,
   strategicInterceptions,
   type StrategicDestroyedOrder,
   type StrategicLevelChange,
 } from '../db/schema.js';
+import { pirateCallsign, privatePirateField } from './pirateField.js';
 
 /**
  * BATTLE REPORTS — the closing link of the loop.
@@ -45,8 +55,23 @@ import {
 export interface BattleReportView {
   kind: 'BATTLE';
   id: string;
-  /** Mission identity links the notification that announced this fight to its report. */
-  missionId: string;
+  /**
+   * Mission identity links the notification that announced this fight to its report.
+   *
+   * NULL on a pirate battle, which has no mission — see `pirateRaidId`. The two
+   * are the report's deep link, and Signals matches on whichever is present.
+   */
+  missionId: string | null;
+  /** The pirate raid this settles, when there was no world on the other side. D150. */
+  pirateRaidId: string | null;
+  /**
+   * WHAT WAS ON THE OTHER SIDE WHEN IT WAS NOT A COMMANDER. D150.
+   *
+   * Structured rather than a sentence, because the sentence belongs to the client's
+   * locale files. `opponentName` still carries a plain fallback for the same reason
+   * "someone" does, but a client that knows about pirates renders this instead.
+   */
+  pirate: { level: PirateLevel; callsign: string } | null;
   at: Date;
   grade: Grade;
   /** The blow-by-blow. Null calculation fields identify a report from before D121a telemetry. */
@@ -233,7 +258,16 @@ async function readBattleReportsIn(
 
   if (history.length === 0 && impacts.length === 0) return { reports: [], rivals: [] };
 
-  const commitments = rows.length === 0
+  /*
+    ONLY THE ROWS THAT HAVE A MISSION. A pirate report's `missionId` is NULL, and
+    `inArray(column, [..., null])` is neither valid Drizzle nor valid SQL — a NULL
+    in an IN list matches nothing and would have silently emptied the clan lookup
+    for every other report on the page.
+  */
+  const missionIds = rows
+    .map((row) => row.missionId)
+    .filter((id): id is string => id !== null);
+  const commitments = missionIds.length === 0
     ? []
     : await tx
         .select({
@@ -242,7 +276,7 @@ async function readBattleReportsIn(
           defenderClanId: attackCommitments.defenderClanId,
         })
         .from(attackCommitments)
-        .where(inArray(attackCommitments.missionId, rows.map((row) => row.missionId)));
+        .where(inArray(attackCommitments.missionId, missionIds));
   const clanIds = [...new Set(commitments.flatMap((commitment) => [
     commitment.attackerClanId,
     commitment.defenderClanId,
@@ -303,25 +337,55 @@ async function readBattleReportsIn(
    * the record of it. The defender's world is `targetPlanetId`; the attacker's is
    * the mission's origin, which is why the launch rows are read here.
    */
-  const originByMission = rows.length === 0
-    && impacts.length === 0
+  const launchIds = [...missionIds, ...impacts.map((row) => row.missionId)];
+  const originByMission = launchIds.length === 0
       ? new Map<string, string>()
       : new Map(
         (await tx
           .select({ id: missions.id, originPlanetId: missions.originPlanetId })
           .from(missions)
-          .where(inArray(missions.id, [
-            ...rows.map((row) => row.missionId),
-            ...impacts.map((row) => row.missionId),
-          ])))
+          .where(inArray(missions.id, launchIds)))
           .map((row) => [row.id, row.originPlanetId]),
       );
+
+  /**
+   * A PIRATE BATTLE STILL HAS ONE WORLD IN IT: the one that launched. D150.
+   *
+   * The half of the report the reader can act on is "which of MY worlds did this",
+   * and a pirate raid answers that from its own origin rather than from a mission.
+   * The pirate's level and callsign come off the season lane, which is derived —
+   * nothing about it is stored on the report.
+   */
+  const raidIds = rows
+    .map((row) => row.pirateRaidId)
+    .filter((id): id is string => id !== null);
+  const raidRows = raidIds.length === 0
+    ? []
+    : await tx
+        .select({
+          id: pirateRaids.id,
+          planetId: pirateRaids.planetId,
+          pirateIndex: pirateRaids.pirateIndex,
+          asteroidKey: seasons.asteroidKey,
+        })
+        .from(pirateRaids)
+        .innerJoin(seasons, eq(seasons.id, pirateRaids.seasonId))
+        .where(inArray(pirateRaids.id, raidIds));
+  const raidById = new Map(raidRows.map((raid) => {
+    const spec = privatePirateField(raid.asteroidKey)[raid.pirateIndex];
+    return [raid.id, {
+      planetId: raid.planetId,
+      level: spec?.level ?? null,
+      callsign: pirateCallsign(raid.asteroidKey, raid.pirateIndex),
+    }];
+  }));
 
   const named = [...new Set([
     ...rows.map((row) => row.targetPlanetId),
     ...impacts.map((row) => row.targetPlanetId),
     ...originByMission.values(),
-  ])];
+    ...raidRows.map((raid) => raid.planetId),
+  ])].filter((id): id is string => id !== null);
   const worldNames = named.length === 0
     ? []
     : await tx
@@ -335,6 +399,12 @@ async function readBattleReportsIn(
     const opponentId = attacking ? row.defenderPlayerId : row.attackerPlayerId;
     const opponent = opponentId === null ? undefined : byId.get(opponentId);
     const neutral = row.targetKind === 'NEUTRAL';
+    /*
+      THE THIRD SHAPE. There is no world and no commander on the other side, so
+      every field that names one has to answer something honest rather than reach
+      through a null — a report that draws an empty box is worse than no report.
+    */
+    const raid = row.pirateRaidId === null ? undefined : raidById.get(row.pirateRaidId);
 
     const yourLosses = attacking ? row.attackerLosses : row.defenderLosses;
     const theirLosses = attacking ? row.defenderLosses : row.attackerLosses;
@@ -349,7 +419,9 @@ async function readBattleReportsIn(
      */
     const dominion =
       row.dominionSwing === null ? null : attacking ? row.dominionSwing : -row.dominionSwing;
-    const commitment = commitmentByMission.get(row.missionId);
+    const commitment = row.missionId === null
+      ? undefined
+      : commitmentByMission.get(row.missionId);
     const rounds: BattleReportRoundView[] = row.rounds.map((round) => ({
       ...round,
       // JSON reports are immutable. Missing means the battle predates detailed
@@ -359,12 +431,15 @@ async function readBattleReportsIn(
       shieldBefore: round.shieldBefore ?? null,
       shieldAfter: round.shieldAfter ?? null,
       attackerHullDamage: round.attackerHullDamage ?? null,
-      // JSON reports written before D95 have no specialist field.
-      breacherShieldDamage:
-        (
-          round as Omit<CombatRound, 'breacherShieldDamage'> &
-            Partial<Pick<CombatRound, 'breacherShieldDamage'>>
-        ).breacherShieldDamage ?? 0,
+      // JSON reports written before Fleet V2 used the specialist's old product
+      // name. Read it once at the persistence boundary; every response is current.
+      shieldBreakerDamage: (() => {
+        const stored = round as unknown as Record<string, unknown>;
+        const current = stored.shieldBreakerDamage;
+        if (typeof current === 'number') return current;
+        const legacy = stored.breacherShieldDamage;
+        return typeof legacy === 'number' ? legacy : 0;
+      })(),
     }));
     const firstRound = rounds[0];
     const lastRound = rounds.at(-1);
@@ -373,27 +448,42 @@ async function readBattleReportsIn(
       kind: 'BATTLE',
       id: row.id,
       missionId: row.missionId,
+      pirateRaidId: row.pirateRaidId,
+      pirate: raid && raid.level !== null
+        ? { level: raid.level, callsign: raid.callsign }
+        : null,
       at: row.createdAt,
       grade: row.grade,
       rounds,
       attacking,
-      opponentName: opponent?.name ?? 'someone',
+      opponentName: raid
+        ? `Pirate L${String(raid.level ?? '?')}-${raid.callsign}`
+        : opponent?.name ?? 'someone',
       /*
         THE ATTACKER IS SHOWN THE WORLD THEY RAIDED; THE DEFENDER, THE WORLD THE
         RAID CAME FROM. Both are "the other side's world in this battle", which is
         what the field means — and only one of them is the opponent's capital.
       */
-      opponentPlanet: attacking
-        ? targetById.get(row.targetPlanetId) ?? opponent?.planet ?? 'an unknown world'
-        : opponent?.planet ?? 'an unknown world',
-      opponentPlanetId: attacking
-        ? row.targetPlanetId
-        : opponent?.planetId ?? null,
+      opponentPlanet: raid
+        ? ''
+        : attacking
+          ? (row.targetPlanetId === null ? undefined : targetById.get(row.targetPlanetId))
+            ?? opponent?.planet ?? 'an unknown world'
+          : opponent?.planet ?? 'an unknown world',
+      // Null on a pirate row on purpose: the dossier matches worlds, and there is
+      // no world here to file a floor against.
+      opponentPlanetId: raid
+        ? null
+        : attacking
+          ? row.targetPlanetId
+          : opponent?.planetId ?? null,
       // Which of the CALLER's worlds this was: the one they launched from, or the
       // one that was hit. Empty only where the world has since ceased to exist.
-      yourPlanet: attacking
-        ? targetById.get(originByMission.get(row.missionId) ?? '') ?? ''
-        : targetById.get(row.targetPlanetId) ?? '',
+      yourPlanet: raid
+        ? targetById.get(raid.planetId) ?? ''
+        : attacking
+          ? targetById.get(originByMission.get(row.missionId ?? '') ?? '') ?? ''
+          : targetById.get(row.targetPlanetId ?? '') ?? '',
       neutral,
       yourLosses,
       theirLosses,

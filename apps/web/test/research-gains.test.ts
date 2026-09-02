@@ -89,48 +89,47 @@ describe('what a rung of research buys', () => {
 
   /* ── the figures themselves, against the rules that make them ── */
 
-  describe('the combat ladders', () => {
+  describe('the Fleet V2 ladders', () => {
     const pct = (x: number) => `${(x * 100).toFixed(0)}%`;
 
-    it('quotes a doctrine at the multiplier the combat rule applies', () => {
+    it('quotes Power at the attack multiplier the combat rule applies', () => {
       for (let level = 0; level < RESEARCH_TECH.weaponMaxLevel; level += 1) {
-        const gain = researchGain('WASP_DOCTRINE', level);
-        const expected = hullTech({ WASP_DOCTRINE: level + 1 }, 'WASP').atk - 1;
+        const gain = researchGain('SHIP_POWER', level);
+        const expected = hullTech({ SHIP_POWER: level + 1 }, 'DART').atk - 1;
         expect(gain.next).toBe(pct(expected));
       }
     });
 
-    /**
-     * THE TWO ROWS THE PLAYER IS ACTUALLY CHOOSING BETWEEN.
-     *
-     * They split the ceiling evenly, so the percentages are the SAME and the
-     * honest difference is reach. If the two ever printed the same scope line the
-     * screen would be offering a choice it had not explained.
-     */
-    it('gives a doctrine and the general project the same step and different reach', () => {
-      const doctrine = researchGain('WASP_DOCTRINE', 2);
-      const general = researchGain('WEAPONS_GENERAL', 2);
-      expect(general.next).toBe(doctrine.next);
-      expect(general.unlocks).not.toBe(doctrine.unlocks);
-      expect(general.unlocks).toMatch(/every ship and ground gun/i);
-      expect(doctrine.unlocks).toMatch(/wasp/i);
+    it('shows Engineering as T3/T4 access rather than a combat percentage', () => {
+      const first = researchGain('STARSHIP_ENGINEERING', 0);
+      const second = researchGain('STARSHIP_ENGINEERING', 1);
+      expect(first.now).toMatch(/tier 2/i);
+      expect(first.next).toMatch(/tier 3/i);
+      expect(second.now).toMatch(/tier 3/i);
+      expect(second.next).toMatch(/tier 4/i);
+      expect(first.unlocks).toMatch(/individual hulls.*power.*armor.*propulsion/i);
     });
 
-    /** And the general project is the only one a support hull ever feels. */
-    it('reflects that no doctrine covers a support hull', () => {
+    it('shows the separate attack, armour and propulsion boundaries', () => {
       const top = RESEARCH_TECH.weaponMaxLevel;
-      expect(hullTech({ WASP_DOCTRINE: top }, 'HAULER').atk).toBe(1);
-      expect(hullTech({ WEAPONS_GENERAL: top }, 'HAULER').atk).toBeGreaterThan(1);
+      expect(hullTech({ SHIP_POWER: top }, 'COURIER').atk).toBe(1);
+      expect(hullTech({ SHIP_ARMOR: top }, 'COURIER').hp).toBeGreaterThan(1);
+      expect(hullTech({ SHIP_PROPULSION: top }, 'COURIER').speed).toBeGreaterThan(1);
+      expect(researchGain('SHIP_POWER', 0).unlocks).toMatch(/combat hull/i);
+      expect(researchGain('SHIP_ARMOR', 0).unlocks).toMatch(/all 18/i);
+      expect(researchGain('SHIP_PROPULSION', 0).unlocks).toMatch(/all 18/i);
     });
 
-    /** The combined ceiling is the one hard rule, and the copy states it. */
-    it('names the combined ceiling on the general row', () => {
+    /** The combined Power × Armor ceiling is the one hard research rule. */
+    it('names the combined ceiling on the Power and Armor rows', () => {
       const both = hullTech(
-        { WASP_DOCTRINE: RESEARCH_TECH.weaponMaxLevel, WEAPONS_GENERAL: RESEARCH_TECH.weaponMaxLevel },
-        'WASP',
+        { SHIP_POWER: RESEARCH_TECH.weaponMaxLevel, SHIP_ARMOR: RESEARCH_TECH.weaponMaxLevel },
+        'DART',
       );
       expect(both.atk * both.hp).toBeCloseTo(RESEARCH_TECH.powerCeiling, 6);
-      expect(researchGain('WEAPONS_GENERAL', 0).unlocks)
+      expect(researchGain('SHIP_POWER', 0).unlocks)
+        .toMatch(new RegExp(String(Math.round((RESEARCH_TECH.powerCeiling - 1) * 100))));
+      expect(researchGain('SHIP_ARMOR', 0).unlocks)
         .toMatch(new RegExp(String(Math.round((RESEARCH_TECH.powerCeiling - 1) * 100))));
     });
   });

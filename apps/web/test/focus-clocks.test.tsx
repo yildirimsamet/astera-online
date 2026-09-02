@@ -23,7 +23,7 @@ describe('a flight in the interface', () => {
     minutesRemaining: 12,
     arriveAt,
     leg: 'outbound',
-    fleet: { WASP: 8 },
+    fleet: { DART: 8 },
     ...over,
   });
 

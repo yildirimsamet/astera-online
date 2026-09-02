@@ -87,7 +87,7 @@ describe.each<Departure>(['mining', 'salvage'])('%s launch cache hand-off', (kin
       mining: status([launched]),
       pending: [],
       planet: planetView(
-        { fleet: { WASP: 12, PROSPECTOR: 0 }, flight: { used: 1, total: 3 } },
+        { fleet: { DART: 12, PROSPECTOR: 0 }, flight: { used: 1, total: 3 } },
       ),
     });
     mine = vi.fn().mockResolvedValue(response);

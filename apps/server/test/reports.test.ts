@@ -148,8 +148,8 @@ describe('battle reports', () => {
   const raid = async (wasps = 40): Promise<string> => {
     await grant(f.db, theirs, 40_000, 4_000);
     await giveUnits(f.db, theirs, { BASTION: 6 });
-    await giveUnits(f.db, mine, { WASP: wasps, HAULER: 3 });
-    const launch = await launchAttack(f.db, mine, theirs, { WASP: wasps, HAULER: 3 }, f.clock);
+    await giveUnits(f.db, mine, { DART: wasps, COURIER: 3 });
+    const launch = await launchAttack(f.db, mine, theirs, { DART: wasps, COURIER: 3 }, f.clock);
     f.clock.set(settledAt(launch.arriveAt));
     await worker().tick();
     return launch.missionId;
@@ -238,7 +238,7 @@ describe('battle reports', () => {
       status: 'resolved',
       originPlanetId: mine,
       targetPlanetId: theirs,
-      fleet: { WASP: 2 },
+      fleet: { DART: 2 },
       distance: 100,
       departAt: f.clock.now(),
       arriveAt: f.clock.now(),
@@ -253,7 +253,7 @@ describe('battle reports', () => {
       grade: 'REPELLED',
       rounds: [],
       loot: { alloy: 0, crystal: 0, deuterium: 0 },
-      attackerLosses: { WASP: 2 },
+      attackerLosses: { DART: 2 },
       defenderLosses: {},
       dominionSwing: -50,
       createdAt: f.clock.now(),
@@ -357,7 +357,7 @@ describe('battle reports', () => {
       await raid(40);
       const [report] = await reportsFor(0);
 
-      expect(report!.yourFleet).toEqual({ WASP: 40, HAULER: 3 });
+      expect(report!.yourFleet).toEqual({ DART: 40, COURIER: 3 });
       // Every loss has to be a subset of what was fielded, or the sheet draws a
       // negative survivor count at the reader.
       for (const [hull, lost] of Object.entries(report!.yourLosses)) {
@@ -394,7 +394,7 @@ describe('battle reports', () => {
       // The defender's Bastions are the tell: they must appear in the defender's
       // own roster and nowhere in the attacker's payload except as losses.
       expect(attacker!.yourFleet.BASTION).toBeUndefined();
-      expect(defender!.yourFleet.WASP ?? 0).not.toBe(40);
+      expect(defender!.yourFleet.DART ?? 0).not.toBe(40);
     });
 
     /**
@@ -427,8 +427,8 @@ describe('battle reports', () => {
     it('tells the attacker when their own holds capped the haul, and tells the defender nothing', async () => {
       // One Wasp of cargo against a full store: the holds are certainly the limit.
       await grant(f.db, theirs, 40_000, 4_000);
-      await giveUnits(f.db, mine, { WASP: 60 });
-      const launch = await launchAttack(f.db, mine, theirs, { WASP: 60 }, f.clock);
+      await giveUnits(f.db, mine, { DART: 60 });
+      const launch = await launchAttack(f.db, mine, theirs, { DART: 60 }, f.clock);
       f.clock.set(settledAt(launch.arriveAt));
       await worker().tick();
 
@@ -478,8 +478,8 @@ describe('battle reports', () => {
 
       // Then throw a token squadron at a world that is still dark, and lose.
       await giveUnits(f.db, theirs, { BASTION: 12 });
-      await giveUnits(f.db, mine, { WASP: 1 });
-      const launch = await launchAttack(f.db, mine, theirs, { WASP: 1 }, f.clock);
+      await giveUnits(f.db, mine, { DART: 1 });
+      const launch = await launchAttack(f.db, mine, theirs, { DART: 1 }, f.clock);
       f.clock.set(settledAt(launch.arriveAt));
       await worker().tick();
 
@@ -545,7 +545,7 @@ describe('battle reports', () => {
           attackerDamage: 40,
           defenderDamage: 10,
           shieldAbsorbed: 0,
-          breacherShieldDamage: 0,
+          shieldBreakerDamage: 0,
           attackerLosses: {},
           defenderLosses: {},
         }],
@@ -593,9 +593,9 @@ describe('battle reports', () => {
       await setLevel(f.db, colony, 'CORE', 8);
       await grant(f.db, colony, 40_000, 4_000);
       await giveUnits(f.db, colony, { BASTION: 2 });
-      await giveUnits(f.db, mine, { WASP: 40 });
+      await giveUnits(f.db, mine, { DART: 40 });
 
-      const launch = await launchAttack(f.db, mine, colony, { WASP: 40 }, f.clock);
+      const launch = await launchAttack(f.db, mine, colony, { DART: 40 }, f.clock);
       f.clock.set(settledAt(launch.arriveAt));
       await worker().tick();
 
@@ -643,8 +643,8 @@ describe('battle reports', () => {
         .where(eq(planets.kind, 'NEUTRAL'))).at(0);
       if (!neutral) return; // ruleset v1 seeds no caretaker worlds
 
-      await giveUnits(f.db, mine, { WASP: 40 });
-      const launch = await launchAttack(f.db, mine, neutral.id, { WASP: 40 }, f.clock);
+      await giveUnits(f.db, mine, { DART: 40 });
+      const launch = await launchAttack(f.db, mine, neutral.id, { DART: 40 }, f.clock);
       f.clock.set(settledAt(launch.arriveAt));
       await worker().tick();
 
@@ -722,8 +722,8 @@ describe('what a battle leaves behind', () => {
 
   const fight = async (): Promise<void> => {
     await giveUnits(f.db, theirs, { BASTION: 6 });
-    await giveUnits(f.db, mine, { WASP: 80, HAULER: 3 });
-    const launch = await launchAttack(f.db, mine, theirs, { WASP: 80, HAULER: 3 }, f.clock);
+    await giveUnits(f.db, mine, { DART: 80, COURIER: 3 });
+    const launch = await launchAttack(f.db, mine, theirs, { DART: 80, COURIER: 3 }, f.clock);
     f.clock.set(settledAt(launch.arriveAt));
     await worker().tick();
   };
@@ -837,5 +837,148 @@ describe('what a battle leaves behind', () => {
     await expect(launchHarvest(f.db, mine, field!.id, 2, f.clock)).rejects.toMatchObject({
       code: 'ALREADY_HARVESTING',
     });
+  });
+});
+
+/**
+ * A REPORT ABOUT SOMETHING THAT WAS NOT A WORLD. D150 · gap G3.
+ *
+ * `battle_reports` had two NOT NULL binders — a mission and a target planet — and
+ * every reader in this file dereferenced both. A pirate battle happens in empty
+ * space against something that is neither, so the binders became nullable and the
+ * readers had to be taught the third shape. A migration alone would have left
+ * `readBattleReports` throwing on a null planet id, or worse, quietly drawing an
+ * empty box where the opponent's name goes.
+ */
+describe('a report about a pirate', () => {
+  let f: Fixture;
+
+  beforeEach(async () => {
+    f = await seedWorld(2);
+  });
+
+  const raidRow = async (): Promise<{ raidId: string; index: number; level: number }> => {
+    const { privatePirateField, pirateCallsign } = await import('../src/services/pirateField.js');
+    const { pirateRaids, seasons } = await import('../src/db/schema.js');
+    const [season] = await f.db.select().from(seasons).where(eq(seasons.id, f.seasonId));
+    const spec = privatePirateField(season!.asteroidKey)[0]!;
+    const [raid] = await f.db.insert(pirateRaids).values({
+      seasonId: f.seasonId,
+      planetId: f.planetIds[0]!,
+      pirateIndex: spec.index,
+      status: 'returning',
+      fleet: { DART: 20 },
+      tech: {},
+      interceptX: 10, interceptY: 0, interceptZ: 0,
+      departAt: f.clock.now(),
+      arriveAt: f.clock.now(),
+    }).returning();
+    expect(pirateCallsign(season!.asteroidKey, spec.index)).toHaveLength(4);
+    return { raidId: raid!.id, index: spec.index, level: spec.level };
+  };
+
+  it('reads back with no mission, no world, and a pirate the client can name', async () => {
+    const raid = await raidRow();
+    await f.db.insert(battleReports).values({
+      seasonId: f.seasonId,
+      missionId: null,
+      targetPlanetId: null,
+      pirateRaidId: raid.raidId,
+      targetKind: 'PIRATE',
+      attackerPlayerId: f.playerIds[0]!,
+      defenderPlayerId: null,
+      grade: 'DECISIVE',
+      rounds: [],
+      loot: { alloy: 100, crystal: 50, deuterium: 0 },
+      attackerLosses: { DART: 3 },
+      defenderLosses: { PIKE: 2 },
+      attackerFleet: { DART: 20 },
+      dominionSwing: 0,
+      createdAt: f.clock.now(),
+    });
+
+    const { readBattleReports } = await import('../src/services/reports.js');
+    const { reports, rivals } = await readBattleReports(f.db, f.playerIds[0]!);
+    const view = reports.find((r) => r.kind === 'BATTLE');
+    expect(view).toBeDefined();
+    if (view?.kind !== 'BATTLE') throw new Error('expected a battle report');
+
+    expect(view.missionId).toBeNull();
+    expect(view.pirateRaidId).toBe(raid.raidId);
+    expect(view.pirate).not.toBeNull();
+    expect(view.pirate?.level).toBe(raid.level);
+    expect(view.pirate?.callsign).toMatch(/^[A-Za-z0-9_-]{4}$/);
+    // Always the launcher's report; a pirate never files one.
+    expect(view.attacking).toBe(true);
+    expect(view.neutral).toBe(false);
+    expect(view.opponentPlanetId).toBeNull();
+    // The caller's own world is still named — that is the actionable half.
+    expect(view.yourPlanet).not.toBe('');
+    expect(view.lootAlloy).toBe(100);
+    expect(view.dominion).toBe(0);
+    // A pirate is not a rival: there is nobody to build a dossier on.
+    expect(rivals).toHaveLength(0);
+  });
+
+  it('refuses a row that names two kinds of target at once', async () => {
+    /*
+      "Exactly one binder" is a CONSTRAINT and not a convention, because a
+      convention is what a table breaks the first time somebody adds a code path.
+    */
+    const raid = await raidRow();
+    const [mission] = await f.db.select().from(missions).limit(1);
+    await expect(f.db.insert(battleReports).values({
+      seasonId: f.seasonId,
+      missionId: mission?.id ?? null,
+      targetPlanetId: f.planetIds[1]!,
+      pirateRaidId: raid.raidId,
+      targetKind: 'PIRATE',
+      attackerPlayerId: f.playerIds[0]!,
+      grade: 'DECISIVE',
+      rounds: [],
+      loot: { alloy: 0, crystal: 0, deuterium: 0 },
+      attackerLosses: {},
+      defenderLosses: {},
+      createdAt: f.clock.now(),
+    })).rejects.toThrow();
+  });
+
+  it('still reads a world battle beside it without confusing the two', async () => {
+    const raid = await raidRow();
+    await f.db.insert(battleReports).values({
+      seasonId: f.seasonId,
+      missionId: null,
+      targetPlanetId: null,
+      pirateRaidId: raid.raidId,
+      targetKind: 'PIRATE',
+      attackerPlayerId: f.playerIds[0]!,
+      grade: 'PARTIAL',
+      rounds: [],
+      loot: { alloy: 0, crystal: 0, deuterium: 0 },
+      attackerLosses: {},
+      defenderLosses: {},
+      createdAt: f.clock.now(),
+    });
+    await grant(f.db, f.planetIds[0]!, 60_000);
+    await giveUnits(f.db, f.planetIds[0]!, { DART: 30 });
+    await giveUnits(f.db, f.planetIds[1]!, { BASTION: 2 });
+    const launched = await launchAttack(
+      f.db, f.planetIds[0]!, f.planetIds[1]!, { DART: 30 }, f.clock,
+    );
+    const w = new EventWorker(f.db, f.clock, { pollMs: 50, batch: 10, staleMinutes: 5 }, silent);
+    f.clock.set(settledAt(launched.arriveAt));
+    await w.tick();
+
+    const { readBattleReports } = await import('../src/services/reports.js');
+    const { reports } = await readBattleReports(f.db, f.playerIds[0]!);
+    const battles = reports.filter((r) => r.kind === 'BATTLE');
+    expect(battles).toHaveLength(2);
+    const pirate = battles.find((r) => r.pirate !== null);
+    const world = battles.find((r) => r.pirate === null);
+    expect(pirate).toBeDefined();
+    expect(world).toBeDefined();
+    if (world?.kind !== 'BATTLE') throw new Error('expected a world battle');
+    expect(world.missionId).not.toBeNull();
+    expect(world.opponentPlanetId).not.toBeNull();
   });
 });

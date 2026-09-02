@@ -237,6 +237,7 @@ describe('one galaxy, one clock', () => {
           [strangerPlanetId],
           SEES_EVERYTHING,
           new Set(),
+          null,
         ).find((c) => c.id === mission.id);
       }
       if (!held) continue;
@@ -254,8 +255,8 @@ describe('one galaxy, one clock', () => {
   it('draws a raid in the same place for its owner and for a stranger, all the way down', async () => {
     await grant(f.db, mine, 40_000, 16_000);
     await levelWorld(f.db, f.planetIds);
-    await giveUnits(f.db, mine, { WASP: 10 });
-    await launchAttack(f.db, mine, theirs, { WASP: 6 }, f.clock);
+    await giveUnits(f.db, mine, { DART: 10 });
+    await launchAttack(f.db, mine, theirs, { DART: 6 }, f.clock);
 
     const { worst, at, samples } = await walk(mine, f.planetIds[2]!, f.playerIds[2]!, 1_000);
     expect(samples).toBeGreaterThan(60);
@@ -389,8 +390,8 @@ describe('one galaxy, one clock', () => {
   it('draws a fleet coming home in the same place for its owner and for a stranger', async () => {
     await grant(f.db, mine, 40_000, 16_000);
     await levelWorld(f.db, f.planetIds);
-    await giveUnits(f.db, mine, { WASP: 10 });
-    const raid = await launchAttack(f.db, mine, theirs, { WASP: 6 }, f.clock);
+    await giveUnits(f.db, mine, { DART: 10 });
+    const raid = await launchAttack(f.db, mine, theirs, { DART: 6 }, f.clock);
 
     // Land it, so the worker writes the leg home.
     f.clock.set(new Date(engagementEndsAt(raid.arriveAt.getTime())));
@@ -478,6 +479,7 @@ describe('one galaxy, one clock', () => {
           [f.planetIds[2]!],
           SEES_EVERYTHING,
           new Set([rock.index]),
+          null,
         ).find((c) => c.id === run.runId);
       }
       if (!held) continue;
@@ -511,8 +513,8 @@ describe('one galaxy, one clock', () => {
   it('never draws a stranger’s craft further along than it really is, however stale the read', async () => {
     await grant(f.db, mine, 40_000, 16_000);
     await levelWorld(f.db, f.planetIds);
-    await giveUnits(f.db, mine, { WASP: 10 });
-    await launchAttack(f.db, mine, theirs, { WASP: 6 }, f.clock);
+    await giveUnits(f.db, mine, { DART: 10 });
+    await launchAttack(f.db, mine, theirs, { DART: 6 }, f.clock);
     nodes = await discNodes();
 
     const [row] = await f.db.select().from(missions).where(eq(missions.originPlanetId, mine));
@@ -543,6 +545,7 @@ describe('one galaxy, one clock', () => {
         [f.planetIds[2]!],
         SEES_EVERYTHING,
         new Set(),
+        null,
       ).find((c) => c.id === mission.id);
       if (!stale) continue;
 

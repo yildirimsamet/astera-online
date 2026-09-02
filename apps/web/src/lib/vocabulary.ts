@@ -1,4 +1,4 @@
-import type { BuildingId, HullId, InstrumentId, SatelliteId } from '@astera/rules';
+import { ALL_HULLS, type BuildingId, type HullId, type InstrumentId, type SatelliteId } from '@astera/rules';
 
 /**
  * THE READING ORDER OF EVERY LIST A PLAYER SCROLLS.
@@ -58,7 +58,4 @@ export const SATELLITE_ORDER: readonly SatelliteId[] = [
   'BEACON',
 ];
 
-export const HULL_ORDER: readonly HullId[] = [
-  'WASP', 'LANCE', 'BULWARK', 'BREACHER', 'HAULER', 'RUNNER',
-  'BASTION', 'THORN', 'PROSPECTOR',
-];
+export const HULL_ORDER: readonly HullId[] = ALL_HULLS;

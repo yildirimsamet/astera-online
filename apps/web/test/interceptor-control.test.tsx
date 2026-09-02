@@ -247,7 +247,8 @@ describe('in Turkish', () => {
 /**
  * THE HULL GATES THAT POINTED AT ROWS THAT LEFT. T12.
  *
- * The Runner is gated on Dense Fuel Cells and the Breacher on Gravitic Charges,
+ * The Tempest is gated on Starship Engineering and Ship Power, while the Nullifier
+ * is gated on Starship Engineering and Ship Propulsion,
  * and both refusals offer to take the player to the research that would open
  * them. That worked through `TAB_OF` while the cards were on this sheet. They are
  * not any more, so the jump had to move with them — unfixed it fell through to
@@ -293,24 +294,24 @@ describe('a hull gated on research', () => {
     return lock!;
   };
 
-  it("sends the Runner's fix to the research surface", async () => {
+  it("sends the Tempest's fix to the research surface", async () => {
     const onOpenResearch = vi.fn();
     const view = showReach(onOpenResearch);
-    await userEvent.click(await fixFrom(view, 'RUNNER'));
+    await userEvent.click(await fixFrom(view, 'TEMPEST'));
     expect(onOpenResearch).toHaveBeenCalledOnce();
   });
 
-  it("sends the Breacher's fix to the same place", async () => {
+  it("sends the Nullifier's fix to the same place", async () => {
     const onOpenResearch = vi.fn();
     const view = showReach(onOpenResearch);
-    await userEvent.click(await fixFrom(view, 'BREACHER'));
+    await userEvent.click(await fixFrom(view, 'NULLIFIER'));
     expect(onOpenResearch).toHaveBeenCalledOnce();
   });
 
   /** With no host to take it, the reason still stands and only the jump is gone. */
   it('still states the requirement with nowhere to send it', () => {
     const view = showReach();
-    expect(view.container.querySelector('#row-RUNNER'))
-      .toHaveTextContent(/Dense Fuel Cells first/i);
+    expect(view.container.querySelector('#row-TEMPEST'))
+      .toHaveTextContent(/Starship Engineering I/i);
   });
 });

@@ -111,61 +111,111 @@ export const vocabulary = {
   },
 
   hull: {
-    WASP: {
-      name: 'Wasp',
-      tag: 'Cheap, fast attacker',
-      role: 'Cheapest attack, fastest out and back',
-      pitch: 'Cheapest damage, fastest home. The shortest time spent undefended.',
-      detail: 'Wasps are strong against Bulwarks and Bastions and weak against Lances and Breachers. Their speed 130 produces the shortest missions. A Wasp carries 45 units, but meaningful raid cargo still calls for Haulers or Runners.',
+    DART: {
+      name: 'Dart', tag: 'Fragile speed raider', role: 'Fastest entry combat hull; trades durability for exposure time.',
+      pitch: 'Arrives and returns quickly, but folds under concentrated fire.',
+      detail: 'A low-cost Skirmisher for short raids and heavy-hull counters. Its speed preserves home-defence uptime; its thin hull makes a failed read expensive.',
     },
-    LANCE: {
-      name: 'Lance',
-      tag: 'Counters light craft',
-      role: 'Strong against Wasps and Thorns · weak against Bulwarks and Bastions',
-      pitch: 'Effective against light, numerous forces; inefficient against the heavy Bulwark class.',
-      detail: 'Lances receive the 1.6 class advantage against Wasps and Thorns. Bulwarks and Bastions receive that advantage against them. Their high attack uses fleet room well, but an all-Lance force has a clear heavy counter.',
+    PIKE: {
+      name: 'Pike', tag: 'Entry strike hull', role: 'High attack for its price; fragile against Bulwark-class targets.',
+      pitch: 'Commits more of its budget to damage than survival.',
+      detail: 'A Lance-class striker that punishes Skirmishers and Thorns. Ramparts and Bastions counter it, so an all-Pike force has a visible answer.',
     },
-    BULWARK: {
-      name: 'Bulwark',
-      tag: 'Slow and tough',
-      role: 'Durable counter to Lances · the slowest mobile hull',
-      pitch: 'Trades travel speed for high durability and an advantage against Lance-class targets.',
-      detail: 'Bulwarks counter Lances and Breachers, but Wasps and Thorns counter them. Speed 65 makes them the slowest mobile hull, so including one lengthens the mission and the time those ships are away from home.',
+    RAMPART: {
+      name: 'Rampart', tag: 'Entry fortress', role: 'Cheap durability that makes the whole fleet slower.',
+      pitch: 'Absorbs Lance fire efficiently; vulnerable to Skirmisher swarms.',
+      detail: 'A slow Bulwark-class line hull. It buys survival instead of attack and is best when travel time matters less than holding formation.',
     },
-    HAULER: {
-      name: 'Hauler',
-      tag: 'Carries the loot home',
-      role: 'Carries the loot home · contributes nothing to the fight',
-      pitch: 'Carries the loot home. Useless in the fight — escort it or lose it.',
-      detail: 'Add Haulers when exposed stock is worth taking. Their cargo is cheap, but support hulls cannot deal damage and remain protected only while combat hulls survive.',
+    WARDEN: {
+      name: 'Warden', tag: 'Mobile escort', role: 'Balanced protection without Rampart-level delay.',
+      pitch: 'Less hull than a fortress, more speed and attack for mixed fleets.',
+      detail: 'An entry Bulwark escort for compositions that need protection without accepting the slowest travel profile.',
     },
-    RUNNER: {
-      name: 'Runner',
-      tag: 'Fast strike cargo',
-      role: 'Fast support hold · expensive capacity for short exposure windows',
-      pitch: 'Carries less than a Hauler, but moves with a strike fleet. Speed is what you buy.',
-      detail: 'Runners keep cargo from slowing a fast raid. They cost more per unit carried than Haulers, so buy them when a shorter exposure window matters more than efficiency.',
+    COURIER: {
+      name: 'Courier', tag: 'Fast light transport', role: 'Entry cargo hull; fast, lightly protected and unarmed.',
+      pitch: 'Keeps quick raids quick, but needs escorts and carries less.',
+      detail: 'A support hull for loot, transfers and settlement. It deals no damage and is protected only while combat escorts survive.',
     },
-    BREACHER: {
-      name: 'Breacher',
+    VIPER: {
+      name: 'Viper', tag: 'Efficient raider', role: 'Tier-two speed and better survival than Dart.',
+      pitch: 'Preserves the fast-fleet plan while paying less durability tax.',
+      detail: 'A research-free tier-two Skirmisher. Dart remains cheaper; Viper converts a larger commitment into better equal-cost efficiency.',
+    },
+    TALON: {
+      name: 'Talon', tag: 'Heavy striker', role: 'Tier-two attack specialization with moderate speed.',
+      pitch: 'More efficient strike damage without removing Pike’s cheap role.',
+      detail: 'A Lance-class damage hull for developed yards. Bulwark counters still matter more than its tier advantage.',
+    },
+    STRONGHOLD: {
+      name: 'Stronghold', tag: 'Heavy line hull', role: 'Maximum tier-two durability; slow and expensive.',
+      pitch: 'Builds a wall when survival matters more than arrival time.',
+      detail: 'A fortress-profile Bulwark. Its high hull anchors fleets, while Skirmishers and long exposure remain clear costs.',
+    },
+    SENTINEL: {
+      name: 'Sentinel', tag: 'Tier-two escort', role: 'Faster defensive escort for mixed formations.',
+      pitch: 'Trades fortress durability for attack and fleet tempo.',
+      detail: 'A mobile Bulwark escort that protects transports without forcing the Stronghold travel profile.',
+    },
+    WAYFARER: {
+      name: 'Wayfarer', tag: 'Balanced transport', role: 'More capacity than Courier; slower but still flexible.',
+      pitch: 'The middle choice between fast Courier and high-capacity Atlas.',
+      detail: 'A tier-two support transport for larger raids and transfers. It remains unarmed and depends on combat escorts.',
+    },
+    TEMPEST: {
+      name: 'Tempest', tag: 'Advanced speed raider', role: 'Fastest combat hull; research-gated Skirmisher.',
+      pitch: 'Late-game speed with improved efficiency, still not a line ship.',
+      detail: 'An advanced raider unlocked by Engineering and Ship Power. It keeps a fragile profile so lower-tier walls and counters remain relevant.',
+    },
+    BALLISTA: {
+      name: 'Ballista', tag: 'Advanced striker', role: 'Research-gated heavy attack in the Lance class.',
+      pitch: 'Concentrated damage that still breaks against the right wall.',
+      detail: 'A tier-three strike hull requiring Engineering and Ship Power. It rewards an informed target, not blind mono-fleet production.',
+    },
+    LEVIATHAN: {
+      name: 'Leviathan', tag: 'Advanced fortress', role: 'Huge line durability bought with speed.',
+      pitch: 'A late-game wall that makes every flight a long commitment.',
+      detail: 'A tier-three fortress unlocked through Engineering and Ship Armor. Skirmishers remain its efficient counter.',
+    },
+    PRAETORIAN: {
+      name: 'Praetorian', tag: 'Advanced escort', role: 'Durable, mobile protection for valuable fleets.',
+      pitch: 'Less hull than Leviathan, more tempo for mixed formations.',
+      detail: 'A tier-three Bulwark escort requiring Engineering and Ship Armor. It protects cargo without becoming the slowest possible choice.',
+    },
+    ATLAS: {
+      name: 'Atlas', tag: 'Maximum cargo', role: 'Largest hold; slow, bulky and research-gated.',
+      pitch: 'Best capacity efficiency when the route is safe enough to be slow.',
+      detail: 'A tier-three support transport unlocked by Engineering and Propulsion. It deals no damage and makes escort planning essential.',
+    },
+    NULLIFIER: {
+      name: 'Nullifier',
       tag: 'Breaks active shields',
       role: 'Lance specialist. Five times its normal effect against an active shield.',
       pitch: 'Crushes an Aegis without turning bonus damage into unit kills. Weak when no shield is standing.',
       detail: 'Its specialist charge deals five times normal effect to an active Aegis. Once the shield falls, that bonus does not spill into ships or guns, so unshielded targets waste its premium.',
     },
+    CATACLYSM: {
+      name: 'Cataclysm', tag: 'Capital striker', role: 'Tier-four attack peak; powerful, costly and deliberately slow.',
+      pitch: 'Exceptional concentrated damage without immunity to counters.',
+      detail: 'A capital Lance hull behind Engineering, Power and Armor. Its efficiency is higher, but Bulwark-class defence remains a better answer than mirroring it.',
+    },
+    CITADEL: {
+      name: 'Citadel', tag: 'Capital fortress', role: 'Tier-four durability peak and the slowest mobile commitment.',
+      pitch: 'The strongest wall, paid for in cost and exposure time.',
+      detail: 'A capital Bulwark hull behind Engineering, Armor and Power. It anchors defence but remains vulnerable to Skirmisher counters.',
+    },
     BASTION: {
       name: 'Bastion',
       tag: 'Heavy ground guns',
       role: 'Ground defence · cannot ever leave the planet',
-      pitch: 'Heavy ground defence with an advantage against Lances and Breachers; vulnerable to Wasps.',
-      detail: 'Bastions never leave the planet. Their class gives them an advantage against Lances and Breachers, while Wasps receive the advantage against them. After combat, 60% of destroyed ground guns are restored, rounded down.',
+      pitch: 'Heavy ground defence with an advantage against Lance-class hulls; vulnerable to Skirmishers.',
+      detail: 'Bastions never leave the planet. Their Bulwark class gives them an advantage against Lance-class hulls, while Skirmishers receive the advantage against them. After combat, 60% of destroyed ground guns are restored, rounded down.',
     },
     THORN: {
       name: 'Thorn',
       tag: 'Light ground guns',
       role: 'Ground defence · light, cheap, and never leaves',
       pitch: 'Low-cost ground defence with an advantage against Bulwarks; vulnerable to Lances.',
-      detail: 'Thorns never leave the planet. Their class gives them an advantage against Bulwarks, while Lances and Breachers receive the advantage against them. They use ground capacity rather than Hangar space; 60% of destroyed ground guns are restored after combat, rounded down.',
+      detail: 'Thorns never leave the planet. Their Skirmisher class gives them an advantage against Bulwark-class hulls, while Lance-class hulls receive the advantage against them. They use ground capacity rather than Hangar space; 60% of destroyed ground guns are restored after combat, rounded down.',
     },
     PROSPECTOR: {
       name: 'Prospector',
@@ -299,24 +349,23 @@ export const gains = {
     label: 'Fleet room',
     value: '{{room}}',
   },
-  /**
-   * RESEARCH, WHICH WAS SOLD ON PROSE ALONE UNTIL NOW.
-   *
-   * Every label is the quantity the player FEELS, not the mechanism: a doctrine
-   * is "Wasp attack and hull", not "combat multiplier". The scope lines matter
-   * more than usual on this ladder, because the choice between a class doctrine
-   * and the general project is a choice between the same percentage applied to
-   * one hull family and to all of them.
-   */
+  /** Every research row names the quantity or permission the player actually buys. */
   research: {
-    doctrineLabel: '{{hull}} attack and hull',
-    doctrineScope: 'Every {{hull}} you own, everywhere. Support hulls are unaffected.',
-    lanceScope: 'Every {{lance}} and {{breacher}} you own. Support hulls are unaffected.',
+    powerLabel: 'Fleet V2 combat attack',
+    powerScope:
+      'Every Fleet V2 combat hull. Power × Armor can add at most 25% equal-budget combat power; transports and preserved units are unaffected.',
+    armorLabel: 'Fleet V2 hull strength',
+    armorScope:
+      'All 18 Fleet V2 hulls, including transports. Power × Armor can add at most 25% equal-budget combat power; preserved units are unaffected.',
+    speedLabel: 'Fleet V2 speed',
+    speedScope:
+      'All 18 Fleet V2 hulls. A mixed fleet still flies at its slowest member’s improved speed; Prospectors, probes and the Death Star are unaffected.',
+    engineeringLabel: 'Hull tier access',
+    engineeringTier: 'Tier {{tier}}',
+    engineeringScope:
+      'Engineering I opens Tier 3 and Engineering II opens Tier 4. Individual hulls can also require Power, Armor, Propulsion or Gravitic Charges.',
     groundLabel: 'Ground defence strength',
     groundScope: '{{bastion}} and {{thorn}} on every world you hold.',
-    generalLabel: 'Every hull, attack and armour',
-    generalScope:
-      'Applies to every ship and ground gun you own. Support hulls gain durability only. Stacks with class doctrine; the two together are capped at 25% combat power.',
     yardLabel: 'Ship build time',
     holdsLabel: 'Prospector hold',
     holdsScope: 'Multiplies with a Derrick in orbit.',
@@ -329,8 +378,8 @@ export const gains = {
     open: 'Open',
     shut: 'Locked',
     isotopeOpens: 'Isotope asteroids become selectable mining targets.',
-    denseOpens: 'The Runner hull becomes buildable.',
-    graviticOpens: 'The Breacher hull becomes buildable.',
+    denseOpens: 'Ship Propulsion research becomes available.',
+    graviticOpens: 'The Nullifier’s specialist research requirement is met.',
     protocolOpens: 'The Death Star becomes buildable.',
     gridOpens: 'The interceptor charge becomes buildable.',
   },
@@ -446,6 +495,8 @@ export const notifications = {
   fleetFrom: ' from {{origin}}',
   probeLost: 'Your probe was lost · that flight could not be completed',
   recalled: '{{count}} craft returned · that flight could not be completed',
+  transferReturningCapacity: 'Transfer returning from {{target}} · destination capacity filled in flight',
+  transferReturningOwnership: 'Transfer returning from {{target}} · the world changed hands in flight',
 
   salvageWord: 'Salvage',
   oreWord: 'Ore',
@@ -469,10 +520,12 @@ export const notifications = {
   },
   colonyCaptured: 'Colony secured · occupation protection is active',
   colonyLost: 'Colony lost to a strategic strike',
-  settlementLost: 'Settlement race lost · the Hauler and cargo are returning',
+  settlementLost: 'Settlement race lost · the Couriers and cargo are returning',
   interceptedDefended: 'Your grid destroyed a Death Star {{range}} units out.',
   interceptedLost: 'Your Death Star was destroyed {{range}} units short of its target.',
   interceptedFallback: 'A Death Star was destroyed in flight.',
+  asteroidShowerStarted: 'An asteroid shower has begun in the galaxy.',
+  asteroidShowerEnded: 'The asteroid shower has ended · asteroid spawn is back to normal.',
 } as const;
 
 /**

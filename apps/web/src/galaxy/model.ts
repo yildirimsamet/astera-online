@@ -83,6 +83,14 @@ export function unitModel(scene: THREE.Object3D): UnitModel | null {
  */
 export type Facing = '+x' | '-x' | '+z' | '-z' | number | readonly [number, number, number];
 
+/** Owner-reviewed correction applied after a craft is centred and aimed onto +Z. */
+export interface CraftPose {
+  /** Additive Three.js XYZ Euler angles, kept in editable degrees. */
+  readonly rotation: readonly [number, number, number];
+  /** Vertical offset in the caller's local normalised model space. */
+  readonly height: number;
+}
+
 /**
  * The bearing of a nose, from the direction it points in its own file.
  *
@@ -173,5 +181,26 @@ export function orientedCraft(scene: THREE.Object3D, facing: Facing): THREE.Obje
   const wrapper = new THREE.Group();
   wrapper.add(model);
   wrapper.scale.setScalar(1 / (Math.max(size.x, size.y, size.z) || 1));
+  return wrapper;
+}
+
+/** Apply a reviewed visual pose without changing the reusable source or canonical facing logic. */
+export function posedCraft(
+  scene: THREE.Object3D,
+  facing: Facing,
+  pose?: CraftPose,
+): THREE.Object3D {
+  const craft = orientedCraft(scene, facing);
+  if (pose === undefined) return craft;
+
+  const wrapper = new THREE.Group();
+  wrapper.position.y = pose.height;
+  wrapper.rotation.set(
+    pose.rotation[0] * Math.PI / 180,
+    pose.rotation[1] * Math.PI / 180,
+    pose.rotation[2] * Math.PI / 180,
+    'XYZ',
+  );
+  wrapper.add(craft);
   return wrapper;
 }

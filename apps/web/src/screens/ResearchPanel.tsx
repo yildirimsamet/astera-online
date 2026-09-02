@@ -6,13 +6,9 @@ import {
   RESEARCH_PROJECTS,
   type ResearchProjectId,
 } from '@astera/rules';
-import {
-  useCancelResearchOrder,
-  useCompleteResearch,
-  usePlanet,
-} from '../api/queries.js';
+import { useCompleteResearch, usePlanet } from '../api/queries.js';
 import type { BuildOrderView, PlanetView } from '../api/schemas.js';
-import { full, percent } from '../lib/format.js';
+import { percent } from '../lib/format.js';
 import { serverNow } from '../lib/clock.js';
 import { clockTime, duration, useNow } from '../lib/time.js';
 import { useProjected } from '../lib/projection.js';
@@ -77,8 +73,8 @@ const GROUPED = [
     label: 'research.doctrineBand',
     note: 'research.doctrineNote',
     projects: [
-      'WASP_DOCTRINE', 'LANCE_DOCTRINE', 'BULWARK_DOCTRINE',
-      'EMPLACEMENT_DOCTRINE', 'WEAPONS_GENERAL',
+      'STARSHIP_ENGINEERING', 'SHIP_POWER', 'SHIP_ARMOR',
+      'SHIP_PROPULSION', 'EMPLACEMENT_DOCTRINE',
     ],
   },
   {
@@ -115,7 +111,6 @@ export function ResearchPanel({ onNeed }: { onNeed?: (id: string) => void }) {
   const { data, dataUpdatedAt, isError, refetch } = usePlanet();
   const held = useProjected(data?.planet, dataUpdatedAt, 5000);
   const research = useCompleteResearch();
-  const cancelResearch = useCancelResearchOrder();
   const say = useToast();
   const now = useNow(1000);
   const [sheet, setSheet] = useState<SheetSpec | null>(null);
@@ -262,26 +257,26 @@ export function ResearchPanel({ onNeed }: { onNeed?: (id: string) => void }) {
           role: t('research.cargoRole'),
           detail: t('research.cargoDetail'),
         };
-      case 'WASP_DOCTRINE':
+      case 'SHIP_POWER':
         return {
-          name: t('research.waspDoctrineName'),
-          tag: t('research.doctrineTag'),
-          role: t('research.doctrineRole'),
-          detail: t('research.waspDoctrineDetail'),
+          name: t('research.powerName'),
+          tag: t('research.powerTag'),
+          role: t('research.powerRole'),
+          detail: t('research.powerDetail'),
         };
-      case 'LANCE_DOCTRINE':
+      case 'SHIP_ARMOR':
         return {
-          name: t('research.lanceDoctrineName'),
-          tag: t('research.doctrineTag'),
-          role: t('research.doctrineRole'),
-          detail: t('research.lanceDoctrineDetail'),
+          name: t('research.armorName'),
+          tag: t('research.armorTag'),
+          role: t('research.armorRole'),
+          detail: t('research.armorDetail'),
         };
-      case 'BULWARK_DOCTRINE':
+      case 'SHIP_PROPULSION':
         return {
-          name: t('research.bulwarkDoctrineName'),
-          tag: t('research.doctrineTag'),
-          role: t('research.doctrineRole'),
-          detail: t('research.bulwarkDoctrineDetail'),
+          name: t('research.propulsionName'),
+          tag: t('research.propulsionTag'),
+          role: t('research.propulsionRole'),
+          detail: t('research.propulsionDetail'),
         };
       case 'EMPLACEMENT_DOCTRINE':
         return {
@@ -290,12 +285,12 @@ export function ResearchPanel({ onNeed }: { onNeed?: (id: string) => void }) {
           role: t('research.doctrineRole'),
           detail: t('research.groundDoctrineDetail'),
         };
-      case 'WEAPONS_GENERAL':
+      case 'STARSHIP_ENGINEERING':
         return {
-          name: t('research.generalName'),
-          tag: t('research.generalTag'),
-          role: t('research.doctrineRole'),
-          detail: t('research.generalDetail'),
+          name: t('research.engineeringName'),
+          tag: t('research.engineeringTag'),
+          role: t('research.engineeringRole'),
+          detail: t('research.engineeringDetail'),
         };
       case 'INTERCEPTION_GRID':
         return {
@@ -476,19 +471,6 @@ export function ResearchPanel({ onNeed }: { onNeed?: (id: string) => void }) {
           label={t('research.queueLane')}
           orders={queueOrders}
           now={now}
-          cancelling={cancelResearch.isPending ? cancelResearch.variables : undefined}
-          onCancel={(order) => {
-            cancelResearch.mutate(order.id, {
-              onSuccess: (result) => {
-                say(t('research.cancelled', {
-                  alloy: full(result.refund.alloy),
-                  crystal: full(result.refund.crystal),
-                  deuterium: full(result.refund.deuterium),
-                }));
-              },
-              onError: (error) => { say(describe(error), 'error'); },
-            });
-          }}
         />
         <p className="px-3 pb-3 text-label leading-snug text-faint">
           {t('research.queueGlobalHint')}

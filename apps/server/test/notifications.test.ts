@@ -112,9 +112,9 @@ describe('a raid tells both sides', () => {
   it('tells the defender what was taken and the attacker what it cost', async () => {
     await affiliate(f, 0, 'WAR');
     await affiliate(f, 1, 'GRD');
-    await giveUnits(f.db, attacker, { WASP: 40 });
+    await giveUnits(f.db, attacker, { DART: 40 });
     f.clock.advance(300);
-    const launch = await launchAttack(f.db, attacker, defender, { WASP: 40 }, f.clock);
+    const launch = await launchAttack(f.db, attacker, defender, { DART: 40 }, f.clock);
     f.clock.set(settledAt(launch.arriveAt));
     const worker = makeWorker(f);
     await worker.tick();
@@ -165,10 +165,10 @@ describe('a raid tells both sides', () => {
    * measured, on a fleet annihilated by ground defence.
    */
   it('tells an attacker whose fleet was annihilated', async () => {
-    await giveUnits(f.db, attacker, { WASP: 3 });
+    await giveUnits(f.db, attacker, { DART: 3 });
     await giveUnits(f.db, defender, { THORN: 60 });
     f.clock.advance(300);
-    const launch = await launchAttack(f.db, attacker, defender, { WASP: 3 }, f.clock);
+    const launch = await launchAttack(f.db, attacker, defender, { DART: 3 }, f.clock);
     f.clock.set(settledAt(launch.arriveAt));
     await makeWorker(f).tick();
 
@@ -180,9 +180,9 @@ describe('a raid tells both sides', () => {
 
   /** Idempotent by `(player, kind, refId)`, so a redelivered arrival says it once. */
   it('says it once however many times the arrival is delivered', async () => {
-    await giveUnits(f.db, attacker, { WASP: 40 });
+    await giveUnits(f.db, attacker, { DART: 40 });
     f.clock.advance(300);
-    const launch = await launchAttack(f.db, attacker, defender, { WASP: 40 }, f.clock);
+    const launch = await launchAttack(f.db, attacker, defender, { DART: 40 }, f.clock);
     f.clock.set(settledAt(launch.arriveAt));
 
     const worker = makeWorker(f);
@@ -225,11 +225,11 @@ describe('the radar warning', () => {
     await setLevel(f.db, defender, 'CORE', 6);
     await giveSatellite(f.db, defender, 'UPLINK');
     await grant(f.db, defender, 30_000, 3_000);
-    await giveUnits(f.db, attacker, { WASP: 40 });
+    await giveUnits(f.db, attacker, { DART: 40 });
     f.clock.advance(300);
   });
 
-  const launch = () => launchAttack(f.db, attacker, defender, { WASP: 40 }, f.clock);
+  const launch = () => launchAttack(f.db, attacker, defender, { DART: 40 }, f.clock);
 
   /**
    * THE WARNING THIS LEVEL ACTUALLY BUYS ON THIS LEG, IN MINUTES.
@@ -403,7 +403,7 @@ describe('the radar warning', () => {
     // L4 buys a coarse mass band, L5 the composition and the world it left.
     expect(warning!.payload).toMatchObject({
       mass: 'MEDIUM',
-      fleet: { WASP: 40 },
+      fleet: { DART: 40 },
       originPlanetId: attacker,
       originUsername: expect.any(String) as string,
       originClanTag: 'WAR',
@@ -612,7 +612,7 @@ describe('the unlock cascade', () => {
     f = await seedWorld(3);
     await setLevel(f.db, f.planetIds[0]!, 'CORE', 6);
     for (const id of f.planetIds.slice(1)) await grant(f.db, id, 30_000, 3_000);
-    await giveUnits(f.db, f.planetIds[0]!, { WASP: 40 });
+    await giveUnits(f.db, f.planetIds[0]!, { DART: 40 });
   });
 
   it('announces the telescope to both sides of a first battle, and the radar to the one hit', async () => {
@@ -621,7 +621,7 @@ describe('the unlock cascade', () => {
       f.db,
       f.planetIds[0]!,
       f.planetIds[1]!,
-      { WASP: 40 },
+      { DART: 40 },
       f.clock,
     );
     f.clock.set(settledAt(launch.arriveAt));
@@ -643,7 +643,7 @@ describe('the unlock cascade', () => {
       f.db,
       f.planetIds[0]!,
       f.planetIds[1]!,
-      { WASP: 20 },
+      { DART: 20 },
       f.clock,
     );
     f.clock.set(settledAt(first.arriveAt));
@@ -658,7 +658,7 @@ describe('the unlock cascade', () => {
       f.db,
       f.planetIds[0]!,
       f.planetIds[1]!,
-      { WASP: 20 },
+      { DART: 20 },
       f.clock,
     );
     f.clock.set(settledAt(second.arriveAt));
@@ -718,8 +718,8 @@ describe('a raid on an unclaimed world', () => {
     const caretakerName = caretaker;
 
     await setLevel(db, joined.planetId, 'CORE', 8);
-    await giveUnits(db, joined.planetId, { WASP: 60 });
-    const launch = await launchAttack(db, joined.planetId, caretaker!.id, { WASP: 60 }, clock);
+    await giveUnits(db, joined.planetId, { DART: 60 });
+    const launch = await launchAttack(db, joined.planetId, caretaker!.id, { DART: 60 }, clock);
     clock.set(settledAt(launch.arriveAt));
     await new EventWorker(db, clock, { pollMs: 1000, batch: 100, staleMinutes: 5 }, silent).tick();
 
@@ -764,6 +764,8 @@ describe('the kinds of news the server can send', () => {
       'colony_lost',
       'death_star_result',
       'fleet_returned',
+      'galaxy_event_ended',
+      'galaxy_event_started',
       'incoming_fleet',
       'probe_report',
       'raid_result',

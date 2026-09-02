@@ -22,18 +22,30 @@ const value = (id: HullId): number =>
  * Equal-budget power. With damage spread across a force rather than focused, what
  * a fixed budget buys goes as `atk x hp / value^2` — NOT as attack per resource,
  * which is the quantity `docs/balance.md` used and the reason it recorded the
- * Bulwark as unfixable.
+ * Rampart as unfixable.
  */
 const power = (id: HullId): number =>
   (HULLS[id].atk * HULLS[id].hp * 1e6) / (value(id) * value(id));
 
 describe('Crystal-bearing hull prices', () => {
   const baselineCrystal = {
-    LANCE: 260,
-    BULWARK: 730,
-    HAULER: 200,
-    RUNNER: 250,
-    BREACHER: 550,
+    PIKE: 90,
+    RAMPART: 140,
+    WARDEN: 110,
+    COURIER: 150,
+    VIPER: 130,
+    TALON: 230,
+    STRONGHOLD: 450,
+    SENTINEL: 420,
+    WAYFARER: 300,
+    TEMPEST: 450,
+    BALLISTA: 700,
+    LEVIATHAN: 1150,
+    PRAETORIAN: 900,
+    ATLAS: 950,
+    NULLIFIER: 800,
+    CATACLYSM: 1700,
+    CITADEL: 2100,
     BASTION: 800,
     THORN: 200,
     PROSPECTOR: 200,
@@ -48,20 +60,32 @@ describe('Crystal-bearing hull prices', () => {
   });
 
   it('does not add Crystal to a hull that did not use it', () => {
-    expect(HULLS.WASP.crystal).toBe(0);
+    expect(HULLS.DART.crystal).toBe(0);
   });
 });
 
 describe('the hull table is priced on equal-budget power', () => {
   /**
    * THE BUG THIS EXISTS TO STOP COMING BACK. At 4.2 attack per 1,000 resources
-   * against a Wasp's 26.9, the shipped Bulwark lost every equal-budget matchup in
-   * the game including against the Lance it counters — so nobody built the top of
+   * against a Dart's 26.9, the shipped Rampart lost every equal-budget matchup in
+   * the game including against the Pike it counters — so nobody built the top of
    * the tree and the counter cycle had a dead corner.
    */
-  it('makes each tech tier worth buying, in order', () => {
-    expect(power('LANCE')).toBeGreaterThan(power('WASP'));
-    expect(power('BULWARK')).toBeGreaterThan(power('LANCE'));
+  it('makes each progression tier modestly more efficient on average', () => {
+    const idsByTier = [
+      ['DART', 'PIKE', 'RAMPART', 'WARDEN'],
+      ['VIPER', 'TALON', 'STRONGHOLD', 'SENTINEL'],
+      ['TEMPEST', 'BALLISTA', 'LEVIATHAN', 'PRAETORIAN'],
+      ['CATACLYSM', 'CITADEL'],
+    ] as const;
+    const averages = idsByTier.map((ids) =>
+      ids.reduce((sum, id) => sum + power(id), 0) / ids.length,
+    );
+    for (let tier = 1; tier < averages.length; tier++) {
+      const gain = averages[tier]! / averages[tier - 1]!;
+      expect(gain, `tier ${String(tier + 1)} efficiency gain`).toBeGreaterThan(1.03);
+      expect(gain, `tier ${String(tier + 1)} efficiency gain`).toBeLessThan(1.10);
+    }
   });
 
   /**
@@ -71,9 +95,13 @@ describe('the hull table is priced on equal-budget power', () => {
    * replace it with "whoever unlocked the most".
    */
   it('keeps the tier gap far below the counter cycle', () => {
-    const gap = power('BULWARK') / power('WASP');
-    expect(gap).toBeGreaterThan(1.1);
-    expect(gap).toBeLessThan(1.6);
+    const tierOne = ['DART', 'PIKE', 'RAMPART', 'WARDEN'] as const;
+    const tierFour = ['CATACLYSM', 'CITADEL'] as const;
+    const average = (ids: readonly HullId[]) =>
+      ids.reduce((sum, id) => sum + power(id), 0) / ids.length;
+    const gap = average(tierFour) / average(tierOne);
+    expect(gap).toBeGreaterThan(1.15);
+    expect(gap).toBeLessThan(1.25);
   });
 
   /**
@@ -82,8 +110,8 @@ describe('the hull table is priced on equal-budget power', () => {
    */
   it('pays the ground guns for being unable to leave', () => {
     for (const id of GROUND_HULLS) {
-      expect(power(id), id).toBeGreaterThan(power('BULWARK'));
-      expect(power(id), id).toBeLessThan(power('WASP') * 2);
+      expect(power(id), id).toBeGreaterThan(power('WARDEN'));
+      expect(power(id), id).toBeLessThan(power('DART') * 2);
     }
   });
 
@@ -95,22 +123,25 @@ describe('the hull table is priced on equal-budget power', () => {
 
   /** Support hulls deal nothing and sell cargo instead. */
   it('sells cargo rather than damage on the support hulls', () => {
-    for (const id of ['HAULER', 'RUNNER', 'PROSPECTOR'] as const) {
+    for (const id of ['COURIER', 'WAYFARER', 'ATLAS', 'PROSPECTOR'] as const) {
       expect(HULLS[id].atk, id).toBe(0);
       expect(HULLS[id].cargo, id).toBeGreaterThan(0);
     }
     const perResource = (id: HullId) => HULLS[id].cargo / value(id);
-    expect(perResource('HAULER')).toBeGreaterThan(perResource('RUNNER') * 3);
-    expect(perResource('RUNNER')).toBeGreaterThan(perResource('WASP'));
+    expect(perResource('WAYFARER')).toBeGreaterThan(perResource('COURIER'));
+    expect(perResource('ATLAS')).toBeGreaterThan(perResource('WAYFARER'));
+    expect(perResource('COURIER')).toBeGreaterThan(perResource('DART'));
   });
 
   /**
-   * A Runner shortens exposure; it never replaces a Hauler. D94. It carries less
+   * A Courier shortens exposure; it never replaces a Wayfarer. D94. It carries less
    * per resource and makes up for it by arriving sooner.
    */
-  it('keeps the Runner faster and the Hauler fatter', () => {
-    expect(HULLS.RUNNER.speed).toBeGreaterThan(HULLS.HAULER.speed);
-    expect(HULLS.HAULER.cargo).toBeGreaterThan(HULLS.RUNNER.cargo * 4);
+  it('keeps the Courier faster and the Wayfarer fatter', () => {
+    expect(HULLS.COURIER.speed).toBeGreaterThan(HULLS.WAYFARER.speed);
+    expect(HULLS.WAYFARER.cargo).toBeGreaterThan(HULLS.COURIER.cargo * 3);
+    expect(HULLS.ATLAS.cargo).toBeGreaterThan(HULLS.WAYFARER.cargo * 2);
+    expect(HULLS.WAYFARER.speed).toBeGreaterThan(HULLS.ATLAS.speed);
   });
 
   /** Every price is a whole resource, and nothing is free. */
@@ -125,7 +156,7 @@ describe('the hull table is priced on equal-budget power', () => {
 
   /**
    * Speed is what the raid tempo is made of, so the ordering is load-bearing: a
-   * Wasp is the fastest thing in an attack fleet and a Bulwark the slowest, which
+   * Dart is the fastest thing in an attack fleet and a Rampart the slowest, which
    * is what lets a commander buy surprise with speed and lets a radar telegraph a
    * slow one.
    */
@@ -134,9 +165,9 @@ describe('the hull table is priced on equal-budget power', () => {
     for (const id of flying) {
       expect(HULLS[id].speed, id).toBeGreaterThan(0);
     }
-    expect(HULLS.WASP.speed).toBeGreaterThan(HULLS.LANCE.speed);
-    expect(HULLS.LANCE.speed).toBeGreaterThan(HULLS.BULWARK.speed);
-    expect(value('WASP')).toBeLessThan(value('LANCE'));
-    expect(value('LANCE')).toBeLessThan(value('BULWARK'));
+    expect(HULLS.DART.speed).toBeGreaterThan(HULLS.PIKE.speed);
+    expect(HULLS.PIKE.speed).toBeGreaterThan(HULLS.RAMPART.speed);
+    expect(value('DART')).toBeLessThan(value('PIKE'));
+    expect(value('PIKE')).toBeLessThan(value('RAMPART'));
   });
 });

@@ -37,24 +37,48 @@ const wrapper = ({ children }: { children: ReactNode }) => {
 };
 
 describe('choosing a fleet to attack with', () => {
-  it('uses exact one-ship steps even for a large hangar and exposes Max', async () => {
+  it('accepts an empty numeric count and clamps direct entry to the ships at home', async () => {
     render(
       <LaunchSheet
         target={target}
-        planet={planetView({ fleet: { WASP: 200 } })}
+        planet={planetView({ fleet: { DART: 200 } })}
         onClose={vi.fn()}
         onLaunched={vi.fn()}
       />,
       { wrapper },
     );
     const user = userEvent.setup();
-    const quantity = screen.getByRole('textbox', { name: /wasp quantity/i });
+    const quantity = screen.getByRole('textbox', { name: /dart quantity/i });
 
     expect(quantity).toHaveValue('0');
-    expect(quantity).toHaveAttribute('readonly');
-    await user.click(screen.getByRole('button', { name: /more wasp/i }));
+    expect(quantity).not.toHaveAttribute('readonly');
+
+    await user.clear(quantity);
+    expect(quantity).toHaveValue('');
+
+    await user.type(quantity, 'fleet');
+    expect(quantity).toHaveValue('');
+
+    await user.type(quantity, '250');
+    expect(quantity).toHaveValue('200');
+  });
+
+  it('uses exact one-ship steps even for a large hangar and exposes Max', async () => {
+    render(
+      <LaunchSheet
+        target={target}
+        planet={planetView({ fleet: { DART: 200 } })}
+        onClose={vi.fn()}
+        onLaunched={vi.fn()}
+      />,
+      { wrapper },
+    );
+    const user = userEvent.setup();
+    const quantity = screen.getByRole('textbox', { name: /dart quantity/i });
+
+    await user.click(screen.getByRole('button', { name: /more dart/i }));
     expect(quantity).toHaveValue('1');
-    await user.click(screen.getByRole('button', { name: /max wasp/i }));
+    await user.click(screen.getByRole('button', { name: /max dart/i }));
     expect(quantity).toHaveValue('200');
   });
 });
@@ -78,8 +102,8 @@ describe('the fleet that is already away', () => {
       <LaunchSheet
         target={target}
         planet={planetView({
-          fleet: { LANCE: 2 },
-          fleetAway: { WASP: 83, HAULER: 2 },
+          fleet: { PIKE: 2 },
+          fleetAway: { DART: 83, COURIER: 2 },
         })}
         onClose={vi.fn()}
         onLaunched={vi.fn()}
@@ -88,11 +112,11 @@ describe('the fleet that is already away', () => {
     );
 
     const note = screen.getByText(/away on a flight/i);
-    expect(note).toHaveTextContent('83 Wasp');
-    expect(note).toHaveTextContent('2 Hauler');
+    expect(note).toHaveTextContent('83 Dart');
+    expect(note).toHaveTextContent('2 Courier');
     // The row is genuinely gone — that is the behaviour the note explains.
-    expect(screen.queryByRole('textbox', { name: /wasp quantity/i })).toBeNull();
-    expect(screen.getByRole('textbox', { name: /lance quantity/i })).toHaveValue('0');
+    expect(screen.queryByRole('textbox', { name: /dart quantity/i })).toBeNull();
+    expect(screen.getByRole('textbox', { name: /pike quantity/i })).toHaveValue('0');
   });
 
   /**
@@ -103,7 +127,7 @@ describe('the fleet that is already away', () => {
     render(
       <LaunchSheet
         target={target}
-        planet={planetView({ fleet: { WASP: 4 }, fleetAway: { PROSPECTOR: 2 } })}
+        planet={planetView({ fleet: { DART: 4 }, fleetAway: { PROSPECTOR: 2 } })}
         onClose={vi.fn()}
         onLaunched={vi.fn()}
       />,
@@ -122,7 +146,7 @@ describe('the fleet that is already away', () => {
     render(
       <LaunchSheet
         target={target}
-        planet={planetView({ fleet: { PROSPECTOR: 1 }, fleetAway: { WASP: 12 } })}
+        planet={planetView({ fleet: { PROSPECTOR: 1 }, fleetAway: { DART: 12 } })}
         onClose={vi.fn()}
         onLaunched={vi.fn()}
       />,
@@ -130,7 +154,7 @@ describe('the fleet that is already away', () => {
     );
 
     expect(screen.getByText(/no ships at home/i)).toBeInTheDocument();
-    expect(screen.getByText(/away on a flight/i)).toHaveTextContent('12 Wasp');
+    expect(screen.getByText(/away on a flight/i)).toHaveTextContent('12 Dart');
   });
 });
 
@@ -138,7 +162,7 @@ describe('the fleet that is already away', () => {
  * THE BET, AS A SHAPE. Owner instruction, D142.
  *
  * This sheet's headline has always been a COUNT of units left holding, and a
- * count is the wrong measure of a garrison: twelve Wasps and three Bulwarks are
+ * count is the wrong measure of a garrison: twelve Darts and three Bulwarks are
  * the same number and not remotely the same defence. The bar is made of POWER,
  * and the split between what stays and what leaves is the decision being made —
  * drawn as the thing being taken away from the thing that remains.
@@ -165,38 +189,38 @@ describe('what the launch costs the world it leaves', () => {
   };
 
   it('draws the whole garrison as holding before anything is packed', () => {
-    const bar = show({ WASP: 6 });
+    const bar = show({ DART: 6 });
     expect(bar.holds()).toBeCloseTo(100, 1);
     expect(bar.leaves()).toBeCloseTo(0, 1);
   });
 
   it('carves the departing fleet out of the garrison as it is packed', async () => {
-    const bar = show({ WASP: 4 });
+    const bar = show({ DART: 4 });
     const user = userEvent.setup();
-    await user.click(screen.getByRole('button', { name: /more wasp/i }));
+    await user.click(screen.getByRole('button', { name: /more dart/i }));
     expect(bar.leaves()).toBeCloseTo(25, 1);
     expect(bar.holds()).toBeCloseTo(75, 1);
   });
 
   /**
    * THE REASON THE BAR IS POWER AND NOT A HULL COUNT. Sending one of two Bulwarks
-   * must not look like sending one of two Wasps when the ground battery behind
+   * must not look like sending one of two Darts when the ground battery behind
    * them is unchanged; the fraction of the DEFENCE that leaves is the fact.
    */
   it('measures what leaves by what it was worth, not by how many hulls it was', async () => {
     const user = userEvent.setup();
-    const light = show({ WASP: 1, BULWARK: 1 });
-    await user.click(screen.getByRole('button', { name: /more wasp/i }));
-    const waspShare = light.leaves();
+    const light = show({ DART: 1, RAMPART: 1 });
+    await user.click(screen.getByRole('button', { name: /more dart/i }));
+    const dartShare = light.leaves();
     cleanup();
 
-    const heavy = show({ WASP: 1, BULWARK: 1 });
-    await user.click(screen.getByRole('button', { name: /more bulwark/i }));
-    expect(heavy.leaves()).toBeGreaterThan(waspShare);
+    const heavy = show({ DART: 1, RAMPART: 1 });
+    await user.click(screen.getByRole('button', { name: /more rampart/i }));
+    expect(heavy.leaves()).toBeGreaterThan(dartShare);
   });
 
   it('says the split out loud for anyone who cannot see the bar', () => {
-    show({ WASP: 3 });
+    show({ DART: 3 });
     expect(screen.getByRole('img', { name: /defence power holds/i })).toBeInTheDocument();
   });
 
@@ -217,13 +241,13 @@ describe('the fuel this launch burns', () => {
     render(
       <LaunchSheet
         target={target}
-        planet={planetView({ fleet: { WASP: 2 } }, { deuterium })}
+        planet={planetView({ fleet: { DART: 2 } }, { deuterium })}
         onClose={vi.fn()}
         onLaunched={vi.fn()}
       />,
       { wrapper },
     );
-    await userEvent.setup().click(screen.getByRole('button', { name: /more wasp/i }));
+    await userEvent.setup().click(screen.getByRole('button', { name: /more dart/i }));
   };
 
   it('draws what is left of the tank when the flight is covered', async () => {
@@ -238,5 +262,59 @@ describe('the fuel this launch burns', () => {
     expect(document.querySelector('[data-spend-bar]')).toHaveAttribute('data-short', 'true');
     expect(document.querySelector('[data-spend-short]')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /send \d+ ships/i })).toBeDisabled();
+  });
+});
+
+/**
+ * WHAT THIS SHEET SAYS ABOUT HOW OLD ITS TARGET IS. D151.
+ *
+ * This is the surface where a fleet becomes irreversible, and until D151 it said
+ * only the target's NAME — a name copied straight out of a frozen probe record,
+ * printed exactly as it is for a world under a live Telescope. A commander
+ * committing twelve hulls against a three-day-old snapshot of a world that had
+ * changed hands twice since was shown nothing at all to tell them so.
+ *
+ * The fog does not move: this adds no fact the player had not already bought. It
+ * states the PROVENANCE of the facts already on the screen, which is the half an
+ * information game cannot leave off its commitment surface.
+ */
+describe('how old the target is, on the surface where the fleet is committed', () => {
+  const remembered = (minutes: number): GalaxyPlanet => ({
+    ...target,
+    intel: 'REMEMBERED' as const,
+    seenAt: new Date(Date.now() - minutes * 60_000),
+  });
+
+  const open = (over: GalaxyPlanet) => {
+    render(
+      <LaunchSheet
+        target={over}
+        planet={planetView({ fleet: { DART: 4 } })}
+        onClose={vi.fn()}
+        onLaunched={vi.fn()}
+      />,
+      { wrapper },
+    );
+  };
+
+  it('stamps the age of the record on a remembered world', () => {
+    open(remembered(190));
+    expect(screen.getByText(/3h 10.*ago/i)).toBeInTheDocument();
+  });
+
+  /** A live reading has no age, and inventing one would be the same lie inverted. */
+  it('says nothing about age on a world under a live reading', () => {
+    open(target);
+    expect(screen.queryByText(/ago/i)).not.toBeInTheDocument();
+  });
+
+  /**
+   * AND AN UNSURVEYED WORLD KEEPS THE LINE IT ALREADY HAD. There is no record to
+   * be old — "nobody has looked here" is the whole of what is true.
+   */
+  it('leaves an unsurveyed world saying only that nobody has looked', () => {
+    open({ ...target, intel: 'UNKNOWN' as const, name: '', owner: '' });
+    expect(screen.queryByText(/ago/i)).not.toBeInTheDocument();
+    expect(screen.getByRole('dialog', { name: /nobody has looked here/i })).toBeInTheDocument();
   });
 });

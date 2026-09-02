@@ -223,8 +223,8 @@ export const DEUTERIUM = {
   graviticDiscoveryShieldShare: 0.25,
 } as const;
 
-/** A specialist, not a fourth counter class. D95. */
-export const BREACHER = {
+/** A specialist profile, not a fourth counter class. D95 · D148. */
+export const SHIELD_BREAKER = {
   /** Four bonus copies plus the ordinary hit make five against a live shield. */
   bonusShieldDamageMult: 4,
 } as const;
@@ -291,7 +291,7 @@ export const START = {
    *   Command Core 1 → 2       90 alloy · 26 crystal
    *   Alloy Refinery 1 → 2     90 alloy · 26 crystal
    *   Crystal Extractor 1 → 2  90 alloy · 26 crystal
-   *   two Wasps               600 alloy ·  0 crystal
+   *   two Darts               600 alloy ·  0 crystal
    *   ─────────────────────────────────────────────
    *                           870 alloy · 78 crystal
    *
@@ -309,8 +309,8 @@ export const START = {
  * A CUSHION ON TOP OF THE ARITHMETIC — OWNER DECISION, D58.
  *
  * `START` above is exactly what the opening COSTS, and it is spent to the last
- * crystal by the time the rehearsal ends: three mandatory upgrades and the two
- * Wasps, which then leave. A commander who has just finished onboarding therefore
+   * crystal by the time the rehearsal ends: three mandatory upgrades and the two
+   * Darts, which then leave. A commander who has just finished onboarding therefore
  * lands on a world with no ships at home, no resources, and a flight forty minutes
  * out — nothing to press, at the one moment the game has the least credit with
  * them. That is the problem this fixes and it is a real one.
@@ -647,7 +647,7 @@ export const COMBAT = {
   varianceMin: 0.92,
   varianceMax: 1.08,
 
-  /** Counter cycle: WASP ▸ BULWARK ▸ LANCE ▸ WASP. */
+  /** Counter cycle: SKIRMISHER ▸ BULWARK ▸ LANCE ▸ SKIRMISHER. */
   strongMult: 1.6,
   weakMult: 0.625,
 
@@ -1180,10 +1180,9 @@ export const PROBE = {
    * ever had, and it is faster everywhere — the fixed cost was what had been
    * flattening it all along.
    *
-   * 4680 IS EXACTLY 36× A WASP, which is the relationship worth remembering: a
-   * scout outruns the fastest thing anyone can send at you by a wide, stated
-   * margin. Written as a multiple rather than as a round number so the next person
-   * to move hull speeds can see what this was pegged to.
+   * 4680 remains far above every Fleet V2 hull: a scout outruns the fastest thing
+   * anyone can send at you by a wide, stated margin. Probe behavior itself is
+   * deliberately untouched by D148.
    *
    * IT NO LONGER RATIONS SCOUTING, AND IT WAS NEVER SUPPOSED TO. What stops a
    * commander reading the same world over and over is stated as a rule rather than
@@ -1363,6 +1362,7 @@ export const RESEARCH_TECH = {
   /** Equal-budget power a fully-teched hull may reach. Never above the counter cycle. */
   powerCeiling: 1.25,
   /** Rungs on a weapon doctrine, and on each economy project. */
+  engineeringMaxLevel: 2,
   weaponMaxLevel: 5,
   economyMaxLevel: 5,
   /**
@@ -1371,6 +1371,30 @@ export const RESEARCH_TECH = {
    * both are worth the levels.
    */
   doctrineShare: 0.5,
+  /**
+   * FOUR PROPULSION RUNGS ADD A QUARTER EACH, AND THE FOURTH DOUBLES THE FLEET.
+   * D152, owner instruction. Existing arrival timestamps never move.
+   *
+   * IT USED TO BE FIVE RUNGS OF TWO PERCENT. Ten percent at the top of a ladder
+   * priced beside `SHIP_POWER` is a rung nobody could feel: a Dart bought all five
+   * and arrived twelve seconds earlier across the neighbourhood it actually
+   * watches. D124's rule is that a rule the player cannot SEE is not a usable
+   * rule, and a bonus this small was that failure wearing a percentage sign.
+   *
+   * A SEPARATE CEILING FROM `weaponMaxLevel`, and that is the load-bearing part.
+   * Power and Armor share `powerCeiling` because they multiply into equal-budget
+   * power; speed is not a combat statistic and takes no share of that product, so
+   * it needs its own top rather than borrowing the weapon ladder's. Four rungs
+   * at a quarter each read as 1.25 / 1.50 / 1.75 / 2.00 — the ladder is legible
+   * from the number itself, which is what the old one never was.
+   *
+   * WHAT IT DOES NOT REACH: the probe, the Prospector and the Death Star. Speed
+   * research is a `hullTech` factor and those three are not Fleet V2 hulls, which
+   * is the same boundary D101 drew when it named what took the disc's factor.
+   */
+  propulsionPerLevel: 0.25,
+  /** Rungs on Propulsion. Its own, because speed takes no share of `powerCeiling`. */
+  propulsionMaxLevel: 4,
   /** Build time shaved per rung. Small: the Shipyard still owns the curve. */
   yardSpeedPerLevel: 0.04,
   holdPerLevel: 0.08,
@@ -1708,6 +1732,43 @@ export const GALAXY = {
 } as const;
 
 /**
+ * Public galaxy moments. Their exact occurrence timestamps are generated once at
+ * season creation and persisted; changing this object never rewrites a live sky.
+ *
+ * Türkiye quiet hours are deliberately a LOW-WEIGHT band, not a blackout. Five
+ * events reserve one quiet-hours start and may roll a second, but can never place
+ * more than two on the same Türkiye calendar date.
+ */
+export const GALAXY_EVENTS = {
+  version: 1,
+  calendar: {
+    /** Human-facing schedule zone; arithmetic uses the pinned offset below. */
+    timeZone: 'Europe/Istanbul',
+    /** Versioned TRT offset. A future legal clock change requires a new config version. */
+    utcOffsetMinutes: 180,
+    dailyCount: { min: 5, max: 5 },
+    lowPriorityWindow: {
+      startsAtLocalMinute: 0,
+      endsAtLocalMinute: 8 * 60,
+      targetShare: 0.2,
+      overflowWeight: 0.25,
+      maxDailyCount: 2,
+    },
+    candidateAttempts: 512,
+  },
+  definitions: {
+    ASTEROID_SHOWER: {
+      version: 1,
+      durationMinutes: 60,
+      /** Two quiet hours after the one-hour shower; starts stay at least three hours apart. */
+      repeatCooldownMinutes: 120,
+      effect: { asteroidSpawnMultiplier: 5 },
+    },
+  },
+  mutuallyExclusive: [] as readonly (readonly [string, string])[],
+} as const;
+
+/**
  * WRECKAGE. D32.
  *
  * A resolved battle leaves a field of debris at the DEFENDER's coordinates, holding
@@ -1847,13 +1908,141 @@ export const SERVERS = {
   idleDays: 3,
 } as const;
 
-/** Multi-world ruleset v3. D114 adds seasonal five-seat clans to fresh seasons only. */
+/** Multi-world ruleset v4. D148 activates Fleet Catalog V2 at an offline rollover. */
+const PIRATE_SPAWN_PER_SEAT_PER_HOUR = 0.02;
+
+/**
+ * KORSAN FİLOLARI — THE GALAXY'S THIRD TARGET CLASS. D150.
+ *
+ * Every number here is PROVISIONAL and closes by playtest, not by argument. What
+ * is NOT provisional is which dials may be turned: `docs/balance.md` records the
+ * VFR blocker, and a pirate is a brand-new resource tap sitting right on top of
+ * it. Spawn rate, fleet size, level weights, `hoardValueMult`, the one-raid-per-
+ * world rule and the flight-bay cost are all legitimate throttles. Loot grade,
+ * hull HP, `defenceSalvage`, the Hangar constants and any acceptance band are NOT
+ * — widening one of those to make this feature pay would be the exact move
+ * CLAUDE.md forbids.
+ *
+ * THE REAL THROTTLE IS NOT A NUMBER AT ALL. Loot is capped by
+ * `fleetCargo(survivors)`, so carrying the prize home costs combat power on the
+ * way out. That is `game-design.md`'s raid decision — how much cargo you bring
+ * depends on what you believe is there — moved onto a target that cannot shoot
+ * first. The tap itself is a decision.
+ */
+export const PIRATE = {
+  /**
+   * WHAT A PIRATE'S GUNS ACTUALLY DO, by level, against the table's own figures.
+   *
+   * The ONLY combat modifier in the feature, and it lives on ATTACK alone. D11
+   * locks combat simple, so this is not a fifth axis: it rides the existing
+   * `CombatSide` interface, applies once inside `statsFor`, and is therefore
+   * honoured identically in the damage pool and in the casualty arithmetic —
+   * which is the one bug `combat.ts` would hide best.
+   *
+   * HP IS DELIBERATELY UNTOUCHED. A level 4 pirate flies a Cataclysm: 800 attack
+   * becomes 680, and all 448 hit points remain. It has to stay genuinely
+   * dangerous while you are shooting at it, or the ship it is guarding is not a
+   * prize.
+   */
+  damageMult: { 1: 0.5, 2: 0.65, 3: 0.75, 4: 0.85 },
+
+  /**
+   * Chance one of its hulls comes home with you, on a DECISIVE win only.
+   *
+   * The inverse of the damage table, and that inversion IS the decision: the
+   * pirate that is cheapest to beat carries the ship worth least. Anything short
+   * of DECISIVE pays nothing here — survivors fly away with their own ships.
+   */
+  captureChance: { 1: 0.5, 2: 0.35, 3: 0.25, 4: 0.15 },
+
+  /** Ships in one pirate. Small on purpose: this is a fight you can read. */
+  sizeMin: 2,
+  sizeMax: 5,
+
+  /** How often each level turns up. Must sum to 1 across levels 1-4. */
+  levelWeights: [0, 0.45, 0.3, 0.18, 0.07] as readonly number[],
+
+  /**
+   * The hoard, as a multiple of what the pirate's own hulls are worth.
+   *
+   * Above 1 by construction: a prize smaller than its escort makes "never launch"
+   * the only rational line. It is swept so `E[net]` is positive for a correctly
+   * composed fleet and negative for a wrong one — see `docs/balance.md`.
+   */
+  hoardValueMult: 1.4,
+  /** How the hoard splits. Deuterium is the smallest share: it is also fuel. */
+  hoardShare: { alloy: 0.55, crystal: 0.3, deuterium: 0.15 },
+
+  /**
+   * New pirates per SEAT per hour, and the galaxy-wide rate that follows.
+   *
+   * Per seat because content that does not scale with the galaxy dies when the
+   * galaxy grows: a fixed rate that feels alive at 40 commanders is an empty sky
+   * at 300. The absolute figure is derived here once so the lane generator stays
+   * a pure function of the season key rather than of a live population count.
+   */
+  spawnPerSeatPerHour: PIRATE_SPAWN_PER_SEAT_PER_HOUR,
+  spawnPerHour: PIRATE_SPAWN_PER_SEAT_PER_HOUR * SERVERS.capacity,
+
+  /** Hours a pirate rides its orbit before it is gone for good. */
+  lifeHoursMin: 2,
+  lifeHoursMax: 4,
+
+  /**
+   * Game units per minute along the orbit. DELIBERATELY UNDER THE ROCKS.
+   *
+   * A pirate has to read as a ship rather than as debris, and it has to be
+   * catchable often enough that a rendezvous is a plan rather than a lottery.
+   * The orbital period follows from this and the radius — six minutes at the
+   * inner edge, an hour at the outer — and that shortest period is what sets the
+   * ceiling on `bearingMs` below.
+   */
+  speedMin: 200,
+  speedMax: 420,
+
+  /** How far out they run. Same band and same draw as the rocks. */
+  orbitMin: 400,
+  orbitMax: 2000,
+
+  /**
+   * HOW FAR AHEAD A PIRATE'S MOTION IS PUBLISHED. Derived, never typed.
+   *
+   * `TRAFFIC.bearingMinutes` is four minutes and it was written for a STRAIGHT
+   * leg. A pirate's shortest revolution is about six minutes, so four minutes of
+   * a closed orbit is most of a lap: the straight chord the client draws between
+   * the two published points would visibly cut through the middle of the orbit.
+   *
+   * Ten seconds is under seven degrees of arc at the very worst radius, which no
+   * eye separates from the curve, and the client's own coasting margin covers a
+   * late read. IT MAY NEVER GO BELOW `TRAFFIC.refreshMs`: a window shorter than
+   * one refetch is a window that names a destination, and CLAUDE.md records that
+   * this project has already shipped that bug once. Written as a MULTIPLE of the
+   * poll interval so the two cannot drift apart again.
+   */
+  bearingMs: TRAFFIC.refreshMs * 2,
+} as const;
+
 export const MULTI_WORLD = {
-  rulesetVersion: 3,
+  rulesetVersion: 4,
+  /** Old hull rows may exist only before this offline season boundary. D148. */
+  fleetCatalogRulesetVersion: 4,
+  /** Persisted galaxy-event calendars exist only on freshly created seasons at this boundary. */
+  galaxyEventsRulesetVersion: 4,
   /** Neutral worlds and colonies remain the v2 boundary. */
   neutralWorldRulesetVersion: 2,
   /** D114 clan state exists only in a freshly created v3 season. */
   clanRulesetVersion: 3,
+  /**
+   * THE PIRATE LANE'S OWN BOUNDARY. D150.
+   *
+   * Pirates ship INSIDE a live season, and that is safe for one reason only:
+   * the lane is entirely independent. Its own seed, its own indices, its own
+   * table — it does not move a single rock, so D143's "a new deterministic
+   * distribution must begin at a season boundary" is not engaged. This version
+   * exists so that the NEXT change, the one that redraws a distribution players
+   * are already flying at, has a boundary to bind to.
+   */
+  pirateRulesetVersion: 1,
   /** Coupled to admission: every seat needs one collision-free capital address. D99. */
   capitalSlots: SERVERS.capacity,
   /** Nine candidates per neutral preserves D97's placement-search density at the larger scale. */
@@ -1887,7 +2076,8 @@ export const MULTI_WORLD = {
       crystal: scalePrice(1000, ECONOMY_TEMPO.fixedPrice),
       deuterium: 0,
     },
-    haulers: 2,
+    transportHull: 'COURIER',
+    transports: 2,
   },
   neutral: {
     1: {
@@ -1900,14 +2090,14 @@ export const MULTI_WORLD = {
     2: {
       buildings: { CORE: 5, REFINERY: 5, EXTRACTOR: 5, VAULT: 0, SHIPYARD: 2, HANGAR: 0, DEUTERIUM_PLANT: 0 },
       instruments: {},
-      fleet: { WASP: 8, LANCE: 2 },
+      fleet: { DART: 8, PIKE: 2 },
       ground: {},
       reinforcementMinutes: 6 * 60,
     },
     3: {
       buildings: { CORE: 8, REFINERY: 8, EXTRACTOR: 8, VAULT: 0, SHIPYARD: 4, HANGAR: 0, DEUTERIUM_PLANT: 0 },
       instruments: { AEGIS: 3 },
-      fleet: { WASP: 16, LANCE: 6, BULWARK: 2 },
+      fleet: { VIPER: 16, TALON: 6, STRONGHOLD: 2 },
       ground: { THORN: 6, BASTION: 2 },
       reinforcementMinutes: 4 * 60,
     },

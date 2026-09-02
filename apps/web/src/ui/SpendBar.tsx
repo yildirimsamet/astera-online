@@ -18,8 +18,10 @@ import { RESOURCE_ART } from './assets.js';
  *   · THE BRIGHT PART, taken off the LEFT-HAND end, is what this act would burn.
  *     It shrinks the remainder in front of the player's eyes as the stepper moves,
  *     which is the same teaching mechanism the build sheet's bright segment uses.
- *   · WHAT IS LEFT is the dim tail, and it is the only figure printed with any
- *     size, because it is the one somebody is actually deciding on.
+ *   · WHAT IS LEFT is the dim tail. It is the default figure for a fixed cost,
+ *     because that decision asks what survives. A cargo slider can instead make
+ *     the bright, departing amount the figure: there the player is choosing what
+ *     to send, and the remainder is not the question.
  *
  * WHEN THE PRICE IS BIGGER THAN THE STORE the bar cannot draw it inside itself,
  * and pretending otherwise — clamping the spend at 100% — would draw "exactly
@@ -40,6 +42,7 @@ export function SpendBar({
   spend,
   tone,
   label,
+  readout = 'left',
   compactSize = false,
 }: {
   /** What the world holds of this resource right now. */
@@ -50,6 +53,8 @@ export function SpendBar({
   tone: 'alloy' | 'crystal' | 'deuterium';
   /** Two or three words naming the spend: "fuel for the flight". */
   label: string;
+  /** Which side of the decision gets the prominent number. */
+  readout?: 'left' | 'spend';
   /** Half height and no art, for a bar that sits inside a row rather than on a card. */
   compactSize?: boolean;
 }) {
@@ -81,13 +86,15 @@ export function SpendBar({
           />
         )}
         <span className="min-w-0 flex-1 truncate text-caption text-faint">{label}</span>
-        {/*
-          THE ANSWER. Short by how much, or how much survives the press — never
-          both, because only one of them is ever the question.
-        */}
+        {/* The answer follows the caller's decision: what remains after a cost,
+            or what is being packed when the slider itself chooses the spend. */}
         {short > 0 ? (
           <span data-spend-short className="readout shrink-0 text-caption text-threat-ink">
             &minus;{compact(short)}
+          </span>
+        ) : readout === 'spend' ? (
+          <span data-spend-amount className="readout shrink-0 text-caption text-bone">
+            {compact(spend)}
           </span>
         ) : (
           <span data-spend-left className="readout shrink-0 text-caption text-bone">
@@ -102,6 +109,8 @@ export function SpendBar({
         aria-label={
           short > 0
             ? t('spend.readingShort', { label, short: compact(short) })
+            : readout === 'spend'
+              ? t('spend.readingSpend', { label, spend: compact(spend) })
             : t('spend.reading', { label, spend: compact(spend), left: compact(left) })
         }
       >

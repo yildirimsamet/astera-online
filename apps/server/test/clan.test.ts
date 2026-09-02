@@ -54,6 +54,7 @@ import { reclaimIdleSeats } from '../src/services/reclaim.js';
 import { EventWorker } from '../src/worker/loop.js';
 import {
   giveUnits,
+  giveResearch,
   grant,
   levelWorld,
   seedWorld,
@@ -173,7 +174,7 @@ describe('ruleset-v3 clans', () => {
       originPlanetId: f.planetIds[0]!,
       recipientPlayerId: f.playerIds[1]!,
       targetPlanetId: f.planetIds[1]!,
-      fleet: { HAULER: 1 },
+      fleet: { COURIER: 1 },
       cargo: { alloy: 0, crystal: 0, deuterium: 0 },
       now: f.clock.now(),
     })).rejects.toMatchObject({ code: 'CLAN_ADAPTING' });
@@ -193,7 +194,7 @@ describe('ruleset-v3 clans', () => {
       originPlanetId: f.planetIds[0]!,
       recipientPlayerId: f.playerIds[1]!,
       targetPlanetId: f.planetIds[1]!,
-      fleet: { HAULER: 1 },
+      fleet: { COURIER: 1 },
       cargo: { alloy: 0, crystal: 0, deuterium: 0 },
       now: f.clock.now(),
     })).resolves.toMatchObject({ canLand: true, withinAllowance: true });
@@ -231,8 +232,8 @@ describe('ruleset-v3 clans', () => {
       .where(eq(players.id, f.playerIds[0]!));
     await f.db.update(players).set({ dominionTaken: 180, dominionLost: 30 })
       .where(eq(players.id, f.playerIds[1]!));
-    await giveUnits(f.db, f.planetIds[0]!, { WASP: 2, BASTION: 1 });
-    await giveUnits(f.db, f.planetIds[1]!, { LANCE: 3, PROSPECTOR: 1 });
+    await giveUnits(f.db, f.planetIds[0]!, { DART: 2, BASTION: 1 });
+    await giveUnits(f.db, f.planetIds[1]!, { PIKE: 3, PROSPECTOR: 1 });
     await f.db.insert(missions).values({
       seasonId: f.seasonId,
       kind: 'transfer',
@@ -240,7 +241,7 @@ describe('ruleset-v3 clans', () => {
       ownerPlayerId: f.playerIds[0]!,
       originPlanetId: f.planetIds[0]!,
       targetPlanetId: f.planetIds[1]!,
-      fleet: { WASP: 1 },
+      fleet: { DART: 1 },
       distance: 10,
       departAt: f.clock.now(),
       arriveAt: new Date(f.clock.now().getTime() + 60_000),
@@ -253,16 +254,16 @@ describe('ruleset-v3 clans', () => {
       memberDominion: 450,
       ships: 6,
       fleetValue:
-        2 * (HULLS.WASP.alloy + HULLS.WASP.crystal + HULLS.WASP.deuterium)
-        + 3 * (HULLS.LANCE.alloy + HULLS.LANCE.crystal + HULLS.LANCE.deuterium)
+        2 * (HULLS.DART.alloy + HULLS.DART.crystal + HULLS.DART.deuterium)
+        + 3 * (HULLS.PIKE.alloy + HULLS.PIKE.crystal + HULLS.PIKE.deuterium)
         + HULLS.PROSPECTOR.alloy + HULLS.PROSPECTOR.crystal + HULLS.PROSPECTOR.deuterium,
       groundDefences: 1,
       worlds: 2,
       activeFlights: 1,
     });
     expect(strength.composition).toEqual([
-      { hull: 'WASP', count: 2 },
-      { hull: 'LANCE', count: 3 },
+      { hull: 'DART', count: 2 },
+      { hull: 'PIKE', count: 3 },
       { hull: 'PROSPECTOR', count: 1 },
     ]);
     expect(strength.members).toMatchObject([
@@ -280,12 +281,12 @@ describe('ruleset-v3 clans', () => {
       clanId: result.clanId,
       now: f.clock.now(),
     }));
-    await giveUnits(f.db, f.planetIds[1]!, { WASP: 2 });
+    await giveUnits(f.db, f.planetIds[1]!, { DART: 2 });
     const hostile = await launchAttack(
       f.db,
       f.planetIds[1]!,
       f.planetIds[0]!,
-      { WASP: 1 },
+      { DART: 1 },
       f.clock,
       f.playerIds[1],
     );
@@ -322,7 +323,7 @@ describe('ruleset-v3 clans', () => {
         ownerPlayerId: f.playerIds[attacker]!,
         originPlanetId: f.planetIds[attacker]!,
         targetPlanetId: f.planetIds[5]!,
-        fleet: { WASP: 1 },
+        fleet: { DART: 1 },
         distance: 1,
         departAt: f.clock.now(),
         arriveAt: f.clock.now(),
@@ -392,14 +393,14 @@ describe('ruleset-v3 clans', () => {
     const { result } = await foundClan(f);
     await joinClan(f, result.clanId, 0, 1);
     f.clock.advance(CLAN.adaptationMinutes);
-    await giveUnits(f.db, f.planetIds[0]!, { HAULER: 2 });
+    await giveUnits(f.db, f.planetIds[0]!, { COURIER: 2 });
     const [before] = await f.db.select().from(planets).where(eq(planets.id, f.planetIds[1]!));
     const launch = await f.db.transaction((tx) => launchClanAid(tx, {
       senderPlayerId: f.playerIds[0]!,
       originPlanetId: f.planetIds[0]!,
       recipientPlayerId: f.playerIds[1]!,
       targetPlanetId: f.planetIds[1]!,
-      fleet: { HAULER: 1 },
+      fleet: { COURIER: 1 },
       cargo: { alloy: 100, crystal: 50, deuterium: 0 },
       clock: f.clock,
     }));
@@ -412,7 +413,7 @@ describe('ruleset-v3 clans', () => {
     const [gifted] = await f.db.select().from(units).where(and(
       eq(units.planetId, f.planetIds[1]!),
       eq(units.ownerPlayerId, f.playerIds[1]!),
-      eq(units.hull, 'HAULER'),
+      eq(units.hull, 'COURIER'),
       eq(units.location, 'home'),
     ));
     expect(commitment?.status).toBe('RETURNING');
@@ -435,7 +436,7 @@ describe('ruleset-v3 clans', () => {
     const home = await f.db.select().from(units).where(and(
       eq(units.planetId, f.planetIds[0]!),
       eq(units.ownerPlayerId, f.playerIds[0]!),
-      eq(units.hull, 'HAULER'),
+      eq(units.hull, 'COURIER'),
       eq(units.location, 'home'),
     ));
     expect(completed?.status).toBe('DELIVERED');
@@ -454,13 +455,13 @@ describe('ruleset-v3 clans', () => {
     const { result } = await foundClan(f);
     await joinClan(f, result.clanId, 0, 1);
     f.clock.advance(CLAN.adaptationMinutes);
-    await giveUnits(f.db, f.planetIds[0]!, { HAULER: 1 });
+    await giveUnits(f.db, f.planetIds[0]!, { COURIER: 1 });
     const launch = await f.db.transaction((tx) => launchClanAid(tx, {
       senderPlayerId: f.playerIds[0]!,
       originPlanetId: f.planetIds[0]!,
       recipientPlayerId: f.playerIds[1]!,
       targetPlanetId: f.planetIds[1]!,
-      fleet: { HAULER: 1 },
+      fleet: { COURIER: 1 },
       cargo: { alloy: 0, crystal: 0, deuterium: 0 },
       clock: f.clock,
     }));
@@ -473,7 +474,7 @@ describe('ruleset-v3 clans', () => {
     const [gifted] = await f.db.select().from(units).where(and(
       eq(units.planetId, f.planetIds[1]!),
       eq(units.ownerPlayerId, f.playerIds[1]!),
-      eq(units.hull, 'HAULER'),
+      eq(units.hull, 'COURIER'),
       eq(units.location, 'home'),
     ));
     expect(commitment?.status).toBe('DELIVERED');
@@ -494,14 +495,14 @@ describe('ruleset-v3 clans', () => {
     }).where(eq(planets.id, colony));
     await f.db.delete(units).where(eq(units.planetId, colony));
     await grant(f.db, colony, 10_000, 5_000);
-    await giveUnits(f.db, colony, { HAULER: 1 });
+    await giveUnits(f.db, colony, { COURIER: 1 });
 
     const launch = await f.db.transaction((tx) => launchClanAid(tx, {
       senderPlayerId: f.playerIds[0]!,
       originPlanetId: colony,
       recipientPlayerId: f.playerIds[1]!,
       targetPlanetId: f.planetIds[1]!,
-      fleet: { HAULER: 1 },
+      fleet: { COURIER: 1 },
       cargo: { alloy: 100, crystal: 0, deuterium: 0 },
       clock: f.clock,
     }));
@@ -516,7 +517,7 @@ describe('ruleset-v3 clans', () => {
     const [home] = await f.db.select().from(units).where(and(
       eq(units.planetId, colony),
       eq(units.ownerPlayerId, f.playerIds[0]!),
-      eq(units.hull, 'HAULER'),
+      eq(units.hull, 'COURIER'),
       eq(units.location, 'home'),
     ));
     expect(home?.count).toBe(1);
@@ -534,13 +535,13 @@ describe('ruleset-v3 clans', () => {
     }).where(eq(planets.id, colony));
     await f.db.delete(units).where(eq(units.planetId, colony));
     await grant(f.db, colony, 10_000, 5_000);
-    await giveUnits(f.db, colony, { HAULER: 1 });
+    await giveUnits(f.db, colony, { COURIER: 1 });
     const launch = await f.db.transaction((tx) => launchClanAid(tx, {
       senderPlayerId: f.playerIds[0]!,
       originPlanetId: colony,
       recipientPlayerId: f.playerIds[1]!,
       targetPlanetId: f.planetIds[1]!,
-      fleet: { HAULER: 1 },
+      fleet: { COURIER: 1 },
       cargo: { alloy: 100, crystal: 0, deuterium: 0 },
       clock: f.clock,
     }));
@@ -557,7 +558,7 @@ describe('ruleset-v3 clans', () => {
     const [home] = await f.db.select().from(units).where(and(
       eq(units.planetId, f.planetIds[0]!),
       eq(units.ownerPlayerId, f.playerIds[0]!),
-      eq(units.hull, 'HAULER'),
+      eq(units.hull, 'COURIER'),
       eq(units.location, 'home'),
     ));
     expect(home?.count).toBe(1);
@@ -570,14 +571,14 @@ describe('ruleset-v3 clans', () => {
     f.clock.advance(CLAN.adaptationMinutes);
     await f.db.delete(units).where(eq(units.planetId, f.planetIds[1]!));
     await setLevel(f.db, f.planetIds[1]!, 'HANGAR', 0);
-    await giveUnits(f.db, f.planetIds[1]!, { WASP: hangarCapacity(0) });
-    await giveUnits(f.db, f.planetIds[0]!, { HAULER: 1 });
+    await giveUnits(f.db, f.planetIds[1]!, { DART: hangarCapacity(0) });
+    await giveUnits(f.db, f.planetIds[0]!, { COURIER: 1 });
     const payload = {
       senderPlayerId: f.playerIds[0]!,
       originPlanetId: f.planetIds[0]!,
       recipientPlayerId: f.playerIds[1]!,
       targetPlanetId: f.planetIds[1]!,
-      fleet: { HAULER: 1 },
+      fleet: { COURIER: 1 },
       cargo: { alloy: 100, crystal: 50, deuterium: 10 },
     };
     const quote = await quoteClanAid(f.db, { ...payload, now: f.clock.now() });
@@ -600,14 +601,14 @@ describe('ruleset-v3 clans', () => {
     f.clock.advance(CLAN.adaptationMinutes);
     await f.db.delete(units).where(eq(units.planetId, f.planetIds[1]!));
     await setLevel(f.db, f.planetIds[1]!, 'HANGAR', 0);
-    await giveUnits(f.db, f.planetIds[1]!, { WASP: hangarCapacity(0) });
-    await giveUnits(f.db, f.planetIds[0]!, { HAULER: 2 });
+    await giveUnits(f.db, f.planetIds[1]!, { DART: hangarCapacity(0) });
+    await giveUnits(f.db, f.planetIds[0]!, { COURIER: 2 });
     const payload = {
       senderPlayerId: f.playerIds[0]!,
       originPlanetId: f.planetIds[0]!,
       recipientPlayerId: f.playerIds[1]!,
       targetPlanetId: f.planetIds[1]!,
-      fleet: { HAULER: 1 },
+      fleet: { COURIER: 1 },
       cargo: { alloy: 0, crystal: 0, deuterium: 0 },
     };
 
@@ -617,6 +618,32 @@ describe('ruleset-v3 clans', () => {
       .rejects.toMatchObject({ code: 'CLAN_AID_CANNOT_LAND' });
   });
 
+  it('revalidates advanced ship gifts against the recipient research', async () => {
+    const f = await setup(3);
+    const { result } = await foundClan(f);
+    await joinClan(f, result.clanId, 0, 1);
+    f.clock.advance(CLAN.adaptationMinutes);
+    await giveUnits(f.db, f.planetIds[0]!, { ATLAS: 1 });
+    const payload = {
+      senderPlayerId: f.playerIds[0]!,
+      originPlanetId: f.planetIds[0]!,
+      recipientPlayerId: f.playerIds[1]!,
+      targetPlanetId: f.planetIds[1]!,
+      fleet: { ATLAS: 1 },
+      cargo: { alloy: 0, crystal: 0, deuterium: 0 },
+    };
+
+    await expect(quoteClanAid(f.db, { ...payload, now: f.clock.now() }))
+      .resolves.toMatchObject({ canLand: false });
+    await expect(f.db.transaction((tx) => launchClanAid(tx, { ...payload, clock: f.clock })))
+      .rejects.toMatchObject({ code: 'CLAN_AID_CANNOT_LAND' });
+
+    await giveResearch(f.db, f.planetIds[1]!, 'STARSHIP_ENGINEERING', 1);
+    await giveResearch(f.db, f.planetIds[1]!, 'SHIP_PROPULSION', 2);
+    await expect(quoteClanAid(f.db, { ...payload, now: f.clock.now() }))
+      .resolves.toMatchObject({ canLand: true });
+  });
+
   it('returns aid intact when the destination fills while it is flying', async () => {
     const f = await setup(3);
     const { result } = await foundClan(f);
@@ -624,17 +651,17 @@ describe('ruleset-v3 clans', () => {
     f.clock.advance(CLAN.adaptationMinutes);
     await f.db.delete(units).where(eq(units.planetId, f.planetIds[1]!));
     await setLevel(f.db, f.planetIds[1]!, 'HANGAR', 0);
-    await giveUnits(f.db, f.planetIds[0]!, { HAULER: 2 });
+    await giveUnits(f.db, f.planetIds[0]!, { COURIER: 2 });
     const launch = await f.db.transaction((tx) => launchClanAid(tx, {
       senderPlayerId: f.playerIds[0]!,
       originPlanetId: f.planetIds[0]!,
       recipientPlayerId: f.playerIds[1]!,
       targetPlanetId: f.planetIds[1]!,
-      fleet: { HAULER: 1 },
+      fleet: { COURIER: 1 },
       cargo: { alloy: 0, crystal: 0, deuterium: 0 },
       clock: f.clock,
     }));
-    await giveUnits(f.db, f.planetIds[1]!, { WASP: hangarCapacity(0) });
+    await giveUnits(f.db, f.planetIds[1]!, { DART: hangarCapacity(0) });
 
     f.clock.set(new Date(launch.arriveAt));
     await workerFor(f).tick();
@@ -651,7 +678,7 @@ describe('ruleset-v3 clans', () => {
     await workerFor(f).tick();
     const home = await f.db.select().from(units).where(and(
       eq(units.planetId, f.planetIds[0]!),
-      eq(units.hull, 'HAULER'),
+      eq(units.hull, 'COURIER'),
       eq(units.location, 'home'),
     ));
     expect(home.reduce((sum, row) => sum + row.count, 0)).toBe(2);
@@ -662,13 +689,13 @@ describe('ruleset-v3 clans', () => {
     const { result } = await foundClan(f);
     await joinClan(f, result.clanId, 0, 1);
     f.clock.advance(CLAN.adaptationMinutes);
-    await giveUnits(f.db, f.planetIds[0]!, { HAULER: 2 });
+    await giveUnits(f.db, f.planetIds[0]!, { COURIER: 2 });
     const launch = await f.db.transaction((tx) => launchClanAid(tx, {
       senderPlayerId: f.playerIds[0]!,
       originPlanetId: f.planetIds[0]!,
       recipientPlayerId: f.playerIds[1]!,
       targetPlanetId: f.planetIds[1]!,
-      fleet: { HAULER: 1 },
+      fleet: { COURIER: 1 },
       cargo: { alloy: 100, crystal: 50, deuterium: 0 },
       clock: f.clock,
     }));
@@ -697,7 +724,7 @@ describe('ruleset-v3 clans', () => {
     const [home] = await f.db.select().from(units).where(and(
       eq(units.planetId, f.planetIds[0]!),
       eq(units.ownerPlayerId, f.playerIds[0]!),
-      eq(units.hull, 'HAULER'),
+      eq(units.hull, 'COURIER'),
       eq(units.location, 'home'),
     ));
     expect(commitment?.status).toBe('RETURNED');
@@ -709,12 +736,12 @@ describe('ruleset-v3 clans', () => {
     const { result } = await foundClan(f);
     await joinClan(f, result.clanId, 0, 1);
     f.clock.advance(CLAN.adaptationMinutes);
-    await giveUnits(f.db, f.planetIds[0]!, { WASP: 5, HAULER: 2 });
+    await giveUnits(f.db, f.planetIds[0]!, { DART: 5, COURIER: 2 });
     const launch = await launchAttack(
       f.db,
       f.planetIds[0]!,
       f.planetIds[2]!,
-      { WASP: 5, HAULER: 2 },
+      { DART: 5, COURIER: 2 },
       f.clock,
       f.playerIds[0],
     );
@@ -772,7 +799,7 @@ describe('ruleset-v3 clans', () => {
       ownerPlayerId: f.playerIds[0]!,
       originPlanetId: f.planetIds[0]!,
       targetPlanetId: f.planetIds[1]!,
-      fleet: { HAULER: 1 },
+      fleet: { COURIER: 1 },
       distance: index + 1,
       departAt: f.clock.now(),
       arriveAt: f.clock.now(),
@@ -787,7 +814,7 @@ describe('ruleset-v3 clans', () => {
       ownerPlayerId: f.playerIds[0]!,
       originPlanetId: f.planetIds[1]!,
       targetPlanetId: f.planetIds[0]!,
-      fleet: { HAULER: 1 },
+      fleet: { COURIER: 1 },
       loot: { alloy: 1_000_000, crystal: 1_000_000, deuterium: 1_000_000 },
       distance: 1,
       departAt: f.clock.now(),
@@ -958,9 +985,9 @@ describe('ruleset-v3 clans', () => {
       recruiting: true,
       clock: f.clock,
     }));
-    await giveUnits(f.db, f.planetIds[1]!, { WASP: 5 });
+    await giveUnits(f.db, f.planetIds[1]!, { DART: 5 });
     const raid = await launchAttack(
-      f.db, f.planetIds[1]!, f.planetIds[2]!, { WASP: 3 }, f.clock, f.playerIds[1],
+      f.db, f.planetIds[1]!, f.planetIds[2]!, { DART: 3 }, f.clock, f.playerIds[1],
     );
     f.clock.set(settledAt(raid.arriveAt));
     await workerFor(f).tick();
@@ -983,9 +1010,9 @@ describe('ruleset-v3 clans', () => {
     const f = await setup(3);
     const { result } = await foundClan(f);
     await joinClan(f, result.clanId, 0, 1);
-    await giveUnits(f.db, f.planetIds[1]!, { WASP: 5 });
+    await giveUnits(f.db, f.planetIds[1]!, { DART: 5 });
     const raid = await launchAttack(
-      f.db, f.planetIds[1]!, f.planetIds[2]!, { WASP: 3 }, f.clock, f.playerIds[1],
+      f.db, f.planetIds[1]!, f.planetIds[2]!, { DART: 3 }, f.clock, f.playerIds[1],
     );
     f.clock.set(settledAt(raid.arriveAt));
     await workerFor(f).tick();
@@ -1009,14 +1036,14 @@ describe('ruleset-v3 clans', () => {
       recruiting: true,
       clock: f.clock,
     }));
-    await giveUnits(f.db, f.planetIds[0]!, { HAULER: 2 });
+    await giveUnits(f.db, f.planetIds[0]!, { COURIER: 2 });
     // The founder is mature at once, so nothing else would have stopped this.
     const payload = {
       senderPlayerId: f.playerIds[0]!,
       originPlanetId: f.planetIds[0]!,
       recipientPlayerId: f.playerIds[0]!,
       targetPlanetId: f.planetIds[0]!,
-      fleet: { HAULER: 1 },
+      fleet: { COURIER: 1 },
       cargo: { alloy: 500, crystal: 0, deuterium: 0 },
     };
     await expect(quoteClanAid(f.db, { ...payload, now: f.clock.now() }))
@@ -1031,13 +1058,13 @@ describe('ruleset-v3 clans', () => {
     const { result } = await foundClan(f);
     await joinClan(f, result.clanId, 0, 1);
     f.clock.advance(CLAN.adaptationMinutes);
-    await giveUnits(f.db, f.planetIds[0]!, { HAULER: 2 });
+    await giveUnits(f.db, f.planetIds[0]!, { COURIER: 2 });
     const quote = await quoteClanAid(f.db, {
       senderPlayerId: f.playerIds[0]!,
       originPlanetId: f.planetIds[0]!,
       recipientPlayerId: f.playerIds[1]!,
       targetPlanetId: f.planetIds[1]!,
-      fleet: { HAULER: 1 },
+      fleet: { COURIER: 1 },
       cargo: { alloy: 100, crystal: 0, deuterium: 0 },
       now: f.clock.now(),
     });

@@ -30,6 +30,13 @@ describe('the asteroid silhouette rim', () => {
     expect(source).toContain('side: THREE.BackSide');
     expect(source).toContain('instanceMatrix * expanded');
   });
+
+  it('keeps the rim behind nearer worlds and leaves the rock body on the opaque path', () => {
+    const source = readFileSync('src/galaxy/Asteroids.tsx', 'utf8');
+    expect(source).toContain('depthTest: true');
+    expect(source).toContain('args={[source.geometry, source.material, bucket.rocks.length]}');
+    expect(source).not.toContain('bodyMaterial');
+  });
 });
 
 describe('the native scrollbar', () => {

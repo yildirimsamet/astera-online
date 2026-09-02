@@ -1,3 +1,4 @@
+import { useEffect, useState, type ChangeEvent } from 'react';
 import { Button, IconButton } from './kit/index.js';
 
 interface QuantityStepperProps {
@@ -8,6 +9,8 @@ interface QuantityStepperProps {
   decreaseLabel: string;
   increaseLabel: string;
   valueLabel: string;
+  /** Allow direct digit entry while keeping the step buttons available. */
+  editable?: boolean;
   /** Accessible name; include the hull when several steppers share a sheet. */
   maxLabel: string;
   /** Short visible copy. Defaults to the accessible label on single steppers. */
@@ -34,6 +37,7 @@ export function QuantityStepper({
   decreaseLabel,
   increaseLabel,
   valueLabel,
+  editable = false,
   maxLabel,
   maxText = maxLabel,
   resetLabel,
@@ -41,13 +45,39 @@ export function QuantityStepper({
 }: QuantityStepperProps) {
   const upper = Math.max(min, max);
   const current = Math.max(min, Math.min(upper, Math.floor(value)));
+  const [draft, setDraft] = useState(() => String(current));
+
+  useEffect(() => {
+    setDraft((held) => held === '' && current === min ? held : String(current));
+  }, [current, min]);
+
+  const commit = (next: number): void => {
+    if (editable) setDraft(String(next));
+    onChange(next);
+  };
+
+  const enter = (event: ChangeEvent<HTMLInputElement>): void => {
+    const digits = event.currentTarget.value.replace(/\D/g, '');
+    if (digits === '') {
+      setDraft('');
+      onChange(min);
+      return;
+    }
+
+    const parsed = Number.parseInt(digits, 10);
+    const next = Number.isSafeInteger(parsed)
+      ? Math.max(min, Math.min(upper, parsed))
+      : upper;
+    setDraft(String(next));
+    onChange(next);
+  };
 
   return (
     <div className="flex items-center justify-end gap-2">
       <IconButton
         ariaLabel={decreaseLabel}
         disabled={current <= min}
-        onClick={() => { onChange(current - 1); }}
+        onClick={() => { commit(current - 1); }}
         className="text-title"
       >
         −
@@ -55,15 +85,17 @@ export function QuantityStepper({
       <input
         type="text"
         inputMode="numeric"
+        pattern="[0-9]*"
         aria-label={valueLabel}
-        readOnly
-        value={String(current)}
+        readOnly={!editable}
+        value={editable ? draft : String(current)}
+        onChange={editable ? enter : undefined}
         className="num plate plate-sunk h-11 w-14 rounded-control px-2 text-center text-title text-bone outline-none"
       />
       <IconButton
         ariaLabel={increaseLabel}
         disabled={current >= upper}
-        onClick={() => { onChange(current + 1); }}
+        onClick={() => { commit(current + 1); }}
         className="text-title"
       >
         +
@@ -76,7 +108,7 @@ export function QuantityStepper({
           size="sm"
           ariaLabel={maxLabel}
           disabled={current >= upper}
-          onClick={() => { onChange(upper); }}
+          onClick={() => { commit(upper); }}
           className="min-h-11"
         >
           {maxText}
@@ -96,7 +128,7 @@ export function QuantityStepper({
             variant="ghost"
             ariaLabel={resetLabel}
             disabled={current <= min}
-            onClick={() => { onChange(min); }}
+            onClick={() => { commit(min); }}
             className="min-h-11"
           >
             {resetText}

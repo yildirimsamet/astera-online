@@ -60,7 +60,7 @@ import type { Resources } from './types.js';
  * görevler toplanarak ilerler."*
  *
  * NOTHING HERE IS STORED AS PROGRESS except one tally the world genuinely cannot
- * reconstruct (see `WASP`). The other ten metrics are counted off rows that exist
+ * reconstruct (see the `SHIPS` chain). The other ten metrics are counted off rows that exist
  * anyway — missions flown, runs completed, levels standing — which keeps this
  * table inside the architectural rule that nothing is stored which a formula can
  * derive, and means a chain added later is retroactive for free.
@@ -245,10 +245,10 @@ const CHAINS: Record<RewardChainId, RewardChain> = {
    * genuinely unrecoverable from the world, so `planets.builtEver` records it,
    * and it is the only counter this feature adds.
    *
-   * IT COUNTS THE WASP ALONE, not hulls in general. Fifty Bulwarks cost more than
-   * ten times fifty Wasps; one number cannot mean both. The Wasp is also the
-   * hull the opening hands you two of, so the chain starts where the player
-   * already is.
+   * IT COUNTS THE OPENING DART ALONE, not hulls in general. Fifty capital hulls
+   * cost many times fifty Darts; one number cannot mean both. Dart is also the
+   * hull the opening asks the player to build twice, so the chain starts where
+   * the player already is.
    */
   SHIPS: {
     id: 'SHIPS',

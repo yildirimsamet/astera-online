@@ -1,7 +1,7 @@
-import { and, desc, eq, gt, inArray, isNotNull, ne } from 'drizzle-orm';
+import { and, desc, eq, gt, inArray, isNotNull, ne, sql } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/pg-core';
 import {
-  WEAPON_PROJECTS,
+  COMBAT_RESEARCH_PROJECTS,
   PROBE,
   DEATH_STAR,
   bearingBetween,
@@ -58,7 +58,7 @@ import {
   saveResources,
 } from './planet.js';
 import { schedule } from '../worker/queue.js';
-import { publishShard } from '../stream/bus.js';
+import { publishShard, publishWorldMemory } from '../stream/bus.js';
 import { hasResearch, researchLevels } from './researchState.js';
 import { publicWorlds, silhouetteOf } from './publicGalaxy.js';
 import { lockWorlds } from './ownership.js';
@@ -709,14 +709,19 @@ export async function launchProbe(
 }
 
 /**
- * THE NEWEST DELIVERED PROBE PER TARGET, FOR ONE COMMANDER. D127.
+ * THE NEWEST LOOK PER TARGET, FOR ONE COMMANDER. D127 · D151.
  *
- * The complete Intel-centre history stays in `probe_reports`; this query follows
- * one materialized pointer per target, so its work is bounded by remembered worlds
- * instead of by every probe the commander has ever sent.
+ * The complete Intel-centre history stays in `probe_reports`; this follows one
+ * materialized row per target, so its work is bounded by remembered worlds rather
+ * than by every probe the commander has ever sent.
+ *
+ * THE SILHOUETTE IS READ FROM THE MEMORY ROW, NOT JOINED FROM A REPORT. It used
+ * to be an `innerJoin` on `probe_reports`, which made the record structurally
+ * unable to come from anything but a probe — and a fleet that had just fought in
+ * a world's orbit is a look by any definition the rest of this file uses.
  */
 export interface WorldMemory {
-  silhouette: NonNullable<typeof probeReports.$inferSelect['silhouette']>;
+  silhouette: NonNullable<typeof probeWorldMemories.$inferSelect['silhouette']>;
   seenAt: Date;
 }
 export type RememberedWorlds = ReadonlyMap<string, WorldMemory>;
@@ -728,20 +733,106 @@ export async function rememberedWorlds(
   const rows = await db
     .select({
       targetPlanetId: probeWorldMemories.targetPlanetId,
-      silhouette: probeReports.silhouette,
+      silhouette: probeWorldMemories.silhouette,
       seenAt: probeWorldMemories.seenAt,
     })
     .from(probeWorldMemories)
-    .innerJoin(probeReports, eq(probeReports.id, probeWorldMemories.reportId))
     .where(eq(probeWorldMemories.observerPlayerId, observerPlayerId));
 
   const out = new Map<string, WorldMemory>();
   for (const row of rows) {
-    if (!row.silhouette) continue;
     out.set(row.targetPlanetId, { silhouette: row.silhouette, seenAt: row.seenAt });
   }
   return out;
 }
+
+/**
+ * ONE COMMANDER'S RECORD OF ONE WORLD, WRITTEN OR REPLACED. D127 · D151.
+ *
+ * THE ONLY WRITER, and that is the point of it existing. The probe path and every
+ * arrival path go through here, so "the newest look wins" is decided once instead
+ * of by whichever caller was written last — and a new craft that reaches a world
+ * cannot record a memory that behaves differently from the two that already do.
+ *
+ * NEWEST WINS, AND THE TIE-BREAK MAY NOT BE NULL. The predicate used to compare
+ * `(seen_at, report_id)` as a row, which is deterministic only while every row has
+ * a report: a battle record carries none, SQL row comparison against NULL is NULL,
+ * and a fresh battle would silently have failed to replace an ancient probe.
+ * `coalesce` to a sortable text makes the second term total.
+ */
+export async function rememberWorld(
+  tx: Tx,
+  input: {
+    observerPlayerId: string;
+    targetPlanetId: string;
+    seasonId: string;
+    seenAt: Date;
+    source: 'PROBE' | 'BATTLE';
+    reportId?: string;
+    /** Provided by the probe, which reads more than a silhouette. */
+    silhouette?: NonNullable<typeof probeWorldMemories.$inferSelect['silhouette']>;
+  },
+): Promise<void> {
+  /*
+    BUILT FROM THE SAME PROJECTION THE GALAXY IS, narrowed to one world, so a
+    record and a live reading can never disagree about what a world looks like.
+    A caller that already holds a richer silhouette — the probe, which also brings
+    home doctrines and the interceptor pad — passes its own.
+  */
+  let silhouette = input.silhouette;
+  if (!silhouette) {
+    const [outside] = await publicWorlds(tx, input.seasonId, input.seenAt, [input.targetPlanetId]);
+    if (!outside) return;
+    silhouette = silhouetteOf(outside);
+  }
+
+  await tx
+    .insert(probeWorldMemories)
+    .values({
+      observerPlayerId: input.observerPlayerId,
+      targetPlanetId: input.targetPlanetId,
+      reportId: input.reportId ?? null,
+      source: input.source,
+      silhouette,
+      seenAt: input.seenAt,
+    })
+    .onConflictDoUpdate({
+      target: [probeWorldMemories.observerPlayerId, probeWorldMemories.targetPlanetId],
+      set: {
+        reportId: sql`excluded.report_id`,
+        source: sql`excluded.source`,
+        silhouette: sql`excluded.silhouette`,
+        seenAt: sql`excluded.seen_at`,
+      },
+      // Two arrivals may land at the same instant. The tuple makes the winner
+      // newest-first and deterministic on ties, with no NULL in either term.
+      setWhere: sql`(excluded.seen_at, coalesce(excluded.report_id::text, ''))
+        > (${probeWorldMemories.seenAt}, coalesce(${probeWorldMemories.reportId}::text, ''))`,
+    });
+
+  // The map this commander reads is a player-keyed projection. A record written
+  // into a warm cache is a record the player does not have until a TTL expires.
+  await publishWorldMemory(tx, input.observerPlayerId);
+}
+
+/**
+ * A CRAFT OF THIS COMMANDER'S REACHED THAT WORLD, SO THEY HAVE SEEN IT. D151.
+ *
+ * Called from every arrival that puts an owned craft at another world — a raid, a
+ * raid that bounces off protection, a battle with a rock, a strategic strike. The
+ * fleet is eyes: it crossed the distance, it was in that orbit, and what the map
+ * draws afterwards has to be what it found rather than what a probe saw before it.
+ *
+ * WHAT IT DOES NOT CARRY is as deliberate as what it does. `silhouetteOf` is the
+ * OUTSIDE of a world — flag, development, orbital hardware, dome. The two readings
+ * only a probe takes (combat doctrine and the interceptor pad) are not here and
+ * must not be inferred: a raid is not a scan, and a record that quietly grew a
+ * doctrine list nobody flew for would be the fog leaking through its own door.
+ */
+export const rememberVisitedWorld = async (
+  tx: Tx,
+  input: { observerPlayerId: string; targetPlanetId: string; seasonId: string; seenAt: Date },
+): Promise<void> => rememberWorld(tx, { ...input, source: 'BATTLE' });
 
 /** Snapshot the target and write both sides of the event. Called by the worker. */
 export async function resolveProbe(
@@ -830,7 +921,7 @@ export async function resolveProbe(
   const doctrines = owner === null
     ? undefined
     : Object.fromEntries(
-      WEAPON_PROJECTS
+      COMBAT_RESEARCH_PROJECTS
         .map((id) => [id, held.get(id) ?? 0] as const)
         .filter(([, level]) => level > 0),
     );

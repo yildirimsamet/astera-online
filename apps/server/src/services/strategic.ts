@@ -1,5 +1,6 @@
 import { and, eq, inArray, sql } from 'drizzle-orm';
 import {
+  ALL_HULLS,
   ANTI_STRATEGIC,
   BUILDING_IDS,
   DEATH_STAR,
@@ -73,9 +74,7 @@ import { refreshSensorEpoch } from './sensorHistory.js';
 const CORE_BOUND_BUILDINGS = [
   'REFINERY', 'EXTRACTOR', 'VAULT', 'SHIPYARD', 'HANGAR', 'DEUTERIUM_PLANT',
 ] as const;
-const DESTROYED_HOME = [
-  'WASP', 'LANCE', 'BULWARK', 'HAULER', 'RUNNER', 'BREACHER', 'PROSPECTOR', 'THORN', 'BASTION',
-] as const;
+const DESTROYED_HOME = ALL_HULLS;
 const BUILDING_TYPES = new Set<string>(BUILDING_IDS);
 const isBuildingId = (value: string): value is BuildingId => BUILDING_TYPES.has(value);
 

@@ -1,6 +1,6 @@
 import { afterAll, beforeEach, describe, expect, it } from 'vitest';
 import { asc, eq } from 'drizzle-orm';
-import { SERVERS } from '@astera/rules';
+import { ALL_HULLS, MULTI_WORLD, SERVERS } from '@astera/rules';
 import {
   scheduledEvents,
   seasonResults,
@@ -9,6 +9,10 @@ import {
   missions,
   accounts,
   buildOrders,
+  battleReports,
+  pirateRaids,
+  pirateState,
+  playerResearch,
   shards,
   units,
   strategicImpacts,
@@ -35,7 +39,7 @@ describe('season lifecycle', () => {
   let f: Fixture;
 
   beforeEach(async () => {
-    f = await seedWorld(3);
+    f = await seedWorld(3, 4242, { pirates: true });
   });
 
   const seasonEndEvent = async () => {
@@ -166,7 +170,7 @@ describe('season lifecycle', () => {
       ownerPlayerId: f.playerIds[0]!,
       originPlanetId: origin,
       targetPlanetId: target,
-      fleet: { WASP: 20 },
+      fleet: { DART: 20 },
       distance: 100,
       departAt: f.clock.now(),
       arriveAt: new Date(f.clock.now().getTime() + 60_000),
@@ -186,7 +190,7 @@ describe('season lifecycle', () => {
 
   it('lets a committed build settle before freezing the season', async () => {
     const planetId = f.planetIds[0]!;
-    await buildUnits(f.db, planetId, 'WASP', 1, f.clock);
+    await buildUnits(f.db, planetId, 'DART', 1, f.clock);
     const [order] = await f.db.select().from(buildOrders).where(eq(buildOrders.planetId, planetId));
     const original = await seasonEndEvent();
     await f.db.update(seasons).set({ endsAt: order!.readyAt }).where(eq(seasons.id, f.seasonId));
@@ -213,10 +217,92 @@ describe('season lifecycle', () => {
       .from(units)
       .where(eq(units.planetId, planetId));
     expect(frozen?.status).toBe('frozen');
-    expect(wasps).toMatchObject({ hull: 'WASP', count: 1 });
+    expect(wasps).toMatchObject({ hull: 'DART', count: 1 });
   });
 
   it('waits for every snapshot, then wipes and opens successors atomically', async () => {
+    const [resolvedMission] = await f.db.insert(missions).values({
+      seasonId: f.seasonId,
+      kind: 'attack',
+      status: 'resolved',
+      ownerPlayerId: f.playerIds[0]!,
+      originPlanetId: f.planetIds[0]!,
+      targetPlanetId: f.planetIds[1]!,
+      fleet: { DART: 1 },
+      distance: 100,
+      departAt: f.clock.now(),
+      arriveAt: f.clock.now(),
+    }).returning();
+    await f.db.insert(units).values({
+      planetId: f.planetIds[0]!,
+      ownerPlayerId: f.playerIds[0]!,
+      hull: 'DART',
+      count: 1,
+    });
+    await f.db.insert(playerResearch).values({
+      playerId: f.playerIds[0]!,
+      projectId: 'SHIP_POWER',
+      level: 1,
+      completedAt: f.clock.now(),
+    });
+    await f.db.insert(battleReports).values({
+      seasonId: f.seasonId,
+      missionId: resolvedMission!.id,
+      attackerPlayerId: f.playerIds[0]!,
+      defenderPlayerId: f.playerIds[1]!,
+      targetPlanetId: f.planetIds[1]!,
+      grade: 'REPELLED',
+      rounds: [],
+      loot: { alloy: 0, crystal: 0, deuterium: 0 },
+      attackerLosses: {},
+      defenderLosses: {},
+    });
+
+    /*
+      A PIRATE LANE AND A RAID AT IT. D150.
+
+      `pirate_raids` has ON DELETE no action keys to `planets` and `seasons`, and
+      `battle_reports` points AT the raid — so a wipe that deletes them in the wrong
+      order fails on a constraint and rolls the whole rollover back. That is not a
+      leak, it is a galaxy that can never be reset, which is exactly the outage
+      `debris_fields` caused here once before. It went unnoticed then because the
+      wipe tests never fought a battle; it would go unnoticed now because they never
+      raid a pirate.
+    */
+    const [pirateRaid] = await f.db.insert(pirateRaids).values({
+      seasonId: f.seasonId,
+      planetId: f.planetIds[0]!,
+      pirateIndex: 3,
+      status: 'done',
+      fleet: { DART: 1 },
+      tech: {},
+      interceptX: 1, interceptY: 2, interceptZ: 3,
+      departAt: f.clock.now(),
+      arriveAt: f.clock.now(),
+    }).returning();
+    await f.db.insert(battleReports).values({
+      seasonId: f.seasonId,
+      missionId: null,
+      targetPlanetId: null,
+      pirateRaidId: pirateRaid!.id,
+      targetKind: 'PIRATE',
+      attackerPlayerId: f.playerIds[0]!,
+      grade: 'DECISIVE',
+      rounds: [],
+      loot: { alloy: 0, crystal: 0, deuterium: 0 },
+      attackerLosses: {},
+      defenderLosses: {},
+      dominionSwing: 0,
+    });
+    await f.db.insert(pirateState).values({
+      seasonId: f.seasonId,
+      index: 3,
+      losses: { DART: 1 },
+      destroyedAt: f.clock.now(),
+      destroyedByPlayerId: f.playerIds[0]!,
+      updatedAt: f.clock.now(),
+    });
+
     const original = await rolloverEvent();
     f.clock.set(original.resolveAt);
     await onSeasonRollover({ db: f.db, clock: f.clock }, original);
@@ -241,9 +327,19 @@ describe('season lifecycle', () => {
       .where(eq(seasons.status, 'live'));
     expect(old!.status).toBe('wiped');
     expect(await f.db.select().from(players)).toHaveLength(0);
+    expect(await f.db.select().from(missions)).toHaveLength(0);
+    expect(await f.db.select().from(playerResearch)).toHaveLength(0);
+    expect(await f.db.select().from(battleReports)).toHaveLength(0);
+    expect(await f.db.select().from(pirateRaids)).toHaveLength(0);
+    expect(await f.db.select().from(pirateState)).toHaveLength(0);
     expect(live).toHaveLength(2);
+    expect(live.every(({ season }) =>
+      season.rulesetVersion === MULTI_WORLD.fleetCatalogRulesetVersion)).toBe(true);
     expect(live.map(({ shard }) => shard.ordinal).sort()).toEqual([1, 2]);
     expect(live.every(({ shard }) => shard.playerCap === SERVERS.capacity)).toBe(true);
+    const successorUnits = await f.db.select().from(units);
+    expect(successorUnits.length).toBeGreaterThan(0);
+    expect(successorUnits.every((row) => ALL_HULLS.includes(row.hull))).toBe(true);
     expect(await latestSeasonResult(f.db, f.accountIds[0]!)).toBeTruthy();
     const [account] = await f.db.select().from(accounts).where(eq(accounts.id, f.accountIds[0]!));
     expect(account?.lifetime.seasons).toBe(1);

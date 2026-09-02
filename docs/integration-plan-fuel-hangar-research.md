@@ -815,11 +815,11 @@ aynı araştırmayı 4 kez satın alır ve bu doğrudan bir regresyon sinyalidir
    Mevcut `planet_research` satırları migration ile taşınır: bir oyuncunun
    herhangi bir dünyasında tamamlanmış proje, oyuncuya seviye 1 olarak yazılır.
    **Eski tablo bir sürüm boyunca bırakılır**, okunmaz.
-2. **Tek slot.** Aynı anda tek araştırma. Herhangi bir dünyanın CONSTRUCTION
-   kuyruğundan başlatılır; kuyruk mekaniği (üç derinlik, sipariş anında maliyet
-   taahhüdü, iptalde yarı iade, sistem hatasında tam iade) aynen kullanılır.
-   İkinci bir dünyadan araştırma başlatma denemesi `RESEARCH_SLOT_BUSY` ile
-   reddedilir.
+2. **Tek slot, ayrı sıra.** Aynı anda tek araştırma çalışır; toplam üç proje
+   komutanın hesap-geneli RESEARCH sırasında bekleyebilir. Maliyet seçilen
+   gezegenden sipariş anında alınır. Başlayan araştırma oyuncu tarafından iptal
+   edilemez; yalnızca sistem hatası kaynakları tam iade eder. İnşaat ve Tersane
+   sıraları bundan tamamen ayrıdır.
 3. **Seviyeli model.**
    ```ts
    interface ResearchProject {
@@ -878,7 +878,7 @@ Sessiz bırakılamaz.
 - Bir dünyada tamamlanan araştırma tüm dünyalarda geçerli.
 - İkinci bir araştırma paralel başlatılamıyor.
 - Migration sonrası mevcut oyuncuların projeleri kaybolmamış.
-- İptal yarı iade, sistem hatası tam iade — kuyruk davranışı değişmemiş.
+- Oyuncu araştırmayı iptal edemiyor; sistem hatası tam iade yapıyor.
 - Keşif mekanizmaları çalışıyor.
 
 ---

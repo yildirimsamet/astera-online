@@ -12,7 +12,8 @@ import { useLaunch } from '../api/queries.js';
 import type { GalaxyPlanet, PlanetView } from '../api/schemas.js';
 import { hullLabel } from '../i18n/names.js';
 import { compact } from '../lib/format.js';
-import { duration } from '../lib/time.js';
+import { recordAgeMinutes } from '../lib/dossier.js';
+import { duration, staleness } from '../lib/time.js';
 import { MOBILE, planRoute, techOf } from '../lib/navigation.js';
 import { StatStrip } from '../ui/Action.js';
 import { CapacityBar } from '../ui/CapacityBar.js';
@@ -114,9 +115,29 @@ export function LaunchSheet({
     setSending((current) => ({ ...current, [hull]: Math.max(0, Math.min(available, value)) }));
   };
 
+  /**
+   * HOW OLD THE TARGET IS, ON THE SURFACE WHERE THE FLEET STOPS BEING RECALLABLE.
+   * D151.
+   *
+   * The dossier stamps the age on every fact it draws from a record, and the disc
+   * label names the record under the world. This sheet — the last screen before an
+   * irreversible commitment — said only "Attack", and printed a name and a
+   * commander copied out of a frozen silhouette exactly as it prints them for a
+   * world under a live Telescope.
+   *
+   * IT ADDS NO FACT. Every figure on this sheet is one the player had already
+   * bought; what was missing was the PROVENANCE of them, which is the half an
+   * information game cannot leave off its commitment surface. `null` on a live
+   * reading, because a reading has no age and inventing one is the same lie
+   * inverted.
+   */
+  const recordAge = recordAgeMinutes(target, Date.now());
+
   return (
     <Sheet
-      eyebrow={t('launch.eyebrow')}
+      eyebrow={recordAge === null
+        ? t('launch.eyebrow')
+        : t('launch.eyebrowRecord', { age: staleness(recordAge) })}
       /**
        * A WORLD YOU CANNOT SEE HAS NO NAME TO PUT HERE. D127.
        *
@@ -397,6 +418,7 @@ export function LaunchSheet({
                   decreaseLabel={t('launch.fewer', { name: hullLabel(hull) })}
                   increaseLabel={t('launch.more', { name: hullLabel(hull) })}
                   valueLabel={t('launch.quantity', { name: hullLabel(hull) })}
+                  editable
                   maxLabel={t('launch.max', { name: hullLabel(hull) })}
                   maxText={t('launch.maxShort')}
                 />

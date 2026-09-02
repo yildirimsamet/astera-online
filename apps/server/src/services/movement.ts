@@ -45,6 +45,7 @@ import {
 } from './planet.js';
 import { planetView } from './planetView.js';
 import { pendingThreads } from './session.js';
+import { techOf } from './researchState.js';
 import { fleetChangesWatch, publishWatchChanges } from './watchEvents.js';
 
 const EMPTY: Resources = { alloy: 0, crystal: 0, deuterium: 0 };
@@ -163,10 +164,10 @@ export async function launchTransfer(
   validateResources(cargo);
   if (originPlanetId === targetPlanetId) throw new GameError('SELF_TRANSFER', 'Choose another world');
   if (resourcesTotal(cargo) > transferCargoCapacity(fleet)) {
-    throw new GameError('CARGO_CAPACITY', 'Cargo exceeds Hauler and Runner capacity', 400);
+    throw new GameError('CARGO_CAPACITY', 'Cargo exceeds dedicated transport capacity', 400);
   }
-  if (resourcesTotal(cargo) > 0 && (fleet.HAULER ?? 0) + (fleet.RUNNER ?? 0) <= 0) {
-    throw new GameError('TRANSFER_NEEDS_CARGO_HULL', 'Resources need a Hauler or Runner', 400);
+  if (resourcesTotal(cargo) > 0 && transferCargoCapacity(fleet) <= 0) {
+    throw new GameError('TRANSFER_NEEDS_CARGO_HULL', 'Resources need a transport hull', 400);
   }
 
   return db.transaction(async (tx) => {
@@ -204,7 +205,8 @@ export async function launchTransfer(
       `assertFuel` is that sum, and it is now the only place any launch states it.
     */
     assertFuel(fuel, origin.deuterium, cargo.deuterium);
-    const oneWay = fleetTravelExact(dist, fleet, fleetSpeedMult(origin.orbit));
+    const tech = await techOf(tx, ownerPlayerId);
+    const oneWay = fleetTravelExact(dist, fleet, fleetSpeedMult(origin.orbit), tech);
     if (!Number.isFinite(oneWay)) throw new GameError('IMMOBILE_FLEET', 'That fleet cannot travel');
     const arriveAt = addMinutes(origin.now, oneWay);
     assertSeasonOpenThrough(origin, arriveAt);
@@ -216,6 +218,7 @@ export async function launchTransfer(
       targetPlanetId,
       fleet,
       cargo,
+      tech,
       distance: dist,
       departAt: origin.now,
       arriveAt,
@@ -272,15 +275,16 @@ export async function launchSettlement(
         claimUntil: neutral.state.claimUntil.toISOString(),
       });
     }
-    const haulers = MULTI_WORLD.settlement.haulers;
-    if ((origin.homeFleet.HAULER ?? 0) < haulers) {
-      throw new GameError('SETTLEMENT_REQUIREMENTS', 'Settlement Haulers are missing', 409);
+    const fleet = settlementFleet();
+    const transportHull = MULTI_WORLD.settlement.transportHull;
+    const transports = MULTI_WORLD.settlement.transports;
+    if ((origin.homeFleet[transportHull] ?? 0) < transports) {
+      throw new GameError('SETTLEMENT_REQUIREMENTS', 'Settlement transports are missing', 409);
     }
     const cost = MULTI_WORLD.settlement.cost;
     if (origin.alloy < cost.alloy || origin.crystal < cost.crystal) {
       throw new GameError('SETTLEMENT_REQUIREMENTS', 'Settlement resources are missing', 409);
     }
-    const fleet: Fleet = { HAULER: haulers };
     const dist = distance(origin, neutral.world);
     // One leg: the settlers land and become the colony. T6.
     const fuel = missionFuel(fleet, dist, 1);
@@ -295,7 +299,8 @@ export async function launchSettlement(
       the one guard so it cannot be true on one path and false on another.
     */
     assertFuel(fuel, origin.deuterium, cost.deuterium);
-    const oneWay = fleetTravelExact(dist, fleet);
+    const tech = await techOf(tx, ownerPlayerId);
+    const oneWay = fleetTravelExact(dist, fleet, 1, tech);
     const arriveAt = addMinutes(origin.now, oneWay);
     if (arriveAt >= neutral.state.claimUntil) {
       throw new GameError('RECOVERY_WINDOW_TOO_SHORT', 'The claim closes before arrival', 409, {
@@ -311,6 +316,7 @@ export async function launchSettlement(
       targetPlanetId,
       fleet,
       cargo: cost,
+      tech,
       distance: dist,
       departAt: origin.now,
       arriveAt,
@@ -342,6 +348,11 @@ export async function launchSettlement(
   });
 }
 
+/** Exact shared founding manifest; exported so route/service tests cannot restate it. */
+export const settlementFleet = (): Fleet => ({
+  [MULTI_WORLD.settlement.transportHull]: MULTI_WORLD.settlement.transports,
+});
+
 async function clearReservedFleet(tx: Tx, mission: typeof missions.$inferSelect): Promise<void> {
   // A rerouted mission deliberately keeps its craft stationed on the original
   // home row while its endpoint changes. Mission ownership + location is the
@@ -366,7 +377,12 @@ async function rerouteToSafeHome(
   if (!from || !home) throw new Error('reroute endpoint vanished');
   const dist = distance(from, home);
   const homeOrbit = await orbitOf(tx, homeId);
-  const oneWay = fleetTravelExact(dist, mission.fleet, fleetSpeedMult(homeOrbit));
+  const oneWay = fleetTravelExact(
+    dist,
+    mission.fleet,
+    fleetSpeedMult(homeOrbit),
+    mission.tech ?? {},
+  );
   if (!Number.isFinite(oneWay)) throw new Error('rerouted transfer has no mobile craft');
   const arriveAt = addMinutes(now, oneWay);
   const [returnMission] = await tx.insert(missions).values({
@@ -377,6 +393,7 @@ async function rerouteToSafeHome(
     targetPlanetId: homeId,
     fleet: mission.fleet,
     cargo: mission.cargo ?? EMPTY,
+    tech: mission.tech,
     distance: dist,
     departAt: now,
     arriveAt,
@@ -402,7 +419,12 @@ export async function resolveTransfer(
   tx: Tx,
   mission: typeof missions.$inferSelect,
   now: Date,
-): Promise<'DELIVERED' | 'REROUTED'> {
+): Promise<'DELIVERED' | 'REROUTED_CAPACITY' | 'REROUTED_OWNERSHIP'> {
+  /*
+   * CARGO IS NOT A RETURN CONDITION. An empty transfer and a loaded transfer are
+   * the same one-way move between the commander's worlds. Only a destination
+   * that became invalid while the fleet was airborne can create a return leg.
+   */
   const [target] = await tx
     .select()
     .from(planets)
@@ -410,7 +432,7 @@ export async function resolveTransfer(
     .for('update');
   if (target?.controllerPlayerId !== mission.ownerPlayerId) {
     await rerouteToSafeHome(tx, mission, now);
-    return 'REROUTED';
+    return 'REROUTED_OWNERSHIP';
   }
   /**
    * THE DESTINATION IS CHECKED AGAIN, because it went on living while this flew.
@@ -425,7 +447,7 @@ export async function resolveTransfer(
    */
   if (mission.parentMissionId === null && await landingBlock(tx, target.id, mission.fleet)) {
     await rerouteToSafeHome(tx, mission, now);
-    return 'REROUTED';
+    return 'REROUTED_CAPACITY';
   }
   await clearReservedFleet(tx, mission);
   await addUnits(tx, target.id, mission.fleet);

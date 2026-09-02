@@ -6,6 +6,11 @@ import {
   markersFor,
   slotOffset,
 } from '../src/galaxy/Squadrons.js';
+import {
+  FORMATION_SPACING,
+  formationAimDirection,
+  formationAimDistance,
+} from '../src/galaxy/flightVisual.js';
 
 /**
  * The owner stated this rule precisely, so it is tested precisely.
@@ -24,18 +29,18 @@ describe('how a fleet becomes models', () => {
 
   it('draws the owner’s worked example exactly', () => {
     // One of the first hull and one full group plus two of the second.
-    const markers = markersFor({ WASP: 1, LANCE: PER_MODEL + 2 });
+    const markers = markersFor({ DART: 1, PIKE: PER_MODEL + 2 });
 
     expect(markers).toEqual([
-      { hull: 'WASP', filled: 1, ordinal: 0 },
-      { hull: 'LANCE', filled: PER_MODEL, ordinal: 0 },
-      { hull: 'LANCE', filled: 2, ordinal: 1 },
+      { hull: 'DART', filled: 1, ordinal: 0 },
+      { hull: 'PIKE', filled: PER_MODEL, ordinal: 0 },
+      { hull: 'PIKE', filled: 2, ordinal: 1 },
     ]);
   });
 
   it('draws exactly one model for a full group', () => {
-    expect(markersFor({ WASP: PER_MODEL })).toEqual([
-      { hull: 'WASP', filled: PER_MODEL, ordinal: 0 },
+    expect(markersFor({ DART: PER_MODEL })).toEqual([
+      { hull: 'DART', filled: PER_MODEL, ordinal: 0 },
     ]);
   });
 
@@ -45,9 +50,9 @@ describe('how a fleet becomes models', () => {
     // changed, which is the failure the invariants table calls "write the share,
     // not the count".
     const half = Math.floor(PER_MODEL / 2);
-    expect(markersFor({ WASP: PER_MODEL + half })).toEqual([
-      { hull: 'WASP', filled: PER_MODEL, ordinal: 0 },
-      { hull: 'WASP', filled: half, ordinal: 1 },
+    expect(markersFor({ DART: PER_MODEL + half })).toEqual([
+      { hull: 'DART', filled: PER_MODEL, ordinal: 0 },
+      { hull: 'DART', filled: half, ordinal: 1 },
     ]);
   });
 
@@ -57,19 +62,19 @@ describe('how a fleet becomes models', () => {
    * middle of a formation reading as battle damage rather than as arithmetic.
    */
   it('draws one over a full group as a full model and a remainder of one', () => {
-    expect(markersFor({ WASP: PER_MODEL + 1 })).toEqual([
-      { hull: 'WASP', filled: PER_MODEL, ordinal: 0 },
-      { hull: 'WASP', filled: 1, ordinal: 1 },
+    expect(markersFor({ DART: PER_MODEL + 1 })).toEqual([
+      { hull: 'DART', filled: PER_MODEL, ordinal: 0 },
+      { hull: 'DART', filled: 1, ordinal: 1 },
     ]);
   });
 
   it('draws one model with one pip for a single ship', () => {
-    expect(markersFor({ HAULER: 1 })).toEqual([{ hull: 'HAULER', filled: 1, ordinal: 0 }]);
+    expect(markersFor({ COURIER: 1 })).toEqual([{ hull: 'COURIER', filled: 1, ordinal: 0 }]);
   });
 
   it('never draws a model for a hull that is not there', () => {
-    expect(markersFor({ WASP: 0, LANCE: 3 })).toEqual([
-      { hull: 'LANCE', filled: 3, ordinal: 0 },
+    expect(markersFor({ DART: 0, PIKE: 3 })).toEqual([
+      { hull: 'PIKE', filled: 3, ordinal: 0 },
     ]);
     expect(markersFor({})).toEqual([]);
   });
@@ -79,20 +84,20 @@ describe('how a fleet becomes models', () => {
    * middle of a formation reads as battle damage rather than as arithmetic.
    */
   it('puts the partial group after the full ones', () => {
-    const lances = markersFor({ LANCE: PER_MODEL * 2 + 2 }).map((m) => m.filled);
+    const lances = markersFor({ PIKE: PER_MODEL * 2 + 2 }).map((m) => m.filled);
     expect(lances).toEqual([PER_MODEL, PER_MODEL, 2]);
   });
 
   it('accounts for every ship, for any count', () => {
     for (let n = 1; n <= 97; n++) {
-      const total = markersFor({ WASP: n }).reduce((s, m) => s + m.filled, 0);
+      const total = markersFor({ DART: n }).reduce((s, m) => s + m.filled, 0);
       expect(total).toBe(n);
     }
   });
 
   it('never fills a model beyond its own capacity', () => {
     for (let n = 1; n <= 97; n++) {
-      for (const marker of markersFor({ BULWARK: n })) {
+      for (const marker of markersFor({ RAMPART: n })) {
         expect(marker.filled).toBeGreaterThan(0);
         expect(marker.filled).toBeLessThanOrEqual(PER_MODEL);
       }
@@ -100,20 +105,20 @@ describe('how a fleet becomes models', () => {
   });
 
   it('keeps hulls in a fixed order so a formation looks the same every time', () => {
-    const a = markersFor({ HAULER: 3, WASP: 2 }).map((m) => m.hull);
-    const b = markersFor({ WASP: 2, HAULER: 3 }).map((m) => m.hull);
+    const a = markersFor({ COURIER: 3, DART: 2 }).map((m) => m.hull);
+    const b = markersFor({ DART: 2, COURIER: 3 }).map((m) => m.hull);
     expect(a).toEqual(b);
-    expect(a[0]).toBe('WASP');
+    expect(a[0]).toBe('DART');
   });
 
   it('accounts for every ship in a mixed fleet', () => {
     const lances = PER_MODEL + 1;
-    const fleet = { WASP: 6, LANCE: lances, BULWARK: 3, HAULER: 1 };
+    const fleet = { DART: 6, PIKE: lances, RAMPART: 3, COURIER: 1 };
     const total = 6 + lances + 3 + 1;
     const markers = markersFor(fleet);
     expect(markers.reduce((sum, marker) => sum + marker.filled, 0)).toBe(total);
     // One over a full group is always exactly two models of that hull.
-    expect(markers.filter((marker) => marker.hull === 'LANCE')).toHaveLength(2);
+    expect(markers.filter((marker) => marker.hull === 'PIKE')).toHaveLength(2);
   });
 });
 
@@ -122,35 +127,35 @@ describe('how a fleet becomes models', () => {
  *
  * The old twelve-marker cap sliced in `ALL_HULLS` order, so one crowded hull ate
  * the whole budget and every other hull vanished from the disc — the exact fleet
- * below drew as twelve Wasps and nothing else while the focus panel spelt all
+ * below drew as twelve Darts and nothing else while the focus panel spelt all
  * four hulls out. These hold the two properties that failure violated: every ship
  * is drawn, and every hull the fleet contains appears.
  */
 describe('very large fleets', () => {
   it('draws every ship in a fleet of two hundred', () => {
-    const markers = markersFor({ WASP: 200 });
+    const markers = markersFor({ DART: 200 });
     expect(markers.reduce((sum, marker) => sum + marker.filled, 0)).toBe(200);
     expect(markers).toHaveLength(Math.ceil(200 / PER_MODEL));
   });
 
   it('keeps every hull when one of them is crowded', () => {
-    const markers = markersFor({ WASP: 83, LANCE: 4, HAULER: 2, BULWARK: 1 });
+    const markers = markersFor({ DART: 83, PIKE: 4, COURIER: 2, RAMPART: 1 });
     expect(markers.reduce((sum, marker) => sum + marker.filled, 0)).toBe(90);
     expect(new Set(markers.map((marker) => marker.hull))).toEqual(
-      new Set(['WASP', 'LANCE', 'HAULER', 'BULWARK']),
+      new Set(['DART', 'PIKE', 'COURIER', 'RAMPART']),
     );
   });
 
   it('draws a mixed fleet without losing a ship', () => {
-    const markers = markersFor({ WASP: 31, LANCE: 27, BULWARK: 14 });
+    const markers = markersFor({ DART: 31, PIKE: 27, RAMPART: 14 });
     expect(markers.reduce((sum, marker) => sum + marker.filled, 0)).toBe(72);
   });
 });
 
 describe('what a squadron reads as', () => {
   it('takes its identity from the heaviest hull present', () => {
-    expect(leadHull({ WASP: 40, BULWARK: 1 })).toBe('BULWARK');
-    expect(leadHull({ WASP: 3, HAULER: 1 })).toBe('HAULER');
+    expect(leadHull({ DART: 40, RAMPART: 1 })).toBe('RAMPART');
+    expect(leadHull({ DART: 3, COURIER: 1 })).toBe('COURIER');
     expect(leadHull({})).toBeNull();
   });
 });
@@ -178,7 +183,7 @@ describe('where a squadron can be tapped', () => {
   });
 
   it('contains every drawn craft in a 500-ship fleet, including the middle and tail', () => {
-    const markers = markersFor({ WASP: 500 });
+    const markers = markersFor({ DART: 500 });
     const positions = markers.map((_, index) => slotOffset(index, SCALE * 1.5));
     const box = formationHitBox(positions, SCALE);
     const half = box.size.map((value) => value / 2);
@@ -300,5 +305,64 @@ describe('where each model sits', () => {
   /** Deterministic: the same squadron must not reshuffle between frames. */
   it('gives the same answer every time', () => {
     expect(slots(SIZE)).toEqual(slots(SIZE));
+  });
+});
+
+describe('where a formation points', () => {
+  /*
+    THE BUG THIS GUARDS, STATED AS THE PLAYER SAW IT.
+
+    "Some ships' noses keep turning slowly to the right — sometimes to the left —
+    and then suddenly snap back."
+
+    Every slot aims from its own offset at one shared point, which reads well while
+    the point is far away and splays the wing the moment it is as close as the
+    formation is wide. A pirate's published bearing window is ten seconds long —
+    about one world unit at these speeds, against a slot spread of nearly one — so
+    each outer craft turned further inward the more of the chord it ate, in
+    opposite directions on either side of the axis, and straightened the instant
+    the next window arrived. Measured at slot 4: 31 degrees at the start of a
+    window and 48 by the end of it.
+  */
+  const spacing = FORMATION_SPACING;
+  const yawOf = (offset: readonly [number, number, number], distance: number): number => {
+    const [dx, , dz] = formationAimDirection(offset, distance);
+    return Math.atan2(dx, dz);
+  };
+  /** One window, from the sample the server published to the craft eating all of it. */
+  const ACROSS_ONE_WINDOW = [1.4, 1, 0.5, 0.1];
+  const drift = (offset: readonly [number, number, number], floor: boolean): number => {
+    const yaws = ACROSS_ONE_WINDOW.map((d) => yawOf(offset, floor ? formationAimDistance(d, 1) : d));
+    return Math.max(...yaws) - Math.min(...yaws);
+  };
+
+  it('no longer drifts the noses as a craft eats its own window', () => {
+    const outer = slotOffset(4, spacing);
+    // Seventeen degrees of yaw nobody asked for, and then a snap.
+    expect(drift(outer, false)).toBeGreaterThan(0.25);
+    expect(drift(outer, true)).toBe(0);
+  });
+
+  it('drifted neighbouring slots opposite ways, which is what was reported', () => {
+    // The sign of the swing follows the sign of the slot's lateral offset, so one
+    // ship appeared to turn right while the one beside it turned left.
+    expect(Math.sign(yawOf(slotOffset(4, spacing), 1)))
+      .not.toBe(Math.sign(yawOf(slotOffset(5, spacing), 1)));
+  });
+
+  it('keeps a small, fixed splay so the wing is still not a rigid lattice', () => {
+    // The point of aiming per slot at all: some spread, just not a moving one.
+    const splay = Math.abs(yawOf(slotOffset(4, spacing), formationAimDistance(1, 1)));
+    expect(splay).toBeGreaterThan(0.05);
+    expect(splay).toBeLessThan(0.2);
+  });
+
+  it('leaves a real destination alone, so an engagement still converges', () => {
+    // A world being fired on is a genuine place, comfortably past the floor.
+    expect(formationAimDistance(40, 1)).toBe(40);
+  });
+
+  it('scales the floor with the squadron rather than with a magic number', () => {
+    expect(formationAimDistance(1, 2)).toBeGreaterThan(formationAimDistance(1, 1));
   });
 });

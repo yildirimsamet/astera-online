@@ -122,8 +122,8 @@ export interface Beat {
   worlds?: (s: BeatState) => (planetId: string) => boolean;
 }
 
-/** How many Wasps the opening grant commits, exactly. Asserted in onboarding tests. */
-export const OPENING_WASPS = 2;
+/** How many Darts the opening grant commits, exactly. Asserted in onboarding tests. */
+export const OPENING_DARTS = 2;
 
 export const BEATS: readonly Beat[] = [
   /**
@@ -228,7 +228,7 @@ export const BEATS: readonly Beat[] = [
        * wrapper has no box of its own: its child is the sheet's `fixed inset-0`
        * root, and measuring the wrapper gives an empty rectangle.
        */
-      selectors: ['#row-WASP [data-open-item]', '[data-build-sheet] [data-sheet-panel]'],
+      selectors: ['#row-DART [data-open-item]', '[data-build-sheet] [data-sheet-panel]'],
       /**
        * The light follows the DECISION rather than the surface: the tab, then the
        * row's control, then — once the sheet is up — the CEILING option, because
@@ -237,7 +237,7 @@ export const BEATS: readonly Beat[] = [
        */
       lit: [
         '[data-tab="reach"]',
-        '#row-WASP [data-open-item]',
+        '#row-DART [data-open-item]',
         '[data-build-sheet] [data-count-max]',
         // Resolves only once the ceiling is chosen, which is what moves the light
         // from "how many" to "do it" without a second beat to carry the change.
@@ -245,7 +245,7 @@ export const BEATS: readonly Beat[] = [
       ],
       dim: false,
     },
-    achieved: (s) => queuedCount(s.world, 'YARD', 'HULL', 'WASP') >= OPENING_WASPS,
+    achieved: (s) => queuedCount(s.world, 'YARD', 'HULL', 'DART') >= OPENING_DARTS,
   },
 
   /**

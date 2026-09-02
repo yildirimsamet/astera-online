@@ -2,12 +2,14 @@ import { StrictMode, createElement, type ReactNode } from 'react';
 import { renderHook, waitFor } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import {
+  FLEET_V2_OPENING_ASSETS,
   GALAXY_ASSETS,
   LANDING_ASSETS,
   preloadAll,
   usePreload,
   type Loader,
 } from '../src/lib/preload.js';
+import { FLEET_V2_ASSET_MANIFEST } from '../src/ui/assets.js';
 
 /**
  * THE WAIT AT THE FRONT DOOR. D23.
@@ -74,6 +76,15 @@ describe('counting what has loaded', () => {
     expect(new Set(LANDING_ASSETS).size).toBe(LANDING_ASSETS.length);
   });
 
+  it('loads only canonical Fleet V2 traffic on the landing scene', () => {
+    const canonical = new Set(Object.values(FLEET_V2_ASSET_MANIFEST).map(({ model }) => model));
+    const landingFleet = LANDING_ASSETS.filter((url) => url.includes('/models/ships/'))
+      .filter((url) => !url.endsWith('/explorer_ship.glb'));
+    expect(landingFleet.length).toBeGreaterThan(0);
+    expect(landingFleet.every((url) => canonical.has(url))).toBe(true);
+    expect(LANDING_ASSETS.join(' ')).not.toMatch(/ship_[1-4]\.glb|runner\.glb|breacher\.glb/);
+  });
+
   /**
    * The disc's list is built from several sources and one file now serves two of
    * them — the drill is both the mining craft and the Drill satellite's body. A
@@ -83,6 +94,10 @@ describe('counting what has loaded', () => {
   it('never asks for the same file twice', () => {
     expect(GALAXY_ASSETS.length).toBeGreaterThan(5);
     expect(new Set(GALAXY_ASSETS).size).toBe(GALAXY_ASSETS.length);
+  });
+
+  it('activates the bounded Fleet V2 opening preload for the live galaxy', () => {
+    expect(GALAXY_ASSETS).toEqual(FLEET_V2_OPENING_ASSETS);
   });
 });
 

@@ -1,7 +1,7 @@
 {
   "$schema": "astera-economy/v2",
   "generatedAt": "2026-08-31",
-  "note": "From-scratch 14-day seasonal PvP economy. Replaces packages/rules/src/constants.ts. Every number here is derived; see docs/balance.md for the formula behind each one.",
+  "note": "Frozen pre-Fleet-V2 14-day economy baseline. Retired hull IDs are intentional historical inputs; this file does not describe the live catalog.",
   "formulas": {
     "production": "rate(L) = base * L * growth^L   per hour",
     "upgradeCost": "cost(L->L+1) = { alloy: costBase * costMult^L, crystal: crystalCostBase * crystalCostMult^L }",

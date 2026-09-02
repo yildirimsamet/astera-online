@@ -3,7 +3,7 @@ import { HULLS, OPENING_BONUS, PLANET_START, START } from '@astera/rules';
 import { redistributedHullPrice, runSeason } from '../src/index.js';
 
 describe('crystal-use experiment', () => {
-  it.each(['LANCE', 'BULWARK', 'HAULER', 'PROSPECTOR'] as const)(
+  it.each(['PIKE', 'RAMPART', 'WAYFARER', 'PROSPECTOR'] as const)(
     'redistributes %s without changing its total price',
     (id) => {
       const stock = HULLS[id];
@@ -16,10 +16,10 @@ describe('crystal-use experiment', () => {
   );
 
   it('does not redistribute Wasp or change opening arithmetic', () => {
-    expect(redistributedHullPrice('WASP', 0.35)).toEqual({
-      alloy: HULLS.WASP.alloy,
-      crystal: HULLS.WASP.crystal,
-      deuterium: HULLS.WASP.deuterium,
+    expect(redistributedHullPrice('DART', 0.35)).toEqual({
+      alloy: HULLS.DART.alloy,
+      crystal: HULLS.DART.crystal,
+      deuterium: HULLS.DART.deuterium,
     });
     expect(PLANET_START.alloy).toBe(START.alloy + OPENING_BONUS.alloy);
     expect(PLANET_START.crystal).toBe(START.crystal + OPENING_BONUS.crystal);

@@ -105,10 +105,10 @@ describe('traffic, as parsed', () => {
   });
 
   it('parses a fleet with no route and no clock on it', () => {
-    const parsed = trafficSchema.parse({ contacts: [contact({ fleet: { WASP: 12, LANCE: 3 } })] });
+    const parsed = trafficSchema.parse({ contacts: [contact({ fleet: { DART: 12, PIKE: 3 } })] });
     expect(parsed.contacts[0]!.route).toBeUndefined();
     expect(parsed.contacts[0]!.minutesRemaining).toBeUndefined();
-    expect(parsed.contacts[0]!.fleet).toEqual({ WASP: 12, LANCE: 3 });
+    expect(parsed.contacts[0]!.fleet).toEqual({ DART: 12, PIKE: 3 });
   });
 
   it('keeps a blind engagement effect-only, with no craft disclosure to render', () => {
@@ -253,10 +253,10 @@ describe('a foreign contact, as rendered', () => {
   });
 
   it('lists exact hulls and total craft when Telescope sight supplies a manifest', () => {
-    const { container } = show(contact({ fleet: { WASP: 12, LANCE: 3 } }));
+    const { container } = show(contact({ fleet: { DART: 12, PIKE: 3 } }));
     expect(screen.getByText(/15 craft/i)).toBeInTheDocument();
-    expect(container.textContent).toMatch(/12 Wasp/i);
-    expect(container.textContent).toMatch(/3 Lance/i);
+    expect(container.textContent).toMatch(/12 Dart/i);
+    expect(container.textContent).toMatch(/3 Pike/i);
     expect(container.textContent).not.toMatch(/no manifest at this range/i);
   });
 

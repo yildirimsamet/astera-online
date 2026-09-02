@@ -315,7 +315,7 @@ export function Rehearsal({
      * rest of the game — and the row the beat is pointing at — called it Atmaca.
      * A name that exists in two places is a name that disagrees with itself.
      */
-    ship: hullLabel('WASP'),
+    ship: hullLabel('DART'),
   };
 
   return (

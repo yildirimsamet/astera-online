@@ -52,10 +52,13 @@ export type ShardEventKind =
   | 'launch'
   | 'arrival'
   | 'mining'
+  /** A pirate raid left, landed or came home. D150. */
+  | 'pirate'
   | 'world'
   | 'score'
   | 'chat'
   | 'chronicle'
+  | 'galaxy-event'
   | 'season'
   | 'rollover'
   | 'impact'
@@ -598,6 +601,21 @@ export async function publishSight(tx: Queryable, playerId: string): Promise<voi
 /** A Death Star interception entered this commander's earned field of view. */
 export async function publishStrategicSight(tx: Queryable, playerId: string): Promise<void> {
   await publish(tx, playerId, `${PRIVATE_PREFIX}strategic-sight`);
+}
+
+/**
+ * THIS COMMANDER'S RECORD OF ONE WORLD JUST MOVED. D151.
+ *
+ * A craft of theirs reached a world and wrote down what it found. Two things have
+ * to hear about it and nothing else does: the replica's player-keyed `remembered`
+ * projection, which would otherwise serve the old record until a TTL, and the
+ * commander's own client, which redraws the disc.
+ *
+ * It names no world and carries no reading — the record is only readable through
+ * `/api/galaxy`, which applies the fog as it always did.
+ */
+export async function publishWorldMemory(tx: Queryable, playerId: string): Promise<void> {
+  await publish(tx, playerId, `${PRIVATE_PREFIX}memory`);
 }
 
 /**

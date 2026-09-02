@@ -270,6 +270,9 @@ export const DESTINATION: Record<string, { panel: Panel; stop?: PanelStop }> = {
   settlement_success: { panel: 'planet' },
   colony_lost: { panel: 'planet' },
   settlement_lost: { panel: 'planet' },
+  // The active-event chip lives on the galaxy itself; closing Signals is the route.
+  galaxy_event_started: { panel: null },
+  galaxy_event_ended: { panel: null },
 };
 
 /**

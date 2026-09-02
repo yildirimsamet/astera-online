@@ -48,7 +48,7 @@ describe('world transfer sheet', () => {
   it('shows cargo capacity and updates the defence left at origin', async () => {
     const user = userEvent.setup();
     const planet = planetView({
-      fleet: { WASP: 2, HAULER: 1 },
+      fleet: { DART: 2, COURIER: 1 },
       ground: { THORN: 3 },
     }, {
       id: 'capital-1',
@@ -70,18 +70,47 @@ describe('world transfer sheet', () => {
     expect(useTransfer).toHaveBeenCalledWith('capital-1');
     expect(screen.getByText(/6 craft remain at origin/i)).toBeInTheDocument();
     expect(screen.queryAllByRole('spinbutton')).toHaveLength(0);
-    await user.click(screen.getByRole('button', { name: 'More Wasp' }));
+    await user.click(screen.getByRole('button', { name: 'More Dart' }));
     expect(screen.getByText(/5 craft remain at origin/i)).toBeInTheDocument();
 
-    await user.click(screen.getByRole('button', { name: 'More Hauler' }));
-    expect(screen.getByText(new RegExp(`0 / ${compact(HULLS.HAULER.cargo)}`, 'i'))).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'More Courier' }));
+    expect(screen.getByText(new RegExp(`0 / ${compact(HULLS.COURIER.cargo)}`, 'i'))).toBeInTheDocument();
     const alloy = screen.getByRole('slider', { name: /Alloy/i });
-    // One Hauler's hold, off the constant — the slider's ceiling IS the cargo.
-    const hold = String(HULLS.HAULER.cargo);
+    // One Courier's hold, off the constant — the slider's ceiling IS the cargo.
+    const hold = String(HULLS.COURIER.cargo);
     expect(alloy).toHaveAttribute('max', hold);
     fireEvent.change(alloy, { target: { value: hold } });
     expect(alloy).toHaveValue(hold);
+    const alloyRow = alloy.closest('label');
+    expect(alloyRow).not.toBeNull();
+    expect(alloyRow).toHaveTextContent('Sending');
+    expect(alloyRow?.querySelector('[data-spend-amount]')).toHaveTextContent(compact(HULLS.COURIER.cargo));
+    expect(alloyRow).not.toHaveTextContent('stays here');
     expect(screen.getByRole('button', { name: /transfer — no recall/i })).toBeEnabled();
+  });
+
+  it('accepts a directly typed hull count and clamps it to the ships at home', async () => {
+    render(
+      <ToastProvider>
+        <TransferSheet
+          target={target}
+          planet={planetView({ fleet: { DART: 200 } }, { id: 'capital-1' })}
+          onClose={vi.fn()}
+          onLaunched={vi.fn()}
+        />
+      </ToastProvider>,
+    );
+    const user = userEvent.setup();
+    const quantity = screen.getByRole('textbox', { name: /dart quantity/i });
+
+    expect(quantity).toHaveValue('0');
+    expect(quantity).not.toHaveAttribute('readonly');
+    await user.clear(quantity);
+    expect(quantity).toHaveValue('');
+    await user.type(quantity, 'fleet');
+    expect(quantity).toHaveValue('');
+    await user.type(quantity, '250');
+    expect(quantity).toHaveValue('200');
   });
 
   it('does not offer a transfer that the owned destination Hangar will reject', async () => {
@@ -92,17 +121,17 @@ describe('world transfer sheet', () => {
         <TransferSheet
           target={target}
           targetPlanet={planetView({
-            fleet: { WASP: hangar },
+            fleet: { DART: hangar },
             capacity: { hangar, hangarUsed: hangar, ground: 100, groundUsed: 0 },
           }, { id: target.id })}
-          planet={planetView({ fleet: { WASP: 1 } }, { id: 'capital-1' })}
+          planet={planetView({ fleet: { DART: 1 } }, { id: 'capital-1' })}
           onClose={vi.fn()}
           onLaunched={vi.fn()}
         />
       </ToastProvider>,
     );
 
-    await user.click(screen.getByRole('button', { name: 'More Wasp' }));
+    await user.click(screen.getByRole('button', { name: 'More Dart' }));
     /*
       THE REFUSAL IS DRAWN, NOT WRITTEN. D142's rule reached this sheet: the
       sentence "Destination Hangar after landing: 40 + 1 / 40" is now the same
@@ -124,7 +153,7 @@ describe('world transfer sheet', () => {
    * THE COMPLAINT THIS SECTION EXISTS FOR.
    *
    * The craft list was built from `MOVABLE.filter(count > 0)`, so a commander with
-   * no Hauler saw no Hauler ROW — the cargo readout sat at `0 / 0`, all three
+   * no Courier saw no Courier ROW — the cargo readout sat at `0 / 0`, all three
    * sliders were pinned at zero, and nothing anywhere said why. The server has
    * refused this for as long as it has existed (`TRANSFER_NEEDS_CARGO_HULL`); the
    * screen simply never spoke the sentence. Ore carriers are now always listed,
@@ -144,34 +173,34 @@ describe('world transfer sheet', () => {
       );
 
     it('lists the ore carriers even on a world that owns none of them', () => {
-      render0({ WASP: 2 });
+      render0({ DART: 2 });
 
-      for (const name of ['Hauler', 'Runner']) {
+      for (const name of ['Courier', 'Wayfarer', 'Atlas']) {
         const more = screen.getByRole('button', { name: `More ${name}` });
         expect(more).toBeInTheDocument();
         expect(more).toBeDisabled();
       }
-      expect(screen.getAllByText(/none at this world/i).length).toBe(2);
+      expect(screen.getAllByText(/none at this world/i).length).toBe(3);
     });
 
     it('says a world with no carrier cannot move ore at all', () => {
-      render0({ WASP: 2 });
+      render0({ DART: 2 });
 
-      expect(screen.getByText(/no Hauler or Runner/i)).toBeInTheDocument();
+      expect(screen.getByText(/no Courier, Wayfarer or Atlas/i)).toBeInTheDocument();
       // Never `0 / 0`, which reads as a limit the player is up against when what
       // is true is that there is no hold on this mission at all.
       expect(screen.getByText('Cargo')).toHaveTextContent('Cargo —');
     });
 
     it('tells a world that owns a carrier to put one in the fleet', () => {
-      render0({ WASP: 2, HAULER: 1 });
+      render0({ DART: 2, COURIER: 1 });
 
-      expect(screen.getByText(/add a Hauler or Runner/i)).toBeInTheDocument();
-      expect(screen.queryByText(/no Hauler or Runner/i)).not.toBeInTheDocument();
+      expect(screen.getByText(/add a Courier, Wayfarer or Atlas/i)).toBeInTheDocument();
+      expect(screen.queryByText(/no Courier, Wayfarer or Atlas/i)).not.toBeInTheDocument();
     });
 
     it('cannot be dragged into a load it will not be allowed to send', () => {
-      render0({ WASP: 2 });
+      render0({ DART: 2 });
 
       for (const resource of [/Alloy/i, /Crystal/i, /Deuterium/i]) {
         expect(screen.getByRole('slider', { name: resource })).toHaveAttribute('max', '0');
@@ -180,12 +209,12 @@ describe('world transfer sheet', () => {
 
     it('drops the notice the moment a carrier is loaded', async () => {
       const user = userEvent.setup();
-      render0({ WASP: 2, HAULER: 1 });
+      render0({ DART: 2, COURIER: 1 });
 
-      await user.click(screen.getByRole('button', { name: 'More Hauler' }));
+      await user.click(screen.getByRole('button', { name: 'More Courier' }));
 
-      expect(screen.queryByText(/add a Hauler or Runner/i)).not.toBeInTheDocument();
-      expect(screen.getByText(new RegExp(`0 / ${compact(HULLS.HAULER.cargo)}`, 'i')))
+      expect(screen.queryByText(/add a Courier, Wayfarer or Atlas/i)).not.toBeInTheDocument();
+      expect(screen.getByText(new RegExp(`0 / ${compact(HULLS.COURIER.cargo)}`, 'i')))
         .toBeInTheDocument();
     });
   });
@@ -206,7 +235,7 @@ describe('world transfer sheet', () => {
  */
 describe('what a transfer burns', () => {
   const withFleet = (deuterium: number) => planetView({
-    fleet: { HAULER: 4, WASP: 2 },
+    fleet: { COURIER: 4, DART: 2 },
   }, { id: 'capital-1', alloy: 50_000, crystal: 50_000, deuterium });
 
   const open = (deuterium: number) => render(
@@ -221,7 +250,7 @@ describe('what a transfer burns', () => {
   );
 
   const load = async (user: ReturnType<typeof userEvent.setup>) => {
-    await user.click(screen.getByRole('button', { name: 'More Hauler' }));
+    await user.click(screen.getByRole('button', { name: 'More Courier' }));
   };
 
   it('quotes the fuel once a fleet is chosen', async () => {
@@ -288,14 +317,14 @@ describe('what a transfer costs the world it leaves', () => {
   );
 
   it('draws the whole garrison as holding before anything is packed', () => {
-    show({ WASP: 4 });
+    show({ DART: 4 });
     expect(part('holds')).toBeCloseTo(100, 1);
     expect(part('leaves')).toBeCloseTo(0, 1);
   });
 
   it('carves the departing craft out of it as they are packed', async () => {
-    show({ WASP: 4 });
-    await userEvent.setup().click(screen.getByRole('button', { name: 'More Wasp' }));
+    show({ DART: 4 });
+    await userEvent.setup().click(screen.getByRole('button', { name: 'More Dart' }));
     expect(part('leaves')).toBeGreaterThan(0);
     expect(part('holds')).toBeLessThan(100);
   });
@@ -305,8 +334,8 @@ describe('what a transfer costs the world it leaves', () => {
    * the rule the shape has to obey to be worth drawing at all.
    */
   it('never counts ground defence as leaving', async () => {
-    show({ WASP: 1 });
-    await userEvent.setup().click(screen.getByRole('button', { name: 'More Wasp' }));
+    show({ DART: 1 });
+    await userEvent.setup().click(screen.getByRole('button', { name: 'More Dart' }));
     expect(part('holds')).toBeGreaterThan(0);
   });
 });
@@ -323,14 +352,14 @@ describe('the deuterium a transfer spends twice', () => {
       <ToastProvider>
         <TransferSheet
           target={target}
-          planet={planetView({ fleet: { HAULER: 1 } }, { deuterium: 400 })}
+          planet={planetView({ fleet: { COURIER: 1 } }, { deuterium: 400 })}
           onClose={vi.fn()}
           onLaunched={vi.fn()}
         />
       </ToastProvider>,
     );
     const user = userEvent.setup();
-    await user.click(screen.getByRole('button', { name: 'More Hauler' }));
+    await user.click(screen.getByRole('button', { name: 'More Courier' }));
     expect(document.querySelector('[data-transfer-fuel] [data-spend-bar]'))
       .toHaveAttribute('data-short', 'false');
 

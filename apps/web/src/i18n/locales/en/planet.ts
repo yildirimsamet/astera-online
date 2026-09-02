@@ -145,16 +145,16 @@ export const planet = {
     groundBand: "On the ground",
     /* The figures moved into `CapacityBar`; the band keeps the RULE. */
     groundNote:
-      "Ground guns never leave the world. Thorns counter Bulwarks; Bastions counter Lances and Breachers.",
+      "Ground guns never leave the world. Thorns counter Bulwark-class hulls; Bastions counter Lance-class hulls.",
     thornNone:
-      "Light guns with an advantage against Bulwarks; vulnerable to Lances and Breachers.",
+      "Light guns with an advantage against Bulwark-class hulls; vulnerable to Lance-class hulls.",
     thornStanding:
-      "{{count}} standing. Strong against Bulwarks; weak against Lances and Breachers.",
+      "{{count}} standing. Strong against Bulwark-class hulls; weak against Lance-class hulls.",
     thornGain: "Thorns",
     bastionNone:
-      "Heavy guns with an advantage against Lances and Breachers; vulnerable to Wasps.",
+      "Heavy guns with an advantage against Lance-class hulls; vulnerable to Skirmishers.",
     bastionStanding:
-      "{{count}} standing. Strong against Lances and Breachers; weak against Wasps. After combat, 60% of destroyed ground guns are restored, rounded down.",
+      "{{count}} standing. Strong against Lance-class hulls; weak against Skirmishers. After combat, 60% of destroyed ground guns are restored, rounded down.",
     groundGain: "Ground units",
     aegisPointer: "A shield is hardware — the <0>{{name}}</0> is under Orbit.",
   },
@@ -191,75 +191,28 @@ export const planet = {
     orbitBand: "Operations satellites",
     orbitNote:
       "A Derrick improves this world’s Prospectors; a Beacon speeds its raid and transfer fleets. Each satellite uses one orbit slot.",
-    frontierBand: "Frontier research",
-    frontierNote:
-      "Each project is researched once and uses Construction. A locked card states its unlock condition.",
-    isotopeName: "Isotope Spectrometry",
-    isotopeTag: "Unlocks Deuterium mining",
-    isotopeRole:
-      "Shows the Deuterium in isotope rocks and lets you send Prospectors to them. The return haul enters the Works.",
-    denseName: "Dense Fuel Cells",
-    denseTag: "Unlocks the Runner",
-    denseRole:
-      "To reveal it, fill your cargo in one raid while loot remains on the target. The Runner is faster than a Hauler but carries less.",
-    graviticName: "Gravitic Charges",
-    graviticTag: "Unlocks the Breacher",
-    graviticRole:
-      "To unlock it, attack a defended world with an active Aegis; the shield must absorb at least {{share}} of your damage. A single Wasp can qualify; you do not need to win. The Breacher hits shields five times harder.",
-    gridName: "Interception Grid",
-    gridTag: "Shoots down a Death Star",
-    gridRole:
-      "A loaded charge destroys the next Death Star detected by Radar 3 or identified in Telescope sight · requires an Uplink",
-    stockpileName: "Strategic Stockpile",
-    stockpileTag: "Keep a second weapon on the pad",
-    stockpileRole:
-      "A second Death Star, built after the first · the wait is unchanged",
-    waspDoctrineName: "Wasp Doctrine",
-    lanceDoctrineName: "Lance/Breacher Doctrine",
-    bulwarkDoctrineName: "Bulwark Doctrine",
-    groundDoctrineName: "Emplacement Doctrine",
-    generalName: "Weapons and Armour",
-    generalTag: "Improves every hull you own",
-    doctrineTag: "Better attack and armour",
-    doctrineRole:
-      "Class and general bonuses stack, but their combined combat multiplier is capped at 25%. Class counters remain the larger advantage.",
-    yardName: "Yard Automation",
-    yardTag: "Builds ships faster",
-    yardRole:
-      "Shaves build time off every hull · the Shipyard still sets the curve",
-    holdsName: "Prospector Holds",
-    holdsTag: "Mining craft carry more",
-    holdsRole: "Raises every Prospector hold and multiplies with the Derrick’s 2.6× capacity bonus",
-    cargoName: "Cargo Holds",
-    cargoTag: "Raids carry more home",
-    cargoRole: "Raises what a fleet can loot · does not change world transfers",
-    synthesisName: "Deuterium Synthesis",
-    synthesisTag: "Raises the Refinery ceiling",
-    synthesisRole:
-      "Each rung opens three more Deuterium Refinery levels on every world you hold",
-    deathStarName: "Death Star Protocol",
-    deathStarTag: "Unlocks the Death Star",
-    deathStarRole:
-      "Lets this world build one Death Star. The first strike devastates its target; a second can capture only a colony or neutral world. A capital cannot be captured.",
-    researchNeedCore: "Raise Command Core to L{{level}}",
-    researchAct: "Research",
-    researchComplete: "researched",
-    researchAt: "Researchable in {{duration}}",
-    researchIsotopeFirst: "Research Isotope Spectrometry first",
-    researchDenseFirst: "Research Dense Fuel Cells first",
-    researchGraviticFirst: "Research Gravitic Charges first",
-    researchWarAt: "War act opens in {{duration}}",
-    researchCargoInsight: "Fill your cargo in one raid while loot remains",
-    researchShieldInsight:
-      "Have an Aegis absorb at least {{share}} of your raid damage",
-    warshipsBand: "Warships",
-    warshipsNote: "These hulls attack and defend. Class matchups determine which targets they counter.",
-    supportBand: "Support",
-    supportNote:
-      "Haulers and Runners carry raid or transfer cargo but cannot attack. They remain protected only while combat hulls survive.",
+    family: {
+      OFFENSIVE: {
+        label: "Offensive hulls",
+        note: "Raiders buy speed and strikers buy attack. Rows run from Tier 1 to Tier 4.",
+      },
+      DEFENSIVE: {
+        label: "Defensive hulls",
+        note: "Fortresses buy durability with speed; escorts keep more fleet tempo. Rows run by tier.",
+      },
+      CARGO: {
+        label: "Cargo hulls",
+        note: "Unarmed transports trade route speed against hold capacity and need surviving escorts.",
+      },
+      SPECIALIST: {
+        label: "Specialist hulls",
+        note: "Narrow answers to a visible problem; their premium is wasted against the wrong target.",
+      },
+    },
     miningBand: "Mining",
     miningNote: "Prospectors travel only to revealed asteroids or debris fields and return their haul to the Works.",
     ownedGain: "You have",
+    hullLocationCounts: "(Home: {{home}}, Away: {{away}})",
     prospectorLimit: "{{owned}} / {{max}} · limit",
   },
 
@@ -273,7 +226,7 @@ export const planet = {
     frontier: "Frontier research",
     complete: "Research complete",
     cost: "Research cost",
-    once: "Researched once and placed in the Construction queue.",
+    once: "Placed once in your commander-wide Research queue.",
   },
 
   /** Why a row cannot be pressed yet. Each is a door, so each names its fix. */
@@ -282,6 +235,7 @@ export const planet = {
     uplink: "an Uplink in orbit",
     orbitSlot: "a free orbit slot",
     shipyard: "Shipyard L{{level}}",
+    research: "{{research}} {{level}}",
     maxed: "at its highest level",
     /** The one building with a second ceiling: its research rung. T5. */
     plantRung: "Research another rung of Deuterium Synthesis",
@@ -303,7 +257,6 @@ export const planet = {
   buildSheet: {
     eyebrowGround: "Ground defence · never leaves",
     eyebrowMobile: "Mobile hull",
-    priceLabel: "Costs",
     howMany: "How many",
     fewer: "Fewer {{name}}",
     more: "More {{name}}",
@@ -409,6 +362,16 @@ export const planetHero = {
 export const launch = {
   fuel: "Fuel",
   eyebrow: "Attack",
+  /**
+   * THE EYEBROW OF A COMMITMENT AGAINST A RECORD. D151.
+   *
+   * This sheet is where a fleet stops being recallable, and it named only the
+   * action. A target under a live Telescope and a target last seen three days ago
+   * opened the identical screen, so the age of the thing being bet on — which the
+   * dossier had stamped on every fact row for two releases — was absent from the
+   * one surface where it decides anything.
+   */
+  eyebrowRecord: "Attack · last seen {{age}}",
   back: "Back",
   launching: "Launching",
   commit: "Launch — no recall",
@@ -463,18 +426,18 @@ export const transfer = {
   sending: "Dispatching",
   launched: "Transfer launched · {{duration}}",
   irreversible:
-    "One way. Ground defence cannot move; cargo space comes only from Haulers and Runners.",
+    "One way. Ground defence cannot move; cargo space comes only from Courier, Wayfarer and Atlas.",
   hullNone: "None at this world",
-  holdReady: "Haulers and Runners carry the ore. Hold: {{capacity}}.",
-  holdNeedsLoad: "Add a Hauler or Runner above to carry ore.",
+  holdReady: "Courier, Wayfarer and Atlas carry the ore. Hold: {{capacity}}.",
+  holdNeedsLoad: "Add a Courier, Wayfarer or Atlas above to carry ore.",
   holdNoCarrier:
-    "This world has no Hauler or Runner, so nothing here can carry ore.",
+    "This world has no Courier, Wayfarer or Atlas, so nothing here can carry ore.",
   /** Caption on the destination's room bar, which draws the figures itself. */
   destinationLabel: "Destination hangar",
   /** Screen-reader sentence for the pips beside a hull. */
   hullPacked: "{{packed}} of {{held}} {{name}} packed",
-  /** Caption on a cargo slider's spend bar: what stays in the store. */
-  remaining: "stays here",
+  /** Caption on a cargo slider's spend bar: what this transfer takes. */
+  cargoSending: "Sending",
   destinationProspectorFull:
     "The destination cannot accept another Prospector.",
 } as const;

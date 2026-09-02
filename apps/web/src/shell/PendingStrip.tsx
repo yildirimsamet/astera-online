@@ -250,7 +250,7 @@ interface AirborneItem {
  */
 type FlightMark =
   | 'fleet' | 'probe' | 'incoming' | 'transfer' | 'settlement' | 'death_star'
-  | 'mining' | 'salvage';
+  | 'mining' | 'salvage' | 'pirate';
 
 const MARK: Record<FlightMark, (props: { className?: string }) => ReactNode> = {
   fleet: AttackIcon,
@@ -261,6 +261,9 @@ const MARK: Record<FlightMark, (props: { className?: string }) => ReactNode> = {
   death_star: WarBannerIcon,
   mining: DrillIcon,
   salvage: DrillIcon,
+  // A pirate raid IS a raid: same glyph, because the act is the same act and a
+  // second symbol would say it is a different kind of commitment. D150.
+  pirate: AttackIcon,
 };
 
 /**
@@ -355,6 +358,20 @@ const title = (thread: PendingThread): string => {
   if (thread.kind === 'death_star') return i18n.t('pendingStrip.deathStar', { target: thread.targetName });
   if (thread.kind === 'settlement') return i18n.t('pendingStrip.settlement', { target: thread.targetName });
   if (thread.kind === 'transfer') return i18n.t('pendingStrip.transfer', { target: thread.targetName });
+  if (thread.kind === 'pirate') {
+    /*
+      NAMED FROM THE LEVEL AND THE CALLSIGN, never from a server sentence. There is
+      no world on the far end to borrow a name from, and the copy that names a
+      pirate belongs in the locale files like every other user-facing string.
+    */
+    const name = thread.pirate
+      ? i18n.t('pirate.name', { level: thread.pirate.level, callsign: thread.pirate.callsign })
+      : i18n.t('pirate.title');
+    return i18n.t(
+      thread.leg === 'return' ? 'pendingStrip.pirateHome' : 'pendingStrip.pirateOut',
+      { target: name },
+    );
+  }
   return i18n.t(thread.leg === 'return' ? 'pendingStrip.fleetHome' : 'pendingStrip.fleetOut', {
     target: thread.targetName,
   });

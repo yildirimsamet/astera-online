@@ -138,6 +138,10 @@ the script's final line as proof of deployment.
 
 ## Production deploy, in order
 
+The root `pnpm verify` and `pnpm lint` commands run type-aware ESLint with a 4 GB Node heap.
+Use those root scripts during qualification; a bare `eslint .` falls back to Node's smaller
+default heap and can fail for memory reasons without identifying an application regression.
+
 ### 1. Qualify the commit locally
 
 ```bash
@@ -719,11 +723,12 @@ planet, which is the failure the flat count was reaching for and never actually 
 
 `ruleset_version` is whatever `MULTI_WORLD.rulesetVersion` was in the code that CREATED the season,
 so it is a fact about the galaxy's birthday rather than an acceptance constant. Seasons opened
-before D114 are `2` and stay `2` for their whole life; every season opened by a rollover on D114 or
-later is `3`, and that is the boundary the clan feature begins at — `assertClanRuleset` answers
-`CLANS_NEXT_SEASON` below it. A deploy therefore does not switch clans on: the rollover that
-follows it does. Require the version to match the code that opened the row, and expect a mixed
-pair across a rollover. Capital count is the current real population,
+before D114 are `2` and stay `2` for their whole life; D114 seasons are `3`, which remains the
+boundary where clans begin; Fleet Catalog V2 seasons are `4`. `assertClanRuleset` therefore still
+answers `CLANS_NEXT_SEASON` only below v3, while the offline Fleet V2 cutover below requires v4.
+A deploy alone switches neither feature on: the rollover that follows it does. Require the version
+to match the code that opened the row, and expect a mixed pair across a rollover. Capital count is
+the current real population,
 not a fixed acceptance value. `/api/servers` must show only the lowest non-full ordinal as `open`;
 the next remains `locked` until the frontier fills.
 
@@ -828,10 +833,53 @@ past `ends_at` while a committed mission, mining run, build or strategic build f
 worker retries the freeze every second. Rollover likewise retries until all live seasons are
 frozen. Never delete that work to force the deadline.
 
-After rollover require: two new live v2 seasons; old seasons `wiped`; no live missions/builds from
+After rollover require: two new live ruleset-v4 seasons; old seasons `wiped`; no live missions/builds from
 the old world; no failed/processing lifecycle events; one pending end, one pending rollover and
 the expected season-act events per successor; and the 300 + 30/15/6 query above. Account identity
 and season results survive; disposable player/world rows do not.
+
+### Fleet Catalog V2 season-boundary cutover (ruleset v4)
+
+Fleet V2 is an offline catalog boundary, not a rolling-compatible application deploy. Ruleset-v3
+seasons may contain Wasp/Lance/Bulwark/Hauler/Runner/Breacher in units, missions, reports and
+commander research; ruleset-v4 code deliberately has no live translator for those meanings.
+
+1. Let every v3 galaxy freeze and finish its five-minute readable afterglow. Record the release
+   SHA, server image digest, web asset release, each ending season id/ruleset and final result count.
+2. Close public traffic and stop **all** API/worker replicas. Verify no process can claim an event or
+   accept a player mutation; leaving one worker alive invalidates the backup boundary.
+3. Take the final quiesced dump, checksum it and restore it to a disposable database exactly as in
+   steps 5 and 8b above. On that restored copy, run the new image's migrations and
+   `season wipe --yes --seed <recorded rehearsal seed>`.
+4. On the restored copy require two live seasons with `ruleset_version = 4`, 51 neutral worlds per
+   successor, no unknown hull rows, no players/missions/research/reports from the old world, and the
+   expected pending lifecycle rows. Run the focused executable smoke:
+
+   ```bash
+   pnpm --filter @astera/server test -- fleet-v2-cutover.test.ts season-lifecycle.test.ts
+   ```
+
+   It performs account reclaim → exactly two queued Darts → Engineering research → another Yard
+   build → attack → engagement → battle report → return using only Fleet V2 hulls.
+5. Only after the restore rehearsal succeeds, run the same new-image `season wipe --yes` command
+   against the still-offline production database. Repeat the v4/count/unknown-ID queries before any
+   listener starts.
+6. Start workers first and require healthy lifecycle queues, then start APIs and open traffic. Watch
+   unknown-hull/schema/event failures and complete one real claim/onboarding smoke.
+
+Ruleset-v4 successors also seed D149's immutable galaxy-event calendar. For each exact 14-day
+successor require 70 `galaxy_event_occurrences`, 70 `galaxy_event_start` jobs and 70
+`galaxy_event_end` jobs before traffic opens. Verify every `dedupe_key` is unique, every occurrence
+ends after it starts, and no occurrence crosses the season boundary. Do not backfill an already-live
+season created by a pre-D149 image. The API exposes only currently active rows, never this future
+calendar. At the first live start/end, observe one Chronicle row, one notification per current
+player and one `galaxy-event` shard invalidation; worker delay may delay those deliveries but must
+not change the clock-derived asteroid effect.
+
+Before traffic reopens, an abort restores the verified final dump and the recorded v3 image/web
+release. After a v4 season accepts any player write, restoring v3 would discard player decisions;
+rollback is forbidden and the response is a forward fix. There is no in-place hull mapping or
+partial per-galaxy activation path.
 
 ## Rollback
 

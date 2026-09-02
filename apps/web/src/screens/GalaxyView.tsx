@@ -12,7 +12,9 @@ import {
   useMining,
   useMiningArrivals,
   usePending,
+  usePirates,
   usePlanet,
+  useRaidPirate,
   useClanBadge,
   useReports,
   useSeason,
@@ -28,6 +30,7 @@ import {
   AsteroidFocus,
   DebrisFocus,
   ContactFocus,
+  PirateFocus,
   PlanetFocus,
   RunFocus,
   ThreadFocus,
@@ -38,8 +41,14 @@ import { threadKey } from '../galaxy/threadKey.js';
 import type { PlanetGroup } from '../lib/directives.js';
 import { haptic } from '../lib/haptics.js';
 import { serverNow } from '../lib/clock.js';
-import { minutesLeft, useNow } from '../lib/time.js';
-import { distance, engagementEndsAt, interceptAsteroid, travelMinutes } from '@astera/rules';
+import { duration, minutesLeft, useNow } from '../lib/time.js';
+import {
+  distance,
+  engagementEndsAt,
+  fleetCount,
+  interceptAsteroid,
+  travelMinutes,
+} from '@astera/rules';
 import { LaunchSheet } from './LaunchSheet.jsx';
 import { SettlementSheet } from './SettlementSheet.js';
 import { TransferSheet } from './TransferSheet.js';
@@ -89,6 +98,7 @@ import {
 } from '../galaxy/ownCraft.js';
 import type { ReachRing } from '../galaxy/SensorRings.jsx';
 import { planetsWithClanPresence } from '../galaxy/clanPresence.js';
+import { ActiveGalaxyEvent } from './ActiveGalaxyEvent.js';
 
 /** Clan command is a large, infrequent room; keep it out of the first galaxy bundle. */
 /**
@@ -213,6 +223,8 @@ export function GalaxyView({
   const pending = usePending();
   const traffic = useTraffic();
   const mining = useMining();
+  /** The caller's own fog-filtered sightings, for the disc tally. D150. */
+  const pirateList = usePirates();
   const reports = useReports();
   const setRival = useSetRival();
   const mine = useMine();
@@ -443,6 +455,15 @@ export function GalaxyView({
   const wrecks = miningScene.debris;
   const threads = useMemo(() => pending.data?.pending ?? [], [pending.data]);
   const contacts = useMemo(() => traffic.data?.contacts ?? [], [traffic.data]);
+  /*
+    HOW MANY PIRATES THIS COMMANDER CAN SEE. D150.
+
+    Read from `/api/pirates` rather than counted off `contacts`, because the two
+    are different questions: a contact list carries anonymous Radar returns as
+    `unknown`, so counting pirates there would silently drop every one a commander
+    has detected but not identified — which is most of them at the low rungs.
+  */
+  const visiblePirates = pirateList.data?.pirates.length ?? 0;
   const interceptions = useMemo(() => traffic.data?.interceptions ?? [], [traffic.data]);
   const interceptionImpacts = useMemo(
     () => traffic.data?.interceptionImpacts ?? [],
@@ -766,6 +787,23 @@ export function GalaxyView({
               <span className="text-crystal">{t('galaxy.rocks', { count: asteroids.length })}</span>
             )}
             {/*
+              AND HOW MANY PIRATES ARE STANDING IN YOUR CIRCLES RIGHT NOW. D150.
+
+              Counted beside the rocks because it answers the same question they
+              do — what is out there worth flying at — and because a pirate is the
+              one target class that LEAVES. A commander who cannot see the number
+              go up has no reason to look at the disc between sessions.
+
+              IT IS WHAT THIS CALLER CAN SEE, NOT WHAT EXISTS. `/api/pirates` is
+              already fog-filtered per commander, so this counts sightings rather
+              than the lane; a galaxy-wide tally would be a number nobody earned.
+            */}
+            {visiblePirates > 0 && (
+              <span className="text-threat">
+                {t('galaxy.pirates', { count: visiblePirates })}
+              </span>
+            )}
+            {/*
               WRECKAGE IS COUNTED HERE BECAUSE IT IS PUBLIC. D32.
 
               A field is a landmark at a known address with a clock on it, and the
@@ -777,6 +815,7 @@ export function GalaxyView({
               <span className="text-alloy">{t('galaxy.wrecks', { count: wrecks.length })}</span>
             )}
         </DiscReadout>
+        <ActiveGalaxyEvent />
 
         {/*
           THE TWO INSTRUMENTS' OWN SWITCHES, UNDER THE CAPTION THAT NAMES THE DISC.
@@ -1049,6 +1088,26 @@ export function GalaxyView({
           // A public effect outside sensor reach is not a contact the commander
           // can inspect; a stale focus may survive the boundary-crossing refetch.
           if (!contact || contact.effectOnly === true) return null;
+          /*
+            A PIRATE IS A TARGET, NOT A CURIOSITY. D150.
+
+            `ContactFocus` is deliberately read-only — there is nothing a commander
+            may DO to somebody else's craft. A pirate is the one contact on the disc
+            that can be flown at, so it gets its own rail with the level, the
+            handicap, the deadline and the button. Matched on the payload's own kind
+            rather than on a separate id list, so a contact that is only a Radar
+            question mark still reads as one.
+          */
+          if (contact.kind === 'pirate') {
+            return (
+              <PirateFocusHost
+                id={contact.id}
+                onClose={close}
+                open={detail}
+                onToggle={toggle}
+              />
+            );
+          }
           return (
             <ContactFocus contact={contact} onClose={close} open={detail} onToggle={toggle} />
           );
@@ -1438,6 +1497,83 @@ const windowsOpen = (planets: readonly { isSelf: boolean; fleet?: { status: stri
  * how long the rock has left, whether your craft could catch it, and how many are
  * free to send. Gathered here so the panel stays a view.
  */
+/**
+ * THE PIRATE RAIL, FED FROM THE ONE PLACE THAT KNOWS THE PRICE. D150.
+ *
+ * The disc's contact carries where it is and what it flies; `/api/pirates` carries
+ * the level, the deadline and the rendezvous table. Both are keyed by the same
+ * opaque handle, so this joins them rather than duplicating either — and the
+ * rendezvous in particular may only ever come from the server, because a second
+ * numerical solver would quote a minute no launch would keep.
+ */
+function PirateFocusHost({
+  id,
+  onClose,
+  open,
+  onToggle,
+}: {
+  id: string;
+  onClose: () => void;
+  open: boolean;
+  onToggle: () => void;
+}) {
+  const pirates = usePirates();
+  const planet = usePlanet();
+  const pending = usePending();
+  const raid = useRaidPirate();
+  const say = useToast();
+  const { t } = useTranslation();
+
+  const pirate = pirates.data?.pirates.find((candidate) => candidate.id === id);
+  if (!pirate) return null;
+
+  // One raid per world per pirate — the server refuses a second, and offering a
+  // control that cannot work teaches a rule that is not true.
+  const raiding = (pending.data?.pending ?? []).some(
+    (thread) => thread.kind === 'pirate' && thread.pirate?.callsign === pirate.callsign,
+  );
+
+  return (
+    <PirateFocus
+      pirate={pirate}
+      fleetAtHome={planet.data?.fleet ?? {}}
+      /*
+        THE TWO REFUSALS THE LAUNCH WILL MAKE, HANDED OVER BEFORE THE TAP. D28/D136.
+
+        `assertFreeBay` and `assertFuel` both fire server-side, so a commander with
+        no bay or no deuterium learned it as a toast after committing. The panel now
+        holds the same two figures and states the reason on the button instead —
+        `interface.md`: an unavailable action stays visible with its reason.
+      */
+      deuteriumAtHome={planet.data?.planet.deuterium ?? 0}
+      baysFree={Math.max(
+        0,
+        (planet.data?.flight.total ?? 0) - (planet.data?.flight.used ?? 0),
+      )}
+      busy={raid.isPending}
+      raiding={raiding}
+      open={open}
+      onToggle={onToggle}
+      onClose={onClose}
+      onSend={(fleet) => {
+        raid.mutate(
+          { pirateId: pirate.id, fleet },
+          {
+            onSuccess: (result) => {
+              say(t('pirate.send', {
+                count: fleetCount(result.fleet),
+                duration: duration(result.flightMinutes),
+              }));
+              onClose();
+            },
+            onError: (err) => { say(describe(err), 'error'); },
+          },
+        );
+      }}
+    />
+  );
+}
+
 function AsteroidFocusHost({
   rock,
   runs,
@@ -1465,6 +1601,16 @@ function AsteroidFocusHost({
 }) {
   const planet = usePlanet();
   if (!rock) return null;
+
+  const isotopeProject = planet.data?.research.find(
+    (project) => project.id === 'ISOTOPE_SPECTROMETRY',
+  );
+  // Research is commander-wide. Prefer its explicit project state, while a
+  // research-gated composition reading is also positive proof during a rolling
+  // deploy or split-query refresh. Either proof is monotonic; absence of target
+  // detail must not revoke a project the commander already completed.
+  const isotopeAccess = (isotopeProject?.level ?? (isotopeProject?.completed ? 1 : 0)) > 0
+    || rock.deuteriumShare !== null;
 
   const minutesLeft = minutesLeftFor(rock, seasonStart, now);
   const speed = mining?.craftSpeed ?? 0;
@@ -1508,6 +1654,7 @@ function AsteroidFocusHost({
   return (
     <AsteroidFocus
       rock={rock}
+      isotopeAccess={isotopeAccess}
       craftAvailable={planet.data?.fleet.PROSPECTOR ?? 0}
       craftHold={mining?.craftHold ?? 0}
       derrick={mining?.derrick ?? false}
@@ -1548,7 +1695,9 @@ function DebrisFocusHost({
 }: {
   field: {
     id: string;
-    planetId: string;
+    /** Null for a pirate battle: the fight had no world under it. D150. */
+    planetId: string | null;
+    at: { x: number; y: number; z: number };
     alloy: number;
     crystal: number;
     deuterium: number;
@@ -1567,11 +1716,22 @@ function DebrisFocusHost({
   const planetQuery = usePlanet();
   if (!field) return null;
 
-  const at = planets.find((p) => p.id === field.planetId);
+  /*
+    THE FLIGHT IS PRICED AGAINST THE FIELD, NOT AGAINST ITS WORLD. D150.
+
+    This resolved the position by looking the planet up in the drawn list, so a
+    wreck whose world was outside the caller's payload quoted no reach at all —
+    and a pirate battle, which has no world, could never have quoted one. The
+    field carries its own coordinates now, which is also the pair the server
+    solves the harvest against.
+  */
+  const named = field.planetId === null
+    ? undefined
+    : planets.find((p) => p.id === field.planetId);
   const speed = mining?.craftSpeed ?? 0;
   const reach =
-    homePosition && at && speed > 0
-      ? travelMinutes(distance(homePosition, at.position), speed)
+    homePosition && speed > 0
+      ? travelMinutes(distance(homePosition, field.at), speed)
       : null;
 
   const p = planetQuery.data?.planet;
@@ -1584,7 +1744,7 @@ function DebrisFocusHost({
   return (
     <DebrisFocus
       field={field}
-      planetName={at?.name}
+      planetName={named?.name}
       craftAvailable={planetQuery.data?.fleet.PROSPECTOR ?? 0}
       craftHold={mining?.craftHold ?? 0}
       reachMinutes={reach}

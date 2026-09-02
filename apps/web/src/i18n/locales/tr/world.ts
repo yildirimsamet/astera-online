@@ -17,8 +17,12 @@ export const galaxy = {
   worlds: "{{count}} gezegen",
   fleetAway: " · {{count}} filo dışarıda",
   rocks: " · {{count}} kaya",
+  pirates_one: " · {{count}} korsan",
+  pirates_other: " · {{count}} korsan",
   wrecks_one: " · {{count}} enkaz",
   wrecks_other: " · {{count}} enkaz",
+  asteroidShower: 'Asteroid yağmuru',
+  asteroidShowerStatus: 'Oluşma ×{{multiplier}} · {{remaining}} kaldı',
   openWorlds: "Dünyaların",
   openIntel: "İstihbarat",
   /* Disk başlığının altındaki iki sensör anahtarı. Yalnızca `aria-label`. */
@@ -32,6 +36,8 @@ export const galaxy = {
   kindColony: "Koloni",
   kindNeutral: "Tarafsız · {{tier}}. kademe",
   /** A world nobody has surveyed. The only honest thing to print about it. D127. */
+  /** Hatırlanan dünyanın alt satırı: kaydın kendisi ve kaç yaşında olduğu. D151. */
+  recordAge: "Kayıt · {{age}}",
   unsurveyed: "Keşfedilmemiş",
   owned: "Senin",
   clanmate: "Klan arkadaşın",
@@ -101,7 +107,7 @@ export const focus = {
     settle: "Koloni kur",
     settleNeedSlot: "Koloni kur · koloni yuvası dolu",
     settleNeedBay: "Koloni kur · uçuş rampaları dolu",
-    settleNeedHauler: "Koloni kur · 2 Şilep gerekli",
+    settleNeedCourier: "Koloni kur · 2 Kurye gerekli",
     settleNeedAlloy: "Koloni kur · Alaşım eksik",
     settleNeedCrystal: "Koloni kur · Kristal eksik",
     settleNeedFuel: "Koloni kur · Döteryum eksik",
@@ -113,8 +119,8 @@ export const focus = {
       unsurveyedTitle: "Bu dünyada koloni kur",
       race: "Geçerli 2 Şilebi ilk ulaştıran oyuncu gezegeni alır.",
       noRecall:
-        "Koloni gemileri geri çağrılamaz. Başkası önce kazanırsa Şileplerin ve kuruluş yükün geri döner; harcanan yakıt dönmez.",
-      haulers: "Koloni gemileri",
+        "Koloni gemileri geri çağrılamaz. Başkası önce kazanırsa Kuryelerin ve kuruluş yükün geri döner; harcanan yakıt dönmez.",
+      transports: "Koloni gemileri",
       foundingCargo: "Kuruluş yükü",
       cargoValue: "{{alloy}} Alaşım · {{crystal}} Kristal",
       fuel: "Uçuş yakıtı",
@@ -165,7 +171,7 @@ export const focus = {
     routeSettleInFlightDetail: "Kuruluş filon yolda. İlk geçerli varış gezegeni alır.",
     raidFleetBadge: "Akın filosu",
     raidFleetExplain:
-      "Akın ekranında savaş gemilerini seç; tüm savunmayı ve kalkanı yok et. 1. adımda Şilep, kuruluş kaynağı veya koloni yuvası gerekmez.",
+      "Akın ekranında savaş gemilerini seç; tüm savunmayı ve kalkanı yok et. 1. adımda Kurye, kuruluş kaynağı veya koloni yuvası gerekmez.",
     automaticBadge: "Otomatik",
     automaticExplain:
       "Kesin zafer yarışı otomatik açar. 2. adım için başka gemi veya kaynak göndermezsin.",
@@ -184,9 +190,9 @@ export const focus = {
     openFlightBay: "1 boş uçuş rampası",
     flightBayExplain:
       "Yalnızca 3. adımda gerekir. 2 Şilebin tek yönlü kuruluş uçuşu, gezegene varana kadar 1 rampayı kullanır.",
-    haulerCount: "2 Şilep",
+    courierCount: "2 Kurye",
     haulerExplain:
-      "Yalnızca 3. adımda gerekir: kuruluş filosudur ve yarış açıldıktan sonra akından ayrı gönderilir. Akın için Şilep gerekmez.",
+      "Yalnızca 3. adımda gerekir: kuruluş filosudur ve yarış açıldıktan sonra akından ayrı gönderilir. Akın için Kurye gerekmez.",
     foundingAlloy: "{{amount}} Alaşım",
     foundingAlloyExplain:
       "{{amount}} Alaşım, 3. adımda yeni koloninin başlangıç stoğu olarak taşınır. Akının maliyeti değildir.",
@@ -195,7 +201,7 @@ export const focus = {
       "{{amount}} Kristal, 3. adımda yeni koloninin başlangıç stoğu olarak taşınır. Akının maliyeti değildir.",
     settlementFuel: "{{amount}} Döteryum",
     settlementFuelExplain:
-      "2 Şilep, 3. adımdaki tek yön uçuşunda {{amount}} Döteryum yakar. Bu miktar mesafeye göre değişir.",
+      "2 Kurye, 3. adımdaki tek yön uçuşunda {{amount}} Döteryum yakar. Bu miktar mesafeye göre değişir.",
     settlementArrivalExplain:
       "Kuruluş uçuşu {{duration}} sürer. Yarış kapanmadan varmalı; ilk geçerli varış kazanır.",
     arrivesIn: "{{duration}} içinde varır",
@@ -398,6 +404,10 @@ export const focus = {
     titleMining: "Maden seferi",
     titleHarvest: "Hurda seferi",
     titleDeathStar: "Ölüm Yıldızı",
+    titlePirate: "Korsan filosu",
+    eyebrowPirate: "Dışarıda korsanlar var",
+    boundaryPirate:
+      "Korsanı ve uçurduğu gemileri görüyorsun. Nereden geldiği ve yörüngesi görünmez — korsan bir konumdur, bir rota değil.",
     working: "Çalışıyor",
     craftCount: "{{count}} gemi",
     massLight: "Küçük temas",
@@ -432,4 +442,48 @@ export const focus = {
     wreckHint:
       "Enkaz herkese açıktır. İki filodan geriye ne kalırsa birazdan orada olacak; isteyen gidip alır.",
   },
+} as const;
+
+/** Korsan filoları. D150. Türkçe doğal yazılır; `İ` naif case-fold edilmez. */
+export const pirate = {
+  title: "Korsan filosu",
+  name: "Korsan filosu S{{level}}-{{callsign}}",
+  level: "Seviye {{level}}",
+  eyebrow: "Seviye {{level}} korsanlar",
+  damagePenalty: "Bu filo %{{percent}} daha az hasar verir",
+  yourFleet: "Filon",
+  atHome: "{{count}} evde",
+  fewer: "{{name}} azalt",
+  more: "{{name}} artır",
+  quantity: "{{name}} adedi",
+  max: "Tüm {{name}} gemilerini gönder",
+  maxShort: "Tümü",
+  noShipsAtHome: "Bu dünyada gönderilecek gemi yok.",
+  leftAtHome: "Evde kalan savunma gücü: {{power}}",
+  eyebrowUnknown: "Tanımlanamayan temas",
+  pickShips: "En az bir gemi seç",
+  fuelCost: "Yakıt {{amount}} döteryum",
+  noFuel: "Bu gidiş-dönüş için döteryum yetmiyor",
+  noBay: "Boş uçuş yatağı yok",
+  tooSlow: "Seçtiğin en yavaş gemi ona yetişemez",
+  roster: "Kadro",
+  rosterUnknown: "Bu menzilde kadro okunamıyor",
+  unknownContact: "Tanımlanamayan temas",
+  mass: "Kütle",
+  leavesIn: "Bölgeden ayrılmasına",
+  reach: "{{duration}} sonra yetişir",
+  reachLabel: "Varışın",
+  tooLate: "Yetişemeden bölgeden ayrılır",
+  unreachable: "Bu dünyadaki hiçbir gemi ona yetişemez",
+  alreadyRaiding: "Bu dünyadan zaten bir akın yolda",
+  outOfSight: "Sensör menzilinde değil",
+  noShips: "Evde gemi yok",
+  captureHint: "Kesin zafer hâlinde kadrodan bir gemi kazanabilirsin",
+  captured: "{{hull}} ele geçirildi",
+  captureMissed: "Eve çekilecek gemi kalmadı",
+  send: "{{count}} gemi gönder · {{duration}}",
+  outbound: "Kalkan filo geri çağrılamaz.",
+  boundary:
+    "Korsan şu an bulunduğu yerdedir; hatırlanmaz. Sensörlerinden çıktığı anda geri dönene kadar bu listeden kaybolur.",
+  hoardHint: "Eve taşıyacağın ganimet, götürdüğün kargo hacmiyle sınırlıdır.",
 } as const;

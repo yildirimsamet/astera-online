@@ -70,6 +70,12 @@ describe('what a shard event asks the client to read', () => {
     expect(readsForShardEvent('shard:score')).toEqual([keys.leaderboard, keys.galaxy]);
     expect(readsForShardEvent('shard:chat')).toEqual([keys.chatMessages, keys.chatUnread]);
     expect(readsForShardEvent('shard:chronicle')).toEqual([keys.chronicle]);
+    expect(readsForShardEvent('shard:galaxy-event')).toEqual([
+      keys.galaxyEvents,
+      keys.notifications,
+      keys.chronicle,
+      keys.miningField,
+    ]);
   });
 
   /**

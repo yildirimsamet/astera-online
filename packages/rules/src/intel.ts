@@ -355,7 +355,7 @@ export const radarRevealsComposition = (radarLevel: number): boolean => radarLev
  *
  * Priced off `fleetValue` rather than off a hull count, because value is what the
  * whole table is balanced on and a count would read six Bulwarks as lighter than
- * six Wasps. A probe and an empty return leg both come out LIGHT, which is right:
+ * six Darts. A probe and an empty return leg both come out LIGHT, which is right:
  * a stranger cannot tell them apart and is not supposed to.
  */
 export function massClass(fleet: Fleet): MassClass {

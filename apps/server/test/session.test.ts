@@ -78,8 +78,8 @@ afterAll(async () => {
  * rather than on anything they were written to check.
  */
 async function raid(f: Fixture, from: string, to: string, wasps = 20): Promise<void> {
-  await giveUnits(f.db, from, { WASP: wasps });
-  const launch = await launchAttack(f.db, from, to, { WASP: wasps }, f.clock);
+  await giveUnits(f.db, from, { DART: wasps });
+  const launch = await launchAttack(f.db, from, to, { DART: wasps }, f.clock);
   f.clock.set(settledAt(launch.arriveAt));
   await worker(f).tick();
   // exposureMinutes is the full round trip, so this always clears the way home.
@@ -308,8 +308,8 @@ describe('the return payload', () => {
    * The payload has to be able to say what is still in flight.
    */
   it('lists what is still in flight', async () => {
-    await giveUnits(f.db, mine, { WASP: 30 });
-    const launch = await launchAttack(f.db, mine, theirs, { WASP: 30 }, f.clock);
+    await giveUnits(f.db, mine, { DART: 30 });
+    const launch = await launchAttack(f.db, mine, theirs, { DART: 30 }, f.clock);
 
     const payload = await buildReturnPayload(f.db, myPlayer, f.clock);
     expect(payload.pending.length).toBeGreaterThan(0);
@@ -328,8 +328,8 @@ describe('the return payload', () => {
    */
   describe('an inbound fleet is only listed once radar has said so', () => {
     const sendAtThem = async (): Promise<void> => {
-      await giveUnits(f.db, theirs, { WASP: 30 });
-      await launchAttack(f.db, theirs, mine, { WASP: 30 }, f.clock);
+      await giveUnits(f.db, theirs, { DART: 30 });
+      await launchAttack(f.db, theirs, mine, { DART: 30 }, f.clock);
     };
 
     it('says nothing at all without radar', async () => {
@@ -383,8 +383,8 @@ describe('the return payload', () => {
    * what L2's bearing costs. Asserted on the payload, not on the rendering.
    */
   it('carries a flight path for your own fleets and none at all for an inbound one', async () => {
-    await giveUnits(f.db, mine, { WASP: 20 });
-    await launchAttack(f.db, mine, theirs, { WASP: 20 }, f.clock);
+    await giveUnits(f.db, mine, { DART: 20 });
+    await launchAttack(f.db, mine, theirs, { DART: 20 }, f.clock);
 
     const outbound = await buildReturnPayload(f.db, myPlayer, f.clock);
     const ours = outbound.pending.find((p) => p.kind === 'fleet');
@@ -393,8 +393,8 @@ describe('the return payload', () => {
 
     // Now let radar see something coming, inside its lead window.
     await giveInstrument(f.db, mine, 'RADAR', 3);
-    await giveUnits(f.db, theirs, { WASP: 20 });
-    await launchAttack(f.db, theirs, mine, { WASP: 20 }, f.clock);
+    await giveUnits(f.db, theirs, { DART: 20 });
+    await launchAttack(f.db, theirs, mine, { DART: 20 }, f.clock);
     const [inbound] = await f.db
       .select()
       .from(missions)
@@ -410,8 +410,8 @@ describe('the return payload', () => {
   });
 
   it('names the planet a returning fleet is coming back from', async () => {
-    await giveUnits(f.db, mine, { WASP: 30 });
-    const launch = await launchAttack(f.db, mine, theirs, { WASP: 30 }, f.clock);
+    await giveUnits(f.db, mine, { DART: 30 });
+    const launch = await launchAttack(f.db, mine, theirs, { DART: 30 }, f.clock);
 
     const outbound = await buildReturnPayload(f.db, myPlayer, f.clock);
     expect(outbound.pending.find((p) => p.kind === 'fleet')?.leg).toBe('outbound');

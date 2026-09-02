@@ -19,6 +19,8 @@ import {
   clanRequests,
   debrisFields,
   miningRuns,
+  pirateRaids,
+  pirateState,
   missions,
   notifications,
   neutralPlanetState,
@@ -124,7 +126,7 @@ async function commanderRows(
   tx: Tx,
   planetIds: string[],
   playerId: string,
-): Promise<{ missionIds: string[]; fieldIds: string[]; runIds: string[] }> {
+): Promise<{ missionIds: string[]; fieldIds: string[]; runIds: string[]; raidIds: string[] }> {
   const missionIds = (
     await tx
       .select({ id: missions.id })
@@ -136,14 +138,43 @@ async function commanderRows(
       ))
   ).map((r) => r.id);
 
+  /**
+   * AND THE RAIDS THIS SEAT HAS OUT AT PIRATES. D150 — gap G5.
+   *
+   * `pirate_raids` has foreign keys to `planets` and `seasons` with `ON DELETE no
+   * action`, so a reclaimed seat with a raid row would fail on the `delete(planets)`
+   * below and the seat would never come back — the exact shape of the
+   * `debris_fields` outage this function has already had once.
+   */
+  const raidIds = (
+    await tx
+      .select({ id: pirateRaids.id })
+      .from(pirateRaids)
+      .where(inArray(pirateRaids.planetId, planetIds))
+  ).map((r) => r.id);
+
   const fieldIds = (
     await tx
       .select({ id: debrisFields.id })
       .from(debrisFields)
+      /*
+        THREE DOORS NOW, AND THE THIRD IS THE ONE WITH NO ADDRESS. D150.
+
+        A pirate battle's wreckage hangs in open space: `planet_id` is NULL and
+        there is no mission, so neither of the original two clauses could ever
+        reach it and the row would survive its own season as an orphan. It is
+        found through the raid that made it.
+      */
       .where(
-        missionIds.length > 0
-          ? or(inArray(debrisFields.planetId, planetIds), inArray(debrisFields.missionId, missionIds))
-          : inArray(debrisFields.planetId, planetIds),
+        or(
+          inArray(debrisFields.planetId, planetIds),
+          ...(missionIds.length > 0
+            ? [inArray(debrisFields.missionId, missionIds)]
+            : []),
+          ...(raidIds.length > 0
+            ? [inArray(debrisFields.pirateRaidId, raidIds)]
+            : []),
+        ),
       )
   ).map((r) => r.id);
 
@@ -158,7 +189,7 @@ async function commanderRows(
       )
   ).map((r) => r.id);
 
-  return { missionIds, fieldIds, runIds };
+  return { missionIds, fieldIds, runIds, raidIds };
 }
 
 /**
@@ -172,7 +203,7 @@ async function busy(
   tx: Tx,
   planetIds: string[],
   playerId: string,
-  rows: { runIds: string[] },
+  rows: { runIds: string[]; raidIds: string[] },
 ): Promise<boolean> {
   const [flight] = await tx
     .select({ id: missions.id })
@@ -189,6 +220,17 @@ async function busy(
     )
     .limit(1);
   if (flight) return true;
+
+  if (rows.raidIds.length > 0) {
+    // A world with a raid in the air is never reclaimed: the fleet is real, and
+    // taking the seat would delete it mid-flight.
+    const [raid] = await tx
+      .select({ id: pirateRaids.id })
+      .from(pirateRaids)
+      .where(and(inArray(pirateRaids.id, rows.raidIds), ne(pirateRaids.status, 'done')))
+      .limit(1);
+    if (raid) return true;
+  }
 
   if (rows.runIds.length === 0) return false;
   const [run] = await tx
@@ -239,9 +281,9 @@ async function demolish(
   tx: Tx,
   planetIds: string[],
   playerId: string,
-  rows: { missionIds: string[]; fieldIds: string[]; runIds: string[] },
+  rows: { missionIds: string[]; fieldIds: string[]; runIds: string[]; raidIds: string[] },
 ): Promise<void> {
-  const { missionIds, fieldIds, runIds } = rows;
+  const { missionIds, fieldIds, runIds, raidIds } = rows;
 
   /**
    * Season-scoped only, and `account_rewards` is deliberately absent from this
@@ -344,13 +386,29 @@ async function demolish(
     .select({ id: buildOrders.id })
     .from(buildOrders)
     .where(inArray(buildOrders.planetId, planetIds))).map((order) => order.id);
-  const refs = [...missionIds, ...runIds, ...planetIds, ...assetIds, ...buildOrderIds];
+  const refs = [...missionIds, ...runIds, ...raidIds, ...planetIds, ...assetIds, ...buildOrderIds];
   if (refs.length > 0) {
     await tx.delete(scheduledEvents).where(inArray(scheduledEvents.refId, refs));
   }
 
   if (runIds.length > 0) await tx.delete(miningRuns).where(inArray(miningRuns.id, runIds));
+  /*
+    DEBRIS BEFORE RAIDS, AND THE ORDER IS A FOREIGN KEY RATHER THAN A PREFERENCE.
+
+    Since D150 a wreck field left in open space points at the raid that made it, so
+    deleting the raid first leaves the field referencing a row that is gone and the
+    whole seat fails to come back. The runs above are already cleared, so nothing is
+    pointing at these fields either.
+  */
   if (fieldIds.length > 0) await tx.delete(debrisFields).where(inArray(debrisFields.id, fieldIds));
+  // After the reports above, which reference the raid, and before the planets below.
+  if (raidIds.length > 0) await tx.delete(pirateRaids).where(inArray(pirateRaids.id, raidIds));
+  // Damage this commander did to a pirate outlives them as anonymous world state,
+  // but the row's `destroyed_by_player_id` points at a commander about to vanish.
+  await tx
+    .update(pirateState)
+    .set({ destroyedByPlayerId: null })
+    .where(eq(pirateState.destroyedByPlayerId, playerId));
   if (assetIds.length > 0) await tx.delete(strategicAssets).where(inArray(strategicAssets.id, assetIds));
   if (buildOrderIds.length > 0) {
     await tx.delete(buildOrders).where(inArray(buildOrders.id, buildOrderIds));

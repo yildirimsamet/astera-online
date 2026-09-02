@@ -148,6 +148,18 @@ export function useSeason() {
   });
 }
 
+/** Active-only event state; lifecycle SSE is primary and this interval heals a missed event. */
+export function useGalaxyEvents() {
+  const api = useApi();
+  return useQuery({
+    queryKey: keys.galaxyEvents,
+    queryFn: api.galaxyEvents,
+    staleTime: NET_MS,
+    refetchInterval: NET_MS,
+    refetchOnWindowFocus: true,
+  });
+}
+
 /**
  * The galaxies and how full they are. D21.
  *
@@ -1368,27 +1380,6 @@ export function useCancelBuildOrder() {
   });
 }
 
-/** Research has one commander-wide lane; the active world only receives a refund. */
-export function useCancelResearchOrder() {
-  const api = useApi();
-  const { activePlanetId } = useWorld();
-  const invalidate = useInvalidator();
-  const apply = useApplyPlanet();
-  const lane = usePlanetMutationLane(activePlanetId);
-  return useMutation({
-    scope: lane.scope,
-    mutationFn: (orderId: string) => activePlanetId
-      ? api.cancelResearchOrder(activePlanetId, orderId)
-      : api.cancelResearchOrder(orderId),
-    onMutate: lane.enter,
-    onSuccess: async (result) => {
-      await apply(result.planet);
-      invalidate(keys.leaderboard);
-    },
-    onSettled: (_data, _error, _orderId, turn) => { lane.leave(turn); },
-  });
-}
-
 /** Discovery is history-derived, so only placement of an already-visible project is predicted. */
 export function useCompleteResearch() {
   const api = useApi();
@@ -1553,6 +1544,61 @@ function useApplyMiningLaunch(activePlanetId: string | null) {
     if (activePlanetId === null) client.setQueryData(keys.miningStatus, result.mining);
     client.setQueryData(keys.pending, { pending: result.pending });
   };
+}
+
+/**
+ * THE PIRATES THIS COMMANDER CAN SEE. D150.
+ *
+ * Keyed by the world it is measured FROM, because `reachMinutes` is a rendezvous
+ * solved from that world's coordinates — reusing another world's answer would put
+ * a flight time on the screen that no launch from here could keep.
+ *
+ * A LIVE SIGHT READING, NOT AN ADDRESS BOOK. Unlike the asteroid field, this list
+ * SHRINKS: a pirate that leaves the commander's circles stops existing for them,
+ * so nothing here may be cached forward or merged with an earlier read.
+ */
+export function usePirates() {
+  const api = useApi();
+  const { activePlanetId } = useWorld();
+  return useQuery({
+    queryKey: activePlanetId ? keys.piratesFrom(activePlanetId) : keys.pirates,
+    queryFn: () => api.pirates(activePlanetId ?? undefined),
+    staleTime: 5_000,
+    refetchInterval: NET_MS,
+    refetchOnWindowFocus: true,
+  });
+}
+
+/**
+ * Send a fleet at a pirate. IRREVERSIBLE — the confirmation is in the UI. P3.
+ *
+ * The answer carries the strip and the world from inside the launch transaction,
+ * so the craft is drawn on the frame the response lands rather than one round trip
+ * later, and an older read already in flight cannot land afterwards and erase it.
+ */
+export function useRaidPirate() {
+  const api = useApi();
+  const client = useQueryClient();
+  const { activePlanetId } = useWorld();
+  const invalidate = useInvalidator();
+  const applyPlanet = useApplyPlanet();
+  const lane = usePlanetMutationLane(activePlanetId);
+  return useMutation({
+    scope: lane.scope,
+    mutationFn: ({ pirateId, fleet }: { pirateId: string; fleet: Fleet }) =>
+      api.raidPirate(pirateId, fleet, activePlanetId ?? undefined),
+    onMutate: lane.enter,
+    onSuccess: async (result) => {
+      await Promise.all([
+        applyPlanet(result.planet),
+        client.cancelQueries({ queryKey: keys.pending }),
+      ]);
+      client.setQueryData(keys.pending, { pending: result.pending });
+      // The lane the raid flew at is one fewer target and one fewer bay.
+      invalidate(keys.pirates, keys.galaxy);
+    },
+    onSettled: (_data, _error, _vars, turn) => { lane.leave(turn); },
+  });
 }
 
 export function useMine() {

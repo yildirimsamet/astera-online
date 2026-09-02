@@ -9,7 +9,7 @@ import {
   hangarLoad,
   hullBulk,
 } from '@astera/rules';
-import { missions, planets, units } from '../src/db/schema.js';
+import { missions, notifications, planets, units } from '../src/db/schema.js';
 import { buildUnits, upgradeBuilding } from '../src/services/build.js';
 import { launchTransfer } from '../src/services/movement.js';
 import { transferPlanetControl } from '../src/services/ownership.js';
@@ -29,7 +29,7 @@ const workerFor = (f: Fixture) =>
   new EventWorker(f.db, f.clock, { pollMs: 1, batch: 100, staleMinutes: 5 }, silent);
 
 /** Wasps enough to fill a world to exactly `bulk` — the Wasp is one unit of room. */
-const wasps = (bulk: number): Record<string, number> => ({ WASP: bulk });
+const wasps = (bulk: number): Record<string, number> => ({ DART: bulk });
 
 async function fleetAt(f: Fixture, planetId: string): Promise<Record<string, number>> {
   const rows = await f.db.select().from(units).where(eq(units.planetId, planetId));
@@ -103,7 +103,7 @@ describe('the Hangar', () => {
       const room = hangarCapacity(0);
       await giveUnits(f.db, home, wasps(room));
 
-      await expect(buildUnits(f.db, home, 'WASP', 1, f.clock)).rejects.toMatchObject({
+      await expect(buildUnits(f.db, home, 'DART', 1, f.clock)).rejects.toMatchObject({
         code: 'HANGAR_FULL',
         params: { capacity: room, used: room },
       });
@@ -114,16 +114,16 @@ describe('the Hangar', () => {
       const room = hangarCapacity(0);
       await giveUnits(f.db, home, wasps(room - 1));
 
-      await expect(buildUnits(f.db, home, 'WASP', 1, f.clock)).resolves.toBeTruthy();
+      await expect(buildUnits(f.db, home, 'DART', 1, f.clock)).resolves.toBeTruthy();
     });
 
     it('charges the room the hull actually takes, not one per ship', async () => {
       await setLevel(f.db, home, 'HANGAR', 0);
       const room = hangarCapacity(0);
-      await giveUnits(f.db, home, wasps(room - hullBulk('BULWARK')));
+      await giveUnits(f.db, home, wasps(room - hullBulk('RAMPART')));
 
-      await expect(buildUnits(f.db, home, 'BULWARK', 1, f.clock)).resolves.toBeTruthy();
-      await expect(buildUnits(f.db, home, 'WASP', 1, f.clock)).rejects.toMatchObject({
+      await expect(buildUnits(f.db, home, 'RAMPART', 1, f.clock)).resolves.toBeTruthy();
+      await expect(buildUnits(f.db, home, 'DART', 1, f.clock)).rejects.toMatchObject({
         code: 'HANGAR_FULL',
       });
     });
@@ -138,8 +138,8 @@ describe('the Hangar', () => {
       const room = hangarCapacity(0);
       await giveUnits(f.db, home, wasps(room - 10));
 
-      await expect(buildUnits(f.db, home, 'WASP', 6, f.clock)).resolves.toBeTruthy();
-      await expect(buildUnits(f.db, home, 'WASP', 6, f.clock)).rejects.toMatchObject({
+      await expect(buildUnits(f.db, home, 'DART', 6, f.clock)).resolves.toBeTruthy();
+      await expect(buildUnits(f.db, home, 'DART', 6, f.clock)).rejects.toMatchObject({
         code: 'HANGAR_FULL',
       });
     });
@@ -153,7 +153,7 @@ describe('the Hangar', () => {
       await setLevel(f.db, home, 'HANGAR', 0);
       await giveUnits(f.db, home, wasps(hangarCapacity(0)), 'mine:pretend-run');
 
-      await expect(buildUnits(f.db, home, 'WASP', 1, f.clock)).rejects.toMatchObject({
+      await expect(buildUnits(f.db, home, 'DART', 1, f.clock)).rejects.toMatchObject({
         code: 'HANGAR_FULL',
       });
     });
@@ -161,12 +161,12 @@ describe('the Hangar', () => {
     it('raising the Hangar makes room', async () => {
       await setLevel(f.db, home, 'HANGAR', 0);
       await giveUnits(f.db, home, wasps(hangarCapacity(0)));
-      await expect(buildUnits(f.db, home, 'WASP', 1, f.clock)).rejects.toMatchObject({
+      await expect(buildUnits(f.db, home, 'DART', 1, f.clock)).rejects.toMatchObject({
         code: 'HANGAR_FULL',
       });
 
       await setLevel(f.db, home, 'HANGAR', 1);
-      await expect(buildUnits(f.db, home, 'WASP', 1, f.clock)).resolves.toBeTruthy();
+      await expect(buildUnits(f.db, home, 'DART', 1, f.clock)).resolves.toBeTruthy();
     });
   });
 
@@ -216,7 +216,7 @@ describe('the Hangar', () => {
       await grant(f.db, fresh, 2_000_000, 600_000);
       await f.db.delete(units).where(eq(units.planetId, fresh));
       await giveUnits(f.db, fresh, { THORN: Math.floor(groundSlots(10) / hullBulk('THORN')) });
-      await expect(buildUnits(f.db, fresh, 'WASP', 1, f.clock)).resolves.toBeTruthy();
+      await expect(buildUnits(f.db, fresh, 'DART', 1, f.clock)).resolves.toBeTruthy();
     });
   });
 
@@ -224,7 +224,7 @@ describe('the Hangar', () => {
     it('refuses a launch the destination has no room for', async () => {
       await setLevel(f.db, colony, 'HANGAR', 0);
       await giveUnits(f.db, colony, wasps(hangarCapacity(0)));
-      await giveUnits(f.db, home, { WASP: 5 });
+      await giveUnits(f.db, home, { DART: 5 });
 
       await expect(
         launchTransfer(
@@ -232,7 +232,7 @@ describe('the Hangar', () => {
           f.playerIds[0]!,
           home,
           colony,
-          { WASP: 5 },
+          { DART: 5 },
           { alloy: 0, crystal: 0, deuterium: 0 },
           f.clock,
         ),
@@ -242,33 +242,33 @@ describe('the Hangar', () => {
 
     it('lands a squadron the destination can hold', async () => {
       await setLevel(f.db, colony, 'HANGAR', 0);
-      await giveUnits(f.db, home, { WASP: 5 });
+      await giveUnits(f.db, home, { DART: 5 });
 
       const launched = await launchTransfer(
         f.db,
         f.playerIds[0]!,
         home,
         colony,
-        { WASP: 5 },
+        { DART: 5 },
         { alloy: 0, crystal: 0, deuterium: 0 },
         f.clock,
       );
       f.clock.set(launched.arriveAt);
       await workerFor(f).tick();
 
-      expect((await fleetAt(f, colony)).WASP).toBe(5);
+      expect((await fleetAt(f, colony)).DART).toBe(5);
     });
 
     /** The far world goes on living while the squadron flies. Nothing is deleted. */
     it('sends home a squadron whose destination filled in the air', async () => {
       await setLevel(f.db, colony, 'HANGAR', 0);
-      await giveUnits(f.db, home, { WASP: 5 });
+      await giveUnits(f.db, home, { DART: 5 });
       const launched = await launchTransfer(
         f.db,
         f.playerIds[0]!,
         home,
         colony,
-        { WASP: 5 },
+        { DART: 5 },
         { alloy: 0, crystal: 0, deuterium: 0 },
         f.clock,
       );
@@ -281,11 +281,24 @@ describe('the Hangar', () => {
         .from(missions)
         .where(and(eq(missions.kind, 'transfer'), eq(missions.status, 'in_flight')));
       expect(rerouted?.parentMissionId).toBe(launched.missionId);
+      const [notice] = await f.db
+        .select()
+        .from(notifications)
+        .where(eq(notifications.refId, launched.missionId));
+      expect(notice).toMatchObject({
+        playerId: f.playerIds[0],
+        kind: 'fleet_returned',
+        payload: {
+          trip: 'transfer_rerouted',
+          reason: 'CAPACITY',
+          targetPlanetId: colony,
+        },
+      });
 
       f.clock.set(rerouted!.arriveAt);
       await workerFor(f).tick();
-      expect((await fleetAt(f, home)).WASP).toBe(5);
-      expect((await fleetAt(f, colony)).WASP).toBe(hangarCapacity(0));
+      expect((await fleetAt(f, home)).DART).toBe(5);
+      expect((await fleetAt(f, colony)).DART).toBe(hangarCapacity(0));
     });
   });
 
@@ -305,16 +318,16 @@ describe('the Hangar', () => {
         }),
       );
 
-      expect((await fleetAt(f, colony)).WASP).toBe(over);
+      expect((await fleetAt(f, colony)).DART).toBe(over);
     });
 
     it('builds nothing, receives nothing, and loses nothing', async () => {
       await setLevel(f.db, colony, 'HANGAR', 0);
       const over = hangarCapacity(0) + 10;
       await giveUnits(f.db, colony, wasps(over));
-      await giveUnits(f.db, home, { WASP: 1 });
+      await giveUnits(f.db, home, { DART: 1 });
 
-      await expect(buildUnits(f.db, colony, 'WASP', 1, f.clock)).rejects.toMatchObject({
+      await expect(buildUnits(f.db, colony, 'DART', 1, f.clock)).rejects.toMatchObject({
         code: 'HANGAR_FULL',
       });
       await expect(
@@ -323,12 +336,12 @@ describe('the Hangar', () => {
           f.playerIds[0]!,
           home,
           colony,
-          { WASP: 1 },
+          { DART: 1 },
           { alloy: 0, crystal: 0, deuterium: 0 },
           f.clock,
         ),
       ).rejects.toMatchObject({ code: 'TARGET_HANGAR_FULL' });
-      expect((await fleetAt(f, colony)).WASP).toBe(over);
+      expect((await fleetAt(f, colony)).DART).toBe(over);
     });
   });
 
@@ -340,13 +353,13 @@ describe('the Hangar', () => {
   it('reports both ceilings and both loads to the client', async () => {
     await setLevel(f.db, home, 'HANGAR', 2);
     await setLevel(f.db, home, 'CORE', 10);
-    await giveUnits(f.db, home, { WASP: 7, BASTION: 1 });
+    await giveUnits(f.db, home, { DART: 7, BASTION: 1 });
 
     const view = await f.db.transaction((tx) => planetView(tx, home, f.clock));
 
     expect(view.capacity).toEqual({
       hangar: hangarCapacity(2),
-      hangarUsed: hangarLoad({ WASP: 7 }),
+      hangarUsed: hangarLoad({ DART: 7 }),
       ground: groundSlots(10),
       groundUsed: hullBulk('BASTION'),
     });

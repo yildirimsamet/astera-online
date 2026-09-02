@@ -180,24 +180,24 @@ describe('predicting an upgrade', () => {
 
 describe('predicting a build', () => {
   const yard = planetView(
-    { buildings: { CORE: 6, REFINERY: 2, EXTRACTOR: 2, VAULT: 0, SHIPYARD: 4 }, fleet: { WASP: 2 } },
+    { buildings: { CORE: 6, REFINERY: 2, EXTRACTOR: 2, VAULT: 0, SHIPYARD: 4 }, fleet: { DART: 2 } },
     { alloy: 500_000, crystal: 500_000 },
   );
 
   it('charges for every hull and queues them without granting any', () => {
-    const after = predictBuild(yard, 'WASP', 3);
-    expect(after?.fleet.WASP).toBe(2);
-    expect(after?.planet.alloy).toBe(500_000 - HULLS.WASP.alloy * 3);
+    const after = predictBuild(yard, 'DART', 3);
+    expect(after?.fleet.DART).toBe(2);
+    expect(after?.planet.alloy).toBe(500_000 - HULLS.DART.alloy * 3);
     expect(lastOrder(after, 'YARD')).toMatchObject({
       queue: 'YARD',
       slot: 0,
       kind: 'HULL',
-      subject: 'WASP',
+      subject: 'DART',
       count: 3,
       cost: {
-        alloy: HULLS.WASP.alloy * 3,
-        crystal: HULLS.WASP.crystal * 3,
-        deuterium: HULLS.WASP.deuterium * 3,
+        alloy: HULLS.DART.alloy * 3,
+        crystal: HULLS.DART.crystal * 3,
+        deuterium: HULLS.DART.deuterium * 3,
       },
       optimistic: true,
     });
@@ -216,23 +216,54 @@ describe('predicting a build', () => {
       { buildings: { CORE: 6, REFINERY: 2, EXTRACTOR: 2, VAULT: 0, SHIPYARD: 1 } },
       { alloy: 500_000, crystal: 500_000 },
     );
-    expect(predictBuild(shed, 'BULWARK', 1)).toBeNull();
+    expect(predictBuild(shed, 'VIPER', 1)).toBeNull();
   });
 
-  it('re-checks both research gates before predicting Frontier hulls', () => {
+  it('reads every advanced build gate from the Fleet V2 catalog metadata', () => {
     const rich = planetView(
-      { buildings: { CORE: 6, REFINERY: 2, EXTRACTOR: 2, VAULT: 0, SHIPYARD: 4 } },
+      {
+        buildings: { CORE: 8, REFINERY: 2, EXTRACTOR: 2, VAULT: 0, SHIPYARD: 6, HANGAR: 10 },
+        capacity: { hangar: 100_000, hangarUsed: 0, ground: groundSlots(8), groundUsed: 0 },
+      },
       { alloy: 500_000, crystal: 500_000, deuterium: 500_000 },
     );
-    expect(predictBuild(rich, 'RUNNER', 1)).toBeNull();
-    expect(predictBuild(rich, 'BREACHER', 1)).toBeNull();
+    expect(predictBuild(rich, 'WAYFARER', 1)).not.toBeNull();
+    expect(predictBuild(rich, 'TEMPEST', 1)).toBeNull();
+    expect(predictBuild(rich, 'LEVIATHAN', 1)).toBeNull();
+    expect(predictBuild(rich, 'ATLAS', 1)).toBeNull();
+    expect(predictBuild(rich, 'NULLIFIER', 1)).toBeNull();
 
-    const unlocked = {
+    const tierThree = {
       ...rich,
-      research: rich.research.map((project) => ({ ...project, completed: true })),
+      research: rich.research.map((project) => ({
+        ...project,
+        level: ({
+          STARSHIP_ENGINEERING: 1,
+          SHIP_POWER: 2,
+          SHIP_ARMOR: 2,
+          SHIP_PROPULSION: 2,
+          GRAVITIC_CHARGES: 1,
+        } as Partial<Record<typeof project.id, number>>)[project.id] ?? project.level,
+      })),
     };
-    expect(predictBuild(unlocked, 'RUNNER', 1)).not.toBeNull();
-    expect(predictBuild(unlocked, 'BREACHER', 1)).not.toBeNull();
+    for (const hull of ['TEMPEST', 'LEVIATHAN', 'ATLAS', 'NULLIFIER'] as const) {
+      expect(predictBuild(tierThree, hull, 1), hull).not.toBeNull();
+    }
+    expect(predictBuild(tierThree, 'CATACLYSM', 1)).toBeNull();
+
+    const tierFour = {
+      ...tierThree,
+      research: tierThree.research.map((project) => ({
+        ...project,
+        level: ({
+          STARSHIP_ENGINEERING: 2,
+          SHIP_POWER: 4,
+          SHIP_ARMOR: 4,
+        } as Partial<Record<typeof project.id, number>>)[project.id] ?? project.level,
+      })),
+    };
+    expect(predictBuild(tierFour, 'CATACLYSM', 1)).not.toBeNull();
+    expect(predictBuild(tierFour, 'CITADEL', 1)).not.toBeNull();
   });
 
   /**
@@ -275,16 +306,16 @@ describe('predicting a build', () => {
         buildings: {
           CORE: 6, REFINERY: 2, EXTRACTOR: 2, VAULT: 0, SHIPYARD: 4, HANGAR: 0,
         },
-        fleet: { WASP: capacity - hullBulk('WASP') },
+        fleet: { DART: capacity - hullBulk('DART') },
         capacity: { hangar: capacity, hangarUsed: capacity - 1, ground: groundSlots(6), groundUsed: 0 },
       },
       { alloy: 500_000, crystal: 500_000 },
     );
 
-    const lastPlace = predictBuild(nearlyFull, 'WASP', 1);
+    const lastPlace = predictBuild(nearlyFull, 'DART', 1);
     expect(lastPlace).not.toBeNull();
-    expect(predictBuild(lastPlace!, 'WASP', 1)).toBeNull();
-    expect(predictBuild(nearlyFull, 'WASP', 2)).toBeNull();
+    expect(predictBuild(lastPlace!, 'DART', 1)).toBeNull();
+    expect(predictBuild(nearlyFull, 'DART', 2)).toBeNull();
   });
 
   it('keeps ground emplacements in their own capacity pool', () => {
@@ -302,7 +333,7 @@ describe('predicting a build', () => {
 
     expect(predictBuild(fullGround, 'THORN', 1)).toBeNull();
     // A full emplacement field does not consume Hangar room.
-    expect(predictBuild(fullGround, 'WASP', 1)).not.toBeNull();
+    expect(predictBuild(fullGround, 'DART', 1)).not.toBeNull();
   });
 
   it('does not let a construction order unlock the independent yard queue', () => {
@@ -315,22 +346,22 @@ describe('predicting a build', () => {
     );
     const shipyardQueued = predictUpgrade(locked, 'SHIPYARD')!;
     expect(projectedQueueState(shipyardQueued, 'CONSTRUCTION').buildings.SHIPYARD).toBe(2);
-    expect(predictBuild(shipyardQueued, 'LANCE', 1)).toBeNull();
+    expect(predictBuild(shipyardQueued, 'VIPER', 1)).toBeNull();
   });
 
   it('declines a count that is not a positive whole number', () => {
-    expect(predictBuild(yard, 'WASP', 0)).toBeNull();
-    expect(predictBuild(yard, 'WASP', -2)).toBeNull();
-    expect(predictBuild(yard, 'WASP', 1.5)).toBeNull();
+    expect(predictBuild(yard, 'DART', 0)).toBeNull();
+    expect(predictBuild(yard, 'DART', -2)).toBeNull();
+    expect(predictBuild(yard, 'DART', 1.5)).toBeNull();
   });
 
   it('declines when the total price is out of reach, not just the unit price', () => {
     const thin = planetView(
       { buildings: yard.buildings },
-      { alloy: HULLS.WASP.alloy * 2, crystal: 0 },
+      { alloy: HULLS.DART.alloy * 2, crystal: 0 },
     );
-    expect(predictBuild(thin, 'WASP', 2)).not.toBeNull();
-    expect(predictBuild(thin, 'WASP', 3)).toBeNull();
+    expect(predictBuild(thin, 'DART', 2)).not.toBeNull();
+    expect(predictBuild(thin, 'DART', 3)).toBeNull();
   });
 });
 
@@ -707,14 +738,14 @@ describe('every predictor', () => {
         orbitSlots: 3,
         instruments: { TELESCOPE: 1 },
         instrumentCosts: { TELESCOPE: instrumentCost('TELESCOPE', 1) },
-        fleet: { WASP: 2 },
+        fleet: { DART: 2 },
       },
       { alloy: 500_000, crystal: 500_000, bufferAlloy: 100, bufferCrystal: 100, alloyCap: 999_999, crystalCap: 999_999 },
     );
     const before = structuredClone(view);
 
     predictUpgrade(view, 'REFINERY');
-    predictBuild(view, 'WASP', 2);
+    predictBuild(view, 'DART', 2);
     predictInstrument(view, 'TELESCOPE');
     predictSatellite(view, 'FOUNDRY');
     predictResearch(view, 'ISOTOPE_SPECTROMETRY');

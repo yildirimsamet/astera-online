@@ -147,7 +147,7 @@ describe('the two build queues', () => {
           queue: 'YARD',
           slot: 0,
           kind: 'HULL',
-          subject: 'WASP',
+          subject: 'DART',
           count: 2,
           startedAt: new Date(now - 5_000),
           finishesAt: new Date(now + 55_000),
@@ -168,7 +168,7 @@ describe('the two build queues', () => {
     const segments = queues.querySelectorAll('[data-segment]');
     expect(segments).toHaveLength(2);
     expect(segments[0]?.getAttribute('aria-label') ?? '').toMatch(/Command Core/);
-    expect(segments[1]?.getAttribute('aria-label') ?? '').toMatch(/Wasp/);
+    expect(segments[1]?.getAttribute('aria-label') ?? '').toMatch(/Dart/);
     expect(within(queues).getByText('×2')).toBeInTheDocument();
     // Both lanes now say when their work ends, which no screen used to carry.
     expect(queues.querySelectorAll('[data-lane-ends]')).toHaveLength(2);
@@ -249,7 +249,7 @@ describe('the two build queues', () => {
   it('keeps a repeatable hull actionable while an earlier batch is queued', () => {
     const now = new Date();
     const view = show({
-      fleet: { WASP: 2 },
+      fleet: { DART: 2 },
       queues: {
         CONSTRUCTION: [],
         YARD: [{
@@ -257,7 +257,7 @@ describe('the two build queues', () => {
           queue: 'YARD',
           slot: 0,
           kind: 'HULL',
-          subject: 'WASP',
+          subject: 'DART',
           count: 3,
           startedAt: now,
           finishesAt: new Date(now.getTime() + 60_000),
@@ -265,10 +265,10 @@ describe('the two build queues', () => {
         }],
       },
     }, 'reach');
-    const row = view.container.querySelector('#row-WASP [data-progression-state]');
+    const row = view.container.querySelector('#row-DART [data-progression-state]');
     expect(row).toHaveAttribute('data-progression-state', 'queued');
     expect(row).toHaveTextContent('3 units queued');
-    expect(within(row as HTMLElement).getByRole('button', { name: /about wasp/i })).toBeInTheDocument();
+    expect(within(row as HTMLElement).getByRole('button', { name: /about dart/i })).toBeInTheDocument();
   });
 
   it('wakes at the server-named completion instant instead of waiting for a poll', () => {
@@ -326,11 +326,28 @@ async function openSheet(name: string): Promise<void> {
   await user.click(button);
 }
 
+describe('fleet holdings beside each hull name', () => {
+  it('separates ships standing at home from ships that are away', () => {
+    const view = show({ fleet: { DART: 5 }, fleetAway: { DART: 6 } });
+    const row = view.container.querySelector('#row-DART');
+
+    expect(row).toHaveTextContent('Dart');
+    expect(row).toHaveTextContent('(Home: 5, Away: 6)');
+  });
+
+  it('shows zero explicitly when none of that hull are away', () => {
+    const view = show({ fleet: { DART: 11 }, fleetAway: {} });
+    const row = view.container.querySelector('#row-DART');
+
+    expect(row).toHaveTextContent('(Home: 11, Away: 0)');
+  });
+});
+
 describe('the quantity picker', () => {
   it('shows the Hangar and never offers more ships than fit', async () => {
     const hangar = hangarCapacity(0);
     show({
-      fleet: { WASP: hangar - 1 },
+      fleet: { DART: hangar - 1 },
       capacity: {
         hangar,
         hangarUsed: hangar - 1,
@@ -340,15 +357,15 @@ describe('the quantity picker', () => {
     });
 
     expect(screen.getByRole('heading', { name: 'Hangar' })).toBeInTheDocument();
-    await openSheet('Wasp');
-    expect(screen.getByRole('textbox', { name: /wasp quantity/i })).toHaveValue('1');
-    expect(screen.getByRole('button', { name: /more wasp/i })).toBeDisabled();
+    await openSheet('Dart');
+    expect(screen.getByRole('textbox', { name: /dart quantity/i })).toHaveValue('1');
+    expect(screen.getByRole('button', { name: /more dart/i })).toBeDisabled();
     /*
       THE SENTENCE BECAME A PICTURE. Owner instruction: this line used to carry the
       hull's footprint, the load and the ceiling as text, and none of the three
       questions it answers could be answered from it at a glance. `CapacityBar`
       draws them — so what is asserted here is the ANSWER the player came for,
-      which is how many more fit, and that one Wasp is drawn at its own width.
+      which is how many more fit, and that one Dart is drawn at its own width.
     */
     const room = document.querySelector('[data-fits]');
     expect(room).toHaveTextContent('1');
@@ -357,12 +374,12 @@ describe('the quantity picker', () => {
 
   it('offers minus, plus and Max around a read-only quantity for a warship', async () => {
     show();
-    await openSheet('Wasp');
-    expect(screen.getByRole('button', { name: /fewer wasp/i })).toBeDisabled();
-    expect(screen.getByRole('button', { name: /more wasp/i })).toBeEnabled();
-    expect(screen.getByRole('button', { name: /max wasp/i })).toBeEnabled();
-    expect(screen.getByRole('textbox', { name: /wasp quantity/i })).toHaveValue('1');
-    expect(screen.getByRole('textbox', { name: /wasp quantity/i })).toHaveAttribute('readonly');
+    await openSheet('Dart');
+    expect(screen.getByRole('button', { name: /fewer dart/i })).toBeDisabled();
+    expect(screen.getByRole('button', { name: /more dart/i })).toBeEnabled();
+    expect(screen.getByRole('button', { name: /max dart/i })).toBeEnabled();
+    expect(screen.getByRole('textbox', { name: /dart quantity/i })).toHaveValue('1');
+    expect(screen.getByRole('textbox', { name: /dart quantity/i })).toHaveAttribute('readonly');
   });
 
   /** THE COMPLAINT, ASSERTED: the ownership cap is also the picker's ceiling. */
@@ -445,7 +462,7 @@ describe('the quantity picker', () => {
       </QueryClientProvider>,
     );
 
-    await openSheet('Wasp');
+    await openSheet('Dart');
     // The sheet remains informative while its commitment states the shortfall.
     const short = screen.getAllByRole('button', { name: /short/i });
     expect(short.length).toBeGreaterThan(0);
@@ -455,12 +472,12 @@ describe('the quantity picker', () => {
 
   it('increments large warship orders one at a time', async () => {
     show();
-    await openSheet('Wasp');
+    await openSheet('Dart');
     const user = userEvent.setup();
-    const more = screen.getByRole('button', { name: /more wasp/i });
+    const more = screen.getByRole('button', { name: /more dart/i });
     await user.click(more);
     await user.click(more);
-    expect(screen.getByRole('textbox', { name: /wasp quantity/i })).toHaveValue('3');
+    expect(screen.getByRole('textbox', { name: /dart quantity/i })).toHaveValue('3');
   });
 
   it('builds the number that was chosen', async () => {
@@ -478,32 +495,37 @@ describe('the quantity picker', () => {
   });
 });
 
-/**
- * WHAT IT COSTS, BESIDE WHAT IT IS. Owner report: *"geminin üretim için istedigi
- * kaynaklar en altta kalmış"*.
- *
- * The price sat below the quantity stepper and the capacity card, at the foot of
- * a sheet that scrolls — so the four figures saying what a hull IS were read
- * first and the one saying whether it can be HAD was under the fold. A commander
- * comparing two hulls needs it in the same glance as the attack and the speed,
- * because the comparison the counter cycle rests on is power per unit of ore.
- */
-describe('where the price sits on a craft sheet', () => {
-  it('puts the cost above the quantity picker, not under it', async () => {
+/** The image carries both comparison overlays: cost left, compact hull facts right. */
+describe('craft facts over the hero art', () => {
+  it('pins the cost to the image top-left without a Costs heading', async () => {
     show({});
-    await openSheet('Wasp');
+    await openSheet('Dart');
+    const art = document.querySelector('[data-build-art]');
     const price = document.querySelector('[data-build-price]');
-    const stepper = screen.getByRole('button', { name: /max wasp/i });
+
+    expect(art).not.toBeNull();
     expect(price).not.toBeNull();
-    // `DOCUMENT_POSITION_FOLLOWING` — the stepper comes after the price.
-    expect(price!.compareDocumentPosition(stepper) & Node.DOCUMENT_POSITION_FOLLOWING)
-      .toBeTruthy();
+    expect(art).toContainElement(price as HTMLElement);
+    expect(price).toHaveClass('absolute', 'left-1', 'top-1');
+    expect(within(price as HTMLElement).queryByText('Costs')).not.toBeInTheDocument();
+  });
+
+  it('pins the stat section to the image top-right at half scale', async () => {
+    show({});
+    await openSheet('Dart');
+    const art = document.querySelector('[data-build-art]');
+    const stats = document.querySelector('[data-build-stats]');
+
+    expect(art).not.toBeNull();
+    expect(stats).not.toBeNull();
+    expect(art).toContainElement(stats as HTMLElement);
+    expect(stats).toHaveClass('absolute', 'right-1', 'top-1', 'origin-top-right', 'scale-50');
   });
 
   /** One price per sheet: the figure shown is the one the commit button quotes. */
   it('shows the order total, and only once', async () => {
     show({});
-    await openSheet('Wasp');
+    await openSheet('Dart');
     expect(document.querySelectorAll('[data-build-price]')).toHaveLength(1);
   });
 });
@@ -514,9 +536,9 @@ describe('where the price sits on a craft sheet', () => {
  * The craft sheet answers "what is this ship" in four figures — attack, hull,
  * speed, cargo — and since T6 a fifth decides whether a fleet can be flown at all.
  * It was in no screen in the game. A commander could see that a Bulwark is slow
- * and takes twelve Wasps' worth of Hangar and had no way to learn, short of
+ * and takes twelve Darts' worth of Hangar and had no way to learn, short of
  * packing one and reading the launch sheet, that it also burns twelve times a
- * Wasp's deuterium to go anywhere.
+ * Dart's deuterium to go anywhere.
  *
  * A RATE, over `FUEL.reference`, because a charge needs a destination and this
  * card has none. The launch and transfer sheets quote the charge itself.
@@ -524,20 +546,20 @@ describe('where the price sits on a craft sheet', () => {
 describe('the fuel a craft burns', () => {
   it('states the rate on the sheet where two hulls are compared', async () => {
     show();
-    await openSheet('Wasp');
+    await openSheet('Dart');
 
     const fuel = document.querySelector('.stat-fuel');
     expect(fuel, 'the craft sheet says nothing about fuel').not.toBeNull();
-    expect(fuel).toHaveTextContent(hullFuelRate('WASP').toFixed(1));
+    expect(fuel).toHaveTextContent(hullFuelRate('DART').toFixed(1));
     expect(fuel).toHaveTextContent(/fuel/i);
   });
 
   it('scales with the mass the Hangar already charges for', async () => {
     show();
-    await openSheet('Bulwark');
+    await openSheet('Rampart');
 
     expect(document.querySelector('.stat-fuel'))
-      .toHaveTextContent(hullFuelRate('BULWARK').toFixed(1));
+      .toHaveTextContent(hullFuelRate('RAMPART').toFixed(1));
   });
 
   /** A gun never travels. A rate for one would invent a decision that cannot be made. */

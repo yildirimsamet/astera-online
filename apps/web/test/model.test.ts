@@ -2,8 +2,15 @@ import { existsSync, readFileSync, statSync } from 'node:fs';
 import { resolve } from 'node:path';
 import * as THREE from 'three';
 import { describe, expect, it } from 'vitest';
-import { noseBearing, noseVector, orientedCraft, turnOnto } from '../src/galaxy/model.js';
-import { CRAFT_MODELS, HULL_MODEL, MODEL, MODEL_FACING, PROP_MODELS } from '../src/ui/assets.js';
+import { noseBearing, noseVector, orientedCraft, posedCraft, turnOnto } from '../src/galaxy/model.js';
+import {
+  CRAFT_MODELS,
+  HULL_MODEL,
+  MODEL,
+  MODEL_FACING,
+  MODEL_POSE,
+  PROP_MODELS,
+} from '../src/ui/assets.js';
 
 /**
  * SHIPS MUST FLY NOSE-FIRST.
@@ -208,6 +215,19 @@ describe('orientedCraft', () => {
   });
 });
 
+describe('posedCraft', () => {
+  it('applies approved additive XYZ degrees and vertical correction after canonical facing', () => {
+    const posed = posedCraft(craft('+z'), '+z', {
+      rotation: [12, -3, 90],
+      height: 0.21,
+    });
+    expect(posed.rotation.x).toBeCloseTo(12 * Math.PI / 180, 10);
+    expect(posed.rotation.y).toBeCloseTo(-3 * Math.PI / 180, 10);
+    expect(posed.rotation.z).toBeCloseTo(Math.PI / 2, 10);
+    expect(posed.position.y).toBeCloseTo(0.21, 10);
+  });
+});
+
 describe('the facing table', () => {
   it('covers every craft the galaxy can draw', () => {
     for (const url of CRAFT_MODELS) {
@@ -274,17 +294,33 @@ describe('the facing table', () => {
     expect(facing).toEqual([0.8652, -0.5010, 0.0208]);
   });
 
-  it('keeps Runner and Breacher on their native -X nose axes', () => {
-    const runner = MODEL_FACING[MODEL.runner];
-    const breacher = MODEL_FACING[MODEL.breacher];
-    expect(runner).toBe('-x');
-    expect(breacher).toBe('-x');
+  it('keeps Wayfarer and Nullifier on their measured native nose axes', () => {
+    expect(MODEL_FACING[MODEL.wayfarer]).toBe('+x');
+    expect(MODEL_FACING[MODEL.nullifier]).toBe('-x');
+  });
+
+  it('does not register retired fleet models as runtime craft', () => {
+    expect(Object.keys(MODEL)).not.toEqual(expect.arrayContaining([
+      'wasp', 'lance', 'bulwark', 'hauler', 'runner', 'breacher',
+    ]));
   });
 
   it('covers every hull a player can build', () => {
     for (const [hull, url] of Object.entries(HULL_MODEL)) {
       expect(MODEL_FACING[url], `${hull} draws ${url}, which has no facing`).toBeDefined();
     }
+  });
+
+  it('maps every Fleet V2 hull to its scale-normalised approved pose', () => {
+    expect(MODEL_POSE[HULL_MODEL.DART]).toEqual({
+      rotation: [0, -1, 16],
+      height: 0.17 / 0.84,
+    });
+    expect(MODEL_POSE[HULL_MODEL.CITADEL]).toEqual({
+      rotation: [-13, 180, 0],
+      height: 0.21 / 1.38,
+    });
+    expect(Object.keys(MODEL_POSE)).toHaveLength(18);
   });
 
   /**
@@ -350,10 +386,4 @@ describe('the model files', () => {
     }
   });
 
-  /** Three-map future hulls still obey the fleet's practical mobile target. */
-  it.each(['runner', 'breacher'] as const)('keeps %s near 100 KB', (name) => {
-    const url = MODEL[name];
-    const path = resolve(process.cwd(), 'public', url.replace(/^\//, ''));
-    expect(statSync(path).size / 1024).toBeLessThan(110);
-  });
 });

@@ -69,10 +69,11 @@ export function registerPreviewRoutes(app: FastifyInstance): void {
     const slot = pickSpawnSlot(spec.slots, taken);
     if (!slot) throw new GameError('SHARD_FULL', 'This galaxy is full', 409);
 
-    const [allWorlds, traffic, adminPlayerIds] = await Promise.all([
+    const [allWorlds, traffic, adminPlayerIds, pirates] = await Promise.all([
       app.projections.worlds(target.seasonId, app.clock.now()),
       app.projections.trafficSnapshot(target.seasonId, app.clock.now()),
       adminPlayerIdsInSeason(app.db, target.seasonId, app.adminUsernames),
+      app.projections.pirateSnapshot(target.seasonId, app.clock.now()),
     ]);
     const worlds = allWorlds.filter((world) =>
       world.controller.kind !== 'PLAYER'
@@ -106,6 +107,13 @@ export function registerPreviewRoutes(app: FastifyInstance): void {
       [],
       [eyes],
       new Set(),
+      /*
+        A VISITOR SEES THE PIRATES TOO, at the naked-eye reach every commander
+        starts with. They are the most legible thing on the disc — a target with a
+        level and a price, moving — and hiding them from the front door would show
+        a quieter galaxy than the one being sold.
+      */
+      pirates,
     );
 
     /**

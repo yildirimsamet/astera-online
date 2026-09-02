@@ -42,6 +42,12 @@ export function ChronicleLauncher({ onOpen }: { onOpen: () => void }) {
       case 'control_transfer':
         line = t('chronicle.launcherControl', { planet: latest.payload.planetName });
         break;
+      case 'galaxy_event_started':
+        line = t('chronicle.launcherAsteroidShowerStarted');
+        break;
+      case 'galaxy_event_ended':
+        line = t('chronicle.launcherAsteroidShowerEnded');
+        break;
     }
   }
   return (

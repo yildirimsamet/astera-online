@@ -133,16 +133,16 @@ export const planet = {
     shieldNote:
       "Aegis hasarı birliklerine ulaşmadan önce karşılar. Seviyeler azami kalkanı artırır; yenilenme hızı azami değerin saatte %35’idir.",
     groundBand: "Yerdekiler",
-    groundNote: "Gezegenden ayrılmazlar. Kirpi Siperlere, Tabya ise Mızrak ve Delicilere karşı sınıf üstünlüğü kazanır.",
+    groundNote: "Gezegenden ayrılmazlar. Kirpi Siper sınıfına, Tabya ise Mızrak sınıfına karşı üstünlük kazanır.",
     thornNone:
       "Hafif yer savunmasıdır. Siper sınıfına karşı güçlü, Mızrak sınıfına karşı zayıftır.",
     thornStanding:
-      "Yerde {{count}} tane var. Sipere güçlü; Mızrak ve Deliciye zayıf.",
+      "Yerde {{count}} tane var. Siper sınıfına güçlü, Mızrak sınıfına zayıf.",
     thornGain: "Kirpi",
     bastionNone:
-      "Ağır yer savunmasıdır. Mızrak sınıfına karşı güçlü, Atmaca sınıfına karşı zayıftır.",
+      "Ağır yer savunmasıdır. Mızrak sınıfına karşı güçlü, Çevik sınıfa karşı zayıftır.",
     bastionStanding:
-      "Yerde {{count}} tane var. Mızrak ve Deliciye güçlü; Atmacaya zayıf. Yok edilen yer toplarının %60’ı aşağı yuvarlanarak enkazdan yeniden kurulur.",
+      "Yerde {{count}} tane var. Mızrak sınıfına güçlü, Çevik sınıfa zayıf. Yok edilen yer toplarının %60’ı aşağı yuvarlanarak enkazdan yeniden kurulur.",
     groundGain: "Yerdeki birlik",
     aegisPointer: "Kalkan bir donanım; <0>{{name}}</0> Yörünge sekmesinde.",
   },
@@ -177,76 +177,28 @@ export const planet = {
     orbitBand: "Operasyon uyduları",
     orbitNote:
       "Matkap bu dünyanın Kazıcılarını hızlandırıp ambarlarını büyütür; Kılavuz akın ve transfer filolarını hızlandırır. Her biri bir yörünge yuvası kullanır.",
-    frontierBand: "Ufuk araştırmaları",
-    frontierNote:
-      "Her araştırma bir kez yapılır ve İnşaat sırasını kullanır. Kilitliyse açma koşulu kartta yazar.",
-    isotopeName: "İzotop Spektrometrisi",
-    isotopeTag: "Döteryum madenciliğini açar",
-    isotopeRole:
-      "İzotop kayalarındaki Döteryumu gösterir ve onlara Kazıcı göndermeni sağlar. Dönen yük üretim havuzuna gelir.",
-    denseName: "Yoğun Yakıt Hücreleri",
-    denseTag: "Koşucuyu açar",
-    denseRole:
-      "Keşfetmek için bir akında ambarını doldur; hedefte ganimet kalsın. Koşucu, Şilep’ten hızlıdır ama daha az taşır.",
-    graviticName: "Gravitik Yükler",
-    graviticTag: "Delici’yi açar",
-    graviticRole:
-      "Açmak için savunması ve aktif Aegis’i olan bir dünyaya saldır; kalkan hasarın en az {{share}}’ini emsin. Bir Atmaca bile yeter; kazanman gerekmez. Delici kalkana beş kat vurur.",
-    gridName: "Önleme Ağı",
-    gridTag: "Ölüm Yıldızı’nı düşürür",
-    gridRole:
-      "Yüklü mühimmat; stratejik silahı 3. seviye Radar önleme çemberinde veya Teleskop görüşünde imha eder. Kurulum için Anten ve Radar 3 gerekir.",
-    stockpileName: "Stratejik Stok",
-    stockpileTag: "Rampada ikinci silah",
-    stockpileRole:
-      "Her dünyada iki Ölüm Yıldızı hazır tutabilirsin. İkincisi, birincinin üretimi bittikten sonra aynı bedel ve süreyle kurulur.",
-    waspDoctrineName: "Atmaca Doktrini",
-    lanceDoctrineName: "Mızrak/Delici Doktrini",
-    bulwarkDoctrineName: "Siper Doktrini",
-    groundDoctrineName: "Tabya/Kirpi Doktrini",
-    generalName: "Silah ve Zırh",
-    generalTag: "Sahip olduğun her gövdeyi geliştirir",
-    doctrineTag: "Daha iyi saldırı ve zırh",
-    doctrineRole:
-      "İlgili sınıfın saldırı gücünü ve gövde dayanımını birlikte artırır. Araştırmalar doğal sınıf üstünlüklerini değiştirmez.",
-    yardName: "Tersane Otomasyonu",
-    yardTag: "Gemileri daha hızlı kurar",
-    yardRole:
-      "Hareketli gemilerin üretim süresini kısaltır; yer savunmalarını ve üretim sırası kapasitesini etkilemez.",
-    holdsName: "Kazıcı Ambarları",
-    holdsTag: "Kazıcılar daha çok taşır",
-    holdsRole:
-      "Her Kazıcının tek seferde taşıdığı cevheri artırır; Matkabın sağladığı ambar artışı bunun üzerine uygulanır.",
-    cargoName: "Gemi Ambarları",
-    cargoTag: "Akınlar daha çok getirir",
-    cargoRole:
-      "Akın filosunun taşıyabileceği ganimeti artırır; dünyalar arası transferi ve asteroit madenciliğini etkilemez.",
-    synthesisName: "Döteryum Sentezi",
-    synthesisTag: "Rafineri seviye sınırını yükseltir",
-    synthesisRole:
-      "Her kademe, sahip olduğun bütün dünyalarda üç yeni Döteryum Rafinerisi seviyesi açar.",
-    deathStarName: "Ölüm Yıldızı Protokolü",
-    deathStarTag: "Ölüm Yıldızı’nı açar",
-    deathStarRole:
-      "Bu dünyada bir Ölüm Yıldızı üretmeni sağlar. Darbe evdeki birlikleri ve bina siparişlerini yok eder, depoyla üretim havuzunu yarıya indirir ve dünyayı iki saat devre dışı bırakır. Bu sürede ele geçirme emriyle verilen ikinci darbe yalnız koloni veya tarafsız dünyayı ele geçirir; ana gezegen ele geçirilemez.",
-    researchNeedCore: "Komuta Çekirdeğini {{level}}. seviyeye yükselt",
-    researchAct: "Araştır",
-    researchComplete: "araştırıldı",
-    researchAt: "{{duration}} sonra araştırılabilir",
-    researchIsotopeFirst: "Önce İzotop Spektrometrisi’ni araştır",
-    researchDenseFirst: "Önce Yoğun Yakıt Hücreleri’ni araştır",
-    researchGraviticFirst: "Önce Gravitik Yükler’i araştır",
-    researchWarAt: "Savaş dönemi {{duration}} sonra başlar",
-    researchCargoInsight: "Bir akında ambarını doldur; hedefte ganimet kalsın",
-    researchShieldInsight: "Aegis akın hasarının en az {{share}}’ini emsin",
-    warshipsBand: "Savaş gemileri",
-    warshipsNote: "Akın filosunun savaş gücünü oluştururlar. Görevdeyken kendi dünyalarını savunamazlar.",
-    supportBand: "Destek",
-    supportNote:
-      "Dövüşmezler. Ucuz kapasite ile daha kısa açıkta kalma süresi arasında seçim yap.",
+    family: {
+      OFFENSIVE: {
+        label: "Saldırı gövdeleri",
+        note: "Akıncılar hıza, taarruz gemileri saldırıya yatırım yapar. Satırlar seviyeye göre ilerler.",
+      },
+      DEFENSIVE: {
+        label: "Savunma gövdeleri",
+        note: "Kaleler hızdan dayanım kazanır; refakatçiler filo temposunu daha iyi korur.",
+      },
+      CARGO: {
+        label: "Yük gövdeleri",
+        note: "Silahsız nakliyeler rota hızıyla ambar kapasitesini değiş tokuş eder ve refakat ister.",
+      },
+      SPECIALIST: {
+        label: "Uzman gövdeler",
+        note: "Görünür bir soruna dar cevap verir; yanlış hedefte uzmanlık bedeli boşa gider.",
+      },
+    },
     miningBand: "Madenci",
     miningNote: "Asteroit ve enkaz sahalarına gider; taşıyabildiği kaynağı üretim havuzuna getirir.",
     ownedGain: "Elinde",
+    hullLocationCounts: "(Evde: {{home}}, Dışarıda: {{away}})",
     prospectorLimit: "{{owned}} / {{max}} · sınır",
   },
 
@@ -260,7 +212,7 @@ export const planet = {
     frontier: "Ufuk araştırması",
     complete: "Araştırma tamamlandı",
     cost: "Araştırma maliyeti",
-    once: "Bir kez araştırılır ve İnşaat sırasına girer.",
+    once: "Komutanın ortak Araştırma sırasına bir kez girer.",
   },
 
   blocked: {
@@ -268,6 +220,7 @@ export const planet = {
     uplink: "yörüngede Anten",
     orbitSlot: "boş yörünge yuvası",
     shipyard: "Tersane {{level}}. seviye",
+    research: "Gerekli: {{research}} {{level}}",
     plantRung: "Bir kademe daha Döteryum Sentezi araştır",
     maxed: "en üst seviyede",
     queueFull: "Sırada zaten 3 sipariş var. Bunu eklemek için biri bitsin veya birini iptal et.",
@@ -287,7 +240,6 @@ export const planet = {
   buildSheet: {
     eyebrowGround: "Yer savunması · hiç kalkmaz",
     eyebrowMobile: "Hareketli gövde",
-    priceLabel: "Maliyet",
     howMany: "Kaç tane",
     fewer: "{{name}} azalt",
     more: "{{name}} artır",
@@ -387,6 +339,8 @@ export const planetHero = {
 export const launch = {
   fuel: "Yakıt",
   eyebrow: "Saldırı",
+  /** Kayda dayanarak yapılan taahhüt. Hedefin ne kadar eski olduğu burada söylenir. D151. */
+  eyebrowRecord: "Saldırı · en son {{age}} görüldü",
   back: "Geri",
   launching: "Kalkıyor",
   commit: "Gönder — geri dönüşü yok",
@@ -441,18 +395,18 @@ export const transfer = {
   sending: "Yola çıkıyor",
   launched: "Transfer yola çıktı · {{duration}}",
   irreversible:
-    "Tek yönlüdür. Yer savunması taşınamaz; yük kapasitesini yalnız Şilep ve Koşucu sağlar.",
+    "Tek yönlüdür. Yer savunması taşınamaz; yük kapasitesini yalnız Kurye, Seyyah ve Atlas sağlar.",
   hullNone: "Bu dünyada yok",
-  holdReady: "Madeni Şilep ve Koşucu taşır. Ambar: {{capacity}}.",
-  holdNeedsLoad: "Maden taşımak için yukarıdan bir Şilep ya da Koşucu ekle.",
+  holdReady: "Madeni Kurye, Seyyah ve Atlas taşır. Ambar: {{capacity}}.",
+  holdNeedsLoad: "Maden taşımak için yukarıdan Kurye, Seyyah veya Atlas ekle.",
   holdNoCarrier:
-    "Bu dünyada kaynak taşıyabilecek Şilep veya Koşucu yok.",
+    "Bu dünyada kaynak taşıyabilecek Kurye, Seyyah veya Atlas yok.",
   /** Hedefin yer çubuğunun altyazısı; sayıları çubuğun kendisi çiziyor. */
   destinationLabel: "Hedef hangarı",
   /** Gemi sayısını gösteren işaretlerin ekran okuyucu karşılığı. */
   hullPacked: "{{held}} {{name}} içinden {{packed}} tanesi yüklendi",
-  /** Yük sürgüsünün altındaki çubuğun altyazısı: depoda kalan. */
-  remaining: "burada kalır",
+  /** Yük sürgüsünün altındaki çubuğun altyazısı: bu transferle giden. */
+  cargoSending: "Gönderiyorsun",
   destinationProspectorFull: "Hedef dünya yeni bir Kazıcı kabul edemiyor.",
 } as const;
 

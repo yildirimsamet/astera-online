@@ -122,6 +122,23 @@ export const orbitStandoff = (radius: number): number => radius * 1.5 + radius *
 export const surfaceStandoff = (radius: number): number => radius * 1.15;
 
 /**
+ * HOW FAR APART TWO FLEETS HOLD WHILE THEY SHOOT AT EACH OTHER. D150.
+ *
+ * A raid on a WORLD has somewhere to stop: the planet has a radius and the
+ * squadron holds off its surface, which is also the gap the bombardment crosses.
+ * A pirate fight happens at a rendezvous in open space — a point, with no size —
+ * so both sides arrived at the SAME coordinates and there was no distance for a
+ * round to travel. `Bombardment` refuses a zero gap outright, which is why the
+ * fight drew nothing at all.
+ *
+ * A WORLD-SPACE DISTANCE, LIKE `surfaceStandoff`, and deliberately small: this is
+ * two formations at knife range, not a siege. The attacker holds short of the
+ * meeting point along its own approach and the pirate holds ON it, so the two face
+ * each other down the line the attacker actually flew in on.
+ */
+export const ENGAGEMENT_STANDOFF = 1.6;
+
+/**
  * The visual leg: where a craft is actually drawn setting off from, and where it
  * is actually drawn stopping.
  *

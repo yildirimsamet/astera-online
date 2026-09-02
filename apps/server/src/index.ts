@@ -3,6 +3,7 @@ import { buildApp } from './app.js';
 import { assertSchemaCurrent } from './db/migrate.js';
 import { loadDotEnv, loadEnv } from './env.js';
 import { ensureSeasonActs } from './services/season.js';
+import { ensureGalaxyEventLifecycleEvents } from './services/galaxyEvents.js';
 
 loadDotEnv();
 const env = loadEnv();
@@ -35,6 +36,10 @@ async function main(): Promise<void> {
     const actsScheduled = await ensureSeasonActs(db);
     if (actsScheduled > 0) {
       log.info({ actsScheduled }, 'scheduled missing season acts');
+    }
+    const galaxyEventMomentsScheduled = await ensureGalaxyEventLifecycleEvents(db);
+    if (galaxyEventMomentsScheduled > 0) {
+      log.info({ galaxyEventMomentsScheduled }, 'scheduled missing galaxy-event moments');
     }
     worker.start();
     log.info('event worker started');

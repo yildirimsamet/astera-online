@@ -118,13 +118,13 @@ describe('the Prospector cap', () => {
 
   describe('arriving by transfer', () => {
     it('delivers a squadron the destination can hold', async () => {
-      await giveUnits(f.db, home, { WASP: 1, PROSPECTOR: 1 });
+      await giveUnits(f.db, home, { DART: 1, PROSPECTOR: 1 });
       const launched = await launchTransfer(
         f.db,
         f.playerIds[0]!,
         home,
         colony,
-        { WASP: 1, PROSPECTOR: 1 },
+        { DART: 1, PROSPECTOR: 1 },
         { alloy: 0, crystal: 0, deuterium: 0 },
         f.clock,
       );
@@ -143,7 +143,7 @@ describe('the Prospector cap', () => {
      * never charged a flight for craft that could not land.
      */
     it('refuses a launch the destination could not hold', async () => {
-      await giveUnits(f.db, home, { WASP: 1, PROSPECTOR: PROSPECTOR.max });
+      await giveUnits(f.db, home, { DART: 1, PROSPECTOR: PROSPECTOR.max });
       await giveUnits(f.db, colony, { PROSPECTOR: PROSPECTOR.max });
 
       await expect(
@@ -152,7 +152,7 @@ describe('the Prospector cap', () => {
           f.playerIds[0]!,
           home,
           colony,
-          { WASP: 1, PROSPECTOR: 1 },
+          { DART: 1, PROSPECTOR: 1 },
           { alloy: 0, crystal: 0, deuterium: 0 },
           f.clock,
         ),
@@ -169,7 +169,7 @@ describe('the Prospector cap', () => {
      * asks "is the target full?" passes this and still lands three craft.
      */
     it('adds the incoming craft to the destination before judging the room', async () => {
-      await giveUnits(f.db, home, { WASP: 1, PROSPECTOR: PROSPECTOR.max });
+      await giveUnits(f.db, home, { DART: 1, PROSPECTOR: PROSPECTOR.max });
       await giveUnits(f.db, colony, { PROSPECTOR: PROSPECTOR.max - 1 });
 
       await expect(
@@ -178,7 +178,7 @@ describe('the Prospector cap', () => {
           f.playerIds[0]!,
           home,
           colony,
-          { WASP: 1, PROSPECTOR: PROSPECTOR.max },
+          { DART: 1, PROSPECTOR: PROSPECTOR.max },
           { alloy: 0, crystal: 0, deuterium: 0 },
           f.clock,
         ),
@@ -192,13 +192,13 @@ describe('the Prospector cap', () => {
      * is sent home rather than deleted.
      */
     it('sends home a squadron whose destination filled while it was in the air', async () => {
-      await giveUnits(f.db, home, { WASP: 1, PROSPECTOR: PROSPECTOR.max });
+      await giveUnits(f.db, home, { DART: 1, PROSPECTOR: PROSPECTOR.max });
       const launched = await launchTransfer(
         f.db,
         f.playerIds[0]!,
         home,
         colony,
-        { WASP: 1, PROSPECTOR: PROSPECTOR.max },
+        { DART: 1, PROSPECTOR: PROSPECTOR.max },
         { alloy: 0, crystal: 0, deuterium: 0 },
         f.clock,
       );
@@ -219,7 +219,7 @@ describe('the Prospector cap', () => {
       // Nothing was destroyed by a rule, and nothing landed where it could not fit.
       expect(await prospectorsAt(f, colony)).toBe(PROSPECTOR.max);
       expect(await prospectorsAt(f, home)).toBe(PROSPECTOR.max);
-      expect(await homeFleetAt(f, home)).toMatchObject({ WASP: 1 });
+      expect(await homeFleetAt(f, home)).toMatchObject({ DART: 1 });
     });
 
     /**
@@ -228,13 +228,13 @@ describe('the Prospector cap', () => {
      * mid-flight and the exploit would come straight back through the front door.
      */
     it('keeps the origin quota spent while its craft are in the air', async () => {
-      await giveUnits(f.db, home, { WASP: 1, PROSPECTOR: PROSPECTOR.max });
+      await giveUnits(f.db, home, { DART: 1, PROSPECTOR: PROSPECTOR.max });
       await launchTransfer(
         f.db,
         f.playerIds[0]!,
         home,
         colony,
-        { WASP: 1, PROSPECTOR: PROSPECTOR.max },
+        { DART: 1, PROSPECTOR: PROSPECTOR.max },
         { alloy: 0, crystal: 0, deuterium: 0 },
         f.clock,
       );
@@ -259,7 +259,7 @@ describe('the Prospector cap', () => {
      * What must hold under the race is the CAP, and that is what is asserted.
      */
     it('lands only what fits when two launches take off at the same instant', async () => {
-      await giveUnits(f.db, home, { WASP: 2, PROSPECTOR: PROSPECTOR.max });
+      await giveUnits(f.db, home, { DART: 2, PROSPECTOR: PROSPECTOR.max });
       await giveUnits(f.db, colony, { PROSPECTOR: PROSPECTOR.max - 1 });
       const before = (await prospectorsAt(f, home)) + (await prospectorsAt(f, colony));
 
@@ -269,7 +269,7 @@ describe('the Prospector cap', () => {
           f.playerIds[0]!,
           home,
           colony,
-          { WASP: 1, PROSPECTOR: 1 },
+          { DART: 1, PROSPECTOR: 1 },
           { alloy: 0, crystal: 0, deuterium: 0 },
           f.clock,
         ),
@@ -278,7 +278,7 @@ describe('the Prospector cap', () => {
           f.playerIds[0]!,
           home,
           colony,
-          { WASP: 1, PROSPECTOR: 1 },
+          { DART: 1, PROSPECTOR: 1 },
           { alloy: 0, crystal: 0, deuterium: 0 },
           f.clock,
         ),
@@ -297,9 +297,9 @@ describe('the Prospector cap', () => {
 
     /** The fourth door, and it was already shut. A raid may not carry miners. */
     it('cannot smuggle one into an attack fleet', async () => {
-      await giveUnits(f.db, home, { WASP: 5, PROSPECTOR: 1 });
+      await giveUnits(f.db, home, { DART: 5, PROSPECTOR: 1 });
       await expect(
-        launchAttack(f.db, home, f.planetIds[2]!, { WASP: 5, PROSPECTOR: 1 }, f.clock),
+        launchAttack(f.db, home, f.planetIds[2]!, { DART: 5, PROSPECTOR: 1 }, f.clock),
       ).rejects.toMatchObject({ code: 'NOT_A_WARSHIP' });
     });
   });
@@ -326,7 +326,7 @@ describe('the Prospector cap', () => {
 
     it('builds nothing and receives nothing, and loses nothing either', async () => {
       await giveUnits(f.db, colony, { PROSPECTOR: PROSPECTOR.max + 1 });
-      await giveUnits(f.db, home, { WASP: 1, PROSPECTOR: 1 });
+      await giveUnits(f.db, home, { DART: 1, PROSPECTOR: 1 });
 
       await expect(buildUnits(f.db, colony, 'PROSPECTOR', 1, f.clock)).rejects.toMatchObject({
         code: 'PROSPECTOR_CAP',
@@ -337,7 +337,7 @@ describe('the Prospector cap', () => {
           f.playerIds[0]!,
           home,
           colony,
-          { WASP: 1, PROSPECTOR: 1 },
+          { DART: 1, PROSPECTOR: 1 },
           { alloy: 0, crystal: 0, deuterium: 0 },
           f.clock,
         ),
@@ -384,22 +384,22 @@ describe('a Prospector does not fight', () => {
   };
 
   it('leaves them untouched when the defence is overrun', async () => {
-    await giveUnits(f.db, attacker, { WASP: 40 });
-    await giveUnits(f.db, defender, { WASP: 5, PROSPECTOR: PROSPECTOR.max });
+    await giveUnits(f.db, attacker, { DART: 40 });
+    await giveUnits(f.db, defender, { DART: 5, PROSPECTOR: PROSPECTOR.max });
 
-    const report = await raid({ WASP: 40 });
+    const report = await raid({ DART: 40 });
 
     expect(report.grade).toBe('DECISIVE');
     const home = await homeFleetAt(f, defender);
     expect(home.PROSPECTOR).toBe(PROSPECTOR.max);
-    expect(home.WASP).toBe(0);
+    expect(home.DART).toBe(0);
   });
 
   it('leaves them untouched when the defence holds', async () => {
-    await giveUnits(f.db, attacker, { WASP: 2 });
+    await giveUnits(f.db, attacker, { DART: 2 });
     await giveUnits(f.db, defender, { BASTION: 6, PROSPECTOR: PROSPECTOR.max });
 
-    const report = await raid({ WASP: 2 });
+    const report = await raid({ DART: 2 });
 
     expect(report.grade).toBe('REPELLED');
     // The roster too, not only the survivors: a raid the guns win outright can
@@ -415,10 +415,10 @@ describe('a Prospector does not fight', () => {
    * grade stops meaning what the claim window and the loot table read it as.
    */
   it('leaves a world defended only by miners undefended', async () => {
-    await giveUnits(f.db, attacker, { WASP: 10, HAULER: 2 });
+    await giveUnits(f.db, attacker, { DART: 10, COURIER: 2 });
     await giveUnits(f.db, defender, { PROSPECTOR: PROSPECTOR.max });
 
-    const report = await raid({ WASP: 10, HAULER: 2 });
+    const report = await raid({ DART: 10, COURIER: 2 });
 
     expect(report.grade).toBe('DECISIVE');
     expect(report.defenderFleet).toEqual({});
@@ -432,10 +432,10 @@ describe('a Prospector does not fight', () => {
    * nothing to the field, and the raider must not find salvage that nobody lost.
    */
   it('leaves no wreckage behind, because nothing of theirs died', async () => {
-    await giveUnits(f.db, attacker, { WASP: 10 });
+    await giveUnits(f.db, attacker, { DART: 10 });
     await giveUnits(f.db, defender, { PROSPECTOR: PROSPECTOR.max });
 
-    const report = await raid({ WASP: 10 });
+    const report = await raid({ DART: 10 });
 
     expect(report.attackerLosses).toEqual({});
     expect(report.wreckValue).toBe(0);
@@ -443,7 +443,7 @@ describe('a Prospector does not fight', () => {
   });
 
   it('still loses them to a Death Star', async () => {
-    await giveUnits(f.db, defender, { WASP: 2, PROSPECTOR: PROSPECTOR.max });
+    await giveUnits(f.db, defender, { DART: 2, PROSPECTOR: PROSPECTOR.max });
     await setLevel(f.db, defender, 'CORE', 5);
     await f.db.insert(strategicAssets).values({
       planetId: attacker,

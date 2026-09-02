@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * ECONOMY v2 — the whole model in one runnable file.
+ * FROZEN LEGACY BASELINE — Economy v2 before Fleet Catalog V2.
  *
  * Emits `docs/economy-v2.json` (the complete numeric tables) and prints the
  * progression validation for days 1/3/7/10/14 against the four phase targets.
@@ -8,9 +8,10 @@
  *   node tools/economy-v2-model.mjs            # tables + validation
  *   node tools/economy-v2-model.mjs --json     # write docs/economy-v2.json
  *
- * Nothing here reads the shipped constants. It is a from-scratch derivation and
- * the numbers are meant to REPLACE `packages/rules/src/constants.ts`, not to be
- * compared with it.
+ * Nothing here reads the shipped constants. Its retired hull IDs are intentional:
+ * this file reproduces the pre-Fleet-V2 derivation for historical comparison and
+ * must not be used as a current catalog generator. Live calibration belongs in
+ * `tools/economy-calibration.ts` and `packages/sim`.
  */
 
 import { writeFileSync, mkdirSync } from 'node:fs';
@@ -589,7 +590,7 @@ function buildJson() {
   return {
     $schema: 'astera-economy/v2',
     generatedAt: new Date().toISOString().slice(0, 10),
-    note: 'From-scratch 14-day seasonal PvP economy. Replaces packages/rules/src/constants.ts. Every number here is derived; see docs/balance.md for the formula behind each one.',
+    note: 'Frozen pre-Fleet-V2 14-day economy baseline. Retired hull IDs are intentional historical inputs; this file does not describe the live catalog.',
     formulas: {
       production: 'rate(L) = base * L * growth^L   per hour',
       upgradeCost: 'cost(L->L+1) = { alloy: costBase * costMult^L, crystal: crystalCostBase * crystalCostMult^L }',

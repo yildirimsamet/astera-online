@@ -12,6 +12,8 @@ export const chronicle = {
   launcherNeutralClaim: '{{planet}} üzerinde hak yarışı açıldı',
   launcherDeathStar: '{{planet}} üzerinde Ölüm Yıldızı darbesi',
   launcherControl: '{{planet}} el değiştirdi',
+  launcherAsteroidShowerStarted: 'Asteroid yağmuru aktif',
+  launcherAsteroidShowerEnded: 'Asteroid yağmuru sona erdi',
   list: 'Bu galaksideki herkese açık olaylar',
   repeatCount: '{{count}} kez',
   empty: 'Galaksi şimdilik sakin. Bir sonraki kalkış bunu değiştirebilir.',
@@ -41,6 +43,10 @@ export const chronicle = {
   },
   controlTransfer: '{{planet}} el değiştirdi',
   controlTransferDetail: '{{commander}} artık bu koloniyi işgal koruması altında yönetiyor.',
+  asteroidShowerStarted: 'Asteroid yağmuru başladı',
+  asteroidShowerStartedDetail: 'Galaksi genelinde yeni asteroid oluşma hızı ×{{multiplier}} seviyesine çıktı.',
+  asteroidShowerEnded: 'Asteroid yağmuru bitti',
+  asteroidShowerEndedDetail: 'Oluşma hızı normale döndü. Mevcut asteroidler doğal süreleri dolana kadar kalır.',
   act: {
     war: {
       title: 'Savaş safhası başladı',

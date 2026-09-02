@@ -12,6 +12,8 @@ export const chronicle = {
   launcherNeutralClaim: 'Claim race opened at {{planet}}',
   launcherDeathStar: 'Death Star impact at {{planet}}',
   launcherControl: '{{planet}} changed control',
+  launcherAsteroidShowerStarted: 'Asteroid shower active',
+  launcherAsteroidShowerEnded: 'Asteroid shower ended',
   list: 'Public events in this galaxy',
   repeatCount: '{{count}} times',
   empty: 'The galaxy is quiet for now. The next launch may change that.',
@@ -41,6 +43,10 @@ export const chronicle = {
   },
   controlTransfer: '{{planet}} changed control',
   controlTransferDetail: '{{commander}} now commands this colony under occupation protection.',
+  asteroidShowerStarted: 'An asteroid shower began',
+  asteroidShowerStartedDetail: 'New asteroid arrivals increased to ×{{multiplier}} across the galaxy.',
+  asteroidShowerEnded: 'The asteroid shower ended',
+  asteroidShowerEndedDetail: 'Spawn returned to normal. Existing asteroids remain until their natural expiry.',
   act: {
     war: {
       title: 'The War act has begun',

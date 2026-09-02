@@ -55,7 +55,7 @@ Rejected engines and the reasoning: `decisions.md` A2.
 | Class | Mechanism | Covers |
 |---|---|---|
 | **Continuous** | Lazy — computed on read | Resource accumulation, shield regen, asteroid position, fleet position, telescope staleness |
-| **Discrete** | Scheduled events + one worker | Fleet arrival → battle, fleet return → loot, probe arrival, radar warning, season rollover |
+| **Discrete** | Scheduled events + one worker | Fleet arrival → battle, fleet return → loot, probe arrival, radar warning, galaxy-event lifecycle, season rollover |
 | **Instantaneous** | REST inside a transaction | Upgrade, build, launch, scout, assign telescope |
 
 ### The lazy tick — the entire offline-progression system
@@ -312,7 +312,7 @@ handling for no benefit.
 Seasonal and permanent tables, with **nothing storing a value derivable from a formula and a clock**:
 
 `accounts` · `shards` · `seasons` · `season_results` · `players` · `chat_messages` ·
-`galaxy_events` · `planets` · `neutral_planet_state` · `strategic_assets` · `buildings` · `satellites` · `units` · `missions` ·
+`galaxy_events` · `galaxy_event_occurrences` · `planets` · `neutral_planet_state` · `strategic_assets` · `buildings` · `satellites` · `units` · `missions` ·
 `build_orders` · `scheduled_events` · `battle_reports` · `scan_events` · `probe_reports` · `probe_world_memories` · `watches` ·
 `sensor_epochs` · `asteroid_claims` · `mining_runs` · `debris_fields` · `notifications` · `reward_grants` ·
 `request_log` · `clans` · `clan_memberships` · `clan_requests` · `clan_ceasefires` ·
@@ -321,6 +321,13 @@ Seasonal and permanent tables, with **nothing storing a value derivable from a f
 
 Schema: `apps/server/src/db/schema.ts`. Migrations: `apps/server/drizzle/`.
 
+**Galaxy-event calendar.** A season-creation transaction generates and persists immutable
+occurrences plus start/end queue rows. Gameplay reads `starts_at <= now < ends_at`; worker lateness
+can delay notification delivery but cannot extend the effect. Each occurrence snapshots its version
+and effect. `scheduled_events.dedupe_key` is nullable so legacy producers retain their semantics,
+while galaxy lifecycle repair can safely upsert one start and one end job across restarts/replicas.
+The active-event API is account/season scoped and never exposes the future schedule.
+
 `probe_reports` is the complete Intel-centre history. `probe_world_memories` is its bounded
 read model: one atomically replaced pointer per observer and target world, used by the galaxy
 projection so repeated scouting cannot make its hottest query grow with report history.
@@ -328,14 +335,14 @@ projection so repeated scouting cannot make its hottest query grow with report h
 **Time model.** Everything in the database is `timestamptz`; the rules work in minutes since
 season start. `apps/server/src/clock.ts` is the **only** place those two meet.
 
-**Build queues.** `build_orders` holds what a world is making: two queues (`CONSTRUCTION`,
-`YARD`), three orders deep, kept compact by `slot` under a partial unique index on the active
-rows. Cost is committed at order time and lives on the row, so Wealth can count it and a refund
-knows what to return. Each order schedules one `build_complete` event at its `readyAt`; the
-handler matches that instant before applying, exactly as `death_star_ready` does, so a
-redelivery is inert. Cancelling or abandoning re-flows the tail and rewrites both the rows and
-their events together — an event whose `expectedReadyAt` no longer matches is a no-op by
-construction.
+**Work queues.** `build_orders` holds what a world is making in two three-deep lanes:
+`CONSTRUCTION` and `YARD`. `research_orders` holds the separate three-deep commander-wide
+`RESEARCH` lane; its funding world supplies the committed resources and Core speed but never owns
+the order. Partial unique indexes keep every active lane compact by `slot`. Each order schedules
+one completion event at its `readyAt`, and handlers match that instant before applying so a
+redelivery is inert. Players may cancel Construction/Yard orders for their defined refund;
+Research is irreversible. System abandonment refunds any lane in full, re-flows its tail and
+rewrites rows and events together.
 
 **Unit ownership.** `units` rows are authoritative, with `location` = `'home'` or a mission
 id. A fleet in flight is still owned by its planet (so it still counts toward Wealth) but is

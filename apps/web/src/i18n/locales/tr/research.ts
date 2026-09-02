@@ -14,14 +14,11 @@ export const research = {
   queueCapacity: "{{count}} yuva",
   queueLane: "Komutan araştırması",
   queueGlobalHint:
-    "Bu sıra komutanına aittir. Her gezegendeki İnşaat ve Tersane sıraları ayrı çalışmaya devam eder.",
-  cancelled: "{{alloy}} Alaşım · {{crystal}} Kristal · {{deuterium}} Döteryum iade edildi",
+    "Bu sıra komutanına aittir ve başlayan araştırma iptal edilemez. Her gezegendeki İnşaat ve Tersane sıraları ayrı çalışır.",
   runningLabel: "Sürüyor",
-  runningOn: "{{planet}} üzerinde",
   runningFinishes: "{{time}}’de biter",
   idleLabel: "Sürmekte olan araştırma yok",
-  idleHint: "Aşağıdan bir proje başlat. Burada üç proje sıraya girebilir; gezegen sıraların çalışmayı sürdürür.",
-  slotBusy: "{{name}}, {{planet}} üzerinde sürüyor",
+  idleHint: "Aşağıdan bir proje başlat. Burada üç proje sıraya girebilir; başladığında iptal edilemez.",
 
   frontierBand: "Ufuk",
   frontierNote:
@@ -31,7 +28,7 @@ export const research = {
     "İlk dakikadan açıktır ve beşer kademeden oluşur. Üretim, yapım süresi ve taşıma kapasitesini geliştirir.",
   doctrineBand: "Doktrin",
   doctrineNote:
-    "Belirli gemi sınıflarının saldırı gücünü ve gövde dayanımını birlikte artırır. Rakipler bu seviyeleri sonda raporlarından öğrenebilir.",
+    "İleri gövde seviyelerini açar; Fleet V2 saldırı, zırh ve itki değerlerini ayrı ve sınırlı basamaklarda geliştirir. Savaş seviyeleri sonda raporlarında görünür.",
   strategicBand: "Stratejik",
   strategicNote: "Ölüm Yıldızı’nı, onu durduran Önleme Ağını ve ikinci silah kapasitesini açar.",
 
@@ -39,7 +36,7 @@ export const research = {
   complete: "araştırıldı",
 
   needCore: "Komuta Çekirdeğini {{level}}. seviyeye yükselt",
-  queueFull: "Araştırma sırası dolu",
+  queueFull: "Sırada zaten 3 araştırma var. Yenisini eklemek için birinin bitmesini bekle.",
   at: "{{duration}} sonra araştırılabilir",
   warAt: "Savaş dönemi {{duration}} sonra başlar",
   isotopeFirst: "Önce İzotop Spektrometrisi’ni araştır",
@@ -60,17 +57,17 @@ export const research = {
   isotopeDetail:
     "Bir kez tamamlandığında izotop asteroitlerini seçilebilir maden hedeflerine çevirir. Kapışılan Döteryuma erişim açar; gezegende kendiliğinden yakıt üretmez.",
   denseName: "Yoğun Yakıt Hücreleri",
-  denseTag: "Koşucuyu açar",
+  denseTag: "Gemi İtkisini açar",
   denseRole:
-    "Keşfetmek için bir akında ambarını doldur; hedefte ganimet kalsın. Koşucu, Şilep’ten hızlıdır ama daha az taşır.",
+    "Keşfetmek için bir akında ambarını doldur ve hedefte ganimet bırak. Tamamlandığında Gemi İtkisi araştırma basamaklarını açar.",
   denseDetail:
-    "Tamamlandığında sahip olduğun bütün dünyalarda Koşucu yapımını kalıcı olarak açar. Hızlı akın filon, yavaş Şilebi beklemeden ganimet taşıyabilir.",
+    "Tamamlandığında komutanın için Gemi İtkisi araştırmasını kalıcı olarak açar. İtki, Fleet V2 kapsamındaki on sekiz gövdeyi hızlandırır ve Atlas üretim koşullarından biridir; Kazıcı, sonda ve Ölüm Yıldızı bundan etkilenmez.",
   graviticName: "Gravitik Yükler",
-  graviticTag: "Delici’yi açar",
+  graviticTag: "Söndürücü’yü açar",
   graviticRole:
-    "Açmak için savunması ve aktif Aegis’i olan bir dünyaya saldır; kalkan hasarın en az {{share}}’ini emsin. Bir Atmaca bile yeter; kazanman gerekmez. Delici kalkana beş kat vurur.",
+    "Açmak için savunması ve aktif Aegis’i olan bir dünyaya saldır; kalkan hasarın en az {{share}}’ini emsin. Bir Ok bile yeter, kazanman gerekmez. Söndürücü aktif kalkana beş kat etki eder.",
   graviticDetail:
-    "Tamamlandığında Delici yapımını bütün dünyalarında kalıcı olarak açar. Delici aktif Aegis’e karşı uzman cevaptır; genel saldırı yükseltmesi değildir.",
+    "Tamamlandığında Söndürücünün uzman araştırma koşulunu kalıcı olarak karşılar. Söndürücü aktif Aegis’e verilen özel bir cevaptır; genel hasar yükseltmesi değildir ve artan kalkan hasarı gemilere ya da yer toplarına taşmaz.",
   deathStarName: "Ölüm Yıldızı Protokolü",
   deathStarTag: "Ölüm Yıldızı’nı açar",
   deathStarRole:
@@ -103,25 +100,36 @@ export const research = {
   cargoDetail:
     "Her kademe hareketli filonun akında taşıyabileceği ganimeti artırır. Savaş sonunda açık stok kaldığında işe yarar; barışçıl transferleri ve asteroit madenciliğini etkilemez.",
 
-  waspDoctrineName: "Atmaca Doktrini",
-  lanceDoctrineName: "Mızrak/Delici Doktrini",
-  bulwarkDoctrineName: "Siper Doktrini",
+  engineeringName: "Yıldız Gemisi Mühendisliği",
+  engineeringTag: "İleri gövde seviyelerini açar",
+  engineeringRole:
+    "Mühendislik I üçüncü, Mühendislik II dördüncü seviye gövde iznini açar. Her geminin sistem araştırması ve Tersane koşulu ayrıca geçerlidir.",
+  engineeringDetail:
+    "Mühendislik bir savaş çarpanı değil, üretim iznidir. İlk kademe üçüncü seviye, ikinci kademe dördüncü seviye gövde kapılarını açar; belirli bir gemi ayrıca Güç, Zırh, İtki veya Gravitik Yükler ile belirtilen Tersane seviyesini isteyebilir.",
+  powerName: "Gemi Gücü",
+  powerTag: "Fleet V2 saldırısını artırır",
+  powerRole:
+    "Fleet V2 savaş gemilerinin saldırısını yükseltir ve ileri saldırı gövdelerinin üretim koşullarına katkı verir. Yük gemileri ile korunan birimler etkilenmez.",
+  powerDetail:
+    "Her kademe, Söndürücü dâhil Fleet V2 savaş gemilerinin normal saldırısını artırır ve mevcut gemilere de uygulanır. Nakliye gemilerine saldırı eklemez; Tabya, Kirpi, Kazıcı, sonda ve Ölüm Yıldızı etkilenmez. Saldıran kalkış, savunan çatışma anındaki seviyeyi kullanır.",
+  armorName: "Gemi Zırhı",
+  armorTag: "Fleet V2 gövde dayanımını artırır",
+  armorRole:
+    "Nakliye gemileri dâhil on sekiz Fleet V2 gövdesinin dayanımını yükseltir ve ileri savunma gövdelerinin üretim koşullarına katkı verir.",
+  armorDetail:
+    "Her kademe Kurye, Seyyah ve Atlas dâhil on sekiz Fleet V2 gemisinin gövde dayanımını artırır. Tabya, Kirpi, Kazıcı, sonda ve Ölüm Yıldızı etkilenmez. Saldıran filo kalkış, savunan taraf çatışma anındaki seviyeyi kullanır.",
+  propulsionName: "Gemi İtkisi",
+  propulsionTag: "Fleet V2 hızını artırır",
+  propulsionRole:
+    "On sekiz Fleet V2 gemisinin hızını artırır ve Atlas üretim koşuluna katkı verir. Yoğun Yakıt Hücrelerinden sonra açılır.",
+  propulsionDetail:
+    "Dört kademenin her biri on sekiz Fleet V2 gemisinin taban hızına dörtte bir ekler; sonuncusu hızı ikiye katlar ve her uçuşu yarıya indirir. Karma filo yine en yavaş üyesinin hızında uçar; böylece itki seçilen filoyu geliştirirken gövde profilini silmez. Kazıcı, sonda ve Ölüm Yıldızı etkilenmez; yalnız tamamlandıktan sonra hesaplanan görevler artışı alır.",
   groundDoctrineName: "Tabya/Kirpi Doktrini",
-  generalName: "Silah ve Zırh",
-  generalTag: "Sahip olduğun her gövdeyi geliştirir",
-  doctrineTag: "Daha iyi saldırı ve zırh",
+  doctrineTag: "Yer savunmasını geliştirir",
   doctrineRole:
-    "Her kademe ilgili sınıfın saldırı gücünü ve gövde dayanımını birlikte artırır. Sınıf doktrini ile Silah ve Zırh araştırmasının toplam savaş gücü katkısı en fazla %25’tir; doğal sınıf üstünlükleri değişmez.",
-  waspDoctrineDetail:
-    "Elindeki gemiler dâhil bütün Atmacaların saldırı gücünü ve gövde dayanımını artırır. Saldıran filo kalkış anındaki, savunan taraf ise çatışma anındaki araştırma kademesini kullanır.",
-  lanceDoctrineDetail:
-    "Elindeki gemiler dâhil bütün Mızrak ve Delicilerin saldırı gücünü ve gövde dayanımını artırır; sınıfların doğal güçlü ve zayıf eşleşmelerini değiştirmez. Saldıran filo kalkış anındaki, savunan taraf çatışma anındaki araştırma kademesini kullanır.",
-  bulwarkDoctrineDetail:
-    "Bütün Siperlerini güçlendirir ama yavaş uçuşunu değiştirmez. Saldıran filo kalkış anındaki, savunan taraf çatışma anındaki araştırma kademesini kullanır.",
+    "Tabya ve Kirpinin saldırı ile gövde dayanımını birlikte yükseltir; kapasite, enkazdan geri kurulum ve sınıf eşleşmeleri değişmez.",
   groundDoctrineDetail:
     "Bütün dünyalarındaki Tabya ve Kirpileri güçlendirir. Yer kapasitesi ve enkazdan geri kurulum kuralı değişmez; savunmada çatışma anındaki kademe kullanılır.",
-  generalDetail:
-    "Bütün gemi ve yer savunmalarının gövde dayanımını, saldırı değeri olanların da saldırı gücünü artırır; destek gemilerinin yalnız dayanımı yükselir. Sınıf doktriniyle birleşir ve ikisinin eşit maliyetli savaş gücüne toplam katkısı %25’i aşmaz. Saldıran filo kalkış, savunan taraf çatışma anındaki kademeyi kullanır.",
 
   gridName: "Önleme Ağı",
   gridTag: "Ölüm Yıldızı’nı düşürür",

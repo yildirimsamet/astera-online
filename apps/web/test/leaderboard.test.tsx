@@ -59,20 +59,19 @@ describe('the Dominion leaderboard', () => {
   it('routes another commander name to the existing Galaxy focus', async () => {
     const onFocusPlanet = await show();
     const commander = screen.getByRole('button', { name: '[WAR] Commander 0' });
-    expect(commander).toHaveClass('name');
+    expect(commander).toHaveClass('name', 'underline');
     await userEvent.setup().click(commander);
     expect(onFocusPlanet).toHaveBeenCalledWith('planet-0');
     expect(screen.queryByRole('button', { name: 'İzci' })).not.toBeInTheDocument();
   });
 
-  it('warns instead of focusing when an UNKNOWN commander location has not been discovered', async () => {
+  it('renders an UNKNOWN commander without a link or underline', async () => {
     const onFocusPlanet = await show();
-    expect(screen.getByText('Commander 1')).toBeVisible();
+    const commander = screen.getByText('Commander 1');
+    expect(commander).toBeVisible();
+    expect(commander).not.toHaveClass('underline');
     expect(screen.queryByText('World 1')).not.toBeInTheDocument();
-    await userEvent.setup().click(screen.getByRole('button', { name: 'Commander 1' }));
-    expect(screen.getByRole('alert')).toHaveTextContent(
-      "You haven't discovered this commander's location yet.",
-    );
+    expect(screen.queryByRole('button', { name: 'Commander 1' })).not.toBeInTheDocument();
     expect(onFocusPlanet).not.toHaveBeenCalled();
   });
 
@@ -90,11 +89,6 @@ describe('the Dominion leaderboard', () => {
     expect(screen.getByText(/World 42 · 3\. kademe/)).toBeInTheDocument();
 
     const user = userEvent.setup();
-    await user.click(screen.getByRole('button', { name: 'Commander 1' }));
-    expect(screen.getByRole('alert')).toHaveTextContent(
-      'Bu kişinin konumunu henüz keşfetmediniz.',
-    );
-
     await user.type(screen.getByRole('searchbox'), 'izci');
     expect(screen.getAllByRole('listitem')).toHaveLength(1);
     expect(screen.getByText('İzci')).toBeVisible();

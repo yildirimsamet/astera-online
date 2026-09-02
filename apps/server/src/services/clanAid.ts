@@ -1,7 +1,6 @@
 import { and, asc, desc, eq, gt, inArray, or, sql } from 'drizzle-orm';
 import {
   CLAN,
-  HULLS,
   clanAidAllowance,
   clanBayAvailable,
   clanAidRemaining,
@@ -53,6 +52,8 @@ import {
 } from './planet.js';
 import { planetView } from './planetView.js';
 import { fleetChangesWatch, publishWatchChanges } from './watchEvents.js';
+import { hullProductionAccessible } from './hullAccess.js';
+import { techOf } from './researchState.js';
 
 const ZERO: Resources = { alloy: 0, crystal: 0, deuterium: 0 };
 
@@ -154,7 +155,7 @@ const assertAidPayload = (fleet: Fleet, cargo: Resources): void => {
     throw new GameError('BAD_CLAN_AID_FLEET', 'Choose at least one eligible mobile ship', 400);
   }
   if (resourcesTotal(cargo) > clanTransferCargoCapacity(fleet)) {
-    throw new GameError('CLAN_AID_CARGO_CAPACITY', 'Only Haulers carry clan resources', 400, {
+    throw new GameError('CLAN_AID_CARGO_CAPACITY', 'Only transport hulls carry clan resources', 400, {
       capacity: clanTransferCargoCapacity(fleet),
     });
   }
@@ -175,17 +176,15 @@ async function payloadCanLand(
       T7 moved research off the planet, and a hull gate asks whether the person
       receiving it can fly the thing — which was never a property of the pad.
     */
-    db.select({ projectId: playerResearch.projectId })
+    db.select({ projectId: playerResearch.projectId, level: playerResearch.level })
       .from(playerResearch)
       .innerJoin(planets, eq(planets.controllerPlayerId, playerResearch.playerId))
       .where(and(eq(planets.id, targetPlanetId), gt(playerResearch.level, 0))),
   ]);
-  const completed = new Set(research.map((row) => row.projectId));
+  const tech = Object.fromEntries(research.map((row) => [row.projectId, row.level]));
   for (const [hull, quantity] of Object.entries(fleet) as [HullId, number][]) {
     if (quantity <= 0) continue;
-    if (yard < HULLS[hull].minShipyard) return false;
-    if (hull === 'RUNNER' && !completed.has('DENSE_FUEL_CELLS')) return false;
-    if (hull === 'BREACHER' && !completed.has('GRAVITIC_CHARGES')) return false;
+    if (!hullProductionAccessible(hull, yard, tech)) return false;
   }
   /*
     THE SAME LANDING RULE A TRANSFER READS. T4.
@@ -306,15 +305,21 @@ export async function quoteClanAid(
   if (target?.seasonId !== origin.seasonId) {
     throw new GameError('CLAN_AID_TARGET', 'Choose a world that clanmate controls', 404);
   }
-  const [orbit, coreLevel] = await Promise.all([
+  const [orbit, coreLevel, tech] = await Promise.all([
     orbitOf(db, origin.id),
     db.select({ level: buildings.level }).from(buildings).where(and(
       eq(buildings.planetId, origin.id),
       eq(buildings.type, 'CORE'),
     )).then((rows) => rows[0]?.level ?? 0),
+    techOf(db, input.senderPlayerId),
   ]);
   const ordinaryBays = await baysOf(db, origin.id, coreLevel);
-  const ordinary = fleetTravelExact(distance(origin, target), input.fleet, fleetSpeedMult(orbit));
+  const ordinary = fleetTravelExact(
+    distance(origin, target),
+    input.fleet,
+    fleetSpeedMult(orbit),
+    tech,
+  );
   const travelMinutes = clanAidTravelMinutes(ordinary);
   const season = await db.select({ endsAt: seasons.endsAt }).from(seasons)
     .where(eq(seasons.id, origin.seasonId)).then((rows) => rows[0]);
@@ -323,6 +328,7 @@ export async function quoteClanAid(
     distance(target, origin),
     input.fleet,
     fleetSpeedMult(orbit),
+    tech,
   ));
   const arriveAt = addMinutes(input.now, travelMinutes);
   const returnAt = addMinutes(arriveAt, returnMinutes);
@@ -437,16 +443,22 @@ export async function launchClanAid(
     });
   }
   const boost = fleetSpeedMult(origin.orbit);
+  const tech = await techOf(tx, input.senderPlayerId);
   const dist = distance(origin, target);
   // A resource delivery always comes home; a ship gift has only its outbound leg.
   const fuel = missionFuel(input.fleet, dist, delivery ? 2 : 1);
   assertFuel(fuel, origin.deuterium, input.cargo.deuterium);
-  const oneWay = clanAidTravelMinutes(fleetTravelExact(dist, input.fleet, boost));
+  const oneWay = clanAidTravelMinutes(fleetTravelExact(dist, input.fleet, boost, tech));
   if (!Number.isFinite(oneWay)) throw new GameError('IMMOBILE_FLEET', 'That fleet cannot travel', 400);
   const capitalWorld = lockedWorlds.get(capital.id);
   if (!capitalWorld) throw new Error('sender capital lock vanished');
   const returnDistance = distance(target, origin);
-  const returnMinutes = clanAidTravelMinutes(fleetTravelExact(returnDistance, input.fleet, boost));
+  const returnMinutes = clanAidTravelMinutes(fleetTravelExact(
+    returnDistance,
+    input.fleet,
+    boost,
+    tech,
+  ));
   const arriveAt = addMinutes(origin.now, oneWay);
   assertSeasonOpenThrough(origin, addMinutes(arriveAt, returnMinutes));
   const [mission] = await tx.insert(missions).values({
@@ -457,6 +469,7 @@ export async function launchClanAid(
     targetPlanetId: target.id,
     fleet: input.fleet,
     cargo: input.cargo,
+    tech,
     distance: dist,
     departAt: origin.now,
     arriveAt,
@@ -538,6 +551,7 @@ async function startAidReturn(
     targetPlanetId: destination.id,
     fleet: mission.fleet,
     cargo,
+    tech: mission.tech,
     distance: distance(from, destination),
     departAt: now,
     arriveAt,

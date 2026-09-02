@@ -35,6 +35,18 @@ export interface GalaxyEventPayloadByKind {
     trigger?: 'RADAR' | 'TELESCOPE';
   };
   control_transfer: { planetName: string; commanderName: string };
+  galaxy_event_started: {
+    eventKind: 'ASTEROID_SHOWER';
+    startsAt: string;
+    endsAt: string;
+    asteroidSpawnMultiplier: number;
+  };
+  galaxy_event_ended: {
+    eventKind: 'ASTEROID_SHOWER';
+    startsAt: string;
+    endsAt: string;
+    asteroidSpawnMultiplier: number;
+  };
 }
 
 export type GalaxyEventKind = keyof GalaxyEventPayloadByKind;

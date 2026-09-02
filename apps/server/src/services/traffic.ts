@@ -1,6 +1,7 @@
 import { and, eq, gte, inArray, ne, or } from 'drizzle-orm';
 import {
   DEATH_STAR,
+  PIRATE,
   TRAFFIC,
   coreTier,
   distance,
@@ -11,30 +12,37 @@ import {
   engagementEndsAt,
   massClass,
   orbitStandoff,
+  piratePosition,
   sensorSphere,
   sensorZone,
   surfaceStandoff,
   visualLeg,
+  ENGAGEMENT_STANDOFF,
   worldRadius,
   type MassClass,
   type Fleet,
+  type PirateLevel,
   type SensorSphere,
   type SensorZone,
   type Vec3,
 } from '@astera/rules';
-import type { Db } from '../db/client.js';
+import type { Db, Queryable } from '../db/client.js';
 import {
   buildings,
   miningRuns,
   missions,
+  pirateRaids,
   planets,
   strategicImpacts,
   strategicInterceptions,
+  units,
 } from '../db/schema.js';
 import { legBelongsTo } from './flight.js';
 import { instrumentLevels, levelOf } from './intel.js';
 import { loadMiningSnapshot } from './mining.js';
 import { discoveredAsteroidIndexes } from './asteroidField.js';
+import { loadPirateSnapshot, pirateId, type PirateSnapshot } from './pirateField.js';
+import { minutesSince } from '../clock.js';
 import { sensorHistoryForPlayer } from './sensorHistory.js';
 
 /**
@@ -167,7 +175,10 @@ const APPROACH_MS = 60_000;
  * how many, and cannot say where from or where to. Those are what the ladder
  * sells and none of them are here.
  */
-export type ContactKind = 'unknown' | 'fleet' | 'probe' | 'death_star' | 'mining' | 'harvest';
+export type ContactKind =
+  | 'unknown' | 'fleet' | 'probe' | 'death_star' | 'mining' | 'harvest'
+  /** An NPC pirate fleet riding its own orbit. D150. */
+  | 'pirate';
 
 export interface Contact {
   /**
@@ -330,6 +341,16 @@ export interface Contact {
   inbound?: true;
   /** How many craft are on a mining run. Public in full, like the rest of the run. */
   craft?: number;
+  /**
+   * HOW HARD THIS PIRATE HITS. IDENTIFIED SIGHT ONLY. D150.
+   *
+   * The level IS the price tag: it sets the damage handicap, the roster's tier
+   * ceiling and the odds of towing a hull home, and a rule the player cannot see
+   * is not a usable rule (D124). So it is the Telescope's product, exactly like a
+   * fleet's manifest — a Radar contact gets a question mark and, on its top rungs,
+   * a mass and a silhouette, and never this.
+   */
+  level?: PirateLevel;
 }
 
 const lerp = (a: Vec3, b: Vec3, t: number): Vec3 => ({
@@ -449,6 +470,18 @@ function windowOf(
 export interface TrafficSnapshot {
   missionRows: { mission: typeof missions.$inferSelect }[];
   miningRows: { run: typeof miningRuns.$inferSelect }[];
+  /** Raids in the air at a pirate. Somebody else's is a craft like any other. D150. */
+  pirateRaidRows: { raid: typeof pirateRaids.$inferSelect }[];
+  /**
+   * WHAT IS ACTUALLY ABOARD EACH RAID, keyed by raid id. D150.
+   *
+   * `pirate_raids.fleet` is the immutable LAUNCH roster, so a returning raid drawn
+   * from it shows ships that died at the rendezvous — and "how weakened is that
+   * neighbour" is exactly what a Telescope is bought to answer. The fog hides and
+   * never lies. The parked `units` rows are the live answer, which is the same
+   * source `pendingThreads` reads for the owner's own copy.
+   */
+  raidFleets: ReadonlyMap<string, Fleet>;
   interceptionRows: { interception: typeof strategicInterceptions.$inferSelect }[];
   landedDeathStarMissionIds: ReadonlySet<string>;
   positions: ReadonlyMap<string, Vec3>;
@@ -480,7 +513,8 @@ export async function loadTrafficSnapshot(
   now: Date = new Date(),
 ): Promise<TrafficSnapshot> {
   const impactCutoff = new Date(now.getTime() - DEATH_STAR.impactSeconds * 1000);
-  const [missionRows, miningRows, interceptionRows, impactRows] = await Promise.all([
+  const [missionRows, miningRows, pirateRaidRows, interceptionRows, impactRows] =
+    await Promise.all([
     db
       .select({ mission: missions })
       .from(missions)
@@ -499,6 +533,10 @@ export async function loadTrafficSnapshot(
       .select({ run: miningRuns })
       .from(miningRuns)
       .where(and(eq(miningRuns.seasonId, seasonId), ne(miningRuns.status, 'done'))),
+    db
+      .select({ raid: pirateRaids })
+      .from(pirateRaids)
+      .where(and(eq(pirateRaids.seasonId, seasonId), ne(pirateRaids.status, 'done'))),
     db
       .select({ interception: strategicInterceptions })
       .from(strategicInterceptions)
@@ -522,11 +560,32 @@ export async function loadTrafficSnapshot(
     ids.add(mission.targetPlanetId);
   }
   for (const { run } of miningRows) ids.add(run.planetId);
+  for (const { raid } of pirateRaidRows) ids.add(raid.planetId);
+
+  // The live roster of every raid still in the air. See `raidFleets` above for why
+  // the row's own `fleet` column is the wrong answer on a return leg.
+  const raidFleets = new Map<string, Fleet>();
+  if (pirateRaidRows.length > 0) {
+    const parked = await db
+      .select({ location: units.location, hull: units.hull, count: units.count })
+      .from(units)
+      .where(inArray(units.location, pirateRaidRows.map(({ raid }) => `pirate:${raid.id}`)));
+    for (const row of parked) {
+      if (row.count <= 0) continue;
+      const id = row.location.slice('pirate:'.length);
+      const fleet: Fleet = raidFleets.get(id) ?? {};
+      fleet[row.hull] = (fleet[row.hull] ?? 0) + row.count;
+      raidFleets.set(id, fleet);
+    }
+  }
+
   const landedDeathStarMissionIds = new Set(impactRows.map((row) => row.missionId));
   if (ids.size === 0) {
     return {
       missionRows,
       miningRows,
+      pirateRaidRows,
+      raidFleets,
       interceptionRows,
       landedDeathStarMissionIds,
       positions: new Map(),
@@ -554,7 +613,16 @@ export async function loadTrafficSnapshot(
   const tiers = new Map<string, number>(
     coreRows.map((row) => [row.planetId, coreTier(row.level)]),
   );
-  return { missionRows, miningRows, interceptionRows, landedDeathStarMissionIds, positions, tiers };
+  return {
+    missionRows,
+    miningRows,
+    pirateRaidRows,
+    raidFleets,
+    interceptionRows,
+    landedDeathStarMissionIds,
+    positions,
+    tiers,
+  };
 }
 
 export interface StrategicInterceptionView {
@@ -696,7 +764,14 @@ export interface SensorPost extends SensorSphere {
  * on the two instruments that SEE.
  */
 export async function sensorPosts(
-  db: Db,
+  /**
+   * A `Queryable` rather than a `Db`, so a launch can build its spheres INSIDE the
+   * transaction it is about to commit. Casting a `Tx` to a `Db` at the call site
+   * was the alternative and it is the kind of compiler-silencing this codebase
+   * bans: it would also have read the caller's sensors on a different snapshot
+   * from the one the fog gate is enforcing against.
+   */
+  db: Queryable,
   planetIds: readonly string[],
 ): Promise<SensorPost[]> {
   if (planetIds.length === 0) return [];
@@ -736,11 +811,12 @@ export async function galaxyTraffic(
   ownPlayerId: string | null = null,
   ownPlanetIds: string[] = ownPlanetId === null ? [] : [ownPlanetId],
 ): Promise<Contact[]> {
-  const [snapshot, sensors, mining, epochs] = await Promise.all([
+  const [snapshot, sensors, mining, epochs, pirates] = await Promise.all([
     loadTrafficSnapshot(db, seasonId, now),
     sensorPosts(db, ownPlanetIds),
     ownPlayerId === null ? Promise.resolve(null) : loadMiningSnapshot(db, seasonId, now),
     ownPlayerId === null ? Promise.resolve([]) : sensorHistoryForPlayer(db, ownPlayerId),
+    loadPirateSnapshot(db, seasonId, now),
   ]);
   const discovered = mining === null
     ? new Set<number>()
@@ -753,6 +829,7 @@ export async function galaxyTraffic(
     ownPlanetIds,
     sensors,
     discovered,
+    pirates,
   );
 }
 
@@ -773,8 +850,26 @@ export function projectGalaxyTraffic(
   ownPlanetIds: string[],
   sensors: readonly SensorPost[],
   discoveredAsteroids: ReadonlySet<number>,
+  /**
+   * The season's pirate lane and its stored damage. D150.
+   *
+   * REQUIRED, LIKE `sensors`, AND FOR A WEAKER BUT REAL REASON. Omitting it cannot
+   * leak anything — a missing lane publishes nothing — but it would silently empty
+   * the disc of a whole target class on whichever surface forgot it, and "the
+   * pirates only render on one screen" is exactly the kind of half-shipped feature
+   * this file's history is made of. Null is a caller with no season lane at all.
+   */
+  pirates: PirateSnapshot | null,
 ): Contact[] {
-  const { missionRows, miningRows, positions, tiers, landedDeathStarMissionIds } = snapshot;
+  const {
+    missionRows,
+    miningRows,
+    pirateRaidRows,
+    raidFleets,
+    positions,
+    tiers,
+    landedDeathStarMissionIds,
+  } = snapshot;
   const ownedPlanets = new Set(ownPlanetIds);
 
   /**
@@ -1209,6 +1304,241 @@ export function projectGalaxyTraffic(
       craft: run.craft,
       // `minedAlloy` and `minedCrystal` are deliberately absent. What a run is
       // bringing back is the owner's, and it is on `/api/mining` for them alone.
+    });
+  }
+
+  /**
+   * THE PIRATES THEMSELVES. D150.
+   *
+   * A pirate is a CRAFT and answers to the same three zones as everything else:
+   * nothing outside the caller's circles, a moving question mark inside a Radar
+   * one, the fleet itself inside a Telescope one. There is no owner exclusion —
+   * nobody owns a pirate — and no discovery memory: unlike a rock (D143), a pirate
+   * that leaves your circles stops existing for you, which is the whole difference
+   * between a target with an address and a target with a course.
+   *
+   * WHAT IS NEVER PUBLISHED: the orbital elements. Radius, period, phase,
+   * inclination and ascending node ARE the route, and the route is the one thing
+   * the fog rule here has always refused. What goes out is a point and a short
+   * bearing, exactly as for a fleet.
+   */
+  if (pirates) {
+    const nowMinutes = minutesSince(pirates.startsAt, now);
+    /*
+      A PIRATE UNDER ATTACK STANDS STILL FOR TEN SECONDS. G6.
+
+      The fight happens at the rendezvous point, not wherever the orbit has carried
+      the pirate to by then. Publishing the orbit through the engagement would draw
+      two fleets shooting at each other while drifting apart — so for the length of
+      the window the pirate's published position IS the meeting point, which is
+      also what the attacking client is already holding.
+    */
+    const engagedAt = new Map<number, {
+      at: Vec3;
+      /** Where the attacking wing is holding — what the pirate shoots back at. */
+      foe: Vec3;
+      arriveAt: Date;
+      endsAt: Date;
+    }>();
+    for (const { raid } of pirateRaidRows) {
+      const endsAt = engagementEndsAt(raid.arriveAt.getTime());
+      if (now.getTime() < raid.arriveAt.getTime() || now.getTime() >= endsAt) continue;
+      const meet = { x: raid.interceptX, y: raid.interceptY, z: raid.interceptZ };
+      const home = positions.get(raid.planetId);
+      engagedAt.set(raid.pirateIndex, {
+        at: meet,
+        // The attacker holds short of the meeting point along the line it flew in
+        // on, so the two formations have a gap to fire across. Both sides read the
+        // same pair of points, which is what makes it one battle rather than two.
+        foe: home ? visualLeg(home, meet, 0, ENGAGEMENT_STANDOFF).to : meet,
+        arriveAt: raid.arriveAt,
+        endsAt: new Date(endsAt),
+      });
+    }
+
+    for (const spec of pirates.standing(now)) {
+      const engaging = engagedAt.get(spec.index);
+      const at = engaging ? engaging.at : piratePosition(spec, nowMinutes);
+      const zone = zoneAt(at);
+      if (zone === 'NONE') continue;
+
+      const crew = pirates.livingRosterOf(spec.index);
+      /*
+        THE WINDOW IS DERIVED FROM THE CLIENT'S POLL INTERVAL, and it is far
+        shorter than a straight leg's. `TRAFFIC.bearingMinutes` was written for a
+        line; a pirate's shortest revolution is about six minutes, so four minutes
+        of it is most of a lap and the straight chord the client draws between the
+        two points would visibly cut through the middle of the orbit. See
+        `PIRATE.bearingMs` for why it may never fall below one refetch.
+      */
+      const ahead = engaging
+        ? at
+        : piratePosition(spec, nowMinutes + PIRATE.bearingMs / 60_000);
+      const endAt = new Date(now.getTime() + PIRATE.bearingMs);
+      /*
+        AND IT TURNS TO FACE WHAT IS SHOOTING AT IT.
+
+        The target used to be the pirate's own held position, which made the aim
+        vector zero-length: the client skipped its `lookAt` entirely and the crew
+        sat through the fight pointing wherever the orbit had last left them, with
+        no round crossing the gap because there was no gap. Aimed at the attacker's
+        hold point, the pirate both turns and has something to fire at.
+      */
+      const moment = engaging
+        ? {
+            engagement: {
+              arriveAt: engaging.arriveAt,
+              endsAt: engaging.endsAt,
+              target: engaging.foe,
+            },
+          }
+        : {};
+
+      if (zone === 'CONTACT') {
+        const reveal = radarReveal(at);
+        out.push({
+          id: pirateId(pirates.key, spec.index),
+          kind: 'unknown',
+          from: at,
+          to: ahead,
+          startAt: now,
+          endAt,
+          ...(reveal.size ? { mass: massClass(crew) } : {}),
+          ...(reveal.kind ? { silhouette: 'pirate' } : {}),
+          ...moment,
+        });
+        continue;
+      }
+
+      out.push({
+        id: pirateId(pirates.key, spec.index),
+        kind: 'pirate',
+        from: at,
+        to: ahead,
+        startAt: now,
+        endAt,
+        mass: massClass(crew),
+        // Actual sight: the crew still aboard, and the level that prices it.
+        fleet: crew,
+        level: spec.level,
+        ...moment,
+      });
+    }
+  }
+
+  /**
+   * AND SOMEBODY ELSE'S RAID AT ONE. D150 — gap G2.
+   *
+   * A raid at a pirate is a real combat fleet crossing the disc, so it belongs in
+   * the public contact list on the same terms as every other flight. The owner's
+   * own is excluded here and drawn from `pendingThreads` instead — the same split
+   * mining uses, and for the same reason: a decorated copy of your own fleet beside
+   * the anonymous one is the duplicate-craft bug this file has already shipped once.
+   */
+  for (const { raid } of pirateRaidRows) {
+    if (ownedPlanets.has(raid.planetId)) continue;
+    const home = positions.get(raid.planetId);
+    if (!home) continue;
+    const meet = { x: raid.interceptX, y: raid.interceptY, z: raid.interceptZ };
+    const returning = raid.status === 'returning';
+    // No survivors means no return leg at all; `homeAt` stays null and there is
+    // nothing in the air to draw.
+    const legArriveAt = returning ? raid.homeAt : raid.arriveAt;
+    if (!legArriveAt) continue;
+
+    const homeTier = tiers.get(raid.planetId);
+    const surface = homeTier === undefined ? 0 : surfaceStandoff(worldRadius(homeTier));
+    const { from, to } = returning
+      ? visualLeg(meet, home, 0, surface)
+      : visualLeg(home, meet, surface, 0);
+    const departAt = returning ? raid.arriveAt : raid.departAt;
+
+    /*
+      THE ATTACKING WING HOLDS, AND FIRES, FOR THE SAME TEN SECONDS. D52 · D150.
+
+      A raid on a world is drawn stopping off the surface and shooting at it. A
+      pirate fight had no such moment on this side at all: the leg simply ended and
+      the fleet sat on top of its target. It now holds short of the rendezvous on
+      its own approach line and carries the same `engagement` a world raid does —
+      which is what makes every observer watch one battle instead of two craft
+      overlapping.
+    */
+    const fightEndsAt = engagementEndsAt(raid.arriveAt.getTime());
+    const fighting = raid.status === 'outbound'
+      && now.getTime() >= raid.arriveAt.getTime()
+      && now.getTime() < fightEndsAt;
+    if (fighting) {
+      const hold = visualLeg(home, meet, 0, ENGAGEMENT_STANDOFF).to;
+      const zone = zoneAt(hold);
+      if (zone === 'NONE') continue;
+      const moment = {
+        engagement: {
+          arriveAt: raid.arriveAt,
+          endsAt: new Date(fightEndsAt),
+          target: meet,
+        },
+      } as const;
+      if (zone === 'CONTACT') {
+        const reveal = radarReveal(hold);
+        out.push({
+          id: raid.id,
+          kind: 'unknown',
+          from: hold,
+          to: hold,
+          startAt: now,
+          endAt: new Date(fightEndsAt),
+          ...(reveal.size ? { mass: massClass(raidFleets.get(raid.id) ?? raid.fleet) } : {}),
+          ...(reveal.kind ? { silhouette: 'fleet' } : {}),
+          ...moment,
+        });
+        continue;
+      }
+      const aboardNow = raidFleets.get(raid.id) ?? raid.fleet;
+      out.push({
+        id: raid.id,
+        kind: 'fleet',
+        from: hold,
+        to: hold,
+        startAt: now,
+        endAt: new Date(fightEndsAt),
+        mass: massClass(aboardNow),
+        fleet: aboardNow,
+        ...moment,
+      });
+      continue;
+    }
+
+    const slice = windowOf(from, to, departAt, legArriveAt, now);
+    if (!slice) continue;
+    const zone = zoneAt(slice.from);
+    if (zone === 'NONE') continue;
+
+    /*
+      WHAT IS ABOARD RIGHT NOW, not what left. The row's `fleet` is the immutable
+      launch roster, so a returning raid read from it shows the ships that died at
+      the rendezvous — the fog hides and never lies. The live `units` rows are the
+      same source `pendingThreads` gives the owner.
+    */
+    const aboard = raidFleets.get(raid.id) ?? raid.fleet;
+
+    if (zone === 'CONTACT') {
+      const reveal = radarReveal(slice.from);
+      out.push({
+        id: raid.id,
+        kind: 'unknown',
+        ...slice,
+        ...(reveal.size ? { mass: massClass(aboard) } : {}),
+        ...(reveal.kind ? { silhouette: 'fleet' } : {}),
+      });
+      continue;
+    }
+
+    out.push({
+      id: raid.id,
+      kind: 'fleet',
+      ...slice,
+      mass: massClass(aboard),
+      fleet: aboard,
     });
   }
 

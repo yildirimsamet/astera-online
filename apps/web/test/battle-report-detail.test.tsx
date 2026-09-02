@@ -14,7 +14,7 @@ import { BattleReports } from '../src/screens/BattleReports.js';
  * decided and then thrown away on the way to the screen. A raider who flew home
  * under-loaded could not learn that their own holds, not the defence, capped the
  * haul. A defender told they lost seven Bastions could not learn that four were
- * standing again by the time they read it. "You lost 12 Wasp" had no denominator
+ * standing again by the time they read it. "You lost 12 Dart" had no denominator
  * at all, so a disaster and a rounding error printed identically.
  *
  * What none of it was allowed to do is widen what one side may know about the
@@ -38,23 +38,23 @@ const base: BattleReport = {
       attackerDamage: 800,
       defenderDamage: 300,
       shieldAbsorbed: 100,
-      breacherShieldDamage: 0,
-      attackerLosses: { WASP: 2 },
-      defenderLosses: { WASP: 6 },
+      shieldBreakerDamage: 0,
+      attackerLosses: { DART: 2 },
+      defenderLosses: { DART: 6 },
     },
     {
       round: 2,
       attackerDamage: 640,
       defenderDamage: 120,
       shieldAbsorbed: 0,
-      breacherShieldDamage: 0,
+      shieldBreakerDamage: 0,
       attackerLosses: {},
       defenderLosses: { BASTION: 1 },
     },
   ],
-  yourLosses: { WASP: 2 },
-  theirLosses: { WASP: 6, BASTION: 1 },
-  yourFleet: { WASP: 12, HAULER: 3 },
+  yourLosses: { DART: 2 },
+  theirLosses: { DART: 6, BASTION: 1 },
+  yourFleet: { DART: 12, COURIER: 3 },
   lootAlloy: 300,
   lootCrystal: 80,
   lootDeuterium: 0,
@@ -116,7 +116,7 @@ describe('what a battle report explains', () => {
       yourPlanet: 'Vantage-3',
       outcome: 'FIRST_STRIKE',
       damage: 12_000,
-      destroyedFleet: { WASP: 5, BASTION: 2 },
+      destroyedFleet: { DART: 5, BASTION: 2 },
       destroyedResources: { alloy: 4_000, crystal: 2_000, deuterium: 500 },
       levelChanges: [
         { kind: 'BUILDING', id: 'CORE', before: 6, after: 5 },
@@ -204,7 +204,7 @@ describe('what a battle report explains', () => {
   /**
    * THE DENOMINATOR. Twelve of fifteen is a disaster and twelve of eighty is the
    * cost of doing business; without the roster the report could not tell them
-   * apart, and "you lost 2 Wasp" was the whole of what it said.
+   * apart, and "you lost 2 Dart" was the whole of what it said.
    */
   it('gives your own losses a force to be measured against', async () => {
     await openSheet(report());
@@ -216,7 +216,7 @@ describe('what a battle report explains', () => {
       of eighty is the cost of doing business — but it is now the WIDTH of the
       thing that died rather than a figure to divide.
 
-      Fifteen craft went: twelve Wasps AND the three Haulers that never fired,
+      Fifteen craft went: twelve Darts AND the three Couriers that never fired,
       because a raid that brings its cargo home is a raid that paid for itself.
     */
     const bars = document.querySelectorAll('[role="img"][aria-label*="in,"]');
@@ -229,9 +229,9 @@ describe('what a battle report explains', () => {
   it('calls the defender’s board what it was — held, not sent', async () => {
     await openSheet(report({
       attacking: false,
-      yourFleet: { WASP: 20, BASTION: 6 },
+      yourFleet: { DART: 20, BASTION: 6 },
       yourLosses: { BASTION: 4 },
-      theirLosses: { WASP: 9 },
+      theirLosses: { DART: 9 },
     }));
 
     expect(screen.getByText('Had')).toBeVisible();
@@ -248,7 +248,7 @@ describe('what a battle report explains', () => {
       attacking: false,
       yourFleet: { BASTION: 6 },
       yourLosses: { BASTION: 4 },
-      theirLosses: { WASP: 9 },
+      theirLosses: { DART: 9 },
       defenceSalvage: { BASTION: 2 },
     }));
 
@@ -309,9 +309,9 @@ describe('what a battle report explains', () => {
    */
   it('shows sent, lost and returned together in the opening verdict', async () => {
     await openSheet(report({
-      yourFleet: { LANCE: 150 },
-      yourLosses: { LANCE: 35 },
-      theirLosses: { WASP: 14, BASTION: 10, THORN: 30 },
+      yourFleet: { PIKE: 150 },
+      yourLosses: { PIKE: 35 },
+      theirLosses: { DART: 14, BASTION: 10, THORN: 30 },
     }));
 
     const verdict = document.querySelector<HTMLElement>('[data-battle-verdict="PARTIAL"]');
@@ -348,7 +348,7 @@ describe('what a battle report explains', () => {
 
   /** Old reports know the loss but not the denominator; the UI must not invent one. */
   it('does not invent sent or returned totals for a legacy report', async () => {
-    await openSheet(report({ yourFleet: {}, yourLosses: { WASP: 2 } }));
+    await openSheet(report({ yourFleet: {}, yourLosses: { DART: 2 } }));
 
     const verdict = document.querySelector<HTMLElement>('[data-battle-verdict="PARTIAL"]');
     const opening = within(verdict!);
@@ -358,7 +358,7 @@ describe('what a battle report explains', () => {
     expect(opening.getByText('2')).toBeVisible();
   });
 
-  /** The lesson a raider could not learn: bring Haulers. */
+  /** The lesson a raider could not learn: bring Couriers. */
   it('tells an attacker when their own holds capped the haul', async () => {
     await openSheet(report({ cargoLimited: true }));
     expect(screen.getByText(/Your holds were full/)).toBeVisible();
@@ -445,7 +445,7 @@ describe('what a battle report explains', () => {
     await openSheet(report());
     // Round 2 is where the Bastion went.
     expect(screen.getByText('−1 Bastion')).toBeVisible();
-    expect(screen.getByText('−6 Wasp')).toBeVisible();
+    expect(screen.getByText('−6 Dart')).toBeVisible();
   });
 
   it('labels both damage bars with words instead of relying on colour', async () => {
@@ -555,8 +555,8 @@ describe('what a battle report explains', () => {
   });
 
   /**
-   * Both sides fly Wasps, so a round in which each lost some rendered as
-   * "−11 Wasp −3 Wasp" — two identical phrases told apart by a colour, which on a
+   * Both sides fly Darts, so a round in which each lost some rendered as
+   * "−11 Dart −3 Dart" — two identical phrases told apart by a colour, which on a
    * phone in daylight reads as a typo rather than as two facts.
    */
   it('says whose casualties they were, in words', async () => {
@@ -566,14 +566,14 @@ describe('what a battle report explains', () => {
         attackerDamage: 800,
         defenderDamage: 300,
         shieldAbsorbed: 0,
-        breacherShieldDamage: 0,
-        attackerLosses: { WASP: 3 },
-        defenderLosses: { WASP: 3 },
+        shieldBreakerDamage: 0,
+        attackerLosses: { DART: 3 },
+        defenderLosses: { DART: 3 },
       }],
     }));
     expect(screen.getByText('Them')).toBeVisible();
     expect(screen.getByText('You')).toBeVisible();
-    expect(screen.getAllByText('−3 Wasp')).toHaveLength(2);
+    expect(screen.getAllByText('−3 Dart')).toHaveLength(2);
   });
 
   /**
@@ -593,7 +593,7 @@ describe('what a battle report explains', () => {
         attackerDamage: 40,
         defenderDamage: 10,
         shieldAbsorbed: 0,
-        breacherShieldDamage: 0,
+        shieldBreakerDamage: 0,
         attackerLosses: {},
         defenderLosses: {},
       }],
@@ -612,8 +612,8 @@ describe('what a battle report explains', () => {
   it('the fog holds: only ever one roster, and it is yours', async () => {
     const sheet = report({
       attacking: true,
-      yourFleet: { WASP: 12, HAULER: 3 },
-      theirLosses: { WASP: 6, BASTION: 1 },
+      yourFleet: { DART: 12, COURIER: 3 },
+      theirLosses: { DART: 6, BASTION: 1 },
     });
     await openSheet(sheet);
 
@@ -636,8 +636,8 @@ describe('what a battle report explains', () => {
     expect(screen.queryByText('Sent')).not.toBeInTheDocument();
     expect(screen.getByText('What it cost you')).toBeVisible();
     expect(screen.queryByText('Your force')).not.toBeInTheDocument();
-    // The Wasps lost are still named, from the list that has always been there.
-    expect(screen.getAllByText('Wasp').length).toBeGreaterThan(0);
+    // The Darts lost are still named, from the list that has always been there.
+    expect(screen.getAllByText('Dart').length).toBeGreaterThan(0);
   });
 
   /**

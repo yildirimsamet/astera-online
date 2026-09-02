@@ -57,9 +57,10 @@ export const DISC_RADIUS = GALAXY.radius / SCALE;
  * quietly flatten them.
  *
  * IT MOVES THREE THINGS THAT ARE NOT THE MODEL, and all three should move with it.
- * Formation spacing is `scale × 1.5`, so squadrons spread as their ships grow and
- * do not intersect. The tap sphere is `max(0.45, scale × 1.6)`, so a bigger craft
- * is a bigger target — at 1.0 the Wasp's sphere was pinned to the 0.45 floor and
+ * Formation spacing is `largest hull scale × 1.8`, so mixed squadrons make room
+ * for their largest craft and do not intersect. The tap sphere is
+ * `max(0.45, scale × 1.6)`, so a bigger craft is a bigger target — at 1.0 the
+ * lightest hull's sphere was pinned to the 0.45 floor and
  * at 1.5 it clears it, which is a real gain on a phone. The wake and the exhaust
  * are both stated in units of `scale` already.
  *
@@ -434,12 +435,35 @@ export interface LegStandoff {
 
 export const NO_STANDOFF: LegStandoff = { start: 0, end: 0 };
 
+/**
+ * HOW FAR SHORT OF A PIRATE A RAID HOLDS. D150.
+ *
+ * There is no world at a rendezvous, so `orbitStandoff` has no radius to work
+ * from and both formations would be drawn occupying the same point — two fleets
+ * inside each other, with nothing for a volley to cross. A fixed clearance gives
+ * the ten seconds a shape: two groups facing each other with a gap between them,
+ * which is what the engagement IS.
+ *
+ * A CONSTANT, BECAUSE THERE IS NOTHING TO DERIVE IT FROM. Every other standoff in
+ * this file is a function of how big the thing being approached is drawn; a pirate
+ * fleet is drawn from its own manifest and has no published size at all.
+ */
+export const PIRATE_STANDOFF = 6;
+
 export function legStandoff(
   thread: PendingThread,
   nodes: readonly PlanetNode[],
 ): LegStandoff {
   if (!thread.path) return NO_STANDOFF;
   const returning = thread.leg === 'return';
+  if (thread.kind === 'pirate') {
+    // Home takes the ordinary surface clearance; the far end is empty space.
+    const homeNode = targetNodeOf(nodes, returning ? thread.path.to : thread.path.from);
+    const home = homeNode ? surfaceStandoff(homeNode.radius) : 0;
+    return returning
+      ? { start: PIRATE_STANDOFF, end: home }
+      : { start: home, end: PIRATE_STANDOFF };
+  }
   // A return mission row is stored with the two worlds swapped (D28), so the
   // foreign orbit is the start on the way home and the end on the way out. Home
   // is the other endpoint and takes only the tight surface clearance (D120).

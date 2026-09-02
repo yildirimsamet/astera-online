@@ -1,5 +1,6 @@
 import { and, eq, inArray, isNull, lte, or } from 'drizzle-orm';
 import {
+  ALL_HULLS,
   DEBRIS,
   HULLS,
   MULTI_WORLD,
@@ -145,9 +146,18 @@ async function createAttackerDebris(
   const total = alloy + crystal + deuterium;
   const wreck = attackerWreckValue(losses);
   if (wreck === 0) return;
+  // The position is stored beside the anchor rather than resolved through it, so
+  // every reader has one place to look whether or not there is a world here. D150.
+  const [at] = await tx
+    .select({ x: planets.x, y: planets.y, z: planets.z })
+    .from(planets)
+    .where(eq(planets.id, mission.targetPlanetId));
   await tx.insert(debrisFields).values({
     seasonId: mission.seasonId,
     planetId: mission.targetPlanetId,
+    x: at?.x ?? 0,
+    y: at?.y ?? 0,
+    z: at?.z ?? 0,
     missionId: mission.id,
     alloy: wreck * alloy / total,
     crystal: wreck * crystal / total,
@@ -174,7 +184,7 @@ export async function resolveNeutralBattle(
   const result = resolveCombat(
     attackingFleet, defenders, neutral.shield, seededFrom(mission.id),
     // A caretaker world researches nothing; the raider's doctrines still count. T9.
-    { attacker: mission.tech ?? {}, defender: {} },
+    { attacker: { tech: mission.tech ?? {} }, defender: { tech: {} } },
   );
   await setNeutralFleet(tx, mission.targetPlanetId, result.defenderSurvivors);
   const loot = computeLoot(
@@ -325,6 +335,7 @@ export async function resolveNeutralBattle(
       mission.distance,
       result.attackerSurvivors,
       fleetSpeedMult(attackerOrbit),
+      mission.tech ?? {},
     );
     const arriveAt = addMinutes(clock.now(), home);
     const [returnMission] = await tx.insert(missions).values({
@@ -335,6 +346,7 @@ export async function resolveNeutralBattle(
       targetPlanetId: mission.originPlanetId,
       fleet: result.attackerSurvivors,
       loot: { alloy: loot.alloy, crystal: loot.crystal, deuterium: loot.deuterium },
+      tech: mission.tech,
       distance: mission.distance,
       departAt: clock.now(),
       arriveAt,
@@ -371,7 +383,12 @@ export async function returnAttackUntouched(
   if (fleetCount(fleet) === 0) return;
   const arriveAt = addMinutes(
     clock.now(),
-    fleetTravelExact(mission.distance, fleet, fleetSpeedMult(attackerOrbit)),
+    fleetTravelExact(
+      mission.distance,
+      fleet,
+      fleetSpeedMult(attackerOrbit),
+      mission.tech ?? {},
+    ),
   );
   const [ret] = await tx.insert(missions).values({
     seasonId: mission.seasonId,
@@ -381,6 +398,7 @@ export async function returnAttackUntouched(
     targetPlanetId: mission.originPlanetId,
     fleet,
     loot: { alloy: 0, crystal: 0, deuterium: 0 },
+    tech: mission.tech,
     distance: mission.distance,
     departAt: clock.now(),
     arriveAt,
@@ -464,7 +482,7 @@ export async function reinforceNeutral(
 
   const current = await neutralFleet(tx, planetId);
   const targets = { ...template.fleet, ...template.ground } as Fleet;
-  const tie: HullId[] = ['WASP', 'LANCE', 'BULWARK', 'THORN', 'BASTION'];
+  const tie: HullId[] = ALL_HULLS.filter((hull) => (targets[hull] ?? 0) > 0);
   while (!reinforcementBlocked) {
     const missing = tie.filter((hull) => (current[hull] ?? 0) < (targets[hull] ?? 0));
     if (missing.length === 0) break;

@@ -8,7 +8,7 @@
  *
  * This walks a stranger through the whole thing on a phone-sized viewport, exactly
  * as one would: read the disc, tap your own world, learn the four-part loop, raise
- * three buildings, buy two Wasps, inspect a neighbour, and sign the world. It photographs every
+ * three buildings, buy two Darts, inspect a neighbour, and sign the world. It photographs every
  * beat and MEASURES what the scene actually holds through `window.__galaxy`.
  *
  *   PORT=3210 DATABASE_URL=... pnpm --filter @astera/server dev
@@ -200,9 +200,9 @@ check('the disc drew worlds', (scene?.planets.length ?? 0) > 1, `${scene?.kinds.
  * The first version of this measured once and then clicked six stale points in
  * empty space, which reads exactly like a beat that will not advance.
  *
- * `SCALE` and `VERTICAL_EXAGGERATION` are `galaxy/scene.ts`'s — the disc is drawn
- * fifty times smaller than the game's own units with its height stretched 3.5×, so
- * a raw game position projects to somewhere off the bottom of the screen.
+ * The shared view contract currently scales every axis by fifty. This used to
+ * duplicate a 3.5× vertical exaggeration that has since been removed; using the
+ * old projection makes a real reserved world look like empty space to the harness.
  */
 const aim = (p) =>
   page.evaluate(
@@ -210,7 +210,7 @@ const aim = (p) =>
       const g = window.__galaxy;
       if (!g) return null;
       const rect = g.gl.domElement.getBoundingClientRect();
-      const v = g.camera.position.clone().set(x / 50, (y * 3.5) / 50, z / 50).project(g.camera);
+      const v = g.camera.position.clone().set(x / 50, y / 50, z / 50).project(g.camera);
       return [
         rect.left + ((v.x + 1) / 2) * rect.width,
         rect.top + ((1 - v.y) / 2) * rect.height,
@@ -318,9 +318,9 @@ check(
   afterUpgrades.split('\n')[1] ?? '',
 );
 
-/* ── beat 7: inspect and build the two Wasps ─────────────────── */
+/* ── beat 7: inspect and build the two Darts ─────────────────── */
 
-await tap(page.locator('#row-WASP [data-open-item]').first());
+await tap(page.locator('#row-DART [data-open-item]').first());
 await settle(900);
 await shot('07-build-sheet');
 

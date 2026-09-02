@@ -36,7 +36,7 @@ const thread = (id: string): PendingThread => ({
   minutesRemaining: 4,
   arriveAt: new Date('2026-04-01T12:04:00.000Z'),
   leg: 'outbound',
-  fleet: { WASP: 8 },
+  fleet: { DART: 8 },
   path: {
     from: { x: 0, y: 0, z: 0 },
     to: { x: 40, y: 0, z: 0 },
@@ -102,7 +102,7 @@ describe('a launch racing a read that is already in the air', () => {
     });
 
     act(() => {
-      result.current.launch.mutate({ targetPlanetId: 'p2', fleet: { WASP: 8 } });
+      result.current.launch.mutate({ targetPlanetId: 'p2', fleet: { DART: 8 } });
     });
 
     await waitFor(() => {
@@ -145,7 +145,7 @@ describe('a launch racing a read that is already in the air', () => {
 
     const { result } = renderHook(() => useLaunch(), { wrapper });
     act(() => {
-      result.current.mutate({ targetPlanetId: 'p2', fleet: { WASP: 8 } });
+      result.current.mutate({ targetPlanetId: 'p2', fleet: { DART: 8 } });
     });
 
     await waitFor(() => {

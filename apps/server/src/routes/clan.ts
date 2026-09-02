@@ -27,6 +27,7 @@ import { markClanChatRead, postClanChat, readClanChat } from '../services/clanCh
 import { launchClanAid, quoteClanAid, readClanAid } from '../services/clanAid.js';
 import { readClanStrength } from '../services/clanStrength.js';
 import { requireAuth } from './auth.js';
+import { mobileFleetSchema } from '../schemas/fleet.js';
 
 const uuidParam = z.object({ clanId: z.string().uuid() }).strict();
 const requestParam = z.object({ requestId: z.string().uuid() }).strict();
@@ -57,7 +58,6 @@ const messageBody = z.object({
 }).strict();
 const chatReadBody = z.object({ messageId: z.string().uuid() }).strict();
 const emptyBody = z.object({}).strict();
-const clanHull = z.enum(['WASP', 'LANCE', 'BULWARK', 'HAULER', 'RUNNER', 'BREACHER']);
 const resourcesBody = z.object({
   alloy: z.number().int().min(0),
   crystal: z.number().int().min(0),
@@ -67,7 +67,7 @@ const aidBody = z.object({
   originPlanetId: z.string().uuid(),
   recipientPlayerId: z.string().uuid(),
   targetPlanetId: z.string().uuid(),
-  fleet: z.record(clanHull, z.number().int().min(0)),
+  fleet: mobileFleetSchema,
   cargo: resourcesBody,
 }).strict();
 

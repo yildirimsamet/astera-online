@@ -213,7 +213,7 @@ describe('the coverage panel', () => {
  *
  * The note under "Who is looking at you" used to promise a fixed number of
  * minutes, and that figure was never a property of the radar: the same twelve
- * minutes caught a Wasp fleet 460 units out and a Bulwark fleet 210. A reach is
+ * minutes caught a Dart fleet 460 units out and a Bulwark fleet 210. A reach is
  * the thing the defender owns; the warning it buys is what the ATTACKER decides,
  * by choosing what to fly.
  */

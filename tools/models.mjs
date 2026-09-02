@@ -124,27 +124,43 @@ const POLICY = {
 
 const DEFAULT_POLICY = { texture: 512, simplify: false };
 
-/**
- * Hulls normally keep a 512px plate, but these two arrive with three texture
- * maps rather than one. At their 40–60px in-flight footprint, 256px preserves
- * the read while keeping each complete GLB near the fleet's 100 KB budget.
- */
 const PATH_POLICY = {
-  'ships/runner.glb': { texture: 256, simplify: false },
-  'ships/breacher.glb': { texture: 256, simplify: false },
   // The strategic craft is shown larger than a normal hull, but its raw Tripo
   // sphere spends 17k triangles and a 4K plate on grooves that collapse below a
   // pixel in flight. Keep the silhouette and a 512px plate; simplify the surface.
   'ships/death_star.glb': { texture: 512, simplify: true, ratio: 0.35, error: 0.01 },
+  // Fleet V2 uses a 768px detail plate by default. These source textures
+  // encode at opposite ends of the content range, so keep all of them inside the
+  // owner's approximately 200–300 KB visual-quality envelope without changing geometry.
+  'ships/pike.glb': { texture: 800, simplify: false },
+  'ships/praetorian.glb': { texture: 736, simplify: false },
+  'ships/citadel.glb': { texture: 752, simplify: false },
 };
 
+/**
+ * Fleet V2 hulls all carry three maps and render at roughly 40–60px in flight.
+ * Physical review showed that the former 256px plate erased authored surface
+ * detail. A 768px plate keeps each runtime GLB in the requested 200–300 KiB
+ * band while preserving every source triangle.
+ */
+const FLEET_V2_MODEL_PATHS = new Set([
+  'dart', 'pike', 'rampart', 'warden', 'courier',
+  'viper', 'talon', 'stronghold', 'sentinel', 'wayfarer',
+  'tempest', 'ballista', 'leviathan', 'praetorian', 'atlas', 'nullifier',
+  'cataclysm', 'citadel',
+].map((name) => `ships/${name}.glb`));
+
 /** The first path segment under SOURCE names the kind. */
-const policyFor = (relPath) =>
-  PATH_POLICY[relPath.replaceAll('\\', '/')] ??
+const policyFor = (relPath) => {
+  const canonical = relPath.replaceAll('\\', '/');
+  return PATH_POLICY[canonical] ??
+  (FLEET_V2_MODEL_PATHS.has(canonical) ? { texture: 768, simplify: false } : undefined) ??
   POLICY[relPath.split(/[\\/]/)[0]] ??
   DEFAULT_POLICY;
+};
 
 const inspectOnly = process.argv.includes('--inspect');
+const fleetV2Only = process.argv.includes('--fleet-v2');
 
 function walk(dir) {
   const found = [];
@@ -197,6 +213,12 @@ try {
 } catch {
   console.log(`No ${SOURCE} directory. Put master .glb files there.`);
   process.exit(0);
+}
+
+if (fleetV2Only) {
+  sources = sources.filter((source) =>
+    FLEET_V2_MODEL_PATHS.has(relative(SOURCE, source).replaceAll('\\', '/')),
+  );
 }
 
 if (sources.length === 0) {

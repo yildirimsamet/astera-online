@@ -10,6 +10,7 @@
 /** Depodan çıkan pay: `SpendBar`. */
 export const spend = {
   reading: '{{label}}: {{spend}} gider, {{left}} kalır',
+  readingSpend: '{{label}} — miktar: {{spend}}',
   readingShort: '{{label}}: {{short}} eksik',
 } as const;
 

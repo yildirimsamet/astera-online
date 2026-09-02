@@ -21,7 +21,7 @@ import type { ChatChannel } from './ChatLauncher.js';
 interface MessageRow {
   id: string;
   authorPlayerId: string;
-  planetId: string;
+  planetId?: string;
   username: string;
   content: string;
   createdAt: Date;
@@ -283,17 +283,21 @@ function ChannelPanel({
                 <div className="flex items-baseline justify-between gap-3">
                   {message.self ? (
                     <strong className={`name truncate ${selfInk}`}>{message.username}</strong>
-                  ) : (
+                  ) : message.planetId !== undefined ? (
                     <button
                       type="button"
                       onClick={() => {
+                        const planetId = message.planetId;
+                        if (planetId === undefined) return;
                         haptic('tap');
-                        onFocusPlanet(message.planetId);
+                        onFocusPlanet(planetId);
                       }}
                       className="name truncate text-bone underline decoration-bone/35 underline-offset-2"
                     >
                       {message.username}
                     </button>
+                  ) : (
+                    <span className="name truncate text-bone">{message.username}</span>
                   )}
                   <time className="shrink-0 text-micro text-faint" dateTime={message.createdAt.toISOString()}>
                     {chatRelativeTime(message.createdAt, now, t)}

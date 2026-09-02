@@ -11,6 +11,7 @@ import { GameError, withPlanetLock, type LockedPlanet } from '../services/planet
 import { planetView } from '../services/planetView.js';
 import { joinSeason } from '../services/player.js';
 import { currentPlacement, listServers, resolveJoinTarget } from '../services/servers.js';
+import { onboardingIntentSchema } from '../schemas/fleet.js';
 import { openSession } from './auth.js';
 
 /**
@@ -38,27 +39,12 @@ import { openSession } from './auth.js';
  */
 
 /** What the visitor did during the rehearsal, in the order they did it. */
-const intent = z.discriminatedUnion('kind', [
-  z.object({
-    kind: z.literal('upgrade'),
-    building: z.enum(['CORE', 'REFINERY', 'EXTRACTOR', 'VAULT', 'SHIPYARD']),
-  }),
-  z.object({
-    kind: z.literal('build'),
-    hull: z.enum(['WASP', 'LANCE', 'BULWARK', 'HAULER', 'BASTION', 'THORN', 'PROSPECTOR']),
-    count: z.number().int().min(1).max(100),
-  }),
-  z.object({
-    kind: z.literal('launch'),
-    targetPlanetId: z.string().uuid(),
-    fleet: z.record(z.enum(['WASP', 'LANCE', 'BULWARK', 'HAULER']), z.number().int().min(0)),
-  }),
-]);
+const intent = onboardingIntentSchema;
 
 /**
  * A CAP, BECAUSE THIS LIST ARRIVES FROM A CLIENT THAT IS NOT SIGNED IN.
  *
- * The scripted opening is four steps — three upgrades and one two-Wasp build —
+ * The scripted opening is four steps — three upgrades and one two-Dart build —
  * with room to spare. Twelve is generous for anything a rehearsal can produce and
  * small enough that nobody can hand an unauthenticated endpoint a thousand
  * transactions to run.

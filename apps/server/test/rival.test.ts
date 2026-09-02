@@ -119,7 +119,7 @@ describe('seasonal rival marker', () => {
       ownerPlayerId: f.playerIds[1]!,
       originPlanetId: f.planetIds[1]!,
       targetPlanetId: f.planetIds[0]!,
-      fleet: { WASP: 1 },
+      fleet: { DART: 1 },
       distance: 10,
       departAt: f.clock.now(),
       arriveAt: f.clock.now(),
@@ -134,7 +134,7 @@ describe('seasonal rival marker', () => {
       grade: 'REPELLED',
       rounds: [],
       loot: { alloy: 0, crystal: 0, deuterium: 0 },
-      attackerLosses: { WASP: 1 },
+      attackerLosses: { DART: 1 },
       defenderLosses: {},
       createdAt: f.clock.now(),
     });

@@ -51,6 +51,8 @@ export const pendingStrip = {
   deathStar: 'Ölüm Yıldızın → {{target}}',
   settlement: 'Yerleşim → {{target}}',
   transfer: 'Aktarım → {{target}}',
+  pirateOut: 'Akın → {{target}}',
+  pirateHome: 'Akın dönüyor · {{target}}',
   fleetHome: 'Filon dönüyor · {{target}}',
   fleetOut: 'Filon → {{target}}',
   engaging: 'Çatışıyor',

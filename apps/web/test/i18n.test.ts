@@ -75,11 +75,11 @@ const RESEARCH_DETAIL_KEYS = {
   YARD_AUTOMATION: 'yardDetail',
   PROSPECTOR_HOLDS: 'holdsDetail',
   CARGO_HOLDS: 'cargoDetail',
-  WASP_DOCTRINE: 'waspDoctrineDetail',
-  LANCE_DOCTRINE: 'lanceDoctrineDetail',
-  BULWARK_DOCTRINE: 'bulwarkDoctrineDetail',
+  SHIP_POWER: 'powerDetail',
+  SHIP_ARMOR: 'armorDetail',
+  SHIP_PROPULSION: 'propulsionDetail',
   EMPLACEMENT_DOCTRINE: 'groundDoctrineDetail',
-  WEAPONS_GENERAL: 'generalDetail',
+  STARSHIP_ENGINEERING: 'engineeringDetail',
   INTERCEPTION_GRID: 'gridDetail',
   STRATEGIC_STOCKPILE: 'stockpileDetail',
 } as const satisfies Record<ResearchProjectId, keyof typeof en.research>;
@@ -123,7 +123,7 @@ const IDENTICAL_ON_PURPOSE = new Set([
   'planet.queue.segment',
   'notifications.composition',
   'notifications.join',
-  // The away-fleet note's list: "83 Wasp · 2 Hauler". The sentence around it is
+  // The away-fleet note's list: "83 Dart · 2 Courier". The sentence around it is
   // translated (`launch.away`); the pair and the separator carry no words. Its
   // own keys rather than the notification pair above, because no surface shares
   // a string with another surface (D55).
@@ -146,6 +146,9 @@ const IDENTICAL_ON_PURPOSE = new Set([
   'landing.form.namePlaceholder',
   'vocabulary.instrument.RADAR.name',
   'vocabulary.instrument.AEGIS.name',
+  // Fleet V2 keeps these mythological proper names unchanged in Turkish.
+  'vocabulary.hull.LEVIATHAN.name',
+  'vocabulary.hull.ATLAS.name',
   // The reward panel. A multiplier and a fraction are notation, not language —
   // "×3" and "3 / 5" are read the same in both. The LEVEL forms beside them are
   // not on this list, because `L5` is `S5` in Turkish (seviye) and a translated
@@ -215,6 +218,12 @@ describe('queue refusals name the player’s next move', () => {
     expect(tr.planet.blocked.queueFull).toMatch(/3 sipariş.*bitsin veya.*iptal/i);
     expect(tr.planet.blocked.queueFull).not.toMatch(/^o üretim sırası dolu$/i);
   });
+
+  it('tells a full irreversible Research queue to wait, never to cancel', () => {
+    expect(en.research.queueFull).toMatch(/3 research.*wait.*finish/i);
+    expect(tr.research.queueFull).toMatch(/3 araştırma.*bitmesini bekle/i);
+    expect(`${en.research.queueFull} ${tr.research.queueFull}`).not.toMatch(/cancel|iptal/i);
+  });
 });
 
 describe('decision sheets explain every item', () => {
@@ -256,9 +265,13 @@ describe('decision sheets explain every item', () => {
   });
 
   it('keeps the rule-sensitive explanations aligned with the mechanics', () => {
-    // Lance Doctrine owns Breachers as well as Lances.
-    expect(en.research.lanceDoctrineDetail).toContain('Breacher');
-    expect(tr.research.lanceDoctrineDetail).toContain('Delici');
+    // Power owns Nullifier's ordinary attack; its shield-only specialization stays separate.
+    expect(en.research.powerDetail).toContain('Nullifier');
+    expect(tr.research.powerDetail).toContain('Söndürücü');
+
+    // Engineering is permission only, with one useful rung for each advanced tier.
+    expect(en.research.engineeringDetail).toMatch(/first rung opens Tier 3.*second opens Tier 4/i);
+    expect(tr.research.engineeringDetail).toMatch(/İlk kademe üçüncü seviye.*ikinci kademe dördüncü seviye/i);
 
     // Automation applies to mobile craft, not the separate ground-defence curve.
     expect(en.research.yardDetail).toContain('does not speed up ground defences');
@@ -448,10 +461,10 @@ describe('a refusal arrives in the language that is up', () => {
 
   /** A hull arrives as an ID so the client can name it in either language. */
   it('names a hull rather than printing its id', async () => {
-    const err = new ApiError('NOT_ENOUGH_SHIPS', 'Not enough WASP at home', 400, { hull: 'WASP' });
-    expect(describeError(err)).toContain('Wasp');
+    const err = new ApiError('NOT_ENOUGH_SHIPS', 'Not enough DART at home', 400, { hull: 'DART' });
+    expect(describeError(err)).toContain('Dart');
     await i18n.changeLanguage('tr');
-    expect(describeError(err)).toContain('Atmaca');
+    expect(describeError(err)).toContain('Ok');
     await i18n.changeLanguage('en');
   });
 

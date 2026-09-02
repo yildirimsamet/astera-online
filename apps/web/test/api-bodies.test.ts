@@ -58,21 +58,21 @@ const WITH_BODY: [name: string, call: (api: Api) => Promise<unknown>, expected: 
   ['claim', (a) => a.claim('vantage', 'a-long-enough-password', []), { username: 'vantage', password: 'a-long-enough-password', intents: [] }],
   ['setRival', (a) => a.setRival('p-2'), { planetId: 'p-2' }],
   ['upgrade', (a) => a.upgrade('CORE'), { type: 'CORE' }],
-  ['build', (a) => a.build('WASP', 4), { hull: 'WASP', count: 4 }],
+  ['build', (a) => a.build('DART', 4), { hull: 'DART', count: 4 }],
   ['completeResearch', (a) => a.completeResearch('ISOTOPE_SPECTROMETRY'), { projectId: 'ISOTOPE_SPECTROMETRY' }],
   ['raiseInstrument', (a) => a.raiseInstrument('TELESCOPE'), { type: 'TELESCOPE' }],
   ['installSatellite', (a) => a.installSatellite('UPLINK'), { type: 'UPLINK' }],
-  ['launch', (a) => a.launch('p-1', { WASP: 3 }), { targetPlanetId: 'p-1', fleet: { WASP: 3 } }],
+  ['launch', (a) => a.launch('p-1', { DART: 3 }), { targetPlanetId: 'p-1', fleet: { DART: 3 } }],
   ['watch', (a) => a.watch('p-1', 2), { targetPlanetId: 'p-1', slot: 2 }],
   ['probe', (a) => a.probe('p-1'), { targetPlanetId: 'p-1' }],
   ['postChat', (a) => a.postChat('hello'), { content: 'hello' }],
   ['markChatRead', (a) => a.markChatRead('00000000-0000-4000-8000-000000000001'), { messageId: '00000000-0000-4000-8000-000000000001' }],
   ['quoteClanAid', (a) => a.quoteClanAid({
     originPlanetId: 'origin-1', recipientPlayerId: 'player-2', targetPlanetId: 'target-2',
-    fleet: { HAULER: 2 }, cargo: { alloy: 400, crystal: 100, deuterium: 0 },
+    fleet: { COURIER: 2 }, cargo: { alloy: 400, crystal: 100, deuterium: 0 },
   }), {
     originPlanetId: 'origin-1', recipientPlayerId: 'player-2', targetPlanetId: 'target-2',
-    fleet: { HAULER: 2 }, cargo: { alloy: 400, crystal: 100, deuterium: 0 },
+    fleet: { COURIER: 2 }, cargo: { alloy: 400, crystal: 100, deuterium: 0 },
   }],
   ['createClan', (a) => a.createClan({ name: 'Orbit Wardens', tag: 'ORB', description: 'Watch the rim.', recruiting: true }), {
     name: 'Orbit Wardens', tag: 'ORB', description: 'Watch the rim.', recruiting: true,
@@ -93,10 +93,10 @@ const WITH_BODY: [name: string, call: (api: Api) => Promise<unknown>, expected: 
   ['claimClanDepot', (a) => a.claimClanDepot(), {}],
   ['launchClanAid', (a) => a.launchClanAid({
     originPlanetId: 'origin-1', recipientPlayerId: 'player-2', targetPlanetId: 'target-2',
-    fleet: { HAULER: 2 }, cargo: { alloy: 400, crystal: 100, deuterium: 0 },
+    fleet: { COURIER: 2 }, cargo: { alloy: 400, crystal: 100, deuterium: 0 },
   }), {
     originPlanetId: 'origin-1', recipientPlayerId: 'player-2', targetPlanetId: 'target-2',
-    fleet: { HAULER: 2 }, cargo: { alloy: 400, crystal: 100, deuterium: 0 },
+    fleet: { COURIER: 2 }, cargo: { alloy: 400, crystal: 100, deuterium: 0 },
   }],
   ['postClanChat', (a) => a.postClanChat('Rim clear.'), { content: 'Rim clear.' }],
   ['markClanChatRead', (a) => a.markClanChatRead('message-1'), { messageId: 'message-1' }],

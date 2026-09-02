@@ -165,7 +165,7 @@ export const reports = {
   roundTook: 'You took',
   roundLine: 'you dealt <0>{{dealt}}</0>, took <1>{{took}}</1>',
   shield: 'shield {{amount}}',
-  breacherShield: 'Breacher +{{amount}}',
+  shieldBreaker: 'Nullifier +{{amount}}',
   aegis: {
     aria: 'Aegis shield',
     label: 'AEGIS',
@@ -208,7 +208,7 @@ export const reports = {
     shieldCharge: 'Shield charge',
     absorbed: '{{amount}} absorbed',
     reachedHulls: 'Reached hulls',
-    breacher: '{{amount}} was Breacher-only shield damage',
+    shieldBreaker: '{{amount}} was Nullifier-only shield damage',
     noAegisNote: 'Nothing caught the hit; all {{amount}} attack power reached the defending hulls.',
     losses: '3 · Losses leave the battle',
   },
@@ -275,7 +275,7 @@ export const reports = {
     shieldTheirs: 'Their shield soaked {{amount}} damage before anything reached a hull.',
     shieldYours: 'Your shield soaked {{amount}} damage before anything reached a hull.',
     cargoLimited:
-      'Your holds were full. There was more on that world than you had the cargo to carry — bring Haulers.',
+      'Your holds were full. There was more on that world than you could carry — bring Courier, Wayfarer or Atlas transports.',
     salvaged_one: '{{count}} ground gun was rebuilt from its own wreckage and is standing again.',
     salvaged_other: '{{count}} ground guns were rebuilt from their own wreckage and are standing again.',
     worksTheirs: 'Their works are offline for {{duration}}. Nothing is being produced there.',
@@ -297,7 +297,7 @@ export const reports = {
     left: 'Left',
     summary: '{{brought}} into the fight · {{lost}} destroyed · {{left}} standing',
   },
-  /** Whose casualties. Both sides fly Wasps, so colour alone cannot say it. */
+  /** Whose casualties. Both sides fly Darts, so colour alone cannot say it. */
   roundTheirs: 'Them',
   roundYours: 'You',
   roundNoLosses: 'Neither side lost a unit this round.',

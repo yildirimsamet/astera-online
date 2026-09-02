@@ -3,7 +3,7 @@ import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import {
-  BUILDING_IDS, HULLS, INSTRUMENT_IDS, INSTRUMENT_MAX_LEVEL, RESEARCH_PROJECT_IDS,
+  BUILDING_IDS, FLEET_V2_HULLS, HULLS, INSTRUMENT_IDS, INSTRUMENT_MAX_LEVEL, RESEARCH_PROJECT_IDS,
   SATELLITES, SATELLITE_IDS, satelliteSlots,
 } from '@astera/rules';
 import { PlanetScreen } from '../src/screens/PlanetScreen.js';
@@ -307,16 +307,27 @@ describe('the reach surface', () => {
   const bodyOrder = (names: readonly string[]): number[] =>
     names.map((n) => document.body.textContent.indexOf(n));
 
-  it('leads with the hulls that fight, and puts the miner last', () => {
+  it('groups all eighteen ships by family and tier, then puts the preserved miner last', () => {
     show({ buildings: { CORE: 9, REFINERY: 3, EXTRACTOR: 3, VAULT: 1, SHIPYARD: 6 } }, 'reach');
-    const [warships = -1, support = -1, mining = -1] = bodyOrder(['Warships', 'Support', 'Mining']);
-    expect(warships).toBeGreaterThan(-1);
-    expect(support).toBeGreaterThan(warships);
-    expect(mining).toBeGreaterThan(support);
+    const [offensive = -1, defensive = -1, cargo = -1, specialist = -1, mining = -1] =
+      bodyOrder(['Offensive hulls', 'Defensive hulls', 'Cargo hulls', 'Specialist hulls', 'Mining']);
+    expect(offensive).toBeGreaterThan(-1);
+    expect(defensive).toBeGreaterThan(offensive);
+    expect(cargo).toBeGreaterThan(defensive);
+    expect(specialist).toBeGreaterThan(cargo);
+    expect(mining).toBeGreaterThan(specialist);
 
-    const wasp = screen.getByText('Wasp');
+    for (const id of FLEET_V2_HULLS) {
+      const item = document.querySelector(`[data-hull-id="${id}"]`);
+      expect(item, id).not.toBeNull();
+      expect(item).toHaveAttribute('data-hull-family', HULLS[id].family);
+      expect(item).toHaveAttribute('data-hull-tier', String(HULLS[id].tier));
+    }
+    expect(document.querySelectorAll('[data-hull-id]')).toHaveLength(FLEET_V2_HULLS.length);
+
+    const dart = screen.getByText('Dart');
     const prospector = screen.getByText('Prospector');
-    expect(wasp.compareDocumentPosition(prospector) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(dart.compareDocumentPosition(prospector) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 
   /**
@@ -342,46 +353,24 @@ describe('the reach surface', () => {
     }
   });
 
-  it('keeps the Runner behind Dense Fuel Cells and shows its Deuterium price when unlocked', () => {
+  it('keeps Tier 3 rows visible and routes each lock to its first missing catalog requirement', () => {
     const locked = show({ buildings: { CORE: 9, REFINERY: 3, EXTRACTOR: 3, VAULT: 1, SHIPYARD: 6 } }, 'reach');
-    expect(locked.container.querySelector('#row-RUNNER')).toHaveTextContent('Dense Fuel Cells first');
+    expect(locked.container.querySelector('#row-WAYFARER [data-progression-state="locked"]')).toBeNull();
+    expect(locked.container.querySelector('#row-TEMPEST')).toHaveTextContent('Starship Engineering I');
+    expect(locked.container.querySelector('#row-ATLAS')).toHaveTextContent('Starship Engineering I');
+    expect(locked.container.querySelector('#row-NULLIFIER')).toHaveTextContent('Starship Engineering I');
     locked.unmount();
 
-    const research = planet().research.map((project) => ({
-      ...project,
-      discovered: true,
-      available: true,
-      completed: true,
-      completedAt: new Date('2026-08-23T00:00:00.000Z'),
+    const engineeringOnly = planet().research.map((project) => ({
+      ...project, level: project.id === 'STARSHIP_ENGINEERING' ? 1 : project.level,
     }));
-    const unlocked = show({
+    const nextGate = show({
       buildings: { CORE: 9, REFINERY: 3, EXTRACTOR: 3, VAULT: 1, SHIPYARD: 6 },
-      research,
+      research: engineeringOnly,
     }, 'reach');
-    const runner = unlocked.container.querySelector('#row-RUNNER');
-    expect(runner).not.toHaveTextContent('Dense Fuel Cells first');
-    expect(runner).toHaveTextContent(String(HULLS.RUNNER.deuterium));
-  });
-
-  it('keeps the Breacher behind Gravitic Charges and shows its Deuterium price when unlocked', () => {
-    const locked = show({ buildings: { CORE: 9, REFINERY: 3, EXTRACTOR: 3, VAULT: 1, SHIPYARD: 6 } }, 'reach');
-    expect(locked.container.querySelector('#row-BREACHER')).toHaveTextContent('Gravitic Charges first');
-    locked.unmount();
-
-    const research = planet().research.map((project) => ({
-      ...project,
-      discovered: true,
-      available: true,
-      completed: true,
-      completedAt: new Date('2026-08-23T00:00:00.000Z'),
-    }));
-    const unlocked = show({
-      buildings: { CORE: 9, REFINERY: 3, EXTRACTOR: 3, VAULT: 1, SHIPYARD: 6 },
-      research,
-    }, 'reach');
-    const breacher = unlocked.container.querySelector('#row-BREACHER');
-    expect(breacher).not.toHaveTextContent('Gravitic Charges first');
-    expect(breacher).toHaveTextContent(String(HULLS.BREACHER.deuterium));
+    expect(nextGate.container.querySelector('#row-TEMPEST')).toHaveTextContent('Ship Power II');
+    expect(nextGate.container.querySelector('#row-ATLAS')).toHaveTextContent('Ship Propulsion II');
+    expect(nextGate.container.querySelector('#row-NULLIFIER')).toHaveTextContent('Gravitic Charges I');
   });
 
   it('says a Prospector is aimed at a rock rather than at a person', () => {
@@ -389,10 +378,11 @@ describe('the reach surface', () => {
     expect(screen.getByText(/only to revealed asteroids or debris fields/i)).toBeInTheDocument();
   });
 
-  it('tags every hull with what it is', () => {
+  it('tags every Fleet V2 hull with what it is', () => {
     show({ buildings: { CORE: 9, REFINERY: 3, EXTRACTOR: 3, VAULT: 1, SHIPYARD: 6 } }, 'reach');
-    for (const tag of ['Cheap, fast attacker', 'Counters light craft', 'Slow and tough', 'Breaks active shields', 'Carries the loot home', 'Fast strike cargo', 'Mines asteroids']) {
-      expect(screen.getByText(tag), `${tag} is missing`).toBeInTheDocument();
+    for (const id of FLEET_V2_HULLS) {
+      expect(document.querySelector(`[data-hull-id="${id}"]`), id)
+        .toHaveTextContent(HULLS[id].tier === 4 ? /capital/i : /./);
     }
   });
 
@@ -445,7 +435,7 @@ describe('the compact row and sheet grammar', () => {
       ['orbit', 'Telescope'],
       ['defend', 'Aegis'],
       ['defend', 'Thorn'],
-      ['reach', 'Wasp'],
+      ['reach', 'Dart'],
     ] as const;
 
     for (const [tab, name] of cases) {

@@ -1,7 +1,10 @@
 /** Shared vocabulary for the whole game. No behaviour lives here. */
 
 export type HullId =
-  | 'WASP' | 'LANCE' | 'BULWARK' | 'HAULER' | 'RUNNER' | 'BREACHER'
+  | 'DART' | 'PIKE' | 'RAMPART' | 'WARDEN' | 'COURIER'
+  | 'VIPER' | 'TALON' | 'STRONGHOLD' | 'SENTINEL' | 'WAYFARER'
+  | 'TEMPEST' | 'BALLISTA' | 'LEVIATHAN' | 'PRAETORIAN' | 'ATLAS' | 'NULLIFIER'
+  | 'CATACLYSM' | 'CITADEL'
   | 'BASTION' | 'THORN'
   | 'PROSPECTOR';
 
@@ -34,6 +37,11 @@ export type MiningHullId = 'PROSPECTOR';
 
 export type MobileHullId = Exclude<HullId, GroundHullId | MiningHullId>;
 export type HullClass = 'SKIRMISHER' | 'LANCE' | 'BULWARK' | 'SUPPORT';
+export type ShipTier = 1 | 2 | 3 | 4;
+export type HullFamily = 'OFFENSIVE' | 'DEFENSIVE' | 'CARGO' | 'SPECIALIST' | 'PRESERVED';
+export type HullProfile =
+  | 'RAIDER' | 'STRIKER' | 'FORTRESS' | 'ESCORT' | 'TRANSPORT' | 'SHIELD_BREAKER'
+  | 'EMPLACEMENT' | 'MINER';
 
 /**
  * The five structures on the surface.
@@ -138,11 +146,11 @@ export type ResearchProjectId =
   | 'YARD_AUTOMATION'
   | 'PROSPECTOR_HOLDS'
   | 'CARGO_HOLDS'
-  | 'WASP_DOCTRINE'
-  | 'LANCE_DOCTRINE'
-  | 'BULWARK_DOCTRINE'
+  | 'STARSHIP_ENGINEERING'
+  | 'SHIP_POWER'
+  | 'SHIP_ARMOR'
+  | 'SHIP_PROPULSION'
   | 'EMPLACEMENT_DOCTRINE'
-  | 'WEAPONS_GENERAL'
   | 'INTERCEPTION_GRID'
   | 'STRATEGIC_STOCKPILE';
 export const RESEARCH_PROJECT_IDS = [
@@ -160,20 +168,30 @@ export const RESEARCH_PROJECT_IDS = [
   'YARD_AUTOMATION',
   'PROSPECTOR_HOLDS',
   'CARGO_HOLDS',
-  /** Four doctrines and one general armour project. T9. */
-  'WASP_DOCTRINE',
-  'LANCE_DOCTRINE',
-  'BULWARK_DOCTRINE',
+  /** Fleet V2 permissions and bounded stat ladders. D148. */
+  'STARSHIP_ENGINEERING',
+  'SHIP_POWER',
+  'SHIP_ARMOR',
+  'SHIP_PROPULSION',
+  /** Ground progression remains separate from mobile-fleet research. */
   'EMPLACEMENT_DOCTRINE',
-  'WEAPONS_GENERAL',
   /** The two strategic projects: one stops a weapon, one keeps a second on the pad. T10/T11. */
   'INTERCEPTION_GRID',
   'STRATEGIC_STOCKPILE',
 ] as const;
 
+export interface ResearchRequirement {
+  readonly project: ResearchProjectId;
+  readonly level: number;
+}
+
 export interface Hull {
   readonly id: HullId;
   readonly name: string;
+  /** Null for the explicitly preserved ground/mining catalog outside Fleet V2 progression. */
+  readonly tier: ShipTier | null;
+  readonly family: HullFamily;
+  readonly profile: HullProfile;
   readonly cls: HullClass;
   readonly atk: number;
   readonly hp: number;
@@ -184,6 +202,7 @@ export interface Hull {
   readonly crystal: number;
   readonly deuterium: number;
   readonly minShipyard: number;
+  readonly requiredResearch: readonly ResearchRequirement[];
   readonly ground: boolean;
 }
 

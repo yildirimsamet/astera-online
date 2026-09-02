@@ -57,6 +57,7 @@ interface RawEventRow {
   kind: EventRow['kind'];
   ref_id: string | null;
   payload: Record<string, unknown> | null;
+  dedupe_key: string | null;
   resolve_at: string | Date;
   status: EventRow['status'];
   attempts: number;
@@ -72,6 +73,7 @@ function fromRow(raw: unknown): EventRow {
     kind: r.kind,
     refId: r.ref_id,
     payload: r.payload,
+    dedupeKey: r.dedupe_key,
     resolveAt: new Date(r.resolve_at),
     status: r.status,
     attempts: r.attempts,

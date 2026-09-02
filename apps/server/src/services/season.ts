@@ -29,6 +29,7 @@ import {
 } from '../db/schema.js';
 import { addMinutes } from '../clock.js';
 import { schedule } from '../worker/queue.js';
+import { seedGalaxyEventCalendar } from './galaxyEvents.js';
 
 /**
  * The galaxy is never stored slot by slot — it is regenerated from `seed`
@@ -95,7 +96,7 @@ export interface CreateSeasonInput {
   startsAt: Date;
   days?: number;
   playerCap?: number;
-  /** Immutable activation boundary. New production seasons use v3. */
+  /** Immutable activation boundary. New production seasons use Fleet V2 ruleset v4. */
   rulesetVersion?: number;
 }
 
@@ -128,6 +129,8 @@ export async function createSeasonIn(tx: Tx, input: CreateSeasonInput) {
         rulesetVersion: input.rulesetVersion ?? MULTI_WORLD.rulesetVersion,
       })
       .returning();
+
+  await seedGalaxyEventCalendar(tx, season!);
 
   await schedule(tx, {
     seasonId: season!.id,

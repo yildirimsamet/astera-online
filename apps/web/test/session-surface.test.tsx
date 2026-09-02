@@ -278,10 +278,10 @@ describe('notification copy', () => {
         arriveAt: new Date(NOW + 12 * 60_000).toISOString(),
         etaMinutes: 12,
         estimatedShips: 40,
-        fleet: { WASP: 30, LANCE: 10 },
+        fleet: { DART: 30, PIKE: 10 },
         originName: 'Grimhold',
       });
-      expect(line).toContain('30 Wasp · 10 Lance');
+      expect(line).toContain('30 Dart · 10 Pike');
       expect(line).toContain('from Grimhold');
       // The estimate is redundant once the composition is known.
       expect(line).not.toContain('est.');
@@ -366,6 +366,29 @@ describe('notification copy', () => {
   });
 
   describe('craft coming home', () => {
+    it('explains why a same-owner transfer had to turn around', () => {
+      const capacityPayload = {
+        trip: 'transfer_rerouted',
+        reason: 'CAPACITY',
+        craft: 3,
+        targetPlanetId: 'colony-1',
+        targetPlanetName: 'Yeni Ufuk',
+      };
+      expect(say('fleet_returned', capacityPayload)).toBe(
+        'Transfer returning from Yeni Ufuk · destination capacity filled in flight',
+      );
+      expect(say('fleet_returned', {
+        trip: 'transfer_rerouted',
+        reason: 'OWNERSHIP',
+        craft: 3,
+        targetPlanetId: 'colony-1',
+        targetPlanetName: 'Yeni Ufuk',
+      })).toBe('Transfer returning from Yeni Ufuk · the world changed hands in flight');
+      const notification = { ...base, kind: 'fleet_returned', payload: capacityPayload };
+      expect(isUrgent(notification)).toBe(true);
+      expect(isAlarming(notification)).toBe(true);
+    });
+
     it('reads a raid return as ships and loot', () => {
       expect(
         say('fleet_returned', {
@@ -539,5 +562,74 @@ describe('flight bays', () => {
   it('renders nothing at all when a planet has no bays', () => {
     const { container } = render(<Bays flight={{ used: 0, total: 0 }} />);
     expect(container).toBeEmptyDOMElement();
+  });
+});
+
+/**
+ * A RAID AT SOMETHING THAT WAS NOT A COMMANDER. D150 — gap G4.
+ *
+ * `identity()` builds a label out of a username, a world and a clan tag, and a
+ * pirate has none of the three. Left to it, the most memorable outcome this
+ * feature can produce — a captured hull — would have been announced as "You raided
+ * someone at an unknown world".
+ */
+describe('a raid at a pirate', () => {
+  const NOW = new Date('2026-08-19T12:00:00Z').getTime();
+  const base = { id: 'n9', seen: false, at: new Date(NOW) };
+  const say = (payload: unknown): string | null =>
+    describeNotification({ ...base, kind: 'raid_result', payload }, NOW);
+
+  const pirate = {
+    targetKind: 'PIRATE' as const,
+    pirateLevel: 3,
+    pirateCallsign: 'mJtQ',
+    grade: 'DECISIVE',
+    lootAlloy: 900,
+    lootCrystal: 300,
+    lootDeuterium: 0,
+    unitsLost: 4,
+    shipsHome: 26,
+    dominion: 0,
+  };
+
+  it('names the pirate rather than an unknown commander', () => {
+    const line = say(pirate);
+    expect(line).toContain('L3-mJtQ');
+    expect(line).not.toContain('someone');
+    expect(line).not.toContain('unknown world');
+  });
+
+  it('leads with the captured ship, because that is the story', () => {
+    const line = say({ ...pirate, capturedHull: 'TEMPEST' });
+    expect(line).toContain('captured');
+    // Before the ore: a risk that pays in FLEET is the thing this feature exists
+    // for, and burying it after the alloy would throw the moment away.
+    expect(line!.indexOf('captured')).toBeLessThan(line!.indexOf('900'));
+  });
+
+  it('drops a hull this build does not know rather than printing a raw id', () => {
+    const line = say({ ...pirate, capturedHull: 'NOT_A_HULL' });
+    expect(line).not.toContain('NOT_A_HULL');
+    expect(line).toContain('L3-mJtQ');
+  });
+
+  it('still reports a wipe as a wipe', () => {
+    const line = say({ ...pirate, shipsHome: 0, grade: 'REPELLED' });
+    expect(line).toContain('L3-mJtQ');
+  });
+
+  it('leaves an ordinary raid at a commander exactly as it was', () => {
+    const line = say({
+      grade: 'PARTIAL',
+      targetUsername: 'Sable',
+      targetPlanetName: 'Kepler',
+      lootAlloy: 10,
+      lootCrystal: 0,
+      lootDeuterium: 0,
+      unitsLost: 1,
+      shipsHome: 3,
+    });
+    expect(line).toContain('Sable');
+    expect(line).not.toContain('L3');
   });
 });

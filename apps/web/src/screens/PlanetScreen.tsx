@@ -5,6 +5,7 @@ import { Unreachable, Waiting } from '../ui/kit/Surface.js';
 import {
   ANTI_STRATEGIC,
   BUILD,
+  FLEET_V2_HULLS,
   HULLS,
   RESEARCH_PROJECTS,
   DEATH_STAR,
@@ -28,6 +29,7 @@ import {
   type BuildingId,
   type BuildingLevels,
   type HullId,
+  type HullFamily,
   type InstrumentId,
   type SatelliteId,
 } from '@astera/rules';
@@ -50,7 +52,7 @@ import { directives, primary, type PlanetGroup } from '../lib/directives.js';
 import { compact, full } from '../lib/format.js';
 import { serverNow } from '../lib/clock.js';
 import { duration, useNow } from '../lib/time.js';
-import { projectedQueueState } from '../lib/predict.js';
+import { projectedQueueState, type ProjectedQueueState } from '../lib/predict.js';
 import { buildingGain, instrumentGain, satelliteGain } from '../lib/gains.js';
 import { useProjected, type Projected } from '../lib/projection.js';
 import {
@@ -84,6 +86,7 @@ import {
   satelliteLabel,
   satelliteRole,
   satelliteTag,
+  researchName,
 } from '../i18n/names.js';
 import { ActionButton, Price, StatStrip } from '../ui/Action.js';
 import { ItemSheet, type ItemRef } from '../ui/ItemSheet.js';
@@ -1712,6 +1715,51 @@ function OrbitContext({ planet }: { planet: PlanetView }) {
   );
 }
 
+type FleetFamily = Exclude<HullFamily, 'PRESERVED'>;
+
+/** Stable catalog order: families teach the role, tiers inside them teach progression. */
+const FLEET_FAMILY_ORDER: readonly FleetFamily[] = [
+  'OFFENSIVE', 'DEFENSIVE', 'CARGO', 'SPECIALIST',
+];
+
+const HULLS_BY_FAMILY: Readonly<Record<FleetFamily, readonly HullId[]>> = {
+  OFFENSIVE: FLEET_V2_HULLS.filter((id) => HULLS[id].family === 'OFFENSIVE'),
+  DEFENSIVE: FLEET_V2_HULLS.filter((id) => HULLS[id].family === 'DEFENSIVE'),
+  CARGO: FLEET_V2_HULLS.filter((id) => HULLS[id].family === 'CARGO'),
+  SPECIALIST: FLEET_V2_HULLS.filter((id) => HULLS[id].family === 'SPECIALIST'),
+};
+
+const RESEARCH_RUNG = ['', 'I', 'II', 'III', 'IV', 'V'] as const;
+
+/** First actionable catalog gate for a hull; no hull identity is hard-coded here. */
+function hullAccessBlock(
+  id: HullId,
+  shipyard: number,
+  state: ProjectedQueueState,
+  onNeed: (id: string) => void,
+): Blocked | undefined {
+  const missing = HULLS[id].requiredResearch.find(
+    ({ project, level }) => (state.research.get(project) ?? 0) < level,
+  );
+  if (missing) {
+    return {
+      reason: i18n.t('planet.blocked.research', {
+        research: researchName(missing.project),
+        level: RESEARCH_RUNG[missing.level] ?? `L${String(missing.level)}`,
+      }),
+      onFix: () => { onNeed(missing.project); },
+    };
+  }
+  const minimum = HULLS[id].minShipyard;
+  if (shipyard < minimum) {
+    return {
+      reason: i18n.t('planet.blocked.shipyard', { level: minimum }),
+      onFix: () => { onNeed('SHIPYARD'); },
+    };
+  }
+  return undefined;
+}
+
 /**
  * WHAT YOU CAN SEND — SORTED BY WHAT IT DOES, NOT BY WHAT IT COSTS.
  *
@@ -1720,10 +1768,9 @@ function OrbitContext({ planet }: { planet: PlanetView }) {
  * player reading top to bottom learnt the wrong thing about the tab before they
  * reached anything that could raid.
  *
- * Three bands now, and each one is a different KIND of sending: the hulls that
- * fight, in ascending weight; the one that carries what they take; and the one
- * that is aimed at a rock instead of a person. The bands are the grouping — the
- * order inside each is fixed and is not a ranking.
+ * Fleet V2 uses four authored families. Rows stay tier-ascending inside each
+ * family, so the player can compare the cheap expression of a tactic with the
+ * researched version without losing the counter class beneath it.
  */
 function Reach({
   planet,
@@ -1748,18 +1795,13 @@ function Reach({
   const hangarUsed = hangarLoad(yardProjection.units);
   const groundTotal = planet.capacity?.ground ?? groundSlots(planet.buildings.CORE ?? 0);
   const groundUsed = groundLoad(yardProjection.units);
-  const dense = planet.research.find((project) => project.id === 'DENSE_FUEL_CELLS');
-  const gravitic = planet.research.find((project) => project.id === 'GRAVITIC_CHARGES');
-  const denseComplete = dense?.completed ?? false;
-  const graviticComplete = gravitic?.completed ?? false;
-
   const hull = (id: HullId) => {
     const hullSpec = HULLS[id];
+    const home = (planet.fleet[id] ?? 0) + (planet.ground[id] ?? 0);
+    const away = planet.fleetAway[id] ?? 0;
     // "You have" is ownership, not readiness. A craft in flight is still owned,
     // and for the Prospector that distinction is also the hard build cap.
-    const owned = (planet.fleet[id] ?? 0)
-      + (planet.ground[id] ?? 0)
-      + (planet.fleetAway[id] ?? 0);
+    const owned = home + away;
     const committed = yardProjection.units[id] ?? owned;
     const prospectorCapped = id === 'PROSPECTOR' && committed >= PROSPECTOR.max;
     const poolTotal = hullSpec.ground ? groundTotal : hangarTotal;
@@ -1771,13 +1813,25 @@ function Reach({
     const queued = queuedCount > 0
       ? t('planet.queue.unitsQueued', { count: queuedCount })
       : undefined;
+    const accessBlock = hullAccessBlock(id, level, yardProjection, onNeed);
     return (
       // Wrapped and identified like every building row, so a hull can be scrolled
       // to and pointed at by anything that has to name one.
-      <div key={id} id={`row-${id}`}>
+      <div
+        key={id}
+        id={`row-${id}`}
+        {...(hullSpec.tier === null
+          ? {}
+          : {
+              'data-hull-id': id,
+              'data-hull-family': hullSpec.family,
+              'data-hull-tier': hullSpec.tier,
+            })}
+      >
       <UpgradeRow
         art={HULL_ART[id]}
         name={hullLabel(id)}
+        nameAside={t('planet.reach.hullLocationCounts', { home: full(home), away: full(away) })}
         tag={hullTag(id)}
         stats={{
           atk: hullSpec.atk,
@@ -1817,36 +1871,8 @@ function Reach({
         income={income}
         unowned={owned === 0}
         onOpen={() => { onBuild(id); }}
-        /**
-         * ONE GATE ON EVERY HULL, AND IT IS THE SHIPYARD. D25.
-         *
-         * The Prospector used to also demand a DRILL satellite, which was wrong
-         * twice over: a drill is a craft rather than hardware holding station
-         * beside a world, and gating a hull on an orbit slot made mining an
-         * all-or-nothing detour. The Derrick in orbit is what makes the craft
-         * BETTER; nothing makes it impossible.
-         */
-        {...(id === 'RUNNER' && !denseComplete
-          ? {
-              blocked: {
-                reason: t('planet.reach.researchDenseFirst'),
-                onFix: () => { onNeed('DENSE_FUEL_CELLS'); },
-              } satisfies Blocked,
-            }
-          : id === 'BREACHER' && !graviticComplete
-          ? {
-              blocked: {
-                reason: t('planet.reach.researchGraviticFirst'),
-                onFix: () => { onNeed('GRAVITIC_CHARGES'); },
-              } satisfies Blocked,
-            }
-          : level < hullSpec.minShipyard
-          ? {
-              blocked: {
-                reason: t('planet.blocked.shipyard', { level: hullSpec.minShipyard }),
-                onFix: () => { onNeed('SHIPYARD'); },
-              } satisfies Blocked,
-            }
+        {...(accessBlock
+          ? { blocked: accessBlock }
           : yardOrders.length >= BUILD.queueDepth
           ? {
               blocked: { reason: t('planet.blocked.queueFull') } satisfies Blocked,
@@ -1980,12 +2006,19 @@ function Reach({
         />
       ))}
 
-      <Band label={t('planet.reach.warshipsBand')} note={t('planet.reach.warshipsNote')} />
-      {(['WASP', 'LANCE', 'BULWARK', 'BREACHER'] as const).map(hull)}
-
-      <Band label={t('planet.reach.supportBand')} note={t('planet.reach.supportNote')} />
-      {hull('HAULER')}
-      {hull('RUNNER')}
+      {FLEET_FAMILY_ORDER.map((family) => (
+        <section
+          key={family}
+          data-hull-family-group={family}
+          style={{ contentVisibility: 'auto', containIntrinsicSize: '1px 720px' }}
+        >
+          <Band
+            label={t(`planet.reach.family.${family}.label`)}
+            note={t(`planet.reach.family.${family}.note`)}
+          />
+          {HULLS_BY_FAMILY[family].map(hull)}
+        </section>
+      ))}
 
       <Band label={t('planet.reach.miningBand')} note={t('planet.reach.miningNote')} />
       {hull('PROSPECTOR')}
@@ -2253,31 +2286,12 @@ function BuildSheet({
   const cap = Math.min(countCap, spaceCap);
   const prospectorCapped = hull === 'PROSPECTOR' && countCap === 0;
   const capacityCapped = spaceCap === 0;
-  const denseComplete = planet.research.some(
-    (project) => project.id === 'DENSE_FUEL_CELLS' && project.completed,
-  );
-  const graviticComplete = planet.research.some(
-    (project) => project.id === 'GRAVITIC_CHARGES' && project.completed,
-  );
   const shipyard = planet.buildings.SHIPYARD ?? 0;
-  const blocked: Blocked | undefined = hull === 'RUNNER' && !denseComplete
-    ? {
-        reason: t('planet.reach.researchDenseFirst'),
-        onFix: () => { onNeed('DENSE_FUEL_CELLS'); },
-      }
-    : hull === 'BREACHER' && !graviticComplete
-      ? {
-          reason: t('planet.reach.researchGraviticFirst'),
-          onFix: () => { onNeed('GRAVITIC_CHARGES'); },
-        }
-      : shipyard < spec.minShipyard
-        ? {
-            reason: t('planet.blocked.shipyard', { level: spec.minShipyard }),
-            onFix: () => { onNeed('SHIPYARD'); },
-          }
-        : (planet.queues?.YARD.length ?? 0) >= BUILD.queueDepth
-          ? { reason: t('planet.blocked.queueFull') }
-          : undefined;
+  const accessBlock = hullAccessBlock(hull, shipyard, yardProjection, onNeed);
+  const blocked: Blocked | undefined = accessBlock
+    ?? ((planet.queues?.YARD.length ?? 0) >= BUILD.queueDepth
+      ? { reason: t('planet.blocked.queueFull') }
+      : undefined);
 
   const affordable = Math.min(
     Math.floor(held.alloy / spec.alloy),
@@ -2361,11 +2375,32 @@ function BuildSheet({
         </span>
       )}
     >
-      {art && (
-        <div className="art-well flex justify-center py-4">
-          <img src={art} alt={hullLabel(hull)} className="h-28 object-contain" />
+      <div data-build-art className="art-well relative flex justify-center py-4">
+        {art ? <img src={art} alt={hullLabel(hull)} className="h-28 object-contain" /> : null}
+
+        {!prospectorCapped && !capacityCapped ? (
+          <div data-build-price className="absolute left-1 top-1">
+            <Price
+              cost={{ alloy: totalAlloy, crystal: totalCrystal, deuterium: totalDeuterium }}
+              held={held}
+            />
+          </div>
+        ) : null}
+
+        <div
+          data-build-stats
+          className="absolute right-1 top-1 origin-top-right scale-50"
+        >
+          <StatStrip
+            atk={spec.atk}
+            hp={spec.hp}
+            speed={spec.speed}
+            cargo={spec.cargo}
+            fuel={hullFuelRate(hull)}
+            size="card"
+          />
         </div>
-      )}
+      </div>
 
       <p className="legend text-crystal/85">{hullTag(hull)}</p>
       <p className="mt-2 text-body leading-relaxed text-dim">{hullPitch(hull)}</p>
@@ -2383,43 +2418,6 @@ function BuildSheet({
         <p className="mt-4 border border-alloy/30 bg-alloy/10 px-3 py-2 text-caption leading-snug text-alloy">
           {t('itemSheet.lockedNote', { reason: blocked.reason })}
         </p>
-      )}
-
-      <div className="mt-4">
-        <StatStrip
-          atk={spec.atk}
-          hp={spec.hp}
-          speed={spec.speed}
-          cargo={spec.cargo}
-          fuel={hullFuelRate(hull)}
-          size="card"
-        />
-      </div>
-
-      {/*
-        WHAT IT COSTS, BESIDE WHAT IT IS. Owner report: *"geminin üretim için
-        istedigi kaynaklar en altta kalmış"*.
-
-        The price sat below the quantity stepper and the capacity card, at the
-        very foot of a sheet that scrolls — so the four figures that say what this
-        hull IS were read first and the one figure that says whether it can be
-        HAD was somewhere under the fold. A commander comparing two hulls needs
-        the price in the same glance as the attack and the speed, because the
-        comparison the whole counter cycle rests on is power per unit of ore.
-
-        IT IS THE TOTAL, NOT A UNIT PRICE, and it stays live under the stepper
-        below it. Two prices on one sheet — one per ship, one for the order —
-        would be the sheet disagreeing with its own commit button, which quotes
-        exactly this figure.
-      */}
-      {!prospectorCapped && !capacityCapped && (
-        <div data-build-price className="mt-3 flex items-baseline gap-2">
-          <span className="legend shrink-0">{t('planet.buildSheet.priceLabel')}</span>
-          <Price
-            cost={{ alloy: totalAlloy, crystal: totalCrystal, deuterium: totalDeuterium }}
-            held={held}
-          />
-        </div>
       )}
 
       <div className="mt-6">

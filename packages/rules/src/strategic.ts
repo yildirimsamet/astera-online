@@ -23,13 +23,13 @@ export const GALAXY_SPAN = 2 * GALAXY.radius;
  * HOW LONG A PUBLIC CLAIM STAYS OPEN. DERIVED, NEVER TYPED. D111.
  *
  * A claim is a race that only a SETTLEMENT can win, and a settlement is two
- * Haulers — the slowest thing that flies. So the window is not a taste in
+ * Couriers — the settlement transport. So the window is not a taste in
  * minutes: it is the longest settlement flight the map can produce, or the far
  * half of the galaxy is unreachable by arithmetic and the race is decided by
  * where a commander was seeded rather than by anything they chose.
  *
  * WRITTEN AS `30` IT WAS RIGHT ONCE. At radius 1000 the widest crossing was a
- * little over 2,000 units and two Haulers covered it in 29.2 minutes, so a flat
+ * little over 2,000 units and two transports covered it in 29.2 minutes, so a flat
  * thirty was this same derivation with the arithmetic already done. D101 then
  * widened the disc 2.5× and named every constant that did and did not take the
  * factor — hull speeds no, `radarRange` no, the Prospector and the rocks yes —
@@ -40,7 +40,7 @@ export const GALAXY_SPAN = 2 * GALAXY.radius;
  * all (capital, neutral) pairs were settleable at all, the median pair missed by
  * 0.8 minutes, and the six T3 worlds at the contested centre — the whole strategic
  * prize — sat 21 to 33 minutes from a rim capital. A commander could decisively
- * raid a world and then watch its one window close with their Haulers still in
+ * raid a world and then watch its one window close with their Couriers still in
  * the air. This is the class of failure D63 named: an absolute duration stops
  * being a fraction of the thing it has to cover as soon as the map moves.
  *
@@ -51,7 +51,9 @@ export const GALAXY_SPAN = 2 * GALAXY.radius;
  * wins, so distance decides the RACE while no longer deciding who may enter it.
  */
 export const SETTLEMENT_CLAIM_MINUTES = Math.ceil(
-  fleetTravelExact(GALAXY_SPAN, { HAULER: MULTI_WORLD.settlement.haulers }),
+  fleetTravelExact(GALAXY_SPAN, {
+    [MULTI_WORLD.settlement.transportHull]: MULTI_WORLD.settlement.transports,
+  }),
 );
 
 /** Capacity is deliberately stepwise and derived from the strongest controlled Core. */
@@ -81,17 +83,17 @@ export const neutralThreat = (tier: NeutralTier): NeutralThreat =>
  * THE ONLY HULLS THAT CARRY ORE BETWEEN OWNED WORLDS.
  *
  * Exported because the transfer screen has to NAME them. It used to list craft by
- * "what this world has more than none of", so a commander with no Hauler was shown
- * no Hauler row, a cargo readout of `0 / 0` and three sliders pinned at zero, with
+ * "what this world has more than none of", so a commander with no transport was shown
+ * no transport row, a cargo readout of `0 / 0` and three sliders pinned at zero, with
  * the reason written nowhere — the refusal existed on the server and the sentence
  * existed on no surface at all. A screen that names the pair off its own literal
  * would be a second copy of this rule, free to drift the first time a third
  * transport is priced.
  *
  * NOT the same list as `CLAN_TRANSFERABLE_HULLS`, and not the same as clan aid's
- * carrier (Haulers only, deliberately — see `clanTransferCargoCapacity`).
+ * carriers (the same three dedicated transports — see `clanTransferCargoCapacity`).
  */
-export const TRANSFER_CARGO_HULLS = ['HAULER', 'RUNNER'] as const;
+export const TRANSFER_CARGO_HULLS = ['COURIER', 'WAYFARER', 'ATLAS'] as const;
 
 /** Only dedicated transports count when moving resources between owned worlds. */
 export function transferCargoCapacity(fleet: Fleet): number {

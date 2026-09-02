@@ -17,6 +17,7 @@ import { raiseInstrument } from '../src/services/build.js';
 import { EventWorker } from '../src/worker/loop.js';
 import {
   giveSatellite,
+  giveResearch,
   giveUnits,
   grant,
   levelWorld,
@@ -62,7 +63,7 @@ describe('launching a fleet', () => {
     // two launches without both being committed to the same planet.
     await placeAt(f.db, other, { x: -150 });
     await setLevel(f.db, attacker, 'CORE', 6);
-    await giveUnits(f.db, attacker, { WASP: 50, HAULER: 5, BASTION: 3 });
+    await giveUnits(f.db, attacker, { DART: 50, COURIER: 5, BASTION: 3 });
     await grant(f.db, defender, 20_000, 2_000);
     // Clear newcomer grace so the interesting rules are the ones being tested.
     f.clock.advance(SETTLED_MINUTES);
@@ -72,7 +73,7 @@ describe('launching a fleet', () => {
   describe('validation', () => {
     it('refuses to attack your own planet', async () => {
       await expect(
-        launchAttack(f.db, attacker, attacker, { WASP: 5 }, f.clock),
+        launchAttack(f.db, attacker, attacker, { DART: 5 }, f.clock),
       ).rejects.toMatchObject({ code: 'SELF_ATTACK' });
     });
 
@@ -81,13 +82,13 @@ describe('launching a fleet', () => {
         launchAttack(f.db, attacker, defender, {}, f.clock),
       ).rejects.toMatchObject({ code: 'EMPTY_FLEET' });
       await expect(
-        launchAttack(f.db, attacker, defender, { WASP: 0 }, f.clock),
+        launchAttack(f.db, attacker, defender, { DART: 0 }, f.clock),
       ).rejects.toMatchObject({ code: 'EMPTY_FLEET' });
     });
 
     it('refuses more ships than are actually at home', async () => {
       await expect(
-        launchAttack(f.db, attacker, defender, { WASP: 51 }, f.clock),
+        launchAttack(f.db, attacker, defender, { DART: 51 }, f.clock),
       ).rejects.toMatchObject({ code: 'NOT_ENOUGH_SHIPS' });
     });
 
@@ -99,10 +100,10 @@ describe('launching a fleet', () => {
 
     it('refuses fractional and negative ship counts', async () => {
       await expect(
-        launchAttack(f.db, attacker, defender, { WASP: 1.5 }, f.clock),
+        launchAttack(f.db, attacker, defender, { DART: 1.5 }, f.clock),
       ).rejects.toMatchObject({ code: 'BAD_FLEET' });
       await expect(
-        launchAttack(f.db, attacker, defender, { WASP: -3 }, f.clock),
+        launchAttack(f.db, attacker, defender, { DART: -3 }, f.clock),
       ).rejects.toMatchObject({ code: 'BAD_FLEET' });
     });
 
@@ -112,7 +113,7 @@ describe('launching a fleet', () => {
           f.db,
           attacker,
           '00000000-0000-0000-0000-000000000000',
-          { WASP: 5 },
+          { DART: 5 },
           f.clock,
         ),
       ).rejects.toMatchObject({ status: 404 });
@@ -132,9 +133,9 @@ describe('launching a fleet', () => {
       const fresh = await seedWorld(2, 777);
       const [a, b] = fresh.planetIds as [string, string];
       await setLevel(fresh.db, a, 'CORE', 6);
-      await giveUnits(fresh.db, a, { WASP: 30 });
+      await giveUnits(fresh.db, a, { DART: 30 });
       // No clock advance: both planets are minutes old.
-      const mission = await launchAttack(fresh.db, a, b, { WASP: 10 }, fresh.clock);
+      const mission = await launchAttack(fresh.db, a, b, { DART: 10 }, fresh.clock);
       expect(mission.arriveAt.getTime()).toBeGreaterThan(fresh.clock.now().getTime());
     });
 
@@ -151,7 +152,7 @@ describe('launching a fleet', () => {
       await setLevel(f.db, defender, 'CORE', 15);
 
       await expect(
-        launchAttack(f.db, attacker, defender, { WASP: 5 }, f.clock),
+        launchAttack(f.db, attacker, defender, { DART: 5 }, f.clock),
       ).resolves.toBeTruthy();
     });
 
@@ -161,7 +162,7 @@ describe('launching a fleet', () => {
       await setLevel(f.db, other, 'CORE', 1);
 
       await expect(
-        launchAttack(f.db, attacker, other, { WASP: 5 }, f.clock),
+        launchAttack(f.db, attacker, other, { DART: 5 }, f.clock),
       ).resolves.toBeTruthy();
     });
 
@@ -188,7 +189,7 @@ describe('launching a fleet', () => {
        */
       for (let i = 0; i < ABUSE.bashLimit; i++) {
         const departedAt = f.clock.now().getTime();
-        const launch = await launchAttack(f.db, attacker, defender, { WASP: 5 }, f.clock);
+        const launch = await launchAttack(f.db, attacker, defender, { DART: 5 }, f.clock);
         const oneWay = (launch.arriveAt.getTime() - departedAt) / 60_000;
 
         f.clock.set(settledAt(launch.arriveAt));
@@ -200,30 +201,30 @@ describe('launching a fleet', () => {
         f.clock.advance(1);
       }
       await expect(
-        launchAttack(f.db, attacker, defender, { WASP: 5 }, f.clock),
+        launchAttack(f.db, attacker, defender, { DART: 5 }, f.clock),
       ).rejects.toMatchObject({ code: 'BASH_LIMIT' });
     });
   });
 
   describe('what a launch does', () => {
     it('moves the ships off the home stack, in the same transaction', async () => {
-      const launch = await launchAttack(f.db, attacker, defender, { WASP: 30 }, f.clock);
+      const launch = await launchAttack(f.db, attacker, defender, { DART: 30 }, f.clock);
 
       const home = await f.db
         .select()
         .from(units)
         .where(and(eq(units.planetId, attacker), eq(units.location, 'home')));
-      expect(home.find((u) => u.hull === 'WASP')!.count).toBe(20);
+      expect(home.find((u) => u.hull === 'DART')!.count).toBe(20);
 
       const away = await f.db
         .select()
         .from(units)
         .where(and(eq(units.planetId, attacker), eq(units.location, launch.missionId)));
-      expect(away.find((u) => u.hull === 'WASP')!.count).toBe(30);
+      expect(away.find((u) => u.hull === 'DART')!.count).toBe(30);
     });
 
     it('leaves ground defence at home — it never travels', async () => {
-      await launchAttack(f.db, attacker, defender, { WASP: 50 }, f.clock);
+      await launchAttack(f.db, attacker, defender, { DART: 50 }, f.clock);
       const home = await f.db
         .select()
         .from(units)
@@ -232,15 +233,15 @@ describe('launching a fleet', () => {
     });
 
     it('reports exposure as the full round trip', async () => {
-      const launch = await launchAttack(f.db, attacker, defender, { WASP: 10 }, f.clock);
+      const launch = await launchAttack(f.db, attacker, defender, { DART: 10 }, f.clock);
       const [a] = await f.db.select().from(planets).where(eq(planets.id, attacker));
       const [b] = await f.db.select().from(planets).where(eq(planets.id, defender));
-      const oneWay = fleetTravelExact(distance(a!, b!), { WASP: 10 });
+      const oneWay = fleetTravelExact(distance(a!, b!), { DART: 10 });
       expect(launch.exposureMinutes).toBe(oneWay * 2);
     });
 
     it('reports the home defence that will actually remain', async () => {
-      const launch = await launchAttack(f.db, attacker, defender, { WASP: 30 }, f.clock);
+      const launch = await launchAttack(f.db, attacker, defender, { DART: 30 }, f.clock);
       // 20 Wasps + 5 Haulers left at home, plus 3 Bastions.
       expect(launch.homeDefenceAfter).toBe(20 + 5 + 3);
     });
@@ -254,20 +255,38 @@ describe('launching a fleet', () => {
      * time decision even where the interface rounds both labels to the same minute.
      */
     it('a slower fleet takes longer — composition is a time decision', async () => {
-      await giveUnits(f.db, attacker, { WASP: 50, HAULER: 5, BULWARK: 2 });
+      await giveUnits(f.db, attacker, { DART: 50, COURIER: 5, RAMPART: 2 });
       // Two equidistant targets, because only one fleet may be committed to a
       // given planet at a time. The comparison is about hull speed, not range.
-      const fast = await launchAttack(f.db, attacker, defender, { WASP: 1 }, f.clock);
-      const slow = await launchAttack(f.db, attacker, other, { BULWARK: 1 }, f.clock);
+      const fast = await launchAttack(f.db, attacker, defender, { DART: 1 }, f.clock);
+      const slow = await launchAttack(f.db, attacker, other, { RAMPART: 1 }, f.clock);
 
-      expect(HULLS.BULWARK.speed).toBeLessThan(HULLS.WASP.speed);
+      expect(HULLS.RAMPART.speed).toBeLessThan(HULLS.DART.speed);
       // Continuous, and therefore true on every leg at every speed.
       const leg = 1_500;
-      expect(travelExact(leg, HULLS.BULWARK.speed)).toBeGreaterThan(
-        travelExact(leg, HULLS.WASP.speed),
+      expect(travelExact(leg, HULLS.RAMPART.speed)).toBeGreaterThan(
+        travelExact(leg, HULLS.DART.speed),
       );
       // And the service never contradicts it.
       expect(slow.exposureMinutes).toBeGreaterThan(fast.exposureMinutes);
+    });
+
+    it('uses and freezes launch-time propulsion in the authoritative arrival', async () => {
+      await giveResearch(f.db, attacker, 'SHIP_PROPULSION', 5);
+      const departedAt = f.clock.now();
+      const launch = await launchAttack(f.db, attacker, defender, { DART: 10 }, f.clock);
+      const [origin, target, mission] = await Promise.all([
+        f.db.select().from(planets).where(eq(planets.id, attacker)).then((rows) => rows[0]!),
+        f.db.select().from(planets).where(eq(planets.id, defender)).then((rows) => rows[0]!),
+        f.db.select().from(missions).where(eq(missions.id, launch.missionId)).then((rows) => rows[0]!),
+      ]);
+      const tech = { SHIP_PROPULSION: 5 } as const;
+      const expected = fleetTravelExact(distance(origin, target), { DART: 10 }, 1, tech);
+      const actual = (launch.arriveAt.getTime() - departedAt.getTime()) / 60_000;
+
+      expect(mission.tech).toMatchObject(tech);
+      expect(Math.abs(actual - expected)).toBeLessThan(1 / 60_000);
+      expect(actual).toBeLessThan(fleetTravelExact(distance(origin, target), { DART: 10 }));
     });
 
     /**
@@ -281,7 +300,7 @@ describe('launching a fleet', () => {
      * bombardment rather than a re-enactment of a recorded fact.
      */
     it('lands the fleet at arriveAt and settles the battle an engagement later', async () => {
-      const launch = await launchAttack(f.db, attacker, defender, { WASP: 10 }, f.clock);
+      const launch = await launchAttack(f.db, attacker, defender, { DART: 10 }, f.clock);
       const [event] = await f.db
         .select()
         .from(scheduledEvents)
@@ -306,7 +325,7 @@ describe('launching a fleet', () => {
      */
     it('does not round or lengthen the scheduled flight', async () => {
       const departedAt = f.clock.now().getTime();
-      const launch = await launchAttack(f.db, attacker, defender, { WASP: 10 }, f.clock);
+      const launch = await launchAttack(f.db, attacker, defender, { DART: 10 }, f.clock);
       const exact = (launch.arriveAt.getTime() - departedAt) / 60_000;
       expect(exact).not.toBe(Math.ceil(exact));
       // PostgreSQL/JS timestamps stop at a millisecond while the pure rule keeps
@@ -331,7 +350,7 @@ describe('launching a fleet', () => {
     });
 
     it('records the mission as in flight', async () => {
-      const launch = await launchAttack(f.db, attacker, defender, { WASP: 10 }, f.clock);
+      const launch = await launchAttack(f.db, attacker, defender, { DART: 10 }, f.clock);
       const [m] = await f.db.select().from(missions).where(eq(missions.id, launch.missionId));
       expect(m!.status).toBe('in_flight');
       expect(m!.kind).toBe('attack');
@@ -361,7 +380,7 @@ describe('launching a fleet', () => {
       // `levelWorld`. This test is about the warning, not about the tier band.
       await levelWorld(f.db, f.planetIds);
 
-      const launch = await launchAttack(f.db, attacker, defender, { WASP: 10 }, f.clock);
+      const launch = await launchAttack(f.db, attacker, defender, { DART: 10 }, f.clock);
       const worker = new EventWorker(
         f.db,
         f.clock,
@@ -392,7 +411,7 @@ describe('launching a fleet', () => {
       for (let i = 0; i < 3; i++) await raiseInstrument(f.db, defender, 'RADAR', f.clock);
       await levelWorld(f.db, f.planetIds);
 
-      const launch = await launchAttack(f.db, attacker, defender, { WASP: 10 }, f.clock);
+      const launch = await launchAttack(f.db, attacker, defender, { DART: 10 }, f.clock);
       const [warning] = await f.db
         .select()
         .from(scheduledEvents)

@@ -79,6 +79,19 @@ const raided = z.object({
 
 const raidResult = z.object({
   grade: z.string(),
+  /**
+   * WHAT WAS ON THE OTHER SIDE. D150.
+   *
+   * Absent on every row written before pirates existed, and absent on every
+   * ordinary raid since — a raid at a commander is the default and says nothing.
+   * `'PIRATE'` is the one value that changes how this notification reads, because
+   * there is no world and no commander to name in it.
+   */
+  targetKind: z.literal('PIRATE').optional(),
+  pirateLevel: z.number().optional(),
+  pirateCallsign: z.string().optional(),
+  /** The hull towed home from a decisive win, if the roll paid out. */
+  capturedHull: z.string().optional(),
   targetPlanetId: z.string().optional(),
   targetUsername: z.string().optional(),
   targetClanTag: z.string().optional(),
@@ -135,7 +148,20 @@ const returned = z.discriminatedUnion('trip', [
     craft: z.number(),
     craftKind: z.enum(['fleet', 'probe']).optional(),
   }),
+  z.object({
+    trip: z.literal('transfer_rerouted'),
+    reason: z.enum(['CAPACITY', 'OWNERSHIP']),
+    craft: z.number(),
+    targetPlanetId: z.string(),
+    targetPlanetName: z.string(),
+  }),
 ]);
+
+const transferWasRerouted = (notification: NotificationView): boolean => {
+  if (notification.kind !== 'fleet_returned') return false;
+  const parsed = returned.safeParse(notification.payload);
+  return parsed.success && parsed.data.trip === 'transfer_rerouted';
+};
 
 const legacyRaidReturn = z.object({
   ships: z.number(),
@@ -174,6 +200,13 @@ const strategicResult = z.object({
 });
 
 const colonyEvent = z.object({ targetPlanetId: z.string() });
+
+const galaxyLifecycle = z.object({
+  eventKind: z.literal('ASTEROID_SHOWER'),
+  startsAt: z.coerce.date(),
+  endsAt: z.coerce.date(),
+  asteroidSpawnMultiplier: z.number().gt(1),
+});
 
 /* ── the sentences ──────────────────────────────────────────── */
 
@@ -269,6 +302,24 @@ export function notificationIdentity(notification: NotificationView): Notificati
     case 'raid_result': {
       const parsed = raidResult.safeParse(notification.payload);
       if (!parsed.success) return null;
+      /*
+        A PIRATE IS NOT A COMMANDER AND HAS NO WORLD. D150.
+
+        `identity()` builds a label out of a username, a world and a clan tag, and
+        a pirate has none of the three — left to it, the row would have read
+        "someone at an unknown world". There is also nothing to deep-link to: the
+        dossier matches worlds, and this fight happened in empty space.
+      */
+      if (parsed.data.targetKind === 'PIRATE') {
+        return {
+          label: parsed.data.pirateLevel === undefined
+            ? i18n.t('pirate.title')
+            : i18n.t('pirate.name', {
+                level: parsed.data.pirateLevel,
+                callsign: parsed.data.pirateCallsign ?? '',
+              }),
+        };
+      }
       return {
         label: identity(
           parsed.data.targetUsername,
@@ -281,7 +332,14 @@ export function notificationIdentity(notification: NotificationView): Notificati
     }
     case 'fleet_returned': {
       const parsed = returned.safeParse(notification.payload);
-      if (!parsed.success || parsed.data.trip !== 'raid') return null;
+      if (!parsed.success) return null;
+      if (parsed.data.trip === 'transfer_rerouted') {
+        return {
+          label: parsed.data.targetPlanetName,
+          planetId: parsed.data.targetPlanetId,
+        };
+      }
+      if (parsed.data.trip !== 'raid') return null;
       if (!parsed.data.fromUsername && !parsed.data.fromPlanetName && !parsed.data.fromName) return null;
       return {
         label: identity(
@@ -462,14 +520,33 @@ export function describeNotification(notification: NotificationView, now: number
       const {
         grade, targetUsername, targetClanTag, targetPlanetName, targetName,
         lootAlloy, lootCrystal, lootDeuterium, unitsLost, shipsHome,
+        targetKind, pirateLevel, pirateCallsign, capturedHull,
       } = parsed.data;
-      const target = identity(targetUsername, targetPlanetName, targetName, targetClanTag);
+      const target = targetKind === 'PIRATE'
+        ? (pirateLevel === undefined
+            ? i18n.t('pirate.title')
+            : i18n.t('pirate.name', { level: pirateLevel, callsign: pirateCallsign ?? '' }))
+        : identity(targetUsername, targetPlanetName, targetName, targetClanTag);
       // The fleet is gone. This is the line the whole notification exists for —
       // before it, nothing in the game told a player their raid had been wiped out.
       if (shipsHome === 0) {
         return i18n.t('notifications.raidWiped', { target, count: unitsLost });
       }
       const took = spoils(lootAlloy, lootCrystal, lootDeuterium);
+      /*
+        THE SHIP IS THE HEADLINE WHEN THERE IS ONE. D150.
+
+        A captured hull is the only thing in the game that a risk pays in FLEET
+        rather than in ore, and reporting it as one more clause after the alloy
+        would bury the single most memorable outcome this feature can produce.
+      */
+      if (capturedHull !== undefined) {
+        // `hullName` returns null for a hull this build does not know, which is
+        // the honest answer during a rolling deploy — the clause is dropped rather
+        // than printing a raw id at the player.
+        const name = hullName(capturedHull);
+        if (name !== null) took.unshift(i18n.t('pirate.captured', { hull: name }));
+      }
       const detail = took.length > 0 ? took.join(JOIN()) : i18n.t('notifications.raidNothing');
       return i18n.t('notifications.raidResult', {
         grade: gradeWord(grade),
@@ -492,6 +569,14 @@ export function describeNotification(notification: NotificationView, now: number
         );
       }
       const trip = parsed.data;
+      if (trip.trip === 'transfer_rerouted') {
+        return i18n.t(
+          trip.reason === 'CAPACITY'
+            ? 'notifications.transferReturningCapacity'
+            : 'notifications.transferReturningOwnership',
+          { target: trip.targetPlanetName },
+        );
+      }
       if (trip.trip === 'recalled') {
         if (trip.craftKind === 'probe') return i18n.t('notifications.probeLost');
         return i18n.t('notifications.recalled', { count: trip.craft });
@@ -590,6 +675,18 @@ export function describeNotification(notification: NotificationView, now: number
       return i18n.t('notifications.settlementLost');
     }
 
+    case 'galaxy_event_started': {
+      const parsed = galaxyLifecycle.safeParse(notification.payload);
+      if (!parsed.success) return null;
+      return i18n.t('notifications.asteroidShowerStarted');
+    }
+
+    case 'galaxy_event_ended': {
+      const parsed = galaxyLifecycle.safeParse(notification.payload);
+      if (!parsed.success) return null;
+      return i18n.t('notifications.asteroidShowerEnded');
+    }
+
     /**
      * A kind this build does not know.
      *
@@ -615,7 +712,9 @@ export const isUrgent = (notification: NotificationView): boolean =>
   notification.kind === 'strategic_incoming' ||
   notification.kind === 'colony_lost' ||
   notification.kind === 'raided' ||
-  notification.kind === 'raid_result';
+  notification.kind === 'raid_result' ||
+  notification.kind === 'galaxy_event_started' ||
+  notification.kind === 'galaxy_event_ended' || transferWasRerouted(notification);
 
 /**
  * Bad news, which is a different question from urgent news.
@@ -631,6 +730,7 @@ export const isAlarming = (notification: NotificationView): boolean => {
     || notification.kind === 'colony_lost'
     || notification.kind === 'raided'
   ) return true;
+  if (notification.kind === 'fleet_returned') return transferWasRerouted(notification);
   if (notification.kind !== 'raid_result') return false;
   const parsed = raidResult.safeParse(notification.payload);
   return parsed.success && parsed.data.shipsHome === 0;

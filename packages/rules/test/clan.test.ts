@@ -67,23 +67,26 @@ describe('D114 clan identity and fixed rules', () => {
 });
 
 describe('D114 clan aid', () => {
-  it('allows only ordinary mobile hulls and gives cargo capacity only to Haulers', () => {
-    expect(clanTransferFleetIsValid({ WASP: 1, RUNNER: 2 })).toBe(true);
+  it('allows only ordinary mobile hulls and gives cargo capacity only to transports', () => {
+    expect(clanTransferFleetIsValid({ DART: 1, COURIER: 2 })).toBe(true);
     expect(clanTransferFleetIsValid({ PROSPECTOR: 1 })).toBe(false);
     expect(clanTransferFleetIsValid({ BASTION: 1 })).toBe(false);
-    expect(clanTransferFleetIsValid({ WASP: 0 })).toBe(false);
-    expect(clanTransferCargoCapacity({ HAULER: 2, RUNNER: 20 })).toBe(4_400);
-    expect(clanTransferCargoCapacity({ RUNNER: 20 })).toBe(0);
+    expect(clanTransferFleetIsValid({ DART: 0 })).toBe(false);
+    const transports = { WAYFARER: 2, COURIER: 20, ATLAS: 1 };
+    expect(clanTransferCargoCapacity(transports)).toBe(
+      2 * HULLS.WAYFARER.cargo + 20 * HULLS.COURIER.cargo + HULLS.ATLAS.cargo,
+    );
+    expect(clanTransferCargoCapacity({ DART: 20 })).toBe(0);
   });
 
   it('charges gifted hulls at full per-resource build cost', () => {
-    const fleet = { WASP: 2, RUNNER: 1, BREACHER: 1 } as const;
+    const fleet = { DART: 2, COURIER: 1, NULLIFIER: 1 } as const;
     const cargo = resources(100, 200, 30);
     expect(clanAidValue(fleet, cargo)).toEqual(resources(
-      cargo.alloy + 2 * HULLS.WASP.alloy + HULLS.RUNNER.alloy + HULLS.BREACHER.alloy,
-      cargo.crystal + 2 * HULLS.WASP.crystal + HULLS.RUNNER.crystal + HULLS.BREACHER.crystal,
+      cargo.alloy + 2 * HULLS.DART.alloy + HULLS.COURIER.alloy + HULLS.NULLIFIER.alloy,
+      cargo.crystal + 2 * HULLS.DART.crystal + HULLS.COURIER.crystal + HULLS.NULLIFIER.crystal,
       cargo.deuterium
-        + 2 * HULLS.WASP.deuterium + HULLS.RUNNER.deuterium + HULLS.BREACHER.deuterium,
+        + 2 * HULLS.DART.deuterium + HULLS.COURIER.deuterium + HULLS.NULLIFIER.deuterium,
     ));
   });
 

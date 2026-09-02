@@ -95,7 +95,7 @@ afterAll(async () => {
   await close();
 });
 
-describe('ruleset v3 worlds', () => {
+describe('current multi-world ruleset', () => {
   beforeEach(async () => {
     const { db } = await testDb();
     await truncateAll(db);
@@ -103,7 +103,7 @@ describe('ruleset v3 worlds', () => {
 
   it('creates the deterministic fixed 30/15/6 pool outside all capital slots', async () => {
     const f = await setup();
-    expect(f.season.rulesetVersion).toBe(3);
+    expect(f.season.rulesetVersion).toBe(MULTI_WORLD.fleetCatalogRulesetVersion);
     expect(f.neutrals).toHaveLength(51);
     expect(f.neutrals.filter((row) => row.state.tier === 1)).toHaveLength(30);
     expect(f.neutrals.filter((row) => row.state.tier === 2)).toHaveLength(15);
@@ -127,7 +127,7 @@ describe('ruleset v3 worlds', () => {
   it('spends reinforcement stock in strict infrastructure then proportional-garrison order', async () => {
     const f = await setup();
     const target = f.neutrals.find((row) => row.state.tier === 2)!;
-    const blockedAlloy = HULLS.WASP.alloy;
+    const blockedAlloy = HULLS.DART.alloy;
     expect(upgradeCost(4).alloy).toBeGreaterThan(blockedAlloy);
     await setLevel(f.db, target.world.id, 'CORE', 4);
     await f.db.delete(units).where(eq(units.planetId, target.world.id));
@@ -147,21 +147,21 @@ describe('ruleset v3 worlds', () => {
     await f.db.insert(units).values({
       planetId: target.world.id,
       ownerPlayerId: null,
-      hull: 'WASP',
+      hull: 'DART',
       location: 'home',
       count: 7,
     });
     await f.db.update(planets).set({
-      alloy: HULLS.LANCE.alloy,
-      crystal: HULLS.LANCE.crystal,
-      deuterium: HULLS.LANCE.deuterium,
+      alloy: HULLS.PIKE.alloy,
+      crystal: HULLS.PIKE.crystal,
+      deuterium: HULLS.PIKE.deuterium,
       lastTickAt: f.clock.now(),
     }).where(eq(planets.id, target.world.id));
     await f.db.transaction((tx) => reinforceNeutral(tx, target.world.id, f.clock.now()));
     const garrison = await f.db.select().from(units).where(eq(units.planetId, target.world.id));
     expect(garrison.map((row) => [row.hull, row.count]).sort()).toEqual([
-      ['LANCE', 1],
-      ['WASP', 7],
+      ['DART', 7],
+      ['PIKE', 1],
     ]);
   });
 
@@ -171,9 +171,9 @@ describe('ruleset v3 worlds', () => {
     await f.db.update(planets).set({ x: 150, y: 0, z: 0 }).where(eq(planets.id, target.world.id));
     await f.db.update(planets).set({ x: 0, y: 0, z: 0 }).where(eq(planets.id, f.joined.planetId));
     await setLevel(f.db, f.joined.planetId, 'CORE', 3);
-    await giveUnits(f.db, f.joined.planetId, { WASP: 1 });
+    await giveUnits(f.db, f.joined.planetId, { DART: 1 });
 
-    const launched = await launchAttack(f.db, f.joined.planetId, target.world.id, { WASP: 1 }, f.clock);
+    const launched = await launchAttack(f.db, f.joined.planetId, target.world.id, { DART: 1 }, f.clock);
     f.clock.set(new Date(launched.arriveAt.getTime() + 11_000));
     await workerFor(f.db, f.clock).tick();
 
@@ -207,8 +207,8 @@ describe('ruleset v3 worlds', () => {
 
     /** One whole raid: out, decisive, and home again, so the next one may launch. */
     const raid = async () => {
-      await giveUnits(f.db, f.joined.planetId, { WASP: 1 });
-      const away = await launchAttack(f.db, f.joined.planetId, target.world.id, { WASP: 1 }, f.clock);
+      await giveUnits(f.db, f.joined.planetId, { DART: 1 });
+      const away = await launchAttack(f.db, f.joined.planetId, target.world.id, { DART: 1 }, f.clock);
       f.clock.set(new Date(away.arriveAt.getTime() + 11_000));
       await workerFor(f.db, f.clock).tick();
       const [state] = await f.db.select().from(neutralPlanetState)
@@ -251,7 +251,7 @@ describe('ruleset v3 worlds', () => {
       .where(eq(planets.id, f.joined.planetId));
     await setLevel(f.db, f.joined.planetId, 'CORE', 3);
     await giveUnits(f.db, f.joined.planetId, {
-      HAULER: MULTI_WORLD.settlement.haulers,
+      COURIER: MULTI_WORLD.settlement.transports,
     });
     await f.db.update(neutralPlanetState)
       .set({ claimUntil: new Date(f.clock.now().getTime() + 30 * 60_000) })
@@ -271,7 +271,7 @@ describe('ruleset v3 worlds', () => {
     const state = await f.db.select().from(neutralPlanetState).where(eq(neutralPlanetState.planetId, target.world.id));
     const [hauler] = await f.db.select().from(units).where(and(
       eq(units.planetId, target.world.id),
-      eq(units.hull, 'HAULER'),
+      eq(units.hull, 'COURIER'),
       eq(units.location, 'home'),
     ));
     expect(captured).toMatchObject({ kind: 'COLONY', controllerPlayerId: f.joined.playerId });
@@ -279,7 +279,7 @@ describe('ruleset v3 worlds', () => {
     expect(state).toHaveLength(0);
     expect(hauler).toMatchObject({
       ownerPlayerId: f.joined.playerId,
-      count: MULTI_WORLD.settlement.haulers,
+      count: MULTI_WORLD.settlement.transports,
     });
   });
 
@@ -297,7 +297,7 @@ describe('ruleset v3 worlds', () => {
     for (const capital of [f.joined.planetId, rival.planetId]) {
       await setLevel(f.db, capital, 'CORE', 3);
       await giveUnits(f.db, capital, {
-        HAULER: MULTI_WORLD.settlement.haulers,
+        COURIER: MULTI_WORLD.settlement.transports,
       });
     }
 
@@ -322,12 +322,12 @@ describe('ruleset v3 worlds', () => {
     await workerFor(f.db, f.clock).tick();
     const [hauler] = await f.db.select().from(units).where(and(
       eq(units.ownerPlayerId, loser.playerId),
-      eq(units.hull, 'HAULER'),
+      eq(units.hull, 'COURIER'),
       eq(units.location, 'home'),
     ));
     expect(hauler).toMatchObject({
       planetId: loser.planetId,
-      count: MULTI_WORLD.settlement.haulers,
+      count: MULTI_WORLD.settlement.transports,
     });
     const loserNotices = await f.db.select().from(notifications).where(and(
       eq(notifications.playerId, loser.playerId),
@@ -340,7 +340,7 @@ describe('ruleset v3 worlds', () => {
     const f = await setup();
     const target = f.neutrals.find((row) => row.state.tier === 1)!;
     await setLevel(f.db, f.joined.planetId, 'CORE', 3);
-    await giveUnits(f.db, f.joined.planetId, { HAULER: 1 });
+    await giveUnits(f.db, f.joined.planetId, { COURIER: 1 });
     await f.db.update(planets).set({ alloy: 10_000, crystal: 5_000 })
       .where(eq(planets.id, f.joined.planetId));
     await f.db.update(neutralPlanetState).set({ claimUntil: f.clock.now() })
@@ -371,7 +371,7 @@ describe('ruleset v3 worlds', () => {
       .set({ x: GALAXY.radius, y: 0, z: 0 })
       .where(eq(planets.id, target.world.id));
     await setLevel(f.db, f.joined.planetId, 'CORE', 3);
-    await giveUnits(f.db, f.joined.planetId, { HAULER: MULTI_WORLD.settlement.haulers });
+    await giveUnits(f.db, f.joined.planetId, { COURIER: MULTI_WORLD.settlement.transports });
     await f.db.update(planets).set({ alloy: 10_000, crystal: 5_000 })
       .where(eq(planets.id, f.joined.planetId));
     await f.db.update(neutralPlanetState)
@@ -394,7 +394,7 @@ describe('ruleset v3 worlds', () => {
     expect(captured).toMatchObject({ kind: 'COLONY', controllerPlayerId: f.joined.playerId });
   });
 
-  it('delivers transfer cargo above storage cap without loss', async () => {
+  it('keeps a loaded transfer one-way and delivers above storage cap without loss', async () => {
     const f = await setup();
     const target = f.neutrals.find((row) => row.state.tier === 1)!;
     await f.db.update(planets).set({
@@ -408,14 +408,14 @@ describe('ruleset v3 worlds', () => {
     await f.db.update(planets).set({ x: 0, y: 0, z: 0, alloy: 20_000, crystal: 10_000 })
       .where(eq(planets.id, f.joined.planetId));
     await setLevel(f.db, f.joined.planetId, 'CORE', 3);
-    await giveUnits(f.db, f.joined.planetId, { HAULER: 1 });
+    await giveUnits(f.db, f.joined.planetId, { COURIER: 1 });
     const before = target.world.alloy;
     const launched = await launchTransfer(
       f.db,
       f.joined.playerId,
       f.joined.planetId,
       target.world.id,
-      { HAULER: 1 },
+      { COURIER: 1 },
       { alloy: 500, crystal: 100, deuterium: 0 },
       f.clock,
     );
@@ -424,6 +424,15 @@ describe('ruleset v3 worlds', () => {
     const [delivered] = await f.db.select().from(planets).where(eq(planets.id, target.world.id));
     expect(delivered?.alloy).toBe(before + 500);
     expect(delivered?.crystal).toBe(target.world.crystal + 100);
+    const [landedFleet] = await f.db.select().from(units).where(and(
+      eq(units.planetId, target.world.id),
+      eq(units.hull, 'COURIER'),
+      eq(units.location, 'home'),
+    ));
+    expect(landedFleet).toMatchObject({ ownerPlayerId: f.joined.playerId, count: 1 });
+    expect(await f.db.select().from(missions).where(eq(missions.status, 'in_flight'))).toHaveLength(0);
+    expect(await f.db.select().from(notifications).where(eq(notifications.refId, launched.missionId)))
+      .toHaveLength(0);
   });
 
   it('rejects ground transfers and cargo that dedicated transports cannot carry', async () => {
@@ -434,7 +443,7 @@ describe('ruleset v3 worlds', () => {
       controllerPlayerId: f.joined.playerId,
     }).where(eq(planets.id, target.world.id));
     await f.db.delete(neutralPlanetState).where(eq(neutralPlanetState.planetId, target.world.id));
-    await giveUnits(f.db, f.joined.planetId, { THORN: 1, WASP: 1, HAULER: 1 });
+    await giveUnits(f.db, f.joined.planetId, { THORN: 1, DART: 1, COURIER: 1 });
 
     await expect(launchTransfer(
       f.db,
@@ -450,7 +459,7 @@ describe('ruleset v3 worlds', () => {
       f.joined.playerId,
       f.joined.planetId,
       target.world.id,
-      { WASP: 1 },
+      { DART: 1 },
       { alloy: 1, crystal: 0, deuterium: 0 },
       f.clock,
     )).rejects.toMatchObject({ code: 'CARGO_CAPACITY' });
@@ -459,8 +468,8 @@ describe('ruleset v3 worlds', () => {
       f.joined.playerId,
       f.joined.planetId,
       target.world.id,
-      { HAULER: 1 },
-      { alloy: HULLS.HAULER.cargo + 1, crystal: 0, deuterium: 0 },
+      { COURIER: 1 },
+      { alloy: HULLS.COURIER.cargo + 1, crystal: 0, deuterium: 0 },
       f.clock,
     )).rejects.toMatchObject({ code: 'CARGO_CAPACITY' });
   });
@@ -479,14 +488,14 @@ describe('ruleset v3 worlds', () => {
     await f.db.update(planets).set({ x: 0, y: 0, z: 0, alloy: 20_000, crystal: 10_000 })
       .where(eq(planets.id, f.joined.planetId));
     await setLevel(f.db, f.joined.planetId, 'CORE', 3);
-    await giveUnits(f.db, f.joined.planetId, { HAULER: 1 });
+    await giveUnits(f.db, f.joined.planetId, { COURIER: 1 });
     const before = await f.db.select().from(planets).where(eq(planets.id, f.joined.planetId));
     const launched = await launchTransfer(
       f.db,
       f.joined.playerId,
       f.joined.planetId,
       target.world.id,
-      { HAULER: 1 },
+      { COURIER: 1 },
       { alloy: 500, crystal: 100, deuterium: 0 },
       f.clock,
     );
@@ -499,6 +508,17 @@ describe('ruleset v3 worlds', () => {
       eq(missions.status, 'in_flight'),
     ));
     expect(rerouted?.parentMissionId).toBe(launched.missionId);
+    const [notice] = await f.db.select().from(notifications)
+      .where(eq(notifications.refId, launched.missionId));
+    expect(notice).toMatchObject({
+      playerId: f.joined.playerId,
+      kind: 'fleet_returned',
+      payload: {
+        trip: 'transfer_rerouted',
+        reason: 'OWNERSHIP',
+        targetPlanetId: target.world.id,
+      },
+    });
     f.clock.set(rerouted!.arriveAt);
     await workerFor(f.db, f.clock).tick();
 
@@ -506,7 +526,7 @@ describe('ruleset v3 worlds', () => {
     expect(stacks).toHaveLength(1);
     expect(stacks[0]).toMatchObject({
       planetId: f.joined.planetId,
-      hull: 'HAULER',
+      hull: 'COURIER',
       location: 'home',
       count: 1,
     });
@@ -526,7 +546,7 @@ describe('ruleset v3 worlds', () => {
     await f.db.update(neutralPlanetState).set({
       claimUntil: new Date(f.clock.now().getTime() + 30 * 60_000),
     }).where(inArray(neutralPlanetState.planetId, [first!.world.id, second!.world.id]));
-    await giveUnits(f.db, f.joined.planetId, { HAULER: 2 });
+    await giveUnits(f.db, f.joined.planetId, { COURIER: 2 });
 
     const launched = await launchSettlement(
       f.db,
@@ -590,17 +610,17 @@ describe('ruleset v3 worlds', () => {
     await giveInstrument(f.db, target.world.id, 'RADAR', 2);
     await giveSatellite(f.db, target.world.id, 'UPLINK');
     await giveUnits(f.db, target.world.id, {
-      WASP: 2,
-      LANCE: 2,
-      BULWARK: 1,
-      HAULER: 1,
-      RUNNER: 1,
-      BREACHER: 1,
+      DART: 2,
+      PIKE: 2,
+      RAMPART: 1,
+      COURIER: 1,
+      WAYFARER: 1,
+      NULLIFIER: 1,
       THORN: 2,
       BASTION: 1,
       PROSPECTOR: 1,
     });
-    await giveUnits(f.db, target.world.id, { WASP: 1, PROSPECTOR: 1 }, 'mining-away');
+    await giveUnits(f.db, target.world.id, { DART: 1, PROSPECTOR: 1 }, 'mining-away');
     const targetReadyAt = new Date(f.clock.now().getTime() + 30 * 60_000);
     await f.db.insert(strategicAssets).values({
       planetId: target.world.id,
@@ -656,8 +676,8 @@ describe('ruleset v3 worlds', () => {
     });
     const survivors = await f.db.select().from(units).where(eq(units.planetId, target.world.id));
     expect(survivors.map((row) => [row.hull, row.location, row.count]).sort()).toEqual([
+      ['DART', 'mining-away', 1],
       ['PROSPECTOR', 'mining-away', 1],
-      ['WASP', 'mining-away', 1],
     ]);
     expect(await f.db.select().from(battleReports)
       .where(eq(battleReports.targetPlanetId, target.world.id))).toEqual([]);
@@ -823,7 +843,7 @@ describe('ruleset v3 worlds', () => {
     }).where(eq(planets.id, defender.planetId));
     await setLevel(f.db, defender.planetId, 'CORE', 5);
     await setLevel(f.db, defender.planetId, 'REFINERY', 4);
-    await giveUnits(f.db, defender.planetId, { WASP: 5, HAULER: 1 });
+    await giveUnits(f.db, defender.planetId, { DART: 5, COURIER: 1 });
     await setLevel(f.db, f.joined.planetId, 'CORE', 2);
     await f.db.insert(strategicAssets).values({
       planetId: f.joined.planetId,
@@ -879,7 +899,7 @@ describe('ruleset v3 worlds', () => {
       defenderPlayerId: defender.playerId,
       targetPlanetId: defender.planetId,
       outcome: 'FIRST_STRIKE',
-      destroyedFleet: { WASP: 5, HAULER: 1 },
+      destroyedFleet: { DART: 5, COURIER: 1 },
       destroyedResources: {
         alloy: struck!.alloy + struck!.bufferAlloy,
         crystal: struck!.crystal + struck!.bufferCrystal,
@@ -912,7 +932,7 @@ describe('ruleset v3 worlds', () => {
       + struck!.bufferAlloy + struck!.bufferCrystal + struck!.bufferDeuterium;
     expect(ledger!.damage).toBeCloseTo(
       survived
-      + fleetValue({ WASP: 5, HAULER: 1 })
+      + fleetValue({ DART: 5, COURIER: 1 })
       + coreLoss.alloy + coreLoss.crystal + coreLoss.deuterium,
       // Six piles, each floored, against a float4 column.
       -1,
@@ -1314,13 +1334,13 @@ describe('a raid on a caretaker world and the ladders it flew with', () => {
       .set({ x: 12, y: 0, z: 0 })
       .where(eq(planets.id, target.world.id));
     await setLevel(f.db, capital, 'SHIPYARD', 6);
-    await giveUnits(f.db, capital, { WASP: 80, HAULER: 6 });
+    await giveUnits(f.db, capital, { DART: 80, COURIER: 6 });
     await f.db.update(planets)
       .set({ alloy: 400_000, crystal: 200_000, deuterium: 200_000 })
       .where(eq(planets.id, capital));
 
     const launched = await launchAttack(
-      f.db, capital, target.world.id, { WASP: 80, HAULER: 6 }, f.clock,
+      f.db, capital, target.world.id, { DART: 80, COURIER: 6 }, f.clock,
     );
     const [mission] = await f.db.select().from(missions)
       .where(eq(missions.id, launched.missionId));
@@ -1340,7 +1360,7 @@ describe('a raid on a caretaker world and the ladders it flew with', () => {
     expect(report).toBeTruthy();
     const loot = report!.loot;
     // The report stores losses; what came home is what was sent minus those.
-    const sent: Fleet = { WASP: 80, HAULER: 6 };
+    const sent: Fleet = { DART: 80, COURIER: 6 };
     const lost = report!.attackerLosses;
     const survivors: Fleet = Object.fromEntries(
       (Object.entries(sent) as [keyof Fleet, number][])

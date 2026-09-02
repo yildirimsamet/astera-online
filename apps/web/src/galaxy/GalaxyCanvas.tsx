@@ -65,6 +65,7 @@ import { installTapGuard, wasMiss, wasTap } from './tap.js';
 import { serverNow } from '../lib/clock.js';
 import { staleness } from '../lib/time.js';
 import { commanderLabel } from '../lib/identity.js';
+import { recordAgeMinutes } from '../lib/dossier.js';
 import { RankBadge } from './RankBadge.jsx';
 import { useTranslation } from 'react-i18next';
 
@@ -756,7 +757,13 @@ function Labels({
 
   return (
     <>
-      {ordered.map((node) => (
+      {ordered.map((node) => {
+      /**
+       * HOW OLD THIS WORLD'S RECORD IS, OR NULL IF IT IS A LIVE READING. D151.
+       * The shared definition, so the label and the dossier cannot drift apart.
+       */
+      const age = recordAgeMinutes(node, serverNow());
+      return (
         <Html
           key={node.id}
           position={[node.position[0], node.position[1] + node.radius * 1.85, node.position[2]]}
@@ -832,23 +839,36 @@ function Labels({
             </span>
             <span className="legend">{node.name}</span>
             {/*
-              A RECORD SAYS WHEN IT WAS TAKEN. D127.
-              Everything above this line on a remembered world is what a probe saw,
-              and it may have been wrong for hours. Printing it without its age
-              would be the map asserting something it cannot know — the fog hides,
-              it never lies. Same string the Telescope already uses for a stale
-              reading, so the two ages read as one idea.
+              A RECORD SAYS WHEN IT WAS TAKEN, AND WHAT IT IS. D127 · D151.
+
+              Everything above this line on a remembered world is what a craft of
+              yours saw when it was last there, and it may have been wrong for
+              hours. Printing it without its age would be the map asserting
+              something it cannot know — the fog hides, it never lies.
+
+              IT USED TO PRINT A BARE DURATION. "3h 10m ago" under a confident kind
+              row and a commander's name reads as decoration; what is three hours
+              old is not stated, so the eye takes the rows above it as current and
+              the line as trim. It names the record now — and the record is no
+              longer only a probe's (D151), which is the other reason the old
+              wording could not stay.
+
+              THE ARITHMETIC IS `recordAgeMinutes` AND NOT A SECOND COPY OF IT. The
+              dossier stamps the same age on its fact rows; the two ran their own
+              subtraction, and a map and a panel that disagree about how old one
+              world is are worse than either of them being wrong alone.
             */}
-            {node.intel === 'REMEMBERED' && node.seenAt && (
+            {age !== null && (
               <span className="legend text-faint">
-                {staleness(Math.max(0, (serverNow() - node.seenAt.getTime()) / 60_000))}
+                {t('galaxy.recordAge', { age: staleness(age) })}
               </span>
             )}
             </>
             )}
           </span>
         </Html>
-      ))}
+      );
+      })}
     </>
   );
 }

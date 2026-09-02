@@ -230,7 +230,7 @@ export function buildingGain(
       };
     }
     case 'SHIPYARD': {
-      const unlocked = (['LANCE', 'HAULER', 'BULWARK'] as const).find(
+      const unlocked = (['PIKE', 'COURIER', 'RAMPART'] as const).find(
         (hull) => HULLS[hull].minShipyard === next,
       );
 
@@ -507,12 +507,9 @@ export function satelliteGain(id: SatelliteId): Gain {
  * craft carry more". How much faster, how much better, how much more — nowhere,
  * on any surface, at any rung.
  *
- * That is D124's rule broken on the screen where it costs most. A player choosing
- * between Wasp Doctrine and Weapons and Armour is choosing between two numbers
- * they were never shown, and the answer is not intuitive: the doctrine is worth
- * MORE to one hull family and NOTHING to the rest, the general project is worth
- * LESS per hull and applies to every one of them, and their combined ceiling is
- * fixed. None of that is guessable from "Better attack and armour".
+ * Fleet V2 makes the distinctions explicit: Engineering opens tiers without
+ * changing combat, Power changes attack, Armor changes HP and Propulsion changes
+ * speed. Those boundaries are the decision, so each row names its own scope.
  *
  * EVERY FIGURE HERE IS COMPUTED FROM THE RULES, never restated. The percentages
  * come out of `hullTech`, `yardSpeedMult`, `prospectorHoldMult` and `cargoMult`,
@@ -548,32 +545,29 @@ export function researchGain(id: ResearchProjectId, level: number): Gain {
     ...(maxed ? { maxed: true as const } : {}),
   });
 
-  /** A doctrine and the general project are one arithmetic, read two ways. */
+  /** Ground doctrine reads the same pure multiplier used by combat. */
   const combat = (hull: HullId, project: ResearchProjectId) =>
     (rung: number) => hullTech({ [project]: rung }, hull).atk - 1;
 
   switch (id) {
-    /* ── the four class doctrines ───────────────────────────── */
-    case 'WASP_DOCTRINE':
+    /* ── the three Fleet V2 stat ladders ───────────────────── */
+    case 'SHIP_POWER':
       return step(
-        i18n.t('gains.research.doctrineLabel', { hull: hullLabel('WASP') }),
-        combat('WASP', 'WASP_DOCTRINE'),
-        i18n.t('gains.research.doctrineScope', { hull: hullLabel('WASP') }),
+        i18n.t('gains.research.powerLabel'),
+        combat('DART', 'SHIP_POWER'),
+        i18n.t('gains.research.powerScope'),
       );
-    case 'LANCE_DOCTRINE':
+    case 'SHIP_ARMOR':
       return step(
-        i18n.t('gains.research.doctrineLabel', { hull: hullLabel('LANCE') }),
-        combat('LANCE', 'LANCE_DOCTRINE'),
-        i18n.t('gains.research.lanceScope', {
-          lance: hullLabel('LANCE'),
-          breacher: hullLabel('BREACHER'),
-        }),
+        i18n.t('gains.research.armorLabel'),
+        (rung) => hullTech({ SHIP_ARMOR: rung }, 'DART').hp - 1,
+        i18n.t('gains.research.armorScope'),
       );
-    case 'BULWARK_DOCTRINE':
+    case 'SHIP_PROPULSION':
       return step(
-        i18n.t('gains.research.doctrineLabel', { hull: hullLabel('BULWARK') }),
-        combat('BULWARK', 'BULWARK_DOCTRINE'),
-        i18n.t('gains.research.doctrineScope', { hull: hullLabel('BULWARK') }),
+        i18n.t('gains.research.speedLabel'),
+        (rung) => hullTech({ SHIP_PROPULSION: rung }, 'DART').speed - 1,
+        i18n.t('gains.research.speedScope'),
       );
     case 'EMPLACEMENT_DOCTRINE':
       return step(
@@ -585,19 +579,15 @@ export function researchGain(id: ResearchProjectId, level: number): Gain {
         }),
       );
 
-    /**
-     * AND THE ONE THAT COVERS EVERYTHING. The figure is deliberately the SAME
-     * arithmetic as a doctrine's — they split the ceiling evenly — so the honest
-     * distinction is not the size of the step but its REACH, which is what the
-     * unlock line carries. A player comparing the two rows sees equal percentages
-     * and two different scopes, which is exactly the choice in front of them.
-     */
-    case 'WEAPONS_GENERAL':
-      return step(
-        i18n.t('gains.research.generalLabel'),
-        (rung) => hullTech({ WEAPONS_GENERAL: rung }, 'WASP').atk - 1,
-        i18n.t('gains.research.generalScope'),
-      );
+    /** Engineering buys tier permission, not a statistic. */
+    case 'STARSHIP_ENGINEERING':
+      return {
+        label: i18n.t('gains.research.engineeringLabel'),
+        now: i18n.t('gains.research.engineeringTier', { tier: Math.min(4, level + 2) }),
+        next: i18n.t('gains.research.engineeringTier', { tier: Math.min(4, show + 2) }),
+        unlocks: i18n.t('gains.research.engineeringScope'),
+        ...(maxed ? { maxed: true as const } : {}),
+      };
 
     /* ── the three economy ladders ──────────────────────────── */
     case 'YARD_AUTOMATION':

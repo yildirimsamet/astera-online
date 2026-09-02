@@ -637,7 +637,7 @@ const launch = async (vu) => {
       const intentAt = performance.now();
       const result = await request(vu, '/api/fleet/launch', {
         method: 'POST',
-        body: { targetPlanetId: target.id, fleet: { WASP: 1 } },
+        body: { targetPlanetId: target.id, fleet: { DART: 1 } },
         acceptedErrorCodes: [
           'NO_FREE_BAY', 'FLEET_ALREADY_COMMITTED', 'OCCUPATION_PROTECTED',
           'WORLD_RECOVERING', 'TIER_BAND', 'BASH_LIMIT', 'SEASON_ENDING',
@@ -662,7 +662,7 @@ const mutate = async (vu) => {
     return;
   }
   if (roll < 0.92) {
-    await request(vu, '/api/planet/build', { method: 'POST', body: { hull: 'WASP', count: 1 } });
+    await request(vu, '/api/planet/build', { method: 'POST', body: { hull: 'DART', count: 1 } });
     return;
   }
   await request(vu, '/api/chat/messages', {

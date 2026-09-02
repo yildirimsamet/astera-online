@@ -40,9 +40,10 @@ import {
 import {
   asteroidId,
   asteroidIndexFromId,
-  privateAsteroidField,
+  privateAsteroidFieldWithEvents,
   projectPlayerAsteroidField,
 } from './asteroidField.js';
+import { loadGalaxyEventSchedule } from './galaxyEvents.js';
 import { sensorHistoryForPlayer } from './sensorHistory.js';
 import { schedule } from '../worker/queue.js';
 import { publish, publishShard } from '../stream/bus.js';
@@ -75,8 +76,9 @@ async function fieldOf(tx: Queryable, seasonId: string): Promise<{
 }> {
   const [season] = await tx.select().from(seasons).where(eq(seasons.id, seasonId));
   if (!season) throw new GameError('SEASON_NOT_FOUND', 'No such season', 404);
+  const eventSchedule = await loadGalaxyEventSchedule(tx, season.id, season.startsAt);
   return {
-    asteroids: privateAsteroidField(season.asteroidKey),
+    asteroids: privateAsteroidFieldWithEvents(season.asteroidKey, eventSchedule),
     startsAt: season.startsAt,
     asteroidKey: season.asteroidKey,
   };
@@ -163,7 +165,11 @@ export function projectVisibleDebris(snapshot: MiningSnapshot, now: Date) {
       const age = (now.getTime() - field.createdAt.getTime()) / 60_000;
       return {
         id: field.id,
+        /** NULL for a pirate battle: open space has no world to orbit. D150. */
         planetId: field.planetId,
+        x: field.x,
+        y: field.y,
+        z: field.z,
         alloy: debrisRemaining(field.alloy, field.takenAlloy, age),
         crystal: debrisRemaining(field.crystal, field.takenCrystal, age),
         deuterium: debrisRemaining(field.deuterium, field.takenDeuterium, age),
@@ -894,8 +900,19 @@ export async function claimFromDebris(
       deuteriumLeft - claim.deuterium,
     );
     if (leftAfter < 1) {
-      const identity = await publicPlanetIdentity(tx, field.planetId);
-      if (identity) {
+      /*
+        A VOID WRECK EXHAUSTING NAMES NO WORLD, SO IT IS NOT A CHRONICLE LINE. D96.
+
+        The chronicle records public transitions and identifies them by the world
+        they happened to; a pirate battle's wreckage happened at a rendezvous with
+        no address. Rather than invent a subject, the stripped field simply passes
+        without an entry — which is also what `subjectPlanetId` being non-null in
+        that payload has always meant.
+      */
+      const identity = field.planetId === null
+        ? null
+        : await publicPlanetIdentity(tx, field.planetId);
+      if (identity && field.planetId !== null) {
         await recordGalaxyEvent(tx, {
           seasonId: field.seasonId,
           kind: 'wreck_exhausted',
@@ -993,8 +1010,15 @@ export async function launchHarvest(
       .limit(1);
     if (existing) throw new GameError('ALREADY_HARVESTING', 'You already have craft there', 409);
 
-    const [target] = await tx.select().from(planets).where(eq(planets.id, field.planetId));
-    if (!target) throw new GameError('NO_SUCH_FIELD', 'No such wreck field', 404);
+    /*
+      THE FIELD'S OWN POSITION, NOT ITS WORLD'S. D150.
+
+      This used to dereference `planetId` and read the coordinates off the planet
+      row, which stopped being possible the moment a battle could happen in open
+      space. The column is on the field for every kind of wreck, so this is one
+      lookup fewer as well as one branch fewer.
+    */
+    const target = { x: field.x, y: field.y, z: field.z };
 
     const speed = prospectorSpeed(origin.orbit);
     const dist = distance(origin, target);

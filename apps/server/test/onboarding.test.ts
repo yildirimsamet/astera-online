@@ -105,7 +105,7 @@ describe('onboarding claim', () => {
     { kind: 'upgrade', building: 'CORE' },
     { kind: 'upgrade', building: 'REFINERY' },
     { kind: 'upgrade', building: 'EXTRACTOR' },
-    { kind: 'build', hull: 'WASP', count: 2 },
+    { kind: 'build', hull: 'DART', count: 2 },
   ];
 
   /* ── the arithmetic the whole rehearsal stands on ─────────── */
@@ -121,9 +121,9 @@ describe('onboarding claim', () => {
     const three = { alloy: step.alloy * 3, crystal: step.crystal * 3 };
 
     expect(three.crystal).toBe(START.crystal);
-    expect(START.alloy - three.alloy).toBe(HULLS.WASP.alloy * 2);
-    expect(HULLS.WASP.crystal).toBe(0);
-    expect(HULLS.WASP.minShipyard).toBe(0);
+    expect(START.alloy - three.alloy).toBe(HULLS.DART.alloy * 2);
+    expect(HULLS.DART.crystal).toBe(0);
+    expect(HULLS.DART.minShipyard).toBe(0);
   });
 
   /* ── the happy path ───────────────────────────────────────── */
@@ -159,7 +159,7 @@ describe('onboarding claim', () => {
     expect(body.planet.queues.CONSTRUCTION.map((order) => order.subject))
       .toEqual(['CORE', 'REFINERY', 'EXTRACTOR']);
     expect(body.planet.queues.YARD).toMatchObject([
-      { kind: 'HULL', subject: 'WASP', count: 2 },
+      { kind: 'HULL', subject: 'DART', count: 2 },
     ]);
     const constructionFinishes = body.planet.queues.CONSTRUCTION
       .map((order) => new Date(order.finishesAt).getTime());
@@ -212,7 +212,7 @@ describe('onboarding claim', () => {
 
     expect(rows.reduce((n, row) => n + row.count, 0)).toBe(0);
     expect(body.planet.queues.YARD).toMatchObject([
-      { kind: 'HULL', subject: 'WASP', count: 2 },
+      { kind: 'HULL', subject: 'DART', count: 2 },
     ]);
   });
 
@@ -248,7 +248,7 @@ describe('onboarding claim', () => {
       password: 'correct-horse-battery',
       intents: [
         ...OPENING(),
-        { kind: 'launch', targetPlanetId: target.planetId, fleet: { WASP: 2 } },
+        { kind: 'launch', targetPlanetId: target.planetId, fleet: { DART: 2 } },
       ],
     })).json<Claim>();
 
@@ -269,7 +269,7 @@ describe('onboarding claim', () => {
       intents: [
         { kind: 'upgrade', building: 'REFINERY' },
         { kind: 'upgrade', building: 'CORE' },
-        { kind: 'build', hull: 'WASP', count: 1 },
+        { kind: 'build', hull: 'DART', count: 1 },
       ],
     })).json<Claim>();
 
@@ -331,7 +331,7 @@ describe('onboarding claim', () => {
     expect(rows.filter((row) => row.queue === 'CONSTRUCTION').map((row) => row.subject).sort())
       .toEqual(['CORE', 'EXTRACTOR', 'REFINERY']);
     expect(rows.filter((row) => row.queue === 'YARD')).toMatchObject([
-      { subject: 'WASP', count: 2 },
+      { subject: 'DART', count: 2 },
     ]);
   });
 
@@ -401,7 +401,7 @@ describe('onboarding claim', () => {
       method: 'POST',
       url: '/api/planet/build',
       headers: { authorization: `Bearer ${body.accessToken}` },
-      payload: { hull: 'WASP', count: 1 },
+      payload: { hull: 'DART', count: 1 },
     });
     expect(action.statusCode).toBe(200);
     const queued = await db.select().from(buildOrders)
@@ -434,7 +434,7 @@ describe('onboarding claim', () => {
         {
           kind: 'launch',
           targetPlanetId: '00000000-0000-4000-8000-000000000000',
-          fleet: { WASP: 1 },
+          fleet: { DART: 1 },
         },
       ],
     })).json<Claim>();

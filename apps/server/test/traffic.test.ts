@@ -20,7 +20,6 @@ import { afterAll, afterEach, beforeEach, describe, expect, it, vi } from 'vites
 import { buildApp } from '../src/app.js';
 import {
   buildings,
-  debrisFields,
   miningRuns,
   missions,
   planets,
@@ -55,6 +54,7 @@ import {
   testDb,
   testEnv,
   type Fixture,
+  giveDebris
 } from './helpers.js';
 
 /**
@@ -182,8 +182,8 @@ describe('galaxy traffic — motion in public, intent in private', () => {
    * about is a craft part-way along its leg, so that is what they now say.
    */
   const strangersFight = async (): Promise<{ arriveAt: Date }> => {
-    await giveUnits(f.db, a, { WASP: 30 });
-    return launchAttack(f.db, a, b, { WASP: 30 }, f.clock);
+    await giveUnits(f.db, a, { DART: 30 });
+    return launchAttack(f.db, a, b, { DART: 30 }, f.clock);
   };
 
   /** Move to `share` of the way through a flight that lands at `arriveAt`. */
@@ -192,10 +192,52 @@ describe('galaxy traffic — motion in public, intent in private', () => {
     f.clock.set(new Date(now + (arriveAt.getTime() - now) * share));
   };
 
+  /**
+   * THE MISSION TRAFFIC ONLY. D150.
+   *
+   * The pirate lane is derived from the season key, so the disc is never quiet
+   * any more — which is the feature, and it is also why these assertions could no
+   * longer count rows. Filtered by opaque id rather than by `kind`, deliberately:
+   * inside a Radar circle a pirate is an `unknown` question mark exactly like
+   * anything else, so a kind filter would drop the craft some of these tests are
+   * actually about.
+   */
   const fetchContacts = async (): Promise<Contact[]> => {
     const res = await app.inject({ method: 'GET', url: '/api/galaxy/traffic', headers: auth });
     expect(res.statusCode).toBe(200);
-    return res.json<{ contacts: Contact[] }>().contacts;
+    const pirates = await pirateContactIds(f.db, f.seasonId);
+    return res.json<{ contacts: Contact[] }>().contacts
+      .filter((contact) => !pirates.has(contact.id));
+  };
+
+  /** `galaxyTraffic`, with the derived pirate lane filtered out. */
+  const missionTraffic = async (
+    planetId: string | null = mine,
+    playerId?: string | null,
+    planetIds?: string[],
+  ) => {
+    const [all, pirates] = await Promise.all([
+      galaxyTraffic(
+        f.db,
+        f.seasonId,
+        planetId,
+        f.clock.now(),
+        playerId ?? null,
+        planetIds ?? (planetId === null ? [] : [planetId]),
+      ),
+      pirateContactIds(f.db, f.seasonId),
+    ]);
+    return all.filter((contact) => !pirates.has(contact.id));
+  };
+
+  /** Every id the season's pirate lane can publish. */
+  const pirateContactIds = async (db: typeof f.db, seasonId: string): Promise<Set<string>> => {
+    const { seasons } = await import('../src/db/schema.js');
+    const { privatePirateField, pirateId } = await import('../src/services/pirateField.js');
+    const [season] = await db.select().from(seasons).where(eq(seasons.id, seasonId));
+    if (!season) return new Set();
+    return new Set(privatePirateField(season.asteroidKey).map((spec) =>
+      pirateId(season.asteroidKey, spec.index)));
   };
 
   const raw = async (): Promise<string> => {
@@ -251,8 +293,8 @@ describe('galaxy traffic — motion in public, intent in private', () => {
   });
 
   it('is still visible on final approach', async () => {
-    await giveUnits(f.db, a, { WASP: 30 });
-    const launch = await launchAttack(f.db, a, b, { WASP: 30 }, f.clock);
+    await giveUnits(f.db, a, { DART: 30 });
+    const launch = await launchAttack(f.db, a, b, { DART: 30 }, f.clock);
     f.clock.set(new Date(launch.arriveAt.getTime() - 60_000));
     expect(await fetchContacts()).toHaveLength(1);
   });
@@ -268,15 +310,15 @@ describe('galaxy traffic — motion in public, intent in private', () => {
     const [contact] = await fetchContacts();
 
     expect(contact?.mass).toBe('LIGHT');
-    expect(contact?.fleet).toEqual({ WASP: 30 });
+    expect(contact?.fleet).toEqual({ DART: 30 });
     // Not reconstructed in the renderer — exact on the wire after sight earned it.
-    expect(await raw()).toContain('WASP');
+    expect(await raw()).toContain('DART');
   });
 
   /** Three steps, so the disc says "something big" without saying what. */
   it('reads a serious fleet as a heavier silhouette', async () => {
-    await giveUnits(f.db, a, { BULWARK: 30 });
-    midFlight((await launchAttack(f.db, a, b, { BULWARK: 30 }, f.clock)).arriveAt);
+    await giveUnits(f.db, a, { RAMPART: 80 });
+    midFlight((await launchAttack(f.db, a, b, { RAMPART: 80 }, f.clock)).arriveAt);
 
     expect((await fetchContacts())[0]?.mass).toBe('HEAVY');
   });
@@ -371,7 +413,7 @@ describe('galaxy traffic — motion in public, intent in private', () => {
     expect(sender).toContainEqual(expect.objectContaining({ id: impact!.id }));
 
     f.clock.set(new Date(arriveAt.getTime() + DEATH_STAR.impactSeconds * 1000));
-    expect(await galaxyTraffic(f.db, f.seasonId, mine, f.clock.now())).toEqual([]);
+    expect(await missionTraffic()).toEqual([]);
   });
 
   it('never draws a ghost weapon or later planet explosion for an intercepted Death Star', async () => {
@@ -404,10 +446,10 @@ describe('galaxy traffic — motion in public, intent in private', () => {
     // During the dedicated eight-second interception scene, the old contact path
     // must already be gone.
     f.clock.set(new Date(interceptedAt.getTime() + 1));
-    expect(await galaxyTraffic(f.db, f.seasonId, mine, f.clock.now())).toEqual([]);
+    expect(await missionTraffic()).toEqual([]);
     // Its original arrival instant must not manufacture a planet detonation.
     f.clock.set(new Date(arriveAt.getTime() + 1));
-    expect(await galaxyTraffic(f.db, f.seasonId, mine, f.clock.now())).toEqual([]);
+    expect(await missionTraffic()).toEqual([]);
   });
 
   it('shares an interception with participants and Telescope witnesses only', async () => {
@@ -585,7 +627,7 @@ describe('galaxy traffic — motion in public, intent in private', () => {
       'startAt',
       'to',
     ]);
-    expect(contact?.fleet).toEqual({ WASP: 30 });
+    expect(contact?.fleet).toEqual({ DART: 30 });
     expect(contact?.mass).toBe('LIGHT');
     expect(contact?.route).toBeUndefined();
     expect(contact?.minutesRemaining).toBeUndefined();
@@ -611,8 +653,8 @@ describe('galaxy traffic — motion in public, intent in private', () => {
    * next speed change cannot walk past it either.
    */
   it('publishes a heading, never the whole of what is left to fly', async () => {
-    await giveUnits(f.db, a, { WASP: 30 });
-    const launch = await launchAttack(f.db, a, b, { WASP: 30 }, f.clock);
+    await giveUnits(f.db, a, { DART: 30 });
+    const launch = await launchAttack(f.db, a, b, { DART: 30 }, f.clock);
 
     /**
      * Sampled where there is still a real flight left to give away. The final
@@ -639,8 +681,8 @@ describe('galaxy traffic — motion in public, intent in private', () => {
   });
 
   it('never publishes a point past the end of the flight', async () => {
-    await giveUnits(f.db, a, { WASP: 30 });
-    const launch = await launchAttack(f.db, a, b, { WASP: 30 }, f.clock);
+    await giveUnits(f.db, a, { DART: 30 });
+    const launch = await launchAttack(f.db, a, b, { DART: 30 }, f.clock);
     midFlight(launch.arriveAt);
 
     const [contact] = await fetchContacts();
@@ -664,8 +706,8 @@ describe('galaxy traffic — motion in public, intent in private', () => {
    * in that minute the window's end point already IS the destination.
    */
   it('says nothing about landing while there is real flight left', async () => {
-    await giveUnits(f.db, a, { WASP: 30 });
-    const launch = await launchAttack(f.db, a, b, { WASP: 30 }, f.clock);
+    await giveUnits(f.db, a, { DART: 30 });
+    const launch = await launchAttack(f.db, a, b, { DART: 30 }, f.clock);
 
     for (const share of [0.1, 0.4, 0.7]) {
       const start = f.clock.now().getTime();
@@ -677,8 +719,8 @@ describe('galaxy traffic — motion in public, intent in private', () => {
   });
 
   it('marks the window as the arrival once it is clamped to it', async () => {
-    await giveUnits(f.db, a, { WASP: 30 });
-    const launch = await launchAttack(f.db, a, b, { WASP: 30 }, f.clock);
+    await giveUnits(f.db, a, { DART: 30 });
+    const launch = await launchAttack(f.db, a, b, { DART: 30 }, f.clock);
 
     /*
       INSIDE THE FINAL WINDOW, DERIVED RATHER THAN TYPED. It was "half a minute
@@ -709,8 +751,8 @@ describe('galaxy traffic — motion in public, intent in private', () => {
    * heading right up to the last few seconds.
    */
   it('is still MOVING on final approach, not parked on its target', async () => {
-    await giveUnits(f.db, a, { WASP: 30 });
-    const launch = await launchAttack(f.db, a, b, { WASP: 30 }, f.clock);
+    await giveUnits(f.db, a, { DART: 30 });
+    const launch = await launchAttack(f.db, a, b, { DART: 30 }, f.clock);
 
     // Nine tenths of the way there: deep inside the old blackout.
     const departAt = f.clock.now().getTime();
@@ -746,8 +788,8 @@ describe('galaxy traffic — motion in public, intent in private', () => {
    * derived from the same public figures on both sides (`visualLeg`).
    */
   it('publishes the craft’s drawn position at every point of the flight', async () => {
-    await giveUnits(f.db, a, { WASP: 30 });
-    const launch = await launchAttack(f.db, a, b, { WASP: 30 }, f.clock);
+    await giveUnits(f.db, a, { DART: 30 });
+    const launch = await launchAttack(f.db, a, b, { DART: 30 }, f.clock);
     const departAt = f.clock.now().getTime();
     const span = launch.arriveAt.getTime() - departAt;
 
@@ -794,8 +836,8 @@ describe('galaxy traffic — motion in public, intent in private', () => {
    * copy of your own squadron beside the real one all the way home.
    */
   it('excludes your own craft on the way out and on the way home', async () => {
-    await giveUnits(f.db, mine, { WASP: 30 });
-    const out = await launchAttack(f.db, mine, a, { WASP: 30 }, f.clock);
+    await giveUnits(f.db, mine, { DART: 30 });
+    const out = await launchAttack(f.db, mine, a, { DART: 30 }, f.clock);
     f.clock.advance(10);
     expect(await fetchContacts()).toHaveLength(0);
 
@@ -827,8 +869,8 @@ describe('galaxy traffic — motion in public, intent in private', () => {
    * Radar's to sell (D9) — asserted below.
    */
   it('shows a fleet flying at you, exactly as it shows one flying at anybody else', async () => {
-    await giveUnits(f.db, b, { WASP: 30 });
-    midFlight((await launchAttack(f.db, b, mine, { WASP: 30 }, f.clock)).arriveAt);
+    await giveUnits(f.db, b, { DART: 30 });
+    midFlight((await launchAttack(f.db, b, mine, { DART: 30 }, f.clock)).arriveAt);
 
     const seen = await fetchContacts();
     expect(seen).toHaveLength(1);
@@ -850,8 +892,8 @@ describe('galaxy traffic — motion in public, intent in private', () => {
     // this file can see its own leg. This one case is about the ABSENCE of a
     // radar, so it takes it back off.
     await giveInstrument(f.db, mine, 'RADAR', 0);
-    await giveUnits(f.db, b, { WASP: 30 });
-    const raid = await launchAttack(f.db, b, mine, { WASP: 30 }, f.clock);
+    await giveUnits(f.db, b, { DART: 30 });
+    const raid = await launchAttack(f.db, b, mine, { DART: 30 }, f.clock);
     f.clock.set(new Date(raid.arriveAt.getTime() - 60_000));
 
     const threads = await pendingThreads(f.db, mine, f.clock.now());
@@ -888,8 +930,8 @@ describe('galaxy traffic — motion in public, intent in private', () => {
    */
   describe('a raid landing', () => {
     const landed = async (offsetSeconds: number): Promise<Contact[]> => {
-      await giveUnits(f.db, a, { WASP: 30 });
-      const launch = await launchAttack(f.db, a, b, { WASP: 30 }, f.clock);
+      await giveUnits(f.db, a, { DART: 30 });
+      const launch = await launchAttack(f.db, a, b, { DART: 30 }, f.clock);
       f.clock.set(new Date(launch.arriveAt.getTime() + offsetSeconds * 1000));
       return fetchContacts();
     };
@@ -1039,18 +1081,13 @@ describe('galaxy traffic — motion in public, intent in private', () => {
      * a battle leaves behind.
      */
     const strangerSalvages = async () => {
-      const [field] = await f.db
-        .insert(debrisFields)
-        .values({
-          seasonId: f.seasonId,
-          planetId: b,
+      const field = await giveDebris(f.db, f.seasonId, b, {
           alloy: 5_000,
           crystal: 1_200,
           createdAt: f.clock.now(),
-        })
-        .returning();
+        });
       await giveUnits(f.db, a, { PROSPECTOR: 3 });
-      return launchHarvest(f.db, a, field!.id, 2, f.clock);
+      return launchHarvest(f.db, a, field.id, 2, f.clock);
     };
 
     it('shows the whole leg and the time left on it', async () => {
@@ -1080,8 +1117,16 @@ describe('galaxy traffic — motion in public, intent in private', () => {
 
     it('still excludes your own, which are drawn at full fidelity elsewhere', async () => {
       await giveUnits(f.db, mine, { PROSPECTOR: 3 });
-      const [rock] = activeAsteroids(f.asteroids, SETTLED_MINUTES);
-      if (!rock) throw new Error('no rock in the disc at SETTLED_MINUTES');
+      const [world] = await f.db.select().from(planets).where(eq(planets.id, mine));
+      const origin = { x: world!.x, y: world!.y, z: world!.z };
+      const rock = activeAsteroids(f.asteroids, SETTLED_MINUTES)
+        .find((candidate) => interceptAsteroid(
+          origin,
+          prospectorSpeed([]),
+          candidate,
+          SETTLED_MINUTES,
+        ) !== null);
+      if (!rock) throw new Error('no reachable rock in the disc at SETTLED_MINUTES');
       midFlight((await launchMining(f.db, mine, rock.index, 2, f.clock)).arriveAt);
 
       expect((await fetchContacts()).filter((c) => c.kind === 'mining')).toHaveLength(0);
@@ -1162,7 +1207,7 @@ describe('galaxy traffic — motion in public, intent in private', () => {
   it('produces the same result through the service as through the route', async () => {
     midFlight((await strangersFight()).arriveAt);
 
-    const direct = await galaxyTraffic(f.db, f.seasonId, mine, f.clock.now());
+    const direct = await missionTraffic();
     const overHttp = await fetchContacts();
     expect(overHttp).toHaveLength(direct.length);
   });

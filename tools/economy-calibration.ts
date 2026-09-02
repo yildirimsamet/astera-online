@@ -26,6 +26,7 @@ import {
   INSTRUMENT_LEVEL_WORTH,
   MULTI_WORLD,
   PLANET_START,
+  RESEARCH_PROJECT_IDS,
   RESEARCH_PROJECTS,
   researchCostMix,
   SATELLITES,
@@ -95,12 +96,24 @@ const BASELINE: EconomyProfile = {
 };
 
 const BASE_HULL_COSTS: Record<HullId, Resources> = {
-  WASP: { alloy: 240, crystal: 0, deuterium: 0 },
-  LANCE: { alloy: 820, crystal: 260, deuterium: 0 },
-  BULWARK: { alloy: 2150, crystal: 730, deuterium: 0 },
-  HAULER: { alloy: 1100, crystal: 200, deuterium: 0 },
-  RUNNER: { alloy: 560, crystal: 250, deuterium: 90 },
-  BREACHER: { alloy: 1250, crystal: 550, deuterium: 200 },
+  DART: { alloy: 240, crystal: 0, deuterium: 0 },
+  PIKE: { alloy: 320, crystal: 90, deuterium: 0 },
+  RAMPART: { alloy: 400, crystal: 140, deuterium: 0 },
+  WARDEN: { alloy: 412, crystal: 110, deuterium: 25 },
+  COURIER: { alloy: 500, crystal: 150, deuterium: 50 },
+  VIPER: { alloy: 600, crystal: 130, deuterium: 50 },
+  TALON: { alloy: 850, crystal: 230, deuterium: 80 },
+  STRONGHOLD: { alloy: 1400, crystal: 450, deuterium: 80 },
+  SENTINEL: { alloy: 1200, crystal: 420, deuterium: 150 },
+  WAYFARER: { alloy: 900, crystal: 300, deuterium: 200 },
+  TEMPEST: { alloy: 1400, crystal: 450, deuterium: 160 },
+  BALLISTA: { alloy: 1800, crystal: 700, deuterium: 280 },
+  LEVIATHAN: { alloy: 3200, crystal: 1150, deuterium: 280 },
+  PRAETORIAN: { alloy: 2500, crystal: 900, deuterium: 300 },
+  ATLAS: { alloy: 2100, crystal: 950, deuterium: 400 },
+  NULLIFIER: { alloy: 1600, crystal: 800, deuterium: 280 },
+  CATACLYSM: { alloy: 4200, crystal: 1700, deuterium: 650 },
+  CITADEL: { alloy: 5000, crystal: 2100, deuterium: 600 },
   BASTION: { alloy: 2400, crystal: 800, deuterium: 0 },
   THORN: { alloy: 700, crystal: 200, deuterium: 0 },
   PROSPECTOR: { alloy: 650, crystal: 200, deuterium: 0 },
@@ -118,6 +131,17 @@ const BASE_RESEARCH_COSTS: Record<ResearchProjectId, Resources> = {
   DENSE_FUEL_CELLS: { alloy: 0, crystal: 1400, deuterium: 150 },
   GRAVITIC_CHARGES: { alloy: 0, crystal: 1900, deuterium: 350 },
   DEATH_STAR_PROTOCOL: { alloy: 11_000, crystal: 3600, deuterium: 900 },
+  DEUTERIUM_SYNTHESIS: { alloy: 400, crystal: 700, deuterium: 0 },
+  YARD_AUTOMATION: { alloy: 900, crystal: 500, deuterium: 0 },
+  PROSPECTOR_HOLDS: { alloy: 700, crystal: 900, deuterium: 0 },
+  CARGO_HOLDS: { alloy: 1400, crystal: 1100, deuterium: 0 },
+  STARSHIP_ENGINEERING: { alloy: 1980, crystal: 1170, deuterium: 0 },
+  SHIP_POWER: { alloy: 2200, crystal: 1300, deuterium: 0 },
+  SHIP_ARMOR: { alloy: 2200, crystal: 1300, deuterium: 0 },
+  SHIP_PROPULSION: { alloy: 2200, crystal: 1300, deuterium: 0 },
+  EMPLACEMENT_DOCTRINE: { alloy: 2200, crystal: 1300, deuterium: 0 },
+  INTERCEPTION_GRID: { alloy: 9000, crystal: 5000, deuterium: 700 },
+  STRATEGIC_STOCKPILE: { alloy: 14_000, crystal: 6000, deuterium: 1400 },
 };
 
 const BASE_SETTLEMENT_COST: Resources = { alloy: 2000, crystal: 1000, deuterium: 0 };
@@ -316,10 +340,10 @@ function collectorCap(profile: EconomyProfile, rate: number): number {
 
 function opening(profile: EconomyProfile): Resources {
   const mandatory = upgradeCost(profile, 1);
-  const wasps = hullCost(profile, 'WASP');
+  const darts = hullCost(profile, 'DART');
   return {
-    alloy: 3 * mandatory.alloy + 2 * wasps.alloy + round(4 * alloyRate(profile, 1)),
-    crystal: 3 * mandatory.crystal + 2 * wasps.crystal + round(4 * crystalRate(profile, 1)),
+    alloy: 3 * mandatory.alloy + 2 * darts.alloy + round(4 * alloyRate(profile, 1)),
+    crystal: 3 * mandatory.crystal + 2 * darts.crystal + round(4 * crystalRate(profile, 1)),
     deuterium: 40,
   };
 }
@@ -669,12 +693,10 @@ function printShips(): void {
   console.log('\nHULL PRICE / CRAFT TIME');
   console.log('hull         price   yard  old time  new time  timer');
   const samples: readonly [HullId, number][] = [
-    ['WASP', 0],
-    ['LANCE', 2],
-    ['BULWARK', 4],
-    ['HAULER', 1],
-    ['RUNNER', 2],
-    ['BREACHER', 3],
+    ['DART', 0], ['PIKE', 0], ['RAMPART', 0], ['WARDEN', 0], ['COURIER', 1],
+    ['VIPER', 2], ['TALON', 2], ['STRONGHOLD', 2], ['SENTINEL', 2], ['WAYFARER', 2],
+    ['TEMPEST', 4], ['BALLISTA', 4], ['LEVIATHAN', 4], ['PRAETORIAN', 4],
+    ['ATLAS', 4], ['NULLIFIER', 4], ['CATACLYSM', 6], ['CITADEL', 6],
     ['THORN', 0],
     ['BASTION', 1],
     ['PROSPECTOR', 1],
@@ -735,19 +757,8 @@ function printHardwareAndResearch(): void {
 
   console.log('\nRESEARCH');
   console.log('project                  core  old price  new price  old time  new time');
-  const researchCore: Record<ResearchProjectId, number> = {
-    ISOTOPE_SPECTROMETRY: 6,
-    DENSE_FUEL_CELLS: 6,
-    GRAVITIC_CHARGES: 6,
-    DEATH_STAR_PROTOCOL: DEATH_STAR.requiredCore,
-  };
-  for (const id of [
-    'ISOTOPE_SPECTROMETRY',
-    'DENSE_FUEL_CELLS',
-    'GRAVITIC_CHARGES',
-    'DEATH_STAR_PROTOCOL',
-  ] as const) {
-    const core = researchCore[id];
+  for (const id of RESEARCH_PROJECT_IDS) {
+    const core = RESEARCH_PROJECTS[id].requiredCore ?? 6;
     const oldCost = researchCost(BASELINE, id);
     const newCost = researchCost(CANDIDATE, id);
     console.log(

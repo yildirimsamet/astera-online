@@ -191,9 +191,9 @@ describe('event worker', () => {
     const orphan = async (): Promise<{ missionId: string; attacker: string }> => {
       const [attacker, defender] = f.planetIds as [string, string];
       await setLevel(f.db, attacker, 'CORE', 6);
-      await giveUnits(f.db, attacker, { WASP: 20 });
+      await giveUnits(f.db, attacker, { DART: 20 });
       f.clock.advance(300);
-      const launch = await launchAttack(f.db, attacker, defender, { WASP: 20 }, f.clock);
+      const launch = await launchAttack(f.db, attacker, defender, { DART: 20 }, f.clock);
       await f.db
         .delete(scheduledEvents)
         .where(
@@ -251,7 +251,7 @@ describe('event worker', () => {
           ownerPlayerId: f.playerIds[0]!,
           originPlanetId: attacker,
           targetPlanetId: defender,
-          fleet: { WASP: 1 },
+          fleet: { DART: 1 },
           distance: 100,
           departAt: new Date(overdue.getTime() - 60 * 60_000),
           arriveAt: overdue,
@@ -294,7 +294,7 @@ describe('event worker', () => {
         .select()
         .from(units)
         .where(and(eq(units.planetId, attacker), eq(units.location, 'home')));
-      expect(home.find((u) => u.hull === 'WASP')?.count).toBe(20);
+      expect(home.find((u) => u.hull === 'DART')?.count).toBe(20);
       expect(await baysInUse(f.db, attacker)).toBe(0);
       expect(await strandedFlightCount(f.db, f.clock.now())).toBe(0);
     });
@@ -311,7 +311,7 @@ describe('event worker', () => {
         .select()
         .from(units)
         .where(and(eq(units.planetId, attacker), eq(units.location, 'home')));
-      expect(home.find((u) => u.hull === 'WASP')?.count).toBe(20);
+      expect(home.find((u) => u.hull === 'DART')?.count).toBe(20);
     });
 
     /**
@@ -323,9 +323,9 @@ describe('event worker', () => {
       const [attacker, defender] = f.planetIds as [string, string];
       await setLevel(f.db, attacker, 'CORE', 6);
       await giveInstrument(f.db, defender, 'RADAR', 5);
-      await giveUnits(f.db, attacker, { WASP: 20 });
+      await giveUnits(f.db, attacker, { DART: 20 });
       f.clock.advance(300);
-      const launch = await launchAttack(f.db, attacker, defender, { WASP: 20 }, f.clock);
+      const launch = await launchAttack(f.db, attacker, defender, { DART: 20 }, f.clock);
 
       // The warning survives; only the arrival is lost.
       await f.db
@@ -381,11 +381,11 @@ describe('event worker', () => {
     it('SIGKILL mid-event: a replacement worker resolves it on restart', async () => {
       const [attacker, defender] = f.planetIds as [string, string];
       await setLevel(f.db, attacker, 'CORE', 6);
-      await giveUnits(f.db, attacker, { WASP: 40, HAULER: 4 });
+      await giveUnits(f.db, attacker, { DART: 40, COURIER: 4 });
       await grant(f.db, defender, 40_000, 4_000);
       f.clock.advance(300); // a settled world, not one seconds old
 
-      const launch = await launchAttack(f.db, attacker, defender, { WASP: 40, HAULER: 4 }, f.clock);
+      const launch = await launchAttack(f.db, attacker, defender, { DART: 40, COURIER: 4 }, f.clock);
 
       // Worker A claims the arrival and is killed before completing.
       f.clock.set(settledAt(launch.arriveAt));
@@ -431,11 +431,11 @@ describe('event worker', () => {
     it('resolving the same arrival twice produces exactly one battle report', async () => {
       const [attacker, defender] = f.planetIds as [string, string];
       await setLevel(f.db, attacker, 'CORE', 6);
-      await giveUnits(f.db, attacker, { WASP: 40 });
+      await giveUnits(f.db, attacker, { DART: 40 });
       await grant(f.db, defender, 30_000, 3_000);
       f.clock.advance(300);
 
-      const launch = await launchAttack(f.db, attacker, defender, { WASP: 40 }, f.clock);
+      const launch = await launchAttack(f.db, attacker, defender, { DART: 40 }, f.clock);
       f.clock.set(settledAt(launch.arriveAt));
 
       const worker = makeWorker(f);
@@ -462,7 +462,7 @@ describe('event worker', () => {
     it('resolves combat, moves loot, disrupts, and brings the fleet home', async () => {
       const [attacker, defender] = f.planetIds as [string, string];
       await setLevel(f.db, attacker, 'CORE', 6);
-      await giveUnits(f.db, attacker, { WASP: 120, HAULER: 8 });
+      await giveUnits(f.db, attacker, { DART: 120, COURIER: 8 });
       await grant(f.db, defender, 60_000, 6_000);
       await grant(f.db, attacker, 0, 0);
       // `grant` raises a Core to whatever holds the resources, which on a rich
@@ -475,7 +475,7 @@ describe('event worker', () => {
         f.db,
         attacker,
         defender,
-        { WASP: 120, HAULER: 8 },
+        { DART: 120, COURIER: 8 },
         f.clock,
       );
       expect(launch.exposureMinutes).toBeGreaterThan(0);
@@ -485,7 +485,7 @@ describe('event worker', () => {
         .select()
         .from(units)
         .where(and(eq(units.planetId, attacker), eq(units.location, 'home')));
-      expect(athome.find((u) => u.hull === 'WASP')!.count).toBe(0);
+      expect(athome.find((u) => u.hull === 'DART')!.count).toBe(0);
 
       /**
        * THE ENGAGEMENT IS A REAL WINDOW, NOT AN ANIMATION. D44.
@@ -546,7 +546,7 @@ describe('event worker', () => {
         .select()
         .from(units)
         .where(and(eq(units.planetId, attacker), eq(units.location, 'home')));
-      expect(home.find((u) => u.hull === 'WASP')!.count).toBeGreaterThan(0);
+      expect(home.find((u) => u.hull === 'DART')!.count).toBeGreaterThan(0);
 
       const [attackerPlanet] = await f.db
         .select()
@@ -577,12 +577,12 @@ describe('event worker', () => {
         await placeAt(f.db, attacker, { x: 0 });
         await placeAt(f.db, defender, { x: 1_200 });
         await setLevel(f.db, attacker, 'CORE', 9);
-        await giveUnits(f.db, attacker, { WASP: 60 });
+        await giveUnits(f.db, attacker, { DART: 60 });
         await grant(f.db, defender, 20_000, 2_000);
         if (beacon) await giveSatellite(f.db, attacker, 'BEACON');
         f.clock.advance(300);
 
-        const launch = await launchAttack(f.db, attacker, defender, { WASP: 60 }, f.clock);
+        const launch = await launchAttack(f.db, attacker, defender, { DART: 60 }, f.clock);
         f.clock.set(settledAt(launch.arriveAt));
         await makeWorker(f).tick();
 
@@ -599,11 +599,11 @@ describe('event worker', () => {
     it('leaves no units stranded in a mission location once it is over', async () => {
       const [attacker, defender] = f.planetIds as [string, string];
       await setLevel(f.db, attacker, 'CORE', 6);
-      await giveUnits(f.db, attacker, { WASP: 60 });
+      await giveUnits(f.db, attacker, { DART: 60 });
       await grant(f.db, defender, 20_000, 2_000);
       f.clock.advance(300);
 
-      const launch = await launchAttack(f.db, attacker, defender, { WASP: 60 }, f.clock);
+      const launch = await launchAttack(f.db, attacker, defender, { DART: 60 }, f.clock);
       const worker = makeWorker(f);
 
       f.clock.set(settledAt(launch.arriveAt));
@@ -661,7 +661,7 @@ describe('an event that gives up releases what it was holding', () => {
       await setLevel(f.db, id, 'CORE', 3);
       await grant(f.db, id, 200_000, 20_000);
     }
-    await giveUnits(f.db, mine, { WASP: 40 });
+    await giveUnits(f.db, mine, { DART: 40 });
     f.clock.advance(600);
   });
 
@@ -677,7 +677,7 @@ describe('an event that gives up releases what it was holding', () => {
   };
 
   it('marks the mission cancelled and brings the units home', async () => {
-    const launch = await launchAttack(f.db, mine, theirs, { WASP: 20 }, f.clock);
+    const launch = await launchAttack(f.db, mine, theirs, { DART: 20 }, f.clock);
     const [event] = await f.db
       .select()
       .from(scheduledEvents)
@@ -703,11 +703,11 @@ describe('an event that gives up releases what it was holding', () => {
       .select()
       .from(units)
       .where(and(eq(units.planetId, mine), eq(units.location, 'home')));
-    expect(home.find((u) => u.hull === 'WASP')?.count).toBe(40);
+    expect(home.find((u) => u.hull === 'DART')?.count).toBe(40);
   });
 
   it('is idempotent — abandoning twice releases nothing the second time', async () => {
-    const launch = await launchAttack(f.db, mine, theirs, { WASP: 20 }, f.clock);
+    const launch = await launchAttack(f.db, mine, theirs, { DART: 20 }, f.clock);
     const [event] = await f.db
       .select()
       .from(scheduledEvents)
@@ -720,7 +720,7 @@ describe('an event that gives up releases what it was holding', () => {
       .select()
       .from(units)
       .where(and(eq(units.planetId, mine), eq(units.location, 'home')));
-    expect(home.find((u) => u.hull === 'WASP')?.count, 'units returned twice').toBe(40);
+    expect(home.find((u) => u.hull === 'DART')?.count, 'units returned twice').toBe(40);
   });
 
   /**
@@ -728,7 +728,7 @@ describe('an event that gives up releases what it was holding', () => {
    * so the health check said "ok" while a player was permanently unable to launch.
    */
   it('a failed event is visible to the health check', async () => {
-    const launch = await launchAttack(f.db, mine, theirs, { WASP: 20 }, f.clock);
+    const launch = await launchAttack(f.db, mine, theirs, { DART: 20 }, f.clock);
     const [event] = await f.db
       .select()
       .from(scheduledEvents)

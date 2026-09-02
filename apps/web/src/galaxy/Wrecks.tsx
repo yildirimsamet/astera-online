@@ -6,7 +6,7 @@ import type { ThreeEvent } from '@react-three/fiber';
 import { DEBRIS } from '@astera/rules';
 import { MODEL } from '../ui/assets.js';
 import { unitModel } from './model.js';
-import type { PlanetNode, Vec3Tuple } from './scene.js';
+import { toWorld, type PlanetNode, type Vec3Tuple } from './scene.js';
 import { markHit, wasTap } from './tap.js';
 
 /**
@@ -84,11 +84,24 @@ useGLTF.preload(MODEL.debris, false);
 
 export interface WreckView {
   id: string;
-  planetId: string;
+  /** The world it orbits, or null when the battle was in open space. D150. */
+  planetId: string | null;
+  /** Where it actually is. Authoritative for every field, world or void. */
+  at: { x: number; y: number; z: number };
   alloy: number;
   crystal: number;
   minutesLeft: number;
 }
+
+/**
+ * The ring a void field is drawn at, in the same units a planet radius is in.
+ *
+ * A wreck over a world is sized against that world so the ring reads as orbiting
+ * it. A pirate battle has no world, so it needs a size of its own — small enough
+ * that it cannot be mistaken for a planet, large enough to be tappable at mobile
+ * map scale. It sits between the smallest and largest world rings on purpose.
+ */
+const VOID_RADIUS = 0.5;
 
 export function Wrecks({
   wrecks,
@@ -104,11 +117,25 @@ export function Wrecks({
 }) {
   const byId = useMemo(() => new Map(nodes.map((n) => [n.id, n])), [nodes]);
 
+  /**
+   * POSITION COMES FROM THE FIELD, SIZE COMES FROM THE WORLD IF THERE IS ONE.
+   *
+   * This used to resolve both through `planetId`, which quietly dropped any field
+   * whose world was not currently drawn and could not represent a battle with no
+   * world at all. Since D150 the server sends the coordinates on every field, so
+   * a wreck is never missing because of what is around it — only its RING is
+   * sized against a planet, and a void field brings its own size.
+   */
   const placed = useMemo(
     () =>
-      wrecks
-        .map((w) => ({ w, node: byId.get(w.planetId) }))
-        .filter((p): p is { w: WreckView; node: PlanetNode } => p.node !== undefined),
+      wrecks.map((w) => {
+        const node = w.planetId === null ? undefined : byId.get(w.planetId);
+        return {
+          w,
+          at: toWorld(w.at),
+          radius: node?.radius ?? VOID_RADIUS,
+        };
+      }),
     [wrecks, byId],
   );
 
@@ -116,12 +143,12 @@ export function Wrecks({
 
   return (
     <>
-      {placed.map(({ w, node }) => (
+      {placed.map(({ w, at, radius }) => (
         <Wreck
           key={w.id}
           wreck={w}
-          at={node.position}
-          planetRadius={node.radius}
+          at={at}
+          planetRadius={radius}
           focused={focusedId === w.id}
           onSelect={() => {
             onSelect(w.id);

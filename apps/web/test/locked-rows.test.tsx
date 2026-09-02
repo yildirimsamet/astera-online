@@ -139,7 +139,7 @@ describe('pressing the reason', () => {
   it('takes a Shipyard-gated hull to the Shipyard', async () => {
     const { default: userEvent } = await import('@testing-library/user-event');
     const view = openTab('reach', bare);
-    const fix = view.container.querySelector<HTMLElement>('#row-HAULER [data-has-fix]');
+    const fix = view.container.querySelector<HTMLElement>('#row-COURIER [data-has-fix]');
     expect(fix).not.toBeNull();
     await userEvent.click(fix!);
 
@@ -171,7 +171,7 @@ describe('pressing the reason', () => {
         </ToastProvider>
       </QueryClientProvider>,
     );
-    const fix = view.container.querySelector<HTMLElement>('#row-RUNNER [data-has-fix]');
+    const fix = view.container.querySelector<HTMLElement>('#row-TEMPEST [data-has-fix]');
     expect(fix).not.toBeNull();
     await userEvent.click(fix!);
 

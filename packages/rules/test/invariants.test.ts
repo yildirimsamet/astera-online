@@ -67,19 +67,19 @@ import {
 /** Small random fleets, biased towards mixes that actually occur in play. */
 const arbFleet = fc
   .record({
-    WASP: fc.integer({ min: 0, max: 300 }),
-    LANCE: fc.integer({ min: 0, max: 60 }),
-    BULWARK: fc.integer({ min: 0, max: 20 }),
-    BREACHER: fc.integer({ min: 0, max: 20 }),
-    HAULER: fc.integer({ min: 0, max: 40 }),
-    RUNNER: fc.integer({ min: 0, max: 20 }),
+    DART: fc.integer({ min: 0, max: 300 }),
+    PIKE: fc.integer({ min: 0, max: 60 }),
+    RAMPART: fc.integer({ min: 0, max: 20 }),
+    NULLIFIER: fc.integer({ min: 0, max: 20 }),
+    WAYFARER: fc.integer({ min: 0, max: 40 }),
+    COURIER: fc.integer({ min: 0, max: 20 }),
   })
-  .filter((f) => f.WASP + f.LANCE + f.BULWARK + f.BREACHER + f.HAULER + f.RUNNER > 0);
+  .filter((f) => f.DART + f.PIKE + f.RAMPART + f.NULLIFIER + f.WAYFARER + f.COURIER > 0);
 
 const arbDefence = fc.record({
-  WASP: fc.integer({ min: 0, max: 200 }),
-  BULWARK: fc.integer({ min: 0, max: 15 }),
-  BREACHER: fc.integer({ min: 0, max: 10 }),
+  DART: fc.integer({ min: 0, max: 200 }),
+  RAMPART: fc.integer({ min: 0, max: 15 }),
+  NULLIFIER: fc.integer({ min: 0, max: 10 }),
   BASTION: fc.integer({ min: 0, max: 25 }),
 });
 
@@ -87,7 +87,7 @@ describe('combat invariants — must hold for ALL inputs', () => {
   it('never produces a negative unit count', () => {
     fc.assert(
       fc.property(arbFleet, arbDefence, fc.integer({ min: 0, max: 40_000 }), fc.nat(), (a, d, shield, seed) => {
-        const r = resolveCombat(a, d, shield, mulberry32(seed), { attacker: {}, defender: {} });
+        const r = resolveCombat(a, d, shield, mulberry32(seed), { attacker: { tech: {} }, defender: { tech: {} } });
         for (const id of ALL_HULLS) {
           expect(r.attackerSurvivors[id] ?? 0).toBeGreaterThanOrEqual(0);
           expect(r.defenderSurvivors[id] ?? 0).toBeGreaterThanOrEqual(0);
@@ -100,7 +100,7 @@ describe('combat invariants — must hold for ALL inputs', () => {
   it('never creates units out of nothing', () => {
     fc.assert(
       fc.property(arbFleet, arbDefence, fc.nat(), (a, d, seed) => {
-        const r = resolveCombat(a, d, 0, mulberry32(seed), { attacker: {}, defender: {} });
+        const r = resolveCombat(a, d, 0, mulberry32(seed), { attacker: { tech: {} }, defender: { tech: {} } });
         for (const id of ALL_HULLS) {
           expect(r.attackerSurvivors[id] ?? 0).toBeLessThanOrEqual((a as Fleet)[id] ?? 0);
           expect(r.defenderSurvivors[id] ?? 0).toBeLessThanOrEqual((d as Fleet)[id] ?? 0);
@@ -113,7 +113,7 @@ describe('combat invariants — must hold for ALL inputs', () => {
   it('never reports negative destroyed value, even with salvage', () => {
     fc.assert(
       fc.property(arbFleet, arbDefence, fc.nat(), (a, d, seed) => {
-        const r = resolveCombat(a, d, 0, mulberry32(seed), { attacker: {}, defender: {} });
+        const r = resolveCombat(a, d, 0, mulberry32(seed), { attacker: { tech: {} }, defender: { tech: {} } });
         expect(r.defenderLossValue).toBeGreaterThanOrEqual(0);
         expect(r.attackerLossValue).toBeGreaterThanOrEqual(0);
       }),
@@ -124,7 +124,7 @@ describe('combat invariants — must hold for ALL inputs', () => {
   it('DECISIVE implies the defence is actually gone', () => {
     fc.assert(
       fc.property(arbFleet, arbDefence, fc.nat(), (a, d, seed) => {
-        const r = resolveCombat(a, d, 0, mulberry32(seed), { attacker: {}, defender: {} });
+        const r = resolveCombat(a, d, 0, mulberry32(seed), { attacker: { tech: {} }, defender: { tech: {} } });
         if (r.grade === 'DECISIVE') expect(fleetCount(r.defenderSurvivors)).toBe(0);
       }),
       { numRuns: 300 },
@@ -134,7 +134,7 @@ describe('combat invariants — must hold for ALL inputs', () => {
   it('resolves in at most three rounds', () => {
     fc.assert(
       fc.property(arbFleet, arbDefence, fc.nat(), (a, d, seed) => {
-        const r = resolveCombat(a, d, 0, mulberry32(seed), { attacker: {}, defender: {} });
+        const r = resolveCombat(a, d, 0, mulberry32(seed), { attacker: { tech: {} }, defender: { tech: {} } });
         expect(r.rounds.length).toBeLessThanOrEqual(3);
       }),
       { numRuns: 200 },
@@ -144,8 +144,8 @@ describe('combat invariants — must hold for ALL inputs', () => {
   it('is deterministic for a given seed', () => {
     fc.assert(
       fc.property(arbFleet, arbDefence, fc.nat(), (a, d, seed) => {
-        const one = resolveCombat(a, d, 0, mulberry32(seed), { attacker: {}, defender: {} });
-        const two = resolveCombat(a, d, 0, mulberry32(seed), { attacker: {}, defender: {} });
+        const one = resolveCombat(a, d, 0, mulberry32(seed), { attacker: { tech: {} }, defender: { tech: {} } });
+        const two = resolveCombat(a, d, 0, mulberry32(seed), { attacker: { tech: {} }, defender: { tech: {} } });
         expect(two).toEqual(one);
       }),
       { numRuns: 200 },
@@ -164,7 +164,7 @@ describe('dominion is zero-sum for ALL battles', () => {
         (a, d, loot, seed) => {
           const atk = emptyLedger();
           const def = emptyLedger();
-          bookBattle(atk, def, loot, resolveCombat(a, d, 0, mulberry32(seed), { attacker: {}, defender: {} }));
+          bookBattle(atk, def, loot, resolveCombat(a, d, 0, mulberry32(seed), { attacker: { tech: {} }, defender: { tech: {} } }));
           expect(dominion(atk) + dominion(def)).toBe(0);
         },
       ),
@@ -923,20 +923,20 @@ describe('crystal is a constraint, not a souvenir', () => {
  * THE OPENING GRANT IS ARITHMETIC, NOT A ROUND NUMBER. D22.
  *
  * `START` exists to pay for exactly one opening — Core, Refinery and Extractor to
- * L2, and two Wasps — so it must never drift away from what those things cost. Any
+ * L2, and two Darts — so it must never drift away from what those things cost. Any
  * price change that is not matched here silently either strands a new commander
  * mid-opening or hands them a surplus they did not decide anything to get.
  */
 describe('the opening grant', () => {
   /** Core, Refinery and Extractor each go 1 → 2, so three of the same step. */
   const OPENING_UPGRADES = 3;
-  const OPENING_WASPS = 2;
+  const OPENING_DARTS = 2;
   const step = upgradeCost(1);
 
   it('pays for the whole opening, to the unit', () => {
-    expect(START.alloy).toBe(OPENING_UPGRADES * step.alloy + OPENING_WASPS * HULLS.WASP.alloy);
+    expect(START.alloy).toBe(OPENING_UPGRADES * step.alloy + OPENING_DARTS * HULLS.DART.alloy);
     expect(START.crystal).toBe(
-      OPENING_UPGRADES * step.crystal + OPENING_WASPS * HULLS.WASP.crystal,
+      OPENING_UPGRADES * step.crystal + OPENING_DARTS * HULLS.DART.crystal,
     );
   });
 
@@ -945,9 +945,9 @@ describe('the opening grant', () => {
    * real decision in the game is which part of the opening to do first, and a
    * surplus would delete that decision before the player met it.
    */
-  it('leaves nothing over for a third Wasp', () => {
-    const spent = OPENING_UPGRADES * step.alloy + OPENING_WASPS * HULLS.WASP.alloy;
-    expect(START.alloy - spent).toBeLessThan(HULLS.WASP.alloy);
+  it('leaves nothing over for a third Dart', () => {
+    const spent = OPENING_UPGRADES * step.alloy + OPENING_DARTS * HULLS.DART.alloy;
+    expect(START.alloy - spent).toBeLessThan(HULLS.DART.alloy);
   });
 
   /**
@@ -959,13 +959,13 @@ describe('the opening grant', () => {
    * first move — and they consume all the crystal, so the cheapest flight in the
    * game (a probe, 50 alloy and 50 crystal) is out of reach at t=0.
    *
-   * What the grant does fund is two Wasps, and sending them IS a flight. This
+   * What the grant does fund is two Darts, and sending them IS a flight. This
    * asserts the property the opening actually rests on: after the mandatory
    * upgrades, what remains must still buy something that can leave the ground.
    */
   it('still buys a craft after the upgrades the Core ceiling forces', () => {
     const mandatory = OPENING_UPGRADES * step.alloy;
-    expect(START.alloy - mandatory).toBeGreaterThanOrEqual(HULLS.WASP.alloy);
+    expect(START.alloy - mandatory).toBeGreaterThanOrEqual(HULLS.DART.alloy);
     // And crystal really is what binds — worth stating, because it is why a probe
     // is not the answer and why enlarging the grant is the tempting wrong fix.
     expect(START.crystal - OPENING_UPGRADES * step.crystal).toBeLessThan(PROBE.crystal);
@@ -1331,7 +1331,7 @@ describe('the tempo — every ratio a hull speed is measured against', () => {
   const furthest = Math.max(...allLegs);
 
   /** A typical raid, out and back. The unit everything below is counted in. */
-  const roundTrip = 2 * travelMinutes(typicalLeg, HULLS.WASP.speed);
+  const roundTrip = 2 * travelMinutes(typicalLeg, HULLS.DART.speed);
 
   /**
    * THE OWNER'S CHOSEN TEMPO, and the one number the rest of the block hangs on.
@@ -1344,7 +1344,7 @@ describe('the tempo — every ratio a hull speed is measured against', () => {
   });
 
   it('keeps a heavy raid on a neighbour inside a single sitting', () => {
-    const heavy = 2 * travelMinutes(typicalLeg, HULLS.BULWARK.speed);
+    const heavy = 2 * travelMinutes(typicalLeg, HULLS.RAMPART.speed);
     expect(heavy).toBeGreaterThan(roundTrip);
     expect(heavy).toBeLessThanOrEqual(45);
   });
@@ -1355,7 +1355,7 @@ describe('the tempo — every ratio a hull speed is measured against', () => {
    * bought with hours of being undefended.
    */
   it('makes a cross-disc siege an expedition, not an errand', () => {
-    const widest = travelMinutes(furthest, HULLS.BULWARK.speed);
+    const widest = travelMinutes(furthest, HULLS.RAMPART.speed);
     expect(widest).toBeGreaterThan(45);
     expect(widest).toBeLessThan(150);
   });
@@ -1371,17 +1371,17 @@ describe('the tempo — every ratio a hull speed is measured against', () => {
    * breaks this immediately, whatever its size.
    */
   it('charges for distance and for nothing else', () => {
-    const near = travelExact(typicalLeg, HULLS.WASP.speed);
-    const far = travelExact(typicalLeg * 2, HULLS.WASP.speed);
+    const near = travelExact(typicalLeg, HULLS.DART.speed);
+    const far = travelExact(typicalLeg * 2, HULLS.DART.speed);
     expect(far / near).toBeCloseTo(2, 9);
     // And halving the speed exactly doubles it, for the same reason.
-    expect(travelExact(typicalLeg, HULLS.WASP.speed / 2) / near).toBeCloseTo(2, 9);
+    expect(travelExact(typicalLeg, HULLS.DART.speed / 2) / near).toBeCloseTo(2, 9);
   });
 
   it('keeps hull choice a real difference in arrival time', () => {
     // A ratio, not a gap. At this tempo the gap is minutes, and that is the point.
     expect(
-      travelExact(typicalLeg, HULLS.BULWARK.speed) / travelExact(typicalLeg, HULLS.WASP.speed),
+      travelExact(typicalLeg, HULLS.RAMPART.speed) / travelExact(typicalLeg, HULLS.DART.speed),
     ).toBeGreaterThan(1.3);
   });
 
@@ -1391,7 +1391,7 @@ describe('the tempo — every ratio a hull speed is measured against', () => {
    * no longer instant, so a warning is only worth anything if a gun fits inside it.
    */
   it('fits a ground gun inside the narrowest radar warning it sells', () => {
-    const oneWay = travelExact(typicalLeg, HULLS.WASP.speed);
+    const oneWay = travelExact(typicalLeg, HULLS.DART.speed);
     const firstRung = INTEL.radarRange.findIndex((r) => r > 0);
     const notice = Math.min(oneWay, (oneWay * INTEL.radarRange[firstRung]!) / typicalLeg);
     const gun = defenceMinutes(HULLS.THORN, 0);
@@ -1419,7 +1419,7 @@ describe('the tempo — every ratio a hull speed is measured against', () => {
   it('keeps a wreck field a race rather than a landmark', () => {
     // Thirty legs of life meant every player in the galaxy could reach it several
     // times over, which is the opposite of a race.
-    const legsOfLife = DEBRIS.decayMinutes / travelMinutes(typicalLeg, HULLS.WASP.speed);
+    const legsOfLife = DEBRIS.decayMinutes / travelMinutes(typicalLeg, HULLS.DART.speed);
     expect(legsOfLife).toBeLessThan(12);
     expect(legsOfLife).toBeGreaterThan(1.5);
   });
@@ -1509,6 +1509,6 @@ describe('the tempo — every ratio a hull speed is measured against', () => {
    * of neighbours must still be able to work through them inside a session.
    */
   it('leaves scouting a rhythm rather than a queue', () => {
-    expect(PROBE.retargetCooldownMinutes).toBeLessThanOrEqual(120);
+    expect(PROBE.retargetCooldownMinutes).toBe(60);
   });
 });

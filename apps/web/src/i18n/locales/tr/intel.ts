@@ -143,7 +143,7 @@ export const reports = {
   roundTook: 'Sana vurdular',
   roundLine: '<0>{{dealt}}</0> vurdun, <1>{{took}}</1> yedin',
   shield: 'kalkan {{amount}}',
-  breacherShield: 'Delici +{{amount}}',
+  shieldBreaker: 'Söndürücü +{{amount}}',
   aegis: {
     aria: 'Aegis kalkanı',
     label: 'AEGIS KALKANI',
@@ -186,7 +186,7 @@ export const reports = {
     shieldCharge: 'Kalkan gücü',
     absorbed: '{{amount}} emildi',
     reachedHulls: 'Gövdelere ulaşan',
-    breacher: '{{amount}} yalnız kalkana vuran Delici hasarıydı',
+    shieldBreaker: '{{amount}}, Söndürücünün yalnız kalkana vuran hasarıydı',
     noAegisNote: 'Darbeyi tutan bir kalkan yoktu; {{amount}} atış gücünün tamamı savunma gövdelerine ulaştı.',
     losses: '3 · Kayıplar savaştan çıkar',
   },
@@ -245,7 +245,7 @@ export const reports = {
     shieldTheirs: 'Kalkanları, gövdelere ulaşmadan önce {{amount}} hasarı karşıladı.',
     shieldYours: 'Kalkanın, gövdelerine ulaşmadan önce {{amount}} hasarı karşıladı.',
     cargoLimited:
-      'Ambarların doldu. O gezegende taşıyabileceğinden fazla kaynak vardı; filona Şilep veya Koşucu ekleyebilirsin.',
+      'Ambarların doldu. O gezegende taşıyabileceğinden fazla kaynak vardı; filona Kurye, Seyyah veya Atlas ekleyebilirsin.',
     salvaged_one: '{{count}} yer topu kendi enkazından yeniden kuruldu; şimdi yine ayakta.',
     salvaged_other: '{{count}} yer topu kendi enkazından yeniden kuruldu; şimdi yine ayakta.',
     worksTheirs: 'Tesisleri {{duration}} boyunca kapalı. Bu sürede kaynak üretilmiyor.',

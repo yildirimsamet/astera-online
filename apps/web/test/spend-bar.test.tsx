@@ -54,6 +54,15 @@ describe('the spend bar', () => {
     expect(view.container.querySelector('[data-spend-short]')).toBeNull();
   });
 
+  it('can make the amount being sent the primary readout', () => {
+    const view = bar({ stock: 1000, spend: 250, label: 'Sending', readout: 'spend' });
+
+    expect(view.container.querySelector('[data-spend-amount]')).toHaveTextContent('250');
+    expect(view.container.querySelector('[data-spend-left]')).toBeNull();
+    expect(view.container.querySelector('[role="img"]'))
+      .toHaveAttribute('aria-label', 'Sending: 250');
+  });
+
   describe('when the price is bigger than the store', () => {
     it('marks itself short and names the gap instead of the remainder', () => {
       const view = bar({ stock: 100, spend: 400 });
@@ -68,7 +77,7 @@ describe('the spend bar', () => {
      *
      * Against the store alone, a spend of twice the tank and a spend of exactly
      * the tank both draw one full bar. Growing the deficit past the end is what
-     * separates "one more Wasp" from "not this session".
+     * separates "one more Dart" from "not this session".
      */
     it('grows the deficit as the shortfall grows', () => {
       const near = widthOf(bar({ stock: 100, spend: 200 }), 'short');

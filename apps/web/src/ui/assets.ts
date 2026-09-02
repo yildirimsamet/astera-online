@@ -6,7 +6,9 @@ import type {
   ResearchProjectId,
   SatelliteId,
 } from '@astera/rules';
-import { noseVector, type Facing } from '../galaxy/model.js';
+import { noseVector, type CraftPose, type Facing } from '../galaxy/model.js';
+import { FLEET_V2_ASSET_MANIFEST } from './fleet-v2-assets.js';
+export { FLEET_V2_ASSET_MANIFEST, FLEET_V2_LANDING_MODELS } from './fleet-v2-assets.js';
 
 /**
  * The art, mapped to the game.
@@ -97,12 +99,9 @@ export const PLANET_ART: readonly string[] = Array.from(
 /* ── hulls ──────────────────────────────────────────────────── */
 
 export const HULL_ART: Record<HullId, string | null> = {
-  WASP: `${BASE}/ships/ship_1.png`,
-  LANCE: `${BASE}/ships/ship_2.png`,
-  BULWARK: `${BASE}/ships/ship_3.png`,
-  HAULER: `${BASE}/ships/ship_4.png`,
-  RUNNER: `${BASE}/ships/runner.png`,
-  BREACHER: `${BASE}/ships/breacher.png`,
+  ...Object.fromEntries(
+    Object.entries(FLEET_V2_ASSET_MANIFEST).map(([id, entry]) => [id, entry.card]),
+  ) as Pick<Record<HullId, string>, keyof typeof FLEET_V2_ASSET_MANIFEST>,
   /**
    * THE TURRET ITSELF, AT ITS FIRST TIER. No longer a borrow and no longer blank.
    *
@@ -154,12 +153,12 @@ export const RESEARCH_ART: Record<ResearchProjectId, string> = {
   YARD_AUTOMATION: `${BASE}/lab/yard_automation.png`,
   PROSPECTOR_HOLDS: `${BASE}/lab/prospector_holds.png`,
   CARGO_HOLDS: `${BASE}/lab/cargo_holds.png`,
-  /* The four class doctrines and the project that covers every hull. T9. */
-  WASP_DOCTRINE: `${BASE}/lab/wasp_doctrine.png`,
-  LANCE_DOCTRINE: `${BASE}/lab/lance_doctrine.png`,
-  BULWARK_DOCTRINE: `${BASE}/lab/bullwark_doctrine.png`,
+  /* Fleet V2's permission root and its three bounded stat ladders. D148. */
+  STARSHIP_ENGINEERING: `${BASE}/lab/starship_engineering.png`,
+  SHIP_POWER: `${BASE}/lab/ship_power.png`,
+  SHIP_ARMOR: `${BASE}/lab/ship_armor.png`,
+  SHIP_PROPULSION: `${BASE}/lab/ship_propulsion.png`,
   EMPLACEMENT_DOCTRINE: `${BASE}/lab/emplacement_doctrine.png`,
-  WEAPONS_GENERAL: `${BASE}/lab/weapons_and_armor.png`,
   /* The strategic act. */
   INTERCEPTION_GRID: `${BASE}/lab/interception_grind.png`,
   STRATEGIC_STOCKPILE: `${BASE}/lab/strategic_stockpile.png`,
@@ -214,13 +213,27 @@ export function nextGroundArt(id: GroundHullId, standing: number): string | null
  */
 export const MODEL = {
   probe: '/assets/models/ships/explorer_ship.glb',
-  wasp: '/assets/models/ships/ship_1.glb',
-  lance: '/assets/models/ships/ship_2.glb',
-  bulwark: '/assets/models/ships/ship_3.glb',
-  hauler: '/assets/models/ships/ship_4.glb',
-  /** Future combat hulls; registered now so their files and measured facing stay tested. */
-  runner: '/assets/models/ships/runner.glb',
-  breacher: '/assets/models/ships/breacher.glb',
+  /** Preserved ground batteries retain their existing geometry. They never travel. */
+  bastion: '/assets/models/ships/ship_3.glb',
+  thorn: '/assets/models/ships/ship_1.glb',
+  dart: FLEET_V2_ASSET_MANIFEST.DART.model,
+  pike: FLEET_V2_ASSET_MANIFEST.PIKE.model,
+  rampart: FLEET_V2_ASSET_MANIFEST.RAMPART.model,
+  warden: FLEET_V2_ASSET_MANIFEST.WARDEN.model,
+  courier: FLEET_V2_ASSET_MANIFEST.COURIER.model,
+  viper: FLEET_V2_ASSET_MANIFEST.VIPER.model,
+  talon: FLEET_V2_ASSET_MANIFEST.TALON.model,
+  stronghold: FLEET_V2_ASSET_MANIFEST.STRONGHOLD.model,
+  sentinel: FLEET_V2_ASSET_MANIFEST.SENTINEL.model,
+  wayfarer: FLEET_V2_ASSET_MANIFEST.WAYFARER.model,
+  tempest: FLEET_V2_ASSET_MANIFEST.TEMPEST.model,
+  ballista: FLEET_V2_ASSET_MANIFEST.BALLISTA.model,
+  leviathan: FLEET_V2_ASSET_MANIFEST.LEVIATHAN.model,
+  praetorian: FLEET_V2_ASSET_MANIFEST.PRAETORIAN.model,
+  atlas: FLEET_V2_ASSET_MANIFEST.ATLAS.model,
+  nullifier: FLEET_V2_ASSET_MANIFEST.NULLIFIER.model,
+  cataclysm: FLEET_V2_ASSET_MANIFEST.CATACLYSM.model,
+  citadel: FLEET_V2_ASSET_MANIFEST.CITADEL.model,
   deathStar: '/assets/models/ships/death_star.glb',
   /** The mining craft, and the Drill's own body. Owner-supplied; no longer a borrow. */
   drill: '/assets/models/drills/drill.glb',
@@ -247,21 +260,18 @@ export const MODEL = {
  * Which way each hull's nose points inside its own file.
  *
  * Measured, not guessed — every model was rendered from six sides and read off
- * the engine bells. Four of the five were authored nose-down−X; only the Wasp
- * arrived facing +Z. `orientedCraft` turns each onto +Z so `lookAt` aims the nose
+ * the engine bells. `orientedCraft` turns each onto +Z so `lookAt` aims the nose
  * and not the exhaust. A new hull MUST get an entry here: without one it will fly
  * backwards or sideways, and that is the sort of thing nobody notices in review
  * and everybody notices in play.
  */
 export const MODEL_FACING: Record<string, Facing> = {
+  ...Object.fromEntries(
+    Object.values(FLEET_V2_ASSET_MANIFEST).map(({ model, facing }) => [model, facing]),
+  ),
   [MODEL.probe]: '-x',
-  [MODEL.wasp]: '+z',
-  [MODEL.lance]: '-x',
-  [MODEL.bulwark]: '-x',
-  [MODEL.hauler]: '-x',
-  /** Native top renders put both engine-to-nose centre lines exactly on -X. */
-  [MODEL.runner]: '-x',
-  [MODEL.breacher]: '-x',
+  [MODEL.bastion]: '-x',
+  [MODEL.thorn]: '+z',
   /**
    * The drill bit leads, but its authored body is pitched rather than lying on X.
    * A principal-component fit over all 2,189 vertices gives the body axis below;
@@ -296,6 +306,18 @@ export const MODEL_FACING: Record<string, Facing> = {
 };
 
 /**
+ * Fine owner-reviewed Fleet V2 pose after `MODEL_FACING` establishes +Z.
+ * Height was calibrated at the manifest's authored preview scale, so divide it
+ * back to normalised model space before the live `Hull` group reapplies that scale.
+ */
+export const MODEL_POSE: Record<string, CraftPose> = Object.fromEntries(
+  Object.values(FLEET_V2_ASSET_MANIFEST).map(({ model, pose, scale }) => [
+    model,
+    { rotation: pose.rotation, height: pose.height / scale },
+  ]),
+);
+
+/**
  * The hull a squadron is drawn as, in the galaxy.
  *
  * The Prospector's borrow is over: it flew as a Hauler for three phases because no
@@ -304,16 +326,13 @@ export const MODEL_FACING: Record<string, Facing> = {
  * file forbids borrowing in the first place.
  */
 export const HULL_MODEL: Record<HullId, string> = {
-  WASP: MODEL.wasp,
-  LANCE: MODEL.lance,
-  BULWARK: MODEL.bulwark,
-  HAULER: MODEL.hauler,
-  RUNNER: MODEL.runner,
-  BREACHER: MODEL.breacher,
+  ...Object.fromEntries(
+    Object.entries(FLEET_V2_ASSET_MANIFEST).map(([id, entry]) => [id, entry.model]),
+  ) as Pick<Record<HullId, string>, keyof typeof FLEET_V2_ASSET_MANIFEST>,
   // Ground defence never travels, so it is never drawn in transit. Present only
   // so the map is total and nothing has to guard against a missing key.
-  BASTION: MODEL.bulwark,
-  THORN: MODEL.wasp,
+  BASTION: MODEL.bastion,
+  THORN: MODEL.thorn,
   PROSPECTOR: MODEL.drill,
 };
 
@@ -332,13 +351,10 @@ export const HULL_MODEL: Record<HullId, string> = {
  * a claim about geometry that nothing honours.
  */
 export const CRAFT_MODELS: readonly string[] = [
+  ...Object.values(FLEET_V2_ASSET_MANIFEST).map(({ model }) => model),
   MODEL.probe,
-  MODEL.wasp,
-  MODEL.lance,
-  MODEL.bulwark,
-  MODEL.hauler,
-  MODEL.runner,
-  MODEL.breacher,
+  MODEL.bastion,
+  MODEL.thorn,
   MODEL.drill,
   MODEL.missile,
   MODEL.deathStar,

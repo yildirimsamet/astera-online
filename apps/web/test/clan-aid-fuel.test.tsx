@@ -21,7 +21,7 @@ import { planetView } from './fixtures.js';
  * `hasFuel` verdict for exactly that reason — the plan named the failure by name:
  * *"the aid quote lies: it says send this, and the launch refuses it"*.
  *
- * The client then ignored both fields. A commander packed three Haulers, pressed
+ * The client then ignored both fields. A commander packed three Couriers, pressed
  * Check, read a quote that said the flight fits and the receiver has room, pressed
  * Send — and got a refusal with nothing on the screen that could have predicted
  * it, and no figure saying how much deuterium was missing.
@@ -82,7 +82,7 @@ const quote = {
 function show(deuterium: number) {
   const api = new Api({ fetch: vi.fn() as unknown as typeof globalThis.fetch });
   vi.spyOn(api, 'clanHome').mockResolvedValue(home);
-  const world = planetView({ fleet: { HAULER: 4 } }, { deuterium, alloy: 9_000, crystal: 4_000 });
+  const world = planetView({ fleet: { COURIER: 4 } }, { deuterium, alloy: 9_000, crystal: 4_000 });
   /*
     THROUGH THE SCHEMA, so this fixture is the payload `/api/planets` actually
     sends rather than a hand-shaped object that resembles it — the same reason
@@ -156,14 +156,14 @@ function show(deuterium: number) {
   return { api };
 }
 
-/** One Hauler, from the fixture world to the clanmate's rim world. */
-const oneHauler = missionFuel({ HAULER: 1 }, distance(HOME, AWAY), 1);
-const returningHauler = missionFuel({ HAULER: 1 }, distance(HOME, AWAY), 2);
+/** One Courier, from the fixture world to the clanmate's rim world. */
+const oneCourier = missionFuel({ COURIER: 1 }, distance(HOME, AWAY), 1);
+const returningCourier = missionFuel({ COURIER: 1 }, distance(HOME, AWAY), 2);
 
-async function packOneHauler(): Promise<void> {
+async function packOneCourier(): Promise<void> {
   const user = userEvent.setup();
   await user.click(await screen.findByRole('tab', { name: 'Aid' }));
-  await user.click(await screen.findByRole('button', { name: /send more hauler/i }));
+  await user.click(await screen.findByRole('button', { name: /send more courier/i }));
 }
 
 afterEach(async () => {
@@ -174,29 +174,29 @@ afterEach(async () => {
 describe('the fuel a clan gift burns', () => {
   it('draws the flight against the tank while the convoy is packed', async () => {
     show(5_000);
-    await packOneHauler();
+    await packOneCourier();
 
     const bar = document.querySelector('[data-aid-fuel] [data-spend-bar]');
     expect(bar, 'the aid form never says what the flight burns').not.toBeNull();
     expect(bar).toHaveAttribute('data-short', 'false');
-    expect(oneHauler).toBeGreaterThan(0);
+    expect(oneCourier).toBeGreaterThan(0);
   });
 
-  it('quotes two fuel legs once the Hauler is carrying resources home again', async () => {
+  it('quotes two fuel legs once the Courier is carrying resources home again', async () => {
     show(5_000);
-    await packOneHauler();
+    await packOneCourier();
     const alloy = screen.getByRole('spinbutton', { name: 'Alloy' });
     await userEvent.setup().clear(alloy);
     await userEvent.setup().type(alloy, '100');
 
     const fuel = document.querySelector('[data-aid-fuel] [role="img"]');
-    expect(fuel?.getAttribute('aria-label')).toContain(`${String(returningHauler)} spent`);
-    expect(returningHauler).toBe(oneHauler * 2);
+    expect(fuel?.getAttribute('aria-label')).toContain(`${String(returningCourier)} spent`);
+    expect(returningCourier).toBe(oneCourier * 2);
   });
 
   it('runs past the end of a tank that cannot cover it, and names the gap', async () => {
     show(0);
-    await packOneHauler();
+    await packOneCourier();
 
     const bar = document.querySelector('[data-aid-fuel] [data-spend-bar]');
     expect(bar).toHaveAttribute('data-short', 'true');
@@ -210,7 +210,7 @@ describe('the fuel a clan gift burns', () => {
   it('will not send a gift the origin cannot fly', async () => {
     const { api } = show(0);
     vi.spyOn(api, 'quoteClanAid').mockResolvedValue(quote);
-    await packOneHauler();
+    await packOneCourier();
 
     await userEvent.setup().click(screen.getByRole('button', { name: 'Check flight' }));
     await waitFor(() => {
@@ -222,7 +222,7 @@ describe('the fuel a clan gift burns', () => {
   it('sends it once the tank covers the leg', async () => {
     const { api } = show(5_000);
     vi.spyOn(api, 'quoteClanAid').mockResolvedValue(quote);
-    await packOneHauler();
+    await packOneCourier();
 
     await userEvent.setup().click(screen.getByRole('button', { name: 'Check flight' }));
     await waitFor(() => {

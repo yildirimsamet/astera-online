@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "tsx watch src/index.ts",
     "worker": "ROLE=worker tsx src/index.ts",
+    "migrate": "tsx src/cli/migrate.ts",
     "season": "tsx src/cli/season.ts",
     "capacity:seed": "tsx src/cli/capacity.ts",
     "typecheck": "tsc --noEmit",

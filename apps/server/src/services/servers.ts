@@ -23,7 +23,10 @@ import {
   clans,
   debrisFields,
   galaxyEvents,
+  galaxyEventOccurrences,
   miningRuns,
+  pirateRaids,
+  pirateState,
   missions,
   neutralPlanetState,
   notifications,
@@ -536,6 +539,7 @@ export async function wipeAllServers(
     await tx.delete(clans);
     await tx.delete(chatMessages);
     await tx.delete(galaxyEvents);
+    await tx.delete(galaxyEventOccurrences);
     await tx.delete(requestLog);
     await tx.delete(notifications);
     await tx.delete(scanEvents);
@@ -545,6 +549,10 @@ export async function wipeAllServers(
     await tx.delete(strategicInterceptions);
     await tx.delete(strategicImpacts);
     await tx.delete(battleReports);
+    // After the reports that reference a raid, before the planets and seasons it
+    // references. `pirate_state` is anonymous world damage and goes with the season.
+    await tx.delete(pirateRaids);
+    await tx.delete(pirateState);
     await tx.delete(scheduledEvents);
     await tx.delete(buildOrders);
     await tx.delete(miningRuns);

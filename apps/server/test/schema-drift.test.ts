@@ -94,9 +94,9 @@ describe('the worker when its housekeeping is broken', () => {
   it('still resolves due events when the stranded sweep throws', async () => {
     const [attacker, defender] = f.planetIds as [string, string];
     await setLevel(f.db, attacker, 'CORE', 6);
-    await giveUnits(f.db, attacker, { WASP: 20 });
+    await giveUnits(f.db, attacker, { DART: 20 });
     f.clock.advance(300);
-    const launch = await launchAttack(f.db, attacker, defender, { WASP: 20 }, f.clock);
+    const launch = await launchAttack(f.db, attacker, defender, { DART: 20 }, f.clock);
 
     /**
      * A pool that fails exactly the sweep and nothing else.
@@ -144,9 +144,9 @@ describe('the worker when its housekeeping is broken', () => {
   it('releases a flight whose event row has vanished', async () => {
     const [attacker, defender] = f.planetIds as [string, string];
     await setLevel(f.db, attacker, 'CORE', 6);
-    await giveUnits(f.db, attacker, { WASP: 20 });
+    await giveUnits(f.db, attacker, { DART: 20 });
     f.clock.advance(300);
-    const launch = await launchAttack(f.db, attacker, defender, { WASP: 20 }, f.clock);
+    const launch = await launchAttack(f.db, attacker, defender, { DART: 20 }, f.clock);
     await f.db
       .delete(scheduledEvents)
       .where(
@@ -163,7 +163,7 @@ describe('the worker when its housekeeping is broken', () => {
       .select()
       .from(units)
       .where(and(eq(units.planetId, attacker), eq(units.location, 'home')));
-    expect(home.find((u) => u.hull === 'WASP')?.count).toBe(20);
+    expect(home.find((u) => u.hull === 'DART')?.count).toBe(20);
     expect(await baysInUse(f.db, attacker)).toBe(0);
   });
 });
