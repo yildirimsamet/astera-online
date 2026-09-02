@@ -34,6 +34,8 @@ import { baysInUse } from '../src/services/flight.js';
 import { fleetTruthFor } from '../src/services/intel.js';
 import { EventWorker } from '../src/worker/loop.js';
 import {
+  giveInstrument,
+  giveSatellite,
   giveUnits,
   grant,
   seedWorld,
@@ -737,5 +739,86 @@ describe('a pirate raid whose origin changed hands', () => {
       .from(notifications)
       .where(and(eq(notifications.playerId, captor), eq(notifications.refId, launch.raidId)));
     expect(toCaptor).toHaveLength(0);
+  });
+
+  /**
+   * AND THE SAME QUESTION, ASKED OF THE TWO SURFACES THAT DRAW THE FLIGHT. D150.
+   *
+   * Delivery was taught to follow the commander; the PICTURE was not. Both the
+   * mission strip and the public contact list still asked "whose pad is this?",
+   * which is a different question the moment the pad changes hands — so a captured
+   * colony moved the raider's own squadron into the captor's strip, and moved it
+   * out of the exclusion that keeps a commander from seeing an anonymous copy of
+   * their own fleet.
+   *
+   * The three layers make it worse rather than better. `pendingThreads` is the
+   * OWNER surface: full fidelity, exact manifest, the leg drawn end to end, and it
+   * is the only place a launched raid is drawn at all. `traffic` is the STRANGER
+   * surface, gated by `sensorZone`. Reading the pad put the raider on the stranger
+   * side of their own fleet and handed the captor a fully-detailed reading of a
+   * squadron they had never had eyes on — the exact disclosure the fog exists to
+   * refuse, obtained by taking a world rather than by looking at anything.
+   */
+  it('draws the raid for the commander who launched it, never for the captor', async () => {
+    const target = await findVisibleFrom(colony);
+    await grant(f.db, colony, 500_000, 100_000);
+    const fleet: Fleet = { DART: 250, COURIER: 6 };
+    await giveUnits(f.db, colony, fleet);
+
+    const launch = await launchPirateRaid(f.db, colony, target.id, fleet, f.clock);
+    // Mid-flight: still outbound, so both surfaces have something to draw.
+    await handOver(colony, raider, captor);
+
+    const { pendingThreads } = await import('../src/services/session.js');
+    const mine = await pendingThreads(f.db, capital, f.clock.now());
+    const theirs = await pendingThreads(f.db, colony, f.clock.now());
+
+    const raidOf = (threads: Awaited<ReturnType<typeof pendingThreads>>) =>
+      threads.find((thread) => thread.kind === 'pirate' && thread.id === launch.raidId);
+
+    // The commander who committed the fleet still has it, in full.
+    const drawn = raidOf(mine);
+    expect(drawn).toBeDefined();
+    expect(drawn?.fleet?.DART).toBe(250);
+    // The commander who took the pad has no claim on somebody else's squadron.
+    expect(raidOf(theirs)).toBeUndefined();
+  });
+
+  /**
+   * AND IT STAYS OUT OF ITS OWNER'S PUBLIC CONTACT LIST.
+   *
+   * `traffic` excludes the caller's own craft so nobody sees a decorated copy of
+   * their own fleet beside the anonymous one — the duplicate-craft bug this file
+   * has already shipped once. That exclusion asked whose PAD it was, so the moment
+   * the colony fell the raider began receiving their own squadron as a stranger's
+   * contact while `pendingThreads` had just stopped sending it.
+   *
+   * Sensors are made generous on purpose: the point of the assertion is that the
+   * contact is withheld by OWNERSHIP and not by range, and a raid that happens to
+   * be out of sight would pass the test for the wrong reason.
+   */
+  it('never shows a commander an anonymous copy of their own raid', async () => {
+    await giveSatellite(f.db, capital, 'UPLINK');
+    await giveInstrument(f.db, capital, 'TELESCOPE', 5);
+    await giveInstrument(f.db, capital, 'RADAR', 5);
+
+    const target = await findVisibleFrom(colony);
+    await grant(f.db, colony, 500_000, 100_000);
+    const fleet: Fleet = { DART: 250, COURIER: 6 };
+    await giveUnits(f.db, colony, fleet);
+
+    const launch = await launchPirateRaid(f.db, colony, target.id, fleet, f.clock);
+    await handOver(colony, raider, captor);
+
+    const { galaxyTraffic } = await import('../src/services/traffic.js');
+    const seen = await galaxyTraffic(
+      f.db,
+      f.seasonId,
+      capital,
+      f.clock.now(),
+      raider,
+      [capital],
+    );
+    expect(seen.find((contact) => contact.id === launch.raidId)).toBeUndefined();
   });
 });

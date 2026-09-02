@@ -1441,9 +1441,24 @@ export function projectGalaxyTraffic(
    * own is excluded here and drawn from `pendingThreads` instead — the same split
    * mining uses, and for the same reason: a decorated copy of your own fleet beside
    * the anonymous one is the duplicate-craft bug this file has already shipped once.
+   *
+   * WHOSE RAID IT IS, NOT WHOSE PAD IT LEFT. D150.
+   *
+   * The exclusion asked about the pad, which stops being the same question the
+   * moment a colony changes hands mid-flight. The raider then started receiving
+   * their own squadron as an anonymous contact — at the same instant
+   * `pendingThreads` stopped sending it — while the captor was handed a
+   * full-fidelity reading of a fleet they had never had eyes on, obtained by taking
+   * a world rather than by looking at anything. `ownerPlayerId` is the same column
+   * the delivery resolves through, and the shape is `missions`' own: the owner
+   * column decides it, and the pad is the fallback only where there is no
+   * commander to ask about (the seat-free preview path, `ownPlayerId === null`).
    */
   for (const { raid } of pirateRaidRows) {
-    if (ownedPlanets.has(raid.planetId)) continue;
+    const mine = ownPlayerId === null
+      ? ownedPlanets.has(raid.planetId)
+      : raid.ownerPlayerId === ownPlayerId;
+    if (mine) continue;
     const home = positions.get(raid.planetId);
     if (!home) continue;
     const meet = { x: raid.interceptX, y: raid.interceptY, z: raid.interceptZ };

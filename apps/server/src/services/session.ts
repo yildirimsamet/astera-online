@@ -647,7 +647,28 @@ export async function pendingThreads(
    * which means this list is the ONLY place a launched raid is drawn. A player
    * would have watched their fleet leave and then vanish.
    */
-  const raids = ownedIds.length === 0
+  /*
+    KEYED ON THE COMMANDER, NEVER ON THE PAD. D150.
+
+    This asked "which raids left one of my worlds", which is a different question
+    the moment a colony changes hands mid-flight — and D97 makes that an ordinary
+    event, not an edge case. A captured pad moved the raider's own squadron into
+    the CAPTOR's mission strip and out of the raider's, and this list is the only
+    place a launched raid is drawn at all (`traffic` deliberately excludes the
+    caller's own craft), so the commander who committed the fleet simply watched it
+    vanish. `resolvePirateReturn` already delivers through `ownerPlayerId`; the
+    picture now asks the same question the delivery does.
+
+    A `planets` join is still needed for the leg's home end and is still made on
+    `planetId`: the squadron is parked at the pad and flies its leg from there,
+    whoever owns it now. Only the OWNERSHIP question moved.
+  */
+  /*
+    `playerId` IS NULLABLE AS WELL AS OPTIONAL — `planets.controller_player_id` is
+    null on an unclaimed world, and this projection is asked about one. A raid
+    always has an owner, so no commander means no raids rather than every raid.
+  */
+  const raids = !playerId
     ? []
     : await db
         .select({
@@ -662,7 +683,7 @@ export async function pendingThreads(
         .innerJoin(planets, eq(pirateRaids.planetId, planets.id))
         .innerJoin(seasons, eq(pirateRaids.seasonId, seasons.id))
         .where(and(
-          inArray(pirateRaids.planetId, ownedIds),
+          eq(pirateRaids.ownerPlayerId, playerId),
           inArray(pirateRaids.status, ['outbound', 'returning']),
         ));
 
