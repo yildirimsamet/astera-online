@@ -84,6 +84,39 @@ describe('what is in flight', () => {
   };
 
   /**
+   * PUT THE TWO WORLDS FAR ENOUGH APART THAT THE CIRCLE ACTUALLY CUTS THE LEG.
+   *
+   * `seedWorld` lines its worlds up `TEST_SPACING` apart — 150 units — and the
+   * NARROWEST radar circle is 1,200. So in the fixture's own geometry every rung
+   * of the ladder swallows the whole leg, `radarLead` correctly returns
+   * `min(1, range/dist) * oneWay` = the ENTIRE FLIGHT at every level, and the
+   * rungs are indistinguishable from one another.
+   *
+   * Two things follow, and both of them bit. A test that wants an instant BEFORE
+   * the warning has none to find, because the warning covers the flight from
+   * departure. And a test that says it checks a circle "at its own size" is not
+   * checking a size at all — at 150 units L1 and L5 behave identically.
+   *
+   * These tests passed anyway, on a margin of 0.125 min: a 150-unit hop used to
+   * take 1.125 min, so `arriveAt - 1 min` landed just inside the flight. D152
+   * lifted base speed by 1.25x, the same hop became 0.900 min, and `arriveAt - 1
+   * min` moved to 0.1 min BEFORE the fleet had launched. Nothing about the radar
+   * changed; the fixture was never far enough out to be asking the question.
+   *
+   * `radarRange(5) * 2` is the span the crossing-tolerance test below already
+   * uses, so the two read the same geometry. Cores are pinned after `grant`
+   * because a large setup purse raises them, and the standoffs the server's
+   * `inboundRadarLead` works from are derived from the Core level.
+   */
+  const farApart = async (): Promise<void> => {
+    const span = radarRange(5) * 2;
+    await placeAt(f.db, mine, { x: 0, y: 0, z: 0 });
+    await placeAt(f.db, theirs, { x: span, y: 0, z: 0 });
+    await setLevel(f.db, mine, 'CORE', 8);
+    await setLevel(f.db, theirs, 'CORE', 8);
+  };
+
+  /**
    * THE BUG THE OWNER REPORTED, AT ITS SOURCE.
    *
    * Two players watching one fleet saw two clocks — the attacker counting to
@@ -155,8 +188,13 @@ describe('what is in flight', () => {
   });
 
   it('stays silent until the warning would have fired, then speaks', async () => {
+    // There is no instant before the warning unless the circle cuts the leg.
+    await farApart();
     const { arriveAt, lead } = await raid(5);
     expect(lead).toBeGreaterThan(1);
+    // And the lead is a SHARE of the flight, not the whole of it — otherwise the
+    // two probes below sit outside the flight rather than either side of a shell.
+    expect(lead).toBeLessThan((arriveAt.getTime() - f.clock.now().getTime()) / 60_000);
 
     // A minute before the lead: nothing.
     f.clock.set(new Date(arriveAt.getTime() - (lead + 1) * 60_000));
@@ -214,10 +252,26 @@ describe('what is in flight', () => {
     }
   });
 
-  /** And the first rung that has a circle warns inside it, at its own size. */
+  /**
+   * And the first rung that has a circle warns inside it, AT ITS OWN SIZE.
+   *
+   * Read either side of that rung's own shell rather than at a flat minute out:
+   * the claim is that the circle has a size, so the test has to be able to fail
+   * if it had a different one. In the fixture's cluster it could not — 150 units
+   * is inside every rung, so this asserted nothing about L1 or L2 and passed on
+   * the flight being a little over a minute long. See `farApart`.
+   */
   it.each([1, 2])('gives a level-%i radar a warning inside its own circle', async (radar) => {
-    const { arriveAt } = await raid(radar);
-    f.clock.set(new Date(arriveAt.getTime() - 1 * 60_000));
+    await farApart();
+    const { arriveAt, lead } = await raid(radar);
+    expect(lead).toBeGreaterThan(0);
+
+    // Outside this rung's shell, with the fleet already flying: still nothing.
+    f.clock.set(new Date(arriveAt.getTime() - (lead + 1) * 60_000));
+    expect(await pendingThreads(f.db, theirs, f.clock.now())).toEqual([]);
+
+    // Inside it: the warning.
+    f.clock.set(new Date(arriveAt.getTime() - (lead / 2) * 60_000));
     const seen = await pendingThreads(f.db, theirs, f.clock.now());
     expect(seen).toHaveLength(1);
     expect(seen[0]!.kind).toBe('incoming');

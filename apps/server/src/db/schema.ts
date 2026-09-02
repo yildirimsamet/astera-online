@@ -1519,8 +1519,22 @@ export const pirateRaidStatus = pgEnum('pirate_raid_status', ['outbound', 'retur
 export const pirateRaids = pgTable('pirate_raids', {
   id: uuid('id').primaryKey().defaultRandom(),
   seasonId: uuid('season_id').notNull().references(() => seasons.id),
-  /** Where it left from, and where it comes back to. */
+  /** Where it left from, and where its squadron is parked for the trip. */
   planetId: uuid('planet_id').notNull().references(() => planets.id),
+  /**
+   * WHO COMMITTED THE FLEET — WHICH IS NOT "WHOEVER HOLDS THE PAD WHEN IT LANDS".
+   *
+   * A raid parks its squadron off-world for the whole trip and its origin is an
+   * ordinary colony, so the world can change hands mid-flight. Without this column
+   * the return leg could only ask `planets.controller_player_id`, and the answer
+   * on a captured world is the commander who just took it — the raid would hand
+   * the squadron, the hoard and the towed hull to the attacker.
+   *
+   * `missions.owner_player_id` has carried exactly this for the same reason since
+   * the first return leg existed; `safeHomePlanet` is the shared answer for where
+   * that commander's fleet is actually delivered.
+   */
+  ownerPlayerId: uuid('owner_player_id').notNull().references(() => players.id),
   /** Index into this season's private pirate lane. Never serialised. */
   pirateIndex: integer('pirate_index').notNull(),
   status: pirateRaidStatus('status').notNull().default('outbound'),

@@ -29,6 +29,7 @@ import {
 } from '../src/db/schema.js';
 import { launchPirateRaid } from '../src/services/pirateRaid.js';
 import { privatePirateField, pirateId } from '../src/services/pirateField.js';
+import { transferPlanetControl } from '../src/services/ownership.js';
 import { baysInUse } from '../src/services/flight.js';
 import { fleetTruthFor } from '../src/services/intel.js';
 import { EventWorker } from '../src/worker/loop.js';
@@ -588,5 +589,153 @@ describe('what a pirate raid comes home with', () => {
     */
     const available = gradeMultiplier(report!.grade) * hoard;
     expect(report!.cargoLimited).toBe(carried + 3 < available);
+  });
+});
+
+/**
+ * THE WORLD A RAID LEFT FROM CAN CHANGE HANDS WHILE THE FLEET IS AWAY.
+ *
+ * A pirate raid parks its squadron off-world for the whole trip and its origin is
+ * an ordinary colony, which is exactly the kind of world D97 lets somebody take on
+ * a second hit. Every other return leg in the game already answers this the same
+ * way — `settleReturn`, the neutral paths and the transfer reroute all resolve
+ * their destination through `safeHomePlanet(ownerPlayerId, originPlanetId)`, so
+ * the fleet follows the COMMANDER who committed it rather than whoever happens to
+ * hold the pad when it lands.
+ *
+ * A raid that skips that step hands the squadron, the hoard and the towed hull to
+ * the commander who just took the world — the attacker is paid for the defender's
+ * flight. That is not a capture rule, it is a delivery bug, and it is the single
+ * most expensive one this lane can have.
+ */
+describe('a pirate raid whose origin changed hands', () => {
+  let f: Fixture;
+  /** Where the raid launches from, and the world that falls mid-flight. */
+  let colony: string;
+  /** The raider's capital — immutable, and therefore the honest fallback. */
+  let capital: string;
+  let raider: string;
+  let captor: string;
+
+  const worker = () =>
+    new EventWorker(f.db, f.clock, { pollMs: 50, batch: 50, staleMinutes: 5 }, silent);
+
+  const findVisibleFrom = async (planetId: string): Promise<Target> => {
+    const [season] = await f.db.select().from(seasons).where(eq(seasons.id, f.seasonId));
+    const key = season!.asteroidKey;
+    const field = privatePirateField(key);
+    const [world] = await f.db.select().from(planets).where(eq(planets.id, planetId));
+    const eye = sensorSphere({ x: world!.x, y: world!.y, z: world!.z }, 0, 0, planetId);
+    for (const spec of field) {
+      const first = Math.ceil(spec.appearsAt) + 1;
+      for (let minute = first; minute < spec.expiresAt; minute += 1) {
+        if (sensorZone([eye], piratePosition(spec, minute)) === 'NONE') continue;
+        f.clock.set(new Date(season!.startsAt.getTime() + minute * 60_000));
+        return { spec, id: pirateId(key, spec.index), key };
+      }
+    }
+    throw new Error('no visible pirate this season — the lane is too thin to test');
+  };
+
+  const handOver = async (planetId: string, from: string, to: string): Promise<void> => {
+    await f.db.transaction(async (tx) => {
+      await transferPlanetControl(tx, {
+        targetPlanetId: planetId,
+        newPlayerId: to,
+        expectedControllerPlayerId: from,
+        now: f.clock.now(),
+        protectedUntil: new Date(f.clock.now().getTime() + 86_400_000),
+      });
+    });
+  };
+
+  beforeEach(async () => {
+    f = await seedWorld(3, 4242, { pirates: true });
+    capital = f.planetIds[0]!;
+    raider = f.playerIds[0]!;
+    captor = f.playerIds[1]!;
+    colony = f.planetIds[2]!;
+    // The raider holds a capital and one colony; the colony is what will fall.
+    await handOver(colony, f.playerIds[2]!, raider);
+  });
+
+  it('delivers the fleet, the hoard and the towed hull to the commander who launched it', async () => {
+    const target = await findVisibleFrom(colony);
+    await grant(f.db, colony, 500_000, 100_000);
+    const fleet: Fleet = { DART: 250, COURIER: 6 };
+    await giveUnits(f.db, colony, fleet);
+
+    const launch = await launchPirateRaid(f.db, colony, target.id, fleet, f.clock);
+
+    f.clock.set(settledAt(launch.arriveAt));
+    await worker().tick();
+    const [raid] = await f.db.select().from(pirateRaids).where(eq(pirateRaids.id, launch.raidId));
+    expect(raid!.status).toBe('returning');
+    expect(raid!.homeAt).not.toBeNull();
+
+    // THE COLONY FALLS WHILE THE SQUADRON IS STILL IN THE AIR.
+    await handOver(colony, raider, captor);
+
+    const [capitalBefore] = await f.db.select().from(planets).where(eq(planets.id, capital));
+    const [colonyBefore] = await f.db.select().from(planets).where(eq(planets.id, colony));
+
+    f.clock.set(new Date(raid!.homeAt!.getTime() + 1000));
+    await worker().tick();
+
+    const [settled] = await f.db.select().from(pirateRaids).where(eq(pirateRaids.id, launch.raidId));
+    expect(settled!.status).toBe('done');
+
+    // The squadron lands on the raider's capital, still theirs.
+    const landed = await f.db
+      .select()
+      .from(units)
+      .where(and(eq(units.planetId, capital), eq(units.location, 'home')));
+    expect(landed.find((row) => row.hull === 'DART')?.count ?? 0).toBeGreaterThan(0);
+    for (const row of landed) expect(row.ownerPlayerId).toBe(raider);
+
+    // And the commander who took the world receives none of it.
+    const seized = await f.db
+      .select()
+      .from(units)
+      .where(and(eq(units.planetId, colony), eq(units.location, 'home')));
+    expect(seized.find((row) => row.hull === 'DART')?.count ?? 0).toBe(0);
+
+    const [capitalAfter] = await f.db.select().from(planets).where(eq(planets.id, capital));
+    const [colonyAfter] = await f.db.select().from(planets).where(eq(planets.id, colony));
+    const hoard = (settled!.loot?.alloy ?? 0) + (settled!.loot?.crystal ?? 0);
+    expect(hoard).toBeGreaterThan(0);
+    expect(capitalAfter!.alloy + capitalAfter!.crystal)
+      .toBeCloseTo(capitalBefore!.alloy + capitalBefore!.crystal + hoard, 3);
+    expect(colonyAfter!.alloy + colonyAfter!.crystal)
+      .toBeCloseTo(colonyBefore!.alloy + colonyBefore!.crystal, 3);
+
+    // Nothing is left parked against the raid on the world it flew from.
+    const parked = await f.db
+      .select()
+      .from(units)
+      .where(and(eq(units.planetId, colony), eq(units.location, `pirate:${launch.raidId}`)));
+    expect(parked).toHaveLength(0);
+
+    /*
+      The commander who committed the fleet is the one told it came home — and the
+      only one. Keyed on the kind as well as the raid, because the arrival already
+      filed this commander's battle report against the same id.
+    */
+    const told = await f.db
+      .select()
+      .from(notifications)
+      .where(and(
+        eq(notifications.refId, launch.raidId),
+        eq(notifications.kind, 'fleet_returned'),
+      ));
+    expect(told).toHaveLength(1);
+    expect(told[0]!.playerId).toBe(raider);
+
+    // Nothing at all reaches the commander who took the world.
+    const toCaptor = await f.db
+      .select()
+      .from(notifications)
+      .where(and(eq(notifications.playerId, captor), eq(notifications.refId, launch.raidId)));
+    expect(toCaptor).toHaveLength(0);
   });
 });

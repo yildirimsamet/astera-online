@@ -15,6 +15,7 @@ import {
   legEnd,
   legStandoff,
   orbitStandoff,
+  bombardmentTarget,
   targetNodeOf,
   threadPosition,
   toWorld,
@@ -637,28 +638,14 @@ function Flight({
   );
 
   /**
-   * The world being raided, for how big it is and nothing else.
+   * What this leg bombards, and how big it is — see `bombardmentTarget`.
    *
-   * Only an outbound FLEET bombards: a probe takes a photograph, and a leg coming
-   * home is landing rather than arriving.
+   * The rule lives in `scene.ts` beside `legStandoff` rather than here: a pirate
+   * raid used to be given `{ radius: 0 }` from this memo, and because the radius
+   * is what scatters a volley's aim, both `volleyFor` and `Bombardment` refuse it
+   * — so the attacker's own engagement drew nothing and no test could see that.
    */
-  /**
-   * A PIRATE IS A TARGET WITH NO WORLD BEHIND IT. D150.
-   *
-   * The volley needs somewhere to land and a size to land against. A raid at a
-   * pirate has the first — the rendezvous point the leg ends at — and genuinely
-   * has no second: the thing being shot at is a fleet, which is drawn from its own
-   * manifest and has no published radius. Radius zero says exactly that, and the
-   * gap the rockets cross is `PIRATE_STANDOFF` rather than an orbit.
-   */
-  const target = useMemo(
-    () => {
-      if (!path || isProbe || isDeathStar || thread.leg === 'return') return undefined;
-      if (thread.kind === 'pirate') return { radius: 0 };
-      return thread.kind === 'fleet' ? targetNodeOf(nodes, path.to) : undefined;
-    },
-    [path, isProbe, isDeathStar, thread.kind, thread.leg, nodes],
-  );
+  const target = useMemo(() => bombardmentTarget(thread, nodes), [thread, nodes]);
 
   /**
    * The formation. D20 / D40: one model per `PER_MODEL` ships, pips for the rest.

@@ -10,6 +10,7 @@ import {
   accounts,
   buildOrders,
   battleReports,
+  debrisFields,
   pirateRaids,
   pirateState,
   playerResearch,
@@ -272,6 +273,7 @@ describe('season lifecycle', () => {
     const [pirateRaid] = await f.db.insert(pirateRaids).values({
       seasonId: f.seasonId,
       planetId: f.planetIds[0]!,
+      ownerPlayerId: f.playerIds[0]!,
       pirateIndex: 3,
       status: 'done',
       fleet: { DART: 1 },
@@ -293,6 +295,23 @@ describe('season lifecycle', () => {
       attackerLosses: {},
       defenderLosses: {},
       dominionSwing: 0,
+    });
+    /*
+      AND THE WRECK IT LEFT IN OPEN SPACE. D150.
+
+      `debris_fields.pirate_raid_id` is the third anchor a void field is found
+      through, and the wipe deleted the raid BEFORE the field that points at it —
+      so the very outage the block above names for `battle_reports` was live again
+      through the wreckage, and no test reached it because none of them left one.
+      A void field has no world: `planet_id` is null and the position is its own.
+    */
+    await f.db.insert(debrisFields).values({
+      seasonId: f.seasonId,
+      planetId: null,
+      pirateRaidId: pirateRaid!.id,
+      x: 1, y: 2, z: 3,
+      alloy: 40, crystal: 20, deuterium: 0,
+      createdAt: f.clock.now(),
     });
     await f.db.insert(pirateState).values({
       seasonId: f.seasonId,

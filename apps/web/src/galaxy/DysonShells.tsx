@@ -2,6 +2,7 @@ import { useEffect, useLayoutEffect, useMemo, useRef } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
 import { useGLTF } from '@react-three/drei';
 import * as THREE from 'three';
+import { CORE_TOP_LEVEL } from '@astera/rules';
 import { DYSON_MODEL } from '../ui/assets.js';
 import { unitModel } from './model.js';
 import { STANCE_LIGHT, type PlanetNode } from './scene.js';
@@ -10,11 +11,12 @@ import { resolvedOnly } from './Satellites.jsx';
 /**
  * WHAT A SEASON OF DEVELOPMENT LOOKS LIKE FROM ORBIT.
  *
- * A world's Core is already in the picture as one of three sizes (`worldRadius`),
- * and that read is deliberately coarse — the exact level is what a probe is for.
- * The shells are the same public fact said louder, one stage per tier, from a
- * single ring up to a finished structure in black and silver. A world that has
- * been played reads as a world that has been played, from anywhere on the disc.
+ * A world's Core is already in the picture as its drawn size (`worldRadius`), which
+ * since D153 grows a little at every level — a gradient anyone can read, and one
+ * that says nothing about WHEN a commander crossed into the late game. The shells
+ * are the second, later signal: from Core 12 up, one stage per level, from a single
+ * ring to a finished structure in black and silver. A world that has been played
+ * reads as a world that has been played, from anywhere on the disc.
  *
  * IT READS THE EXACT CORE LEVEL, AND THAT IS A FOG DECISION RATHER THAN A DRAWING
  * ONE. `/api/galaxy` used to publish only a coarse tier, so that a world's precise
@@ -80,7 +82,7 @@ const SHELL_OPENING = 0.513;
  * world's own radius.
  *
  * A ratio rather than a distance, for the reason the invariants table already
- * states about minutes: worlds are drawn at three sizes 3.2× apart, so one
+ * states about minutes: the smallest world and the largest are 3.2× apart, so one
  * clearance in world units would graze a heavyweight and leave a small world
  * rattling around inside its own ring.
  *
@@ -181,29 +183,34 @@ const spokes = (count: number): readonly THREE.Euler[] =>
 const SCALE = ['#5f9ae3', '#9977e3', '#54c68d', '#ccc167', '#dc915c', '#c65f5d'] as const;
 
 /**
- * WHERE THE LADDER STARTS AND WHERE IT ENDS. Owner decision, revised.
+ * WHERE THE LADDER STARTS AND WHERE IT ENDS. Owner decision, revised twice.
  *
- * IT STARTS AT CORE 9, NOT 3 — "this should be on the more solid players". A ring
- * is meant to mark a commander who has actually built something, and starting at 3
- * put one on nearly every world in the disc within a day, which says nothing. The
- * shape then gains a ring every `BAND` levels and the colour eases the whole way
+ * IT STARTS AT CORE 12, AND EACH REVISION MOVED IT LATER. Three put a ring on
+ * nearly every world in the disc within a day, which says nothing. Nine was "the
+ * more solid players" — and D153 is the owner's report on what nine actually looked
+ * like: a world arriving at 9 grew a megastructure, so the step from 8 to 9 was the
+ * biggest visual event in the game, and it landed barely past the middle of the Core
+ * ladder. Twelve is past the halfway point, which is also what separates this from
+ * the size ramp: the world grows a little at every level (`worldRadius`), and the
+ * structure is the SECOND, later signal rather than a louder copy of the first.
+ *
+ * The shape then gains a ring every `BAND` levels and the colour eases the whole way
  * from the first anchor to the last across the reachable range:
  *
- *   9,10,11 → one ring
- *   12,13,14 → two rings
- *   15,16,17 → three rings
- *   18,19,20 → four rings
+ *   12,13,14 → one ring
+ *   15,16,17 → two rings
+ *   18,19,20 → three rings
  *   21 → four rings, the last colour
- *   22+ → unreachable, and clamped there anyway
+ *   22+ → past the top of the game, and clamped there anyway
  *
- * IT ENDS AT CORE 21 BECAUSE THE ECONOMY ENDS THERE. Nothing caps the Command Core
- * in `build.ts` — only non-CORE buildings are held under it — but the invariant
- * `upgradeCost(L).alloy < storageCap(L, vault)` breaks between 21 and 22 (591,044
- * against a full store of 590,789), so 21 is as far as anyone can get. Anchoring
- * the last colour there means the top of the ladder is the top of the GAME.
+ * IT ENDS WHERE THE GAME ENDS, at `CORE_TOP_LEVEL` — the shared rules own that
+ * number because the size ramp anchors its last size on the same rung, and a world
+ * drawn at full size with a rung of structure still to come would be the disc
+ * contradicting itself. Nothing caps the Command Core in `build.ts`; the economy
+ * runs out first.
  *
  * NO NEUTRAL WORLD WEARS ONE, and that falls out rather than being special-cased:
- * the three neutral tiers are seeded at Core 2, 5 and 8 (`ABUSE.neutral`), all
+ * the three neutral tiers are seeded at Core 2, 5 and 8 (`MULTI_WORLD.neutral`), all
  * below the first rung. Scenery stays scenery and a ring always means a player.
  *
  * FOUR RINGS IS THE LAST SHAPE. Past it the structure stops growing and the colour
@@ -212,8 +219,8 @@ const SCALE = ['#5f9ae3', '#9977e3', '#54c68d', '#ccc167', '#dc915c', '#c65f5d']
  * thicker shell rather than as another ring, and the openwork that tells the stages
  * apart would start closing.
  */
-const FIRST_LEVEL = 9;
-const LAST_LEVEL = 21;
+const FIRST_LEVEL = 12;
+const LAST_LEVEL = CORE_TOP_LEVEL;
 const BAND = 3;
 const MAX_RINGS = 4;
 /** Steps between the first rung and the last — the span the colour eases over. */
@@ -234,7 +241,7 @@ interface Stage {
  * base colour map to `emissiveMap` and tinting it with the stage colour is the fix
  * — emissive is MULTIPLIED by the map, so a panel only glows as much as it is
  * already bright and the seam is the only bright thing in the sheet. It is also
- * what makes one grey asset wear thirteen different colours.
+ * what makes one grey asset wear a colour for every rung of the ladder.
  *
  * AT 0.85 IT IS FAR TOO MUCH. The panelling is mid-grey rather than dark, so a
  * strong emissive lifts the whole sheet along with the seam: an early version drew
@@ -305,7 +312,7 @@ function blend(from: string, to: string, t: number): string {
  * ONE RUNG PER CORE LEVEL, from `FIRST_LEVEL` to `LAST_LEVEL`.
  *
  * THE COLOUR RAMP AND THE RING BANDS ARE INDEPENDENT, which is what changed when
- * the ladder moved to Core 9. There are thirteen rungs and only four ring counts, so
+ * the ladder moved off Core 3. There are ten rungs and only four ring counts, so
  * the anchors cannot sit on the band boundaries the way they used to — the colour
  * eases continuously across the whole reachable range instead, reaching the last
  * anchor exactly at `LAST_LEVEL`. The shape says roughly how far along a commander
@@ -313,9 +320,9 @@ function blend(from: string, to: string, t: number): string {
  *
  * A stage rather than a formula because a stage is also a DRAW GROUP: the body's
  * emissive tint and the rim's colour are material uniforms, not per-instance
- * attributes, so worlds sharing a colour have to share a material. Thirteen rungs
- * is thirteen possible groups of two instanced meshes, and only the ones a galaxy
- * actually contains are ever built.
+ * attributes, so worlds sharing a colour have to share a material. Ten rungs is ten
+ * possible groups of two instanced meshes, and only the ones a galaxy actually
+ * contains are ever built.
  */
 const SHELL_STAGE: readonly Stage[] = Array.from({ length: RUNGS + 1 }, (_, step) => ({
   rings: Math.min(Math.floor(step / BAND) + 1, MAX_RINGS),

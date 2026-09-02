@@ -192,6 +192,79 @@ The probe and the drill are excluded, by instruction and by their own arithmetic
 Forced adjacent change, in the season gate: two assertions in `packages/sim/test/season.test.ts` were knife-edge fixtures that the shifted `strategicRng` stream flipped, and both were restated against measurement rather than nudged. (1) `transferredResources > 0` on some run: a transfer needs a colony, a spare transport after the settlement spent two Couriers, and a 5% roll — only six of thirty seeds produced one at all, so the five-seed fixture passed on a one-in-five chance. It now runs the same five seeds at `colonyTransferChance: 1`, where 18 of those 30 seeds transfer. The mechanism improved rather than regressed: the same thirty seeds go from 31 colonies and six transferring runs to 38 and nine. (2) Turtle ≤ Grinder median Dominion was asserted per seed for a measure whose spread this file already documents as pooled; the turtle out-earns the grinder on four of thirty seeds before the change and two after. Pooled across the five fixture seeds the turtle sits at 0.670 of the grinder's median before and 0.615 after, and the grinder's pooled median rank improves from 36.5 to 32.5 — faster hulls pay the player who chose the target more than the one who waited for it. `packages/rules/test/foundations.test.ts` also had a flat 500-unit fixture that became exactly three minutes at the Dart's new speed; the distance is now derived from the hull so it cannot go stale again.
 Binds: `HULLS` speed column, `RESEARCH_TECH.propulsionPerLevel`/`propulsionMaxLevel`, `propulsionSide`, `RESEARCH_MAX_LEVEL.SHIP_PROPULSION` and the Propulsion cost ladder, `SETTLEMENT_CLAIM_MINUTES`, research panel gains text, TR/EN research strings, `docs/balance.md` Fleet V2 table, D74/D101/D111/D121/D124/D137/D148.
 
+### D153 · The disc grows every level, the fleet drinks, and the camera follows a craft out — OWNER INSTRUCTION
+
+Rule: Four changes, each answering a report from the map rather than from a model.
+
+(1) A world's DRAWN SIZE reads its exact Core level. `worldRadius` runs a geometric ramp through
+the three authored sizes — 0.44 at Core 1, 0.82 at Core 11, 1.40 at `CORE_TOP_LEVEL` — clamped at
+both ends, so the 3.2× spread and all three tuned numbers survive while no single level is a step
+over 7%. The coarse tier keeps its two jobs untouched: the three `worldWeight` words, and D49's ±2
+attack band. Every standoff caller reads the level, because a standoff off a tier is now the wrong
+distance for eight levels out of nine.
+
+(2) The dyson ladder starts at Core 12 rather than 9, and ends where the size ramp ends. One rung
+per level, a ring every three, `CORE_TOP_LEVEL` shared with the ramp so the two ladders cannot
+disagree about the top of the game.
+
+(3) Fuel mass is Hangar bulk × the hull tier's own thirst rung: ×1, ×2, ×4, ×5 for tiers 1–4.
+`FUEL.tierMass` multiplies fuel mass only — `bulk` remains Hangar room and nothing in the hull
+table moves. Tier 1 is excluded by instruction, so the opening costs exactly what it did. Prices,
+combat, the counter cycle and D137's 25% product ceiling are untouched, and fuel is still
+explicitly not a function of speed (T6 · D152).
+
+(4) Probe base speed ×0.75, 4,680 → 3,510. Every mobile Fleet V2 hull keeps D152's lift; the
+Prospector keeps its rock-tied number.
+
+(5) Automatic craft focus follows a craft OUT and never home. `reconcileOwnCraft` is the single
+statement of it, off the `leg` every own thread already carries and the `status` every mining row
+already carries. A homebound craft is still baselined into `seen` — a return must never move the
+camera at all, not move it once and then stop.
+
+Evidence: (1) The two old transitions were +86% at Core 3 → 4 and +71% at Core 9 → 10, so the whole
+public development signal arrived twice a season and the eight levels between said nothing —
+"8'den 9'a geçince çok bariz bir fark oluşuyor". Geometric rather than linear because the eye reads
+size as a ratio: linear steps would grow a small world by a tenth and a large one by a thirtieth
+for the same level, stalling the gradient exactly where the game gets interesting. Reading the exact
+level costs nothing new — `publicGalaxy` has published `coreLevel` since the dyson rings, because a
+ring count stepping every three levels and a colour stepping every one cannot be drawn from a tier.
+(2) Nine was already the second revision of "this should be on the more solid players", and it put a
+megastructure on a world barely past the middle of the ladder — which is also what made Core 9 the
+largest visual event in the game. Twelve separates the two signals: the world grows a little at
+every level, and the structure is the later one. (3) Fuel is mass × distance and mass was bulk,
+which is derived from hull VALUE — so a late fleet cost more to move only in proportion to what it
+cost to build, and a refinery that covered the opening covered the endgame. Deuterium went from
+being the lesson of the first hour to a rounding error, which is the one outcome T6 exists to
+prevent. (4) D152 lifted the fleet a quarter and left the probe out, so the distance between "how
+fast can I look" and "how fast can I hit" grew by a quarter in the scout's favour on top of D121's
+×12; the cut and the lift close the same gap from both ends. D121's ceiling is a ceiling on
+FLATNESS, not on speed — with no fixed launch term the gradient is exactly
+`GALAXY_SPAN / minSeparation` and a slower probe simply pays more for distance, which is the
+direction that rule wants. At 3,510 it still outruns every hull by more than an order of magnitude
+and the retarget hour still outlasts the widest round trip. (5) The server does not turn a mission
+round: it closes the outbound row and inserts a fresh one linked by `parentMissionId`, so every
+craft reached the follow rule a second time as a brand-new identity and seized the screen on the way
+home — mid-menu, mid-inspection, once per craft, and with several in the air it never stopped.
+
+Scope: Forced adjacent changes, all three restated against measurement rather than nudged.
+`packages/sim/test/fleet-v2-balance.test.ts` asserted T4 research open at day 12; the weapon ladder
+is priced in deuterium from its second rung, so a thirstier fleet slows it — the leading grinder now
+reaches `SHIP_POWER` 4 on day 13 of a fourteen-day season, still inside the sunset act the test is
+named for. The assertion is now derived from `SEASON.days` so it states the act rather than the day,
+and CLAUDE.md's own caution applies: the bots still log in on async-era assumptions, so a one-day
+question belongs to playtesting. `apps/web/test/bombardment.test.ts` pinned two absolute radii (1.4
+for "a heavyweight", 0.44 for home) against fixtures that declared only a tier; both worlds now sit
+at the ends of the ladder, where those two numbers are what the disc actually draws. `worldRadius`
+is also total on a non-finite level, because it feeds position buffers and one NaN takes the scene
+down — the same answer an unread world gets.
+
+Binds: `worldRadius`/`CORE_TOP_LEVEL`/`RADIUS_LEVEL`, `worldWeight`, every `surfaceStandoff`/
+`orbitStandoff` caller (traffic, radar, worker, `planetNodes`), `SHELL_STAGE`/`FIRST_LEVEL` in
+`DysonShells`, `FUEL.tierMass`, `fuelMass`/`hullFuelMass`/`missionFuel`/`hullFuelRate` and every
+launch, transfer, clan-aid, settlement and pirate flow that quotes them, `PROBE.speed`,
+`reconcileOwnCraft`, `docs/balance.md`, D44/D49/D52/D74/D101/D111/D121/D123/D124/D127/D136/D137/
+D148/D152.
+
 ### D149 · Public galaxy events are immutable seasonal moments — OWNER INSTRUCTION
 
 Rule: A new season receives a hidden, deterministic calendar of public galaxy-event occurrences;
@@ -402,6 +475,9 @@ Evidence: Straight-pass targets can only be met by a faster craft, which is what
 Scope: This pulls "fleet interception" forward from the CLAUDE.md post-MVP list. Recorded deliberately, not silently.
 Forced adjacent change: `interceptAsteroid`'s scan/bisection solver is extracted to a shared `interceptOrbit`, and the orbit trigonometry and fourth-power radius draw to `orbitPosition` / `orbitRadius` on a shared `OrbitElements`, because a second copy of any of them is the "honoured in one place, forgotten in the other" failure this codebase has already shipped. `invariants.test.ts`'s generated-field reachability sweep and the rest of the rules suite stayed green unchanged across the extraction (573 tests).
 Void wreckage: a pirate battle leaves a real harvestable field at the rendezvous, priced from both sides' losses exactly as a player battle is. `debris_fields.planet_id` is nullable and every field carries its own `x/y/z`, populated for world battles too so no reader branches on which kind it is holding; `pirate_raid_id` is the third anchor `reclaim` finds a void field through, and the CHECK insists on exactly one. `launchHarvest`, `projectVisibleDebris` and `Wrecks` read the field's position rather than dereferencing a planet, which also fixes a wreck vanishing whenever its world was outside the caller's payload.
+Return delivery: the squadron follows the COMMANDER, not the pad. `pirate_raids.owner_player_id` records who committed the fleet, and `resolvePirateReturn` resolves its destination through `safeHomePlanet(owner, origin)` exactly as `settleReturn`, the neutral paths and the transfer reroute already do — so a colony captured while the raid is airborne can no longer deliver the fleet, the hoard and the towed hull to the commander who just took it. The kill credit on `pirate_state.destroyed_by_player_id`, the away stack's `units.owner_player_id`, the arrival's wealth recompute and the `fleet_returned` notification all read the same column. Wealth counts units by the world they sit on, so a captor carried the parked stack on their books for the flight and both commanders are settled on delivery.
+First-hit lock: `pirate_state` is seeded with `ON CONFLICT DO NOTHING` immediately before the `FOR UPDATE`, because `SELECT ... FOR UPDATE` cannot lock a row that does not exist yet. On an UNTOUCHED pirate two overlapping arrivals therefore both read the full crew, both fought it, and the second wrote its own casualties over the first's — cumulative losses lost, and the hoard and capture roll paid twice. A seeded row with no losses and no `destroyed_at` is indistinguishable from no row to `livingRosterOf`, `destroyedAt` and `standing`, so this creates state without creating meaning. The single worker resolves events one at a time and hid this; `claimDue`'s `FOR UPDATE SKIP LOCKED` exists precisely to allow a second replica, so `concurrency.test.ts` now runs the two arrivals in genuinely parallel transactions instead of through one `tick()`.
+Attacker bombardment: the volley's `radius` is what scatters its aim, so `volleyFor` and `Bombardment` both refuse zero — a pirate raid handed `{ radius: 0 }` drew no engagement at all, losing the one moment of the trip the player waited for. `bombardmentTarget` in `scene.ts` is now the single statement of what a leg fires at and how big it is, and a pirate takes the stated `PIRATE_TARGET_RADIUS` for the reason `PIRATE_STANDOFF` is a constant: a pirate is drawn from its own manifest and publishes no size.
 Measured, with an instrument: `tools/pirate-study.ts` (`pnpm study:pirates`) reads the shipped constants and regenerates both tables in `docs/balance.md`. Across five seeds a commander meets a median of 23 distinct pirates per eight-hour session at the naked eye (p10 14, p90 29) and 58 at Radar 3 — sensor investment roughly triples opportunity. `E[net]` is positive for a wing sized for the target at every level and negative for the same budget with nothing that shoots, which is the gap the decision lives in; a fixed fleet stops paying between L2 and L3. Every pirate is reachable by a Dart from the centre, the mid band and the rim, asserted at 100% rather than at a majority.
 Binds: `packages/rules/src/pirates.ts`, `combat.ts` `CombatSide`, `galaxy.ts` `interceptOrbit`, `pirate_state`/`pirate_raids`/`battle_reports` schema, pirate field/raid services, traffic fog, `pendingThreads`, reports, notifications, reclaim, season lifecycle, `/api/pirates`, galaxy client.
 

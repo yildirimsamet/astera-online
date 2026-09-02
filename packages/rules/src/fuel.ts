@@ -1,6 +1,39 @@
 import { FUEL } from './constants.js';
-import { HULLS, hangarLoad, hullBulk } from './hulls.js';
+import { HULLS, fleetEntries, hullBulk } from './hulls.js';
 import type { Fleet, HullId } from './types.js';
+
+/**
+ * THE MASS A FUEL CHARGE IS MEASURED IN. T6 · D153.
+ *
+ * Hangar room, times the tier's own thirst rung. `FUEL.tierMass` states why the
+ * multiplier is here rather than folded into `bulk`: room and thirst are two jobs,
+ * and one number doing both would re-rate every hull against the Hangar the next
+ * time fuel moved.
+ *
+ * ZERO FOR A GROUND HULL rather than its bulk, for the same reason it takes no
+ * hangar room: a gun never travels. A hull with no tier — the Prospector — is at the
+ * bottom rung, and burns nothing in practice because a mining run is not charged
+ * (D136).
+ */
+export function hullFuelMass(hull: HullId): number {
+  const spec = HULLS[hull];
+  if (spec.ground) return 0;
+  return hullBulk(hull) * (spec.tier === null ? 1 : FUEL.tierMass[spec.tier]);
+}
+
+/**
+ * WHAT THIS FLEET WEIGHS TO A FUEL PUMP. T6 · D153.
+ *
+ * The counterpart to `hangarLoad`, and deliberately a separate function from it for
+ * the reason that file already states about `hangarLoad`/`groundLoad`: a caller
+ * passing the wrong quantity is exactly the failure this code base has shipped
+ * before. Here the split is in the name — room is `hangarLoad`, thirst is this.
+ */
+export function fuelMass(fleet: Fleet): number {
+  let mass = 0;
+  for (const [id, count] of fleetEntries(fleet)) mass += count * hullFuelMass(id);
+  return mass;
+}
 
 /**
  * WHAT IT COSTS TO PUT THIS FLEET IN THE AIR. T6.
@@ -12,11 +45,12 @@ import type { Fleet, HullId } from './types.js';
  *
  * MASS × DISTANCE, PER LEG, AND NOTHING ELSE.
  *
- *   · MASS is `hangarLoad`, the same `bulk` the Hangar rations. One quantity for
- *     "how big is this fleet" doing both jobs, because two would drift apart at
- *     the first edit and the symptom would be a fleet that fits in a hangar it
- *     cannot afford to move. Ground defence weighs nothing here for the same
- *     reason it takes no hangar room: it never travels.
+ *   · MASS is `fuelMass`: the same `bulk` the Hangar rations, times the hull tier's
+ *     thirst rung (D153). Room and thirst are derived from one number so they can
+ *     never disagree about how big a fleet is, and kept separate so a fuel change
+ *     cannot silently re-rate the Hangar — `FUEL.tierMass` states the whole
+ *     argument. Ground defence weighs nothing here for the same reason it takes no
+ *     hangar room: it never travels.
  *
  *   · DISTANCE, because that is the axis the game already charges on. D125 and
  *     D126 made distance an INFORMATION cost — how far you can see, how late the
@@ -38,7 +72,7 @@ import type { Fleet, HullId } from './types.js';
  * all of them before it leaves.
  */
 export function missionFuel(fleet: Fleet, distance: number, legs: 1 | 2): number {
-  const mass = hangarLoad(fleet);
+  const mass = fuelMass(fleet);
   if (mass <= 0) return 0;
   const span = Math.max(0, distance);
   return Math.ceil((mass * span) / FUEL.scale) * legs;
@@ -59,12 +93,10 @@ export function missionFuel(fleet: Fleet, distance: number, legs: 1 | 2): number
  * table reads on one scale; the launch and transfer screens quote the charge
  * itself, off `missionFuel`, against the tank it comes out of.
  *
- * IT IS THE SAME MASS, so it cannot drift from the charge: both are `hullBulk`,
- * which is also the Hangar's unit of room. Ground defence is zero rather than its
- * bulk — a gun never travels, and printing a rate for one would invent a decision
- * that does not exist.
+ * IT IS THE SAME MASS, so it cannot drift from the charge: both are `hullFuelMass`.
+ * Ground defence is zero rather than its bulk — a gun never travels, and printing a
+ * rate for one would invent a decision that does not exist.
  */
 export function hullFuelRate(hull: HullId): number {
-  if (HULLS[hull].ground) return 0;
-  return (hullBulk(hull) * FUEL.reference) / FUEL.scale;
+  return (hullFuelMass(hull) * FUEL.reference) / FUEL.scale;
 }

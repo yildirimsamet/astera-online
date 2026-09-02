@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import {
   COMBAT,
+  CORE_TOP_LEVEL,
   GALAXY,
+  coreTier,
   engagementEndsAt,
   isEngaging,
   surfaceStandoff,
@@ -19,12 +21,14 @@ import {
   volleyFor,
 } from '../src/galaxy/volley.js';
 import {
+  bombardmentTarget,
   engagementHold,
   legEnd,
   legStandoff,
   legStart,
   NO_STANDOFF,
   orbitStandoff,
+  PIRATE_STANDOFF,
   planetNodes,
   targetNodeOf,
   threadPosition,
@@ -398,7 +402,14 @@ describe('a leg that ends at a world', () => {
       name: 'Tharsis',
       owner: 'someone',
       position: FAR,
-      coreTier: 4,
+      /**
+       * A HEAVYWEIGHT AT THE TOP OF THE LADDER, so the 1.4 silhouette the assertions
+       * below are written against is exactly what the disc draws it at. Since D153 the
+       * drawn size is a ramp over the exact Core level rather than three flat sizes off
+       * the tier, so "the biggest world" is a level, not a tier.
+       */
+      coreTier: coreTier(CORE_TOP_LEVEL),
+      coreLevel: CORE_TOP_LEVEL,
       satellites: [],
       shielded: false,
       isSelf: false,
@@ -406,8 +417,9 @@ describe('a leg that ends at a world', () => {
       ...over,
     }) as GalaxyPlanet;
 
+  // ...and home is the smallest world there is: the 0.44 the assertions use.
   const nodes = planetNodes([
-    planet({ id: 'p1', position: { x: 0, y: 0, z: 0 }, isSelf: true, coreTier: 1 }),
+    planet({ id: 'p1', position: { x: 0, y: 0, z: 0 }, isSelf: true, coreTier: 1, coreLevel: 1 }),
     planet(),
   ]);
 
@@ -443,6 +455,43 @@ describe('a leg that ends at a world', () => {
         arriveAt: new Date('2026-04-01T13:20:00.000Z'),
       },
     });
+
+  /**
+   * WHAT A LEG SHOOTS AT, AND HOW BIG IT IS.
+   *
+   * `Bombardment` and `volleyFor` both refuse a radius of zero, and they are right
+   * to: the radius is what scatters the aim across the target, so at zero every
+   * round in the volley converges on one point and the effect is a single line
+   * rather than a bombardment. A raid at a pirate was handed exactly that, so the
+   * attacker's own ten seconds drew nothing at all — the one moment in the whole
+   * trip the player waited for.
+   *
+   * A pirate has no published size, so it takes a stated one. `PIRATE_STANDOFF`
+   * already had to be a constant for the same reason and for the same lack.
+   */
+  it('gives a raid the world it is aimed at, sized by that world', () => {
+    const at = bombardmentTarget(thread(), nodes);
+    expect(at?.radius).toBeCloseTo(targetNodeOf(nodes, FAR)!.radius, 6);
+  });
+
+  it('gives a pirate raid a target that can actually be fired at', () => {
+    const at = bombardmentTarget(thread({ kind: 'pirate' }), nodes);
+    expect(at).not.toBeUndefined();
+    expect(at!.radius).toBeGreaterThan(0);
+    // The gap the rounds cross must survive being fired across.
+    expect(at!.radius).toBeLessThan(PIRATE_STANDOFF);
+    // And the volley it produces is a real one, not the empty list radius 0 gives.
+    const shots = volleyFor('pirate-raid-1', 5, at!.radius);
+    expect(shots.length).toBeGreaterThan(0);
+    expect(shots.some((shot) => shot.aim[0] !== 0 || shot.aim[1] !== 0)).toBe(true);
+  });
+
+  it('has nothing bombard on the way home, or from a probe, or from a Death Star', () => {
+    expect(bombardmentTarget(homeward(), nodes)).toBeUndefined();
+    expect(bombardmentTarget(thread({ kind: 'pirate', leg: 'return' }), nodes)).toBeUndefined();
+    expect(bombardmentTarget(thread({ kind: 'probe' }), nodes)).toBeUndefined();
+    expect(bombardmentTarget(thread({ kind: 'death_star' }), nodes)).toBeUndefined();
+  });
 
   it('finds the world it is aimed at, from coordinates alone', () => {
     const found = targetNodeOf(nodes, FAR);
@@ -563,6 +612,7 @@ describe('a raid landing, from both sides', () => {
       owner: 'Vale',
       position: FAR,
       coreTier: 3,
+      coreLevel: 8,
       satellites: [],
       shielded: false,
       isSelf: false,
@@ -571,7 +621,7 @@ describe('a raid landing, from both sides', () => {
     }) as GalaxyPlanet;
 
   const nodes = planetNodes([
-    planet({ id: 'p1', position: { x: 0, y: 0, z: 0 }, isSelf: true, coreTier: 1 }),
+    planet({ id: 'p1', position: { x: 0, y: 0, z: 0 }, isSelf: true, coreTier: 1, coreLevel: 2 }),
     planet(),
   ]);
 

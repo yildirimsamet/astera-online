@@ -37,6 +37,7 @@ import { assertFreeBay } from './flight.js';
 import { assertFuel } from './fuel.js';
 import { notify } from './notifications.js';
 import { schedule } from '../worker/queue.js';
+import { safeHomePlanet } from './ownership.js';
 import { sensorPosts } from './traffic.js';
 import { techOf } from './researchState.js';
 import { pendingThreads, type PendingThread } from './session.js';
@@ -265,6 +266,8 @@ export async function launchPirateRaid(
       .values({
         seasonId: origin.seasonId,
         planetId,
+        // The fleet follows its COMMANDER home, not the pad. See the column.
+        ownerPlayerId: origin.playerId,
         pirateIndex: index,
         fleet: requested,
         // Frozen at launch and read at the fight, exactly like a mission. D137.
@@ -413,6 +416,32 @@ async function settleArrival(
   const { raid, spec, key, origin } = ctx;
   const now = origin.now;
 
+  /**
+   * TAKE THE ROW INTO EXISTENCE BEFORE LOCKING IT.
+   *
+   * `SELECT ... FOR UPDATE` locks a ROW, and it cannot lock one that is not there.
+   * An untouched pirate has no `pirate_state` row at all, so on the FIRST hit the
+   * lock below held nothing: two arrivals inside one transaction window both read
+   * "full crew, nothing shot off", both fought it, and the second `ON CONFLICT DO
+   * UPDATE` wrote its own total over the first one's. The pirate was then paid for
+   * twice — two full hoards, two capture rolls — and its crew quietly came back to
+   * life in between.
+   *
+   * `ON CONFLICT DO NOTHING` is the serialisation point: a concurrent inserter of
+   * the same key waits on this transaction before it may proceed, so whichever
+   * arrival gets here second reads the first one's committed casualties. A seeded
+   * row with no losses and no `destroyed_at` is indistinguishable from no row to
+   * every reader — `livingRosterOf`, `destroyedAt` and `standing` all answer the
+   * same — so this creates state without creating meaning.
+   *
+   * The lock order is unchanged and still the global one: season, then planet
+   * (both taken by `loadLocked`), then this row last.
+   */
+  await tx
+    .insert(pirateState)
+    .values({ seasonId: raid.seasonId, index: raid.pirateIndex, losses: {}, updatedAt: now })
+    .onConflictDoNothing({ target: [pirateState.seasonId, pirateState.index] });
+
   const [state] = await tx
     .select()
     .from(pirateState)
@@ -449,14 +478,14 @@ async function settleArrival(
       index: raid.pirateIndex,
       losses,
       destroyedAt: wiped ? now : null,
-      destroyedByPlayerId: wiped ? origin.playerId : null,
+      destroyedByPlayerId: wiped ? raid.ownerPlayerId : null,
       updatedAt: now,
     })
     .onConflictDoUpdate({
       target: [pirateState.seasonId, pirateState.index],
       set: {
         losses,
-        ...(wiped ? { destroyedAt: now, destroyedByPlayerId: origin.playerId } : {}),
+        ...(wiped ? { destroyedAt: now, destroyedByPlayerId: raid.ownerPlayerId } : {}),
         updatedAt: now,
       },
     });
@@ -621,7 +650,7 @@ async function turnForHome(
       .set({ status: 'done', loot, capturedHull: captured, homeAt: null })
       .where(eq(pirateRaids.id, raid.id));
     await recomputeWealth(tx, raid.planetId);
-    await recomputePlayerWealth(tx, origin.playerId);
+    await recomputePlayerWealth(tx, raid.ownerPlayerId);
     return;
   }
 
@@ -636,7 +665,7 @@ async function turnForHome(
 
   // Only the survivors fly home; the dead simply cease to exist.
   await clearRaidUnits(tx, raid.planetId, raid.id);
-  await setUnits(tx, raid.planetId, survivors, raidLocation(raid.id), origin.playerId);
+  await setUnits(tx, raid.planetId, survivors, raidLocation(raid.id), raid.ownerPlayerId);
 
   await tx
     .update(pirateRaids)
@@ -649,7 +678,7 @@ async function turnForHome(
     refId: raid.id,
     resolveAt: homeAt,
   });
-  await recomputePlayerWealth(tx, origin.playerId);
+  await recomputePlayerWealth(tx, raid.ownerPlayerId);
 }
 
 export interface PirateRaidDelivery {
@@ -688,8 +717,24 @@ export async function resolvePirateReturn(
 
   await publishShard(tx, raid.seasonId, 'pirate');
 
-  const home = await loadLocked(tx, raid.planetId, clock);
-  const returning = await fleetOfRaid(tx, raid.planetId, raidId);
+  /**
+   * WHERE THE SQUADRON IS PARKED, AND WHERE IT IS ACTUALLY DELIVERED. D97 · D134.
+   *
+   * They are the same world on every ordinary trip and they are NOT the same world
+   * the moment the origin colony falls while the fleet is away. Ownership follows
+   * `raid.ownerPlayerId`; delivery follows that commander's still-owned world,
+   * falling back to the capital, which cannot be captured and is therefore always
+   * an answer. This is `settleReturn`'s arithmetic, and it is shared rather than
+   * restated so the two lanes cannot drift.
+   *
+   * Reading the destination off `planets.controller_player_id` instead handed the
+   * whole raid — squadron, hoard and towed hull — to the commander who had just
+   * taken the pad, which paid an attacker for their victim's flight.
+   */
+  const storagePlanetId = raid.planetId;
+  const destinationPlanetId = await safeHomePlanet(tx, raid.ownerPlayerId, storagePlanetId);
+  const home = await loadLocked(tx, destinationPlanetId, clock);
+  const returning = await fleetOfRaid(tx, storagePlanetId, raidId);
   const merged: Fleet = { ...home.homeFleet };
   for (const [hull, count] of fleetEntries(returning)) {
     merged[hull] = (merged[hull] ?? 0) + count;
@@ -697,21 +742,26 @@ export async function resolvePirateReturn(
   if (raid.capturedHull) {
     merged[raid.capturedHull] = (merged[raid.capturedHull] ?? 0) + 1;
   }
-  await clearRaidUnits(tx, raid.planetId, raidId);
-  await setUnits(tx, raid.planetId, merged, 'home', home.playerId);
+  await clearRaidUnits(tx, storagePlanetId, raidId);
+  await setUnits(tx, destinationPlanetId, merged, 'home', raid.ownerPlayerId);
 
   const loot = raid.loot ?? { alloy: 0, crystal: 0, deuterium: 0 };
-  await saveResources(tx, raid.planetId, {
+  await saveResources(tx, destinationPlanetId, {
     alloy: home.alloy + loot.alloy,
     crystal: home.crystal + loot.crystal,
     deuterium: home.deuterium + loot.deuterium,
   });
 
-  await recomputeWealth(tx, raid.planetId);
-  await recomputePlayerWealth(tx, home.playerId);
+  /*
+    THE WORLD THE SQUADRON LEFT IS SOMEBODY ELSE'S NOW, AND ITS WEALTH MOVED TOO.
+    Wealth counts units by the world they sit on, so a captor was carrying the
+    parked stack on their books for the whole flight. Both commanders are settled.
+  */
+  await recomputePlayerWealth(tx, raid.ownerPlayerId);
+  if (destinationPlanetId !== storagePlanetId) await recomputeWealth(tx, storagePlanetId);
 
   await notify(tx, {
-    playerId: home.playerId,
+    playerId: raid.ownerPlayerId,
     kind: 'fleet_returned',
     payload: {
       trip: 'pirate',
@@ -724,7 +774,7 @@ export async function resolvePirateReturn(
     at: home.now,
     refId: raid.id,
   });
-  await publish(tx, home.playerId, 'private:pirate');
+  await publish(tx, raid.ownerPlayerId, 'private:pirate');
 
   return {
     raidId,

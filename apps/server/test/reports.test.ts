@@ -865,6 +865,7 @@ describe('a report about a pirate', () => {
     const [raid] = await f.db.insert(pirateRaids).values({
       seasonId: f.seasonId,
       planetId: f.planetIds[0]!,
+      ownerPlayerId: f.playerIds[0]!,
       pirateIndex: spec.index,
       status: 'returning',
       fleet: { DART: 20 },

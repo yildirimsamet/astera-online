@@ -1,4 +1,4 @@
-import type { BuildingId, InstrumentId, Resources, SatelliteId } from './types.js';
+import type { BuildingId, InstrumentId, Resources, SatelliteId, ShipTier } from './types.js';
 import { ECONOMY_TEMPO, scalePrice } from './tempo.js';
 
 /**
@@ -1184,12 +1184,26 @@ export const PROBE = {
    * anyone can send at you by a wide, stated margin. Probe behavior itself is
    * deliberately untouched by D148.
    *
+   * ×0.75 AT D153, ON THE OWNER'S INSTRUCTION: 4680 → 3510. It is the other half of
+   * D152, which lifted every Fleet V2 hull a quarter and left the probe out — so the
+   * distance between "how fast can I look" and "how fast can I hit" grew by a
+   * quarter in the scout's favour, on top of the ×12 above. Looking was becoming
+   * free in the one currency the intel layer is meant to charge in, which is time.
+   * The two changes close the same gap from both ends.
+   *
+   * D121'S CEILING IS UNTOUCHED, BECAUSE IT IS A CEILING ON FLATNESS. The failure it
+   * recorded was every probe in the galaxy landing in exactly two minutes; with no
+   * fixed launch term the gradient is exactly `GALAXY_SPAN / minSeparation` and no
+   * speed anyone picks can move it. A slower probe pays MORE for distance, which is
+   * the direction that rule wants — and at 3510 it is still an order of magnitude
+   * clear of the fastest hull anyone can send at you.
+   *
    * IT NO LONGER RATIONS SCOUTING, AND IT WAS NEVER SUPPOSED TO. What stops a
    * commander reading the same world over and over is stated as a rule rather than
    * smuggled in as travel time: `retargetCooldownMinutes` below, plus the flight
    * bay every craft in the game competes for (D28).
    */
-  speed: 4680,
+  speed: 3510,
   /**
    * HOW LONG BEFORE THE SAME COMMANDER MAY LOOK AT THE SAME WORLD AGAIN. D121,
    * owner instruction.
@@ -1451,6 +1465,37 @@ export const ANTI_STRATEGIC = {
 
 export const FUEL = {
   scale: 10_000,
+  /**
+   * HOW THIRSTY EACH SHIP TIER IS, ON ITS OWN FUEL MASS. D153, owner instruction.
+   *
+   * THE REPORT WAS THAT SHIPS BURNED ALMOST NOTHING. Fuel is mass × distance and
+   * mass was `bulk`, which is derived from hull VALUE — so a late fleet already
+   * cost more to move than an early one, but only in proportion to what it cost to
+   * BUILD. A refinery that covered the opening covered the endgame too, and
+   * deuterium went from being the lesson of the first hour to a rounding error,
+   * which is the one outcome T6 exists to prevent.
+   *
+   * TIER 1 IS EXCLUDED BY INSTRUCTION, and that is the load-bearing half of the
+   * ladder. Every hull a fresh commander can build is tier 1, so
+   * `PLANET_START.deuterium` still covers exactly the run of launches it did, and
+   * the chain the opening teaches — "I have fuel, it is running out, I need a
+   * refinery, the refinery needs research" — arrives at the same moment it always
+   * did. The rungs above it are where the tank starts deciding things.
+   *
+   * IT MULTIPLIES FUEL MASS, NEVER `bulk`. Bulk is Hangar ROOM (T4), priced off
+   * hull value so capacity caps how much military a world may hold without caring
+   * which hulls it is made of. Folding thirst into it would re-rate every hull
+   * against the Hangar as a side effect of a fuel change, with nothing in the hull
+   * table to show it. Two numbers, one derived from the other, one job each — and
+   * the consequence a player feels is the good one: the fleet that FITS is not the
+   * fleet you can afford to fly.
+   *
+   * STILL NOT SPEED, and still not a price. `atk × hp / value²` does not read fuel,
+   * the counter cycle is untouched, and D152's speed lift takes no part in this. A
+   * tier-4 fleet is not weaker for being thirsty; it is dearer to commit, which is
+   * a decision taken with the tank in front of you.
+   */
+  tierMass: { 1: 1, 2: 2, 3: 4, 4: 5 } as Readonly<Record<ShipTier, number>>,
   /**
    * THE SPAN A PER-CRAFT FUEL FIGURE IS QUOTED OVER. Owner report — a ship card
    * has to say what one of these costs to fly.

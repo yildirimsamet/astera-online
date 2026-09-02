@@ -1718,8 +1718,21 @@ describe('every payload the client parses', () => {
     // Rich means tall, and tall means out of the tier band (D49). This test is
     // about what a notification SAYS, so put the world back in one band.
     await levelWorld(f.db, f.planetIds);
+    const departAt = f.clock.now();
     const launch = await launchAttack(f.db, mine, theirs, { DART: 12, COURIER: 2 }, f.clock);
-    f.clock.set(new Date(launch.arriveAt.getTime() - 60_000));
+    /*
+      HALFWAY THROUGH THE FLIGHT, DERIVED — NOT A FLAT MINUTE OUT.
+
+      `onRadarWarning` refuses to speak once the fleet is over the target
+      (`remaining <= 0`: a warning that arrives with the fleet is noise), and the
+      event is not due before the crossing it was scheduled for. A fixed
+      `arriveAt - 60s` therefore has to sit inside a flight that is longer than a
+      minute, and `seedWorld`'s worlds are 150 units apart — 0.900 min at D152's
+      speeds, so that instant moved to before the fleet had launched and
+      `incoming_fleet` was never written. The midpoint is inside the window at any
+      spacing and at any future speed.
+    */
+    f.clock.set(new Date((departAt.getTime() + launch.arriveAt.getTime()) / 2));
     await worker.tick();
     f.clock.set(settledAt(launch.arriveAt));
     await worker.tick();

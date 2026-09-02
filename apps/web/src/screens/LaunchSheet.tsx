@@ -12,6 +12,7 @@ import { useLaunch } from '../api/queries.js';
 import type { GalaxyPlanet, PlanetView } from '../api/schemas.js';
 import { hullLabel } from '../i18n/names.js';
 import { compact } from '../lib/format.js';
+import { serverNow } from '../lib/clock.js';
 import { recordAgeMinutes } from '../lib/dossier.js';
 import { duration, staleness } from '../lib/time.js';
 import { MOBILE, planRoute, techOf } from '../lib/navigation.js';
@@ -130,8 +131,13 @@ export function LaunchSheet({
    * information game cannot leave off its commitment surface. `null` on a live
    * reading, because a reading has no age and inventing one is the same lie
    * inverted.
+   *
+   * ON `serverNow()`, LIKE THE DISC LABEL. D51 · D52. `seenAt` is server-authored,
+   * so a device `Date.now()` subtracts two different epochs and prints the age plus
+   * whatever that phone's clock is wrong by — the same record then read one age
+   * under the world and another on the sheet, and the sheet was the wrong one.
    */
-  const recordAge = recordAgeMinutes(target, Date.now());
+  const recordAge = recordAgeMinutes(target, serverNow());
 
   return (
     <Sheet

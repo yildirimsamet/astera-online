@@ -166,15 +166,16 @@ export interface PlanetNode {
   radius: number;
   /** 1, 2 or 3. What the size means, for anything that needs to say it in words. */
   weight: 1 | 2 | 3;
-  /** The public core tier. Three drawn sizes and D49's ±2 attack band read this. */
+  /** The public core tier. The `weight` word and D49's ±2 attack band read this. */
   coreTier: number;
   /**
    * The exact Command Core level, which the tier is a lossy read of.
    *
    * The dyson rings need it: the ring count steps every three levels and the
    * colour every one, so a tier — which spans three levels — cannot express
-   * either. See `SHELL_STAGE` in `DysonShells`, and `publicGalaxy` on the server
-   * for why this is public at all.
+   * either. Since D153 the world's own DRAWN SIZE needs it too. See `SHELL_STAGE`
+   * in `DysonShells`, `worldRadius` in the shared rules, and `publicGalaxy` on the
+   * server for why this is public at all.
    */
   coreLevel: number;
   /** The satellites in orbit. Public hardware, and a satellite has no level — D15/D25. */
@@ -206,24 +207,16 @@ export interface PlanetNode {
 }
 
 /**
- * THREE SIZES, NOT A RAMP.
+ * THREE WEIGHTS — THE WORD, NOT THE SIZE. D153.
  *
- * The server publishes a coarse core TIER — never the exact level, because that is
- * what a probe is for — and the disc turns it into one of three silhouettes. A
- * continuous ramp encoded five sizes that no eye could separate at a glance, which
- * is the same as encoding nothing: the point of putting development into the
- * picture is that a player sweeping the galaxy can tell a soft target from a hard
- * one without opening anything.
+ * One of three, off the coarse tier, for anything that has to SAY how developed a
+ * world is. The drawn size is a separate question and reads the exact Core level:
+ * see `worldRadius` in `packages/rules/src/view.ts` for why the three authored
+ * sizes became the anchors of a per-level ramp rather than the whole table.
  *
  * It is a silhouette, not a readout. "Bigger than me" is the whole message; how
  * much bigger, what it is defended with and whether its fleet is home all still
  * cost a telescope slot or a probe.
- *
- * THE THREE ARE HELD APART DELIBERATELY. The middle is the anchor and does not
- * move; the outer two were pushed outward (owner call) because the gap is the
- * whole signal. 0.5 against 1.24 was a 2.5× spread, which reads as "somewhat
- * bigger" at the distances this map is actually flown at; 0.44 against 1.40 is
- * 3.2×, and a heavyweight now looks like one from across the disc without a label.
  */
 export const weightOf = worldWeight;
 
@@ -255,8 +248,9 @@ export function planetNodes(planets: readonly GalaxyPlanet[]): PlanetNode[] {
     ...(!planet.dominionRank ? {} : { dominionRank: planet.dominionRank }),
     position: toWorld(planet.position),
     // Map markers, not scale models. A planet at true scale in a disc 2000 units
-    // across would be invisible, so these are sized to be READ.
-    radius: worldRadius(planet.coreTier),
+    // across would be invisible, so these are sized to be READ. One step per Core
+    // level since D153 — the exact level, not the tier the WORD below reads.
+    radius: worldRadius(planet.coreLevel),
     weight: weightOf(planet.coreTier),
     coreTier: planet.coreTier,
     coreLevel: planet.coreLevel,
@@ -372,9 +366,9 @@ export function threadPosition(
  * It is also what the bombardment is fired ACROSS. Missiles need somewhere to come
  * from, and "the point the squadron actually holds" is the only honest answer.
  *
- * Scaled by the world rather than fixed, because worlds are drawn at 0.44, 0.82
- * and 1.40 and one number would either bury a squadron in a heavyweight or park it
- * a long way off a small one. The half-radius of clearance on top is what keeps a
+ * Scaled by the world rather than fixed, because worlds are drawn anywhere from
+ * 0.44 to 1.40 across (D153) and one number would either bury a squadron in a
+ * heavyweight or park it a long way off a small one. The half-radius of clearance on top is what keeps a
  * twelve-model formation — which is nearly two spacings across — outside the
  * silhouette rather than half-embedded in it.
  */
@@ -449,6 +443,42 @@ export const NO_STANDOFF: LegStandoff = { start: 0, end: 0 };
  * fleet is drawn from its own manifest and has no published size at all.
  */
 export const PIRATE_STANDOFF = 6;
+
+/**
+ * HOW BIG THE THING A PIRATE RAID IS SHOOTING AT IS DRAWN.
+ *
+ * The radius is not decoration: `volleyFor` scatters every round's aim across a
+ * disc of exactly this size, and `Bombardment` refuses a volley without one. Zero
+ * therefore does not mean "a point target", it means NO BOMBARDMENT AT ALL — the
+ * attacker's own ten seconds over the rendezvous drew nothing, which is the one
+ * moment of the whole forty-minute trip the player was waiting for.
+ *
+ * A CONSTANT FOR THE REASON `PIRATE_STANDOFF` IS ONE: a pirate is drawn from its
+ * own manifest and publishes no size, and the raid thread carries only its level
+ * and callsign. Held below the standoff so the gap the rounds cross stays visible
+ * — the volley has to read as crossing to the other formation, not as going off
+ * inside its own.
+ */
+export const PIRATE_TARGET_RADIUS = PIRATE_STANDOFF / 2;
+
+/**
+ * WHAT THIS LEG BOMBARDS, AND HOW BIG IT IS — OR NOTHING.
+ *
+ * The one statement of it, because there are two answers and three refusals and
+ * they were previously spread across a memo in `Fleets.tsx` where nothing could
+ * assert them. A probe takes a photograph, a Death Star IS the explosion, and a
+ * leg coming home is landing rather than arriving; only an outbound fleet or an
+ * outbound pirate raid fires.
+ */
+export function bombardmentTarget(
+  thread: PendingThread,
+  nodes: readonly PlanetNode[],
+): { radius: number } | undefined {
+  if (!thread.path || thread.leg === 'return') return undefined;
+  if (thread.kind === 'pirate') return { radius: PIRATE_TARGET_RADIUS };
+  if (thread.kind !== 'fleet') return undefined;
+  return targetNodeOf(nodes, thread.path.to);
+}
 
 export function legStandoff(
   thread: PendingThread,
@@ -766,12 +796,13 @@ export function asteroidWorldPosition(
  * THE ONE PIECE OF FREE INFORMATION IN THE FIELD. Ore comes from level and nothing
  * else, so size IS value — a player sweeping the disc can tell a rock worth
  * diverting a squadron for from one that is not, without opening anything. Sized
- * generously apart for the same reason planets use three silhouettes rather than a
- * ramp: five steps nobody can distinguish encode nothing.
+ * generously apart because five steps nobody can distinguish encode nothing — the
+ * rocks keep a three-step ladder even though worlds took a per-level ramp at D153,
+ * for the same reason: a rock's grade is a category, not a gradient.
  *
- * KEPT WELL UNDER THE PLANETS, and taken down another quarter (owner call). Worlds
- * are 0.44, 0.82 and 1.40, so the richest rock in the galaxy is well under two
- * thirds of the smallest world and the two can never be confused at a glance. The
+ * KEPT WELL UNDER THE PLANETS, and taken down another quarter (owner call). No world
+ * is drawn under 0.44, so the richest rock in the galaxy is well under two thirds of
+ * the smallest world and the two can never be confused at a glance. The
  * first version topped out at 0.68 against an unnormalised model — see `model.ts`
  * — and produced rocks bigger than worlds.
  *

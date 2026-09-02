@@ -549,14 +549,26 @@ export async function wipeAllServers(
     await tx.delete(strategicInterceptions);
     await tx.delete(strategicImpacts);
     await tx.delete(battleReports);
-    // After the reports that reference a raid, before the planets and seasons it
-    // references. `pirate_state` is anonymous world damage and goes with the season.
+    /*
+      THE WRECKAGE COMES DOWN BEFORE THE RAID THAT MADE IT. D150.
+
+      A void field carries `pirate_raid_id`, so it is the SECOND thing pointing at
+      a raid and the comment below only ever accounted for the first. Deleting the
+      raid first failed on `debris_fields_pirate_raid_id_pirate_raids_id_fk` and
+      rolled the whole rollover back — a galaxy that can never be reset, which is
+      exactly the outage `debris_fields` has now caused here twice.
+
+      `mining_runs` points at a debris field, so the three unwind innermost first.
+    */
+    await tx.delete(miningRuns);
+    await tx.delete(debrisFields);
+    // After the reports and the wreckage that reference a raid, before the planets
+    // and seasons it references. `pirate_state` is anonymous world damage and goes
+    // with the season.
     await tx.delete(pirateRaids);
     await tx.delete(pirateState);
     await tx.delete(scheduledEvents);
     await tx.delete(buildOrders);
-    await tx.delete(miningRuns);
-    await tx.delete(debrisFields);
     await tx.delete(strategicAssets);
     await tx.delete(missions);
     await tx.delete(asteroidClaims);

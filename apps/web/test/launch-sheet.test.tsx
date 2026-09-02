@@ -6,6 +6,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { Api } from '../src/api/client.js';
 import { ApiProvider } from '../src/api/context.js';
 import type { GalaxyPlanet } from '../src/api/schemas.js';
+import { resetClock, serverNow } from '../src/lib/clock.js';
 import { LaunchSheet } from '../src/screens/LaunchSheet.js';
 import { ToastProvider } from '../src/ui/Toast.js';
 import { planetView } from './fixtures.js';
@@ -279,10 +280,16 @@ describe('the fuel this launch burns', () => {
  * information game cannot leave off its commitment surface.
  */
 describe('how old the target is, on the surface where the fleet is committed', () => {
+  /**
+   * `seenAt` IS SERVER-AUTHORED, so the fixture has to write it on the server's
+   * epoch. Building it from the device clock instead makes a drifting phone look
+   * correct in a test and wrong in a player's hand — the offset cancels itself out
+   * of both sides of the subtraction, which is precisely the bug going unseen.
+   */
   const remembered = (minutes: number): GalaxyPlanet => ({
     ...target,
     intel: 'REMEMBERED' as const,
-    seenAt: new Date(Date.now() - minutes * 60_000),
+    seenAt: new Date(serverNow() - minutes * 60_000),
   });
 
   const open = (over: GalaxyPlanet) => {
@@ -316,5 +323,31 @@ describe('how old the target is, on the surface where the fleet is committed', (
     open({ ...target, intel: 'UNKNOWN' as const, name: '', owner: '' });
     expect(screen.queryByText(/ago/i)).not.toBeInTheDocument();
     expect(screen.getByRole('dialog', { name: /nobody has looked here/i })).toBeInTheDocument();
+  });
+
+  /**
+   * THE AGE IS READ ON THE SERVER'S CLOCK, NOT THE PHONE'S. D51 · D52.
+   *
+   * `seenAt` is written by the server, so subtracting a device `Date.now()` from
+   * it yields the age PLUS whatever that phone's clock is wrong by. The disc label
+   * draws the same record through `serverNow()`, so the two surfaces disagreed by
+   * exactly the offset — and the one that was wrong was the commitment screen.
+   *
+   * A drifting phone clock is ordinary, which is why `noteServerTime` exists at
+   * all. `Math.max(0, …)` in `recordAgeMinutes` then hides the failure rather than
+   * showing it: a device running fast prints a plausible wrong number instead of
+   * an obviously impossible one.
+   */
+  it('reads the record age on the server clock, not the device clock', () => {
+    // This phone is six minutes fast; the offset the app measured says so.
+    resetClock(-6 * 60_000);
+    try {
+      open(remembered(30));
+      expect(screen.getByText(/30m.*ago/i)).toBeInTheDocument();
+      // 36m is what a device-clock read produces, and it is the whole bug.
+      expect(screen.queryByText(/36m/i)).not.toBeInTheDocument();
+    } finally {
+      resetClock();
+    }
   });
 });

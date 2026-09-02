@@ -6,7 +6,6 @@ import {
   prospectorSpeed,
   interceptAsteroid,
   asteroidPosition,
-  coreTier,
   engagementEndsAt,
   orbitStandoff,
   surfaceStandoff,
@@ -803,8 +802,8 @@ describe('galaxy traffic — motion in public, intent in private', () => {
     const drawn = visualLeg(
       { x: from!.x, y: from!.y, z: from!.z },
       { x: to!.x, y: to!.y, z: to!.z },
-      surfaceStandoff(worldRadius(coreTier(levelByPlanet.get(a) ?? 0))),
-      orbitStandoff(worldRadius(coreTier(levelByPlanet.get(b) ?? 0))),
+      surfaceStandoff(worldRadius(levelByPlanet.get(a) ?? 0)),
+      orbitStandoff(worldRadius(levelByPlanet.get(b) ?? 0)),
     );
 
     // Past the departure shroud (D123): before it there is deliberately nothing

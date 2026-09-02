@@ -3,6 +3,7 @@ import {
   COMBAT_HULLS,
   HULLS,
   RESEARCH_TECH,
+  SEASON,
   counterMult,
   exposureMinutes,
   fleetCargo,
@@ -159,6 +160,25 @@ describe('Fleet V2 mission-profile calibration — D148', () => {
 });
 
 describe('Fleet V2 research pacing — D148', () => {
+  /**
+   * THE RULE IS WHICH ACT A TIER BELONGS TO, NOT WHICH DAY IT LANDS ON.
+   *
+   * T4 IS ASSERTED AT THE SEASON'S OWN LENGTH, and it used to be asserted at day 12.
+   * D153 made deuterium bite — a tier-2 hull now burns twice its old fuel and a
+   * tier-4 hull five times — and fuel comes out of the same tank the weapon ladder
+   * is priced in from its second rung up. Measured on this fixture, the leading
+   * grinder's `SHIP_POWER` reaches 4 on day 13 rather than day 12: one day later
+   * inside a fourteen-day season, and still deep in the sunset act this test is
+   * named for. Nothing about the SHAPE moved — T3 still opens in the midgame, T4
+   * still cannot be had at day 7, and it is still not something everybody gets.
+   *
+   * Restated against measurement rather than nudged, and derived from `SEASON.days`
+   * so it cannot go stale the next time the season length or the fuel model moves.
+   * The bots are also the wrong instrument for a one-day question: CLAUDE.md's own
+   * caution is that they still log in on async-era assumptions, so their pacing is
+   * an indicator. What playtesting has to confirm is that a commander who has flown
+   * a real fleet all season can still field the top tier before the wipe.
+   */
   it('opens T3 in the midgame and T4 in the late game rather than the opening', () => {
     const at = (days: number) => runSeason({
       players: 50,
@@ -177,11 +197,11 @@ describe('Fleet V2 research pacing — D148', () => {
       && (player.tech.SHIP_POWER ?? 0) >= 2)).toBe(true);
     expect(day7.some((player) => (player.tech.SHIP_POWER ?? 0) >= 4)).toBe(false);
 
-    const day12 = at(12);
-    expect(day12.some((player) =>
+    const wipe = at(SEASON.days);
+    expect(wipe.some((player) =>
       (player.tech.STARSHIP_ENGINEERING ?? 0) >= 2
       && (player.tech.SHIP_POWER ?? 0) >= 4
       && (player.tech.SHIP_ARMOR ?? 0) >= 2)).toBe(true);
-    expect(day12.some((player) => (player.tech.SHIP_POWER ?? 0) < 4)).toBe(true);
+    expect(wipe.some((player) => (player.tech.SHIP_POWER ?? 0) < 4)).toBe(true);
   });
 });

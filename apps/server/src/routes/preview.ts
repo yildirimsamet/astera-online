@@ -203,10 +203,11 @@ export function registerPreviewRoutes(app: FastifyInstance): void {
             },
             position: reserved.position,
             coreTier: 1,
-            // Level 1 like every fresh planet. It carries no dyson ring and cannot
-            // grow one here — those start at Core 9 — but the pair has to stay
-            // honest: `coreTier` is `ceil(level / 3)` and a payload where the two
-            // disagree is a projection the client is entitled to trust and cannot.
+            // Level 1 like every fresh planet: the smallest silhouette on the disc
+            // (D153 draws the size off this level), and no dyson ring — those start
+            // at Core 12. The pair still has to stay honest: `coreTier` is
+            // `ceil(level / 3)` and a payload where the two disagree is a projection
+            // the client is entitled to trust and cannot.
             coreLevel: 1,
             satellites: [],
             shielded: false,

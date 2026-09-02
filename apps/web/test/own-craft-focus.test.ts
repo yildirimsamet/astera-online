@@ -105,6 +105,62 @@ describe('automatic focus for newly launched craft', () => {
     expect(returned.focus).toBeNull();
   });
 
+  /**
+   * A RETURN LEG IS NOT A LAUNCH, AND IT ARRIVES WITH A NEW MISSION ID. Owner report.
+   *
+   * The server does not flip a mission round: it closes the outbound row and inserts
+   * a fresh one for the trip home, linked by `parentMissionId` — `handleMissionArrival`
+   * does it for a raid, and the probe's homeward leg does it too. So the identity the
+   * camera de-duplicates on is brand new, and every craft in the game seized the
+   * screen a second time on its way back: mid-menu, mid-inspection, once per craft,
+   * for as long as the commander had anything in the air.
+   *
+   * THE PAYLOAD ALREADY KNEW. Every own thread carries `leg`, so the rule is stated
+   * where the decision is made rather than repaired downstream: follow a craft out,
+   * never home. The row is still BASELINED — it goes into `seen` — because the point
+   * is that nothing about a return may ever move the camera, not that it moves it
+   * later.
+   */
+  it('does not follow a return leg home, even under a new mission id', () => {
+    const out = reconcileOwnCraft(new Set(), [thread()], []);
+    const back = reconcileOwnCraft(out.seen, [thread({ id: 'mission-2', leg: 'return' })], []);
+
+    expect(out.focus).toEqual({ kind: 'thread', key: 'mission-1' });
+    expect(back.focus).toBeNull();
+    expect(back.seen.has('thread:mission-2')).toBe(true);
+  });
+
+  /** And a drill turning for home is the same rule, off its own status. */
+  it('does not follow a mining or salvage run home', () => {
+    const back = reconcileOwnCraft(
+      new Set(),
+      [],
+      [run({ id: 'run-2', status: 'returning' })],
+    );
+
+    expect(back.focus).toBeNull();
+    expect(back.seen.has('run:run-2')).toBe(true);
+  });
+
+  /** A craft that really did just leave still wins, even beside a returning one. */
+  it('still follows a launch that departs while something else is coming home', () => {
+    const result = reconcileOwnCraft(
+      new Set(),
+      [
+        thread({ id: 'homeward', leg: 'return', path: {
+          from: { x: 5, y: 0, z: 5 },
+          to: { x: 0, y: 0, z: 0 },
+          departAt: new Date('2026-08-25T12:04:00.000Z'),
+          arriveAt: new Date('2026-08-25T12:09:00.000Z'),
+        } }),
+        thread({ id: 'outward' }),
+      ],
+      [],
+    );
+
+    expect(result.focus).toEqual({ kind: 'thread', key: 'outward' });
+  });
+
   it('chooses the most recently dispatched craft when several arrive together', () => {
     const result = reconcileOwnCraft(new Set(), [thread()], [run()]);
     expect(result.focus).toEqual({ kind: 'run', id: 'run-1' });

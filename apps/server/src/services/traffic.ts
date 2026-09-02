@@ -3,7 +3,6 @@ import {
   DEATH_STAR,
   PIRATE,
   TRAFFIC,
-  coreTier,
   distance,
   radarRange,
   radarRevealsComposition,
@@ -486,17 +485,19 @@ export interface TrafficSnapshot {
   landedDeathStarMissionIds: ReadonlySet<string>;
   positions: ReadonlyMap<string, Vec3>;
   /**
-   * THE PUBLIC CORE TIER OF EVERY WORLD A LEG TOUCHES. D106.
+   * THE PUBLIC CORE LEVEL OF EVERY WORLD A LEG TOUCHES. D106 · D153.
    *
    * It is here for one reason: how big a world is DRAWN decides where a craft
    * stops short of it, and a published window has to end where the owner's own
    * client ends the same leg or the two screens disagree by more than a planet.
    * See `packages/rules/src/view.ts`.
    *
-   * It discloses nothing — `coreTier` is on `/api/galaxy` for every world in the
-   * disc (D49), which is exactly why the correction can be computed on both sides.
+   * It discloses nothing — `coreLevel` is on `/api/galaxy` for every world in the
+   * disc, which is exactly why the correction can be computed on both sides. It was
+   * the coarse tier until D153 turned the drawn size into a per-level ramp; a
+   * standoff off a tier is now the wrong distance for eight levels out of nine.
    */
-  tiers: ReadonlyMap<string, number>;
+  coreLevels: ReadonlyMap<string, number>;
 }
 
 /**
@@ -589,7 +590,7 @@ export async function loadTrafficSnapshot(
       interceptionRows,
       landedDeathStarMissionIds,
       positions: new Map(),
-      tiers: new Map(),
+      coreLevels: new Map(),
     };
   }
 
@@ -609,9 +610,15 @@ export async function loadTrafficSnapshot(
       { x: planet.x, y: planet.y, z: planet.z },
     ]),
   );
-  // The same coarse tier `/api/galaxy` publishes, from the same column.
-  const tiers = new Map<string, number>(
-    coreRows.map((row) => [row.planetId, coreTier(row.level)]),
+  /**
+   * The same exact Core level `/api/galaxy` publishes, from the same column. It
+   * used to be reduced to the coarse tier here, which was fine while a world was
+   * drawn at one of three sizes; D153 made the drawn size a per-level ramp, and a
+   * standoff computed off a tier would put a craft in the wrong place for eight
+   * levels out of every nine.
+   */
+  const coreLevels = new Map<string, number>(
+    coreRows.map((row) => [row.planetId, row.level]),
   );
   return {
     missionRows,
@@ -621,7 +628,7 @@ export async function loadTrafficSnapshot(
     interceptionRows,
     landedDeathStarMissionIds,
     positions,
-    tiers,
+    coreLevels,
   };
 }
 
@@ -867,7 +874,7 @@ export function projectGalaxyTraffic(
     pirateRaidRows,
     raidFleets,
     positions,
-    tiers,
+    coreLevels,
     landedDeathStarMissionIds,
   } = snapshot;
   const ownedPlanets = new Set(ownPlanetIds);
@@ -963,10 +970,10 @@ export function projectGalaxyTraffic(
     const returning = mission.kind === 'return' || mission.parentMissionId !== null;
     const home = returning ? mission.targetPlanetId : mission.originPlanetId;
     const foreign = returning ? mission.originPlanetId : mission.targetPlanetId;
-    const homeTier = tiers.get(home);
-    const foreignTier = tiers.get(foreign);
-    const surface = homeTier === undefined ? 0 : surfaceStandoff(worldRadius(homeTier));
-    const orbit = foreignTier === undefined ? 0 : orbitStandoff(worldRadius(foreignTier));
+    const homeCore = coreLevels.get(home);
+    const foreignCore = coreLevels.get(foreign);
+    const surface = homeCore === undefined ? 0 : surfaceStandoff(worldRadius(homeCore));
+    const orbit = foreignCore === undefined ? 0 : orbitStandoff(worldRadius(foreignCore));
     return returning
       ? visualLeg(origin, target, orbit, surface)
       : visualLeg(origin, target, surface, orbit);
@@ -1243,8 +1250,8 @@ export function projectGalaxyTraffic(
 
     const rawFrom = returning ? meet : home;
     const rawTo = returning ? home : meet;
-    const homeTier = tiers.get(run.planetId);
-    const surface = homeTier === undefined ? 0 : surfaceStandoff(worldRadius(homeTier));
+    const homeCore = coreLevels.get(run.planetId);
+    const surface = homeCore === undefined ? 0 : surfaceStandoff(worldRadius(homeCore));
     const { from, to } = returning
       ? visualLeg(rawFrom, rawTo, 0, surface)
       : visualLeg(rawFrom, rawTo, surface, 0);
@@ -1446,8 +1453,8 @@ export function projectGalaxyTraffic(
     const legArriveAt = returning ? raid.homeAt : raid.arriveAt;
     if (!legArriveAt) continue;
 
-    const homeTier = tiers.get(raid.planetId);
-    const surface = homeTier === undefined ? 0 : surfaceStandoff(worldRadius(homeTier));
+    const homeCore = coreLevels.get(raid.planetId);
+    const surface = homeCore === undefined ? 0 : surfaceStandoff(worldRadius(homeCore));
     const { from, to } = returning
       ? visualLeg(meet, home, 0, surface)
       : visualLeg(home, meet, surface, 0);

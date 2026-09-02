@@ -154,12 +154,14 @@ function answer(
        * everybody — so both readings of it are recomputed rather than frozen at
        * the opening.
        *
-       * The TIER is what the visitor actually sees change: it decides the drawn
-       * size, and Core 4 is reachable inside the ninety seconds. The LEVEL earns
-       * nothing here — dyson rings start at Core 9 and no rehearsal reaches it —
-       * and it is recomputed anyway because the two must not disagree. `coreTier`
-       * is `ceil(level / 3)`, and a payload where the pair contradicts itself is a
-       * projection the client is entitled to trust and cannot.
+       * The LEVEL is what the visitor actually sees change, and since D153 it is the
+       * one that decides the drawn size: a world grows a little at every Core level,
+       * and Core 4 is reachable inside the ninety seconds. The TIER still carries the
+       * three `worldWeight` words and D49's ±2 band, and is recomputed here because
+       * the two must not disagree — `coreTier` is `ceil(level / 3)`, and a payload
+       * where the pair contradicts itself is a projection the client is entitled to
+       * trust and cannot. Neither earns a dyson ring: those start at Core 12 and no
+       * rehearsal comes close.
        */
       case '/api/galaxy':
         return {

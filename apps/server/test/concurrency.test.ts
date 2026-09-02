@@ -328,15 +328,23 @@ describe('two raids at one pirate', () => {
     f = await seedWorld(2, 4242, { pirates: true });
   });
 
-  it('accumulates both sets of casualties under the row lock', async () => {
-    const { and: sqlAnd, eq: sqlEq } = await import('drizzle-orm');
-    const { pirateRaids, pirateState, seasons } = await import('../src/db/schema.js');
+  /**
+   * Two raids in the air at the same pirate, and the moment they both land.
+   *
+   * Shared because the interesting part is what happens AFTER this — whether the
+   * two arrivals are applied one at a time or on top of each other — and both
+   * tests below need an identical board to ask it on.
+   */
+  const twoRaidsInTheAir = async (): Promise<{
+    index: number;
+    launches: { raidId: string; arriveAt: Date }[];
+  }> => {
+    const { eq: sqlEq } = await import('drizzle-orm');
+    const { seasons } = await import('../src/db/schema.js');
     const { privatePirateField, pirateId } = await import('../src/services/pirateField.js');
     const { launchPirateRaid } = await import('../src/services/pirateRaid.js');
-    const { EventWorker } = await import('../src/worker/loop.js');
-    const { giveUnits, settledAt } = await import('./helpers.js');
-    const { pino } = await import('pino');
-    const { piratePosition, pirateActive, sensorSphere, distance, fleetCount } =
+    const { giveUnits } = await import('./helpers.js');
+    const { piratePosition, pirateActive, sensorSphere, distance } =
       await import('@astera/rules');
 
     const [season] = await f.db.select().from(seasons).where(sqlEq(seasons.id, f.seasonId));
@@ -368,6 +376,63 @@ describe('two raids at one pirate', () => {
     }
     const launches = await Promise.all(f.planetIds.map((planetId) =>
       launchPirateRaid(f.db, planetId, pirateId(key, chosen!.index), { DART: 12 }, f.clock)));
+    return { index: chosen!.index, launches };
+  };
+
+  /**
+   * WHAT THE TWO ARRIVALS MUST ADD UP TO, HOWEVER THEY INTERLEAVE.
+   *
+   * `pirate_state.losses` is the cumulative crew damage and the reports are the
+   * per-raid record of it, so the stored row has to be exactly the sum of what
+   * every report claims. That holds under any ordering if the accumulation is
+   * atomic, and fails the moment one arrival computes its total from a crew the
+   * other had already shot at.
+   */
+  const lossesMustReconcile = async (index: number): Promise<void> => {
+    const { and: sqlAnd, eq: sqlEq } = await import('drizzle-orm');
+    const { battleReports, pirateState } = await import('../src/db/schema.js');
+    const { fleetEntries, fleetCount } = await import('@astera/rules');
+    const { privatePirateField } = await import('../src/services/pirateField.js');
+    const { seasons } = await import('../src/db/schema.js');
+
+    const [season] = await f.db.select().from(seasons).where(sqlEq(seasons.id, f.seasonId));
+    const roster = privatePirateField(season!.asteroidKey)[index]!.roster;
+
+    const reports = await f.db
+      .select()
+      .from(battleReports)
+      .where(sqlAnd(
+        sqlEq(battleReports.seasonId, f.seasonId),
+        sqlEq(battleReports.targetKind, 'PIRATE'),
+      ));
+    const claimed: Record<string, number> = {};
+    for (const report of reports) {
+      for (const [hull, lost] of fleetEntries(report.defenderLosses)) {
+        claimed[hull] = (claimed[hull] ?? 0) + lost;
+      }
+    }
+
+    const [state] = await f.db
+      .select()
+      .from(pirateState)
+      .where(sqlAnd(sqlEq(pirateState.seasonId, f.seasonId), sqlEq(pirateState.index, index)));
+    expect(state).toBeDefined();
+    expect(fleetCount(state!.losses)).toBeGreaterThan(0);
+    // Every casualty any report claims is on the row, and nothing else is.
+    expect({ ...state!.losses }).toEqual(claimed);
+    for (const [hull, lost] of fleetEntries(state!.losses)) {
+      expect(lost).toBeLessThanOrEqual(roster[hull] ?? 0);
+    }
+  };
+
+  it('accumulates both sets of casualties under the row lock', async () => {
+    const { eq: sqlEq } = await import('drizzle-orm');
+    const { pirateRaids } = await import('../src/db/schema.js');
+    const { EventWorker } = await import('../src/worker/loop.js');
+    const { settledAt } = await import('./helpers.js');
+    const { pino } = await import('pino');
+
+    const { index, launches } = await twoRaidsInTheAir();
 
     const silent = pino({ level: 'silent' });
     const worker = new EventWorker(
@@ -387,24 +452,39 @@ describe('two raids at one pirate', () => {
     expect(rows).toHaveLength(2);
     for (const row of rows) expect(row.status).not.toBe('outbound');
 
-    const [state] = await f.db
-      .select()
-      .from(pirateState)
-      .where(sqlAnd(
-        sqlEq(pirateState.seasonId, f.seasonId),
-        sqlEq(pirateState.index, chosen!.index),
-      ));
-    expect(state).toBeDefined();
-    /*
-      THE CREW NEVER COMES BACK. Whatever the two raids destroyed between them, the
-      stored losses can only be a subset of the original roster and can never
-      exceed it — a second arrival that overwrote rather than accumulated would
-      show fewer losses than the first one already wrote.
-    */
-    const roster = field[chosen!.index]!.roster;
-    expect(fleetCount(state!.losses)).toBeGreaterThan(0);
-    for (const [hull, lost] of Object.entries(state!.losses)) {
-      expect(lost).toBeLessThanOrEqual(roster[hull as keyof typeof roster] ?? 0);
-    }
+    await lossesMustReconcile(index);
+  });
+
+  /**
+   * THE SAME TWO ARRIVALS, GENUINELY AT ONCE — AND THE FIRST HIT IS THE HOLE.
+   *
+   * The single worker resolves events one at a time, so the test above proves the
+   * sequential path and cannot reach this one. `claimDue` takes its batch with
+   * `FOR UPDATE SKIP LOCKED`, which exists for exactly one reason: to let a second
+   * worker run. The day one does, two arrivals at the same pirate share a
+   * transaction window.
+   *
+   * `SELECT ... FOR UPDATE` LOCKS A ROW. It cannot lock a row that is not there
+   * yet, and an untouched pirate has no `pirate_state` row at all — so on the
+   * FIRST hit both transactions read "full crew, nothing shot off", both fight it,
+   * and the loser of the race writes its own total over the winner's. The pirate
+   * is then paid for twice: two full hoards, two capture rolls, and a crew that
+   * quietly comes back to life between them.
+   *
+   * Run through `db.transaction` directly rather than through the worker, because
+   * the worker is the thing that currently hides it.
+   */
+  it('accumulates them when the two arrivals genuinely overlap', async () => {
+    const { resolvePirateArrival } = await import('../src/services/pirateRaid.js');
+    const { settledAt } = await import('./helpers.js');
+
+    const { index, launches } = await twoRaidsInTheAir();
+    const latest = launches.reduce((a, b) => (a.arriveAt > b.arriveAt ? a : b), launches[0]!);
+    f.clock.set(settledAt(latest.arriveAt));
+
+    await Promise.all(launches.map((launch) =>
+      f.db.transaction((tx) => resolvePirateArrival(tx, launch.raidId, f.clock))));
+
+    await lossesMustReconcile(index);
   });
 });

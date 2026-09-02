@@ -1,6 +1,5 @@
 import {
   RADAR_RANGES,
-  coreTier,
   orbitStandoff,
   sensorLeadOnVisualLeg,
   surfaceStandoff,
@@ -21,8 +20,8 @@ interface InboundLeg {
 
 /** The timed Radar crossing for the exact leg players see on the galaxy. */
 export function inboundRadarLead(range: number, leg: InboundLeg): number {
-  const start = surfaceStandoff(worldRadius(coreTier(leg.originCoreLevel)));
-  const end = orbitStandoff(worldRadius(coreTier(leg.targetCoreLevel)));
+  const start = surfaceStandoff(worldRadius(leg.originCoreLevel));
+  const end = orbitStandoff(worldRadius(leg.targetCoreLevel));
   return sensorLeadOnVisualLeg(
     range,
     leg.from,

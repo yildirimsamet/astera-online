@@ -19,7 +19,7 @@ import { markHit, wasTap } from './tap.js';
  *
  * DRAWN AS A RING, NOT A CLOUD, AND THAT IS A BUG FIX. The first version scattered
  * motes in a sphere centred on the planet with a 0.85-radius tap sphere around it.
- * Planets are drawn at radius 0.44, 0.82 or 1.4, so on anything but the largest
+ * Planets are drawn between radius 0.44 and 1.4, so on anything but the largest
  * world the wreckage completely covered the planet — and since the tap target sat
  * in front, **a planet with debris over it could not be selected at all**. A player
  * could no longer open the dossier of the one world in the galaxy they had most

@@ -1865,9 +1865,27 @@ export function PirateFocus({
    */
   const available = MOBILE_HULL_IDS.filter((hull) => (fleetAtHome[hull] ?? 0) > 0);
   const [sending, setSending] = useState<Fleet>({});
-  /** Set the moment the player moves any stepper, and never unset. */
+  /** Set the moment the player moves any stepper, and unset only by a new target. */
   const touched = useRef(false);
+  /**
+   * WHICH PIRATE THE SELECTION BELOW BELONGS TO.
+   *
+   * "Untouched" is a fact about ONE target, and this is what scopes it. Two
+   * pirates seen from the same world share a `fleetAtHome` — the same object out
+   * of the query cache — so the reset below has nothing in its dependencies that
+   * changes when the focus moves between them, and the clamp then guarantees the
+   * carried-over choice is never re-defaulted. The second target opened holding
+   * the first one's numbers, already marked as chosen.
+   *
+   * Kept here rather than left to a `key` on the caller: the invariant belongs to
+   * the panel that states it, and a caller cannot be relied on to remember it.
+   */
+  const chosenFor = useRef(pirate.id);
   useEffect(() => {
+    if (chosenFor.current !== pirate.id) {
+      chosenFor.current = pirate.id;
+      touched.current = false;
+    }
     setSending((current) => {
       const next: Fleet = {};
       for (const hull of MOBILE_HULL_IDS) {
@@ -1888,7 +1906,7 @@ export function PirateFocus({
       }
       return next;
     });
-  }, [fleetAtHome]);
+  }, [fleetAtHome, pirate.id]);
 
   const total = fleetCount(sending);
   /** What the world keeps. Drawn as power, because that is what a garrison is. */

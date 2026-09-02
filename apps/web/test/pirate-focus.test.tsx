@@ -277,4 +277,48 @@ describe('a selection the player made', () => {
     await user.click(screen.getByRole('button', { name: /Send 6 · 12m/ }));
     expect(onSend).toHaveBeenCalledWith({ DART: 6 });
   });
+
+  /**
+   * A DIFFERENT PIRATE IS A DIFFERENT DECISION.
+   *
+   * "Untouched" is a fact about ONE target, and the clamp above is what makes
+   * getting that wrong expensive: once the panel believes the player has chosen,
+   * it never offers the default again. Two pirates visible from the same world
+   * share a `fleetAtHome` — identical, and the same object out of the query cache
+   * — so nothing in the reset's dependencies changes when the focus moves from one
+   * to the other, and the second target opened holding the first one's selection
+   * with the choice already marked as made.
+   *
+   * What the player then sees is a committed number they never picked, on the last
+   * screen before a launch that cannot be recalled and at a target that shoots
+   * back. The default is "everything at home" for a reason, and every target is
+   * owed it once.
+   */
+  it('returns to the default when the focus moves to another pirate', async () => {
+    const user = userEvent.setup();
+    const { onSend, rerender } = panel(identified(), { DART: 40 });
+    const darts = screen.getByRole('textbox', { name: /How many Dart/i });
+    await user.clear(darts);
+    await user.type(darts, '6');
+    expect(screen.getByRole('button', { name: /Send 6 · 12m/ })).toBeTruthy();
+
+    // The player taps a second pirate on the disc. Same world, same garrison.
+    rerender(
+      <PirateFocus
+        pirate={identified({ id: 'A7bC2dE9fG4hJ6kL8mN0pQ', callsign: 'A7bC' })}
+        fleetAtHome={{ DART: 40 }}
+        deuteriumAtHome={1_000_000}
+        baysFree={3}
+        onClose={vi.fn()}
+        onSend={onSend}
+        busy={false}
+        raiding={false}
+        open
+        onToggle={vi.fn()}
+      />,
+    );
+
+    await user.click(screen.getByRole('button', { name: /Send 40 · 12m/ }));
+    expect(onSend).toHaveBeenCalledWith({ DART: 40 });
+  });
 });

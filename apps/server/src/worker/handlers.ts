@@ -14,7 +14,6 @@ import {
   fleetValue,
   fleetTravelExact,
   garrisonOf,
-  coreTier,
   distance,
   massClass,
   interceptionRange,
@@ -1890,8 +1889,8 @@ export const onStrategicIntercept: Handler = async ({ db, clock }, event) => {
     const drawnLeg = visualLeg(
       originPoint,
       targetPoint,
-      surfaceStandoff(worldRadius(coreTier(timedLeg.originCoreLevel))),
-      orbitStandoff(worldRadius(coreTier(timedLeg.targetCoreLevel))),
+      surfaceStandoff(worldRadius(timedLeg.originCoreLevel)),
+      orbitStandoff(worldRadius(timedLeg.targetCoreLevel)),
     );
     const totalMs = Math.max(1, mission.arriveAt.getTime() - mission.departAt.getTime());
     const progress = (now.getTime() - mission.departAt.getTime()) / totalMs;

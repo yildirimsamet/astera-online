@@ -75,20 +75,108 @@ export const toGame = (p: Vec3Tuple): Vec3 => ({
 });
 
 /**
- * THREE SIZES, NOT A RAMP — and the public tier is what picks one.
+ * THREE WEIGHTS — and the public tier is what picks one.
  *
- * The server publishes a coarse core TIER rather than the exact level, because the
- * exact level is what a probe is for. The disc turns it into one of three
- * silhouettes: a continuous ramp encoded five sizes no eye could separate, and the
- * three-step version is the only reason a glance at the galaxy tells you anything.
+ * This is what a surface says OUT LOUD about a world's development: one of three
+ * words, off the coarse tier, because a sentence cannot be more precise than the
+ * reading it describes. The DRAWN size is a separate question and reads the exact
+ * level — see `worldRadius`.
  */
 export const worldWeight = (coreTier: number): 1 | 2 | 3 =>
   coreTier >= 4 ? 3 : coreTier >= 2 ? 2 : 1;
 
+/**
+ * THE THREE AUTHORED SIZES. Owner-tuned, and the anchors the ramp below runs
+ * through rather than the whole table.
+ *
+ * THE THREE ARE HELD APART DELIBERATELY. The middle is the anchor and does not
+ * move; the outer two were pushed outward (owner call) because the gap is the whole
+ * signal. 0.5 against 1.24 was a 2.5× spread, which reads as "somewhat bigger" at
+ * the distances this map is actually flown at; 0.44 against 1.40 is 3.2×, and a
+ * heavyweight looks like one from across the disc without a label.
+ */
 const WEIGHT_RADIUS: Record<1 | 2 | 3, number> = { 1: 0.44, 2: 0.82, 3: 1.4 };
 
-/** How big a world is drawn, in world units. Map markers, not scale models. */
-export const worldRadius = (coreTier: number): number => WEIGHT_RADIUS[worldWeight(coreTier)];
+/**
+ * THE TOP OF THE LADDER, IN CORE LEVELS.
+ *
+ * The last rung anything visual anchors on: the size ramp's cap here, and the dyson
+ * ladder's last colour in `DysonShells`. It is exported so those two cannot drift
+ * — a world drawn at full size while its structure had a rung left, or the other
+ * way round, is the disc contradicting itself about the same fact.
+ *
+ * IT IS THE TOP OF THE GAME, NOT AN ARBITRARY CAP. Nothing in `build.ts` caps the
+ * Command Core — only non-CORE buildings are held under it — the ECONOMY does.
+ * `upgradeCost(L).alloy` grows faster than `storageCap(alloyRate(L), L)`, and on
+ * the current tempo the two cross between 21 and 22: 20 → 21 costs 307,331 against
+ * a full store of 382,919, while 21 → 22 wants 473,290 against 454,907. So 21 is
+ * the last rung a world reaches on its own production, and past it a Core rises
+ * only on resources shipped in from colonies. Anchoring the last size and the last
+ * colour there means the top of both ladders is the top of what anyone plays to.
+ *
+ * Re-derive it whenever `ECON` moves. The figures in the sentence above are the
+ * check, and the old ones (591,044 against 590,789) no longer reproduce — the same
+ * conclusion, at a tempo that has since changed underneath it.
+ */
+export const CORE_TOP_LEVEL = 21;
+
+/**
+ * WHERE EACH AUTHORED SIZE SITS ON THE CORE LADDER. D153.
+ *
+ * The floor, the exact middle, and the cap. The middle at 11 is what keeps 0.82
+ * meaning what it has always meant — it is the level halfway to the top of the game,
+ * which is the world the number was chosen to describe.
+ */
+const RADIUS_LEVEL: Record<1 | 2 | 3, number> = { 1: 1, 2: 11, 3: CORE_TOP_LEVEL };
+
+/**
+ * HOW BIG A WORLD IS DRAWN, IN WORLD UNITS — one step per Core level. D153.
+ *
+ * Map markers, not scale models. A planet at true scale in a disc 2,000 units
+ * across would be invisible, so these are sized to be READ.
+ *
+ * IT USED TO BE THREE FLAT SIZES OFF THE COARSE TIER, and the owner's report is what
+ * that looked like from the map: the whole public development signal arrived in two
+ * hard steps — Core 3 → 4 at +86% and Core 9 → 10 at +71% — so a neighbour who was
+ * one thing yesterday was suddenly another, and the eight levels between those two
+ * moments said nothing at all. A silhouette that changes only twice in a season is
+ * not a gradient, it is two announcements.
+ *
+ * SO THE THREE SIZES BECAME THE ANCHORS OF A RAMP, and nothing about the tuned
+ * spread moved: the same 0.44, the same 0.82, the same 1.40, and the same 3.2×
+ * between the ends that is the only reason a glance at the galaxy tells you
+ * anything. What changed is that the distance between them is now paid one level at
+ * a time.
+ *
+ * GEOMETRIC, NOT LINEAR, because the eye reads size as a ratio. Linear steps would
+ * grow a small world by a tenth and a large one by a thirtieth for the same level —
+ * the ramp would feel like it stalled exactly where the game gets interesting.
+ * Constant ratio per rung is a constant amount of "it grew", and the largest single
+ * step in the whole ladder is under 7%: growth you notice over a session, never a
+ * jump you notice between two refreshes.
+ *
+ * READING THE EXACT LEVEL COSTS NOTHING NEW. `publicGalaxy` has published
+ * `coreLevel` since the dyson rings — a ring count stepping every three levels and a
+ * colour stepping every one cannot be drawn from a tier — so this is the same public
+ * fact drawn at the resolution it was already published at. The tier stays where it
+ * was and is still what D49's ±2 attack band is defined on.
+ *
+ * CLAMPED AT BOTH ENDS. Below the floor because D127 omits `coreLevel` for an
+ * UNKNOWN world and the schema parses the gap to zero — a point with nothing behind
+ * it is drawn at the smallest size, which is exactly what it was before. Above the
+ * cap because a Core fed by colonies must not keep inflating its own marker.
+ *
+ * AND TOTAL ON A LEVEL THAT IS NOT A NUMBER, because this feeds position buffers
+ * and one NaN takes the whole scene down. A missing level is the same answer as a
+ * level of zero: the smallest size, which is what an unread world is drawn at.
+ */
+export function worldRadius(coreLevel: number): number {
+  if (!Number.isFinite(coreLevel)) return WEIGHT_RADIUS[1];
+  const level = Math.min(Math.max(coreLevel, RADIUS_LEVEL[1]), RADIUS_LEVEL[3]);
+  const [from, to] = level <= RADIUS_LEVEL[2] ? ([1, 2] as const) : ([2, 3] as const);
+  const share = (level - RADIUS_LEVEL[from]) / (RADIUS_LEVEL[to] - RADIUS_LEVEL[from]);
+  return WEIGHT_RADIUS[from] * (WEIGHT_RADIUS[to] / WEIGHT_RADIUS[from]) ** share;
+}
 
 /**
  * HOW FAR SHORT OF A WORLD A CRAFT STOPS. D44.
@@ -100,9 +188,9 @@ export const worldRadius = (coreTier: number): number => WEIGHT_RADIUS[worldWeig
  * to cross — missiles need somewhere to come from, and "the point the squadron
  * actually holds" is the only honest answer.
  *
- * Scaled by the world rather than fixed, because worlds are drawn at three sizes
- * and one number would either bury a squadron inside a heavyweight or park it a
- * long way off a small one.
+ * Scaled by the world rather than fixed, because worlds are drawn over a 3.2×
+ * range of sizes and one number would either bury a squadron inside a heavyweight
+ * or park it a long way off a small one.
  */
 export const orbitStandoff = (radius: number): number => radius * 1.5 + radius * 0.5;
 

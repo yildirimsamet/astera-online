@@ -211,7 +211,8 @@ stats or bulk move; D7/D27 ground values are not silently buffed inside this sco
 Prices below are the executable post-tempo values; bulk remains price-derived in Dart units.
 The Speed column is post-D152: D148's authored figure ×1.25, rounded to a whole unit. The lift is
 uniform, so every efficiency figure and every profile relation in this table is unchanged by it —
-`atk · hp / value²` does not read speed. Probe and Prospector took no factor (D152).
+`atk · hp / value²` does not read speed. The Prospector took no factor; the probe took none at
+D152 and then ×0.75 at D153, closing the same gap from the other end (D152/D153).
 
 | Hull | T | Profile | Class | ATK | HP | Speed | Cargo | Alloy | Crystal | D | Yard | Bulk | Efficiency ×10⁶ |
 |---|---:|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
@@ -233,6 +234,14 @@ uniform, so every efficiency figure and every profile relation in this table is 
 | Nullifier | 3 | Shield Breaker | Lance | 140 | 308 | 119 | 20 | 2,000 | 1,150 | 350 | 4 | 12 | 3,520 |
 | Cataclysm | 4 | Striker | Lance | 800 | 448 | 106 | 160 | 5,250 | 2,444 | 813 | 6 | 28 | 4,952 |
 | Citadel | 4 | Fortress | Bulwark | 300 | 1,656 | 56 | 180 | 6,250 | 3,019 | 750 | 6 | 33 | 4,949 |
+
+**Fuel mass is bulk × the tier's thirst rung (D153):** ×1, ×2, ×4, ×5 for tiers 1–4. Bulk stays
+Hangar room and is unchanged, so nothing in this table moves; `missionFuel` is fuel mass × distance
+÷ `FUEL.scale`, rounded up per leg. Tier 1 is excluded by instruction, so `PLANET_START.deuterium`
+still buys the same run of opening launches. The measured consequence is that the weapon ladder,
+priced in deuterium from its second rung, now competes with flying: on the D148 pacing fixture the
+leading grinder reaches `SHIP_POWER` 4 on day 13 rather than day 12 of a fourteen-day season. Real
+playtesting owns that number — the bots still log in on async-era assumptions.
 
 The 225-pair equal-resource matrix and the same 225 pairs at equal bulk both preserve every strong
 and weak edge of the counter cycle. A no-research Dart still trades up into a Rampart while a
@@ -350,7 +359,7 @@ tables are temporarily the same; splitting them restores the narrower surprise w
 many times it is requested inside its window. Without this a player defeats the entire fog layer by
 pulling to refresh. It is the easiest way to ship a broken information game.
 
-Probes: `50 alloy · 30 crystal · speed 4,680`, rationed by flight bays and by one launch per
+Probes: `50 alloy · 30 crystal · speed 3,510` (×0.75 at D153), rationed by flight bays and by one launch per
 target world per commander per hour (D121).
 
 ### What the disc itself gives away — the sensor horizon (D123)

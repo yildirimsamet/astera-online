@@ -105,11 +105,12 @@ describe('a dyson shell over a world in recovery', () => {
 
   /** Every rung looks dead the same way. The ladder is not readable off a wreck. */
   it('says nothing about the rung a wrecked world had reached', () => {
-    const looks = [0, 4, 8, 12].map((index) => shellLook(index, true));
+    const rungs = [0, 3, 6, 9];
+    const looks = rungs.map((index) => shellLook(index, true));
     expect(new Set(looks.map((look) => look.rim)).size).toBe(1);
     expect(new Set(looks.map((look) => look.seam)).size).toBe(1);
     // While a live shell's colour is exactly what says which rung it is on.
-    expect(new Set([0, 4, 8, 12].map((i) => shellLook(i, false).rim)).size).toBe(4);
+    expect(new Set(rungs.map((i) => shellLook(i, false).rim)).size).toBe(rungs.length);
   });
 
   /* ── and why it needs its own draw group ──────────────────── */
@@ -147,9 +148,9 @@ describe('a dyson shell over a world in recovery', () => {
 
   /**
    * AND A STRIKE OFTEN TAKES THE SHELL WITH IT, which is the ordinary case rather
-   * than the one this feature is about: the ladder starts at Core 9, and a Core
-   * knocked under that wears nothing at all. A wrecked world with no rings must
-   * not produce an empty draw group.
+   * than the one this feature is about: the ladder starts at Core 12 (D153), and a
+   * Core knocked under that wears nothing at all. A wrecked world with no rings
+   * must not produce an empty draw group.
    */
   it('draws nothing for a world the strike knocked off the ladder', () => {
     const groups = shellGroups(nodesOf(

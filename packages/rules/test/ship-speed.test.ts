@@ -59,12 +59,13 @@ describe('D152 base ship speed', () => {
   });
 
   /**
-   * The probe and the drill are excluded BY OWNER INSTRUCTION, and each has its own
-   * reason: the probe's speed is the whole distance gradient of scouting (D121) and
-   * the Prospector's is tied to rock speed rather than to warship speed (D74).
+   * The probe and the drill took no part in the LIFT, by owner instruction, and each
+   * has its own reason: the probe's speed is the whole distance gradient of scouting
+   * (D121) and the Prospector's is tied to rock speed rather than to warship speed
+   * (D74). The drill is still exactly where it was; the probe went the other way at
+   * D153 — see below.
    */
-  it('leaves the probe and the drill exactly where they were', () => {
-    expect(PROBE.speed).toBe(4680);
+  it('leaves the drill exactly where it was', () => {
     expect(PROSPECTOR.speed).toBe(825);
     expect(HULLS.PROSPECTOR.speed).toBe(PROSPECTOR.speed);
   });
@@ -145,5 +146,49 @@ describe('D152 Ship Propulsion ladder', () => {
     for (let level = 2; level <= 4; level++) {
       expect(value(level), `L${String(level)}`).toBeGreaterThan(value(level - 1));
     }
+  });
+});
+
+/**
+ * THE PROBE FLIES A QUARTER SLOWER. D153, owner instruction.
+ *
+ * IT IS THE OTHER HALF OF D152. The fleet took +25% and the probe was excluded, so
+ * the gap between "how fast can I look" and "how fast can I hit" widened by a
+ * quarter in the probe's favour — on top of the ×12 D121 had already given it. A
+ * scout that arrives 15× faster than the fastest warship makes looking nearly free
+ * in the one currency the intel layer is supposed to charge in: time. Cutting it a
+ * quarter and lifting the fleet a quarter closes that from both ends at once.
+ *
+ * THE CEILING D121 SET IS UNTOUCHED, and it is a ceiling on flatness rather than on
+ * speed. The failure it recorded was every probe in the galaxy landing in exactly two
+ * minutes, at which point distance stopped meaning anything to a scout; with no fixed
+ * launch term the gradient is exactly `GALAXY_SPAN / minSeparation` and no speed
+ * anyone picks can move it. A slower probe is a probe that pays MORE for distance,
+ * which is the direction that rule wants.
+ *
+ * AND IT IS STILL THE FASTEST THING IN THE GAME by a wide margin — a scout must
+ * outrun anything that can be sent at you, or a warning is worth nothing — and the
+ * hour that actually rations scouting (`retargetCooldownMinutes`) still outlasts the
+ * widest round trip, which is the relationship that keeps two rules from disagreeing
+ * about one control.
+ */
+describe('D153 probe speed', () => {
+  it('flies at exactly three quarters of what it flew before', () => {
+    expect(PROBE.speed).toBe(Math.round(4680 * 0.75));
+    expect(PROBE.speed).toBe(3510);
+  });
+
+  it('still outruns every hull in the game, and the drill', () => {
+    expect(PROBE.speed).toBeGreaterThan(PROSPECTOR.speed);
+    for (const id of MOBILE_HULLS) {
+      expect(PROBE.speed, `a ${HULLS[id].name} outruns a probe`)
+        .toBeGreaterThan(HULLS[id].speed);
+    }
+  });
+
+  /** The cut is on the probe alone. Nothing else in the model reads it. */
+  it('moves nothing but the probe', () => {
+    expect(PROSPECTOR.speed).toBe(825);
+    for (const id of MOBILE_HULLS) expect(HULLS[id].speed, id).toBe(D152_SPEED[id]);
   });
 });

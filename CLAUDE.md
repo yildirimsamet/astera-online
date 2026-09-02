@@ -77,6 +77,7 @@ Rationale/evidence: `docs/decisions.md`. Numbers/simulator history: `docs/balanc
 
 - Support hulls are shielded while combat hulls live.
 - Fleet V2 base speed is D148's table ×1.25; `SHIP_PROPULSION` is four rungs of +25% to a ×2 ceiling and reads its own `propulsionMaxLevel`, never the weapon ladder's. Speed takes no share of the 25% combat product ceiling and is not probe-visible. The probe and the Prospector took neither the lift nor the research (D152).
+- Probe base speed is D152-era ×0.75 (3,510); the Prospector keeps its rock-tied number. A slower probe pays more for distance, which is what D121's ceiling on FLATNESS wants (D153).
 - Two opposing ground-gun classes; cheapest available at Shipyard 0.
 - Raid arrives at authoritative `arriveAt`; engagement lasts 10s as real `in_flight` state.
 - A fleet reaching target always fires.
@@ -84,10 +85,13 @@ Rationale/evidence: `docs/decisions.md`. Numbers/simulator history: `docs/balanc
 - Death Star defence fires only on the defender’s **visible timed Radar circle** with Radar 3 + Uplink (D139).
 - Strategic weapon and charge are separate typed assets; all strategic-asset flows handle both (D139/D140).
 - Fuel is paid once at launch: full fuel or no launch; no later charge/refund. Probes/mining burn no fuel (D136).
+- Fuel mass is Hangar bulk × the hull tier's thirst rung — ×1/×2/×4/×5 for tiers 1–4. `FUEL.tierMass` multiplies fuel mass ONLY; `bulk` stays Hangar room and no hull price moves. Tier 1 is excluded, so the opening costs what it always did (D153).
 - Flight time = distance / speed; `travelExact` is canonical, no fixed overhead (D121).
 - A planet owns at most two Prospectors wherever located; `prospectorRoom` is the single capacity arithmetic and legal overflow is never retroactively deleted (D131).
 - Count flight bays under the planet row lock.
 - Pirates are the third target class and cost exactly what a raid costs: a bay, both legs of prepaid fuel, doctrine frozen at launch, origin `AWAY` for the trip. One raid per origin world per pirate, DB-enforced (D150).
+- **A raid's return follows its commander, never the pad.** `pirate_raids.ownerPlayerId` is who committed the fleet; delivery resolves through `safeHomePlanet`, like every other return leg. A world captured mid-flight must never receive somebody else's squadron, hoard or towed hull (D150).
+- `SELECT … FOR UPDATE` cannot lock a row that does not exist. Seed `pirate_state` before locking it, or two first hits on one pirate both fight a full crew and pay the hoard twice (D150).
 - A pirate moves **zero Dominion** — `bookBattle` is never called. Its only modifier is a per-level attack `damageMult` on `CombatSide`; never HP, never research (D150).
 - Capture pays only on DECISIVE, from the pirate's ORIGINAL roster, and lands even over Hangar capacity; `builtEver` never moves (D133/D150).
 - Mutual annihilation pays nothing and flies no return leg.
@@ -162,6 +166,8 @@ Detailed UI rules: `docs/interface.md`, `docs/visual-design.md`, i18n files, loc
 - User-facing strings live in `apps/web/src/i18n/locales/`; format numbers/dates/clocks through shared formatters. Write Turkish naturally and never naïvely case-fold `İ`.
 - Returning players skip onboarding; `/api/preview` is seat-free and writes nothing (D56/D68).
 - Camera moves only on explicit instruction; refetch identity changes must not reframe (D69).
+- Automatic craft focus follows a craft **out and never home**. A return leg is a new mission row, so `reconcileOwnCraft` reads `leg`/`status` and baselines a homebound craft without ever moving the camera (D153).
+- A world's drawn size is a geometric ramp over its **exact Core level** through the three authored sizes (0.44 / 0.82 / 1.40 at Core 1 / 11 / `CORE_TOP_LEVEL`), clamped both ends. The coarse tier keeps only the three `worldWeight` words and D49's ±2 band; every standoff caller reads the level. Dyson shells start at Core 12 and end at the same `CORE_TOP_LEVEL` (D153).
 - Read a file’s docblock before editing, especially 3D/harness files.
 
 ## Server / engineering / production
@@ -244,7 +250,7 @@ Regression signals: loop becomes `BUILD → WAIT → COLLECT → UPGRADE`; resou
 
 ## Current state
 
-Core game is implemented through D152: shared rules/sim, backend, persistent galaxy, accounts, economy/queues, fleets/combat/loot, intel/Telescope/Radar/Veil, probes, mining/wreckage, public galaxy events/Asteroid Shower, pirate fleets, engagement, notifications/SSE, 3D galaxy, TR/EN, preview/onboarding, deployment, rewards, realtime/camera fixes, clans, deuterium/fuel/hangar, commander-wide research, strategic weapons, fleet-written world records, D152 fleet speed.
+Core game is implemented through D153: shared rules/sim, backend, persistent galaxy, accounts, economy/queues, fleets/combat/loot, intel/Telescope/Radar/Veil, probes, mining/wreckage, public galaxy events/Asteroid Shower, pirate fleets, engagement, notifications/SSE, 3D galaxy, TR/EN, preview/onboarding, deployment, rewards, realtime/camera fixes, clans, deuterium/fuel/hangar, commander-wide research, strategic weapons, fleet-written world records, D152 fleet speed, D153 world-size ramp/tier fuel/probe speed/outbound-only camera follow.
 
 D150 shipped without void wreckage: a pirate battle books its wreck value on the report but leaves no harvestable field, because `debris_fields` still requires a planet. That migration is the deliberate second commit.
 
