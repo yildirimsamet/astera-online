@@ -9,13 +9,13 @@ import { Bombardment, bombardmentIntensity } from './Bombardment.jsx';
 import { softGlow } from './Environment.jsx';
 import { posedCraft } from './model.js';
 import {
+  concealedVolley,
   contactPosition,
   CRAFT_SCALE,
   engagementPosition,
   isHeading,
   legEnd,
   legStandoff,
-  orbitStandoff,
   bombardmentTarget,
   targetNodeOf,
   threadPosition,
@@ -1742,6 +1742,12 @@ const CONCEALED_VOLLEY_SLOTS: Vec3Tuple[] = [
  * Only the deterministic rounds and their surface impacts exist. The synthetic
  * source keeps the cinematic readable without laundering a hidden bearing through
  * the renderer.
+ *
+ * AND IT NO LONGER NEEDS A WORLD TO FIRE AT. Both figures it places the volley
+ * with used to come off the target's planet node, so a pirate battle — which
+ * happens at a rendezvous in open space and never has one — mounted nothing at
+ * all, and the one public moment of that fight was invisible to everybody who
+ * could not see the craft. `concealedVolley` states both, with or without a world.
  */
 function ConcealedEngagement({
   contact,
@@ -1752,21 +1758,22 @@ function ConcealedEngagement({
 }) {
   const fight = contact.engagement;
   const engaging = useEngagement(fight ? fight.arriveAt.getTime() : null);
-  const world = useMemo(
-    () => (fight ? targetNodeOf(nodes, fight.target) : undefined),
+  const shot = useMemo(
+    () => (fight
+      ? concealedVolley(fight.target, nodes, CONTACT_STYLE.fleet.scale)
+      : null),
     [fight, nodes],
   );
   const centre = useMemo(() => (fight ? toWorld(fight.target) : null), [fight]);
   const direction = useMemo(() => concealedEngagementDirection(contact.id), [contact.id]);
   const source = useMemo<Vec3Tuple | null>(() => {
-    if (!world || !centre) return null;
-    const distance = orbitStandoff(world.radius);
+    if (!shot || !centre) return null;
     return [
-      centre[0] + direction[0] * distance,
-      centre[1] + direction[1] * distance,
-      centre[2] + direction[2] * distance,
+      centre[0] + direction[0] * shot.standoff,
+      centre[1] + direction[1] * shot.standoff,
+      centre[2] + direction[2] * shot.standoff,
     ];
-  }, [centre, direction, world]);
+  }, [centre, direction, shot]);
   const orientation = useMemo(() => {
     if (!source || !centre) return null;
     const frame = new THREE.Object3D();
@@ -1775,7 +1782,7 @@ function ConcealedEngagement({
     return frame.quaternion.clone();
   }, [centre, source]);
 
-  if (!fight || !world || !centre || !source || !orientation || !engaging) return null;
+  if (!fight || !shot || !centre || !source || !orientation || !engaging) return null;
 
   return (
     <group
@@ -1792,7 +1799,7 @@ function ConcealedEngagement({
           centre[1] - source[1],
           centre[2] - source[2],
         )}
-        radius={world.radius}
+        radius={shot.radius}
         shipScale={CONTACT_STYLE.fleet.scale}
         arriveAt={fight.arriveAt.getTime()}
         intensity={bombardmentIntensity(true)}

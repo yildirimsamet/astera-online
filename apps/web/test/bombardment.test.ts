@@ -25,6 +25,7 @@ import {
 } from '../src/galaxy/volley.js';
 import {
   bombardmentTarget,
+  concealedVolley,
   contactPosition,
   engagementHold,
   HEADING_EPSILON,
@@ -953,6 +954,59 @@ describe('a pirate fight, drawn from both ends', () => {
     ]);
     const at = bombardmentTarget({ ...raid, kind: 'fleet' }, onAWorld);
     expect(at?.radius).toBeCloseTo(targetNodeOf(onAWorld, meet)!.radius, 6);
+  });
+});
+
+/**
+ * THE FLASH NOBODY CAN SEE THE CRAFT OF. D52 · D150 — OWNER INSTRUCTION.
+ *
+ * A battle outside every sensor circle still publishes its bombardment, and the
+ * renderer draws it from a synthetic source in a direction invented from the event
+ * id — so the spectacle survives without the bearing leaking. That worked over a
+ * world and drew NOTHING at a rendezvous, because both figures it needs were taken
+ * off the target's planet node and open space has none: `ConcealedEngagement`
+ * bailed, and a pirate battle out of range was simply invisible.
+ *
+ * The two figures are the same two every engagement needs — how far back the fire
+ * comes from, and how wide it scatters — so the answer is the same one the sensed
+ * path already gives: a world states its own size, and where there is no world the
+ * shared `ENGAGEMENT_STANDOFF` and the battery's own footprint stand in. Zero is
+ * not an option for either: `volleyFor` and `Bombardment` both refuse it, which is
+ * how "no volley at all" gets drawn instead of "a point-blank one".
+ */
+describe('the volley of a battle nobody can see', () => {
+  const world = { x: GALAXY.radius * 0.3, y: 0, z: 0 };
+  const nodes = planetNodes([
+    {
+      id: 'p7', name: 'Tharsis', owner: 'someone', position: world,
+      coreTier: 3, coreLevel: CORE_TOP_LEVEL, satellites: [],
+      shielded: false, isSelf: false, fleet: null,
+    } as unknown as GalaxyPlanet,
+  ]);
+  const battery = 0.2925;
+
+  it('stands off a world by the same orbit clearance a sensed squadron holds at', () => {
+    const node = targetNodeOf(nodes, world)!;
+    const shot = concealedVolley(world, nodes, battery);
+    expect(shot.standoff).toBeCloseTo(orbitStandoff(node.radius), 6);
+    expect(shot.radius).toBeCloseTo(node.radius, 6);
+  });
+
+  /** A rendezvous has no world, and that used to mean no volley at all. */
+  it('falls back to the shared engagement gap and its own footprint in open space', () => {
+    const shot = concealedVolley({ x: 1, y: 2, z: 3 }, nodes, battery);
+    expect(shot.standoff).toBeCloseTo(ENGAGEMENT_STANDOFF, 6);
+    expect(shot.radius).toBeCloseTo(battery, 6);
+  });
+
+  /** Both refuse zero, so neither may ever be handed one. */
+  it('never answers with a figure that would draw no volley', () => {
+    for (const target of [world, { x: 1, y: 2, z: 3 }]) {
+      const shot = concealedVolley(target, nodes, battery);
+      expect(shot.standoff).toBeGreaterThan(0);
+      expect(shot.radius).toBeGreaterThan(0);
+      expect(volleyFor('concealed', 3, shot.radius).length).toBeGreaterThan(0);
+    }
   });
 });
 

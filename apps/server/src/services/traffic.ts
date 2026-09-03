@@ -1367,7 +1367,47 @@ export function projectGalaxyTraffic(
       const engaging = engagedAt.get(spec.index);
       const at = engaging ? engaging.at : piratePosition(spec, nowMinutes);
       const zone = zoneAt(at);
-      if (zone === 'NONE') continue;
+      if (zone === 'NONE') {
+        /*
+          THE FLASH IS PUBLIC AT ANY RANGE; THE CRAFT IS NOT. D52 — owner rule.
+
+          A pirate outside every circle does not exist for this commander and there
+          is nothing more to say about it — unless it is FIGHTING, which is a public
+          moment on the same terms a world battle has been since D52.
+
+          THE OLD REFUSAL WAS THAT EMPTY SPACE HAS NO PUBLIC ADDRESS TO HANG IT ON,
+          and that did not survive its own consequence: the fight leaves a
+          `debris_fields` row at this exact point and wreckage is public to
+          everybody at any range (D32), drawn on the disc and counted in the
+          readout. The coordinate was already going out, durably, for the whole
+          decay window — so withholding the ten seconds that produced it hid
+          nothing and cost the disc one of the few genuinely public moments it has.
+
+          WHAT GOES OUT IS A POINT AND AN INSTANT. The rendezvous, never the
+          attacker's hold: the hold sits back along the approach and would hand over
+          the direction of the raider's own world. Both window ends are that point,
+          so there is no bearing to extrapolate, and the renderer invents its own
+          firing direction from the event id (`concealedEngagementDirection`).
+        */
+        if (engaging) {
+          out.push({
+            id: pirateId(pirates.key, spec.index),
+            kind: 'unknown',
+            from: engaging.at,
+            to: engaging.at,
+            startAt: engaging.arriveAt,
+            endAt: engaging.endsAt,
+            landing: true,
+            effectOnly: true,
+            engagement: {
+              arriveAt: engaging.arriveAt,
+              endsAt: engaging.endsAt,
+              target: engaging.at,
+            },
+          });
+        }
+        continue;
+      }
 
       const crew = pirates.livingRosterOf(spec.index);
       /*
@@ -1492,7 +1532,6 @@ export function projectGalaxyTraffic(
     if (fighting) {
       const hold = visualLeg(home, meet, 0, ENGAGEMENT_STANDOFF).to;
       const zone = zoneAt(hold);
-      if (zone === 'NONE') continue;
       const moment = {
         engagement: {
           arriveAt: raid.arriveAt,
@@ -1500,6 +1539,34 @@ export function projectGalaxyTraffic(
           target: meet,
         },
       } as const;
+      if (zone === 'NONE') {
+        /*
+          THE WING'S FIRE IS PUBLIC TOO, AND FROM THE RENDEZVOUS. D52 — owner rule.
+
+          The other half of the rule stated over the pirate lane above: the moment
+          is public, the squadron answers to the horizon. Written from `meet` rather
+          than from `hold` deliberately — the hold sits one `ENGAGEMENT_STANDOFF`
+          back along the approach, so publishing it to a commander who cannot see
+          the craft would hand them the bearing of the raider's own world. That is
+          the same refusal the world case makes when it publishes a planet's centre
+          instead of the orbit point a squadron is really standing at.
+
+          The two sides publish separate rows under separate ids, so a commander who
+          can see one of them gets that craft and the other one's fire only.
+        */
+        out.push({
+          id: raid.id,
+          kind: 'unknown',
+          from: meet,
+          to: meet,
+          startAt: raid.arriveAt,
+          endAt: new Date(fightEndsAt),
+          landing: true,
+          effectOnly: true,
+          ...moment,
+        });
+        continue;
+      }
       if (zone === 'CONTACT') {
         const reveal = radarReveal(hold);
         out.push({

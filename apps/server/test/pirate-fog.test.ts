@@ -382,11 +382,118 @@ describe('a raid at a pirate, seen from outside', () => {
     near(wing!.from, foe);
     near(wing!.engagement!.target, sent.intercept);
 
-    // And an observer who cannot see the point is told nothing at all — the world
-    // case publishes a public planet centre; empty space has no such address.
-    const blind = (await contactsFor(BLIND, during, [f.planetIds[1]!], 1))
-      .find((c) => c.id === pirateId(key, spec.index));
-    expect(blind).toBeUndefined();
+    // Neither side is `effectOnly` for an observer who can actually see them: a
+    // sensed craft is a craft, and the flash comes with it.
+    expect(contact!.effectOnly).toBeUndefined();
+    expect(wing!.effectOnly).toBeUndefined();
+  });
+
+  /**
+   * THE FLASH IS PUBLIC AT ANY RANGE; THE CRAFT IS NOT. D52 · D123 — OWNER
+   * INSTRUCTION.
+   *
+   * A world battle has published its bombardment to the whole galaxy since D52 —
+   * out of range you get the volley over a public planet centre and nothing else.
+   * A pirate battle published nothing at all, on the reasoning that empty space has
+   * no public address to hang it on.
+   *
+   * THAT REASONING DID NOT SURVIVE ITS OWN CONSEQUENCE. The fight leaves a
+   * `debris_fields` row at that exact point, and wreckage is public to everybody at
+   * any range (D32) — it is drawn on the disc and counted in the readout. So the
+   * coordinate was already being handed to the entire galaxy, durably, for the
+   * whole decay window; withholding the ten-second flash that preceded it hid
+   * nothing and cost the disc one of the few genuinely public moments it has.
+   *
+   * SO THE RULE IS THE WORLD'S RULE: the moment is public, the squadron answers to
+   * the horizon. What goes out is a point and an instant — no craft, no bearing, no
+   * mass, no silhouette, no roster — and the renderer invents its own firing
+   * direction from the event id so not even the approach can be read off it.
+   */
+  it('publishes the flash of a pirate battle to a commander who cannot see either side', async () => {
+    const { spec, launch: sent } = await launch();
+    const during = new Date(sent.arriveAt.getTime() + ENGAGEMENT_MS / 2);
+
+    const blind = await contactsFor(BLIND, during, [f.planetIds[1]!], 1);
+    const crew = blind.find((c) => c.id === pirateId(key, spec.index));
+    const wing = blind.find((c) => c.id === sent.raidId);
+
+    // Both sides are firing, so both sides' fire is drawn.
+    expect(crew).toBeDefined();
+    expect(wing).toBeDefined();
+
+    for (const side of [crew!, wing!]) {
+      expect(side.effectOnly).toBe(true);
+      expect(side.kind).toBe('unknown');
+      expect(side.engagement).toBeDefined();
+      // No craft was sensed, so nothing about a craft goes out.
+      expect(side.mass).toBeUndefined();
+      expect(side.silhouette).toBeUndefined();
+      expect(side).not.toHaveProperty('fleet');
+      expect(side).not.toHaveProperty('level');
+      expect(side).not.toHaveProperty('route');
+      /*
+        AND NOT ONE END OF A BEARING. A window with two different points is a
+        heading; both ends are the rendezvous, so there is nothing to extrapolate.
+      */
+      expect(side.from).toEqual(side.to);
+      near(side.from, sent.intercept);
+      near(side.engagement!.target, sent.intercept);
+    }
+  });
+
+  /**
+   * AND THE ATTACKER'S HOLD IS NEVER THE POINT THAT IS PUBLISHED.
+   *
+   * It sits one `ENGAGEMENT_STANDOFF` back along the line the raid flew in on, so
+   * publishing it to somebody who cannot see the craft hands them the APPROACH —
+   * which is the direction of the raider's world. The world case refuses the orbit
+   * point for exactly this reason and publishes the planet's centre instead; the
+   * rendezvous is this lane's equivalent, and it carries no bearing at all.
+   */
+  it('never leaks the approach through the public flash', async () => {
+    const { launch: sent } = await launch();
+    const during = new Date(sent.arriveAt.getTime() + ENGAGEMENT_MS / 2);
+    const [home] = await f.db.select().from(planets).where(eq(planets.id, mine));
+
+    const wing = (await contactsFor(BLIND, during, [f.planetIds[1]!], 1))
+      .find((c) => c.id === sent.raidId);
+    expect(wing).toBeDefined();
+    // The published point is the rendezvous, which is FURTHER from the raider's
+    // world than the hold it is actually standing at.
+    const published = distance(wing!.from, { x: home!.x, y: home!.y, z: home!.z });
+    const held = distance(sent.intercept, { x: home!.x, y: home!.y, z: home!.z })
+      - ENGAGEMENT_STANDOFF * VIEW.scale;
+    expect(published).toBeGreaterThan(held);
+  });
+
+  /**
+   * SEEING ONE SIDE IS NOT SEEING THE FIGHT.
+   *
+   * The two sides are zoned independently — they stand `ENGAGEMENT_STANDOFF` apart
+   * and a circle's edge can fall between them. A commander in that position gets
+   * the craft they can actually see, and the other side's fire as a flash only.
+   * That is the honest picture and it is a good one: something is shooting back at
+   * a thing you can see, and you cannot say what.
+   */
+  it('gives a craft for the side in reach and a flash for the side that is not', async () => {
+    const { spec, launch: sent } = await launch();
+    const during = new Date(sent.arriveAt.getTime() + ENGAGEMENT_MS / 2);
+    // An eye tight enough to hold the rendezvous and nothing much beyond it.
+    const eye = post(sent.intercept, 5, 5, f.planetIds[1]!);
+    const seen = await contactsFor([eye], during, [f.planetIds[1]!], 1);
+
+    const crew = seen.find((c) => c.id === pirateId(key, spec.index));
+    expect(crew?.effectOnly).toBeUndefined();
+    expect(crew?.fleet).toBeDefined();
+
+    // Now blind that eye to the wing alone by shrinking it to the pirate's point.
+    const pinhole = post(sent.intercept, 0, 0, f.planetIds[1]!);
+    const narrowed = { ...pinhole, detect: 1, identify: 1 };
+    const partial = await contactsFor([narrowed], during, [f.planetIds[1]!], 1);
+    const crewOnly = partial.find((c) => c.id === pirateId(key, spec.index));
+    const wingOnly = partial.find((c) => c.id === sent.raidId);
+    expect(crewOnly?.effectOnly).toBeUndefined();
+    expect(wingOnly?.effectOnly).toBe(true);
   });
 
   it('draws a returning raid as what survived, never as what launched', async () => {

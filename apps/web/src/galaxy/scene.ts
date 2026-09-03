@@ -712,6 +712,36 @@ export function contactPosition(
 }
 
 /**
+ * THE TWO FIGURES A CONCEALED VOLLEY NEEDS. D52 · D150.
+ *
+ * A battle outside every sensor circle publishes its bombardment and nothing else,
+ * and the renderer draws it from a synthetic source in a direction invented from
+ * the event id — the spectacle without the bearing. To place that it needs how far
+ * back the fire comes from and how wide it scatters, and both used to be read off
+ * the target's planet node.
+ *
+ * A RENDEZVOUS HAS NO NODE, so `ConcealedEngagement` bailed and a pirate battle out
+ * of range drew nothing at all. The fallbacks are the same two the sensed path
+ * already uses: the shared `ENGAGEMENT_STANDOFF` for the gap, and the firing
+ * formation's own footprint for the scatter.
+ *
+ * NEITHER MAY EVER BE ZERO. `volleyFor` and `Bombardment` both refuse a zero
+ * radius, so zero does not mean "a point target", it means NO BOMBARDMENT — which
+ * is the failure this whole helper exists to end.
+ */
+export function concealedVolley(
+  target: { x: number; y: number; z: number },
+  nodes: readonly PlanetNode[],
+  /** How big the firing battery is drawn — the stand-in where there is no world. */
+  craftScale: number,
+): { standoff: number; radius: number } {
+  const node = targetNodeOf(nodes, target);
+  return node
+    ? { standoff: orbitStandoff(node.radius), radius: node.radius }
+    : { standoff: ENGAGEMENT_STANDOFF, radius: craftScale };
+}
+
+/**
  * WHERE A CRAFT IN A LIVE ENGAGEMENT IS DRAWN — the one answer, for every caller.
  *
  * THERE ARE TWO KINDS OF ENGAGEMENT PAYLOAD AND THEY ARE NOT INTERCHANGEABLE.
