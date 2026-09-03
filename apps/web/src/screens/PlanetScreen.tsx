@@ -5,7 +5,6 @@ import { Unreachable, Waiting } from '../ui/kit/Surface.js';
 import {
   ANTI_STRATEGIC,
   BUILD,
-  FLEET_V2_HULLS,
   HULLS,
   RESEARCH_PROJECTS,
   DEATH_STAR,
@@ -29,7 +28,6 @@ import {
   type BuildingId,
   type BuildingLevels,
   type HullId,
-  type HullFamily,
   type InstrumentId,
   type SatelliteId,
 } from '@astera/rules';
@@ -53,6 +51,14 @@ import { compact, full } from '../lib/format.js';
 import { serverNow } from '../lib/clock.js';
 import { duration, useNow } from '../lib/time.js';
 import { projectedQueueState, type ProjectedQueueState } from '../lib/predict.js';
+/*
+  THE CATALOGUE'S BANDS ARE THE ROSTER'S BANDS. Owner instruction.
+  Both the order and the membership come from `lib/roster.ts`, which the launch
+  picker reads too: the two surfaces ask one question twice, and a player who
+  learns the roles here must find them in the same order at the moment the fleet
+  actually leaves.
+*/
+import { FLEET_FAMILY_ORDER, HULLS_BY_FAMILY } from '../lib/roster.js';
 import { buildingGain, instrumentGain, satelliteGain } from '../lib/gains.js';
 import { useProjected, type Projected } from '../lib/projection.js';
 import {
@@ -1715,20 +1721,6 @@ function OrbitContext({ planet }: { planet: PlanetView }) {
   );
 }
 
-type FleetFamily = Exclude<HullFamily, 'PRESERVED'>;
-
-/** Stable catalog order: families teach the role, tiers inside them teach progression. */
-const FLEET_FAMILY_ORDER: readonly FleetFamily[] = [
-  'OFFENSIVE', 'DEFENSIVE', 'CARGO', 'SPECIALIST',
-];
-
-const HULLS_BY_FAMILY: Readonly<Record<FleetFamily, readonly HullId[]>> = {
-  OFFENSIVE: FLEET_V2_HULLS.filter((id) => HULLS[id].family === 'OFFENSIVE'),
-  DEFENSIVE: FLEET_V2_HULLS.filter((id) => HULLS[id].family === 'DEFENSIVE'),
-  CARGO: FLEET_V2_HULLS.filter((id) => HULLS[id].family === 'CARGO'),
-  SPECIALIST: FLEET_V2_HULLS.filter((id) => HULLS[id].family === 'SPECIALIST'),
-};
-
 const RESEARCH_RUNG = ['', 'I', 'II', 'III', 'IV', 'V'] as const;
 
 /** First actionable catalog gate for a hull; no hull identity is hard-coded here. */
@@ -2397,6 +2389,8 @@ function BuildSheet({
             speed={spec.speed}
             cargo={spec.cargo}
             fuel={hullFuelRate(hull)}
+            // The same figure this sheet caps the order with, a dozen lines up.
+            room={bulk}
             size="card"
           />
         </div>

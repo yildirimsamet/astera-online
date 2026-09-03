@@ -741,11 +741,11 @@ export function useSetRival() {
   const client = useQueryClient();
   return useMutation({
     mutationFn: (planetId: string | null) => api.setRival(planetId),
-    onSuccess: async ({ rivalPlanetId, rivalPlayerId, rivalCommitted }) => {
+    onSuccess: async ({ rivalPlanetId, rivalPlayerId }) => {
       await client.cancelQueries({ queryKey: keys.season });
       client.setQueryData<SeasonInfo>(keys.season, (current) =>
         current
-          ? { ...current, rivalPlanetId, rivalPlayerId: rivalPlayerId ?? null, rivalCommitted: rivalCommitted ?? false }
+          ? { ...current, rivalPlanetId, rivalPlayerId: rivalPlayerId ?? null }
           : current,
       );
     },

@@ -32,8 +32,9 @@ import {
   Starfield,
 } from './Environment.jsx';
 import { useAmbientFrames, useCommittedDemandFrame } from './frames.jsx';
-import { Wrecks, type WreckView } from './Wrecks.js';
-import { Asteroids, InterceptMarks } from './Asteroids.jsx';
+import { Wrecks, wreckPosition, type WreckView } from './Wrecks.js';
+import { Asteroids } from './Asteroids.jsx';
+import { AimMark, RendezvousMarks } from './Rendezvous.jsx';
 import { OwnFleets, Traffic } from './Fleets.jsx';
 import { threadKey } from './threadKey.js';
 import { DeathStarImpacts } from './DeathStarImpact.jsx';
@@ -55,11 +56,13 @@ import {
   isRivalNode,
   legStandoff,
   planetNodes,
+  rendezvousMarks,
   runHomePosition,
   runPosition,
   threadPosition,
   toWorld,
   type PlanetNode,
+  type Vec3Tuple,
 } from './scene.js';
 import { installTapGuard, wasMiss, wasTap } from './tap.js';
 import { serverNow } from '../lib/clock.js';
@@ -153,6 +156,13 @@ export interface GalaxyCanvasProps {
   /** Wreck fields left by battles, visible to the whole galaxy. D32. */
   wrecks: readonly WreckView[];
   /**
+   * Whether an Asteroid Shower is running right now. D149, owner instruction.
+   *
+   * The only thing it moves is the sky: three times the shooting stars for as long
+   * as the event lasts. Decoration, not a reading — see `METEOR_SHOWER_MULTIPLIER`.
+   */
+  meteorShower?: boolean;
+  /**
    * The caller's own sensor boundaries, one per controlled world. D125/D126.
    *
    * Drawn so the ladder is a thing in the galaxy rather than a fact in a payload
@@ -207,6 +217,15 @@ export interface GalaxyCanvasProps {
    */
   allowFocus?: (planetId: string) => boolean;
   /**
+   * WHERE AN OPEN LAUNCH SHEET WOULD SEND THE WING IT HAS SELECTED. D155.
+   *
+   * In game coordinates, from `planPirateRoute` — the server's own solve for the
+   * slowest ship picked. Absent draws nothing, which is the state for every launch
+   * at a world: a world is its own address and is already on screen with a label
+   * under it. See `AimMark`.
+   */
+  aim?: { x: number; y: number; z: number } | null;
+  /**
    * Called once, after the first frame that has every model in it is on screen.
    *
    * The cover over this canvas cannot be lifted on "the request came back": the
@@ -224,6 +243,7 @@ export function GalaxyCanvas({
   asteroids,
   runs,
   wrecks,
+  meteorShower = false,
   sensors,
   showTelescopeReach = false,
   showRadarReach = false,
@@ -236,6 +256,7 @@ export function GalaxyCanvas({
   focus,
   onFocus,
   homeSignal,
+  aim = null,
   openWide = false,
   wideDistance = WHOLE_DISC_DISTANCE,
   allowFocus,
@@ -245,6 +266,17 @@ export function GalaxyCanvas({
   const home = useMemo<[number, number, number]>(
     () => activeWorldPosition(planets, activePlanetId, homePosition),
     [activePlanetId, homePosition, planets],
+  );
+
+  const rendezvous = useMemo(() => rendezvousMarks(runs, pending), [runs, pending]);
+  /**
+   * Held to the coordinates rather than the object: `aim` is rebuilt on every
+   * keystroke in the picker, and a fresh tuple would remount `AimMark` — and its
+   * line buffer with it — on each one.
+   */
+  const aimAt = useMemo<Vec3Tuple | null>(
+    () => (aim ? toWorld(aim) : null),
+    [aim?.x, aim?.y, aim?.z],
   );
 
   const selfId = useMemo(() => planets.find((p) => p.isSelf)?.id, [planets]);
@@ -284,14 +316,19 @@ export function GalaxyCanvas({
     }
 
     /**
-     * A wreck sits at the planet the battle happened over, so the camera goes to
-     * the planet's position. Without this branch the camera silently does nothing
-     * when a player taps one — the failure mode the switch is exhaustive against.
+     * A WRECK IS WHERE THE WRECK IS. See `wreckPosition`.
+     *
+     * This used to resolve the field through the world the battle happened over,
+     * which is null for a pirate fight in open space — so the camera silently did
+     * nothing when a player tapped the one field nobody owns. A field states its
+     * own coordinates and they do not move, so the subject is a fixed point like a
+     * planet's rather than a live read.
      */
     if (focus.kind === 'debris') {
       const wreck = wrecks.find((w) => w.id === focus.id);
-      const node = wreck ? nodes.find((n) => n.id === wreck.planetId) : undefined;
-      return node ? () => node.position : null;
+      if (!wreck) return null;
+      const at = wreckPosition(wreck);
+      return () => at;
     }
 
     if (focus.kind === 'thread') {
@@ -457,7 +494,7 @@ export function GalaxyCanvas({
       <Starfield />
       <BrightStars />
       <Dust />
-      <Meteors />
+      <Meteors shower={meteorShower} />
       <Disc />
 
       <Suspense fallback={null}>
@@ -534,7 +571,20 @@ export function GalaxyCanvas({
             }}
           />
         )}
-        <InterceptMarks runs={runs} />
+        {/*
+          EVERY POINT IN OPEN SPACE ONE OF YOUR CRAFT IS AIMED AT, both lanes. D40.
+
+          `rendezvousMarks` is the one list: a mining run's interception and a
+          raid's rendezvous with a pirate are the same thing to look at, and the
+          pirate lane went without one until D155 — so a raid flew off at an angle
+          to the contact that had just been tapped with nothing explaining it.
+        */}
+        <RendezvousMarks points={rendezvous} />
+        {/*
+          And where an OPEN sheet would send the wing it has selected — the only
+          moment the player can still act on it. D124.
+        */}
+        {aimAt && <AimMark from={home} to={aimAt} />}
         <Traffic
           contacts={contacts}
           nodes={nodes}

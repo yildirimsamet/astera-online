@@ -89,6 +89,7 @@ Rationale/evidence: `docs/decisions.md`. Numbers/simulator history: `docs/balanc
 - Flight time = distance / speed; `travelExact` is canonical, no fixed overhead (D121).
 - A planet owns at most two Prospectors wherever located; `prospectorRoom` is the single capacity arithmetic and legal overflow is never retroactively deleted (D131).
 - Count flight bays under the planet row lock.
+- A pirate's orbital speed comes off the hull table — `PIRATE.speedMin/Max` are a Cataclysm's and a Dart's figure divided by `TRAVEL.distanceFactor`. Every Skirmisher outruns every pirate; a heavy line cannot lead one. A target faster than the fleet turns `interceptOrbit`'s earliest meeting into a lap of waiting, not a lead (D155).
 - Pirates are the third target class and cost exactly what a raid costs: a bay, both legs of prepaid fuel, doctrine frozen at launch, origin `AWAY` for the trip. One raid per origin world per pirate, DB-enforced (D150).
 - **A raid's return follows its commander, never the pad.** `pirate_raids.ownerPlayerId` is who committed the fleet; delivery resolves through `safeHomePlanet`, like every other return leg. A world captured mid-flight must never receive somebody else's squadron, hoard or towed hull (D150).
 - `SELECT … FOR UPDATE` cannot lock a row that does not exist. Seed `pirate_state` before locking it, or two first hits on one pirate both fight a full crew and pay the hoard twice (D150).
@@ -114,6 +115,7 @@ Rationale/evidence: `docs/decisions.md`. Numbers/simulator history: `docs/balanc
 - **A pirate is a craft, not a rock: it is never remembered.** Nothing on that lane reads or writes `sensor_epochs`; leaving a commander's circles ends its existence for them, and launching requires live sight. Its orbital elements are the route and are never published; a pirate's window is `PIRATE.bearingMs`, derived from `TRAFFIC.refreshMs` and never typed (D150).
 - **There is no departure shroud.** A craft is visible from the first instant of its leg to anyone whose circle covers it. Nothing about where a craft STARTED may enter the answer.
 - Telescope reach stays below the galaxy radius; the identifying fog never fully disappears (D126). The Radar's wider ceiling is deliberate — a mote you cannot name is not omniscience.
+- A craft's rank badge — family glyph then one star per tier, one statement, `galaxy/rank.ts`, derived from the hull table — is drawn under every hull that has a tier, and only where the roster is EXACT. A Radar silhouette's markers are a synthetic count, so a badge over one would be a reading nobody bought (D123/D154).
 - Radar `CONTACT` exposes no roster: L4 adds `mass`, L5 names its `silhouette` kind, and its generic formation has no count pips. Telescope `IDENTIFIED` is actual sight: a fleet carries its exact manifest and renders the real hull assets with exact-count pips (D123).
 - Every craft, including an engaging fleet and a mining/salvage Prospector, stays zoned. The live bombardment/impact effect and wreckage remain public at any range; an out-of-range engagement carries no craft point, bearing or mass (D52/D123).
 - Radar is a **radius**, not a countdown. Use craft position, never route length (D49/D126).
@@ -168,6 +170,11 @@ Detailed UI rules: `docs/interface.md`, `docs/visual-design.md`, i18n files, loc
 - Camera moves only on explicit instruction; refetch identity changes must not reframe (D69).
 - Automatic craft focus follows a craft **out and never home**. A return leg is a new mission row, so `reconcileOwnCraft` reads `leg`/`status` and baselines a homebound craft without ever moving the camera (D153).
 - A world's drawn size is a geometric ramp over its **exact Core level** through the three authored sizes (0.44 / 0.82 / 1.40 at Core 1 / 11 / `CORE_TOP_LEVEL`), clamped both ends. The coarse tier keeps only the three `worldWeight` words and D49's ±2 band; every standoff caller reads the level. Dyson shells start at Core 12 and end at the same `CORE_TOP_LEVEL` (D153).
+- The disc caption names the galaxy by its shard CODE and states two populations: live, and the 24h figure off the same `players.lastActiveAt` index. Neither is broadcast; the one-minute season read is the refresh (D154).
+- A posed hull's exhaust, wake and drive glow read `hullPoseLift`, the same lift the hull is drawn at — the flame comes out of the ship (D154).
+- Every point in open space one of your craft is aimed at is DRAWN, both lanes: `rendezvousMarks` is the single list, and an open launch sheet shows where the selected wing would meet a moving target before it commits. A mark never outlives the sheet that proposed it, and a target that is an address is never marked (D40/D124/D155).
+- Every list of ships is banded the same way: **Offensive · Defensive · Special · Cargo**, tier-ascending inside a band, with an empty band never drawn. `apps/web/src/lib/roster.ts` is the only statement of that order, read by both the Fleet tab and the launch/pirate-raid picker.
+- The Rival mark is free to move: a second press of the same control clears it, and no shared history freezes it (D103).
 - Read a file’s docblock before editing, especially 3D/harness files.
 
 ## Server / engineering / production
@@ -250,9 +257,7 @@ Regression signals: loop becomes `BUILD → WAIT → COLLECT → UPGRADE`; resou
 
 ## Current state
 
-Core game is implemented through D153: shared rules/sim, backend, persistent galaxy, accounts, economy/queues, fleets/combat/loot, intel/Telescope/Radar/Veil, probes, mining/wreckage, public galaxy events/Asteroid Shower, pirate fleets, engagement, notifications/SSE, 3D galaxy, TR/EN, preview/onboarding, deployment, rewards, realtime/camera fixes, clans, deuterium/fuel/hangar, commander-wide research, strategic weapons, fleet-written world records, D152 fleet speed, D153 world-size ramp/tier fuel/probe speed/outbound-only camera follow.
-
-D150 shipped without void wreckage: a pirate battle books its wreck value on the report but leaves no harvestable field, because `debris_fields` still requires a planet. That migration is the deliberate second commit.
+Core game is implemented through D155: shared rules/sim, backend, persistent galaxy, accounts, economy/queues, fleets/combat/loot, intel/Telescope/Radar/Veil, probes, mining/wreckage, public galaxy events/Asteroid Shower, pirate fleets, engagement, notifications/SSE, 3D galaxy, TR/EN, preview/onboarding, deployment, rewards, realtime/camera fixes, clans, deuterium/fuel/hangar, commander-wide research, strategic weapons, fleet-written world records, D152 fleet speed, D153 world-size ramp/tier fuel/probe speed/outbound-only camera follow, D154 disc caption/24h population/craft rank badges/shower sky/hangar figure, D155 fleet-pace pirate lane and drawn rendezvous.
 
 Baseline near D140: **0 type errors · 0 lint errors · ~2,900 tests**.
 
@@ -284,6 +289,7 @@ Baseline near D140: **0 type errors · 0 lint errors · ~2,900 tests**.
 - `PROVISIONAL`: vault floor, disruption duration, shield curve, season length, asteroid parameters → resolve by playtest.
 - SQL hard-codes queue slots `BETWEEN 0 AND 2`; `BUILD.queueDepth` change requires migration.
 - Captured colonies keep world-local build orders; commander research stays with its buyer (D134).
+- `MODEL_POSE` heights are normalised by the manifest's authored scale; anything mounted beside a hull must multiply `hullPoseLift` by that craft's drawn scale.
 - Simulator bots lack skill variance; do not tune ladder spread against them.
 - `season_end` exists; handler does not.
 - After `packages/rules` changes, restart **both** dev servers.

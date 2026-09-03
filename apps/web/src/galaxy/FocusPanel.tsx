@@ -45,7 +45,7 @@ import {
   type Gap,
   type Headline as HeadlineKind,
 } from '../lib/dossier.js';
-import { duration, staleness } from '../lib/time.js';
+import { countdown, duration, staleness, useNow } from '../lib/time.js';
 import { serverNow } from '../lib/clock.js';
 import { reachMinutes } from '../lib/navigation.js';
 import { HullMark } from '../ui/icons/hulls.js';
@@ -324,7 +324,6 @@ export function PlanetFocus({
   reports,
   rival,
   isRival = false,
-  rivalCommitted = false,
   now,
   onClose,
   onAttack,
@@ -343,7 +342,6 @@ export function PlanetFocus({
   reports: readonly Report[];
   rival?: RivalSummary;
   isRival?: boolean;
-  rivalCommitted?: boolean;
   now: number;
   onClose: () => void;
   onAttack: () => void;
@@ -546,7 +544,7 @@ export function PlanetFocus({
           <button
             type="button"
             className={`slab slab-ghost min-w-[8rem] flex-1 whitespace-normal px-3 leading-tight ${isRival ? 'text-alloy' : ''}`}
-            disabled={setRival.isPending || rivalCommitted}
+            disabled={setRival.isPending}
             onClick={() => {
               setRival.mutate(isRival ? null : target.id, {
                 onSuccess: () => {
@@ -558,9 +556,16 @@ export function PlanetFocus({
               });
             }}
           >
-            {t(rivalCommitted
-              ? 'focus.planet.rivalCommittedAction'
-              : isRival ? 'focus.planet.rivalMarkedAction' : 'focus.planet.markRival')}
+            {/*
+              A SECOND PRESS TAKES THE MARK OFF AGAIN. Owner instruction,
+              reversing D103. The button used to freeze the moment the two
+              commanders had shared a probe, a battle or a strike, and read "Rival
+              fixed" for the rest of the season — so the control that says "watch
+              this one" became one that refused. The mark is a bookmark on a disc
+              of three hundred worlds; changing your mind about who you are
+              watching is not a decision the game needs to protect you from.
+            */}
+            {t(isRival ? 'focus.planet.rivalMarkedAction' : 'focus.planet.markRival')}
           </button>
           )}
           {onSettle && claimActive && colonyPhase !== 'SETTLEMENT_IN_FLIGHT' && (
@@ -1994,23 +1999,10 @@ export function RunFocus({
 }) {
   const { t } = useTranslation();
   const returning = run.status === 'returning';
-  /**
-   * A HARVEST IS NOT A MINING RUN, AND THIS PANEL USED TO SAY IT WAS. D32.
-   *
-   * The two share the table, the launch path, the traffic contact and the flight
-   * rendering, which is the whole point of D32 — but they do not share their
-   * TARGET, and every word here was written about a rock. A harvest carries no
-   * `asteroidId`, so the rock lookup could only ever come back empty, and the
-   * panel then stated the one thing that lookup means on a mining run: "Rock has
-   * passed". A player who had just sent four Prospectors at a wreck field was told
-   * their target was gone, in the very panel that exists to tell them where their
-   * craft is.
-   *
-   * The other two lines were wrong in the same direction and more quietly: a field
-   * does not move, so there is no interception to explain and no rock to be
-   * stripped by somebody faster — a field is CLAIMED, and it decays on a clock.
-   */
   const salvage = run.targetKind === 'debris';
+  const now = useNow(1000);
+  const arriveAt = returning ? (run.homeAt ?? run.arriveAt) : run.arriveAt;
+  const remainingMs = arriveAt.getTime() - now;
 
   return (
     <Shell
@@ -2025,7 +2017,7 @@ export function RunFocus({
       open={open}
       onToggle={onToggle}
       onClose={onClose}
-      summary={<span>{duration(minutesRemaining)}</span>}
+      summary={<span>{countdown(remainingMs)}</span>}
     >
       <div className="grid grid-cols-2 gap-3">
         <Figure
@@ -2099,6 +2091,8 @@ export function ThreadFocus({
 }) {
   const { t } = useTranslation();
   const composition = thread.fleet ? describeThreadFleet(thread.fleet) : null;
+  const now = useNow(1000);
+  const remainingMs = thread.arriveAt.getTime() - now;
 
   return (
     <Shell
@@ -2115,7 +2109,7 @@ export function ThreadFocus({
       open={open}
       onToggle={onToggle}
       onClose={onClose}
-      summary={<span>{duration(minutesRemaining)}</span>}
+      summary={<span>{countdown(remainingMs)}</span>}
     >
       <div className="grid grid-cols-2 gap-3">
         <Figure label={t('focus.thread.arrivesIn')} value={duration(minutesRemaining)} />

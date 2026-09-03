@@ -337,6 +337,22 @@ export const HULL_MODEL: Record<HullId, string> = {
 };
 
 /**
+ * HOW HIGH A HULL IS DRAWN ABOVE ITS OWN ORIGIN, in the units `Hull` is scaled in.
+ *
+ * THE FLAME HAS TO KNOW THIS, which is the whole reason it is a function rather
+ * than a lookup at one call site. Several hulls carry a positive `pose.height`
+ * because the models sit low in their own files; the plume, the drive glow and the
+ * wake were all anchored at the group's origin, so on every lifted hull the
+ * exhaust burned from a point under the tail instead of out of it. One number,
+ * read by the hull and by its fire.
+ *
+ * Zero — never undefined — for anything with no authored pose: the probe, the
+ * drill and the two ground guns, none of which are in the Fleet V2 manifest.
+ */
+export const hullPoseLift = (hull: HullId): number =>
+  MODEL_POSE[HULL_MODEL[hull]]?.height ?? 0;
+
+/**
  * WHICH MODELS FLY.
  *
  * `MODEL` used to hold craft and nothing else, so "every model declares a facing"

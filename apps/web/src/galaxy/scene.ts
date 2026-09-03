@@ -556,6 +556,46 @@ export function runPosition(
   );
 }
 
+/**
+ * EVERY POINT IN OPEN SPACE A CRAFT OF YOURS IS CURRENTLY AIMED AT. D40 · D155.
+ *
+ * One list, because an interception is the least obvious thing in the game — a
+ * craft heading for empty space looks like a bug until the thing it is meeting
+ * arrives there — and the mark is the whole explanation. It was wired to mining
+ * runs alone, so the rock lane explained itself and the pirate lane, whose target
+ * moves faster and therefore leads FURTHER, did not: a raid left at an angle to
+ * the pirate drawn on the disc with nothing on screen saying why. D124.
+ *
+ * OUTBOUND ONLY, AND ONLY AT SOMETHING THAT MOVES. A return leg is aimed at a
+ * world that is already drawn with a label under it, and so is a raid, a probe or
+ * a transfer — a ring there says nothing and clutters the busiest part of the
+ * scene. What earns a mark is a coordinate the player would otherwise read as
+ * empty.
+ *
+ * Structural parameter types rather than the payload's, exactly as `runPosition`
+ * takes them: this is geometry, and it must be testable without a wire fixture.
+ */
+export function rendezvousMarks(
+  runs: readonly { intercept: { x: number; y: number; z: number }; status: string }[],
+  pending: readonly {
+    kind: string;
+    leg?: 'outbound' | 'return' | undefined;
+    path?: { to: { x: number; y: number; z: number } } | undefined;
+  }[],
+): Vec3Tuple[] {
+  const marks: Vec3Tuple[] = [];
+  for (const run of runs) {
+    if (run.status === 'outbound') marks.push(toWorld(run.intercept));
+  }
+  for (const thread of pending) {
+    // `leg` is optional on the wire for rolling deploys; a pirate thread without
+    // one is outbound by the same default the renderer uses.
+    if (thread.kind !== 'pirate' || thread.leg === 'return') continue;
+    if (thread.path) marks.push(toWorld(thread.path.to));
+  }
+  return marks;
+}
+
 /** Resolve a run against its own colony, never whichever world is active now. */
 export function runHomePosition(
   run: MiningRun,

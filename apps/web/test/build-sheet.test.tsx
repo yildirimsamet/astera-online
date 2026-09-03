@@ -2,7 +2,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { act, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
-import { PROSPECTOR, groundSlots, hangarCapacity, hullFuelRate } from '@astera/rules';
+import { PROSPECTOR, groundSlots, hangarCapacity, hullBulk, hullFuelRate } from '@astera/rules';
 import { PlanetScreen } from '../src/screens/PlanetScreen.js';
 import { ToastProvider } from '../src/ui/Toast.js';
 import type { PlanetView } from '../src/api/schemas.js';
@@ -568,5 +568,48 @@ describe('the fuel a craft burns', () => {
     await openSheet('Bastion');
 
     expect(document.querySelector('.stat-fuel')).toHaveTextContent('—');
+  });
+});
+
+/**
+ * HOW MUCH ROOM A CRAFT TAKES, ON THE SHEET WHERE IT IS BOUGHT. Owner report.
+ *
+ * The Hangar is the ceiling on a whole fleet, and the number that decides how much
+ * of it one hull eats was on no card in the game — a commander could read a
+ * Citadel's attack, hull, speed, cargo and fuel and had to divide two capacity
+ * bars in their head to learn that eight of them fill a Hangar. `hullBulk` is the
+ * same figure the sheet already caps the order with, so the card and the cap are
+ * one number rather than two.
+ *
+ * SIX FIGURES IN A 3×2 GRID, at owner instruction. A sixth on a wrapping flex row
+ * broke wherever the corner happened to be narrow; a fixed grid is the same shape
+ * on every hull, which is the property that makes two cards comparable at a glance.
+ */
+describe('the room a craft takes in a hangar', () => {
+  it('states the bulk the order is already capped by', async () => {
+    show();
+    await openSheet('Dart');
+
+    const room = document.querySelector('.stat-room');
+    expect(room, 'the craft sheet says nothing about hangar room').not.toBeNull();
+    expect(room).toHaveTextContent(String(hullBulk('DART')));
+    expect(room).toHaveTextContent(/hangar/i);
+  });
+
+  it('grows with the hull, so two cards can be compared', async () => {
+    show();
+    await openSheet('Rampart');
+    expect(document.querySelector('.stat-room')).toHaveTextContent(String(hullBulk('RAMPART')));
+    expect(hullBulk('RAMPART')).toBeGreaterThan(hullBulk('DART'));
+  });
+
+  it('lays the six figures out as a fixed three-column grid', async () => {
+    show();
+    await openSheet('Dart');
+
+    const strip = document.querySelector('[data-build-stats] .stats');
+    expect(strip).not.toBeNull();
+    expect(strip).toHaveClass('stats-card');
+    expect(strip?.querySelectorAll('.stat')).toHaveLength(6);
   });
 });

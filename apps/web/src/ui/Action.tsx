@@ -7,6 +7,7 @@ import {
   BuildIcon,
   CargoIcon,
   ClaimIcon,
+  HangarIcon,
   HullIcon,
   InstallIcon,
   LockIcon,
@@ -287,6 +288,7 @@ export function StatStrip({
   speed,
   cargo,
   fuel,
+  room,
   size = 'row',
 }: {
   atk: number;
@@ -302,6 +304,20 @@ export function StatStrip({
    * destination to charge against, which is exactly why it quotes a rate instead.
    */
   fuel: number;
+  /**
+   * HANGAR ROOM ONE OF THIS HULL TAKES — `hullBulk`. Owner report.
+   *
+   * The Hangar is the ceiling on a whole fleet and this is the number that decides
+   * how much of it one craft eats, and it was on no card in the game: a commander
+   * could read every other figure on a Citadel and still had to divide two capacity
+   * bars in their head to learn that eight of them fill a bay. The same figure the
+   * sheet already caps the order with, so the card and the cap cannot disagree.
+   *
+   * Optional, because the row form beside a hull in the launch sheet is choosing
+   * ships out of a hangar that has already been paid for — there is no room
+   * decision left to make there.
+   */
+  room?: number;
   size?: 'row' | 'card';
 }) {
   const big = size === 'card';
@@ -340,6 +356,15 @@ export function StatStrip({
         text={cargo === 0 ? i18n.t('action.statCargoNone') : undefined}
         big={big}
       />
+      {room !== undefined && (
+        <Stat
+          icon={<HangarIcon className={big ? 'size-5' : 'size-4'} />}
+          tone="room"
+          label={i18n.t('action.statRoom')}
+          value={room}
+          big={big}
+        />
+      )}
       <Stat
         icon={<Mark of="deuterium" className={big ? 'size-5' : 'size-4'} />}
         tone="fuel"
@@ -367,7 +392,7 @@ function Stat({
   big,
 }: {
   icon: ReactNode;
-  tone: 'attack' | 'hull' | 'speed' | 'cargo' | 'fuel';
+  tone: 'attack' | 'hull' | 'speed' | 'cargo' | 'fuel' | 'room';
   label: string;
   value: number;
   text?: string;

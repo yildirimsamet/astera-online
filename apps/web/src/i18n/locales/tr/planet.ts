@@ -371,6 +371,7 @@ export const action = {
   statSpeedFixed: "sabit",
   statCargo: "Ambar",
   statCargoNone: "—",
+  statRoom: "Hangar",
   statFuel: "Yakıt",
   statFuelRate: "{{value}} /1.000",
   statFuelNone: "—",
@@ -435,6 +436,8 @@ export const launch = {
   unreachable: "Buradan hiçbir gemi yetişemez",
   /** Yetişebilecek var — ama bu seçimdeki en yavaş gemi değil. */
   tooSlow: "Yavaş gemileri geride bırak",
+  /** Bir dünyaya yapılan akın ateş edebilmeli. Sunucu da bunu reddediyor. */
+  noEscort: "Bir savaş gemisi ekle",
   cargo: "Ambar",
   distance: "Mesafe",
   fleetHeading: "Filo",

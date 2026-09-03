@@ -5,6 +5,7 @@ import { useTranslation } from 'react-i18next';
 import {
   miningSceneData,
   useGalaxy,
+  useGalaxyEvents,
   useIntel,
   useHarvest,
   useMine,
@@ -235,6 +236,21 @@ export function GalaxyView({
   const clanBadge = useClanBadge();
   const say = useToast();
   const now = useNow(5_000);
+  /**
+   * THE SKY ANSWERS THE EVENT. Owner instruction, D149.
+   *
+   * A shower is announced by a caption in the corner and by rocks arriving over
+   * the next hour — neither of which a player notices on the second they open the
+   * disc. `Meteors` triples its shooting stars while this is true and drops back
+   * the moment it is not, so the whole sky says something is happening.
+   *
+   * READ OFF THE SAME FIVE-SECOND TICK the rest of this screen already runs on:
+   * the payload carries only ACTIVE events, and the end of one is a clock, so this
+   * needs no timer of its own and adds no render.
+   */
+  const galaxyEvents = useGalaxyEvents();
+  const meteorShower = (galaxyEvents.data?.events ?? [])
+    .some((event) => now < event.endsAt.getTime());
   const [requestedPlanetGroup, setRequestedPlanetGroup] = useState<PlanetGroup | null>(null);
 
   useEffect(() => {
@@ -333,6 +349,16 @@ export function GalaxyView({
    * with `PIRATE_OUT_OF_SIGHT`.
    */
   const [attackingPirateId, setAttackingPirateId] = useState<string | null>(null);
+  /**
+   * WHERE THE OPEN SHEET WOULD SEND THE WING IT HAS SELECTED. D155.
+   *
+   * Lifted out of `LaunchSheet` because the rendezvous is a point in the GALAXY
+   * and the sheet is a panel over it — the disc is what has to draw it, and the
+   * player is choosing hulls at the moment they need to see where those hulls
+   * would go. The sheet reports it and clears it on the way out, so a mark can
+   * never outlive the decision it belongs to.
+   */
+  const [aim, setAim] = useState<{ x: number; y: number; z: number } | null>(null);
   const [settlingTargetId, setSettlingTargetId] = useState<string | null>(null);
   const [homeSignal, setHomeSignal] = useState(0);
   const [chatChannel, setChatChannel] = useState<ChatChannel>('general');
@@ -738,6 +764,7 @@ export function GalaxyView({
         runs={runs}
 
         wrecks={wrecks}
+        meteorShower={meteorShower}
         sensors={sensors}
         showTelescopeReach={showTelescopeReach}
         showRadarReach={showRadarReach}
@@ -751,6 +778,7 @@ export function GalaxyView({
         onReady={onReady}
         onFocus={onFocus}
         homeSignal={homeSignal}
+        aim={aim}
         openWide={openWide ?? false}
         {...(wideDistance !== undefined ? { wideDistance } : {})}
         {...(allowFocus ? { allowFocus } : {})}
@@ -770,24 +798,25 @@ export function GalaxyView({
         */}
         <div className="pointer-events-none flex min-w-0 flex-col items-start">
         <DiscReadout
-          shardName={season.data?.shardName}
           shard={season.data?.shard ?? ''}
           online={season.data?.online}
+          onlineToday={season.data?.onlineToday}
         >
           {/*
-            THE NAME ON THE LEFT, WHO IS IN HERE ON THE RIGHT.
+            THE CODE ON THE LEFT, WHO IS IN HERE ON THE RIGHT. D154.
 
             `justify-between` rather than a gap, because the two are not a phrase:
-            one names the place and the other counts the people in it. The box is
-            already as wide as the line of counts underneath, so pushing the tally
-            to the far edge costs no width and gives it its own corner to live in.
+            one names the place and the other counts the people in it. The galaxy's
+            poetic name and the word "disc" used to sit on that left side and are
+            gone — see `DiscReadout` — which is what made room for the day figure
+            beside the live one.
 
             Green is the system's own `opportunity`, which is what the disc already
             uses for a fleet in the air — the colour means "somebody is doing
             something" everywhere else on this screen, and a commander at the
             controls is the same fact.
 
-            HIDDEN, NOT ZEROED, when the figure is absent: `online` is optional on
+            HIDDEN, NOT ZEROED, when a figure is absent: both counts are optional on
             the payload so a client ahead of its server still parses, and "0
             online" on a screen you are personally looking at is a lie.
           */}
@@ -913,7 +942,6 @@ export function GalaxyView({
             || (season.data?.rivalPlayerId == null
               && season.data?.rivalPlanetId === selected.id)
           }
-          rivalCommitted={season.data?.rivalCommitted ?? false}
           now={now}
           settlementInFlight={settlementInFlight}
           onClose={close}
@@ -1404,6 +1432,7 @@ export function GalaxyView({
             <LaunchSheet
               target={{ kind: 'pirate', pirate: target }}
               planet={planet.data}
+              onAim={setAim}
               onClose={() => { setAttackingPirateId(null); }}
               onLaunched={() => {
                 setAttackingPirateId(null);

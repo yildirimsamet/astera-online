@@ -4,7 +4,7 @@ import { Billboard, useGLTF } from '@react-three/drei';
 import * as THREE from 'three';
 import { engagementEndsAt, isEngaging, seededFrom } from '@astera/rules';
 import type { Contact, PendingThread } from '../api/schemas.js';
-import { HULL_MODEL, MODEL, MODEL_FACING, MODEL_POSE } from '../ui/assets.js';
+import { HULL_MODEL, MODEL, MODEL_FACING, MODEL_POSE, hullPoseLift } from '../ui/assets.js';
 import { Bombardment, bombardmentIntensity } from './Bombardment.jsx';
 import { softGlow } from './Environment.jsx';
 import { posedCraft } from './model.js';
@@ -29,6 +29,7 @@ import {
   markersFor,
   type Marker,
 } from './Squadrons.js';
+import { STAR, rankLayout, rankRow, type RankGlyph } from './rank.js';
 import { markHit, wasTap } from './tap.js';
 import { serverNow } from '../lib/clock.js';
 import {
@@ -912,9 +913,19 @@ function Craft({
     direction.set(...aimed.current);
     craft.current.quaternion.setFromUnitVectors(forward, direction);
   });
+  /**
+   * The hull's own lift, so the fire comes out of the ship rather than from a
+   * point under its tail. See `hullPoseLift` — one number, read by both.
+   */
+  const lift = hullPoseLift(marker.hull) * authoredScale;
+
   return (
     <group ref={craft} position={offset}>
-      {!batched && <Wake scale={authoredScale} colour={light.glow} />}
+      {!batched && (
+        <group position={[0, lift, 0]}>
+          <Wake scale={authoredScale} colour={light.glow} />
+        </group>
+      )}
       <Hull
         url={HULL_MODEL[marker.hull]}
         scale={authoredScale}
@@ -922,7 +933,7 @@ function Craft({
         focused={focused}
       />
       {!batched && (
-        <group position={[0, 0, -authoredScale * 0.42]}>
+        <group position={[0, lift, -authoredScale * 0.42]}>
           <Exhaust
             colour={light.flame}
             length={authoredScale * 0.8}
@@ -992,12 +1003,14 @@ function FormationLightField({
     markers.forEach((marker, markerIndex) => {
       const slot = slots[markerIndex] ?? [0, 0, 0];
       const authoredScale = hullVisualScale(marker.hull, scale);
+      // The plume starts where the hull's tail actually is. See `hullPoseLift`.
+      const lift = hullPoseLift(marker.hull) * authoredScale;
       const flameColour = new THREE.Color(HULL_LIGHT[marker.hull].flame);
       for (let i = 0; i < PLUME_STEPS; i += 1) {
         const puff = plumeShape(i);
         const tint = flameColour.clone().lerp(white, puff.white);
         put(
-          [slot[0], slot[1], slot[2] - authoredScale * (0.42 + 0.8 * puff.at)],
+          [slot[0], slot[1] + lift, slot[2] - authoredScale * (0.42 + 0.8 * puff.at)],
           tint,
           authoredScale * 0.46 * puff.size,
           puff.alpha,
@@ -1068,6 +1081,7 @@ function FormationLightField({
     markers.forEach((marker, markerIndex) => {
       const slot = slots[markerIndex] ?? [0, 0, 0];
       const authoredScale = hullVisualScale(marker.hull, scale);
+      const lift = hullPoseLift(marker.hull) * authoredScale;
       formationAimDirection(slot, aimDistance.current, aimed);
       for (let i = 0; i < PLUME_STEPS; i += 1) {
         const puff = plumeShape(i);
@@ -1075,7 +1089,7 @@ function FormationLightField({
         positions.setXYZ(
           cursor,
           slot[0] - aimed[0] * behind,
-          slot[1] - aimed[1] * behind,
+          slot[1] + lift - aimed[1] * behind,
           slot[2] - aimed[2] * behind,
         );
         cursor += 1;
@@ -1108,7 +1122,10 @@ function FormationLightField({
         name="formation-lights"
       />
       {showPips && (
-        <FormationPips markers={markers} slots={slots} scale={scale} focused={focused} />
+        <>
+          <FormationPips markers={markers} slots={slots} scale={scale} focused={focused} />
+          <FormationRanks markers={markers} slots={slots} scale={scale} />
+        </>
       )}
     </>
   );
@@ -1235,6 +1252,261 @@ function FormationPips({
       frustumCulled={false}
       renderOrder={SHIP_ORDER + 2}
       name="formation-pips"
+    />
+  );
+}
+
+/* ── rank badges ────────────────────────────────────────────── */
+
+/**
+ * THE BADGE UNDER EVERY WARSHIP ON THE DISC. Owner instruction.
+ *
+ * The pips above a marker say how many ships it stands for. Nothing said what
+ * they WERE — and the two facts that decide whether an approaching wing is a
+ * problem are its tier and its role. D124: a rule the player cannot see is not a
+ * usable rule, and D142: a quantity a player must judge is drawn, not written.
+ *
+ * `rank.ts` decides the row; this file only draws it. The stars are the tier and
+ * the glyph on their left is the family — sword, shield or crate — so "four stars
+ * and a sword" is read as fast as a shape and needs no legend.
+ *
+ * ONE TEXTURE AND ONE DRAW CALL FOR THE WHOLE GALAXY, the same construction the
+ * pips already use: an atlas of four glyphs built once on a canvas, and one point
+ * buffer per formation whose vertex shader expands each mark into a camera-facing
+ * quad. A twenty-model formation is up to a hundred marks and still one call.
+ *
+ * IT FOLLOWS EXACT SIGHT, NEVER A SILHOUETTE. Mounted from the same `showPips`
+ * flag, because a Radar contact's markers are a synthetic count of Darts — a tier
+ * printed over an estimate would be the interface inventing a reading nobody
+ * bought (D123). The probe and the drill wear no badge at all, which falls out of
+ * `rankRow` rather than out of a second exclusion list.
+ */
+
+/** The atlas cells, in the order the shader indexes them. */
+const RANK_CELLS: readonly RankGlyph[] = ['sword', 'shield', 'crate', STAR];
+
+/** Gold for a rank; the role glyph stays bone so the stars are what counts. */
+const RANK_COLOUR = { star: '#ffc93c', glyph: '#dbe7f2' } as const;
+
+/**
+ * One mark's size and where the row hangs, both as multiples of the drawn craft.
+ *
+ * Bigger than a pip (0.085) because a star has internal structure to read where a
+ * pip is a square, and low enough under the hull that it never touches it —
+ * measured from the craft's own lift so a posed hull keeps the same gap.
+ */
+const RANK_MARK = { size: 0.115, drop: 0.62 } as const;
+
+let rankTexture: THREE.Texture | null = null;
+
+/**
+ * Four white glyphs in a row, drawn once.
+ *
+ * White so the shader can tint each mark; solid rather than stroked so every one
+ * of them survives being drawn eight pixels across on a phone, which is the size
+ * it is actually read at.
+ */
+function rankAtlas(): THREE.Texture {
+  if (rankTexture) return rankTexture;
+  const cell = 128;
+  const canvas = document.createElement('canvas');
+  canvas.width = cell * RANK_CELLS.length;
+  canvas.height = cell;
+  const ctx = canvas.getContext('2d');
+  if (ctx) {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = '#ffffff';
+    ctx.strokeStyle = '#ffffff';
+    ctx.lineJoin = 'round';
+    ctx.lineCap = 'round';
+    RANK_CELLS.forEach((glyph, index) => {
+      ctx.save();
+      ctx.translate(index * cell, 0);
+      const u = cell / 100;
+      switch (glyph) {
+        case 'sword':
+          // Blade, crossguard, grip: a weapon pointing up.
+          ctx.beginPath();
+          ctx.moveTo(50 * u, 6 * u);
+          ctx.lineTo(59 * u, 24 * u);
+          ctx.lineTo(59 * u, 62 * u);
+          ctx.lineTo(41 * u, 62 * u);
+          ctx.lineTo(41 * u, 24 * u);
+          ctx.closePath();
+          ctx.fill();
+          ctx.fillRect(22 * u, 62 * u, 56 * u, 11 * u);
+          ctx.fillRect(43 * u, 73 * u, 14 * u, 17 * u);
+          ctx.fillRect(34 * u, 88 * u, 32 * u, 9 * u);
+          break;
+        case 'shield':
+          ctx.beginPath();
+          ctx.moveTo(50 * u, 6 * u);
+          ctx.lineTo(88 * u, 22 * u);
+          ctx.lineTo(88 * u, 52 * u);
+          ctx.quadraticCurveTo(88 * u, 82 * u, 50 * u, 96 * u);
+          ctx.quadraticCurveTo(12 * u, 82 * u, 12 * u, 52 * u);
+          ctx.lineTo(12 * u, 22 * u);
+          ctx.closePath();
+          ctx.fill();
+          break;
+        case 'crate':
+          // A parcel: a box with its strapping, which reads as cargo at any size.
+          ctx.fillRect(12 * u, 20 * u, 76 * u, 62 * u);
+          ctx.globalCompositeOperation = 'destination-out';
+          ctx.fillRect(44 * u, 20 * u, 12 * u, 62 * u);
+          ctx.fillRect(12 * u, 45 * u, 76 * u, 12 * u);
+          ctx.globalCompositeOperation = 'source-over';
+          break;
+        default: {
+          // Five points, outer to inner, starting at the top.
+          const outer = 46 * u;
+          const inner = 19 * u;
+          ctx.beginPath();
+          for (let i = 0; i < 10; i += 1) {
+            const radius = i % 2 === 0 ? outer : inner;
+            const angle = -Math.PI / 2 + (i * Math.PI) / 5;
+            const x = 50 * u + Math.cos(angle) * radius;
+            const y = 52 * u + Math.sin(angle) * radius;
+            if (i === 0) ctx.moveTo(x, y);
+            else ctx.lineTo(x, y);
+          }
+          ctx.closePath();
+          ctx.fill();
+          break;
+        }
+      }
+      ctx.restore();
+    });
+  }
+  rankTexture = new THREE.CanvasTexture(canvas);
+  rankTexture.colorSpace = THREE.SRGBColorSpace;
+  rankTexture.needsUpdate = true;
+  return rankTexture;
+}
+
+function FormationRanks({
+  markers,
+  slots,
+  scale,
+}: {
+  markers: readonly Marker[];
+  slots: readonly Vec3Tuple[];
+  scale: number;
+}) {
+  const texture = useMemo(() => rankAtlas(), []);
+
+  const geometry = useMemo(() => {
+    const rows = markers.map((marker) => rankRow(marker.hull));
+    const count = rows.reduce((total, row) => total + row.length, 0);
+    const positions = new Float32Array(count * 3);
+    const colours = new Float32Array(count * 3);
+    const sizes = new Float32Array(count);
+    const cells = new Float32Array(count);
+    const star = new THREE.Color(RANK_COLOUR.star);
+    const glyph = new THREE.Color(RANK_COLOUR.glyph);
+    let cursor = 0;
+
+    markers.forEach((marker, markerIndex) => {
+      const row = rows[markerIndex] ?? [];
+      if (row.length === 0) return;
+      const slot = slots[markerIndex] ?? [0, 0, 0];
+      const authoredScale = hullVisualScale(marker.hull, scale);
+      const size = authoredScale * RANK_MARK.size;
+      // Under the hull as it is actually drawn, so a posed craft keeps the gap.
+      const y = slot[1] + hullPoseLift(marker.hull) * authoredScale
+        - authoredScale * RANK_MARK.drop;
+      for (const mark of rankLayout(row, size)) {
+        positions.set([slot[0] + mark.x, y, slot[2]], cursor * 3);
+        const tint = mark.glyph === STAR ? star : glyph;
+        colours.set([tint.r, tint.g, tint.b], cursor * 3);
+        sizes[cursor] = size;
+        cells[cursor] = RANK_CELLS.indexOf(mark.glyph);
+        cursor += 1;
+      }
+    });
+
+    const buffer = new THREE.BufferGeometry();
+    buffer.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+    buffer.setAttribute('color', new THREE.BufferAttribute(colours, 3));
+    buffer.setAttribute('aSize', new THREE.BufferAttribute(sizes, 1));
+    buffer.setAttribute('aCell', new THREE.BufferAttribute(cells, 1));
+    return buffer;
+  }, [markers, slots, scale]);
+
+  const material = useMemo(
+    () =>
+      new THREE.ShaderMaterial({
+        uniforms: {
+          uProjectionScale: { value: 700 },
+          uPixelRatio: { value: 1 },
+          uMap: { value: texture },
+          uCells: { value: RANK_CELLS.length },
+        },
+        vertexColors: true,
+        transparent: true,
+        depthWrite: false,
+        depthTest: false,
+        toneMapped: false,
+        vertexShader: `
+          attribute float aSize;
+          attribute float aCell;
+          varying vec3 vColour;
+          varying float vCell;
+          uniform float uProjectionScale;
+          uniform float uPixelRatio;
+          void main() {
+            vColour = color;
+            vCell = aCell;
+            vec4 mv = modelViewMatrix * vec4(position, 1.0);
+            float projected = aSize * uProjectionScale / max(0.01, -mv.z);
+            gl_PointSize = clamp(projected, 1.0, 11.0 * uPixelRatio);
+            gl_Position = projectionMatrix * mv;
+          }
+        `,
+        fragmentShader: `
+          uniform sampler2D uMap;
+          uniform float uCells;
+          varying vec3 vColour;
+          varying float vCell;
+          void main() {
+            // The atlas is one row of cells; the point's own coordinate picks the
+            // pixel inside the cell this mark was assigned. Y is flipped because
+            // gl_PointCoord counts down from the top and a texture counts up.
+            vec2 uv = vec2((vCell + gl_PointCoord.x) / uCells, 1.0 - gl_PointCoord.y);
+            float mask = texture2D(uMap, uv).a;
+            if (mask < 0.04) discard;
+            gl_FragColor = vec4(vColour, mask);
+          }
+        `,
+      }),
+    [texture],
+  );
+
+  useFrame(({ camera, size: viewport, gl }) => {
+    const perspective = camera as THREE.PerspectiveCamera;
+    const fov = THREE.MathUtils.degToRad(perspective.fov || 45);
+    material.uniforms.uProjectionScale!.value =
+      (viewport.height * gl.getPixelRatio()) / (2 * Math.tan(fov / 2));
+    material.uniforms.uPixelRatio!.value = gl.getPixelRatio();
+  });
+
+  useEffect(
+    () => () => {
+      geometry.dispose();
+      material.dispose();
+    },
+    [geometry, material],
+  );
+
+  if (geometry.getAttribute('position').count === 0) return null;
+
+  return (
+    <points
+      geometry={geometry}
+      material={material}
+      frustumCulled={false}
+      renderOrder={SHIP_ORDER + 3}
+      name="formation-ranks"
     />
   );
 }
@@ -1492,9 +1764,11 @@ function FormationWakes({
     markers.forEach((marker, markerIndex) => {
       const slot = slots[markerIndex] ?? [0, 0, 0];
       const authoredScale = hullVisualScale(marker.hull, scale);
+      // The streak is shed by the hull, so it starts at the hull's own height.
+      const lift = hullPoseLift(marker.hull) * authoredScale;
       formationAimDirection(slot, aimDistance.current, aimed);
       direction.set(...aimed);
-      eyeFromCraft.set(eye.x - slot[0], eye.y - slot[1], eye.z - slot[2]);
+      eyeFromCraft.set(eye.x - slot[0], eye.y - slot[1] - lift, eye.z - slot[2]);
       side.copy(direction).cross(eyeFromCraft);
       if (side.lengthSq() < 1e-12) side.set(1, 0, 0);
       else side.normalize();
@@ -1509,7 +1783,7 @@ function FormationWakes({
           0.22;
         const distance = authoredScale * WAKE_LENGTH * back;
         const centreX = slot[0] - direction.x * distance;
-        const centreY = slot[1] - direction.y * distance;
+        const centreY = slot[1] + lift - direction.y * distance;
         const centreZ = slot[2] - direction.z * distance;
         const vertex = vertexBase + k * 2;
         positions.setXYZ(

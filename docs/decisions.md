@@ -176,6 +176,11 @@ Binds: Hull speed, Propulsion, D111/D148.
 Rule: (1) `worldRadius` uses exact Core level: 0.44@1, 0.82@11, 1.40@top, geometric/clamped; standoffs use level. (2) Dyson starts Core 12, ring/3 levels. (3) Fuel mass=`bulk × tierMass`, tiers ×1/2/4/5; speed irrelevant. (4) Probe speed=3510; Prospector unchanged. (5) Auto-focus follows own outbound craft only, never returns.
 Binds: Radius/Dyson/fuel/probe/focus.
 
+### D154 · The galaxy states what it is looking at — OWNER INSTRUCTION
+
+Rule: (1) The disc caption is the shard CODE alone — no "disc" label, no galaxy name — and carries two population figures: the live `SERVERS.onlineWindowMinutes` count and a `SERVERS.dayWindowMinutes` (24h) count off the same `players.lastActiveAt` index, refreshed by the existing one-minute `/api/season` read rather than by a broadcast. (2) Every drawn craft with a hull tier wears a badge under it: the family glyph (sword/shield/crate; SPECIALIST reads as sword) then one gold star per tier. It follows exact sight only — never a Radar silhouette's synthetic roster — and hulls outside the tier ladder (probe, Prospector, ground guns) wear none. (3) A posed hull's exhaust, wake and drive glow are offset by `hullPoseLift`, the same lift the hull is drawn at. (4) An active Asteroid Shower triples the local shooting-star pool for its duration; the meteors carry no information and no server cost. (5) The craft sheet states `hullBulk` as a sixth figure and the card stat block is a fixed 3×2 grid. (6) A wreck's camera subject is its own coordinates, so a void field is focusable.
+Binds: Disc readout, `/api/season`, `rank.ts`/Fleets, `Meteors`, `StatStrip`, wreck focus.
+
 ### D149 · Public galaxy events are immutable seasonal moments — OWNER INSTRUCTION
 
 Rule: Each season has a hidden deterministic public-event calendar. Asteroid Shower: 60m, ×5 new asteroid arrival only, exactly 5 starts per full Türkiye day, ≥120m gap after end; 00:00–08:00 is low-priority (target 1, max 2), not blackout. Ending affects future arrivals only. Players see active events, never future calendar/hidden coordinates.
@@ -374,6 +379,11 @@ Binds: Pirates, combat, debris, returns, reports, traffic fog, launch surface.
 Rule: REMEMBERED is the last time observer had a craft at that world, not probe-only memory. Raid/neutral battle/strategic strike/settlement arrivals write `silhouetteOf`; transfer/clan-transfer do not. Memory stays frozen, visitor-only, newest-look wins and keeps `seenAt`. Battle visits never infer probe-only doctrine/interceptor data. `rememberWorld` is the single writer and publishes private-memory invalidation; record age uses one shared calculation.
 Binds: World memory, D127.
 
+### D155 · A pirate is chased at fleet speed, and the meeting point is drawn — OWNER INSTRUCTION
+
+Rule: `PIRATE.speedMin/Max` are the hull table's own figures divided by `TRAVEL.distanceFactor` — a Cataclysm's pace to a Dart's pace — so every Skirmisher outruns every pirate and a heavy line cannot lead one. The old 200–420 band was measured against rock speed, but a rock is chased by a Prospector and a pirate is chased by a warship: on one scale it was 240–504, faster than every ship in the game, so `interceptOrbit`'s earliest meeting was the far side of the orbit after a lap of waiting rather than a lead. `pirates.test.ts` asserts both anchors against `HULLS` and holds the median lead under a quarter revolution, the ceiling the rock lane has carried since D40/D121. `/api/pirates` publishes each `reach` row's rendezvous point; it is `distance` and `minutes` stated rather than implied, for a pirate in current sight from a world the caller owns, and the orbital elements stay server-private. The disc draws every open-space aim point through one list (`rendezvousMarks`): a mining interception, an outbound raid's rendezvous, and — while the launch sheet is open — where the selected wing would meet it. Marks never survive the sheet that proposed them, and never mark a target that is an address.
+Binds: Pirate lane geometry, `/api/pirates`, launch sheet, disc marks, D40, D124, D142, D150.
+
 ## World, season & social
 
 ### D21 · Account identity and seasonal placement — OWNER DECISION
@@ -461,10 +471,10 @@ Binds: Server selection, admission, bootstrap/rollover, historical shard rows.
 Rule: Isotope eligibility is deterministic, currently 11/90 indexes. Concentration is separate deterministic whole-percent 10–25% from season seed + asteroid index and consumes no shared galaxy RNG. Deuterium replaces Alloy; total ore unchanged. Changing concentration must not alter isotope cadence or D110 arrival cadence.
 Binds: Asteroids, mining, simulator.
 
-### D103 · Rival commits on first shared interaction — OWNER DECISION
+### D103 · The Rival mark is free to move — OWNER INSTRUCTION
 
-Rule: A Rival may change only until the first recorded probe, battle or Death Star impact between the pair; that first shared interaction commits the Rival for the season. Strategic strikes enter the same durable encounter history with an idempotent value/damage record.
-Binds: Rival service, probe/battle/strategic history, season results/recap.
+Rule: A Rival may be marked, cleared by a second press of the same control, and re-marked at any time. Nothing commits it: the first shared probe, battle or strike between the pair used to freeze the choice for the season, and that lock is retired — players disliked it and the mark is a bookmark, not a contract. Encounter history (battles, strategic impacts with their idempotent value/damage record, probe readings) is still recorded and still feeds reports, the dossier and the recap; nothing reads it to refuse a change.
+Binds: Rival service, `/api/rival`, planet focus control, season payload.
 
 ### D105 · Strategic impacts remain reconstructible during the public effect — OWNER DECISION
 

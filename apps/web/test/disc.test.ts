@@ -5,6 +5,8 @@ import {
   DISC_OPACITY,
   DISC_ROTATION_RADIANS_PER_SECOND,
   METEOR_GAP,
+  METEOR_POOL,
+  meteorPool,
   STARFIELD_ROTATION_RADIANS_PER_SECOND,
   advanceDiscRotation,
   advanceStarfieldRotation,
@@ -131,5 +133,19 @@ describe('the galactic plane', () => {
 
   it('halves both meteor gaps to double the random shooting-star cadence', () => {
     expect(METEOR_GAP).toEqual([3.5, 13]);
+  });
+
+  /**
+   * THE SKY ANSWERS THE EVENT. Owner instruction.
+   *
+   * An Asteroid Shower is the one public moment the whole galaxy shares (D149),
+   * and until now it was a line of text in the corner. Tripling the shooting stars
+   * for exactly as long as it runs makes the sky itself the announcement — and
+   * because meteors are purely local decoration that is seeded from nothing and
+   * fetched from nowhere, it costs the server not one byte.
+   */
+  it('triples the shooting stars while a shower is running, and only while it runs', () => {
+    expect(meteorPool(false)).toBe(METEOR_POOL);
+    expect(meteorPool(true)).toBe(METEOR_POOL * 3);
   });
 });

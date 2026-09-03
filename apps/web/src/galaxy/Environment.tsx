@@ -496,7 +496,27 @@ export function BrightStars() {
 /* ── meteors ────────────────────────────────────────────────── */
 
 /** How many can be in the sky at once. More than this and they stop being events. */
-const METEOR_POOL = 3;
+export const METEOR_POOL = 3;
+
+/**
+ * HOW MUCH BUSIER THE SKY GETS DURING AN ASTEROID SHOWER. Owner instruction.
+ *
+ * D149's shower is the one public moment the whole galaxy shares, and it was
+ * announced by a line of text in a corner. Three times the shooting stars for
+ * exactly as long as it runs makes the SKY the announcement — somebody who never
+ * reads the caption still looks up and sees that something is happening, which is
+ * the entire point of a public event.
+ *
+ * IT COSTS NOTHING AND MEANS NOTHING. Meteors are local decoration: nothing here
+ * is seeded from the season and nothing is fetched, so this carries no information
+ * and two players seeing different streaks costs the game nothing. It is the sky
+ * reacting, not a reading — the rock field is where the event actually happens.
+ */
+export const METEOR_SHOWER_MULTIPLIER = 3;
+
+/** How many streaks the sky carries right now. Back to normal when the event ends. */
+export const meteorPool = (shower: boolean): number =>
+  shower ? METEOR_POOL * METEOR_SHOWER_MULTIPLIER : METEOR_POOL;
 /** Seconds a streak is visible. */
 const METEOR_LIFE = 1.15;
 /** Seconds of empty sky between one and the next, per slot. */
@@ -555,21 +575,34 @@ const spawn = (): Meteor => {
  * transparent through vertex colours, so the whole effect is two vertices per
  * meteor and no per-object overhead.
  */
-export function Meteors() {
-  return <MeteorField />;
+export function Meteors({ shower = false }: { shower?: boolean }) {
+  /*
+    KEYED ON THE POOL, so the whole field is rebuilt when a shower starts or ends.
+
+    The buffer's length IS the pool, and both the geometry and the live meteor
+    array are memos over it — remounting is one allocation at each edge of an event
+    that lasts an hour, and it is the only way the two cannot disagree about how
+    many streaks there are.
+  */
+  const pool = meteorPool(shower);
+  return <MeteorField key={pool} pool={pool} />;
 }
 
-function MeteorField() {
+function MeteorField({ pool }: { pool: number }) {
   const ref = useRef<THREE.LineSegments>(null);
-  const meteors = useMemo(() => Array.from({ length: METEOR_POOL }, spawn), []);
+  const meteors = useMemo(() => Array.from({ length: pool }, spawn), [pool]);
 
   const geometry = useMemo(() => {
     const g = new THREE.BufferGeometry();
-    g.setAttribute('position', new THREE.BufferAttribute(new Float32Array(METEOR_POOL * 6), 3));
-    const colours = new Float32Array(METEOR_POOL * 6);
+    g.setAttribute('position', new THREE.BufferAttribute(new Float32Array(pool * 6), 3));
+    const colours = new Float32Array(pool * 6);
     g.setAttribute('color', new THREE.BufferAttribute(colours, 3));
     return g;
-  }, []);
+  }, [pool]);
+
+  // The buffer used to live as long as the app did. It is rebuilt at each edge of
+  // an Asteroid Shower now, so the old one has to go back explicitly.
+  useEffect(() => () => { geometry.dispose(); }, [geometry]);
 
   useFrame((state, delta) => {
     const node = ref.current;

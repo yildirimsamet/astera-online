@@ -14,6 +14,7 @@ import {
   piratePosition,
   sensorZone,
   type MobileHullId,
+  type Vec3,
 } from '@astera/rules';
 import { minutesSince } from '../clock.js';
 import { planets, players, units } from '../db/schema.js';
@@ -150,7 +151,7 @@ export function registerPirateRoutes(app: FastifyInstance): void {
         slowest ship it has selected, and a hull with no entry is a hull that cannot
         get there — which is the same answer the launch will give.
       */
-      const byHullSpeed = new Map<number, { minutes: number; distance: number }>();
+      const byHullSpeed = new Map<number, { minutes: number; distance: number; at: Vec3 }>();
       if (origin) {
         for (const speed of distinctSpeeds) {
           const solved = interceptOrbit(
@@ -165,6 +166,25 @@ export function registerPirateRoutes(app: FastifyInstance): void {
               minutes: solved.flightMinutes,
               // The leg the launch will charge fuel for, both ways. D136.
               distance: distance(origin, solved.at),
+              /**
+               * AND WHERE. D155.
+               *
+               * The minute and the leg were published from the day this shipped
+               * and the POINT was not, so the one screen where a fleet stops being
+               * recallable could say "eleven minutes, nine hundred units" and
+               * nothing at all about the direction. The squadron then left at an
+               * angle to the pirate drawn on the disc — correct, unexplained, and
+               * reported by the owner as the fleet flying somewhere unrelated.
+               * D124: a rule the player cannot see is not a usable rule. The rock
+               * lane has drawn its rendezvous since D40 for exactly this reason.
+               *
+               * NOT A NEW DISCLOSURE. `distance` from a known origin plus
+               * `minutes` already pin this point, for a pirate the caller can
+               * currently see, from a world the caller owns. What changes is that
+               * the client can DRAW it instead of the player inferring it (D142).
+               * The orbit itself stays server-private: one point is not a route.
+               */
+              at: solved.at,
             });
           }
         }
@@ -173,7 +193,7 @@ export function registerPirateRoutes(app: FastifyInstance): void {
         const solved = byHullSpeed.get(speed);
         return solved === undefined
           ? []
-          : [{ hull, minutes: solved.minutes, distance: solved.distance }];
+          : [{ hull, minutes: solved.minutes, distance: solved.distance, at: solved.at }];
       });
 
       return [{

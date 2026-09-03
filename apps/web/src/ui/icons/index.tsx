@@ -793,6 +793,25 @@ export function SpeedIcon(props: IconProps) {
   );
 }
 
+/**
+ * HANGAR ROOM — how much of the bay one craft fills.
+ *
+ * A vaulted shed with a craft standing in it, deliberately unlike `CargoIcon`'s
+ * crate: cargo is what a ship CARRIES and this is what it TAKES UP, and the two
+ * sit side by side on the same card. The arch is the same one the Hangar building
+ * wears elsewhere, so the figure and the building it is charged against look
+ * related without a word being written.
+ */
+export function HangarIcon(props: IconProps) {
+  return (
+    <Glyph {...props}>
+      <path d="M3 20V11a9 9 0 0 1 18 0v9" />
+      <path d="M3 20h18" />
+      <path d="M9 20v-5a3 3 0 0 1 6 0v5" />
+    </Glyph>
+  );
+}
+
 /** CARGO — what comes home. A hold with a load in it. */
 export function CargoIcon(props: IconProps) {
   return (

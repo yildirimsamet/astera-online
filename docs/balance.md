@@ -501,13 +501,13 @@ Speed is **independent of level**, so a rich rock is not automatically a slow on
 **closed**, so a craft slower than a rock still has a meeting on a later pass. Interception is a root
 find, not a speed comparison.
 
-### Pirates (D150)
+### Pirates (D150 · D155)
 
 ```
 spawn         0.02 per seat per hour — 6/h at 300 seats, ~18 alive at any moment
-orbit         radius 400–2000, closed 3D orbit, constant speed 200–420 units/min
-              (deliberately under the rocks: a pirate must read as a ship)
-period        6 min at the inner edge to ~63 min at the outer, derived from the two
+orbit         radius 400–2000, closed 3D orbit, constant speed 88.3–166.7 units/min
+              = a Cataclysm's 106 and a Dart's 200 ÷ TRAVEL.distanceFactor (D155)
+period        15 min at the inner edge to ~142 min at the outer, derived from the two
 life          2–4 hours, then gone for good
 level weights [—, .45, .30, .18, .07]                       levels 1–4
 roster        2–5 ships, one guaranteed COMBAT hull AT the level, rest free below it
@@ -525,9 +525,9 @@ point in that window.
 
 | Instruments | p10 | median | p90 | share of the window |
 | ----------- | --- | ------ | --- | ------------------- |
-| naked eye | 14 | 23 | 29 | 33% |
-| Radar 3 | 52 | 58 | 63 | 86% |
-| Telescope 5 · Radar 5 | 62 | 65 | 67 | 97% |
+| naked eye | 13 | 21 | 27 | 31% |
+| Radar 3 | 50 | 56 | 61 | 83% |
+| Telescope 5 · Radar 5 | 60 | 64 | 66 | 95% |
 
 The naked-eye p90:p10 spread is 2.1x, the same range the fourth-power orbit draw was adopted
 to hold for asteroids — it is the same draw. **Sensor investment roughly triples
@@ -540,11 +540,35 @@ origin unless its own radius is under 750; real capitals are off-centre.
 orbit comes back round, so the rendezvous exists whether the craft is faster or slower than
 the pirate — that is what separates this from a straight-pass rock, which only a faster craft
 can meet (`galaxy.ts`, `interceptOrbit`). Measured at 100% from the centre, the mid band and
-the rim: flights of 4.5–22.5 minutes at the Dart's post-D152 speed of 200, and 10.5–57.5 at
+the rim: flights of 3.6–23.4 minutes at the Dart's post-D152 speed of 200, and 12.4–74.2 at
 the Citadel's 56, which is the slowest mobile hull the game sells.
 `packages/rules/test/pirates.test.ts` asserts it at 100% rather than at a majority, because a
 visible target you cannot reach is a refusal at the launch screen for something the disc is
 actively showing you.
+
+**Reachable was never the same as catchable, and for one release it was not (D155).** The
+speed band above read 200–420 and justified itself as "deliberately under the rocks" — rocks
+run 350–750. The comparison was against the wrong craft. A rock is chased by a Prospector at
+825; a pirate is chased by a warship at 106–231, and a hull's catalogue figure is divided by
+`TRAVEL.distanceFactor` to reach units per minute. On that one scale the old band was
+**240–504: faster than every ship in the game**. `interceptOrbit` still answered — a closed
+orbit always comes back round — but the earliest meeting was then a lap of waiting rather
+than a lead, and the owner reported the symptom the rock lane produced before D40: the fleet
+sets off somewhere unrelated.
+
+Measured over the generated lane, 288 rendezvous from four origins:
+
+| Chaser → target | median lead | share past the target | tail |
+| --------------- | ----------- | --------------------- | ---- |
+| Prospector → rock (D74, reference) | 0.232 laps · 83° | 13% | < 1 lap |
+| Dart → pirate, old 200–420 band | 0.340 laps · 122° | 74% | — |
+| Dart → pirate, D155 band | **0.138 laps · 50°** | 12% | 0.455 laps |
+
+The ceiling asserted in `pirates.test.ts` is the rock lane's own — median under a quarter
+revolution, worst case under one — so a future change to either the lane or the hull ladder
+re-measures the geometry instead of assuming it. A heavy line is deliberately left outside
+it: the floor IS a Cataclysm's pace, so anything slower than a Cataclysm buys guns at the
+cost of the chase, and hunting pirates is what the Skirmisher class is for.
 
 **"Profitable" is an equation, and it is measured rather than asserted.** `hoardValueMult` is
 swept so this is positive for a fleet composed for the target and negative for one that is

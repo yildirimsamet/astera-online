@@ -27,8 +27,9 @@ describe('a flight in the interface', () => {
     ...over,
   });
 
-  it('agrees with the strip that counts the same craft down', () => {
+  it('agrees with the strip that counts the same craft down with seconds', () => {
     const now = Date.now();
+    const expectedCountdown = countdown(arriveAt.getTime() - now);
     render(
       <ThreadFocus
         thread={thread()}
@@ -38,10 +39,11 @@ describe('a flight in the interface', () => {
         onClose={() => undefined}
       />,
     );
-    // The strip's own arithmetic, from the same instant.
-    expect(countdown(arriveAt.getTime() - now)).toMatch(/^11m/);
+    // The summary rail uses countdown() with minutes and seconds
+    expect(screen.getByText(expectedCountdown)).toBeInTheDocument();
+    // Body figure still shows duration
     expect(screen.getAllByText('11m').length).toBeGreaterThan(0);
-    // And never the figure the server rounded a poll ago.
+    // And never the figure the server rounded a poll ago
     expect(screen.queryByText('12m')).not.toBeInTheDocument();
   });
 
@@ -97,10 +99,13 @@ describe('a run of your own', () => {
       />,
     );
 
-  it('names the rock on a mining run', () => {
-    show(run());
+  it('names the rock on a mining run and shows countdown with seconds in summary', () => {
+    const r = run();
+    show(r);
     expect(screen.getByText(/level 3 rock/i)).toBeInTheDocument();
     expect(screen.getByText(/meets the rock in/i)).toBeInTheDocument();
+    const expected = countdown(r.arriveAt.getTime() - Date.now());
+    expect(screen.getByText(expected)).toBeInTheDocument();
   });
 
   it('never tells a salvage run that its rock has passed', () => {

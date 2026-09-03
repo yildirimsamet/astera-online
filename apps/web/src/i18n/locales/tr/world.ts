@@ -11,9 +11,8 @@
 export const galaxy = {
   settlementAway: "{{world}} için yerleşim görevi yola çıktı",
   deathStarAway: "Ölüm Yıldızı {{world}} yönüne fırlatıldı",
-  discLabel: "Disk",
-  serverLabel: "{{name}} ({{code}})",
   online: "{{count}} çevrimiçi",
+  onlineToday: "24 saatte {{count}}",
   worlds: "{{count}} gezegen",
   fleetAway: " · {{count}} filo dışarıda",
   rocks: " · {{count}} kaya",
@@ -259,7 +258,6 @@ export const focus = {
     probeCooling: "Buraya az önce baktın · yeni sonda {{duration}} sonra",
     markRival: "Rakip olarak işaretle",
     rivalMarkedAction: "Rakibin",
-    rivalCommittedAction: "Rakip sabitlendi",
     rivalMarked: "{{commander}} artık Rakibin.",
     rivalCleared: "{{commander}} artık Rakip olarak işaretli değil.",
     rivalHeading: "Bu sezonki hikâyeniz",

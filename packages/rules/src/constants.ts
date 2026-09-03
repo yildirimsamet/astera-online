@@ -1927,6 +1927,24 @@ export const SERVERS = {
   onlineWindowMinutes: 5,
 
   /**
+   * THE OTHER POPULATION WINDOW: how far back "was here today" reaches.
+   *
+   * A live five-minute count is the honest answer to "who is at the controls" and
+   * a misleading answer to "is this galaxy alive". Astera is played in gaps of
+   * hours across a whole day, so at any given minute most of a full galaxy is
+   * offline by construction — and a commander who opens the disc at four in the
+   * morning, sees four people and concludes the game is dead has been told the
+   * truth and misled by it.
+   *
+   * A DAY RATHER THAN A SESSION, because the thing being counted is the population
+   * of a place, not the length of a visit. It is counted off the same
+   * `players.lastActiveAt` column the live figure reads, over the same index, so
+   * the second figure costs one more `count(*)` on a query that was already being
+   * made — no table, no cache, and nothing to keep in step.
+   */
+  dayWindowMinutes: 24 * 60,
+
+  /**
    * HOW LONG A COMMANDER MAY BE AWAY BEFORE THEIR WORLD IS RECLAIMED. Owner
    * instruction: *"bir oyuncu 3 gün boyunca oyuna girmezse gezegeni silinsin ve
    * böylece serverlarda yer açılır. Pasif hesaplar birikmez."*
@@ -2034,16 +2052,43 @@ export const PIRATE = {
   lifeHoursMax: 4,
 
   /**
-   * Game units per minute along the orbit. DELIBERATELY UNDER THE ROCKS.
+   * Game units per minute along the orbit, OFF THE HULL TABLE'S OWN SCALE. D155.
    *
-   * A pirate has to read as a ship rather than as debris, and it has to be
-   * catchable often enough that a rendezvous is a plan rather than a lottery.
-   * The orbital period follows from this and the radius — six minutes at the
-   * inner edge, an hour at the outer — and that shortest period is what sets the
-   * ceiling on `bearingMs` below.
+   * THIS WAS THE ONE NUMBER IN THE FEATURE THAT WAS MEASURED AGAINST THE WRONG
+   * THING. It read 200-420 and called itself "deliberately under the rocks", which
+   * it was — rocks run 350-750. But the craft that chases a rock is a PROSPECTOR
+   * at 825, and the craft that chases a pirate is a WARSHIP at 106-231. A hull's
+   * catalogue figure is divided by `TRAVEL.distanceFactor` to get units per minute
+   * and a pirate's speed already IS units per minute, so on one scale the old band
+   * was 240-504: faster than every ship in the game, the Dart included.
+   *
+   * `interceptOrbit` was right the whole time and that was the problem. A closed
+   * orbit comes back round, so a rendezvous exists at any speed — but when the
+   * target outruns the chaser the earliest one is not a lead, it is the far side of
+   * the circle after a lap of waiting. Measured over the generated lane, a Dart's
+   * median meeting sat a third of a revolution away with three quarters of them
+   * PAST the pirate's current position. That is the exact complaint D40 and D121
+   * answered for the rocks — "the craft sets off in an unrelated direction" — and
+   * it was live on this lane from the day it shipped.
+   *
+   * SO BOTH ENDS ARE NOW READ OFF THE CATALOGUE, and are written as the conversion
+   * rather than as its result so the scale cannot be mistaken again:
+   *
+   *   · TOP — a Dart's pace. The cheapest hull in the game outruns the fastest
+   *     pirate, so whether you can catch one is never a question about your wallet.
+   *   · FLOOR — a Cataclysm's pace. A heavy line still cannot lead one, so hunting
+   *     is a genuine choice between guns and geometry, and the Skirmisher class
+   *     gets the job D148 built it for.
+   *
+   * A pirate now moves like the fleet it is rather than like a rock, which is also
+   * the honest reading of what a player is looking at. `pirates.test.ts` asserts
+   * both anchors against `HULLS` and re-measures the lead over the generated lane.
+   * The orbital period follows from this and the radius — fifteen minutes at the
+   * inner edge, two and a half hours at the outer — and that shortest period is
+   * what sets the ceiling on `bearingMs` below.
    */
-  speedMin: 200,
-  speedMax: 420,
+  speedMin: 106 / TRAVEL.distanceFactor,
+  speedMax: 200 / TRAVEL.distanceFactor,
 
   /** How far out they run. Same band and same draw as the rocks. */
   orbitMin: 400,
@@ -2053,13 +2098,15 @@ export const PIRATE = {
    * HOW FAR AHEAD A PIRATE'S MOTION IS PUBLISHED. Derived, never typed.
    *
    * `TRAFFIC.bearingMinutes` is four minutes and it was written for a STRAIGHT
-   * leg. A pirate's shortest revolution is about six minutes, so four minutes of
-   * a closed orbit is most of a lap: the straight chord the client draws between
-   * the two published points would visibly cut through the middle of the orbit.
+   * leg. A pirate's shortest revolution is about fifteen minutes since D155 slowed
+   * the lane to fleet pace, so four minutes of a closed orbit is a quarter of a
+   * lap: the straight chord the client draws between the two published points
+   * would visibly cut through the middle of the orbit.
    *
-   * Ten seconds is under seven degrees of arc at the very worst radius, which no
+   * Ten seconds is under three degrees of arc at the very worst radius, which no
    * eye separates from the curve, and the client's own coasting margin covers a
-   * late read. IT MAY NEVER GO BELOW `TRAFFIC.refreshMs`: a window shorter than
+   * late read. It was under seven before D155 and the slower lane only widened the
+   * margin — this floor is set by the refetch interval, never by the speed. IT MAY NEVER GO BELOW `TRAFFIC.refreshMs`: a window shorter than
    * one refetch is a window that names a destination, and CLAUDE.md records that
    * this project has already shipped that bug once. Written as a MULTIPLE of the
    * poll interval so the two cannot drift apart again.

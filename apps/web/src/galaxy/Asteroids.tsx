@@ -4,7 +4,7 @@ import { useGLTF } from '@react-three/drei';
 import * as THREE from 'three';
 import type { AsteroidView } from '../api/schemas.js';
 import { ASTEROID_MODELS } from '../ui/assets.js';
-import { asteroidRadius, asteroidVisualSeed, asteroidWorldPosition, toWorld } from './scene.js';
+import { asteroidRadius, asteroidVisualSeed, asteroidWorldPosition } from './scene.js';
 import { unitModel } from './model.js';
 import { markHit, wasTap } from './tap.js';
 import { serverNow } from '../lib/clock.js';
@@ -631,61 +631,5 @@ function Tails({
         frustumCulled={false}
       />
     </>
-  );
-}
-
-/**
- * The straight line a mining squadron is flying, and the point it is aimed at.
- *
- * Drawn because the interception is the single least obvious thing in the game: a
- * craft heading for empty space looks like a bug until you see the rock arrive
- * there. The marker is the explanation.
- */
-export function InterceptMarks({
-  runs,
-}: {
-  runs: readonly { intercept: { x: number; y: number; z: number }; status: string }[];
-}) {
-  const points = useMemo(
-    () => runs.filter((r) => r.status === 'outbound').map((r) => toWorld(r.intercept)),
-    [runs],
-  );
-  const ring = useRef<THREE.Group>(null);
-
-  useFrame(({ clock }) => {
-    /**
-     * A slow pulse, so it reads as a target being held rather than as a decal.
-     *
-     * EACH RING, NEVER THE GROUP. Scaling the parent scaled its children's
-     * POSITIONS too, about the galaxy's origin — so a marker fifty units out swung
-     * six units back and forth every cycle and read as a target sliding around
-     * rather than breathing. Scaling each mesh applies about that mesh's own
-     * centre, which is what a pulse means.
-     *
-     * The amplitude came down with the fix (owner call): the old figure was doing
-     * two jobs at once, and once the swing is gone what is left only has to be
-     * enough to say the marker is live.
-     */
-    const s = 1 + Math.sin(clock.elapsedTime * 1.6) * 0.05;
-    for (const mark of ring.current?.children ?? []) mark.scale.setScalar(s);
-  });
-
-  if (points.length === 0) return null;
-
-  return (
-    <group ref={ring}>
-      {points.map((at, i) => (
-        <mesh key={i} position={at} rotation={[Math.PI / 2, 0, 0]}>
-          <ringGeometry args={[0.22, 0.26, 24]} />
-          <meshBasicMaterial
-            color="#d9a441"
-            transparent
-            opacity={0.75}
-            side={THREE.DoubleSide}
-            depthWrite={false}
-          />
-        </mesh>
-      ))}
-    </group>
   );
 }

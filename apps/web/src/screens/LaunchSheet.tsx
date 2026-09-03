@@ -1,6 +1,7 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
+  COMBAT_HULLS,
   HULLS,
   fleetCount,
   fleetPower,
@@ -22,7 +23,9 @@ import {
   planRoute,
   techOf,
 } from '../lib/navigation.js';
+import { familyGroups } from '../lib/roster.js';
 import { StatStrip } from '../ui/Action.js';
+import { Band } from '../ui/UpgradeRow.js';
 import { CapacityBar } from '../ui/CapacityBar.js';
 import { SpendBar } from '../ui/SpendBar.js';
 import { HULL_ART } from '../ui/assets.js';
@@ -69,11 +72,22 @@ export function LaunchSheet({
   planet,
   onClose,
   onLaunched,
+  onAim,
 }: {
   target: LaunchTarget;
   planet: PlanetView;
   onClose: () => void;
   onLaunched: () => void;
+  /**
+   * WHERE THE CHOSEN WING WOULD MEET A MOVING TARGET, for the disc to draw. D155.
+   *
+   * Reported upward rather than drawn here because the rendezvous is a point in
+   * the galaxy and this is a sheet over it — the same division `InterceptMarks`
+   * already keeps for a mining run. `null` whenever there is nothing to draw:
+   * nothing selected, a wing that cannot make it, or a target that IS an address
+   * and is therefore already on screen with a label under it.
+   */
+  onAim?: (at: { x: number; y: number; z: number } | null) => void;
 }) {
   const { t } = useTranslation();
   const launch = useLaunch();
@@ -101,6 +115,24 @@ export function LaunchSheet({
     : planRoute(
         planet.planet.position, target.world.position, sending, planet.fleet, planet.ground, tech,
       );
+  const aim = route?.rendezvous ?? null;
+  /**
+   * HAND THE AIM POINT TO THE DISC, AND TAKE IT BACK ON THE WAY OUT.
+   *
+   * The cleanup is the load-bearing half: a mark left behind by a closed sheet is
+   * a target sitting on the galaxy as though the player had committed to it. It
+   * runs on unmount and on every change of the point, so the disc holds at most
+   * one, and it is always the one this selection would actually fly to.
+   *
+   * Depends on the COORDINATES rather than on the object, because `route` is
+   * rebuilt on every render and an object identity would republish the same point
+   * on each keystroke in the picker.
+   */
+  useEffect(() => {
+    onAim?.(aim);
+    return () => { onAim?.(null); };
+  }, [onAim, aim?.x, aim?.y, aim?.z]);
+
   const total = fleetCount(sending);
   /**
    * A LAUNCH TAKES A FLIGHT BAY, and this screen never said so. D28.
@@ -123,11 +155,29 @@ export function LaunchSheet({
     helper both planners use, so the two figures cannot drift on one screen.
   */
   const holding = homeDefenceAfter(planet.fleet, planet.ground, sending);
+  /**
+   * A RAID AT A WORLD NEEDS SOMETHING THAT CAN FIGHT. Owner report.
+   *
+   * `launchAttack` refuses a fleet with no combat hull in it — `NOT_A_WARSHIP`,
+   * thrown before the transaction even opens — and this sheet did not, so a
+   * commander could pack a hold of Couriers, press the one irreversible control
+   * in the game, sit through the confirmation step and learn the rule from a red
+   * toast. Every other reason this commitment can be refused is already stated on
+   * the button before it is pressed; this one was the exception.
+   *
+   * A PIRATE IS NOT THE SAME TARGET. `launchPirateRaid` takes any mobile hull —
+   * sending cargo at a pirate is a bad decision, not an illegal one — so the
+   * refusal is scoped to the target that actually carries it.
+   */
+  const needsWarship = target.kind === 'world'
+    && total > 0
+    && !COMBAT_HULLS.some((hull) => (sending[hull] ?? 0) > 0);
   const canSend = total > 0
     && route !== null
     && route.oneWayMinutes > 0
     && !tooLate
     && baysFree > 0
+    && !needsWarship
     // The server refuses this too; offering a control that cannot work is worse
     // than refusing early, because it teaches a rule that is not true.
     && route.fuel <= planet.planet.deuterium;
@@ -207,6 +257,92 @@ export function LaunchSheet({
   const recordAge = target.kind === 'world'
     ? recordAgeMinutes(target.world, serverNow())
     : null;
+
+  /**
+   * ONE HULL'S ROW IN THE PICKER: the ship, the four numbers, and the stepper.
+   *
+   * Lifted out of the list so the bands above it are the only thing the layout
+   * says — a family loop that also carried eighty lines of row markup would make
+   * the grouping the hardest thing on the screen to read.
+   */
+  const row = (hull: MobileHullId) => {
+    const available = planet.fleet[hull] ?? 0;
+    const chosen = sending[hull] ?? 0;
+    if (available === 0) return null;
+    return (
+      <div
+        key={hull}
+        className={`border-b border-line-soft py-3 px-1 ${chosen > 0 ? 'bg-crystal/[0.05]' : ''}`}
+      >
+        {/*
+          THE SHIP, NOT ITS NAME.
+          This picker used to be a name and a speed, which is the one place
+          in the game a player is actually choosing between hulls and the one
+          place they were given nothing to choose WITH. The counter cycle is
+          the whole of combat, and it is decided by these four numbers.
+        */}
+        <div className="flex items-center gap-3">
+          <div data-art className="socket size-12 shrink-0 rounded-control">
+            {HULL_ART[hull] ? (
+              <img
+                src={HULL_ART[hull]}
+                alt=""
+                aria-hidden
+                className="size-11 object-contain"
+                loading="lazy"
+              />
+            ) : (
+              <HullMark hull={hull} className="size-7 text-dim" />
+            )}
+          </div>
+
+          <div className="min-w-0 flex-1">
+            <div className="flex items-baseline gap-2">
+              <p className="name text-bone">
+                {hullLabel(hull)}
+              </p>
+              <span className="num text-label text-faint">
+                {t('launch.atHome', { count: available })}
+              </span>
+            </div>
+            <div className="mt-1">
+              <StatStrip
+                atk={HULLS[hull].atk}
+                hp={HULLS[hull].hp}
+                speed={HULLS[hull].speed}
+                cargo={HULLS[hull].cargo}
+                fuel={hullFuelRate(hull)}
+              />
+            </div>
+          </div>
+        </div>
+
+        <div className="mt-2">
+          <QuantityStepper
+            value={chosen}
+            min={0}
+            max={available}
+            onChange={(value) => { set(hull, value); }}
+            decreaseLabel={t('launch.fewer', { name: hullLabel(hull) })}
+            increaseLabel={t('launch.more', { name: hullLabel(hull) })}
+            valueLabel={t('launch.quantity', { name: hullLabel(hull) })}
+            editable
+            maxLabel={t('launch.max', { name: hullLabel(hull) })}
+            maxText={t('launch.maxShort')}
+          />
+        </div>
+      </div>
+    );
+  };
+
+  /**
+   * THE PICKER'S BANDS. Owner instruction.
+   *
+   * Only what is standing on this world, grouped by the roster's own families, so
+   * a commander reads Offensive, Defensive, Special, Cargo here exactly as they do
+   * in the shipyard. A family this world has nothing of gets no heading.
+   */
+  const groups = familyGroups(MOBILE.filter((hull) => (planet.fleet[hull] ?? 0) > 0));
 
   return (
     <Sheet
@@ -344,7 +480,9 @@ export function LaunchSheet({
                     ? t('launch.tooLate')
                     : route.fuel > planet.planet.deuterium
                       ? t('launch.noFuel')
-                      : t('launch.send', { count: total })}
+                      : needsWarship
+                        ? t('launch.noEscort')
+                        : t('launch.send', { count: total })}
           </Button>
         )
       }
@@ -523,75 +661,20 @@ export function LaunchSheet({
             </span>
           </div>
         )}
-        {MOBILE.map((hull) => {
-          const available = planet.fleet[hull] ?? 0;
-          const chosen = sending[hull] ?? 0;
-          if (available === 0) return null;
-          return (
-            <div
-              key={hull}
-              className={`border-b border-line-soft py-3 px-1 ${chosen > 0 ? 'bg-crystal/[0.05]' : ''}`}
-            >
-              {/*
-                THE SHIP, NOT ITS NAME.
-                This picker used to be a name and a speed, which is the one place
-                in the game a player is actually choosing between hulls and the one
-                place they were given nothing to choose WITH. The counter cycle is
-                the whole of combat, and it is decided by these four numbers.
-              */}
-              <div className="flex items-center gap-3">
-                <div data-art className="socket size-12 shrink-0 rounded-control">
-                  {HULL_ART[hull] ? (
-                    <img
-                      src={HULL_ART[hull]}
-                      alt=""
-                      aria-hidden
-                      className="size-11 object-contain"
-                      loading="lazy"
-                    />
-                  ) : (
-                    <HullMark hull={hull} className="size-7 text-dim" />
-                  )}
-                </div>
+        {groups.map(({ family, hulls }) => (
+          <section key={family} data-fleet-family={family}>
+            {/*
+              THE SAME BAND, IN THE SAME ORDER, AS THE TAB THESE SHIPS WERE BOUGHT ON.
 
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-baseline gap-2">
-                    <p className="name text-bone">
-                      {hullLabel(hull)}
-                    </p>
-                    <span className="num text-label text-faint">
-                      {t('launch.atHome', { count: available })}
-                    </span>
-                  </div>
-                  <div className="mt-1">
-                    <StatStrip
-                      atk={HULLS[hull].atk}
-                      hp={HULLS[hull].hp}
-                      speed={HULLS[hull].speed}
-                      cargo={HULLS[hull].cargo}
-                      fuel={hullFuelRate(hull)}
-                    />
-                  </div>
-                </div>
-              </div>
-
-              <div className="mt-2">
-                <QuantityStepper
-                  value={chosen}
-                  min={0}
-                  max={available}
-                  onChange={(value) => { set(hull, value); }}
-                  decreaseLabel={t('launch.fewer', { name: hullLabel(hull) })}
-                  increaseLabel={t('launch.more', { name: hullLabel(hull) })}
-                  valueLabel={t('launch.quantity', { name: hullLabel(hull) })}
-                  editable
-                  maxLabel={t('launch.max', { name: hullLabel(hull) })}
-                  maxText={t('launch.maxShort')}
-                />
-              </div>
-            </div>
-          );
-        })}
+              No note under it. On the shipyard tab a band teaches what a family is
+              for, because that is where the hull is chosen for good; here the
+              player already owns them and is picking a wing under a clock. The
+              label alone is what carries over.
+            */}
+            <Band label={t(`planet.reach.family.${family}.label`)} />
+            {hulls.map(row)}
+          </section>
+        ))}
         {atHome === 0 && <p className="text-body text-dim">{t('launch.noShips')}</p>}
       </div>
 

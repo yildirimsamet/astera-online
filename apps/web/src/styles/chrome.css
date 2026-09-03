@@ -1068,7 +1068,20 @@
 /* ── combat statistics ───────────────────────────────────────── */
 
 .stats { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
-.stats-card { gap: 16px; }
+/*
+  THE CARD FORM IS A GRID, NOT A WRAPPING ROW. Owner instruction.
+
+  Six figures on a flex row broke wherever the corner they sit in happened to be
+  narrow — four and two on one hull, three and three on the next — so two ship
+  cards could not be compared by position. Three columns and two rows is the same
+  shape on every hull, which is the whole job of a stat block.
+*/
+.stats-card {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px 16px;
+  align-items: start;
+}
 
 .stat { display: inline-flex; align-items: center; gap: 5px; }
 .stat-icon { display: inline-flex; opacity: 0.9; }
@@ -1088,6 +1101,12 @@
 .stat-cargo  .stat-icon { color: var(--color-alloy); }
 /* The fuel mark is the painted deuterium render, so it carries its own colour. */
 .stat-fuel   .stat-icon { color: var(--color-deuterium); }
+/*
+  Hangar room is the only figure here that is a LIMIT rather than a capability, so
+  it takes the interface's word for a ceiling rather than a resource hue — nothing
+  on this strip should read as if buying a bigger number were the goal.
+*/
+.stat-room   .stat-icon { color: var(--color-dim); }
 
 /* ── price ───────────────────────────────────────────────────── */
 

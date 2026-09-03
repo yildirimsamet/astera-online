@@ -33,9 +33,9 @@ const identified = (over: Partial<PirateContact> = {}): PirateContact => ({
   expiresInMinutes: 180,
   reachMinutes: 12,
   reach: [
-    { hull: 'DART', minutes: 12, distance: 900 },
-    { hull: 'COURIER', minutes: 20, distance: 900 },
-    { hull: 'RAMPART', minutes: 40, distance: 900 },
+    { hull: 'DART', minutes: 12, distance: 900, at: { x: 900, y: 0, z: 0 } },
+    { hull: 'COURIER', minutes: 20, distance: 900, at: { x: 900, y: 0, z: 0 } },
+    { hull: 'RAMPART', minutes: 40, distance: 900, at: { x: 900, y: 0, z: 0 } },
   ],
   level: 3,
   fleet: { TEMPEST: 1, DART: 2 },

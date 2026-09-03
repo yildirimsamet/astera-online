@@ -309,13 +309,13 @@ describe('the reach surface', () => {
 
   it('groups all eighteen ships by family and tier, then puts the preserved miner last', () => {
     show({ buildings: { CORE: 9, REFINERY: 3, EXTRACTOR: 3, VAULT: 1, SHIPYARD: 6 } }, 'reach');
-    const [offensive = -1, defensive = -1, cargo = -1, specialist = -1, mining = -1] =
-      bodyOrder(['Offensive hulls', 'Defensive hulls', 'Cargo hulls', 'Specialist hulls', 'Mining']);
+    const [offensive = -1, defensive = -1, specialist = -1, cargo = -1, mining = -1] =
+      bodyOrder(['Offensive hulls', 'Defensive hulls', 'Specialist hulls', 'Cargo hulls', 'Mining']);
     expect(offensive).toBeGreaterThan(-1);
     expect(defensive).toBeGreaterThan(offensive);
-    expect(cargo).toBeGreaterThan(defensive);
-    expect(specialist).toBeGreaterThan(cargo);
-    expect(mining).toBeGreaterThan(specialist);
+    expect(specialist).toBeGreaterThan(defensive);
+    expect(cargo).toBeGreaterThan(specialist);
+    expect(mining).toBeGreaterThan(cargo);
 
     for (const id of FLEET_V2_HULLS) {
       const item = document.querySelector(`[data-hull-id="${id}"]`);

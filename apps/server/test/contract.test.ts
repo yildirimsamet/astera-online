@@ -803,6 +803,74 @@ describe('every payload the client parses', () => {
     }
   });
 
+  /**
+   * THE POINT THE FLEET IS ACTUALLY AIMED AT, ON THE WIRE. D155.
+   *
+   * `reach` already carried the minute and the leg length, and the player still could
+   * not see WHERE any of it was: they committed a bay, both legs of fuel and a
+   * frozen doctrine to a coordinate the payload never named, and then watched the
+   * squadron fly off at an angle to the pirate on the disc. D124 calls that a rule
+   * the player cannot see, and D142 says a quantity a player has to judge is
+   * DRAWN, not only written — the mining lane has drawn its rendezvous since D40.
+   *
+   * IT IS NOT A NEW READING. `distance` and `minutes` were already published for
+   * every hull at this world, off a pirate the caller can currently SEE, and the
+   * two of them pin the point already. This states it instead of implying it.
+   */
+  it('GET /api/pirates names the rendezvous each hull would fly to', async () => {
+    const { HULLS, distance, interceptOrbit, piratePosition, pirateActive, sensorSphere, sensorZone } =
+      await import('@astera/rules');
+    const [season] = await f.db.select().from(seasons).where(eq(seasons.id, f.seasonId));
+    const field = privatePirateField(season!.asteroidKey);
+    const [world] = await f.db.select().from(planets).where(eq(planets.id, f.planetIds[0]!));
+    const origin = { x: world!.x, y: world!.y, z: world!.z };
+    const eye = sensorSphere(origin, 0, 0, f.planetIds[0]);
+
+    let found: { index: number; minute: number } | null = null;
+    outer: for (const spec of field) {
+      for (let minute = Math.ceil(spec.appearsAt) + 1; minute < spec.expiresAt; minute += 1) {
+        if (!pirateActive(spec, minute)) continue;
+        if (sensorZone([eye], piratePosition(spec, minute)) === 'NONE') continue;
+        found = { index: spec.index, minute };
+        break outer;
+      }
+    }
+    expect(found).not.toBeNull();
+    f.clock.set(new Date(season!.startsAt.getTime() + found!.minute * 60_000));
+    await giveUnits(f.db, f.planetIds[0]!, { DART: 5 });
+
+    const parsed = piratesSchema.parse(await get('/api/pirates'));
+    const seen = parsed.pirates.find((p) => p.id === pirateId(season!.asteroidKey, found!.index));
+    expect(seen, 'the pirate was not on the payload at all').toBeDefined();
+    const row = seen!.reach.find((entry) => entry.hull === 'DART');
+    expect(row, 'a Dart stands at this world and could not be quoted').toBeDefined();
+
+    // The same solve the launch will run, from the same two coordinates.
+    const spec = field[found!.index]!;
+    const solved = interceptOrbit(
+      origin,
+      HULLS.DART.speed,
+      (m) => piratePosition(spec, m),
+      spec.expiresAt,
+      found!.minute,
+    );
+    expect(solved).not.toBeNull();
+    expect(row!.at.x).toBeCloseTo(solved!.at.x, 6);
+    expect(row!.at.y).toBeCloseTo(solved!.at.y, 6);
+    expect(row!.at.z).toBeCloseTo(solved!.at.z, 6);
+    // And it is the leg the fuel quote is charged against, so the two agree.
+    expect(distance(origin, row!.at)).toBeCloseTo(row!.distance, 6);
+    // The pirate is really there when the fleet is: a meeting, not a heading.
+    expect(distance(piratePosition(spec, found!.minute + row!.minutes), row!.at))
+      .toBeLessThan(1e-6);
+
+    // A point is not an orbit. Those five numbers remain the route.
+    const wire = JSON.stringify(seen);
+    for (const forbidden of ['radius', 'period', 'phase', 'inclination', 'ascendingNode']) {
+      expect(wire).not.toContain(forbidden);
+    }
+  });
+
   it('POST /api/pirates/raid parses, and answers with the strip and the world', async () => {
     const { piratePosition, pirateActive, sensorSphere, sensorZone } = await import('@astera/rules');
     const [season] = await f.db.select().from(seasons).where(eq(seasons.id, f.seasonId));

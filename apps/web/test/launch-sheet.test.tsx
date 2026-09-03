@@ -85,6 +85,106 @@ describe('choosing a fleet to attack with', () => {
 });
 
 /**
+ * THE PICKER IS GROUPED THE WAY THE SHIPYARD IS. Owner instruction.
+ *
+ * Committing a fleet is the one irreversible control in the game, and it offered a
+ * flat tier-ordered list — so the counter cycle, which is the whole of combat, had
+ * to be reconstructed hull by hull from four numbers on each row. The bands say
+ * what a row is FOR before the player reads what it costs, and they are the same
+ * four bands, in the same order, as the tab the ships were bought on.
+ */
+describe('the picker is banded by what a hull is for', () => {
+  const bandOrder = () =>
+    [...document.querySelectorAll('[data-fleet-family]')].map(
+      (node) => node.getAttribute('data-fleet-family'),
+    );
+
+  it('bands a world raid Offensive, Defensive, Special, Cargo', () => {
+    render(
+      <LaunchSheet
+        target={{ kind: 'world', world: target }}
+        planet={planetView(
+          { fleet: { DART: 4, RAMPART: 2, NULLIFIER: 1, COURIER: 3 } },
+          { deuterium: 500_000 },
+        )}
+        onClose={vi.fn()}
+        onLaunched={vi.fn()}
+      />,
+      { wrapper },
+    );
+
+    expect(bandOrder()).toEqual(['OFFENSIVE', 'DEFENSIVE', 'SPECIALIST', 'CARGO']);
+    expect(screen.getByText('Offensive hulls')).toBeInTheDocument();
+    expect(screen.getByText('Specialist hulls')).toBeInTheDocument();
+  });
+
+  it('bands a pirate raid the same way, off the same order', () => {
+    render(
+      <LaunchSheet
+        target={{
+          kind: 'pirate',
+          pirate: {
+            id: 'pirate-2',
+            callsign: 'VEX9',
+            zone: 'IDENTIFIED' as const,
+            at: { x: 400, y: 0, z: 0 },
+            expiresInMinutes: 180,
+            reachMinutes: 12,
+            reach: [{ hull: 'DART' as const, minutes: 12, distance: 900, at: { x: 900, y: 0, z: 0 } }],
+            level: 2,
+            fleet: { VIPER: 3 },
+            damageMult: 0.65,
+            mass: 'MEDIUM' as const,
+          },
+        }}
+        planet={planetView({ fleet: { DART: 4, COURIER: 1 } }, { deuterium: 500_000 })}
+        onClose={vi.fn()}
+        onLaunched={vi.fn()}
+      />,
+      { wrapper },
+    );
+
+    expect(bandOrder()).toEqual(['OFFENSIVE', 'CARGO']);
+  });
+
+  /** A band is a heading for rows that exist; an empty one is a lie about the fleet. */
+  it('heads no band for a family the world has nothing of', () => {
+    render(
+      <LaunchSheet
+        target={{ kind: 'world', world: target }}
+        planet={planetView({ fleet: { DART: 4 } }, { deuterium: 500_000 })}
+        onClose={vi.fn()}
+        onLaunched={vi.fn()}
+      />,
+      { wrapper },
+    );
+
+    expect(bandOrder()).toEqual(['OFFENSIVE']);
+    expect(screen.queryByText('Cargo hulls')).not.toBeInTheDocument();
+  });
+
+  /** Every hull still keeps its own row: a band groups the picker, it never trims it. */
+  it('keeps one row per hull standing at home', () => {
+    render(
+      <LaunchSheet
+        target={{ kind: 'world', world: target }}
+        planet={planetView(
+          { fleet: { DART: 4, PIKE: 1, RAMPART: 2, COURIER: 3 } },
+          { deuterium: 500_000 },
+        )}
+        onClose={vi.fn()}
+        onLaunched={vi.fn()}
+      />,
+      { wrapper },
+    );
+
+    for (const name of [/dart quantity/i, /pike quantity/i, /rampart quantity/i, /courier quantity/i]) {
+      expect(screen.getByRole('textbox', { name })).toBeInTheDocument();
+    }
+  });
+});
+
+/**
  * WHAT IS ALREADY IN THE AIR. Owner report.
  *
  * The sheet offers what is standing on the world, which is correct — nothing in
@@ -386,8 +486,8 @@ describe('committing a fleet at a pirate', () => {
     expiresInMinutes: 180,
     reachMinutes: 12,
     reach: [
-      { hull: 'DART', minutes: 12, distance: 900 },
-      { hull: 'RAMPART', minutes: 44, distance: 1500 },
+      { hull: 'DART', minutes: 12, distance: 900, at: { x: 900, y: 0, z: 0 } },
+      { hull: 'RAMPART', minutes: 44, distance: 1500, at: { x: 0, y: 0, z: 1500 } },
     ],
     level: 2,
     fleet: { VIPER: 3, COURIER: 1 },
@@ -471,7 +571,7 @@ describe('committing a fleet at a pirate', () => {
    * helpless when what they need to do is leave the slow hull behind.
    */
   it('refuses a fleet whose slowest ship cannot make the rendezvous', async () => {
-    open(pirate({ reach: [{ hull: 'DART', minutes: 12, distance: 900 }] }));
+    open(pirate({ reach: [{ hull: 'DART', minutes: 12, distance: 900, at: { x: 900, y: 0, z: 0 } }] }));
     const user = userEvent.setup();
     await user.click(screen.getByRole('button', { name: /max.*dart/i }));
     await user.click(screen.getByRole('button', { name: /max.*rampart/i }));
@@ -504,6 +604,50 @@ describe('committing a fleet at a pirate', () => {
     expect(screen.getByRole('button', { name: /send/i })).toBeEnabled();
   });
 
+  /**
+   * AND THE DISC IS TOLD WHERE THE FLEET WOULD GO. D124 · D155.
+   *
+   * Every figure on this sheet was a number in a box: "44 minutes, 1,500 units"
+   * about a coordinate nothing on screen named. A pirate is on a closed orbit, so
+   * the wing flies to a point AHEAD of the contact the player tapped — and with
+   * nothing drawn there, the launch read as the squadron setting off somewhere
+   * unrelated. The mining lane has marked its rendezvous since D40.
+   *
+   * IT FOLLOWS THE SELECTION, because the rendezvous does: adding a slow hull
+   * moves the whole wing's meeting point, which is the single most surprising
+   * consequence of the picker and the one worth SEEING rather than reading.
+   *
+   * AND IT IS CLEARED ON THE WAY OUT. A mark left behind by a closed sheet is a
+   * target the player never committed to, sitting on the disc as though they had.
+   */
+  it('tells the disc where the chosen wing would meet it', async () => {
+    const onAim = vi.fn();
+    const { unmount } = render(
+      <LaunchSheet
+        target={{ kind: 'pirate', pirate: pirate() }}
+        planet={planetView({ fleet: { DART: 20, RAMPART: 2 } }, { deuterium: 500_000 })}
+        onClose={vi.fn()}
+        onLaunched={vi.fn()}
+        onAim={onAim}
+      />,
+      { wrapper },
+    );
+    const user = userEvent.setup();
+
+    // Nothing selected is nothing to draw: there is no rendezvous yet.
+    expect(onAim).toHaveBeenLastCalledWith(null);
+
+    await user.click(screen.getByRole('button', { name: /max.*dart/i }));
+    expect(onAim).toHaveBeenLastCalledWith({ x: 900, y: 0, z: 0 });
+
+    // The slow hull drags the meeting point with it.
+    await user.click(screen.getByRole('button', { name: /max.*rampart/i }));
+    expect(onAim).toHaveBeenLastCalledWith({ x: 0, y: 0, z: 1500 });
+
+    unmount();
+    expect(onAim).toHaveBeenLastCalledWith(null);
+  });
+
   /** The bet is the same bet, so the last screen before it says the same thing. */
   it('keeps the confirmation step and the fleetsave line', async () => {
     open(pirate());
@@ -513,5 +657,56 @@ describe('committing a fleet at a pirate', () => {
 
     expect(screen.getByText(/ships in flight cannot be raided/i)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /back/i })).toBeInTheDocument();
+  });
+});
+
+/**
+ * A CONTROL THAT CANNOT WORK MUST NOT BE OFFERED. `interface.md` I1.
+ *
+ * `launchAttack` refuses a fleet with no combat hull in it — `NOT_A_WARSHIP`,
+ * checked before the transaction opens — and this sheet let the commander pack a
+ * hold of Couriers, press the irreversible control, sit through the confirmation
+ * step and learn the rule from a red toast. It is the same failure the bay and
+ * the fuel refusals were given their own lines for: every other reason this
+ * commitment can be refused is stated on the button before it is pressed.
+ */
+describe('a fleet that cannot fight', () => {
+  const packAll = async (hull: string) => {
+    const user = userEvent.setup();
+    await user.click(screen.getByRole('button', { name: new RegExp(`max ${hull}`, 'i') }));
+  };
+
+  it('refuses a hold of cargo hulls, on the button, before it is pressed', async () => {
+    render(
+      <LaunchSheet
+        target={{ kind: 'world', world: target }}
+        planet={planetView({ fleet: { COURIER: 3 } }, { deuterium: 5_000 })}
+        onClose={vi.fn()}
+        onLaunched={vi.fn()}
+      />,
+      { wrapper },
+    );
+    await packAll('courier');
+
+    const commit = screen.getByRole('button', { name: /warship|send/i });
+    expect(commit).toBeDisabled();
+    expect(commit).toHaveTextContent(/add a warship/i);
+  });
+
+  it('accepts the same hold the moment one warship joins it', async () => {
+    render(
+      <LaunchSheet
+        target={{ kind: 'world', world: target }}
+        planet={planetView({ fleet: { COURIER: 3, DART: 1 } }, { deuterium: 5_000 })}
+        onClose={vi.fn()}
+        onLaunched={vi.fn()}
+      />,
+      { wrapper },
+    );
+    await packAll('courier');
+    await packAll('dart');
+
+    const commit = screen.getByRole('button', { name: /send/i });
+    expect(commit).toBeEnabled();
   });
 });

@@ -7,6 +7,7 @@ import {
   MOBILE_HULLS,
   PIRATE,
   TRAFFIC,
+  TRAVEL,
   asteroidOrbitRadius,
   distance,
   fleetCount,
@@ -38,6 +39,15 @@ const LEVELS: readonly PirateLevel[] = [1, 2, 3, 4];
 
 const schedule = (seed = 7, span = 60 * 24): PirateSpec[] =>
   generatePirateSchedule(mulberry32(seed), span);
+
+/** Middle of a sorted sample. The lead measurements below are medians, not means. */
+const median = (values: readonly number[]): number => {
+  const sorted = [...values].sort((a, b) => a - b);
+  return sorted[Math.floor(sorted.length / 2)]!;
+};
+
+/** Every hull that flies and is built to chase — the pirate-hunting class. */
+const skirmishers = MOBILE_HULLS.filter((id) => HULLS[id].cls === 'SKIRMISHER');
 
 /**
  * KORSAN FİLOLARI — D150.
@@ -87,6 +97,46 @@ describe('the pirate table', () => {
     expect(total).toBeCloseTo(1, 10);
     expect(PIRATE.levelWeights[0]).toBe(0);
     expect(PIRATE.levelWeights).toHaveLength(5);
+  });
+
+  it('flies at a pace off the hull table, so a raid can cut it off', () => {
+    /*
+      THE BAND IS THE HULL TABLE'S OWN, AND THAT IS THE WHOLE OF D155.
+
+      It used to be 200-420 units per minute, chosen "deliberately under the rocks"
+      — but the craft that chases a rock is a Prospector at 825, and the craft that
+      chases a pirate is a warship at 106-231. On the hull table's scale the old
+      band was 240-504: FASTER THAN EVERY SHIP IN THE GAME. So `interceptOrbit`
+      answered correctly and the answer was never a lead — it was the far side of
+      the orbit, one lap of waiting, and the owner reported it exactly as the rock
+      lane was once reported: the fleet sets off somewhere unrelated.
+
+      Both ends are read off the catalogue rather than typed, because a number
+      typed here is a number that stops meaning what it says the next time D152
+      moves the ladder — which is precisely what happened to the old figure.
+
+        · TOP: a Dart's pace. The cheapest ship in the game outruns the fastest
+          pirate, so "can I catch it" is never a question about your wallet.
+        · FLOOR: a Cataclysm's pace. A heavy line cannot lead one, so the chase is
+          a real choice between guns and geometry rather than a free win.
+
+      EVERY COMPARISON HERE IS IN UNITS PER MINUTE, which is the scale a pirate's
+      `speed` is already on. `travelExact` divides a hull's catalogue figure by
+      `distanceFactor` to reach it, so that division is the comparison — and
+      leaving it out is exactly how the two scales came to be confused.
+    */
+    expect(PIRATE.speedMax).toBeCloseTo(HULLS.DART.speed / TRAVEL.distanceFactor, 9);
+    expect(PIRATE.speedMin).toBeCloseTo(HULLS.CATACLYSM.speed / TRAVEL.distanceFactor, 9);
+    expect(PIRATE.speedMin).toBeLessThan(PIRATE.speedMax);
+
+    // The hunting class outruns every pirate the lane can draw, at every rung.
+    expect(skirmishers.length).toBeGreaterThan(2);
+    for (const id of skirmishers) {
+      expect(HULLS[id].speed / TRAVEL.distanceFactor).toBeGreaterThanOrEqual(PIRATE.speedMax);
+    }
+    // And a heavy line does not: the floor IS the heaviest striker's pace, so
+    // anything slower than a Cataclysm is buying guns at the cost of the chase.
+    expect(HULLS.CITADEL.speed / TRAVEL.distanceFactor).toBeLessThan(PIRATE.speedMin);
   });
 
   it('derives its published window from the client poll interval and never below it', () => {
@@ -456,6 +506,48 @@ describe('the shared orbit solver', () => {
         }
       }
     }
+  });
+
+  it('aims ahead of a pirate rather than a lap behind it', () => {
+    /*
+      THE MIRROR OF THE ROCK LANE'S LEAD TEST, and it is the same design rule.
+
+      `invariants.test.ts` holds a drill's aim point under a QUARTER revolution at
+      the median, because a craft that has to wait for another lap reads as a craft
+      flying somewhere unrelated — the owner reported that about the rocks, D40 and
+      D121 fixed it, and the ceiling has been asserted ever since. Nothing held the
+      same line on this lane, and the same bug duly appeared here: at the old speed
+      band the median meeting was a third of a lap away with three quarters of them
+      past the pirate's own position.
+
+      Measured over the generated lane rather than a fixture, so a future change to
+      the lane re-measures the geometry instead of assuming it.
+    */
+    const field = schedule(11, 60 * 12);
+    const origins = [
+      { x: 0, y: 0, z: 0 },
+      { x: 1000, y: 0, z: 0 },
+      { x: 1900, y: 200, z: 0 },
+      { x: -1400, y: -120, z: 900 },
+    ];
+    const laps: number[] = [];
+    for (const from of origins) {
+      for (const spec of field.slice(0, 120)) {
+        const now = spec.appearsAt + 0.25;
+        const hit = interceptOrbit(
+          from, HULLS.DART.speed, (m) => piratePosition(spec, m), spec.expiresAt, now,
+        );
+        if (!hit) continue;
+        laps.push(hit.flightMinutes / spec.period);
+      }
+    }
+    expect(laps.length).toBeGreaterThan(200);
+    // A lead at all: a fleet aimed at where the pirate IS would meet empty space.
+    expect(median(laps)).toBeGreaterThan(0);
+    // And a lead shot rather than a lap of waiting — the rock lane's own ceiling.
+    expect(median(laps)).toBeLessThan(0.25);
+    // A median hides a tail, and one baffling launch is the memory that sticks.
+    expect(Math.max(...laps)).toBeLessThan(1);
   });
 
   it('refuses a meeting that would land after the pirate is gone', () => {

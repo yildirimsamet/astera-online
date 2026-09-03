@@ -53,23 +53,33 @@ describe('seasonal rival marker', () => {
     expect(rivalSetSchema.parse((await set(f.planetIds[1]!)).json())).toEqual({
       rivalPlanetId: f.planetIds[1],
       rivalPlayerId: f.playerIds[1],
-      rivalCommitted: false,
     });
     expect(rivalSetSchema.parse((await set(f.planetIds[2]!)).json())).toEqual({
       rivalPlanetId: f.planetIds[2],
       rivalPlayerId: f.playerIds[2],
-      rivalCommitted: false,
     });
     const changed = await app.inject({ method: 'GET', url: '/api/season', headers: auth });
     expect(seasonSchema.parse(changed.json()).rivalPlanetId).toBe(f.planetIds[2]);
     expect(rivalSetSchema.parse((await set(null)).json())).toEqual({
       rivalPlanetId: null,
       rivalPlayerId: null,
-      rivalCommitted: false,
     });
   });
 
-  it('commits the choice after a Death Star interaction', async () => {
+  /**
+   * THE MARK IS A BOOKMARK, NOT A CONTRACT. Owner instruction, reversing D103.
+   *
+   * A Rival used to lock the moment the pair had shared anything — a probe, a
+   * battle, a strike — so the surface the player used to say "watch this one"
+   * became a surface that refused them. Players disliked it and it is not what
+   * the mark is for: it is a memory aid on a disc of three hundred worlds, and the
+   * commander is allowed to change their mind about who they are watching.
+   *
+   * The encounter history the old lock read is untouched — battles, strikes and
+   * probes are still recorded, because reports and the recap are built on them.
+   * Nothing reads them to REFUSE anything any more.
+   */
+  it('still moves after a Death Star has landed between the pair', async () => {
     await set(f.planetIds[1]!);
     const [mission] = await f.db.insert(missions).values({
       seasonId: f.seasonId,
@@ -95,24 +105,25 @@ describe('seasonal rival marker', () => {
       createdAt: f.clock.now(),
     });
 
-    expect((await set(f.planetIds[2]!)).statusCode).toBe(409);
-    const clear = await set(null);
-    expect(clear.statusCode).toBe(409);
-    expect(errorSchema.parse(clear.json()).error).toBe('RIVAL_COMMITTED');
-    expect(rivalSetSchema.parse((await set(f.planetIds[1]!)).json()).rivalCommitted).toBe(true);
-    const season = seasonSchema.parse((await app.inject({
-      method: 'GET', url: '/api/season', headers: auth,
-    })).json());
-    expect(season).toMatchObject({
-      rivalPlanetId: f.planetIds[1],
-      rivalPlayerId: f.playerIds[1],
-      rivalCommitted: true,
-    });
+    expect(rivalSetSchema.parse((await set(f.planetIds[2]!)).json()).rivalPlanetId)
+      .toBe(f.planetIds[2]);
+    expect(rivalSetSchema.parse((await set(null)).json()).rivalPlanetId).toBeNull();
   });
 
-  it('commits symmetrically after a conventional battle', async () => {
+  it('clears on a second press of the same world, and marks again after', async () => {
+    expect(rivalSetSchema.parse((await set(f.planetIds[1]!)).json()).rivalPlanetId)
+      .toBe(f.planetIds[1]);
+    expect(rivalSetSchema.parse((await set(null)).json())).toEqual({
+      rivalPlanetId: null,
+      rivalPlayerId: null,
+    });
+    expect(rivalSetSchema.parse((await set(f.planetIds[1]!)).json()).rivalPlanetId)
+      .toBe(f.planetIds[1]);
+  });
+
+  it('still moves after a battle and after a probe reading', async () => {
     await set(f.planetIds[1]!);
-    const [mission] = await f.db.insert(missions).values({
+    const [battle] = await f.db.insert(missions).values({
       seasonId: f.seasonId,
       kind: 'attack',
       status: 'resolved',
@@ -126,7 +137,7 @@ describe('seasonal rival marker', () => {
     }).returning();
     await f.db.insert(battleReports).values({
       seasonId: f.seasonId,
-      missionId: mission!.id,
+      missionId: battle!.id,
       attackerPlayerId: f.playerIds[1]!,
       defenderPlayerId: f.playerIds[0]!,
       targetPlanetId: f.planetIds[0]!,
@@ -138,13 +149,7 @@ describe('seasonal rival marker', () => {
       defenderLosses: {},
       createdAt: f.clock.now(),
     });
-
-    expect((await set(f.planetIds[2]!)).statusCode).toBe(409);
-  });
-
-  it('commits when a probe reaches the marked commander', async () => {
-    await set(f.planetIds[1]!);
-    const [mission] = await f.db.insert(missions).values({
+    const [scout] = await f.db.insert(missions).values({
       seasonId: f.seasonId,
       kind: 'probe',
       status: 'in_flight',
@@ -159,7 +164,7 @@ describe('seasonal rival marker', () => {
     await f.db.insert(probeReports).values({
       observerPlayerId: f.playerIds[0]!,
       targetPlanetId: f.planetIds[1]!,
-      missionId: mission!.id,
+      missionId: scout!.id,
       accuracy: 0.5,
       stock: { low: 0, high: 0 },
       defence: { low: 0, high: 0 },
@@ -169,7 +174,8 @@ describe('seasonal rival marker', () => {
       createdAt: f.clock.now(),
     });
 
-    expect((await set(null)).statusCode).toBe(409);
+    expect((await set(f.planetIds[2]!)).statusCode).toBe(200);
+    expect((await set(null)).statusCode).toBe(200);
   });
 
   it('refuses self and a planet outside the caller’s current galaxy', async () => {

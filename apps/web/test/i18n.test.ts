@@ -98,6 +98,8 @@ const IDENTICAL_ON_PURPOSE = new Set([
   'vocabulary.building.HANGAR.name',
   // Same word, same reason, on the launch sheet's room bar.
   'launch.hangarLabel',
+  // And on the craft sheet's room figure, which names the same building.
+  'action.statRoom',
   // A bare numeric placeholder has no language to translate. The label beside it
   // carries the Turkish wording.
   'gains.hangar.value',
@@ -140,8 +142,6 @@ const IDENTICAL_ON_PURPOSE = new Set([
   'gains.derrick.now',
   'gains.derrick.next',
   // Proper nouns and marks the Turkish glossary keeps.
-  // A bare interpolation of a galaxy's name: there is no language in it to translate.
-  'galaxy.serverLabel',
   'onboarding.beats.wide.title',
   'landing.form.namePlaceholder',
   'vocabulary.instrument.RADAR.name',

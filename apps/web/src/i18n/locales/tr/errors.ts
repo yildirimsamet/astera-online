@@ -152,7 +152,6 @@ export const errors = {
   RESEARCH_UNAVAILABLE: 'Bu araştırma henüz kullanıma açık değil',
   RIVAL_NOT_VISIBLE: 'O dünya senin galaksinde değil',
   RIVAL_SELF: 'Kendi dünyanı Rakip olarak işaretleyemezsin',
-  RIVAL_COMMITTED: 'İlk ortak hamleniz bu Rakibi sezon boyunca sabitledi',
   REHEARSAL_ONLY: 'Bu dünya senin olmadan yapılamaz',
   SEASON_ENDS_BEFORE_RETURN: 'Bu filo sezon bitmeden geri dönemez',
   SEASON_ENDS_BEFORE_BUILD: 'Bu sipariş sezon bitmeden tamamlanamaz',

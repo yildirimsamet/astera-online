@@ -1,85 +1,17 @@
-import { and, eq, gte, or, sql } from 'drizzle-orm';
+import { and, eq, gte, sql } from 'drizzle-orm';
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import { SERVERS } from '@astera/rules';
 import {
-  battleReports,
   planets,
   players,
-  probeReports,
   seasonResults,
   seasons,
   shards,
-  strategicImpacts,
 } from '../db/schema.js';
-import type { Db, Tx } from '../db/client.js';
 import { addMinutes } from '../clock.js';
 import { GameError } from '../services/planet.js';
 import { requireAuth } from './auth.js';
-
-async function rivalIsCommitted(
-  tx: Db | Tx,
-  playerId: string,
-  rivalPlayerId: string,
-): Promise<boolean> {
-  const [battle, impact, myProbe, theirProbe] = await Promise.all([
-    tx
-      .select({ id: battleReports.id })
-      .from(battleReports)
-      .where(
-        or(
-          and(
-            eq(battleReports.attackerPlayerId, playerId),
-            eq(battleReports.defenderPlayerId, rivalPlayerId),
-          ),
-          and(
-            eq(battleReports.attackerPlayerId, rivalPlayerId),
-            eq(battleReports.defenderPlayerId, playerId),
-          ),
-        ),
-      )
-      .limit(1),
-    tx
-      .select({ id: strategicImpacts.id })
-      .from(strategicImpacts)
-      .where(
-        or(
-          and(
-            eq(strategicImpacts.attackerPlayerId, playerId),
-            eq(strategicImpacts.defenderPlayerId, rivalPlayerId),
-          ),
-          and(
-            eq(strategicImpacts.attackerPlayerId, rivalPlayerId),
-            eq(strategicImpacts.defenderPlayerId, playerId),
-          ),
-        ),
-      )
-      .limit(1),
-    tx
-      .select({ id: probeReports.id })
-      .from(probeReports)
-      .innerJoin(planets, eq(probeReports.targetPlanetId, planets.id))
-      .where(
-        and(
-          eq(probeReports.observerPlayerId, playerId),
-          eq(planets.controllerPlayerId, rivalPlayerId),
-        ),
-      )
-      .limit(1),
-    tx
-      .select({ id: probeReports.id })
-      .from(probeReports)
-      .innerJoin(planets, eq(probeReports.targetPlanetId, planets.id))
-      .where(
-        and(
-          eq(probeReports.observerPlayerId, rivalPlayerId),
-          eq(planets.controllerPlayerId, playerId),
-        ),
-      )
-      .limit(1),
-  ]);
-  return [battle, impact, myProbe, theirProbe].some((rows) => rows.length > 0);
-}
 
 /**
  * The clock of the galaxy the caller is standing in.
@@ -98,7 +30,6 @@ export function registerSeasonRoutes(app: FastifyInstance): void {
       .select({
         season: seasons,
         shard: shards,
-        playerId: players.id,
         accountId: players.accountId,
         rivalPlanetId: players.rivalPlanetId,
         rivalPlayerId: players.rivalPlayerId,
@@ -128,7 +59,23 @@ export function registerSeasonRoutes(app: FastifyInstance): void {
      * `/api/servers` to somebody who has not even signed in.
      */
     const since = addMinutes(app.clock.now(), -SERVERS.onlineWindowMinutes);
-    const [[count], [active], [result]] = await Promise.all([
+    /**
+     * AND HOW MANY HAVE BEEN HERE TODAY. Owner instruction.
+     *
+     * The live figure alone reads as an empty galaxy at every hour that is not
+     * peak, because it is a five-minute slice of a game played in gaps. This is
+     * the same column, the same index and the same grouped shape over a day, so
+     * the second reading costs one more `count(*)` on a request that was already
+     * being made — no presence table, no cache to invalidate, and nothing that can
+     * fall out of step with the first figure.
+     *
+     * IT REFRESHES BECAUSE THE PAYLOAD DOES. `useSeason` re-reads once a minute
+     * (see `queries.ts`), so the day figure moves as commanders arrive without a
+     * broadcast per login — which at three hundred seats would be a shard event a
+     * minute to move a number in a corner.
+     */
+    const today = addMinutes(app.clock.now(), -SERVERS.dayWindowMinutes);
+    const [[count], [active], [seenToday], [result]] = await Promise.all([
       app.db
         .select({ n: sql<number>`count(*)::int` })
         .from(players)
@@ -138,6 +85,10 @@ export function registerSeasonRoutes(app: FastifyInstance): void {
         .from(players)
         .where(and(eq(players.seasonId, row.season.id), gte(players.lastActiveAt, since))),
       app.db
+        .select({ n: sql<number>`count(*)::int` })
+        .from(players)
+        .where(and(eq(players.seasonId, row.season.id), gte(players.lastActiveAt, today))),
+      app.db
         .select()
         .from(seasonResults)
         .where(and(
@@ -145,10 +96,6 @@ export function registerSeasonRoutes(app: FastifyInstance): void {
           eq(seasonResults.accountId, row.accountId),
         )),
     ]);
-
-    const rivalCommitted = row.rivalPlayerId
-      ? await rivalIsCommitted(app.db, row.playerId, row.rivalPlayerId)
-      : false;
 
     return {
       seasonId: row.season.id,
@@ -170,13 +117,30 @@ export function registerSeasonRoutes(app: FastifyInstance): void {
       rulesetVersion: row.season.rulesetVersion,
       players: count?.n ?? 0,
       online: active?.n ?? 0,
+      onlineToday: seenToday?.n ?? 0,
       result: result ?? null,
       rivalPlanetId: row.rivalPlanetId,
       rivalPlayerId: row.rivalPlayerId,
-      rivalCommitted,
     };
   });
 
+  /**
+   * THE ONE WORLD A COMMANDER IS WATCHING, AND IT IS FREE TO MOVE. D103.
+   *
+   * The mark used to COMMIT: the first probe, battle or Death Star between the two
+   * commanders froze it for the rest of the season, and every later press of the
+   * control was answered with `RIVAL_COMMITTED`. Owner instruction reverses that —
+   * players disliked it, and it was the wrong shape for what the mark is. A Rival
+   * is a bookmark on a disc of three hundred worlds, not a declaration; a second
+   * press of the same world clears it, and any world may be marked at any time.
+   *
+   * The encounter history that check read is untouched. Battles, strikes and probe
+   * readings are still recorded, because the reports, the dossier and the recap are
+   * built on them — nothing reads them to refuse anything any more.
+   *
+   * The two refusals that remain are about targets that cannot exist: your own
+   * world, and a world outside your galaxy.
+   */
   app.post('/api/rival', { preHandler: requireAuth }, async (req) => {
     const body = z.object({ planetId: z.string().uuid().nullable() }).strict().parse(req.body);
     return app.db.transaction(async (tx) => {
@@ -188,22 +152,6 @@ export function registerSeasonRoutes(app: FastifyInstance): void {
         .for('update')
         .limit(1);
       if (!me) throw new GameError('NO_PLANET', 'Join a galaxy first', 404);
-
-      const [current] = await tx
-        .select({ rivalPlanetId: players.rivalPlanetId, rivalPlayerId: players.rivalPlayerId })
-        .from(players)
-        .where(eq(players.id, me.playerId));
-      const committed = current?.rivalPlayerId
-        ? await rivalIsCommitted(tx, me.playerId, current.rivalPlayerId)
-        : false;
-      const changesCurrent = body.planetId !== current?.rivalPlanetId;
-      if (committed && changesCurrent) {
-        throw new GameError(
-          'RIVAL_COMMITTED',
-          'Your first shared move committed this Rival for the season',
-          409,
-        );
-      }
 
       if (body.planetId !== null) {
         const [target] = await tx
@@ -228,18 +176,14 @@ export function registerSeasonRoutes(app: FastifyInstance): void {
           rivalPlanetId: body.planetId,
           rivalPlayerId: target.playerId,
         }).where(eq(players.id, me.playerId));
-        return {
-          rivalPlanetId: body.planetId,
-          rivalPlayerId: target.playerId,
-          rivalCommitted: await rivalIsCommitted(tx, me.playerId, target.playerId),
-        };
+        return { rivalPlanetId: body.planetId, rivalPlayerId: target.playerId };
       }
 
       await tx
         .update(players)
         .set({ rivalPlanetId: null, rivalPlayerId: null })
         .where(eq(players.id, me.playerId));
-      return { rivalPlanetId: null, rivalPlayerId: null, rivalCommitted: false };
+      return { rivalPlanetId: null, rivalPlayerId: null };
     });
   });
 }

@@ -6,14 +6,14 @@
 export const galaxy = {
   settlementAway: "Settlement dispatched for {{world}}",
   deathStarAway: "Death Star launched toward {{world}}",
-  discLabel: "The disc",
-  serverLabel: "{{name}} ({{code}})",
   /**
    * Its own key rather than a reuse of the server list's, because nothing is
    * shared between surfaces (D55): this one sits at 8px in the corner of the
    * disc and the other is a row in a list, and they are free to diverge.
    */
   online: "{{count}} online",
+  /** The same population over a day, so an off-peak galaxy still reads as inhabited. */
+  onlineToday: "{{count}} in 24h",
   worlds: "{{count}} worlds",
   fleetAway: " · {{count}} fleet away",
   rocks: " · {{count}} rocks",
@@ -271,7 +271,6 @@ export const focus = {
     probeCooling: "You just looked here · another probe in {{duration}}",
     markRival: "Mark rival",
     rivalMarkedAction: "Rival",
-    rivalCommittedAction: "Rival fixed",
     rivalMarked: "{{commander}} is now your Rival.",
     rivalCleared: "{{commander}} is no longer marked as your Rival.",
     rivalHeading: "Your story this season",

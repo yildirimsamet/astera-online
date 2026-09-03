@@ -390,6 +390,7 @@ export const action = {
   statSpeedFixed: "fixed",
   statCargo: "Cargo",
   statCargoNone: "—",
+  statRoom: "Hangar",
   statFuel: "Fuel",
   /** The rate carries its own span: the row form of the strip prints no labels. */
   statFuelRate: "{{value}} /1k",
@@ -464,6 +465,8 @@ export const launch = {
   unreachable: "Nothing here can catch it",
   /** Something could — just not the slowest ship in this selection. */
   tooSlow: "Leave the slow ships behind",
+  /** A raid at a world has to be able to shoot back. The server refuses this too. */
+  noEscort: "Add a warship",
   cargo: "Cargo",
   distance: "Distance",
   fleetHeading: "Fleet",

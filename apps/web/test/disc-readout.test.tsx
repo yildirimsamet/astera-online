@@ -4,45 +4,57 @@ import i18n from '../src/i18n/index.js';
 import { DiscReadout } from '../src/screens/DiscReadout.jsx';
 
 describe('disc readout', () => {
-  it('shows the shard name and code while keeping the online count on the right', () => {
+  it('names the galaxy by its short code alone, with no word for the disc', async () => {
+    await i18n.changeLanguage('en');
     render(
-      <DiscReadout shardName="Vantage" shard="EU-1" online={6}>
+      <DiscReadout shard="EU-1" online={6} onlineToday={41}>
         38 worlds
       </DiscReadout>,
     );
-    expect(screen.getByText(/Vantage \(EU-1\)/)).toBeVisible();
-    expect(screen.getByText('6 online')).toHaveClass('shrink-0');
+    expect(screen.getByText('EU-1')).toBeVisible();
+    expect(screen.queryByText(/The disc/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Vantage/)).not.toBeInTheDocument();
   });
 
-  it('hides server information when an old payload has no shard name', () => {
-    render(
-      <DiscReadout shard="EU-1" online={1}>
-        38 worlds
-      </DiscReadout>,
-    );
-    expect(screen.queryByText(/EU-1/)).not.toBeInTheDocument();
-    expect(screen.getByText('The disc')).toBeVisible();
-  });
-
-  it('constrains and truncates long names on a portrait viewport', () => {
+  it('puts the day figure beside the live one, both on the right', () => {
     const { container } = render(
-      <DiscReadout shardName="The Extremely Long Vantage Galaxy" shard="EU-123" online={50}>
+      <DiscReadout shard="EU-1" online={6} onlineToday={41}>
+        38 worlds
+      </DiscReadout>,
+    );
+    expect(screen.getByText('6 online')).toBeVisible();
+    expect(screen.getByText('41 in 24h')).toBeVisible();
+    expect(container.querySelector('[data-population]')).toHaveClass('shrink-0');
+  });
+
+  it('omits the day figure when an older server does not send one', () => {
+    render(
+      <DiscReadout shard="EU-1" online={6}>
+        38 worlds
+      </DiscReadout>,
+    );
+    expect(screen.getByText('6 online')).toBeVisible();
+    expect(screen.queryByText(/24h/)).not.toBeInTheDocument();
+  });
+
+  it('constrains itself to a portrait viewport', () => {
+    const { container } = render(
+      <DiscReadout shard="EU-123" online={50} onlineToday={280}>
         50 worlds · 12 fleets away · 9 rocks
       </DiscReadout>,
     );
     expect(container.firstElementChild).toHaveClass('max-w-[calc(100vw-1.5rem)]');
-    expect(screen.getByTitle('The Extremely Long Vantage Galaxy (EU-123)')).toHaveClass('truncate');
-    expect(screen.getByText('50 online')).toHaveClass('shrink-0');
   });
 
-  it('renders the Turkish disc and online labels', async () => {
+  it('renders the Turkish online labels', async () => {
     await i18n.changeLanguage('tr');
     render(
-      <DiscReadout shardName="Vantage" shard="EU-1" online={6}>
+      <DiscReadout shard="EU-1" online={6} onlineToday={41}>
         38 gezegen
       </DiscReadout>,
     );
-    expect(screen.getByText('Disk')).toBeVisible();
     expect(screen.getByText('6 çevrimiçi')).toBeVisible();
+    expect(screen.getByText('24 saatte 41')).toBeVisible();
+    await i18n.changeLanguage('en');
   });
 });

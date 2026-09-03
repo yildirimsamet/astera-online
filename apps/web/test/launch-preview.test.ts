@@ -98,9 +98,25 @@ describe('the launch preview', () => {
  */
 describe('the launch preview for something on an orbit', () => {
   const reach = [
-    { hull: 'DART' as const, minutes: 12, distance: 900 },
-    { hull: 'RAMPART' as const, minutes: 31, distance: 1400 },
+    { hull: 'DART' as const, minutes: 12, distance: 900, at: { x: 900, y: 0, z: 0 } },
+    { hull: 'RAMPART' as const, minutes: 31, distance: 1400, at: { x: 0, y: 0, z: 1400 } },
   ];
+
+  /**
+   * THE POINT, NOT ONLY THE MINUTE. D155.
+   *
+   * The sheet is the last surface before a fleet stops being recallable, and it
+   * quoted "31 minutes, 1,400 units" about a coordinate nothing on screen named.
+   * The disc draws the rendezvous now, so the preview has to carry it — and it has
+   * to be the SLOWEST selected ship's point, because that is the one the whole
+   * wing will actually fly to.
+   */
+  it('carries the rendezvous of the ship the wing flies at', () => {
+    expect(planPirateRoute(reach, { DART: 10, RAMPART: 1 }, { DART: 20, RAMPART: 1 }, {}, {})
+      ?.rendezvous).toEqual({ x: 0, y: 0, z: 1400 });
+    expect(planPirateRoute(reach, { DART: 10 }, { DART: 20, RAMPART: 1 }, {}, {})
+      ?.rendezvous).toEqual({ x: 900, y: 0, z: 0 });
+  });
 
   it('quotes the server\'s own solve for the slowest ship selected', () => {
     // A Rampart is slower than a Dart, so the whole wing flies at its rendezvous.

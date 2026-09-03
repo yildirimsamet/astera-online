@@ -41,6 +41,16 @@ export interface Route {
   fuel: number;
   /** Units still standing at home the moment this fleet leaves. */
   homeDefenceAfter: number;
+  /**
+   * WHERE THE OUTBOUND LEG ENDS, when that is not an address. D155.
+   *
+   * Absent for a world: a world IS its coordinates, it is drawn on the disc with a
+   * label under it, and the target of the launch is the thing the player tapped.
+   * A pirate is on a closed orbit, so the fleet flies to a point the pirate has
+   * not reached yet — which the disc has to draw or the launch reads as a squadron
+   * setting off in an unrelated direction (D124).
+   */
+  rendezvous?: { x: number; y: number; z: number };
 }
 
 /**
@@ -91,6 +101,8 @@ export interface PirateReach {
   hull: HullId;
   minutes: number;
   distance: number;
+  /** The meeting point itself, so the sheet can put it on the disc. D155. */
+  at: { x: number; y: number; z: number };
 }
 
 /**
@@ -140,6 +152,8 @@ export function planPirateRoute(
     cargo: fleetCargo(sending, tech),
     fuel: missionFuel(sending, quoted.distance, 2),
     homeDefenceAfter: homeDefenceAfter(homeFleet, ground, sending),
+    // The slowest selected ship's own meeting point — the one the wing flies to.
+    rendezvous: quoted.at,
   };
 }
 

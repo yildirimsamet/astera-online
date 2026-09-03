@@ -248,13 +248,18 @@ export const seasonSchema = z.object({
    * rule every added field follows here.
    */
   online: z.number().optional(),
+  /**
+   * Distinct commanders seen in this galaxy over `SERVERS.dayWindowMinutes`.
+   *
+   * Optional for the same rolling-deploy reason as `online`, and read the same
+   * way: absent means "this server does not say", never zero.
+   */
+  onlineToday: z.number().optional(),
   result: seasonResultSchema.nullable().optional(),
   /** One seasonal identity marker; optional only for rolling-deploy compatibility. D91. */
   rivalPlanetId: z.string().nullable().optional(),
   /** Stable commander identity, so every world they control wears the same mark. */
   rivalPlayerId: z.string().nullable().optional(),
-  /** Once the first shared move exists, the seasonal choice cannot be replaced. D103. */
-  rivalCommitted: z.boolean().optional(),
 });
 
 const activeGalaxyEventSchema = z.object({
@@ -281,7 +286,6 @@ export const activeGalaxyEventsSchema = z.object({
 export const rivalSetSchema = z.object({
   rivalPlanetId: z.string().nullable(),
   rivalPlayerId: z.string().nullable().optional(),
-  rivalCommitted: z.boolean().optional(),
 });
 
 /* ── your planet ────────────────────────────────────────────── */
@@ -1760,7 +1764,21 @@ export const piratesSchema = z.object({
      * ship's flight time and offered launches the server then refused. A hull that
      * is absent cannot reach this pirate.
      */
-    reach: z.array(z.object({ hull: hullId, minutes: z.number(), distance: z.number() })),
+    reach: z.array(z.object({
+      hull: hullId,
+      minutes: z.number(),
+      distance: z.number(),
+      /**
+       * WHERE THE MEETING HAPPENS, so the disc can draw it before the fleet is
+       * committed. D155.
+       *
+       * A pirate flies a closed orbit, so the aim point is ahead of it and — for
+       * the heaviest wings — can be most of a lap ahead. Written but not drawn,
+       * that read as the squadron setting off in an unrelated direction; the
+       * mining lane solved the same complaint by marking the point (D40).
+       */
+      at: vec,
+    })),
     /** IDENTIFIED only: what it is, what it flies, and how hard it hits. */
     level: z.number().int().min(1).max(4).optional(),
     fleet: fleet.optional(),

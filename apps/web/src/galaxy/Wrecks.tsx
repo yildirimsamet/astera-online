@@ -103,6 +103,20 @@ export interface WreckView {
  */
 const VOID_RADIUS = 0.5;
 
+/**
+ * WHERE A FIELD IS, AND THE ONLY PLACE THAT IS DECIDED.
+ *
+ * The ring has always been drawn from the field's own coordinates, which the
+ * server sends on every field since D150. The CAMERA resolved it through the
+ * planet the battle happened over instead — so a pirate wreck, which has no
+ * planet, produced no subject and tapping it silently did nothing: no focus, no
+ * zoom, and no way for the player to tell they had not simply missed it.
+ *
+ * One function, read by the renderer and the rig, so the two cannot disagree
+ * again about where a wreck is.
+ */
+export const wreckPosition = (wreck: WreckView): Vec3Tuple => toWorld(wreck.at);
+
 export function Wrecks({
   wrecks,
   nodes,
@@ -132,7 +146,7 @@ export function Wrecks({
         const node = w.planetId === null ? undefined : byId.get(w.planetId);
         return {
           w,
-          at: toWorld(w.at),
+          at: wreckPosition(w),
           radius: node?.radius ?? VOID_RADIUS,
         };
       }),
@@ -172,8 +186,15 @@ function Wreck({
   focused: boolean;
   onSelect: () => void;
 }) {
-  const ringRadius = Math.max(planetRadius * RING_RATIO, planetRadius + MIN_CLEARANCE);
-  const tube = Math.max(ringRadius * TUBE_RATIO, MIN_TUBE);
+  /**
+   * Pirate / open-space battle debris (`wreck.planetId === null`) is drawn as a
+   * compact, dense cluster (outer radius ~0.42, flatten = 1.6) with the inner hole closed up.
+   */
+  const isVoid = wreck.planetId === null;
+  const baseRingRadius = Math.max(planetRadius * RING_RATIO, planetRadius + MIN_CLEARANCE);
+  const ringRadius = isVoid ? 0.35 : baseRingRadius;
+  const tube = isVoid ? 0.4 : Math.max(ringRadius * TUBE_RATIO, MIN_TUBE);
+  const flatten = isVoid ? 1 : FLATTEN;
 
   /**
    * THE MODEL IS THE WHOLE RING, NOT ONE PIECE OF IT.
@@ -271,11 +292,7 @@ function Wreck({
           geometry={source.geometry}
           material={material}
           rotation={LIE_FLAT}
-          // `unitModel` normalises to a unit bounding sphere, so this is the ring's
-          // outer radius in world units and nothing else has to know the file.
-          // Pressed on its own axis only — see FLATTEN. Local X is the ring's
-          // thin axis, which LIE_FLAT stands up into world Y.
-          scale={[(ringRadius + tube) * FLATTEN, ringRadius + tube, ringRadius + tube]}
+          scale={[(ringRadius + tube) * flatten, ringRadius + tube, ringRadius + tube]}
         />
       )}
 
@@ -285,9 +302,6 @@ function Wreck({
         A sphere here is what broke planet selection: it filled the centre. A torus
         is hollow, so the world inside it — and the space above and below — stay
         open for the planet's own hit test.
-
-        Invisible rather than hidden: `visible={false}` is skipped by the raycaster
-        entirely, which is a mistake the asteroid field already paid for once.
       */}
       <mesh onPointerUp={pick} rotation={[Math.PI / 2, 0, 0]} frustumCulled={false} renderOrder={-1}>
         <torusGeometry args={[ringRadius, tube, 6, 24]} />
