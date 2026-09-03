@@ -1,5 +1,5 @@
 import { GameActions } from '../session/seasonLock.js';
-import { useEffect, useId, useMemo, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { useTranslation, Trans } from 'react-i18next';
 import {
@@ -10,12 +10,10 @@ import {
   distance,
   fleetCount,
   fleetEntries,
-  fleetPower,
   fleetTravelExact,
   missionFuel,
   telescopeSlots,
   travelExact,
-  HULLS,
   MOBILE_HULLS,
   type Fleet,
   type HullId,
@@ -51,7 +49,6 @@ import { duration, staleness } from '../lib/time.js';
 import { serverNow } from '../lib/clock.js';
 import { reachMinutes } from '../lib/navigation.js';
 import { HullMark } from '../ui/icons/hulls.js';
-import { QuantityStepper } from '../ui/QuantityStepper.js';
 import { AttackIcon, EyeIcon } from '../ui/icons/index.js';
 import { PlanetSigil } from '../ui/PlanetSigil.js';
 import { RESOURCE_ART } from '../ui/assets.js';
@@ -1828,11 +1825,8 @@ const MOBILE_HULL_IDS = MOBILE_HULLS;
 export function PirateFocus({
   pirate,
   fleetAtHome,
-  deuteriumAtHome,
-  baysFree,
   onClose,
-  onSend,
-  busy,
+  onAttack,
   raiding,
   open,
   onToggle,
@@ -1840,13 +1834,9 @@ export function PirateFocus({
   pirate: PirateContact;
   /** What is STANDING at the selected world. Nothing in the air can be sent again. */
   fleetAtHome: Fleet;
-  /** The tank the round trip is paid out of, before the launch charges it. D136. */
-  deuteriumAtHome: number;
-  /** Bays the Command Core has left open. A launch takes one. D28. */
-  baysFree: number;
   onClose: () => void;
-  onSend: (fleet: Fleet) => void;
-  busy: boolean;
+  /** Opens `LaunchSheet` — the game's one commitment surface. */
+  onAttack: () => void;
   /** This world already has a raid out at this pirate — one per world. */
   raiding: boolean;
   open: boolean;
@@ -1858,105 +1848,25 @@ export function PirateFocus({
   const crewEntries = crew ? fleetEntries(crew) : [];
 
   /**
-   * THE DEFAULT IS EVERYTHING AT HOME, and it is a defensible one: a pirate hits
-   * back, so under-committing is how a fleet gets destroyed for nothing. The
-   * player takes ships OUT of it, which makes the decision "how much do I dare
-   * leave behind" rather than "how much do I bother to send".
-   */
-  const available = MOBILE_HULL_IDS.filter((hull) => (fleetAtHome[hull] ?? 0) > 0);
-  const [sending, setSending] = useState<Fleet>({});
-  /** Set the moment the player moves any stepper, and unset only by a new target. */
-  const touched = useRef(false);
-  /**
-   * WHICH PIRATE THE SELECTION BELOW BELONGS TO.
+   * Whether there is anything here that could be sent at all.
    *
-   * "Untouched" is a fact about ONE target, and this is what scopes it. Two
-   * pirates seen from the same world share a `fleetAtHome` — the same object out
-   * of the query cache — so the reset below has nothing in its dependencies that
-   * changes when the focus moves between them, and the clamp then guarantees the
-   * carried-over choice is never re-defaulted. The second target opened holding
-   * the first one's numbers, already marked as chosen.
-   *
-   * Kept here rather than left to a `key` on the caller: the invariant belongs to
-   * the panel that states it, and a caller cannot be relied on to remember it.
+   * MOBILE hulls only: a Prospector cannot fly an attack, so a world holding
+   * nothing but miners has an empty hangar as far as this decision is concerned.
+   * Every other refusal — no bay, no fuel, too slow, too late — belongs to the
+   * sheet, which is where the fleet is actually chosen and therefore the only
+   * place those questions have an answer.
    */
-  const chosenFor = useRef(pirate.id);
-  useEffect(() => {
-    if (chosenFor.current !== pirate.id) {
-      chosenFor.current = pirate.id;
-      touched.current = false;
-    }
-    setSending((current) => {
-      const next: Fleet = {};
-      for (const hull of MOBILE_HULL_IDS) {
-        const atHome = fleetAtHome[hull] ?? 0;
-        if (atHome <= 0) continue;
-        /*
-          A CHOICE THE PLAYER MADE IS CLAMPED, NEVER REPLACED.
+  const hasShips = MOBILE_HULL_IDS.some((hull) => (fleetAtHome[hull] ?? 0) > 0);
 
-          This re-defaulted to the whole garrison on every change to the home
-          fleet — and the planet view refetches on a timer, on every SSE wake and
-          after any mutation. A commander who had carefully cut forty Darts down to
-          six watched it silently jump back to forty, and the next tap launched
-          the lot. Only an untouched panel takes the default.
-        */
-        next[hull] = touched.current
-          ? Math.min(current[hull] ?? 0, atHome)
-          : atHome;
-      }
-      return next;
-    });
-  }, [fleetAtHome, pirate.id]);
-
-  const total = fleetCount(sending);
-  /** What the world keeps. Drawn as power, because that is what a garrison is. */
-  const remaining = useMemo(() => {
-    const left: Fleet = {};
-    for (const hull of MOBILE_HULL_IDS) {
-      const keep = (fleetAtHome[hull] ?? 0) - (sending[hull] ?? 0);
-      if (keep > 0) left[hull] = keep;
-    }
-    return left;
-  }, [fleetAtHome, sending]);
   /**
-   * A FLEET FLIES AT ITS SLOWEST SHIP, so the rendezvous is the one the server
-   * solved for exactly that speed. The table is the complete set of answers for
-   * this world rather than samples of a curve — see `reach` on the payload.
-   */
-  const slowestHull = fleetEntries(sending).reduce<HullId | null>(
-    (worst, [hull]) =>
-      worst === null || HULLS[hull].speed < HULLS[worst].speed ? hull : worst,
-    null,
-  );
-  /*
-    LOOKED UP BY HULL, BECAUSE THE SPEEDS ARE NOT ON THE SAME SCALE.
-
-    `reach` carries the world's Beacon and the commander's Propulsion; this panel
-    only knows the catalogue. Matching a catalogue speed against an effective one
-    by nearest absolute difference picked the wrong ship's flight time as soon as
-    any Propulsion was researched — and because an unreachable speed is left OUT of
-    the table, the match slid onto a FASTER hull's row, so the panel quoted an ETA
-    and enabled Send for a launch `launchPirateRaid` then refused outright.
-
-    A hull with no entry cannot get there, which is exactly what the launch will
-    say, so an absent row is a refusal here rather than a wrong number.
-  */
-  const quoted = slowestHull === null
-    ? null
-    : pirate.reach.find((entry) => entry.hull === slowestHull) ?? null;
-  const reach = quoted?.minutes ?? null;
-  const tooLate = reach === null || reach >= pirate.expiresInMinutes;
-  /**
-   * WHAT THE ROUND TRIP COSTS, PRICED HERE RATHER THAN DISCOVERED AT THE GATE.
+   * THE BEST CASE THIS WORLD COULD MANAGE, AND IT IS LABELLED AS ONE.
    *
-   * Fuel is mass × distance × legs and is paid in full at launch or the launch is
-   * refused (D136). The distance is the one the server solved for this exact hull,
-   * so this is the figure `launchPirateRaid` will charge — not an estimate.
+   * `reachMinutes` is the soonest rendezvous the world's FASTEST hull could keep —
+   * an honest upper bound on opportunity, which is the question a rail answers:
+   * could I reach this at all. What the launch will actually use depends on the
+   * slowest ship SELECTED, and the sheet quotes that exactly, from the same table.
    */
-  const fuel = quoted === null ? 0 : missionFuel(sending, quoted.distance, 2);
-  const shortOfFuel = fuel > deuteriumAtHome;
-  const noBay = baysFree <= 0;
-  const canSend = total > 0 && !tooLate && !raiding && !shortOfFuel && !noBay;
+  const soonest = pirate.reachMinutes;
 
   return (
     <Shell
@@ -1983,9 +1893,19 @@ export function PirateFocus({
           <span className={pirate.expiresInMinutes < 30 ? 'text-threat' : ''}>
             {duration(pirate.expiresInMinutes)}
           </span>
-          {reach !== null && ` · ${t('pirate.reach', { duration: duration(reach) })}`}
+          {soonest !== null && ` · ${t('pirate.reach', { duration: duration(soonest) })}`}
         </span>
       }
+      /*
+        ONE TAP TO THE GAME'S OWN COMMITMENT SURFACE. D150 — owner instruction.
+
+        This rail used to carry its own picker and its own send button, which made
+        it a second, thinner `LaunchSheet`: no hull stats, no cargo, no hangar, no
+        ships-away, no confirmation step and no fleetsave line. Flying at a pirate
+        is the same bet as flying at a world — ships leave, the world is uncovered
+        for the round trip, the fuel is prepaid and nothing can be recalled — so it
+        is the same screen. What is left here is what only a rail can say.
+      */
       actions={
         raiding ? (
           <p className="num text-caption text-crystal">{t('pirate.alreadyRaiding')}</p>
@@ -1993,33 +1913,10 @@ export function PirateFocus({
           <button
             type="button"
             className="slab slab-primary basis-full whitespace-normal px-3 leading-tight"
-            disabled={busy || !canSend}
-            onClick={() => {
-              onSend(sending);
-            }}
+            disabled={!hasShips}
+            onClick={onAttack}
           >
-            {total === 0
-              ? (available.length === 0 ? t('pirate.noShips') : t('pirate.pickShips'))
-              : noBay
-                ? t('pirate.noBay')
-                : reach === null
-                  /*
-                    TWO DIFFERENT REFUSALS, AND THEY USED TO SHARE ONE SENTENCE.
-
-                    An empty table means nothing standing here can catch it. A
-                    non-empty table with no row for the slowest ship SELECTED means
-                    this fleet cannot — a Dart could. Saying "nothing could" in the
-                    second case tells the player their world is helpless when what
-                    they actually need to do is leave the slow hull behind.
-                  */
-                  ? (pirate.reach.length === 0
-                      ? t('pirate.unreachable')
-                      : t('pirate.tooSlow'))
-                  : tooLate
-                    ? t('pirate.tooLate')
-                    : shortOfFuel
-                      ? t('pirate.noFuel')
-                      : t('pirate.send', { count: total, duration: duration(reach) })}
+            {hasShips ? t('pirate.attack') : t('pirate.noShips')}
           </button>
         )
       }
@@ -2032,8 +1929,8 @@ export function PirateFocus({
         />
         <Figure
           label={t('pirate.reachLabel')}
-          value={reach === null ? '—' : duration(reach)}
-          tone={tooLate ? 'threat' : undefined}
+          value={soonest === null ? '—' : duration(soonest)}
+          tone={soonest === null ? 'threat' : undefined}
         />
       </div>
 
@@ -2047,85 +1944,6 @@ export function PirateFocus({
           {t('pirate.damagePenalty', { percent: Math.round((1 - pirate.damageMult) * 100) })}
         </p>
       )}
-
-      {/*
-        WHICH SHIPS GO, AND IT HAS TO BE A CHOICE. D150.
-
-        The default is still everything at home — a pirate hits back, and
-        under-committing is how a fleet dies for nothing — but a default is not a
-        decision, and this panel used to offer no way past it: the button sent the
-        whole garrison whether or not the player meant to. Planning a raid on a
-        WORLD has always been a per-hull choice (`LaunchSheet`), and flying at a
-        pirate is the same commitment against a target that shoots first.
-
-        The same `QuantityStepper` that sheet uses, so the two surfaces cannot
-        drift into two different ways of saying "how many".
-      */}
-      {/*
-        AND NOT WHILE A RAID IS ALREADY OUT. One per world per pirate — the server
-        refuses a second, and a picker that cannot be committed teaches a rule that
-        is not true. Same reasoning as the button it sits above.
-      */}
-      {!raiding && <>
-      <p className="legend mt-4 mb-2">{t('pirate.yourFleet')}</p>
-      {available.length > 0 ? (
-        <div className="flex flex-col gap-2">
-          {available.map((hull) => {
-            const atHome = fleetAtHome[hull] ?? 0;
-            const chosen = sending[hull] ?? 0;
-            return (
-              <div key={hull} className="rounded-chip border border-line px-2 py-1.5">
-                <div className="flex items-baseline gap-2">
-                  <HullMark hull={hull} className="size-4 shrink-0 text-dim" />
-                  <p className="name min-w-0 flex-1 truncate text-bone">{hullLabel(hull)}</p>
-                  <span className="num text-label text-faint">
-                    {t('pirate.atHome', { count: atHome })}
-                  </span>
-                </div>
-                <div className="mt-1.5">
-                  <QuantityStepper
-                    value={chosen}
-                    min={0}
-                    max={atHome}
-                    onChange={(value) => {
-                      touched.current = true;
-                      setSending((current) => ({
-                        ...current,
-                        [hull]: Math.max(0, Math.min(atHome, value)),
-                      }));
-                    }}
-                    decreaseLabel={t('pirate.fewer', { name: hullLabel(hull) })}
-                    increaseLabel={t('pirate.more', { name: hullLabel(hull) })}
-                    valueLabel={t('pirate.quantity', { name: hullLabel(hull) })}
-                    editable
-                    maxLabel={t('pirate.max', { name: hullLabel(hull) })}
-                    maxText={t('pirate.maxShort')}
-                  />
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      ) : (
-        <p className="text-caption text-faint">{t('pirate.noShipsAtHome')}</p>
-      )}
-
-      {/*
-        WHAT STAYS BEHIND, WHICH IS THE OTHER HALF OF THE BET. D144.
-
-        A garrison is measured in POWER, never in hull count: the launch decision
-        is what leaves carved out of what holds, and a count cannot say that a
-        world kept its Bulwarks and sent its Darts.
-      */}
-      <p className="mt-2 text-caption leading-snug text-dim">
-        {t('pirate.leftAtHome', { power: Math.round(fleetPower(remaining)) })}
-      </p>
-      {fuel > 0 && (
-        <p className={`mt-1 text-caption leading-snug ${shortOfFuel ? 'text-threat' : 'text-dim'}`}>
-          {t('pirate.fuelCost', { amount: compact(fuel) })}
-        </p>
-      )}
-      </>}
 
       {/* Actual sight carries the actual crew; a radar return carries a size. */}
       <p className="legend mt-4 mb-2">{t('pirate.roster')}</p>

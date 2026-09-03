@@ -408,6 +408,12 @@ export const launch = {
   eyebrow: "Saldırı",
   /** Kayda dayanarak yapılan taahhüt. Hedefin ne kadar eski olduğu burada söylenir. D151. */
   eyebrowRecord: "Saldırı · en son {{age}} görüldü",
+  /**
+   * KORSANIN ESKİYECEK BİR KAYDI YOKTUR — hiç hatırlanmaz, okuma tanımı gereği
+   * canlıdır. Satıra asıl yakışan öbür saat: daha ne kadar orada olacağı, yani
+   * acele etmenin sebebi.
+   */
+  eyebrowPirate: "Saldırı · {{duration}} içinde gidiyor",
   back: "Geri",
   launching: "Kalkıyor",
   commit: "Gönder — geri dönüşü yok",
@@ -421,6 +427,14 @@ export const launch = {
   exposedFor: "{{duration}} boyunca açıksın",
   oneWay: "Tek yön",
   oneWayUnknown: "—",
+  /* Bu taahhüdün reddedilme sebepleri; her biri butonun üzerinde yazılı. */
+  noBay: "Boş uçuş yuvası yok",
+  noFuel: "Döteryum yetmiyor",
+  tooLate: "Sen varmadan gitmiş olur",
+  /** Bu dünyada duran hiçbir gemi ona yetişemez. */
+  unreachable: "Buradan hiçbir gemi yetişemez",
+  /** Yetişebilecek var — ama bu seçimdeki en yavaş gemi değil. */
+  tooSlow: "Yavaş gemileri geride bırak",
   cargo: "Ambar",
   distance: "Mesafe",
   fleetHeading: "Filo",

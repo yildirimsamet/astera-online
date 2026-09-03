@@ -487,6 +487,8 @@ export const pirate = {
   eyebrow: "Level {{level}} pirates",
   /** The one combat modifier in the feature, stated as a number the player can price. */
   damagePenalty: "This fleet deals {{percent}}% less damage",
+  /** Opens the same commitment sheet a raid on a world opens. D150. */
+  attack: "Attack",
   yourFleet: "Your fleet",
   atHome: "{{count}} at home",
   fewer: "Fewer {{name}}",

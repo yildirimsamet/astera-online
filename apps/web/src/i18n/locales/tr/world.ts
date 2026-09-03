@@ -451,6 +451,8 @@ export const pirate = {
   level: "Seviye {{level}}",
   eyebrow: "Seviye {{level}} korsanlar",
   damagePenalty: "Bu filo %{{percent}} daha az hasar verir",
+  /** Bir dünyaya saldırırken açılan taahhüt sayfasının aynısını açar. D150. */
+  attack: "Saldır",
   yourFleet: "Filon",
   atHome: "{{count}} evde",
   fewer: "{{name}} azalt",

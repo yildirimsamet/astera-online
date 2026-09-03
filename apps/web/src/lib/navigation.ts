@@ -10,6 +10,7 @@ import {
   missionFuel,
   travelMinutes,
   type Fleet,
+  type HullId,
   type MobileHullId,
   type ResearchProjectId,
   type TechLevels,
@@ -42,6 +43,19 @@ export interface Route {
   homeDefenceAfter: number;
 }
 
+/**
+ * WHAT IS STILL STANDING AT HOME THE MOMENT THIS FLEET LEAVES.
+ *
+ * One definition, three readers: both route planners quote it, and the launch
+ * sheet needs it even when there is no route to quote — nothing selected yet, or a
+ * rendezvous the chosen wing cannot make. A second copy of this arithmetic is a
+ * garrison figure that disagrees with itself on the same screen.
+ *
+ * Ground guns never leave, so they are added rather than subtracted from.
+ */
+export const homeDefenceAfter = (homeFleet: Fleet, ground: Fleet, sending: Fleet): number =>
+  Math.max(0, fleetCount(homeFleet) - fleetCount(sending)) + fleetCount(ground);
+
 export function planRoute(
   origin: Vec3,
   target: Vec3,
@@ -53,7 +67,6 @@ export function planRoute(
 ): Route {
   const dist = distance(origin, target);
   const oneWay = fleetSpeed(sending) > 0 ? fleetTravelExact(dist, sending) : 0;
-  const remaining = fleetCount(homeFleet) - fleetCount(sending);
 
   return {
     distance: dist,
@@ -61,8 +74,92 @@ export function planRoute(
     exposureMinutes: exposureMinutes(oneWay),
     cargo: fleetCargo(sending, tech),
     fuel: missionFuel(sending, dist, 2),
-    homeDefenceAfter: Math.max(0, remaining) + fleetCount(ground),
+    homeDefenceAfter: homeDefenceAfter(homeFleet, ground, sending),
   };
+}
+
+/**
+ * One row of `/api/pirates`' per-hull rendezvous table.
+ *
+ * `HullId` rather than `MobileHullId` because that is what the payload is typed
+ * as: the server only ever publishes hulls that can fly, but the schema parses the
+ * whole catalogue and narrowing here would be this file asserting something the
+ * wire does not guarantee. The lookup is by identity, so a hull that could not fly
+ * simply never matches.
+ */
+export interface PirateReach {
+  hull: HullId;
+  minutes: number;
+  distance: number;
+}
+
+/**
+ * THE SAME PREVIEW, AGAINST A TARGET THAT MOVES. D150.
+ *
+ * A world sits still, so `planRoute` solves its own leg out of two coordinates. A
+ * pirate is on a closed orbit and the outbound leg is a RENDEZVOUS — a numerical
+ * solve against a moving target, and two implementations of that produce two
+ * different minutes, one of which the player read and the other of which the
+ * launch used. `/api/pirates` solves it once, per hull standing at the world, and
+ * this reads the answer.
+ *
+ * A FLEET FLIES AT ITS SLOWEST SHIP, so the row that matters is the slowest hull
+ * SELECTED — not the slowest at home, and not an average. A hull with no row at
+ * all cannot reach this pirate, which is the same answer `launchPirateRaid` gives
+ * (`CANNOT_INTERCEPT`), so an absent row is `null` here rather than a guess. That
+ * is what stops the sheet quoting an ETA for a launch the server will refuse.
+ *
+ * AND THE TWO LEGS ARE NOT THE SAME LENGTH, which is why `exposureMinutes` — the
+ * world sheet's `oneWay * 2` — may not be reused. Flying out is a chase and can
+ * include waiting for the orbit to come round; flying home is a straight line back
+ * from the meeting point. Doubling the chase would overstate a long one and
+ * understate a short one on the last surface before a fleet stops being
+ * recallable.
+ *
+ * The return leg is the same client-side approximation `planRoute` makes for a
+ * world — catalogue speeds, no Beacon, no Propulsion — so the two sheets quote
+ * exposure to the same standard. The OUTBOUND minute is better than that: it is
+ * the server's own figure.
+ */
+export function planPirateRoute(
+  reach: readonly PirateReach[],
+  sending: Fleet,
+  homeFleet: Fleet,
+  ground: Fleet,
+  tech: TechLevels,
+): Route | null {
+  const slowest = slowestHullIn(sending);
+  if (slowest === null) return null;
+  const quoted = reach.find((entry) => entry.hull === slowest);
+  if (quoted === undefined) return null;
+
+  return {
+    distance: quoted.distance,
+    oneWayMinutes: quoted.minutes,
+    exposureMinutes: quoted.minutes + fleetTravelExact(quoted.distance, sending),
+    cargo: fleetCargo(sending, tech),
+    fuel: missionFuel(sending, quoted.distance, 2),
+    homeDefenceAfter: homeDefenceAfter(homeFleet, ground, sending),
+  };
+}
+
+/**
+ * The hull a mixed fleet flies at, by the CATALOGUE speed.
+ *
+ * Deliberately not the effective one: the panel knows only the catalogue, while
+ * every figure on `reach` already carries this world's Beacon and the commander's
+ * Propulsion. Matching an effective speed against a catalogue one by nearest
+ * difference picked the wrong ship's row as soon as any Propulsion was researched —
+ * and because an unreachable speed is left OUT of the table, the match slid onto a
+ * FASTER hull's row. Keyed by hull there is nothing to guess.
+ */
+function slowestHullIn(sending: Fleet): HullId | null {
+  let worst: HullId | null = null;
+  for (const hull of MOBILE_HULLS) {
+    if ((sending[hull] ?? 0) <= 0) continue;
+    if (worst === null || HULLS[hull].speed < HULLS[worst].speed) worst = hull;
+  }
+  return worst;
 }
 
 /**

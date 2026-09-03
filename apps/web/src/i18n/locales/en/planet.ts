@@ -438,6 +438,12 @@ export const launch = {
    * one surface where it decides anything.
    */
   eyebrowRecord: "Attack · last seen {{age}}",
+  /**
+   * A PIRATE HAS NO RECORD TO BE STALE — it is never remembered, so the reading is
+   * live by definition. What belongs on the line instead is the other clock: how
+   * long the thing will still be out there, which is the reason to hurry.
+   */
+  eyebrowPirate: "Attack · gone in {{duration}}",
   back: "Back",
   launching: "Launching",
   commit: "Launch — no recall",
@@ -450,6 +456,14 @@ export const launch = {
   exposedFor: "Exposed for {{duration}}",
   oneWay: "One way",
   oneWayUnknown: "—",
+  /* The five reasons this commitment can be refused, each stated on the button. */
+  noBay: "No flight bay free",
+  noFuel: "Not enough deuterium",
+  tooLate: "It will be gone first",
+  /** Nothing standing at this world is fast enough to catch it. */
+  unreachable: "Nothing here can catch it",
+  /** Something could — just not the slowest ship in this selection. */
+  tooSlow: "Leave the slow ships behind",
   cargo: "Cargo",
   distance: "Distance",
   fleetHeading: "Fleet",

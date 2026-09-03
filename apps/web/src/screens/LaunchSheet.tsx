@@ -8,14 +8,20 @@ import {
   type Fleet,
   type MobileHullId,
 } from '@astera/rules';
-import { useLaunch } from '../api/queries.js';
-import type { GalaxyPlanet, PlanetView } from '../api/schemas.js';
+import { useLaunch, useRaidPirate } from '../api/queries.js';
+import type { GalaxyPlanet, PirateContact, PlanetView } from '../api/schemas.js';
 import { hullLabel } from '../i18n/names.js';
 import { compact } from '../lib/format.js';
 import { serverNow } from '../lib/clock.js';
 import { recordAgeMinutes } from '../lib/dossier.js';
 import { duration, staleness } from '../lib/time.js';
-import { MOBILE, planRoute, techOf } from '../lib/navigation.js';
+import {
+  MOBILE,
+  homeDefenceAfter,
+  planPirateRoute,
+  planRoute,
+  techOf,
+} from '../lib/navigation.js';
 import { StatStrip } from '../ui/Action.js';
 import { CapacityBar } from '../ui/CapacityBar.js';
 import { SpendBar } from '../ui/SpendBar.js';
@@ -24,6 +30,29 @@ import { HullMark } from '../ui/icons/hulls.js';
 import { QuantityStepper } from '../ui/QuantityStepper.js';
 import { Button, Sheet } from '../ui/kit/index.js';
 import { describe, useToast } from '../ui/Toast.js';
+
+/**
+ * WHAT A FLEET CAN BE COMMITTED AT. D150.
+ *
+ * Two kinds of target and ONE commitment surface, because to a commander they are
+ * one decision: ships leave, the world is uncovered for the round trip, the fuel
+ * is paid up front and nothing can be recalled. A pirate had its own picker in the
+ * focus rail, and that second surface quietly dropped most of what makes this
+ * screen a decision rather than a form — the hull stats a counter cycle is chosen
+ * with, the cargo the haul is capped by, the fuel drawn against the tank, the
+ * hangar, the ships already away, and the confirmation step with the fleetsave
+ * line on it.
+ *
+ * THE FOG SHAPE IS THE SAME TOO, which is what makes one component honest rather
+ * than merely convenient. A world is RESOLVED or UNKNOWN; a pirate is IDENTIFIED
+ * or CONTACT. Either way a commander may commit a fleet at something they cannot
+ * read, and either way this screen must refuse to invent the half they were not
+ * sold. Everything below that is target-specific is exactly that: the half the
+ * reading buys.
+ */
+export type LaunchTarget =
+  | { kind: 'world'; world: GalaxyPlanet }
+  | { kind: 'pirate'; pirate: PirateContact };
 
 /**
  * The commitment.
@@ -41,26 +70,64 @@ export function LaunchSheet({
   onClose,
   onLaunched,
 }: {
-  target: GalaxyPlanet;
+  target: LaunchTarget;
   planet: PlanetView;
   onClose: () => void;
   onLaunched: () => void;
 }) {
   const { t } = useTranslation();
   const launch = useLaunch();
+  const raid = useRaidPirate();
   const say = useToast();
   const [sending, setSending] = useState<Fleet>({});
   const [confirming, setConfirming] = useState(false);
 
+  const pirate = target.kind === 'pirate' ? target.pirate : null;
   // The commander's own ladders, off the payload, so the preview quotes exactly
   // what the server will charge and carry. T8.
   const tech = techOf(planet);
-  const route = planRoute(
-    planet.planet.position, target.position, sending, planet.fleet, planet.ground, tech,
-  );
+  /**
+   * THE LEG, AND ONLY ITS OUTBOUND HALF DIFFERS.
+   *
+   * A world sits still and the client solves its own leg. A pirate is on a closed
+   * orbit, so the rendezvous is a numerical solve against a moving target and the
+   * SERVER answers it — per hull standing at this world, so the sheet can quote the
+   * exact minute for whatever has been picked without a second request. `null`
+   * means the slowest ship selected cannot get there at all, which is the same
+   * refusal the launch will make.
+   */
+  const route = target.kind === 'pirate'
+    ? planPirateRoute(target.pirate.reach, sending, planet.fleet, planet.ground, tech)
+    : planRoute(
+        planet.planet.position, target.world.position, sending, planet.fleet, planet.ground, tech,
+      );
   const total = fleetCount(sending);
+  /**
+   * A LAUNCH TAKES A FLIGHT BAY, and this screen never said so. D28.
+   *
+   * `assertFreeBay` fires server-side for every launch there is, so a commander
+   * with none learned it as a toast after committing — the pirate rail had already
+   * been taught to state it, and the rule is not different for a world.
+   * `interface.md`: an unavailable action stays visible with its reason.
+   */
+  const baysFree = Math.max(0, planet.flight.total - planet.flight.used);
+  /** It will be gone before anything could reach it. Pirates only: worlds keep. */
+  const tooLate = pirate !== null
+    && route !== null
+    && route.oneWayMinutes >= pirate.expiresInMinutes;
+  const busy = launch.isPending || raid.isPending;
+  /*
+    READ HERE RATHER THAN OFF THE ROUTE, because the garrison is a fact about this
+    world and this selection and does not stop being true when there is no route to
+    quote — nothing picked yet, or a rendezvous the chosen wing cannot make. Same
+    helper both planners use, so the two figures cannot drift on one screen.
+  */
+  const holding = homeDefenceAfter(planet.fleet, planet.ground, sending);
   const canSend = total > 0
+    && route !== null
     && route.oneWayMinutes > 0
+    && !tooLate
+    && baysFree > 0
     // The server refuses this too; offering a control that cannot work is worse
     // than refusing early, because it teaches a rule that is not true.
     && route.fuel <= planet.planet.deuterium;
@@ -137,13 +204,26 @@ export function LaunchSheet({
    * whatever that phone's clock is wrong by — the same record then read one age
    * under the world and another on the sheet, and the sheet was the wrong one.
    */
-  const recordAge = recordAgeMinutes(target, serverNow());
+  const recordAge = target.kind === 'world'
+    ? recordAgeMinutes(target.world, serverNow())
+    : null;
 
   return (
     <Sheet
-      eyebrow={recordAge === null
-        ? t('launch.eyebrow')
-        : t('launch.eyebrowRecord', { age: staleness(recordAge) })}
+      /*
+        WHAT THIS READING IS, AND HOW OLD. Both targets answer, differently.
+
+        A world's provenance is its RECORD AGE — the sheet is the last screen before
+        a fleet stops being recallable, so it names how stale the facts under it
+        are. A pirate is never remembered (D150): the reading is live by definition
+        and has no age, so what belongs here is the other clock — how long the thing
+        will still be there, which is the whole reason to hurry.
+      */
+      eyebrow={pirate
+        ? t('launch.eyebrowPirate', { duration: duration(pirate.expiresInMinutes) })
+        : recordAge === null
+          ? t('launch.eyebrow')
+          : t('launch.eyebrowRecord', { age: staleness(recordAge) })}
       /**
        * A WORLD YOU CANNOT SEE HAS NO NAME TO PUT HERE. D127.
        *
@@ -153,7 +233,16 @@ export function LaunchSheet({
        * The launch itself is legitimate and stays: diving blind is the choice D127
        * exists to create. What it may not do is look broken while you make it.
        */
-      title={target.intel === 'UNKNOWN' ? t('focus.planet.unsurveyedTitle') : target.name}
+      title={target.kind === 'pirate'
+        ? (target.pirate.zone === 'IDENTIFIED' && target.pirate.level !== undefined
+            ? t('pirate.name', {
+                level: target.pirate.level,
+                callsign: target.pirate.callsign,
+              })
+            : t('pirate.unknownContact'))
+        : target.world.intel === 'UNKNOWN'
+          ? t('focus.planet.unsurveyedTitle')
+          : target.world.name}
       onClose={onClose}
       footer={
         confirming ? (
@@ -166,14 +255,40 @@ export function LaunchSheet({
             >
               {t('launch.back')}
             </Button>
+            {/*
+              TWO ENDPOINTS, ONE BUTTON. A raid at a world and a raid at a pirate
+              are different routes because they are different tables — a pirate has
+              no address and never became a `missions` row — but they are the same
+              commitment, so they are the same control and the same confirmation.
+            */}
             <Button
               variant="commit"
               size="lg"
               className="flex-[2]"
-              disabled={launch.isPending}
+              disabled={busy}
               onClick={() => {
+                if (pirate) {
+                  raid.mutate(
+                    { pirateId: pirate.id, fleet: sending },
+                    {
+                      onSuccess: (result) => {
+                        say(t('pirate.send', {
+                          count: fleetCount(result.fleet),
+                          duration: duration(result.flightMinutes),
+                        }));
+                        onLaunched();
+                      },
+                      onError: (err) => {
+                        say(describe(err), 'error');
+                        setConfirming(false);
+                      },
+                    },
+                  );
+                  return;
+                }
+                if (target.kind !== 'world') return;
                 launch.mutate(
-                  { targetPlanetId: target.id, fleet: sending },
+                  { targetPlanetId: target.world.id, fleet: sending },
                   {
                     onSuccess: (result) => {
                       say(
@@ -192,7 +307,7 @@ export function LaunchSheet({
                 );
               }}
             >
-              {launch.isPending ? t('launch.launching') : t('launch.commit')}
+              {busy ? t('launch.launching') : t('launch.commit')}
             </Button>
           </div>
         ) : (
@@ -205,7 +320,31 @@ export function LaunchSheet({
               setConfirming(true);
             }}
           >
-            {total === 0 ? t('launch.chooseFleet') : t('launch.send', { count: total })}
+            {/*
+              A DISABLED CONTROL STATES ITS OWN REASON, and there are five of them.
+              `interface.md`: an unavailable action stays visible with the reason
+              on it, because a button that simply will not press teaches nothing.
+
+              THE TWO SPEED REFUSALS ARE NOT THE SAME REFUSAL. An empty reach table
+              means nothing standing at this world can catch it; a table with no row
+              for the slowest ship SELECTED means this fleet cannot — a faster one
+              could. Saying "nothing could" in the second case tells a commander
+              their world is helpless when what they need to do is leave the slow
+              hull behind.
+            */}
+            {total === 0
+              ? t('launch.chooseFleet')
+              : baysFree <= 0
+                ? t('launch.noBay')
+                : route === null
+                  ? (pirate?.reach.length === 0
+                      ? t('launch.unreachable')
+                      : t('launch.tooSlow'))
+                  : tooLate
+                    ? t('launch.tooLate')
+                    : route.fuel > planet.planet.deuterium
+                      ? t('launch.noFuel')
+                      : t('launch.send', { count: total })}
           </Button>
         )
       }
@@ -254,10 +393,10 @@ export function LaunchSheet({
 
         <div className="mt-2 flex items-baseline justify-between gap-3">
           <p className="num text-title leading-tight text-bone">
-            {t('launch.defending', { count: route.homeDefenceAfter })}
+            {t('launch.defending', { count: holding })}
           </p>
           <p className="num text-body text-threat-ink">
-            {total === 0
+            {total === 0 || route === null
               ? t('launch.nothingSent')
               : t('launch.exposedFor', { duration: duration(route.exposureMinutes) })}
           </p>
@@ -278,13 +417,34 @@ export function LaunchSheet({
         <Figure
           label={t('launch.oneWay')}
           value={
-            route.oneWayMinutes > 0 ? duration(route.oneWayMinutes) : t('launch.oneWayUnknown')
+            route !== null && route.oneWayMinutes > 0
+              ? duration(route.oneWayMinutes)
+              : t('launch.oneWayUnknown')
           }
+          tone={tooLate ? 'threat' : undefined}
         />
-        <Figure label={t('launch.cargo')} value={compact(route.cargo)} />
-        <Figure label={t('launch.distance')} value={route.distance.toFixed(0)} />
+        <Figure label={t('launch.cargo')} value={compact(route?.cargo ?? 0)} />
+        <Figure
+          label={t('launch.distance')}
+          value={route === null ? t('launch.oneWayUnknown') : route.distance.toFixed(0)}
+        />
       </div>
-      {route.fuel > 0 && (
+      {/*
+        THE ONE MODIFIER THE FIGHT HAS, ON THE SURFACE WHERE IT IS PRICED. D124.
+
+        A pirate's whole difference from a player fleet of the same roster is a
+        per-level cut to its attack, and it is the reason a PvE prize can be
+        affordable at all. IDENTIFIED only — a Radar return has no level to read it
+        from, and inventing one here would sell a reading nobody bought.
+      */}
+      {pirate?.damageMult !== undefined && (
+        <p className="mt-3 border-l border-crystal/60 pl-3 text-caption leading-snug text-crystal">
+          {t('pirate.damagePenalty', {
+            percent: Math.round((1 - pirate.damageMult) * 100),
+          })}
+        </p>
+      )}
+      {route !== null && route.fuel > 0 && (
         <div className="plate mt-3 px-3 py-3">
           <SpendBar
             stock={planet.planet.deuterium}
@@ -438,7 +598,7 @@ export function LaunchSheet({
       {confirming && (
         <>
           <p className="mt-6 text-body leading-relaxed text-threat-ink">
-            {t('launch.warning', { count: route.homeDefenceAfter })}
+            {t('launch.warning', { count: holding })}
           </p>
           {/*
             THE CHEAPEST DEPTH IN THE GAME. D28.

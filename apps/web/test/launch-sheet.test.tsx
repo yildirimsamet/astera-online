@@ -5,7 +5,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { describe, expect, it, vi } from 'vitest';
 import { Api } from '../src/api/client.js';
 import { ApiProvider } from '../src/api/context.js';
-import type { GalaxyPlanet } from '../src/api/schemas.js';
+import type { GalaxyPlanet, PirateContact } from '../src/api/schemas.js';
 import { resetClock, serverNow } from '../src/lib/clock.js';
 import { LaunchSheet } from '../src/screens/LaunchSheet.js';
 import { ToastProvider } from '../src/ui/Toast.js';
@@ -41,7 +41,7 @@ describe('choosing a fleet to attack with', () => {
   it('accepts an empty numeric count and clamps direct entry to the ships at home', async () => {
     render(
       <LaunchSheet
-        target={target}
+        target={{ kind: 'world', world: target }}
         planet={planetView({ fleet: { DART: 200 } })}
         onClose={vi.fn()}
         onLaunched={vi.fn()}
@@ -67,7 +67,7 @@ describe('choosing a fleet to attack with', () => {
   it('uses exact one-ship steps even for a large hangar and exposes Max', async () => {
     render(
       <LaunchSheet
-        target={target}
+        target={{ kind: 'world', world: target }}
         planet={planetView({ fleet: { DART: 200 } })}
         onClose={vi.fn()}
         onLaunched={vi.fn()}
@@ -101,7 +101,7 @@ describe('the fleet that is already away', () => {
   it('names what is in the air, including a hull with nothing left at home', () => {
     render(
       <LaunchSheet
-        target={target}
+        target={{ kind: 'world', world: target }}
         planet={planetView({
           fleet: { PIKE: 2 },
           fleetAway: { DART: 83, COURIER: 2 },
@@ -127,7 +127,7 @@ describe('the fleet that is already away', () => {
   it('says nothing about a mining run', () => {
     render(
       <LaunchSheet
-        target={target}
+        target={{ kind: 'world', world: target }}
         planet={planetView({ fleet: { DART: 4 }, fleetAway: { PROSPECTOR: 2 } })}
         onClose={vi.fn()}
         onLaunched={vi.fn()}
@@ -146,7 +146,7 @@ describe('the fleet that is already away', () => {
   it('still says the hangar is empty when the only craft at home is a miner', () => {
     render(
       <LaunchSheet
-        target={target}
+        target={{ kind: 'world', world: target }}
         planet={planetView({ fleet: { PROSPECTOR: 1 }, fleetAway: { DART: 12 } })}
         onClose={vi.fn()}
         onLaunched={vi.fn()}
@@ -172,7 +172,7 @@ describe('what the launch costs the world it leaves', () => {
   const show = (fleet: Record<string, number>, ground: Record<string, number> = {}) => {
     render(
       <LaunchSheet
-        target={target}
+        target={{ kind: 'world', world: target }}
         planet={planetView({ fleet, ground })}
         onClose={vi.fn()}
         onLaunched={vi.fn()}
@@ -241,7 +241,7 @@ describe('the fuel this launch burns', () => {
   const packOne = async (deuterium: number) => {
     render(
       <LaunchSheet
-        target={target}
+        target={{ kind: 'world', world: target }}
         planet={planetView({ fleet: { DART: 2 } }, { deuterium })}
         onClose={vi.fn()}
         onLaunched={vi.fn()}
@@ -262,7 +262,15 @@ describe('the fuel this launch burns', () => {
     await packOne(0);
     expect(document.querySelector('[data-spend-bar]')).toHaveAttribute('data-short', 'true');
     expect(document.querySelector('[data-spend-short]')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /send \d+ ships/i })).toBeDisabled();
+    /*
+      AND THE BUTTON NAMES THE REASON RATHER THAN GOING QUIETLY GREY. D142.
+
+      It used to read "Send 20 ships" and simply not press, which teaches nothing —
+      `interface.md` asks an unavailable action to stay visible WITH its reason, and
+      short fuel is one of five this commitment can be refused for.
+    */
+    const commit = screen.getByRole('button', { name: /not enough deuterium/i });
+    expect(commit).toBeDisabled();
   });
 });
 
@@ -295,7 +303,7 @@ describe('how old the target is, on the surface where the fleet is committed', (
   const open = (over: GalaxyPlanet) => {
     render(
       <LaunchSheet
-        target={over}
+        target={{ kind: 'world', world: over }}
         planet={planetView({ fleet: { DART: 4 } })}
         onClose={vi.fn()}
         onLaunched={vi.fn()}
@@ -349,5 +357,161 @@ describe('how old the target is, on the surface where the fleet is committed', (
     } finally {
       resetClock();
     }
+  });
+});
+
+/**
+ * ONE COMMITMENT SURFACE, TWO KINDS OF TARGET. D150 — OWNER INSTRUCTION.
+ *
+ * A raid on a pirate is the same bet as a raid on a world: ships leave, the world
+ * is uncovered for the round trip, fuel is paid up front and nothing can be
+ * recalled. It had its own picker anyway, inside the focus rail, and that second
+ * surface quietly dropped most of what makes this screen a decision — the hull
+ * stats a counter cycle is chosen with, the cargo the haul is capped by, the fuel
+ * against the tank, the hangar, the ships already away, and the confirmation step
+ * with the fleetsave line on it. The owner's question was the right one: why are
+ * these not the same component.
+ *
+ * THE FOG SHAPE IS ALSO THE SAME, which is what makes the merge honest rather than
+ * convenient. A world is RESOLVED or UNKNOWN; a pirate is IDENTIFIED or CONTACT.
+ * Both let a commander commit a fleet at something they cannot read, and both must
+ * refuse to invent the half they were not sold.
+ */
+describe('committing a fleet at a pirate', () => {
+  const pirate = (over: Partial<PirateContact> = {}): PirateContact => ({
+    id: 'pirate-1',
+    callsign: 'VEX7',
+    zone: 'IDENTIFIED',
+    at: { x: 400, y: 0, z: 0 },
+    expiresInMinutes: 180,
+    reachMinutes: 12,
+    reach: [
+      { hull: 'DART', minutes: 12, distance: 900 },
+      { hull: 'RAMPART', minutes: 44, distance: 1500 },
+    ],
+    level: 2,
+    fleet: { VIPER: 3, COURIER: 1 },
+    damageMult: 0.65,
+    mass: 'MEDIUM',
+    ...over,
+  });
+
+  const open = (target: PirateContact, fleet = { DART: 20, RAMPART: 2 }) => {
+    render(
+      <LaunchSheet
+        target={{ kind: 'pirate', pirate: target }}
+        // A full tank: fuel has its own refusal and its own test, and a dry world
+        // would make every assertion here read the wrong reason off the button.
+        planet={planetView({ fleet }, { deuterium: 500_000 })}
+        onClose={vi.fn()}
+        onLaunched={vi.fn()}
+      />,
+      { wrapper },
+    );
+  };
+
+  /**
+   * THE FOUR NUMBERS A HULL IS CHOSEN WITH. D142.
+   *
+   * The counter cycle is the whole of combat and this is the one screen a player
+   * actually chooses between hulls on. The rail offered a name and a count.
+   */
+  it('offers the same picker, with the stats a hull is chosen on', async () => {
+    open(pirate());
+    const user = userEvent.setup();
+    await user.click(screen.getByRole('button', { name: /max.*dart/i }));
+
+    expect(screen.getByRole('textbox', { name: /dart quantity/i })).toHaveValue('20');
+    // `StatStrip` — attack, hull, speed, cargo, fuel — beside every hull row. It
+    // renders no labels at `row` size, so the shape is what is asserted.
+    expect(document.querySelectorAll('.stats .stat-attack')).toHaveLength(2);
+    expect(document.querySelectorAll('.stats .stat-cargo')).toHaveLength(2);
+  });
+
+  /**
+   * AND THE FIGURE THE WHOLE FEATURE IS THROTTLED BY.
+   *
+   * Cargo room is bought with combat power on the way out: what a raid carries home
+   * is capped by the holds it brought, and the report says so afterwards. The rail
+   * told the player that in a sentence and then showed them neither the hoard nor
+   * their own cargo — the one number they were being told to manage was not on the
+   * screen at all.
+   */
+  it('shows the cargo, the distance and the fuel against the tank', async () => {
+    open(pirate());
+    const user = userEvent.setup();
+    await user.click(screen.getByRole('button', { name: /max.*dart/i }));
+
+    expect(screen.getByText(/cargo/i)).toBeInTheDocument();
+    expect(screen.getByText(/^900$/)).toBeInTheDocument();
+    expect(screen.getByText(/fuel/i)).toBeInTheDocument();
+  });
+
+  /**
+   * THE MINUTE IS THE SERVER'S, AND IT BELONGS TO THE SLOWEST SHIP SELECTED.
+   * A rendezvous is a numerical solve against a moving target; the client asks.
+   */
+  it('quotes the rendezvous the launch will actually use', async () => {
+    open(pirate());
+    const user = userEvent.setup();
+    await user.click(screen.getByRole('button', { name: /max.*dart/i }));
+    expect(screen.getByText('12m')).toBeInTheDocument();
+
+    // Add the slow hull and the whole wing flies at its rendezvous instead.
+    await user.click(screen.getByRole('button', { name: /max.*rampart/i }));
+    expect(screen.getByText('44m')).toBeInTheDocument();
+  });
+
+  /**
+   * A HULL WITH NO ROW CANNOT GET THERE, and the two refusals are different.
+   *
+   * An empty table means nothing standing here can catch it. A table with no row
+   * for the slowest ship SELECTED means THIS fleet cannot — a faster one could.
+   * Saying "nothing could" in the second case tells a commander their world is
+   * helpless when what they need to do is leave the slow hull behind.
+   */
+  it('refuses a fleet whose slowest ship cannot make the rendezvous', async () => {
+    open(pirate({ reach: [{ hull: 'DART', minutes: 12, distance: 900 }] }));
+    const user = userEvent.setup();
+    await user.click(screen.getByRole('button', { name: /max.*dart/i }));
+    await user.click(screen.getByRole('button', { name: /max.*rampart/i }));
+
+    const commit = screen.getByRole('button', { name: /leave the slow ships behind/i });
+    expect(commit).toBeDisabled();
+
+    // Drop it and the same wing is offered the earlier rendezvous instead.
+    await user.click(screen.getByRole('button', { name: /fewer rampart/i }));
+    await user.click(screen.getByRole('button', { name: /fewer rampart/i }));
+    expect(screen.getByRole('button', { name: /send/i })).toBeEnabled();
+  });
+
+  /**
+   * AND A CONTACT IS NOT A READING. D123.
+   *
+   * A Radar return has no level and no crew, and this surface may not invent
+   * either — but the launch itself stays available, because diving at a question
+   * mark is exactly the gamble D150 exists to create.
+   */
+  it('names no level and no crew for an unidentified contact', async () => {
+    open(pirate({ zone: 'CONTACT', level: undefined, fleet: undefined, damageMult: undefined }));
+
+    expect(screen.getByText(/unidentified contact/i)).toBeInTheDocument();
+    expect(screen.queryByText(/VEX7/)).toBeNull();
+    expect(screen.queryByText(/less damage/i)).toBeNull();
+
+    const user = userEvent.setup();
+    await user.click(screen.getByRole('button', { name: /max.*dart/i }));
+    expect(screen.getByRole('button', { name: /send/i })).toBeEnabled();
+  });
+
+  /** The bet is the same bet, so the last screen before it says the same thing. */
+  it('keeps the confirmation step and the fleetsave line', async () => {
+    open(pirate());
+    const user = userEvent.setup();
+    await user.click(screen.getByRole('button', { name: /max.*dart/i }));
+    await user.click(screen.getByRole('button', { name: /send/i }));
+
+    expect(screen.getByText(/ships in flight cannot be raided/i)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /back/i })).toBeInTheDocument();
   });
 });

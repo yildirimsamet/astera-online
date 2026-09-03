@@ -14,7 +14,6 @@ import {
   usePending,
   usePirates,
   usePlanet,
-  useRaidPirate,
   useClanBadge,
   useReports,
   useSeason,
@@ -41,11 +40,10 @@ import { threadKey } from '../galaxy/threadKey.js';
 import type { PlanetGroup } from '../lib/directives.js';
 import { haptic } from '../lib/haptics.js';
 import { serverNow } from '../lib/clock.js';
-import { duration, minutesLeft, useNow } from '../lib/time.js';
+import { minutesLeft, useNow } from '../lib/time.js';
 import {
   distance,
   engagementEndsAt,
-  fleetCount,
   interceptAsteroid,
   travelMinutes,
 } from '@astera/rules';
@@ -324,6 +322,17 @@ export function GalaxyView({
    */
   const [detail, setDetail] = useState(false);
   const [attacking, setAttacking] = useState(false);
+  /**
+   * Which pirate the commitment sheet is open against. D150.
+   *
+   * Held by ID rather than by the contact itself, because a pirate is a LIVE
+   * reading and never a remembered one: `/api/pirates` refetches on a timer and the
+   * list shrinks as well as grows. Keeping the object would leave the sheet open
+   * over a target that has left the caller's circles — a commitment surface for
+   * something that no longer exists for them, and a launch the server would refuse
+   * with `PIRATE_OUT_OF_SIGHT`.
+   */
+  const [attackingPirateId, setAttackingPirateId] = useState<string | null>(null);
   const [settlingTargetId, setSettlingTargetId] = useState<string | null>(null);
   const [homeSignal, setHomeSignal] = useState(0);
   const [chatChannel, setChatChannel] = useState<ChatChannel>('general');
@@ -497,6 +506,7 @@ export function GalaxyView({
     setTransferOriginId(null);
     setDetail(false);
     setAttacking(false);
+    setAttackingPirateId(null);
   }, [ownCraftReady, runs, threads]);
 
   /**
@@ -1107,6 +1117,7 @@ export function GalaxyView({
               <PirateFocusHost
                 id={contact.id}
                 onClose={close}
+                onAttack={() => { setAttackingPirateId(contact.id); }}
                 open={detail}
                 onToggle={toggle}
               />
@@ -1365,7 +1376,7 @@ export function GalaxyView({
         // told to make.
         <div data-launch-sheet>
         <LaunchSheet
-          target={selected}
+          target={{ kind: 'world', world: selected }}
           planet={planet.data}
           onClose={() => {
             setAttacking(false);
@@ -1376,6 +1387,32 @@ export function GalaxyView({
         />
         </div>
       )}
+
+      {/*
+        THE SAME SHEET, AGAINST THE OTHER KIND OF TARGET. D150.
+
+        Rendered from the LIVE list rather than from a captured object, so a pirate
+        that leaves the commander's circles takes its own commitment surface with
+        it — which is the honest behaviour for a reading that is never remembered.
+      */}
+      {panel !== 'recap' && attackingPirateId !== null && planet.data && (() => {
+        const target = pirateList.data?.pirates
+          .find((candidate) => candidate.id === attackingPirateId);
+        if (!target) return null;
+        return (
+          <div data-launch-sheet>
+            <LaunchSheet
+              target={{ kind: 'pirate', pirate: target }}
+              planet={planet.data}
+              onClose={() => { setAttackingPirateId(null); }}
+              onLaunched={() => {
+                setAttackingPirateId(null);
+                close();
+              }}
+            />
+          </div>
+        );
+      })()}
 
       {panel !== 'recap'
         && settlingTargetId !== null
@@ -1513,20 +1550,20 @@ const windowsOpen = (planets: readonly { isSelf: boolean; fleet?: { status: stri
 function PirateFocusHost({
   id,
   onClose,
+  onAttack,
   open,
   onToggle,
 }: {
   id: string;
   onClose: () => void;
+  /** Opens `LaunchSheet` against this pirate — the one commitment surface. D150. */
+  onAttack: () => void;
   open: boolean;
   onToggle: () => void;
 }) {
   const pirates = usePirates();
   const planet = usePlanet();
   const pending = usePending();
-  const raid = useRaidPirate();
-  const say = useToast();
-  const { t } = useTranslation();
 
   const pirate = pirates.data?.pirates.find((candidate) => candidate.id === id);
   if (!pirate) return null;
@@ -1541,39 +1578,11 @@ function PirateFocusHost({
     <PirateFocus
       pirate={pirate}
       fleetAtHome={planet.data?.fleet ?? {}}
-      /*
-        THE TWO REFUSALS THE LAUNCH WILL MAKE, HANDED OVER BEFORE THE TAP. D28/D136.
-
-        `assertFreeBay` and `assertFuel` both fire server-side, so a commander with
-        no bay or no deuterium learned it as a toast after committing. The panel now
-        holds the same two figures and states the reason on the button instead —
-        `interface.md`: an unavailable action stays visible with its reason.
-      */
-      deuteriumAtHome={planet.data?.planet.deuterium ?? 0}
-      baysFree={Math.max(
-        0,
-        (planet.data?.flight.total ?? 0) - (planet.data?.flight.used ?? 0),
-      )}
-      busy={raid.isPending}
       raiding={raiding}
       open={open}
       onToggle={onToggle}
       onClose={onClose}
-      onSend={(fleet) => {
-        raid.mutate(
-          { pirateId: pirate.id, fleet },
-          {
-            onSuccess: (result) => {
-              say(t('pirate.send', {
-                count: fleetCount(result.fleet),
-                duration: duration(result.flightMinutes),
-              }));
-              onClose();
-            },
-            onError: (err) => { say(describe(err), 'error'); },
-          },
-        );
-      }}
+      onAttack={onAttack}
     />
   );
 }

@@ -8,11 +8,21 @@ import type { PirateContact } from '../src/api/schemas.js';
 /**
  * THE PIRATE RAIL. D150.
  *
- * The rail is where the whole feature becomes usable, and D124 is the standard it
- * has to meet: a rule the player cannot SEE is not a rule. The level, the damage
- * handicap, the deadline and the rendezvous all exist nowhere else in the
- * interface — if any of them is missing here, a commander is being asked to price
- * a fight blind and the system is a lottery rather than a decision.
+ * The rail's job is to DESCRIBE the target and offer the commitment — the same
+ * shape `PlanetFocus` has, and the same shape `AsteroidFocus` has: something is
+ * passing through, it is worth something, it will not be there later.
+ *
+ * IT USED TO BE THE COMMITMENT SURFACE AS WELL, and that is what changed. It
+ * carried its own fleet picker, its own fuel line and its own send button — a
+ * second, thinner copy of `LaunchSheet` that had lost the hull stats, the cargo,
+ * the hangar, the ships already away and the confirmation step. The picker moved
+ * to the sheet the whole game already uses; what stays here is what only the rail
+ * can say.
+ *
+ * D124 IS STILL THE STANDARD FOR THAT HALF. The level, the damage handicap, the
+ * deadline and the rendezvous exist nowhere else in the interface — if any of them
+ * is missing, a commander is being asked to price a fight blind and the system is
+ * a lottery rather than a decision.
  */
 
 const identified = (over: Partial<PirateContact> = {}): PirateContact => ({
@@ -37,24 +47,21 @@ const identified = (over: Partial<PirateContact> = {}): PirateContact => ({
 const panel = (
   pirate: PirateContact,
   fleetAtHome: Fleet,
-  onSend = vi.fn(),
-  over: { deuterium?: number; bays?: number } = {},
+  onAttack = vi.fn(),
+  over: { raiding?: boolean } = {},
 ) => {
   const result = render(
     <PirateFocus
       pirate={pirate}
       fleetAtHome={fleetAtHome}
-      deuteriumAtHome={over.deuterium ?? 1_000_000}
-      baysFree={over.bays ?? 3}
       onClose={vi.fn()}
-      onSend={onSend}
-      busy={false}
-      raiding={false}
+      onAttack={onAttack}
+      raiding={over.raiding ?? false}
       open
       onToggle={vi.fn()}
     />,
   );
-  return { ...result, onSend };
+  return { ...result, onAttack };
 };
 
 describe('the pirate rail', () => {
@@ -65,31 +72,23 @@ describe('the pirate rail', () => {
     expect(screen.getByText(/25/)).toBeTruthy();
   });
 
-  it('quotes the flight time of the SLOWEST ship the player is sending', () => {
-    /*
-      A fleet flies at its slowest hull, so a Rampart in the selection changes the
-      rendezvous — and it has to change the number on the button BEFORE the launch,
-      or the player learns the rule by being refused.
-    */
-    const first = panel(identified(), { DART: 10 });
-    expect(screen.getByRole('button', { name: /Send 10 · 12m/ })).toBeTruthy();
-    first.unmount();
-
-    panel(identified(), { RAMPART: 4 });
-    expect(screen.getByRole('button', { name: /Send 4 · 40m/ })).toBeTruthy();
+  /**
+   * THE BEST CASE THIS WORLD COULD MANAGE, and it is labelled as one.
+   *
+   * The rail quotes the soonest rendezvous anything standing here could keep; the
+   * SHEET quotes the exact minute for the wing actually picked, because that is
+   * where the choice is made. Two surfaces, two questions — "could I reach it at
+   * all" and "when will THIS fleet get there".
+   */
+  it('quotes the soonest rendezvous this world could keep', () => {
+    panel(identified(), { DART: 10, RAMPART: 4 });
+    expect(screen.getAllByText(/12m/).length).toBeGreaterThan(0);
   });
 
-  it('refuses a rendezvous that lands after the pirate has gone', async () => {
-    const { onSend } = panel(
-      identified({ expiresInMinutes: 5, reach: [{ hull: 'DART', minutes: 30, distance: 900 }] }),
-      { DART: 10 },
-    );
-    // The refusal is written on the control itself — a disabled button with no
-    // sentence is a rule the player meets and cannot read.
-    const refusal = screen.getByRole('button', { name: /leaves the area/i });
-    expect(refusal).toHaveProperty('disabled', true);
-    await userEvent.click(refusal);
-    expect(onSend).not.toHaveBeenCalled();
+  it('names the crew it can actually see', () => {
+    panel(identified(), { DART: 10 });
+    expect(screen.getByTitle(/Tempest/i)).toBeTruthy();
+    expect(screen.getByText(/mJtQ/)).toBeTruthy();
   });
 
   it('says nothing about a crew it cannot see', () => {
@@ -104,221 +103,52 @@ describe('the pirate rail', () => {
       { DART: 10 },
     );
     expect(screen.queryByText(/25/)).toBeNull();
-  });
-
-  it('will not offer a launch from a world with nothing standing on it', async () => {
-    const { onSend } = panel(identified(), {});
-    const refusal = screen.getByRole('button', { name: /No ships at home/i });
-    expect(refusal).toHaveProperty('disabled', true);
-    await userEvent.click(refusal);
-    expect(onSend).not.toHaveBeenCalled();
-  });
-
-  it('sends exactly what is standing at home when the player commits', async () => {
-    const { onSend } = panel(identified(), { DART: 7, COURIER: 2 });
-    // The Courier is the slow one, so the quote is its row and not the Dart's.
-    const send = screen.getByRole('button', { name: /Send 9 · 20m/ });
-    await userEvent.click(send);
-    expect(onSend).toHaveBeenCalledWith({ DART: 7, COURIER: 2 });
-  });
-
-  it('says a raid is already out rather than offering a second one', () => {
-    render(
-      <PirateFocus
-        pirate={identified()}
-        fleetAtHome={{ DART: 10 }}
-        deuteriumAtHome={1_000_000}
-        baysFree={3}
-        onClose={vi.fn()}
-        onSend={vi.fn()}
-        busy={false}
-        raiding
-        open
-        onToggle={vi.fn()}
-      />,
-    );
-    expect(screen.queryByRole('button', { name: /Send/ })).toBeNull();
-    expect(screen.getByText(/already has a raid/i)).toBeTruthy();
-  });
-});
-
-describe('choosing what to send', () => {
-  /*
-    THE COMPLAINT THIS GUARDS, IN THE PLAYER'S WORDS.
-
-    "I click send fleet and everything on my planet leaves. I should be able to
-    pick my ships like the sheet that opens when I plan an attack on a planet."
-
-    The rail defaulted to the whole garrison and offered no control to change it,
-    so the default WAS the behaviour. Committing a fleet is the bet this game is
-    built on — it may not be something that happens to a player.
-  */
-  it('sends only the ships the player chose', async () => {
-    const user = userEvent.setup();
-    const { onSend } = panel(identified(), { DART: 10, RAMPART: 4 });
-
-    const darts = screen.getByRole('textbox', { name: /How many Dart/i });
-    await user.clear(darts);
-    await user.type(darts, '3');
-    // Three Darts plus the four Ramparts left at their default; the wing flies at
-    // the Rampart's speed, so the quote is the slow one.
-    await user.click(screen.getByRole('button', { name: /Send 7 · 40m/ }));
-
-    expect(onSend).toHaveBeenCalledTimes(1);
-    expect(onSend.mock.calls[0]![0]).toEqual({ DART: 3, RAMPART: 4 });
-  });
-
-  it('offers a control for every hull standing at the world', () => {
-    panel(identified(), { DART: 10, RAMPART: 4 });
-    expect(screen.getByRole('textbox', { name: /How many Dart/i })).toBeTruthy();
-    expect(screen.getByRole('textbox', { name: /How many Rampart/i })).toBeTruthy();
-  });
-
-  it('says what the world keeps, in power rather than in hull count', () => {
-    // D144: a garrison is measured in POWER — the bet is what leaves carved out
-    // of what holds, and a count cannot say a world kept its Bulwarks.
-    panel(identified(), { DART: 10, RAMPART: 4 });
-    expect(screen.getByText(/savunma gücü|Defence left/i)).toBeTruthy();
-  });
-});
-
-describe('quoting the rendezvous', () => {
-  /*
-    THE BUG THIS GUARDS.
-
-    `reach` carries the world's Beacon and the commander's Propulsion; the panel
-    only knows the catalogue. It used to match a raw catalogue speed against those
-    effective figures by nearest absolute difference — so any Propulsion at all
-    picked the wrong ship's row, and because an UNREACHABLE speed is left out of
-    the table entirely the match slid onto a faster hull's row: the panel quoted an
-    ETA, enabled Send, and `launchPirateRaid` refused with CANNOT_INTERCEPT.
-  */
-  it('reads the row for the slowest hull selected, not the nearest speed', () => {
-    panel(identified(), { DART: 10, RAMPART: 4 });
-    // Rampart is slowest, so its forty minutes is the quote — never the Dart's twelve.
-    expect(screen.getByRole('button', { name: /Send 14 · 40m/ })).toBeTruthy();
-  });
-
-  it('refuses when the slowest hull has no rendezvous at all', async () => {
-    /*
-      A hull the server could not solve for is absent from the table, and a fleet
-      flies at its slowest ship — so this fleet cannot get there. Offering a launch
-      the server will refuse is the failure; the refusal belongs on the button.
-    */
-    const { onSend } = panel(
-      identified({ reach: [{ hull: 'DART', minutes: 12, distance: 900 }] }),
-      { DART: 10, RAMPART: 4 },
-    );
-    const refusal = screen.getByRole('button', { name: /slowest ship cannot catch|en yavaş gemi/i });
-    expect(refusal).toHaveProperty('disabled', true);
-    await userEvent.click(refusal);
-    expect(onSend).not.toHaveBeenCalled();
-  });
-
-  it('states the fuel the round trip costs, and refuses when the tank is short', async () => {
-    // D136: full fuel or no launch. Discovering that as a toast after committing
-    // is the refusal-at-the-gate this panel exists to prevent.
-    const { onSend } = panel(identified(), { DART: 10 }, vi.fn(), { deuterium: 0 });
-    const refusal = screen.getByRole('button', { name: /deuterium|döteryum/i });
-    expect(refusal).toHaveProperty('disabled', true);
-    await userEvent.click(refusal);
-    expect(onSend).not.toHaveBeenCalled();
-  });
-
-  it('refuses with a reason when no flight bay is free', async () => {
-    const { onSend } = panel(identified(), { DART: 10 }, vi.fn(), { bays: 0 });
-    const refusal = screen.getByRole('button', { name: /flight bay|uçuş yatağı/i });
-    expect(refusal).toHaveProperty('disabled', true);
-    await userEvent.click(refusal);
-    expect(onSend).not.toHaveBeenCalled();
-  });
-});
-
-describe('what an unidentified contact may say', () => {
-  it('prints no level at all rather than inventing level zero', () => {
-    // The schema allows 1-4. `level ?? 0` put "Level 0 pirates" over a title that
-    // said "Unidentified contact" in the same breath.
-    panel(
-      { ...identified(), zone: 'CONTACT', level: undefined, fleet: undefined, damageMult: undefined },
-      { DART: 10 },
-    );
-    expect(screen.queryByText(/Level 0|Seviye 0/i)).toBeNull();
-  });
-});
-
-describe('a selection the player made', () => {
-  it('survives the planet view refetching, clamped but never reset', async () => {
-    /*
-      The panel re-defaulted to the whole garrison on every change to the home
-      fleet, and that view refetches on a timer, on every SSE wake and after any
-      mutation. Forty Darts cut down to six jumped silently back to forty.
-    */
-    const user = userEvent.setup();
-    const { onSend, rerender } = panel(identified(), { DART: 40 });
-    const darts = screen.getByRole('textbox', { name: /How many Dart/i });
-    await user.clear(darts);
-    await user.type(darts, '6');
-
-    // The same world, re-rendered with a fresh object identity — one refetch.
-    rerender(
-      <PirateFocus
-        pirate={identified()}
-        fleetAtHome={{ DART: 40 }}
-        deuteriumAtHome={1_000_000}
-        baysFree={3}
-        onClose={vi.fn()}
-        onSend={onSend}
-        busy={false}
-        raiding={false}
-        open
-        onToggle={vi.fn()}
-      />,
-    );
-    await user.click(screen.getByRole('button', { name: /Send 6 · 12m/ }));
-    expect(onSend).toHaveBeenCalledWith({ DART: 6 });
+    expect(screen.queryByTitle(/Tempest/i)).toBeNull();
   });
 
   /**
-   * A DIFFERENT PIRATE IS A DIFFERENT DECISION.
+   * THE COMMITMENT IS ONE TAP AWAY, AND IT IS THE GAME'S OWN COMMITMENT SURFACE.
    *
-   * "Untouched" is a fact about ONE target, and the clamp above is what makes
-   * getting that wrong expensive: once the panel believes the player has chosen,
-   * it never offers the default again. Two pirates visible from the same world
-   * share a `fleetAtHome` — identical, and the same object out of the query cache
-   * — so nothing in the reset's dependencies changes when the focus moves from one
-   * to the other, and the second target opened holding the first one's selection
-   * with the choice already marked as made.
-   *
-   * What the player then sees is a committed number they never picked, on the last
-   * screen before a launch that cannot be recalled and at a target that shoots
-   * back. The default is "everything at home" for a reason, and every target is
-   * owed it once.
+   * `LaunchSheet` — the same screen a raid on a world opens — carries the picker,
+   * the hull stats, the cargo, the fuel against the tank and the confirmation. The
+   * rail's only job is to open it.
    */
-  it('returns to the default when the focus moves to another pirate', async () => {
-    const user = userEvent.setup();
-    const { onSend, rerender } = panel(identified(), { DART: 40 });
-    const darts = screen.getByRole('textbox', { name: /How many Dart/i });
-    await user.clear(darts);
-    await user.type(darts, '6');
-    expect(screen.getByRole('button', { name: /Send 6 · 12m/ })).toBeTruthy();
+  it('opens the launch sheet rather than committing a fleet itself', async () => {
+    const { onAttack } = panel(identified(), { DART: 7, COURIER: 2 });
+    await userEvent.click(screen.getByRole('button', { name: /attack/i }));
+    expect(onAttack).toHaveBeenCalledTimes(1);
+    // The rail no longer decides what goes: it never had the stats to decide with.
+    expect(screen.queryByRole('textbox', { name: /How many Dart/i })).toBeNull();
+  });
 
-    // The player taps a second pirate on the disc. Same world, same garrison.
-    rerender(
-      <PirateFocus
-        pirate={identified({ id: 'A7bC2dE9fG4hJ6kL8mN0pQ', callsign: 'A7bC' })}
-        fleetAtHome={{ DART: 40 }}
-        deuteriumAtHome={1_000_000}
-        baysFree={3}
-        onClose={vi.fn()}
-        onSend={onSend}
-        busy={false}
-        raiding={false}
-        open
-        onToggle={vi.fn()}
-      />,
-    );
+  it('will not offer a launch from a world with nothing standing on it', async () => {
+    const { onAttack } = panel(identified(), {});
+    const refusal = screen.getByRole('button', { name: /No ships at home/i });
+    expect(refusal).toHaveProperty('disabled', true);
+    await userEvent.click(refusal);
+    expect(onAttack).not.toHaveBeenCalled();
+  });
 
-    await user.click(screen.getByRole('button', { name: /Send 40 · 12m/ }));
-    expect(onSend).toHaveBeenCalledWith({ DART: 40 });
+  /** A Prospector cannot fly an attack, so a world holding only miners has none. */
+  it('counts only hulls that can actually fly an attack', () => {
+    panel(identified(), { PROSPECTOR: 3 });
+    expect(screen.getByRole('button', { name: /No ships at home/i }))
+      .toHaveProperty('disabled', true);
+  });
+
+  it('says a raid is already out rather than offering a second one', () => {
+    panel(identified(), { DART: 10 }, vi.fn(), { raiding: true });
+    expect(screen.queryByRole('button', { name: /attack/i })).toBeNull();
+    expect(screen.getByText(/already has a raid/i)).toBeTruthy();
+  });
+
+  /** The deadline is the reason to hurry, so it leads and it turns red near the end. */
+  it('states the deadline, and marks it when it is nearly up', () => {
+    const { unmount } = panel(identified({ expiresInMinutes: 180 }), { DART: 10 });
+    expect(screen.getAllByText(/3h/).length).toBeGreaterThan(0);
+    unmount();
+
+    panel(identified({ expiresInMinutes: 12 }), { DART: 10 });
+    expect(document.querySelector('.text-threat')).toBeTruthy();
   });
 });
