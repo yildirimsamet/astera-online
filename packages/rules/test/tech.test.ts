@@ -48,10 +48,19 @@ describe('the economy ladders', () => {
     expect(cargoMult(over)).toBe(cargoMult(atMax));
   });
 
-  it('are all modest — none of them is a second building', () => {
-    expect(yardSpeedMult({ YARD_AUTOMATION: max })).toBeGreaterThan(0.75);
-    expect(prospectorHoldMult({ PROSPECTOR_HOLDS: max })).toBeLessThan(1.5);
-    expect(cargoMult({ CARGO_HOLDS: max })).toBeLessThan(1.25);
+  /**
+   * D169 MADE THEM CONSEQUENTIAL ON PURPOSE, and this is what they cost now.
+   *
+   * These were modest by design — 20% off a build, 40% more ore, 20% more loot —
+   * and priced as conveniences. The owner's tables take all three to a different
+   * order: a third off the yard, two and a half times the hold, two and a half
+   * times what a raid carries home. The bound left is that they stay FINITE and
+   * stop where the table stops; the smallness is gone deliberately.
+   */
+  it('reach the top of their own tables and stop there', () => {
+    expect(yardSpeedMult({ YARD_AUTOMATION: max })).toBe(0.70);
+    expect(prospectorHoldMult({ PROSPECTOR_HOLDS: max })).toBe(2.5);
+    expect(cargoMult({ CARGO_HOLDS: max })).toBe(2.5);
   });
 
   describe('yard automation', () => {
@@ -60,10 +69,16 @@ describe('the economy ladders', () => {
       expect(shipMinutes(cost, 4, { YARD_AUTOMATION: max })).toBeLessThan(plain);
     });
 
-    /** The Shipyard still owns the curve; this only ever shaves it. */
-    it('never overtakes the Shipyard itself', () => {
+    /**
+     * IT IS WORTH ABOUT TWO SHIPYARD LEVELS NOW, and that is the D169 table.
+     * At 4% a rung it was worth less than one and the Shipyard owned the curve
+     * outright; at three tenths off the top rung it buys real yard, which is what
+     * the price it charges is for. It still does not outrun three levels.
+     */
+    it('is worth about two Shipyard levels, and never three', () => {
       const teched = shipMinutes(cost, 4, { YARD_AUTOMATION: max });
-      expect(teched).toBeGreaterThan(shipMinutes(cost, 6, {}));
+      expect(teched).toBeLessThan(shipMinutes(cost, 5, {}));
+      expect(teched).toBeGreaterThan(shipMinutes(cost, 7, {}));
     });
   });
 
@@ -158,9 +173,19 @@ describe('the Fleet V2 military ceiling', () => {
    * loses to the counter cycle by a wide margin — which is what makes a probe
    * worth flying and what makes this whole ladder a side bet rather than the game.
    */
-  it('stays far below what knowing your enemy buys', () => {
+  /**
+   * D169 NARROWED IT FROM A DIFFERENT LEAGUE TO A LEAD, on the owner's decision.
+   *
+   * The ceiling was 1.25 against a 2.56x counter cycle — information beat tech by
+   * six times over. Power and Armor now pay a quarter EACH, so the product is
+   * 1.5625 and the margin is 1.64x. Information still wins every equal-budget
+   * fight it is brought to; a probe is still the best thing a commander can spend
+   * on. What it no longer is, is the only thing worth spending on.
+   */
+  it('stays below what knowing your enemy buys', () => {
     const counter = COMBAT.strongMult / COMBAT.weakMult;
-    expect(RESEARCH_TECH.powerCeiling).toBeLessThan(counter / 2);
+    expect(RESEARCH_TECH.powerCeiling).toBeLessThan(counter);
+    expect(counter / RESEARCH_TECH.powerCeiling).toBeGreaterThan(1.6);
   });
 
   it('does nothing at all before anything is researched', () => {

@@ -11,7 +11,7 @@ const ALLOWED_CORE_LEVELS = [3, 5, 7, 9, 12, 15] as const;
 
 function getRandomCoreLevel(): number {
   const index = Math.floor(Math.random() * ALLOWED_CORE_LEVELS.length);
-  return ALLOWED_CORE_LEVELS[index];
+  return ALLOWED_CORE_LEVELS[index] ?? ALLOWED_CORE_LEVELS[0];
 }
 
 try {

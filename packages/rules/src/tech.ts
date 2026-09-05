@@ -17,21 +17,31 @@ import type { HullId, ResearchProjectId } from './types.js';
  */
 export type TechLevels = Partial<Record<ResearchProjectId, number>>;
 
-const rung = (tech: TechLevels, id: ResearchProjectId, max: number): number =>
-  Math.max(0, Math.min(max, Math.floor(tech[id] ?? 0)));
+/**
+ * WHAT A LADDER PAYS AT ONE RUNG, AND LEVEL ZERO IS ALWAYS NEUTRAL.
+ *
+ * Every effect below is a typed table now (D169), so there is exactly one piece of
+ * arithmetic left in this file and this is it: clamp into the table, and read.
+ * Level zero is not in the table because "not researched" is not a rung — it is
+ * the absence of one, and its value is 1 for every project by construction.
+ */
+const ladderAt = (ladder: readonly number[], level: number): number => {
+  const rung = Math.max(0, Math.min(ladder.length, Math.floor(level)));
+  return rung === 0 ? 1 : ladder[rung - 1] ?? 1;
+};
 
 /**
  * HOW MUCH FASTER THE YARD RUNS. T8.
  *
  * A share off the build time, never a rewrite of the throughput curve: the
- * Shipyard still decides the shape and this shaves it. D128 calibrated yard time
- * with a coefficient of 1.50 and `pnpm balance:goal` holds the six-to-seven day
- * band, so the ceiling here is deliberately small enough to be a convenience
- * rather than a second Shipyard.
+ * Shipyard still decides the shape and this shaves it.
+ *
+ * D169 opened the ladder at a tenth and took it to three tenths at the top, where
+ * it used to run from 4% to 20%. That is a real second Shipyard at rung five, and
+ * it is priced like one — see the table in `research.ts`.
  */
 export const yardSpeedMult = (tech: TechLevels): number =>
-  1 - RESEARCH_TECH.yardSpeedPerLevel
-    * rung(tech, 'YARD_AUTOMATION', RESEARCH_TECH.economyMaxLevel);
+  ladderAt(RESEARCH_TECH.yardSpeedLadder, tech.YARD_AUTOMATION ?? 0);
 
 /**
  * HOW MUCH MORE ONE MINING CRAFT CARRIES. T8.
@@ -44,8 +54,7 @@ export const yardSpeedMult = (tech: TechLevels): number =>
  * it did nothing.
  */
 export const prospectorHoldMult = (tech: TechLevels): number =>
-  1 + RESEARCH_TECH.holdPerLevel
-    * rung(tech, 'PROSPECTOR_HOLDS', RESEARCH_TECH.economyMaxLevel);
+  ladderAt(RESEARCH_TECH.holdLadder, tech.PROSPECTOR_HOLDS ?? 0);
 
 /**
  * HOW MUCH MORE A HULL CARRIES HOME. T8.
@@ -60,28 +69,20 @@ export const prospectorHoldMult = (tech: TechLevels): number =>
  * deliberately separated long before this existed.
  */
 export const cargoMult = (tech: TechLevels): number =>
-  1 + RESEARCH_TECH.cargoPerLevel
-    * rung(tech, 'CARGO_HOLDS', RESEARCH_TECH.economyMaxLevel);
+  ladderAt(RESEARCH_TECH.cargoLadder, tech.CARGO_HOLDS ?? 0);
 
 /**
- * One side's contribution, as a factor on ONE stat.
+ * ONE SIDE'S CONTRIBUTION, AS A FACTOR ON ONE STAT. D169.
  *
- * Everything is derived from `powerCeiling`. Equal-budget power goes as
- * `atk x hp / value^2`, so a project that lifts attack and hit points equally by
- * `c` moves power by `c^2` — which is why each side takes the square root of the
- * share it is allowed. Written this way, the ceiling is arithmetic rather than a
- * promise: change `powerCeiling` and every rung follows it.
+ * It used to be `powerCeiling` raised to a fractional power, which made the
+ * ceiling arithmetic rather than a promise — and made every rung unreadable:
+ * 1.0225651825635729 for eleven thousand alloy. The relationship now runs the
+ * other way. The table is authored, and `powerCeiling` is DERIVED from its top
+ * rung squared, so the ceiling still cannot disagree with what is sold; what
+ * changed is which of the two a person wrote down.
  */
-const side = (level: number, share: number): number =>
-  Math.pow(
-    RESEARCH_TECH.powerCeiling,
-    (share / 2) * (Math.max(0, Math.min(RESEARCH_TECH.weaponMaxLevel, Math.floor(level)))
-      / RESEARCH_TECH.weaponMaxLevel),
-  );
-
-/** A full half of the product ceiling: Power owns attack and Armor owns HP. */
 const fleetStatSide = (level: number): number =>
-  side(level, 1);
+  ladderAt(RESEARCH_TECH.fleetStatLadder, level);
 
 /**
  * Propulsion is linear and visibly capped at DOUBLE across four rungs. D152.
@@ -98,17 +99,17 @@ const propulsionSide = (level: number): number =>
  * WHAT THIS COMMANDER'S RESEARCH DOES TO ONE HULL. T9.
  *
  * THE ONE HARD RULE IN THE WHOLE TASK: the COMBINED effect of every weapon project
- * may never raise a hull's equal-budget power above `RESEARCH_TECH.powerCeiling`.
+ * may never raise a hull's equal-budget power above `RESEARCH_TECH.powerCeiling`,
+ * and that ceiling is now read off the ladder rather than the ladder off it.
  *
  *   information (the counter cycle)  1.6 / 0.625 = 2.56x   =  156%
- *   technology  (every project)                    1.25x   =   25%
+ *   technology  (Power x Armor)      1.25 x 1.25 = 1.5625x =   56%
  *
  * `hulls.ts` states the claim the game rests on — "information beats tech by
- * construction". Give attack and hit points 25% EACH and the product is 1.5625x,
- * which is 56%, and at that point knowing what your opponent flies stops being the
- * decisive thing. So the ceiling is on the PRODUCT, the two projects split it
- * between them, and `test/tech.test.ts` walks every hull at every rung rather than
- * trusting this paragraph.
+ * construction". D169 gave attack and hit points 25% EACH on the owner's
+ * instruction, so the product is 1.5625x and the information lead narrowed from
+ * six times to 1.64x. It is still a lead, and `test/tech.test.ts` walks every hull
+ * at every rung to hold it rather than trusting this paragraph.
  */
 export function hullTech(
   tech: TechLevels,
@@ -119,10 +120,7 @@ export function hullTech(
   const emplacement = hull.profile === 'EMPLACEMENT';
 
   if (emplacement) {
-    const factor = side(
-      tech.EMPLACEMENT_DOCTRINE ?? 0,
-      RESEARCH_TECH.doctrineShare,
-    );
+    const factor = ladderAt(RESEARCH_TECH.doctrineLadder, tech.EMPLACEMENT_DOCTRINE ?? 0);
     return { atk: factor, hp: factor, speed: 1 };
   }
 

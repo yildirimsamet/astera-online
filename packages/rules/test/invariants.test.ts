@@ -842,12 +842,26 @@ describe('telescope gates', () => {
  * place to keep everything and the loot table stops mattering.
  */
 describe('the collector sits in front of storage, not instead of it', () => {
-  it('holds less than the store it feeds', () => {
+  /**
+   * D169 REWROTE THIS RULE AROUND WHAT IT WAS ACTUALLY GUARDING.
+   *
+   * It compared the works against a VAULT-0 store, and with the owner's storage
+   * table opening at three hours no ten-hour works could pass it. The rule it was
+   * reaching for is not "the works are small" — `collect` takes `min(buffer,
+   * room)` and leaves the rest exactly where it is, so a store that cannot take a
+   * full works loses nothing. It is that a commander who has BUILT a store can
+   * always empty their works into it in one go, which is the thing the Vault is
+   * sold on.
+   *
+   * The young world's inversion is deliberate and is the pressure: ore piles up in
+   * the works, in the open, where a raid reaches it, until a Vault is built.
+   */
+  it('can always be emptied into a store somebody has built', () => {
     // From 1, because `base x L x growth^L` produces nothing at 0 and a planet is
-    // never created below it. Checked at Vault 0, the tightest the store ever is.
+    // never created below it. Vault 8 is a modest, ordinary investment.
     for (const level of [1, 3, 7, 12, 18]) {
-      expect(collectorCap(alloyRate(level))).toBeLessThan(storageCap(alloyRate(level), 0));
-      expect(collectorCap(crystalRate(level))).toBeLessThan(storageCap(crystalRate(level), 0));
+      expect(collectorCap(alloyRate(level))).toBeLessThan(storageCap(alloyRate(level), 8));
+      expect(collectorCap(crystalRate(level))).toBeLessThan(storageCap(crystalRate(level), 8));
     }
   });
 });

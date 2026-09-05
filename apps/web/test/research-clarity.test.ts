@@ -35,8 +35,8 @@ describe('a percentage small enough to matter', () => {
   });
 
   it('keeps the top of a small ladder at its tenth too', () => {
-    // The ceiling of Ship Power. Rounded to 12% it would break the very ladder
-    // the decimals were added to make even: 2.3, 4.6, 6.9, 9.3, then 12.
+    // A tenth still survives the formatter, even though D169's authored ladders
+    // are all whole percentages now and no longer need it.
     expect(percent(0.118)).toBe('11.8%');
   });
 
@@ -71,7 +71,8 @@ describe('every ladder says where it ends', () => {
     const top = RESEARCH_MAX_LEVEL.SHIP_POWER;
     const full = hullTech({ SHIP_POWER: top }, 'DART').atk - 1;
     expect(researchGain('SHIP_POWER', 0).ceiling).toBe(percent(full));
-    expect(researchGain('SHIP_POWER', 0).ceiling).toBe('11.8%');
+    // D169's authored ladder: a quarter of attack at the fifth rung.
+    expect(researchGain('SHIP_POWER', 0).ceiling).toBe('25%');
   });
 
   it('says nothing about a ceiling on a door, which has no ladder', () => {

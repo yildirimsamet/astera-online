@@ -255,8 +255,11 @@ describe('the three deuterium ceilings agree', () => {
       idle({ bufferDeuterium: 5_000 }),
       { refineryLevel: 8, extractorLevel: 8, plantLevel: 0, aegisLevel: 0, vaultLevel: 8 },
     );
-    // All of it: the buffer is smaller than the room its industry gives it.
-    expect(state.moved.deuterium).toBe(5_000);
-    expect(deuteriumStorageCap(0, crystalRate(8), 8)).toBeGreaterThan(5_000);
+    // As much as its industry can contain: D169 cut the store with the Vault
+    // table, so a 5,000 buffer now fills a Vault-8 world rather than fitting in
+    // it. What matters is unchanged — a world with no refinery still banks the
+    // isotope its craft flew home, which is the whole of D93's second act.
+    expect(state.moved.deuterium).toBe(deuteriumStorageCap(0, crystalRate(8), 8));
+    expect(state.moved.deuterium).toBeGreaterThan(0);
   });
 });

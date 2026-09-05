@@ -27,6 +27,13 @@ describe('research resource mix', () => {
     'YARD_AUTOMATION',
     'PROSPECTOR_HOLDS',
     'CARGO_HOLDS',
+    // D169 put five more projects on authored price tables, and an authored table
+    // that something else then multiplies is not an authored table.
+    'STARSHIP_ENGINEERING',
+    'SHIP_POWER',
+    'SHIP_ARMOR',
+    'SHIP_PROPULSION',
+    'EMPLACEMENT_DOCTRINE',
   ]);
 
   it('moves every level of every non-exempt project toward Crystal', () => {

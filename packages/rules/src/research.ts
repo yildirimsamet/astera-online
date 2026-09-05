@@ -164,65 +164,108 @@ const RESEARCH_PROJECTS_WAR_OPENS =
 const flat = (cost: Resources) => (): Resources => cost;
 
 /**
- * An economy ladder: five rungs, each 2.2x the last, open from the first minute.
+ * THE EIGHT HAND-PRICED LADDERS. D169, and the tables are the owner's own.
  *
- * One helper rather than three hand-written tables, because the three differ only
- * in their opening price — and a shape written out three times is three places for
- * a rung to go missing.
+ * These used to be two generators — `economyLadder` at 2.2x a rung and
+ * `weaponLadder` at 2.0x — each then scaled by `ECONOMY_TEMPO.fixedPrice` and
+ * biased toward Crystal by `researchCostMix`. Four multiplications stood between
+ * the number a person chose and the number on the screen, which is fine while
+ * nobody wants to choose the number on the screen. The owner does.
+ *
+ * SO THESE ARE FINAL FIGURES. No tempo scale, no Crystal mix — both would move
+ * them, and `RESEARCH_COST_MIX_EXEMPTIONS` below is what keeps the mix off. What a
+ * rung costs here is what the research row quotes, and `test/research-tables`
+ * holds every cell of it.
+ *
+ * The rung count is NOT stated here. `RESEARCH_MAX_LEVEL` walks the effect to find
+ * where a project stops selling anything, and `test/research-ceiling` fails if a
+ * price table and its effect ever part company — which is D36's bug, and the whole
+ * reason this file walks a ceiling instead of typing one.
  */
+const PRICE_TABLES = {
+  YARD_AUTOMATION: [
+    { alloy: 1500, crystal: 850, deuterium: 0 },
+    { alloy: 3500, crystal: 2000, deuterium: 0 },
+    { alloy: 7500, crystal: 4000, deuterium: 0 },
+    { alloy: 16_500, crystal: 9000, deuterium: 0 },
+    { alloy: 30_500, crystal: 17_000, deuterium: 0 },
+  ],
+  PROSPECTOR_HOLDS: [
+    { alloy: 1500, crystal: 1000, deuterium: 0 },
+    { alloy: 3500, crystal: 2250, deuterium: 0 },
+    { alloy: 6000, crystal: 3500, deuterium: 0 },
+    { alloy: 10_000, crystal: 7500, deuterium: 0 },
+    { alloy: 15_000, crystal: 10_000, deuterium: 0 },
+  ],
+  CARGO_HOLDS: [
+    { alloy: 2500, crystal: 1500, deuterium: 0 },
+    { alloy: 5000, crystal: 3500, deuterium: 0 },
+    { alloy: 7500, crystal: 5000, deuterium: 0 },
+    { alloy: 10_000, crystal: 7500, deuterium: 0 },
+    { alloy: 12_500, crystal: 10_000, deuterium: 0 },
+  ],
+  STARSHIP_ENGINEERING: [
+    { alloy: 5000, crystal: 3500, deuterium: 0 },
+    { alloy: 7500, crystal: 5000, deuterium: 500 },
+  ],
+  SHIP_POWER: [
+    { alloy: 4500, crystal: 2500, deuterium: 0 },
+    { alloy: 7500, crystal: 4500, deuterium: 250 },
+    { alloy: 11_500, crystal: 6500, deuterium: 500 },
+    { alloy: 17_500, crystal: 10_500, deuterium: 750 },
+    { alloy: 26_000, crystal: 15_500, deuterium: 1000 },
+  ],
+  SHIP_ARMOR: [
+    { alloy: 4500, crystal: 2500, deuterium: 0 },
+    { alloy: 7500, crystal: 4500, deuterium: 250 },
+    { alloy: 11_500, crystal: 6500, deuterium: 500 },
+    { alloy: 17_500, crystal: 10_500, deuterium: 750 },
+    { alloy: 26_000, crystal: 15_500, deuterium: 1000 },
+  ],
+  /** The fourth rung is the one that doubles the fleet, so it is priced like it. */
+  SHIP_PROPULSION: [
+    { alloy: 4500, crystal: 2500, deuterium: 0 },
+    { alloy: 7500, crystal: 4500, deuterium: 500 },
+    { alloy: 11_500, crystal: 6500, deuterium: 750 },
+    { alloy: 17_500, crystal: 10_500, deuterium: 1000 },
+  ],
+  EMPLACEMENT_DOCTRINE: [
+    { alloy: 4500, crystal: 2500, deuterium: 0 },
+    { alloy: 7500, crystal: 4500, deuterium: 250 },
+    { alloy: 11_500, crystal: 6500, deuterium: 500 },
+    { alloy: 17_500, crystal: 10_500, deuterium: 750 },
+    { alloy: 26_000, crystal: 15_500, deuterium: 1000 },
+  ],
+} as const satisfies Partial<Record<ResearchProjectId, readonly Resources[]>>;
+
+type PricedProjectId = keyof typeof PRICE_TABLES;
+
+/** A project whose price is a table: clamp into it, and read. Open from minute one. */
+const priced = (id: PricedProjectId): ResearchProject => {
+  const table = PRICE_TABLES[id];
+  return {
+    id,
+    maxLevel: RESEARCH_MAX_LEVEL[id],
+    costAt: (level: number): Resources => {
+      const rung = Math.max(1, Math.min(table.length, Math.floor(level)));
+      return table[rung - 1] ?? table[0];
+    },
+    availableAtMinutes: 0,
+    prerequisite: null,
+  };
+};
+
 /**
- * A weapon ladder: five rungs, each 2.0x the last, and deuterium from the second.
+ * The eight hand-priced projects quote FINAL figures, so nothing may bias them.
  *
- * TWO, NOT MORE, AND THE CLAMP IS WHY. At 2.4 the top rung priced out at a build
- * time of exactly `BUILD.capMinutes` even for a Core-14 commander — and at the
- * clamp, further cost stops being felt as time, which makes the last rung partly
- * free in the one currency a queue actually charges.
- *
- * `weight` prices the general project above a single doctrine, because it lifts
- * every hull a commander owns rather than one of them.
+ * It used to name the three economy ladders alone — they kept their own
+ * Alloy/Crystal split while the generated ones were pushed 25% toward Crystal.
+ * D169 put every one of the eight on an authored table, and an authored table that
+ * something else then multiplies is not an authored table.
  */
-const weaponLadder = (id: ResearchProjectId, weight = 1): ResearchProject => ({
-  id,
-  maxLevel: RESEARCH_MAX_LEVEL[id],
-  costAt: (level: number) => {
-    const rung = Math.max(1, Math.min(RESEARCH_MAX_LEVEL[id], Math.floor(level)));
-    const step = Math.pow(2, rung - 1) * weight;
-    return {
-      alloy: scalePrice(2200 * step, ECONOMY_TEMPO.fixedPrice),
-      crystal: scalePrice(1300 * step, ECONOMY_TEMPO.fixedPrice),
-      deuterium: rung === 1 ? 0 : scalePrice(180 * Math.pow(2, rung - 2) * weight,
-        ECONOMY_TEMPO.deuteriumPrice),
-    };
-  },
-  availableAtMinutes: 0,
-  prerequisite: null,
-});
-
-const economyLadder = (
-  id: ResearchProjectId,
-  alloy: number,
-  crystal: number,
-): ResearchProject => ({
-  id,
-  maxLevel: RESEARCH_MAX_LEVEL[id],
-  costAt: (level: number) => {
-    const step = Math.pow(2.2, Math.max(1, Math.min(RESEARCH_TECH.economyMaxLevel, level)) - 1);
-    return {
-      alloy: scalePrice(alloy * step, ECONOMY_TEMPO.fixedPrice),
-      crystal: scalePrice(crystal * step, ECONOMY_TEMPO.fixedPrice),
-      deuterium: 0,
-    };
-  },
-  availableAtMinutes: 0,
-  prerequisite: null,
-});
-
-/** These three economy projects keep their original Alloy/Crystal distribution. */
-const RESEARCH_COST_MIX_EXEMPTIONS = new Set<ResearchProjectId>([
-  'YARD_AUTOMATION',
-  'PROSPECTOR_HOLDS',
-  'CARGO_HOLDS',
-]);
+const RESEARCH_COST_MIX_EXEMPTIONS = new Set<ResearchProjectId>(
+  Object.keys(PRICE_TABLES) as ResearchProjectId[],
+);
 
 /**
  * Bias a research price toward Crystal without changing its Deuterium component.
@@ -360,29 +403,29 @@ export const RESEARCH_PROJECTS: Record<ResearchProjectId, ResearchProject> = wit
    * bought at the capital is a ladder every colony has — these cost what a
    * three-world commander should feel, not what one world can shrug off.
    */
-  YARD_AUTOMATION: economyLadder('YARD_AUTOMATION', 900, 500),
-  PROSPECTOR_HOLDS: economyLadder('PROSPECTOR_HOLDS', 700, 900),
+  YARD_AUTOMATION: priced('YARD_AUTOMATION'),
+  PROSPECTOR_HOLDS: priced('PROSPECTOR_HOLDS'),
   /**
    * Dearest of the three, because it is the only one that moves ARR: `fleetCargo`
    * is what caps a raid's loot. A player buying raid income should feel it.
    */
-  CARGO_HOLDS: economyLadder('CARGO_HOLDS', 1400, 1100),
+  CARGO_HOLDS: priced('CARGO_HOLDS'),
 
-  /** Fleet V2 permissions and bounded stat ladders. D148. */
-  STARSHIP_ENGINEERING: weaponLadder('STARSHIP_ENGINEERING', 0.9),
+  /** Fleet V2 permissions and bounded stat ladders. D148, re-priced at D169. */
+  STARSHIP_ENGINEERING: priced('STARSHIP_ENGINEERING'),
   SHIP_POWER: {
-    ...weaponLadder('SHIP_POWER'),
+    ...priced('SHIP_POWER'),
     prerequisite: 'STARSHIP_ENGINEERING',
   },
   SHIP_ARMOR: {
-    ...weaponLadder('SHIP_ARMOR'),
+    ...priced('SHIP_ARMOR'),
     prerequisite: 'STARSHIP_ENGINEERING',
   },
   SHIP_PROPULSION: {
-    ...weaponLadder('SHIP_PROPULSION'),
+    ...priced('SHIP_PROPULSION'),
     prerequisite: 'DENSE_FUEL_CELLS',
   },
-  EMPLACEMENT_DOCTRINE: weaponLadder('EMPLACEMENT_DOCTRINE'),
+  EMPLACEMENT_DOCTRINE: priced('EMPLACEMENT_DOCTRINE'),
 
   /**
    * THE TWO STRATEGIC PROJECTS, AND THEY ARE EACH OTHER'S ANSWER. T10 · T11.

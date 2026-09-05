@@ -1038,7 +1038,7 @@ describe('the reason a shut project is shut', () => {
    */
   it('separates a queued prerequisite from a held one', async () => {
     await completeResearch(f.db, mine, 'STARSHIP_ENGINEERING', f.clock);
-    const served = await planetView(f.db, mine, f.clock);
+    const served = await f.db.transaction((tx) => planetView(tx, mine, f.clock));
     const state = served.research.find((row) => row.id === 'SHIP_POWER')!;
     expect(state.prerequisiteMet).toBe(false);
     expect(state.queuePrerequisiteMet).toBe(true);

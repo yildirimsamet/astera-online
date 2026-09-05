@@ -155,8 +155,36 @@ export const ECON = {
    * D161 wanted anyway: a bigger store is more ore in the open, and the vault
    * floor below did not follow it up.
    */
-  capHours: (12 / 0.9) * ECONOMY_TEMPO.storageHours,
-  capHoursPerVault: (0.8 / 0.9) * ECONOMY_TEMPO.storageHours,
+  /**
+   * D169 REPLACED THE PAIR WITH A TABLE, AND THE VAULT BECAME A REAL BUILDING.
+   *
+   * The store used to open at 14.7 hours before anybody built a Vault and grow by
+   * 0.98 an hour after — which meant the first ten Vault levels bought about two
+   * thirds of what a commander already had for free. A building whose first ten
+   * levels are a rounding error on the thing they improve is a building nobody has
+   * a reason to think about.
+   *
+   * The owner's table opens at THREE hours and reaches forty, so the Vault is the
+   * whole difference between a store that holds an afternoon and one that holds
+   * two days. It is priced to match — see `VAULT_PRICE` in `economy.ts`, which is
+   * the same table's other half and the reason the Vault left the shared building
+   * curve entirely.
+   *
+   * WHAT THIS COSTS, STATED PLAINLY: at Vault 0 a world now holds a fifth of what
+   * it held, so the opening is far more exposed and far less able to bank for an
+   * upgrade. That is the direction the owner asked for. `tempo.test.ts` still
+   * refuses an upgrade no reachable store can hold — but it now measures against a
+   * Vault kept ONE level behind the Core rather than three, because with this
+   * table the Vault is the store and a commander who ignores it stalls.
+   *
+   * PAST THE TABLE the last step continues: +4 hours a level, forever, because the
+   * Command Core has no ceiling and a store that stopped growing would re-create
+   * the crossing this whole note exists to prevent.
+   */
+  storageHoursLadder: [
+    3, 4, 5, 6, 7, 8, 9, 10, 11, 12,
+    13, 14, 16, 18, 20, 22, 24, 28, 32, 36, 40,
+  ] as const,
 
   /**
    * Hours the works hold before they STOP. D16.
@@ -172,6 +200,28 @@ export const ECON = {
    * and it is deliberately set at the harsher end because everything else in this
    * economy is generous to the casual player. Raise it to 12 and the waste goes
    * to nearly zero.
+   */
+  /**
+   * LEFT AT TEN THROUGH D169, AND THE REASON IS WORTH WRITING DOWN.
+   *
+   * The works sit in FRONT of storage, and the old rule was that they must hold
+   * less than the store they feed — measured at Vault 0, the tightest the store
+   * ever was. The owner's storage table opens at three hours, so ten no longer
+   * clears that bar and the obvious move was to cut it with the store.
+   *
+   * IT WOULD HAVE BEEN THE WRONG MOVE. `collect` takes `min(buffer, room)` and
+   * leaves the remainder in the works — nothing is ever lost to a full store, only
+   * left where it is. A two-hour works would have thrown away no ore and cost the
+   * game a great deal: 1,200 alloy of battle salvage has nowhere to land on a
+   * young world, a clan share is refused for want of room, and an eight-hour
+   * absence stops producing after two. That is a real loss to fix a bookkeeping
+   * rule that was never about loss.
+   *
+   * So the works stay at ten hours and the relationship inverts on a young world:
+   * a commander with no Vault fills their works faster than they can bank them,
+   * and the ore waits in the open where a raid can reach it. Emptying the works is
+   * exactly what a Vault buys, and `invariants.test.ts` now holds the honest
+   * version of the rule — a DEVELOPED store must be able to take a full works.
    */
   collectorHours: 10,
 
@@ -235,8 +285,28 @@ export const ECON = {
    * THE FLAT TERM IS REDUCED, NEVER REMOVED — see the paragraph below, and the
    * simulator run that refused its removal outright.
    */
-  protectedHoursBase: 1.5 * ECONOMY_TEMPO.storageHours,
-  protectedHoursPerVault: 0.2 * ECONOMY_TEMPO.storageHours,
+  /**
+   * D169: ONE SHARE OF THE STORE, AT EVERY LEVEL, AND THE INVARIANT IS NOW SHAPE.
+   *
+   * It was two hour figures — a flat base plus a per-Vault term — held against the
+   * store by a test (`protectedHoursPerVault / capHoursPerVault < 0.5`). That test
+   * existed because two independent ladders can drift, and the docblock above
+   * records what happened the one time they did: a vault that compounded faster
+   * than the stock it protected covered 100% of storage and killed a season's PvP
+   * economy with no other symptom.
+   *
+   * The store is a table now, and a flat 1.65 hours against a 3-hour opening store
+   * would have protected 55% of it — the exact failure, arrived at from the other
+   * side. So the floor is denominated in the STORE rather than in hours: 15% of
+   * whatever the Vault holds. D61's half-a-store rule and D161's fifth-of-a-store
+   * ceiling are both true by construction now rather than by measurement, which is
+   * the only way a derived constant stops being a trap.
+   *
+   * 0.15 is the middle of what the old pair actually measured — 11% at Vault 0
+   * rising to 18% at Vault 20 — so the protected SHARE is unchanged on average and
+   * no longer grows as a season goes on, which D161 called backwards.
+   */
+  protectedShare: 0.15,
   /**
    * The floor a brand-new planet gets, in alloy, before the hours rule outgrows it
    * — cut a quarter with the two hour figures above at D161, so the opening's
@@ -252,7 +322,17 @@ export const ECON = {
    *
    * The crystal figure is derived from the income ratio, never picked.
    */
-  openingFloorAlloy: scalePrice(630, ECONOMY_TEMPO.upgradePrice),
+  /**
+   * SCALED WITH THE STORE AT D169, for the same reason as `collectorHours`.
+   *
+   * It is a flat alloy figure measured against a store that opened at 14.7 hours —
+   * where it covered about 80% of a brand-new world's alloy, which is what makes
+   * the opening survivable. Against a 3-hour store the same figure covers 390%,
+   * so the floor exceeded the store and the vault protected ore the world could
+   * not hold. Multiplied by the same 0.2045 the store moved by, it covers the same
+   * 80% of the same young world, and the measurement it was chosen for is intact.
+   */
+  openingFloorAlloy: scalePrice(129, ECONOMY_TEMPO.upgradePrice),
 } as const;
 
 /**
@@ -1423,37 +1503,60 @@ export const HANGAR = {
 /**
  * WHAT RESEARCH IS ALLOWED TO BE WORTH. T8 · T9.
  *
- * THE ONE HARD RULE IS THE POWER CEILING, and it is the claim the whole game rests
- * on stated as a number:
+ * EVERY EFFECT IS A TYPED LADDER NOW, AND THE LADDER IS THE DESIGN. D169.
+ *
+ * These were derived figures — a per-level share, a ceiling split in half, a
+ * square root — and they produced rungs like 1.0225651825635729. D124's rule is
+ * that a rule the player cannot SEE is not a usable rule, and a research screen
+ * quoting +2.3% for a rung that cost eleven thousand alloy is that failure wearing
+ * a percentage sign. The owner's tables replace them: five rungs a commander can
+ * read off the row and predict from, written out rather than computed.
+ *
+ * WHAT THAT COST, STATED PLAINLY. The power ceiling moved with them:
  *
  *   information (the counter cycle)  1.6 / 0.625 = 2.56x   =  156% advantage
- *   technology  (every project)                    1.25x   =   25% advantage
+ *   technology  (Power x Armor)      1.25 x 1.25 = 1.5625x =   56% advantage
  *
- * `hulls.ts` says it outright — "information beats tech by construction, and that
- * is the claim the whole game rests on". Give attack and hit points 25% EACH and
- * the product is 1.5625x, which is not 25%: it is 56%, and it lands close enough
- * to the counter cycle that knowing what your opponent flies stops being the
- * decisive thing. So the ceiling is on the PRODUCT, every weapon project's
- * contribution is derived from it, and `test/tech.test.ts` holds the arithmetic
- * rather than a comment promising it.
+ * D137 held the PRODUCT at 1.25 so that knowing what your opponent flies stayed
+ * decisive by a factor of six. At 1.5625 the margin is 1.64x — information still
+ * wins, and `test/tech.test.ts` still asserts that it does, but the gap is now a
+ * lead rather than a different league. This was the owner's call, made against
+ * that arithmetic and not around it.
  *
- * The economy figures are separate and small on purpose. `cargoPerLevel` is the
- * one that moves ARR — `fleetCargo` caps what a raid carries home — so it is the
- * smallest of the three and the band is measured, never assumed.
+ * The economy ladders are separate. `cargoLadder` is the one that moves ARR —
+ * `fleetCargo` caps what a raid carries home — and it now reaches 2.5x, which is
+ * the largest single change in this table.
  */
+/** The last rung of a ladder, which is what it is worth at the top. */
+const ladderTop = (ladder: readonly number[]): number => ladder[ladder.length - 1] ?? 1;
+
+/** Build time left on the yard, by rung. Three tenths off at the top. */
+const YARD_SPEED_LADDER = [0.90, 0.85, 0.80, 0.75, 0.70] as const;
+/** What one mining craft carries, by rung. */
+const HOLD_LADDER = [1.25, 1.50, 1.75, 2.00, 2.50] as const;
+/** What one hull carries home from a raid, by rung. */
+const CARGO_LADDER = [1.25, 1.50, 1.75, 2.00, 2.50] as const;
+/** Attack (Power) or hit points (Armor) on a Fleet V2 hull, by rung. */
+const FLEET_STAT_LADDER = [1.05, 1.10, 1.15, 1.20, 1.25] as const;
+/** Both stats on a ground emplacement, by rung. */
+const DOCTRINE_LADDER = [1.05, 1.10, 1.15, 1.20, 1.25] as const;
+
 export const RESEARCH_TECH = {
-  /** Equal-budget power a fully-teched hull may reach. Never above the counter cycle. */
-  powerCeiling: 1.25,
-  /** Rungs on a weapon doctrine, and on each economy project. */
-  engineeringMaxLevel: 2,
-  weaponMaxLevel: 5,
-  economyMaxLevel: 5,
   /**
-   * How the ceiling is split between a hull's own doctrine and the general
-   * attack/armour project. Half each, so neither alone is the whole answer and
-   * both are worth the levels.
+   * Equal-budget power a fully-teched hull may reach: the PRODUCT of the two fleet
+   * ladders, derived from them so it can never disagree with what is sold.
    */
-  doctrineShare: 0.5,
+  powerCeiling: ladderTop(FLEET_STAT_LADDER) * ladderTop(FLEET_STAT_LADDER),
+  /** Rungs on a weapon doctrine, and on each economy project — the tables' own lengths. */
+  engineeringMaxLevel: 2,
+  weaponMaxLevel: FLEET_STAT_LADDER.length,
+  economyMaxLevel: YARD_SPEED_LADDER.length,
+  /** The five tables above, and they are the only statement of each effect. */
+  yardSpeedLadder: YARD_SPEED_LADDER,
+  holdLadder: HOLD_LADDER,
+  cargoLadder: CARGO_LADDER,
+  fleetStatLadder: FLEET_STAT_LADDER,
+  doctrineLadder: DOCTRINE_LADDER,
   /**
    * FOUR PROPULSION RUNGS ADD A QUARTER EACH, AND THE FOURTH DOUBLES THE FLEET.
    * D152, owner instruction. Existing arrival timestamps never move.
@@ -1478,10 +1581,6 @@ export const RESEARCH_TECH = {
   propulsionPerLevel: 0.25,
   /** Rungs on Propulsion. Its own, because speed takes no share of `powerCeiling`. */
   propulsionMaxLevel: 4,
-  /** Build time shaved per rung. Small: the Shipyard still owns the curve. */
-  yardSpeedPerLevel: 0.04,
-  holdPerLevel: 0.08,
-  cargoPerLevel: 0.04,
 } as const;
 
 /**

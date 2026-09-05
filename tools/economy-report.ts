@@ -6,15 +6,15 @@ import {
   INSTRUMENT_MAX_LEVEL, PROBE, RESEARCH_PROJECT_IDS, RESEARCH_PROJECTS,
   SATELLITE_IDS, alloyRate, buildingCost, buildMinutes, crystalRate,
   defenceMinutes, deuteriumRate, flightSlots, groundSlots, hangarCapacity,
-  hullBulk, instrumentCost, plantCeiling, radarRange, researchEffectAt,
+  hullBulk, instrumentCost, radarRange, researchEffectAt,
   researchMinutes, satelliteCost, satelliteSlots, sensorReach, shieldHp,
   shipMinutes, storageHours, telescopeCooldownHours, telescopeSlots,
-  upgradeCost, yardThroughput,
+  yardThroughput,
 } from '../packages/rules/src/index.js';
 import type { BuildingId, InstrumentId, ResearchProjectId, Resources } from '../packages/rules/src/index.js';
 
 type Cell = string | number;
-type Sheet = { name: string; rows: Cell[][] };
+interface Sheet { name: string; rows: Cell[][] }
 const trBuilding: Record<BuildingId, string> = {
   CORE: 'Komuta Çekirdeği', REFINERY: 'Alaşım Rafinerisi', EXTRACTOR: 'Kristal Ocağı',
   VAULT: 'Kasa', SHIPYARD: 'Tersane', HANGAR: 'Hangar', DEUTERIUM_PLANT: 'Döteryum Rafinerisi',

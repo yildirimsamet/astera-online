@@ -137,7 +137,13 @@ const WEIGHT_RADIUS: Record<1 | 2 | 3, number> = {
  * check, and the old ones (591,044 against 590,789) no longer reproduce — the same
  * conclusion, at a tempo that has since changed underneath it.
  */
-export const CORE_TOP_LEVEL = 21;
+/*
+  D169 MOVED IT BY ONE, AND IT MOVED BECAUSE THE MEASUREMENT DID. The Vault's new
+  storage table holds more ore at the top than the old flat-per-level pair did, so
+  a world funds one more Core level out of its own store before it needs ore
+  shipped in from a colony. `view.test.ts` re-measures it; nothing here is chosen.
+*/
+export const CORE_TOP_LEVEL = 22;
 
 /**
  * WHERE EACH AUTHORED SIZE SITS ON THE CORE LADDER. D153.

@@ -30,6 +30,7 @@ import {
   RESEARCH_PROJECTS,
   researchCostMix,
   SATELLITES,
+  storageHours,
   START_BUILDINGS,
   type BuildingId,
   type HullId,
@@ -328,10 +329,14 @@ function defenceMinutes(profile: EconomyProfile, id: HullId, yard: number): numb
   return Math.min(profile.buildCapMinutes, total(hullCost(profile, id)) / throughput);
 }
 
-function storageCap(profile: EconomyProfile, rate: number, vault: number): number {
-  return round(
-    rate * (profile.capHours + profile.capHoursPerVault * Math.max(0, vault)),
-  );
+/**
+ * D169: the store is `ECON.storageHoursLadder`, not a base plus a per-level term.
+ * The profile's two hour fields survive only as the BASELINE the report prints
+ * against; the live figure is the shipped ladder, read through the rules so this
+ * tool cannot quote a store the game does not have.
+ */
+function storageCap(_profile: EconomyProfile, rate: number, vault: number): number {
+  return round(rate * storageHours(vault));
 }
 
 function collectorCap(profile: EconomyProfile, rate: number): number {
@@ -829,8 +834,8 @@ function assertShippedCandidate(): void {
   if (ECON.costMult !== CANDIDATE.costMult) mismatches.push('costMult');
   if (ECON.crystalCostBase !== CANDIDATE.crystalCostBase) mismatches.push('crystalCostBase');
   if (ECON.crystalCostMult !== CANDIDATE.crystalCostMult) mismatches.push('crystalCostMult');
-  if (ECON.capHours !== CANDIDATE.capHours) mismatches.push('capHours');
-  if (ECON.capHoursPerVault !== CANDIDATE.capHoursPerVault) mismatches.push('capHoursPerVault');
+  // D169: one table replaced the pair, and it is the rules' own.
+  if (storageHours(0) !== ECON.storageHoursLadder[0]) mismatches.push('storageHoursLadder');
   if (BUILD.conBase !== CANDIDATE.constructionBase) mismatches.push('constructionBase');
   if (BUILD.conPerCore !== CANDIDATE.constructionPerCore) mismatches.push('constructionPerCore');
   if (BUILD.yardBase !== CANDIDATE.yardBase) mismatches.push('yardBase');

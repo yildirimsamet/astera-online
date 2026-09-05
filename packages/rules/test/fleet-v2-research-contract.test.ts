@@ -87,7 +87,8 @@ describe('Fleet V2 research effects — D148', () => {
         .toEqual({ atk: 1, hp: 1, speed: 1 });
     }
 
-    const preservedDirectFactor = Math.pow(rules.RESEARCH_TECH.powerCeiling, 0.25);
+    // D169: the doctrine ladder is authored, not derived from the ceiling.
+    const preservedDirectFactor = rules.RESEARCH_TECH.doctrineLadder.at(-1) ?? 1;
     for (const id of ['BASTION', 'THORN'] as const) {
       const effect = hullTechAt(emplacement, id);
       expect(effect.atk, `${id} preserved attack factor`).toBeCloseTo(preservedDirectFactor, 12);
@@ -105,7 +106,7 @@ describe('Fleet V2 research effects — D148', () => {
     const power = hullTechAt({ SHIP_POWER: max }, 'DART');
     const armor = hullTechAt({ SHIP_ARMOR: max }, 'DART');
     const both = hullTechAt({ SHIP_POWER: max, SHIP_ARMOR: max }, 'DART');
-    const side = Math.sqrt(rules.RESEARCH_TECH.powerCeiling);
+    const side = rules.RESEARCH_TECH.fleetStatLadder.at(-1) ?? 1;
 
     expect(power.atk).toBeCloseTo(side, 12);
     expect(power.hp).toBe(1);

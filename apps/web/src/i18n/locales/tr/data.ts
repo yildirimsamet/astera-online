@@ -445,10 +445,10 @@ export const gains = {
   research: {
     powerLabel: 'Savaş gemisi saldırısı',
     powerScope:
-      'Filondaki bütün savaş gemileri. Güç × Zırh birlikte, eşit bütçeyle savaş gücünü en fazla %25 artırır; nakliye gemileri ve yer savunması etkilenmez.',
+      'Filondaki bütün savaş gemileri. Güç × Zırh birlikte, eşit bütçeyle savaş gücünü en fazla %56 artırır; nakliye gemileri ve yer savunması etkilenmez.',
     armorLabel: 'Gemi gövde dayanımı',
     armorScope:
-      'Nakliye dâhil filonun 18 gemisi. Güç × Zırh birlikte, eşit bütçeyle savaş gücünü en fazla %25 artırır; yer savunması etkilenmez.',
+      'Nakliye dâhil filonun 18 gemisi. Güç × Zırh birlikte, eşit bütçeyle savaş gücünü en fazla %56 artırır; yer savunması etkilenmez.',
     speedLabel: 'Filo hızı',
     speedScope:
       'Filonun 18 gemisinin tamamı. Karma filo yine en yavaş üyesinin — geliştirilmiş — hızıyla uçar; Kazıcı, sonda ve Ölüm Yıldızı etkilenmez.',

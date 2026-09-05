@@ -1,5 +1,5 @@
 import { and, eq, ilike } from 'drizzle-orm';
-import { ALL_HULLS, type HullId } from '@astera/rules';
+import { ALL_HULLS } from '@astera/rules';
 import { createDb } from '../db/client.js';
 import { accounts, planets, players, units } from '../db/schema.js';
 import { loadDotEnv, loadEnv } from '../env.js';
@@ -68,7 +68,7 @@ try {
         .values({
           planetId: planet.id,
           ownerPlayerId: player.id,
-          hull: hull as HullId,
+          hull,
           location: 'home',
           count: nextCount,
         })

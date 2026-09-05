@@ -17,6 +17,7 @@ import {
   shipMinutes,
   storageCap,
   alloyRate,
+  storageHours,
   upgradeCost,
 } from '../src/index.js';
 
@@ -24,10 +25,10 @@ describe('the calibrated economy tempo', () => {
   it('keeps the upgrade curve inside a raidable storage profile', () => {
     expect(ECON.costBase / 52).toBe(1.05);
     expect(ECON.costMult).toBe(1.54);
-    // D161 divided both by 0.9 with the alloy income cut, so a store still holds
-    // the same ORE it held before — see the note on `capHours`.
-    expect(ECON.capHours).toBeCloseTo(14.667, 3);
-    expect(ECON.capHoursPerVault).toBeCloseTo(0.978, 3);
+    // D169 replaced the pair with the owner's table: three hours before a Vault
+    // exists, forty at the top of it — see `ECON.storageHoursLadder`.
+    expect(storageHours(0)).toBe(3);
+    expect(storageHours(20)).toBe(40);
   });
 
   it('keeps the opening in minutes and both meanings of L12 inside one to two hours', () => {
@@ -43,9 +44,18 @@ describe('the calibrated economy tempo', () => {
     expect(outOfL12).toBeLessThanOrEqual(120);
   });
 
+  /**
+   * ONE LEVEL BEHIND THE CORE, NOT THREE. D169.
+   *
+   * The Vault used to be a convenience on top of a store that already held fifteen
+   * hours, so a commander three levels behind on it was still fine. The table made
+   * the Vault the store itself, and a commander who ignores it stalls — which is
+   * the point of the change, not a side effect of it. The measurement is the same
+   * measurement; what it assumes about a developed world moved with the building.
+   */
   it('never creates an upgrade a developed Vault cannot hold', () => {
     for (let level = 1; level <= 20; level += 1) {
-      const vault = Math.max(0, Math.min(16, level - 3));
+      const vault = Math.max(0, level - 1);
       expect(upgradeCost(level).alloy, `L${String(level)} at Vault ${String(vault)}`)
         .toBeLessThanOrEqual(storageCap(alloyRate(level), vault));
     }

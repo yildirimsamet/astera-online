@@ -404,16 +404,25 @@ export async function grant(
   const { PLANET_START, alloyRate, crystalRate, storageCap } = await import('@astera/rules');
 
   /**
-   * Sized against the VAULT-0 ceiling, deliberately.
+   * SIZED WITH A VAULT NOW, AND IT HAS TO BE. D169.
    *
-   * The store grows with the Vault now, so a level chosen against a tall store
-   * would not actually hold the grant on a planet with no Vault — and this helper
-   * never raises the Vault. Choosing the conservative level means the grant always
-   * fits, whatever the test has done to the planet.
+   * It used to size against the Vault-0 ceiling and never touch the Vault, which
+   * was conservative and free while a bare world already held 14.7 hours of ore.
+   * The owner's storage table opens at three, so the same conservative sum wanted
+   * a Refinery several levels taller to hold the same grant — and `grant` raises
+   * the Core to match, which quietly pushed every enriched defender out of D168's
+   * tier band and refused launches in forty-odd tests that are not about it.
+   *
+   * Solving for a world whose Vault matches its producers keeps the Core within a
+   * level of where it always landed, which is what every fixture was written
+   * against. The VAULT ITSELF IS STILL NEVER RAISED: this helper writes the stock
+   * straight into the row rather than through the cap, and a fixture that then
+   * buys a Vault level must find it at the price the test expects, not at the
+   * price of whatever level a helper decided to install.
    */
   const levelFor = (amount: number, rate: (l: number) => number): number => {
     let level = 1;
-    while (level < 40 && storageCap(rate(level), 0) < amount) level++;
+    while (level < 40 && storageCap(rate(level), level) < amount) level++;
     return level;
   };
   const refinery = levelFor(alloy, alloyRate);

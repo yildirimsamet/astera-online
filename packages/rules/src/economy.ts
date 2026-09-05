@@ -161,8 +161,68 @@ export function upgradeCost(level: number): Resources {
   };
 }
 
+/**
+ * THE VAULT'S OWN PRICE LADDER. D169, and it is the other half of
+ * `ECON.storageHoursLadder`.
+ *
+ * The Vault left the shared building curve because its effect did. A store that
+ * opens at three hours and reaches forty is the difference between banking an
+ * afternoon and banking two days, and the old curve charged 55 alloy for the first
+ * level of that — the price of a rounding error for the most consequential
+ * building on the world.
+ *
+ * Indexed by the level being REACHED, one-based: `VAULT_PRICE[0]` takes a world
+ * from Vault 0 to Vault 1. The figures are the owner's own table, typed rather
+ * than generated, and `test/vault-table` holds every cell.
+ */
+const VAULT_PRICE: readonly Resources[] = [
+  { alloy: 200, crystal: 100, deuterium: 0 },
+  { alloy: 300, crystal: 150, deuterium: 0 },
+  { alloy: 450, crystal: 225, deuterium: 0 },
+  { alloy: 675, crystal: 338, deuterium: 0 },
+  { alloy: 1013, crystal: 506, deuterium: 0 },
+  { alloy: 1519, crystal: 760, deuterium: 0 },
+  { alloy: 2280, crystal: 1140, deuterium: 0 },
+  { alloy: 3417, crystal: 1520, deuterium: 0 },
+  { alloy: 5126, crystal: 2280, deuterium: 0 },
+  { alloy: 7689, crystal: 3845, deuterium: 0 },
+  { alloy: 11_533, crystal: 5767, deuterium: 0 },
+  { alloy: 17_300, crystal: 8650, deuterium: 0 },
+  { alloy: 25_950, crystal: 12_975, deuterium: 0 },
+  { alloy: 38_925, crystal: 19_463, deuterium: 0 },
+  { alloy: 58_388, crystal: 29_194, deuterium: 0 },
+  { alloy: 87_582, crystal: 43_791, deuterium: 0 },
+  { alloy: 131_373, crystal: 65_687, deuterium: 0 },
+  { alloy: 197_060, crystal: 98_530, deuterium: 0 },
+  { alloy: 295_590, crystal: 147_795, deuterium: 0 },
+  { alloy: 443_385, crystal: 221_693, deuterium: 0 },
+];
+
+/** The table's own growth, used to continue it past its end. 1.5x a level. */
+const VAULT_PRICE_GROWTH = 1.5;
+
+/** What it costs to reach one Vault level, table first and its own curve after. */
+function vaultCost(level: number): Resources {
+  const index = Math.max(0, Math.floor(level));
+  const inTable = VAULT_PRICE[index];
+  if (inTable !== undefined) return inTable;
+  /*
+    The Command Core has no ceiling, so the Vault has none either and the table
+    has to continue rather than clamp — a clamped price would make every level
+    past the twentieth the cheapest purchase on the world.
+  */
+  const last = VAULT_PRICE[VAULT_PRICE.length - 1] ?? { alloy: 0, crystal: 0, deuterium: 0 };
+  const beyond = Math.pow(VAULT_PRICE_GROWTH, index - VAULT_PRICE.length + 1);
+  return {
+    alloy: Math.round(last.alloy * beyond),
+    crystal: Math.round(last.crystal * beyond),
+    deuterium: 0,
+  };
+}
+
 /** Cost to raise one building, including the Hangar's strategic-room premium. */
 export function buildingCost(type: BuildingId, level: number): Resources {
+  if (type === 'VAULT') return vaultCost(level);
   const base = upgradeCost(level);
   const multiplier = type === 'HANGAR' ? HANGAR.costMultiplier : 1;
   return {
@@ -237,8 +297,21 @@ export const investedInSatellite = (id: SatelliteId): number =>
  * amount — the interface states them, and the invariant test compares them against
  * `protectedHours`.
  */
-export const storageHours = (vaultLevel: number): number =>
-  ECON.capHours + ECON.capHoursPerVault * Math.max(0, vaultLevel);
+export const storageHours = (vaultLevel: number): number => {
+  const ladder = ECON.storageHoursLadder;
+  const level = Math.max(0, Math.floor(vaultLevel));
+  const top = ladder.length - 1;
+  if (level <= top) return ladder[level] ?? ladder[0];
+  /*
+    PAST THE TABLE, THE LAST STEP CONTINUES. The Command Core has no ceiling, so
+    neither may the Vault — and a store that stopped growing at Vault 20 would
+    re-create the crossing `ECON.storageHoursLadder` exists to prevent: an upgrade
+    that costs more alloy than any store can hold, refused with nothing in the
+    interface to explain it.
+  */
+  const lastStep = (ladder[top] ?? 0) - (ladder[top - 1] ?? 0);
+  return (ladder[top] ?? 0) + lastStep * (level - top);
+};
 
 /**
  * THE CEILING ON STORED ORE, AND IT TAKES THE VAULT LEVEL. Economy v2.
@@ -327,7 +400,7 @@ export const deuteriumCollectorCap = (
  * accident, which a second exported function would not have.
  */
 export const protectedHours = (vaultLevel: number): number =>
-  ECON.protectedHoursBase + ECON.protectedHoursPerVault * Math.max(0, vaultLevel);
+  storageHours(vaultLevel) * ECON.protectedShare;
 
 /**
  * WHAT THE VAULT KEEPS SAFE, PER RESOURCE, IN HOURS OF THAT RESOURCE'S OWN

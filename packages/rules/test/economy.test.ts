@@ -128,12 +128,12 @@ describe('the vault invariant', () => {
    * `alloyMult` of 1.45 and killed the whole PvP economy for a season before the
    * simulator caught it.
    *
-   * Now that both the store and the floor are measured in HOURS of the same
-   * production, the guard is a ratio of two constants rather than a comparison of
-   * two exponentials — and it bounds the protected share for every level at once.
+   * D169 made the guard SHAPE rather than measurement. The floor is a share of the
+   * store, so there is no second ladder left to drift against the first and the
+   * bound holds at every level by construction.
    */
   it('can never protect more than half a store, at any Vault level', () => {
-    expect(ECON.protectedHoursPerVault / ECON.capHoursPerVault).toBeLessThan(0.5);
+    expect(ECON.protectedShare).toBeLessThan(0.5);
   });
 
   it('never protects more than storage can hold', () => {
@@ -149,18 +149,17 @@ describe('the vault invariant', () => {
   /**
    * WHAT THE VAULT ACTUALLY BUYS, and why the ceiling is the part that matters.
    *
-   * PROTECTION IS BUILT, NOT GIVEN. A commander with no Vault keeps about a sixth
-   * of their store; one who has spent on it keeps a bit over a quarter. That is a
-   * deliberate inversion of the old design, where a beginner was handed most of
-   * their protection for free and it decayed as they grew — the beginner is now
-   * covered by the tier band and the bash limit instead, and the Vault is a
-   * decision rather than a gift.
+   * PROTECTION IS BUILT, NOT GIVEN. A commander with no Vault keeps three hours of
+   * production; one who has taken the building to sixteen keeps twenty-four hours
+   * of it — eight times as much ore behind the same share. That is a deliberate
+   * inversion of the old design, where a beginner was handed most of their
+   * protection for free and it decayed as they grew.
    *
-   * WHAT MUST NEVER MOVE is the ceiling. Both the store and the floor are hours of
-   * the same production, so the share can never exceed
-   * `protectedHoursPerVault / capHoursPerVault` however much is spent — which is
-   * what stops a hoarder walling themselves off, the failure the old
-   * `vaultMult < alloyMult` rule guarded against.
+   * WHAT MUST NEVER MOVE is the ceiling, and D169 turned it from a measurement
+   * into a shape: the floor is `protectedShare` of the store at every level, so
+   * the share cannot rise however much is spent. A hoarder can bank far more ore
+   * than before and is exposed on exactly the same fraction of it, which is the
+   * failure the old `vaultMult < alloyMult` rule guarded against, closed for good.
    */
   it('lets the Vault buy protection, but never more than the ceiling allows', () => {
     const floor = (v: number) => vaultProtects(v, 12, 12, 0).alloy;
@@ -168,8 +167,8 @@ describe('the vault invariant', () => {
 
     // The building is worth levelling: the amount kept safe rises with it.
     expect(floor(16)).toBeGreaterThan(floor(0) * 2);
-    // ...and so does the share, because protection is earned.
-    expect(share(16)).toBeGreaterThan(share(0));
+    // ...but never the share, which is one constant at every level now.
+    expect(share(16)).toBeCloseTo(share(0), 3);
     // But never past the bound, at any level, on any world.
     for (const v of [0, 1, 4, 8, 12, 16]) {
       expect(share(v), `Vault ${String(v)}`).toBeLessThan(0.5);
@@ -238,7 +237,9 @@ describe('lazy economy', () => {
   it('clamps at the collector cap, not the storage cap', () => {
     const after = advanceEconomy(fresh(), input, 60 * 500);
     expect(after.bufferAlloy).toBe(collectorCap(alloyRate(5)));
-    expect(collectorCap(alloyRate(5))).toBeLessThan(storageCap(alloyRate(5), input.vaultLevel));
+    // Against a store somebody has BUILT. D169 opened the store at three hours, so
+    // a bare world's works outgrow it — see `ECON.collectorHours`.
+    expect(collectorCap(alloyRate(5))).toBeLessThan(storageCap(alloyRate(5), 8));
   });
 
   it('produces nothing while disrupted', () => {
@@ -295,12 +296,14 @@ describe('collecting the works', () => {
     expect(state.bufferAlloy).toBe(0);
   });
 
+  /** Emptying the works is what a Vault buys, so this asks a world that has one. */
   it('restarts production that the full buffer had stopped', () => {
-    const stalled = advanceEconomy(fresh(), input, 60 * 500);
+    const banked = { ...input, vaultLevel: 8 };
+    const stalled = advanceEconomy(fresh(), banked, 60 * 500);
     expect(stalled.bufferAlloy).toBe(collectorCap(alloyRate(5)));
 
-    const emptied = collect(stalled, input).state;
-    const later = advanceEconomy({ ...emptied, lastTickMinutes: 60 * 500 }, input, 60 * 501);
+    const emptied = collect(stalled, banked).state;
+    const later = advanceEconomy({ ...emptied, lastTickMinutes: 60 * 500 }, banked, 60 * 501);
     expect(later.bufferAlloy).toBeCloseTo(alloyRate(5), 4);
   });
 
