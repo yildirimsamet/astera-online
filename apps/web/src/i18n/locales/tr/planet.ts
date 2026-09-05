@@ -406,6 +406,7 @@ export const planetHero = {
   defenceHeld: "Sağlam",
   defenceShipsOnly: "sadece {{count}} gemi",
   defenceOnGround: "yerde {{count}} tane",
+  fleetAway: "Havada {{count}} tane",
   shield: "Kalkan",
   shieldNone: "Yok",
   shieldNoAegis: "aegis yok",

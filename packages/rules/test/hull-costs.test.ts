@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { HULLS, MOBILE_HULLS, GROUND_HULLS } from '../src/hulls.js';
+import { COMBAT } from '../src/constants.js';
 import { ECONOMY_TEMPO, scalePrice } from '../src/tempo.js';
 import type { HullId } from '../src/types.js';
 
@@ -84,7 +85,20 @@ describe('the hull table is priced on equal-budget power', () => {
     for (let tier = 1; tier < averages.length; tier++) {
       const gain = averages[tier]! / averages[tier - 1]!;
       expect(gain, `tier ${String(tier + 1)} efficiency gain`).toBeGreaterThan(1.03);
-      expect(gain, `tier ${String(tier + 1)} efficiency gain`).toBeLessThan(1.10);
+      /*
+        1.13, NOT 1.10, AND D170 IS WHY — read this before treating it as slack.
+
+        Halving every deuterium price did not cut the tiers evenly: deuterium is a
+        larger share of a heavy hull's bill than of a light one's, and three of
+        tier 1's four hulls never charged any, so tier 2 got the deepest discount
+        of the four. The band moved because the PRICES moved, which is the one
+        reason a measured band may move at all.
+
+        What it is still holding is the shape: a tier is a modest edge, not a
+        different game. If a future change wants it back under 1.10 the lever is
+        Alloy and Crystal on the tier-2 hulls, never this number.
+      */
+      expect(gain, `tier ${String(tier + 1)} efficiency gain`).toBeLessThan(1.13);
     }
   });
 
@@ -101,7 +115,11 @@ describe('the hull table is priced on equal-budget power', () => {
       ids.reduce((sum, id) => sum + power(id), 0) / ids.length;
     const gap = average(tierFour) / average(tierOne);
     expect(gap).toBeGreaterThan(1.15);
-    expect(gap).toBeLessThan(1.25);
+    // 1.26 after D170's deuterium cut — see the note on the tier gain above. The
+    // claim this guards is unchanged and still enormous: 1.26 against the counter
+    // cycle's 2.56, so knowing what your opponent flies is worth ten tiers.
+    expect(gap).toBeLessThan(1.27);
+    expect(COMBAT.strongMult / COMBAT.weakMult).toBeGreaterThan(gap * 2);
   });
 
   /**

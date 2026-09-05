@@ -7,6 +7,7 @@ import { compact, full } from '../lib/format.js';
 import { powerOf } from '../lib/gains.js';
 import { countdown, useNow } from '../lib/time.js';
 import { SATELLITE_ART, RESOURCE_ART } from './assets.js';
+import { FleetCards } from './FleetCards.js';
 import { Meter } from './kit/index.js';
 import { PlanetSigil } from './PlanetSigil.js';
 
@@ -281,6 +282,18 @@ function Verdicts({
         planet={planet}
         exposed={exposed}
       />
+      {/*
+        THE WHOLE FORCE, UNDER THE TWO VERDICTS ABOUT IT. D170.
+
+        It spans both columns because a fleet is not a third verdict standing
+        beside defence and shield — it is the answer to what those two are made
+        of, and the one thing on this sheet that is read as a picture rather than
+        as a sentence. `FleetCards` draws nothing when there is nothing to draw,
+        so an empty world keeps the compact two-up it always had.
+      */}
+      <div className="col-span-2">
+        <FleetCards fleet={planet.fleet} fleetAway={planet.fleetAway} />
+      </div>
     </div>
   );
 }

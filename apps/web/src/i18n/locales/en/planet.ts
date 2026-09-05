@@ -425,6 +425,7 @@ export const planetHero = {
   defenceHeld: "Held",
   defenceShipsOnly: "{{count}} ships only",
   defenceOnGround: "{{count}} on the ground",
+  fleetAway: "{{count}} in the air",
   shield: "Shield",
   shieldNone: "None",
   shieldNoAegis: "no aegis",

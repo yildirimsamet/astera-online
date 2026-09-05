@@ -71,7 +71,10 @@ describe('the calibrated economy tempo', () => {
 
   it('applies each price class deliberately instead of one accidental global multiplier', () => {
     expect(HULLS.DART.alloy).toBe(300);
-    expect(HULLS.COURIER.deuterium).toBe(63);
+    // D170 took deuterium off the Courier entirely: a world makes none of its own
+    // until the research and the plant, and the entry transport is the first thing
+    // a commander builds. Its Alloy and Crystal classes are untouched.
+    expect(HULLS.COURIER.deuterium).toBe(0);
     expect(satelliteCost('UPLINK')).toEqual({ alloy: 1125, crystal: 375, deuterium: 0 });
     expect(satelliteCost('FOUNDRY')).toEqual({ alloy: 3400, crystal: 1190, deuterium: 0 });
     expect(MULTI_WORLD.settlement.cost).toEqual({ alloy: 3400, crystal: 1700, deuterium: 0 });

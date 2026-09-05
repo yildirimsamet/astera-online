@@ -1311,3 +1311,20 @@
   text-decoration: underline dotted;
   text-underline-offset: 3px;
 }
+/**
+ * CHAT READS TWO POINTS LARGER THAN THE REST OF THE GAME. D170, owner request.
+ *
+ * Every other surface states a FACT — a price, a level, a countdown — and the
+ * compact scale is what lets a 375px screen hold enough of them to decide with.
+ * Chat states SENTENCES, written by people and read in a row, and 12px of running
+ * prose on a phone is the one place the compact rule costs more than it buys.
+ *
+ * A SCOPE, NOT A SECOND SCALE. It re-points the two tokens the chat surface
+ * actually uses, so the lift follows every element inside the sheet without any
+ * of them naming a size of its own — and nothing outside it moves. Raising
+ * `--text-body` globally would have grown every row in the game by two points.
+ */
+.chat-type {
+  --text-body: 14px;
+  --text-micro: 11px;
+}

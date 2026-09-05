@@ -77,7 +77,7 @@ export function ChatScreen({
   ];
 
   return (
-    <div className="flex h-full min-h-0 flex-col">
+    <div className="chat-type flex h-full min-h-0 flex-col">
       <div className="shrink-0 border-b border-line-soft bg-void px-3 py-2">
         <Segmented
           segments={tabs}
