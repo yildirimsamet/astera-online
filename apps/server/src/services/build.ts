@@ -1,6 +1,5 @@
 import {
   HULLS,
-  PROSPECTOR,
   buildingCost,
   buildMinutes,
   collect,
@@ -14,6 +13,7 @@ import {
   hullBulk,
   plantCeiling,
   productionMult,
+  prospectorCeiling,
   prospectorRoom,
   satelliteCost,
   satelliteSlots,
@@ -257,18 +257,24 @@ export async function placeUnitBuild(
      */
   if (hull === 'PROSPECTOR') {
     const have = context.projected.units.PROSPECTOR ?? 0;
+    /*
+      THE CEILING IS THE COMMANDER'S, NOT A CONSTANT. D170: the third rung of
+      Prospector Holds buys a third craft, so the refusal has to quote the number
+      this commander actually has rather than `PROSPECTOR.max`.
+    */
+    const ceiling = prospectorCeiling(tech);
     // `prospectorRoom` is the one place the cap arithmetic lives, so this door and
     // the transfer doors in `movement.ts` cannot answer the question differently.
-    if (count > prospectorRoom(have)) {
+    if (count > prospectorRoom(have, tech)) {
       throw new GameError(
         'PROSPECTOR_CAP',
-        have >= PROSPECTOR.max
-          ? `You already have ${String(PROSPECTOR.max)} Prospectors. That is the limit.`
-          : `You may hold ${String(PROSPECTOR.max)} Prospectors, and you have ${String(have)}.`,
+        have >= ceiling
+          ? `You already have ${String(ceiling)} Prospectors. That is the limit.`
+          : `You may hold ${String(ceiling)} Prospectors, and you have ${String(have)}.`,
         400,
         // `context` picks the variant client-side, the same way it picks the
         // wording here. i18next reads it off the params like any other value.
-        { max: PROSPECTOR.max, have, ...(have >= PROSPECTOR.max ? { context: 'atLimit' } : {}) },
+        { max: ceiling, have, ...(have >= ceiling ? { context: 'atLimit' } : {}) },
       );
     }
   }

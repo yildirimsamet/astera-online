@@ -186,6 +186,27 @@ export const BOTS = {
   perGalaxy: 12,
 
   /**
+   * THE OPENING CEASEFIRE. D170, owner instruction: *"Botlar server yeni
+   * başladığında en az 4 saat savaşmasın."*
+   *
+   * A galaxy's first hours are when every commander is weakest and least defended,
+   * and twelve of them are the server's own — so a bot raiding at minute thirty is
+   * not competition, it is a world that arrived already hostile. Four hours is
+   * long enough for a person to stand a Vault, a gun and a fleet before anything
+   * they own is at stake.
+   *
+   * THE PvP LANE ONLY. A pirate is not a player: raiding one costs the bot a bay
+   * and a fuel bill and takes nothing from anybody, so it stays open from the
+   * first minute along with probing, mining and salvage. The galaxy is busy from
+   * the start; it is simply not hostile.
+   *
+   * IT IS THE BOT'S OWN MANNERS AND CHANGES NO RULE. `withinTierBand`, the bash
+   * limit, the newcomer grace and the fog all still bind them exactly as they bind
+   * a person, and nothing here alters what a player may do to another player.
+   */
+  ceasefireMinutes: 4 * 60,
+
+  /**
    * THE SHIFT ROSTER, AS A TARGET FOR EACH TÜRKIYE HOUR. Owner instruction:
    * nobody between 01:00 and 08:00, and between four and twelve of them awake at
    * every other hour.

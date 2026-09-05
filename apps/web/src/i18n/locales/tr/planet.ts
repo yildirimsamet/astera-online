@@ -39,16 +39,16 @@ export const planet = {
     build: "Üret",
     started: "Ölüm Yıldızı üretimi başladı",
     dangerHint:
-      "Tek yönlü gezegen kırıcı. Her darbe harap eder; ikinci darbe yalnız koloni veya tarafsız dünyayı ele geçirebilir.",
+      "Tek yönlü gezegen kırıcı. Hiçbir şey almaz: dünyayı karartır ve bir süre başlatır. Koloni o süre içinde kurtarılmazsa sahipsiz kalır.",
     readyHint:
-      "Silahlı. Herhangi bir düşman dünyasını seç; ana gezegenler harap edilir ama ele geçirilemez.",
+      "Silahlı. Herhangi bir düşman dünyasını seç. Koloniye 8, ana gezegene 2 saatlik toparlanma verir; ana gezegen asla elden çıkmaz.",
     needProtocol: "Protokol",
     needCore: "Çekirdek {{level}}. seviye",
     needShipyard: "Tersane {{level}}. seviye",
     needOperational: "Dünya çalışır durumda",
     buildTime: "60 dk · tek silah · geri çağrılamaz",
 
-    /** Tek darbenin ne yaptığı, para harcanmadan önce, açık açık. D113. */
+    /** Tek darbenin ne yaptığı, para harcanmadan önce, açık açık. D113 · D167. */
     effectsTitle: "Tek darbe ne yapar",
     effectFleet: "Dünyada duran bütün gemileri ve topları yok eder",
     effectStock: "Depo ve üretim havuzundaki kaynakların yarısını yok eder",
@@ -56,7 +56,11 @@ export const planet = {
       "Komuta Çekirdeği’ni bir seviye indirir; yeni Çekirdek sınırını aşan binalar da bu seviyeye düşer",
     effectAegis: "Aegis’i {{levels}} seviye indirir ve kalkanı sıfırlar",
     effectDark:
-      "{{duration}} boyunca üretimi, toplamayı, inşayı, yeni siparişleri ve fırlatmayı durdurur",
+      "Koloniyi 8, ana gezegeni 2 saat karartır: üretim, toplama, inşa, sipariş ve fırlatma durur",
+    /** D167: darbe ele geçirmez, SÜRE başlatır. Kaçırılan sürenin bedeli bu. */
+    effectRelease:
+      "Koloniye o 8 saat içinde tek gemi inmezse dünya sahipsiz kalır — kimseye geçmez, herkese açılır",
+    effectCapital: "Ana gezegen asla elden çıkmaz; yalnız 2 saat karanlıkta kalır",
     effectSurvives:
       "Yeni Çekirdek sınırını aşmayan binalar, araştırmalar ve diğer yörünge donanımları korunur",
   },

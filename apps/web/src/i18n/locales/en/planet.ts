@@ -39,9 +39,9 @@ export const planet = {
     build: "Build",
     started: "Death Star construction started",
     dangerHint:
-      "A one-way planet-breaker. Every impact devastates; a second can capture only a colony or neutral world.",
+      "A one-way planet-breaker. It takes nothing: it darkens a world and starts a clock. A colony not saved inside it is released to nobody.",
     readyHint:
-      "Armed. Select any enemy world; capitals can be devastated but never captured.",
+      "Armed. Select any enemy world. Eight hours of recovery for a colony, two for a capital; a capital is never lost.",
     needProtocol: "Protocol",
     needCore: "Core L{{level}}",
     needShipyard: "Shipyard L{{level}}",
@@ -64,7 +64,11 @@ export const planet = {
     effectAegis:
       "Takes {{levels}} levels off the Aegis, and drops the shield to nothing",
     effectDark:
-      "Stops production, collection, construction, new orders and launching for {{duration}}",
+      "Darkens a colony for 8 hours and a capital for 2: no production, collection, construction, orders or launches",
+    /** D167: a strike starts a DEADLINE, never an acquisition. */
+    effectRelease:
+      "A colony with no ship landed inside those 8 hours is released to nobody — taken by no one, open to anyone",
+    effectCapital: "A capital is never lost; it only sits dark for 2 hours",
     effectSurvives:
       "Buildings within the new Core ceiling, all research and other orbital hardware survive",
   },

@@ -188,8 +188,24 @@ export function garrisonOf(home: Fleet, ground: Fleet): Fleet {
  * whatever was standing there) and no rule deletes a craft to tidy that up. Over
  * the line means nothing new comes in, not that something already there goes.
  */
-export const prospectorRoom = (owned: number): number =>
-  Math.max(0, PROSPECTOR.max - owned);
+export const prospectorRoom = (owned: number, tech: TechLevels = {}): number =>
+  Math.max(0, prospectorCeiling(tech) - owned);
+
+/**
+ * HOW MANY PROSPECTORS ONE WORLD MAY OWN. D131, extended at D170.
+ *
+ * Two, and a third from the third rung of Prospector Holds — which is 6,000 alloy
+ * and 3,500 crystal of commander-wide research, so the extra craft is BOUGHT and
+ * lifts every world the commander holds at once.
+ *
+ * D131's point survives intact: the ceiling is what makes a rock contested, since
+ * nobody can simply out-mine a neighbour by owning more craft. What the rung
+ * changes is where the ceiling sits, not that there is one — and a commander who
+ * has not bought it reads exactly the number they always did.
+ */
+export const prospectorCeiling = (tech: TechLevels = {}): number =>
+  PROSPECTOR.max
+  + ((tech.PROSPECTOR_HOLDS ?? 0) >= PROSPECTOR.thirdCraftRung ? 1 : 0);
 
 /**
  * ROOM, PRICED OFF WORTH. T4.

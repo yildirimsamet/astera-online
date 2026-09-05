@@ -22,6 +22,9 @@ export const trade = {
   rateReading: "Bir döteryuma karşılık {{amount}} {{resource}}",
   leavesIn: "Ayrılmasına",
   reachLabel: "En erken varış",
+  reachNoCraft: "Gemin yok",
+  reachNoCarrier: "Kargo gemin yok",
+  reachCarriersAway: "Kargo gemilerin dışarıda",
   reachNone: "Yetişilemiyor",
   boundary:
     "Bu gemiyi, yörüngesini ve kurunu galaksideki her komutan görür. Kota da yok, komisyon da.",

@@ -2,7 +2,6 @@ import { and, eq, sql } from 'drizzle-orm';
 import {
   HULLS,
   MULTI_WORLD,
-  PROSPECTOR,
   distance,
   fleetCount,
   fleetSpeedMult,
@@ -10,6 +9,7 @@ import {
   hangarCapacity,
   hangarLoad,
   missionFuel,
+  prospectorCeiling,
   prospectorRoom,
   resourcesTotal,
   transferCargoCapacity,
@@ -132,13 +132,30 @@ export async function landingBlock(
 
   const prospectors = fleet.PROSPECTOR ?? 0;
   const held = owned.PROSPECTOR ?? 0;
-  if (prospectors > 0 && prospectors > prospectorRoom(held)) {
-    return {
-      code: 'TARGET_PROSPECTOR_CAP',
-      message:
-        `That world may hold ${String(PROSPECTOR.max)} Prospectors, and it has ${String(held)}.`,
-      params: { max: PROSPECTOR.max, have: held },
-    };
+  if (prospectors > 0) {
+    /*
+      THE CEILING BELONGS TO WHOEVER HOLDS THE TARGET. D170.
+
+      The third rung of Prospector Holds buys a third craft, and research belongs
+      to the COMMANDER (D134) — so the question "how many may stand here" is
+      answered by the world's controller, not by the fleet arriving or by a
+      constant. A neutral or unheld world has no commander and therefore no rung,
+      which is the two-craft answer every caller had before this existed.
+    */
+    const [world] = await tx
+      .select({ playerId: planets.controllerPlayerId })
+      .from(planets)
+      .where(eq(planets.id, targetPlanetId));
+    const tech = world?.playerId ? await techOf(tx, world.playerId) : {};
+    const ceiling = prospectorCeiling(tech);
+    if (prospectors > prospectorRoom(held, tech)) {
+      return {
+        code: 'TARGET_PROSPECTOR_CAP',
+        message:
+          `That world may hold ${String(ceiling)} Prospectors, and it has ${String(held)}.`,
+        params: { max: ceiling, have: held },
+      };
+    }
   }
 
   const incoming = hangarLoad(fleet);

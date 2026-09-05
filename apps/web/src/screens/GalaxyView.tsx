@@ -965,7 +965,20 @@ export function GalaxyView({
               <span className="text-alloy">{t('galaxy.wrecks', { count: wrecks.length })}</span>
             )}
         </DiscReadout>
-        <ActiveGalaxyEvent />
+        {/*
+          PRESSING THE MERCHANT'S CHIP FRAMES THE MERCHANT. D170, owner request.
+
+          The chip announced the one craft every commander in the galaxy can see
+          and then refused to be touched. It hands back the OCCURRENCE id, which is
+          exactly what `Focus` of kind `tradeShip` carries, so the press is the same
+          selection the disc already makes — camera and rail both follow.
+        */}
+        <ActiveGalaxyEvent
+          onFocusTrade={(id) => {
+            setFocus({ kind: 'tradeShip', id });
+            setDetail(true);
+          }}
+        />
 
         {/*
           THE TWO INSTRUMENTS' OWN SWITCHES, UNDER THE CAPTION THAT NAMES THE DISC.

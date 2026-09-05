@@ -29,12 +29,8 @@ import {
   type HullId,
   type InstrumentId,
   type SatelliteId,
-  recoveryMinutesFor,
 } from '@astera/rules';
 import {
-  useGalaxy,
-  useIntel,
-  usePending,
   usePlanet,
   useBuild,
   useBuildInterceptor,
@@ -46,7 +42,7 @@ import {
 } from '../api/queries.js';
 import type { PlanetView } from '../api/schemas.js';
 
-import { directives, primary, type PlanetGroup } from '../lib/directives.js';
+import type { PlanetGroup } from '../lib/directives.js';
 import { compact, full } from '../lib/format.js';
 import { serverNow } from '../lib/clock.js';
 import { duration, untilReady, useNow } from '../lib/time.js';
@@ -184,7 +180,6 @@ export function PlanetScreen({
   const { t } = useTranslation();
   const { data, dataUpdatedAt, isError, refetch } = usePlanet();
   const held = useProjected(data?.planet, dataUpdatedAt, 5000);
-  const advice = useAdvice(data, held);
   const [building, setBuilding] = useState<HullId | null>(null);
   const [sheet, setSheet] = useState<SheetSpec | null>(null);
   const [tab, setTab] = useState<GroupId | null>(null);
@@ -292,8 +287,21 @@ export function PlanetScreen({
   }
   if (!data) return <Waiting>{t('surface.waitingPlanet')}</Waiting>;
 
-  const recommended = advice ?? groupOrder(data, focusGroup)[0] ?? 'grow';
-  const active = tab ?? focusGroup ?? recommended;
+  /*
+    THE SHEET OPENS ON PRODUCTION, ALWAYS. D170, owner instruction:
+    *"Menü üretim tab'ı ile açılsın. Şuanda kafasına göre takılıyor."*
+
+    It used to open on `advice` — whatever a recommendation engine judged most
+    urgent that minute — which meant the same tap landed on a different tab each
+    time and the sheet could not be navigated by habit. Habit is the only thing
+    that makes a four-tab sheet cheap to use on a phone, and a screen that guesses
+    is a screen that has to be re-read before it can be touched.
+
+    A CALLER THAT NAMES A TAB STILL WINS. `focusGroup` is not the screen guessing;
+    it is something else saying where to go — a build row pointed at from the map,
+    a queue tapped in the strip — and answering that is the whole point of it.
+  */
+  const active = tab ?? focusGroup ?? 'grow';
   const recovering = data.planet.recoveryUntil !== null
     && data.planet.recoveryUntil !== undefined
     && data.planet.recoveryUntil.getTime() > serverNow();
@@ -428,33 +436,6 @@ export function PlanetScreen({
   );
 }
 
-/**
- * The recommendation, taken from the same place the banner takes it.
- *
- * The pip used to be scored separately, which produced the one thing an interface
- * must never do: two pieces of advice on the same screen disagreeing. The card at
- * the top said the planet was undefended while the pip pointed at See.
- */
-function useAdvice(
-  planet: PlanetView | undefined,
-  held: { alloy: number; crystal: number },
-): GroupId | undefined {
-  const galaxy = useGalaxy();
-  const intel = useIntel();
-  const pending = usePending();
-
-  if (!planet) return undefined;
-  const top = primary(
-    directives({
-      planet,
-      galaxy: galaxy.data,
-      intel: intel.data,
-      pending: pending.data?.pending ?? [],
-      held,
-    }),
-  );
-  return top?.action.group;
-}
 
 /** Which tab a given row lives under, so a requirement can jump to it. */
 export const TAB_OF: Record<string, GroupId | undefined> = {
@@ -769,12 +750,27 @@ function DeathStarForge({
  */
 function DeathStarEffects() {
   const { t } = useTranslation();
+  /**
+   * FOLDED, AND SHUT ON ARRIVAL. D170, owner instruction.
+   *
+   * Seven lines of reference sat open under a purchase a commander makes once a
+   * season, so every visit to the fleet tab paid for a paragraph read once. The
+   * sheet's own rule covers this exactly — the row states the fact, the fold
+   * states the rule — and the fact here is the danger line above, which stays
+   * drawn. `useState` rather than `useAccordion`: this is one panel with no
+   * siblings to stay in step with, and it deliberately does NOT remember being
+   * opened. It is reference, wanted the first time and skipped after.
+   */
+  const [open, setOpen] = useState(false);
   const lines = [
     t('planet.deathStar.effectFleet'),
     t('planet.deathStar.effectStock'),
     t('planet.deathStar.effectCore'),
     t('planet.deathStar.effectAegis', { levels: DEATH_STAR.aegisLevelsLost }),
-    t('planet.deathStar.effectDark', { duration: duration(recoveryMinutesFor('COLONY')) }),
+    t('planet.deathStar.effectDark'),
+    /* D167: the strike takes nothing — it starts a clock, and this is its price. */
+    t('planet.deathStar.effectRelease'),
+    t('planet.deathStar.effectCapital'),
   ];
   /**
    * `plate-inset` and NOT `plate-threat`. The lit states are reserved for a plate
@@ -784,21 +780,31 @@ function DeathStarEffects() {
    */
   return (
     <div className="plate plate-inset mt-3 flex flex-col gap-2 p-3">
-      <p className="legend text-threat-ink">{t('planet.deathStar.effectsTitle')}</p>
-      <ul className="flex flex-col gap-2">
-        {lines.map((line) => (
-          <li key={line} className="flex gap-2 text-caption text-bone">
-            <span aria-hidden className="text-threat-ink">▪</span>
-            <span>{line}</span>
+      <button
+        type="button"
+        className="flex w-full items-center justify-between gap-2 text-left"
+        aria-expanded={open}
+        onClick={() => { setOpen((was) => !was); }}
+      >
+        <span className="legend text-threat-ink">{t('planet.deathStar.effectsTitle')}</span>
+        <span aria-hidden className="text-caption text-faint">{open ? '−' : '+'}</span>
+      </button>
+      {open && (
+        <ul className="flex flex-col gap-2">
+          {lines.map((line) => (
+            <li key={line} className="flex gap-2 text-caption text-bone">
+              <span aria-hidden className="text-threat-ink">▪</span>
+              <span>{line}</span>
+            </li>
+          ))}
+          {/* What a strike CANNOT take, in the opposite hue. Half of understanding
+              a weapon is knowing where it stops. */}
+          <li className="flex gap-2 text-caption text-dim">
+            <span aria-hidden className="text-opportunity">▪</span>
+            <span>{t('planet.deathStar.effectSurvives')}</span>
           </li>
-        ))}
-        {/* What a strike CANNOT take, in the opposite hue. Half of understanding
-            a weapon is knowing where it stops. */}
-        <li className="flex gap-2 text-caption text-dim">
-          <span aria-hidden className="text-opportunity">▪</span>
-          <span>{t('planet.deathStar.effectSurvives')}</span>
-        </li>
-      </ul>
+        </ul>
+      )}
     </div>
   );
 }
@@ -821,9 +827,11 @@ function DeathStarNeed({ ok, children }: { ok: boolean; children: ReactNode }) {
  *
  * A pip used to mark whichever problem the situation engine ranked highest. It is
  * gone: the screen states what each tab IS and leaves the choosing to the player,
- * rather than carrying a second opinion beside whatever else is on screen. The
- * engine still picks which tab OPENS — see `useAdvice` — because a screen has to
- * open on something, and that is a default rather than a recommendation.
+ * rather than carrying a second opinion beside whatever else is on screen.
+ *
+ * AND THE ENGINE IS GONE WITH IT. D170: it used to choose which tab OPENED, which
+ * meant the same tap landed somewhere different each time and the sheet could not
+ * be learned. Production opens, always, unless a caller names a tab.
  */
 function Tabs({
   active,
@@ -859,36 +867,6 @@ function Tabs({
       />
     </div>
   );
-}
-
-/**
- * Which worry comes first.
- *
- * A planet with no ground defence and a full vault has a different most-important
- * screen than one that cannot see anybody. Fixed section order would be right for
- * exactly one of them.
- */
-function groupOrder(planet: PlanetView, focus?: GroupId): GroupId[] {
-  const score: Record<GroupId, number> = { defend: 0, orbit: 0, reach: 0, grow: 10 };
-
-  const exposed = Math.max(
-    0,
-    planet.planet.alloy
-    + planet.planet.crystal
-    + planet.planet.deuterium
-    - planet.planet.vaultFloor,
-  );
-  if (fleetCount(planet.ground) === 0) score.defend += 60;
-  if (exposed > planet.planet.vaultFloor * 3) score.defend += 40;
-  if ((planet.instruments.TELESCOPE ?? 0) === 0) score.orbit += 55;
-  if ((planet.instruments.RADAR ?? 0) === 0) score.orbit += 25;
-  if (fleetCount(planet.fleet) === 0) score.reach += 45;
-  if ((planet.buildings.SHIPYARD ?? 0) === 0) score.reach += 15;
-
-  const ids: GroupId[] = ['defend', 'orbit', 'reach', 'grow'];
-  const sorted = ids.sort((a, b) => score[b] - score[a]);
-  if (!focus) return sorted;
-  return [focus, ...sorted.filter((id) => id !== focus)];
 }
 
 /* ── shared plumbing ────────────────────────────────────────── */
@@ -2067,21 +2045,6 @@ function Reach({
         />
       </div>
 
-      <Band label={t('planet.reach.orbitBand')} note={t('planet.reach.orbitNote')} />
-      {(['DERRICK', 'BEACON'] as const).map((id) => (
-        <SatelliteItemRow
-          key={id}
-          id={id}
-          planet={planet}
-          action={orbit(id, satelliteLabel(id), onNeed)}
-          held={held}
-          income={income}
-          focused={focused}
-          flashed={flashed}
-          onOpen={onOpen}
-        />
-      ))}
-
       {/*
         THE CATALOGUE FOLDS. Owner instruction.
 
@@ -2122,6 +2085,31 @@ function Reach({
 
       <Band label={t('planet.reach.miningBand')} note={t('planet.reach.miningNote')} />
       {hull('PROSPECTOR')}
+
+      {/*
+        THE TWO ORBITAL SATELLITES, LAST, BESIDE THE CRAFT THEY SERVE. D170.
+
+        They used to open the tab, above nineteen hull rows — so the first thing a
+        commander read under "what can I reach" was a pair of purchases they make
+        once a season and then never think about again. The Derrick exists to raise
+        the Prospector's yield and the Beacon to speed the fleet that was just
+        listed, so both are footnotes to what is above them rather than a preamble
+        to it, and a reader arrives here having already passed what they came for.
+      */}
+      <Band label={t('planet.reach.orbitBand')} note={t('planet.reach.orbitNote')} />
+      {(['DERRICK', 'BEACON'] as const).map((id) => (
+        <SatelliteItemRow
+          key={id}
+          id={id}
+          planet={planet}
+          action={orbit(id, satelliteLabel(id), onNeed)}
+          held={held}
+          income={income}
+          focused={focused}
+          flashed={flashed}
+          onOpen={onOpen}
+        />
+      ))}
     </>
   );
 }

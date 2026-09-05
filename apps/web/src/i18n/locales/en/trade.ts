@@ -26,6 +26,9 @@ export const trade = {
   rateReading: "{{amount}} {{resource}} for one deuterium",
   leavesIn: "Leaves in",
   reachLabel: "Soonest reach",
+  reachNoCraft: "No ships here",
+  reachNoCarrier: "No transport here",
+  reachCarriersAway: "Your transports are out",
   reachNone: "Out of reach",
   boundary:
     "Every commander in the galaxy sees this ship, its orbit and its rate. There is no quota and no fee.",

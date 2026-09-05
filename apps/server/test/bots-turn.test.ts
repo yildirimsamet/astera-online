@@ -254,6 +254,12 @@ describe('what a bot may raid', () => {
   });
 
   it('actually launches at a world it is allowed to hit', async () => {
+    /*
+      PAST THE OPENING CEASEFIRE. D170 keeps every bot off the PvP lane for the
+      first `BOTS.ceasefireMinutes` of a season, so a raid test has to be in a
+      galaxy old enough to have one — the clock moves rather than the rule.
+    */
+    f.clock.advance(BOTS.ceasefireMinutes + 1);
     await remember(f.planetIds[0]!, f.clock.now());
     await giveUnits(f.db, seat.planetId, { DART: 30 });
     await fuelUp(f.db, seat.planetId);

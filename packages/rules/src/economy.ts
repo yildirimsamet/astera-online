@@ -220,9 +220,32 @@ function vaultCost(level: number): Resources {
   };
 }
 
+/**
+ * THE DEUTERIUM PLANT'S PREMIUM AT ONE LEVEL. D170.
+ *
+ * Five times an ordinary building at the opening, decaying geometrically toward
+ * `plantCostFloor` — so the rungs a commander buys while deuterium is new carry
+ * the change and the late rungs stay on a curve that is already steep.
+ */
+const plantCostMultiplier = (level: number): number => {
+  const past = Math.max(0, Math.floor(level) - DEUTERIUM.plantCostFullLevels + 1);
+  return DEUTERIUM.plantCostFloor
+    + (DEUTERIUM.plantCostOpening - DEUTERIUM.plantCostFloor)
+      * Math.pow(DEUTERIUM.plantCostDecay, past);
+};
+
 /** Cost to raise one building, including the Hangar's strategic-room premium. */
 export function buildingCost(type: BuildingId, level: number): Resources {
   if (type === 'VAULT') return vaultCost(level);
+  if (type === 'DEUTERIUM_PLANT') {
+    const base = upgradeCost(level);
+    const premium = plantCostMultiplier(level);
+    return {
+      alloy: Math.round(base.alloy * premium),
+      crystal: Math.round(base.crystal * premium),
+      deuterium: 0,
+    };
+  }
   const base = upgradeCost(level);
   const multiplier = type === 'HANGAR' ? HANGAR.costMultiplier : 1;
   return {

@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useGalaxyEvents } from '../api/queries.js';
 import { compact } from '../lib/format.js';
@@ -25,7 +26,7 @@ import { GalaxyIcon } from '../ui/icons/index.js';
  * must judge, applied to the smallest surface in the game. It also stops being a
  * translated sentence: there is no grammar left in it to get wrong.
  */
-export function ActiveGalaxyEvent() {
+export function ActiveGalaxyEvent({ onFocusTrade }: { onFocusTrade?: (id: string) => void } = {}) {
   const { t } = useTranslation();
   const events = useGalaxyEvents();
   const now = useNow(1_000);
@@ -38,14 +39,24 @@ export function ActiveGalaxyEvent() {
   return (
     <div className="pointer-events-none flex flex-col">
       {active.map((event) => (
-        <div
+        /*
+          THE MERCHANT'S CHIP IS A BUTTON; THE SHOWER'S IS NOT. D170, owner request.
+
+          A trade window is one ship, in one place, on the disc — so the chip that
+          announces it can frame it, exactly as pressing anything else out there
+          does. An Asteroid Shower is a property of the whole rock field with no
+          single thing to look at, so its chip stays a status line and keeps
+          `pointer-events-none`: a control that does nothing is worse than no
+          control, and the surrounding layer must go on passing taps to the disc.
+        */
+        <Chip
           key={event.id}
-          role="status"
-          className={`pointer-events-none mt-2 flex items-center gap-2 rounded-control border bg-deep/95 px-2 py-1.5 shadow-[0_8px_24px_rgba(0,0,0,0.35)] ${
-            event.kind === 'TRADE_SHIP'
-              ? 'border-alloy/35 text-alloy'
-              : 'border-crystal/35 text-crystal'
-          }`}
+          {...(event.kind === 'TRADE_SHIP' && onFocusTrade !== undefined
+            ? { onPress: () => { onFocusTrade(event.id); } }
+            : {})}
+          tone={event.kind === 'TRADE_SHIP'
+            ? 'border-alloy/35 text-alloy'
+            : 'border-crystal/35 text-crystal'}
         >
           <GalaxyIcon className="size-4 shrink-0" />
           <div className="min-w-0">
@@ -85,8 +96,38 @@ export function ActiveGalaxyEvent() {
               </p>
             )}
           </div>
-        </div>
+        </Chip>
       ))}
     </div>
+  );
+}
+
+
+/**
+ * ONE CHIP, PRESSABLE OR NOT.
+ *
+ * The two states are a `button` and a `div` rather than a button that is
+ * sometimes disabled: a disabled control still reads as a control a commander
+ * has failed to earn, and a shower's chip is not a control at all. The pressable
+ * one has to re-enable pointer events for itself — the layer around it stays
+ * transparent to taps so the disc underneath keeps receiving them.
+ */
+function Chip({
+  onPress,
+  tone,
+  children,
+}: {
+  onPress?: () => void;
+  tone: string;
+  children: ReactNode;
+}) {
+  const shell = `mt-2 flex items-center gap-2 rounded-control border bg-deep/95 px-2 py-1.5 text-left shadow-[0_8px_24px_rgba(0,0,0,0.35)] ${tone}`;
+  if (onPress === undefined) {
+    return <div role="status" className={`pointer-events-none ${shell}`}>{children}</div>;
+  }
+  return (
+    <button type="button" className={`pointer-events-auto ${shell}`} onClick={onPress}>
+      {children}
+    </button>
   );
 }

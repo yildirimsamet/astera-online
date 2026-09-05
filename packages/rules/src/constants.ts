@@ -354,6 +354,33 @@ export const DEUTERIUM = {
    */
   plantLevelsPerResearch: 3,
   /**
+   * THE PLANT COSTS A MULTIPLE OF AN ORDINARY BUILDING, STEEPEST AT THE BOTTOM.
+   * D170, owner report: *"Döteryum rafinerisi level atlatmak için çok az kaynak
+   * istiyor, özellikle ilk 3 5 level çok düşük."*
+   *
+   * It sat on the shared `upgradeCost` curve, which prices a building against the
+   * ore that building helps produce — and the plant does not produce ore, it
+   * produces the one resource a world cannot mine at all. Its first rungs came in
+   * under a hundred alloy behind a research ladder costing thousands: the gate was
+   * the research and the building was change found down the side of it.
+   *
+   * FIVE AT THE OPENING, DECAYING TOWARD `plantCostFloor`. The opening rungs are
+   * the ones actually bought in the act where deuterium is new, so they carry the
+   * whole of the change; multiplying the top of an already-steep curve by five
+   * would price the resource out of the late game rather than into it. The decay
+   * is geometric so the premium falls smoothly rather than stepping.
+   */
+  plantCostOpening: 5,
+  plantCostFloor: 1.25,
+  /**
+   * The opening rungs pay the full five, flat, before the decay starts — the
+   * owner named the first three to five levels specifically, and a premium that
+   * begins decaying at L0 has already given a third of itself away by L3.
+   */
+  plantCostFullLevels: 3,
+  /** How fast the premium decays after that. 0.85 reaches about 1.9x by L15. */
+  plantCostDecay: 0.85,
+  /**
    * The Frontier act begins simultaneously for the whole galaxy. D93.
    *
    * 42 → 35 hours: this is a game-clock moment, so it takes the INVERSE of the
@@ -1745,6 +1772,15 @@ export const PROSPECTOR = {
    * flight are still owned, and a cap that a launch could dodge is not a cap.
    */
   max: 2,
+  /**
+   * THE RUNG THAT BUYS A THIRD CRAFT. D170, owner request.
+   *
+   * Prospector Holds already lifts what each craft carries; its third rung now
+   * also lifts how many a world may stand. Three of the five rungs are therefore
+   * pure capacity and the third is the one that changes the shape of a mining
+   * operation, which is what makes it worth its 6,000 alloy.
+   */
+  thirdCraftRung: 3,
 } as const;
 
 /**

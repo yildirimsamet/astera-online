@@ -2413,10 +2413,33 @@ export function TradeFocus({
           value={duration(minutesLeft)}
           tone={minutesLeft < 30 ? 'threat' : undefined}
         />
+        {/*
+          "YOU CANNOT CATCH IT" IS AN ANSWER TO A QUESTION A SHIPLESS WORLD NEVER
+          ASKED. D170, owner report: *"Gemim yok ama focus sheet'te 'yetişemezsin'
+          diyor. Gemim yok zaten nasıl yetişeyim."*
+
+          `reach` is null for two entirely different reasons — nothing here can
+          make the window, or there is nothing here at all — and printing the same
+          red "unreachable" for both told a commander their fleet was too slow when
+          what they actually needed was a fleet. It also contradicted the button
+          directly underneath, which was already saying the true thing.
+
+          So the figure states the reason it is empty, in the same ladder the
+          button uses, and it is only a THREAT when the answer really is about
+          speed. Missing craft is a gap to close, not a race that was lost.
+        */}
         <Figure
           label={t('trade.reachLabel')}
-          value={reach === null ? t('trade.reachNone') : duration(reach)}
-          tone={reach === null ? 'threat' : undefined}
+          value={reach !== null
+            ? duration(reach)
+            : carriersAway
+              ? t('trade.reachCarriersAway')
+              : !hasCraft
+                ? t('trade.reachNoCraft')
+                : !hasCarrier
+                  ? t('trade.reachNoCarrier')
+                  : t('trade.reachNone')}
+          tone={reach === null && hasCraft && hasCarrier ? 'threat' : undefined}
         />
       </div>
 

@@ -28,7 +28,7 @@ import {
 } from '@astera/rules';
 import type { Db } from '../../db/client.js';
 import { type Clock, minutesSince } from '../../clock.js';
-import { battleReports, buildings, planets, players } from '../../db/schema.js';
+import { battleReports, buildings, planets, players, seasons } from '../../db/schema.js';
 import { GameError } from '../planet.js';
 import { buildUnits, collectWorks, installSatellite, raiseInstrument, upgradeBuilding } from '../build.js';
 import { completeResearch } from '../research.js';
@@ -364,10 +364,23 @@ export type Lane = 'probe' | 'mine' | 'harvest' | 'pirate' | 'attack';
  * The question a raid asks is the one `launchAttack` asks — is there a COMBAT hull
  * on the pad — so it is asked with the same list.
  */
-export function openLanes(view: PlanetView): Lane[] {
+export function openLanes(view: PlanetView, seasonAgeMinutes = Number.POSITIVE_INFINITY): Lane[] {
   const open: Lane[] = ['probe'];
   if ((view.fleet.PROSPECTOR ?? 0) > 0) open.push('mine', 'harvest');
-  if (COMBAT_HULLS.some((hull) => (view.fleet[hull] ?? 0) > 0)) open.push('pirate', 'attack');
+  if (COMBAT_HULLS.some((hull) => (view.fleet[hull] ?? 0) > 0)) {
+    open.push('pirate');
+    /*
+      NOBODY IS ATTACKED IN THE FIRST FOUR HOURS. D170 — see `BOTS.ceasefireMinutes`
+      for the reasoning. The pirate lane above is deliberately outside it: a pirate
+      is not a player, so a bot fighting one is alive rather than hostile.
+
+      The default is INFINITY rather than zero, so a caller that has no season age
+      to hand gets the behaviour this function always had. A ceasefire that
+      switched itself on for want of an argument would silently stop every bot in
+      an already-running galaxy from ever raiding again.
+    */
+    if (seasonAgeMinutes >= BOTS.ceasefireMinutes) open.push('attack');
+  }
   return open;
 }
 
@@ -404,7 +417,23 @@ async function commitOneFlight(
   if (view.flight.used >= view.flight.total) return;
 
   const now = clock.now();
-  const lane = drawLane(persona, openLanes(view), rng);
+  /*
+    HOW OLD IS THIS GALAXY? D170's ceasefire is measured from the season's own
+    start, read here rather than passed down: the turn already holds the seat's
+    `seasonId`, and one indexed row per turn is cheaper than threading a figure
+    through six call sites that have no other use for it. A season that cannot be
+    read leaves the ceasefire OFF — the default — so a missing row can never
+    silently disarm every bot in a running galaxy.
+  */
+  const [season] = await db
+    .select({ startsAt: seasons.startsAt })
+    .from(seasons)
+    .where(eq(seasons.id, seat.seasonId));
+  const ageMinutes = season
+    ? (now.getTime() - season.startsAt.getTime()) / 60_000
+    : Number.POSITIVE_INFINITY;
+
+  const lane = drawLane(persona, openLanes(view, ageMinutes), rng);
   if (!lane) return;
 
   switch (lane) {
