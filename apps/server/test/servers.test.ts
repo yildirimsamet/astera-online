@@ -7,6 +7,7 @@ import { buildApp } from '../src/app.js';
 import {
   accountRewards,
   chatMessages,
+  researchOrders,
   debrisFields,
   missions,
   planets,
@@ -635,8 +636,28 @@ describe('servers', () => {
         createdAt: clock.now(),
       });
 
+      /*
+        A RESEARCH ORDER POINTS AT THE WORLD THAT FUNDED IT, and that key is what
+        broke a live wipe on the D169 release: `research_orders` arrived with D134
+        and was never added to the delete list, so `delete(planets)` failed on the
+        foreign key and the galaxy could not be ended at all. One row is enough to
+        reproduce it.
+      */
+      await db.insert(researchOrders).values({
+        playerId: placed.playerId,
+        fundingPlanetId: placed.planetId,
+        slot: 0,
+        projectId: 'ISOTOPE_SPECTROMETRY',
+        level: 1,
+        startedAt: clock.now(),
+        readyAt: clock.now(),
+        remainingSeconds: 0,
+        cost: { alloy: 0, crystal: 0, deuterium: 0 },
+      });
+
       const result = await wipeAllServers(db, clock, { count: 2, capacity: 1 });
 
+      expect(await db.select().from(researchOrders)).toHaveLength(0);
       expect(result.playersCleared).toBe(2);
       expect(result.seasonsWiped).toBe(2);
       expect(await db.select().from(players)).toHaveLength(0);

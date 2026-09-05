@@ -33,6 +33,7 @@ import {
   planets,
   planetResearch,
   playerResearch,
+  researchOrders,
   players,
   probeReports,
   probeWorldMemories,
@@ -586,6 +587,14 @@ export async function wipeAllServers(
     await tx.delete(satellites);
     await tx.delete(sensorEpochs);
     await tx.delete(buildings);
+    /*
+      THE COMMANDER-WIDE RESEARCH QUEUE, AND IT WAS MISSING. D134 added
+      `research_orders` with a foreign key to the FUNDING WORLD, and this list was
+      never told — so `delete(planets)` failed on the key and a wipe was impossible
+      on any galaxy where somebody had ever ordered research. Found on the D169
+      release, against 276 live rows.
+    */
+    await tx.delete(researchOrders);
     await tx.delete(planetResearch);
     await tx.delete(neutralPlanetState);
     await tx.delete(planets);
