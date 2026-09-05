@@ -10,12 +10,11 @@ import {
   SETTLEMENT_CLAIM_MINUTES,
   deuteriumStorageCap,
   crystalRate,
+  recoveryMinutesFor,
   upgradeCost,
   DEATH_STAR,
-  fleetCargo,
   fleetValue,
   sensorSphere,
-  type Fleet,
 } from '@astera/rules';
 import {
   battleReports,
@@ -48,7 +47,7 @@ import {
 import { launchSettlement, launchTransfer } from '../src/services/movement.js';
 import { upgradeBuilding } from '../src/services/build.js';
 import { reinforceNeutral } from '../src/services/neutral.js';
-import { colonyStanding, transferPlanetControl } from '../src/services/ownership.js';
+import { colonyStanding } from '../src/services/ownership.js';
 import { refreshSensorEpoch } from '../src/services/sensorHistory.js';
 import { listServers } from '../src/services/servers.js';
 import { EventWorker } from '../src/worker/loop.js';
@@ -103,7 +102,8 @@ describe('current multi-world ruleset', () => {
 
   it('creates the deterministic fixed 30/15/6 pool outside all capital slots', async () => {
     const f = await setup();
-    expect(f.season.rulesetVersion).toBe(MULTI_WORLD.fleetCatalogRulesetVersion);
+    // The current ruleset, which stopped being the Fleet V2 boundary at D156.
+    expect(f.season.rulesetVersion).toBe(MULTI_WORLD.rulesetVersion);
     expect(f.neutrals).toHaveLength(51);
     expect(f.neutrals.filter((row) => row.state.tier === 1)).toHaveLength(30);
     expect(f.neutrals.filter((row) => row.state.tier === 2)).toHaveLength(15);
@@ -656,8 +656,10 @@ describe('current multi-world ruleset', () => {
       shield: 0,
       disruptedUntil: null,
     });
+    // The window is the WORLD'S, and this one was made a colony above — eight hours
+    // since D167, against a capital's two.
     expect(struck?.recoveryUntil?.getTime())
-      .toBe(f.clock.now().getTime() + MULTI_WORLD.recoveryMinutes * 60_000);
+      .toBe(f.clock.now().getTime() + recoveryMinutesFor('COLONY') * 60_000);
     const levels = Object.fromEntries((await f.db.select().from(buildings)
       .where(eq(buildings.planetId, target.world.id))).map((row) => [row.type, row.level]));
     // CORE drops. REFINERY was ON the old ceiling so the new Core pulls it down;
@@ -699,11 +701,29 @@ describe('current multi-world ruleset', () => {
     );
     const [defenderScore] = await f.db.select().from(players).where(eq(players.id, defender.playerId));
     expect(defenderScore).toMatchObject({ dominionTaken: 0, dominionLost: 0 });
-    expect(await f.db.select().from(notifications).where(eq(notifications.playerId, defender.playerId)))
-      .toHaveLength(1);
+    /*
+      SCOPED PAST THE GALAXY'S OWN NEWS. The claim is that the defender is told
+      about the strike ONCE — not that nothing else happens to them for the length
+      of the window. D166 put four merchants a day in the sky and D167 made a
+      colony's window eight hours, so a lifecycle notice or two now lands inside it.
+    */
+    const told = await f.db.select().from(notifications)
+      .where(eq(notifications.playerId, defender.playerId));
+    expect(told.filter((row) => !row.kind.startsWith('galaxy_event_'))).toHaveLength(1);
   });
 
-  it('uses two strategic hits to capture a neutral and resumes a captured build', async () => {
+  /**
+   * TWO HITS NO LONGER TAKE A WORLD. D167 retired D105/D113's second-strike
+   * capture: a rocket darkens a world and restarts its deadline, and that is all
+   * it ever does. A neutral has no commander to answer the deadline and no control
+   * to lose, so repeated strikes simply keep it dark.
+   *
+   * This replaces two tests — "uses two strategic hits to capture a neutral" and
+   * "awards recovery capture to the second attacker" — whose whole subject was the
+   * route that is gone. What they also guarded, and what is kept here, is that a
+   * paused strategic build on the struck world resumes when the window closes.
+   */
+  it('leaves a neutral neutral however many rockets land on it', async () => {
     const f = await setup();
     const capital = f.joined.planetId;
     const target = f.neutrals.find((row) => row.state.tier === 1)!;
@@ -711,11 +731,10 @@ describe('current multi-world ruleset', () => {
       x: 0,
       y: 0,
       z: 0,
-      alloy: DEATH_STAR.cost.alloy * 2,
-      crystal: DEATH_STAR.cost.crystal * 2,
-      deuterium: DEATH_STAR.cost.deuterium * 2,
-    })
-      .where(eq(planets.id, capital));
+      alloy: DEATH_STAR.cost.alloy * 3,
+      crystal: DEATH_STAR.cost.crystal * 3,
+      deuterium: DEATH_STAR.cost.deuterium * 3,
+    }).where(eq(planets.id, capital));
     await f.db.update(planets).set({ x: 20, y: 0, z: 0 }).where(eq(planets.id, target.world.id));
     await setLevel(f.db, capital, 'CORE', DEATH_STAR.requiredCore);
     await setLevel(f.db, capital, 'SHIPYARD', DEATH_STAR.requiredShipyard);
@@ -723,58 +742,26 @@ describe('current multi-world ruleset', () => {
     await giveResearch(f.db, capital, 'DEATH_STAR_PROTOCOL');
     const worker = workerFor(f.db, f.clock);
 
-    const firstBuild = await buildDeathStar(f.db, capital, f.clock);
-    f.clock.set(firstBuild.readyAt);
-    await worker.tick();
-    const first = await launchDeathStar(f.db, capital, target.world.id, f.clock);
-    const secondBuild = await buildDeathStar(f.db, capital, f.clock);
-    const [before] = await f.db.select().from(planets).where(eq(planets.id, target.world.id));
-    f.clock.set(first.arriveAt);
-    await worker.tick();
-    let [struck] = await f.db.select().from(planets).where(eq(planets.id, target.world.id));
-    expect(struck?.kind).toBe('NEUTRAL');
-    expect(struck?.recoveryUntil).not.toBeNull();
-    /**
-     * AND A NEUTRAL'S ECONOMY IS ADVANCED BEFORE IT IS HALVED. D113.
-     *
-     * Nothing else advances a neutral world — its stored row is whatever the last
-     * raid or reinforcement left there, and an hour of Death Star build time has
-     * passed since. Halving the stale figure would take well over half of what the
-     * world actually holds, so the strike advances it first; that is why this is
-     * `>=` against half the pre-strike row rather than exactly half of it.
-     */
-    expect(struck!.alloy).toBeGreaterThanOrEqual(Math.floor(before!.alloy / 2));
-    expect(struck!.alloy).toBeGreaterThan(0);
-    const halvedAgain = struck!.alloy;
+    for (let round = 0; round < 2; round += 1) {
+      const built = await buildDeathStar(f.db, capital, f.clock);
+      f.clock.set(built.readyAt);
+      await worker.tick();
+      const flight = await launchDeathStar(f.db, capital, target.world.id, f.clock);
+      f.clock.set(flight.arriveAt);
+      await worker.tick();
 
-    f.clock.set(secondBuild.readyAt);
-    await worker.tick();
-    const second = await launchDeathStar(f.db, capital, target.world.id, f.clock);
-    f.clock.set(second.arriveAt);
-    await worker.tick();
-    [struck] = await f.db.select().from(planets).where(eq(planets.id, target.world.id));
-    expect(struck).toMatchObject({ kind: 'COLONY', controllerPlayerId: f.joined.playerId, recoveryUntil: null });
-    /**
-     * HALF OF WHAT WAS LEFT, not half of what there once was — the whole reason
-     * the rule is a share rather than a wipe.
-     *
-     * AT MOST half rather than exactly half, and that is a real interaction worth
-     * naming: `advanceNeutralEconomy` clamps a neutral's stock DOWN to its storage
-     * cap (player worlds never do this), and the first strike lowered the Core,
-     * which pulled the Refinery down with it and shrank that cap. So the second
-     * impact halves a figure the smaller store had already trimmed. The exact
-     * halving is pinned on player worlds, where nothing clamps: see the damage
-     * matrix and the capital case above.
-     */
-    expect(struck!.alloy * 2).toBeLessThanOrEqual(halvedAgain);
-    expect(struck!.alloy).toBeGreaterThan(0);
-    const consumed = await f.db.select().from(strategicAssets).where(eq(strategicAssets.status, 'CONSUMED'));
-    expect(consumed).toHaveLength(2);
-    const inFlight = await f.db.select().from(missions).where(and(
-      eq(missions.kind, 'death_star'),
-      eq(missions.status, 'in_flight'),
-    ));
-    expect(inFlight).toHaveLength(0);
+      const [struck] = await f.db.select().from(planets).where(eq(planets.id, target.world.id));
+      expect(struck).toMatchObject({ kind: 'NEUTRAL', controllerPlayerId: null });
+      // A world nobody holds takes the short window: there is no commander to
+      // answer a deadline and nothing to be released from.
+      expect(struck?.recoveryUntil?.getTime())
+        .toBe(flight.arriveAt.getTime() + recoveryMinutesFor('NEUTRAL') * 60_000);
+    }
+
+    // The neutral state row survives every strike — the world was never taken.
+    const [state] = await f.db.select().from(neutralPlanetState)
+      .where(eq(neutralPlanetState.planetId, target.world.id));
+    expect(state).toBeDefined();
   });
 
   it('serializes Death Star construction and never charges a rejected duplicate', async () => {
@@ -878,7 +865,7 @@ describe('current multi-world ruleset', () => {
       deuterium: 1_000,
     });
     expect(struck?.recoveryUntil?.getTime())
-      .toBe(f.clock.now().getTime() + MULTI_WORLD.recoveryMinutes * 60_000);
+      .toBe(f.clock.now().getTime() + recoveryMinutesFor('CAPITAL') * 60_000);
     const damaged = Object.fromEntries((await f.db.select().from(buildings)
       .where(eq(buildings.planetId, defender.planetId))).map((row) => [row.type, row.level]));
     // Core 5 → 4; the Refinery was already under the new ceiling and stays put.
@@ -1157,12 +1144,19 @@ describe('current multi-world ruleset', () => {
     expect(ledger!.damage).toBeGreaterThan(replacement);
   });
 
-  it('also requires colony capacity when a Death Star targets an already recovering world', async () => {
+  /**
+   * D167 RETIRED THE CAPACITY RESERVATION WITH THE CAPTURE ROUTE. A strike at a
+   * world that is already recovering used to be an ACQUISITION, so it reserved a
+   * colony slot and was refused with `COLONY_CAP` when the attacker had none. The
+   * weapon takes nothing now — it restarts the target's deadline — so a full
+   * commander may fire it exactly like an empty one.
+   */
+  it('no longer reserves colony capacity to strike a recovering world', async () => {
     const f = await setup();
     const target = f.neutrals.find((row) => row.state.tier === 1)!;
     await setLevel(f.db, f.joined.planetId, 'CORE', 2);
     await f.db.update(planets).set({
-      recoveryUntil: new Date(f.clock.now().getTime() + MULTI_WORLD.recoveryMinutes * 60_000),
+      recoveryUntil: new Date(f.clock.now().getTime() + recoveryMinutesFor('CAPITAL') * 60_000),
     }).where(eq(planets.id, target.world.id));
     await f.db.insert(strategicAssets).values({
       planetId: f.joined.planetId,
@@ -1171,15 +1165,12 @@ describe('current multi-world ruleset', () => {
       remainingSeconds: 0,
     });
 
-    await expect(launchDeathStar(
-      f.db,
-      f.joined.planetId,
-      target.world.id,
-      f.clock,
-    )).rejects.toMatchObject({ code: 'COLONY_CAP' });
-    const [asset] = await f.db.select().from(strategicAssets)
-      .where(eq(strategicAssets.planetId, f.joined.planetId));
-    expect(asset?.status).toBe('READY');
+    const launched = await launchDeathStar(f.db, f.joined.planetId, target.world.id, f.clock);
+    const [mission] = await f.db.select().from(missions).where(eq(missions.id, launched.missionId));
+    expect(mission?.deathStarCapture).toBe(false);
+    await expect(colonyStanding(f.db, f.joined.playerId)).resolves.toMatchObject({
+      reservations: 0,
+    });
   });
 
   it('never turns a destructive rocket into an accidental capture while it is in flight', async () => {
@@ -1201,7 +1192,7 @@ describe('current multi-world ruleset', () => {
 
     // Another impact begins recovery after this destructive flight committed.
     await f.db.update(planets).set({
-      recoveryUntil: new Date(f.clock.now().getTime() + MULTI_WORLD.recoveryMinutes * 60_000),
+      recoveryUntil: new Date(f.clock.now().getTime() + recoveryMinutesFor('CAPITAL') * 60_000),
     }).where(eq(planets.id, target.world.id));
     f.clock.set(launched.arriveAt);
     await workerFor(f.db, f.clock).tick();
@@ -1209,6 +1200,223 @@ describe('current multi-world ruleset', () => {
     const [world] = await f.db.select().from(planets).where(eq(planets.id, target.world.id));
     expect(world).toMatchObject({ kind: 'NEUTRAL', controllerPlayerId: null });
     expect(world?.recoveryUntil?.getTime()).toBeGreaterThan(launched.arriveAt.getTime());
+  });
+
+  /* ── a colony that is not answered for ─────────────────────── */
+
+  /**
+   * THE DEATH STAR STOPPED TAKING WORLDS AND STARTED LOSING THEM FOR PEOPLE. D167.
+   *
+   * Owner instruction, and it replaces D105/D113's second-strike capture outright.
+   * A struck COLONY goes dark for eight hours, and the clock is a DEADLINE: put a
+   * ship on it before the window closes or it stops being yours. What the attacker
+   * gets is not the world — it is the world being on the table, for everybody.
+   *
+   * A CAPITAL IS OUTSIDE ALL OF IT. Two hours, never released: "capitals cannot be
+   * captured" is a locked constraint, and an outage long enough to drop one would
+   * be that rule reinterpreted rather than kept.
+   *
+   * WHAT SURVIVES THE RELEASE IS EVERYTHING. Buildings, satellites, research and
+   * whatever stock the strike left stay exactly where they are — the world changes
+   * hands, not shape, and whoever settles it next inherits what is standing.
+   */
+  const armed = async (f: Awaited<ReturnType<typeof setup>>, from: string) => {
+    await setLevel(f.db, from, 'CORE', DEATH_STAR.requiredCore);
+    await setLevel(f.db, from, 'SHIPYARD', DEATH_STAR.requiredShipyard);
+    await f.db.insert(strategicAssets).values({
+      planetId: from,
+      status: 'READY',
+      startedAt: f.clock.now(),
+      remainingSeconds: 0,
+    });
+  };
+
+  /** A colony of the caller's, settled the ordinary way, at a known distance. */
+  const withColony = async (f: Awaited<ReturnType<typeof setup>>) => {
+    const target = f.neutrals.find((row) => row.state.tier === 1)!;
+    await f.db.update(planets).set({ x: 40, y: 0, z: 0 }).where(eq(planets.id, target.world.id));
+    await f.db.update(planets).set({ x: 0, y: 0, z: 0, alloy: 400_000, crystal: 200_000, deuterium: 60_000 })
+      .where(eq(planets.id, f.joined.planetId));
+    await setLevel(f.db, f.joined.planetId, 'CORE', 3);
+    await giveUnits(f.db, f.joined.planetId, { COURIER: MULTI_WORLD.settlement.transports });
+    await f.db.update(neutralPlanetState)
+      .set({ claimUntil: new Date(f.clock.now().getTime() + 30 * 60_000) })
+      .where(eq(neutralPlanetState.planetId, target.world.id));
+    const settling = await launchSettlement(
+      f.db, f.joined.playerId, f.joined.planetId, target.world.id, f.clock,
+    );
+    f.clock.set(settling.arriveAt);
+    await workerFor(f.db, f.clock).tick();
+    // Settling grants six hours of occupation protection; a strike needs it gone.
+    await f.db.update(planets).set({ protectedUntil: null }).where(eq(planets.id, target.world.id));
+    return target.world.id;
+  };
+
+  /** A second commander with a pad, since nobody may strike their own world. */
+  const rivalPad = async (f: Awaited<ReturnType<typeof setup>>, name: string) => {
+    const account = await makeAccount(f.db, name);
+    const rival = await joinSeason(f.db, account.id, f.season.id, f.clock);
+    await f.db.update(planets)
+      .set({ x: 0, y: 0, z: 200, alloy: 400_000, crystal: 200_000, deuterium: 60_000 })
+      .where(eq(planets.id, rival.planetId));
+    return rival;
+  };
+
+  const strike = async (f: Awaited<ReturnType<typeof setup>>, from: string, at: string) => {
+    await armed(f, from);
+    const launched = await launchDeathStar(f.db, from, at, f.clock);
+    f.clock.set(launched.arriveAt);
+    await workerFor(f.db, f.clock).tick();
+    return launched;
+  };
+
+  it('darkens a struck colony for eight hours, not the capital’s two', async () => {
+    const f = await setup();
+    const colony = await withColony(f);
+    const rival = await rivalPad(f, 'Colony Breaker');
+    await strike(f, rival.planetId, colony);
+
+    const [struck] = await f.db.select().from(planets).where(eq(planets.id, colony));
+    expect(struck?.recoveryUntil?.getTime())
+      .toBe(f.clock.now().getTime() + recoveryMinutesFor('COLONY') * 60_000);
+    // And it is still theirs while the clock runs.
+    expect(struck?.controllerPlayerId).toBe(f.joined.playerId);
+    expect(struck?.recoveryReliefAt).toBeNull();
+  });
+
+  it('releases a colony nobody sent a ship to, keeping everything standing', async () => {
+    const f = await setup();
+    const colony = await withColony(f);
+    const rival = await rivalPad(f, 'Colony Breaker');
+    await strike(f, rival.planetId, colony);
+    // Read AFTER the strike: the impact drops the Core, and what this test is about
+    // is that RELEASING the world changes nothing further.
+    const before = Object.fromEntries((await f.db.select().from(buildings)
+      .where(eq(buildings.planetId, colony))).map((row) => [row.type, row.level]));
+    const [dark] = await f.db.select().from(planets).where(eq(planets.id, colony));
+
+    f.clock.set(new Date(dark!.recoveryUntil!.getTime() + 1_000));
+    await workerFor(f.db, f.clock).tick();
+
+    const [released] = await f.db.select().from(planets).where(eq(planets.id, colony));
+    expect(released).toMatchObject({ controllerPlayerId: null, recoveryUntil: null });
+    /*
+      NEUTRAL AGAIN AND ACTUALLY SETTLEABLE, which is a stronger claim than it looks
+      and the one this test was missing. `resolveSettlement` reads `claimUntil` as
+      the SETTLE PERMIT rather than as a race window, so the obvious "no race, so
+      null" left the released world permanently unclaimable. It runs to the end of
+      the season instead: open at once, and open until the season is.
+    */
+    const [state] = await f.db.select().from(neutralPlanetState)
+      .where(eq(neutralPlanetState.planetId, colony));
+    expect(state).toBeDefined();
+    expect(state?.claimUntil?.getTime()).toBeGreaterThan(f.clock.now().getTime());
+    // The world changed hands, not shape.
+    const after = Object.fromEntries((await f.db.select().from(buildings)
+      .where(eq(buildings.planetId, colony))).map((row) => [row.type, row.level]));
+    expect(after).toEqual(before);
+    await expect(colonyStanding(f.db, f.joined.playerId)).resolves.toMatchObject({ colonies: 0 });
+
+    // ...and a founding flight really does land on it. The whole instruction was
+    // that the world opens up, so nothing short of a completed settlement proves it.
+    await giveUnits(f.db, f.joined.planetId, { COURIER: MULTI_WORLD.settlement.transports });
+    await f.db.update(planets).set({ alloy: 200_000, crystal: 100_000, deuterium: 40_000 })
+      .where(eq(planets.id, f.joined.planetId));
+    const settling = await launchSettlement(
+      f.db, f.joined.playerId, f.joined.planetId, colony, f.clock,
+    );
+    f.clock.set(settling.arriveAt);
+    await workerFor(f.db, f.clock).tick();
+    const [resettled] = await f.db.select().from(planets).where(eq(planets.id, colony));
+    expect(resettled).toMatchObject({ kind: 'COLONY', controllerPlayerId: f.joined.playerId });
+  });
+
+  it('keeps a colony whose commander put a ship on it before the clock ran out', async () => {
+    const f = await setup();
+    const colony = await withColony(f);
+    const rival = await rivalPad(f, 'Colony Breaker');
+    await strike(f, rival.planetId, colony);
+    const [dark] = await f.db.select().from(planets).where(eq(planets.id, colony));
+
+    await giveUnits(f.db, f.joined.planetId, { COURIER: 2 });
+    const relief = await launchTransfer(
+      f.db,
+      f.joined.playerId,
+      f.joined.planetId,
+      colony,
+      { COURIER: 1 },
+      { alloy: 0, crystal: 0, deuterium: 0 },
+      f.clock,
+    );
+    f.clock.set(relief.arriveAt);
+    await workerFor(f.db, f.clock).tick();
+
+    const [answered] = await f.db.select().from(planets).where(eq(planets.id, colony));
+    expect(answered?.recoveryReliefAt).not.toBeNull();
+    // The relief does NOT end the outage — only the drop.
+    expect(answered?.recoveryUntil?.getTime()).toBe(dark!.recoveryUntil!.getTime());
+
+    f.clock.set(new Date(dark!.recoveryUntil!.getTime() + 1_000));
+    await workerFor(f.db, f.clock).tick();
+    const [kept] = await f.db.select().from(planets).where(eq(planets.id, colony));
+    expect(kept).toMatchObject({
+      controllerPlayerId: f.joined.playerId,
+      kind: 'COLONY',
+      recoveryUntil: null,
+      recoveryReliefAt: null,
+    });
+  });
+
+  /**
+   * AND THE ANSWER HAS TO BE GIVEN AGAIN EVERY TIME. A second strike restarts the
+   * eight hours and forgets the relief, so a commander who saved a colony once has
+   * to save it again — which is the whole shape the owner asked for.
+   */
+  it('makes a second strike restart the deadline rather than take the world', async () => {
+    const f = await setup();
+    const colony = await withColony(f);
+    const rival = await rivalPad(f, 'Colony Breaker');
+    await strike(f, rival.planetId, colony);
+
+    await giveUnits(f.db, f.joined.planetId, { COURIER: 2 });
+    const relief = await launchTransfer(
+      f.db, f.joined.playerId, f.joined.planetId, colony,
+      { COURIER: 1 }, { alloy: 0, crystal: 0, deuterium: 0 }, f.clock,
+    );
+    f.clock.set(relief.arriveAt);
+    await workerFor(f.db, f.clock).tick();
+
+    const second = await strike(f, rival.planetId, colony);
+    const [again] = await f.db.select().from(planets).where(eq(planets.id, colony));
+    // Still the defender's — the weapon never transfers control any more.
+    expect(again?.controllerPlayerId).toBe(f.joined.playerId);
+    expect(again?.recoveryReliefAt).toBeNull();
+    expect(again?.recoveryUntil?.getTime())
+      .toBe(second.arriveAt.getTime() + recoveryMinutesFor('COLONY') * 60_000);
+  });
+
+  it('never releases a capital, however many times it is struck', async () => {
+    const f = await setup();
+    const victimAccount = await makeAccount(f.db, 'Struck Capital');
+    const victim = await joinSeason(f.db, victimAccount.id, f.season.id, f.clock);
+    await f.db.update(planets).set({ x: 0, y: 0, z: 0, alloy: 400_000, crystal: 200_000, deuterium: 60_000 })
+      .where(eq(planets.id, f.joined.planetId));
+    await f.db.update(planets).set({ x: 40, y: 0, z: 0, protectedUntil: null })
+      .where(eq(planets.id, victim.planetId));
+
+    const first = await strike(f, f.joined.planetId, victim.planetId);
+    const [dark] = await f.db.select().from(planets).where(eq(planets.id, victim.planetId));
+    expect(dark?.recoveryUntil?.getTime())
+      .toBe(first.arriveAt.getTime() + recoveryMinutesFor('CAPITAL') * 60_000);
+
+    f.clock.set(new Date(dark!.recoveryUntil!.getTime() + 1_000));
+    await workerFor(f.db, f.clock).tick();
+    const [after] = await f.db.select().from(planets).where(eq(planets.id, victim.planetId));
+    expect(after).toMatchObject({
+      kind: 'CAPITAL',
+      controllerPlayerId: victim.playerId,
+      recoveryUntil: null,
+    });
   });
 
   it('treats stale recovery and occupation events as idempotent no-ops', async () => {
@@ -1239,35 +1447,30 @@ describe('current multi-world ruleset', () => {
     expect(unchanged?.protectedUntil?.getTime()).toBe(currentProtection.getTime());
   });
 
-  it('awards recovery capture to the second attacker and consumes a later protected impact', async () => {
+  /**
+   * THREE ROCKETS, ONE DARK WORLD, AND NOBODY OWNS IT AT THE END. D167.
+   *
+   * This test used to prove that the SECOND impact inside a recovery window handed
+   * the colony to its attacker and a later one arrived to find the world protected.
+   * That route is retired: every strike is a first strike now, so what has to hold
+   * instead is that each one lands, each one restarts the deadline, control never
+   * moves, and every weapon is consumed exactly once.
+   */
+  it('lets three rockets land without any of them taking the world', async () => {
     const f = await setup();
-    const secondAccount = await makeAccount(f.db, 'Second Strike');
-    const thirdAccount = await makeAccount(f.db, 'Late Strike');
-    const defenderAccount = await makeAccount(f.db, 'Colony Holder');
-    const second = await joinSeason(f.db, secondAccount.id, f.season.id, f.clock);
-    const third = await joinSeason(f.db, thirdAccount.id, f.season.id, f.clock);
-    const defender = await joinSeason(f.db, defenderAccount.id, f.season.id, f.clock);
     const target = f.neutrals.find((row) => row.state.tier === 1)!;
-    await f.db.update(planets).set({
-      kind: 'COLONY',
-      controllerPlayerId: defender.playerId,
-      x: 100,
-      y: 0,
-      z: 0,
-    }).where(eq(planets.id, target.world.id));
-    await f.db.delete(neutralPlanetState).where(eq(neutralPlanetState.planetId, target.world.id));
-
-    const launchers = [
-      { planetId: f.joined.planetId, x: 0 },
-      { planetId: second.planetId, x: 90 },
-      { planetId: third.planetId, x: 80 },
-    ];
-    for (const launcher of launchers) {
-      await f.db.update(planets).set({ x: launcher.x, y: 0, z: 0 })
-        .where(eq(planets.id, launcher.planetId));
-      await setLevel(f.db, launcher.planetId, 'CORE', 6);
+    const secondAccount = await makeAccount(f.db, 'Second Rocket');
+    const second = await joinSeason(f.db, secondAccount.id, f.season.id, f.clock);
+    const thirdAccount = await makeAccount(f.db, 'Third Rocket');
+    const third = await joinSeason(f.db, thirdAccount.id, f.season.id, f.clock);
+    await f.db.update(planets).set({ x: 0, y: 0, z: 0 }).where(eq(planets.id, f.joined.planetId));
+    await f.db.update(planets).set({ x: 20, y: 0, z: 0 }).where(eq(planets.id, target.world.id));
+    await f.db.update(planets).set({ x: 0, y: 60, z: 0 }).where(eq(planets.id, second.planetId));
+    await f.db.update(planets).set({ x: 0, y: 0, z: 400 }).where(eq(planets.id, third.planetId));
+    for (const pad of [f.joined.planetId, second.planetId, third.planetId]) {
+      await setLevel(f.db, pad, 'CORE', 2);
       await f.db.insert(strategicAssets).values({
-        planetId: launcher.planetId,
+        planetId: pad,
         status: 'READY',
         startedAt: f.clock.now(),
         remainingSeconds: 0,
@@ -1284,173 +1487,22 @@ describe('current multi-world ruleset', () => {
     f.clock.set(lateFlight.arriveAt);
     await worker.tick();
 
-    const [captured] = await f.db.select().from(planets).where(eq(planets.id, target.world.id));
-    expect(captured).toMatchObject({
-      kind: 'COLONY',
-      controllerPlayerId: second.playerId,
-      recoveryUntil: null,
-    });
-    expect(captured?.protectedUntil?.getTime()).toBeGreaterThan(f.clock.now().getTime());
+    const [struck] = await f.db.select().from(planets).where(eq(planets.id, target.world.id));
+    expect(struck).toMatchObject({ kind: 'NEUTRAL', controllerPlayerId: null });
+    // The LAST rocket set the clock: every impact restarts the window.
+    expect(struck?.recoveryUntil?.getTime())
+      .toBe(lateFlight.arriveAt.getTime() + recoveryMinutesFor('NEUTRAL') * 60_000);
+    expect(struck?.protectedUntil).toBeNull();
+
+    // Nobody is told they captured anything, and all three weapons are spent.
     const results = await f.db.select().from(notifications).where(and(
       inArray(notifications.playerId, [second.playerId, third.playerId]),
       eq(notifications.kind, 'death_star_result'),
     ));
-    expect(results.find((notice) =>
-      notice.playerId === second.playerId && notice.refId === secondFlight.missionId,
-    )?.payload)
-      .toMatchObject({ outcome: 'CAPTURED' });
-    expect(results.find((notice) =>
-      notice.playerId === third.playerId && notice.refId === lateFlight.missionId,
-    )?.payload)
-      .toMatchObject({ outcome: 'INEFFECTIVE' });
-    // The new owner is also the defender of the late protected impact. Keep that
-    // distinct from the result of their own successful rocket: SQL row order is
-    // deliberately irrelevant and both events remain independently idempotent.
-    expect(results.find((notice) =>
-      notice.playerId === second.playerId && notice.refId === lateFlight.missionId,
-    )?.payload)
-      .toMatchObject({ outcome: 'INEFFECTIVE' });
+    for (const notice of results) {
+      expect(notice.payload).not.toMatchObject({ outcome: 'CAPTURED' });
+    }
     expect(await f.db.select().from(strategicAssets)
       .where(eq(strategicAssets.status, 'CONSUMED'))).toHaveLength(3);
-  });
-});
-
-/**
- * THE ATTACKER'S LADDERS ARE FROZEN ON BOTH BATTLE PATHS. D137.
- *
- * `resolveNeutralBattle` used the mission's snapshot for the combat and re-read the
- * commander's ladders LIVE three lines later for the cargo cap. So the same raid,
- * with Cargo Holds finishing while it was in the air, carried more home from a
- * caretaker world than the identical raid on a player would have — and more than
- * the launch preview quoted, which computes off launch-time tech.
- */
-describe('a raid on a caretaker world and the ladders it flew with', () => {
-  it('caps the haul with the tech the mission left holding', async () => {
-    const f = await setup();
-    const capital = f.joined.planetId;
-    const target = f.neutrals.find((row) => row.state.tier === 1)!;
-    await f.db.update(planets).set({ x: 0, y: 0, z: 0 }).where(eq(planets.id, capital));
-    await f.db.update(planets)
-      .set({ x: 12, y: 0, z: 0 })
-      .where(eq(planets.id, target.world.id));
-    await setLevel(f.db, capital, 'SHIPYARD', 6);
-    await giveUnits(f.db, capital, { DART: 80, COURIER: 6 });
-    await f.db.update(planets)
-      .set({ alloy: 400_000, crystal: 200_000, deuterium: 200_000 })
-      .where(eq(planets.id, capital));
-
-    const launched = await launchAttack(
-      f.db, capital, target.world.id, { DART: 80, COURIER: 6 }, f.clock,
-    );
-    const [mission] = await f.db.select().from(missions)
-      .where(eq(missions.id, launched.missionId));
-    expect(mission?.tech).toEqual({});
-
-    // The ladder completes mid-flight. It belongs to the next launch, not this one.
-    await giveResearch(f.db, capital, 'CARGO_HOLDS', 5);
-    // Arrival, then the ten-second engagement window before it settles.
-    f.clock.set(launched.arriveAt);
-    const w = workerFor(f.db, f.clock);
-    await w.tick();
-    f.clock.advance(1);
-    await w.tick();
-
-    const [report] = await f.db.select().from(battleReports)
-      .where(eq(battleReports.targetPlanetId, target.world.id));
-    expect(report).toBeTruthy();
-    const loot = report!.loot;
-    // The report stores losses; what came home is what was sent minus those.
-    const sent: Fleet = { DART: 80, COURIER: 6 };
-    const lost = report!.attackerLosses;
-    const survivors: Fleet = Object.fromEntries(
-      (Object.entries(sent) as [keyof Fleet, number][])
-        .map(([hull, count]) => [hull, count - (lost[hull] ?? 0)]),
-    );
-    const flownWith = fleetCargo(survivors, {});
-    const finishedLater = fleetCargo(survivors, { CARGO_HOLDS: 5 });
-    expect(finishedLater).toBeGreaterThan(flownWith);
-    expect(loot.alloy + loot.crystal + loot.deuterium).toBeLessThanOrEqual(flownWith);
-  });
-});
-
-/**
- * ONE COMMANDER, ONE GALAXY — AND THE SEAM THAT WROTE THE WRITE DID NOT CHECK IT.
- *
- * The invariant has read "DB-enforced" since D97. `planets` has a unique index for
- * one capital per player and a check tying `kind` to the controller; it has
- * nothing saying a colony must sit in the same season as its owner, and
- * `transferPlanetControl` — the primitive shared by settlement and the second
- * strategic hit — never asked.
- *
- * WHAT THAT PRODUCES IS A WORLD THAT EXISTS AND CANNOT BE SEEN. `commanderTopology`
- * joins on `controllerPlayerId` alone, so a cross-season world lands in
- * `planetIds` and rides out on `/api/planets`: the worlds list offers it and the
- * selector switches to it. `publicWorlds` filters by the caller's season, so the
- * disc never draws it and every surface built on the galaxy payload behaves as
- * though it is not there.
- *
- * Found when a dev tool picked "the nearest unclaimed world" without a season
- * filter — and every season names its neutrals by tier and index, so `Neutral
- * T1-07` exists once per galaxy and the nearest one was in the other shard. The
- * tool was wrong. So was there being nothing here to stop it.
- */
-describe('a world in another galaxy', () => {
-  it('cannot be handed to a commander who does not play there', async () => {
-    const f = await setup();
-
-    // A second galaxy, with its own caretaker worlds and its own commander.
-    const { season: elsewhere } = await createSeason(f.db, {
-      shardCode: 'EU-OTHER',
-      seed: 5150,
-      startsAt: f.clock.now(),
-      playerCap: SERVERS.capacity,
-      rulesetVersion: MULTI_WORLD.rulesetVersion,
-    });
-    const [foreign] = await f.db
-      .select({ id: planets.id })
-      .from(planets)
-      .where(and(eq(planets.seasonId, elsewhere.id), eq(planets.kind, 'NEUTRAL')))
-      .limit(1);
-    expect(foreign, 'the second galaxy has caretaker worlds').toBeDefined();
-
-    // The CODE is the contract the client localises against; the message is prose.
-    await expect(
-      f.db.transaction((tx) => transferPlanetControl(tx, {
-        targetPlanetId: foreign!.id,
-        newPlayerId: f.joined.playerId,
-        expectedControllerPlayerId: null,
-        now: f.clock.now(),
-        protectedUntil: new Date(f.clock.now().getTime() + 60_000),
-      })),
-    ).rejects.toMatchObject({ code: 'WRONG_GALAXY' });
-
-    // And it is still a caretaker world, not a half-transferred one.
-    const [after] = await f.db
-      .select({ kind: planets.kind, owner: planets.controllerPlayerId })
-      .from(planets)
-      .where(eq(planets.id, foreign!.id));
-    expect(after?.kind).toBe('NEUTRAL');
-    expect(after?.owner).toBeNull();
-  });
-
-  /** The ordinary case still works, or the guard is just breaking settlement. */
-  it('still hands over a world in the commander\'s own galaxy', async () => {
-    const f = await setup();
-    const target = f.neutrals[0]!;
-
-    await f.db.transaction((tx) => transferPlanetControl(tx, {
-      targetPlanetId: target.world.id,
-      newPlayerId: f.joined.playerId,
-      expectedControllerPlayerId: null,
-      now: f.clock.now(),
-      protectedUntil: new Date(f.clock.now().getTime() + 60_000),
-    }));
-
-    const [after] = await f.db
-      .select({ kind: planets.kind, owner: planets.controllerPlayerId })
-      .from(planets)
-      .where(eq(planets.id, target.world.id));
-    expect(after?.kind).toBe('COLONY');
-    expect(after?.owner).toBe(f.joined.playerId);
   });
 });

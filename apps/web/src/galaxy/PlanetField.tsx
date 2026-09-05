@@ -337,8 +337,8 @@ export function bodyLight(stance: Stance, intel: PlanetNode['intel']): number {
 
 
 /** How much of a pin's height the eye clears it by, and how big it is drawn. */
-const EYE_LIFT = 0.24;
-const EYE_SIZE = 0.44;
+const EYE_LIFT = -0.22;
+const EYE_SIZE = 0.3;
 /**
  * ONE COLOUR FOR BOTH STATES, AND THE SHAPE CARRIES THE DIFFERENCE.
  *

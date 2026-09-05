@@ -30,6 +30,7 @@ import { EventWorker } from '../src/worker/loop.js';
 import {
   giveUnits,
   grant,
+  levelWorld,
   giveInstrument,
   seedWorld,
   setLevel,
@@ -78,6 +79,8 @@ interface ReportView {
   theirLosses: Record<string, number>;
   /** The caller's OWN board at contact. Never the opponent's. D121. */
   yourFleet: Record<string, number>;
+  /** The force that flew at the caller. Defender's copy only, empty otherwise. D164. */
+  theirFleet: Record<string, number>;
   /** The caller's own world in this battle: launched from, or hit. */
   yourPlanet: string;
   lootAlloy: number;
@@ -378,14 +381,44 @@ describe('battle reports', () => {
     });
 
     /**
-     * THE FOG, RESTATED FOR THE ONE FIELD THAT COULD HAVE BROKEN IT.
+     * WHAT CAME AT YOU IS YOURS TO KNOW — ALL OF IT. D164, owner instruction.
      *
-     * `yourFleet` minus `yourLosses` is the caller's own survivors, which they may
-     * have. The identical subtraction on the OPPONENT's roster is the disclosure
-     * the whole intel layer exists to refuse — so the opponent's roster is not in
-     * the payload at all, and each side's copy of the field is its own.
+     * The defender stood under this fleet while it emptied its guns at their
+     * world, so nothing about its composition is a thing they have to be told:
+     * they watched it. What the report was doing instead was handing them the
+     * WRECKAGE and calling that the force — a floor, and a floor that omits by
+     * construction exactly the hulls a defender most needs to have seen. A raid's
+     * Couriers carry no gun, never enter a firing line and usually fly home
+     * whole, so a commander could be robbed by a convoy and read a report in
+     * which the convoy did not exist.
      */
-    it('never hands either side the other one\u2019s roster', async () => {
+    it('shows the defender the whole force that flew at them, guns or none', async () => {
+      // Big enough that the raid walks the defence, so most of what arrived flies
+      // home again — which is the case the wreckage could never have described.
+      await raid(160);
+      const [defender] = await reportsFor(1);
+
+      expect(defender!.attacking).toBe(false);
+      // The Couriers are the proof: `atk: 0`, so they cannot have fired a shot,
+      // and they are in the roster at full strength anyway.
+      expect(defender!.theirFleet).toEqual({ DART: 160, COURIER: 3 });
+      expect(fleetCount(defender!.theirLosses)).toBeLessThan(163);
+      // Wreckage is a floor on a force, never the force: every loss is a subset.
+      for (const [hull, lost] of Object.entries(defender!.theirLosses)) {
+        expect(lost).toBeLessThanOrEqual(defender!.theirFleet[hull] ?? 0);
+      }
+    });
+
+    /**
+     * THE FOG, RESTATED FOR THE FIELDS THAT COULD HAVE BROKEN IT.
+     *
+     * D164 opened exactly one direction: the force that ARRIVED, to the commander
+     * it arrived at. What sat at home defending is not a thing an attacker
+     * watched — it is a probe's product (D127) — so the defender's board is still
+     * not in the attacker's payload at all, and neither side is handed the
+     * other's survivors as a number.
+     */
+    it('still never hands the attacker the defender\u2019s board', async () => {
       await raid();
       const [attacker] = await reportsFor(0);
       const [defender] = await reportsFor(1);
@@ -394,6 +427,7 @@ describe('battle reports', () => {
       // The defender's Bastions are the tell: they must appear in the defender's
       // own roster and nowhere in the attacker's payload except as losses.
       expect(attacker!.yourFleet.BASTION).toBeUndefined();
+      expect(attacker!.theirFleet).toEqual({});
       expect(defender!.yourFleet.DART ?? 0).not.toBe(40);
     });
 
@@ -1041,6 +1075,9 @@ describe('a report about a pirate', () => {
       createdAt: f.clock.now(),
     });
     await grant(f.db, f.planetIds[0]!, 60_000);
+    // A pirate raid ignores the development band; the world raid beside it does
+    // not, and the purse above has just lifted this Core out of it. D168.
+    await levelWorld(f.db, f.planetIds);
     await giveUnits(f.db, f.planetIds[0]!, { DART: 30 });
     await giveUnits(f.db, f.planetIds[1]!, { BASTION: 2 });
     const launched = await launchAttack(

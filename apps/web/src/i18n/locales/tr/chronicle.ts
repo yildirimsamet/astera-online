@@ -14,6 +14,8 @@ export const chronicle = {
   launcherControl: '{{planet}} el değiştirdi',
   launcherAsteroidShowerStarted: 'Asteroid yağmuru aktif',
   launcherAsteroidShowerEnded: 'Asteroid yağmuru sona erdi',
+  launcherTradeShipStarted: 'Galakside ticaret gemisi',
+  launcherTradeShipEnded: 'Ticaret gemisi gitti',
   list: 'Bu galaksideki herkese açık olaylar',
   repeatCount: '{{count}} kez',
   empty: 'Galaksi şimdilik sakin. Bir sonraki kalkış bunu değiştirebilir.',
@@ -47,6 +49,10 @@ export const chronicle = {
   asteroidShowerStartedDetail: 'Galaksi genelinde yeni asteroid oluşma hızı ×{{multiplier}} seviyesine çıktı.',
   asteroidShowerEnded: 'Asteroid yağmuru bitti',
   asteroidShowerEndedDetail: 'Oluşma hızı normale döndü. Mevcut asteroidler doğal süreleri dolana kadar kalır.',
+  tradeShipStarted: 'Galaksiye bir ticaret gemisi girdi',
+  tradeShipStartedDetail: 'Ona yetişebilen herkese {{alloy}} alaşım = {{crystal}} kristal = 1 döteryum kurundan takas yaptı.',
+  tradeShipEnded: 'Ticaret gemisi ayrıldı',
+  tradeShipEndedDetail: 'Penceresi kapandı. Havadaki konvoylar yine de eve döner.',
   act: {
     war: {
       title: 'Savaş safhası başladı',

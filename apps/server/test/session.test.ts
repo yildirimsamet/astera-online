@@ -19,6 +19,7 @@ import {
   giveSatellite,
   giveUnits,
   grant,
+  levelWorld,
   placeAt,
   seedWorld,
   setLevel,
@@ -228,6 +229,9 @@ describe('the return payload', () => {
 
   it('never shows more than five entries — this is a glance, not a log', async () => {
     await grant(f.db, mine, 60_000, 6_000);
+    // This purse is big enough to lift the reader's Core a tier above its
+    // neighbour's, which would refuse the raids below. D168; see `levelWorld`.
+    await levelWorld(f.db, f.planetIds);
     for (let i = 0; i < 3; i++) {
       await raid(f, theirs, mine, 20);
       f.clock.advance(1);

@@ -211,8 +211,24 @@ export async function researchView(
         && discovered
         && prerequisiteMet
         && researchAvailable(id, planet.nowMinutes),
+      /**
+       * WHETHER THE PROJECT IN FRONT OF THIS ONE IS DONE — PUBLISHED, NOT INFERRED.
+       *
+       * Both gates were computed here and neither left the server, so a card that
+       * saw `available: false` had exactly one visible gate to blame and blamed it:
+       * a live commander was told the Interception Grid was researchable "in 0m"
+       * two days after the War act opened, when the truth was that Gravitic Charges
+       * was not held. Five projects are gated by a project alone — the three stat
+       * ladders and the two strategic ones — and `discovered` is true for every one
+       * of them, so nothing else in the payload can carry the reason.
+       *
+       * A project with no prerequisite reports `true`: nothing stands in front of
+       * it, which is what "met" means when there is nothing to meet.
+       */
+      prerequisiteMet,
       /** Whether this project may be appended after the active Construction tail. */
       queueDiscovered,
+      queuePrerequisiteMet,
       queueAvailable: queuedLevel < project.maxLevel
         && queueDiscovered
         && queuePrerequisiteMet

@@ -70,7 +70,7 @@ export const DISC_RADIUS = GALAXY.radius / SCALE;
  * travel time reads them — so this is the same kind of number as
  * `VERTICAL_EXAGGERATION` below and carries the same guarantee.
  */
-export const CRAFT_SCALE = 1.5;
+export const CRAFT_SCALE = 0.8;
 
 /**
  * THE CONVERSION AND THE HEIGHT EXAGGERATION NOW LIVE IN `@astera/rules`. D106.
@@ -220,6 +220,21 @@ export interface PlanetNode {
  * cost a telescope slot or a probe.
  */
 export const weightOf = worldWeight;
+
+/**
+ * HAS A ROCKET LANDED ON THIS WORLD AND NOT YET FINISHED DOING ITS DAMAGE? D121a.
+ *
+ * `state` is optional on the payload, so a server that predates it reads as a
+ * world in one piece — which is the safe way round: a live structure drawn on a
+ * wreck is a cosmetic miss, and a dead one drawn on a healthy world would say a
+ * commander had been hit when they had not.
+ *
+ * It lives here, on the node itself, because TWO renderers read it: the dyson
+ * rings stop and go cold (D121a), and since the owner's call the satellites over
+ * the same crater do too. It was in `DysonShells`, and `Satellites` cannot import
+ * that file — the dependency already runs the other way (`resolvedOnly`).
+ */
+export const isWrecked = (node: PlanetNode): boolean => node.state.kind === 'RECOVERY';
 
 export function planetNodes(planets: readonly GalaxyPlanet[]): PlanetNode[] {
   const selfClanId = planets.find(
@@ -900,6 +915,29 @@ export function asteroidProgress(
 }
 
 /**
+ * THE SHARED ORBIT TRIG, ONCE. Both a rock and the trade ship ride one of these
+ * (`OrbitLike`), and each has its own rules-package counterpart to agree with —
+ * `asteroidPosition` and `tradeShipPosition`. They must never become two
+ * hand-copied blocks of the same rotation that drift apart one edit at a time;
+ * see `asteroidWorldPosition`'s docblock for what that drift costs a player.
+ */
+function orbitWorldPosition(orbit: OrbitLike, seasonStart: Date, now: number): Vec3Tuple {
+  const minutes = (now - seasonStart.getTime()) / 60_000;
+  const theta = orbit.phase + (2 * Math.PI * minutes) / orbit.period;
+  const cosTheta = Math.cos(theta);
+  const sinTheta = Math.sin(theta);
+  const cosNode = Math.cos(orbit.ascendingNode);
+  const sinNode = Math.sin(orbit.ascendingNode);
+  const cosInclination = Math.cos(orbit.inclination);
+  const sinInclination = Math.sin(orbit.inclination);
+  return toWorld({
+    x: orbit.radius * (cosNode * cosTheta - sinNode * sinTheta * cosInclination),
+    y: orbit.radius * sinTheta * sinInclination,
+    z: orbit.radius * (sinNode * cosTheta + cosNode * sinTheta * cosInclination),
+  });
+}
+
+/**
  * Its world position this instant, from the orbit and the clock.
  *
  * Must stay identical to `asteroidPosition` in the rules package: the server
@@ -911,19 +949,26 @@ export function asteroidWorldPosition(
   seasonStart: Date,
   now: number,
 ): Vec3Tuple {
-  const minutes = (now - seasonStart.getTime()) / 60_000;
-  const theta = rock.phase + (2 * Math.PI * minutes) / rock.period;
-  const cosTheta = Math.cos(theta);
-  const sinTheta = Math.sin(theta);
-  const cosNode = Math.cos(rock.ascendingNode);
-  const sinNode = Math.sin(rock.ascendingNode);
-  const cosInclination = Math.cos(rock.inclination);
-  const sinInclination = Math.sin(rock.inclination);
-  return toWorld({
-    x: rock.radius * (cosNode * cosTheta - sinNode * sinTheta * cosInclination),
-    y: rock.radius * sinTheta * sinInclination,
-    z: rock.radius * (sinNode * cosTheta + cosNode * sinTheta * cosInclination),
-  });
+  return orbitWorldPosition(rock, seasonStart, now);
+}
+
+/**
+ * Where the merchant is, this instant, from its orbit and the clock. D156.
+ *
+ * Must stay identical to `tradeShipPosition` in the rules package, and here the
+ * stakes are sharper than for a rock: the launch screen solves a rendezvous
+ * against this merchant and the server solves the same rendezvous again, so a
+ * client drawn a few pixels off `tradeShipPosition` is a client aiming a convoy
+ * at empty space. Unlike a rock or a pirate, the trade ship's orbit is public by
+ * owner decision (D156), so this reads it straight off the wire payload rather
+ * than off a caller-earned discovery.
+ */
+export function tradeShipWorldPosition(
+  orbit: OrbitLike,
+  seasonStart: Date,
+  now: number,
+): Vec3Tuple {
+  return orbitWorldPosition(orbit, seasonStart, now);
 }
 
 /**

@@ -21,7 +21,8 @@ export const planet = {
     build: "Mühimmat yükle",
     started: "Mühimmat yükleniyor",
     hint: "Zamanlı Radar çemberine giren veya dünyalarından birinin Teleskop görüşünde tanımladığı ilk Ölüm Yıldızı’nı imha eder. Ateşlendiğinde tükenir.",
-    readyHint: "Hazır. Radar önleme çemberine giren veya Teleskop görüşünde tanımlanan ilk Ölüm Yıldızı’nı imha eder.",
+    readyHint:
+      "Hazır. Radar önleme çemberine giren veya Teleskop görüşünde tanımlanan ilk Ölüm Yıldızı’nı imha eder.",
     needResearch: "Önleme Ağı",
     needRadar: "Radar {{level}}. seviye",
     needUplink: "Yörüngede Anten",
@@ -82,6 +83,7 @@ export const planet = {
     segment: "{{name}} · {{duration}}",
     cancelOne: "{{name}} siparişini iptal et",
     title: "Üretim sıraları",
+    idle: "Üretim yok",
     capacity: "her birinde {{count}} yer",
     construction: "İnşaat",
     yard: "Tersane",
@@ -112,13 +114,16 @@ export const planet = {
   },
 
   roles: {
-    vault: "Her kaynak için korumalı bir miktar belirler. Bu sınırın üstünde kalan stok akınlarda yağmalanabilir.",
+    vault:
+      "Her kaynak için korumalı bir miktar belirler. Bu sınırın üstünde kalan stok akınlarda yağmalanabilir.",
     shipyard:
       "Yeni gemi sınıflarını açar; gemi ve yer savunması üretimini hızlandırır, sondalarının başarı ihtimalini artırır.",
-    refinery: "Saatlik alaşım üretimini ve alaşım depo kapasitesini artırır. Binaların ve gemilerin çoğu bu kaynağı kullanır.",
+    refinery:
+      "Saatlik alaşım üretimini ve alaşım depo kapasitesini artırır. Binaların ve gemilerin çoğu bu kaynağı kullanır.",
     extractor:
       "Saatlik kristal üretimini ve kristal depo kapasitesini artırır. Gelişmiş gemiler, cihazlar ve araştırmalar kristal kullanır.",
-    coreCapped_one: "{{count}} bina mevcut Çekirdek sınırına ulaştı; Çekirdeği yükseltmeden ilerleyemez.",
+    coreCapped_one:
+      "{{count}} bina mevcut Çekirdek sınırına ulaştı; Çekirdeği yükseltmeden ilerleyemez.",
     coreCapped_other:
       "{{count}} bina mevcut Çekirdek sınırına ulaştı; Çekirdeği yükseltmeden ilerleyemez.",
     coreClear:
@@ -132,8 +137,9 @@ export const planet = {
     shieldBand: "Kalkan",
     shieldNote:
       "Aegis hasarı birliklerine ulaşmadan önce karşılar. Seviyeler azami kalkanı artırır; yenilenme hızı azami değerin saatte %35’idir.",
-    groundBand: "Yerdekiler",
-    groundNote: "Gezegenden ayrılmazlar. Kirpi Siper sınıfına, Tabya ise Mızrak sınıfına karşı üstünlük kazanır.",
+    groundBand: "Yerdekiler (kapasite komuta merkezi ile artar)",
+    groundNote:
+      "Gezegenden ayrılmazlar. Kirpi Siper sınıfına, Tabya ise Mızrak sınıfına karşı üstünlük kazanır.",
     thornNone:
       "Hafif yer savunmasıdır. Siper sınıfına karşı güçlü, Mızrak sınıfına karşı zayıftır.",
     thornStanding:
@@ -167,7 +173,8 @@ export const planet = {
     slotEmpty: "Boş",
     inactiveSatellite:
       "Sahipsin; Komuta Çekirdeği bu yörünge yuvasını yeniden açana kadar pasif.",
-    inactiveUplink: "{{owned}}. seviye sende; Anten yeniden etkinleşene kadar pasif.",
+    inactiveUplink:
+      "{{owned}}. seviye sende; Anten yeniden etkinleşene kadar pasif.",
     inactiveCore:
       "{{owned}}. seviye sende · Komuta Çekirdeği onarılana kadar {{active}}. seviye etkin.",
     alreadyInOrbit: "zaten yörüngede",
@@ -179,19 +186,19 @@ export const planet = {
       "Matkap bu dünyanın Kazıcılarını hızlandırıp ambarlarını büyütür; Kılavuz akın ve transfer filolarını hızlandırır. Her biri bir yörünge yuvası kullanır.",
     family: {
       OFFENSIVE: {
-        label: "Saldırı gövdeleri",
+        label: "Saldırı gemileri",
         note: "Akıncılar hıza, taarruz gemileri saldırıya yatırım yapar. Satırlar seviyeye göre ilerler.",
       },
       DEFENSIVE: {
-        label: "Savunma gövdeleri",
+        label: "Savunma gemileri",
         note: "Kaleler hızdan dayanım kazanır; refakatçiler filo temposunu daha iyi korur.",
       },
       CARGO: {
-        label: "Yük gövdeleri",
+        label: "Yük gemileri",
         note: "Silahsız nakliyeler rota hızıyla ambar kapasitesini değiş tokuş eder ve refakat ister.",
       },
       SPECIALIST: {
-        label: "Uzman gövdeler",
+        label: "Özel gemiler",
         note: "Görünür bir soruna dar cevap verir; yanlış hedefte uzmanlık bedeli boşa gider.",
       },
     },
@@ -258,13 +265,16 @@ export const planet = {
     researchCargoInsight: "Bir akında ambarını doldur; hedefte ganimet kalsın",
     researchShieldInsight: "Aegis akın hasarının en az {{share}}’ini emsin",
     warshipsBand: "Savaş gemileri",
-    warshipsNote: "Akın filosunun savaş gücünü oluştururlar. Görevdeyken kendi dünyalarını savunamazlar.",
+    warshipsNote:
+      "Akın filosunun savaş gücünü oluştururlar. Görevdeyken kendi dünyalarını savunamazlar.",
     supportBand: "Destek",
     supportNote:
       "Dövüşmezler. Ucuz kapasite ile daha kısa açıkta kalma süresi arasında seçim yap.",
     miningBand: "Madenci",
-    miningNote: "Asteroit ve enkaz sahalarına gider; taşıyabildiği kaynağı üretim havuzuna getirir.",
+    miningNote:
+      "Asteroit ve enkaz sahalarına gider; taşıyabildiği kaynağı üretim havuzuna getirir.",
     ownedGain: "Elinde",
+    hullAwayCount: "{{count}} dışarıda",
     hullLocationCounts: "(Evde: {{home}}, Dışarıda: {{away}})",
     prospectorLimit: "{{owned}} / {{max}} · sınır",
   },
@@ -290,7 +300,8 @@ export const planet = {
     research: "Gerekli: {{research}} {{level}}",
     plantRung: "Bir kademe daha Döteryum Sentezi araştır",
     maxed: "en üst seviyede",
-    queueFull: "Sırada zaten 3 sipariş var. Bunu eklemek için biri bitsin veya birini iptal et.",
+    queueFull:
+      "Sırada zaten 3 sipariş var. Bunu eklemek için biri bitsin veya birini iptal et.",
   },
 
   done: {
@@ -349,7 +360,12 @@ export const upgradeRow = {
   about: "{{name}} nedir",
   nextTierAlt: "{{name}} bir üst kademede",
   becomes: "olur",
+  /** Merdivenin bittiği yer; bir kademe ancak bütünün karşısında değerlendirilir. */
+  ceiling: "· tavan {{value}}",
   affordableIn: "Bu hızla <0>{{duration}}</0> sonra alabilirsin",
+  /** İşin kendisi ne kadar sürer — cüzdanın değil, nesnenin saati. */
+  takes: "{{duration}}",
+  takesLabel: "Yapımı {{duration}} sürer",
   ladder: "Seviye {{level}} / {{max}}",
 } as const;
 
@@ -373,7 +389,7 @@ export const action = {
   statCargoNone: "—",
   statRoom: "Hangar",
   statFuel: "Yakıt",
-  statFuelRate: "{{value}} /1.000",
+  statFuelRate: "{{value}} /1b",
   statFuelNone: "—",
 } as const;
 
@@ -497,7 +513,6 @@ export const transfer = {
 export const capacity = {
   fit: "daha sığar",
   full: "DOLU",
-  each: "biri şu kadar",
   /* The two ends of a room card's bar, each under the part it describes. */
   used: "dolu",
   free: "boş",

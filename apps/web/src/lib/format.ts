@@ -70,6 +70,27 @@ export const signed = (value: number): string =>
  *
  * English writes `40%` and Turkish writes `%40`, so this cannot be a template
  * literal at the call site — which is what it was, in four of them.
+ *
+ * A TENTH ON THE SMALL ONES, AND IT IS NOT A PRESENTATION PREFERENCE. Owner
+ * report: *"Ne kadar arttırıyor anlaşılamıyor."* Rounded whole, the five rungs of
+ * Ship Power — 2.26, 4.56, 6.92, 9.34, 11.80 — printed as 2, 5, 7, 9, 12: gaps of
+ * three, two, two and three, which reads as rounding noise rather than as the even
+ * ladder it is, and each rung on its own reads as "nothing". At this scale the
+ * tenth is where the design lives.
+ *
+ * TWENTY PER CENT IS THE LINE, AND A WHOLE NUMBER STAYS WHOLE. Above it the tenth
+ * IS the noise — nobody chooses between 25% and 25.4% of speed — and propulsion's
+ * own ladder is 25/50/75/100, which must not grow a `.0`. Putting a decimal on
+ * every figure in the game to serve four small ladders would be the wrong trade.
+ *
+ * THROUGH `decimals`, never `toFixed`. That is this file's own recorded bug: a
+ * hard-wired full stop put `12.4b` on a Turkish screen, and `%2.3` would be the
+ * same mistake in a smaller place.
  */
-export const percent = (value: number): string =>
-  i18n.t('units.percent', { value: Math.round(value * 100) });
+export const percent = (value: number): string => {
+  const scaled = value * 100;
+  const fine = Math.abs(scaled) < 20 && !Number.isInteger(Number(scaled.toFixed(1)));
+  return i18n.t('units.percent', {
+    value: fine ? decimals(scaled, 1) : full(scaled),
+  });
+};

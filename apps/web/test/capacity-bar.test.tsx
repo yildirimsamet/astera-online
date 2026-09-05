@@ -1,6 +1,6 @@
 import { render } from '@testing-library/react';
 import { beforeEach, describe, expect, it } from 'vitest';
-import { HULLS, hullBulk } from '@astera/rules';
+import { hullBulk } from '@astera/rules';
 import { CapacityBar } from '../src/ui/CapacityBar.js';
 import i18n from '../src/i18n/index.js';
 
@@ -19,8 +19,11 @@ import i18n from '../src/i18n/index.js';
  *   · the BRIGHT part is what the order on screen would add, and it grows under the
  *     stepper as the player presses it — cause and effect in the same eyeful
  *   · the DARK part is what would still be free
- *   · one SHIP BLOCK sits under it at the exact width one of this hull takes, so
- *     "a Bulwark eats twelve Darts of room" is read off the picture, not counted
+ *
+ * There is ONE bar and nothing under it. A narrower block drawing the width of a
+ * single hull was tried and removed on owner instruction: it read as a second bar
+ * with no stated job even once it shared an origin with the first, and the count
+ * of how many more fit already answers what it was for.
  *
  * The only figure with any size to it is HOW MANY MORE FIT, because that is the
  * number the player came to the sheet holding.
@@ -31,7 +34,7 @@ beforeEach(async () => {
 });
 
 const bar = (over: Partial<Parameters<typeof CapacityBar>[0]> = {}) => render(
-  <CapacityBar total={200} used={40} incoming={0} bulk={hullBulk('DART')} fits={160} {...over} />,
+  <CapacityBar total={200} used={40} incoming={0} fits={160} {...over} />,
 );
 
 const widthOf = (view: ReturnType<typeof render>, part: string): number => {
@@ -73,25 +76,6 @@ describe('the capacity bar', () => {
     expect(view.container.querySelector('[data-fits]')).toHaveTextContent('37');
   });
 
-  /**
-   * ONE SHIP, AT THE WIDTH IT ACTUALLY TAKES. A Bulwark is twelve Darts of room,
-   * and the block under the bar is twelve times as wide — which is the whole
-   * mechanism explained without a word or a number.
-   */
-  it('draws one ship at its true share of the bar', () => {
-    // A hangar small enough that both hulls are comfortably above the floor below,
-    // which is where the ratio is the thing being drawn rather than the floor.
-    const small = { total: 60 };
-    const wasp = widthOf(bar({ ...small, bulk: hullBulk('DART') }), 'one');
-    const bulwark = widthOf(bar({ ...small, bulk: hullBulk('RAMPART') }), 'one');
-    expect(bulwark / wasp).toBeCloseTo(hullBulk('RAMPART') / hullBulk('DART'), 1);
-  });
-
-  it('keeps a single ship visible even when it is a sliver of the bar', () => {
-    // One Dart in a 1,800-capacity hangar is 0.06% — a segment nobody can see.
-    expect(widthOf(bar({ total: 1800, bulk: 1 }), 'one')).toBeGreaterThan(0.5);
-  });
-
   it('never draws past the end of the bar', () => {
     const view = bar({ total: 100, used: 90, incoming: 40 });
     expect(widthOf(view, 'used') + widthOf(view, 'incoming')).toBeLessThanOrEqual(100.01);
@@ -111,33 +95,22 @@ describe('the capacity bar', () => {
 
   /** Ground guns share the vocabulary; only the ceiling behind it differs. */
   it('draws a ground battery the same way', () => {
-    const view = bar({ total: 30, used: 13, incoming: hullBulk('BASTION'), bulk: hullBulk('BASTION'), fits: 1 });
-    expect(widthOf(view, 'one')).toBeCloseTo((HULLS.BASTION.alloy > 0 ? hullBulk('BASTION') : 0) / 30 * 100, 0);
+    const view = bar({ total: 30, used: 13, incoming: hullBulk('BASTION'), fits: 1 });
+    expect(widthOf(view, 'incoming')).toBeCloseTo(hullBulk('BASTION') / 30 * 100, 0);
   });
 });
 
 /**
- * THE ONE-SHIP BLOCK HAS TO START WHERE THE BAR ABOVE IT STARTS. Owner report:
- * *"alttaki bar ne işe yarıyor ve ortadaki beyaz çizgi gibi gözüken şey ne?"*
- *
- * `.socket` is `display: grid; place-items: center`, and this well carried no
- * display utility to override it — so the block that measures one hull was
- * CENTRED in its own track. It read as a floating tick mark inside an
- * unexplained second bar, which is exactly how it was reported. A measurement
- * that does not share an origin with the thing it is measured against is not a
- * measurement.
+ * NO SURFACE DRAWS A SECOND BAR. Owner report against the Fleet and Defend tabs —
+ * *"alttaki bar ne işe yarıyor ve ortadaki beyaz çizgi gibi gözüken şey ne?"* —
+ * answered first by aligning that block to the bar above it, and then by owner
+ * instruction removing it. This holds the removal on every card the component
+ * draws, so it cannot come back by accident.
  */
-describe('the ship block under the bar', () => {
-  const well = (view: ReturnType<typeof render>): HTMLElement => {
-    const block = view.container.querySelector<HTMLElement>('[data-part="one"]');
-    expect(block, 'no ship block').not.toBeNull();
-    return block!.parentElement!;
-  };
-
-  it('measures from the left edge, like the bar it is compared against', () => {
-    expect(well(bar()).className).toContain('justify-items-start');
+describe('the space under the bar', () => {
+  it('draws nothing under the bar on a purchase card', () => {
+    expect(bar().container.querySelector('[data-part="one"]')).toBeNull();
   });
-
 });
 
 /**
@@ -145,19 +118,16 @@ describe('the ship block under the bar', () => {
  * and Defend tabs: *"bu iki bardan alttaki ne işe yarıyor?"*
  *
  * A ROOM — the Hangar band, the ground battery, a transfer's destination — has no
- * hull being chosen, so it has no ship to measure and no count of ships to give.
- * Drawing one anyway is a second bar with no stated job, which is exactly how it
- * was reported.
+ * hull being chosen, so it has no count of ships to give. Giving one anyway states
+ * space as a number of ships, which is exactly how it was reported.
  *
- * A PURCHASE — the craft sheet — adds the two things only that surface can say.
+ * A PURCHASE — the craft sheet — adds the one thing only that surface can say.
  */
 describe('a room card, where nobody is choosing a hull', () => {
   const room = () => render(<CapacityBar total={200} used={40} incoming={0} label="Hangar" />);
 
-  it('draws no ship block and no count of ships', () => {
-    const view = room();
-    expect(view.container.querySelector('[data-part="one"]')).toBeNull();
-    expect(view.container.querySelector('[data-fits]')).toBeNull();
+  it('gives no count of ships', () => {
+    expect(room().container.querySelector('[data-fits]')).toBeNull();
   });
 
   /**

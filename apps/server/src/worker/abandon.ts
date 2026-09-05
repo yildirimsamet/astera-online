@@ -12,6 +12,7 @@ import { fleetChangesWatch, publishWatchChanges } from '../services/watchEvents.
 import { abandonBuildOrder } from '../services/buildQueue.js';
 import { abandonResearchOrder } from '../services/research.js';
 import { abandonDeathStarBuild } from '../services/strategic.js';
+import { abandonTradeRun } from '../services/trade.js';
 
 /**
  * WHAT HAPPENS WHEN AN EVENT GIVES UP FOR GOOD. D28.
@@ -174,6 +175,21 @@ export async function abandon(db: Db, event: EventRow, clock: Clock): Promise<bo
     case 'mining_arrival':
     case 'mining_return':
       return abandonMiningRun(db, event.refId, clock.now());
+    /**
+     * A CONVOY THAT CANNOT BE RESOLVED COMES HOME WITH WHATEVER NEVER CHANGED
+     * HANDS. D156.
+     *
+     * MATCHED ON THE EVENT'S OWN KIND, and here that is not merely hygiene (D46) —
+     * it is the whole answer. One run has two moments and they owe the commander
+     * two different piles: on the way out the OFFER is still aboard, on the way
+     * back the HAUL is. A single `refId` cannot tell them apart, and getting it
+     * wrong would either invent goods the merchant never sold or delete goods the
+     * commander already paid for. Fuel is refunded on neither (D136).
+     */
+    case 'trade_arrival':
+      return (await abandonTradeRun(db, event.refId, 'outbound', clock)) !== null;
+    case 'trade_return':
+      return (await abandonTradeRun(db, event.refId, 'returning', clock)) !== null;
     case 'build_complete':
       // Migrated legacy research rows keep their old event kind because PostgreSQL
       // cannot use a newly-added enum value in the same migration transaction.
@@ -237,6 +253,7 @@ export async function sweepStranded(db: Db, clock: Clock): Promise<number> {
   const {
     missions: strandedMissions,
     runs: strandedRuns,
+    trades: strandedTrades,
     builds: strandedBuilds,
     research: strandedResearch,
     deathStars: strandedDeathStars,
@@ -245,6 +262,17 @@ export async function sweepStranded(db: Db, clock: Clock): Promise<number> {
   let released = 0;
   for (const id of strandedMissions) if (await abandonMission(db, id, now)) released += 1;
   for (const id of strandedRuns) if (await abandonMiningRun(db, id, now)) released += 1;
+  /*
+    A CONVOY WHOSE EVENT ROW IS SIMPLY GONE HOLDS A BAY FOR THE REST OF THE SEASON.
+
+    D46's hole, and a trade run falls into it the same way a mission does: `reap`,
+    `fail` and `/health` all read the EVENT, so a flight with no event is invisible
+    to every safety net there is. The leg is read off the row rather than guessed,
+    because which pile comes home depends on it.
+  */
+  for (const { id, leg } of strandedTrades) {
+    if (await abandonTradeRun(db, id, leg, clock)) released += 1;
+  }
   for (const id of strandedBuilds) if (await abandonBuildOrder(db, id, clock)) released += 1;
   for (const id of strandedResearch) {
     if (await abandonResearchOrder(db, id, clock)) released += 1;
@@ -276,6 +304,7 @@ async function strandedState(
 ): Promise<{
   missions: string[];
   runs: string[];
+  trades: { id: string; leg: 'outbound' | 'returning' }[];
   builds: string[];
   research: string[];
   deathStars: string[];
@@ -305,6 +334,17 @@ async function strandedState(
       and not exists (
         select 1 from scheduled_events e
         where e.ref_id = r.id and e.kind in ('mining_arrival', 'mining_return')
+          and e.status in ('pending', 'processing'))
+  `);
+
+  /** Same `coalesce` shape as a mining run: `home_at` is NULL until it turns. */
+  const tradeRows = await db.execute<{ id: string; status: 'outbound' | 'returning' }>(sql`
+    select t.id, t.status from trade_runs t
+    where t.status in ('outbound', 'returning')
+      and coalesce(t.home_at, t.arrive_at) < ${cutoff}::timestamptz
+      and not exists (
+        select 1 from scheduled_events e
+        where e.ref_id = t.id and e.kind in ('trade_arrival', 'trade_return')
           and e.status in ('pending', 'processing'))
   `);
 
@@ -341,6 +381,7 @@ async function strandedState(
   return {
     missions: missionRows.map((row) => row.id),
     runs: runRows.map((row) => row.id),
+    trades: tradeRows.map((row) => ({ id: row.id, leg: row.status })),
     builds: buildRows.map((row) => row.id),
     research: researchRows.map((row) => row.id),
     deathStars: deathStarRows.map((row) => row.id),
@@ -354,8 +395,8 @@ async function strandedState(
  * able to report the number on an API-only process that runs no worker at all.
  */
 export async function strandedFlightCount(db: Db, now: Date): Promise<number> {
-  const { missions: m, runs: r } = await strandedState(db, now);
-  return m.length + r.length;
+  const { missions: m, runs: r, trades: t } = await strandedState(db, now);
+  return m.length + r.length + t.length;
 }
 
 /** Ordinary and strategic builds whose completion event has disappeared. */

@@ -55,6 +55,8 @@ const base: BattleReport = {
   yourLosses: { DART: 2 },
   theirLosses: { DART: 6, BASTION: 1 },
   yourFleet: { DART: 12, COURIER: 3 },
+  /** Defender-only: the force that arrived. Empty on an attacker’s report. D164. */
+  theirFleet: {},
   lootAlloy: 300,
   lootCrystal: 80,
   lootDeuterium: 0,
@@ -615,14 +617,71 @@ describe('what a battle report explains', () => {
   });
 
   /**
-   * THE LINE NONE OF THIS WAS ALLOWED TO CROSS.
+   * WHAT CAME AT YOU, DRAWN WHOLE. D164, owner instruction.
+   *
+   * A defender's copy of "what was on the other side" was the WRECKAGE — the hulls
+   * that died — and the section said so honestly, which did not make it enough.
+   * The hulls that never fired are the ones the wreckage omits by construction: a
+   * Courier has no gun, joins no firing line and usually flies home whole, so a
+   * commander could be robbed by a convoy and read a report the convoy was not in.
+   */
+  it('shows the defender the whole force that arrived, including what never fired', async () => {
+    await openSheet(report({
+      attacking: false,
+      yourFleet: { RAMPART: 9, BASTION: 6 },
+      yourLosses: { RAMPART: 4 },
+      theirFleet: { DART: 40, COURIER: 3 },
+      theirLosses: { DART: 11 },
+    }));
+
+    const board = document.querySelector('[data-their-board="arrived"]');
+    expect(board).not.toBeNull();
+    // The gunless hull is named in the roster, at full strength.
+    expect(within(board as HTMLElement).getByText('Courier')).toBeVisible();
+    expect(within(board as HTMLElement).getByText('Dart')).toBeVisible();
+    expect(screen.getByText('What came at you')).toBeVisible();
+    // And the floor framing is gone: this is not a floor, it is the force.
+    expect(screen.queryByText('At least this much')).not.toBeInTheDocument();
+  });
+
+  /**
+   * A raider learns nothing new here. D164 opened ONE direction: the force that
+   * arrived, to the commander it arrived at. What was standing at the target is a
+   * probe's product, so the attacker's copy of the field is empty and their side
+   * of the sheet keeps the floor it always had.
+   */
+  it('leaves the attacker with the wreckage, which is a floor and says so', async () => {
+    await openSheet(report({ attacking: true, theirFleet: {} }));
+
+    expect(document.querySelector('[data-their-board="arrived"]')).toBeNull();
+    expect(screen.getByText('At least this much')).toBeVisible();
+  });
+
+  /**
+   * A report written before the attacker's roster was stored carries an empty one,
+   * exactly like an attacker's. The defender falls back to the loss list rather
+   * than being shown an empty table where a force should be.
+   */
+  it('falls back to the loss list for a defender report written before D164', async () => {
+    await openSheet(report({
+      attacking: false,
+      theirFleet: {},
+      theirLosses: { DART: 6 },
+    }));
+
+    expect(document.querySelector('[data-their-board="arrived"]')).toBeNull();
+    expect(screen.getByText('At least this much')).toBeVisible();
+  });
+
+  /**
+   * THE LINE THAT STILL HOLDS.
    *
    * `yourFleet` minus `yourLosses` is the caller's own survivors, which they are
-   * entitled to. The same subtraction on the OPPONENT's roster is exactly the
-   * disclosure the fog exists to refuse, so the opponent's roster never reaches
-   * the client — the server sends one roster and it is always the reader's.
+   * entitled to. The same subtraction on the DEFENDER's roster is the disclosure
+   * the fog exists to refuse, so an attacker still receives one roster and it is
+   * always their own.
    */
-  it('the fog holds: only ever one roster, and it is yours', async () => {
+  it('the fog holds: an attacker only ever gets one roster, and it is theirs', async () => {
     const sheet = report({
       attacking: true,
       yourFleet: { DART: 12, COURIER: 3 },
@@ -635,7 +694,15 @@ describe('what a battle report explains', () => {
     // The defender's Bastion appears as a LOSS below, and never as a holding in
     // the one table on this sheet that states how many of something there were.
     expect(within(force!).queryByText('Bastion')).not.toBeInTheDocument();
-    expect(screen.getByText('What you destroyed')).toBeVisible();
+
+    /*
+      AND THE LIST OF LOSSES NOW STATES ITS OWN BOUND. This report is a PARTIAL, so
+      what the reader holds is a FLOOR on the enemy's board and not the board —
+      which is the fog above, said out loud instead of left for them to infer from
+      a short list. `battle-report-cases.test.tsx` holds down both bounds.
+    */
+    expect(document.querySelector('[data-their-board="floor"]')).not.toBeNull();
+    expect(screen.getByText('At least this much')).toBeVisible();
   });
 
   /**

@@ -36,10 +36,10 @@ const VARIANT: Record<ButtonVariant, string> = {
 };
 
 const SIZE: Record<ButtonSize, string> = {
-  sm: 'min-h-8 px-3 py-2 text-label',
-  md: 'min-h-[42px] px-4 py-3 text-body',
-  lg: 'min-h-[52px] px-6 py-3 text-body',
-  hero: 'min-h-[60px] px-6 py-4 text-title tracking-label',
+  sm: 'min-h-9 max-h-9 px-2 py-2 text-label',
+  md: 'min-h-[42px] max-h-[42px] px-2 py-3 text-body',
+  lg: 'min-h-[52px] max-h-[52px] px-6 py-3 text-body',
+  hero: 'min-h-[60px] max-h-[60px] px-6 py-2 text-title tracking-label',
 };
 
 export function Button({
@@ -54,6 +54,7 @@ export function Button({
   className = '',
   type = 'button',
   ariaLabel,
+  testId,
 }: {
   children?: ReactNode;
   onClick?: () => void;
@@ -66,12 +67,22 @@ export function Button({
   className?: string;
   type?: 'button' | 'submit';
   ariaLabel?: string;
+  /**
+   * `data-testid`, for a control whose LABEL is the thing under test.
+   *
+   * The trade sheet's commit states its own refusal, so its accessible name is a
+   * different sentence in each of eleven states and cannot also be the handle a
+   * test grabs it by. Same escape hatch `Segmented`'s `marker` already provides,
+   * and it emits nothing when unused.
+   */
+  testId?: string;
 }) {
   return (
     <button
       type={type === 'submit' ? 'submit' : 'button'}
       disabled={disabled}
       {...(ariaLabel === undefined ? {} : { 'aria-label': ariaLabel })}
+      {...(testId === undefined ? {} : { 'data-testid': testId })}
       onClick={() => {
         if (disabled) return;
         // Weight matches consequence. A commit is the only press in the game that
@@ -99,7 +110,7 @@ export function IconButton({
   onClick,
   ariaLabel,
   tone = 'default',
-  size = 'md',
+  size = 'sm',
   disabled = false,
   className = '',
   badge = false,

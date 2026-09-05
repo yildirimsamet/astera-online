@@ -71,10 +71,28 @@ describe('the shared visual leg', () => {
  * stays exactly where it was, and is still what D49's ±2 attack band is defined on.
  */
 describe('D153 world size by core level', () => {
+  /**
+   * SHRUNK UNIFORMLY AT D166, AND THE SPREAD IS WHAT SURVIVED. Owner call: the
+   * three authored sizes came down because worlds were reading too large on the
+   * disc. The first pass moved them by three different factors (×0.64 / ×0.66 /
+   * ×0.57), which shrank the SIGNAL as well as the marker — the floor-to-cap ratio
+   * fell from 3.18 to 2.86 — so the anchors were re-derived: the middle holds at
+   * 0.54 (it is the level halfway to the top of the game and the number the ramp
+   * is defined around), and the outer two are placed by the SAME two sub-ratios
+   * the tuned table always had. The result is one factor, ×0.659, applied to all
+   * three, and a spread that is still 3.18.
+   */
   it('anchors the three authored sizes at the floor, the middle and the cap', () => {
-    expect(worldRadius(1)).toBeCloseTo(0.44, 8);
-    expect(worldRadius(11)).toBeCloseTo(0.82, 8);
-    expect(worldRadius(CORE_TOP_LEVEL)).toBeCloseTo(1.4, 8);
+    expect(worldRadius(1)).toBeCloseTo(0.29, 2);
+    expect(worldRadius(11)).toBeCloseTo(0.54, 8);
+    expect(worldRadius(CORE_TOP_LEVEL)).toBeCloseTo(0.92, 2);
+  });
+
+  /** And the shrink is UNIFORM, which is the property that keeps the ramp's shape. */
+  it('shrank all three anchors by one factor', () => {
+    const scale = worldRadius(11) / 0.82;
+    expect(worldRadius(1) / 0.44).toBeCloseTo(scale, 2);
+    expect(worldRadius(CORE_TOP_LEVEL) / 1.4).toBeCloseTo(scale, 2);
   });
 
   /**

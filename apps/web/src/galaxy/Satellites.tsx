@@ -5,7 +5,7 @@ import * as THREE from 'three';
 import { SATELLITE_IDS, type SatelliteId } from '@astera/rules';
 import { SATELLITE_MODEL, SATELLITE_NEON } from '../ui/assets.js';
 import { unitModel } from './model.js';
-import type { PlanetNode } from './scene.js';
+import { isWrecked, type PlanetNode } from './scene.js';
 
 /**
  * EVERY INSTRUMENT ANYONE HAS BUILT, IN ORBIT, VISIBLE TO EVERYONE.
@@ -50,15 +50,32 @@ const VISIBLE_WITHIN = 34;
  */
 const NEON = SATELLITE_NEON;
 
-/** A probe record has shape, but no powered colour or live glow. */
-export const REMEMBERED_HARDWARE = {
+/**
+ * TWO REASONS A SATELLITE HAS NO POWER, AND THEY LOOK THE SAME. D127 and D121a.
+ *
+ * A RECORD is a world a probe found and nobody can currently see: the hardware
+ * drawn is the hardware that was there, and it may have been added to, struck or
+ * switched off since. A WRECK is a world a Death Star has landed on: its
+ * instruments survive the crater and go dark with it.
+ *
+ * Neither can assert anything about RIGHT NOW, which is exactly what a lit,
+ * turning satellite asserts — so both wear the same dead style. One flag rather
+ * than two, for the reason `shellLook` states about the rings over the same
+ * worlds: nothing downstream distinguishes them, and a second boolean nobody
+ * reads is a branch waiting to be got wrong.
+ */
+export const DORMANT_HARDWARE = {
   colour: '#34383d',
   rimOpacity: 0.3,
 } as const;
 
-export const satelliteLook = (type: SatelliteId, remembered: boolean) => remembered
-  ? { colour: REMEMBERED_HARDWARE.colour, rimOpacity: REMEMBERED_HARDWARE.rimOpacity, turning: false }
+export const satelliteLook = (type: SatelliteId, dormant: boolean) => dormant
+  ? { colour: DORMANT_HARDWARE.colour, rimOpacity: DORMANT_HARDWARE.rimOpacity, turning: false }
   : { colour: NEON[type], rimOpacity: 0.82, turning: true };
+
+/** A world whose hardware may only be drawn as a still, colourless silhouette. */
+export const isDormant = (node: PlanetNode): boolean =>
+  node.intel === 'REMEMBERED' || isWrecked(node);
 
 /** How big a satellite is drawn, as a share of the planet it orbits. */
 export const BODY_SCALE = 0.3;
@@ -102,35 +119,55 @@ interface Body {
 export const resolvedOnly = (nodes: readonly PlanetNode[]): readonly PlanetNode[] =>
   nodes.filter((node) => node.intel !== 'UNKNOWN');
 
-export function Satellites({ nodes: all }: { nodes: readonly PlanetNode[] }) {
-  const nodes = useMemo(() => resolvedOnly(all), [all]);
-  const byType = useMemo(() => {
-    const map = new Map<string, Body[]>();
-    for (const planet of nodes) {
-      planet.satellites.forEach((type, index) => {
-        const key = `${type}:${planet.intel === 'REMEMBERED' ? 'memory' : 'live'}`;
-        const list = map.get(key) ?? [];
-        list.push({ planet, index, of: planet.satellites.length });
-        map.set(key, list);
-      });
-    }
-    return map;
-  }, [nodes]);
+export interface SatelliteGroup {
+  key: string;
+  type: SatelliteId;
+  /** Drawn dead: no neon, no orbit. See `isDormant`. */
+  dormant: boolean;
+  bodies: Body[];
+}
+
+/**
+ * ONE DRAW GROUP PER INSTRUMENT KIND AND PER STATE, AND THE SECOND HALF MATTERS.
+ *
+ * Colour lives in a MATERIAL and motion lives in one frame loop, and a material
+ * and a loop are shared by every instance in a mesh — so a struck or remembered
+ * world sharing a bucket with a live one would keep the live one's neon and keep
+ * turning, whatever `satelliteLook` says about it. This is the same split
+ * `shellGroups` makes over the same worlds, and for the same reason.
+ *
+ * It is a function rather than a `useMemo` body because it is the whole of what a
+ * test can meaningfully assert here: the rest of this component is instanced-mesh
+ * plumbing that only a GPU can confirm.
+ */
+export function satelliteGroups(nodes: readonly PlanetNode[]): SatelliteGroup[] {
+  const byKey = new Map<string, SatelliteGroup>();
+  for (const planet of resolvedOnly(nodes)) {
+    const dormant = isDormant(planet);
+    planet.satellites.forEach((type, index) => {
+      const key = `${type}:${dormant ? 'dormant' : 'live'}`;
+      const body: Body = { planet, index, of: planet.satellites.length };
+      const bucket = byKey.get(key);
+      if (bucket) bucket.bodies.push(body);
+      else byKey.set(key, { key, type, dormant, bodies: [body] });
+    });
+  }
+  return [...byKey.values()];
+}
+
+export function Satellites({ nodes }: { nodes: readonly PlanetNode[] }) {
+  const groups = useMemo(() => satelliteGroups(nodes), [nodes]);
 
   return (
     <>
-      {IN_ORBIT.map((type) => {
-        const live = byType.get(`${type}:live`);
-        const remembered = byType.get(`${type}:memory`);
-        return (
-          <group key={type}>
-            {live && live.length > 0 ? <Ring type={type} bodies={live} remembered={false} /> : null}
-            {remembered && remembered.length > 0
-              ? <Ring type={type} bodies={remembered} remembered />
-              : null}
-          </group>
-        );
-      })}
+      {groups.map((group) => (
+        <Ring
+          key={group.key}
+          type={group.type}
+          bodies={group.bodies}
+          dormant={group.dormant}
+        />
+      ))}
     </>
   );
 }
@@ -147,18 +184,18 @@ function hash(id: string): number {
 function Ring({
   type,
   bodies,
-  remembered,
+  dormant,
 }: {
   type: SatelliteId;
   bodies: Body[];
-  remembered: boolean;
+  dormant: boolean;
 }) {
   const mesh = useRef<THREE.InstancedMesh>(null);
   const rimMesh = useRef<THREE.InstancedMesh>(null);
   const lastStaticCamera = useRef(new THREE.Vector3(Number.POSITIVE_INFINITY, 0, 0));
   const camera = useThree((state) => state.camera);
   const { scene } = useGLTF(SATELLITE_MODEL[type], false);
-  const look = satelliteLook(type, remembered);
+  const look = satelliteLook(type, dormant);
 
   // Normalised to unit radius. These models are quantised like the asteroids, so
   // instancing the raw geometry would size them by an arbitrary integer range
@@ -172,19 +209,20 @@ function Ring({
     // the true outside contour.
     material.transparent = true;
     material.depthWrite = true;
-    if (remembered && material instanceof THREE.MeshStandardMaterial) {
+    if (dormant && material instanceof THREE.MeshStandardMaterial) {
       // Texture colour and emissive maps would keep advertising the live hardware
-      // kind. A memory is a dark physical silhouette, not a powered satellite.
+      // kind. A record — or a crater — is a dark physical silhouette, not a
+      // powered satellite.
       material.map = null;
       material.emissiveMap = null;
-      material.color.set(REMEMBERED_HARDWARE.colour);
+      material.color.set(DORMANT_HARDWARE.colour);
       material.emissive.set('#050607');
       material.emissiveIntensity = 0;
       material.metalness = 0.15;
       material.roughness = 1;
     }
     return material;
-  }, [remembered, source]);
+  }, [dormant, source]);
   const rimMaterial = useMemo(() => new THREE.ShaderMaterial({
     uniforms: {
       uColour: { value: new THREE.Color(look.colour) },
@@ -242,7 +280,7 @@ function Ring({
   );
 
   useEffect(() => {
-    // A changed memory/live group must rewrite its fixed matrices on the next
+    // A changed dormant/live group must rewrite its fixed matrices on the next
     // frame even if the camera itself has not moved.
     lastStaticCamera.current.set(Number.POSITIVE_INFINITY, 0, 0);
   }, [bodies, orbits]);
@@ -251,8 +289,8 @@ function Ring({
     const node = mesh.current;
     const rim = rimMesh.current;
     if (!node || !rim) return;
-    if (remembered) {
-      // Remembered hardware never animates. Rebuild only when the camera moves
+    if (dormant) {
+      // Dead hardware never animates. Rebuild only when the camera moves
       // enough for the distance cull to change, not on every idle frame.
       if (lastStaticCamera.current.distanceToSquared(camera.position) < 0.25) return;
       lastStaticCamera.current.copy(camera.position);
@@ -273,15 +311,16 @@ function Ring({
 
       const orbit = orbits[i]!;
       /**
-       * A REMEMBERED WORLD'S ORBIT IS STOPPED. D127.
+       * A DORMANT WORLD'S ORBIT IS STOPPED. D127 and D121a.
        *
-       * These are the satellites a probe found, not the ones up there now — the
-       * owner may have added a Foundry or lost the lot to a strike since. A moving
-       * satellite is an assertion about this instant that a record cannot make, so
-       * it holds at its own phase: still, and visibly a snapshot rather than a
-       * feed. Same reasoning as a struck world's rings (D121a).
+       * On a REMEMBERED world these are the satellites a probe found, not the ones
+       * up there now — the owner may have added a Foundry or lost the lot to a
+       * strike since. On a STRUCK one a rocket has just landed under them. A moving
+       * satellite is an assertion about this instant that neither state can make,
+       * so it holds at its own phase: still, and visibly a snapshot rather than a
+       * feed. Same reasoning, and the same look, as those worlds' rings.
        */
-      const angle = remembered ? orbit.phase : t + orbit.phase;
+      const angle = dormant ? orbit.phase : t + orbit.phase;
       const r = body.planet.radius * orbit.radius;
 
       dummy.position.set(

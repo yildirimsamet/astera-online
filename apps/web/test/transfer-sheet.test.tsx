@@ -1,7 +1,7 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { HULLS, hangarCapacity } from '@astera/rules';
+import { HULLS, hangarCapacity, missionFuel } from '@astera/rules';
 import { compact } from '../src/lib/format.js';
 import { TransferSheet } from '../src/screens/TransferSheet.js';
 import { ToastProvider } from '../src/ui/Toast.js';
@@ -268,17 +268,21 @@ describe('what a transfer burns', () => {
   });
 
   /**
-   * The cargo is spoken for before the fuel is, which is the sum the server takes.
-   * A tank loaded to the brim leaves nothing to fly on.
+   * THE CARGO IS SPOKEN FOR BEFORE THE FUEL IS, which is the sum the server takes
+   * — so a tank loaded to the brim would leave nothing to fly on, and the slider
+   * no longer reaches the brim. Since the owner's instruction the flight comes off
+   * the deuterium ceiling (`loadCeiling`), so this is now a CLAMP rather than a
+   * refusal: asking for the whole tank hands back the whole tank minus the launch.
    */
-  it('refuses to send a load that leaves no fuel behind', async () => {
+  it('never lets the load take the fuel with it', async () => {
     const user = userEvent.setup();
     const view = open(30);
     await load(user);
     const deuterium = screen.getByRole('slider', { name: /Deuterium/i });
     fireEvent.change(deuterium, { target: { value: '30' } });
 
-    expect(screen.getByRole('button', { name: /transfer — no recall/i })).toBeDisabled();
+    expect(Number((deuterium as HTMLInputElement).value)).toBeLessThan(30);
+    expect(screen.getByRole('button', { name: /transfer — no recall/i })).toBeEnabled();
     expect(view.container.querySelector('[data-transfer-fuel]')).toHaveTextContent(/\d/);
     expect(mutate).not.toHaveBeenCalled();
   });
@@ -363,11 +367,98 @@ describe('the deuterium a transfer spends twice', () => {
     expect(document.querySelector('[data-transfer-fuel] [data-spend-bar]'))
       .toHaveAttribute('data-short', 'false');
 
-    // Load every drop of it and the flight can no longer be paid for.
+    /*
+      ASK FOR EVERY DROP AND THE HOLD STILL LEAVES THE FLIGHT ITS SHARE.
+      The bar reads what is left AFTER the hold — that has not changed — but the
+      slider's own ceiling now stops one launch short of the tank, so the state
+      this bar used to go red in cannot be reached by dragging it. The refusal is
+      still there underneath: a tank too small for the flight AT ALL is asserted
+      in "offers nothing when the tank cannot even cover the flight".
+    */
     const slider = screen.getByRole('slider', { name: /Deuterium/i });
     fireEvent.change(slider, { target: { value: '400' } });
+    expect(Number((slider as HTMLInputElement).value))
+      .toBe(400 - missionFuel({ COURIER: 1 }, 100, 1));
     expect(document.querySelector('[data-transfer-fuel] [data-spend-bar]'))
-      .toHaveAttribute('data-short', 'true');
+      .toHaveAttribute('data-short', 'false');
+    expect(screen.getByRole('button', { name: /transfer — no recall/i })).toBeEnabled();
+  });
+});
+
+/**
+ * THE FLIGHT IS PAID FOR BEFORE THE HOLD IS FILLED. Owner instruction.
+ *
+ * The screen quoted the fuel and then still offered a deuterium slider that ran to
+ * the last drop in the tank — so the commander was handed the arithmetic, and the
+ * only way to learn how much to leave behind was to overshoot, watch the fuel bar
+ * go short and back off by hand. Both halves of the sum are the SAME store and the
+ * server takes them together; there is no reading of "how much may I send" that
+ * does not already have the flight subtracted from it.
+ *
+ * So the ceiling itself moves. The slider stops where the tank still covers the
+ * launch, which makes the rule visible in the control rather than in a refusal —
+ * and it is the deuterium slider alone, because alloy and crystal do not fly the
+ * ship.
+ */
+describe('the deuterium a transfer may actually load', () => {
+  const far = { ...target, position: { x: 1900, y: 0, z: 0 } };
+  const flight = (fleet: Record<string, number>) => missionFuel(fleet, 1900, 1);
+
+  const open = (deuterium: number, fleet: Record<string, number> = { ATLAS: 2 }) => render(
+    <ToastProvider>
+      <TransferSheet
+        target={far}
+        planet={planetView({ fleet }, { alloy: 5_000, crystal: 5_000, deuterium })}
+        onClose={vi.fn()}
+        onLaunched={vi.fn()}
+      />
+    </ToastProvider>,
+  );
+
+  const slider = (name: RegExp): HTMLInputElement =>
+    screen.getByRole<HTMLInputElement>('slider', { name });
+
+  it('takes the flight off the ceiling, and off no other store', async () => {
+    open(5_000);
+    await userEvent.setup().click(screen.getByRole('button', { name: 'More Atlas' }));
+
+    const fuel = flight({ ATLAS: 1 });
+    expect(fuel).toBeGreaterThan(0);
+    expect(Number(slider(/Deuterium/i).max)).toBe(5_000 - fuel);
+    // Alloy and crystal do not fly the ship: their ceiling is the store, whole.
+    expect(Number(slider(/Alloy/i).max)).toBe(5_000);
+  });
+
+  /**
+   * THE CEILING FALLS WHEN THE CONVOY GROWS, AND THE LOAD HAS TO COME WITH IT.
+   *
+   * A hold packed to the old ceiling and then a second hull added is the one way
+   * back into the state this change exists to remove — a screen offering a launch
+   * the server will refuse. The load follows the ceiling down instead.
+   */
+  it('trims a load that a heavier convoy has just made unaffordable', async () => {
+    const user = userEvent.setup();
+    open(5_000);
+    await user.click(screen.getByRole('button', { name: 'More Atlas' }));
+
+    const deuterium = slider(/Deuterium/i);
+    fireEvent.change(deuterium, { target: { value: deuterium.max } });
+    expect(Number(deuterium.value)).toBe(5_000 - flight({ ATLAS: 1 }));
+
+    await user.click(screen.getByRole('button', { name: 'More Atlas' }));
+    expect(Number(slider(/Deuterium/i).value)).toBe(5_000 - flight({ ATLAS: 2 }));
+    expect(screen.getByRole('button', { name: /transfer — no recall/i })).toBeEnabled();
+  });
+
+  /**
+   * A TANK THAT CANNOT COVER THE FLIGHT OFFERS NO DEUTERIUM AT ALL, and the launch
+   * stays refused — the guard is the server's and this is only its ceiling.
+   */
+  it('offers nothing when the tank cannot even cover the flight', async () => {
+    open(1, { ATLAS: 4 });
+    await userEvent.setup().click(screen.getByRole('button', { name: 'More Atlas' }));
+
+    expect(Number(slider(/Deuterium/i).max)).toBe(0);
     expect(screen.getByRole('button', { name: /transfer — no recall/i })).toBeDisabled();
   });
 });

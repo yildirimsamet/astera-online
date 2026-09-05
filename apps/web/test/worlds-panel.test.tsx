@@ -24,7 +24,6 @@ const panel = (over: Partial<Parameters<typeof WorldsPanel>[0]> = {}) => (
     capitalPlanetId="capital-1"
     onSelect={vi.fn()}
     onTransfer={vi.fn()}
-    onCentre={vi.fn()}
     onClose={vi.fn()}
     {...over}
   />
@@ -44,14 +43,9 @@ const row = (name: string): HTMLElement => {
 /** The row body itself: its accessible name STARTS with the world's name. */
 const openRow = (name: string) =>
   within(row(name)).getByRole('button', { name: new RegExp(`^${name}`) });
-/**
- * By the FULL name, not by "send here". Three identical buttons in a list need to
- * say which one they are, and the kit takes `ariaLabel` rather than `aria-label` —
- * a hyphenated JSX attribute is accepted by TypeScript on any component and then
- * dropped in silence, so only an assertion on the distinguishing half catches it.
- */
-const sendTo = (name: string) =>
-  within(row(name)).queryByRole('button', { name: `Send here — ${name}` });
+const from = () => screen.getByRole<HTMLSelectElement>('combobox', { name: /from/i });
+const to = () => screen.getByRole<HTMLSelectElement>('combobox', { name: /to/i });
+const send = () => screen.getByRole('button', { name: /^transfer$/i });
 
 /**
  * THE PANEL EXISTS BECAUSE THE DISC IS NOT A LIST. T3.
@@ -136,71 +130,97 @@ describe('the worlds panel', () => {
     expect(onClose).toHaveBeenCalled();
   });
 
-  it('hands the active world to Home so the next world tap can open management', async () => {
-    const user = userEvent.setup();
-    const onCentre = vi.fn();
-    render(panel({ onCentre }));
-
-    await user.click(screen.getByRole('button', { name: /active planet/i }));
-
-    expect(onCentre).toHaveBeenCalledWith('capital-1');
+  /**
+   * THE CAMERA MOVE LEFT THIS SHEET ENTIRELY. D163.
+   *
+   * "Zoom in on the active planet" was a text button at the top of a list, which
+   * is two taps and a read for the most frequent camera move in the game — behind
+   * a glyph on the disc that already looked exactly like it. The glyph does it now
+   * (`DiscControls`), and nothing here offers it.
+   */
+  it('offers no camera control of its own', () => {
+    render(panel());
+    expect(screen.queryByRole('button', { name: /active planet/i })).not.toBeInTheDocument();
   });
 
+  /**
+   * TWO DROPDOWNS AND ONE BUTTON. Owner instruction, D163: *"tablı sistem ile
+   * değil dropdown ile nereden -> nereye şeklinde anlaması daha basit."*
+   *
+   * The old shape asked the same question in two unrelated places — a segmented
+   * control at the top picked the SOURCE, and then one of three identical "send
+   * here" buttons further down the list picked the DESTINATION, with the two ends
+   * of one sentence separated by three world rows. A commander had to work out
+   * that the tabs and the buttons were the same decision.
+   *
+   * Written as `from → to` in one line, the sentence reads itself, both ends are
+   * visible at once, and there is exactly one control that commits.
+   */
   describe('starting a transfer', () => {
     /**
      * THE ACTIVE WORLD DOES NOT MOVE. That is the whole point of the second door:
      * `POST /api/fleet/transfer` has taken an explicit origin since D118, so the
      * panel can name both ends without making the player stand on one of them.
      */
-    it('sends from the chosen source to the row, and leaves the active world alone', async () => {
+    it('sends from the chosen source to the chosen target, and moves neither', async () => {
       const user = userEvent.setup();
       const onTransfer = vi.fn();
       const onSelect = vi.fn();
       render(panel({ onTransfer, onSelect }));
 
-      await user.click(sendTo('Haven')!);
+      await user.selectOptions(to(), 'colony-1');
+      await user.click(send());
 
       expect(onTransfer).toHaveBeenCalledWith('capital-1', 'colony-1');
       expect(onSelect).not.toHaveBeenCalled();
     });
 
+    /** The world they are standing on is the source nine times out of ten. */
     it('opens on the active world as the source', () => {
       render(panel({ activePlanetId: 'colony-2' }));
-
-      expect(screen.getByRole('button', { name: 'Orlo', pressed: true })).toBeInTheDocument();
+      expect(from().value).toBe('colony-2');
     });
 
-    /** Nothing may be sent to itself; the server refuses it as `SELF_TRANSFER`. */
-    it('offers no way to send a world to itself', () => {
+    /**
+     * NOTHING MAY BE SENT TO ITSELF. The server refuses it as `SELF_TRANSFER`, and
+     * an option that cannot be committed is not offered — the destination list is
+     * every world EXCEPT the source, and it re-picks itself the moment the source
+     * becomes what the destination was.
+     */
+    it('never offers the source as its own destination', async () => {
+      const user = userEvent.setup();
       render(panel());
 
-      expect(sendTo('Kestrel-12')).not.toBeInTheDocument();
-      expect(sendTo('Haven')).toBeInTheDocument();
+      expect([...to().options].map((option) => option.value)).toEqual(['colony-1', 'colony-2']);
+
+      await user.selectOptions(from(), 'colony-1');
+      expect([...to().options].map((option) => option.value)).toEqual(['capital-1', 'colony-2']);
+      expect(to().value).not.toBe('colony-1');
     });
 
-    it('moves the un-sendable row when the source changes', async () => {
+    it('commits whatever the two dropdowns are showing', async () => {
       const user = userEvent.setup();
       const onTransfer = vi.fn();
       render(panel({ onTransfer }));
 
-      await user.click(screen.getByRole('button', { name: 'Haven', pressed: false }));
+      await user.selectOptions(from(), 'colony-1');
+      await user.selectOptions(to(), 'colony-2');
+      await user.click(send());
 
-      expect(sendTo('Haven')).not.toBeInTheDocument();
-      await user.click(sendTo('Orlo')!);
       expect(onTransfer).toHaveBeenCalledWith('colony-1', 'colony-2');
     });
 
     /**
-     * A commander with one world has nowhere to send anything, and a source
-     * selector with one option is a control that decides nothing. The list still
-     * has to work — it is also how they switch back to it and centre on it.
+     * A commander with one world has nowhere to send anything, and two dropdowns
+     * over a list of one decide nothing. The list still has to work — it is also
+     * how they switch between worlds.
      */
     it('shows no transfer machinery at all to a commander with one world', () => {
       render(panel({ worlds: [capital] }));
 
       expect(within(list()).getByText('Kestrel-12')).toBeInTheDocument();
-      expect(screen.queryByRole('button', { name: /send here/i })).not.toBeInTheDocument();
-      expect(screen.queryByRole('group', { name: /send from/i })).not.toBeInTheDocument();
+      expect(screen.queryByRole('combobox', { name: /from/i })).not.toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: /^transfer$/i })).not.toBeInTheDocument();
     });
   });
 });

@@ -1,7 +1,7 @@
 import { and, eq, inArray, isNotNull, isNull, ne, or, sql } from 'drizzle-orm';
 import { clanBayAvailable, flightSlots } from '@astera/rules';
 import type { Queryable } from '../db/client.js';
-import { miningRuns, missions, pirateRaids } from '../db/schema.js';
+import { miningRuns, missions, pirateRaids, tradeRuns } from '../db/schema.js';
 import { GameError } from './planet.js';
 
 /**
@@ -121,7 +121,24 @@ export async function baysInUse(tx: Queryable, planetId: string): Promise<number
       ),
     );
 
-  return (flights?.n ?? 0) + (mining?.n ?? 0) + (pirate?.n ?? 0);
+  /**
+   * A TRADE CONVOY IS A BAY, LIKE EVERY OTHER FLIGHT. D28 · D156.
+   *
+   * The merchant deliberately has no quota, no fee and no per-world convoy limit —
+   * the owner ruled all three out — which makes THIS the brake, together with hold
+   * size and prepaid fuel. A flight table that is not counted here does not consume
+   * a bay at all, so a commander would keep their whole raid budget while running
+   * convoys on the side, and D28's single scarcity would be punctured by the one
+   * lane that was given no scarcity of its own.
+   */
+  const [trade] = await tx
+    .select({ n: sql<number>`count(*)::int` })
+    .from(tradeRuns)
+    .where(
+      and(eq(tradeRuns.planetId, planetId), inArray(tradeRuns.status, ['outbound', 'returning'])),
+    );
+
+  return (flights?.n ?? 0) + (mining?.n ?? 0) + (pirate?.n ?? 0) + (trade?.n ?? 0);
 }
 
 export interface BayCount {

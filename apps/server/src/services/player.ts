@@ -1,6 +1,6 @@
-import { and, eq } from 'drizzle-orm';
+import { and, eq, inArray, sql } from 'drizzle-orm';
 import { BUILDING_IDS, PLANET_START, START_BUILDINGS, pickSpawnSlot } from '@astera/rules';
-import type { Db } from '../db/client.js';
+import type { Db, Tx } from '../db/client.js';
 import type { Clock } from '../clock.js';
 import { accounts, buildings, planets, players, seasons, shards } from '../db/schema.js';
 import { galaxyOf, occupiedSlots } from './season.js';
@@ -269,4 +269,56 @@ export async function joinSeason(
 
 export async function touchLastSeen(db: Db, playerId: string, clock: Clock): Promise<void> {
   await db.update(players).set({ lastSeenAt: clock.now() }).where(eq(players.id, playerId));
+}
+
+/**
+ * THE TALLEST COMMAND CORE EACH OF THESE COMMANDERS HOLDS. D168.
+ *
+ * The band `canAttack` enforces is a statement about two PEOPLE, not about the two
+ * worlds in a launch, so this is the reading it takes: max Core over everything
+ * the commander controls, capital and colonies alike. Owner instruction —
+ * *"user'ın tüm gezegenlerinden en yüksek tier'ı seçilir"*.
+ *
+ * ONE QUERY FOR THE WHOLE LIST, because both sides of a launch are asked at once
+ * and this sits on the hot path of every raid. It is a `max` in the database
+ * rather than rows fetched and reduced here: a commander with four worlds is four
+ * rows, and there is no reason to move them.
+ *
+ * A COMMANDER WHO HOLDS NOTHING READS 1, NOT `undefined`. `coreTier` floors at 1
+ * anyway, but the caller of this feeds arithmetic — a missing entry would arrive
+ * as `NaN` inside `Math.abs`, and `NaN <= 1` is false, which would silently
+ * become "refuse every launch" rather than an error anyone could see. The same
+ * floor covers a world with no CORE row at all.
+ *
+ * IT IS DELIBERATELY NOT LOCKED. A Core upgrade landing in the same instant as a
+ * launch can only move a commander one level, the tier is a three-level bucket,
+ * and taking a row lock on the defender's worlds here would introduce exactly the
+ * two-planet lock ordering the architecture rules forbid.
+ */
+export async function peakCoreLevels(
+  db: Db | Tx,
+  playerIds: readonly string[],
+): Promise<Map<string, number>> {
+  const peaks = new Map<string, number>();
+  if (playerIds.length === 0) return peaks;
+  for (const id of playerIds) peaks.set(id, 1);
+
+  const rows = await db
+    .select({
+      playerId: planets.controllerPlayerId,
+      peak: sql<number>`max(${buildings.level})::int`,
+    })
+    .from(planets)
+    .innerJoin(buildings, and(
+      eq(buildings.planetId, planets.id),
+      eq(buildings.type, 'CORE'),
+    ))
+    .where(inArray(planets.controllerPlayerId, [...playerIds]))
+    .groupBy(planets.controllerPlayerId);
+
+  for (const row of rows) {
+    if (row.playerId === null) continue;
+    peaks.set(row.playerId, Math.max(1, row.peak));
+  }
+  return peaks;
 }

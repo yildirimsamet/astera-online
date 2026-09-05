@@ -5,7 +5,7 @@ import type { PlanetView } from '../api/schemas.js';
 import { compact } from '../lib/format.js';
 import { Tally } from '../ui/Tally.js';
 import { RESOURCE_ART } from '../ui/assets.js';
-import { Button, Chip, Meter, Segmented, Sheet, type Segment } from '../ui/kit/index.js';
+import { Chip, Meter, Sheet } from '../ui/kit/index.js';
 
 /**
  * THE THREE STORES, IN ONE ORDER, READ OFF THE VIEW RATHER THAN RETYPED.
@@ -47,7 +47,7 @@ const INK: Record<'alloy' | 'crystal' | 'deuterium', string> = {
 };
 
 /**
- * YOUR WORLDS, AS A LIST. T3.
+ * YOUR WORLDS, AND THE ONE SENTENCE THAT MOVES SOMETHING BETWEEN THEM. T3 · D163.
  *
  * The disc is the right way to look at a galaxy and the wrong way to answer "which
  * of mine has the alloy". Both things a commander does across their own holdings —
@@ -55,16 +55,29 @@ const INK: Record<'alloy' | 'crystal' | 'deuterium', string> = {
  * by eye on a rotating 3D scene first, and the second of them needed the player to
  * stand on the source before they could name the destination.
  *
+ * THE TRANSFER IS `FROM → TO`, IN ONE LINE. Owner instruction: *"tablı sistem ile
+ * değil dropdown ile nereden -> nereye."* It used to ask one question in two
+ * unrelated places — a segmented control at the top chose the SOURCE, then one of
+ * three identical "send here" buttons further down chose the DESTINATION, with
+ * three world rows between the two halves of the same sentence. Nothing on screen
+ * said they were one decision, and the sheet's own name for itself ("Kolay
+ * Aktarım", the easy transfer) was the thing being contradicted.
+ *
+ * Two dropdowns and one button: both ends visible at once, the arrow between them
+ * doing the explaining, and exactly one control that commits. A destination that
+ * cannot be committed is not offered — the target list is every world except the
+ * source, because the server refuses `SELF_TRANSFER` and an option that always
+ * fails is a rule the interface is teaching wrongly.
+ *
+ * THE LIST BELOW IS A DIFFERENT VERB and keeps its own tap: pressing a row GOES
+ * there — camera and active world together, because they have to move together or
+ * the player manages one world while looking at another. Nothing in this sheet
+ * moves the camera on its own any more; the planet mark on the disc does that
+ * (D163).
+ *
  * THE OLD ROUTE IS UNTOUCHED (D118): focus a world, focus it again to manage it,
  * and the focus rail still offers the transfer with the previously active world as
- * its source. This is a second door onto the same two verbs, not a replacement, and
- * the header `<select>` stays until this one has proved itself in real sessions.
- *
- * TWO AFFORDANCES PER ROW, AND THEY ARE DIFFERENT VERBS. Pressing the row goes
- * there — camera and active world together, because they have to move together or
- * the player manages one world while looking at another. Pressing "send here" opens
- * a transfer to that world FROM the chosen source, and moves neither. The route has
- * taken an explicit origin since D118; nothing on screen had ever used it.
+ * its source.
  */
 export function WorldsPanel({
   worlds,
@@ -72,7 +85,6 @@ export function WorldsPanel({
   capitalPlanetId,
   onSelect,
   onTransfer,
-  onCentre,
   onClose,
 }: {
   worlds: readonly PlanetView[];
@@ -82,8 +94,6 @@ export function WorldsPanel({
   onSelect: (planetId: string) => void;
   /** Open a transfer without disturbing the active world. */
   onTransfer: (originPlanetId: string, targetPlanetId: string) => void;
-  /** Centre and semantically focus the active world, ready for its management tap. */
-  onCentre: (planetId: string) => void;
   onClose: () => void;
 }) {
   const { t } = useTranslation();
@@ -94,50 +104,86 @@ export function WorldsPanel({
    * source here does not fight a later change of active world.
    */
   const [sourceId, setSourceId] = useState<string | null>(activePlanetId);
+  const [targetId, setTargetId] = useState<string | null>(null);
   const canTransfer = worlds.length > 1;
   const source = worlds.some((world) => world.planet.id === sourceId)
     ? sourceId
     : worlds[0]?.planet.id ?? null;
-
-  const segments: readonly Segment<string>[] = worlds.map((world) => ({
-    id: world.planet.id,
-    label: world.planet.name,
-  }));
+  /**
+   * EVERYWHERE BUT HERE, and the fallback is what keeps the pair legal.
+   *
+   * `targetId` is deliberately allowed to go stale — the player may pick a target
+   * and then change the source to it — so the committed value is derived rather
+   * than stored: a target that is no longer offered falls back to the first world
+   * that is. Storing a corrected value instead would need an effect, and an effect
+   * that rewrites a control the player is looking at is how a dropdown ends up
+   * jumping under a thumb.
+   */
+  const targets = worlds.filter((world) => world.planet.id !== source);
+  const target = targets.some((world) => world.planet.id === targetId)
+    ? targetId
+    : targets[0]?.planet.id ?? null;
 
   return (
     <Sheet eyebrow={t('worlds.eyebrow')} title={t('worlds.title')} onClose={onClose}>
-      <div className="pt-0 mb-2">
-        <Button
-          variant="ghost"
-          size="sm"
-          disabled={activePlanetId === null}
-          onClick={() => { if (activePlanetId !== null) onCentre(activePlanetId); }}
-          className="ml-auto block"
-        >
-          {t('worlds.centre')}
-        </Button>
-      </div>
-
-      {canTransfer && source !== null && (
-        <div className="mt-4">
-          <h2 className='legend headline mb-2 text-balance text-md'>{t('worlds.sendTitle')}</h2>
-          <h3 className="legend text-dim">{t('worlds.sendFrom')}</h3>
-          <Segmented
-            className="mt-2"
-            label={t('worlds.sendFrom')}
-            segments={segments}
-            value={source}
-            onSelect={setSourceId}
-          />
-        </div>
+      {canTransfer && source !== null && target !== null && (
+        <section className="plate mb-3 px-3 py-3">
+          <h2 className="legend mb-2">{t('worlds.sendTitle')}</h2>
+          {/*
+            ONE LINE, TWO ENDS, AN ARROW BETWEEN THEM. At 375px two selects and a
+            glyph fit across the sheet with room to spare, and the arrow is the
+            whole explanation — a labelled pair stacked in a column would spend
+            four rows saying what one row draws.
+          */}
+          <div className="flex items-center gap-2">
+            <label className="min-w-0 flex-1">
+              <span className="sr-only">{t('worlds.sendFrom')}</span>
+              <select
+                aria-label={t('worlds.sendFrom')}
+                value={source}
+                onChange={(event) => { setSourceId(event.currentTarget.value); }}
+                className="field min-h-9 w-full py-1"
+              >
+                {worlds.map((world) => (
+                  <option key={world.planet.id} value={world.planet.id}>
+                    {world.planet.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <span aria-hidden className="shrink-0 text-dim">→</span>
+            <label className="min-w-0 flex-1">
+              <span className="sr-only">{t('worlds.sendTo')}</span>
+              <select
+                aria-label={t('worlds.sendTo')}
+                value={target}
+                onChange={(event) => { setTargetId(event.currentTarget.value); }}
+                className="field min-h-9 w-full py-1"
+              >
+                {targets.map((world) => (
+                  <option key={world.planet.id} value={world.planet.id}>
+                    {world.planet.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </div>
+          <button
+            type="button"
+            className="slab slab-primary mt-2 w-full max-h-10 min-h-10"
+            onClick={() => { onTransfer(source, target); }}
+          >
+            {t('worlds.send')}
+          </button>
+        </section>
       )}
 
-      <ul aria-label={t('worlds.list')} className="mt-4 flex flex-col gap-2">
+      <ul aria-label={t('worlds.list')} className="mt-2 flex flex-col gap-2">
         {worlds.map((world) => {
           const id = world.planet.id;
           const standing = fleetCount(world.fleet) + fleetCount(world.ground);
           return (
-            <li key={id} className="plate flex items-center gap-3 px-3 py-3">
+            <li key={id} className="plate flex items-center gap-2 px-3 py-3">
               <button
                 type="button"
                 onClick={() => {
@@ -221,18 +267,6 @@ export function WorldsPanel({
                   </span>
                 </span>
               </button>
-              {canTransfer && source !== null && id !== source && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  ariaLabel={t('worlds.sendTo', { name: world.planet.name })}
-                  onClick={() => {
-                    onTransfer(source, id);
-                  }}
-                >
-                  {t('worlds.sendHere')}
-                </Button>
-              )}
             </li>
           );
         })}

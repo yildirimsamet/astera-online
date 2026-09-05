@@ -132,6 +132,26 @@ FLEET rather than in ore. It lands even over Hangar capacity and never counts as
 handle rather than from its position in the season's lane, so a name discloses nothing about
 how many pirates the season has produced. D150.
 
+**Trade ship (Ticaret Gemisi)** — a merchant NPC riding a closed orbit for a three-hour window,
+three times a Türkiye day, and the galaxy's fourth target class beside a commander, a neutral
+world and a pirate. Unlike a pirate, its orbit is public from the moment it appears — nothing to
+scout, nothing to fight. A convoy hands it one resource and receives another at one fixed rate;
+no combat happens at the rendezvous and no Dominion moves either way. D156.
+
+**Trade window** — the three hours a trade ship holds its appearance before it is gone for good.
+Three windows a Türkiye day, never overlapping, each announced to the whole galaxy the instant it
+opens and never a moment before. D149/D156.
+
+**Trade rate** — the merchant's one published exchange price: 90 alloy = 30 crystal = 1
+deuterium, frozen on the occurrence a convoy launches against regardless of when the constant
+table next moves. No haggling, no order book, and no price that shifts with how much the galaxy
+has already sold it. D156.
+
+**Trade convoy** — the cargo fleet sent to a trade ship. Sized by `requiredHold`, the larger of
+what it carries out and what it carries home — a small offer buying a large haul still needs room
+for the haul — with no quota, no fee and no per-world limit: a flight bay and prepaid fuel are the
+only brakes it answers to. D156.
+
 ## Economy
 
 **Alloy / Crystal** — The two resources. Alloy builds everything; crystal is scarce and

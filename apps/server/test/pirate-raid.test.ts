@@ -1,5 +1,6 @@
+import type { FastifyInstance } from 'fastify';
 import { pino } from 'pino';
-import { afterAll, beforeEach, describe, expect, it } from 'vitest';
+import { afterAll, afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { and, eq } from 'drizzle-orm';
 import {
   DEBRIS,
@@ -27,6 +28,8 @@ import {
   seasons,
   units,
 } from '../src/db/schema.js';
+import { buildApp } from '../src/app.js';
+import { TokenService } from '../src/auth/tokens.js';
 import { launchPirateRaid } from '../src/services/pirateRaid.js';
 import { privatePirateField, pirateId } from '../src/services/pirateField.js';
 import { transferPlanetControl } from '../src/services/ownership.js';
@@ -41,6 +44,7 @@ import {
   seedWorld,
   settledAt,
   testDb,
+  testEnv,
   type Fixture,
 } from './helpers.js';
 
@@ -820,5 +824,113 @@ describe('a pirate raid whose origin changed hands', () => {
       [capital],
     );
     expect(seen.find((contact) => contact.id === launch.raidId)).toBeUndefined();
+  });
+});
+
+/**
+ * THE WRECK HAS TO BE THERE THE INSTANT THE FIGHT IS OVER. D150 · D32.
+ *
+ * A pirate battle ends ten seconds after the fleet arrives — that is the
+ * engagement, and it is deliberate — and the field it leaves is the payoff the
+ * whole target class is built around. It was arriving up to a further five
+ * seconds late, and not because anything was slow: `/api/mining` serves debris
+ * out of the shared season snapshot, and `shard:pirate` was the one shard kind
+ * that could create a field without invalidating it. So the read the commander's
+ * own `raid_result` wake provoked landed on a snapshot loaded BEFORE the battle
+ * committed, and the disc stayed empty until the cache aged out.
+ *
+ * The TTL is pushed far out of reach here on purpose: with a five-second window
+ * this test would pass on expiry rather than on invalidation, which is exactly
+ * how the bug survived.
+ */
+describe('the wreck a pirate battle leaves, on the read that follows it', () => {
+  let f: Fixture;
+  let mine: string;
+  let app: FastifyInstance;
+  let close: () => Promise<void>;
+  let auth: { authorization: string };
+
+  const worker = () =>
+    new EventWorker(f.db, f.clock, { pollMs: 50, batch: 50, staleMinutes: 5 }, silent);
+
+  /** A pirate this world can see, with the clock moved to the minute it is up. */
+  const findVisible = async (): Promise<Target> => {
+    const [season] = await f.db.select().from(seasons).where(eq(seasons.id, f.seasonId));
+    const key = season!.asteroidKey;
+    const [world] = await f.db.select().from(planets).where(eq(planets.id, mine));
+    const eye = sensorSphere({ x: world!.x, y: world!.y, z: world!.z }, 0, 0, mine);
+    for (const spec of privatePirateField(key)) {
+      const first = Math.ceil(spec.appearsAt) + 1;
+      for (let minute = first; minute < spec.expiresAt; minute += 1) {
+        if (sensorZone([eye], piratePosition(spec, minute)) === 'NONE') continue;
+        f.clock.set(new Date(season!.startsAt.getTime() + minute * 60_000));
+        return { spec, id: pirateId(key, spec.index), key };
+      }
+    }
+    throw new Error('no visible pirate this season — the lane is too thin to test');
+  };
+
+  beforeEach(async () => {
+    f = await seedWorld(2, 4242, { pirates: true });
+    mine = f.planetIds[0]!;
+
+    const built = buildApp({
+      env: testEnv({ MINING_CACHE_TTL_MS: '60000' }),
+      logger: silent,
+      db: f.db,
+      clock: f.clock,
+    });
+    app = built.app;
+    close = built.close;
+    await built.bus.start();
+    await app.ready();
+
+    const tokens = new TokenService('test-secret-that-is-long-enough', 15, 30);
+    auth = { authorization: `Bearer ${await tokens.issueAccess(f.accountIds[0]!)}` };
+  });
+
+  afterEach(async () => {
+    await close();
+  });
+
+  /** Exactly what the client's own wreck read returns. */
+  const wrecksOnDisc = async (): Promise<
+    { id: string; at: { x: number; y: number; z: number } }[]
+  > => {
+    const res = await app.inject({ method: 'GET', url: '/api/mining/field', headers: auth });
+    expect(res.statusCode).toBe(200);
+    return (
+      JSON.parse(res.body) as {
+        debris: { id: string; at: { x: number; y: number; z: number } }[];
+      }
+    ).debris;
+  };
+
+  it('is on the disc as soon as the battle commits, not when a cache expires', async () => {
+    const target = await findVisible();
+    await grant(f.db, mine, 500_000, 100_000);
+    const fleet: Fleet = { DART: 250, COURIER: 6 };
+    await giveUnits(f.db, mine, fleet);
+    const launch = await launchPirateRaid(f.db, mine, target.id, fleet, f.clock);
+
+    // The read a player makes while the squadron is still in the air. This is the
+    // snapshot that used to be served back after the fight.
+    expect(await wrecksOnDisc()).toEqual([]);
+    const before = app.projections.status().mining.invalidations;
+
+    f.clock.set(settledAt(launch.arriveAt));
+    await worker().tick();
+
+    // NOTIFY arrives on its own socket, so the invalidation is genuinely async.
+    await vi.waitFor(() => {
+      expect(app.projections.status().mining.invalidations).toBeGreaterThan(before);
+    });
+
+    const [wreck] = await wrecksOnDisc();
+    expect(wreck).toBeDefined();
+    // At the rendezvous, which is the only place this fight happened.
+    expect(wreck!.at.x).toBeCloseTo(launch.intercept.x, 2);
+    expect(wreck!.at.y).toBeCloseTo(launch.intercept.y, 2);
+    expect(wreck!.at.z).toBeCloseTo(launch.intercept.z, 2);
   });
 });

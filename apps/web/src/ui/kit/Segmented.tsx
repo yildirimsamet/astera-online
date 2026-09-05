@@ -128,7 +128,7 @@ export function Segmented<T extends string>({
               onSelect(segment.id);
             }}
             className={`legend rounded-chip transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-crystal ${
-              size === 'sm' ? 'min-h-8 px-2' : 'min-h-11 px-2'
+              size === 'sm' ? 'min-h-9 px-2' : 'min-h-11 px-2'
             } ${
               on
                 ? 'bg-raised text-bone shadow-[inset_0_1px_0_rgb(255_255_255/12%),0_1px_0_rgb(0_0_0/45%)]'

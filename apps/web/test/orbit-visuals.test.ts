@@ -3,15 +3,17 @@ import { SATELLITE_IDS } from '@astera/rules';
 import { SATELLITE_NEON } from '../src/ui/assets.js';
 import {
   SATELLITE_RIM_EXPANSION,
-  REMEMBERED_HARDWARE,
+  DORMANT_HARDWARE,
   REMEMBERED_SHIELD,
   SHIELD_TIER,
   bodySizeFor,
+  satelliteGroups,
   satelliteLook,
   shieldLook,
   shieldTierOf,
 } from '../src/galaxy/Satellites.js';
-import { STANCE_COLOUR } from '../src/galaxy/scene.js';
+import { STANCE_COLOUR, planetNodes } from '../src/galaxy/scene.js';
+import type { GalaxyPlanet } from '../src/api/schemas.js';
 
 /**
  * WHAT SITS AROUND A WORLD, AND WHAT IT IS ALLOWED TO SAY.
@@ -105,7 +107,7 @@ describe('the satellite silhouette rim', () => {
   it('turns every remembered satellite into the same dim, motionless record', () => {
     const looks = SATELLITE_IDS.map((id) => satelliteLook(id, true));
     expect(new Set(looks.map((look) => look.colour))).toEqual(
-      new Set([REMEMBERED_HARDWARE.colour]),
+      new Set([DORMANT_HARDWARE.colour]),
     );
     for (const look of looks) {
       expect(look.turning).toBe(false);
@@ -227,5 +229,95 @@ describe('the shield', () => {
     expect(shieldLook(2, true, false).opacity).toBeGreaterThan(
       shieldLook(0, false, false).opacity,
     );
+  });
+});
+
+/**
+ * A WORLD THAT HAS TAKEN A DEATH STAR WEARS DEAD HARDWARE TOO. Owner call.
+ *
+ * `DysonShells` has stopped and greyed a struck world's rings since D121a, and the
+ * satellites over the same crater kept turning in full neon — the disc saying, in
+ * one frame, both that a rocket landed and that nothing happened. The instruments
+ * ARE still up there, which is why they are still drawn; what a wreck cannot do is
+ * look powered.
+ *
+ * It is the same picture a probe record wears (D127) and deliberately so: neither
+ * a struck world nor a frozen record can assert anything about RIGHT NOW, and a
+ * second dead-hardware style would teach a distinction the game does not make.
+ */
+describe('orbital hardware over a struck world', () => {
+  const world = (over: Partial<GalaxyPlanet> = {}): GalaxyPlanet => ({
+    id: 'w1',
+    name: 'Quillon-116',
+    owner: 'johnnylesh',
+    position: { x: 0, y: 0, z: 0 },
+    coreTier: 5,
+    coreLevel: 12,
+    intel: 'RESOLVED' as const,
+    state: { kind: 'NORMAL' as const },
+    satellites: ['UPLINK'],
+    shielded: false,
+    isSelf: false,
+    ...over,
+  });
+
+  const struck = { kind: 'RECOVERY' as const, until: new Date() };
+
+  it('stops the orbit and takes the colour out of it', () => {
+    const [group] = satelliteGroups(planetNodes([world({ state: struck })]));
+
+    expect(group?.dormant).toBe(true);
+    const look = satelliteLook(group!.type, group!.dormant);
+    expect(look.turning).toBe(false);
+    expect(look.colour).toBe(DORMANT_HARDWARE.colour);
+    expect(look.rimOpacity).toBeLessThan(satelliteLook('UPLINK', false).rimOpacity);
+  });
+
+  /** And a world nobody has hit keeps its instruments lit and turning. */
+  it('leaves an intact world’s hardware alone', () => {
+    const [group] = satelliteGroups(planetNodes([world()]));
+    expect(group?.dormant).toBe(false);
+  });
+
+  /**
+   * A frozen probe record is the other unpowered state, and it was already drawn
+   * this way. Both must keep arriving at the same look through the same flag.
+   */
+  it('reads a probe record as unpowered as well', () => {
+    const [group] = satelliteGroups(planetNodes([world({ intel: 'REMEMBERED' })]));
+    expect(group?.dormant).toBe(true);
+  });
+
+  /**
+   * THE SPLIT IS NOT COSMETIC. Colour and motion live in a MATERIAL and in one
+   * frame loop shared by every instance in a mesh, so a struck world drawn in its
+   * healthy neighbours' bucket would keep their neon and their rotation whatever
+   * `satelliteLook` says about it.
+   */
+  it('splits a struck world out of the live draw group', () => {
+    const groups = satelliteGroups(planetNodes([
+      world({ id: 'a' }),
+      world({ id: 'b', state: struck }),
+    ]));
+
+    expect(groups).toHaveLength(2);
+    expect(groups.every((group) => group.type === 'UPLINK')).toBe(true);
+    const dead = groups.find((group) => group.dormant)!;
+    expect(dead.bodies.map((body) => body.planet.id)).toEqual(['b']);
+  });
+
+  /** Two struck worlds are still one bucket: the split is by state, not by world. */
+  it('keeps every wreck in one group', () => {
+    const groups = satelliteGroups(planetNodes([
+      world({ id: 'a', state: struck }),
+      world({ id: 'b', state: struck }),
+    ]));
+    expect(groups).toHaveLength(1);
+    expect(groups[0]!.bodies).toHaveLength(2);
+  });
+
+  /** A world you cannot resolve has no readable hardware at all. D126. */
+  it('draws nothing for a world outside every sensor circle', () => {
+    expect(satelliteGroups(planetNodes([world({ intel: 'UNKNOWN' })]))).toEqual([]);
   });
 });

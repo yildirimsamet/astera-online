@@ -30,10 +30,10 @@ export function AnnouncementsScreen() {
       />
     );
   }
-  if (!announcements.data) return <SkeletonText lines={7} className="mt-4" />;
+  if (!announcements.data) return <SkeletonText lines={7} className="mt-2" />;
   if (announcements.data.announcements.length === 0) {
     return (
-      <div className="py-4">
+      <div className="py-2">
         <EmptyState
           icon={<BellIcon className="size-7" />}
           title={t('community.announcements.empty')}
@@ -46,8 +46,8 @@ export function AnnouncementsScreen() {
     <ol className="flex flex-col gap-4 pb-6 pt-3">
       {announcements.data.announcements.map((announcement) => (
         <li key={announcement.id} className="plate overflow-hidden">
-          <header className="border-b border-line-soft px-4 py-3">
-            <div className="flex items-start justify-between gap-3">
+          <header className="border-b border-line-soft px-2 py-3">
+            <div className="flex items-start justify-between gap-2">
               <h3 className="name text-bone">{announcement.title}</h3>
               {!announcement.seen && (
                 <span className="shrink-0 rounded-full bg-opportunity/15 px-2 py-1 text-micro text-opportunity">
@@ -62,7 +62,7 @@ export function AnnouncementsScreen() {
               {dateFormat.format(announcement.publishedAt)}
             </time>
           </header>
-          <RichContent html={announcement.bodyHtml} className="px-4 py-4" />
+          <RichContent html={announcement.bodyHtml} className="px-2 py-2" />
         </li>
       ))}
     </ol>

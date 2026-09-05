@@ -74,6 +74,7 @@ import {
 } from '../services/planet.js';
 import { clearMissionUnits, fleetOfMission } from '../services/mission.js';
 import { resolvePirateArrival, resolvePirateReturn } from '../services/pirateRaid.js';
+import { resolveTradeArrival, resolveTradeReturn } from '../services/trade.js';
 import { techOf } from '../services/researchState.js';
 import { applyResearchCompletion } from '../services/research.js';
 import {
@@ -2186,6 +2187,30 @@ export const onPirateReturn: Handler = async ({ db, clock }, event) => {
   });
 };
 
+/**
+ * A CONVOY REACHES THE MERCHANT, AND COMES HOME AGAIN. D156.
+ *
+ * Thin wrappers on purpose, exactly like the pirate pair above: the dock clock,
+ * the return leg and the delivery all live in `trade.ts` beside the launch that
+ * created the row, so the two halves of one feature cannot drift apart in two
+ * files. The clock is the injected one and never database ambient time (A13).
+ */
+export const onTradeArrival: Handler = async ({ db, clock }, event) => {
+  if (!event.refId) throw new Error('trade_arrival without refId');
+  const runId = event.refId;
+  await db.transaction(async (tx) => {
+    await resolveTradeArrival(tx, runId, clock);
+  });
+};
+
+export const onTradeReturn: Handler = async ({ db, clock }, event) => {
+  if (!event.refId) throw new Error('trade_return without refId');
+  const runId = event.refId;
+  await db.transaction(async (tx) => {
+    await resolveTradeReturn(tx, runId, clock);
+  });
+};
+
 export const HANDLERS: Partial<Record<EventRow['kind'], Handler>> = {
   mission_arrival: onMissionArrival,
   radar_warning: onRadarWarning,
@@ -2195,6 +2220,8 @@ export const HANDLERS: Partial<Record<EventRow['kind'], Handler>> = {
   mining_return: onMiningReturn,
   pirate_arrival: onPirateArrival,
   pirate_return: onPirateReturn,
+  trade_arrival: onTradeArrival,
+  trade_return: onTradeReturn,
   season_end: onSeasonEnd,
   season_rollover: onSeasonRollover,
   season_act: onSeasonAct,

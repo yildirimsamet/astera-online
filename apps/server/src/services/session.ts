@@ -27,6 +27,7 @@ import {
   players,
   scanEvents,
   seasons,
+  tradeRuns,
   units,
   watches,
 } from '../db/schema.js';
@@ -35,6 +36,7 @@ import { announceUnlocks } from './notifications.js';
 import { GameError } from './planet.js';
 import { instrumentLevels, levelOf } from './intel.js';
 import { inboundRadarLead, LEAD_TOLERANCE } from './radar.js';
+import { dockEndsAt } from './trade.js';
 
 /* ── the unlock cascade ─────────────────────────────────────── */
 
@@ -140,7 +142,17 @@ export interface ReturnEntry {
 export interface PendingThread {
   /** The mission's own id — YOUR OWN CRAFT ONLY. Absent on `incoming`. See below. */
   id?: string;
-  kind: 'fleet' | 'probe' | 'incoming' | 'transfer' | 'settlement' | 'death_star' | 'pirate';
+  /**
+   * `trade` IS A CONVOY OUT AT THE MERCHANT. D156.
+   *
+   * It is on this payload for the same reason `pirate` is, and the gap is the one
+   * that hurt that lane: this list INNER JOINs `missions`, a convoy is not a
+   * `missions` row, and without a second query the commander who launched one
+   * cannot see it on any screen at all — `traffic.ts` deliberately excludes the
+   * caller's own craft. D153's outbound-only camera follow reads `leg`/`status`
+   * off this thread too, so it dies with it.
+   */
+  kind: 'fleet' | 'probe' | 'incoming' | 'transfer' | 'settlement' | 'death_star' | 'pirate' | 'trade';
   targetName: string;
   /**
    * THE WORLD THIS THREAD IS HEADING TOWARD.
@@ -153,6 +165,27 @@ export interface PendingThread {
    * to a selected world without comparing a translated or hidden name.
    */
   targetPlanetId?: string;
+  /**
+   * THE CONTACT ON THE DISC THIS WARNING IS ABOUT. `incoming` ONLY. D162.
+   *
+   * Owner report: *"alttaki radar'da gelen uyarıya tıklayınca focus olmalı. Çünkü
+   * bana neyin geldiği söyleniyor zaten."* The strip's only handle on a craft was
+   * `path`, and a defender is deliberately never given one (D123) — so the one row
+   * a commander most wants to look at was the one row that did nothing when
+   * pressed, even while the fleet was drawn on their own disc.
+   *
+   * IT DISCLOSES NOTHING NEW, and that is the whole argument for it. This is the
+   * mission uuid, which `/api/galaxy/traffic` already publishes as that craft's
+   * contact key to everybody who can see it — and that payload already says which
+   * contact is coming for the caller (`Contact.inbound`). What was missing was the
+   * JOIN between two rows the client was handed separately.
+   *
+   * THE FOG STAYS IN THE CONTACT QUERY. Where no circle of the caller's covers the
+   * craft, there is no contact carrying this id, so the client finds nothing to
+   * focus and the row falls back to what it always was. A uuid on its own is not a
+   * position, a heading or an origin.
+   */
+  contactId?: string;
   /**
    * WHICH PIRATE THIS RAID IS AT. `pirate` THREADS ONLY. D150.
    *
@@ -567,6 +600,9 @@ export async function pendingThreads(
         kind: 'incoming',
         targetName: row.targetName,
         targetPlanetId: m.targetPlanetId,
+        // The key the same craft carries on the public contact list, so the strip
+        // can focus what the disc is already drawing. See `contactId`. D162.
+        contactId: m.id,
         minutesRemaining: minutes,
         arriveAt: m.arriveAt,
         ...(radarRevealsSize(radar) ? { mass: massClass(m.fleet) } : {}),
@@ -737,6 +773,100 @@ export async function pendingThreads(
       });
       void originName;
     }
+  }
+
+  /**
+   * AND THE CONVOYS THIS COMMANDER HAS OUT AT THE MERCHANT. D156.
+   *
+   * A THIRD QUERY RATHER THAN A JOIN, for the reason the raid query above states:
+   * `missions.{originPlanetId, targetPlanetId}` are both NOT NULL foreign keys to
+   * `planets`, and the merchant has no address. Mining hit the wall first, the
+   * pirate lane hit it second, and this is the third table to answer it the same
+   * way.
+   *
+   * WITHOUT THIS THE FEATURE IS INVISIBLE TO ITS OWN OWNER, exactly as the raid
+   * lane was: `traffic.ts` removes the caller's own craft from the public contact
+   * list — deliberately, so a commander never sees a decorated copy of their own
+   * fleet beside the real one — which makes this list the ONLY place a launched
+   * convoy is drawn. A player would have watched their transports leave and then
+   * vanish.
+   *
+   * KEYED ON THE COMMANDER, NEVER ON THE PAD. D150. A colony that changes hands
+   * mid-flight is an ordinary event (D97), and asking "which convoys left one of my
+   * worlds" would move the trader's own flight into the CAPTOR's strip and out of
+   * the trader's. `resolveTradeReturn` delivers through `ownerPlayerId`; the
+   * picture asks the same question the delivery does.
+   */
+  const convoys = !playerId
+    ? []
+    : await db
+        .select({
+          run: tradeRuns,
+          originX: planets.x,
+          originY: planets.y,
+          originZ: planets.z,
+        })
+        .from(tradeRuns)
+        .innerJoin(planets, eq(tradeRuns.planetId, planets.id))
+        .where(and(
+          eq(tradeRuns.ownerPlayerId, playerId),
+          inArray(tradeRuns.status, ['outbound', 'returning']),
+        ));
+
+  for (const { run, originX, originY, originZ } of convoys) {
+    const returning = run.status === 'returning';
+    const arriveAt = returning ? run.homeAt : run.arriveAt;
+    if (!arriveAt) continue;
+    const home = { x: originX, y: originY, z: originZ };
+    const meet = { x: run.interceptX, y: run.interceptY, z: run.interceptZ };
+    pending.push({
+      id: run.id,
+      kind: 'trade',
+      /**
+       * THE EVENT KIND, NOT A SENTENCE. D150's shape, and the server has never
+       * written user-facing copy.
+       *
+       * "Ticaret Gemisi" and "Trade Ship" are two strings for one fact, and both
+       * of them live in `apps/web/src/i18n/locales/`. What travels is the stable
+       * identifier the client already knows from `/api/galaxy/events`, so the
+       * strip names the merchant in the reader's own language without this file
+       * having an opinion about which one that is.
+       */
+      targetName: 'TRADE_SHIP',
+      // There is no world on the far end, so no world is named. Absent, not null:
+      // there is no field for a client to read a lie out of.
+      minutesRemaining: Math.max(0, Math.round((arriveAt.getTime() - now.getTime()) / 60_000)),
+      arriveAt,
+      leg: returning ? 'return' : 'outbound',
+      /*
+        WHAT LEFT IS WHAT IS ABOARD, ON BOTH LEGS, AND THAT IS A PROPERTY OF THE
+        LANE RATHER THAN AN ASSUMPTION. There is no combat at a merchant, so unlike
+        a raid there are no casualties for the launch roster to be stale about — the
+        parked `units` rows and this column can never disagree.
+      */
+      fleet: run.fleet,
+      path: {
+        from: returning ? meet : home,
+        to: returning ? home : meet,
+        /**
+         * THE RETURN LEG STARTS WHEN THE DOCK ENDS, NOT WHEN THE CONVOY ARRIVED.
+         * D166.
+         *
+         * This read the raw `run.arriveAt`, so the trader's OWN path was
+         * `TRADE.dockSeconds` longer than the flight actually is — while
+         * `traffic.ts` published the same leg from `dockEndsAt(run.arriveAt)` to
+         * every other commander. One flight with two clocks: the owner's convoy
+         * interpolated behind where every stranger saw it, and appeared to leave
+         * the merchant while it was still alongside.
+         *
+         * `dockEndsAt` is also the instant `resolveTradeArrival` measures the
+         * return from, so this is the number the queue is actually waiting on.
+         * D51/D52: one fleet, one authoritative clock.
+         */
+        departAt: returning ? dockEndsAt(run.arriveAt) : run.departAt,
+        arriveAt,
+      },
+    });
   }
 
   return pending;

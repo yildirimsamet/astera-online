@@ -445,9 +445,11 @@ bir oyun durumu.
 | İki dünyamın çemberleri **çakışır**, araç aradan geçer | Kimlik kaybolmaz                                    | Birleşim tek hacim gibi davranmalı                             |
 | Uplink söker/takar                                     | Etki durur/başlar, **donanım silinmez**             | `instrumentLevels` kapısı                                      |
 | Core düşer (Ölüm Yıldızı)                              | Teleskop/Radar kırpılır, `sensors` cache temizlenir | `projections.ts` `shard:impact`                                |
-| **Korsan** çemberimden çıkar (D150)                    | **Tamamen kaybolur — hatırlanmaz**                  | Kaya `sensor_epochs` ile kalıcı keşif alır; korsan bir CRAFT'tır ve almaz |
+| **Korsan** çemberimden çıkar (D158/D160)               | **Bir kez TANIMLANDIYSA tanımlı kalır**            | Kaya gibi hatırlanır: aynı `sensor_epochs`, aynı `orbitDiscoveredAt`. `sensor_epochs.reach` teleskop yarıçapıdır, yani "keşfedilmiş" zaten "teleskop çemberindeydi" demektir |
 | Korsan radar çemberimde                                | ❓ + (L4) kütle + (L5) `silhouette: 'pirate'`        | Kadro ve **seviye** yalnız teleskopta; seviye fiyat etiketidir  |
 | Korsan teleskop çemberimde                             | Gerçek kadro + seviye + hasar cezası                | Kadro `roster − losses`; ölmüş gemi yeniden doğmaz              |
+| Hatırlanan korsan hiçbir çemberde değil (D160/D166)    | Gemi kendisi — kadro, seviye, kütle — **tam güçte** | `pirateZone` tabanı `IDENTIFIED`; `remembered: true` yayınlanır ve RAY bunu yazıyla söyler, ama disk hiçbir aracı soluklaştırmaz (D166). Yörünge çözülebilir, kadro canlı — kayanın `oreRemaining`'i gibi |
+| Hiç tanımlanmamış korsan radar çemberinde (D160)       | ❓ nokta — kütle/silüet yalnız L4/L5                | Hafıza yok, taban yok: radar tek başına manifest satmaz        |
 | Korsan **yörüngesi**                                   | **Hiçbir zaman yayınlanmaz**                        | radius/period/phase/inclination/ascendingNode = rota            |
 | Korsan pencere süresi                                  | `TRAFFIC.refreshMs × 2` (10 sn), asla altı değil    | 4 dk pencere en kısa turda ~180° yay; kiriş yörüngeyi keser     |
 | Korsan **çarpışma** anında                             | Randevu noktasında **durur**, `engagement` fog-kapılı | Yörüngeye devam ederse gemiler uzaklaşırken dövüşür           |

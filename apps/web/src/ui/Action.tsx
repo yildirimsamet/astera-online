@@ -1,12 +1,14 @@
 import type { ReactNode } from 'react';
 import i18n from '../i18n/index.js';
 import { compact, decimal } from '../lib/format.js';
+import { duration } from '../lib/time.js';
 import { haptic } from '../lib/haptics.js';
 import {
   AttackIcon,
   BuildIcon,
   CargoIcon,
   ClaimIcon,
+  ClockIcon,
   HangarIcon,
   HullIcon,
   InstallIcon,
@@ -413,16 +415,30 @@ function Stat({
 export function Price({
   cost,
   held,
+  layout = 'stack',
 }: {
   cost: { alloy: number; crystal: number; deuterium?: number };
   held?: { alloy: number; crystal: number; deuterium?: number };
+  /**
+   * DOWN THE PAGE, OR ACROSS IT.
+   *
+   * `stack` is the original and belongs where the price sits in a corner with
+   * height to spare — the build sheet's art well. It was also, silently, what
+   * every LIST ROW got, and on a three-resource hull at 375px that turned the
+   * right-hand column into four stacked lines and dragged the row's height with
+   * it. A row has the width for one line and should use it.
+   */
+  layout?: 'stack' | 'row';
 }) {
   const shortAlloy = held ? cost.alloy > held.alloy : false;
   const shortCrystal = held ? cost.crystal > held.crystal : false;
   const shortDeuterium = held ? (cost.deuterium ?? 0) > (held.deuterium ?? 0) : false;
 
   return (
-    <span className="price">
+    <span
+      data-layout={layout}
+      className={`price ${layout === 'stack' ? '!grid grid-rows-1' : 'flex-wrap justify-end'}`}
+    >
       <span className={`price-part ${shortAlloy ? 'price-short' : ''}`}>
         <Mark of="alloy" />
         {compact(cost.alloy)}
@@ -439,6 +455,38 @@ export function Price({
           {compact(cost.deuterium ?? 0)}
         </span>
       )}
+    </span>
+  );
+}
+
+/**
+ * WHAT AN ORDER COSTS IN TIME, in the price's own vocabulary.
+ *
+ * Owner report: *"hiç bir geliştirmede, geliştirme yapmadan önce: kaç saat, kaç
+ * dakika sürecek bilgisi yok!"* Every row in the game named its alloy and its
+ * crystal and none of them named the wait, although `buildMinutes`, `shipMinutes`,
+ * `defenceMinutes` and `researchMinutes` were pure, exported and one import away
+ * the whole time.
+ *
+ * IT IS SHAPED LIKE A PRICE PART ON PURPOSE. A glyph and a figure, in the row the
+ * resources already occupy, because time is the fourth currency this game charges
+ * in and the player is meant to weigh it against the other three rather than read
+ * it as a footnote. It is one step quieter than they are: the wait is something to
+ * plan around, not a refusal.
+ *
+ * The accessible name is a whole sentence — a lone "2h 18m" read out after a price
+ * says nothing about which question it answers.
+ */
+export function TimeCost({ minutes }: { minutes: number }) {
+  const spoken = duration(minutes);
+  return (
+    <span
+      data-testid="order-time"
+      className="num inline-flex items-center gap-1 text-micro text-faint"
+      aria-label={i18n.t('upgradeRow.takesLabel', { duration: spoken })}
+    >
+      <ClockIcon className="size-3 shrink-0" />
+      {i18n.t('upgradeRow.takes', { duration: spoken })}
     </span>
   );
 }

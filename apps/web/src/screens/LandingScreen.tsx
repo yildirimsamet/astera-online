@@ -329,7 +329,7 @@ export type Mode = 'login' | 'register';
 function Population({ commanders, online }: { commanders: number | null; online: number | null }) {
   if (commanders === null || commanders === 0) return null;
   return (
-    <p className="mb-4 text-caption text-faint">
+    <p className="mb-2 text-caption text-faint">
       {/*
         `Trans` rather than two fragments of a sentence: which side of the figure
         the noun sits on is a property of the language, and splitting the string
@@ -496,7 +496,7 @@ function AuthDialog({
           placeholder={t('landing.form.namePlaceholder')}
         />
 
-        <label className="legend mt-4 block" htmlFor={passwordId}>
+        <label className="legend mt-2 block" htmlFor={passwordId}>
           {t('landing.form.passwordLabel')}
         </label>
         <input
@@ -532,7 +532,7 @@ function AuthDialog({
 
         <button
           type="button"
-          className="mt-4 w-full text-center text-caption text-dim underline decoration-dim/40 underline-offset-4 transition-colors hover:text-bone hover:decoration-bone/60"
+          className="mt-2 w-full text-center text-caption text-dim underline decoration-dim/40 underline-offset-4 transition-colors hover:text-bone hover:decoration-bone/60"
           onClick={() => {
             setProblem(null);
             onMode(register ? 'login' : 'register');

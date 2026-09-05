@@ -37,6 +37,7 @@ import {
   saveResources,
   setUnits,
 } from './planet.js';
+import { peakCoreLevels } from './player.js';
 import { techOf } from './researchState.js';
 import { schedule } from '../worker/queue.js';
 import { publishShard } from '../stream/bus.js';
@@ -207,17 +208,44 @@ export async function launchAttack(
     }
 
     /**
-     * THE BAND IS MEASURED IN CORE LEVELS, SO BOTH HAVE TO BE READ. D49.
+     * THE BAND IS MEASURED ON THE TWO COMMANDERS, AND IT IS ASKED FIRST. D168.
      *
-     * The attacker's is already under the lock `loadLocked` holds. The defender's
-     * is one row, and it is read UNLOCKED on purpose: a Core upgrade landing in
-     * the same instant as a launch can only move a target one level, the tier is
-     * a three-level bucket, and taking a second planet's row lock here would
-     * introduce exactly the deadlock ordering the architecture rules forbid for
-     * two-planet operations.
+     * Not on the pad and not on the target: `peakCoreLevels` reads the tallest
+     * Core each side holds anywhere, because a planet-measured band is bought off
+     * with an undeveloped colony (see `canAttack`). Both readings are UNLOCKED on
+     * purpose — a Core upgrade landing in the same instant can only move a
+     * commander one level, the tier is a three-level bucket, and locking another
+     * commander's worlds here would introduce exactly the two-planet lock ordering
+     * the architecture rules forbid.
+     *
+     * IT RUNS BEFORE `prepareClanAttack` FOR TWO REASONS. The refusal it produces
+     * is permanent, and `prepareClanAttack` raises the temporary one — a player
+     * told to wait out a twelve-hour bash window that will not make the fight
+     * legal is sent away and comes back for the same no. And it takes advisory
+     * locks on both commanders and both clans, which is work nobody should pay for
+     * on a launch that was never going to be allowed.
+     *
+     * WHAT THIS COSTS, STATED BECAUSE D127 REMOVED THE BAND FOR IT: development is
+     * private, so this is a rule the player cannot fully check before committing.
+     * The refusal is therefore raised BEFORE anything is spent — no fuel is
+     * debited, no bay is taken, no ships leave the stack — and the client is told
+     * which rule refused. D168 in `decisions.md` carries the surface work still
+     * owed.
      */
     let preparedClanAttack: Awaited<ReturnType<typeof prepareClanAttack>> | null = null;
     if (target.kind !== 'NEUTRAL' && them) {
+      const peaks = await peakCoreLevels(tx, [me.id, them.id]);
+      const attackerPeak = peaks.get(me.id) ?? 1;
+      const defenderPeak = peaks.get(them.id) ?? 1;
+      const band = canAttack(
+        { playerId: me.id, peakCoreLevel: attackerPeak },
+        { playerId: them.id, peakCoreLevel: defenderPeak },
+        0,
+      );
+      if (!band.ok) {
+        throw new GameError(band.reason ?? 'FORBIDDEN', describeRefusal(band.reason), 403);
+      }
+
       const [ruleset] = await tx.select({ version: seasons.rulesetVersion })
         .from(seasons).where(eq(seasons.id, origin.seasonId));
       let personalRecent: number;
@@ -243,14 +271,16 @@ export async function launchAttack(
           ));
         personalRecent = recent?.n ?? 0;
       }
-      const [targetCore] = await tx
-        .select({ level: buildings.level })
-        .from(buildings)
-        .where(and(eq(buildings.planetId, targetPlanetId), eq(buildings.type, 'CORE')))
-        .limit(1);
+      /*
+        THE SAME FUNCTION AGAIN, NOW THAT THE COUNT IS KNOWN. The band is asked
+        twice and answers the same both times; what this call adds is the bash
+        limit, and it is asked THROUGH `canAttack` rather than compared here so
+        the rule keeps one statement. `prepareClanAttack` raises its own
+        `BASH_LIMIT` on the clan path before this is reached.
+      */
       const gate = canAttack(
-        { playerId: me.id, coreLevel: origin.buildings.CORE },
-        { playerId: them.id, coreLevel: targetCore?.level ?? 1 },
+        { playerId: me.id, peakCoreLevel: attackerPeak },
+        { playerId: them.id, peakCoreLevel: defenderPeak },
         personalRecent,
       );
       if (!gate.ok) {
@@ -443,6 +473,10 @@ function describeRefusal(reason?: string): string {
       return 'You have hit this planet too many times recently';
     case 'SELF':
       return 'You cannot attack your own planet';
+    case 'TIER_BAND':
+      return "That commander's total strength is far above your own";
+    case 'TIER_BAND_WEAK':
+      return "That commander's total strength is far below your own";
     default:
       return 'You cannot attack that planet';
   }

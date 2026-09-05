@@ -230,13 +230,20 @@ describe('a fleet refreshes what its owner remembers', () => {
     await probe(far);
     const recorded = (await world(far)).coreLevel!;
 
-    await setLevel(f.db, far, 'CORE', recorded + 6);
+    /*
+      EXACTLY ONE TIER OF GROWTH, because the fleet still has to be allowed to fly.
+      `coreTier` buckets Core levels in threes, so `+3` is one tier and D168 lets a
+      raid cross one; the `+6` this used to use is two, and the launch below would
+      be refused for a reason this test is not about. What is being proved is that
+      the record moves with what the fleet found, and a level is a level.
+    */
+    await setLevel(f.db, far, 'CORE', recorded + 3);
     await giveSatellite(f.db, far, 'FOUNDRY');
     f.clock.advance(61);
     await raid(far);
 
     const fought = await world(far);
-    expect(fought.coreLevel).toBe(recorded + 6);
+    expect(fought.coreLevel).toBe(recorded + 3);
     expect(fought.satellites).toEqual(['FOUNDRY']);
   });
 

@@ -117,6 +117,16 @@ export interface Gain {
     now: { alloy: number; crystal: number; deuterium?: number };
     next: { alloy: number; crystal: number; deuterium?: number };
   };
+  /**
+   * WHERE THE LADDER ENDS, on the rows that have one. Owner report: *"Ne kadar
+   * arttırıyor anlaşılamıyor."*
+   *
+   * A rung is not judgeable on its own. "+2.3% attack" is a number a commander
+   * reads as nothing; "+2.3% now, +11.8% when the ladder is finished" is a
+   * decision about whether to start climbing at all. Absent on a door, which has
+   * no ladder to end — D36's rule about not drawing a permission as a quantity.
+   */
+  ceiling?: string;
   /** Something new becomes possible — stated as a capability, not a rule. */
   unlocks?: string;
   /**
@@ -536,11 +546,20 @@ export function researchGain(id: ResearchProjectId, level: number): Gain {
     ...(maxed ? { maxed: true as const } : {}),
   });
 
-  /** A rung on a real ladder, as the percentage the player will feel. */
+  /**
+   * A rung on a real ladder, as the percentage the player will feel — AND WHAT THE
+   * WHOLE LADDER COMES TO.
+   *
+   * The ceiling is read off the same function as the rung, at the ladder's own top
+   * rung, so it cannot drift from what combat actually does. Typing it beside the
+   * copy is how a research screen ends up promising a number the game does not
+   * pay; `RESEARCH_MAX_LEVEL` exists for exactly this reason.
+   */
   const step = (label: string, at: (rung: number) => number, unlocks?: string): Gain => ({
     label,
     now: percent(at(level)),
     next: percent(at(show)),
+    ceiling: percent(at(max)),
     ...(unlocks === undefined ? {} : { unlocks }),
     ...(maxed ? { maxed: true as const } : {}),
   });

@@ -103,12 +103,15 @@ hiçbir üreteci değiştirmiyor: kendi tohumu, kendi indeksleri, kendi tablosu 
 `MULTI_WORLD`'e `pirateRulesetVersion` eklenir ki ileride korsan dağılımı
 değiştiğinde o değişiklik sınıra bağlanabilsin.
 
-### Keşif hafızası **kullanılmayacak** — bunu bilerek yazıyorum
+### Keşif hafızası — D158 ile **kullanılıyor** (bu bölüm geçersiz)
 
-`asteroidDiscoveredAt` / `sensor_epochs` kalıcı keşif verir. Seçilen model
-craft-zone, yani korsan **sensörden çıkınca yok olur**. Bir implementasyoncunun
-asteroid dosyasından refleksle kopyalayacağı ilk şey bu; kopyalanırsa D123
-delinir. Korsan tarafında `sensor_epochs`'a hiç dokunulmaz.
+Bu plan yazıldığında model craft-zone idi: korsan sensörden çıkınca yok olurdu.
+**D158 sahibin talimatıyla bunu tersine çevirdi** ("korsan filolar, asteroid
+gibi"): `orbitDiscoveredAt` / `sensor_epochs` korsana da kalıcı keşif verir — bir
+kez çemberine girmiş korsan, ömrü boyunca diskte kalır ve akın hedefi olmayı
+sürdürür. Hafıza bir **taban**tır, tavan değil: `pirateZone` canlı `sensorZone`'u
+döndürür ve yalnızca `CONTACT`'a kadar taban koyar, dolayısıyla kadro/seviye
+teleskopta, kütle/silüet radarda kalır — D123'ün fidelity merdiveni delinmez.
 
 ### Katman haritası
 

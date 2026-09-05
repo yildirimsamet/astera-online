@@ -23,8 +23,16 @@ export const galaxy = {
   wrecks_other: " · {{count}} wrecks",
   asteroidShower: 'Asteroid shower',
   asteroidShowerStatus: 'Spawn ×{{multiplier}} · {{remaining}} left',
-  openWorlds: "Your worlds",
   openIntel: "Intel",
+  /**
+   * THE PLANET GLYPH IS A CAMERA MOVE NOW, AND THE SHEET HAS ITS OWN MARK. D163.
+   *
+   * `openWorlds` is gone with the tap that opened a list from a glyph that looked
+   * like "go to my planet"; the list itself is the transfer sheet and is named
+   * for what a commander opens it to DO.
+   */
+  goHome: "Zoom in on your active planet",
+  openTransfer: "Transfer between your worlds",
   /* The two sensor switches under the disc readout. `aria-label` only. */
   showTelescope: "Show Telescope reach",
   hideTelescope: "Hide Telescope reach",
@@ -77,7 +85,6 @@ export const worlds = {
   title: "Worlds",
   /** Names the list itself, so the rows are not three unlabelled buttons. */
   list: "Your worlds",
-  centre: "Zoom In on Active Planet 🪐",
   active: "Active",
   kindCapital: "Capital",
   kindColony: "Colony",
@@ -85,10 +92,17 @@ export const worlds = {
   craft_other: "{{count}} craft",
   bays: "Bays",
   sendTitle: "Quick Transfer",
-  sendFrom: "Send from",
-  sendHere: "Send here",
-  /** Three identical buttons in a list need to say which one they are. */
-  sendTo: "Send here — {{name}}",
+  /**
+   * THE TWO ENDS OF ONE SENTENCE, AND THE BUTTON THAT COMMITS IT. D163.
+   *
+   * The labels are visually hidden — the arrow between the dropdowns says which is
+   * which, and two words above two controls that already read `Kestrel-12 → Haven`
+   * would be the interface writing out what it has just drawn. They stay for the
+   * screen reader, where there is no arrow to see.
+   */
+  sendFrom: "From",
+  sendTo: "To",
+  send: "Transfer",
   /** Screen-reader readings for the two pictures on a row. */
   store: "{{resource}}: {{amount}} of {{cap}}",
   baysReading: "{{used}} of {{total}} flight bays in use",
@@ -134,7 +148,6 @@ export const focus = {
     },
     deathStar: "Death Star",
     deathStarStrike: "Death Star · devastate",
-    deathStarCapture: "Death Star · capture",
     deathStarUnavailable: "No Death Star ready",
     deathStarProtected: "Death Star · target protected",
     deathStarNeedBay: "Death Star · flight bays full",
@@ -185,12 +198,12 @@ export const focus = {
     claimRaidStillOpen:
       "Another raid is possible; it does not extend this claim.",
     claimDeathStarConsequence:
-      "A Death Star clears this claim and starts {{duration}} of recovery. A second impact is the capture route.",
+      "A Death Star clears this claim and starts {{duration}} of recovery. It takes no world: a colony left without ships when the window closes simply stops belonging to anyone.",
     openColonySlot: "Colony slot",
     colonySlotExplain:
       "Needed only for step 3. Your strongest Command Core must provide an unused colony slot when the founding fleet leaves.",
     captureColonySlotExplain:
-      "A second Death Star can transfer this colony only while you have an unused colony slot.",
+      "Needed to found a colony, never to strike one: a Death Star transfers nothing.",
     openFlightBay: "1 free flight bay",
     flightBayExplain:
       "Needed only for step 3. The one-way flight of the 2 Couriers occupies 1 bay until they reach the neutral world.",
@@ -209,17 +222,26 @@ export const focus = {
     settlementArrivalExplain:
       "The founding flight lasts {{duration}}. It must arrive before the public race closes; first valid arrival wins.",
     arrivesIn: "Arrives {{duration}}",
-    deathStarRoute: "Strategic capture route",
-    recoveryBreach: "Recovery breach · capture window",
+    deathStarRoute: "What a strike does",
+    /** The clock a defender is racing, named for what runs out at the end of it. */
+    recoveryBreach: "Recovery breach · drop deadline",
     occupationProtected: "Occupation protection",
     protectedFor: "Cannot be struck or captured for {{duration}}.",
-    firstImpact: "Damage + {{duration}} recovery",
-    secondImpact: "Control transfers",
+    firstImpact: "Damage + {{duration}} dark",
+    secondImpact: "No ships sent · the world is nobody's",
     deathStarReadyRequirement: "Death Star ready",
     deathStarReadyExplain:
-      "The second impact needs a completed Death Star waiting at the launch world.",
-    deathStarArrivalExplain:
-      "The Death Star must arrive before this recovery window closes or control cannot transfer.",
+      "A strike needs a completed Death Star waiting at the launch world.",
+    /**
+     * THE ONE THING A DEFENDER HAS TO KNOW, WHERE THEY ARE LOOKING AT IT. D167.
+     *
+     * It replaces three requirement chips that described the capture route: an
+     * open colony slot, a ready weapon, an arrival before the window shut, none of
+     * which exist any more. A rule the player cannot see is not a usable rule, and
+     * this is the only rule left on this panel that can cost them a world.
+     */
+    recoveryDropWarning:
+      "{{duration}} left. Land a ship here before the clock runs out or this colony stops being yours — no second strike required.",
 
     /**
      * THE SAME FACTS AS THE FORGE CARD, WRITTEN FOR THE PERSON PULLING THE
@@ -233,13 +255,18 @@ export const focus = {
       "The Aegis loses {{levels}} levels and the shield drops to nothing",
     strikeDark:
       "Production, collection, construction, new orders and launches stop for {{duration}}",
-    strikeCapture: "A second impact inside that window takes control",
-    strikeNoCapture: "A capital can be devastated again, but never captured",
+    strikeCapture: "If its commander lands no ship before that window closes, the world becomes nobody's",
+    strikeNoCapture: "A capital can be devastated again, but is never lost",
     eyebrow: "Held by {{owner}}",
     location: "World · {{planet}}",
     /** A world outside every reach and never probed. It has no other name. D127. */
     unsurveyedEyebrow: "World · unsurveyed",
     unsurveyedTitle: "Nobody has looked here",
+    /* Paired side by side on the rail, so the verb is the label and the cost is
+       its own micro line. See `ProbeControl`. */
+    attackShort: "Attack",
+    probeShort: "Probe",
+    probeCoolingShort: "Probe in {{duration}}",
     attack: "Plan an attack",
     attackNeutralAgain: "Raid again · claim unchanged",
     attackOriginRecovering: "Attack · origin recovering",
@@ -520,8 +547,17 @@ export const pirate = {
   captureMissed: "Nothing left worth towing home",
   send: "Send {{count}} · {{duration}}",
   outbound: "A launched fleet cannot be recalled.",
+  /**
+   * YOU CANNOT SEE THIS ONE — WHICH IS NOT THE SAME AS "THIS IS OLD". D160.
+   *
+   * The line says what the faded craft on the disc says: no circle of yours covers
+   * it, and it is here because you identified it once. The figures are still
+   * current — an orbit is solvable and the crew is the lane's live state, exactly
+   * as a rock you have found keeps reporting its remaining ore.
+   */
+  remembered: "Tracked since you identified it · not on your sensors now",
   /** The boundary, stated — the same job the contact panel's last line does. */
   boundary:
-    "A pirate is where it is, right now. It is not remembered: leave your sensors and it is gone from this list until it comes back.",
+    "A pirate you have identified stays on this list until it dies or its time runs out, exactly like a rock you have found. Its orbit is solvable, so you keep the track and the crew count out of range — what you lose is the eye, not the trail.",
   hoardHint: "What you carry home is capped by the holds you brought.",
 } as const;

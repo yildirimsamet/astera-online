@@ -101,7 +101,7 @@ export function Sheet({
           contained ? 'h-[88dvh]' : 'max-h-[88dvh]'
         }`}
       >
-        <header className="relative flex shrink-0 items-start gap-3 px-4 pb-3 pt-4">
+        <header className="relative flex shrink-0 items-start gap-2 px-2 pb-3 pt-3">
           {/* The one bright seam on the sheet: a filament along the cut edge, so
               the panel reads as machined into the frame rather than laid on it. */}
           <span
@@ -127,7 +127,7 @@ export function Sheet({
 
         {/* `min-h-0` is what actually lets a flex child scroll instead of growing. */}
         <div
-          className={`min-h-0 flex-1 ${bleed ? '' : 'px-4 py-4'} ${
+          className={`min-h-0 flex-1 ${bleed ? '' : 'px-2 py-2'} ${
             contained ? 'overflow-hidden' : 'overflow-y-auto overscroll-contain'
           }`}
         >
@@ -137,7 +137,7 @@ export function Sheet({
         {footer ? (
           <>
             <div className="rail-soft shrink-0" />
-            <div className="shrink-0 bg-void/55 px-4 py-3">{footer}</div>
+            <div className="shrink-0 bg-void/55 px-2 py-3">{footer}</div>
           </>
         ) : null}
       </div>

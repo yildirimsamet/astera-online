@@ -476,11 +476,18 @@ quote rounded at the edge, never the time stored on the mission (D83).
 Distance is the real map boundary — no artificial range cap is needed, because a cross-galaxy
 round trip in Bulwarks already costs two hours of being undefended.
 
-**There is no development band any more (D127).** D49 limited attacks to ±2 tiers and kept tier
-public so the rule could be read off the map before a fleet was packed; with development private
-the band could only become a refusal at the gate, which is the failure D49 replaced a wealth
-ratio for. What protects a small commander now is that nobody can SEE they are small — and
-`ABUSE.bashLimit`, which is the whole of the anti-farming machinery.
+**The development band is ±1 tier, and it measures the COMMANDER (D168).** A raid is legal when
+the two commanders' tiers are at most one apart, your own tier included — tier 3 reaches 2, 3 and
+4 — and each side is read on the tallest Command Core it holds anywhere, never on the world the
+fleet leaves from or the world it is aimed at. A band measured on a planet is bought off with an
+undeveloped colony, which is the whole reason it moved. D49 set it at ±2 on a public tier and
+D127 removed it when development became private; D168 restores it narrower because fog stops a
+raider FINDING a beginner and does nothing once one is found. The price is D49's own objection —
+with peak development unpublished this is a rule the player cannot fully check before choosing a
+target — so the refusal costs nothing (no fuel, no bay, no ships off the stack), names which side of the band the
+target is on (`TIER_BAND` above, `TIER_BAND_WEAK` below), and is reported ahead of the bash limit. `ABUSE.bashLimit` still caps
+repetition inside the band; pirates, Death Star strikes, transfers and neutral worlds are outside
+it entirely.
 
 **Asteroids orbit analytically** — position is a pure function of the clock, never stored,
 never simulated. A rock carries a level that sets its ore, and interception is solved in
@@ -563,6 +570,44 @@ you richer and moves you nowhere. Standing is still bought from people.
 **What it deliberately is not.** Pirates never attack. There is no escalating threat, no defence
 minigame and no pirate faction with a memory. The system adds one target class and one new reason
 to launch tonight; it does not add a second game beside the game.
+
+### Trade ships — the fourth target class, and the first you deal with (D156)
+
+A trade ship rides a closed orbit for three hours, three times a Türkiye day, and then it is
+gone. Everything about it is public: unlike a pirate, whose whole value is that nobody else can
+see it coming, the merchant's orbit is broadcast to the entire galaxy from the moment it appears
+until the moment it leaves. There is nothing to scout and nothing to hide here — the opportunity
+is finding the decision worth making with it, not finding the ship.
+
+**The decision it creates.** Every other target answers "is this worth taking, and can I get away
+with it." A merchant answers a different question: what do I have too much of, what do I actually
+need, and is it worth pinning a convoy — and the flight bay and both legs of fuel that convoy
+holds for the whole round trip — to an appointment that only stands for three hours. What a
+commander gives up by taking it is capacity: that convoy is not available for a raid or a rock
+worth mining for as long as it is committed to the merchant instead. In exchange it turns a
+surplus that cannot be spent — a full alloy store while deuterium starves the yard queue — into
+the resource actually blocking the next order, at a price fixed and known a day in advance.
+
+**What limits it is the hold, not a rulebook.** There is no quota, no fee, no one-visit-per-world
+cap — the owner ruled out all three. `requiredHold`, the larger of what the convoy carries out and
+what it carries home, is the whole arithmetic: a small offer buying a large haul still needs a
+hold big enough to bring the haul home, so the planning question is never "can I afford this
+trade" but "how big a convoy am I willing to have caught away from home for three hours." That is
+the same brake the rest of the game already runs on — cargo capacity, a flight bay, prepaid fuel —
+applied to the one lane that cannot itself cost a ship.
+
+**What it deliberately is not.** There is no combat at the rendezvous and no Dominion moves — a
+trade ship cannot be raided, cannot fight back, and pays nothing onto the ladder either way. It is
+not a market: one published rate, no haggling, no order book, and no price that softens or
+hardens with how much the galaxy has already sold it. A rate cheap enough to undercut what a
+Refinery already produces would make an isotope asteroid worthless to fight over — the shipped
+90 alloy : 30 crystal : 1 deuterium is generous without cutting the ground out from under the
+mining race D135 is built on.
+
+This feeds OPPORTUNITY and RE-ENGAGEMENT most directly — one more reason to check the sky this
+session even with nothing under threat — and a little AMBITION and RISK besides: three hours
+committed to a convoy in the open is still three hours undefended, on the same clock as
+everything else that can go wrong while you are away.
 
 ## Clans — five seats, useful cooperation, no diplomacy game
 

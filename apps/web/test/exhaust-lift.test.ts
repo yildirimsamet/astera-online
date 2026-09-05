@@ -23,11 +23,25 @@ describe('the lift a posed hull is drawn at', () => {
     }
   });
 
+  /**
+   * READ OFF THE TABLE, NOT RESTATED FROM IT.
+   *
+   * This used to name the Citadel as the most-lifted hull and assert a floor under
+   * that figure, which stopped being true the moment the authored sizes were
+   * re-scaled by tier: the lift is a pose height DIVIDED by the hull's scale, so
+   * making a capital bigger makes its normalised lift smaller. The claim that
+   * matters survives either way — a hull the owner posed off the ground is drawn
+   * off the ground, and the one hull posed at zero is drawn at zero.
+   */
   it('is a real offset on the hulls that were drawn floating', () => {
-    // The two extremes of the authored table: the Citadel is lifted most, and the
-    // Nullifier is the one Fleet V2 hull that needed none.
-    expect(hullPoseLift('CITADEL')).toBeGreaterThan(0.1);
+    for (const hull of FLEET_V2_HULLS) {
+      const asset = FLEET_V2_ASSET_MANIFEST[hull];
+      if (asset.pose.height === 0) continue;
+      expect(hullPoseLift(hull), hull).toBeGreaterThan(0);
+    }
     expect(hullPoseLift('DART')).toBeGreaterThan(0);
+    // The one Fleet V2 hull that needed no lift at all.
+    expect(FLEET_V2_ASSET_MANIFEST.NULLIFIER.pose.height).toBe(0);
     expect(hullPoseLift('NULLIFIER')).toBe(0);
   });
 

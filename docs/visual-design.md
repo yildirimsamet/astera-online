@@ -110,6 +110,56 @@ not. **Glow is a state, never a decoration** — if everything glows, nothing is
 300–450px and are the most expensive thing this project owns. A render used at 40px in a text row
 is a wasted asset and reads as a favicon.
 
+### The type scale
+
+Owner instruction, applied across the whole client: everything in **12–18px came down 2px**
+and everything in **20–30px came down 3px**. Nothing below 12 or above 30 moved.
+
+| Token | Was | Now |
+| --- | --- | --- |
+| `--text-hero` | 46 | 46 |
+| `--text-readout` | 30 | **27** |
+| `--text-figure` | 21 | **18** |
+| `--text-title` | 18 | **16** |
+| `--text-body` | 14 | **12** |
+| `--text-caption` | 12 | **10** |
+| `--text-label` | 11 | 11 |
+| `--text-micro` | 10 | **9** |
+
+Two consequences to know before reaching for one of these:
+
+- **`micro` is 9px on owner instruction**, which re-separates it from `caption` (10) — the two
+  collided when caption came down, and a scale with two identical steps has one step too many.
+- **`caption` (10) now sits BELOW `label` (11).** That is not an error — `label`/`legend` is
+  uppercase and tracked, so it still reads as the heading of the caption under it — but a
+  new pairing should be checked by eye rather than assumed from the numbers.
+
+**One size in the 12–18 band was deliberately NOT changed.** `.field` is 16px because iOS
+Safari zooms the viewport when a focused input is under 16px; it is a functional guard, not a
+type choice, and `test/viewport-zoom.test.ts` asserts it.
+
+### The screen every layout is budgeted against
+
+**375 x 812 CSS pixels, portrait.** Owner instruction. This is the narrow end of the iPhone line
+and it is the width a layout must survive, not the width it should merely prefer. `tools/visual.mjs`
+runs at exactly this figure; it ran at 390 until D157, and those fifteen pixels were enough to hide
+a truncation that was live on the real target — a shipyard row whose name read "Tempest" in every
+screenshot ever taken read "T..." on a phone.
+
+The budget a full-width `UpgradeRow` actually has, so a new element on it can be priced honestly:
+
+| Consumed by                | px    |
+| -------------------------- | ----- |
+| Screen                     | 375   |
+| Row padding (`px-3`, both) | −24   |
+| Art socket + gap           | −86   |
+| Chevron / action + gap     | −24   |
+| **Left for text**          | **241** |
+
+241px is roughly twenty-four characters of `name`. Anything else that wants to sit on the name's
+line is spending the name's budget, and a truncated label is worse than a small one — the player
+cannot tell what they are being sold, which is the one job that row has.
+
 Which size a render gets follows from what the surface asks the player to do (`interface.md` I3).
 
 - **A SHEET is the argument**, so its portrait runs at 96–150px as the subject of the plate.
@@ -254,6 +304,27 @@ Two more traps at the same site: `orientedCraft` turns a model *before* it measu
 a box round a body lying diagonally is a box round the diagonal; and a thin shell needs
 `THREE.DoubleSide` or it draws nothing for half of every rotation, which reads as a corrupt
 model rather than a material setting.
+
+## A hull's size is its tier, and a wing is packed by footprint
+
+`FLEET_V2_ASSET_MANIFEST.scale` is the one statement of how big a hull is drawn, and it is
+authored by TIER — 0.7 · 1.25 · 1.85 · 3.0 — so weight is readable off a formation before any
+label is. The rule the tests hold is the ordering, not the numbers: **no hull is ever drawn
+smaller than a hull of a lower tier.**
+
+That spread is 4.3×, and it broke the arrangement that carried it. `formationLayout` used to
+lay every slot on one grid whose spacing was the largest hull present, which cost nothing while
+the sizes ran 0.84–1.38 and became the picture at 0.7–3.0: a Dart beside a capital sat alone in
+a hole three of its own lengths across. The spiral now advances with the square root of the room
+already SPENT — each craft spending `(size / largest) ** FOOTPRINT_EXPONENT` — and the heaviest
+hull takes the point (D165). One unit per craft reproduces the old spiral exactly, so a wing of
+one hull is untouched at the spacing it was tuned at.
+
+`FOOTPRINT_EXPONENT` is 1.6 and not a strict area's 2 because heaviest-first puts a capital's
+spiral neighbours among the small craft behind it, and at a strict share those advance the
+radius too slowly to clear it. Do not tune it by eye: `flight-visual.test.ts` measures the
+tightest pair in a mixed wing against the tightest pair in a single-hull wing, which is the
+property the number exists to hold.
 
 ## Audio — nothing exists
 

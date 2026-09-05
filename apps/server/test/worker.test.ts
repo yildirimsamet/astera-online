@@ -383,6 +383,8 @@ describe('event worker', () => {
       await setLevel(f.db, attacker, 'CORE', 6);
       await giveUnits(f.db, attacker, { DART: 40, COURIER: 4 });
       await grant(f.db, defender, 40_000, 4_000);
+      // The purse raises the defender's Core out of the attacker's tier band. D168.
+      await levelWorld(f.db, [attacker, defender]);
       f.clock.advance(300); // a settled world, not one seconds old
 
       const launch = await launchAttack(f.db, attacker, defender, { DART: 40, COURIER: 4 }, f.clock);
@@ -433,6 +435,8 @@ describe('event worker', () => {
       await setLevel(f.db, attacker, 'CORE', 6);
       await giveUnits(f.db, attacker, { DART: 40 });
       await grant(f.db, defender, 30_000, 3_000);
+      // The purse raises the defender's Core out of the attacker's tier band. D168.
+      await levelWorld(f.db, [attacker, defender]);
       f.clock.advance(300);
 
       const launch = await launchAttack(f.db, attacker, defender, { DART: 40 }, f.clock);

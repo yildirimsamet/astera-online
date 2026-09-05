@@ -1,11 +1,11 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { render } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { PlanetScreen } from '../src/screens/PlanetScreen.js';
 import i18n from '../src/i18n/index.js';
 import { ToastProvider } from '../src/ui/Toast.js';
 import type { PlanetView } from '../src/api/schemas.js';
-import { planetView } from './fixtures.js';
+import { openAllBands, planetView } from './fixtures.js';
 
 /**
  * A SHUT DOOR SAYS WHY, AND SAYS WHERE. Owner instruction.
@@ -139,6 +139,8 @@ describe('pressing the reason', () => {
   it('takes a Shipyard-gated hull to the Shipyard', async () => {
     const { default: userEvent } = await import('@testing-library/user-event');
     const view = openTab('reach', bare);
+    // The Courier sits in the Cargo band, and the tab's families fold shut.
+    await openAllBands(screen, userEvent.setup());
     const fix = view.container.querySelector<HTMLElement>('#row-COURIER [data-has-fix]');
     expect(fix).not.toBeNull();
     await userEvent.click(fix!);

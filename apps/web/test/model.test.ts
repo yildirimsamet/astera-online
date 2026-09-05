@@ -311,14 +311,33 @@ describe('the facing table', () => {
     }
   });
 
+  /**
+   * THE TRADE SHIP, MEASURED. Six-side offline render off the source glb (see
+   * `docs/game-design.md` slice notes): a bridge/canopy with a window and a
+   * sensor mast sits at −X, and a stepped, layered nozzle cluster sits at +X.
+   * The principal axis is (0.997, −0.012, 0.081) — 4.7° off pure X, well
+   * inside named-compass territory, unlike the missile/Death Star's genuine
+   * diagonals — so this is a named facing, not a `noseVector`.
+   */
+  it('declares the Trade Ship at its measured nose axis', () => {
+    expect(MODEL_FACING[MODEL.tradeShip]).toBe('-x');
+  });
+
+  it('classifies the Trade Ship as a craft that is aimed, never a prop', () => {
+    expect(CRAFT_MODELS).toContain(MODEL.tradeShip);
+    expect(PROP_MODELS).not.toContain(MODEL.tradeShip);
+  });
+
   it('maps every Fleet V2 hull to its scale-normalised approved pose', () => {
+    // The authored figures, divided back out of the preview scale they were
+    // calibrated at. Both hulls were re-scaled when size became a hull's tier.
     expect(MODEL_POSE[HULL_MODEL.DART]).toEqual({
       rotation: [0, -1, 16],
-      height: 0.17 / 0.84,
+      height: 0.17 / 0.7,
     });
     expect(MODEL_POSE[HULL_MODEL.CITADEL]).toEqual({
       rotation: [-13, 180, 0],
-      height: 0.21 / 1.38,
+      height: 0.21 / 2.5,
     });
     expect(Object.keys(MODEL_POSE)).toHaveLength(18);
   });
@@ -384,6 +403,23 @@ describe('the model files', () => {
         400,
       );
     }
+  });
+
+  /**
+   * THE TRADE SHIP, EXPLICITLY. The generic loops above already cover every
+   * entry in `MODEL`, but this pins the served file itself so a regression
+   * here fails on a name a reviewer can grep for, not just "some model".
+   */
+  it("resolves the Trade Ship's served file, begins with glTF, and stays inside budget", () => {
+    const url = MODEL.tradeShip;
+    expect(url).toBeDefined();
+    const path = resolve(process.cwd(), 'public', url.replace(/^\//, ''));
+    expect(existsSync(path), `${url} is not in public/`).toBe(true);
+    expect(readFileSync(path).toString('ascii', 0, 4), `${url} is not a .glb`).toBe('glTF');
+    const kb = statSync(path).size / 1024;
+    expect(kb, `MODEL.tradeShip is ${kb.toFixed(0)} KB — did it skip \`pnpm models\`?`).toBeLessThan(
+      400,
+    );
   });
 
 });

@@ -20,7 +20,7 @@ import {
   pirateStats,
   resolveCombat,
   seededFrom,
-  sensorZone,
+  pirateZone,
   type Fleet,
   type HullId,
   type PirateLevel,
@@ -39,6 +39,7 @@ import { notify } from './notifications.js';
 import { schedule } from '../worker/queue.js';
 import { safeHomePlanet } from './ownership.js';
 import { sensorPosts } from './traffic.js';
+import { sensorHistoryForPlayer } from './sensorHistory.js';
 import { techOf } from './researchState.js';
 import { pendingThreads, type PendingThread } from './session.js';
 import { planetView, type PlanetView } from './planetView.js';
@@ -206,19 +207,27 @@ export async function launchPirateRaid(
     }
 
     /**
-     * THE FOG GATE. You may only aim at a pirate you can see RIGHT NOW.
+     * THE FOG GATE. You may only aim at a pirate that is on your disc.
      *
-     * Tested against the pirate's current point through `sensorZone`, which is the
-     * one statement of the three zones — the launch, the traffic projection and
-     * the client's crossing solver all read it, so a target that is legal to shoot
-     * at is exactly the one that is drawn on the disc.
+     * Tested through `pirateZone`, which is live `sensorZone` — the one statement
+     * of the three zones — floored at IDENTIFIED by D158/D160's discovery memory.
+     * The launch, the traffic projection and the pirate list all read that one
+     * function, so a target that is legal to shoot at is exactly the one that is
+     * drawn on the disc.
+     *
+     * D158 WIDENED THIS DELIBERATELY, and it is the same rule the rock lane has
+     * had since D143: a target you have found once stays yours to send a fleet at,
+     * because an opportunity that expires while the commander is picking hulls is
+     * not a decision. D160 then made what memory hands back the reading the
+     * commander already paid for — the epoch's reach IS the telescope's.
      *
      * CONTACT is enough. You do not have to identify a pirate to fly at it; that
      * is what makes a Radar-only commander able to gamble on a question mark, and
      * what the Telescope sells is knowing what you are gambling against.
      */
     const spheres = await sensorPosts(tx, await ownWorldIds(tx, origin.playerId));
-    if (sensorZone(spheres, piratePosition(spec, nowMinutes)) === 'NONE') {
+    const epochs = await sensorHistoryForPlayer(tx, origin.playerId);
+    if (pirateZone(spheres, spec, piratePosition(spec, nowMinutes), epochs, nowMinutes) === 'NONE') {
       throw new GameError('PIRATE_OUT_OF_SIGHT', 'That pirate is not on your sensors', 403);
     }
 

@@ -315,14 +315,24 @@ const SHIP_ORDER = 999;
  * loses every material type downstream. The runtime flag is the narrowing three
  * itself uses internally, and it comes back typed.
  */
-function isMesh(node: THREE.Object3D): node is THREE.Mesh<THREE.BufferGeometry, THREE.Material> {
+function isMesh(node: THREE.Object3D): node is THREE.Mesh {
   return (node as { isMesh?: boolean }).isMesh === true;
 }
 
-/** `Mesh.material` is one or many. */
-function materialsOf(mesh: THREE.Mesh<THREE.BufferGeometry, THREE.Material>): THREE.Material[] {
+/**
+ * `Mesh.material` is one or many, and the narrowing above now says so.
+ *
+ * `isMesh` used to narrow to `Mesh<BufferGeometry, Material>` — a SINGLE material,
+ * which three's own default type does not claim. That made every array case a
+ * runtime-only hazard the compiler could not see, and the first draft of
+ * `dimMeshMaterials` was written against the lie and would have thrown on a
+ * multi-primitive hull, inside a render memo, taking the scene down with it.
+ */
+function materialsOf(mesh: THREE.Mesh): THREE.Material[] {
   return Array.isArray(mesh.material) ? mesh.material : [mesh.material];
 }
+
+
 
 /**
  * A funnel: widest where it leaves the hull, tapering to nothing behind.
@@ -349,7 +359,11 @@ const plumeShape = (i: number) => {
   };
 };
 
-function Exhaust({ colour, length, width }: { colour: string; length: number; width: number }) {
+export function Exhaust({ colour, length, width }: {
+  colour: string;
+  length: number;
+  width: number;
+}) {
   const group = useRef<THREE.Group>(null);
   const glow = useMemo(() => softGlow(), []);
 
@@ -2432,6 +2446,7 @@ function Foreign({
   const exactFleet =
     (contact.kind === 'fleet' || contact.kind === 'pirate') && contact.fleet !== undefined;
 
+
   const to = useMemo(() => toWorld(contact.to), [contact.to]);
 
   /**
@@ -2632,6 +2647,18 @@ function Foreign({
         <Suspense fallback={null}>
           {markers ? (
             <>
+              {/*
+                EVERY CRAFT ON THE DISC IS DRAWN THE SAME WAY. Owner instruction,
+                D166 — reversing the faded treatment D160 gave a remembered pirate.
+
+                The payload still says `remembered`, and the RAIL still states it in
+                words, because "no circle covers this right now" is a real fact and a
+                commander is entitled to it. What it no longer does is change the
+                picture: a target that has left your circles keeps its full light
+                field, its wake and its hull, because its position and crew are
+                current either way (the rock lane's rule), and a dimmed ship reads as
+                a rendering fault rather than as a sentence about sight.
+              */}
               <FormationLightField
                 markers={markers}
                 slots={slots}

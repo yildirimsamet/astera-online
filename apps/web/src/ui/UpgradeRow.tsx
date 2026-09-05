@@ -5,7 +5,7 @@ import type { Gain } from '../lib/gains.js';
 import { haptic } from '../lib/haptics.js';
 import { Rungs } from './Rungs.js';
 import { duration } from '../lib/time.js';
-import { ActionButton, Price, ResourceAmounts, type Verb } from './Action.js';
+import { ActionButton, Price, ResourceAmounts, TimeCost, type Verb } from './Action.js';
 import { LockMark } from './marks.js';
 
 /**
@@ -49,6 +49,7 @@ export function UpgradeRow({
   mark,
   name,
   nameAside,
+  nameBadge,
   level,
   maxLevel,
   tag,
@@ -57,6 +58,7 @@ export function UpgradeRow({
   cost,
   held,
   income,
+  takes,
   blocked,
   completed,
   queued,
@@ -78,6 +80,16 @@ export function UpgradeRow({
   name: string;
   /** Compact state that belongs beside the name, such as home/away hull counts. */
   nameAside?: string;
+  /**
+   * A MARK BESIDE THE NAME, where the row's own taxonomy is not the whole story.
+   *
+   * Exists for one case and should stay that way: a hull's COMBAT CLASS. The
+   * shipyard bands hulls by family — where to find it — and the counter cycle runs
+   * at right angles to that, so a Pike sits under "Offensive" and is beaten by a
+   * "Defensive" Rampart. A node rather than a string because it is a chip with a
+   * glyph in it; `nameAside` remains the slot for plain text.
+   */
+  nameBadge?: ReactNode;
   level?: number;
   /**
    * The top of a ladder that HAS one, so the row can read "L2 / 5". T12.
@@ -103,6 +115,24 @@ export function UpgradeRow({
   held: { alloy: number; crystal: number; deuterium?: number };
   /** Production rates, so an unaffordable row can say WHEN instead of how far. */
   income?: { alloyPerHour: number; crystalPerHour: number };
+  /**
+   * MINUTES THE WORK ITSELF TAKES, from `orderMinutes`. Owner report.
+   *
+   * *"hiç bir geliştirmede, geliştirme yapmadan önce: kaç saat, kaç dakika sürecek
+   * bilgisi yok!"* — and it was true of every row in the game. The four functions
+   * that answer it have been pure and exported in `@astera/rules` since the economy
+   * was written and `apps/web` called none of them.
+   *
+   * NOT THE SAME CLOCK AS `income`'s. That one is `affordableIn` — a property of
+   * the WALLET, which only ever appeared when the player was short. This is a
+   * property of the ITEM and shows whether or not they can pay, because a commander
+   * who can afford the thing is exactly the one for whom the wait is the only
+   * remaining question.
+   *
+   * Optional, and absent means absent: a row with no time to quote prints none
+   * rather than a zero.
+   */
+  takes?: number;
   blocked?: Blocked;
   /** Owned once, researched, or at the real final level. */
   completed?: string;
@@ -221,7 +251,7 @@ export function UpgradeRow({
         of height and makes the row read in the order a player asks: what is it,
         what does it look like, what does it cost, what do I press.
       */}
-      <div className="pointer-events-none relative z-10 flex items-center gap-3">
+      <div className="pointer-events-none relative z-10 flex items-center gap-2">
         {/*
           THE ART IS THE SUBJECT, AT THE SIZE IT WAS DRAWN FOR.
 
@@ -239,12 +269,12 @@ export function UpgradeRow({
               alt=""
               aria-hidden
               className={`socket-art size-[86%] object-contain transition-[filter,opacity,transform] duration-300 group-hover:scale-[1.04] ${
-                artLocked ? 'opacity-35 grayscale' : unowned ? 'opacity-55 grayscale' : ''
+                artLocked ? 'opacity-20' : unowned ? 'opacity-65' : ''
               }`}
               loading="lazy"
             />
           ) : (
-            <span className={artLocked ? 'opacity-35 grayscale' : unowned ? 'opacity-55 grayscale' : ''}>
+            <span className={artLocked ? 'opacity-20' : unowned ? 'opacity-65' : ''}>
               {mark}
             </span>
           )}
@@ -271,15 +301,21 @@ export function UpgradeRow({
           height at all and hands the name the whole column back.
         */}
         <div className="flex min-w-0 flex-1 flex-col gap-1 self-stretch py-1">
-          <div className="flex min-w-0 items-baseline gap-2">
-            <div className="flex min-w-0 flex-1 items-baseline gap-1">
-              <h3 className="name min-w-0 truncate">{name}</h3>
-              {nameAside ? (
-                <span className="num shrink-0 whitespace-nowrap text-micro text-faint">
-                  {nameAside}
-                </span>
-              ) : null}
-            </div>
+          {/*
+            LINE ONE IS THE NAME'S, AND NOTHING ELSE MAY SPEND IT. D109 · owner report.
+
+            At 375px this column has about 241px, which is roughly twenty-four
+            characters. The class chip and the home/away counts were both put on
+            this line and between them left "E...", "P..." and "K..." where a ship's
+            name should have been — the exact failure this component's docblock was
+            written about, committed twice.
+
+            Only the LEVEL shares it, because a ladder is a fixed 40-odd pixels that
+            cannot grow with a longer word, and because "which rung am I on" is part
+            of naming the thing rather than a fact about it.
+          */}
+          <div data-row-line="name" className="flex min-w-0 items-baseline gap-2">
+            <h3 className="name min-w-0 flex-1 truncate">{name}</h3>
             {/*
               A LADDER IS DRAWN; A LEVEL IS WRITTEN.
 
@@ -298,9 +334,30 @@ export function UpgradeRow({
               </span>
             ) : null}
           </div>
-          {tag && <p className="truncate text-caption leading-snug text-dim">{tag}</p>}
+          {/*
+            LINE TWO CARRIES EVERYTHING THAT USED TO CROWD LINE ONE.
 
-          <div className="flex min-w-0 items-baseline gap-2">
+            The class chip is here rather than beside the name because it is a fact
+            ABOUT the ship, not part of its identity — and because it is 60-odd
+            pixels the name cannot afford. The counts follow it, and the tag takes
+            whatever is left and truncates, which is the right thing to lose: it is
+            flavour, and the chip beside it is the rule.
+          */}
+          {nameBadge === undefined && nameAside === undefined && !tag ? null : (
+              <div data-row-line="support" className="flex min-w-0 items-center gap-1.5">
+                {nameBadge}
+                {nameAside ? (
+                  <span className="num shrink-0 whitespace-nowrap text-micro text-faint">
+                    {nameAside}
+                  </span>
+                ) : null}
+                {tag ? (
+                  <p className="min-w-0 truncate text-caption leading-snug text-dim">{tag}</p>
+                ) : null}
+              </div>
+            )}
+
+          <div className="min-w-0 items-baseline gap-2">
             <div className="min-w-0 flex-1">
             {inactive ? (
               <p className="truncate text-caption text-alloy">{inactive}</p>
@@ -355,13 +412,39 @@ export function UpgradeRow({
                 {gain.resourcePair
                   ? <ResourceAmounts resources={gain.resourcePair.next} label={gain.next} />
                   : <span className="text-bone">{gain.next}</span>}
+                {/*
+                  AND WHERE THE LADDER ENDS, on the rows that have one. Owner
+                  report: *"Ne kadar arttırıyor anlaşılamıyor."* A rung of Ship
+                  Power is +2.3%, which a commander reads as nothing; +2.3% of an
+                  eventual +11.8% is a decision about whether to start climbing.
+                  Dropped once the ladder is finished, where the ceiling is the
+                  figure already standing to the left of it.
+                */}
+                {gain.ceiling !== undefined && gain.maxed !== true && (
+                  <span data-gain-ceiling className="ml-1.5 text-faint">
+                    {t('upgradeRow.ceiling', { value: gain.ceiling })}
+                  </span>
+                )}
               </p>
             ) : (
               <p className="truncate text-caption text-faint">{role}</p>
             )}
             </div>
             {!completed && (!queued || queuedActionable) && (
-              <div className="shrink-0"><Price cost={cost} held={held} /></div>
+              /*
+                TWO CURRENCIES, ONE COLUMN. Time sits under the price because in
+                this game it IS a price: a hull that lands after the season's last
+                raid cost more than its alloy, and a commander budgeting an evening
+                needs both figures in the same glance.
+
+                It is deliberately quieter than the resources — the wait is a fact
+                to plan around rather than a refusal, and `affordableIn` below still
+                owns the louder amber when the player cannot pay at all.
+              */
+              <div className="flex shrink-0 items-center gap-0.5 mt-1">
+                <Price cost={cost} held={held} layout="row" />
+                {takes === undefined ? null : (<div className="flex items-center ml-1"><TimeCost minutes={takes} /></div>)}
+              </div>
             )}
           </div>
         </div>
@@ -435,16 +518,85 @@ export function UpgradeRow({
  *
  * `note` is the rule in one short clause. If it needs two, the band is wrong.
  */
-export function Band({ label, note, aside }: { label: string; note?: string; aside?: ReactNode }) {
-  return (
-    <div className="flex flex-col gap-1 border-b border-line-soft bg-void/30 px-3 py-2">
-      <div className="flex items-baseline gap-2">
+export function Band({
+  label,
+  note,
+  aside,
+  count,
+  open,
+  onToggle,
+}: {
+  label: string;
+  note?: string;
+  aside?: ReactNode;
+  /**
+   * HOW MANY ROWS ARE UNDER THIS HEADING. Shown whenever the band can fold.
+   *
+   * A shut band must say what it is holding back, or it is just a word the player
+   * has to open to find out about — which costs the tap the fold was meant to save.
+   */
+  count?: number;
+  /** Whether the rows below are showing. Undefined leaves the band a plain heading. */
+  open?: boolean;
+  /**
+   * MAKES THE BAND AN ACCORDION. Owner instruction.
+   *
+   * Nineteen hull rows at ~98px is nearly two thousand pixels — about four screens
+   * of a 375-wide phone before a commander has seen the catalogue once, and the
+   * same list is what an attack sheet asks them to choose a wing from under a
+   * clock. Folding costs nothing that the row height would not cost far more of:
+   * the art stays at the 74px `visual-design.md` requires, and the bands the player
+   * is not shopping in stay out of the way with their counts on them.
+   *
+   * Absent leaves `Band` exactly as it was — a heading — because several surfaces
+   * use it over a group of two or three where a fold would be pure ceremony.
+   */
+  onToggle?: () => void;
+}) {
+  const body = (
+    <>
+      <div className="flex min-w-0 items-baseline gap-2">
         <h3 className="legend text-crystal/85">{label}</h3>
         <span className="rail-soft flex-1" />
+        {count === undefined ? null : (
+          <span className="num shrink-0 text-micro text-faint">{count}</span>
+        )}
         {aside}
+        {onToggle === undefined ? null : (
+          <svg
+            aria-hidden
+            viewBox="0 0 20 20"
+            className={`size-3.5 shrink-0 text-faint transition-transform duration-200 ${
+              open === true ? 'rotate-90' : ''
+            }`}
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.75"
+          >
+            <path d="M7 4.5 12.5 10 7 15.5" />
+          </svg>
+        )}
       </div>
       {note && <p className="text-caption leading-snug text-faint">{note}</p>}
-    </div>
+    </>
+  );
+
+  const shell = 'flex w-full flex-col gap-1 border-b border-line-soft bg-void/30 px-3 py-2 text-left';
+
+  if (onToggle === undefined) return <div className={shell}>{body}</div>;
+
+  return (
+    <button
+      type="button"
+      aria-expanded={open === true}
+      onClick={() => {
+        haptic('tap');
+        onToggle();
+      }}
+      className={`${shell} transition-colors hover:bg-bone/[0.03] active:bg-raised/60`}
+    >
+      {body}
+    </button>
   );
 }
 
@@ -461,9 +613,9 @@ export function DecisionGroup({
   children: ReactNode;
 }) {
   return (
-    <section className="flex flex-col gap-3">
+    <section className="flex flex-col gap-2">
       <div className="flex flex-col gap-1">
-        <header className="flex items-baseline gap-3">
+        <header className="flex items-baseline gap-2">
           <h2 className="headline shrink-0">{problem}</h2>
           <span className="rail-soft flex-1" />
           {aside}

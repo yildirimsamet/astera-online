@@ -127,7 +127,7 @@ export function RewardsScreen({ commander }: { commander: string }) {
   }
   // `isError` above is what keeps this honest: React Query drops `isPending` on
   // failure, so a lone pending check would shimmer forever at a dead request (D53a).
-  if (isPending) return <SkeletonText lines={8} className="mt-4" />;
+  if (isPending) return <SkeletonText lines={8} className="mt-2" />;
 
   /**
    * Would taking what is on offer put either store over its ceiling? Measured
@@ -174,7 +174,7 @@ export function RewardsScreen({ commander }: { commander: string }) {
       )}
 
       {data.claimable > 0 && (
-        <p className="flex items-center gap-3">
+        <p className="flex items-center gap-2">
           <span className="rail-soft flex-1" />
           <span className="num shrink-0 text-micro text-opportunity">
             {t('rewards.waiting', { count: data.claimable })}
@@ -185,7 +185,7 @@ export function RewardsScreen({ commander }: { commander: string }) {
       {chains.length === 0 ? (
         <EmptyState icon={<RewardIcon className="size-7" />} title={t('rewards.allTaken')} />
       ) : (
-        <ul className="flex flex-col gap-3">
+        <ul className="flex flex-col gap-2">
           {chains.map((chain) => (
             <ChainCard
               key={chain.id}
@@ -265,7 +265,7 @@ function GoalCard({
 
   return (
     <Plate as="li" tone={waiting ? 'opportunity' : 'neutral'} className="px-3 py-3">
-      <div className="flex items-start gap-3">
+      <div className="flex items-start gap-2">
         <span
           className={`socket grid size-9 shrink-0 place-items-center rounded-control ${
             waiting ? 'text-opportunity' : done ? 'text-faint' : 'text-dim'
@@ -388,7 +388,7 @@ function SocialCard({
       as="li"
       cut
       tone={ready ? 'opportunity' : 'neutral'}
-      className="relative overflow-hidden px-4 pb-4 pt-3"
+      className="relative overflow-hidden px-2 pb-2 pt-3"
     >
       {/* A single wash behind the card, warm at one corner. The only decorative
           gradient in the panel, and it is what separates "an offer from us" from
@@ -399,7 +399,7 @@ function SocialCard({
       />
 
       <div className="relative">
-        <div className="flex items-start gap-3">
+        <div className="flex items-start gap-2">
           <span
             className={`socket grid size-11 shrink-0 place-items-center rounded-control ${
               ready ? 'text-opportunity' : 'text-crystal'
@@ -442,7 +442,7 @@ function SocialCard({
             href={t('rewards.social.url')}
             target="_blank"
             rel="noreferrer noopener"
-            className="slab slab-primary mt-4 w-full"
+            className="slab slab-primary mt-2 w-full"
           >
             <ExternalIcon className="size-[18px] shrink-0" />
             {t('rewards.social.open')}
@@ -487,7 +487,7 @@ function SocialCard({
  *  is stripped by the CSS reset and these three have to be done in order. */
 function Step({ n, children }: { n: number; children: ReactNode }) {
   return (
-    <li className="flex gap-3 text-caption leading-relaxed text-dim">
+    <li className="flex gap-2 text-caption leading-relaxed text-dim">
       <span className="num mt-[1px] grid size-[18px] shrink-0 place-items-center rounded-full bg-raised text-micro text-crystal">
         {n}
       </span>

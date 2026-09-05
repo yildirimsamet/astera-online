@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { render } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { ANTI_STRATEGIC } from '@astera/rules';
@@ -8,7 +8,7 @@ import { STRATEGIC_ART } from '../src/ui/assets.js';
 import i18n from '../src/i18n/index.js';
 import { ToastProvider } from '../src/ui/Toast.js';
 import type { PlanetView } from '../src/api/schemas.js';
-import { planetView } from './fixtures.js';
+import { openAllBands, planetView } from './fixtures.js';
 
 /**
  * THE ONE CONTROL THAT LOADS AN INTERCEPTION CHARGE. T10, given a door in T12.
@@ -284,6 +284,8 @@ describe('a hull gated on research', () => {
    * takes: press the row, read the sheet, press the requirement.
    */
   const fixFrom = async (view: View, hull: string): Promise<HTMLElement> => {
+    // The Fleet tab's families fold; the Nullifier is behind the Specialist band.
+    await openAllBands(screen, userEvent.setup());
     const opener = view.container
       .querySelector<HTMLElement>(`#row-${hull} [data-open-item]`);
     expect(opener, `${hull} does not open`).not.toBeNull();

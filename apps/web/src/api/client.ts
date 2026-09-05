@@ -48,6 +48,7 @@ import {
   miningFieldSchema,
   piratesSchema,
   pirateRaidSchema,
+  tradeLaunchSchema,
   miningSchema,
   miningStatusSchema,
   launchSchema,
@@ -633,6 +634,27 @@ export class Api {
     this.send('/api/pirates/raid', pirateRaidSchema, {
       method: 'POST',
       body: { pirateId, fleet, ...(originPlanetId ? { originPlanetId } : {}) },
+    });
+
+  /**
+   * SEND A CONVOY TO THE MERCHANT. D156.
+   *
+   * IRREVERSIBLE, like every launch, and there is deliberately no `GET` beside it:
+   * the merchant already reaches the client on `/api/galaxy/events`, orbit and all,
+   * so the rendezvous is solved on both sides from the same published elements with
+   * the same `interceptOrbit`. A second read here would be a second answer to a
+   * question that already has one.
+   */
+  trade = (
+    occurrenceId: string,
+    fleet: Fleet,
+    give: { alloy: number; crystal: number; deuterium: number },
+    want: { alloy: number; crystal: number; deuterium: number },
+    originPlanetId?: string,
+  ) =>
+    this.send('/api/trade/launch', tradeLaunchSchema, {
+      method: 'POST',
+      body: { occurrenceId, fleet, give, want, ...(originPlanetId ? { originPlanetId } : {}) },
     });
 
   /** Send craft to a wreck field. D32 — the same craft, a different errand. */

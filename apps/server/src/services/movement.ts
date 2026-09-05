@@ -58,7 +58,16 @@ function validateResources(cargo: Resources): void {
   }
 }
 
-function validateTransferFleet(fleet: Fleet): void {
+/**
+ * THE THREE STRUCTURAL REFUSALS EVERY CARGO LAUNCH MAKES, IN ONE PLACE.
+ *
+ * Exported for the trade lane (D156), which is the second path in the game to send
+ * transports somewhere and therefore the second path that has to say "that is not
+ * a fleet" before it says anything about what the fleet is FOR. Structure first,
+ * semantics second — and one statement of it rather than two, because two copies
+ * of a refusal ladder is two chances to answer the same bad request differently.
+ */
+export function validateTransferFleet(fleet: Fleet): void {
   if (fleetCount(fleet) <= 0) throw new GameError('EMPTY_FLEET', 'Send at least one craft', 400);
   for (const [hull, count] of Object.entries(fleet) as [HullId, number][]) {
     if (!Number.isInteger(count) || count < 0) throw new GameError('BAD_FLEET', 'Bad craft count', 400);
@@ -452,10 +461,26 @@ export async function resolveTransfer(
   await clearReservedFleet(tx, mission);
   await addUnits(tx, target.id, mission.fleet);
   const cargo = mission.cargo ?? EMPTY;
+  /**
+   * A SHIP LANDING ON A DARK WORLD IS THE ANSWER TO A DEADLINE. D167.
+   *
+   * A struck colony is released at the end of its recovery window unless its
+   * commander put a ship on it, and this is where that is recorded. It is stamped
+   * only while the window is actually open and only for a flight carrying craft —
+   * cargo alone is a delivery, not a defence, and the owner's instruction was
+   * about sending a fleet.
+   *
+   * The stamp is cleared by every strike, so it can only ever answer the rocket
+   * that is currently overhead.
+   */
+  const answersRecovery = fleetCount(mission.fleet) > 0
+    && target.recoveryUntil !== null
+    && target.recoveryUntil > now;
   await tx.update(planets).set({
     alloy: sql`${planets.alloy} + ${cargo.alloy}`,
     crystal: sql`${planets.crystal} + ${cargo.crystal}`,
     deuterium: sql`${planets.deuterium} + ${cargo.deuterium}`,
+    ...(answersRecovery ? { recoveryReliefAt: now } : {}),
   }).where(eq(planets.id, target.id));
   return 'DELIVERED';
 }

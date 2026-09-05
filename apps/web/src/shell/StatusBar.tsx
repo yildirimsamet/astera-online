@@ -54,7 +54,7 @@ export function StatusBar({
 
   if (!data) return <div className="h-[70px]" />;
   return (
-    <header className="relative shrink-0 border-b border-line bg-gradient-to-b from-[#0b1120] to-void px-3 pb-2 pt-[calc(10px+env(safe-area-inset-top))]">
+    <header className="relative shrink-0 border-b border-line bg-gradient-to-b from-[#0b1120] to-void px-2 pb-2 pt-[calc(10px+env(safe-area-inset-top))]">
       {/*
         THE SELECTOR APPEARS WHEN THERE IS SOMETHING TO SELECT.
 
@@ -91,8 +91,8 @@ export function StatusBar({
           </select>
         </label>
       )}
-      <div className="flex items-end gap-2">
-        <div className="flex min-w-0 flex-1 items-end gap-2" data-resource-strip>
+      <div className="flex items-end gap-2 max-h-[44px]">
+        <div className="flex min-w-0 flex-1 items-end gap-2 max-w-[275px]" data-resource-strip>
           <Stock
             label={t('statusBar.alloyLabel')}
             value={held.alloy}
@@ -115,7 +115,7 @@ export function StatusBar({
             tone="deuterium"
           />
         </div>
-        <div className="flex shrink-0 items-end gap-2 pb-1">
+        <div className="flex shrink-0 items-end gap-2 ml-auto">
           {/**
            * TWO CONTROLS, AND THERE USED TO BE FOUR. Owner decision.
            *
@@ -150,7 +150,7 @@ export function StatusBar({
               haptic('tap');
               onOpen('menu');
             }}
-            className="relative flex size-11 items-center justify-center rounded-chip border border-line-soft bg-deep text-dim transition-colors hover:border-line hover:text-bone"
+            className="relative flex size-9 items-center justify-center rounded-chip border border-line-soft bg-deep text-dim transition-colors hover:border-line hover:text-bone"
           >
             <MenuIcon className="size-5" />
             {/*
@@ -297,7 +297,7 @@ function Works({
   const blocked = something && movable < 1;
 
   return (
-    <div className="mt-2 flex items-stretch gap-2">
+    <div className="mt-3 flex items-stretch gap-2 max-h-[32px]">
       <button
         type="button"
         disabled={collect.isPending || !something}
@@ -457,7 +457,7 @@ function Stock({
           src={RESOURCE_ART[tone]}
           alt=""
           aria-hidden
-          className="size-4 shrink-0 object-contain drop-shadow-[0_0_5px_rgba(120,160,220,0.35)]"
+          className="size-3 shrink-0 object-contain drop-shadow-[0_0_5px_rgba(120,160,220,0.35)]"
         />
         {/*
           Still `full()` and never `compact()`. This is what the player is holding
@@ -466,7 +466,7 @@ function Stock({
         */}
         <span
           className={`readout min-w-0 whitespace-nowrap ${colour} ${pop ? 'pop' : ''}`}
-          style={{ fontSize: 'clamp(11px, 19cqi, 16px)' }}
+          style={{ fontSize: 'clamp(11px, 19cqi, 11px)' }}
         >
           {full(value)}
         </span>

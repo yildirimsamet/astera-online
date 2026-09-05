@@ -1,7 +1,7 @@
 import { and, eq, inArray } from 'drizzle-orm';
 import { pino } from 'pino';
 import { afterAll, beforeEach, describe, expect, it } from 'vitest';
-import { MULTI_WORLD, SERVERS, radarLead, radarRange } from '@astera/rules';
+import { CORE_TOP_LEVEL, MULTI_WORLD, SERVERS, radarLead, radarRange } from '@astera/rules';
 import {
   buildings,
   clanMemberships,
@@ -27,6 +27,7 @@ import {
   grant,
   makeAccount,
   placeAt,
+  levelWorld,
   seedWorld,
   setLevel,
   settledAt,
@@ -107,6 +108,9 @@ describe('a raid tells both sides', () => {
     await setLevel(f.db, defender, 'CORE', 6);
     await giveSatellite(f.db, defender, 'UPLINK');
     await grant(f.db, defender, 30_000, 3_000);
+    // `grant` raises the defender's Core to hold the purse, which is what puts the
+    // two worlds outside D168's tier band. See `levelWorld`.
+    await levelWorld(f.db, f.planetIds);
   });
 
   it('tells the defender what was taken and the attacker what it cost', async () => {
@@ -225,6 +229,8 @@ describe('the radar warning', () => {
     await setLevel(f.db, defender, 'CORE', 6);
     await giveSatellite(f.db, defender, 'UPLINK');
     await grant(f.db, defender, 30_000, 3_000);
+    // The purse raises the defender's Core past the attacker's tier band. D168.
+    await levelWorld(f.db, f.planetIds);
     await giveUnits(f.db, attacker, { DART: 40 });
     f.clock.advance(300);
   });
@@ -304,8 +310,16 @@ describe('the radar warning', () => {
     const leg = radarRange(3) * 2;
     await placeAt(f.db, attacker, { x: 0, y: 0, z: 0 });
     await placeAt(f.db, defender, { x: leg, y: 0, z: 0 });
-    await setLevel(f.db, attacker, 'CORE', 12);
-    await setLevel(f.db, defender, 'CORE', 12);
+    /*
+      AND BOTH WORLDS ARE DRAWN AT THE TOP OF THE LADDER, because the gap this
+      test measures IS the standoff. At Core 12 it was a fraction of a unit, and
+      D166's uniform shrink of the three authored sizes took two thirds of that —
+      leaving the two leads close enough that `LEAD_TOLERANCE` swallowed the
+      difference and the test measured nothing. Read off `CORE_TOP_LEVEL` rather
+      than a literal so the next size change cannot repeat it.
+    */
+    await setLevel(f.db, attacker, 'CORE', CORE_TOP_LEVEL);
+    await setLevel(f.db, defender, 'CORE', CORE_TOP_LEVEL);
     await giveInstrument(f.db, defender, 'RADAR', 3);
     const { arriveAt, missionId } = await launch();
     const visualLead = await leadFor(missionId, 3);
@@ -612,6 +626,9 @@ describe('the unlock cascade', () => {
     f = await seedWorld(3);
     await setLevel(f.db, f.planetIds[0]!, 'CORE', 6);
     for (const id of f.planetIds.slice(1)) await grant(f.db, id, 30_000, 3_000);
+    // Both targets are granted a purse, which lifts their Cores out of the raider's
+    // tier band until the whole fixture is levelled. D168.
+    await levelWorld(f.db, f.planetIds);
     await giveUnits(f.db, f.planetIds[0]!, { DART: 40 });
   });
 

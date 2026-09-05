@@ -13,7 +13,7 @@ import { StatusBar } from './shell/StatusBar.js';
 import { useAmbientMusic } from './lib/music.js';
 import { WorldProvider } from './api/world.js';
 import { Button } from './ui/kit/index.js';
-import type { CraftFocus } from './galaxy/ownCraft.js';
+import type { StripFocus } from './shell/PendingStrip.js';
 import { nextPanelStop, type PanelStopRequest } from './shell/panelRoute.js';
 
 /**
@@ -100,7 +100,7 @@ export function App() {
     setPanel(next);
   };
   const [planetFocus, setPlanetFocus] = useState<{ planetId: string; request: number } | null>(null);
-  const [craftFocus, setCraftFocus] = useState<{ focus: CraftFocus; request: number } | null>(null);
+  const [craftFocus, setCraftFocus] = useState<{ focus: StripFocus; request: number } | null>(null);
   const focusPlanet = (planetId: string): void => {
     setPanel(null);
     setPlanetFocus((current) => ({ planetId, request: (current?.request ?? 0) + 1 }));

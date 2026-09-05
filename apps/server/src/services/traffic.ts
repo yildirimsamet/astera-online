@@ -12,6 +12,7 @@ import {
   massClass,
   orbitStandoff,
   piratePosition,
+  pirateSightZone,
   sensorSphere,
   sensorZone,
   surfaceStandoff,
@@ -34,13 +35,20 @@ import {
   planets,
   strategicImpacts,
   strategicInterceptions,
+  tradeRuns,
   units,
 } from '../db/schema.js';
 import { legBelongsTo } from './flight.js';
 import { instrumentLevels, levelOf } from './intel.js';
 import { loadMiningSnapshot } from './mining.js';
 import { discoveredAsteroidIndexes } from './asteroidField.js';
-import { loadPirateSnapshot, pirateId, type PirateSnapshot } from './pirateField.js';
+import {
+  discoveredPirateIndexes,
+  loadPirateSnapshot,
+  pirateId,
+  type PirateSnapshot,
+} from './pirateField.js';
+import { dockEndsAt } from './trade.js';
 import { minutesSince } from '../clock.js';
 import { sensorHistoryForPlayer } from './sensorHistory.js';
 
@@ -350,6 +358,22 @@ export interface Contact {
    * a mass and a silhouette, and never this.
    */
   level?: PirateLevel;
+  /**
+   * THIS READING IS FROZEN, NOT LIVE. PIRATES ONLY. D160.
+   *
+   * Present when no circle of this commander's covers the craft right now and the
+   * only reason it is on the disc at all is that they identified it once. The
+   * position is still exact — an orbit is a solved function of time, which is why a
+   * rock behaves the same way — but the crew, the level and the mass are what was
+   * aboard the last time an eye was on it.
+   *
+   * IT EXISTS SO THE PICTURE CAN SAY SO. D151's rule is that a record is what you
+   * last had eyes on and that no surface may show a frozen record as a live one, so
+   * the disc draws a remembered pirate faded and the panel says when. Without this
+   * flag the client would have to guess by re-deriving the caller's own circles —
+   * a second opinion about sight, which is exactly what `sight.ts` exists to stop.
+   */
+  remembered?: true;
 }
 
 const lerp = (a: Vec3, b: Vec3, t: number): Vec3 => ({
@@ -472,6 +496,15 @@ export interface TrafficSnapshot {
   /** Raids in the air at a pirate. Somebody else's is a craft like any other. D150. */
   pirateRaidRows: { raid: typeof pirateRaids.$inferSelect }[];
   /**
+   * CONVOYS IN THE AIR AT THE MERCHANT. D156.
+   *
+   * NO LIVE-ROSTER MAP BESIDE IT, and the absence is a fact about the lane rather
+   * than an oversight: there is no combat at a merchant, so `trade_runs.fleet` is
+   * what is aboard on BOTH legs and can never be stale the way `pirate_raids.fleet`
+   * is on a return leg. One source, because there is only one truth.
+   */
+  tradeRunRows: { run: typeof tradeRuns.$inferSelect }[];
+  /**
    * WHAT IS ACTUALLY ABOARD EACH RAID, keyed by raid id. D150.
    *
    * `pirate_raids.fleet` is the immutable LAUNCH roster, so a returning raid drawn
@@ -514,7 +547,7 @@ export async function loadTrafficSnapshot(
   now: Date = new Date(),
 ): Promise<TrafficSnapshot> {
   const impactCutoff = new Date(now.getTime() - DEATH_STAR.impactSeconds * 1000);
-  const [missionRows, miningRows, pirateRaidRows, interceptionRows, impactRows] =
+  const [missionRows, miningRows, pirateRaidRows, tradeRunRows, interceptionRows, impactRows] =
     await Promise.all([
     db
       .select({ mission: missions })
@@ -539,6 +572,10 @@ export async function loadTrafficSnapshot(
       .from(pirateRaids)
       .where(and(eq(pirateRaids.seasonId, seasonId), ne(pirateRaids.status, 'done'))),
     db
+      .select({ run: tradeRuns })
+      .from(tradeRuns)
+      .where(and(eq(tradeRuns.seasonId, seasonId), ne(tradeRuns.status, 'done'))),
+    db
       .select({ interception: strategicInterceptions })
       .from(strategicInterceptions)
       .where(and(
@@ -562,6 +599,7 @@ export async function loadTrafficSnapshot(
   }
   for (const { run } of miningRows) ids.add(run.planetId);
   for (const { raid } of pirateRaidRows) ids.add(raid.planetId);
+  for (const { run } of tradeRunRows) ids.add(run.planetId);
 
   // The live roster of every raid still in the air. See `raidFleets` above for why
   // the row's own `fleet` column is the wrong answer on a return leg.
@@ -586,6 +624,7 @@ export async function loadTrafficSnapshot(
       missionRows,
       miningRows,
       pirateRaidRows,
+      tradeRunRows,
       raidFleets,
       interceptionRows,
       landedDeathStarMissionIds,
@@ -624,6 +663,7 @@ export async function loadTrafficSnapshot(
     missionRows,
     miningRows,
     pirateRaidRows,
+    tradeRunRows,
     raidFleets,
     interceptionRows,
     landedDeathStarMissionIds,
@@ -837,6 +877,7 @@ export async function galaxyTraffic(
     sensors,
     discovered,
     pirates,
+    discoveredPirateIndexes(pirates, epochs, now),
   );
 }
 
@@ -867,11 +908,21 @@ export function projectGalaxyTraffic(
    * this file's history is made of. Null is a caller with no season lane at all.
    */
   pirates: PirateSnapshot | null,
+  /**
+   * THE PIRATES THIS COMMANDER HAS ALREADY HAD EYES ON. D158.
+   *
+   * Required for the reason `discoveredAsteroids` is: a discovery set that a call
+   * site could forget is a surface where a whole target class silently disappears
+   * again. Empty is a legitimate caller — a visitor, or a commander who has never
+   * had one inside a post.
+   */
+  discoveredPirates: ReadonlySet<number>,
 ): Contact[] {
   const {
     missionRows,
     miningRows,
     pirateRaidRows,
+    tradeRunRows,
     raidFleets,
     positions,
     coreLevels,
@@ -1315,14 +1366,19 @@ export function projectGalaxyTraffic(
   }
 
   /**
-   * THE PIRATES THEMSELVES. D150.
+   * THE PIRATES THEMSELVES. D150, and D158 for the memory.
    *
    * A pirate is a CRAFT and answers to the same three zones as everything else:
    * nothing outside the caller's circles, a moving question mark inside a Radar
    * one, the fleet itself inside a Telescope one. There is no owner exclusion —
-   * nobody owns a pirate — and no discovery memory: unlike a rock (D143), a pirate
-   * that leaves your circles stops existing for you, which is the whole difference
-   * between a target with an address and a target with a course.
+   * nobody owns a pirate.
+   *
+   * AND SINCE D158 IT IS REMEMBERED LIKE A ROCK. Once the caller's sensor history
+   * has ever contained it, the mark never goes out again: `discoveredPirates`
+   * floors the zone at CONTACT, so a target that flies out of every circle is
+   * still on the disc and still raidable. It buys the mark and nothing else — the
+   * crew, the level and the silhouette stay live readings — so the fidelity ladder
+   * is unchanged.
    *
    * WHAT IS NEVER PUBLISHED: the orbital elements. Radius, period, phase,
    * inclination and ascending node ARE the route, and the route is the one thing
@@ -1366,7 +1422,34 @@ export function projectGalaxyTraffic(
     for (const spec of pirates.standing(now)) {
       const engaging = engagedAt.get(spec.index);
       const at = engaging ? engaging.at : piratePosition(spec, nowMinutes);
-      const zone = zoneAt(at);
+      /*
+        LIVE SIGHT, FLOORED BY MEMORY. D158 · D160.
+
+        `zoneAt` is `sensorZone` and stays the only statement of the three zones;
+        discovery is a floor under its answer and never a second opinion about it.
+        The set is computed from the same `sensor_epochs` rows the rock lane reads,
+        and the floor is IDENTIFIED because that reach IS the telescope's — a
+        discovered pirate is one this commander has already counted the crew of.
+        A pirate no epoch ever held keeps the live answer, radar contact included.
+
+        `pirateSightZone` RATHER THAN THE TERNARY IT REPLACES. This loop cannot call
+        `pirateZone`: it arrives with the whole lane's discovery answer precomputed
+        as a set, and re-solving per pirate would be the same work twice. Writing the
+        floor out inline here instead made it the SECOND statement of a sight rule,
+        which is the thing `sight.ts` exists to prevent — and the two had already
+        drifted at the expiry boundary before the floor was shared.
+      */
+      const live = zoneAt(at);
+      const zone = pirateSightZone(live, discoveredPirates.has(spec.index));
+      /**
+       * NO CIRCLE COVERS IT — which is a statement about SIGHT, not about age. D160.
+       *
+       * The figures below are the lane's current state either way; what the flag
+       * buys is the disc drawing this craft faded, so a commander can tell what they
+       * are looking at from what they are remembering. A discovered rock publishes
+       * its live `oreRemaining` on exactly these terms.
+       */
+      const frozen = live === 'NONE' ? { remembered: true as const } : {};
       if (zone === 'NONE') {
         /*
           THE FLASH IS PUBLIC AT ANY RANGE; THE CRAFT IS NOT. D52 — owner rule.
@@ -1452,6 +1535,7 @@ export function projectGalaxyTraffic(
           endAt,
           ...(reveal.size ? { mass: massClass(crew) } : {}),
           ...(reveal.kind ? { silhouette: 'pirate' } : {}),
+          ...frozen,
           ...moment,
         });
         continue;
@@ -1465,9 +1549,12 @@ export function projectGalaxyTraffic(
         startAt: now,
         endAt,
         mass: massClass(crew),
-        // Actual sight: the crew still aboard, and the level that prices it.
+        // Actual sight, or the memory of it: the crew still aboard and the level
+        // that prices it. `remembered` says which of the two the caller is doing —
+        // the numbers are current in both cases, like a rock's. D160.
         fleet: crew,
         level: spec.level,
+        ...frozen,
         ...moment,
       });
     }
@@ -1628,6 +1715,144 @@ export function projectGalaxyTraffic(
       ...slice,
       mass: massClass(aboard),
       fleet: aboard,
+    });
+  }
+
+  /**
+   * A TRADE CONVOY IS A CRAFT, AND IT ANSWERS TO THE SAME THREE ZONES. D123 · D156.
+   *
+   * THE MERCHANT IS PUBLIC; THE CONVOY IS NOT, and the split is the whole fog
+   * position of this feature. The ship itself is an announced moment whose orbit
+   * every commander in the galaxy is handed on `/api/galaxy/events` — fog hides
+   * pre-decision knowledge, never a public live event. The transports flying at it
+   * are ordinary craft carrying an ordinary decision, so they appear when they
+   * enter a circle and stop existing when they leave it.
+   *
+   * `kind: 'fleet'`, AND THERE IS DELIBERATELY NO `trade` CONTACT KIND. A defender
+   * who could tell a laden convoy from an inbound raid at a glance would be handed,
+   * for nothing, the one judgement the whole intel layer is sold to make. At
+   * IDENTIFIED the manifest reads like any other fleet's and a Telescope owner can
+   * work out from the hulls that it is cargo — which is the Telescope doing its
+   * job, not the payload doing it for them.
+   *
+   * NO CARGO FIELD, ON EITHER ZONE. What a convoy is carrying and what it is
+   * fetching belong to the commander who sent it, exactly as a transfer's hold
+   * does. There is no field here for a modified client to read.
+   */
+  for (const { run } of tradeRunRows) {
+    /*
+      WHOSE CONVOY IT IS, NOT WHOSE PAD IT LEFT. D150.
+
+      The mining loop above asks about the pad because a mining run has no owner
+      column to ask about. A trade run does, for exactly the reason `pirate_raids`
+      grew one: a colony that changes hands mid-flight would otherwise start
+      sending the trader an anonymous copy of their own convoy — at the same instant
+      `pendingThreads` stopped sending them the real one — while handing the captor
+      a full-fidelity reading of a fleet they had never had eyes on, obtained by
+      taking a world rather than by looking at anything. The pad is the fallback
+      only where there is no commander to ask about, which is the seat-free preview
+      path (D56).
+    */
+    const mine = ownPlayerId === null
+      ? ownedPlanets.has(run.planetId)
+      : run.ownerPlayerId === ownPlayerId;
+    if (mine) continue;
+    const home = positions.get(run.planetId);
+    if (!home) continue;
+
+    const meet = { x: run.interceptX, y: run.interceptY, z: run.interceptZ };
+    const returning = run.status === 'returning';
+    const legArriveAt = returning ? run.homeAt : run.arriveAt;
+    if (!legArriveAt) continue;
+
+    const homeCore = coreLevels.get(run.planetId);
+    const surface = homeCore === undefined ? 0 : surfaceStandoff(worldRadius(homeCore));
+    const { from, to } = returning
+      ? visualLeg(meet, home, 0, surface)
+      : visualLeg(home, meet, surface, 0);
+    /*
+      THE RETURN LEG STARTS WHEN THE DOCK ENDS, NOT WHEN THE CONVOY ARRIVED.
+      The same instant `resolveTradeArrival` measures the leg from, so the window
+      this publishes and the clock the queue is waiting on are one number.
+    */
+    const departAt = returning ? dockEndsAt(run.arriveAt) : run.departAt;
+
+    /*
+      ALONGSIDE, FOR TEN SECONDS, AND STILL SUBJECT TO THE HORIZON.
+
+      `windowOf` returns null the instant a leg is over, so without this branch a
+      convoy would blink out of every stranger's disc for the length of the dock
+      and reappear on its way home. It holds AT the rendezvous rather than short of
+      it: there is no combat here to stand off from, and the point is one the
+      observer can already see — they are inside a circle that covers it, which is
+      the only reason they are being told anything at all.
+
+      AND NOTHING IS PUBLISHED AT `NONE`. A raid's flash is public at any range
+      because a battle is a public moment (D52); a swap is a transaction, and there
+      is no effect for a commander with no eyes on it to watch.
+    */
+    const dockEnd = dockEndsAt(run.arriveAt);
+    const docked = run.status === 'outbound'
+      && now.getTime() >= run.arriveAt.getTime()
+      && now.getTime() < dockEnd.getTime();
+    if (docked) {
+      const zone = zoneAt(meet);
+      if (zone === 'NONE') continue;
+      if (zone === 'CONTACT') {
+        const reveal = radarReveal(meet);
+        out.push({
+          id: run.id,
+          kind: 'unknown',
+          from: meet,
+          to: meet,
+          startAt: now,
+          endAt: dockEnd,
+          ...(reveal.size ? { mass: massClass(run.fleet) } : {}),
+          ...(reveal.kind ? { silhouette: 'fleet' } : {}),
+        });
+        continue;
+      }
+      out.push({
+        id: run.id,
+        kind: 'fleet',
+        from: meet,
+        to: meet,
+        startAt: now,
+        endAt: dockEnd,
+        mass: massClass(run.fleet),
+        fleet: run.fleet,
+      });
+      continue;
+    }
+
+    const slice = windowOf(from, to, departAt, legArriveAt, now);
+    if (!slice) continue;
+    /*
+      THE ZONE IS APPLIED TO THE CRAFT'S INSTANTANEOUS POSITION, NEVER TO THE LEG.
+      A per-leg test would publish the whole flight of anything that ever passed
+      near a circle, which is the opposite of what a sensor horizon is.
+    */
+    const zone = zoneAt(slice.from);
+    if (zone === 'NONE') continue;
+
+    if (zone === 'CONTACT') {
+      const reveal = radarReveal(slice.from);
+      out.push({
+        id: run.id,
+        kind: 'unknown',
+        ...slice,
+        ...(reveal.size ? { mass: massClass(run.fleet) } : {}),
+        ...(reveal.kind ? { silhouette: 'fleet' } : {}),
+      });
+      continue;
+    }
+
+    out.push({
+      id: run.id,
+      kind: 'fleet',
+      ...slice,
+      mass: massClass(run.fleet),
+      fleet: run.fleet,
     });
   }
 

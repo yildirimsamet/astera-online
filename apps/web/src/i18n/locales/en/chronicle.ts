@@ -14,6 +14,8 @@ export const chronicle = {
   launcherControl: '{{planet}} changed control',
   launcherAsteroidShowerStarted: 'Asteroid shower active',
   launcherAsteroidShowerEnded: 'Asteroid shower ended',
+  launcherTradeShipStarted: 'Trade ship in the galaxy',
+  launcherTradeShipEnded: 'Trade ship departed',
   list: 'Public events in this galaxy',
   repeatCount: '{{count}} times',
   empty: 'The galaxy is quiet for now. The next launch may change that.',
@@ -47,6 +49,10 @@ export const chronicle = {
   asteroidShowerStartedDetail: 'New asteroid arrivals increased to ×{{multiplier}} across the galaxy.',
   asteroidShowerEnded: 'The asteroid shower ended',
   asteroidShowerEndedDetail: 'Spawn returned to normal. Existing asteroids remain until their natural expiry.',
+  tradeShipStarted: 'A trade ship entered the galaxy',
+  tradeShipStartedDetail: 'It swapped at {{alloy}} alloy = {{crystal}} crystal = 1 deuterium, for anyone who could reach it.',
+  tradeShipEnded: 'The trade ship left',
+  tradeShipEndedDetail: 'Its window closed. Convoys already in the air still come home.',
   act: {
     war: {
       title: 'The War act has begun',

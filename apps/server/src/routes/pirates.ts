@@ -12,6 +12,7 @@ import {
   interceptOrbit,
   massClass,
   piratePosition,
+  pirateZone,
   sensorZone,
   type MobileHullId,
   type Vec3,
@@ -21,6 +22,7 @@ import { planets, players, units } from '../db/schema.js';
 import { GameError, orbitOf } from '../services/planet.js';
 import { ownedPlanet } from '../services/ownership.js';
 import { pirateCallsign, pirateId } from '../services/pirateField.js';
+import { sensorHistoryForPlayer } from '../services/sensorHistory.js';
 import { launchPirateRaid } from '../services/pirateRaid.js';
 import { techOf } from '../services/researchState.js';
 import { requireAuth } from './auth.js';
@@ -34,10 +36,16 @@ const raidBody = z.object({
 /**
  * PIRATES — the third target class. D150.
  *
- * `GET` answers with the pirates this commander can see RIGHT NOW, and nothing
- * else: no orbital elements, no raw lane index, no hoard figure. The fog is
- * applied in the query through `sensorZone`, which is the one statement of the
- * three zones — so what this route hands over is exactly what the disc draws.
+ * `GET` answers with the pirates this commander can see, and nothing else: no
+ * orbital elements, no raw lane index, no hoard figure. The fog is applied in the
+ * query through `pirateZone` — live sight off `sensorZone`, floored at IDENTIFIED
+ * by D158/D160's discovery memory — so what this route hands over is exactly what
+ * the disc draws, including the marks memory is holding open.
+ *
+ * `remembered` IS THE OTHER HALF OF THAT FLOOR. A memory is a reading that has
+ * stopped moving, and D151 forbids any surface showing one as though it were live,
+ * so every entry says whether a circle covers it right now. The launch sheet prints
+ * the age; the disc fades the craft.
  *
  * `reachMinutes` COMES FROM HERE AND NOT FROM THE CLIENT. The rendezvous is a
  * numerical solve against a moving target; two implementations would produce two
@@ -72,9 +80,11 @@ export function registerPirateRoutes(app: FastifyInstance): void {
       throw new GameError('NOT_YOUR_PLANET', 'That world is not yours', 403);
     }
 
-    const [snapshot, sensors] = await Promise.all([
+    const [snapshot, sensors, epochs] = await Promise.all([
       app.projections.pirateSnapshot(self.seasonId, now),
       app.projections.sensorsFor(self.playerId, self.planetIds),
+      // The commander's own sensor history: what memory is still holding open. D158.
+      sensorHistoryForPlayer(app.db, self.playerId),
     ]);
     const nowMinutes = minutesSince(snapshot.startsAt, now);
 
@@ -128,8 +138,10 @@ export function registerPirateRoutes(app: FastifyInstance): void {
 
     const pirates = snapshot.standing(now).flatMap((spec) => {
       const at = piratePosition(spec, nowMinutes);
-      const zone = sensorZone(sensors, at);
+      const zone = pirateZone(sensors, spec, at, epochs, nowMinutes);
       if (zone === 'NONE') return [];
+      /** Nothing of this commander's covers it right now: the reading is frozen. */
+      const remembered = sensorZone(sensors, at) === 'NONE';
       const crew = snapshot.livingRosterOf(spec.index);
       if (fleetCount(crew) === 0) return [];
 
@@ -200,6 +212,7 @@ export function registerPirateRoutes(app: FastifyInstance): void {
         id: pirateId(snapshot.key, spec.index),
         callsign: pirateCallsign(snapshot.key, spec.index),
         zone,
+        ...(remembered ? { remembered: true as const } : {}),
         at,
         /** Minutes until it leaves the disc for good. Public: it is a deadline. */
         expiresInMinutes: Math.max(0, spec.expiresAt - nowMinutes),

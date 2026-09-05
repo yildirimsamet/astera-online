@@ -6,7 +6,6 @@ import {
   DEATH_STAR,
   interceptionRange,
   strategicStockpile,
-  MULTI_WORLD,
   buildingCost,
   distance,
   fleetValue,
@@ -16,6 +15,7 @@ import {
   type BuildingId,
   type Fleet,
   type Resources,
+  recoveryMinutesFor,
 } from '@astera/rules';
 import { addMinutes, type Clock } from '../clock.js';
 import type { Db, Tx } from '../db/client.js';
@@ -35,7 +35,7 @@ import { schedule } from '../worker/queue.js';
 import { destroyBuildingOrders } from './buildQueue.js';
 import { assertFreeBay } from './flight.js';
 import { advanceNeutralEconomy } from './neutral.js';
-import { assertColonyCapacity, capitalPlanet, lockWorlds, transferPlanetControl } from './ownership.js';
+import { capitalPlanet, lockWorlds, releasePlanetControl } from './ownership.js';
 import {
   GameError,
   assertSeasonOpenThrough,
@@ -328,13 +328,19 @@ export async function launchDeathStar(
         until: target.protectedUntil.toISOString(),
       });
     }
-    // D98: recovery only implies acquisition for a world whose control may
-    // actually change. A capital may be devastated repeatedly, but never reserves
-    // colony capacity and never becomes a capture while the rocket is in flight.
-    const captureIntent = target.kind !== 'CAPITAL'
-      && target.recoveryUntil !== null
-      && target.recoveryUntil > origin.now;
-    if (captureIntent) await assertColonyCapacity(tx, origin.playerId, origin.seasonId);
+    /**
+     * A STRIKE IS NEVER AN ACQUISITION ANY MORE. D167 — owner instruction.
+     *
+     * D98/D105/D113 made a second impact inside the recovery window transfer the
+     * colony to the attacker, which is why launching one used to reserve colony
+     * capacity and refuse when the window would close before impact. That whole
+     * route is gone: the weapon darkens a world and starts a DEADLINE its commander
+     * has to answer, and a colony that goes unanswered is released to NOBODY.
+     *
+     * So there is no capture intent to declare, no capacity to reserve, and no
+     * `RECOVERY_WINDOW_TOO_SHORT` — a second strike is simply another strike, and
+     * its only effect on a world already dark is to restart the clock.
+     */
     /*
       THE WEAPON, AND ONLY THE WEAPON. T12.
 
@@ -357,14 +363,6 @@ export async function launchDeathStar(
     const dist = distance(origin, target);
     const oneWay = travelExact(dist, DEATH_STAR.speed);
     const arriveAt = addMinutes(origin.now, oneWay);
-    if (captureIntent && target.recoveryUntil !== null && arriveAt >= target.recoveryUntil) {
-      throw new GameError(
-        'RECOVERY_WINDOW_TOO_SHORT',
-        'The recovery window closes before impact',
-        409,
-        { recoveryUntil: target.recoveryUntil.toISOString() },
-      );
-    }
     assertSeasonOpenThrough(origin, arriveAt);
     const [mission] = await tx
       .insert(missions)
@@ -387,7 +385,8 @@ export async function launchDeathStar(
         distance: dist,
         departAt: origin.now,
         arriveAt,
-        deathStarCapture: captureIntent,
+        // Retired at D167 and kept only so old rows still parse; nothing sets it.
+        deathStarCapture: false,
       })
       .returning();
     if (!mission) throw new Error('death star mission insert returned no row');
@@ -613,10 +612,6 @@ export async function applyDeathStarStrike(
   const shieldDestroyed = advancedTarget?.shield ?? target.shield;
   const strippedValue = resourcesDestroyed + buildingDamage + aegisDamage + fleetValue(destroyedFleet);
 
-  const secondStrike = target.kind !== 'CAPITAL'
-    && mission.deathStarCapture
-    && target.recoveryUntil !== null
-    && target.recoveryUntil > now;
   await tx
     .update(planets)
     .set({
@@ -676,41 +671,24 @@ export async function applyDeathStarStrike(
   // minutes of Telescope discoveries that the struck world never had.
   await refreshSensorEpoch(tx, target.id, mission.arriveAt);
 
-  if (secondStrike) {
-    const protectedUntil = addMinutes(now, MULTI_WORLD.occupationMinutes);
-    await transferPlanetControl(tx, {
-      targetPlanetId: target.id,
-      newPlayerId: mission.ownerPlayerId,
-      expectedControllerPlayerId: target.controllerPlayerId,
-      now,
-      protectedUntil,
-    });
-    await schedule(tx, {
-      seasonId: mission.seasonId,
-      kind: 'occupation_end',
-      refId: target.id,
-      payload: { expectedUntil: protectedUntil.toISOString() },
-      resolveAt: protectedUntil,
-    });
-    await resumePausedAsset(tx, target.id, mission.seasonId, now);
-    if (target.controllerPlayerId) await recomputePlayerWealth(tx, target.controllerPlayerId);
-    await recomputePlayerWealth(tx, mission.ownerPlayerId);
-    return {
-      outcome: 'CAPTURED',
-      previousPlayerId: target.controllerPlayerId,
-      damage,
-      destroyedFleet,
-      destroyedResources,
-      levelChanges,
-      destroyedOrders: burned,
-      shieldDestroyed,
-    };
-  }
-
-  const recoveryUntil = addMinutes(now, MULTI_WORLD.recoveryMinutes);
+  /**
+   * THE STRIKE STARTS A DEADLINE. IT NEVER TAKES A WORLD. D167.
+   *
+   * D105/D113 handed a colony to the attacker when a second impact landed inside
+   * the recovery window, and that whole branch is gone on the owner's instruction.
+   * What the weapon buys now is time pressure on somebody else: a struck colony is
+   * dark for eight hours (`recoveryMinutesFor`), and if its commander does not put
+   * a ship on it before the clock runs out, `endRecovery` releases it to NOBODY —
+   * neutral again, buildings and stock untouched, open to whoever gets there.
+   *
+   * `recoveryReliefAt` IS CLEARED HERE, and that is the rule the owner asked for in
+   * as many words: a commander who saved this colony an hour ago has to save it
+   * again. The answer belongs to the strike it answered, not to the world.
+   */
+  const recoveryUntil = addMinutes(now, recoveryMinutesFor(target.kind));
   await tx
     .update(planets)
-    .set({ recoveryUntil, protectedUntil: null })
+    .set({ recoveryUntil, protectedUntil: null, recoveryReliefAt: null })
     .where(eq(planets.id, target.id));
   await schedule(tx, {
     seasonId: mission.seasonId,
@@ -811,6 +789,25 @@ export async function abandonDeathStarBuild(
   });
 }
 
+/**
+ * THE END OF THE WINDOW, AND FOR A COLONY IT IS A VERDICT. D167.
+ *
+ * This used to be housekeeping: clear the flag, resume what was paused. It is now
+ * the moment a struck COLONY is either kept or lost, because the owner's rule is
+ * that the recovery window is a deadline rather than an outage — put a ship on the
+ * world before the clock runs out or it stops being yours.
+ *
+ * WHAT DECIDES IT IS `recoveryReliefAt`, stamped by a transfer landing and cleared
+ * by every strike, so the answer belongs to the strike it answered. A commander who
+ * saved this colony from the last rocket has to save it from the next one.
+ *
+ * A CAPITAL IS NEVER RELEASED — the locked constraint, kept literally rather than
+ * reinterpreted as "captured slowly" — and neither is a world nobody holds.
+ *
+ * THE ROW IS READ AND WRITTEN UNDER THE SAME `recoveryUntil` GUARD the clear
+ * already used, so a redelivered `recovery_end` cannot release a world twice or
+ * release one whose window has since been restarted by a second strike.
+ */
 export async function endRecovery(
   tx: Tx,
   planetId: string,
@@ -818,14 +815,63 @@ export async function endRecovery(
   now: Date,
 ): Promise<boolean> {
   const until = new Date(expectedUntil);
+  const [before] = await tx
+    .select({
+      kind: planets.kind,
+      controllerPlayerId: planets.controllerPlayerId,
+      reliefAt: planets.recoveryReliefAt,
+      recoveryUntil: planets.recoveryUntil,
+    })
+    .from(planets)
+    .where(eq(planets.id, planetId));
+  const unanswered = before?.kind === 'COLONY'
+    && before.controllerPlayerId !== null
+    && before.recoveryUntil !== null
+    && before.recoveryUntil.getTime() === until.getTime()
+    /*
+      NO RELIEF AT ALL IS THE WHOLE TEST. The stamp is written only while the window
+      is open and cleared by every strike, so its mere presence already means "for
+      this rocket" — an extra comparison against `until` would be dead code
+      pretending to be a guard.
+    */
+    && before.reliefAt === null;
+
+  if (unanswered) {
+    const released = await releasePlanetControl(tx, {
+      planetId,
+      expectedControllerPlayerId: before.controllerPlayerId!,
+      now,
+    });
+    if (released) {
+      await resumePausedAsset(tx, planetId, await seasonOf(tx, planetId), now);
+      return true;
+    }
+    /*
+      THE WORLD CHANGED HANDS BETWEEN THE READ AND THE WRITE, so there is nothing to
+      release — and this must NOT return early. `recovery_end` fires once; leaving
+      without clearing `recoveryUntil` would strand the world dark for the rest of
+      the season with no event left to wake it. Fall through and end the window.
+    */
+  }
+
   const ended = await tx
     .update(planets)
-    .set({ recoveryUntil: null, lastTickAt: now })
+    .set({ recoveryUntil: null, recoveryReliefAt: null, lastTickAt: now })
     .where(and(eq(planets.id, planetId), eq(planets.recoveryUntil, until)))
     .returning({ id: planets.id, seasonId: planets.seasonId });
   if (!ended[0]) return false;
   await resumePausedAsset(tx, planetId, ended[0].seasonId, now);
   return true;
+}
+
+/** The season a world belongs to. Never changes after creation. */
+async function seasonOf(tx: Tx, planetId: string): Promise<string> {
+  const [row] = await tx
+    .select({ seasonId: planets.seasonId })
+    .from(planets)
+    .where(eq(planets.id, planetId));
+  if (!row) throw new Error('planet vanished mid-transaction');
+  return row.seasonId;
 }
 
 export async function endOccupation(

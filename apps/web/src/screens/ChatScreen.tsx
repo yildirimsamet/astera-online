@@ -126,7 +126,7 @@ export function ChatScreen({
             />
           )
         ) : !inClan ? (
-          <div className="px-4 py-6">
+          <div className="px-2 py-6">
             <EmptyState icon={<ClanIcon className="size-6" />} title={t('chat.clanLocked')}>
               {t('chat.clanLockedHint')}
             </EmptyState>
@@ -261,7 +261,7 @@ function ChannelPanel({
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
-      <div ref={history} className="min-h-0 flex-1 overflow-y-auto px-4 pb-3" role="log" aria-label={listLabel} aria-live="polite">
+      <div ref={history} className="min-h-0 flex-1 overflow-y-auto px-2 pb-3" role="log" aria-label={listLabel} aria-live="polite">
         {hasNextPage ? (
           <div className="py-3 text-center">
             <Button size="sm" variant="ghost" disabled={fetchingOlder} onClick={onOlder}>
@@ -280,7 +280,7 @@ function ChannelPanel({
                   message.self ? `ml-auto ${selfSurface}` : 'mr-auto border-line-soft bg-deep'
                 }`}
               >
-                <div className="flex items-baseline justify-between gap-3">
+                <div className="flex items-baseline justify-between gap-2">
                   {message.self ? (
                     <strong className={`name truncate ${selfInk}`}>{message.username}</strong>
                   ) : message.planetId !== undefined ? (
@@ -312,7 +312,7 @@ function ChannelPanel({
         )}
       </div>
 
-      <form onSubmit={submit} className="shrink-0 border-t border-line-soft bg-void/80 px-4 pb-3 pt-3">
+      <form onSubmit={submit} className="shrink-0 border-t border-line-soft bg-void/80 px-2 pb-3 pt-3">
         <div className="flex items-center gap-2">
           <label className="min-w-0 flex-1">
             <span className="sr-only">{placeholder}</span>
@@ -337,7 +337,7 @@ function ChannelPanel({
             {t('chat.send')}
           </Button>
         </div>
-        <div className="mt-1 flex min-h-4 justify-between gap-3 text-micro">
+        <div className="mt-1 flex min-h-4 justify-between gap-2 text-micro">
           <span className="text-threat-ink">{postError ? describeError(postError) : ''}</span>
           <span className="ml-auto text-faint">
             {t('chat.remaining', { count: maxChars - Array.from(draft).length })}

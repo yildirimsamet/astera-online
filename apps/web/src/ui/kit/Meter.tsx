@@ -44,7 +44,7 @@ export function Meter({
 
   return (
     <div
-      className="relative flex h-[7px] gap-px"
+      className="relative flex h-[5px] gap-px"
       role="meter"
       {...(label ? { 'aria-label': label } : {})}
       data-full={full ? 'true' : 'false'}

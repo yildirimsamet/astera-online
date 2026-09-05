@@ -87,6 +87,8 @@ const fought = (minutesAgo: number): BattleReport => ({
   yourLosses: {},
   theirLosses: { DART: 4 },
   yourFleet: { DART: 10 },
+  /** Defender-only: the force that arrived. Empty on an attacker’s report. D164. */
+  theirFleet: {},
   lootAlloy: 100,
   lootCrystal: 0,
   lootDeuterium: 0,

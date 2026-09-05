@@ -69,6 +69,34 @@ function fitCargo(
 }
 
 /**
+ * HOW MUCH OF ONE STORE THIS MISSION MAY CARRY. Owner instruction.
+ *
+ * Three limits meet on the deuterium slider and only two of them were in it: the
+ * store itself, the room left in the hold — and THE FLIGHT. Deuterium is the one
+ * resource that is both cargo and fuel, the server's guard is on the sum, and the
+ * screen used to run the slider to the last drop in the tank and let the commander
+ * discover the third limit by overshooting it. A ceiling that has the launch
+ * already subtracted is the rule made visible in the control, which is I1 and I2:
+ * a max button that hands back a load the server will refuse is not a max.
+ *
+ * ALLOY AND CRYSTAL DO NOT FLY THE SHIP, so nothing comes off theirs.
+ */
+export function loadCeiling(
+  resource: (typeof RESOURCE_ORDER)[number],
+  { stock, capacity, otherCargo, fuel }: {
+    stock: number;
+    capacity: number;
+    /** What the other two stores have already taken out of the hold. */
+    otherCargo: number;
+    /** What this exact fleet burns over this exact distance, in deuterium. */
+    fuel: number;
+  },
+): number {
+  const store = resource === 'deuterium' ? stock - fuel : stock;
+  return Math.max(0, Math.floor(Math.min(store, capacity - otherCargo)));
+}
+
+/**
  * WHERE THE CARGO IS GOING, IN THE THREE FIELDS THIS SHEET ACTUALLY USES.
  *
  * It used to take a whole `GalaxyPlanet`, which is a row off the PUBLIC disc
@@ -148,11 +176,11 @@ export function TransferSheet({
   const homeDefence = fleetPower({ ...remainingFleet, ...planet.ground });
   /** What the origin holds before anything is packed, so the bar has a whole. */
   const defencePowerNow = fleetPower({ ...planet.fleet, ...planet.ground });
+  /** The one distance this sheet is about: the ETA, the fuel and the trim share it. */
+  const span = distance(planet.planet.position, target.position);
   const eta = useMemo(
-    () => fleetCount(fleet) > 0
-      ? fleetTravelExact(distance(planet.planet.position, target.position), fleet)
-      : 0,
-    [fleet, planet.planet.position, target.position],
+    () => fleetCount(fleet) > 0 ? fleetTravelExact(span, fleet) : 0,
+    [fleet, span],
   );
   /**
    * WHAT THE FLIGHT ITSELF BURNS, AND IT WAS NOWHERE ON THIS SCREEN. T6.
@@ -168,10 +196,8 @@ export function TransferSheet({
    * the worse half — a screen causing a refusal it cannot explain.
    */
   const fuel = useMemo(
-    () => fleetCount(fleet) > 0
-      ? missionFuel(fleet, distance(planet.planet.position, target.position), 1)
-      : 0,
-    [fleet, planet.planet.position, target.position],
+    () => fleetCount(fleet) > 0 ? missionFuel(fleet, span, 1) : 0,
+    [fleet, span],
   );
   const spendableDeuterium = planet.planet.deuterium - cargo.deuterium;
   const fuelled = spendableDeuterium >= fuel;
@@ -185,7 +211,17 @@ export function TransferSheet({
     const max = planet.fleet[id] ?? 0;
     const next = { ...fleet, [id]: Math.max(0, Math.min(max, value)) };
     setFleet(next);
-    setCargo((current) => fitCargo(current, transferCargoCapacity(next)));
+    /*
+      A HEAVIER CONVOY BURNS MORE, AND THE LOAD FOLLOWS ITS CEILING DOWN.
+      Packing the hold to the limit and then adding a hull is the one way back
+      into the state the ceiling exists to remove — a screen offering a launch the
+      server will refuse — because the flight got dearer after the load was set.
+    */
+    const room = Math.max(0, planet.planet.deuterium - missionFuel(next, span, 1));
+    setCargo((current) => fitCargo(
+      { ...current, deuterium: Math.min(current.deuterium, room) },
+      transferCargoCapacity(next),
+    ));
   };
 
   return (
@@ -223,7 +259,7 @@ export function TransferSheet({
         assemble. The launch sheet next door has drawn its equivalents since D142;
         these are the same facts and now wear the same shapes.
       */}
-      <div className="grid grid-cols-2 gap-2 pt-4">
+      <div className="grid grid-cols-2 gap-2 pt-2">
         <p className="plate px-3 py-2 text-caption text-dim">
           {t('transfer.eta')} <strong className="text-bone">{eta > 0 ? duration(eta) : '—'}</strong>
         </p>
@@ -278,7 +314,7 @@ export function TransferSheet({
           )}
         </div>
       )}
-      <h3 className="legend mt-4">{t('transfer.fleet')}</h3>
+      <h3 className="legend mt-2">{t('transfer.fleet')}</h3>
       {/*
         WHAT THIS WORLD IS LEFT HOLDING, drawn the way the raid sheet draws it:
         the garrison as a bar, with the part that flies away carved off it. A
@@ -333,7 +369,7 @@ export function TransferSheet({
               className={`min-h-14 rounded-chip border border-line-soft px-3 py-2 ${(fleet[id] ?? 0) > 0 ? 'bg-crystal/[0.05]' : ''
                 }`}
             >
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2">
               {/*
               THE SHIP, NOT ITS NAME. The raid sheet next door has shown the render
               since it was written; this one — the other half of the same verb —
@@ -410,7 +446,7 @@ export function TransferSheet({
           );
         })}
       </div>
-      <h3 className="legend mt-4">{t('transfer.cargo')}</h3>
+      <h3 className="legend mt-2">{t('transfer.cargo')}</h3>
       {/*
         PERMANENT, AND IT CHANGES WHAT IT SAYS RATHER THAN WHETHER IT IS THERE. A
         line that only appears when something is wrong teaches nothing the first
@@ -430,7 +466,7 @@ export function TransferSheet({
         {RESOURCE_ORDER.map((resource) => {
           const stock = Math.floor(planet.planet[resource]);
           const otherCargo = loaded - cargo[resource];
-          const max = Math.max(0, Math.floor(Math.min(stock, capacity - otherCargo)));
+          const max = loadCeiling(resource, { stock, capacity, otherCargo, fuel });
           const fill = max > 0 ? Math.min(100, (cargo[resource] / max) * 100) : 0;
           return (
             <label key={resource} className="block rounded-chip border border-line-soft bg-deep/55 px-3 py-3">

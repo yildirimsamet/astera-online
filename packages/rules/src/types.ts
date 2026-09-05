@@ -37,6 +37,15 @@ export type MiningHullId = 'PROSPECTOR';
 
 export type MobileHullId = Exclude<HullId, GroundHullId | MiningHullId>;
 export type HullClass = 'SKIRMISHER' | 'LANCE' | 'BULWARK' | 'SUPPORT';
+/**
+ * The three classes that are IN the counter cycle.
+ *
+ * SUPPORT is not a fourth rung — it deals nothing and everything is strong against
+ * it — so a surface that draws the cycle must not be handed a type that lets SUPPORT
+ * appear as one of its corners. `COUNTERS` and `COMBAT_CLASSES` in `hulls.ts` are
+ * keyed by this for exactly that reason.
+ */
+export type CombatClass = Exclude<HullClass, 'SUPPORT'>;
 export type ShipTier = 1 | 2 | 3 | 4;
 export type HullFamily = 'OFFENSIVE' | 'DEFENSIVE' | 'CARGO' | 'SPECIALIST' | 'PRESERVED';
 export type HullProfile =

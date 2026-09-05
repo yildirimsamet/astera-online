@@ -321,9 +321,22 @@ export class Projections {
     ) {
       this.traffic.invalidate(event.shard);
     }
+    /*
+      THE DEBRIS LIST LIVES IN THIS SNAPSHOT, AND A PIRATE BATTLE CREATES ONE. D150.
+
+      `shard:pirate` was the one kind that could write a `debris_fields` row and
+      leave this projection warm. The engagement is ten seconds by design; the
+      wreck then took up to `MINING_CACHE_TTL_MS` longer to appear, because the
+      read provoked by the commander's own `raid_result` wake was answered from a
+      snapshot loaded before the battle committed. The field at the rendezvous is
+      the entire payoff of the target class and the public race to collect it is
+      half of what makes the fight worth watching (D32) — it may not arrive on a
+      cache expiry.
+    */
     if (
       kind === 'shard:mining'
       || kind === 'shard:arrival'
+      || kind === 'shard:pirate'
       || kind === 'shard:impact'
       || kind === 'shard:control'
       || kind === 'shard:season'

@@ -10,19 +10,23 @@ import { compact } from '../lib/format.js';
  * their capacity was, what one ship cost, or how many more they could build: three
  * questions the sentence technically answers and none it answers at a glance.
  *
- * IT DRAWS TWO DIFFERENT CARDS, AND CONFLATING THEM WAS A REAL BUG. Owner report
- * against the Fleet and Defend tabs: *"bu iki bardan alttaki ne işe yarıyor ve
- * ortadaki beyaz çizgi gibi gözüken şey ne?"*
+ * THERE IS ONE BAR AND NO SECOND ONE. Owner report against the Fleet and Defend
+ * tabs — *"bu iki bardan alttaki ne işe yarıyor ve ortadaki beyaz çizgi gibi
+ * gözüken şey ne?"* — and then, when the answer was a narrower block that started
+ * at the same origin, the owner's instruction was that it should not be there at
+ * all. A measurement nobody asked for is a second bar with no stated job however
+ * carefully it is aligned, so the width one hull takes is no longer drawn: the
+ * count of how many more fit already answers the question that block was for.
+ *
+ * IT STILL DRAWS TWO DIFFERENT CARDS, AND CONFLATING THEM WAS A REAL BUG.
  *
  *   · A ROOM (`fits` omitted) — the Hangar band, the ground battery band, a
  *     transfer's destination. Nobody is choosing a hull here, so the questions are
  *     "how big is this world's deck" and "how much of it is spoken for". It gets
- *     the bar and the two figures at the ends of it. NO SHIP BLOCK: there is no
- *     ship to measure, and one drawn anyway is a second bar with no stated job,
- *     which is exactly how it was reported.
+ *     the bar and the two figures at the ends of it.
  *   · A PURCHASE (`fits` given) — the craft sheet, where a hull IS being chosen.
- *     It adds the two things only that surface can say: how many more of THIS ONE
- *     fit, and how much of the deck one of them eats.
+ *     It adds the one thing only that surface can say: how many more of THIS ONE
+ *     fit.
  *
  * AND THE FIGURE HAD TO MEAN THE SAME THING ON BOTH BANDS. The Hangar card passed
  * `hangarTotal - hangarUsed`, which is SPACE, under the words "more fit" — so a
@@ -39,22 +43,18 @@ export function CapacityBar({
   total,
   used,
   incoming,
-  bulk,
   fits,
   icon,
   label,
+  className,
 }: {
+  className?: string;
   /** The ceiling: a Hangar's room, or the Core's ground slots. */
   total: number;
   /** Committed already — standing craft plus whatever the yard queue will land. */
   used: number;
   /** What the order currently on screen would add. Zero on a room card. */
   incoming: number;
-  /**
-   * What ONE of this hull takes, which is what the block under the bar draws.
-   * Omitted on a room card, where there is no hull to measure.
-   */
-  bulk?: number;
   /**
    * How many more of that hull fit — a COUNT OF SHIPS, never a quantity of space.
    * Its presence is what turns this into a purchase card.
@@ -73,13 +73,6 @@ export function CapacityBar({
   // draw past its own end even while the stepper is mid-press.
   const incomingShare = Math.min(share(incoming), 100 - usedShare);
   const freeShare = Math.max(0, 100 - usedShare - incomingShare);
-  /*
-    A SINGLE SHIP HAS A FLOOR. One Wasp in a Hangar 10 is 0.06% of the bar — a
-    segment with no width is not a smaller explanation, it is no explanation. The
-    floor is small enough to stay honest against its neighbours and wide enough to
-    be a thing on screen.
-  */
-  const oneShare = Math.max(0.8, share(bulk ?? 0));
   const shopping = fits !== undefined;
   /*
     A ROOM IS FULL WHEN THE BAR IS; A PURCHASE IS FULL WHEN NONE OF THE CHOSEN HULL
@@ -90,8 +83,8 @@ export function CapacityBar({
   const free = Math.max(0, total - used - incoming);
 
   return (
-    <div className="plate flex flex-col gap-2.5 p-3">
-      <div className="flex items-center gap-3">
+    <div className={`flex flex-col gap-2.5 p-3 ${className}`}>
+      <div className="flex items-center gap-2">
         {icon}
         <p className="flex min-w-0 flex-1 items-baseline gap-2">
           {shopping ? (
@@ -104,7 +97,7 @@ export function CapacityBar({
               <span className="text-caption text-faint">{t('capacity.fit')}</span>
             </>
           ) : (
-            label !== undefined && <span className="legend truncate">{label}</span>
+            label !== undefined && <span className="legend truncate !text-[10px] !tracking-[0px]">{label}</span>
           )}
         </p>
         {full && (
@@ -119,7 +112,7 @@ export function CapacityBar({
         recess rather than as a hairline chart.
       */}
       <div
-        className="socket flex h-3.5 w-full justify-items-start overflow-hidden rounded-full"
+        className="socket flex h-2 w-full justify-items-start overflow-hidden rounded-full"
         role="img"
         aria-label={t('capacity.reading', {
           used: Math.round(used + incoming),
@@ -155,7 +148,7 @@ export function CapacityBar({
         shopped for. It is stated as SPACE, which is the unit a deck is measured in.
       */}
       {!shopping && (
-        <div className="flex items-baseline justify-between gap-3">
+        <div className="flex items-baseline justify-between gap-2">
           <span className="num text-micro text-faint">
             {compact(Math.round(used + incoming))}
             <span className="ml-1">{t('capacity.used')}</span>
@@ -163,32 +156,6 @@ export function CapacityBar({
           <span className={`num text-caption ${full ? 'text-alloy' : 'text-bone'}`}>
             {compact(free)}
             <span className="ml-1 text-faint">{t('capacity.free')}</span>
-          </span>
-        </div>
-      )}
-
-      {/*
-        ONE SHIP, AT THE WIDTH IT TAKES — AND IT STARTS WHERE THE BAR ABOVE STARTS.
-        Owner report: *"ortadaki beyaz çizgi gibi gözüken şey ne?"*
-
-        `.socket` is `display: grid; place-items: center` (chrome.css) and this well
-        carried no display utility to override it, so the block measuring one hull
-        was CENTRED in its own track — a floating tick mark under an unexplained
-        bar. A measurement that does not share an origin with the thing it is
-        measured against is not a measurement.
-
-        The caption leads rather than trails, so the row reads left to right as the
-        sentence it is: one takes THIS MUCH of the bar above.
-      */}
-      {shopping && (
-        <div className="flex items-center gap-2">
-          <span className="shrink-0 text-micro text-faint">{t('capacity.each')}</span>
-          <span className="socket h-2 flex-1 justify-items-start overflow-hidden rounded-full">
-            <span
-              data-part="one"
-              className="block h-full rounded-full bg-crystal/70"
-              style={{ width: `${String(oneShare)}%` }}
-            />
           </span>
         </div>
       )}

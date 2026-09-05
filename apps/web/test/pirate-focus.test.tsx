@@ -142,6 +142,27 @@ describe('the pirate rail', () => {
     expect(screen.getByText(/already has a raid/i)).toBeTruthy();
   });
 
+  /**
+   * A PIRATE OUT OF SIGHT IS STILL A TARGET. D160.
+   *
+   * No circle is covering it, so the rail says exactly that — and then offers the
+   * launch anyway, because that is the whole point of remembering it. What the line
+   * must NOT claim is that the figures are stale: they are the lane's current state,
+   * on the same terms a discovered rock reports its remaining ore.
+   */
+  it('offers the raid on a remembered pirate, and says it is out of sight', () => {
+    const { onAttack } = panel(identified({ remembered: true }), { DART: 10 });
+    expect(screen.getByText(/not on your sensors now/i)).toBeTruthy();
+    expect(screen.getByRole('button', { name: /attack/i })).toHaveProperty('disabled', false);
+    expect(onAttack).not.toHaveBeenCalled();
+  });
+
+  /** And a pirate a circle IS covering is never marked out of sight. */
+  it('says nothing about sensors while a circle is covering it', () => {
+    panel(identified(), { DART: 10 });
+    expect(screen.queryByText(/not on your sensors now/i)).toBeNull();
+  });
+
   /** The deadline is the reason to hurry, so it leads and it turns red near the end. */
   it('states the deadline, and marks it when it is nearly up', () => {
     const { unmount } = panel(identified({ expiresInMinutes: 180 }), { DART: 10 });

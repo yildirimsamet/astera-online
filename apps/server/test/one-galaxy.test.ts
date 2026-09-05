@@ -238,6 +238,7 @@ describe('one galaxy, one clock', () => {
           SEES_EVERYTHING,
           new Set(),
           null,
+          new Set(),
         ).find((c) => c.id === mission.id);
       }
       if (!held) continue;
@@ -480,6 +481,7 @@ describe('one galaxy, one clock', () => {
           SEES_EVERYTHING,
           new Set([rock.index]),
           null,
+          new Set(),
         ).find((c) => c.id === run.runId);
       }
       if (!held) continue;
@@ -546,6 +548,7 @@ describe('one galaxy, one clock', () => {
         SEES_EVERYTHING,
         new Set(),
         null,
+        new Set(),
       ).find((c) => c.id === mission.id);
       if (!stale) continue;
 

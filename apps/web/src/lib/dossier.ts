@@ -358,7 +358,14 @@ export function dossier({ target, planet, intel, reports, rival, now }: DossierI
       source: 'probe',
       ageMinutes: age,
       accuracy: report.accuracy,
-      note: report.detected ? i18n.t('dossier.stockCaught') : i18n.t('dossier.stockClean'),
+      /*
+        WHAT THE FIGURE IS, THEN WHETHER THEY SAW YOU. The probe reports raidable
+        stock now, not the store, and a reader who is not told that will compare it
+        to their own full warehouse and conclude the target is poor.
+      */
+      note: `${i18n.t('dossier.stockNote')} ${
+        report.detected ? i18n.t('dossier.stockCaught') : i18n.t('dossier.stockClean')
+      }`,
     });
 
     facts.push({

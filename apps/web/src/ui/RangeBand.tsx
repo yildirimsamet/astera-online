@@ -60,7 +60,7 @@ export function RangeBand({
         <span className="legend truncate">{label}</span>
       </div>
       <div
-        className="socket relative h-2.5 w-full overflow-hidden rounded-full"
+        className="socket relative h-2 w-full overflow-hidden rounded-full"
         role="img"
         aria-label={t('rangeBand.reading', {
           label,

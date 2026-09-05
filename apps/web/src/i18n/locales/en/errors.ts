@@ -64,11 +64,20 @@ export const errors = {
   RESEARCH_QUEUE_FULL: '3 research projects are already queued. Wait for one to finish before adding another.',
   BUILD_ORDER_NOT_FOUND: 'No active build order by that id',
   BASH_LIMIT: 'You have hit this planet too many times recently',
+  TIER_BAND: "That commander's total strength is far above your own",
+  TIER_BAND_WEAK: "That commander's total strength is far below your own",
   CANNOT_INTERCEPT: 'It will leave the disc before your craft could reach it',
+  /* Raised by the transfer lane with no detail and by the trade lane with one, so
+     it is written without interpolation: a placeholder rendered raw on the older
+     caller is worse than a sentence that fits both. */
+  CARGO_CAPACITY: 'That load is more than this convoy can carry',
+  TRANSFER_NEEDS_CARGO_HULL: 'Carrying resources needs a Courier, Wayfarer or Atlas',
+  BAD_TRADE: 'The merchant does not take that swap',
+  TRADE_WINDOW_CLOSED: 'The merchant has left the galaxy',
   CHAT_RATE_LIMIT: 'Send at most five messages every {{seconds}} seconds.',
   BAD_CHAT_CURSOR: 'That part of the conversation is no longer available',
   CHAT_MESSAGE_NOT_VISIBLE: 'That message is no longer available',
-  CLANS_NEXT_SEASON: 'Clans begin in ruleset-v3 galaxies',
+  CLANS_NEXT_SEASON: 'Clans open in newer galaxies than this one',
   CLAN_ADAPTING: 'This opens when the 12-hour clan adaptation is complete',
   CLAN_AID_CANNOT_LAND: 'That world cannot receive this exact ship payload yet',
   CLAN_AID_CARGO_CAPACITY: 'Only Courier, Wayfarer and Atlas carry clan resources; capacity is {{capacity}}',

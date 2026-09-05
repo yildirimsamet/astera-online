@@ -37,7 +37,7 @@ export function DiscReadout({
 
   return (
     <div className="pointer-events-auto plate plate-inset max-w-[calc(100vw-1.5rem)] px-2 py-1">
-      <div className="flex min-w-0 items-center justify-between gap-3">
+      <div className="flex min-w-0 items-center justify-between gap-2">
         <p className="legend min-w-0 truncate text-micro tracking-label">{shard}</p>
         {online !== undefined ? (
           <p

@@ -2,6 +2,7 @@ import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useChronicle } from '../api/queries.js';
 import { chatRelativeTime } from '../lib/chatTime.js';
+import { full } from '../lib/format.js';
 import { haptic } from '../lib/haptics.js';
 import { useNow } from '../lib/time.js';
 import {
@@ -133,16 +134,37 @@ export function ChronicleScreen({
                 });
                 icon = <CoreIcon className="size-4" />;
                 break;
+              /*
+                TWO PUBLIC EVENTS SHARE ONE ROW KIND. D156.
+
+                The payload is discriminated on `eventKind`, so the sentence is
+                chosen from the payload rather than from the row — a merchant and a
+                shower are the same MOMENT in the record and entirely different
+                news. Reading `asteroidSpawnMultiplier` unconditionally is what the
+                schema's old shower-only literal was protecting; the narrowing is
+                what replaces it.
+              */
               case 'galaxy_event_started':
-                title = t('chronicle.asteroidShowerStarted');
-                detail = t('chronicle.asteroidShowerStartedDetail', {
-                  multiplier: event.payload.asteroidSpawnMultiplier,
-                });
+                title = event.payload.eventKind === 'TRADE_SHIP'
+                  ? t('chronicle.tradeShipStarted')
+                  : t('chronicle.asteroidShowerStarted');
+                detail = event.payload.eventKind === 'TRADE_SHIP'
+                  ? t('chronicle.tradeShipStartedDetail', {
+                    alloy: full(event.payload.rate.deuterium / event.payload.rate.alloy),
+                    crystal: full(event.payload.rate.deuterium / event.payload.rate.crystal),
+                  })
+                  : t('chronicle.asteroidShowerStartedDetail', {
+                    multiplier: event.payload.asteroidSpawnMultiplier,
+                  });
                 icon = <GalaxyIcon className="size-4" />;
                 break;
               case 'galaxy_event_ended':
-                title = t('chronicle.asteroidShowerEnded');
-                detail = t('chronicle.asteroidShowerEndedDetail');
+                title = event.payload.eventKind === 'TRADE_SHIP'
+                  ? t('chronicle.tradeShipEnded')
+                  : t('chronicle.asteroidShowerEnded');
+                detail = event.payload.eventKind === 'TRADE_SHIP'
+                  ? t('chronicle.tradeShipEndedDetail')
+                  : t('chronicle.asteroidShowerEndedDetail');
                 icon = <GalaxyIcon className="size-4" />;
                 break;
             }
@@ -151,7 +173,7 @@ export function ChronicleScreen({
                 ? () => { onFocusPlanet(event.subjectPlanetId!); }
                 : null;
             return (
-              <li key={event.id} className="flex gap-3 px-4 py-3">
+              <li key={event.id} className="flex gap-2 px-2 py-3">
                 <div className={`mt-1 grid size-9 shrink-0 place-items-center rounded-full border ${tone}`}>
                   {icon}
                 </div>
@@ -194,7 +216,7 @@ export function ChronicleScreen({
         </ol>
       )}
       {chronicle.hasNextPage && (
-        <div className="px-4 pt-4 text-center">
+        <div className="px-2 pt-2 text-center">
           <Button size="sm" variant="ghost" disabled={chronicle.isFetchingNextPage} onClick={() => { void chronicle.fetchNextPage(); }}>
             {chronicle.isFetchingNextPage ? t('chronicle.loadingOlder') : t('chronicle.older')}
           </Button>

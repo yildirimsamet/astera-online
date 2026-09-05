@@ -5,7 +5,17 @@ import type { NotificationView, PlanetView } from '../api/schemas.js';
 import i18n from '../i18n/index.js';
 import { compact } from '../lib/format.js';
 import { haptic } from '../lib/haptics.js';
-import { describeNotification, isAlarming, notificationIdentity } from '../lib/notifications.js';
+import {
+  describeNotification,
+  isAlarming,
+  notificationIdentity,
+  signalFamily,
+  signalGlyph,
+  signalOutcome,
+  type SignalFamily,
+  type SignalGlyph,
+  type SignalOutcome,
+} from '../lib/notifications.js';
 import { useProjected, type Projected } from '../lib/projection.js';
 import { duration, staleness, useNow } from '../lib/time.js';
 import { Sheet } from '../ui/kit/index.js';
@@ -14,14 +24,20 @@ import { serverNow } from '../lib/clock.js';
 import {
   AlloyIcon,
   BellIcon,
+  ConquestIcon,
   CrystalIcon,
+  DeathStarIcon,
   DisruptedIcon,
+  EyeIcon,
+  GalaxyIcon,
   IncomingIcon,
   RaidedIcon,
   RefineryIcon,
   ReturnedIcon,
   ScanIcon,
+  SkullIcon,
   UnlockIcon,
+  WorldLostIcon,
 } from '../ui/icons/index.js';
 
 /**
@@ -128,13 +144,12 @@ export function Signals({
          * new, and a badge that can never be cleared teaches people to ignore
          * badges.
          */
-        className={`relative flex size-11 items-center justify-center rounded-chip border transition-colors ${
-          unseen > 0
-            ? 'border-threat/70 bg-threat/15 motion-safe:animate-pulse'
-            : status.length > 0
-              ? 'border-alloy/50 bg-alloy/10'
-              : 'border-line-soft bg-deep hover:border-line'
-        }`}
+        className={`relative flex size-9 items-center justify-center rounded-chip border transition-colors ${unseen > 0
+          ? 'border-threat/70 bg-threat/15 motion-safe:animate-pulse'
+          : status.length > 0
+            ? 'border-alloy/50 bg-alloy/10'
+            : 'border-line-soft bg-deep hover:border-line'
+          }`}
       >
         <Beacon lit={unseen > 0} />
         {unseen > 0 && (
@@ -164,7 +179,7 @@ export function Signals({
           }}
         >
           {status.length > 0 && (
-            <div className="mb-6 mt-4">
+            <div className="mb-6 mt-2">
               <p className="legend mb-2">{t('signals.statusHeading')}</p>
               <div className="plate plate-inset">
                 {status.map((item) => (
@@ -177,9 +192,9 @@ export function Signals({
                       onOpen(item.go);
                       setOpen(false);
                     }}
-                    className="flex w-full items-start gap-3 border-b border-line-soft p-3 text-left last:border-b-0"
+                    className="flex w-full items-start gap-2 border-b border-line-soft p-3 text-left last:border-b-0"
                   >
-                    <span className={`mt-1 grid size-9 shrink-0 place-items-center rounded-chip border ${ item.tone === 'threat' ? 'border-threat/45 bg-threat/10 text-threat' : item.tone === 'alloy' ? 'border-alloy/35 bg-alloy/10 text-alloy' : 'border-crystal/35 bg-crystal/10 text-crystal' }`} aria-hidden>
+                    <span className={`mt-1 grid size-9 shrink-0 place-items-center rounded-chip border ${item.tone === 'threat' ? 'border-threat/45 bg-threat/10 text-threat' : item.tone === 'alloy' ? 'border-alloy/35 bg-alloy/10 text-alloy' : 'border-crystal/35 bg-crystal/10 text-crystal'}`} aria-hidden>
                       <StatusGlyph kind={item.kind} />
                     </span>
                     <span className="min-w-0 flex-1">
@@ -199,7 +214,7 @@ export function Signals({
 
           <p className="legend mb-2">{t('signals.eventsHeading')}</p>
           {events.length === 0 ? (
-            <div className="grid justify-items-center gap-3 border border-dashed border-line-soft px-6 py-8 text-center text-dim">
+            <div className="grid justify-items-center gap-2 border border-dashed border-line-soft px-6 py-8 text-center text-dim">
               <BellIcon className="size-10 text-faint" />
               <p className="max-w-[28ch] text-body leading-relaxed">{t('signals.empty')}</p>
             </div>
@@ -250,12 +265,22 @@ export const DESTINATION: Record<string, { panel: Panel; stop?: PanelStop }> = {
   incoming_fleet: { panel: 'planet' },
   strategic_incoming: { panel: 'planet' },
   fleet_returned: { panel: 'planet' },
-  // Everything that is a READING goes where readings live — the battle report
-  // behind a raid, the radar log behind a scan, the report behind a probe.
-  raided: { panel: 'intel', stop: 'battles' },
-  raid_result: { panel: 'intel', stop: 'battles' },
-  death_star_result: { panel: 'intel', stop: 'battles' },
-  strategic_intercepted: { panel: 'intel', stop: 'battles' },
+  /*
+    A FIGHT OPENS ITS OWN REPORT. Owner instruction, correcting D121.
+
+    D121 read this complaint as a ROOM problem — "you were raided" opened the
+    Intel centre and landed on the probe list — and fixed the shelf. The altitude
+    was still wrong: the reader tapped one battle and got a list with that battle
+    somewhere in it. `report` is the door onto the report itself, and the shelf
+    named beside it is where `BattleReportDoor` falls back when that exact fight
+    cannot be found.
+  */
+  raided: { panel: 'report', stop: 'battles' },
+  raid_result: { panel: 'report', stop: 'battles' },
+  death_star_result: { panel: 'report', stop: 'battles' },
+  strategic_intercepted: { panel: 'report', stop: 'battles' },
+  // Everything else that is a READING goes where readings live — the radar log
+  // behind a scan, the report behind a probe.
   // The radar log is its own section further down the same screen, and the probe
   // list is the shelf it sits under.
   scan_detected: { panel: 'intel', stop: 'probes' },
@@ -310,6 +335,74 @@ export function group(events: readonly NotificationView[]): Group[] {
   return out;
 }
 
+/**
+ * HOW EACH FAMILY OF NEWS IS PAINTED. D142.
+ *
+ * `docs/visual-design.md`: **icons carry shape, the interface carries colour.**
+ * So the family decides the chip's hue and `signalGlyph` decides its shape, and a
+ * row is never separated from its neighbour by only one of the two.
+ *
+ * THE READ COLUMN IS DIMMER, NOT GREY. Every chip used to turn furniture-grey the
+ * moment the row was seen, which threw the category away as soon as the player
+ * looked at the list — so a history of forty rows was forty identical grey dots.
+ * A read row keeps its colour at about a third of the intensity: still legible as
+ * "that was a loss", clearly no longer new.
+ *
+ * PIRATE AND THREAT SHARE THE RED, DELIBERATELY. An identified pirate wears a red
+ * skull on the disc (`PIRATE_MARK`, `galaxy/Fleets.tsx`) and the mark, not the hue,
+ * is what says "a target rather than a commander". A second red would teach a
+ * distinction the galaxy itself does not draw.
+ */
+const FAMILY_SKIN: Record<SignalFamily, { live: string; read: string }> = {
+  threat: {
+    live: 'border-threat/75 bg-threat/55 text-threat-ink',
+    read: 'border-threat/44 bg-threat/[0.2] text-threat-ink/55',
+  },
+  pirate: {
+    live: 'border-threat/75 bg-threat/55 text-threat-ink',
+    read: 'border-threat/44 bg-threat/[0.2] text-threat-ink/55',
+  },
+  gain: {
+    live: 'border-opportunity/45 bg-opportunity/30 text-opportunity',
+    read: 'border-opportunity/20 bg-opportunity/[0.2] text-opportunity/75',
+  },
+  watch: {
+    live: 'border-alloy/45 bg-alloy/30 text-alloy',
+    read: 'border-alloy/20 bg-alloy/[0.2] text-alloy/75',
+  },
+  world: {
+    live: 'border-crystal/45 bg-crystal/30 text-crystal',
+    read: 'border-crystal/20 bg-crystal/[0.2] text-crystal/75',
+  },
+  // A kind this build has never heard of. Furniture, on purpose — see `signalFamily`.
+  note: {
+    live: 'border-line-soft bg-deep text-faint',
+    read: 'border-line-soft bg-deep text-faint',
+  },
+};
+
+/**
+ * THE GROUND A ROW SITS ON — whether the news went the reader's way. Owner rule.
+ *
+ * A thin green for a win, a thin red for a loss, nothing for what is neither. The
+ * values are deliberately near the floor: this is a tint on the plate, not a
+ * highlight, and at any real strength it would fight both the sentence over it and
+ * the chip beside it.
+ *
+ * NEUTRAL KEEPS THE OLD BEHAVIOUR EXACTLY — the faint aqua when unread and bare
+ * plate once read — because a wash on a row that is neither a win nor a loss makes
+ * three states out of two and costs the other two their meaning.
+ *
+ * WHICH IS WHY NEWNESS MOVED OFF THE BACKGROUND. Two `raided` rows, one read and
+ * one not, are both losses and are now painted identically; the unread mark is the
+ * design system's `.pip`, the only thing on this surface shaped like it.
+ */
+const OUTCOME_WASH: Record<SignalOutcome, string> = {
+  win: 'bg-opportunity/[0.1]',
+  loss: 'bg-threat/[0.05]',
+  neutral: '',
+};
+
 function Event({
   event,
   repeats,
@@ -328,65 +421,183 @@ function Event({
 }) {
   const line = describeNotification(event, now);
   if (!line) return null;
+  const family = signalFamily(event);
+  const outcome = signalOutcome(event);
   const bad = isAlarming(event);
   const destination = DESTINATION[event.kind];
-  const subject = notificationIdentity(event);
-  const subjectAt = subject === null ? -1 : line.indexOf(subject.label);
+  const age = staleness((now - event.at.getTime()) / 60_000);
+  /**
+   * The outcome owns the background; a neutral row keeps the old aqua-when-unread.
+   * `pip` then carries newness on its own, for every family at once.
+   */
+  const wash = outcome === 'neutral'
+    ? (unread ? 'bg-crystal/[0.04]' : '')
+    : OUTCOME_WASH[outcome];
+  const pip = unread
+    ? (
+      <span
+        data-unread
+        aria-hidden
+        /*
+          `pointer-events-none`, like the sentence beside it: the row's door is a
+          full-bleed button UNDER this mark, and a positioned decoration paints
+          over it. An unread row is exactly the row a reader taps, and the corner
+          of the newest one was the one spot on it that swallowed the tap.
+        */
+        className={`pip pointer-events-none absolute right-2 top-2.5 ${outcome === 'loss' ? 'pip-threat' : ''}`}
+      />
+    )
+    : null;
 
+  const sentence = (
+    <Sentence
+      line={line}
+      event={event}
+      repeats={repeats}
+      onFocusPlanet={onFocusPlanet}
+    />
+  );
+
+  const open = destination
+    ? (
+      <button
+        type="button"
+        aria-label={i18n.t('signals.openEvent')}
+        onClick={() => {
+          /*
+            THE SHELF DECIDES WHETHER THE ROW NAMES A FIGHT. Owner report.
+
+            A battle notification is about ONE report, and `refId` is that fight on
+            every kind that routes to the battle shelf — the mission for a raid, a
+            Death Star and an interception, the raid itself for a pirate (D150),
+            and `BattleReports` matches both binders. This used to be a list of two
+            kinds, so a Death Star resolving and a rocket being shot down opened
+            the list and left the reader to find their own report in it.
+
+            Read off the destination, the rule is stated once: a fifth battle kind
+            gets it by routing there, which is the only place it can be forgotten.
+          */
+          const reportMissionId = destination.stop === 'battles'
+            ? event.refId ?? undefined
+            : undefined;
+          onGo(destination.panel, destination.stop, reportMissionId);
+        }}
+        className="absolute inset-0"
+      />
+    )
+    : null;
+
+  /**
+   * A GALAXY EVENT IS NOT PERSONAL MAIL, AND IS NOT DRAWN LIKE IT.
+   *
+   * An asteroid shower happened to the whole shard. Rendered as an ordinary row it
+   * sat between "your fleet came home" and "you were raided" in the same shape, so
+   * the reader's first question was which of their worlds it was about — a question
+   * the sentence cannot answer because there is no world in it.
+   *
+   * A framed plate with a lit rail and a GALAXY EVENT eyebrow, in the same crystal
+   * the live event chip on the disc uses (`ActiveGalaxyEvent`), so the two read as
+   * one thing seen twice rather than two unrelated notices.
+   */
+  if (family === 'world') {
+    return (
+      <div
+        data-testid="signal-event"
+        data-signal-id={event.id}
+        data-family={family}
+        className={`relative w-full border-b border-line-soft p-2 last:border-b-0 ${wash}`}
+      >
+        {open}
+        {pip}
+        <div className="relative overflow-hidden rounded-plate border border-crystal/30 bg-[radial-gradient(130%_120%_at_0%_0%,rgb(89_200_255/0.14),transparent_62%)] p-3">
+          <span
+            aria-hidden
+            className="absolute inset-y-0 left-0 w-[2px] bg-crystal/70 shadow-[0_0_10px_rgba(89,200,255,0.65)]"
+          />
+          <div className="flex items-center gap-2">
+            <span data-glyph={signalGlyph(event)} className="shrink-0 text-crystal" aria-hidden>
+              <EventGlyph glyph={signalGlyph(event)} className="size-4" />
+            </span>
+            <p className="legend text-micro text-crystal">{i18n.t('signals.worldEvent')}</p>
+            <span className="num ml-auto shrink-0 text-label text-faint">{age}</span>
+          </div>
+          <p className="pointer-events-none relative mt-1.5 text-body text-bone">{sentence}</p>
+        </div>
+      </div>
+    );
+  }
+
+  const skin = FAMILY_SKIN[family];
   return (
     <div
       data-testid="signal-event"
-      className={`relative flex w-full items-start gap-3 border-b border-line-soft p-3 text-left last:border-b-0 ${
-        unread ? 'bg-crystal/[0.04]' : ''
-      }`}
+      data-signal-id={event.id}
+      data-family={family}
+      className={`relative flex w-full items-start gap-2 border-b border-line-soft p-3 pr-6 text-left last:border-b-0 ${wash}`}
     >
-      {destination && (
-        <button
-          type="button"
-          aria-label={i18n.t('signals.openEvent')}
-          onClick={() => {
-            const reportMissionId = event.kind === 'raided' || event.kind === 'raid_result'
-              ? event.refId ?? undefined
-              : undefined;
-            onGo(destination.panel, destination.stop, reportMissionId);
-          }}
-          className="absolute inset-0"
-        />
-      )}
-      <span className={`mt-1 grid size-9 shrink-0 place-items-center rounded-chip border ${ !unread ? 'border-line-soft bg-deep text-faint' : bad ? 'border-threat/45 bg-threat/10 text-threat' : 'border-crystal/40 bg-crystal/10 text-crystal' }`} aria-hidden>
-        <EventGlyph kind={event.kind} />
+      {open}
+      {pip}
+      <span
+        data-glyph={signalGlyph(event)}
+        className={`mt-1 grid size-9 shrink-0 place-items-center rounded-chip border ${unread ? skin.live : skin.read
+          }`}
+        aria-hidden
+      >
+        <EventGlyph glyph={signalGlyph(event)} />
       </span>
       <span className="pointer-events-none relative min-w-0 flex-1">
         <span className={`relative block text-body ${bad ? 'text-threat-ink' : 'text-bone'}`}>
-          {subject && subjectAt >= 0 ? (
-            <>
-              {line.slice(0, subjectAt)}
-              {subject.planetId ? (
-                <button
-                  type="button"
-                  onClick={() => {
-                    haptic('tap');
-                    onFocusPlanet(subject.planetId!);
-                  }}
-                  className="pointer-events-auto relative z-10 font-bold text-inherit underline decoration-current/40 underline-offset-2"
-                >
-                  {subject.label}
-                </button>
-              ) : (
-                <strong className="font-bold">{subject.label}</strong>
-              )}
-              {line.slice(subjectAt + subject.label.length)}
-            </>
-          ) : line}
-          {repeats > 1 && (
-            <span className="num text-faint"> {i18n.t('signals.repeat', { count: repeats })}</span>
-          )}
+          {sentence}
         </span>
-        <span className="num mt-1 block text-label text-faint">
-          {staleness((now - event.at.getTime()) / 60_000)}
-        </span>
+        <span className="num mt-1 block text-label text-faint">{age}</span>
       </span>
     </div>
+  );
+}
+
+/**
+ * The sentence, with the one identity in it made bold and — when it is a world —
+ * a way to fly there. Extracted only because two row shapes now print it.
+ */
+function Sentence({
+  line,
+  event,
+  repeats,
+  onFocusPlanet,
+}: {
+  line: string;
+  event: NotificationView;
+  repeats: number;
+  onFocusPlanet: (planetId: string) => void;
+}) {
+  const subject = notificationIdentity(event);
+  const subjectAt = subject === null ? -1 : line.indexOf(subject.label);
+  return (
+    <>
+      {subject && subjectAt >= 0 ? (
+        <>
+          {line.slice(0, subjectAt)}
+          {subject.planetId ? (
+            <button
+              type="button"
+              onClick={() => {
+                haptic('tap');
+                onFocusPlanet(subject.planetId!);
+              }}
+              className="pointer-events-auto relative z-10 font-bold text-inherit underline decoration-current/40 underline-offset-2"
+            >
+              {subject.label}
+            </button>
+          ) : (
+            <strong className="font-bold">{subject.label}</strong>
+          )}
+          {line.slice(subjectAt + subject.label.length)}
+        </>
+      ) : line}
+      {repeats > 1 && (
+        <span className="num text-faint"> {i18n.t('signals.repeat', { count: repeats })}</span>
+      )}
+    </>
   );
 }
 
@@ -466,13 +677,42 @@ function StatusGlyph({ kind }: { kind: Status['kind'] }) {
   return <CrystalIcon className="size-5" />;
 }
 
-function EventGlyph({ kind }: { kind: string }) {
-  if (kind === 'incoming_fleet') return <IncomingIcon className="size-5" />;
-  if (kind === 'fleet_returned') return <ReturnedIcon className="size-5" />;
-  if (kind === 'raided' || kind === 'raid_result') return <RaidedIcon className="size-5" />;
-  if (kind === 'scan_detected' || kind === 'probe_report') return <ScanIcon className="size-5" />;
-  if (kind === 'unlock') return <UnlockIcon className="size-5" />;
-  return <BellIcon className="size-5" />;
+/**
+ * THE SHAPE HALF. `signalGlyph` decides which; this only draws it.
+ *
+ * The split matters because the decision is testable as data and the drawing is
+ * not: eight kinds used to reach the bell here, and nothing failed — a bell is a
+ * perfectly valid icon, it just says nothing. The classifier's own test now
+ * refuses to let any kind the server can send fall through to it.
+ */
+function EventGlyph({ glyph, className = 'size-5' }: { glyph: SignalGlyph; className?: string }) {
+  switch (glyph) {
+    case 'incoming':
+      return <IncomingIcon className={className} />;
+    case 'strategic':
+      return <DeathStarIcon className={className} />;
+    case 'raided':
+      return <RaidedIcon className={className} />;
+    case 'returned':
+      return <ReturnedIcon className={className} />;
+    case 'skull':
+      return <SkullIcon className={className} />;
+    /** Your instrument looking out; the ping below is somebody looking at you. */
+    case 'probe':
+      return <EyeIcon className={className} />;
+    case 'scan':
+      return <ScanIcon className={className} />;
+    case 'unlock':
+      return <UnlockIcon className={className} />;
+    case 'conquest':
+      return <ConquestIcon className={className} />;
+    case 'world-lost':
+      return <WorldLostIcon className={className} />;
+    case 'galaxy':
+      return <GalaxyIcon className={className} />;
+    default:
+      return <BellIcon className={className} />;
+  }
 }
 
 function stores(planet: PlanetView, held: Projected) {

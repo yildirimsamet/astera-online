@@ -90,6 +90,26 @@ export function readsForShardEvent(kind: string): readonly (readonly string[])[]
      */
     case 'mining':
       return [keys.miningField, keys.traffic];
+    /**
+     * A PIRATE RAID LEFT, LANDED, OR CAME HOME. D150.
+     *
+     * The server has published this since the lane shipped and this table had no
+     * case for it, so the kind fell through to the inert default below and the
+     * whole feature ran on the sixty-second safety net. Three things arrived late:
+     *
+     *   · THE WRECK. A pirate battle leaves a real field at the rendezvous, and
+     *     the public race to collect it is half of what makes the fight worth
+     *     watching (D32). Nobody in the galaxy was told to go and look — not even
+     *     the commander who fought it, because a `raid_result` resync reads
+     *     `miningField` off a projection that was not invalidated either.
+     *   · THE CONTACT. The squadron is in `traffic` for both of its legs.
+     *   · THE LANE. Unlike the rock field, this list SHRINKS: a pirate somebody
+     *     else wiped has to leave the disc, and `usePirates` is the only read that
+     *     says so. `keys.pirates` is a prefix of the per-world key, so this covers
+     *     whichever world the reading was measured from.
+     */
+    case 'pirate':
+      return [keys.traffic, keys.miningField, keys.pirates];
     /** A world changed shape or gained hardware — the only public change to a world. */
     case 'world':
       return [keys.galaxy, keys.leaderboard];

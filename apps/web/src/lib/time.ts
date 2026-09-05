@@ -98,6 +98,29 @@ export function duration(minutes: number): string {
 }
 
 /**
+ * HOW LONG UNTIL SOMETHING OPENS — AND IT NEVER READS ZERO.
+ *
+ * Owner report: *"Araştırmalarda ve bazı butonların üstünde '0d sonra
+ * araştırılabilir', '0d sonra açılır' gibi kötü UX writingler var. 0D diye bir şey
+ * olamaz."*
+ *
+ * Turkish abbreviates minutes as `d` for dakika, so a spent countdown rendered as
+ * "0d" — which reads as zero DAYS, and is a nonsense sentence in either language:
+ * a thing that opens in no time at all is a thing that is open.
+ *
+ * IT IS A SEPARATE FUNCTION FROM `duration`, and that separation is the fix rather
+ * than an implementation detail. `duration` measures a SPAN, where zero is a true
+ * answer somebody may legitimately want to print — a flight that took no time, a
+ * record with no age — and `i18n.test.ts` pins that on purpose. Counting DOWN is
+ * the other question: a clock that has run out has not measured zero, it has
+ * arrived, and a view whose cache is a few seconds behind the server should say so
+ * rather than announce a wait of none.
+ */
+export function untilReady(minutes: number): string {
+  return minutes <= 0 ? i18n.t('units.imminent') : duration(minutes);
+}
+
+/**
  * The age of a reading. The single most important string on the intel screen:
  * "HOME · 18 min ago" is a different decision from "HOME · live".
  */
@@ -107,6 +130,21 @@ export function staleness(minutes: number): string {
 }
 
 export const minutesUntil = (at: Date, now: number): number => (at.getTime() - now) / MINUTE;
+
+/**
+ * THE MINUTE A TIMESTAMP FALLS IN — a dependency for work that is priced in minutes.
+ *
+ * `useNow()` ticks every second or five, and a `useMemo` that lists its value can
+ * never hit. That is free for arithmetic and expensive for a SOLVE: the merchant's
+ * "soonest reach" runs a scan and a bisection over a three-hour horizon, and it was
+ * doing that twelve times a minute for the whole window, on the main thread, beside
+ * the 3D scene — to produce a figure printed in whole minutes.
+ *
+ * Quantising the dependency keeps the answer exactly as accurate as the thing that
+ * reads it and does the work once per minute instead. Use it wherever a memo's only
+ * reason to depend on the clock is that its OUTPUT is a duration.
+ */
+export const minuteTick = (now: number): number => Math.floor(now / MINUTE);
 
 /**
  * A WALL CLOCK, IN THE PLAYER'S OWN LOCALE AND THEIR OWN TIME ZONE. T12.

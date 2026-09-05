@@ -114,7 +114,7 @@ export function BeatCard({
        * one moment it has something to say.
        */
       ref={box}
-      className={`pointer-events-none fixed inset-x-0 z-50 flex justify-center px-4 ${
+      className={`pointer-events-none fixed inset-x-0 z-50 flex justify-center px-2 ${
         place === 'top'
           ? 'top-0 pt-[calc(8px+env(safe-area-inset-top))]'
           : 'bottom-0 pb-[calc(46px+env(safe-area-inset-bottom))]'
@@ -157,7 +157,7 @@ export function BeatCard({
         <p className="mt-2 text-body leading-snug text-dim">{line}</p>
 
         {concept && (
-          <div className="mt-4 border-y border-line-soft py-3" aria-label={concept.outcome}>
+          <div className="mt-2 border-y border-line-soft py-3" aria-label={concept.outcome}>
             <div className="grid grid-cols-4 gap-1">
               {concept.steps.map((label, index) => (
                 <div key={label} className="relative min-w-0 text-center">
@@ -178,12 +178,12 @@ export function BeatCard({
         )}
 
         {action !== undefined && onAction && (
-          <Button variant="primary" size="lg" full className="mt-4" onClick={onAction}>
+          <Button variant="primary" size="lg" full className="mt-2" onClick={onAction}>
             {action}
           </Button>
         )}
 
-        <div className="mt-3 flex items-center justify-between gap-3">
+        <div className="mt-3 flex items-center justify-between gap-2">
           <button
             type="button"
             className="text-label text-faint underline-offset-4 hover:underline"

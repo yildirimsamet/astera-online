@@ -34,6 +34,8 @@ import {
 import { useAmbientFrames, useCommittedDemandFrame } from './frames.jsx';
 import { Wrecks, wreckPosition, type WreckView } from './Wrecks.js';
 import { Asteroids } from './Asteroids.jsx';
+import { TradeShip } from './TradeShip.jsx';
+import type { TradeShipEvent } from '../lib/trade.js';
 import { AimMark, RendezvousMarks } from './Rendezvous.jsx';
 import { OwnFleets, Traffic } from './Fleets.jsx';
 import { threadKey } from './threadKey.js';
@@ -61,6 +63,7 @@ import {
   runPosition,
   threadPosition,
   toWorld,
+  tradeShipWorldPosition,
   type PlanetNode,
   type Vec3Tuple,
 } from './scene.js';
@@ -153,6 +156,17 @@ export interface GalaxyCanvasProps {
   /** Rocks crossing the disc right now, and your craft working them. D19. */
   asteroids: readonly AsteroidView[];
   runs: readonly MiningRun[];
+  /**
+   * The merchant, if one is currently in the sky. D156.
+   *
+   * Public by owner decision — an announced moment, not a fogged craft — so this
+   * is the one already-narrowed occurrence rather than the raw event array: there
+   * is never more than one live at a time (`TRADE_SHIP`'s cooldown equals its own
+   * window), and narrowing which entry of a discriminated union is the merchant
+   * is exactly the kind of decision that belongs with whoever reads the wire
+   * payload, not with the renderer.
+   */
+  tradeShip?: TradeShipEvent | null;
   /** Wreck fields left by battles, visible to the whole galaxy. D32. */
   wrecks: readonly WreckView[];
   /**
@@ -243,6 +257,7 @@ export function GalaxyCanvas({
   asteroids,
   runs,
   wrecks,
+  tradeShip = null,
   meteorShower = false,
   sensors,
   showTelescopeReach = false,
@@ -355,6 +370,17 @@ export function GalaxyCanvas({
       return () => runPosition(run, origin, serverNow(), nodes);
     }
 
+    /**
+     * THE MERCHANT IS FOLLOWED, because it moves and it is the only reason anyone
+     * tapped it. Read from the SAME `tradeShipWorldPosition` the renderer uses, so
+     * the camera and the ship agree to the frame — deriving a second position here
+     * would show as the subject creeping out of centre over a three-hour window.
+     */
+    if (focus.kind === 'tradeShip' && seasonStart && tradeShip?.id === focus.id) {
+      const orbit = tradeShip.orbit;
+      return () => tradeShipWorldPosition(orbit, seasonStart, serverNow());
+    }
+
     if (focus.kind === 'interception') {
       const event = interceptions?.find((candidate) => candidate.id === focus.id);
       if (!event) return null;
@@ -400,6 +426,7 @@ export function GalaxyCanvas({
     contacts,
     interceptions,
     interceptionImpacts,
+    tradeShip,
   ]);
 
   /**
@@ -519,6 +546,21 @@ export function GalaxyCanvas({
             }}
           />
         )}
+
+        {/*
+          THE MERCHANT. D156. Public by owner decision, so it is drawn for every
+          player with no sensor check at all — unlike everything else in this
+          block it carries no fog whatsoever. It is tappable since slice 3a, and a
+          tap is the explicit instruction D69 requires before the camera moves.
+        */}
+        <TradeShip
+          event={tradeShip}
+          seasonStart={seasonStart}
+          focused={focus?.kind === 'tradeShip' && focus.id === tradeShip?.id}
+          onSelect={(id) => {
+            onFocus({ kind: 'tradeShip', id });
+          }}
+        />
 
         {/*
           THE BOUNDARIES, DRAWN. D125/D126. Before the worlds, so the rings sit
@@ -676,7 +718,7 @@ export function GalaxyCanvas({
  */
 const LABEL_BOX = { w: 132, h: 46 };
 /** Past this the type is smaller than the disc's own dust. */
-const LABEL_MAX_RANGE = 26;
+const LABEL_MAX_RANGE = 60;
 
 function labelRank(
   node: PlanetNode,

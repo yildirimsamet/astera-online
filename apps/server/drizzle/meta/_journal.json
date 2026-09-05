@@ -386,6 +386,34 @@
       "when": 1788353872722,
       "tag": "0054_raid_remembers_its_commander",
       "breakpoints": true
+    },
+    {
+      "idx": 55,
+      "version": "7",
+      "when": 1788470279036,
+      "tag": "0055_fantastic_vapor",
+      "breakpoints": true
+    },
+    {
+      "idx": 56,
+      "version": "7",
+      "when": 1788470329650,
+      "tag": "0056_curved_otto_octavius",
+      "breakpoints": true
+    },
+    {
+      "idx": 57,
+      "version": "7",
+      "when": 1788568799000,
+      "tag": "0057_steep_robin_chapel",
+      "breakpoints": true
+    },
+    {
+      "idx": 58,
+      "version": "7",
+      "when": 1788609352711,
+      "tag": "0058_rapid_mother_askani",
+      "breakpoints": true
     }
   ]
 }

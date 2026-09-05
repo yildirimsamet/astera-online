@@ -192,7 +192,7 @@ export function ClanScreen() {
         id={`clan-panel-${tab}`}
         role="tabpanel"
         aria-labelledby={`clan-tab-${tab}`}
-        className="px-4 py-4"
+        className="px-2 py-2"
       >
         {tab === 'overview' ? (
           <ClanOverview
@@ -229,9 +229,9 @@ export function ClanScreen() {
 function ClanHeader({ home }: { home: ClanMemberHome }) {
   const { t } = useTranslation();
   return (
-    <header className="relative overflow-hidden px-4 pb-5 pt-2">
+    <header className="relative overflow-hidden px-2 pb-5 pt-2">
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_78%_20%,rgba(89,200,255,0.13),transparent_42%)]" />
-      <div className="relative flex items-start gap-3">
+      <div className="relative flex items-start gap-2">
         <span className="socket grid size-12 shrink-0 place-items-center rounded-control text-crystal">
           <ClanIcon className="size-7" />
         </span>
@@ -246,7 +246,7 @@ function ClanHeader({ home }: { home: ClanMemberHome }) {
           </p>
         </div>
       </div>
-      <div className="relative mt-4 grid grid-cols-2 gap-3">
+      <div className="relative mt-2 grid grid-cols-2 gap-2">
         <Plate sunk className="px-3 py-3">
           <Stat label={t('clan.membersCountLabel')} value={`${String(home.members.length)} / ${String(CLAN.maxMembers)}`} size="sm" />
         </Plate>
@@ -310,11 +310,11 @@ function ClanOutside({
   };
 
   return (
-    <div className="flex flex-col gap-7 px-4 py-2">
+    <div className="flex flex-col gap-7 px-2 py-2">
       <header className="plate plate-cut relative overflow-hidden px-5 py-6">
         <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_80%_15%,rgba(89,200,255,0.16),transparent_45%)]" />
         <ClanIcon className="relative size-7 text-crystal" />
-        <p className="legend relative mt-4 text-crystal">{t('clan.outside.eyebrow')}</p>
+        <p className="legend relative mt-2 text-crystal">{t('clan.outside.eyebrow')}</p>
         <h3 className="headline relative mt-2 text-readout text-bone">{t('clan.outside.title')}</h3>
         <p className="relative mt-3 max-w-[42ch] text-body leading-relaxed text-dim">
           {t('clan.outside.body')}
@@ -330,11 +330,11 @@ function ClanOutside({
 
       {hasDepot ? (
         <Section label={t('clan.depot.formerHeading')}>
-          <Plate tone="opportunity" className="px-4 py-4">
+          <Plate tone="opportunity" className="px-2 py-2">
             <p className="text-body text-bone">{t('clan.depot.formerBody')}</p>
             <ResourceFigures resources={depot} className="mt-3" />
             <Button
-              className="mt-4"
+              className="mt-2"
               variant="primary"
               disabled={actions.claimDepot.isPending}
               onClick={() => { actions.claimDepot.mutate(); }}
@@ -348,12 +348,12 @@ function ClanOutside({
 
       {home.requests.length > 0 ? (
         <Section label={t('clan.requests.heading')}>
-          <div className="flex flex-col gap-3">
+          <div className="flex flex-col gap-2">
             {home.requests.map((request) => {
               const pending = request.status === 'PENDING';
               return (
-                <Plate key={request.id} className="px-4 py-4">
-                  <div className="flex items-start justify-between gap-3">
+                <Plate key={request.id} className="px-2 py-2">
+                  <div className="flex items-start justify-between gap-2">
                     <div className="min-w-0">
                       <p className="name truncate text-bone">[{request.clanTag}] {request.clanName}</p>
                       <p className="mt-1 text-caption text-faint">
@@ -365,7 +365,7 @@ function ClanOutside({
                     {pending ? <Chip tone="opportunity">{duration(minutesUntil(request.expiresAt, now))}</Chip> : null}
                   </div>
                   {pending && request.kind === 'INVITATION' ? (
-                    <div className="mt-4 flex flex-wrap gap-2">
+                    <div className="mt-2 flex flex-wrap gap-2">
                       <Button
                         size="sm"
                         variant="primary"
@@ -385,7 +385,7 @@ function ClanOutside({
                     </div>
                   ) : pending ? (
                     <Button
-                      className="mt-4"
+                      className="mt-2"
                       size="sm"
                       variant="ghost"
                       disabled={actions.withdraw.isPending}
@@ -441,15 +441,15 @@ function ClanOutside({
         ) : listedClans.length === 0 ? (
           <EmptyState title={t('clan.directory.empty')} />
         ) : (
-          <ol className="flex flex-col gap-3">
+          <ol className="flex flex-col gap-2">
             {listedClans.map((clan) => {
               const applied = pendingApplications.has(clan.id);
               const fullClan = clan.memberCount >= CLAN.maxMembers;
               const canApply = clan.recruiting && !fullClan && !applied && !locked;
               return (
                 <li key={clan.id}>
-                  <Plate className="px-4 py-4">
-                    <div className="flex items-start gap-3">
+                  <Plate className="px-2 py-2">
+                    <div className="flex items-start gap-2">
                       <span className="socket grid size-8 shrink-0 place-items-center rounded-control text-crystal">
                         <ClanIcon className="size-4" />
                       </span>
@@ -472,7 +472,7 @@ function ClanOutside({
                     </div>
                     <Button
                       full
-                      className="mt-4"
+                      className="mt-2"
                       size="sm"
                       variant={canApply ? 'primary' : 'ghost'}
                       ariaLabel={t('clan.directory.applyTo', { clan: clan.name })}
@@ -520,7 +520,7 @@ function ClanOutside({
 
 function Benefit({ icon, title, body }: { icon: ReactNode; title: string; body: string }) {
   return (
-    <Plate className="flex items-start gap-3 px-4 py-4">
+    <Plate className="flex items-start gap-2 px-2 py-2">
       <span className="socket grid size-10 shrink-0 place-items-center rounded-control text-crystal">{icon}</span>
       <span className="min-w-0">
         <strong className="name block text-bone">{title}</strong>
@@ -553,8 +553,8 @@ function FoundClan({ home, actions }: { home: ClanOutsideHome; actions: Actions 
 
   return (
     <Section label={t('clan.found.heading')}>
-      <Plate className="px-4 py-4">
-        <div className="grid grid-cols-2 gap-3">
+      <Plate className="px-2 py-2">
+        <div className="grid grid-cols-2 gap-2">
           <div className={`rounded-control border px-3 py-3 ${coreReady ? 'border-opportunity/30 bg-opportunity/5' : 'border-line-soft bg-deep'}`}>
             <CoreIcon className="size-5 text-crystal" />
             <p className="name mt-2 text-bone">
@@ -578,7 +578,7 @@ function FoundClan({ home, actions }: { home: ClanOutsideHome; actions: Actions 
         ) : null}
         <Note>{t('clan.found.identityNote')}</Note>
 
-        <form onSubmit={submit} className="mt-4 flex flex-col gap-3">
+        <form onSubmit={submit} className="mt-2 flex flex-col gap-2">
           <label>
             <span className="legend mb-1 block">{t('clan.found.nameLabel')}</span>
             <input
@@ -615,7 +615,7 @@ function FoundClan({ home, actions }: { home: ClanOutsideHome; actions: Actions 
               {t('clan.charactersLeft', { count: CLAN.descriptionMaxChars - Array.from(description).length })}
             </span>
           </label>
-          <label className="plate plate-sunk flex items-center gap-3 px-3 py-3">
+          <label className="plate plate-sunk flex items-center gap-2 px-3 py-3">
             <input
               type="checkbox"
               checked={recruiting}
@@ -660,8 +660,8 @@ function ClanOverview({
       <ClanSeats members={home.members} now={now} />
 
       {!home.clan.mature ? (
-        <Plate tone="lit" cut className="px-4 py-4">
-          <div className="flex items-start gap-3">
+        <Plate tone="lit" cut className="px-2 py-2">
+          <div className="flex items-start gap-2">
             <ClockIcon className="mt-0.5 size-5 shrink-0 text-crystal" />
             <div>
               <p className="name text-bone">{t('clan.adaptation.title')}</p>
@@ -677,14 +677,14 @@ function ClanOverview({
           </div>
         </Plate>
       ) : (
-        <Plate tone="opportunity" className="px-4 py-4">
+        <Plate tone="opportunity" className="px-2 py-2">
           <p className="name text-opportunity">{t('clan.adaptation.readyTitle')}</p>
           <p className="mt-1 text-caption leading-relaxed text-dim">{t('clan.adaptation.readyBody')}</p>
         </Plate>
       )}
 
       <Section label={t('clan.benefits.activeHeading')}>
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-2 gap-2">
           <SmallRule title={t('clan.rules.peaceTitle')} body={t('clan.rules.peaceBody')} />
           <SmallRule title={t('clan.rules.aidTitle')} body={t('clan.rules.aidBody')} />
           <SmallRule title={t('clan.rules.lootTitle')} body={t('clan.rules.lootBody')} />
@@ -700,12 +700,12 @@ function ClanOverview({
         ) : !depot.data ? (
           <Waiting>{t('clan.depot.waiting')}</Waiting>
         ) : (
-          <Plate className="px-4 py-4">
+          <Plate className="px-2 py-2">
             <p className="text-caption leading-relaxed text-dim">{t('clan.depot.body')}</p>
-            <ResourceFigures resources={depot.data.resources} className="mt-4" />
+            <ResourceFigures resources={depot.data.resources} className="mt-2" />
             <Button
               full
-              className="mt-4"
+              className="mt-2"
               variant="primary"
               disabled={resourceTotal(depot.data.resources) <= 0 || actions.claimDepot.isPending}
               onClick={() => { actions.claimDepot.mutate(); }}
@@ -720,7 +720,7 @@ function ClanOverview({
 
       <Section label={t('clan.history.heading')}>
         {!home.clan.mature ? (
-          <Plate sunk className="px-4 py-5 text-center">
+          <Plate sunk className="px-2 py-5 text-center">
             <ClockIcon className="mx-auto size-5 text-faint" />
             <p className="mt-2 text-caption text-dim">{t('clan.history.adapting')}</p>
           </Plate>
@@ -777,7 +777,7 @@ function ClanStrengthView({ strength }: { strength: ClanStrength }) {
 
   return (
     <div className="flex flex-col gap-7">
-      <Plate tone="opportunity" cut="lg" className="relative overflow-hidden px-4 py-5">
+      <Plate tone="opportunity" cut="lg" className="relative overflow-hidden px-2 py-5">
         <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_82%_18%,color-mix(in_srgb,var(--color-opportunity)_19%,transparent),transparent_46%)]" />
         <div className="relative">
           <p className="legend text-opportunity">[{strength.clan.tag}] {strength.clan.name}</p>
@@ -787,8 +787,8 @@ function ClanStrengthView({ strength }: { strength: ClanStrength }) {
           <p className="mt-2 max-w-[44ch] text-caption leading-relaxed text-dim">
             {t('clan.strength.body')}
           </p>
-          <div className="mt-5 grid grid-cols-2 gap-3">
-            <Plate sunk className="px-3 py-4">
+          <div className="mt-5 grid grid-cols-2 gap-2">
+            <Plate sunk className="px-3 py-2">
               <Stat
                 label={t('clan.strength.memberDominion')}
                 value={full(strength.totals.memberDominion)}
@@ -797,7 +797,7 @@ function ClanStrengthView({ strength }: { strength: ClanStrength }) {
                 size="lg"
               />
             </Plate>
-            <Plate sunk className="px-3 py-4">
+            <Plate sunk className="px-3 py-2">
               <Stat
                 label={t('clan.strength.ships')}
                 value={full(strength.totals.ships)}
@@ -811,7 +811,7 @@ function ClanStrengthView({ strength }: { strength: ClanStrength }) {
       </Plate>
 
       <Section label={t('clan.strength.totalsHeading')}>
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-2 gap-2">
           <Plate sunk className="px-3 py-3">
             <Stat
               label={t('clan.strength.clanDominion')}
@@ -851,7 +851,7 @@ function ClanStrengthView({ strength }: { strength: ClanStrength }) {
           <ol className="space-y-2">
             {strength.composition.map((entry) => (
               <li key={entry.hull} className="plate plate-sunk px-3 py-3">
-                <div className="flex items-baseline justify-between gap-3">
+                <div className="flex items-baseline justify-between gap-2">
                   <span className="name text-bone">{hullName(entry.hull) ?? entry.hull}</span>
                   <span className="num text-body text-crystal">{full(entry.count)}</span>
                 </div>
@@ -887,7 +887,7 @@ function ClanStrengthView({ strength }: { strength: ClanStrength }) {
         <ol className="divide-y divide-line-soft overflow-hidden rounded-plate border border-line-soft bg-deep/60">
           {strength.members.map((member) => (
             <li key={member.playerId} className="px-3 py-3">
-              <div className="flex items-center justify-between gap-3">
+              <div className="flex items-center justify-between gap-2">
                 <span className="name min-w-0 truncate text-bone">{member.username}</span>
                 {member.role === 'LEADER' ? <Chip tone="opportunity">{t('clan.leader')}</Chip> : null}
               </div>
@@ -1011,7 +1011,7 @@ function ClanStandings({
               <li
                 key={clan.id}
                 aria-current={clan.self ? 'true' : undefined}
-                className={`grid grid-cols-[2rem_minmax(0,1fr)_auto] items-center gap-3 px-3 py-3 ${
+                className={`grid grid-cols-[2rem_minmax(0,1fr)_auto] items-center gap-2 px-3 py-3 ${
                   clan.self ? 'bg-crystal/8' : ''
                 } ${separated ? 'border-t-2 border-crystal/25' : ''}`}
               >
@@ -1127,13 +1127,13 @@ function ClanMembers({
   return (
     <div className="flex flex-col gap-7">
       <Section label={t('clan.members.heading')} aside={`${String(home.members.length)} / ${String(CLAN.maxMembers)}`}>
-        <ol className="flex flex-col gap-3">
+        <ol className="flex flex-col gap-2">
           {home.members.map((member) => {
             const self = member.playerId === selfPlayerId;
             return (
               <li key={member.playerId}>
-                <Plate className="px-4 py-4">
-                  <div className="flex items-start justify-between gap-3">
+                <Plate className="px-2 py-2">
+                  <div className="flex items-start justify-between gap-2">
                     <div className="min-w-0">
                       <div className="flex flex-wrap items-center gap-2">
                         <strong className="name truncate text-bone">{member.username}</strong>
@@ -1200,7 +1200,7 @@ function ClanMembers({
               <EmptyState title={t('clan.applications.empty')} />
             ) : (
               home.requests.filter((request) => request.kind === 'APPLICATION').map((request) => (
-                <Plate key={request.id} className="px-4 py-4">
+                <Plate key={request.id} className="px-2 py-2">
                   <p className="name text-bone">{request.username}</p>
                   <p className="mt-1 text-label text-faint">{t('clan.applications.expires', { duration: duration(minutesUntil(request.expiresAt, now)) })}</p>
                   <div className="mt-3 flex gap-2">
@@ -1229,7 +1229,7 @@ function ClanMembers({
           </Section>
 
           <Section label={t('clan.invite.heading')}>
-            <Plate className="px-4 py-4">
+            <Plate className="px-2 py-2">
               <p className="text-caption leading-relaxed text-dim">{t('clan.invite.body')}</p>
               <label className="mt-3 block">
                 <span className="sr-only">{t('clan.invite.choose')}</span>
@@ -1253,7 +1253,7 @@ function ClanMembers({
           </Section>
 
           <Section label={t('clan.settings.heading')}>
-            <Plate className="px-4 py-4">
+            <Plate className="px-2 py-2">
               <label>
                 <span className="legend mb-1 block">{t('clan.settings.description')}</span>
                 <textarea
@@ -1266,7 +1266,7 @@ function ClanMembers({
                   className="field resize-none"
                 />
               </label>
-              <label className="mt-3 flex items-center gap-3">
+              <label className="mt-3 flex items-center gap-2">
                 <input
                   type="checkbox"
                   checked={recruiting}
@@ -1276,7 +1276,7 @@ function ClanMembers({
                 <span className="name text-bone">{t('clan.settings.recruiting')}</span>
               </label>
               <Button
-                className="mt-4"
+                className="mt-2"
                 variant="primary"
                 disabled={actions.settings.isPending || (description === home.clan.description && recruiting === home.clan.recruiting)}
                 onClick={() => {
@@ -1294,13 +1294,13 @@ function ClanMembers({
       ) : null}
 
       <Section label={t('clan.danger.heading')}>
-        <Plate tone="threat" className="px-4 py-4">
+        <Plate tone="threat" className="px-2 py-2">
           <p className="text-caption leading-relaxed text-dim">
             {home.clan.role === 'LEADER' ? t('clan.danger.leaderBody') : t('clan.danger.memberBody')}
           </p>
           <Button
             full
-            className="mt-4"
+            className="mt-2"
             variant="ghost"
             onClick={() => { setConfirm({ kind: home.clan.role === 'LEADER' ? 'disband' : 'leave' }); }}
           >
@@ -1435,7 +1435,7 @@ function ClanAidPanel({
   return (
     <div className="flex flex-col gap-7">
       <Section label={t('clan.aid.receiveHeading')}>
-        <Plate className="flex items-center gap-3 px-4 py-4">
+        <Plate className="flex items-center gap-2 px-2 py-2">
           <div className="min-w-0 flex-1">
             <p className="name text-bone">{home.clan.aidEnabled ? t('clan.aid.receiving') : t('clan.aid.paused')}</p>
             <p className="mt-1 text-caption leading-relaxed text-faint">{t('clan.aid.receiveHint')}</p>
@@ -1453,7 +1453,7 @@ function ClanAidPanel({
       </Section>
 
       <Section label={t('clan.aid.sendHeading')}>
-        <Plate tone="lit" className="px-4 py-4">
+        <Plate tone="lit" className="px-2 py-2">
           <p className="text-caption leading-relaxed text-dim">{t('clan.aid.explainer')}</p>
           <div className="mt-3 flex flex-wrap gap-2">
             <Chip tone="crystal">{t('clan.aid.speed')}</Chip>
@@ -1469,8 +1469,8 @@ function ClanAidPanel({
             {t('clan.aid.noRecipientHint')}
           </EmptyState>
         ) : (
-          <Plate className="px-4 py-4">
-            <div className="grid gap-3 sm:grid-cols-3">
+          <Plate className="px-2 py-2">
+            <div className="grid gap-2 sm:grid-cols-3">
               <SelectField
                 label={t('clan.aid.origin')}
                 value={origin?.planet.id ?? ''}
@@ -1491,13 +1491,13 @@ function ClanAidPanel({
               />
             </div>
 
-            <div className="mt-5 border-t border-line-soft pt-4">
+            <div className="mt-5 border-t border-line-soft pt-2">
               <p className="legend">{t(resourceDelivery ? 'clan.aid.transportShips' : 'clan.aid.ships')}</p>
-              <div className="mt-3 flex flex-col gap-3">
+              <div className="mt-3 flex flex-col gap-2">
                 {CLAN_TRANSFERABLE_HULLS.map((hull) => {
                   const available = origin?.fleet[hull] ?? 0;
                   return (
-                    <div key={hull} className="flex items-center gap-3">
+                    <div key={hull} className="flex items-center gap-2">
                       <div className="min-w-0 flex-1">
                         <p className="name truncate text-bone">{hullName(hull) ?? hull}</p>
                         <p className="mt-1 text-label text-faint">{t('clan.aid.available', { count: available })}</p>
@@ -1519,7 +1519,7 @@ function ClanAidPanel({
               </div>
             </div>
 
-            <div className="mt-5 border-t border-line-soft pt-4">
+            <div className="mt-5 border-t border-line-soft pt-2">
               <p className="legend">{t('clan.aid.cargo')}</p>
               {/*
                 THE HOLD, IN THE BAR THE BUILD SHEET AND THE TRANSFER SHEET BOTH
@@ -1588,8 +1588,8 @@ function ClanAidPanel({
             <MutationError mutation={actions.quoteAid} />
 
             {quote ? (
-              <Plate sunk className="mt-4 px-4 py-4">
-                <div className="grid grid-cols-2 gap-3">
+              <Plate sunk className="mt-2 px-2 py-2">
+                <div className="grid grid-cols-2 gap-2">
                   <Stat label={t('clan.aid.arrival')} value={duration(quote.travelMinutes)} size="sm" tone="crystal" />
                   <Stat label={t('clan.aid.receiverRoom')} value={quote.withinAllowance ? t('clan.aid.fits') : t('clan.aid.overLimit')} size="sm" tone={quote.withinAllowance ? 'opportunity' : 'threat'} />
                 </div>
@@ -1599,7 +1599,7 @@ function ClanAidPanel({
                   is the one figure in this quote a sender reads to find out
                   whether it can land at all.
                 */}
-                <div className="mt-3 flex items-center justify-between gap-3 rounded-control border border-line-soft px-3 py-2">
+                <div className="mt-3 flex items-center justify-between gap-2 rounded-control border border-line-soft px-3 py-2">
                   <Tally
                     used={quote.bay.used}
                     total={quote.bay.total}
@@ -1617,8 +1617,8 @@ function ClanAidPanel({
                     duration: duration(minutesUntil(quote.possibleReturnAt, now)),
                   })}
                 </p>
-                <ResourceFigures resources={quote.remaining} className="mt-4" label={t('clan.aid.remainingLimit')} />
-                <ResourceFigures resources={quote.value} className="mt-4" label={t('clan.aid.limitValue')} />
+                <ResourceFigures resources={quote.remaining} className="mt-2" label={t('clan.aid.remainingLimit')} />
+                <ResourceFigures resources={quote.value} className="mt-2" label={t('clan.aid.limitValue')} />
                 {quote.nextReleaseAt ? (
                   <p className="mt-3 text-label text-faint">
                     {t('clan.aid.nextLimit', {
@@ -1628,7 +1628,7 @@ function ClanAidPanel({
                 ) : null}
                 <Button
                   full
-                  className="mt-4"
+                  className="mt-2"
                   variant="commit"
                   // `fuelled` is the live read of the sender's own store; the
                   // quote's `hasFuel` is a snapshot of the same sum taken one
@@ -1655,11 +1655,11 @@ function ClanAidPanel({
         ) : transfers.length === 0 ? (
           <EmptyState title={t('clan.aid.transfersEmpty')} />
         ) : (
-          <ol className="flex flex-col gap-3">
+          <ol className="flex flex-col gap-2">
             {transfers.map((transfer) => (
               <li key={transfer.id}>
-                <Plate className="px-4 py-4">
-                  <div className="flex items-start justify-between gap-3">
+                <Plate className="px-2 py-2">
+                  <div className="flex items-start justify-between gap-2">
                     <div className="min-w-0">
                       <p className="name truncate text-bone">
                         {transfer.direction === 'OUTGOING'
@@ -1690,7 +1690,7 @@ function ClanAidPanel({
 function ClanEventRow({ event, now }: { event: ClanEvent; now: number }) {
   const { t } = useTranslation();
   return (
-    <li className="px-4 py-3">
+    <li className="px-2 py-3">
       <p className="text-body text-bone">{describeClanEvent(event, t)}</p>
       <p className="mt-1 text-micro text-faint">{chatRelativeTime(event.occurredAt, now, t)}</p>
     </li>
@@ -1731,10 +1731,10 @@ function Confirmation({
 }) {
   const { t } = useTranslation();
   return (
-    <Plate tone="threat" className="mt-4 px-4 py-4" as="aside">
+    <Plate tone="threat" className="mt-2 px-2 py-2" as="aside">
       <p className="name text-threat-ink">{title}</p>
       <p className="mt-2 text-caption leading-relaxed text-dim">{body}</p>
-      <div className="mt-4 flex flex-wrap gap-2">
+      <div className="mt-2 flex flex-wrap gap-2">
         <Button size="sm" disabled={busy} onClick={onConfirm}>{confirm}</Button>
         <Button size="sm" variant="ghost" disabled={busy} onClick={onCancel}>{t('clan.cancel')}</Button>
       </div>

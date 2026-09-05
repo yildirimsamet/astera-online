@@ -101,6 +101,23 @@ const schema = z.object({
    * every time, so the cost is a query per second per worker process and the return
    * is that the universe stops visibly lagging its own clock.
    */
+  /**
+   * DOES THIS DEPLOYMENT PLAY COMMANDERS OF ITS OWN? D159.
+   *
+   * OFF BY DEFAULT, and the default is load-bearing rather than cautious. Turning
+   * this on seats accounts on a live galaxy, writes the population figures every
+   * screen in the game reads, and launches real fleets at real players. None of
+   * that may happen because a process booted with an empty environment — a
+   * developer running `pnpm dev` against a copy of production must get a quiet
+   * galaxy, not twelve commanders going to work.
+   *
+   * Only the worker reads it (`ROLE=worker|both`); an API replica with it set does
+   * nothing, because nothing in the request path consults it.
+   */
+  BOTS_ENABLED: z
+    .enum(['true', 'false'])
+    .default('false')
+    .transform((value) => value === 'true'),
   WORKER_POLL_MS: z.coerce.number().default(1000),
   WORKER_BATCH: z.coerce.number().default(100),
   /** A claim older than this is assumed dead and returned to the queue. */

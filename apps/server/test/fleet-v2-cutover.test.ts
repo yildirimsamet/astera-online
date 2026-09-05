@@ -61,7 +61,18 @@ describe('Fleet V2 offline season cutover', () => {
       .select()
       .from(seasons)
       .where(eq(seasons.status, 'live'));
-    expect(successor?.rulesetVersion).toBe(MULTI_WORLD.fleetCatalogRulesetVersion);
+    /*
+      A SUCCESSOR OPENS ON THE CURRENT RULESET, NOT ON THE FLEET V2 BOUNDARY.
+
+      The two were the same number while `rulesetVersion` was 4, so this read
+      `fleetCatalogRulesetVersion` and passed by coincidence. D156 moved the
+      current ruleset to 5 for the trade lane and the coincidence ended. What this
+      test is actually about is that the successor is at or past the Fleet V2
+      boundary, so both halves are stated.
+    */
+    expect(successor?.rulesetVersion).toBe(MULTI_WORLD.rulesetVersion);
+    expect(successor?.rulesetVersion)
+      .toBeGreaterThanOrEqual(MULTI_WORLD.fleetCatalogRulesetVersion);
     expect(await old.db.select().from(playerResearch)).toHaveLength(0);
 
     const attacker = await joinSeason(old.db, old.accountIds[0]!, successor!.id, old.clock);

@@ -44,6 +44,7 @@ import {
   scheduledEvents,
   seasons,
   shards,
+  tradeRuns,
   units,
   strategicAssets,
   strategicImpacts,
@@ -538,6 +539,15 @@ export async function wipeAllServers(
     await tx.delete(clanMemberships);
     await tx.delete(clans);
     await tx.delete(chatMessages);
+    /*
+      CONVOYS BEFORE THE OCCURRENCES THEY POINT AT. D156.
+
+      `trade_runs.occurrence_id` is a foreign key to `galaxy_event_occurrences`
+      with `ON DELETE no action`, so wiping the calendar first raises — the same
+      ordering lesson the pirate rows and the debris fields both taught this
+      function.
+    */
+    await tx.delete(tradeRuns);
     await tx.delete(galaxyEvents);
     await tx.delete(galaxyEventOccurrences);
     await tx.delete(requestLog);

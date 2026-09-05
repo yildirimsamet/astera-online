@@ -5,7 +5,7 @@ import { action, capacity, itemSheet, launch, planet, planetHero, transfer, upgr
 import { clarity, dossier, intel, reports } from './intel.js';
 import { directives, gains, notifications, units, vocabulary } from './data.js';
 import { errors } from './errors.js';
-import { flightBar, rangeBand, spend } from './shapes.js';
+import { flightBar, rangeBand, spend, counter } from './shapes.js';
 import { onboarding } from './onboarding.js';
 import { research } from './research.js';
 import { rewards } from './rewards.js';
@@ -13,6 +13,7 @@ import { seasonRecap } from './season.js';
 import { chronicle } from './chronicle.js';
 import { clan } from './clan.js';
 import { community } from './community.js';
+import { trade } from './trade.js';
 
 /**
  * ENGLISH, AND IT IS THE SHAPE EVERY OTHER LANGUAGE IS CHECKED AGAINST.
@@ -54,6 +55,7 @@ export const en = {
   spend,
   rangeBand,
   flightBar,
+  counter,
   itemSheet,
   upgradeRow,
   action,
@@ -77,6 +79,7 @@ export const en = {
   chronicle,
   clan,
   community,
+  trade,
 } as const;
 
 /**

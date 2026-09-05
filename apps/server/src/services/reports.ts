@@ -50,8 +50,14 @@ import { pirateCallsign, privatePirateField } from './pirateField.js';
  * So each of them is served from the CALLER's row and never from the opponent's.
  * `yourFleet` minus `yourLosses` is the caller's own survivors, which they may
  * have; the identical subtraction on the opponent's roster is precisely the
- * disclosure the fog exists to refuse, so the opponent's roster is not in the
- * payload at all. The fog is enforced HERE, in the query, not in the component.
+ * disclosure the fog exists to refuse. The fog is enforced HERE, in the query, not
+ * in the component.
+ *
+ * D164 OPENED ONE DIRECTION OF THAT, and only one: the force that ARRIVED, to the
+ * commander it arrived at (`theirFleet`). A defender watched that fleet cross their
+ * own sky; telling them what was in it is reporting what they saw, not lifting fog.
+ * The opposite direction is untouched — what was standing at the target is a
+ * probe's product, so an attacker's copy of the field is empty.
  */
 
 export interface BattleReportView {
@@ -138,6 +144,26 @@ export interface BattleReportView {
    * section rather than drawing a roster of nothing.
    */
   yourFleet: Fleet;
+  /**
+   * THE FORCE THAT FLEW AT THE CALLER. DEFENDER ONLY — empty for an attacker. D164.
+   *
+   * Owner instruction: *"hiç ateş etmemiş olsalar bile saldıranın geldiği tüm
+   * filoyu savunan raporunda görebilmeli."* A defender was already handed the
+   * attacker's WRECKAGE and left to read the force off it, which is a floor, and a
+   * floor that omits precisely the hulls a defender most needs to have seen: a
+   * Courier carries no gun, never joins a firing line and usually flies home whole,
+   * so a commander could be robbed by a convoy and read a report the convoy did not
+   * appear in.
+   *
+   * It crosses no line, because there is no line here to cross. This fleet spent
+   * its engagement in orbit over the reader's own world, in front of their own
+   * instruments — D151 already lets an arriving fleet rewrite the VISITOR's world
+   * record for exactly that reason, and this is the same fact read from the other
+   * end. What stays refused is the other direction: the defender's board is not a
+   * thing an attacker watched, it is a probe's product (D127), so an attacker's
+   * copy of this field is `{}`.
+   */
+  theirFleet: Fleet;
   /** Positive when the caller gained; negative when it was taken from them. */
   lootAlloy: number;
   lootCrystal: number;
@@ -530,6 +556,9 @@ async function readBattleReportsIn(
       yourLosses,
       theirLosses,
       yourFleet: attacking ? row.attackerFleet : row.defenderFleet,
+      // What arrived over the reader's own world — see the field. One direction:
+      // the attacker learns nothing here about what was standing at the target.
+      theirFleet: attacking ? {} : row.attackerFleet,
       // Signed from the caller's side: what you took, or what was taken.
       lootAlloy: attacking ? row.loot.alloy : -row.loot.alloy,
       lootCrystal: attacking ? row.loot.crystal : -row.loot.crystal,

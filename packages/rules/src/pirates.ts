@@ -1,8 +1,9 @@
 import { PIRATE, SEASON } from './constants.js';
 import { COMBAT_HULLS, HULLS, MOBILE_HULLS, fleetEntries, fleetValue } from './hulls.js';
-import { orbitRadius } from './galaxy.js';
+import { orbitDiscoveredAt, orbitRadius } from './galaxy.js';
 import { orbitPosition } from './galaxy.js';
-import type { OrbitElements } from './galaxy.js';
+import type { OrbitElements, SensorEpoch } from './galaxy.js';
+import { sensorZone, type SensorSphere, type SensorZone } from './sight.js';
 import type { Fleet, Grade, HullId, MobileHullId, Resources, Rng, Vec3 } from './types.js';
 
 /**
@@ -23,12 +24,31 @@ import type { Fleet, Grade, HullId, MobileHullId, Resources, Rng, Vec3 } from '.
  * holds only what cannot be derived: what has been shot off it, and whether it is
  * gone (`pirate_state`). Same philosophy as `asteroid_claims`, same reason (A5).
  *
- * AND UNLIKE A ROCK, IT IS NOT REMEMBERED. `asteroidDiscoveredAt` and
- * `sensor_epochs` give a rock permanent discovery; a pirate is a CRAFT, and a
- * craft outside your circles does not exist for you (`sight.ts`). Nothing in this
- * lane reads or writes a sensor epoch. Copying that from the asteroid file is the
- * single most likely way to punch a hole in D123, so it is written here as a
- * refusal rather than left as an omission.
+ * AND LIKE A ROCK, IT IS REMEMBERED. D158 — owner instruction, reversing D150.
+ *
+ * This lane shipped with the opposite rule, written into three files as a refusal:
+ * a pirate was a craft, so leaving your circles ended its existence for you, and
+ * copying the rock lane's discovery memory was called the most likely way to punch
+ * a hole in D123. The owner has decided the other way, and the reason is D124's:
+ * an opportunity nobody can hold on to is not a decision. A raid takes minutes to
+ * assemble and the target is on a closed orbit that carries it out of sight while
+ * the commander is still choosing hulls — an offer withdrawn mid-sentence.
+ *
+ * AND SINCE D160 MEMORY BUYS THE MANIFEST TOO. D158 floored a discovered pirate at
+ * `CONTACT` — the mark without the crew — and the owner has ruled the rest of the
+ * way: a pirate you have identified stays identified, exactly as a rock you have
+ * found stays a rock with a yield on it. It is safe because `sensor_epochs.reach`
+ * is the TELESCOPE radius alone, so "discovered" already means "was inside an
+ * identifying circle": the reading was paid for. "Radar detects, Telescope
+ * identifies" is intact — a pirate no telescope ever held is still a question mark
+ * at every range — and `remembered` says only that no circle covers it right now,
+ * which is what the disc draws faded. The figures stay CURRENT, on the rock lane's
+ * own terms: another commander wearing this pirate down is visible to everyone who
+ * has found it, the same way a rock's remaining ore is.
+ *
+ * IT IS THE ROCK'S MECHANISM, NOT A SECOND ONE: the same `sensor_epochs` rows and
+ * the same analytic orbit/sphere solve (`orbitDiscoveredAt`), so the two lanes
+ * cannot drift apart.
  */
 
 export type PirateLevel = 1 | 2 | 3 | 4;
@@ -179,6 +199,96 @@ export const piratePosition = (spec: PirateSpec, minutes: number): Vec3 =>
   orbitPosition(spec, minutes);
 
 /** Is this pirate in the disc at this instant? */
+/**
+ * HAS THIS COMMANDER EVER HAD THIS PIRATE INSIDE ONE OF THEIR POSTS? D158.
+ *
+ * The rock lane's question, asked about a pirate, through the rock lane's own
+ * solve — a pirate is an orbiting body with a life, which is the entire input
+ * `orbitDiscoveredAt` needs. Discovery is a fact about the PAST: the orbit flying
+ * on, the post being upgraded and the world being lost all leave it standing.
+ */
+export const pirateDiscoveredAt = (
+  spec: PirateSpec,
+  epochs: readonly SensorEpoch[],
+  nowMinutes: number,
+): number | null => orbitDiscoveredAt(spec, epochs, nowMinutes);
+
+/**
+ * HAS THIS COMMANDER FOUND THIS PIRATE — asked at the last instant it existed.
+ *
+ * `orbitDiscoveredAt` answers null once `nowMinutes` reaches `expiresAt`, which is
+ * right for a rock nobody is flying at and wrong for a pirate somebody is: a raid
+ * already in the air must not lose its target on the boundary. The clamp used to
+ * live in `discoveredPirateIndexes` alone, so the disc and the launch gate could
+ * disagree by one instant. One question, asked one way, by both.
+ */
+export const pirateDiscovered = (
+  spec: PirateSpec,
+  epochs: readonly SensorEpoch[],
+  nowMinutes: number,
+): boolean =>
+  pirateDiscoveredAt(spec, epochs, Math.min(nowMinutes, spec.expiresAt - 1e-9)) !== null;
+
+/**
+ * THE MEMORY FLOOR ITSELF, STATED ONCE. D160.
+ *
+ * `sight.ts` is the only statement of the three zones and this never contradicts
+ * it — it sits on top, raising an answer for a pirate this commander has already
+ * identified. It is exported as a function of the two inputs rather than only
+ * being reachable through `pirateZone` because `projectGalaxyTraffic` arrives with
+ * the whole lane's discovery answer already computed as a set: re-solving per
+ * pirate would be the same work twice, and writing `discovered ? … : live` inline
+ * there would be a SECOND opinion about zones, which is exactly what this project
+ * forbids.
+ */
+export const pirateSightZone = (live: SensorZone, discovered: boolean): SensorZone =>
+  discovered ? 'IDENTIFIED' : live;
+
+/**
+ * WHAT A COMMANDER IS ENTITLED TO SEE OF ONE PIRATE, RIGHT NOW. D158 · D160.
+ *
+ * `sensorZone` is still the only statement of the three zones and is read first.
+ * Discovery is a FLOOR under its answer, and only for a pirate:
+ *
+ *   · once discovered → `IDENTIFIED`, wherever it is now;
+ *   · never discovered → exactly what the circles give, `NONE` included.
+ *
+ * THE FLOOR IS `IDENTIFIED` AND NOT `CONTACT`, WHICH IS D160. D158 shipped the
+ * lower floor to protect "Radar detects, Telescope identifies", and the protection
+ * was unnecessary: `sensor_epochs.reach` is the TELESCOPE radius alone
+ * (`refreshSensorEpoch`), so a discovered pirate is by definition one this
+ * commander has already had inside an identifying circle. The manifest was bought.
+ * Handing it back is memory; withholding it was amnesia — and it cost the lane the
+ * thing D124 asks for, a target a commander can still act on while they assemble
+ * the fleet to act with. A rock behaves exactly this way and always has.
+ *
+ * A RADAR-ONLY PIRATE IS UNTOUCHED. No epoch ever contained it, so the floor is
+ * absent and it stays the moving question mark at every range.
+ *
+ * WHAT THIS DOES NOT ANSWER IS WHETHER A CIRCLE IS COVERING IT. Callers publish
+ * `sensorZone(spheres, at) === 'NONE'` alongside it as `remembered`, and the disc
+ * draws such a craft faded. That mark means "you cannot see this", NOT "this is
+ * stale": the orbit is a solved function of time and the crew is the lane's current
+ * state, exactly as a discovered rock keeps serving its live `oreRemaining` to a
+ * commander with no eyes on it (D143). The faintness is about sight, not about age.
+ *
+ * `at` IS PASSED RATHER THAN DERIVED because the published point is not always the
+ * orbit's: a pirate under attack holds at the rendezvous for the length of the
+ * engagement (G6), and the zone has to be answered about the point actually drawn.
+ */
+export function pirateZone(
+  spheres: readonly SensorSphere[],
+  spec: PirateSpec,
+  at: Vec3,
+  epochs: readonly SensorEpoch[],
+  nowMinutes: number,
+): SensorZone {
+  return pirateSightZone(
+    sensorZone(spheres, at),
+    pirateDiscovered(spec, epochs, nowMinutes),
+  );
+}
+
 export const pirateActive = (spec: PirateSpec, minutes: number): boolean =>
   minutes >= spec.appearsAt && minutes < spec.expiresAt;
 

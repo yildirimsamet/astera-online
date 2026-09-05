@@ -18,7 +18,18 @@ import { chromium } from 'playwright';
 
 const WEB = process.env.WEB ?? 'http://localhost:5173';
 const OUT = process.argv[2] ?? 'out/visual';
-const PHONE = { width: 390, height: 844 };
+/**
+ * THE TARGET SCREEN, AND IT IS 375 WIDE. Owner instruction.
+ *
+ * This harness ran at 390 for most of the project's life, which is fifteen pixels
+ * wider than the phone the game is actually designed against — and fifteen pixels
+ * is precisely the margin that hides a truncation. A shipyard row whose name read
+ * "Tempest" in every screenshot ever taken here read "T..." on the real target.
+ *
+ * 375 x 667 is the narrow end of the iPhone line and the figure every layout in
+ * `docs/visual-design.md` is budgeted against. Widen it only if that budget moves.
+ */
+const PHONE = { width: 375, height: 812 };
 
 await mkdir(OUT, { recursive: true });
 

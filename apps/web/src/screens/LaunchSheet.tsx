@@ -4,17 +4,17 @@ import {
   COMBAT_HULLS,
   HULLS,
   fleetCount,
-  fleetPower,
+  fleetValue,
   hullFuelRate,
   type Fleet,
   type MobileHullId,
 } from '@astera/rules';
 import { useLaunch, useRaidPirate } from '../api/queries.js';
-import type { GalaxyPlanet, PirateContact, PlanetView } from '../api/schemas.js';
+import type { GalaxyPlanet, IntelView, PirateContact, PlanetView } from '../api/schemas.js';
 import { hullLabel } from '../i18n/names.js';
 import { compact } from '../lib/format.js';
 import { serverNow } from '../lib/clock.js';
-import { recordAgeMinutes } from '../lib/dossier.js';
+import { recordAgeMinutes, sourceLabel } from '../lib/dossier.js';
 import { duration, staleness } from '../lib/time.js';
 import {
   MOBILE,
@@ -24,12 +24,15 @@ import {
   techOf,
 } from '../lib/navigation.js';
 import { familyGroups } from '../lib/roster.js';
+import { useAccordion } from '../lib/accordion.js';
 import { StatStrip } from '../ui/Action.js';
 import { Band } from '../ui/UpgradeRow.js';
 import { CapacityBar } from '../ui/CapacityBar.js';
 import { SpendBar } from '../ui/SpendBar.js';
 import { HULL_ART } from '../ui/assets.js';
 import { HullMark } from '../ui/icons/hulls.js';
+import { ClassChip } from '../ui/CounterMark.js';
+import { ForceCompare, type ForceReading } from '../ui/ForceCompare.js';
 import { QuantityStepper } from '../ui/QuantityStepper.js';
 import { Button, Sheet } from '../ui/kit/index.js';
 import { describe, useToast } from '../ui/Toast.js';
@@ -70,12 +73,23 @@ export type LaunchTarget =
 export function LaunchSheet({
   target,
   planet,
+  intel,
   onClose,
   onLaunched,
   onAim,
 }: {
   target: LaunchTarget;
   planet: PlanetView;
+  /**
+   * THE DOSSIER'S OWN READINGS, so this sheet can put the target's defence on the
+   * same axis as the fleet being packed. Owner report: *"Savunma gücü yazıyor ama
+   * bunun neye karşılık geldiğini bilmiyorum."*
+   *
+   * Optional, and its absence is a real state rather than a loading artefact: a
+   * commander who has never probed this world gets no enemy bar, which is the
+   * honest picture and the reason to buy one.
+   */
+  intel?: IntelView | undefined;
   onClose: () => void;
   onLaunched: () => void;
   /**
@@ -210,24 +224,6 @@ export function LaunchSheet({
    */
   const atHome = MOBILE.reduce((sum, hull) => sum + (planet.fleet[hull] ?? 0), 0);
 
-  /**
-   * THE BET, AS A QUANTITY THAT CAN BE DRAWN. Owner instruction.
-   *
-   * The headline of this sheet has always been a COUNT of units left holding, and
-   * a count is the wrong measure of a garrison: twelve Wasps and three Bulwarks
-   * are the same number and not remotely the same defence. Power is what decides
-   * the fight, so power is what the bar is made of — and the split between what
-   * stays and what leaves is the whole decision, drawn as the thing being taken
-   * away from the thing that remains.
-   *
-   * The unit count stays underneath as the caption, because it is the figure the
-   * launch toast and the confirmation sentence both quote and the two must agree.
-   */
-  const standing = { ...planet.fleet, ...planet.ground };
-  const powerNow = fleetPower(standing);
-  const powerLeaving = fleetPower(sending);
-  const powerHolding = Math.max(0, powerNow - powerLeaving);
-
   const set = (hull: MobileHullId, value: number): void => {
     const available = planet.fleet[hull] ?? 0;
     setSending((current) => ({ ...current, [hull]: Math.max(0, Math.min(available, value)) }));
@@ -259,6 +255,45 @@ export function LaunchSheet({
     : null;
 
   /**
+   * WHAT IS STANDING AT THE TARGET, ON THE AXIS THE FLEET IS MEASURED IN.
+   *
+   * `fleetValue` on both sides, because that is the one quantity a commander can
+   * already read of somebody else's world: a probe's defence band IS
+   * `fleetValue(homeFleet)`, fuzzed at the look. Until now nothing in the game
+   * expressed the player's own ships in the same units, so the band was a figure
+   * with nothing to be compared to.
+   *
+   * THE TWO TARGET KINDS ARE HONESTLY DIFFERENT HERE, and the difference is the
+   * whole economy of the intel layer:
+   *
+   *   · A WORLD is a memory. The band has width (the probe fuzzed it) and an age
+   *     (the world has moved on), and both are drawn.
+   *   · A PIRATE is current sight. An IDENTIFIED contact hands over its exact
+   *     roster, so the reading has no width and no age — a solid bar beside the
+   *     world's hatched one, which is what paying for a look buys.
+   *
+   * Null in every other case, and null draws NO enemy bar. An empty bar would say
+   * the target is undefended, on the one screen where that mistake cannot be taken
+   * back.
+   */
+  const opposing: ForceReading | null = (() => {
+    if (target.kind === 'pirate') {
+      const roster = target.pirate.fleet;
+      if (!roster) return null;
+      const exact = fleetValue(roster);
+      return { low: exact, high: exact, source: sourceLabel('public'), ageMinutes: null };
+    }
+    const report = intel?.probeReports.find((r) => r.targetPlanetId === target.world.id);
+    if (!report) return null;
+    return {
+      low: report.defence.low,
+      high: report.defence.high,
+      source: sourceLabel('probe'),
+      ageMinutes: Math.max(0, (serverNow() - report.at.getTime()) / 60_000),
+    };
+  })();
+
+  /**
    * ONE HULL'S ROW IN THE PICKER: the ship, the four numbers, and the stepper.
    *
    * Lifted out of the list so the bands above it are the only thing the layout
@@ -281,7 +316,7 @@ export function LaunchSheet({
           place they were given nothing to choose WITH. The counter cycle is
           the whole of combat, and it is decided by these four numbers.
         */}
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2">
           <div data-art className="socket size-12 shrink-0 rounded-control">
             {HULL_ART[hull] ? (
               <img
@@ -297,10 +332,20 @@ export function LaunchSheet({
           </div>
 
           <div className="min-w-0 flex-1">
-            <div className="flex items-baseline gap-2">
+            <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
               <p className="name text-bone">
                 {hullLabel(hull)}
               </p>
+              {/*
+                THE ROLE IT FIGHTS AS, not the band it was bought under. D124.
+
+                The picker groups by FAMILY, which is where a hull lives in the
+                shipyard and says nothing about how it fights — Pike is Offensive,
+                Rampart is Defensive, and the Rampart beats the Pike. Without this
+                chip the only taxonomy on the one irreversible screen in the game
+                pointed the wrong way.
+              */}
+              <ClassChip cls={HULLS[hull].cls} />
               <span className="num text-label text-faint">
                 {t('launch.atHome', { count: available })}
               </span>
@@ -344,6 +389,21 @@ export function LaunchSheet({
    */
   const groups = familyGroups(MOBILE.filter((hull) => (planet.fleet[hull] ?? 0) > 0));
 
+  /**
+   * WHICH BANDS ARE SHOWING THEIR ROWS.
+   *
+   * Seeded with the FIRST band that has anything in it rather than with a fixed
+   * family, because a world holding only transports would otherwise open on an
+   * empty Offensive heading and look broken. Held as a set so opening one band
+   * never shuts another — a commander comparing a Skirmisher against a Bulwark
+   * needs both on screen, and an accordion that allows only one open group makes
+   * exactly that comparison impossible.
+   *
+   * Lazy `useState` initialiser: the seed is read once, so a band the player shuts
+   * stays shut when the picker re-renders under them on every keystroke.
+   */
+  const families = useAccordion('launch', groups[0] ? [groups[0].family] : []);
+
   return (
     <Sheet
       /*
@@ -384,6 +444,7 @@ export function LaunchSheet({
         confirming ? (
           <div className="flex gap-2">
             <Button
+              size="sm"
               className="flex-1"
               onClick={() => {
                 setConfirming(false);
@@ -399,7 +460,7 @@ export function LaunchSheet({
             */}
             <Button
               variant="commit"
-              size="lg"
+              size="sm"
               className="flex-[2]"
               disabled={busy}
               onClick={() => {
@@ -449,7 +510,7 @@ export function LaunchSheet({
         ) : (
           <Button
             variant="commit"
-            size="lg"
+            size="sm"
             full
             disabled={!canSend}
             onClick={() => {
@@ -488,58 +549,19 @@ export function LaunchSheet({
       }
     >
       {/*
-        THE LINE. Everything else on this sheet is supporting detail — and it is
-        now a SHAPE, because the one thing a commander is deciding here is how much
-        of their own defence to take away from themselves.
+        WHAT YOU ARE FLYING AT, ON THE SAME AXIS AS WHAT YOU ARE SENDING.
 
-        THE BAR IS THE GARRISON. What holds is solid bone; what leaves is carved
-        off the right-hand end in threat red and hatched, so a fleet being packed
-        looks like the wall coming down. Nothing about that needs reading, and
-        pressing "+" on a Bulwark takes a visibly bigger bite than pressing it on a
-        Wasp — which is the counter cycle teaching itself at the moment it matters.
+        Directly under the home-defence bar, so the sheet's argument runs in the
+        order the decision is actually made: what this costs me at home, what I am
+        up against, what the trip costs, and only then which ships go. It reacts to
+        the picker exactly as the bar above it does — pressing "+" moves both, which
+        is the same cause and effect in two different currencies.
 
-        THE TWO FIGURES ARE THE SAME TWO THE SHEET HAS ALWAYS SHOWN: how many units
-        hold, and for how long they are alone. They are captions now.
+        It states no verdict. The reading is stale, fuzzed and blind to the counter
+        cycle, and a sheet that answered "will I win" would end the bet the whole
+        game is built on.
       */}
-      <div className="plate plate-threat mt-1 px-3 py-3">
-        <p className="legend text-threat-ink">{t('launch.whileAway')}</p>
-
-        <div
-          data-defence-bar
-          className="socket mt-3 flex h-3.5 w-full overflow-hidden rounded-full"
-          role="img"
-          aria-label={t('launch.defenceReading', {
-            holds: compact(powerHolding),
-            leaves: compact(powerLeaving),
-          })}
-        >
-          <span
-            data-part="holds"
-            className="h-full bg-bone/60 transition-[width] duration-200"
-            style={{ width: `${String(barShare(powerHolding, powerNow))}%` }}
-          />
-          <span
-            data-part="leaves"
-            className="h-full bg-threat/70 transition-[width] duration-200"
-            style={{
-              width: `${String(barShare(powerLeaving, powerNow))}%`,
-              backgroundImage:
-                'repeating-linear-gradient(45deg, rgb(0 0 0 / 28%) 0 3px, transparent 3px 6px)',
-            }}
-          />
-        </div>
-
-        <div className="mt-2 flex items-baseline justify-between gap-3">
-          <p className="num text-title leading-tight text-bone">
-            {t('launch.defending', { count: holding })}
-          </p>
-          <p className="num text-body text-threat-ink">
-            {total === 0 || route === null
-              ? t('launch.nothingSent')
-              : t('launch.exposedFor', { duration: duration(route.exposureMinutes) })}
-          </p>
-        </div>
-      </div>
+      <ForceCompare yours={fleetValue(sending)} theirs={opposing} />
 
       {/*
         THE FLIGHT, IN THREE FIGURES AND ONE PICTURE.
@@ -551,7 +573,7 @@ export function LaunchSheet({
         a figure that went red with no way of telling whether the player was ten
         deuterium short or a thousand.
       */}
-      <div className="mt-6 grid grid-cols-3 gap-3">
+      <div className="mt-6 grid grid-cols-3 gap-2">
         <Figure
           label={t('launch.oneWay')}
           value={
@@ -582,31 +604,53 @@ export function LaunchSheet({
           })}
         </p>
       )}
-      {route !== null && route.fuel > 0 && (
-        <div className="plate mt-3 px-3 py-3">
-          <SpendBar
-            stock={planet.planet.deuterium}
-            spend={route.fuel}
-            tone="deuterium"
-            label={t('launch.fuel')}
-          />
+      {/*
+        THE TWO METERS SHARE A ROW. Owner directive: *"gereksiz progress bar
+        tasarımları ile dikey alanı uzatıyoruz."*
+
+        Fuel and hangar are the same SHAPE of fact — a quantity against a ceiling —
+        and they were stacked as two full-width blocks, one of them inside a plate
+        of its own, for a total of four bars down a sheet that already carries the
+        force comparison. Side by side they are the same two readings in half the
+        height, and putting them level also states the thing the stack never did:
+        these are the two limits on the same launch, and either can be the one that
+        stops it.
+
+        They wrap back to full width below ~320px, which is the right degradation —
+        a bar too narrow to read is worse than a bar on its own line.
+      */}
+      {(route !== null) || planet.capacity ? (
+        <div data-launch-meters className="mt-2 gap-2">
+          {route !== null && (
+            <div className="min-w-[9rem] flex-1 flex items-center">
+              <SpendBar
+                stock={planet.planet.deuterium}
+                spend={route.fuel}
+                tone="deuterium"
+                label={t('launch.fuel')}
+              />
+            </div>
+          )}
+          {planet.capacity && (
+            <div className="min-w-[9rem] flex-1">
+              <CapacityBar
+                className='px-0'
+                total={planet.capacity.hangar}
+                used={planet.capacity.hangarUsed}
+                incoming={0}
+                label={t('launch.hangarLabel')}
+              />
+            </div>
+          )}
         </div>
-      )}
+      ) : null}
+      {/*
+        THE RULE NO PICTURE CAN CARRY: a fleet in the air still occupies this
+        world's hangar, so launching frees nothing. One micro line under both
+        meters rather than a caption belonging to one of them.
+      */}
       {planet.capacity && (
-        <div className="mt-3">
-          <CapacityBar
-            total={planet.capacity.hangar}
-            used={planet.capacity.hangarUsed}
-            incoming={0}
-            label={t('launch.hangarLabel')}
-          />
-          {/*
-            THE BAR CARRIES THE FIGURES; THE SENTENCE CARRIES THE RULE that no
-            picture can — that a fleet in the air still occupies this world's
-            hangar, so launching frees nothing.
-          */}
-          <p className="mt-2 text-caption leading-snug text-faint">{t('launch.hangarNote')}</p>
-        </div>
+        <p className="mt-2 text-micro leading-snug text-faint">{t('launch.hangarNote')}</p>
       )}
 
       <div className="mt-6">
@@ -661,20 +705,43 @@ export function LaunchSheet({
             </span>
           </div>
         )}
-        {groups.map(({ family, hulls }) => (
-          <section key={family} data-fleet-family={family}>
-            {/*
-              THE SAME BAND, IN THE SAME ORDER, AS THE TAB THESE SHIPS WERE BOUGHT ON.
+        {groups.map(({ family, hulls }) => {
+          /*
+            THE SAME BAND, IN THE SAME ORDER, AS THE TAB THESE SHIPS WERE BOUGHT ON —
+            AND IT FOLDS. Owner instruction.
 
-              No note under it. On the shipyard tab a band teaches what a family is
-              for, because that is where the hull is chosen for good; here the
-              player already owns them and is picking a wing under a clock. The
-              label alone is what carries over.
-            */}
-            <Band label={t(`planet.reach.family.${family}.label`)} />
-            {hulls.map(row)}
-          </section>
-        ))}
+            No note under it. On the shipyard tab a band teaches what a family is
+            for, because that is where the hull is chosen for good; here the player
+            already owns them and is picking a wing under a clock. The label alone
+            is what carries over.
+
+            The FOLD is what makes that clock survivable. A developed world offers
+            close to twenty hulls here, and a commander scrolling four screens to
+            find a Cargo band is a commander who has stopped weighing the decision
+            and started operating a list. One band is open on arrival and the rest
+            state their counts, so the shape of the roster arrives in one screen.
+
+            A LONE BAND NEVER FOLDS (`foldable`): hiding the only group on the sheet
+            would cost a tap to save nothing at all.
+          */
+          const foldable = groups.length > 1;
+          const open = !foldable || families.isOpen(family);
+          return (
+            <section key={family} data-fleet-family={family}>
+              <Band
+                label={t(`planet.reach.family.${family}.label`)}
+                {...(foldable
+                  ? {
+                    count: hulls.reduce((sum, hull) => sum + (planet.fleet[hull] ?? 0), 0),
+                    open,
+                    onToggle: () => { families.toggle(family); },
+                  }
+                  : {})}
+              />
+              {open ? hulls.map(row) : null}
+            </section>
+          );
+        })}
         {atHome === 0 && <p className="text-body text-dim">{t('launch.noShips')}</p>}
       </div>
 
@@ -703,15 +770,6 @@ export function LaunchSheet({
     </Sheet>
   );
 }
-
-/**
- * A part's share of a whole, clamped, with an empty garrison drawing nothing.
- *
- * `powerNow` is zero on a world with no craft standing at all — every hull away,
- * no ground guns — and dividing by it would put `NaN%` into a style attribute.
- */
-const barShare = (part: number, whole: number): number =>
-  whole <= 0 ? 0 : Math.max(0, Math.min(100, (part / whole) * 100));
 
 function Figure({
   label,

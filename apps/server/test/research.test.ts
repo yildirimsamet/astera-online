@@ -321,26 +321,27 @@ describe('the seasonal frontier', () => {
     expect(run!.minedDeuterium).toBeGreaterThan(0);
   });
 
-  it('keeps the Deuterium probe band hidden without spectroscopy', async () => {
+  /**
+   * THE PROBE'S DEUTERIUM BAND IS NOT SOLD BY RESEARCH ANY MORE. D166 — owner
+   * instruction: *"isotope_spectrometry araştırmasının sonda verisi ile olan
+   * ilişkisini kes. sonda → yağmalanabilir döteryumu da default olarak göstersin."*
+   *
+   * THE GATE WAS ALREADY LEAKING, WHICH IS WHY IT HAD TO GO ONE WAY OR THE OTHER.
+   * The report's headline `stock` band comes from `raidableStock`, which sums ALL
+   * THREE resources — so a commander with no spectroscopy was reading the deuterium
+   * through the total anyway, while a commander who had paid for it saw the same
+   * ore twice: once inside the band and once on its own line. A gate that cannot be
+   * enforced is not a gate; it is a rule the interface teaches wrongly.
+   *
+   * WHAT THE PROJECT STILL SELLS is unchanged and is the part that was never
+   * leaking: mining an isotope anomaly at all (`NEEDS_ISOTOPE_SPECTROMETRY`), and
+   * seeing which rocks are rich. Reading a world is the probe's job.
+   */
+  it('bands the raidable Deuterium for every commander, researched or not', async () => {
     const target = f.planetIds[1]!;
     await grant(f.db, mine, 20_000, 4_000);
     await setLevel(f.db, mine, 'SHIPYARD', 2);
-    await f.db.update(planets).set({ deuterium: 300 }).where(eq(planets.id, target));
-
-    const launch = await launchProbe(f.db, mine, target, f.clock);
-    f.clock.set(launch.arriveAt);
-    await worker(f).tick();
-    const [report] = await f.db.select().from(probeReports);
-
-    expect(report!.deuteriumStock).toBeNull();
-  });
-
-  it('adds a banded Deuterium reading to probes after spectroscopy', async () => {
-    const target = f.planetIds[1]!;
-    await grant(f.db, mine, 20_000, 4_000);
-    await setLevel(f.db, mine, 'SHIPYARD', 2);
-    await f.db.update(planets).set({ deuterium: 300 }).where(eq(planets.id, target));
-    await giveResearch(f.db, mine, 'ISOTOPE_SPECTROMETRY');
+    await f.db.update(planets).set({ deuterium: 3_000 }).where(eq(planets.id, target));
 
     const launch = await launchProbe(f.db, mine, target, f.clock);
     f.clock.set(launch.arriveAt);
@@ -350,6 +351,28 @@ describe('the seasonal frontier', () => {
     expect(report!.deuteriumStock).not.toBeNull();
     expect(report!.deuteriumStock!.low).toBeGreaterThanOrEqual(0);
     expect(report!.deuteriumStock!.high).toBeGreaterThan(report!.deuteriumStock!.low);
+  });
+
+  /**
+   * AND IT IS THE RAIDABLE FIGURE, NOT THE STORE. The line sits beside a band that
+   * already means "what a fleet could carry away", so a total would be the one
+   * number on that screen measuring something else — the exact confusion D144 was
+   * reported for on alloy and crystal.
+   */
+  it('bands what a raid could take rather than the whole tank', async () => {
+    const target = f.planetIds[1]!;
+    await grant(f.db, mine, 20_000, 4_000);
+    await setLevel(f.db, mine, 'SHIPYARD', 2);
+    await f.db.update(planets).set({ deuterium: 3_000 }).where(eq(planets.id, target));
+
+    const launch = await launchProbe(f.db, mine, target, f.clock);
+    f.clock.set(launch.arriveAt);
+    await worker(f).tick();
+    const [report] = await f.db.select().from(probeReports);
+
+    // A DECISIVE raid takes `COMBAT.lootDecisive` of what is exposed, so the band
+    // has to sit under the tank rather than on it.
+    expect(report!.deuteriumStock!.high).toBeLessThan(3_000);
   });
 });
 
@@ -948,6 +971,84 @@ describe('what is open from the first minute', () => {
   it('keeps the stockpile behind the weapon it stockpiles', async () => {
     expect(RESEARCH_PROJECTS.STRATEGIC_STOCKPILE.prerequisite).toBe('DEATH_STAR_PROTOCOL');
     expect((await stateOf('STRATEGIC_STOCKPILE')).available).toBe(false);
+  });
+});
+
+/**
+ * WHY A SHUT PROJECT IS SHUT, AS DATA RATHER THAN AS A GUESS. Live-shard report.
+ *
+ * A commander could not order the Interception Grid, and the card told them it was
+ * researchable "in 0m" — a sentence about an act clock that had run out two days
+ * earlier. The real refusal was the prerequisite: Gravitic Charges was not held.
+ * The card had no way to say so, because `researchView` computed both prerequisite
+ * gates and then published NEITHER of them, leaving the screen to guess from the
+ * only gate it could see.
+ *
+ * FIVE PROJECTS STAND BEHIND A PREREQUISITE AND OUTSIDE THE FRONTIER'S DISCOVERY
+ * RULE, so `discovered` is true for every one of them and cannot carry the reason:
+ * the three Fleet V2 stat ladders and the two strategic projects. Publishing the
+ * gate is what lets the card name the door instead of inventing a clock.
+ */
+describe('the reason a shut project is shut', () => {
+  let f: Fixture;
+  let mine: string;
+
+  const view = async () => f.db.transaction(async (tx) => {
+    const planet = await loadLocked(tx, mine, f.clock);
+    return researchView(tx, planet);
+  });
+  const stateOf = async (id: string) => (await view()).find((row) => row.id === id)!;
+
+  /** Every project whose only gate is a project, never the season clock. */
+  const BEHIND_A_PROJECT = [
+    'SHIP_POWER', 'SHIP_ARMOR', 'SHIP_PROPULSION',
+    'INTERCEPTION_GRID', 'STRATEGIC_STOCKPILE',
+  ] as const;
+
+  beforeEach(async () => {
+    f = await seedWorld();
+    [mine] = f.planetIds as [string];
+    await setLevel(f.db, mine, 'CORE', 12);
+    await grant(f.db, mine, 5_000_000, 5_000_000);
+    await f.db.update(planets).set({ deuterium: 500_000 }).where(eq(planets.id, mine));
+  });
+
+  it('publishes an unmet prerequisite on every project that stands behind one', async () => {
+    for (const id of BEHIND_A_PROJECT) {
+      const state = await stateOf(id);
+      expect(state.discovered, id).toBe(true);
+      expect(state.available, id).toBe(false);
+      expect(state.prerequisiteMet, id).toBe(false);
+      expect(state.queuePrerequisiteMet, id).toBe(false);
+    }
+  });
+
+  it('reports a prerequisite met once it is held', async () => {
+    await giveResearch(f.db, mine, 'STARSHIP_ENGINEERING');
+    const state = await stateOf('SHIP_POWER');
+    expect(state.prerequisiteMet).toBe(true);
+    expect(state.queuePrerequisiteMet).toBe(true);
+    expect(state.available).toBe(true);
+  });
+
+  /**
+   * The queue gate counts what is PAID FOR, the durable one what has LANDED — and
+   * the projection only exists on the served view, so this asks the payload the
+   * client actually parses rather than the raw helper.
+   */
+  it('separates a queued prerequisite from a held one', async () => {
+    await completeResearch(f.db, mine, 'STARSHIP_ENGINEERING', f.clock);
+    const served = await planetView(f.db, mine, f.clock);
+    const state = served.research.find((row) => row.id === 'SHIP_POWER')!;
+    expect(state.prerequisiteMet).toBe(false);
+    expect(state.queuePrerequisiteMet).toBe(true);
+  });
+
+  it('leaves a project with no prerequisite met by definition', async () => {
+    expect(RESEARCH_PROJECTS.EMPLACEMENT_DOCTRINE.prerequisite).toBeNull();
+    const state = await stateOf('EMPLACEMENT_DOCTRINE');
+    expect(state.prerequisiteMet).toBe(true);
+    expect(state.queuePrerequisiteMet).toBe(true);
   });
 });
 

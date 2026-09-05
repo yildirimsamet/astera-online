@@ -77,7 +77,7 @@ function LayoutChecks() {
         <div className="relative h-[300px] overflow-hidden rounded-chip border border-line-soft">
           <div className="absolute inset-0">
             <Sheet title="Marrow-81" eyebrow="Your planet" onClose={() => undefined}>
-              <div className="sticky top-0 -mx-4 grid grid-cols-4 gap-1 border-y border-line-soft bg-deep/95 px-4 py-2">
+              <div className="sticky top-0 -mx-4 grid grid-cols-4 gap-1 border-y border-line-soft bg-deep/95 px-2 py-2">
                 {['Grow', 'See', 'Defend', 'Reach'].map((t) => (
                   <span key={t} className="legend py-2 text-center">
                     {t}
@@ -130,7 +130,7 @@ function LayoutChecks() {
 
 function Preview() {
   return (
-    <div className="mx-auto max-w-[390px] space-y-8 px-4 py-6">
+    <div className="mx-auto max-w-[390px] space-y-8 px-2 py-6">
       <LayoutChecks />
 
       <section>
@@ -231,7 +231,7 @@ function Preview() {
 
       <section>
         <SectionHead label="Art wells" aside="I1 · art dims, copy never" />
-        <Plate className="flex items-end gap-3 p-3">
+        <Plate className="flex items-end gap-2 p-3">
           <ArtWell src={instrumentArt('TELESCOPE', 3)} size="lg" />
           <ArtWell src={HULL_ART.RAMPART} size="md" />
           <ArtWell src={HULL_ART.PIKE} size="md" locked />
@@ -248,7 +248,7 @@ function Preview() {
           </div>
           <Progress have={390} need={620} label="saving for Vault L4" />
           <Meter value={9} cap={10} cells={12} tone="alloy" />
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2">
             <span className="text-clarity-clear">
               <Bars lit={4} />
             </span>
@@ -272,7 +272,7 @@ function Preview() {
             Extends the area where moving craft can be identified, and lets you watch
             a planet&apos;s fleet status silently.
           </EmptyState>
-          <Plate className="flex gap-3 p-3">
+          <Plate className="flex gap-2 p-3">
             <Skeleton className="size-[74px]" />
             <div className="flex-1 space-y-2 py-2">
               <Skeleton className="h-3 w-1/2" />

@@ -10,6 +10,7 @@ import {
   surfaceStandoff,
   toGame,
   visualLeg,
+  worldRadius,
 } from '@astera/rules';
 import {
   BLAST_SECONDS,
@@ -506,18 +507,25 @@ describe('a leg that ends at a world', () => {
     expect(targetNodeOf(nodes, { x: 123, y: 45, z: 6 })).toBeUndefined();
   });
 
+  /*
+    READ OFF `worldRadius`, NEVER TYPED. These assertions carried the literal 1.4
+    and 0.44 — the authored anchor sizes at the time — so the day D166 shrank the
+    three anchors they failed for a reason that had nothing to do with standoffs.
+    A test that restates a constant is a second copy of it.
+  */
   it('stops clear of the world rather than inside it', () => {
     const end = legEnd(thread().path!, legStandoff(thread(), nodes).end);
     const centre = toWorld(FAR);
     const gap = Math.hypot(end[0] - centre[0], end[1] - centre[1], end[2] - centre[2]);
-    // A heavyweight world is drawn at 1.4 across; the squadron must be outside it.
-    expect(gap).toBeGreaterThan(1.4);
-    expect(gap).toBeCloseTo(orbitStandoff(1.4), 6);
+    const capital = worldRadius(CORE_TOP_LEVEL);
+    // A heavyweight world is drawn at its cap size; the squadron must be outside it.
+    expect(gap).toBeGreaterThan(capital);
+    expect(gap).toBeCloseTo(orbitStandoff(capital), 6);
   });
 
   /** A fleet coming home lands at the tight surface, not the wider foreign orbit. */
   it('uses surface clearance at the world it is landing on', () => {
-    expect(legStandoff(homeward(), nodes).end).toBeCloseTo(surfaceStandoff(0.44), 6);
+    expect(legStandoff(homeward(), nodes).end).toBeCloseTo(surfaceStandoff(worldRadius(1)), 6);
   });
 
   /**
@@ -545,19 +553,19 @@ describe('a leg that ends at a world', () => {
     const at = threadPosition(path, path.departAt.getTime(), legStandoff(back, nodes));
     const centre = toWorld(path.from);
     const gap = Math.hypot(at[0] - centre[0], at[1] - centre[1], at[2] - centre[2]);
-    // Outside the heavyweight's 1.4 silhouette, not sitting in the middle of it.
-    expect(gap).toBeCloseTo(orbitStandoff(1.4), 6);
+    // Outside the heavyweight's silhouette, not sitting in the middle of it.
+    expect(gap).toBeCloseTo(orbitStandoff(worldRadius(CORE_TOP_LEVEL)), 6);
   });
 
   /** A missing endpoint changes only that endpoint; the known home still clears. */
   it('does not invent clearance for a world that is not on the map', () => {
     const stray = thread();
     stray.path!.to = { x: -999, y: 30, z: 12 };
-    expect(legStandoff(stray, nodes)).toEqual({ start: surfaceStandoff(0.44), end: 0 });
+    expect(legStandoff(stray, nodes)).toEqual({ start: surfaceStandoff(worldRadius(1)), end: 0 });
 
     const strayHome = homeward();
     strayHome.path!.from = { x: -999, y: 30, z: 12 };
-    expect(legStandoff(strayHome, nodes)).toEqual({ start: 0, end: surfaceStandoff(0.44) });
+    expect(legStandoff(strayHome, nodes)).toEqual({ start: 0, end: surfaceStandoff(worldRadius(1)) });
   });
 
   it('leaves from its own surface rather than its centre', () => {
@@ -566,7 +574,7 @@ describe('a leg that ends at a world', () => {
     const centre = toWorld(path.from);
     const left = threadPosition(path, path.departAt.getTime(), standoff);
     expect(Math.hypot(left[0] - centre[0], left[1] - centre[1], left[2] - centre[2]))
-      .toBeCloseTo(surfaceStandoff(0.44), 6);
+      .toBeCloseTo(surfaceStandoff(worldRadius(1)), 6);
   });
 
   it('holds the craft at the standoff point once it has arrived', () => {

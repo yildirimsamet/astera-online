@@ -110,6 +110,22 @@ export const vocabulary = {
     },
   },
 
+  /**
+   * THE THREE ROLES A FIGHT IS DECIDED BY, plus the one that is prey.
+   *
+   * Named separately from `hull.*.family` on purpose. Family is a PURCHASING
+   * taxonomy — where a hull sits in the shipyard — and it runs at right angles to
+   * this one: a Pike is Offensive and a Rampart Defensive, and the Rampart beats
+   * the Pike. Teaching the two with one word was how the interface came to imply
+   * the opposite of the rule it enforces.
+   */
+  combatClass: {
+    SKIRMISHER: { name: 'Skirmisher', tag: 'Many, fast, light' },
+    BULWARK: { name: 'Bulwark', tag: 'Heavy armour, slow' },
+    LANCE: { name: 'Lance', tag: 'One heavy blow' },
+    SUPPORT: { name: 'Support', tag: 'Unarmed; covered while escorts live' },
+  },
+
   hull: {
     DART: {
       name: 'Dart', tag: 'Fragile speed raider', role: 'Fastest entry combat hull; trades durability for exposure time.',
@@ -351,15 +367,15 @@ export const gains = {
   },
   /** Every research row names the quantity or permission the player actually buys. */
   research: {
-    powerLabel: 'Fleet V2 combat attack',
+    powerLabel: 'Warship attack',
     powerScope:
-      'Every Fleet V2 combat hull. Power × Armor can add at most 25% equal-budget combat power; transports and preserved units are unaffected.',
-    armorLabel: 'Fleet V2 hull strength',
+      'Every warship in your fleet. Power and Armor together add at most 25% equal-budget combat power; transports and ground defence are unaffected.',
+    armorLabel: 'Ship hull strength',
     armorScope:
-      'All 18 Fleet V2 hulls, including transports. Power × Armor can add at most 25% equal-budget combat power; preserved units are unaffected.',
-    speedLabel: 'Fleet V2 speed',
+      'All 18 ships in your fleet, transports included. Power and Armor together add at most 25% equal-budget combat power; ground defence is unaffected.',
+    speedLabel: 'Fleet speed',
     speedScope:
-      'All 18 Fleet V2 hulls. A mixed fleet still flies at its slowest member’s improved speed; Prospectors, probes and the Death Star are unaffected.',
+      'All 18 ships in your fleet. A mixed fleet still flies at its slowest member’s — improved — speed; Prospectors, probes and the Death Star are unaffected.',
     engineeringLabel: 'Hull tier access',
     engineeringTier: 'Tier {{tier}}',
     engineeringScope:
@@ -492,6 +508,15 @@ export const notifications = {
   fleetFallback: 'Your fleet is home.',
   fleetHomeLooted: 'Fleet home{{where}} · {{count}} ships · +{{amount}} looted',
   fleetHomeEmpty: 'Fleet home{{where}} · {{count}} ships · empty-handed',
+  /**
+   * THE MERCHANT'S OWN HOMECOMING. D166.
+   *
+   * A swap is not a raid, so it never borrows the plunder wording — and a
+   * convoy that bought nothing is a different fact from a fleet that found
+   * nothing, which is why the empty case has its own line.
+   */
+  tradeHome: 'Convoy home · {{count}} ships · bought {{landed}}',
+  tradeHomeEmpty: 'Convoy home · {{count}} ships · nothing bought',
   fleetFrom: ' from {{origin}}',
   probeLost: 'Your probe was lost · that flight could not be completed',
   recalled: '{{count}} craft returned · that flight could not be completed',
@@ -526,6 +551,8 @@ export const notifications = {
   interceptedFallback: 'A Death Star was destroyed in flight.',
   asteroidShowerStarted: 'An asteroid shower has begun in the galaxy.',
   asteroidShowerEnded: 'The asteroid shower has ended · asteroid spawn is back to normal.',
+  tradeShipStarted: 'A trade ship is in the galaxy · {{alloy}} alloy = 1 deuterium.',
+  tradeShipEnded: 'The trade ship has left the galaxy.',
 } as const;
 
 /**
@@ -540,6 +567,7 @@ export const units = {
   now: 'now',
   live: 'live',
   ago: '{{duration}} ago',
+  imminent: 'any moment',
   hoursMinutes: '{{h}}h {{m}}m',
   minutesSeconds: '{{m}}m {{s}}s',
   seconds: '{{s}}s',

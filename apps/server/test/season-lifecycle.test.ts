@@ -352,8 +352,9 @@ describe('season lifecycle', () => {
     expect(await f.db.select().from(pirateRaids)).toHaveLength(0);
     expect(await f.db.select().from(pirateState)).toHaveLength(0);
     expect(live).toHaveLength(2);
+    // The current ruleset, which stopped being the Fleet V2 boundary at D156.
     expect(live.every(({ season }) =>
-      season.rulesetVersion === MULTI_WORLD.fleetCatalogRulesetVersion)).toBe(true);
+      season.rulesetVersion === MULTI_WORLD.rulesetVersion)).toBe(true);
     expect(live.map(({ shard }) => shard.ordinal).sort()).toEqual([1, 2]);
     expect(live.every(({ shard }) => shard.playerCap === SERVERS.capacity)).toBe(true);
     const successorUnits = await f.db.select().from(units);

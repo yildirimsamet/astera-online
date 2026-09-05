@@ -732,6 +732,39 @@ the current real population,
 not a fixed acceptance value. `/api/servers` must show only the lowest non-full ordinal as `open`;
 the next remains `locked` until the frontier fills.
 
+## Turning on the commanders the server plays — D159
+
+A separate, explicitly authorized owner operation, and deliberately two steps: the roster is
+filled by hand and the switch is thrown afterwards. `BOTS_ENABLED` defaults to `false`, so a
+deploy never starts seating anybody on its own.
+
+1. **Migrate first.** `bot_profiles` arrives in `0057`; the ordinary rule applies — migrations
+   before the new image (`assertSchemaCurrent` refuses otherwise).
+2. **Name them.** Nothing generates a name, and a short roster warns rather than inventing one.
+   Run this on the VPS, against production, with the real `DATABASE_URL`:
+
+   ```bash
+   pnpm bots add "Kara Şahin" "Yıldız" "Poyraz" ...     # 12 per live galaxy
+   pnpm bots list
+   ```
+
+   Each line prints a login and a password ONCE. They are never printed again and these
+   commanders never sign in; keep them only if you might want to take one over by hand.
+3. **Throw the switch.** `BOTS_ENABLED=true` in `.env`, then restart the worker alone — the API
+   replicas never read it:
+
+   ```bash
+   docker compose -f docker-compose.prod.yml up -d worker
+   ```
+4. **Confirm.** `/health` reports `checks.bots = { seated, awake }`. `seated` should reach the
+   roster size within a minute; `awake` is zero between 01:00 and 08:00 Türkiye time and between
+   four and twelve at every other hour — that is the schedule working, not a fault. `/api/season`
+   `online` should rise to match.
+
+To stop: `BOTS_ENABLED=false` and restart the worker. The worlds stay exactly where they are and
+go quiet, and are reclaimed on the ordinary three-day terms like any commander who stopped coming
+back. `pnpm bots retire "<name>"` takes one off the roster without touching anything it owns.
+
 ## Manual five-minute season cutoff
 
 This is a separate, explicitly authorized owner operation. It was exercised successfully in

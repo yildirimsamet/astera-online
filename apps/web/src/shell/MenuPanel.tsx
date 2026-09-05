@@ -9,12 +9,13 @@ import {
 } from '../lib/music.js';
 import { serverNow } from '../lib/clock.js';
 import { haptic } from '../lib/haptics.js';
-import { duration } from '../lib/time.js';
+import { untilReady } from '../lib/time.js';
 import { Button, Note, Section } from '../ui/kit/index.js';
 import {
   ChevronIcon,
   BellIcon,
   GalaxyIcon,
+  HeartIcon,
   LeaderboardIcon,
   RewardIcon,
   SendIcon,
@@ -89,7 +90,7 @@ export function MenuPanel({
   const announcementWaiting = announcementData?.announcements.filter((row) => !row.seen).length ?? 0;
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-4">
       {/**
        * WHAT IS LEFT AFTER THE DISC TOOK THE TWO VERBS. Owner instruction.
        *
@@ -111,7 +112,7 @@ export function MenuPanel({
        * came here to do; the galaxy name, the clock and the way out are what they
        * came here to check.
        */}
-      <div className="flex flex-col gap-3">
+      <div className="flex flex-col gap-2">
         {hasSeasonResult && (
           <MenuRow
             icon={<GalaxyIcon className="size-5" />}
@@ -175,6 +176,15 @@ export function MenuPanel({
             onOpen('rewards');
           }}
         />
+        {/* TODO: for now its closed */}
+        {/* <MenuRow
+          icon={<HeartIcon className="size-5" />}
+          label={t('community.donate.menuLabel')}
+          hint={t('community.donate.menuHint')}
+          onClick={() => {
+            onOpen('donate');
+          }}
+        /> */}
         {isAdmin && (
           <MenuRow
             icon={<LockIcon className="size-5" />}
@@ -196,8 +206,8 @@ export function MenuPanel({
         backwards.
       */}
       <Section label={t('menu.accountHeading')}>
-        <div className="grid grid-cols-2 gap-3">
-          <div className="plate flex flex-col gap-1 p-3">
+        <div className="grid grid-cols-2 gap-2">
+          <div className="plate flex flex-col gap-1 p-2">
             <p className="legend">{t('galaxy.commander.galaxyLabel')}</p>
             <p className="name truncate">
               {galaxy ?? t('galaxy.commander.galaxyUnknown')}
@@ -206,7 +216,7 @@ export function MenuPanel({
               <p className="text-label text-faint">{shard}</p>
             )}
           </div>
-          <div className="plate flex flex-col gap-1 p-3">
+          <div className="plate flex flex-col gap-1 p-2">
             <p className="legend">
               {ended ? t('seasonRecap.seasonLabel') : t('galaxy.commander.endsLabel')}
             </p>
@@ -215,7 +225,7 @@ export function MenuPanel({
                 ? t('seasonRecap.ended')
                 : hoursLeft === null
                 ? t('galaxy.commander.endsUnknown')
-                : duration(Math.max(0, hoursLeft) * 60)}
+                : untilReady(hoursLeft * 60)}
             </p>
           </div>
         </div>
@@ -290,11 +300,25 @@ function MenuRow({
         haptic('tap');
         onClick();
       }}
-      className="plate flex w-full items-center gap-3 px-3 py-3 text-left transition-colors hover:bg-bone/[0.03] active:bg-raised/60"
+      /*
+        THE HINT IS THE ACCESSIBLE NAME, NOT A SECOND LINE. Owner directive:
+        *"gereksiz fazla yazı yerine tasarımın kendini anlattığı ... temiz premium."*
+
+        Seven of these at two lines each is most of a 375-wide phone spent on a
+        menu, and the second line was explaining destinations that name themselves:
+        "Leaderboard" does not need a sentence under it, and the icon and chevron
+        have already said the rest.
+
+        MOVED rather than deleted. A screen reader still hears the whole thing, and
+        the one reader who genuinely cannot infer a destination from its name is the
+        reader who cannot see the icon either.
+      */
+      aria-label={`${label}. ${hint}`}
+      className="plate flex w-full items-center gap-2 px-3 py-2 text-left transition-colors hover:bg-bone/[0.03] active:bg-raised/60"
     >
       <span
         data-attention={attention || undefined}
-        className={`socket grid size-9 shrink-0 place-items-center rounded-control transition-colors ${
+        className={`socket grid size-8 shrink-0 place-items-center rounded-control transition-colors ${
           attention
             ? 'border-opportunity/45 bg-opportunity/10 text-opportunity'
             : 'text-dim'
@@ -302,14 +326,9 @@ function MenuRow({
       >
         {icon}
       </span>
-      <span className="min-w-0 flex-1">
-        <span className="name block text-bone">
-          {label}
-        </span>
-        <span className="mt-1 block truncate text-label leading-snug text-faint">{hint}</span>
-      </span>
+      <span aria-hidden className="name min-w-0 flex-1 truncate text-bone">{label}</span>
       {badge === undefined ? null : (
-        <span className="num shrink-0 rounded-full bg-opportunity/15 px-2 py-1 text-micro text-opportunity">
+        <span className="num shrink-0 rounded-full bg-opportunity/15 px-2 py-0.5 text-micro text-opportunity">
           {badge}
         </span>
       )}
@@ -344,7 +363,7 @@ function SoundSwitch() {
           haptic('tap');
           setMusicEnabled(!on);
         }}
-        className={`flex w-full items-center gap-3 px-3 py-3 text-left transition-colors hover:bg-white/[0.025] ${ on ? 'text-bone' : 'text-faint' }`}
+        className={`flex w-full items-center gap-2 px-3 py-3 text-left transition-colors hover:bg-white/[0.025] ${ on ? 'text-bone' : 'text-faint' }`}
       >
         <span className="socket grid size-8 shrink-0 place-items-center rounded-control">
           {on ? <SpeakerOnIcon className="size-[18px]" /> : <SpeakerOffIcon className="size-[18px]" />}
@@ -359,7 +378,7 @@ function SoundSwitch() {
         </span>
       </button>
 
-      <label className="flex items-center gap-3 border-t border-line-soft px-3 py-3">
+      <label className="flex items-center gap-2 border-t border-line-soft px-3 py-3">
         <span className="legend shrink-0">{t('menu.volumeLabel')}</span>
         <input
           type="range"

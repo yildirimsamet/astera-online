@@ -40,16 +40,19 @@ import type { Resources } from './types.js';
  *   · A fresh Vault-0 planet's alloy store holds 5,611 and a Wasp costs 300. So
  *     a first tier at 200 alloy is two-thirds of a warship — felt immediately,
  *     and still too small to replace production.
- *   · The whole table pays 13,600 alloy and 4,740 crystal if every tier is taken,
+ *   · The whole table pays 14,600 alloy and 6,555 crystal if every tier is taken,
  *     and stays deliberately UNSCALED by the slower tempo. Rewards pay actions,
  *     not waiting; keeping them fixed makes play slightly more valuable while the
  *     fixed-goal simulation proves they still do not replace the economy.
  *
- * CRYSTAL IS HELD AT ~35% OF ALLOY THROUGHOUT, which is the income share
- * (`crystalBase / alloyBase` = 33.6/92.4) and not a taste. Paying crystal faster than
- * it is earned would quietly undo the scarcity `ECON.crystalCostBase` exists to
- * create — the constant that took a whole pass to derive, because a resource that
- * arrives faster than it can be spent is decoration rather than a constraint.
+ * CRYSTAL IS HELD AT ~44% OF ALLOY THROUGHOUT, which is the income share
+ * (`crystalBase / alloyBase` = 36.96/83.16) and not a taste. It was ~35% until
+ * D161 raised crystal income a tenth and lowered alloy income a tenth; the table
+ * follows the share rather than the literal, because paying crystal faster or
+ * slower than it is earned would quietly undo the scarcity `ECON.crystalCostBase`
+ * exists to create — the constant that took a whole pass to derive, because a
+ * resource that arrives faster than it can be spent is decoration rather than a
+ * constraint.
  *
  * ── the shape ────────────────────────────────────────────────────────────────
  *
@@ -142,7 +145,7 @@ export interface RewardChain {
   tiers: readonly RewardTier[];
 }
 
-/** 200 : 70 is the ratio every line below is built on. See the docblock. */
+/** 200 : 90 is the ratio every line below is built on. See the docblock. */
 const reward = (alloy: number, crystal: number): Resources => ({
   alloy,
   crystal,
@@ -164,9 +167,9 @@ const CHAINS: Record<RewardChainId, RewardChain> = {
     metric: 'count',
     scope: 'season',
     tiers: [
-      { goal: 1, reward: reward(200, 70) },
-      { goal: 3, reward: reward(350, 120) },
-      { goal: 5, reward: reward(600, 210) },
+      { goal: 1, reward: reward(200, 90) },
+      { goal: 3, reward: reward(350, 155) },
+      { goal: 5, reward: reward(600, 265) },
     ],
   },
 
@@ -180,9 +183,9 @@ const CHAINS: Record<RewardChainId, RewardChain> = {
     metric: 'count',
     scope: 'season',
     tiers: [
-      { goal: 1, reward: reward(300, 100) },
-      { goal: 3, reward: reward(550, 190) },
-      { goal: 5, reward: reward(900, 320) },
+      { goal: 1, reward: reward(300, 135) },
+      { goal: 3, reward: reward(550, 245) },
+      { goal: 5, reward: reward(900, 400) },
     ],
   },
 
@@ -196,10 +199,10 @@ const CHAINS: Record<RewardChainId, RewardChain> = {
     metric: 'level',
     scope: 'season',
     tiers: [
-      { goal: 3, reward: reward(250, 90) },
-      { goal: 5, reward: reward(500, 175) },
-      { goal: 7, reward: reward(900, 315) },
-      { goal: 9, reward: reward(1600, 560) },
+      { goal: 3, reward: reward(250, 110) },
+      { goal: 5, reward: reward(500, 220) },
+      { goal: 7, reward: reward(900, 400) },
+      { goal: 9, reward: reward(1600, 710) },
     ],
   },
 
@@ -208,9 +211,9 @@ const CHAINS: Record<RewardChainId, RewardChain> = {
     metric: 'level',
     scope: 'season',
     tiers: [
-      { goal: 2, reward: reward(200, 70) },
-      { goal: 3, reward: reward(400, 140) },
-      { goal: 4, reward: reward(700, 245) },
+      { goal: 2, reward: reward(200, 90) },
+      { goal: 3, reward: reward(400, 180) },
+      { goal: 4, reward: reward(700, 310) },
     ],
   },
 
@@ -219,9 +222,9 @@ const CHAINS: Record<RewardChainId, RewardChain> = {
     metric: 'level',
     scope: 'season',
     tiers: [
-      { goal: 3, reward: reward(200, 70) },
-      { goal: 5, reward: reward(400, 140) },
-      { goal: 7, reward: reward(750, 260) },
+      { goal: 3, reward: reward(200, 90) },
+      { goal: 5, reward: reward(400, 180) },
+      { goal: 7, reward: reward(750, 335) },
     ],
   },
 
@@ -230,9 +233,9 @@ const CHAINS: Record<RewardChainId, RewardChain> = {
     metric: 'level',
     scope: 'season',
     tiers: [
-      { goal: 3, reward: reward(200, 70) },
-      { goal: 5, reward: reward(400, 140) },
-      { goal: 7, reward: reward(750, 260) },
+      { goal: 3, reward: reward(200, 90) },
+      { goal: 5, reward: reward(400, 180) },
+      { goal: 7, reward: reward(750, 335) },
     ],
   },
 
@@ -255,10 +258,10 @@ const CHAINS: Record<RewardChainId, RewardChain> = {
     metric: 'count',
     scope: 'season',
     tiers: [
-      { goal: 5, reward: reward(200, 70) },
-      { goal: 10, reward: reward(350, 120) },
-      { goal: 20, reward: reward(600, 210) },
-      { goal: 50, reward: reward(1200, 420) },
+      { goal: 5, reward: reward(200, 90) },
+      { goal: 10, reward: reward(350, 155) },
+      { goal: 20, reward: reward(600, 265) },
+      { goal: 50, reward: reward(1200, 535) },
     ],
   },
 
@@ -267,7 +270,7 @@ const CHAINS: Record<RewardChainId, RewardChain> = {
     id: 'AEGIS',
     metric: 'level',
     scope: 'season',
-    tiers: [{ goal: 1, reward: reward(500, 175) }],
+    tiers: [{ goal: 1, reward: reward(500, 220) }],
   },
 
   /**
@@ -282,14 +285,14 @@ const CHAINS: Record<RewardChainId, RewardChain> = {
     id: 'MINE',
     metric: 'count',
     scope: 'season',
-    tiers: [{ goal: 1, reward: reward(300, 100) }],
+    tiers: [{ goal: 1, reward: reward(300, 135) }],
   },
 
   SALVAGE: {
     id: 'SALVAGE',
     metric: 'count',
     scope: 'season',
-    tiers: [{ goal: 1, reward: reward(300, 100) }],
+    tiers: [{ goal: 1, reward: reward(300, 135) }],
   },
 
   /**

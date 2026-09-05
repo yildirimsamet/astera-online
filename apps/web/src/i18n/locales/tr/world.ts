@@ -22,8 +22,16 @@ export const galaxy = {
   wrecks_other: " · {{count}} enkaz",
   asteroidShower: 'Asteroid yağmuru',
   asteroidShowerStatus: 'Oluşma ×{{multiplier}} · {{remaining}} kaldı',
-  openWorlds: "Dünyaların",
   openIntel: "İstihbarat",
+  /**
+   * THE PLANET GLYPH IS A CAMERA MOVE NOW, AND THE SHEET HAS ITS OWN MARK. D163.
+   *
+   * `openWorlds` is gone with the tap that opened a list from a glyph that looked
+   * like "go to my planet"; the list itself is the transfer sheet and is named
+   * for what a commander opens it to DO.
+   */
+  goHome: "Aktif gezegenine yakınlaş",
+  openTransfer: "Dünyaların arasında aktarım",
   /* Disk başlığının altındaki iki sensör anahtarı. Yalnızca `aria-label`. */
   showTelescope: "Teleskop menzilini göster",
   hideTelescope: "Teleskop menzilini gizle",
@@ -75,7 +83,6 @@ export const worlds = {
   title: "Dünyaların",
   /** Listenin kendi adı; yoksa satırlar adsız üç düğme olur. */
   list: "Dünyaların",
-  centre: "Aktif Gezegenine Yakınlaş 🪐",
   active: "Etkin",
   kindCapital: "Ana gezegen",
   kindColony: "Koloni",
@@ -83,10 +90,10 @@ export const worlds = {
   craft_other: "{{count}} araç",
   bays: "Rampa",
   sendTitle: "Kolay Aktarım",
-  sendFrom: "Gönderen",
-  sendHere: "Buraya gönder",
-  /** Listedeki üç aynı düğmenin hangisi olduğunu söylemesi gerekir. */
-  sendTo: "Buraya gönder — {{name}}",
+  /** Tek cümlenin iki ucu ve onu işleyen düğme. Etiketler yalnızca ekran okuyucu için. D163. */
+  sendFrom: "Nereden",
+  sendTo: "Nereye",
+  send: "Aktar",
   /** Satırdaki iki resmin ekran okuyucu karşılığı. */
   store: "{{resource}}: {{cap}} kapasitenin {{amount}} kadarı",
   baysReading: "{{total}} uçuş yuvasının {{used}} tanesi dolu",
@@ -130,7 +137,6 @@ export const focus = {
     },
     deathStar: "Ölüm Yıldızı",
     deathStarStrike: "Ölüm Yıldızı · harap et",
-    deathStarCapture: "Ölüm Yıldızı · ele geçir",
     deathStarUnavailable: "Hazır Ölüm Yıldızı yok",
     deathStarProtected: "Ölüm Yıldızı · hedef korumada",
     deathStarNeedBay: "Ölüm Yıldızı · rampalar dolu",
@@ -180,12 +186,12 @@ export const focus = {
     claimCloses: "{{duration}} sonra kapanır",
     claimRaidStillOpen: "Tekrar akın yapılabilir; açık hakkın süresi uzamaz.",
     claimDeathStarConsequence:
-      "Ölüm Yıldızı bu hakkı siler ve {{duration}} toparlanma başlatır. Ele geçirme yolu ikinci darbedir.",
+      "Ölüm Yıldızı bu hakkı siler ve {{duration}} toparlanma başlatır. Hiçbir dünyayı ele geçirmez: süre dolarken üzerinde gemi bulunmayan koloni artık kimsenin olmaz.",
     openColonySlot: "Koloni yuvası",
     colonySlotExplain:
       "Yalnızca 3. adımda gerekir. Kuruluş filosu kalkarken en güçlü Komuta Çekirdeğinde kullanılabilir bir koloni yuvası olmalı.",
     captureColonySlotExplain:
-      "İkinci Ölüm Yıldızı darbesinin bu koloniyi alabilmesi için boş bir koloni yuvan olmalı.",
+      "Koloni kurmak için gerekir, koloni vurmak için değil: Ölüm Yıldızı hiçbir dünyayı devretmez.",
     openFlightBay: "1 boş uçuş rampası",
     flightBayExplain:
       "Yalnızca 3. adımda gerekir. 2 Şilebin tek yönlü kuruluş uçuşu, gezegene varana kadar 1 rampayı kullanır.",
@@ -204,17 +210,25 @@ export const focus = {
     settlementArrivalExplain:
       "Kuruluş uçuşu {{duration}} sürer. Yarış kapanmadan varmalı; ilk geçerli varış kazanır.",
     arrivesIn: "{{duration}} içinde varır",
-    deathStarRoute: "Stratejik ele geçirme yolu",
-    recoveryBreach: "Toparlanma açığı · ele geçirme penceresi",
+    deathStarRoute: "Bu darbe ne yapar",
+    /** Savunanın yarıştığı saat, sonunda tükenen şeyin adıyla. D167. */
+    recoveryBreach: "Toparlanma açığı · düşme süresi",
     occupationProtected: "İşgal koruması",
     protectedFor: "{{duration}} boyunca vurulamaz veya ele geçirilemez.",
-    firstImpact: "Hasar + {{duration}} toparlanma",
-    secondImpact: "Kontrol el değiştirir",
+    firstImpact: "Hasar + {{duration}} karanlık",
+    secondImpact: "Gemi gönderilmezse · dünya sahipsiz kalır",
     deathStarReadyRequirement: "Ölüm Yıldızı hazır",
     deathStarReadyExplain:
-      "İkinci darbe için çıkış gezegeninde tamamlanmış bir Ölüm Yıldızı bekliyor olmalı.",
-    deathStarArrivalExplain:
-      "Kontrolün el değiştirebilmesi için Ölüm Yıldızı bu toparlanma süresi bitmeden varmalı.",
+      "Darbe için çıkış gezegeninde tamamlanmış bir Ölüm Yıldızı bekliyor olmalı.",
+    /**
+     * Savunanın bilmesi gereken tek şey, tam ona baktığı yerde. D167.
+     *
+     * Ele geçirme yolunu anlatan üç koşul çipinin yerini alır; o yol artık yok.
+     * Görülemeyen kural oynanabilir kural değildir ve bu panelde bir komutana
+     * dünya kaybettirebilecek tek kural bu.
+     */
+    recoveryDropWarning:
+      "{{duration}} kaldı. Süre dolmadan buraya bir gemi indir, yoksa bu koloni senin olmaktan çıkar — ikinci bir darbeye gerek yok.",
 
     /** Üretim kartıyla aynı gerçekler, tetiği çeken kişinin diliyle. D113/D55. */
     strikeTitle: "Bu darbe ne yapar",
@@ -224,14 +238,17 @@ export const focus = {
     strikeAegis: "Aegis {{levels}} seviye iner ve kalkan sıfırlanır",
     strikeDark:
       "{{duration}} boyunca üretim, toplama, inşa, sipariş verme ve fırlatma durur",
-    strikeCapture: "Bu pencere içinde inen ikinci darbe kontrolü alır",
+    strikeCapture: "Komutanı bu süre dolmadan bir gemi indirmezse dünya kimsenin olmaz",
     strikeNoCapture:
-      "Ana gezegen tekrar harap edilebilir ama asla ele geçirilemez",
+      "Ana gezegen tekrar harap edilebilir ama asla kaybedilmez",
     eyebrow: "Sahibi: {{owner}}",
     location: "Dünya · {{planet}}",
     /** A world outside every reach and never probed. It has no other name. D127. */
     unsurveyedEyebrow: "Dünya · keşfedilmemiş",
     unsurveyedTitle: "Buraya kimse bakmadı",
+    attackShort: "Saldır",
+    probeShort: "Sonda",
+    probeCoolingShort: "{{duration}} sonra",
     attack: "Saldırı planla",
     attackNeutralAgain: "Tekrar akın · hak değişmez",
     attackOriginRecovering: "Saldırı · ana dünya toparlanıyor",
@@ -483,7 +500,9 @@ export const pirate = {
   captureMissed: "Eve çekilecek gemi kalmadı",
   send: "{{count}} gemi gönder · {{duration}}",
   outbound: "Kalkan filo geri çağrılamaz.",
+  /** "Göremiyorsun" demek; "bu bilgi eski" demek değil. Rakamlar canlı. D160. */
+  remembered: "Tanımladığından beri izleniyor · şu anda sensörlerinde değil",
   boundary:
-    "Korsan şu an bulunduğu yerdedir; hatırlanmaz. Sensörlerinden çıktığı anda geri dönene kadar bu listeden kaybolur.",
+    "Bir kez tanımladığın korsan, tıpkı bulduğun bir asteroit gibi, ölene ya da süresi dolana kadar bu listede kalır. Yörüngesi hesaplanabilir olduğu için menzil dışındayken de izini ve kadro sayısını korursun; kaybettiğin şey gözün, iz değil.",
   hoardHint: "Eve taşıyacağın ganimet, götürdüğün kargo hacmiyle sınırlıdır.",
 } as const;

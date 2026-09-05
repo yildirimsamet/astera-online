@@ -262,18 +262,73 @@ export const seasonSchema = z.object({
   rivalPlayerId: z.string().nullable().optional(),
 });
 
-const activeGalaxyEventSchema = z.object({
-  id: z.string().uuid(),
-  kind: z.literal('ASTEROID_SHOWER'),
-  startsAt: z.coerce.date(),
-  endsAt: z.coerce.date(),
-  asteroidSpawnMultiplier: z.number().gt(1),
+/**
+ * THE SIX NUMBERS THAT MAKE ONE ORBIT, AND THE SAME SIX A DISCOVERED ROCK CARRIES.
+ *
+ * Given these, the client runs the shared `interceptOrbit` the server runs, which
+ * is what stops the launch screen and the server disagreeing about the minute a
+ * convoy meets the merchant.
+ */
+const galaxyOrbitSchema = z.object({
+  radius: z.number().positive(),
+  period: z.number().positive(),
+  phase: z.number(),
+  inclination: z.number(),
+  ascendingNode: z.number(),
+  speed: z.number().positive(),
 });
 
+const tradeRateSchema = z.object({
+  alloy: z.number().positive(),
+  crystal: z.number().positive(),
+  deuterium: z.number().positive(),
+});
+
+const activeGalaxyEventSchema = z.discriminatedUnion('kind', [
+  z.object({
+    id: z.string().uuid(),
+    kind: z.literal('ASTEROID_SHOWER'),
+    startsAt: z.coerce.date(),
+    endsAt: z.coerce.date(),
+    asteroidSpawnMultiplier: z.number().gt(1),
+  }),
+  /**
+   * Ticaret Gemisi. D156. Unlike a pirate, whose elements ARE its route and stay
+   * server-private (D150), the merchant is an announced public moment and the disc
+   * may draw its whole circle — but only while it is actually there.
+   */
+  z.object({
+    id: z.string().uuid(),
+    kind: z.literal('TRADE_SHIP'),
+    startsAt: z.coerce.date(),
+    endsAt: z.coerce.date(),
+    rate: tradeRateSchema,
+    /** Minutes since season start — the clock `orbit` is evaluated on. */
+    appearsAtMinute: z.number(),
+    expiresAtMinute: z.number(),
+    orbit: galaxyOrbitSchema,
+  }),
+]);
+
+const knownGalaxyEventKinds: ReadonlySet<string> = new Set(
+  activeGalaxyEventSchema.options.map((option) => option.shape.kind.value),
+);
+
+/**
+ * FORWARD-COMPATIBLE ON PURPOSE, AND THAT IS ALSO ITS ONE HAZARD.
+ *
+ * An unknown kind is dropped so a server that learns a new public event never
+ * blanks the chip on an older client. The cost is that a kind the server publishes
+ * correctly and this file has not been taught simply never appears, with no error
+ * anywhere — which is exactly what happened while `activeGalaxyEventsSchema` knew
+ * only `ASTEROID_SHOWER`: a live trade ship arrived on every response and was
+ * silently discarded. `contract.test.ts` now parses this route with a live
+ * merchant on it so the drop can never be the reason a kind is missing again.
+ */
 export const activeGalaxyEventsSchema = z.object({
   events: z.array(z.unknown()).transform((rows, context) => rows.flatMap((row, index) => {
     const identity = z.object({ kind: z.string() }).passthrough().safeParse(row);
-    if (!identity.success || identity.data.kind !== 'ASTEROID_SHOWER') return [];
+    if (!identity.success || !knownGalaxyEventKinds.has(identity.data.kind)) return [];
     const parsed = activeGalaxyEventSchema.safeParse(row);
     if (parsed.success) return [parsed.data];
     for (const issue of parsed.error.issues) {
@@ -375,6 +430,17 @@ export const planetSchema = z.object({
     queueAvailable: z.boolean().optional(),
     availableAt: z.coerce.date(),
     prerequisite: researchProjectId.nullable(),
+    /**
+     * WHETHER THE PROJECT NAMED BY `prerequisite` IS DONE — the second half of the
+     * sentence, and for five projects the only half that is ever false.
+     *
+     * `prerequisite` alone says what stands in front; without these it cannot say
+     * whether it is still standing there, and the card fell back to the one gate it
+     * could read: a spent act clock. Optional for a rolling deploy, where an older
+     * server means the card keeps the behaviour it already had.
+     */
+    prerequisiteMet: z.boolean().optional(),
+    queuePrerequisiteMet: z.boolean().optional(),
   })),
   /** One commander-wide queue, repeated in planet responses for atomic mutation updates. */
   researchQueue: z.array(timedResearchOrder).optional(),
@@ -1037,6 +1103,39 @@ export const chatPostSchema = z.object({ message: chatMessageSchema });
 export const chatUnreadSchema = z.object({ count: z.number().int().nonnegative() });
 export const chatReadSchema = z.object({ ok: z.literal(true), readAt: z.coerce.date() });
 
+/**
+ * WHAT A PUBLIC EVENT'S START AND END ROW CARRIES. D149 · D156.
+ *
+ * ONE SHAPE PER KIND, DISCRIMINATED, so a reader that has only been taught the
+ * shower cannot silently read a merchant's row as one — which is exactly what the
+ * flat `z.literal('ASTEROID_SHOWER')` here used to guarantee it never had to,
+ * because it dropped the merchant on the floor instead. The server's own
+ * `GalaxyEventLifecyclePayload` is this union; this is its parse.
+ *
+ * The merchant's row carries the RATE and never the orbit: the Chronicle is a
+ * permanent public record and an occurrence that has ended is precisely the
+ * pre-decision knowledge D149 keeps back. The rate is what the moment MEANT.
+ */
+const galaxyLifecyclePayloadSchema = z.discriminatedUnion('eventKind', [
+  z.object({
+    eventKind: z.literal('ASTEROID_SHOWER'),
+    startsAt: z.string(),
+    endsAt: z.string(),
+    asteroidSpawnMultiplier: z.number().gt(1),
+  }),
+  z.object({
+    eventKind: z.literal('TRADE_SHIP'),
+    startsAt: z.string(),
+    endsAt: z.string(),
+    rate: tradeRateSchema,
+  }),
+]);
+
+/** Every lifecycle kind this build can render. See the drop rule below. */
+const knownLifecycleKinds: ReadonlySet<string> = new Set(
+  galaxyLifecyclePayloadSchema.options.map((option) => option.shape.eventKind.value),
+);
+
 const galaxyEventSchema = z.discriminatedUnion('kind', [
   z.object({
     id: z.string(),
@@ -1110,12 +1209,7 @@ const galaxyEventSchema = z.discriminatedUnion('kind', [
       id: z.string(),
       kind: z.literal(kind),
       subjectPlanetId: z.null(),
-      payload: z.object({
-        eventKind: z.literal('ASTEROID_SHOWER'),
-        startsAt: z.string(),
-        endsAt: z.string(),
-        asteroidSpawnMultiplier: z.number().gt(1),
-      }),
+      payload: galaxyLifecyclePayloadSchema,
       occurredAt: z.coerce.date(),
     })),
 ]);
@@ -1132,7 +1226,16 @@ export const chroniclePageSchema = z.object({
       const lifecycle = z.object({
         payload: z.object({ eventKind: z.string() }).passthrough(),
       }).passthrough().safeParse(row);
-      if (!lifecycle.success || lifecycle.data.payload.eventKind !== 'ASTEROID_SHOWER') return [];
+      /*
+        A lifecycle kind this build has never been taught is dropped rather than
+        raised, for the reason the outer flatMap gives — a server one deploy ahead
+        must not blank the whole page. It is the one drop this file makes on
+        purpose, and `trade-wiring.test.ts` pins both halves: the merchant is kept,
+        and a third kind nobody has written a sentence for is still skipped.
+      */
+      if (!lifecycle.success || !knownLifecycleKinds.has(lifecycle.data.payload.eventKind)) {
+        return [];
+      }
     }
     const parsed = galaxyEventSchema.safeParse(row);
     if (parsed.success) return [parsed.data];
@@ -1268,7 +1371,18 @@ const pendingThread = z.object({
    * own (D52).
    */
   id: z.string().optional(),
-  kind: z.enum(['fleet', 'probe', 'incoming', 'transfer', 'settlement', 'death_star', 'pirate']),
+  /**
+   * `trade` IS A CONVOY OUT AT THE MERCHANT. D156.
+   *
+   * Not optional and not forward-compatible by accident: this schema is strict
+   * about `kind`, so the moment one convoy exists in the galaxy EVERY pending read
+   * for that commander fails to parse and the whole mission strip goes blank —
+   * their raids included. Its `targetName` is the event-kind identifier
+   * `TRADE_SHIP` rather than a sentence; the locale files own the name.
+   */
+  kind: z.enum([
+    'fleet', 'probe', 'incoming', 'transfer', 'settlement', 'death_star', 'pirate', 'trade',
+  ]),
   targetName: z.string(),
   /**
    * WHICH PIRATE A `pirate` THREAD IS AT. D150.
@@ -1310,6 +1424,20 @@ const pendingThread = z.object({
    * even when the world has no visible name. Optional for rolling deploys.
    */
   targetPlanetId: z.string().optional(),
+  /**
+   * THE CONTACT ON THE DISC THIS WARNING IS ABOUT. `incoming` ONLY. D162.
+   *
+   * An inbound warning has no `path` and never will — the attacker's route is not
+   * sold at any radar level — so the strip had nothing to focus with, and the one
+   * row a defender most wants to look at did nothing when pressed. This is the key
+   * the SAME craft carries on `/api/galaxy/traffic`, which already flags which
+   * contact is coming for you, so it discloses no new fact: it joins two rows the
+   * client was handed separately.
+   *
+   * Where no circle covers the craft there is no contact carrying this id, and the
+   * row simply offers no focus — the fog stays in the contact query.
+   */
+  contactId: z.string().optional(),
   /**
    * ABSENT on an inbound attack, always. Its origin is what Radar L5 sells and its
    * heading is most of what L2's bearing costs, so the server never sends one —
@@ -1399,9 +1527,11 @@ export const unlocksSchema = z.object({ unlocked: z.array(unlockable) });
  * survivors are not in the payload at all — a report tells you what someone
  * fielded, not what they kept.
  *
- * `yourFleet` is the one roster in here and it is the CALLER's: their own board
- * when the shooting started, which is what gives their own losses a denominator.
- * The server decides which row that comes from; nothing on this side chooses.
+ * `yourFleet` is the CALLER's own board when the shooting started, which is what
+ * gives their own losses a denominator. `theirFleet` is the exception D164 made and
+ * the only one: the force that ARRIVED, to the commander it arrived at — they stood
+ * under it, so naming it reports what they saw. The server decides which row each
+ * comes from and empties the one that is not owed; nothing on this side chooses.
  */
 const ordinaryBattleReport = z.object({
       /** Absent only on battle reports cached before strategic reports existed. */
@@ -1467,6 +1597,17 @@ const ordinaryBattleReport = z.object({
       theirLosses: fleet,
       /** The caller's own board at contact. Empty on reports written before D121. */
       yourFleet: fleet.default({}),
+      /**
+       * THE FORCE THAT FLEW AT THE READER. Defender's copy only. D164.
+       *
+       * The second roster in this payload, and the only one that is not the
+       * caller's own — because it is the one the caller watched arrive over their
+       * own world. Empty for an attacker (what was standing at the target is a
+       * probe's product, never a report's) and empty on any report written before
+       * the attacker's roster was stored, which is what makes the fallback on the
+       * sheet a real branch rather than a defensive one.
+       */
+      theirFleet: fleet.default({}),
       lootAlloy: z.number(),
       lootCrystal: z.number(),
       lootDeuterium: z.number(),
@@ -1718,16 +1859,26 @@ export const miningLaunchSchema = miningLaunchBaseSchema.extend({
 const vec = z.object({ x: z.number(), y: z.number(), z: z.number() });
 
 /**
- * THE PIRATES THIS COMMANDER CAN SEE RIGHT NOW. D150.
+ * THE PIRATES THIS COMMANDER CAN SEE OR REMEMBERS. D150 · D158 · D160.
  *
- * A live sight reading, never a remembered one: unlike an asteroid (D143), a
- * pirate that leaves your circles stops existing for you, so this list shrinks as
- * well as grows and the client must not cache it as an address book.
+ * A pirate is remembered exactly as an asteroid is (D143): once it has been inside
+ * a Telescope circle it stays on this list, and stays raidable, until it dies or
+ * the season takes it. So the list no longer shrinks when a target flies out of
+ * reach — an opportunity that expires while the fleet is being packed is not a
+ * decision (D124).
+ *
+ * `remembered` SAYS WHICH ENTRIES NO CIRCLE IS COVERING RIGHT NOW — a statement
+ * about SIGHT, not about age. The figures are current either way: an orbit is a
+ * solved function of time and the crew is the lane's live state, exactly as a
+ * discovered rock keeps reporting its remaining ore to a commander with no eyes on
+ * it. What the flag buys is the disc drawing such a craft faded, so a player can
+ * tell what they are looking at from what they are only tracking.
  *
  * THE LADDER IS IN THE OPTIONALITY. `zone` says which of the three states this
- * reading is; `level`, `fleet` and `damageMult` arrive only with IDENTIFIED,
- * `mass` at Radar L4 and `silhouette` at L5. Nothing here carries an orbit —
- * radius, period and phase ARE the route, and a route is what the fog refuses.
+ * reading is; `level`, `fleet` and `damageMult` arrive with IDENTIFIED — live or
+ * remembered — `mass` at Radar L4 and `silhouette` at L5. Nothing here carries an
+ * orbit: radius, period and phase ARE the route, and a route is what the fog
+ * refuses.
  */
 export const piratesSchema = z.object({
   originPlanetId: z.string(),
@@ -1736,6 +1887,16 @@ export const piratesSchema = z.object({
     /** Four characters off the opaque handle. Season-unique, and leaks no index. */
     callsign: z.string(),
     zone: z.enum(['CONTACT', 'IDENTIFIED']),
+    /**
+     * NO CIRCLE COVERS THIS ONE RIGHT NOW. D160.
+     *
+     * It is on the list because the commander identified it once. The figures below
+     * are still current — the rock lane's own terms — so this marks a craft that
+     * cannot be SEEN, not one whose numbers are stale. Optional so a client ahead of
+     * its server still parses, and absent rather than `false` for the same reason
+     * every other flag on this wire is.
+     */
+    remembered: z.literal(true).optional(),
     at: vec,
     /** Minutes until it leaves the disc for good. A deadline, so it is public. */
     expiresInMinutes: z.number(),
@@ -1804,6 +1965,36 @@ export const pirateRaidSchema = z.object({
   departAt: z.coerce.date(),
   arriveAt: z.coerce.date(),
   flightMinutes: z.number(),
+  intercept: vec,
+  /** Deuterium taken for BOTH legs at launch, and never refunded. D136. */
+  fuel: z.number(),
+  pending: z.array(pendingThread),
+  ...withPlanet,
+});
+
+/**
+ * A LAUNCHED CONVOY, with the strip and the world it left. D53 · D156.
+ *
+ * The same three-view answer the mining and pirate launches give, and for the same
+ * reason: the convoy is drawn on the frame the response lands, and an older read
+ * already in flight cannot land afterwards and erase it.
+ *
+ * `rate` COMES BACK FROM THE SERVER rather than being read off the merchant chip.
+ * It is frozen on the run at launch, so the figure the return leg will actually
+ * pay is the figure the answer states — the client never has to assume that the
+ * ship it quoted against is the ship the server priced against.
+ */
+export const tradeLaunchSchema = z.object({
+  runId: z.string(),
+  occurrenceId: z.string(),
+  fleet,
+  give: resources,
+  want: resources,
+  rate: tradeRateSchema,
+  departAt: z.coerce.date(),
+  arriveAt: z.coerce.date(),
+  flightMinutes: z.number(),
+  /** Where the convoy meets the merchant. Solved once, frozen, and drawn (D155). */
   intercept: vec,
   /** Deuterium taken for BOTH legs at launch, and never refunded. D136. */
   fuel: z.number(),
@@ -1909,6 +2100,16 @@ export const trafficSchema = z.object({
        * something you cannot identify, bearing down on a world you own.
        */
       inbound: z.literal(true).optional(),
+      /**
+       * OUT OF SIGHT, STILL TRACKED. PIRATES ONLY. D160.
+       *
+       * Present when nothing of this commander's covers the craft right now and it
+       * is on the disc because they identified it once. The point and the manifest
+       * are both current — an orbit is solvable and the crew is the lane's live
+       * state — so the renderer fades this craft to say the commander cannot SEE it,
+       * never to imply the numbers are old.
+       */
+      remembered: z.literal(true).optional(),
       craft: z.number().optional(),
       route: z
         .object({

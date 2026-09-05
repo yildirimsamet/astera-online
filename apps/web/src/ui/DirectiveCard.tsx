@@ -76,7 +76,7 @@ export function DirectiveStrip({
       onClick={() => {
         onAct(directive);
       }}
-      className="flex w-full items-center gap-3 border-b border-line-soft py-3 text-left"
+      className="flex w-full items-center gap-2 border-b border-line-soft py-3 text-left"
     >
       {/* The KIND as a word, not the enum. The strip used to print `threat` —
           the machine's name for it — which was already wrong in English. */}

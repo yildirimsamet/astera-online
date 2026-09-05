@@ -17,6 +17,7 @@ import {
   makeAccount,
   placeAt,
   seedWorld,
+  levelWorld,
   setLevel,
   testDb,
   testEnv,
@@ -78,6 +79,10 @@ describe('GET /api/galaxy — fog enforced in the response', () => {
     f = await seedWorld(3);
     [mine, theirs] = f.planetIds as [string, string];
     await setLevel(f.db, mine, 'CORE', 8);
+    // The reader is Core 8 and its neighbours open at Core 2, which is two tier
+    // bands apart — every launch below would be refused for a reason none of these
+    // tests are about. D168; see `levelWorld`.
+    await levelWorld(f.db, f.planetIds);
     await giveSatellite(f.db, mine, 'UPLINK');
 
     const built = buildApp({ env: testEnv(), logger: silent, db: f.db, clock: f.clock });
@@ -240,7 +245,6 @@ describe('GET /api/galaxy — fog enforced in the response', () => {
 
   it('a Veil that outmatches your telescope yields UNKNOWN, never the truth', async () => {
     await giveTelescope(mine, 1);
-    await setLevel(f.db, theirs, 'CORE', 3);
     await f.db
       .insert(satellites)
       .values({ planetId: theirs, slot: 0, type: 'VEIL', level: 3 })

@@ -116,7 +116,7 @@ export function IntelScreen({
 
   return (
     <GameActions>
-      <div className="flex flex-col gap-6 px-4 py-4">
+      <div className="flex flex-col gap-4 px-2 py-3">
       <Coverage
         seen={seen}
         slots={slots}
@@ -228,7 +228,7 @@ export function IntelScreen({
                   one smears across the card. That comparison is what the whole
                   Telescope ladder is being sold on, and it was nowhere on screen.
                 */}
-                <div className="mt-3 grid grid-cols-3 gap-3">
+                <div className="mt-3 grid grid-cols-3 gap-2">
                   <RangeBand
                     label={t('intel.probes.stock')}
                     low={report.stock.low}
@@ -319,7 +319,7 @@ export function IntelScreen({
             {radarLog.map((scan) => (
               <div
                 key={`${scan.planetId ?? ''}-${String(scan.at.getTime())}`}
-                className="flex items-baseline justify-between gap-3 border-b border-line-soft py-3 last:border-b-0"
+                className="flex items-baseline justify-between gap-2 border-b border-line-soft py-3 last:border-b-0"
               >
                 <span className="text-body text-bone">
                   {t('intel.radar.scan')}
@@ -477,9 +477,11 @@ function Coverage({
   const more = slots > 0 && telescopeSlots(telescope + 1) > slots;
 
   return (
-    <div className="plate mb-6 px-4 py-4">
+    <div className="plate mb-2 px-3 py-3">
       <p className="legend">{t('intel.coverage.label')}</p>
-      <p className="mt-2 text-title leading-tight text-bone">
+      {/* A coverage sentence is a STATE, not a headline. 18px made it compete with
+         the screen's own title for a fact that changes with a slot. */}
+      <p className="mt-1 text-body leading-tight text-bone">
         {slots === 0
           ? t('intel.coverage.blind')
           : idle > 0
@@ -568,7 +570,7 @@ function RadarReach({ sense, warn, level }: { sense: number; warn: number; level
   const merged = sense === warn;
 
   return (
-    <div className="plate flex items-center gap-4 p-4">
+    <div className="plate flex items-center gap-2 p-3">
       <div
         data-radar-reach
         className="socket relative size-[112px] shrink-0 rounded-control"
@@ -601,7 +603,7 @@ function RadarReach({ sense, warn, level }: { sense: number; warn: number; level
         The dashed swatch is the dashed circle; the solid one with the clock is
         the circle with the clock. Nothing here needs the paragraph it replaced.
       */}
-      <dl className="flex min-w-0 flex-1 flex-col gap-3">
+      <dl className="flex min-w-0 flex-1 flex-col gap-2">
         {!merged && (
         <div className="flex items-center gap-2">
           <span aria-hidden className="size-3 shrink-0 rounded-full border border-dashed border-crystal/45" />
@@ -649,14 +651,16 @@ function Instrument({
   onAct?: () => void;
 }) {
   return (
-    <div className="plate group grid grid-cols-[104px_1fr] items-center gap-4 p-4">
+    <div className="plate group grid grid-cols-[88px_1fr] items-center gap-2 p-3">
       <InstrumentDiagram kind={kind} art={art} />
       <div className="min-w-0 flex-1">
-        <p className="text-body text-alloy">{missing}</p>
-        <p className="mt-1 text-body leading-snug text-bone">{gives}</p>
-        <p className="mt-2 text-caption leading-relaxed text-dim">{cost}</p>
+        {/* Three sentences at body size was an essay per instrument. The gap and
+           what closes it stay at reading size; the price is a caption. */}
+        <p className="text-caption text-alloy">{missing}</p>
+        <p className="mt-0.5 text-body leading-snug text-bone">{gives}</p>
+        <p className="mt-1 text-caption leading-snug text-dim">{cost}</p>
         {onAct && action && (
-          <button type="button" className="slab slab-ghost mt-3 w-full" onClick={onAct}>
+          <button type="button" className="slab slab-ghost slab-compact mt-2 w-full" onClick={onAct}>
             {action}
             <span aria-hidden>→</span>
           </button>
@@ -677,7 +681,7 @@ function InstrumentDiagram({
     <div
       data-instrument-diagram={kind}
       data-art
-      className="socket relative size-[104px] shrink-0 overflow-hidden rounded-control"
+      className="socket relative shrink-0 overflow-hidden rounded-control"
       aria-hidden
     >
       {kind === 'radar' && (

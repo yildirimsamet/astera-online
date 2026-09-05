@@ -177,10 +177,12 @@ export function ItemSheet({
     >
       <Portrait item={item} level={durableLevel} name={name} />
 
-      <div className="mt-4">
+      {/* Three paragraphs, each one step quieter than the last, with the leading
+         they need to be read rather than the leading of a printed page. */}
+      <div className="mt-3">
         <p className="legend text-crystal/85">{tag}</p>
-        <p className="mt-2 text-body leading-relaxed text-dim">{role}</p>
-        <p data-item-detail className="mt-2 text-caption leading-relaxed text-faint">{detail}</p>
+        <p className="mt-1 text-body leading-snug text-dim">{role}</p>
+        <p data-item-detail className="mt-1.5 text-caption leading-snug text-faint">{detail}</p>
       </div>
 
       {queued && (
@@ -217,7 +219,7 @@ export function ItemSheet({
         and the two agree because they are the same two numbers.
       */}
       {!blocked && !terminal && !affordable && (
-        <div className="mt-3 flex flex-col gap-3">
+        <div className="mt-3 flex flex-col gap-2">
           <SpendBar
             stock={held.alloy}
             spend={cost.alloy}
@@ -243,7 +245,7 @@ export function ItemSheet({
           used={planet.orbit.length}
         />
       ) : terminal ? null : (
-        <div className="mt-6">
+        <div className="mt-2">
           <p className="legend mb-2">{t('itemSheet.ladderHeading')}</p>
           <div className="plate plate-inset">
             {rungs.map((rung) => (
@@ -276,7 +278,12 @@ function Portrait({ item, level, name }: { item: ItemRef; level: number; name: s
   const mark = markFor(item);
 
   return (
-    <div className="item-portrait flex h-48 items-center justify-center overflow-hidden">
+    /*
+      160px, NOT 192. `visual-design.md` puts a sheet portrait at 96–150px and the
+      art inside this is 144 — the extra 48px was empty frame above and below it,
+      which on a 375-wide phone is a sixth of the screen spent on nothing.
+    */
+    <div className="item-portrait flex h-40 items-center justify-center overflow-hidden">
       <span aria-hidden className="item-portrait-orbit" />
       <span aria-hidden className="item-portrait-index num">{String(Math.max(0, level)).padStart(2, '0')}</span>
       {art ? (
@@ -343,7 +350,7 @@ function Rung({
 
   return (
     <div
-      className={`flex items-start gap-3 border-b border-line-soft p-3 last:border-b-0 ${
+      className={`flex items-start gap-2 border-b border-line-soft p-3 last:border-b-0 ${
         next ? '' : 'opacity-65'
       }`}
     >
@@ -433,7 +440,7 @@ function Orbital({
   const gain = satelliteGain(id);
 
   return (
-    <div className="mt-6">
+    <div className="mt-2">
       <p className="legend mb-2">{t('itemSheet.orbitalDoesHeading')}</p>
       <div className="plate plate-inset p-3">
         <p className="num text-body">
@@ -445,7 +452,7 @@ function Orbital({
         )}
       </div>
 
-      <p className="legend mb-2 mt-6">{t('itemSheet.orbitalCostHeading')}</p>
+      <p className="legend mb-2 mt-2">{t('itemSheet.orbitalCostHeading')}</p>
       <div className="plate plate-inset p-3">
         {/*
           THE ORE PRICE LIVES HERE BECAUSE THERE IS NO RUNG TO PUT IT ON.
@@ -480,7 +487,7 @@ function Orbital({
           telescope draw. This was a fourth hand-rolled row of pips that happened
           to look like the others and could drift from them.
         */}
-        <div className="flex items-center justify-between gap-3 pt-3">
+        <div className="flex items-center justify-between gap-2 pt-3">
           <Tally
             used={used}
             total={Math.max(slots, 1)}

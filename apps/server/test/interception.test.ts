@@ -24,6 +24,7 @@ import {
   giveResearch,
   giveSatellite,
   giveUnits,
+  levelWorld,
   grant,
   placeAt,
   seedWorld,
@@ -503,6 +504,9 @@ describe('the interception grid', () => {
   it('survives an ordinary raid', async () => {
     await armDefender();
     await setLevel(f.db, attacker, 'CORE', 8);
+    // A Death Star ignores the development band; an ordinary raid does not, and the
+    // defender's 200k purse has already lifted its Core well past Core 8. D168.
+    await levelWorld(f.db, [attacker, defender]);
     await giveUnits(f.db, attacker, { DART: 40 });
     await placeAt(f.db, defender, { x: 200 });
 

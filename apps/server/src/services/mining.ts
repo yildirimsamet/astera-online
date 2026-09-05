@@ -21,7 +21,7 @@ import {
   type AsteroidSpec,
   type SatelliteSet,
   type Vec3,
-  asteroidDiscoveredAt,
+  orbitDiscoveredAt,
 } from '@astera/rules';
 import { addMinutes, atMinute, minutesSince, type Clock } from '../clock.js';
 import type { Db, Queryable, Tx } from '../db/client.js';
@@ -364,7 +364,7 @@ export async function launchMining(
       const epochs = await sensorHistoryForPlayer(tx, origin.playerId, field.startsAt);
       const earned = rock !== undefined
         && asteroidActive(rock, nowMinutes)
-        && asteroidDiscoveredAt(rock, epochs, nowMinutes) !== null;
+        && orbitDiscoveredAt(rock, epochs, nowMinutes) !== null;
       if (!earned) {
         throw new GameError(
           'ASTEROID_UNAVAILABLE',

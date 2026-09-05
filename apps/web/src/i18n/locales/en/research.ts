@@ -38,7 +38,7 @@ export const research = {
     "Open from the first minute with five rungs each. Improves production, build time and carrying capacity.",
   doctrineBand: "Doctrine",
   doctrineNote:
-    "Opens advanced hull tiers and improves Fleet V2 attack, armour or propulsion on separate bounded ladders. Combat levels are probe-visible.",
+    "Opens advanced hull tiers and improves attack, armour or propulsion on separate bounded ladders. Combat levels are probe-visible.",
   strategicBand: "Strategic",
   strategicNote:
     "Unlocks the galaxy’s most destructive weapon, its defensive answer and additional stock capacity.",
@@ -51,6 +51,7 @@ export const research = {
   at: "Researchable in {{duration}}",
   warAt: "War act opens in {{duration}}",
   isotopeFirst: "Research Isotope Spectrometry first",
+  prerequisiteFirst: "Research {{name}} first",
   graviticFirst: "Research Gravitic Charges first",
   cargoInsight: "Fill your cargo in one raid while loot remains",
   shieldInsight: "Have an Aegis absorb at least {{share}} of your raid damage",
@@ -72,7 +73,7 @@ export const research = {
   denseRole:
     "To reveal it, fill your cargo in one raid while loot remains on the target. Completion opens the Ship Propulsion research ladder.",
   denseDetail:
-    "Completing it permanently opens Ship Propulsion research for your commander. Propulsion improves all eighteen Fleet V2 hulls and is also part of the Atlas build gate; it does not change Prospectors, probes or the Death Star.",
+    "Completing it permanently opens Ship Propulsion research for your commander. Propulsion improves all eighteen ships in your fleet and is also part of the Atlas build gate; it does not change Prospectors, probes or the Death Star.",
   graviticName: "Gravitic Charges",
   graviticTag: "Unlocks the Nullifier",
   graviticRole:
@@ -116,23 +117,23 @@ export const research = {
   engineeringDetail:
     "Engineering grants build permission rather than a combat multiplier. Its first rung opens Tier 3 hull gates and its second opens Tier 4; a specific hull may still require Power, Armor, Propulsion or Gravitic Charges and the stated Shipyard level.",
   powerName: "Ship Power",
-  powerTag: "Raises Fleet V2 attack",
+  powerTag: "Raises warship attack",
   powerRole:
-    "Increases the attack of all Fleet V2 combat hulls and satisfies advanced offensive build gates. Cargo hulls and preserved units are unaffected.",
+    "Increases the attack of every warship in your fleet and satisfies advanced offensive build gates. Cargo hulls and ground defence are unaffected.",
   powerDetail:
-    "Each rung increases ordinary attack on Fleet V2 combat hulls, including the Nullifier, and applies to ships you already own. It does not add attack to transports or affect Bastion, Thorn, Prospector, probes or the Death Star. An attacker carries its launch-time level; a defender reads the battle-time level.",
+    "Each rung increases ordinary attack on every warship, the Nullifier included, and applies to ships you already own. It does not add attack to transports or affect Bastion, Thorn, Prospector, probes or the Death Star. An attacker carries its launch-time level; a defender reads the battle-time level.",
   armorName: "Ship Armor",
-  armorTag: "Raises Fleet V2 hull strength",
+  armorTag: "Raises ship hull strength",
   armorRole:
-    "Increases hull strength for all eighteen Fleet V2 ships, including transports, and satisfies advanced defensive build gates.",
+    "Increases hull strength for all eighteen ships in your fleet, transports included, and satisfies advanced defensive build gates.",
   armorDetail:
-    "Each rung increases hull strength for all eighteen Fleet V2 ships, including Courier, Wayfarer and Atlas. It does not affect Bastion, Thorn, Prospector, probes or the Death Star. An attacker carries its launch-time level; a defender reads the battle-time level.",
+    "Each rung increases hull strength for all eighteen ships, Courier, Wayfarer and Atlas included. It does not affect Bastion, Thorn, Prospector, probes or the Death Star. An attacker carries its launch-time level; a defender reads the battle-time level.",
   propulsionName: "Ship Propulsion",
-  propulsionTag: "Raises Fleet V2 speed",
+  propulsionTag: "Raises fleet speed",
   propulsionRole:
-    "Increases the speed of all eighteen Fleet V2 ships and contributes to the Atlas gate. It opens after Dense Fuel Cells.",
+    "Increases the speed of all eighteen ships in your fleet and contributes to the Atlas gate. It opens after Dense Fuel Cells.",
   propulsionDetail:
-    "Each of the four rungs adds a quarter to the nominal speed of all eighteen Fleet V2 ships, so the last one doubles it and halves every flight. A mixed fleet still travels at the speed of its slowest member, so propulsion improves a chosen composition without erasing its profile. It does not affect Prospectors, probes or the Death Star, and only missions quoted after completion receive the gain.",
+    "Each of the four rungs adds a quarter to the nominal speed of all eighteen ships, so the last one doubles it and halves every flight. A mixed fleet still travels at the speed of its slowest member, so propulsion improves a chosen composition without erasing its profile. It does not affect Prospectors, probes or the Death Star, and only missions quoted after completion receive the gain.",
   groundDoctrineName: "Emplacement Doctrine",
   doctrineTag: "Improves ground defence",
   doctrineRole:

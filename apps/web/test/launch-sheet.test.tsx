@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { cleanup, render, screen } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { describe, expect, it, vi } from 'vitest';
@@ -35,6 +35,20 @@ const wrapper = ({ children }: { children: ReactNode }) => {
       </ApiProvider>
     </QueryClientProvider>
   );
+};
+
+/**
+ * OPEN EVERY BAND THE PICKER IS HOLDING SHUT.
+ *
+ * The picker folds its families on owner instruction — one open on arrival, the
+ * rest shut with their counts on them. Most tests here are about a hull rather
+ * than about the fold, so they reach past it deliberately. The fold itself is held
+ * down in `ship-list-density.test.tsx`.
+ */
+const openAllBands = async (user: ReturnType<typeof userEvent.setup>) => {
+  for (const band of screen.queryAllByRole('button', { expanded: false })) {
+    await user.click(band);
+  }
 };
 
 describe('choosing a fleet to attack with', () => {
@@ -163,8 +177,11 @@ describe('the picker is banded by what a hull is for', () => {
     expect(screen.queryByText('Cargo hulls')).not.toBeInTheDocument();
   });
 
-  /** Every hull still keeps its own row: a band groups the picker, it never trims it. */
-  it('keeps one row per hull standing at home', () => {
+  /**
+   * Every hull still keeps its own row: a band groups the picker and now FOLDS it,
+   * but folding is not trimming — every hull standing here is one tap away.
+   */
+  it('keeps one row per hull standing at home', async () => {
     render(
       <LaunchSheet
         target={{ kind: 'world', world: target }}
@@ -178,6 +195,7 @@ describe('the picker is banded by what a hull is for', () => {
       { wrapper },
     );
 
+    await openAllBands(userEvent.setup());
     for (const name of [/dart quantity/i, /pike quantity/i, /rampart quantity/i, /courier quantity/i]) {
       expect(screen.getByRole('textbox', { name })).toBeInTheDocument();
     }
@@ -269,74 +287,56 @@ describe('the fleet that is already away', () => {
  * drawn as the thing being taken away from the thing that remains.
  */
 describe('what the launch costs the world it leaves', () => {
-  const show = (fleet: Record<string, number>, ground: Record<string, number> = {}) => {
+  /**
+   * THE GARRISON BAR IS GONE, ON OWNER INSTRUCTION.
+   *
+   * *"Bu filo dışarıdayken sectionları kaldır. Büyük çok yer kaplıyor ve gereksiz"* —
+   * quoting `launch.whileAway`'s own Turkish heading. The plate filled roughly a
+   * third of the sheet above the picker, and it argued about a decision the player
+   * had not made yet while they were still making it.
+   *
+   * WHAT IT CARRIED IS NOT LOST, and that is what these tests now hold down. The
+   * garrison count and the irreversibility both live on the confirmation step, one
+   * press before the fleet stops being recallable, which is where a warning is
+   * read rather than scrolled past.
+   */
+  const show = (fleet: Record<string, number>) => {
     render(
       <LaunchSheet
         target={{ kind: 'world', world: target }}
-        planet={planetView({ fleet, ground })}
+        planet={planetView({ fleet }, { deuterium: 50_000 })}
         onClose={vi.fn()}
         onLaunched={vi.fn()}
       />,
       { wrapper },
     );
-    return {
-      holds: () => Number.parseFloat(
-        document.querySelector<HTMLElement>('[data-part="holds"]')!.style.width,
-      ),
-      leaves: () => Number.parseFloat(
-        document.querySelector<HTMLElement>('[data-part="leaves"]')!.style.width,
-      ),
-    };
   };
 
-  it('draws the whole garrison as holding before anything is packed', () => {
-    const bar = show({ DART: 6 });
-    expect(bar.holds()).toBeCloseTo(100, 1);
-    expect(bar.leaves()).toBeCloseTo(0, 1);
+  it('spends no plate on the garrison while the player is still choosing', () => {
+    show({ DART: 6 });
+    expect(document.querySelector('[data-defence-bar]')).toBeNull();
+    expect(document.body.textContent).not.toMatch(/while this fleet is away/i);
   });
 
-  it('carves the departing fleet out of the garrison as it is packed', async () => {
-    const bar = show({ DART: 4 });
+  it('names the garrison that stays behind at the moment of commitment', async () => {
+    show({ DART: 4 });
     const user = userEvent.setup();
     await user.click(screen.getByRole('button', { name: /more dart/i }));
-    expect(bar.leaves()).toBeCloseTo(25, 1);
-    expect(bar.holds()).toBeCloseTo(75, 1);
+    await user.click(screen.getByRole('button', { name: /^send/i }));
+    // Four at home, one packed: three hold.
+    expect(document.body.textContent).toMatch(/holds 3 units until it comes back/i);
+    expect(document.body.textContent).toMatch(/cannot be recalled/i);
   });
 
-  /**
-   * THE REASON THE BAR IS POWER AND NOT A HULL COUNT. Sending one of two Bulwarks
-   * must not look like sending one of two Darts when the ground battery behind
-   * them is unchanged; the fraction of the DEFENCE that leaves is the fact.
-   */
-  it('measures what leaves by what it was worth, not by how many hulls it was', async () => {
+  it('still teaches fleetsave, which is what makes the risk cut both ways', async () => {
+    show({ DART: 4 });
     const user = userEvent.setup();
-    const light = show({ DART: 1, RAMPART: 1 });
     await user.click(screen.getByRole('button', { name: /more dart/i }));
-    const dartShare = light.leaves();
-    cleanup();
-
-    const heavy = show({ DART: 1, RAMPART: 1 });
-    await user.click(screen.getByRole('button', { name: /more rampart/i }));
-    expect(heavy.leaves()).toBeGreaterThan(dartShare);
-  });
-
-  it('says the split out loud for anyone who cannot see the bar', () => {
-    show({ DART: 3 });
-    expect(screen.getByRole('img', { name: /defence power holds/i })).toBeInTheDocument();
-  });
-
-  /** A world with nothing standing must not divide by zero. */
-  it('survives a world whose every craft is already away', () => {
-    expect(() => show({})).not.toThrow();
+    await user.click(screen.getByRole('button', { name: /^send/i }));
+    expect(document.body.textContent).toMatch(/cannot be raided/i);
   });
 });
 
-/**
- * THE FUEL IS A SPEND AGAINST A TANK, so it is drawn as one. T6 put the figure on
- * this sheet and turned it red when the tank could not cover it — which says
- * "refused" and not how far off, so a commander ten deuterium short and one a
- * thousand short read the same screen.
- */
 describe('the fuel this launch burns', () => {
   const packOne = async (deuterium: number) => {
     render(
@@ -519,6 +519,7 @@ describe('committing a fleet at a pirate', () => {
   it('offers the same picker, with the stats a hull is chosen on', async () => {
     open(pirate());
     const user = userEvent.setup();
+    await openAllBands(user);
     await user.click(screen.getByRole('button', { name: /max.*dart/i }));
 
     expect(screen.getByRole('textbox', { name: /dart quantity/i })).toHaveValue('20');
@@ -540,6 +541,7 @@ describe('committing a fleet at a pirate', () => {
   it('shows the cargo, the distance and the fuel against the tank', async () => {
     open(pirate());
     const user = userEvent.setup();
+    await openAllBands(user);
     await user.click(screen.getByRole('button', { name: /max.*dart/i }));
 
     expect(screen.getByText(/cargo/i)).toBeInTheDocument();
@@ -554,6 +556,7 @@ describe('committing a fleet at a pirate', () => {
   it('quotes the rendezvous the launch will actually use', async () => {
     open(pirate());
     const user = userEvent.setup();
+    await openAllBands(user);
     await user.click(screen.getByRole('button', { name: /max.*dart/i }));
     expect(screen.getByText('12m')).toBeInTheDocument();
 
@@ -573,6 +576,7 @@ describe('committing a fleet at a pirate', () => {
   it('refuses a fleet whose slowest ship cannot make the rendezvous', async () => {
     open(pirate({ reach: [{ hull: 'DART', minutes: 12, distance: 900, at: { x: 900, y: 0, z: 0 } }] }));
     const user = userEvent.setup();
+    await openAllBands(user);
     await user.click(screen.getByRole('button', { name: /max.*dart/i }));
     await user.click(screen.getByRole('button', { name: /max.*rampart/i }));
 
@@ -600,6 +604,7 @@ describe('committing a fleet at a pirate', () => {
     expect(screen.queryByText(/less damage/i)).toBeNull();
 
     const user = userEvent.setup();
+    await openAllBands(user);
     await user.click(screen.getByRole('button', { name: /max.*dart/i }));
     expect(screen.getByRole('button', { name: /send/i })).toBeEnabled();
   });
@@ -637,6 +642,7 @@ describe('committing a fleet at a pirate', () => {
     // Nothing selected is nothing to draw: there is no rendezvous yet.
     expect(onAim).toHaveBeenLastCalledWith(null);
 
+    await openAllBands(user);
     await user.click(screen.getByRole('button', { name: /max.*dart/i }));
     expect(onAim).toHaveBeenLastCalledWith({ x: 900, y: 0, z: 0 });
 
@@ -652,6 +658,7 @@ describe('committing a fleet at a pirate', () => {
   it('keeps the confirmation step and the fleetsave line', async () => {
     open(pirate());
     const user = userEvent.setup();
+    await openAllBands(user);
     await user.click(screen.getByRole('button', { name: /max.*dart/i }));
     await user.click(screen.getByRole('button', { name: /send/i }));
 
@@ -673,6 +680,8 @@ describe('committing a fleet at a pirate', () => {
 describe('a fleet that cannot fight', () => {
   const packAll = async (hull: string) => {
     const user = userEvent.setup();
+    // These tests are about the escort rule, not the fold; reach past it.
+    await openAllBands(user);
     await user.click(screen.getByRole('button', { name: new RegExp(`max ${hull}`, 'i') }));
   };
 

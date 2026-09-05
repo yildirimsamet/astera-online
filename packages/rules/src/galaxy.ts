@@ -299,6 +299,20 @@ export function generateAsteroidSchedule(
  * remain stable; only fresh indices after the baseline are allocated. A shower's
  * lane contains no spawn at or after `endsAtMinute`, while each generated rock's
  * ordinary lifetime may extend well beyond that boundary.
+ *
+ * IT IS HANDED THE WHOLE CALENDAR AND TAKES ONLY WHAT IS ITS OWN. D156.
+ *
+ * This appended a lane for EVERY occurrence it was given, which was correct while
+ * the calendar had exactly one kind in it. The moment a second kind exists, that
+ * same code turns every trade-ship window into an asteroid shower — and NOTHING
+ * WOULD FAIL: the field would simply be denser than the design says, for a reason
+ * no test asks about. The filter therefore lives here rather than at the call
+ * site, because a call site is a place a rule can be forgotten, and there will be
+ * more call sites than there are today.
+ *
+ * The filter runs BEFORE the sort and before any draw, so the shower lanes take
+ * exactly the number of draws in exactly the order they always did and no
+ * existing rock id moves.
  */
 export function withAsteroidShowerLanes(
   base: readonly AsteroidSpec[],
@@ -308,7 +322,9 @@ export function withAsteroidShowerLanes(
     (occurrence) => seededFrom('asteroid:shower:v1', isotopeSeed, occurrence.sequence),
 ): AsteroidSpec[] {
   const asteroids = [...base];
-  const showers = [...occurrences].sort((left, right) => left.sequence - right.sequence);
+  const showers = occurrences
+    .filter((occurrence) => occurrence.kind === 'ASTEROID_SHOWER')
+    .sort((left, right) => left.sequence - right.sequence);
 
   for (const occurrence of showers) {
     const duration = occurrence.endsAtMinute - occurrence.startsAtMinute;
@@ -368,9 +384,25 @@ export const asteroidPosition = (a: AsteroidSpec, minutes: number): Vec3 =>
 const TAU = Math.PI * 2;
 const CONTACT_EPSILON = 1e-10;
 
-/** Squared distance without allocating the asteroid's current point twice. */
-function asteroidDistanceSquared(a: AsteroidSpec, at: Vec3, minutes: number): number {
-  const point = asteroidPosition(a, minutes);
+/**
+ * A BODY ON A CLOSED ORBIT WITH A LIFE. A rock, and since D158 a pirate.
+ *
+ * The discovery solve below is pure geometry — a circle, a sphere and a window —
+ * and knows nothing about ore or crews. Naming the shape is what lets the pirate
+ * lane share the exact maths rather than grow a second copy that drifts: the
+ * failure this project has shipped before is two answers to one question, not one
+ * answer used twice.
+ */
+export interface OrbitingBody extends OrbitElements {
+  /** Minutes since season start. */
+  appearsAt: number;
+  /** Minutes since season start. It is gone after this. */
+  expiresAt: number;
+}
+
+/** Squared distance without allocating the body's current point twice. */
+function orbitDistanceSquared(a: OrbitingBody, at: Vec3, minutes: number): number {
+  const point = orbitPosition(a, minutes);
   const dx = point.x - at.x;
   const dy = point.y - at.y;
   const dz = point.z - at.z;
@@ -384,8 +416,8 @@ function asteroidDistanceSquared(a: AsteroidSpec, at: Vec3, minutes: number): nu
  * a short pass and makes discovery depend on a server tick; the dot product below
  * reduces sphere contact to one cosine interval per revolution.
  */
-export function firstAsteroidSensorContact(
-  asteroid: AsteroidSpec,
+export function firstOrbitSensorContact(
+  asteroid: OrbitingBody,
   epoch: SensorEpoch,
   fromMinutes: number,
   toMinutes: number,
@@ -410,7 +442,7 @@ export function firstAsteroidSensorContact(
   if (start >= epochEnd || start >= asteroid.expiresAt) return null;
 
   const reachSquared = epoch.reach * epoch.reach;
-  if (asteroidDistanceSquared(asteroid, epoch.at, start) <= reachSquared + CONTACT_EPSILON) {
+  if (orbitDistanceSquared(asteroid, epoch.at, start) <= reachSquared + CONTACT_EPSILON) {
     return start;
   }
 
@@ -450,9 +482,17 @@ export function firstAsteroidSensorContact(
   return Math.max(start, candidate);
 }
 
-/** First contact already earned by this commander while the rock still exists. */
-export function asteroidDiscoveredAt(
-  asteroid: AsteroidSpec,
+/**
+ * First contact already earned by this commander while the body still exists.
+ *
+ * PERMANENT BY CONSTRUCTION: it asks whether the orbit has EVER been inside one of
+ * this commander's posts, so nothing that happens later — the body flying on, the
+ * post being upgraded, the world being lost — can take the discovery back. Both
+ * lanes rest on that: a rock stays mineable (D143) and, since D158, a pirate stays
+ * on the disc (`pirateDiscoveredAt`).
+ */
+export function orbitDiscoveredAt(
+  asteroid: OrbitingBody,
   epochs: readonly SensorEpoch[],
   nowMinutes: number,
 ): number | null {
@@ -461,7 +501,7 @@ export function asteroidDiscoveredAt(
   }
   let first: number | null = null;
   for (const epoch of epochs) {
-    const found = firstAsteroidSensorContact(
+    const found = firstOrbitSensorContact(
       asteroid,
       epoch,
       Math.max(asteroid.appearsAt, epoch.startsAt),
@@ -476,18 +516,18 @@ export function asteroidDiscoveredAt(
 
 /** Next contact the current/future sensor epochs will earn, excluding known rocks. */
 export function nextAsteroidDiscoveryAt(
-  asteroids: readonly AsteroidSpec[],
+  asteroids: readonly OrbitingBody[],
   epochs: readonly SensorEpoch[],
   nowMinutes: number,
 ): number | null {
   if (!Number.isFinite(nowMinutes) || epochs.length === 0) return null;
   let next: number | null = null;
   for (const asteroid of asteroids) {
-    if (asteroid.expiresAt <= nowMinutes || asteroidDiscoveredAt(asteroid, epochs, nowMinutes) !== null) {
+    if (asteroid.expiresAt <= nowMinutes || orbitDiscoveredAt(asteroid, epochs, nowMinutes) !== null) {
       continue;
     }
     for (const epoch of epochs) {
-      const found = firstAsteroidSensorContact(
+      const found = firstOrbitSensorContact(
         asteroid,
         epoch,
         Math.max(nowMinutes, epoch.startsAt, asteroid.appearsAt),

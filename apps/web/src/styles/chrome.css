@@ -21,6 +21,7 @@
  */
 
 @layer components {
+
   /**
    * THE PODIUM IN ONE GLANCE.
    *
@@ -77,7 +78,10 @@
     --rank-lo: var(--color-rank-gold-lo);
   }
 
-  .rank-badge-gold::before { width: 2.15rem; height: 2.15rem; }
+  .rank-badge-gold::before {
+    width: 2.15rem;
+    height: 2.15rem;
+  }
 
   .rank-badge-silver {
     --rank-metal: var(--color-rank-silver);
@@ -101,12 +105,10 @@
     /* Two layers: the catch-light along the top, then the body of the metal. */
     background:
       linear-gradient(180deg, rgb(255 255 255 / 9%) 0%, transparent 30%),
-      linear-gradient(
-        180deg,
+      linear-gradient(180deg,
         var(--color-plate-hi) 0%,
         var(--color-plate) 44%,
-        var(--color-plate-lo) 100%
-      );
+        var(--color-plate-lo) 100%);
     box-shadow:
       inset 0 0 0 1px rgb(74 98 136 / 20%),
       inset 0 -1px 0 rgb(0 0 0 / 60%),
@@ -164,18 +166,22 @@
     --edge: rgb(89 200 255 / 55%);
     --edge-soft: rgb(89 200 255 / 40%);
   }
+
   .plate-threat {
     --edge: rgb(255 106 77 / 60%);
     --edge-soft: rgb(226 65 44 / 45%);
   }
+
   .plate-opportunity {
     --edge: rgb(111 245 182 / 55%);
     --edge-soft: rgb(90 211 155 / 40%);
   }
+
   .plate-alloy {
     --edge: rgb(255 190 82 / 55%);
     --edge-soft: rgb(217 164 65 / 40%);
   }
+
   .plate-lit::after,
   .plate-threat::after,
   .plate-opportunity::after,
@@ -198,6 +204,7 @@
       linear-gradient(180deg, rgb(255 255 255 / 7%) 0%, transparent 30%),
       linear-gradient(180deg, #1a1620 0%, #120e15 44%, var(--color-plate-lo) 100%);
   }
+
   .plate-opportunity {
     background:
       radial-gradient(130% 110% at 0% 0%, rgb(90 211 155 / 14%), transparent 58%),
@@ -253,14 +260,12 @@
     border-radius: 0;
     color: var(--color-bone);
     background: color-mix(in srgb, var(--color-crystal) 60%, transparent);
-    clip-path: polygon(
-      var(--cut) 0,
-      100% 0,
-      100% calc(100% - var(--cut)),
-      calc(100% - var(--cut)) 100%,
-      0 100%,
-      0 var(--cut)
-    );
+    clip-path: polygon(var(--cut) 0,
+        100% 0,
+        100% calc(100% - var(--cut)),
+        calc(100% - var(--cut)) 100%,
+        0 100%,
+        0 var(--cut));
     animation: enter-breathe 4.5s ease-in-out infinite;
   }
 
@@ -270,14 +275,12 @@
     position: absolute;
     inset: 1px;
     z-index: -2;
-    clip-path: polygon(
-      calc(var(--cut) - 1px) 0,
-      100% 0,
-      100% calc(100% - var(--cut) + 1px),
-      calc(100% - var(--cut) + 1px) 100%,
-      0 100%,
-      0 calc(var(--cut) - 1px)
-    );
+    clip-path: polygon(calc(var(--cut) - 1px) 0,
+        100% 0,
+        100% calc(100% - var(--cut) + 1px),
+        calc(100% - var(--cut) + 1px) 100%,
+        0 100%,
+        0 calc(var(--cut) - 1px));
     background:
       radial-gradient(120% 180% at 50% 120%, color-mix(in srgb, var(--color-crystal) 34%, transparent), transparent 70%),
       linear-gradient(180deg, #16294a 0%, #0a1428 55%, #070f1e 100%);
@@ -289,13 +292,11 @@
     position: absolute;
     inset: 0;
     z-index: -1;
-    background: linear-gradient(
-      104deg,
-      transparent 34%,
-      rgb(255 255 255 / 16%) 46%,
-      rgb(190 225 255 / 22%) 50%,
-      transparent 64%
-    );
+    background: linear-gradient(104deg,
+        transparent 34%,
+        rgb(255 255 255 / 16%) 46%,
+        rgb(190 225 255 / 22%) 50%,
+        transparent 64%);
     transform: translateX(-130%);
     animation: enter-glint 5.5s cubic-bezier(0.4, 0, 0.2, 1) infinite;
   }
@@ -316,13 +317,11 @@
     inset: -60%;
     z-index: -1;
     opacity: 0.55;
-    background: conic-gradient(
-      from 0deg,
-      transparent 0 52%,
-      color-mix(in srgb, var(--color-crystal) 70%, transparent) 68%,
-      color-mix(in srgb, var(--color-crystal-glow) 80%, transparent) 74%,
-      transparent 88%
-    );
+    background: conic-gradient(from 0deg,
+        transparent 0 52%,
+        color-mix(in srgb, var(--color-crystal) 70%, transparent) 68%,
+        color-mix(in srgb, var(--color-crystal-glow) 80%, transparent) 74%,
+        transparent 88%);
     /* The wide transparent stops feather the source without a blur pass, keeping
        the plate and every neighbouring edge optically sharp. */
     animation: enter-orbit 12s linear infinite;
@@ -334,41 +333,38 @@
     isolation: isolate;
     border-radius: 0;
     background: rgb(74 98 136 / 42%);
-    clip-path: polygon(
-      var(--cut) 0,
-      100% 0,
-      100% calc(100% - var(--cut)),
-      calc(100% - var(--cut)) 100%,
-      0 100%,
-      0 var(--cut)
-    );
+    clip-path: polygon(var(--cut) 0,
+        100% 0,
+        100% calc(100% - var(--cut)),
+        calc(100% - var(--cut)) 100%,
+        0 100%,
+        0 var(--cut));
     box-shadow: none;
   }
+
   .plate-cut::before {
     content: '';
     position: absolute;
     inset: 1px;
     z-index: -1;
-    clip-path: polygon(
-      calc(var(--cut) - 1px) 0,
-      100% 0,
-      100% calc(100% - var(--cut) + 1px),
-      calc(100% - var(--cut) + 1px) 100%,
-      0 100%,
-      0 calc(var(--cut) - 1px)
-    );
+    clip-path: polygon(calc(var(--cut) - 1px) 0,
+        100% 0,
+        100% calc(100% - var(--cut) + 1px),
+        calc(100% - var(--cut) + 1px) 100%,
+        0 100%,
+        0 calc(var(--cut) - 1px));
     background:
       linear-gradient(180deg, rgb(255 255 255 / 8%) 0%, transparent 30%),
-      linear-gradient(
-        180deg,
+      linear-gradient(180deg,
         var(--color-plate-hi) 0%,
         var(--color-plate) 44%,
-        var(--color-plate-lo) 100%
-      );
+        var(--color-plate-lo) 100%);
   }
+
   .plate-cut-sm {
     --cut: var(--cut-sm);
   }
+
   .plate-cut-lg {
     --cut: var(--cut-lg);
   }
@@ -471,6 +467,27 @@
       box-shadow var(--dur-fast) var(--ease-press),
       filter var(--dur-fast) var(--ease-press);
   }
+
+  /**
+   * COMPACT — the rail size. Owner directive: *"Büyük tasarım istemiyorum. HEP!"*
+   *
+   * The full `.slab` is 44px at body size and is right for a sheet's single
+   * commitment, where one control owns the bottom of the screen. It is wrong for a
+   * RAIL of two or three paired controls: at 375px that stack was most of what a
+   * commander saw of a focus panel.
+   *
+   * 40px keeps a comfortable thumb target — this is a hair under the 44px ideal and
+   * well above the 32px floor where taps start being missed — while the label drops
+   * to `--text-label` and the padding tightens. What it buys is a control that
+   * states its verb and its price on ONE line instead of two.
+   */
+  .slab-compact {
+    min-height: 40px;
+    gap: 6px;
+    padding: 8px 12px;
+    font-size: var(--text-label);
+  }
+
   .slab:active:not(:disabled) {
     transform: translateY(var(--slab-depth));
     box-shadow:
@@ -479,6 +496,7 @@
       inset 0 2px 7px rgb(0 0 0 / 65%),
       0 0 0 #05080f;
   }
+
   .slab:disabled {
     color: var(--color-faint);
     text-shadow: none;
@@ -500,6 +518,7 @@
       0 4px 12px -2px rgb(0 0 0 / 60%),
       0 0 20px -6px rgb(89 200 255 / 55%);
   }
+
   .slab-primary:active:not(:disabled) {
     box-shadow:
       inset 0 1px 0 rgb(255 255 255 / 8%),
@@ -526,6 +545,7 @@
       0 4px 12px -2px rgb(0 0 0 / 60%),
       0 0 22px -6px rgb(255 106 77 / 55%);
   }
+
   .slab-commit:active:not(:disabled) {
     box-shadow:
       inset 0 1px 0 rgb(255 255 255 / 8%),
@@ -540,6 +560,7 @@
     background: transparent;
     box-shadow: inset 0 0 0 1px rgb(74 98 136 / 26%);
   }
+
   .slab-ghost:active:not(:disabled) {
     transform: none;
     background: rgb(74 98 136 / 14%);
@@ -571,18 +592,21 @@
       inset 0 0 0 1px rgb(0 0 0 / 55%),
       0 1px 0 rgb(255 255 255 / 6%);
   }
+
   .socket-alloy {
     background:
       radial-gradient(ellipse 38% 10% at 50% 88%, rgb(0 0 0 / 60%), transparent 74%),
       radial-gradient(circle at 50% 38%, rgb(255 190 82 / 15%) 0%, transparent 62%),
       linear-gradient(180deg, #0e0a06 0%, #140e08 100%);
   }
+
   .socket-threat {
     background:
       radial-gradient(ellipse 38% 10% at 50% 88%, rgb(0 0 0 / 60%), transparent 74%),
       radial-gradient(circle at 50% 38%, rgb(255 106 77 / 16%) 0%, transparent 62%),
       linear-gradient(180deg, #120a09 0%, #170d0b 100%);
   }
+
   /**
    * THE ART IS GROUNDED BY THE SOCKET, NOT BY A FILTER ON THE IMAGE.
    *
@@ -633,9 +657,11 @@
       box-shadow var(--dur-fast) var(--ease-hardware),
       background var(--dur-fast) var(--ease-hardware);
   }
+
   .field::placeholder {
     color: var(--color-faint);
   }
+
   .field:focus {
     outline: none;
     box-shadow:
@@ -643,6 +669,7 @@
       inset 0 0 0 1px rgb(89 200 255 / 55%),
       0 0 0 3px rgb(89 200 255 / 12%);
   }
+
   /** A field whose contents were refused. Colour states it; the message says why. */
   .field-bad {
     box-shadow:
@@ -669,19 +696,18 @@
 
   .rail-soft {
     height: 1px;
-    background: linear-gradient(
-      90deg,
-      transparent,
-      rgb(74 98 136 / 38%) 22%,
-      rgb(74 98 136 / 38%) 78%,
-      transparent
-    );
+    background: linear-gradient(90deg,
+        transparent,
+        rgb(74 98 136 / 38%) 22%,
+        rgb(74 98 136 / 38%) 78%,
+        transparent);
   }
 
   /** Text stamped into metal. */
   .etch {
     text-shadow: 0 1px 0 rgb(0 0 0 / 70%);
   }
+
   /** Text lit from behind — for a value that is currently live. */
   .lit {
     text-shadow: 0 0 14px currentcolor;
@@ -704,6 +730,7 @@
     box-shadow: inset 0 0 0 1px rgb(74 98 136 / 28%);
     text-shadow: 0 1px 0 rgb(0 0 0 / 50%);
   }
+
   .chip-threat {
     color: var(--color-threat-ink);
     background: rgb(226 65 44 / 16%);
@@ -711,6 +738,7 @@
       inset 0 0 0 1px rgb(255 106 77 / 45%),
       0 0 12px -4px rgb(255 106 77 / 55%);
   }
+
   .chip-opportunity {
     color: var(--color-opportunity-glow);
     background: rgb(90 211 155 / 14%);
@@ -718,16 +746,19 @@
       inset 0 0 0 1px rgb(111 245 182 / 42%),
       0 0 12px -4px rgb(111 245 182 / 50%);
   }
+
   .chip-alloy {
     color: var(--color-alloy-glow);
     background: rgb(217 164 65 / 14%);
     box-shadow: inset 0 0 0 1px rgb(255 190 82 / 38%);
   }
+
   .chip-crystal {
     color: var(--color-crystal-glow);
     background: rgb(89 200 255 / 12%);
     box-shadow: inset 0 0 0 1px rgb(89 200 255 / 38%);
   }
+
   .chip-locked {
     color: var(--color-faint);
     background: rgb(0 0 0 / 35%);
@@ -743,6 +774,7 @@
     background: var(--color-crystal-glow);
     box-shadow: 0 0 8px 1px rgb(89 200 255 / 80%);
   }
+
   .pip-threat {
     background: var(--color-threat-glow);
     box-shadow: 0 0 8px 1px rgb(255 106 77 / 80%);
@@ -758,18 +790,17 @@
     position: relative;
     overflow: hidden;
   }
+
   .shimmer::after {
     content: '';
     position: absolute;
     inset: 0;
     width: 45%;
     pointer-events: none;
-    background: linear-gradient(
-      90deg,
-      transparent,
-      rgb(89 200 255 / 12%) 50%,
-      transparent
-    );
+    background: linear-gradient(90deg,
+        transparent,
+        rgb(89 200 255 / 12%) 50%,
+        transparent);
     animation: shimmer 1.5s var(--ease-hardware) infinite;
   }
 
@@ -783,6 +814,7 @@
       inset 0 0 0 1px rgb(74 98 136 / 22%),
       0 10px 24px -12px rgb(0 0 0 / 80%);
   }
+
   .directive-threat {
     background:
       radial-gradient(130% 120% at 0% 0%, rgb(226 65 44 / 22%), transparent 62%),
@@ -792,6 +824,7 @@
       inset 0 0 16px -6px rgb(255 106 77 / 45%),
       0 0 24px -10px rgb(255 106 77 / 50%);
   }
+
   .directive-opportunity {
     background:
       radial-gradient(130% 120% at 0% 0%, rgb(90 211 155 / 18%), transparent 62%),
@@ -801,6 +834,7 @@
       inset 0 0 16px -6px rgb(111 245 182 / 40%),
       0 0 24px -10px rgb(111 245 182 / 45%);
   }
+
   .directive-growth,
   .directive-idle {
     background:
@@ -816,17 +850,33 @@
    background and dark text on a dark ground. Always use the `--color-` name. */
 
 @keyframes enter-orbit {
-  to { transform: rotate(1turn); }
+  to {
+    transform: rotate(1turn);
+  }
 }
 
 @keyframes enter-glint {
-  0%, 62% { transform: translateX(-130%); }
-  100% { transform: translateX(130%); }
+
+  0%,
+  62% {
+    transform: translateX(-130%);
+  }
+
+  100% {
+    transform: translateX(130%);
+  }
 }
 
 @keyframes enter-breathe {
-  0%, 100% { box-shadow: 0 12px 44px -16px color-mix(in srgb, var(--color-crystal) 55%, transparent); }
-  50% { box-shadow: 0 14px 60px -14px color-mix(in srgb, var(--color-crystal) 85%, transparent); }
+
+  0%,
+  100% {
+    box-shadow: 0 12px 44px -16px color-mix(in srgb, var(--color-crystal) 55%, transparent);
+  }
+
+  50% {
+    box-shadow: 0 14px 60px -14px color-mix(in srgb, var(--color-crystal) 85%, transparent);
+  }
 }
 
 /* ── the works · D16 ──────────────────────────────────────────
@@ -848,8 +898,13 @@
   transition: border-color 160ms ease, background 160ms ease;
 }
 
-.works:not(:disabled):active { transform: scale(0.995); }
-.works-idle { opacity: 0.55; }
+.works:not(:disabled):active {
+  transform: scale(0.995);
+}
+
+.works-idle {
+  opacity: 0.55;
+}
 
 /* Ready is one quiet step above furniture; FULL remains the only urgent state. */
 .works-ready:not(.works-full) {
@@ -862,7 +917,11 @@
   border-color: color-mix(in srgb, var(--color-crystal) 62%, var(--color-line));
 }
 
-.works-vessels { display: flex; gap: 3px; flex-shrink: 0; }
+.works-vessels {
+  display: flex;
+  gap: 3px;
+  flex-shrink: 0;
+}
 
 /* Rim always full height — the empty part is the headroom, and the headroom is
    the whole point. */
@@ -883,9 +942,17 @@
   transition: height 700ms ease-out;
 }
 
-.works-fill-alloy { background: linear-gradient(to top, #b3771f, #f0c070); }
-.works-fill-crystal { background: linear-gradient(to top, #2a7f96, #7fdcf0); }
-.works-fill-deuterium { background: linear-gradient(to top, #326e18, var(--color-deuterium)); }
+.works-fill-alloy {
+  background: linear-gradient(to top, #b3771f, #f0c070);
+}
+
+.works-fill-crystal {
+  background: linear-gradient(to top, #2a7f96, #7fdcf0);
+}
+
+.works-fill-deuterium {
+  background: linear-gradient(to top, #326e18, var(--color-deuterium));
+}
 
 /* Inflow, running only while the works run. Its absence is how a player sees
    that production has actually stopped rather than merely reached a number. */
@@ -900,12 +967,31 @@
   animation: works-drip 1.6s linear infinite;
 }
 
-.works-drip-alloy { background: #f0c070; }
-.works-drip-crystal { background: #7fdcf0; animation-delay: 0.5s; }
-.works-drip-deuterium { background: var(--color-deuterium-glow); animation-delay: 0.8s; }
+.works-drip-alloy {
+  background: #f0c070;
+}
 
-.works-body { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
-.works-amount { font-size: var(--text-body); line-height: 1.1; }
+.works-drip-crystal {
+  background: #7fdcf0;
+  animation-delay: 0.5s;
+}
+
+.works-drip-deuterium {
+  background: var(--color-deuterium-glow);
+  animation-delay: 0.8s;
+}
+
+.works-body {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+
+.works-amount {
+  font-size: var(--text-body);
+  line-height: 1.1;
+}
 
 .works-action {
   display: inline-flex;
@@ -927,14 +1013,31 @@
 }
 
 @keyframes works-drip {
-  0% { opacity: 0; translate: 0 0; }
-  25% { opacity: 1; }
-  100% { opacity: 0; translate: 0 16px; }
+  0% {
+    opacity: 0;
+    translate: 0 0;
+  }
+
+  25% {
+    opacity: 1;
+  }
+
+  100% {
+    opacity: 0;
+    translate: 0 16px;
+  }
 }
 
 @keyframes works-urgent {
-  0%, 100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--color-alloy) 40%, transparent); }
-  50% { box-shadow: 0 0 0 4px color-mix(in srgb, var(--color-alloy) 0%, transparent); }
+
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--color-alloy) 40%, transparent);
+  }
+
+  50% {
+    box-shadow: 0 0 0 4px color-mix(in srgb, var(--color-alloy) 0%, transparent);
+  }
 }
 
 /* ── actions · four states, and the state is visible ──────────
@@ -969,26 +1072,34 @@
 }
 
 /* A verb never wraps and never truncates — it is two syllables. */
-.act-word { line-height: 1; white-space: nowrap; }
+.act-word {
+  line-height: 1;
+  white-space: nowrap;
+}
 
 /* READY — the only filled state, and the only one that acts.
    Weighted deliberately hard: at 26% tint this read as another outline on a
    near-black ground, which is the exact failure the four states exist to fix. */
 .act-ready {
   border-color: color-mix(in srgb, var(--color-crystal) 85%, transparent);
-  background: linear-gradient(
-    to bottom,
-    color-mix(in srgb, var(--color-crystal) 62%, transparent),
-    color-mix(in srgb, var(--color-crystal) 34%, transparent)
-  );
+  background: linear-gradient(to bottom,
+      color-mix(in srgb, var(--color-crystal) 62%, transparent),
+      color-mix(in srgb, var(--color-crystal) 34%, transparent));
   color: #062028;
   font-weight: 600;
   box-shadow:
     inset 0 1px 0 color-mix(in srgb, #ffffff 30%, transparent),
     0 1px 6px color-mix(in srgb, var(--color-crystal) 22%, transparent);
 }
-.act-ready:active:not(:disabled) { transform: scale(0.96); filter: brightness(1.15); }
-.act-ready:disabled { opacity: 0.6; }
+
+.act-ready:active:not(:disabled) {
+  transform: scale(0.96);
+  filter: brightness(1.15);
+}
+
+.act-ready:disabled {
+  opacity: 0.6;
+}
 
 /* SHORT — outlined, with the gap named. Never a dead grey rectangle. */
 .act-short {
@@ -1013,7 +1124,13 @@
   gap: 2px;
   min-width: 0;
 }
-.act-need-figs { display: inline-flex; align-items: center; gap: 7px; }
+
+.act-need-figs {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+}
+
 /* The word that stops a shortfall being read as a price. Quieter than the
    figures it qualifies, because the figures are what the player acts on. */
 .act-need-word {
@@ -1024,6 +1141,7 @@
   letter-spacing: var(--tracking-label);
   opacity: 0.7;
 }
+
 .act-need-part {
   display: inline-flex;
   align-items: center;
@@ -1033,7 +1151,10 @@
   letter-spacing: 0;
   color: var(--color-alloy);
 }
-.act-need-crystal { color: var(--color-crystal); }
+
+.act-need-crystal {
+  color: var(--color-crystal);
+}
 
 /* A full-width action — the sheet footer — has room for one line, and looks wrong
    as a stacked block across 340px. It opts back out. */
@@ -1041,7 +1162,10 @@
   flex-direction: row;
   gap: 8px;
 }
-.act-short.w-full { padding: 0 11px; }
+
+.act-short.w-full {
+  padding: 0 11px;
+}
 
 /* LOCKED — a door, not a disabled control. */
 .act-locked {
@@ -1052,6 +1176,7 @@
   font-size: var(--text-micro);
   letter-spacing: var(--tracking-label);
 }
+
 /* A REQUIREMENT IS A SENTENCE AND SENTENCES VARY.
    "Core L7" is four characters; "an Uplink in orbit" is eighteen. The long ones
    wrap to a second line inside the button rather than pushing the control off the
@@ -1061,13 +1186,29 @@
   text-align: left;
   overflow-wrap: anywhere;
 }
-.act-locked:not(:disabled):active { transform: scale(0.96); }
-.act-locked:not(:disabled) { color: var(--color-bone); border-color: color-mix(in srgb, var(--color-alloy) 40%, transparent); }
-.act-go { opacity: 0.75; }
+
+.act-locked:not(:disabled):active {
+  transform: scale(0.96);
+}
+
+.act-locked:not(:disabled) {
+  color: var(--color-bone);
+  border-color: color-mix(in srgb, var(--color-alloy) 40%, transparent);
+}
+
+.act-go {
+  opacity: 0.75;
+}
 
 /* ── combat statistics ───────────────────────────────────────── */
 
-.stats { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.stats {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
 /*
   THE CARD FORM IS A GRID, NOT A WRAPPING ROW. Owner instruction.
 
@@ -1078,39 +1219,78 @@
 */
 .stats-card {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 10px 16px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px !important;
   align-items: start;
 }
 
-.stat { display: inline-flex; align-items: center; gap: 5px; }
-.stat-icon { display: inline-flex; opacity: 0.9; }
-.stat-body { display: flex; flex-direction: column; gap: 1px; }
+.stat {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.stat-icon {
+  display: inline-flex;
+  opacity: 0.9;
+}
+
+.stat-body {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
 .stat-value {
   font-family: var(--font-mono, inherit);
   font-size: var(--text-body);
   line-height: 1.1;
   color: var(--color-bone);
 }
-.stats-card .stat-value { font-size: var(--text-title); }
+
+.stats-card .stat-value {
+  font-size: var(--text-title);
+}
 
 /* Fixed hues, matching what these ideas already mean elsewhere in the UI. */
-.stat-attack .stat-icon { color: var(--color-threat-ink); }
-.stat-hull   .stat-icon { color: var(--color-bone); }
-.stat-speed  .stat-icon { color: var(--color-crystal); }
-.stat-cargo  .stat-icon { color: var(--color-alloy); }
+.stat-attack .stat-icon {
+  color: var(--color-threat-ink);
+}
+
+.stat-hull .stat-icon {
+  color: var(--color-bone);
+}
+
+.stat-speed .stat-icon {
+  color: var(--color-crystal);
+}
+
+.stat-cargo .stat-icon {
+  color: var(--color-alloy);
+}
+
 /* The fuel mark is the painted deuterium render, so it carries its own colour. */
-.stat-fuel   .stat-icon { color: var(--color-deuterium); }
+.stat-fuel .stat-icon {
+  color: var(--color-deuterium);
+}
+
 /*
   Hangar room is the only figure here that is a LIMIT rather than a capability, so
   it takes the interface's word for a ceiling rather than a resource hue — nothing
   on this strip should read as if buying a bigger number were the goal.
 */
-.stat-room   .stat-icon { color: var(--color-dim); }
+.stat-room .stat-icon {
+  color: var(--color-dim);
+}
 
 /* ── price ───────────────────────────────────────────────────── */
 
-.price { display: inline-flex; align-items: center; gap: 10px; }
+.price {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+
 .price-part {
   display: inline-flex;
   align-items: center;
@@ -1119,7 +1299,15 @@
   font-size: var(--text-caption);
   color: var(--color-alloy);
 }
-.price-crystal { color: var(--color-crystal); }
+
+.price-crystal {
+  color: var(--color-crystal);
+}
+
 /* Short shows as a struck-through-ish dimming rather than red: it is a price you
    cannot meet YET, not an error. */
-.price-short { opacity: 0.5; text-decoration: underline dotted; text-underline-offset: 3px; }
+.price-short {
+  opacity: 0.5;
+  text-decoration: underline dotted;
+  text-underline-offset: 3px;
+}

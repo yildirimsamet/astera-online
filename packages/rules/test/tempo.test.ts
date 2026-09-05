@@ -24,8 +24,10 @@ describe('the calibrated economy tempo', () => {
   it('keeps the upgrade curve inside a raidable storage profile', () => {
     expect(ECON.costBase / 52).toBe(1.05);
     expect(ECON.costMult).toBe(1.54);
-    expect(ECON.capHours).toBeCloseTo(13.2);
-    expect(ECON.capHoursPerVault).toBeCloseTo(0.88);
+    // D161 divided both by 0.9 with the alloy income cut, so a store still holds
+    // the same ORE it held before — see the note on `capHours`.
+    expect(ECON.capHours).toBeCloseTo(14.667, 3);
+    expect(ECON.capHoursPerVault).toBeCloseTo(0.978, 3);
   });
 
   it('keeps the opening in minutes and both meanings of L12 inside one to two hours', () => {
@@ -63,13 +65,20 @@ describe('the calibrated economy tempo', () => {
     expect(satelliteCost('UPLINK')).toEqual({ alloy: 1125, crystal: 375, deuterium: 0 });
     expect(satelliteCost('FOUNDRY')).toEqual({ alloy: 3400, crystal: 1190, deuterium: 0 });
     expect(MULTI_WORLD.settlement.cost).toEqual({ alloy: 3400, crystal: 1700, deuterium: 0 });
-    expect(DEATH_STAR.cost).toEqual({ alloy: 25_500, crystal: 25_500, deuterium: 3900 });
+    /*
+      THE ONE PRICE THAT IS NOT SCALED, AND IT IS DELIBERATE. D167 — owner figures.
+      A tempo change moves everything priced through `scalePrice`; the strategic
+      weapon is set by hand against what it now DOES, so it is written out here and
+      pinned here rather than derived from a base nobody would recognise.
+    */
+    expect(DEATH_STAR.cost).toEqual({ alloy: 40_000, crystal: 25_000, deuterium: 6_000 });
     expect(CLAN.creationCost).toEqual({ alloy: 8500, crystal: 5100, deuterium: 0 });
   });
 
   it('keeps action rewards and the scouting entry price as intentional exceptions', () => {
     expect(PROBE).toMatchObject({ alloy: 50, crystal: 30 });
-    expect(rewardPurse()).toEqual({ alloy: 13_600, crystal: 4740, deuterium: 0 });
+    // Crystal follows the INCOME share, which D161 moved from ~35% to ~44%.
+    expect(rewardPurse()).toEqual({ alloy: 13_600, crystal: 6055, deuterium: 0 });
   });
 
   it('keeps the strategic asset timer fixed outside ordinary yard crafting', () => {

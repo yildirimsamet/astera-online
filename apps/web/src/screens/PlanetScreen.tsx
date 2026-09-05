@@ -8,7 +8,6 @@ import {
   HULLS,
   RESEARCH_PROJECTS,
   DEATH_STAR,
-  MULTI_WORLD,
   PROSPECTOR,
   buildingCost,
   fleetCount,
@@ -30,6 +29,7 @@ import {
   type HullId,
   type InstrumentId,
   type SatelliteId,
+  recoveryMinutesFor,
 } from '@astera/rules';
 import {
   useGalaxy,
@@ -49,7 +49,7 @@ import type { PlanetView } from '../api/schemas.js';
 import { directives, primary, type PlanetGroup } from '../lib/directives.js';
 import { compact, full } from '../lib/format.js';
 import { serverNow } from '../lib/clock.js';
-import { duration, useNow } from '../lib/time.js';
+import { duration, untilReady, useNow } from '../lib/time.js';
 import { projectedQueueState, type ProjectedQueueState } from '../lib/predict.js';
 /*
   THE CATALOGUE'S BANDS ARE THE ROSTER'S BANDS. Owner instruction.
@@ -94,12 +94,15 @@ import {
   satelliteTag,
   researchName,
 } from '../i18n/names.js';
-import { ActionButton, Price, StatStrip } from '../ui/Action.js';
+import { ActionButton, Price, StatStrip, TimeCost } from '../ui/Action.js';
 import { ItemSheet, type ItemRef } from '../ui/ItemSheet.js';
 import { PlanetHero } from '../ui/PlanetHero.js';
 import { CapacityBar } from '../ui/CapacityBar.js';
 import { QueueStrip } from '../ui/QueueStrip.js';
 import { Band, DecisionGroup, UpgradeRow, type Blocked } from '../ui/UpgradeRow.js';
+import { ClassChip, CounterCycle, CounterLine } from '../ui/CounterMark.js';
+import { orderMinutes } from '../lib/orderTime.js';
+import { useAccordion } from '../lib/accordion.js';
 import { describe, useToast } from '../ui/Toast.js';
 import { Sheet } from '../ui/kit/index.js';
 import { QuantityStepper } from '../ui/QuantityStepper.js';
@@ -330,96 +333,96 @@ export function PlanetScreen({
       {/*
         WHO OWNS THE INSET. The sheet bleeds and this screen pads, block by block,
         because ONE thing here has to run edge to edge: the sticky category bar.
-        It used to reach the edges with a `-mx-4` that cancelled a `px-4` the sheet
+        It used to reach the edges with a `-mx-4` that cancelled a `px-2` the sheet
         had applied and this screen had re-applied — three declarations for one
         sixteen-pixel gutter, and no owner to change when it was wrong.
       */}
-      <div className="flex flex-col gap-4 pb-4">
-      <div className="px-4 pt-4">
-        <PlanetHero planet={data} compact={embedded} />
-      </div>
-
-      <div className="px-4">
-        <BuildQueues planet={data} />
-      </div>
-
-      {recovering && (
-        <div className="mx-4 rounded-chip border border-alert/40 bg-alert/10 px-3 py-2 text-caption text-threat-ink">
-          {t('planet.recovery', { duration: duration((data.planet.recoveryUntil!.getTime() - serverNow()) / 60_000) })}
+      <div className="flex flex-col gap-3 pb-2">
+        <div className="px-2 pt-2">
+          <PlanetHero planet={data} compact={embedded} />
         </div>
-      )}
 
-      {data.strategic && (
-        <div className="px-4">
-          <DeathStarForge planet={data} held={held} recovering={recovering} />
+        <div className="px-2">
+          <BuildQueues planet={data} />
         </div>
-      )}
 
-      <Tabs
-        active={active}
-        onSelect={setTab}
-        held={held}
-      />
+        {recovering && (
+          <div className="mx-4 rounded-chip border border-alert/40 bg-alert/10 px-3 py-2 text-caption text-threat-ink">
+            {t('planet.recovery', { duration: duration((data.planet.recoveryUntil!.getTime() - serverNow()) / 60_000) })}
+          </div>
+        )}
 
-      <div className="flex flex-col gap-4 px-4">
-      <OrbitContext planet={data} />
+        {data.strategic && (
+          <div className="px-2">
+            <DeathStarForge planet={data} held={held} recovering={recovering} />
+          </div>
+        )}
 
-      {active === 'reach' && !data.strategic && (
-        <DeathStarForge planet={data} held={held} recovering={recovering} />
-      )}
-
-      <div
-        id={`planet-panel-${active}`}
-        role="tabpanel"
-        aria-labelledby={`planet-tab-${active}`}
-        className={recovering ? 'pointer-events-none opacity-50' : ''}
-        aria-disabled={recovering}
-      >
-      <DecisionGroup problem={t(GROUPS[active].problem)} question={t(GROUPS[active].question)}>
-        {active === 'defend' && <Defend {...shared} onBuild={setBuilding} />}
-        {active === 'orbit' && <Orbit {...shared} />}
-        {active === 'reach' && <Reach {...shared} onBuild={setBuilding} />}
-        {active === 'grow' && <Grow {...shared} />}
-      </DecisionGroup>
-      </div>
-      </div>
-
-      {sheet && (
-        <ItemSheet
-          item={sheet.item}
-          name={sheet.name}
-          role={sheet.role}
-          planet={data}
+        <Tabs
+          active={active}
+          onSelect={setTab}
           held={held}
-          {...(sheet.blocked ? { blocked: sheet.blocked } : {})}
-          {...(sheet.completed ? { completed: sheet.completed } : {})}
-          {...(sheet.queued ? { queued: sheet.queued } : {})}
-          pending={sheet.pending}
-          onAct={sheet.act}
-          onClose={() => {
-            setSheet(null);
-          }}
         />
-      )}
 
-      {building && (
-        // `data-build-sheet` is how the onboarding gate (D56) keeps this surface
-        // live: it is opened BY a gated control, so sealing it would trap.
-        <div data-build-sheet>
-        <BuildSheet
-          hull={building}
-          planet={data}
-          held={held}
-          onNeed={(id) => {
-            setBuilding(null);
-            goToNeed(id);
-          }}
-          onClose={() => {
-            setBuilding(null);
-          }}
-        />
+        <div className="flex flex-col gap-4 px-2">
+          <OrbitContext planet={data} />
+
+          {active === 'reach' && !data.strategic && (
+            <DeathStarForge planet={data} held={held} recovering={recovering} />
+          )}
+
+          <div
+            id={`planet-panel-${active}`}
+            role="tabpanel"
+            aria-labelledby={`planet-tab-${active}`}
+            className={recovering ? 'pointer-events-none opacity-50' : ''}
+            aria-disabled={recovering}
+          >
+            <DecisionGroup problem={t(GROUPS[active].problem)} question={t(GROUPS[active].question)}>
+              {active === 'defend' && <Defend {...shared} onBuild={setBuilding} />}
+              {active === 'orbit' && <Orbit {...shared} />}
+              {active === 'reach' && <Reach {...shared} onBuild={setBuilding} />}
+              {active === 'grow' && <Grow {...shared} />}
+            </DecisionGroup>
+          </div>
         </div>
-      )}
+
+        {sheet && (
+          <ItemSheet
+            item={sheet.item}
+            name={sheet.name}
+            role={sheet.role}
+            planet={data}
+            held={held}
+            {...(sheet.blocked ? { blocked: sheet.blocked } : {})}
+            {...(sheet.completed ? { completed: sheet.completed } : {})}
+            {...(sheet.queued ? { queued: sheet.queued } : {})}
+            pending={sheet.pending}
+            onAct={sheet.act}
+            onClose={() => {
+              setSheet(null);
+            }}
+          />
+        )}
+
+        {building && (
+          // `data-build-sheet` is how the onboarding gate (D56) keeps this surface
+          // live: it is opened BY a gated control, so sealing it would trap.
+          <div data-build-sheet>
+            <BuildSheet
+              hull={building}
+              planet={data}
+              held={held}
+              onNeed={(id) => {
+                setBuilding(null);
+                goToNeed(id);
+              }}
+              onClose={() => {
+                setBuilding(null);
+              }}
+            />
+          </div>
+        )}
       </div>
     </GameActions>
   );
@@ -508,7 +511,7 @@ function Wallet({ held }: { held: Projected }) {
     compacted. Both were on screen at once: 1,303 above and 1.3k below.
   */
   return (
-    <div className="flex items-center gap-3 px-4 pb-2 pt-2 text-body">
+    <div className="flex items-center gap-2 px-2 pb-2 pt-2 text-body">
       <span className="flex items-center gap-2">
         <img src={RESOURCE_ART.alloy} alt="" aria-hidden className="size-4 object-contain" />
         <span className="num text-alloy">{full(held.alloy)}</span>
@@ -546,6 +549,38 @@ function BuildQueues({ planet }: { planet: PlanetView }) {
   const cancel = useCancelBuildOrder();
   const say = useToast();
   const queues = planet.queues ?? { CONSTRUCTION: [], YARD: [] };
+  const working = queues.CONSTRUCTION.length + queues.YARD.length;
+
+  /**
+   * NOTHING BUILDING IS ONE LINE, NOT TWO ROWS OF EMPTY SOCKETS. Owner report:
+   * *"Üretim sıraları sectionda üretim yoksa bile full section açık bom bom
+   * duruyor."*
+   *
+   * `interface.md` I6b says a rationed thing draws its empty slots, and that is
+   * right while ONE queue is running — three sockets with one filled is how a
+   * commander reads "two more will fit". It is not right when the whole section is
+   * empty: six empty sockets under two headings say only that nothing is happening,
+   * and they say it in about a third of a 375-wide screen.
+   *
+   * The capacity stays on the header, so the rule the sockets were teaching is
+   * still on screen when there is nothing to draw them around.
+   */
+  if (working === 0) {
+    return (
+      <section
+        data-queues-idle
+        className="plate plate-inset flex items-baseline gap-2 px-3 py-2"
+        aria-label={t('planet.queue.title')}
+      >
+        <h2 className="legend text-bone">{t('planet.queue.title')}</h2>
+        <span className="h-px flex-1 bg-gradient-to-r from-line-soft to-transparent" />
+        <span className="text-caption text-faint">{t('planet.queue.idle')}</span>
+        <span className="num text-micro text-faint">
+          {t('planet.queue.capacity', { count: BUILD.queueDepth })}
+        </span>
+      </section>
+    );
+  }
 
   return (
     <section className="plate plate-inset overflow-hidden" aria-label={t('planet.queue.title')}>
@@ -625,7 +660,7 @@ function DeathStarForge({
       data-strategic-state={planet.strategic?.status ?? 'LOCKED'}
       className={`death-star-forge ${planet.strategic?.status === 'READY' ? 'death-star-forge-ready' : ''}`}
     >
-      <div className="relative z-[1] flex items-start gap-3">
+      <div className="relative z-[1] flex items-start gap-2">
         <div className={`death-star-art relative grid shrink-0 place-items-center overflow-hidden rounded-chip ${live ? 'size-[72px]' : 'size-24'}`}>
           <span className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-alloy/70 to-transparent" />
           <img
@@ -649,10 +684,10 @@ function DeathStarForge({
                 ? t('planet.deathStar.paused')
                 : planet.strategic?.status === 'BUILDING'
                   ? t('planet.deathStar.building', {
-                      duration: planet.strategic.readyAt
-                        ? duration(Math.max(0, planet.strategic.readyAt.getTime() - serverNow()) / 60_000)
-                        : duration((planet.strategic.remainingSeconds ?? 0) / 60),
-                    })
+                    duration: planet.strategic.readyAt
+                      ? untilReady((planet.strategic.readyAt.getTime() - serverNow()) / 60_000)
+                      : duration((planet.strategic.remainingSeconds ?? 0) / 60),
+                  })
                   : t('planet.deathStar.none')}
           </p>
           <p className="mt-1 text-caption leading-snug text-dim">
@@ -676,10 +711,10 @@ function DeathStarForge({
             <DeathStarNeed ok={!recovering}>{t('planet.deathStar.needOperational')}</DeathStarNeed>
           </div>
           <DeathStarEffects />
-          <div className="mt-3 flex items-center justify-between gap-3">
+          <div className="mt-3 flex items-center justify-between gap-2">
             <div>
-              <Price cost={DEATH_STAR.cost} held={held} />
-              <p className="legend mt-1">
+              <Price cost={DEATH_STAR.cost} held={held} layout='row' />
+              <p className="legend text-micro mt-1">
                 {t('planet.deathStar.buildTime')}
               </p>
             </div>
@@ -697,10 +732,12 @@ function DeathStarForge({
               variant="commit"
               disabled={recovering || strategicBuild.isPending || !protocol
                 || !core || !yard || !affordable}
-              onClick={() => { strategicBuild.mutate(undefined, {
-                onSuccess: () => { say(t('planet.deathStar.started')); },
-                onError: (error) => { say(describe(error), 'error'); },
-              }); }}
+              onClick={() => {
+                strategicBuild.mutate(undefined, {
+                  onSuccess: () => { say(t('planet.deathStar.started')); },
+                  onError: (error) => { say(describe(error), 'error'); },
+                });
+              }}
             >
               {t('planet.deathStar.build')}
             </Button>
@@ -712,8 +749,10 @@ function DeathStarForge({
         <div className="relative z-[1] mt-3 h-1.5 overflow-hidden rounded-full bg-black/45">
           <span
             className="block h-full bg-gradient-to-r from-alloy/45 via-alloy to-bone"
-            style={{ width: `${String(Math.max(2, Math.min(100,
-              100 * (1 - (planet.strategic.remainingSeconds ?? 3600) / 3600))))}%` }}
+            style={{
+              width: `${String(Math.max(2, Math.min(100,
+                100 * (1 - (planet.strategic.remainingSeconds ?? 3600) / 3600))))}%`
+            }}
           />
         </div>
       )}
@@ -726,7 +765,7 @@ function DeathStarForge({
  *
  * The forge said "devastates" and left the rest to be discovered by being on the
  * receiving end. Five consequences and one survival line, every number read from
- * `DEATH_STAR` and `MULTI_WORLD` so the card cannot drift from the strike.
+ * `DEATH_STAR` and `recoveryMinutesFor` so the card cannot drift from the strike.
  */
 function DeathStarEffects() {
   const { t } = useTranslation();
@@ -735,7 +774,7 @@ function DeathStarEffects() {
     t('planet.deathStar.effectStock'),
     t('planet.deathStar.effectCore'),
     t('planet.deathStar.effectAegis', { levels: DEATH_STAR.aegisLevelsLost }),
-    t('planet.deathStar.effectDark', { duration: duration(MULTI_WORLD.recoveryMinutes) }),
+    t('planet.deathStar.effectDark', { duration: duration(recoveryMinutesFor('COLONY')) }),
   ];
   /**
    * `plate-inset` and NOT `plate-threat`. The lit states are reserved for a plate
@@ -835,9 +874,9 @@ function groupOrder(planet: PlanetView, focus?: GroupId): GroupId[] {
   const exposed = Math.max(
     0,
     planet.planet.alloy
-      + planet.planet.crystal
-      + planet.planet.deuterium
-      - planet.planet.vaultFloor,
+    + planet.planet.crystal
+    + planet.planet.deuterium
+    - planet.planet.vaultFloor,
   );
   if (fleetCount(planet.ground) === 0) score.defend += 60;
   if (exposed > planet.planet.vaultFloor * 3) score.defend += 40;
@@ -928,17 +967,17 @@ function useBuildingAction(planet: PlanetView, onFlash: (id: string) => void) {
     const blocked: Blocked | undefined =
       id !== 'CORE' && nextLevel >= core
         ? {
-            reason: i18n.t('planet.blocked.core', { level: core + 1 }),
-            onFix: () => { onNeed('CORE'); },
-          }
+          reason: i18n.t('planet.blocked.core', { level: core + 1 }),
+          onFix: () => { onNeed('CORE'); },
+        }
         : orders.length >= BUILD.queueDepth
           ? { reason: i18n.t('planet.blocked.queueFull') }
-        : plantCapped
-          ? {
+          : plantCapped
+            ? {
               reason: i18n.t('planet.blocked.plantRung'),
               onFix: () => { onNeed('DEUTERIUM_SYNTHESIS'); },
             }
-        : undefined;
+            : undefined;
 
     return {
       level,
@@ -1017,9 +1056,9 @@ function useInstrumentAction(planet: PlanetView, onFlash: (id: string) => void) 
         ? { reason: i18n.t('planet.blocked.uplink'), onFix: () => { onNeed('UPLINK'); } }
         : nextLevel >= core
           ? {
-              reason: i18n.t('planet.blocked.core', { level: core + 1 }),
-              onFix: () => { onNeed('CORE'); },
-            }
+            reason: i18n.t('planet.blocked.core', { level: core + 1 }),
+            onFix: () => { onNeed('CORE'); },
+          }
           : orders.length >= BUILD.queueDepth
             ? { reason: i18n.t('planet.blocked.queueFull') }
             : undefined;
@@ -1074,7 +1113,7 @@ function useOrbitAction(planet: PlanetView, onFlash: (id: string) => void) {
         ? { reason: i18n.t('planet.blocked.orbitSlot'), onFix: () => { onNeed('CORE'); } }
         : orders.length >= BUILD.queueDepth
           ? { reason: i18n.t('planet.blocked.queueFull') }
-        : undefined;
+          : undefined;
 
     return {
       owned,
@@ -1135,6 +1174,7 @@ function SatelliteItemRow({
         cost={action.cost}
         held={held}
         income={income}
+        takes={orderMinutes('SATELLITE', action.cost, planet)}
         unowned={!action.owned}
         {...(inactive ? { inactive: t('planet.orbit.inactiveSatellite') } : {})}
         {...(action.blocked ? { blocked: action.blocked } : {})}
@@ -1193,6 +1233,7 @@ function InstrumentItemRow({
         cost={action.cost}
         held={held}
         income={income}
+        takes={orderMinutes('INSTRUMENT', action.cost, planet)}
         unowned={action.level === 0}
         {...(inactive ? { inactive: inactiveReason } : {})}
         {...(action.blocked ? { blocked: action.blocked } : {})}
@@ -1290,6 +1331,7 @@ function Defend({
           cost={vault.cost}
           held={held}
           income={income}
+          takes={orderMinutes('BUILDING', vault.cost, planet)}
           unowned={vault.level === 0}
           {...(vault.blocked ? { blocked: vault.blocked } : {})}
           {...(vault.queued ? { queued: vault.queued } : {})}
@@ -1340,80 +1382,82 @@ function Defend({
       </div>
 
       <div id="row-THORN">
-      <UpgradeRow
-        art={groundArt('THORN', Math.max(1, thornsStanding))}
-        nextArt={nextGroundArt('THORN', thornsStanding)}
-        name={hullLabel('THORN')}
-        tag={hullTag('THORN')}
-        stats={{ atk: thorn.atk, hp: thorn.hp, speed: thorn.speed, cargo: thorn.cargo }}
-        role={
-          thornsStanding === 0
-            ? t('planet.defend.thornNone')
-            : t('planet.defend.thornStanding', { count: thornsStanding })
-        }
-        gain={{
-          label: t('planet.defend.thornGain'),
-          now: String(thornsStanding),
-          next: String(thornsStanding + 1),
-        }}
-        cost={{ alloy: thorn.alloy, crystal: thorn.crystal }}
-        held={held}
-        income={income}
-        unowned={thornsStanding === 0}
-        onOpen={() => { onBuild('THORN'); }}
-        verb="build"
-        onAct={() => { onBuild('THORN'); }}
-        {...(yardOrders.length >= BUILD.queueDepth
-          ? { blocked: { reason: t('planet.blocked.queueFull') } satisfies Blocked }
-          : {})}
-        {...(queuedThorns > 0
-          ? { queued: t('planet.queue.unitsQueued', { count: queuedThorns }) }
-          : {})}
-        queuedActionable
-      />
+        <UpgradeRow
+          art={groundArt('THORN', Math.max(1, thornsStanding))}
+          nextArt={nextGroundArt('THORN', thornsStanding)}
+          name={hullLabel('THORN')}
+          tag={hullTag('THORN')}
+          stats={{ atk: thorn.atk, hp: thorn.hp, speed: thorn.speed, cargo: thorn.cargo }}
+          role={
+            thornsStanding === 0
+              ? t('planet.defend.thornNone')
+              : t('planet.defend.thornStanding', { count: thornsStanding })
+          }
+          gain={{
+            label: t('planet.defend.thornGain'),
+            now: String(thornsStanding),
+            next: String(thornsStanding + 1),
+          }}
+          cost={{ alloy: thorn.alloy, crystal: thorn.crystal }}
+          held={held}
+          income={income}
+          takes={orderMinutes('DEFENCE', { ...thorn, deuterium: 0 }, planet)}
+          unowned={thornsStanding === 0}
+          onOpen={() => { onBuild('THORN'); }}
+          verb="build"
+          onAct={() => { onBuild('THORN'); }}
+          {...(yardOrders.length >= BUILD.queueDepth
+            ? { blocked: { reason: t('planet.blocked.queueFull') } satisfies Blocked }
+            : {})}
+          {...(queuedThorns > 0
+            ? { queued: t('planet.queue.unitsQueued', { count: queuedThorns }) }
+            : {})}
+          queuedActionable
+        />
       </div>
 
       <div id="row-BASTION">
-      <UpgradeRow
-        art={groundArt('BASTION', Math.max(1, bastionsStanding))}
-        nextArt={nextGroundArt('BASTION', bastionsStanding)}
-        name={hullLabel('BASTION')}
-        tag={hullTag('BASTION')}
-        stats={{ atk: bastion.atk, hp: bastion.hp, speed: bastion.speed, cargo: bastion.cargo }}
-        role={
-          ground === 0
-            ? t('planet.defend.bastionNone')
-            : t('planet.defend.bastionStanding', { count: bastionsStanding })
-        }
-        gain={{
-          label: t('planet.defend.groundGain'),
-          now: String(ground),
-          next: String(ground + 1),
-        }}
-        cost={{ alloy: bastion.alloy, crystal: bastion.crystal }}
-        held={held}
-        income={income}
-        unowned={bastionsStanding === 0}
-        onOpen={() => { onBuild('BASTION'); }}
-        {...(shipyard < bastion.minShipyard
-          ? {
+        <UpgradeRow
+          art={groundArt('BASTION', Math.max(1, bastionsStanding))}
+          nextArt={nextGroundArt('BASTION', bastionsStanding)}
+          name={hullLabel('BASTION')}
+          tag={hullTag('BASTION')}
+          stats={{ atk: bastion.atk, hp: bastion.hp, speed: bastion.speed, cargo: bastion.cargo }}
+          role={
+            ground === 0
+              ? t('planet.defend.bastionNone')
+              : t('planet.defend.bastionStanding', { count: bastionsStanding })
+          }
+          gain={{
+            label: t('planet.defend.groundGain'),
+            now: String(ground),
+            next: String(ground + 1),
+          }}
+          cost={{ alloy: bastion.alloy, crystal: bastion.crystal }}
+          held={held}
+          income={income}
+          takes={orderMinutes('DEFENCE', { ...bastion, deuterium: 0 }, planet)}
+          unowned={bastionsStanding === 0}
+          onOpen={() => { onBuild('BASTION'); }}
+          {...(shipyard < bastion.minShipyard
+            ? {
               blocked: {
                 reason: t('planet.blocked.shipyard', { level: bastion.minShipyard }),
                 onFix: () => { onNeed('SHIPYARD'); },
               } satisfies Blocked,
             }
-          : yardOrders.length >= BUILD.queueDepth
-            ? {
+            : yardOrders.length >= BUILD.queueDepth
+              ? {
                 blocked: { reason: t('planet.blocked.queueFull') } satisfies Blocked,
               }
+              : {})}
+          {...(queuedBastions > 0
+            ? { queued: t('planet.queue.unitsQueued', { count: queuedBastions }) }
             : {})}
-        {...(queuedBastions > 0
-          ? { queued: t('planet.queue.unitsQueued', { count: queuedBastions }) }
-          : {})}
-        queuedActionable
-        verb="build"
-        onAct={() => { onBuild('BASTION'); }}
-      />
+          queuedActionable
+          verb="build"
+          onAct={() => { onBuild('BASTION'); }}
+        />
       </div>
 
       <Band
@@ -1484,7 +1528,7 @@ function InterceptorBattery({
       data-interceptor-state={state}
       className="plate flex flex-col gap-2 border-b border-line-soft p-3 last:border-b-0"
     >
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-2">
         <img
           data-interceptor-art
           src={STRATEGIC_ART.interceptor}
@@ -1501,10 +1545,10 @@ function InterceptorBattery({
                 ? t('planet.interceptor.paused')
                 : charge?.status === 'BUILDING'
                   ? t('planet.interceptor.building', {
-                      duration: charge.readyAt
-                        ? duration(Math.max(0, charge.readyAt.getTime() - serverNow()) / 60_000)
-                        : duration((charge.remainingSeconds ?? 0) / 60),
-                    })
+                    duration: charge.readyAt
+                      ? untilReady((charge.readyAt.getTime() - serverNow()) / 60_000)
+                      : duration((charge.remainingSeconds ?? 0) / 60),
+                  })
                   : t('planet.interceptor.none')}
           </p>
           <p className="text-caption leading-snug text-dim">
@@ -1532,16 +1576,17 @@ function InterceptorBattery({
               {t('planet.interceptor.needOperational')}
             </DeathStarNeed>
           </div>
-          <div className="mt-1 flex items-center justify-between gap-3">
+          <div className="mt-1 flex items-center justify-between gap-2">
             <div>
-              <Price cost={ANTI_STRATEGIC.cost} held={held} />
-              <p className="legend mt-1">
+              <Price cost={ANTI_STRATEGIC.cost} held={held} layout='row' />
+              <p className="legend text-micro mt-1">
                 {t('planet.interceptor.buildTime', {
                   duration: duration(ANTI_STRATEGIC.buildMinutes),
                 })}
               </p>
             </div>
             <Button
+              className="!text-caption"
               variant="commit"
               disabled={recovering || load.isPending || !grid || !radarReady || !affordable}
               onClick={() => {
@@ -1671,7 +1716,7 @@ function OrbitRack({ slots, orbit }: { slots: number; orbit: SatelliteId[] }) {
         return (
           <div
             key={index}
-            className={`relative flex min-h-16 min-w-0 flex-col items-center justify-center rounded-chip border px-1 py-2 ${ satellite ? 'border-crystal/30 bg-crystal/[0.06]' : 'border-dashed border-line bg-void/30' }`}
+            className={`relative flex min-h-16 min-w-0 flex-col items-center justify-center rounded-chip border px-1 py-2 ${satellite ? 'border-crystal/30 bg-crystal/[0.06]' : 'border-dashed border-line bg-void/30'}`}
           >
             <span className="num absolute left-1.5 top-1 text-micro text-faint">{index + 1}</span>
             {satellite ? (
@@ -1776,6 +1821,20 @@ function Reach({
   onBuild,
 }: GroupProps & { onBuild: (hull: HullId) => void }) {
   const { t } = useTranslation();
+  /**
+   * WHICH HULL FAMILIES ARE SHOWING THEIR ROWS.
+   *
+   * Offensive is the seed because it is first in `FLEET_FAMILY_ORDER` and is what a
+   * commander opens the tab for; the rest arrive shut with their counts on them.
+   *
+   * A SET, so opening one never shuts another. An accordion that allows a single
+   * open group would make the one comparison this screen exists for — a Skirmisher
+   * against the Bulwark that beats it — impossible without scrolling between two
+   * taps, which is the interaction cost the fold was supposed to remove.
+   */
+  // `slice(0, 1)` rather than `[FLEET_FAMILY_ORDER[0]]`: the order is the single
+  // statement of which band leads, and an index read is `| undefined` here.
+  const families = useAccordion('fleet', FLEET_FAMILY_ORDER.slice(0, 1));
   const building = useBuildingAction(planet, onFlash);
   const orbit = useOrbitAction(planet, onFlash);
   const shipyard = building('SHIPYARD', buildingName('SHIPYARD'), onNeed);
@@ -1815,66 +1874,89 @@ function Reach({
         {...(hullSpec.tier === null
           ? {}
           : {
-              'data-hull-id': id,
-              'data-hull-family': hullSpec.family,
-              'data-hull-tier': hullSpec.tier,
-            })}
+            'data-hull-id': id,
+            'data-hull-family': hullSpec.family,
+            'data-hull-tier': hullSpec.tier,
+          })}
       >
-      <UpgradeRow
-        art={HULL_ART[id]}
-        name={hullLabel(id)}
-        nameAside={t('planet.reach.hullLocationCounts', { home: full(home), away: full(away) })}
-        tag={hullTag(id)}
-        stats={{
-          atk: hullSpec.atk,
-          hp: hullSpec.hp,
-          /**
-           * A PROSPECTOR DOES NOT FLY AT ITS HULL SPEED. D25.
-           *
-           * Mining reads `PROSPECTOR.speed` — a separate constant, tied to how fast
-           * a rock moves so interception stays exact — and `fleetSpeed` never
-           * touches the hull field at all. The card was printing the hull number,
-           * which drifted from the authoritative value. D74 locks the duplicate in
-           * `HULLS` to this same value too. The Derrick's lift is deliberately not
-           * shown; this is the shipyard, and what it sells is the craft.
-           */
-          speed: id === 'PROSPECTOR' ? PROSPECTOR.speed : hullSpec.speed,
-          cargo: hullSpec.cargo,
-        }}
-        role={hullPitch(id)}
-        gain={{
-          label: queued ? t('planet.queue.afterQueue') : t('planet.reach.ownedGain'),
-          now: String(queued ? committed : owned),
-          next: String(committed + 1),
-        }}
-        {...(prospectorCapped || capacityCapped
-          ? {
+        <UpgradeRow
+          art={HULL_ART[id]}
+          name={hullLabel(id)}
+          /*
+            THE ROLE IT FIGHTS AS, beside the name. D124.
+
+            This tab bands hulls by FAMILY, which is where a ship lives in the
+            catalogue and says nothing about how it fights: Pike is Offensive,
+            Rampart is Defensive, and the Rampart beats the Pike. Until this chip
+            existed the only taxonomy a commander could see pointed the wrong way,
+            and `HullClass` appeared nowhere in the client at all.
+
+            A Prospector has a class too and it means the same thing on a run, so
+            no hull is excluded.
+          */
+          nameBadge={<ClassChip cls={hullSpec.cls} />}
+          /*
+            ONLY THE HALF THE ROW DOES NOT ALREADY SAY.
+
+            This printed "(Home: 1, Away: 0)" beside every hull while the gain line
+            two rows down said "You have 1 → 2" — the same fact twice, and between
+            them they left the NAME about fifty pixels at 375. Away is the half a
+            commander cannot read anywhere else on this screen, so it is the half
+            that stays, and only when there is something out there.
+          */
+          {...(away > 0 ? { nameAside: t('planet.reach.hullAwayCount', { count: away }) } : {})}
+          tag={hullTag(id)}
+          stats={{
+            atk: hullSpec.atk,
+            hp: hullSpec.hp,
+            /**
+             * A PROSPECTOR DOES NOT FLY AT ITS HULL SPEED. D25.
+             *
+             * Mining reads `PROSPECTOR.speed` — a separate constant, tied to how fast
+             * a rock moves so interception stays exact — and `fleetSpeed` never
+             * touches the hull field at all. The card was printing the hull number,
+             * which drifted from the authoritative value. D74 locks the duplicate in
+             * `HULLS` to this same value too. The Derrick's lift is deliberately not
+             * shown; this is the shipyard, and what it sells is the craft.
+             */
+            speed: id === 'PROSPECTOR' ? PROSPECTOR.speed : hullSpec.speed,
+            cargo: hullSpec.cargo,
+          }}
+          role={hullPitch(id)}
+          gain={{
+            label: queued ? t('planet.queue.afterQueue') : t('planet.reach.ownedGain'),
+            now: String(queued ? committed : owned),
+            next: String(committed + 1),
+          }}
+          {...(prospectorCapped || capacityCapped
+            ? {
               completed: prospectorCapped
                 ? t('planet.reach.prospectorLimit', { owned: committed, max: PROSPECTOR.max })
                 : t('planet.capacity.full', { used: poolUsed, total: poolTotal }),
             }
-          : {})}
-        cost={{
-          alloy: hullSpec.alloy,
-          crystal: hullSpec.crystal,
-          deuterium: hullSpec.deuterium,
-        }}
-        held={held}
-        income={income}
-        unowned={owned === 0}
-        onOpen={() => { onBuild(id); }}
-        {...(accessBlock
-          ? { blocked: accessBlock }
-          : yardOrders.length >= BUILD.queueDepth
-          ? {
-              blocked: { reason: t('planet.blocked.queueFull') } satisfies Blocked,
-            }
-          : {})}
-        {...(queued ? { queued } : {})}
-        queuedActionable
-        verb="build"
-        onAct={() => { onBuild(id); }}
-      />
+            : {})}
+          cost={{
+            alloy: hullSpec.alloy,
+            crystal: hullSpec.crystal,
+            deuterium: hullSpec.deuterium,
+          }}
+          held={held}
+          income={income}
+          takes={orderMinutes(hullSpec.ground ? 'DEFENCE' : 'HULL', hullSpec, planet)}
+          unowned={owned === 0}
+          onOpen={() => { onBuild(id); }}
+          {...(accessBlock
+            ? { blocked: accessBlock }
+            : yardOrders.length >= BUILD.queueDepth
+              ? {
+                blocked: { reason: t('planet.blocked.queueFull') } satisfies Blocked,
+              }
+              : {})}
+          {...(queued ? { queued } : {})}
+          queuedActionable
+          verb="build"
+          onAct={() => { onBuild(id); }}
+        />
       </div>
     );
   };
@@ -1908,6 +1990,7 @@ function Reach({
           cost={shipyard.cost}
           held={held}
           income={income}
+          takes={orderMinutes('BUILDING', shipyard.cost, planet)}
           unowned={shipyard.level === 0}
           {...(shipyard.blocked ? { blocked: shipyard.blocked } : {})}
           {...(shipyard.queued ? { queued: shipyard.queued } : {})}
@@ -1947,6 +2030,7 @@ function Reach({
           cost={hangar.cost}
           held={held}
           income={income}
+          takes={orderMinutes('BUILDING', hangar.cost, planet)}
           unowned={hangar.level === 0}
           {...(hangar.blocked ? { blocked: hangar.blocked } : {})}
           {...(hangar.queued ? { queued: hangar.queued } : {})}
@@ -1998,19 +2082,43 @@ function Reach({
         />
       ))}
 
-      {FLEET_FAMILY_ORDER.map((family) => (
-        <section
-          key={family}
-          data-hull-family-group={family}
-          style={{ contentVisibility: 'auto', containIntrinsicSize: '1px 720px' }}
-        >
-          <Band
-            label={t(`planet.reach.family.${family}.label`)}
-            note={t(`planet.reach.family.${family}.note`)}
-          />
-          {HULLS_BY_FAMILY[family].map(hull)}
-        </section>
-      ))}
+      {/*
+        THE CATALOGUE FOLDS. Owner instruction.
+
+        Nineteen hull rows at ~98px is close to two thousand pixels — about four
+        screens of the 375-wide phone this game is designed against, before a
+        commander has seen the roster once. The alternative was shrinking the row,
+        and `visual-design.md` forbids it in as many words: the renders are the most
+        expensive thing this project owns and a 40px one "reads as a favicon".
+
+        So the height stays and the LIST gets shorter. One band is open on arrival
+        and the other three state their counts, which puts the shape of the whole
+        catalogue on one screen and the ships a commander is actually shopping for
+        one tap away.
+
+        The band's NOTE only draws while the band is open. A shut band is a heading
+        and a number; a paragraph under it would give back the height the fold just
+        saved.
+      */}
+      {FLEET_FAMILY_ORDER.map((family) => {
+        const open = families.isOpen(family);
+        return (
+          <section
+            key={family}
+            data-hull-family-group={family}
+            style={{ contentVisibility: 'auto', containIntrinsicSize: '1px 720px' }}
+          >
+            <Band
+              label={t(`planet.reach.family.${family}.label`)}
+              {...(open ? { note: t(`planet.reach.family.${family}.note`) } : {})}
+              count={HULLS_BY_FAMILY[family].length}
+              open={open}
+              onToggle={() => { families.toggle(family); }}
+            />
+            {open ? HULLS_BY_FAMILY[family].map(hull) : null}
+          </section>
+        );
+      })}
 
       <Band label={t('planet.reach.miningBand')} note={t('planet.reach.miningNote')} />
       {hull('PROSPECTOR')}
@@ -2070,6 +2178,7 @@ function Grow({ planet, held, income, focused, flashed, onNeed, onFlash, onOpen 
           cost={core.cost}
           held={held}
           income={income}
+          takes={orderMinutes('BUILDING', core.cost, planet)}
           unowned={core.level === 0}
           verb="raise"
           onAct={core.act}
@@ -2088,81 +2197,83 @@ function Grow({ planet, held, income, focused, flashed, onNeed, onFlash, onOpen 
         never matched. Two of the five buildings could not be pointed at.
       */}
       <div id="row-REFINERY">
-      <UpgradeRow
-        art={buildingArt('REFINERY', refinery.level)}
-        name={buildingName('REFINERY')}
-        tag={buildingTag('REFINERY')}
-        level={refinery.level}
-        role={refineryRole()}
-        onOpen={() => {
-          onOpen(
-            spec(
-              { kind: 'building', id: 'REFINERY' },
-              buildingName('REFINERY'),
-              refineryRole(),
-              refinery,
-            ),
-          );
-        }}
-        gain={buildingGain(
-          'REFINERY',
-          refinery.actionLevel,
-          capped,
-          refinery.projectedLevels,
-          production,
-        )}
-        cost={refinery.cost}
-        held={held}
-        income={income}
-        unowned={refinery.level === 0}
-        {...(refinery.blocked ? { blocked: refinery.blocked } : {})}
-        {...(refinery.queued ? { queued: refinery.queued } : {})}
-        queuedActionable
-        verb="raise"
-        onAct={refinery.act}
-        pending={refinery.pending}
-        highlighted={focused === 'REFINERY'}
-        flash={flashed === 'REFINERY'}
-      />
+        <UpgradeRow
+          art={buildingArt('REFINERY', refinery.level)}
+          name={buildingName('REFINERY')}
+          tag={buildingTag('REFINERY')}
+          level={refinery.level}
+          role={refineryRole()}
+          onOpen={() => {
+            onOpen(
+              spec(
+                { kind: 'building', id: 'REFINERY' },
+                buildingName('REFINERY'),
+                refineryRole(),
+                refinery,
+              ),
+            );
+          }}
+          gain={buildingGain(
+            'REFINERY',
+            refinery.actionLevel,
+            capped,
+            refinery.projectedLevels,
+            production,
+          )}
+          cost={refinery.cost}
+          held={held}
+          income={income}
+          takes={orderMinutes('BUILDING', refinery.cost, planet)}
+          unowned={refinery.level === 0}
+          {...(refinery.blocked ? { blocked: refinery.blocked } : {})}
+          {...(refinery.queued ? { queued: refinery.queued } : {})}
+          queuedActionable
+          verb="raise"
+          onAct={refinery.act}
+          pending={refinery.pending}
+          highlighted={focused === 'REFINERY'}
+          flash={flashed === 'REFINERY'}
+        />
       </div>
 
       <div id="row-EXTRACTOR">
-      <UpgradeRow
-        art={buildingArt('EXTRACTOR', extractor.level)}
-        name={buildingName('EXTRACTOR')}
-        tag={buildingTag('EXTRACTOR')}
-        level={extractor.level}
-        role={extractorRole()}
-        onOpen={() => {
-          onOpen(
-            spec(
-              { kind: 'building', id: 'EXTRACTOR' },
-              buildingName('EXTRACTOR'),
-              extractorRole(),
-              extractor,
-            ),
-          );
-        }}
-        gain={buildingGain(
-          'EXTRACTOR',
-          extractor.actionLevel,
-          capped,
-          extractor.projectedLevels,
-          production,
-        )}
-        cost={extractor.cost}
-        held={held}
-        income={income}
-        unowned={extractor.level === 0}
-        {...(extractor.blocked ? { blocked: extractor.blocked } : {})}
-        {...(extractor.queued ? { queued: extractor.queued } : {})}
-        queuedActionable
-        verb="raise"
-        onAct={extractor.act}
-        pending={extractor.pending}
-        highlighted={focused === 'EXTRACTOR'}
-        flash={flashed === 'EXTRACTOR'}
-      />
+        <UpgradeRow
+          art={buildingArt('EXTRACTOR', extractor.level)}
+          name={buildingName('EXTRACTOR')}
+          tag={buildingTag('EXTRACTOR')}
+          level={extractor.level}
+          role={extractorRole()}
+          onOpen={() => {
+            onOpen(
+              spec(
+                { kind: 'building', id: 'EXTRACTOR' },
+                buildingName('EXTRACTOR'),
+                extractorRole(),
+                extractor,
+              ),
+            );
+          }}
+          gain={buildingGain(
+            'EXTRACTOR',
+            extractor.actionLevel,
+            capped,
+            extractor.projectedLevels,
+            production,
+          )}
+          cost={extractor.cost}
+          held={held}
+          income={income}
+          takes={orderMinutes('BUILDING', extractor.cost, planet)}
+          unowned={extractor.level === 0}
+          {...(extractor.blocked ? { blocked: extractor.blocked } : {})}
+          {...(extractor.queued ? { queued: extractor.queued } : {})}
+          queuedActionable
+          verb="raise"
+          onAct={extractor.act}
+          pending={extractor.pending}
+          highlighted={focused === 'EXTRACTOR'}
+          flash={flashed === 'EXTRACTOR'}
+        />
       </div>
 
       {/*
@@ -2174,42 +2285,43 @@ function Grow({ planet, held, income, focused, flashed, onNeed, onFlash, onOpen 
         first.
       */}
       <div id="row-DEUTERIUM_PLANT">
-      <UpgradeRow
-        art={buildingArt('DEUTERIUM_PLANT', plant.level)}
-        name={buildingName('DEUTERIUM_PLANT')}
-        tag={buildingTag('DEUTERIUM_PLANT')}
-        level={plant.level}
-        role={buildingRole('DEUTERIUM_PLANT')}
-        onOpen={() => {
-          onOpen(
-            spec(
-              { kind: 'building', id: 'DEUTERIUM_PLANT' },
-              buildingName('DEUTERIUM_PLANT'),
-              buildingRole('DEUTERIUM_PLANT'),
-              plant,
-            ),
-          );
-        }}
-        gain={buildingGain(
-          'DEUTERIUM_PLANT',
-          plant.actionLevel,
-          cappedCountOf(plant.projectedLevels),
-          plant.projectedLevels,
-          production,
-        )}
-        cost={plant.cost}
-        held={held}
-        income={income}
-        unowned={plant.level === 0}
-        {...(plant.blocked ? { blocked: plant.blocked } : {})}
-        {...(plant.queued ? { queued: plant.queued } : {})}
-        queuedActionable
-        verb="raise"
-        onAct={plant.act}
-        pending={plant.pending}
-        highlighted={focused === 'DEUTERIUM_PLANT'}
-        flash={flashed === 'DEUTERIUM_PLANT'}
-      />
+        <UpgradeRow
+          art={buildingArt('DEUTERIUM_PLANT', plant.level)}
+          name={buildingName('DEUTERIUM_PLANT')}
+          tag={buildingTag('DEUTERIUM_PLANT')}
+          level={plant.level}
+          role={buildingRole('DEUTERIUM_PLANT')}
+          onOpen={() => {
+            onOpen(
+              spec(
+                { kind: 'building', id: 'DEUTERIUM_PLANT' },
+                buildingName('DEUTERIUM_PLANT'),
+                buildingRole('DEUTERIUM_PLANT'),
+                plant,
+              ),
+            );
+          }}
+          gain={buildingGain(
+            'DEUTERIUM_PLANT',
+            plant.actionLevel,
+            cappedCountOf(plant.projectedLevels),
+            plant.projectedLevels,
+            production,
+          )}
+          cost={plant.cost}
+          held={held}
+          income={income}
+          takes={orderMinutes('BUILDING', plant.cost, planet)}
+          unowned={plant.level === 0}
+          {...(plant.blocked ? { blocked: plant.blocked } : {})}
+          {...(plant.queued ? { queued: plant.queued } : {})}
+          queuedActionable
+          verb="raise"
+          onAct={plant.act}
+          pending={plant.pending}
+          highlighted={focused === 'DEUTERIUM_PLANT'}
+          flash={flashed === 'DEUTERIUM_PLANT'}
+        />
       </div>
 
       <Band label={t('planet.grow.multiplierBand')} note={t('planet.grow.multiplierNote')} />
@@ -2327,73 +2439,92 @@ function BuildSheet({
           press rather than one ship at a time.
         */
         <span data-act data-commit {...(clamped === ceiling ? { 'data-ready': true } : {})}>
-        <ActionButton
-          verb="build"
-          cost={{ alloy: totalAlloy, crystal: totalCrystal, deuterium: totalDeuterium }}
-          held={held}
-          pending={build.isPending}
-          {...(blocked
-            ? {
+          <ActionButton
+            verb="build"
+            cost={{ alloy: totalAlloy, crystal: totalCrystal, deuterium: totalDeuterium }}
+            held={held}
+            pending={build.isPending}
+            {...(blocked
+              ? {
                 blocked: {
                   reason: blocked.reason,
                   ...(blocked.onFix
                     ? {
-                        onFix: () => {
-                          blocked.onFix?.();
-                          onClose();
-                        },
-                      }
+                      onFix: () => {
+                        blocked.onFix?.();
+                        onClose();
+                      },
+                    }
                     : {}),
                 },
               }
-            : {})}
-          full
-          label={t('planet.buildSheet.build', { count: clamped })}
-          onAct={() => {
-            build.mutate(
-              { hull, count: clamped },
-              {
-                onSuccess: () => {
-                  say(t('planet.done.unitsQueued', { count: clamped, name: hullLabel(hull) }));
-                  onClose();
+              : {})}
+            full
+            label={t('planet.buildSheet.build', { count: clamped })}
+            onAct={() => {
+              build.mutate(
+                { hull, count: clamped },
+                {
+                  onSuccess: () => {
+                    say(t('planet.done.unitsQueued', { count: clamped, name: hullLabel(hull) }));
+                    onClose();
+                  },
+                  onError: (err) => {
+                    say(describe(err), 'error');
+                  },
                 },
-                onError: (err) => {
-                  say(describe(err), 'error');
-                },
-              },
-            );
-          }}
-        />
+              );
+            }}
+          />
         </span>
       )}
     >
-      <div data-build-art className="art-well relative flex justify-center py-4">
-        {art ? <img src={art} alt={hullLabel(hull)} className="h-28 object-contain" /> : null}
+      <div data-build-art className="art-well relative flex justify-center py-2">
+        {art ? <img src={art} alt={hullLabel(hull)} className="h-28 object-contain mr-[15%] -mt-2 mb-2" /> : null}
 
-        {!prospectorCapped && !capacityCapped ? (
-          <div data-build-price className="absolute left-1 top-1">
+        {!prospectorCapped ? (
+          <div data-build-price className="absolute left-1 top-1 flex flex-col items-start gap-1">
             <Price
               cost={{ alloy: totalAlloy, crystal: totalCrystal, deuterium: totalDeuterium }}
               held={held}
             />
+            {/*
+              AND WHAT THE BATCH COSTS IN TIME. Owner report.
+
+              It moves with the stepper, which is the whole reason it belongs on
+              this sheet rather than only on the row: ten Darts is a different
+              evening from one, and this was the screen where that had to be worked
+              out in the player's head.
+            */}
+            <span data-testid="build-sheet-time">
+              <TimeCost
+                minutes={orderMinutes(
+                  spec.ground ? 'DEFENCE' : 'HULL',
+                  { alloy: spec.alloy, crystal: spec.crystal, deuterium: spec.deuterium },
+                  planet,
+                  clamped,
+                )}
+              />
+            </span>
           </div>
         ) : null}
 
-        <div
-          data-build-stats
-          className="absolute right-1 top-1 origin-top-right scale-50"
-        >
-          <StatStrip
-            atk={spec.atk}
-            hp={spec.hp}
-            speed={spec.speed}
-            cargo={spec.cargo}
-            fuel={hullFuelRate(hull)}
-            // The same figure this sheet caps the order with, a dozen lines up.
-            room={bulk}
-            size="card"
-          />
-        </div>
+        {!prospectorCapped ? (
+          <div
+            data-build-stats
+            className="absolute right-1 top-1 origin-top-right scale-[60%]"
+          >
+            <StatStrip
+              atk={spec.atk}
+              hp={spec.hp}
+              speed={spec.speed}
+              cargo={spec.cargo}
+              fuel={hullFuelRate(hull)}
+              // The same figure this sheet caps the order with, a dozen lines up.
+              room={bulk}
+              size="card"
+            />
+          </div>) : null}
       </div>
 
       <p className="legend text-crystal/85">{hullTag(hull)}</p>
@@ -2403,13 +2534,38 @@ function BuildSheet({
       </p>
 
       {/*
+        THE WHOLE RULE, ONE TAP DEEPER THAN THE ROW. D124.
+
+        A hull is chosen for good HERE and committed under a clock on the launch
+        sheet, so this is the surface with the attention to spare for the cycle
+        itself. That is the progressive disclosure the interface was missing in both
+        directions at once: the row said nothing about class, and the multipliers
+        existed on exactly one screen in the game — the battle report, after the
+        fleet was already lost.
+
+        `hullDetail` has described these matchups in PROSE since the catalogue was
+        written ("a Lance-class striker that punishes Skirmishers and Thorns"). Prose
+        is not a rule a player can act on at speed; the shapes above it are, and D142
+        says a quantity to be judged is drawn rather than only written.
+      */}
+      <div data-counter-cycle className="mt-2">
+        <p className="legend text-crystal/85">{t('counter.heading')}</p>
+        <div className="mt-2">
+          <CounterLine cls={spec.cls} />
+        </div>
+        <div className="mt-3">
+          <CounterCycle highlight={spec.cls} />
+        </div>
+      </div>
+
+      {/*
         A REQUIREMENT IS A DOOR, NOT AN ALARM (interface.md I1), and this was the
         build sheet's copy of the same red the item sheet had. Amber is the game's
         word for a gap the commander can close; red is reserved for something that
         can harm them.
       */}
       {blocked && (
-        <p className="mt-4 border border-alloy/30 bg-alloy/10 px-3 py-2 text-caption leading-snug text-alloy">
+        <p className="mt-2 border border-alloy/30 bg-alloy/10 px-3 py-2 text-caption leading-snug text-alloy">
           {t('itemSheet.lockedNote', { reason: blocked.reason })}
         </p>
       )}
@@ -2459,11 +2615,12 @@ function BuildSheet({
             total={poolTotal}
             used={poolUsed}
             incoming={prospectorCapped || capacityCapped ? 0 : bulk * clamped}
-            bulk={bulk}
             fits={spaceCap}
-            {...(art ? { icon: (
-              <img src={art} alt="" aria-hidden className="size-8 shrink-0 object-contain" />
-            ) } : {})}
+            {...(art ? {
+              icon: (
+                <img src={art} alt="" aria-hidden className="size-8 shrink-0 object-contain" />
+              )
+            } : {})}
           />
         </div>
       </div>

@@ -140,30 +140,34 @@ describe('launching a fleet', () => {
     });
 
     /**
-     * THE BAND IS GONE, FROM THE OUTSIDE. D127.
+     * THE BAND IS BACK, AT ±1 TIER AND ON THE COMMANDER. D168.
      *
-     * D49 limited a launch to ±2 development tiers and kept tier public so the
-     * rule could be read off the map before a fleet was packed. D127 made
-     * development private, and an invisible band is precisely the failure D49
-     * replaced a wealth ratio for — a refusal arriving after the work.
+     * D49 limited a launch to ±2 development tiers, D127 removed it because
+     * development had become private, and D168 restores it narrower on the owner's
+     * instruction. What it costs — a refusal arriving after the fleet was picked —
+     * is D49's objection and is now a stated price, not an oversight. The two
+     * directions are asserted separately because they protect different people.
+     *
+     * The whole rule, including the fact that it reads the commander rather than
+     * either world in the launch, lives in `tier-band.test.ts`.
      */
-    it('launches at a target far above it in development', async () => {
+    it('refuses a target far above it in development', async () => {
       // Attacker is Core 6 — tier 2 — from the fixture. Tier 5 is three above.
       await setLevel(f.db, defender, 'CORE', 15);
 
       await expect(
         launchAttack(f.db, attacker, defender, { DART: 5 }, f.clock),
-      ).resolves.toBeTruthy();
+      ).rejects.toMatchObject({ code: 'TIER_BAND' });
     });
 
-    /** And far below, which is the direction the band was actually protecting. */
-    it('launches at a target far below it, with only the bash limit left', async () => {
+    /** And far below, which is the direction the band mainly protects. */
+    it('refuses a target far below it, and says it is the weak side', async () => {
       await setLevel(f.db, attacker, 'CORE', 30);
       await setLevel(f.db, other, 'CORE', 1);
 
       await expect(
         launchAttack(f.db, attacker, other, { DART: 5 }, f.clock),
-      ).resolves.toBeTruthy();
+      ).rejects.toMatchObject({ code: 'TIER_BAND_WEAK' });
     });
 
     it('stops the fourth raid on the same target inside the window', async () => {

@@ -96,6 +96,13 @@ rather than racing a scheduler.
 **Housekeeping runs before events are claimed and may never stop the queue** (D47). Releasing
 a stranded flight is housekeeping; landing everybody's fleets is the job.
 
+Three sweeps sit there, each on its own interval and each in its own `try/catch`: the stranded
+flight repair (30s), the idle-seat reclaim (10min) and the bot roster (60s, D159). Only the last
+is a FEATURE rather than a repair, and it is the one that most obviously must not be able to
+delay a raid settling: it seats the commanders the server plays, stamps their presence and takes
+at most one turn each. It deliberately owns no `event_kind` — a missed turn costs one commander
+one upgrade, which is not worth a queue row, a handler, an abandon branch and a health check.
+
 ## Realtime — SSE over LISTEN/NOTIFY
 
 One endpoint, `GET /api/stream`, carrying only instants a player could not have predicted. Fleet
@@ -448,4 +455,10 @@ pnpm season bootstrap                  # two galaxies of 300 + 51 neutrals each
 pnpm season bootstrap --unattended 12  # DEV ONLY: inert commanders to scout
 pnpm season status                     # every galaxy, its population, who is on it
 pnpm season wipe --yes                 # END EVERYTHING and open fresh galaxies
+
+# The commanders the server plays (D159). Names are typed by hand and never generated;
+# the worker seats them once BOTS_ENABLED=true and the roster has names in it.
+pnpm bots add "Kara Şahin" "Yıldız"    # prints each login once, then never again
+pnpm bots list
+pnpm bots retire "Yıldız"              # stops driving it; the world stays and goes quiet
 ```

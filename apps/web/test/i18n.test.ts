@@ -103,6 +103,10 @@ const IDENTICAL_ON_PURPOSE = new Set([
   // A bare numeric placeholder has no language to translate. The label beside it
   // carries the Turkish wording.
   'gains.hangar.value',
+  // The build-time tag is the formatted duration and nothing else — `duration()`
+  // is what speaks Turkish here. Its accessible name, `upgradeRow.takesLabel`, is
+  // the sentence, and that one IS translated.
+  'upgradeRow.takes',
   // Punctuation and stand-ins for a missing figure. Not words.
   'statusBar.works.idle',
   'galaxy.commander.galaxyUnknown',
@@ -118,6 +122,9 @@ const IDENTICAL_ON_PURPOSE = new Set([
   'units.rangeJoin',
   // The dash between the two ends of a probe's range. Punctuation.
   'rangeBand.join',
+  // A multiplication sign and a placeholder. The verdict beside it — Güçlü, Zayıf,
+  // Eşit — is what carries the Turkish, and that one is translated.
+  'counter.multiplier',
   'units.plus',
   'units.minus',
   'units.millions',
@@ -136,6 +143,11 @@ const IDENTICAL_ON_PURPOSE = new Set([
   // The same shape, naming which of the caller's own worlds was scanned.
   'intel.radar.onWorld',
   'notifications.unlock',
+  // Network/provider names, not prose: "USDT · TRC-20", "SOLANA" and "İyzico"
+  // are the same proper nouns in every language.
+  'community.donate.cryptoTrc20',
+  'community.donate.cryptoSolana',
+  'community.donate.cardHeading',
   'signals.repeat',
   'pendingStrip.more',
   'planet.orbit.slotsUsed',

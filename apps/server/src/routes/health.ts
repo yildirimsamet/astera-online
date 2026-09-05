@@ -5,6 +5,7 @@ import type { FastifyInstance } from 'fastify';
 import { failedEventCount, oldestPendingAge } from '../worker/queue.js';
 import { strandedBuildCount, strandedFlightCount } from '../worker/abandon.js';
 import { idleSeatCount } from '../services/reclaim.js';
+import { botStatus } from '../services/bots/sweep.js';
 import { missions, planets, scheduledEvents } from '../db/schema.js';
 
 /**
@@ -99,6 +100,8 @@ export function registerHealthRoutes(
       rateLimit?: ReturnType<typeof app.rateLimitBackend.status>;
       streams?: ReturnType<typeof app.streams.status>;
       worker?: ReturnType<typeof app.worker.status>;
+      /** How many commanders the server plays, and how many are at the controls. D159. */
+      bots?: { seated: number; awake: number };
     } = {};
     let ok = true;
 
@@ -155,6 +158,16 @@ export function registerHealthRoutes(
       checks.failedStrategicEvents = failedStrategic?.n ?? 0;
       checks.staleWorldStates = staleWorlds?.n ?? 0;
       checks.idleSeats = await idleSeatCount(app.db, app.clock);
+      /*
+        REPORTED, NEVER JUDGED. `/health` reports; it does not repair.
+
+        An empty roster is a deployment that has not been given names yet and a
+        legitimate state; a roster that is seated but asleep is three in the morning
+        in Türkiye. Neither is a failure, so neither moves `ok` — but both are
+        questions somebody will ask when the disc looks quiet, and this is where the
+        answer belongs.
+      */
+      checks.bots = await botStatus(app.db, app.clock);
       if (lag !== null && lag > MAX_QUEUE_LAG_SECONDS) {
         ok = false;
         checks.queue = 'stalled';

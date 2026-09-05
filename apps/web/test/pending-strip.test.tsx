@@ -1,7 +1,7 @@
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
-import type { MiningRun, PendingThread } from '../src/api/schemas.js';
+import type { Contact, MiningRun, PendingThread } from '../src/api/schemas.js';
 import { PendingStrip } from '../src/shell/PendingStrip.js';
 
 /**
@@ -19,6 +19,7 @@ import { PendingStrip } from '../src/shell/PendingStrip.js';
 
 let rows: PendingThread[] = [];
 let runs: MiningRun[] = [];
+let contacts: Contact[] = [];
 
 vi.mock('../src/api/queries.js', async () => {
   const actual = await vi.importActual<Record<string, unknown>>('../src/api/queries.js');
@@ -26,7 +27,20 @@ vi.mock('../src/api/queries.js', async () => {
     ...actual,
     usePending: () => ({ data: { pending: rows } }),
     useMining: () => ({ data: { runs } }),
+    useTraffic: () => ({ data: { contacts } }),
   };
+});
+
+/** The one contact shape this file needs: an id, a bearing window and a kind. */
+const contact = (over: Partial<Contact> = {}): Contact => ({
+  id: 'mission-9',
+  kind: 'unknown',
+  from: { x: 0, y: 0, z: 0 },
+  to: { x: 1, y: 0, z: 1 },
+  startAt: new Date(Date.now() - 30_000),
+  endAt: new Date(Date.now() + 30_000),
+  inbound: true,
+  ...over,
 });
 
 const thread = (over: Partial<PendingThread> = {}): PendingThread => ({
@@ -58,10 +72,17 @@ const run = (over: Partial<MiningRun> = {}): MiningRun => ({
 const show = (
   pending: PendingThread[],
   miningRuns: MiningRun[] = [],
-  onFocus?: (focus: { kind: 'thread'; key: string } | { kind: 'run'; id: string }) => void,
+  onFocus?: (
+    focus:
+      | { kind: 'thread'; key: string }
+      | { kind: 'run'; id: string }
+      | { kind: 'contact'; id: string },
+  ) => void,
+  seen: Contact[] = [],
 ) => {
   rows = pending;
   runs = miningRuns;
+  contacts = seen;
   return render(<PendingStrip {...(onFocus ? { onFocus } : {})} />);
 };
 
@@ -154,6 +175,62 @@ describe('the pending strip', () => {
     await user.click(screen.getByRole('button', { name: /your drills.*asteroid/i }));
     expect(onFocus).toHaveBeenCalledWith({ kind: 'run', id: 'run-1' });
     expect(screen.queryByRole('dialog', { name: /in flight/i })).not.toBeInTheDocument();
+  });
+
+  /**
+   * THE ROW A DEFENDER MOST WANTS TO PRESS. D162 — owner report.
+   *
+   * An inbound warning has no `path` and never will: a defender is not sold the
+   * attacker's route at any radar level (D123). But the craft itself is often on
+   * their disc — inside a radar circle as a question mark, inside a telescope one
+   * as the fleet — and pressing the warning did nothing at all. The join is
+   * `contactId`, which is the same key the contact list already publishes for that
+   * craft.
+   */
+  it('focuses the inbound craft the disc is already drawing', async () => {
+    const onFocus = vi.fn();
+    show(
+      [thread({
+        kind: 'incoming',
+        targetPlanetId: 'w2',
+        targetName: 'Kestrel-3',
+        contactId: 'mission-9',
+      })],
+      [],
+      onFocus,
+      [contact()],
+    );
+    const user = userEvent.setup();
+
+    await user.click(screen.getByRole('button', { name: /open flights/i }));
+    await user.click(screen.getByRole('button', { name: /kestrel-3/i }));
+    expect(onFocus).toHaveBeenCalledWith({ kind: 'contact', id: 'mission-9' });
+  });
+
+  /**
+   * AND NOT OTHERWISE. A warning whose craft is outside every circle has nothing
+   * to look at, so the row stays a statement rather than becoming a control that
+   * moves the camera to empty space — which is the fog being enforced by the
+   * contact query, exactly where it belongs.
+   */
+  it('offers no focus when the inbound craft is on nobody\'s sensors', async () => {
+    const onFocus = vi.fn();
+    show(
+      [thread({
+        kind: 'incoming',
+        targetPlanetId: 'w2',
+        targetName: 'Kestrel-3',
+        contactId: 'mission-9',
+      })],
+      [],
+      onFocus,
+      [],
+    );
+    const user = userEvent.setup();
+
+    await user.click(screen.getByRole('button', { name: /open flights/i }));
+    expect(screen.queryByRole('button', { name: /kestrel-3/i })).toBeNull();
+    expect(onFocus).not.toHaveBeenCalled();
   });
 
   it('does not count completed mining rows as airborne', () => {

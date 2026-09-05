@@ -31,3 +31,50 @@ export const flightBar = {
   back: 'Returning to this world',
   incoming: 'Inbound — position unknown',
 } as const;
+
+/**
+ * THE COUNTER CYCLE'S OWN WORDS. D124.
+ *
+ * The multipliers this namespace captions were printed in exactly ONE place in the
+ * whole game before it existed — `CombatFormula`, inside a battle report, which is
+ * to say after the fleet was already lost. Everything here exists so the same rule
+ * is legible at the moment it is being bet on instead.
+ *
+ * The strings are captions. A player who reads none of them still sees three
+ * different shapes and a green or red mark, which is the rule arriving without
+ * being read; these are for the screen reader and for confirming what the shape
+ * already said.
+ */
+export const counter = {
+  /** The relation, as a heading over a hull's two lines. */
+  heading: 'Matchups',
+  strongVs: 'Strong against {{class}}',
+  weakVs: 'Weak against {{class}}',
+  /** SUPPORT is outside the cycle in both directions and must not fake a rung. */
+  supportNote: 'Unarmed. Covered while a combat hull on its side survives.',
+  /** The three-word verdict on one pairing. */
+  strong: 'Strong',
+  weak: 'Weak',
+  even: 'Even',
+  /** No shot at all: a support hull firing is not a weak match, it is no match. */
+  none: 'No attack',
+  multiplier: '×{{mult}}',
+  matchupLabel: '{{attacker}} against {{defender}}: {{outcome}}, ×{{mult}} damage',
+  cycleLabel: 'Skirmisher beats Bulwark, Bulwark beats Lance, Lance beats Skirmisher',
+  /** Above the two bars on the launch sheet. */
+  compareHeading: 'Your fleet against theirs',
+  compareYours: 'Sending',
+  compareTheirs: 'Standing there',
+  /** The reading has an age and a width, and both are the fact. */
+  compareRecord: '{{source}}, {{age}} old',
+  compareLive: '{{source}}, read now',
+  compareUnknown: 'Never measured',
+  compareUnknownWhy: 'A probe would put a number on this side of the bar.',
+  compareLabel: 'You are sending {{yours}}; the last reading of their world was {{theirs}}',
+  /** What the player is looking at, in the one sentence that must not overclaim. */
+  compareNote: 'Resource value, both sides. It does not include the counter cycle.',
+  mixHeading: 'What is standing there',
+  mixMostly: 'Mostly {{class}}',
+  mixEven: 'No single class dominates',
+  mixFrom: 'From {{source}}, {{age}} old',
+} as const;

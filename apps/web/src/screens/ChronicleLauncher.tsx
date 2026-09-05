@@ -42,11 +42,16 @@ export function ChronicleLauncher({ onOpen }: { onOpen: () => void }) {
       case 'control_transfer':
         line = t('chronicle.launcherControl', { planet: latest.payload.planetName });
         break;
+      /* Two public events, one row kind; the payload says which. D156. */
       case 'galaxy_event_started':
-        line = t('chronicle.launcherAsteroidShowerStarted');
+        line = latest.payload.eventKind === 'TRADE_SHIP'
+          ? t('chronicle.launcherTradeShipStarted')
+          : t('chronicle.launcherAsteroidShowerStarted');
         break;
       case 'galaxy_event_ended':
-        line = t('chronicle.launcherAsteroidShowerEnded');
+        line = latest.payload.eventKind === 'TRADE_SHIP'
+          ? t('chronicle.launcherTradeShipEnded')
+          : t('chronicle.launcherAsteroidShowerEnded');
         break;
     }
   }
@@ -58,7 +63,7 @@ export function ChronicleLauncher({ onOpen }: { onOpen: () => void }) {
         haptic('tap');
         onOpen();
       }}
-      className="pointer-events-auto absolute bottom-3 right-16 z-20 flex h-11 max-w-[min(14rem,calc(100vw-8rem))] items-center gap-2 rounded-control border border-line bg-deep/95 px-3 text-opportunity shadow-[0_10px_30px_rgba(0,0,0,0.4)] transition-colors hover:border-opportunity/60 hover:text-bone active:scale-95"
+      className="pointer-events-auto absolute bottom-2 right-11 z-20 flex h-9 max-w-[min(14rem,calc(100vw-8rem))] items-center gap-2 rounded-control border border-line bg-deep/95 px-3 text-opportunity shadow-[0_10px_30px_rgba(0,0,0,0.4)] transition-colors hover:border-opportunity/60 hover:text-bone active:scale-95"
     >
       <GalaxyIcon className="size-5 shrink-0" />
       <span className="legend truncate">{line}</span>

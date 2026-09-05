@@ -380,6 +380,26 @@ describe('what is in flight', () => {
    * for free on the public contact list instead, which is why the ladder read as
    * worthless.
    */
+  /**
+   * THE WARNING NAMES THE CRAFT IT IS ABOUT. D162 — owner report.
+   *
+   * *"Görüş alanımda da olsa, radar alanımda da olsa... alttaki radar'da gelen
+   * uyarıya tıklayınca focus olmalı. Çünkü bana neyin geldiğini söyleniyor zaten."*
+   * The strip could not focus an inbound warning because the only thing it could
+   * focus was a `path`, and a defender is deliberately never given one (D123) — so
+   * a commander who could SEE the fleet on their own disc still had a row that did
+   * nothing when pressed.
+   *
+   * `contactId` IS THE MISSION UUID, WHICH IS ALREADY PUBLIC. It is the key
+   * `/api/galaxy/traffic` publishes for that same craft, and that payload already
+   * flags which contact is coming for you (`inbound`). So this adds no fact: it
+   * lets the client JOIN two rows it was handed separately. Where the craft is
+   * outside every circle there is no contact to join to, and the strip falls back
+   * to a row that does not offer a focus — the fog is enforced by the contact list
+   * exactly as it was.
+   *
+   * It carries no heading, no route and no origin. Those are still absent fields.
+   */
   it('tells a low radar that something is coming, and nothing else', async () => {
     const { arriveAt, lead } = await raid(3);
     f.clock.set(new Date(arriveAt.getTime() - (lead / 2) * 60_000));
@@ -390,6 +410,25 @@ describe('what is in flight', () => {
     expect(inbound!.fleet).toBeUndefined();
     expect(inbound!.originName).toBeUndefined();
     expect(inbound!.path).toBeUndefined();
+    /**
+     * BUT IT DOES NAME THE CRAFT IT IS ABOUT. D162 — owner report: *"alttaki
+     * radar'da gelen uyarıya tıklayınca focus olmalı. Çünkü bana neyin geldiği
+     * söyleniyor zaten."*
+     *
+     * The strip could not focus an inbound warning, because the only thing it had
+     * to focus with was a `path` and a defender is deliberately never given one.
+     * So a commander watching the fleet on their own disc still had a row that did
+     * nothing when pressed.
+     *
+     * `contactId` IS THE MISSION UUID, WHICH IS ALREADY PUBLIC: it is the key
+     * `/api/galaxy/traffic` publishes for that same craft, and that payload already
+     * says which contact is coming for you (`inbound`). It adds no fact — it lets
+     * the client JOIN two rows it was handed separately. Where no circle covers the
+     * craft there is no contact to join to, so the row simply offers no focus and
+     * the fog stays exactly where it was: in the contact query.
+     */
+    expect(inbound!.contactId).toBeTypeOf('string');
+    expect(inbound!.id).toBeUndefined();
     /**
      * AND IT NAMES THE DEFENDER'S OWN WORLD, WHICH IS NOT A RADAR PRODUCT.
      *

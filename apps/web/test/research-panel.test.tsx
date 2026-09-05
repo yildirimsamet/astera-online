@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { render, within } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
@@ -55,6 +55,8 @@ const state = (id: ResearchProjectId, over: Partial<ResearchState> = {}): Resear
   queueAvailable: true,
   availableAt: new Date('2026-01-01T00:00:00.000Z'),
   prerequisite: RESEARCH_PROJECTS[id].prerequisite,
+  prerequisiteMet: true,
+  queuePrerequisiteMet: true,
   ...over,
 });
 
@@ -116,13 +118,26 @@ const show = (
 ) => {
   current = world(over, stock);
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-  return render(
+  const view = render(
     <QueryClientProvider client={client}>
       <ToastProvider>
         <ResearchPanel {...props} />
       </ToastProvider>
     </QueryClientProvider>,
   );
+  /*
+    THE FOUR BANDS FOLD, and only one is open on arrival — fifteen project cards is
+    several screens of a 375-wide phone otherwise. Every test in this file is about
+    a PROJECT rather than about the fold, so they reach past it here; the fold's own
+    behaviour lives in `accordion-memory.test.ts`.
+
+    `fireEvent` rather than `userEvent` so `show` stays synchronous and no test
+    signature has to move for a layout decision.
+  */
+  for (const band of screen.queryAllByRole('button', { expanded: false })) {
+    fireEvent.click(band);
+  }
+  return view;
 };
 
 type View = ReturnType<typeof render>;
@@ -510,6 +525,83 @@ describe('a closed door states its reason', () => {
     expect(row(view, 'GRAVITIC_CHARGES')).toHaveAttribute('data-focused', 'true');
   });
 
+  /**
+   * A PREREQUISITE IS A DOOR, AND THE CARD USED TO BLAME THE CLOCK FOR IT.
+   *
+   * Live-shard report: a commander could not order the Interception Grid and the
+   * row read "Researchable in 0m" — a countdown on an act that had opened two days
+   * earlier. `discovered` is true for everything outside the Frontier four, so the
+   * discovery branches above skipped these rows and the act clock caught them all,
+   * spending itself on a refusal it had nothing to do with.
+   *
+   * Five projects are gated by a project alone: the three stat ladders and the two
+   * strategic ones. A brand new commander meets three of them on their first visit.
+   */
+  const behindProject = (
+    id: ResearchProjectId,
+    over: Partial<ResearchState> = {},
+  ): Partial<Record<ResearchProjectId, Partial<ResearchState>>> => ({
+    [id]: {
+      available: false,
+      queueAvailable: false,
+      prerequisiteMet: false,
+      queuePrerequisiteMet: false,
+      // The act this project belongs to opened an hour ago: nothing is waiting.
+      availableAt: new Date(Date.now() - 3_600_000),
+      ...over,
+    },
+  });
+
+  it('names the project a stat ladder stands behind rather than a spent clock', () => {
+    const view = show({ research: allOpen(behindProject('SHIP_POWER')) });
+    const power = row(view, 'SHIP_POWER');
+    expect(power).toHaveTextContent(/Starship Engineering first/i);
+    expect(power).not.toHaveTextContent(/Researchable in/i);
+  });
+
+  it('names Gravitic Charges behind the Interception Grid', () => {
+    const view = show({ research: allOpen(behindProject('INTERCEPTION_GRID')) });
+    const grid = row(view, 'INTERCEPTION_GRID');
+    expect(grid).toHaveTextContent(/Gravitic Charges first/i);
+    expect(grid).not.toHaveTextContent(/Researchable in/i);
+  });
+
+  it('names the Protocol behind the Stockpile', () => {
+    const view = show({ research: allOpen(behindProject('STRATEGIC_STOCKPILE')) });
+    expect(row(view, 'STRATEGIC_STOCKPILE'))
+      .toHaveTextContent(/Death Star Protocol first/i);
+  });
+
+  it('scrolls to the prerequisite it named', async () => {
+    const onNeed = vi.fn();
+    const view = show({ research: allOpen(behindProject('SHIP_POWER')) }, {}, { onNeed });
+    await userEvent.click(act(await open(view, 'SHIP_POWER'))!);
+    expect(onNeed).not.toHaveBeenCalled();
+    expect(row(view, 'STARSHIP_ENGINEERING')).toHaveAttribute('data-focused', 'true');
+  });
+
+  /**
+   * THE WIDEST REFUSAL STILL WINS. An act that has not opened is not fixable by
+   * research, so while the clock is genuinely ahead it keeps the sentence — the
+   * same ordering D113 gave the Protocol.
+   */
+  it('keeps a clock that has not run out ahead of the prerequisite', () => {
+    const view = show({
+      research: allOpen(behindProject('INTERCEPTION_GRID', {
+        availableAt: new Date(Date.now() + 7_200_000),
+      })),
+    });
+    const grid = row(view, 'INTERCEPTION_GRID');
+    expect(grid).toHaveTextContent(/Researchable in/i);
+    expect(grid).not.toHaveTextContent(/Gravitic Charges first/i);
+  });
+
+  /** A spent countdown never becomes the sentence, in either shape it can take. */
+  it('never answers a prerequisite with a countdown of none', () => {
+    const view = show({ research: allOpen(behindProject('SHIP_ARMOR')) });
+    expect(reason(view, 'SHIP_ARMOR')).not.toMatch(/any moment|0m\b/i);
+  });
+
   it('names a full Research queue', () => {
     const view = show({
       researchQueue: [
@@ -698,6 +790,27 @@ describe('in Turkish', () => {
       .toHaveTextContent('Bir akında ambarını doldur; hedefte ganimet kalsın');
     expect(row(view, 'GRAVITIC_CHARGES'))
       .toHaveTextContent('Aegis akın hasarının en az %25’ini emsin');
+  });
+
+  /**
+   * THE SENTENCE THE LIVE SHARD ACTUALLY SHOWED, and why the fix has a Turkish
+   * assertion of its own: Turkish abbreviates a MINUTE as `d`, so a spent
+   * countdown printed "0d sonra araştırılabilir" — which reads as zero DAYS. The
+   * countdown was never the refusal; the prerequisite was.
+   */
+  it('names the prerequisite instead of a countdown of none', () => {
+    const view = show({
+      research: allOpen({
+        INTERCEPTION_GRID: {
+          available: false, queueAvailable: false,
+          prerequisiteMet: false, queuePrerequisiteMet: false,
+          availableAt: new Date(Date.now() - 3_600_000),
+        },
+      }),
+    });
+    const grid = row(view, 'INTERCEPTION_GRID');
+    expect(grid).toHaveTextContent('Önce Gravitik Yükler araştırmasını tamamla');
+    expect(grid).not.toHaveTextContent(/sonra araştırılabilir/);
   });
 
   it('names every project and every group', () => {

@@ -76,7 +76,7 @@ export function ServersScreen({
       {latestResult && (
         <button
           type="button"
-          className="plate plate-cut plate-cut-sm mt-4 w-full max-w-md px-4 py-3 text-left transition-[filter] hover:brightness-125"
+          className="plate plate-cut plate-cut-sm mt-2 w-full max-w-md px-2 py-3 text-left transition-[filter] hover:brightness-125"
           onClick={openRecord}
         >
           <span className="name block text-bone">
@@ -87,7 +87,7 @@ export function ServersScreen({
       )}
 
       {error !== undefined && (
-        <p className="mt-4 text-body text-threat-ink" role="alert">
+        <p className="mt-2 text-body text-threat-ink" role="alert">
           {error}
         </p>
       )}

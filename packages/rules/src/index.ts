@@ -27,6 +27,7 @@ export * from './score.js';
 export * from './galaxy.js';
 export * from './galaxyEvents.js';
 export * from './pirates.js';
+export * from './trade.js';
 export * from './rewards.js';
 export * from './research.js';
 export * from './strategic.js';

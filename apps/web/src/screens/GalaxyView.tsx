@@ -32,6 +32,7 @@ import {
   ContactFocus,
   PirateFocus,
   PlanetFocus,
+  TradeFocus,
   RunFocus,
   ThreadFocus,
   minutesLeftFor,
@@ -41,14 +42,22 @@ import { threadKey } from '../galaxy/threadKey.js';
 import type { PlanetGroup } from '../lib/directives.js';
 import { haptic } from '../lib/haptics.js';
 import { serverNow } from '../lib/clock.js';
-import { minutesLeft, useNow } from '../lib/time.js';
+import { activeTradeShip } from '../lib/trade.js';
+import { planTradeRoute, techOf } from '../lib/navigation.js';
+import { minuteTick, minutesLeft, useNow } from '../lib/time.js';
 import {
+  HULLS,
+  MOBILE_HULLS,
   distance,
   engagementEndsAt,
+  fleetSpeedMult,
   interceptAsteroid,
+  transferCargoCapacity,
   travelMinutes,
+  type MobileHullId,
 } from '@astera/rules';
 import { LaunchSheet } from './LaunchSheet.jsx';
+import { TradeSheet } from './TradeSheet.jsx';
 import { SettlementSheet } from './SettlementSheet.js';
 import { TransferSheet } from './TransferSheet.js';
 import { WorldsPanel } from './WorldsPanel.js';
@@ -56,9 +65,11 @@ import { DiscControls } from '../galaxy/DiscControls.js';
 import { PlanetScreen, TAB_OF } from './PlanetScreen.jsx';
 import { ResearchPanel } from './ResearchPanel.js';
 import { IntelScreen } from './IntelScreen.jsx';
+import { BattleReportDoor } from './BattleReports.jsx';
 import { RewardsScreen } from './RewardsScreen.jsx';
 import { AnnouncementsScreen } from './AnnouncementsScreen.js';
 import { FeedbackScreen } from './FeedbackScreen.js';
+import { DonateScreen } from './DonateScreen.js';
 import { MenuPanel } from '../shell/MenuPanel.jsx';
 import { LeaderboardScreen } from './LeaderboardScreen.jsx';
 import { ChatScreen } from './ChatScreen.jsx';
@@ -93,8 +104,8 @@ import {
   reconcileOwnCraft,
   reconcileOwnInterceptionImpacts,
   reconcileOwnInterceptions,
-  type CraftFocus,
 } from '../galaxy/ownCraft.js';
+import type { StripFocus } from '../shell/PendingStrip.js';
 import type { ReachRing } from '../galaxy/SensorRings.jsx';
 import { planetsWithClanPresence } from '../galaxy/clanPresence.js';
 import { ActiveGalaxyEvent } from './ActiveGalaxyEvent.js';
@@ -132,7 +143,7 @@ const AdminPanel = lazy(async () => import('./AdminPanel.js'));
  * world the commander controls, that second tap opens management instead.
  */
 
-export type Panel = 'planet' | 'research' | 'intel' | 'leaderboard' | 'clan' | 'chat' | 'chronicle' | 'rewards' | 'announcements' | 'feedback' | 'admin' | 'recap' | 'menu' | null;
+export type Panel = 'planet' | 'research' | 'intel' | 'report' | 'leaderboard' | 'clan' | 'chat' | 'chronicle' | 'rewards' | 'announcements' | 'feedback' | 'donate' | 'admin' | 'recap' | 'menu' | null;
 
 /**
  * WHICH SHELF INSIDE A PANEL, WHEN THE PANEL ALONE IS NOT AN ANSWER. D121.
@@ -141,6 +152,10 @@ export type Panel = 'planet' | 'research' | 'intel' | 'leaderboard' | 'clan' | '
  * report arrived" pointed at the place and dropped the reader on the other one.
  * Only `intel` has shelves today, so this is deliberately its two tabs and not a
  * general routing scheme nobody has asked for.
+ *
+ * The `report` panel names one too, and means it as a FALLBACK: a battle
+ * notification opens its own report directly (owner instruction), and lands on
+ * this shelf only when that exact fight cannot be found.
  */
 export type PanelStop = 'probes' | 'battles';
 
@@ -165,7 +180,11 @@ export function GalaxyView({
 }: {
   /** Opened from the header, which is the only chrome left outside the canvas. */
   panel: Panel;
-  onPanel: (panel: Panel) => void;
+  /**
+   * The shelf and the fight travel with the panel, because the report door falls
+   * back to the Intel centre and has to be able to say where.
+   */
+  onPanel: (panel: Panel, stop?: PanelStop, reportMissionId?: string) => void;
   /**
    * Which shelf the panel should open on, with a counter so the same one twice
    * still lands — a second battle notification must not be swallowed because the
@@ -175,7 +194,7 @@ export function GalaxyView({
   /** A route from an already-revealed identity back to its world. */
   focusRequest?: { planetId: string; request: number } | null;
   /** A route from the permanent in-flight sheet to a craft already on the disc. */
-  craftFocusRequest?: { focus: CraftFocus; request: number } | null;
+  craftFocusRequest?: { focus: StripFocus; request: number } | null;
   /** Who is signed in. Shown on the one surface that is about you rather than the world. */
   commander: string;
   /** Operations access comes from the server's out-of-band username allow-list. */
@@ -249,8 +268,27 @@ export function GalaxyView({
    * needs no timer of its own and adds no render.
    */
   const galaxyEvents = useGalaxyEvents();
+  /*
+    NARROWED ON KIND, which it was not. D154 gives the extra shooting stars to an
+    ASTEROID SHOWER, and `/api/galaxy/events` has published a second kind since
+    D156 — so a trade window was quietly tripling the meteor pool as well. The
+    sky is a statement about rocks arriving; a merchant is not one.
+  */
   const meteorShower = (galaxyEvents.data?.events ?? [])
-    .some((event) => now < event.endsAt.getTime());
+    .some((event) => event.kind === 'ASTEROID_SHOWER' && now < event.endsAt.getTime());
+  /**
+   * THE MERCHANT, AND THE PROP THAT WAS NEVER PASSED. D156.
+   *
+   * `GalaxyCanvas` has mounted `<TradeShip>` since slice 2a and its `tradeShip`
+   * default is `null`, so the ship was never drawn and nothing anywhere errored —
+   * the feature simply was not in the galaxy. `activeTradeShip` narrows the union
+   * (`filter` does not) and drops a window that has already shut, so the disc, the
+   * chip, the rail and the sheet all read one answer.
+   */
+  const tradeShip = useMemo(
+    () => activeTradeShip(galaxyEvents.data?.events, now),
+    [galaxyEvents.data, now],
+  );
   const [requestedPlanetGroup, setRequestedPlanetGroup] = useState<PlanetGroup | null>(null);
 
   useEffect(() => {
@@ -359,6 +397,15 @@ export function GalaxyView({
    * never outlive the decision it belongs to.
    */
   const [aim, setAim] = useState<{ x: number; y: number; z: number } | null>(null);
+  /**
+   * Whether the merchant's commitment sheet is open. D156.
+   *
+   * A boolean rather than an id, because there is exactly one merchant in the
+   * galaxy at a time and the sheet is rendered from the LIVE payload — so a window
+   * that shuts while the sheet is open takes the sheet with it, which is the honest
+   * behaviour for an appointment nobody can extend.
+   */
+  const [trading, setTrading] = useState(false);
   const [settlingTargetId, setSettlingTargetId] = useState<string | null>(null);
   const [homeSignal, setHomeSignal] = useState(0);
   const [chatChannel, setChatChannel] = useState<ChatChannel>('general');
@@ -383,6 +430,10 @@ export function GalaxyView({
    */
   const openSeasonRecap = useCallback(() => {
     onPanel('recap');
+  }, [onPanel]);
+  /** Where a battle notification lands when its own report cannot be found. */
+  const openBattleList = useCallback(() => {
+    onPanel('intel', 'battles');
   }, [onPanel]);
   const recapResult = season.data?.result ?? pastResult;
   useSeasonRecapOpening(
@@ -466,6 +517,52 @@ export function GalaxyView({
       clearTimeout(timer);
     };
   }, [drawn, armed]);
+
+  /**
+   * THE SOONEST THIS WORLD COULD BE ALONGSIDE THE MERCHANT, AND IT IS A BEST CASE.
+   *
+   * Solved with the FASTEST CARRIER standing here, because a convoy with no hold
+   * is not a trade — so the honest upper bound on opportunity is the quickest
+   * craft that could actually carry something. The sheet then quotes the exact
+   * minute for the wing actually picked, off the same solver, exactly as the
+   * pirate rail and its sheet already split the question.
+   *
+   * `null` says the appointment cannot be kept from here, and the rail writes that
+   * refusal out rather than letting the line quietly disappear.
+   */
+  /*
+    THE SOLVE IS PRICED IN MINUTES, SO IT DEPENDS ON THE MINUTE. D166.
+
+    `now` really is needed — the merchant is on a moving orbit and the rendezvous
+    it is solved against moves with it — but the memo listed the raw tick, which
+    advances every five seconds and can therefore never hit. That ran a scan plus a
+    bisection over a three-hour horizon twelve times a minute, on the main thread
+    beside the 3D scene, to produce a figure printed in whole minutes.
+  */
+  const tradeMinute = minuteTick(now);
+  const tradeReach = useMemo(() => {
+    if (!tradeShip || !planet.data || !season.data) return null;
+    const home = planet.data;
+    const carriers = MOBILE_HULLS.filter(
+      (hull) => (home.fleet[hull] ?? 0) > 0 && transferCargoCapacity({ [hull]: 1 }) > 0,
+    );
+    const quickest = carriers.reduce<MobileHullId | null>(
+      (best, hull) => (best === null || HULLS[hull].speed > HULLS[best].speed ? hull : best),
+      null,
+    );
+    if (quickest === null) return null;
+    const route = planTradeRoute(
+      home.planet.position,
+      { orbit: tradeShip.orbit, expiresAtMinute: tradeShip.expiresAtMinute },
+      (tradeMinute * 60_000 - season.data.startsAt.getTime()) / 60_000,
+      { [quickest]: 1 },
+      home.fleet,
+      home.ground,
+      techOf(home),
+      fleetSpeedMult(home.effectiveOrbit ?? home.orbit),
+    );
+    return route?.oneWayMinutes ?? null;
+  }, [tradeShip, planet.data, season.data, tradeMinute]);
 
   const planets = useMemo(() => planetsWithClanPresence(galaxy.data), [galaxy.data]);
   /**
@@ -587,16 +684,24 @@ export function GalaxyView({
       || handledCraftFocusRequest.current === craftFocusRequest.request
     ) return;
     const requested = craftFocusRequest.focus;
+    /*
+      THE CRAFT HAS TO STILL BE THERE. Three kinds now: a mining run, one of your
+      own threads, and — since the inbound warning became pressable — a public
+      contact on the disc, which is exactly the state a tap on a foreign fleet
+      produces. D163.
+    */
     const exists = requested.kind === 'run'
       ? runs.some((run) => run.id === requested.id && run.status !== 'done')
-      : threads.some((thread, index) => threadKey(thread, index) === requested.key && thread.path);
+      : requested.kind === 'contact'
+        ? contacts.some((c) => c.id === requested.id)
+        : threads.some((thread, index) => threadKey(thread, index) === requested.key && thread.path);
     if (!exists) return;
     handledCraftFocusRequest.current = craftFocusRequest.request;
     setFocus(requested);
     setTransferOriginId(null);
     setDetail(false);
     setAttacking(false);
-  }, [craftFocusRequest, runs, threads]);
+  }, [craftFocusRequest, runs, threads, contacts]);
 
   /**
    * EVERY PROP THE DISC TAKES IS STABLE. D53.
@@ -744,6 +849,7 @@ export function GalaxyView({
     setTransferOriginId(null);
     setDetail(false);
     setAttacking(false);
+    setTrading(false);
     setSettlingTargetId(null);
   };
 
@@ -765,6 +871,7 @@ export function GalaxyView({
 
         wrecks={wrecks}
         meteorShower={meteorShower}
+        tradeShip={tradeShip}
         sensors={sensors}
         showTelescopeReach={showTelescopeReach}
         showRadarReach={showRadarReach}
@@ -786,7 +893,7 @@ export function GalaxyView({
 
       {/* ── the only chrome on the canvas ───────────────────── */}
 
-      <div className="pointer-events-none absolute inset-x-0 top-0 flex items-start justify-between p-3">
+      <div className="pointer-events-none absolute inset-x-0 top-0 flex items-start justify-between p-1">
         {/*
           THE DISC READOUT, TAKEN DOWN A SIZE. Owner decision.
 
@@ -898,7 +1005,22 @@ export function GalaxyView({
           onOpenResearch={() => { onPanel('research'); }}
           onOpenClan={() => { onPanel('clan'); }}
           onOpenIntel={() => { onPanel('intel'); }}
-          onOpenWorlds={() => { setWorldsOpen(true); }}
+          /*
+            THE PLANET GLYPH IS THE CAMERA MOVE ITSELF NOW. D163.
+
+            The same three steps the sheet's own button used to take: clear the
+            focus so a tracked subject cannot drag the camera straight back, focus
+            the world (which also makes the next direct tap open management rather
+            than focusing it twice), and raise the home signal.
+          */
+          onGoHome={() => {
+            if (activePlanetId === null) return;
+            close();
+            focusPlanet(activePlanetId);
+            setHomeSignal((n) => n + 1);
+          }}
+          onOpenTransfer={() => { setWorldsOpen(true); }}
+          canTransfer={worlds.length > 1}
           clanAvailable={clanBadge.data?.available ?? false}
           clanWaiting={clanBadge.data?.attentionCount ?? 0}
         />
@@ -1055,6 +1177,27 @@ export function GalaxyView({
         />
       )}
 
+      {/*
+        THE MERCHANT'S RAIL. D156.
+
+        Rendered from the live event rather than from a captured object, exactly as
+        the pirate rail is: an appointment that has ended takes its own surface with
+        it instead of offering a launch the server would refuse.
+      */}
+      {focus?.kind === 'tradeShip' && tradeShip?.id === focus.id && (
+        <TradeFocus
+          merchant={tradeShip}
+          fleetAtHome={planet.data?.fleet ?? {}}
+          fleetAway={planet.data?.fleetAway ?? {}}
+          minutesLeft={Math.max(0, (tradeShip.endsAt.getTime() - now) / 60_000)}
+          reachMinutes={tradeReach}
+          onClose={close}
+          onTrade={() => { setTrading(true); }}
+          open={detail}
+          onToggle={toggle}
+        />
+      )}
+
       {focus?.kind === 'run' &&
         (() => {
           const run = runs.find((r) => r.id === focus.id);
@@ -1157,7 +1300,7 @@ export function GalaxyView({
         })()}
 
       {season.data?.status === 'frozen' && panel === null && (
-        <div className="pointer-events-none absolute inset-x-0 bottom-[calc(96px+env(safe-area-inset-bottom))] z-30 mx-auto w-full max-w-sm px-4">
+        <div className="pointer-events-none absolute inset-x-0 bottom-[calc(96px+env(safe-area-inset-bottom))] z-30 mx-auto w-full max-w-sm px-2">
           <NextSeason endsAt={season.data.endsAt} />
         </div>
       )}
@@ -1293,6 +1436,16 @@ export function GalaxyView({
         </Sheet>
       )}
 
+      {panel === 'donate' && (
+        <Sheet
+          eyebrow={t('community.donate.eyebrow')}
+          title={t('community.donate.title')}
+          onClose={() => { onPanel(null); }}
+        >
+          <DonateScreen />
+        </Sheet>
+      )}
+
       {isAdmin && panel === 'admin' && (
         <Sheet
           contained
@@ -1363,6 +1516,24 @@ export function GalaxyView({
         </Sheet>
       )}
 
+      {/*
+        THE REPORT ITSELF, WITH NO ROOM AROUND IT. Owner instruction.
+
+        A notification about a fight opens that fight. `BattleReportDoor` draws
+        nothing until it knows whether the report is there, and hands back to the
+        battles list when it is not — so the reader either gets the report they
+        asked for or the list it would have been in, and never a blank sheet.
+      */}
+      {panel === 'report' && panelStop?.reportMissionId !== undefined && (
+        <BattleReportDoor
+          missionId={panelStop.reportMissionId}
+          onClose={() => {
+            onPanel(null);
+          }}
+          onUnavailable={openBattleList}
+        />
+      )}
+
       {panel === 'intel' && (
         <Sheet
           bleed
@@ -1406,6 +1577,7 @@ export function GalaxyView({
         <LaunchSheet
           target={{ kind: 'world', world: selected }}
           planet={planet.data}
+          intel={intel.data}
           onClose={() => {
             setAttacking(false);
           }}
@@ -1442,6 +1614,27 @@ export function GalaxyView({
           </div>
         );
       })()}
+
+      {/*
+        THE CONVOY SHEET. D156 · D155.
+
+        `onAim` goes to the same single mark the raid sheets publish, so the point
+        where the convoy would meet the merchant is drawn on the disc while the
+        decision is open and gone the moment it closes.
+      */}
+      {panel !== 'recap' && trading && tradeShip && planet.data && season.data && (
+        <TradeSheet
+          merchant={tradeShip}
+          seasonStart={season.data.startsAt}
+          planet={planet.data}
+          onAim={setAim}
+          onClose={() => { setTrading(false); }}
+          onLaunched={() => {
+            setTrading(false);
+            close();
+          }}
+        />
+      )}
 
       {panel !== 'recap'
         && settlingTargetId !== null
@@ -1485,16 +1678,6 @@ export function GalaxyView({
             close();
             setTransferOriginId(originPlanetId);
             setTransferTargetId(targetPlanetId);
-            setWorldsOpen(false);
-          }}
-          onCentre={(planetId) => {
-            // Home is also the first semantic tap on the active world. The camera
-            // instruction still wins this render, while keeping this focus means
-            // the next direct world tap opens management instead of focusing it
-            // for a second time.
-            close();
-            focusPlanet(planetId);
-            setHomeSignal((n) => n + 1);
             setWorldsOpen(false);
           }}
           onClose={() => { setWorldsOpen(false); }}

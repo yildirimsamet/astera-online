@@ -90,7 +90,7 @@ export function QuantityStepper({
         readOnly={!editable}
         value={editable ? draft : String(current)}
         onChange={editable ? enter : undefined}
-        className="num plate plate-sunk h-11 w-14 rounded-control px-2 text-center text-title text-bone outline-none"
+        className="num plate plate-sunk h-9 w-9 rounded-control px-2 text-center text-title text-bone outline-none"
       />
       <IconButton
         ariaLabel={increaseLabel}
@@ -109,7 +109,7 @@ export function QuantityStepper({
           ariaLabel={maxLabel}
           disabled={current >= upper}
           onClick={() => { commit(upper); }}
-          className="min-h-11"
+          className="min-h-9"
         >
           {maxText}
         </Button>

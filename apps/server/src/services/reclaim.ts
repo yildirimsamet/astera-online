@@ -40,6 +40,7 @@ import {
   strategicAssets,
   strategicImpacts,
   strategicInterceptions,
+  tradeRuns,
   units,
   watches,
 } from '../db/schema.js';
@@ -126,7 +127,13 @@ async function commanderRows(
   tx: Tx,
   planetIds: string[],
   playerId: string,
-): Promise<{ missionIds: string[]; fieldIds: string[]; runIds: string[]; raidIds: string[] }> {
+): Promise<{
+  missionIds: string[];
+  fieldIds: string[];
+  runIds: string[];
+  raidIds: string[];
+  tradeIds: string[];
+}> {
   const missionIds = (
     await tx
       .select({ id: missions.id })
@@ -150,7 +157,32 @@ async function commanderRows(
     await tx
       .select({ id: pirateRaids.id })
       .from(pirateRaids)
-      .where(inArray(pirateRaids.planetId, planetIds))
+      .where(or(inArray(pirateRaids.planetId, planetIds), eq(pirateRaids.ownerPlayerId, playerId)))
+  ).map((r) => r.id);
+
+  /**
+   * AND THE CONVOYS THIS SEAT HAS OUT AT THE MERCHANT. D156.
+   *
+   * `trade_runs` has foreign keys to `planets`, `players`, `seasons` and
+   * `galaxy_event_occurrences`, all `ON DELETE no action`, so a reclaimed seat with
+   * a convoy row would fail on the `delete(planets)` below and the seat would never
+   * come back — the exact shape of the `debris_fields` outage this function has
+   * already had once.
+   *
+   * BY PAD **OR** BY COMMANDER, AND THE SECOND HALF WAS MISSING FROM BOTH LANES.
+   * D150 gave a raid an `owner_player_id` because *"a raid's return follows its
+   * commander, never the pad"*, and D156 copied that onto a convoy — but this sweep
+   * gathered rows by pad alone. A world that changed hands after the flight came
+   * home leaves a row whose `planet_id` now belongs to somebody else and whose
+   * `owner_player_id` is the commander being reclaimed, so `delete(players)`
+   * violates the owner key and the seat can never be freed again. `units` below has
+   * always read both; these two now do too.
+   */
+  const tradeIds = (
+    await tx
+      .select({ id: tradeRuns.id })
+      .from(tradeRuns)
+      .where(or(inArray(tradeRuns.planetId, planetIds), eq(tradeRuns.ownerPlayerId, playerId)))
   ).map((r) => r.id);
 
   const fieldIds = (
@@ -189,7 +221,7 @@ async function commanderRows(
       )
   ).map((r) => r.id);
 
-  return { missionIds, fieldIds, runIds, raidIds };
+  return { missionIds, fieldIds, runIds, raidIds, tradeIds };
 }
 
 /**
@@ -203,7 +235,7 @@ async function busy(
   tx: Tx,
   planetIds: string[],
   playerId: string,
-  rows: { runIds: string[]; raidIds: string[] },
+  rows: { runIds: string[]; raidIds: string[]; tradeIds: string[] },
 ): Promise<boolean> {
   const [flight] = await tx
     .select({ id: missions.id })
@@ -230,6 +262,21 @@ async function busy(
       .where(and(inArray(pirateRaids.id, rows.raidIds), ne(pirateRaids.status, 'done')))
       .limit(1);
     if (raid) return true;
+  }
+
+  if (rows.tradeIds.length > 0) {
+    /*
+      A world with a convoy in the air is never reclaimed, for the reason every
+      other clause here exists: the transports are real, the goods aboard them are
+      real, and taking the seat would delete both mid-flight. "Never reclaim a world
+      referenced by an airborne mission" does not have a merchant exception.
+    */
+    const [convoy] = await tx
+      .select({ id: tradeRuns.id })
+      .from(tradeRuns)
+      .where(and(inArray(tradeRuns.id, rows.tradeIds), ne(tradeRuns.status, 'done')))
+      .limit(1);
+    if (convoy) return true;
   }
 
   if (rows.runIds.length === 0) return false;
@@ -281,9 +328,15 @@ async function demolish(
   tx: Tx,
   planetIds: string[],
   playerId: string,
-  rows: { missionIds: string[]; fieldIds: string[]; runIds: string[]; raidIds: string[] },
+  rows: {
+    missionIds: string[];
+    fieldIds: string[];
+    runIds: string[];
+    raidIds: string[];
+    tradeIds: string[];
+  },
 ): Promise<void> {
-  const { missionIds, fieldIds, runIds, raidIds } = rows;
+  const { missionIds, fieldIds, runIds, raidIds, tradeIds } = rows;
 
   /**
    * Season-scoped only, and `account_rewards` is deliberately absent from this
@@ -386,7 +439,10 @@ async function demolish(
     .select({ id: buildOrders.id })
     .from(buildOrders)
     .where(inArray(buildOrders.planetId, planetIds))).map((order) => order.id);
-  const refs = [...missionIds, ...runIds, ...raidIds, ...planetIds, ...assetIds, ...buildOrderIds];
+  const refs = [
+    ...missionIds, ...runIds, ...raidIds, ...tradeIds,
+    ...planetIds, ...assetIds, ...buildOrderIds,
+  ];
   if (refs.length > 0) {
     await tx.delete(scheduledEvents).where(inArray(scheduledEvents.refId, refs));
   }
@@ -403,6 +459,11 @@ async function demolish(
   if (fieldIds.length > 0) await tx.delete(debrisFields).where(inArray(debrisFields.id, fieldIds));
   // After the reports above, which reference the raid, and before the planets below.
   if (raidIds.length > 0) await tx.delete(pirateRaids).where(inArray(pirateRaids.id, raidIds));
+  /*
+    Convoys before the occurrences they point at — which are season rows this
+    function never touches — and before the planets and the player below.
+  */
+  if (tradeIds.length > 0) await tx.delete(tradeRuns).where(inArray(tradeRuns.id, tradeIds));
   // Damage this commander did to a pirate outlives them as anonymous world state,
   // but the row's `destroyed_by_player_id` points at a commander about to vanish.
   await tx
@@ -420,7 +481,22 @@ async function demolish(
     eq(units.ownerPlayerId, playerId),
   ));
   await tx.delete(satellites).where(inArray(satellites.planetId, planetIds));
-  await tx.delete(sensorEpochs).where(inArray(sensorEpochs.planetId, planetIds));
+  /*
+    BY WORLD **OR** BY OBSERVER — PRE-EXISTING, AND THE THIRD TABLE IN THIS FAMILY.
+
+    An epoch is a commander's sight of a world, so it carries both keys. This swept
+    by world alone, which is correct only while the two never diverge: capture a
+    world this commander once had eyes on and the row keeps a `player_id` that is
+    about to be deleted while its `planet_id` now belongs to somebody else. The
+    seat then fails on `sensor_epochs_player_id_players_id_fk` and can never be
+    reclaimed again.
+
+    `watches`, `probe_reports`, `probe_world_memories`, `attack_commitments` and
+    `units` all already read both keys; this was the one that did not.
+  */
+  await tx
+    .delete(sensorEpochs)
+    .where(or(inArray(sensorEpochs.planetId, planetIds), eq(sensorEpochs.playerId, playerId)));
   await tx.delete(buildings).where(inArray(buildings.planetId, planetIds));
   await tx.delete(planetResearch).where(inArray(planetResearch.planetId, planetIds));
   await tx.delete(neutralPlanetState).where(inArray(neutralPlanetState.planetId, planetIds));

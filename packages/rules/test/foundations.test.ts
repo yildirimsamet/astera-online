@@ -41,6 +41,7 @@ import {
   seeingUnlocked,
   shieldHp,
   upgradeCost,
+  withinTierBand,
   type Fleet,
   type Grade,
   type SatelliteSet,
@@ -71,12 +72,14 @@ import {
  * casual-player farming the open design problem, so the rule that limits it is
  * about as load-bearing as a rule gets.
  *
- * D49 changed WHAT it measures — development tier rather than a Wealth ratio —
- * and the properties below are the ones that must hold whatever it measures:
- * symmetry, the exact boundary, and the order the refusals are reported in.
+ * D49 changed WHAT it measures — development tier rather than a Wealth ratio.
+ * D127 removed it. D168 brings it back at ±1 tier and moves it off the PLANET
+ * onto the COMMANDER: the peak Core level of everything each side holds. The
+ * properties below are the ones that must hold whatever it measures: symmetry,
+ * the exact boundary, and the order the refusals are reported in.
  */
 describe('canAttack', () => {
-  const party = (playerId: string, coreLevel: number) => ({ playerId, coreLevel });
+  const party = (playerId: string, peakCoreLevel: number) => ({ playerId, peakCoreLevel });
 
   it('refuses to let anyone attack themselves', () => {
     expect(canAttack(party('a', 5), party('a', 5), 0)).toEqual({
@@ -85,19 +88,53 @@ describe('canAttack', () => {
     });
   });
 
-  /** D127 retired the band; development is private, so it may not gate a launch. */
-  it('allows a fight at any development distance', () => {
-    const me = party('a', 2);
-    expect(canAttack(me, party('b', 9), 0).ok).toBe(true);
-    expect(canAttack(me, party('b', 10), 0).ok).toBe(true);
-    expect(canAttack(me, party('b', 45), 0).ok).toBe(true);
+  /**
+   * THE BAND IS ONE TIER WIDE AND INCLUSIVE OF YOUR OWN. D168, owner instruction:
+   * "tier 3 isem -> 2-3-4 ile savaşabilirim".
+   */
+  it('allows the tier below, the tier itself and the tier above', () => {
+    const mine = party('a', 8); // Core 7–9 is tier 3
+    expect(canAttack(mine, party('b', 5), 0).ok).toBe(true); // tier 2
+    expect(canAttack(mine, party('b', 8), 0).ok).toBe(true); // tier 3
+    expect(canAttack(mine, party('b', 11), 0).ok).toBe(true); // tier 4
   });
 
   /**
-   * PERMISSION IS STILL SYMMETRIC, and D127 kept that by removing the band rather
-   * than narrowing it. `rankFloor` protected the small from the large and let
-   * anyone punch up without limit — an asymmetry the band fixed and its absence
-   * preserves: nobody's development decides whether anybody may fight them.
+   * TWO REFUSALS, BECAUSE THE BAND HAS TWO SIDES AND THEY ARE NOT THE SAME
+   * SENTENCE. "That commander is far above you" is useful; said to somebody who
+   * picked a target far BELOW them it is simply false, and a player who is told
+   * the wrong direction goes looking for the wrong fix.
+   */
+  it('refuses two tiers out, and names which side of the band the target is on', () => {
+    const mine = party('a', 8); // tier 3
+    expect(canAttack(mine, party('b', 14), 0)).toMatchObject({
+      ok: false,
+      reason: 'TIER_BAND',
+    });
+    expect(canAttack(mine, party('b', 2), 0)).toMatchObject({
+      ok: false,
+      reason: 'TIER_BAND_WEAK',
+    });
+  });
+
+  /**
+   * THE FLOOR TIER FIGHTS ITS OWN. Owner instruction — the band is `|a - b| <= 1`
+   * with no special case at the bottom. A season opens with everybody at tier 1,
+   * and a tier that could not fight itself would make the first hours of the game
+   * the safe ones D14 deliberately refused to make them.
+   */
+  it('lets the floor tier fight its own, and stops it two tiers up', () => {
+    expect(canAttack(party('a', 1), party('b', 3), 0).ok).toBe(true); // 1 v 1
+    expect(canAttack(party('a', 1), party('b', 4), 0).ok).toBe(true); // 1 v 2
+    expect(canAttack(party('a', 1), party('b', 7), 0)).toMatchObject({
+      reason: 'TIER_BAND',
+    }); // two tiers ABOVE the floor
+  });
+
+  /**
+   * PERMISSION IS SYMMETRIC. `rankFloor` protected the small from the large and
+   * let anyone punch up without limit — an asymmetry the band fixes in both
+   * directions: nobody's development decides one-sidedly who may fight whom.
    */
   it('is symmetric — if they cannot hit you, you cannot hit them', () => {
     fc.assert(
@@ -114,20 +151,31 @@ describe('canAttack', () => {
     );
   });
 
-  /**
-   * DEVELOPMENT NO LONGER GATES A FIGHT AT ALL. D127.
-   *
-   * The ±2 tier band went with the public tier it was defined on: with development
-   * private it could only have become a refusal at the gate, after a fleet was
-   * packed — the exact failure D49 replaced a wealth ratio for. What protects a
-   * small commander now is that nobody can SEE they are small, plus the bash limit.
-   */
-  it('lets any two worlds fight, however far apart their development', () => {
+  /** The band, stated as the arithmetic it is, over the whole ladder. */
+  it('allows exactly the pairs whose tiers differ by at most the band', () => {
     fc.assert(
       fc.property(fc.integer({ min: 1, max: 60 }), fc.integer({ min: 1, max: 60 }), (a, b) => {
-        expect(canAttack(party('a', a), party('b', b), 0).ok).toBe(true);
+        const gate = canAttack(party('a', a), party('b', b), 0);
+        expect(gate.ok).toBe(Math.abs(coreTier(a) - coreTier(b)) <= ABUSE.tierBand);
+        // Whichever side it lands on, the reason matches the direction.
+        if (!gate.ok) {
+          expect(gate.reason).toBe(coreTier(b) > coreTier(a) ? 'TIER_BAND' : 'TIER_BAND_WEAK');
+        }
       }),
       { numRuns: 400 },
+    );
+  });
+
+  /** `withinTierBand` is the single statement of the band; `canAttack` reads it. */
+  it('exposes the band as one question both the gate and the client can ask', () => {
+    expect(withinTierBand(8, 5)).toBe(true);
+    expect(withinTierBand(8, 14)).toBe(false);
+    expect(withinTierBand(0, 1)).toBe(true); // the tier floor, not a level of zero
+    fc.assert(
+      fc.property(fc.integer({ min: 0, max: 60 }), fc.integer({ min: 0, max: 60 }), (a, b) => {
+        expect(withinTierBand(a, b)).toBe(withinTierBand(b, a));
+      }),
+      { numRuns: 200 },
     );
   });
 
@@ -140,29 +188,30 @@ describe('canAttack', () => {
   });
 
   /**
-   * TWO REASONS REMAIN, AND SELF COMES FIRST. Order matters because the reason is
-   * shown to the player: being told the wrong one sends them to find a different
-   * target and get refused again.
+   * THREE REASONS, AND THE PERMANENT ONE OUTRANKS THE TEMPORARY. Order matters
+   * because the reason is shown to the player: `BASH_LIMIT` says "wait twelve
+   * hours", which is advice worth acting on only if the fight would then be legal.
+   * Out of band it never becomes legal, so the band is reported first.
    */
-  it('reports self before the bash limit when both apply', () => {
+  it('reports self first, then the band, then the bash limit', () => {
     expect(canAttack(party('a', 30), party('a', 30), ABUSE.bashLimit)).toMatchObject({
       reason: 'SELF',
+    });
+    expect(canAttack(party('a', 30), party('b', 2), ABUSE.bashLimit)).toMatchObject({
+      reason: 'TIER_BAND_WEAK',
     });
   });
 
   /**
-   * WHAT IS LEFT PROTECTING A NEW COMMANDER, STATED AS A TEST. D127.
-   *
-   * Not the band any more — the bash limit, and the fact that a raider cannot see
-   * who is small. This holds the first half; the second is enforced by the galaxy
-   * payload and tested there.
+   * WHAT PROTECTS A NEW COMMANDER, STATED AS A TEST. D168 restores the half D127
+   * removed: a finished commander can no longer reach a fresh one at all, and the
+   * bash limit still caps the farming inside the band.
    */
-  it('still lets a finished commander reach a fresh one, and still caps the farming', () => {
-    const fresh = party('b', 1);
-    const finished = party('a', 30);
-    expect(canAttack(finished, fresh, 0).ok).toBe(true);
-    expect(canAttack(finished, fresh, ABUSE.bashLimit).ok).toBe(false);
-    expect(canAttack(finished, fresh, ABUSE.bashLimit).reason).toBe('BASH_LIMIT');
+  it('keeps a finished commander away from a fresh one entirely', () => {
+    expect(canAttack(party('a', 30), party('b', 1), 0)).toMatchObject({
+      ok: false,
+      reason: 'TIER_BAND_WEAK',
+    });
   });
 
   /** Core level is never zero in play, but the tier floor must not be either. */

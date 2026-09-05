@@ -235,6 +235,8 @@ export const MODEL = {
   cataclysm: FLEET_V2_ASSET_MANIFEST.CATACLYSM.model,
   citadel: FLEET_V2_ASSET_MANIFEST.CITADEL.model,
   deathStar: '/assets/models/ships/death_star.glb',
+  /** The Trade Ship NPC. A craft, not a building — it flies, so it is aimed. */
+  tradeShip: '/assets/models/ships/trade_ship.glb',
   /** The mining craft, and the Drill's own body. Owner-supplied; no longer a borrow. */
   drill: '/assets/models/drills/drill.glb',
   /**
@@ -303,6 +305,23 @@ export const MODEL_FACING: Record<string, Facing> = {
    * weapon visibly travelled nose-up. The full vector is levelled onto +Z.
    */
   [MODEL.deathStar]: noseVector(0.7101, 0.408, -0.5736),
+  /**
+   * THE TRADE SHIP. Measured off `assets/source/models/ships/trade_ship.glb`:
+   * the loader was pointed at the SOURCE file rather than the served one,
+   * because `tools/models.mjs` only resizes textures, simplifies meshes and
+   * meshopt-compresses — it never rotates or re-orients geometry, so source
+   * and served agree on facing.
+   *
+   * The scene graph gave no naming hint (one mesh, named `mesh_0`, on node
+   * `mesh_node`, one material named `material`), so this was read off six
+   * rasterised silhouettes: a bridge/canopy carrying a window and a sensor
+   * mast sits at the −X end, and a stepped, layered nozzle cluster sits at
+   * +X. A principal-component fit over all 15,643 vertices gives an axis of
+   * (0.997, −0.012, 0.081) — 4.7° off pure X, well inside named-compass
+   * territory next to the missile's 56.5° or the Death Star's 24° diagonal —
+   * so this is declared as a named facing rather than a `noseVector`.
+   */
+  [MODEL.tradeShip]: '-x',
 };
 
 /**
@@ -374,6 +393,7 @@ export const CRAFT_MODELS: readonly string[] = [
   MODEL.drill,
   MODEL.missile,
   MODEL.deathStar,
+  MODEL.tradeShip,
 ];
 
 /** Drawn, never aimed. Scenery and wreckage. */

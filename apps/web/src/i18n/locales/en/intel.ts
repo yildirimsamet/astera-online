@@ -127,7 +127,7 @@ export const reports = {
   pirateBroken: 'The crew broke. What was left of them is yours.',
   pirateHeld: 'They held, and flew on. Your squadron came back with nothing.',
   /** The prize, and the only door in the game into a hull you did not build. */
-  pirateCaptured: 'Towed home',
+  pirateCaptured: 'From pirates',
   pirateCapturedNote:
     'Taken intact from the wreck of a crew you destroyed. It joins the garrison at the world your fleet returns to — even over Hangar capacity — and it does not count as one you built.',
   youHeld: 'You held. They now know how much you had waiting.',
@@ -187,6 +187,47 @@ export const reports = {
     note: 'The planet shield takes damage before any defending unit does.',
     absorbed: '{{amount}} shield damage absorbed',
   },
+  /* ── what a report owes each case. `docs/battle-reports.md` ── */
+  /**
+   * THE WALKOVER. `resolveCombat` breaks before round one when there is nothing
+   * standing and no shield, so the most common raid in the game arrives with
+   * `rounds: []` — and drew a heading over an empty plate.
+   */
+  /** The four questions a battle report answers, in the order a reader asks them. */
+  q: {
+    happened: 'What happened',
+    there: 'What was on the other side',
+    who: 'Who died, and when',
+    changed: 'What it changed',
+  },
+  walkoverHeading: 'Nothing was standing here',
+  walkoverBody:
+    'No fleet, no ground defence, no shield. Your ships arrived, loaded, and left. There was no fight to report.',
+  /** Their board, and how far the reading goes. */
+  theirBoardComplete: 'Everything they had',
+  theirBoardCompleteNote:
+    'Nothing survived, so this is their whole force — the most exact reading of another commander you will ever get.',
+  theirBoardFloor: 'At least this much',
+  theirBoardFloorNote:
+    'They held, so this is what you destroyed and not what they had. A battle reports what died; a probe is what counts what is left.',
+  theirBoardNothing: 'You destroyed nothing',
+  /**
+   * THE DEFENDER'S VERSION, WHICH IS NOT A BOUND AT ALL. D164.
+   *
+   * The two above describe a reading with an edge to it — wreckage, and how far it
+   * lets you see. This one describes a force the reader stood underneath, so it
+   * makes no claim about limits: it names what arrived, and the bar beside each
+   * hull says how much of it the defence took down.
+   */
+  theirBoardArrived: 'What came at you',
+  theirBoardArrivedNote:
+    'Their whole squadron, down to the hulls that never fired. You watched it arrive; the red is what flew home again.',
+  /** The wall, stated apart from the ships, because it is a different kind of thing. */
+  groundHeading: 'Ground defence',
+  groundNote: 'Guns that never leave the world. They cannot loot and take no Dominion.',
+  shipsHeading: 'Ships',
+  noGroundHeading: 'No ground defence',
+  noGroundNote: 'This world had no wall standing when you arrived.',
   calculation: {
     intro:
       'The fixed recipe above produces the numbers below. Every round then follows the same three steps.',
@@ -382,7 +423,13 @@ export const dossier = {
   fleetGapRange: 'Reaches {{reach}}; this world is {{distance}} away',
   fleetGapSlots: 'All {{count}} slots are in use — one has to be moved',
 
-  stockLabel: 'Resources held',
+  /**
+   * THE LABEL FOLLOWS THE NUMBER. The probe reports what a raid could TAKE now —
+   * `raidableStock` — rather than the whole store, so "Resources held" would be
+   * naming a different quantity than the one printed under it.
+   */
+  stockLabel: 'Raidable now',
+  stockNote: 'What a decisive raid could carry off. The vault floor is not in it, and your own holds may cap it further.',
   stockCaught: 'Their radar caught the probe — they know somebody looked.',
   stockClean: 'The probe got in and out unnoticed.',
   defenceLabel: 'Defence value',
@@ -397,8 +444,16 @@ export const dossier = {
    * Each one names WHEN it was true rather than asserting it now, because all
    * four are frozen at the look. The dossier prints the age beside them.
    */
-  deuteriumLabel: 'Deuterium held',
-  deuteriumNote: 'Fuel. What they can still launch with.',
+  /**
+   * THE FUEL SHARE OF THE BAND ABOVE, NOT THE TANK. D166.
+   *
+   * It used to read the whole store while sitting directly under "Raidable now",
+   * so the one deuterium figure on the screen measured a different quantity from
+   * every other number beside it. Both come off `computeLoot` now, and the label
+   * says which question this answers.
+   */
+  deuteriumLabel: 'Raidable Deuterium',
+  deuteriumNote: 'The fuel share of the band above — what a decisive raid could carry off.',
   strategicLabel: 'Strategic weapon',
   strategicReady: 'Armed and ready',
   strategicBuilding: 'Under construction',

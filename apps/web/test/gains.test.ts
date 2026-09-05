@@ -68,8 +68,10 @@ describe('every upgrade row states something that actually changes', () => {
   it('formats fractional storage hours to one decimal place', () => {
     const gain = buildingGain('VAULT', 0, 0, at(0));
 
-    expect(gain.now).toContain('13.2h');
-    expect(gain.next).toContain('14.1h');
+    // D161 divided the storage hours by 0.9 with the alloy income cut, so a store
+    // still holds the ore it held before. See `ECON.capHours`.
+    expect(gain.now).toContain('14.7h');
+    expect(gain.next).toContain('15.6h');
     expect(gain.now).not.toContain('000000000');
     expect(gain.next).not.toContain('000000000');
   });

@@ -90,6 +90,7 @@ export const planet = {
     segment: "{{name}} · {{duration}}",
     cancelOne: "Cancel {{name}}",
     title: "Build queues",
+    idle: "Nothing building",
     capacity: "{{count}} slots each",
     construction: "Construction",
     yard: "Yard",
@@ -142,7 +143,7 @@ export const planet = {
     shieldBand: "Shield",
     shieldNote:
       "Aegis absorbs damage before it reaches your units and regenerates 35% of its maximum each hour.",
-    groundBand: "On the ground",
+    groundBand: "On the ground (capacity is increased by core level) ",
     /* The figures moved into `CapacityBar`; the band keeps the RULE. */
     groundNote:
       "Ground guns never leave the world. Thorns counter Bulwark-class hulls; Bastions counter Lance-class hulls.",
@@ -278,6 +279,7 @@ export const planet = {
     miningBand: "Mining",
     miningNote: "Prospectors travel only to revealed asteroids or debris fields and return their haul to the Works.",
     ownedGain: "You have",
+    hullAwayCount: "{{count}} away",
     hullLocationCounts: "(Home: {{home}}, Away: {{away}})",
     prospectorLimit: "{{owned}} / {{max}} · limit",
   },
@@ -366,7 +368,19 @@ export const upgradeRow = {
   about: "About {{name}}",
   nextTierAlt: "{{name}} at the next tier",
   becomes: "becomes",
+  /** Where a ladder ends, so one rung of it can be judged against the whole. */
+  ceiling: "of {{value}}",
   affordableIn: "Affordable in <0>{{duration}}</0> at your current rate",
+  /**
+   * HOW LONG THE WORK ITSELF TAKES — a different clock from `affordableIn`.
+   *
+   * That one is a property of the wallet and only ever appeared when the player
+   * was SHORT; this is a property of the item and shows whether or not they can
+   * pay. A commander who can already afford a Citadel used to get no clock at all,
+   * which is precisely when the wait is the only thing left to decide.
+   */
+  takes: "{{duration}}",
+  takesLabel: "Takes {{duration}} to build",
   /** A row whose level has a top: research ladders are the only ones so far. T12. */
   ladder: "L{{level}} / {{max}}",
 } as const;
@@ -532,7 +546,6 @@ export const transfer = {
 export const capacity = {
   fit: "more fit",
   full: "FULL",
-  each: "one takes",
   /* The two ends of a room card's bar, each under the part it describes. */
   used: "used",
   free: "free",

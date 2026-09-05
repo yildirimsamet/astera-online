@@ -29,6 +29,35 @@ describe('production and cost curves', () => {
   });
 
   /**
+   * THE D161 REBALANCE OF THE THREE PASSIVE RATES. Owner instruction.
+   *
+   * Alloy down a tenth, crystal up a tenth, deuterium up 15%. Stated as RATIOS
+   * rather than as three absolute figures, because the tempo levers
+   * (`ECONOMY_TEMPO.passiveIncome`) are allowed to move all three together and a
+   * test that pinned the absolutes would fail for a reason that has nothing to do
+   * with what this change was about.
+   *
+   * WHY IT WAS ASKED FOR. Alloy was the resource nobody ever ran out of and
+   * crystal the one that gated every upgrade; deuterium — which is also fuel, and
+   * therefore the thing that decides whether a session ends with something in the
+   * air — was the tightest of the three. Narrowing the gap moves the pinch away
+   * from the resource a player cannot do anything about.
+   *
+   * IT IS THE INCOME SHARE THAT MATTERS, and `invariants.test.ts` holds the
+   * upgrade's crystal share to it: charge crystal at the old share against the new
+   * income and crystal quietly stops being the constraint the design needs.
+   */
+  it('holds the D161 balance between the three passive rates', () => {
+    // 52.8 / 118.8 — crystal is now 4/9 of alloy income rather than 4/11.
+    expect(crystalRate(1) / alloyRate(1)).toBeCloseTo((48 * 1.1) / (132 * 0.9) * (1.09 / 1.10), 6);
+    // Deuterium keeps its own flatter ladder; only its base moved.
+    expect(deuteriumRate(1) / alloyRate(1))
+      .toBeCloseTo((4.15 * 1.15) / (132 * 0.9) * (1.04 / 1.10), 6);
+    // And the shape is untouched: it is still `base x L x growth^L`.
+    expect(alloyRate(2) / alloyRate(1)).toBeCloseTo(2 * ECON.alloyMult, 6);
+  });
+
+  /**
    * THE DOPAMINE THE OPENING IS BUILT ON. The linear factor is what makes the
    * first upgrade more than double a commander's output; a pure exponential can
    * only ever add `growth - 1`.

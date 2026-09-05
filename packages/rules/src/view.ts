@@ -1,4 +1,5 @@
-import type { Vec3 } from './types.js';
+import { MULTI_WORLD } from './constants.js';
+import type { PlanetKind, Vec3 } from './types.js';
 
 /**
  * THE ONE LEG EVERY SCREEN DRAWS. D106.
@@ -90,12 +91,30 @@ export const worldWeight = (coreTier: number): 1 | 2 | 3 =>
  * through rather than the whole table.
  *
  * THE THREE ARE HELD APART DELIBERATELY. The middle is the anchor and does not
- * move; the outer two were pushed outward (owner call) because the gap is the whole
+ * move; the outer two are placed relative to it, because the GAP is the whole
  * signal. 0.5 against 1.24 was a 2.5× spread, which reads as "somewhat bigger" at
- * the distances this map is actually flown at; 0.44 against 1.40 is 3.2×, and a
- * heavyweight looks like one from across the disc without a label.
+ * the distances this map is actually flown at; a 3.18× spread makes a heavyweight
+ * look like one from across the disc without a label.
+ *
+ * SHRUNK BY ×0.659 AT D166, AND UNIFORMLY. Owner call: worlds were reading too
+ * large on the disc. The first pass moved the three by three different factors
+ * (×0.64 / ×0.66 / ×0.57), which shrank the SIGNAL along with the marker — the
+ * floor-to-cap ratio fell to 2.86 and the ramp's shape moved with it. So the
+ * anchors are re-derived here rather than typed: the middle holds at 0.54, and the
+ * outer two keep the tuned table's own two sub-ratios (×1.8636 below the middle,
+ * ×1.7073 above it). One factor for all three, and the spread survives the shrink.
+ *
+ * ANY FUTURE RESIZE GOES THROUGH `WEIGHT_SCALE`, not through three hand-typed
+ * numbers — that is what stopped this being noticed for a whole session.
  */
-const WEIGHT_RADIUS: Record<1 | 2 | 3, number> = { 1: 0.44, 2: 0.82, 3: 1.4 };
+const WEIGHT_MIDDLE = 0.54;
+/** The tuned table's own shape: how far the floor sits below the middle, and the cap above it. */
+const WEIGHT_STEP = { down: 1.8636, up: 1.7073 } as const;
+const WEIGHT_RADIUS: Record<1 | 2 | 3, number> = {
+  1: WEIGHT_MIDDLE / WEIGHT_STEP.down,
+  2: WEIGHT_MIDDLE,
+  3: WEIGHT_MIDDLE * WEIGHT_STEP.up,
+};
 
 /**
  * THE TOP OF THE LADDER, IN CORE LEVELS.
@@ -143,10 +162,11 @@ const RADIUS_LEVEL: Record<1 | 2 | 3, number> = { 1: 1, 2: 11, 3: CORE_TOP_LEVEL
  * not a gradient, it is two announcements.
  *
  * SO THE THREE SIZES BECAME THE ANCHORS OF A RAMP, and nothing about the tuned
- * spread moved: the same 0.44, the same 0.82, the same 1.40, and the same 3.2×
- * between the ends that is the only reason a glance at the galaxy tells you
- * anything. What changed is that the distance between them is now paid one level at
- * a time.
+ * SHAPE moved: the same two sub-ratios, and the same 3.18× between the ends that is
+ * the only reason a glance at the galaxy tells you anything. What changed is that
+ * the distance between them is now paid one level at a time. D166 then shrank all
+ * three by one factor — see `WEIGHT_RADIUS` — which moves the markers without
+ * touching any of that.
  *
  * GEOMETRIC, NOT LINEAR, because the eye reads size as a ratio. Linear steps would
  * grow a small world by a tenth and a large one by a thirtieth for the same level —
@@ -320,3 +340,18 @@ export function sensorLeadOnVisualLeg(
 
   return Math.min(1, (range - destinationClearance) / legLength) * oneWayMinutes;
 }
+
+/**
+ * HOW LONG THIS WORLD STAYS DARK AFTER A STRIKE. D167.
+ *
+ * The one place a world's KIND becomes a recovery window, so the server, the
+ * client's warning copy and the simulator cannot disagree about a clock the player
+ * is being asked to race.
+ *
+ * A NEUTRAL WORLD TAKES THE CAPITAL'S SHORT WINDOW, and that is not an oversight.
+ * The long one exists to give a commander time to answer a threat to something they
+ * hold; a world nobody holds has nobody to answer and nothing to lose, so the long
+ * clock would only be a longer wait for whoever is trying to take it.
+ */
+export const recoveryMinutesFor = (kind: PlanetKind): number =>
+  (kind === 'COLONY' ? MULTI_WORLD.recoveryMinutes.colony : MULTI_WORLD.recoveryMinutes.capital);

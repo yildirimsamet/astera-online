@@ -1,6 +1,7 @@
 import {
   ALL_HULLS,
   type BuildingId,
+  type HullClass,
   type HullId,
   type InstrumentId,
   type ResearchProjectId,
@@ -53,6 +54,19 @@ export const satelliteRole = (id: SatelliteId): string => i18n.t(`vocabulary.sat
 export const satelliteDetail = (id: SatelliteId): string => i18n.t(`vocabulary.satellite.${id}.detail`);
 export const satelliteBlurb = (id: SatelliteId): string =>
   i18n.t(`vocabulary.satellite.${id}.blurb`);
+
+/**
+ * THE ROLE A HULL FIGHTS AS — not the family it is sold under.
+ *
+ * Two different taxonomies over the same ships, and the interface conflated them
+ * for most of this project's life. `hullTag` and the shipyard bands answer "where
+ * do I find this"; these answer "what happens when it meets that", which is the
+ * only question a battle asks.
+ */
+export const combatClassLabel = (cls: HullClass): string =>
+  i18n.t(`vocabulary.combatClass.${cls}.name`);
+export const combatClassTag = (cls: HullClass): string =>
+  i18n.t(`vocabulary.combatClass.${cls}.tag`);
 
 export const hullLabel = (id: HullId): string => i18n.t(`vocabulary.hull.${id}.name`);
 export const hullTag = (id: HullId): string => i18n.t(`vocabulary.hull.${id}.tag`);

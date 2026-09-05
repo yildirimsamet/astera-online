@@ -4,6 +4,8 @@ import type { Db } from '../db/client.js';
 import { HANDLERS } from './handlers.js';
 import { abandon, sweepStranded } from './abandon.js';
 import { reclaimIdleSeats } from '../services/reclaim.js';
+import { runBotSweep } from '../services/bots/sweep.js';
+import { BOTS } from '../services/bots/personas.js';
 import { claimDue, complete, fail, reap } from './queue.js';
 import { performance } from 'node:perf_hooks';
 
@@ -11,6 +13,14 @@ export interface WorkerOptions {
   pollMs: number;
   batch: number;
   staleMinutes: number;
+  /**
+   * Whether the server plays commanders of its own. D159.
+   *
+   * OFF UNLESS SOMEBODY SAID SO. This seats accounts, writes population figures and
+   * launches real fleets at real players; a default that did any of that because a
+   * process happened to boot would be the wrong default in every direction.
+   */
+  botsEnabled?: boolean;
 }
 
 export interface TickResult {
@@ -27,6 +37,8 @@ export interface TickResult {
   abandoned: number;
   /** Seats freed from commanders who stopped coming back. */
   reclaimed: number;
+  /** Turns taken by the commanders the server plays. D159. */
+  botTurns: number;
 }
 
 export interface WorkerStatus {
@@ -97,6 +109,15 @@ export class EventWorker {
    * on its first tick. It waits its full interval like any other run.
    */
   private reclaimedAt = 0;
+  /**
+   * When the bot roster was last looked at.
+   *
+   * `0` rather than `-Infinity` merely for tidiness — the first tick sweeps either
+   * way, and here that is WANTED: seating a roster and stamping presence is not
+   * destructive, and a deploy should put commanders back in the sky at once rather
+   * than a minute later.
+   */
+  private botsSweptAt = 0;
   private ticks = 0;
   private tickErrors = 0;
   private processed = 0;
@@ -223,6 +244,31 @@ export class EventWorker {
       }
     }
 
+    /**
+     * THE COMMANDERS THE SERVER PLAYS. D159, and on the same terms as the two
+     * sweeps above: its own clock, its own `try/catch`, and no claim on the queue.
+     *
+     * It is the least important thing in this tick — a missed turn costs one
+     * commander one upgrade and the next sweep is a minute away — which is exactly
+     * why it must be incapable of delaying a raid settling. The catch is the whole
+     * point of it living here rather than inside `claimDue`'s path.
+     */
+    let botTurns = 0;
+    if (this.opts.botsEnabled === true) {
+      if (now.getTime() - this.botsSweptAt >= BOTS.sweepEveryMs) {
+        this.botsSweptAt = now.getTime();
+        try {
+          const bots = await runBotSweep(this.db, this.clock, this.log);
+          botTurns = bots.turns;
+          if (bots.seated > 0) {
+            this.log.info({ seated: bots.seated }, 'seated commanders on a live galaxy');
+          }
+        } catch (err) {
+          this.log.error({ err }, 'bot sweep failed; the queue carries on regardless');
+        }
+      }
+    }
+
     const due = await claimDue(this.db, this.opts.batch, now);
     let processed = 0;
     let failed = 0;
@@ -270,6 +316,7 @@ export class EventWorker {
       reaped,
       abandoned: abandoned + stranded,
       reclaimed,
+      botTurns,
     };
   }
 

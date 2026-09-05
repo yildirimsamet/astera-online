@@ -114,6 +114,12 @@ export function registerPreviewRoutes(app: FastifyInstance): void {
         a quieter galaxy than the one being sold.
       */
       pirates,
+      /*
+        AND REMEMBERS NONE OF THEM. D158's memory is a commander's own sensor
+        history, and a visitor has neither a seat nor a post — what they see is the
+        live naked-eye disc and nothing carried over from a past they do not have.
+      */
+      new Set(),
     );
 
     /**

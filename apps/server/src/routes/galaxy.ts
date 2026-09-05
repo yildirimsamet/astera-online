@@ -19,6 +19,7 @@ import {
   projectStrategicInterceptions,
 } from '../services/traffic.js';
 import { discoveredAsteroidIndexes } from '../services/asteroidField.js';
+import { discoveredPirateIndexes } from '../services/pirateField.js';
 import { sensorHistoryForPlayer } from '../services/sensorHistory.js';
 import { readClanPresence } from '../services/clan.js';
 import { adminPlayerIdsInSeason } from '../services/admin.js';
@@ -320,6 +321,7 @@ export function registerGalaxyRoutes(app: FastifyInstance): void {
         sensors,
         discoveredAsteroidIndexes(mining, epochs, now),
         pirates,
+        discoveredPirateIndexes(pirates, epochs, now),
       ),
       interceptions: projectStrategicInterceptions(snapshot, self.playerId, sensors),
       interceptionImpacts: projectStrategicInterceptionImpacts(

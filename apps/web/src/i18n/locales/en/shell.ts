@@ -60,6 +60,15 @@ export const pendingStrip = {
   transfer: 'Transfer → {{target}}',
   pirateOut: 'Raid → {{target}}',
   pirateHome: 'Raid returning · {{target}}',
+  /*
+    THE MERCHANT IS NAMED HERE, NOT ON THE SERVER. D156.
+
+    A `trade` thread carries the event-kind identifier `TRADE_SHIP` and no world,
+    because there is no world on the far end and the server has never written
+    user-facing copy. Without these two lines the strip printed that identifier.
+  */
+  tradeOut: 'Convoy → Trade Ship',
+  tradeHome: 'Convoy returning · Trade Ship',
   fleetHome: 'Your fleet home from {{target}}',
   fleetOut: 'Your fleet → {{target}}',
   engaging: 'Engaging',
@@ -71,6 +80,14 @@ export const pendingStrip = {
   craftCount: '{{count}} craft',
   craftUnknown: 'Craft manifest unavailable',
   incomingHint: 'Inbound warning · origin hidden by fog',
+  /**
+   * THE SAME WARNING, WHEN THE CRAFT IS ON YOUR DISC. D162.
+   *
+   * The origin is still unsold — that is the top of the radar ladder — but saying
+   * "hidden by fog" over a fleet the commander can watch crossing their own circle
+   * reads as the interface disagreeing with the picture.
+   */
+  incomingVisible: 'Inbound warning · on your sensors — tap to look',
   /**
    * THE RADAR LADDER, FINALLY WORTH CLIMBING. D123.
    *
@@ -94,6 +111,8 @@ export const signals = {
   statusHeading: 'Right now',
   eventsHeading: 'What happened',
   openEvent: 'Open related report',
+  /** The eyebrow on a galaxy-wide row, so it is never mistaken for personal news. */
+  worldEvent: 'Galaxy event',
   empty:
     'Nothing yet. The galaxy tells you when a fleet moves against you, when a probe is caught, and when your own ships come home.',
   repeat: '×{{count}}',

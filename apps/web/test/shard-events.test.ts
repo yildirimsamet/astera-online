@@ -46,6 +46,30 @@ describe('what a shard event asks the client to read', () => {
     expect(readsForShardEvent('shard:mining')).toEqual([keys.miningField, keys.traffic]);
   });
 
+  /**
+   * A PIRATE RAID LEFT, LANDED, OR CAME HOME — AND THIS ROW DID NOT EXIST. D150.
+   *
+   * The server has published `shard:pirate` since the lane shipped and this table
+   * had no case for it, so the kind fell through to the inert default and the whole
+   * feature ran on the sixty-second safety net. Three separate things arrived late
+   * because of it:
+   *
+   *   · THE WRECK. A pirate battle leaves a real field at the rendezvous and the
+   *     public race to collect it is half of what makes the fight worth watching
+   *     (D32). Nobody in the galaxy — including the commander who fought it — was
+   *     told to go and look.
+   *   · THE CONTACT. The squadron is in `traffic` for both of its legs.
+   *   · THE LANE. Unlike the rock field this list SHRINKS: a pirate somebody else
+   *     wiped has to leave the disc, and `usePirates` is the only read that says so.
+   */
+  it('sends a pirate raid to the lane, the contact list and the wreck it leaves', () => {
+    expect(readsForShardEvent('shard:pirate')).toEqual([
+      keys.traffic,
+      keys.miningField,
+      keys.pirates,
+    ]);
+  });
+
   it('refreshes asteroid entitlement when damage can shrink a sensor post', () => {
     expect(readsForShardEvent('shard:impact')).toContainEqual(keys.miningField);
   });

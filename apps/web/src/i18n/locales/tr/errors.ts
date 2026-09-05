@@ -60,11 +60,20 @@ export const errors = {
   RESEARCH_QUEUE_FULL: 'Sırada zaten 3 araştırma var. Yenisini eklemek için birinin bitmesini bekle.',
   BUILD_ORDER_NOT_FOUND: 'Bu kimlikte etkin bir üretim siparişi yok',
   BASH_LIMIT: 'Bu gezegene son zamanlarda fazla yüklendin',
+  TIER_BAND: 'Bu komutanın toplam gücü senden fazla yüksek',
+  TIER_BAND_WEAK: 'Bu komutanın toplam gücü senden fazla düşük',
   CANNOT_INTERCEPT: 'Araçların yetişemeden diskten çıkacak',
+  /* Raised by the transfer lane with no detail and by the trade lane with one, so
+     it is written without interpolation: a placeholder rendered raw on the older
+     caller is worse than a sentence that fits both. */
+  CARGO_CAPACITY: 'Bu yük konvoyun taşıyabileceğinden fazla',
+  TRANSFER_NEEDS_CARGO_HULL: 'Kaynak taşımak için Kurye, Seyyah veya Atlas gerekir',
+  BAD_TRADE: 'Tüccar bu takası kabul etmiyor',
+  TRADE_WINDOW_CLOSED: 'Tüccar galaksiden ayrıldı',
   CHAT_RATE_LIMIT: '{{seconds}} saniyede en fazla beş mesaj gönderebilirsin.',
   BAD_CHAT_CURSOR: 'Sohbetin o bölümü artık okunamıyor',
   CHAT_MESSAGE_NOT_VISIBLE: 'O mesaj artık okunamıyor',
-  CLANS_NEXT_SEASON: 'Klanlar yalnız kural seti v3 galaksilerinde açılır',
+  CLANS_NEXT_SEASON: 'Klanlar bu galaksiden daha yeni galaksilerde açılır',
   CLAN_ADAPTING: 'Bu özellik 12 saatlik klan uyumu tamamlanınca açılır',
   CLAN_AID_CANNOT_LAND: 'Bu dünya gönderdiğin gemileri henüz teslim alamaz',
   CLAN_AID_CARGO_CAPACITY: 'Klan kaynağını yalnız Kurye, Seyyah ve Atlas taşır; kapasite {{capacity}}',

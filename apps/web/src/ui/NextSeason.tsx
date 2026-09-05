@@ -27,7 +27,7 @@ export function NextSeason({
 
   const left = endsAt.getTime() + SEASON.afterglowMinutes * 60_000 - now;
   return (
-    <div className={`plate px-4 py-3 text-center ${className}`} role="status">
+    <div className={`plate px-2 py-3 text-center ${className}`} role="status">
       <p className="legend text-crystal">
         {left > 0
           ? t('seasonRecap.nextIn', { duration: countdown(left) })

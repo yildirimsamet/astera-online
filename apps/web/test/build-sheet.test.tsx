@@ -6,7 +6,7 @@ import { PROSPECTOR, groundSlots, hangarCapacity, hullBulk, hullFuelRate } from 
 import { PlanetScreen } from '../src/screens/PlanetScreen.js';
 import { ToastProvider } from '../src/ui/Toast.js';
 import type { PlanetView } from '../src/api/schemas.js';
-import { planetView } from './fixtures.js';
+import { openAllBands, planetView } from './fixtures.js';
 
 /**
  * HOW MANY, AND THE ONE HULL WHERE THE ANSWER IS NOT "AS MANY AS YOU CAN AFFORD".
@@ -318,6 +318,9 @@ describe('the two build queues', () => {
  */
 async function openSheet(name: string): Promise<void> {
   const user = userEvent.setup();
+  // The Fleet tab's families fold; these tests are about the sheet behind a hull,
+  // not about the fold, so they reach past it. See `ship-list-density.test.tsx`.
+  await openAllBands(screen, user);
   const heading = screen.getByRole('heading', { name });
   const row = heading.closest(`#row-${name.toUpperCase()}`)
     ?? heading.closest('[id^="row-"]');
@@ -327,19 +330,42 @@ async function openSheet(name: string): Promise<void> {
 }
 
 describe('fleet holdings beside each hull name', () => {
-  it('separates ships standing at home from ships that are away', () => {
+  /**
+   * THE ROW NAMES WHAT IS AWAY, AND NOTHING ELSE.
+   *
+   * It used to print "(Home: 5, Away: 6)" beside the name while the gain line two
+   * rows down said "You have 5 → 6" — the same fact twice, and between them they
+   * left the NAME about fifty pixels at 375px. The owner's screenshot showed the
+   * result: "E...", "P...", "K...".
+   *
+   * Away is the half a commander cannot read anywhere else on this screen, so away
+   * is the half that stays.
+   */
+  it('names the ships that are away, where the row cannot say it twice', () => {
     const view = show({ fleet: { DART: 5 }, fleetAway: { DART: 6 } });
     const row = view.container.querySelector('#row-DART');
 
     expect(row).toHaveTextContent('Dart');
-    expect(row).toHaveTextContent('(Home: 5, Away: 6)');
+    expect(row).toHaveTextContent('6 away');
+    /*
+      And the gain line carries the total OWNED — five at home plus six away — which
+      is the figure the Hangar and the Prospector cap are both charged against. The
+      home count is the subtraction, and it is the one a commander does not need a
+      row to do for them.
+    */
+    expect(row).toHaveTextContent(/11/);
   });
 
-  it('shows zero explicitly when none of that hull are away', () => {
+  /**
+   * NOTHING AWAY IS NOTHING TO SAY. "Away: 0" is a line of type spent telling a
+   * commander that the ordinary thing is happening, on the row that has the least
+   * width in the game to spend.
+   */
+  it('says nothing at all when none of that hull are away', () => {
     const view = show({ fleet: { DART: 11 }, fleetAway: {} });
     const row = view.container.querySelector('#row-DART');
 
-    expect(row).toHaveTextContent('(Home: 11, Away: 0)');
+    expect(row).not.toHaveTextContent(/away/i);
   });
 });
 
@@ -365,11 +391,11 @@ describe('the quantity picker', () => {
       hull's footprint, the load and the ceiling as text, and none of the three
       questions it answers could be answered from it at a glance. `CapacityBar`
       draws them — so what is asserted here is the ANSWER the player came for,
-      which is how many more fit, and that one Dart is drawn at its own width.
+      which is how many more fit. The block that drew one hull's own width was
+      removed on owner instruction; the bar and this count are the whole card.
     */
     const room = document.querySelector('[data-fits]');
     expect(room).toHaveTextContent('1');
-    expect(document.querySelector('[data-part="one"]')).toBeInTheDocument();
   });
 
   it('offers minus, plus and Max around a read-only quantity for a warship', async () => {
@@ -510,7 +536,7 @@ describe('craft facts over the hero art', () => {
     expect(within(price as HTMLElement).queryByText('Costs')).not.toBeInTheDocument();
   });
 
-  it('pins the stat section to the image top-right at half scale', async () => {
+  it('pins the stat section to the image top-right, scaled down', async () => {
     show({});
     await openSheet('Dart');
     const art = document.querySelector('[data-build-art]');
@@ -519,7 +545,7 @@ describe('craft facts over the hero art', () => {
     expect(art).not.toBeNull();
     expect(stats).not.toBeNull();
     expect(art).toContainElement(stats as HTMLElement);
-    expect(stats).toHaveClass('absolute', 'right-1', 'top-1', 'origin-top-right', 'scale-50');
+    expect(stats).toHaveClass('absolute', 'right-1', 'top-1', 'origin-top-right', 'scale-[60%]');
   });
 
   /** One price per sheet: the figure shown is the one the commit button quotes. */

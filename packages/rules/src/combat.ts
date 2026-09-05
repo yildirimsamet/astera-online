@@ -32,7 +32,10 @@ export interface CombatRound {
 
 export interface CombatResult {
   grade: Grade;
-  /** Share of the defender's unit VALUE destroyed. */
+  /**
+   * Share of the defender's DEFENCE destroyed — unit value where there were units,
+   * and the Aegis where the shield was the whole of it. See `resolveCombat`.
+   */
   lossRatio: number;
   rounds: CombatRound[];
   shieldLeft: number;
@@ -279,7 +282,33 @@ export function resolveCombat(
     if (back > 0) defenceSalvage[id] = back;
   }
 
-  const lossRatio = defValueBefore > 0 ? 1 - fleetValue(D) / defValueBefore : 1;
+  /**
+   * HOW MUCH OF THE DEFENCE CAME DOWN — AND THE AEGIS IS PART OF THE DEFENCE.
+   *
+   * Owner ruling: *"aegis'te bir savunma birimi sonucta. tabya gibi kirpi gibi
+   * gemi gibi bir savunma birimi."*
+   *
+   * This was `defValueBefore > 0 ? … : 1`, and the `: 1` was doing two jobs. For a
+   * WALKOVER it is right — a world with nothing on it and no shield has all of its
+   * nothing destroyed, and the DECISIVE branch below picks that up. But a world
+   * whose entire defence is an Aegis also has no unit VALUE, so it took the same
+   * branch: a fleet with no Nullifier flew at a bare shield, landed no damage, spent
+   * none of the shield, killed nobody, and came home at ratio 1 — which DECISIVE
+   * refuses while `shieldLeft > 0`, so it fell through to PARTIAL and was paid a
+   * partial haul for achieving literally nothing.
+   *
+   * So where the defence IS the shield, the shield is what the ratio measures. The
+   * three cases read as one rule now: destroy the units where there are units,
+   * destroy the shield where that is all there is, and an empty world is empty.
+   *
+   * NOTHING MOVES FOR A BATTLE THAT HAD UNITS IN IT. The first branch is unchanged
+   * and is the one every ordinary fight takes, so no grade anywhere else shifts.
+   */
+  const lossRatio = defValueBefore > 0
+    ? 1 - fleetValue(D) / defValueBefore
+    : shield > 0
+      ? 1 - shieldLeft / shield
+      : 1;
   const grade: Grade =
     fleetCount(D) === 0 && shieldLeft <= 0
       ? 'DECISIVE'

@@ -24,7 +24,7 @@ export function LeaderboardScreen({ onFocusPlanet }: { onFocusPlanet: (planetId:
   }
   if (!board.data) return <Waiting>{t('surface.waitingLeaderboard')}</Waiting>;
   if (board.data.ladder.length === 0) {
-    return <div className="px-4 py-4"><EmptyState title={t('leaderboard.empty')} /></div>;
+    return <div className="px-2 py-2"><EmptyState title={t('leaderboard.empty')} /></div>;
   }
 
   const mine = board.data.you?.playerId;
@@ -53,7 +53,7 @@ export function LeaderboardScreen({ onFocusPlanet }: { onFocusPlanet: (planetId:
 
   return (
     <div>
-      <div className="sticky top-0 z-10 border-b border-line-soft bg-void px-4 py-3">
+      <div className="sticky top-0 z-10 border-b border-line-soft bg-void px-2 py-3">
         <input
           type="search"
           name="leaderboard-search"
@@ -66,7 +66,7 @@ export function LeaderboardScreen({ onFocusPlanet }: { onFocusPlanet: (planetId:
         />
       </div>
       {rows.length === 0 ? (
-        <div className="px-4 py-6"><EmptyState title={t('leaderboard.noMatch')} /></div>
+        <div className="px-2 py-6"><EmptyState title={t('leaderboard.noMatch')} /></div>
       ) : (
     <ol className="divide-y divide-line-soft" aria-label={t('leaderboard.title')}>
       {rows.map((row) => {
@@ -75,7 +75,7 @@ export function LeaderboardScreen({ onFocusPlanet }: { onFocusPlanet: (planetId:
           <li
             key={row.playerId}
             aria-current={self ? 'true' : undefined}
-            className={`grid grid-cols-[2.25rem_2.5rem_minmax(0,1fr)_auto] items-center gap-2 px-4 py-3 ${self ? 'bg-crystal/8' : ''}`}
+            className={`grid grid-cols-[2.25rem_2.5rem_minmax(0,1fr)_auto] items-center gap-2 px-2 py-3 ${self ? 'bg-crystal/8' : ''}`}
             style={{ contentVisibility: 'auto', containIntrinsicSize: '64px' }}
           >
             <span className={`num text-center text-body ${self ? 'text-crystal' : 'text-faint'}`}>

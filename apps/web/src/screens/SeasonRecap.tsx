@@ -122,7 +122,7 @@ export function SeasonRecap({
       aria-labelledby="season-recap-title"
     >
       <div className="pointer-events-none fixed inset-0 bg-[radial-gradient(circle_at_50%_18%,rgba(89,200,255,0.16),transparent_34%),radial-gradient(circle_at_18%_72%,rgba(90,211,155,0.08),transparent_30%)]" />
-      <main className="relative mx-auto flex min-h-dvh w-full max-w-xl flex-col px-4 pb-[calc(22px+env(safe-area-inset-bottom))] pt-[calc(28px+env(safe-area-inset-top))]">
+      <main className="relative mx-auto flex min-h-dvh w-full max-w-xl flex-col px-2 pb-[calc(22px+env(safe-area-inset-bottom))] pt-[calc(28px+env(safe-area-inset-top))]">
         <button
           type="button"
           aria-label={t('seasonRecap.close')}
@@ -134,7 +134,7 @@ export function SeasonRecap({
 
         <header className="text-center">
           <GalaxyIcon className="mx-auto size-8 text-crystal drop-shadow-[0_0_12px_var(--color-crystal-glow)]" />
-          <p className="legend mt-4 text-crystal">{t('seasonRecap.eyebrow')}</p>
+          <p className="legend mt-2 text-crystal">{t('seasonRecap.eyebrow')}</p>
           <p className="legend mt-1">
             {t('seasonRecap.finalRecord', { galaxy })}
           </p>
@@ -152,7 +152,7 @@ export function SeasonRecap({
           </p>
         </header>
 
-        <section className="mt-8 grid grid-cols-2 gap-3" aria-label={t('seasonRecap.finalRecord', { galaxy })}>
+        <section className="mt-8 grid grid-cols-2 gap-2" aria-label={t('seasonRecap.finalRecord', { galaxy })}>
           <HeroFigure
             icon={<LeaderboardIcon className="size-5" />}
             label={
@@ -169,13 +169,13 @@ export function SeasonRecap({
           />
         </section>
 
-        <section className="plate plate-cut mt-3 grid grid-cols-3 divide-x divide-line-soft px-2 py-4">
+        <section className="plate plate-cut mt-3 grid grid-cols-3 divide-x divide-line-soft px-2 py-2">
           <Figure label={t('seasonRecap.battles')} value={full(result.recap.battles)} />
           <Figure label={t('seasonRecap.attacks')} value={full(result.recap.attacks)} />
           <Figure label={t('seasonRecap.defences')} value={full(result.recap.defences)} />
         </section>
 
-        <section className="mt-3 grid grid-cols-2 gap-3">
+        <section className="mt-3 grid grid-cols-2 gap-2">
           <SmallFigure
             icon={<AttackIcon className="size-4 text-alert" />}
             label={t('seasonRecap.damageDealt')}
@@ -189,8 +189,8 @@ export function SeasonRecap({
         </section>
 
         {result.recap.clan ? (
-          <section className="plate plate-cut mt-3 px-4 py-4" aria-label={t('seasonRecap.clan.heading')}>
-            <div className="flex items-start gap-3">
+          <section className="plate plate-cut mt-3 px-2 py-2" aria-label={t('seasonRecap.clan.heading')}>
+            <div className="flex items-start gap-2">
               <span className="socket grid size-10 shrink-0 place-items-center rounded-control text-crystal">
                 <ClanIcon className="size-5" />
               </span>
@@ -205,14 +205,14 @@ export function SeasonRecap({
                 <span className="chip chip-opportunity shrink-0">{t('seasonRecap.clan.seal')}</span>
               ) : null}
             </div>
-            <div className="mt-4 grid grid-cols-2 divide-x divide-line-soft">
+            <div className="mt-2 grid grid-cols-2 divide-x divide-line-soft">
               <Figure label={t('seasonRecap.clan.rank')} value={`#${full(result.recap.clan.finalRank)}`} />
               <Figure
                 label={t('seasonRecap.clan.dominion')}
                 value={result.recap.clan.dominion === 0 ? full(0) : signed(result.recap.clan.dominion)}
               />
             </div>
-            <p className="mt-4 text-label leading-relaxed text-faint">{t('seasonRecap.clan.recordOnly')}</p>
+            <p className="mt-2 text-label leading-relaxed text-faint">{t('seasonRecap.clan.recordOnly')}</p>
           </section>
         ) : null}
 
@@ -222,7 +222,7 @@ export function SeasonRecap({
             body={t('seasonRecap.quietBody')}
           />
         ) : (
-          <div className="mt-3 grid gap-3 sm:grid-cols-2">
+          <div className="mt-3 grid gap-2 sm:grid-cols-2">
             {result.recap.rival && (
               <Story
                 heading={t('seasonRecap.rivalHeading')}
@@ -247,7 +247,7 @@ export function SeasonRecap({
         <NextSeason endsAt={endsAt} className="mt-6" />
 
         {showPrimaryAction ? (
-          <button type="button" className="slab slab-primary mt-auto w-full pt-4" onClick={close}>
+          <button type="button" className="slab slab-primary mt-auto w-full pt-2" onClick={close}>
             {t(canExplore ? 'seasonRecap.explore' : 'seasonRecap.close')}
           </button>
         ) : null}
@@ -258,7 +258,7 @@ export function SeasonRecap({
 
 function HeroFigure({ icon, label, value }: { icon: ReactNode; label: string; value: string }) {
   return (
-    <div className="plate plate-cut flex min-h-28 flex-col items-center justify-center px-3 py-4 text-center">
+    <div className="plate plate-cut flex min-h-28 flex-col items-center justify-center px-3 py-2 text-center">
       <span className="text-crystal">{icon}</span>
       <p className="readout mt-2 text-readout text-bone">{value}</p>
       <p className="legend mt-1">{label}</p>
@@ -277,7 +277,7 @@ function Figure({ label, value }: { label: string; value: string }) {
 
 function SmallFigure({ icon, label, value }: { icon: ReactNode; label: string; value: string }) {
   return (
-    <div className="plate flex items-center gap-3 px-3 py-3">
+    <div className="plate flex items-center gap-2 px-3 py-3">
       {icon}
       <div className="min-w-0">
         <p className="legend">{label}</p>
@@ -289,7 +289,7 @@ function SmallFigure({ icon, label, value }: { icon: ReactNode; label: string; v
 
 function Story({ heading, body }: { heading: string; body: string }) {
   return (
-    <div className="plate mt-3 px-4 py-3 sm:mt-0">
+    <div className="plate mt-3 px-2 py-3 sm:mt-0">
       <p className="legend text-opportunity">{heading}</p>
       <p className="mt-1 text-body leading-relaxed text-bone">{body}</p>
     </div>

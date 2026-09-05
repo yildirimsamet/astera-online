@@ -38,7 +38,7 @@ export function SectionHead({
  * THE GAP IS THE COMPONENT'S, NOT THE CHILDREN'S. There were two of these — one
  * in the kit that was only a header, one in a `primitives` file that was a header
  * plus a block — and they disagreed about every measurement: `mb-6` against
- * `mb-3`, `gap-3` against `gap-2.5`, a gradient rule against a hairline. Both are
+ * `mb-3`, `gap-2` against `gap-2.5`, a gradient rule against a hairline. Both are
  * this. Spacing comes from `gap` on a column rather than from margins on the
  * pieces, so nothing collapses and nothing doubles.
  */
@@ -54,7 +54,7 @@ export function Section({
   children: ReactNode;
 }) {
   return (
-    <section className="flex flex-col gap-3">
+    <section className="flex flex-col gap-2">
       <SectionHead
         label={label}
         {...(aside === undefined ? {} : { aside })}
@@ -115,7 +115,7 @@ export function EmptyState({
   action?: ReactNode;
 }) {
   return (
-    <div className="plate plate-sunk flex flex-col items-center gap-3 px-4 py-8 text-center">
+    <div className="plate plate-sunk flex flex-col items-center gap-2 px-2 py-8 text-center">
       {icon === undefined ? null : (
         <span className="socket grid size-14 place-items-center text-faint">{icon}</span>
       )}
@@ -166,7 +166,7 @@ export function SkeletonText({ lines = 3, className = '' }: { lines?: number; cl
 /** Where a whole surface is still arriving. Says what is coming, not "Loading…". */
 export function Waiting({ children }: { children: ReactNode }) {
   return (
-    <div className="flex items-center gap-3 px-4 py-6">
+    <div className="flex items-center gap-2 px-2 py-6">
       <span className="size-2 animate-pulse rounded-full bg-crystal shadow-[0_0_10px_1px_rgba(89,200,255,0.8)]" />
       <p className="legend">{children}</p>
     </div>
@@ -192,7 +192,7 @@ export function Waiting({ children }: { children: ReactNode }) {
 export function Unreachable({ what, onRetry }: { what: string; onRetry: () => void }) {
   const { t } = useTranslation();
   return (
-    <div className="px-4 py-6" role="alert">
+    <div className="px-2 py-6" role="alert">
       {/* `what` arrives already translated from the caller, which is the one that
           knows WHICH surface failed. The sentence around it is this component's. */}
       <p className="text-body text-threat-ink">{t('surface.unreachable', { what })}</p>

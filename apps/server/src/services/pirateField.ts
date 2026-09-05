@@ -3,9 +3,11 @@ import { eq } from 'drizzle-orm';
 import {
   activePirates,
   generatePirateSchedule,
+  pirateDiscovered,
   type Fleet,
   type HullId,
   type PirateSpec,
+  type SensorEpoch,
 } from '@astera/rules';
 import { minutesSince } from '../clock.js';
 import { GameError } from './planet.js';
@@ -21,12 +23,19 @@ import type { Queryable } from '../db/client.js';
  * import `crypto` (A1), so the keyed determinism is injected from this side and
  * the pure generator is handed an ordinary function.
  *
- * ONE DIFFERENCE, AND IT IS THE IMPORTANT ONE. A rock is REMEMBERED once seen —
- * `sensor_epochs` makes discovery permanent (D143). A pirate is a CRAFT, and a
- * craft outside your circles does not exist for you (D123). Nothing in this file
- * reads or writes a sensor epoch, and nothing here should ever learn how: the
- * reflex to copy discovery memory across from the asteroid file is the single
- * most likely way to punch a hole through the pirate fog.
+ * AND SINCE D158 THE MIRRORING GOES ALL THE WAY. A rock is REMEMBERED once seen
+ * (`sensor_epochs`, D143) and a pirate now is too, on the owner's instruction and
+ * reversing D150's refusal — which used to be written in this very paragraph. The
+ * memory is the SAME rows and the same solve (`discoveredPirateIndexes` below), so
+ * the two lanes cannot answer the discovery question differently.
+ *
+ * AND SINCE D160 IT BUYS THE MANIFEST TOO. `pirateZone` floors a discovered pirate
+ * at IDENTIFIED, not at CONTACT — this paragraph said the opposite until the floor
+ * moved, and a stale docblock about fog is worse than none. It is safe because
+ * `sensor_epochs.reach` is the TELESCOPE radius alone (`refreshSensorEpoch`): a
+ * discovered pirate is one this commander already counted the crew of, so memory
+ * hands back a reading they bought. A pirate no telescope ever held is untouched —
+ * CONTACT inside a radar circle, nothing outside every circle.
  *
  * THE LANE IS DERIVED FROM THE SEASON'S EXISTING SECRET under its own HMAC
  * labels. A separate key column would have been a migration for no gain: distinct
@@ -133,6 +142,30 @@ export function livingRoster(roster: Fleet, losses: Fleet | undefined): Fleet {
     if (left > 0) alive[id] = left;
   }
   return alive;
+}
+
+/**
+ * EVERY PIRATE THIS COMMANDER HAS EVER HAD INSIDE ONE OF THEIR POSTS. D158.
+ *
+ * The mirror of `discoveredAsteroidIndexes`. The expiry clamp — a pirate that has
+ * just left the lane may still be the subject of a raid in the air, so discovery is
+ * tested at the last instant it existed — now lives inside `pirateDiscovered`,
+ * which `pirateZone` also calls. It was written here alone at first, so the disc
+ * and the launch gate could answer the boundary differently.
+ *
+ * Indexes, not ids, because every caller is inside the server and the raw lane
+ * index is exactly what must never be serialised.
+ */
+export function discoveredPirateIndexes(
+  snapshot: PirateSnapshot,
+  epochs: readonly SensorEpoch[],
+  now: Date,
+): ReadonlySet<number> {
+  if (epochs.length === 0) return new Set();
+  const nowMinutes = minutesSince(snapshot.startsAt, now);
+  return new Set(snapshot.pirates
+    .filter((spec) => pirateDiscovered(spec, epochs, nowMinutes))
+    .map((spec) => spec.index));
 }
 
 export interface PirateStateRow {

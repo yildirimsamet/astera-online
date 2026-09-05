@@ -74,7 +74,7 @@ export function SpendBar({
     <div
       data-spend-bar
       data-short={short > 0 ? 'true' : 'false'}
-      className={`flex flex-col ${compactSize ? 'gap-1' : 'gap-2'}`}
+      className={`flex flex-col w-full ${compactSize ? 'gap-1' : 'gap-2'}`}
     >
       <div className="flex items-center gap-2">
         {!compactSize && (
@@ -104,7 +104,7 @@ export function SpendBar({
       </div>
 
       <div
-        className={`socket flex w-full overflow-hidden rounded-full ${compactSize ? 'h-1.5' : 'h-2.5'}`}
+        className={`socket flex w-full overflow-hidden rounded-full ${compactSize ? 'h-1.5' : 'h-2'}`}
         role="img"
         aria-label={
           short > 0

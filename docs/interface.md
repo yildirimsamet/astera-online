@@ -22,6 +22,95 @@ code. Read with `visual-design.md`, which governs art rather than layout.
    pushes a notification; the honest one is on screen, in-app and factual: *this is full, and
    you have thrown away two hours.*
 
+## The four questions every surface must answer
+
+Owner instruction, and they outrank aesthetics on every screen in this game. A surface that
+fails one of these is unfinished however finished it looks — and the failure is usually
+invisible to whoever built it, because the builder already knows what the number means.
+
+### 1 · Clarity — does the player understand this?
+
+Putting a value on screen is not the same as making it understood. Beside every figure a
+player is meant to act on, they need to be able to answer:
+
+- What does this represent?
+- Is a big one good?
+- How does it compare to MY equivalent?
+- What else is it related to?
+- Which decision am I supposed to use it for?
+
+*The worked example this rule was written from:* a probe reported "Defence value 11,400 –
+13,900". Correct, sourced, aged — and it is `fleetValue(homeFleet)`, a figure in resource
+units that nothing else in the game ever expressed the player's own fleet in. There was
+nothing on any screen to compare it against, so it was trivia with a provenance stamp.
+`ForceCompare` exists to put both sides on one axis. **A number with no second number is not
+information.**
+
+### 2 · Predictability — can the player anticipate the outcome?
+
+They do not need certainty. This game is *built* on not having it, and a screen that answered
+"will I win" would end the bet the core loop is made of. But an outcome nobody can estimate
+is indistinguishable from a random one, and it makes the whole intel layer worthless: nobody
+pays for a reading that does not narrow anything.
+
+The line: **the player must be able to form an expectation and be wrong about it.** Give the
+inputs and the rule; withhold the answer.
+
+### 3 · Decision support — do they hold what they need to choose?
+
+Rules must be discoverable *where they are used*, in the amount needed *at that moment*. The
+two failure modes are equally bad:
+
+- **Too much** — a twenty-page wiki, or every rule on every card.
+- **Too little** — dropping the player into a system with no explanation at all.
+
+Progressive disclosure is the answer: the row states the fact, the sheet one tap deeper
+states the rule. *The worked example:* the counter cycle decides every fight in the game and
+its multipliers appeared in exactly one place — the battle report, after the fleet was
+already lost. A rule taught as a post-mortem is not decision support (D124).
+
+And the adjacent case: **a player must be able to sense why a feature exists.** If a mechanic
+leaves them asking "why am I doing this", the answer to *what does it get me* and *when
+should I use it* is missing from the surface, not from the player.
+
+### 4 · Interaction cost — how much work is this to use?
+
+Scroll is a cost. So is a tap, and so is a screen change. Ten items a player wants to
+COMPARE, at one screen each, is a different product from the same ten at two screens.
+
+On a 375-wide phone, density and screen economy outrank decorative whitespace — but not
+blindly: **space must carry a purpose.** The 74px art socket earns its height (a render at
+40px reads as a favicon); a paragraph under a collapsed band does not.
+
+### The question behind all four
+
+**Does this interface SHOW, or does it HELP?** An interface can present every fact a player
+needs and still leave them unable to decide, and that is the state this project's screens
+were found in. Showing more is not helping more.
+
+## What folds, and what never does
+
+The three surfaces reworked under the four questions — the ship lists, the colony route,
+the intelligence gaps — all reached the same division, and it is the rule for the next one:
+
+| Never folds | Folds by default |
+| --- | --- |
+| The fact itself (what is missing, what is standing there) | The argument for why it matters |
+| Any control, and any refusal printed on one | Explanatory prose about a step |
+| A requirement or a price | A step the player is not standing on |
+
+**A cost is never behind a tap.** The colony route's first fold hid the founding requirements —
+two Couriers and their alloy — on step three, where a commander standing on step one would not
+meet them until the race had already opened. `focus-actions.test.tsx` is named for exactly that
+("so the claim cannot reveal a surprise cost"), and it caught it. Folding prose is where the
+height is won anyway; folding a price buys a line and costs a decision.
+
+**A control for something the commander does not own takes no row at all.** I1 says an
+unavailable action stays visible with its reason on it — and that is about a gap the player is
+*about to close*. "No ready Death Star" to somebody who has never built one is not a gap; it is
+a full-width slab announcing an absence. The moment a strategic asset exists in any state the
+control returns, because from then on its refusal is actionable.
+
 ## The rules this sets
 
 Commander identity is always `accounts.displayName`. Galaxy labels and focus
@@ -189,6 +278,30 @@ four-part control: minus, a read-only exact figure, plus and Max. Minus and plus
 move by one, including for large fleets; fixed rungs may not make an intermediate
 quantity unreachable.
 
+### I3b · The merchant is a rail, and the swap is a sheet (D156)
+
+The trade ship is a public moment with a clock on it, so it wears the same three surfaces every
+other passing target wears. A chip in the corner states the rate and the countdown while the
+window is open; tapping the ship focuses it and opens a rail carrying the drawn rate table, the
+time left, the soonest this world could be alongside and one control; that control opens the one
+sheet the convoy is committed from. A rate that exists only in a constants file is a rule the
+player cannot see (D124), so the rail draws it: one deuterium against what it is worth in each
+substance.
+
+**The sheet is sized by the leg that carries more, and it says so.** One resource is offered and
+up to two are asked for, and `quoteTrade`'s `requiredHold = max(outboundVolume, returnVolume)` is
+drawn against the convoy's own hold with the deciding leg named beneath it. A small offer buying a
+large haul is the trade worth making, and it is exactly the case a player sizes wrongly if the
+screen quotes only what is leaving. Whatever the merchant would keep — `leftoverUnits` — is stated
+in full units with a control that fills it into the ask, coarsest resource first so alloy resolves
+the remainder to zero without breaching the hold.
+
+**No slider enforces a rule the sheet could explain.** The ask runs to what this world could ever
+pay; "the offer will not pay for that" and "the convoy hold is too small" are refusals with a fix
+each, printed on the commit control, and a slider that silently stopped at them would hide both.
+The ladder on that control is `services/trade.ts`'s own order so screen and server cannot disagree,
+and the commitment is two-staged with the no-recall line, like every other launch.
+
 ### I4 · One notification centre, holding status as well as events
 
 The personal server notification kinds, the two public galaxy-event lifecycle kinds, plus
@@ -198,6 +311,30 @@ full works. Nothing here is ever pushed out of the app.
 Unseen state clears when the centre is **opened**, not when the app loads. Status never enters
 the count, because a badge that cannot be cleared teaches people to ignore badges. A run of
 identical events folds to one row with a count rather than repeating down the screen.
+
+### What a Signals row looks like
+
+Three questions, three separate answers, and no row may be told apart by only one of them.
+`docs/visual-design.md`'s law holds — **icons carry shape, the interface carries colour** —
+so:
+
+- **Family → the chip's hue.** `threat` and `pirate` red, `gain` jade, `watch` amber, `world`
+  crystal, and an unknown kind grey furniture. A pirate raid takes the red skull whichever way
+  the fight went, because that is the mark an identified pirate already wears on the disc.
+- **Kind → the glyph.** Every kind the server can send has one; two kinds may share a shape
+  only when they are about the same object (a Death Star inbound and a Death Star resolving).
+- **Outcome → the row's own background.** A thin green wash for a win, a thin red one for a
+  loss, and **nothing at all** for what is neither: a wash on a neutral row would make three
+  states out of two and cost the other two their meaning.
+
+Newness is therefore neither of those: it is the design system's pip, because two losses — one
+read, one not — are washed identically. A read row keeps its family colour at low intensity
+rather than turning grey; a history of forty identical grey dots says nothing.
+
+A **galaxy event** is drawn as a banner, not a row: a framed plate with a lit rail and a
+GALAXY EVENT eyebrow, in the same crystal the live event chip on the disc uses. It happened to
+the whole shard, and a row shaped like "your fleet came home" invites the reader to ask which
+of their worlds it was about — a question its sentence cannot answer.
 
 A commander or planet identity in Signals is set in bold. When the payload already
 reveals that world's identity, the name is also a direct route back to the disc:
@@ -268,19 +405,26 @@ previews, and the bounded newest-first feedback inbox. The preview is guidance, 
 boundary: the API parses and allow-list sanitizes every submitted HTML document again, rejects
 active content, and stores only the cleaned result.
 
-The planet glyph in the corner of the disc opens **Worlds** — the commander's own holdings as a
-list. It used to recentre the camera and nothing else, which was a control that named a surface
-it did not open; the recentre is now the first thing inside it, so nothing was taken away and the
-label is honest. The list carries what a commander chooses between — stock, craft standing,
-flight bays, and which world is active — because a menu of names still makes them visit each
-world to decide.
+**The planet glyph in the corner of the disc IS the camera move** (D163). It used to open the
+worlds list while "zoom in on the active planet" sat inside that list as a text button — two taps
+and a read for the most frequent camera move in the game, behind a glyph that already looked
+exactly like it. The glyph performs the move and opens nothing; a fifth mark, an arrow, opens the
+transfer sheet instead. The four older marks keep their positions, because a control that moves
+between sessions has to be re-found every time.
 
-**Two affordances per row, and they are different verbs.** Pressing the row goes there: camera
-and active world move together, or the player manages one world while looking at another.
-Pressing "send here" opens a transfer to that row FROM a source chosen at the top of the panel,
-and moves neither the camera nor the active world. `POST /api/fleet/transfer` has taken an
-explicit origin since D118; until this panel, nothing on screen ever used it. The old route —
-focus a world, focus it again, transfer from the focus rail — is untouched.
+**The sheet is one sentence: `from → to`.** Two dropdowns and a single commit button, replacing a
+segmented source picker at the top of the panel plus one of three identical "send here" buttons
+further down — the two halves of one decision separated by three world rows, with nothing on
+screen saying they were the same decision. Both ends are visible at once, the arrow does the
+explaining, and the destination list never contains the source, because the server refuses
+`SELF_TRANSFER` and an option that always fails teaches a rule wrongly. `POST /api/fleet/transfer`
+has taken an explicit origin since D118; until this panel, nothing on screen ever used it.
+
+**The list below it is a different verb.** It carries what a commander chooses between — stock,
+craft standing, flight bays, and which world is active — because a menu of names still makes them
+visit each world to decide, and pressing a row GOES there: camera and active world move together,
+or the player manages one world while looking at another. Nothing in the sheet moves the camera on
+its own. The old route — focus a world, focus it again, transfer from the focus rail — is untouched.
 
 ### I5b · Clan is one simple room with five visible seats (D114)
 

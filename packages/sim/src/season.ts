@@ -100,6 +100,7 @@ import {
   type AsteroidSpec,
   type Resources,
   type ResearchProjectId,
+  recoveryMinutesFor,
 } from '@astera/rules';
 import {
   ARCHETYPES,
@@ -1276,7 +1277,13 @@ function resolveStrategicMission(mission: StrategicMission, t: number, world: Wo
     target.protectedUntil = t + MULTI_WORLD.occupationMinutes;
     world.strategic.deathStar.captures++;
   } else {
-    target.recoveryUntil = t + MULTI_WORLD.recoveryMinutes;
+    /*
+      A SIMULATED STRIKE ONLY EVER LANDS ON A NEUTRAL, which takes the short window
+      since D167 — there is no commander to answer a deadline and no control to
+      lose. The colony branch is not reachable here, and the drop itself is not
+      modelled: no simulated bot ever relieves a world.
+    */
+    target.recoveryUntil = t + recoveryMinutesFor('NEUTRAL');
     world.strategic.deathStar.firstHits++;
   }
 }
@@ -2131,9 +2138,16 @@ function tryAttack(p: SimPlayer, t: number, world: World, rng: Rng): void {
     q.wealthNow = q.wealthNow || totalWealth(q, world);
 
     const hits = (p.recentHits.get(q.id) ?? []).filter((x) => t - x < ABUSE.bashWindowMinutes).length;
+    /*
+      ONE WORLD PER SIMULATED COMMANDER, SO THE PEAK IS THE ONLY CORE THERE IS.
+      D168 measures the band on a commander's tallest Core across every world they
+      hold; `SimPlayer` models a single planet, so this is that reading and not a
+      shortcut past it. A simulator that ever grows colonies has to take the max
+      here, or it will report a band the server does not enforce.
+    */
     const gate = canAttack(
-      { playerId: String(p.id), coreLevel: p.buildings.CORE },
-      { playerId: String(q.id), coreLevel: q.buildings.CORE },
+      { playerId: String(p.id), peakCoreLevel: p.buildings.CORE },
+      { playerId: String(q.id), peakCoreLevel: q.buildings.CORE },
       hits,
     );
     if (!gate.ok) continue;

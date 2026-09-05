@@ -55,20 +55,53 @@ two guided-opening Darts, and not a unit more. D148 rederived it as `852 alloy �
 ## Economy
 
 ```
-alloyRate(L)   = 92.4 × L × 1.10^L   per hour
-crystalRate(L) = 33.6 × L × 1.09^L   per hour
-deuteriumRate  = 0                          — mined only, never passive
+alloyRate(L)   = 83.16 × L × 1.10^L   per hour        — D161: was 92.4 (×0.90)
+crystalRate(L) = 36.96 × L × 1.09^L   per hour        — D161: was 33.6 (×1.10)
+deuteriumRate(L) = 3.34 × L × 1.04^L  per hour        — D161: was 2.905 (×1.15)
 
 upgradeCost(L→L+1) = { alloy:   54.600 × 1.5400^L
                        crystal: 15.807 × 1.5260^L }   charged from L0
 
-storageHours(vault)   = 13.200 + 0.880 × vault
+storageHours(vault)   = 14.667 + 0.978 × vault        — D161: both ÷ 0.9
 worksHours            = 10                  — the uncollected buffer
-protectedHours(vault) = 2.200 + 0.330 × vault
+protectedHours(vault) = 1.650 + 0.220 × vault         — D161: was 2.200 + 0.330
 vaultProtects         = per resource, max(openingFloor, protectedHours × that rate)
-                        openingFloorAlloy 882; crystal floor from the income ratio
+                        openingFloorAlloy 662; crystal floor from the income ratio
 deuteriumCap          = half the crystal cap of the same kind
 ```
+
+**D161 — the owner's rate pass, and its two forced neighbours.** Alloy ×0.90, crystal ×1.10,
+deuterium ×1.15, on the three bases only: the shape, the growth terms and the relative ladders are
+untouched. Alloy was the resource nobody ran out of, crystal gated every upgrade, and deuterium —
+which is also fuel — decided whether a session could end with something in the air.
+
+Two things had to move with it and both were caught by tests rather than chosen:
+
+- **Storage hours ÷ 0.9.** A store is denominated in hours of production, so a tenth off alloy income
+  took a tenth off every alloy store while `upgradeCost` stayed where it was. At L20 that put a
+  307,331-alloy upgrade against a 305,258-alloy store — the exact crossing the invariant above
+  exists to prevent, and it appeared immediately. Dividing by the same 0.9 restores the measured
+  margin exactly: `costAlloy / storageCap` peaks at 0.906 at L20 again.
+- **The reward table's crystal share, ~35% → ~44%**, because `rewards.test.ts` pins it to
+  `crystalBase / alloyBase` rather than to a literal. The full table now pays 14,600 alloy and
+  6,555 crystal.
+
+**`crystalCostBase` deliberately did NOT follow, and that was measured.** Re-deriving it at the old
+0.79 of income (0.2895 → 0.3538) pushes `paybackHours(1)` from 0.98 to 1.03 and breaks the day-zero
+promise that the first upgrade repays inside one session. So the charged share falls to 0.65 of the
+income share — inside the 0.6–1.0 band `invariants.test.ts` enforces, and on the loose side of it,
+which is the direction this pass was asking for: crystal was supposed to get easier.
+
+**The vault floor was cut with it (D161).** `protectedHoursBase` 2 → 1.5, `protectedHoursPerVault`
+0.3 → 0.2, `openingFloorAlloy` 840 → 630, answering *"yağmalanabilir miktar bir şekilde artmalı"*.
+The vault is the right dial and the loot share is not: a wider `lootDecisive` pays the attacker more
+for the same fight, while a lower floor changes what is at stake for the DEFENDER. Against the new
+store the protected share of a full store falls from a sixth to about a ninth at Vault 0, and from a
+quarter to under a sixth at Vault 10 — the old pair grew faster than the store it sat in, so raiding
+got worse as a season went on. `raidable.test.ts` holds the new ceiling at 0.18 for every Vault level.
+
+**None of D161 has been through the simulator.** These figures are not tuned against the standing
+D134 VFR blocker and must not be read as evidence about it.
 
 **Production carries a linear factor, and that is the whole shape.** `base × L × g^L` (OGame's form)
 is the only common shape that both doubles output at L1→L2 — the day-zero dopamine a 14-day season
@@ -141,6 +174,15 @@ removing an order would change the meaning of a later one; Research cannot be ca
 ---
 
 ## Combat
+
+**The Death Star is the one hand-set price (D167).** 40,000 alloy · 25,000 crystal · 6,000
+deuterium, written out rather than run through `scalePrice`, because it is priced against what
+it DOES rather than against the economy's pace — and at D167 what it does changed completely.
+It no longer transfers a colony to its attacker; it darkens a world for eight hours and starts a
+deadline its commander has to answer, and a colony left unanswered is released to NOBODY. The
+buyer is paying to put somebody else's holding on the table for the whole galaxy, garrison and
+half-stock intact, which is a different purchase from buying a planet. Previous figure: 25,500 /
+25,500 / 3,900 through the tempo scaler.
 
 ```
 3 rounds · simultaneous fire · ±8% variance
@@ -606,6 +648,62 @@ those to make pirates pay is the move `CLAUDE.md` forbids outright.
 
 Pirates move **no Dominion**: `bookBattle` is never called and the report's swing is stored as
 zero, so the zero-sum property `invariants.test.ts` asserts is untouched by the whole lane.
+
+### Trade ship (D156)
+
+```
+rate     90 alloy = 30 crystal = 1 deuterium — TRADE.rate = { alloy: 1, crystal: 3, deuterium: 90 }
+         read as units per resource unit: the scarcer the resource, the larger its own figure
+speed    47 ÷ TRAVEL.distanceFactor (1.2) = 39.17 units/min — half the Atlas's catalogue 94,
+         on the Atlas's own scale, never the rocks' 350–750 (D155's lesson, applied before it
+         could repeat)
+orbit    radius 600–1,600 — narrower than the rocks'/pirates' 400–2,000, because a public
+         position has no sensor opportunity left to equalise, only distance fairness
+window   3 appearances per Türkiye day, 180 minutes (3h) each; the cooldown IS the window
+         (`repeatCooldownMinutes = durationMinutes = 180`), so two merchants never overlap
+season   `MULTI_WORLD.tradeShipRulesetVersion = 5` — new seasons only; `galaxyEventsRulesetVersion`
+         stays 4 so the Asteroid Shower keeps seeding on every already-live season
+dock     10s alongside before the return leg — the same shape as a raid's engagement window
+```
+
+**The rate is the measured production parity, not a round number.** At the L12 fixed-goal pace
+this file's own Economy formulas give `alloyRate(12)` ≈ 3,480/h against `crystalRate(12)` ≈
+1,134/h — a 3.07:1 ratio, which is where the 1:3 alloy:crystal price comes from directly.
+Deuterium has no passive rate (`deuteriumRate = 0`, mined only, see Economy above), so its price
+was set by comparison instead: the owner measured it against the roughly 60–160 alloy-equivalent
+a Prospector run at an isotope rock nets per hour and priced it inside that band — generous enough
+to matter against a starved Refinery queue without making the isotope rock a wasted trip under
+D135's "Refinery is the floor, rocks are the ceiling" rule. This comparison is the owner's own
+measurement rather than a checked-in tool's output — there is no `tools/trade-study.ts` the way
+`tools/pirate-study.ts` backs the pirate numbers above, and it should not be treated as more
+precise than "generous, inside the band" until one exists. The owner's first proposal — 20 alloy :
+10 crystal : 1 deuterium — priced deuterium 3–8× cheaper than producing it: a single five-Atlas
+convoy would have returned one to three DAYS of a developed world's own refinery output, which is
+the finding that reopened the rate, not the 3:1 ratio itself.
+
+**The worst-case round trip sits inside the window, with room to spare.** A rim world at 2,000 and
+a merchant at 1,600 on the opposite side of the sphere are 3,600 units apart. The Atlas — the
+slowest cargo hull, so this is also the slowest anyone can be caught making this trip — covers
+that in 46 minutes, so the full round trip is 92 minutes against a 180-minute window, leaving the
+10-second dock and a late launch fully paid for. `trade.test.ts` asserts this bound.
+
+**Dials that may be turned, and dials that may not.** **Turnable:** the daily appearance count,
+the window length, the orbit band, the rate itself if the production-parity measurement moves,
+and — should abuse ever be reported — a merchant fee or a per-world convoy cap, both of which the
+owner has ruled out for now rather than forever. **Not turnable, for this or for any feature:**
+health/acceptance bands, loot grade multipliers, hull prices, and the Hangar constants. Widening
+one of those to make the rate land is the move `CLAUDE.md` forbids outright.
+
+**The simulator does not model this lane**, for the same reason it does not model the pirate
+lane's real-time pacing: bots still run on async-era `loginsPerDay`, and a trade ship's whole
+appeal is timing one convoy against a three-hour window inside a single login. Reading `VFR`
+against this lane, or tuning the rate to move the standing D134 blocker, would be pricing a
+benefit the model cannot see — exactly what this file's own "simulator never prices benefits it
+does not model" rule forbids.
+
+No Dominion moves on this lane either: `launchTrade` never calls `bookBattle`, so the zero-sum
+property `invariants.test.ts` asserts is untouched by a fourth target class the same way it was
+by the third.
 
 ---
 

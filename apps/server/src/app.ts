@@ -22,6 +22,7 @@ import { registerIntelRoutes } from './routes/intel.js';
 import { registerGalaxyRoutes } from './routes/galaxy.js';
 import { registerMiningRoutes } from './routes/mining.js';
 import { registerPirateRoutes } from './routes/pirates.js';
+import { registerTradeRoutes } from './routes/trade.js';
 import { registerHealthRoutes } from './routes/health.js';
 import { EventWorker } from './worker/loop.js';
 import { EventBus } from './stream/bus.js';
@@ -146,6 +147,7 @@ export function buildApp(opts: BuildAppOptions): BuiltApp {
       pollMs: opts.env.WORKER_POLL_MS,
       batch: opts.env.WORKER_BATCH,
       staleMinutes: opts.env.WORKER_STALE_MINUTES,
+      botsEnabled: opts.env.BOTS_ENABLED,
     },
     log,
   );
@@ -385,6 +387,7 @@ export function buildApp(opts: BuildAppOptions): BuiltApp {
     registerGalaxyRoutes(app);
     registerMiningRoutes(app);
     registerPirateRoutes(app);
+    registerTradeRoutes(app);
     registerSessionRoutes(app);
     registerChatRoutes(app);
     registerChronicleRoutes(app);

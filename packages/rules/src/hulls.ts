@@ -2,7 +2,15 @@ import { COMBAT, PROSPECTOR } from './constants.js';
 import { cargoMult, hullTech } from './tech.js';
 import type { TechLevels } from './tech.js';
 import { ECONOMY_TEMPO, scalePrice } from './tempo.js';
-import type { Fleet, GroundHullId, Hull, HullClass, HullId, MobileHullId } from './types.js';
+import type {
+  CombatClass,
+  Fleet,
+  GroundHullId,
+  Hull,
+  HullClass,
+  HullId,
+  MobileHullId,
+} from './types.js';
 
 /**
  * Fleet Catalog V2. D148.
@@ -240,18 +248,53 @@ export function groundLoad(fleet: Fleet): number {
   return load;
 }
 
-/** SKIRMISHER ▸ BULWARK ▸ LANCE ▸ SKIRMISHER. Support is prey and deals nothing. */
-const BEATS: Record<Exclude<HullClass, 'SUPPORT'>, HullClass> = {
+/**
+ * SKIRMISHER ▸ BULWARK ▸ LANCE ▸ SKIRMISHER. Support is prey and deals nothing.
+ *
+ * EXPORTED, BECAUSE A RULE THE PLAYER CANNOT SEE IS NOT A USABLE RULE (D124).
+ *
+ * This was private for most of the project's life, and the consequence was
+ * measurable: `HullClass` appeared ZERO times in `apps/web/src`, so the whole of
+ * combat — the one relation that decides every fight — was invisible on every
+ * screen a fleet is chosen on. The multipliers were printed in exactly one place,
+ * `CombatFormula` in the battle report, which is to say AFTER the fleet was gone.
+ *
+ * `counterMult` alone could never have fixed that. It answers one pairwise
+ * question, which is all a resolver needs and nothing a card can draw: a hull sheet
+ * asking "what am I strong against" would have to probe the function with every
+ * class and reconstruct the cycle from the answers. So the relation is published as
+ * DATA, and `counterMult` is now a reader of it rather than its only witness.
+ */
+export const COUNTERS: Readonly<Record<CombatClass, CombatClass>> = {
   SKIRMISHER: 'BULWARK',
   BULWARK: 'LANCE',
   LANCE: 'SKIRMISHER',
 };
 
+/** The three rungs, in cycle order. SUPPORT is deliberately not among them. */
+export const COMBAT_CLASSES: readonly CombatClass[] = ['SKIRMISHER', 'BULWARK', 'LANCE'];
+
+const inCycle = (cls: HullClass): cls is CombatClass => cls !== 'SUPPORT';
+
+/**
+ * What this class is STRONG against — `strongMult`. Null for SUPPORT.
+ *
+ * The null is not an oversight to be defaulted away by a caller. Support is
+ * outside the cycle in both directions, and a chip reading "Courier ▸ strong vs
+ * Bulwark" would be teaching a rule that does not exist.
+ */
+export const counters = (cls: HullClass): CombatClass | null =>
+  inCycle(cls) ? COUNTERS[cls] : null;
+
+/** What is strong against THIS class — the thing to be afraid of. Null for SUPPORT. */
+export const counteredBy = (cls: HullClass): CombatClass | null =>
+  inCycle(cls) ? COMBAT_CLASSES.find((other) => COUNTERS[other] === cls) ?? null : null;
+
 export function counterMult(attacker: HullClass, defender: HullClass): number {
   if (attacker === 'SUPPORT') return 0;
   if (defender === 'SUPPORT') return COMBAT.strongMult;
-  if (BEATS[attacker] === defender) return COMBAT.strongMult;
-  if (BEATS[defender] === attacker) return COMBAT.weakMult;
+  if (COUNTERS[attacker] === defender) return COMBAT.strongMult;
+  if (COUNTERS[defender] === attacker) return COMBAT.weakMult;
   return 1;
 }
 
@@ -280,6 +323,68 @@ export function fleetValue(fleet: Fleet): number {
     v += n * (h.alloy + h.crystal + h.deuterium);
   }
   return v;
+}
+
+/**
+ * HOW A FLEET IS SPLIT ACROSS THE COUNTER CYCLE, as shares of its VALUE.
+ *
+ * The axis is deliberate. `fleetValue` is the one quantity a commander can already
+ * read on BOTH sides of a decision: it is what a probe's defence band reports and
+ * what a battle is graded on. Splitting that same axis by class means two bars on a
+ * launch sheet are the same currency, and the comparison is arithmetic the player
+ * could in principle do by hand.
+ *
+ * An HP share would have been closer to what `damageMap` actually weights by — and
+ * would have been a SECOND, invisible currency on a screen that already shows the
+ * first. A number nobody can check against anything else on the page is the exact
+ * failure this whole surface exists to fix.
+ *
+ * Ground hulls are counted. The two guns sit in opposite classes on purpose (D27),
+ * a probe's defence band is taken over everything standing on the world, and a
+ * share that dropped them would describe a different wall than the one being flown
+ * at.
+ */
+export function classShares(fleet: Fleet): Readonly<Record<HullClass, number>> {
+  const byClass: Record<HullClass, number> = {
+    SKIRMISHER: 0, LANCE: 0, BULWARK: 0, SUPPORT: 0,
+  };
+  let total = 0;
+  for (const [id, n] of fleetEntries(fleet)) {
+    const h = HULLS[id];
+    const v = n * (h.alloy + h.crystal + h.deuterium);
+    byClass[h.cls] += v;
+    total += v;
+  }
+  if (total <= 0) return byClass;
+  for (const cls of Object.keys(byClass) as HullClass[]) byClass[cls] /= total;
+  return byClass;
+}
+
+/**
+ * The class holding the most value — "mostly Bulwark", in one word.
+ *
+ * NULL ON AN EXACT TIE, and that is the point rather than an omission. On a wall
+ * split evenly between two classes there is no dominant one, and a caller that
+ * printed a winner anyway would be an interface asserting a reading nobody took —
+ * on the screen where that reading decides what gets committed.
+ */
+export function dominantClass(fleet: Fleet): HullClass | null {
+  const shares = classShares(fleet);
+  let best: HullClass | null = null;
+  let bestShare = 0;
+  let tied = false;
+  for (const cls of Object.keys(shares) as HullClass[]) {
+    const share = shares[cls];
+    if (share <= 0) continue;
+    if (share > bestShare) {
+      best = cls;
+      bestShare = share;
+      tied = false;
+    } else if (share === bestShare) {
+      tied = true;
+    }
+  }
+  return tied ? null : best;
 }
 
 /**

@@ -160,9 +160,29 @@ const GOLDEN_ANGLE = Math.PI * (3 - Math.sqrt(5));
  * reached five and a half spacings across, and this reaches under two.
  */
 export function slotOffset(i: number, spacing: number): [number, number, number] {
-  if (i === 0) return [0, 0, 0];
-  const spread = Math.sqrt(i);
-  const angle = i * GOLDEN_ANGLE;
+  return slotAt(i, Math.sqrt(i), spacing);
+}
+
+/**
+ * The same cone, with the radius handed in rather than derived from the count.
+ *
+ * `sqrt(i)` is what makes the arrangement solid, and it says something narrower
+ * than that: it is the square root of the AREA already spent, at one unit of area
+ * per craft. That holds only while every craft is the same size, which stopped
+ * being true when a capital became four times a Dart — see `formationLayout`,
+ * which spends area by footprint and calls this with the total.
+ *
+ * The angle still comes off the raw index, because the golden angle's whole job is
+ * to keep successive craft off each other's bearing and it does that regardless of
+ * how far out the radius has got.
+ */
+export function slotAt(
+  index: number,
+  spread: number,
+  spacing: number,
+): [number, number, number] {
+  if (spread <= 0) return [0, 0, 0];
+  const angle = index * GOLDEN_ANGLE;
   return [
     Math.cos(angle) * spread * spacing * 0.5,
     Math.sin(angle) * spread * spacing * 0.28,

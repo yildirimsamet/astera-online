@@ -1,6 +1,6 @@
 import type { HullId } from '@astera/rules';
 import { FLEET_V2_ASSET_MANIFEST } from '../ui/fleet-v2-assets.js';
-import { slotOffset, type Marker } from './Squadrons.js';
+import { slotAt, type Marker } from './Squadrons.js';
 
 type Vec3Tuple = [number, number, number];
 
@@ -48,28 +48,85 @@ export const hullVisualScale = (hull: HullId, base: number): number =>
  */
 export const FORMATION_SPACING = 1.8;
 
+/**
+ * HOW MUCH OF THE WING'S ROOM ONE CRAFT TAKES, as a power of its own size.
+ *
+ * Two would be the strict answer — room is area, and area goes as the square — and
+ * two is very slightly wrong in the one direction that shows. A wing is laid out
+ * heaviest-first, so a capital's nearest neighbours out along the spiral are the
+ * SMALL craft behind it, and at a strict area share those advance the radius so
+ * slowly that they close inside the capital's own length. Below two, a small craft
+ * is given a little more room than its area strictly needs, which is what buys the
+ * capital its clearance back.
+ *
+ * 1.6 is where a mixed wing's tightest pair returns to exactly the clearance a
+ * single-hull wing already has (`flight-visual.test.ts` measures both and compares
+ * them, rather than trusting this number). It costs about eight per cent of extent
+ * against a strict share, on a formation that is still a third the size of the one
+ * grid it replaced. A wing of one hull is unaffected at any exponent: every ratio
+ * is one, and one to any power is one.
+ */
+export const FOOTPRINT_EXPONENT = 1.6;
+
 export interface FormationLayout {
   readonly slots: Vec3Tuple[];
   /** Largest world-space hull size; also the padding basis for the hit target. */
   readonly scale: number;
 }
 
-/** One size-aware layout shared by owned fleets and resolved foreign contacts. */
+/**
+ * ONE SIZE-AWARE LAYOUT, shared by owned fleets and resolved foreign contacts.
+ *
+ * PACKED BY FOOTPRINT, ORDERED BY WEIGHT. Owner report, against the wing in their
+ * screenshot: a Cataclysm leading nineteen Darts, every Dart alone in a hole three
+ * of its own lengths across.
+ *
+ * The cause was one grid for the whole squadron, sized by the largest hull in it.
+ * That was very nearly free while the authored sizes ran 0.84 to 1.38 and became
+ * the picture the moment a capital was authored at four times a Dart: the biggest
+ * ship set a spacing that every other ship was then spread on, so the more mixed a
+ * fleet the emptier it looked — and a fleet is at its most mixed exactly when it is
+ * the interesting one.
+ *
+ * So the radius advances with the ROOM ALREADY SPENT rather than with the number of
+ * craft placed, which is the same `sqrt` growth generalised: at one unit per craft
+ * it reproduces the old spiral exactly, and at a Dart's share of a Cataclysm it
+ * advances by a twelfth as much. Small craft close up behind the capital instead of
+ * inheriting its lattice.
+ *
+ * AND THE HEAVIEST HULL LEADS. That falls out of needing an order to spend the room
+ * in — but it is also the half the owner asked for by name, and it is the game's own
+ * reading of a squadron: a wing reads as its biggest ship (`leadHull`), so the
+ * biggest ship is the one at the point of it.
+ *
+ * THE SLOT LIST STAYS IN THE CALLER'S ORDER. Pips, drive lights, rank badges and a
+ * volley all index this against the marker list they were built from; a layout that
+ * reordered its own output would hang every one of those on the wrong ship.
+ */
 export function formationLayout(
   markers: readonly Marker[] | null,
   base: number,
 ): FormationLayout {
   if (markers === null) return { slots: [[0, 0, 0]], scale: base };
 
-  const scale = markers.reduce(
-    (largest, marker) => Math.max(largest, hullVisualScale(marker.hull, base)),
-    base,
-  );
+  const sizes = markers.map((marker) => hullVisualScale(marker.hull, base));
+  const scale = sizes.reduce((largest, size) => Math.max(largest, size), base);
   const spacing = scale * FORMATION_SPACING;
-  return {
-    slots: markers.map((_, index) => slotOffset(index, spacing)),
-    scale,
-  };
+
+  // Heaviest first, and stable: two hulls of one size keep the order they arrived
+  // in, so a squadron's own groups stay together instead of interleaving.
+  const byWeight = sizes
+    .map((_, index) => index)
+    .sort((a, b) => sizes[b]! - sizes[a]! || a - b);
+
+  const slots: Vec3Tuple[] = new Array<Vec3Tuple>(markers.length);
+  let spent = 0;
+  for (const [place, index] of byWeight.entries()) {
+    slots[index] = slotAt(place, Math.sqrt(spent), spacing);
+    spent += (sizes[index]! / scale) ** FOOTPRINT_EXPONENT;
+  }
+
+  return { slots, scale };
 }
 
 export const DEATH_STAR_LIGHT = { glow: '#ff274d', flame: '#ff6b3d' } as const;

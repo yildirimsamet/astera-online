@@ -1,7 +1,7 @@
 import {
   PROSPECTOR,
   activeAsteroids,
-  asteroidDiscoveredAt,
+  orbitDiscoveredAt,
   coreTier,
   drillHoldMult,
   drillSpeedMult,
@@ -214,7 +214,7 @@ function answer(
           endsAt: null,
         };
         const visible = active.filter(
-          (rock) => asteroidDiscoveredAt(rock, [eye], minutes) !== null,
+          (rock) => orbitDiscoveredAt(rock, [eye], minutes) !== null,
         );
         const nextDiscovery = nextAsteroidDiscoveryAt(field, [eye], minutes);
         const nextMinute = [

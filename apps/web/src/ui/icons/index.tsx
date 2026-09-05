@@ -310,7 +310,13 @@ export function DrillIcon(props: IconProps) {
 }
 
 /* ── 5 · Events ─────────────────────────────────────────────────
-   There are exactly four notification types and there will never be a fifth. */
+   THE NEWS GLYPHS. There were four of these and the header used to promise there
+   would never be a fifth; the game now sends sixteen kinds of news, and eight of
+   them shared the bell — which on a list is the same as having no icon at all.
+
+   Each one below answers a different question at a glance, because that is the
+   only reason a row in Signals can be scanned rather than read. `signalGlyph` in
+   `lib/notifications.ts` is the one place that decides which kind gets which. */
 
 /** An arrow INTO a circle. The most urgent mark in the game. */
 export function IncomingIcon(props: IconProps) {
@@ -358,6 +364,88 @@ export function ScanIcon(props: IconProps) {
       <circle cx="12" cy="15.6" r="1.6" fill="currentColor" stroke="none" />
       <path d="M7.6 12.4a6.2 6.2 0 0 1 8.8 0" />
       <path d="M4.8 9.2a10.2 10.2 0 0 1 14.4 0" strokeOpacity=".5" />
+    </Glyph>
+  );
+}
+
+/**
+ * A PIRATE. D150.
+ *
+ * Not an invention: an identified pirate formation already wears a red skull on
+ * the disc (`PIRATE_MARK` in `galaxy/Fleets.tsx`), and a raid at one has to report
+ * back under the same mark or the player is learning the lane twice. That skull is
+ * a solid canvas glyph drawn for viewing at map scale; this is the same idea as
+ * line art at list scale.
+ *
+ * THE SOCKETS ARE THE WHOLE GLYPH at 20px, so they are large and round and the
+ * nose is deliberately absent — a third small shape between two of them closes to
+ * a smudge. The teeth hang BELOW the cranium as three separate strokes for the
+ * same reason: a drawn jawline at this size reads as a helmet.
+ */
+export function SkullIcon(props: IconProps) {
+  return (
+    <Glyph {...props}>
+      <path d="M5 11.2a7 7 0 0 1 14 0c0 3-1.6 4.8-3.1 5.6v2H8.1v-2C6.6 16 5 14.2 5 11.2Z" />
+      <circle cx="9.6" cy="11" r="2" />
+      <circle cx="14.4" cy="11" r="2" />
+      <path d="M9.6 18.8v2.4M12 18.8v2.4M14.4 18.8v2.4" />
+    </Glyph>
+  );
+}
+
+/**
+ * THE STRATEGIC WEAPON — the most consequential object in the game, and it had
+ * no mark at all.
+ *
+ * A Death Star inbound, a Death Star resolving and a Death Star shot off a ring
+ * were three bells. The sphere, the equatorial trench and the dish are the one
+ * silhouette nobody needs taught, and the trench is a straight line where
+ * `HomeworldIcon`'s ring is an ellipse, so the two never read as each other.
+ */
+export function DeathStarIcon(props: IconProps) {
+  return (
+    <Glyph {...props}>
+      <circle cx="12" cy="12" r="8.6" />
+      <path d="M3.6 13.6h16.8" />
+      <circle cx="8.9" cy="8.6" r="2.5" />
+    </Glyph>
+  );
+}
+
+/**
+ * A WORLD TAKEN — a flag planted on a horizon.
+ *
+ * Deliberately not `ClaimIcon` (a canister you carry away) and not `PlanetIcon`
+ * (a world, stated). Taking a world is an act performed ON a place and the flag
+ * is the only shape that says the place is now yours. The horizon is an arc
+ * rather than a full circle so the pole has somewhere to stand.
+ */
+export function ConquestIcon(props: IconProps) {
+  return (
+    <Glyph {...props}>
+      <path d="M3.4 18.6a9.4 9.4 0 0 1 17.2 0" />
+      <path d="M11.4 18.6V3.6" />
+      <path d="M11.4 4.4h7l-1.9 2.9 1.9 2.9h-7" />
+    </Glyph>
+  );
+}
+
+/**
+ * A WORLD LOST — one fracture, all the way through.
+ *
+ * `RaidedIcon` is a world with a bite out of its rim and stock falling away: that
+ * is a raid, which takes and leaves. This is the other thing entirely — the world
+ * itself is gone from you — so the mark goes THROUGH the body rather than nibbling
+ * its edge.
+ */
+export function WorldLostIcon(props: IconProps) {
+  return (
+    <Glyph {...props}>
+      <circle cx="12" cy="12" r="8.5" />
+      {/* Wide kinks, not a gentle S. Photographed at 20px the first draft's 2.7-unit
+          swings blurred into one curve and the glyph read as a slashed zero; only a
+          lateral throw of nearly four units still says "fractured" at list size. */}
+      <path d="M9.5 3.8 13.2 9.5 9.4 12.6 13.5 20.2" />
     </Glyph>
   );
 }
@@ -819,6 +907,124 @@ export function CargoIcon(props: IconProps) {
       <path d="M3.5 9.5 12 5l8.5 4.5v7L12 21l-8.5-4.5Z" />
       <path d="M12 12.5v8.5" />
       <path d="m3.5 9.5 8.5 3 8.5-3" />
+    </Glyph>
+  );
+}
+
+/* ── the counter cycle, as three shapes ────────────────────────────────────── */
+
+/**
+ * THE THREE CLASSES A FIGHT IS DECIDED BY, DRAWN. D124.
+ *
+ * `HullClass` appeared ZERO times anywhere in `apps/web` before these existed, so
+ * the one relation that decides every battle in the game was invisible on every
+ * screen a fleet is chosen on — while the shipyard grouped hulls by FAMILY
+ * (Offensive · Defensive · Cargo), a purchasing taxonomy that runs at right angles
+ * to the combat one and quietly implies the opposite of the truth: a Pike is
+ * "Offensive" and a Rampart "Defensive", and the Rampart beats the Pike.
+ *
+ * They are drawn as three different KINDS OF THING rather than three tinted
+ * variants of one, because the cycle has to be learnable from the shapes alone:
+ *
+ *   SWARM  many light marks       overwhelms a wall
+ *   WALL   one solid block        stops a spear
+ *   SPEAR  one heavy point        skewers a swarm
+ *
+ * Read in that order the pictures ARE the rule, which is the whole point — a
+ * player should be able to infer the cycle before reading a word of it.
+ *
+ * No dedicated hue. `docs/interface.md` reserves the green/red wash for OUTCOME
+ * and the chip hue for family; identity here is carried by the glyph, and colour
+ * is spent on the matchup instead, where the judgement actually is.
+ */
+
+/** SKIRMISHER — many, fast, light. Three marks in formation, never one. */
+export function SkirmisherIcon(props: IconProps) {
+  return (
+    <Glyph {...props}>
+      <path d="M4 16.5 7.5 12 4 7.5" />
+      <path d="M10 16.5 13.5 12 10 7.5" />
+      <path d="M16 16.5 19.5 12 16 7.5" />
+    </Glyph>
+  );
+}
+
+/** BULWARK — a wall. Courses of masonry, not the shield `HullIcon` already owns. */
+export function BulwarkIcon(props: IconProps) {
+  return (
+    <Glyph {...props}>
+      <path d="M3.5 6.5h17v11h-17Z" />
+      <path d="M3.5 12h17" />
+      <path d="M12 6.5V12" />
+      <path d="M7.75 12v5.5" />
+      <path d="M16.25 12v5.5" />
+    </Glyph>
+  );
+}
+
+/**
+ * LANCE — one heavy point.
+ *
+ * Vertical, where `AttackIcon` is diagonal: the two sit on the same card and a
+ * player must never have to work out which of them is the class and which is the
+ * attack figure.
+ */
+export function LanceIcon(props: IconProps) {
+  return (
+    <Glyph {...props}>
+      <path d="M12 2.75 15.75 9.5h-7.5Z" />
+      <path d="M12 9.5V21.25" />
+      <path d="M8.75 13.5h6.5" />
+    </Glyph>
+  );
+}
+
+/**
+ * SUPPORT — not a rung of the cycle, and drawn so it cannot be mistaken for one.
+ *
+ * A hold with cover on every side: it deals nothing, everything is strong against
+ * it, and it survives only while a combat hull on its side does. The four ticks are
+ * the escort, which is the only rule that applies to it.
+ */
+export function SupportIcon(props: IconProps) {
+  return (
+    <Glyph {...props}>
+      <path d="M12 7.25a4.75 4.75 0 1 1 0 9.5 4.75 4.75 0 0 1 0-9.5Z" />
+      <path d="M12 2.5v2.25" />
+      <path d="M12 19.25v2.25" />
+      <path d="M2.5 12h2.25" />
+      <path d="M19.25 12h2.25" />
+    </Glyph>
+  );
+}
+
+/* ── Donate ──────────────────────────────────────────────────────
+   A plain heart, not a coin or a crest — this is the one screen in the game
+   with nothing to sell. `docs/visual-design.md`'s law still applies: shape
+   only, tinted at the point of use. */
+
+export function HeartIcon(props: IconProps) {
+  return (
+    <Glyph {...props}>
+      <path d="M12 20.2 4.6 12.9a5 5 0 0 1 7.1-7.1l.3.3.3-.3a5 5 0 0 1 7.1 7.1Z" />
+    </Glyph>
+  );
+}
+
+/** DONE — the answer to a press that had no other visible result. */
+export function CheckIcon(props: IconProps) {
+  return (
+    <Glyph {...props}>
+      <path d="m4.75 12.5 4.75 4.75L19.25 7.5" />
+    </Glyph>
+  );
+}
+
+export function CopyIcon(props: IconProps) {
+  return (
+    <Glyph {...props}>
+      <rect x="8.75" y="8.75" width="12.5" height="12.5" rx="1.5" />
+      <path d="M15.25 8.75V4.75a1.5 1.5 0 0 0-1.5-1.5H4.75a1.5 1.5 0 0 0-1.5 1.5v9a1.5 1.5 0 0 0 1.5 1.5h4" />
     </Glyph>
   );
 }

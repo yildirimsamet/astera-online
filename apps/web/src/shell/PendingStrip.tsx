@@ -1,10 +1,11 @@
 import { useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { fleetCount } from '@astera/rules';
-import { useMining, usePending } from '../api/queries.js';
-import type { MiningRun, PendingThread } from '../api/schemas.js';
+import { useMining, usePending, useTraffic } from '../api/queries.js';
+import type { Contact, MiningRun, PendingThread } from '../api/schemas.js';
 import { threadKey } from '../galaxy/threadKey.js';
 import type { CraftFocus } from '../galaxy/ownCraft.js';
+import type { Focus } from '../galaxy/FocusPanel.js';
 import i18n from '../i18n/index.js';
 import { countdown, useNow } from '../lib/time.js';
 import { FlightBar } from '../ui/FlightBar.js';
@@ -20,6 +21,16 @@ import {
 import { Sheet } from '../ui/kit/index.js';
 
 /**
+ * WHAT THIS STRIP CAN ASK THE CAMERA TO LOOK AT. D162.
+ *
+ * Your own craft (a thread), your own drills (a run) — and, since the inbound
+ * warning became pressable, somebody else's craft as a public CONTACT. The third
+ * is not a craft you own, so it is not a `CraftFocus`; it is the same focus state
+ * the disc already uses when a player taps a foreign fleet.
+ */
+export type StripFocus = CraftFocus | Extract<Focus, { kind: 'contact' }>;
+
+/**
  * DESIGN LAW #1, made visible.
  *
  * "Every session must end with something in flight." A player can only act on
@@ -28,20 +39,31 @@ import { Sheet } from '../ui/kit/index.js';
  * here even though the API keeps them separate. When it is empty it says so
  * plainly — an empty strip is a prompt, not decoration.
  */
-export function PendingStrip({ onFocus }: { onFocus?: (focus: CraftFocus) => void }) {
+export function PendingStrip({ onFocus }: { onFocus?: (focus: StripFocus) => void }) {
   const { t } = useTranslation();
   const { data } = usePending();
   const mining = useMining();
+  /**
+   * THE DISC'S OWN CONTACT LIST, READ HERE FOR ONE THING ONLY. D162.
+   *
+   * An inbound warning carries no path, so the only way this strip can offer to
+   * LOOK at the fleet coming for you is to check whether the caller's circles are
+   * covering it — and the honest answer to that is the contact list itself, not a
+   * second sight calculation on the client. Present means focusable; absent means
+   * the row stays a statement.
+   */
+  const traffic = useTraffic();
   const now = useNow(1000);
   const threads = data?.pending ?? [];
   const runs = (mining.data?.runs ?? []).filter((run) => run.status !== 'done');
+  const seen = traffic.data?.contacts ?? [];
   const [open, setOpen] = useState(false);
 
   const items: AirborneItem[] = [
     ...threads.map((thread, index): AirborneItem => ({
       key: `thread:${threadKey(thread, index)}`,
       title: title(thread),
-      detail: incomingDetail(thread) ?? (thread.fleet
+      detail: incomingDetail(thread, contactFor(thread, seen)) ?? (thread.fleet
         ? t('pendingStrip.craftCount', { count: fleetCount(thread.fleet) })
         : t('pendingStrip.craftUnknown')),
       arrival: arrivalOf(thread),
@@ -58,9 +80,19 @@ export function PendingStrip({ onFocus }: { onFocus?: (focus: CraftFocus) => voi
       span: thread.path
         ? { from: thread.path.departAt.getTime(), to: thread.path.arriveAt.getTime() }
         : null,
+      /*
+        TWO WAYS TO LOOK AT A CRAFT, AND AN INBOUND WARNING HAS THE SECOND. D162.
+
+        Your own craft is focused by its thread. A warning has no path — the route
+        is what Radar L5 does not sell — so it is focused through the CONTACT the
+        disc is already drawing, and only when there is one. No contact, no
+        control: the fog is enforced in the contact query, not here.
+      */
       ...(thread.path
-        ? { focus: { kind: 'thread', key: threadKey(thread, index) } }
-        : {}),
+        ? { focus: { kind: 'thread' as const, key: threadKey(thread, index) } }
+        : contactFor(thread, seen)
+          ? { focus: { kind: 'contact' as const, id: thread.contactId! } }
+          : {}),
     })),
     ...runs.map((run): AirborneItem => ({
       key: `run:${run.id}`,
@@ -96,12 +128,12 @@ export function PendingStrip({ onFocus }: { onFocus?: (focus: CraftFocus) => voi
         type="button"
         aria-label={t('pendingStrip.openFlights')}
         onClick={() => { setOpen(true); }}
-        className={`w-full border-t px-4 py-2 text-left transition-colors hover:bg-raised/60 ${
+        className={`w-full border-t px-2 py-2 text-left transition-colors hover:bg-raised/60 ${
           incoming ? 'border-alert/40 bg-alert/10' : 'border-line-soft bg-deep/80'
         }`}
       >
         {shown ? (
-          <span className="flex items-center gap-3">
+          <span className="flex items-center gap-2">
             {/*
               THE KIND, THEN THE NAME. A raid, a probe and a mining run were three
               sentences that differed only in wording; the glyph says which before
@@ -141,7 +173,7 @@ export function PendingStrip({ onFocus }: { onFocus?: (focus: CraftFocus) => voi
             <span aria-hidden className="text-faint">⌃</span>
           </span>
         ) : (
-          <span className="flex items-center justify-between gap-3">
+          <span className="flex items-center justify-between gap-2">
             <span className="legend text-faint">{t('pendingStrip.empty')}</span>
             <span aria-hidden className="text-faint">⌃</span>
           </span>
@@ -155,9 +187,9 @@ export function PendingStrip({ onFocus }: { onFocus?: (focus: CraftFocus) => voi
           onClose={() => { setOpen(false); }}
         >
           {items.length === 0 ? (
-            <p className="pt-4 text-body text-dim">{t('pendingStrip.sheetEmpty')}</p>
+            <p className="pt-2 text-body text-dim">{t('pendingStrip.sheetEmpty')}</p>
           ) : (
-            <div className="space-y-2 pt-4">
+            <div className="space-y-2 pt-2">
               {items.map((item) => {
                 const focus = item.focus;
                 const body = (
@@ -206,12 +238,12 @@ export function PendingStrip({ onFocus }: { onFocus?: (focus: CraftFocus) => voi
                       setOpen(false);
                       onFocus?.(focus);
                     }}
-                    className="plate flex min-h-14 w-full items-start gap-3 px-3 py-3 text-left transition-colors hover:bg-bone/[0.03] active:bg-raised/60"
+                    className="plate flex min-h-14 w-full items-start gap-2 px-3 py-3 text-left transition-colors hover:bg-bone/[0.03] active:bg-raised/60"
                   >
                     {body}
                   </button>
                 ) : (
-                  <div key={item.key} className="plate flex min-h-14 items-start gap-3 px-3 py-3">
+                  <div key={item.key} className="plate flex min-h-14 items-start gap-2 px-3 py-3">
                     {body}
                   </div>
                 );
@@ -236,7 +268,7 @@ interface AirborneItem {
   mark: FlightMark;
   /** The leg's departure and arrival instants, or null where it is fogged. */
   span: { from: number; to: number } | null;
-  focus?: CraftFocus;
+  focus?: StripFocus;
 }
 
 /**
@@ -250,7 +282,7 @@ interface AirborneItem {
  */
 type FlightMark =
   | 'fleet' | 'probe' | 'incoming' | 'transfer' | 'settlement' | 'death_star'
-  | 'mining' | 'salvage' | 'pirate';
+  | 'mining' | 'salvage' | 'pirate' | 'trade';
 
 const MARK: Record<FlightMark, (props: { className?: string }) => ReactNode> = {
   fleet: AttackIcon,
@@ -264,6 +296,9 @@ const MARK: Record<FlightMark, (props: { className?: string }) => ReactNode> = {
   // A pirate raid IS a raid: same glyph, because the act is the same act and a
   // second symbol would say it is a different kind of commitment. D150.
   pirate: AttackIcon,
+  // A convoy IS a transfer: cargo leaving a world under escort. Same reasoning as
+  // the pirate line above — the glyph names the ACT, not the destination. D156.
+  trade: SendIcon,
 };
 
 /**
@@ -321,14 +356,41 @@ function Mark({ of, incoming }: { of: FlightMark; incoming: boolean }) {
  * so an owned craft falls through to its own manifest — which is free, because you
  * packed it.
  */
-const incomingDetail = (thread: PendingThread): string | null => {
+const incomingDetail = (thread: PendingThread, seen: Contact | undefined): string | null => {
   if (thread.kind !== 'incoming') return null;
-  if (thread.fleet) return i18n.t('pendingStrip.craftCount', { count: fleetCount(thread.fleet) });
-  if (thread.mass === 'HEAVY') return i18n.t('pendingStrip.massHeavy');
-  if (thread.mass === 'MEDIUM') return i18n.t('pendingStrip.massMedium');
-  if (thread.mass === 'LIGHT') return i18n.t('pendingStrip.massLight');
-  return i18n.t('pendingStrip.incomingHint');
+  const fleet = thread.fleet ?? seen?.fleet;
+  if (fleet) return i18n.t('pendingStrip.craftCount', { count: fleetCount(fleet) });
+  const mass = thread.mass ?? seen?.mass;
+  if (mass === 'HEAVY') return i18n.t('pendingStrip.massHeavy');
+  if (mass === 'MEDIUM') return i18n.t('pendingStrip.massMedium');
+  if (mass === 'LIGHT') return i18n.t('pendingStrip.massLight');
+  /*
+    "ORIGIN HIDDEN BY FOG" IS ONLY TRUE OF A CRAFT NOBODY CAN SEE. D162.
+
+    Owner report: the line kept saying the source was fogged while the fleet was
+    plainly drawn on the disc — because the row only ever read the RADAR ladder's
+    own fields and never the sight the commander already had. Where a circle is
+    covering the craft, the honest line is that it is on the disc and can be looked
+    at; the origin genuinely stays unsold, and the row no longer implies that the
+    craft itself is unseen.
+  */
+  return i18n.t(seen ? 'pendingStrip.incomingVisible' : 'pendingStrip.incomingHint');
 };
+
+/**
+ * THE CONTACT THIS WARNING IS ABOUT, IF ANY CIRCLE IS COVERING IT. D162.
+ *
+ * Matched on the mission uuid the two payloads share. It is the client's only
+ * statement of "can I look at this", and it is a LOOKUP rather than a sight
+ * calculation on purpose: the server decided what is visible, and a second opinion
+ * about sight on this side is exactly what `sight.ts` exists to prevent.
+ */
+const contactFor = (
+  thread: PendingThread,
+  contacts: readonly Contact[],
+): Contact | undefined => (thread.contactId === undefined
+  ? undefined
+  : contacts.find((c) => c.id === thread.contactId));
 
 const title = (thread: PendingThread): string => {
   if (thread.kind === 'incoming') {
@@ -358,6 +420,16 @@ const title = (thread: PendingThread): string => {
   if (thread.kind === 'death_star') return i18n.t('pendingStrip.deathStar', { target: thread.targetName });
   if (thread.kind === 'settlement') return i18n.t('pendingStrip.settlement', { target: thread.targetName });
   if (thread.kind === 'transfer') return i18n.t('pendingStrip.transfer', { target: thread.targetName });
+  /*
+    THE MERCHANT IS NAMED FROM THE LOCALE FILES, never from `targetName`. D156.
+
+    That field carries the stable event-kind identifier `TRADE_SHIP` — there is no
+    world on the far end to borrow a name from — and printing a wire identifier at
+    a player is the failure this branch exists to prevent.
+  */
+  if (thread.kind === 'trade') {
+    return i18n.t(thread.leg === 'return' ? 'pendingStrip.tradeHome' : 'pendingStrip.tradeOut');
+  }
   if (thread.kind === 'pirate') {
     /*
       NAMED FROM THE LEVEL AND THE CALLSIGN, never from a server sentence. There is

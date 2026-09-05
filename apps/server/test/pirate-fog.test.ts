@@ -11,10 +11,16 @@ import {
   pirateActive,
   piratePosition,
   sensorSphere,
+  type SensorEpoch,
   type Vec3,
 } from '@astera/rules';
 import { pirateRaids, pirateState, planets, seasons, units } from '../src/db/schema.js';
-import { loadPirateSnapshot, pirateId, privatePirateField } from '../src/services/pirateField.js';
+import {
+  discoveredPirateIndexes,
+  loadPirateSnapshot,
+  pirateId,
+  privatePirateField,
+} from '../src/services/pirateField.js';
 import {
   loadTrafficSnapshot,
   projectGalaxyTraffic,
@@ -31,8 +37,15 @@ import { giveUnits, grant, seedWorld, testDb, type Fixture } from './helpers.js'
  * The three zones are the whole rule and `packages/rules/src/sight.ts` is their
  * only statement: NONE outside every circle, CONTACT inside a Radar one,
  * IDENTIFIED inside a Telescope one. A pirate is a CRAFT, so it answers to that
- * ladder exactly as a fleet does — and unlike a rock, it is not remembered: leave
- * the circle and it stops existing for you.
+ * ladder exactly as a fleet does — and since D158 it is also REMEMBERED like a
+ * rock: once a commander's sensor history has ever contained it, the mark stays on
+ * the disc for the rest of its life.
+ *
+ * D160 RAISED THAT FLOOR TO IDENTIFIED. `sensor_epochs.reach` is the TELESCOPE
+ * radius alone, so "discovered" means "was once inside an identifying circle" and
+ * the manifest handed back is one the commander bought. The contact is marked
+ * `remembered` whenever no live circle covers it, so the disc can draw the frozen
+ * reading as frozen.
  *
  * The most expensive failure this file guards is publishing the ORBIT. Radius,
  * period, phase, inclination and ascending node are the route, and a route is what
@@ -91,6 +104,8 @@ describe('a pirate on the disc', () => {
     sensors: SensorPost[],
     now: Date,
     ownIds: string[] = [],
+    /** Pirates D158's memory is holding open for this caller. Empty by default. */
+    discovered: ReadonlySet<number> = new Set(),
   ): Promise<Contact[]> => {
     const [snapshot, pirates] = await Promise.all([
       loadTrafficSnapshot(f.db, f.seasonId, now),
@@ -105,6 +120,7 @@ describe('a pirate on the disc', () => {
       sensors,
       new Set(),
       pirates,
+      discovered,
     );
   };
 
@@ -119,6 +135,112 @@ describe('a pirate on the disc', () => {
       expect((await contactsFor([far], now)).some((c) => c.id === pirateId(key, target.index)))
         .toBe(false);
     }
+  });
+
+  /**
+   * D158 · D160, AND IT REVERSES THE TEST DIRECTLY ABOVE FOR ONE CASE ONLY.
+   *
+   * A commander who has had this pirate inside a post keeps it for the rest of its
+   * life. Owner instruction: "korsan filolar, asteroid gibi" — an opportunity that
+   * expires while the fleet is being packed is not a decision.
+   *
+   * AND WHAT MEMORY HANDS BACK IS THE READING THEY PAID FOR (D160): the crew and
+   * the level, because the epoch that discovered it was a TELESCOPE circle. It is
+   * flagged `remembered`, which is the payload saying "frozen, not live" — the one
+   * thing a faded mark on the disc has to be able to prove.
+   */
+  it('keeps a pirate it has already found, blind and at any range', async () => {
+    const target = live();
+    const now = new Date(startsAt.getTime() + target.minute * 60_000);
+    const held = (await contactsFor(BLIND, now, [], new Set([target.index])))
+      .find((c) => c.id === pirateId(key, target.index));
+
+    expect(held).toBeDefined();
+    expect(held!.kind).toBe('pirate');
+    expect(held!.level).toBe(target.level);
+    expect(held!.fleet).toBeDefined();
+    expect(held!.remembered).toBe(true);
+  });
+
+  /** And memory of ONE pirate is not memory of the lane. */
+  it('holds open only the pirates that were actually found', async () => {
+    const target = live();
+    const now = new Date(startsAt.getTime() + target.minute * 60_000);
+    const contacts = await contactsFor(BLIND, now, [], new Set([target.index]));
+    const pirateIds = new Set(contacts.map((c) => c.id));
+    const field = privatePirateField(key);
+    for (const spec of field) {
+      if (spec.index === target.index) continue;
+      expect(pirateIds.has(pirateId(key, spec.index))).toBe(false);
+    }
+  });
+
+  /**
+   * A LIVE READING IS NOT MARKED FROZEN. Same pirate, same memory, but a circle
+   * covers it right now — so `remembered` is absent and the disc draws it at full
+   * strength. That flag is the entire difference between the two pictures.
+   */
+  it('does not flag a pirate a live circle is currently covering', async () => {
+    const target = live();
+    const now = new Date(startsAt.getTime() + target.minute * 60_000);
+    const eye = post(target.at, 5, 5, mine);
+    const seen = (await contactsFor([eye], now, [], new Set([target.index])))
+      .find((c) => c.id === pirateId(key, target.index));
+
+    expect(seen?.kind).toBe('pirate');
+    expect(seen?.level).toBe(target.level);
+    expect(seen?.remembered).toBeUndefined();
+  });
+
+  /**
+   * AND RADAR ALONE IS UNTOUCHED BY D160. A pirate no telescope has ever held is
+   * the moving question mark it always was, whatever the radar can reach.
+   */
+  it('leaves a never-identified pirate a question mark inside a radar circle', async () => {
+    const target = live();
+    const now = new Date(startsAt.getTime() + target.minute * 60_000);
+    const eye = post(target.at, 0, 5, mine);
+    const away = { x: target.at.x + eye.identify + 50, y: target.at.y, z: target.at.z };
+    const radarOnly = post(away, 0, 5, mine);
+    const contact = (await contactsFor([radarOnly], now))
+      .find((c) => c.id === pirateId(key, target.index));
+
+    expect(contact?.kind).toBe('unknown');
+    expect(contact?.fleet).toBeUndefined();
+    expect(contact?.level).toBeUndefined();
+  });
+
+  /**
+   * AND THE MEMORY ITSELF IS COMPUTED, not asserted by the caller. D158.
+   *
+   * The two cases above hand the discovery set in, which is the right shape for a
+   * fog test and proves nothing about where the set comes from. This is the other
+   * half: `discoveredPirateIndexes` reading the same `sensor_epochs` rows the rock
+   * lane reads, through the same analytic orbit/sphere solve.
+   */
+  it('works out for itself which pirates a sensor history has ever held', async () => {
+    const target = live();
+    const now = new Date(startsAt.getTime() + target.minute * 60_000);
+    const pirates = await loadPirateSnapshot(f.db, f.seasonId, now);
+
+    // A post at the centre of the disc, wide enough to have swept every orbit.
+    const everywhere: SensorEpoch = {
+      at: { x: 0, y: 0, z: 0 },
+      reach: 1e6,
+      startsAt: 0,
+      endsAt: null,
+    };
+    expect(discoveredPirateIndexes(pirates, [everywhere], now).has(target.index)).toBe(true);
+
+    // A pinhole parked outside the galaxy sees nothing, ever.
+    const nowhere: SensorEpoch = {
+      at: { x: 1e6, y: 0, z: 0 },
+      reach: 1,
+      startsAt: 0,
+      endsAt: null,
+    };
+    expect(discoveredPirateIndexes(pirates, [nowhere], now).size).toBe(0);
+    expect(discoveredPirateIndexes(pirates, [], now).size).toBe(0);
   });
 
   it('is a moving question mark inside a Radar circle and nothing more', async () => {
@@ -288,6 +410,7 @@ describe('a raid at a pirate, seen from outside', () => {
     now: Date,
     ownIds: string[],
     playerIndex: number,
+    discovered: ReadonlySet<number> = new Set(),
   ): Promise<Contact[]> => {
     const [snapshot, pirates] = await Promise.all([
       loadTrafficSnapshot(f.db, f.seasonId, now),
@@ -302,6 +425,7 @@ describe('a raid at a pirate, seen from outside', () => {
       sensors,
       new Set(),
       pirates,
+      discovered,
     );
   };
 
@@ -581,7 +705,7 @@ describe('the shared test fixture', () => {
         loadPirateSnapshot(f.db, f.seasonId, now),
       ]);
       seen += projectGalaxyTraffic(
-        snapshot, null, now, null, [], [omniscient(f.planetIds[0]!)], new Set(), pirates,
+        snapshot, null, now, null, [], [omniscient(f.planetIds[0]!)], new Set(), pirates, new Set(),
       ).filter((c) => c.kind === 'pirate' || c.silhouette === 'pirate').length;
     }
     return seen;

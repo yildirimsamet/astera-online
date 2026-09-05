@@ -38,7 +38,7 @@ export function GradeStamp({
     size === 'sm'
       ? 'text-micro px-2 py-1'
       : size === 'lg'
-        ? 'text-body px-4 py-2'
+        ? 'text-body px-2 py-2'
         : 'text-label px-3 py-2';
 
   return (

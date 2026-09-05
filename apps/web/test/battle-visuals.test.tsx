@@ -31,6 +31,8 @@ const report: BattleReport = {
   yourLosses: { DART: 2 },
   theirLosses: { DART: 6, PIKE: 1 },
   yourFleet: { DART: 12, COURIER: 2 },
+  /** Defender-only: the force that arrived. Empty on an attacker’s report. D164. */
+  theirFleet: {},
   lootAlloy: 300,
   lootCrystal: 80,
   lootDeuterium: 0,

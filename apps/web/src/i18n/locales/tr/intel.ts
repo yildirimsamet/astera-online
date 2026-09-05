@@ -114,7 +114,7 @@ export const reports = {
   pirateBroken: 'Mürettebat dağıldı. Geriye kalan artık senin.',
   pirateHeld: 'Dayandılar ve yollarına devam ettiler. Filon eli boş döndü.',
   /** Ödül: oyunda inşa etmediğin bir gövdeye açılan tek kapı. */
-  pirateCaptured: 'Çekilerek getirildi',
+  pirateCaptured: 'Korsanlardan kaçırıldı.',
   pirateCapturedNote:
     'Yok ettiğin mürettebatın enkazından sağlam çıkarıldı. Filonun döndüğü dünyanın garnizonuna katılır — Hangar kapasitesi dolu olsa bile — ve inşa ettiğin gemilerden sayılmaz.',
   youHeld: 'Dayandın. Artık onlar da seni beklerken elinde ne olduğunu biliyor.',
@@ -165,6 +165,31 @@ export const reports = {
     note: 'Gezegen kalkanı, savunmadaki birliklerden önce hasar alır.',
     absorbed: '{{amount}} kalkan hasarı emildi',
   },
+  /* ── raporun her duruma borcu. `docs/battle-reports.md` ── */
+  q: {
+    happened: 'Ne oldu',
+    there: 'Karşıda ne vardı',
+    who: 'Kim, hangi turda öldü',
+    changed: 'Ne değişti',
+  },
+  walkoverHeading: 'Burada hiçbir şey yoktu',
+  walkoverBody:
+    'Filo yok, yer savunması yok, kalkan yok. Gemilerin geldi, yükledi ve gitti. Rapor edilecek bir çarpışma olmadı.',
+  theirBoardComplete: 'Ellerindeki her şey',
+  theirBoardCompleteNote:
+    'Hiçbir şey sağ kalmadı; yani bu onların tüm gücü — başka bir komutan hakkında alabileceğin en kesin okuma.',
+  theirBoardFloor: 'En az bu kadarı',
+  theirBoardFloorNote:
+    'Dayandılar; yani bu, yok ettiğin şey — ellerinde olan değil. Savaş ölenleri bildirir; kalanı sayan şey sondadır.',
+  theirBoardNothing: 'Hiçbir şey yok edemedin',
+  theirBoardArrived: 'Üzerine gelen güç',
+  theirBoardArrivedNote:
+    'Tek el ateş etmemiş gövdeler dahil, filonun tamamı. Gelişini kendi gözünle gördün; kırmızı olan, geri dönen kısmı.',
+  groundHeading: 'Yer savunması',
+  groundNote: 'Dünyadan hiç ayrılmayan toplar. Yağma yapamaz, Hakimiyet almazlar.',
+  shipsHeading: 'Gemiler',
+  noGroundHeading: 'Yer savunması yok',
+  noGroundNote: 'Vardığında bu dünyada ayakta duran bir duvar yoktu.',
   calculation: {
     intro:
       'Yukarıdaki sabit tarif aşağıdaki sayıları üretir. Sonra her raunt aynı üç adımla ilerler.',
@@ -346,7 +371,8 @@ export const dossier = {
   fleetGapRange: '{{reach}} birim görüyor, o gezegen {{distance}} birim uzakta',
   fleetGapSlots: '{{count}} yuvanın hepsi dolu; birini kaydırman gerek',
 
-  stockLabel: 'Ellerindeki kaynak',
+  stockLabel: 'Şu an yağmalanabilir',
+  stockNote: 'Kesin zaferle taşınabilecek miktar. Kasa tabanı buna dahil değil; kendi ambarın daha da kısabilir.',
   stockCaught: 'Radarları sondayı yakaladı; birinin baktığını biliyorlar.',
   stockClean: 'Sonda girip çıktı, kimse fark etmedi.',
   defenceLabel: 'Savunma değeri',
@@ -356,8 +382,9 @@ export const dossier = {
   shipsSomeOut: 'Gemilerinin bir kısmı dışarıdaydı.',
 
   /** Sondanın hep aldığı ama hiç gösterilmeyen dört okuma. Hepsi bakış anında donar. */
-  deuteriumLabel: 'Ellerindeki döteryum',
-  deuteriumNote: 'Filo uçuşlarında kullanabilecekleri yakıt miktarı.',
+  /** Üstteki bandın yakıt payı; depo değil. D166. */
+  deuteriumLabel: 'Yağmalanabilir döteryum',
+  deuteriumNote: 'Üstteki bandın yakıt payı — kesin zaferle taşınabilecek miktar.',
   strategicLabel: 'Stratejik silah',
   strategicReady: 'Hazır ve kurulu',
   strategicBuilding: 'Yapım aşamasında',

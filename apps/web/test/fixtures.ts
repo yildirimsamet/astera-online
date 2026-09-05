@@ -89,3 +89,28 @@ export function planetView(
     ...over,
   };
 }
+
+/**
+ * OPEN EVERY BAND A SURFACE IS HOLDING SHUT.
+ *
+ * Four surfaces fold on owner instruction — the Fleet tab, the attack sheet's
+ * picker, the research menu and the focus panel — and the choice is remembered per
+ * device (`useAccordion`). Almost every test that touches a ROW is about the row
+ * rather than about the fold, so it reaches past it here in one line.
+ *
+ * The folds' own behaviour — which band opens, what a shut one says, that a lone
+ * band never folds, that the choice survives a revisit — is held down in
+ * `ship-list-density.test.tsx` and `accordion-memory.test.ts`, and those are the
+ * only places it should be asserted.
+ *
+ * `aria-expanded="false"` is the whole query: a band that cannot fold never gets
+ * the attribute, so this is a no-op on a surface with nothing to open.
+ */
+export async function openAllBands(
+  screen: { queryAllByRole: (role: string, options: { expanded: boolean }) => HTMLElement[] },
+  user: { click: (element: Element) => Promise<void> },
+): Promise<void> {
+  for (const band of screen.queryAllByRole('button', { expanded: false })) {
+    await user.click(band);
+  }
+}

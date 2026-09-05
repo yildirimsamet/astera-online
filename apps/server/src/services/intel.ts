@@ -7,6 +7,9 @@ import {
   bearingBetween,
   detectChance,
   fuzzBand,
+  computeLoot,
+  raidableStock,
+  vaultProtects,
   probeAccuracy,
   distance,
   fleetCount,
@@ -59,7 +62,7 @@ import {
 } from './planet.js';
 import { schedule } from '../worker/queue.js';
 import { publishShard, publishWorldMemory } from '../stream/bus.js';
-import { hasResearch, researchLevels } from './researchState.js';
+import { researchLevels } from './researchState.js';
 import { publicWorlds, silhouetteOf } from './publicGalaxy.js';
 import { lockWorlds } from './ownership.js';
 import { assertClanHostilityAllowed, lockClanPlayers } from './clanCombat.js';
@@ -864,16 +867,87 @@ export async function resolveProbe(
   const homeFleet = home as Partial<Record<HullId, number>>;
 
   const accuracy = probeAccuracy(shipyard, veil);
-  const stock = fuzzBand(target.alloy + target.crystal, accuracy, rng);
-  // The COMMANDER'S research, not the launching world's. T7: a probe reads the
-  // band because the person who sent it knows how, and that is not a property of
-  // the pad it left from.
-  const readsIsotopes = await hasResearch(tx, mission.ownerPlayerId, 'ISOTOPE_SPECTROMETRY');
-  // A separate deterministic roll keeps unlocking this field from changing the
-  // existing report bands or whether the target detects the probe.
-  const deuteriumStock = readsIsotopes
-    ? fuzzBand(target.deuterium, accuracy, seededFrom(mission.id, 0x1d50_70e))
-    : null;
+  /**
+   * WHAT A RAID COULD TAKE, NOT WHAT THE WORLD IS HOLDING. Owner report:
+   * *"gezegende 50k kaynak gözüküyor ama dalıyom 300 alloy alıyorum. Böyle
+   * saçmalık olmaz. Yağmalanabilir kaynak aralığını vermeli."*
+   *
+   * This fuzzed `alloy + crystal` — the whole pile — and three rules stand between
+   * that figure and what a fleet flies home with: the vault floor is untouchable,
+   * the grade takes a SHARE rather than the remainder, and uncollected ore is
+   * exposed at only half that again while the vault does not cover it at all. On a
+   * developed world the floor alone is most of the store, so the reported number
+   * and the delivered number were never the same quantity — and a reading that
+   * cannot be compared to the outcome it predicts is not intelligence.
+   *
+   * `raidableStock` is `computeLoot` with the raider's hold taken out of the
+   * question, so this figure and the haul are computed by ONE piece of arithmetic
+   * and cannot drift. The hold stays out on purpose: it is a fact about the
+   * attacker, and a probe that folded it in would report a different world to two
+   * commanders.
+   *
+   * DECISIVE is the grade quoted, because it is the ceiling — the most this world
+   * can be made to give up. A PARTIAL takes proportionally less and the player
+   * already knows which of the two they are flying for.
+   */
+  const targetBuildings = await buildingLevelsOf(tx, target.id);
+  const raidable = raidableStock(
+    { alloy: target.alloy, crystal: target.crystal, deuterium: target.deuterium },
+    {
+      alloy: target.bufferAlloy,
+      crystal: target.bufferCrystal,
+      deuterium: target.bufferDeuterium,
+    },
+    vaultProtects(
+      targetBuildings.VAULT,
+      targetBuildings.REFINERY,
+      targetBuildings.EXTRACTOR,
+      targetBuildings.DEUTERIUM_PLANT,
+    ),
+    'DECISIVE',
+  );
+  const stock = fuzzBand(raidable, accuracy, rng);
+  /**
+   * THE DEUTERIUM SHARE OF THE SAME FIGURE, FOR EVERY COMMANDER. D166.
+   *
+   * Owner instruction, and the gate it removes could not have been kept honestly:
+   * `raidableStock` above sums ALL THREE resources, so the deuterium was already
+   * inside the headline band. A commander without `ISOTOPE_SPECTROMETRY` was
+   * reading it through the total, and one who had bought the project saw the same
+   * ore twice — once in the band, once on its own line, and was sizing a hold
+   * against a number that counted it twice.
+   *
+   * IT IS THE RAIDABLE SHARE, NOT THE TANK, and that is the other half of the fix.
+   * This used to publish `target.deuterium` — the whole store — beside a band that
+   * means "what a fleet could carry away", so the one line a commander read for
+   * deuterium was measuring a different quantity from every other figure on the
+   * screen. `computeLoot` is the single definition of exposure and both now read
+   * it.
+   *
+   * A separate deterministic roll keeps this field from perturbing the other bands
+   * or the detection roll, exactly as it did while it was gated.
+   */
+  const raidableDeuterium = computeLoot(
+    { alloy: target.alloy, crystal: target.crystal, deuterium: target.deuterium },
+    {
+      alloy: target.bufferAlloy,
+      crystal: target.bufferCrystal,
+      deuterium: target.bufferDeuterium,
+    },
+    vaultProtects(
+      targetBuildings.VAULT,
+      targetBuildings.REFINERY,
+      targetBuildings.EXTRACTOR,
+      targetBuildings.DEUTERIUM_PLANT,
+    ),
+    'DECISIVE',
+    Number.MAX_SAFE_INTEGER,
+  ).deuterium;
+  const deuteriumStock = fuzzBand(
+    raidableDeuterium,
+    accuracy,
+    seededFrom(mission.id, 0x1d50_70e),
+  );
   const defence = fuzzBand(fleetValue(homeFleet), accuracy, rng);
   const size = fuzzBand(fleetCount(homeFleet), accuracy, rng);
   /*
@@ -956,9 +1030,9 @@ export async function resolveProbe(
     missionId: mission.id,
     accuracy,
     stock: { low: stock.low, high: stock.high },
-    deuteriumStock: deuteriumStock
-      ? { low: deuteriumStock.low, high: deuteriumStock.high }
-      : null,
+    // Always present since D166 — the column stays nullable for the reports written
+    // while it was gated behind research.
+    deuteriumStock: { low: deuteriumStock.low, high: deuteriumStock.high },
     defence: { low: defence.low, high: defence.high },
     fleetSize: { low: size.low, high: size.high },
     fleetHome: !anyAway,

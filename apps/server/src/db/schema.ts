@@ -23,6 +23,8 @@ import type {
   HullId,
   GalaxyEventKind as ScheduledGalaxyEventKind,
   AsteroidShowerEffect,
+  TradeShipEffect,
+  TradeRate,
   ResearchProjectId,
   Resources,
   TechLevels,
@@ -85,9 +87,22 @@ export const eventKind = pgEnum('event_kind', [
   /** A raid reaching its pirate, and its survivors reaching home again. D150. */
   'pirate_arrival',
   'pirate_return',
+  /** A convoy reaching the merchant, and its return leg reaching home. D156. */
+  'trade_arrival',
+  'trade_return',
 ]);
+/**
+ * APPEND-ONLY, AND THE ORDER IS THE ENUM'S PHYSICAL IDENTITY.
+ *
+ * Postgres stores an enum value's sort order by declaration position, and drizzle
+ * diffs this array against the type it finds. Reordering it does not produce an
+ * `ALTER TYPE ... ADD VALUE` — it produces a rebuild of the type and every column
+ * that uses it. New kinds go on the end.
+ */
 export const galaxyEventOccurrenceKind = pgEnum('galaxy_event_occurrence_kind', [
   'ASTEROID_SHOWER',
+  /** Ticaret Gemisi. D156. */
+  'TRADE_SHIP',
 ]);
 /**
  * WHAT THE GAME TELLS YOU, AND NOTHING ELSE. D45.
@@ -188,6 +203,39 @@ export const feedbackEntries = pgTable('feedback_entries', {
   index('feedback_entries_created_idx').on(t.createdAt),
   index('feedback_entries_account_idx').on(t.accountId, t.createdAt),
   check('feedback_entries_kind_check', sql`${t.kind} IN ('BUG', 'SUGGESTION', 'PRAISE')`),
+]);
+
+/**
+ * COMMANDERS THE SERVER PLAYS. D159.
+ *
+ * The single statement of "this account is not a person". There is deliberately no
+ * flag on `accounts`: one place to ask the question means one place that can be
+ * wrong, and a boolean beside `password_hash` invites every future join to carry an
+ * `AND NOT is_bot` that somebody will forget.
+ *
+ * IT HANGS OFF THE ACCOUNT, NOT THE PLAYER, BECAUSE THAT IS WHAT SURVIVES A WIPE.
+ * `wipeAllServers` deletes every `players` row and keeps every `accounts` row, so a
+ * profile keyed on the account is what lets the same twelve names be seated again in
+ * the next season without the owner retyping them.
+ *
+ * `ordinal` is the shift roster's key and the persona's: it decides when this
+ * commander is awake and how it plays, so it is stable for the life of the account
+ * and unique across the whole table rather than per galaxy.
+ */
+export const botProfiles = pgTable('bot_profiles', {
+  accountId: uuid('account_id').primaryKey().references(() => accounts.id),
+  ordinal: integer('ordinal').notNull(),
+  persona: text('persona').notNull(),
+  /**
+   * When this commander next does something. The sweep claims rows by this column
+   * with `FOR UPDATE SKIP LOCKED`, so two workers can never drive one bot at once
+   * and a crashed sweep leaves the row exactly as it found it.
+   */
+  nextActionAt: timestamp('next_action_at', { withTimezone: true }).notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull(),
+}, (t) => [
+  uniqueIndex('bot_profiles_ordinal_idx').on(t.ordinal),
+  index('bot_profiles_due_idx').on(t.nextActionAt),
 ]);
 
 /**
@@ -472,6 +520,34 @@ export const chatMessages = pgTable('chat_messages', {
   index('chat_messages_author_rate_idx').on(t.authorPlayerId, t.createdAt),
 ]);
 
+/**
+ * The two lifecycle payloads, named because the Chronicle types them too. D156.
+ *
+ * One shape per event kind, discriminated on `eventKind`, so a reader that has
+ * only been taught the shower cannot silently read a merchant's row as one.
+ */
+export type GalaxyEventLifecyclePayload =
+  | {
+      eventKind: 'ASTEROID_SHOWER';
+      startsAt: string;
+      endsAt: string;
+      asteroidSpawnMultiplier: number;
+    }
+  /**
+   * The merchant's lifecycle row carries the RATE and nothing else.
+   *
+   * Not the orbit: the Chronicle is a permanent public record and an occurrence
+   * that has ended is exactly the pre-decision knowledge D149 keeps back. The rate
+   * is what the moment MEANT, and it is frozen here for the same reason the
+   * occurrence freezes it — a later constant change must not rewrite history.
+   */
+  | {
+      eventKind: 'TRADE_SHIP';
+      startsAt: string;
+      endsAt: string;
+      rate: TradeRate;
+    };
+
 export type GalaxyEventPayload =
   | { planetName: string; commanderName: string }
   | { planetName: string; commanderName: string; tier: number }
@@ -484,12 +560,7 @@ export type GalaxyEventPayload =
     }
   | Record<string, never>
   | { act: 'war' | 'consolidation' | 'sunset' }
-  | {
-      eventKind: 'ASTEROID_SHOWER';
-      startsAt: string;
-      endsAt: string;
-      asteroidSpawnMultiplier: number;
-    };
+  | GalaxyEventLifecyclePayload;
 
 /** Public history, not intel. Its intentionally small contract is locked by D89. */
 export const galaxyEvents = pgTable('galaxy_events', {
@@ -515,17 +586,35 @@ export const galaxyEvents = pgTable('galaxy_events', {
 export const galaxyEventOccurrences = pgTable('galaxy_event_occurrences', {
   id: uuid('id').primaryKey().defaultRandom(),
   seasonId: uuid('season_id').notNull().references(() => seasons.id),
+  /**
+   * Position in THIS KIND's own calendar, 0-based and in start order.
+   *
+   * Per kind, never global, which is what moved the unique index below to
+   * `(season_id, kind, sequence)`: each lane numbers its occurrences from zero, so
+   * on the old `(season_id, sequence)` index the first merchant and the first
+   * shower of a season collided and took the whole season-creation transaction
+   * down with them.
+   */
   sequence: integer('sequence').notNull(),
   kind: galaxyEventOccurrenceKind('kind').$type<ScheduledGalaxyEventKind>().notNull(),
   definitionVersion: integer('definition_version').notNull(),
   startsAt: timestamp('starts_at', { withTimezone: true }).notNull(),
   endsAt: timestamp('ends_at', { withTimezone: true }).notNull(),
-  effect: jsonb('effect').$type<AsteroidShowerEffect>().notNull(),
+  /**
+   * The effect snapshot, frozen at deal time — one shape per kind.
+   *
+   * The jsonb carries no self-describing tag, so the `kind` column IS the
+   * discriminator and every reader must narrow through it. `galaxyEvents.ts` does
+   * that in one place and refuses a row whose effect does not match its kind,
+   * rather than each of the four readers guessing at the shape.
+   */
+  effect: jsonb('effect').$type<AsteroidShowerEffect | TradeShipEffect>().notNull(),
   startProcessedAt: timestamp('start_processed_at', { withTimezone: true }),
   endProcessedAt: timestamp('end_processed_at', { withTimezone: true }),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 }, (t) => [
-  uniqueIndex('galaxy_event_occurrences_season_sequence_idx').on(t.seasonId, t.sequence),
+  uniqueIndex('galaxy_event_occurrences_season_kind_sequence_idx')
+    .on(t.seasonId, t.kind, t.sequence),
   index('galaxy_event_occurrences_active_idx').on(t.seasonId, t.startsAt, t.endsAt),
   check('galaxy_event_occurrences_sequence_check', sql`${t.sequence} >= 0`),
   check('galaxy_event_occurrences_window_check', sql`${t.endsAt} > ${t.startsAt}`),
@@ -564,6 +653,21 @@ export const planets = pgTable('planets', {
   lastTickAt: timestamp('last_tick_at', { withTimezone: true }).notNull().defaultNow(),
   disruptedUntil: timestamp('disrupted_until', { withTimezone: true }),
   recoveryUntil: timestamp('recovery_until', { withTimezone: true }),
+  /**
+   * WHEN A SHIP LAST LANDED HERE DURING A RECOVERY. D167.
+   *
+   * A struck COLONY is on a deadline, not merely an outage: if its commander puts
+   * no ship on it before `recoveryUntil`, `endRecovery` releases the world. This is
+   * how that question is answered — stamped by a transfer arrival, cleared by every
+   * strike, so "was this world answered for" is one column and one comparison.
+   *
+   * IT MEASURES THE ANSWER, NOT THE LEFTOVERS. Counting hulls at the end would
+   * have been one fewer column and the wrong question: a strike destroys every home
+   * hull, so a relief wing that arrived and then flew on to do something else would
+   * read as no relief at all. The commander showed up; that is the fact being
+   * recorded.
+   */
+  recoveryReliefAt: timestamp('recovery_relief_at', { withTimezone: true }),
   protectedUntil: timestamp('protected_until', { withTimezone: true }),
   /**
    * HOW MANY OF EACH HULL THIS PLANET HAS EVER BUILT. Cumulative, never reduced.
@@ -1565,6 +1669,91 @@ export const pirateRaids = pgTable('pirate_raids', {
   uniqueIndex('pirate_raids_planet_target_idx')
     .on(t.planetId, t.pirateIndex)
     .where(sql`status <> 'done'`),
+]);
+
+export const tradeRunStatus = pgEnum('trade_run_status', ['outbound', 'returning', 'done']);
+
+/**
+ * A CONVOY SENT TO THE TİCARET GEMİSİ. D156.
+ *
+ * Deliberately NOT a `missions` row, for the reason written over `pirateRaids` one
+ * screen up: `missions.{originPlanetId, targetPlanetId}` are both NOT NULL foreign
+ * keys to `planets`, and every query over that table assumes a fight between two
+ * addresses. A merchant has no address. Bolting a nullable target planet onto
+ * `missions` would put that assumption one forgotten `WHERE` clause away from
+ * being wrong inside the fog layer.
+ *
+ * THERE IS NO `trade_state` TABLE, AND THAT IS A DESIGN FACT RATHER THAN AN
+ * OMISSION. A pirate has a crew that gets shot off and a hoard that gets taken
+ * once, so `pirate_state` holds the one thing that cannot be derived — and D150
+ * had to learn the hard way that `SELECT ... FOR UPDATE` cannot lock a row that
+ * does not exist, so the row must be seeded before it is locked or two first hits
+ * both fight a full crew and both collect the hoard. The merchant's stock is
+ * unlimited and its rate is frozen on the occurrence: there is nothing about it
+ * that a convoy mutates, so this lane has no row to seed and cannot reach that
+ * race at all.
+ *
+ * `interceptX/Y/Z` is the point the fleet was aimed at, STORED rather than
+ * re-derived, exactly as a pirate raid stores it. The rendezvous depends on the
+ * convoy's speed at launch and on where the merchant was at that instant;
+ * re-solving it later would silently teleport a flight onto a new course every
+ * time the ship moved along its orbit.
+ */
+export const tradeRuns = pgTable('trade_runs', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  seasonId: uuid('season_id').notNull().references(() => seasons.id),
+  /** Which appearance of the merchant this convoy was sent to. */
+  occurrenceId: uuid('occurrence_id').notNull().references(() => galaxyEventOccurrences.id),
+  /** Where it left from, and where its squadron is parked for the trip. */
+  planetId: uuid('planet_id').notNull().references(() => planets.id),
+  /**
+   * WHO COMMITTED THE FLEET — WHICH IS NOT "WHOEVER HOLDS THE PAD WHEN IT LANDS".
+   *
+   * The same column, for the same reason, as `pirate_raids.owner_player_id` (D150):
+   * a convoy parks its squadron off-world for the whole trip and its origin may be
+   * an ordinary colony, so the world can change hands mid-flight. Asking
+   * `planets.controller_player_id` on the return leg would hand the squadron and
+   * the goods to the commander who had just captured the pad. `safeHomePlanet` is
+   * the shared answer for where this commander's fleet is actually delivered.
+   */
+  ownerPlayerId: uuid('owner_player_id').notNull().references(() => players.id),
+  status: tradeRunStatus('status').notNull().default('outbound'),
+  fleet: jsonb('fleet').$type<Fleet>().notNull(),
+  /** What the convoy carries out. Already debited from the origin at launch. */
+  give: jsonb('give').$type<Resources>().notNull(),
+  /** What it brings home. Credited on the return leg, never before. */
+  want: jsonb('want').$type<Resources>().notNull(),
+  /**
+   * The occurrence's rate, frozen at launch — the D137 discipline applied to a
+   * price. What was quoted on the launch screen is what the return leg pays, even
+   * if the constant table moves underneath a live season.
+   */
+  rate: jsonb('rate').$type<TradeRate>().notNull(),
+  interceptX: real('intercept_x').notNull(),
+  interceptY: real('intercept_y').notNull(),
+  interceptZ: real('intercept_z').notNull(),
+  departAt: timestamp('depart_at', { withTimezone: true }).notNull(),
+  arriveAt: timestamp('arrive_at', { withTimezone: true }).notNull(),
+  /** NULL until it turns for home. */
+  homeAt: timestamp('home_at', { withTimezone: true }),
+}, (t) => [
+  index('trade_runs_planet_idx').on(t.planetId, t.status),
+  index('trade_runs_season_idx').on(t.seasonId, t.status),
+  /*
+    NO UNIQUE INDEX ON (planet_id, occurrence_id), AND THAT IS THE DECISION.
+
+    `pirate_raids` carries `pirate_raids_planet_target_idx` because D150 caps a
+    world at one raid per pirate and the database is what guarantees it. The
+    merchant has no such cap: the owner ruled out a quota, a fee and a per-world
+    convoy limit, because hold size, flight bays and prepaid fuel (D136) are
+    already the brakes and they are the brakes the rest of the game runs on. A
+    world may run as many convoys at one appearance as it can pay for.
+
+    Written down rather than left absent so the gap reads as a decision. Should
+    that ever change, the index to add is
+    `uniqueIndex('trade_runs_planet_occurrence_idx').on(t.planetId, t.occurrenceId)
+      .where(sql`status <> 'done'`)`.
+  */
 ]);
 
 export const miningStatus = pgEnum('mining_status', ['outbound', 'returning', 'done']);

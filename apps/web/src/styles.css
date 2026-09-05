@@ -166,7 +166,7 @@
   .announcement-content {
     overflow-wrap: anywhere;
     color: var(--color-dim);
-    font-size: 0.94rem;
+    font-size: 0.815rem;
     line-height: 1.7;
   }
 
@@ -209,12 +209,12 @@
 
   .announcement-content h2,
   .tiptap-editor h2 {
-    font-size: 1.25rem;
+    font-size: 1.0625rem;
   }
 
   .announcement-content h3,
   .tiptap-editor h3 {
-    font-size: 1.05rem;
+    font-size: 0.925rem;
   }
 
   .announcement-content ul,
@@ -281,7 +281,7 @@
     padding: 0.8rem;
     color: var(--color-bone);
     font-family: 'IBM Plex Mono', monospace;
-    font-size: 0.82rem;
+    font-size: 0.695rem;
   }
 
   .tiptap-editor {
@@ -420,19 +420,19 @@
    */
   --text-hero: 46px;
   --text-hero--line-height: 0.92;
-  --text-readout: 30px;
+  --text-readout: 27px;
   --text-readout--line-height: 1;
-  --text-figure: 21px;
+  --text-figure: 18px;
   --text-figure--line-height: 1.05;
-  --text-title: 18px;
+  --text-title: 16px;
   --text-title--line-height: 1.2;
-  --text-body: 14px;
+  --text-body: 12px;
   --text-body--line-height: 1.5;
-  --text-caption: 12px;
+  --text-caption: 10px;
   --text-caption--line-height: 1.45;
   --text-label: 11px;
   --text-label--line-height: 1.2;
-  --text-micro: 10px;
+  --text-micro: 9px;
   --text-micro--line-height: 1.2;
 
   /**

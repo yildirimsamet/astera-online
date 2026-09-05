@@ -32,9 +32,27 @@ export const ECON = {
    * shape, not merely its pace. Prices and storage have their own explicit tempo
    * levers so every ratio is measured rather than accidentally coupled.
    */
-  alloyBase: 132 * ECONOMY_TEMPO.passiveIncome,
+  /**
+   * D161 MOVED ALL THREE BASES AND NOTHING ELSE. Owner instruction: alloy down a
+   * tenth, crystal up a tenth, deuterium up 15%.
+   *
+   * Written as `132 x 0.9` rather than folded into 118.8 on purpose — the factor
+   * IS the decision, and the next person to read this needs to see which way the
+   * dial was turned and by how much, not a number with no history.
+   *
+   * WHAT IT CHANGES IN PLAY. Crystal was the resource every upgrade waited on
+   * while alloy piled up unspent, and deuterium — which is also fuel, and so
+   * decides whether a session can end with something in the air — was the tightest
+   * of the three. The shape is untouched: same `base x L x growth^L`, same growth
+   * terms, same relative ladders. Only the three heights moved.
+   *
+   * `crystalCostBase` IS DERIVED FROM THIS PAIR AND HAD TO MOVE WITH IT. See its
+   * own note: the crystal share of an UPGRADE tracks the crystal share of INCOME,
+   * or the scarce resource stops being scarce.
+   */
+  alloyBase: 132 * 0.9 * ECONOMY_TEMPO.passiveIncome,
   alloyMult: 1.10,
-  crystalBase: 48 * ECONOMY_TEMPO.passiveIncome,
+  crystalBase: 48 * 1.1 * ECONOMY_TEMPO.passiveIncome,
   crystalMult: 1.09,
   /**
    * THE THIRD PRODUCER, AND IT IS DELIBERATELY A TRICKLE. T5.
@@ -54,7 +72,7 @@ export const ECON = {
    * The floor, never the ceiling: if the two ever meet, the whole Frontier act
    * becomes dead content.
    */
-  deuteriumBase: 4.15 * ECONOMY_TEMPO.passiveIncome,
+  deuteriumBase: 4.15 * 1.15 * ECONOMY_TEMPO.passiveIncome,
   deuteriumMult: 1.04,
 
   costBase: 52 * ECONOMY_TEMPO.upgradePrice,
@@ -64,8 +82,18 @@ export const ECON = {
    * INCOME, or the scarce resource is not scarce.
    *
    * BOTH OF THESE ARE DERIVED. `crystalCostMult` is `costMult × (crystalMult /
-   * alloyMult)` and `crystalCostBase` is `costBase × 0.79 × (crystalBase /
-   * alloyBase)`. Two independently hand-picked multipliers drift: the shipped
+   * alloyMult)` and `crystalCostBase` WAS `costBase × 0.79 × (crystalBase /
+   * alloyBase)` — 0.2895 against the pre-D161 pair of 48 / 132.
+   *
+   * D161 MOVED THE INCOME PAIR TO 52.8 / 118.8 AND THIS FIGURE STAYED. Re-deriving
+   * it (0.3538, holding the charge at 0.79 of income) was tried first and refused
+   * by measurement, not by taste: it pushes `paybackHours(1)` from 0.98 to 1.03,
+   * and the first upgrade repaying inside a single session is the day-zero promise
+   * the opening is built on. So the charged share falls to 0.65 of the income
+   * share — still inside the 0.6–1.0 band `invariants.test.ts` enforces, and on
+   * the loose side of it, which is the direction D161 was asking for: crystal is
+   * supposed to have got EASIER. Below 0.6 it would start piling up unspendably,
+   * and at that point the answer is the price curve, not this ratio. Two independently hand-picked multipliers drift: the shipped
    * game once ran 1.58 against a 1.55 alloy curve and the crystal cost share
    * climbed from 0.21 to 0.37 across ten levels WHILE THE INCOME SHARE FELL,
    * quietly inverting which resource was scarce. Tying it to the income curve
@@ -111,8 +139,24 @@ export const ECON = {
    * nobody is collecting. A tall store is only reachable by somebody who keeps
    * emptying the works into it — which is one more thing active play buys.
    */
-  capHours: 12 * ECONOMY_TEMPO.storageHours,
-  capHoursPerVault: 0.8 * ECONOMY_TEMPO.storageHours,
+  /**
+   * BOTH DIVIDED BY 0.9 AT D161, AND THAT IS A CORRECTION RATHER THAN A CHANGE.
+   *
+   * The store is denominated in HOURS OF PRODUCTION, so dropping alloy income a
+   * tenth shrank every alloy store by a tenth while `upgradeCost` did not move —
+   * and the crossing this whole note is about arrived immediately: at L20 an
+   * upgrade cost 307,331 alloy against a 305,258 store, so the purchase became
+   * unbuyable with nothing in the interface to explain it. `tempo.test.ts` caught
+   * it in the same run.
+   *
+   * Dividing by the same 0.9 restores the measured margin exactly — `costAlloy /
+   * storageCap` peaks at 0.906 at L20 again, the figure this note was written
+   * against. Crystal and deuterium stores grow with it, which is the direction
+   * D161 wanted anyway: a bigger store is more ore in the open, and the vault
+   * floor below did not follow it up.
+   */
+  capHours: (12 / 0.9) * ECONOMY_TEMPO.storageHours,
+  capHoursPerVault: (0.8 / 0.9) * ECONOMY_TEMPO.storageHours,
 
   /**
    * Hours the works hold before they STOP. D16.
@@ -160,7 +204,10 @@ export const ECON = {
    * being clever. Do not remove it again without re-running `pnpm sim`.
    *
    * It moved from 0.55 with `capHoursPerVault` because it is denominated against
-   * it — a constant priced in another constant has to move with it.
+   * it — a constant priced in another constant has to move with it. D161 cut it
+   * again, to 0.2, on the owner's instruction that a raid must be worth flying;
+   * the ratio it is measured by (0.2 / 0.889 = 0.225) is further inside the half-a-
+   * store rule than the pair it replaces, not closer to it.
    *
    * The old rule guarded exactly this failure and guarded it silently: a vault
    * that compounds faster than the stock it protects eventually covers 100% of
@@ -168,11 +215,33 @@ export const ECON = {
    * `alloyMult` of 1.45 and killed the entire PvP economy for a whole season
    * before the simulator caught it.
    */
-  protectedHoursBase: 2 * ECONOMY_TEMPO.storageHours,
-  protectedHoursPerVault: 0.3 * ECONOMY_TEMPO.storageHours,
+  /**
+   * CUT A QUARTER AND A THIRD AT D161. Owner instruction: *"Yağmalanabilir miktar
+   * bir şekilde artmalı. Kasa hacmini küçültsek nasıl olur?"*
+   *
+   * THE VAULT IS THE RIGHT DIAL FOR THAT QUESTION and the loot share is not. A
+   * wider `lootDecisive` pays the attacker more for the same fight and changes
+   * nothing about the defender's exposure; a lower floor changes what is AT STAKE,
+   * which is the side of the trade the complaint is about — a commander flew at a
+   * world showing 50,000 and came home with three hundred.
+   *
+   * WHAT IT MEASURES TO. Against the D161 store the protected share of a full
+   * store falls from 1/6 to about 1/9 at Vault 0, and from a QUARTER to under a
+   * sixth at Vault 10 — the old pair grew faster than the store it sat in, so
+   * raiding got steadily worse as a season went on, which is backwards for a game
+   * whose late act is meant to be its most dangerous. `raidable.test.ts` holds the
+   * new ceiling; `invariants.test.ts` still holds the half-a-store rule above it.
+   *
+   * THE FLAT TERM IS REDUCED, NEVER REMOVED — see the paragraph below, and the
+   * simulator run that refused its removal outright.
+   */
+  protectedHoursBase: 1.5 * ECONOMY_TEMPO.storageHours,
+  protectedHoursPerVault: 0.2 * ECONOMY_TEMPO.storageHours,
   /**
    * The floor a brand-new planet gets, in alloy, before the hours rule outgrows it
-   * — about nine hours of a Refinery-1 world's output. It follows the current
+   * — cut a quarter with the two hour figures above at D161, so the opening's
+   * protection moves with the rest of the vault rather than quietly becoming the
+   * binding term for longer than it used to. It follows the current
    * price profile so the protected opening moves with the purchases it protects.
    *
    * It binds only below about Refinery 3. While it binds the Vault buys no extra
@@ -183,7 +252,7 @@ export const ECON = {
    *
    * The crystal figure is derived from the income ratio, never picked.
    */
-  openingFloorAlloy: scalePrice(840, ECONOMY_TEMPO.upgradePrice),
+  openingFloorAlloy: scalePrice(630, ECONOMY_TEMPO.upgradePrice),
 } as const;
 
 /**
@@ -1658,6 +1727,22 @@ export const DISRUPTION = {
 export const ABUSE = {
   bashLimit: 3,
   bashWindowMinutes: 720,
+
+  /**
+   * HOW MANY DEVELOPMENT TIERS APART TWO COMMANDERS MAY STILL FIGHT. D168.
+   *
+   * One, so a tier reaches the tier below it, its own, and the tier above — three
+   * tiers wide out of the seven the ladder has (`coreTier` buckets Core levels in
+   * threes and the Core tops out at `CORE_TOP_LEVEL`). It is a COMMANDER's number
+   * and not a world's: both sides are measured on the tallest Core they hold, so a
+   * developed commander cannot reach down through a small colony.
+   *
+   * D49 set it at 2 on a public tier, D127 removed it with the public tier, and
+   * D168 restores it narrower on the owner's instruction. Widening it is a gameplay
+   * decision rather than a tuning knob: it is the whole of what keeps a finished
+   * commander off a fresh one, and `bashLimit` only caps repetition inside it.
+   */
+  tierBand: 1,
 } as const;
 
 export const GALAXY = {
@@ -1777,12 +1862,98 @@ export const GALAXY = {
 } as const;
 
 /**
+ * TİCARET GEMİSİ — THE SECOND PUBLIC MOMENT IN THE SKY. D156.
+ *
+ * A merchant rides a closed orbit three times a day and swaps one resource for
+ * another at ONE fixed, published rate. It is the first thing in the galaxy that
+ * turns a surplus into a shortage without a fight, and it is deliberately not a
+ * market: no price discovery, no order book, no quota, no fee. A rate a player
+ * can hold in their head is a rate they can plan a convoy against.
+ *
+ * WHAT LIMITS IT IS THE CONVOY, AND NOTHING ELSE. There is no merchant quota and
+ * no one-visit-per-world rule, because the brakes already exist and are the ones
+ * the rest of the game is made of: cargo capacity, a flight bay, and prepaid fuel
+ * (D136). Adding a fourth brake would only make the decision less legible.
+ *
+ * UNLIKE A PIRATE, ITS POSITION IS PUBLIC. It is an ANNOUNCED event, so its
+ * orbital elements may be published and the three-zone craft fog does not apply
+ * to it — the fog rule protects pre-decision knowledge, never a public live
+ * moment. Only the ACTIVE occurrence is ever published; the future calendar stays
+ * on the server exactly as D149 requires of every galaxy event.
+ */
+export const TRADE = {
+  /**
+   * 90 alloy = 30 crystal = 1 deuterium. Owner instruction, D156.
+   *
+   * Read as UNITS PER RESOURCE UNIT, which is the only way this cannot be
+   * inverted by accident: a resource's number is what one of it is worth, so the
+   * scarcer the resource the larger the figure. One Deuterium is ninety units and
+   * ninety Alloy is also ninety units, which is the same sentence twice.
+   */
+  rate: { alloy: 1, crystal: 3, deuterium: 90 },
+
+  /**
+   * HALF AN ATLAS'S PACE, ON THE ATLAS'S OWN SCALE. D155's lesson, applied before
+   * it could be repeated: a hull's catalogue figure is divided by
+   * `TRAVEL.distanceFactor` to reach units per minute, and this number already IS
+   * units per minute. Measured against a rock instead — rocks run 350-750 — the
+   * merchant would outrun every cargo hull in the game, and `interceptOrbit`'s
+   * earliest meeting would be a lap of waiting rather than a lead. That is exactly
+   * the bug the pirate lane shipped with and D155 removed.
+   *
+   * The Atlas is the SLOWEST cargo hull in the catalogue, so anchoring on it means
+   * every hold in the game leads the merchant and the convoy decision is about how
+   * much you can carry, never about whether you can catch it.
+   *
+   * `constants.ts` cannot import `hulls.ts` — `hulls.ts` imports this file — so
+   * the anchor is written as the conversion rather than as its result, exactly as
+   * `PIRATE.speedMin` names a Cataclysm. `trade.test.ts` binds it to `HULLS`.
+   */
+  speed: 47 / TRAVEL.distanceFactor,
+
+  /**
+   * How far out it runs. NARROWER THAN THE ROCKS' 400-2,000 ON PURPOSE.
+   *
+   * The fourth-power draw exists to equalise sensor OPPORTUNITY across a disc
+   * where player worlds fill a volume, and a public position has no sensor
+   * opportunity to equalise — everyone sees this one. What is left is distance
+   * fairness, and both ends of the rocks' band hurt it: a merchant glued to the
+   * centre is a free trip for whoever was seeded near the origin, and one hugging
+   * the rim is a free trip for the opposite rim and an expedition for everybody
+   * else. Pulling both ends in costs nothing and makes the worst case survivable.
+   *
+   * THE WORST CASE, VERIFIED IN `trade.test.ts`: a rim world at 2,000 and a ship
+   * at 1,600 on the far side is 3,600 units. An Atlas covers that in 46 minutes,
+   * so the round trip is 92 — comfortably inside the 180-minute window, with the
+   * dock and a mis-timed launch still paid for.
+   */
+  orbitMin: 600,
+  orbitMax: 1600,
+
+  /**
+   * Seconds a convoy is alongside before it turns for home.
+   *
+   * The same shape as a raid's ten-second engagement: a swap that resolved
+   * instantly would have no moment to draw, and a public event with nothing to
+   * watch is a menu entry rather than a moment.
+   */
+  dockSeconds: 10,
+} as const;
+
+/**
  * Public galaxy moments. Their exact occurrence timestamps are generated once at
  * season creation and persisted; changing this object never rewrites a live sky.
  *
  * Türkiye quiet hours are deliberately a LOW-WEIGHT band, not a blackout. Five
- * events reserve one quiet-hours start and may roll a second, but can never place
- * more than two on the same Türkiye calendar date.
+ * showers reserve one quiet-hours start and may roll a second, but can never
+ * place more than two on the same Türkiye calendar date.
+ *
+ * `dailyCount` LIVES ON EACH DEFINITION, NOT ON THE CALENDAR. D156. It sat under
+ * `calendar` while there was exactly one kind of moment, where it read as a
+ * property of the schedule rather than of the event — and the day a second kind
+ * arrived, the two would have had to share a rate. A shower is five a day; a
+ * merchant is three. The calendar block is now only what is genuinely common to
+ * every kind: the clock, the quiet band and how hard the packer tries.
  */
 export const GALAXY_EVENTS = {
   version: 1,
@@ -1791,7 +1962,6 @@ export const GALAXY_EVENTS = {
     timeZone: 'Europe/Istanbul',
     /** Versioned TRT offset. A future legal clock change requires a new config version. */
     utcOffsetMinutes: 180,
-    dailyCount: { min: 5, max: 5 },
     lowPriorityWindow: {
       startsAtLocalMinute: 0,
       endsAtLocalMinute: 8 * 60,
@@ -1804,12 +1974,61 @@ export const GALAXY_EVENTS = {
   definitions: {
     ASTEROID_SHOWER: {
       version: 1,
+      dailyCount: { min: 5, max: 5 },
       durationMinutes: 60,
       /** Two quiet hours after the one-hour shower; starts stay at least three hours apart. */
       repeatCooldownMinutes: 120,
       effect: { asteroidSpawnMultiplier: 5 },
     },
+    /**
+     * FOUR MERCHANTS A DAY, THREE HOURS EACH, AND ONE OF THEM AT NIGHT. D156 · D166.
+     *
+     * Twelve of every twenty-four hours have a ship in the sky, which is the point:
+     * a player who logs in once a day has to have a real chance of finding one,
+     * and a window shorter than a round trip from the rim would be an announced
+     * event most of the galaxy could not attend.
+     *
+     * D166 RAISED IT FROM THREE AND PINNED THE FOURTH TO THE NIGHT. Owner
+     * instruction: *"günde 4 kez … 3 aktif zamanlarda 1 gece (TSİ 01:00 - 08:00)"*.
+     * The calendar's shared `lowPriorityWindow` could not express that: it is a
+     * SHARE with a ceiling plus a coin flip, which is right for a shower nobody has
+     * to attend and wrong for a promise made to the commander who plays after
+     * midnight. `quietWindow` states the merchant's own rule — its own hours, and an
+     * exact count rather than a target.
+     *
+     * THE COOLDOWN CAME DOWN WITH THE COUNT, and it had to. Two merchants never
+     * overlap as long as the gap covers the window, and the gap is
+     * `durationMinutes + repeatCooldownMinutes`. At the old 180 the gap was 360, and
+     * four of those need 1,440 minutes — an entire day, with the night window
+     * eating one of the four slots. At 60 the gap is 240 and four starts need 960,
+     * which leaves the planner real room on both sides of 08:00. The shower's five
+     * starts at a 180-minute gap still need 720 of their own, so the two lanes pack
+     * independently and never have to negotiate — which is why `mutuallyExclusive`
+     * stays empty.
+     *
+     * `version` MOVED WITH THE SHAPE. A live season keeps the calendar it was dealt
+     * (D149); only seasons created past `MULTI_WORLD.tradeShipRulesetVersion` get
+     * this one.
+     */
+    TRADE_SHIP: {
+      version: 2,
+      dailyCount: { min: 4, max: 4 },
+      durationMinutes: 180,
+      repeatCooldownMinutes: 60,
+      /** The merchant's own night, and exactly one window inside it. D166. */
+      quietWindow: {
+        startsAtLocalMinute: 60,
+        endsAtLocalMinute: 8 * 60,
+        exactDailyCount: 1,
+      },
+      effect: { rate: TRADE.rate },
+    },
   },
+  /**
+   * A shower and a merchant MAY share the sky, and nothing is gained by stopping
+   * them. They compete for no resource, no screen and no decision — one changes
+   * how many rocks arrive, the other parks a shop in orbit.
+   */
   mutuallyExclusive: [] as readonly (readonly [string, string])[],
 } as const;
 
@@ -2115,11 +2334,42 @@ export const PIRATE = {
 } as const;
 
 export const MULTI_WORLD = {
-  rulesetVersion: 4,
+  /**
+   * THE RULESET A NEW SEASON IS CREATED AT. 5 → 6 at D166, with the merchant's
+   * calendar: `tradeShipRulesetVersion` gates on this figure, so raising the gate
+   * without raising this would have switched the merchant off entirely rather than
+   * reshaping it.
+   */
+  rulesetVersion: 6,
   /** Old hull rows may exist only before this offline season boundary. D148. */
   fleetCatalogRulesetVersion: 4,
   /** Persisted galaxy-event calendars exist only on freshly created seasons at this boundary. */
   galaxyEventsRulesetVersion: 4,
+  /**
+   * THE TRADE SHIP'S OWN BOUNDARY, AND WHY IT IS NOT `galaxyEventsRulesetVersion`.
+   * D156.
+   *
+   * A season's event calendar is dealt ONCE, at creation, and persisted. A live
+   * season therefore has no TRADE_SHIP rows and can never grow any, which is the
+   * whole of "ships only in new seasons" — so the gate has to be a second
+   * constant rather than a bump of the first.
+   *
+   * RAISING `galaxyEventsRulesetVersion` TO 5 WOULD HAVE KILLED THE ASTEROID
+   * SHOWER OUTRIGHT, and it is written down here because it is not visible from
+   * either constant on its own. `seedGalaxyEventCalendar` returns early when
+   * `season.rulesetVersion < MULTI_WORLD.galaxyEventsRulesetVersion`, and
+   * `season.rulesetVersion` defaults to `rulesetVersion` — so moving both to 5
+   * looks like a no-op and is one, while moving only the gate leaves every new
+   * season with NO calendar at all. The gate stays at 4; the ruleset moves to 5;
+   * the trade lane reads the constant below.
+   */
+  /**
+   * D166 RESHAPED THE MERCHANT'S CALENDAR (four a day, one of them at night), and a
+   * calendar is dealt once at creation and persisted (D149). So the gate moves with
+   * it: seasons already running keep the three-a-day schedule they were dealt, and
+   * only seasons created past this boundary get the new one.
+   */
+  tradeShipRulesetVersion: 6,
   /** Neutral worlds and colonies remain the v2 boundary. */
   neutralWorldRulesetVersion: 2,
   /** D114 clan state exists only in a freshly created v3 season. */
@@ -2154,14 +2404,22 @@ export const MULTI_WORLD = {
    * How long a struck world is dark: no production, no regeneration, no
    * collection, no purchase, no launch. TWO HOURS AT D113, from six.
    *
-   * It is also the window a second impact has to arrive in to take control, and
-   * that is why it was worth shortening rather than lengthening: six hours put
-   * the capture leg on the far side of most people's evening, while a Death Star
-   * crosses the whole disc in thirteen minutes. Two hours is still ten crossings
-   * wide, so the capture route survives intact and the punishment stops being an
-   * evening-long outage for the world that took the hit.
+   * SPLIT BY WORLD KIND AT D167, and the asymmetry is the whole feature. A capital
+   * keeps the two hours it has had since D113 — it can be devastated repeatedly and
+   * never lost, because "capitals cannot be captured" is a locked constraint and a
+   * long enough outage would be that rule reinterpreted as "captured slowly".
+   *
+   * A COLONY GETS EIGHT, because for a colony the window is now a DEADLINE rather
+   * than an outage: put a ship on it before the clock runs out or it stops being
+   * yours (`endRecovery`). Two hours is a punishment a commander can sleep through;
+   * eight is one they have to answer, and answering is the entire decision the
+   * feature exists to create. It is also long enough that somebody struck at
+   * midnight has a real chance of waking up inside it.
+   *
+   * The old note said this was "the window a second impact has to arrive in to take
+   * control". That route is gone: D167 stopped the weapon capturing anything.
    */
-  recoveryMinutes: 2 * 60,
+  recoveryMinutes: { capital: 2 * 60, colony: 8 * 60 },
   settlement: {
     cost: {
       alloy: scalePrice(2000, ECONOMY_TEMPO.fixedPrice),
@@ -2223,11 +2481,18 @@ export const DEATH_STAR = {
   requiredCore: 12,
   requiredShipyard: 5,
   requiredResearch: 'DEATH_STAR_PROTOCOL',
-  cost: {
-    alloy: scalePrice(15_000, ECONOMY_TEMPO.fixedPrice),
-    crystal: scalePrice(15_000, ECONOMY_TEMPO.fixedPrice),
-    deuterium: scalePrice(3000, ECONOMY_TEMPO.deuteriumPrice),
-  },
+  /**
+   * SET BY HAND, NOT SCALED. D167 — owner figures, and the exception is deliberate.
+   *
+   * Everything else in this file is priced through `scalePrice` so a tempo change
+   * carries it. This weapon is priced against WHAT IT DOES, and at D167 what it does
+   * changed completely: it no longer hands the attacker a world. It makes a
+   * commander lose one, and the world it opens is open to everybody — so the buyer
+   * is paying to put somebody else's colony on the table, not to buy a planet. That
+   * is a judgement about the galaxy rather than about the economy's pace, so the
+   * number is written out where it can be read and argued with.
+   */
+  cost: { alloy: 40_000, crystal: 25_000, deuterium: 6_000 },
   buildMinutes: 60,
   /** Owner-approved strategic travel speed after local interception playtesting. */
   speed: 1_250,

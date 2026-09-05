@@ -1,27 +1,42 @@
 import { useTranslation } from 'react-i18next';
 import type { ReactNode } from 'react';
 import { haptic } from '../lib/haptics.js';
-import { HomeworldIcon, IntelIcon, MicroscopeIcon, WarBannerIcon } from '../ui/icons/index.js';
+import {
+  HomeworldIcon,
+  IntelIcon,
+  MicroscopeIcon,
+  SendIcon,
+  WarBannerIcon,
+} from '../ui/icons/index.js';
 
 /**
- * THE FOUR WAYS OFF THE DISC, AS MARKS RATHER THAN AS A MENU. Owner instruction.
+ * THE FIVE WAYS OFF THE DISC, AS MARKS RATHER THAN AS A MENU. Owner instruction.
  *
  * Research and the clan used to be rows inside the commander sheet, behind the
  * hamburger. A menu is where you go when you already know the thing exists — and
- * these are three of the four things a commander actually DOES, so a player who never
- * opened that sheet never found out the game had research in it at all.
+ * these are things a commander actually DOES, so a player who never opened that
+ * sheet never found out the game had research in it at all.
  *
  * ON THE CANVAS, AS GLYPHS, AND WITH NO WORDS. `docs/visual-design.md`: a labelled
  * button in the corner of a map reads as browser chrome, which is the note that put
- * the worlds glyph here in the first place. The same argument covers all four, so
- * they are one cluster and they look alike — four marks of the same size and
- * weight, in a two-by-two grid, at the same low opacity until the eye wants them.
+ * the worlds glyph here in the first place. The same argument covers all of them,
+ * so they are one cluster and they look alike — marks of the same size and weight,
+ * two to a row, at the same low opacity until the eye wants them.
  *
- * THE ORDER IS THE POINT OF THE GRID. Research · worlds over intel · clan, with
- * the two most-used controls on the top row. It is a stable shelf: a control
- * never moves between sessions, so the hand learns where each one is and stops
- * reading them — which is why the order lives in a test as well as in this
- * paragraph, and why the two had drifted apart.
+ * D163 SPLIT THE PLANET GLYPH FROM THE SHEET IT USED TO OPEN. Owner instruction,
+ * and it fixes the one control on this grid that did not do what it looked like.
+ * The planet mark opened a LIST, while "zoom in on my active planet" was a text
+ * button inside that list — the most frequent camera move in the game, costing two
+ * taps and a read, behind a glyph that already looked exactly like it. So the
+ * planet mark IS that move now, and the transfer sheet it used to open has a mark
+ * of its own: an arrow, the same glyph the strip and the signals already use for
+ * cargo leaving a world.
+ *
+ * THE ORDER IS THE POINT OF THE GRID and the four original marks do not move.
+ * Research · planet over intel · clan, with the transfer appended below. It is a
+ * stable shelf: a control that changes place between sessions has to be re-found
+ * every time, so the new one goes on the end — which is why the order lives in a
+ * test as well as in this paragraph.
  *
  * TEXT IS FOR THE SCREEN READER. Every label here is an `aria-label` and nothing
  * is painted, because the whole reason these are pictures is that a picture is read
@@ -31,23 +46,34 @@ export function DiscControls({
   onOpenResearch,
   onOpenClan,
   onOpenIntel,
-  onOpenWorlds,
+  onGoHome,
+  onOpenTransfer,
   clanAvailable,
   clanWaiting,
+  canTransfer = true,
 }: {
   onOpenResearch: () => void;
   onOpenClan: () => void;
   onOpenIntel: () => void;
-  onOpenWorlds: () => void;
+  /** Fly the camera to the active world and focus it. No sheet. D163. */
+  onGoHome: () => void;
+  /** Open the transfer sheet — where to send resources and ships, and from where. */
+  onOpenTransfer: () => void;
   /** Whether the season has a clan layer at all. No layer, no dead glyph. */
   clanAvailable: boolean;
   /** How much is waiting on the clan: an invitation, a request, unread aid. */
   clanWaiting: number;
+  /**
+   * A commander with one world has nowhere to send anything. Drawn in place and
+   * disabled rather than absent: a grid that changes shape the day a colony is
+   * founded is a grid the hand has to learn twice.
+   */
+  canTransfer?: boolean;
 }) {
   const { t } = useTranslation();
 
   return (
-    <div data-disc-controls className="pointer-events-none grid grid-cols-2 gap-2">
+    <div data-disc-controls className="pointer-events-none grid grid-cols-2 gap-1">
       <Mark
         id="research"
         label={t('galaxy.openResearch')}
@@ -56,7 +82,7 @@ export function DiscControls({
         <MicroscopeIcon className="size-5" />
       </Mark>
 
-      <Mark id="worlds" label={t('galaxy.openWorlds')} onPress={onOpenWorlds}>
+      <Mark id="home" label={t('galaxy.goHome')} onPress={onGoHome}>
         <HomeworldIcon className="size-5" />
       </Mark>
 
@@ -73,6 +99,15 @@ export function DiscControls({
         {...(clanWaiting > 0 ? { waiting: true } : {})}
       >
         <WarBannerIcon className="size-5" />
+      </Mark>
+
+      <Mark
+        id="transfer"
+        label={t('galaxy.openTransfer')}
+        onPress={onOpenTransfer}
+        disabled={!canTransfer}
+      >
+        <SendIcon className="size-5" />
       </Mark>
 
     </div>

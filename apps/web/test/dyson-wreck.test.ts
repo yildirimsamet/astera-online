@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { isWrecked, shellGroups, shellLook } from '../src/galaxy/DysonShells.js';
-import { planetNodes } from '../src/galaxy/scene.js';
+import { shellGroups, shellLook } from '../src/galaxy/DysonShells.js';
+import { isWrecked, planetNodes } from '../src/galaxy/scene.js';
 import type { GalaxyPlanet } from '../src/api/schemas.js';
 
 /**

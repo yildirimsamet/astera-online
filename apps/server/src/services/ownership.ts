@@ -1,9 +1,17 @@
 import { and, count, eq, inArray, isNull, max, or } from 'drizzle-orm';
-import { colonyCapacity } from '@astera/rules';
+import { colonyCapacity, coreTier, seededFrom } from '@astera/rules';
 import type { Clock } from '../clock.js';
 import type { Db, Queryable, Tx } from '../db/client.js';
-import { buildings, missions, neutralPlanetState, planets, players, units } from '../db/schema.js';
-import { GameError, lockSeason } from './planet.js';
+import {
+  buildings,
+  missions,
+  neutralPlanetState,
+  planets,
+  players,
+  seasons,
+  units,
+} from '../db/schema.js';
+import { GameError, lockSeason, recomputePlayerWealth } from './planet.js';
 import { refreshSensorEpoch } from './sensorHistory.js';
 
 export interface CommanderWorld {
@@ -270,6 +278,92 @@ export async function transferPlanetControl(
     ));
   await refreshSensorEpoch(tx, input.targetPlanetId, input.now);
   return { previousPlayerId: input.expectedControllerPlayerId, planetId: input.targetPlanetId };
+}
+
+/**
+ * THE OPPOSITE OF `transferPlanetControl`: A WORLD LET GO OF. D167.
+ *
+ * A colony whose commander did not answer a Death Star strike inside its recovery
+ * window stops being theirs — and becomes NOBODY's rather than the attacker's. It
+ * is the same row, changed as little as possible:
+ *
+ *   · `controllerPlayerId` cleared and `kind` back to NEUTRAL;
+ *   · BUILDINGS, SATELLITES, RESEARCH AND WHATEVER STOCK THE STRIKE LEFT UNTOUCHED
+ *     — the owner's rule in as many words. The world changes hands, not shape, and
+ *     whoever settles it next inherits exactly what is standing on it;
+ *   · a `neutral_planet_state` row whose `claimUntil` runs to the END OF THE SEASON,
+ *     so it is open at once and stays open. NULL was the first attempt and it was
+ *     exactly wrong: `resolveSettlement` reads `claimUntil` as the SETTLE PERMIT,
+ *     not as a race window, and a null one reroutes every founding flight — the
+ *     released world would have been permanently unclaimable, which is the opposite
+ *     of the instruction. Widening that check instead would have opened every
+ *     seed-time neutral in the galaxy, since those carry a null claim too;
+ *   · `nextReinforcementAt` NULL, because a released colony is not a seeded frontier
+ *     world and must not start growing a garrison it never had.
+ *
+ * `tier` IS DERIVED FROM WHAT IS THERE. It is the public development band
+ * (`coreTier`), so a world released at Core 9 reads as the tier-3 prize it is
+ * rather than as the tier it happened to be seeded at years of season-time ago.
+ *
+ * UNITS KEEP THEIR OWNER COLUMN and simply sit on a world nobody controls, exactly
+ * as a neutral's garrison does. In practice a strike has destroyed every home hull
+ * (`DESTROYED_HOME`), so this is about the rare survivor rather than a fleet.
+ */
+export async function releasePlanetControl(
+  tx: Tx,
+  input: { planetId: string; expectedControllerPlayerId: string; now: Date },
+): Promise<boolean> {
+  const [season] = await tx
+    .select({ endsAt: seasons.endsAt })
+    .from(seasons)
+    .innerJoin(planets, eq(planets.seasonId, seasons.id))
+    .where(eq(planets.id, input.planetId));
+  const rows = await tx
+    .update(planets)
+    .set({
+      controllerPlayerId: null,
+      kind: 'NEUTRAL',
+      recoveryUntil: null,
+      recoveryReliefAt: null,
+      protectedUntil: null,
+      disruptedUntil: null,
+      lastTickAt: input.now,
+    })
+    .where(and(
+      eq(planets.id, input.planetId),
+      eq(planets.controllerPlayerId, input.expectedControllerPlayerId),
+    ))
+    .returning({ id: planets.id, seasonId: planets.seasonId });
+  if (rows.length === 0) return false;
+
+  const [core] = await tx
+    .select({ level: buildings.level })
+    .from(buildings)
+    .where(and(eq(buildings.planetId, input.planetId), eq(buildings.type, 'CORE')));
+  await tx
+    .insert(neutralPlanetState)
+    .values({
+      planetId: input.planetId,
+      tier: Math.min(3, coreTier(core?.level ?? 1)),
+      // Deterministic from the world itself: the same released world always reads
+      // the same, and nothing here consumes a season RNG stream.
+      profileSeed: seededFrom(input.planetId, 0)() * 0x7fff_ffff | 0,
+      claimUntil: season?.endsAt ?? null,
+      nextReinforcementAt: null,
+      economyAnchorAt: input.now,
+    })
+    .onConflictDoUpdate({
+      target: neutralPlanetState.planetId,
+      set: {
+        tier: Math.min(3, coreTier(core?.level ?? 1)),
+        claimUntil: season?.endsAt ?? null,
+        nextReinforcementAt: null,
+        economyAnchorAt: input.now,
+      },
+    });
+  await refreshSensorEpoch(tx, input.planetId, input.now);
+  await recomputePlayerWealth(tx, input.expectedControllerPlayerId);
+  return true;
 }
 
 /** Return destination for an owner whose former home world changed hands. */

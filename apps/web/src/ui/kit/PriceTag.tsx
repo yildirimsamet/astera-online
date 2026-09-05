@@ -41,7 +41,7 @@ export function PriceTag({
   const shortCrystal = have !== undefined && crystal > have.crystal;
 
   return (
-    <span className={`inline-flex items-center gap-3 ${className}`}>
+    <span className={`inline-flex items-center gap-2 ${className}`}>
       {alloy > 0 && (
         <span className={`inline-flex items-center gap-1 ${shortAlloy ? 'text-threat' : 'text-alloy'}`}>
           <AlloyIcon className={glyph} />

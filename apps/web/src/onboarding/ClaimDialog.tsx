@@ -149,7 +149,7 @@ export function ClaimDialog({
 
         {!naming && (
           <>
-            <label className="legend mt-4 block" htmlFor={passwordId}>
+            <label className="legend mt-2 block" htmlFor={passwordId}>
               {t('onboarding.claim.passwordLabel')}
             </label>
             <input
@@ -184,7 +184,7 @@ export function ClaimDialog({
               : t('onboarding.claim.submit')}
         </Button>
 
-        <div className="mt-4 flex items-center justify-between gap-3">
+        <div className="mt-2 flex items-center justify-between gap-2">
           <button
             type="button"
             className="text-caption text-faint underline-offset-4 hover:underline"

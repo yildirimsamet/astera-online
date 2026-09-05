@@ -53,6 +53,8 @@ export const pendingStrip = {
   transfer: 'Aktarım → {{target}}',
   pirateOut: 'Akın → {{target}}',
   pirateHome: 'Akın dönüyor · {{target}}',
+  tradeOut: 'Konvoy → Ticaret Gemisi',
+  tradeHome: 'Konvoy dönüyor · Ticaret Gemisi',
   fleetHome: 'Filon dönüyor · {{target}}',
   fleetOut: 'Filon → {{target}}',
   engaging: 'Çatışıyor',
@@ -64,6 +66,8 @@ export const pendingStrip = {
   craftCount: '{{count}} araç',
   craftUnknown: 'Araç dökümü bilinmiyor',
   incomingHint: 'Yaklaşan tehdit · kaynak sisin ardında',
+  /** Aynı uyarı, araç senin diskinde görünürken. D162. */
+  incomingVisible: 'Yaklaşan tehdit · sensörlerinde — bakmak için dokun',
   incomingFrom: '{{origin}} yönünden geliyor',
   massLight: 'Küçük bir güç geliyor',
   massMedium: 'Kayda değer bir güç geliyor',
@@ -79,6 +83,7 @@ export const signals = {
   statusHeading: 'Şu anda',
   eventsHeading: 'Neler oldu',
   openEvent: 'İlgili raporu aç',
+  worldEvent: 'Galaksi olayı',
   empty:
     'Henüz bildirim yok. Sana bir filo yöneldiğinde, bir sonda yakalandığında ve gemilerin eve döndüğünde galaksi haber verir.',
   repeat: '×{{count}}',

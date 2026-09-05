@@ -5,7 +5,7 @@ import * as THREE from 'three';
 import { CORE_TOP_LEVEL } from '@astera/rules';
 import { DYSON_MODEL } from '../ui/assets.js';
 import { unitModel } from './model.js';
-import { STANCE_LIGHT, type PlanetNode } from './scene.js';
+import { STANCE_LIGHT, isWrecked, type PlanetNode } from './scene.js';
 import { resolvedOnly } from './Satellites.jsx';
 
 /**
@@ -329,15 +329,6 @@ const SHELL_STAGE: readonly Stage[] = Array.from({ length: RUNGS + 1 }, (_, step
   colour: sample(step / RUNGS),
 }));
 
-/**
- * Has a rocket landed on this world and not yet finished doing its damage?
- *
- * `state` is optional on the payload, so a server that predates it reads as a
- * world in one piece — which is the safe way round: a live structure drawn on a
- * wreck is a cosmetic miss, and a dead one drawn on a healthy world would say a
- * commander had been hit when they had not.
- */
-export const isWrecked = (node: PlanetNode): boolean => node.state.kind === 'RECOVERY';
 
 /** The stage a world is at, or null while it has not built one. */
 const stageIndexFor = (coreLevel: number): number | null => {

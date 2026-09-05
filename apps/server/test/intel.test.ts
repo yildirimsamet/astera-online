@@ -25,6 +25,7 @@ import { EventWorker } from '../src/worker/loop.js';
 import {
   giveUnits,
   grant,
+  levelWorld,
   makeAccount,
   placeAt,
   seedWorld,
@@ -384,6 +385,9 @@ describe('the information layer', () => {
     beforeEach(async () => {
       await grant(f.db, mine, 50_000, 5_000);
       await setLevel(f.db, mine, 'SHIPYARD', 3);
+      // The purse raises this world's Core past its neighbour's tier band, and one
+      // test below needs the neighbour to be able to launch back. D168.
+      await levelWorld(f.db, f.planetIds);
     });
 
     it('costs alloy and schedules an arrival', async () => {
@@ -426,6 +430,57 @@ describe('the information layer', () => {
       expect(report!.stock.high).toBeGreaterThan(report!.stock.low);
       expect(report!.defence.high).toBeGreaterThan(report!.defence.low);
       expect(report!.fleetHome).toBe(true);
+    });
+
+    /**
+     * WHAT A RAID COULD TAKE, NOT WHAT THE WORLD IS HOLDING. Owner report:
+     * *"gezegende 50k kaynak gözüküyor ama dalıyom 300 alloy alıyorum. Böyle
+     * saçmalık olmaz. Yağmalanabilir kaynak aralığını vermeli."*
+     *
+     * The probe used to fuzz `alloy + crystal` — the whole pile — while three rules
+     * stood between that figure and the haul: the vault floor is untouchable, the
+     * grade takes a share rather than the remainder, and uncollected ore is exposed
+     * at only half that again. The reported number and the delivered number were
+     * never the same quantity, which is the Clarity failure `interface.md` opens
+     * with: a figure that cannot be compared to the outcome it is supposed to
+     * predict.
+     */
+    it('bands what a raid could take, not the whole pile', async () => {
+      const held = 60_000;
+      await grant(f.db, theirs, held, 6_000);
+
+      const launch = await launchProbe(f.db, mine, theirs, f.clock);
+      f.clock.set(launch.arriveAt);
+      await worker(f).tick();
+
+      const [report] = await f.db.select().from(probeReports);
+      expect(report).toBeDefined();
+      // The vault floor alone puts the raidable figure well under the store.
+      expect(report!.stock.high).toBeLessThan(held);
+      expect(report!.stock.low).toBeGreaterThanOrEqual(0);
+    });
+
+    /**
+     * A WORLD UNDER ITS OWN VAULT FLOOR OFFERS ONLY ITS WORKS.
+     *
+     * The store is fully protected, so it contributes nothing — but ore still
+     * sitting uncollected is exposed at `COMBAT.lootBufferShare` and the vault does
+     * not reach it at all (D16). That is the exact shape of the owner's complaint
+     * inverted and answered: a world whose numbers LOOK full pays out almost
+     * nothing, and now the probe says so before the fleet leaves rather than the
+     * battle report saying it afterwards.
+     */
+    it('offers only the uncollected works when the vault covers the store', async () => {
+      const held = 50;
+      await grant(f.db, theirs, held, held);
+
+      const launch = await launchProbe(f.db, mine, theirs, f.clock);
+      f.clock.set(launch.arriveAt);
+      await worker(f).tick();
+
+      const [report] = await f.db.select().from(probeReports);
+      // Whatever is left is the works' share; the protected store adds none of it.
+      expect(report!.stock.high).toBeLessThan(held * 2);
     });
 
     it('a better shipyard buys a narrower band', async () => {

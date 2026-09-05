@@ -27,6 +27,7 @@ export function SurvivorBar({
   rebuilt = 0,
   compactRow = false,
   showFigures = true,
+  side = 'yours',
 }: {
   /** What stood or was sent in. The width of the whole bar. */
   sent: number;
@@ -38,6 +39,16 @@ export function SurvivorBar({
   compactRow?: boolean;
   /** The surrounding summary may already print these figures at display size. */
   showFigures?: boolean;
+  /**
+   * WHOSE FORCE THIS IS, which decides only the colours. D164.
+   *
+   * The bar measures the same thing either way — what went in, what died — and
+   * the reader's stake in the answer inverts with the side. On your own force,
+   * surviving is the good half; on the force that came at you, the survivors are
+   * a squadron flying home with your ore and the dead are your defence working.
+   * Painting both the same way would have the sheet cheering at your losses.
+   */
+  side?: 'yours' | 'theirs';
 }) {
   const { t } = useTranslation();
   const total = Math.max(1, sent);
@@ -64,8 +75,16 @@ export function SurvivorBar({
       })}
     >
       <span className="socket flex h-2.5 min-w-0 flex-1 overflow-hidden rounded-full">
-        <span data-part="alive" className="h-full bg-bone/70" style={{ width: `${String(alivePart)}%` }} />
-        <span data-part="lost" className="h-full bg-threat/80" style={{ width: `${String(diedPart)}%` }} />
+        <span
+          data-part="alive"
+          className={`h-full ${side === 'theirs' ? 'bg-threat/70' : 'bg-bone/70'}`}
+          style={{ width: `${String(alivePart)}%` }}
+        />
+        <span
+          data-part="lost"
+          className={`h-full ${side === 'theirs' ? 'bg-opportunity/70' : 'bg-threat/80'}`}
+          style={{ width: `${String(diedPart)}%` }}
+        />
         <span
           data-part="rebuilt"
           className="h-full bg-opportunity/70"
@@ -77,12 +96,22 @@ export function SurvivorBar({
         whole bar and needs no numeral; "rebuilt" is the green sliver.
       */}
       {showFigures ? (
-        <span className="num shrink-0 text-caption text-bone" data-alive>
+        <span
+          className={`num shrink-0 text-caption ${side === 'theirs' ? 'text-threat-ink' : 'text-bone'}`}
+          data-alive
+        >
           {compact(alive + back)}
         </span>
       ) : null}
       {showFigures && died > 0 ? (
-        <span className="num shrink-0 text-caption text-threat-ink" data-lost>−{compact(died)}</span>
+        <span
+          className={`num shrink-0 text-caption ${
+            side === 'theirs' ? 'text-opportunity' : 'text-threat-ink'
+          }`}
+          data-lost
+        >
+          −{compact(died)}
+        </span>
       ) : null}
     </span>
   );

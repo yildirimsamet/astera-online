@@ -1,0 +1,1 @@
+ALTER TABLE "planets" ADD COLUMN "recovery_relief_at" timestamp with time zone;

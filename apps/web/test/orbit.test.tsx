@@ -9,7 +9,7 @@ import {
 import { PlanetScreen } from '../src/screens/PlanetScreen.js';
 import { ToastProvider } from '../src/ui/Toast.js';
 import type { PlanetView } from '../src/api/schemas.js';
-import { planetView } from './fixtures.js';
+import { openAllBands, planetView } from './fixtures.js';
 
 /**
  * THE ORBIT SURFACE — TWO KINDS OF HARDWARE, AND THE DIFFERENCE IS THE POINT. D25.
@@ -307,8 +307,15 @@ describe('the reach surface', () => {
   const bodyOrder = (names: readonly string[]): number[] =>
     names.map((n) => document.body.textContent.indexOf(n));
 
-  it('groups all eighteen ships by family and tier, then puts the preserved miner last', () => {
+  /**
+   * THE BANDS FOLD NOW, so this opens them before counting. What it asserts is
+   * unchanged and is the thing that matters: folding a band is not trimming it —
+   * every hull in the catalogue still has exactly one row, in its own family, in
+   * tier order, with the miner last.
+   */
+  it('groups all eighteen ships by family and tier, then puts the preserved miner last', async () => {
     show({ buildings: { CORE: 9, REFINERY: 3, EXTRACTOR: 3, VAULT: 1, SHIPYARD: 6 } }, 'reach');
+    await openAllBands(screen, userEvent.setup());
     const [offensive = -1, defensive = -1, specialist = -1, cargo = -1, mining = -1] =
       bodyOrder(['Offensive hulls', 'Defensive hulls', 'Specialist hulls', 'Cargo hulls', 'Mining']);
     expect(offensive).toBeGreaterThan(-1);
@@ -353,8 +360,9 @@ describe('the reach surface', () => {
     }
   });
 
-  it('keeps Tier 3 rows visible and routes each lock to its first missing catalog requirement', () => {
+  it('keeps Tier 3 rows visible and routes each lock to its first missing catalog requirement', async () => {
     const locked = show({ buildings: { CORE: 9, REFINERY: 3, EXTRACTOR: 3, VAULT: 1, SHIPYARD: 6 } }, 'reach');
+    await openAllBands(screen, userEvent.setup());
     expect(locked.container.querySelector('#row-WAYFARER [data-progression-state="locked"]')).toBeNull();
     expect(locked.container.querySelector('#row-TEMPEST')).toHaveTextContent('Starship Engineering I');
     expect(locked.container.querySelector('#row-ATLAS')).toHaveTextContent('Starship Engineering I');
@@ -368,6 +376,7 @@ describe('the reach surface', () => {
       buildings: { CORE: 9, REFINERY: 3, EXTRACTOR: 3, VAULT: 1, SHIPYARD: 6 },
       research: engineeringOnly,
     }, 'reach');
+    await openAllBands(screen, userEvent.setup());
     expect(nextGate.container.querySelector('#row-TEMPEST')).toHaveTextContent('Ship Power II');
     expect(nextGate.container.querySelector('#row-ATLAS')).toHaveTextContent('Ship Propulsion II');
     expect(nextGate.container.querySelector('#row-NULLIFIER')).toHaveTextContent('Gravitic Charges I');
@@ -378,8 +387,9 @@ describe('the reach surface', () => {
     expect(screen.getByText(/only to revealed asteroids or debris fields/i)).toBeInTheDocument();
   });
 
-  it('tags every Fleet V2 hull with what it is', () => {
+  it('tags every Fleet V2 hull with what it is', async () => {
     show({ buildings: { CORE: 9, REFINERY: 3, EXTRACTOR: 3, VAULT: 1, SHIPYARD: 6 } }, 'reach');
+    await openAllBands(screen, userEvent.setup());
     for (const id of FLEET_V2_HULLS) {
       expect(document.querySelector(`[data-hull-id="${id}"]`), id)
         .toHaveTextContent(HULLS[id].tier === 4 ? /capital/i : /./);
@@ -533,7 +543,12 @@ describe('the Deuterium Refinery', () => {
  * than in a player's session.
  */
 describe('nothing is sold without a control', () => {
-  const rowsAcrossEveryTab = (): Set<string> => {
+  /**
+   * `async` because the Fleet tab's families fold: one band is open on arrival and
+   * a sweep that did not open the rest would only ever see a quarter of the
+   * catalogue and call the other three quarters missing.
+   */
+  const rowsAcrossEveryTab = async (): Promise<Set<string>> => {
     const found = new Set<string>();
     for (const tab of ['grow', 'orbit', 'defend', 'reach'] as const) {
       const view = show({
@@ -541,6 +556,7 @@ describe('nothing is sold without a control', () => {
         orbit: ['UPLINK'],
         orbitSlots: 4,
       }, tab);
+      await openAllBands(screen, userEvent.setup());
       for (const element of view.container.querySelectorAll('[id^="row-"]')) {
         found.add(element.id.slice('row-'.length));
       }
@@ -549,30 +565,30 @@ describe('nothing is sold without a control', () => {
     return found;
   };
 
-  it('gives every building a row', () => {
-    const rendered = rowsAcrossEveryTab();
+  it('gives every building a row', async () => {
+    const rendered = await rowsAcrossEveryTab();
     const missing = BUILDING_IDS.filter((id) => !rendered.has(id));
     expect(missing).toEqual([]);
   });
 
-  it('gives every hull a row', () => {
-    const rendered = rowsAcrossEveryTab();
+  it('gives every hull a row', async () => {
+    const rendered = await rowsAcrossEveryTab();
     const missing = Object.keys(HULLS).filter((id) => !rendered.has(id));
     expect(missing).toEqual([]);
   });
 
-  it('gives every instrument and satellite a row', () => {
-    const rendered = rowsAcrossEveryTab();
+  it('gives every instrument and satellite a row', async () => {
+    const rendered = await rowsAcrossEveryTab();
     const missing = [...INSTRUMENT_IDS, ...SATELLITE_IDS].filter((id) => !rendered.has(id));
     expect(missing).toEqual([]);
   });
 
   /** And every row it draws is a thing that exists, not a leftover id. */
-  it('draws no row for something the rules do not have', () => {
+  it('draws no row for something the rules do not have', async () => {
     const known = new Set<string>([
       ...BUILDING_IDS, ...Object.keys(HULLS), ...INSTRUMENT_IDS, ...SATELLITE_IDS,
       ...RESEARCH_PROJECT_IDS,
     ]);
-    expect([...rowsAcrossEveryTab()].filter((id) => !known.has(id))).toEqual([]);
+    expect([...(await rowsAcrossEveryTab())].filter((id) => !known.has(id))).toEqual([]);
   });
 });

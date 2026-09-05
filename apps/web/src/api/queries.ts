@@ -1601,6 +1601,45 @@ export function useRaidPirate() {
   });
 }
 
+/**
+ * SEND A CONVOY TO THE MERCHANT. D156 · D53.
+ *
+ * The same lane, the same cancel and the same three invalidations `useTransfer`
+ * uses, because a convoy is a launch like any other: craft leave a world, its
+ * store drops by the offer AND by both legs of fuel, and a flight bay closes.
+ *
+ * `applyPlanet` plus `setQueryData(keys.pending)` are what put the convoy on the
+ * disc on the frame the response lands rather than one round trip later — and the
+ * `cancelQueries` is what stops an older pending read, already in the air when the
+ * button was pressed, landing afterwards and erasing it.
+ */
+export function useLaunchTrade(originPlanetId: string) {
+  const api = useApi();
+  const client = useQueryClient();
+  const apply = useApplyPlanet();
+  const invalidate = useInvalidator();
+  const lane = usePlanetMutationLane(originPlanetId);
+  return useMutation({
+    scope: lane.scope,
+    mutationFn: ({ occurrenceId, fleet, give, want }: {
+      occurrenceId: string;
+      fleet: Fleet;
+      give: { alloy: number; crystal: number; deuterium: number };
+      want: { alloy: number; crystal: number; deuterium: number };
+    }) => api.trade(occurrenceId, fleet, give, want, originPlanetId),
+    onMutate: lane.enter,
+    onSuccess: async (result) => {
+      await Promise.all([
+        apply(result.planet),
+        client.cancelQueries({ queryKey: keys.pending }),
+      ]);
+      client.setQueryData(keys.pending, { pending: result.pending });
+      invalidate(keys.traffic, keys.galaxy, keys.planets);
+    },
+    onSettled: (_data, _error, _vars, turn) => { lane.leave(turn); },
+  });
+}
+
 export function useMine() {
   const api = useApi();
   const { activePlanetId } = useWorld();

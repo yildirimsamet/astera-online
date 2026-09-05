@@ -160,6 +160,14 @@ export const vocabulary = {
     },
   },
 
+  /** Muharebeyi belirleyen üç rol, artı avı olan dördüncü. */
+  combatClass: {
+    SKIRMISHER: { name: 'Akıncı', tag: 'Çok sayıda, hızlı, hafif' },
+    BULWARK: { name: 'Sur', tag: 'Ağır zırh, yavaş' },
+    LANCE: { name: 'Mızrak', tag: 'Tek ağır darbe' },
+    SUPPORT: { name: 'Destek', tag: 'Silahsız; muhafız ayaktayken korunur' },
+  },
+
   hull: {
     DART: {
       name: 'Ok',
@@ -435,16 +443,16 @@ export const gains = {
     value: '{{room}}',
   },
   research: {
-    powerLabel: 'Fleet V2 savaş gemisi saldırısı',
+    powerLabel: 'Savaş gemisi saldırısı',
     powerScope:
-      'Bütün Fleet V2 savaş gemileri. Güç × Zırh, eşit maliyetli savaş gücünü en fazla %25 artırır; nakliye ve korunan birimler etkilenmez.',
-    armorLabel: 'Fleet V2 gövde dayanımı',
+      'Filondaki bütün savaş gemileri. Güç × Zırh birlikte, eşit bütçeyle savaş gücünü en fazla %25 artırır; nakliye gemileri ve yer savunması etkilenmez.',
+    armorLabel: 'Gemi gövde dayanımı',
     armorScope:
-      'Nakliye gemileri dâhil 18 Fleet V2 gövdesi. Güç × Zırh, eşit maliyetli savaş gücünü en fazla %25 artırır; korunan birimler etkilenmez.',
-    speedLabel: 'Fleet V2 hızı',
+      'Nakliye dâhil filonun 18 gemisi. Güç × Zırh birlikte, eşit bütçeyle savaş gücünü en fazla %25 artırır; yer savunması etkilenmez.',
+    speedLabel: 'Filo hızı',
     speedScope:
-      'Bütün 18 Fleet V2 gövdesi. Karma filo yine en yavaş üyesinin geliştirilmiş hızında uçar; Kazıcı, sonda ve Ölüm Yıldızı etkilenmez.',
-    engineeringLabel: 'Gövde seviyesi erişimi',
+      'Filonun 18 gemisinin tamamı. Karma filo yine en yavaş üyesinin — geliştirilmiş — hızıyla uçar; Kazıcı, sonda ve Ölüm Yıldızı etkilenmez.',
+    engineeringLabel: 'Gemi seviyesi erişimi',
     engineeringTier: '{{tier}}. seviye',
     engineeringScope:
       'Mühendislik I üçüncü, Mühendislik II dördüncü seviyeyi açar. Gemiler ayrıca Güç, Zırh, İtki veya Gravitik Yükler isteyebilir.',
@@ -575,6 +583,15 @@ export const notifications = {
   fleetFallback: 'Filon evde.',
   fleetHomeLooted: 'Filo evde{{where}} · {{count}} gemi · +{{amount}} ganimet',
   fleetHomeEmpty: 'Filo evde{{where}} · {{count}} gemi · eli boş',
+  /**
+   * THE MERCHANT'S OWN HOMECOMING. D166.
+   *
+   * A swap is not a raid, so it never borrows the plunder wording — and a
+   * convoy that bought nothing is a different fact from a fleet that found
+   * nothing, which is why the empty case has its own line.
+   */
+  tradeHome: 'Konvoy evde · {{count}} gemi · {{landed}} alındı',
+  tradeHomeEmpty: 'Konvoy evde · {{count}} gemi · alım yok',
   fleetFrom: ' ({{origin}} dönüşü)',
   probeLost: 'Sondan kayboldu. O uçuş tamamlanamadı',
   recalled: '{{count}} araç geri döndü. O uçuş tamamlanamadı',
@@ -609,6 +626,8 @@ export const notifications = {
   interceptedFallback: 'Bir Ölüm Yıldızı uçuş hâlinde imha edildi.',
   asteroidShowerStarted: 'Galakside asteroid yağmuru başladı.',
   asteroidShowerEnded: 'Asteroid yağmuru bitti. Yeni asteroid oluşma hızı normale döndü.',
+  tradeShipStarted: 'Galakside bir ticaret gemisi var · {{alloy}} alaşım = 1 döteryum.',
+  tradeShipEnded: 'Ticaret gemisi galaksiden ayrıldı.',
 } as const;
 
 /**
@@ -625,6 +644,7 @@ export const units = {
   now: 'şimdi',
   live: 'canlı',
   ago: '{{duration}} önce',
+  imminent: 'birazdan',
   hoursMinutes: '{{h}}s {{m}}d',
   minutesSeconds: '{{m}}d {{s}}sn',
   seconds: '{{s}}sn',

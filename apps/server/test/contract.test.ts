@@ -10,7 +10,7 @@ import {
   RESEARCH_PROJECT_IDS,
   SATELLITE_IDS,
   SENSOR,
-  CLAN, DEATH_STAR, DISRUPTION, REWARD_CHAINS, SHIELD, alloyRate, flightSlots,
+  CLAN, DEATH_STAR, DISRUPTION, GALAXY_EVENTS, REWARD_CHAINS, SHIELD, TRADE, alloyRate, flightSlots,
   groundLoad,
   groundSlots, hangarCapacity, hangarLoad, rewardId, shieldHp,
   asteroidPosition,
@@ -20,6 +20,7 @@ import {
 import {
   buildings,
   clanLootShares,
+  galaxyEventOccurrences,
   galaxyEvents,
   miningRuns,
   neutralPlanetState,
@@ -88,6 +89,7 @@ import {
   miningFieldSchema,
   piratesSchema,
   pirateRaidSchema,
+  tradeLaunchSchema,
   miningSchema,
   miningStatusSchema,
   movementLaunchSchema,
@@ -367,6 +369,44 @@ describe('every payload the client parses', () => {
   it('GET /api/galaxy/events parses without exposing future occurrences', async () => {
     const parsed = activeGalaxyEventsSchema.parse(await get('/api/galaxy/events'));
     expect(parsed.events).toEqual([]);
+  });
+
+  /**
+   * THE FAILURE THIS TEST EXISTS TO CATCH IS A SILENT ONE. D156.
+   *
+   * `activeGalaxyEventsSchema` drops any row whose `kind` it does not know, on
+   * purpose — a server that learns a new event kind must not blank the chip on an
+   * older client. The cost is that a trade ship the server publishes correctly and
+   * the client fails to describe simply never appears, with no error anywhere. So
+   * the route is parsed by the client's own schema with a live merchant on it, and
+   * the orbit the launch screen aims at is asserted to survive the trip.
+   */
+  it('GET /api/galaxy/events parses a live trade ship with its orbit', async () => {
+    const startsAt = new Date(f.clock.now().getTime() - 60_000);
+    const [occurrence] = await f.db.insert(galaxyEventOccurrences).values({
+      seasonId: f.seasonId,
+      sequence: 0,
+      kind: 'TRADE_SHIP',
+      definitionVersion: GALAXY_EVENTS.definitions.TRADE_SHIP.version,
+      startsAt,
+      endsAt: new Date(
+        startsAt.getTime() + GALAXY_EVENTS.definitions.TRADE_SHIP.durationMinutes * 60_000,
+      ),
+      effect: { rate: TRADE.rate },
+      createdAt: startsAt,
+    }).returning();
+
+    const parsed = activeGalaxyEventsSchema.parse(await get('/api/galaxy/events'));
+    const merchant = parsed.events.find((event) => event.kind === 'TRADE_SHIP');
+    expect(merchant, 'the trade ship was dropped on the way out').toBeDefined();
+    if (merchant?.kind !== 'TRADE_SHIP') throw new Error('unreachable');
+    expect(merchant.id).toBe(occurrence!.id);
+    expect(merchant.rate).toEqual(TRADE.rate);
+    expect(merchant.orbit.speed).toBe(TRADE.speed);
+    expect(merchant.orbit.radius).toBeGreaterThanOrEqual(TRADE.orbitMin);
+    expect(merchant.orbit.radius).toBeLessThanOrEqual(TRADE.orbitMax);
+    expect(merchant.expiresAtMinute - merchant.appearsAtMinute)
+      .toBeCloseTo(GALAXY_EVENTS.definitions.TRADE_SHIP.durationMinutes, 6);
   });
 
   /**
@@ -909,6 +949,58 @@ describe('every payload the client parses', () => {
     expect(row!.pirateIndex).toBe(found!.index);
   });
 
+  /**
+   * POST /api/trade/launch, THROUGH THE CLIENT'S OWN SCHEMA. D53 · D156.
+   *
+   * The launch answers with the strip and the world, like every other committing
+   * action, so the convoy is drawn on the frame the response lands. The `trade`
+   * thread kind is the part that bites if it is missed: `pendingThread` is strict
+   * about `kind`, so a server that publishes a kind the client cannot name blanks
+   * the ENTIRE mission strip for that commander — their raids and transfers with it
+   * — and nothing anywhere reports an error.
+   */
+  it('POST /api/trade/launch parses, and puts the convoy on the strip', async () => {
+    const startsAt = new Date(f.clock.now().getTime() - 60_000);
+    const [occurrence] = await f.db.insert(galaxyEventOccurrences).values({
+      seasonId: f.seasonId,
+      sequence: 1,
+      kind: 'TRADE_SHIP',
+      definitionVersion: GALAXY_EVENTS.definitions.TRADE_SHIP.version,
+      startsAt,
+      endsAt: new Date(
+        startsAt.getTime() + GALAXY_EVENTS.definitions.TRADE_SHIP.durationMinutes * 60_000,
+      ),
+      effect: { rate: TRADE.rate },
+      createdAt: startsAt,
+    }).returning();
+    await giveUnits(f.db, f.planetIds[0]!, { COURIER: 4 });
+
+    const parsed = tradeLaunchSchema.parse(await post('/api/trade/launch', {
+      occurrenceId: occurrence!.id,
+      fleet: { COURIER: 4 },
+      give: { alloy: 900, crystal: 0, deuterium: 0 },
+      want: { alloy: 0, crystal: 300, deuterium: 0 },
+    }));
+    expect(parsed.fleet).toEqual({ COURIER: 4 });
+    expect(parsed.rate).toEqual(TRADE.rate);
+    expect(parsed.fuel).toBeGreaterThan(0);
+    expect(parsed.arriveAt.getTime()).toBeGreaterThan(f.clock.now().getTime());
+
+    const thread = parsed.pending.find((p) => p.id === parsed.runId);
+    expect(thread, 'the launch answered without its own convoy on the strip').toBeDefined();
+    expect(thread!.kind).toBe('trade');
+    expect(thread!.leg).toBe('outbound');
+    // No world on the far end, and no sentence written by the server.
+    expect(thread!.targetPlanetId).toBeUndefined();
+    expect(thread!.targetName).toBe('TRADE_SHIP');
+
+    // A point is not an orbit: the rendezvous travels, the route never does.
+    const wire = JSON.stringify(parsed);
+    for (const forbidden of ['radius', 'period', 'phase', 'inclination', 'ascendingNode']) {
+      expect(wire).not.toContain(forbidden);
+    }
+  });
+
   it('GET /api/galaxy/traffic parses', async () => {
     trafficSchema.parse(await get('/api/galaxy/traffic'));
   });
@@ -1154,6 +1246,23 @@ describe('every payload the client parses', () => {
       await post('/api/planet/research', { projectId: 'ISOTOPE_SPECTROMETRY' }),
     );
     expect(parsed.projectId).toBe('ISOTOPE_SPECTROMETRY');
+  });
+
+  /**
+   * THE GATE HAS TO SURVIVE THE PARSE, not only the query. Zod drops what the
+   * schema does not declare, so a reading the server computes and the client
+   * schema has never heard of is a reading nobody will ever see — and this one
+   * cost a live commander an unbuyable card with a spent countdown on it.
+   */
+  it('carries both prerequisite gates through the planet schema', async () => {
+    const parsed = planetSchema.parse(await get('/api/planet'));
+    const behind = parsed.research.find((row) => row.id === 'SHIP_POWER');
+    expect(behind?.prerequisite).toBe('STARSHIP_ENGINEERING');
+    expect(behind?.prerequisiteMet).toBe(false);
+    expect(behind?.queuePrerequisiteMet).toBe(false);
+    const free = parsed.research.find((row) => row.id === 'EMPLACEMENT_DOCTRINE');
+    expect(free?.prerequisite).toBeNull();
+    expect(free?.prerequisiteMet).toBe(true);
   });
 
   it('refuses to cancel a commander research commitment', async () => {

@@ -9,6 +9,7 @@ import {
   yardSpeedMult,
 } from '@astera/rules';
 import { researchGain } from '../src/lib/gains.js';
+import { percent } from '../src/lib/format.js';
 
 /**
  * WHAT A RUNG OF RESEARCH BUYS, AND WHETHER THE SCREEN SAYS SO.
@@ -90,7 +91,7 @@ describe('what a rung of research buys', () => {
   /* ── the figures themselves, against the rules that make them ── */
 
   describe('the Fleet V2 ladders', () => {
-    const pct = (x: number) => `${(x * 100).toFixed(0)}%`;
+    const pct = percent;
 
     it('quotes Power at the attack multiplier the combat rule applies', () => {
       for (let level = 0; level < RESEARCH_TECH.weaponMaxLevel; level += 1) {
@@ -115,7 +116,14 @@ describe('what a rung of research buys', () => {
       expect(hullTech({ SHIP_POWER: top }, 'COURIER').atk).toBe(1);
       expect(hullTech({ SHIP_ARMOR: top }, 'COURIER').hp).toBeGreaterThan(1);
       expect(hullTech({ SHIP_PROPULSION: top }, 'COURIER').speed).toBeGreaterThan(1);
-      expect(researchGain('SHIP_POWER', 0).unlocks).toMatch(/combat hull/i);
+      /*
+        Power's scope is the NARROW one — warships only — while Armor and
+        Propulsion cover the whole fleet. The wording moved when "Fleet V2" was
+        taken out of player-facing copy (it names a decision, not anything a
+        commander can see); the distinction it draws is what is asserted.
+      */
+      expect(researchGain('SHIP_POWER', 0).unlocks).toMatch(/warship/i);
+      expect(researchGain('SHIP_POWER', 0).unlocks).not.toMatch(/all 18/i);
       expect(researchGain('SHIP_ARMOR', 0).unlocks).toMatch(/all 18/i);
       expect(researchGain('SHIP_PROPULSION', 0).unlocks).toMatch(/all 18/i);
     });
@@ -135,7 +143,7 @@ describe('what a rung of research buys', () => {
   });
 
   describe('the economy ladders', () => {
-    const pct = (x: number) => `${(x * 100).toFixed(0)}%`;
+    const pct = percent;
 
     /** A shorter build is a saving, and must not be quoted as a negative gain. */
     it('quotes yard automation as time SAVED', () => {

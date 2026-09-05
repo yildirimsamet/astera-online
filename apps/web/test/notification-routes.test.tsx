@@ -153,11 +153,11 @@ describe('where a notification takes you', () => {
    * reports, not beside them.
    */
   it.each([
-    ['raided', 'intel', 'battles'],
-    ['raid_result', 'intel', 'battles'],
-    ['death_star_result', 'intel', 'battles'],
-    ['strategic_intercepted', 'intel', 'battles'],
-  ] as const)('takes %s to the %s centre, on the %s shelf', (kind, panel, stop) => {
+    ['raided', 'report', 'battles'],
+    ['raid_result', 'report', 'battles'],
+    ['death_star_result', 'report', 'battles'],
+    ['strategic_intercepted', 'report', 'battles'],
+  ] as const)('takes %s straight to the %s, with the %s list behind it', (kind, panel, stop) => {
     expect(DESTINATION[kind]).toEqual({ panel, stop });
   });
 
@@ -182,12 +182,33 @@ describe('where a notification takes you', () => {
     expect(DESTINATION[kind]?.panel).toBe('planet');
   });
 
-  /** The shelf is only ever meaningful for the one panel that has shelves. */
+  /**
+   * THE SHELF IS ONLY EVER MEANINGFUL WHERE THERE ARE SHELVES — the Intel centre,
+   * and the report door that falls back into it when the fight cannot be found.
+   */
   it('never names a shelf on a panel that has none', () => {
     for (const [kind, where] of Object.entries(DESTINATION)) {
-      if (where.panel !== 'intel') {
+      if (where.panel !== 'intel' && where.panel !== 'report') {
         expect(where.stop, `${kind} names a shelf outside the Intel centre`).toBeUndefined();
       }
+    }
+  });
+
+  /**
+   * THE OWNER'S CORRECTION. A battle notification is about ONE fight, and the
+   * reader tapped it to read that fight — so the door opens onto the report
+   * itself, not onto the room the report is filed in. The Intel centre is where it
+   * lands only if the report cannot be found (`GalaxyView`'s report panel), which
+   * is why the battle kinds still name the battles shelf.
+   */
+  it('sends every battle kind to the report and nothing else there', () => {
+    for (const [kind, where] of Object.entries(DESTINATION)) {
+      if (where.panel !== 'report') continue;
+      expect(
+        ['raided', 'raid_result', 'death_star_result', 'strategic_intercepted'],
+        `${kind} is not a fight`,
+      ).toContain(kind);
+      expect(where.stop, `${kind} has no list to fall back to`).toBe('battles');
     }
   });
 
@@ -198,7 +219,41 @@ describe('where a notification takes you', () => {
     await openSheet();
     await userEvent.click(screen.getByRole('button', { name: 'Open related report' }));
 
-    expect(onOpen).toHaveBeenCalledWith('intel', 'battles', 'mission-raided');
+    expect(onOpen).toHaveBeenCalledWith('report', 'battles', 'mission-raided');
+  });
+
+  /**
+   * AND THE SHELF IS NOT THE WHOLE ANSWER EITHER. Owner report.
+   *
+   * A battle notification names one fight, and the reader tapped it to read THAT
+   * report — landing them on a list with it somewhere in it is the same failure
+   * one layer down from the one this file was written for. Two of the four kinds
+   * carried their identity and two did not: a Death Star resolving and an
+   * interception both dropped it, though `refId` is the mission id on all four and
+   * `BattleReports` matches on exactly that.
+   *
+   * It is derived from the shelf rather than listed per kind, so a fifth battle
+   * kind cannot arrive without it — a list of kinds in two places is how the first
+   * two got left out.
+   */
+  it.each(['raided', 'raid_result', 'death_star_result', 'strategic_intercepted'] as const)(
+    'opens the exact fight a %s notification is about',
+    async (kind) => {
+      const { onOpen } = mount([notification(kind)]);
+      await openSheet();
+      await userEvent.click(screen.getByRole('button', { name: 'Open related report' }));
+
+      expect(onOpen).toHaveBeenCalledWith('report', 'battles', `mission-${kind}`);
+    },
+  );
+
+  /** A probe report is a reading, not a fight: the battle list has nothing to open. */
+  it('carries no fight identity off the probe shelf', async () => {
+    const { onOpen } = mount([notification('probe_report')]);
+    await openSheet();
+    await userEvent.click(screen.getByRole('button', { name: 'Open related report' }));
+
+    expect(onOpen).toHaveBeenCalledWith('intel', 'probes', undefined);
   });
 
   it('passes no shelf where the panel is the whole answer', async () => {

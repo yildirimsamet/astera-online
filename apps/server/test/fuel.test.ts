@@ -87,6 +87,9 @@ describe('fuel', () => {
     await setLevel(f.db, mine, 'CORE', 8);
     await grant(f.db, mine, 200_000, 60_000);
     await grant(f.db, target, 40_000, 8_000);
+    // The two purses are different sizes, so `grant` leaves the two Cores in
+    // different tier bands and every launch below is refused. D168.
+    await levelWorld(f.db, f.planetIds);
     f.clock.advance(250);
   });
 

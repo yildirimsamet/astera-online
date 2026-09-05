@@ -2,7 +2,14 @@ import type { ReactNode } from 'react';
 import { act, fireEvent, render, screen, within } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { describe, expect, it, vi } from 'vitest';
-import { DEATH_STAR, GALAXY_SPAN, MULTI_WORLD, distance, missionFuel } from '@astera/rules';
+import {
+  DEATH_STAR,
+  GALAXY_SPAN,
+  MULTI_WORLD,
+  distance,
+  missionFuel,
+  recoveryMinutesFor,
+} from '@astera/rules';
 import { duration } from '../src/lib/time.js';
 import { resetClock } from '../src/lib/clock.js';
 import { compact } from '../src/lib/format.js';
@@ -305,11 +312,16 @@ describe('the focus rail’s two commitments', () => {
     expect(screen.getByText(
       new RegExp(`aegis loses ${String(DEATH_STAR.aegisLevelsLost)} levels`, 'i'),
     )).toBeInTheDocument();
-    // The window is the recovery, and it is read from the constant.
+    /*
+      THE WINDOW IS THE WORLD'S OWN, AND THIS PANEL IS ALWAYS LOOKING AT A COLONY —
+      a capital returns before the guide is drawn. D167 split the two: eight hours
+      here, two for a capital, both off `recoveryMinutesFor`.
+    */
     expect(screen.getByText(
-      new RegExp(`production, collection, construction, new orders and launches stop for ${duration(MULTI_WORLD.recoveryMinutes)}`, 'i'),
+      new RegExp(`production, collection, construction, new orders and launches stop for ${duration(recoveryMinutesFor('COLONY'))}`, 'i'),
     )).toBeInTheDocument();
-    expect(screen.getByText(/second impact inside that window takes control/i)).toBeInTheDocument();
+    // And the consequence is a DROP, not a transfer: the weapon takes nothing.
+    expect(screen.getByText(/lands no ship before that window closes/i)).toBeInTheDocument();
 
     view.rerender(
       <Wrapper>
@@ -319,7 +331,7 @@ describe('the focus rail’s two commitments', () => {
     expect(screen.getByText(/what this impact does/i)).toBeInTheDocument();
     expect(screen.getByText(/half the resources in storage and the Works are destroyed/i)).toBeInTheDocument();
     // A capital gets the opposite closing line, because it can never be taken.
-    expect(screen.getByText(/never captured/i)).toBeInTheDocument();
+    expect(screen.getByText(/never lost/i)).toBeInTheDocument();
     expect(screen.queryByText(/takes control/i)).toBeNull();
   });
 
@@ -410,6 +422,22 @@ describe('the focus rail’s two commitments', () => {
     expect(screen.getByRole('button', { name: /attack.*origin recovering/i })).toBeDisabled();
   });
 
+  /**
+   * THE ROUTE STAYS; THE EMPTY BUTTON GOES. Owner report, with a screenshot.
+   *
+   * This case used to assert both halves: the strategic capture route AND a
+   * full-width disabled slab reading "No Death Star ready". The owner's rail
+   * screenshot is three stacked slabs on a 375-wide phone, one of which exists
+   * only to announce a weapon they have never built.
+   *
+   * The two halves answer different questions and only one of them was earning
+   * its space. The ROUTE is ambition — it teaches that this world can be taken
+   * and how — and it stays, which is what this test still guards. The BUTTON was
+   * a control with no action behind it and no gap the commander was about to
+   * close; `focus-density.test.tsx` holds down that it returns the moment a
+   * strategic asset actually exists, in any state, because from then on its
+   * refusal is something they can act on.
+   */
   it('keeps the Death Star route visible before a weapon is ready', () => {
     const Wrapper = harness();
     render(
@@ -430,8 +458,9 @@ describe('the focus rail’s two commitments', () => {
         />
       </Wrapper>,
     );
-    expect(screen.getByText(/strategic capture route/i)).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /no death star ready/i })).toBeDisabled();
+    expect(screen.getByText(/what a strike does/i)).toBeInTheDocument();
+    // ...and no row is spent on a weapon this commander does not own.
+    expect(document.querySelector('[data-death-star]')).toBeNull();
   });
 
   it('shows the whole neutral claim route and unmet founding cargo at the decision', () => {

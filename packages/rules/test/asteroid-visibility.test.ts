@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import {
-  asteroidDiscoveredAt,
+  orbitDiscoveredAt,
   asteroidOrbitRadius,
   asteroidPosition,
-  firstAsteroidSensorContact,
+  firstOrbitSensorContact,
   nextAsteroidDiscoveryAt,
   type AsteroidSpec,
   type SensorEpoch,
@@ -73,11 +73,11 @@ describe('asteroid orbit distribution', () => {
 
 describe('exact asteroid/sensor contact', () => {
   it('finds a contact already in progress at the interval start', () => {
-    expect(firstAsteroidSensorContact(rock(), epoch(), 0, 20)).toBe(0);
+    expect(firstOrbitSensorContact(rock(), epoch(), 0, 20)).toBe(0);
   });
 
   it('finds the next revolution when the interval starts outside the sensor', () => {
-    const found = firstAsteroidSensorContact(rock(), epoch(), 20, 120);
+    const found = firstOrbitSensorContact(rock(), epoch(), 20, 120);
     expect(found).not.toBeNull();
     expect(found!).toBeGreaterThan(90);
     expect(found!).toBeLessThan(100);
@@ -85,17 +85,17 @@ describe('exact asteroid/sensor contact', () => {
 
   it('counts an exact tangent as a real contact', () => {
     const tangent = epoch({ at: { x: 1_500, y: 0, z: 0 }, reach: 500 });
-    expect(firstAsteroidSensorContact(rock(), tangent, 0, 1)).toBeCloseTo(0, 10);
+    expect(firstOrbitSensorContact(rock(), tangent, 0, 1)).toBeCloseTo(0, 10);
   });
 
   it('returns null when the orbit can never enter the sphere', () => {
     const centre = epoch({ at: { x: 0, y: 0, z: 0 }, reach: 999 });
-    expect(firstAsteroidSensorContact(rock(), centre, 0, 500)).toBeNull();
+    expect(firstOrbitSensorContact(rock(), centre, 0, 500)).toBeNull();
   });
 
   it('treats an orbit fully enclosed by the sensor as continuously visible', () => {
     const enclosing = epoch({ at: { x: 0, y: 0, z: 0 }, reach: 1_001 });
-    expect(firstAsteroidSensorContact(rock(), enclosing, 37, 38)).toBe(37);
+    expect(firstOrbitSensorContact(rock(), enclosing, 37, 38)).toBe(37);
   });
 
   it('works on an isotropically tilted 3D orbit, not only the horizontal plane', () => {
@@ -103,58 +103,58 @@ describe('exact asteroid/sensor contact', () => {
     const at = asteroidPosition(tilted, 25);
     const post = epoch({ at, reach: 1 });
     const expectedEntry = 25 - (Math.asin(post.reach / tilted.radius) * tilted.period) / TAU;
-    expect(firstAsteroidSensorContact(tilted, post, 20, 30)).toBeCloseTo(expectedEntry, 8);
+    expect(firstOrbitSensorContact(tilted, post, 20, 30)).toBeCloseTo(expectedEntry, 8);
   });
 
   it('clips the search to asteroid appearance and excludes the expiry instant', () => {
     // Phase π puts the rock at this sensor when the global orbit clock reaches 50.
     // Appearance does not reset its orbit phase.
     const finite = rock({ phase: Math.PI, appearsAt: 50, expiresAt: 100 });
-    expect(firstAsteroidSensorContact(finite, epoch(), 0, 49.999)).toBeNull();
-    expect(firstAsteroidSensorContact(finite, epoch(), 0, 60)).toBe(50);
-    expect(firstAsteroidSensorContact(finite, epoch(), 100, 200)).toBeNull();
+    expect(firstOrbitSensorContact(finite, epoch(), 0, 49.999)).toBeNull();
+    expect(firstOrbitSensorContact(finite, epoch(), 0, 60)).toBe(50);
+    expect(firstOrbitSensorContact(finite, epoch(), 100, 200)).toBeNull();
   });
 
   it('clips the search to a closed sensor epoch', () => {
     const closedBeforeContact = epoch({ startsAt: 10, endsAt: 90 });
-    expect(firstAsteroidSensorContact(rock(), closedBeforeContact, 10, 200)).toBeNull();
+    expect(firstOrbitSensorContact(rock(), closedBeforeContact, 10, 200)).toBeNull();
   });
 
   it('handles zero-length, reversed and non-finite intervals safely', () => {
-    expect(firstAsteroidSensorContact(rock(), epoch(), 10, 10)).toBeNull();
-    expect(firstAsteroidSensorContact(rock(), epoch(), 11, 10)).toBeNull();
-    expect(firstAsteroidSensorContact(rock(), epoch(), Number.NaN, 10)).toBeNull();
+    expect(firstOrbitSensorContact(rock(), epoch(), 10, 10)).toBeNull();
+    expect(firstOrbitSensorContact(rock(), epoch(), 11, 10)).toBeNull();
+    expect(firstOrbitSensorContact(rock(), epoch(), Number.NaN, 10)).toBeNull();
   });
 });
 
 describe('persistent per-commander asteroid discovery', () => {
   it('remembers a rock after it leaves the sensor, until the rock expires', () => {
     const asteroid = rock();
-    expect(asteroidDiscoveredAt(asteroid, [epoch()], 40)).toBe(0);
-    expect(asteroidDiscoveredAt(asteroid, [epoch()], 499.999)).toBe(0);
-    expect(asteroidDiscoveredAt(asteroid, [epoch()], 500)).toBeNull();
+    expect(orbitDiscoveredAt(asteroid, [epoch()], 40)).toBe(0);
+    expect(orbitDiscoveredAt(asteroid, [epoch()], 499.999)).toBe(0);
+    expect(orbitDiscoveredAt(asteroid, [epoch()], 500)).toBeNull();
   });
 
   it('does not use a future sensor epoch to reveal a past crossing retroactively', () => {
     const upgraded = epoch({ startsAt: 10, endsAt: 90 });
-    expect(asteroidDiscoveredAt(rock(), [upgraded], 90)).toBeNull();
+    expect(orbitDiscoveredAt(rock(), [upgraded], 90)).toBeNull();
   });
 
   it('keeps a discovery made by an old, closed epoch', () => {
     const oldPost = epoch({ startsAt: 0, endsAt: 10 });
-    expect(asteroidDiscoveredAt(rock(), [oldPost], 80)).toBe(0);
+    expect(orbitDiscoveredAt(rock(), [oldPost], 80)).toBe(0);
   });
 
   it('uses the union of multiple owned worlds and chooses the earliest earned contact', () => {
     const misses = epoch({ at: { x: 0, y: 0, z: 0 }, reach: 100 });
     const later = epoch({ startsAt: 20, at: { x: 0, y: 1_000, z: 0 }, reach: 10 });
     const earlier = epoch({ startsAt: 0, at: { x: 1_000, y: 0, z: 0 }, reach: 10 });
-    expect(asteroidDiscoveredAt(rock(), [misses, later, earlier], 120)).toBe(0);
+    expect(orbitDiscoveredAt(rock(), [misses, later, earlier], 120)).toBe(0);
   });
 
   it('does not discover through an epoch with no positive reach or no duration', () => {
-    expect(asteroidDiscoveredAt(rock(), [epoch({ reach: 0 })], 100)).toBeNull();
-    expect(asteroidDiscoveredAt(rock(), [epoch({ startsAt: 10, endsAt: 10 })], 100)).toBeNull();
+    expect(orbitDiscoveredAt(rock(), [epoch({ reach: 0 })], 100)).toBeNull();
+    expect(orbitDiscoveredAt(rock(), [epoch({ startsAt: 10, endsAt: 10 })], 100)).toBeNull();
   });
 
   it('returns the next first discovery, ignoring already discovered and expired rocks', () => {

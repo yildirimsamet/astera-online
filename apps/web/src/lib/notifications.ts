@@ -2,7 +2,7 @@ import { z } from 'zod';
 import type { NotificationView } from '../api/schemas.js';
 import i18n from '../i18n/index.js';
 import { hullName, unlockCopy } from '../i18n/names.js';
-import { compact } from './format.js';
+import { compact, full } from './format.js';
 import { commanderLabel } from './identity.js';
 import { duration } from './time.js';
 
@@ -155,6 +155,27 @@ const returned = z.discriminatedUnion('trip', [
     targetPlanetId: z.string(),
     targetPlanetName: z.string(),
   }),
+  /**
+   * A CONVOY BACK FROM THE MERCHANT. D156 · D166.
+   *
+   * This branch was missing while the server was already writing `trip: 'trade'`,
+   * and the failure mode is the reason it is called out here: an unparsed
+   * `fleet_returned` falls through to `legacyRaidReturn`, which asks for exactly
+   * the four fields a trade payload happens to carry — so it PARSED, and a swap
+   * that took nothing from anybody was reported as plunder. A new `trip` value has
+   * to grow this union in the same change.
+   *
+   * The field names are the server's (`lootAlloy` and friends), kept rather than
+   * renamed: they are the same wire the raid branch reads and a rename would be a
+   * migration for the notifications already written.
+   */
+  z.object({
+    trip: z.literal('trade'),
+    ships: z.number(),
+    lootAlloy: z.number(),
+    lootCrystal: z.number(),
+    lootDeuterium: z.number().default(0),
+  }),
 ]);
 
 const transferWasRerouted = (notification: NotificationView): boolean => {
@@ -201,12 +222,33 @@ const strategicResult = z.object({
 
 const colonyEvent = z.object({ targetPlanetId: z.string() });
 
-const galaxyLifecycle = z.object({
-  eventKind: z.literal('ASTEROID_SHOWER'),
-  startsAt: z.coerce.date(),
-  endsAt: z.coerce.date(),
-  asteroidSpawnMultiplier: z.number().gt(1),
-});
+/**
+ * A PUBLIC EVENT STARTING OR ENDING — AND THERE ARE TWO KINDS OF THEM. D156.
+ *
+ * This pinned `eventKind` to the shower, so a merchant's start and end parsed as
+ * FAILURES and the two cases below returned null: the row was written, delivered,
+ * counted and then silently dropped from Signals. Nothing errored, which is what
+ * made it expensive. Discriminated now, so a kind that is added and not taught
+ * fails to parse loudly at the one place that has to say a sentence about it.
+ */
+const galaxyLifecycle = z.discriminatedUnion('eventKind', [
+  z.object({
+    eventKind: z.literal('ASTEROID_SHOWER'),
+    startsAt: z.coerce.date(),
+    endsAt: z.coerce.date(),
+    asteroidSpawnMultiplier: z.number().gt(1),
+  }),
+  z.object({
+    eventKind: z.literal('TRADE_SHIP'),
+    startsAt: z.coerce.date(),
+    endsAt: z.coerce.date(),
+    rate: z.object({
+      alloy: z.number().positive(),
+      crystal: z.number().positive(),
+      deuterium: z.number().positive(),
+    }),
+  }),
+]);
 
 /* ── the sentences ──────────────────────────────────────────── */
 
@@ -581,6 +623,21 @@ export function describeNotification(notification: NotificationView, now: number
         if (trip.craftKind === 'probe') return i18n.t('notifications.probeLost');
         return i18n.t('notifications.recalled', { count: trip.craft });
       }
+      if (trip.trip === 'trade') {
+        /*
+          WHAT IT BOUGHT, NOT WHAT IT TOOK. The merchant is a transaction, so the
+          sentence names the goods and never uses the plunder wording — a convoy
+          that came home with nothing bought nothing, which is a different fact
+          from a raid that found nothing.
+        */
+        const bought = spoils(trip.lootAlloy, trip.lootCrystal, trip.lootDeuterium);
+        return bought.length === 0
+          ? i18n.t('notifications.tradeHomeEmpty', { count: trip.ships })
+          : i18n.t('notifications.tradeHome', {
+              count: trip.ships,
+              landed: bought.join(JOIN()),
+            });
+      }
       if (trip.trip === 'raid') {
         const origin = identity(
           trip.fromUsername,
@@ -678,13 +735,24 @@ export function describeNotification(notification: NotificationView, now: number
     case 'galaxy_event_started': {
       const parsed = galaxyLifecycle.safeParse(notification.payload);
       if (!parsed.success) return null;
-      return i18n.t('notifications.asteroidShowerStarted');
+      /*
+        THE MERCHANT'S ARRIVAL IS THE ONE PIECE OF NEWS IN THIS GAME THAT IS AN
+        INVITATION RATHER THAN A WARNING. It reaches Signals with the rate on it,
+        because the rate is the whole of the decision it is asking for.
+      */
+      return parsed.data.eventKind === 'TRADE_SHIP'
+        ? i18n.t('notifications.tradeShipStarted', {
+            alloy: full(parsed.data.rate.deuterium / parsed.data.rate.alloy),
+          })
+        : i18n.t('notifications.asteroidShowerStarted');
     }
 
     case 'galaxy_event_ended': {
       const parsed = galaxyLifecycle.safeParse(notification.payload);
       if (!parsed.success) return null;
-      return i18n.t('notifications.asteroidShowerEnded');
+      return parsed.data.eventKind === 'TRADE_SHIP'
+        ? i18n.t('notifications.tradeShipEnded')
+        : i18n.t('notifications.asteroidShowerEnded');
     }
 
     /**
@@ -735,3 +803,194 @@ export const isAlarming = (notification: NotificationView): boolean => {
   const parsed = raidResult.safeParse(notification.payload);
   return parsed.success && parsed.data.shipsHome === 0;
 };
+
+/* ── what a row looks like ──────────────────────────────────── */
+
+/**
+ * WHICH FAMILY OF NEWS THIS IS — the hue, and nothing else.
+ *
+ * Every row in Signals used to be drawn identically: five glyphs plus a bell for
+ * the other eleven kinds, aqua while unread and grey once read. A probe coming
+ * home, a colony falling and an asteroid shower starting were interchangeable
+ * lines, so the surface whose whole job is to say WHAT happened while you were
+ * away could only say THAT something had.
+ *
+ * `docs/visual-design.md` states the law: **icons carry shape, the interface
+ * carries colour.** This is the colour half — the CATEGORY — and `signalGlyph`
+ * below is the shape half, the KIND. Neither is allowed to be the only thing that
+ * separates two rows.
+ *
+ * IT IS A DIFFERENT QUESTION FROM `isAlarming`, WHICH IS WHY BOTH EXIST. This asks
+ * what sort of news arrived; that asks whether the news is bad, and it decides the
+ * sentence's ink and the toast's severity. They part company on exactly one lane:
+ * a raid at a pirate wears the pirate's red skull whichever way it went, and a
+ * decisive win is still not bad news — so the chip is red and the sentence is not.
+ *
+ *   · `threat` — done TO you, and it cost you something.
+ *   · `pirate` — the pirate lane, which is red and skulled on the disc too.
+ *   · `gain`   — a reading landed, a gate opened, something came home.
+ *   · `watch`  — somebody is looking at you. A warning, not yet a loss.
+ *   · `world`  — the whole galaxy, not you. Drawn as a banner, not a row.
+ *   · `note`   — a kind this build has never heard of. Furniture, on purpose:
+ *                a newer server's news must never borrow a hue that means something.
+ */
+export type SignalFamily = 'threat' | 'pirate' | 'gain' | 'watch' | 'world' | 'note';
+
+/** A pirate raid, from the one field that says so. D150. */
+const isPirateNews = (notification: NotificationView): boolean => {
+  if (notification.kind !== 'raid_result') return false;
+  const parsed = raidResult.safeParse(notification.payload);
+  return parsed.success && parsed.data.targetKind === 'PIRATE';
+};
+
+export function signalFamily(notification: NotificationView): SignalFamily {
+  switch (notification.kind) {
+    case 'galaxy_event_started':
+    case 'galaxy_event_ended':
+      return 'world';
+    /**
+     * `settlement_lost` IS A LOSS AND IS NOT IN `isAlarming`, nor is an
+     * interception the caller did not make (below).
+     *
+     * A settlement race lost sends the Couriers and their cargo home for nothing;
+     * a Death Star shot off somebody else's ring is the most expensive hull in the
+     * game gone. `isAlarming` is deliberately left alone — it drives a toast's
+     * severity and a line's ink, and widening it here would be changing two
+     * surfaces to fix one.
+     */
+    case 'incoming_fleet':
+    case 'strategic_incoming':
+    case 'raided':
+    case 'colony_lost':
+    case 'settlement_lost':
+      return 'threat';
+    case 'scan_detected':
+      return 'watch';
+    case 'strategic_intercepted': {
+      const parsed = intercepted.safeParse(notification.payload);
+      // An unreadable payload is the fallback sentence, which says a weapon was
+      // destroyed without saying whose. Neither hue would be honest; grey is.
+      if (!parsed.success) return 'note';
+      return parsed.data.defended ? 'gain' : 'threat';
+    }
+    case 'raid_result':
+      if (isPirateNews(notification)) return 'pirate';
+      return isAlarming(notification) ? 'threat' : 'gain';
+    case 'fleet_returned':
+      return isAlarming(notification) ? 'threat' : 'gain';
+    case 'probe_report':
+    case 'unlock':
+    case 'colony_captured':
+    case 'settlement_success':
+    case 'death_star_result':
+      return 'gain';
+    default:
+      return 'note';
+  }
+}
+
+/**
+ * DID IT GO THE READER'S WAY? Owner decision, and the row's own background says so.
+ *
+ * The third and last question a row is asked, and the only one whose answer is
+ * legible without focusing on the row at all: a thin green wash for a win, a thin
+ * red one for a loss, nothing on what is neither. `signalFamily` says which
+ * CATEGORY of news arrived and `signalGlyph` says which kind; neither says whether
+ * it was good, which is the first thing a person scanning forty rows wants.
+ *
+ * NEUTRAL IS UNTOUCHED, ON INSTRUCTION. Being scanned has cost nothing yet, an
+ * asteroid shower is the galaxy's news rather than the reader's, and a strike that
+ * did nothing did nothing. Washing them too would make three states out of two and
+ * cost the other two their meaning.
+ *
+ * IT IS NOT `isAlarming` EITHER, though it agrees with it on every loss. That one
+ * answers "is this worth a red toast and red ink"; this one has a third answer,
+ * and the two part company on the pirate lane, where the chip is red whichever way
+ * the fight went and only the squadron coming home decides this.
+ */
+export type SignalOutcome = 'win' | 'loss' | 'neutral';
+
+export function signalOutcome(notification: NotificationView): SignalOutcome {
+  const family = signalFamily(notification);
+  if (family === 'threat' || isAlarming(notification)) return 'loss';
+  if (family === 'world' || family === 'watch' || family === 'note') return 'neutral';
+  /**
+   * A STRIKE THAT DID NOTHING. D105.
+   *
+   * `INEFFECTIVE` means protection or target state absorbed it — the Death Star is
+   * still consumed, and nothing happened. It is the one `gain`-family row that is
+   * not a gain, and painting it green would be the interface congratulating the
+   * player on a wasted capital ship.
+   */
+  if (notification.kind === 'death_star_result') {
+    const parsed = strategicResult.safeParse(notification.payload);
+    if (parsed.success && parsed.data.outcome === 'INEFFECTIVE') return 'neutral';
+  }
+  // `gain`, and the half of the pirate lane whose squadron came home.
+  return 'win';
+}
+
+/**
+ * WHICH SHAPE THIS KIND OF NEWS IS DRAWN WITH.
+ *
+ * A name rather than a component, so this stays a pure function next to the
+ * sentence it labels and the one file that draws Signals maps the names to glyphs.
+ * The test that matters asserts no kind the server can send falls back to `bell` —
+ * eight of them did, which is indistinguishable from having no icon at all.
+ */
+export type SignalGlyph =
+  | 'incoming'
+  | 'strategic'
+  | 'raided'
+  | 'returned'
+  | 'skull'
+  | 'probe'
+  | 'scan'
+  | 'unlock'
+  | 'conquest'
+  | 'world-lost'
+  | 'galaxy'
+  | 'bell';
+
+export function signalGlyph(notification: NotificationView): SignalGlyph {
+  // Before the kind, because a raid at a pirate and a raid at a commander are the
+  // same kind and are not the same news.
+  if (isPirateNews(notification)) return 'skull';
+  switch (notification.kind) {
+    case 'incoming_fleet':
+      return 'incoming';
+    case 'strategic_incoming':
+    case 'strategic_intercepted':
+    case 'death_star_result':
+      return 'strategic';
+    case 'raided':
+    case 'raid_result':
+      return 'raided';
+    case 'fleet_returned':
+      return 'returned';
+    /**
+     * AN EYE FOR YOUR PROBE, A PING FOR SOMEBODY ELSE'S. See `EyeIcon`.
+     *
+     * The two used to share `ScanIcon`, which put "your reading came home" and
+     * "you were scanned" under one mark — the two halves of "watching is silent;
+     * probing is loud", drawn as the same thing.
+     */
+    case 'probe_report':
+      return 'probe';
+    case 'scan_detected':
+      return 'scan';
+    case 'unlock':
+      return 'unlock';
+    case 'colony_captured':
+    case 'settlement_success':
+      return 'conquest';
+    case 'colony_lost':
+    case 'settlement_lost':
+      return 'world-lost';
+    case 'galaxy_event_started':
+    case 'galaxy_event_ended':
+      return 'galaxy';
+    default:
+      return 'bell';
+  }
+}

@@ -52,7 +52,7 @@ export function PlanetHero({
 
   if (compactMode) {
     return (
-      <div className="flex flex-col gap-3">
+      <div className="flex flex-col gap-2">
         {/*
           THE KIND LEADS; THE NAME CONFIRMS.
 
@@ -67,7 +67,7 @@ export function PlanetHero({
         */}
         <div
           data-planet-subject
-          className="flex items-center gap-3 border-b border-line-soft pb-3"
+          className="flex items-center gap-2 border-b border-line-soft pb-1"
         >
           <div className="relative grid size-20 shrink-0 place-items-center" aria-hidden>
             <span
@@ -89,8 +89,9 @@ export function PlanetHero({
             </p>
             <p className="legend mt-1 truncate">{planet.planet.name}</p>
           </div>
+          <Readouts planet={planet} />
         </div>
-        <Readouts planet={planet} />
+        
         <Verdicts planet={planet} ground={ground} home={home} exposed={exposed} />
         {disruptedFor > 0 && <Disrupted ms={disruptedFor} />}
       </div>
@@ -98,7 +99,7 @@ export function PlanetHero({
   }
 
   return (
-    <div className="flex flex-col gap-3">
+    <div className="flex flex-col gap-2">
       {/*
         Side by side rather than stacked.
         A full-width portrait with the numbers underneath pushed every actual
@@ -106,7 +107,7 @@ export function PlanetHero({
         to do anything with it. The planet keeps its presence; it just stops
         occupying the screen alone.
       */}
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-2">
         <div className="relative flex size-[152px] shrink-0 items-center justify-center">
           <div
             className="pointer-events-none absolute inset-[-14px]"
@@ -148,9 +149,9 @@ export function PlanetHero({
           </h1>
           <div className="plate plate-inset mt-2 px-3 py-2">
             <p className="legend">{t('planetHero.power')}</p>
-            <p className="readout mt-1 text-figure text-bone">{full(powerOf(planet))}</p>
+            <p className="readout mt-1 text-body text-bone">{full(powerOf(planet))}</p>
           </div>
-          <div className="mt-2 flex gap-3">
+          <div className="mt-2 flex gap-2">
             <Rate art={RESOURCE_ART.alloy} value={planet.planet.alloyPerHour} tone="text-alloy" />
             <Rate
               art={RESOURCE_ART.crystal}
@@ -177,14 +178,24 @@ export function PlanetHero({
 function Readouts({ planet }: { planet: PlanetView }) {
   const { t } = useTranslation();
   return (
-    <div className="flex items-stretch gap-2">
-      <div className="plate plate-inset flex-1 px-3 py-3">
+    /*
+      30px WAS A POSTER, NOT A READOUT. Owner directive: *"gereksiz büyük fontlar."*
+
+      `--text-readout` exists for a figure that is the entire point of its screen —
+      a season score on the recap. Standing power is the first of FOUR readings in
+      this block, and at 30px it made the other three look like footnotes to it
+      while eating a fifth of the sheet before a commander reached anything they
+      could press. `--text-figure` is 21px, still the largest thing here, and it
+      leaves the block readable as one group instead of one number and some others.
+    */
+    <div className="flex items-stretch gap-1 ml-auto">
+      <div className="plate plate-inset flex-1 px-2 py-2 min-w-[80px]">
         <p className="legend">{t('planetHero.power')}</p>
-        <p className="readout mt-2 text-readout text-bone">{full(powerOf(planet))}</p>
+        <p className="readout mt-1 text-body text-bone">{full(powerOf(planet))}</p>
       </div>
-      <div className="plate plate-inset w-[142px] px-3 py-3">
+      <div className="plate plate-inset flex-1 px-2 py-2 min-w-[100px]">
         <p className="legend">{t('planetHero.perHour')}</p>
-        <div className="mt-2 space-y-1">
+        <div className="mt-1 space-y-0.5">
           <Rate art={RESOURCE_ART.alloy} value={planet.planet.alloyPerHour} tone="text-alloy" />
           <Rate
             art={RESOURCE_ART.crystal}
@@ -284,7 +295,7 @@ function VaultVerdict({ planet, exposed }: { planet: PlanetView; exposed: number
   ] as const;
 
   return (
-    <div className="plate plate-inset col-span-2 flex flex-col gap-2 px-3 py-3">
+    <div className="plate plate-inset col-span-2 flex flex-col gap-1.5 px-3 py-2">
       {/*
         ONE HEADING, ONE MEANING — AND THE SENTENCE IS GONE.
 
@@ -296,7 +307,7 @@ function VaultVerdict({ planet, exposed }: { planet: PlanetView; exposed: number
         What is left says the fact once and shows the OTHER half beside it: this
         much is safe, that much is not. Two figures, one rule, no prose.
       */}
-      <div className="flex items-baseline justify-between gap-3">
+      <div className="flex items-baseline justify-between gap-2">
         <p className="legend">{t('planetHero.vaultSafe')}</p>
         <p className={`num text-label ${exposed > 0 ? 'text-alloy' : 'text-opportunity'}`}>
           {t('planetHero.atRiskValue', { amount: compact(exposed) })}
@@ -321,8 +332,8 @@ function VaultVerdict({ planet, exposed }: { planet: PlanetView; exposed: number
 function Rate({ art, value, tone }: { art: string; value: number; tone: string }) {
   const { t } = useTranslation();
   return (
-    <p className={`num flex items-center gap-2 text-body ${tone}`}>
-      <img src={art} alt="" aria-hidden className="size-4 object-contain" />
+    <p className={`num flex items-center gap-2 text-caption ${tone}`}>
+      <img src={art} alt="" aria-hidden className="size-3.5 object-contain" />
       {compact(value)}
       <span className="text-micro text-faint">{t('planetHero.perHourSuffix')}</span>
     </p>
@@ -363,7 +374,10 @@ function Verdict({
   return (
     <div className="plate plate-inset px-3 py-2">
       <p className="legend">{label}</p>
-      <p className={`readout mt-2 text-title ${TONE[tone]}`}>{value}</p>
+      {/* A verdict is a WORD — "Weak", "None". A word does not need 18px to land,
+         and at 18px two of them beside a 30px figure read as a third heading level
+         nobody asked for. */}
+      <p className={`readout mt-1 text-body ${TONE[tone]}`}>{value}</p>
       {typeof detail === 'string'
         ? <p className="num mt-1 text-micro text-faint">{detail}</p>
         : detail}

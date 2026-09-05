@@ -10,12 +10,14 @@ import { useCompleteResearch, usePlanet } from '../api/queries.js';
 import type { BuildOrderView, PlanetView } from '../api/schemas.js';
 import { percent } from '../lib/format.js';
 import { serverNow } from '../lib/clock.js';
-import { clockTime, duration, useNow } from '../lib/time.js';
+import { clockTime, untilReady, useNow } from '../lib/time.js';
 import { useProjected } from '../lib/projection.js';
 import { RESEARCH_ART } from '../ui/assets.js';
 import { researchGain, type Gain } from '../lib/gains.js';
 import { ActionButton, Price } from '../ui/Action.js';
 import { Band, UpgradeRow, type Blocked } from '../ui/UpgradeRow.js';
+import { orderMinutes } from '../lib/orderTime.js';
+import { useAccordion } from '../lib/accordion.js';
 import { describe, useToast } from '../ui/Toast.js';
 import { Note, Sheet, Unreachable, Waiting } from '../ui/kit/index.js';
 import { QueueStrip } from '../ui/QueueStrip.js';
@@ -123,6 +125,8 @@ export function ResearchPanel({ onNeed }: { onNeed?: (id: string) => void }) {
    * the cards moved — it landed them on a tab with no research on it at all.
    */
   const [focused, setFocused] = useState<ResearchProjectId | null>(null);
+  /** Frontier leads because its cards are FOUND rather than bought — see `GROUPED`. */
+  const bands = useAccordion('research', [GROUPED[0].id]);
 
   useEffect(() => {
     if (!focused) return;
@@ -326,7 +330,12 @@ export function ResearchPanel({ onNeed }: { onNeed?: (id: string) => void }) {
    *   1. the commander Research queue is full
    *   2. the season has not opened this act yet — no amount of building fixes it
    *   3. the discovery has not happened — a condition to play out, not to buy
-   *   4. the Core is too low — the only one that is a build, so it goes last
+   *   4. the project in front of this one is not held — a purchase, so it follows
+   *   5. the Core is too low — the only one that is a build, so it goes last
+   *
+   * AND EVERY ONE OF THEM HAS TO STILL BE TRUE TO BE SAID. Step 2 used to be the
+   * catch-all for anything that reached the end of the list, which put a spent
+   * countdown on five cards whose only real gate was step 4.
    */
   const doorOf = (
     id: ResearchProjectId,
@@ -343,9 +352,7 @@ export function ResearchPanel({ onNeed }: { onNeed?: (id: string) => void }) {
         (project) => project.id === 'ISOTOPE_SPECTROMETRY',
       );
       const gravitic = planet.research.find((project) => project.id === 'GRAVITIC_CHARGES');
-      const untilOpen = duration(
-        Math.max(0, (state.availableAt.getTime() - serverNow()) / 60_000),
-      );
+      const untilOpen = untilReady((state.availableAt.getTime() - serverNow()) / 60_000);
       /*
         THE ACT CLOCK FIRST, AND FOR THE PROTOCOL SPECIFICALLY. D113: once Gravitic
         Charges is held, "research Gravitic Charges first" is a false sentence, and
@@ -376,8 +383,33 @@ export function ResearchPanel({ onNeed }: { onNeed?: (id: string) => void }) {
             : t('research.shieldInsight', { share: graviticShare }),
         };
       }
-      // Discovered, prerequisite met, and still not available: the act clock is
-      // the only thing left that can be holding it.
+      /*
+        THE ACT CLOCK ONLY WHILE IT IS GENUINELY AHEAD. It used to catch every row
+        that fell this far, and a spent countdown is not a refusal: a live commander
+        was told the Interception Grid was researchable "in 0m" two days after the
+        War act opened. D113's ordering is kept — an act nobody can build their way
+        past outranks a project — but it now has to still be true to be said.
+      */
+      if (state.availableAt.getTime() > serverNow()) {
+        return { reason: t('research.at', { duration: untilOpen }) };
+      }
+      /*
+        WHAT IS LEFT IS THE PROJECT IN FRONT OF THIS ONE, and for the three stat
+        ladders and the two strategic projects it is the ONLY gate they ever have:
+        `discovered` is true for everything outside the Frontier four, so none of
+        them reaches the discovery branches above. A brand new commander meets three
+        of these on their first visit to this screen.
+
+        The fix stays here rather than going to the host — the card it names is a
+        few rows up, and `onNeed` would close this screen for it.
+      */
+      const behind = state.prerequisite;
+      if (behind !== null && !(state.queuePrerequisiteMet ?? state.prerequisiteMet ?? true)) {
+        return {
+          reason: t('research.prerequisiteFirst', { name: copy(behind).name }),
+          onFix: () => { setFocused(behind); },
+        };
+      }
       return { reason: t('research.at', { duration: untilOpen }) };
     }
     const needCore = RESEARCH_PROJECTS[id].requiredCore ?? 0;
@@ -440,6 +472,14 @@ export function ResearchPanel({ onNeed }: { onNeed?: (id: string) => void }) {
             alloyPerHour: planet.planet.alloyPerHour,
             crystalPerHour: planet.planet.crystalPerHour,
           }}
+          /*
+            RESEARCH RUNS ON THE FUNDING WORLD'S CURRENT CORE — `research.ts` reads
+            `planet.buildings.CORE` and never consults a build queue, because D134
+            gave research its own commander-wide lane rather than a slot in
+            CONSTRUCTION. `orderMinutes` honours that asymmetry rather than tidying
+            it away; a quote the server contradicts is worse than no quote.
+          */
+          takes={orderMinutes('RESEARCH', state.cost, planet)}
           unowned={level === 0}
           {...(spec.blocked ? { blocked: spec.blocked } : {})}
           {...(spec.completed ? { completed: spec.completed } : {})}
@@ -478,7 +518,7 @@ export function ResearchPanel({ onNeed }: { onNeed?: (id: string) => void }) {
       </section>
 
       {running ? (
-        <div data-research-running className="plate flex flex-col gap-1 p-3">
+        <div data-research-running className="plate flex flex-col gap-1 p-2">
           <p className="legend text-crystal/85">{t('research.runningLabel')}</p>
           <p className="name text-bone">{copy(running.projectId).name}</p>
           <p className="text-label text-faint">
@@ -488,12 +528,24 @@ export function ResearchPanel({ onNeed }: { onNeed?: (id: string) => void }) {
           </p>
         </div>
       ) : (
-        <div data-research-idle className="plate flex flex-col gap-1 p-3">
+        <div data-research-idle className="plate flex flex-col gap-1 p-2">
           <p className="legend">{t('research.idleLabel')}</p>
           <p className="text-label leading-snug text-faint">{t('research.idleHint')}</p>
         </div>
       )}
 
+      {/*
+        FOUR BANDS, FIFTEEN PROJECTS, AND ONLY ONE BAND OPEN. Owner instruction.
+
+        Every project row carries art, a name, what it unlocks, its gate, a price in
+        three resources and now a build time — a tall card by necessity, and fifteen
+        of them is several screens before a commander has seen what research even
+        offers. The bands were already the right grouping; they simply drew all of
+        their contents at once.
+
+        The choice is REMEMBERED (`useAccordion`): somebody working through Doctrine
+        for a week should not reopen Doctrine every visit.
+      */}
       {GROUPED.map((group) => (
         <section key={group.id} data-band={group.id} className="plate overflow-hidden">
           {/*
@@ -502,8 +554,14 @@ export function ResearchPanel({ onNeed }: { onNeed?: (id: string) => void }) {
             checking the other three — and a missing key on this screen prints its
             own path on a phone.
           */}
-          <Band label={t(group.label)} note={t(group.note)} />
-          {group.projects.map(row)}
+          <Band
+            label={t(group.label)}
+            {...(bands.isOpen(group.id) ? { note: t(group.note) } : {})}
+            count={group.projects.length}
+            open={bands.isOpen(group.id)}
+            onToggle={() => { bands.toggle(group.id); }}
+          />
+          {bands.isOpen(group.id) ? group.projects.map(row) : null}
         </section>
       ))}
 
@@ -612,7 +670,7 @@ function ProjectSheet({
             className={`relative z-[1] h-36 object-contain ${spec.level === 0 ? 'opacity-45 grayscale' : ''}`}
           />
         </div>
-        <p className="legend mt-4 text-crystal/85">{spec.tag}</p>
+        <p className="legend mt-2 text-crystal/85">{spec.tag}</p>
         <p className="mt-2 text-body leading-relaxed text-dim">{spec.role}</p>
         <p data-item-detail className="mt-2 text-caption leading-relaxed text-faint">
           {spec.detail}
@@ -624,19 +682,24 @@ function ProjectSheet({
         */}
         <div
           data-research-gain
-          className="mt-6 flex items-baseline justify-between gap-3 border-t border-line-soft pt-3"
+          className="mt-6 flex items-baseline justify-between gap-2 border-t border-line-soft pt-3"
         >
           <span className="legend text-faint">{spec.gain.label}</span>
           <span className="num text-body">
             {spec.gain.maxed
               ? spec.gain.now
               : `${spec.gain.now} → ${spec.gain.next}`}
+            {spec.gain.ceiling !== undefined && spec.gain.maxed !== true && (
+              <span className="ml-2 text-faint">
+                {t('upgradeRow.ceiling', { value: spec.gain.ceiling })}
+              </span>
+            )}
           </span>
         </div>
         {spec.gain.unlocks !== undefined && (
           <p className="mt-2 text-caption leading-snug text-crystal/80">{spec.gain.unlocks}</p>
         )}
-        <div className="mt-4 grid grid-cols-[1fr_auto] items-center gap-4 border-y border-line-soft py-3">
+        <div className="mt-2 grid grid-cols-[1fr_auto] items-center gap-4 border-y border-line-soft py-3">
           <div>
             <p className="legend">{t('research.sheetCost')}</p>
             <p className="mt-1 text-label text-faint">
@@ -652,7 +715,7 @@ function ProjectSheet({
           <Price cost={spec.cost} held={held} />
         </div>
         {(spec.blocked ?? spec.queued) && (
-          <p className={`mt-4 border px-3 py-2 text-caption leading-snug ${spec.blocked ? 'border-threat/30 bg-threat/10 text-threat' : 'border-crystal/30 bg-crystal/10 text-crystal'}`}>
+          <p className={`mt-2 border px-3 py-2 text-caption leading-snug ${spec.blocked ? 'border-threat/30 bg-threat/10 text-threat' : 'border-crystal/30 bg-crystal/10 text-crystal'}`}>
             {spec.blocked
               ? t('itemSheet.lockedNote', { reason: spec.blocked.reason })
               : spec.queued}

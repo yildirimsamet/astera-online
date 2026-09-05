@@ -53,7 +53,7 @@ export function SettlementSheet({
         </Button>
       }
     >
-      <div className="plate plate-crystal px-4 py-4">
+      <div className="plate plate-crystal px-2 py-2">
         <p className="text-title text-figure">
           {t('focus.planet.settlementConfirm.race')}
         </p>
@@ -62,7 +62,7 @@ export function SettlementSheet({
         </p>
       </div>
 
-      <dl className="mt-4 grid grid-cols-2 gap-px overflow-hidden rounded-panel bg-line/50">
+      <dl className="mt-2 grid grid-cols-2 gap-px overflow-hidden rounded-panel bg-line/50">
         <SettlementFact
           label={t('focus.planet.settlementConfirm.transports')}
           value={String(MULTI_WORLD.settlement.transports)}

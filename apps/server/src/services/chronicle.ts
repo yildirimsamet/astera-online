@@ -1,7 +1,13 @@
 import { and, asc, desc, eq, gt, lt, or, sql } from 'drizzle-orm';
 import type { Clock } from '../clock.js';
 import type { Db, Tx } from '../db/client.js';
-import { accounts, galaxyEvents, planets, players } from '../db/schema.js';
+import {
+  accounts,
+  galaxyEvents,
+  planets,
+  players,
+  type GalaxyEventLifecyclePayload,
+} from '../db/schema.js';
 import { publishShard } from '../stream/bus.js';
 import { GameError } from './planet.js';
 
@@ -35,18 +41,8 @@ export interface GalaxyEventPayloadByKind {
     trigger?: 'RADAR' | 'TELESCOPE';
   };
   control_transfer: { planetName: string; commanderName: string };
-  galaxy_event_started: {
-    eventKind: 'ASTEROID_SHOWER';
-    startsAt: string;
-    endsAt: string;
-    asteroidSpawnMultiplier: number;
-  };
-  galaxy_event_ended: {
-    eventKind: 'ASTEROID_SHOWER';
-    startsAt: string;
-    endsAt: string;
-    asteroidSpawnMultiplier: number;
-  };
+  galaxy_event_started: GalaxyEventLifecyclePayload;
+  galaxy_event_ended: GalaxyEventLifecyclePayload;
 }
 
 export type GalaxyEventKind = keyof GalaxyEventPayloadByKind;

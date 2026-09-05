@@ -1,7 +1,7 @@
 import { createHmac, timingSafeEqual } from 'node:crypto';
 import {
   asteroidActive,
-  asteroidDiscoveredAt,
+  orbitDiscoveredAt,
   generateAsteroidSchedule,
   nextAsteroidDiscoveryAt,
   withAsteroidShowerLanes,
@@ -73,13 +73,34 @@ export function privateAsteroidFieldWithEvents(
   occurrences: readonly PlannedGalaxyEvent[],
 ): AsteroidSpec[] {
   if (occurrences.length === 0) return privateAsteroidField(key);
+  /*
+    THE SIGNATURE IS THE COMPLETE OCCURRENCE, AND IT HAS TO STAY THAT WAY.
+
+    This cache is what makes the composed field cheap, and a signature that went
+    stale or collided would serve a field from a different calendar — at which
+    point asteroid ids stop resolving, because `idsFor` keys on the field's
+    length. So every field that can change the composition is in the string.
+
+    The effect is now one shape per kind (D156), so it is stringified per kind
+    rather than by reaching for `asteroidSpawnMultiplier` unconditionally — that
+    property does not exist on a `TradeShipEffect` and the reach was a type error
+    the moment a second kind existed. Merchants are included even though
+    `withAsteroidShowerLanes` filters them out internally: the signature describes
+    the CALENDAR, and describing it partially is how a signature starts colliding.
+  */
   const signature = occurrences.map((occurrence) => [
-    occurrence.sequence,
     occurrence.kind,
+    occurrence.sequence,
     occurrence.startsAtMinute,
     occurrence.endsAtMinute,
     occurrence.definitionVersion,
-    occurrence.effect.asteroidSpawnMultiplier,
+    occurrence.kind === 'ASTEROID_SHOWER'
+      ? occurrence.effect.asteroidSpawnMultiplier
+      : [
+          occurrence.effect.rate.alloy,
+          occurrence.effect.rate.crystal,
+          occurrence.effect.rate.deuterium,
+        ].join('/'),
   ].join(':')).join('|');
   const cacheKey = `${key}:${signature}`;
   const cached = composedFieldCache.get(cacheKey);
@@ -167,7 +188,7 @@ export function discoveredAsteroidIndexes(
       // returning from it. Test discovery at the last instant the rock existed so
       // an already earned public race does not vanish halfway through its return.
       const whileAlive = Math.min(nowMinutes, rock.expiresAt - 1e-9);
-      return asteroidDiscoveredAt(rock, epochs, whileAlive) !== null;
+      return orbitDiscoveredAt(rock, epochs, whileAlive) !== null;
     })
     .map((rock) => rock.index));
 }
@@ -183,7 +204,7 @@ export function projectPlayerAsteroidField(
   const nowMinutes = minutesSince(snapshot.startsAt, now);
   const asteroids = snapshot.asteroids
     .filter((rock) => asteroidActive(rock, nowMinutes))
-    .filter((rock) => asteroidDiscoveredAt(rock, epochs, nowMinutes) !== null)
+    .filter((rock) => orbitDiscoveredAt(rock, epochs, nowMinutes) !== null)
     .map((rock): PrivateAsteroidView => ({
       id: asteroidId(key, rock.index),
       level: rock.level,
