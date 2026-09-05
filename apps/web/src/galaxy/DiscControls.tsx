@@ -106,6 +106,7 @@ export function DiscControls({
         label={t('galaxy.openTransfer')}
         onPress={onOpenTransfer}
         disabled={!canTransfer}
+        className={`col-[2] ${!canTransfer ? 'hidden' : 'block'}`}
       >
         <SendIcon className="size-5" />
       </Mark>
@@ -131,6 +132,7 @@ function Mark({
   onPress,
   disabled = false,
   waiting = false,
+  className,
   children,
 }: {
   id: string;
@@ -138,6 +140,7 @@ function Mark({
   onPress: () => void;
   disabled?: boolean;
   waiting?: boolean;
+  className?: string;
   children: ReactNode;
 }) {
   return (
@@ -150,7 +153,7 @@ function Mark({
         haptic('tap');
         onPress();
       }}
-      className="pointer-events-auto relative flex size-10 items-center justify-center rounded-chip border border-line-soft/60 bg-void/35 text-dim transition-colors hover:border-line hover:text-bone active:scale-95 disabled:pointer-events-none disabled:opacity-35"
+      className={`pointer-events-auto relative flex size-10 items-center justify-center rounded-chip border border-line-soft/60 bg-void/35 text-dim transition-colors hover:border-line hover:text-bone active:scale-95 disabled:pointer-events-none disabled:opacity-35${className === undefined ? '' : ` ${className}`}`}
     >
       {children}
       {waiting && (

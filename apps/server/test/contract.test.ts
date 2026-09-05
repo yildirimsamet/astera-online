@@ -1,7 +1,7 @@
 import type { FastifyInstance } from 'fastify';
 import { pino } from 'pino';
 import { afterAll, beforeEach, describe, expect, it } from 'vitest';
-import { and, eq } from 'drizzle-orm';
+import { and, desc, eq } from 'drizzle-orm';
 import {
   ANTI_STRATEGIC,
   BUILDING_IDS,
@@ -551,6 +551,14 @@ describe('every payload the client parses', () => {
       remainingAlloy: 10,
       createdAt: f.clock.now(),
     });
+    /*
+      AND THE CAPITAL HAS TO HAVE ROOM FOR THE SHARE. `claimDepot` refuses when
+      nothing fits, and this fixture's capital is granted far past its Vault-0
+      store — so the claim was answered 409 by a rule working correctly against a
+      world the fixture had already filled. Ten alloy needs ten alloy of headroom.
+    */
+    await f.db.update(planets).set({ alloy: 0, crystal: 0 })
+      .where(eq(planets.id, f.planetIds[0]!));
     clanDepotClaimSchema.parse(await clanPost('/api/clan/depot/claim', {}));
 
     const aidPayload = {
@@ -1834,13 +1842,22 @@ describe('every payload the client parses', () => {
     f.clock.set(settledAt(launch.arriveAt));
     await worker.tick();
 
+    /*
+      THE LATEST ONE. This read the first `raided` row Postgres happened to hand
+      back, with no order at all — and this world has been raided before in the
+      same fixture, so it was asserting about an EARLIER raid's notification.
+      Every figure below belongs to the raid this test just flew.
+    */
     const [row] = await f.db
       .select()
       .from(notifications)
-      .where(eq(notifications.kind, 'raided'));
+      .where(eq(notifications.kind, 'raided'))
+      .orderBy(desc(notifications.createdAt))
+      .limit(1);
     expect(row, 'the defender was told nothing at all').toBeDefined();
 
     const payload = row!.payload as {
+      grade: 'DECISIVE' | 'PARTIAL' | 'REPELLED';
       lootAlloy: number;
       lootCrystal: number;
       unitsLost: number;
@@ -1851,14 +1868,24 @@ describe('every payload the client parses', () => {
     expect(payload.unitsLost).toBe(0);
     // And the thing that did happen, which used not to travel at all.
     /**
-     * THE CAP, NOT THE RAID'S OWN LENGTH — because this planet was already down.
-     * `applyDisruption` refreshes rather than stacks and clamps to
-     * `maxPendingMinutes`, so a second raid of the evening reports the ceiling.
-     * The two constants used to be the same number, which is why this assertion
-     * could not previously tell which one it was reading.
+     * NOTHING, BECAUSE THIS RAID WAS REPELLED — and that is the assertion worth
+     * having here.
+     *
+     * It used to expect `DISRUPTION.maxPendingMinutes`, on the reading that a
+     * second raid of the evening reports the ceiling. Two things were wrong with
+     * it. The row was read with no ORDER BY, so it was often asserting about an
+     * earlier raid's notification; and the raid this test actually flies comes
+     * home REPELLED, which disrupts nothing at all.
+     *
+     * `applyDisruption` returns the STANDING window untouched when a raid adds
+     * nothing, so without a grade check this line reported the hour left over
+     * from the raid before — telling a defender who had just BEATEN an attack
+     * that it had knocked their works offline. The report was guarded against
+     * exactly that; the notification was not, and now is.
      */
-    expect(payload.disruptedMinutes, 'the works were knocked down and nobody said so')
-      .toBe(DISRUPTION.maxPendingMinutes);
+    expect(payload.grade, 'this fixture flies a raid the defender beats').toBe('REPELLED');
+    expect(payload.disruptedMinutes, 'a repelled raid disrupted nothing, and said so')
+      .toBe(0);
 
     const now = f.clock.now().getTime();
     const view = (over: Record<string, unknown>) =>
@@ -1872,9 +1899,16 @@ describe('every payload the client parses', () => {
 
     // THE FIGURE IS LOAD-BEARING IN THE SENTENCE, not merely present in the row.
     // Asserted by removing it rather than by matching wording, so the copy stays
-    // free to change in either language.
-    const told = describeNotification(view({}), now);
-    const silent_ = describeNotification(view({ disruptedMinutes: undefined }), now);
+    // free to change in either language. A NON-ZERO figure is what has to change
+    // the sentence: this fixture's own raid was repelled and reports zero, which
+    // says the same thing as saying nothing — correctly.
+    // The grade moves with it: a REPELLED line never mentions disruption at all,
+    // which is right — and is why this pair has to be posed on a raid that landed.
+    const landed = { grade: 'DECISIVE' as const };
+    const told = describeNotification(
+      view({ ...landed, disruptedMinutes: DISRUPTION.maxPendingMinutes }), now,
+    );
+    const silent_ = describeNotification(view({ ...landed, disruptedMinutes: undefined }), now);
     expect(told).not.toBe(silent_);
     expect(told).not.toBeNull();
   });

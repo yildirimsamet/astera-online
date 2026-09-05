@@ -367,8 +367,6 @@ export const gains = {
   vault: {
     label: 'Kasa kapasitesi',
     value: '{{alloy}} alaşım · {{crystal}} kristal · {{deuterium}} Döteryum',
-    storeLabel: 'Depo kapasitesi',
-    storeValue: '{{hours}} saatlik üretim',
   },
   shipyard: {
     accuracyLabel: 'Sonda isabeti',

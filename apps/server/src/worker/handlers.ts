@@ -1034,8 +1034,20 @@ export const onMissionArrival: Handler = async ({ db, clock }, event) => {
          * the sentence says and it cannot then drift as the row ages: a
          * notification is a record of a moment, not a live countdown. The planet
          * view carries `disruptedUntil` for the countdown.
-         */
-        disruptedMinutes: Math.max(0, disruptedUntilMinutes - defender.nowMinutes),
+         *
+        THE SAME GUARD THE REPORT ABOVE ALREADY HAD, and it was missing here.
+
+        `applyDisruption` returns the STANDING figure untouched when a raid adds
+        nothing — a repelled attack must not extend a window — and that figure
+        belongs to an earlier raid. Without the grade check this line told a
+        defender who had just BEATEN an attack that it had knocked their works
+        offline for an hour, quoting the leftover from the raid before it. The
+        report was fixed for exactly this at the time; the notification says the
+        same sentence to the same person and was left behind.
+      */
+        disruptedMinutes: disruptionMinutes(result.grade) === 0
+          ? 0
+          : Math.max(0, disruptedUntilMinutes - defender.nowMinutes),
       },
       at: defender.now,
       refId: missionId,

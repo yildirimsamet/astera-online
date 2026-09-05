@@ -65,15 +65,22 @@ const at = (level: number): BuildingLevels => ({
 });
 
 describe('every upgrade row states something that actually changes', () => {
-  it('formats fractional storage hours to one decimal place', () => {
-    const gain = buildingGain('VAULT', 0, 0, at(0));
-
-    // D169 put the store on the owner's Vault table: three hours before the
-    // building exists, four at its first level. See `ECON.storageHoursLadder`.
-    expect(gain.now).toContain('3.0h');
-    expect(gain.next).toContain('4.0h');
-    expect(gain.now).not.toContain('000000000');
-    expect(gain.next).not.toContain('000000000');
+  /**
+   * THE VAULT ROW ALWAYS STATES PROTECTION NOW. D171.
+   *
+   * It used to fall back to the storage ceiling whenever a level bought no extra
+   * protection — the flat opening floor made that common on a young world, and a
+   * row quoting the same pair twice while charging is the worst thing an upgrade
+   * screen can do. D169 made the floor a SHARE of the store, so every level moves
+   * it by construction and the fallback became unreachable code. Both are gone.
+   */
+  it('never quotes the same protected pair twice', () => {
+    for (const level of [0, 1, 3, 6, 12]) {
+      const gain = buildingGain('VAULT', level, level, at(level));
+      expect(gain.now, `Vault ${String(level)}`).not.toBe(gain.next);
+      expect(gain.now).not.toContain('000000000');
+      expect(gain.next).not.toContain('000000000');
+    }
   });
 
   it.each(BUILDING_IDS)('%s, at every level', (id) => {

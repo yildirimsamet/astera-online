@@ -290,8 +290,6 @@ export const gains = {
   vault: {
     label: 'Vault capacity',
     value: '{{alloy}} alloy · {{crystal}} crystal · {{deuterium}} Deuterium',
-    storeLabel: 'Storage ceiling',
-    storeValue: '{{hours}}h of production',
   },
   shipyard: {
     accuracyLabel: 'Probe accuracy',

@@ -31,10 +31,23 @@ const PRICE_CRYSTAL = [
   5767, 8650, 12_975, 19_463, 29_194, 43_791, 65_687, 98_530, 147_795, 221_693,
 ] as const;
 
-/** Hours of production the STORE holds, indexed by Vault level, zero first. */
-const HOURS = [
+/**
+ * The Vault's own table, unchanged: 4 hours at L1 and 40 at L20, one step at a
+ * time. It is the SHAPE of the building's progression and the owner keeps it.
+ */
+const TABLE = [
   3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 16, 18, 20, 22, 24, 28, 32, 36, 40,
 ] as const;
+
+/**
+ * WHAT THE STORE ACTUALLY HOLDS: the table times `ECON.storageScale`. D171.
+ *
+ * The two are separate on purpose. The TABLE is the Vault's progression, which
+ * the owner authored and which nothing here may reshape; the SCALE is how much
+ * ore a step is worth, which is an economy dial. Multiplying the table in place
+ * would have destroyed the first and hidden the second inside it.
+ */
+const HOURS = TABLE.map((hours) => hours * 2.5);
 
 describe('the Vault price table', () => {
   PRICE_ALLOY.forEach((alloy, index) => {
@@ -60,14 +73,33 @@ describe('the Vault price table', () => {
 describe('the store the Vault buys', () => {
   HOURS.forEach((hours, level) => {
     it(`holds ${String(hours)} hours at Vault ${String(level)}`, () => {
-      expect(storageHours(level)).toBe(hours);
+      expect(storageHours(level)).toBeCloseTo(hours, 10);
     });
   });
 
-  it('opens at three hours and tops out at forty', () => {
+  it('keeps the owner’s table at 3 to 40 and scales it by two and a half', () => {
     expect(ECON.storageHoursLadder[0]).toBe(3);
     expect(ECON.storageHoursLadder.at(-1)).toBe(40);
     expect(ECON.storageHoursLadder).toHaveLength(21);
+    expect(ECON.storageScale).toBe(2.5);
+  });
+
+  /**
+   * THE RULE THE SCALE EXISTS FOR. D171.
+   *
+   * The works sit in FRONT of the store and fill at the same rate, so a works
+   * deeper than the store is production that cannot be banked — it piles up in
+   * the open, on a world that has nowhere to put it, and every raid eats it. That
+   * was live from D169 until here: 10 hours of works against 3 hours of store, so
+   * a commander with no Vault could keep less than a third of what they made.
+   *
+   * It now holds at EVERY Vault level, including zero, which is what makes the
+   * Vault a lift rather than a rescue.
+   */
+  it('never lets the works outgrow the store, at any Vault level', () => {
+    for (let level = 0; level <= 20; level += 1) {
+      expect(ECON.collectorHours, `Vault ${String(level)}`).toBeLessThan(storageHours(level));
+    }
   });
 
   /**
@@ -76,9 +108,9 @@ describe('the store the Vault buys', () => {
    * re-create the crossing the ladder exists to prevent.
    */
   it("continues the table's last step past its end", () => {
-    expect(storageHours(21)).toBe(44);
-    expect(storageHours(25)).toBe(60);
-    expect(storageHours(-3)).toBe(3);
+    expect(storageHours(21)).toBeCloseTo(44 * 2.5, 10);
+    expect(storageHours(25)).toBeCloseTo(60 * 2.5, 10);
+    expect(storageHours(-3)).toBeCloseTo(3 * 2.5, 10);
   });
 
   it('continues the price table at its own growth past its end', () => {

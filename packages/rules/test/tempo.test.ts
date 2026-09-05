@@ -25,10 +25,11 @@ describe('the calibrated economy tempo', () => {
   it('keeps the upgrade curve inside a raidable storage profile', () => {
     expect(ECON.costBase / 52).toBe(1.05);
     expect(ECON.costMult).toBe(1.54);
-    // D169 replaced the pair with the owner's table: three hours before a Vault
-    // exists, forty at the top of it — see `ECON.storageHoursLadder`.
-    expect(storageHours(0)).toBe(3);
-    expect(storageHours(20)).toBe(40);
+    // D169 replaced the pair with the owner's table — three hours before a Vault
+    // exists, forty at the top — and D171 scaled what a step is worth by 2.5 so
+    // the works can always be banked. See `ECON.storageScale`.
+    expect(storageHours(0)).toBe(7.5);
+    expect(storageHours(20)).toBe(100);
   });
 
   it('keeps the opening in minutes and both meanings of L12 inside one to two hours', () => {

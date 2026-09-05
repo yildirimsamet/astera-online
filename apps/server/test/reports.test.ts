@@ -823,6 +823,15 @@ describe('what a battle leaves behind', () => {
     await fight();
     const [field] = await f.db.select().from(debrisFields);
     await giveUnits(f.db, mine, { PROSPECTOR: 4 });
+    /*
+      A WORLD THAT FLIES FOUR PROSPECTORS HAS A REFINERY. D171 sized the works at
+      six hours of production, so a Refinery-2 world holds about 1,200 alloy in
+      them — the same order as the haul itself, which makes this fixture measure
+      the works ceiling rather than the delivery. Four mining craft is a mid-game
+      operation and the industry underneath is set to match.
+    */
+    await setLevel(f.db, mine, 'REFINERY', 6);
+    await setLevel(f.db, mine, 'EXTRACTOR', 6);
 
     /**
      * EMPTY THE WORKS FIRST, because that is the flow the game now asks for.
@@ -838,11 +847,29 @@ describe('what a battle leaves behind', () => {
     const run = await launchHarvest(f.db, mine, field!.id, 4, f.clock);
     expect(await baysInUse(f.db, mine)).toBe(bays + 1);
 
-    const [beforePlanet] = await f.db.select().from(planets).where(eq(planets.id, mine));
     f.clock.set(run.arriveAt);
     await worker().tick();
     const [mid] = await f.db.select().from(miningRuns).where(eq(miningRuns.id, run.runId));
     f.clock.set(mid!.homeAt!);
+    /*
+      AND AGAIN ON THE WAY BACK, for the same reason as above. The flight is
+      hours long and the works refill while it is out, so by the time the craft
+      lands they are at the cap again and D31 drops the whole haul — which is the
+      rule working, and is exactly what the launch panel warns about. A commander
+      empties the works before their miners land; the fixture has to as well, or
+      it measures the warning instead of the delivery.
+    */
+    /*
+      AND THE STORE HAS TO HAVE ROOM FOR THAT COLLECTION TO GO ANYWHERE. The
+      fixture grants 200,000 alloy against a Vault-0 store of about 6,700, so the
+      store is full, `collect` moves nothing, the works stay at the cap and the
+      haul is dropped on arrival — three rules behaving correctly and a fixture
+      that cannot see any of them. Emptying the store is what a commander does by
+      spending it.
+    */
+    await f.db.update(planets).set({ alloy: 0, crystal: 0 }).where(eq(planets.id, mine));
+    await collectWorks(f.db, mine, f.clock);
+    const [beforePlanet] = await f.db.select().from(planets).where(eq(planets.id, mine));
     await worker().tick();
 
     const [afterPlanet] = await f.db.select().from(planets).where(eq(planets.id, mine));
@@ -867,6 +894,15 @@ describe('what a battle leaves behind', () => {
     await fight();
     const [field] = await f.db.select().from(debrisFields);
     await giveUnits(f.db, mine, { PROSPECTOR: 4 });
+    /*
+      A WORLD THAT FLIES FOUR PROSPECTORS HAS A REFINERY. D171 sized the works at
+      six hours of production, so a Refinery-2 world holds about 1,200 alloy in
+      them — the same order as the haul itself, which makes this fixture measure
+      the works ceiling rather than the delivery. Four mining craft is a mid-game
+      operation and the industry underneath is set to match.
+    */
+    await setLevel(f.db, mine, 'REFINERY', 6);
+    await setLevel(f.db, mine, 'EXTRACTOR', 6);
     await launchHarvest(f.db, mine, field!.id, 2, f.clock);
     await expect(launchHarvest(f.db, mine, field!.id, 2, f.clock)).rejects.toMatchObject({
       code: 'ALREADY_HARVESTING',

@@ -341,19 +341,28 @@ describe('fleet holdings beside each hull name', () => {
    * Away is the half a commander cannot read anywhere else on this screen, so away
    * is the half that stays.
    */
-  it('names the ships that are away, where the row cannot say it twice', () => {
+  it('names where the ships are, both halves of it', () => {
     const view = show({ fleet: { DART: 5 }, fleetAway: { DART: 6 } });
     const row = view.container.querySelector('#row-DART');
 
     expect(row).toHaveTextContent('Dart');
-    expect(row).toHaveTextContent('6 away');
     /*
-      And the gain line carries the total OWNED — five at home plus six away — which
-      is the figure the Hangar and the Prospector cap are both charged against. The
-      home count is the subtraction, and it is the one a commander does not need a
-      row to do for them.
+      BOTH FIGURES SINCE D170. It used to print the away half alone, on the
+      grounds that the gain line below carries the total and home is the
+      subtraction. The owner asked for the pair back — where a commander's craft
+      ARE is what this tab is for — so the line states both and pays for it in
+      WIDTH instead: `5 in · 6 out`, no labels spelled out and no parentheses.
     */
-    expect(row).toHaveTextContent(/11/);
+    expect(row).toHaveTextContent('5 in · 6 out');
+    /*
+      AND THE "You have 0 → 1" LINE IS GONE WITH IT. D170, owner instruction.
+
+      It stated the same holding a second time, one line lower, in a different
+      shape — and once the row above says `5 in · 6 out` there is nothing left for
+      it to add. What a purchase does to the count is the one thing on a shipyard
+      row a commander can work out without being told.
+    */
+    expect(row).not.toHaveTextContent(/You have/);
   });
 
   /**

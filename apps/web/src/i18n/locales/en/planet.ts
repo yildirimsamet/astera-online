@@ -284,7 +284,7 @@ export const planet = {
     miningNote: "Prospectors travel only to revealed asteroids or debris fields and return their haul to the Works.",
     ownedGain: "You have",
     hullAwayCount: "{{count}} away",
-    hullLocationCounts: "(Home: {{home}}, Away: {{away}})",
+    hullLocationCounts: "{{home}} in · {{away}} out",
     prospectorLimit: "{{owned}} / {{max}} · limit",
   },
 

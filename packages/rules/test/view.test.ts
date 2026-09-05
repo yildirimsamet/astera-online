@@ -144,11 +144,28 @@ describe('D153 world size by core level', () => {
    * it silently would leave the biggest world in the galaxy a rung short of its own
    * structure.
    */
-  it('anchors the cap at the last Core level a world can fund itself', () => {
+  /**
+   * D171 BROKE THE ANCHOR BY MAKING THE STORE BIGGER, and the honest reading is
+   * that the cap stopped being an economic measurement.
+   *
+   * It used to sit exactly where `upgradeCost` outgrew what a world could hold, so
+   * the drawing and the economy agreed on where a world stops. `storageScale`
+   * pushed that crossing out to Core 27 while the drawn ramp stays at 22 — and
+   * moving the ramp to follow it would spread every world's size over five more
+   * levels to chase a number nobody looks at, which is a visual change made for an
+   * arithmetic reason.
+   *
+   * So the claim is now the weaker, TRUE one: no world reaches the top of the
+   * drawn ramp and finds itself unable to fund the next level. The ramp ends
+   * first, which is the safe direction — a Core the economy refuses would be a
+   * wall with nothing in the interface to explain it.
+   */
+  it('never lets a world outgrow its own store before the ramp ends', () => {
     const selfFunded = (level: number): boolean =>
       upgradeCost(level).alloy < storageCap(alloyRate(level), level);
-    expect(selfFunded(CORE_TOP_LEVEL - 1)).toBe(true);
-    expect(selfFunded(CORE_TOP_LEVEL)).toBe(false);
+    for (let level = 1; level <= CORE_TOP_LEVEL; level += 1) {
+      expect(selfFunded(level), `Core ${String(level)}`).toBe(true);
+    }
   });
 
   /** And it is genuinely no longer a tier: two levels inside one tier differ. */

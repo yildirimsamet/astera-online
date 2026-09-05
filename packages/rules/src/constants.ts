@@ -187,6 +187,35 @@ export const ECON = {
   ] as const,
 
   /**
+   * WHAT ONE STEP OF THAT TABLE IS WORTH IN ORE. D171, owner instruction.
+   *
+   * THE BUG IT FIXES WAS LIVE AND THE OWNER FOUND IT: *"Depoların kapasitesi çok
+   * düşmüş ya."* D169 opened the store at three hours while `collectorHours` sat
+   * at ten — so the WORKS were deeper than the STORE, and a commander with no
+   * Vault produced 6,697 alloy and could bank 2,009 of it. The remaining 4,688 had
+   * nowhere to go: it stayed in the works, in the open, where every raid reaches
+   * it. Nothing was LOST to a full store, which is why no test caught it; what was
+   * lost was the point of producing.
+   *
+   * TWO DIALS RATHER THAN ONE REWRITTEN TABLE, and that separation is the design.
+   * The ladder above is the Vault's progression — 4 hours at L1, one step a level,
+   * 40 at the top — which the owner authored and which nothing may reshape. This
+   * is how much ore a step is worth, which is an economy dial. Fold the scale into
+   * the table and the progression is destroyed to move a number unrelated to it.
+   *
+   * MEASURED, AT 2.5 AGAINST A SIX-HOUR WORKS:
+   *   · the works are smaller than the store at EVERY Vault level, zero included
+   *     (6 against 7.5), so everything a world makes can be banked;
+   *   · `costAlloy / storageCap` peaks at 0.305 rather than 0.906, so no upgrade
+   *     can outgrow what a world holds — the crossing this ladder was written to
+   *     prevent is now far away rather than narrowly avoided;
+   *   · the vault floor stays `protectedShare` OF the store, so the protected and
+   *     the RAIDABLE amounts both grow with it. A raid is worth more flying, which
+   *     is the direction D161 asked for.
+   */
+  storageScale: 2.5,
+
+  /**
    * Hours the works hold before they STOP. D16.
    *
    * Production does not flow into storage on its own: it fills a buffer inside
@@ -209,21 +238,20 @@ export const ECON = {
    * ever was. The owner's storage table opens at three hours, so ten no longer
    * clears that bar and the obvious move was to cut it with the store.
    *
-   * IT WOULD HAVE BEEN THE WRONG MOVE. `collect` takes `min(buffer, room)` and
-   * leaves the remainder in the works — nothing is ever lost to a full store, only
-   * left where it is. A two-hour works would have thrown away no ore and cost the
-   * game a great deal: 1,200 alloy of battle salvage has nowhere to land on a
-   * young world, a clan share is refused for want of room, and an eight-hour
-   * absence stops producing after two. That is a real loss to fix a bookkeeping
-   * rule that was never about loss.
+   * CUTTING IT ALONE WOULD HAVE BEEN THE WRONG MOVE, and D169 was right to refuse:
+   * `collect` takes `min(buffer, room)` and leaves the remainder in the works, so
+   * nothing is ever lost to a full store — only left where it is. A two-hour works
+   * would have thrown away no ore and cost the game a great deal: 1,200 alloy of
+   * battle salvage with nowhere to land on a young world, a clan share refused for
+   * want of room, an eight-hour absence that stops producing after two.
    *
-   * So the works stay at ten hours and the relationship inverts on a young world:
-   * a commander with no Vault fills their works faster than they can bank them,
-   * and the ore waits in the open where a raid can reach it. Emptying the works is
-   * exactly what a Vault buys, and `invariants.test.ts` now holds the honest
-   * version of the rule — a DEVELOPED store must be able to take a full works.
+   * D171 FIXED IT FROM BOTH ENDS INSTEAD. The store grew by `ECON.storageScale`
+   * and the works came down to six, so the works are now smaller than the store at
+   * every Vault level INCLUDING ZERO — 6 against 7.5 — and everything a world
+   * produces can be banked. Six hours still holds a salvage haul and an overnight
+   * absence. Moving one dial was the wrong fix; moving both was the right one.
    */
-  collectorHours: 10,
+  collectorHours: 6,
 
   /**
    * THE VAULT FLOOR IS DENOMINATED IN HOURS OF THAT RESOURCE'S OWN PRODUCTION,
@@ -1645,15 +1673,27 @@ export const ANTI_STRATEGIC = {
   /** Immediate launch, with enough screen time for every entitled client to join the scene. */
   flightSeconds: 8,
   /**
-   * About a third of what it destroys. Dear enough that a defence is a real
-   * decision, cheap enough to be worth making — and it reloads in half the time
-   * the thing it shoots down takes to build, because a defender who spent their
-   * shot should not be defenceless for the rest of the hour.
+   * ABOUT THREE FIFTHS OF WHAT IT DESTROYS, SET BY HAND. D170, owner figures.
+   *
+   * The battery and the weapon are priced against EACH OTHER rather than
+   * separately — that is the whole interlock. A cheap defence throws D113's work
+   * away; a defence nobody can afford leaves a 71,000-resource strike
+   * unanswerable. It read 13,600 / 13,600 / 1,560, about 40% of a Death Star, and
+   * the owner's figures take it to roughly 60%: loading a battery is now a real
+   * share of the thing it exists to stop, and spending the shot costs something.
+   *
+   * FINAL FIGURES, like `DEATH_STAR.cost` and the research tables. No tempo scale
+   * runs on top of them — what the sheet quotes is what a person typed — so the
+   * two sides of the interlock can be compared by reading them.
+   *
+   * It still reloads in half the time the weapon takes to build, because a
+   * defender who spent their shot should not be defenceless for the rest of the
+   * hour. `interceptor-cost.test.ts` holds the ratio against the weapon.
    */
   cost: {
-    alloy: scalePrice(8000, ECONOMY_TEMPO.fixedPrice),
-    crystal: scalePrice(8000, ECONOMY_TEMPO.fixedPrice),
-    deuterium: scalePrice(1200, ECONOMY_TEMPO.deuteriumPrice),
+    alloy: 22_000,
+    crystal: 16_000,
+    deuterium: 3000,
   },
   buildMinutes: 30,
 } as const;

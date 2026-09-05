@@ -1876,13 +1876,24 @@ function Reach({
           /*
             ONLY THE HALF THE ROW DOES NOT ALREADY SAY.
 
-            This printed "(Home: 1, Away: 0)" beside every hull while the gain line
-            two rows down said "You have 1 → 2" — the same fact twice, and between
-            them they left the NAME about fifty pixels at 375. Away is the half a
-            commander cannot read anywhere else on this screen, so it is the half
-            that stays, and only when there is something out there.
+            BOTH HALVES, BACK, AND SHORTER. Owner report: the line that said
+            *"3 evde 2 dışarıda"* had gone.
+
+            It had, and on purpose — it read "(Home: 1, Away: 0)" beside every
+            hull while the gain line two rows down already said "You have 1 → 2",
+            which is the same fact twice, and between them they left the NAME about
+            fifty pixels at 375. But the width was the problem, not the
+            information: where a commander's craft ARE is the question this tab
+            exists to answer, and half an answer is what sent them to count rows.
+
+            So the fix is the SHAPE. `{{home}} ev · {{away}} dış` is eleven
+            characters at its widest and carries no parentheses, no labels spelled
+            out in words and no comma — the numbers say what they are by standing
+            where they stand. Zero away is drawn rather than hidden, because
+            "everything I own is here" is a real answer to the question and a row
+            that goes silent instead makes the reader check whether it is broken.
           */
-          {...(away > 0 ? { nameAside: t('planet.reach.hullAwayCount', { count: away }) } : {})}
+          nameAside={t('planet.reach.hullLocationCounts', { home, away })}
           tag={hullTag(id)}
           stats={{
             atk: hullSpec.atk,
@@ -1901,11 +1912,18 @@ function Reach({
             cargo: hullSpec.cargo,
           }}
           role={hullPitch(id)}
-          gain={{
-            label: queued ? t('planet.queue.afterQueue') : t('planet.reach.ownedGain'),
-            now: String(queued ? committed : owned),
-            next: String(committed + 1),
-          }}
+          /*
+            NO GAIN LINE ON A HULL ROW. D170, owner instruction.
+
+            It read "You have 0 → 1", which is the same holding the line above now
+            states as `5 in · 6 out` — the same fact twice, in two shapes, on a row
+            that is already the tightest in the game. And it was the weaker of the
+            two: a count with no location answers "how many", where a commander
+            standing on a shipyard is asking "how many are HERE".
+
+            Buildings keep theirs. There the gain is a RATE that changes — +58/h →
+            +84/h — which is a fact nothing else on the row carries.
+          */
           {...(prospectorCapped || capacityCapped
             ? {
               completed: prospectorCapped

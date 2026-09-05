@@ -28,7 +28,6 @@ import {
   type BuildingLevels,
   type InstrumentId,
   type SatelliteId,
-  storageHours,
   type HullId,
   type ResearchProjectId,
 } from '@astera/rules';
@@ -207,18 +206,14 @@ export function buildingGain(
        * moved, the row states the ceiling instead, exactly as the Shipyard row
        * switches to Veils once its accuracy figure flattens.
        */
-      if (
-        current.alloy === raised.alloy
-        && current.crystal === raised.crystal
-        && current.deuterium === raised.deuterium
-      ) {
-        return {
-          label: i18n.t('gains.vault.storeLabel'),
-          now: i18n.t('gains.vault.storeValue', { hours: storageHours(level).toFixed(1) }),
-          next: i18n.t('gains.vault.storeValue', { hours: storageHours(next).toFixed(1) }),
-        };
-      }
-
+      /*
+        THE STORAGE FALLBACK IS GONE, because the case it existed for cannot
+        happen any more. D169 made the vault floor a SHARE of the store rather
+        than its own hour figure, so every Vault level moves the protected amount
+        by construction — the row can no longer quote the same pair twice, which
+        is the failure this branch was written to avoid. `gains.vault.storeLabel`
+        and `storeValue` went with it.
+      */
       return {
         label: i18n.t('gains.vault.label'),
         // The resources stay separate. Adding them into one number erases the

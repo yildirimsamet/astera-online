@@ -129,7 +129,7 @@ export function QuantityStepper({
             ariaLabel={resetLabel}
             disabled={current <= min}
             onClick={() => { commit(min); }}
-            className="min-h-11"
+            className="min-h-9"
           >
             {resetText}
           </Button>

@@ -347,7 +347,10 @@ export function UpgradeRow({
               <div data-row-line="support" className="flex min-w-0 items-center gap-1.5">
                 {nameBadge}
                 {nameAside ? (
-                  <span className="num shrink-0 whitespace-nowrap text-micro text-faint">
+                  <span
+                    data-testid="hull-where"
+                    className="num shrink-0 whitespace-nowrap text-micro text-faint"
+                  >
                     {nameAside}
                   </span>
                 ) : null}

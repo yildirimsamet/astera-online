@@ -141,7 +141,7 @@ export const planet = {
     shieldBand: "Kalkan",
     shieldNote:
       "Aegis hasarı birliklerine ulaşmadan önce karşılar. Seviyeler azami kalkanı artırır; yenilenme hızı azami değerin saatte %35’idir.",
-    groundBand: "Yerdekiler (kapasite komuta merkezi ile artar)",
+    groundBand: "Yerdekiler (kapasite komuta çekirdeği ile artar)",
     groundNote:
       "Gezegenden ayrılmazlar. Kirpi Siper sınıfına, Tabya ise Mızrak sınıfına karşı üstünlük kazanır.",
     thornNone:
@@ -279,7 +279,7 @@ export const planet = {
       "Asteroit ve enkaz sahalarına gider; taşıyabildiği kaynağı üretim havuzuna getirir.",
     ownedGain: "Elinde",
     hullAwayCount: "{{count}} dışarıda",
-    hullLocationCounts: "(Evde: {{home}}, Dışarıda: {{away}})",
+    hullLocationCounts: "{{home}} ev · {{away}} dış",
     prospectorLimit: "{{owned}} / {{max}} · sınır",
   },
 

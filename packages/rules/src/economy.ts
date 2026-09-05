@@ -320,7 +320,18 @@ export const investedInSatellite = (id: SatelliteId): number =>
  * amount — the interface states them, and the invariant test compares them against
  * `protectedHours`.
  */
-export const storageHours = (vaultLevel: number): number => {
+export const storageHours = (vaultLevel: number): number =>
+  storageTableHours(vaultLevel) * ECON.storageScale;
+
+/**
+ * The Vault's own table, in its own units, before `ECON.storageScale`. D171.
+ *
+ * Separate because the two answer different questions: this is the SHAPE of the
+ * building's progression, which the owner authored, and the scale is what one of
+ * its steps is worth in ore. `storageHours` above is the only composer of them,
+ * and the only figure any caller in the game should ever read.
+ */
+const storageTableHours = (vaultLevel: number): number => {
   const ladder = ECON.storageHoursLadder;
   const level = Math.max(0, Math.floor(vaultLevel));
   const top = ladder.length - 1;
