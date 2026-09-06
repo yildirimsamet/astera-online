@@ -1,0 +1,276 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Astera Online – Hızlı Başlangıç Rehberi</title>
+<style>
+  body{
+    font-family:Arial,Helvetica,sans-serif;
+    max-width:820px;
+    margin:36px auto;
+    padding:0 18px 40px;
+    line-height:1.55;
+    background:#0b1020;
+    color:#eef2ff
+  }
+  h1{font-size:30px;margin-bottom:8px}
+  h2{font-size:20px;margin:0 0 10px}
+  .sub{color:#b6c2e2;margin-bottom:22px}
+  .card{
+    background:#141b33;
+    border-radius:14px;
+    padding:18px 20px;
+    margin:14px 0
+  }
+  .resources{
+    background:#11182d;
+    border-radius:14px;
+    padding:18px 20px;
+    margin:14px 0
+  }
+  .res{
+    padding:11px 0;
+    border-bottom:1px solid rgba(255,255,255,.08)
+  }
+  .res:last-child{border-bottom:none}
+  .alloy{color:#d6a15f}
+  .crystal{color:#60c7ff}
+  .deut{color:#79e66b}
+  strong{color:#fff}
+  .muted{color:#b6c2e2}
+  .flow{
+    background:#1b2444;
+    border-radius:14px;
+    padding:18px 20px;
+    margin-top:24px;
+    font-weight:700;
+    line-height:1.8
+  }
+  .tip{color:#c7d2fe;margin-top:18px}
+  /*
+    THE WAY BACK, AND IT FOLLOWS THE READER DOWN THE PAGE.
+
+    This guide is one long scroll. A back control that lives only at the top is a
+    back control for somebody who has not read anything yet — the reader who most
+    wants to return to the game is the one furthest down it. So it sticks.
+
+    The negative margins cancel the body's own margin and padding so the bar
+    spans the full column and sits flush against the top of the viewport; without
+    them it would float in from the edges with page showing through underneath it
+    as the content scrolled past.
+
+    THE GROUND IS OPAQUE, not a 94% wash. Translucency here bought nothing and
+    cost legibility: the page's own body text is #eef2ff, so six percent of it
+    still came through and the bar read as two sentences printed on top of each
+    other. Measured at 375 before and after.
+  */
+  .back{
+    position:sticky;
+    top:0;
+    z-index:10;
+    display:flex;
+    align-items:center;
+    gap:8px;
+    margin:-36px -18px 22px;
+    padding:13px 18px;
+    background:#0b1020;
+    border-bottom:1px solid rgba(255,255,255,.09);
+    color:#c7d2fe;
+    text-decoration:none;
+    font-size:14px
+  }
+  .back:hover{color:#fff}
+  .back span{font-size:17px;line-height:1}
+</style>
+</head>
+<body>
+
+<a class="back" href="/"><span aria-hidden="true">←</span>Oyuna dön</a>
+
+<h1>🚀 Astera Online – Hızlı Başlangıç</h1>
+<p class="sub">Oyuna yeni başladıysan aşağıdaki sırayı takip et.</p>
+
+<div class="card">
+  <h2>🌌 Oyunun amacı</h2>
+  <p>
+    Astera'da amaç <strong>gezegenini geliştirip ekonomini büyütmek, araştırmalar yapmak,
+    filo kurmak, meteor ve korsanlardan kaynak toplamak, diğer oyuncularla mücadele etmek
+    ve yeni koloniler kurarak galakside güçlenmek.</strong>
+  </p>
+  <p><strong>Kısaca:</strong> üret → araştır → filo kur → kaynak topla → savaş → genişle.</p>
+</div>
+
+<div class="resources">
+  <h2>💎 Kaynaklar</h2>
+
+  <div class="res">
+    <strong class="alloy">● Alaşım</strong><br>
+    En temel kaynağındır. Özellikle <strong>bina geliştirmeleri, Komuta Çekirdeği,
+    madenler, Hangar/Tersane ve gemi üretiminde</strong> sık kullanılır.
+  </div>
+
+  <div class="res">
+    <strong class="crystal">● Kristal</strong><br>
+    Daha çok <strong>araştırmalar, teknoloji geliştirmeleri ve gelişmiş gemilerde</strong>
+    önem kazanır. İlerledikçe Kristal ihtiyacın belirgin şekilde artar.
+  </div>
+
+  <div class="res">
+    <strong class="deut">● Döteryum</strong><br>
+    Daha değerli ve sınırlı kaynaklardan biridir. Özellikle <strong>ileri araştırmalar,
+    gelişmiş filo teknolojileri ve filo ile ilgili yüksek seviye işlemlerde</strong> önemlidir.
+  </div>
+
+  <p class="muted">
+    Başlangıçta kaynak biriktirmekten çok <strong>üretim hızını artırmaya</strong> odaklan.
+    Güçlü ekonomi, oyundaki diğer her şeyi daha hızlı yapmanı sağlar.
+  </p>
+</div>
+
+<div class="card">
+  <h2>1. Komuta Çekirdeğini ve madenlerini geliştir</h2>
+  <p><strong>Gezegenine tıkla → Üretim bölümüne gir.</strong></p>
+  <p>Burada <strong>Komuta Çekirdeği</strong> ve kaynak madenlerini bulabilirsin.</p>
+  <p>
+    Önce Komuta Çekirdeğini geliştir, ardından <strong>Alaşım, Kristal ve Döteryum</strong>
+    üretimini artır. İlk hedefin güçlü ve sürekli çalışan bir ekonomi kurmak olsun.
+  </p>
+</div>
+
+<div class="card">
+  <h2>2. Kazıcı üret ve meteorları kaz</h2>
+  <p><strong>Gezegenine tıkla → Filo bölümüne gir.</strong></p>
+  <p>Buradan <strong>Kazıcı</strong> üretebilirsin.</p>
+  <p>
+    Kazıcın hazır olduğunda galaksi haritasındaki meteorları seç ve Kazıcı gönder.
+    Meteorlar özellikle başlangıçta ek kaynak kazanmanın en kolay yollarından biridir.
+  </p>
+</div>
+
+<div class="card">
+  <h2>3. Hangar ve Tersaneni geliştir</h2>
+  <p><strong>Gezegenine tıkla → Filo bölümüne git.</strong></p>
+  <p>Burada <strong>Hangar</strong> ve <strong>Tersane</strong> geliştirmelerini bulabilirsin.</p>
+  <p>
+    <strong>Hangar</strong> filonda kullanabileceğin toplam gemi kapasitesini artırır.
+    <strong>Tersane</strong> ise gemi üretim altyapını geliştirir.
+  </p>
+</div>
+
+<div class="card">
+  <h2>4. İlk filonu kur</h2>
+  <p><strong>Gezegenine tıkla → Filo bölümüne git.</strong></p>
+  <p>Buradan savaş gemilerini üretebilirsin.</p>
+  <p>
+    Gemileri seçerken sadece saldırı gücüne değil;
+    <strong>saldırı, savunma, maliyet ve Hangarda kapladığı alana</strong> birlikte bak.
+  </p>
+</div>
+
+<div class="card">
+  <h2>5. Araştırmaları geliştir</h2>
+  <p><strong>Gezegenine tıkla → Araştırma bölümüne gir.</strong></p>
+  <p>
+    Araştırmalar yeni özellikler ve teknolojiler açar; ekonomini ve filonu kalıcı olarak güçlendirir.
+    Bazı gemiler ve gelişmiş özellikler için belirli araştırma seviyeleri gerekir.
+  </p>
+  <p>
+    Araştırmaları ihmal etme ama bütün kaynaklarını tek seferde araştırmaya da harcama.
+    <strong>Üretim + araştırma + filo</strong> arasında dengeli ilerle.
+  </p>
+</div>
+
+<div class="card">
+  <h2>6. Korsanlara saldır</h2>
+  <p><strong>Galaksi haritasına gir</strong> ve çevrendeki korsanları bul.</p>
+  <p>
+    Filon hazır olduğunda korsan hedefini seçip saldırı gönderebilirsin.
+    Savaşı kazanırsan <strong>ganimet elde edebilirsin</strong> ve bazı savaşlarda
+    <strong>gemi de kazanabilirsin.</strong>
+  </p>
+  <p>
+    Ancak korsan savaşları risksiz değildir. Tıpkı PvP'de olduğu gibi
+    <strong>savaş sırasında kendi gemilerini de kaybedebilirsin.</strong>
+    Bu yüzden korsanın gücünü ve göndereceğin filonun değerini göz önünde bulundur.
+  </p>
+</div>
+
+<div class="card">
+  <h2>7. Galaksiyi düzenli kontrol et</h2>
+  <p>
+    Galaksi ekranında <strong>meteorları, korsanları, diğer oyuncuları ve koloni için uygun bölgeleri</strong>
+    görebilirsin.
+  </p>
+  <p>Boşta Kazıcın veya filon varsa onları kullan; aktif kalan filo daha hızlı gelişmeni sağlar.</p>
+</div>
+
+<div class="card">
+  <h2>8. Çevreni izle ve istihbarat topla</h2>
+  <p><strong>Gezegenine tıkla → Bilgi bölümüne gir → Teleskop üret.</strong></p>
+  <p>
+    Teleskop sayesinde çevrendeki galaksiyi ve yakın hareketliliği daha iyi takip edebilirsin.
+    Bu, çevrende neler olduğunu görmek için kullanışlıdır.
+  </p>
+  <p>
+    Ancak belirli bir gezegenin <strong>savunması, kaynakları ve diğer spesifik bilgileri</strong>
+    hakkında bilgi almak istiyorsan yalnızca Teleskop yeterli değildir.
+  </p>
+  <p>
+    Bunun için <strong>Galaksi haritasında hedef gezegene tıkla → Sonda gönder.</strong>
+    Sondadan gelen istihbarata göre saldırıp saldırmayacağına karar ver.
+  </p>
+</div>
+
+<div class="card">
+  <h2>9. Koloni kur ve genişle</h2>
+  <p>
+    Ana gezegenin güçlendikçe yeni koloniler kur.
+    Yeni koloniler daha fazla <strong>Alaşım, Kristal ve Döteryum üretimi</strong>,
+    daha büyük ekonomi ve daha güçlü filo demektir.
+  </p>
+</div>
+
+<div class="card">
+  <h2>10. Gezegenlerini savun</h2>
+  <p><strong>Gezegenine tıkla → Savunma bölümüne gir.</strong></p>
+  <p>
+    Burada <strong>Kasa</strong> ile kaynaklarını koruyabilir,
+    <strong>Aegis</strong> ile gezegen kalkanını güçlendirebilir ve
+    <strong>Yerdekiler</strong> bölümünden Kirpi gibi yer savunmaları üretebilirsin.
+  </p>
+  <p>
+    Özellikle çok kaynak biriktirdiğin gezegenleri savunmasız bırakma.
+  </p>
+</div>
+
+
+
+<p class="tip">
+  <strong>Küçük ipucu:</strong> Kaynaklarını uzun süre boşta bekletme.
+  Ekonomini geliştirirken Kazıcılarını ve filonu da mümkün olduğunca aktif tut.
+</p>
+
+<script>
+  /*
+    CLOSE IF WE CAN, NAVIGATE IF WE CANNOT.
+
+    The menu opens this page with `window.open`, so the galaxy is still sitting
+    in the tab behind it — closing this one hands it straight back, with no
+    reload of a 3D scene and no assets fetched twice. A reader who arrived here
+    cold instead (a shared link, a bookmark) has no opener and no tab to go back
+    to, so the anchor's own `href` takes them into the game.
+
+    The timeout is the third case: a browser that has an opener but refuses the
+    close still has to end up somewhere.
+  */
+  document.querySelector('.back').addEventListener('click', function (event) {
+    if (!window.opener) return;
+    event.preventDefault();
+    window.close();
+    setTimeout(function () { location.href = '/'; }, 200);
+  });
+</script>
+
+</body>
+</html>

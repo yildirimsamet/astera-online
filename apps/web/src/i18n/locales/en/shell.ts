@@ -175,6 +175,13 @@ export const menu = {
   intelHint: 'Telescope, probes, radar and battle reports',
   rewardsLabel: 'Rewards',
   rewardsHint: 'What the galaxy owes you for playing it',
+  /*
+    THE ONE ROW THAT LEAVES THE GAME. The hint is the accessible name here
+    (see `MenuRow`), so it is the sentence that has to say the page opens
+    outside — a reader who cannot see the arrow glyph gets it from the words.
+  */
+  guideLabel: 'Quick start',
+  guideHint: 'The opening moves, in a new tab',
   rewardsWaiting: '{{count}} ready',
   /** T12: research is a commander's, not a world's, so its way in is here. */
   researchLabel: 'Research',

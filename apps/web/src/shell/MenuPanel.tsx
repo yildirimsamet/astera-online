@@ -21,8 +21,10 @@ import {
   LockIcon,
   SpeakerOffIcon,
   SpeakerOnIcon,
+  ExternalIcon,
 } from '../ui/icons/index.js';
 import { LanguageSwitch } from '../ui/LanguageSwitch.js';
+import { openGuide } from './guide.js';
 import type { Panel } from '../screens/GalaxyView.jsx';
 
 /**
@@ -174,6 +176,29 @@ export function MenuPanel({
           onClick={() => {
             onOpen('rewards');
           }}
+        />
+        {/*
+          THE QUICK-START GUIDE, APPENDED. Owner request, and the small version of
+          it on purpose: `public/hizli-baslangic-rehberi.html` is a finished
+          standalone page the build already ships and Nginx already serves, so all
+          that was missing was a door.
+
+          IT LEAVES THE GAME AND IT SAYS SO — `ExternalIcon`, a new tab. The page
+          carries its own stylesheet and its own Turkish, and putting it behind an
+          in-game sheet would claim it is part of the interface while it still
+          reads as a separate site. A new tab also leaves the galaxy sitting
+          exactly where the player left it, which is what somebody looking
+          something up wants.
+
+          Appended after the last standing row rather than inserted, so nothing a
+          commander already knows the position of moves. See `shell/guide.ts` for
+          why this is provisional.
+        */}
+        <MenuRow
+          icon={<ExternalIcon className="size-5" />}
+          label={t('menu.guideLabel')}
+          hint={t('menu.guideHint')}
+          onClick={openGuide}
         />
         {/* TODO: for now its closed */}
         {/* <MenuRow

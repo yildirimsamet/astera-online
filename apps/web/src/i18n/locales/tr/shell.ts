@@ -141,6 +141,8 @@ export const menu = {
   intelHint: 'İzlediğin dünyalar, Radar kayıtları, sondalar ve savaş raporları',
   rewardsLabel: 'Ödüller',
   rewardsHint: 'Galakside tamamladığın hedeflerden kazandığın kaynaklar',
+  guideLabel: 'Hızlı başlangıç',
+  guideHint: 'İlk hamleler, yeni sekmede açılır',
   rewardsWaiting: '{{count}} hazır',
   researchLabel: 'Araştırma',
   researchHint: 'Bir kez tamamlanan ve sahip olduğun bütün dünyalarda geçerli olan projeler',
