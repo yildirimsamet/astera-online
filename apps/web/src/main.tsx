@@ -16,6 +16,7 @@ import { Api } from './api/client.js';
 import { shareStructure } from './api/structural.js';
 import { ApiProvider } from './api/context.js';
 import { ToastProvider } from './ui/Toast.js';
+import { ErrorBoundary } from './shell/ErrorBoundary.js';
 import { App } from './App.js';
 import './styles.css';
 
@@ -92,18 +93,36 @@ lockViewportZoom();
  * on a phone — this is a mobile-first game, not a desktop app that shrinks.
  *
  */
+/**
+ * THE BOUNDARY SITS AS HIGH AS IT CAN WHILE STILL BEING ABLE TO SPEAK.
+ *
+ * Directly inside the language provider and outside everything else, so a throw
+ * in the query client, the API context, the toast layer or any screen below them
+ * lands on a floor instead of emptying `#root` — which is the black screen the
+ * owner was handed a report of. It goes no higher because its fallback needs the
+ * i18n instance; it reads that instance directly rather than through context, so
+ * the provider above it is a placement rule and not a dependency.
+ *
+ * ONE BOUNDARY, ON PURPOSE. A second one around the disc would keep the header
+ * and the strip alive through a scene crash, and may well be worth adding — but
+ * only after this one has told us what is actually throwing. See
+ * `shell/ErrorBoundary.tsx` for why the first question is answered by catching
+ * rather than by guessing.
+ */
 createRoot(root).render(
   <StrictMode>
     <I18nextProvider i18n={i18n}>
-      <LazyMotion features={domMax} strict>
-        <QueryClientProvider client={client}>
-          <ApiProvider api={api}>
-            <ToastProvider>
-              <App />
-            </ToastProvider>
-          </ApiProvider>
-        </QueryClientProvider>
-      </LazyMotion>
+      <ErrorBoundary>
+        <LazyMotion features={domMax} strict>
+          <QueryClientProvider client={client}>
+            <ApiProvider api={api}>
+              <ToastProvider>
+                <App />
+              </ToastProvider>
+            </ApiProvider>
+          </QueryClientProvider>
+        </LazyMotion>
+      </ErrorBoundary>
     </I18nextProvider>
   </StrictMode>,
 );

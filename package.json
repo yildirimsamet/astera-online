@@ -13,6 +13,7 @@
     "sim": "pnpm --filter @astera/sim start",
     "balance:economy": "tsx tools/economy-calibration.ts",
     "balance:goal": "tsx tools/economy-goal-sim.ts",
+    "start": "bash tools/dev-up.sh",
     "dev": "pnpm --parallel --filter @astera/server --filter @astera/web dev",
     "dev:server": "pnpm --filter @astera/server dev",
     "dev:web": "pnpm --filter @astera/web dev",

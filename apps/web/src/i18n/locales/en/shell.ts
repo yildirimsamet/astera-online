@@ -247,3 +247,26 @@ export const chat = {
     days_other: '{{count}} days ago',
   },
 } as const;
+
+/**
+ * THE SCREEN THAT REPLACES A BLANK ONE.
+ *
+ * Written for somebody who has just lost what they were looking at, so it says
+ * what happened, what it cost them — nothing — and what to do, in that order.
+ * "The galaxy is untouched" is a fact, not a comfort: the server is the only
+ * authority and this failure never left the phone.
+ *
+ * The technical detail behind these labels is deliberately NOT translated. It is
+ * pasted into a message to the person who will fix it. See `shell/crashReport.ts`.
+ */
+export const crash = {
+  title: 'Something broke',
+  body: 'The interface stopped drawing. Reloading brings you back to the disc — nothing in the galaxy was lost.',
+  reload: 'Reload',
+  detailShow: 'Show detail',
+  detailHide: 'Hide detail',
+  /** What the developer needs, in the one gesture a phone can make. */
+  copy: 'Copy report',
+  copied: 'Copied — send it to us',
+  copyFailed: 'Could not copy. Screenshot the detail instead.',
+} as const;

@@ -212,3 +212,14 @@ export const chat = {
     days_other: '{{count}} gün önce',
   },
 } as const;
+
+export const crash = {
+  title: 'Bir şeyler bozuldu',
+  body: 'Arayüz çizmeyi durdurdu. Yeniden yüklemek seni diske geri getirir — galakside hiçbir şey kaybolmadı.',
+  reload: 'Yeniden yükle',
+  detailShow: 'Ayrıntıyı göster',
+  detailHide: 'Ayrıntıyı gizle',
+  copy: 'Raporu kopyala',
+  copied: 'Kopyalandı — bize gönder',
+  copyFailed: 'Kopyalanamadı. Ayrıntının ekran görüntüsünü al.',
+} as const;

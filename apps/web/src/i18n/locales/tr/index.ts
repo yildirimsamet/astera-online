@@ -1,5 +1,5 @@
 import { app, document, landing, loading, servers, settings } from './entry.js';
-import { chat, leaderboard, menu, pendingStrip, sheet, signals, statusBar, surface, toast } from './shell.js';
+import { chat, crash, leaderboard, menu, pendingStrip, sheet, signals, statusBar, surface, toast } from './shell.js';
 import { focus, galaxy, pirate, worlds } from './world.js';
 import { action, capacity, itemSheet, launch, planet, planetHero, transfer, upgradeRow } from './planet.js';
 import { clarity, dossier, intel, reports } from './intel.js';
@@ -28,6 +28,7 @@ export const tr: Resources = {
   landing,
   servers,
   app,
+  crash,
   loading,
   document,
   settings,
