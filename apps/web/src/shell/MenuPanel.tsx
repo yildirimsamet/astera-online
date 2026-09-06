@@ -21,10 +21,10 @@ import {
   LockIcon,
   SpeakerOffIcon,
   SpeakerOnIcon,
-  ExternalIcon,
+  GuideIcon,
 } from '../ui/icons/index.js';
 import { LanguageSwitch } from '../ui/LanguageSwitch.js';
-import { openGuide } from './guide.js';
+import { GUIDE_URL } from './guide.js';
 import type { Panel } from '../screens/GalaxyView.jsx';
 
 /**
@@ -183,22 +183,24 @@ export function MenuPanel({
           standalone page the build already ships and Nginx already serves, so all
           that was missing was a door.
 
-          IT LEAVES THE GAME AND IT SAYS SO — `ExternalIcon`, a new tab. The page
-          carries its own stylesheet and its own Turkish, and putting it behind an
-          in-game sheet would claim it is part of the interface while it still
-          reads as a separate site. A new tab also leaves the galaxy sitting
-          exactly where the player left it, which is what somebody looking
-          something up wants.
+          A LINK, IN THIS TAB. It shipped as a new tab and the owner reversed it:
+          on a phone that leaves a tab behind on every visit, and it costs the
+          page the one control every reader already has — the browser's own back.
+          The guide replaces the game here, and stepping back restores it.
+
+          It is still not an in-game sheet. The page carries its own stylesheet
+          and its own Turkish, and wrapping it would claim it is part of the
+          interface while it still reads as a separate site.
 
           Appended after the last standing row rather than inserted, so nothing a
           commander already knows the position of moves. See `shell/guide.ts` for
           why this is provisional.
         */}
         <MenuRow
-          icon={<ExternalIcon className="size-5" />}
+          icon={<GuideIcon className="size-5" />}
           label={t('menu.guideLabel')}
           hint={t('menu.guideHint')}
-          onClick={openGuide}
+          href={GUIDE_URL}
         />
         {/* TODO: for now its closed */}
         {/* <MenuRow
@@ -309,20 +311,33 @@ function MenuRow({
   badge,
   attention = false,
   onClick,
+  href,
 }: {
   icon: ReactNode;
   label: string;
   hint: string;
   badge?: string;
   attention?: boolean;
-  onClick: () => void;
+  onClick?: () => void;
+  /**
+   * A ROW THAT GOES TO A URL IS A LINK, NOT A BUTTON.
+   *
+   * Every other row here opens a surface inside the app, which is a button doing
+   * something. The guide is a real document at a real address, and saying so in
+   * the markup is not pedantry: it is what gives a long-press or a middle-click
+   * the choice of a new tab, what puts the destination in the status bar, and
+   * what lets the browser's own back button lead home afterwards. Same classes,
+   * same shape, same accessible name — only the element changes.
+   */
+  href?: string;
 }) {
+  const Element = href === undefined ? 'button' : 'a';
   return (
-    <button
-      type="button"
+    <Element
+      {...(href === undefined ? { type: 'button' as const } : { href })}
       onClick={() => {
         haptic('tap');
-        onClick();
+        onClick?.();
       }}
       /*
         THE HINT IS THE ACCESSIBLE NAME, NOT A SECOND LINE. Owner directive:
@@ -357,7 +372,7 @@ function MenuRow({
         </span>
       )}
       <ChevronIcon className="size-4 shrink-0 text-faint" />
-    </button>
+    </Element>
   );
 }
 

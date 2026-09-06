@@ -2,7 +2,6 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import type { ReactNode } from 'react';
 import { render, screen } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { Api } from '../src/api/client.js';
@@ -19,12 +18,13 @@ import i18n from '../src/i18n/index.js';
  * already copies into the build and Nginx already serves — so it has been
  * ADDRESSABLE all along and simply had no door. What was missing was one row.
  *
- * IT LEAVES THE GAME, AND IT SAYS SO. The row carries `ExternalIcon` and opens a
- * new tab rather than an in-game sheet: the page is its own document with its own
- * stylesheet, and wrapping it in an iframe would be pretending it is part of the
- * interface while it is still styled like a separate site. A player reading a
- * guide has not lost their place either — the game is still sitting in the tab
- * behind it, which is the behaviour a guide wants and a sheet cannot give.
+ * IT IS A LINK, AND IT STAYS IN THIS TAB. The page is its own document with its
+ * own stylesheet, so an in-game sheet would be pretending it is part of the
+ * interface while it still reads as a separate site — but a new tab was the wrong
+ * answer too, and the owner said so. On a phone it leaves a tab behind on every
+ * visit, and it costs the page the one control every reader already knows: the
+ * browser's own back. So the row is an anchor, the guide replaces the game in
+ * this tab, and stepping back restores it.
  *
  * APPENDED, NEVER INSERTED. A control that changes position between sessions has
  * to be re-found every time, so it goes after the last standing row and nothing
@@ -74,28 +74,30 @@ describe('the quick-start guide row', () => {
     show();
 
     expect(
-      screen.getByRole('button', { name: new RegExp(i18n.t('menu.guideLabel'), 'i') }),
+      screen.getByRole('link', { name: new RegExp(i18n.t('menu.guideLabel'), 'i') }),
     ).toBeInTheDocument();
   });
 
   /*
-    AND IT KEEPS ITS OPENER, which is the whole reason the guide's back control
-    can be cheap. With `noopener` the new tab is not script-closable, so "back"
-    could only NAVIGATE — reloading a 3D galaxy and 79MB of assets on a phone to
-    return a player to a screen that was still sitting in the other tab. The page
-    is our own static file on our own origin, so there is nothing an opener
-    reference gives away here.
+    A LINK, IN THIS TAB. Owner decision, reversing the new tab this shipped with.
+
+    Two things follow from it and both are improvements. The row becomes an
+    ANCHOR rather than a button, which is what it always was semantically — so a
+    long-press or a middle-click can still choose a new tab, and the browser's
+    own "back" now leads home without the page having to invent one. And a phone
+    stops accumulating tabs it never asked for.
+
+    The href is asserted rather than a click handler, because that IS the
+    behaviour: nothing runs, the browser navigates.
   */
-  it('opens the guide in a tab that can close itself again', async () => {
-    const open = vi.spyOn(window, 'open').mockReturnValue(null);
-    const user = userEvent.setup();
+  it('is a link to the guide rather than a button that opens a window', () => {
     show();
 
-    await user.click(
-      screen.getByRole('button', { name: new RegExp(i18n.t('menu.guideLabel'), 'i') }),
-    );
-
-    expect(open).toHaveBeenCalledWith(GUIDE_URL, '_blank');
+    const row = screen.getByRole('link', {
+      name: new RegExp(i18n.t('menu.guideLabel'), 'i'),
+    });
+    expect(row).toHaveAttribute('href', GUIDE_URL);
+    expect(row).not.toHaveAttribute('target');
   });
 
   /*
@@ -114,17 +116,21 @@ describe('the quick-start guide row', () => {
     for somebody who has not read anything — the reader who most wants to return
     is the one furthest down the page.
 
-    It is an ANCHOR to `/` first and a tab-close second: a player who arrived
-    from the menu gets their galaxy back untouched, and one who opened the link
-    cold — shared to them, or a bookmark — still lands in the game rather than
-    on a dead control.
+    It steps BACK through history when the reader came from the game, so the
+    browser restores the galaxy it already has rather than booting a fresh one,
+    and falls through to its own `href="/"` for anyone who arrived cold — a
+    shared link, a bookmark — who has no game behind them to step back to.
   */
   it('carries a sticky way back into the game', () => {
     const page = readFileSync(resolve(process.cwd(), `public${GUIDE_URL}`), 'utf8');
 
     expect(page).toMatch(/<a[^>]+class="back"[^>]+href="\/"/);
     expect(page).toContain('position:sticky');
-    expect(page).toContain('window.close()');
+    // Same tab means the game is one step back in this tab's own history —
+    // and stepping back is what lets the browser restore it instead of
+    // booting a fresh galaxy. The `href` covers a reader who arrived cold.
+    expect(page).toContain('history.back()');
+    expect(page).not.toContain('window.close()');
   });
 
   /*
@@ -133,7 +139,7 @@ describe('the quick-start guide row', () => {
   */
   it('sits after the rows that were already there', () => {
     const view = show();
-    const labels = [...view.container.querySelectorAll('button[aria-label]')]
+    const labels = [...view.container.querySelectorAll('[aria-label]')]
       .map((node) => node.getAttribute('aria-label') ?? '');
 
     const rewards = labels.findIndex((label) => label.startsWith(i18n.t('menu.rewardsLabel')));

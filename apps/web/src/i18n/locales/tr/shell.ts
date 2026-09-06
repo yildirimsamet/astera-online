@@ -142,7 +142,7 @@ export const menu = {
   rewardsLabel: 'Ödüller',
   rewardsHint: 'Galakside tamamladığın hedeflerden kazandığın kaynaklar',
   guideLabel: 'Hızlı başlangıç',
-  guideHint: 'İlk hamleler, yeni sekmede açılır',
+  guideHint: 'İlk hamleler, yapılması gereken sırayla',
   rewardsWaiting: '{{count}} hazır',
   researchLabel: 'Araştırma',
   researchHint: 'Bir kez tamamlanan ve sahip olduğun bütün dünyalarda geçerli olan projeler',

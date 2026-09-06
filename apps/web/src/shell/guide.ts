@@ -19,22 +19,3 @@
  * and it is drawn as one.
  */
 export const GUIDE_URL = '/hizli-baslangic-rehberi.html';
-
-/**
- * OPENED WITH ITS OPENER INTACT, and that is a deliberate reversal.
- *
- * `noopener` is the right default for a link that leaves your origin, and it was
- * what this used at first. It is the wrong default here, because it also makes
- * the new tab NOT SCRIPT-CLOSABLE — and the guide's sticky back control then has
- * only one move left, which is to NAVIGATE. On a phone that means tearing down a
- * perfectly good galaxy and reloading the 3D scene to return the player to a
- * screen that was still sitting untouched in the other tab.
- *
- * What `noopener` protects against is a page you do not control reaching back
- * into yours. This is a static file in our own `public/`, on our own origin,
- * with no third-party script on it. There is nothing here to protect against,
- * and closing the tab is strictly the better way home.
- */
-export function openGuide(): void {
-  window.open(GUIDE_URL, '_blank');
-}

@@ -697,6 +697,27 @@ export function ExternalIcon(props: IconProps) {
   );
 }
 
+/**
+ * THE GUIDE — an open book, and it is drawn rather than borrowed.
+ *
+ * The row used `ExternalIcon` while it opened a new tab. That glyph means one
+ * specific thing, "this leaves and opens elsewhere", and once the guide started
+ * replacing the game in the same tab it was stating something false. The set's
+ * own law is that nothing stands in for anything else, so the guide gets a
+ * shape: a spine down the middle, two leaves, and two lines of text on the
+ * right-hand page. Three lines would be mush at 20px.
+ */
+export function GuideIcon(props: IconProps) {
+  return (
+    <Glyph {...props}>
+      <path d="M12 6.4v13" />
+      <path d="M12 6.4C10.4 5.1 8.4 4.5 5.6 4.5H3.4v13h2.2c2.8 0 4.8.6 6.4 1.9" />
+      <path d="M12 6.4c1.6-1.3 3.6-1.9 6.4-1.9h2.2v13h-2.2c-2.8 0-4.8.6-6.4 1.9" />
+      <path d="M14.8 9.2h3.4M14.8 12.4h3.4" />
+    </Glyph>
+  );
+}
+
 export function SpeakerOnIcon(props: IconProps) {
   return (
     <Glyph {...props}>

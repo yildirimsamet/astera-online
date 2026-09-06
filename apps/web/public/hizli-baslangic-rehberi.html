@@ -253,22 +253,24 @@
 
 <script>
   /*
-    CLOSE IF WE CAN, NAVIGATE IF WE CANNOT.
+    STEP BACK IF THERE IS SOMEWHERE TO STEP BACK TO, NAVIGATE IF THERE IS NOT.
 
-    The menu opens this page with `window.open`, so the galaxy is still sitting
-    in the tab behind it — closing this one hands it straight back, with no
-    reload of a 3D scene and no assets fetched twice. A reader who arrived here
-    cold instead (a shared link, a bookmark) has no opener and no tab to go back
-    to, so the anchor's own `href` takes them into the game.
+    The menu links here in this same tab, so the galaxy is one entry back in this
+    tab's own history — and going BACK is what lets the browser restore the page
+    it already has (bfcache) instead of booting a fresh 3D scene and fetching the
+    assets again. That is the whole reason this is not just a plain link.
 
-    The timeout is the third case: a browser that has an opener but refuses the
-    close still has to end up somewhere.
+    The guard is the referrer: a reader who arrived cold — a shared link, a
+    bookmark, a search result — has no game behind them, and for them the
+    anchor's own href="/" is the right answer and this handler stands aside.
   */
   document.querySelector('.back').addEventListener('click', function (event) {
-    if (!window.opener) return;
+    var cameFromTheGame =
+      window.history.length > 1 &&
+      document.referrer.indexOf(window.location.origin + '/') === 0;
+    if (!cameFromTheGame) return;
     event.preventDefault();
-    window.close();
-    setTimeout(function () { location.href = '/'; }, 200);
+    window.history.back();
   });
 </script>
 
