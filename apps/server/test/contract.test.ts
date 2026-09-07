@@ -1820,7 +1820,7 @@ describe('every payload the client parses', () => {
    * nothing reads, which is exactly the failure `describeNotification` was given a
    * contract test for in the first place.
    */
-  it('tells a defender with nothing to lose what the raid actually did', async () => {
+  it('tells a defender that a repelled raid took nothing and caused no disruption', async () => {
     const [mine, theirs] = f.planetIds as [string, string];
     const worker = new EventWorker(
       f.db,
@@ -1830,10 +1830,13 @@ describe('every payload the client parses', () => {
     );
 
     await levelWorld(f.db, f.planetIds);
+    // D173: an idle Aegis cannot repel an unopposed raid. Give this notification
+    // fixture a real defending line so it still exercises the REPELLED branch.
+    await giveUnits(f.db, theirs, { BASTION: 100 });
     const launch = await launchAttack(f.db, mine, theirs, { DART: 6 }, f.clock);
 
     /**
-     * Empty, undefended, and ALREADY DOWN — which is the reported case rather than
+     * Empty stores and ALREADY DOWN — which is the reported case rather than
      * a contrived one: this is the second raid of an evening. The standing
      * disruption is what keeps the works from refilling during the forty minutes
      * the fleet is in the air, so the planet is still empty when it lands. Without
