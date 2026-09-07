@@ -280,19 +280,27 @@ function ChannelPanel({
                 key={message.id}
                 data-chat-message={message.id}
                 /*
-                  THE ADMIN IS RINGED IN GOLD. Owner instruction.
+                  THE ADMIN IS RINGED IN GOLD — QUIETLY. Owner instruction, twice.
 
                   A galaxy-wide room has no other way to say "this one is
                   answerable for the game". The border repeats what the name
                   already says, so the mark survives a wall of scrolling text and
                   one glance finds the official word without reading a name.
 
+                  THE FIRST ATTEMPT WAS TOO LOUD and was reported as such: a 1px
+                  rule at full saturation still shouts beside the `border-line-soft`
+                  on every message around it. The weight was never the problem —
+                  the SHADE was. At 35% it is the same hairline every other message
+                  has, tinted, which is the house idiom here and the same mix
+                  `styles.css` uses for a plate. The name keeps full strength: it
+                  is small, it is the signal, and it is what a reader looks for.
+
                   It wins over BOTH ordinary surfaces, self included: an admin's
                   own message is still an admin's message.
                 */
                 className={`max-w-[88%] rounded-control border px-3 py-2 ${
                   message.admin === true
-                    ? `${message.self ? 'ml-auto' : 'mr-auto'} border-alloy bg-deep`
+                    ? `${message.self ? 'ml-auto' : 'mr-auto'} border-alloy/35 bg-deep`
                     : message.self ? `ml-auto ${selfSurface}` : 'mr-auto border-line-soft bg-deep'
                 }`}
               >

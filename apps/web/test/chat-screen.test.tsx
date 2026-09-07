@@ -219,11 +219,29 @@ describe('the admin speaking in chat', () => {
     );
   };
 
-  it('paints the admin’s name gold and rings their message in the same gold', () => {
+  it('paints the admin’s name gold and rings their message in a QUIET gold', () => {
+    /*
+      SOFT, AND ASSERTED AS SOFT. Owner report: full-strength gold on the border
+      was "çok kalın", loud enough that readers complained — a 1px rule at 100%
+      saturation still shouts next to `border-line-soft` on every message around
+      it.
+
+      `border-alloy/35` is the house idiom, already used elsewhere in the client,
+      and it matches the plate tint in `styles.css` (alloy mixed at 24% into the
+      line colour). The NAME keeps full strength: it is small, it is the signal,
+      and it is what a reader is looking for.
+
+      Asserted with a word boundary rather than `toContain`, because
+      `'border-alloy/35'.includes('border-alloy')` is true — the old assertion
+      could not have failed on this change, which is the one thing a test about a
+      shade must be able to do.
+    */
     const view = golden();
     const row = view.container.querySelector('[data-chat-message="m-admin"]');
     expect(row, 'the admin message has no row').not.toBeNull();
-    expect(row!.className).toContain('border-alloy');
+    expect(row!.className).toMatch(/\bborder-alloy\/35\b/);
+    expect(row!.className, 'the border is at full strength again')
+      .not.toMatch(/\bborder-alloy(?![/\d])/);
     expect(row!.querySelector('[data-chat-author]')!.className).toContain('text-alloy');
   });
 
