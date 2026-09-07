@@ -115,9 +115,9 @@ const raid = await call('/api/fleet/launch', {
   token: a.token,
   body: { targetPlanetId: b.planet.id, fleet: { DART: 40 } },
 });
-const probeTarget = (await call('/api/galaxy', { token: a.token })).planets.find(
-  (p) => !p.isSelf && p.id !== b.planet.id,
-);
+// Keep the fast scout inside the same measured sensor corridor as the raid.
+// An arbitrary world can send it beyond B's telescope before traffic is read.
+const probeTarget = b.planet;
 await call('/api/intel/probe', {
   method: 'POST',
   token: a.token,
@@ -356,10 +356,23 @@ const shared = asA.filter(
 );
 const disagreed = shared.filter((x) => {
   const other = asB.find((o) => o.id === x.id);
+  // Each HTTP read authors a fresh bearing window at its own server time.
+  // Compare positions at one instant inside BOTH windows, not their moving ends.
+  const at = Math.max(new Date(x.startAt).getTime(), new Date(other.startAt).getTime());
+  const until = Math.min(new Date(x.endAt).getTime(), new Date(other.endAt).getTime());
+  const position = (contact) => {
+    const start = new Date(contact.startAt).getTime();
+    const end = new Date(contact.endAt).getTime();
+    const progress = (at - start) / (end - start);
+    return ['x', 'y', 'z'].map((axis) =>
+      contact.from[axis] + (contact.to[axis] - contact.from[axis]) * progress);
+  };
+  const first = position(x);
+  const second = position(other);
   return (
     other.kind !== x.kind ||
-    Math.abs(new Date(other.endAt).getTime() - new Date(x.endAt).getTime()) > 1500 ||
-    Math.hypot(other.to.x - x.to.x, other.to.y - x.to.y, other.to.z - x.to.z) > 1
+    at >= until ||
+    Math.hypot(...first.map((coordinate, axis) => coordinate - second[axis])) > 1
   );
 });
 check(

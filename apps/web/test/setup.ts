@@ -3,6 +3,22 @@ import { afterEach, beforeEach } from 'vitest';
 import '@testing-library/jest-dom/vitest';
 import i18n from '../src/i18n/index.js';
 
+// jsdom has no Element.scrollTo. Model its final position for report-sheet
+// effects; browser harnesses verify the actual smooth scrolling and layout.
+Object.defineProperty(Element.prototype, 'scrollTo', {
+  configurable: true,
+  writable: true,
+  value: function (this: Element, options: ScrollToOptions | number = {}, y = 0): void {
+    if (typeof options === 'number') {
+      this.scrollLeft = options;
+      this.scrollTop = y;
+    } else {
+      this.scrollLeft = options.left ?? this.scrollLeft;
+      this.scrollTop = options.top ?? this.scrollTop;
+    }
+  },
+});
+
 /**
  * EVERY TEST RUNS IN ENGLISH, AND IT SAYS SO OUT LOUD.
  *
