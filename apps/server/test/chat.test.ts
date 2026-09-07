@@ -228,3 +228,73 @@ describe('galaxy chat', () => {
     }
   });
 });
+
+describe('who is speaking with authority', () => {
+  /**
+   * THE ADMIN IS MARKED IN CHAT, AND ONLY IN CHAT. Owner instruction.
+   *
+   * `admin.ts` deliberately keeps authority off the wire — a client-visible flag
+   * "would merely advertise the hidden identity", and the galaxy layer omits an
+   * admin's worlds rather than labelling them. Chat is the one surface where that
+   * argument does not hold: the author is speaking publicly under their own name,
+   * and it already publishes their `planetId` so the world was never hidden here
+   * in the first place. What the flag adds is who is answerable for the message.
+   *
+   * It is resolved at the RESPONSE BOUNDARY from the configured usernames, exactly
+   * as `adminPlayerIdsInSeason` does. Nothing is stored on a player or a planet, so
+   * it still cannot be granted by an API call.
+   */
+  let f2: Fixture;
+  let app2: FastifyInstance;
+  let close2: () => Promise<void>;
+  let auth2: { authorization: string }[];
+
+  beforeEach(async () => {
+    f2 = await seedWorld(2);
+    const [admin] = await f2.db.select().from(accounts)
+      .where(eq(accounts.id, f2.accountIds[0]!)).limit(1);
+    const built = buildApp({
+      env: testEnv({ ADMIN_USERNAMES: admin!.username }),
+      logger: silent, db: f2.db, clock: f2.clock,
+    });
+    app2 = built.app;
+    close2 = built.close;
+    await app2.ready();
+    const tokens = new TokenService('test-secret-that-is-long-enough', 15, 30);
+    auth2 = await Promise.all(f2.accountIds.map(async (id) => ({
+      authorization: `Bearer ${await tokens.issueAccess(id)}`,
+    })));
+  });
+
+  afterEach(async () => { await close2(); });
+
+  it('marks an admin’s message and leaves an ordinary commander’s unmarked', async () => {
+    for (const [i, header] of auth2.entries()) {
+      const posted = await app2.inject({
+        method: 'POST', url: '/api/chat/messages', headers: header,
+        payload: { content: `hello from ${String(i)}` },
+      });
+      expect(posted.statusCode).toBe(200);
+    }
+
+    const page = await app2.inject({
+      method: 'GET', url: '/api/chat/messages', headers: auth2[1]!,
+    });
+    expect(page.statusCode).toBe(200);
+    const { messages } = page.json<{ messages: { content: string; admin?: boolean }[] }>();
+
+    const fromAdmin = messages.find((m) => m.content === 'hello from 0');
+    const fromPlayer = messages.find((m) => m.content === 'hello from 1');
+    expect(fromAdmin?.admin, 'the admin was not marked').toBe(true);
+    expect(fromPlayer?.admin, 'an ordinary commander was marked').toBe(false);
+  });
+
+  it('marks it on the posted message too, so the sender sees it immediately', async () => {
+    const posted = await app2.inject({
+      method: 'POST', url: '/api/chat/messages', headers: auth2[0]!,
+      payload: { content: 'an announcement' },
+    });
+    const body = posted.json<{ message: { admin?: boolean } }>();
+    expect(body.message.admin).toBe(true);
+  });
+});

@@ -1107,6 +1107,15 @@ const chatMessageSchema = z.object({
   content: z.string(),
   createdAt: z.coerce.date(),
   self: z.boolean(),
+  /**
+   * THE AUTHOR SPEAKS WITH ADMIN AUTHORITY. Owner instruction.
+   *
+   * Marked in chat and nowhere else: the galaxy deliberately hides which worlds an
+   * admin holds, but a chat author is speaking publicly under their own name and
+   * this payload already carries their `planetId`. Optional for a rolling deploy —
+   * an older server simply marks nobody.
+   */
+  admin: z.boolean().optional(),
 });
 
 export const chatPageSchema = z.object({

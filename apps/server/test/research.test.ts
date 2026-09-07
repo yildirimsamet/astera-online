@@ -162,7 +162,22 @@ describe('the seasonal frontier', () => {
   it('exposes and accepts a discovered project behind its queued prerequisite', async () => {
     const target = f.planetIds[1]!;
     f.clock.advance(RESEARCH_PROJECTS.ISOTOPE_SPECTROMETRY.availableAtMinutes);
-    await grant(f.db, mine, 30_000, 5_000);
+    /*
+      FUNDED FROM THE PRICE, NOT FROM A NUMBER THAT WAS ONCE ENOUGH.
+
+      This read `5_000` Crystal, which stopped covering the two projects the moment
+      `RESEARCH_CRYSTAL_UPLIFT` raised every rung by a quarter — and the test then
+      failed on INSUFFICIENT_RESOURCES, which says nothing at all about the
+      prerequisite chain it exists to test. Reading the cost keeps the arrangement
+      honest through any later re-pricing.
+    */
+    const bill = (['ISOTOPE_SPECTROMETRY', 'DENSE_FUEL_CELLS'] as const)
+      .map((id) => RESEARCH_PROJECTS[id].costAt(1))
+      .reduce((sum, cost) => ({
+        alloy: sum.alloy + cost.alloy,
+        crystal: sum.crystal + cost.crystal,
+      }), { alloy: 0, crystal: 0 });
+    await grant(f.db, mine, Math.max(30_000, bill.alloy * 2), bill.crystal * 2);
     await grant(f.db, target, 100_000, 20_000);
     await f.db.update(planets).set({ deuterium: 1_000 }).where(eq(planets.id, mine));
     await levelWorld(f.db, f.planetIds);

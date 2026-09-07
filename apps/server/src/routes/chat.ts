@@ -26,12 +26,19 @@ export function registerChatRoutes(app: FastifyInstance): void {
       app.projections.sensorsFor(self.playerId, self.planetIds),
       app.projections.rememberedFor(self.playerId),
     ]);
-    return readChat(app.db, req.accountId!, query.limit, { sensors, remembered }, query.before);
+    return readChat(
+      app.db, req.accountId!, query.limit, { sensors, remembered },
+      query.before, app.adminUsernames,
+    );
   });
 
   app.post('/api/chat/messages', { preHandler: requireAuth }, async (req) => {
     const body = messageBody.parse(req.body);
-    return { message: await postChat(app.db, req.accountId!, body.content, app.clock) };
+    return {
+      message: await postChat(
+        app.db, req.accountId!, body.content, app.clock, app.adminUsernames,
+      ),
+    };
   });
 
   app.get('/api/chat/unread', { preHandler: requireAuth }, async (req) => ({

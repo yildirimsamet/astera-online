@@ -26,6 +26,8 @@ interface MessageRow {
   content: string;
   createdAt: Date;
   self: boolean;
+  /** The author speaks with admin authority. Marked in gold; see the row below. */
+  admin?: boolean;
 }
 
 export function ChatScreen({
@@ -276,13 +278,27 @@ function ChannelPanel({
             {messages.map((message) => (
               <li
                 key={message.id}
+                data-chat-message={message.id}
+                /*
+                  THE ADMIN IS RINGED IN GOLD. Owner instruction.
+
+                  A galaxy-wide room has no other way to say "this one is
+                  answerable for the game". The border repeats what the name
+                  already says, so the mark survives a wall of scrolling text and
+                  one glance finds the official word without reading a name.
+
+                  It wins over BOTH ordinary surfaces, self included: an admin's
+                  own message is still an admin's message.
+                */
                 className={`max-w-[88%] rounded-control border px-3 py-2 ${
-                  message.self ? `ml-auto ${selfSurface}` : 'mr-auto border-line-soft bg-deep'
+                  message.admin === true
+                    ? `${message.self ? 'ml-auto' : 'mr-auto'} border-alloy bg-deep`
+                    : message.self ? `ml-auto ${selfSurface}` : 'mr-auto border-line-soft bg-deep'
                 }`}
               >
                 <div className="flex items-baseline justify-between gap-2">
                   {message.self ? (
-                    <strong className={`name truncate ${selfInk}`}>{message.username}</strong>
+                    <strong data-chat-author className={`name truncate ${message.admin === true ? 'text-alloy' : selfInk}`}>{message.username}</strong>
                   ) : message.planetId !== undefined ? (
                     <button
                       type="button"
@@ -292,12 +308,15 @@ function ChannelPanel({
                         haptic('tap');
                         onFocusPlanet(planetId);
                       }}
-                      className="name truncate text-bone underline decoration-bone/35 underline-offset-2"
+                      data-chat-author
+                      className={`name truncate underline decoration-bone/35 underline-offset-2 ${
+                        message.admin === true ? 'text-alloy' : 'text-bone'
+                      }`}
                     >
                       {message.username}
                     </button>
                   ) : (
-                    <span className="name truncate text-bone">{message.username}</span>
+                    <span data-chat-author className={`name truncate ${message.admin === true ? 'text-alloy' : 'text-bone'}`}>{message.username}</span>
                   )}
                   <time className="shrink-0 text-micro text-faint" dateTime={message.createdAt.toISOString()}>
                     {chatRelativeTime(message.createdAt, now, t)}

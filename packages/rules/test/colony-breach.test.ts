@@ -42,7 +42,7 @@ describe('how long a struck world stays dark', () => {
 
 describe('what the weapon costs', () => {
   it('carries the owner’s figures exactly', () => {
-    expect(DEATH_STAR.cost).toEqual({ alloy: 40_000, crystal: 25_000, deuterium: 6_000 });
+    expect(DEATH_STAR.cost).toEqual({ alloy: 35_000, crystal: 25_000, deuterium: 6_000 });
   });
 
   /**

@@ -15,11 +15,28 @@ export interface ChatMessageView {
   content: string;
   createdAt: Date;
   self: boolean;
+  /**
+   * THE AUTHOR SPEAKS WITH ADMIN AUTHORITY. Owner instruction.
+   *
+   * `admin.ts` keeps this off the wire everywhere else on purpose — a visible flag
+   * "would merely advertise the hidden identity", so the galaxy omits an admin's
+   * worlds rather than labelling them. Chat is the one surface where the argument
+   * does not apply: the author is speaking publicly under their own name, and this
+   * payload already carries their `planetId`, so nothing about their world becomes
+   * knowable that was not already. What the flag adds is who is answerable.
+   *
+   * Resolved at the RESPONSE BOUNDARY from the configured usernames, never stored
+   * on a player or a planet, so it still cannot be granted by an API call.
+   */
+  admin: boolean;
 }
 
 async function chatPlayer(db: Db, accountId: string) {
   const [row] = await db
-    .select({ player: players, planetId: planets.id, username: accounts.displayName })
+    .select({
+      player: players, planetId: planets.id,
+      username: accounts.displayName, login: accounts.username,
+    })
     .from(players)
     .innerJoin(accounts, eq(players.accountId, accounts.id))
     .innerJoin(planets, and(eq(planets.controllerPlayerId, players.id), eq(planets.kind, 'CAPITAL')))
@@ -36,6 +53,8 @@ export async function readChat(
   limit: number,
   sight: LocationSight,
   before?: string,
+  /** Configured admin logins, resolved at the boundary. Empty marks nobody. */
+  adminUsernames: ReadonlySet<string> = new Set(),
 ): Promise<{ messages: ChatMessageView[]; nextBefore: string | null }> {
   const me = await chatPlayer(db, accountId);
   let cursor: { createdAt: Date; id: string } | undefined;
@@ -58,6 +77,7 @@ export async function readChat(
       y: planets.y,
       z: planets.z,
       username: accounts.displayName,
+      login: accounts.username,
       content: chatMessages.content,
       createdAt: chatMessages.createdAt,
     })
@@ -82,12 +102,13 @@ export async function readChat(
   return {
     messages: page.reverse().map((row) => {
       const self = row.authorPlayerId === me.player.id;
-      const { x, y, z, planetId, ...message } = row;
+      const { x, y, z, planetId, login, ...message } = row;
       const canLocate = locationIsKnown(planetId, { x, y, z }, self, sight);
       return {
         ...message,
         ...(canLocate ? { planetId } : {}),
         self,
+        admin: adminUsernames.has(login),
       };
     }),
     nextBefore,
@@ -106,6 +127,8 @@ export async function postChat(
   accountId: string,
   content: string,
   clock: Clock,
+  /** Same boundary resolution as `readChat`, so the sender sees their own mark. */
+  adminUsernames: ReadonlySet<string> = new Set(),
 ): Promise<ChatMessageView> {
   const me = await chatPlayer(db, accountId);
   const requestedAt = clock.now();
@@ -151,7 +174,10 @@ export async function postChat(
     if (!message) throw new Error('chat insert returned no row');
 
     await publishShard(tx, me.player.seasonId, 'chat');
-    return { ...message, planetId: me.planetId, username: me.username, self: true };
+    return {
+      ...message, planetId: me.planetId, username: me.username, self: true,
+      admin: adminUsernames.has(me.login),
+    };
   });
 }
 

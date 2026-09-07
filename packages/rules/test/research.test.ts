@@ -7,6 +7,7 @@ import {
   claimOre,
   isotopeProfile,
   researchAvailable,
+  RESEARCH_CRYSTAL_UPLIFT,
   researchCostMix,
   scalePrice,
   type ResearchProjectId,
@@ -17,10 +18,23 @@ const researchPrice = (base: { alloy: number; crystal: number; deuterium: number
   crystal: scalePrice(base.crystal, ECONOMY_TEMPO.fixedPrice),
   deuterium: scalePrice(base.deuterium, ECONOMY_TEMPO.deuteriumPrice),
 });
+/**
+ * The price a project actually SHIPS at: tempo, then the Crystal bias, then the
+ * owner's Crystal uplift.
+ *
+ * The uplift belongs here rather than in each expectation. These tests are about
+ * the MIX — that a frontier project is Crystal-weighted — and a later instruction
+ * that raised Crystal everywhere by a quarter did not change that claim, only the
+ * figure it lands on. Baking the new number into each `toEqual` would have hidden
+ * a second multiplication inside a test whose whole subject is the first one.
+ */
 const mixedResearchPrice = (
   id: ResearchProjectId,
   base: { alloy: number; crystal: number; deuterium: number },
-) => researchCostMix(id, researchPrice(base));
+) => {
+  const mixed = researchCostMix(id, researchPrice(base));
+  return { ...mixed, crystal: Math.round(mixed.crystal * RESEARCH_CRYSTAL_UPLIFT) };
+};
 
 describe('research resource mix', () => {
   const unchanged = new Set([

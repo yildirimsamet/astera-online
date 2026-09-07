@@ -2705,7 +2705,13 @@ export const DEATH_STAR = {
    * is a judgement about the galaxy rather than about the economy's pace, so the
    * number is written out where it can be read and argued with.
    */
-  cost: { alloy: 40_000, crystal: 25_000, deuterium: 6_000 },
+  /*
+    ALLOY CUT 40k → 35k ON OWNER INSTRUCTION. Set by hand, as D167 requires: this
+    figure is never scaled, so it is the one number that has to move when the
+    weapon is meant to become reachable a little sooner. Crystal and Deuterium are
+    untouched — the change is one column wide.
+  */
+  cost: { alloy: 35_000, crystal: 25_000, deuterium: 6_000 },
   buildMinutes: 60,
   /** Owner-approved strategic travel speed after local interception playtesting. */
   speed: 1_250,

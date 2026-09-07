@@ -1,8 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import {
+  RESEARCH_CRYSTAL_UPLIFT,
   RESEARCH_MAX_LEVEL,
   RESEARCH_PROJECTS,
+  RESEARCH_PROJECT_IDS,
   RESEARCH_TECH,
+  researchBaseCostAt,
   cargoMult,
   hullTech,
   prospectorHoldMult,
@@ -19,9 +22,16 @@ import type { ResearchProjectId } from '../src/index.js';
  * intent; these are the intent, so the table is the test and the code is what has
  * to match it — not the other way round.
  *
- * The figures are FINAL: what the research screen quotes. No tempo scale and no
- * Crystal mix runs on top of them, which is exactly what the exemption in
- * `research.ts` is for.
+ * The figures are the owner's BASE: no tempo scale and no Crystal mix runs on top
+ * of them, which is exactly what the exemption in `research.ts` is for.
+ *
+ * ONE THING DOES SIT ON TOP, AND ONLY ONE. A later owner instruction raised the
+ * Crystal on every research rung in the game by a quarter, and the only place all
+ * fifteen projects meet — eight hand-priced, seven generated and Crystal-biased —
+ * is where their price is quoted. So the Alloy and Deuterium cells below are read
+ * literally and the Crystal cell is compared against `RESEARCH_CRYSTAL_UPLIFT`,
+ * applied here rather than retyped, so the table on screen stays the table the
+ * owner chose and the quote is still asserted cell by cell.
  */
 
 type Rung = readonly [alloy: number, crystal: number, deuterium: number, effect?: number];
@@ -91,7 +101,11 @@ describe('the re-priced research tables', () => {
       rungs.forEach(([alloy, crystal, deuterium, effect], index) => {
         const level = index + 1;
         it(`quotes the table price at L${String(level)}`, () => {
-          expect(RESEARCH_PROJECTS[id].costAt(level)).toEqual({ alloy, crystal, deuterium });
+          expect(RESEARCH_PROJECTS[id].costAt(level)).toEqual({
+            alloy,
+            crystal: Math.round(crystal * RESEARCH_CRYSTAL_UPLIFT),
+            deuterium,
+          });
         });
 
         it(`pays the table effect at L${String(level)}`, () => {
@@ -137,5 +151,41 @@ describe('the effects behind the tables', () => {
   /** Support hulls never take the attack lift; only combat hulls do. */
   it("leaves a support hull's attack alone", () => {
     expect(hullTech({ SHIP_POWER: 5 }, 'COURIER').atk).toBe(1);
+  });
+});
+
+describe('the Crystal uplift the owner asked for', () => {
+  /**
+   * A QUARTER MORE CRYSTAL ON EVERY RUNG IN THE GAME, not only on the eight
+   * hand-priced ladders. Owner instruction.
+   *
+   * The two families reach their price by different roads — eight are typed out
+   * final and exempt from the Crystal bias, seven are generated, tempo-scaled and
+   * biased — so a change made in either table alone would have moved half the
+   * research screen and left the other half where it was. `withResearchCostMix`
+   * is the one place both roads end, and that is where the uplift is applied.
+   *
+   * Asserted as a RATIO against the pre-uplift price rather than as a list of new
+   * numbers, so this keeps meaning the same thing when a rung is re-priced.
+   */
+  it('raises Crystal on every project, and touches nothing else', () => {
+    for (const id of RESEARCH_PROJECT_IDS) {
+      const levels = RESEARCH_MAX_LEVEL[id];
+      for (let level = 1; level <= levels; level++) {
+        const quoted = RESEARCH_PROJECTS[id].costAt(level);
+        const base = researchBaseCostAt(id, level);
+        expect(quoted.crystal, `${id} L${String(level)} Crystal`)
+          .toBe(Math.round(base.crystal * RESEARCH_CRYSTAL_UPLIFT));
+        expect(quoted.alloy, `${id} L${String(level)} Alloy moved`).toBe(base.alloy);
+        expect(quoted.deuterium, `${id} L${String(level)} Deuterium moved`).toBe(base.deuterium);
+      }
+    }
+  });
+
+  it('is an increase, not a rounding accident', () => {
+    expect(RESEARCH_CRYSTAL_UPLIFT).toBeGreaterThan(1);
+    // A project with real Crystal must actually cost more than it did.
+    const before = researchBaseCostAt('YARD_AUTOMATION', 1).crystal;
+    expect(RESEARCH_PROJECTS.YARD_AUTOMATION.costAt(1).crystal).toBeGreaterThan(before);
   });
 });

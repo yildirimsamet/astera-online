@@ -181,3 +181,56 @@ describe('galaxy chat surface', () => {
   });
 
 });
+
+describe('the admin speaking in chat', () => {
+  /**
+   * GOLD, ON THE NAME AND ON THE MESSAGE. Owner instruction.
+   *
+   * A galaxy-wide room has no other way to say "this one is answerable for the
+   * game". The name carries the colour and the message's own container repeats it
+   * as a border, so the mark survives a wall of scrolling text — one glance finds
+   * the official word without reading a single name.
+   *
+   * `alloy` is the palette's existing gold (`#d9a441`); nothing was invented.
+   */
+  const golden = () => {
+    const api = new Api({ fetch: vi.fn() as unknown as typeof globalThis.fetch });
+    vi.spyOn(api, 'markChatRead').mockResolvedValue({ ok: true, readAt: at });
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    client.setQueryData(keys.chatMessages, {
+      pages: [{
+        messages: [
+          { id: 'm-admin', authorPlayerId: 'boss', username: 'Yönetici',
+            content: 'duyuru', createdAt: at, self: false, admin: true },
+          { id: 'm-player', authorPlayerId: 'other', username: 'Sable',
+            content: 'selam', createdAt: new Date(at.getTime() + 1000), self: false },
+        ],
+        nextBefore: null,
+      }],
+      pageParams: [null],
+    });
+    client.setQueryData(keys.chatUnread, { count: 0 });
+    return render(
+      <QueryClientProvider client={client}>
+        <ApiProvider api={api}>
+          <ChatScreen onFocusPlanet={vi.fn()} />
+        </ApiProvider>
+      </QueryClientProvider>,
+    );
+  };
+
+  it('paints the admin’s name gold and rings their message in the same gold', () => {
+    const view = golden();
+    const row = view.container.querySelector('[data-chat-message="m-admin"]');
+    expect(row, 'the admin message has no row').not.toBeNull();
+    expect(row!.className).toContain('border-alloy');
+    expect(row!.querySelector('[data-chat-author]')!.className).toContain('text-alloy');
+  });
+
+  it('leaves an ordinary commander untouched', () => {
+    const view = golden();
+    const row = view.container.querySelector('[data-chat-message="m-player"]');
+    expect(row!.className).not.toContain('border-alloy');
+    expect(row!.querySelector('[data-chat-author]')!.className).not.toContain('text-alloy');
+  });
+});

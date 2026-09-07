@@ -172,10 +172,15 @@ const flat = (cost: Resources) => (): Resources => cost;
  * the number a person chose and the number on the screen, which is fine while
  * nobody wants to choose the number on the screen. The owner does.
  *
- * SO THESE ARE FINAL FIGURES. No tempo scale, no Crystal mix — both would move
- * them, and `RESEARCH_COST_MIX_EXEMPTIONS` below is what keeps the mix off. What a
- * rung costs here is what the research row quotes, and `test/research-tables`
- * holds every cell of it.
+ * SO THESE ARE THE OWNER'S OWN FIGURES. No tempo scale, no Crystal mix — both
+ * would move them, and `RESEARCH_COST_MIX_EXEMPTIONS` below is what keeps the mix
+ * off. `test/research-tables` holds every cell of it.
+ *
+ * EXACTLY ONE THING SITS ON TOP, and it is named: `RESEARCH_CRYSTAL_UPLIFT`, a
+ * later owner instruction raising the Crystal on every rung in the game by a
+ * quarter. It is applied where all fifteen projects meet rather than typed into
+ * these cells, so the ladders below stay the numbers that were chosen and the
+ * uplift stays one auditable multiplication rather than a rewrite.
  *
  * The rung count is NOT stated here. `RESEARCH_MAX_LEVEL` walks the effect to find
  * where a project stops selling anything, and `test/research-ceiling` fails if a
@@ -281,15 +286,57 @@ export function researchCostMix(id: ResearchProjectId, cost: Resources): Resourc
   };
 }
 
+/**
+ * A QUARTER MORE CRYSTAL ON EVERY RESEARCH RUNG IN THE GAME. Owner instruction.
+ *
+ * APPLIED HERE BECAUSE THIS IS THE ONLY PLACE ALL FIFTEEN PROJECTS MEET. They
+ * reach their price by two different roads: eight are the hand-typed ladders in
+ * `PRICE_TABLES`, exempt from the Crystal bias and never tempo-scaled, and seven
+ * are generated, scaled and biased. Raising the number in either table alone would
+ * have moved half the research screen and left the other half exactly where it
+ * was, which is not what "all research" means.
+ *
+ * IT DOES NOT REOPEN D169. That decision removed four multiplications standing
+ * between a number the owner chose and the number on screen, so that the tables
+ * could be read directly. This is one, named, and it is itself the owner's choice
+ * — and `research-tables.test.ts` still asserts every cell, comparing the quote
+ * against the table times this constant rather than against retyped figures, so
+ * the authored ladders stay readable as exactly what they are.
+ *
+ * ALLOY AND DEUTERIUM DO NOT MOVE. The change is one column wide.
+ */
+export const RESEARCH_CRYSTAL_UPLIFT = 1.25;
+
+/** Every project's price BEFORE the uplift, so the tests can hold both halves. */
+const BASE_COST = new Map<ResearchProjectId, (level: number) => Resources>();
+
+/**
+ * What a rung cost before `RESEARCH_CRYSTAL_UPLIFT` was applied.
+ *
+ * Exported for `research-tables.test.ts`, which asserts the uplift as a RATIO
+ * against this rather than as a list of new numbers — so the assertion keeps
+ * meaning the same thing the next time a rung is re-priced.
+ */
+export const researchBaseCostAt = (id: ResearchProjectId, level: number): Resources => {
+  const base = BASE_COST.get(id);
+  if (!base) throw new Error(`No base price for ${id}`);
+  return base(level);
+};
+
 const withResearchCostMix = (
   projects: Record<ResearchProjectId, ResearchProject>,
 ): Record<ResearchProjectId, ResearchProject> => {
   for (const id of RESEARCH_PROJECT_IDS) {
     const project = projects[id];
     const baseCostAt = project.costAt;
+    const priced = (level: number) => researchCostMix(id, baseCostAt(level));
+    BASE_COST.set(id, priced);
     projects[id] = {
       ...project,
-      costAt: (level: number) => researchCostMix(id, baseCostAt(level)),
+      costAt: (level: number) => {
+        const cost = priced(level);
+        return { ...cost, crystal: Math.round(cost.crystal * RESEARCH_CRYSTAL_UPLIFT) };
+      },
     };
   }
   return projects;

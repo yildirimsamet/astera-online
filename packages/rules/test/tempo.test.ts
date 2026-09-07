@@ -85,7 +85,7 @@ describe('the calibrated economy tempo', () => {
       weapon is set by hand against what it now DOES, so it is written out here and
       pinned here rather than derived from a base nobody would recognise.
     */
-    expect(DEATH_STAR.cost).toEqual({ alloy: 40_000, crystal: 25_000, deuterium: 6_000 });
+    expect(DEATH_STAR.cost).toEqual({ alloy: 35_000, crystal: 25_000, deuterium: 6_000 });
     expect(CLAN.creationCost).toEqual({ alloy: 8500, crystal: 5100, deuterium: 0 });
   });
 
