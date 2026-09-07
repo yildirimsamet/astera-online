@@ -3,6 +3,10 @@ import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import type { Preview } from '../src/api/schemas.js';
 import { Rehearsal } from '../src/onboarding/Rehearsal.jsx';
+import { track } from '../src/lib/analytics.js';
+import * as script from '../src/onboarding/script.js';
+
+vi.mock('../src/lib/analytics.js', () => ({ track: vi.fn() }));
 
 vi.mock('../src/screens/GalaxyView.jsx', () => ({
   GalaxyView: () => <div data-testid="rehearsal-galaxy" />,
@@ -53,6 +57,32 @@ const preview = (): Preview => ({
 });
 
 describe('skipping the onboarding rehearsal', () => {
+  it('points at the action using the supplied hand instead of a dark spotlight', () => {
+    const beat = script.BEATS.find((entry) => entry.id === 'core')!;
+    const current = vi.spyOn(script, 'currentBeat').mockReturnValue(beat);
+    const view = render(<Rehearsal preview={preview()} onClaim={vi.fn()} onSignIn={vi.fn()} onLeave={vi.fn()} />);
+    expect(view.container.querySelector('img[src="/assets/images/general/tutorial-hand-icon.png"]')).not.toBeNull();
+    expect(view.container.querySelector('#onboarding-spotlight')).toBeNull();
+    current.mockRestore();
+  });
+  it('claims all four opening orders even when skipped immediately', async () => {
+    const onClaim = vi.fn(() => Promise.resolve());
+    render(<Rehearsal preview={preview()} onClaim={onClaim} onSignIn={vi.fn()} onLeave={vi.fn()} />);
+    const user = userEvent.setup();
+    await user.click(screen.getByRole('button', { name: 'Skip' }));
+    expect(track).toHaveBeenCalledWith('tutorial_skip', { orders: 0 });
+    await user.type(screen.getByLabelText('Commander name'), 'NewPilot');
+    await user.click(screen.getByRole('button', { name: 'Continue' }));
+    await user.type(screen.getByLabelText('Password'), 'a-real-password');
+    await user.click(screen.getByRole('button', { name: /claim/i }));
+    expect(onClaim).toHaveBeenCalledWith('NewPilot', 'a-real-password', [
+      { kind: 'upgrade', building: 'CORE' },
+      { kind: 'upgrade', building: 'REFINERY' },
+      { kind: 'upgrade', building: 'EXTRACTOR' },
+      { kind: 'build', hull: 'DART', count: 2 },
+    ]);
+  });
+
   it('opens the final commander-credentials step instead of returning to the landing screen', async () => {
     const onLeave = vi.fn();
     render(

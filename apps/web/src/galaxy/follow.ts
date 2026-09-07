@@ -1,5 +1,24 @@
 import type { Focus } from './FocusPanel.js';
 
+/** Incremental smoothstep: finishes on its clock, even if the pivot was already
+ * centred and only the camera range changes. Equal result at 30 or 120 fps. */
+export function cameraEaseStep(remaining: number, duration: number, delta: number): {
+  fraction: number; remaining: number; done: boolean;
+} {
+  const left = Math.max(0, remaining - delta);
+  const smooth = (t: number) => t * t * (3 - 2 * t);
+  const before = smooth(Math.max(0, Math.min(1, 1 - remaining / duration)));
+  const after = smooth(Math.max(0, Math.min(1, 1 - left / duration)));
+  return { fraction: left === 0 || before >= 1 ? 1 : (after - before) / (1 - before), remaining: left, done: left === 0 };
+}
+
+/** Full sphere, not a flat disc. Extra room keeps the tutorial coach clear. */
+export function sightCameraDistance(radius: number, verticalFov: number, aspect: number): number {
+  const vertical = verticalFov * Math.PI / 360;
+  const horizontal = Math.atan(Math.tan(vertical) * aspect);
+  return radius * 1.25 / Math.sin(Math.min(vertical, horizontal));
+}
+
 /**
  * WHAT THE CAMERA IS FOLLOWING, AND WHEN IT IS ALLOWED TO MOVE ON ITS OWN.
  *

@@ -145,7 +145,7 @@ export function Signals({
          * badges.
          */
         className={`relative flex size-9 items-center justify-center rounded-chip border transition-colors ${unseen > 0
-          ? 'border-threat/70 bg-threat/15 motion-safe:animate-pulse'
+          ? 'border-threat/70 bg-threat/15 animate-pulse'
           : status.length > 0
             ? 'border-alloy/50 bg-alloy/10'
             : 'border-line-soft bg-deep hover:border-line'
@@ -158,7 +158,7 @@ export function Signals({
                 header's own gradient rather than only inside the border. */}
             <span
               aria-hidden
-              className="pointer-events-none absolute -inset-1 rounded-chip bg-threat/20 blur-[6px] motion-safe:animate-pulse"
+              className="pointer-events-none absolute -inset-1 rounded-chip bg-threat/20 blur-[6px] animate-pulse"
             />
             <span className="num absolute -right-1 -top-1 min-w-[16px] rounded-full bg-threat px-1 text-center text-micro leading-4 text-bone shadow-[0_0_8px_rgba(224,138,124,0.9)]">
               {unseen > 9 ? '9+' : unseen}
@@ -757,7 +757,7 @@ function Beacon({ lit }: { lit: boolean }) {
         d="M5.5 6a9 9 0 0 1 13 0"
         strokeLinecap="round"
         strokeOpacity={lit ? '1' : '.4'}
-        className={lit ? 'motion-safe:animate-pulse' : ''}
+        className={lit ? 'animate-pulse' : ''}
       />
     </svg>
   );

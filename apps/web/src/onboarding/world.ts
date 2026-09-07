@@ -241,6 +241,17 @@ export function build(w: RehearsalWorld, hull: HullId, count: number): Rehearsal
 
 /* ── rendering it ───────────────────────────────────────────── */
 
+/** Skip teaches nothing, but must still stage the same paid opening. */
+export function completeOpening(world: RehearsalWorld): RehearsalWorld {
+  let next = world;
+  for (const id of ['CORE', 'REFINERY', 'EXTRACTOR'] as const) {
+    if (projectedBuildings(next)[id] < 2) next = upgrade(next, id);
+  }
+  const missing = 2 - queuedCount(next, 'YARD', 'HULL', 'DART');
+  if (missing > 0) next = build(next, 'DART', missing);
+  return next;
+}
+
 /**
  * The world as `/api/planet` would describe it.
  *

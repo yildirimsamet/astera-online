@@ -6,6 +6,7 @@ import { ToastProvider } from '../src/ui/Toast.js';
 import type { PlanetView } from '../src/api/schemas.js';
 import { planetView } from './fixtures.js';
 import i18n from '../src/i18n/index.js';
+import { AcademyLessonContext } from '../src/onboarding/lessonScope.js';
 
 /**
  * WHERE THE PLANET SHEET PUTS THINGS, AND WHICH TAB IT OPENS ON. D170.
@@ -89,6 +90,35 @@ describe('the fleet tab puts the orbit satellites last', () => {
 });
 
 describe('the sheet opens on production', () => {
+  it('reveals Intel while keeping Production selected for the tab-press lesson', () => {
+    const client = new QueryClient();
+    render(<QueryClientProvider client={client}><ToastProvider>
+      <AcademyLessonContext.Provider value="intel"><PlanetScreen focusGroup="grow" /></AcademyLessonContext.Provider>
+    </ToastProvider></QueryClientProvider>);
+    expect(screen.getAllByRole('tab')).toHaveLength(2);
+    expect(screen.getByRole('tab', { name: i18n.t('planet.tabs.growProblem') })).toHaveAttribute('aria-selected', 'true');
+    expect(screen.getByRole('tab', { name: i18n.t('planet.tabs.orbitProblem') })).toHaveAttribute('aria-selected', 'false');
+  });
+  it('reveals the Academy cargo row even if the device previously folded cargo', () => {
+    localStorage.setItem('astera.accordion.fleet', '[]');
+    const client = new QueryClient();
+    const { container } = render(<QueryClientProvider client={client}><ToastProvider>
+      <AcademyLessonContext.Provider value="courier"><PlanetScreen focusGroup="reach" /></AcademyLessonContext.Provider>
+    </ToastProvider></QueryClientProvider>);
+    expect(container.querySelector('#row-COURIER')).not.toBeNull();
+    expect(localStorage.getItem('astera.accordion.fleet')).toBe('[]');
+    expect(screen.queryByText(i18n.t('planet.reach.orbitBand'))).not.toBeInTheDocument();
+    expect(screen.queryByText(i18n.t('planet.reach.family.OFFENSIVE.note'))).not.toBeInTheDocument();
+    localStorage.removeItem('astera.accordion.fleet');
+  });
+  it('does not show later category tabs in the first Academy lesson', () => {
+    const client = new QueryClient();
+    render(<QueryClientProvider client={client}><ToastProvider>
+      <AcademyLessonContext.Provider value="core"><PlanetScreen focusGroup="grow" /></AcademyLessonContext.Provider>
+    </ToastProvider></QueryClientProvider>);
+    expect(screen.getAllByRole('tab')).toHaveLength(1);
+    expect(screen.queryByText(i18n.t('planet.grow.multiplierBand'))).not.toBeInTheDocument();
+  });
   /**
    * IT USED TO OPEN WHEREVER A RECOMMENDATION ENGINE POINTED, and the owner's
    * report is the whole case against it: *"bir başka açılıyor bir başka"*. A sheet

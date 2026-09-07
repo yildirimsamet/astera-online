@@ -67,7 +67,12 @@ export function LandingScene() {
     <Canvas
       className="!absolute inset-0"
       dpr={[1, 2]}
-      gl={{ antialias: true, powerPreference: 'high-performance' }}
+      // The `EffectComposer` below owns antialiasing: it draws the scene into its
+      // own multisampled target and hands the canvas one flat quad. Asking the
+      // context for AA too bought a second full-screen multisampled buffer that
+      // smooths nothing. Stated explicitly because fiber's own default is `true`.
+      // See `GalaxyCanvas` for the long version.
+      gl={{ antialias: false, powerPreference: 'high-performance' }}
       camera={{ position: [0, 0, CAMERA_Z], fov: FOV, near: 0.1, far: 900 }}
       // The page above is what the visitor interacts with; this is scenery.
       style={{ pointerEvents: 'none' }}

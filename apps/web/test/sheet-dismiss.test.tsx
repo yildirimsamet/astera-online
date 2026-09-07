@@ -2,6 +2,7 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import { Sheet } from '../src/ui/kit/index.js';
+import { AcademyLessonContext } from '../src/onboarding/lessonScope.js';
 
 /**
  * A DISMISS CONTROL ANSWERS ONLY THE GESTURE THAT BEGAN ON IT.
@@ -34,6 +35,16 @@ const scrimOf = (view: ReturnType<typeof render>): HTMLElement => {
 };
 
 describe('the sheet survives the gesture that opened it', () => {
+  it('exposes only its scrollable body for the Academy queue reveal', () => {
+    const view = show(vi.fn());
+    expect(view.container.querySelector('[data-sheet-scroll]')).toHaveTextContent('Body');
+    expect(view.container.querySelector('[data-sheet-scroll]')).toHaveClass('overflow-y-auto');
+  });
+  it('keeps the Academy sky visible instead of darkening it behind each sheet', () => {
+    const view = render(<AcademyLessonContext.Provider value="core"><Sheet title="Academy" onClose={vi.fn()}>Body</Sheet></AcademyLessonContext.Provider>);
+    expect(scrimOf(view).className).not.toContain('bg-void/80');
+    expect(scrimOf(view).className).toContain('bg-transparent');
+  });
   it('ignores a click whose press landed somewhere else', () => {
     const onClose = vi.fn();
     const view = show(onClose);

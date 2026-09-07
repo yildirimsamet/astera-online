@@ -1,4 +1,6 @@
 import type { ReactNode } from 'react';
+import { academyOrderSeconds } from '@astera/rules';
+import { useAcademyLesson } from '../onboarding/lessonScope.js';
 import i18n from '../i18n/index.js';
 import { compact, decimal } from '../lib/format.js';
 import { duration } from '../lib/time.js';
@@ -478,7 +480,8 @@ export function Price({
  * says nothing about which question it answers.
  */
 export function TimeCost({ minutes }: { minutes: number }) {
-  const spoken = duration(minutes);
+  const lesson = useAcademyLesson();
+  const spoken = duration(lesson ? academyOrderSeconds(minutes) / 60 : minutes);
   return (
     <span
       data-testid="order-time"

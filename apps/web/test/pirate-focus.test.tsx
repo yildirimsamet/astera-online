@@ -2,6 +2,7 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import { PIRATE, type Fleet } from '@astera/rules';
+import { hullLabel } from '../src/i18n/names.js';
 import { PirateFocus } from '../src/galaxy/FocusPanel.js';
 import type { PirateContact } from '../src/api/schemas.js';
 
@@ -87,8 +88,40 @@ describe('the pirate rail', () => {
 
   it('names the crew it can actually see', () => {
     panel(identified(), { DART: 10 });
-    expect(screen.getByTitle(/Tempest/i)).toBeTruthy();
+    expect(screen.getByText(hullLabel('TEMPEST'))).toBeTruthy();
     expect(screen.getByText(/mJtQ/)).toBeTruthy();
+  });
+
+  /**
+   * A GLYPH AND A NUMBER ARE NOT A ROSTER. Owner instruction.
+   *
+   * The crew chips carried an icon, a count, and the hull's name in a `title`
+   * attribute — which on the device this game is played on does not exist. There
+   * is no hover on a phone, so the one fact that says WHAT you are about to fight
+   * was reachable only with a mouse. A commander pricing a raid was reading two
+   * silhouettes and two integers.
+   *
+   * The name is now drawn, at the smallest step on the type scale: it is a label
+   * on a chip, not a heading, and the count stays the figure the eye lands on.
+   * `title` went with it — a fact that is drawn is not also written (`CLAUDE.md`),
+   * and leaving it would have let both of the tests around this one keep passing
+   * against something no player can see.
+   */
+  it('writes each hull’s name beside its glyph, small enough to stay a label', () => {
+    panel(identified(), { DART: 10 });
+
+    for (const [hull, count] of [['TEMPEST', 1], ['DART', 2]] as const) {
+      const chip = document.querySelector(`[data-crew-hull="${hull}"]`);
+      expect(chip, `${hull} has no crew chip`).not.toBeNull();
+      expect(chip!.textContent).toContain(hullLabel(hull));
+      expect(chip!.textContent).toContain(String(count));
+    }
+
+    // Smallest step on the scale — the owner asked for the name to be small, and
+    // a chip that grows a heading is the compact-by-default rule going backwards.
+    const name = document.querySelector('[data-crew-hull="TEMPEST"] [data-crew-name]');
+    expect(name, 'the hull name is not its own element').not.toBeNull();
+    expect(name!.className).toContain('text-micro');
   });
 
   it('says nothing about a crew it cannot see', () => {
@@ -103,7 +136,8 @@ describe('the pirate rail', () => {
       { DART: 10 },
     );
     expect(screen.queryByText(/25/)).toBeNull();
-    expect(screen.queryByTitle(/Tempest/i)).toBeNull();
+    expect(screen.queryByText(hullLabel('TEMPEST'))).toBeNull();
+    expect(document.querySelector('[data-crew-hull]')).toBeNull();
   });
 
   /**

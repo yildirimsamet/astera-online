@@ -369,6 +369,7 @@ Baseline near D140: **0 type errors · 0 lint errors · ~2,900 tests**.
 | `docs/visual-design.md`         | Art / 3D                             |
 | `docs/playtest-log.md`          | Playtesting                          |
 | `docs/review-sight.md`          | Touching Telescope/Radar/probe sight |
+| `docs/review-onboarding.md`     | Onboarding / new-player experience   |
 | `docs/glossary.md`              | Terms                                |
 
 ## One thing to remember

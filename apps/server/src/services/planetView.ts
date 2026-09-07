@@ -309,6 +309,17 @@ export async function planetView(tx: Tx, planetId: string, clock: Clock) {
       ground: groundSlots(p.buildings.CORE),
       groundUsed: groundLoad(owned),
     },
+    /**
+     * WHETHER THE COMMANDER HOLDING THIS WORLD IS NEW. Owner instruction.
+     *
+     * A world claimed through the Academy carries the step it was claimed at;
+     * every world that existed before onboarding, and every established
+     * commander's, carries null. The client uses it for one thing — whether the
+     * written coaching card applies at all (`SituationGuide`) — and it has to come
+     * from here rather than from the device, because a device flag would put the
+     * beginner's card in front of a season-old commander on a new phone.
+     */
+    academyStep: p.academyStep,
     score: {
       wealth: player?.wealth ?? 0,
       dominion: dominion({

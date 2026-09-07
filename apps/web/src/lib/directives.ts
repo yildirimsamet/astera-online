@@ -81,7 +81,8 @@ export function directives(s: Situation): Directive[] {
       kind: 'threat',
       title: i18n.t('directives.inboundTitle', { duration: duration(inbound.minutesRemaining) }),
       detail: i18n.t('directives.inboundDetail'),
-      action: { label: i18n.t('directives.inboundAction'), screen: 'planet', group: 'defend' },
+      action: { label: i18n.t('directives.inboundAction'), screen: 'planet', group: 'defend',
+        ...(inbound.targetPlanetId ? { planetId: inbound.targetPlanetId } : {}) },
       weight: 1000,
     });
   }

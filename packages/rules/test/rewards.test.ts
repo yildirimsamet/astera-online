@@ -25,6 +25,13 @@ import {
  *     crystal share tracks income.
  */
 describe('the reward table', () => {
+  it('pays the Academy actions without removing existing later goals', () => {
+    for (const id of ['CORE:2', 'REFINERY:2', 'EXTRACTOR:2', 'SHIPYARD:1', 'SHIPS:2',
+      'VAULT:1', 'VAULT:3', 'VAULT:5', 'AEGIS:1', 'AEGIS:3', 'AEGIS:5',
+      'PIRATE:1', 'PIRATE:3', 'PIRATE:5', 'SHIPS:5', 'SHIPYARD:2', 'CORE:3']) {
+      expect(findRewardTier(id), id).not.toBeNull();
+    }
+  });
   it('gives every tier a unique id, and derives it from what it pays for', () => {
     const ids = REWARD_CHAINS.flatMap((c) => c.tiers.map((t) => rewardId(c.id, t.goal)));
     expect(new Set(ids).size).toBe(ids.length);

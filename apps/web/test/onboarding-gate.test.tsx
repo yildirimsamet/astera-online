@@ -15,6 +15,13 @@ import {
 } from '../src/onboarding/script.js';
 import { build, openWorld, upgrade } from '../src/onboarding/world.js';
 
+it('keeps legacy intent lessons free of retired spotlight configuration', () => {
+  for (const beat of BEATS) {
+    expect('lit' in beat.gate).toBe(false);
+    expect('dim' in beat.gate).toBe(false);
+  }
+});
+
 /**
  * THE GUIDED HALF OF THE REHEARSAL. D56.
  *

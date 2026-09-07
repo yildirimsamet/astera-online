@@ -1,6 +1,7 @@
 import js from '@eslint/js';
 import tseslint from 'typescript-eslint';
 import globals from 'globals';
+import reactHooks from 'eslint-plugin-react-hooks';
 import { defineConfig } from 'eslint/config';
 
 export default defineConfig(
@@ -110,6 +111,34 @@ export default defineConfig(
   {
     files: ['apps/web/**/*.{ts,tsx}'],
     languageOptions: { globals: { ...globals.browser } },
+  },
+
+  /**
+   * HOOK ORDER IS ENFORCED, BECAUSE BREAKING IT TAKES THE WHOLE APP DOWN.
+   *
+   * This is the only class of mistake in the client that cannot degrade: React
+   * does not render a broken panel, it throws out of the render and unmounts the
+   * entire tree. A player gets the crash screen and loses their session — from a
+   * hook sitting six lines below an early return.
+   *
+   * That is not hypothetical. `PlanetFocus` called `useAccordion` after returning
+   * early for an owned world, and because the focus rail is drawn with no `key`,
+   * moving the focus between your own colony and a foreign one changed the hook
+   * count on a live fiber. It shipped, and it reached every commander holding more
+   * than one world (React #310 in one direction, #300 in the other). Nothing in
+   * `pnpm verify` could see it: TypeScript cannot type hook order, and no test
+   * had re-rendered that component with the branch flipped.
+   *
+   * ONLY `rules-of-hooks`, DELIBERATELY. `exhaustive-deps` is advice about
+   * correctness that this codebase frequently and knowingly overrides — several
+   * effects here are meant to fire on a change of subject and not on every render
+   * — and the plugin's React Compiler rules are a different project. This one rule
+   * is the one whose violation is always a crash.
+   */
+  {
+    files: ['apps/web/**/*.{ts,tsx}'],
+    plugins: { 'react-hooks': reactHooks },
+    rules: { 'react-hooks/rules-of-hooks': 'error' },
   },
 
   /**

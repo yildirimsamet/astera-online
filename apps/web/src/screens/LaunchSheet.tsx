@@ -25,6 +25,8 @@ import {
 } from '../lib/navigation.js';
 import { familyGroups } from '../lib/roster.js';
 import { useAccordion } from '../lib/accordion.js';
+import { useAcademyLesson } from '../onboarding/lessonScope.js';
+import { ACADEMY_LEG_SECONDS, academyLessonFleet } from '@astera/rules';
 import { StatStrip } from '../ui/Action.js';
 import { Band } from '../ui/UpgradeRow.js';
 import { CapacityBar } from '../ui/CapacityBar.js';
@@ -109,6 +111,7 @@ export function LaunchSheet({
   const say = useToast();
   const [sending, setSending] = useState<Fleet>({});
   const [confirming, setConfirming] = useState(false);
+  const lesson = useAcademyLesson();
 
   const pirate = target.kind === 'pirate' ? target.pirate : null;
   // The commander's own ladders, off the payload, so the preview quotes exactly
@@ -124,11 +127,13 @@ export function LaunchSheet({
    * means the slowest ship selected cannot get there at all, which is the same
    * refusal the launch will make.
    */
-  const route = target.kind === 'pirate'
+  const planned = target.kind === 'pirate'
     ? planPirateRoute(target.pirate.reach, sending, planet.fleet, planet.ground, tech)
     : planRoute(
         planet.planet.position, target.world.position, sending, planet.fleet, planet.ground, tech,
       );
+  const route = lesson && planned ? { ...planned,
+    oneWayMinutes: ACADEMY_LEG_SECONDS / 60, exposureMinutes: (ACADEMY_LEG_SECONDS * 2 + 10) / 60 } : planned;
   const aim = route?.rendezvous ?? null;
   /**
    * HAND THE AIM POINT TO THE DISC, AND TAKE IT BACK ON THE WAY OUT.
@@ -224,9 +229,29 @@ export function LaunchSheet({
    */
   const atHome = MOBILE.reduce((sum, hull) => sum + (planet.fleet[hull] ?? 0), 0);
 
+  /**
+   * WHAT A LESSON LETS THE COMMANDER PICK, AND WHY IT IS A CEILING NOT A HINT.
+   *
+   * The Academy teaches one gesture for filling this picker — press Max — and its
+   * hand points at nothing else. So inside a mission lesson the picker may only
+   * offer numbers Max is allowed to produce, or the tutorial teaches a gesture
+   * that gets the launch refused. It did: the raid lesson wanted two Darts while
+   * three were standing, Max sent three, the private API refused it, and the
+   * Academy silences toasts — so the commit button simply did nothing.
+   *
+   * `academyLessonFleet` is the single statement of what each lesson sends, read
+   * here and by the Academy's own API, so the picker and the refusal cannot
+   * disagree. Outside a lesson this is `null` and the sheet is the ordinary one:
+   * everything standing at home, up to what is standing at home.
+   */
+  const allowance = lesson === 'pirate' || lesson === 'raid' ? academyLessonFleet(lesson) : null;
+  const roomFor = (hull: MobileHullId): number => {
+    const home = planet.fleet[hull] ?? 0;
+    return allowance ? Math.min(home, allowance[hull] ?? 0) : home;
+  };
+
   const set = (hull: MobileHullId, value: number): void => {
-    const available = planet.fleet[hull] ?? 0;
-    setSending((current) => ({ ...current, [hull]: Math.max(0, Math.min(available, value)) }));
+    setSending((current) => ({ ...current, [hull]: Math.max(0, Math.min(roomFor(hull), value)) }));
   };
 
   /**
@@ -301,12 +326,26 @@ export function LaunchSheet({
    * the grouping the hardest thing on the screen to read.
    */
   const row = (hull: MobileHullId) => {
+    /**
+     * WHAT IS STANDING HERE, AND WHAT THIS LESSON WILL LET YOU SPEND.
+     *
+     * They are different numbers and the row needs both. `available` is the truth
+     * about the hangar and it is what the row prints; `pickable` is the lesson's
+     * ceiling and it is what the stepper obeys.
+     *
+     * A hull the lesson does not want keeps its row with every control dead —
+     * owner correction, and the better reading. Hiding the captured Warden made
+     * the commander's own prize disappear from the one screen that lists their
+     * fleet, minutes after they were told they had won it.
+     */
     const available = planet.fleet[hull] ?? 0;
+    const pickable = roomFor(hull);
     const chosen = sending[hull] ?? 0;
     if (available === 0) return null;
     return (
       <div
         key={hull}
+        data-hull-row={hull}
         className={`border-b border-line-soft py-3 px-1 ${chosen > 0 ? 'bg-crystal/[0.05]' : ''}`}
       >
         {/*
@@ -366,7 +405,7 @@ export function LaunchSheet({
           <QuantityStepper
             value={chosen}
             min={0}
-            max={available}
+            max={pickable}
             onChange={(value) => { set(hull, value); }}
             decreaseLabel={t('launch.fewer', { name: hullLabel(hull) })}
             increaseLabel={t('launch.more', { name: hullLabel(hull) })}
@@ -388,6 +427,22 @@ export function LaunchSheet({
    * in the shipyard. A family this world has nothing of gets no heading.
    */
   const groups = familyGroups(MOBILE.filter((hull) => (planet.fleet[hull] ?? 0) > 0));
+
+  /**
+   * THE LESSON'S OWN READING ORDER, or null outside a lesson.
+   *
+   * Kept-back hulls first — the captured Warden is the commander's prize and
+   * belongs where it can be seen, but it is context rather than the task — then
+   * the hulls the lesson actually wants, in the order `academyLessonFleet` names
+   * them, so the Max presses the hand teaches run top to bottom with no dead row
+   * between them. A rule rather than a list: add a hull to a lesson and it sorts
+   * itself into the right half.
+   */
+  const lessonOrder = allowance === null ? null : [
+    ...MOBILE.filter((hull) => (planet.fleet[hull] ?? 0) > 0 && roomFor(hull) === 0),
+    ...Object.keys(allowance).filter((hull): hull is MobileHullId =>
+      MOBILE.includes(hull as MobileHullId) && roomFor(hull as MobileHullId) > 0),
+  ];
 
   /**
    * WHICH BANDS ARE SHOWING THEIR ROWS.
@@ -705,7 +760,24 @@ export function LaunchSheet({
             </span>
           </div>
         )}
-        {groups.map(({ family, hulls }) => {
+        {/*
+          A LESSON READS AS ONE LIST, IN THE ORDER THE LESSON MEANS. Owner
+          instruction: Warden, Dart, Courier.
+
+          Four band headings over three ships is the "never hold a section open"
+          rule broken for nothing, and the banding is not what a tutorial is
+          teaching here. What it IS teaching is two Max presses, so the two hulls
+          it wants run together at the bottom of the list, in the order
+          `academyLessonFleet` names them — and the captured Warden, which the
+          lesson will not let you send, sits above them where the commander can
+          still see the prize they just won.
+
+          The ordinary picker is untouched: outside a lesson this is `groups` and
+          `roster.ts` remains the only statement of the band order.
+        */}
+        {lessonOrder !== null
+          ? lessonOrder.map(row)
+          : groups.map(({ family, hulls }) => {
           /*
             THE SAME BAND, IN THE SAME ORDER, AS THE TAB THESE SHIPS WERE BOUGHT ON —
             AND IT FOLDS. Owner instruction.
@@ -725,7 +797,7 @@ export function LaunchSheet({
             would cost a tap to save nothing at all.
           */
           const foldable = groups.length > 1;
-          const open = !foldable || families.isOpen(family);
+          const open = lesson !== null || !foldable || families.isOpen(family);
           return (
             <section key={family} data-fleet-family={family}>
               <Band
@@ -734,14 +806,14 @@ export function LaunchSheet({
                   ? {
                     count: hulls.reduce((sum, hull) => sum + (planet.fleet[hull] ?? 0), 0),
                     open,
-                    onToggle: () => { families.toggle(family); },
+                    onToggle: () => { if (!lesson) families.toggle(family); },
                   }
                   : {})}
               />
               {open ? hulls.map(row) : null}
             </section>
           );
-        })}
+          })}
         {atHome === 0 && <p className="text-body text-dim">{t('launch.noShips')}</p>}
       </div>
 

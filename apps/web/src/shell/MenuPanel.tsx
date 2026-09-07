@@ -69,6 +69,7 @@ export function MenuPanel({
   onClearRival,
   onOpen,
   onSignOut,
+  onReplayAcademy,
   isAdmin = false,
 }: {
   galaxy: string | null;
@@ -82,6 +83,7 @@ export function MenuPanel({
   onClearRival?: () => void;
   onOpen: (panel: Panel) => void;
   onSignOut: () => void;
+  onReplayAcademy?: () => void;
   isAdmin?: boolean;
 }) {
   const { t } = useTranslation();
@@ -202,6 +204,8 @@ export function MenuPanel({
           hint={t('menu.guideHint')}
           href={GUIDE_URL}
         />
+        {onReplayAcademy && <MenuRow icon={<GuideIcon className="size-5" />} label={t('academy.replay')}
+          hint={t('academy.replayHint')} onClick={onReplayAcademy} />}
         {/* TODO: for now its closed */}
         {/* <MenuRow
           icon={<HeartIcon className="size-5" />}

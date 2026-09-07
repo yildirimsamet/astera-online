@@ -2409,8 +2409,16 @@ export const PIRATE = {
    * The inverse of the damage table, and that inversion IS the decision: the
    * pirate that is cheapest to beat carries the ship worth least. Anything short
    * of DECISIVE pays nothing here — survivors fly away with their own ships.
+   *
+   * RAISED THROUGHOUT, and flattened at the hard end, on owner instruction
+   * (0.5/0.35/0.25/0.15 → 0.75/0.5/0.35/0.3). The inversion is intact and still
+   * the decision; what changed is the altitude. At the old table a level 4 raid
+   * paid a hull once in seven, which priced the game's most expensive PvE fight
+   * as a lottery — the prize was a story, but a story you had to fund six times.
+   * The top two rungs now sit close together on purpose: past level 2 you are
+   * choosing WHICH hull you are gambling for, not whether the gamble pays.
    */
-  captureChance: { 1: 0.5, 2: 0.35, 3: 0.25, 4: 0.15 },
+  captureChance: { 1: 0.75, 2: 0.5, 3: 0.35, 4: 0.3 },
 
   /** Ships in one pirate. Small on purpose: this is a fight you can read. */
   sizeMin: 2,
@@ -2427,8 +2435,38 @@ export const PIRATE = {
    * composed fleet and negative for a wrong one — see `docs/balance.md`.
    */
   hoardValueMult: 1.4,
-  /** How the hoard splits. Deuterium is the smallest share: it is also fuel. */
-  hoardShare: { alloy: 0.55, crystal: 0.3, deuterium: 0.15 },
+  /**
+   * How the hoard splits. Deuterium is the smallest share: it is also fuel.
+   *
+   * CUT TWICE ON OWNER INSTRUCTION, AND THE SECOND CUT SET A CEILING: 0.15 →
+   * 0.075 → 0.008, so the richest level-4 hoard the generator can produce pays
+   * about 500 deuterium and every level below it scales from the same share.
+   *
+   * WHY A SHARE AND NOT A CAP. A flat `min(deuterium, 500)` was the obvious shape
+   * and it flattens the ladder: levels 2, 3 and 4 would all have paid 500 at the
+   * top, and the level badge is exactly the number a commander prices the fight
+   * against. Scaling keeps each hoard proportional to what the pirate is worth,
+   * which is the property the whole hoard is built on. The measured ceilings are
+   * 45 · 137 · 285 · 497 — a ladder, ending where the owner put it.
+   *
+   * WHY IT IS THIS SMALL AT ALL. Fuel is what makes a raid cost something (D136):
+   * it is paid in full at launch and never refunded. A hoard that hands the tank
+   * back turns the pirate lane into a loop that funds its own next trip, which is
+   * the one thing this reward may not become. Deuterium is now a garnish; alloy
+   * and crystal are the prize.
+   *
+   * NOT REDISTRIBUTED, on purpose. Moving the freed share onto alloy and crystal
+   * would have kept the lane paying what it always paid, in a currency that is
+   * easier to spend — the opposite of the instruction. So these no longer sum to
+   * 1 and `hoardValueMult` is no longer the whole multiplier: a hoard is worth
+   * `hoardValueMult × 0.858` of the pirate's hulls. Stated here rather than folded
+   * into `hoardValueMult`, because 1.4 is a SWEPT number that `docs/balance.md`
+   * and `tools/pirate-study.ts` know by that name, and rewriting it would hide a
+   * reward cut inside a constant nobody would think to re-derive.
+   * `pirates.test.ts` reads both numbers and asserts their product, and samples
+   * the ceiling rather than trusting this comment.
+   */
+  hoardShare: { alloy: 0.55, crystal: 0.3, deuterium: 0.008 },
 
   /**
    * New pirates per SEAT per hour, and the galaxy-wide rate that follows.

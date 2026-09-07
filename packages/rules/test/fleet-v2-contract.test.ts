@@ -364,10 +364,11 @@ describe('Fleet V2 catalog contract — D148', () => {
     expect(runtimeProperty(MULTI_WORLD.settlement, 'haulers')).toBeUndefined();
   });
 
-  it('keeps the ship reward generic and above the two staged opening craft', () => {
+  it('keeps the ship reward generic with an Academy tier for the two opening craft', () => {
     const chain = REWARD_CHAINS.find(({ id }) => id === 'SHIPS');
     expect(chain?.metric).toBe('count');
-    expect(chain?.tiers[0]?.goal).toBeGreaterThan(2);
+    expect(chain?.tiers[0]?.goal).toBe(2);
+    expect(chain?.tiers.slice(1).every((tier) => tier.goal > 2)).toBe(true);
   });
 });
 

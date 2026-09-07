@@ -21,7 +21,8 @@ import { commanderKnownHere, forgetCommander, rememberCommander } from '../src/l
  * page starts a rehearsal, the rehearsal ends in a dialog asking you to CREATE a
  * commander, and a new name is a legitimately new account entitled to a seat.
  *
- * So the weights invert for a device that has held a commander. These tests hold
+ * Sign-in comes first on a known device; training has equal weight for somebody
+ * sharing it (onboarding review B2). These tests hold
  * three things: that a stranger still meets D56's door unchanged, that a returning
  * player meets the way back in, and that BOTH doors stay reachable from either
  * state — because the flag is a hint about emphasis and must never become a gate.
@@ -114,9 +115,11 @@ describe('the front door on a device that has held a commander', () => {
    * commander, must still get through — the flag decides which control is loud and
    * locks nothing.
    */
-  it('still lets a genuinely new commander start, from the quiet line', async () => {
+  it('gives a new player on a shared device an equally visible training door', async () => {
     const { onBegin } = show(true);
-    await userEvent.setup().click(screen.getByRole('button', { name: /start a new commander/i }));
+    const door = screen.getByRole('button', { name: /start a new commander/i });
+    expect(door).toHaveClass('enter');
+    await userEvent.setup().click(door);
     expect(onBegin).toHaveBeenCalled();
   });
 });

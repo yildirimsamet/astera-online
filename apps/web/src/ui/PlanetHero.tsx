@@ -120,7 +120,7 @@ export function PlanetHero({
 
 
           <div className="absolute size-[132px] rounded-full border border-line-soft/50" />
-          <div className="absolute size-[132px] motion-safe:animate-[spin_84s_linear_infinite]">
+          <div className="absolute size-[132px] animate-[spin_84s_linear_infinite]">
             {orbitals.map((type, i) => {
               const angle = (i / Math.max(1, orbitals.length)) * 360;
               return (

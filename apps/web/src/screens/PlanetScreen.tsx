@@ -99,6 +99,7 @@ import { Band, DecisionGroup, UpgradeRow, type Blocked } from '../ui/UpgradeRow.
 import { ClassChip, CounterCycle, CounterLine } from '../ui/CounterMark.js';
 import { orderMinutes } from '../lib/orderTime.js';
 import { useAccordion } from '../lib/accordion.js';
+import { academyGroup, useAcademyLesson } from '../onboarding/lessonScope.js';
 import { describe, useToast } from '../ui/Toast.js';
 import { Sheet } from '../ui/kit/index.js';
 import { QuantityStepper } from '../ui/QuantityStepper.js';
@@ -179,6 +180,7 @@ export function PlanetScreen({
 }) {
   const { t } = useTranslation();
   const { data, dataUpdatedAt, isError, refetch } = usePlanet();
+  const lesson = useAcademyLesson();
   const held = useProjected(data?.planet, dataUpdatedAt, 5000);
   const [building, setBuilding] = useState<HullId | null>(null);
   const [sheet, setSheet] = useState<SheetSpec | null>(null);
@@ -301,7 +303,7 @@ export function PlanetScreen({
     it is something else saying where to go — a build row pointed at from the map,
     a queue tapped in the strip — and answering that is the whole point of it.
   */
-  const active = tab ?? focusGroup ?? 'grow';
+  const active = lesson ? focusGroup ?? 'grow' : tab ?? focusGroup ?? 'grow';
   const recovering = data.planet.recoveryUntil !== null
     && data.planet.recoveryUntil !== undefined
     && data.planet.recoveryUntil.getTime() > serverNow();
@@ -346,9 +348,9 @@ export function PlanetScreen({
         sixteen-pixel gutter, and no owner to change when it was wrong.
       */}
       <div className="flex flex-col gap-3 pb-2">
-        <div className="px-2 pt-2">
+        {!lesson && <div className="px-2 pt-2">
           <PlanetHero planet={data} compact={embedded} />
-        </div>
+        </div>}
 
         <div className="px-2">
           <BuildQueues planet={data} />
@@ -360,7 +362,7 @@ export function PlanetScreen({
           </div>
         )}
 
-        {data.strategic && (
+        {!lesson && data.strategic && (
           <div className="px-2">
             <DeathStarForge planet={data} held={held} recovering={recovering} />
           </div>
@@ -373,9 +375,9 @@ export function PlanetScreen({
         />
 
         <div className="flex flex-col gap-4 px-2">
-          <OrbitContext planet={data} />
+          {!lesson && <OrbitContext planet={data} />}
 
-          {active === 'reach' && !data.strategic && (
+          {!lesson && active === 'reach' && !data.strategic && (
             <DeathStarForge planet={data} held={held} recovering={recovering} />
           )}
 
@@ -843,6 +845,7 @@ function Tabs({
   held: Projected;
 }) {
   const { t } = useTranslation();
+  const lesson = useAcademyLesson();
   // Opaque, because it is sticky: at 95% the rows scrolling underneath ghosted
   // through the wallet figures, which are the one thing on it a player reads
   // against a price.
@@ -859,7 +862,7 @@ function Tabs({
         marker="tab"
         role="tablist"
         label={t('planet.tabs.label')}
-        segments={TABS.map((id) => ({ id, label: t(GROUPS[id].problem) }))}
+        segments={(lesson ? TABS.slice(0, TABS.indexOf(academyGroup(lesson)) + 1) : TABS).map((id) => ({ id, label: t(GROUPS[id].problem) }))}
         value={active}
         onSelect={onSelect}
         tabId={(id) => `planet-tab-${id}`}
@@ -1257,6 +1260,7 @@ function Defend({
   onBuild,
 }: GroupProps & { onBuild: (hull: HullId) => void }) {
   const { t } = useTranslation();
+  const lesson = useAcademyLesson();
   const building = useBuildingAction(planet, onFlash);
   const instrument = useInstrumentAction(planet, onFlash);
   const vault = building('VAULT', buildingName('VAULT'), onNeed);
@@ -1442,7 +1446,7 @@ function Defend({
         label={t('planet.defend.strategicBand')}
         note={t('planet.defend.strategicNote')}
       />
-      <InterceptorBattery planet={planet} held={held} onNeed={onNeed} />
+      {!lesson && <InterceptorBattery planet={planet} held={held} onNeed={onNeed} />}
     </>
   );
 }
@@ -1813,6 +1817,7 @@ function Reach({
   // `slice(0, 1)` rather than `[FLEET_FAMILY_ORDER[0]]`: the order is the single
   // statement of which band leads, and an index read is `| undefined` here.
   const families = useAccordion('fleet', FLEET_FAMILY_ORDER.slice(0, 1));
+  const lesson = useAcademyLesson();
   const building = useBuildingAction(planet, onFlash);
   const orbit = useOrbitAction(planet, onFlash);
   const shipyard = building('SHIPYARD', buildingName('SHIPYARD'), onNeed);
@@ -2082,7 +2087,7 @@ function Reach({
         saved.
       */}
       {FLEET_FAMILY_ORDER.map((family) => {
-        const open = families.isOpen(family);
+        const open = lesson ? family === 'OFFENSIVE' || (lesson === 'courier' && family === 'CARGO') : families.isOpen(family);
         return (
           <section
             key={family}
@@ -2094,7 +2099,7 @@ function Reach({
               {...(open ? { note: t(`planet.reach.family.${family}.note`) } : {})}
               count={HULLS_BY_FAMILY[family].length}
               open={open}
-              onToggle={() => { families.toggle(family); }}
+              onToggle={() => { if (!lesson) families.toggle(family); }}
             />
             {open ? HULLS_BY_FAMILY[family].map(hull) : null}
           </section>
@@ -2114,7 +2119,7 @@ function Reach({
         listed, so both are footnotes to what is above them rather than a preamble
         to it, and a reader arrives here having already passed what they came for.
       */}
-      <Band label={t('planet.reach.orbitBand')} note={t('planet.reach.orbitNote')} />
+      {!lesson && <Band label={t('planet.reach.orbitBand')} note={t('planet.reach.orbitNote')} />}
       {(['DERRICK', 'BEACON'] as const).map((id) => (
         <SatelliteItemRow
           key={id}
@@ -2364,6 +2369,11 @@ function BuildSheet({
   const spec = HULLS[hull];
   const build = useBuild();
   const say = useToast();
+  const lesson = useAcademyLesson();
+  // The hand points straight to Build. Offer the authored quantity, not the
+  // live game's default of one, which the local lesson correctly refuses.
+  const lessonCount = hull === 'DART' && (lesson === 'darts' || lesson === 'reinforcements') ? 2
+    : (hull === 'PROSPECTOR' && lesson === 'prospector') || (hull === 'COURIER' && lesson === 'courier') ? 1 : null;
 
   /**
    * A PROSPECTOR IS RATIONED, AND THE SHEET HAS TO SAY SO.
@@ -2413,7 +2423,7 @@ function BuildSheet({
   const room = Math.min(affordable, cap);
   const ceiling = Math.max(1, room);
   const [count, setCount] = useState(1);
-  const clamped = Math.min(count, ceiling);
+  const clamped = lessonCount ?? Math.min(count, ceiling);
   const totalAlloy = spec.alloy * clamped;
   const totalCrystal = spec.crystal * clamped;
   const totalDeuterium = spec.deuterium * clamped;
@@ -2588,8 +2598,8 @@ function BuildSheet({
           <div className="mb-1">
             <QuantityStepper
               value={clamped}
-              min={1}
-              max={ceiling}
+              min={lessonCount ?? 1}
+              max={lessonCount ?? ceiling}
               onChange={setCount}
               decreaseLabel={t('planet.buildSheet.fewer', { name: hullLabel(hull) })}
               increaseLabel={t('planet.buildSheet.more', { name: hullLabel(hull) })}

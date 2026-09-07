@@ -7,6 +7,7 @@ import { PlanetScreen } from '../src/screens/PlanetScreen.js';
 import { ToastProvider } from '../src/ui/Toast.js';
 import type { PlanetView } from '../src/api/schemas.js';
 import { openAllBands, planetView } from './fixtures.js';
+import { AcademyLessonContext } from '../src/onboarding/lessonScope.js';
 
 /**
  * HOW MANY, AND THE ONE HULL WHERE THE ANSWER IS NOT "AS MANY AS YOU CAN AFFORD".
@@ -379,6 +380,20 @@ describe('fleet holdings beside each hull name', () => {
 });
 
 describe('the quantity picker', () => {
+  it.each(['darts', 'reinforcements'] as const)('offers the exact two-Dart lesson order on the first Build press in %s', async (lesson) => {
+    current = rich();
+    build.mockClear();
+    const client = new QueryClient();
+    render(<QueryClientProvider client={client}><ToastProvider><AcademyLessonContext.Provider value={lesson}>
+      <PlanetScreen focusGroup="reach" />
+    </AcademyLessonContext.Provider></ToastProvider></QueryClientProvider>);
+    await userEvent.click(document.querySelector('#row-DART button')!);
+    expect(screen.getByRole('textbox', { name: /dart quantity/i })).toHaveValue('2');
+    expect(screen.getByRole('button', { name: /fewer dart/i })).toBeDisabled();
+    expect(screen.getByRole('button', { name: /more dart/i })).toBeDisabled();
+    await userEvent.click(screen.getByRole('button', { name: /build 2/i }));
+    expect(build).toHaveBeenCalledWith({ hull: 'DART', count: 2 }, expect.anything());
+  });
   it('shows the Hangar and never offers more ships than fit', async () => {
     const hangar = hangarCapacity(0);
     show({

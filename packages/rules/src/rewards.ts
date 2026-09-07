@@ -21,7 +21,7 @@ import type { Resources } from './types.js';
  * Nothing here can be earned by waiting. A player who leaves the tab open for a
  * week completes none of it; a player who probes a neighbour completes one in
  * ninety seconds. That is the correct direction for a game whose recorded risk is
- * *"nobody scouts — the game degrades into a worse OGame"*: two of the eleven
+ * *"nobody scouts — the game degrades into a worse OGame"*: two of the action
  * chains pay for probing and raiding specifically, and they are the two with the
  * largest purses.
  *
@@ -40,7 +40,8 @@ import type { Resources } from './types.js';
  *   · A fresh Vault-0 planet's alloy store holds 5,611 and a Wasp costs 300. So
  *     a first tier at 200 alloy is two-thirds of a warship — felt immediately,
  *     and still too small to replace production.
- *   · The whole table pays 14,600 alloy and 6,555 crystal if every tier is taken,
+ *   · The season table pays 18,950 alloy and 8,445 crystal after D172's opening,
+ *     Vault, Aegis and pirate additions (account-scoped social grants excluded),
  *     and stays deliberately UNSCALED by the slower tempo. Rewards pay actions,
  *     not waiting; keeping them fixed makes play slightly more valuable while the
  *     fixed-goal simulation proves they still do not replace the economy.
@@ -63,7 +64,7 @@ import type { Resources } from './types.js';
  * görevler toplanarak ilerler."*
  *
  * NOTHING HERE IS STORED AS PROGRESS except one tally the world genuinely cannot
- * reconstruct (see the `SHIPS` chain). The other ten metrics are counted off rows that exist
+ * reconstruct (see the `SHIPS` chain). Other metrics are counted off rows that exist
  * anyway — missions flown, runs completed, levels standing — which keeps this
  * table inside the architectural rule that nothing is stored which a formula can
  * derive, and means a chain added later is retroactive for free.
@@ -80,12 +81,14 @@ export const REWARD_CHAIN_IDS = [
   'SOCIAL',
   'PROBE',
   'RAID',
+  'PIRATE',
   'CORE',
   'SHIPYARD',
   'REFINERY',
   'EXTRACTOR',
   'SHIPS',
   'AEGIS',
+  'VAULT',
   'MINE',
   'SALVAGE',
 ] as const;
@@ -112,7 +115,7 @@ export type RewardMetric = 'count' | 'level' | 'grant';
  * earned and one that is given. Owner instruction: *"twitter takip bonusu kişiye
  * 1 kez verilebilmeli. her sezon her sezon alamaz."*
  *
- *   `season`   the ten counted chains. Progress is read off THIS season's world —
+ *   `season`   the counted chains. Progress is read off THIS season's world —
  *              probes flown, levels standing — so it necessarily starts again
  *              when the world does, and it should: a new galaxy is a new game and
  *              the first probe in it is a real first probe.
@@ -199,6 +202,7 @@ const CHAINS: Record<RewardChainId, RewardChain> = {
     metric: 'level',
     scope: 'season',
     tiers: [
+      { goal: 2, reward: reward(100, 45) },
       { goal: 3, reward: reward(250, 110) },
       { goal: 5, reward: reward(500, 220) },
       { goal: 7, reward: reward(900, 400) },
@@ -211,6 +215,7 @@ const CHAINS: Record<RewardChainId, RewardChain> = {
     metric: 'level',
     scope: 'season',
     tiers: [
+      { goal: 1, reward: reward(100, 45) },
       { goal: 2, reward: reward(200, 90) },
       { goal: 3, reward: reward(400, 180) },
       { goal: 4, reward: reward(700, 310) },
@@ -222,6 +227,7 @@ const CHAINS: Record<RewardChainId, RewardChain> = {
     metric: 'level',
     scope: 'season',
     tiers: [
+      { goal: 2, reward: reward(100, 45) },
       { goal: 3, reward: reward(200, 90) },
       { goal: 5, reward: reward(400, 180) },
       { goal: 7, reward: reward(750, 335) },
@@ -233,6 +239,7 @@ const CHAINS: Record<RewardChainId, RewardChain> = {
     metric: 'level',
     scope: 'season',
     tiers: [
+      { goal: 2, reward: reward(100, 45) },
       { goal: 3, reward: reward(200, 90) },
       { goal: 5, reward: reward(400, 180) },
       { goal: 7, reward: reward(750, 335) },
@@ -258,6 +265,7 @@ const CHAINS: Record<RewardChainId, RewardChain> = {
     metric: 'count',
     scope: 'season',
     tiers: [
+      { goal: 2, reward: reward(100, 45) },
       { goal: 5, reward: reward(200, 90) },
       { goal: 10, reward: reward(350, 155) },
       { goal: 20, reward: reward(600, 265) },
@@ -265,12 +273,35 @@ const CHAINS: Record<RewardChainId, RewardChain> = {
     ],
   },
 
-  /** One tier. Either the shield generator is on the ground or it is not. */
+  /** D172: the first shield is taught; later rungs remain goals in the galaxy. */
   AEGIS: {
     id: 'AEGIS',
     metric: 'level',
     scope: 'season',
-    tiers: [{ goal: 1, reward: reward(500, 220) }],
+    tiers: [
+      { goal: 1, reward: reward(500, 220) },
+      { goal: 3, reward: reward(750, 335) },
+      { goal: 5, reward: reward(1000, 445) },
+    ],
+  },
+
+  VAULT: {
+    id: 'VAULT', metric: 'level', scope: 'season',
+    tiers: [
+      { goal: 1, reward: reward(200, 90) },
+      { goal: 3, reward: reward(400, 180) },
+      { goal: 5, reward: reward(750, 335) },
+    ],
+  },
+
+  /** Different pirates defeated, not launches or repeated hits on one crew. */
+  PIRATE: {
+    id: 'PIRATE', metric: 'count', scope: 'season',
+    tiers: [
+      { goal: 1, reward: reward(300, 135) },
+      { goal: 3, reward: reward(550, 245) },
+      { goal: 5, reward: reward(900, 400) },
+    ],
   },
 
   /**

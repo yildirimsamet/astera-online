@@ -132,7 +132,7 @@ export function BeatCard({
     >
       <div
         key={nudge}
-        className="plate plate-cut plate-cut-sm pointer-events-auto w-full max-w-md p-4 motion-safe:animate-[nudge_360ms_ease-out]"
+        className="plate plate-cut plate-cut-sm pointer-events-auto w-full max-w-md p-4 animate-[nudge_360ms_ease-out]"
       >
         {/*
           A rank of pips rather than "3/9". The player is not tracking a count —

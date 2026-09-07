@@ -75,12 +75,37 @@ describe('shared progression presentation', () => {
       .toHaveTextContent('that build queue is full');
   });
 
-  it('locks and desaturates only an unmet, never-owned item', () => {
+  /**
+   * THE ART DIMS IN THREE STEPS, AND IT USED TO BE A SWITCH.
+   *
+   * This asserted `grayscale`, which the row stopped using: the treatment moved
+   * from "coloured or not" to a ladder of opacity — owned art at full strength,
+   * an available unowned one at 65%, and a locked one at 20%. The test was left
+   * behind and had been failing ever since.
+   *
+   * Written as the LADDER rather than as one class, because the ladder is the
+   * claim. A single `toHaveClass('opacity-20')` would pass just as happily on a
+   * row that dimmed everything to 20%, which would say the opposite of what the
+   * three states are for.
+   */
+  const art = (over: Partial<Parameters<typeof UpgradeRow>[0]>) =>
+    render(<UpgradeRow {...base} {...over} />).container
+      .querySelector('[data-art] > img')?.className ?? '';
+
+  it('dims an unmet, never-owned item hardest, and locks it', () => {
     const view = render(
       <UpgradeRow {...base} unowned blocked={{ reason: 'Needs Shipyard L4' }} />,
     );
-    expect(view.container.querySelector('[data-art] > img')).toHaveClass('grayscale');
+    expect(view.container.querySelector('[data-art] > img')).toHaveClass('opacity-20');
     expect(view.container.querySelector('[data-art] svg')).toBeInTheDocument();
+  });
+
+  it('dims an available unowned item less, and an owned one not at all', () => {
+    expect(art({ unowned: true })).toContain('opacity-65');
+    expect(art({ unowned: true })).not.toContain('opacity-20');
+    const owned = art({});
+    expect(owned).not.toContain('opacity-20');
+    expect(owned).not.toContain('opacity-65');
   });
 
   it('keeps the affordability time on a row that opens a detail sheet', () => {

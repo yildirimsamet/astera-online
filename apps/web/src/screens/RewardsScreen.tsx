@@ -18,6 +18,7 @@ import {
   RewardIcon,
   ScanIcon,
   ShipyardIcon,
+  VaultIcon,
   type IconProps,
 } from '../ui/icons/index.js';
 import { Rungs } from '../ui/Rungs.js';
@@ -61,6 +62,8 @@ const CHAIN_ICON: Record<string, (props: IconProps) => React.ReactElement> = {
   EXTRACTOR: ExtractorIcon,
   SHIPS: HullIcon,
   AEGIS: AegisIcon,
+  VAULT: VaultIcon,
+  PIRATE: AttackIcon,
   MINE: DrillIcon,
   SALVAGE: CargoIcon,
   SOCIAL: RewardIcon,
@@ -559,7 +562,7 @@ function TierRow({
       </span>
 
       {tier.state === 'claimable' ? (
-        <Button
+        <span data-reward-claim={tier.id}><Button
           className="relative"
           size="sm"
           variant="primary"
@@ -569,7 +572,7 @@ function TierRow({
           }}
         >
           {t('rewards.claim')}
-        </Button>
+        </Button></span>
       ) : tier.state === 'claimed' ? (
         <span className="num relative shrink-0 text-micro text-faint">{t('rewards.claimed')}</span>
       ) : (

@@ -1,7 +1,7 @@
 import { and, eq } from 'drizzle-orm';
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
-import { PLANET_START } from '@astera/rules';
+import { ACADEMY_STEPS, PLANET_START } from '@astera/rules';
 import { registerBody } from '../auth/credentials.js';
 import type { Tx } from '../db/client.js';
 import { buildOrders, missions, planets, units } from '../db/schema.js';
@@ -51,6 +51,9 @@ const intent = onboardingIntentSchema;
  */
 const claimBody = registerBody.extend({
   intents: z.array(intent).max(12).default([]),
+  step: z.number().int().min(0).max(ACADEMY_STEPS.length).optional(),
+}).strict().refine((body) => body.step === undefined || body.intents.length === 0, {
+  message: 'Choose Academy or legacy intents, never both',
 });
 
 type Intent = z.infer<typeof intent>;
@@ -87,10 +90,10 @@ export function registerOnboardingRoutes(app: FastifyInstance): void {
     const placement = await currentPlacement(app.db, account.id);
     const seated = placement
       ? await seatIn(app, account.id, placement.shardCode)
-      : await seatOnFrontier(app, account.id);
+      : await seatOnFrontier(app, account.id, body.step);
     const { target, joined } = seated;
 
-    const applied = await withPlanetLock(
+    const applied = body.step !== undefined ? [] : await withPlanetLock(
       app.db,
       joined.planetId,
       app.clock,
@@ -180,9 +183,10 @@ const seatIn = async (
   app: FastifyInstance,
   accountId: string,
   shardCode: string,
+  step?: number,
 ): Promise<Seated> => {
   const target = await resolveJoinTarget(app.db, shardCode, app.clock);
-  return { target, joined: await joinSeason(app.db, accountId, target.seasonId, app.clock) };
+  return { target, joined: await joinSeason(app.db, accountId, target.seasonId, app.clock, step) };
 };
 
 /**
@@ -199,12 +203,12 @@ const seatIn = async (
  * on: `SERVERS` tops out at two, and a claim that cannot find a seat in three goes
  * has met a world at capacity rather than a race.
  */
-async function seatOnFrontier(app: FastifyInstance, accountId: string): Promise<Seated> {
+async function seatOnFrontier(app: FastifyInstance, accountId: string, step?: number): Promise<Seated> {
   for (let attempt = 0; attempt < 3; attempt += 1) {
     const open = (await listServers(app.db, app.clock)).find((s) => s.status === 'open');
     if (!open) throw new GameError('NO_FRONTIER', 'Every galaxy is full right now', 409);
     try {
-      return await seatIn(app, accountId, open.code);
+      return await seatIn(app, accountId, open.code, step);
     } catch (err) {
       const raced =
         err instanceof GameError && (err.code === 'SHARD_FULL' || err.code === 'SERVER_LOCKED');
@@ -224,6 +228,10 @@ async function seatOnFrontier(app: FastifyInstance, accountId: string): Promise<
  * fast proof that no paid opening order was placed.
  */
 async function untouched(tx: Tx, planet: LockedPlanet): Promise<boolean> {
+  const [origin] = await tx.select({ step: planets.academyStep }).from(planets)
+    .where(eq(planets.id, planet.planetId));
+  // A seeded Academy checkpoint is already an opening, even if skipped at step 0.
+  if (origin?.step !== null && origin?.step !== undefined) return false;
   /**
    * COMPARED AGAINST WHAT A PLANET IS CREATED WITH, not against `START`.
    *

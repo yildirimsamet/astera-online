@@ -11,6 +11,7 @@ import type { PlanetsView } from '../src/api/schemas.js';
 import { StatusBar } from '../src/shell/StatusBar.js';
 import { ToastProvider } from '../src/ui/Toast.js';
 import { planetView } from './fixtures.js';
+import { AcademyLessonContext } from '../src/onboarding/lessonScope.js';
 
 const capital = planetView({}, { id: 'capital', name: 'Origin' });
 const colony = planetView({}, { id: 'colony', name: 'Haven' });
@@ -57,6 +58,16 @@ const show = (data = worlds()) => {
 };
 
 describe('commander world selection', () => {
+  it('does not show the account menu and signals before they are taught in Academy', () => {
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    client.setQueryData(keys.planet, capital);
+    const api = new Api({ fetch: () => Promise.reject(new Error('unexpected fetch')) });
+    render(<QueryClientProvider client={client}><ApiProvider api={api}><ToastProvider>
+      <AcademyLessonContext.Provider value="core"><StatusBar commander="Academy" onOpen={vi.fn()} onFocusPlanet={vi.fn()} /></AcademyLessonContext.Provider>
+    </ToastProvider></ApiProvider></QueryClientProvider>);
+    expect(screen.queryByRole('button', { name: /menu|signals/i })).not.toBeInTheDocument();
+    expect(screen.getByText('Alloy')).toBeInTheDocument();
+  });
   it('focuses the world chosen from the active-world dropdown', async () => {
     localStorage.clear();
     const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });

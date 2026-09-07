@@ -14,6 +14,7 @@ import { chronicle } from './chronicle.js';
 import { clan } from './clan.js';
 import { community } from './community.js';
 import { trade } from './trade.js';
+import { academy } from './academy.js';
 
 /**
  * ENGLISH, AND IT IS THE SHAPE EVERY OTHER LANGUAGE IS CHECKED AGAINST.
@@ -31,6 +32,7 @@ import { trade } from './trade.js';
  * between English and Turkish — the other must not move with it.
  */
 export const en = {
+  academy,
   landing,
   servers,
   app,

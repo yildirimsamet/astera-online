@@ -37,6 +37,7 @@
     "@gltf-transform/cli": "^4.4.2",
     "@types/node": "^22.10.2",
     "eslint": "^10.8.1",
+    "eslint-plugin-react-hooks": "^7.1.1",
     "globals": "^17.11.0",
     "playwright": "^1.62.1",
     "tsx": "^4.23.12",

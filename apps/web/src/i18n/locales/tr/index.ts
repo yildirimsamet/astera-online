@@ -14,6 +14,7 @@ import { chronicle } from './chronicle.js';
 import { clan } from './clan.js';
 import { community } from './community.js';
 import { trade } from './trade.js';
+import { academy } from './academy.js';
 import type { Resources } from '../en/index.js';
 
 /**
@@ -25,6 +26,7 @@ import type { Resources } from '../en/index.js';
  * anahtarı yakalar ama boş bir dizeyi yakalamaz.
  */
 export const tr: Resources = {
+  academy,
   landing,
   servers,
   app,

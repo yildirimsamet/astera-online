@@ -74,6 +74,12 @@ export function planetView(
       prerequisite: RESEARCH_PROJECTS[id].prerequisite,
     })),
     researchQueue: [],
+    /**
+     * A NEWCOMER BY DEFAULT, so the coaching card is exercised rather than gated
+     * out of every test that renders it. Production is the other way round: an
+     * established world carries null here and sees no guide.
+     */
+    academyStep: 0,
     fleet: { DART: 12 },
     ground: {},
     /** Craft that are off the planet. Empty by default: nothing is in the air. */

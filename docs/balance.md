@@ -628,10 +628,26 @@ Average net per raid, from the same tool:
 
 | Composition | L1 | L2 | L3 | L4 |
 | ----------- | -- | -- | -- | -- |
-| sized for the target | 2,403 | 5,287 | 8,760 | 8,872 |
-| sized, but no hold | 1,427 | 4,248 | 7,409 | 7,536 |
-| sized, but no guns | −1,235 | −4,157 | −11,520 | −26,447 |
-| fixed 40 Darts + 2 Couriers | 2,578 | 2,301 | −2,320 | −8,547 |
+| sized for the target | 2,353 | 4,788 | 7,874 | 7,294 |
+| sized, but no hold | 1,532 | 4,183 | 7,012 | 6,606 |
+| sized, but no guns | −1,150 | −3,871 | −10,724 | −24,616 |
+| fixed 40 Darts + 2 Couriers | 2,431 | 2,402 | −2,237 | −8,422 |
+
+Re-measured after the owner's pirate tunes: `captureChance` raised to 0.75/0.5/0.35/0.3, and
+`hoardShare.deuterium` cut twice — to 0.075, then to **0.008**, which is a ceiling rather than
+a trim. It is set so the richest level-4 roster the generator can draw pays about 500
+deuterium; the measured ceilings run 45 · 137 · 285 · 497. A flat cap was rejected because it
+would have paid the same 500 at levels 2, 3 and 4 and flattened the one number a commander
+prices the fight against.
+
+The two tunes pull opposite ways — a much smaller hoard against a hull that lands far more
+often — and the net lands slightly flatter and slightly lower than before: L1 gives back about
+3%, L4 about 18%. The lane still pays a fleet built for the target and still punishes one that
+is not, which is the only property this table exists to hold.
+
+Note the shares now sum to 0.858, so a hoard is worth `hoardValueMult × 0.858` of the pirate's
+hulls. `hoardValueMult` itself is untouched at 1.4 so the swept number keeps meaning what
+`pirate-study.ts` and this table say it means.
 
 Two things that table has to keep saying. Bringing no hold costs roughly a third of the
 prize — cargo room is bought with combat power, so how much to bring is the raid decision

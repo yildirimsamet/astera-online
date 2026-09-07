@@ -8,12 +8,14 @@ import type { Focus } from '../galaxy/FocusPanel.jsx';
 import { describe } from '../ui/Toast.js';
 import { hullLabel } from '../i18n/names.js';
 import { full } from '../lib/format.js';
+import { track } from '../lib/analytics.js';
 import { GalaxyView, type Panel } from '../screens/GalaxyView.jsx';
 import { PendingStrip } from '../shell/PendingStrip.js';
 import { StatusBar } from '../shell/StatusBar.js';
 import { BeatCard } from './BeatCard.jsx';
 import { ClaimDialog } from './ClaimDialog.jsx';
-import { Spotlight, useGate, usePlacement, useScrollIntoView } from './Gate.jsx';
+import { useGate, usePlacement, useScrollIntoView } from './Gate.jsx';
+import { TutorialHand } from './TutorialHand.jsx';
 import { rehearsalFetch } from './rehearsalFetch.js';
 import {
   BEATS,
@@ -23,7 +25,7 @@ import {
   type BeatId,
   type BeatState,
 } from './script.js';
-import { openWorld, type RehearsalWorld } from './world.js';
+import { completeOpening, openWorld, type RehearsalWorld } from './world.js';
 
 /**
  * NINETY SECONDS OF THE REAL GAME, BEFORE THERE IS AN ACCOUNT. D56.
@@ -112,6 +114,10 @@ export function Rehearsal({
    * the final credentials dialog becomes the next (and only) unfinished beat.
    */
   const skipToClaim = useCallback((): void => {
+    track('tutorial_skip', { orders: worldRef.current.intents.length });
+    const next = completeOpening(worldRef.current);
+    worldRef.current = next;
+    setWorld(next);
     setDone(new Set(BEATS.filter(({ id }) => id !== 'claim').map(({ id }) => id)));
   }, []);
 
@@ -218,11 +224,11 @@ export function Rehearsal({
     return resolve(gate.selectors);
   }, [beat]);
 
-  /** What is lit. Narrower than what is allowed, wherever the two differ. */
+  /** Legacy cue targets may be narrower than the controls allowed by the gate. */
   const litTargets = useCallback((): readonly Element[] => {
     const gate = beat.gate;
     if (gate.kind !== 'element') return [];
-    return inTopSurface(resolve(gate.lit ?? gate.selectors));
+    return inTopSurface(resolve(gate.subjects ?? gate.selectors));
   }, [beat]);
 
   /**
@@ -341,6 +347,7 @@ export function Rehearsal({
           <main className="relative flex-1">
             <GalaxyView
               showChat={false}
+              showGuidance={false}
               panel={panel}
               onPanel={setPanel}
               commander={preview.reserved.name}
@@ -358,9 +365,9 @@ export function Rehearsal({
             <PendingStrip />
           </div>
 
-        {/* The light on the one live control. Never over the disc — see `Spotlight`. */}
+        {/* D172: the owner's hand points without darkening the game. */}
         {beat.gate.kind === 'element' && (
-          <Spotlight targets={litTargets} dim={beat.gate.dim ?? true} />
+          <TutorialHand targets={litTargets} />
         )}
 
         {beat.id !== 'claim' && (

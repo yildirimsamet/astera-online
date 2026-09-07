@@ -14,6 +14,12 @@ pnpm verify        # typecheck + lint + all tests → 0 errors, all green
 reads. If a rule is wrong, change the rule deliberately and say why — never learn to ignore
 its output.
 
+## Motion
+
+Owner instruction (7 September 2026): web animations run independently of OS motion
+preferences. Do not introduce reduced-motion media queries, hooks, or Tailwind
+conditional motion variants. `no-reduced-motion.test.ts` scans all web sources.
+
 ## Typing
 
 **Everything is typed. `any` is banned.** `tsconfig.base.json` runs `strict` plus
@@ -46,6 +52,17 @@ call that script.
 another workspace package, `Math.random`, `Date.now` or `new Date`. **If the rules ever acquire
 a clock, CI fails.** This is the invariant the whole design rests on, enforced mechanically
 rather than by anyone remembering it.
+
+**Hook order is a lint rule too, for the same reason.** `react-hooks/rules-of-hooks` runs as an
+error over `apps/web`. It is the only client mistake that cannot degrade gracefully: React does
+not render a broken panel, it throws out of the render and unmounts the whole tree, so the player
+gets the crash screen and loses their session. `PlanetFocus` shipped with `useAccordion` six lines
+below an early return, and because the focus rail carries no `key`, moving focus between an owned
+and a foreign world changed the hook count on a live fiber — React #310 one way, #300 the other,
+for every commander holding more than one world. TypeScript cannot type hook order and no test had
+re-rendered that component with the branch flipped. **Only `rules-of-hooks` is on:**
+`exhaustive-deps` is advice this codebase knowingly overrides, and the plugin's React Compiler
+rules are a separate project.
 
 **When lint and reality disagree, type the variable rather than suppressing the rule.**
 `no-unnecessary-type-assertion` once flagged a cast on the Fastify logger as unnecessary — it

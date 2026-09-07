@@ -464,6 +464,10 @@ export const directives = {
   kindOpportunity: 'Opportunity',
   kindGrowth: 'Weakness',
   kindIdle: 'Nothing pending',
+
+  /** The fold. One word each way: the card is small enough that a label is the control. */
+  hide: 'Hide',
+  show: 'Show',
 } as const;
 
 /** The seven kinds of news, turned into the sentences a player reads. */

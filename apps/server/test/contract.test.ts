@@ -267,6 +267,18 @@ describe('every payload the client parses', () => {
     expect(parsed.instruments.TELESCOPE).toBe(2);
     expect(parsed.orbit).toContain('UPLINK');
     expect(parsed.orbitSlots).toBeGreaterThan(0);
+    /*
+      ACADEMY STEP IS PRESENT, NOT MERELY PARSEABLE.
+
+      It is optional in the schema for a rolling deploy, so `parse` alone would
+      pass just as happily on a server that never sends it — and the client reads
+      `== null` to mean "this commander is established", so a missing field would
+      silently hide the coaching card from every new player instead of from every
+      old one. The key has to be there; its value is legitimately null here,
+      because this fixture's world was not claimed through the Academy.
+    */
+    expect(parsed).toHaveProperty('academyStep');
+    expect(parsed.academyStep).toBeNull();
     expect(parsed.planet.vaultCapacity).toEqual(
       vaultProtects(
         parsed.buildings.VAULT ?? 0,

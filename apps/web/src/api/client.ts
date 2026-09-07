@@ -364,10 +364,12 @@ export class Api {
    * `@astera/rules` the server validates against; this call is where it becomes
    * true, or is refused and says which step and why.
    */
-  async claim(username: string, password: string, intents: readonly ClaimIntent[]) {
+  async claim(username: string, password: string, progress: readonly ClaimIntent[] | number) {
     const claimed = await this.send('/api/onboarding/claim', claimSchema, {
       method: 'POST',
-      body: { username, password, intents },
+      // D172: the server authors the checkpoint; no local resources/fleet travel.
+      // Arrays remain readable for the previous rehearsal during migration.
+      body: { username, password, ...(typeof progress === 'number' ? { step: progress } : { intents: progress }) },
       retryOnExpiry: false,
     });
     this.token = claimed.accessToken;

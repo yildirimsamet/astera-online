@@ -5,6 +5,8 @@ import {
   accountRewards,
   accounts,
   buildings,
+  battleReports,
+  pirateRaids,
   miningRuns,
   missions,
   planets,
@@ -74,6 +76,40 @@ describe('rewards', () => {
   });
 
   /* ── what the panel counts ─────────────────────────────────── */
+
+  it('counts distinct defeated pirates, excluding launches, defeats and mutual destruction', async () => {
+    const record = async (index: number, grade: 'DECISIVE' | 'REPELLED', survivors: number) => {
+      const [raid] = await f.db.insert(pirateRaids).values({
+        seasonId: f.seasonId, planetId: mine, ownerPlayerId: f.playerIds[0]!,
+        pirateIndex: index, status: 'done', fleet: { DART: survivors },
+        interceptX: 0, interceptY: 0, interceptZ: 0,
+        departAt: f.clock.now(), arriveAt: f.clock.now(),
+      }).returning();
+      await f.db.insert(battleReports).values({
+        seasonId: f.seasonId, pirateRaidId: raid!.id, targetKind: 'PIRATE',
+        attackerPlayerId: f.playerIds[0]!, grade, rounds: [],
+        loot: { alloy: 0, crystal: 0, deuterium: 0 },
+        attackerFleet: { DART: 2 }, attackerLosses: { DART: 2 - survivors },
+        defenderLosses: {},
+      });
+    };
+    await record(1, 'DECISIVE', 1);
+    await record(1, 'DECISIVE', 1);
+    await record(2, 'REPELLED', 1);
+    await record(3, 'DECISIVE', 0);
+    expect((await chainOf('PIRATE')).progress).toBe(1);
+    expect(await stateOf('PIRATE', 1)).toBe('claimable');
+    await claimReward(f.db, mine, 'PIRATE:1', f.clock);
+    await expect(claimReward(f.db, mine, 'PIRATE:1', f.clock)).rejects.toMatchObject({ code: 'REWARD_TAKEN' });
+  });
+
+  it('offers Vault and Aegis levels 1, 3 and 5 independently', async () => {
+    await setLevel(f.db, mine, 'VAULT', 5);
+    await giveInstrument(f.db, mine, 'AEGIS', 5);
+    for (const id of ['VAULT', 'AEGIS']) {
+      for (const goal of [1, 3, 5]) expect(await stateOf(id, goal)).toBe('claimable');
+    }
+  });
 
   it('starts a fresh commander with everything locked and nothing to claim', async () => {
     const view = await rewardsView(f.db, mine, f.clock);
@@ -230,7 +266,7 @@ describe('rewards', () => {
     const [before] = await f.db.select().from(planets).where(eq(planets.id, mine));
 
     const result = await claimReward(f.db, mine, rewardId('CORE', 3), f.clock);
-    const tier = REWARD_CHAINS.find((c) => c.id === 'CORE')!.tiers[0]!.reward;
+    const tier = REWARD_CHAINS.find((c) => c.id === 'CORE')!.tiers.find((t) => t.goal === 3)!.reward;
 
     expect(result.granted).toEqual({
       alloy: tier.alloy,
@@ -267,7 +303,7 @@ describe('rewards', () => {
     const cap = storageCap(alloyRate(refinery?.level ?? 0), vault?.level ?? 0);
     await f.db.update(planets).set({ alloy: cap }).where(eq(planets.id, mine));
 
-    const tier = REWARD_CHAINS.find((c) => c.id === 'CORE')!.tiers[0]!.reward;
+    const tier = REWARD_CHAINS.find((c) => c.id === 'CORE')!.tiers.find((t) => t.goal === 3)!.reward;
     const result = await claimReward(f.db, mine, rewardId('CORE', 3), f.clock);
 
     // Every last unit landed, and the total is legitimately over the ceiling.
@@ -334,7 +370,7 @@ describe('rewards', () => {
     ]);
     expect(results.filter((r) => r.status === 'fulfilled')).toHaveLength(1);
 
-    const tier = REWARD_CHAINS.find((c) => c.id === 'CORE')!.tiers[0]!.reward;
+    const tier = REWARD_CHAINS.find((c) => c.id === 'CORE')!.tiers.find((t) => t.goal === 3)!.reward;
     const [after] = await f.db.select().from(planets).where(eq(planets.id, mine));
     expect(after!.alloy).toBeCloseTo(before!.alloy + tier.alloy, 4);
 
@@ -595,10 +631,10 @@ describe('rewards', () => {
 
   it('counts what is waiting, and stops counting it once taken', async () => {
     await setLevel(f.db, mine, 'CORE', 5);
-    expect((await rewardsView(f.db, mine, f.clock)).claimable).toBe(2);
+    expect((await rewardsView(f.db, mine, f.clock)).claimable).toBe(3);
 
     await claimReward(f.db, mine, rewardId('CORE', 3), f.clock);
-    expect((await rewardsView(f.db, mine, f.clock)).claimable).toBe(1);
+    expect((await rewardsView(f.db, mine, f.clock)).claimable).toBe(2);
   });
 
   /** One planet's progress is its own. Nothing here reads across the galaxy. */

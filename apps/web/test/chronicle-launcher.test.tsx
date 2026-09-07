@@ -34,7 +34,13 @@ describe('Galaxy Chronicle launcher', () => {
     const onOpen = show(true);
     const launcher = screen.getByRole('button', { name: 'Open the Galaxy Chronicle' });
     expect(launcher).toHaveTextContent('Kestrel-4 under fire');
-    expect(launcher).toHaveClass('bottom-3', 'right-16');
+    /*
+      THE SAME ROW AS CHAT (`bottom-2` — see that test), and clear of it: Chat owns
+      `right-1` at 36px wide, so this sits at `right-11` and the two never overlap.
+      Both halves are asserted because either alone can drift into a stack of one
+      button on top of another, which is the failure a screenshot catches late.
+    */
+    expect(launcher).toHaveClass('bottom-2', 'right-11');
     await userEvent.setup().click(launcher);
     expect(onOpen).toHaveBeenCalledOnce();
   });

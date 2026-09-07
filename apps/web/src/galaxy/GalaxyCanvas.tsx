@@ -1,4 +1,4 @@
-import { Suspense, useEffect, useMemo, useRef, type ComponentRef } from 'react';
+import { Suspense, useEffect, useMemo, useRef, type ComponentRef, type RefObject } from 'react';
 import { Canvas, useFrame, useStore, useThree } from '@react-three/fiber';
 import { Html, OrbitControls, Preload } from '@react-three/drei';
 import { Bloom, EffectComposer, Vignette } from '@react-three/postprocessing';
@@ -21,6 +21,8 @@ import {
   rigAction,
   rigGestureState,
   sphericalLeashCorrection,
+  sightCameraDistance,
+  cameraEaseStep,
 } from './follow.js';
 import {
   BrightStars,
@@ -216,6 +218,26 @@ export interface GalaxyCanvasProps {
   openWide?: boolean;
   /** Exact camera range for an animated wide re-frame. Defaults to the whole disc. */
   wideDistance?: number;
+  /** Explicit Academy toggle only; ordinary sensor toggles never move the camera. */
+  /**
+   * ACADEMY ONLY: A THING TO TAP, DRAWN WHERE THE SUBJECT ACTUALLY IS.
+   *
+   * The lesson needs the commander to tap the pirate, the rock or the world it has
+   * just flown the camera to. The first attempt put a button at the CENTRE of the
+   * screen on the argument that focusing centres the subject — true right up until
+   * it is not. Turn the disc by hand during the previous beat, or open a beat whose
+   * subject has not reached its payload yet so the rig never moved, and the centre
+   * of the screen is empty space with a hand pointing at it. That is exactly what
+   * was reported.
+   *
+   * So it is not placed by assumption. It rides the same `subject` the camera
+   * follows and is projected every frame, which puts it ON the target whether the
+   * camera got there or not.
+   */
+  coachTap?: { label: string; onTap: () => void } | null;
+  sightRadius?: number;
+  /** The Academy entrance flies toward home once, over two seconds. */
+  openingHome?: boolean;
   /**
    * Which worlds may be selected at all. D56.
    *
@@ -274,9 +296,14 @@ export function GalaxyCanvas({
   aim = null,
   openWide = false,
   wideDistance = WHOLE_DISC_DISTANCE,
+  coachTap = null,
+  sightRadius,
+  openingHome = false,
   allowFocus,
   onReady,
 }: GalaxyCanvasProps) {
+  const sceneReady = useRef(false);
+  const openingMark = useRef<HTMLSpanElement>(null);
   const nodes = useMemo(() => planetNodes(planets), [planets]);
   const home = useMemo<[number, number, number]>(
     () => activeWorldPosition(planets, activePlanetId, homePosition),
@@ -471,7 +498,23 @@ export function GalaxyCanvas({
       frameloop="demand"
       camera={{ position: initialHomeCameraPosition(...home), fov: 45, near: 0.1, far: 600 }}
       dpr={[1, 2]}
-      gl={{ antialias: true, powerPreference: 'high-performance' }}
+      /**
+       * NO `antialias` HERE, BECAUSE THE COMPOSER BELOW ALREADY DOES IT.
+       *
+       * The scene is never drawn to this context's own framebuffer: `EffectComposer`
+       * renders it into a multisampled target of its own (`multisampling={2}`) and
+       * then puts ONE full-screen quad on the canvas. Asking the context for
+       * antialiasing as well allocated a second multisampled default framebuffer and
+       * resolved it on every present, to smooth the edges of a rectangle that has
+       * none — at device pixel ratio 2 on a phone, a full-screen buffer of tile
+       * memory and a resolve per frame, bought and never looked at.
+       *
+       * SAID OUT LOUD, because fiber's own default is `antialias: true` and the `gl`
+       * prop is merged ON TOP of it. Deleting the key turns nothing off.
+       *
+       * Nothing about the image changes. `render-cost.test.ts` holds the pair apart.
+       */
+      gl={{ antialias: false, powerPreference: 'high-performance' }}
       onCreated={({ gl }) => {
         /**
          * THE COLOUR CONTRACT, stated rather than inherited from library defaults.
@@ -648,7 +691,7 @@ export function GalaxyCanvas({
           rivalPlayerId={rivalPlayerId}
         />
         <Preload all />
-        {onReady && <FirstFrame onDrawn={onReady} />}
+        <FirstFrame onDrawn={() => { sceneReady.current = true; onReady?.(); }} />
       </Suspense>
 
       {/*
@@ -674,15 +717,32 @@ export function GalaxyCanvas({
         <Vignette eskil={false} offset={0.24} darkness={0.7} />
       </EffectComposer>
 
+      {/*
+        THE LESSON'S TAP TARGET, ON THE SUBJECT RATHER THAN ON THE MIDDLE.
+        See `coachTap`. Mounted here because this is where `subject` is — the same
+        live read the camera follows, so the button and the camera cannot disagree.
+      */}
+      {coachTap && subject && (
+        <CoachTap subject={subject} label={coachTap.label} onTap={coachTap.onTap} />
+      )}
+
       <DevBridge />
+      {openingHome && <Html position={home} center zIndexRange={[10, 0]} style={{ pointerEvents: 'none' }}>
+        <span ref={openingMark} data-academy-home data-academy-home-ready="false" className="pointer-events-none block size-px" />
+      </Html>}
       <Rig
         home={home}
         homeSignal={homeSignal}
         subject={subject}
         focusKey={focusKey}
         approach={approach}
+        exactApproach={coachTap !== null}
         openWide={openWide}
         wideDistance={wideDistance}
+        {...(sightRadius !== undefined ? { sightRadius } : {})}
+        openingHome={openingHome}
+        sceneReady={sceneReady}
+        openingMark={openingMark}
       />
       <AmbientTicker />
     </Canvas>
@@ -992,8 +1052,13 @@ function Rig({
   subject,
   focusKey,
   approach,
+  exactApproach = false,
   openWide = false,
   wideDistance,
+  sightRadius,
+  openingHome,
+  sceneReady,
+  openingMark,
 }: {
   home: [number, number, number];
   homeSignal: number;
@@ -1017,6 +1082,16 @@ function Rig({
   /** Pull the camera in to at most this distance while easing. Null leaves it. */
   approach: number | null;
   /**
+   * TAKE THE RANGE EXACTLY, RATHER THAN ONLY PULLING IN. Academy instruction.
+   *
+   * An ordinary focus is one-way on purpose: it may close on a small craft but
+   * must never shove a player back out of a view they chose. A LESSON is the other
+   * case — the owner asked for the target to be framed the same way every time,
+   * however the commander left the camera — so the coach focus is a scripted
+   * composition like the opening wide shot, and takes its distance exactly.
+   */
+  exactApproach?: boolean;
+  /**
    * OPEN ON THE WHOLE DISC RATHER THAN ON YOUR OWN DOORSTEP. D56.
    *
    * The first frame normally snaps to the player's world, which is right for a
@@ -1028,6 +1103,10 @@ function Rig({
   openWide?: boolean;
   /** The range an animated wide re-frame must reach, even when that means pulling back. */
   wideDistance: number;
+  sightRadius?: number;
+  openingHome: boolean;
+  sceneReady: RefObject<boolean>;
+  openingMark: RefObject<HTMLSpanElement | null>;
 }) {
   const ref = useRef<ComponentRef<typeof OrbitControls>>(null);
   const invalidate = useThree((state) => state.invalidate);
@@ -1035,8 +1114,10 @@ function Rig({
   const ease = useRef<{
     to: THREE.Vector3;
     left: number;
+    duration: number;
     rangeTo: number | null;
     exactRange: boolean;
+    waitForScene: boolean;
   } | null>(null);
 
   /**
@@ -1080,12 +1161,16 @@ function Rig({
     z: number,
     rangeTo: number | null = null,
     exactRange = false,
+    duration = EASE,
+    waitForScene = false,
   ): void => {
     ease.current = {
       to: new THREE.Vector3(x, y, z),
-      left: EASE,
+      left: duration,
+      duration,
       rangeTo,
       exactRange,
+      waitForScene,
     };
     invalidate();
   };
@@ -1115,11 +1200,11 @@ function Rig({
     const at = live.current?.();
     if (at) {
       acquired.current = true;
-      goTo(at[0], at[1], at[2], approach);
+      goTo(at[0], at[1], at[2], approach, exactApproach);
     }
     // `live` is read through a ref by design: this must not re-run when the data
     // behind the subject refetches, only when the player picks something else.
-  }, [focusKey, approach]);
+  }, [focusKey, approach, exactApproach]);
 
   /**
    * HOME re-frames rather than teleports: an instant cut loses every sense of
@@ -1160,6 +1245,7 @@ function Rig({
       controls.target.set(homeX, homeY, homeZ);
       controls.object.position.set(...initialHomeCameraPosition(homeX, homeY, homeZ));
       controls.update();
+      if (openingHome) goTo(homeX, homeY, homeZ, HOME_DISTANCE, true, 2, true);
       invalidate();
       return;
     }
@@ -1167,6 +1253,15 @@ function Rig({
     // Primitive coordinates are deliberate. `home` is rebuilt from every live
     // galaxy refetch; depending on the tuple identity made broadcasts press Home.
   }, [homeX, homeY, homeZ, homeSignal, openWide, wideDistance]);
+
+  useEffect(() => {
+    if (!sightRadius) return;
+    const camera = ref.current?.object;
+    if (!(camera instanceof THREE.PerspectiveCamera)) return;
+    mode.current = 'manual';
+    acquired.current = false;
+    goTo(homeX, homeY, homeZ, sightCameraDistance(sightRadius, camera.fov, camera.aspect), true);
+  }, [sightRadius]);
 
   useFrame((_, delta) => {
     const controls = ref.current;
@@ -1199,7 +1294,7 @@ function Rig({
     }
     if (act.acquire && at) {
       acquired.current = true;
-      goTo(at[0], at[1], at[2], approach);
+      goTo(at[0], at[1], at[2], approach, exactApproach);
     }
 
     if (act.track && at) {
@@ -1232,8 +1327,18 @@ function Rig({
     const move = ease.current;
     if (!move) return;
 
+    // The Rig lives outside Suspense: starting on mount spends the opening on
+    // model decoding / shader compilation. Wait for the compiled scene's paint,
+    // then discard that loading frame's delta so the glide gets its full 2s.
+    if (move.waitForScene) {
+      if (sceneReady.current) move.waitForScene = false;
+      invalidate();
+      return;
+    }
+
     // Frame-rate independent easing: the same curve at 30fps and at 120.
-    const step = 1 - Math.pow(0.001, delta / Math.max(0.001, move.left + delta));
+    const progress = cameraEaseStep(move.left, move.duration, delta);
+    const step = progress.fraction;
     const previous = controls.target.clone();
     controls.target.lerp(move.to, Math.min(1, step));
     // The camera follows its pivot, so the framing is preserved and only the
@@ -1267,8 +1372,8 @@ function Rig({
     controls.update();
     invalidate();
 
-    move.left -= delta;
-    if (move.left <= 0 || controls.target.distanceToSquared(move.to) < 0.0004) {
+    move.left = progress.remaining;
+    if (progress.done) {
       const out = controls.object.position.clone().sub(controls.target);
       controls.target.copy(move.to);
       if (move.rangeTo !== null && out.lengthSq() > 1e-10) {
@@ -1281,6 +1386,7 @@ function Rig({
       }
       controls.update();
       ease.current = null;
+      if (openingMark.current) openingMark.current.dataset.academyHomeReady = 'true';
     }
   });
 
@@ -1324,6 +1430,8 @@ function Rig({
         mode.current = next.mode;
         acquired.current = next.acquired;
         ease.current = null;
+        // A deliberate gesture ends the scripted zoom too; don't strand its cue.
+        if (openingMark.current) openingMark.current.dataset.academyHomeReady = 'true';
       }}
     />
   );
@@ -1498,6 +1606,45 @@ function DevBridge() {
  * beat against the display's refresh and was throttled by the browser whenever it
  * decided the page was not being looked at. See that file for the measurements.
  */
+/**
+ * A DOM BUTTON PINNED TO A POINT IN THE GALAXY. Academy only.
+ *
+ * `Html` projects it every frame, so it tracks the subject through a camera move,
+ * a hand-turned disc and the subject's own orbit alike. The group's position is
+ * written in `useFrame` from the same `subject` closure the rig reads — a prop
+ * would freeze it at whatever the point was when React last rendered, which for a
+ * pirate on an orbit is wrong within a second.
+ *
+ * Invisible on purpose: the thing being pointed at is the pirate, the rock or the
+ * world already drawn there. This is only the part a thumb can hit, and the hand
+ * that points at it is `TutorialHand` finding it by `data-academy-tap-target`.
+ */
+function CoachTap({ subject, label, onTap }: {
+  subject: () => [number, number, number] | null;
+  label: string;
+  onTap: () => void;
+}) {
+  const group = useRef<THREE.Group>(null);
+  useFrame(() => {
+    const at = subject();
+    if (at) group.current?.position.set(at[0], at[1], at[2]);
+  });
+  const start = subject() ?? [0, 0, 0];
+  return (
+    <group ref={group} position={start}>
+      <Html center zIndexRange={[40, 40]}>
+        <button
+          type="button"
+          data-academy-tap-target
+          aria-label={label}
+          onClick={onTap}
+          className="size-24 rounded-full"
+        />
+      </Html>
+    </group>
+  );
+}
+
 function AmbientTicker() {
   useAmbientFrames();
   return null;

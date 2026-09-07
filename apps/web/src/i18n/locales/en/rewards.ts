@@ -44,6 +44,8 @@ export const rewards = {
    * anybody would want it. A player scanning eleven of these needs both.
    */
   chains: {
+    VAULT: { name: 'Vault', tag: 'Protect part of your stock in every raid' },
+    PIRATE: { name: 'Pirates defeated', tag: 'Win against different crews and bring ships home' },
     PROBE: { name: 'Probes sent', tag: 'Look before you leap' },
     RAID: { name: 'Worlds raided', tag: 'Different worlds, not the same one twice' },
     CORE: { name: 'Command Core', tag: 'The ceiling everything else obeys' },

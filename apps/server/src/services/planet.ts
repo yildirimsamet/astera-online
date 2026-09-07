@@ -119,6 +119,12 @@ export interface LockedPlanet {
   seasonEndsAt: Date;
   name: string;
   x: number; y: number; z: number;
+  /**
+   * How far this world's commander got through the Academy, or null if it was
+   * never claimed through one. The single server-side answer to "is this
+   * commander NEW" — see `planetView`, which publishes it.
+   */
+  academyStep: number | null;
   /** In storage: spendable, vault-protected, fully exposed to a raid. */
   alloy: number;
   crystal: number;
@@ -349,6 +355,7 @@ export async function loadLocked(
     seasonEndsAt: season.endsAt,
     name: row.name,
     x: row.x, y: row.y, z: row.z,
+    academyStep: row.academyStep,
     alloy: advanced.alloy,
     crystal: advanced.crystal,
     deuterium: advanced.deuterium,

@@ -92,6 +92,21 @@ describe('the pirate table', () => {
     }
   });
 
+  it('makes a hull the usual prize where the fight is easy, and never a rarity where it is hard', () => {
+    /*
+      THE SHAPE OF THE TABLE, NOT ITS DIGITS. Owner instruction.
+
+      The ordering test above cannot tell a generous ladder from a stingy one —
+      0.5/0.35/0.25/0.15 and 0.75/0.5/0.35/0.3 both descend. What the owner moved
+      is the ALTITUDE: a raid on the easy end should usually come home with a hull
+      rather than usually not, and the hardest pirate should still be worth flying
+      at rather than a lottery ticket. Those are two claims about whether the
+      feature pays, and they are what a later sweep must not quietly undo.
+    */
+    expect(PIRATE.captureChance[1]).toBeGreaterThan(0.5);
+    expect(PIRATE.captureChance[4]).toBeGreaterThanOrEqual(0.3);
+  });
+
   it('spends its whole level distribution', () => {
     const total = PIRATE.levelWeights.reduce((sum, w) => sum + w, 0);
     expect(total).toBeCloseTo(1, 10);
@@ -218,8 +233,21 @@ describe('the pirate hoard', () => {
       const roster = pirateRoster(level, seededFrom('hoard', level));
       const hoard = pirateHoard(roster);
       expect(resourcesTotal(hoard)).toBeGreaterThan(0);
+      /*
+        THE SHARES ARE THE MULTIPLIER'S SECOND HALF, so the test reads both.
+
+        This used to compare against `fleetValue * hoardValueMult` alone, which
+        silently assumed the three shares sum to exactly 1. They no longer do:
+        the owner halved the deuterium share and it was NOT redistributed, so a
+        hoard is deliberately worth less than `hoardValueMult` says on its own.
+        Asserting the product of both numbers keeps the real invariant — the
+        hoard is what the shares say and nothing is lost but rounding — while
+        still failing on a typo in either.
+      */
+      const shares = PIRATE.hoardShare.alloy + PIRATE.hoardShare.crystal
+        + PIRATE.hoardShare.deuterium;
+      const want = fleetValue(roster) * PIRATE.hoardValueMult * shares;
       // Within rounding of the multiplier: three floors, never more.
-      const want = fleetValue(roster) * PIRATE.hoardValueMult;
       expect(resourcesTotal(hoard)).toBeGreaterThan(want - 4);
       expect(resourcesTotal(hoard)).toBeLessThanOrEqual(want);
       expect(hoard.alloy).toBeGreaterThan(0);
@@ -227,6 +255,67 @@ describe('the pirate hoard', () => {
       expect(Number.isInteger(hoard.alloy)).toBe(true);
       expect(Number.isInteger(hoard.crystal)).toBe(true);
       expect(Number.isInteger(hoard.deuterium)).toBe(true);
+    }
+  });
+
+  it('caps the deuterium a hoard can carry at a tankful, and keeps the levels apart', () => {
+    /*
+      THE OWNER'S CEILING: about 500 at level 4, every level below it scaled by
+      the same share rather than clamped.
+
+      A FLAT CAP WAS THE OBVIOUS SHAPE AND IT IS THE WRONG ONE. Levels 2, 3 and 4
+      would all have paid 500 at the top, and the level badge is precisely the
+      number a commander prices the fight against — a reward that stops answering
+      it turns the hardest pirate into the same trip as the middling one. Scaling
+      the share keeps every hoard proportional to what the pirate is actually
+      worth, which is the property the whole hoard is built on.
+
+      SAMPLED, NOT DERIVED. The roster comes out of a seeded generator, so the
+      ceiling is the richest roster it can produce and there is no closed form.
+      Twenty thousand seeds per level here; the constant itself was set against
+      sixty thousand, where the worst level-4 roster is worth 44,404.
+    */
+    const worst = new Map<PirateLevel, number>();
+    for (const level of LEVELS) {
+      let max = 0;
+      for (let seed = 0; seed < 20_000; seed++) {
+        max = Math.max(max, pirateHoard(pirateRoster(level, mulberry32(seed))).deuterium);
+      }
+      worst.set(level, max);
+    }
+
+    expect(worst.get(4)).toBeLessThanOrEqual(500);
+    /*
+      AND IT HAS TO REACH IT. An upper bound alone would pass just as happily on a
+      share tuned to fifty, which would have deleted the reward instead of
+      capping it — the exact failure `balance.md` calls a diagnostic that cannot
+      fail.
+    */
+    expect(worst.get(4)).toBeGreaterThan(450);
+
+    for (const level of [2, 3, 4] as const) {
+      expect(worst.get(level)!).toBeGreaterThan(worst.get((level - 1) as PirateLevel)!);
+    }
+  });
+
+  it('carries deuterium as a garnish rather than as a fuel supply', () => {
+    /*
+      HALVED ON OWNER INSTRUCTION, and this is the claim that halving made true.
+
+      Deuterium is fuel, and fuel is what makes a raid cost something (D136) — a
+      hoard that refills the tank it emptied turns the pirate lane into a loop
+      that pays for itself. It was a sixth of the hoard and it is now a
+      thirteenth: still worth collecting, no longer worth flying for.
+
+      Asserted on `pirateHoard`'s OUTPUT and against the crystal beside it, so
+      this stays a statement about what a raid pays rather than an echo of the
+      constant it is computed from.
+    */
+    for (const level of LEVELS) {
+      const roster = pirateRoster(level, seededFrom('deuterium', level));
+      const hoard = pirateHoard(roster);
+      expect(hoard.deuterium / resourcesTotal(hoard)).toBeLessThan(0.1);
+      expect(hoard.deuterium).toBeLessThan(hoard.crystal / 3);
     }
   });
 

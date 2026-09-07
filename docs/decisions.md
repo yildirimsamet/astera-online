@@ -29,9 +29,58 @@ Binds: Season lifecycle, pacing, balance acceptance tests.
 Rule: The galaxy fills the game surface; management screens open over it rather than replacing it with a conventional tabbed app. Focus is the base interaction and must expose only information the commander is entitled to know, including source and staleness where relevant.
 Binds: Galaxy shell, focus system, navigation model, intel presentation.
 
+### D172 · Local Academy replaces the guided rehearsal — OWNER DECISION
+
+The first game is authored on the device, using the production screens and shared
+rules. Reveal controls progressively. The supplied `tutorial-hand-icon.png` and
+a short bubble replace the spotlight; preserve the click gate and scroll support.
+The opening glides from the distant view to home over two seconds, starting after
+the scene has compiled and painted. The player presses the actual planet to open
+management, without Continue. Leave the opening coach 48px above the planet anchor.
+Every action hand loops a tap with two expanding fingertip ripples below the image.
+Loading covers sit above the hand, which remains hidden until loading ends.
+On the opening lesson it stays hidden until the actual camera glide finishes
+(or the player deliberately takes over the camera). Reward coaches clear the
+whole reward card, including its title, while the hand still points at Claim.
+Academy silences and discards all toasts, restoring normal notifications on exit.
+Accepted construction or ship orders scroll the menu body to the queue at its top,
+once per order, while the coach explains the wait.
+The Academy build picker offers only the lesson's authored quantity (two Darts,
+one Prospector or Courier), ready for the indicated Build press. The live game's
+free quantity picker is unchanged.
+Introduction-only lessons frame the element without a hand or detail-sheet press;
+brief copy explains its purpose and that no upgrade is required. Only these lessons
+offer a continuously scaling Continue. Per the owner's final instruction, no
+OS motion-preference queries or conditional animation classes are used anywhere
+in the web client. Action lessons
+advance on the actual tab, build, dispatch, reward or report-close action, never
+an extra Continue. Keep the planet menu open when introducing the next tab;
+the player presses that newly revealed tab. The Telescope exercise smoothly
+frames the entire sight sphere after the toggle, fitting portrait as well as landscape.
+Order: Production (Core, Alloy Refinery, Crystal Extractor upgrades/rewards;
+Deuterium Refinery and Foundry introductions), Intel (Uplink, Telescope, Radar,
+Veil introductions; press the Telescope sensor toggle to see its reach), Defend
+(Vault and Aegis upgrades/rewards; Thorn/Bastion introductions), Fleet (Shipyard
+upgrade/reward, Hangar introduction, two Darts), authored pirate victory with a
+small ship loss, battle notification/report and rewards, Prospector manufacture
+and asteroid trip/reward, research-menu introduction, two more Darts and a Courier,
+explaining cargo, then an authored world raid/report and account creation.
+
+Add Vault L1/3/5 and pirate reward chains, Aegis L3/5, and opening tiers needed by
+the lessons, retaining existing reward IDs and claims. A completed tutorial reward
+cannot be paid again after placement. Replay from Help is local and never changes
+the existing commander. Claim sends only a bounded completed-step number, never
+client-authored resources or levels; the server seeds that authored checkpoint
+atomically with creation and never overwrites a returning player's world. Cached
+legacy intent claims stay compatible. Neutrals keep `PLANET_START`; bots use the
+Academy exit. Short waits and nearby targets belong to the Academy, not a global
+fleet-speed change. Keep a running real queue at exit. Owner waived detailed
+balance simulation/calibration; retain affordability, progression, capacity,
+boundary, retry/concurrency and once-only reward tests, without widening bands.
+
 ### D56 · Rehearsal is the real game before account creation — OWNER INSTRUCTION
 
-Rule: `/api/preview` is write/seat-free and uses the real public-galaxy projection. Rehearsal uses production contracts, `START` + shared fuel; claim creates `PLANET_START`, then replays intents through normal services. Retry with same credentials recovers the created account; replay only on untouched world. A refused replay step never rolls back account/planet. Guidance/skip changes commitments only, never navigation, exit or final claim.
+Rule: `/api/preview` is write/seat-free and uses the real public-galaxy projection. Rehearsal uses production contracts, `START` + shared fuel; claim creates `PLANET_START`, then replays intents through normal services. Retry with same credentials recovers the created account; replay only on untouched world. A refused replay step never rolls back account/planet. Skip fills missing opening orders without duplicating staged commitments and opens final claim. The front-door form signs in only; new commanders enter training before registering (onboarding review §3).
 Binds: Preview, rehearsal, claim, D58/D136.
 
 ### D63 · Astera is a real-time game — OWNER INSTRUCTION
@@ -423,7 +472,7 @@ Binds: Season API, presence tracking, server list, galaxy HUD.
 
 ### D68 · Returning devices lead with sign-in — OWNER DECISION
 
-Rule: Signing out returns with sign-in emphasized, and a device-local returning hint may change which front-door action is prominent. The hint never authorizes or blocks anything; both sign-in and rehearsal remain reachable and the server remains the sole authority on account/placement.
+Rule: Signing out opens sign-in. A device-local returning hint puts sign-in first on the front door, with an equally visible training control for a new person sharing that device (onboarding review §3). The hint never authorizes or blocks anything; both sign-in and rehearsal remain reachable and the server remains the sole authority on account/placement.
 Binds: Front door, logout, returning-device hint, onboarding routing.
 
 ### D69 · Camera moves only on instruction — OWNER DECISION

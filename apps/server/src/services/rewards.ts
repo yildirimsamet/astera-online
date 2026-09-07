@@ -1,6 +1,8 @@
 import { and, eq, isNull, or, sql } from 'drizzle-orm';
 import {
   REWARD_CHAINS,
+  fleetCount,
+  academyCheckpoint,
   findRewardTier,
   rewardId,
   type Fleet,
@@ -15,6 +17,8 @@ import { normaliseUsername } from '../auth/credentials.js';
 import {
   accountRewards,
   accounts,
+  battleReports,
+  pirateRaids,
   miningRuns,
   missions,
   planets,
@@ -70,6 +74,7 @@ interface Standing {
   levels: Record<string, number>;
   aegis: number;
   builtDarts: number;
+  academyStep: number | null;
 }
 
 /**
@@ -129,6 +134,25 @@ async function miningCounts(tx: Tx, planetId: string): Promise<{ rocks: number; 
     .groupBy(miningRuns.targetKind);
   const of = (k: string): number => rows.find((r) => r.kind === k)?.n ?? 0;
   return { rocks: of('asteroid'), wrecks: of('debris') };
+}
+
+/** D172: victory with survivors, once per pirate and only for its attacker. */
+async function pirateVictories(tx: Tx, standing: Standing): Promise<number> {
+  const reports = await tx.select({
+    index: pirateRaids.pirateIndex,
+    fleet: battleReports.attackerFleet,
+    losses: battleReports.attackerLosses,
+  }).from(battleReports)
+    .innerJoin(pirateRaids, eq(pirateRaids.id, battleReports.pirateRaidId))
+    .where(and(
+      eq(pirateRaids.planetId, standing.planetId),
+      eq(pirateRaids.ownerPlayerId, standing.playerId),
+      eq(battleReports.attackerPlayerId, standing.playerId),
+      eq(battleReports.targetKind, 'PIRATE'),
+      eq(battleReports.grade, 'DECISIVE'),
+    ));
+  return new Set(reports.filter((r) => fleetCount(r.fleet) > fleetCount(r.losses))
+    .map((r) => r.index)).size;
 }
 
 /** One tier's record, whichever ledger it was found in. */
@@ -197,11 +221,12 @@ export interface RewardsView {
  * re-locking a row it owns and re-running the economy advance for nothing.
  */
 async function assemble(tx: Tx, standing: Standing): Promise<RewardsView> {
-  const [flights, mining, seasonGrants, accountGrants] = await Promise.all([
+  const [flights, mining, seasonGrants, accountGrants, pirates] = await Promise.all([
     flightCounts(tx, standing.planetId),
     miningCounts(tx, standing.planetId),
     seasonGrantsOf(tx, standing.playerId),
     accountGrantsOf(tx, standing.accountId),
+    pirateVictories(tx, standing),
   ]);
 
   /**
@@ -219,13 +244,16 @@ async function assemble(tx: Tx, standing: Standing): Promise<RewardsView> {
     chain.scope === 'account' ? accountGrants : seasonGrants;
 
   const progressOf = (chain: RewardChain): number => {
+    const academy = standing.academyStep === null ? null : academyCheckpoint(standing.academyStep);
     switch (chain.id) {
       case 'PROBE':
         return flights.probes;
       case 'RAID':
-        return flights.raided;
+        return flights.raided + (academy?.progress.RAID ?? 0);
+      case 'PIRATE':
+        return pirates + (academy?.progress.PIRATE ?? 0);
       case 'MINE':
-        return mining.rocks;
+        return mining.rocks + (academy?.progress.MINE ?? 0);
       case 'SALVAGE':
         return mining.wrecks;
       case 'SHIPS':
@@ -290,7 +318,7 @@ async function assemble(tx: Tx, standing: Standing): Promise<RewardsView> {
  */
 async function standingOf(tx: Tx, planet: LockedPlanet): Promise<Standing> {
   const [worldRows, ownerRows] = await Promise.all([
-    tx.select({ builtEver: planets.builtEver }).from(planets).where(eq(planets.id, planet.planetId)),
+    tx.select({ builtEver: planets.builtEver, academyStep: planets.academyStep }).from(planets).where(eq(planets.id, planet.planetId)),
     tx.select({ accountId: players.accountId }).from(players).where(eq(players.id, planet.playerId)),
   ]);
   const accountId = ownerRows[0]?.accountId;
@@ -311,6 +339,7 @@ async function standingOf(tx: Tx, planet: LockedPlanet): Promise<Standing> {
     levels: planet.buildings,
     aegis: planet.instruments.AEGIS ?? 0,
     builtDarts: builtEver.DART ?? 0,
+    academyStep: worldRows[0]?.academyStep ?? null,
   };
 }
 

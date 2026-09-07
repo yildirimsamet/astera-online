@@ -15,7 +15,7 @@ async function sourceFiles(directory: string): Promise<string[]> {
 
 describe('motion is always enabled', () => {
   it('has no OS reduced-motion query, hook or conditional path anywhere in web source', async () => {
-    const forbidden = /prefers-reduced-motion|useReducedMotionPreference|reducedMotion/;
+    const forbidden = /prefers-reduced-motion|useReducedMotion|reducedMotion|motion-safe:|motion-reduce:/;
     const offenders: string[] = [];
     for (const path of await sourceFiles(sourceRoot)) {
       if (forbidden.test(await readFile(path, 'utf8'))) offenders.push(path.slice(sourceRoot.length + 1));

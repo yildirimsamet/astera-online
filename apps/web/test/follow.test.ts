@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
+  sightCameraDistance,
+  cameraEaseStep,
   easedCameraRange,
   finishedCameraRange,
   focusIdentity,
@@ -14,6 +16,32 @@ import {
   type RigFrame,
 } from '../src/galaxy/follow.js';
 import type { Focus } from '../src/galaxy/FocusPanel.js';
+
+describe('explicit tutorial sight framing', () => {
+  it('uses the full two seconds even when only the zoom changes', () => {
+    let remaining = 2;
+    let distance = 28;
+    for (let n = 0; n < 119; n++) {
+      const move = cameraEaseStep(remaining, 2, 1 / 60);
+      distance += (7 - distance) * move.fraction;
+      remaining = move.remaining;
+      expect(move.done).toBe(false);
+    }
+    expect(distance).toBeGreaterThan(7);
+    const last = cameraEaseStep(remaining, 2, 1 / 60 + 1e-9);
+    expect(last.done).toBe(true);
+    expect(last.fraction).toBe(1);
+  });
+  it('fits the whole sphere in portrait and landscape with room for the coach', () => {
+    for (const aspect of [375 / 812, 812 / 375]) {
+      const distance = sightCameraDistance(15, 45, aspect);
+      const vertical = 45 * Math.PI / 360;
+      const horizontal = Math.atan(Math.tan(vertical) * aspect);
+      expect(Math.asin(15 / distance)).toBeLessThan(Math.min(vertical, horizontal));
+    }
+    expect(sightCameraDistance(15, 45, 375 / 812)).toBeGreaterThan(sightCameraDistance(15, 45, 812 / 375));
+  });
+});
 
 /**
  * THE CAMERA'S AUTONOMY, WHICH IS THE ONLY PART OF IT A PLAYER COMPLAINS ABOUT.

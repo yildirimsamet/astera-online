@@ -1,6 +1,8 @@
 import { act, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { DWELL_MS, ERROR_DWELL_MS, ToastProvider, useToast } from '../src/ui/Toast.js';
+import { DWELL_MS, ERROR_DWELL_MS, ToastProvider, useToast, useSilenceToasts } from '../src/ui/Toast.js';
+
+function QuietAcademy() { useSilenceToasts(); return null; }
 
 /**
  * ONE LINE AT A TIME, AND ALL OF THEM IN TURN. D45.
@@ -39,6 +41,20 @@ const speak = (lines: readonly [string, 'info' | 'error'][]) => {
 };
 
 describe('the toast queue', () => {
+  it('discards existing and new Academy toasts, then restores normal notifications on exit', () => {
+    const tree = (quiet: boolean) => <ToastProvider>{quiet && <QuietAcademy />}<Speaker lines={[["notice", 'info'], ['refusal', 'error']]} /></ToastProvider>;
+    const view = render(tree(false));
+    act(() => { screen.getByRole('button', { name: 'speak' }).click(); });
+    expect(screen.getByRole('status')).toBeInTheDocument();
+    view.rerender(tree(true));
+    act(() => { screen.getByRole('button', { name: 'speak' }).click(); });
+    expect(screen.queryByRole('status')).not.toBeInTheDocument();
+    view.rerender(tree(false));
+    act(() => { vi.advanceTimersByTime(ERROR_DWELL_MS * 3); });
+    expect(screen.queryByRole('status')).not.toBeInTheDocument();
+    act(() => { screen.getByRole('button', { name: 'speak' }).click(); });
+    expect(screen.getByRole('status')).toHaveTextContent('notice');
+  });
   beforeEach(() => {
     vi.useFakeTimers();
   });

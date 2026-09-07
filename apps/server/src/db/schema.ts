@@ -686,6 +686,8 @@ export const planets = pgTable('planets', {
    * could not have meant both.
    */
   builtEver: jsonb('built_ever').$type<Fleet>().notNull().default({}),
+  /** D172: immutable authored start, not live progress; NULL is a legacy world. */
+  academyStep: integer('academy_step'),
 }, (t) => [
   uniqueIndex('planets_capital_player_idx')
     .on(t.controllerPlayerId)
@@ -693,6 +695,8 @@ export const planets = pgTable('planets', {
   uniqueIndex('planets_season_slot_idx').on(t.seasonId, t.slotIndex),
   index('planets_season_idx').on(t.seasonId),
   index('planets_controller_idx').on(t.controllerPlayerId),
+  // D172: versioned authored checkpoints, mirrored by migration 0059.
+  check('planets_academy_step_check', sql`${t.academyStep} IS NULL OR ${t.academyStep} BETWEEN 0 AND 40`),
   check(
     'planets_controller_kind_check',
     sql`(${t.kind} = 'NEUTRAL' AND ${t.controllerPlayerId} IS NULL)

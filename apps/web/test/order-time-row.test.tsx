@@ -2,6 +2,8 @@ import { render, screen } from '@testing-library/react';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { UpgradeRow } from '../src/ui/UpgradeRow.js';
 import i18n from '../src/i18n/index.js';
+import { AcademyLessonContext } from '../src/onboarding/lessonScope.js';
+import { TimeCost } from '../src/ui/Action.js';
 
 /**
  * THE TIME AN ORDER TAKES, ON THE ROW THAT SELLS IT.
@@ -36,6 +38,10 @@ const row = (over: Partial<Parameters<typeof UpgradeRow>[0]> = {}) => render(
 );
 
 describe('how long it takes', () => {
+  it('quotes the short Academy clock only inside a local lesson', () => {
+    render(<AcademyLessonContext.Provider value="core"><TimeCost minutes={138} /></AcademyLessonContext.Provider>);
+    expect(screen.getByTestId('order-time')).toHaveTextContent('8s');
+  });
   it('is drawn on an affordable row, where no other clock would appear', () => {
     row({ takes: 138 });
     const tag = screen.getByTestId('order-time');

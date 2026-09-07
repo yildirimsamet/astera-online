@@ -46,6 +46,7 @@ export function LoadingScreen({
 
   return (
     <main
+      data-loading-screen
       /**
        * THE COVER IS THE TOPMOST THING IN THE APP.
        *
@@ -55,7 +56,7 @@ export function LoadingScreen({
        * that must cover everything cannot be on the same rung as the things it
        * covers.
        */
-      className="fixed inset-0 z-[60] flex flex-col items-center justify-center overflow-hidden bg-void px-8"
+      className="fixed inset-0 z-[70] flex flex-col items-center justify-center overflow-hidden bg-void px-8"
       role="status"
       aria-live="polite"
       aria-busy="true"
@@ -98,7 +99,7 @@ export function LoadingScreen({
             />
           ) : (
             <span
-              className="absolute inset-y-0 w-1/3 bg-gradient-to-r from-transparent via-crystal to-transparent motion-safe:animate-[shimmer_1400ms_ease-in-out_infinite]"
+              className="absolute inset-y-0 w-1/3 bg-gradient-to-r from-transparent via-crystal to-transparent animate-[shimmer_1400ms_ease-in-out_infinite]"
               style={{ boxShadow: '0 0 8px rgb(89 200 255 / 50%)' }}
             />
           )}
@@ -129,7 +130,7 @@ function Dish() {
       stroke="currentColor"
       aria-hidden
     >
-      <g className="origin-center motion-safe:animate-[spin_3600ms_linear_infinite]">
+      <g className="origin-center animate-[spin_3600ms_linear_infinite]">
         <path
           d="M32 32 L32 6"
           strokeWidth="1"
@@ -152,7 +153,7 @@ function Dish() {
         r="3"
         fill="currentColor"
         stroke="none"
-        className="motion-safe:animate-pulse"
+        className="animate-pulse"
       />
     </svg>
   );

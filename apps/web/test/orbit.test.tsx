@@ -251,7 +251,14 @@ describe('the orbit surface', () => {
     expect(screen.getByText(/already in orbit/i)).toBeInTheDocument();
     expect(view.container.querySelector('#row-BEACON [data-progression-state]'))
       .toHaveAttribute('data-progression-state', 'complete');
-    expect(view.container.querySelector('#row-BEACON .grayscale')).toBeNull();
+    /*
+      NOT DIMMED AT ALL. This read `.grayscale`, a class the row stopped using —
+      so it had become a check that could not fail, which `engineering-standards`
+      forbids outright. The treatment is now an opacity ladder; owned art is on
+      the top rung and carries neither of the dimmed ones.
+    */
+    expect(view.container.querySelector('#row-BEACON .opacity-65')).toBeNull();
+    expect(view.container.querySelector('#row-BEACON .opacity-20')).toBeNull();
     expect(view.container.querySelector('#row-BEACON [data-open-item]')).toBeInTheDocument();
   });
 
@@ -259,7 +266,10 @@ describe('the orbit surface', () => {
     const view = show({ orbit: [] }, 'reach');
     const row = view.container.querySelector('#row-BEACON [data-progression-state]');
     expect(row).toHaveAttribute('data-progression-state', 'available-unowned');
-    expect(view.container.querySelector('#row-BEACON .grayscale')).toBeInTheDocument();
+    // Available but unowned: the middle rung. Not the locked one — the next test
+    // is what earns that, and the two must not be the same picture.
+    expect(view.container.querySelector('#row-BEACON .opacity-65')).toBeInTheDocument();
+    expect(view.container.querySelector('#row-BEACON .opacity-20')).toBeNull();
     expect(view.container.querySelector('#row-BEACON [data-open-item]')).toBeInTheDocument();
   });
 

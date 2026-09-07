@@ -10,11 +10,18 @@
  *   pnpm --filter @astera/server dev
  *   pnpm --filter @astera/web dev
  *   node tools/visual.mjs out/visual
+ *   node tools/visual.mjs out/onboarding --onboarding
  *
  * WebGL runs on SwiftShader here, so everything is given time to settle.
  */
 import { mkdir } from 'node:fs/promises';
 import { chromium } from 'playwright';
+
+if (process.argv.includes('--academy')) {
+  const { verifyAcademy } = await import('./academy-visual.mjs');
+  await verifyAcademy(process.argv[2] ?? 'out/academy');
+  process.exit(0);
+}
 
 const WEB = process.env.WEB ?? 'http://localhost:5173';
 const OUT = process.argv[2] ?? 'out/visual';
@@ -102,34 +109,29 @@ const PASSWORD = 'correct-horse-battery';
  * commander"). This harness clicked a button that had not existed for two
  * decisions and reported a forty-second timeout that read like a broken scene.
  *
- * The sign-in door is the one taken here, then switched to register: it is two
- * clicks and it does not enter the ninety-second onboarding rehearsal, which is
- * its own flow with its own harness (`tools/onboarding.mjs`).
+ * Registration now follows training. The harness skips the guided interaction,
+ * keeps its opening orders, and uses the same two-step claim a visitor does.
  */
 // The front door waits for its own sky (D23), so the buttons are not there at once.
-const signInDoor = page.getByRole('button', { name: /already have a commander/i }).first();
+const trainingDoor = page.getByRole('button', { name: /check your planet|start a new commander/i }).first();
 const commanderField = page.getByLabel(/commander name/i);
 for (let attempt = 0; attempt < 3 && !(await commanderField.isVisible().catch(() => false)); attempt += 1) {
-  await signInDoor.waitFor({ timeout: 40_000 });
+  await trainingDoor.waitFor({ timeout: 40_000 });
   // Vite may optimise a dependency and reload the first page opened after a code
   // change. Do not let Playwright wait on that dev-only navigation forever; if it
   // resets the front door, this loop simply walks through it again.
-  await signInDoor.click({ noWaitAfter: true });
-  const registerDoor = page.getByRole('button', { name: /i need a commander/i }).first();
-  await registerDoor.waitFor({ timeout: 20_000 });
-  await registerDoor.click({ noWaitAfter: true });
+  await trainingDoor.click({ noWaitAfter: true });
+  const skip = page.getByRole('button', { name: /^skip$/i });
+  await skip.waitFor({ timeout: 30_000 });
+  await skip.click({ noWaitAfter: true });
   await page.waitForTimeout(1500);
 }
 await commanderField.waitFor({ timeout: 20_000 });
 await commanderField.fill(COMMANDER);
+await page.getByRole('button', { name: /^continue$/i }).click();
 await page.getByLabel(/password/i).fill(PASSWORD);
-await page.getByRole('button', { name: /create commander/i }).click();
-
-// Then a galaxy from the server list. Only the frontier one offers a control at
-// all, so the first Join/Enter on the page is the one open door.
-const open = page.getByRole('button', { name: /^(join|enter)$/i }).first();
-await open.waitFor({ timeout: 30_000 });
-await open.click();
+await page.getByRole('button', { name: /^claim the planet$/i }).click();
+await page.getByRole('dialog', { name: /sign the world/i }).waitFor({ state: 'hidden' });
 await page.waitForSelector('canvas', { timeout: 40_000 });
 // The models arrive over the network and decode on the CPU; surveying before
 // they land measures an empty scene.
@@ -146,6 +148,34 @@ await page.waitForFunction(
 );
 await settle(3000);
 await shot('01-galaxy');
+
+// A narrow front-door regression run, independent of the older scene survey.
+// A card that shares pixels with Chat/Chronicle is not a usable next action.
+if (process.argv.includes('--onboarding')) {
+  try {
+    const guide = page.getByRole('button', { name: /this world has no ground defence/i });
+    await guide.waitFor();
+    const bounds = await guide.boundingBox();
+    if (!bounds || bounds.x < 0 || bounds.x + bounds.width > PHONE.width) {
+      throw new Error(`Next-action card does not fit the phone: ${JSON.stringify(bounds)}`);
+    }
+    for (const label of [/open galaxy chat/i, /galaxy chronicle/i]) {
+      const launcher = await page.getByRole('button', { name: label }).boundingBox();
+      if (!launcher || bounds.y + bounds.height > launcher.y) {
+        throw new Error(`Next-action card overlaps ${String(label)}`);
+      }
+    }
+    await guide.click();
+    await page.getByRole('button', { name: /^close$/i }).first().waitFor();
+    await page.locator('#planet-tab-defend[aria-selected="true"]').waitFor();
+    await shot('onboarding-next-action');
+    if (problems.length) throw new Error(problems.join('\n'));
+    console.log('  PASS  skipped opening reaches a readable, clickable next action at 375px');
+  } finally {
+    await browser.close();
+  }
+  process.exit(0);
+}
 
 /**
  * Everything the scene knows about itself, read through the dev bridge.

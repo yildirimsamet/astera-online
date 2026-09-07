@@ -99,7 +99,8 @@ describe('seating bots on a live galaxy', () => {
       .from(buildings)
       .where(eq(buildings.planetId, seat!.planetId));
     expect(levels.length).toBeGreaterThan(0);
-    expect(levels.find((row) => row.type === 'CORE')?.level).toBeGreaterThanOrEqual(1);
+    expect(levels.find((row) => row.type === 'CORE')?.level).toBeGreaterThanOrEqual(2);
+    expect(levels.find((row) => row.type === 'VAULT')?.level).toBeGreaterThanOrEqual(1);
   });
 
   it('seats the whole pool it has and asks for no more', async () => {

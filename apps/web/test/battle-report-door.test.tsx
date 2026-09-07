@@ -165,3 +165,32 @@ describe('which fight a notification names', () => {
     expect(reportFor([], 'mission-b1')).toBeUndefined();
   });
 });
+
+describe('where a report opens', () => {
+  /**
+   * AT THE BOTTOM, WHICH IS WHERE THE ANSWER IS. Owner instruction.
+   *
+   * A report is read in one direction: what happened, then what it cost, then what
+   * came home. The sheet is taller than a phone and opens at the top, so a
+   * commander who tapped a notification to find out how a raid went arrived at the
+   * header and had to scroll past the whole account to reach the verdict.
+   *
+   * ONCE, ON ARRIVAL. Not a scroll lock — the reader is free to go back up through
+   * the rounds, and nothing pulls them down again.
+   */
+  it('lands the reader on the outcome rather than the header', async () => {
+    const scrollTo = vi.fn();
+    Object.defineProperty(Element.prototype, 'scrollTo', {
+      value: scrollTo, writable: true, configurable: true,
+    });
+    Object.defineProperty(Element.prototype, 'scrollHeight', {
+      value: 2400, writable: true, configurable: true,
+    });
+
+    open('mission-b1', [report()]);
+    await screen.findByRole('dialog');
+    await waitFor(() => { expect(scrollTo).toHaveBeenCalled(); });
+    const [args] = scrollTo.mock.calls.at(-1) as [{ top: number }];
+    expect(args.top).toBeGreaterThan(0);
+  });
+});

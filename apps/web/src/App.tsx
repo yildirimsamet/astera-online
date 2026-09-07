@@ -4,7 +4,7 @@ import { useSession } from './session/useSession.js';
 import { useEventStream } from './session/useEventStream.js';
 import { useLiveAlerts } from './session/useLiveAlerts.js';
 import { LandingScreen } from './screens/LandingScreen.jsx';
-import { Rehearsal } from './onboarding/Rehearsal.jsx';
+import { Academy } from './onboarding/Academy.jsx';
 import { ServersScreen } from './screens/ServersScreen.jsx';
 import { GalaxyView, type Panel, type PanelStop } from './screens/GalaxyView.jsx';
 import { PendingStrip } from './shell/PendingStrip.js';
@@ -71,6 +71,7 @@ export function App() {
     rollover,
   } = useSession();
   const ready = session.phase === 'ready';
+  const [academyReplay, setAcademyReplay] = useState(false);
 
   /**
    * ABOVE EVERY EARLY RETURN IN THIS COMPONENT, and it has to be.
@@ -82,8 +83,8 @@ export function App() {
    */
   useAmbientMusic();
 
-  useEventStream(ready, rollover);
-  useLiveAlerts(ready);
+  useEventStream(ready && !academyReplay, rollover);
+  useLiveAlerts(ready && !academyReplay);
 
   const [panel, setPanel] = useState<Panel>(null);
   /**
@@ -138,8 +139,7 @@ export function App() {
    */
   if (session.phase === 'rehearsing') {
     return (
-      <Rehearsal
-        preview={session.preview}
+      <Academy
         onClaim={claim}
         onSignIn={signInInstead}
         onLeave={leaveRehearsal}
@@ -173,6 +173,9 @@ export function App() {
     );
   }
 
+  if (academyReplay) return <Academy replay onClaim={() => Promise.reject(new Error('REPLAY_ONLY'))}
+    onSignIn={() => { setAcademyReplay(false); }} onLeave={() => { setAcademyReplay(false); }} />;
+
   return (
     <WorldProvider>
     <div className="relative z-10 flex h-dvh flex-col overflow-hidden">
@@ -196,6 +199,7 @@ export function App() {
             void signOut();
           }}
           onPlacementLost={rollover}
+          onReplayAcademy={() => { setPanel(null); setAcademyReplay(true); }}
         />
       </main>
 

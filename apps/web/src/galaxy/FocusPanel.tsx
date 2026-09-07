@@ -426,6 +426,19 @@ export function PlanetFocus({
   const { t } = useTranslation();
   const setRival = useSetRival();
   const say = useToast();
+  /*
+    The PROBE band leads: it is the section a commander opens this panel to read,
+    and the one they paid alloy and a round trip for. Remembered per device.
+
+    ABOVE THE OWNED-WORLD RETURN BELOW, and it has to be. This sat under it and
+    took the whole app down in production (React #310). The rail is drawn with no
+    `key` and `planetFocusRailVisible` keeps it up across a change of subject, so
+    moving the focus between your own colony and a foreign world re-renders THIS
+    fiber — and a hook that only some of those renders reach changes the hook
+    count on a live component. Owned or foreign, this panel now calls the same
+    hooks in the same order; only what it draws is a branch.
+  */
+  const dossierBands = useAccordion('dossier', ['probe']);
 
   if (target.isOwned) {
     return (
@@ -449,11 +462,6 @@ export function PlanetFocus({
     planet.planet.recoveryUntil && planet.planet.recoveryUntil.getTime() > now,
   );
   const colonyPhase = colonizationPhase(target, now, settlementInFlight);
-  /*
-    The PROBE band leads: it is the section a commander opens this panel to read,
-    and the one they paid alloy and a round trip for. Remembered per device.
-  */
-  const dossierBands = useAccordion('dossier', ['probe']);
   /**
    * A CLAIM WINDOW SURVIVES THE FOG, SO THE CONTROL HAS TO AS WELL. D112/D127.
    *
@@ -2224,13 +2232,28 @@ export function PirateFocus({
       <p className="legend mt-2 mb-2">{t('pirate.roster')}</p>
       {crewEntries.length > 0 ? (
         <div className="flex flex-wrap gap-2">
+          {/*
+            THE NAME IS DRAWN, BECAUSE A PHONE HAS NO HOVER. Owner instruction.
+
+            This chip was a silhouette and an integer, with the hull's name in a
+            `title` — an attribute that does not exist on the device this game is
+            played on. So the one fact that says WHAT is out there was mouse-only,
+            and a commander pricing a raid read two glyphs and two numbers.
+
+            `text-micro` is the smallest step on the scale and it is the right one:
+            the name is a label on a chip, not a heading. The COUNT keeps
+            `text-caption` so it stays the figure the eye lands on — the name says
+            what, the number says how many, and they are not the same question.
+            `title` is gone with it: a fact that is drawn is not also written.
+          */}
           {crewEntries.map(([hull, count]) => (
             <span
               key={hull}
+              data-crew-hull={hull}
               className="flex items-center gap-1.5 rounded-chip border border-line px-2 py-1"
-              title={hullLabel(hull)}
             >
               <HullMark hull={hull} className="size-4 text-dim" />
+              <span data-crew-name className="text-micro text-dim">{hullLabel(hull)}</span>
               <span className="num text-caption text-bone">{count}</span>
             </span>
           ))}

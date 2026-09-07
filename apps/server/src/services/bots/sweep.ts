@@ -1,6 +1,6 @@
 import { and, asc, eq, inArray, lte, sql } from 'drizzle-orm';
 import type { FastifyBaseLogger } from 'fastify';
-import { SERVERS, hashSeed, mulberry32 } from '@astera/rules';
+import { ACADEMY_STEPS, SERVERS, hashSeed, mulberry32 } from '@astera/rules';
 import type { Db } from '../../db/client.js';
 import type { Clock } from '../../clock.js';
 import { botProfiles, planets, players, seasons } from '../../db/schema.js';
@@ -94,7 +94,7 @@ export async function ensureBotSeats(
     free = free.slice(taking.length);
     for (const profile of taking) {
       try {
-        await joinSeason(db, profile.accountId, season.id, clock);
+        await joinSeason(db, profile.accountId, season.id, clock, ACADEMY_STEPS.length);
         /*
           SEATING IS NOT PLAYING, AND THE POPULATION FIGURE MUST NOT SAY IT IS.
 

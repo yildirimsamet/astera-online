@@ -22,6 +22,7 @@ import {
   impactAt,
   impactPoint,
   shotProgress,
+  returnVolleyFrame,
   volleyFor,
 } from '../src/galaxy/volley.js';
 import {
@@ -1039,5 +1040,44 @@ describe('whether two points make a heading', () => {
 
   it('refuses a separation too small to be a direction', () => {
     expect(isHeading([0, 0, 0], [0, 0, HEADING_EPSILON / 2])).toBe(false);
+  });
+});
+
+describe('the volley that comes back', () => {
+  /**
+   * A PIRATE SHOOTS AT YOU. Owner report: *"Korsan filo ile savaşırken bize neden
+   * korsan ateş etmiyor."*
+   *
+   * The rules always had it two-sided — the Academy's own fight kills one of the
+   * two Darts it sends — but the DISC only ever drew one direction. `Bombardment`
+   * fires from the squadron's slots straight down its own +Z at the target, and
+   * nothing was mounted for the other end. So a ten-second battle read as target
+   * practice, and the Dart that failed to come home had been shot by nobody.
+   *
+   * ONLY WHERE THE DEFENDER IS KNOWN TO HAVE A CREW. A pirate always does — its
+   * roster is generated and `pirates.test.ts` holds the line that it can fight
+   * back — so return fire at a pirate is always true. A world is not: drawing
+   * rounds out of an undefended planet would be the renderer inventing a garrison,
+   * which is the one thing the fog rules forbid outright.
+   *
+   * This frame is the whole geometry, and both halves of it can be wrong in a way
+   * no type would catch: fire from the wrong END, or fire the wrong WAY.
+   */
+  it('fires from the target, back down the squadron’s own line', () => {
+    const distance = 12.5;
+    const frame = returnVolleyFrame(distance);
+
+    // At the far end of the leg: the defender's position in the attacker's frame.
+    expect(frame.position).toEqual([0, 0, distance]);
+    // Turned to face back down it, so its rounds travel toward the squadron.
+    expect(frame.rotation).toEqual([0, Math.PI, 0]);
+  });
+
+  it('keeps the two volleys from firing as one', () => {
+    // Same key would give the incoming rounds the outgoing rounds' exact timing
+    // and scatter, which reads as a mirror rather than as a second fleet.
+    const out = volleyFor('raid-1', 3, 1.2);
+    const back = volleyFor('raid-1:return', 1, 1.2);
+    expect(back.map((s) => s.launchAt)).not.toEqual(out.slice(0, back.length).map((s) => s.launchAt));
   });
 });

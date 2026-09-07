@@ -7,6 +7,8 @@ import { keys } from '../api/keys.js';
 import type { ClaimIntent, ClaimResult, Me, Preview } from '../api/schemas.js';
 import { track } from '../lib/analytics.js';
 import { rememberCommander } from '../lib/returning.js';
+import { academyPreview } from '../onboarding/academyWorld.js';
+import { serverNow } from '../lib/clock.js';
 
 /** Where the player is standing, as one word. */
 export type Phase = Session['phase'];
@@ -21,7 +23,7 @@ export type Session =
   /** Asking the cookie whether there is a session to come back to. */
   | { phase: 'starting' }
   /** No session. The front door: the premise, and a way in. */
-  | { phase: 'landing'; error?: string; open?: 'login' | 'register' }
+  | { phase: 'landing'; error?: string; open?: 'login' }
   /**
    * Playing the real game, on a world that does not exist yet. D56.
    *
@@ -192,30 +194,12 @@ export function useSession() {
   );
 
   /**
-   * Start the rehearsal: read the frontier galaxy, and play it. D56.
-   *
-   * ONE PUBLIC REQUEST AND NO ACCOUNT. If every galaxy is full there is nothing to
-   * rehearse and the front door says so, rather than opening ninety seconds of a
-   * world that cannot be claimed at the end.
+   * D172: enter a private Academy without a frontier request or an account.
    */
-  const rehearse = useCallback(async (): Promise<void> => {
-    /**
-     * THE FRONT DOOR STAYS ON SCREEN WHILE THIS LANDS.
-     *
-     * It used to drop to the loading frame, and that is a spinner where a decision
-     * should be (Principle 10): the visitor pressed one button and the thing they
-     * were looking at was replaced by a caption saying "making contact". The page
-     * they pressed is a live 3D scene — leaving it up and letting the control say
-     * it is working is both calmer and honest, and the disc behind it is already
-     * loading its models by then.
-     */
-    try {
-      setSession({ phase: 'rehearsing', preview: await api.preview() });
-    } catch (err) {
-      setSession({ phase: 'landing', error: messageOf(err) });
-      throw err;
-    }
-  }, [api]);
+  const rehearse = useCallback((): Promise<void> => {
+    setSession({ phase: 'rehearsing', preview: academyPreview(serverNow()) });
+    return Promise.resolve();
+  }, []);
 
   /** Out of the rehearsal without an account. Nothing to undo. */
   const leaveRehearsal = useCallback((): void => {
@@ -276,7 +260,7 @@ export function useSession() {
     async (
       username: string,
       password: string,
-      intents: readonly ClaimIntent[],
+      intents: readonly ClaimIntent[] | number,
     ): Promise<void> => {
       const result = await api.claim(username, password, intents);
       rememberCommander();

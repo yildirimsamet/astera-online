@@ -1,4 +1,5 @@
 import { SeasonLockProvider } from '../session/seasonLock.js';
+import { VIEW } from '@astera/rules';
 import { NextSeason } from '../ui/NextSeason.js';
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -40,6 +41,7 @@ import {
 } from '../galaxy/FocusPanel.jsx';
 import { threadKey } from '../galaxy/threadKey.js';
 import type { PlanetGroup } from '../lib/directives.js';
+import { SituationGuide } from '../ui/SituationGuide.js';
 import { haptic } from '../lib/haptics.js';
 import { serverNow } from '../lib/clock.js';
 import { activeTradeShip } from '../lib/trade.js';
@@ -169,14 +171,20 @@ export function GalaxyView({
   isAdmin = false,
   pastResult,
   onSignOut,
+  onReplayAcademy,
   onPlacementLost,
   onFocused,
   planetGroup,
   openWide,
   wideDistance,
+  frameTelescope = false,
+  openingHome = false,
+  coachFocus = null,
+  coachTap = null,
   allowFocus,
   goHome,
   showChat = true,
+  showGuidance = true,
 }: {
   /** Opened from the header, which is the only chrome left outside the canvas. */
   panel: Panel;
@@ -202,6 +210,7 @@ export function GalaxyView({
   /** The newest permanent record, still readable after its world was wiped. D87. */
   pastResult?: HistoricalSeasonResult | null;
   onSignOut: () => void;
+  onReplayAcademy?: () => void;
   /** Safety net when the rollover broadcast was missed while this tab slept. */
   onPlacementLost?: () => void;
   /**
@@ -220,6 +229,27 @@ export function GalaxyView({
   openWide?: boolean;
   /** Exact range for a scripted wide re-frame; used by the rehearsal's neighbourhood beat. */
   wideDistance?: number;
+  /** Explicit training exercise: frame the owned world's complete sight sphere. */
+  /**
+   * ACADEMY ONLY: FLY THE CAMERA ONTO A SUBJECT AND DRAW NO RAIL FOR IT.
+   *
+   * The mission lessons need the commander to LOOK at the pirate, the rock or the
+   * world before they are asked to attack it — and then to tap it. A rail opening
+   * over the subject is the one thing that cannot happen there: it covers the
+   * target the lesson is pointing at, and it offers a commitment the lesson has
+   * not reached yet.
+   *
+   * `interception` already establishes that a focus kind may be camera-only
+   * (`FocusPanel`'s union says so in as many words). This is the same idea reached
+   * from outside: while it is set, the subject is followed and every information
+   * rail stays shut.
+   */
+  coachFocus?: { focus: Focus; request: number } | null;
+  /** Academy: an invisible hit area pinned to whatever `coachFocus` is showing. */
+  coachTap?: { label: string; onTap: () => void } | null;
+  frameTelescope?: boolean;
+  /** Explicit scripted entrance; ordinary navigation keeps its own camera. */
+  openingHome?: boolean;
   /** Which worlds may be selected. Absent means all of them, which is the game. */
   allowFocus?: (planetId: string) => boolean;
   /**
@@ -232,6 +262,8 @@ export function GalaxyView({
   goHome?: number;
   /** Hidden in the pre-account rehearsal, where no commander identity exists. */
   showChat?: boolean;
+  /** The scripted lesson owns guidance during training. */
+  showGuidance?: boolean;
 }) {
   const { t } = useTranslation();
   const galaxy = useGalaxy();
@@ -677,6 +709,17 @@ export function GalaxyView({
     setAttacking(false);
   }, [interceptionImpacts, traffic.data]);
 
+  /** Academy: a camera move the lesson asked for, with no rail behind it. */
+  const handledCoachFocus = useRef<number | null>(null);
+  useEffect(() => {
+    if (!coachFocus || handledCoachFocus.current === coachFocus.request) return;
+    handledCoachFocus.current = coachFocus.request;
+    setFocus(coachFocus.focus);
+    setTransferOriginId(null);
+    setDetail(false);
+    setAttacking(false);
+  }, [coachFocus]);
+
   const handledCraftFocusRequest = useRef<number | null>(null);
   useEffect(() => {
     if (
@@ -885,9 +928,12 @@ export function GalaxyView({
         onReady={onReady}
         onFocus={onFocus}
         homeSignal={homeSignal}
+        openingHome={openingHome}
         aim={aim}
+        coachTap={coachTap}
         openWide={openWide ?? false}
         {...(wideDistance !== undefined ? { wideDistance } : {})}
+        {...(frameTelescope ? { sightRadius: Math.max(0, ...sensors.map((post) => post.identify)) / VIEW.scale } : {})}
         {...(allowFocus ? { allowFocus } : {})}
       />
 
@@ -1060,7 +1106,7 @@ export function GalaxyView({
 
       {/* ── focus ───────────────────────────────────────────── */}
 
-      {focus?.kind === 'planet' && selected && focusedPlanet && showPlanetFocus && !attacking && (
+      {!coachFocus && focus?.kind === 'planet' && selected && focusedPlanet && showPlanetFocus && !attacking && (
         <PlanetFocus
           target={selected}
           planet={focusedPlanet}
@@ -1123,7 +1169,7 @@ export function GalaxyView({
         />
       )}
 
-      {focus?.kind === 'debris' && (
+      {!coachFocus && focus?.kind === 'debris' && (
         <DebrisFocusHost
           field={wrecks.find((d) => d.id === focus.id)}
           planets={planets}
@@ -1156,7 +1202,7 @@ export function GalaxyView({
         />
       )}
 
-      {focus?.kind === 'asteroid' && season.data && (
+      {!coachFocus && focus?.kind === 'asteroid' && season.data && (
         <AsteroidFocusHost
           rock={asteroids.find((a) => a.id === focus.id)}
           runs={runs}
@@ -1197,7 +1243,7 @@ export function GalaxyView({
         the pirate rail is: an appointment that has ended takes its own surface with
         it instead of offering a launch the server would refuse.
       */}
-      {focus?.kind === 'tradeShip' && tradeShip?.id === focus.id && (
+      {!coachFocus && focus?.kind === 'tradeShip' && tradeShip?.id === focus.id && (
         <TradeFocus
           merchant={tradeShip}
           fleetAtHome={planet.data?.fleet ?? {}}
@@ -1211,7 +1257,7 @@ export function GalaxyView({
         />
       )}
 
-      {focus?.kind === 'run' &&
+      {!coachFocus && focus?.kind === 'run' &&
         (() => {
           const run = runs.find((r) => r.id === focus.id);
           if (!run) return null;
@@ -1247,7 +1293,7 @@ export function GalaxyView({
           );
         })()}
 
-      {focus?.kind === 'thread' &&
+      {!coachFocus && focus?.kind === 'thread' &&
         (() => {
           const index = threads.findIndex((t, i) => threadKey(t, i) === focus.key);
           const thread = threads[index];
@@ -1280,7 +1326,7 @@ export function GalaxyView({
         })()}
 
       {/* Somebody else's craft. D24: selectable, and readable up to a point. */}
-      {focus?.kind === 'contact' &&
+      {!coachFocus && focus?.kind === 'contact' &&
         (() => {
           const contact = (traffic.data?.contacts ?? []).find((c) => c.id === focus.id);
           // A public effect outside sensor reach is not a contact the commander
@@ -1319,6 +1365,31 @@ export function GalaxyView({
       )}
 
       {/* ── full surfaces, over the live galaxy ─────────────── */}
+
+      {showGuidance && !showPlanetFocus && planet.data && panel === null && season.data?.status === 'live'
+        && (focus === null || (focus.kind === 'planet' && focus.id === activePlanetId)) && (
+        // Chat and Chronicle occupy bottom-2 + h-9; leave their entire row clear.
+        <div className="absolute bottom-14 left-2 right-2 z-10 max-w-sm">
+          <SituationGuide
+            now={now}
+            situation={{ planet: planet.data, galaxy: galaxy.data, intel: intel.data,
+              pending: threads, held: planet.data.planet }}
+            onAct={({ action }) => {
+              if (action.screen === 'planet') {
+                if (action.planetId) selectPlanet(action.planetId);
+                setRequestedPlanetGroup(action.group ?? 'grow');
+                onPanel('planet');
+              } else if (action.screen === 'intel') {
+                onPanel('intel');
+              } else {
+                onPanel(null);
+                if (action.planetId) focusPlanet(action.planetId);
+                else setFocus(null);
+              }
+            }}
+          />
+        </div>
+      )}
 
       {panel === 'planet' && planet.data && (
         <Sheet
@@ -1394,6 +1465,7 @@ export function GalaxyView({
             }}
             onOpen={onPanel}
             onSignOut={onSignOut}
+            {...(onReplayAcademy ? { onReplayAcademy } : {})}
             isAdmin={isAdmin}
           />
         </Sheet>

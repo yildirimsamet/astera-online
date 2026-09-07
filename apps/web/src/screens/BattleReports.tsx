@@ -419,6 +419,27 @@ function GradeMark({ report }: { report: OrdinaryReport }) {
 
 function ReportSheet({ report, onClose }: { report: OrdinaryReport; onClose: () => void }) {
   const { t } = useTranslation();
+
+  /**
+   * OPEN AT THE OUTCOME, NOT AT THE HEADER. Owner instruction.
+   *
+   * A report is read in one direction — what happened, what it cost, what came
+   * home — and the sheet is taller than a phone. A commander who tapped a
+   * notification to find out how their raid went arrived at the top and had to
+   * scroll past the entire account to reach the answer they opened it for.
+   *
+   * ONE FRAME LATE, DELIBERATELY: the sheet animates in, and a body with no height
+   * yet has nothing to scroll. Once, on arrival, and never again — the reader is
+   * free to go back up through the rounds and nothing drags them down.
+   */
+  useEffect(() => {
+    const frame = requestAnimationFrame(() => {
+      document.querySelectorAll<HTMLElement>('[data-sheet-panel] [data-sheet-scroll]')
+        .forEach((body) => { body.scrollTo({ top: body.scrollHeight, behavior: 'smooth' }); });
+    });
+    return () => { cancelAnimationFrame(frame); };
+  }, []);
+
   const looted = report.lootAlloy + report.lootCrystal + report.lootDeuterium;
   const yourClan = report.attacking ? report.attackerClan : report.defenderClan;
   const theirClan = report.attacking ? report.defenderClan : report.attackerClan;

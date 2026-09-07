@@ -540,6 +540,10 @@ export const directives = {
   kindOpportunity: 'Fırsat',
   kindGrowth: 'Açık',
   kindIdle: 'Bekleyen yok',
+
+  /** The fold. One word each way: the card is small enough that a label is the control. */
+  hide: 'Gizle',
+  show: 'Göster',
 } as const;
 
 export const notifications = {

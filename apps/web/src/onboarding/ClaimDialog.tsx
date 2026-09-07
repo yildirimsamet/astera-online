@@ -29,12 +29,15 @@ export function ClaimDialog({
   onClaim,
   onSignIn,
   error,
+  introduction,
 }: {
   planetName: string;
   onClaim: (username: string, password: string) => Promise<void>;
   onSignIn: () => void;
   /** A refusal from the claim, already translated. */
   error?: string;
+  /** The caller describes what will actually be transferred; legacy intents differ. */
+  introduction?: string;
 }) {
   const { t } = useTranslation();
   const [step, setStep] = useState<'name' | 'password'>('name');
@@ -114,7 +117,7 @@ export function ClaimDialog({
         </h2>
         <p className="mt-2 text-body leading-snug text-dim">
           {naming
-            ? t('onboarding.claim.lineName', { name: planetName })
+            ? introduction ?? t('onboarding.claim.lineName', { name: planetName })
             : t('onboarding.claim.linePassword')}
         </p>
 

@@ -1,10 +1,11 @@
 import { and, eq, inArray, sql } from 'drizzle-orm';
-import { BUILDING_IDS, PLANET_START, START_BUILDINGS, pickSpawnSlot } from '@astera/rules';
+import { BUILDING_IDS, PLANET_START, START_BUILDINGS, academyExitCheckpoint, fleetEntries, findRewardTier, pickSpawnSlot } from '@astera/rules';
 import type { Db, Tx } from '../db/client.js';
 import type { Clock } from '../clock.js';
-import { accounts, buildings, planets, players, seasons, shards } from '../db/schema.js';
+import { accounts, buildings, planets, players, seasons, shards, satellites, units, rewardGrants } from '../db/schema.js';
 import { galaxyOf, occupiedSlots } from './season.js';
-import { GameError, recomputeWealth } from './planet.js';
+import { GameError, loadLocked, recomputeWealth } from './planet.js';
+import { placeBuildingUpgrade } from './build.js';
 import { publishShard } from '../stream/bus.js';
 import { refreshSensorEpoch } from './sensorHistory.js';
 import {
@@ -137,7 +138,10 @@ export async function joinSeason(
   accountId: string,
   seasonId: string,
   clock: Clock,
+  academyStep?: number,
 ): Promise<JoinResult> {
+  // Validate before even looking for a placement. Only creation consumes it.
+  const academy = academyStep === undefined ? null : academyExitCheckpoint(academyStep);
   const existing = await readPlacement(db, accountId);
   if (existing) return settle(existing, seasonId);
 
@@ -198,11 +202,16 @@ export async function joinSeason(
              * D58, because the arithmetic alone is spent to the last crystal by the
              * time onboarding ends and leaves nothing to press.
              */
-            alloy: PLANET_START.alloy,
-            crystal: PLANET_START.crystal,
+            alloy: academy ? academy.resources.alloy + (academy.queue?.cost.alloy ?? 0) : PLANET_START.alloy,
+            crystal: academy ? academy.resources.crystal + (academy.queue?.cost.crystal ?? 0) : PLANET_START.crystal,
             // The starting tank. T6: a world opens able to fly and unable to make
             // more fuel, which is the chain the opening has to teach.
-            deuterium: PLANET_START.deuterium,
+            deuterium: academy ? academy.resources.deuterium + (academy.queue?.cost.deuterium ?? 0) : PLANET_START.deuterium,
+            academyStep: academyStep ?? null,
+            builtEver: academy?.builtEver ?? {},
+            bufferAlloy: academy?.buffer.alloy ?? 0,
+            bufferCrystal: academy?.buffer.crystal ?? 0,
+            bufferDeuterium: academy?.buffer.deuterium ?? 0,
             lastTickAt: now,
           })
           .onConflictDoNothing({ target: [planets.seasonId, planets.slotIndex] })
@@ -212,7 +221,28 @@ export async function joinSeason(
 
         await tx
           .insert(buildings)
-          .values(STARTING_BUILDINGS.map((b) => ({ planetId: planet.id, ...b })));
+          .values(STARTING_BUILDINGS.map((b) => ({ planetId: planet.id, ...b,
+            level: academy?.buildings[b.type] ?? b.level })));
+
+        if (academy) {
+          if (academy.instruments.AEGIS > 0) await tx.insert(satellites).values({
+            planetId: planet.id, slot: 0, type: 'AEGIS', level: academy.instruments.AEGIS,
+          });
+          const fleet = fleetEntries(academy.fleet);
+          if (fleet.length) await tx.insert(units).values(fleet.map(([hull, count]) => ({
+            planetId: planet.id, ownerPlayerId: player.id, hull, count, location: 'home',
+          })));
+          for (const id of academy.claimedRewards) {
+            const reward = findRewardTier(id);
+            if (!reward) throw new Error(`Missing Academy reward ${id}`);
+            await tx.insert(rewardGrants).values({ playerId: player.id, rewardId: id,
+              ...reward.tier.reward, claimedAt: now });
+          }
+          if (academy.queue) {
+            // Ordinary paid queue, in this same creation transaction. No instant build.
+            await placeBuildingUpgrade(tx, await loadLocked(tx, planet.id, clock), academy.queue.building);
+          }
+        }
 
         /**
          * NO STARTING FLEET. D22.

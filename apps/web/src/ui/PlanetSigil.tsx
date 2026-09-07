@@ -59,7 +59,7 @@ export function PlanetSigil({
             className="absolute inset-[-6%] rounded-full border border-crystal/35"
             style={{ boxShadow: '0 0 18px rgba(111,211,224,0.22) inset' }}
           />
-          <div className="absolute inset-[-6%] rounded-full border border-dashed border-crystal/25 motion-safe:animate-[spin_48s_linear_infinite]" />
+          <div className="absolute inset-[-6%] rounded-full border border-dashed border-crystal/25 animate-[spin_48s_linear_infinite]" />
         </>
       )}
     </div>

@@ -6,6 +6,7 @@ import { engagementEndsAt, isEngaging, seededFrom } from '@astera/rules';
 import type { Contact, PendingThread } from '../api/schemas.js';
 import { HULL_MODEL, MODEL, MODEL_FACING, MODEL_POSE, hullPoseLift } from '../ui/assets.js';
 import { Bombardment, bombardmentIntensity } from './Bombardment.jsx';
+import { returnVolleyFrame } from './volley.js';
 import { softGlow } from './Environment.jsx';
 import { posedCraft } from './model.js';
 import {
@@ -868,16 +869,50 @@ function Flight({
           nothing was standing in while every bystander watched a tight volley on
           the same battle. `bombardmentTarget` answers `null` for "no world here".
         */}
-        {target && engaging && (
-          <Bombardment
-            volleyKey={id}
-            slots={slots}
-            distance={Math.hypot(to[0] - stop[0], to[1] - stop[1], to[2] - stop[2])}
-            radius={target.radius ?? formationScale}
-            shipScale={style.scale}
-            arriveAt={path.arriveAt.getTime()}
-          />
-        )}
+        {target && engaging && (() => {
+          const reach = Math.hypot(to[0] - stop[0], to[1] - stop[1], to[2] - stop[2]);
+          const back = returnVolleyFrame(reach);
+          return (
+            <>
+              <Bombardment
+                volleyKey={id}
+                slots={slots}
+                distance={reach}
+                radius={target.radius ?? formationScale}
+                shipScale={style.scale}
+                arriveAt={path.arriveAt.getTime()}
+              />
+              {/*
+                AND THE PIRATE SHOOTS BACK. Owner report: *"Korsan filo ile
+                savaşırken bize neden korsan ateş etmiyor."*
+
+                The rules were two-sided all along — the Academy's own fight kills
+                one of the two Darts it sends — but the disc only ever drew this
+                squadron firing. Ten seconds of target practice, and the Dart that
+                never came home had been shot by nobody.
+
+                ONLY AT A PIRATE, and that limit is the honest part. A pirate
+                always has a crew: its roster is generated and `pirates.test.ts`
+                holds the line that it can fight back, so rounds coming out of one
+                are always true. A WORLD is not — drawing fire out of an
+                undefended planet would be the renderer inventing a garrison,
+                which is exactly what the fog rules forbid.
+              */}
+              {thread.kind === 'pirate' && (
+                <group position={back.position} rotation={back.rotation}>
+                  <Bombardment
+                    volleyKey={`${id}:return`}
+                    slots={[[0, 0, 0]]}
+                    distance={reach}
+                    radius={formationScale}
+                    shipScale={style.scale}
+                    arriveAt={path.arriveAt.getTime()}
+                  />
+                </group>
+              )}
+            </>
+          );
+        })()}
       </group>
     </>
   );

@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import type { ReactNode } from 'react';
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { Api } from '../src/api/client.js';
@@ -70,6 +70,15 @@ beforeEach(async () => {
 });
 
 describe('the quick-start guide row', () => {
+  it('opens reward-free Academy replay without signing out', () => {
+    const { wrapper } = harness();
+    const replay = vi.fn();
+    const signOut = vi.fn();
+    render(<MenuPanel galaxy="Vantage" shard="EU-1" endsAt={null} onOpen={vi.fn()} onSignOut={signOut} onReplayAcademy={replay} />, { wrapper });
+    fireEvent.click(screen.getByRole('button', { name: /Replay Academy/i }));
+    expect(replay).toHaveBeenCalledOnce();
+    expect(signOut).not.toHaveBeenCalled();
+  });
   it('is a named row in the menu, not a glyph on its own', () => {
     show();
 

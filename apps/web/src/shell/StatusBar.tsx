@@ -14,6 +14,7 @@ import type { PlanetView } from '../api/schemas.js';
 import { Signals } from './Signals.js';
 import type { Panel, PanelStop } from '../screens/GalaxyView.jsx';
 import { useWorld } from '../api/world.js';
+import { useAcademyLesson } from '../onboarding/lessonScope.js';
 
 /**
  * What you hold, what is waiting, and how long the season has left.
@@ -40,6 +41,7 @@ export function StatusBar({
   onFocusPlanet: (planetId: string) => void;
 }) {
   const { t } = useTranslation();
+  const lesson = useAcademyLesson();
   const { activePlanetId, capitalPlanetId, worlds, selectPlanet } = useWorld();
   const { data, dataUpdatedAt } = usePlanet();
   const held = useProjected(data?.planet, dataUpdatedAt);
@@ -115,7 +117,7 @@ export function StatusBar({
             tone="deuterium"
           />
         </div>
-        <div className="flex shrink-0 items-end gap-2 ml-auto">
+        {!lesson && <div className="flex shrink-0 items-end gap-2 ml-auto">
           {/**
            * TWO CONTROLS, AND THERE USED TO BE FOUR. Owner decision.
            *
@@ -176,10 +178,10 @@ export function StatusBar({
               <span className="sr-only">{t('statusBar.clanWaiting', { count: clanAttention })}</span>
             ) : null}
           </button>
-        </div>
+        </div>}
       </div>
 
-      <Works planet={data} held={held} onOpen={onOpen} />
+      {!lesson && <Works planet={data} held={held} onOpen={onOpen} />}
     </header>
   );
 }

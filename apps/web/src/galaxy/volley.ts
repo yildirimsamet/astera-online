@@ -390,3 +390,26 @@ export function impactPoint(
   if (!Number.isFinite(hit) || hit <= 0) return target;
   return [from[0] + unit[0] * hit, from[1] + unit[1] * hit, from[2] + unit[2] * hit];
 }
+
+/**
+ * WHERE THE DEFENDER'S OWN ROUNDS COME FROM. Owner report.
+ *
+ * `Bombardment` fires from its slots straight down its parent's +Z. A squadron's
+ * group already points +Z at whatever it is attacking, so drawing the fight from
+ * the other side is not a second component — it is the same one, mounted at the
+ * far end of the leg and turned around.
+ *
+ * The battle was two-sided in the rules the whole time; only the picture was not.
+ * The Academy's own pirate fight kills one of the two Darts it sends, and nothing
+ * on the disc had ever fired at them.
+ *
+ * BOTH HALVES CAN BE WRONG SILENTLY — fire from the wrong END, or fire the wrong
+ * WAY — and neither is a type error, which is why this is a function with a test
+ * rather than two literals inline in the scene.
+ */
+export function returnVolleyFrame(distance: number): {
+  position: [number, number, number];
+  rotation: [number, number, number];
+} {
+  return { position: [0, 0, distance], rotation: [0, Math.PI, 0] };
+}

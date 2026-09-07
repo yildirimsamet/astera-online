@@ -1,5 +1,6 @@
 import { useEffect, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useAcademyLesson } from '../../onboarding/lessonScope.js';
 import { IconButton } from './Button.js';
 import { useOwnPress } from './useOwnPress.js';
 import { CloseIcon } from '../icons/index.js';
@@ -64,6 +65,7 @@ export function Sheet({
   bleed?: boolean;
 }) {
   const { t } = useTranslation();
+  const lesson = useAcademyLesson();
   useEffect(() => {
     const onKey = (event: KeyboardEvent): void => {
       if (event.key === 'Escape') onClose();
@@ -90,7 +92,7 @@ export function Sheet({
         aria-hidden="true"
         tabIndex={-1}
         {...dismiss}
-        className="absolute inset-0 animate-[fade-in_200ms_var(--ease-hardware)] bg-void/80"
+        className={`absolute inset-0 animate-[fade-in_200ms_var(--ease-hardware)] ${lesson ? 'bg-transparent' : 'bg-void/80'}`}
       />
       <div
         role="dialog"
@@ -127,6 +129,7 @@ export function Sheet({
 
         {/* `min-h-0` is what actually lets a flex child scroll instead of growing. */}
         <div
+          data-sheet-scroll
           className={`min-h-0 flex-1 ${bleed ? '' : 'px-2 py-2'} ${
             contained ? 'overflow-hidden' : 'overflow-y-auto overscroll-contain'
           }`}

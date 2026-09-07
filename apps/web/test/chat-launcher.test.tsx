@@ -42,7 +42,16 @@ describe('Galaxy chat launcher', () => {
   it('opens chat directly from the Galaxy and owns the general unread light', async () => {
     const onOpen = show(3, 0);
     const launcher = screen.getByRole('button', { name: 'Open galaxy chat — 3 unread' });
-    expect(launcher).toHaveClass('bottom-3', 'right-3');
+    /*
+      THE ROW THESE TWO SHARE. `GalaxyView` states it in its own words — "Chat and
+      Chronicle occupy bottom-2 + h-9; leave their entire row clear" — and places
+      the situation card at `bottom-14` to clear exactly that. So `bottom-2` is a
+      contract between three files rather than a number this one happened to see,
+      and the Chronicle's test asserts the same rung.
+
+      This pinned `bottom-3 right-3` and was left behind when the pair moved.
+    */
+    expect(launcher).toHaveClass('bottom-2', 'right-1');
     expect(launcher.querySelector('.bg-threat')).not.toBeNull();
     await userEvent.setup().click(launcher);
     expect(onOpen).toHaveBeenCalledWith('general');

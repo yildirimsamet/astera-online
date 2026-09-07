@@ -414,6 +414,13 @@
       "when": 1788609352711,
       "tag": "0058_rapid_mother_askani",
       "breakpoints": true
+    },
+    {
+      "idx": 59,
+      "version": "7",
+      "when": 1788740000000,
+      "tag": "0059_academy_start",
+      "breakpoints": true
     }
   ]
 }

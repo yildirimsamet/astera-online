@@ -92,7 +92,9 @@ describe('the calibrated economy tempo', () => {
   it('keeps action rewards and the scouting entry price as intentional exceptions', () => {
     expect(PROBE).toMatchObject({ alloy: 50, crystal: 30 });
     // Crystal follows the INCOME share, which D161 moved from ~35% to ~44%.
-    expect(rewardPurse()).toEqual({ alloy: 13_600, crystal: 6055, deuterium: 0 });
+    // D172 adds authored Academy tiers, Vault, pirate victories and Aegis L3/L5;
+    // existing tiers are not rescaled and the shared purse ceiling is unchanged.
+    expect(rewardPurse()).toEqual({ alloy: 18_950, crystal: 8445, deuterium: 0 });
   });
 
   it('keeps the strategic asset timer fixed outside ordinary yard crafting', () => {

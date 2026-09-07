@@ -483,6 +483,20 @@ export const planetSchema = z.object({
     reservations: z.number(),
     capacity: z.number(),
   }).optional(),
+  /**
+   * HOW FAR THIS WORLD'S COMMANDER GOT THROUGH THE ACADEMY, or null if they never
+   * went. Owner instruction.
+   *
+   * The one thing the client cannot work out for itself: whether the person
+   * holding this world is NEW. Every world claimed through the Academy carries a
+   * step; every world that existed before it carries null, and so does every
+   * established commander. `SituationGuide` reads it to decide whether the written
+   * coaching applies at all — a device-local flag would have put that card back in
+   * front of a season-old commander the first time they opened a new phone.
+   *
+   * Optional only for a rolling deploy against an older server.
+   */
+  academyStep: z.number().nullable().optional(),
   fleet,
   ground: fleet,
   /** Your own craft that are off the planet right now. Ownership, not readiness. */

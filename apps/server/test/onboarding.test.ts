@@ -2,11 +2,12 @@ import { eq } from 'drizzle-orm';
 import type { FastifyInstance } from 'fastify';
 import { pino } from 'pino';
 import { afterAll, afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { OPENING_BONUS, PLANET_START, START, upgradeCost, HULLS } from '@astera/rules';
+import { ACADEMY_STEPS, TUTORIAL_EXIT, OPENING_BONUS, PLANET_START, START, upgradeCost, HULLS } from '@astera/rules';
 import { buildApp } from '../src/app.js';
 import { accounts, buildOrders, missions, planets, players, units } from '../src/db/schema.js';
 import { FixedClock } from '../src/clock.js';
 import { bootstrapServers } from '../src/services/servers.js';
+import { rewardsView, claimReward } from '../src/services/rewards.js';
 import { testDb, testEnv, truncateAll, type Fixture } from './helpers.js';
 
 const silent = pino({ level: 'silent' });
@@ -95,6 +96,73 @@ describe('onboarding claim', () => {
 
   const claim = (payload: Record<string, unknown>) =>
     app.inject({ method: 'POST', url: '/api/onboarding/claim', payload });
+
+  it('seeds the Academy once and never upgrades a returning commander on retry', async () => {
+    await openWorld();
+    const payload = { username: 'AcademyPilot', password: 'correct-horse-battery', step: ACADEMY_STEPS.length };
+    const first = await claim(payload);
+    expect(first.statusCode).toBe(200);
+    const body = first.json<Claim>();
+    expect(body.planet.buildings).toMatchObject(TUTORIAL_EXIT.buildings);
+    expect(body.planet.queues.CONSTRUCTION).toHaveLength(1);
+    const [row] = await db.select().from(planets).where(eq(planets.id, body.placement.planetId));
+    expect(row?.builtEver).toEqual(TUTORIAL_EXIT.builtEver);
+    expect(row?.bufferAlloy).toBe(TUTORIAL_EXIT.buffer.alloy);
+    expect(row?.bufferCrystal).toBe(TUTORIAL_EXIT.buffer.crystal);
+    const ships = await db.select().from(units).where(eq(units.planetId, body.placement.planetId));
+    expect(Object.fromEntries(ships.map((s) => [s.hull, s.count]))).toEqual(TUTORIAL_EXIT.fleet);
+    const rewards = await rewardsView(db, body.placement.planetId, clock);
+    expect(rewards.chains.find((c) => c.id === 'PIRATE')?.progress).toBe(1);
+    expect(rewards.chains.find((c) => c.id === 'MINE')?.progress).toBe(1);
+    expect(rewards.chains.find((c) => c.id === 'RAID')?.progress).toBe(1);
+    await expect(claimReward(db, body.placement.planetId, 'PIRATE:1', clock))
+      .rejects.toMatchObject({ code: 'REWARD_TAKEN' });
+    const again = await claim(payload);
+    expect(again.statusCode).toBe(200);
+    expect(again.json<Claim>().placement.planetId).toBe(body.placement.planetId);
+    expect(again.json<Claim>().planet.queues).toEqual(body.planet.queues);
+  });
+
+  it('leaves a paid Core upgrade after skipping at the welcome without awarding a lesson', async () => {
+    await openWorld();
+    const response = await claim({ username: 'EarlyAcademy', password: 'correct-horse-battery', step: 0 });
+    expect(response.statusCode).toBe(200);
+    const body = response.json<Claim>();
+    expect(body.planet.buildings.CORE).toBe(1);
+    expect(body.planet.queues.CONSTRUCTION).toHaveLength(1);
+    expect(body.planet.queues.CONSTRUCTION[0]?.subject).toBe('CORE');
+    const rewards = await rewardsView(db, body.placement.planetId, clock);
+    expect(rewards.chains.flatMap((c) => c.tiers).some((tier) => tier.state === 'claimed')).toBe(false);
+  });
+
+  it('serializes concurrent Academy claims and preserves a partial checkpoint on a later full claim', async () => {
+    await openWorld();
+    const step = ACADEMY_STEPS.findIndex((s) => s.id === 'vaultReward');
+    const payload = { username: 'PartialAcademy', password: 'correct-horse-battery', step };
+    const results = await Promise.all([claim(payload), claim(payload)]);
+    expect(results.map((r) => r.statusCode)).toEqual([200, 200]);
+    const worlds = results.map((r) => r.json<Claim>());
+    expect(worlds[0]!.placement.planetId).toBe(worlds[1]!.placement.planetId);
+    const id = worlds[0]!.placement.planetId;
+    expect(worlds[0]!.planet.buildings.VAULT).toBe(1);
+    const later = await claim({ ...payload, step: ACADEMY_STEPS.length });
+    expect(later.json<Claim>().planet.buildings.SHIPYARD).toBe(0);
+    const rewards = await rewardsView(db, id, clock);
+    expect(rewards.chains.find((c) => c.id === 'VAULT')?.tiers[0]?.state).toBe('claimable');
+  });
+
+  it.each([-1, 0.5, 41, '40'])('rejects an invalid Academy step %s before account creation', async (step) => {
+    const response = await claim({ username: 'InvalidAcademy', password: 'correct-horse-battery', step });
+    expect(response.statusCode).toBe(400);
+    expect(await db.select().from(accounts)).toHaveLength(0);
+  });
+
+  it('rejects a mixed legacy/Academy payload and client-authored state', async () => {
+    for (const extra of [{ intents: [{ kind: 'upgrade', building: 'CORE' }] }, { resources: { alloy: 999999 } }]) {
+      const response = await claim({ username: 'InvalidAcademy', password: 'correct-horse-battery', step: 3, ...extra });
+      expect(response.statusCode).toBe(400);
+    }
+  });
 
   /**
    * THE SCRIPTED OPENING, which is not a script the interface invented — it is the

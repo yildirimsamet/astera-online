@@ -28,6 +28,7 @@ import {
 import { rehearsalFetch } from '../src/onboarding/rehearsalFetch.js';
 import {
   build,
+  completeOpening,
   openWorld,
   planetOf,
   refusesBuild,
@@ -35,6 +36,23 @@ import {
   upgrade,
   type RehearsalWorld,
 } from '../src/onboarding/world.js';
+
+describe('skipping preserves the opening', () => {
+  it.each([0, 1, 2, 3, 4])('fills only missing orders after %i guided purchases', (purchases) => {
+    let w = openWorld(previewOf());
+    const buildings = ['CORE', 'REFINERY', 'EXTRACTOR'] as const;
+    for (const id of buildings.slice(0, purchases)) w = upgrade(w, id);
+    if (purchases === 4) w = build(w, 'DART', 2);
+    const next = completeOpening(w);
+    expect(next.intents).toEqual([
+      ...buildings.map((building) => ({ kind: 'upgrade', building })),
+      { kind: 'build', hull: 'DART', count: 2 },
+    ]);
+    expect(next.alloy).toBe(0);
+    expect(next.crystal).toBe(0);
+    expect(completeOpening(next)).toEqual(next);
+  });
+});
 
 /**
  * THE REHEARSAL. D56.

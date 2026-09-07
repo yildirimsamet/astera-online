@@ -3,7 +3,6 @@ import { Trans, useTranslation } from 'react-i18next';
 import { useServers } from '../api/queries.js';
 import { LandingScene } from '../landing/LandingScene.jsx';
 import { full } from '../lib/format.js';
-import { MIN_PASSWORD, USERNAME_PATTERN } from '../lib/credentials.js';
 import { LANDING_ASSETS, usePreload, type Loader } from '../lib/preload.js';
 import { LoadingScreen } from '../shell/LoadingScreen.js';
 import { Button, useOwnPress } from '../ui/kit/index.js';
@@ -78,6 +77,12 @@ export function LandingScreen({
   const [returning] = useState(() => (knownCommander ?? commanderKnownHere)());
   /** True while the frontier galaxy is being read. The page stays; the door waits. */
   const [opening, setOpening] = useState(false);
+  const begin = (): void => {
+    if (opening) return;
+    setMode(null);
+    setOpening(true);
+    void onBegin().catch(() => { setOpening(false); });
+  };
   const servers = useServers();
   /**
    * THE SCREEN IS A COVER, NOT A GATE. Owner decision.
@@ -190,7 +195,7 @@ export function LandingScreen({
           )}
 
           {/**
-           * THE TWO DOORS SWAP FOR SOMEBODY WHO HAS BEEN HERE. Owner-reported bug.
+           * A SHARED DEVICE NEEDS BOTH DOORS. Onboarding review, B2.
            *
            * D56's argument is intact and unchanged for a STRANGER: the loud
            * control is ninety seconds of the real galaxy, and the password is
@@ -204,11 +209,9 @@ export function LandingScreen({
            * is entitled to a seat in the frontier galaxy. Nothing refused, because
            * nothing had been broken.
            *
-           * So on a device that has held a commander the weights invert: signing
-           * in becomes the loud control and the rehearsal becomes the quiet line.
-           * Both doors stay open — a shared phone, or somebody making a second
-           * commander deliberately, must still be able to get through — and the
-           * flag is a HINT that decides emphasis, never a gate. See
+           * Signing in remains first on a device that has held a commander, while
+           * training gets the same visible control for a new person sharing it.
+           * The flag is a HINT about the device, never proof of identity. See
            * `lib/returning.ts`.
            */}
           <p className="legend mb-3 text-center text-crystal/90">
@@ -241,7 +244,7 @@ export function LandingScreen({
                 <button
                   type="button"
                   disabled={opening}
-                  className="text-caption text-dim underline decoration-dim/40 underline-offset-4 transition-colors hover:text-bone hover:decoration-bone/60"
+                  className="enter font-display uppercase"
                   onClick={() => {
                     if (opening) return;
                     setOpening(true);
@@ -250,7 +253,11 @@ export function LandingScreen({
                     });
                   }}
                 >
-                  {opening ? t('landing.opening') : t('landing.newCommander')}
+                  <span className="enter-orbit" aria-hidden />
+                  <span className="text-title tracking-label">
+                    {opening ? t('landing.opening') : t('landing.newCommander')}
+                  </span>
+                  <span aria-hidden className="text-title text-crystal">&rarr;</span>
                 </button>
               </div>
             </>
@@ -300,8 +307,7 @@ export function LandingScreen({
 
       {mode !== null && (
         <AuthDialog
-          mode={mode}
-          onMode={setMode}
+          onBegin={begin}
           onClose={() => {
             setMode(null);
           }}
@@ -318,7 +324,7 @@ export function LandingScreen({
   );
 }
 
-export type Mode = 'login' | 'register';
+export type Mode = 'login';
 
 /**
  * How busy the world is, stated before anyone signs up.
@@ -359,26 +365,15 @@ function Population({ commanders, online }: { commanders: number | null; online:
 
 
 /**
- * Sign in, or become somebody.
- *
- * ONE COMPONENT FOR BOTH. The two forms differ by a heading, a verb and one
- * validation rule; splitting them would mean two copies of the focus handling, the
- * error handling and the keyboard behaviour, and those are the parts that actually
- * go wrong.
- *
- * VALIDATION IS CLIENT-SIDE FOR SPEED AND SERVER-SIDE FOR TRUTH. The rules here
- * mirror `auth/credentials.ts` so a player is told about a three-character name
- * without a round trip; the server checks again regardless, and its refusal —
- * including the one this cannot know, that the name is taken — is what is shown.
+ * Sign-in only. A new commander goes through training before ClaimDialog asks
+ * for credentials; registering here bypassed both teaching and opening orders.
  */
 function AuthDialog({
-  mode,
-  onMode,
+  onBegin,
   onClose,
   onSubmit,
 }: {
-  mode: Mode;
-  onMode: (mode: Mode) => void;
+  onBegin: () => void;
   onClose: () => void;
   onSubmit: (mode: Mode, username: string, password: string) => Promise<void>;
 }) {
@@ -409,16 +404,8 @@ function AuthDialog({
     };
   }, [onClose]);
 
-  const register = mode === 'register';
-
   const check = (): string | null => {
-    if (register && !USERNAME_PATTERN.test(username.trim())) {
-      return t('landing.form.badName');
-    }
     if (username.trim().length === 0) return t('landing.form.noName');
-    if (register && password.length < MIN_PASSWORD) {
-      return t('landing.form.shortPassword', { count: MIN_PASSWORD });
-    }
     if (password.length === 0) return t('landing.form.noPassword');
     return null;
   };
@@ -434,7 +421,7 @@ function AuthDialog({
     setBusy(true);
     void (async () => {
       try {
-        await onSubmit(mode, username.trim(), password);
+        await onSubmit('login', username.trim(), password);
       } catch (err) {
         // The session hook has already set the phase back; this is the part the
         // form owns — say what happened without discarding what was typed.
@@ -453,7 +440,7 @@ function AuthDialog({
       className="fixed inset-0 z-30 flex items-end justify-center sm:items-center"
       role="dialog"
       aria-modal="true"
-      aria-label={register ? t('landing.form.labelRegister') : t('landing.form.labelLogin')}
+      aria-label={t('landing.form.labelLogin')}
     >
       <button
         type="button"
@@ -470,10 +457,10 @@ function AuthDialog({
         }}
       >
         <p className="legend">
-          {register ? t('landing.form.eyebrowRegister') : t('landing.form.eyebrowLogin')}
+          {t('landing.form.eyebrowLogin')}
         </p>
         <h2 className="headline text-figure mt-2 text-bone">
-          {register ? t('landing.form.headingRegister') : t('landing.form.headingLogin')}
+          {t('landing.form.headingLogin')}
         </h2>
 
         <label className="legend mt-6 block" htmlFor={nameId}>
@@ -508,9 +495,8 @@ function AuthDialog({
             setPassword(event.target.value);
             setProblem(null);
           }}
-          autoComplete={register ? 'new-password' : 'current-password'}
+          autoComplete="current-password"
           maxLength={200}
-          placeholder={register ? t('landing.form.passwordPlaceholder', { count: MIN_PASSWORD }) : ''}
         />
 
         {problem !== null && (
@@ -525,20 +511,17 @@ function AuthDialog({
         <Button type="submit" variant="primary" size="lg" full disabled={busy} className="mt-6">
           {busy
             ? t('landing.form.submitBusy')
-            : register
-              ? t('landing.form.submitRegister')
-              : t('landing.form.submitLogin')}
+            : t('landing.form.submitLogin')}
         </Button>
 
         <button
           type="button"
           className="mt-2 w-full text-center text-caption text-dim underline decoration-dim/40 underline-offset-4 transition-colors hover:text-bone hover:decoration-bone/60"
           onClick={() => {
-            setProblem(null);
-            onMode(register ? 'login' : 'register');
+            onBegin();
           }}
         >
-          {register ? t('landing.form.switchToLogin') : t('landing.form.switchToRegister')}
+          {t('landing.form.switchToRegister')}
         </button>
       </form>
     </div>

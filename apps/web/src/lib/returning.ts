@@ -24,8 +24,9 @@
  *
  * So the door remembers. One boolean, per device, per origin.
  *
- * IT IS A HINT AND NEVER A GATE. It decides which control is loud; it locks
- * nothing. A device with storage disabled, a fresh private window, or somebody
+ * IT IS A HINT AND NEVER A GATE. Sign-in comes first on a known device, with an
+ * equally visible training door for a new person sharing it. It locks nothing.
+ * A device with storage disabled, a fresh private window, or somebody
  * else's phone simply gets the first-time door, which is the correct default and
  * not a degraded one. Nothing here is trusted by the server and nothing here can
  * keep a real new player out.

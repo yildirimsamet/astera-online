@@ -10,6 +10,9 @@ import { resetClock, serverNow } from '../src/lib/clock.js';
 import { LaunchSheet } from '../src/screens/LaunchSheet.js';
 import { ToastProvider } from '../src/ui/Toast.js';
 import { planetView } from './fixtures.js';
+import { AcademyLessonContext } from '../src/onboarding/lessonScope.js';
+import { academyLessonFleet } from '@astera/rules';
+import { hullLabel } from '../src/i18n/names.js';
 
 const target: GalaxyPlanet = {
   id: 'p2',
@@ -52,6 +55,18 @@ const openAllBands = async (user: ReturnType<typeof userEvent.setup>) => {
 };
 
 describe('choosing a fleet to attack with', () => {
+  it('quotes the Academy leg and opens cargo without overwriting live folds', async () => {
+    localStorage.setItem('astera.accordion.launch', '[]');
+    render(<AcademyLessonContext.Provider value="raid"><LaunchSheet
+      target={{ kind: 'world', world: target }} planet={planetView({ fleet: { DART: 3, COURIER: 1 } })}
+      onClose={vi.fn()} onLaunched={vi.fn()} /></AcademyLessonContext.Provider>, { wrapper });
+    const user = userEvent.setup();
+    await user.type(screen.getByRole('textbox', { name: /dart quantity/i }), '2');
+    await user.type(screen.getByRole('textbox', { name: /courier quantity/i }), '1');
+    expect(screen.getAllByText('6s').length).toBeGreaterThan(0);
+    expect(localStorage.getItem('astera.accordion.launch')).toBe('[]');
+    localStorage.removeItem('astera.accordion.launch');
+  });
   it('accepts an empty numeric count and clamps direct entry to the ships at home', async () => {
     render(
       <LaunchSheet
@@ -717,5 +732,140 @@ describe('a fleet that cannot fight', () => {
 
     const commit = screen.getByRole('button', { name: /send/i });
     expect(commit).toBeEnabled();
+  });
+});
+
+/**
+ * THE PICKER INSIDE A LESSON. Owner report, and it was a dead button.
+ *
+ * The Academy teaches exactly one way to fill this picker — press Max — and its
+ * hand points at nothing else. But the raid lesson's private API demanded
+ * `{ DART: 2, COURIER: 1 }` while the commander stood on three Darts, a captured
+ * Warden and a Prospector. Max sent three Darts, the launch was refused, and
+ * because the Academy silences toasts the refusal arrived as a commit button that
+ * did nothing at all.
+ *
+ * The rule is now the same on both sides: a lesson names its hulls, the picker
+ * offers ONLY those, and Max on each row is by construction the fleet the lesson
+ * expects. The captured Warden stays in the hangar — it is a real warship and it
+ * would be legal to send, but the lesson never taught it and a third row asks a
+ * question the tutorial has no answer for.
+ */
+describe('the picker while a lesson is running', () => {
+  const holding = planetView({
+    fleet: { DART: 3, COURIER: 1, WARDEN: 1, PROSPECTOR: 1 },
+    buildings: { CORE: 4, REFINERY: 2, EXTRACTOR: 2, VAULT: 1, SHIPYARD: 1, HANGAR: 3 },
+  });
+
+  const lessonSheet = (lesson: 'pirate' | 'raid') => render(
+    <AcademyLessonContext.Provider value={lesson}>
+      <LaunchSheet planet={holding} target={{ kind: 'world', world: target }}
+        onClose={vi.fn()} onLaunched={vi.fn()} />
+    </AcademyLessonContext.Provider>,
+    { wrapper },
+  );
+
+  it('shows the captured hull but will not let the lesson spend it', () => {
+    /*
+      OWNER CORRECTION, and it is the better reading. Hiding the Warden made the
+      commander's own prize vanish from the one screen that lists their fleet —
+      they had just been told they captured it. It stays on the roster, and the
+      controls that would add it are dead: the lesson says what it wants without
+      pretending the ship is not there.
+    */
+    const view = lessonSheet('raid');
+    expect(screen.getByText(hullLabel('DART'))).toBeInTheDocument();
+    expect(screen.getByText(hullLabel('COURIER'))).toBeInTheDocument();
+    expect(screen.getByText(hullLabel('WARDEN'))).toBeInTheDocument();
+
+    const warden = view.container.querySelector('[data-hull-row="WARDEN"]');
+    expect(warden, 'the captured hull has no row').not.toBeNull();
+    for (const control of warden!.querySelectorAll('button')) {
+      expect(control, `${control.getAttribute('aria-label') ?? ''} is still live`).toBeDisabled();
+    }
+
+    // A miner was never launchable from here, lesson or no lesson.
+    expect(screen.queryByText(hullLabel('PROSPECTOR'))).not.toBeInTheDocument();
+  });
+
+  it('narrows the pirate lesson to the Darts alone', () => {
+    lessonSheet('pirate');
+    expect(screen.getByText(hullLabel('DART'))).toBeInTheDocument();
+    const courier = screen.queryByText(hullLabel('COURIER'));
+    if (courier) {
+      // Present is fine; spendable is not.
+      const row = courier.closest('[data-hull-row]');
+      for (const control of row!.querySelectorAll('button')) expect(control).toBeDisabled();
+    }
+  });
+
+  it('makes Max produce exactly the fleet each lesson expects', async () => {
+    const user = userEvent.setup();
+
+    lessonSheet('raid');
+    for (const max of screen.getAllByRole('button', { name: /max/i })) await user.click(max);
+    for (const [hull, count] of Object.entries(academyLessonFleet('raid'))) {
+      expect(
+        screen.getByRole('textbox', { name: new RegExp(hullLabel(hull as 'DART'), 'i') }),
+        `${hull} did not fill to the lesson's count`,
+      ).toHaveValue(String(count));
+    }
+  });
+
+  it('caps the pirate lesson at two Darts even though three are standing', async () => {
+    const user = userEvent.setup();
+    lessonSheet('pirate');
+    for (const max of screen.getAllByRole('button', { name: /max/i })) await user.click(max);
+    expect(screen.getByRole('textbox', { name: new RegExp(hullLabel('DART'), 'i') }))
+      .toHaveValue(String(academyLessonFleet('pirate').DART));
+  });
+});
+
+/**
+ * THE ORDER A LESSON READS IN. Owner instruction: Warden, Dart, Courier.
+ *
+ * Outside a lesson the picker is banded — Offensive · Defensive · Special · Cargo,
+ * `roster.ts`, and that stays exactly as it is. Inside one it is three ships, and
+ * four band headings over three rows is the "never hold a section open" rule
+ * broken for no gain. So a lesson reads as one list, in the order the lesson means:
+ *
+ *   · what it will NOT let you send, first — the captured Warden is the
+ *     commander's prize and belongs where they can see it, but it is context, not
+ *     the task;
+ *   · then the hulls the lesson wants, in the order `academyLessonFleet` names
+ *     them, so the two Max presses the hand teaches run top to bottom without a
+ *     dead row between them.
+ *
+ * It is a rule, not a hard-coded triple: add a hull to the lesson and it lands in
+ * the right half on its own.
+ */
+describe('the order a lesson lists ships in', () => {
+  const holding = planetView({
+    fleet: { DART: 3, COURIER: 1, WARDEN: 1, PROSPECTOR: 1 },
+    buildings: { CORE: 4, REFINERY: 2, EXTRACTOR: 2, VAULT: 1, SHIPYARD: 1, HANGAR: 3 },
+  });
+
+  const rows = (lesson: 'pirate' | 'raid' | null) => {
+    const sheet = (
+      <LaunchSheet planet={holding} target={{ kind: 'world', world: target }}
+        onClose={vi.fn()} onLaunched={vi.fn()} />
+    );
+    const view = render(
+      lesson === null
+        ? sheet
+        : <AcademyLessonContext.Provider value={lesson}>{sheet}</AcademyLessonContext.Provider>,
+      { wrapper },
+    );
+    return [...view.container.querySelectorAll('[data-hull-row]')]
+      .map((row) => row.getAttribute('data-hull-row'));
+  };
+
+  it('puts the kept-back prize first, then the lesson’s own ships in its order', () => {
+    expect(rows('raid')).toEqual(['WARDEN', 'DART', 'COURIER']);
+  });
+
+  it('leaves the ordinary picker banded, which is not this order', () => {
+    // Offensive before Defensive before Cargo — `roster.ts`, untouched.
+    expect(rows(null)).toEqual(['DART', 'WARDEN', 'COURIER']);
   });
 });

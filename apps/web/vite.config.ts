@@ -22,6 +22,17 @@ const apiProxy = {
 
 export default defineConfig({
   plugins: [react(), tailwindcss()],
+  /**
+   * ONE THREE, STATED RATHER THAN HOPED FOR.
+   *
+   * `three` is a peer dependency of five packages here — fiber, drei,
+   * postprocessing, three-stdlib, troika — and a second copy is the worst kind of
+   * bug this client can have: every `instanceof` across the boundary is false, two
+   * renderers fight over the same GPU state, and the only symptom is one console
+   * line. The graph resolves to a single copy today; this is what keeps it there
+   * through an upgrade that would otherwise change it silently.
+   */
+  resolve: { dedupe: ['three'] },
   server: {
     port: 5173,
     // Reachable from a phone on the same network — this game is played in gaps,

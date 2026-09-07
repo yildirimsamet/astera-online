@@ -1,4 +1,4 @@
-import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from 'react';
+import { createContext, useCallback, useContext, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { describeError } from '../i18n/errors.js';
 import { CloseIcon, RaidedIcon } from './icons/index.js';
@@ -11,6 +11,14 @@ interface Message {
 }
 
 const ToastContext = createContext<((text: string, tone?: Tone) => void) | null>(null);
+const ToastSilenceContext = createContext<(() => () => void) | null>(null);
+
+/** The Academy speaks in its coach, never over it. Drop messages, don't defer
+ * them until exit; a returning commander must not receive practice toasts. */
+export function useSilenceToasts(): void {
+  const silence = useContext(ToastSilenceContext);
+  useLayoutEffect(() => silence?.(), [silence]);
+}
 
 /**
  * How long one line holds the slot before the next may have it.
@@ -48,9 +56,16 @@ let sequence = 0;
 export function ToastProvider({ children }: { children: ReactNode }) {
   const { t } = useTranslation();
   const [queue, setQueue] = useState<Message[]>([]);
+  const quiet = useRef(0);
+  const silence = useCallback(() => {
+    quiet.current += 1;
+    setQueue([]);
+    return () => { quiet.current -= 1; };
+  }, []);
   const message = queue[0] ?? null;
 
   const say = useCallback((text: string, tone: Tone = 'info') => {
+    if (quiet.current > 0) return;
     sequence += 1;
     setQueue((current) => [...current, { id: sequence, text, tone }]);
   }, []);
@@ -68,7 +83,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   }, [dwell, head]);
 
   return (
-    <ToastContext.Provider value={say}>
+    <ToastSilenceContext.Provider value={silence}><ToastContext.Provider value={say}>
       {children}
       {message && (
         <div
@@ -126,7 +141,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
           </div>
         </div>
       )}
-    </ToastContext.Provider>
+    </ToastContext.Provider></ToastSilenceContext.Provider>
   );
 }
 

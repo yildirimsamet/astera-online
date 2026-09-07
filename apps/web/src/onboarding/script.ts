@@ -81,28 +81,9 @@ export type GateTarget =
       kind: 'element';
       /** What may be PRESSED. Everything else is refused. */
       selectors: readonly string[];
-      /**
-       * What is LIT, if that is not the same list.
-       *
-       * The two questions are different, and conflating them is what put the beat
-       * card over a build sheet's controls on a short screen. What may be pressed
-       * has to include the whole sheet — the count picker is on it — while what
-       * the light points at must stay the one control the beat is asking for, or
-       * there is nothing for the card to get out of the way OF.
-       *
-       * The last entry that resolves is the SUBJECT: it carries the dimming, and
-       * the card places itself against it. The ones before it are context — the
-       * tab a beat is working in, so a screen dimmed to a single live button still
-       * says where that button is.
-       */
-      lit?: readonly string[];
-      /**
-       * Whether to darken everything that is not lit. Defaults to true.
-       *
-       * FALSE WHEN THE WHOLE SURFACE IS THE DECISION. The rings still say where the
-       * controls are.
-       */
-      dim?: boolean;
+      /** Legacy intent tests retain precise cue targets, never a darkening mask.
+       * The final match is the control the bubble must leave unobscured. */
+      subjects?: readonly string[];
     }
   | { kind: 'open' };
 
@@ -183,8 +164,7 @@ export const BEATS: readonly Beat[] = [
     gate: {
       kind: 'element',
       selectors: ['#row-CORE [data-open-item]', '[data-item-sheet] [data-sheet-panel]'],
-      lit: ['[data-tab="grow"]', '#row-CORE [data-open-item]', '[data-item-sheet] [data-act]'],
-      dim: false,
+      subjects: ['[data-tab="grow"]', '#row-CORE [data-open-item]', '[data-item-sheet] [data-act]'],
     },
     achieved: (s) => queuedCount(s.world, 'CONSTRUCTION', 'BUILDING', 'CORE') >= 1,
   },
@@ -195,8 +175,7 @@ export const BEATS: readonly Beat[] = [
     gate: {
       kind: 'element',
       selectors: ['#row-REFINERY [data-open-item]', '[data-item-sheet] [data-sheet-panel]'],
-      lit: ['[data-tab="grow"]', '#row-REFINERY [data-open-item]', '[data-item-sheet] [data-act]'],
-      dim: false,
+      subjects: ['[data-tab="grow"]', '#row-REFINERY [data-open-item]', '[data-item-sheet] [data-act]'],
     },
     achieved: (s) => queuedCount(s.world, 'CONSTRUCTION', 'BUILDING', 'REFINERY') >= 1,
   },
@@ -208,8 +187,7 @@ export const BEATS: readonly Beat[] = [
     gate: {
       kind: 'element',
       selectors: ['#row-EXTRACTOR [data-open-item]', '[data-item-sheet] [data-sheet-panel]'],
-      lit: ['[data-tab="grow"]', '#row-EXTRACTOR [data-open-item]', '[data-item-sheet] [data-act]'],
-      dim: false,
+      subjects: ['[data-tab="grow"]', '#row-EXTRACTOR [data-open-item]', '[data-item-sheet] [data-act]'],
     },
     achieved: (s) => queuedCount(s.world, 'CONSTRUCTION', 'BUILDING', 'EXTRACTOR') >= 1,
   },
@@ -235,7 +213,7 @@ export const BEATS: readonly Beat[] = [
        * the grant buys exactly two and spending it one at a time is the one way to
        * get this beat wrong. Lighting the whole sheet instead lit nothing at all.
        */
-      lit: [
+      subjects: [
         '[data-tab="reach"]',
         '#row-DART [data-open-item]',
         '[data-build-sheet] [data-count-max]',
@@ -243,7 +221,6 @@ export const BEATS: readonly Beat[] = [
         // from "how many" to "do it" without a second beat to carry the change.
         '[data-build-sheet] [data-commit][data-ready]',
       ],
-      dim: false,
     },
     achieved: (s) => queuedCount(s.world, 'YARD', 'HULL', 'DART') >= OPENING_DARTS,
   },

@@ -156,12 +156,13 @@ describe('the landing screen', () => {
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
   });
 
-  it('opens sign-in on the second door, and can still swap to making a commander', async () => {
+  it('routes a new commander from sign-in into training, never a registration form', async () => {
     const user = userEvent.setup();
+    const onBegin = vi.fn(() => Promise.resolve());
     const { wrapper: Wrapper } = harness();
     render(
       <Wrapper>
-        <LandingScreen onAuthenticate={vi.fn()} onBegin={vi.fn(() => Promise.resolve())} loadAsset={instantly} />
+        <LandingScreen onAuthenticate={vi.fn()} onBegin={onBegin} loadAsset={instantly} />
       </Wrapper>,
     );
     await openDoor();
@@ -170,7 +171,8 @@ describe('the landing screen', () => {
     expect(screen.getByRole('dialog', { name: /sign in/i })).toBeInTheDocument();
 
     await user.click(screen.getByRole('button', { name: /i need a commander/i }));
-    expect(screen.getByRole('dialog', { name: /create a commander/i })).toBeInTheDocument();
+    expect(onBegin).toHaveBeenCalledTimes(1);
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
   });
 
   /** Somebody sent back here to sign in lands on the form, not on the front page. */
@@ -203,12 +205,11 @@ describe('the landing screen', () => {
     await openDoor();
 
     await user.click(screen.getByRole('button', { name: /^i already have a commander$/i }));
-    await user.click(screen.getByRole('button', { name: /i need a commander/i }));
     await user.type(screen.getByLabelText(/commander name/i), 'Vantage');
     await user.type(screen.getByLabelText(/password/i), 'a-real-password');
-    await user.click(screen.getByRole('button', { name: /create commander/i }));
+    await user.click(within(screen.getByRole('dialog')).getByRole('button', { name: /^sign in$/i }));
 
-    expect(onAuthenticate).toHaveBeenCalledWith('register', 'Vantage', 'a-real-password');
+    expect(onAuthenticate).toHaveBeenCalledWith('login', 'Vantage', 'a-real-password');
   });
 
   it('trims a name before sending it, so a stray space is not a different commander', async () => {
@@ -232,9 +233,8 @@ describe('the landing screen', () => {
   });
 
   it.each([
-    ['a name that is too short', 'ab', 'a-real-password', /3-16 letters/i],
-    ['a name with punctuation', 'van.tage', 'a-real-password', /3-16 letters/i],
-    ['a password that is too short', 'Vantage', 'short', /at least 8 characters/i],
+    ['an empty name', ' ', 'a-real-password', /commander name/i],
+    ['an empty password', 'Vantage', '', /password/i],
   ])('refuses %s without a round trip', async (_label, username, password, complaint) => {
     const user = userEvent.setup();
     const onAuthenticate = vi.fn(() => Promise.resolve());
@@ -247,10 +247,9 @@ describe('the landing screen', () => {
     await openDoor();
 
     await user.click(screen.getByRole('button', { name: /^i already have a commander$/i }));
-    await user.click(screen.getByRole('button', { name: /i need a commander/i }));
     await user.type(screen.getByLabelText(/commander name/i), username);
-    await user.type(screen.getByLabelText(/password/i), password);
-    await user.click(screen.getByRole('button', { name: /create commander/i }));
+    if (password) await user.type(screen.getByLabelText(/password/i), password);
+    await user.click(within(screen.getByRole('dialog')).getByRole('button', { name: /^sign in$/i }));
 
     expect(await screen.findByRole('alert')).toHaveTextContent(complaint);
     expect(onAuthenticate).not.toHaveBeenCalled();

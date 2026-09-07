@@ -96,6 +96,13 @@ const galaxyWith = (status: 'HOME' | 'AWAY'): GalaxyView => ({
 });
 
 describe('the situation engine', () => {
+  it('routes an inbound warning to the world being defended', () => {
+    const next = primary(directives(situation({ pending: [{
+      kind: 'incoming', targetName: 'Colony', targetPlanetId: 'colony',
+      minutesRemaining: 3, arriveAt: new Date(Date.now() + 180_000),
+    }] })));
+    expect(next?.action.planetId).toBe('colony');
+  });
   it('says nothing urgent when a planet is defended, seeing, and busy', () => {
     const list = directives(situation());
     expect(list.filter((d) => d.kind === 'threat')).toHaveLength(0);

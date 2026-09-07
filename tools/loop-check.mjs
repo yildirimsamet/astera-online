@@ -92,7 +92,10 @@ const installEyes = async (planetId, x) => {
 
 await installEyes(a.planet.id, 0);
 await installEyes(b.planet.id, 900);
-await sql`UPDATE buildings SET level = 9 WHERE planet_id = ${a.planet.id} AND type = 'CORE'`;
+// D168 measures the attack band from Core, not Wealth. Both fixture commanders
+// need the same tier so this harness reaches the flight it intends to inspect.
+await sql`UPDATE buildings SET level = 9
+  WHERE planet_id IN (${a.planet.id}, ${b.planet.id}) AND type = 'CORE'`;
 for (const [hull, n] of [['DART', 40], ['PROSPECTOR', 2]]) {
   await sql`
     INSERT INTO units (planet_id, hull, location, count) VALUES (${a.planet.id}, ${hull}, 'home', ${n})

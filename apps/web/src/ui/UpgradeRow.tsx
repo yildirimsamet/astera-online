@@ -7,6 +7,7 @@ import { Rungs } from './Rungs.js';
 import { duration } from '../lib/time.js';
 import { ActionButton, Price, ResourceAmounts, TimeCost, type Verb } from './Action.js';
 import { LockMark } from './marks.js';
+import { useAcademyLesson } from '../onboarding/lessonScope.js';
 
 /**
  * One decision, presented as a decision.
@@ -556,6 +557,8 @@ export function Band({
    */
   onToggle?: () => void;
 }) {
+  const lesson = useAcademyLesson();
+  if (lesson && lesson !== 'research') return null;
   const body = (
     <>
       <div className="flex min-w-0 items-baseline gap-2">
