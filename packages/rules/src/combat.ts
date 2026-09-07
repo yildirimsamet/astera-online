@@ -33,8 +33,7 @@ export interface CombatRound {
 export interface CombatResult {
   grade: Grade;
   /**
-   * Share of the defender's DEFENCE destroyed — unit value where there were units,
-   * and the Aegis where the shield was the whole of it. See `resolveCombat`.
+   * Share of defending unit value destroyed; 1 for an unguarded walkover (D173).
    */
   lossRatio: number;
   rounds: CombatRound[];
@@ -140,7 +139,7 @@ const sum = (m: Map<HullId, number>): number => {
   return t;
 };
 
-/** Specialist damage, including the shield-only case where no unit is targetable. */
+/** The Nullifier's class-adjusted contribution while an Aegis covers a defending line. */
 function specialistDamage(
   attackers: Fleet,
   defenders: Fleet,
@@ -148,11 +147,7 @@ function specialistDamage(
   a: SideStats,
   d: SideStats,
 ): number {
-  const mapped = sum(damageMap(attackers, defenders, roll, a, d));
-  if (mapped > 0 || fleetCount(defenders) > 0) return mapped;
-  let raw = 0;
-  for (const [id, count] of fleetEntries(attackers)) raw += a.atk(id) * count;
-  return raw * roll;
+  return sum(damageMap(attackers, defenders, roll, a, d));
 }
 
 /**
@@ -226,7 +221,17 @@ export function resolveCombat(
 
   for (let r = 0; r < COMBAT.rounds; r++) {
     if (fleetCount(A) === 0) break;
-    if (fleetCount(D) === 0 && shieldLeft <= 0) break;
+    /**
+     * AN AEGIS IS COVER FOR A DEFENDING LINE, NOT A LINE OF ITS OWN. D173.
+     *
+     * Owner instruction after Yasin's production raid: "Sıfır kişi varsa bu WIN
+     * sayılır ve yağmalanabilir kaynakları almaları lazım." With no combat hull
+     * or ground gun to fight, there is no target to distribute ordinary fire
+     * across and therefore no battle round. The raid is the same walkover it is
+     * on an unshielded world; the idle shield spends nothing and the grade below
+     * opens the ordinary DECISIVE loot path.
+     */
+    if (fleetCount(D) === 0) break;
 
     const span = COMBAT.varianceMax - COMBAT.varianceMin;
     const attackerRoll = COMBAT.varianceMin + rng() * span;
@@ -239,10 +244,9 @@ export function resolveCombat(
       : 0;
     const toA = damageMap(D, A, defenderRoll, d, a);
 
-    // With no units to target, only a Nullifier has a planet-facing shield hit.
-    // This preserves the established ordinary-combat model while ensuring its
-    // advertised fivefold shield effect still exists against a bare Aegis.
-    const incoming = sum(toD) + (fleetCount(D) === 0 ? specialistNormal : 0);
+    // Ordinary fire and the first copy of the Nullifier's shot follow the same
+    // class-adjusted damage map. The four bonus copies below hit only the shield.
+    const incoming = sum(toD);
     const shieldBefore = Math.max(0, Math.round(shieldLeft));
     const specialistBonus = specialistNormal * SHIELD_BREAKER.bonusShieldDamageMult;
     const specialistAbsorbed = Math.min(shieldLeft, specialistBonus);
@@ -282,35 +286,10 @@ export function resolveCombat(
     if (back > 0) defenceSalvage[id] = back;
   }
 
-  /**
-   * HOW MUCH OF THE DEFENCE CAME DOWN — AND THE AEGIS IS PART OF THE DEFENCE.
-   *
-   * Owner ruling: *"aegis'te bir savunma birimi sonucta. tabya gibi kirpi gibi
-   * gemi gibi bir savunma birimi."*
-   *
-   * This was `defValueBefore > 0 ? … : 1`, and the `: 1` was doing two jobs. For a
-   * WALKOVER it is right — a world with nothing on it and no shield has all of its
-   * nothing destroyed, and the DECISIVE branch below picks that up. But a world
-   * whose entire defence is an Aegis also has no unit VALUE, so it took the same
-   * branch: a fleet with no Nullifier flew at a bare shield, landed no damage, spent
-   * none of the shield, killed nobody, and came home at ratio 1 — which DECISIVE
-   * refuses while `shieldLeft > 0`, so it fell through to PARTIAL and was paid a
-   * partial haul for achieving literally nothing.
-   *
-   * So where the defence IS the shield, the shield is what the ratio measures. The
-   * three cases read as one rule now: destroy the units where there are units,
-   * destroy the shield where that is all there is, and an empty world is empty.
-   *
-   * NOTHING MOVES FOR A BATTLE THAT HAD UNITS IN IT. The first branch is unchanged
-   * and is the one every ordinary fight takes, so no grade anywhere else shifts.
-   */
-  const lossRatio = defValueBefore > 0
-    ? 1 - fleetValue(D) / defValueBefore
-    : shield > 0
-      ? 1 - shieldLeft / shield
-      : 1;
+  /** The share of the defending LINE destroyed; no line means a complete walkover. D173. */
+  const lossRatio = defValueBefore > 0 ? 1 - fleetValue(D) / defValueBefore : 1;
   const grade: Grade =
-    fleetCount(D) === 0 && shieldLeft <= 0
+    fleetCount(D) === 0 && (defValueBefore === 0 || shieldLeft <= 0)
       ? 'DECISIVE'
       : lossRatio >= COMBAT.partialThreshold
         ? 'PARTIAL'

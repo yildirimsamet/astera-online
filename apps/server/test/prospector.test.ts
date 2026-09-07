@@ -12,11 +12,13 @@ import {
 } from '../src/db/schema.js';
 import { buildUnits } from '../src/services/build.js';
 import { launchAttack } from '../src/services/mission.js';
+import { loadLocked } from '../src/services/planet.js';
 import { launchTransfer } from '../src/services/movement.js';
 import { transferPlanetControl } from '../src/services/ownership.js';
 import { launchDeathStar } from '../src/services/strategic.js';
 import { EventWorker } from '../src/worker/loop.js';
 import {
+  giveInstrument,
   giveUnits,
   grant,
   seedWorld,
@@ -424,6 +426,61 @@ describe('a Prospector does not fight', () => {
     expect(report.defenderFleet).toEqual({});
     expect(report.defenderLosses).toEqual({});
     expect((await homeFleetAt(f, defender)).PROSPECTOR).toBe(PROSPECTOR.max);
+  });
+
+  /**
+   * AN AEGIS NEEDS A DEFENDING LINE. D173.
+   *
+   * This is Yasin's production incident in its smallest server-owned shape: two
+   * mining craft were excluded correctly, but the idle shield then manufactured
+   * three zero-damage rounds and a REPELLED grade. An unguarded world is a
+   * walkover, so its raidable stock must enter the ordinary DECISIVE return leg.
+   */
+  it('loots a world whose only craft are miners even when its Aegis is charged', async () => {
+    await giveUnits(f.db, attacker, { DART: 10, COURIER: 2 });
+    await giveUnits(f.db, defender, { PROSPECTOR: PROSPECTOR.max });
+    await giveInstrument(f.db, defender, 'AEGIS', 3);
+    await f.db.update(planets).set({ shield: 203 }).where(eq(planets.id, defender));
+
+    const launch = await launchAttack(f.db, attacker, defender, { DART: 10, COURIER: 2 }, f.clock);
+    f.clock.set(settledAt(launch.arriveAt));
+    const before = await f.db.transaction((tx) => loadLocked(tx, defender, f.clock));
+    await workerFor(f).tick();
+    const [report] = await f.db.select().from(battleReports)
+      .where(eq(battleReports.missionId, launch.missionId));
+    if (!report) throw new Error('missing raid report');
+    if (!report.missionId) throw new Error('player raid report has no mission');
+    const [returning] = await f.db
+      .select()
+      .from(missions)
+      .where(eq(missions.parentMissionId, report.missionId));
+    const loot = report.loot.alloy + report.loot.crystal + report.loot.deuterium;
+
+    expect(report.grade).toBe('DECISIVE');
+    expect(report.rounds).toEqual([]);
+    expect(report.defenderFleet).toEqual({});
+    expect(loot).toBeGreaterThan(0);
+    expect(returning?.loot).toEqual(report.loot);
+    expect((await homeFleetAt(f, defender)).PROSPECTOR).toBe(PROSPECTOR.max);
+    expect((await f.db.select().from(planets).where(eq(planets.id, defender)))[0]?.shield).toBe(203);
+    const [after] = await f.db.select().from(planets).where(eq(planets.id, defender));
+    if (!after || !returning) throw new Error('missing settled world or return');
+    for (const [stock, buffer] of [
+      ['alloy', 'bufferAlloy'], ['crystal', 'bufferCrystal'], ['deuterium', 'bufferDeuterium'],
+    ] as const) {
+      expect(before[stock] + before[buffer] - after[stock] - after[buffer])
+        .toBeCloseTo(report.loot[stock], 1);
+    }
+    const [homeBefore] = await f.db.select().from(planets).where(eq(planets.id, attacker));
+    if (!homeBefore) throw new Error('missing home');
+    f.clock.set(returning.arriveAt);
+    await workerFor(f).tick();
+    const [homeAfter] = await f.db.select().from(planets).where(eq(planets.id, attacker));
+    if (!homeAfter) throw new Error('missing home after return');
+    for (const resource of ['alloy', 'crystal', 'deuterium'] as const) {
+      expect(homeAfter[resource] - homeBefore[resource]).toBeCloseTo(report.loot[resource], 1);
+    }
+    expect(await homeFleetAt(f, attacker)).toMatchObject({ DART: 10, COURIER: 2 });
   });
 
   /**

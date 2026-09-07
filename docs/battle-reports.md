@@ -69,9 +69,8 @@ shipped resolver.
 
 | Case | Setup | Result |
 |------|-------|--------|
-| Walkover | attacker vs nothing, no shield | **DECISIVE, ZERO rounds**, no losses either side |
-| Bare Aegis, no breaker | fleet vs shield only | **PARTIAL**, 3 rounds, nothing happens at all — see the defect below |
-| Bare Aegis vs Nullifier | Nullifiers vs shield only | DECISIVE in 2 rounds, shield to 0 |
+| Walkover | attacker vs no defending line, with or without Aegis | **DECISIVE, ZERO rounds**, shield untouched, no losses either side |
+| Guarded Aegis vs Nullifier | Nullifiers vs units behind a shield | Nullifier adds shield-only damage; bonus never spills into units |
 | Ground guns only | fleet vs Thorns | PARTIAL; **60% of the guns walk back out of their own wreckage** |
 | Mutual annihilation | even trade | REPELLED, ends early, pays nothing, flies no return leg |
 | Repelled clean | small fleet vs Citadels | REPELLED, attacker wiped, **defender loses nothing** |
@@ -83,33 +82,25 @@ shipped resolver.
 
 **A walkover has no rounds.** `rounds: []` rendered as an empty plate under a "How it went"
 heading. The most common raid in the game — hitting an undefended world — produced the least
-informative report. It needs its own sentence: *nothing was standing here.*
+informative report. It needs its own sentence: *no defending force was standing here.* That
+sentence must not claim there was no shield: D173 makes a charged but unguarded Aegis the same
+walkover and leaves its charge untouched.
 
 **A clean repel tells the attacker nothing, and did not say so.** `theirLosses` is `{}`, so the
 sheet printed an empty list where the reader expected the fight's most valuable product.
 
-## The defect this analysis found, and the ruling that fixed it
+## The production defect D173 fixed
 
-Flying a fleet with no Nullifier at a world holding **only** an Aegis produced a **PARTIAL**
-grade — and PARTIAL pays a partial haul — although the fight achieved literally nothing: no
-damage landed, no shield was spent, no unit died on either side.
+Yasin sent 265 ships at a colony whose only craft were two non-combatant Prospectors. Its charged
+Aegis made `resolveCombat` manufacture three zero-damage rounds, return `REPELLED` and suppress a
+haul even though no defending line existed. The report was internally consistent with that result
+and still visibly absurd: hundreds of armed ships displayed zero attack against nobody.
 
-Cause: `resolveCombat`'s `lossRatio` was `defValueBefore > 0 ? … : 1`. The `: 1` is right for
-the walkover (destroying all of nothing is total), but a world whose defence is entirely its
-shield also has no unit value, so it took the same branch — and there the DECISIVE branch is
-blocked by `shieldLeft > 0`, so a ratio of 1 fell through to PARTIAL.
+**Owner instruction:** *"Sıfır kişi varsa bu WIN sayılır ve yağmalanabilir kaynakları almaları
+lazım."* D173 makes the garrison the first question. With no combat hull or ground gun, the raid is
+DECISIVE before a round starts, takes the normal decisive haul, preserves non-combatant Prospectors
+and leaves the idle Aegis charge untouched. With a defending line, Aegis and Nullifier continue to
+work exactly as D95 specifies.
 
-**Owner ruling:** *"aegis'te bir savunma birimi sonucta. tabya gibi kirpi gibi gemi gibi bir
-savunma birimi."* The Aegis is a defence unit like a Bastion, a Thorn or a ship — so where a
-world's defence IS the shield, the shield is what the ratio measures:
-
-| Defender | Ratio measures | Result |
-| --- | --- | --- |
-| Units (with or without a shield) | unit value destroyed — **unchanged** | as before |
-| Only an Aegis, untouched | shield spent → 0 | **REPELLED**, pays nothing |
-| Only an Aegis, dented | shield spent | PARTIAL past the threshold |
-| Only an Aegis, broken | shield spent → 1, `shieldLeft` 0 | DECISIVE |
-| Nothing at all | all of nothing → 1 | DECISIVE (the walkover) |
-
-Held down by `packages/rules/test/aegis-grade.test.ts`, including the case that nothing about a
-battle with units in it moved.
+Held down by `packages/rules/test/aegis-grade.test.ts` and the Prospector server integration test,
+including the report, loot-bearing return leg and unchanged shield.

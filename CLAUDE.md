@@ -76,6 +76,9 @@ Rationale/evidence: `docs/decisions.md`. Numbers/simulator history: `docs/balanc
 ### Combat / fleets
 
 - Support hulls are shielded while combat hulls live.
+- An Aegis covers a defending line; it never becomes one. Zero combat hulls and zero ground guns
+  is a zero-round DECISIVE walkover regardless of shield charge; the shield stays untouched and
+  the ordinary decisive haul returns (D173).
 - Fleet V2 base speed is D148's table ×1.25; `SHIP_PROPULSION` is four rungs of +25% to a ×2 ceiling and reads its own `propulsionMaxLevel`, never the weapon ladder's. Speed takes no share of the 25% combat product ceiling and is not probe-visible. The probe and the Prospector took neither the lift nor the research (D152).
 - Probe base speed is D152-era ×0.75 (3,510); the Prospector keeps its rock-tied number. A slower probe pays more for distance, which is what D121's ceiling on FLATNESS wants (D153).
 - Two opposing ground-gun classes; cheapest available at Shipyard 0.

@@ -200,9 +200,11 @@ export const reports = {
     who: 'Who died, and when',
     changed: 'What it changed',
   },
-  walkoverHeading: 'Nothing was standing here',
+  walkoverHeading: 'No defending force stood here',
   walkoverBody:
-    'No fleet, no ground defence, no shield. Your ships arrived, loaded, and left. There was no fight to report.',
+    'No combat fleet or ground defence stood here. Your ships arrived, loaded, and left. There was no fight to report.',
+  walkoverDefendingBody:
+    'No defending units stood on your world. The attacking fleet could take the available loot without a fight.',
   /** Their board, and how far the reading goes. */
   theirBoardComplete: 'Everything they had',
   theirBoardCompleteNote:
@@ -320,12 +322,14 @@ export const reports = {
     attacking: {
       DECISIVE: 'You destroyed everything defending it and broke the shield, which is what opens the full haul.',
       DECISIVE_WITHOUT_SHIELD: 'You destroyed everything defending it, which is what opens the full haul.',
+      WALKOVER: 'No defending units stood here; the available loot was open to your fleet.',
       PARTIAL: 'You broke most of the defence but not all of it, so only part of their stock came away.',
       REPELLED: 'Their defence held. Your fleet could not get through, and nothing came away.',
     },
     defending: {
       DECISIVE: 'Everything you had defending fell and the shield went with it, so they took the full haul.',
       DECISIVE_WITHOUT_SHIELD: 'Everything you had defending fell, so they took the full haul.',
+      WALKOVER: 'No defending units stood on your world, so the available loot was open to the raiders.',
       PARTIAL: 'Most of your defence fell but something held, so they only got part of your stock.',
       REPELLED: 'Your defence held. They got through nothing, and took nothing.',
     },

@@ -303,9 +303,8 @@ describe('shields', () => {
   });
 
   describe('Nullifier', () => {
-    it('records shield-only bonus damage and can break a bare Aegis', () => {
-      const r = resolveCombat({ NULLIFIER: 1 }, {}, 100, flat(), NO_TECH);
-      expect(r.grade).toBe('DECISIVE');
+    it('records shield-only bonus damage against a guarded Aegis', () => {
+      const r = resolveCombat({ NULLIFIER: 1 }, { BASTION: 1 }, 100, flat(), NO_TECH);
       expect(r.shieldLeft).toBe(0);
       expect(r.rounds.reduce((sum, round) => sum + round.shieldAbsorbed, 0)).toBe(100);
       expect(r.rounds.reduce((sum, round) => sum + round.shieldBreakerDamage, 0)).toBeGreaterThan(0);

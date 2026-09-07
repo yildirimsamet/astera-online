@@ -99,12 +99,22 @@ describe('the walkover — a DECISIVE with no rounds at all', () => {
     const view = await openSheet(walkover());
     expect(view.container.querySelector('[data-walkover]')).not.toBeNull();
     expect(view.container.querySelector('[data-combat-round]')).toBeNull();
+    expect(view.container.textContent).not.toMatch(/no shield/i);
+    expect(view.container.textContent).not.toMatch(/You destroyed everything defending/i);
   });
 
   it('still reports the haul, which is the only thing that happened', async () => {
     const view = await openSheet(walkover());
     // The loot line signs its figures, so match the number rather than the string.
     expect(view.container.textContent).toMatch(/300/);
+  });
+
+  it('explains an undefended raid from the defending commander’s perspective', async () => {
+    const view = await openSheet({ ...walkover(), attacking: false, lootAlloy: -300 });
+    const explanation = view.container.querySelector('[data-walkover]');
+    expect(explanation?.textContent).toMatch(/attacking fleet/i);
+    expect(explanation?.textContent).not.toMatch(/Your ships arrived/i);
+    expect(view.container.textContent).not.toMatch(/Everything you had defending fell/i);
   });
 });
 

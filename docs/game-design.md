@@ -228,19 +228,25 @@ composition are applied.
 
 | Grade | Condition | Loot |
 |---|---|---|
-| `DECISIVE` | No defending units survive and the shield is depleted | 70% of raidable stock |
+| `DECISIVE` | No defending units stand at contact, or none survive after the shield is depleted | 70% of raidable stock |
 | `PARTIAL` | ≥42% of defender value destroyed | 35% |
 | `REPELLED` | Below that | Nothing |
 
 Three grades rather than win/lose: binary outcomes make marginal attacks worthless and punish
 good-but-imperfect reads.
 
+**An Aegis covers a defending line; it is not one.** If no combat hull or ground gun stands at
+the world, the raid is a zero-round DECISIVE walkover and takes the ordinary decisive haul. The
+idle Aegis keeps its charge. Prospectors do not turn that walkover into a fight because they are
+not part of the garrison (D173).
+
 **Nullifier does not change the counter cycle.** It is Lance-class and its ordinary attack
 resolves through the same damage map as every other ship. While an Aegis shield remains, its
 additional copies of that class-adjusted damage hit only the
 shield. The bonus is capped at the shield left in that round and never overkills
 into ships or ground guns. Scouting an Aegis creates the choice; sending Nullifiers
-blind is intentionally expensive and weak.
+blind is intentionally expensive and weak. With no defending line there is no fight and therefore
+no Nullifier shot; the raid follows D173's walkover rule.
 
 **A raid takes ten seconds to land (D44), and the whole galaxy watches the bombardment (D52).** The fleet is
 over the target at `arriveAt` and the battle is settled ten seconds later; in between the

@@ -551,7 +551,9 @@ function ReportSheet({ report, onClose }: { report: OrdinaryReport; onClose: () 
       <p className="mt-2 text-caption leading-relaxed text-faint">
         {t(
           `reports.why.${report.attacking ? 'attacking' : 'defending'}.${
-            report.grade === 'DECISIVE' && !shieldWasBroken(report)
+            report.grade === 'DECISIVE' && report.rounds.length === 0
+              ? 'WALKOVER'
+              : report.grade === 'DECISIVE' && !shieldWasBroken(report)
               ? 'DECISIVE_WITHOUT_SHIELD'
               : report.grade
           }` as
@@ -619,8 +621,8 @@ function ReportSheet({ report, onClose }: { report: OrdinaryReport; onClose: () 
         THE WALKOVER, WHICH IS THE MOST COMMON RAID IN THE GAME AND THE ONE THE
         SHEET SAID LEAST ABOUT. Owner report · `docs/battle-reports.md`.
 
-        `resolveCombat` breaks before round one when there is nothing standing and
-        no shield, so an undefended world arrives with `rounds: []`. That drew a
+        `resolveCombat` breaks before round one when no defending units stand,
+        even with an idle Aegis, so the report arrives with `rounds: []`. That drew a
         "How it went" heading over an EMPTY PLATE — a reader who flew a real fleet
         at a real world and came home to a box with nothing in it, on the surface
         that is supposed to be the whole product of the trip.
@@ -632,7 +634,9 @@ function ReportSheet({ report, onClose }: { report: OrdinaryReport; onClose: () 
       {report.rounds.length === 0 ? (
         <section data-walkover className="plate plate-inset mt-3 px-3 py-2">
           <p className="legend text-crystal">{t('reports.walkoverHeading')}</p>
-          <p className="mt-2 text-body leading-relaxed text-dim">{t('reports.walkoverBody')}</p>
+          <p className="mt-2 text-body leading-relaxed text-dim">
+            {t(report.attacking ? 'reports.walkoverBody' : 'reports.walkoverDefendingBody')}
+          </p>
         </section>
       ) : (
       <>

@@ -172,9 +172,11 @@ export const reports = {
     who: 'Kim, hangi turda öldü',
     changed: 'Ne değişti',
   },
-  walkoverHeading: 'Burada hiçbir şey yoktu',
+  walkoverHeading: 'Burada savunabilecek birlik yoktu',
   walkoverBody:
-    'Filo yok, yer savunması yok, kalkan yok. Gemilerin geldi, yükledi ve gitti. Rapor edilecek bir çarpışma olmadı.',
+    'Savaşabilecek filo veya yer savunması yoktu. Gemilerin geldi, yükledi ve gitti. Rapor edilecek bir çarpışma olmadı.',
+  walkoverDefendingBody:
+    'Dünyanda savunacak birlik yoktu. Saldıran filo yağmalanabilir kaynakları çatışmadan alabildi.',
   theirBoardComplete: 'Ellerindeki her şey',
   theirBoardCompleteNote:
     'Hiçbir şey sağ kalmadı; yani bu onların tüm gücü — başka bir komutan hakkında alabileceğin en kesin okuma.',
@@ -274,12 +276,14 @@ export const reports = {
     attacking: {
       DECISIVE: 'Savunan ne varsa yok ettin, kalkanı da düşürdün; yağmanın tamamı bu yüzden açıldı.',
       DECISIVE_WITHOUT_SHIELD: 'Savunan ne varsa yok ettin; yağmanın tamamı bu yüzden açıldı.',
+      WALKOVER: 'Savunacak birlik yoktu; yağmalanabilir kaynaklar filona açıktı.',
       PARTIAL: 'Savunmanın çoğunu kırdın ama hepsini değil; bu yüzden depolarından ancak bir kısmını alabildin.',
       REPELLED: 'Savunmaları dayandı. Filon içeri giremedi, eli boş döndün.',
     },
     defending: {
       DECISIVE: 'Savunmadaki bütün birliklerin düştü, kalkanın da gitti; yağmanın tamamını aldılar.',
       DECISIVE_WITHOUT_SHIELD: 'Savunmadaki bütün birliklerin düştü; yağmanın tamamını aldılar.',
+      WALKOVER: 'Dünyanda savunacak birlik yoktu; yağmalanabilir kaynaklar saldıran filoya açıktı.',
       PARTIAL: 'Savunmanın çoğu düştü ama bir kısmı dayandı; depondan ancak bir parça götürebildiler.',
       REPELLED: 'Savunman dayandı. İçeri giremediler ve kaynak götüremediler.',
     },
