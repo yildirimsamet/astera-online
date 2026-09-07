@@ -165,6 +165,79 @@ node tools/visual.mjs
 Set higher `RATE_LIMIT_*` values only on that throwaway API if a harness would otherwise hit a
 429. A production release starts only after the commit is pushed.
 
+#### 1a. When the gate is red for reasons the release does not touch
+
+Measured on 2026-09-07, qualifying `4f40076`. Recorded because it is the situation the
+step above does not describe and the one an operator will actually meet: `pnpm verify`
+does not pass on this repository, and it has not for some time.
+
+**Nine failures, none of them this release's.** Six in `packages/sim`
+(`season.test.ts` ARR on all five fixed seeds, plus `fleet-v2-balance.test.ts` research
+pacing) and three in `apps/server/test/bots-turn.test.ts`. Every one of them reproduces
+IDENTICALLY on a clean tree — same names, same count — which is the only evidence that
+settles authorship. Take that measurement before drawing any conclusion:
+
+```bash
+git stash push -u -m qualify-check
+pnpm --filter @astera/sim test; pnpm --filter @astera/server exec vitest run test/bots-turn.test.ts
+git stash pop
+```
+
+**The rule this produces.** A red gate is not automatically a stop, and it is not
+automatically ignorable either. What decides it is whether the failing set is IDENTICAL
+before and after the change. If it is, the release regresses nothing and blocking it
+means production can never receive any fix until an unrelated blocker is cleared — which
+is how a repository ends up shipping nothing. If the set GREW, or a failure changed its
+message, the release owns it and the deploy stops. Record the before/after counts in the
+release notes either way; a bare "verify is known-red" is not a qualification.
+
+**The sim six are the documented D134 blocker** (`CLAUDE.md`, "Current blocker") and are
+indicator-only: the simulator's bots still use async-era `loginsPerDay`. Do not tune
+against them and do not widen a band to clear the gate.
+
+**The bots three are NOT an indicator, and they describe live behaviour.** Production
+carries `BOTS_ENABLED=true` in `.env`, so the server-played commanders these tests
+describe are running in the world right now: the tests assert that a bot never queues a
+Core past `BOTS.coreCeiling` and never opens a raid lane on a world that owns no
+warship, and both assertions currently fail. That is a standing production defect
+sitting in the qualification gate rather than in an issue, which is exactly where a
+defect goes unnoticed. It is unrelated to any rendering release and must not be fixed
+inside one — but it must not be re-discovered from scratch at every deploy either.
+
+#### 1b. The browser harness needs the scratch database step 1 asks for
+
+`node tools/visual.mjs` does not qualify a release when it is pointed at a running
+development stack, and it will look like a product failure when it is. Two consecutive
+runs against the shared dev server on 2026-09-07 timed out at DIFFERENT places — the
+first on the onboarding "Claim the planet" button, the second some way further on, at
+`[data-disc-control="worlds"]` after three screenshots had already been captured. A
+harness that gets further on the second attempt is racing state it did not create, not
+finding a regression: it claims a seat and drives onboarding, and a dev database that is
+already seeded and already has this session's account in it is not the isolated database
+the step above specifies.
+
+So bring up an API against a throwaway database for the harnesses, and read a timeout
+against a shared dev server as "not qualified" rather than as "broken". `visual:baseline`
+is the exception and is safe against a running dev stack: it opens the write-free
+rehearsal, takes no seat, creates no account, and fails if the page makes an unexpected
+API call — which is why its renderer counters, not the harness's screenshots, are what
+the CR step compares.
+
+#### 1c. Say which path the release is on, and say it from the diff
+
+The quiesced/rolling decision is Rule 5's, and it is measured, not assumed. Read it off
+the diff before going near the VPS:
+
+```bash
+git diff --name-only "$deployed_sha..HEAD" | grep -iE 'migration|drizzle|\.sql'
+```
+
+No match means no DDL, which means the rolling path, which means Rule 12's approval
+requirement does not apply — a rolling release takes nothing away from anyone and the
+database is not the rollback boundary (the image and the webroot are, retained by Rule
+10). A match does NOT immediately mean a stop either: most DDL is expand-only, and Rule
+5's point is that which kind it is gets measured in step 5b against a restored copy.
+
 ### 2. Inventory the VPS before changing it
 
 ```bash
