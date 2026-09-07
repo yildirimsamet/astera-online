@@ -554,18 +554,8 @@ export interface Interception {
   at: Vec3;
 }
 
-/**
- * Steps the scan takes when hunting for the first meeting, in minutes.
- *
- * FINE ENOUGH TO BE SAFE EVEN WHEN THE GUARANTEE BELOW DOES NOT HOLD. Above
- * `TRAVEL.distanceFactor x asteroidSpeedMax` the intercept function falls
- * monotonically and any step at all finds the one root; below it — a craft slower
- * than the rocks, which the solver still has to serve — `f` can rise and fall
- * within a step and a coarse scan could straddle a whole crossing pair.
- */
-const SCAN_STEP = 0.2;
-/** Bisection passes once a bracket is found. 40 is far past float precision. */
-const REFINE = 40;
+/** Bisection reaches floating-point precision even for a season-long bracket. */
+const REFINE = 60;
 
 /**
  * WHERE TO AIM.
@@ -578,7 +568,7 @@ const REFINE = 40;
  * THE EQUATION. Flight time obeys the game's own travel rule, so a meeting is any
  * delta where the time to fly to the rock's future position equals that delta:
  *
- *     f(d) = base + |A(now + d) - P| * factor / hullSpeed  -  d  =  0
+ *     f(d) = |A(now + d) - P| * factor / hullSpeed  -  d  =  0
  *
  * WHY THIS IS SOLVED NUMERICALLY AND NOT IN CLOSED FORM. On a straight-line path
  * `A` is linear and this collapses to a quadratic — which is how it was written
@@ -589,28 +579,23 @@ const REFINE = 40;
  * sign once per revolution, so a meeting exists for a craft of any speed. Trading
  * an elegant formula for a few hundred additions bought the motion back.
  *
- * `f(0)` is positive (you cannot arrive before you leave) and `f` falls by one per
- * minute between revolutions, so scanning forward for the first sign change and
- * bisecting inside it finds the EARLIEST meeting — which is the one a player means
- * when they send a squadron.
- *
- * AND ABOVE A CERTAIN SPEED THERE IS ONLY ONE MEETING TO FIND. `f' = factor x
- * (d|A - P|/dt) / speed - 1`, and the rock's contribution is bounded by its own
- * speed, so once `hullSpeed > factor x asteroidSpeedMax` every derivative is
- * negative: `f` is strictly decreasing, the root is unique, and no scan step can
- * straddle it. D74 deliberately puts the base Prospector below that bound (330
- * against 360), so generated-field coverage is asserted by the sweep in
- * `invariants.test.ts`; the solver has always supported slower craft because the
- * orbit comes back around.
+ * A fixed time scan is unsafe when the target is faster: a whole reachable pass
+ * can fit between samples. The old 0.2-minute scan turned a 4.7-second pirate
+ * interception into 44.78 minutes. Instead, partition the squared equation at
+ * ALL its extrema using the analytic second derivative below, then find the
+ * first root. This also handles a tangent and a target already at the origin.
  */
 export function interceptOrbit(
   from: Vec3,
   hullSpeed: number,
-  positionAt: (minutes: number) => Vec3,
+  orbit: OrbitElements,
   expiresAt: number,
   nowMinutes: number,
 ): Interception | null {
-  if (hullSpeed <= 0) return null;
+  if (!Number.isFinite(hullSpeed) || hullSpeed <= 0
+    || !Number.isFinite(orbit.period) || orbit.period <= 0
+    || !Number.isFinite(expiresAt) || !Number.isFinite(nowMinutes)) return null;
+  const positionAt = (minutes: number): Vec3 => orbitPosition(orbit, minutes);
 
   /**
    * Time to fly to where the rock is at `now + delta`, minus delta.
@@ -635,25 +620,79 @@ export function interceptOrbit(
   const horizon = expiresAt - nowMinutes;
   if (horizon <= 0) return null;
 
-  /**
-   * The step index is multiplied, never accumulated.
-   *
-   * `delta += 0.2` over the eighteen hundred steps a six-hour rock needs drifts by
-   * a measurable fraction of a step, and the last sample would land short of the
-   * horizon by an amount that depends on how long the rock has left. Multiplying
-   * makes every sample exact and the final one land ON the horizon rather than up
-   * to a step inside it — which is what used to make a meeting in that last sliver
-   * report as "it will leave before your craft could reach it".
-   */
-  const steps = Math.ceil(horizon / SCAN_STEP);
-  let previous = f(0);
-  let last = 0;
+  const meeting = (delta: number): Interception | null => {
+    const meets = nowMinutes + delta;
+    return meets >= expiresAt ? null : {
+      flightMinutes: delta, meetsAtMinutes: meets, at: positionAt(meets),
+    };
+  };
+  if (f(0) === 0) return meeting(0);
 
-  for (let i = 1; i <= steps; i++) {
-    const delta = Math.min(i * SCAN_STEP, horizon);
-    const current = f(delta);
-    if (previous > 0 && current <= 0) {
-      // Bracketed. Bisect for the crossing.
+  /*
+   * g(t) = |A(now+t)-P|² - (s*t)² has the same roots/sign as f for t >= 0.
+   * On a circle: g = C - B*cos(theta+w*t) - s²*t².
+   * Thus g'' = B*w²*cos(theta+w*t) - 2*s² has ANALYTIC roots. Between
+   * those roots g' is monotone, so bisecting it finds every extremum of g.
+   * Between the extrema g is monotone: the first reachable endpoint brackets
+   * the first meeting, even when an entire close pass lasts under 12 seconds.
+   * Orbit elements are required internally; pirates still never publish them.
+   */
+  const speed = 1 / travelExact(1, hullSpeed);
+  const angularSpeed = TAU / orbit.period;
+  const cosNode = Math.cos(orbit.ascendingNode);
+  const sinNode = Math.sin(orbit.ascendingNode);
+  const dotU = from.x * cosNode + from.z * sinNode;
+  const dotV = (-from.x * sinNode + from.z * cosNode) * Math.cos(orbit.inclination)
+    + from.y * Math.sin(orbit.inclination);
+  const amplitude = 2 * orbit.radius * Math.hypot(dotU, dotV);
+  const theta = (orbit.phase + angularSpeed * nowMinutes - Math.atan2(dotV, dotU)) % TAU;
+  const derivative = (t: number): number =>
+    amplitude * angularSpeed * Math.sin(theta + angularSpeed * t) - 2 * speed * speed * t;
+  // Past this time the expanding reachable sphere encloses the entire orbit.
+  // Leave numerical room at the geometric bound: at the exact radius a last-bit
+  // distance error can otherwise reject a valid centre-to-orbit rendezvous.
+  const end = Math.min(horizon, (orbit.radius + Math.hypot(from.x, from.y, from.z)) / speed * (1 + 1e-12));
+  const inflections = [0, end];
+  const ratio = 2 * speed * speed / (amplitude * angularSpeed * angularSpeed);
+  if (ratio < 1) {
+    const angle = Math.acos(ratio);
+    for (const base of [-angle, angle]) {
+      const first = Math.ceil((theta - base) / TAU);
+      const last = Math.floor((theta + angularSpeed * end - base) / TAU);
+      for (let lap = first; lap <= last; lap++) {
+        const t = (base + lap * TAU - theta) / angularSpeed;
+        if (t > 0 && t < end) inflections.push(t);
+      }
+    }
+  }
+  inflections.sort((a, b) => a - b);
+  const extrema = [end];
+  for (let i = 1; i < inflections.length; i++) {
+    let lo = inflections[i - 1]!;
+    let hi = inflections[i]!;
+    const left = derivative(lo);
+    const right = derivative(hi);
+    if (left === 0) extrema.push(lo);
+    if (right === 0) extrema.push(hi);
+    if ((left < 0 && right > 0) || (left > 0 && right < 0)) {
+      for (let j = 0; j < REFINE; j++) {
+        const mid = (lo + hi) / 2;
+        if ((derivative(mid) > 0) === (left > 0)) lo = mid;
+        else hi = mid;
+      }
+      extrema.push((lo + hi) / 2);
+    }
+  }
+  extrema.sort((a, b) => a - b);
+  const roundoff = 32 * Number.EPSILON * (1 + Math.abs(nowMinutes)
+    + travelExact(orbit.radius + Math.hypot(from.x, from.y, from.z), hullSpeed));
+  let last = 0;
+  for (const delta of extrema) {
+    const residual = f(delta);
+    // A tangent need not change sign. Only an INTERNAL extremum may use this
+    // floating-point tolerance; never turn expiry or the launch into a meeting.
+    if (delta > 0 && delta < end && residual > 0 && residual <= roundoff) return meeting(delta);
+    if (residual <= 0) {
       let lo = last;
       let hi = delta;
       for (let j = 0; j < REFINE; j++) {
@@ -661,14 +700,10 @@ export function interceptOrbit(
         if (f(mid) > 0) lo = mid;
         else hi = mid;
       }
-      const meets = nowMinutes + hi;
-      if (hi <= 0 || meets >= expiresAt) return null;
-      return { flightMinutes: hi, meetsAtMinutes: meets, at: positionAt(meets) };
+      return meeting(hi);
     }
-    previous = current;
     last = delta;
   }
-
   return null;
 }
 
@@ -676,7 +711,7 @@ export function interceptOrbit(
  * WHERE TO AIM AT ONE ROCK. The shared solver, handed this rock's own orbit.
  *
  * This used to BE the solver. D150 needed the identical answer for a moving
- * pirate, and a second copy of a scan-and-bisect is precisely the failure this
+ * pirate, and a second copy of the root solve is precisely the failure this
  * project has already shipped and named — a rule honoured in one place and
  * forgotten in the other. `interception.test.ts` and the generated-field sweep in
  * `invariants.test.ts` were run unchanged either side of the extraction, which is
@@ -691,7 +726,7 @@ export const interceptAsteroid = (
   interceptOrbit(
     from,
     hullSpeed,
-    (minutes) => asteroidPosition(asteroid, minutes),
+    asteroid,
     asteroid.expiresAt,
     nowMinutes,
   );

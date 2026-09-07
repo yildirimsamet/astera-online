@@ -306,7 +306,7 @@ describe('reaching the merchant', () => {
         for (const from of origins) {
           const now = spec.appearsAt + 0.25;
           const hit = interceptOrbit(
-            from, HULLS.ATLAS.speed, (m) => tradeShipPosition(spec, m), spec.expiresAt, now,
+            from, HULLS.ATLAS.speed, spec, spec.expiresAt, now,
           );
           expect(hit, `seed ${String(seed)} from ${JSON.stringify(from)}`).not.toBeNull();
           expect(hit!.flightMinutes).toBeLessThan(window);
@@ -343,7 +343,7 @@ describe('reaching the merchant', () => {
         for (const from of origins) {
           const now = spec.appearsAt + 0.25;
           const hit = interceptOrbit(
-            from, HULLS.ATLAS.speed, (m) => tradeShipPosition(spec, m), spec.expiresAt, now,
+            from, HULLS.ATLAS.speed, spec, spec.expiresAt, now,
           );
           if (!hit) continue;
           laps.push(hit.flightMinutes / spec.period);

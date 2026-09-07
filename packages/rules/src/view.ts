@@ -110,10 +110,24 @@ export const worldWeight = (coreTier: number): 1 | 2 | 3 =>
 const WEIGHT_MIDDLE = 0.54;
 /** The tuned table's own shape: how far the floor sits below the middle, and the cap above it. */
 const WEIGHT_STEP = { down: 1.8636, up: 1.7073 } as const;
+
+/**
+ * THE RESIZE DIAL THE DOCBLOCK ABOVE PROMISED, now that there is a resize to make.
+ *
+ * Owner call: a quarter back on, at every rung. It is one factor rather than three
+ * retyped anchors for exactly the reason D166 gives — the SPREAD is the signal, and
+ * three hand-moved numbers is how the spread quietly changed last time. Multiplying
+ * here leaves both sub-ratios and the 3.18× floor-to-cap distance untouched: the
+ * markers grow, the statement they make does not move.
+ *
+ * 0.290 / 0.540 / 0.922 becomes 0.362 / 0.675 / 1.152.
+ */
+const WEIGHT_SCALE = 1.25;
+
 const WEIGHT_RADIUS: Record<1 | 2 | 3, number> = {
-  1: WEIGHT_MIDDLE / WEIGHT_STEP.down,
-  2: WEIGHT_MIDDLE,
-  3: WEIGHT_MIDDLE * WEIGHT_STEP.up,
+  1: (WEIGHT_MIDDLE * WEIGHT_SCALE) / WEIGHT_STEP.down,
+  2: WEIGHT_MIDDLE * WEIGHT_SCALE,
+  3: WEIGHT_MIDDLE * WEIGHT_SCALE * WEIGHT_STEP.up,
 };
 
 /**

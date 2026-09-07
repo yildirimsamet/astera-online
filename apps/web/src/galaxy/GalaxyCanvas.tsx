@@ -34,6 +34,7 @@ import {
   Starfield,
 } from './Environment.jsx';
 import { useAmbientFrames, useCommittedDemandFrame } from './frames.jsx';
+import { QUALITY_PRESETS, useRenderQuality } from '../lib/quality.js';
 import { Wrecks, wreckPosition, type WreckView } from './Wrecks.js';
 import { Asteroids } from './Asteroids.jsx';
 import { TradeShip } from './TradeShip.jsx';
@@ -493,11 +494,30 @@ export function GalaxyCanvas({
 
   useEffect(() => installTapGuard(), []);
 
+  /**
+   * WHAT THIS DEVICE SPENDS PER PIXEL. See `lib/quality.ts` for the whole argument.
+   *
+   * Read here rather than threaded through `GalaxyView` because it is a property
+   * of the phone, not of the galaxy: nothing above this component has an opinion
+   * about it, and every screen that mounts a disc — the game, the Academy, the
+   * write-free rehearsal — gets the player's own setting without being told.
+   */
+  const quality = useRenderQuality();
+  const preset = QUALITY_PRESETS[quality];
+
   return (
     <Canvas
       frameloop="demand"
       camera={{ position: initialHomeCameraPosition(...home), fov: 45, near: 0.1, far: 600 }}
-      dpr={[1, 2]}
+      /**
+       * A CLAMP, SO THE PRESET CAN ONLY EVER LOWER THE RATIO.
+       *
+       * `[1, cap]` keeps fiber's own behaviour — take the device's ratio and clamp
+       * it — rather than forcing a number. A fixed 1.5 on a desktop at 1 would
+       * render half again as many pixels as the screen has and then throw them
+       * away, which would make the cheap preset the expensive one.
+       */
+      dpr={[1, preset.dprCap]}
       /**
        * NO `antialias` HERE, BECAUSE THE COMPOSER BELOW ALREADY DOES IT.
        *
@@ -519,15 +539,37 @@ export function GalaxyCanvas({
         /**
          * THE COLOUR CONTRACT, stated rather than inherited from library defaults.
          *
-         * Three works in linear-sRGB; the display is sRGB; ACES compresses values
-         * above one into photographed highlights instead of clipping them white.
-         * R3F currently chooses these defaults too, but a premium renderer cannot
-         * let a dependency upgrade silently change what every texture and plume
-         * means. The post-process target below is half-float so those highlights
-         * survive long enough for bloom to read them.
+         * Three works in linear-sRGB; the display is sRGB. R3F currently chooses
+         * this default too, but a premium renderer cannot let a dependency upgrade
+         * silently change what every texture and plume means. The post-process
+         * target below is half-float so highlights survive long enough for bloom
+         * to read them.
+         *
+         * THIS SCENE HAS NO TONE MAPPING, ON PURPOSE, AND THAT IS WORTH SAYING
+         * BECAUSE IT LOOKS LIKE AN OVERSIGHT.
+         *
+         * There used to be a `gl.toneMapping = ACESFilmicToneMapping` here and it
+         * never did anything: while an `EffectComposer` is mounted,
+         * `@react-three/postprocessing` forces the renderer to `NoToneMapping` and
+         * hands the job to the composer, so the assignment was overwritten on the
+         * next frame. The shipped image has never had a mapping of any kind.
+         *
+         * ADDING ONE WAS TRIED AND REVERTED. A `<ToneMapping>` effect in the
+         * composer is where it would belong and it works immediately — and the
+         * owner's report on seeing it was that the disc went dark: the background
+         * galaxy and the dust cloud at its centre disappeared. That is correct
+         * behaviour and the wrong change. Every colour in this directory — the
+         * nebula's three depth bands, the dust, the star magnitudes, every plume
+         * and drive core — was authored by eye against a linear passthrough, so a
+         * filmic curve does not "fix" them, it RE-GRADES all of them at once, and
+         * its toe takes the faint end first. Nothing in the scene is faded on
+         * purpose; the whole galaxy is the faint end.
+         *
+         * So a mapping goes in only WITH a re-grade of those values, never on its
+         * own. The line is gone rather than left dead, so nobody reads it as a
+         * setting that is already in force.
          */
         gl.outputColorSpace = THREE.SRGBColorSpace;
-        gl.toneMapping = THREE.ACESFilmicToneMapping;
         gl.toneMappingExposure = 1;
       }}
       onPointerMissed={() => {
@@ -699,12 +741,38 @@ export function GalaxyCanvas({
         post-process worth its cost here: everything bright in this scene is
         additive already, so a small mipmap kernel does all the work.
       */}
+      {/*
+        REBUILT WHEN THE RESOLUTION CEILING MOVES, and it has to be.
+
+        `EffectComposer` sizes its buffers from `setSize(size.width, size.height)`
+        in an effect keyed on `size` — the CSS box — and `postprocessing` then
+        multiplies by whatever `renderer.getPixelRatio()` says AT THAT MOMENT.
+        Changing the preset moves the pixel ratio without moving the CSS box, so
+        nothing in that dependency list fires: the scene would keep rendering into
+        buffers built for the old ratio, which is a scaled, cropped picture rather
+        than a slow one.
+
+        The key is the whole fix. A preset change is a deliberate, rare tap, and
+        fiber applies the new ratio in the canvas's LAYOUT effect — before this
+        subtree's passive effects, which is where the composer is constructed — so
+        the replacement reads the ratio that is already in force.
+      */}
       <EffectComposer
+        key={preset.dprCap}
         enableNormalPass={false}
         frameBufferType={THREE.HalfFloatType}
-        // Two samples preserve the small hull silhouettes without paying the
-        // package default of eight samples on every full-screen mobile buffer.
-        multisampling={2}
+        /*
+          COVERAGE SAMPLES, FROM THE PRESET — still far under the package default
+          of eight on every full-screen mobile buffer, and never zero.
+
+          This is what draws a rock's tail and the hairline on a world's limb at
+          all: both are thin geometry that falls under one pixel of coverage, and
+          multisampling is the only thing that renders a quarter-covered pixel at a
+          quarter strength instead of dropping it. `lib/quality.ts` carries why it
+          went UP when the resolution came down, and why the cheapest preset is the
+          one that needs it most.
+        */
+        multisampling={preset.multisampling}
       >
         <Bloom
           intensity={0.62}

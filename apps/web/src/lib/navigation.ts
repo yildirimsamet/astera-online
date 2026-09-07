@@ -10,7 +10,6 @@ import {
   fleetTravelExact,
   interceptOrbit,
   missionFuel,
-  orbitPosition,
   transferCargoCapacity,
   travelMinutes,
   type Fleet,
@@ -206,7 +205,7 @@ export function planTradeRoute(
   const hit = interceptOrbit(
     origin,
     speed,
-    (minutes) => orbitPosition(merchant.orbit, minutes),
+    merchant.orbit,
     merchant.expiresAtMinute,
     nowMinutes,
   );

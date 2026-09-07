@@ -910,7 +910,7 @@ describe('every payload the client parses', () => {
     const solved = interceptOrbit(
       origin,
       HULLS.DART.speed,
-      (m) => piratePosition(spec, m),
+      spec,
       spec.expiresAt,
       found!.minute,
     );

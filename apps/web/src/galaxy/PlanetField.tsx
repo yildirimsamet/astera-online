@@ -307,6 +307,16 @@ function Atmospheres({ nodes }: { nodes: readonly PlanetNode[] }) {
 
 const UP = new THREE.Object3D();
 /** The axis a cone is spun about to point it down at the world it names. */
+
+/**
+ * HOW DARK AN UNREAD WORLD'S BODY IS DRAWN, as its own exported number.
+ *
+ * Exported so the test that guards it reads the value rather than repeating it: a
+ * copy in `planet-visuals.test.ts` is how a deliberate change to this shows up as
+ * a failing assertion about a number nobody meant to state twice.
+ */
+export const UNRESOLVED_BODY_LIGHT = 0.35;
+
 /**
  * What losing resolution costs a world. D126.
  *
@@ -323,8 +333,19 @@ const UNRESOLVED = {
    * "you cannot read this" signal rather than sharing it with the absences around
    * it. Still well short of invisible: the map is public (D49, D119) and the world
    * must stay findable and tappable at its true public size.
+   *
+   * RAISED FROM 0.22 ON THE OWNER'S REPORT: undiscovered worlds were too hard to
+   * see. Compounding is what made it that dark — an unread world is dimmed THREE
+   * times over, by its stance, by this, and by `HIDDEN_PLANET_BRIGHTNESS`, so a
+   * `dark` world was landing at 0.42 × 0.22 × 0.85 ≈ 0.079 of full brightness
+   * while its own warm limb sat at 0.357 and read as a rim around nothing. At 0.35
+   * the body reaches ≈ 0.125 — half again as visible, still a sixth of what a
+   * world under live sight is drawn at, so ignorance is still plainly darkness.
+   *
+   * IT REVEALS NOTHING. The silhouette is public either way (D123/D127); what a
+   * probe buys is the detail drawn ON the body, and none of that is lit by this.
    */
-  light: 0.22,
+  light: UNRESOLVED_BODY_LIGHT,
   warm: { r: 1, g: 1, b: 1 },
   cool: { r: 0.72, g: 0.84, b: 1 },
 } as const;

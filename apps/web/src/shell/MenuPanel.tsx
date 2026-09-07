@@ -10,7 +10,13 @@ import {
 import { serverNow } from '../lib/clock.js';
 import { haptic } from '../lib/haptics.js';
 import { untilReady } from '../lib/time.js';
-import { Button, Note, Section } from '../ui/kit/index.js';
+import {
+  RENDER_QUALITIES,
+  setRenderQuality,
+  useRenderQuality,
+  type RenderQuality,
+} from '../lib/quality.js';
+import { Button, Note, Section, Segmented, type Segment } from '../ui/kit/index.js';
 import {
   ChevronIcon,
   BellIcon,
@@ -291,6 +297,13 @@ export function MenuPanel({
           the commander or the season. Both are stored per device for that reason.
         */}
         <SoundSwitch />
+
+        {/*
+          AND THE RESOLUTION, for the same reason both of its neighbours are here:
+          it is a fact about the device in the player's hand, not about the
+          commander or the season, and it is stored per device like they are.
+        */}
+        <QualitySwitch />
       </Section>
 
       <Button variant="ghost" size="lg" full onClick={onSignOut}>
@@ -440,6 +453,58 @@ function SoundSwitch() {
           {t('menu.volumeValue', { volume: percent })}
         </output>
       </label>
+    </div>
+  );
+}
+
+/**
+ * HOW SHARP THE GALAXY IS DRAWN, AND WHAT IT COSTS THE PHONE.
+ *
+ * Owner instruction, raised by players reporting heat. `lib/quality.ts` carries
+ * the reasoning — including why this dial is the resolution and not bloom or a
+ * draw distance, both of which would spend more picture for less power.
+ *
+ * THREE RUNGS, NOT A SLIDER. A slider implies a continuum somebody can tune, and
+ * there is nothing here to tune: there are three sensible ceilings on the device
+ * pixel ratio and every value between them looks and costs the same as one of
+ * them. It is also the compact form — one row of three words against a slider,
+ * its track, its handle and a readout, on the phone this game is budgeted for.
+ *
+ * THE LINE UNDER THE NAME IS THE CURRENT RUNG'S OWN, so choosing states what was
+ * chosen. `docs/interface.md` I1: a value the player cannot compare is not yet
+ * information, and "Balanced" alone does not say what it balances.
+ */
+function QualitySwitch() {
+  const { t } = useTranslation();
+  const quality = useRenderQuality();
+
+  const segments: readonly Segment<RenderQuality>[] = RENDER_QUALITIES.map((id) => ({
+    id,
+    label: t(`menu.quality.${id}`),
+  }));
+
+  return (
+    <div className="plate px-3 py-3">
+      <div className="flex items-center gap-2">
+        <span className="socket grid size-8 shrink-0 place-items-center rounded-control text-dim">
+          <GalaxyIcon className="size-[18px]" />
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className="name block">{t('menu.qualityLabel')}</span>
+          <span className="mt-1 block text-label leading-snug text-faint">
+            {t(`menu.qualityHint.${quality}`)}
+          </span>
+        </span>
+      </div>
+
+      <Segmented
+        className="mt-3"
+        size="sm"
+        label={t('menu.qualityLabel')}
+        segments={segments}
+        value={quality}
+        onSelect={setRenderQuality}
+      />
     </div>
   );
 }

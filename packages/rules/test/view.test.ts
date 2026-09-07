@@ -81,11 +81,17 @@ describe('D153 world size by core level', () => {
    * is defined around), and the outer two are placed by the SAME two sub-ratios
    * the tuned table always had. The result is one factor, ×0.659, applied to all
    * three, and a spread that is still 3.18.
+   *
+   * AND A QUARTER WENT BACK ON, THROUGH THE SAME KIND OF DIAL. Owner call: worlds
+   * were reading too small. `WEIGHT_SCALE` multiplies the anchors rather than
+   * three retyped numbers, for exactly the reason D166 had to re-derive them — so
+   * the figures below moved and the two properties the tests after this one hold
+   * (one uniform factor, and no level that is a jump) did not.
    */
   it('anchors the three authored sizes at the floor, the middle and the cap', () => {
-    expect(worldRadius(1)).toBeCloseTo(0.29, 2);
-    expect(worldRadius(11)).toBeCloseTo(0.54, 8);
-    expect(worldRadius(CORE_TOP_LEVEL)).toBeCloseTo(0.92, 2);
+    expect(worldRadius(1)).toBeCloseTo(0.362, 3);
+    expect(worldRadius(11)).toBeCloseTo(0.675, 6);
+    expect(worldRadius(CORE_TOP_LEVEL)).toBeCloseTo(1.152, 3);
   });
 
   /** And the shrink is UNIFORM, which is the property that keeps the ramp's shape. */

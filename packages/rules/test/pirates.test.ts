@@ -19,7 +19,6 @@ import {
   interceptAsteroid,
   interceptOrbit,
   mulberry32,
-  orbitPosition,
   orbitRadius,
   pirateActive,
   pirateCapture,
@@ -532,7 +531,7 @@ describe('the shared orbit solver', () => {
       const shared = interceptOrbit(
         from,
         400,
-        (minutes) => orbitPosition(rock, minutes),
+        rock,
         rock.expiresAt,
         now,
       );
@@ -585,7 +584,7 @@ describe('the shared orbit solver', () => {
         for (const spec of field.slice(0, 40)) {
           const now = spec.appearsAt + 0.25;
           const hit = interceptOrbit(
-            from, speed, (m) => piratePosition(spec, m), spec.expiresAt, now,
+            from, speed, spec, spec.expiresAt, now,
           );
           expect(hit, `speed ${String(speed)}`).not.toBeNull();
           expect(hit!.meetsAtMinutes).toBeLessThan(spec.expiresAt);
@@ -624,7 +623,7 @@ describe('the shared orbit solver', () => {
       for (const spec of field.slice(0, 120)) {
         const now = spec.appearsAt + 0.25;
         const hit = interceptOrbit(
-          from, HULLS.DART.speed, (m) => piratePosition(spec, m), spec.expiresAt, now,
+          from, HULLS.DART.speed, spec, spec.expiresAt, now,
         );
         if (!hit) continue;
         laps.push(hit.flightMinutes / spec.period);
@@ -642,10 +641,10 @@ describe('the shared orbit solver', () => {
   it('refuses a meeting that would land after the pirate is gone', () => {
     const spec = schedule()[0]!;
     expect(
-      interceptOrbit({ x: 0, y: 0, z: 0 }, 160, (m) => piratePosition(spec, m), spec.expiresAt, spec.expiresAt + 1),
+      interceptOrbit({ x: 0, y: 0, z: 0 }, 160, spec, spec.expiresAt, spec.expiresAt + 1),
     ).toBeNull();
     expect(
-      interceptOrbit({ x: 0, y: 0, z: 0 }, 0, (m) => piratePosition(spec, m), spec.expiresAt, spec.appearsAt),
+      interceptOrbit({ x: 0, y: 0, z: 0 }, 0, spec, spec.expiresAt, spec.appearsAt),
     ).toBeNull();
   });
 });

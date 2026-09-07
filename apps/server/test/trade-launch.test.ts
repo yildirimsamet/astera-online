@@ -10,7 +10,6 @@ import {
   interceptOrbit,
   missionFuel,
   quoteTrade,
-  tradeShipPosition,
   transferCargoCapacity,
   type Fleet,
 } from '@astera/rules';
@@ -202,7 +201,7 @@ describe('a convoy sent to the merchant', () => {
     const hit = interceptOrbit(
       origin!,
       speed,
-      (minutes) => tradeShipPosition(merchant.spec, minutes),
+      merchant.spec,
       merchant.spec.expiresAt,
       minutesSince(seasonStartsAt, f.clock.now()),
     );
@@ -272,7 +271,7 @@ describe('a convoy sent to the merchant', () => {
     const hit = interceptOrbit(
       origin!,
       speed,
-      (minutes) => tradeShipPosition(merchant.spec, minutes),
+      merchant.spec,
       merchant.spec.expiresAt,
       minutesSince(seasonStartsAt, f.clock.now()),
     )!;

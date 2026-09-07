@@ -39,10 +39,27 @@ Portrait rehearsal, wide disc, Chromium/SwiftShader:
 | GPU textures | 47 | 64 | 80 |
 | GPU geometries | 32 | 48 | 72 |
 | Rendered points | 5,100 | 8,000 | 20,000 |
-| Pixel ratio | 2 | 2 | 2 |
+| Pixel ratio | 1.5 (`balanced`) | preset cap | preset cap |
 
 These are ceilings, not targets to fill. An effect that crosses one needs a measured
-trade, not a wider column. Battle peak is sampled with a full visible volley,
+trade, not a wider column.
+
+**THE PIXEL RATIO ROW MOVED AT D170, DELIBERATELY, AND IT IS THE ONE BUDGET IN THIS
+TABLE A PLAYER SETS.** Players reported the phone getting hot. The cost of this scene
+is per pixel and paid several times over — a multisampled half-float scene target, a
+luminance pass, a mipmap chain and a composite — so `lib/quality.ts` offers three
+ceilings (2.0 · 1.5 · 1.0) stored per device, and `balanced` is the default. Measured
+on the portrait rehearsal, the backing buffer falls from 780×1688 to 585×1141: 44% of
+every per-pixel cost. Multisampling went the other way, from 2 to 4 (2 at the bottom
+rung), because the thin geometry that carries this scene — a rock's tail, the hairline
+on a world's limb — falls under one pixel of coverage as the ratio drops, and coverage
+sampling is the only thing that draws it at all. Reproduce a specific rung by setting
+`astera.quality` in `localStorage` before the capture; the run above is `balanced`.
+
+The scene carries **no tone mapping**, and that is a recorded decision rather than an
+omission — see D170. Every colour in `galaxy/` was authored against a linear
+passthrough, so a filmic curve re-grades all of them at once and takes the faint end
+first. It goes in with a re-grade or not at all. Battle peak is sampled with a full visible volley,
 impacts and debris; it is not permission for the idle galaxy to retain battle VFX.
 
 Current visual score: **6.4 / 10 — competent and distinctive, not yet premium.**

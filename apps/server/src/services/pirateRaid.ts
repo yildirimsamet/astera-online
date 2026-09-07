@@ -236,7 +236,7 @@ export async function launchPirateRaid(
     const hit = interceptOrbit(
       origin,
       speed,
-      (minutes) => piratePosition(spec, minutes),
+      spec,
       spec.expiresAt,
       nowMinutes,
     );

@@ -12,7 +12,6 @@ import {
   missionFuel,
   quoteTrade,
   tradeShipActive,
-  tradeShipPosition,
   transferCargoCapacity,
   type Fleet,
   type Resources,
@@ -262,7 +261,7 @@ export async function launchTrade(
     const hit = interceptOrbit(
       origin,
       speed,
-      (minutes) => tradeShipPosition(spec, minutes),
+      spec,
       spec.expiresAt,
       origin.nowMinutes,
     );

@@ -70,7 +70,20 @@ export const DISC_RADIUS = GALAXY.radius / SCALE;
  * travel time reads them — so this is the same kind of number as
  * `VERTICAL_EXAGGERATION` below and carries the same guarantee.
  */
-export const CRAFT_SCALE = 0.8;
+/*
+  DOUBLED ON THE OWNER'S REPORT: players could not see their own ships. It is one
+  factor and not seven edited constants for the reason above — and that is also why
+  it moves the probe, the drill and the strategic weapon along with the warships,
+  which were the two classes actually named. Doubling only the fleet entries would
+  have left the Death Star (0.34) drawn SMALLER than an ordinary squadron (0.39),
+  and an unidentified contact visibly smaller than the same craft once named. The
+  relative table is the design statement; the bulk change goes through here.
+
+  The trade ship rides this too — `TRADE_SHIP_BASE_SCALE` is stated as a fraction
+  of it — so the merchant doubles with everything else and its own multiplier is
+  untouched.
+*/
+export const CRAFT_SCALE = 1.6;
 
 /**
  * THE CONVERSION AND THE HEIGHT EXAGGERATION NOW LIVE IN `@astera/rules`. D106.
@@ -991,12 +1004,33 @@ export function tradeShipWorldPosition(
  * shaving more off the top than the bottom would flatten the very ratios that let
  * a player rank rocks by eye, which is the only thing this scale is for.
  */
+/**
+ * GROWN ON THE OWNER'S REPORT, and through one factor for the same reason the
+ * shrink above used one: the LADDER is the information, so every rung moves by the
+ * same amount or the ranking a player does by eye stops meaning what it meant.
+ *
+ * DOUBLED FIRST AND THEN TAKEN BACK A QUARTER, on the owner's eye — 2 read as too
+ * big beside the worlds. 1.5 is that second reading, and it is one number rather
+ * than a re-typed table so the second look cost the ladder nothing.
+ *
+ * IT STILL CROSSES THE LINE THE DOCBLOCK ABOVE DRAWS, and that is stated rather
+ * than quietly absorbed. Worlds are 0.362 / 0.675 / 1.152 and the rungs here top
+ * out at 0.383, so the richest rock in the galaxy is drawn about 6% LARGER than a
+ * Core-1 world — the "well under two thirds of the smallest world" clearance is
+ * gone. A Core-1 world is a newcomer's and it is the one case where it matters
+ * least; every world from Core 4 up still clears the largest rock comfortably.
+ *
+ * The dial to close it is this factor alone: below 1.42 the top rock returns under
+ * the smallest world.
+ */
+const ASTEROID_SCALE = 1.5;
+
 export const ASTEROID_RADIUS: Record<number, number> = {
-  1: 0.075,
-  2: 0.105,
-  3: 0.143,
-  4: 0.195,
-  5: 0.255,
+  1: 0.075 * ASTEROID_SCALE,
+  2: 0.105 * ASTEROID_SCALE,
+  3: 0.143 * ASTEROID_SCALE,
+  4: 0.195 * ASTEROID_SCALE,
+  5: 0.255 * ASTEROID_SCALE,
 };
 
 export const asteroidRadius = (level: number): number => ASTEROID_RADIUS[level] ?? 0.2;

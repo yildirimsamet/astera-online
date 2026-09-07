@@ -169,6 +169,22 @@ export const menu = {
   soundOff: 'Bu cihazda kapalı.',
   volumeLabel: 'Müzik seviyesi',
   volumeValue: '%{{volume}}',
+  /**
+   * ÇÖZÜNÜRLÜK. Üç kademe, her biri tek kelime — üçü yan yana 375 piksele sığmak
+   * zorunda. Altındaki cümle seçili kademenin kendisine ait: kademenin adı ne
+   * kazandırdığını söylemiyor, cümle söylüyor.
+   */
+  qualityLabel: 'Görüntü kalitesi',
+  quality: {
+    high: 'Yüksek',
+    balanced: 'Dengeli',
+    low: 'Düşük',
+  },
+  qualityHint: {
+    high: 'Tam çözünürlük. En keskin görüntü, en çok pil.',
+    balanced: 'Çözünürlük dörtte üçe iner. Fark zor görülür, ısınma belirgin azalır.',
+    low: 'Yarım çözünürlük, kenar yumuşatma kapalı. Eski telefonlar için.',
+  },
 } as const;
 
 export const leaderboard = {

@@ -209,6 +209,22 @@ export const menu = {
   soundOff: 'Silenced on this device.',
   volumeLabel: 'Music volume',
   volumeValue: '{{volume}}%',
+  /**
+   * RESOLUTION. Three rungs, one word each — all three share a 375-wide row. The
+   * line beneath belongs to the chosen rung: a rung's name does not say what it
+   * buys, and the sentence does.
+   */
+  qualityLabel: 'Image quality',
+  quality: {
+    high: 'High',
+    balanced: 'Balanced',
+    low: 'Low',
+  },
+  qualityHint: {
+    high: 'Full resolution. Sharpest picture, most battery.',
+    balanced: 'Three quarter resolution. Hard to see, markedly cooler.',
+    low: 'Half resolution, no edge smoothing. For older phones.',
+  },
 } as const;
 
 export const leaderboard = {

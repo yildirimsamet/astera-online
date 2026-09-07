@@ -150,7 +150,7 @@ export function registerPirateRoutes(app: FastifyInstance): void {
       /*
         SOLVED PER DISTINCT SPEED, PUBLISHED PER HULL.
 
-        Solving is a numerical scan; two hulls that fly at the same speed share one
+        Solving partitions the orbit; two hulls that fly at the same speed share one
         answer. But the CLIENT cannot key on speed — the figures here carry this
         world's Beacon and the commander's Propulsion, and the panel only knows the
         catalogue. Matching a raw catalogue speed against an effective one landed on
@@ -169,7 +169,7 @@ export function registerPirateRoutes(app: FastifyInstance): void {
           const solved = interceptOrbit(
             origin,
             speed,
-            (minutes) => piratePosition(spec, minutes),
+            spec,
             spec.expiresAt,
             nowMinutes,
           );

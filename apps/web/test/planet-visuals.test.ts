@@ -7,6 +7,7 @@ import {
   MIN_MARKER_PX,
   SELECTION_RING,
   HIDDEN_PLANET_BRIGHTNESS,
+  UNRESOLVED_BODY_LIGHT,
   VISIBLE_PLANET_BRIGHTNESS,
   bodyLight,
   eyeMarkerScale,
@@ -341,9 +342,38 @@ describe('world identity on the disc', () => {
     expect(VISIBLE_PLANET_BRIGHTNESS).toBe(1.25);
     expect(HIDDEN_PLANET_BRIGHTNESS).toBe(0.85);
     expect(bodyLight('watched', 'RESOLVED')).toBeCloseTo(STANCE_LIGHT.watched * 1.25);
-    expect(bodyLight('dark', 'UNKNOWN')).toBeCloseTo(STANCE_LIGHT.dark * 0.22 * 0.85);
+    expect(bodyLight('dark', 'UNKNOWN'))
+      .toBeCloseTo(STANCE_LIGHT.dark * UNRESOLVED_BODY_LIGHT * 0.85);
     expect(limbLight('watched', 'RESOLVED')).toBeCloseTo(STANCE_LIGHT.watched * 1.25);
     expect(limbLight('dark', 'UNKNOWN')).toBeCloseTo(STANCE_LIGHT.dark * 0.85);
+  });
+
+  /**
+   * AN UNREAD WORLD WAS TOO DARK TO FIND, and the fix has to hold both ends.
+   *
+   * Owner report: undiscovered worlds were barely visible on a phone. The cause is
+   * that the dimming COMPOUNDS — stance, then this, then `HIDDEN_PLANET_BRIGHTNESS`
+   * — so the darkest world was landing near a twelfth of full brightness while its
+   * own warm limb sat four times higher and read as a rim around nothing.
+   *
+   * So the number moved, and both properties that make it a fog signal are held
+   * here rather than left to the eye: it is brighter than it was, and it is still
+   * unmistakably darker than a world under live sight. A future lift that quietly
+   * closed the second gap would delete the fog while every screenshot still looked
+   * right.
+   */
+  it('lifts an unread world clear of invisible without letting it read as seen', () => {
+    expect(UNRESOLVED_BODY_LIGHT).toBe(0.35);
+
+    const unread = bodyLight('dark', 'UNKNOWN');
+    const seen = bodyLight('self', 'RESOLVED');
+
+    // Brighter than the 0.22 it shipped at, which is the owner's actual request.
+    expect(unread).toBeGreaterThan(STANCE_LIGHT.dark * 0.22 * HIDDEN_PLANET_BRIGHTNESS);
+    // And still a fraction of a world you can actually see.
+    expect(unread).toBeLessThan(seen * 0.2);
+    // The limb stays the brighter of the two, so the silhouette still reads as a rim.
+    expect(limbLight('dark', 'UNKNOWN')).toBeGreaterThan(unread);
   });
 
   it('marks every owned colony as self and preserves capital/colony identity', () => {
