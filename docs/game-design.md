@@ -441,17 +441,16 @@ a real decision — eyes, or production, or faster drills.
 **Hardware in orbit is public; its levels are not (D15).** A dome reads as a dome to everyone,
 because deterrence only works if it is legible. How strong it is still costs a probe.
 
-## Silent Space transition — D174, implementation in progress
+## Silent Space — D174
 
-Inactivity no longer triggers the worker's destructive seat reclaim. The planned replacement
-moves a commander inactive for 48 hours into Silent Space with their worlds and progress
-preserved. A return application retains its original priority while flights or insufficient
-vacated colony addresses prevent returning; the oldest currently eligible applicant may
-return first. MAIN return locations come only from recorded inactive departures.
-
-The current bridge preserves inactive worlds in place. A transferred WAITING commander sees a dismissible notice with a return application action,
-also available from Menu → Silent Space. Automatic relocation is not yet enabled.
-Normal season-end reset remains unchanged.
+After 48 hours without authenticated API activity, the commander and all developed worlds
+move to Silent Space. MAIN colony addresses become initial-state unowned neutrals. A return
+application reuses available departure colony sites with the applicant's own development.
+Unused neutrals remain capturable. Returns may exceed player capacity; a vacant or safe new
+capital address is allocated. New registrations remain capped. The oldest eligible applicant
+returns first; blocked applicants retain priority. Maintenance runs every five minutes, up
+to five successful moves. The placement notice links to return applications. Normal season
+reset continues. Activation status and measured acceptance are recorded in deployment docs.
 
 ## Galaxy, travel and mining
 

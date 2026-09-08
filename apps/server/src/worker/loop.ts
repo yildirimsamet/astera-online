@@ -273,6 +273,7 @@ export class EventWorker {
       && now.getTime() - this.silentSpaceAt >= SILENT_SPACE_INTERVAL_MS) {
       this.silentSpaceAt = now.getTime();
       this.silentSpaceTask = runSilentSpaceSweep(this.db, this.clock, {
+        onError: (err) => { this.log.error({ err }, 'Silent Space commander deferred after an error'); },
         batchSize: this.opts.silentSpaceBatch ?? 5, maxWaitingShards: this.opts.silentSpaceMaxShards ?? 16,
       }).then(result => {
         if (result.ran) this.log.info(result, 'Silent Space five-minute maintenance');

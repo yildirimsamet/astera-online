@@ -1,3 +1,4 @@
+import { spatialHistory } from './spatialHistory.js';
 import { and, desc, eq, inArray, or } from 'drizzle-orm';
 import {
   PIRATE,
@@ -449,6 +450,8 @@ async function readBattleReportsIn(
         .where(inArray(planets.id, named));
   const targetById = new Map(worldNames.map((world) => [world.id, world.name]));
 
+  const spatiallyCurrent = await spatialHistory(tx, playerId, [...named, ...opponents.map(opponent => opponent.planetId)]);
+
   const viewOf = (row: (typeof rows)[number]): BattleReportView => {
     const attacking = row.attackerPlayerId === playerId;
     const opponentId = attacking ? row.defenderPlayerId : row.attackerPlayerId;
@@ -540,7 +543,7 @@ async function readBattleReportsIn(
           : opponent?.planet ?? 'an unknown world',
       // Null on a pirate row on purpose: the dossier matches worlds, and there is
       // no world here to file a floor against.
-      opponentPlanetId: raid
+      opponentPlanetId: raid || !spatiallyCurrent(attacking ? row.targetPlanetId : opponent?.planetId ?? null, row.createdAt)
         ? null
         : attacking
           ? row.targetPlanetId
@@ -611,7 +614,8 @@ async function readBattleReportsIn(
       opponentPlanet: attacking
         ? targetById.get(impact.targetPlanetId) ?? opponent?.planet ?? 'an unknown world'
         : opponent?.planet ?? 'an unknown world',
-      opponentPlanetId: attacking ? impact.targetPlanetId : opponent?.planetId ?? null,
+      opponentPlanetId: spatiallyCurrent(attacking ? impact.targetPlanetId : opponent?.planetId ?? null, impact.createdAt)
+        ? attacking ? impact.targetPlanetId : opponent?.planetId ?? null : null,
       yourPlanet: attacking
         ? targetById.get(originByMission.get(impact.missionId) ?? '') ?? ''
         : targetById.get(impact.targetPlanetId) ?? '',
@@ -633,7 +637,7 @@ async function readBattleReportsIn(
     const attacking = row.attackerPlayerId === playerId;
     const opponentId = attacking ? row.defenderPlayerId : row.attackerPlayerId;
     const opponent = opponentId === null ? undefined : byId.get(opponentId);
-    if (!opponent) continue;
+    if (!opponent || !spatiallyCurrent(opponent.planetId, row.createdAt)) continue;
     const signed = row.dominionSwing === null ? 0 : attacking ? row.dominionSwing : -row.dominionSwing;
     const theirs = attacking ? row.defenderLosses : row.attackerLosses;
     const hasKnownFleet = Object.values(theirs).some((count) => count > 0);
@@ -669,7 +673,7 @@ async function readBattleReportsIn(
     const attacking = impact.attackerPlayerId === playerId;
     const opponentId = attacking ? impact.defenderPlayerId : impact.attackerPlayerId;
     const opponent = opponentId === null ? undefined : byId.get(opponentId);
-    if (!opponent) continue;
+    if (!opponent || !spatiallyCurrent(opponent.planetId, impact.createdAt)) continue;
     const theirs = attacking ? impact.destroyedFleet : {};
     const hasKnownFleet = Object.values(theirs).some((count) => count > 0);
     const current = rivals.get(opponent.planetId);

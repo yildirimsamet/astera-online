@@ -368,3 +368,33 @@ describe('the API client', () => {
     expect(seen).toEqual(['raided', 'fleet_returned']);
   });
 });
+
+it('stamps subsequent requests with the server placement and rejects delayed old replies', async () => {
+  let header: string | null = null;
+  let version = 'commander:1';
+  const fetch: typeof globalThis.fetch = (_url, init) => {
+    header = new Headers(init?.headers).get('x-placement');
+    return Promise.resolve(new Response(JSON.stringify(PLANET), { headers: { 'x-placement': version } }));
+  };
+  const api = new Api({ fetch });
+  await api.planet();
+  await api.planet();
+  expect(header).toBe('commander:1');
+  version = 'commander:0';
+  await expect(api.planet()).rejects.toMatchObject({ code: 'PLACEMENT_CHANGED' });
+});
+
+it('rejects a delayed me response after a newer reconciliation completed', async () => {
+  let finishOld: ((response: Response) => void) | undefined;
+  let count = 0;
+  const me = { accountId: 'a1', username: 'vantage', displayName: 'Vantage', placement: null };
+  const fetch: typeof globalThis.fetch = async () => {
+    if (++count === 1) return new Promise<Response>(resolve => { finishOld = resolve; });
+    return new Response(JSON.stringify(me), { headers: { 'x-placement': 'commander:2' } });
+  };
+  const api = new Api({ fetch });
+  const old = api.me();
+  await api.me();
+  finishOld!(new Response(JSON.stringify(me), { headers: { 'x-placement': 'commander:1' } }));
+  await expect(old).rejects.toMatchObject({ code: 'PLACEMENT_CHANGED' });
+});

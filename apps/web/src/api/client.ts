@@ -177,6 +177,7 @@ export class Api {
   private readonly http: typeof globalThis.fetch;
   private readonly baseUrl: string;
   private token: string | null = null;
+  private placement: string | null = null;
   /** Deduped: five queries expiring at once must produce one refresh, not five. */
   private refreshing: Promise<boolean> | null = null;
 
@@ -217,12 +218,14 @@ export class Api {
      * `lib/clock.ts`. Measured around the call rather than after it, because half
      * the round trip is what has to come back off the sample.
      */
+    const sentPlacement = this.placement;
     const sentAt = Date.now();
     const res = await this.http(`${this.baseUrl}${path}`, {
       method: opts.method ?? 'GET',
       headers: {
         ...(opts.body === undefined ? {} : { 'content-type': 'application/json' }),
         ...(this.token ? { authorization: `Bearer ${this.token}` } : {}),
+        ...(sentPlacement ? { 'x-placement': sentPlacement } : {}),
         ...(opts.idempotencyKey ? { 'idempotency-key': opts.idempotencyKey } : {}),
       },
       ...(opts.body === undefined ? {} : { body: JSON.stringify(opts.body) }),
@@ -238,6 +241,25 @@ export class Api {
     }
 
     const body: unknown = await res.json().catch(() => null);
+    const receivedPlacement = res.headers.get('x-placement');
+    if (path === '/api/auth/me' && res.ok) {
+      if (sentPlacement !== this.placement && receivedPlacement !== this.placement) {
+        window.dispatchEvent(new Event('astera:placement-changed'));
+        throw new ApiError('PLACEMENT_CHANGED', 'Your galaxy changed; refresh and try again', 409);
+      }
+      this.placement = receivedPlacement;
+    }
+    else if (res.ok && receivedPlacement) {
+      if (this.placement !== null && receivedPlacement !== this.placement) {
+        window.dispatchEvent(new Event('astera:placement-changed'));
+        throw new ApiError('PLACEMENT_CHANGED', 'Your galaxy changed; refresh and try again', 409);
+      }
+      this.placement = receivedPlacement;
+    }
+    if (res.status === 409 && typeof body === 'object' && body !== null && 'error' in body && body.error === 'PLACEMENT_CHANGED') {
+      window.dispatchEvent(new Event('astera:placement-changed'));
+    }
+
     if (!res.ok) {
       /**
        * A failure with NO BODY is not a game rule refusing you.
@@ -276,6 +298,7 @@ export class Api {
         return true;
       } catch {
         this.token = null;
+    this.placement = null;
         return false;
       } finally {
         this.refreshing = null;
@@ -320,6 +343,7 @@ export class Api {
    */
   async logout(): Promise<void> {
     this.token = null;
+    this.placement = null;
     try {
       await this.send('/api/auth/logout', okSchema, { method: 'POST', retryOnExpiry: false });
     } catch {
@@ -385,6 +409,7 @@ export class Api {
   /** Drops the token without telling the server. For a 401 we already know about. */
   forget(): void {
     this.token = null;
+    this.placement = null;
   }
 
   /* ── choosing a galaxy ────────────────────────────────────── */

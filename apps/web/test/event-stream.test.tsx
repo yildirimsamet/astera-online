@@ -199,6 +199,13 @@ describe('the event stream', () => {
     expect(asked).toEqual([]);
   });
 
+  it('reconciles the session when an HTTP request detects a missed move', () => {
+    const onPlacement = vi.fn();
+    mountCaughtUp(onPlacement);
+    act(() => { window.dispatchEvent(new Event('astera:placement-changed')); });
+    expect(onPlacement).toHaveBeenCalledOnce();
+  });
+
   it('reconciles the session when the commander changes galaxy', () => {
     const onPlacement = vi.fn();
     mountCaughtUp(onPlacement);
@@ -370,3 +377,5 @@ describe('the event stream', () => {
     expect(asked).toEqual([]);
   });
 });
+
+// HTTP can detect a missed relocation notification when a suspended tab wakes.

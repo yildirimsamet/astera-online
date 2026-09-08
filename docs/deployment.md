@@ -1166,51 +1166,43 @@ ssh yildirim@hoofywood.com \
   sequence. Rerun it before claiming a new capacity result after a capacity-sensitive change.
 
 
-## Silent Space release — automatic transfers disabled
+## Silent Space activation release
 
-This release removes destructive inactivity reclaim. It includes the return application API,
-the Turkish/English relocation notice, and placement-aware SSE: an old connection is closed on
-placement change, the client clears cached galaxy data and reconciles `/me`, then opens the
-notice in the waiting galaxy. A player does not need to reload the page manually.
+Final behavior is specified in `docs/handoffs/sessiz-uzay-entegrasyon-plani.md`.
+The previous bridge (`0912992`) is live with transfers disabled. This release adds HTTP
+placement fences, cycle result uniqueness, history isolation and the final colony return
+policy. MAIN departure colony sites reset to neutral; eligible returns reuse those sites
+and may exceed player capacity. Capital addresses have a safe fallback; new joins stay capped.
 
-The maintenance worker is implemented with a **five-minute interval**, a default **five successful
-transfers per pass**, and a database lease shared across worker replicas. It is separate from the
-one-second fleet resolver. Activity uses authenticated API presence (`lastActiveAt`), with the
-48-hour joined/main-entry guards. This release must run with `SILENT_SPACE_ENABLED=false`:
-HTTP placement isolation, history/cycle isolation, admission races and the full transfer blocker
-matrix still need qualification. Deploying this release does not authorize a manual SQL transfer.
-
-Production settings for this release (worker environment in `docker-compose.prod.yml`):
+Run the five-minute worker with `SILENT_SPACE_ENABLED=false` throughout mixed-version rollout.
+After qualification and four-process/web acceptance, set these worker values and recreate
+only the worker:
 
 ```dotenv
-SILENT_SPACE_ENABLED=false
+SILENT_SPACE_ENABLED=true
 SILENT_SPACE_BATCH=5
 SILENT_SPACE_MAX_SHARDS=16
 ```
 
-The interval is fixed in code; `WORKER_POLL_MS` remains unchanged. Do not enable transfers until
-the acceptance matrix in the Silent Space handoff is complete. The operational limit of 16
-waiting shards is a provisioning bound, not a certified capacity promise.
+Do not change WORKER_POLL_MS. The maintenance lease persists its next due time across restarts.
+Inspect first and subsequent maintenance results, audit/outbox, placement/world consistency,
+queue failures and late fleet events. Unexpected failures mean disable transfers and forward-fix,
+never restore an old dump over subsequent player activity. Existing WAITING placements stay playable.
 
-Migrations 0060–0062 introduce exact-period cycles, placement metadata, persistent return
-applications, transfer audit/outbox, vacated addresses and intel invalidation markers. 0060
-backfills cycle/home metadata without changing season deadlines, player activity or coordinates.
-0061 preserves closed return history through player deletion at rollover. Rehearse all three
-against a restored production dump and verify player/world counts plus existing timestamps.
+Migration 0063 backfills season_results.cycle_id and enforces one result per account/cycle.
+Preflight must find no duplicate account/cycle results. Rehearse on a fresh restored dump;
+compare player/world IDs, counts, activity, coordinates and period boundaries before/after.
+Old worker result INSERT is incompatible with the new NOT NULL field: stop the singleton
+worker for migration, resume the new worker with transfers off, roll APIs one at a time,
+then swap the prepared web artifact. The owner explicitly approved a short interruption if
+necessary; keep nginx/site serving if the documented compatibility checks pass.
 
-**Migration compatibility must include writes.** 0060 makes `seasons.cycle_id` required; the old
-image creates seasons without this column. A green old-image health/preview alone therefore
-cannot certify coexistence through an old-worker rollover. Under release rules 5/12 and step 6,
-prepare and verify the artifacts/restore first, then obtain the owner's explicit downtime
-approval before stopping production or applying this release's backfill. Do not use the rolling
-path on the strength of an old-image read-only smoke.
+The HTTP placement gate adds two pool connections per API (six across three replicas).
+Include them in host connection-budget acceptance. Active HTTP responses hold shared galaxy
+leases; transfer takes the exclusive side with fail-fast contention handling. Existing clients
+reconcile via /me and placement_changed; stale actions cannot mutate a moved world.
 
-Never roll back to a worker that runs destructive inactivity reclaim after waiting placements
-exist. For this disabled rollout, verify `commander_transfers`, `main_vacancies` and
-`silent_space_maintenance` remain empty, all four processes identify the pushed release SHA,
-and the existing world continues resolving scheduled work after restart.
-
-The notice appears once per placement per device and can be reopened from Menu → Silent Space.
-It submits a return application only on an explicit button press. Eligible returns keep FIFO
-priority; deferred applications retain their original sequence. New departures cannot consume
-the entire maintenance budget before existing return applications are considered.
+The notice appears once per placement/device and can be reopened from Menu → Silent Space.
+It submits only explicit return intent. Season reset still applies. Known baseline failures:
+six owner-authorized simulator skips; three unchanged bots-turn assertions. Do not hide new
+failures behind these. Actual qualification and activation evidence is appended below.

@@ -1,3 +1,4 @@
+import { installPlacementGate } from './services/placementGate.js';
 import { registerReturnApplicationRoutes } from './routes/returnApplications.js';
 import cookie from '@fastify/cookie';
 import rateLimit, { normalizeIP } from '@fastify/rate-limit';
@@ -136,6 +137,7 @@ export function buildApp(opts: BuildAppOptions): BuiltApp {
      */
     trustProxy: opts.env.TRUST_PROXY,
   });
+  const closePlacementGate = installPlacementGate(app, opts.env.DATABASE_URL);
   const tokens = new TokenService(
     opts.env.JWT_SECRET,
     opts.env.ACCESS_TOKEN_MINUTES,
@@ -422,6 +424,7 @@ export function buildApp(opts: BuildAppOptions): BuiltApp {
       await bus.stop();
       await rateLimitBackend.stop();
       metrics.close();
+      await closePlacementGate();
       if (owned) await owned.close();
     },
   };

@@ -179,3 +179,8 @@ describe('a world the map remembers', () => {
     expect(gap!.missing).toMatch(/ever looked/i);
   });
 });
+
+it('never applies an archived probe to a relocated world dossier', () => {
+  const archived = { ...report({ doctrines: { SHIP_POWER: 2 } }), spatiallyCurrent: false };
+  expect(read(archived).facts.some(f => f.source === 'probe')).toBe(false);
+});

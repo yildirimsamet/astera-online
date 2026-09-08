@@ -175,5 +175,8 @@ export function loadEnv(source: NodeJS.ProcessEnv = process.env): Env {
   if (parsed.data.NODE_ENV === 'production' && parsed.data.JWT_SECRET.startsWith('dev-only')) {
     throw new Error('JWT_SECRET must be set in production');
   }
+  if (parsed.data.SILENT_SPACE_ENABLED && parsed.data.ROLE !== 'api' && parsed.data.DB_POOL_MAX < 2) {
+    throw new Error('DB_POOL_MAX must be at least 2 for Silent Space maintenance');
+  }
   return parsed.data;
 }

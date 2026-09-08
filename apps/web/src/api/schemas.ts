@@ -1310,6 +1310,7 @@ export const intelSchema = z.object({
   ),
   probeReports: z.array(
     z.object({
+      spatiallyCurrent: z.boolean().optional(),
       targetPlanetId: z.string(),
       targetName: z.string(),
       targetUsername: z.string(),

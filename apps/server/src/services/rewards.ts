@@ -140,6 +140,7 @@ async function miningCounts(tx: Tx, planetId: string): Promise<{ rocks: number; 
 async function pirateVictories(tx: Tx, standing: Standing): Promise<number> {
   const reports = await tx.select({
     index: pirateRaids.pirateIndex,
+    seasonId: pirateRaids.seasonId,
     fleet: battleReports.attackerFleet,
     losses: battleReports.attackerLosses,
   }).from(battleReports)
@@ -152,7 +153,7 @@ async function pirateVictories(tx: Tx, standing: Standing): Promise<number> {
       eq(battleReports.grade, 'DECISIVE'),
     ));
   return new Set(reports.filter((r) => fleetCount(r.fleet) > fleetCount(r.losses))
-    .map((r) => r.index)).size;
+    .map((r) => `${r.seasonId}:${String(r.index)}`)).size;
 }
 
 /** One tier's record, whichever ledger it was found in. */

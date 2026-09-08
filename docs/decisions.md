@@ -706,28 +706,17 @@ Binds: Intel persistence, probe delivery, fog enforcement, history queries.
 Rule: Every authoritative timestamp written by application logic comes from the injected clock; database/default ambient time is not allowed for gameplay events. Client display converts through the shared server-time relationship rather than mixing device and server epochs.
 Binds: Database writes, event scheduling, tests, countdowns/projections.
 
-### D174 · Inactivity preserves the commander; return order preserves blocked applications — OWNER INSTRUCTION
+### D174 · Silent Space relocation and eligible return order — OWNER INSTRUCTION
 
-The owner requested moving commanders inactive for 48 continuous hours into a normally
-playable Silent Space galaxy instead of deleting their worlds. A return uses the exact
-capital/colony addresses vacated by inactive departures. Return admission is oldest
-**eligible** application first: an airborne or address-blocked applicant stays queued with
-the same original sequence, is reconsidered on later sweeps, and regains precedence over
-newer eligible applications when the blocker clears. Temporary blockers never cancel an
-application or move it to the tail. A lock timeout does not prove gameplay ineligibility.
-
-Implementation is in progress: the worker's destructive reclaim call is removed; 48-hour,
-address-selection and queue rules, cycle/placement schema, return application persistence,
-presence expiry, sensor isolation and WAIT provisioning foundations are implemented.
-The placement notice and authenticated return status/application endpoints are available.
-Automatic transfers are not yet enabled. Full transfer,
-history/stream fencing and lifecycle acceptance remain required before automatic transfer activation.
-See `docs/handoffs/sessiz-uzay-uygulama-durumu.md` for measured completion and remaining work.
-
-The plan's home-shard-only return, explicit 48-hour application expiry, whole-domain move
-and existing seasonal reset remain documented implementation assumptions; the owner's
-eligible-order correction alone is not a separate approval of every assumption. No change
-to seasonal power reset, hull balance, galaxy radius or minimum separation is implied.
+48-hour authenticated presence inactivity moves the whole commander and all developed
+worlds into a compatible, playable WAITING galaxy. MAIN colony sites are replenished with
+initial-template neutrals. Returning colonies use pooled departure sites only while still
+unowned, retaining the returner's own development. Unused sites stay neutral and capturable.
+Returns may exceed the MAIN player cap. Prefer a vacant capital address; otherwise allocate
+a safe new capital position. New registrations remain capped. Never take another player's
+colony to admit a return. Oldest eligible application first; blocked applications retain
+sequence and are rechecked. Five-minute maintenance, five successful moves per pass.
+Normal season reset and clan exit rules remain. See the final handoff plan for acceptance.
 
 ## Known authority gaps
 

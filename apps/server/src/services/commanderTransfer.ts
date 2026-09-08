@@ -1,6 +1,7 @@
+import { createNeutralWorld } from './season.js';
 import { randomUUID } from 'node:crypto';
 import { and, asc, eq, gt, inArray, isNull, ne, notInArray, or, sql } from 'drizzle-orm';
-import { CLAN, INACTIVITY_MS, MULTI_WORLD, generateGalaxy, inactivityEligible, returnPlacement, waitingColonySlots } from '@astera/rules';
+import { CLAN, INACTIVITY_MS, MULTI_WORLD, generateGalaxy, inactivityEligible, waitingColonySlots, selectNeutralSlots, hashSeed } from '@astera/rules';
 import type { Clock } from '../clock.js';
 import type { Db } from '../db/client.js';
 import { accounts, buildOrders, clanMemberships, clanRequests, clans, commanderTransfers, mainVacancies,
@@ -25,6 +26,10 @@ export async function transferCommander(db: Db, playerId: string, targetSeasonId
       const [initial] = await tx.select().from(players).where(eq(players.id, playerId));
       const [targetBefore] = await tx.select().from(seasons).where(eq(seasons.id, targetSeasonId));
       if (!initial || !targetBefore || initial.seasonId === targetSeasonId) defer('PLACEMENT');
+      for (const seasonId of [initial.seasonId, targetSeasonId].sort()) {
+        const [lease] = await tx.execute<{ acquired: boolean }>(sql`select pg_try_advisory_xact_lock(hashtextextended(${`placement:${seasonId}`}, 0)) as acquired`);
+        if (!lease?.acquired) defer('CONTENTION');
+      }
       // Lifecycle first; NOWAIT prevents a transfer from holding up the world queue.
       const [lifecycle] = await tx.execute<{ acquired: boolean }>(sql`select pg_try_advisory_xact_lock(83202488) as acquired`);
       if (!lifecycle?.acquired) defer('CONTENTION');
@@ -98,15 +103,46 @@ export async function transferCommander(db: Db, playerId: string, targetSeasonId
         if (!events.some(e => e.refId === work.id)) defer('EVENT');
       }
       const [count] = await tx.select({ n: sql<number>`count(*)::int` }).from(players).where(eq(players.seasonId, target.id));
-      if ((count?.n ?? 0) >= toShard.playerCap) defer('CAPACITY');
+      if (!returning && (count?.n ?? 0) >= toShard.playerCap) defer('CAPACITY');
       const occupiedWorlds = await tx.select().from(planets).where(eq(planets.seasonId, target.id));
       const occupied = new Set(occupiedWorlds.map(w => w.slotIndex));
       const vacancies = returning ? await tx.select().from(mainVacancies).where(and(eq(mainVacancies.seasonId, target.id), isNull(mainVacancies.consumedAt))).for('update') : [];
-      const returnSlots = returning ? returnPlacement(vacancies.map(v => ({ ...v, index: v.slotIndex, createdAt: v.createdAt.getTime() })), occupied, colonies.length) : null;
-      const reserved = returning ? [] : generateGalaxy(target.seed, MULTI_WORLD.capitalSlots).slots;
-      const capitalSlot = returning ? returnSlots?.capital : reserved.slice(0, toShard.playerCap).find(s => !occupied.has(s.index));
-      const colonySlots = returning ? returnSlots?.colonies ?? [] : waitingColonySlots(target.seed,
-        [...reserved, ...occupiedWorlds.map(w => ({ index: w.slotIndex, x: w.x, y: w.y, z: w.z }))], colonies.length);
+      const addresses = vacancies.toSorted((a, b) => a.createdAt.getTime() - b.createdAt.getTime() || a.id.localeCompare(b.id));
+      const capitalAddress = addresses.find(v => v.kind === 'CAPITAL' && !occupied.has(v.slotIndex));
+      const safeNeutrals = returning ? await tx.select({ id: planets.id }).from(planets).where(and(
+        eq(planets.seasonId, target.id), eq(planets.kind, 'NEUTRAL'), isNull(planets.controllerPlayerId), isNull(planets.recoveryUntil),
+        sql`not exists (select 1 from missions m where m.status = 'in_flight' and (m.origin_planet_id = ${planets.id} or m.target_planet_id = ${planets.id}))`,
+        sql`not exists (select 1 from units u where u.planet_id = ${planets.id} and u.owner_player_id is not null and u.count > 0)`,
+        sql`not exists (select 1 from scheduled_events e where e.ref_id = ${planets.id} and e.status <> 'done' and (e.kind <> 'neutral_reinforce' or e.status <> 'pending' or e.attempts <> 0 or e.resolve_at <= ${now.toISOString()}::timestamptz))`,
+      )) : [];
+      const safeIds = new Set(safeNeutrals.map(world => world.id));
+      const colonyAddresses = addresses.filter(v => v.kind === 'COLONY' && occupiedWorlds.some(w => w.slotIndex === v.slotIndex && safeIds.has(w.id))).slice(0, colonies.length);
+      const reserved = generateGalaxy(target.seed, MULTI_WORLD.capitalSlots).slots;
+      const obstacles = [...reserved, ...occupiedWorlds.map(w => ({ index: w.slotIndex, x: w.x, y: w.y, z: w.z }))];
+      const capitalSlot = returning
+        ? capitalAddress ? { ...capitalAddress, index: capitalAddress.slotIndex }
+          : reserved.find(slot => !occupied.has(slot.index)) ?? waitingColonySlots(target.seed, obstacles, 1)[0]
+        : reserved.slice(0, toShard.playerCap).find(slot => !occupied.has(slot.index));
+      const colonySlots = returning ? colonyAddresses.map(v => ({ ...v, index: v.slotIndex })) : waitingColonySlots(target.seed, obstacles, colonies.length);
+      // The neutral and returning colony exchange addresses. Keeping both UUIDs
+      // preserves old battle/probe references without attaching them to the newcomer.
+      const replacements = returning ? colonyAddresses.map(v => occupiedWorlds.find(w => w.slotIndex === v.slotIndex)!) : [];
+      if (replacements.length > 0) {
+        const replacementIds = replacements.map(w => w.id);
+        await tx.select().from(planets).where(inArray(planets.id, replacementIds)).orderBy(asc(planets.id)).for('update', { noWait: true });
+        const [incoming] = await tx.select({ id: missions.id }).from(missions).where(and(eq(missions.status, 'in_flight'), or(inArray(missions.originPlanetId, replacementIds), inArray(missions.targetPlanetId, replacementIds)))).limit(1);
+        const [foreignUnit] = await tx.select({ id: units.planetId }).from(units).where(and(inArray(units.planetId, replacementIds), sql`${units.ownerPlayerId} is not null`, gt(units.count, 0))).limit(1);
+        if (incoming || foreignUnit || replacements.some(w => w.recoveryUntil !== null)) defer('FLIGHT');
+        const replacementEvents = await tx.select().from(scheduledEvents).where(and(inArray(scheduledEvents.refId, replacementIds), ne(scheduledEvents.status, 'done'))).for('update', { noWait: true });
+        if (replacementEvents.some(e => e.kind !== 'neutral_reinforce' || e.status !== 'pending' || e.attempts !== 0 || e.resolveAt <= now)) defer('EVENT');
+        for (const event of replacementEvents) await tx.update(scheduledEvents).set({ seasonId: source.id }).where(eq(scheduledEvents.id, event.id));
+        // Temporary transaction-local indexes break the swap's unique-index cycle.
+        for (let i = 0; i < replacements.length; i++) await tx.update(planets).set({ slotIndex: -1 - i }).where(eq(planets.id, replacements[i]!.id));
+        const neutralObservers = await tx.selectDistinct({ id: watches.observerPlayerId }).from(watches).where(inArray(watches.targetPlanetId, replacementIds));
+        for (const observer of neutralObservers) await publishSight(tx, observer.id);
+        await tx.update(watches).set({ detachedAt: now, lastStatus: null, lastConfirmedAt: null }).where(inArray(watches.targetPlanetId, replacementIds));
+        await tx.update(probeWorldMemories).set({ invalidatedAt: now }).where(inArray(probeWorldMemories.targetPlanetId, replacementIds));
+      }
       if (!capitalSlot || colonySlots.length !== colonies.length) defer('CAPACITY');
       const ordered = [capital, ...colonies];
       const slots = [capitalSlot, ...colonySlots];
@@ -115,7 +151,7 @@ export async function transferCommander(db: Db, playerId: string, targetSeasonId
       for (const w of worlds) await loadLocked(tx, w.id, { now: () => now });
       if (membership) {
         const [account] = await tx.select().from(accounts).where(eq(accounts.id, player.accountId));
-        await reconcileClanPlayerReclaim(tx, { playerId, seasonId: source.id, displayName: account?.displayName ?? player.name, now, activeCutoff: new Date(now.getTime() - INACTIVITY_MS) });
+        await reconcileClanPlayerReclaim(tx, { playerId, seasonId: source.id, displayName: account?.displayName ?? player.name, now, preserveCommander: true, activeCutoff: new Date(now.getTime() - INACTIVITY_MS) });
         await tx.update(clanMemberships).set({ leftAt: now }).where(and(eq(clanMemberships.playerId, playerId), isNull(clanMemberships.leftAt)));
       }
       await tx.update(clanRequests).set({ status: 'CLOSED', resolvedAt: now }).where(and(eq(clanRequests.playerId, playerId), eq(clanRequests.status, 'PENDING')));
@@ -125,17 +161,38 @@ export async function transferCommander(db: Db, playerId: string, targetSeasonId
       await tx.insert(commanderTransfers).values({ id: transferId, playerId, accountId: player.accountId, cycleId: source.cycleId,
         sourceSeasonId: source.id, targetSeasonId: target.id, fromVersion: player.placementVersion, toVersion: player.placementVersion + 1,
         direction: returning ? 'RETURN' : 'OUT', applicationId: applicationId ?? null, committedAt: now,
-        worlds: ordered.map((w, i) => ({ id: w.id, kind: w.kind, from: { index: w.slotIndex, x: w.x, y: w.y, z: w.z }, to: slots[i]! })),
+        worlds: [
+          ...ordered.map((w, i) => ({ id: w.id, kind: w.kind, from: { index: w.slotIndex, x: w.x, y: w.y, z: w.z }, to: slots[i]! })),
+          ...replacements.map((w, i) => ({ id: w.id, kind: w.kind, from: { index: w.slotIndex, x: w.x, y: w.y, z: w.z }, to: { index: colonies[i]!.slotIndex, x: colonies[i]!.x, y: colonies[i]!.y, z: colonies[i]!.z } })),
+        ],
       });
-      if (!returning) await tx.insert(mainVacancies).values(ordered.map(w => ({ cycleId: source.cycleId, seasonId: source.id, departureTransferId: transferId,
+      if (!returning) {
+        await tx.update(mainVacancies).set({ consumedAt: now, consumedReason: 'REPLACED_DEPARTURE' })
+          .where(and(eq(mainVacancies.seasonId, source.id), inArray(mainVacancies.slotIndex, ordered.map(world => world.slotIndex)), isNull(mainVacancies.consumedAt)));
+        await tx.insert(mainVacancies).values(ordered.map(w => ({ cycleId: source.cycleId, seasonId: source.id, departureTransferId: transferId,
         kind: w.kind === 'CAPITAL' ? 'CAPITAL' as const : 'COLONY' as const, slotIndex: w.slotIndex, x: w.x, y: w.y, z: w.z, createdAt: now })));
-      else {
-        await tx.update(mainVacancies).set({ consumedAt: now, consumedReason: 'RETURN' }).where(inArray(mainVacancies.id, [returnSlots!.capital.id, ...returnSlots!.colonies.map(v => v.id)]));
+      } else {
+        await tx.update(mainVacancies).set({ consumedAt: now, consumedReason: 'RETURN' }).where(inArray(mainVacancies.id, [...(capitalAddress ? [capitalAddress.id] : []), ...colonyAddresses.map(v => v.id)]));
         await tx.update(returnApplications).set({ status: 'COMPLETED', closedAt: now, updatedAt: now, closedReason: 'RETURNED' }).where(eq(returnApplications.id, applicationId));
       }
       for (let i = 0; i < ordered.length; i++) {
         const slot = slots[i]!;
         await tx.update(planets).set({ seasonId: target.id, slotIndex: slot.index, x: slot.x, y: slot.y, z: slot.z }).where(eq(planets.id, ordered[i]!.id));
+      }
+      for (let i = 0; i < replacements.length; i++) {
+        const former = colonies[i]!;
+        await tx.update(planets).set({ seasonId: source.id, slotIndex: former.slotIndex, x: former.x, y: former.y, z: former.z }).where(eq(planets.id, replacements[i]!.id));
+      }
+      if (!returning && colonies.length > 0) {
+        const originals = selectNeutralSlots(source.seed, generateGalaxy(source.seed, MULTI_WORLD.neutralSlotPool).slots);
+        for (const colony of colonies) {
+          const original = originals.find(neutral => neutral.slot.index === colony.slotIndex);
+          await createNeutralWorld(tx, source.id, {
+            tier: original?.tier ?? 1,
+            profileSeed: original?.profileSeed ?? (hashSeed(source.seed, colony.slotIndex) & 0x7fffffff),
+            slot: { index: colony.slotIndex, x: colony.x, y: colony.y, z: colony.z },
+          }, now, colony.slotIndex);
+        }
       }
       await tx.update(players).set({ seasonId: target.id, homeShardId: player.homeShardId ?? source.shardId,
         placementVersion: player.placementVersion + 1,

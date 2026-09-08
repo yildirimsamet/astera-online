@@ -139,6 +139,16 @@ export class Projections {
     });
   }
 
+  private readonly placements = new Map<string, string>();
+
+  /** The database placement check is authoritative even if NOTIFY arrives late. */
+  reconcilePlacement(accountId: string, placement: string): void {
+    if (this.placements.get(accountId) === placement) return;
+    this.clear();
+    if (this.placements.size >= this.config.maxAccounts) this.placements.clear();
+    this.placements.set(accountId, placement);
+  }
+
   worlds(seasonId: string, now: Date): Promise<PublicWorld[]> {
     return this.publicGalaxy.get(seasonId, () => publicWorlds(this.db, seasonId, now));
   }

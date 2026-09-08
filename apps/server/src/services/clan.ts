@@ -1335,6 +1335,7 @@ export async function reconcileClanPlayerReclaim(
     displayName: string;
     now: Date;
     activeCutoff: Date;
+    preserveCommander?: boolean;
   },
 ): Promise<void> {
   const [initial] = await tx
@@ -1371,6 +1372,9 @@ export async function reconcileClanPlayerReclaim(
 
   const current = members.find((member) => member.playerId === input.playerId);
   if (!current) return;
+  if (input.preserveCommander) {
+    await addCeasefires(tx, input.seasonId, clan.id, [input.playerId], members.map(member => member.playerId), input.now);
+  }
   const remaining = members.filter((member) => member.playerId !== input.playerId);
 
   if (current.role === 'LEADER') {

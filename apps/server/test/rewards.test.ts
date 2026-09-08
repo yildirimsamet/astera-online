@@ -103,6 +103,20 @@ describe('rewards', () => {
     await expect(claimReward(f.db, mine, 'PIRATE:1', f.clock)).rejects.toMatchObject({ code: 'REWARD_TAKEN' });
   });
 
+  it('counts the same pirate index in different galaxies as two victories', async () => {
+    const otherSeason = await createSeason(f.db, { shardCode: 'PIRATE-HISTORY', seed: 7, startsAt: f.clock.now(), rulesetVersion: 1 });
+    for (const seasonId of [f.seasonId, otherSeason.season.id]) {
+      const [raid] = await f.db.insert(pirateRaids).values({ seasonId, planetId: mine,
+        ownerPlayerId: f.playerIds[0]!, pirateIndex: 1, status: 'done', fleet: { DART: 1 },
+        departAt: f.clock.now(), arriveAt: f.clock.now(), interceptX: 0, interceptY: 0, interceptZ: 0 }).returning();
+      await f.db.insert(battleReports).values({ seasonId, pirateRaidId: raid!.id, targetKind: 'PIRATE',
+        attackerPlayerId: f.playerIds[0]!, grade: 'DECISIVE', rounds: [],
+        loot: { alloy: 0, crystal: 0, deuterium: 0 }, attackerFleet: { DART: 2 },
+        attackerLosses: { DART: 1 }, defenderLosses: {} });
+    }
+    expect((await chainOf('PIRATE')).progress).toBe(2);
+  });
+
   it('offers Vault and Aegis levels 1, 3 and 5 independently', async () => {
     await setLevel(f.db, mine, 'VAULT', 5);
     await giveInstrument(f.db, mine, 'AEGIS', 5);

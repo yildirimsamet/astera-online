@@ -1,7 +1,8 @@
+import { joinSeason } from '../src/services/player.js';
 import { and, eq } from 'drizzle-orm';
 import { afterAll, expect, it } from 'vitest';
-import { seedWorld, testDb, giveUnits } from './helpers.js';
-import { players, planets, units, commanderTransfers, mainVacancies, scheduledEvents, seasons } from '../src/db/schema.js';
+import { seedWorld, testDb, giveUnits, makeAccount } from './helpers.js';
+import { players, planets, units, commanderTransfers, mainVacancies, scheduledEvents, seasons, shards } from '../src/db/schema.js';
 import { transferCommander } from '../src/services/commanderTransfer.js';
 import { ensureWaitingSeason } from '../src/services/waitingServers.js';
 import { enqueueReturn } from '../src/services/returnQueue.js';
@@ -96,4 +97,32 @@ it('gives queued returns a turn even while more inactive commanders await depart
   const sweep = await runSilentSpaceSweep(f.db, f.clock, { batchSize: 1 });
   expect(sweep.returned).toBe(1);
   expect(sweep.movedOut).toBe(0);
+});
+
+it('reserves departed addresses for queued returns while keeping unused seats open', async () => {
+  const f = await idleFixture();
+  const [before] = await f.db.select().from(planets).where(eq(planets.id, f.planetIds[0]!));
+  const target = await ensureWaitingSeason(f.db, f.seasonId, f.clock);
+  await transferCommander(f.db, f.playerIds[0]!, target!.id, f.clock);
+  await f.db.update(players).set({ lastActiveAt: new Date(f.clock.now().getTime() - 48 * 60 * 60_000) }).where(eq(players.id, f.playerIds[1]!));
+  await transferCommander(f.db, f.playerIds[1]!, target!.id, f.clock);
+  const app = await enqueueReturn(f.db, f.accountIds[0]!, f.clock, 1);
+  const newcomer = await makeAccount(f.db, 'new-seat');
+  const joined = await joinSeason(f.db, newcomer.id, f.seasonId, f.clock);
+  expect(joined.slotIndex).not.toBe(before!.slotIndex);
+  expect((await transferCommander(f.db, f.playerIds[0]!, f.seasonId, f.clock, app.id)).status).toBe('MOVED');
+});
+it('closes a vacancy consumed by a new player when no return is queued', async () => {
+  const f = await idleFixture();
+  const target = await ensureWaitingSeason(f.db, f.seasonId, f.clock);
+  await transferCommander(f.db, f.playerIds[0]!, target!.id, f.clock);
+  await f.db.update(players).set({ lastActiveAt: new Date(f.clock.now().getTime() - 48 * 60 * 60_000) }).where(eq(players.id, f.playerIds[1]!));
+  await transferCommander(f.db, f.playerIds[1]!, target!.id, f.clock);
+  const [source] = await f.db.select().from(seasons).where(eq(seasons.id, f.seasonId));
+  await f.db.update(shards).set({ playerCap: 1 }).where(eq(shards.id, source!.shardId));
+  const newcomer = await makeAccount(f.db, 'new-seat');
+  const joined = await joinSeason(f.db, newcomer.id, f.seasonId, f.clock);
+  const [vacancy] = await f.db.select().from(mainVacancies).where(eq(mainVacancies.slotIndex, joined.slotIndex));
+  expect(joined.slotIndex).toBe(vacancy!.slotIndex);
+  expect(vacancy!.consumedReason).toBe('NEW_JOIN');
 });

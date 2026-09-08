@@ -247,7 +247,7 @@ Showing more is not helping more.
 - Simulator never prices benefits it does not model; interception uses continuous `travelExact`.
 - Client/API share one origin. `VITE_GA_ID` is build-time. Register routes inside `app.after()`. Rate-limit refusals are `GameError`s.
 - `TRUST_PROXY` only on proxy-only ports.
-- Silent Space transition: inactivity must never delete a commander or world. The worker destructive reclaim call is disabled; the five-minute transfer worker is implemented but must stay off until its safety gates pass. Return admission is oldest eligible first, preserving blocked applications and their original priority.
+- Silent Space transition: inactivity must never delete a commander or world. The worker destructive reclaim call is disabled; the five-minute transfer worker is activated only after the deployment acceptance gates. MAIN colony sites reset to neutral on departure; returning colonies reuse unowned departure sites. Returns may exceed the player cap and allocate a safe capital address; ordinary new joins remain capped. Return admission is oldest eligible first, preserving blocked applications and their original priority.
 - Run migrations before new app image. `/health` reports; it does not repair. Production uses `docker-compose.prod.yml`.
 
 ## How to work

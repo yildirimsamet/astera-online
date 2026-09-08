@@ -197,92 +197,101 @@ async function createNeutralWorlds(
   const ordinal = new Map<NeutralTier, number>([[1, 0], [2, 0], [3, 0]]);
   for (const neutral of selected) {
     const tier = neutral.tier;
-    const template = MULTI_WORLD.neutral[tier];
     const number = (ordinal.get(tier) ?? 0) + 1;
     ordinal.set(tier, number);
-    const alloyCap = storageCap(alloyRate(template.buildings.REFINERY), template.buildings.VAULT);
-    const crystalCap = storageCap(crystalRate(template.buildings.EXTRACTOR), template.buildings.VAULT);
-    /*
-      A SEEDED STOCKPILE, NOT A PRODUCTION CEILING. T5.
-
-      A caretaker world has no refinery and makes no deuterium, so a cap derived
-      from its own rate would be zero and the whole PvE deuterium source would
-      vanish with it. What it holds is a stockpile somebody left there, and the
-      Extractor's rate is the size the game has always given it — kept exactly,
-      but no longer dressed up as a production ceiling it is not. `advanceNeutralEconomy`
-      never touches deuterium, so nothing re-clamps this afterwards.
-    */
-    const deuteriumStock = deuteriumStorageCap(
-      deuteriumRate(template.buildings.DEUTERIUM_PLANT),
-      crystalRate(template.buildings.EXTRACTOR),
-      template.buildings.VAULT,
-    );
-    const nextReinforcementAt = template.reinforcementMinutes === null
-      ? null
-      : addMinutes(startsAt, template.reinforcementMinutes);
-    const [world] = await tx
-      .insert(planets)
-      .values({
-        controllerPlayerId: null,
-        seasonId,
-        kind: 'NEUTRAL',
-        name: `Neutral T${String(tier)}-${String(number).padStart(2, '0')}`,
-        slotIndex: neutral.slot.index,
-        x: neutral.slot.x,
-        y: neutral.slot.y,
-        z: neutral.slot.z,
-        alloy: alloyCap,
-        crystal: crystalCap,
-        // Neutrals never mint Deuterium, but the season starts with every shared
-        // stockpile full. Once raided or spent this reserve can only decrease.
-        deuterium: deuteriumStock,
-        shield: tier === 3 ? shieldHp(3) : 0,
-        lastTickAt: startsAt,
-      })
-      .returning();
-    if (!world) throw new Error('failed to create neutral world');
-
-    await tx.insert(buildings).values(
-      Object.entries(template.buildings).map(([type, level]) => ({
-        planetId: world.id,
-        type,
-        level,
-      })),
-    );
-    if (tier === 3) {
-      await tx.insert(satellites).values({ planetId: world.id, slot: 0, type: 'AEGIS', level: 3 });
-    }
-    const fleet = { ...template.fleet, ...template.ground };
-    const unitRows = Object.entries(fleet)
-      .filter(([, count]) => count > 0)
-      .map(([hull, count]) => ({
-        planetId: world.id,
-        // Neutrals have no player owner. The expand column remains nullable for
-        // system garrisons and is contracted only for player-owned units.
-        ownerPlayerId: null,
-        hull: hull as keyof typeof fleet,
-        location: 'home',
-        count,
-      }));
-    if (unitRows.length > 0) await tx.insert(units).values(unitRows);
-    await tx.insert(neutralPlanetState).values({
-      planetId: world.id,
-      tier,
-      profileSeed: neutral.profileSeed,
-      nextReinforcementAt,
-      economyAnchorAt: startsAt,
-    });
-    if (nextReinforcementAt) {
-      await schedule(tx, {
-        seasonId,
-        kind: 'neutral_reinforce',
-        refId: world.id,
-        payload: { expectedAt: nextReinforcementAt.toISOString() },
-        resolveAt: nextReinforcementAt,
-      });
-    }
+    await createNeutralWorld(tx, seasonId, neutral, startsAt, number);
   }
 }
+
+/** Shared seed template for a new galaxy and a colony reset after inactivity. */
+export async function createNeutralWorld(
+  tx: Tx, seasonId: string, neutral: ReturnType<typeof selectNeutralSlots>[number], startsAt: Date, number: number,
+): Promise<void> {
+  const tier = neutral.tier;
+  const template = MULTI_WORLD.neutral[tier];
+  const alloyCap = storageCap(alloyRate(template.buildings.REFINERY), template.buildings.VAULT);
+  const crystalCap = storageCap(crystalRate(template.buildings.EXTRACTOR), template.buildings.VAULT);
+  /*
+    A SEEDED STOCKPILE, NOT A PRODUCTION CEILING. T5.
+
+    A caretaker world has no refinery and makes no deuterium, so a cap derived
+    from its own rate would be zero and the whole PvE deuterium source would
+    vanish with it. What it holds is a stockpile somebody left there, and the
+    Extractor's rate is the size the game has always given it — kept exactly,
+    but no longer dressed up as a production ceiling it is not. `advanceNeutralEconomy`
+    never touches deuterium, so nothing re-clamps this afterwards.
+  */
+  const deuteriumStock = deuteriumStorageCap(
+    deuteriumRate(template.buildings.DEUTERIUM_PLANT),
+    crystalRate(template.buildings.EXTRACTOR),
+    template.buildings.VAULT,
+  );
+  const nextReinforcementAt = template.reinforcementMinutes === null
+    ? null
+    : addMinutes(startsAt, template.reinforcementMinutes);
+  const [world] = await tx
+    .insert(planets)
+    .values({
+      controllerPlayerId: null,
+      seasonId,
+      kind: 'NEUTRAL',
+      name: `Neutral T${String(tier)}-${String(number).padStart(2, '0')}`,
+      slotIndex: neutral.slot.index,
+      x: neutral.slot.x,
+      y: neutral.slot.y,
+      z: neutral.slot.z,
+      alloy: alloyCap,
+      crystal: crystalCap,
+      // Neutrals never mint Deuterium, but the season starts with every shared
+      // stockpile full. Once raided or spent this reserve can only decrease.
+      deuterium: deuteriumStock,
+      shield: tier === 3 ? shieldHp(3) : 0,
+      lastTickAt: startsAt,
+    })
+    .returning();
+  if (!world) throw new Error('failed to create neutral world');
+
+  await tx.insert(buildings).values(
+    Object.entries(template.buildings).map(([type, level]) => ({
+      planetId: world.id,
+      type,
+      level,
+    })),
+  );
+  if (tier === 3) {
+    await tx.insert(satellites).values({ planetId: world.id, slot: 0, type: 'AEGIS', level: 3 });
+  }
+  const fleet = { ...template.fleet, ...template.ground };
+  const unitRows = Object.entries(fleet)
+    .filter(([, count]) => count > 0)
+    .map(([hull, count]) => ({
+      planetId: world.id,
+      // Neutrals have no player owner. The expand column remains nullable for
+      // system garrisons and is contracted only for player-owned units.
+      ownerPlayerId: null,
+      hull: hull as keyof typeof fleet,
+      location: 'home',
+      count,
+    }));
+  if (unitRows.length > 0) await tx.insert(units).values(unitRows);
+  await tx.insert(neutralPlanetState).values({
+    planetId: world.id,
+    tier,
+    profileSeed: neutral.profileSeed,
+    nextReinforcementAt,
+    economyAnchorAt: startsAt,
+  });
+  if (nextReinforcementAt) {
+    await schedule(tx, {
+      seasonId,
+      kind: 'neutral_reinforce',
+      refId: world.id,
+      payload: { expectedAt: nextReinforcementAt.toISOString() },
+      resolveAt: nextReinforcementAt,
+    });
+  }
+}
+
 
 /**
  * Seat the three public Act beats on seasons created before D96.

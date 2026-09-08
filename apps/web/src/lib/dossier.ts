@@ -347,7 +347,7 @@ export function dossier({ target, planet, intel, reports, rival, now }: DossierI
 
   /* ── probe ──────────────────────────────────────────────── */
 
-  const report = intel?.probeReports.find((r) => r.targetPlanetId === target.id);
+  const report = intel?.probeReports.find((r) => r.spatiallyCurrent !== false && r.targetPlanetId === target.id);
   if (report) {
     const age = (now - report.at.getTime()) / 60_000;
 

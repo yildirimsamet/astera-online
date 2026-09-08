@@ -113,6 +113,13 @@ export function useEventStream(enabled: boolean, onRollover?: () => void): void 
   useEffect(() => {
     if (!enabled) return;
     const controller = new AbortController();
+    const onPlacementChanged = (): void => {
+      if (controller.signal.aborted) return;
+      controller.abort();
+      onRollover?.();
+    };
+    window.addEventListener('astera:placement-changed', onPlacementChanged);
+
 
     const shard = shardCoalescer((reads) => {
       for (const key of reads) void client.invalidateQueries({ queryKey: key });
@@ -192,7 +199,7 @@ export function useEventStream(enabled: boolean, onRollover?: () => void): void 
 
     const refresh = (kind: string): void => {
       if (kind === 'shard:rollover' || kind === 'placement_changed') {
-        onRollover?.();
+        onPlacementChanged();
         return;
       }
       if (isGlobalEvent(kind)) {
@@ -316,6 +323,7 @@ export function useEventStream(enabled: boolean, onRollover?: () => void): void 
 
     return () => {
       controller.abort();
+      window.removeEventListener('astera:placement-changed', onPlacementChanged);
       if (reconnectResyncTimer !== null) clearTimeout(reconnectResyncTimer);
       if (lifecycleResyncTimer !== null) clearTimeout(lifecycleResyncTimer);
       if (worldConsistencyTimer !== null) clearTimeout(worldConsistencyTimer);

@@ -315,6 +315,7 @@ export interface SeasonRecap {
 
 /** Permanent identity and story, never permanent power. D85. */
 export const seasonResults = pgTable('season_results', {
+  cycleId: uuid('cycle_id').notNull().references(() => seasonCycles.id),
   seasonId: uuid('season_id').notNull().references(() => seasons.id),
   accountId: uuid('account_id').notNull().references(() => accounts.id),
   finalRank: integer('final_rank').notNull(),
@@ -328,6 +329,7 @@ export const seasonResults = pgTable('season_results', {
   createdAt: timestamp('created_at', { withTimezone: true }).notNull(),
 }, (t) => [
   primaryKey({ columns: [t.seasonId, t.accountId] }),
+  uniqueIndex('season_results_cycle_account_idx').on(t.cycleId, t.accountId),
   index('season_results_account_idx').on(t.accountId, t.createdAt),
 ]);
 

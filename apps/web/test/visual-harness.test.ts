@@ -5,16 +5,9 @@ import { describe, expect, it } from 'vitest';
 const harness = readFileSync(resolve(import.meta.dirname, '../../../tools/visual.mjs'), 'utf8');
 
 describe('the visual verification journey', () => {
-  it('opens the Worlds panel before pressing its camera-home control', () => {
-    const homeSection = harness.slice(
-      harness.indexOf('/* ── 3 · home works while something is focused'),
-      harness.indexOf('/* ── 4 ·', harness.indexOf('/* ── 3 · home works while something is focused')),
-    );
-    const opensWorlds = homeSection.indexOf("page.locator('[data-disc-control=\"worlds\"]')");
-    const pressesHome = homeSection.indexOf("name: /zoom in on active planet|aktif gezegenine yakınlaş/i");
-
-    expect(opensWorlds).toBeGreaterThanOrEqual(0);
-    expect(pressesHome).toBeGreaterThan(opensWorlds);
+  it('uses the disc Home control directly', () => {
+    expect(harness).toContain('data-disc-control="home"');
+    expect(harness).not.toContain('data-disc-control="worlds"');
   });
 
   it('measures camera home with the current shared world transform', () => {

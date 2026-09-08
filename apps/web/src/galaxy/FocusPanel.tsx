@@ -797,7 +797,7 @@ export function PlanetFocus({
       {(isRival || rival) && (
         <RivalHistory
           summary={rival}
-          probeAt={intel?.probeReports.find((report) => report.targetPlanetId === target.id)?.at}
+          probeAt={intel?.probeReports.find((report) => report.spatiallyCurrent !== false && report.targetPlanetId === target.id)?.at}
           now={now}
           marked={isRival}
         />

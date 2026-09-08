@@ -308,7 +308,7 @@ export function LaunchSheet({
       const exact = fleetValue(roster);
       return { low: exact, high: exact, source: sourceLabel('public'), ageMinutes: null };
     }
-    const report = intel?.probeReports.find((r) => r.targetPlanetId === target.world.id);
+    const report = intel?.probeReports.find((r) => r.spatiallyCurrent !== false && r.targetPlanetId === target.world.id);
     if (!report) return null;
     return {
       low: report.defence.low,

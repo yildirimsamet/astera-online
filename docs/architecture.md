@@ -482,15 +482,35 @@ is read after the player/application locks; new bootstrap seasons share one peri
 Presence uses player → application only and expires an already-late
 application before writing activity. `loadLocked` and `lockWorlds` recheck the locked world's
 season against the pre-read season. Sensor reads filter by season, and epoch continuity includes
-season identity. Transfer still needs the stronger two-season UPDATE protocol and event claim
-fencing before it can be enabled.
+season identity. Transfers acquire sorted exclusive placement advisory leases, lifecycle/admission locks,
+then season UPDATE and clan/player/world locks with bounded timeouts. Previously claimed
+or due personal events defer relocation; only unclaimed future completions are retargeted.
 
 WAIT provisioning holds the lifecycle lock, matches the source's period/ruleset, and occurs
 outside a commander transfer. It does not reserve capacity. Mid-period provisioning preserves
 the original deadline and records past event boundaries as done so restart repair cannot replay
 them. MAIN geometry is unchanged; WAIT migration addresses use their own versioned seed stream.
-The worker no longer calls destructive reclaim. Full transfer/outbox/SSE integration remains
-in progress; see the implementation handoff for test evidence and activation gates.
+The worker no longer calls destructive reclaim. Transfer/outbox/SSE integration is implemented.
+Authenticated HTTP handlers hold a shared placement lease through response construction;
+a dedicated pool of two connections per API prevents nested-handler pool starvation. This
+adds six connections across three production APIs to the D99 budget. Client `x-placement`
+rejects stale intent and late replies. Placement reconciliation invalidates warm projections
+even if NOTIFY is delayed. Streams retain their separate per-frame fence.
+
+Historical probes stay readable but no longer feed a relocated world's dossier. Battle
+history similarly loses live-world/rival links across relocation. Cycle-wide recap preserves
+previous-galaxy contributions; migration 0063 backfills cycle results and enforces one result
+per account/cycle. Season freeze waits for research, pirate and trade work too.
+
+MAIN colony departure now creates an initial-template neutral at the vacated address,
+using a distinct world ID. Original colony assets and references travel intact. Repeated
+capture/departure supersedes the old open address audit rather than violating its unique index.
+Return admission may exceed MAIN player capacity. Returning colonies and eligible neutral
+placeholders exchange addresses between MAIN and WAITING, preserving both world UUIDs and
+historical foreign keys. Incoming flights, player-owned units, recovery or claimed neutral
+events defer that address. Relocation audit includes both sides; watches/memories detach.
+A vacant capital address is preferred, with a bounded collision-free fallback. Unused
+neutral placeholders remain in MAIN. No other commander's world is taken.
 
 
 The authenticated `GET /api/return-applications` returns a placement snapshot and only the

@@ -54,6 +54,9 @@ import {
   planets,
   players,
   probeReports,
+  researchOrders,
+  pirateRaids,
+  tradeRuns,
   scheduledEvents,
   seasonResults,
   seasons,
@@ -1512,7 +1515,7 @@ export const onSeasonEnd: Handler = async ({ db, clock }, event) => {
     // Recovery guard for pre-D85 rows and same-instant worker ordering. Delete
     // this processing event and replace it atomically; EventWorker's later
     // `complete()` update simply finds no old row.
-    const [[missionCount], [miningCount], [buildCount], [strategicCount]] = await Promise.all([
+    const [[missionCount], [miningCount], [buildCount], [strategicCount], [researchCount], [pirateCount], [tradeCount]] = await Promise.all([
       tx
         .select({ n: sql<number>`count(*)::int` })
         .from(missions)
@@ -1534,12 +1537,22 @@ export const onSeasonEnd: Handler = async ({ db, clock }, event) => {
           eq(planets.seasonId, seasonId),
           inArray(strategicAssets.status, ['BUILDING', 'PAUSED']),
         )),
+      tx.select({ n: sql<number>`count(*)::int` }).from(researchOrders)
+        .innerJoin(players, eq(players.id, researchOrders.playerId))
+        .where(and(eq(players.seasonId, seasonId), eq(researchOrders.status, 'BUILDING'))),
+      tx.select({ n: sql<number>`count(*)::int` }).from(pirateRaids)
+        .where(and(eq(pirateRaids.seasonId, seasonId), ne(pirateRaids.status, 'done'))),
+      tx.select({ n: sql<number>`count(*)::int` }).from(tradeRuns)
+        .where(and(eq(tradeRuns.seasonId, seasonId), ne(tradeRuns.status, 'done'))),
     ]);
     if (
       (missionCount?.n ?? 0) > 0
       || (miningCount?.n ?? 0) > 0
       || (buildCount?.n ?? 0) > 0
       || (strategicCount?.n ?? 0) > 0
+      || (researchCount?.n ?? 0) > 0
+      || (pirateCount?.n ?? 0) > 0
+      || (tradeCount?.n ?? 0) > 0
     ) {
       await tx.delete(scheduledEvents).where(eq(scheduledEvents.id, event.id));
       await schedule(tx, {
@@ -1568,9 +1581,10 @@ export const onSeasonEnd: Handler = async ({ db, clock }, event) => {
         and(eq(planets.controllerPlayerId, players.id), eq(planets.kind, 'CAPITAL')),
       )
       .where(eq(players.seasonId, seasonId));
+    const cycleSeasons = tx.select({ id: seasons.id }).from(seasons).where(eq(seasons.cycleId, season.cycleId));
     const [reports, impacts, clanRows, membershipRows] = await Promise.all([
-      tx.select().from(battleReports).where(eq(battleReports.seasonId, seasonId)),
-      tx.select().from(strategicImpacts).where(eq(strategicImpacts.seasonId, seasonId)),
+      tx.select().from(battleReports).where(inArray(battleReports.seasonId, cycleSeasons)),
+      tx.select().from(strategicImpacts).where(inArray(strategicImpacts.seasonId, cycleSeasons)),
       tx.select({
         id: clans.id,
         name: clans.name,
@@ -1654,6 +1668,7 @@ export const onSeasonEnd: Handler = async ({ db, clock }, event) => {
       const clan = playerClanId ? clanRecapById.get(playerClanId) ?? null : null;
       return {
         seasonId,
+        cycleId: season.cycleId,
         accountId: player.accountId,
         finalRank,
         dominion,

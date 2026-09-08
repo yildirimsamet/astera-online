@@ -1,3 +1,4 @@
+import { spatialHistory } from './spatialHistory.js';
 import { isNull, and, desc, eq, gt, inArray, isNotNull, ne, sql } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/pg-core';
 import {
@@ -1192,7 +1193,9 @@ export async function readProbeReports(db: Db, playerId: string, limit = 40) {
   ).values()].toSorted(
     (a, b) => b.report.createdAt.getTime() - a.report.createdAt.getTime(),
   );
+  const current = await spatialHistory(db, playerId, rows.map(row => row.report.targetPlanetId));
   return rows.map((row) => ({
+    spatiallyCurrent: current(row.report.targetPlanetId, row.report.createdAt),
     ...row,
     // Identity is part of the arrival snapshot. Joining the target's current
     // controller rewrote old intelligence after a capture and leaked ownership

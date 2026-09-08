@@ -68,6 +68,7 @@ export function registerIntelRoutes(app: FastifyInstance): void {
       probeCooldowns: cooldowns,
       probeReports: reports.map((r) => ({
         targetPlanetId: r.report.targetPlanetId,
+        spatiallyCurrent: r.spatiallyCurrent,
         targetName: r.targetName,
         targetUsername: r.targetUsername,
         at: r.report.createdAt,

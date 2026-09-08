@@ -1,9 +1,10 @@
-import { and, eq, inArray, sql } from 'drizzle-orm';
+import { and, eq, gt, inArray, isNull, sql } from 'drizzle-orm';
 import { BUILDING_IDS, PLANET_START, START_BUILDINGS, academyExitCheckpoint, fleetEntries, findRewardTier, pickSpawnSlot } from '@astera/rules';
 import type { Db, Tx } from '../db/client.js';
 import type { Clock } from '../clock.js';
-import { accounts, buildings, planets, players, seasons, shards, satellites, units, rewardGrants } from '../db/schema.js';
-import { galaxyOf, occupiedSlots } from './season.js';
+import { accounts, buildings, planets, players, seasons, shards, satellites, units, rewardGrants, mainVacancies, returnApplications } from '../db/schema.js';
+import { lockAdmission } from './returnQueue.js';
+import { galaxyOf } from './season.js';
 import { GameError, loadLocked, recomputeWealth } from './planet.js';
 import { placeBuildingUpgrade } from './build.js';
 import { publishShard } from '../stream/bus.js';
@@ -156,20 +157,34 @@ export async function joinSeason(
   const spec = galaxyOf(seasonId, season.seed, shard.playerCap);
   const [account] = await db.select().from(accounts).where(eq(accounts.id, accountId));
   for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
-    const taken = await occupiedSlots(db, seasonId);
-    if (taken.size >= shard.playerCap) {
-      throw new GameError('SHARD_FULL', 'This galaxy is full', 409);
-    }
-
-    const slot = pickSpawnSlot(spec.slots, taken);
-    if (!slot) throw new GameError('SHARD_FULL', 'This galaxy is full', 409);
-
     try {
       return await db.transaction(async (tx) => {
+        await lockAdmission(tx, season.cycleId, shard.id);
         await lockGalaxyEventAudience(tx, seasonId, 'membership');
         // Read after the audience lock. If a lifecycle transition won the race,
         // backfill is evaluated on its side of the exact boundary, never before it.
         const now = clock.now();
+        const [current] = await tx.select().from(seasons).where(eq(seasons.id, seasonId));
+        if (current?.status !== 'live' || now >= current.endsAt) {
+          throw new GameError('SEASON_ENDED', 'This season has ended', 409);
+        }
+        const occupied = await tx.select({ slot: planets.slotIndex }).from(planets).where(eq(planets.seasonId, seasonId));
+        const capitalIndices = new Set(spec.slots.map(row => row.index));
+        const taken = new Set(occupied.map(row => row.slot).filter(index => capitalIndices.has(index)));
+        const [queued] = await tx.select({ id: returnApplications.id }).from(returnApplications)
+          .where(and(eq(returnApplications.cycleId, season.cycleId), eq(returnApplications.targetShardId, shard.id),
+            eq(returnApplications.status, 'QUEUED'), gt(returnApplications.expiresAt, now))).limit(1);
+        if (queued) {
+          const reserved = await tx.select({ slot: mainVacancies.slotIndex }).from(mainVacancies)
+            .where(and(eq(mainVacancies.seasonId, seasonId), isNull(mainVacancies.consumedAt)));
+          for (const row of reserved) taken.add(row.slot);
+        }
+        const [count] = await tx.select({ n: sql<number>`count(*)::int` }).from(players).where(eq(players.seasonId, seasonId));
+        const slot = pickSpawnSlot(spec.slots, taken);
+        if (!slot || (count?.n ?? 0) >= shard.playerCap) throw new GameError('SHARD_FULL', 'This galaxy is full', 409);
+        await tx.update(mainVacancies).set({ consumedAt: now, consumedReason: 'NEW_JOIN' })
+          .where(and(eq(mainVacancies.seasonId, seasonId), eq(mainVacancies.slotIndex, slot.index), isNull(mainVacancies.consumedAt)));
+
         const [player] = await tx
           .insert(players)
           .values({
