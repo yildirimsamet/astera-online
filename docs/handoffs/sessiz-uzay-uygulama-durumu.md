@@ -219,3 +219,21 @@ Bunlar tam özellik kabulü değildir. Açık işler: yeni join ile ortak admiss
 HTTP placement çiti, tarihsel koordinat/fog ve cycle sonuç izolasyonu, event/klan kapsamının
 adversarial testleri, bakım turunda tüm kilit/bütçe sınırları ve geniş regresyon. Önceki
 bölümlerdeki “motor henüz yok” ifadesi artık bu bölümdeki kısmi uygulama durumuyla değişmiştir.
+
+### 8 Eylül — wiki'den ayrılmış deploy hazırlığı
+
+Release ayrı worktree'de hazırlandı; wiki dosyaları ve ortak dil dosyalarındaki wiki
+import/export'ları dahil edilmedi. İlk kod commit'i `b27db1a` origin/master'a pushlandı.
+Qualification: typecheck/lint/build PASS; rules 919 PASS, web 2453 PASS, sim 82 PASS +
+kullanıcının izin verdiği 6 skip; server 1339 PASS + baseline ile aynı isim/mesajlarda
+3 bots-turn hatası. `loop-check` ve `movement` izole `_test` DB üzerinde ALL GREEN.
+TR/EN modal 375×812 PASS. Genel visual harness D163'ten eski `worlds` seçicisinde
+RED oldu; mevcut `home` seçicisiyle kamera/odak/ekonomi kontrolleri PASS. Sabit test
+build'i `VITE_VISUAL_TEST=1` ile üretildi; normal production build bu bayrağı taşımaz.
+Genel visual çalışmasında izole asteroid odak örneği bulunmadığından yalnız bu ölçüm
+SKIP; runtime hatası yok. Canlı smoke için hesap veya dünya oluşturulmadı.
+
+Production release otomatik aktarımı KAPALI tutar (`SILENT_SPACE_ENABLED=false`).
+0060'daki zorunlu `cycle_id` eski sezon INSERT'iyle uyumsuzdur. `docs/deployment.md`
+rule 12 uyarınca artifact/restore provası bittikten sonra kesinti onayı gereklidir;
+normal “deploy et/devam et” talimatı bu açık kesinti kararının yerine geçmez.

@@ -1184,7 +1184,7 @@ Production settings for this release (worker environment in `docker-compose.prod
 
 ```dotenv
 SILENT_SPACE_ENABLED=false
-SILENT_SPACE_BATCH_SIZE=5
+SILENT_SPACE_BATCH=5
 SILENT_SPACE_MAX_SHARDS=16
 ```
 
