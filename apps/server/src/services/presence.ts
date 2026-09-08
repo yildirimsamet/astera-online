@@ -3,6 +3,7 @@ import { SERVERS } from '@astera/rules';
 import type { Db } from '../db/client.js';
 import type { Clock } from '../clock.js';
 import { players } from '../db/schema.js';
+import { refreshReturnActivity } from './returnQueue.js';
 
 /**
  * WHO IS IN THE GAME RIGHT NOW. D21.
@@ -30,14 +31,14 @@ export class Presence {
     private readonly db: Db,
     private readonly clock: Clock,
     private readonly throttleMs = 60_000,
+    private readonly reportError: (error: unknown) => void = (error) => { console.error('Presence write failed', error); },
   ) {}
 
   /**
    * Note that this account is playing. Returns whether it actually wrote.
    *
-   * Never throws. Presence is a cosmetic figure on a lobby screen, and a failed
-   * update of it must not be able to fail the request that carried it — the caller
-   * is the middle of somebody's fleet launch.
+   * A failed write is reported and may be retried; it never promises renewed
+   * queue priority. Explicit queue mutations use their own unthrottled transaction.
    */
   async touch(accountId: string): Promise<boolean> {
     const now = this.clock.now().getTime();
@@ -50,14 +51,17 @@ export class Presence {
     this.sweep(now);
 
     try {
-      await this.db
-        .update(players)
-        .set({ lastActiveAt: this.clock.now() })
-        .where(eq(players.accountId, accountId));
+      await this.db.transaction(async (tx) => {
+        // Presence never acquires season/admission locks after this player lock.
+        const [player] = await tx.select({ id: players.id }).from(players)
+          .where(eq(players.accountId, accountId)).for('update');
+        if (player) await refreshReturnActivity(tx, player.id, this.clock);
+      });
       return true;
-    } catch {
+    } catch (error) {
       // Let the next request try again rather than staying quiet for a minute.
       this.lastWrite.delete(accountId);
+      this.reportError(error);
       return false;
     }
   }

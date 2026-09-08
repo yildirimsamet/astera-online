@@ -223,6 +223,12 @@ rehearsal, takes no seat, creates no account, and fails if the page makes an une
 API call — which is why its renderer counters, not the harness's screenshots, are what
 the CR step compares.
 
+The 2026-09-08 Silent Space qualification also reproduced the `worlds` timeout on a fresh
+scratch database. Inspection found an additional deterministic cause: D163 replaced
+`data-disc-control="worlds"` with the direct `home` control. The visual harness now presses
+that existing control; the camera assertions remain unchanged. A scratch database is still
+required, but cannot by itself repair a stale selector.
+
 #### 1c. Say which path the release is on, and say it from the diff
 
 The quiesced/rolling decision is Rule 5's, and it is measured, not assumed. Read it off
@@ -835,8 +841,8 @@ deploy never starts seating anybody on its own.
    `online` should rise to match.
 
 To stop: `BOTS_ENABLED=false` and restart the worker. The worlds stay exactly where they are and
-go quiet, and are reclaimed on the ordinary three-day terms like any commander who stopped coming
-back. `pnpm bots retire "<name>"` takes one off the roster without touching anything it owns.
+go quiet. The Silent Space bridge disables destructive inactivity reclaim for humans and bots;
+no automatic transfer is active yet. `pnpm bots retire "<name>"` takes one off the roster without touching anything it owns.
 
 ## Manual five-minute season cutoff
 
@@ -1158,3 +1164,53 @@ ssh yildirim@hoofywood.com \
   is not a first-class fail-closed CLI command.
 - Capacity soak is an isolated, long-running qualification and is not part of the ordinary deploy
   sequence. Rerun it before claiming a new capacity result after a capacity-sensitive change.
+
+
+## Silent Space release — automatic transfers disabled
+
+This release removes destructive inactivity reclaim. It includes the return application API,
+the Turkish/English relocation notice, and placement-aware SSE: an old connection is closed on
+placement change, the client clears cached galaxy data and reconciles `/me`, then opens the
+notice in the waiting galaxy. A player does not need to reload the page manually.
+
+The maintenance worker is implemented with a **five-minute interval**, a default **five successful
+transfers per pass**, and a database lease shared across worker replicas. It is separate from the
+one-second fleet resolver. Activity uses authenticated API presence (`lastActiveAt`), with the
+48-hour joined/main-entry guards. This release must run with `SILENT_SPACE_ENABLED=false`:
+HTTP placement isolation, history/cycle isolation, admission races and the full transfer blocker
+matrix still need qualification. Deploying this release does not authorize a manual SQL transfer.
+
+Production settings for this release (worker environment in `docker-compose.prod.yml`):
+
+```dotenv
+SILENT_SPACE_ENABLED=false
+SILENT_SPACE_BATCH_SIZE=5
+SILENT_SPACE_MAX_SHARDS=16
+```
+
+The interval is fixed in code; `WORKER_POLL_MS` remains unchanged. Do not enable transfers until
+the acceptance matrix in the Silent Space handoff is complete. The operational limit of 16
+waiting shards is a provisioning bound, not a certified capacity promise.
+
+Migrations 0060–0062 introduce exact-period cycles, placement metadata, persistent return
+applications, transfer audit/outbox, vacated addresses and intel invalidation markers. 0060
+backfills cycle/home metadata without changing season deadlines, player activity or coordinates.
+0061 preserves closed return history through player deletion at rollover. Rehearse all three
+against a restored production dump and verify player/world counts plus existing timestamps.
+
+**Migration compatibility must include writes.** 0060 makes `seasons.cycle_id` required; the old
+image creates seasons without this column. A green old-image health/preview alone therefore
+cannot certify coexistence through an old-worker rollover. Under release rules 5/12 and step 6,
+prepare and verify the artifacts/restore first, then obtain the owner's explicit downtime
+approval before stopping production or applying this release's backfill. Do not use the rolling
+path on the strength of an old-image read-only smoke.
+
+Never roll back to a worker that runs destructive inactivity reclaim after waiting placements
+exist. For this disabled rollout, verify `commander_transfers`, `main_vacancies` and
+`silent_space_maintenance` remain empty, all four processes identify the pushed release SHA,
+and the existing world continues resolving scheduled work after restart.
+
+The notice appears once per placement per device and can be reopened from Menu → Silent Space.
+It submits a return application only on an explicit button press. Eligible returns keep FIFO
+priority; deferred applications retain their original sequence. New departures cannot consume
+the entire maintenance budget before existing return applications are considered.

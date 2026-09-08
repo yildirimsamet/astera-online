@@ -34,6 +34,7 @@ import {
   planetResearch,
   playerResearch,
   researchOrders,
+  returnApplications,
   players,
   probeReports,
   probeWorldMemories,
@@ -114,6 +115,7 @@ export async function listServers(db: Db, clock: Clock): Promise<ServerSummary[]
     .select({ shard: shards, season: seasons })
     .from(shards)
     .leftJoin(seasons, and(eq(seasons.shardId, shards.id), eq(seasons.status, 'live')))
+    .where(eq(shards.role, 'MAIN'))
     .orderBy(asc(shards.ordinal));
 
   // The supported official range wins whenever it exists. A scratch database
@@ -254,7 +256,7 @@ export async function resolveJoinTarget(
     .select({ season: seasons, shard: shards })
     .from(seasons)
     .innerJoin(shards, eq(seasons.shardId, shards.id))
-    .where(and(eq(shards.code, shardCode), eq(seasons.status, 'live')))
+    .where(and(eq(shards.code, shardCode), eq(shards.role, 'MAIN'), eq(seasons.status, 'live')))
     .limit(1);
   // Unreachable through `listServers`, which only reports 'open' for a live
   // season. Checked anyway: the alternative to this branch is a non-null
@@ -351,6 +353,8 @@ async function bootstrapServersIn(
   const days = opts.days ?? SEASON.days;
   const seedBase = opts.seedBase ?? Math.floor(Math.random() * 1_000_000);
 
+  // One period for every new galaxy in this bootstrap, even while I/O advances time.
+  const startsAt = clock.now();
   const created: string[] = [];
   const existing: string[] = [];
 
@@ -376,7 +380,7 @@ async function bootstrapServersIn(
       // the same map twice. Derived rather than random so a seedBase reproduces
       // the whole world for a bug report.
       seed: seedBase + ordinal * 7919,
-      startsAt: clock.now(),
+      startsAt,
       days,
       playerCap: capacity,
     });
@@ -539,6 +543,9 @@ export async function wipeAllServers(
     await tx.delete(clanCeasefires);
     await tx.delete(clanMemberships);
     await tx.delete(clans);
+    // Presence takes player → application. Acquire the same order before clearing
+    // worlds/applications so rollover cannot deadlock with an activity refresh.
+    await tx.select({ id: players.id }).from(players).orderBy(asc(players.id)).for('update');
     await tx.delete(chatMessages);
     /*
       CONVOYS BEFORE THE OCCURRENCES THEY POINT AT. D156.
@@ -600,6 +607,9 @@ export async function wipeAllServers(
     await tx.delete(planets);
     // Before the commanders it points at, or the wipe fails on the foreign key. T7.
     await tx.delete(playerResearch);
+    await tx.update(returnApplications).set({
+      status: 'SEASON_ENDED', closedAt: clock.now(), updatedAt: clock.now(), closedReason: 'SEASON_ENDED',
+    }).where(eq(returnApplications.status, 'QUEUED'));
     await tx.delete(players);
 
     const opened = await bootstrapServersIn(tx, clock, opts);

@@ -273,7 +273,7 @@ async function miningStatusAfterLaunch(
     .from(asteroidClaims)
     .where(eq(asteroidClaims.seasonId, origin.seasonId));
   const taken = new Map(claims.map((claim) => [claim.index, claim.oreTaken]));
-  const epochs = await sensorHistoryForPlayer(tx, origin.playerId, field.startsAt);
+  const epochs = await sensorHistoryForPlayer(tx, origin.playerId, origin.seasonId, field.startsAt);
   const projected = projectPlayerAsteroidField(
     { asteroids: field.asteroids, startsAt: field.startsAt, oreTaken: taken },
     field.asteroidKey,
@@ -361,7 +361,7 @@ export async function launchMining(
       : field.asteroids.find((candidate) => candidate.index === asteroidIndex);
 
     if (fromOpaqueId) {
-      const epochs = await sensorHistoryForPlayer(tx, origin.playerId, field.startsAt);
+      const epochs = await sensorHistoryForPlayer(tx, origin.playerId, origin.seasonId, field.startsAt);
       const earned = rock !== undefined
         && asteroidActive(rock, nowMinutes)
         && orbitDiscoveredAt(rock, epochs, nowMinutes) !== null;

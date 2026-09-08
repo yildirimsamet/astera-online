@@ -11,6 +11,7 @@
  * hooks concern to begin with.
  */
 export const keys = {
+  returnStatus: ['return-status'],
   servers: ['servers'],
   season: ['season'],
   planets: ['planets'],

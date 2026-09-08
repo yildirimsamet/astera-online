@@ -2426,3 +2426,12 @@ export type Announcement = z.infer<typeof announcementSchema>;
 export type AnnouncementsPage = z.infer<typeof announcementsPageSchema>;
 export type FeedbackKind = z.infer<typeof feedbackKindSchema>;
 export type AdminFeedbackPage = z.infer<typeof adminFeedbackPageSchema>;
+
+
+export const returnStatusSchema = z.object({
+  placement: z.object({ playerId: z.string(), version: z.number().int().nonnegative(), role: z.enum(['MAIN', 'WAITING']) }).nullable(),
+  homeShard: z.string().nullable(),
+  canApply: z.boolean(),
+  application: z.object({ id: z.string(), position: z.number().int().positive() }).nullable(),
+});
+export type ReturnStatus = z.infer<typeof returnStatusSchema>;

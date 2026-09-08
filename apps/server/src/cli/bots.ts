@@ -9,8 +9,8 @@
  *
  * Safe to run against production, which is why there is no `_staging` guard like
  * `cli/capacity.ts` has: `add` creates accounts and `retire` removes a profile row.
- * Neither deletes a world — that stays `reclaimIdleSeats`' job, on its ordinary
- * three-day terms, because a retired commander is simply one who stopped playing.
+ * Neither deletes a world. The Silent Space bridge also disables automatic
+ * destructive inactivity reclaim, so a retired commander's worlds stay intact.
  *
  *   pnpm bots add "Kara Şahin" "Yıldız" "Poyraz"
  *   pnpm bots list

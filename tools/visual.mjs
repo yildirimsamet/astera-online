@@ -17,6 +17,12 @@
 import { mkdir } from 'node:fs/promises';
 import { chromium } from 'playwright';
 
+if (process.argv.includes('--silent-space')) {
+  const { verifySilentSpace } = await import('./silent-space-visual.mjs');
+  await verifySilentSpace(process.argv[2] ?? 'out/silent-space');
+  process.exit(0);
+}
+
 if (process.argv.includes('--academy')) {
   const { verifyAcademy } = await import('./academy-visual.mjs');
   await verifyAcademy(process.argv[2] ?? 'out/academy');
@@ -460,13 +466,10 @@ await shot('03-focus');
 
 /* ── 3 · home works while something is focused ───────────────── */
 // The last sampled instance may have opened a detail or management surface.
-// Close it before opening the Worlds surface that now owns the Home control.
+// D163 moved Home directly onto the disc; the old Worlds control no longer exists.
 await dismiss();
 const camBefore = await page.evaluate(() => window.__galaxy.camera.position.toArray());
-await page.locator('[data-disc-control="worlds"]').click();
-await page.getByRole('button', {
-  name: /zoom in on active planet|aktif gezegenine yakınlaş/i,
-}).click();
+await page.locator('[data-disc-control="home"]').click();
 await settle(3000);
 const camAfter = await page.evaluate(() => window.__galaxy.camera.position.toArray());
 const homeTarget = await page.evaluate(() => window.__galaxy.controls?.target?.toArray() ?? null);

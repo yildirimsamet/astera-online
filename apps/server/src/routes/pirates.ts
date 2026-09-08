@@ -84,7 +84,7 @@ export function registerPirateRoutes(app: FastifyInstance): void {
       app.projections.pirateSnapshot(self.seasonId, now),
       app.projections.sensorsFor(self.playerId, self.planetIds),
       // The commander's own sensor history: what memory is still holding open. D158.
-      sensorHistoryForPlayer(app.db, self.playerId),
+      sensorHistoryForPlayer(app.db, self.playerId, self.seasonId),
     ]);
     const nowMinutes = minutesSince(snapshot.startsAt, now);
 

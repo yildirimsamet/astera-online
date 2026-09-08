@@ -6,7 +6,7 @@ import { planets, seasons, sensorEpochs } from '../db/schema.js';
 import { instrumentLevels, levelOf } from './intel.js';
 
 /**
- * Close/open a world's post only when owner, position or effective reach changed.
+ * Close/open a world's post only when season, owner, position or effective reach changed.
  * Callers place this inside the transaction that made the change, so there is no
  * instant where gameplay and discovery history disagree.
  */
@@ -43,6 +43,7 @@ export async function refreshSensorEpoch(
   const unchanged = open !== undefined
     && world.playerId !== null
     && open.playerId === world.playerId
+    && open.seasonId === world.seasonId
     && open.x === world.x
     && open.y === world.y
     && open.z === world.z
@@ -76,6 +77,7 @@ export async function refreshSensorEpoch(
 export async function sensorHistoryForPlayer(
   db: Queryable,
   playerId: string,
+  seasonId: string,
   seasonStart?: Date,
 ): Promise<SensorEpoch[]> {
   const rows = await db
@@ -90,7 +92,7 @@ export async function sensorHistoryForPlayer(
     })
     .from(sensorEpochs)
     .innerJoin(seasons, eq(sensorEpochs.seasonId, seasons.id))
-    .where(eq(sensorEpochs.playerId, playerId));
+    .where(and(eq(sensorEpochs.playerId, playerId), eq(sensorEpochs.seasonId, seasonId)));
   return rows.map((row) => {
     const startsAt = seasonStart ?? row.seasonStartsAt;
     return {

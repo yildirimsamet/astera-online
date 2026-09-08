@@ -462,3 +462,40 @@ pnpm bots add "Kara Şahin" "Yıldız"    # prints each login once, then never a
 pnpm bots list
 pnpm bots retire "Yıldız"              # stops driving it; the world stays and goes quiet
 ```
+
+
+## Silent Space foundations — D174, not yet activated
+
+`shards.role` separates MAIN from WAITING. `season_cycles` groups exact period boundaries;
+`players.home_shard_id`, `main_entered_at` and `placement_version` describe placement without
+replacing commander/world identities. Existing period dates and activity timestamps survive
+backfill. Global wipe still coordinates all shards through lifecycle advisory key 83202488.
+
+`return_applications` keeps bigint sequence order per target/cycle, with one QUEUED application
+per player. Terminal history has a player snapshot and a nullable live FK; wipe closes queued
+applications as SEASON_ENDED before removing players. `return_queue_counters` allocates sequence
+under the shared admission lock. Temporary flight/address blockers do not change this sequence.
+
+Lock order for queue mutations: target admission advisory → sorted season SHARE → player
+UPDATE → application. Global wipe also locks players in ID order before clearing applications/worlds. Activity time
+is read after the player/application locks; new bootstrap seasons share one period timestamp.
+Presence uses player → application only and expires an already-late
+application before writing activity. `loadLocked` and `lockWorlds` recheck the locked world's
+season against the pre-read season. Sensor reads filter by season, and epoch continuity includes
+season identity. Transfer still needs the stronger two-season UPDATE protocol and event claim
+fencing before it can be enabled.
+
+WAIT provisioning holds the lifecycle lock, matches the source's period/ruleset, and occurs
+outside a commander transfer. It does not reserve capacity. Mid-period provisioning preserves
+the original deadline and records past event boundaries as done so restart repair cannot replay
+them. MAIN geometry is unchanged; WAIT migration addresses use their own versioned seed stream.
+The worker no longer calls destructive reclaim. Full transfer/outbox/SSE integration remains
+in progress; see the implementation handoff for test evidence and activation gates.
+
+
+The authenticated `GET /api/return-applications` returns a placement snapshot and only the
+caller's application/position; `POST` requires the expected placement version and uses durable
+idempotent enqueue. The Silent Space modal appears only for a verified WAITING placement with
+a positive placement version. A per-player/version local acknowledgement suppresses repeat
+announcements on that device; the menu reopens the same return surface. The UI submits only
+explicit intent and keeps queue priority/expiry authority on the server.

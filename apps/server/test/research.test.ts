@@ -377,7 +377,9 @@ describe('the seasonal frontier', () => {
   it('bands what a raid could take rather than the whole tank', async () => {
     const target = f.planetIds[1]!;
     await grant(f.db, mine, 20_000, 4_000);
-    await setLevel(f.db, mine, 'SHIPYARD', 2);
+    // Exact sight isolates the raidable base. An imprecise band's high end may
+    // legitimately overshoot the whole tank, depending on the mission's RNG.
+    await setLevel(f.db, mine, 'SHIPYARD', 4);
     await f.db.update(planets).set({ deuterium: 3_000 }).where(eq(planets.id, target));
 
     const launch = await launchProbe(f.db, mine, target, f.clock);
@@ -387,6 +389,7 @@ describe('the seasonal frontier', () => {
 
     // A DECISIVE raid takes `COMBAT.lootDecisive` of what is exposed, so the band
     // has to sit under the tank rather than on it.
+    expect(report!.accuracy).toBe(1);
     expect(report!.deuteriumStock!.high).toBeLessThan(3_000);
   });
 });

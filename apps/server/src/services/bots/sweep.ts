@@ -3,7 +3,7 @@ import type { FastifyBaseLogger } from 'fastify';
 import { ACADEMY_STEPS, SERVERS, hashSeed, mulberry32 } from '@astera/rules';
 import type { Db } from '../../db/client.js';
 import type { Clock } from '../../clock.js';
-import { botProfiles, planets, players, seasons } from '../../db/schema.js';
+import { botProfiles, planets, players, seasons, shards } from '../../db/schema.js';
 import { joinSeason } from '../player.js';
 import { GameError } from '../planet.js';
 import { BOTS } from './personas.js';
@@ -14,15 +14,14 @@ import { runBotTurn, type BotSeat } from './brain.js';
  * THE ONE THING THAT DRIVES THEM. D159.
  *
  * A fixed-cadence sweep on the worker's own clock, beside the stranded-flight
- * repair and the idle-seat reclaim, rather than a new `scheduled_events` kind. The
+ * repair, rather than a new `scheduled_events` kind. The
  * queue exists for MOMENTS the world is waiting on — a raid settling, a fleet
  * landing — and it earns its enum value, its handler, its abandon branch and its
  * health entry by being unable to be missed. A bot's turn is the opposite: missing
  * one costs a commander one upgrade, and the next sweep is a minute away. Paying
  * the queue's whole tax for that would be paying for a guarantee nobody needs.
  *
- * `reclaimIdleSeats` is the shape being copied, and its rule applies here word for
- * word: housekeeping may never stop the event queue. The caller wraps this in its
+ * Housekeeping may never stop the event queue. The caller wraps this in its
  * own `try/catch` and carries on regardless.
  *
  * IT IS STILL SAFE UNDER MORE THAN ONE WORKER. Seating is idempotent because
@@ -66,7 +65,8 @@ export async function ensureBotSeats(
   const live = await db
     .select({ id: seasons.id })
     .from(seasons)
-    .where(eq(seasons.status, 'live'))
+    .innerJoin(shards, eq(shards.id, seasons.shardId))
+    .where(and(eq(seasons.status, 'live'), eq(shards.role, 'MAIN')))
     .orderBy(asc(seasons.startsAt), asc(seasons.id));
   if (live.length === 0) return 0;
 

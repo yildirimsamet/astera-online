@@ -691,7 +691,7 @@ async function sendMiner(
   did: string[], log: FastifyBaseLogger, rng: () => number,
 ): Promise<void> {
   const snapshot = await loadMiningSnapshot(db, seat.seasonId, now);
-  const epochs = await sensorHistoryForPlayer(db, seat.playerId);
+  const epochs = await sensorHistoryForPlayer(db, seat.playerId, seat.seasonId);
   const discovered = discoveredAsteroidIndexes(snapshot, epochs, now);
   if (discovered.size === 0) return;
 

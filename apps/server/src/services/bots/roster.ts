@@ -196,10 +196,8 @@ export async function listBots(db: Db): Promise<BotRosterEntry[]> {
  *
  * The profile row is the only thing removed. The account, the world, the fleet and
  * every battle report anybody fought against them stay exactly where they are —
- * deleting a world is `reclaimIdleSeats`' job, it is destructive, and it takes other
- * people's history with it. What retiring does is stop the sweep driving them; the
- * world then goes quiet and is reclaimed on the ordinary three-day terms, like any
- * commander who stopped coming back.
+ * retiring only stops the sweep driving them. The Silent Space bridge disables
+ * destructive inactivity reclaim; quiet humans and bots both retain their worlds.
  */
 export async function retireBot(db: Db, displayName: string): Promise<boolean> {
   const username = normaliseUsername(displayName);

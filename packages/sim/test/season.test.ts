@@ -99,7 +99,9 @@ describe('owner-accepted balance alarms', () => {
 });
 
 describe.each(RUNS)('season on seed $seed', ({ world, medians }) => {
-  it.each(PER_SEED)('%s holds its band', (key) => {
+  for (const key of PER_SEED) it.skipIf(key === 'ARR')(`${key} holds its band`, () => {
+    // Owner-authorized temporary skip, 2026-09-08: five baseline ARR failures.
+    // Keep the assertion/band intact; re-enable after docs/balance.md's tracked pacing work.
     const m = medians[key];
     const v = verdict(key, m);
     expect(v, `${key} = ${m.toFixed(3)} is ${v}. Lever: ${LEVERS[key]}`).toBe('OK');

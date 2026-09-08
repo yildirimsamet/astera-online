@@ -149,6 +149,9 @@ export async function joinSeason(
   if (!season) throw new GameError('SEASON_NOT_FOUND', 'No such season', 404);
   const [shard] = await db.select().from(shards).where(eq(shards.id, season.shardId));
   if (!shard) throw new GameError('SEASON_NOT_FOUND', 'No such season', 404);
+  if (shard.role !== 'MAIN') {
+    throw new GameError('WAITING_JOIN_FORBIDDEN', 'Join an available main galaxy', 403);
+  }
 
   const spec = galaxyOf(seasonId, season.seed, shard.playerCap);
   const [account] = await db.select().from(accounts).where(eq(accounts.id, accountId));
@@ -172,6 +175,8 @@ export async function joinSeason(
           .values({
             accountId,
             seasonId,
+            homeShardId: shard.id,
+            mainEnteredAt: now,
             name: account?.displayName ?? 'Commander',
             joinedAt: now,
             lastSeenAt: now,

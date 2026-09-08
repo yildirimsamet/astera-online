@@ -118,6 +118,10 @@ const schema = z.object({
     .enum(['true', 'false'])
     .default('false')
     .transform((value) => value === 'true'),
+  // Explicit rollout switch. Disabling never re-enables destructive reclaim.
+  SILENT_SPACE_ENABLED: z.enum(['true', 'false']).default('false').transform(value => value === 'true'),
+  SILENT_SPACE_BATCH: z.coerce.number().int().min(1).max(20).default(5),
+  SILENT_SPACE_MAX_SHARDS: z.coerce.number().int().min(1).max(32).default(16),
   WORKER_POLL_MS: z.coerce.number().default(1000),
   WORKER_BATCH: z.coerce.number().default(100),
   /** A claim older than this is assumed dead and returned to the queue. */

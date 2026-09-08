@@ -1,3 +1,4 @@
+import { registerReturnApplicationRoutes } from './routes/returnApplications.js';
 import cookie from '@fastify/cookie';
 import rateLimit, { normalizeIP } from '@fastify/rate-limit';
 import Fastify, {
@@ -148,6 +149,9 @@ export function buildApp(opts: BuildAppOptions): BuiltApp {
       batch: opts.env.WORKER_BATCH,
       staleMinutes: opts.env.WORKER_STALE_MINUTES,
       botsEnabled: opts.env.BOTS_ENABLED,
+      silentSpaceEnabled: opts.env.SILENT_SPACE_ENABLED,
+      silentSpaceBatch: opts.env.SILENT_SPACE_BATCH,
+      silentSpaceMaxShards: opts.env.SILENT_SPACE_MAX_SHARDS,
     },
     log,
   );
@@ -155,7 +159,8 @@ export function buildApp(opts: BuildAppOptions): BuiltApp {
   app.decorate('db', db);
   app.decorate('clock', clock);
   app.decorate('tokens', tokens);
-  app.decorate('presence', new Presence(db, clock, opts.env.PRESENCE_THROTTLE_MS));
+  app.decorate('presence', new Presence(db, clock, opts.env.PRESENCE_THROTTLE_MS,
+    (err) => { log.error({ err }, 'presence write failed; activity was not renewed'); }));
   app.decorate('worker', worker);
   const bus = new EventBus(opts.env.DATABASE_URL, log);
   app.decorate('bus', bus);
@@ -389,6 +394,7 @@ export function buildApp(opts: BuildAppOptions): BuiltApp {
     registerPirateRoutes(app);
     registerTradeRoutes(app);
     registerSessionRoutes(app);
+    registerReturnApplicationRoutes(app);
     registerChatRoutes(app);
     registerChronicleRoutes(app);
     registerGalaxyEventRoutes(app);

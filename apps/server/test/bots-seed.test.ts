@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import { pino } from 'pino';
 import { and, eq, gte, sql } from 'drizzle-orm';
 import { SERVERS } from '@astera/rules';
-import { accounts, botProfiles, buildings, planets, players, seasons } from '../src/db/schema.js';
+import { accounts, botProfiles, buildings, planets, players, seasons, shards } from '../src/db/schema.js';
 import { addBot, listBots, retireBot } from '../src/services/bots/roster.js';
 import { ensureBotSeats, runBotSweep } from '../src/services/bots/sweep.js';
 import { BOTS } from '../src/services/bots/personas.js';
@@ -48,6 +48,14 @@ async function fillPool(count: number): Promise<void> {
 }
 
 describe('bot roster', () => {
+  it('does not fill or warn about a waiting galaxy roster', async () => {
+    await fillPool(1);
+    await f.db.update(shards).set({ role: 'WAITING' });
+    const { log, warnings } = countingLog();
+    expect(await ensureBotSeats(f.db, f.clock, log)).toBe(0);
+    expect(warnings).toEqual([]);
+    expect(await f.db.select().from(players)).toHaveLength(2);
+  });
   it('takes the name the owner typed and keeps its casing', async () => {
     const added = await addBot(f.db, 'Kara Şahin', f.clock);
     expect(added.displayName).toBe('Kara Şahin');
@@ -245,7 +253,12 @@ describe('presence', () => {
   it('clears the backlog rather than starving anybody', async () => {
     await fillPool(BOTS.perGalaxy);
     f.clock.set(busyEvening);
+    const continuouslyAwake = botsAwakeAt(BOTS.perGalaxy, 4242, busyEvening);
     for (let sweep = 0; sweep < 8; sweep++) {
+      const awake = botsAwakeAt(BOTS.perGalaxy, 4242, f.clock.now());
+      for (const ordinal of continuouslyAwake) {
+        if (!awake.has(ordinal)) continuouslyAwake.delete(ordinal);
+      }
       await runBotSweep(f.db, f.clock, silent);
       f.clock.advance(1);
     }
@@ -255,12 +268,14 @@ describe('presence', () => {
     // Asserted this way rather than by counting turns, because the awake set drifts
     // minute to minute — a commander awake only for the first of those minutes is
     // legitimately passed over, and counting would call that starvation.
-    const now = f.clock.now();
-    const awake = botsAwakeAt(BOTS.perGalaxy, 4242, now);
     const rows = await f.db
       .select({ ordinal: botProfiles.ordinal, nextActionAt: botProfiles.nextActionAt })
       .from(botProfiles);
-    const starved = rows.filter((row) => awake.has(row.ordinal) && row.nextActionAt <= now);
+    // A bot may already have acted and become due again by minute eight. That
+    // is recurring work, not starvation. Check the initial backlog among bots
+    // awake throughout the observed sweeps, not somebody waking on the last edge.
+    expect(continuouslyAwake.size).toBeGreaterThan(0);
+    const starved = rows.filter((row) => continuouslyAwake.has(row.ordinal) && row.nextActionAt <= busyEvening);
     expect(starved).toHaveLength(0);
   });
 

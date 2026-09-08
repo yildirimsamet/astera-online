@@ -1,4 +1,4 @@
-import { and, desc, eq, gt, inArray, isNotNull, ne, sql } from 'drizzle-orm';
+import { isNull, and, desc, eq, gt, inArray, isNotNull, ne, sql } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/pg-core';
 import {
   COMBAT_RESEARCH_PROJECTS,
@@ -269,7 +269,7 @@ export async function assignWatch(
 
     // Re-pointing at what the slot already watches is a no-op, not a purchase.
     // Charging a day's cooldown for a double-tap would be indefensible.
-    if (existing?.targetPlanetId === targetPlanetId) {
+    if (existing?.targetPlanetId === targetPlanetId && existing.detachedAt === null) {
       return { slot, targetPlanetId, cooldownUntil: existing.cooldownUntil };
     }
 
@@ -293,6 +293,7 @@ export async function assignWatch(
       .where(and(
         eq(watches.observerPlayerId, observer.playerId),
         eq(watches.targetPlanetId, targetPlanetId),
+        isNull(watches.detachedAt),
       ))
       .limit(1);
     if (duplicate) {
@@ -338,7 +339,7 @@ export async function assignWatch(
       // something new, so nothing is "last confirmed" about it.
       .onConflictDoUpdate({
         target: [watches.observerPlanetId, watches.slot],
-        set: { targetPlanetId, lastStatus: null, lastConfirmedAt: null, cooldownUntil },
+        set: { targetPlanetId, detachedAt: null, lastStatus: null, lastConfirmedAt: null, cooldownUntil },
       });
 
     // "I can't tell if he's rich." Pointing a telescope at somebody is the moment
@@ -379,6 +380,8 @@ export async function readTelescopes(
       // A watch belongs to the commander, not to a world forever. If that world
       // changes hands, its former controller must stop receiving live readings.
       eq(observerPlanet.controllerPlayerId, playerId),
+      isNull(watches.detachedAt),
+      eq(observerPlanet.seasonId, planets.seasonId),
     ));
 
   if (rows.length === 0) return [];
@@ -740,7 +743,7 @@ export async function rememberedWorlds(
       seenAt: probeWorldMemories.seenAt,
     })
     .from(probeWorldMemories)
-    .where(eq(probeWorldMemories.observerPlayerId, observerPlayerId));
+    .where(and(eq(probeWorldMemories.observerPlayerId, observerPlayerId), isNull(probeWorldMemories.invalidatedAt)));
 
   const out = new Map<string, WorldMemory>();
   for (const row of rows) {
@@ -802,6 +805,7 @@ export async function rememberWorld(
     .onConflictDoUpdate({
       target: [probeWorldMemories.observerPlayerId, probeWorldMemories.targetPlanetId],
       set: {
+        invalidatedAt: null,
         reportId: sql`excluded.report_id`,
         source: sql`excluded.source`,
         silhouette: sql`excluded.silhouette`,

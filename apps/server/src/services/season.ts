@@ -23,6 +23,7 @@ import {
   satellites,
   scheduledEvents,
   seasonResults,
+  seasonCycles,
   seasons,
   shards,
   units,
@@ -95,6 +96,10 @@ export interface CreateSeasonInput {
   seed: number;
   startsAt: Date;
   days?: number;
+  /** Waiting provisioning preserves the original period exactly. */
+  endsAt?: Date;
+  initializedAt?: Date;
+  role?: 'MAIN' | 'WAITING';
   playerCap?: number;
   /** Immutable activation boundary. New production seasons use Fleet V2 ruleset v4. */
   rulesetVersion?: number;
@@ -111,10 +116,20 @@ export async function createSeasonIn(tx: Tx, input: CreateSeasonInput) {
   const name = input.shardName ?? input.shardCode;
   const ordinal = input.ordinal ?? incidentalOrdinal(input.shardCode);
   const days = input.days ?? SEASON.days;
-  const endsAt = addMinutes(input.startsAt, days * 24 * 60);
+  const endsAt = input.endsAt ?? addMinutes(input.startsAt, days * 24 * 60);
+  const initializedAt = input.initializedAt ?? input.startsAt;
+  // Exact period grouping preserves legacy clocks; never round a remaining duration.
+  const [cycle] = await tx.insert(seasonCycles)
+    .values({ startsAt: input.startsAt, endsAt })
+    .onConflictDoUpdate({
+      target: [seasonCycles.startsAt, seasonCycles.endsAt],
+      set: { startsAt: input.startsAt },
+    })
+    .returning();
+  if (!cycle) throw new Error('Season cycle allocation returned no row');
   const [shard] = await tx
       .insert(shards)
-      .values({ code: input.shardCode, name, ordinal, playerCap: cap })
+      .values({ code: input.shardCode, name, ordinal, playerCap: cap, role: input.role ?? 'MAIN' })
       .onConflictDoUpdate({ target: shards.code, set: { name, ordinal, playerCap: cap } })
       .returning();
 
@@ -122,6 +137,7 @@ export async function createSeasonIn(tx: Tx, input: CreateSeasonInput) {
       .insert(seasons)
       .values({
         shardId: shard!.id,
+        cycleId: cycle.id,
         seed: input.seed,
         status: 'live',
         startsAt: input.startsAt,
@@ -130,7 +146,7 @@ export async function createSeasonIn(tx: Tx, input: CreateSeasonInput) {
       })
       .returning();
 
-  await seedGalaxyEventCalendar(tx, season!);
+  await seedGalaxyEventCalendar(tx, season!, initializedAt);
 
   await schedule(tx, {
     seasonId: season!.id,
@@ -145,16 +161,19 @@ export async function createSeasonIn(tx: Tx, input: CreateSeasonInput) {
     resolveAt: addMinutes(endsAt, SEASON.afterglowMinutes),
   });
   for (const act of SEASON.actBoundaries) {
-    await schedule(tx, {
+    const resolveAt = new Date(input.startsAt.getTime() + (endsAt.getTime() - input.startsAt.getTime()) * act.share);
+    await tx.insert(scheduledEvents).values({
       seasonId: season!.id,
       kind: 'season_act',
       refId: season!.id,
       payload: { act: act.id },
-      resolveAt: addMinutes(input.startsAt, days * 24 * 60 * act.share),
+      resolveAt,
+      // Durable done markers prevent boot repair from replaying past season acts.
+      status: resolveAt < initializedAt ? 'done' : 'pending',
     });
   }
   if (season!.rulesetVersion >= MULTI_WORLD.neutralWorldRulesetVersion) {
-    await createNeutralWorlds(tx, season!.id, input.seed, input.startsAt);
+    await createNeutralWorlds(tx, season!.id, input.seed, initializedAt);
   }
   return { shard: shard!, season: season! };
 }

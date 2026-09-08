@@ -179,7 +179,9 @@ describe('Fleet V2 research pacing — D148', () => {
    * an indicator. What playtesting has to confirm is that a commander who has flown
    * a real fleet all season can still field the top tier before the wipe.
    */
-  it('opens T3 in the midgame and T4 in the late game rather than the opening', () => {
+  // Owner-authorized temporary skip, 2026-09-08. Baseline day4 SHIP_POWER exceeds
+  // this expectation; tracked with the five ARR failures in docs/balance.md.
+  it.skip('opens T3 in the midgame and T4 in the late game rather than the opening', () => {
     const at = (days: number) => runSeason({
       players: 50,
       days,

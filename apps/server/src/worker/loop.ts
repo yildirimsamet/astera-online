@@ -1,9 +1,9 @@
+import { runSilentSpaceSweep, SILENT_SPACE_INTERVAL_MS } from '../services/silentSpace.js';
 import type { FastifyBaseLogger } from 'fastify';
 import type { Clock } from '../clock.js';
 import type { Db } from '../db/client.js';
 import { HANDLERS } from './handlers.js';
 import { abandon, sweepStranded } from './abandon.js';
-import { reclaimIdleSeats } from '../services/reclaim.js';
 import { runBotSweep } from '../services/bots/sweep.js';
 import { BOTS } from '../services/bots/personas.js';
 import { claimDue, complete, fail, reap } from './queue.js';
@@ -21,6 +21,9 @@ export interface WorkerOptions {
    * process happened to boot would be the wrong default in every direction.
    */
   botsEnabled?: boolean;
+  silentSpaceEnabled?: boolean;
+  silentSpaceBatch?: number;
+  silentSpaceMaxShards?: number;
 }
 
 export interface TickResult {
@@ -84,31 +87,12 @@ export interface WorkerStatus {
  */
 const SWEEP_EVERY_MS = 30_000;
 
-/**
- * How often idle seats are reclaimed. TEN MINUTES, and it is deliberately slow.
- *
- * The thing being measured is three days long, so the difference between checking
- * every minute and every ten is nothing to a player and is the difference between
- * a scan of `players` six times an hour and sixty. It is also a DESTRUCTIVE sweep:
- * a slower cadence means a commander who comes back in the same minute the cutoff
- * passes is far more likely to be seen as active before anything is taken apart,
- * on top of the locked re-read that already guarantees it.
- */
-const RECLAIM_EVERY_MS = 10 * 60_000;
-
 export class EventWorker {
   private timer: NodeJS.Timeout | null = null;
   private running = false;
   private stopped = false;
   /** When the stranded sweep last ran. `-Infinity` so the first tick always does. */
   private sweptAt = -Infinity;
-  /**
-   * When idle seats were last reclaimed. `0` rather than `-Infinity`, so a process
-   * that restarts does NOT immediately take worlds apart: a deploy, a crash loop or
-   * a local `pnpm dev` should never be the thing that triggers a destructive sweep
-   * on its first tick. It waits its full interval like any other run.
-   */
-  private reclaimedAt = 0;
   /**
    * When the bot roster was last looked at.
    *
@@ -118,6 +102,8 @@ export class EventWorker {
    * than a minute later.
    */
   private botsSweptAt = 0;
+  private silentSpaceAt = -Infinity;
+  private silentSpaceTask: Promise<void> | null = null;
   private ticks = 0;
   private tickErrors = 0;
   private processed = 0;
@@ -213,40 +199,13 @@ export class EventWorker {
       }
     }
 
-    /**
-     * IDLE SEATS, ON THE SAME TERMS AS THE STRANDED SWEEP AND FOR THE SAME REASON.
-     *
-     * Its own clock, and its own catch. Housekeeping may never stop the event
-     * queue — a repair that throws before `claimDue` turns "one world could not be
-     * reclaimed" into "no fleet in the galaxy ever lands again", which is exactly
-     * how the stranded sweep went wrong the first time it shipped.
-     *
-     * `reclaimIdleSeats` already isolates each world in its own transaction, so
-     * this catch is the outer belt: it is there for a failure to READ the candidate
-     * list at all.
-     */
-    let reclaimed = 0;
-    if (this.reclaimedAt === 0) {
-      this.reclaimedAt = now.getTime();
-    } else if (now.getTime() - this.reclaimedAt >= RECLAIM_EVERY_MS) {
-      this.reclaimedAt = now.getTime();
-      try {
-        const result = await reclaimIdleSeats(this.db, this.clock);
-        reclaimed = result.reclaimed.length;
-        if (reclaimed > 0 || result.failed > 0) {
-          this.log.warn(
-            { freed: result.reclaimed, deferred: result.deferred, failed: result.failed },
-            'reclaimed seats from commanders who stopped coming back',
-          );
-        }
-      } catch (err) {
-        this.log.error({ err }, 'idle-seat sweep failed; the queue carries on regardless');
-      }
-    }
+    // Silent Space bridge: disabling transfers must preserve every commander.
+    // Never fall back to destructive reclaim while the transfer engine is offline.
+    const reclaimed = 0;
 
     /**
-     * THE COMMANDERS THE SERVER PLAYS. D159, and on the same terms as the two
-     * sweeps above: its own clock, its own `try/catch`, and no claim on the queue.
+     * THE COMMANDERS THE SERVER PLAYS. D159, and on the same terms as the
+     * stranded sweep above: its own clock, its own `try/catch`, and no claim on the queue.
      *
      * It is the least important thing in this tick — a missed turn costs one
      * commander one upgrade and the next sweep is a minute away — which is exactly
@@ -307,6 +266,19 @@ export class EventWorker {
           abandoned++;
         }
       }
+    }
+
+    // A separate promise owns maintenance: fleet resolution never awaits a move.
+    if (this.opts.silentSpaceEnabled && !this.stopped && this.silentSpaceTask === null
+      && now.getTime() - this.silentSpaceAt >= SILENT_SPACE_INTERVAL_MS) {
+      this.silentSpaceAt = now.getTime();
+      this.silentSpaceTask = runSilentSpaceSweep(this.db, this.clock, {
+        batchSize: this.opts.silentSpaceBatch ?? 5, maxWaitingShards: this.opts.silentSpaceMaxShards ?? 16,
+      }).then(result => {
+        if (result.ran) this.log.info(result, 'Silent Space five-minute maintenance');
+      }).catch((err: unknown) => {
+        this.log.error({ err }, 'Silent Space maintenance failed; fleet resolution continues');
+      }).finally(() => { this.silentSpaceTask = null; });
     }
 
     return {
@@ -388,5 +360,6 @@ export class EventWorker {
     }
     // Let an in-flight tick finish rather than tearing its transaction down.
     while (this.running) await new Promise((r) => setTimeout(r, 20));
+    await this.silentSpaceTask;
   }
 }

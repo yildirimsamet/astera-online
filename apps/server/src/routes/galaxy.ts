@@ -307,7 +307,7 @@ export function registerGalaxyRoutes(app: FastifyInstance): void {
       app.projections.trafficSnapshot(self.seasonId, now),
       app.projections.sensorsFor(self.playerId, self.planetIds),
       app.projections.miningSnapshot(self.seasonId, now),
-      sensorHistoryForPlayer(app.db, self.playerId),
+      sensorHistoryForPlayer(app.db, self.playerId, self.seasonId),
       app.projections.pirateSnapshot(self.seasonId, now),
     ]);
 

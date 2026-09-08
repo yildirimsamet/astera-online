@@ -860,3 +860,17 @@ research price fixed it. A 120–240 minute intelligence lifetime caused repeate
 informed attacks; 480 minutes restored the value of reports. Raising every archetype's attack chance
 did not improve TAX and made the seed-99 turtle dominate, so that attempt was reverted rather than
 being accepted as “more war.”
+
+## 2026-09-08 — owner-authorized temporary simulator skips
+
+While integrating Silent Space, an unchanged `f1fa09d` archive reproduced six
+simulator failures: ARR LOW on seeds 42/7/99/4242/1337 (0.229/0.237/0.221/0.220/0.216),
+and Fleet V2 research pacing's day-4 `SHIP_POWER <= 1` assertion. This replaces the
+manual's stale description of the current failures as five VFR failures.
+
+The owner explicitly requested recording and skipping these known failures so
+integration can proceed. Only the five ARR cases in `season.test.ts` and the one
+research pacing case in `fleet-v2-balance.test.ts` are skipped. Assertions, balance
+bands and gameplay constants are unchanged. VFR, SV and all other simulator gates
+remain active. Remove these skips when the pacing/balance work resolves the six
+failures; a green suite with skips is not evidence that these balance issues are fixed.

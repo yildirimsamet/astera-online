@@ -1,6 +1,7 @@
 import { sql } from 'drizzle-orm';
 import {
   boolean,
+  bigint,
   index,
   integer,
   jsonb,
@@ -255,14 +256,35 @@ export const shards = pgTable('shards', {
   ordinal: integer('ordinal').notNull().default(1),
   region: text('region').notNull().default('eu'),
   playerCap: integer('player_cap').notNull().default(300),
+  role: text('role').$type<'MAIN' | 'WAITING'>().notNull().default('MAIN'),
 }, (t) => [
   uniqueIndex('shards_code_idx').on(t.code),
   uniqueIndex('shards_ordinal_idx').on(t.ordinal),
+  check('shards_role_check', sql`${t.role} IN ('MAIN', 'WAITING')`),
 ]);
+
+/** Compatibility group only; rollover still coordinates all live shards globally. */
+export const seasonCycles = pgTable('season_cycles', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  startsAt: timestamp('starts_at', { withTimezone: true }).notNull(),
+  endsAt: timestamp('ends_at', { withTimezone: true }).notNull(),
+}, (t) => [
+  uniqueIndex('season_cycles_period_idx').on(t.startsAt, t.endsAt),
+  check('season_cycles_period_check', sql`${t.endsAt} > ${t.startsAt}`),
+]);
+
+/** Queue allocation is serialized with target admission; bigint never becomes Number. */
+export const returnQueueCounters = pgTable('return_queue_counters', {
+  cycleId: uuid('cycle_id').notNull().references(() => seasonCycles.id),
+  targetShardId: uuid('target_shard_id').notNull().references(() => shards.id),
+  // SQL default avoids drizzle-kit's JSON snapshot serializer rejecting a JS bigint.
+  lastSequence: bigint('last_sequence', { mode: 'bigint' }).notNull().default(sql`0`),
+}, (t) => [primaryKey({ columns: [t.cycleId, t.targetShardId] })]);
 
 export const seasons = pgTable('seasons', {
   id: uuid('id').primaryKey().defaultRandom(),
   shardId: uuid('shard_id').notNull().references(() => shards.id),
+  cycleId: uuid('cycle_id').notNull().references(() => seasonCycles.id),
   /** The galaxy is regenerated from this — never stored slot by slot. */
   seed: integer('seed').notNull(),
   /** Private keyed asteroid schedule and opaque identities. Never sent to clients. */
@@ -315,6 +337,10 @@ export const players = pgTable('players', {
   id: uuid('id').primaryKey().defaultRandom(),
   accountId: uuid('account_id').notNull().references(() => accounts.id),
   seasonId: uuid('season_id').notNull().references(() => seasons.id),
+  /** Nullable only for legacy/manual inserts; normal admission always supplies it. */
+  homeShardId: uuid('home_shard_id').references(() => shards.id),
+  placementVersion: integer('placement_version').notNull().default(0),
+  mainEnteredAt: timestamp('main_entered_at', { withTimezone: true }),
   name: text('name').notNull(),
   /** Dominion is the ladder: taken − lost. Stored as two counters. */
   dominionTaken: real('dominion_taken').notNull().default(0),
@@ -373,6 +399,31 @@ export const players = pgTable('players', {
   uniqueIndex('players_account_idx').on(t.accountId),
   index('players_ladder_idx').on(t.seasonId, t.dominionTaken, t.dominionLost),
   index('players_active_idx').on(t.seasonId, t.lastActiveAt),
+]);
+
+export type ReturnApplicationStatus = 'QUEUED' | 'COMPLETED' | 'CANCELLED' | 'EXPIRED' | 'SEASON_ENDED';
+
+/** Terminal application history survives global player deletion without blocking rollover. */
+export const returnApplications = pgTable('return_applications', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  playerId: uuid('player_id').references(() => players.id, { onDelete: 'set null' }),
+  playerIdSnapshot: uuid('player_id_snapshot').notNull(),
+  cycleId: uuid('cycle_id').notNull().references(() => seasonCycles.id),
+  targetShardId: uuid('target_shard_id').notNull().references(() => shards.id),
+  sequence: bigint('sequence', { mode: 'bigint' }).notNull(),
+  status: text('status').$type<ReturnApplicationStatus>().notNull().default('QUEUED'),
+  requestedAt: timestamp('requested_at', { withTimezone: true }).notNull(),
+  expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull(),
+  closedAt: timestamp('closed_at', { withTimezone: true }),
+  closedReason: text('closed_reason'),
+}, (t) => [
+  uniqueIndex('return_applications_queued_player_idx').on(t.playerId).where(sql`${t.status} = 'QUEUED'`),
+  uniqueIndex('return_applications_sequence_idx').on(t.cycleId, t.targetShardId, t.sequence),
+  index('return_applications_admission_idx').on(t.cycleId, t.targetShardId, t.status, t.sequence),
+  check('return_applications_status_check', sql`${t.status} IN ('QUEUED', 'COMPLETED', 'CANCELLED', 'EXPIRED', 'SEASON_ENDED')`),
+  check('return_applications_closed_check', sql`(${t.status} = 'QUEUED' AND ${t.closedAt} IS NULL AND ${t.playerId} IS NOT NULL) OR (${t.status} <> 'QUEUED' AND ${t.closedAt} IS NOT NULL)`),
+  check('return_applications_sequence_check', sql`${t.sequence} > 0`),
 ]);
 
 export type ClanMembershipRole = 'LEADER' | 'MEMBER';
@@ -1429,6 +1480,7 @@ export const probeReports = pgTable('probe_reports', {
  * explicitly, like the rest of this schema's audit-facing graph.
  */
 export const probeWorldMemories = pgTable('probe_world_memories', {
+  invalidatedAt: timestamp('invalidated_at', { withTimezone: true }),
   observerPlayerId: uuid('observer_player_id').notNull().references(() => players.id),
   targetPlanetId: uuid('target_planet_id').notNull().references(() => planets.id),
   /** The probe report this came from. NULL when a fleet took the look. */
@@ -1459,6 +1511,7 @@ export const probeWorldMemories = pgTable('probe_world_memories', {
 
 /** Telescope assignments. The target is NEVER told this row exists. */
 export const watches = pgTable('watches', {
+  detachedAt: timestamp('detached_at', { withTimezone: true }),
   observerPlayerId: uuid('observer_player_id').notNull().references(() => players.id),
   observerPlanetId: uuid('observer_planet_id').notNull().references(() => planets.id),
   slot: integer('slot').notNull(),
@@ -1934,3 +1987,45 @@ export const accountRewards = pgTable('account_rewards', {
   claimedAt: timestamp('claimed_at', { withTimezone: true }),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 }, (t) => [primaryKey({ columns: [t.accountId, t.rewardId] })]);
+
+/** Durable cadence/cursor shared by every worker replica. */
+export const silentSpaceMaintenance = pgTable('silent_space_maintenance', {
+  id: integer('id').primaryKey(),
+  nextRunAt: timestamp('next_run_at', { withTimezone: true }).notNull(),
+  cursorPlayerId: uuid('cursor_player_id'),
+  lastRunAt: timestamp('last_run_at', { withTimezone: true }),
+  lastResult: jsonb('last_result').$type<Record<string, unknown>>(),
+});
+
+/** Immutable move history also serves as a transactional notification outbox. No live-player FK. */
+export const commanderTransfers = pgTable('commander_transfers', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  playerId: uuid('player_id').notNull(),
+  accountId: uuid('account_id').notNull().references(() => accounts.id),
+  cycleId: uuid('cycle_id').notNull().references(() => seasonCycles.id),
+  sourceSeasonId: uuid('source_season_id').notNull().references(() => seasons.id),
+  targetSeasonId: uuid('target_season_id').notNull().references(() => seasons.id),
+  fromVersion: integer('from_version').notNull(),
+  toVersion: integer('to_version').notNull(),
+  direction: text('direction').$type<'OUT' | 'RETURN'>().notNull(),
+  applicationId: uuid('application_id'),
+  worlds: jsonb('worlds').$type<{ id: string; kind: string; from: { index: number; x: number; y: number; z: number }; to: { index: number; x: number; y: number; z: number } }[]>().notNull(),
+  committedAt: timestamp('committed_at', { withTimezone: true }).notNull(),
+  emittedAt: timestamp('emitted_at', { withTimezone: true }),
+}, (t) => [uniqueIndex('commander_transfers_version_idx').on(t.playerId, t.fromVersion),
+  index('commander_transfers_outbox_idx').on(t.emittedAt),
+  check('commander_transfers_version_check', sql`${t.toVersion} = ${t.fromVersion} + 1`)]);
+
+/** Only recorded departures create a return address. History survives world/player deletion. */
+export const mainVacancies = pgTable('main_vacancies', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  cycleId: uuid('cycle_id').notNull().references(() => seasonCycles.id),
+  seasonId: uuid('season_id').notNull().references(() => seasons.id),
+  departureTransferId: uuid('departure_transfer_id').notNull().references(() => commanderTransfers.id),
+  kind: text('kind').$type<'CAPITAL' | 'COLONY'>().notNull(),
+  slotIndex: integer('slot_index').notNull(),
+  x: real('x').notNull(), y: real('y').notNull(), z: real('z').notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull(),
+  consumedAt: timestamp('consumed_at', { withTimezone: true }),
+  consumedReason: text('consumed_reason'),
+}, (t) => [uniqueIndex('main_vacancies_open_idx').on(t.seasonId, t.slotIndex).where(sql`${t.consumedAt} IS NULL`)]);

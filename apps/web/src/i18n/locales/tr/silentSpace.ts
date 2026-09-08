@@ -1,0 +1,16 @@
+export const silentSpace = {
+  title: 'Sessiz Uzay’a taşındın',
+  body: '48 saat boyunca aktif olmadığın için gezegenlerini Sessiz Uzay’a taşıdık. Gezegenlerin ve ilerlemen korundu; burada oynamaya devam edebilirsin.',
+  returnTo: '{{galaxy}} galaksisine dönmek için buradan başvurabilirsin.',
+  apply: 'Dönüş başvurusu yap',
+  applying: 'Başvuruluyor…',
+  later: 'Oynamaya devam et',
+  menu: 'Sessiz Uzay',
+  menuHint: 'Dönüş başvurusu',
+  reminder: 'Daha sonra Menü → Sessiz Uzay’dan başvurabilirsin.',
+  queued: 'Dönüş başvurun sırada',
+  position: '{{galaxy}} · Sıran {{position}}',
+  queueHint: 'Yer açıldığında uygun en eski başvuru değerlendirilir. Uçuşların veya yetersiz gezegen yeri dönüşünü engellerse sıranı kaybetmezsin.',
+  expiry: '48 saat aktif olmazsan başvurun sona erer.',
+  unavailable: 'Eski galaksin şu anda dönüş başvurusu kabul etmiyor.',
+};

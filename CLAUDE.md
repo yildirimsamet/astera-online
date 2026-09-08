@@ -247,7 +247,7 @@ Showing more is not helping more.
 - Simulator never prices benefits it does not model; interception uses continuous `travelExact`.
 - Client/API share one origin. `VITE_GA_ID` is build-time. Register routes inside `app.after()`. Rate-limit refusals are `GameError`s.
 - `TRUST_PROXY` only on proxy-only ports.
-- Reclaim idle seats while preserving accounts, but never reclaim a world referenced by an airborne mission.
+- Silent Space transition: inactivity must never delete a commander or world. The worker destructive reclaim call is disabled; the five-minute transfer worker is implemented but must stay off until its safety gates pass. Return admission is oldest eligible first, preserving blocked applications and their original priority.
 - Run migrations before new app image. `/health` reports; it does not repair. Production uses `docker-compose.prod.yml`.
 
 ## How to work
@@ -322,7 +322,11 @@ Baseline near D140: **0 type errors · 0 lint errors · ~2,900 tests**.
 
 ### Current blocker
 
-`pnpm verify` is green except the **D134 separate-Research-queue balance regression**: VFR is LOW on all five fixed seeds. A direct A/B run proves `17c515b` was 69/69 green; applying only the accurate third-lane simulator produces seven failures, while the requested asteroid/hull Crystal changes reduce that set to the five VFR failures. This is not a slow-machine or flaky-test issue.
+Current baseline (`f1fa09d`, remeasured 2026-09-08) has six simulator failures:
+five ARR LOW seeds and Fleet V2 research pacing at day 4. The owner explicitly
+authorized temporarily skipping exactly these six while Silent Space is integrated.
+They are recorded in `docs/balance.md`; 82 other simulator tests pass. Remove the
+skips when pacing work resolves them. The older five-VFR description is stale.
 
 - Do **not** widen bands.
 - Read **D133 before touching Hangar constants**; height was already swept and is not the mechanism.

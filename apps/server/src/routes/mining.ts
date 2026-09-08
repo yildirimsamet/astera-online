@@ -149,7 +149,7 @@ export function registerMiningRoutes(app: FastifyInstance): void {
   const fieldView = async (seasonId: string, playerId: string, revealIsotopes: boolean) => {
     const now = app.clock.now();
     const snapshot = await app.projections.miningSnapshot(seasonId, now);
-    const epochs = await sensorHistoryForPlayer(app.db, playerId, snapshot.startsAt);
+    const epochs = await sensorHistoryForPlayer(app.db, playerId, seasonId, snapshot.startsAt);
     const field = projectPlayerAsteroidField(
       snapshot,
       snapshot.asteroidKey,

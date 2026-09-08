@@ -97,6 +97,7 @@ function calendarRng(asteroidKey: string, kind: GalaxyEventKind): () => number {
 export async function seedGalaxyEventCalendar(
   tx: Tx,
   season: typeof seasons.$inferSelect,
+  initializedAt: Date = season.startsAt,
 ): Promise<void> {
   if (season.rulesetVersion < MULTI_WORLD.galaxyEventsRulesetVersion) return;
   const durationMinutes = minutesSince(season.startsAt, season.endsAt);
@@ -142,7 +143,9 @@ export async function seedGalaxyEventCalendar(
       startsAt: addMinutes(season.startsAt, event.startsAtMinute),
       endsAt: addMinutes(season.startsAt, event.endsAtMinute),
       effect: event.effect,
-      createdAt: season.startsAt,
+      createdAt: initializedAt,
+      startProcessedAt: addMinutes(season.startsAt, event.startsAtMinute) < initializedAt ? initializedAt : null,
+      endProcessedAt: addMinutes(season.startsAt, event.endsAtMinute) <= initializedAt ? initializedAt : null,
     })))
     .returning({
       id: galaxyEventOccurrences.id,
@@ -150,7 +153,7 @@ export async function seedGalaxyEventCalendar(
       endsAt: galaxyEventOccurrences.endsAt,
     });
 
-  await tx.insert(scheduledEvents).values(inserted.flatMap((occurrence) => [
+  const moments = inserted.flatMap((occurrence) => [
     {
       seasonId: season.id,
       kind: 'galaxy_event_start' as const,
@@ -165,7 +168,12 @@ export async function seedGalaxyEventCalendar(
       dedupeKey: `galaxy-event:end:${occurrence.id}`,
       resolveAt: occurrence.endsAt,
     },
-  ]));
+  ]).map((event) => ({
+    ...event,
+    // Keep the dedupe key even for past boundaries so restart repair cannot enqueue them.
+    status: event.resolveAt < initializedAt ? 'done' as const : 'pending' as const,
+  }));
+  if (moments.length > 0) await tx.insert(scheduledEvents).values(moments);
 }
 
 /** Repair only missing queue rows for already-persisted live-season occurrences. */

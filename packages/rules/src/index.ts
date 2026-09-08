@@ -34,3 +34,7 @@ export * from './strategic.js';
 export * from './view.js';
 export * from './clan.js';
 export * from './academy.js';
+export * from './returnQueue.js';
+export * from './inactivity.js';
+export * from './waitingPlacement.js';
+export * from './returnPlacement.js';

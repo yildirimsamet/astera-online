@@ -1,0 +1,16 @@
+export const silentSpace = {
+  title: 'You moved to Silent Space',
+  body: 'After 48 hours of inactivity, we moved your planets to Silent Space. Your planets and progress are preserved; you can keep playing here.',
+  returnTo: 'Apply here to return to {{galaxy}}.',
+  apply: 'Apply to return',
+  applying: 'Applying…',
+  later: 'Keep playing',
+  menu: 'Silent Space',
+  menuHint: 'Return application',
+  reminder: 'You can apply later from Menu → Silent Space.',
+  queued: 'Your return application is queued',
+  position: '{{galaxy}} · Position {{position}}',
+  queueHint: 'When space opens, the oldest eligible application is considered. Flights or insufficient planet space may delay your return, but you keep your priority.',
+  expiry: 'Your application expires after 48 hours of inactivity.',
+  unavailable: 'Your former galaxy is not accepting return applications right now.',
+};

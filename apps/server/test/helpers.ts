@@ -80,7 +80,7 @@ export async function testDb(): Promise<{ db: Db; close: () => Promise<void> }> 
 /** Wipe everything between tests. CASCADE handles the foreign-key order. */
 export async function truncateAll(db: Db): Promise<void> {
   await db.execute(sql`
-    TRUNCATE announcement_reads, announcements, feedback_entries,
+    TRUNCATE main_vacancies, commander_transfers, silent_space_maintenance, return_applications, return_queue_counters, announcement_reads, announcements, feedback_entries,
              account_rewards, reward_grants, request_log, notifications, scan_events,
              probe_world_memories, probe_reports, watches,
              clan_loot_shares, clan_score_events, clan_raid_roster, attack_commitments,
@@ -92,7 +92,7 @@ export async function truncateAll(db: Db): Promise<void> {
              galaxy_event_occurrences, galaxy_events,
              sensor_epochs, satellites, buildings, planet_research, player_research,
              neutral_planet_state, planets, players,
-             seasons, shards, bot_profiles, accounts
+             seasons, season_cycles, shards, bot_profiles, accounts
     RESTART IDENTITY CASCADE
   `);
 }

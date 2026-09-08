@@ -1,4 +1,4 @@
-import { and, eq, inArray } from 'drizzle-orm';
+import { isNull, and, eq, inArray } from 'drizzle-orm';
 import type { Fleet } from '@astera/rules';
 import type { Queryable } from '../db/client.js';
 import { planets, watches } from '../db/schema.js';
@@ -35,7 +35,7 @@ export async function publishWatchChanges(
         eq(planets.controllerPlayerId, watches.observerPlayerId),
       ),
     )
-    .where(inArray(watches.targetPlanetId, targets));
+    .where(and(inArray(watches.targetPlanetId, targets), isNull(watches.detachedAt)));
 
   // Keep one transaction connection sequential; NOTIFY itself is delivered on commit.
   for (const observer of observers) await publishSight(tx, observer.playerId);

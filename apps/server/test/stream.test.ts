@@ -1,3 +1,5 @@
+import { eq } from 'drizzle-orm';
+import { players } from '../src/db/schema.js';
 import type { FastifyInstance } from 'fastify';
 import { pino } from 'pino';
 import { afterAll, afterEach, beforeEach, describe, expect, it } from 'vitest';
@@ -137,6 +139,15 @@ describe('the event stream', () => {
     }
     throw new Error('the stream never subscribed');
   };
+
+  it('fences an old placement before forwarding any later shard frame', async () => {
+    const stream = listen(1);
+    await connected(f.playerIds[0]!);
+    await f.db.update(players).set({ placementVersion: 1 }).where(eq(players.id, f.playerIds[0]!));
+    await publishShard(f.db, f.seasonId, 'world');
+    await expect(stream.done).resolves.toEqual(['placement_changed']);
+    stream.abort();
+  });
 
   it('carries what happened to this commander', async () => {
     const stream = listen(1);

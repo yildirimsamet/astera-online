@@ -199,6 +199,14 @@ describe('the event stream', () => {
     expect(asked).toEqual([]);
   });
 
+  it('reconciles the session when the commander changes galaxy', () => {
+    const onPlacement = vi.fn();
+    mountCaughtUp(onPlacement);
+    fire('placement_changed');
+    expect(onPlacement).toHaveBeenCalledOnce();
+    expect(asked).toEqual([]);
+  });
+
   it('resyncs immediately when a suspended page is shown again', () => {
     mountCaughtUp();
     act(() => {

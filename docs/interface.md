@@ -575,3 +575,13 @@ It appears twice on purpose. In the commander sheet, beside the galaxy and sign-
 language you read the world in is an account fact and that is the one surface about the account
 rather than the world. And on the front door, because a visitor who landed in the wrong language
 has no account yet and cannot reach a sheet that only exists after they sign in.
+
+
+## Silent Space placement notice
+
+After an inactivity transfer, show a compact modal explaining the 48-hour absence, preserved
+planets/progress and the former galaxy. Offer “Apply to return” and “Keep playing”. Application
+is explicit, never automatic on opening the notice. A queued application replaces the action
+with its current position and explains that temporary blockers preserve priority; no return ETA
+is promised. Dismissal is stored per commander/placement version on this device. Menu → Silent
+Space reopens the surface. MAIN and pre-account Academy sessions show no transfer notice.

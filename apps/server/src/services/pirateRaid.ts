@@ -226,7 +226,7 @@ export async function launchPirateRaid(
      * what the Telescope sells is knowing what you are gambling against.
      */
     const spheres = await sensorPosts(tx, await ownWorldIds(tx, origin.playerId));
-    const epochs = await sensorHistoryForPlayer(tx, origin.playerId);
+    const epochs = await sensorHistoryForPlayer(tx, origin.playerId, origin.seasonId);
     if (pirateZone(spheres, spec, piratePosition(spec, nowMinutes), epochs, nowMinutes) === 'NONE') {
       throw new GameError('PIRATE_OUT_OF_SIGHT', 'That pirate is not on your sensors', 403);
     }

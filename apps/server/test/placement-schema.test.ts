@@ -1,0 +1,34 @@
+import { eq } from 'drizzle-orm';
+import { afterAll, expect, it } from 'vitest';
+import { players, seasons, shards } from '../src/db/schema.js';
+import { createSeason } from '../src/services/season.js';
+import { seedWorld, testDb } from './helpers.js';
+
+afterAll(async () => { await (await testDb()).close(); });
+
+it('initializes a main placement without granting a new activity timestamp', async () => {
+  const f = await seedWorld(1);
+  const [season] = await f.db.select().from(seasons).where(eq(seasons.id, f.seasonId));
+  const [shard] = await f.db.select().from(shards).where(eq(shards.id, season!.shardId));
+  const [player] = await f.db.select().from(players).where(eq(players.id, f.playerIds[0]!));
+  expect(shard?.role).toBe('MAIN');
+  expect(season?.cycleId).toEqual(expect.any(String));
+  expect(player?.homeShardId).toBe(shard?.id);
+  expect(player?.placementVersion).toBe(0);
+  expect(player?.mainEnteredAt).toEqual(player?.joinedAt);
+  expect(player?.lastActiveAt).toEqual(f.clock.now());
+});
+
+it('groups matching period boundaries without changing a legacy period', async () => {
+  const f = await seedWorld(0);
+  const [source] = await f.db.select().from(seasons).where(eq(seasons.id, f.seasonId));
+  const same = await createSeason(f.db, {
+    shardCode: 'SAME-CYCLE', seed: 7, startsAt: f.clock.now(), rulesetVersion: 1,
+  });
+  const different = await createSeason(f.db, {
+    shardCode: 'OTHER-CYCLE', seed: 7, startsAt: f.clock.now(), days: 10, rulesetVersion: 1,
+  });
+  expect(same.season.cycleId).toBe(source?.cycleId);
+  expect(different.season.cycleId).not.toBe(source?.cycleId);
+  expect((await f.db.select().from(seasons).where(eq(seasons.id, f.seasonId)))[0]).toEqual(source);
+});

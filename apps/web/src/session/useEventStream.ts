@@ -191,7 +191,7 @@ export function useEventStream(enabled: boolean, onRollover?: () => void): void 
     };
 
     const refresh = (kind: string): void => {
-      if (kind === 'shard:rollover') {
+      if (kind === 'shard:rollover' || kind === 'placement_changed') {
         onRollover?.();
         return;
       }

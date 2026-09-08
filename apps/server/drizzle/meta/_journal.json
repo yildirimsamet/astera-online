@@ -421,6 +421,27 @@
       "when": 1788740000000,
       "tag": "0059_academy_start",
       "breakpoints": true
+    },
+    {
+      "idx": 60,
+      "version": "7",
+      "when": 1788820382544,
+      "tag": "0060_amusing_mad_thinker",
+      "breakpoints": true
+    },
+    {
+      "idx": 61,
+      "version": "7",
+      "when": 1788838075006,
+      "tag": "0061_gifted_thundra",
+      "breakpoints": true
+    },
+    {
+      "idx": 62,
+      "version": "7",
+      "when": 1788850923513,
+      "tag": "0062_fixed_purifiers",
+      "breakpoints": true
     }
   ]
 }

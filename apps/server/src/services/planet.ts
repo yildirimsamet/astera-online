@@ -240,7 +240,7 @@ export async function loadLocked(
   options: { requireLive?: boolean; expectedPlayerId?: string } = {},
 ): Promise<LockedPlanet> {
   // Resolve the parent first without locking the child, then take locks in the
-  // global season → planet order. A planet never changes season after creation.
+  // global season → planet order. The pre-read locates a lock, not authority.
   const [identity] = await tx
     .select({ seasonId: planets.seasonId })
     .from(planets)
@@ -250,6 +250,9 @@ export async function loadLocked(
   const season = await lockSeason(tx, identity.seasonId, options.requireLive ?? true);
   const [row] = await tx.select().from(planets).where(eq(planets.id, planetId)).for('update');
   if (!row) throw new GameError('PLANET_NOT_FOUND', 'No such planet', 404);
+  if (row.seasonId !== season.id) {
+    throw new GameError('PLACEMENT_CHANGED', 'Your galaxy changed; refresh and try again', 409);
+  }
   if (!row.controllerPlayerId || row.kind === 'NEUTRAL') {
     throw new GameError('PLANET_NOT_OWNED', 'That world has no commander', 403);
   }

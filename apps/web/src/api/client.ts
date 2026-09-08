@@ -1,3 +1,4 @@
+import { returnStatusSchema } from './schemas.js';
 import type { z } from 'zod';
 import type {
   Fleet,
@@ -326,6 +327,11 @@ export class Api {
       // `restore()` is the server's chance to disagree.
     }
   }
+
+  returnStatus = () => this.send('/api/return-applications', returnStatusSchema);
+  applyToReturn = (placementVersion: number) => this.send('/api/return-applications', returnStatusSchema, {
+    method: 'POST', body: { placementVersion },
+  });
 
   me = () => this.send('/api/auth/me', meSchema);
 

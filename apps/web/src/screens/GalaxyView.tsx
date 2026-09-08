@@ -1,3 +1,5 @@
+import { SilentSpaceNotice } from '../shell/SilentSpaceNotice.js';
+import { useReturnStatus, useApplyToReturn } from '../api/returnQueries.js';
 import { SeasonLockProvider } from '../session/seasonLock.js';
 import { VIEW } from '@astera/rules';
 import { NextSeason } from '../ui/NextSeason.js';
@@ -145,7 +147,7 @@ const AdminPanel = lazy(async () => import('./AdminPanel.js'));
  * world the commander controls, that second tap opens management instead.
  */
 
-export type Panel = 'planet' | 'research' | 'intel' | 'report' | 'leaderboard' | 'clan' | 'chat' | 'chronicle' | 'rewards' | 'announcements' | 'feedback' | 'donate' | 'admin' | 'recap' | 'menu' | null;
+export type Panel = 'planet' | 'research' | 'intel' | 'report' | 'leaderboard' | 'clan' | 'chat' | 'chronicle' | 'rewards' | 'announcements' | 'feedback' | 'donate' | 'admin' | 'recap' | 'menu' | 'return' | null;
 
 /**
  * WHICH SHELF INSIDE A PANEL, WHEN THE PANEL ALONE IS NOT AN ANSWER. D121.
@@ -266,6 +268,8 @@ export function GalaxyView({
   showGuidance?: boolean;
 }) {
   const { t } = useTranslation();
+  const returnStatus = useReturnStatus(showChat);
+  const applyToReturn = useApplyToReturn();
   const galaxy = useGalaxy();
   const planet = usePlanet();
   const intel = useIntel();
@@ -1435,6 +1439,15 @@ export function GalaxyView({
         </Sheet>
       )}
 
+      {returnStatus.data && <SilentSpaceNotice
+        key={`${returnStatus.data.placement?.playerId ?? ''}:${String(returnStatus.data.placement?.version ?? 0)}`}
+        data={returnStatus.data}
+        open={panel === 'return'}
+        allowAutomatic={panel === null}
+        onClose={() => { onPanel(null); }}
+        onApply={() => applyToReturn.mutateAsync(returnStatus.data.placement!.version)}
+      />}
+
       {panel === 'menu' && (
         <Sheet
           eyebrow={t('galaxy.panelCommanderEyebrow')}
@@ -1448,6 +1461,7 @@ export function GalaxyView({
             shard={season.data?.shard ?? null}
             endsAt={season.data?.endsAt ?? null}
             ended={season.data?.status === 'frozen'}
+            inSilentSpace={returnStatus.data?.placement?.role === 'WAITING'}
             hasSeasonResult={recapResult != null}
             rival={planets.find((world) => world.id === season.data?.rivalPlanetId) ?? null}
             rivalLost={season.data?.rivalPlanetId != null && !planets.some((world) => world.id === season.data?.rivalPlanetId)}

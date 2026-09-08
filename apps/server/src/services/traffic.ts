@@ -862,7 +862,7 @@ export async function galaxyTraffic(
     loadTrafficSnapshot(db, seasonId, now),
     sensorPosts(db, ownPlanetIds),
     ownPlayerId === null ? Promise.resolve(null) : loadMiningSnapshot(db, seasonId, now),
-    ownPlayerId === null ? Promise.resolve([]) : sensorHistoryForPlayer(db, ownPlayerId),
+    ownPlayerId === null ? Promise.resolve([]) : sensorHistoryForPlayer(db, ownPlayerId, seasonId),
     loadPirateSnapshot(db, seasonId, now),
   ]);
   const discovered = mining === null

@@ -69,6 +69,7 @@ export function MenuPanel({
   endsAt,
   ended = false,
   hasSeasonResult = false,
+  inSilentSpace = false,
   rival = null,
   rivalLost = false,
   onFocusRival,
@@ -83,6 +84,7 @@ export function MenuPanel({
   endsAt: Date | null;
   ended?: boolean;
   hasSeasonResult?: boolean;
+  inSilentSpace?: boolean;
   rival?: { owner: string; name: string } | null;
   rivalLost?: boolean;
   onFocusRival?: () => void;
@@ -122,6 +124,8 @@ export function MenuPanel({
        * came here to check.
        */}
       <div className="flex flex-col gap-2">
+        {inSilentSpace && <MenuRow icon={<GalaxyIcon className="size-5" />}
+          label={t('silentSpace.menu')} hint={t('silentSpace.menuHint')} onClick={() => { onOpen('return'); }} />}
         {hasSeasonResult && (
           <MenuRow
             icon={<GalaxyIcon className="size-5" />}

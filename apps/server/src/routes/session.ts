@@ -39,9 +39,9 @@ export function registerSessionRoutes(app: FastifyInstance): void {
    * than taken from anywhere the client can influence, so a connection can only
    * ever be subscribed to the galaxy it is actually in.
    */
-  const whoAndWhere = async (accountId: string): Promise<{ playerId: string; seasonId: string }> => {
+  const whoAndWhere = async (accountId: string): Promise<{ playerId: string; seasonId: string; placementVersion: number }> => {
     const rows = await app.db
-      .select({ playerId: players.id, seasonId: players.seasonId })
+      .select({ playerId: players.id, seasonId: players.seasonId, placementVersion: players.placementVersion })
       .from(players)
       .innerJoin(planets, and(eq(planets.controllerPlayerId, players.id), eq(planets.kind, 'CAPITAL')))
       .where(eq(players.accountId, accountId))
@@ -167,7 +167,7 @@ export function registerSessionRoutes(app: FastifyInstance): void {
    * costs one line per real event in a galaxy of three hundred commanders.
    */
   app.get('/api/stream', { preHandler: requireAuth }, async (req, reply) => {
-    const { playerId, seasonId } = await whoAndWhere(req.accountId!);
+    const { playerId, seasonId, placementVersion } = await whoAndWhere(req.accountId!);
 
     reply.hijack();
     reply.raw.writeHead(200, {
@@ -189,8 +189,41 @@ export function registerSessionRoutes(app: FastifyInstance): void {
       }
       return true;
     };
+    // Serialize frames under a placement read lock: no old-shard frame may
+    // cross a committed transfer. Bound the pending queue as well as the socket.
+    let pendingBytes = 0;
+    let delivery = Promise.resolve();
+    const enqueue = (frame: string): void => {
+      if (reply.raw.destroyed || reply.raw.writableEnded) return;
+      const bytes = Buffer.byteLength(frame);
+      pendingBytes += bytes;
+      if (pendingBytes > app.sseMaxBufferBytes) {
+        cleanup('slow');
+        reply.raw.destroy();
+        return;
+      }
+      delivery = delivery.then(async () => {
+        if (reply.raw.destroyed || reply.raw.writableEnded) return;
+        await app.db.transaction(async (tx) => {
+          const [current] = await tx.select({ seasonId: players.seasonId,
+            placementVersion: players.placementVersion }).from(players)
+            .where(eq(players.id, playerId)).for('share');
+          if (current?.seasonId !== seasonId || current.placementVersion !== placementVersion) {
+            write('event: placement_changed\ndata: {"kind":"placement_changed"}\n\n');
+            cleanup('client');
+            reply.raw.end();
+            return;
+          }
+          write(frame);
+        });
+      }).catch((err: unknown) => {
+        app.log.warn({ err, playerId }, 'stream placement check failed');
+        cleanup('error');
+        reply.raw.destroy();
+      }).finally(() => { pendingBytes -= bytes; });
+    };
     const send = (event: { kind: string }): void => {
-      write(`event: ${event.kind}\ndata: ${JSON.stringify(event)}\n\n`);
+      enqueue(`event: ${event.kind}\ndata: ${JSON.stringify(event)}\n\n`);
     };
     // Subscribe before the first byte makes the response visible to the client.
     // Once fetch resolves its headers the client considers the channel live; a
@@ -201,7 +234,7 @@ export function registerSessionRoutes(app: FastifyInstance): void {
     const unsubscribeGlobal = app.bus.subscribeGlobal(send);
 
     const heartbeat = setInterval(() => {
-      write(`: ping\n\n`);
+      enqueue(`: ping\n\n`);
     }, HEARTBEAT_MS);
 
     const lease = app.streams.open(() => {

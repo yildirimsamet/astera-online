@@ -149,6 +149,9 @@ services:
       # and only ever here: an API replica never consults it. Names come from
       # `pnpm bots add` and are never generated.
       BOTS_ENABLED: ${BOTS_ENABLED:-false}
+      SILENT_SPACE_ENABLED: ${SILENT_SPACE_ENABLED:-false}
+      SILENT_SPACE_BATCH: ${SILENT_SPACE_BATCH:-5}
+      SILENT_SPACE_MAX_SHARDS: ${SILENT_SPACE_MAX_SHARDS:-16}
       # The worker registers no public routes, so it needs no shared limiter.
       RATE_LIMIT_REDIS_URL: ''
     ports:

@@ -158,3 +158,13 @@ describe('the quick-start guide row', () => {
     expect(guide).toBeGreaterThan(rewards);
   });
 });
+
+it('opens the return application from the menu only for Silent Space', () => {
+  const { wrapper } = harness();
+  const onOpen = vi.fn();
+  const view = render(<MenuPanel galaxy="Silent Space" shard="WAIT-1" endsAt={null} onOpen={onOpen} onSignOut={vi.fn()} />, { wrapper });
+  expect(screen.queryByRole('button', { name: /Return application/i })).toBeNull();
+  view.rerender(<MenuPanel galaxy="Silent Space" shard="WAIT-1" endsAt={null} inSilentSpace onOpen={onOpen} onSignOut={vi.fn()} />);
+  fireEvent.click(screen.getByRole('button', { name: /Return application/i }));
+  expect(onOpen).toHaveBeenCalledWith('return');
+});

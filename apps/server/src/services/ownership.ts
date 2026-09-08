@@ -106,6 +106,9 @@ export async function lockWorlds(
   for (const id of unique) {
     const [world] = await tx.select().from(planets).where(eq(planets.id, id)).for('update');
     if (!world) throw new GameError('PLANET_NOT_FOUND', 'One of those worlds no longer exists', 404);
+    if (world.seasonId !== rows[0]!.seasonId) {
+      throw new GameError('PLACEMENT_CHANGED', 'Your galaxy changed; refresh and try again', 409);
+    }
     locked.push(world);
   }
   // Return the rows read under the locks. Controller and resource state may have
