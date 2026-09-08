@@ -279,7 +279,12 @@ export class EventWorker {
         if (result.ran) this.log.info(result, 'Silent Space five-minute maintenance');
       }).catch((err: unknown) => {
         this.log.error({ err }, 'Silent Space maintenance failed; fleet resolution continues');
-      }).finally(() => { this.silentSpaceTask = null; });
+      }).finally(() => {
+        // The persisted lease takes its timestamp after tick entry. Starting the
+        // next interval at completion prevents an early no-op from skipping a tour.
+        this.silentSpaceAt = this.clock.now().getTime();
+        this.silentSpaceTask = null;
+      });
     }
 
     return {

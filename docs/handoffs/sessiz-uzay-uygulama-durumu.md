@@ -36,3 +36,13 @@ canlı health/commit kabul çıktıları ve ilk/sonraki bakım turunun audit ç�
 Canlı flag için worker ortamı ve silent_space_maintenance tablosu esas alınır.
 Dağıtım boyunca flag kapalı tutulur; dört süreç ve web doğrulandıktan sonra açılır.
 Wiki değişiklikleri bu release kapsamına alınmadı.
+
+## Aktivasyon ve takip düzeltmesi
+
+2636901 site kapatılmadan dağıtıldı; otomatik aktarım açıldı ve ilk turda beş hesap
+başarıyla taşındı. Bütünlük, outbox, event ve uçuş kontrolleri sıfır hata verdi.
+Takip turunda yerel tick başlangıcı ile veritabanının lease zamanı arasındaki farkın
+bir turu erken denetip atlatabildiği görüldü. Interval artık bağımsız bakım işi
+bittikten sonra başlar; her turun ardından beş dakika bekler. Bu nedenle normal
+çalışma süresi kadar küçük bir ek gecikme olabilir, erken kontrol yüzünden beş dakika
+atlanmaz. Regresyon önce FAIL, düzeltme ve CR sonrası ilgili 37 test PASS.
