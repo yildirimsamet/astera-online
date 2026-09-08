@@ -50,9 +50,14 @@ describe('production and cost curves', () => {
   it('holds the D161 balance between the three passive rates', () => {
     // 52.8 / 118.8 — crystal is now 4/9 of alloy income rather than 4/11.
     expect(crystalRate(1) / alloyRate(1)).toBeCloseTo((48 * 1.1) / (132 * 0.9) * (1.09 / 1.10), 6);
-    // Deuterium keeps its own flatter ladder; only its base moved.
+    /*
+      Deuterium keeps its own flatter ladder; only its base has ever moved. D161
+      lifted it 15%, D176 tripled what that produced — both are written as the
+      factors they are rather than as one collapsed number, so a later reader can
+      still see which instruction moved which part of it.
+    */
     expect(deuteriumRate(1) / alloyRate(1))
-      .toBeCloseTo((4.15 * 1.15) / (132 * 0.9) * (1.04 / 1.10), 6);
+      .toBeCloseTo((4.15 * 1.15 * 3) / (132 * 0.9) * (1.04 / 1.10), 6);
     // And the shape is untouched: it is still `base x L x growth^L`.
     expect(alloyRate(2) / alloyRate(1)).toBeCloseTo(2 * ECON.alloyMult, 6);
   });

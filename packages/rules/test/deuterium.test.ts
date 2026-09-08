@@ -37,11 +37,19 @@ const input = (plantLevel: number) => ({
  * it; T6 makes every launch need it, and a resource most players cannot get is a
  * game most players cannot play.
  *
- * THE REFINERY IS THE FLOOR, NEVER THE CEILING. A guaranteed trickle you can plan
- * around; the rocks stay the fast, contested money that pays for Couriers,
- * Nullifiers, the last two research rungs and a Death Star. If the two ever meet,
- * the whole second act of the season becomes dead content — that is the acceptance
- * criterion, and it is asserted below rather than left as a hope.
+ * THE REFINERY WAS THE FLOOR AND IS NOW A SUPPLY. D176, owner instruction: the
+ * plant's output is tripled. That RETIRES the ordering this suite used to assert —
+ * "a guaranteed trickle that must stay under what a miner pulls off the rocks" —
+ * and it is retired deliberately rather than drifted into, so the crossing is
+ * asserted instead of the old ceiling.
+ *
+ * WHAT REPLACES IT. A young world still cannot out-produce a miner: through plant
+ * level 7 the refinery is under a single isotope run, so the opening still sends
+ * commanders to the rocks. From level 8 the plant passes it, and at the top of both
+ * ladders it is about two and a half times a miner's run. The rocks keep the two
+ * things a plant can never give — they are contested, and they arrive in one lump
+ * that a fleet has to be in position for — but they are no longer the larger
+ * number, and the Frontier act now competes on those terms rather than on volume.
  */
 describe('the deuterium refinery', () => {
   it('produces nothing at all without a plant', () => {
@@ -56,20 +64,29 @@ describe('the deuterium refinery', () => {
   });
 
   /**
-   * THE NUMBER THAT MATTERS, stated as a ratio so it survives a tempo change.
+   * WHERE THE PLANT OVERTAKES THE ROCKS, stated as a ratio so it survives a tempo
+   * change. D176.
    *
-   * Two craft on an isotope rock carry home about `2 × hold × mean share`. A
+   * Two craft on an isotope rock carry home about `2 × hold × mean share`, and a
    * dedicated miner turns that round roughly once an hour while the frontier is
-   * open. The plant at the very top of both its ladders must still be visibly
-   * short of that, or nobody flies to a rock again.
+   * open. The owner tripled the plant, so this is no longer a ceiling the refinery
+   * must stay under — it is a CROSSING, and the test's job is to say exactly where
+   * it falls. An assertion that merely allowed the plant to be large would pass on
+   * a tenfold change as happily as on this one.
    */
-  it('stays below what a dedicated miner pulls off the rocks', () => {
+  it('is under a miner while a world is young, and passes it from level 8', () => {
     const perRun = 2 * PROSPECTOR.hold
       * (DEUTERIUM.isotopeShareMin + DEUTERIUM.isotopeShareMax) / 2;
     const ceiling = plantCeiling(RESEARCH_PROJECTS.DEUTERIUM_SYNTHESIS.maxLevel);
-    expect(deuteriumRate(ceiling)).toBeLessThan(perRun);
-    // And an ordinary developed plant is a trickle beside it, not a rival.
-    expect(deuteriumRate(6)).toBeLessThan(perRun / 3);
+
+    // The opening still belongs to the rocks: a plant a young world can afford
+    // does not out-produce one miner.
+    expect(deuteriumRate(7)).toBeLessThan(perRun);
+    // And from the next level it does, which is the whole of what D176 bought.
+    expect(deuteriumRate(8)).toBeGreaterThanOrEqual(perRun);
+    // The top is a real supply rather than an unbounded one.
+    expect(deuteriumRate(ceiling)).toBeGreaterThan(perRun * 2);
+    expect(deuteriumRate(ceiling)).toBeLessThan(perRun * 3);
   });
 
   it('is a fraction of what the other two produce, at every level', () => {

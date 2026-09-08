@@ -640,6 +640,16 @@ deuterium; the measured ceilings run 45 · 137 · 285 · 497. A flat cap was rej
 would have paid the same 500 at levels 2, 3 and 4 and flattened the one number a commander
 prices the fight against.
 
+**D176 raised that ceiling to about 700**, on owner instruction and by moving the share alone:
+**0.008 → 0.01125**, measured against the same sixty thousand seeds per level, where the richest
+level-4 roster is worth 44,404. The ladder keeps its shape and every level rises with it —
+64 · 192 · 401 · 699 against the old 45 · 137 · 285 · 497 — so the level badge still prices the
+fight. Deuterium remains a garnish by share: about 1.3% of a hoard's total value against alloy's
+55% and crystal's 30%. The self-funding worry D136 raises was already moot at 0.008 and is no
+less moot now — a two-leg pirate raid burns single-digit to low-double-digit deuterium against a
+median level-4 hoard of 240 — but that is a statement about how cheap fuel is at this fleet
+size, not a licence to grow the share again without re-measuring both.
+
 The two tunes pull opposite ways — a much smaller hoard against a hull that lands far more
 often — and the net lands slightly flatter and slightly lower than before: L1 gives back about
 3%, L4 about 18%. The lane still pays a fleet built for the target and still punishes one that

@@ -259,8 +259,9 @@ describe('the pirate hoard', () => {
 
   it('caps the deuterium a hoard can carry at a tankful, and keeps the levels apart', () => {
     /*
-      THE OWNER'S CEILING: about 500 at level 4, every level below it scaled by
-      the same share rather than clamped.
+      THE OWNER'S CEILING: about 700 at level 4, every level below it scaled by
+      the same share rather than clamped. Raised from 500 by D176, by moving the
+      share alone — the ladder keeps its shape and every level rises with it.
 
       A FLAT CAP WAS THE OBVIOUS SHAPE AND IT IS THE WRONG ONE. Levels 2, 3 and 4
       would all have paid 500 at the top, and the level badge is precisely the
@@ -273,6 +274,13 @@ describe('the pirate hoard', () => {
       ceiling is the richest roster it can produce and there is no closed form.
       Twenty thousand seeds per level here; the constant itself was set against
       sixty thousand, where the worst level-4 roster is worth 44,404.
+
+      WHICH IS WHY THE LOWER BOUND IS NINE TENTHS OF THE CEILING RATHER THAN THE
+      CEILING ITSELF. Twenty thousand seeds do not reach the richest roster sixty
+      thousand find — they land about 93% of the way there — so the bound is set
+      below that gap on purpose and was set the same way before D176 raised the
+      share (450 against a 500 ceiling, 630 against 700). It is the same
+      diagnostic, re-derived, not a band widened to admit a new number.
     */
     const worst = new Map<PirateLevel, number>();
     for (const level of LEVELS) {
@@ -283,14 +291,14 @@ describe('the pirate hoard', () => {
       worst.set(level, max);
     }
 
-    expect(worst.get(4)).toBeLessThanOrEqual(500);
+    expect(worst.get(4)).toBeLessThanOrEqual(700);
     /*
       AND IT HAS TO REACH IT. An upper bound alone would pass just as happily on a
       share tuned to fifty, which would have deleted the reward instead of
       capping it — the exact failure `balance.md` calls a diagnostic that cannot
       fail.
     */
-    expect(worst.get(4)).toBeGreaterThan(450);
+    expect(worst.get(4)).toBeGreaterThan(630);
 
     for (const level of [2, 3, 4] as const) {
       expect(worst.get(level)!).toBeGreaterThan(worst.get((level - 1) as PirateLevel)!);

@@ -55,24 +55,33 @@ export const ECON = {
   crystalBase: 48 * 1.1 * ECONOMY_TEMPO.passiveIncome,
   crystalMult: 1.09,
   /**
-   * THE THIRD PRODUCER, AND IT IS DELIBERATELY A TRICKLE. T5.
+   * THE THIRD PRODUCER, TRIPLED. D176, owner instruction.
    *
    * Scaled by `passiveIncome` like the other two, so a tempo change moves all
-   * three together rather than leaving deuterium behind.
+   * three together rather than leaving deuterium behind. The `× 3` is written as
+   * its own factor rather than folded into the 4.15: that number was swept
+   * against the ladder below and against `docs/balance.md`, and hiding a
+   * threefold change inside it would leave nobody able to re-derive either.
    *
-   * A FLATTER CURVE THAN ALLOY OR CRYSTAL (1.04 against 1.10 and 1.09), because
-   * this ladder must not be able to catch the rocks. Measured: two craft on an
-   * isotope rock carry home about 105, and a dedicated miner turns that round
-   * roughly once an hour once the frontier opens. The plant reads
+   * WHAT IT RETIRES, SAID OUT LOUD. This block used to read "the floor, never the
+   * ceiling: if the two ever meet, the whole Frontier act becomes dead content",
+   * and the flat 1.04 curve existed to keep the plant under the rocks. It no
+   * longer does. Two craft on an isotope rock carry home about 105, and the plant
+   * now reads
    *
-   *   L1  3/h     L3  10/h     L6  22/h     L9  37/h     L15  78/h
+   *   L1  10/h    L3  34/h    L6  76/h    L9  128/h    L15  271/h
    *
-   * so even at the top of both its ladders — research 5 and Core 16 — it is
-   * visibly short of a miner who is actually flying, and it is guaranteed instead.
-   * The floor, never the ceiling: if the two ever meet, the whole Frontier act
-   * becomes dead content.
+   * so it passes a single miner's run at level 8 and ends at about two and a half
+   * times it. The rocks keep what a plant cannot copy — they are contested, and
+   * they arrive in one lump a fleet has to be in position for — but they are no
+   * longer the bigger number, and that is the owner's decision rather than drift.
+   * `deuterium.test.ts` asserts the crossing so it cannot move unnoticed.
+   *
+   * THE CURVE ITSELF IS UNTOUCHED. Only the base moved, so every level rises by
+   * the same factor and the ladder keeps the shape the rest of the economy was
+   * measured against.
    */
-  deuteriumBase: 4.15 * 1.15 * ECONOMY_TEMPO.passiveIncome,
+  deuteriumBase: 4.15 * 1.15 * 3 * ECONOMY_TEMPO.passiveIncome,
   deuteriumMult: 1.04,
 
   costBase: 52 * ECONOMY_TEMPO.upgradePrice,
@@ -2438,16 +2447,18 @@ export const PIRATE = {
   /**
    * How the hoard splits. Deuterium is the smallest share: it is also fuel.
    *
-   * CUT TWICE ON OWNER INSTRUCTION, AND THE SECOND CUT SET A CEILING: 0.15 →
-   * 0.075 → 0.008, so the richest level-4 hoard the generator can produce pays
-   * about 500 deuterium and every level below it scales from the same share.
+   * CUT TWICE AND THEN RAISED ONCE, ALL THREE ON OWNER INSTRUCTION: 0.15 → 0.075
+   * → 0.008 → 0.01125 (D176), so the richest level-4 hoard the generator can
+   * produce pays about 700 deuterium and every level below it scales from the
+   * same share. The raise moved the SHARE and nothing else, so the ladder keeps
+   * the shape the two cuts gave it.
    *
    * WHY A SHARE AND NOT A CAP. A flat `min(deuterium, 500)` was the obvious shape
    * and it flattens the ladder: levels 2, 3 and 4 would all have paid 500 at the
    * top, and the level badge is exactly the number a commander prices the fight
    * against. Scaling keeps each hoard proportional to what the pirate is worth,
    * which is the property the whole hoard is built on. The measured ceilings are
-   * 45 · 137 · 285 · 497 — a ladder, ending where the owner put it.
+   * 64 · 192 · 401 · 699 — a ladder, ending where the owner put it.
    *
    * WHY IT IS THIS SMALL AT ALL. Fuel is what makes a raid cost something (D136):
    * it is paid in full at launch and never refunded. A hoard that hands the tank
@@ -2466,7 +2477,7 @@ export const PIRATE = {
    * `pirates.test.ts` reads both numbers and asserts their product, and samples
    * the ceiling rather than trusting this comment.
    */
-  hoardShare: { alloy: 0.55, crystal: 0.3, deuterium: 0.008 },
+  hoardShare: { alloy: 0.55, crystal: 0.3, deuterium: 0.01125 },
 
   /**
    * New pirates per SEAT per hour, and the galaxy-wide rate that follows.

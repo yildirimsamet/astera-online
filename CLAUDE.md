@@ -142,7 +142,9 @@ Rationale/evidence: `docs/decisions.md`. Numbers/simulator history: `docs/balanc
 - Three independent queues, depth 3: world-local `CONSTRUCTION`, world-local `YARD`, and commander-wide `RESEARCH`. Cost commits on order; Construction/Yard cancellation refunds half, Research cannot be cancelled, system fault refunds all; gates use projected same-queue state (D4).
 - Research belongs to the commander, not the funding planet; capture neither cancels nor transfers it (D134).
 - Instruments/research stop where effect tables stop; derive max levels from effects, never duplicate ladders manually (D140/D141).
-- Refinery is deuterium floor; rocks are contested ceiling. Plant level is capped by research rung (D135).
+- The deuterium plant is a SUPPLY, not a floor (D176 tripled its output): it passes a miner's
+  isotope run at level 8 and ends near 2.5×. Rocks stay contested and arrive in one lump, but they
+  are no longer the larger number. Plant level is still capped by research rung (D135).
 - Mined ore lands in `WORKS`, not storage.
 - Notifications are idempotent by `(player_id, kind, ref_id)`.
 - Broadcast only when referenced **public** payload changes; hidden changes must not leak timing (D53).
