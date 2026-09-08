@@ -20,7 +20,7 @@ Bu metin önceki taslakların yerini alır. Son kullanıcı kararları bağlayı
   uygun sonraki başvuru değerlendirilir. Sonraki turda eski başvurular yeniden denenir.
 - Başvuruda 48 saat inaktivite expiry yaratır. Yeni başvuru yeni sıra alır.
 - Bakım 5 dakikada bir, tur başına en çok 5 başarılı aktarım; fleet resolver bağımsızdır.
-- Uçuş/çatışma, recovery, yabancı gemi veya işlenmekte olan event kaybolmaz: ilgili aktarım
+- Uçuş/çatışma, canlı enkaz veya devam eden enkaz toplama, recovery, yabancı gemi veya işlenmekte olan event kaybolmaz: ilgili aktarım
   ertelenir. Başkasının saldırısı inaktif hedefte de bulunabilir. Engeller kaldırılarak zorlanmaz.
 - Normal klan ayrılığı ve ateşkes uygulanır. Eski üyelik dönüşte geri verilmez.
 - Açık oturum eski galaksi verisini temizleyip yeni placement'a geçer; TR/EN modal

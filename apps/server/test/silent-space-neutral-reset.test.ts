@@ -113,3 +113,16 @@ it('uses another available neutral site when one has an incoming fleet', async (
   const [returned] = await f.db.select().from(planets).where(eq(planets.id, colony!.id));
   expect(returned!.slotIndex).toBe(701);
 });
+
+it('leaves live wreckage at its source until it expires before moving its world', async () => {
+  const f = await seedWorld(1);
+  const { debrisFields } = await import('../src/db/schema.js');
+  const { DEBRIS } = await import('@astera/rules');
+  f.clock.advance(48 * 60);
+  const [world] = await f.db.select().from(planets).where(eq(planets.id, f.planetIds[0]!));
+  await f.db.insert(debrisFields).values({ seasonId: f.seasonId, planetId: world!.id, x: world!.x, y: world!.y, z: world!.z, alloy: 40, crystal: 20, createdAt: f.clock.now() });
+  const waiting = await ensureWaitingSeason(f.db, f.seasonId, f.clock);
+  expect((await transferCommander(f.db, f.playerIds[0]!, waiting!.id, f.clock)).status).toBe('EFFECT');
+  f.clock.advance(DEBRIS.decayMinutes + 1);
+  expect((await transferCommander(f.db, f.playerIds[0]!, waiting!.id, f.clock)).status).toBe('MOVED');
+});

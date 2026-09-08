@@ -1,10 +1,10 @@
 import { createNeutralWorld } from './season.js';
 import { randomUUID } from 'node:crypto';
 import { and, asc, eq, gt, inArray, isNull, ne, notInArray, or, sql } from 'drizzle-orm';
-import { CLAN, INACTIVITY_MS, MULTI_WORLD, generateGalaxy, inactivityEligible, waitingColonySlots, selectNeutralSlots, hashSeed } from '@astera/rules';
+import { CLAN, DEBRIS, INACTIVITY_MS, MULTI_WORLD, generateGalaxy, inactivityEligible, waitingColonySlots, selectNeutralSlots, hashSeed } from '@astera/rules';
 import type { Clock } from '../clock.js';
 import type { Db } from '../db/client.js';
-import { accounts, buildOrders, clanMemberships, clanRequests, clans, commanderTransfers, mainVacancies,
+import { accounts, buildOrders, clanMemberships, clanRequests, clans, commanderTransfers, debrisFields, mainVacancies,
   miningRuns, missions, planets, players, probeWorldMemories, researchOrders, returnApplications,
   scheduledEvents, seasons, shards, strategicAssets, strategicInterceptions, units, watches, pirateRaids, tradeRuns } from '../db/schema.js';
 import { loadLocked } from './planet.js';
@@ -86,6 +86,12 @@ export async function transferCommander(db: Db, playerId: string, targetSeasonId
       const [interception] = await tx.select({ id: strategicInterceptions.id }).from(strategicInterceptions).where(and(isNull(strategicInterceptions.resolvedAt),
         or(eq(strategicInterceptions.attackerPlayerId, playerId), eq(strategicInterceptions.defenderPlayerId, playerId), inArray(strategicInterceptions.targetPlanetId, ids)))).limit(1);
       if (interception || worlds.some(w => w.recoveryUntil !== null || (w.protectedUntil !== null && w.protectedUntil > now))) defer('EFFECT');
+      const wreckCutoff = new Date(now.getTime() - DEBRIS.decayMinutes * 60_000);
+      const [wreck] = await tx.select({ id: debrisFields.id }).from(debrisFields).where(and(inArray(debrisFields.planetId, ids), or(
+        gt(debrisFields.createdAt, wreckCutoff),
+        sql`exists (select 1 from mining_runs r where r.debris_field_id = ${debrisFields.id} and r.status <> 'done')`,
+      ))).limit(1);
+      if (wreck) defer('EFFECT');
       const orders = await tx.select().from(buildOrders).where(inArray(buildOrders.planetId, ids));
       const research = await tx.select().from(researchOrders).where(eq(researchOrders.playerId, playerId));
       const assets = await tx.select().from(strategicAssets).where(inArray(strategicAssets.planetId, ids));
@@ -111,6 +117,7 @@ export async function transferCommander(db: Db, playerId: string, targetSeasonId
       const capitalAddress = addresses.find(v => v.kind === 'CAPITAL' && !occupied.has(v.slotIndex));
       const safeNeutrals = returning ? await tx.select({ id: planets.id }).from(planets).where(and(
         eq(planets.seasonId, target.id), eq(planets.kind, 'NEUTRAL'), isNull(planets.controllerPlayerId), isNull(planets.recoveryUntil),
+        sql`not exists (select 1 from debris_fields d where d.planet_id = ${planets.id} and (d.created_at > ${wreckCutoff.toISOString()}::timestamptz or exists (select 1 from mining_runs r where r.debris_field_id = d.id and r.status <> 'done')))`,
         sql`not exists (select 1 from missions m where m.status = 'in_flight' and (m.origin_planet_id = ${planets.id} or m.target_planet_id = ${planets.id}))`,
         sql`not exists (select 1 from units u where u.planet_id = ${planets.id} and u.owner_player_id is not null and u.count > 0)`,
         sql`not exists (select 1 from scheduled_events e where e.ref_id = ${planets.id} and e.status <> 'done' and (e.kind <> 'neutral_reinforce' or e.status <> 'pending' or e.attempts <> 0 or e.resolve_at <= ${now.toISOString()}::timestamptz))`,
