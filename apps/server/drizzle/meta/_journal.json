@@ -442,6 +442,13 @@
       "when": 1788850923513,
       "tag": "0062_fixed_purifiers",
       "breakpoints": true
+    },
+    {
+      "idx": 63,
+      "version": "7",
+      "when": 1788878695595,
+      "tag": "0063_careless_purple_man",
+      "breakpoints": true
     }
   ]
 }

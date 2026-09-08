@@ -402,6 +402,10 @@ export async function resolvePirateArrival(
    * thing that happens when another commander wins the race.
    */
   if (!spec) {
+    await tellTargetGone(tx, raid, origin.playerId, {
+      callsign: pirateCallsign(key, raid.pirateIndex),
+      ships: fleetCount(attacking),
+    }, origin.now);
     await turnForHome(tx, raid, attacking, origin, null, null);
     return;
   }
@@ -459,7 +463,14 @@ async function settleArrival(
 
   const crew = livingRoster(spec.roster, state?.losses);
   if (state?.destroyedAt != null || fleetCount(crew) === 0) {
-    // Somebody else won the race. The fleet turns around with nothing.
+    // Somebody else won the race. The fleet turns around with nothing — and is
+    // told so HERE, at the instant it becomes true, rather than a return leg
+    // later when the squadron lands and the row says "empty-handed".
+    await tellTargetGone(tx, raid, origin.playerId, {
+      callsign: pirateCallsign(key, raid.pirateIndex),
+      level: spec.level,
+      ships: fleetCount(attacking),
+    }, now);
     await turnForHome(tx, raid, attacking, origin, null, null);
     return;
   }
@@ -635,6 +646,36 @@ async function settleArrival(
     loot ? { alloy: loot.alloy, crystal: loot.crystal, deuterium: loot.deuterium } : null,
     captured,
   );
+}
+
+/**
+ * THE TRIP THAT ARRIVED AT NOTHING. D177.
+ *
+ * A raid can be pointless for two reasons that are one fact to the commander who
+ * flew it: another commander wiped the crew first, or the lane no longer carries
+ * that pirate at all. Both end in `turnForHome` with no loot, and both used to end
+ * in SILENCE — `raid_result` is written by the fight, so a trip with no fight in it
+ * wrote nothing and the news waited for the squadron to land.
+ *
+ * IT NAMES THE PIRATE AND NOT THE WINNER. Who got there first is somebody else's
+ * raid, and D127 does not hand it over because this commander happened to aim at
+ * the same target. Idempotent by `(player, kind, refId)` like every other
+ * notification, so a redelivered arrival cannot say it twice.
+ */
+async function tellTargetGone(
+  tx: Tx,
+  raid: PirateRaidRow,
+  playerId: string,
+  what: { callsign: string; level?: number; ships: number },
+  at: Date,
+): Promise<void> {
+  await notify(tx, {
+    playerId,
+    kind: 'target_gone',
+    payload: { targetKind: 'PIRATE', ...what },
+    at,
+    refId: raid.id,
+  });
 }
 
 /**

@@ -594,6 +594,20 @@ export const notifications = {
    */
   tradeHome: 'Konvoy evde · {{count}} gemi · {{landed}} alındı',
   tradeHomeEmpty: 'Konvoy evde · {{count}} gemi · alım yok',
+  /**
+   * THE PIRATE LANE HAS ITS OWN HOMECOMING AND ITS OWN EMPTY TRIP. D177.
+   *
+   * A pirate is not a commander: there is no world to come back FROM by name
+   * and no ledger that moved, so these never borrow the raid's wording. And a
+   * flight that arrived at nothing is a different fact from one that fought and
+   * lost — it names what was gone and how many craft are turning back, and never
+   * who got there first.
+   */
+  targetGonePirate: 'Korsan {{callsign}} çoktan yok edilmiş · {{count}} gemi geri dönüyor',
+  targetGoneAsteroid: 'Asteroit sen varmadan tükendi · {{count}} kazıcı geri dönüyor',
+  targetGoneDebris: 'Enkaz sahası çoktan toplanmış · {{count}} kazıcı geri dönüyor',
+  pirateHome: 'Akın filosu evde · {{count}} gemi · +{{amount}} ganimet',
+  pirateHomeEmpty: 'Akın filosu evde · {{count}} gemi · eli boş',
   fleetFrom: ' ({{origin}} dönüşü)',
   probeLost: 'Sondan kayboldu. O uçuş tamamlanamadı',
   recalled: '{{count}} araç geri döndü. O uçuş tamamlanamadı',

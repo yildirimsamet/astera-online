@@ -147,6 +147,10 @@ Rationale/evidence: `docs/decisions.md`. Numbers/simulator history: `docs/balanc
   are no longer the larger number. Plant level is still capped by research rung (D135).
 - Mined ore lands in `WORKS`, not storage.
 - Notifications are idempotent by `(player_id, kind, ref_id)`.
+- **A committed flight is never recalled and never turns early** — it flies the whole outbound
+  leg, and a target that died mid-flight is discovered on arrival. What the arrival owes the
+  commander is the SENTENCE: `target_gone` is written the moment the trip becomes pointless,
+  on both the pirate and the mining lane, and it names the target and never the rival (D177).
 - Broadcast only when referenced **public** payload changes; hidden changes must not leak timing (D53).
 - Reports identify the actual fought-over/owned world and use immutable clan snapshots.
 - **A defender is shown the whole force that arrived** — the attacker's complete committed roster, hulls that never fired included, because that fleet was in front of them (D164). One direction only: what was standing at the target stays a probe's product, so an attacker's `theirFleet` is empty and their side keeps D121a's floor framing. A report still states losses and never survivors.

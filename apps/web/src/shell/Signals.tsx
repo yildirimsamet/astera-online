@@ -265,6 +265,9 @@ export const DESTINATION: Record<string, { panel: Panel; stop?: PanelStop }> = {
   incoming_fleet: { panel: 'planet' },
   strategic_incoming: { panel: 'planet' },
   fleet_returned: { panel: 'planet' },
+  // The trip is spent and the craft are on their way back; the flight board is
+  // where the commander sees them and decides what the next launch is aimed at.
+  target_gone: { panel: 'planet' },
   /*
     A FIGHT OPENS ITS OWN REPORT. Owner instruction, correcting D121.
 

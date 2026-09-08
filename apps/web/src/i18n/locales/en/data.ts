@@ -519,6 +519,20 @@ export const notifications = {
    */
   tradeHome: 'Convoy home · {{count}} ships · bought {{landed}}',
   tradeHomeEmpty: 'Convoy home · {{count}} ships · nothing bought',
+  /**
+   * THE PIRATE LANE HAS ITS OWN HOMECOMING AND ITS OWN EMPTY TRIP. D177.
+   *
+   * A pirate is not a commander: there is no world to come back FROM by name
+   * and no ledger that moved, so these never borrow the raid's wording. And a
+   * flight that arrived at nothing is a different fact from one that fought and
+   * lost — it names what was gone and how many craft are turning back, and never
+   * who got there first.
+   */
+  targetGonePirate: 'Pirate {{callsign}} was already destroyed · {{count}} ships turning back',
+  targetGoneAsteroid: 'The rock was stripped before you arrived · {{count}} drills turning back',
+  targetGoneDebris: 'The wreck field was already picked clean · {{count}} drills turning back',
+  pirateHome: 'Raiders home · {{count}} ships · +{{amount}} looted',
+  pirateHomeEmpty: 'Raiders home · {{count}} ships · empty-handed',
   fleetFrom: ' from {{origin}}',
   probeLost: 'Your probe was lost · that flight could not be completed',
   recalled: '{{count}} craft returned · that flight could not be completed',

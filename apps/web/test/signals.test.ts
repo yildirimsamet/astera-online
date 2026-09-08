@@ -359,6 +359,7 @@ describe('what family of news a signal is', () => {
       settlement_success: { targetPlanetId: 'p9' },
       strategic_incoming: { etaMinutes: 9 },
       strategic_intercepted: { defended: true, range: 1300 },
+      target_gone: { targetKind: 'PIRATE', callsign: 'BLACKJAW', level: 3, ships: 40 },
       unlock: { unlock: 'RADAR', title: 'Radar unlocked', body: 'Catches anyone looking.' },
     };
     for (const [kind, payload] of Object.entries(payloads)) {

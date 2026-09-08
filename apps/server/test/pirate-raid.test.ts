@@ -554,6 +554,49 @@ describe('what a pirate raid comes home with', () => {
     expect(home!.count).toBe(250);
   });
 
+  /**
+   * THE SAME SILENCE THE MINING LANE HAD, and the same fix.
+   *
+   * The fleet already turned for home when it arrived to find nothing — the test
+   * above proves the ships land — but nothing was written at the moment it
+   * happened, and `raid_result` is only produced by a fight. So a commander who
+   * lost the race learned it when the squadron touched down, one full return leg
+   * after the answer existed. The arrival now says so, and it still says nothing
+   * about who won the race: that is somebody else's raid.
+   */
+  it('tells the commander at the arrival that the pirate was already gone', async () => {
+    const target = await findVisible();
+    const launch = await launchPirateRaid(f.db, mine, target.id, await overwhelming(), f.clock);
+    await f.db.insert(pirateState).values({
+      seasonId: f.seasonId,
+      index: target.spec.index,
+      losses: target.spec.roster,
+      destroyedAt: f.clock.now(),
+      destroyedByPlayerId: f.playerIds[1]!,
+      updatedAt: f.clock.now(),
+    });
+
+    f.clock.set(settledAt(launch.arriveAt));
+    await worker().tick();
+    // Redelivery: the status transition is the claim, so nobody is told twice.
+    await worker().tick();
+
+    const told = await f.db
+      .select()
+      .from(notifications)
+      .where(and(eq(notifications.playerId, me), eq(notifications.kind, 'target_gone')));
+    expect(told).toHaveLength(1);
+    expect(told[0]!.payload).toMatchObject({ targetKind: 'PIRATE', level: target.spec.level });
+    expect(told[0]!.refId).toBe(launch.raidId);
+
+    // A trip with no fight in it produces no battle news of any kind.
+    const fought = await f.db
+      .select()
+      .from(notifications)
+      .where(and(eq(notifications.playerId, me), eq(notifications.kind, 'raid_result')));
+    expect(fought).toHaveLength(0);
+  });
+
   it('never lets the hoard exceed what the survivors could carry', async () => {
     const target = await findVisible();
     await grant(f.db, mine, 500_000, 100_000);
