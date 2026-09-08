@@ -1,5 +1,11 @@
 import { eq } from 'drizzle-orm';
-import { PLANET_START as GRANT, SERVERS, rewardId } from '@astera/rules';
+import {
+  PLANET_START as GRANT,
+  SERVERS,
+  generateGalaxy,
+  pickSpawnSlot,
+  rewardId,
+} from '@astera/rules';
 import type { FastifyInstance } from 'fastify';
 import { pino } from 'pino';
 import { afterAll, afterEach, beforeEach, describe, expect, it } from 'vitest';
@@ -333,6 +339,75 @@ describe('servers', () => {
       const body = await list();
       expect(body.servers.every((s) => s.status === 'full')).toBe(true);
       expect((await join(await register(), 'EU-1')).statusCode).toBe(409);
+    });
+
+    /**
+     * A SLOT IS HELD BY A WORLD, NOT BY A COMMANDER.
+     *
+     * The capital window is `0..playerCap-1` and the neutral worlds are drawn from
+     * indexes at or above `MULTI_WORLD.capitalSlots`, so at the shipped 300 the two
+     * ranges never meet and "which slots are taken" could be answered with the
+     * capitals alone. Raise a live galaxy's stored cap past 300 — the owner's
+     * temporary EU-1 measure — and they overlap immediately: a neutral world, or a
+     * colony captured from one, stands inside the window a joining commander is
+     * placed into.
+     *
+     * WHAT THAT COSTS IS THE WHOLE FRONT DOOR, because `pickSpawnSlot` is
+     * deterministic. It returns the free slot furthest from everyone placed; a slot
+     * that a non-capital world holds looks free to it, `planets_season_slot_idx`
+     * rejects the insert, and the retry re-reads a set that did not change and picks
+     * the SAME slot six times. The join then reports `SHARD_FULL` on a galaxy with
+     * empty seats, `listServers` still reads it as open, so the frontier never moves
+     * on to the next galaxy and nobody can join anywhere. `/api/preview` reads the
+     * same set and would rehearse a world the join is about to refuse.
+     *
+     * Two facts, and they pull in opposite directions: the COLLISION set is every
+     * world, and the CAPACITY count is capitals only. Merging them re-breaks the
+     * other half — the 51 neutrals sit outside the window, so counting worlds
+     * against the cap refuses every join into a galaxy that is empty.
+     */
+    it('never offers a joining commander a slot another world already holds', async () => {
+      await openWorld(2, 4);
+      const [row] = await db
+        .select({ seasonId: seasons.id, seed: seasons.seed, cap: shards.playerCap })
+        .from(seasons)
+        .innerJoin(shards, eq(shards.id, seasons.shardId))
+        .where(eq(shards.code, 'EU-1'));
+      if (!row) throw new Error('EU-1 fixture was not created');
+
+      // Exactly the slot the next join would take, standing under a neutral world.
+      const spec = generateGalaxy(row.seed, row.cap);
+      const contested = pickSpawnSlot(spec.slots, new Set<number>());
+      if (!contested) throw new Error('a fresh galaxy offered no slot');
+      await db.insert(planets).values({
+        seasonId: row.seasonId,
+        kind: 'NEUTRAL',
+        name: 'Neutral T1-99',
+        slotIndex: contested.index,
+        x: contested.x,
+        y: contested.y,
+        z: contested.z,
+        lastTickAt: START,
+      });
+
+      const res = await join(await register(), 'EU-1');
+      expect(res.statusCode, res.body.slice(0, 200)).toBe(200);
+      expect(res.json<Placement>().slotIndex).not.toBe(contested.index);
+    });
+
+    /** The other half: 51 neutral worlds live above the window and cost no seat. */
+    it('counts commanders against the seat cap, never worlds', async () => {
+      await openWorld(2, 4);
+      const neutrals = await db
+        .select({ slotIndex: planets.slotIndex })
+        .from(planets)
+        .where(eq(planets.kind, 'NEUTRAL'));
+      expect(neutrals.length).toBeGreaterThan(0);
+
+      for (let seat = 0; seat < 4; seat++) {
+        const res = await join(await register(), 'EU-1');
+        expect(res.statusCode, res.body.slice(0, 200)).toBe(200);
+      }
     });
 
     /**

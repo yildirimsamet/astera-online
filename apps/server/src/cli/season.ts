@@ -9,7 +9,7 @@
 import { parseArgs } from 'node:util';
 import { randomBytes } from 'node:crypto';
 import { eq } from 'drizzle-orm';
-import { SEASON, SERVERS, rewardId } from '@astera/rules';
+import { GALAXY_EVENT_KINDS, SEASON, SERVERS, rewardId, type GalaxyEventKind } from '@astera/rules';
 import { createDb } from '../db/client.js';
 import { runMigrations } from '../db/migrate.js';
 import { loadDotEnv, loadEnv } from '../env.js';
@@ -17,6 +17,7 @@ import { addMinutes, systemClock } from '../clock.js';
 import { accounts, players } from '../db/schema.js';
 import { hashPassword } from '../auth/password.js';
 import { createSeason, liveSeason } from '../services/season.js';
+import { restampFutureOccurrences } from '../services/galaxyEvents.js';
 import { joinSeason } from '../services/player.js';
 import { grantReward } from '../services/rewards.js';
 import {
@@ -38,6 +39,11 @@ season wipe --yes [options]        END EVERYTHING. Fold records into accounts,
                                    delete every season world, open fresh galaxies.
 season reward NAME [--id ID]       unlock a hand-checked reward for one commander
                                    (default SOCIAL:1 — the @JoinAstera bonus)
+season restamp [--yes] [options]    re-deal the effect of every window of ONE event
+                                   kind that has NOT opened yet, from today's
+                                   rules. Dry run unless --yes; opened windows are
+                                   never touched (see the note in the service).
+                                   --kind KIND, default ASTEROID_SHOWER
 
   --shard CODE      shard code, for 'create'   (default: EU-1)
   --seed N          galaxy seed / seed base    (default: random)
@@ -115,6 +121,7 @@ async function main(): Promise<void> {
       count: { type: 'string' },
       unattended: { type: 'string' },
       id: { type: 'string' },
+      kind: { type: 'string' },
       yes: { type: 'boolean' },
     },
   });
@@ -228,6 +235,54 @@ async function main(): Promise<void> {
         );
         await placeUnattended(db, num(values.unattended, 0));
         return;
+      }
+
+      /**
+       * D178. The calendar is frozen at deal time, so a definition change reaches
+       * nothing already on it. This is the door — and the safety rule lives in
+       * `restampFutureOccurrences`, not here: a window that has opened owns rocks
+       * whose indices are load-bearing, so only future ones are ever moved.
+       *
+       * A DRY RUN IS THE DEFAULT, and it is the real transaction rolled back
+       * rather than a second code path that counts differently from the one that
+       * writes.
+       */
+      case 'restamp': {
+        const now = systemClock.now();
+        // Named, never defaulted: see `restampFutureOccurrences` for why a sweep
+        // over every lane is the wrong shape for this command.
+        const kind = values.kind ?? 'ASTEROID_SHOWER';
+        if (!GALAXY_EVENT_KINDS.includes(kind as GalaxyEventKind)) {
+          throw new Error(`Unknown event kind ${kind}. One of: ${GALAXY_EVENT_KINDS.join(', ')}`);
+        }
+        const kinds = [kind as GalaxyEventKind];
+        const seasonId = values.shard === undefined
+          ? undefined
+          : (await liveSeason(db, values.shard))?.season.id;
+        if (values.shard !== undefined && seasonId === undefined) {
+          throw new Error(`no live season on ${values.shard}`);
+        }
+        if (values.yes === true) {
+          const changed = await db.transaction((tx) =>
+            restampFutureOccurrences(tx, { now, seasonId, kinds }));
+          console.log(`restamped ${String(changed)} pending window(s).`);
+          break;
+        }
+        class DryRun extends Error {}
+        let planned = 0;
+        try {
+          await db.transaction(async (tx) => {
+            planned = await restampFutureOccurrences(tx, { now, seasonId, kinds });
+            throw new DryRun();
+          });
+        } catch (error) {
+          if (!(error instanceof DryRun)) throw error;
+        }
+        console.log(
+          `${String(planned)} pending window(s) would change. Nothing was written; `
+          + 'pass --yes to apply.',
+        );
+        break;
       }
 
       /**

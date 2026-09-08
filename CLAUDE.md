@@ -138,13 +138,23 @@ Rationale/evidence: `docs/decisions.md`. Numbers/simulator history: `docs/balanc
 ### World / queues / research / clans
 
 - One account → one commander → one galaxy; galaxies fill in order; one capital + max three colonies, DB-enforced.
-- A season's public-event calendar plans one kind at a time, each from its own RNG stream, in a fixed kind order (`GALAXY_EVENT_KINDS`, Asteroid Shower first); a new kind is appended, never inserted, and the shower's stream must stay byte-identical. `withAsteroidShowerLanes` filters occurrences by kind internally, so a second kind's window is never read as a shower lane (D149/D156). A kind may state its own night — `quietWindow`, its own hours and an EXACT daily count — instead of the calendar-wide share heuristic; the merchant runs four windows a day with exactly one inside 01:00–08:00 (D166).
+- A season's public-event calendar plans one kind at a time, each from its own RNG stream, in a fixed kind order (`GALAXY_EVENT_KINDS`, Asteroid Shower first); a new kind is appended, never inserted, and the shower's stream must stay byte-identical. `withAsteroidShowerLanes` filters occurrences by kind internally, so a second kind's window is never read as a shower lane (D149/D156). A kind may state its own night — `quietWindow`, its own hours and an EXACT daily count — instead of the calendar-wide share heuristic; the merchant runs four windows a day with exactly one inside 01:00–08:00 (D166). A kind may
+  also state what it is WORTH at night — `nightEffect`, stamped per occurrence at deal time from
+  the calendar's own `lowPriorityWindow`; the shower is 10× by day and 5× at night (D178). An
+  effect is frozen on its row, so changing a definition never reaches a season already dealt:
+  `season restamp` is the only door and it refuses any window that has already opened.
 - Three independent queues, depth 3: world-local `CONSTRUCTION`, world-local `YARD`, and commander-wide `RESEARCH`. Cost commits on order; Construction/Yard cancellation refunds half, Research cannot be cancelled, system fault refunds all; gates use projected same-queue state (D4).
 - Research belongs to the commander, not the funding planet; capture neither cancels nor transfers it (D134).
 - Instruments/research stop where effect tables stop; derive max levels from effects, never duplicate ladders manually (D140/D141).
-- Refinery is deuterium floor; rocks are contested ceiling. Plant level is capped by research rung (D135).
+- The deuterium plant is a SUPPLY, not a floor (D176 tripled its output): it passes a miner's
+  isotope run at level 8 and ends near 2.5×. Rocks stay contested and arrive in one lump, but they
+  are no longer the larger number. Plant level is still capped by research rung (D135).
 - Mined ore lands in `WORKS`, not storage.
 - Notifications are idempotent by `(player_id, kind, ref_id)`.
+- **A committed flight is never recalled and never turns early** — it flies the whole outbound
+  leg, and a target that died mid-flight is discovered on arrival. What the arrival owes the
+  commander is the SENTENCE: `target_gone` is written the moment the trip becomes pointless,
+  on both the pirate and the mining lane, and it names the target and never the rival (D177).
 - Broadcast only when referenced **public** payload changes; hidden changes must not leak timing (D53).
 - Reports identify the actual fought-over/owned world and use immutable clan snapshots.
 - **A defender is shown the whole force that arrived** — the attacker's complete committed roster, hulls that never fired included, because that fleet was in front of them (D164). One direction only: what was standing at the target stays a probe's product, so an attacker's `theirFleet` is empty and their side keeps D121a's floor framing. A report still states losses and never survivors.

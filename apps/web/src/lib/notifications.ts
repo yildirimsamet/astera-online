@@ -176,6 +176,47 @@ const returned = z.discriminatedUnion('trip', [
     lootCrystal: z.number(),
     lootDeuterium: z.number().default(0),
   }),
+  /**
+   * A RAID ON A PIRATE COMING HOME. D177, and the branch above's warning made good.
+   *
+   * The server has written `trip: 'pirate'` since D150 and this union never had a
+   * case for it, so every pirate homecoming fell to `legacyRaidReturn` — which
+   * asks for exactly the four fields a pirate payload happens to carry. It parsed,
+   * and printed the PvP fleet's wording over a lane with no commander in it. The
+   * words were nearly right, which is why a year of them went unnoticed; the next
+   * field added to the payload would have made them wrong.
+   */
+  z.object({
+    trip: z.literal('pirate'),
+    ships: z.number(),
+    lootAlloy: z.number(),
+    lootCrystal: z.number(),
+    lootDeuterium: z.number().default(0),
+    /** `resolvePirateReturn` puts it here; a capture is fleet, not ore. */
+    capturedHull: z.string().optional(),
+  }),
+]);
+
+/**
+ * A FLIGHT THAT ARRIVED AT NOTHING. D177.
+ *
+ * One kind for two lanes because it is one fact: the pirate somebody else wiped
+ * and the rock somebody else emptied are the same moment for the commander who
+ * flew at it. `targetKind` says which, exactly as `raid_result` already carries
+ * one. The payload names the target and never the rival — who got there first is
+ * their own raid, and D127 does not hand it over.
+ */
+const targetGone = z.discriminatedUnion('targetKind', [
+  z.object({
+    targetKind: z.literal('PIRATE'),
+    callsign: z.string(),
+    level: z.number().optional(),
+    ships: z.number(),
+  }),
+  z.object({
+    targetKind: z.enum(['ASTEROID', 'DEBRIS']),
+    craft: z.number(),
+  }),
 ]);
 
 const transferWasRerouted = (notification: NotificationView): boolean => {
@@ -638,6 +679,36 @@ export function describeNotification(notification: NotificationView, now: number
               landed: bought.join(JOIN()),
             });
       }
+      if (trip.trip === 'pirate') {
+        /*
+          THE LANE IS NOT A COMMANDER, so it never borrows the raid's wording. A
+          pirate has no world to come back FROM by name and no ledger to move, and
+          `fleetFrom` would have nothing to put in it.
+        */
+        const loot = trip.lootAlloy + trip.lootCrystal + trip.lootDeuterium;
+        /*
+          A TOWED HULL IS NOT AN EMPTY HAND. `raid_result` puts a capture first
+          because it is the one thing this lane pays in FLEET rather than in ore,
+          and a raid whose cargo hulls all died comes home with nothing in the hold
+          and a ship behind it — which "empty-handed" states as a falsehood.
+          `hullName` returns null for a hull this build does not know, which is the
+          honest answer mid-rolling-deploy: the clause is dropped rather than
+          printing a raw id at the player.
+        */
+        const towed = trip.capturedHull === undefined ? null : hullName(trip.capturedHull);
+        if (towed !== null) {
+          return i18n.t('notifications.pirateHomeTowed', {
+            count: trip.ships,
+            hull: towed,
+            ...(loot > 0 ? { amount: compact(loot) } : {}),
+            context: loot > 0 ? 'looted' : 'empty',
+          });
+        }
+        return i18n.t(
+          loot > 0 ? 'notifications.pirateHome' : 'notifications.pirateHomeEmpty',
+          { count: trip.ships, amount: compact(loot) },
+        );
+      }
       if (trip.trip === 'raid') {
         const origin = identity(
           trip.fromUsername,
@@ -683,6 +754,31 @@ export function describeNotification(notification: NotificationView, now: number
       // this line stays deliberately vague.
       void parsed;
       return i18n.t('notifications.scanDetected');
+    }
+
+    /**
+     * ARRIVED, AND THERE WAS NOTHING THERE. D177.
+     *
+     * The sentence's job is to be the news the flight itself cannot be: a
+     * committed launch cannot turn early, so this is the whole of what the
+     * commander can act on — the trip is spent, and the next one should be aimed
+     * somewhere else. It names the target and the craft turning back, and stops.
+     */
+    case 'target_gone': {
+      const parsed = targetGone.safeParse(notification.payload);
+      if (!parsed.success) return null;
+      if (parsed.data.targetKind === 'PIRATE') {
+        return i18n.t('notifications.targetGonePirate', {
+          callsign: parsed.data.callsign,
+          count: parsed.data.ships,
+        });
+      }
+      return i18n.t(
+        parsed.data.targetKind === 'DEBRIS'
+          ? 'notifications.targetGoneDebris'
+          : 'notifications.targetGoneAsteroid',
+        { count: parsed.data.craft },
+      );
     }
 
     case 'probe_report': {
@@ -838,6 +934,10 @@ export type SignalFamily = 'threat' | 'pirate' | 'gain' | 'watch' | 'world' | 'n
 
 /** A pirate raid, from the one field that says so. D150. */
 const isPirateNews = (notification: NotificationView): boolean => {
+  if (notification.kind === 'target_gone') {
+    const gone = targetGone.safeParse(notification.payload);
+    return gone.success && gone.data.targetKind === 'PIRATE';
+  }
   if (notification.kind !== 'raid_result') return false;
   const parsed = raidResult.safeParse(notification.payload);
   return parsed.success && parsed.data.targetKind === 'PIRATE';
@@ -876,6 +976,13 @@ export function signalFamily(notification: NotificationView): SignalFamily {
     case 'raid_result':
       if (isPirateNews(notification)) return 'pirate';
       return isAlarming(notification) ? 'threat' : 'gain';
+    /*
+      The lane it was flying, not a category of its own: a wasted pirate raid is
+      pirate news and a wasted drill is the mining lane's, which is the family its
+      own homecoming already wears. `signalOutcome` is what says it paid nothing.
+    */
+    case 'target_gone':
+      return isPirateNews(notification) ? 'pirate' : 'gain';
     case 'fleet_returned':
       return isAlarming(notification) ? 'threat' : 'gain';
     case 'probe_report':
@@ -912,6 +1019,15 @@ export type SignalOutcome = 'win' | 'loss' | 'neutral';
 
 export function signalOutcome(notification: NotificationView): SignalOutcome {
   const family = signalFamily(notification);
+  /*
+    NOTHING WAS WON AND NOTHING WAS LOST. D177.
+
+    Every ship is coming back and the fuel was spent at launch, so a trip that
+    arrived at nothing is the third answer this function exists to have. Without
+    this line a pirate-family row falls through to `win` and the interface
+    congratulates a commander on a trip that paid nothing.
+  */
+  if (notification.kind === 'target_gone') return 'neutral';
   if (family === 'threat' || isAlarming(notification)) return 'loss';
   if (family === 'world' || family === 'watch' || family === 'note') return 'neutral';
   /**
@@ -967,6 +1083,7 @@ export function signalGlyph(notification: NotificationView): SignalGlyph {
     case 'raid_result':
       return 'raided';
     case 'fleet_returned':
+    case 'target_gone':
       return 'returned';
     /**
      * AN EYE FOR YOUR PROBE, A PING FOR SOMEBODY ELSE'S. See `EyeIcon`.

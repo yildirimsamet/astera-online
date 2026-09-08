@@ -640,6 +640,25 @@ deuterium; the measured ceilings run 45 · 137 · 285 · 497. A flat cap was rej
 would have paid the same 500 at levels 2, 3 and 4 and flattened the one number a commander
 prices the fight against.
 
+**D178 · the shower is 10x by day and 5x at night.** Owner instruction. The night keeps exactly
+the density it always had (5x through the calendar's own 00:00–08:00 TRT band) and the day is worth
+twice that — a raise where somebody is awake to fly at it, and no change to the hours where a
+denser sky mostly expires unseen. The bonus lane is `round(asteroidSpawnPerHour x (multiplier - 1)
+x duration / 60)`, so an hour-long shower adds ~93 rocks by day against ~41 at night. The figure is
+stamped per occurrence at deal time and consumes no randomness, so no window moves and no existing
+rock changes; a season already dealt keeps its frozen figures until `season restamp` raises the
+windows that have not opened yet.
+
+**D176 raised that ceiling to about 700**, on owner instruction and by moving the share alone:
+**0.008 → 0.01125**, measured against the same sixty thousand seeds per level, where the richest
+level-4 roster is worth 44,404. The ladder keeps its shape and every level rises with it —
+64 · 192 · 401 · 699 against the old 45 · 137 · 285 · 497 — so the level badge still prices the
+fight. Deuterium remains a garnish by share: about 1.3% of a hoard's total value against alloy's
+55% and crystal's 30%. The self-funding worry D136 raises was already moot at 0.008 and is no
+less moot now — a two-leg pirate raid burns single-digit to low-double-digit deuterium against a
+median level-4 hoard of 240 — but that is a statement about how cheap fuel is at this fleet
+size, not a licence to grow the share again without re-measuring both.
+
 The two tunes pull opposite ways — a much smaller hoard against a hull that lands far more
 often — and the net lands slightly flatter and slightly lower than before: L1 gives back about
 3%, L4 about 18%. The lane still pays a fleet built for the target and still punishes one that

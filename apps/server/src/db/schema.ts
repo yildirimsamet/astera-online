@@ -145,6 +145,15 @@ export const notificationKind = pgEnum('notification_kind', [
   /** Public galaxy-event lifecycle messages. */
   'galaxy_event_started',
   'galaxy_event_ended',
+  /**
+   * YOU ARRIVED AND THERE WAS NOTHING THERE. D177.
+   *
+   * One kind for two lanes, because it is one fact: the pirate somebody else
+   * wiped, and the rock somebody else emptied, are the same moment for the
+   * commander who flew at it. `targetKind` in the payload says which, exactly as
+   * `raid_result` already carries one.
+   */
+  'target_gone',
 ]);
 export type NotificationKind = (typeof notificationKind.enumValues)[number];
 

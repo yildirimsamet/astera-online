@@ -125,15 +125,22 @@ its works are sized from its own production now, and the Vault protects hours of
 production exactly as it does for alloy and crystal: a world with no plant still protects none,
 because the floor was always hours of a resource's own rate.
 
-**The Refinery is the floor and the rocks are the ceiling, and that ordering is the whole
-design.** Measured on the gate seasons, the median commander used to end a fourteen-day season
-holding TEN deuterium — it existed only on isotope asteroids, only after the season's
-thirty-fifth hour, and only for whoever got there first. That was survivable while nothing
-needed it. The refinery is a guaranteed trickle a player can plan around; Isotope Spectrometry
-still reveals the fast, contested source that actually pays for advanced Fleet V2 hulls, the last
-research rungs and a Death Star. If the two ever met, the whole Frontier act would become dead
-content — so the plant's curve is deliberately flatter than alloy's or crystal's, and a test
-holds it below what a miner pulls off the rocks.
+**The Refinery was the floor and the rocks the ceiling; D176 retires that ordering.** Measured
+on the gate seasons, the median commander used to end a fourteen-day season holding TEN
+deuterium — it existed only on isotope asteroids, only after the season's thirty-fifth hour, and
+only for whoever got there first. That was survivable while nothing needed it. The refinery
+answered it as a guaranteed trickle held deliberately under the rocks; on owner instruction its
+output is now tripled, so a young world is still under a single isotope run through plant level
+7, the plant passes it at level 8, and at the top of both ladders it produces about two and a
+half times what one miner brings home.
+
+**What the rocks keep is what a plant cannot copy.** They are contested — somebody else is
+flying at the same rock — and they arrive in one lump a fleet has to be in position for, which
+is a decision rather than an accrual. Isotope Spectrometry still reveals them, and they still
+pay for advanced Fleet V2 hulls, the last research rungs and a Death Star. What they no longer
+are is the bigger number, and the Frontier act now has to compete on risk and timing instead of
+on volume. The plant's curve is still flatter than alloy's or crystal's, and the test now asserts
+where the two cross rather than that they never do.
 
 Deuterium is otherwise unchanged: fully raidable above the vault floor, the same fleet cargo as
 any other material, and consumed by repeatable losable hulls rather than turned into permanent

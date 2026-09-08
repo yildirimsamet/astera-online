@@ -55,8 +55,94 @@ describe('galaxy event calendar', () => {
     expect(GALAXY_EVENTS.definitions.ASTEROID_SHOWER).toMatchObject({
       durationMinutes: 60,
       repeatCooldownMinutes: 120,
-      effect: { asteroidSpawnMultiplier: 5 },
+      effect: { asteroidSpawnMultiplier: 10 },
+      nightEffect: { asteroidSpawnMultiplier: 5 },
     });
+  });
+
+  /**
+   * TEN BY DAY, FIVE AT NIGHT. D178, owner instruction.
+   *
+   * The multiplier has always been per OCCURRENCE — a frozen snapshot on the row,
+   * which is why it can differ between two showers of the same season at all — so
+   * this is a stamping rule and not a new mechanism. The night it reads is the
+   * calendar's OWN `lowPriorityWindow`, the same 00:00–08:00 that already decides
+   * how rarely a shower is scheduled there; inventing a third definition of night
+   * beside that one and the merchant's would be two rules where one will do.
+   */
+  it('stamps the night figure on a night shower and the day figure on the rest', () => {
+    const schedule = generateGalaxyEventSchedule({
+      seasonStartsAtUnixMinute: TURKEY_MIDNIGHT_UNIX_MINUTE,
+      seasonDurationMinutes: 14 * DAY_MINUTES,
+      rngFor: streamsFrom(0x51a7),
+      kinds: ['ASTEROID_SHOWER'],
+    });
+
+    const night: number[] = [];
+    const day: number[] = [];
+    for (const event of schedule) {
+      const local = ((event.startsAtMinute % DAY_MINUTES) + DAY_MINUTES) % DAY_MINUTES;
+      const isNight = local >= 0 && local < 8 * 60;
+      (isNight ? night : day).push(
+        event.kind === 'ASTEROID_SHOWER' ? event.effect.asteroidSpawnMultiplier : NaN,
+      );
+    }
+    // Both sets must be non-empty, or this passes by finding nothing to check.
+    expect(night.length).toBeGreaterThan(0);
+    expect(day.length).toBeGreaterThan(0);
+    expect(new Set(night)).toEqual(new Set([5]));
+    expect(new Set(day)).toEqual(new Set([10]));
+  });
+
+  /**
+   * THE EFFECT NEVER TOUCHES THE STREAM, AND THIS IS WHAT PROVES IT. D149 · D178.
+   *
+   * A shower's start instants are drawn before any effect is stamped, so changing
+   * either figure must move no window by a single minute — the property the whole
+   * "byte-identical stream" rule depends on, and the one that makes a mid-season
+   * change to the multiplier a safe operation rather than a re-deal.
+   */
+  it('draws the same windows whatever the two multipliers are', () => {
+    const plan = (effect: number, nightEffect: number) => generateGalaxyEventSchedule({
+      seasonStartsAtUnixMinute: TURKEY_MIDNIGHT_UNIX_MINUTE,
+      seasonDurationMinutes: 14 * DAY_MINUTES,
+      rngFor: streamsFrom(0x51a7),
+      kinds: ['ASTEROID_SHOWER'],
+      config: {
+        ...GALAXY_EVENTS,
+        definitions: {
+          ...GALAXY_EVENTS.definitions,
+          ASTEROID_SHOWER: {
+            ...GALAXY_EVENTS.definitions.ASTEROID_SHOWER,
+            effect: { asteroidSpawnMultiplier: effect },
+            nightEffect: { asteroidSpawnMultiplier: nightEffect },
+          },
+        },
+      },
+    }).map((event) => [event.startsAtMinute, event.endsAtMinute].join(':'));
+
+    expect(plan(10, 5)).toEqual(plan(2, 1.5));
+    expect(plan(10, 5)).toEqual(plan(97, 96));
+  });
+
+  /** A night figure is an effect like any other, and is refused on the same rule. */
+  it('refuses a night multiplier that is not a multiplier', () => {
+    expect(() => generateGalaxyEventSchedule({
+      seasonStartsAtUnixMinute: TURKEY_MIDNIGHT_UNIX_MINUTE,
+      seasonDurationMinutes: DAY_MINUTES,
+      rngFor: streamsFrom(1),
+      kinds: ['ASTEROID_SHOWER'],
+      config: {
+        ...GALAXY_EVENTS,
+        definitions: {
+          ...GALAXY_EVENTS.definitions,
+          ASTEROID_SHOWER: {
+            ...GALAXY_EVENTS.definitions.ASTEROID_SHOWER,
+            nightEffect: { asteroidSpawnMultiplier: 1 },
+          },
+        },
+      },
+    })).toThrow(/multiplier/i);
   });
 
   it('plans exactly five events per full Türkiye day with one or at most two at night', () => {
@@ -324,26 +410,76 @@ describe('a multi-kind calendar', () => {
 });
 
 describe('Asteroid Shower bonus lane', () => {
-  it('adds four times the normal hourly rate without changing existing rocks', () => {
+  /**
+   * THE LANE FOLLOWS THE OCCURRENCE'S OWN FIGURE, never the definition's. D178.
+   *
+   * That was always the code's shape and it used to be untestable, because every
+   * shower in a season carried the same number and the assertion could read either
+   * one and pass. Now two showers of one season legitimately differ, so reading the
+   * definition here would have made this test a statement about the wrong thing —
+   * it failed the moment the day figure moved and the hand-built occurrence did not.
+   */
+  it('adds the occurrence’s own multiple of the hourly rate, and moves no existing rock', () => {
     const span = DAY_MINUTES;
     const base = generateAsteroidSchedule(mulberry32(400), span, 400);
-    const showered = withAsteroidShowerLanes(base, [{
+    const occurrence: PlannedGalaxyEvent = {
       sequence: 3,
       kind: 'ASTEROID_SHOWER',
       startsAtMinute: 8 * 60,
       endsAtMinute: 9 * 60,
-      definitionVersion: 1,
+      definitionVersion: 2,
       effect: { asteroidSpawnMultiplier: 5 },
-    }], 400);
+    };
+    const showered = withAsteroidShowerLanes(base, [occurrence], 400);
 
     expect(showered.slice(0, base.length)).toEqual(base);
     expect(showered.length - base.length).toBe(
-      Math.round(GALAXY.asteroidSpawnPerHour
-        * (GALAXY_EVENTS.definitions.ASTEROID_SHOWER.effect.asteroidSpawnMultiplier - 1)),
+      Math.round(GALAXY.asteroidSpawnPerHour * (occurrence.effect.asteroidSpawnMultiplier - 1)),
     );
     const bonus = showered.slice(base.length);
     expect(bonus.every((rock) => rock.appearsAt >= 8 * 60 && rock.appearsAt < 9 * 60)).toBe(true);
     expect(bonus.some((rock) => rock.expiresAt > 9 * 60)).toBe(true);
+  });
+
+  /**
+   * TWO SHOWERS OF ONE SEASON, TWO SIZES, AND THE EARLIER ONE UNMOVED. D178.
+   *
+   * This is the property the day/night split rests on and the one a mid-season
+   * change to a future window depends on: a lane is appended after everything
+   * already in the field, so a bigger later shower adds rocks and renumbers
+   * nothing before it. The reverse — changing an EARLIER lane's size — is what
+   * would move every later index onto a different rock, which is why that is never
+   * done to a window that has already opened.
+   */
+  it('sizes each shower from its own figure and never renumbers an earlier one', () => {
+    const span = DAY_MINUTES;
+    const base = generateAsteroidSchedule(mulberry32(511), span, 511);
+    const night: PlannedGalaxyEvent = {
+      sequence: 0, kind: 'ASTEROID_SHOWER',
+      startsAtMinute: 3 * 60, endsAtMinute: 4 * 60,
+      definitionVersion: 2, effect: { asteroidSpawnMultiplier: 5 },
+    };
+    const day: PlannedGalaxyEvent = {
+      sequence: 1, kind: 'ASTEROID_SHOWER',
+      startsAtMinute: 13 * 60, endsAtMinute: 14 * 60,
+      definitionVersion: 2, effect: { asteroidSpawnMultiplier: 10 },
+    };
+
+    const both = withAsteroidShowerLanes(base, [night, day], 511);
+    const nightOnly = withAsteroidShowerLanes(base, [night], 511);
+    const nightCount = Math.round(GALAXY.asteroidSpawnPerHour * 4);
+    const dayCount = Math.round(GALAXY.asteroidSpawnPerHour * 9);
+
+    expect(nightOnly.length - base.length).toBe(nightCount);
+    expect(both.length - base.length).toBe(nightCount + dayCount);
+    // The day shower is worth more rocks than the night one, which is the point.
+    expect(dayCount).toBeGreaterThan(nightCount);
+    /*
+      AND EVERY ROCK THE NIGHT LANE ALREADY OWNED KEEPS ITS INDEX. A rock's public
+      id is an HMAC of that index, and claims and in-flight runs are keyed by it, so
+      this equality is what makes adding to a later window safe on a live season.
+    */
+    expect(both.slice(0, base.length + nightCount)).toEqual(nightOnly);
   });
 
   it('ignores TRADE_SHIP rows instead of turning every trade window into a shower', () => {

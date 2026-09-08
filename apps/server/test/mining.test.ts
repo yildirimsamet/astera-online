@@ -21,6 +21,7 @@ import {
   asteroidClaims,
   galaxyEvents,
   miningRuns,
+  notifications,
   planets,
   units,
 } from '../src/db/schema.js';
@@ -449,6 +450,86 @@ describe('mining', () => {
   /* ── the race ─────────────────────────────────────────────── */
 
   describe('the race for a rock', () => {
+    /**
+     * SOMEBODY ELSE FINISHED THE ROCK WHILE THE DRILL WAS IN THE AIR.
+     *
+     * The craft cannot be recalled and does not turn early — a launched flight is
+     * committed (D40), so it flies the whole outbound leg, finds an empty rock and
+     * flies home. THE PART THAT MUST NEVER REGRESS is that it comes home at all: a
+     * craft can never disappear, and this lane has no fight to lose it in.
+     *
+     * WHAT WAS MISSING WAS THE SENTENCE. The trip was already silent at the moment
+     * it became pointless — the commander found out when the drill landed and the
+     * haul row said "eli boş", by which time the whole round trip had been spent
+     * waiting for news that already existed. The arrival now says so when it is
+     * true, which is what makes the next launch a decision rather than a guess.
+     */
+    it('turns a drill for home and says so when the rock is already empty', async () => {
+      await giveUnits(f.db, mine, { PROSPECTOR: 2 });
+      const rock = waitForRock();
+      const run = await launchMining(f.db, mine, rock.index, 2, f.clock);
+
+      // Another commander emptied it while this squadron was in the air.
+      await f.db.insert(asteroidClaims).values({
+        seasonId: f.seasonId,
+        index: rock.index,
+        oreTaken: rock.ore,
+        updatedAt: f.clock.now(),
+      });
+
+      f.clock.set(run.arriveAt);
+      await worker(f).tick();
+
+      const [mid] = await f.db.select().from(miningRuns).where(eq(miningRuns.id, run.runId));
+      expect(mid!.status).toBe('returning');
+      expect(mid!.homeAt).not.toBeNull();
+      expect(mid!.minedAlloy + mid!.minedCrystal + mid!.minedDeuterium).toBe(0);
+
+      const told = await f.db
+        .select()
+        .from(notifications)
+        .where(and(
+          eq(notifications.playerId, f.playerIds[0]!),
+          eq(notifications.kind, 'target_gone'),
+        ));
+      expect(told).toHaveLength(1);
+      expect(told[0]!.payload).toMatchObject({ targetKind: 'ASTEROID', craft: 2 });
+
+      // Redelivery must not tell them twice.
+      await worker(f).tick();
+      expect(await f.db
+        .select()
+        .from(notifications)
+        .where(eq(notifications.kind, 'target_gone'))).toHaveLength(1);
+
+      // And the drills are actually standing at home again.
+      f.clock.set(mid!.homeAt!);
+      await worker(f).tick();
+      const [home] = await f.db
+        .select()
+        .from(units)
+        .where(and(
+          eq(units.planetId, mine),
+          eq(units.location, 'home'),
+          eq(units.hull, 'PROSPECTOR'),
+        ));
+      expect(home!.count).toBe(2);
+    });
+
+    /** A rock that still has ore says nothing — the sentence is about an empty trip. */
+    it('says nothing when the rock still had ore in it', async () => {
+      await giveUnits(f.db, mine, { PROSPECTOR: 1 });
+      const rock = waitForRock();
+      const run = await launchMining(f.db, mine, rock.index, 1, f.clock);
+      f.clock.set(run.arriveAt);
+      await worker(f).tick();
+
+      expect(await f.db
+        .select()
+        .from(notifications)
+        .where(eq(notifications.kind, 'target_gone'))).toHaveLength(0);
+    });
+
     it('chronicles an exhausted isotope without naming who took its Deuterium', async () => {
       const rich = f.asteroids.find((rock) => rock.isotopeRich);
       expect(rich).toBeDefined();

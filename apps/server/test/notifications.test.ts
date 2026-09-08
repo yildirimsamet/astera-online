@@ -792,6 +792,7 @@ describe('the kinds of news the server can send', () => {
       'settlement_success',
       'strategic_incoming',
       'strategic_intercepted',
+      'target_gone',
       'unlock',
     ]);
   });

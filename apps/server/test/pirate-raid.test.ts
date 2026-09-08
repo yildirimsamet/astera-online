@@ -554,6 +554,49 @@ describe('what a pirate raid comes home with', () => {
     expect(home!.count).toBe(250);
   });
 
+  /**
+   * THE SAME SILENCE THE MINING LANE HAD, and the same fix.
+   *
+   * The fleet already turned for home when it arrived to find nothing — the test
+   * above proves the ships land — but nothing was written at the moment it
+   * happened, and `raid_result` is only produced by a fight. So a commander who
+   * lost the race learned it when the squadron touched down, one full return leg
+   * after the answer existed. The arrival now says so, and it still says nothing
+   * about who won the race: that is somebody else's raid.
+   */
+  it('tells the commander at the arrival that the pirate was already gone', async () => {
+    const target = await findVisible();
+    const launch = await launchPirateRaid(f.db, mine, target.id, await overwhelming(), f.clock);
+    await f.db.insert(pirateState).values({
+      seasonId: f.seasonId,
+      index: target.spec.index,
+      losses: target.spec.roster,
+      destroyedAt: f.clock.now(),
+      destroyedByPlayerId: f.playerIds[1]!,
+      updatedAt: f.clock.now(),
+    });
+
+    f.clock.set(settledAt(launch.arriveAt));
+    await worker().tick();
+    // Redelivery: the status transition is the claim, so nobody is told twice.
+    await worker().tick();
+
+    const told = await f.db
+      .select()
+      .from(notifications)
+      .where(and(eq(notifications.playerId, me), eq(notifications.kind, 'target_gone')));
+    expect(told).toHaveLength(1);
+    expect(told[0]!.payload).toMatchObject({ targetKind: 'PIRATE', level: target.spec.level });
+    expect(told[0]!.refId).toBe(launch.raidId);
+
+    // A trip with no fight in it produces no battle news of any kind.
+    const fought = await f.db
+      .select()
+      .from(notifications)
+      .where(and(eq(notifications.playerId, me), eq(notifications.kind, 'raid_result')));
+    expect(fought).toHaveLength(0);
+  });
+
   it('never lets the hoard exceed what the survivors could carry', async () => {
     const target = await findVisible();
     await grant(f.db, mine, 500_000, 100_000);
@@ -663,6 +706,76 @@ describe('a pirate raid whose origin changed hands', () => {
     colony = f.planetIds[2]!;
     // The raider holds a capital and one colony; the colony is what will fall.
     await handOver(colony, f.playerIds[2]!, raider);
+  });
+
+  /**
+   * AND THE NEWS FOLLOWS THE COMMANDER TOO, not just the cargo. D150 · D177.
+   *
+   * `loadLocked` reads the pad's CURRENT controller, which is the right answer to
+   * "who owns this world" and the wrong one to "whose raid is this". The delivery
+   * path has always known the difference — `pirate_raids.ownerPlayerId` is the
+   * column that exists for it — but the notifications did not, so a colony taken
+   * mid-flight sent the arrival's news to the captor: they are told about a raid
+   * they never committed, and the commander whose fleet it is hears nothing at all
+   * before their squadron lands somewhere else entirely.
+   */
+  it('tells the commander who committed the fleet that the pirate was gone', async () => {
+    const target = await findVisibleFrom(colony);
+    await grant(f.db, colony, 500_000, 100_000);
+    const fleet: Fleet = { DART: 250, COURIER: 6 };
+    await giveUnits(f.db, colony, fleet);
+    const launch = await launchPirateRaid(f.db, colony, target.id, fleet, f.clock);
+
+    // Both happen while the squadron is in the air: somebody else wipes the
+    // pirate, and the colony it launched from falls.
+    await f.db.insert(pirateState).values({
+      seasonId: f.seasonId,
+      index: target.spec.index,
+      losses: target.spec.roster,
+      destroyedAt: f.clock.now(),
+      destroyedByPlayerId: captor,
+      updatedAt: f.clock.now(),
+    });
+    await handOver(colony, raider, captor);
+
+    f.clock.set(settledAt(launch.arriveAt));
+    await worker().tick();
+
+    const told = await f.db
+      .select()
+      .from(notifications)
+      .where(eq(notifications.kind, 'target_gone'));
+    expect(told).toHaveLength(1);
+    expect(told[0]!.playerId).toBe(raider);
+  });
+
+  /** The same rule, on the half of the lane that did fight. */
+  it('addresses a fought raid’s result to the commander who committed it', async () => {
+    const target = await findVisibleFrom(colony);
+    await grant(f.db, colony, 500_000, 100_000);
+    const fleet: Fleet = { DART: 250, COURIER: 6 };
+    await giveUnits(f.db, colony, fleet);
+    const launch = await launchPirateRaid(f.db, colony, target.id, fleet, f.clock);
+
+    await handOver(colony, raider, captor);
+    f.clock.set(settledAt(launch.arriveAt));
+    await worker().tick();
+
+    const told = await f.db
+      .select()
+      .from(notifications)
+      .where(eq(notifications.kind, 'raid_result'));
+    expect(told).toHaveLength(1);
+    expect(told[0]!.playerId).toBe(raider);
+
+    /*
+      AND THE REPORT IS THEIRS TO OPEN. `reports.ts` gates visibility on this
+      column, so a pad that changed hands used to take the raider's own battle
+      report with it — the captor could read a fight they were not in, and the
+      commander who fought it could not.
+    */
+    const [report] = await f.db.select().from(battleReports);
+    expect(report!.attackerPlayerId).toBe(raider);
   });
 
   it('delivers the fleet, the hoard and the towed hull to the commander who launched it', async () => {

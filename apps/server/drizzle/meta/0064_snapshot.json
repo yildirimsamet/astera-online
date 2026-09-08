@@ -1,6 +1,6 @@
 {
-  "id": "16739025-34ef-4de0-8f26-a084b69a65b8",
-  "prevId": "19d13cf1-eabb-4d24-a4e8-1e4dbcd05953",
+  "id": "5a3f9c9d-bed9-4998-b679-f5ec91a274ca",
+  "prevId": "16739025-34ef-4de0-8f26-a084b69a65b8",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -7059,6 +7059,12 @@
       "name": "season_results",
       "schema": "",
       "columns": {
+        "cycle_id": {
+          "name": "cycle_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
         "season_id": {
           "name": "season_id",
           "type": "uuid",
@@ -7130,6 +7136,27 @@
         }
       },
       "indexes": {
+        "season_results_cycle_account_idx": {
+          "name": "season_results_cycle_account_idx",
+          "columns": [
+            {
+              "expression": "cycle_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "account_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
         "season_results_account_idx": {
           "name": "season_results_account_idx",
           "columns": [
@@ -7153,6 +7180,19 @@
         }
       },
       "foreignKeys": {
+        "season_results_cycle_id_season_cycles_id_fk": {
+          "name": "season_results_cycle_id_season_cycles_id_fk",
+          "tableFrom": "season_results",
+          "tableTo": "season_cycles",
+          "columnsFrom": [
+            "cycle_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
         "season_results_season_id_seasons_id_fk": {
           "name": "season_results_season_id_seasons_id_fk",
           "tableFrom": "season_results",

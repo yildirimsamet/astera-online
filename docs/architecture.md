@@ -499,7 +499,7 @@ even if NOTIFY is delayed. Streams retain their separate per-frame fence.
 
 Historical probes stay readable but no longer feed a relocated world's dossier. Battle
 history similarly loses live-world/rival links across relocation. Cycle-wide recap preserves
-previous-galaxy contributions; migration 0063 backfills cycle results and enforces one result
+previous-galaxy contributions; migration 0064 backfills cycle results and enforces one result
 per account/cycle. Season freeze waits for research, pirate and trade work too.
 
 MAIN colony departure now creates an initial-template neutral at the vacated address,

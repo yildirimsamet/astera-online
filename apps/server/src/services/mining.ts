@@ -45,6 +45,7 @@ import {
 } from './asteroidField.js';
 import { loadGalaxyEventSchedule } from './galaxyEvents.js';
 import { sensorHistoryForPlayer } from './sensorHistory.js';
+import { notify } from './notifications.js';
 import { schedule } from '../worker/queue.js';
 import { publish, publishShard } from '../stream/bus.js';
 import { hasResearch, techOf } from './researchState.js';
@@ -666,6 +667,36 @@ export async function resolveMiningArrival(tx: Tx, runId: string, now: Date): Pr
       homeAt,
     })
     .where(eq(miningRuns.id, runId));
+
+  /**
+   * THE TRIP THAT ARRIVED AT NOTHING. D177, and the same fact as the pirate lane's.
+   *
+   * A drill cannot be recalled and does not turn early — it flies the whole
+   * outbound leg — so the only question is WHEN the commander finds out that
+   * somebody emptied the rock, or that the rock is no longer in the disc at all.
+   * It used to be when the craft landed, one full return leg after the answer
+   * existed, in a haul row that said "empty-handed" without saying why.
+   *
+   * ZERO IS THE WHOLE TEST, and it is the honest one: `claimOre` takes what is
+   * left, so nothing taken means nothing was there — an exhausted rock, a wreck
+   * field already picked clean, or an index the current field no longer carries.
+   * A rock that still had ore in it says nothing, because that trip paid.
+   *
+   * IT NAMES NO RIVAL. Who emptied it is their run, not this one's news (D127).
+   */
+  const took = mined.alloy + mined.crystal + mined.deuterium;
+  if (took === 0 && home.controllerPlayerId) {
+    await notify(tx, {
+      playerId: home.controllerPlayerId,
+      kind: 'target_gone',
+      payload: {
+        targetKind: run.debrisFieldId !== null ? 'DEBRIS' : 'ASTEROID',
+        craft: run.craft,
+      },
+      at: now,
+      refId: runId,
+    });
+  }
 
   await schedule(tx, {
     seasonId: run.seasonId,

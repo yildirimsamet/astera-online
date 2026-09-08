@@ -55,7 +55,8 @@ and the rollback boundary. It is deliberately not a release history.
   can return false world state. `/health` therefore returns 503 for `stream: not listening` on an
   API. The worker intentionally has no LISTEN socket, so that value is expected on port 3210.
 - Production admits at most two live galaxies, each with 300 real-player seats, filled strictly
-  in order. Each new galaxy also has 30 tier-1, 15 tier-2 and 6 tier-3 neutral worlds; those 51
+  in order. EU-1 carries a temporary owner-set `player_cap=350` for the current season only —
+  see "Live galaxy acceptance", which is where the expectation of a red row is recorded. Each new galaxy also has 30 tier-1, 15 tier-2 and 6 tier-3 neutral worlds; those 51
   worlds do not consume player seats.
 - The certified host budget assumes HoofyWood and Candely remain stopped. Astera deployment has
   no authority to delete their containers or volumes, and they must not be restarted casually
@@ -776,6 +777,33 @@ SELECT sh.ordinal,
 
 Required: exactly two rows, ordinals 1 and 2; and `player_cap=300` on both.
 
+**EU-1 IS TEMPORARILY 350 AND THIS ROW IS EXPECTED TO READ RED.** Owner instruction,
+2026-09-08: EU-1 filled at 300 and the cap was raised to open seats now, on a live season,
+rather than waiting for a rollover. It is a stored column on one shard — nothing in the
+rules moved — so `SERVERS.capacity` still reads 300 and every derived figure with it: the
+neutral pool, `MULTI_WORLD.capitalSlots`, `PIRATE.spawnPerHour`, and the cap a new season
+or a rollover writes. A rollover therefore takes EU-1 back to 300 on its own; the bump
+only lasts as long as this season, which is what "temporary" means here.
+
+Read the row as `player_cap=300` on EU-2 and `player_cap=350` on EU-1 until the owner says
+otherwise, and check the acceptance the raised cap actually needs instead:
+
+```sql
+SELECT count(*) AS worlds_inside_the_window
+  FROM planets p
+  JOIN seasons s ON s.id = p.season_id AND s.status = 'live'
+  JOIN shards sh ON sh.id = s.shard_id AND sh.code = 'EU-1'
+ WHERE p.kind <> 'CAPITAL' AND p.slot_index < sh.player_cap;
+```
+
+A non-zero answer is CORRECT and is the whole reason the cap could not simply be raised:
+neutral worlds are drawn from slot indexes at or above `MULTI_WORLD.capitalSlots` (300), so
+a window wider than 300 contains some of them. `occupiedSlots` counts every world when it
+answers "which addresses are taken" and `seatedCommanders` counts capitals when it answers
+"how many seats are gone" — the deploy that raises the cap must already carry both, or
+`pickSpawnSlot` keeps offering a built-on slot and the front door answers `SHARD_FULL` on a
+galaxy with empty seats. Real seats are therefore `player_cap` minus that count.
+
 **The 51 / 30 / 15 / 6 pool is a SEEDING fact, not a standing one, and only a galaxy nobody has
 settled still shows it.** A settlement captures a neutral world: the row becomes a `COLONY`, its
 `neutral_planet_state` is detached, and the neutral count falls by one for the rest of the season.
@@ -1020,6 +1048,49 @@ Never rewrite Git history on the VPS. For a code-only failure, revert forward in
 deploy that new SHA through the same gates. Do not prune rollback images or dumps in the same
 session that created them.
 
+## Raising a public event on a live season
+
+A season's event calendar is dealt once, at season creation, and every occurrence freezes its own
+effect on its row. Nothing re-deals a live calendar — `seedGalaxyEventCalendar` has exactly one
+caller — so shipping a new figure in `GALAXY_EVENTS` reaches only seasons created after it. To move
+a season that is already running:
+
+```bash
+compose=(docker compose -f docker-compose.prod.yml)
+
+# Dry run first — it is the real transaction, rolled back.
+"${compose[@]}" exec api1 apps/server/node_modules/.bin/tsx apps/server/src/cli/season.ts \
+  restamp --shard EU-1 --kind ASTEROID_SHOWER
+# reads: "N pending window(s) would change. Nothing was written; pass --yes to apply."
+
+"${compose[@]}" exec api1 apps/server/node_modules/.bin/tsx apps/server/src/cli/season.ts \
+  restamp --shard EU-1 --kind ASTEROID_SHOWER --yes
+```
+
+The binary path is not decoration: the image installs with `--prod --filter @astera/server...`,
+so there is no root `tsx` to load — `node --import tsx` fails to resolve at `/app`. Every CLI
+call in this document uses the package's own binary for the same reason the `CMD` does.
+
+**Name the kind.** The command has no "every lane" mode on purpose: definitions move on their own
+schedules, and sweeping them all would rewrite a merchant's rate and stamp today's version onto a
+window dealt under an older one.
+
+**It will only ever touch a window that has not opened, and that restriction is the whole safety
+argument.** A shower's bonus rocks are appended to the field after everything already in it, so a
+lane's SIZE fixes the index of every rock in every later lane. A rock's public id is an HMAC of that
+index, `asteroid_claims` is keyed by it, and an in-flight `mining_runs.asteroid_index` resolves
+through it — so resizing a lane whose rocks are already in the sky moves a commander's claim, and a
+drill already on its way, onto a different rock. Nothing throws; the damage is silent. A window that
+has not opened owns no rocks yet.
+
+Two consequences worth stating before running it:
+
+- The change is live on the next read — the composed field's cache key contains each occurrence's
+  effect, so no restart is needed and no process serves a stale calendar.
+- It is not a season operation under rule 9 and needs no stop, but it IS a deliberate world change:
+  run it after the code deploy that ships the new figure, never before, or the restamped rows will
+  disagree with the definition the running image would have dealt.
+
 ## Capacity qualification
 
 Capacity qualification is not a production smoke test. Run it against the isolated fixture; the
@@ -1189,7 +1260,7 @@ Inspect first and subsequent maintenance results, audit/outbox, placement/world 
 queue failures and late fleet events. Unexpected failures mean disable transfers and forward-fix,
 never restore an old dump over subsequent player activity. Existing WAITING placements stay playable.
 
-Migration 0063 backfills season_results.cycle_id and enforces one result per account/cycle.
+Migration 0064 backfills season_results.cycle_id and enforces one result per account/cycle.
 Preflight must find no duplicate account/cycle results. Rehearse on a fresh restored dump;
 compare player/world IDs, counts, activity, coordinates and period boundaries before/after.
 Old worker result INSERT is incompatible with the new NOT NULL field: stop the singleton
