@@ -1,3 +1,5 @@
+> Bu dosya önceki ara sürümün tarihsel incelemesidir. Güncel uygulama ve son doğrulama için [uygulama durumu](sessiz-uzay-uygulama-durumu.md) esas alınır. Aşağıdaki eski tamamlanmamış iş ifadeleri güncel durum değildir.
+
 # Sessiz Uzay — kod incelemesi
 
 Tarih: 2026-09-08. Karşılaştırma: `f1fa09d` → mevcut çalışma ağacı; yeni/untracked implementasyon dosyaları dahil. Migration/backfill, saf kurallar, kuyruk, presence, WAIT provisioning, sensör izolasyonu, kilit kontrolleri, worker değişikliği, testler ve dokümantasyon incelendi. Bu incelemede uygulama kodu değiştirilmedi.

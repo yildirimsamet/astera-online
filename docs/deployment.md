@@ -1240,7 +1240,7 @@ ssh yildirim@hoofywood.com \
 ## Silent Space activation release
 
 Final behavior is specified in `docs/handoffs/sessiz-uzay-entegrasyon-plani.md`.
-The previous bridge (`0912992`) is live with transfers disabled. This release adds HTTP
+The activation release builds on the previously deployed bridge. It adds HTTP
 placement fences, cycle result uniqueness, history isolation and the final colony return
 policy. MAIN departure colony sites reset to neutral; eligible returns reuse those sites
 and may exceed player capacity. Capital addresses have a safe fallback; new joins stay capped.
