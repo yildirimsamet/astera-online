@@ -107,6 +107,35 @@ describe('a raid on a pirate coming home', () => {
     expect(line).toMatch(/raider/i);
   });
 
+  /**
+   * THE TOWED HULL SURVIVES THE HOMECOMING SENTENCE.
+   *
+   * `raid_result` calls a capture "the single most memorable outcome this feature
+   * can produce" and puts it first. The landing row is the other place a commander
+   * meets it, and a raid whose cargo hulls all died comes home with loot 0 and a
+   * captured ship in the hangar — reporting that as "empty-handed" is the one
+   * wording that is flatly untrue.
+   */
+  it('names a hull it towed home even when the hold is empty', () => {
+    const line = describeNotification(
+      raidersHome({ lootAlloy: 0, lootCrystal: 0, lootDeuterium: 0, capturedHull: 'DART' }),
+      AT.getTime(),
+    );
+    expect(line).toBeTruthy();
+    expect(line).not.toMatch(/empty/i);
+    expect(line).toMatch(/captured/i);
+  });
+
+  /** A hull this build has never heard of is dropped, never printed as an id. */
+  it('drops an unknown towed hull rather than printing its id', () => {
+    const line = describeNotification(
+      raidersHome({ lootAlloy: 0, lootCrystal: 0, lootDeuterium: 0, capturedHull: 'WARP_SLED' }),
+      AT.getTime(),
+    );
+    expect(line).toMatch(/empty/i);
+    expect(line).not.toMatch(/WARP_SLED/);
+  });
+
   it('still has a sentence when it comes home empty', () => {
     const line = describeNotification(
       raidersHome({ lootAlloy: 0, lootCrystal: 0, lootDeuterium: 0 }),

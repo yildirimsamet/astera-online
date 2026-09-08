@@ -192,6 +192,8 @@ const returned = z.discriminatedUnion('trip', [
     lootAlloy: z.number(),
     lootCrystal: z.number(),
     lootDeuterium: z.number().default(0),
+    /** `resolvePirateReturn` puts it here; a capture is fleet, not ore. */
+    capturedHull: z.string().optional(),
   }),
 ]);
 
@@ -684,6 +686,24 @@ export function describeNotification(notification: NotificationView, now: number
           `fleetFrom` would have nothing to put in it.
         */
         const loot = trip.lootAlloy + trip.lootCrystal + trip.lootDeuterium;
+        /*
+          A TOWED HULL IS NOT AN EMPTY HAND. `raid_result` puts a capture first
+          because it is the one thing this lane pays in FLEET rather than in ore,
+          and a raid whose cargo hulls all died comes home with nothing in the hold
+          and a ship behind it — which "empty-handed" states as a falsehood.
+          `hullName` returns null for a hull this build does not know, which is the
+          honest answer mid-rolling-deploy: the clause is dropped rather than
+          printing a raw id at the player.
+        */
+        const towed = trip.capturedHull === undefined ? null : hullName(trip.capturedHull);
+        if (towed !== null) {
+          return i18n.t('notifications.pirateHomeTowed', {
+            count: trip.ships,
+            hull: towed,
+            ...(loot > 0 ? { amount: compact(loot) } : {}),
+            context: loot > 0 ? 'looted' : 'empty',
+          });
+        }
         return i18n.t(
           loot > 0 ? 'notifications.pirateHome' : 'notifications.pirateHomeEmpty',
           { count: trip.ships, amount: compact(loot) },

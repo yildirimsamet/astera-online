@@ -1056,10 +1056,24 @@ caller — so shipping a new figure in `GALAXY_EVENTS` reaches only seasons crea
 a season that is already running:
 
 ```bash
-docker exec astera-api1-prod node --import tsx apps/server/src/cli/season.ts restamp --shard EU-1
+compose=(docker compose -f docker-compose.prod.yml)
+
+# Dry run first — it is the real transaction, rolled back.
+"${compose[@]}" exec api1 apps/server/node_modules/.bin/tsx apps/server/src/cli/season.ts \
+  restamp --shard EU-1 --kind ASTEROID_SHOWER
 # reads: "N pending window(s) would change. Nothing was written; pass --yes to apply."
-docker exec astera-api1-prod node --import tsx apps/server/src/cli/season.ts restamp --shard EU-1 --yes
+
+"${compose[@]}" exec api1 apps/server/node_modules/.bin/tsx apps/server/src/cli/season.ts \
+  restamp --shard EU-1 --kind ASTEROID_SHOWER --yes
 ```
+
+The binary path is not decoration: the image installs with `--prod --filter @astera/server...`,
+so there is no root `tsx` to load — `node --import tsx` fails to resolve at `/app`. Every CLI
+call in this document uses the package's own binary for the same reason the `CMD` does.
+
+**Name the kind.** The command has no "every lane" mode on purpose: definitions move on their own
+schedules, and sweeping them all would rewrite a merchant's rate and stamp today's version onto a
+window dealt under an older one.
 
 **It will only ever touch a window that has not opened, and that restriction is the whole safety
 argument.** A shower's bonus rocks are appended to the field after everything already in it, so a

@@ -402,7 +402,7 @@ export async function resolvePirateArrival(
    * thing that happens when another commander wins the race.
    */
   if (!spec) {
-    await tellTargetGone(tx, raid, origin.playerId, {
+    await tellTargetGone(tx, raid, {
       callsign: pirateCallsign(key, raid.pirateIndex),
       ships: fleetCount(attacking),
     }, origin.now);
@@ -466,7 +466,7 @@ async function settleArrival(
     // Somebody else won the race. The fleet turns around with nothing — and is
     // told so HERE, at the instant it becomes true, rather than a return leg
     // later when the squadron lands and the row says "empty-handed".
-    await tellTargetGone(tx, raid, origin.playerId, {
+    await tellTargetGone(tx, raid, {
       callsign: pirateCallsign(key, raid.pirateIndex),
       level: spec.level,
       ships: fleetCount(attacking),
@@ -590,7 +590,15 @@ async function settleArrival(
     targetPlanetId: null,
     pirateRaidId: raid.id,
     targetKind: 'PIRATE',
-    attackerPlayerId: origin.playerId,
+    /*
+      THE COMMANDER WHO COMMITTED THE FLEET, NOT THE WORLD'S CURRENT HOLDER. D150.
+
+      `reports.ts` gates a report's visibility on this column, so reading the pad's
+      controller here did not merely mislabel the row: a colony taken while the
+      squadron was out handed the raider's own battle report to the captor, and the
+      commander who fought it could no longer open it at all.
+    */
+    attackerPlayerId: raid.ownerPlayerId,
     defenderPlayerId: null,
     grade: result.grade,
     rounds: result.rounds,
@@ -619,7 +627,8 @@ async function settleArrival(
   });
 
   await notify(tx, {
-    playerId: origin.playerId,
+    // The same rule as the report above and the delivery below: D150's column.
+    playerId: raid.ownerPlayerId,
     kind: 'raid_result',
     payload: {
       targetKind: 'PIRATE',
@@ -665,12 +674,14 @@ async function settleArrival(
 async function tellTargetGone(
   tx: Tx,
   raid: PirateRaidRow,
-  playerId: string,
   what: { callsign: string; level?: number; ships: number },
   at: Date,
 ): Promise<void> {
   await notify(tx, {
-    playerId,
+    // THE COMMANDER, NEVER THE PAD. `loadLocked` reads whoever holds the origin
+    // world right now, which is the wrong answer to "whose raid is this" the
+    // moment a colony changes hands mid-flight. D150.
+    playerId: raid.ownerPlayerId,
     kind: 'target_gone',
     payload: { targetKind: 'PIRATE', ...what },
     at,

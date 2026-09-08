@@ -1,5 +1,5 @@
 import { createHmac } from 'node:crypto';
-import { and, asc, eq, gt, isNull, lte } from 'drizzle-orm';
+import { and, asc, eq, gt, inArray, isNull, lte } from 'drizzle-orm';
 import {
   GALAXY_EVENTS,
   MULTI_WORLD,
@@ -115,22 +115,32 @@ function calendarRng(asteroidKey: string, kind: GalaxyEventKind): () => number {
  *
  * The strict `>` is deliberate: an occurrence starting exactly now has opened.
  *
+ * THE KIND IS AN ARGUMENT AND HAS NO DEFAULT. A calendar holds more than one lane
+ * and their definitions move on their own schedules: `TRADE_SHIP` went to version
+ * 2 at D166 with a SHAPE change, three windows a day becoming four. Sweeping every
+ * kind would rewrite a merchant's rate and stamp today's version onto a window
+ * dealt under the old one — a row that lies about itself, and a silent mid-season
+ * change to what the merchant pays, from a command whose operator asked about
+ * asteroids.
+ *
  * It reads `plannedEffectFor`, the same statement the planner deals with, so the
  * restamped figure cannot drift from the dealt one.
  */
 export async function restampFutureOccurrences(
   tx: Tx,
-  input: { now: Date; seasonId?: string },
+  input: { now: Date; seasonId?: string; kinds: readonly GalaxyEventKind[] },
 ): Promise<number> {
+  if (input.kinds.length === 0) return 0;
   const rows = await tx
     .select()
     .from(galaxyEventOccurrences)
-    .where(input.seasonId === undefined
-      ? gt(galaxyEventOccurrences.startsAt, input.now)
-      : and(
-          eq(galaxyEventOccurrences.seasonId, input.seasonId),
-          gt(galaxyEventOccurrences.startsAt, input.now),
-        ))
+    .where(and(
+      gt(galaxyEventOccurrences.startsAt, input.now),
+      inArray(galaxyEventOccurrences.kind, [...input.kinds]),
+      ...(input.seasonId === undefined
+        ? []
+        : [eq(galaxyEventOccurrences.seasonId, input.seasonId)]),
+    ))
     .for('update');
 
   let changed = 0;

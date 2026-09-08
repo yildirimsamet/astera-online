@@ -9,7 +9,7 @@
 import { parseArgs } from 'node:util';
 import { randomBytes } from 'node:crypto';
 import { eq } from 'drizzle-orm';
-import { SEASON, SERVERS, rewardId } from '@astera/rules';
+import { GALAXY_EVENT_KINDS, SEASON, SERVERS, rewardId, type GalaxyEventKind } from '@astera/rules';
 import { createDb } from '../db/client.js';
 import { runMigrations } from '../db/migrate.js';
 import { loadDotEnv, loadEnv } from '../env.js';
@@ -39,10 +39,11 @@ season wipe --yes [options]        END EVERYTHING. Fold records into accounts,
                                    delete every season world, open fresh galaxies.
 season reward NAME [--id ID]       unlock a hand-checked reward for one commander
                                    (default SOCIAL:1 — the @JoinAstera bonus)
-season restamp [--yes] [--shard C] re-deal the effect of every public event window
-                                   that has NOT opened yet, from today's rules.
-                                   Dry run unless --yes; opened windows are never
-                                   touched (see the note in the service).
+season restamp [--yes] [options]    re-deal the effect of every window of ONE event
+                                   kind that has NOT opened yet, from today's
+                                   rules. Dry run unless --yes; opened windows are
+                                   never touched (see the note in the service).
+                                   --kind KIND, default ASTEROID_SHOWER
 
   --shard CODE      shard code, for 'create'   (default: EU-1)
   --seed N          galaxy seed / seed base    (default: random)
@@ -120,6 +121,7 @@ async function main(): Promise<void> {
       count: { type: 'string' },
       unattended: { type: 'string' },
       id: { type: 'string' },
+      kind: { type: 'string' },
       yes: { type: 'boolean' },
     },
   });
@@ -236,10 +238,6 @@ async function main(): Promise<void> {
       }
 
       /**
-       * The operator's half of a reward the game cannot see. See USAGE above and
-       * `services/rewards.ts` for why this is a command and not a route.
-       */
-      /**
        * D178. The calendar is frozen at deal time, so a definition change reaches
        * nothing already on it. This is the door — and the safety rule lives in
        * `restampFutureOccurrences`, not here: a window that has opened owns rocks
@@ -251,6 +249,13 @@ async function main(): Promise<void> {
        */
       case 'restamp': {
         const now = systemClock.now();
+        // Named, never defaulted: see `restampFutureOccurrences` for why a sweep
+        // over every lane is the wrong shape for this command.
+        const kind = values.kind ?? 'ASTEROID_SHOWER';
+        if (!GALAXY_EVENT_KINDS.includes(kind as GalaxyEventKind)) {
+          throw new Error(`Unknown event kind ${kind}. One of: ${GALAXY_EVENT_KINDS.join(', ')}`);
+        }
+        const kinds = [kind as GalaxyEventKind];
         const seasonId = values.shard === undefined
           ? undefined
           : (await liveSeason(db, values.shard))?.season.id;
@@ -259,7 +264,7 @@ async function main(): Promise<void> {
         }
         if (values.yes === true) {
           const changed = await db.transaction((tx) =>
-            restampFutureOccurrences(tx, { now, seasonId }));
+            restampFutureOccurrences(tx, { now, seasonId, kinds }));
           console.log(`restamped ${String(changed)} pending window(s).`);
           break;
         }
@@ -267,7 +272,7 @@ async function main(): Promise<void> {
         let planned = 0;
         try {
           await db.transaction(async (tx) => {
-            planned = await restampFutureOccurrences(tx, { now, seasonId });
+            planned = await restampFutureOccurrences(tx, { now, seasonId, kinds });
             throw new DryRun();
           });
         } catch (error) {
@@ -280,6 +285,10 @@ async function main(): Promise<void> {
         break;
       }
 
+      /**
+       * The operator's half of a reward the game cannot see. See USAGE above and
+       * `services/rewards.ts` for why this is a command and not a route.
+       */
       case 'reward': {
         const name = positionals[1];
         if (name === undefined) throw new Error('Which commander? season reward NAME');

@@ -100,7 +100,7 @@ describe('persisted galaxy events', () => {
       // "Now" sits between the third and fourth shower: three have opened.
       const now = new Date(rows[3]!.startsAt.getTime() - 60_000);
       const changed = await db.transaction((tx) =>
-        restampFutureOccurrences(tx, { now, seasonId: season.id }));
+        restampFutureOccurrences(tx, { now, seasonId: season.id, kinds: ['ASTEROID_SHOWER'] }));
 
       const after = await db
         .select()
@@ -139,16 +139,28 @@ describe('persisted galaxy events', () => {
     it('changes nothing on a season that already carries the current figures', async () => {
       const { db, season } = await world();
       const now = new Date(START.getTime() + 60_000);
-      await db.transaction((tx) => restampFutureOccurrences(tx, { now, seasonId: season.id }));
+      const kinds = ['ASTEROID_SHOWER'] as const;
+      await db.transaction((tx) =>
+        restampFutureOccurrences(tx, { now, seasonId: season.id, kinds }));
       const again = await db.transaction((tx) =>
-        restampFutureOccurrences(tx, { now, seasonId: season.id }));
+        restampFutureOccurrences(tx, { now, seasonId: season.id, kinds }));
       expect(again).toBe(0);
     });
 
-    /** The merchant is on the same calendar and has no night figure to restamp. */
-    it('leaves the trade lane alone', async () => {
+    /**
+     * IT TOUCHES THE KIND IT WAS ASKED FOR AND NOTHING ELSE.
+     *
+     * A calendar holds more than one lane and their definitions move on their own
+     * schedules — `TRADE_SHIP` went to version 2 at D166 with a SHAPE change, three
+     * windows a day becoming four. A restamp that swept every kind would rewrite a
+     * merchant row's rate and stamp today's version on a window that was dealt
+     * under the old one: a row that lies about itself, and a silent mid-season
+     * change to what the merchant pays, from a command whose operator asked about
+     * asteroids. So the kind is an argument, never a default.
+     */
+    it('touches only the kind it was asked for', async () => {
       const { db, season } = await world();
-      const before = await db
+      const merchants = () => db
         .select()
         .from(galaxyEventOccurrences)
         .where(and(
@@ -156,21 +168,40 @@ describe('persisted galaxy events', () => {
           eq(galaxyEventOccurrences.kind, 'TRADE_SHIP'),
         ))
         .orderBy(asc(galaxyEventOccurrences.sequence));
+
+      // A merchant lane dealt under an older definition, exactly as a season that
+      // predates D166 carries one.
+      await db
+        .update(galaxyEventOccurrences)
+        .set({ definitionVersion: 1, effect: { rate: { alloy: 1, crystal: 2, deuterium: 3 } } })
+        .where(and(
+          eq(galaxyEventOccurrences.seasonId, season.id),
+          eq(galaxyEventOccurrences.kind, 'TRADE_SHIP'),
+        ));
+      const before = await merchants();
       expect(before.length).toBeGreaterThan(0);
 
-      await db.transaction((tx) => restampFutureOccurrences(tx, {
-        now: new Date(START.getTime() + 60_000), seasonId: season.id,
-      }));
-
-      const after = await db
-        .select()
-        .from(galaxyEventOccurrences)
+      // And a shower lane that genuinely has something to restamp, so the run
+      // below is a real one rather than a no-op that would leave any lane alone.
+      await db
+        .update(galaxyEventOccurrences)
+        .set({ effect: { asteroidSpawnMultiplier: 5 }, definitionVersion: 1 })
         .where(and(
           eq(galaxyEventOccurrences.seasonId, season.id),
-          eq(galaxyEventOccurrences.kind, 'TRADE_SHIP'),
-        ))
-        .orderBy(asc(galaxyEventOccurrences.sequence));
+          eq(galaxyEventOccurrences.kind, 'ASTEROID_SHOWER'),
+        ));
+
+      const changed = await db.transaction((tx) => restampFutureOccurrences(tx, {
+        now: new Date(START.getTime() + 60_000),
+        seasonId: season.id,
+        kinds: ['ASTEROID_SHOWER'],
+      }));
+      expect(changed).toBeGreaterThan(0);
+
+      const after = await merchants();
       expect(after.map((row) => row.effect)).toEqual(before.map((row) => row.effect));
+      expect(after.map((row) => row.definitionVersion))
+        .toEqual(before.map((row) => row.definitionVersion));
     });
   });
 

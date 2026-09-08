@@ -608,6 +608,8 @@ export const notifications = {
   targetGoneDebris: 'Enkaz sahası çoktan toplanmış · {{count}} kazıcı geri dönüyor',
   pirateHome: 'Akın filosu evde · {{count}} gemi · +{{amount}} ganimet',
   pirateHomeEmpty: 'Akın filosu evde · {{count}} gemi · eli boş',
+  pirateHomeTowed_looted: 'Akın filosu evde · {{count}} gemi · +{{amount}} ganimet · {{hull}} ele geçirildi',
+  pirateHomeTowed_empty: 'Akın filosu evde · {{count}} gemi · {{hull}} ele geçirildi',
   fleetFrom: ' ({{origin}} dönüşü)',
   probeLost: 'Sondan kayboldu. O uçuş tamamlanamadı',
   recalled: '{{count}} araç geri döndü. O uçuş tamamlanamadı',

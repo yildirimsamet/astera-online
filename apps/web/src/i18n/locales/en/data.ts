@@ -533,6 +533,8 @@ export const notifications = {
   targetGoneDebris: 'The wreck field was already picked clean · {{count}} drills turning back',
   pirateHome: 'Raiders home · {{count}} ships · +{{amount}} looted',
   pirateHomeEmpty: 'Raiders home · {{count}} ships · empty-handed',
+  pirateHomeTowed_looted: 'Raiders home · {{count}} ships · +{{amount}} looted · {{hull}} captured',
+  pirateHomeTowed_empty: 'Raiders home · {{count}} ships · {{hull}} captured',
   fleetFrom: ' from {{origin}}',
   probeLost: 'Your probe was lost · that flight could not be completed',
   recalled: '{{count}} craft returned · that flight could not be completed',
