@@ -47,7 +47,7 @@ it('does not spend the next five-minute opportunity before the persisted lease i
   const f = await seedWorld(0);
   let finish: (() => void) | undefined;
   const sweep = vi.spyOn(maintenance, 'runSilentSpaceSweep').mockImplementation(() => new Promise(resolve => {
-    finish = () => resolve({ ran: true, checked: 0, movedOut: 0, returned: 0, deferred: {}, failed: 0 });
+    finish = () => { resolve({ ran: true, checked: 0, movedOut: 0, returned: 0, deferred: {}, failed: 0 }); };
   }));
   const worker = new EventWorker(f.db, f.clock, { pollMs: 1000, batch: 10, staleMinutes: 5, silentSpaceEnabled: true }, log);
   await worker.tick();
