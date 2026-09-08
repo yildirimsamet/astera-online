@@ -4,6 +4,7 @@ import {
   GALAXY_EVENTS,
   MULTI_WORLD,
   generateGalaxyEventSchedule,
+  plannedEffectFor,
   type GalaxyEventKind,
   type OrbitElements,
   type PlannedGalaxyEvent,
@@ -91,6 +92,63 @@ function calendarRng(asteroidKey: string, kind: GalaxyEventKind): () => number {
     counter += 1;
     return digest.readUInt32BE(0) / 0x1_0000_0000;
   };
+}
+
+/**
+ * RESTAMP THE EFFECTS OF WINDOWS THAT HAVE NOT OPENED YET. D178.
+ *
+ * An occurrence's effect is a SNAPSHOT frozen at deal time, which is what lets two
+ * showers of one season legitimately be worth different numbers — and what means a
+ * definition change reaches nothing already on the calendar. `seedGalaxyEventCalendar`
+ * has exactly one caller, season creation, so nothing re-deals a live season on its
+ * own. This is the operator's door onto that, and it has one rule.
+ *
+ * A WINDOW THAT HAS OPENED IS NEVER TOUCHED, and the reason is arithmetic rather
+ * than caution. `withAsteroidShowerLanes` appends each shower's rocks after
+ * everything already in the field, so a lane's size decides the INDEX of every rock
+ * in every later lane. A rock's public id is an HMAC of its index, `asteroid_claims`
+ * is keyed by it, and an in-flight `mining_runs.asteroid_index` resolves through it
+ * — so resizing a lane whose rocks are in the sky would move a commander's claim,
+ * and a drill already on its way, onto a different rock. Nothing would throw. A
+ * window that has not opened owns no rocks yet, and resizing it moves only lanes
+ * that own none either.
+ *
+ * The strict `>` is deliberate: an occurrence starting exactly now has opened.
+ *
+ * It reads `plannedEffectFor`, the same statement the planner deals with, so the
+ * restamped figure cannot drift from the dealt one.
+ */
+export async function restampFutureOccurrences(
+  tx: Tx,
+  input: { now: Date; seasonId?: string },
+): Promise<number> {
+  const rows = await tx
+    .select()
+    .from(galaxyEventOccurrences)
+    .where(input.seasonId === undefined
+      ? gt(galaxyEventOccurrences.startsAt, input.now)
+      : and(
+          eq(galaxyEventOccurrences.seasonId, input.seasonId),
+          gt(galaxyEventOccurrences.startsAt, input.now),
+        ))
+    .for('update');
+
+  let changed = 0;
+  for (const row of rows) {
+    const kind = row.kind;
+    const wanted = plannedEffectFor(kind, row.startsAt.getTime() / 60_000);
+    const version = GALAXY_EVENTS.definitions[kind].version;
+    if (JSON.stringify(row.effect) === JSON.stringify(wanted)
+      && row.definitionVersion === version) {
+      continue;
+    }
+    await tx
+      .update(galaxyEventOccurrences)
+      .set({ effect: wanted, definitionVersion: version })
+      .where(eq(galaxyEventOccurrences.id, row.id));
+    changed += 1;
+  }
+  return changed;
 }
 
 /** Seed occurrences and their two queue moments in the season-creation transaction. */

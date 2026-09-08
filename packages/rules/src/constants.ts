@@ -2156,13 +2156,37 @@ export const GALAXY_EVENTS = {
     candidateAttempts: 512,
   },
   definitions: {
+    /**
+     * TEN BY DAY, FIVE AT NIGHT. D178, owner instruction: *"gündüz 10x olsun gece
+     * 5x kalsın"*.
+     *
+     * The night keeps exactly the shower it always had and the day is worth twice
+     * that — a raise where somebody is awake to fly at it, and no change at all to
+     * the hours where a denser sky would mostly expire unseen.
+     *
+     * THE NIGHT IS THE CALENDAR'S OWN, not a third one. `lowPriorityWindow` already
+     * decides how rarely a shower is scheduled between midnight and 08:00; reading
+     * the same band here means the hours that are scarce are also the hours that
+     * are smaller, stated once. (The merchant's `quietWindow` is its own 01:00
+     * boundary and stays that way — D166 bought it for a promise this kind never
+     * made.)
+     *
+     * THIS MOVES NO WINDOW. The multiplier is stamped onto an occurrence AFTER its
+     * start instant is drawn and consumes no randomness, so the shower's stream
+     * stays byte-identical (D149) and a season already dealt is untouched: every
+     * occurrence froze its own figure at deal time. Raising it on a live season is
+     * therefore a row update, never a re-deal — and only for windows that have not
+     * opened yet, because a shower's rocks take their indices in sequence order and
+     * renumbering a lane would move claims and in-flight runs onto other rocks.
+     */
     ASTEROID_SHOWER: {
-      version: 1,
+      version: 2,
       dailyCount: { min: 5, max: 5 },
       durationMinutes: 60,
       /** Two quiet hours after the one-hour shower; starts stay at least three hours apart. */
       repeatCooldownMinutes: 120,
-      effect: { asteroidSpawnMultiplier: 5 },
+      effect: { asteroidSpawnMultiplier: 10 },
+      nightEffect: { asteroidSpawnMultiplier: 5 },
     },
     /**
      * FOUR MERCHANTS A DAY, THREE HOURS EACH, AND ONE OF THEM AT NIGHT. D156 · D166.

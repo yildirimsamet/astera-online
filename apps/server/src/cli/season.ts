@@ -17,6 +17,7 @@ import { addMinutes, systemClock } from '../clock.js';
 import { accounts, players } from '../db/schema.js';
 import { hashPassword } from '../auth/password.js';
 import { createSeason, liveSeason } from '../services/season.js';
+import { restampFutureOccurrences } from '../services/galaxyEvents.js';
 import { joinSeason } from '../services/player.js';
 import { grantReward } from '../services/rewards.js';
 import {
@@ -38,6 +39,10 @@ season wipe --yes [options]        END EVERYTHING. Fold records into accounts,
                                    delete every season world, open fresh galaxies.
 season reward NAME [--id ID]       unlock a hand-checked reward for one commander
                                    (default SOCIAL:1 — the @JoinAstera bonus)
+season restamp [--yes] [--shard C] re-deal the effect of every public event window
+                                   that has NOT opened yet, from today's rules.
+                                   Dry run unless --yes; opened windows are never
+                                   touched (see the note in the service).
 
   --shard CODE      shard code, for 'create'   (default: EU-1)
   --seed N          galaxy seed / seed base    (default: random)
@@ -234,6 +239,47 @@ async function main(): Promise<void> {
        * The operator's half of a reward the game cannot see. See USAGE above and
        * `services/rewards.ts` for why this is a command and not a route.
        */
+      /**
+       * D178. The calendar is frozen at deal time, so a definition change reaches
+       * nothing already on it. This is the door — and the safety rule lives in
+       * `restampFutureOccurrences`, not here: a window that has opened owns rocks
+       * whose indices are load-bearing, so only future ones are ever moved.
+       *
+       * A DRY RUN IS THE DEFAULT, and it is the real transaction rolled back
+       * rather than a second code path that counts differently from the one that
+       * writes.
+       */
+      case 'restamp': {
+        const now = systemClock.now();
+        const seasonId = values.shard === undefined
+          ? undefined
+          : (await liveSeason(db, values.shard))?.season.id;
+        if (values.shard !== undefined && seasonId === undefined) {
+          throw new Error(`no live season on ${values.shard}`);
+        }
+        if (values.yes === true) {
+          const changed = await db.transaction((tx) =>
+            restampFutureOccurrences(tx, { now, seasonId }));
+          console.log(`restamped ${String(changed)} pending window(s).`);
+          break;
+        }
+        class DryRun extends Error {}
+        let planned = 0;
+        try {
+          await db.transaction(async (tx) => {
+            planned = await restampFutureOccurrences(tx, { now, seasonId });
+            throw new DryRun();
+          });
+        } catch (error) {
+          if (!(error instanceof DryRun)) throw error;
+        }
+        console.log(
+          `${String(planned)} pending window(s) would change. Nothing was written; `
+          + 'pass --yes to apply.',
+        );
+        break;
+      }
+
       case 'reward': {
         const name = positionals[1];
         if (name === undefined) throw new Error('Which commander? season reward NAME');

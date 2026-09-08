@@ -90,6 +90,20 @@ export interface GalaxyEventDefinition<Effect> {
     readonly exactDailyCount: number;
   };
   readonly effect: Effect;
+  /**
+   * WHAT THE SAME EVENT IS WORTH INSIDE THE CALENDAR'S NIGHT. D178, optional.
+   *
+   * A kind without one is worth its `effect` at every hour, which is every kind
+   * that had one before this existed. The night it reads is the calendar's own
+   * `lowPriorityWindow` — the same band that already decides how rarely this kind
+   * is scheduled there — rather than a third definition of night beside that one
+   * and the merchant's `quietWindow`.
+   *
+   * IT IS STAMPED, NOT CONSULTED LATER. The occurrence row carries one effect and
+   * the readers keep reading one number; which of the two figures it holds is
+   * decided once, at deal time, from the start instant that was already drawn.
+   */
+  readonly nightEffect?: Effect;
 }
 
 export type GalaxyEventDefinitions = {
@@ -235,6 +249,9 @@ function validateConfig(config: GalaxyEventsConfig): void {
       throw new RangeError(`${kind}.repeatCooldownMinutes cannot be negative`);
     }
     validateEffect(kind, definition.effect);
+    // A night figure is an effect like any other and fails on the same rule; a
+    // kind without one is simply worth its `effect` at every hour.
+    if (definition.nightEffect) validateEffect(kind, definition.nightEffect);
   }
 }
 
@@ -503,6 +520,53 @@ function planKind(
 }
 
 /**
+ * The minute of the local day an absolute instant falls on. D178.
+ *
+ * ONE STATEMENT, AND DELIBERATELY NOT THE ONE THE BUCKETS USE. The scheduling path
+ * works in whole local DAYS (`dayStartsAt`) because that is what it packs events
+ * into; this asks a different question of an instant that has already been drawn,
+ * and rewriting the bucket arithmetic to share a helper would risk moving a draw —
+ * which is the one thing D149 forbids. Nothing here consumes randomness.
+ */
+const localMinuteOfDay = (unixMinute: number, utcOffsetMinutes: number): number =>
+  (((unixMinute + utcOffsetMinutes) % DAY_MINUTES) + DAY_MINUTES) % DAY_MINUTES;
+
+/**
+ * Which of a kind's two figures this occurrence is dealt. D178.
+ *
+ * Half-open on the same boundaries the scheduler uses, so a shower that opens
+ * exactly at 08:00 is a day shower — the window it was NOT counted against.
+ */
+export function effectAt<Effect>(
+  startsAtUnixMinute: number,
+  config: GalaxyEventsConfig,
+  definition: { readonly effect: Effect; readonly nightEffect?: Effect },
+): Effect {
+  if (!definition.nightEffect) return definition.effect;
+  const window = config.calendar.lowPriorityWindow;
+  const local = localMinuteOfDay(startsAtUnixMinute, config.calendar.utcOffsetMinutes);
+  const atNight = local >= window.startsAtLocalMinute && local < window.endsAtLocalMinute;
+  return atNight ? definition.nightEffect : definition.effect;
+}
+
+/**
+ * The effect one occurrence of `kind` would be dealt if it started at this instant.
+ *
+ * THE OPERATOR'S DOOR ONTO THE SAME RULE. A season's effects are frozen at deal
+ * time, so changing a definition mid-season reaches nothing that is already on the
+ * calendar — the only way to move it is to restamp rows, and a restamp that
+ * computed the figure its own way would be a second statement of D178's rule that
+ * could drift from this one. `restampFutureOccurrences` reads this.
+ */
+export function plannedEffectFor<Kind extends GalaxyEventKind>(
+  kind: Kind,
+  startsAtUnixMinute: number,
+  config: GalaxyEventsConfig = GALAXY_EVENTS,
+): GalaxyEventEffects[Kind] {
+  return effectAt(startsAtUnixMinute, config, config.definitions[kind]);
+}
+
+/**
  * Turn one kind's start instants into its occurrence rows.
  *
  * The switch is exhaustive over `GalaxyEventKind`, so a third kind is a COMPILE
@@ -525,7 +589,10 @@ function occurrencesFor(
         startsAtMinute: startsAt - seasonStartsAtUnixMinute,
         endsAtMinute: startsAt - seasonStartsAtUnixMinute + definition.durationMinutes,
         definitionVersion: definition.version,
-        effect: { asteroidSpawnMultiplier: definition.effect.asteroidSpawnMultiplier },
+        effect: {
+          asteroidSpawnMultiplier: effectAt(startsAt, config, definition)
+            .asteroidSpawnMultiplier,
+        },
       }));
     }
     case 'TRADE_SHIP': {

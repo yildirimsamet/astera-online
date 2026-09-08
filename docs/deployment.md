@@ -1048,6 +1048,35 @@ Never rewrite Git history on the VPS. For a code-only failure, revert forward in
 deploy that new SHA through the same gates. Do not prune rollback images or dumps in the same
 session that created them.
 
+## Raising a public event on a live season
+
+A season's event calendar is dealt once, at season creation, and every occurrence freezes its own
+effect on its row. Nothing re-deals a live calendar — `seedGalaxyEventCalendar` has exactly one
+caller — so shipping a new figure in `GALAXY_EVENTS` reaches only seasons created after it. To move
+a season that is already running:
+
+```bash
+docker exec astera-api1-prod node --import tsx apps/server/src/cli/season.ts restamp --shard EU-1
+# reads: "N pending window(s) would change. Nothing was written; pass --yes to apply."
+docker exec astera-api1-prod node --import tsx apps/server/src/cli/season.ts restamp --shard EU-1 --yes
+```
+
+**It will only ever touch a window that has not opened, and that restriction is the whole safety
+argument.** A shower's bonus rocks are appended to the field after everything already in it, so a
+lane's SIZE fixes the index of every rock in every later lane. A rock's public id is an HMAC of that
+index, `asteroid_claims` is keyed by it, and an in-flight `mining_runs.asteroid_index` resolves
+through it — so resizing a lane whose rocks are already in the sky moves a commander's claim, and a
+drill already on its way, onto a different rock. Nothing throws; the damage is silent. A window that
+has not opened owns no rocks yet.
+
+Two consequences worth stating before running it:
+
+- The change is live on the next read — the composed field's cache key contains each occurrence's
+  effect, so no restart is needed and no process serves a stale calendar.
+- It is not a season operation under rule 9 and needs no stop, but it IS a deliberate world change:
+  run it after the code deploy that ships the new figure, never before, or the restamped rows will
+  disagree with the definition the running image would have dealt.
+
 ## Capacity qualification
 
 Capacity qualification is not a production smoke test. Run it against the isolated fixture; the

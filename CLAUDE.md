@@ -138,7 +138,11 @@ Rationale/evidence: `docs/decisions.md`. Numbers/simulator history: `docs/balanc
 ### World / queues / research / clans
 
 - One account → one commander → one galaxy; galaxies fill in order; one capital + max three colonies, DB-enforced.
-- A season's public-event calendar plans one kind at a time, each from its own RNG stream, in a fixed kind order (`GALAXY_EVENT_KINDS`, Asteroid Shower first); a new kind is appended, never inserted, and the shower's stream must stay byte-identical. `withAsteroidShowerLanes` filters occurrences by kind internally, so a second kind's window is never read as a shower lane (D149/D156). A kind may state its own night — `quietWindow`, its own hours and an EXACT daily count — instead of the calendar-wide share heuristic; the merchant runs four windows a day with exactly one inside 01:00–08:00 (D166).
+- A season's public-event calendar plans one kind at a time, each from its own RNG stream, in a fixed kind order (`GALAXY_EVENT_KINDS`, Asteroid Shower first); a new kind is appended, never inserted, and the shower's stream must stay byte-identical. `withAsteroidShowerLanes` filters occurrences by kind internally, so a second kind's window is never read as a shower lane (D149/D156). A kind may state its own night — `quietWindow`, its own hours and an EXACT daily count — instead of the calendar-wide share heuristic; the merchant runs four windows a day with exactly one inside 01:00–08:00 (D166). A kind may
+  also state what it is WORTH at night — `nightEffect`, stamped per occurrence at deal time from
+  the calendar's own `lowPriorityWindow`; the shower is 10× by day and 5× at night (D178). An
+  effect is frozen on its row, so changing a definition never reaches a season already dealt:
+  `season restamp` is the only door and it refuses any window that has already opened.
 - Three independent queues, depth 3: world-local `CONSTRUCTION`, world-local `YARD`, and commander-wide `RESEARCH`. Cost commits on order; Construction/Yard cancellation refunds half, Research cannot be cancelled, system fault refunds all; gates use projected same-queue state (D4).
 - Research belongs to the commander, not the funding planet; capture neither cancels nor transfers it (D134).
 - Instruments/research stop where effect tables stop; derive max levels from effects, never duplicate ladders manually (D140/D141).

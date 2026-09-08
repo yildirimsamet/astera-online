@@ -22,6 +22,7 @@ import {
   ensureGalaxyEventLifecycleEvents,
   loadGalaxyEventSchedule,
   lockGalaxyEventAudience,
+  restampFutureOccurrences,
   seedGalaxyEventCalendar,
 } from '../src/services/galaxyEvents.js';
 import { onGalaxyEventEnd, onGalaxyEventStart } from '../src/worker/handlers.js';
@@ -61,6 +62,118 @@ describe('persisted galaxy events', () => {
     return { db, clock, season, playerIds, accountIds };
   }
 
+  /**
+   * RESTAMPING A LIVE SEASON. D178.
+   *
+   * A season's effects are frozen at deal time, which is exactly why a definition
+   * change reaches nothing already on the calendar — and why an operator needs a
+   * door. The door has one rule and it is the whole safety argument: A WINDOW THAT
+   * HAS OPENED IS NEVER TOUCHED. A shower's rocks take their indices in sequence
+   * order, a rock's public id is an HMAC of its index, and claims and in-flight
+   * runs are keyed by it — so resizing a lane that already has rocks in the sky
+   * would silently move somebody's claim onto a different rock. Resizing one that
+   * has not opened moves only later lanes, which have no rocks yet.
+   */
+  describe('restamping a live calendar', () => {
+    it('raises the windows that have not opened and refuses to touch the rest', async () => {
+      const { db, season } = await world();
+      const rows = await db
+        .select()
+        .from(galaxyEventOccurrences)
+        .where(and(
+          eq(galaxyEventOccurrences.seasonId, season.id),
+          eq(galaxyEventOccurrences.kind, 'ASTEROID_SHOWER'),
+        ))
+        .orderBy(asc(galaxyEventOccurrences.sequence));
+      expect(rows.length).toBeGreaterThan(4);
+
+      // Put every occurrence back on the old single figure, as a season dealt
+      // before D178 would carry it.
+      await db
+        .update(galaxyEventOccurrences)
+        .set({ effect: { asteroidSpawnMultiplier: 5 }, definitionVersion: 1 })
+        .where(and(
+          eq(galaxyEventOccurrences.seasonId, season.id),
+          eq(galaxyEventOccurrences.kind, 'ASTEROID_SHOWER'),
+        ));
+
+      // "Now" sits between the third and fourth shower: three have opened.
+      const now = new Date(rows[3]!.startsAt.getTime() - 60_000);
+      const changed = await db.transaction((tx) =>
+        restampFutureOccurrences(tx, { now, seasonId: season.id }));
+
+      const after = await db
+        .select()
+        .from(galaxyEventOccurrences)
+        .where(and(
+          eq(galaxyEventOccurrences.seasonId, season.id),
+          eq(galaxyEventOccurrences.kind, 'ASTEROID_SHOWER'),
+        ))
+        .orderBy(asc(galaxyEventOccurrences.sequence));
+
+      const opened = after.filter((row) => row.startsAt <= now);
+      const pending = after.filter((row) => row.startsAt > now);
+      expect(opened).toHaveLength(3);
+      expect(pending.length).toBeGreaterThan(0);
+      expect(changed).toBe(pending.length);
+
+      // Not one window that has opened moved, in either field.
+      for (const row of opened) {
+        expect(row.effect).toEqual({ asteroidSpawnMultiplier: 5 });
+        expect(row.definitionVersion).toBe(1);
+      }
+      // And every pending one now carries the figure its own hour is worth.
+      for (const row of pending) {
+        const local = ((row.startsAt.getTime() / 60_000)
+          + GALAXY_EVENTS.calendar.utcOffsetMinutes) % (24 * 60);
+        const atNight = local >= 0 && local < 8 * 60;
+        expect(row.effect).toEqual({
+          asteroidSpawnMultiplier: atNight ? 5 : 10,
+        });
+        expect(row.definitionVersion)
+          .toBe(GALAXY_EVENTS.definitions.ASTEROID_SHOWER.version);
+      }
+    });
+
+    /** Idempotent: a second pass finds nothing left to say. */
+    it('changes nothing on a season that already carries the current figures', async () => {
+      const { db, season } = await world();
+      const now = new Date(START.getTime() + 60_000);
+      await db.transaction((tx) => restampFutureOccurrences(tx, { now, seasonId: season.id }));
+      const again = await db.transaction((tx) =>
+        restampFutureOccurrences(tx, { now, seasonId: season.id }));
+      expect(again).toBe(0);
+    });
+
+    /** The merchant is on the same calendar and has no night figure to restamp. */
+    it('leaves the trade lane alone', async () => {
+      const { db, season } = await world();
+      const before = await db
+        .select()
+        .from(galaxyEventOccurrences)
+        .where(and(
+          eq(galaxyEventOccurrences.seasonId, season.id),
+          eq(galaxyEventOccurrences.kind, 'TRADE_SHIP'),
+        ))
+        .orderBy(asc(galaxyEventOccurrences.sequence));
+      expect(before.length).toBeGreaterThan(0);
+
+      await db.transaction((tx) => restampFutureOccurrences(tx, {
+        now: new Date(START.getTime() + 60_000), seasonId: season.id,
+      }));
+
+      const after = await db
+        .select()
+        .from(galaxyEventOccurrences)
+        .where(and(
+          eq(galaxyEventOccurrences.seasonId, season.id),
+          eq(galaxyEventOccurrences.kind, 'TRADE_SHIP'),
+        ))
+        .orderBy(asc(galaxyEventOccurrences.sequence));
+      expect(after.map((row) => row.effect)).toEqual(before.map((row) => row.effect));
+    });
+  });
+
   it('atomically seeds both immutable lanes and their lifecycle queue pairs', async () => {
     const { db, season } = await world();
     const occurrences = await db
@@ -80,8 +193,33 @@ describe('persisted galaxy events', () => {
     // Sequence is per kind now, so uniqueness is asserted inside each lane.
     expect(new Set(showers.map((row) => row.sequence)).size).toBe(showers.length);
     expect(new Set(merchants.map((row) => row.sequence)).size).toBe(merchants.length);
-    expect(showers.every((row) => 'asteroidSpawnMultiplier' in row.effect
-      && row.effect.asteroidSpawnMultiplier === 5)).toBe(true);
+    /*
+      EACH SHOWER CARRIES WHAT ITS OWN HOUR IS WORTH. D178.
+
+      This read `=== 5` while every shower of a season was worth the same number.
+      Two figures make that assertion a statement about whichever shower happened
+      to be first, so it states the rule instead — and checks both halves are
+      actually present, or a stamping bug that dealt one figure everywhere would
+      pass it.
+    */
+    const nightFigure = GALAXY_EVENTS.definitions.ASTEROID_SHOWER.nightEffect
+      .asteroidSpawnMultiplier;
+    const dayFigure = GALAXY_EVENTS.definitions.ASTEROID_SHOWER.effect
+      .asteroidSpawnMultiplier;
+    const stamped = showers.map((row) => {
+      const local = ((row.startsAt.getTime() / 60_000)
+        + GALAXY_EVENTS.calendar.utcOffsetMinutes) % (24 * 60);
+      const atNight = local >= 0 && local < 8 * 60;
+      return {
+        wanted: atNight ? nightFigure : dayFigure,
+        got: 'asteroidSpawnMultiplier' in row.effect
+          ? row.effect.asteroidSpawnMultiplier
+          : null,
+      };
+    });
+    expect(stamped.every((row) => row.got === row.wanted)).toBe(true);
+    expect(stamped.some((row) => row.wanted === nightFigure)).toBe(true);
+    expect(stamped.some((row) => row.wanted === dayFigure)).toBe(true);
     expect(merchants.every((row) => 'rate' in row.effect
       && row.effect.rate.deuterium === TRADE.rate.deuterium)).toBe(true);
     expect(lifecycle.every((row) => row.refId !== null)).toBe(true);
@@ -407,8 +545,11 @@ describe('persisted galaxy events', () => {
     expect(active.filter((event) => event.kind === 'ASTEROID_SHOWER')).toEqual([
       expect.objectContaining({
         kind: 'ASTEROID_SHOWER',
-        asteroidSpawnMultiplier: GALAXY_EVENTS.definitions.ASTEROID_SHOWER
-          .effect.asteroidSpawnMultiplier,
+        // The occurrence's OWN figure, not the definition's day one: which of the
+        // two this window carries depends on the hour it opens at (D178).
+        asteroidSpawnMultiplier: 'asteroidSpawnMultiplier' in occurrence!.effect
+          ? occurrence!.effect.asteroidSpawnMultiplier
+          : null,
       }),
     ]);
     const rows = await db
