@@ -55,7 +55,8 @@ and the rollback boundary. It is deliberately not a release history.
   can return false world state. `/health` therefore returns 503 for `stream: not listening` on an
   API. The worker intentionally has no LISTEN socket, so that value is expected on port 3210.
 - Production admits at most two live galaxies, each with 300 real-player seats, filled strictly
-  in order. Each new galaxy also has 30 tier-1, 15 tier-2 and 6 tier-3 neutral worlds; those 51
+  in order. EU-1 carries a temporary owner-set `player_cap=350` for the current season only —
+  see "Live galaxy acceptance", which is where the expectation of a red row is recorded. Each new galaxy also has 30 tier-1, 15 tier-2 and 6 tier-3 neutral worlds; those 51
   worlds do not consume player seats.
 - The certified host budget assumes HoofyWood and Candely remain stopped. Astera deployment has
   no authority to delete their containers or volumes, and they must not be restarted casually
@@ -775,6 +776,33 @@ SELECT sh.ordinal,
 ```
 
 Required: exactly two rows, ordinals 1 and 2; and `player_cap=300` on both.
+
+**EU-1 IS TEMPORARILY 350 AND THIS ROW IS EXPECTED TO READ RED.** Owner instruction,
+2026-09-08: EU-1 filled at 300 and the cap was raised to open seats now, on a live season,
+rather than waiting for a rollover. It is a stored column on one shard — nothing in the
+rules moved — so `SERVERS.capacity` still reads 300 and every derived figure with it: the
+neutral pool, `MULTI_WORLD.capitalSlots`, `PIRATE.spawnPerHour`, and the cap a new season
+or a rollover writes. A rollover therefore takes EU-1 back to 300 on its own; the bump
+only lasts as long as this season, which is what "temporary" means here.
+
+Read the row as `player_cap=300` on EU-2 and `player_cap=350` on EU-1 until the owner says
+otherwise, and check the acceptance the raised cap actually needs instead:
+
+```sql
+SELECT count(*) AS worlds_inside_the_window
+  FROM planets p
+  JOIN seasons s ON s.id = p.season_id AND s.status = 'live'
+  JOIN shards sh ON sh.id = s.shard_id AND sh.code = 'EU-1'
+ WHERE p.kind <> 'CAPITAL' AND p.slot_index < sh.player_cap;
+```
+
+A non-zero answer is CORRECT and is the whole reason the cap could not simply be raised:
+neutral worlds are drawn from slot indexes at or above `MULTI_WORLD.capitalSlots` (300), so
+a window wider than 300 contains some of them. `occupiedSlots` counts every world when it
+answers "which addresses are taken" and `seatedCommanders` counts capitals when it answers
+"how many seats are gone" — the deploy that raises the cap must already carry both, or
+`pickSpawnSlot` keeps offering a built-on slot and the front door answers `SHARD_FULL` on a
+galaxy with empty seats. Real seats are therefore `player_cap` minus that count.
 
 **The 51 / 30 / 15 / 6 pool is a SEEDING fact, not a standing one, and only a galaxy nobody has
 settled still shows it.** A settlement captures a neutral world: the row becomes a `COLONY`, its

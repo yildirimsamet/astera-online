@@ -1,4 +1,4 @@
-import { and, desc, eq } from 'drizzle-orm';
+import { and, desc, eq, sql } from 'drizzle-orm';
 import {
   GALAXY,
   MULTI_WORLD,
@@ -374,10 +374,45 @@ export async function latestSeasonResult(db: Db, accountId: string) {
   };
 }
 
+/**
+ * EVERY SLOT A WORLD OF ANY KIND STANDS ON. The collision truth, not a seat count.
+ *
+ * `planets_season_slot_idx` is per SEASON, so a neutral world and a colony hold
+ * their address exactly as hard as a capital does. This read once filtered on
+ * `kind = 'CAPITAL'` and was correct for as long as the two ranges could not meet:
+ * capitals fill `0..playerCap-1` and `selectNeutralSlots` draws from indexes at or
+ * above `MULTI_WORLD.capitalSlots`. Raising a live galaxy's stored cap past that
+ * boundary — the temporary EU-1 measure — makes them overlap, and then a filter
+ * hands `pickSpawnSlot` a slot that is already built on.
+ *
+ * The failure is not one lost join. `pickSpawnSlot` is deterministic, so the retry
+ * re-reads an unchanged set, picks the same taken slot again, and the join reports
+ * `SHARD_FULL` on a galaxy with empty seats — while `listServers` still reads it as
+ * open, which keeps the sequential frontier from moving on to the next galaxy.
+ *
+ * NOT THE CAPACITY QUESTION. That one is `seatedCommanders`, and merging the two
+ * breaks the opposite half: the 51 neutrals sit outside the window, so counting
+ * worlds against the cap refuses every join into an empty galaxy.
+ */
 export async function occupiedSlots(db: Db, seasonId: string): Promise<Set<number>> {
   const rows = await db
     .select({ slotIndex: planets.slotIndex })
     .from(planets)
-    .where(and(eq(planets.seasonId, seasonId), eq(planets.kind, 'CAPITAL')));
+    .where(eq(planets.seasonId, seasonId));
   return new Set(rows.map((r) => r.slotIndex));
+}
+
+/**
+ * How many commander seats this galaxy has handed out. The capacity truth.
+ *
+ * A capital is what a seat IS — one account, one commander, one protected world —
+ * so this counts the same rows `listServers` counts against `shards.playerCap`.
+ * Colonies are captured neutrals and cost no seat; neutrals cost none either.
+ */
+export async function seatedCommanders(db: Db, seasonId: string): Promise<number> {
+  const [row] = await db
+    .select({ n: sql<number>`count(*)::int` })
+    .from(planets)
+    .where(and(eq(planets.seasonId, seasonId), eq(planets.kind, 'CAPITAL')));
+  return row?.n ?? 0;
 }

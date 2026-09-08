@@ -3,7 +3,7 @@ import { BUILDING_IDS, PLANET_START, START_BUILDINGS, academyExitCheckpoint, fle
 import type { Db, Tx } from '../db/client.js';
 import type { Clock } from '../clock.js';
 import { accounts, buildings, planets, players, seasons, shards, satellites, units, rewardGrants } from '../db/schema.js';
-import { galaxyOf, occupiedSlots } from './season.js';
+import { galaxyOf, occupiedSlots, seatedCommanders } from './season.js';
 import { GameError, loadLocked, recomputeWealth } from './planet.js';
 import { placeBuildingUpgrade } from './build.js';
 import { publishShard } from '../stream/bus.js';
@@ -156,8 +156,13 @@ export async function joinSeason(
   const spec = galaxyOf(seasonId, season.seed, shard.playerCap);
   const [account] = await db.select().from(accounts).where(eq(accounts.id, accountId));
   for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
-    const taken = await occupiedSlots(db, seasonId);
-    if (taken.size >= shard.playerCap) {
+    // Two different questions, and they are counted over different rows: a seat is
+    // a capital, an address is any world at all. See `occupiedSlots`.
+    const [taken, seated] = await Promise.all([
+      occupiedSlots(db, seasonId),
+      seatedCommanders(db, seasonId),
+    ]);
+    if (seated >= shard.playerCap) {
       throw new GameError('SHARD_FULL', 'This galaxy is full', 409);
     }
 
