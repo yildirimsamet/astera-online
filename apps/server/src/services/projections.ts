@@ -144,7 +144,8 @@ export class Projections {
   /** The database placement check is authoritative even if NOTIFY arrives late. */
   reconcilePlacement(accountId: string, placement: string): void {
     if (this.placements.get(accountId) === placement) return;
-    this.clear();
+    // A first request from an unmoved commander must not flush shared public data.
+    if (this.placements.has(accountId) || !placement.endsWith(':0')) this.clear();
     if (this.placements.size >= this.config.maxAccounts) this.placements.clear();
     this.placements.set(accountId, placement);
   }
